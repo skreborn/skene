@@ -32,13 +32,17 @@ use crate::{
   Length,
   Media,
   MediaEnv,
+  NodeId,
+  NodeRecord,
   Plain,
+  Platform,
   PlatformLeaf,
   PropertyKey,
   RunStyle,
   RunValue,
   RunVisitor,
   Scalar,
+  Scene,
   Size,
   Slot,
   State,
@@ -734,5 +738,176 @@ impl<X: StyleExtension> RunStyle<Plain, X> {
     self.visit(&mut find);
 
     find.found
+  }
+}
+
+/// Where a runtime-resolving platform's [`ResolutionContext`] reads what the scene does
+/// not hold: the environment, container sizes, slots and the font size's token.
+#[diagnostic::on_unimplemented(
+  message = "`{Self}` is no source a platform's resolution reads",
+  label = "a resolution source gives the environment, container sizes, slots and the font size's token"
+)]
+pub trait ResolutionSource<P: Platform> {
+  /// The font size an `em` evaluates against where no typography defines one, in the
+  /// medium's unit.
+  const EM: f32;
+
+  /// The reader's environment.
+  fn environment(&self) -> Environment<P::Scalar>;
+
+  /// The size last measured for the named container `name`.
+  fn container_size(&self, name: ContainerName) -> Option<Size<P::Scalar>>;
+
+  /// The latest derived write into `slot` on `node`.
+  fn slot(&self, node: NodeId, slot: Slot) -> Option<SlotLeaf<P::Scalar, P::StyleExt>>;
+
+  /// The token naming the font size, where the medium draws text at sizes other than
+  /// [`EM`](Self::EM).
+  fn size_token(&self) -> Option<TokenName>;
+}
+
+/// What one node's properties resolve against: the environment, the node's interaction
+/// and the named containers above it, from the scene and a platform's `source`.
+#[must_use]
+pub struct ResolutionContext<'a, P: Platform, S> {
+  source: &'a S,
+  node: Option<NodeId>,
+  environment: Environment<P::Scalar>,
+  interaction: Interaction,
+  containers: Vec<(ContainerName, Option<Size<P::Scalar>>)>,
+}
+
+impl<P: Platform, S> std::fmt::Debug for ResolutionContext<'_, P, S> {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter
+      .debug_struct("ResolutionContext")
+      .field("node", &self.node)
+      .finish_non_exhaustive()
+  }
+}
+
+impl<'a, P, S> ResolutionContext<'a, P, S>
+where
+  P: Platform<TokenValue = TokenValue<<P as Platform>::Scalar>>,
+  S: ResolutionSource<P>,
+{
+  /// The context of `node`; `None` for a stale id.
+  pub fn of(source: &'a S, node: NodeId) -> Option<Self> {
+    let (interaction, names) = Scene::<P>::read(|scene| {
+      scene.record(node)?;
+
+      let mut names = Vec::new();
+      let mut current = scene.placed_parent(node);
+
+      while let Some(ancestor) = current {
+        if let Some(name) = scene.record(ancestor).and_then(NodeRecord::container) {
+          names.push(name);
+        }
+
+        current = scene.placed_parent(ancestor);
+      }
+
+      Some((scene.interaction(node), names))
+    })?;
+
+    Some(Self {
+      source,
+      node: Some(node),
+      environment: source.environment(),
+      interaction,
+      containers: names
+        .into_iter()
+        .map(|name| (name, source.container_size(name)))
+        .collect(),
+    })
+  }
+
+  /// The context of the root the root definitions hang off: the platform's environment,
+  /// with no interaction and no container above it.
+  pub fn root(source: &'a S) -> Self {
+    Self {
+      source,
+      node: None,
+      environment: source.environment(),
+      interaction: Interaction::default(),
+      containers: Vec::new(),
+    }
+  }
+
+  /// The context a token's definition resolves in: the defining node's, else the
+  /// root's.
+  fn of_scope(source: &'a S, scope: Option<NodeId>) -> Option<Self> {
+    match scope {
+      Some(node) => Self::of(source, node),
+      None => Some(Self::root(source)),
+    }
+  }
+
+  /// The definition of `name` in force here, with the node defining it.
+  fn scoped_token(&self, name: TokenName) -> Option<(Option<NodeId>, P::TokenValue)> {
+    match self.node {
+      Some(node) => Scene::<P>::with(|scene| scene.resolve_scoped_token(node, name)),
+      None => Scene::<P>::read(|scene| scene.root_definitions().get(name).cloned())
+        .map(|value| (None, value)),
+    }
+  }
+
+  /// The value of the token `name` in force here, resolved where it is defined.
+  fn token(&self, name: TokenName) -> Option<Resolved<P::Scalar>> {
+    Resolver::<P::Scalar, P::StyleExt>::nested(|| {
+      let (scope, definition) = self.scoped_token(name)?;
+
+      Self::of_scope(self.source, scope)?.with_resolver(|resolver| resolver.definition(&definition))
+    })
+  }
+
+  /// The font size in force here: the size token's, resolved where it is defined, else
+  /// the source's [`EM`](ResolutionSource::EM).
+  fn font_size(&self) -> f32 {
+    let Some(size) = self.source.size_token()
+    else {
+      return S::EM;
+    };
+
+    Resolver::<P::Scalar, P::StyleExt>::nested(|| {
+      let (scope, definition) = self.scoped_token(size)?;
+
+      Self::of_scope(self.source, scope)?
+        .with_resolver_at(S::EM, |resolver| resolver.definition(&definition))
+    })
+    .and_then(|resolved| match resolved {
+      Resolved::Length(size) => Some(size),
+      _ => None,
+    })
+    .unwrap_or(S::EM)
+  }
+
+  /// Runs `operation` with the resolver of this context, reading tokens where they are
+  /// defined and slots through the source.
+  pub fn with_resolver<R>(
+    &self,
+    operation: impl FnOnce(&Resolver<'_, P::Scalar, P::StyleExt>) -> R,
+  ) -> R {
+    self.with_resolver_at(self.font_size(), operation)
+  }
+
+  /// Runs `operation` with the resolver of this context, an `em` evaluating against
+  /// `em`.
+  fn with_resolver_at<R>(
+    &self,
+    em: f32,
+    operation: impl FnOnce(&Resolver<'_, P::Scalar, P::StyleExt>) -> R,
+  ) -> R {
+    let token = |name| self.token(name);
+    let slot = |slot| self.source.slot(self.node?, slot);
+
+    operation(&Resolver {
+      environment: self.environment,
+      interaction: self.interaction,
+      containers: &self.containers,
+      em,
+      token: &token,
+      slot: &slot,
+    })
   }
 }

@@ -84,10 +84,8 @@ left half-done in a code comment.
     - Token caches take per-scope epochs in place of the global generation, a cached
     nearest defining node, a token's value cached at its defining scope where each
     consumer resolves it there afresh today, interned names and skipped equal
-    redefinitions, so a palette change costs the number of tokens beyond the web too;
-    the per-node resolution environment headless and the terminal each copy
-    (`of_scope`, `scoped_token`, `font_size`, `with_resolver`) moves into core beside
-    `Resolver` first, so the cache is written once.
+    redefinitions, so a palette change costs the number of tokens beyond the web too,
+    written once in core's `ResolutionContext`, which headless and the terminal share.
     - Constant factors: the UI-thread assertion in debug alone, fused borrows, the
     iterative pull and alien-signals' propagation techniques, estimated to halve a read
     and a write; a lazy first memo run; `reconcile` as a thin generic shim over a

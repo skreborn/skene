@@ -194,7 +194,17 @@ pub use props::{
   StaticRunStyle,
 };
 pub use reorder::Reorder;
-pub use resolve::{Focus, Interaction, Resolved, Resolver, SlotLeaf, SlotValue, TokenValue};
+pub use resolve::{
+  Focus,
+  Interaction,
+  ResolutionContext,
+  ResolutionSource,
+  Resolved,
+  Resolver,
+  SlotLeaf,
+  SlotValue,
+  TokenValue,
+};
 pub use run_style::{
   IntoRunValue,
   RunDynamics,

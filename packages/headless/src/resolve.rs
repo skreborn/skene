@@ -2,168 +2,52 @@
 //! feed the shared [`Resolver`], and the presented value lays the node's motion over
 //! what it resolved to.
 
-use skene_common::{
-  gui::{GuiExt, GuiProperty},
-  typography,
-};
+use skene_common::{gui::GuiProperty, typography};
 use skene_core::{
   Animation,
   BoxKeyframe,
   ContainerName,
   Environment,
-  Interaction,
   NodeId,
-  NodeRecord,
   PropertyKey,
-  Resolved,
-  Resolver,
+  ResolutionContext,
+  ResolutionSource,
   RunKeyframe,
-  Scene,
   Size,
+  Slot,
   TokenName,
   Transition,
 };
 
-use crate::{Headless, SlotValue, TokenValue, store::Kind, with_store};
+use crate::{Headless, SlotLeaf, SlotValue, store::Kind, with_store};
 
-/// The font size an `em` evaluates against where no typography defines one.
-const EM: f32 = 16.;
+/// Where headless resolution reads what the scene does not hold: the platform's
+/// records.
+pub(crate) struct Records;
+
+impl ResolutionSource<Headless> for Records {
+  const EM: f32 = 16.;
+
+  fn environment(&self) -> Environment<f32> {
+    with_store(|store| store.environment())
+  }
+
+  fn container_size(&self, name: ContainerName) -> Option<Size<f32>> {
+    with_store(|store| store.media().signals.container_sizes).get_untracked(name)
+  }
+
+  fn slot(&self, node: NodeId, slot: Slot) -> Option<SlotLeaf> {
+    with_store(|store| store.record(node)?.slots.get(&slot).cloned())
+  }
+
+  fn size_token(&self) -> Option<TokenName> {
+    Some(typography::SIZE.name())
+  }
+}
 
 /// What one node's properties resolve against: the environment, the node's interaction
 /// and the named containers above it.
-pub(crate) struct Env {
-  /// The node, or `None` for the root the root definitions hang off.
-  node: Option<NodeId>,
-  /// The reader's environment.
-  environment: Environment<f32>,
-  /// The node's interaction.
-  interaction: Interaction,
-  /// The named containers above the node, nearest first, with their sizes.
-  containers: Vec<(ContainerName, Option<Size<f32>>)>,
-}
-
-impl Env {
-  /// The environment of `node`; `None` for a stale id.
-  pub(crate) fn of(node: NodeId) -> Option<Self> {
-    let (interaction, names) = Scene::<Headless>::with(|scene| {
-      scene.record(node)?;
-
-      let interaction = scene.interaction(node);
-      let mut names = Vec::new();
-      let mut current = scene.parent(node);
-
-      while let Some(ancestor) = current {
-        if let Some(name) = scene.record(ancestor).and_then(NodeRecord::container) {
-          names.push(name);
-        }
-
-        current = scene.parent(ancestor);
-      }
-
-      Some((interaction, names))
-    })?;
-
-    with_store(|store| {
-      store.record(node)?;
-
-      let sizes = store.media().signals.container_sizes;
-
-      Some(Self {
-        node: Some(node),
-        environment: store.environment(),
-        interaction,
-        containers: names
-          .into_iter()
-          .map(|name| (name, sizes.get_untracked(name)))
-          .collect(),
-      })
-    })
-  }
-
-  /// The environment of the root: the platform's, with no container above it.
-  fn root() -> Self {
-    with_store(|store| Self {
-      node: None,
-      environment: store.environment(),
-      interaction: Interaction::default(),
-      containers: Vec::new(),
-    })
-  }
-
-  /// The environment a token's definition resolves in: the defining node's, else the
-  /// root's.
-  fn of_scope(scope: Option<NodeId>) -> Option<Self> {
-    match scope {
-      Some(node) => Self::of(node),
-      None => Some(Self::root()),
-    }
-  }
-
-  /// The definition of `name` in force here, with the node defining it.
-  fn scoped_token(&self, name: TokenName) -> Option<(Option<NodeId>, TokenValue)> {
-    match self.node {
-      Some(node) => Scene::<Headless>::with(|scene| scene.resolve_scoped_token(node, name)),
-      None => Scene::<Headless>::with(|scene| scene.root_definitions().get(name).cloned())
-        .map(|value| (None, value)),
-    }
-  }
-
-  /// The value of the token `name` in force here, resolved where it is defined.
-  fn token(&self, name: TokenName) -> Option<Resolved<f32>> {
-    Resolver::<f32>::nested(|| {
-      let (scope, definition) = self.scoped_token(name)?;
-
-      Self::of_scope(scope)?.with_resolver(|resolver| resolver.definition(&definition))
-    })
-  }
-
-  /// The font size in force here: the typography's size, resolved where it is
-  /// defined, else [`EM`].
-  fn font_size(&self) -> f32 {
-    Resolver::<f32>::nested(|| {
-      let (scope, definition) = self.scoped_token(typography::SIZE.name())?;
-
-      Self::of_scope(scope)?.with_resolver_at(EM, |resolver| resolver.definition(&definition))
-    })
-    .and_then(|resolved| match resolved {
-      Resolved::Length(size) => Some(size),
-      _ => None,
-    })
-    .unwrap_or(EM)
-  }
-
-  /// Runs `operation` with the resolver of this environment, reading tokens where they
-  /// are defined and slots through the store.
-  pub(crate) fn with_resolver<R>(
-    &self,
-    operation: impl FnOnce(&Resolver<'_, f32, GuiExt>) -> R,
-  ) -> R {
-    self.with_resolver_at(self.font_size(), operation)
-  }
-
-  /// Runs `operation` with the resolver of this environment, an `em` evaluating against
-  /// `em`.
-  fn with_resolver_at<R>(
-    &self,
-    em: f32,
-    operation: impl FnOnce(&Resolver<'_, f32, GuiExt>) -> R,
-  ) -> R {
-    let token = |name| self.token(name);
-    let slot = |slot| {
-      let node = self.node?;
-      with_store(|store| store.record(node)?.slots.get(&slot).cloned())
-    };
-
-    operation(&Resolver {
-      environment: self.environment,
-      interaction: self.interaction,
-      containers: &self.containers,
-      em,
-      token: &token,
-      slot: &slot,
-    })
-  }
-}
+pub(crate) type Env = ResolutionContext<'static, Headless, Records>;
 
 /// A box animation reading `key` from each keyframe, each leaf resolved.
 fn box_frames(
@@ -278,7 +162,7 @@ fn present(
 /// run's as a [`RunValue`], in flight where a transition or an animation moves it.
 pub(crate) fn resolve(node: NodeId, key: PropertyKey<GuiProperty>) -> Option<SlotValue> {
   let target = resolve_target(node, key);
-  let env = Env::of(node)?;
+  let env = Env::of(&Records, node)?;
   let kind = with_store(|store| match &store.record(node)?.kind {
     Kind::Box(props) => Some(Kind::Box(props.clone())),
     Kind::Control(props) => Some(Kind::Control(props.clone())),
@@ -292,7 +176,7 @@ pub(crate) fn resolve(node: NodeId, key: PropertyKey<GuiProperty>) -> Option<Slo
 
 /// The property `key` of `node` resolved, motion aside: the value it is heading for.
 fn resolve_target(node: NodeId, key: PropertyKey<GuiProperty>) -> Option<SlotValue> {
-  let env = Env::of(node)?;
+  let env = Env::of(&Records, node)?;
   let kind = with_store(|store| match &store.record(node)?.kind {
     Kind::Box(props) => Some(Kind::Box(props.clone())),
     Kind::Control(props) => Some(Kind::Control(props.clone())),

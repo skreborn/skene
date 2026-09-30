@@ -3591,6 +3591,13 @@ impl core::default::Default for skene_core::Reorder
 pub fn skene_core::Reorder::default() -> skene_core::Reorder
 impl core::fmt::Debug for skene_core::Reorder
 pub fn skene_core::Reorder::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_core::ResolutionContext<'a, P: skene_core::Platform, S>
+impl<'a, P, S> skene_core::ResolutionContext<'a, P, S> where P: skene_core::Platform<TokenValue = skene_core::TokenValue<<P as skene_core::Platform>::Scalar>>, S: skene_core::ResolutionSource<P>
+pub fn skene_core::ResolutionContext<'a, P, S>::of(&'a S, skene_core::NodeId) -> core::option::Option<Self>
+pub fn skene_core::ResolutionContext<'a, P, S>::root(&'a S) -> Self
+pub fn skene_core::ResolutionContext<'a, P, S>::with_resolver<R>(&self, impl core::ops::function::FnOnce(&skene_core::Resolver<'_, <P as skene_core::Platform>::Scalar, <P as skene_core::Platform>::StyleExt>) -> R) -> R
+impl<P: skene_core::Platform, S> core::fmt::Debug for skene_core::ResolutionContext<'_, P, S>
+pub fn skene_core::ResolutionContext<'_, P, S>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_core::Resolver<'a, N: skene_core::Scalar, X: skene_core::StyleExtension>
 pub skene_core::Resolver::containers: &'a [(skene_core::ContainerName, core::option::Option<skene_core::Size<N>>)]
 pub skene_core::Resolver::em: f32
@@ -4729,6 +4736,12 @@ impl skene_core::Quantity for skene_core::Length
 pub fn skene_core::Length::literal(f32) -> skene_core::ExprNode
 impl skene_core::Quantity for skene_core::Number
 pub fn skene_core::Number::literal(f32) -> skene_core::ExprNode
+pub trait skene_core::ResolutionSource<P: skene_core::Platform>
+pub const skene_core::ResolutionSource::EM: f32
+pub fn skene_core::ResolutionSource::container_size(&self, skene_core::ContainerName) -> core::option::Option<skene_core::Size<<P as skene_core::Platform>::Scalar>>
+pub fn skene_core::ResolutionSource::environment(&self) -> skene_core::Environment<<P as skene_core::Platform>::Scalar>
+pub fn skene_core::ResolutionSource::size_token(&self) -> core::option::Option<skene_core::TokenName>
+pub fn skene_core::ResolutionSource::slot(&self, skene_core::NodeId, skene_core::Slot) -> core::option::Option<skene_core::SlotLeaf<<P as skene_core::Platform>::Scalar, <P as skene_core::Platform>::StyleExt>>
 pub trait skene_core::RunField<X: skene_core::StyleExtension>: 'static
 pub type skene_core::RunField::Value: skene_core::IntoRunValue<X>
 pub const skene_core::RunField::KEY: skene_core::PropertyKey<<X as skene_core::StyleExtension>::Property>

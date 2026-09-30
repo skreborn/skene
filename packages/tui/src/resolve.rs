@@ -9,51 +9,32 @@ use skene_core::{
   Color,
   Condition,
   Conditional,
-  ContainerName,
-  Environment,
-  Interaction,
   Keyframe,
-  NodeId,
   PlatformLeaf,
-  Resolved,
+  ResolutionContext,
   Resolver,
   RunStyle,
   Scene,
-  Size,
   Static,
   StaticLeaf,
-  TokenName,
 };
 
 use crate::{
   BOLD_WEIGHT,
   BorderGlyphs,
-  TokenValue,
   Tui,
   TuiExt,
   store::{Handle, Kind, PlainBox, PlainRun, Store},
-  text,
 };
 
-/// The font size an `em` evaluates against where no typography defines one, or where the
-/// terminal draws every size at one cell: one cell.
-const EM: f32 = 1.;
-
-/// What one node's properties resolve against: the environment, the node's
-/// interaction, and the named containers above it.
+/// What one node's properties resolve against, with the records it reads.
 pub(crate) struct Env<'a> {
   /// The records the environment reads.
   store: &'a Store,
   /// The node's record.
   handle: Handle,
-  /// The scene node the record realizes, or `None` for the root.
-  node: Option<NodeId>,
-  /// The reader's environment.
-  environment: Environment<u32>,
-  /// The node's interaction.
-  interaction: Interaction,
-  /// The named containers above the node, nearest first, with their sizes.
-  containers: Vec<(ContainerName, Option<Size<u32>>)>,
+  /// The environment, the node's interaction and the named containers above it.
+  context: ResolutionContext<'a, Tui, Store>,
 }
 
 impl<'a> Env<'a> {
@@ -62,86 +43,15 @@ impl<'a> Env<'a> {
     Self {
       store,
       handle,
-      node: store.record(handle).and_then(|record| record.node),
-      environment: store.environment(),
-      interaction: store.interaction(handle),
-      containers: store.containers_above(handle),
+      context: ResolutionContext::of(store, handle)
+        .unwrap_or_else(|| ResolutionContext::root(store)),
     }
-  }
-
-  /// The environment a token's definition resolves in: the defining node's, else the
-  /// root's.
-  fn of_scope(store: &'a Store, scope: Option<NodeId>) -> Option<Self> {
-    let handle = match scope {
-      Some(node) => Scene::<Tui>::with(|scene| scene.contains(node).then_some(node))?,
-      None => store.root,
-    };
-
-    Some(Self::of(store, handle))
-  }
-
-  /// The definition of `name` in force here, with the node defining it.
-  fn scoped_token(&self, name: TokenName) -> Option<(Option<NodeId>, TokenValue)> {
-    match self.node {
-      Some(node) => Scene::<Tui>::with(|scene| scene.resolve_scoped_token(node, name)),
-      None => Scene::<Tui>::with(|scene| scene.root_definitions().get(name).cloned())
-        .map(|value| (None, value)),
-    }
-  }
-
-  /// The value of the token `name` in force here, resolved where it is defined.
-  fn token(&self, name: TokenName) -> Option<Resolved<u32>> {
-    Resolver::<u32, TuiExt>::nested(|| {
-      let (scope, definition) = self.scoped_token(name)?;
-
-      Self::of_scope(self.store, scope)?.with_resolver(|resolver| resolver.definition(&definition))
-    })
-  }
-
-  /// The font size in force here, in cells: the typography's size, resolved where it
-  /// is defined, where the terminal proves text sizing, else [`EM`].
-  fn font_size(&self) -> f32 {
-    if !text::sizing() {
-      return EM;
-    }
-
-    Resolver::<u32, TuiExt>::nested(|| {
-      let (scope, definition) = self.scoped_token(typography::SIZE.name())?;
-
-      Self::of_scope(self.store, scope)?
-        .with_resolver_at(EM, |resolver| resolver.definition(&definition))
-    })
-    .and_then(|resolved| match resolved {
-      Resolved::Length(scale) => Some(scale * EM),
-      _ => None,
-    })
-    .unwrap_or(EM)
   }
 
   /// Runs `operation` with the resolver of this environment, reading tokens where they
   /// are defined and slots through the store.
   fn with_resolver<R>(&self, operation: impl FnOnce(&Resolver<'_, u32, TuiExt>) -> R) -> R {
-    self.with_resolver_at(self.font_size(), operation)
-  }
-
-  /// Runs `operation` with the resolver of this environment, an `em` evaluating against
-  /// `em`.
-  fn with_resolver_at<R>(
-    &self,
-    em: f32,
-    operation: impl FnOnce(&Resolver<'_, u32, TuiExt>) -> R,
-  ) -> R {
-    let token = |name| self.token(name);
-    let slot = |slot| self.store.record(self.handle)?.slots.get(&slot).cloned();
-
-    operation(&Resolver {
-      environment: self.environment,
-      interaction: self.interaction,
-      containers: &self.containers,
-      em,
-      token: &token,
-      slot: &slot,
-    })
+    self.context.with_resolver(operation)
   }
 
   /// A box keyframe with every leaf resolved at the node.
@@ -161,9 +71,8 @@ impl<'a> Env<'a> {
   /// an otherwise empty box style.
   pub(crate) fn resolve_run_layout(&self) -> PlainBox {
     let mut layout = PlainBox::default();
-    let Some(annotation) = self
-      .node
-      .and_then(|node| Scene::<Tui>::with(|scene| scene.record(node)?.annotation().cloned()))
+    let Some(annotation) =
+      Scene::<Tui>::read(|scene| scene.record(self.handle)?.annotation().cloned())
     else {
       return layout;
     };

@@ -606,7 +606,11 @@ Condition     = Media | State | And | Or
   node under a generation covering environment, interaction and definitions, and
   reports whether the resolved value changed; that report is where a transition
   starts. The headless platform resolves through the same `Resolver`, so a test's answer
-  and the terminal's are one computation.
+  and the terminal's are one computation, and both build it through one
+  `ResolutionContext` (a node's environment, interaction and containers from the scene,
+  a token resolved where it is defined, the font size from the size token) over a
+  `ResolutionSource` giving what the scene does not hold: the environment, container
+  sizes, slots, the default `em` and whether text is drawn at other sizes.
 
 ### Tokens and themes
 

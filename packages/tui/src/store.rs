@@ -24,6 +24,7 @@ use skene_core::{
   Plain,
   PointerButtons,
   PointerPrecision,
+  ResolutionSource,
   Role,
   RunProps,
   RunStyle,
@@ -33,6 +34,7 @@ use skene_core::{
   Slot,
   TextSelection,
   Timers,
+  TokenName,
 };
 use skene_reactive::{Owner, ReadSignal, Signal, WriteSignal};
 use smallvec::SmallVec;
@@ -1349,30 +1351,6 @@ impl Store {
     })
   }
 
-  /// The named containers above `handle`, nearest first, with their last measured
-  /// sizes.
-  pub(crate) fn containers_above(&self, handle: Handle) -> Vec<(ContainerName, Option<Size<u32>>)> {
-    let mut names = Vec::new();
-    let sizes = self
-      .media
-      .as_ref()
-      .map(|media| media.signals.container_sizes);
-
-    Scene::<Tui>::read(|scene| {
-      let mut current = scene.placed_parent(handle);
-
-      while let Some(ancestor) = current {
-        if let Some(name) = self.record(ancestor).and_then(Record::container) {
-          names.push((name, sizes.and_then(|sizes| sizes.get_untracked(name))));
-        }
-
-        current = scene.placed_parent(ancestor);
-      }
-    });
-
-    names
-  }
-
   /// Whether the app holds the mouse now: taken at launch and not handed to the
   /// terminal since.
   #[inline(always)]
@@ -1704,6 +1682,32 @@ impl Store {
       u32::try_from(width - left - right).unwrap_or(0),
       u32::try_from(height - top - bottom).unwrap_or(0),
     )
+  }
+}
+
+impl ResolutionSource<Tui> for Store {
+  /// The terminal draws every size at one cell where it proves no text sizing.
+  const EM: f32 = 1.;
+
+  fn environment(&self) -> Environment<u32> {
+    Self::environment(self)
+  }
+
+  fn container_size(&self, name: ContainerName) -> Option<Size<u32>> {
+    self
+      .media
+      .as_ref()?
+      .signals
+      .container_sizes
+      .get_untracked(name)
+  }
+
+  fn slot(&self, node: NodeId, slot: Slot) -> Option<SlotLeaf> {
+    self.record(node)?.slots.get(&slot).cloned()
+  }
+
+  fn size_token(&self) -> Option<TokenName> {
+    crate::text::sizing().then(|| skene_common::typography::SIZE.name())
   }
 }
 

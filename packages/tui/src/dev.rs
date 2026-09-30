@@ -24,9 +24,9 @@ use std::{
 };
 
 use skene_core::{Color, HasChildren, Scene};
-use skene_reactive::{Get, Position, Set, Signal};
+use skene_reactive::{Get, Set, Signal, SnapshotPlace};
 
-use crate::{Column, Overlay, Text, Tui, TuiText, View as _, store::Handle};
+use crate::{Column, Overlay, Text, Tui, TuiText, View as _, records::Handle};
 
 /// The exit status telling the launcher the app stopped for a swap it could not
 /// perform in place.
@@ -206,26 +206,26 @@ pub(crate) fn swap(path: &Path) -> ! {
 }
 
 /// The snapshot position of the node `handle` realizes.
-fn position_of(handle: Handle) -> Option<Position> {
-  let node = crate::try_with_store(|store| store.record(handle)?.node)??;
+fn position_of(handle: Handle) -> Option<SnapshotPlace> {
+  let node = crate::try_with_records(|records| records.record(handle)?.node)??;
 
   Scene::<Tui>::with(|scene| scene.record(node).map(|record| record.position().clone()))
 }
 
 /// The handle realizing the node at `position`, if it is live.
-fn handle_at(position: &Position) -> Option<Handle> {
+fn handle_at(position: &SnapshotPlace) -> Option<Handle> {
   Scene::<Tui>::with(|scene| scene.node_at(position))
 }
 
 /// Every scrolled node's offsets by position, in creation order: the dev loop's carry
 /// across a restart.
-fn scroll_snapshot() -> Option<Vec<(Position, u32, u32)>> {
-  let scrolled: Vec<(Handle, u32, u32)> = crate::try_with_store(|store| {
-    store
+fn scroll_snapshot() -> Option<Vec<(SnapshotPlace, u32, u32)>> {
+  let scrolled: Vec<(Handle, u32, u32)> = crate::try_with_records(|records| {
+    records
       .handles()
       .into_iter()
       .filter_map(|handle| {
-        let (x, y) = store.record(handle)?.scroll;
+        let (x, y) = records.record(handle)?.scroll;
 
         (x > 0 || y > 0).then_some((handle, x, y))
       })
@@ -241,10 +241,10 @@ fn scroll_snapshot() -> Option<Vec<(Position, u32, u32)>> {
 }
 
 /// The focused node's position and, for a text entry, its caret and selection anchor.
-fn focus_snapshot() -> Option<(Position, Option<Caret>)> {
-  let (focused, caret) = crate::try_with_store(|store| {
-    let focused = store.focused()?;
-    let caret = store
+fn focus_snapshot() -> Option<(SnapshotPlace, Option<Caret>)> {
+  let (focused, caret) = crate::try_with_records(|records| {
+    let focused = records.focused()?;
+    let caret = records
       .record(focused)
       .and_then(|record| record.kind.field())
       .map(|field| (field.caret, field.anchor));
@@ -258,12 +258,12 @@ fn focus_snapshot() -> Option<(Position, Option<Caret>)> {
 /// Registers the platform's scroll offsets and focused node as snapshot providers; the
 /// entries ride every snapshot alongside the tagged signals.
 pub(crate) fn provide_restoration() {
-  skene_reactive::provide(SCROLL_TAG, || {
+  skene_reactive::provide_extra(SCROLL_TAG, || {
     scroll_snapshot()
       .filter(|entries| !entries.is_empty())
       .map(|entries| skene_reactive::encode(&entries))
   });
-  skene_reactive::provide(FOCUS_TAG, || {
+  skene_reactive::provide_extra(FOCUS_TAG, || {
     focus_snapshot().map(|focus| skene_reactive::encode(&focus))
   });
 }
@@ -278,8 +278,8 @@ pub fn adopt_restoration() {
 /// Adopts the focused node a restore staged, and its caret and selection where the
 /// node is a text entry.
 fn adopt_focus() {
-  let Some((position, caret)) = skene_reactive::staged(FOCUS_TAG)
-    .and_then(|bytes| skene_reactive::decode::<(Position, Option<Caret>)>(&bytes))
+  let Some((position, caret)) = skene_reactive::take_extra(FOCUS_TAG)
+    .and_then(|bytes| skene_reactive::decode::<(SnapshotPlace, Option<Caret>)>(&bytes))
   else {
     return;
   };
@@ -291,27 +291,27 @@ fn adopt_focus() {
   crate::interaction::set_focus(Some(handle));
 
   if let Some((caret, anchor)) = caret {
-    crate::with_store(|store| {
-      if let Some(field) = store
+    crate::with_records(|records| {
+      if let Some(field) = records
         .record_mut(handle)
         .and_then(|record| record.kind.field_mut())
       {
         field.select(anchor.unwrap_or(caret), caret);
       }
 
-      store.settle_entry(handle);
-      store.damage(handle);
+      records.settle_entry(handle);
+      records.damage(handle);
     });
   }
 }
 
 /// Adopts the scroll offsets a restore staged.
 fn adopt_scroll() {
-  let Some(bytes) = skene_reactive::staged(SCROLL_TAG)
+  let Some(bytes) = skene_reactive::take_extra(SCROLL_TAG)
   else {
     return;
   };
-  let Some(entries) = skene_reactive::decode::<Vec<(Position, u32, u32)>>(&bytes)
+  let Some(entries) = skene_reactive::decode::<Vec<(SnapshotPlace, u32, u32)>>(&bytes)
   else {
     return;
   };
@@ -336,7 +336,7 @@ pub(crate) fn notice_signal() -> Option<Signal<Option<String>>> {
 /// while `notice` holds one, dismissed back to `None` by Escape or a press outside.
 #[must_use]
 pub fn notice_view(notice: Signal<Option<String>>) -> impl crate::View {
-  let dark = crate::with_store(|store| store.dark());
+  let dark = crate::with_records(|records| records.dark());
   let fill = if dark {
     Color::srgb(0., 0., 0.)
   }

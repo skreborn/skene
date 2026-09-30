@@ -7,9 +7,9 @@ use unicode_segmentation::UnicodeSegmentation as _;
 use crate::{
   Tui,
   paint::wrap_spans,
-  store::{AUTOSCROLL_INTERVAL, Drag, Field, Handle, Store},
+  records::{AUTOSCROLL_INTERVAL, Drag, Field, Handle, Records},
   text,
-  with_store,
+  with_records,
 };
 
 /// The word segments of `text` as Unicode word boundaries divide it, by cluster: each
@@ -527,7 +527,7 @@ fn is_removal(key: &str, ctrl: bool) -> bool {
   matches!(key, "Backspace" | "Delete") || (ctrl && matches!(key, "h" | "w"))
 }
 
-impl Store {
+impl Records {
   /// The cells an entry shows its value in: inside its border and padding.
   pub(crate) fn field_area(&self, handle: Handle) -> Area {
     let (width, height) = self.node_size(handle);
@@ -554,7 +554,7 @@ impl Store {
   /// read-only.
   #[expect(
     clippy::unused_self,
-    reason = "every reader holds the store, and an entry's editability is asked of it as of the rest"
+    reason = "every reader holds the records, and an entry's editability is asked of it as of the rest"
   )]
   pub(crate) fn is_editable(&self, handle: Handle) -> bool {
     Scene::<Tui>::read(|scene| scene.is_editable(handle))
@@ -918,8 +918,8 @@ impl Store {
 /// Applies an editing or caret key to the focused entry, reporting a changed value
 /// through the node's change handlers.
 pub(crate) fn edit_focused(event: &KeyEvent) {
-  let changed = with_store(|store| {
-    store.edit_focused_entry(|field, area, editable| apply(event, field, area, editable))
+  let changed = with_records(|records| {
+    records.edit_focused_entry(|field, area, editable| apply(event, field, area, editable))
   });
 
   if let Some((node, value)) = changed {
@@ -932,7 +932,7 @@ pub(crate) fn edit_focused(event: &KeyEvent) {
 /// Reports every entry's selection that moved since it was last reported, through
 /// the node's selection handlers.
 pub(crate) fn report_selections() {
-  let reports = with_store(Store::selection_reports);
+  let reports = with_records(Records::selection_reports);
 
   for (node, selection) in reports {
     notify_selection_change::<Tui>(node, selection);
@@ -942,7 +942,7 @@ pub(crate) fn report_selections() {
 /// Inserts `text` into the focused entry in place of its selection, reporting the
 /// changed value through the node's change handlers.
 pub(crate) fn paste_focused(text: &str) {
-  let target = with_store(|store| store.focused());
+  let target = with_records(|records| records.focused());
 
   paste_into(target, text);
 }
@@ -951,7 +951,7 @@ pub(crate) fn paste_focused(text: &str) {
 /// that asked for it, reporting the changed value through the node's change handlers;
 /// nothing happens when no entry asked or it is gone.
 pub(crate) fn paste_requested(text: &str) {
-  let target = with_store(|store| store.paste_target.take());
+  let target = with_records(|records| records.paste_target.take());
 
   paste_into(target, text);
 }
@@ -963,8 +963,8 @@ fn paste_into(target: Option<Handle>, text: &str) {
   else {
     return;
   };
-  let changed = with_store(|store| {
-    store.edit_entry(target, |field, _, editable| {
+  let changed = with_records(|records| {
+    records.edit_entry(target, |field, _, editable| {
       let text = field.sanitized(text);
 
       if !editable || (text.is_empty() && field.selection().is_none()) {
@@ -988,17 +988,17 @@ fn paste_into(target: Option<Handle>, text: &str) {
 /// the changed value through the node's change handlers; nothing happens when `Cut` is
 /// not offered or the entry is not editable.
 pub(crate) fn cut_focused() {
-  let changed = with_store(|store| {
-    if !store.offers(ClipboardAction::Cut) {
+  let changed = with_records(|records| {
+    if !records.offers(ClipboardAction::Cut) {
       return None;
     }
 
-    let entry = store
+    let entry = records
       .clipboard_entry()
-      .filter(|entry| store.is_editable(*entry))?;
+      .filter(|entry| records.is_editable(*entry))?;
 
-    store.copy_selection();
-    store.edit_entry(entry, |field, _, _| {
+    records.copy_selection();
+    records.edit_entry(entry, |field, _, _| {
       let (from, to) = field.selection()?;
 
       field.remove(from, to);

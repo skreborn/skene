@@ -42,18 +42,18 @@ use crate::{
   cells::{CellPainter, Painter},
   interaction,
   motion::RunMotion,
-  store::{BoxRecord, Field, Kind, PictureRecord, Store},
+  records::{BoxRecord, Field, Kind, PictureRecord, Records},
 };
 
 /// The terminal platform: a zero-sized [`Platform`] keeping a record per node in this
-/// crate's store.
+/// crate's records.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 #[must_use]
 pub struct Tui;
 
 thread_local! {
   static SCENE: RefCell<Scene<Tui>> = RefCell::new(Scene::new());
-  static STORE: RefCell<Option<Store>> = const { RefCell::new(None) };
+  static STORE: RefCell<Option<Records>> = const { RefCell::new(None) };
   static ROOT: RefCell<Option<NodeId>> = const { RefCell::new(None) };
 }
 
@@ -63,15 +63,15 @@ pub(crate) fn end_turn() {
   skene_core::end_turn();
 }
 
-/// Runs `operation` on the installed store; nothing of the user's runs inside it.
+/// Runs `operation` on the installed records; nothing of the user's runs inside it.
 ///
 /// # Panics
 ///
 /// Panics if the terminal platform is not installed for this thread.
-pub(crate) fn with_store<R>(operation: impl FnOnce(&mut Store) -> R) -> R {
-  STORE.with(|store| {
+pub(crate) fn with_records<R>(operation: impl FnOnce(&mut Records) -> R) -> R {
+  STORE.with(|records| {
     operation(
-      store
+      records
         .borrow_mut()
         .as_mut()
         .expect("the terminal platform to be installed for this thread"),
@@ -79,9 +79,9 @@ pub(crate) fn with_store<R>(operation: impl FnOnce(&mut Store) -> R) -> R {
   })
 }
 
-/// Runs `operation` on the store, or `None` when none is installed.
-pub(crate) fn try_with_store<R>(operation: impl FnOnce(&mut Store) -> R) -> Option<R> {
-  STORE.with(|store| store.borrow_mut().as_mut().map(operation))
+/// Runs `operation` on the records, or `None` when none is installed.
+pub(crate) fn try_with_records<R>(operation: impl FnOnce(&mut Records) -> R) -> Option<R> {
+  STORE.with(|records| records.borrow_mut().as_mut().map(operation))
 }
 
 /// The scene node every mounted view attaches under.
@@ -99,20 +99,20 @@ impl Platform for Tui {
   }
 
   fn create_box(node: NodeId, props: &BoxProps<Self>) {
-    with_store(|store| store.insert_laid_out(node, Kind::Box(BoxRecord::new(props.clone()))));
+    with_records(|records| records.insert_laid_out(node, Kind::Box(BoxRecord::new(props.clone()))));
   }
 
   fn update_box(node: NodeId, slot: Slot, leaf: &StaticLeaf<BoxValue<u32, TuiStyle>>) {
-    with_store(|store| {
-      if let Some(record) = store.record_mut(node) {
+    with_records(|records| {
+      if let Some(record) = records.record_mut(node) {
         record.slots.insert(slot, leaf.clone().into());
 
         if let Some(inner) = record.kind.box_record_mut() {
           inner.mark_stale();
         }
 
-        store.layout_dirty = true;
-        store.damage(node);
+        records.layout_dirty = true;
+        records.damage(node);
       }
     });
   }
@@ -123,8 +123,8 @@ impl Platform for Tui {
       .is_some_and(NativeElement::is_text_entry)
       .then(|| Box::new(Field::new(props.placeholder.clone(), props.lines)));
 
-    with_store(|store| {
-      store.insert_laid_out(
+    with_records(|records| {
+      records.insert_laid_out(
         node,
         Kind::Control {
           native: props.native,
@@ -137,15 +137,15 @@ impl Platform for Tui {
   }
 
   fn set_control_state(node: NodeId, _state: &ControlState) {
-    with_store(|store| {
-      store.layout_dirty = true;
-      store.damage(node);
+    with_records(|records| {
+      records.layout_dirty = true;
+      records.damage(node);
     });
   }
 
   fn create_overlay(node: NodeId, props: &OverlayProps<Self>) {
-    with_store(|store| {
-      store.insert_laid_out(
+    with_records(|records| {
+      records.insert_laid_out(
         node,
         Kind::Overlay {
           inner: BoxRecord::new(props.box_props.clone()),
@@ -156,12 +156,12 @@ impl Platform for Tui {
           position: None,
         },
       );
-      store.overlays.push(node);
+      records.overlays.push(node);
     });
   }
 
   fn set_overlay_open(node: NodeId, open: bool, _anchor: Option<NodeId>) {
-    let focus = with_store(|store| store.set_overlay_open(node, open));
+    let focus = with_records(|records| records.set_overlay_open(node, open));
 
     if let interaction::OverlayFocus::Moved(next) = focus {
       interaction::set_focus(next);
@@ -169,9 +169,9 @@ impl Platform for Tui {
   }
 
   fn set_overlay_position(node: NodeId, position: Option<Point<f32>>) {
-    with_store(|store| {
+    with_records(|records| {
       if let Some(Kind::Overlay { position: held, .. }) =
-        store.record_mut(node).map(|record| &mut record.kind)
+        records.record_mut(node).map(|record| &mut record.kind)
       {
         #[expect(
           clippy::cast_possible_truncation,
@@ -180,19 +180,19 @@ impl Platform for Tui {
         let cell = position.map(|point| (point.x.floor() as i64, point.y.floor() as i64));
 
         *held = cell;
-        store.paint_dirty = true;
+        records.paint_dirty = true;
       }
     });
   }
 
   fn set_overlay_placement(node: NodeId, placement: Placement) {
-    with_store(|store| {
+    with_records(|records| {
       if let Some(Kind::Overlay {
         placement: held, ..
-      }) = store.record_mut(node).map(|record| &mut record.kind)
+      }) = records.record_mut(node).map(|record| &mut record.kind)
       {
         *held = placement;
-        store.paint_dirty = true;
+        records.paint_dirty = true;
       }
     });
   }
@@ -200,8 +200,8 @@ impl Platform for Tui {
   fn create_run(node: NodeId, props: &RunProps<Self>) {
     let inline_box = props.display == skene_core::RunDisplay::InlineBox;
 
-    with_store(|store| {
-      store.insert_laid_out(
+    with_records(|records| {
+      records.insert_laid_out(
         node,
         Kind::Run {
           props: props.clone(),
@@ -212,15 +212,15 @@ impl Platform for Tui {
       );
 
       // An inline box flows as one placeholder cluster, as large as its own layout.
-      if inline_box && let Some(record) = store.record_mut(node) {
+      if inline_box && let Some(record) = records.record_mut(node) {
         record.text = crate::layout::INLINE_BOX.to_string();
       }
     });
   }
 
   fn update_run(node: NodeId, slot: Slot, leaf: &StaticLeaf<RunValue<TuiStyle>>) {
-    with_store(|store| {
-      if let Some(record) = store.record_mut(node) {
+    with_records(|records| {
+      if let Some(record) = records.record_mut(node) {
         record.slots.insert(slot, leaf.clone().into());
 
         if let Kind::Run {
@@ -230,15 +230,15 @@ impl Platform for Tui {
           cache.generation = 0;
         }
 
-        store.layout_dirty = true;
-        store.damage(node);
+        records.layout_dirty = true;
+        records.damage(node);
       }
     });
   }
 
   fn set_text(node: NodeId, text: &str) {
-    with_store(|store| {
-      let Some(record) = store.record_mut(node)
+    with_records(|records| {
+      let Some(record) = records.record_mut(node)
       else {
         return;
       };
@@ -248,50 +248,50 @@ impl Platform for Tui {
       }
 
       text.clone_into(&mut record.text);
-      store.invalidate_selection(node);
-      store.layout_dirty = true;
-      store.damage(node);
+      records.invalidate_selection(node);
+      records.layout_dirty = true;
+      records.damage(node);
     });
   }
 
   fn create_anchor(node: NodeId) {
-    with_store(|store| store.insert(node, Kind::Anchor, None));
+    with_records(|records| records.insert(node, Kind::Anchor, None));
   }
 
   fn create_scope(node: NodeId) {
-    with_store(|store| store.insert(node, Kind::Scope, None));
+    with_records(|records| records.insert(node, Kind::Scope, None));
   }
 
   fn attach(_parent: NodeId, _child: NodeId, _before: Option<NodeId>) {
-    with_store(Store::note_structure);
+    with_records(Records::note_structure);
   }
 
   fn relocate(_parent: NodeId, _child: NodeId, _before: Option<NodeId>) {
-    with_store(Store::note_structure);
+    with_records(Records::note_structure);
   }
 
   fn hide(_parent: NodeId, _child: NodeId) {
-    with_store(Store::note_structure);
+    with_records(Records::note_structure);
   }
 
   fn remove(_parent: NodeId, _child: NodeId) {
-    with_store(Store::note_structure);
+    with_records(Records::note_structure);
   }
 
   fn destroy(node: NodeId) {
-    with_store(|store| store.destroy(node));
+    with_records(|records| records.destroy(node));
   }
 
   fn define_tokens(_scope: NodeId, _definitions: &Definitions<TokenValue>) {
-    with_store(Store::invalidate_styles);
+    with_records(Records::invalidate_styles);
   }
 
   fn define_root_tokens(_definitions: &Definitions<TokenValue>) {
-    with_store(Store::invalidate_styles);
+    with_records(Records::invalidate_styles);
   }
 
   fn localize_pointer(node: NodeId, event: &PointerEvent) -> PointerEvent {
-    let (x, y) = with_store(|store| store.screen_origin(node));
+    let (x, y) = with_records(|records| records.screen_origin(node));
 
     #[expect(
       clippy::cast_precision_loss,
@@ -309,7 +309,7 @@ impl Platform for Tui {
   }
 
   fn blur(node: NodeId) {
-    let holds = with_store(|store| store.focused() == Some(node));
+    let holds = with_records(|records| records.focused() == Some(node));
 
     if holds {
       interaction::set_focus(None);
@@ -317,16 +317,16 @@ impl Platform for Tui {
   }
 
   fn focus_visible() -> bool {
-    with_store(|store| {
-      store
+    with_records(|records| {
+      records
         .focused()
-        .is_some_and(|focused| store.focus_shows(focused))
+        .is_some_and(|focused| records.focus_shows(focused))
     })
   }
 
   fn set_value(node: NodeId, value: &str) {
-    with_store(|store| {
-      let Some(record) = store.record_mut(node)
+    with_records(|records| {
+      let Some(record) = records.record_mut(node)
       else {
         return;
       };
@@ -339,17 +339,17 @@ impl Platform for Tui {
         return;
       }
 
-      store.settle_entry(node);
-      store.layout_dirty = true;
-      store.damage(node);
+      records.settle_entry(node);
+      records.layout_dirty = true;
+      records.damage(node);
     });
 
     crate::field::report_selections();
   }
 
   fn set_selection(node: NodeId, selection: TextSelection) {
-    with_store(|store| {
-      let Some(field) = store
+    with_records(|records| {
+      let Some(field) = records
         .record_mut(node)
         .and_then(|record| record.kind.field_mut())
       else {
@@ -360,8 +360,8 @@ impl Platform for Tui {
         return;
       }
 
-      store.settle_entry(node);
-      store.damage(node);
+      records.settle_entry(node);
+      records.damage(node);
     });
   }
 
@@ -370,17 +370,17 @@ impl Platform for Tui {
   fn observe_size(node: NodeId, report: Rc<dyn Fn(Size<u32>)>) -> Observation {
     let kept = Rc::clone(&report);
 
-    with_store(|store| {
-      if let Some(record) = store.record_mut(node) {
+    with_records(|records| {
+      if let Some(record) = records.record_mut(node) {
         record.observers.push(report);
         record.reported = None;
-        store.layout_dirty = true;
+        records.layout_dirty = true;
       }
     });
 
     Observation::new(move || {
-      with_store(|store| {
-        if let Some(record) = store.record_mut(node) {
+      with_records(|records| {
+        if let Some(record) = records.record_mut(node) {
           record
             .observers
             .retain(|observer| !Rc::ptr_eq(observer, &kept));
@@ -390,7 +390,7 @@ impl Platform for Tui {
   }
 
   fn media() -> MediaSignals<u32> {
-    with_store(|store| store.media().signals)
+    with_records(|records| records.media().signals)
   }
 
   fn watch_media(media: &Media<u32>) -> Memo<bool> {
@@ -398,20 +398,20 @@ impl Platform for Tui {
   }
 
   fn set_scheme(scheme: Option<ColorScheme>) {
-    let write = with_store(|store| {
-      let before = store.scheme();
+    let write = with_records(|records| {
+      let before = records.scheme();
 
-      store.choice = scheme;
+      records.choice = scheme;
 
-      let after = store.scheme();
+      let after = records.scheme();
 
       if before == after {
         return None;
       }
 
-      store.invalidate_styles();
+      records.invalidate_styles();
 
-      Some((store.media().set_scheme, after))
+      Some((records.media().set_scheme, after))
     });
 
     if let Some((write, scheme)) = write {
@@ -420,32 +420,32 @@ impl Platform for Tui {
   }
 
   fn schedule(delay: std::time::Duration, action: Box<dyn FnOnce()>) -> Timer {
-    with_store(|store| {
-      let at = store.now() + delay.as_secs_f64();
+    with_records(|records| {
+      let at = records.now() + delay.as_secs_f64();
 
-      store.timers.schedule(at, action)
+      records.timers.schedule(at, action)
     })
   }
 
   fn cancel(timer: Timer) {
-    with_store(|store| store.timers.cancel(timer));
+    with_records(|records| records.timers.cancel(timer));
   }
 
   fn clipboard_availability(action: ClipboardAction) -> Availability {
-    with_store(|store| {
-      if !store.offers(action) {
+    with_records(|records| {
+      if !records.offers(action) {
         return Availability::Absent;
       }
 
       // Outside an entry, only the document's selection is copyable, and nothing is
       // cut or pasted; inside one, every action is listed, copying its selection, and
       // cutting and pasting where it takes edits.
-      let entry = store.clipboard_entry();
-      let editable = entry.is_some_and(|entry| store.is_editable(entry));
+      let entry = records.clipboard_entry();
+      let editable = entry.is_some_and(|entry| records.is_editable(entry));
       let applies = match action {
-        ClipboardAction::Copy => store.has_selection(),
+        ClipboardAction::Copy => records.has_selection(),
         ClipboardAction::Cut => {
-          editable && entry.is_some_and(|entry| store.entry_has_selection(entry))
+          editable && entry.is_some_and(|entry| records.entry_has_selection(entry))
         }
         ClipboardAction::Paste => editable,
       };
@@ -461,30 +461,30 @@ impl Platform for Tui {
 
   fn clipboard(action: ClipboardAction) {
     match action {
-      ClipboardAction::Copy => with_store(Store::copy_selection),
+      ClipboardAction::Copy => with_records(Records::copy_selection),
       ClipboardAction::Cut => crate::field::cut_focused(),
-      ClipboardAction::Paste => with_store(Store::request_paste),
+      ClipboardAction::Paste => with_records(Records::request_paste),
     }
   }
 
   fn stored_scheme() -> Option<ColorScheme> {
-    with_store(|store| store.choice)
+    with_records(|records| records.choice)
   }
 }
 
 impl Painting for Tui {
   fn available() -> ReadSignal<bool> {
-    with_store(|store| store.media().graphics)
+    with_records(|records| records.media().graphics)
   }
 
   fn paint(node: NodeId, painter: Box<skene_common::Painter>) {
-    with_store(|store| {
-      if let Some(record) = store.record_mut(node) {
+    with_records(|records| {
+      if let Some(record) = records.record_mut(node) {
         record.picture = Some(PictureRecord {
           painter: Rc::from(painter),
           image: None,
         });
-        store.damage(node);
+        records.damage(node);
       }
     });
   }
@@ -492,17 +492,17 @@ impl Painting for Tui {
 
 impl CellPainter for Tui {
   fn paint(node: NodeId, painter: Box<Painter>) {
-    with_store(|store| {
-      if let Some(record) = store.record_mut(node) {
+    with_records(|records| {
+      if let Some(record) = records.record_mut(node) {
         record.painter = Some(painter);
-        store.damage(node);
+        records.damage(node);
       }
     });
   }
 }
 
 /// Installs the terminal platform for this thread: the reactive runtime, flushing at
-/// the end of each turn, the host executor, the scene and the store.
+/// the end of each turn, the host executor, the scene and the records.
 ///
 /// # Panics
 ///
@@ -512,20 +512,20 @@ pub(crate) fn install() {
   skene_core::executor::install();
   crate::text::reset();
 
-  STORE.with(|store| {
-    let mut store = store.borrow_mut();
+  STORE.with(|records| {
+    let mut records = records.borrow_mut();
 
     assert!(
-      store.is_none(),
+      records.is_none(),
       "the terminal platform is already installed for this thread",
     );
 
-    *store = Some(Store::new(Scene::<Tui>::with(|scene| {
+    *records = Some(Records::new(Scene::<Tui>::with(|scene| {
       scene.create(NodeKind::Box, None)
     })));
   });
 
-  let node = with_store(|store| store.root);
+  let node = with_records(|records| records.root);
   // Every run inherits its text properties through the typography tokens, so the
   // terminal's defaults are defined at the root before any theme redefines them.
   let typography = Definitions::of(&Typography::default());
@@ -539,14 +539,14 @@ pub(crate) fn install() {
   crate::dev::provide_restoration();
 }
 
-/// Uninstalls the terminal platform: empties the scene and the store, and resets the
+/// Uninstalls the terminal platform: empties the scene and the records, and resets the
 /// reactive runtime and root scope, so one thread can run many independent mounts.
 pub fn uninstall() {
-  let owner = STORE.with(|store| {
-    store
+  let owner = STORE.with(|records| {
+    records
       .borrow_mut()
       .as_mut()
-      .and_then(Store::take_media_owner)
+      .and_then(Records::take_media_owner)
   });
 
   if let Some(owner) = owner {
@@ -555,7 +555,7 @@ pub fn uninstall() {
 
   skene_core::reset_thread::<Tui>();
   ROOT.with(|root| *root.borrow_mut() = None);
-  STORE.with(|store| *store.borrow_mut() = None);
+  STORE.with(|records| *records.borrow_mut() = None);
 }
 
 /// Builds `view` under the installed root as one turn, returning its node.

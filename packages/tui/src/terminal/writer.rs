@@ -13,7 +13,7 @@ use crate::{
   escape::{self, Color, CursorStyle, DecMode, MoveTo, QueryMode, Sgr, Underline},
   paint,
   text::{CellScale, Glyph},
-  with_store,
+  with_records,
 };
 
 /// A DEC private mode set or reset, as one control.
@@ -179,7 +179,7 @@ pub(super) const fn pointer_shape(cursor: Option<MouseCursor>) -> &'static str {
 /// Writes the pointer shape the current hover resolves to when it differs from
 /// `shape`, the one last written, which follows.
 pub(super) fn sync_pointer_shape(out: &mut impl Write, shape: &mut &'static str) {
-  let current = pointer_shape(with_store(|store| store.hover_cursor()));
+  let current = pointer_shape(with_records(|records| records.hover_cursor()));
 
   if current != *shape {
     *shape = current;

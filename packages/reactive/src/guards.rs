@@ -6,7 +6,7 @@ use std::{
 
 use crate::{
   id::Id,
-  value::{TrackedRef, TrackedRefCell, TrackedRefMut},
+  tracked_cell::{TrackedRef, TrackedRefCell, TrackedRefMut},
 };
 
 /// A shared borrow guard over a signal's value.

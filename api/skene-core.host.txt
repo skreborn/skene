@@ -3390,7 +3390,7 @@ pub fn skene_core::NodeRecord<P>::definitions(&self) -> core::option::Option<&sk
 pub const fn skene_core::NodeRecord<P>::kind(&self) -> skene_core::NodeKind
 pub const fn skene_core::NodeRecord<P>::parent(&self) -> core::option::Option<skene_core::NodeId>
 pub const fn skene_core::NodeRecord<P>::part(&self) -> core::option::Option<skene_core::Part>
-pub const fn skene_core::NodeRecord<P>::position(&self) -> &skene_reactive::path::Position
+pub const fn skene_core::NodeRecord<P>::position(&self) -> &skene_reactive::path::SnapshotPlace
 impl<P: skene_core::Platform> core::fmt::Debug for skene_core::NodeRecord<P>
 pub fn skene_core::NodeRecord<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_core::Number(pub f32)
@@ -3764,7 +3764,7 @@ pub fn skene_core::Scene<P>::contains(&self, skene_core::NodeId) -> bool
 pub fn skene_core::Scene<P>::create(&mut self, skene_core::NodeKind, core::option::Option<skene_core::Annotation<P>>) -> skene_core::NodeId
 pub fn skene_core::Scene<P>::is_borrowed() -> bool
 pub fn skene_core::Scene<P>::new() -> Self
-pub fn skene_core::Scene<P>::node_at(&self, &skene_reactive::path::Position) -> core::option::Option<skene_core::NodeId>
+pub fn skene_core::Scene<P>::node_at(&self, &skene_reactive::path::SnapshotPlace) -> core::option::Option<skene_core::NodeId>
 pub fn skene_core::Scene<P>::read<R>(impl core::ops::function::FnOnce(&Self) -> R) -> R
 pub fn skene_core::Scene<P>::record(&self, skene_core::NodeId) -> core::option::Option<&skene_core::NodeRecord<P>>
 pub fn skene_core::Scene<P>::record_mut(&mut self, skene_core::NodeId) -> core::option::Option<&mut skene_core::NodeRecord<P>>

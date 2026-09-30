@@ -757,11 +757,11 @@ The public API speaks the ecosystem's standard reactive vocabulary:
   `Signal::transient` occupies no position, `Signal::tagged` is an anchor the diff aligns
   around within one owner. Restore aligns per owner as the live side is created, and
   every mismatch defaults, so a stale snapshot reaching an edited program is the
-  ordinary case and never fails. A node takes a `Position` from the same sequence when
-  the scene creates it, and a platform carries what a node holds outside the graph—focus,
-  a text control's selection or caret, scroll offsets—through `provide`/`staged` by that
-  position, so a rebuilt page resumes on the same node through the same alignment,
-  keys included.
+  ordinary case and never fails. A node takes a `SnapshotPlace` from the same sequence
+  when the scene creates it, and a platform carries what a node holds outside the
+  graph—focus, a text control's selection or caret, scroll offsets—through
+  `provide_extra`/`take_extra` by that place, so a rebuilt page resumes on the same
+  node through the same alignment, keys included.
 - **Tasks belong to their owners.** `set_spawner` installs the thread's executor,
   which hands back a guard that cancels a task when dropped; `spawn` files it with the
   current owner, so a task ends when it finishes, when its owner is disposed or runs

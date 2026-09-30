@@ -109,7 +109,7 @@ fn field_code(fields: &Fields, reactive: &TokenStream, bound: bool) -> syn::Resu
       .as_ref()
       .map_or_else(|| position.to_string(), |ident| ident.unraw().to_string());
     let name = attributes.tag.as_deref().unwrap_or(&label);
-    let key = quote!(const { #reactive::key(#name) });
+    let key = quote!(const { #reactive::field_key(#name) });
     let binding = format_ident!("__field_{position}");
     let member: syn::Member = field.ident.clone().map_or_else(
       || syn::Member::Unnamed(syn::Index::from(position)),
@@ -220,7 +220,7 @@ pub(crate) fn derive(input: &DeriveInput) -> syn::Result<TokenStream> {
         let ident = &variant.ident;
         let label = ident.unraw().to_string();
         let name = tag.as_deref().unwrap_or(&label);
-        let key = quote!(const { #reactive::key(#name) });
+        let key = quote!(const { #reactive::field_key(#name) });
         let constant = format_ident!("__VARIANT_KEY_{}", restore_constants.len());
         let code = field_code(&variant.fields, &reactive, true)?;
         let bindings = &code.bindings;
@@ -261,7 +261,7 @@ pub(crate) fn derive(input: &DeriveInput) -> syn::Result<TokenStream> {
         record_arms.push(quote! {
           #pattern => __recorder.variant(#key, |__recorder| { #payload }),
         });
-        restore_constants.push(quote!(const #constant: u32 = #reactive::key(#name);));
+        restore_constants.push(quote!(const #constant: u32 = #reactive::field_key(#name);));
         restore_arms.push(quote!(#constant => #restored,));
 
         if default {

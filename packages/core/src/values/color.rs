@@ -1,7 +1,7 @@
 use std::hash::{Hash, Hasher};
 
 use color::{AlphaColor, ColorSpace, Hsl, Hwb, Lab, Srgb};
-use skene_reactive::{Recorder, Snapshot, Value, key};
+use skene_reactive::{Recorder, Snapshot, Value, field_key};
 
 use crate::Scalar;
 
@@ -318,7 +318,7 @@ impl Snapshot for ColorScheme {
       Self::Dark => "Dark",
     };
 
-    recorder.variant(key(name), Recorder::unit);
+    recorder.variant(field_key(name), Recorder::unit);
   }
 
   fn restore(value: Value<'_>) -> Option<Self> {
@@ -327,10 +327,10 @@ impl Snapshot for ColorScheme {
       return None;
     };
 
-    if variant == key("Light") {
+    if variant == field_key("Light") {
       Some(Self::Light)
     }
-    else if variant == key("Dark") {
+    else if variant == field_key("Dark") {
       Some(Self::Dark)
     }
     else {
@@ -342,10 +342,10 @@ impl Snapshot for ColorScheme {
 impl Snapshot for Color {
   fn record(&self, recorder: &mut Recorder) {
     recorder.record(|fields| {
-      fields.field(key("lightness"), &self.lightness);
-      fields.field(key("chroma"), &self.chroma);
-      fields.field(key("hue"), &self.hue);
-      fields.field(key("alpha"), &self.alpha);
+      fields.field(field_key("lightness"), &self.lightness);
+      fields.field(field_key("chroma"), &self.chroma);
+      fields.field(field_key("hue"), &self.hue);
+      fields.field(field_key("alpha"), &self.alpha);
     });
   }
 
@@ -354,7 +354,7 @@ impl Snapshot for Color {
     else {
       return None;
     };
-    let component = |name: &str| record.field(key(name)).and_then(f32::restore);
+    let component = |name: &str| record.field(field_key(name)).and_then(f32::restore);
 
     Some(Self {
       lightness: component("lightness")?,

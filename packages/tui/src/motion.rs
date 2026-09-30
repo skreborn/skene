@@ -20,7 +20,7 @@ use skene_core::{
 use crate::{
   TuiProperty,
   TuiStyle,
-  store::{PlainBox, PlainRun},
+  records::{PlainBox, PlainRun},
 };
 
 /// What a box-like node runs: its properties' motion.
@@ -251,7 +251,7 @@ mod tests {
   use skene_core::{Animation, BoxDynamics, Color, Easing, Property, Transition};
 
   use super::{BoxMotion, Clock};
-  use crate::store::PlainBox;
+  use crate::records::PlainBox;
 
   fn colored(color: Color) -> PlainBox {
     PlainBox {

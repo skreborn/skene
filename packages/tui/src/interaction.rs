@@ -1,8 +1,8 @@
 //! The terminal's interaction: hit testing, hover and focus, presses and clicks,
 //! wheel scrolling and scrollbar drags, each routed through core's dispatch.
 //!
-//! No borrow of the store is held while a handler runs: every entry point reads what
-//! it needs, releases the store, dispatches, then writes the outcome back.
+//! No borrow of the records is held while a handler runs: every entry point reads what
+//! it needs, releases the records, dispatches, then writes the outcome back.
 
 use skene_core::{
   Axes,
@@ -59,8 +59,8 @@ use crate::{
     paragraph_run_at,
   },
   paint::control_entry,
-  store::{Drag, Handle, Kind, Press, Record, ScrollLatch, Store},
-  with_store,
+  records::{Drag, Handle, Kind, Press, Record, Records, ScrollLatch},
+  with_records,
 };
 
 /// The rows or columns one wheel report scrolls: a browser's three lines per notch.
@@ -74,7 +74,7 @@ pub(crate) enum OverlayFocus {
   Moved(Option<Handle>),
 }
 
-impl Store {
+impl Records {
   /// Every open overlay reachable from the root, in the order they opened; later
   /// entries stack on top.
   pub(crate) fn open_overlays(&self) -> Vec<Handle> {
@@ -99,7 +99,7 @@ impl Store {
   /// The topmost open overlay and whether it is modal.
   #[expect(
     clippy::unused_self,
-    reason = "every reader holds the store, and the overlays are asked of it as of the rest"
+    reason = "every reader holds the records, and the overlays are asked of it as of the rest"
   )]
   pub(crate) fn topmost_open_overlay(&self) -> Option<(Handle, bool)> {
     Scene::<Tui>::read(|scene| {
@@ -112,7 +112,7 @@ impl Store {
   /// The topmost open modal overlay.
   #[expect(
     clippy::unused_self,
-    reason = "every reader holds the store, and the overlays are asked of it as of the rest"
+    reason = "every reader holds the records, and the overlays are asked of it as of the rest"
   )]
   pub(crate) fn topmost_modal(&self) -> Option<Handle> {
     Scene::<Tui>::read(|scene| scene.topmost_modal(scene.open_overlays()))
@@ -122,7 +122,7 @@ impl Store {
   /// an overlay opened above it; everything is while no modal is open.
   #[expect(
     clippy::unused_self,
-    reason = "every reader holds the store, and the overlays are asked of it as of the rest"
+    reason = "every reader holds the records, and the overlays are asked of it as of the rest"
   )]
   pub(crate) fn reachable_under_modal(&self, handle: Handle) -> bool {
     Scene::<Tui>::read(|scene| scene.reachable_under_modal(scene.open_overlays(), handle))
@@ -761,9 +761,9 @@ impl Store {
   }
 }
 
-/// The store, released; runs `operation` on it.
-fn store<R>(operation: impl FnOnce(&mut Store) -> R) -> R {
-  with_store(operation)
+/// The records, released; runs `operation` on them.
+fn records<R>(operation: impl FnOnce(&mut Records) -> R) -> R {
+  with_records(operation)
 }
 
 /// Moves focus to `next`, notifying the node focus left and the one it reached; the
@@ -782,24 +782,24 @@ pub(crate) fn set_focus_restored(next: Option<Handle>) {
 }
 
 fn focus_on(next: Option<Handle>, restored: bool) {
-  let moved = store(|store| {
-    let previous = store.focused();
+  let moved = records(|records| {
+    let previous = records.focused();
 
     if previous == next {
       return None;
     }
 
     if let Some(previous) = previous {
-      if !store.inside_open_overlay(next) {
-        store.collapse_entry_selection(previous);
+      if !records.inside_open_overlay(next) {
+        records.collapse_entry_selection(previous);
       }
 
-      store.damage(previous);
+      records.damage(previous);
     }
 
     if let Some(next) = next {
       if !restored
-        && let Some(field) = store
+        && let Some(field) = records
           .record_mut(next)
           .and_then(|record| record.kind.field_mut())
       {
@@ -811,12 +811,12 @@ fn focus_on(next: Option<Handle>, restored: bool) {
         }
       }
 
-      store.settle_entry(next);
-      store.damage(next);
-      store.reveal = Some(next);
+      records.settle_entry(next);
+      records.damage(next);
+      records.reveal = Some(next);
     }
 
-    Some(next.and_then(|next| store.record(next).and_then(|record| record.node)))
+    Some(next.and_then(|next| records.record(next).and_then(|record| record.node)))
   });
 
   if let Some(gained) = moved {
@@ -830,12 +830,12 @@ fn focus_on(next: Option<Handle>, restored: bool) {
 /// node that is no tab stop (one disabled while it held focus), to the nearest stop
 /// after it, or before it for a negative `step`, in document order.
 pub(crate) fn move_focus(step: isize) {
-  let next = store(|store| {
+  let next = records(|records| {
     let root = crate::platform::root_node()?;
-    let order = store.tab_stops();
-    let from = store
+    let order = records.tab_stops();
+    let from = records
       .focused()
-      .and_then(|focused| store.record(focused)?.node);
+      .and_then(|focused| records.record(focused)?.node);
 
     Scene::<Tui>::read(|scene| scene.tab_from(root, &order, from, step))
   });
@@ -849,18 +849,18 @@ pub(crate) fn move_focus(step: isize) {
 /// browser's `:hover` holds on the ancestors of what the pointer is over, an overlay's
 /// among them, notifying the nodes the pointer left and entered.
 pub(crate) fn set_hover(x: u16, y: u16) {
-  let deepest = store(|store| {
-    let next = store.pointer_path(x, y);
+  let deepest = records(|records| {
+    let next = records.pointer_path(x, y);
 
-    if std::mem::replace(&mut store.last_pointer, (x, y)) != (x, y) {
+    if std::mem::replace(&mut records.last_pointer, (x, y)) != (x, y) {
       // A real pointer move releases the wheel's latched target.
-      store.scroll_latch = None;
+      records.scroll_latch = None;
     }
 
-    let deepest = next.last().and_then(|handle| store.record(*handle)?.node);
+    let deepest = next.last().and_then(|handle| records.record(*handle)?.node);
 
     // A moved hover restyles the nodes whose style it changed.
-    store.restyle_pending |= Scene::<Tui>::read(Scene::hovered) != deepest;
+    records.restyle_pending |= Scene::<Tui>::read(Scene::hovered) != deepest;
 
     deepest
   });
@@ -878,7 +878,8 @@ fn pointer_event(
   button: Option<PointerButton>,
   modifiers: Modifiers,
 ) -> PointerEvent {
-  let ((within_x, within_y), buttons) = store(|store| (store.pointer_within, store.buttons));
+  let ((within_x, within_y), buttons) =
+    records(|records| (records.pointer_within, records.buttons));
   let (x, y) = (f32::from(x) + within_x, f32::from(y) + within_y);
 
   #[expect(
@@ -898,31 +899,31 @@ fn pointer_event(
 
 /// The deepest node under (`x`, `y`) with its origin, or the node declaring drag axes
 /// the held press captured.
-fn pointer_target(store: &Store, x: u16, y: u16) -> Option<(Handle, (i64, i64))> {
-  if let Some(press) = &store.press
-    && store.buttons.contains(PointerButton::Primary)
+fn pointer_target(records: &Records, x: u16, y: u16) -> Option<(Handle, (i64, i64))> {
+  if let Some(press) = &records.press
+    && records.buttons.contains(PointerButton::Primary)
     && let Some(captured) = press.captured
   {
-    return Some((captured, store.screen_origin(captured)));
+    return Some((captured, records.screen_origin(captured)));
   }
 
-  store.hit_test(x, y).last().copied()
+  records.hit_test(x, y).last().copied()
 }
 
 /// Dispatches a pointer move at (`x`, `y`), the terminal reporting `dragging` held: the
 /// hover path follows it, the move reaches the node declaring drag axes the press
 /// captured, or else the node under the pointer, and a drag in progress follows.
 pub(crate) fn pointer_move(x: u16, y: u16, dragging: Option<PointerButton>, modifiers: Modifiers) {
-  if !store(|store| store.mouse_taken()) {
+  if !records(|records| records.mouse_taken()) {
     return;
   }
 
   set_hover(x, y);
 
-  let target = store(|store| pointer_target(store, x, y));
+  let target = records(|records| pointer_target(records, x, y));
 
   if let Some((handle, origin)) = target
-    && let Some(node) = store(|store| store.record(handle).and_then(|record| record.node))
+    && let Some(node) = records(|records| records.record(handle).and_then(|record| record.node))
   {
     let _ = dispatch_pointer_move::<Tui>(node, &pointer_event(x, y, origin, None, modifiers));
   }
@@ -949,25 +950,25 @@ pub(crate) fn pointer_press(x: u16, y: u16, button: PointerButton, modifiers: Mo
   reason = "one press has these stages; length is the stage count, not complexity"
 )]
 fn press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
-  store(|store| store.set_focus_visible(false));
+  records(|records| records.set_focus_visible(false));
 
-  if !store(|store| store.mouse_taken()) {
+  if !records(|records| records.mouse_taken()) {
     return;
   }
 
   set_hover(x, y);
 
   // A press on a scrollbar grabs it and consumes the press.
-  let grabbed = store(|store| {
+  let grabbed = records(|records| {
     if button != PointerButton::Primary {
       return None;
     }
 
-    let (handle, axis, position) = store.scrollbar_hit(x, y)?;
-    let (_, track, limit) = store.scroll_geometry(handle, axis);
+    let (handle, axis, position) = records.scrollbar_hit(x, y)?;
+    let (_, track, limit) = records.scroll_geometry(handle, axis);
     let offset = match axis {
-      Axis::Horizontal => store.scroll_offset(handle).0,
-      Axis::Vertical => store.scroll_offset(handle).1,
+      Axis::Horizontal => records.scroll_offset(handle).0,
+      Axis::Vertical => records.scroll_offset(handle).1,
     };
     let (start, thumb) =
       crate::paint::thumb_span(isize::try_from(track).unwrap_or(0), offset, limit);
@@ -978,9 +979,9 @@ fn press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
     else {
       thumb / 2.
     };
-    let offsets = store.thumb_offsets(handle, axis, track, limit, position - grab);
+    let offsets = records.thumb_offsets(handle, axis, track, limit, position - grab);
 
-    store.drag = Some(Drag::Scrollbar {
+    records.drag = Some(Drag::Scrollbar {
       node: handle,
       axis,
       grab,
@@ -995,28 +996,28 @@ fn press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
     return;
   }
 
-  let (path, dismissed, modal_blocked) = store(|store| {
-    let path = store.hit_test(x, y);
+  let (path, dismissed, modal_blocked) = records(|records| {
+    let path = records.hit_test(x, y);
     let deepest = path
       .last()
-      .and_then(|(handle, _)| store.record(*handle)?.node);
-    let overlays: Vec<NodeId> = store
+      .and_then(|(handle, _)| records.record(*handle)?.node);
+    let overlays: Vec<NodeId> = records
       .open_overlays()
       .into_iter()
-      .filter_map(|overlay| store.record(overlay)?.node)
+      .filter_map(|overlay| records.record(overlay)?.node)
       .collect();
     let dismissed = Scene::<Tui>::read(|scene| scene.dismissed_by_press(&overlays, deepest));
-    let inside_overlay = store
+    let inside_overlay = records
       .topmost_open_overlay()
-      .is_some_and(|(top, _)| store.hit_overlay(top, x, y, &mut Vec::new()));
+      .is_some_and(|(top, _)| records.hit_overlay(top, x, y, &mut Vec::new()));
 
     // A press outside the topmost modal, and the overlays above it, reaches nothing.
-    let blocked = store.topmost_modal().is_some() && path.is_empty();
+    let blocked = records.topmost_modal().is_some() && path.is_empty();
 
     // A left press starts over, unless it lands in an open overlay, whose items act on
     // the selection beneath; a right press keeps the selection for the context menu.
     if button == PointerButton::Primary && !inside_overlay {
-      store.clear_selection();
+      records.clear_selection();
     }
 
     (path, dismissed, blocked)
@@ -1040,8 +1041,8 @@ fn press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
   };
   // A press on a link's cell focuses the linked run, as a click on an anchor does,
   // whether the run is hit itself or flows in a paragraph.
-  let link = store(|store| store.link_at(x, y));
-  let focus_target = store(|store| {
+  let link = records(|records| records.link_at(x, y));
+  let focus_target = records(|records| {
     link
       .as_ref()
       .map(|(run, _)| *run)
@@ -1049,7 +1050,7 @@ fn press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
         path
           .iter()
           .rev()
-          .find_map(|(handle, _)| store.focus_holder(*handle))
+          .find_map(|(handle, _)| records.focus_holder(*handle))
       })
       .or_else(|| {
         // A press inside an overlay with no focusable of its own keeps focus on the
@@ -1057,44 +1058,45 @@ fn press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
         // control that opened it.
         let (first, _) = path.first()?;
 
-        if !store.record(*first).is_some_and(Record::is_overlay) {
+        if !records.record(*first).is_some_and(Record::is_overlay) {
           return None;
         }
 
-        store
+        records
           .ancestors(*first)
           .into_iter()
-          .find(|node| store.is_focusable(*node))
+          .find(|node| records.is_focusable(*node))
       })
   });
 
   // A right press on an entry focuses it too, so its edit menu is the focused entry's.
-  let entry = focus_target.filter(|target| store(|store| store.is_field(*target)));
-  let entry_held_focus = entry.is_some_and(|entry| store(|store| store.focused() == Some(entry)));
+  let entry = focus_target.filter(|target| records(|records| records.is_field(*target)));
+  let entry_held_focus =
+    entry.is_some_and(|entry| records(|records| records.focused() == Some(entry)));
 
   if button == PointerButton::Primary || entry.is_some() {
     set_focus(focus_target);
   }
 
-  let node = store(|store| store.record(deepest).and_then(|record| record.node));
+  let node = records(|records| records.record(deepest).and_then(|record| record.node));
   let prevented = node.map_or(Prevented::default(), |node| {
     dispatch_pointer_down::<Tui>(node, &pointer_event(x, y, origin, Some(button), modifiers))
   });
 
-  store(|store| {
+  records(|records| {
     if button == PointerButton::Primary {
-      let path = store.ancestors(deepest);
-      let captured = path.iter().copied().find(|handle| store.drags(*handle));
-      let count = store.register_press(x, y);
+      let path = records.ancestors(deepest);
+      let captured = path.iter().copied().find(|handle| records.drags(*handle));
+      let count = records.register_press(x, y);
 
-      store.press = Some(Press {
+      records.press = Some(Press {
         path: path.into_iter().rev().collect(),
         pressed: deepest,
         captured,
         target: focus_target,
         count,
       });
-      store.restyle_pending = true;
+      records.restyle_pending = true;
 
       Scene::<Tui>::with(|scene| scene.set_pressed(node));
     }
@@ -1120,8 +1122,8 @@ fn press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
     && let Some(node) = node
     && Scene::<Tui>::read(|scene| scene.drag_source(node)).is_some()
   {
-    store(|store| {
-      store.drag = Some(Drag::Item {
+    records(|records| {
+      records.drag = Some(Drag::Item {
         node,
         from: (x, y),
         started: false,
@@ -1165,41 +1167,41 @@ fn press_default(
 
   match button {
     PointerButton::Primary => {
-      store(|store| {
+      records(|records| {
         // A press on an entry places its caret—`Shift` extending the selection to
         // it—and starts the drag that extends it: a double click takes the word, a
         // triple click the line.
-        let count = store.press.as_ref().map_or(1, |press| press.count);
+        let count = records.press.as_ref().map_or(1, |press| press.count);
 
         if let Some((entry, local_x, local_y)) = entry_local {
           match count {
-            2 => store.select_entry_word(entry),
-            3 => store.select_entry_line(entry),
-            _ => store.place_caret(entry, local_x, local_y, modifiers.shift),
+            2 => records.select_entry_word(entry),
+            3 => records.select_entry_line(entry),
+            _ => records.place_caret(entry, local_x, local_y, modifiers.shift),
           }
         }
         // A press on a selectable run starts a selection: a drag extends it, a double
         // click takes the word, a triple click the whole run.
-        else if let Some(point) = store.text_position_at(x, y) {
+        else if let Some(point) = records.text_position_at(x, y) {
           match count {
-            2 => store.select_word(point),
-            3 => store.select_run(point),
-            _ => store.anchor_selection(point),
+            2 => records.select_word(point),
+            3 => records.select_run(point),
+            _ => records.anchor_selection(point),
           }
         }
 
         // A press on a link arms it; the release on the same cell opens it.
-        store.pressed_link = link.map(|(_, url)| (x, y, url));
+        records.pressed_link = link.map(|(_, url)| (x, y, url));
       });
     }
-    PointerButton::Secondary => store(|store| {
+    PointerButton::Secondary => records(|records| {
       // A right press outside the selection of the entry holding focus places its
       // caret there first; one focusing the entry places it regardless.
       if let Some((entry, local_x, local_y)) = entry_local
-        && !(entry_held_focus && store.entry_selection_contains(entry, local_x, local_y))
+        && !(entry_held_focus && records.entry_selection_contains(entry, local_x, local_y))
       {
-        store.place_caret(entry, local_x, local_y, false);
-        store.drag = None;
+        records.place_caret(entry, local_x, local_y, false);
+        records.drag = None;
       }
     }),
     _ => {}
@@ -1211,15 +1213,15 @@ fn press_default(
 /// the deepest node under both the press and the release—releasing over a different
 /// target clicks nothing, as on the web.
 pub(crate) fn pointer_release(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
-  if !store(|store| store.mouse_taken()) {
+  if !records(|records| records.mouse_taken()) {
     return;
   }
 
   // A release ends an item drag: one that started drops where it is, its press long
   // cancelled, and one that never did is an ordinary release.
-  let dragged = store(|store| match store.drag {
+  let dragged = records(|records| match records.drag {
     Some(Drag::Item { started, .. }) if button == PointerButton::Primary => {
-      store.drag = None;
+      records.drag = None;
 
       started
     }
@@ -1229,22 +1231,22 @@ pub(crate) fn pointer_release(x: u16, y: u16, button: PointerButton, modifiers: 
   if dragged {
     let _ = drop_drag::<Tui>();
 
-    store(|store| store.restyle_pending = true);
+    records(|records| records.restyle_pending = true);
 
     return;
   }
 
-  let target = store(|store| {
-    store
+  let target = records(|records| {
+    records
       .press
       .as_ref()
       .and_then(|press| press.captured)
-      .map(|captured| (captured, store.screen_origin(captured)))
-      .or_else(|| pointer_target(store, x, y))
+      .map(|captured| (captured, records.screen_origin(captured)))
+      .or_else(|| pointer_target(records, x, y))
   });
 
   if let Some((handle, origin)) = target
-    && let Some(node) = store(|store| store.record(handle).and_then(|record| record.node))
+    && let Some(node) = records(|records| records.record(handle).and_then(|record| record.node))
   {
     let _ = dispatch_pointer_up::<Tui>(node, &pointer_event(x, y, origin, Some(button), modifiers));
   }
@@ -1253,18 +1255,18 @@ pub(crate) fn pointer_release(x: u16, y: u16, button: PointerButton, modifiers: 
     return;
   }
 
-  let (clicked, pressed_link, count) = store(|store| {
-    store.drag = None;
+  let (clicked, pressed_link, count) = records(|records| {
+    records.drag = None;
 
-    let Some(press) = store.press.take()
+    let Some(press) = records.press.take()
     else {
       return (None, None, 0);
     };
 
-    store.restyle_pending = true;
+    records.restyle_pending = true;
     Scene::<Tui>::with(|scene| scene.set_pressed(None));
 
-    let released = store.pointer_path(x, y);
+    let released = records.pointer_path(x, y);
     let common = press
       .path
       .iter()
@@ -1272,10 +1274,10 @@ pub(crate) fn pointer_release(x: u16, y: u16, button: PointerButton, modifiers: 
       .take_while(|(press, release)| press == release)
       .map(|(node, _)| *node)
       .last();
-    let pressed_link = store.pressed_link.take();
+    let pressed_link = records.pressed_link.take();
 
     (
-      common.and_then(|handle| store.record(handle).and_then(|record| record.node)),
+      common.and_then(|handle| records.record(handle).and_then(|record| record.node)),
       pressed_link,
       press.count,
     )
@@ -1300,7 +1302,7 @@ pub(crate) fn pointer_release(x: u16, y: u16, button: PointerButton, modifiers: 
   if let Some((press_x, press_y, url)) = pressed_link
     && (press_x, press_y) == (x, y)
   {
-    store(|store| store.pending_open = Some(url));
+    records(|records| records.pending_open = Some(url));
   }
 }
 
@@ -1314,14 +1316,14 @@ fn drag_item(node: NodeId, from: (u16, u16), started: bool, x: u16, y: u16) {
     }
 
     if start_drag::<Tui>(node).is_none() {
-      store(|store| store.drag = None);
+      records(|records| records.drag = None);
 
       return;
     }
 
     cancel_press();
-    store(|store| {
-      store.drag = Some(Drag::Item {
+    records(|records| {
+      records.drag = Some(Drag::Item {
         node,
         from,
         started: true,
@@ -1329,20 +1331,20 @@ fn drag_item(node: NodeId, from: (u16, u16), started: bool, x: u16, y: u16) {
     });
   }
 
-  let over = store(|store| {
-    let (handle, _) = store.hit_test(x, y).last().copied()?;
+  let over = records(|records| {
+    let (handle, _) = records.hit_test(x, y).last().copied()?;
 
-    store.record(handle)?.node
+    records.record(handle)?.node
   });
   let _ = move_drag::<Tui>(over);
 
-  store(|store| store.restyle_pending = true);
+  records(|records| records.restyle_pending = true);
 }
 
 /// Follows the drag in progress to the pointer at (`x`, `y`), if one is under way: a
 /// scrollbar's thumb follows the pointer's position within the cell.
 pub(crate) fn drag_to(x: u16, y: u16) {
-  let item = store(|store| match store.drag {
+  let item = records(|records| match records.drag {
     Some(Drag::Item {
       node,
       from,
@@ -1357,10 +1359,10 @@ pub(crate) fn drag_to(x: u16, y: u16) {
     return;
   }
 
-  let scrolled = store(|store| match store.drag {
+  let scrolled = records(|records| match records.drag {
     Some(Drag::Scrollbar { node, axis, grab }) => {
-      let (track_start, track, limit) = store.scroll_geometry(node, axis);
-      let (within_x, within_y) = store.pointer_within;
+      let (track_start, track, limit) = records.scroll_geometry(node, axis);
+      let (within_x, within_y) = records.pointer_within;
       let along = match axis {
         Axis::Horizontal => cells(i64::from(x) - track_start) + within_x,
         Axis::Vertical => cells(i64::from(y) - track_start) + within_y,
@@ -1368,16 +1370,16 @@ pub(crate) fn drag_to(x: u16, y: u16) {
 
       Some((
         node,
-        store.thumb_offsets(node, axis, track, limit, along - grab),
+        records.thumb_offsets(node, axis, track, limit, along - grab),
       ))
     }
     Some(Drag::Selection) => {
-      store.extend_selection(x, y);
+      records.extend_selection(x, y);
 
       None
     }
     Some(Drag::Caret(handle)) => {
-      store.drag_caret(handle, x, y);
+      records.drag_caret(handle, x, y);
 
       None
     }
@@ -1402,12 +1404,12 @@ const fn cells(count: i64) -> f32 {
 
 /// Writes `offsets` into `handle` and notifies its scroll handlers.
 pub(crate) fn scroll_to(handle: Handle, offsets: (u32, u32)) {
-  let node = store(|store| {
-    if store.scroll_offset(handle) == offsets {
+  let node = records(|records| {
+    if records.scroll_offset(handle) == offsets {
       return None;
     }
 
-    store.write_scroll(handle, offsets)
+    records.write_scroll(handle, offsets)
   });
 
   if let Some(node) = node {
@@ -1428,11 +1430,11 @@ pub(crate) fn scroll_to(handle: Handle, offsets: (u32, u32)) {
 /// Scrolls `handle` by a delta, clamped to its limits; `true` when it moved. A
 /// single-line field scrolls its window along its value by the horizontal delta.
 pub(crate) fn scroll_by(handle: Handle, delta_x: i64, delta_y: i64) -> bool {
-  if let Some(moved) = store(|store| store.scroll_field_by(handle, delta_x)) {
+  if let Some(moved) = records(|records| records.scroll_field_by(handle, delta_x)) {
     return moved;
   }
 
-  let Some(offsets) = store(|store| store.scrolled_by(handle, delta_x, delta_y))
+  let Some(offsets) = records(|records| records.scrolled_by(handle, delta_x, delta_y))
   else {
     return false;
   };
@@ -1448,14 +1450,14 @@ pub(crate) fn scroll_by(handle: Handle, delta_x: i64, delta_y: i64) -> bool {
 /// box's limits, and a fresh gesture targeting the innermost box under the cell that
 /// can still move in the given direction.
 pub(crate) fn wheel(x: u16, y: u16, delta_x: i64, delta_y: i64, modifiers: Modifiers) {
-  if !store(|store| store.mouse_taken()) {
+  if !records(|records| records.mouse_taken()) {
     return;
   }
 
-  let under = store(|store| {
-    let (handle, origin) = store.hit_test(x, y).last().copied()?;
+  let under = records(|records| {
+    let (handle, origin) = records.hit_test(x, y).last().copied()?;
 
-    Some((store.record(handle)?.node?, origin))
+    Some((records.record(handle)?.node?, origin))
   });
 
   if let Some((node, origin)) = under {
@@ -1472,11 +1474,11 @@ pub(crate) fn wheel(x: u16, y: u16, delta_x: i64, delta_y: i64, modifiers: Modif
   }
 
   let now = std::time::Instant::now();
-  let (latched, candidates) = store(|store| {
-    let latched = match store.scroll_latch.as_mut() {
+  let (latched, candidates) = records(|records| {
+    let latched = match records.scroll_latch.as_mut() {
       Some(entry)
         if entry.cell == (x, y)
-          && now.duration_since(entry.last) <= crate::store::SCROLL_GESTURE =>
+          && now.duration_since(entry.last) <= crate::records::SCROLL_GESTURE =>
       {
         entry.last = now;
 
@@ -1484,7 +1486,7 @@ pub(crate) fn wheel(x: u16, y: u16, delta_x: i64, delta_y: i64, modifiers: Modif
       }
       _ => None,
     };
-    let candidates: Vec<Handle> = store
+    let candidates: Vec<Handle> = records
       .hit_test(x, y)
       .iter()
       .rev()
@@ -1502,8 +1504,8 @@ pub(crate) fn wheel(x: u16, y: u16, delta_x: i64, delta_y: i64, modifiers: Modif
 
   for handle in candidates {
     if scroll_by(handle, delta_x, delta_y) {
-      store(|store| {
-        store.scroll_latch = Some(ScrollLatch {
+      records(|records| {
+        records.scroll_latch = Some(ScrollLatch {
           cell: (x, y),
           target: handle,
           last: now,
@@ -1519,34 +1521,34 @@ pub(crate) fn wheel(x: u16, y: u16, delta_x: i64, delta_y: i64, modifiers: Modif
 /// by `pages` pages, a page the rows it shows less one, as a browser keeps a line of
 /// context.
 pub(crate) fn page_scroll(pages: i64) {
-  let target = store(|store| {
-    let target = store
+  let target = records(|records| {
+    let target = records
       .focused()
       .and_then(|focused| {
-        store
+        records
           .ancestors(focused)
           .into_iter()
-          .find(|node| store.is_scrollable(*node))
+          .find(|node| records.is_scrollable(*node))
       })
       .or_else(|| {
-        let mut stack = vec![store.root];
+        let mut stack = vec![records.root];
 
         while let Some(current) = stack.pop() {
-          if store.is_scrollable(current) {
+          if records.is_scrollable(current) {
             return Some(current);
           }
 
-          stack.extend(store.children_reversed(current));
+          stack.extend(records.children_reversed(current));
         }
 
         None
       })?;
-    let rows = if store.is_editor(target) {
-      i64::try_from(store.field_area(target).rows).unwrap_or(i64::MAX)
+    let rows = if records.is_editor(target) {
+      i64::try_from(records.field_area(target).rows).unwrap_or(i64::MAX)
     }
     else {
-      let (_, height) = store.node_size(target);
-      let (_, top, _, bottom) = store.node_border(target);
+      let (_, height) = records.node_size(target);
+      let (_, top, _, bottom) = records.node_border(target);
 
       height - top - bottom
     };
@@ -1563,14 +1565,14 @@ pub(crate) fn page_scroll(pages: i64) {
 /// the terminal's own response unless a handler prevented it: focus movement,
 /// dismissal, page scrolling, the clipboard keys and entry editing.
 pub(crate) fn key(event: &KeyEvent) {
-  let target = store(|store| {
+  let target = records(|records| {
     if event.shows_focus() {
-      store.set_focus_visible(true);
+      records.set_focus_visible(true);
     }
 
-    let handle = store.focused().unwrap_or(store.root);
+    let handle = records.focused().unwrap_or(records.root);
 
-    store.record(handle).and_then(|record| record.node)
+    records.record(handle).and_then(|record| record.node)
   });
   let prevented = target.map_or(Prevented::default(), |node| {
     dispatch_key_down::<Tui>(node, event)
@@ -1589,10 +1591,10 @@ pub(crate) fn key(event: &KeyEvent) {
 /// Dispatches a key release to the focused node, or the root; the terminal has no
 /// response of its own to one.
 pub(crate) fn key_up(event: &KeyEvent) {
-  let target = store(|store| {
-    let handle = store.focused().unwrap_or(store.root);
+  let target = records(|records| {
+    let handle = records.focused().unwrap_or(records.root);
 
-    store.record(handle).and_then(|record| record.node)
+    records.record(handle).and_then(|record| record.node)
   });
 
   if let Some(node) = target {
@@ -1604,19 +1606,19 @@ pub(crate) fn key_up(event: &KeyEvent) {
 fn key_default(event: &KeyEvent) {
   // The mouse key hands the mouse over and takes it back; any other key, a modifier
   // alone aside, takes it back and goes on to act.
-  let (mouse_key, released) = store(|store| {
+  let (mouse_key, released) = records(|records| {
     (
-      store.mouse
-        && store
+      records.mouse
+        && records
           .mouse_key
           .is_some_and(|shortcut| event.matches(&shortcut)),
-      store.mouse_released,
+      records.mouse_released,
     )
   });
 
   if mouse_key {
     if released {
-      store(|store| store.mouse_released = false);
+      records(|records| records.mouse_released = false);
     }
     else {
       release_mouse();
@@ -1626,18 +1628,19 @@ fn key_default(event: &KeyEvent) {
   }
 
   if released && !event.is_modifier() {
-    store(|store| store.mouse_released = false);
+    records(|records| records.mouse_released = false);
   }
 
   // The most transient layer goes first: a drag, then the scene's defaults, an open
   // overlay among them, then the selection.
   if event.is(NamedKey::Escape)
-    && store(|store| {
-      matches!(store.drag, Some(Drag::Item { started: true, .. })) && store.drag.take().is_some()
+    && records(|records| {
+      matches!(records.drag, Some(Drag::Item { started: true, .. }))
+        && records.drag.take().is_some()
     })
   {
     end_drag::<Tui>();
-    store(|store| store.restyle_pending = true);
+    records(|records| records.restyle_pending = true);
 
     return;
   }
@@ -1661,22 +1664,22 @@ fn key_default(event: &KeyEvent) {
     None => {}
   }
 
-  let offers = |action| store(|store| store.offers(action));
+  let offers = |action| records(|records| records.offers(action));
   let ctrl = event.modifiers.ctrl && !event.modifiers.alt;
 
   match event.shortcut_key().as_ref() {
-    "Enter" if store(|store| store.focused_link()).is_some() => {
+    "Enter" if records(|records| records.focused_link()).is_some() => {
       follow_focused_link(event.modifiers);
 
       return;
     }
     "Escape" => {
-      store(|store| {
-        if store.has_selection() {
-          store.clear_selection();
+      records(|records| {
+        if records.has_selection() {
+          records.clear_selection();
 
-          if let Some(entry) = store.focused_entry() {
-            store.collapse_entry_selection(entry);
+          if let Some(entry) = records.focused_entry() {
+            records.collapse_entry_selection(entry);
           }
         }
       });
@@ -1689,7 +1692,7 @@ fn key_default(event: &KeyEvent) {
     // exists, `Ctrl+X` cuts the focused entry's, `Ctrl+V` pastes into the focused
     // entry; one not offered is an ordinary key.
     "c" if ctrl && offers(ClipboardAction::Copy) => {
-      store(Store::copy_selection);
+      records(Records::copy_selection);
 
       return;
     }
@@ -1699,9 +1702,9 @@ fn key_default(event: &KeyEvent) {
       return;
     }
     "v" if ctrl && offers(ClipboardAction::Paste) => {
-      store(|store| {
-        if store.focused_entry().is_some() {
-          store.request_paste();
+      records(|records| {
+        if records.focused_entry().is_some() {
+          records.request_paste();
         }
       });
 
@@ -1716,11 +1719,11 @@ fn key_default(event: &KeyEvent) {
 /// Asks the focused node, or the root, for its context menu at the node's bottom-start
 /// corner, the request naming no pointer.
 fn context_menu_from_keyboard(modifiers: Modifiers) {
-  let Some((node, origin, x, y)) = store(|store| {
-    let handle = store.focused().unwrap_or(store.root);
-    let node = store.record(handle).and_then(|record| record.node)?;
-    let (origin_x, origin_y) = store.screen_origin(handle);
-    let (_, height) = store.node_size(handle);
+  let Some((node, origin, x, y)) = records(|records| {
+    let handle = records.focused().unwrap_or(records.root);
+    let node = records.record(handle).and_then(|record| record.node)?;
+    let (origin_x, origin_y) = records.screen_origin(handle);
+    let (_, height) = records.node_size(handle);
 
     Some((
       node,
@@ -1748,13 +1751,13 @@ fn context_menu_from_keyboard(modifiers: Modifiers) {
 /// cancelled at the node it reached, the hover path empties, its nodes told the pointer
 /// left, and every mouse event is ignored meanwhile.
 fn release_mouse() {
-  store(|store| {
-    store.mouse_released = true;
-    store.scroll_latch = None;
-    store.drag = None;
-    store.pressed_link = None;
-    store.buttons.clear();
-    store.restyle_pending |= Scene::<Tui>::read(Scene::hovered).is_some();
+  records(|records| {
+    records.mouse_released = true;
+    records.scroll_latch = None;
+    records.drag = None;
+    records.pressed_link = None;
+    records.buttons.clear();
+    records.restyle_pending |= Scene::<Tui>::read(Scene::hovered).is_some();
   });
 
   end_drag::<Tui>();
@@ -1765,14 +1768,18 @@ fn release_mouse() {
 /// Cancels the press in progress at the node it reached, which holds `Pressed` no
 /// longer, as a platform taking the pointer for itself does.
 fn cancel_press() {
-  let cancelled = store(|store| {
-    let press = store.press.take()?;
+  let cancelled = records(|records| {
+    let press = records.press.take()?;
 
-    store.restyle_pending = true;
+    records.restyle_pending = true;
 
     let reached = press.captured.unwrap_or(press.pressed);
 
-    Some((reached, store.screen_origin(reached), store.last_pointer))
+    Some((
+      reached,
+      records.screen_origin(reached),
+      records.last_pointer,
+    ))
   });
   let Some((reached, origin, (x, y))) = cancelled
   else {
@@ -1781,7 +1788,7 @@ fn cancel_press() {
 
   Scene::<Tui>::with(|scene| scene.set_pressed(None));
 
-  if let Some(node) = store(|store| store.record(reached).and_then(|record| record.node)) {
+  if let Some(node) = records(|records| records.record(reached).and_then(|record| record.node)) {
     let event = PointerEvent {
       buttons: PointerButtons::new(),
       pressure: 0.,
@@ -1795,7 +1802,7 @@ fn cancel_press() {
 /// platform, stages its destination for the terminal loop's system handler: `Enter` on
 /// a link is its click, as on an anchor.
 fn follow_focused_link(modifiers: Modifiers) {
-  let Some((node, url)) = store(|store| store.focused_link())
+  let Some((node, url)) = records(|records| records.focused_link())
   else {
     return;
   };
@@ -1811,7 +1818,7 @@ fn follow_focused_link(modifiers: Modifiers) {
     return;
   }
 
-  store(|store| store.pending_open = Some(url));
+  records(|records| records.pending_open = Some(url));
 }
 
 /// Inserts `text`, pasted by the terminal, into the focused entry.

@@ -3,7 +3,7 @@
 
 use std::time::Instant;
 
-use super::{CellRect, Handle, Store};
+use super::{CellRect, Handle, Records};
 
 /// How long the loop waits for input between frames while the frame clock runs: the
 /// frame rate's cap.
@@ -36,7 +36,7 @@ impl Clock {
   }
 }
 
-impl Store {
+impl Records {
   /// Marks `handle` for repaint: the rows it covered at the last paint and the rows it
   /// covers now are rewritten at the next frame.
   #[inline(always)]
@@ -95,7 +95,7 @@ mod tests {
 
   use skene_core::Platform as _;
 
-  use crate::{Tui, with_store};
+  use crate::{Tui, with_records};
 
   /// A delay past what a duration holds waits the longest a duration can.
   #[test]
@@ -105,7 +105,7 @@ mod tests {
     let _ = Tui::schedule(Duration::MAX, Box::new(|| {}));
 
     assert_eq!(
-      with_store(|store| store.next_timer_due()),
+      with_records(|records| records.next_timer_due()),
       Some(Duration::MAX)
     );
 

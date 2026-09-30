@@ -12,7 +12,7 @@ mod tokens;
 use std::{any::TypeId, fmt::Debug};
 
 use rustc_hash::{FxHashMap, FxHashSet};
-use skene_reactive::Position;
+use skene_reactive::SnapshotPlace;
 
 pub use self::annotation::{Annotated, Annotation};
 use self::{
@@ -75,7 +75,7 @@ pub struct NodeRecord<P: Platform> {
   hidden: bool,
   caption_beside: bool,
   part: Option<Part>,
-  position: Position,
+  position: SnapshotPlace,
   access: Option<Box<AccessReports>>,
   focus_order: Option<FocusOrder>,
   overlay: Option<OverlayRecord>,
@@ -99,7 +99,7 @@ impl<P: Platform> NodeRecord<P> {
   /// platform carries what a node holds outside the reactive graph—focus, a scroll
   /// offset, a caret—by it.
   #[inline(always)]
-  pub const fn position(&self) -> &Position {
+  pub const fn position(&self) -> &SnapshotPlace {
     &self.position
   }
 
@@ -394,7 +394,7 @@ impl<P: Platform> Scene<P> {
   /// Panics past 2^32 live nodes.
   pub fn create(&mut self, kind: NodeKind, annotation: Option<Annotation<P>>) -> NodeId {
     let is_control = kind == NodeKind::Control;
-    let position = Position::next();
+    let position = SnapshotPlace::next();
     let record = NodeRecord {
       parent: None,
       enclosing: None,
@@ -440,7 +440,7 @@ impl<P: Platform> Scene<P> {
 
   /// The live node created at `position`, if any.
   #[must_use]
-  pub fn node_at(&self, position: &Position) -> Option<NodeId> {
+  pub fn node_at(&self, position: &SnapshotPlace) -> Option<NodeId> {
     self.entries.iter().enumerate().find_map(|(index, entry)| {
       let record = entry.record.as_ref()?;
 

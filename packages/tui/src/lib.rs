@@ -39,10 +39,10 @@ mod motion;
 mod paint;
 mod parse;
 mod platform;
+mod records;
 mod resolve;
 mod routing;
 mod selection;
-mod store;
 mod terminal;
 pub mod testing;
 mod text;
@@ -155,7 +155,7 @@ pub use skene_core::{
 };
 pub use skene_reactive::{self as reactive, LoadState, Resource};
 
-pub(crate) use crate::platform::{try_with_store, with_store};
+pub(crate) use crate::platform::{try_with_records, with_records};
 pub use crate::{
   cells::{CellPainter, Cells},
   dev::{adopt_restoration, notice_view as dev_notice_view},
@@ -179,9 +179,9 @@ skene_common::facade!(ActivePlatform, u32, "cells");
 pub fn set_title(title: impl Into<String>) {
   let title = title.into();
 
-  with_store(move |store| {
-    store.title = Some(title);
-    store.title_dirty = true;
+  with_records(move |records| {
+    records.title = Some(title);
+    records.title_dirty = true;
   });
 }
 

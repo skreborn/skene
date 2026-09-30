@@ -1,4 +1,4 @@
-//! What the store keeps per node: its kind with the props its creation carried, its
+//! What the records keep per node: its kind with the props its creation carried, its
 //! resolved style and motion, and what the frame last measured and painted of it.
 
 use std::rc::Rc;

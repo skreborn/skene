@@ -32,7 +32,7 @@ use crate::{
     paragraph_runs,
     paragraph_text,
   },
-  store::{Contrast, Handle, Kind, PlainBox, PlainRun, Record, Store},
+  records::{Contrast, Handle, Kind, PlainBox, PlainRun, Record, Records},
   text::{self, CellScale, Extent, Glyph, Scales},
 };
 
@@ -969,16 +969,16 @@ fn line_breaks(paragraph: &str) -> Vec<bool> {
 /// Paints the frame into `buffer`: the tree, then every open overlay, and mends the
 /// wide glyphs a later paint broke into; a picture an open overlay covers in part is
 /// left out, since the terminal draws it over the overlay's cells.
-pub(crate) fn paint(store: &Store, buffer: &mut Buffer) {
-  paint_node(store, buffer, store.root, 0, 0);
+pub(crate) fn paint(records: &Records, buffer: &mut Buffer) {
+  paint_node(records, buffer, records.root, 0, 0);
 
-  let overlays = store.open_overlays();
+  let overlays = records.open_overlays();
 
   buffer.pictures.retain(|picture| {
     picture.layer < 0
       || !overlays.iter().any(|overlay| {
-        let (origin_x, origin_y) = store.overlay_origin(*overlay);
-        let (width, height) = store.node_size(*overlay);
+        let (origin_x, origin_y) = records.overlay_origin(*overlay);
+        let (width, height) = records.node_size(*overlay);
 
         i64::from(picture.column) < origin_x + width
           && i64::from(picture.column + picture.columns) > origin_x
@@ -988,7 +988,7 @@ pub(crate) fn paint(store: &Store, buffer: &mut Buffer) {
   });
 
   for overlay in overlays {
-    paint_overlay(store, buffer, overlay);
+    paint_overlay(records, buffer, overlay);
   }
 
   buffer.mend_blocks();
@@ -996,13 +996,13 @@ pub(crate) fn paint(store: &Store, buffer: &mut Buffer) {
 
 /// Paints one open overlay over the frame: its backdrop scrim, then its subtree at its
 /// computed origin.
-fn paint_overlay(store: &Store, buffer: &mut Buffer, overlay: Handle) {
-  let Some(Kind::Overlay { backdrop, .. }) = store.record(overlay).map(|record| &record.kind)
+fn paint_overlay(records: &Records, buffer: &mut Buffer, overlay: Handle) {
+  let Some(Kind::Overlay { backdrop, .. }) = records.record(overlay).map(|record| &record.kind)
   else {
     return;
   };
   let modal = Scene::<Tui>::read(|scene| scene.is_modal(overlay));
-  let contrast = store.contrast();
+  let contrast = records.contrast();
 
   if let Some(color) = backdrop {
     let [red, green, blue, alpha] = color.to_rgba();
@@ -1020,13 +1020,13 @@ fn paint_overlay(store: &Store, buffer: &mut Buffer, overlay: Handle) {
     }
   }
 
-  let (origin_x, origin_y) = store.overlay_origin(overlay);
+  let (origin_x, origin_y) = records.overlay_origin(overlay);
 
   // A modal makes everything beneath inert, taking the caret with it; a popup hides
   // the caret only when it covers the cell. Either way the overlay's own content may
   // set a fresh one while it paints.
   if let Some((caret_x, caret_y)) = buffer.caret {
-    let (overlay_width, overlay_height) = store.node_size(overlay);
+    let (overlay_width, overlay_height) = records.node_size(overlay);
     let covered = i64::from(caret_x) >= origin_x
       && i64::from(caret_x) < origin_x + overlay_width
       && i64::from(caret_y) >= origin_y
@@ -1037,10 +1037,10 @@ fn paint_overlay(store: &Store, buffer: &mut Buffer, overlay: Handle) {
     }
   }
 
-  let (location_x, location_y) = store.node_location(overlay);
+  let (location_x, location_y) = records.node_location(overlay);
 
   paint_node(
-    store,
+    records,
     buffer,
     overlay,
     isize::try_from(origin_x - location_x).unwrap_or(0),
@@ -1153,8 +1153,8 @@ enum NodePaint {
 
 /// The border paint of a resolved box style: in its color, the terminal's own ink where
 /// it sets none, and unshown where its color is transparent.
-fn border_paint(store: &Store, handle: Handle) -> Option<BorderPaint> {
-  let style = &store
+fn border_paint(records: &Records, handle: Handle) -> Option<BorderPaint> {
+  let style = &records
     .record(handle)?
     .kind
     .box_record()?
@@ -1180,8 +1180,8 @@ fn selection_colors(style: &PlainRun) -> Option<SelectionColors> {
 
 /// The emphasis a link run paints in while its focus shows: the typography's colors,
 /// or reverse video when both are unset or transparent.
-fn link_focus_emphasis(store: &Store, run: Handle) -> Emphasis {
-  let (ink, surface) = crate::resolve::Env::of(store, run).resolve_link_focus();
+fn link_focus_emphasis(records: &Records, run: Handle) -> Emphasis {
+  let (ink, surface) = crate::resolve::Env::of(records, run).resolve_link_focus();
 
   emphasis_colors(ink, surface).map_or(Emphasis::Reverse, Emphasis::Colors)
 }
@@ -1206,26 +1206,26 @@ fn emphasis_colors(ink: Option<Color>, surface: Option<Color>) -> Option<Selecti
   clippy::too_many_lines,
   reason = "a match dispatch over the record kinds; length is the kind count, not complexity"
 )]
-fn node_paint(store: &Store, handle: Handle, width: usize, focused: bool) -> NodePaint {
-  let Some(record) = store.record(handle)
+fn node_paint(records: &Records, handle: Handle, width: usize, focused: bool) -> NodePaint {
+  let Some(record) = records.record(handle)
   else {
     return NodePaint::None;
   };
 
   match &record.kind {
     Kind::Anchor | Kind::Scope => NodePaint::None,
-    Kind::Box(inner) if is_paragraph(store, handle) => {
+    Kind::Box(inner) if is_paragraph(records, handle) => {
       let _ = inner;
-      let text = paragraph_text(store, handle);
-      let scales = paragraph_scales(store, handle);
+      let text = paragraph_text(records, handle);
+      let scales = paragraph_scales(records, handle);
       let lines = wrap_sized(&text, width, &scales);
-      let runs = paragraph_runs(store, handle);
+      let runs = paragraph_runs(records, handle);
       let mut destinations = Vec::new();
       let mut ends = Vec::new();
       let spans: Vec<SpanPaint> = runs
         .iter()
         .map(|run| {
-          let record = store.record(*run).expect("a live run");
+          let record = records.record(*run).expect("a live run");
           let Kind::Run { props, cache, .. } = &record.kind
           else {
             unreachable!("paragraph runs are runs");
@@ -1243,8 +1243,8 @@ fn node_paint(store: &Store, handle: Handle, width: usize, focused: bool) -> Nod
             bold: style.and_then(|style| style.ext.bold).unwrap_or(false),
             decoration: CellDecoration::of(style, link.is_some()),
             link,
-            focused: (link.is_some() && store.focus_shows(*run))
-              .then(|| link_focus_emphasis(store, *run)),
+            focused: (link.is_some() && records.focus_shows(*run))
+              .then(|| link_focus_emphasis(records, *run)),
             selection: style.and_then(selection_colors),
           }
         })
@@ -1265,7 +1265,7 @@ fn node_paint(store: &Store, handle: Handle, width: usize, focused: bool) -> Nod
         spans,
         scales,
         links: destinations,
-        selection: store.selection_range(handle),
+        selection: records.selection_range(handle),
       }
     }
     Kind::Box(inner) | Kind::Overlay { inner, .. } => {
@@ -1273,7 +1273,7 @@ fn node_paint(store: &Store, handle: Handle, width: usize, focused: bool) -> Nod
 
       NodePaint::Box {
         background: style.and_then(|style| style.color).and_then(terminal_rgb),
-        border: border_paint(store, handle),
+        border: border_paint(records, handle),
         shadow: style.and_then(ShadowPaint::of),
       }
     }
@@ -1281,7 +1281,7 @@ fn node_paint(store: &Store, handle: Handle, width: usize, focused: bool) -> Nod
       let style = inner.style();
       let background = style.and_then(|style| style.color).and_then(terminal_rgb);
       let shadow = style.and_then(ShadowPaint::of);
-      let border = border_paint(store, handle);
+      let border = border_paint(records, handle);
 
       let Some(field) = field
       else {
@@ -1297,9 +1297,9 @@ fn node_paint(store: &Store, handle: Handle, width: usize, focused: bool) -> Nod
         isize::try_from(border_cells).unwrap_or(0) + isize::try_from(padding.left).unwrap_or(0),
         isize::try_from(border_cells).unwrap_or(0) + isize::try_from(padding.top).unwrap_or(0),
       );
-      let area = store.field_area(handle);
+      let area = records.field_area(handle);
       let (rows, caret) = field.visible_rows(area);
-      let run = crate::resolve::Env::of(store, handle).resolve_entry_run();
+      let run = crate::resolve::Env::of(records, handle).resolve_entry_run();
       let selection = field
         .selection()
         .filter(|_| focused)
@@ -1322,15 +1322,15 @@ fn node_paint(store: &Store, handle: Handle, width: usize, focused: bool) -> Nod
         selection,
       }
     }
-    Kind::Run { .. } if is_inline_box(store, handle) => NodePaint::None,
+    Kind::Run { .. } if is_inline_box(records, handle) => NodePaint::None,
     Kind::Run { props, cache, .. } => {
       let style = cache.as_ref().map(|cache| &cache.style);
-      let scale = run_scale(store, handle);
+      let scale = run_scale(records, handle);
       let lines = wrap_sized(&record.text, width, &Scales::uniform(scale));
       let selection = props
         .selectable
         .then(|| {
-          store.selection_range(handle).map(|range| SelectionPaint {
+          records.selection_range(handle).map(|range| SelectionPaint {
             range,
             starts: lines.iter().map(|line| line.start).collect(),
             colors: style.and_then(selection_colors),
@@ -1345,7 +1345,7 @@ fn node_paint(store: &Store, handle: Handle, width: usize, focused: bool) -> Nod
         scale,
         decoration: CellDecoration::of(style, props.link.is_some()),
         link: props.link.clone(),
-        focused: (props.link.is_some() && focused).then(|| link_focus_emphasis(store, handle)),
+        focused: (props.link.is_some() && focused).then(|| link_focus_emphasis(records, handle)),
         selection,
       }
     }
@@ -1359,40 +1359,40 @@ fn node_paint(store: &Store, handle: Handle, width: usize, focused: bool) -> Nod
   reason = "a match dispatch over the paints; length is the kind count, not complexity"
 )]
 fn paint_node(
-  store: &Store,
+  records: &Records,
   buffer: &mut Buffer,
   handle: Handle,
   offset_x: isize,
   offset_y: isize,
 ) {
-  let Some(record) = store.record(handle)
+  let Some(record) = records.record(handle)
   else {
     return;
   };
 
   if !record.kind.is_laid_out() {
-    for child in store.children(handle) {
-      paint_node(store, buffer, child, offset_x, offset_y);
+    for child in records.children(handle) {
+      paint_node(records, buffer, child, offset_x, offset_y);
     }
 
     return;
   }
 
-  if store.is_hidden(handle) {
+  if records.is_hidden(handle) {
     return;
   }
 
-  let (location_x, location_y) = store.node_location(handle);
+  let (location_x, location_y) = records.node_location(handle);
   let (x, y) = (
     offset_x + isize::try_from(location_x).unwrap_or(0),
     offset_y + isize::try_from(location_y).unwrap_or(0),
   );
-  let (width, height) = store.node_size(handle);
+  let (width, height) = records.node_size(handle);
   let (width, height) = (
     usize::try_from(width).unwrap_or(0),
     usize::try_from(height).unwrap_or(0),
   );
-  let border = store.node_border(handle);
+  let border = records.node_border(handle);
   let border = (
     isize::try_from(border.0).unwrap_or(0),
     isize::try_from(border.1).unwrap_or(0),
@@ -1400,11 +1400,11 @@ fn paint_node(
     isize::try_from(border.3).unwrap_or(0),
   );
   let edges = border;
-  let focused = store.focus_shows(handle);
-  let contrast = store.contrast();
-  let paragraph = is_paragraph(store, handle);
+  let focused = records.focus_shows(handle);
+  let contrast = records.contrast();
+  let paragraph = is_paragraph(records, handle);
 
-  match node_paint(store, handle, width, focused) {
+  match node_paint(records, handle, width, focused) {
     NodePaint::Paragraph {
       lines,
       attribution,
@@ -1465,11 +1465,11 @@ fn paint_node(
       }
 
       // An inline box paints its own layout at the cell its placeholder flowed into.
-      for (run, (cell_x, cell_y)) in inline_box_cells(store, handle) {
-        let (location_x, location_y) = store.node_location(run);
+      for (run, (cell_x, cell_y)) in inline_box_cells(records, handle) {
+        let (location_x, location_y) = records.node_location(run);
 
         paint_node(
-          store,
+          records,
           buffer,
           run,
           x + isize::try_from(cell_x - location_x).unwrap_or(0),
@@ -1484,7 +1484,7 @@ fn paint_node(
     } => {
       // A backdrop carries the decoration as pixels beneath the cells, which stay
       // uncolored and unbordered so it shows through.
-      if place_backdrop(store, buffer, handle, (x, y), (width, height)) {
+      if place_backdrop(records, buffer, handle, (x, y), (width, height)) {
         // Nothing in cells.
       }
       else {
@@ -1495,7 +1495,7 @@ fn paint_node(
         // A childless, borderless box paints from its parent's origin by eighths:
         // whole cells in its color, and a cell an edge crosses as a block glyph
         // carrying its color beside what lies beneath.
-        match store.smooth_span(handle).filter(|_| border.is_none()) {
+        match records.smooth_span(handle).filter(|_| border.is_none()) {
           Some((start, extent)) => {
             draw_smooth(buffer, offset_x, y, height, start, extent, background);
           }
@@ -1524,10 +1524,10 @@ fn paint_node(
         .picture
         .as_ref()
         .and_then(|picture| picture.image.clone())
-        && store.graphics
+        && records.graphics
       {
         place_image(
-          store,
+          records,
           buffer,
           handle.index() + 1,
           image,
@@ -1590,7 +1590,7 @@ fn paint_node(
       inset,
       selection,
     } => {
-      if !place_backdrop(store, buffer, handle, (x, y), (width, height)) {
+      if !place_backdrop(records, buffer, handle, (x, y), (width, height)) {
         if let Some(shadow) = shadow {
           draw_shadow(buffer, x, y, width, height, shadow, contrast);
         }
@@ -1669,7 +1669,7 @@ fn paint_node(
 
   let saved_clip = buffer.clip;
 
-  if store.clips(handle) {
+  if records.clips(handle) {
     let rect = (
       x + border.0,
       y + border.1,
@@ -1683,24 +1683,24 @@ fn paint_node(
     });
   }
 
-  let (scroll_x, scroll_y) = store.scroll_offset(handle);
+  let (scroll_x, scroll_y) = records.scroll_offset(handle);
   let (child_x, child_y) = (
     x - isize::try_from(scroll_x).unwrap_or(0),
     y - isize::try_from(scroll_y).unwrap_or(0),
   );
 
-  for child in store.children(handle) {
-    if store.record(child).is_some_and(Record::is_overlay) {
+  for child in records.children(handle) {
+    if records.record(child).is_some_and(Record::is_overlay) {
       continue;
     }
 
-    paint_node(store, buffer, child, child_x, child_y);
+    paint_node(records, buffer, child, child_x, child_y);
   }
 
   buffer.clip = saved_clip;
 
-  if store.is_scrollable(handle) {
-    draw_scrollbars(store, buffer, handle, x, y, width, height, border);
+  if records.is_scrollable(handle) {
+    draw_scrollbars(records, buffer, handle, x, y, width, height, border);
   }
 }
 
@@ -1740,7 +1740,7 @@ const fn intersect(
 /// Places `image` as `id` on `layer` over the visible part of the rectangle at
 /// (`x`, `y`) of `width` by `height` cells, cropping the image to the cells in view.
 fn place_image(
-  store: &Store,
+  records: &Records,
   buffer: &mut Buffer,
   id: u32,
   image: Rc<Image>,
@@ -1752,7 +1752,7 @@ fn place_image(
   else {
     return;
   };
-  let (cell_width, cell_height) = store.cell_pixels;
+  let (cell_width, cell_height) = records.cell_pixels;
   let left = u16::try_from(isize::try_from(column).unwrap_or(0) - x).unwrap_or(0);
   let top = u16::try_from(isize::try_from(row).unwrap_or(0) - y).unwrap_or(0);
 
@@ -1778,35 +1778,35 @@ fn place_image(
 /// band beyond it, beneath every colored cell at the box's depth; `true` when placed,
 /// so the cells carry none of the decoration.
 fn place_backdrop(
-  store: &Store,
+  records: &Records,
   buffer: &mut Buffer,
   handle: Handle,
   (x, y): (isize, isize),
   (width, height): (usize, usize),
 ) -> bool {
-  if !store.graphics {
+  if !records.graphics {
     return false;
   }
 
-  let Some(backdrop) = store
+  let Some(backdrop) = records
     .record(handle)
     .and_then(|record| record.backdrop.as_ref())
   else {
     return false;
   };
-  let ancestors = store.ancestors(handle);
+  let ancestors = records.ancestors(handle);
   let depth = ancestors.len()
     + 512
       * usize::from(
         ancestors
           .iter()
-          .any(|ancestor| store.record(*ancestor).is_some_and(Record::is_overlay)),
+          .any(|ancestor| records.record(*ancestor).is_some_and(Record::is_overlay)),
       );
   let layer = BACKDROP_Z + i32::try_from(depth.min(1023)).unwrap_or(1023);
   let band = isize::try_from(backdrop.key.band).unwrap_or(0);
 
   place_image(
-    store,
+    records,
     buffer,
     BACKDROP_ID + handle.index(),
     Rc::clone(&backdrop.image),
@@ -1828,7 +1828,7 @@ fn place_backdrop(
   reason = "each argument is a separate fact of the box the scrollbars are drawn on"
 )]
 fn draw_scrollbars(
-  store: &Store,
+  records: &Records,
   buffer: &mut Buffer,
   handle: Handle,
   x: isize,
@@ -1837,14 +1837,14 @@ fn draw_scrollbars(
   height: usize,
   border: (isize, isize, isize, isize),
 ) {
-  let (offset_x, offset_y) = store.scroll_offset(handle);
-  let (limit_x, limit_y) = store.scroll_limits(handle);
+  let (offset_x, offset_y) = records.scroll_offset(handle);
+  let (limit_x, limit_y) = records.scroll_limits(handle);
   let (width, height) = (
     isize::try_from(width).unwrap_or(0),
     isize::try_from(height).unwrap_or(0),
   );
-  let contrast = store.contrast();
-  let style = store
+  let contrast = records.contrast();
+  let style = records
     .record(handle)
     .and_then(|record| record.kind.box_style());
   let bar = BarStyle {
@@ -2343,12 +2343,12 @@ fn draw_selection(
 
 /// The scale the run `handle` draws at: its resolved size where the terminal sizes
 /// text, one cell elsewhere and for an inline box.
-pub(crate) fn run_scale(store: &Store, handle: Handle) -> CellScale {
-  if is_inline_box(store, handle) {
+pub(crate) fn run_scale(records: &Records, handle: Handle) -> CellScale {
+  if is_inline_box(records, handle) {
     return CellScale::ONE;
   }
 
-  match store.record(handle).map(|record| &record.kind) {
+  match records.record(handle).map(|record| &record.kind) {
     Some(Kind::Run { cache, .. }) => {
       text::scale_of(cache.as_ref().and_then(|cache| cache.style.ext.size))
     }
@@ -2358,9 +2358,9 @@ pub(crate) fn run_scale(store: &Store, handle: Handle) -> CellScale {
 
 /// The extent of each run's stretch of the paragraph `handle`'s text: its scale, or an
 /// inline box's size.
-pub(crate) fn paragraph_scales(store: &Store, handle: Handle) -> Scales {
-  Scales::of(paragraph_runs(store, handle).into_iter().map(|run| {
-    let record = store.record(run);
+pub(crate) fn paragraph_scales(records: &Records, handle: Handle) -> Scales {
+  Scales::of(paragraph_runs(records, handle).into_iter().map(|run| {
+    let record = records.record(run);
 
     match record.map(|record| &record.kind) {
       Some(Kind::Run {
@@ -2375,7 +2375,7 @@ pub(crate) fn paragraph_scales(store: &Store, handle: Handle) -> Scales {
       ),
       _ => (
         record.map_or(0, |record| text::count(&record.text)),
-        Extent::Scaled(run_scale(store, run)),
+        Extent::Scaled(run_scale(records, run)),
       ),
     }
   }))
@@ -2571,8 +2571,8 @@ pub(crate) fn row_changed(previous: Option<&Buffer>, next: &Buffer, row: usize) 
 }
 
 /// Whether the control `handle` is a text entry; `None` where it is no control.
-pub(crate) fn control_entry(store: &Store, handle: Handle) -> Option<bool> {
-  match store.record(handle)?.kind {
+pub(crate) fn control_entry(records: &Records, handle: Handle) -> Option<bool> {
+  match records.record(handle)?.kind {
     Kind::Control { native, .. } => Some(native.is_some_and(NativeElement::is_text_entry)),
     _ => None,
   }

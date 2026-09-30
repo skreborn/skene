@@ -19,7 +19,7 @@ use skene_core::{
   Transition,
 };
 
-use crate::{Headless, SlotLeaf, SlotValue, store::Kind, with_store};
+use crate::{Headless, SlotLeaf, SlotValue, records::Kind, with_records};
 
 /// Where headless resolution reads what the scene does not hold: the platform's
 /// records.
@@ -29,15 +29,15 @@ impl ResolutionSource<Headless> for Records {
   const EM: f32 = 16.;
 
   fn environment(&self) -> Environment<f32> {
-    with_store(|store| store.environment())
+    with_records(|records| records.environment())
   }
 
   fn container_size(&self, name: ContainerName) -> Option<Size<f32>> {
-    with_store(|store| store.media().signals.container_sizes).get_untracked(name)
+    with_records(|records| records.media().signals.container_sizes).get_untracked(name)
   }
 
   fn slot(&self, node: NodeId, slot: Slot) -> Option<SlotLeaf> {
-    with_store(|store| store.record(node)?.slots.get(&slot).cloned())
+    with_records(|records| records.record(node)?.slots.get(&slot).cloned())
   }
 
   fn size_token(&self) -> Option<TokenName> {
@@ -115,7 +115,7 @@ impl DeclaredMotion {
   }
 }
 
-/// The value `key` of `node` presents at the store's clock: the
+/// The value `key` of `node` presents at the records' clock: the
 /// tween in flight where `target` moved under a transition, else `target`, with the
 /// node's animations laid over.
 fn present(
@@ -130,10 +130,10 @@ fn present(
     return target;
   };
 
-  with_store(|store| {
-    let now = store.clock;
-    let reduced = store.reduced_motion.unwrap_or(false);
-    let Some(record) = store.record_mut(node)
+  with_records(|records| {
+    let now = records.clock;
+    let reduced = records.reduced_motion.unwrap_or(false);
+    let Some(record) = records.record_mut(node)
     else {
       return target;
     };
@@ -163,7 +163,7 @@ fn present(
 pub(crate) fn resolve(node: NodeId, key: PropertyKey<GuiProperty>) -> Option<SlotValue> {
   let target = resolve_target(node, key);
   let env = Env::of(&Records, node)?;
-  let kind = with_store(|store| match &store.record(node)?.kind {
+  let kind = with_records(|records| match &records.record(node)?.kind {
     Kind::Box(props) => Some(Kind::Box(props.clone())),
     Kind::Control(props) => Some(Kind::Control(props.clone())),
     Kind::Overlay(props) => Some(Kind::Overlay(props.clone())),
@@ -177,7 +177,7 @@ pub(crate) fn resolve(node: NodeId, key: PropertyKey<GuiProperty>) -> Option<Slo
 /// The property `key` of `node` resolved, motion aside: the value it is heading for.
 fn resolve_target(node: NodeId, key: PropertyKey<GuiProperty>) -> Option<SlotValue> {
   let env = Env::of(&Records, node)?;
-  let kind = with_store(|store| match &store.record(node)?.kind {
+  let kind = with_records(|records| match &records.record(node)?.kind {
     Kind::Box(props) => Some(Kind::Box(props.clone())),
     Kind::Control(props) => Some(Kind::Control(props.clone())),
     Kind::Overlay(props) => Some(Kind::Overlay(props.clone())),

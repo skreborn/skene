@@ -261,8 +261,8 @@ fn corrupt_snapshot_stages_nothing() {
 #[test]
 fn provided_extras_ride_the_snapshot() {
   let staged = across_runs(
-    || skene_reactive::provide("extra", || Some(vec![1, 2, 3])),
-    || skene_reactive::staged("extra"),
+    || skene_reactive::provide_extra("extra", || Some(vec![1, 2, 3])),
+    || skene_reactive::take_extra("extra"),
   );
 
   assert_eq!(staged, Some(vec![1, 2, 3]));

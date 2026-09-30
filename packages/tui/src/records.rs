@@ -1,4 +1,4 @@
-//! The record store beside the scene: what the platform keeps per node, the taffy tree,
+//! The records beside the scene: what the platform keeps per node, the taffy tree,
 //! the interaction state, and the environment it reports.
 
 mod environment;
@@ -64,9 +64,9 @@ pub(crate) type Handle = NodeId;
   clippy::struct_excessive_bools,
   reason = "each flag is an independent fact about the frame or the pointer"
 )]
-pub(crate) struct Store {
+pub(crate) struct Records {
   /// The records, by node.
-  records: NodeMap<Record>,
+  by_node: NodeMap<Record>,
   /// The layout tree; a text run's leaf carries its text and scales as context,
   /// wrapped by the layout's measure function.
   pub(crate) taffy: taffy::TaffyTree<Measured>,
@@ -187,8 +187,8 @@ pub(crate) struct Store {
   pub(crate) picture_generation: u64,
 }
 
-impl Store {
-  /// A store whose root box, filling the screen, is the scene's node `root`.
+impl Records {
+  /// Records whose root box, filling the screen, is the scene's node `root`.
   pub(crate) fn new(root: NodeId) -> Self {
     let mut taffy = taffy::TaffyTree::new();
     let root_taffy = taffy
@@ -208,8 +208,8 @@ impl Store {
       access: Vec::new(),
       destination: None,
     };
-    let mut store = Self {
-      records: NodeMap::new(),
+    let mut records = Self {
+      by_node: NodeMap::new(),
       taffy,
       root,
       overlays: Vec::new(),
@@ -264,13 +264,13 @@ impl Store {
       picture_generation: 0,
     };
 
-    store.insert(
+    records.insert(
       root,
       Kind::Box(BoxRecord::new(root_props)),
       Some(root_taffy),
     );
 
-    store
+    records
   }
 
   /// Stores a record of `kind` over `taffy` as the record of `node`.
@@ -280,7 +280,7 @@ impl Store {
     record.node = Some(node);
     self.structure_dirty = true;
 
-    let _replaced = self.records.insert(node, record);
+    let _replaced = self.by_node.insert(node, record);
   }
 
   /// Stores a record of `kind` over a fresh taffy leaf as the record of `node`.
@@ -296,13 +296,13 @@ impl Store {
   /// The record of `handle`, if it is live.
   #[inline(always)]
   pub(crate) fn record(&self, handle: Handle) -> Option<&Record> {
-    self.records.get(handle)
+    self.by_node.get(handle)
   }
 
   /// The record of `handle`, mutably, if it is live.
   #[inline(always)]
   pub(crate) fn record_mut(&mut self, handle: Handle) -> Option<&mut Record> {
-    self.records.get_mut(handle)
+    self.by_node.get_mut(handle)
   }
 
   /// Measures every node's text again, after the terminal's clustering changed: each
@@ -327,12 +327,12 @@ impl Store {
 
   /// Every live handle, in index order.
   pub(crate) fn handles(&self) -> Vec<Handle> {
-    self.records.iter().map(|(handle, _)| handle).collect()
+    self.by_node.iter().map(|(handle, _)| handle).collect()
   }
 
   /// Releases the record of `handle`, retiring the handle and every reference to it.
   pub(crate) fn destroy(&mut self, handle: Handle) {
-    let Some(record) = self.records.remove(handle)
+    let Some(record) = self.by_node.remove(handle)
     else {
       return;
     };

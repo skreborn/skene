@@ -3,7 +3,7 @@
 //! reader was.
 
 use skene_core::{NodeId, Scene};
-use skene_reactive::Position;
+use skene_reactive::SnapshotPlace;
 use wasm_bindgen::JsCast;
 use web_sys::{Element, HtmlElement, HtmlInputElement, HtmlTextAreaElement};
 
@@ -15,8 +15,8 @@ const TAG: &str = "skene-web:restore";
 /// What the page carries across a restart: the focused node with its selection, and
 /// every scrolled node's offsets, each by position.
 type Carry = (
-  Option<(Position, Option<(u32, u32)>)>,
-  Vec<(Position, i32, i32)>,
+  Option<(SnapshotPlace, Option<(u32, u32)>)>,
+  Vec<(SnapshotPlace, i32, i32)>,
 );
 
 /// The current page's carry; `None` when nothing is focused or scrolled, or no page
@@ -80,7 +80,7 @@ fn select(element: &Element, start: u32, end: u32) {
 /// Registers the page's focus, selection and scroll offsets as a snapshot provider; the
 /// entry rides every snapshot alongside the tagged signals.
 pub(crate) fn provide_restoration() {
-  skene_reactive::provide(TAG, || {
+  skene_reactive::provide_extra(TAG, || {
     current().map(|carry| skene_reactive::encode(&carry))
   });
 }
@@ -89,11 +89,11 @@ pub(crate) fn provide_restoration() {
 /// mounted: entries no live node carries are dropped.
 pub fn adopt_restoration() {
   let Some((focused, scrolls)) =
-    skene_reactive::staged(TAG).and_then(|bytes| skene_reactive::decode::<Carry>(&bytes))
+    skene_reactive::take_extra(TAG).and_then(|bytes| skene_reactive::decode::<Carry>(&bytes))
   else {
     return;
   };
-  let sink_at = |position: &Position| Scene::<Web>::with(|scene| scene.node_at(position));
+  let sink_at = |position: &SnapshotPlace| Scene::<Web>::with(|scene| scene.node_at(position));
   let scrolls: Vec<(NodeId, i32, i32)> = scrolls
     .iter()
     .filter_map(|(position, x, y)| Some((sink_at(position)?, *x, *y)))

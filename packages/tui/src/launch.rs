@@ -3,7 +3,7 @@
 use skene_common::{ContextMenu, MenuEntry, typography};
 use skene_core::{Color, Inset, Media, Modifiers, Shortcut, State, View, When};
 
-use crate::{Device, Tui, terminal, with_store};
+use crate::{Device, Tui, terminal, with_records};
 
 /// The clipboard operations offered.
 ///
@@ -124,10 +124,10 @@ impl Launch {
   pub fn install(self) {
     crate::platform::install();
 
-    with_store(|store| {
-      store.clipboard = self.clipboard;
-      store.mouse = self.mouse;
-      store.mouse_key = self.mouse_key;
+    with_records(|records| {
+      records.clipboard = self.clipboard;
+      records.mouse = self.mouse;
+      records.mouse_key = self.mouse_key;
     });
     serve_standard_menu();
   }
@@ -220,7 +220,7 @@ where
 }
 
 /// Installs the terminal platform for this thread under the default configuration, for
-/// a headless test: the reactive runtime, the host executor, the scene and the store.
+/// a headless test: the reactive runtime, the host executor, the scene and the records.
 ///
 /// # Panics
 ///

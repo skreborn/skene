@@ -2,7 +2,7 @@ pub mod skene_reactive
 pub use skene_reactive::Snapshot
 pub use skene_reactive::Store
 pub mod skene_reactive::hash
-pub const fn skene_reactive::hash::key(&str) -> u32
+pub const fn skene_reactive::hash::field_key(&str) -> u32
 pub fn skene_reactive::hash::wide(&[u8]) -> u128
 pub fn skene_reactive::hash::wide_of(&impl core::hash::Hash) -> u128
 pub enum skene_reactive::LoadState
@@ -218,25 +218,6 @@ impl core::fmt::Debug for skene_reactive::Owner
 pub fn skene_reactive::Owner::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::Copy for skene_reactive::Owner
 impl core::marker::StructuralPartialEq for skene_reactive::Owner
-pub struct skene_reactive::Position
-impl skene_reactive::Position
-pub fn skene_reactive::Position::next() -> Self
-impl core::clone::Clone for skene_reactive::Position
-pub fn skene_reactive::Position::clone(&self) -> skene_reactive::Position
-impl core::cmp::Eq for skene_reactive::Position
-impl core::cmp::PartialEq for skene_reactive::Position
-pub fn skene_reactive::Position::eq(&self, &skene_reactive::Position) -> bool
-impl core::fmt::Debug for skene_reactive::Position
-pub fn skene_reactive::Position::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::hash::Hash for skene_reactive::Position
-pub fn skene_reactive::Position::hash<__H: core::hash::Hasher>(&self, &mut __H)
-impl core::marker::StructuralPartialEq for skene_reactive::Position
-impl skene_reactive::Snapshot for skene_reactive::Position
-pub fn skene_reactive::Position::absent() -> core::option::Option<Self>
-pub fn skene_reactive::Position::record(&self, &mut skene_reactive::Recorder)
-pub fn skene_reactive::Position::record_slice(&[Self], &mut skene_reactive::Recorder)
-pub fn skene_reactive::Position::restore(skene_reactive::Value<'_>) -> core::option::Option<Self>
-pub fn skene_reactive::Position::restore_slice(skene_reactive::Value<'_>) -> core::option::Option<alloc::vec::Vec<Self>>
 pub struct skene_reactive::ReactiveId(_)
 impl core::clone::Clone for skene_reactive::ReactiveId
 pub fn skene_reactive::ReactiveId::clone(&self) -> skene_reactive::ReactiveId
@@ -430,6 +411,25 @@ impl<T> skene_reactive::Write<T> for skene_reactive::Signal<T>
 pub fn skene_reactive::Signal<T>::id(&self) -> skene_reactive::ReactiveId
 pub fn skene_reactive::Signal<T>::try_write(&self) -> core::option::Option<skene_reactive::WriteGuard<'_, T>> where T: 'static
 pub fn skene_reactive::Signal<T>::write(&self) -> skene_reactive::WriteGuard<'_, T> where T: 'static
+pub struct skene_reactive::SnapshotPlace
+impl skene_reactive::SnapshotPlace
+pub fn skene_reactive::SnapshotPlace::next() -> Self
+impl core::clone::Clone for skene_reactive::SnapshotPlace
+pub fn skene_reactive::SnapshotPlace::clone(&self) -> skene_reactive::SnapshotPlace
+impl core::cmp::Eq for skene_reactive::SnapshotPlace
+impl core::cmp::PartialEq for skene_reactive::SnapshotPlace
+pub fn skene_reactive::SnapshotPlace::eq(&self, &skene_reactive::SnapshotPlace) -> bool
+impl core::fmt::Debug for skene_reactive::SnapshotPlace
+pub fn skene_reactive::SnapshotPlace::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_reactive::SnapshotPlace
+pub fn skene_reactive::SnapshotPlace::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::StructuralPartialEq for skene_reactive::SnapshotPlace
+impl skene_reactive::Snapshot for skene_reactive::SnapshotPlace
+pub fn skene_reactive::SnapshotPlace::absent() -> core::option::Option<Self>
+pub fn skene_reactive::SnapshotPlace::record(&self, &mut skene_reactive::Recorder)
+pub fn skene_reactive::SnapshotPlace::record_slice(&[Self], &mut skene_reactive::Recorder)
+pub fn skene_reactive::SnapshotPlace::restore(skene_reactive::Value<'_>) -> core::option::Option<Self>
+pub fn skene_reactive::SnapshotPlace::restore_slice(skene_reactive::Value<'_>) -> core::option::Option<alloc::vec::Vec<Self>>
 pub struct skene_reactive::Store<T: 'static>
 impl<T: 'static> skene_reactive::Store<T>
 pub fn skene_reactive::Store<T>::transient(T) -> Self
@@ -759,12 +759,12 @@ pub fn isize::record(&self, &mut skene_reactive::Recorder)
 pub fn isize::record_slice(&[Self], &mut skene_reactive::Recorder)
 pub fn isize::restore(skene_reactive::Value<'_>) -> core::option::Option<Self>
 pub fn isize::restore_slice(skene_reactive::Value<'_>) -> core::option::Option<alloc::vec::Vec<Self>>
-impl skene_reactive::Snapshot for skene_reactive::Position
-pub fn skene_reactive::Position::absent() -> core::option::Option<Self>
-pub fn skene_reactive::Position::record(&self, &mut skene_reactive::Recorder)
-pub fn skene_reactive::Position::record_slice(&[Self], &mut skene_reactive::Recorder)
-pub fn skene_reactive::Position::restore(skene_reactive::Value<'_>) -> core::option::Option<Self>
-pub fn skene_reactive::Position::restore_slice(skene_reactive::Value<'_>) -> core::option::Option<alloc::vec::Vec<Self>>
+impl skene_reactive::Snapshot for skene_reactive::SnapshotPlace
+pub fn skene_reactive::SnapshotPlace::absent() -> core::option::Option<Self>
+pub fn skene_reactive::SnapshotPlace::record(&self, &mut skene_reactive::Recorder)
+pub fn skene_reactive::SnapshotPlace::record_slice(&[Self], &mut skene_reactive::Recorder)
+pub fn skene_reactive::SnapshotPlace::restore(skene_reactive::Value<'_>) -> core::option::Option<Self>
+pub fn skene_reactive::SnapshotPlace::restore_slice(skene_reactive::Value<'_>) -> core::option::Option<alloc::vec::Vec<Self>>
 impl skene_reactive::Snapshot for u128
 pub fn u128::absent() -> core::option::Option<Self>
 pub fn u128::record(&self, &mut skene_reactive::Recorder)
@@ -1072,16 +1072,16 @@ pub fn skene_reactive::WriteSignal<T>::write(&self) -> skene_reactive::WriteGuar
 pub fn skene_reactive::batch<T>(impl core::ops::function::FnOnce() -> T) -> T
 pub fn skene_reactive::decode<T: skene_reactive::Snapshot>(&[u8]) -> core::option::Option<T>
 pub fn skene_reactive::encode(&impl skene_reactive::Snapshot) -> alloc::vec::Vec<u8>
-pub const fn skene_reactive::key(&str) -> u32
+pub const fn skene_reactive::field_key(&str) -> u32
 pub fn skene_reactive::on_cleanup(impl core::ops::function::FnOnce() + 'static)
-pub fn skene_reactive::provide(&'static str, impl core::ops::function::Fn() -> core::option::Option<alloc::vec::Vec<u8>> + 'static)
 pub fn skene_reactive::provide_context<T>(T) where T: core::clone::Clone + 'static
+pub fn skene_reactive::provide_extra(&'static str, impl core::ops::function::Fn() -> core::option::Option<alloc::vec::Vec<u8>> + 'static)
 pub fn skene_reactive::restore(&[u8])
 pub fn skene_reactive::set_spawner(impl core::ops::function::Fn(skene_reactive::Task) -> skene_reactive::TaskGuard + 'static)
 pub fn skene_reactive::signal<T: skene_reactive::Snapshot>(T) -> (skene_reactive::ReadSignal<T>, skene_reactive::WriteSignal<T>)
 pub fn skene_reactive::snapshot() -> alloc::vec::Vec<u8>
 pub fn skene_reactive::spawn(impl core::future::future::Future<Output = ()> + 'static) -> skene_reactive::TaskHandle
-pub fn skene_reactive::staged(&str) -> core::option::Option<alloc::vec::Vec<u8>>
+pub fn skene_reactive::take_extra(&str) -> core::option::Option<alloc::vec::Vec<u8>>
 pub fn skene_reactive::untrack<T>(impl core::ops::function::FnOnce() -> T) -> T
 pub fn skene_reactive::use_context<T>() -> core::option::Option<T> where T: core::clone::Clone + 'static
 pub type skene_reactive::Task = core::pin::Pin<alloc::boxed::Box<dyn core::future::future::Future<Output = ()>>>

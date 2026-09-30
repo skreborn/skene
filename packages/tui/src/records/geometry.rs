@@ -2,9 +2,9 @@
 
 use skene_core::Size;
 
-use super::{Handle, Store};
+use super::{Handle, Records};
 
-impl Store {
+impl Records {
   /// A node's laid-out size, in cells.
   pub(crate) fn node_size(&self, handle: Handle) -> (i64, i64) {
     let Some(taffy) = self.record(handle).and_then(|record| record.taffy)

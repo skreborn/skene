@@ -13,7 +13,7 @@ use xxhash_rust::{const_xxh3, xxh3};
   clippy::cast_possible_truncation,
   reason = "a key is the hash's low half"
 )]
-pub const fn key(name: &str) -> u32 {
+pub const fn field_key(name: &str) -> u32 {
   const_xxh3::xxh3_64(name.as_bytes()) as u32
 }
 

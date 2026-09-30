@@ -1,4 +1,4 @@
-//! The record store: what the platform keeps per node, and the environment it reports.
+//! The records: what the platform keeps per node, and the environment it reports.
 
 use std::rc::Rc;
 
@@ -151,9 +151,9 @@ pub(crate) struct MediaState {
 }
 
 /// Every record the platform holds, the focus, the root definitions and the environment.
-pub(crate) struct Store {
+pub(crate) struct Records {
   /// The records, by node.
-  records: NodeMap<Record>,
+  by_node: NodeMap<Record>,
   /// The token definitions on the root, as last written.
   pub root_definitions: Definitions<TokenValue>,
   /// How many times the root definitions have been written.
@@ -197,10 +197,10 @@ pub(crate) struct Store {
   media: Option<MediaState>,
 }
 
-impl Default for Store {
+impl Default for Records {
   fn default() -> Self {
     Self {
-      records: NodeMap::new(),
+      by_node: NodeMap::new(),
       root_definitions: Definitions::from(Vec::new()),
       root_definition_writes: 0,
       viewport: None,
@@ -225,29 +225,29 @@ impl Default for Store {
   }
 }
 
-impl Store {
+impl Records {
   /// Stores `record` as the record of `node`.
   pub(crate) fn insert(&mut self, node: NodeId, mut record: Record) {
     record.motion.runner = Motion::started_at(self.clock);
 
-    let _replaced = self.records.insert(node, record);
+    let _replaced = self.by_node.insert(node, record);
   }
 
   /// The record of `node`, if it is live.
   #[inline(always)]
   pub(crate) fn record(&self, node: NodeId) -> Option<&Record> {
-    self.records.get(node)
+    self.by_node.get(node)
   }
 
   /// The record of `node`, mutably, if it is live.
   #[inline(always)]
   pub(crate) fn record_mut(&mut self, node: NodeId) -> Option<&mut Record> {
-    self.records.get_mut(node)
+    self.by_node.get_mut(node)
   }
 
   /// Releases the record of `node`.
   pub(crate) fn destroy(&mut self, node: NodeId) {
-    let _released = self.records.remove(node);
+    let _released = self.by_node.remove(node);
   }
 
   /// The color scheme in force: the app's choice, else the platform's.
@@ -327,7 +327,7 @@ impl Store {
   #[must_use]
   pub(crate) fn tracked(&self) -> Vec<(NodeId, Vec<PropertyKey<GuiProperty>>)> {
     self
-      .records
+      .by_node
       .iter()
       .filter_map(|(node, record)| {
         let motion = &record.motion;
@@ -338,7 +338,7 @@ impl Store {
   }
 
   /// Forgets everything and hands back the owner of the environment's signals, for
-  /// the caller to dispose once the store is released.
+  /// the caller to dispose once the records are released.
   pub(crate) fn reset(&mut self) -> Option<Owner> {
     let media = self.media.take();
 

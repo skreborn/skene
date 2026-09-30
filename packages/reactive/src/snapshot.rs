@@ -29,9 +29,9 @@ use crate::{
   Signal,
   With,
   encode::{Fields, Recorder, Snapshot, Value, decode, encode},
-  hash::key,
+  hash::field_key,
   id::Id,
-  path::{Position, Step},
+  path::{SnapshotPlace, Step},
   runtime::{RUNTIME, with_graph},
 };
 
@@ -59,9 +59,9 @@ struct Entry {
 impl Snapshot for Entry {
   fn record(&self, recorder: &mut Recorder) {
     recorder.record(|fields: &mut Fields| {
-      fields.field(key("ty"), &self.ty);
-      fields.field(key("tag"), &self.tag);
-      fields.field(key("bytes"), &self.bytes);
+      fields.field(field_key("ty"), &self.ty);
+      fields.field(field_key("tag"), &self.tag);
+      fields.field(field_key("bytes"), &self.bytes);
     });
   }
 
@@ -72,12 +72,12 @@ impl Snapshot for Entry {
     };
 
     Some(Self {
-      ty: record.field(key("ty")).and_then(u64::restore)?,
+      ty: record.field(field_key("ty")).and_then(u64::restore)?,
       tag: record
-        .field(key("tag"))
+        .field(field_key("tag"))
         .and_then(Option::restore)
         .unwrap_or(None),
-      bytes: record.field(key("bytes")).and_then(Vec::restore)?,
+      bytes: record.field(field_key("bytes")).and_then(Vec::restore)?,
     })
   }
 }
@@ -92,8 +92,8 @@ struct Capture {
 impl Snapshot for Capture {
   fn record(&self, recorder: &mut Recorder) {
     recorder.record(|fields: &mut Fields| {
-      fields.field(key("owners"), &self.owners);
-      fields.field(key("extras"), &self.extras);
+      fields.field(field_key("owners"), &self.owners);
+      fields.field(field_key("extras"), &self.extras);
     });
   }
 
@@ -104,11 +104,11 @@ impl Snapshot for Capture {
     };
     Some(Self {
       owners: record
-        .field(key("owners"))
+        .field(field_key("owners"))
         .and_then(Vec::restore)
         .unwrap_or_default(),
       extras: record
-        .field(key("extras"))
+        .field(field_key("extras"))
         .and_then(Vec::restore)
         .unwrap_or_default(),
     })
@@ -166,7 +166,7 @@ impl<T: Snapshot> Signal<T> {
   #[cfg_attr(debug_assertions, track_caller)]
   pub(crate) fn snapshotted(tag: Option<&'static str>, value: T) -> Self {
     let owner = RUNTIME.with(|runtime| runtime.current_owner.get());
-    let Position { path, index } = Position::next();
+    let SnapshotPlace { path, index } = SnapshotPlace::next();
     let ty = type_hash::<T>();
     let value = take_staged(&path, ty, tag)
       .and_then(|bytes| decode::<T>(&bytes))
@@ -272,12 +272,12 @@ pub(crate) fn unregister(id: Id) {
 
 /// Registers a snapshot provider: its bytes join every later [`snapshot`] under `tag`,
 /// beside the signals. `None` omits the entry; a restored counterpart is adopted
-/// through [`staged`].
+/// through [`take_extra`].
 ///
 /// # Panics
 ///
 /// Panics if `tag` is already carried by a live provider.
-pub fn provide(tag: &'static str, serialize: impl Fn() -> Option<Vec<u8>> + 'static) {
+pub fn provide_extra(tag: &'static str, serialize: impl Fn() -> Option<Vec<u8>> + 'static) {
   REGISTRY.with(|registry| {
     let mut registry = registry.borrow_mut();
 
@@ -290,9 +290,9 @@ pub fn provide(tag: &'static str, serialize: impl Fn() -> Option<Vec<u8>> + 'sta
 }
 
 /// Takes the bytes a [`restore`] staged under `tag`, consuming them—the adopting half
-/// of a [`provide`]d entry.
+/// of a [`provide_extra`]ed entry.
 #[must_use]
-pub fn staged(tag: &str) -> Option<Vec<u8>> {
+pub fn take_extra(tag: &str) -> Option<Vec<u8>> {
   REGISTRY.with(|registry| registry.borrow_mut().staged_extras.remove(tag))
 }
 

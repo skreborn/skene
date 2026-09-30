@@ -38,25 +38,25 @@ mod signal;
 mod snapshot;
 mod spawn;
 mod store;
+mod tracked_cell;
 mod trigger;
-mod value;
 
 pub use access::{Get, Read, Set, Track, Update, With, Write};
 pub use context::{provide_context, use_context};
 pub use effect::{Effect, EffectHandle, batch, untrack};
 pub use encode::{Fields, Reader, Record, Recorder, Seq, Snapshot, Value, decode, encode};
 pub use guards::{ReadGuard, WriteGuard};
-pub use hash::key;
+pub use hash::field_key;
 pub use id::Id as ReactiveId;
 pub use memo::Memo;
 pub use owner::{Owner, on_cleanup};
-pub use path::{Key, Position};
+pub use path::{Key, SnapshotPlace};
 pub use resource::{LoadState, Resource};
 pub use runtime::Runtime;
 pub use selector::Selector;
 pub use signal::{ReadSignal, Signal, WriteSignal, signal};
 pub use skene_macros::{Snapshot, Store};
-pub use snapshot::{provide, restore, snapshot, staged};
+pub use snapshot::{provide_extra, restore, snapshot, take_extra};
 pub use spawn::{Task, TaskGuard, TaskHandle, set_spawner, spawn};
 pub use store::{
   AtIndex,

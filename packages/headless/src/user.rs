@@ -22,7 +22,7 @@ use crate::{
   Headless,
   end_turn,
   focus_order,
-  store::Kind,
+  records::Kind,
   trigger_blur,
   trigger_change,
   trigger_click,

@@ -8,7 +8,7 @@ use skene_core::{Key, KeyEvent, NodeId};
 use unicode_segmentation::UnicodeSegmentation;
 
 use super::{trigger_key_event, trigger_mouse_click, trigger_mouse_move};
-use crate::with_store;
+use crate::with_records;
 
 /// The center cell of the rectangle `node` covered at the last paint.
 ///
@@ -16,7 +16,7 @@ use crate::with_store;
 ///
 /// Panics where `node` covered no cell: a user reaches only what is on screen.
 fn cell_of(node: NodeId) -> (u16, u16) {
-  let rect = with_store(|store| store.record(node).and_then(|record| record.painted));
+  let rect = with_records(|records| records.record(node).and_then(|record| record.painted));
   let center = rect
     .filter(|(_, _, width, height)| *width > 0 && *height > 0)
     .and_then(|(x, y, width, height)| {

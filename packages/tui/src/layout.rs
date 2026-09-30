@@ -24,8 +24,8 @@ use taffy::{
 use crate::{
   motion::{Clock, Presented},
   paint::{line_holding, longest_word, paragraph_scales, run_scale, sized_rows, wrap_sized},
+  records::{BoxCache, Handle, Kind, PlainBox, PlainRun, Record, Records, RunCache},
   resolve::Env,
-  store::{BoxCache, Handle, Kind, PlainBox, PlainRun, Record, RunCache, Store},
   text::{self, Scales},
 };
 
@@ -48,17 +48,17 @@ pub(crate) struct Measured {
 
 /// Whether `handle` lays its inline runs out as one paragraph: a flow box whose every
 /// laid-out child is an inline text run or an inline box.
-pub(crate) fn is_paragraph(store: &Store, handle: Handle) -> bool {
-  if store.record(handle).and_then(Record::layout) != Some(Layout::Flow) {
+pub(crate) fn is_paragraph(records: &Records, handle: Handle) -> bool {
+  if records.record(handle).and_then(Record::layout) != Some(Layout::Flow) {
     return false;
   }
 
-  let children = store.layout_children(handle);
+  let children = records.layout_children(handle);
 
   !children.is_empty()
     && children.iter().all(|child| {
       matches!(
-        store.record(*child).map(|record| &record.kind),
+        records.record(*child).map(|record| &record.kind),
         Some(Kind::Run { props, .. }) if props.display != RunDisplay::Block
       )
     })
@@ -66,32 +66,32 @@ pub(crate) fn is_paragraph(store: &Store, handle: Handle) -> bool {
 
 /// Whether `handle` is an inline box: a run laid out as a box among its paragraph's
 /// text, its text one placeholder cluster as large as the box.
-pub(crate) fn is_inline_box(store: &Store, handle: Handle) -> bool {
+pub(crate) fn is_inline_box(records: &Records, handle: Handle) -> bool {
   matches!(
-    store.record(handle).map(|record| &record.kind),
+    records.record(handle).map(|record| &record.kind),
     Some(Kind::Run { props, .. }) if props.display == RunDisplay::InlineBox
   )
 }
 
 /// Whether `handle` is an inline run: text, a group or an inline box flowing in a
 /// paragraph.
-pub(crate) fn is_inline_run(store: &Store, handle: Handle) -> bool {
+pub(crate) fn is_inline_run(records: &Records, handle: Handle) -> bool {
   matches!(
-    store.record(handle).map(|record| &record.kind),
+    records.record(handle).map(|record| &record.kind),
     Some(Kind::Run { props, .. }) if props.display != RunDisplay::Block
   )
 }
 
 /// The paragraph the inline run `handle` flows in, through any groups around it.
-pub(crate) fn enclosing_paragraph(store: &Store, handle: Handle) -> Option<Handle> {
-  let mut current = store.layout_parent(handle)?;
+pub(crate) fn enclosing_paragraph(records: &Records, handle: Handle) -> Option<Handle> {
+  let mut current = records.layout_parent(handle)?;
 
-  while !is_paragraph(store, current) {
-    if !is_inline_run(store, current) {
+  while !is_paragraph(records, current) {
+    if !is_inline_run(records, current) {
       return None;
     }
 
-    current = store.layout_parent(current)?;
+    current = records.layout_parent(current)?;
   }
 
   Some(current)
@@ -99,17 +99,17 @@ pub(crate) fn enclosing_paragraph(store: &Store, handle: Handle) -> Option<Handl
 
 /// The inline boxes of the paragraph `handle`, each with the cell its placeholder
 /// flowed into, relative to the paragraph's origin, against the last layout.
-pub(crate) fn inline_box_cells(store: &Store, handle: Handle) -> Vec<(Handle, (i64, i64))> {
-  let runs = paragraph_runs(store, handle);
+pub(crate) fn inline_box_cells(records: &Records, handle: Handle) -> Vec<(Handle, (i64, i64))> {
+  let runs = paragraph_runs(records, handle);
 
-  if !runs.iter().any(|run| is_inline_box(store, *run)) {
+  if !runs.iter().any(|run| is_inline_box(records, *run)) {
     return Vec::new();
   }
 
-  let (width, _) = store.node_size(handle);
-  let scales = paragraph_scales(store, handle);
+  let (width, _) = records.node_size(handle);
+  let scales = paragraph_scales(records, handle);
   let lines = wrap_sized(
-    &paragraph_text(store, handle),
+    &paragraph_text(records, handle),
     usize::try_from(width).unwrap_or(1),
     &scales,
   );
@@ -118,7 +118,7 @@ pub(crate) fn inline_box_cells(store: &Store, handle: Handle) -> Vec<(Handle, (i
   let mut cells = Vec::new();
 
   for run in runs {
-    let Some(record) = store.record(run)
+    let Some(record) = records.record(run)
     else {
       continue;
     };
@@ -126,7 +126,7 @@ pub(crate) fn inline_box_cells(store: &Store, handle: Handle) -> Vec<(Handle, (i
 
     offset += text::count(&record.text);
 
-    if !is_inline_box(store, run) {
+    if !is_inline_box(records, run) {
       continue;
     }
 
@@ -162,15 +162,15 @@ pub(crate) fn inline_box_cells(store: &Store, handle: Handle) -> Vec<(Handle, (i
 /// (`column`, `row`), against the last layout: exact hits only, a smaller cluster or an
 /// inline box held by the rows it draws on alone.
 pub(crate) fn paragraph_cluster_at(
-  store: &Store,
+  records: &Records,
   handle: Handle,
   column: usize,
   row: usize,
 ) -> Option<usize> {
-  let (width, _) = store.node_size(handle);
-  let scales = paragraph_scales(store, handle);
+  let (width, _) = records.node_size(handle);
+  let scales = paragraph_scales(records, handle);
   let lines = wrap_sized(
-    &paragraph_text(store, handle),
+    &paragraph_text(records, handle),
     usize::try_from(width).unwrap_or(1),
     &scales,
   );
@@ -185,11 +185,11 @@ pub(crate) fn paragraph_cluster_at(
 
 /// The leaf run of the paragraph `handle` that holds the cluster at `offset` of its
 /// text.
-pub(crate) fn paragraph_run_at(store: &Store, handle: Handle, offset: usize) -> Option<Handle> {
+pub(crate) fn paragraph_run_at(records: &Records, handle: Handle, offset: usize) -> Option<Handle> {
   let mut cursor = 0;
 
-  paragraph_runs(store, handle).into_iter().find(|run| {
-    let count = store
+  paragraph_runs(records, handle).into_iter().find(|run| {
+    let count = records
       .record(*run)
       .map_or(0, |record| text::count(&record.text));
     let hit = (cursor..cursor + count).contains(&offset);
@@ -202,20 +202,20 @@ pub(crate) fn paragraph_run_at(store: &Store, handle: Handle, offset: usize) -> 
 
 /// Lays every inline box out on its own and records its size, which its placeholder
 /// spans; `true` when a size changed, in which case its paragraph measures again.
-pub(crate) fn measure_inline_boxes(store: &mut Store) -> bool {
+pub(crate) fn measure_inline_boxes(records: &mut Records) -> bool {
   let mut changed = false;
 
-  for handle in store.handles() {
-    if !is_inline_box(store, handle) {
+  for handle in records.handles() {
+    if !is_inline_box(records, handle) {
       continue;
     }
 
-    let Some(taffy) = store.record(handle).and_then(|record| record.taffy)
+    let Some(taffy) = records.record(handle).and_then(|record| record.taffy)
     else {
       continue;
     };
 
-    store
+    records
       .taffy
       .compute_layout_with_measure(
         taffy,
@@ -227,13 +227,14 @@ pub(crate) fn measure_inline_boxes(store: &mut Store) -> bool {
       )
       .expect("compute an inline box's layout");
 
-    let (width, height) = store.node_size(handle);
+    let (width, height) = records.node_size(handle);
     let size = (
       usize::try_from(width).unwrap_or(1).max(1),
       usize::try_from(height).unwrap_or(1).max(1),
     );
 
-    if let Some(Kind::Run { extent, .. }) = store.record_mut(handle).map(|record| &mut record.kind)
+    if let Some(Kind::Run { extent, .. }) =
+      records.record_mut(handle).map(|record| &mut record.kind)
       && *extent != Some(size)
     {
       *extent = Some(size);
@@ -242,18 +243,18 @@ pub(crate) fn measure_inline_boxes(store: &mut Store) -> bool {
   }
 
   if changed {
-    store.layout_dirty = true;
+    records.layout_dirty = true;
   }
 
   changed
 }
 
 /// The text of the paragraph `handle`: every inline run beneath it, in order.
-pub(crate) fn paragraph_text(store: &Store, handle: Handle) -> String {
+pub(crate) fn paragraph_text(records: &Records, handle: Handle) -> String {
   let mut text = String::new();
 
-  for run in paragraph_runs(store, handle) {
-    if let Some(record) = store.record(run) {
+  for run in paragraph_runs(records, handle) {
+    if let Some(record) = records.record(run) {
       text.push_str(&record.text);
     }
   }
@@ -263,18 +264,18 @@ pub(crate) fn paragraph_text(store: &Store, handle: Handle) -> String {
 
 /// The leaf runs of the paragraph `handle`, in order: a group run contributes its
 /// runs, never its own (empty) text.
-pub(crate) fn paragraph_runs(store: &Store, handle: Handle) -> Vec<Handle> {
+pub(crate) fn paragraph_runs(records: &Records, handle: Handle) -> Vec<Handle> {
   let mut runs = Vec::new();
 
-  collect_runs(store, handle, &mut runs);
+  collect_runs(records, handle, &mut runs);
 
   runs
 }
 
-fn collect_runs(store: &Store, handle: Handle, runs: &mut Vec<Handle>) {
-  for child in store.layout_children(handle) {
+fn collect_runs(records: &Records, handle: Handle, runs: &mut Vec<Handle>) {
+  for child in records.layout_children(handle) {
     let is_run = matches!(
-      store.record(child).map(|record| &record.kind),
+      records.record(child).map(|record| &record.kind),
       Some(Kind::Run { .. })
     );
 
@@ -282,40 +283,40 @@ fn collect_runs(store: &Store, handle: Handle, runs: &mut Vec<Handle>) {
       continue;
     }
 
-    if is_inline_box(store, child) || store.layout_children(child).is_empty() {
+    if is_inline_box(records, child) || records.layout_children(child).is_empty() {
       runs.push(child);
     }
     else {
-      collect_runs(store, child, runs);
+      collect_runs(records, child, runs);
     }
   }
 }
 
 /// Resolves every stale node's style and writes the taffy styles that changed; `true`
 /// when any changed.
-pub(crate) fn restyle(store: &mut Store) -> bool {
-  let mut handles = store.handles();
+pub(crate) fn restyle(records: &mut Records) -> bool {
+  let mut handles = records.handles();
   let mut changed = false;
 
   // A paragraph measures by its runs' scales, so the runs resolve first.
   handles.sort_by_key(|handle| {
     !matches!(
-      store.record(*handle).map(|record| &record.kind),
+      records.record(*handle).map(|record| &record.kind),
       Some(Kind::Run { .. })
     )
   });
 
-  store.motion_active = false;
-  store.restyle_pending = false;
+  records.motion_active = false;
+  records.restyle_pending = false;
 
-  let displayed = store.displayed();
+  let displayed = records.displayed();
 
   for handle in handles {
-    let Some(restyled) = restyle_one(store, handle, displayed.contains(&handle))
+    let Some(restyled) = restyle_one(records, handle, displayed.contains(&handle))
     else {
       continue;
     };
-    let Some(record) = store.record_mut(handle)
+    let Some(record) = records.record_mut(handle)
     else {
       continue;
     };
@@ -326,22 +327,22 @@ pub(crate) fn restyle(store: &mut Store) -> bool {
 
     if record.measured_text != restyled.text {
       record.measured_text.clone_from(&restyled.text);
-      store
+      records
         .taffy
         .set_node_context(taffy, restyled.text)
         .expect("carry a run's text");
       changed = true;
     }
 
-    let record = store.record_mut(handle).expect("checked live");
+    let record = records.record_mut(handle).expect("checked live");
 
     if record.applied.as_ref() != Some(&restyled.style) {
       record.applied = Some(restyled.style.clone());
-      store
+      records
         .taffy
         .set_style(taffy, restyled.style)
         .expect("style a node");
-      store.set_style_calls += 1;
+      records.set_style_calls += 1;
       changed = true;
     }
   }
@@ -352,11 +353,11 @@ pub(crate) fn restyle(store: &mut Store) -> bool {
 /// Resolves `handle`'s style if stale or in motion, and returns the taffy style it maps
 /// to; `None` for a node outside the layout. A node out of the display runs no motion
 /// and forgets its presentation, so it shows afresh once `displayed` again.
-fn restyle_one(store: &mut Store, handle: Handle, displayed: bool) -> Option<Restyled> {
-  let generation = store.generation;
-  let now = store.now();
-  let reduced = store.reduced_motion;
-  let record = store.record_mut(handle)?;
+fn restyle_one(records: &mut Records, handle: Handle, displayed: bool) -> Option<Restyled> {
+  let generation = records.generation;
+  let now = records.now();
+  let reduced = records.reduced_motion;
+  let record = records.record_mut(handle)?;
 
   if !record.kind.is_laid_out() {
     return None;
@@ -369,14 +370,14 @@ fn restyle_one(store: &mut Store, handle: Handle, displayed: bool) -> Option<Res
       record.kind.forget_presentation();
     }
 
-    return Some(taffy_style_of(store, handle));
+    return Some(taffy_style_of(records, handle));
   }
 
   record.hidden = false;
 
-  let record = store.record(handle)?;
+  let record = records.record(handle)?;
 
-  let interaction = store.interaction(handle);
+  let interaction = records.interaction(handle);
   let fresh = match &record.kind {
     Kind::Run { cache, .. } => cache
       .as_ref()
@@ -395,8 +396,8 @@ fn restyle_one(store: &mut Store, handle: Handle, displayed: bool) -> Option<Res
       resolved_layout,
       box_keyframes,
       run_keyframes,
-    } = targets(store, handle, fresh)?;
-    let record = store.record_mut(handle)?;
+    } = targets(records, handle, fresh)?;
+    let record = records.record_mut(handle)?;
     let frame = Frame {
       generation,
       interaction,
@@ -421,14 +422,14 @@ fn restyle_one(store: &mut Store, handle: Handle, displayed: bool) -> Option<Res
     };
 
     record.in_motion = active;
-    store.motion_active |= active;
+    records.motion_active |= active;
 
     if repaint {
-      store.damage(handle);
+      records.damage(handle);
     }
   }
 
-  Some(taffy_style_of(store, handle))
+  Some(taffy_style_of(records, handle))
 }
 
 /// What a restyle presents: the resolved box or run target, the wrapper layout of a
@@ -443,8 +444,8 @@ struct Targets {
 
 /// The targets of `handle`: a fresh node in motion samples its clock over the targets
 /// and keyframes it already resolved; only a stale one resolves again.
-fn targets(store: &mut Store, handle: Handle, fresh: bool) -> Option<Targets> {
-  let record = store.record(handle)?;
+fn targets(records: &mut Records, handle: Handle, fresh: bool) -> Option<Targets> {
+  let record = records.record(handle)?;
   let (resolved_box, resolved_run, resolved_layout, box_keyframes, run_keyframes) = if fresh {
     match &record.kind {
       Kind::Run { cache, .. } => {
@@ -472,7 +473,7 @@ fn targets(store: &mut Store, handle: Handle, fresh: bool) -> Option<Targets> {
     }
   }
   else {
-    let env = Env::of(store, handle);
+    let env = Env::of(records, handle);
     let resolved_box = env.resolve_box();
     let resolved_run = env.resolve_run();
     let resolved_layout = env.resolve_run_layout();
@@ -499,7 +500,7 @@ fn targets(store: &mut Store, handle: Handle, fresh: bool) -> Option<Targets> {
       _ => Vec::new(),
     };
 
-    store.style_resolutions += 1;
+    records.style_resolutions += 1;
 
     (
       resolved_box,
@@ -523,7 +524,7 @@ fn targets(store: &mut Store, handle: Handle, fresh: bool) -> Option<Targets> {
 /// and the clock its motion samples at.
 struct Frame {
   generation: u64,
-  interaction: crate::store::Interaction,
+  interaction: crate::records::Interaction,
   clock: Clock,
 }
 
@@ -571,7 +572,7 @@ fn present_run(
 
 /// Presents a box's resolution over its motion and caches it; `(repaint, active)`.
 fn present_box(
-  inner: &mut crate::store::BoxRecord,
+  inner: &mut crate::records::BoxRecord,
   resolved: Option<PlainBox>,
   keyframes: &[skene_core::Animation<PlainBox>],
   frame: &Frame,
@@ -607,15 +608,15 @@ fn present_box(
 }
 
 /// The taffy style `handle` takes from its resolved style and its place in the tree.
-fn taffy_style_of(store: &Store, handle: Handle) -> Restyled {
-  let record = store.record(handle).expect("a live record");
-  let layout_parent = store.layout_parent(handle);
+fn taffy_style_of(records: &Records, handle: Handle) -> Restyled {
+  let record = records.record(handle).expect("a live record");
+  let layout_parent = records.layout_parent(handle);
   let in_stack = layout_parent
-    .and_then(|parent| store.record(parent))
+    .and_then(|parent| records.record(parent))
     .and_then(Record::layout)
     == Some(Layout::Stack);
   // The root's child fills the viewport, unless it sizes its own height.
-  let fills_root = layout_parent == Some(store.root)
+  let fills_root = layout_parent == Some(records.root)
     && !record.is_overlay()
     && record
       .kind
@@ -626,7 +627,7 @@ fn taffy_style_of(store: &Store, handle: Handle) -> Restyled {
     Kind::Run { props, cache, .. } => {
       let mut style = Style::default();
       let inline = props.display != RunDisplay::Block;
-      let has_children = !store.layout_children(handle).is_empty();
+      let has_children = !records.layout_children(handle).is_empty();
 
       // A wrapper's properties on a bare run: its flexibility, alignment, pinning and
       // grid placement, folded like a box's.
@@ -648,7 +649,7 @@ fn taffy_style_of(store: &Store, handle: Handle) -> Restyled {
       else {
         Some(Measured {
           text: record.text.clone(),
-          scales: Scales::uniform(run_scale(store, handle)),
+          scales: Scales::uniform(run_scale(records, handle)),
         })
       };
 
@@ -668,7 +669,7 @@ fn taffy_style_of(store: &Store, handle: Handle) -> Restyled {
     },
     Kind::Box(inner) => {
       let resolved = inner.style().cloned().unwrap_or_default();
-      let paragraph = is_paragraph(store, handle);
+      let paragraph = is_paragraph(records, handle);
       let mut style = box_taffy_style(inner.props.layout, &resolved, in_stack);
 
       if fills_root {
@@ -676,8 +677,8 @@ fn taffy_style_of(store: &Store, handle: Handle) -> Restyled {
       }
 
       let text = paragraph.then(|| Measured {
-        text: paragraph_text(store, handle),
-        scales: paragraph_scales(store, handle),
+        text: paragraph_text(records, handle),
+        scales: paragraph_scales(records, handle),
       });
 
       if paragraph {
@@ -746,15 +747,15 @@ fn stack_cell(style: &mut Style) {
 
 /// Hands every laid-out node its flattened children, where the tree changed since the
 /// last layout.
-pub(crate) fn rebuild_children(store: &mut Store) {
-  if !std::mem::take(&mut store.structure_dirty) {
+pub(crate) fn rebuild_children(records: &mut Records) {
+  if !std::mem::take(&mut records.structure_dirty) {
     return;
   }
 
-  let handles = store.handles();
+  let handles = records.handles();
 
   for handle in handles {
-    let Some(record) = store.record(handle)
+    let Some(record) = records.record(handle)
     else {
       continue;
     };
@@ -767,51 +768,51 @@ pub(crate) fn rebuild_children(store: &mut Store) {
       continue;
     }
 
-    let mut children: Vec<taffy::NodeId> = if is_paragraph(store, handle) {
+    let mut children: Vec<taffy::NodeId> = if is_paragraph(records, handle) {
       Vec::new()
     }
     else {
-      store
+      records
         .layout_children(handle)
         .into_iter()
-        .filter_map(|child| store.record(child).and_then(|record| record.taffy))
+        .filter_map(|child| records.record(child).and_then(|record| record.taffy))
         .collect()
     };
 
-    if handle == store.root {
-      let overlays: Vec<taffy::NodeId> = store
+    if handle == records.root {
+      let overlays: Vec<taffy::NodeId> = records
         .overlays
         .clone()
         .into_iter()
-        .filter(|overlay| store.is_reachable(*overlay))
-        .filter_map(|overlay| store.record(overlay).and_then(|record| record.taffy))
+        .filter(|overlay| records.is_reachable(*overlay))
+        .filter_map(|overlay| records.record(overlay).and_then(|record| record.taffy))
         .collect();
 
       children.extend(overlays);
     }
 
-    let record = store.record_mut(handle).expect("checked live");
+    let record = records.record_mut(handle).expect("checked live");
 
     if record.taffy_children != children {
       record.taffy_children.clone_from(&children);
-      store
+      records
         .taffy
         .set_children(taffy, &children)
         .expect("set a node's children");
     }
   }
 
-  store.layout_dirty = true;
+  records.layout_dirty = true;
 }
 
 /// Computes the layout at `width` x `height`, the root sized to the terminal.
-pub(crate) fn compute(store: &mut Store, width: u16, height: u16) {
-  let root_taffy = store
-    .record(store.root)
+pub(crate) fn compute(records: &mut Records, width: u16, height: u16) {
+  let root_taffy = records
+    .record(records.root)
     .and_then(|record| record.taffy)
     .expect("the root");
 
-  store
+  records
     .taffy
     .set_style(
       root_taffy,
@@ -826,7 +827,7 @@ pub(crate) fn compute(store: &mut Store, width: u16, height: u16) {
       },
     )
     .expect("style the root");
-  store
+  records
     .taffy
     .compute_layout_with_measure(
       root_taffy,
@@ -837,7 +838,7 @@ pub(crate) fn compute(store: &mut Store, width: u16, height: u16) {
       |known, available, _, measured, _| measure_run(known, available, measured.as_deref()),
     )
     .expect("compute the layout");
-  store.layout_generation += 1;
+  records.layout_generation += 1;
 }
 
 /// Measures a text leaf: its text wrapped at the width constraint, in cells, each

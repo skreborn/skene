@@ -8,7 +8,7 @@ use crate::{
   escape,
   interaction,
   parse::{Key, KeyCode, KeyKind, ModifierKey},
-  with_store,
+  with_records,
 };
 
 /// The kitty keyboard flags asked of a terminal that answers the flags query: the
@@ -33,14 +33,14 @@ pub(super) fn dispatch_key(key: &Key) {
 /// Where the terminal does not report releases, a release follows every press at once.
 pub(crate) fn press(event: &KeyEvent) {
   if event.modifiers.ctrl && event.shortcut_key() == "q" {
-    with_store(|store| store.quit = true);
+    with_records(|records| records.quit = true);
 
     return;
   }
 
   interaction::key(event);
 
-  if !with_store(|store| store.key_releases) {
+  if !with_records(|records| records.key_releases) {
     interaction::key_up(&KeyEvent {
       repeat: false,
       ..event.clone()

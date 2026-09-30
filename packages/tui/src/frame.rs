@@ -14,8 +14,8 @@ use crate::{
   interaction::scroll_to,
   layout::{self, border_edges, has_border, is_inline_run, is_paragraph},
   paint::{self, Buffer, Image, ShadowPaint, terminal_rgb},
-  store::{Backdrop, BackdropKey, CellRect, Handle, Record, Store},
-  with_store,
+  records::{Backdrop, BackdropKey, CellRect, Handle, Record, Records},
+  with_records,
 };
 
 /// How many times a frame re-lays out for a size report or a container measurement
@@ -34,23 +34,23 @@ const SETTLE_ROUNDS: usize = 4;
 pub(crate) fn render(width: u16, height: u16) -> Buffer {
   crate::platform::end_turn();
   resize(width, height);
-  with_store(Store::autoscroll_caret_drag);
+  with_records(Records::autoscroll_caret_drag);
   crate::field::report_selections();
   crate::platform::end_turn();
 
   for _ in 0..SETTLE_ROUNDS {
-    let laid_out = with_store(|store| {
-      let restyled = layout::restyle(store);
+    let laid_out = with_records(|records| {
+      let restyled = layout::restyle(records);
 
-      layout::rebuild_children(store);
+      layout::rebuild_children(records);
 
-      if !(restyled || store.layout_dirty) {
+      if !(restyled || records.layout_dirty) {
         return false;
       }
 
-      store.layout_dirty = false;
-      layout::compute(store, width, height);
-      layout::measure_inline_boxes(store);
+      records.layout_dirty = false;
+      layout::compute(records, width, height);
+      layout::measure_inline_boxes(records);
 
       true
     });
@@ -60,43 +60,44 @@ pub(crate) fn render(width: u16, height: u16) -> Buffer {
 
     crate::platform::end_turn();
 
-    let settled = !(containers || reported || revealed || with_store(|store| store.layout_dirty));
+    let settled =
+      !(containers || reported || revealed || with_records(|records| records.layout_dirty));
 
     if settled {
       break;
     }
   }
 
-  with_store(|store| {
-    render_pictures(store);
-    render_backdrops(store);
+  with_records(|records| {
+    render_pictures(records);
+    render_backdrops(records);
 
     let (width, height) = (usize::from(width), usize::from(height));
-    let previous = store
+    let previous = records
       .last_frame
       .take()
       .filter(|frame| frame.width == width && frame.height == height);
-    let full = std::mem::take(&mut store.paint_dirty) || previous.is_none();
+    let full = std::mem::take(&mut records.paint_dirty) || previous.is_none();
 
-    measure_covers(store);
+    measure_covers(records);
 
-    let rows = damaged_rows(store, height);
+    let rows = damaged_rows(records, height);
     let mut buffer = match previous {
       Some(previous) if !full => previous.repainting(&rows),
       _ => Buffer::new(width, height),
     };
 
-    store.repainted = rows
+    records.repainted = rows
       .iter()
       .enumerate()
       .filter(|(_, repaint)| full || **repaint)
       .map(|(row, _)| row)
       .collect();
 
-    paint::paint(store, &mut buffer);
-    record_painted(store);
+    paint::paint(records, &mut buffer);
+    record_painted(records);
 
-    store.last_frame = Some(buffer.clone());
+    records.last_frame = Some(buffer.clone());
 
     buffer
   })
@@ -105,20 +106,20 @@ pub(crate) fn render(width: u16, height: u16) -> Buffer {
 /// The rows the next paint rewrites: those the damaged nodes covered at the last paint
 /// and cover now, those of the rectangles no node covers any more, and those of every
 /// node the layout moved or resized.
-fn damaged_rows(store: &mut Store, height: usize) -> Vec<bool> {
-  let (damaged, mut rects) = store.take_damage();
+fn damaged_rows(records: &mut Records, height: usize) -> Vec<bool> {
+  let (damaged, mut rects) = records.take_damage();
 
   for handle in damaged {
-    let target = paint_owner(store, handle);
+    let target = paint_owner(records, handle);
 
-    if let Some(record) = store.record(target) {
+    if let Some(record) = records.record(target) {
       rects.extend(record.painted);
       rects.extend(record.covers);
     }
   }
 
-  for handle in store.handles() {
-    let Some(record) = store.record(handle)
+  for handle in records.handles() {
+    let Some(record) = records.record(handle)
     else {
       continue;
     };
@@ -145,11 +146,11 @@ fn damaged_rows(store: &mut Store, height: usize) -> Vec<bool> {
 
 /// The node whose paint covers `handle`: the paragraph an inline run flows in, or an
 /// inline box's content, through any groups; else the node itself.
-fn paint_owner(store: &Store, handle: Handle) -> Handle {
+fn paint_owner(records: &Records, handle: Handle) -> Handle {
   let mut owner = handle;
 
-  while let Some(parent) = store.layout_parent(owner) {
-    if !(is_paragraph(store, parent) || is_inline_run(store, parent)) {
+  while let Some(parent) = records.layout_parent(owner) {
+    if !(is_paragraph(records, parent) || is_inline_run(records, parent)) {
       break;
     }
 
@@ -161,14 +162,14 @@ fn paint_owner(store: &Store, handle: Handle) -> Handle {
 
 /// The screen rectangle `handle` paints at `origin`, grown by the cells its shadow
 /// reaches; `None` for a node without extent.
-fn rect_at(store: &Store, handle: Handle, (x, y): (i64, i64)) -> Option<CellRect> {
-  let (width, height) = store.node_size(handle);
+fn rect_at(records: &Records, handle: Handle, (x, y): (i64, i64)) -> Option<CellRect> {
+  let (width, height) = records.node_size(handle);
 
   if width <= 0 || height <= 0 {
     return None;
   }
 
-  let band = store
+  let band = records
     .record(handle)
     .and_then(|record| record.kind.box_style())
     .map_or(0, |style| i64::from(ShadowPaint::band(style)));
@@ -179,15 +180,15 @@ fn rect_at(store: &Store, handle: Handle, (x, y): (i64, i64)) -> Option<CellRect
 /// Renders every painted box's picture whose image is missing or of another size than
 /// the box's content in pixels, while the terminal shows graphics: the painter runs
 /// on a canvas of that size, and the pixels take the next generation.
-fn render_pictures(store: &mut Store) {
-  if !store.graphics {
+fn render_pictures(records: &mut Records) {
+  if !records.graphics {
     return;
   }
 
-  let (cell_width, cell_height) = store.cell_pixels;
+  let (cell_width, cell_height) = records.cell_pixels;
 
-  for handle in store.handles() {
-    let Some(record) = store.record(handle)
+  for handle in records.handles() {
+    let Some(record) = records.record(handle)
     else {
       continue;
     };
@@ -195,7 +196,7 @@ fn render_pictures(store: &mut Store) {
     else {
       continue;
     };
-    let size = store.client_size(handle);
+    let size = records.client_size(handle);
     let width = u16::try_from(size.width.saturating_mul(u32::from(cell_width))).unwrap_or(u16::MAX);
     let height =
       u16::try_from(size.height.saturating_mul(u32::from(cell_height))).unwrap_or(u16::MAX);
@@ -219,11 +220,11 @@ fn render_pictures(store: &mut Store) {
 
     let pixels = canvas.pixels();
 
-    store.picture_generation += 1;
+    records.picture_generation += 1;
 
-    let generation = store.picture_generation;
+    let generation = records.picture_generation;
 
-    if let Some(picture) = store
+    if let Some(picture) = records
       .record_mut(handle)
       .and_then(|record| record.picture.as_mut())
     {
@@ -242,15 +243,15 @@ fn render_pictures(store: &mut Store) {
 /// backdrop of a box that no longer does: the image is the box's cells and the
 /// shadow's band in pixels, rendered afresh when the size, the cell's pixels or any
 /// part of the decoration changed.
-fn render_backdrops(store: &mut Store) {
-  if !store.graphics {
+fn render_backdrops(records: &mut Records) {
+  if !records.graphics {
     return;
   }
 
-  let cell_pixels = store.cell_pixels;
+  let cell_pixels = records.cell_pixels;
 
-  for handle in store.handles() {
-    let Some(record) = store.record(handle)
+  for handle in records.handles() {
+    let Some(record) = records.record(handle)
     else {
       continue;
     };
@@ -275,10 +276,10 @@ fn render_backdrops(store: &mut Store) {
     let border = has_border(style)
       .then(|| match style.border_color {
         Some(color) => terminal_rgb(color),
-        None => Some(store.contrast().ink),
+        None => Some(records.contrast().ink),
       })
       .flatten();
-    let (width, height) = store.node_size(handle);
+    let (width, height) = records.node_size(handle);
     let band = if shadow.is_some() {
       ShadowPaint::band(style)
     }
@@ -306,7 +307,7 @@ fn render_backdrops(store: &mut Store) {
     let wanted = width > 0 && height > 0 && (radius > 0. || border.is_some() || shadow.is_some());
 
     if !wanted {
-      if let Some(record) = store.record_mut(handle) {
+      if let Some(record) = records.record_mut(handle) {
         record.backdrop = None;
       }
 
@@ -323,11 +324,11 @@ fn render_backdrops(store: &mut Store) {
 
     let pixels = render_backdrop(&key);
 
-    store.picture_generation += 1;
+    records.picture_generation += 1;
 
-    let generation = store.picture_generation;
+    let generation = records.picture_generation;
 
-    if let Some(record) = store.record_mut(handle) {
+    if let Some(record) = records.record_mut(handle) {
       record.backdrop = Some(Backdrop {
         image: Rc::new(Image {
           generation,
@@ -428,23 +429,23 @@ fn render_backdrop(key: &BackdropKey) -> Vec<u8> {
 
 /// Measures the rectangle every node under the root covers now, summing each origin
 /// down the tree once; a node outside it covers none.
-fn measure_covers(store: &mut Store) {
+fn measure_covers(records: &mut Records) {
   let mut covers = Vec::new();
-  let mut pending = vec![(store.root, (0, 0), None)];
+  let mut pending = vec![(records.root, (0, 0), None)];
 
   while let Some((handle, (base_x, base_y), laid_out_parent)) = pending.pop() {
-    let Some(record) = store.record(handle)
+    let Some(record) = records.record(handle)
     else {
       continue;
     };
     let laid_out = record.kind.is_laid_out();
     let origin = if record.is_overlay() {
-      store.overlay_origin(handle)
+      records.overlay_origin(handle)
     }
     else if laid_out {
-      let (x, y) = store.inline_location(handle);
+      let (x, y) = records.inline_location(handle);
       let (scroll_x, scroll_y) =
-        laid_out_parent.map_or((0, 0), |parent| store.scroll_offset(parent));
+        laid_out_parent.map_or((0, 0), |parent| records.scroll_offset(parent));
 
       (
         base_x + x - i64::from(scroll_x),
@@ -461,32 +462,32 @@ fn measure_covers(store: &mut Store) {
       laid_out_parent
     };
 
-    covers.push((handle, rect_at(store, handle, origin)));
+    covers.push((handle, rect_at(records, handle, origin)));
     pending.extend(
-      store
+      records
         .children(handle)
         .into_iter()
         .map(|child| (child, origin, beneath)),
     );
   }
 
-  for handle in store.handles() {
-    if let Some(record) = store.record_mut(handle) {
+  for handle in records.handles() {
+    if let Some(record) = records.record_mut(handle) {
       record.covers = None;
     }
   }
 
   for (handle, rect) in covers {
-    if let Some(record) = store.record_mut(handle) {
+    if let Some(record) = records.record_mut(handle) {
       record.covers = rect;
     }
   }
 }
 
 /// Records the rectangle every node covers as the one it covered at this paint.
-fn record_painted(store: &mut Store) {
-  for handle in store.handles() {
-    if let Some(record) = store.record_mut(handle) {
+fn record_painted(records: &mut Records) {
+  for handle in records.handles() {
+    if let Some(record) = records.record_mut(handle) {
       record.painted = record.covers;
     }
   }
@@ -495,15 +496,15 @@ fn record_painted(store: &mut Store) {
 /// Records the terminal size, moving the viewport signal and every resolved style when
 /// it changed.
 pub(crate) fn resize(width: u16, height: u16) {
-  let write = with_store(|store| {
-    if store.last_size == (width, height) {
+  let write = with_records(|records| {
+    if records.last_size == (width, height) {
       return None;
     }
 
-    store.last_size = (width, height);
-    store.invalidate_styles();
+    records.last_size = (width, height);
+    records.invalidate_styles();
 
-    Some((store.media().set_viewport, store.viewport()))
+    Some((records.media().set_viewport, records.viewport()))
   });
 
   if let Some((write, viewport)) = write {
@@ -514,17 +515,17 @@ pub(crate) fn resize(width: u16, height: u16) {
 /// Measures every named container; `true` when a size changed, in which case every
 /// style is stale and the container sizes signal moves.
 fn measure_containers() -> bool {
-  let (changed, publish) = with_store(|store| {
+  let (changed, publish) = with_records(|records| {
     let mut changed: Vec<(ContainerName, Size<u32>)> = Vec::new();
 
-    for handle in store.handles() {
-      let Some(name) = store.record(handle).and_then(Record::container)
+    for handle in records.handles() {
+      let Some(name) = records.record(handle).and_then(Record::container)
       else {
         continue;
       };
-      let size = store.client_size(handle);
+      let size = records.client_size(handle);
 
-      if store.media().signals.container_sizes.get_untracked(name) != Some(size)
+      if records.media().signals.container_sizes.get_untracked(name) != Some(size)
         && !changed.iter().any(|(held, _)| *held == name)
       {
         changed.push((name, size));
@@ -535,9 +536,12 @@ fn measure_containers() -> bool {
       return (false, None);
     }
 
-    store.invalidate_styles();
+    records.invalidate_styles();
 
-    (true, Some((store.media().signals.container_sizes, changed)))
+    (
+      true,
+      Some((records.media().signals.container_sizes, changed)),
+    )
   });
 
   if let Some((sizes, changed)) = publish {
@@ -555,11 +559,11 @@ type Report = (Rc<dyn Fn(Size<u32>)>, Size<u32>);
 /// Reports every observed node's size where it changed since the last report; `true`
 /// when any observer ran.
 fn report_sizes() -> bool {
-  let reports: Vec<Report> = with_store(|store| {
+  let reports: Vec<Report> = with_records(|records| {
     let mut reports = Vec::new();
 
-    for handle in store.handles() {
-      let Some(record) = store.record(handle)
+    for handle in records.handles() {
+      let Some(record) = records.record(handle)
       else {
         continue;
       };
@@ -568,7 +572,7 @@ fn report_sizes() -> bool {
         continue;
       }
 
-      let size = store.client_size(handle);
+      let size = records.client_size(handle);
 
       if record.reported == Some(size) {
         continue;
@@ -581,7 +585,7 @@ fn report_sizes() -> bool {
           .map(|observer| (Rc::clone(observer), size)),
       );
 
-      if let Some(record) = store.record_mut(handle) {
+      if let Some(record) = records.record_mut(handle) {
         record.reported = Some(size);
       }
     }
@@ -600,10 +604,10 @@ fn report_sizes() -> bool {
 /// Scrolls ancestors so the pending reveal target is visible; `true` when any offset
 /// changed.
 fn reveal() -> bool {
-  let adjusted = with_store(|store| {
-    let node = store.reveal.take()?;
+  let adjusted = with_records(|records| {
+    let node = records.reveal.take()?;
 
-    Some(adjustments(store, paint_owner(store, node)))
+    Some(adjustments(records, paint_owner(records, node)))
   })
   .unwrap_or_default();
   let changed = !adjusted.is_empty();
@@ -616,19 +620,19 @@ fn reveal() -> bool {
 }
 
 /// The scroll offsets each scrollable ancestor of `handle` takes to show it.
-fn adjustments(store: &Store, handle: Handle) -> Vec<(Handle, (u32, u32))> {
+fn adjustments(records: &Records, handle: Handle) -> Vec<(Handle, (u32, u32))> {
   let mut adjusted = Vec::new();
-  let (mut rel_x, mut rel_y) = store.node_location(handle);
-  let (width, height) = store.node_size(handle);
-  let mut current = store.layout_parent(handle);
+  let (mut rel_x, mut rel_y) = records.node_location(handle);
+  let (width, height) = records.node_size(handle);
+  let mut current = records.layout_parent(handle);
 
   while let Some(ancestor) = current {
-    let (mut offset_x, mut offset_y) = store.scroll_offset(ancestor);
+    let (mut offset_x, mut offset_y) = records.scroll_offset(ancestor);
 
-    if store.is_scrollable(ancestor) {
-      let (limit_x, limit_y) = store.scroll_limits(ancestor);
-      let (ancestor_width, ancestor_height) = store.node_size(ancestor);
-      let border = store.node_border(ancestor);
+    if records.is_scrollable(ancestor) {
+      let (limit_x, limit_y) = records.scroll_limits(ancestor);
+      let (ancestor_width, ancestor_height) = records.node_size(ancestor);
+      let border = records.node_border(ancestor);
       let next = (
         fit_axis(
           i64::from(offset_x),
@@ -659,11 +663,11 @@ fn adjustments(store: &Store, handle: Handle) -> Vec<(Handle, (u32, u32))> {
       (offset_x, offset_y) = next;
     }
 
-    let (location_x, location_y) = store.node_location(ancestor);
+    let (location_x, location_y) = records.node_location(ancestor);
 
     rel_x += location_x - i64::from(offset_x);
     rel_y += location_y - i64::from(offset_y);
-    current = store.layout_parent(ancestor);
+    current = records.layout_parent(ancestor);
   }
 
   adjusted

@@ -186,7 +186,7 @@ pub(crate) fn derive(input: &DeriveInput) -> syn::Result<TokenStream> {
       fn #accessor(self) -> #reactive::Subfield<Self, #ty> {
         #reactive::Subfield::new(
           self,
-          const { #reactive::key(#key) },
+          const { #reactive::field_key(#key) },
           |value: &#name #ty_generics| &value.#member,
           |value: &mut #name #ty_generics| &mut value.#member,
         )
@@ -211,7 +211,7 @@ pub(crate) fn derive(input: &DeriveInput) -> syn::Result<TokenStream> {
 
       quote! {
         const _: () = ::core::assert!(
-          #reactive_path::key(#key) != #reactive_path::key(#other),
+          #reactive_path::field_key(#key) != #reactive_path::field_key(#other),
           #message
         );
       }

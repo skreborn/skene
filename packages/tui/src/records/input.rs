@@ -7,7 +7,7 @@ use skene_core::{FocusOrder, Interaction, NodeId, Scene};
 
 use super::{
   Handle,
-  Store,
+  Records,
   record::{Kind, Record},
 };
 use crate::Tui;
@@ -68,11 +68,11 @@ pub(crate) struct Press {
   pub(crate) count: u8,
 }
 
-impl Store {
+impl Records {
   /// `handle`'s place in focus traversal, as the scene holds it.
   #[expect(
     clippy::unused_self,
-    reason = "every reader holds the store, and focus is asked of it as of the rest"
+    reason = "every reader holds the records, and focus is asked of it as of the rest"
   )]
   pub(crate) fn focus_order(&self, handle: Handle) -> Option<FocusOrder> {
     Scene::<Tui>::read(|scene| scene.focus_order(handle))
@@ -113,7 +113,7 @@ impl Store {
   /// The node holding focus, as the scene holds it.
   #[expect(
     clippy::unused_self,
-    reason = "every reader holds the store, and focus is asked of it as of the rest"
+    reason = "every reader holds the records, and focus is asked of it as of the rest"
   )]
   pub(crate) fn focused(&self) -> Option<Handle> {
     Scene::<Tui>::read(Scene::focused)

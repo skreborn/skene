@@ -55,7 +55,7 @@ use crate::{
   platform::end_turn,
   text,
   tty::Tty,
-  with_store,
+  with_records,
 };
 
 /// How long the loop waits for input while nothing moves.
@@ -196,7 +196,7 @@ impl PixelMouse {
   fn locate(&self, mouse: Mouse) -> (Mouse, (f32, f32)) {
     let Some((width, height)) = self.cell.filter(|_| self.on)
     else {
-      return (mouse, crate::store::CELL_CENTER);
+      return (mouse, crate::records::CELL_CENTER);
     };
 
     (
@@ -245,10 +245,10 @@ where
 {
   launch.install();
 
-  let mouse = with_store(|store| {
-    store.clock = crate::store::Clock::Real(Instant::now());
+  let mouse = with_records(|records| {
+    records.clock = crate::records::Clock::Real(Instant::now());
 
-    store.mouse
+    records.mouse
   });
 
   let _ = crate::dev::install();
@@ -311,7 +311,7 @@ where
 
     // The mouse key moves the mouse between the app and the terminal; the modes and
     // the pixel reports follow, asked for afresh each time the app takes it back.
-    let taken = with_store(|store| store.mouse_taken());
+    let taken = with_records(|records| records.mouse_taken());
 
     if taken != mouse_taken {
       mouse_taken = taken;
@@ -341,25 +341,25 @@ where
 
     end_turn();
 
-    let title = with_store(|store| {
-      store
+    let title = with_records(|records| {
+      records
         .title_dirty
-        .then(|| store.title.clone().unwrap_or_default())
+        .then(|| records.title.clone().unwrap_or_default())
     });
 
     if let Some(title) = title {
-      with_store(|store| store.title_dirty = false);
+      with_records(|records| records.title_dirty = false);
       emit_title(&mut terminal, &title);
     }
 
-    let dirty = with_store(|store| store.needs_frame());
+    let dirty = with_records(|records| records.needs_frame());
 
     if dirty {
       // A degenerate reported size (a fresh pseudo-terminal) falls back to a classic
       // 80x24 rather than painting nothing.
       let (width, height) = match &window {
         Some(size) if size.columns > 0 && size.rows > 0 => (size.columns, size.rows),
-        _ => crate::store::DEFAULT_SIZE,
+        _ => crate::records::DEFAULT_SIZE,
       };
       let frame = frame::render(width, height);
 
@@ -384,12 +384,12 @@ where
       sync_pointer_shape(&mut terminal, &mut shape);
     }
 
-    let (quit, copy, paste_asked, open) = with_store(|store| {
+    let (quit, copy, paste_asked, open) = with_records(|records| {
       (
-        store.quit,
-        store.pending_copy.take(),
-        std::mem::take(&mut store.pending_paste),
-        store.pending_open.take(),
+        records.quit,
+        records.pending_copy.take(),
+        std::mem::take(&mut records.pending_paste),
+        records.pending_open.take(),
       )
     });
 
@@ -417,7 +417,7 @@ where
       if !is_remote(|name| std::env::var_os(name).is_some()) {
         open_url(&url);
       }
-      else if with_store(|store| store.offers(ClipboardAction::Copy)) {
+      else if with_records(|records| records.offers(ClipboardAction::Copy)) {
         write_copy(&mut terminal, &mut input, &url, clipboard_answers);
       }
     }
@@ -426,15 +426,15 @@ where
       break;
     }
 
-    let wait = with_store(|store| {
-      let frame = if store.frame_clock_running() {
-        crate::store::FRAME_INTERVAL
+    let wait = with_records(|records| {
+      let frame = if records.frame_clock_running() {
+        crate::records::FRAME_INTERVAL
       }
       else {
         IDLE_POLL
       };
 
-      store.next_timer_due().map_or(frame, |due| due.min(frame))
+      records.next_timer_due().map_or(frame, |due| due.min(frame))
     });
 
     // Every event already queued is handled before the next frame, and a run of
@@ -464,7 +464,7 @@ where
         Event::Mouse(mouse) => {
           let (mouse, within) = pixels.locate(mouse);
 
-          with_store(|store| store.pointer_within = within);
+          with_records(|records| records.pointer_within = within);
           dispatch_mouse(mouse);
         }
         Event::Paste(text) => {
@@ -484,7 +484,7 @@ where
           // shows.
           last_frame = None;
 
-          with_store(|store| store.paint_dirty = true);
+          with_records(|records| records.paint_dirty = true);
 
           // A notification without a pixel size keeps the known one while the
           // terminal reports resizes in band, since that report carries the true one.
@@ -536,9 +536,9 @@ where
           placed = Placed::default();
           last_frame = None;
 
-          with_store(|store| {
-            store.paint_dirty = true;
-            store.title_dirty = store.title.is_some();
+          with_records(|records| {
+            records.paint_dirty = true;
+            records.title_dirty = records.title.is_some();
           });
         }
         // A theme change moves the terminal's own colors too, which are asked for
@@ -610,9 +610,9 @@ where
           set_detected_background((red, green, blue));
         }
         Event::Foreground(red, green, blue) => {
-          with_store(|store| {
-            store.detected_foreground = Some((red, green, blue));
-            store.paint_dirty = true;
+          with_records(|records| {
+            records.detected_foreground = Some((red, green, blue));
+            records.paint_dirty = true;
           });
         }
         // A base color the terminal shows otherwise than the defaults moves what a
@@ -627,7 +627,7 @@ where
           if moved && depth == ColorDepth::Ansi16 {
             last_frame = None;
 
-            with_store(|store| store.paint_dirty = true);
+            with_records(|records| records.paint_dirty = true);
           }
         }
         Event::Clipboard(content) => {
@@ -646,7 +646,7 @@ where
           ClipboardStatus::Refused => {
             clipboard_read.clear();
 
-            with_store(|store| store.paste_target = None);
+            with_records(|records| records.paste_target = None);
           }
         },
         // A terminal whose clipboard answers offers every operation from its reply.
@@ -656,7 +656,7 @@ where
         } => {
           clipboard_answers = setting.available();
 
-          with_store(|store| store.clipboard_answers = clipboard_answers);
+          with_records(|records| records.clipboard_answers = clipboard_answers);
         }
         // A terminal speaking the kitty keyboard protocol disambiguates modified
         // keys—`Ctrl+Backspace` above all; the rest keep the legacy encoding, where
@@ -664,7 +664,7 @@ where
         // reports releases.
         Event::KeyboardFlags(flags) => {
           if keyboard_flags_pushed {
-            with_store(|store| store.key_releases = flags & escape::REPORT_EVENT_TYPES != 0);
+            with_records(|records| records.key_releases = flags & escape::REPORT_EVENT_TYPES != 0);
           }
           else {
             keyboard_flags_pushed = true;
@@ -687,14 +687,14 @@ where
             depth = reported;
             last_frame = None;
 
-            with_store(|store| store.paint_dirty = true);
+            with_records(|records| records.paint_dirty = true);
           }
 
           if detect::styled_underlines_reported(&attributes) && !styled_underlines {
             styled_underlines = true;
             last_frame = None;
 
-            with_store(|store| store.paint_dirty = true);
+            with_records(|records| records.paint_dirty = true);
           }
         }
         _ => {}
@@ -712,13 +712,13 @@ where
 /// Runs every scheduled action whose reading has come, earliest due first, as one
 /// turn.
 pub(crate) fn run_due_timers() {
-  let batch = with_store(|store| store.timers.next_timer());
+  let batch = with_records(|records| records.timers.next_timer());
   let mut ran = false;
 
-  while let Some(action) = with_store(|store| {
-    let now = store.now();
+  while let Some(action) = with_records(|records| {
+    let now = records.now();
 
-    store.timers.pop_due(now, batch)
+    records.timers.pop_due(now, batch)
   }) {
     action();
     ran = true;
@@ -738,29 +738,29 @@ fn finish(terminal: &mut impl Device) {
 /// Records the terminal's own background, which a paint mixes against, and the scheme
 /// its luminance implies; the frame paints afresh.
 pub(crate) fn set_detected_background(background: (u8, u8, u8)) {
-  with_store(|store| {
-    store.detected_background = Some(background);
-    store.paint_dirty = true;
+  with_records(|records| {
+    records.detected_background = Some(background);
+    records.paint_dirty = true;
   });
   set_detected_scheme(detect::is_dark(background));
 }
 
 /// Records the detected background, moving the scheme in force where it changes.
 pub(crate) fn set_detected_scheme(dark: bool) {
-  let write = with_store(|store| {
-    let before = store.scheme();
+  let write = with_records(|records| {
+    let before = records.scheme();
 
-    store.detected_dark = dark;
+    records.detected_dark = dark;
 
-    let after = store.scheme();
+    let after = records.scheme();
 
     if before == after {
       return None;
     }
 
-    store.invalidate_styles();
+    records.invalidate_styles();
 
-    Some((store.media().set_scheme, after))
+    Some((records.media().set_scheme, after))
   });
 
   if let Some((write, scheme)) = write {
@@ -783,19 +783,19 @@ fn dispatch_mouse(mouse: Mouse) {
       interaction::pointer_move(mouse.column, mouse.row, button, modifiers);
     }
     MouseKind::Press(button) => {
-      with_store(|store| store.buttons.insert(button));
+      with_records(|records| records.buttons.insert(button));
       interaction::pointer_press(mouse.column, mouse.row, button, modifiers);
     }
     MouseKind::Release(button) => {
       // A release whose press was never delivered stands in for the whole click: VTE
       // terminals report only the first three presses of a rapid sequence to the app,
       // yet forward every release.
-      if !with_store(|store| store.buttons.contains(button)) {
-        with_store(|store| store.buttons.insert(button));
+      if !with_records(|records| records.buttons.contains(button)) {
+        with_records(|records| records.buttons.insert(button));
         interaction::pointer_press(mouse.column, mouse.row, button, modifiers);
       }
 
-      with_store(|store| store.buttons.remove(button));
+      with_records(|records| records.buttons.remove(button));
       interaction::pointer_release(mouse.column, mouse.row, button, modifiers);
     }
     MouseKind::ScrollDown => {
@@ -867,10 +867,10 @@ pub(crate) fn apply_clustering(confirmed: bool) -> bool {
     return false;
   }
 
-  with_store(|store| {
-    store.remeasure();
-    store.layout_dirty = true;
-    store.paint_dirty = true;
+  with_records(|records| {
+    records.remeasure();
+    records.layout_dirty = true;
+    records.paint_dirty = true;
   });
 
   true
@@ -884,10 +884,10 @@ pub(crate) fn apply_sizing(confirmed: bool) -> bool {
     return false;
   }
 
-  with_store(|store| {
-    store.remeasure();
-    store.layout_dirty = true;
-    store.paint_dirty = true;
+  with_records(|records| {
+    records.remeasure();
+    records.layout_dirty = true;
+    records.paint_dirty = true;
   });
 
   true
@@ -897,15 +897,15 @@ pub(crate) fn apply_sizing(confirmed: bool) -> bool {
 /// builds its painted form or its fallback, and the next frame paints whole; `true`
 /// when that changed it.
 pub(crate) fn apply_graphics(confirmed: bool) -> bool {
-  let write = with_store(|store| {
-    if store.graphics == confirmed {
+  let write = with_records(|records| {
+    if records.graphics == confirmed {
       return None;
     }
 
-    store.graphics = confirmed;
-    store.paint_dirty = true;
+    records.graphics = confirmed;
+    records.paint_dirty = true;
 
-    Some(store.media().set_graphics)
+    Some(records.media().set_graphics)
   });
   let Some(write) = write
   else {
@@ -920,12 +920,12 @@ pub(crate) fn apply_graphics(confirmed: bool) -> bool {
 /// Takes the cell's pixel size from the window's, where the terminal reports it, so a
 /// picture renders at the size the terminal shows it.
 fn set_cell_pixels(size: &WindowSize) {
-  let cell = PixelMouse::cell_of(size).unwrap_or(crate::store::DEFAULT_CELL_PIXELS);
+  let cell = PixelMouse::cell_of(size).unwrap_or(crate::records::DEFAULT_CELL_PIXELS);
 
-  with_store(|store| {
-    if store.cell_pixels != cell {
-      store.cell_pixels = cell;
-      store.paint_dirty = true;
+  with_records(|records| {
+    if records.cell_pixels != cell {
+      records.cell_pixels = cell;
+      records.paint_dirty = true;
     }
   });
 }
@@ -969,7 +969,7 @@ mod tests {
       on: false,
     };
 
-    assert_eq!(cells.locate(report), (report, crate::store::CELL_CENTER));
+    assert_eq!(cells.locate(report), (report, crate::records::CELL_CENTER));
   }
 
   /// The cell size is the window's pixels over its cells, and absent without them.

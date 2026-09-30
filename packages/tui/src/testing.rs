@@ -34,7 +34,7 @@ use crate::{
   interaction,
   platform,
   platform::end_turn,
-  store::Kind,
+  records::Kind,
   terminal::{
     apply_clustering,
     apply_graphics,
@@ -45,7 +45,7 @@ use crate::{
     set_detected_background,
     set_detected_scheme,
   },
-  with_store,
+  with_records,
 };
 
 /// The installed platform, uninstalled when dropped.
@@ -103,7 +103,7 @@ pub fn locate(frame: &str, needle: &str) -> (u16, u16) {
 ///
 /// Until it does, a release follows every press at once.
 pub fn trigger_key_releases(confirmed: bool) {
-  trigger(|| with_store(|store| store.key_releases = confirmed));
+  trigger(|| with_records(|records| records.key_releases = confirmed));
 }
 
 /// Simulates the terminal's report that its clipboard answers (mode 5522), or that it
@@ -111,7 +111,7 @@ pub fn trigger_key_releases(confirmed: bool) {
 ///
 /// An answering clipboard offers every operation, whatever the launch chose.
 pub fn trigger_answering_clipboard(confirmed: bool) {
-  trigger(|| with_store(|store| store.clipboard_answers = confirmed));
+  trigger(|| with_records(|records| records.clipboard_answers = confirmed));
 }
 
 /// Simulates the terminal's report that grapheme clustering (mode 2027) is set, or
@@ -168,7 +168,7 @@ pub fn trigger_key_event(event: &KeyEvent) {
 #[must_use]
 pub fn is_quit_requested() -> bool {
   end_turn();
-  with_store(|store| store.quit)
+  with_records(|records| records.quit)
 }
 
 /// Simulates one key release by its portable W3C key value, with the prefixes
@@ -181,10 +181,10 @@ pub fn trigger_key_up(key: &str) {
 #[must_use]
 pub fn focused_node() -> Option<skene_core::NodeId> {
   end_turn();
-  with_store(|store| {
-    store
+  with_records(|records| {
+    records
       .focused()
-      .and_then(|focused| store.record(focused).and_then(|record| record.node))
+      .and_then(|focused| records.record(focused).and_then(|record| record.node))
   })
 }
 
@@ -192,8 +192,8 @@ skene_core::access_queries!(Tui, name_facts);
 
 /// What the accessible-name computation reads of `node`.
 fn name_facts(node: NodeId) -> NameFacts {
-  with_store(|store| {
-    let Some(record) = store.record(node)
+  with_records(|records| {
+    let Some(record) = records.record(node)
     else {
       return NameFacts::default();
     };
@@ -219,7 +219,7 @@ fn name_facts(node: NodeId) -> NameFacts {
     };
 
     NameFacts {
-      hidden: facts.hidden || store.is_hidden(node),
+      hidden: facts.hidden || records.is_hidden(node),
       ..facts
     }
   })
@@ -229,7 +229,7 @@ fn name_facts(node: NodeId) -> NameFacts {
 /// headlessly. Hit-testing resolves against the last render's layout.
 pub fn trigger_mouse_move(x: u16, y: u16) {
   trigger(|| {
-    with_store(|store| store.pointer_within = crate::store::CELL_CENTER);
+    with_records(|records| records.pointer_within = crate::records::CELL_CENTER);
     interaction::pointer_move(x, y, None, Modifiers::default());
   });
 }
@@ -245,9 +245,9 @@ pub fn trigger_mouse_click(x: u16, y: u16) {
 /// drag—for a test driving drags headlessly.
 pub fn trigger_mouse_press(x: u16, y: u16) {
   trigger(|| {
-    with_store(|store| {
-      store.pointer_within = crate::store::CELL_CENTER;
-      store.buttons.insert(PointerButton::Primary);
+    with_records(|records| {
+      records.pointer_within = crate::records::CELL_CENTER;
+      records.buttons.insert(PointerButton::Primary);
     });
     interaction::pointer_press(x, y, PointerButton::Primary, Modifiers::default());
   });
@@ -256,7 +256,7 @@ pub fn trigger_mouse_press(x: u16, y: u16) {
 /// Simulates dragging to the center of the cell (`x`, `y`) with the left button held,
 /// after [`trigger_mouse_press`].
 pub fn trigger_mouse_drag(x: u16, y: u16) {
-  trigger_mouse_drag_within(x, y, crate::store::CELL_CENTER);
+  trigger_mouse_drag_within(x, y, crate::records::CELL_CENTER);
 }
 
 /// Simulates dragging to the cell (`x`, `y`) with the left button held, the pointer
@@ -264,7 +264,7 @@ pub fn trigger_mouse_drag(x: u16, y: u16) {
 /// it—after [`trigger_mouse_press`].
 pub fn trigger_mouse_drag_within(x: u16, y: u16, within: (f32, f32)) {
   trigger(|| {
-    with_store(|store| store.pointer_within = within);
+    with_records(|records| records.pointer_within = within);
     interaction::pointer_move(x, y, Some(PointerButton::Primary), Modifiers::default());
   });
 }
@@ -273,14 +273,14 @@ pub fn trigger_mouse_drag_within(x: u16, y: u16, within: (f32, f32)) {
 /// press delivered stands in for the whole click, as the interactive loop's does.
 pub fn trigger_mouse_release(x: u16, y: u16) {
   trigger(|| {
-    with_store(|store| store.pointer_within = crate::store::CELL_CENTER);
+    with_records(|records| records.pointer_within = crate::records::CELL_CENTER);
 
-    if !with_store(|store| store.buttons.contains(PointerButton::Primary)) {
-      with_store(|store| store.buttons.insert(PointerButton::Primary));
+    if !with_records(|records| records.buttons.contains(PointerButton::Primary)) {
+      with_records(|records| records.buttons.insert(PointerButton::Primary));
       interaction::pointer_press(x, y, PointerButton::Primary, Modifiers::default());
     }
 
-    with_store(|store| store.buttons.remove(PointerButton::Primary));
+    with_records(|records| records.buttons.remove(PointerButton::Primary));
     interaction::pointer_release(x, y, PointerButton::Primary, Modifiers::default());
   });
 }
@@ -289,12 +289,12 @@ pub fn trigger_mouse_release(x: u16, y: u16) {
 /// driving selection headlessly.
 pub fn trigger_mouse_right_click(x: u16, y: u16) {
   trigger(|| {
-    with_store(|store| {
-      store.pointer_within = crate::store::CELL_CENTER;
-      store.buttons.insert(PointerButton::Secondary);
+    with_records(|records| {
+      records.pointer_within = crate::records::CELL_CENTER;
+      records.buttons.insert(PointerButton::Secondary);
     });
     interaction::pointer_press(x, y, PointerButton::Secondary, Modifiers::default());
-    with_store(|store| store.buttons.remove(PointerButton::Secondary));
+    with_records(|records| records.buttons.remove(PointerButton::Secondary));
     interaction::pointer_release(x, y, PointerButton::Secondary, Modifiers::default());
   });
 }
@@ -312,14 +312,14 @@ pub fn trigger_mouse_scroll(x: u16, y: u16, delta_columns: i64, delta_rows: i64)
 #[must_use]
 pub fn take_copied() -> Option<String> {
   end_turn();
-  with_store(|store| store.pending_copy.take())
+  with_records(|records| records.pending_copy.take())
 }
 
 /// Takes whether the last `Paste` staged a clipboard read, for a headless test.
 #[must_use]
 pub fn take_paste_requested() -> bool {
   end_turn();
-  with_store(|store| std::mem::take(&mut store.pending_paste))
+  with_records(|records| std::mem::take(&mut records.pending_paste))
 }
 
 /// Simulates the terminal pasting `text` by its own key—a bracketed paste—into the
@@ -338,14 +338,14 @@ pub fn trigger_clipboard_reply(text: &str) {
 #[must_use]
 pub fn take_opened() -> Option<String> {
   end_turn();
-  with_store(|store| store.pending_open.take())
+  with_records(|records| records.pending_open.take())
 }
 
 /// The current terminal title, for a headless test.
 #[must_use]
 pub fn window_title() -> Option<String> {
   end_turn();
-  with_store(|store| store.title.clone())
+  with_records(|records| records.title.clone())
 }
 
 /// Simulates the terminal reporting `scheme` as its background, for a headless test
@@ -359,7 +359,7 @@ pub fn trigger_color_scheme(scheme: ColorScheme) {
 /// the background's luminance.
 pub fn trigger_terminal_colors(foreground: (u8, u8, u8), background: (u8, u8, u8)) {
   trigger(|| {
-    with_store(|store| store.detected_foreground = Some(foreground));
+    with_records(|records| records.detected_foreground = Some(foreground));
     set_detected_background(background);
   });
 }
@@ -372,9 +372,9 @@ pub fn trigger_terminal_colors(foreground: (u8, u8, u8), background: (u8, u8, u8
 /// at the point the last step left it.
 pub fn trigger_frame(elapsed: Duration) {
   trigger(|| {
-    with_store(|store| {
-      store.clock.advance(elapsed.as_secs_f64());
-      store.motion_active = true;
+    with_records(|records| {
+      records.clock.advance(elapsed.as_secs_f64());
+      records.motion_active = true;
     });
     run_due_timers();
   });
@@ -384,15 +384,15 @@ pub fn trigger_frame(elapsed: Duration) {
 /// reduced-motion condition and the motion that respects it.
 pub fn trigger_reduced_motion(reduced: bool) {
   trigger(|| {
-    let write = with_store(|store| {
-      if store.reduced_motion == reduced {
+    let write = with_records(|records| {
+      if records.reduced_motion == reduced {
         return None;
       }
 
-      store.reduced_motion = reduced;
-      store.invalidate_styles();
+      records.reduced_motion = reduced;
+      records.invalidate_styles();
 
-      Some(store.media().set_reduced_motion)
+      Some(records.media().set_reduced_motion)
     });
 
     if let Some(write) = write {
@@ -411,7 +411,7 @@ pub fn trigger_resize(columns: u16, rows: u16) {
 #[must_use]
 pub fn mouse_cursor() -> Option<MouseCursor> {
   end_turn();
-  with_store(|store| store.hover_cursor())
+  with_records(|records| records.hover_cursor())
 }
 
 /// Whether the loop would draw a frame now, something having changed since the last
@@ -419,7 +419,7 @@ pub fn mouse_cursor() -> Option<MouseCursor> {
 #[must_use]
 pub fn is_frame_pending() -> bool {
   end_turn();
-  with_store(|store| store.needs_frame())
+  with_records(|records| records.needs_frame())
 }
 
 /// How many layouts have been computed since the platform was installed, for a test
@@ -427,7 +427,7 @@ pub fn is_frame_pending() -> bool {
 #[must_use]
 pub fn layout_generation() -> u64 {
   end_turn();
-  with_store(|store| store.layout_generation)
+  with_records(|records| records.layout_generation)
 }
 
 /// How many taffy styles have been written since the platform was installed, for a test
@@ -435,7 +435,7 @@ pub fn layout_generation() -> u64 {
 #[must_use]
 pub fn style_writes() -> u64 {
   end_turn();
-  with_store(|store| store.set_style_calls)
+  with_records(|records| records.set_style_calls)
 }
 
 /// How many node styles have been resolved from their declarations since the platform
@@ -443,7 +443,7 @@ pub fn style_writes() -> u64 {
 #[must_use]
 pub fn style_resolutions() -> u64 {
   end_turn();
-  with_store(|store| store.style_resolutions)
+  with_records(|records| records.style_resolutions)
 }
 
 /// The rows the last render rewrote, for a test asserting that a change repainted only
@@ -451,7 +451,7 @@ pub fn style_resolutions() -> u64 {
 #[must_use]
 pub fn repainted_rows() -> Vec<usize> {
   end_turn();
-  with_store(|store| store.repainted.clone())
+  with_records(|records| records.repainted.clone())
 }
 
 /// Lays the mounted tree out at `width` x `height` cells and paints it to plain text:

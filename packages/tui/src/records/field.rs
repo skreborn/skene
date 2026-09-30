@@ -2,7 +2,7 @@
 
 use skene_core::{NodeId, TextSelection};
 
-use super::Store;
+use super::Records;
 use crate::{
   field::Area,
   text::{self, Clusters},
@@ -313,7 +313,7 @@ impl Field {
   }
 }
 
-impl Store {
+impl Records {
   /// The selection of every entry whose selection changed since it was last reported
   /// or written from outside, with the entry's node.
   pub(crate) fn selection_reports(&mut self) -> Vec<(NodeId, TextSelection)> {

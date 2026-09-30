@@ -5,7 +5,7 @@
 //! source text—so it survives reflow and copies as the text appears in the source, soft
 //! wraps excluded. A press anchors it, a drag extends it across runs in document order,
 //! a double click takes the word, a triple click the run. A text entry's selection lives
-//! in its [`Field`](crate::store::Field) instead, over its value, and holds while a
+//! in its [`Field`](crate::records::Field) instead, over its value, and holds while a
 //! popup takes focus from the entry, so the context menu acts on it. `Copy` stages the
 //! text for the terminal loop's OSC 52 write, `Cut` removes it as well, and `Paste`
 //! stages an OSC 52 read whose reply lands in the entry that asked. The launch's
@@ -22,7 +22,7 @@ use crate::{
   field::word_bounds,
   layout::{is_inline_box, is_paragraph, paragraph_runs, paragraph_text},
   paint::{line_at_row, line_holding, paragraph_scales, run_scale, wrap_sized},
-  store::{Drag, Handle, Kind, Store},
+  records::{Drag, Handle, Kind, Records},
   text::{self, Scales},
 };
 
@@ -44,7 +44,7 @@ pub(crate) struct Selection {
 /// The window between two presses of one multi-click sequence.
 const MULTI_CLICK: Duration = Duration::from_millis(500);
 
-impl Store {
+impl Records {
   /// Counts a press at (`x`, `y`) into its multi-click sequence: 1 for a fresh press,
   /// 2 for a double click, 3 for a triple; a fourth begins a new sequence.
   pub(crate) fn register_press(&mut self, x: u16, y: u16) -> u8 {

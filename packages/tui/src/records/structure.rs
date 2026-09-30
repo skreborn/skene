@@ -1,19 +1,19 @@
-//! The structure the store reads from the scene: children, parents and ancestors, the
+//! The structure the records read from the scene: children, parents and ancestors, the
 //! layout tree's view of them, and what is in the display.
 
 use rustc_hash::FxHashSet;
 use skene_core::Scene;
 use smallvec::SmallVec;
 
-use super::{Handle, Store};
+use super::{Handle, Records};
 use crate::Tui;
 
-impl Store {
+impl Records {
   /// The children of `handle` as the scene places them, in order; empty for a leaf or a
   /// stale handle.
   #[expect(
     clippy::unused_self,
-    reason = "every reader holds the store, and structure is asked of it as of the rest"
+    reason = "every reader holds the records, and structure is asked of it as of the rest"
   )]
   pub(crate) fn children(&self, handle: Handle) -> SmallVec<[Handle; 8]> {
     Scene::<Tui>::read(|scene| scene.placed_children(handle).collect())
@@ -27,7 +27,7 @@ impl Store {
   /// The node `handle` is placed under.
   #[expect(
     clippy::unused_self,
-    reason = "every reader holds the store, and structure is asked of it as of the rest"
+    reason = "every reader holds the records, and structure is asked of it as of the rest"
   )]
   pub(crate) fn parent(&self, handle: Handle) -> Option<Handle> {
     Scene::<Tui>::read(|scene| scene.placed_parent(handle))
@@ -36,7 +36,7 @@ impl Store {
   /// The path from `handle` up to the root, `handle` first.
   #[expect(
     clippy::unused_self,
-    reason = "every reader holds the store, and structure is asked of it as of the rest"
+    reason = "every reader holds the records, and structure is asked of it as of the rest"
   )]
   pub(crate) fn ancestors(&self, handle: Handle) -> Vec<Handle> {
     Scene::<Tui>::read(|scene| {
@@ -124,7 +124,7 @@ impl Store {
   /// control answering to that control.
   #[expect(
     clippy::unused_self,
-    reason = "every reader holds the store, and the control is asked of it as of the rest"
+    reason = "every reader holds the records, and the control is asked of it as of the rest"
   )]
   pub(crate) fn enclosing_control(&self, handle: Handle) -> Option<Handle> {
     Scene::<Tui>::read(|scene| scene.enclosing_control(handle))

@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use skene_reactive::{Recorder, Snapshot, Value, key};
+use skene_reactive::{Recorder, Snapshot, Value, field_key};
 
 /// The selection inside a text entry, in grapheme clusters of its value.
 ///
@@ -95,8 +95,8 @@ impl TextSelection {
 impl Snapshot for TextSelection {
   fn record(&self, recorder: &mut Recorder) {
     recorder.record(|fields| {
-      fields.field(key("start"), &self.start);
-      fields.field(key("end"), &self.end);
+      fields.field(field_key("start"), &self.start);
+      fields.field(field_key("end"), &self.end);
     });
   }
 
@@ -107,8 +107,8 @@ impl Snapshot for TextSelection {
     };
 
     Some(Self {
-      start: record.field(key("start")).and_then(usize::restore)?,
-      end: record.field(key("end")).and_then(usize::restore)?,
+      start: record.field(field_key("start")).and_then(usize::restore)?,
+      end: record.field(field_key("end")).and_then(usize::restore)?,
     })
   }
 

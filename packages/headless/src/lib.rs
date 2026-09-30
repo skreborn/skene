@@ -1,6 +1,6 @@
 //! # Headless platform
 //!
-//! The host platform: realizes the portable vocabulary into an inspectable record store,
+//! The host platform: realizes the portable vocabulary into inspectable records,
 //! so view logic tests run without a platform. Every mirrored call is bookkeeping, not
 //! emulation: no layout runs, and no platform response fires. Tests build views exactly
 //! as an app does, then inspect the records ([`outline`], [`box_props`], [`slot_leaf`],
@@ -34,8 +34,8 @@
 //! [`install_executor`] makes it the thread's spawner ([`reset`] does too), so a
 //! `Resource` built in a test loads when the test pumps.
 
+mod records;
 mod resolve;
-mod store;
 pub mod user;
 
 use std::{cell::RefCell, fmt::Write as _, rc::Rc, thread::LocalKey, time::Duration};
@@ -120,10 +120,10 @@ use skene_core::{
 use skene_reactive::{Memo, ReadSignal, Set};
 use unicode_segmentation::UnicodeSegmentation;
 
-use crate::store::{Kind, Record, Store};
+use crate::records::{Kind, Record, Records};
 
 /// The host platform: a zero-sized [`Platform`] keeping a record per node in this
-/// crate's store.
+/// crate's records.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 #[must_use]
 pub struct Headless;
@@ -140,7 +140,7 @@ pub type SlotLeaf = skene_core::SlotLeaf<f32, GuiStyle>;
 
 thread_local! {
   static SCENE: RefCell<Scene<Headless>> = RefCell::new(Scene::new());
-  static STORE: RefCell<Store> = RefCell::new(Store::default());
+  static STORE: RefCell<Records> = RefCell::new(Records::default());
 }
 
 /// Ends the turn: runs the flush the writes since the last turn's end scheduled, so
@@ -165,14 +165,14 @@ fn trigger<R>(event: impl FnOnce() -> R) -> R {
   outcome
 }
 
-/// Runs `operation` on the store; nothing of the user's runs inside it.
-fn with_store<R>(operation: impl FnOnce(&mut Store) -> R) -> R {
-  STORE.with(|store| operation(&mut store.borrow_mut()))
+/// Runs `operation` on the records; nothing of the user's runs inside it.
+fn with_records<R>(operation: impl FnOnce(&mut Records) -> R) -> R {
+  STORE.with(|records| operation(&mut records.borrow_mut()))
 }
 
 /// Runs `operation` on the record of `node`, if it is live.
 fn with_record<R>(node: NodeId, operation: impl FnOnce(&mut Record) -> R) -> Option<R> {
-  with_store(|store| store.record_mut(node).map(operation))
+  with_records(|records| records.record_mut(node).map(operation))
 }
 
 impl Platform for Headless {
@@ -185,7 +185,7 @@ impl Platform for Headless {
   }
 
   fn create_box(node: NodeId, props: &BoxProps<Self>) {
-    with_store(|store| store.insert(node, Record::new(Kind::Box(Box::new(props.clone())))));
+    with_records(|records| records.insert(node, Record::new(Kind::Box(Box::new(props.clone())))));
   }
 
   fn update_box(node: NodeId, slot: Slot, leaf: &StaticLeaf<BoxValue<f32, GuiStyle>>) {
@@ -195,7 +195,9 @@ impl Platform for Headless {
   }
 
   fn create_control(node: NodeId, props: &ControlProps<Self>) {
-    with_store(|store| store.insert(node, Record::new(Kind::Control(Box::new(props.clone())))));
+    with_records(|records| {
+      records.insert(node, Record::new(Kind::Control(Box::new(props.clone()))));
+    });
   }
 
   fn set_control_state(node: NodeId, state: &ControlState) {
@@ -205,7 +207,9 @@ impl Platform for Headless {
   }
 
   fn create_overlay(node: NodeId, props: &OverlayProps<Self>) {
-    with_store(|store| store.insert(node, Record::new(Kind::Overlay(Box::new(props.clone())))));
+    with_records(|records| {
+      records.insert(node, Record::new(Kind::Overlay(Box::new(props.clone()))));
+    });
   }
 
   fn set_overlay_open(node: NodeId, open: bool, _anchor: Option<NodeId>) {
@@ -238,7 +242,7 @@ impl Platform for Headless {
   }
 
   fn create_run(node: NodeId, props: &RunProps<Self>) {
-    with_store(|store| store.insert(node, Record::new(Kind::Run(Box::new(props.clone())))));
+    with_records(|records| records.insert(node, Record::new(Kind::Run(Box::new(props.clone())))));
   }
 
   fn update_run(node: NodeId, slot: Slot, leaf: &StaticLeaf<RunValue<GuiStyle>>) {
@@ -252,11 +256,11 @@ impl Platform for Headless {
   }
 
   fn create_anchor(node: NodeId) {
-    with_store(|store| store.insert(node, Record::new(Kind::Anchor)));
+    with_records(|records| records.insert(node, Record::new(Kind::Anchor)));
   }
 
   fn create_scope(node: NodeId) {
-    with_store(|store| store.insert(node, Record::new(Kind::Scope)));
+    with_records(|records| records.insert(node, Record::new(Kind::Scope)));
   }
 
   fn attach(_: NodeId, _: NodeId, _: Option<NodeId>) {}
@@ -268,7 +272,7 @@ impl Platform for Headless {
   fn remove(_: NodeId, _: NodeId) {}
 
   fn destroy(node: NodeId) {
-    with_store(|store| store.destroy(node));
+    with_records(|records| records.destroy(node));
   }
 
   fn define_tokens(scope: NodeId, definitions: &Definitions<TokenValue>) {
@@ -278,9 +282,9 @@ impl Platform for Headless {
   }
 
   fn define_root_tokens(definitions: &Definitions<TokenValue>) {
-    with_store(|store| {
-      store.root_definitions = definitions.clone();
-      store.root_definition_writes += 1;
+    with_records(|records| {
+      records.root_definitions = definitions.clone();
+      records.root_definition_writes += 1;
     });
   }
 
@@ -293,7 +297,7 @@ impl Platform for Headless {
   }
 
   fn focus(node: NodeId) {
-    if with_store(|store| store.record(node).is_some()) {
+    if with_records(|records| records.record(node).is_some()) {
       notify_focus_moved::<Self>(Some(node));
     }
   }
@@ -347,7 +351,7 @@ impl Platform for Headless {
   }
 
   fn media() -> MediaSignals<f32> {
-    with_store(|store| store.media().signals)
+    with_records(|records| records.media().signals)
   }
 
   fn watch_media(media: &Media<f32>) -> Memo<bool> {
@@ -355,7 +359,7 @@ impl Platform for Headless {
   }
 
   fn hydration() -> Option<ReadSignal<bool>> {
-    Some(with_store(|store| store.media().hydrated))
+    Some(with_records(|records| records.media().hydrated))
   }
 
   fn set_scheme(scheme: Option<ColorScheme>) {
@@ -363,20 +367,20 @@ impl Platform for Headless {
   }
 
   fn schedule(delay: Duration, action: Box<dyn FnOnce()>) -> Timer {
-    with_store(|store| {
-      let at = store.clock + delay.as_secs_f64();
+    with_records(|records| {
+      let at = records.clock + delay.as_secs_f64();
 
-      store.timers.schedule(at, action)
+      records.timers.schedule(at, action)
     })
   }
 
   fn cancel(timer: Timer) {
-    with_store(|store| store.timers.cancel(timer));
+    with_records(|records| records.timers.cancel(timer));
   }
 
   fn clipboard_availability(action: ClipboardAction) -> Availability {
-    with_store(|store| {
-      store
+    with_records(|records| {
+      records
         .availability
         .get(&action)
         .copied()
@@ -385,7 +389,7 @@ impl Platform for Headless {
   }
 
   fn clipboard(action: ClipboardAction) {
-    with_store(|store| store.clipboard.push(action));
+    with_records(|records| records.clipboard.push(action));
   }
 
   fn stored_scheme() -> Option<ColorScheme> {
@@ -399,7 +403,7 @@ impl Painting for Headless {
   }
 
   fn available() -> ReadSignal<bool> {
-    with_store(|store| store.media().graphics)
+    with_records(|records| records.media().graphics)
   }
 }
 
@@ -430,12 +434,12 @@ pub fn render_to_pixels(node: NodeId, size: Size<f32>) -> Option<Vec<u8>> {
   Some(canvas.pixels())
 }
 
-/// Empties the scene, the store and the task queue, returns the environment to its
+/// Empties the scene, the records and the task queue, returns the environment to its
 /// defaults, installs the executor and holds every flush until its turn ends.
 pub fn reset() {
   end_turn();
 
-  let owner = with_store(Store::reset);
+  let owner = with_records(Records::reset);
 
   if let Some(owner) = owner {
     owner.dispose();
@@ -461,12 +465,12 @@ pub fn pump_tasks() -> bool {
 
 /// Registers `title` for the document, in force while it is the latest live one.
 pub fn add_head_title(title: &str) -> HeadId {
-  with_store(|store| store.head.add_title(title.to_owned()))
+  with_records(|records| records.head.add_title(title.to_owned()))
 }
 
 /// Rewrites the title registration `id`.
 pub fn set_head_title(id: HeadId, title: &str) {
-  with_store(|store| store.head.set_title(id, title.to_owned()));
+  with_records(|records| records.head.set_title(id, title.to_owned()));
 }
 
 /// Registers an element for the document head, in force while it is the latest live
@@ -477,17 +481,17 @@ pub fn set_head_title(id: HeadId, title: &str) {
 /// Panics when `tag` is not an element a head holds (`base`, `link`, `meta` or
 /// `script`) or an attribute name is not one.
 pub fn add_head_element(tag: &str, attributes: &[(&str, &str)]) -> HeadId {
-  with_store(|store| store.head.add_element(HeadElement::new(tag, attributes)))
+  with_records(|records| records.head.add_element(HeadElement::new(tag, attributes)))
 }
 
 /// Removes the head registration `id`.
 pub fn remove_head_entry(id: HeadId) {
-  with_store(|store| store.head.remove(id));
+  with_records(|records| records.head.remove(id));
 }
 
 /// Sets the document's language, a BCP 47 tag.
 pub fn set_document_language(language: &str) {
-  with_store(|store| store.language = Some(language.to_owned()));
+  with_records(|records| records.language = Some(language.to_owned()));
 }
 
 /// The document title in force.
@@ -495,7 +499,7 @@ pub fn set_document_language(language: &str) {
 pub fn document_title() -> Option<String> {
   end_turn();
 
-  with_store(|store| store.head.title().map(str::to_owned))
+  with_records(|records| records.head.title().map(str::to_owned))
 }
 
 /// The document language last set.
@@ -503,7 +507,7 @@ pub fn document_title() -> Option<String> {
 pub fn document_language() -> Option<String> {
   end_turn();
 
-  with_store(|store| store.language.clone())
+  with_records(|records| records.language.clone())
 }
 
 /// The elements in force in the document head, in their registrations' order.
@@ -511,7 +515,7 @@ pub fn document_language() -> Option<String> {
 pub fn head_elements() -> Vec<HeadElement> {
   end_turn();
 
-  with_store(|store| store.head.elements().cloned().collect())
+  with_records(|records| records.head.elements().cloned().collect())
 }
 
 /// Dispatches a single click with no modifier held at `node`, bubbling through the
@@ -786,14 +790,14 @@ pub fn trigger_context_menu(node: NodeId, event: &PointerEvent) -> Prevented {
 pub fn take_clipboard_actions() -> Vec<ClipboardAction> {
   end_turn();
 
-  with_store(|store| std::mem::take(&mut store.clipboard))
+  with_records(|records| std::mem::take(&mut records.clipboard))
 }
 
 /// Sets what `action` answers when a view asks whether it can be offered; enabled
 /// unless set.
 pub fn set_clipboard_availability(action: ClipboardAction, availability: Availability) {
-  with_store(|store| {
-    store.availability.insert(action, availability);
+  with_records(|records| {
+    records.availability.insert(action, availability);
   });
 }
 
@@ -822,10 +826,10 @@ pub fn trigger_size(node: NodeId, size: Size<f32>) {
 /// Simulates the viewport resizing to `size`.
 pub fn trigger_resize(size: Size<f32>) {
   trigger(|| {
-    let write = with_store(|store| {
-      store.viewport = Some(size);
+    let write = with_records(|records| {
+      records.viewport = Some(size);
 
-      store.media().set_viewport
+      records.media().set_viewport
     });
 
     write.set(size);
@@ -836,10 +840,10 @@ pub fn trigger_resize(size: Size<f32>) {
 /// follows it unless the app chose one.
 pub fn trigger_color_scheme(scheme: ColorScheme) {
   trigger(|| {
-    let (write, in_force) = with_store(|store| {
-      store.scheme = Some(scheme);
+    let (write, in_force) = with_records(|records| {
+      records.scheme = Some(scheme);
 
-      (store.media().set_scheme, store.scheme_in_force())
+      (records.media().set_scheme, records.scheme_in_force())
     });
 
     write.set(in_force);
@@ -848,10 +852,10 @@ pub fn trigger_color_scheme(scheme: ColorScheme) {
 
 /// Records the scheme the app chose, the scheme in force following.
 fn record_chosen_scheme(scheme: Option<ColorScheme>) {
-  let (write, in_force) = with_store(|store| {
-    store.chosen_scheme = scheme;
+  let (write, in_force) = with_records(|records| {
+    records.chosen_scheme = scheme;
 
-    (store.media().set_scheme, store.scheme_in_force())
+    (records.media().set_scheme, records.scheme_in_force())
   });
 
   write.set(in_force);
@@ -862,7 +866,7 @@ fn record_chosen_scheme(scheme: Option<ColorScheme>) {
 pub fn chosen_scheme() -> Option<ColorScheme> {
   end_turn();
 
-  with_store(|store| store.chosen_scheme)
+  with_records(|records| records.chosen_scheme)
 }
 
 /// Simulates whether the render stands hydrated, as the web leaves answer it: false
@@ -870,10 +874,10 @@ pub fn chosen_scheme() -> Option<ColorScheme> {
 /// hydrated until triggered.
 pub fn trigger_hydrated(hydrated: bool) {
   trigger(|| {
-    let write = with_store(|store| {
-      store.hydrated = Some(hydrated);
+    let write = with_records(|records| {
+      records.hydrated = Some(hydrated);
 
-      store.media().set_hydrated
+      records.media().set_hydrated
     });
 
     write.set(hydrated);
@@ -883,10 +887,10 @@ pub fn trigger_hydrated(hydrated: bool) {
 /// Simulates whether a painted box shows as pixels; shown until triggered.
 pub fn trigger_graphics(shown: bool) {
   trigger(|| {
-    let write = with_store(|store| {
-      store.graphics = Some(shown);
+    let write = with_records(|records| {
+      records.graphics = Some(shown);
 
-      store.media().set_graphics
+      records.media().set_graphics
     });
 
     write.set(shown);
@@ -896,10 +900,10 @@ pub fn trigger_graphics(shown: bool) {
 /// Simulates the reader's reduced-motion preference.
 pub fn trigger_reduced_motion(reduced: bool) {
   trigger(|| {
-    let write = with_store(|store| {
-      store.reduced_motion = Some(reduced);
+    let write = with_records(|records| {
+      records.reduced_motion = Some(reduced);
 
-      store.media().set_reduced_motion
+      records.media().set_reduced_motion
     });
 
     write.set(reduced);
@@ -909,10 +913,10 @@ pub fn trigger_reduced_motion(reduced: bool) {
 /// Simulates the reader's reduced-transparency preference.
 pub fn trigger_reduced_transparency(reduced: bool) {
   trigger(|| {
-    let write = with_store(|store| {
-      store.reduced_transparency = Some(reduced);
+    let write = with_records(|records| {
+      records.reduced_transparency = Some(reduced);
 
-      store.media().set_reduced_transparency
+      records.media().set_reduced_transparency
     });
 
     write.set(reduced);
@@ -922,10 +926,10 @@ pub fn trigger_reduced_transparency(reduced: bool) {
 /// Simulates the reader's preference for more contrast.
 pub fn trigger_high_contrast(high: bool) {
   trigger(|| {
-    let write = with_store(|store| {
-      store.high_contrast = Some(high);
+    let write = with_records(|records| {
+      records.high_contrast = Some(high);
 
-      store.media().set_high_contrast
+      records.media().set_high_contrast
     });
 
     write.set(high);
@@ -936,10 +940,10 @@ pub fn trigger_high_contrast(high: bool) {
 /// `precision` says.
 pub fn trigger_pointer_precision(precision: PointerPrecision) {
   trigger(|| {
-    let write = with_store(|store| {
-      store.pointer = Some(precision);
+    let write = with_records(|records| {
+      records.pointer = Some(precision);
 
-      store.media().set_pointer
+      records.media().set_pointer
     });
 
     write.set(precision);
@@ -949,10 +953,10 @@ pub fn trigger_pointer_precision(precision: PointerPrecision) {
 /// Simulates the display keeping `insets` clear of the viewport's edges.
 pub fn trigger_safe_area(insets: Inset<f32>) {
   trigger(|| {
-    let write = with_store(|store| {
-      store.safe_area = Some(insets);
+    let write = with_records(|records| {
+      records.safe_area = Some(insets);
 
-      store.media().set_safe_area
+      records.media().set_safe_area
     });
 
     write.set(insets);
@@ -962,10 +966,10 @@ pub fn trigger_safe_area(insets: Inset<f32>) {
 /// Simulates a change of the reader's primary pointer to one that hovers, or not.
 pub fn trigger_pointer_hovers(hovers: bool) {
   trigger(|| {
-    let write = with_store(|store| {
-      store.hover = Some(hovers);
+    let write = with_records(|records| {
+      records.hover = Some(hovers);
 
-      store.media().set_hover
+      records.media().set_hover
     });
 
     write.set(hovers);
@@ -978,7 +982,7 @@ pub fn trigger_pointer_hovers(hovers: bool) {
 pub fn pending_timers() -> usize {
   end_turn();
 
-  with_store(|store| store.timers.len())
+  with_records(|records| records.timers.len())
 }
 
 /// Simulates a frame passing, stepping the clock forward by `elapsed`.
@@ -988,7 +992,7 @@ pub fn pending_timers() -> usize {
 /// next resolution samples every transition and animation at the new reading.
 pub fn trigger_frame(elapsed: Duration) {
   trigger(|| {
-    let tracked = with_store(|store| store.tracked());
+    let tracked = with_records(|records| records.tracked());
 
     for (node, keys) in tracked {
       for key in keys {
@@ -996,13 +1000,13 @@ pub fn trigger_frame(elapsed: Duration) {
       }
     }
 
-    let batch = with_store(|store| {
-      store.clock += elapsed.as_secs_f64();
+    let batch = with_records(|records| {
+      records.clock += elapsed.as_secs_f64();
 
-      store.timers.next_timer()
+      records.timers.next_timer()
     });
 
-    while let Some(action) = with_store(|store| store.timers.pop_due(store.clock, batch)) {
+    while let Some(action) = with_records(|records| records.timers.pop_due(records.clock, batch)) {
       action();
     }
   });
@@ -1015,7 +1019,7 @@ pub fn trigger_container_size(name: ContainerName, size: Size<f32>) {
 
 /// Records the measured size of the query container `name`.
 fn record_container_size(name: ContainerName, size: Size<f32>) {
-  let sizes = with_store(|store| store.media().signals.container_sizes);
+  let sizes = with_records(|records| records.media().signals.container_sizes);
 
   sizes.set(name, size);
 }
@@ -1069,8 +1073,8 @@ fn render_outline(node: NodeId, full: bool) -> String {
 
 fn outline_into(node: NodeId, depth: usize, full: bool, out: &mut String) {
   let children: Vec<NodeId> = Scene::<Headless>::with(|scene| scene.children(node).collect());
-  let Some(line) = with_store(|store| {
-    let record = store.record(node)?;
+  let Some(line) = with_records(|records| {
+    let record = records.record(node)?;
     let line = match &record.kind {
       Kind::Box(_) => Some("Box".to_owned()),
       Kind::Control(props) => Some(format!("Control {:?}", props.native)),
@@ -1111,7 +1115,7 @@ fn outline_into(node: NodeId, depth: usize, full: bool, out: &mut String) {
 pub fn is_live(node: NodeId) -> bool {
   end_turn();
 
-  with_store(|store| store.record(node).is_some())
+  with_records(|records| records.record(node).is_some())
 }
 
 /// The props the box, control or overlay `node` was created with, carrying the focus
@@ -1371,7 +1375,7 @@ pub fn definitions(node: NodeId) -> Option<Definitions<TokenValue>> {
 pub fn root_definitions() -> Definitions<TokenValue> {
   end_turn();
 
-  with_store(|store| store.root_definitions.clone())
+  with_records(|records| records.root_definitions.clone())
 }
 
 /// How many times the root definitions have been written since the last reset.
@@ -1379,7 +1383,7 @@ pub fn root_definitions() -> Definitions<TokenValue> {
 pub fn root_definition_writes() -> usize {
   end_turn();
 
-  with_store(|store| store.root_definition_writes)
+  with_records(|records| records.root_definition_writes)
 }
 
 /// The children of `node` as the scene holds them, in order.

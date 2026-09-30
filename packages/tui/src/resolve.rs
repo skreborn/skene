@@ -24,32 +24,32 @@ use crate::{
   BorderGlyphs,
   Tui,
   TuiStyle,
-  store::{Handle, Kind, PlainBox, PlainRun, Store},
+  records::{Handle, Kind, PlainBox, PlainRun, Records},
 };
 
 /// What one node's properties resolve against, with the records it reads.
 pub(crate) struct Env<'a> {
   /// The records the environment reads.
-  store: &'a Store,
+  records: &'a Records,
   /// The node's record.
   handle: Handle,
   /// The environment, the node's interaction and the named containers above it.
-  context: ResolutionContext<'a, Tui, Store>,
+  context: ResolutionContext<'a, Tui, Records>,
 }
 
 impl<'a> Env<'a> {
-  /// The environment of `handle` in `store`.
-  pub(crate) fn of(store: &'a Store, handle: Handle) -> Self {
+  /// The environment of `handle` in `records`.
+  pub(crate) fn of(records: &'a Records, handle: Handle) -> Self {
     Self {
-      store,
+      records,
       handle,
-      context: ResolutionContext::of(store, handle)
-        .unwrap_or_else(|| ResolutionContext::root(store)),
+      context: ResolutionContext::of(records, handle)
+        .unwrap_or_else(|| ResolutionContext::root(records)),
     }
   }
 
   /// Runs `operation` with the resolver of this environment, reading tokens where they
-  /// are defined and slots through the store.
+  /// are defined and slots through the records.
   fn with_resolver<R>(&self, operation: impl FnOnce(&Resolver<'_, u32, TuiStyle>) -> R) -> R {
     self.context.with_resolver(operation)
   }
@@ -111,7 +111,7 @@ impl<'a> Env<'a> {
 
   /// The box style of the record, every property resolved.
   pub(crate) fn resolve_box(&self) -> Option<PlainBox> {
-    let record = self.store.record(self.handle)?;
+    let record = self.records.record(self.handle)?;
     let source: &BoxStyle<u32, Static<Condition<u32>>, TuiStyle> =
       &record.kind.box_record()?.props.style;
     let mut style = self.with_resolver(|resolver| resolver.box_style(source));
@@ -165,7 +165,7 @@ impl<'a> Env<'a> {
 
   /// The run style of the record, every property resolved.
   pub(crate) fn resolve_run(&self) -> Option<PlainRun> {
-    let record = self.store.record(self.handle)?;
+    let record = self.records.record(self.handle)?;
     let Kind::Run { props, .. } = &record.kind
     else {
       return None;

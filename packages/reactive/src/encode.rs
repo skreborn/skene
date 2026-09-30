@@ -1086,7 +1086,7 @@ tuples!(
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::hash::key;
+  use crate::hash::field_key;
 
   /// Every kind round-trips through its own type.
   #[test]
@@ -1136,8 +1136,8 @@ mod tests {
     let mut recorder = Recorder::new();
 
     recorder.record(|fields| {
-      fields.field(key("name"), &"a".to_owned());
-      fields.field(key("gone"), &1u8);
+      fields.field(field_key("name"), &"a".to_owned());
+      fields.field(field_key("gone"), &1u8);
     });
 
     let bytes = recorder.finish();
@@ -1147,10 +1147,10 @@ mod tests {
     };
 
     assert_eq!(
-      String::restore(record.field(key("name")).unwrap()),
+      String::restore(record.field(field_key("name")).unwrap()),
       Some("a".to_owned())
     );
-    assert!(record.field(key("count")).is_none());
+    assert!(record.field(field_key("count")).is_none());
     assert_eq!(record.fields().count(), 2);
   }
 }

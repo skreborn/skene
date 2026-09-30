@@ -65,17 +65,17 @@ impl Step {
 /// A place in the state snapshot: an owner's path and an index in its sequence.
 ///
 /// A snapshot signal takes one at creation, and so may anything else a platform carries
-/// across runs by [`provide`](crate::provide)/[`staged`](crate::staged)—a focused or
-/// scrolled node, say—so it is matched across runs exactly as a signal is, keys
+/// across runs by [`provide_extra`](crate::provide_extra)/[`take_extra`](crate::take_extra)—a
+/// focused or scrolled node, say—so it is matched across runs exactly as a signal is, keys
 /// included.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[must_use]
-pub struct Position {
+pub struct SnapshotPlace {
   pub(crate) path: Rc<[Step]>,
   pub(crate) index: u32,
 }
 
-impl Snapshot for Position {
+impl Snapshot for SnapshotPlace {
   fn record(&self, recorder: &mut Recorder) {
     recorder.seq(2, |recorder| {
       Step::record_slice(&self.path, recorder);
@@ -98,7 +98,7 @@ impl Snapshot for Position {
   }
 }
 
-impl Position {
+impl SnapshotPlace {
   /// Takes the next place in the current owner's sequence.
   pub fn next() -> Self {
     RUNTIME.with(|runtime| {

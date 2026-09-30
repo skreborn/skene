@@ -16,7 +16,7 @@ use skene_core::{
 };
 use skene_reactive::{Owner, ReadSignal, Signal, WriteSignal};
 
-use super::{Store, record::SlotLeaf};
+use super::{Records, record::SlotLeaf};
 use crate::Tui;
 
 /// The colors an unset cell shows: the ink and the base a paint mixes against.
@@ -44,7 +44,7 @@ pub(crate) struct MediaState {
   pub(crate) signals: MediaSignals<u32>,
 }
 
-impl ResolutionSource<Tui> for Store {
+impl ResolutionSource<Tui> for Records {
   /// The terminal draws every size at one cell where it proves no text sizing.
   const EM: f32 = 1.;
 
@@ -70,7 +70,7 @@ impl ResolutionSource<Tui> for Store {
   }
 }
 
-impl Store {
+impl Records {
   /// Whether the scheme in force is dark: the app's choice when it has made one, and
   /// the background the terminal reported otherwise.
   #[inline(always)]

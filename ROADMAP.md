@@ -230,13 +230,10 @@ left half-done in a code comment.
     plus `rlib` pair, `__skene_main` and app-level cfgs go.
     - Renames: `Show` and `Switch` to `Visibility` and `OneOf`, where `Visibility`
     already names the style value that hides a box; `stored_scheme` to `chosen_scheme`,
-    beside a web-only `persisted_scheme`; the terminal's and headless's `Store` to
-    `Records`; the reactive crate's `value.rs`, `key()`, `Position` and
-    `provide`/`staged` to `tracked_cell.rs`, `field_key()`, `SnapshotPlace` and
-    `provide_extra`/`take_extra`; the choice and activation handlers
-    and binders to `choose`/`chosen` for value groups and `activate` for commands, with
-    `bind_` documented as a builder prefix; test files named by tier (`browser_*`,
-    `server_*`), `render_next.rs` renamed and `misc.rs` split by topic.
+    beside a web-only `persisted_scheme`; the choice and activation handlers and binders
+    to `choose`/`chosen` for value groups and `activate` for commands, with `bind_`
+    documented as a builder prefix; test files named by tier (`browser_*`, `server_*`),
+    `render_next.rs` renamed and `misc.rs` split by topic.
     - Vocabulary: `FlexDirection`'s reversed variants become an axis plus `reversed`;
     `Overflow` becomes `Clip`, `Scroll` and `ScrollIfNeeded`; `RunDisplay`,
     `GridTrack::Minmax` and `Layout::Flow` lose their CSS names; `Expr::vw`, `vh`,

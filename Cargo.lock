@@ -2621,6 +2621,7 @@ version = "0.1.0"
 dependencies = [
  "base64 0.22.1",
  "libc",
+ "memchr",
  "miniz_oxide",
  "proptest",
  "rustc-hash 2.1.3",

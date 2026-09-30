@@ -392,19 +392,18 @@ impl Discard {
   /// Where the sequence ends in `buffer`, the bytes up to it its own, when it does.
   fn end(self, buffer: &[u8]) -> Option<usize> {
     match self {
-      Self::String { bel } => buffer
-        .iter()
-        .enumerate()
-        .find_map(|(index, byte)| match *byte {
-          BEL if bel => Some(index + 1),
-          CAN | SUB => Some(index + 1),
-          ESC => match buffer.get(index + 1) {
-            Some(b'\\') => Some(index + 2),
-            Some(_) => Some(index),
+      Self::String { bel } => {
+        let stop = string_stop(buffer, bel)?;
+
+        match buffer[stop] {
+          ESC => match buffer.get(stop + 1) {
+            Some(b'\\') => Some(stop + 2),
+            Some(_) => Some(stop),
             None => None,
           },
-          _ => None,
-        }),
+          _ => Some(stop + 1),
+        }
+      }
       Self::Paste => find(buffer, PASTE_END).map(|at| at + PASTE_END.len()),
       Self::Csi => buffer
         .iter()
@@ -607,21 +606,18 @@ fn scan_string(
   scanned: usize,
   parse: impl Fn(&[u8]) -> Option<Event>,
 ) -> Scan {
-  let mut index = scanned.saturating_sub(1).max(2);
+  let from = scanned.saturating_sub(1).clamp(2, buffer.len());
 
-  while index < buffer.len() {
-    match buffer[index] {
-      BEL if bel => return Scan::Done(index + 1, parse(&buffer[2..index])),
-      ESC => {
-        return match buffer.get(index + 1) {
-          Some(b'\\') => Scan::Done(index + 2, parse(&buffer[2..index])),
-          Some(_) => Scan::Done(index, None),
-          None => Scan::Incomplete,
-        };
-      }
-      CAN | SUB => return Scan::Done(index + 1, None),
-      _ => index += 1,
-    }
+  if let Some(stop) = string_stop(&buffer[from..], bel).map(|stop| from + stop) {
+    return match buffer[stop] {
+      BEL => Scan::Done(stop + 1, parse(&buffer[2..stop])),
+      ESC => match buffer.get(stop + 1) {
+        Some(b'\\') => Scan::Done(stop + 2, parse(&buffer[2..stop])),
+        Some(_) => Scan::Done(stop, None),
+        None => Scan::Incomplete,
+      },
+      _ => Scan::Done(stop + 1, None),
+    };
   }
 
   if buffer.len() > MAX_STRING {
@@ -736,9 +732,21 @@ fn scan_csi(buffer: &[u8], replying: bool, scanned: usize) -> Scan {
 
 /// Where `needle` first appears in `haystack`.
 fn find(haystack: &[u8], needle: &[u8]) -> Option<usize> {
-  haystack
-    .windows(needle.len())
-    .position(|window| window == needle)
+  memchr::memmem::find(haystack, needle)
+}
+
+/// Where the first byte of `bytes` that stops a string sequence stands: `ESC`, `CAN` or
+/// `SUB`, or `BEL` where `bel` says the kind ends on it.
+fn string_stop(bytes: &[u8], bel: bool) -> Option<usize> {
+  let control = memchr::memchr3(ESC, CAN, SUB, bytes);
+
+  if !bel {
+    return control;
+  }
+
+  let bell = memchr::memchr(BEL, &bytes[..control.unwrap_or(bytes.len())]);
+
+  bell.or(control)
 }
 
 /// The modifiers a mask names: the held keys less one, bit by bit.

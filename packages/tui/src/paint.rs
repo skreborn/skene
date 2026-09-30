@@ -1362,7 +1362,7 @@ fn paint_node(
   };
 
   if !record.kind.is_laid_out() {
-    for child in record.children.clone() {
+    for child in store.children(handle) {
       paint_node(store, buffer, child, offset_x, offset_y);
     }
 
@@ -1680,7 +1680,7 @@ fn paint_node(
     y - isize::try_from(scroll_y).unwrap_or(0),
   );
 
-  for child in store.children(handle).to_vec() {
+  for child in store.children(handle) {
     if store.record(child).is_some_and(Record::is_overlay) {
       continue;
     }

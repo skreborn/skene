@@ -81,14 +81,16 @@ facade names only its own platforms and publishes the selected one as `ActivePla
 ## The scene and the platform
 
 **Core owns the tree; a platform keeps a record per node.** `Scene<P: Platform>` is a
-generational arena of node records—parent, children, the annotation a wrapper asked for
-the child, the token definitions a theme placed on the node, the query-container name,
-the handlers. The scene mints every `NodeId`, and the platform keys its own record of the
+generational arena of node records—parent, children as a list of linked siblings (a move
+relinks a few records and shifts nothing), the annotation a wrapper asked for the child,
+the token definitions a theme placed on the node, the query-container name, the
+handlers. The scene mints every `NodeId`, and the platform keys its own record of the
 node by that id (a `NodeMap`: an element, a string-tree index, a taffy leaf), realizing
 it once the scene is released and before the node takes part in anything else. Every
 structural mutation (`attach`, `detach`, `destroy`, reorder) is implemented once in core;
 the platform is called only to mirror it into its records, after core has released its
-own borrow. `NodeId` carries a generation, so a stale id resolves to nothing rather than
+own borrow; a platform keeping children of its own (the terminal's store, the server's
+string tree) links them the same way. `NodeId` carries a generation, so a stale id resolves to nothing rather than
 to a recycled node, in the scene and in a platform's records alike. Token resolution and event dispatch walk this tree; nothing reads
 structure back from a platform. The scene also records each node's place in focus
 traversal and each overlay's state, the open ones in the order they opened, as a

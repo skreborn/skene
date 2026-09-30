@@ -537,6 +537,34 @@ fn an_async_load_settles_before_serialization() {
   );
 }
 
+/// A list reordered by work the render waits on serializes in its new order, each item
+/// once.
+#[test]
+fn a_list_reordered_before_serialization_serializes_in_its_new_order() {
+  let page = render_to_string(|| {
+    let order = Resource::new(|| async {
+      web::sleep(Duration::from_millis(1)).await;
+
+      vec![4, 3, 2, 1]
+    });
+
+    Column::new().derive_children(
+      move || order.with(|order| order.cloned().unwrap_or_else(|| vec![1, 2, 3, 4])),
+      |item: &i32| *item,
+      |item| Text::new(format!("item {item}")),
+    )
+  });
+  let body = page.body();
+  let at = |item: i32| {
+    body
+      .find(&format!(">item {item}</span>"))
+      .expect("every item serializes")
+  };
+
+  assert!(at(4) < at(3) && at(3) < at(2) && at(2) < at(1), "{body}");
+  assert_eq!(body.matches(">item ").count(), 4, "{body}");
+}
+
 /// A complete document assembles the styles into `<head>`, the tree into `<body>`, and
 /// the state into the script `hydrate_page` reads back.
 #[test]

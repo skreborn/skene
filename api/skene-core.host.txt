@@ -3354,7 +3354,6 @@ pub fn skene_core::NodeMap<T>::default() -> Self
 pub struct skene_core::NodeRecord<P: skene_core::Platform>
 impl<P: skene_core::Platform> skene_core::NodeRecord<P>
 pub const fn skene_core::NodeRecord<P>::annotation(&self) -> core::option::Option<&skene_core::Annotation<P>>
-pub fn skene_core::NodeRecord<P>::children(&self) -> &[skene_core::NodeId]
 pub const fn skene_core::NodeRecord<P>::container(&self) -> core::option::Option<skene_core::ContainerName>
 pub const fn skene_core::NodeRecord<P>::control_state(&self) -> core::option::Option<skene_core::ControlState>
 pub fn skene_core::NodeRecord<P>::definitions(&self) -> core::option::Option<&skene_core::Definitions<<P as skene_core::Platform>::TokenValue>>
@@ -3732,6 +3731,7 @@ pub fn skene_core::Scene<P>::is_pressed(&self, skene_core::NodeId) -> bool
 pub fn skene_core::Scene<P>::move_focus(&mut self, core::option::Option<skene_core::NodeId>) -> (smallvec::SmallVec<[skene_core::NodeId; 16]>, smallvec::SmallVec<[skene_core::NodeId; 16]>)
 pub fn skene_core::Scene<P>::move_pointer(&mut self, core::option::Option<skene_core::NodeId>) -> (smallvec::SmallVec<[skene_core::NodeId; 16]>, smallvec::SmallVec<[skene_core::NodeId; 16]>)
 pub fn skene_core::Scene<P>::new() -> Self
+pub fn skene_core::Scene<P>::next_sibling(&self, skene_core::NodeId) -> core::option::Option<skene_core::NodeId>
 pub fn skene_core::Scene<P>::node_at(&self, &skene_reactive::path::Position) -> core::option::Option<skene_core::NodeId>
 pub fn skene_core::Scene<P>::note_access(&mut self, skene_core::NodeId, alloc::vec::Vec<skene_core::AccessProp>)
 pub fn skene_core::Scene<P>::note_entry(&mut self, skene_core::NodeId)
@@ -3744,6 +3744,7 @@ pub fn skene_core::Scene<P>::parent(&self, skene_core::NodeId) -> core::option::
 pub fn skene_core::Scene<P>::part(&self, skene_core::NodeId) -> core::option::Option<skene_core::Part>
 pub fn skene_core::Scene<P>::placement(&self, skene_core::NodeId) -> core::option::Option<skene_core::NodeId>
 pub const fn skene_core::Scene<P>::pressed(&self) -> core::option::Option<skene_core::NodeId>
+pub fn skene_core::Scene<P>::previous_sibling(&self, skene_core::NodeId) -> core::option::Option<skene_core::NodeId>
 pub fn skene_core::Scene<P>::reachable_under_modal(&self, &[skene_core::NodeId], skene_core::NodeId) -> bool
 pub fn skene_core::Scene<P>::record(&self, skene_core::NodeId) -> core::option::Option<&skene_core::NodeRecord<P>>
 pub fn skene_core::Scene<P>::record_mut(&mut self, skene_core::NodeId) -> core::option::Option<&mut skene_core::NodeRecord<P>>

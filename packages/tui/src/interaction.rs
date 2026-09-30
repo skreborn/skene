@@ -209,11 +209,9 @@ impl Store {
     else {
       return false;
     };
-    let children = record.children.clone();
-
     if !record.kind.is_laid_out() {
-      for child in children.iter().rev() {
-        if self.hit_walk(*child, offset_x, offset_y, x, y, path) {
+      for child in self.children_reversed(handle) {
+        if self.hit_walk(child, offset_x, offset_y, x, y, path) {
           return true;
         }
       }
@@ -250,12 +248,12 @@ impl Store {
     );
 
     // Later children paint on top, so they win the hit; overlays hit separately.
-    for child in children.iter().rev() {
-      if self.record(*child).is_some_and(Record::is_overlay) {
+    for child in self.children_reversed(handle) {
+      if self.record(child).is_some_and(Record::is_overlay) {
         continue;
       }
 
-      if self.hit_walk(*child, child_x, child_y, x, y, path) {
+      if self.hit_walk(child, child_x, child_y, x, y, path) {
         break;
       }
     }
@@ -1581,7 +1579,7 @@ pub(crate) fn page_scroll(pages: i64) {
             return Some(current);
           }
 
-          stack.extend(store.children(current).iter().rev());
+          stack.extend(store.children_reversed(current));
         }
 
         None

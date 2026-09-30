@@ -130,14 +130,14 @@ const ROOT: u32 = 0;
 /// A probe for whether a deferred boundary's content has settled.
 type BoundarySettled = Box<dyn Fn() -> bool>;
 
-/// A position in the in-order stream walk: a node whose opening tag is emitted, where
-/// among its children the walk stands, and the child it last passed, by which it finds
-/// its place again among children that changed while it paused.
+/// A position in the in-order stream walk: a node whose opening tag is emitted, the
+/// child it last passed, by which it finds its place again among children that changed
+/// while it paused, and how many it passed, where it resumes once that child is gone.
 #[derive(Clone, Copy)]
 struct Frame {
   index: u32,
-  next_child: usize,
   passed: Option<u32>,
+  passed_count: usize,
 }
 
 /// What a node is in the string tree.
@@ -171,8 +171,14 @@ struct Node {
   inline: Vec<(String, String)>,
   /// The text content: a run's text, or a `<textarea>`'s value.
   text: Option<String>,
-  /// The children, in order.
-  children: Vec<u32>,
+  /// Its first child.
+  first_child: Option<u32>,
+  /// Its last child.
+  last_child: Option<u32>,
+  /// The child before it under its parent.
+  previous_sibling: Option<u32>,
+  /// The child after it under its parent.
+  next_sibling: Option<u32>,
   /// The node it is attached under.
   parent: Option<u32>,
   /// The native element carrying a control's state, focus and value, when the control
@@ -208,7 +214,10 @@ impl Node {
       token_class: None,
       inline: Vec::new(),
       text: None,
-      children: Vec::new(),
+      first_child: None,
+      last_child: None,
+      previous_sibling: None,
+      next_sibling: None,
       parent: None,
       carrier: None,
       control: None,
@@ -438,16 +447,31 @@ impl Tree {
     self.create(node)
   }
 
-  fn node(&mut self, index: u32) -> Option<&mut Node> {
+  fn node(&self, index: u32) -> Option<&Node> {
+    self.nodes.get(index as usize).and_then(Option::as_ref)
+  }
+
+  fn node_mut(&mut self, index: u32) -> Option<&mut Node> {
     self.nodes.get_mut(index as usize).and_then(Option::as_mut)
   }
 
+  /// The children of `index`, in order; empty for a leaf or a destroyed node.
+  fn children(&self, index: u32) -> impl Iterator<Item = u32> + '_ {
+    let mut next = self.node(index).and_then(|node| node.first_child);
+
+    std::iter::from_fn(move || {
+      let current = next?;
+
+      next = self.node(current).and_then(|node| node.next_sibling);
+
+      Some(current)
+    })
+  }
+
   /// The element carrying `index`'s state: its native input, else itself.
-  fn carrier(&mut self, index: u32) -> u32 {
+  fn carrier(&self, index: u32) -> u32 {
     self
-      .nodes
-      .get(index as usize)
-      .and_then(Option::as_ref)
+      .node(index)
       .and_then(|node| node.carrier)
       .unwrap_or(index)
   }
@@ -506,7 +530,7 @@ impl Tree {
     let previous = self.node(index).and_then(|node| node.style_class.clone());
     let class = self.swap_class(&compiled.template, previous.as_deref());
 
-    if let Some(node) = self.node(index) {
+    if let Some(node) = self.node_mut(index) {
       node.style_class = Some(class);
       node.slots = Rc::from(compiled.slots.as_slice());
     }
@@ -540,11 +564,11 @@ impl Tree {
       let caption = self.element("label");
       let id = element_id(node);
 
-      if labels && let Some(label) = self.node(caption) {
+      if labels && let Some(label) = self.node_mut(caption) {
         label.set_attribute("for", &id);
       }
 
-      if let Some(entry) = self.node(parent) {
+      if let Some(entry) = self.node_mut(parent) {
         if labels {
           entry.set_attribute("id", &id);
         }
@@ -576,11 +600,11 @@ impl Tree {
 
     if self
       .node(caption)
-      .is_some_and(|label| label.children.is_empty())
+      .is_some_and(|label| label.first_child.is_none())
     {
       self.destroy(caption);
 
-      if let Some(entry) = self.node(parent) {
+      if let Some(entry) = self.node_mut(parent) {
         entry.caption = None;
       }
     }
@@ -588,48 +612,124 @@ impl Tree {
     true
   }
 
+  /// Removes `child` from the children of the node it is attached under, if any.
+  fn unlink(&mut self, child: u32) {
+    let Some((parent, previous, next)) = self
+      .node(child)
+      .and_then(|node| Some((node.parent?, node.previous_sibling, node.next_sibling)))
+    else {
+      return;
+    };
+
+    match previous {
+      Some(previous) => {
+        if let Some(node) = self.node_mut(previous) {
+          node.next_sibling = next;
+        }
+      }
+      None => {
+        if let Some(node) = self.node_mut(parent) {
+          node.first_child = next;
+        }
+      }
+    }
+
+    match next {
+      Some(next) => {
+        if let Some(node) = self.node_mut(next) {
+          node.previous_sibling = previous;
+        }
+      }
+      None => {
+        if let Some(node) = self.node_mut(parent) {
+          node.last_child = previous;
+        }
+      }
+    }
+
+    if let Some(node) = self.node_mut(child) {
+      node.parent = None;
+      node.previous_sibling = None;
+      node.next_sibling = None;
+    }
+  }
+
+  /// Attaches `child` under `parent` before `before`, else last, moving it from wherever
+  /// it was attached.
   fn attach(&mut self, parent: u32, child: u32, before: Option<u32>) {
-    if let Some(old) = self.node(child).and_then(|node| node.parent)
-      && let Some(old) = self.node(old)
-      && let Some(index) = position_from_ends(&old.children, child)
-    {
-      old.children.remove(index);
+    self.unlink(child);
+
+    if self.node(parent).is_none() || self.node(child).is_none() {
+      return;
     }
 
-    if let Some(node) = self.node(child) {
+    let before = before.filter(|before| {
+      self
+        .node(*before)
+        .is_some_and(|node| node.parent == Some(parent))
+    });
+    let previous = match before {
+      Some(before) => self.node(before).and_then(|node| node.previous_sibling),
+      None => self.node(parent).and_then(|node| node.last_child),
+    };
+
+    if let Some(node) = self.node_mut(child) {
       node.parent = Some(parent);
+      node.previous_sibling = previous;
+      node.next_sibling = before;
     }
 
-    if let Some(parent) = self.node(parent) {
-      match before.and_then(|before| position_from_ends(&parent.children, before)) {
-        Some(index) => parent.children.insert(index, child),
-        None => parent.children.push(child),
+    match previous {
+      Some(previous) => {
+        if let Some(node) = self.node_mut(previous) {
+          node.next_sibling = Some(child);
+        }
+      }
+      None => {
+        if let Some(node) = self.node_mut(parent) {
+          node.first_child = Some(child);
+        }
+      }
+    }
+
+    match before {
+      Some(before) => {
+        if let Some(node) = self.node_mut(before) {
+          node.previous_sibling = Some(child);
+        }
+      }
+      None => {
+        if let Some(node) = self.node_mut(parent) {
+          node.last_child = Some(child);
+        }
       }
     }
   }
 
+  /// Removes `child` from under `parent`, where it is attached there.
   fn detach(&mut self, parent: u32, child: u32) {
-    if let Some(parent) = self.node(parent)
-      && let Some(index) = position_from_ends(&parent.children, child)
+    if self
+      .node(child)
+      .is_some_and(|node| node.parent == Some(parent))
     {
-      parent.children.remove(index);
-    }
-
-    if let Some(child) = self.node(child) {
-      child.parent = None;
+      self.unlink(child);
     }
   }
 
+  /// Destroys `index` and everything beneath it, removing it from under its parent.
   fn destroy(&mut self, index: u32) {
+    self.unlink(index);
+
     let mut stack = vec![index];
 
     while let Some(current) = stack.pop() {
+      stack.extend(self.children(current));
+
       let Some(node) = self.nodes.get_mut(current as usize).and_then(Option::take)
       else {
         continue;
       };
 
-      stack.extend(node.children);
       stack.extend(node.caption);
 
       for class in node.style_class.iter().chain(&node.token_class) {
@@ -748,10 +848,8 @@ impl Tree {
   fn render_body(&self) -> String {
     let mut out = String::new();
 
-    if let Some(Some(root)) = self.nodes.first() {
-      for child in &root.children {
-        self.serialize(*child, &mut out);
-      }
+    for child in self.children(ROOT) {
+      self.serialize(child, &mut out);
     }
 
     out
@@ -779,8 +877,8 @@ impl Tree {
     match &node.text {
       Some(text) => node.emit_text(text, out),
       None => {
-        for child in &node.children {
-          self.serialize(*child, out);
+        for child in self.children(index) {
+          self.serialize(child, out);
         }
       }
     }
@@ -801,52 +899,38 @@ impl Tree {
     pending: impl Fn(u32) -> bool,
   ) -> Option<u32> {
     while let Some(frame) = cursor.last_mut() {
-      let Some(Some(node)) = self.nodes.get(frame.index as usize)
+      let Some(node) = self.node(frame.index)
       else {
         cursor.pop();
 
         continue;
       };
-
-      if let Some(passed) = frame.passed
-        && frame
-          .next_child
-          .checked_sub(1)
-          .and_then(|at| node.children.get(at))
-          != Some(&passed)
-        && let Some(at) = node.children.iter().position(|child| *child == passed)
-      {
-        frame.next_child = at + 1;
-      }
-
-      frame.next_child = frame.next_child.min(node.children.len());
-
-      let Frame {
-        index, next_child, ..
-      } = *frame;
-
-      if next_child == node.children.len() {
-        if index != ROOT {
+      let next = match frame.passed {
+        None => node.first_child,
+        Some(passed) => match self.node(passed) {
+          Some(passed) if passed.parent == Some(frame.index) => passed.next_sibling,
+          _ => self.children(frame.index).nth(frame.passed_count),
+        },
+      };
+      let Some(child) = next
+      else {
+        if frame.index != ROOT {
           node.emit_close(out);
         }
 
         cursor.pop();
 
         continue;
-      }
-
-      let child = node.children[next_child];
+      };
 
       if pending(child) {
         return Some(child);
       }
 
-      let frame = cursor.last_mut().expect("the frame just read");
-
-      frame.next_child += 1;
       frame.passed = Some(child);
+      frame.passed_count += 1;
 
-      let Some(Some(child_node)) = self.nodes.get(child as usize)
+      let Some(child_node) = self.node(child)
       else {
         continue;
       };
@@ -869,11 +953,11 @@ impl Tree {
           child_node.emit_text(text, out);
           child_node.emit_close(out);
         }
-        None if child_node.children.is_empty() => child_node.emit_close(out),
+        None if child_node.first_child.is_none() => child_node.emit_close(out),
         None => cursor.push(Frame {
           index: child,
-          next_child: 0,
           passed: None,
+          passed_count: 0,
         }),
       }
     }
@@ -1012,7 +1096,7 @@ fn with_tree<R>(operation: impl FnOnce(&mut Tree) -> R) -> R {
 
 /// Runs `operation` on the node `index`, if it is live.
 fn with_node<R>(index: u32, operation: impl FnOnce(&mut Node) -> R) -> Option<R> {
-  with_tree(|tree| tree.node(index).map(operation))
+  with_tree(|tree| tree.node_mut(index).map(operation))
 }
 
 /// The tree index of the element realizing the scene's `node`, if it is live.
@@ -1025,7 +1109,7 @@ fn realize(node: NodeId, index: u32) {
   with_tree(|tree| {
     let _replaced = tree.realized.insert(node, index);
 
-    if let Some(record) = tree.node(index) {
+    if let Some(record) = tree.node_mut(index) {
       record.realizes = Some(node);
     }
   });
@@ -1125,7 +1209,7 @@ fn write_referenced_ids(tree: &mut Tree, access: &[AccessProp]) {
     };
     let target = tree.carrier(sink);
 
-    if let Some(target) = tree.node(target) {
+    if let Some(target) = tree.node_mut(target) {
       target.set_attribute("id", &element_id(node));
     }
   }
@@ -1137,7 +1221,7 @@ fn finish_box(index: u32, props: &BoxProps<Web>, compiled: &Rc<Compiled>) {
     tree.assign_style(index, compiled);
 
     if let Some(axes) = props.drag_axes
-      && let Some(node) = tree.node(index)
+      && let Some(node) = tree.node_mut(index)
     {
       node.set_attribute(DRAGS_ATTRIBUTE, drags_value(axes));
     }
@@ -1145,7 +1229,7 @@ fn finish_box(index: u32, props: &BoxProps<Web>, compiled: &Rc<Compiled>) {
     let target = tree.carrier(index);
     let scrolls = scrolls::<Web>(&props.style);
 
-    if let Some(node) = tree.node(target) {
+    if let Some(node) = tree.node_mut(target) {
       node.scrolls = scrolls;
       write_focus_order(node, props.focus_order);
       write_access(node, &props.access);
@@ -1164,7 +1248,7 @@ fn box_index(props: &BoxProps<Web>) -> u32 {
       props.destination.is_some(),
     ));
 
-    if let Some(node) = tree.node(index) {
+    if let Some(node) = tree.node_mut(index) {
       if let Some(role) = props.role.and_then(aria_role) {
         node.set_attribute("role", role);
       }
@@ -1195,7 +1279,7 @@ fn control_index(props: &ControlProps<Web>) -> u32 {
       if native.is_bare() {
         let root = tree.element(native.tag);
 
-        if let Some(node) = tree.node(root) {
+        if let Some(node) = tree.node_mut(root) {
           node.write_native_attributes(native, props);
           node.bare = true;
         }
@@ -1206,14 +1290,14 @@ fn control_index(props: &ControlProps<Web>) -> u32 {
         let root = tree.element("label");
         let input = tree.element(native.tag);
 
-        if let Some(node) = tree.node(input) {
+        if let Some(node) = tree.node_mut(input) {
           node.write_native_attributes(native, props);
           node.set_attribute("class", NATIVE_CLASS);
         }
 
         tree.attach(root, input, None);
 
-        if let Some(node) = tree.node(root) {
+        if let Some(node) = tree.node_mut(root) {
           node.carrier = Some(input);
         }
 
@@ -1224,7 +1308,7 @@ fn control_index(props: &ControlProps<Web>) -> u32 {
       let (tag, attribute) = drawn_element(props.native, props.box_props.role);
       let root = tree.element(tag);
 
-      if let Some(node) = tree.node(root) {
+      if let Some(node) = tree.node_mut(root) {
         if let Some((name, value)) = attribute {
           node.set_attribute(name, value);
         }
@@ -1237,7 +1321,7 @@ fn control_index(props: &ControlProps<Web>) -> u32 {
       root
     };
 
-    if let Some(node) = tree.node(index) {
+    if let Some(node) = tree.node_mut(index) {
       node.control = Some(if props.label_beside {
         Captioned::Beside
       }
@@ -1266,7 +1350,7 @@ fn overlay_index(props: &OverlayProps<Web>) -> u32 {
     else {
       let index = tree.element("div");
 
-      if let Some(node) = tree.node(index) {
+      if let Some(node) = tree.node_mut(index) {
         node.set_attribute("popover", if props.hint { "hint" } else { "manual" });
 
         if let Some(role) = props.role().and_then(aria_role) {
@@ -1293,7 +1377,7 @@ fn run_index(props: &RunProps<Web>) -> u32 {
       Some(href) => {
         let index = tree.element("a");
 
-        if let Some(node) = tree.node(index) {
+        if let Some(node) = tree.node_mut(index) {
           for (name, value) in link_attributes(href, props.link_policy) {
             node.set_attribute(name, &value);
           }
@@ -1327,7 +1411,7 @@ fn scope_index() -> u32 {
   with_tree(|tree| {
     let index = tree.element("div");
 
-    if let Some(node) = tree.node(index) {
+    if let Some(node) = tree.node_mut(index) {
       node.set_attribute(SCOPE_ATTRIBUTE, "");
       node.set_inline("display".to_owned(), "contents".to_owned());
     }
@@ -1385,7 +1469,7 @@ impl Platform for Web {
     with_tree(|tree| {
       let target = tree.carrier(sink);
 
-      if let Some(node) = tree.node(target) {
+      if let Some(node) = tree.node_mut(target) {
         write_focus_order(node, focus_order);
       }
     });
@@ -1400,7 +1484,7 @@ impl Platform for Web {
     with_tree(|tree| {
       let target = tree.carrier(sink);
 
-      if let Some(node) = tree.node(target) {
+      if let Some(node) = tree.node_mut(target) {
         write_access(node, access);
       }
 
@@ -1423,7 +1507,7 @@ impl Platform for Web {
       let carrier = tree.carrier(root);
 
       if carrier == root {
-        if let Some(node) = tree.node(root) {
+        if let Some(node) = tree.node_mut(root) {
           let disabled_natively = takes_disabled(node.tag());
 
           node.set_flag("data-skene-checked", state.checked == Toggle::On);
@@ -1436,7 +1520,7 @@ impl Platform for Web {
           }
         }
       }
-      else if let Some(node) = tree.node(carrier) {
+      else if let Some(node) = tree.node_mut(carrier) {
         node.set_flag("checked", state.checked == Toggle::On);
         node.set_flag("data-skene-indeterminate", state.checked == Toggle::Mixed);
         node.set_flag("disabled", state.disabled);
@@ -1449,7 +1533,7 @@ impl Platform for Web {
         }
       }
 
-      if let Some(node) = tree.node(root) {
+      if let Some(node) = tree.node_mut(root) {
         node.set_flag("data-skene-open", state.open);
       }
     });
@@ -1563,7 +1647,7 @@ impl Platform for Web {
       let previous = tree.node(scope).and_then(|node| node.token_class.clone());
 
       if previous.is_some() && all_unconditional(definitions) {
-        if let Some(node) = tree.node(scope) {
+        if let Some(node) = tree.node_mut(scope) {
           for (property, value) in inline_definitions(definitions) {
             node.set_inline(property, value);
           }
@@ -1574,7 +1658,7 @@ impl Platform for Web {
 
       let class = tree.swap_class(&compile_definitions(definitions), previous.as_deref());
 
-      if let Some(node) = tree.node(scope) {
+      if let Some(node) = tree.node_mut(scope) {
         node.token_class = Some(class);
       }
     });
@@ -1606,7 +1690,7 @@ impl Platform for Web {
     with_tree(|tree| {
       let target = tree.carrier(sink);
 
-      if let Some(node) = tree.node(target) {
+      if let Some(node) = tree.node_mut(target) {
         if node.tag() == "textarea" {
           node.text = Some(value.to_owned());
         }
@@ -1629,7 +1713,7 @@ impl Platform for Web {
     with_tree(|tree| {
       let target = tree.carrier(sink);
 
-      if let Some(node) = tree.node(target) {
+      if let Some(node) = tree.node_mut(target) {
         node.options = options.to_vec();
       }
     });
@@ -1646,7 +1730,7 @@ impl Platform for Web {
     with_tree(|tree| {
       let target = tree.carrier(sink);
 
-      if let Some(node) = tree.node(target) {
+      if let Some(node) = tree.node_mut(target) {
         node.set_flag("checked", checked);
       }
     });
@@ -2023,8 +2107,8 @@ where
 
   let mut cursor = vec![Frame {
     index: ROOT,
-    next_child: 0,
     passed: None,
+    passed_count: 0,
   }];
 
   // TODO: once HTML's declarative out-of-order patching (`<template for>`) is Baseline
@@ -2060,25 +2144,4 @@ where
 
   flush(StreamPiece::Tail(crate::hydration::collect_state()));
   end_render(scope);
-}
-
-/// The index of `child` among `children`, searched from both ends at once.
-fn position_from_ends<T: PartialEq + Copy>(children: &[T], child: T) -> Option<usize> {
-  let (mut front, mut back) = (0, children.len());
-
-  while front < back {
-    if children[front] == child {
-      return Some(front);
-    }
-
-    back -= 1;
-
-    if children[back] == child {
-      return Some(back);
-    }
-
-    front += 1;
-  }
-
-  None
 }

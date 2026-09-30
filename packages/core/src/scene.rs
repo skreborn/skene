@@ -198,7 +198,10 @@ struct TokenCache<V> {
 pub struct NodeRecord<P: Platform> {
   parent: Option<NodeId>,
   enclosing: Option<NodeId>,
-  children: SmallVec<[NodeId; 4]>,
+  first_child: Option<NodeId>,
+  last_child: Option<NodeId>,
+  previous_sibling: Option<NodeId>,
+  next_sibling: Option<NodeId>,
   kind: NodeKind,
   annotation: Option<Annotation<P>>,
   definitions: Option<Box<Definitions<P::TokenValue>>>,
@@ -260,12 +263,6 @@ impl<P: Platform> NodeRecord<P> {
   #[inline(always)]
   pub const fn position(&self) -> &Position {
     &self.position
-  }
-
-  /// The nodes attached under this one, in order.
-  #[inline(always)]
-  pub fn children(&self) -> &[NodeId] {
-    &self.children
   }
 
   /// What the node is.
@@ -535,7 +532,10 @@ impl<P: Platform> Scene<P> {
     let record = NodeRecord {
       parent: None,
       enclosing: None,
-      children: SmallVec::new(),
+      first_child: None,
+      last_child: None,
+      previous_sibling: None,
+      next_sibling: None,
       kind,
       annotation: None,
       definitions: None,
@@ -650,12 +650,45 @@ impl<P: Platform> Scene<P> {
   /// The children of `node`, in order; empty for a leaf or a stale id.
   #[inline(always)]
   pub fn children(&self, node: NodeId) -> impl Iterator<Item = NodeId> + '_ {
-    self
-      .record(node)
-      .map(NodeRecord::children)
-      .unwrap_or_default()
-      .iter()
-      .copied()
+    let mut next = self.record(node).and_then(|record| record.first_child);
+
+    std::iter::from_fn(move || {
+      let current = next?;
+
+      next = self.record(current).and_then(|record| record.next_sibling);
+
+      Some(current)
+    })
+  }
+
+  /// The children of `node`, last first; empty for a leaf or a stale id.
+  #[inline(always)]
+  fn children_reversed(&self, node: NodeId) -> impl Iterator<Item = NodeId> + '_ {
+    let mut previous = self.record(node).and_then(|record| record.last_child);
+
+    std::iter::from_fn(move || {
+      let current = previous?;
+
+      previous = self
+        .record(current)
+        .and_then(|record| record.previous_sibling);
+
+      Some(current)
+    })
+  }
+
+  /// The node after `node` among its parent's children, if any.
+  #[inline(always)]
+  #[must_use]
+  pub fn next_sibling(&self, node: NodeId) -> Option<NodeId> {
+    self.record(node).and_then(|record| record.next_sibling)
+  }
+
+  /// The node before `node` among its parent's children, if any.
+  #[inline(always)]
+  #[must_use]
+  pub fn previous_sibling(&self, node: NodeId) -> Option<NodeId> {
+    self.record(node).and_then(|record| record.previous_sibling)
   }
 
   /// `node` and the nodes an event at it climbs through, innermost first: the start of
@@ -859,12 +892,13 @@ impl<P: Platform> Scene<P> {
     let mut stack = vec![node];
 
     while let Some(node) = stack.pop() {
+      let children: SmallVec<[NodeId; 8]> = self.children(node).collect();
       let Some(record) = self.remove(node)
       else {
         continue;
       };
 
-      stack.extend(record.children);
+      stack.extend(children);
 
       if let Some(segment) = record.segment {
         stack.extend(segment.pending);
@@ -1268,7 +1302,7 @@ impl<P: Platform> Scene<P> {
         stack.extend(self.segment_nodes(current).into_iter().rev());
       }
       else {
-        stack.extend(record.children.iter().rev());
+        stack.extend(self.children_reversed(current));
       }
     }
 
@@ -1518,7 +1552,7 @@ impl<P: Platform> Scene<P> {
         Some(FocusOrder::Skip) | None => {}
       }
 
-      stack.extend(record.children.iter().rev());
+      stack.extend(self.children_reversed(current));
     }
 
     positioned.sort_by_key(|(position, _)| *position);
@@ -1584,13 +1618,12 @@ impl<P: Platform> Scene<P> {
     let mut stack = vec![root];
 
     while let Some(current) = stack.pop() {
-      let Some(record) = self.record(current)
-      else {
+      if !self.contains(current) {
         continue;
-      };
+      }
 
       positions.insert(current, positions.len());
-      stack.extend(record.children.iter().rev());
+      stack.extend(self.children_reversed(current));
     }
 
     positions
@@ -1649,9 +1682,7 @@ impl<P: Platform> Scene<P> {
   /// the controls inside it are passed over with their parts.
   #[must_use]
   pub fn find_part(&self, control: NodeId, part: Part) -> Option<NodeId> {
-    let mut stack: Vec<NodeId> = self.children(control).collect();
-
-    stack.reverse();
+    let mut stack: Vec<NodeId> = self.children_reversed(control).collect();
 
     while let Some(node) = stack.pop() {
       let Some(record) = self.record(node)
@@ -1667,10 +1698,7 @@ impl<P: Platform> Scene<P> {
         continue;
       }
 
-      let before = stack.len();
-
-      stack.extend(self.children(node));
-      stack[before..].reverse();
+      stack.extend(self.children_reversed(node));
     }
 
     None
@@ -1892,42 +1920,60 @@ impl<P: Platform> Scene<P> {
     }
 
     let last = record.segment.as_ref().map_or(child, |segment| segment.end);
-    let children = self
-      .record(parent)
-      .map(NodeRecord::children)
-      .unwrap_or_default();
 
-    children
-      .iter()
-      .position(|node| *node == last)
-      .is_some_and(|at| children.get(at + 1).copied() == before)
+    self
+      .record(last)
+      .is_some_and(|record| record.parent == Some(parent) && record.next_sibling == before)
   }
 
   /// Inserts `child` into `parent`'s children before `before` (else last) and mirrors
   /// it; `child` must be detached.
   fn link(&mut self, parent: NodeId, child: NodeId, before: Option<NodeId>) {
-    if self.record(child).is_none() {
+    if self.record(child).is_none() || self.record(parent).is_none() {
       return;
     }
 
-    let Some(parent_record) = self.record_mut(parent)
-    else {
-      return;
-    };
-    let index = before
-      .and_then(|before| position_from_ends(&parent_record.children, before))
-      .unwrap_or(parent_record.children.len());
-
-    parent_record.children.insert(index, child);
-
-    let Some(child_record) = self.record_mut(child)
-    else {
-      return;
+    let before = before.filter(|before| {
+      self
+        .record(*before)
+        .is_some_and(|record| record.parent == Some(parent))
+    });
+    let previous = match before {
+      Some(before) => self.previous_sibling(before),
+      None => self.record(parent).and_then(|record| record.last_child),
     };
 
-    child_record.parent = Some(parent);
+    if let Some(record) = self.record_mut(child) {
+      record.parent = Some(parent);
+      record.previous_sibling = previous;
+      record.next_sibling = before;
+    }
 
-    let before = before.filter(|before| self.contains(*before));
+    match previous {
+      Some(previous) => {
+        if let Some(record) = self.record_mut(previous) {
+          record.next_sibling = Some(child);
+        }
+      }
+      None => {
+        if let Some(record) = self.record_mut(parent) {
+          record.first_child = Some(child);
+        }
+      }
+    }
+
+    match before {
+      Some(before) => {
+        if let Some(record) = self.record_mut(before) {
+          record.previous_sibling = Some(child);
+        }
+      }
+      None => {
+        if let Some(record) = self.record_mut(parent) {
+          record.last_child = Some(child);
+        }
+      }
+    }
 
     self.mirrors.push(Mirror::Attach {
       parent,
@@ -1968,14 +2014,43 @@ impl<P: Platform> Scene<P> {
 
   /// Removes one node from under `parent` and mirrors it.
   fn unlink_one(&mut self, parent: NodeId, child: NodeId) {
-    if let Some(parent_record) = self.record_mut(parent)
-      && let Some(index) = position_from_ends(&parent_record.children, child)
-    {
-      let _unlinked = parent_record.children.remove(index);
+    let links = self
+      .record(child)
+      .filter(|record| record.parent == Some(parent))
+      .map(|record| (record.previous_sibling, record.next_sibling));
+
+    if let Some((previous, next)) = links {
+      match previous {
+        Some(previous) => {
+          if let Some(record) = self.record_mut(previous) {
+            record.next_sibling = next;
+          }
+        }
+        None => {
+          if let Some(record) = self.record_mut(parent) {
+            record.first_child = next;
+          }
+        }
+      }
+
+      match next {
+        Some(next) => {
+          if let Some(record) = self.record_mut(next) {
+            record.previous_sibling = previous;
+          }
+        }
+        None => {
+          if let Some(record) = self.record_mut(parent) {
+            record.last_child = previous;
+          }
+        }
+      }
     }
 
     if let Some(child_record) = self.record_mut(child) {
       child_record.parent = None;
+      child_record.previous_sibling = None;
+      child_record.next_sibling = None;
     }
 
     if self.contains(parent) && self.contains(child) {
@@ -2007,28 +2082,6 @@ impl<P: Platform> Scene<P> {
       segment.pending = content;
     }
   }
-}
-
-/// The index of `node` among `children`, searched from both ends at once, so a node
-/// near either end is found at once.
-fn position_from_ends(children: &[NodeId], node: NodeId) -> Option<usize> {
-  let (mut front, mut back) = (0, children.len());
-
-  while front < back {
-    if children[front] == node {
-      return Some(front);
-    }
-
-    back -= 1;
-
-    if children[back] == node {
-      return Some(back);
-    }
-
-    front += 1;
-  }
-
-  None
 }
 
 /// A drag source, out of a handler.

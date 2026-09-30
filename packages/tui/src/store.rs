@@ -564,8 +564,14 @@ pub(crate) struct Record {
   pub(crate) node: Option<NodeId>,
   /// The node it is attached under.
   pub(crate) parent: Option<Handle>,
-  /// The children attached to it, in order.
-  pub(crate) children: Vec<Handle>,
+  /// The first child attached to it.
+  pub(crate) first_child: Option<Handle>,
+  /// The last child attached to it.
+  pub(crate) last_child: Option<Handle>,
+  /// The node before it among its parent's children.
+  pub(crate) previous_sibling: Option<Handle>,
+  /// The node after it among its parent's children.
+  pub(crate) next_sibling: Option<Handle>,
   /// The taffy children last handed to the layout tree.
   pub(crate) taffy_children: Vec<taffy::NodeId>,
   /// The text and scales the layout tree carries for a run or a paragraph.
@@ -650,7 +656,10 @@ impl Record {
       taffy,
       node: None,
       parent: None,
-      children: Vec::new(),
+      first_child: None,
+      last_child: None,
+      previous_sibling: None,
+      next_sibling: None,
       taffy_children: Vec::new(),
       measured_text: None,
       applied: None,
@@ -1128,6 +1137,8 @@ impl Store {
 
   /// Releases the record of `handle`, retiring the handle and every reference to it.
   pub(crate) fn destroy(&mut self, handle: Handle) {
+    self.unlist(handle);
+
     let Some(record) = self.records.remove(handle)
     else {
       return;
@@ -1135,13 +1146,6 @@ impl Store {
 
     if let Some(taffy) = record.taffy {
       let _ = self.taffy.remove(taffy);
-    }
-
-    if let Some(parent) = record.parent
-      && let Some(parent) = self.record_mut(parent)
-      && let Some(index) = position_from_ends(&parent.children, handle)
-    {
-      let _unlinked = parent.children.remove(index);
     }
 
     self.overlays.retain(|overlay| *overlay != handle);
@@ -1179,8 +1183,32 @@ impl Store {
 
   /// The children of `handle`, in order; empty for a leaf or a stale handle.
   #[inline(always)]
-  pub(crate) fn children(&self, handle: Handle) -> &[Handle] {
-    self.record(handle).map_or(&[], |record| &record.children)
+  pub(crate) fn children(&self, handle: Handle) -> impl Iterator<Item = Handle> + '_ {
+    let mut next = self.record(handle).and_then(|record| record.first_child);
+
+    std::iter::from_fn(move || {
+      let current = next?;
+
+      next = self.record(current).and_then(|record| record.next_sibling);
+
+      Some(current)
+    })
+  }
+
+  /// The children of `handle`, last first; empty for a leaf or a stale handle.
+  #[inline(always)]
+  pub(crate) fn children_reversed(&self, handle: Handle) -> impl Iterator<Item = Handle> + '_ {
+    let mut previous = self.record(handle).and_then(|record| record.last_child);
+
+    std::iter::from_fn(move || {
+      let current = previous?;
+
+      previous = self
+        .record(current)
+        .and_then(|record| record.previous_sibling);
+
+      Some(current)
+    })
   }
 
   /// The parent of `handle`.
@@ -1248,7 +1276,7 @@ impl Store {
 
   fn collect_layout_children(&self, handle: Handle, out: &mut Vec<Handle>) {
     for child in self.children(handle) {
-      let Some(record) = self.record(*child)
+      let Some(record) = self.record(child)
       else {
         continue;
       };
@@ -1258,10 +1286,10 @@ impl Store {
       }
 
       if record.kind.is_laid_out() {
-        out.push(*child);
+        out.push(child);
       }
       else {
-        self.collect_layout_children(*child, out);
+        self.collect_layout_children(child, out);
       }
     }
   }
@@ -1306,15 +1334,43 @@ impl Store {
 
   /// Removes `child` from the children of the node it is attached under, if any.
   pub(crate) fn unlist(&mut self, child: Handle) {
-    if let Some(previous) = self.parent(child)
-      && let Some(record) = self.record_mut(previous)
-      && let Some(index) = position_from_ends(&record.children, child)
-    {
-      let _unlinked = record.children.remove(index);
+    let Some((parent, previous, next)) = self
+      .record(child)
+      .and_then(|record| Some((record.parent?, record.previous_sibling, record.next_sibling)))
+    else {
+      return;
+    };
+
+    match previous {
+      Some(previous) => {
+        if let Some(record) = self.record_mut(previous) {
+          record.next_sibling = next;
+        }
+      }
+      None => {
+        if let Some(record) = self.record_mut(parent) {
+          record.first_child = next;
+        }
+      }
+    }
+
+    match next {
+      Some(next) => {
+        if let Some(record) = self.record_mut(next) {
+          record.previous_sibling = previous;
+        }
+      }
+      None => {
+        if let Some(record) = self.record_mut(parent) {
+          record.last_child = previous;
+        }
+      }
     }
 
     if let Some(record) = self.record_mut(child) {
       record.parent = None;
+      record.previous_sibling = None;
+      record.next_sibling = None;
     }
   }
 
@@ -1323,18 +1379,48 @@ impl Store {
   pub(crate) fn list(&mut self, parent: Handle, child: Handle, before: Option<Handle>) {
     self.unlist(child);
 
-    let Some(record) = self.record_mut(parent)
-    else {
+    if self.record(parent).is_none() || self.record(child).is_none() {
       return;
-    };
-    let index = before
-      .and_then(|before| position_from_ends(&record.children, before))
-      .unwrap_or(record.children.len());
+    }
 
-    record.children.insert(index, child);
+    let before = before.filter(|before| self.parent(*before) == Some(parent));
+    let previous = match before {
+      Some(before) => self
+        .record(before)
+        .and_then(|record| record.previous_sibling),
+      None => self.record(parent).and_then(|record| record.last_child),
+    };
 
     if let Some(record) = self.record_mut(child) {
       record.parent = Some(parent);
+      record.previous_sibling = previous;
+      record.next_sibling = before;
+    }
+
+    match previous {
+      Some(previous) => {
+        if let Some(record) = self.record_mut(previous) {
+          record.next_sibling = Some(child);
+        }
+      }
+      None => {
+        if let Some(record) = self.record_mut(parent) {
+          record.first_child = Some(child);
+        }
+      }
+    }
+
+    match before {
+      Some(before) => {
+        if let Some(record) = self.record_mut(before) {
+          record.previous_sibling = Some(child);
+        }
+      }
+      None => {
+        if let Some(record) = self.record_mut(parent) {
+          record.last_child = Some(child);
+        }
+      }
     }
 
     self.structure_dirty = true;
@@ -1480,7 +1566,7 @@ impl Store {
       }
 
       displayed.insert(current);
-      stack.extend(record.children.iter().copied());
+      stack.extend(self.children(current));
     }
 
     displayed
@@ -1724,7 +1810,7 @@ impl Store {
         .is_some_and(|record| record.kind.is_laid_out())
     };
 
-    if record.children.iter().any(|child| laid_out(*child)) {
+    if self.children(handle).any(laid_out) {
       return None;
     }
 
@@ -1795,27 +1881,6 @@ impl Store {
       u32::try_from(height - top - bottom).unwrap_or(0),
     )
   }
-}
-
-/// The index of `child` among `children`, searched from both ends at once.
-fn position_from_ends<T: PartialEq + Copy>(children: &[T], child: T) -> Option<usize> {
-  let (mut front, mut back) = (0, children.len());
-
-  while front < back {
-    if children[front] == child {
-      return Some(front);
-    }
-
-    back -= 1;
-
-    if children[back] == child {
-      return Some(back);
-    }
-
-    front += 1;
-  }
-
-  None
 }
 
 #[cfg(test)]

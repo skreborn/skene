@@ -224,7 +224,7 @@ impl Store {
         }
       }
 
-      stack.extend(record.children.iter().rev());
+      stack.extend(self.children_reversed(current));
     }
 
     order
@@ -406,7 +406,7 @@ impl Store {
         text.push_str(&record.text);
       }
 
-      stack.extend(record.children.iter().rev());
+      stack.extend(self.children_reversed(current));
     }
 
     text

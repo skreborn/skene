@@ -3,40 +3,23 @@
 use std::rc::Rc;
 
 use skene_core::{
-  Animation,
   AnyKind,
   AnyView,
   Bubbling,
   ClickEvent,
   ClickHandler,
-  Color,
-  DeclaredRunStyle,
   Handler,
   IntoView,
   Layout,
-  LinkPolicy,
   NodeId,
   PlainChild,
   Platform,
   RunDisplay,
-  RunKeyframe,
   Scene,
-  StyleExtension,
-  TextDecoration,
-  TextDecorationStyle,
-  Transition,
   View,
 };
 
-use crate::{
-  LayoutBox,
-  TypeMetrics,
-  layout_box::verdict,
-  properties,
-  realize::Source,
-  run::Run,
-  run_type_metrics,
-};
+use crate::{LayoutBox, TypeMetrics, layout_box::verdict, realize::Source, run::Run};
 
 /// What a span renders.
 enum Content<P: Platform> {
@@ -102,28 +85,7 @@ impl<P: Platform> Span<P> {
     }
   }
 
-  /// The declared style, for a facade's medium-specific setters to write into.
-  #[inline(always)]
-  pub const fn style_mut(&mut self) -> &mut DeclaredRunStyle<P> {
-    self.run.style_mut()
-  }
-
-  properties! { style_mut;
-    set_color / derive_color (color) => color: Color,
-      "the text color";
-    set_selection_color / derive_selection_color (color) => selection_color: Color,
-      "the text color while selected";
-    set_selection_background / derive_selection_background (color) => selection_background: Color,
-      "the background behind selected text";
-    set_decoration / derive_decoration (decoration) => decoration: TextDecoration,
-      "the line the text is decorated with: beneath, above or through it; a link is underlined unless set";
-    set_decoration_style / derive_decoration_style (style) => decoration_style: TextDecorationStyle,
-      "how the decoration line is drawn";
-    set_decoration_color / derive_decoration_color (color) => decoration_color: Color,
-      "the decoration line's color; the text color unless set";
-  }
-
-  run_type_metrics! { style_mut }
+  crate::run_setters! { run }
 
   /// Runs `action` on a click on the span; its verdict says whether the click carries
   /// on to the ancestors.
@@ -132,52 +94,6 @@ impl<P: Platform> Span<P> {
     self
       .click
       .push(Rc::new(move |_: &ClickEvent| verdict(action())));
-
-    self
-  }
-
-  /// Sets whether the reader can select and copy the text; off by default.
-  #[inline(always)]
-  pub fn set_selectable(mut self, selectable: bool) -> Self {
-    self.run = self.run.set_selectable(selectable);
-
-    self
-  }
-
-  /// Makes the span a link to `destination`, inked in the link color unless styled and
-  /// opening per its [`LinkPolicy`]; a destination that would run script when followed,
-  /// a `javascript:` URL, is never followed.
-  #[inline(always)]
-  pub fn set_link(mut self, destination: impl Into<String>) -> Self {
-    self.run = self.run.set_link(destination);
-
-    self
-  }
-
-  /// Sets how the link opens and what it discloses.
-  #[inline(always)]
-  pub fn set_link_policy(mut self, link_policy: LinkPolicy) -> Self {
-    self.run = self.run.set_link_policy(link_policy);
-
-    self
-  }
-
-  /// Adds a property transition, interpolating that property whenever its value
-  /// changes.
-  #[inline(always)]
-  pub fn set_transition(
-    mut self,
-    transition: Transition<<P::StyleExt as StyleExtension>::Property>,
-  ) -> Self {
-    self.run = self.run.set_transition(transition);
-
-    self
-  }
-
-  /// Adds a keyframe animation.
-  #[inline(always)]
-  pub fn set_animation(mut self, animation: Animation<RunKeyframe<P>>) -> Self {
-    self.run = self.run.set_animation(animation);
 
     self
   }

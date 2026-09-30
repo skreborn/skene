@@ -167,6 +167,81 @@ macro_rules! decoration {
   };
 }
 
+/// Generates builder methods forwarding to the same-named methods of the field
+/// `$field`, each rebuilding the field and returning `self`.
+///
+/// A method's generic parameters sit in brackets after its name:
+/// `fn handle_click[R: Into<Bubbling>](action: impl Fn() -> R + 'static);`.
+#[macro_export]
+macro_rules! forward {
+  ($field:ident; $(
+    $(#[$meta:meta])*
+    fn $name:ident $([$($generics:tt)*])? ($($argument:ident: $type:ty),* $(,)?);
+  )+) => {$(
+    $(#[$meta])*
+    #[inline(always)]
+    pub fn $name $(<$($generics)*>)? (mut self, $($argument: $type),*) -> Self {
+      self.$field = self.$field.$name($($argument),*);
+
+      self
+    }
+  )+};
+}
+
+/// Generates what every text view shares over the [`Run`](crate::Run) in `$field`.
+///
+/// The declared style, the color, selection and decoration setters, the type metrics,
+/// selectability, the link and motion.
+#[macro_export]
+macro_rules! run_setters {
+  ($field:ident) => {
+    /// The declared style, for a facade's medium-specific setters to write into.
+    #[inline(always)]
+    pub const fn style_mut(&mut self) -> &mut $crate::__core::DeclaredRunStyle<P> {
+      self.$field.style_mut()
+    }
+
+    $crate::properties! { style_mut;
+      set_color / derive_color (color) => color: $crate::__core::Color,
+        "the text color";
+      set_selection_color / derive_selection_color (color) => selection_color: $crate::__core::Color,
+        "the text color while selected";
+      set_selection_background / derive_selection_background (color)
+        => selection_background: $crate::__core::Color,
+        "the background behind selected text";
+      set_decoration / derive_decoration (decoration) => decoration: $crate::__core::TextDecoration,
+        "the line the text is decorated with: beneath, above or through it; a link is underlined unless set";
+      set_decoration_style / derive_decoration_style (style)
+        => decoration_style: $crate::__core::TextDecorationStyle,
+        "how the decoration line is drawn";
+      set_decoration_color / derive_decoration_color (color) => decoration_color: $crate::__core::Color,
+        "the decoration line's color; the text color unless set";
+    }
+
+    $crate::run_type_metrics! { style_mut }
+
+    $crate::forward! { $field;
+      /// Sets whether the reader can select and copy the text; off by default.
+      fn set_selectable(selectable: bool);
+      /// Makes the text a link to `destination`, inked in the link color unless styled
+      /// and opening per its [`LinkPolicy`](skene_core::LinkPolicy); a destination that
+      /// would run script when followed, a `javascript:` URL, is never followed.
+      fn set_link(destination: impl Into<String>);
+      /// Sets how the link opens and what it discloses.
+      fn set_link_policy(link_policy: $crate::__core::LinkPolicy);
+      /// Adds a property transition, interpolating that property whenever its value
+      /// changes.
+      fn set_transition(
+        transition: $crate::__core::Transition<
+          <P::StyleExt as $crate::__core::StyleExtension>::Property,
+        >,
+      );
+      /// Adds a keyframe animation.
+      fn set_animation(animation: $crate::__core::Animation<$crate::__core::RunKeyframe<P>>);
+    }
+  };
+}
+
 /// Generates the type-metric setters every run shares, over the style `$access`
 /// returns, each writing through the extension's [`TypeMetrics`](crate::TypeMetrics).
 #[macro_export]

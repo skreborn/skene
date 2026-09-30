@@ -71,13 +71,10 @@ impl<P: Painting> Painted<P> {
       "the width-to-height ratio the unsized axis follows";
   }
 
-  /// Binds `handle` to the box once built: its measured size is reported through the
-  /// handle, and an overlay may be placed against it.
-  #[inline(always)]
-  pub fn bind_handle(mut self, handle: NodeHandle<P>) -> Self {
-    self.inner = self.inner.bind_handle(handle);
-
-    self
+  crate::forward! { inner;
+    /// Binds `handle` to the box once built: its measured size is reported through the
+    /// handle, and an overlay may be placed against it.
+    fn bind_handle(handle: NodeHandle<P>);
   }
 
   /// Sets what the picture shows, for assistive technology: the box is then a picture

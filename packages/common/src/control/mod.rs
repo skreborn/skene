@@ -586,72 +586,24 @@ impl<P: Platform, B: Behavior<P>> Control<P, B> {
       "where the control's parts, body and label sit on the cross axis; centered unless told otherwise";
   }
 
-  /// Binds `handle` to the control once built: an overlay is placed against it, focus
-  /// moves to it and its measured size is reported through the handle.
-  #[inline(always)]
-  pub fn bind_handle(mut self, handle: NodeHandle<P>) -> Self {
-    self.inner = self.inner.bind_handle(handle);
-
-    self
-  }
-
-  /// Sets where the body sits when it fills neither axis.
-  #[inline(always)]
-  pub fn set_alignment(
-    mut self,
-    alignment: impl Into<Value<Alignment, Condition<P::Scalar>>>,
-  ) -> Self {
-    self.inner = self.inner.set_alignment(alignment);
-
-    self
-  }
-
-  /// Derives where the body sits from the signals `alignment` reads.
-  #[inline(always)]
-  pub fn derive_alignment<R: Into<StaticLeaf<Alignment>>>(
-    mut self,
-    alignment: impl Fn() -> R + 'static,
-  ) -> Self {
-    self.inner = self.inner.derive_alignment(alignment);
-
-    self
-  }
-
-  /// Names the control for container queries against its size.
-  #[inline(always)]
-  pub fn set_container_name(mut self, name: ContainerName) -> Self {
-    self.inner = self.inner.set_container_name(name);
-
-    self
-  }
-
-  /// Adds a property transition, interpolating that property whenever its value
-  /// changes.
-  #[inline(always)]
-  pub fn set_transition(
-    mut self,
-    transition: Transition<<P::StyleExt as StyleExtension>::Property>,
-  ) -> Self {
-    self.inner = self.inner.set_transition(transition);
-
-    self
-  }
-
-  /// Adds a keyframe animation.
-  #[inline(always)]
-  pub fn set_animation(mut self, animation: Animation<BoxKeyframe<P>>) -> Self {
-    self.inner = self.inner.set_animation(animation);
-
-    self
-  }
-
-  /// Names the box for view transitions: it is paired with the box of the same name
-  /// across a navigation, where the platform animates between them.
-  #[inline(always)]
-  pub fn set_transition_name(mut self, name: impl Into<String>) -> Self {
-    self.inner = self.inner.set_transition_name(name);
-
-    self
+  crate::forward! { inner;
+    /// Binds `handle` to the control once built: an overlay is placed against it, focus
+    /// moves to it and its measured size is reported through the handle.
+    fn bind_handle(handle: NodeHandle<P>);
+    /// Sets where the body sits when it fills neither axis.
+    fn set_alignment(alignment: impl Into<Value<Alignment, Condition<P::Scalar>>>);
+    /// Derives where the body sits from the signals `alignment` reads.
+    fn derive_alignment[R: Into<StaticLeaf<Alignment>>](alignment: impl Fn() -> R + 'static);
+    /// Names the control for container queries against its size.
+    fn set_container_name(name: ContainerName);
+    /// Adds a property transition, interpolating that property whenever its value
+    /// changes.
+    fn set_transition(transition: Transition<<P::StyleExt as StyleExtension>::Property>);
+    /// Adds a keyframe animation.
+    fn set_animation(animation: Animation<BoxKeyframe<P>>);
+    /// Names the box for view transitions: it is paired with the box of the same name
+    /// across a navigation, where the platform animates between them.
+    fn set_transition_name(name: impl Into<String>);
   }
 
   /// Sets the caption: a [`Part::Label`] child whose text is the accessible name.

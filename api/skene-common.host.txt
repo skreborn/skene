@@ -918,7 +918,9 @@ pub const skene_common::typography::SELECTION_SURFACE: skene_core::token::TokenR
 pub const skene_common::typography::SIZE: skene_core::token::TokenRef<skene_core::expr::Length>
 pub const skene_common::typography::WEIGHT: skene_core::token::TokenRef<f32>
 pub macro skene_common::decoration!
+pub macro skene_common::forward!
 pub macro skene_common::properties!
+pub macro skene_common::run_setters!
 pub macro skene_common::run_type_metrics!
 pub macro skene_common::trait_properties!
 pub macro skene_common::type_metrics!
@@ -2046,6 +2048,21 @@ pub fn skene_common::Row<P>::children_mut(&mut self, skene_core::children::Seal)
 impl<P: skene_core::platform::Platform> skene_core::view::AnyKind for skene_common::Row<P>
 impl<P: skene_core::platform::Platform> skene_core::view::View<P> for skene_common::Row<P>
 pub fn skene_common::Row<P>::build(self) -> skene_core::node::NodeId
+pub struct skene_common::Run<P: skene_core::platform::Platform>
+impl<P: skene_core::platform::Platform> skene_common::Run<P>
+pub fn skene_common::Run<P>::build(self, skene_core::values::run_display::RunDisplay) -> skene_core::node::NodeId
+pub fn skene_common::Run<P>::build_group(self, skene_core::values::run_display::RunDisplay) -> skene_core::node::NodeId where <P as skene_core::platform::Platform>::StyleExt: skene_common::TypeMetrics
+pub fn skene_common::Run<P>::new() -> Self
+pub fn skene_common::Run<P>::set_animation(self, skene_core::motion::Animation<skene_core::props::RunKeyframe<P>>) -> Self
+pub fn skene_common::Run<P>::set_link(self, impl core::convert::Into<alloc::string::String>) -> Self
+pub const fn skene_common::Run<P>::set_link_policy(self, skene_core::values::link::LinkPolicy) -> Self
+pub const fn skene_common::Run<P>::set_selectable(self, bool) -> Self
+pub fn skene_common::Run<P>::set_transition(self, skene_core::motion::Transition<<<P as skene_core::platform::Platform>::StyleExt as skene_core::extension::StyleExtension>::Property>) -> Self
+pub const fn skene_common::Run<P>::style_mut(&mut self) -> &mut skene_core::props::DeclaredRunStyle<P>
+impl<P: skene_core::platform::Platform> core::default::Default for skene_common::Run<P>
+pub fn skene_common::Run<P>::default() -> Self
+impl<P: skene_core::platform::Platform> core::fmt::Debug for skene_common::Run<P>
+pub fn skene_common::Run<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_common::Span<P: skene_core::platform::Platform>
 impl<P: skene_core::platform::Platform> skene_common::Span<P>
 pub fn skene_common::Span<P>::derive(impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self

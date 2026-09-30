@@ -72,308 +72,93 @@ impl<P: Platform> Container<P> {
 
   decoration! { style_mut }
 
-  /// Sets where the child sits when it fills neither axis.
-  #[inline(always)]
-  pub fn set_alignment(
-    mut self,
-    alignment: impl Into<Value<Alignment, Condition<P::Scalar>>>,
-  ) -> Self {
-    self.inner = self.inner.set_alignment(alignment);
-
-    self
-  }
-
-  /// Derives where the child sits from the signals `alignment` reads.
-  #[inline(always)]
-  pub fn derive_alignment<R: Into<StaticLeaf<Alignment>>>(
-    mut self,
-    alignment: impl Fn() -> R + 'static,
-  ) -> Self {
-    self.inner = self.inner.derive_alignment(alignment);
-
-    self
-  }
-
-  /// Names the container for container queries against its size.
-  #[inline(always)]
-  pub fn set_container_name(mut self, name: ContainerName) -> Self {
-    self.inner = self.inner.set_container_name(name);
-
-    self
-  }
-
-  /// Declares the axes a press's pointer drags the box along: the press's moves and
-  /// its release reach the box wherever the pointer goes, and a touch pans only along
-  /// the others.
-  #[inline(always)]
-  pub fn set_drag_axes(mut self, axes: DragAxes) -> Self {
-    self.inner = self.inner.set_drag_axes(axes);
-
-    self
-  }
-
-  /// Sets the semantic role, guiding the platform's concrete choice of element.
-  #[inline(always)]
-  pub fn set_label(mut self, label: impl Into<String>) -> Self {
-    self.inner = self.inner.set_label(label);
-
-    self
-  }
-
-  /// Sets the node whose text names the box: a region's heading.
-  #[inline(always)]
-  pub fn set_labelled_by(mut self, node: NodeId) -> Self {
-    self.inner = self.inner.set_labelled_by(node);
-
-    self
-  }
-
-  /// Sets the semantic role, guiding the platform's choice of element.
-  #[inline(always)]
-  pub fn set_role(mut self, role: Role) -> Self {
-    self.inner = self.inner.set_role(role);
-
-    self
-  }
-
-  /// Sets the box's place in sequential focus traversal; a box without one takes no
-  /// focus.
-  #[inline(always)]
-  pub fn set_focus_order(mut self, focus_order: FocusOrder) -> Self {
-    self.inner = self.inner.set_focus_order(focus_order);
-
-    self
-  }
-
-  /// Derives the box's place in sequential focus traversal from the signals
-  /// `focus_order` reads.
-  #[inline(always)]
-  pub fn derive_focus_order(mut self, focus_order: impl Fn() -> FocusOrder + 'static) -> Self {
-    self.inner = self.inner.derive_focus_order(focus_order);
-
-    self
-  }
-
-  /// Sets what the box reports to assistive technology, beside its role.
-  #[inline(always)]
-  pub fn set_accessibility(mut self, access: impl IntoIterator<Item = AccessProp>) -> Self {
-    self.inner = self.inner.set_accessibility(access);
-
-    self
-  }
-
-  /// Derives what the box reports to assistive technology from the signals `access`
-  /// reads.
-  #[inline(always)]
-  pub fn derive_accessibility(mut self, access: impl Fn() -> Vec<AccessProp> + 'static) -> Self {
-    self.inner = self.inner.derive_accessibility(access);
-
-    self
-  }
-
-  /// Binds `handle` to the box once built: an overlay is placed against it, focus
-  /// moves to it, which the box takes only with a focus order, and its measured size
-  /// is reported through the handle.
-  #[inline(always)]
-  pub fn bind_handle(mut self, handle: NodeHandle<P>) -> Self {
-    self.inner = self.inner.bind_handle(handle);
-
-    self
-  }
-
-  /// Adds a property transition, interpolating that property whenever its value
-  /// changes.
-  #[inline(always)]
-  pub fn set_transition(
-    mut self,
-    transition: Transition<<P::StyleExt as StyleExtension>::Property>,
-  ) -> Self {
-    self.inner = self.inner.set_transition(transition);
-
-    self
-  }
-
-  /// Adds a keyframe animation.
-  #[inline(always)]
-  pub fn set_animation(mut self, animation: Animation<BoxKeyframe<P>>) -> Self {
-    self.inner = self.inner.set_animation(animation);
-
-    self
-  }
-
-  /// Names the box for view transitions: it is paired with the box of the same name
-  /// across a navigation, where the platform animates between them.
-  #[inline(always)]
-  pub fn set_transition_name(mut self, name: impl Into<String>) -> Self {
-    self.inner = self.inner.set_transition_name(name);
-
-    self
-  }
-
-  /// Runs `action` on a click; return [`Bubbling::Stop`] to keep the click from the
-  /// ancestors.
-  #[inline(always)]
-  pub fn handle_click<R: Into<Bubbling>>(mut self, action: impl Fn() -> R + 'static) -> Self {
-    self.inner = self.inner.handle_click(action);
-
-    self
-  }
-
-  /// Runs `action` on the second click of a double click, after the click itself;
-  /// return [`Bubbling::Stop`] to keep the double click from the ancestors.
-  #[inline(always)]
-  pub fn handle_double_click<R: Into<Bubbling>>(
-    mut self,
-    action: impl Fn() -> R + 'static,
-  ) -> Self {
-    self.inner = self.inner.handle_double_click(action);
-
-    self
-  }
-
-  /// Runs `action` on a key pressed while the box or a descendant holds focus; return
-  /// [`Bubbling::Stop`] to keep the key from the ancestors.
-  #[inline(always)]
-  pub fn handle_key_down<R: Into<Bubbling>>(
-    mut self,
-    action: impl Fn(&KeyEvent) -> R + 'static,
-  ) -> Self {
-    self.inner = self.inner.handle_key_down(action);
-
-    self
-  }
-
-  /// Runs `action` on a key released while the box or a descendant holds focus;
-  /// return [`Bubbling::Stop`] to keep the release from the ancestors.
-  #[inline(always)]
-  pub fn handle_key_up<R: Into<Bubbling>>(
-    mut self,
-    action: impl Fn(&KeyEvent) -> R + 'static,
-  ) -> Self {
-    self.inner = self.inner.handle_key_up(action);
-
-    self
-  }
-
-  /// Runs `action` on a pointer button pressed over the box; return
-  /// [`Bubbling::Stop`] to keep the press from the ancestors.
-  #[inline(always)]
-  pub fn handle_pointer_down<R: Into<Bubbling>>(
-    mut self,
-    action: impl Fn(&PointerEvent) -> R + 'static,
-  ) -> Self {
-    self.inner = self.inner.handle_pointer_down(action);
-
-    self
-  }
-
-  /// Runs `action` on a pointer button released over the box; return
-  /// [`Bubbling::Stop`] to keep the release from the ancestors.
-  #[inline(always)]
-  pub fn handle_pointer_up<R: Into<Bubbling>>(
-    mut self,
-    action: impl Fn(&PointerEvent) -> R + 'static,
-  ) -> Self {
-    self.inner = self.inner.handle_pointer_up(action);
-
-    self
-  }
-
-  /// Runs `action` on the pointer moving over the box; return [`Bubbling::Stop`] to
-  /// keep the move from the ancestors.
-  #[inline(always)]
-  pub fn handle_pointer_move<R: Into<Bubbling>>(
-    mut self,
-    action: impl Fn(&PointerEvent) -> R + 'static,
-  ) -> Self {
-    self.inner = self.inner.handle_pointer_move(action);
-
-    self
-  }
-
-  /// Offers what a drag from the box carries, `data` building it as the drag starts;
-  /// the box holds [`State::Dragged`](skene_core::State::Dragged) while the drag lasts.
-  #[inline(always)]
-  pub fn set_drag_data(mut self, data: impl Fn() -> DragData + 'static) -> Self {
-    self.inner = self.inner.set_drag_data(data);
-
-    self
-  }
-
-  /// Takes a drag carrying a `T` dropped on the box, running `action` with the value;
-  /// the box holds [`State::Targeted`](skene_core::State::Targeted) while such a drag
-  /// is over it.
-  #[inline(always)]
-  pub fn handle_drop<T: 'static>(mut self, action: impl Fn(&T) + 'static) -> Self {
-    self.inner = self.inner.handle_drop(action);
-
-    self
-  }
-
-  /// Runs `action` on a wheel turned over the box, before the platform scrolls by it;
-  /// return [`Bubbling::Stop`] to keep the turn from the ancestors.
-  #[inline(always)]
-  pub fn handle_wheel<R: Into<Bubbling>>(
-    mut self,
-    action: impl Fn(&WheelEvent) -> R + 'static,
-  ) -> Self {
-    self.inner = self.inner.handle_wheel(action);
-
-    self
-  }
-
-  /// Runs `action` when the platform takes a pointer pressed over the box for itself,
-  /// ending the press without a release; return [`Bubbling::Stop`] to keep the cancel
-  /// from the ancestors.
-  #[inline(always)]
-  pub fn handle_pointer_cancel<R: Into<Bubbling>>(
-    mut self,
-    action: impl Fn(&PointerEvent) -> R + 'static,
-  ) -> Self {
-    self.inner = self.inner.handle_pointer_cancel(action);
-
-    self
-  }
-
-  /// Runs `action` when the pointer enters the box.
-  #[inline(always)]
-  pub fn handle_pointer_enter(mut self, action: impl Fn() + 'static) -> Self {
-    self.inner = self.inner.handle_pointer_enter(action);
-
-    self
-  }
-
-  /// Runs `action` when the pointer leaves the box.
-  #[inline(always)]
-  pub fn handle_pointer_leave(mut self, action: impl Fn() + 'static) -> Self {
-    self.inner = self.inner.handle_pointer_leave(action);
-
-    self
-  }
-
-  /// Runs `action` when focus enters the box or a node inside it from outside.
-  #[inline(always)]
-  pub fn handle_focus(mut self, action: impl Fn() + 'static) -> Self {
-    self.inner = self.inner.handle_focus(action);
-
-    self
-  }
-
-  /// Runs `action` when focus leaves the box and every node inside it.
-  #[inline(always)]
-  pub fn handle_blur(mut self, action: impl Fn() + 'static) -> Self {
-    self.inner = self.inner.handle_blur(action);
-
-    self
-  }
-
-  /// Runs `action` with the box's new offsets when it scrolls; the box scrolls only
-  /// with an overflow that allows it.
-  #[inline(always)]
-  pub fn handle_scroll(mut self, action: impl Fn(&ScrollEvent) + 'static) -> Self {
-    self.inner = self.inner.handle_scroll(action);
-
-    self
+  crate::forward! { inner;
+    /// Sets where the child sits when it fills neither axis.
+    fn set_alignment(alignment: impl Into<Value<Alignment, Condition<P::Scalar>>>);
+    /// Derives where the child sits from the signals `alignment` reads.
+    fn derive_alignment[R: Into<StaticLeaf<Alignment>>](alignment: impl Fn() -> R + 'static);
+    /// Names the container for container queries against its size.
+    fn set_container_name(name: ContainerName);
+    /// Declares the axes a press's pointer drags the box along: the press's moves and
+    /// its release reach the box wherever the pointer goes, and a touch pans only along
+    /// the others.
+    fn set_drag_axes(axes: DragAxes);
+    /// Sets the box's accessible name, for a region, a dialog or a picture that no visible
+    /// text names.
+    fn set_label(label: impl Into<String>);
+    /// Sets the node whose text names the box: a region's heading.
+    fn set_labelled_by(node: NodeId);
+    /// Sets the semantic role, guiding the platform's choice of element.
+    fn set_role(role: Role);
+    /// Sets the box's place in sequential focus traversal; a box without one takes no
+    /// focus.
+    fn set_focus_order(focus_order: FocusOrder);
+    /// Derives the box's place in sequential focus traversal from the signals
+    /// `focus_order` reads.
+    fn derive_focus_order(focus_order: impl Fn() -> FocusOrder + 'static);
+    /// Sets what the box reports to assistive technology, beside its role.
+    fn set_accessibility(access: impl IntoIterator<Item = AccessProp>);
+    /// Derives what the box reports to assistive technology from the signals `access`
+    /// reads.
+    fn derive_accessibility(access: impl Fn() -> Vec<AccessProp> + 'static);
+    /// Binds `handle` to the box once built: an overlay is placed against it, focus
+    /// moves to it, which the box takes only with a focus order, and its measured size
+    /// is reported through the handle.
+    fn bind_handle(handle: NodeHandle<P>);
+    /// Adds a property transition, interpolating that property whenever its value
+    /// changes.
+    fn set_transition(transition: Transition<<P::StyleExt as StyleExtension>::Property>);
+    /// Adds a keyframe animation.
+    fn set_animation(animation: Animation<BoxKeyframe<P>>);
+    /// Names the box for view transitions: it is paired with the box of the same name
+    /// across a navigation, where the platform animates between them.
+    fn set_transition_name(name: impl Into<String>);
+    /// Runs `action` on a click; return [`Bubbling::Stop`] to keep the click from the
+    /// ancestors.
+    fn handle_click[R: Into<Bubbling>](action: impl Fn() -> R + 'static);
+    /// Runs `action` on the second click of a double click, after the click itself;
+    /// return [`Bubbling::Stop`] to keep the double click from the ancestors.
+    fn handle_double_click[R: Into<Bubbling>](action: impl Fn() -> R + 'static);
+    /// Runs `action` on a key pressed while the box or a descendant holds focus; return
+    /// [`Bubbling::Stop`] to keep the key from the ancestors.
+    fn handle_key_down[R: Into<Bubbling>](action: impl Fn(&KeyEvent) -> R + 'static);
+    /// Runs `action` on a key released while the box or a descendant holds focus;
+    /// return [`Bubbling::Stop`] to keep the release from the ancestors.
+    fn handle_key_up[R: Into<Bubbling>](action: impl Fn(&KeyEvent) -> R + 'static);
+    /// Runs `action` on a pointer button pressed over the box; return
+    /// [`Bubbling::Stop`] to keep the press from the ancestors.
+    fn handle_pointer_down[R: Into<Bubbling>](action: impl Fn(&PointerEvent) -> R + 'static);
+    /// Runs `action` on a pointer button released over the box; return
+    /// [`Bubbling::Stop`] to keep the release from the ancestors.
+    fn handle_pointer_up[R: Into<Bubbling>](action: impl Fn(&PointerEvent) -> R + 'static);
+    /// Runs `action` on the pointer moving over the box; return [`Bubbling::Stop`] to
+    /// keep the move from the ancestors.
+    fn handle_pointer_move[R: Into<Bubbling>](action: impl Fn(&PointerEvent) -> R + 'static);
+    /// Offers what a drag from the box carries, `data` building it as the drag starts;
+    /// the box holds [`State::Dragged`](skene_core::State::Dragged) while the drag lasts.
+    fn set_drag_data(data: impl Fn() -> DragData + 'static);
+    /// Takes a drag carrying a `T` dropped on the box, running `action` with the value;
+    /// the box holds [`State::Targeted`](skene_core::State::Targeted) while such a drag
+    /// is over it.
+    fn handle_drop[T: 'static](action: impl Fn(&T) + 'static);
+    /// Runs `action` on a wheel turned over the box, before the platform scrolls by it;
+    /// return [`Bubbling::Stop`] to keep the turn from the ancestors.
+    fn handle_wheel[R: Into<Bubbling>](action: impl Fn(&WheelEvent) -> R + 'static);
+    /// Runs `action` when the platform takes a pointer pressed over the box for itself,
+    /// ending the press without a release; return [`Bubbling::Stop`] to keep the cancel
+    /// from the ancestors.
+    fn handle_pointer_cancel[R: Into<Bubbling>](action: impl Fn(&PointerEvent) -> R + 'static);
+    /// Runs `action` when the pointer enters the box.
+    fn handle_pointer_enter(action: impl Fn() + 'static);
+    /// Runs `action` when the pointer leaves the box.
+    fn handle_pointer_leave(action: impl Fn() + 'static);
+    /// Runs `action` when focus enters the box or a node inside it from outside.
+    fn handle_focus(action: impl Fn() + 'static);
+    /// Runs `action` when focus leaves the box and every node inside it.
+    fn handle_blur(action: impl Fn() + 'static);
+    /// Runs `action` with the box's new offsets when it scrolls; the box scrolls only
+    /// with an overflow that allows it.
+    fn handle_scroll(action: impl Fn(&ScrollEvent) + 'static);
   }
 }
 

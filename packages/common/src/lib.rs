@@ -153,6 +153,7 @@ pub use crate::{
   picker::{Face, RawPicker},
   pinned::Pinned,
   realize::{ChildBuilder, LowLevel},
+  run::Run,
   span::{RichText, Span},
   stack::Stack,
   suspense::Suspense,

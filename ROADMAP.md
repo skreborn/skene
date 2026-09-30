@@ -210,7 +210,7 @@ left half-done in a code comment.
     (`pub(in crate::spine)`), so built-in views still use only the public API, and a
     check keeps the spine modules from importing the medium modules; `skene-reactive`
     stays separate, knowing nothing of UI. The facades stop re-exporting the spine as
-    `core`; `AGENTS.md` and `DESIGN.md` follow; `run::Run`, `split_alignment` and
+    `core`; `AGENTS.md` and `DESIGN.md` follow; `split_alignment` and
     `ThemedIn::define_root` stop being crate-private. The resolution then names the
     typography size token itself, so `ResolutionSource::size_token` goes, the terminal
     keeping only whether it proved text sizing, and the `em` fallback becomes the
@@ -257,10 +257,8 @@ left half-done in a code comment.
     `render_to_stream`; the terminal's `Kind::Control.checked`, `Record::listened`,
     the `interaction::store` alias and `KeyCode::BackTab`; the
     CLI's unreachable Windows `Tty` and its `windows-sys`; `num-traits`.
-    - Copies folded: `Container`'s 25 forwarded `LayoutBox` methods and what `Text` and
-    `Span` share, into a forwarding macro and a public `Run` builder; the roughly 200
-    lines each facade repeats, into one exported `facade!` macro that also makes a
-    third party's facade a few lines; the seven accessibility query seams headless and
+    - Copies folded: the roughly 200 lines each facade repeats, into one exported
+    `facade!` macro that also makes a third party's facade a few lines; the seven accessibility query seams headless and
     the terminal each repeat over the name facts core builds; the helpers the browser
     tests repeat (`document`, `Installed`, `fresh_root`, `computed`, `only_child` and
     their kin), into a `skene_web::testing` beside `skene_tui::testing`, which takes the

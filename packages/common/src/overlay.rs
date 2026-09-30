@@ -133,58 +133,22 @@ impl<P: Platform> Overlay<P> {
 
   decoration! { style_mut }
 
-  /// Adds a property transition, interpolating that property whenever its value
-  /// changes.
-  #[inline(always)]
-  pub fn set_transition(
-    mut self,
-    transition: Transition<<P::StyleExt as StyleExtension>::Property>,
-  ) -> Self {
-    self.inner = self.inner.set_transition(transition);
-
-    self
-  }
-
-  /// Adds a keyframe animation.
-  #[inline(always)]
-  pub fn set_animation(mut self, animation: Animation<BoxKeyframe<P>>) -> Self {
-    self.inner = self.inner.set_animation(animation);
-
-    self
-  }
-
-  /// Names the box for view transitions: it is paired with the box of the same name
-  /// across a navigation, where the platform animates between them.
-  #[inline(always)]
-  pub fn set_transition_name(mut self, name: impl Into<String>) -> Self {
-    self.inner = self.inner.set_transition_name(name);
-
-    self
-  }
-
-  /// Sets the overlay's accessible name, where no heading inside names it.
-  #[inline(always)]
-  pub fn set_label(mut self, label: impl Into<String>) -> Self {
-    self.inner = self.inner.set_label(label);
-
-    self
-  }
-
-  /// Sets the node whose text names the overlay: its heading.
-  #[inline(always)]
-  pub fn set_labelled_by(mut self, node: NodeId) -> Self {
-    self.inner = self.inner.set_labelled_by(node);
-
-    self
-  }
-
-  /// Sets the semantic role a popup takes: [`Role::Dialog`] for one holding a form; a
-  /// modal is a dialog already.
-  #[inline(always)]
-  pub fn set_role(mut self, role: Role) -> Self {
-    self.inner = self.inner.set_role(role);
-
-    self
+  crate::forward! { inner;
+    /// Adds a property transition, interpolating that property whenever its value
+    /// changes.
+    fn set_transition(transition: Transition<<P::StyleExt as StyleExtension>::Property>);
+    /// Adds a keyframe animation.
+    fn set_animation(animation: Animation<BoxKeyframe<P>>);
+    /// Names the box for view transitions: it is paired with the box of the same name
+    /// across a navigation, where the platform animates between them.
+    fn set_transition_name(name: impl Into<String>);
+    /// Sets the overlay's accessible name, where no heading inside names it.
+    fn set_label(label: impl Into<String>);
+    /// Sets the node whose text names the overlay: its heading.
+    fn set_labelled_by(node: NodeId);
+    /// Sets the semantic role a popup takes: [`Role::Dialog`] for one holding a form; a
+    /// modal is a dialog already.
+    fn set_role(role: Role);
   }
 
   /// Sets where the overlay sits; anchored, `Bottom` and `Top` open below and above

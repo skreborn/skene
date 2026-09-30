@@ -37,8 +37,11 @@ use crate::{
 };
 
 /// What every text view declares of its run: selection, link and style.
+///
+/// A text view holds one and forwards its surface through [`run_setters!`](crate::run_setters),
+/// realizing it with [`build`](Self::build) or, for a group, [`build_group`](Self::build_group).
 #[must_use]
-pub(crate) struct Run<P: Platform> {
+pub struct Run<P: Platform> {
   selectable: bool,
   link: Option<String>,
   link_policy: LinkPolicy,
@@ -46,10 +49,23 @@ pub(crate) struct Run<P: Platform> {
   dynamics: RunDynamics<P::StyleExt>,
 }
 
+impl<P: Platform> std::fmt::Debug for Run<P> {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("Run").finish_non_exhaustive()
+  }
+}
+
+impl<P: Platform> Default for Run<P> {
+  #[inline(always)]
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
 impl<P: Platform> Run<P> {
   /// An unselectable run with no link and nothing set.
   #[inline(always)]
-  pub(crate) fn new() -> Self {
+  pub fn new() -> Self {
     Self {
       selectable: false,
       link: None,
@@ -61,13 +77,13 @@ impl<P: Platform> Run<P> {
 
   /// The declared style, for a view to write its properties into.
   #[inline(always)]
-  pub(crate) const fn style_mut(&mut self) -> &mut DeclaredRunStyle<P> {
+  pub const fn style_mut(&mut self) -> &mut DeclaredRunStyle<P> {
     &mut self.style
   }
 
   /// Sets whether the reader can select and copy the text.
   #[inline(always)]
-  pub(crate) const fn set_selectable(mut self, selectable: bool) -> Self {
+  pub const fn set_selectable(mut self, selectable: bool) -> Self {
     self.selectable = selectable;
 
     self
@@ -76,7 +92,7 @@ impl<P: Platform> Run<P> {
   /// Makes the run a link to `destination`; a destination that would run script when
   /// followed, a `javascript:` URL, is never followed.
   #[inline(always)]
-  pub(crate) fn set_link(mut self, destination: impl Into<String>) -> Self {
+  pub fn set_link(mut self, destination: impl Into<String>) -> Self {
     self.link = Some(destination.into());
 
     self
@@ -84,7 +100,7 @@ impl<P: Platform> Run<P> {
 
   /// Sets how the link opens and what it discloses.
   #[inline(always)]
-  pub(crate) const fn set_link_policy(mut self, link_policy: LinkPolicy) -> Self {
+  pub const fn set_link_policy(mut self, link_policy: LinkPolicy) -> Self {
     self.link_policy = link_policy;
 
     self
@@ -93,7 +109,7 @@ impl<P: Platform> Run<P> {
   /// Adds a property transition, interpolating that property whenever its value
   /// changes.
   #[inline(always)]
-  pub(crate) fn set_transition(
+  pub fn set_transition(
     mut self,
     transition: Transition<<P::StyleExt as StyleExtension>::Property>,
   ) -> Self {
@@ -104,7 +120,7 @@ impl<P: Platform> Run<P> {
 
   /// Adds a keyframe animation.
   #[inline(always)]
-  pub(crate) fn set_animation(mut self, animation: Animation<RunKeyframe<P>>) -> Self {
+  pub fn set_animation(mut self, animation: Animation<RunKeyframe<P>>) -> Self {
     self.dynamics.animations.push(animation);
 
     self
@@ -112,7 +128,7 @@ impl<P: Platform> Run<P> {
 
   /// Realizes the run as a detached node with `display`, each property it leaves unset
   /// referencing its typography token.
-  pub(crate) fn build(self, display: RunDisplay) -> NodeId {
+  pub fn build(self, display: RunDisplay) -> NodeId {
     self.realize(display, Vec::new())
   }
 
@@ -120,7 +136,7 @@ impl<P: Platform> Run<P> {
   /// does, redefining for the runs beneath it the typography tokens of the text
   /// properties it sets, its type metrics among them, and a link group setting no color
   /// the ink as the link ink.
-  pub(crate) fn build_group(self, display: RunDisplay) -> NodeId
+  pub fn build_group(self, display: RunDisplay) -> NodeId
   where
     P::StyleExt: TypeMetrics,
   {

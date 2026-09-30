@@ -58,26 +58,11 @@ impl<P: Platform> Stack<P> {
       "the inset between the box and the children it arranges";
   }
 
-  /// Sets the alignment of the unpinned children within the stack, on both axes.
-  #[inline(always)]
-  pub fn set_alignment(
-    mut self,
-    alignment: impl Into<Value<Alignment, Condition<P::Scalar>>>,
-  ) -> Self {
-    self.inner = self.inner.set_alignment(alignment);
-
-    self
-  }
-
-  /// Derives the alignment of the unpinned children from the signals `alignment` reads.
-  #[inline(always)]
-  pub fn derive_alignment<R: Into<StaticLeaf<Alignment>>>(
-    mut self,
-    alignment: impl Fn() -> R + 'static,
-  ) -> Self {
-    self.inner = self.inner.derive_alignment(alignment);
-
-    self
+  crate::forward! { inner;
+    /// Sets the alignment of the unpinned children within the stack, on both axes.
+    fn set_alignment(alignment: impl Into<Value<Alignment, Condition<P::Scalar>>>);
+    /// Derives the alignment of the unpinned children from the signals `alignment` reads.
+    fn derive_alignment[R: Into<StaticLeaf<Alignment>>](alignment: impl Fn() -> R + 'static);
   }
 }
 

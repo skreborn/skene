@@ -1493,11 +1493,7 @@ impl Platform for Web {
         if let Some(element) = dom.node(sink).and_then(Node::element) {
           let _ = element.set_attribute("popover", if props.hint { "hint" } else { "manual" });
 
-          // A hint is a tooltip; a popup takes the role its box asks for.
-          if props.hint {
-            let _ = element.set_attribute("role", "tooltip");
-          }
-          else if let Some(role) = props.box_props.role.and_then(aria_role) {
+          if let Some(role) = props.role().and_then(aria_role) {
             let _ = element.set_attribute("role", role);
           }
         }

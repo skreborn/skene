@@ -2490,6 +2490,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "skene-conformance"
+version = "0.1.0"
+dependencies = [
+ "skene-common",
+ "skene-core",
+ "skene-reactive",
+]
+
+[[package]]
 name = "skene-core"
 version = "0.1.0"
 dependencies = [
@@ -2535,6 +2544,7 @@ version = "0.1.0"
 dependencies = [
  "rustc-hash 2.1.3",
  "skene-common",
+ "skene-conformance",
  "skene-core",
  "skene-reactive",
  "unicode-segmentation",
@@ -2598,6 +2608,7 @@ dependencies = [
  "rustc-hash 2.1.3",
  "rustix",
  "skene-common",
+ "skene-conformance",
  "skene-core",
  "skene-reactive",
  "skene-simple",

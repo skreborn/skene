@@ -254,7 +254,8 @@ impl<P: Platform> Scene<P> {
       .map(|(node, _)| node)
   }
 
-  /// Every node in the accessibility tree with its facts, in tree order.
+  /// Every node in the accessibility tree with its facts, in tree order: a tree's root,
+  /// then its children, and after a segment standing in no parent, its content.
   fn accessible_nodes(facts: &impl Fn(NodeId) -> NameFacts) -> Vec<(NodeId, NameFacts)> {
     let mut pending = Self::with(|scene| scene.roots().collect::<Vec<_>>());
     let mut nodes = Vec::new();
@@ -268,9 +269,17 @@ impl<P: Platform> Scene<P> {
         continue;
       }
 
-      let children = Self::with(|scene| scene.children(node).collect::<Vec<_>>());
+      let beneath = Self::with(|scene| {
+        let mut beneath: Vec<_> = scene.children(node).collect();
 
-      pending.extend(children.into_iter().rev());
+        if scene.parent(node).is_none() {
+          beneath.extend(scene.segment_nodes(node));
+        }
+
+        beneath
+      });
+
+      pending.extend(beneath.into_iter().rev());
       nodes.push((node, node_facts));
     }
 

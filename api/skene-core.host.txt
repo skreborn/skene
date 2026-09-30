@@ -3391,6 +3391,8 @@ pub skene_core::OverlayProps::box_props: skene_core::BoxProps<P>
 pub skene_core::OverlayProps::hint: bool
 pub skene_core::OverlayProps::modal: bool
 pub skene_core::OverlayProps::placement: skene_core::Placement
+impl<P: skene_core::Platform> skene_core::OverlayProps<P>
+pub fn skene_core::OverlayProps<P>::role(&self) -> core::option::Option<accesskit::Role>
 impl<P: core::clone::Clone + skene_core::Platform> core::clone::Clone for skene_core::OverlayProps<P>
 pub fn skene_core::OverlayProps<P>::clone(&self) -> skene_core::OverlayProps<P>
 impl<P: core::fmt::Debug + skene_core::Platform> core::fmt::Debug for skene_core::OverlayProps<P>
@@ -3733,6 +3735,7 @@ pub fn skene_core::Scene<P>::note_focus_order(&mut self, skene_core::NodeId, cor
 pub fn skene_core::Scene<P>::note_overlay(&mut self, skene_core::NodeId, bool)
 pub fn skene_core::Scene<P>::open_overlays(&self) -> &[skene_core::NodeId]
 pub fn skene_core::Scene<P>::overlay_anchor(&self, skene_core::NodeId) -> core::option::Option<skene_core::NodeId>
+pub fn skene_core::Scene<P>::overlay_opener(&self, skene_core::NodeId) -> core::option::Option<skene_core::NodeId>
 pub fn skene_core::Scene<P>::parent(&self, skene_core::NodeId) -> core::option::Option<skene_core::NodeId>
 pub fn skene_core::Scene<P>::part(&self, skene_core::NodeId) -> core::option::Option<skene_core::Part>
 pub fn skene_core::Scene<P>::placement(&self, skene_core::NodeId) -> core::option::Option<skene_core::NodeId>

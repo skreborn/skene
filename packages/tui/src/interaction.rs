@@ -64,7 +64,7 @@ use crate::{
 /// The rows or columns one wheel report scrolls: a browser's three lines per notch.
 pub(crate) const WHEEL_STEP: i64 = 3;
 
-/// The focus move an overlay's opening or closing asks for.
+/// The focus move an overlay's opening asks for.
 pub(crate) enum OverlayFocus {
   /// Focus stays where it is.
   Held,
@@ -757,21 +757,18 @@ impl Store {
   }
 
   /// Opens or closes an overlay against `anchor`, returning the focus move the change
-  /// asks for. A modal opening takes focus to its first tab stop, or from every node
-  /// when it has none; an overlay closing—a modal, or a popup holding the focus—returns
-  /// it to the node focused when it opened, else to its anchor's focus holder.
+  /// asks for: a modal opening takes focus to its first tab stop, or from every node
+  /// when it has none. The scene returns focus as an overlay closes.
   pub(crate) fn set_overlay_open(
     &mut self,
     handle: Handle,
     open: bool,
     anchor: Option<Handle>,
   ) -> OverlayFocus {
-    let focused = self.focused();
     let Some(Kind::Overlay {
       open: held,
       anchor: bound,
       modal,
-      return_focus,
       ..
     }) = self.record_mut(handle).map(|record| &mut record.kind)
     else {
@@ -779,45 +776,20 @@ impl Store {
     };
     let was_open = std::mem::replace(held, open);
     let modal = *modal;
-    let previous = match (was_open, open) {
-      (false, true) => std::mem::replace(return_focus, focused),
-      (true, false) => return_focus.take(),
-      _ => None,
-    };
 
     *bound = anchor;
     self.layout_dirty = true;
     self.paint_dirty = true;
 
-    if open == was_open {
-      return OverlayFocus::Held;
-    }
-
-    if open {
-      if !modal {
-        return OverlayFocus::Held;
-      }
-
-      return OverlayFocus::Moved(
-        self
-          .tab_order()
-          .into_iter()
-          .find(|stop| self.ancestors(*stop).contains(&handle)),
-      );
-    }
-
-    let inside = focused.is_some_and(|focused| self.ancestors(focused).contains(&handle));
-
-    if !modal && !inside {
+    if !open || was_open || !modal {
       return OverlayFocus::Held;
     }
 
     OverlayFocus::Moved(
-      previous
-        .filter(|previous| {
-          self.is_reachable(*previous) && self.record(*previous).is_some_and(Record::is_focusable)
-        })
-        .or_else(|| anchor.and_then(|anchor| self.focus_holder(anchor))),
+      self
+        .tab_order()
+        .into_iter()
+        .find(|stop| self.ancestors(*stop).contains(&handle)),
     )
   }
 
@@ -843,8 +815,8 @@ pub(crate) fn set_focus(next: Option<Handle>) {
   focus_on(next, false);
 }
 
-/// Returns focus to `next` as a popup closes: like [`set_focus`], but the entry it
-/// returns to keeps its selection and caret as they were.
+/// Moves focus to `next` as a script or a closing popup does: like [`set_focus`], but
+/// the entry it reaches keeps its selection and caret as they were.
 pub(crate) fn set_focus_restored(next: Option<Handle>) {
   focus_on(next, true);
 }

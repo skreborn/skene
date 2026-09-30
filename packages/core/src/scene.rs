@@ -216,12 +216,13 @@ pub struct NodeRecord<P: Platform> {
 }
 
 /// An overlay's standing: whether it blocks what lies beneath it while open, whether it
-/// is open, and the node it opened against.
+/// is open, the node it opened against, and the node focused when it opened.
 #[derive(Debug, Clone, Copy)]
 struct OverlayRecord {
   modal: bool,
   open: bool,
   anchor: Option<NodeId>,
+  opener: Option<NodeId>,
 }
 
 impl<P: Platform> std::fmt::Debug for NodeRecord<P> {
@@ -362,6 +363,7 @@ enum Mirror<P: Platform> {
     open: bool,
     anchor: Option<NodeId>,
   },
+  Focus(NodeId),
 }
 
 impl<P: Platform> Mirror<P> {
@@ -381,6 +383,7 @@ impl<P: Platform> Mirror<P> {
       Self::Listen { node, kind } => P::listen(node, kind),
       Self::FocusOrder { node, order } => P::update_focus_order(node, order),
       Self::OverlayOpen { node, open, anchor } => P::set_overlay_open(node, open, anchor),
+      Self::Focus(node) => P::focus(node),
     }
   }
 }
@@ -1280,6 +1283,7 @@ impl<P: Platform> Scene<P> {
         modal,
         open: false,
         anchor: None,
+        opener: None,
       });
     }
   }
@@ -1287,8 +1291,13 @@ impl<P: Platform> Scene<P> {
   /// Opens or closes the overlay `node`, placed against `anchor` while open, and mirrors
   /// it; an opening puts it on top of every open overlay, as a browser's top layer
   /// stacks, and a node of any other kind is left alone.
+  ///
+  /// A close of a modal, or of an overlay holding focus, returns focus as a browser's
+  /// top layer does: to the node focused when it opened, while that node takes focus,
+  /// else to the nearest node taking focus at or above the anchor it opened against.
   pub fn set_overlay_open(&mut self, node: NodeId, open: bool, anchor: Option<NodeId>) {
     let placed = anchor.and_then(|anchor| self.placement(anchor));
+    let focused = self.focused;
     let Some(record) = self.record_mut(node)
     else {
       return;
@@ -1298,8 +1307,17 @@ impl<P: Platform> Scene<P> {
       return;
     };
     let was_open = std::mem::replace(&mut overlay.open, open);
+    let opened_against = std::mem::replace(&mut overlay.anchor, anchor);
+    let modal = overlay.modal;
+    let opener = match (was_open, open) {
+      (false, true) => {
+        overlay.opener = focused;
 
-    overlay.anchor = anchor;
+        None
+      }
+      (true, false) => overlay.opener.take(),
+      _ => None,
+    };
 
     match (was_open, open) {
       (false, true) => self.open_overlays.push(node),
@@ -1312,6 +1330,59 @@ impl<P: Platform> Scene<P> {
       open,
       anchor: placed,
     });
+
+    if was_open && !open {
+      self.return_focus(node, modal, opener, opened_against);
+    }
+  }
+
+  /// Returns focus from the overlay `node` as it closes, where it is `modal` or holds
+  /// focus: to `opener` while it takes focus, else to the nearest node taking focus at
+  /// or above `anchor`.
+  fn return_focus(
+    &mut self,
+    node: NodeId,
+    modal: bool,
+    opener: Option<NodeId>,
+    anchor: Option<NodeId>,
+  ) {
+    let inside = self
+      .focused
+      .is_some_and(|focused| self.ancestry(focused).contains(&node));
+
+    if !modal && !inside {
+      return;
+    }
+
+    let overlays = self.open_overlays.clone();
+    let takes_focus = |scene: &Self, candidate: NodeId| {
+      scene.focus_order(candidate).is_some() && scene.reachable_under_modal(&overlays, candidate)
+    };
+    let target = opener
+      .filter(|opener| takes_focus(self, *opener))
+      .or_else(|| {
+        anchor.and_then(|anchor| {
+          self
+            .ancestry(anchor)
+            .into_iter()
+            .find(|candidate| takes_focus(self, *candidate))
+        })
+      });
+
+    if let Some(target) = target {
+      self.mirrors.push(Mirror::Focus(target));
+    }
+  }
+
+  /// The node focused when the overlay `node` opened, while it is open.
+  #[inline(always)]
+  #[must_use]
+  pub fn overlay_opener(&self, node: NodeId) -> Option<NodeId> {
+    self
+      .record(node)
+      .and_then(|record| record.overlay)
+      .filter(|overlay| overlay.open)
+      .and_then(|overlay| overlay.opener)
   }
 
   /// The node an overlay anchored on `node` is placed against: `node` itself, or for a

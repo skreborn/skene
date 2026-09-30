@@ -445,6 +445,7 @@ pub fn render_to_pixels(node: NodeId, size: Size<f32>) -> Option<Vec<u8>> {
 /// Empties the scene, the store and the task queue, returns the environment to its
 /// defaults, installs the executor and holds every flush until its turn ends.
 pub fn reset() {
+  end_turn();
   TURN.with(|turn| *turn.borrow_mut() = None);
   skene_reactive::Runtime::set_scheduler(|flush| {
     TURN.with(|turn| *turn.borrow_mut() = Some(flush));
@@ -549,16 +550,38 @@ pub fn trigger_double_click(node: NodeId) -> Prevented {
 /// Dispatches a key press at `node`, bubbling through the scene; focus shows from
 /// here on.
 ///
-/// A `Tab` the handlers leave to the platform moves focus to the next tab stop of the
-/// tree `node` stands in, or to the previous one with `Shift`, as the terminal does.
+/// What the handlers leave to the platform follows as a browser's default does: a `Tab`
+/// moves focus to the next tab stop of the tree `node` stands in, or to the previous one
+/// with `Shift`; an `Escape` dismisses the topmost open overlay; and the menu key or
+/// `Shift-F10` asks `node` for its context menu, the request naming no pointer.
 pub fn trigger_key_down(node: NodeId, event: &KeyEvent) -> Prevented {
   trigger(|| {
     Scene::<Headless>::with(|scene| scene.set_focus_visible(true));
 
     let prevented = dispatch_key_down::<Headless>(node, event);
 
-    if !prevented.platform && event.is(NamedKey::Tab) {
+    if prevented.platform {
+      return prevented;
+    }
+
+    if event.is(NamedKey::Tab) {
       traverse(node, if event.modifiers.shift { -1 } else { 1 });
+    }
+    else if event.is(NamedKey::Escape) {
+      let topmost = Scene::<Headless>::with(|scene| scene.open_overlays().last().copied());
+
+      if let Some(overlay) = topmost {
+        notify_dismiss::<Headless>(overlay);
+      }
+    }
+    else if event.is(NamedKey::ContextMenu) || (event.is(NamedKey::F10) && event.modifiers.shift)
+    {
+      let mut request = PointerEvent::mouse(0., 0.);
+
+      request.pointer.pointer_id = None;
+      request.modifiers = event.modifiers;
+
+      let _ = dispatch_context_menu::<Headless>(node, &request);
     }
 
     prevented
@@ -1021,9 +1044,15 @@ pub fn is_hovered(node: NodeId) -> bool {
 /// Whether `node` holds focus.
 #[must_use]
 pub fn is_focused(node: NodeId) -> bool {
+  focused_node() == Some(node)
+}
+
+/// The node holding focus.
+#[must_use]
+pub fn focused_node() -> Option<NodeId> {
   end_turn();
 
-  Scene::<Headless>::with(|scene| scene.focused()) == Some(node)
+  Scene::<Headless>::with(|scene| scene.focused())
 }
 
 /// The tree under `node` as the layout sees it: one line per box or run, indented by
@@ -1271,7 +1300,10 @@ fn name_facts(node: NodeId) -> NameFacts {
     }
 
     match &record.kind {
-      Kind::Overlay(_) => facts.hidden |= !record.open,
+      Kind::Overlay(props) => {
+        facts.hidden |= !record.open;
+        facts.role = props.role();
+      }
       Kind::Control(props) => {
         facts.role = facts.role.or(props.native.map(NativeElement::role));
         facts.label.clone_from(&props.label);

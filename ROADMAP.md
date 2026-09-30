@@ -57,11 +57,16 @@ left half-done in a code comment.
     wheel latching, field editing, selection, motion) is extracted into a
     medium-generic kit; headless lays out through it and renders pixel snapshots, and
     it is the native family's first prerequisite.
-    - Browser screenshot goldens through the browser tier's geckodriver session.
-    - A `Driver` trait (press, type, focus, resize, advance) implemented by headless,
-    the terminal and the browser tier runs one behavior suite everywhere, so parity
-    holds by construction; an AccessKit tree built from the scene's merged reports
-    serves headless assertions.
+    - A host-side WebDriver harness in the browser tier, over geckodriver's session,
+    runs the conformance suite (`skene-conformance`) in Firefox through trusted input
+    from WebDriver's actions and takes the screenshot goldens: an event a page
+    dispatches to itself runs no browser default—no focus on a press, no button's click
+    on `Enter`, no text in an entry—so neither can run inside the page. The suite's
+    scenarios then name their pages, the harness serving each from one test app and
+    finding what a scenario acts on by WebDriver's computed role and label; the goldens
+    need a pinned font and Firefox before they compare across machines.
+    - An AccessKit tree built from the scene's merged reports serves headless
+    assertions.
     - A terminal `Device` trait (bytes in and out, size, wake), implemented by the tty
     and a pty harness, runs the real loop end to end under test; the Windows console,
     an SSH session and xterm.js are further implementations.

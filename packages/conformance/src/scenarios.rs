@@ -1,0 +1,479 @@
+//! The suite's scenarios, each generic over the driver acting it out.
+
+use skene_common::{
+  Activate,
+  Column,
+  Container,
+  ContextMenu,
+  ListItem,
+  MenuItem,
+  RadioMember,
+  Range,
+  RawButton,
+  RawCheckbox,
+  RawOption,
+  RawPicker,
+  RawRadio,
+  RawRadioGroup,
+  RawSlider,
+  RawTextField,
+  Roving,
+  TOOLTIP_DELAY,
+  Text,
+  TextEntry,
+  Toggle,
+  Tooltip,
+};
+use skene_core::{
+  FocusOrder,
+  HasChild,
+  HasChildren,
+  KeyEvent,
+  Media,
+  NodeId,
+  Platform,
+  Role,
+  Scalar,
+  Size,
+  View,
+  Visibility,
+  When,
+};
+use skene_reactive::{Get, Set, Signal, Update};
+
+use crate::{Driver, Scenario};
+
+/// Every scenario, in the order the suite runs them.
+pub(crate) fn all<D: Driver>() -> Vec<Scenario<D>> {
+  vec![
+    Scenario {
+      name: "a button activates on a click, on Enter and on Space",
+      act: a_button_activates,
+    },
+    Scenario {
+      name: "a checkbox toggles on a click and on Space",
+      act: a_checkbox_toggles,
+    },
+    Scenario {
+      name: "Tab moves through the controls in order, Shift-Tab back",
+      act: tab_moves_through_the_controls,
+    },
+    Scenario {
+      name: "a disabled button takes no click and no tab stop",
+      act: a_disabled_button_is_skipped,
+    },
+    Scenario {
+      name: "typed text edits a bound field, Backspace removing a cluster",
+      act: typed_text_edits_a_field,
+    },
+    Scenario {
+      name: "the arrows choose within a radio group, focus following",
+      act: the_arrows_choose_within_a_radio_group,
+    },
+    Scenario {
+      name: "a slider steps by the arrows and reaches its ends by Home and End",
+      act: a_slider_steps_by_its_keys,
+    },
+    Scenario {
+      name: "a picker opens on a click, chooses on Enter and returns focus to its face",
+      act: a_picker_chooses_and_returns_focus,
+    },
+    Scenario {
+      name: "a tooltip shows on focus and hides on Escape",
+      act: a_tooltip_shows_on_focus,
+    },
+    Scenario {
+      name: "a context menu opens on Shift-F10 and closes on Escape",
+      act: a_context_menu_opens_on_shift_f10,
+    },
+    Scenario {
+      name: "a tooltip shows once the pointer rests on its view for the delay",
+      act: a_tooltip_shows_after_its_delay,
+    },
+    Scenario {
+      name: "a condition on the viewport's width follows a resize",
+      act: a_viewport_condition_follows_a_resize,
+    },
+  ]
+}
+
+/// The press of the key its W3C value `name` names.
+fn key(name: &str) -> KeyEvent {
+  KeyEvent::new(name)
+}
+
+/// The press of the key `name` names with `Shift` held.
+fn shifted(name: &str) -> KeyEvent {
+  let mut event = KeyEvent::new(name);
+
+  event.modifiers.shift = true;
+
+  event
+}
+
+/// The node of role `role` named `name`, which the scenario acts on.
+fn found<D: Driver>(driver: &mut D, role: Role, name: &str) -> NodeId {
+  driver
+    .find(role, name)
+    .unwrap_or_else(|| panic!("no {role:?} named {name:?}"))
+}
+
+/// A button named `name`.
+fn button<D: Driver>(name: &str) -> RawButton<D::Platform> {
+  RawButton::new(Activate::new()).set_label(name)
+}
+
+fn a_button_activates<D: Driver>(driver: &mut D) {
+  let clicks = Signal::new(0u32);
+
+  driver.mount(move || {
+    button::<D>("Save")
+      .handle_click(move || clicks.update(|count| *count += 1))
+      .into_any()
+  });
+
+  let save = found(driver, Role::Button, "Save");
+
+  driver.click(save);
+
+  assert_eq!(clicks.get(), 1, "a click activates it once");
+  assert_eq!(driver.focused(), Some(save), "a click focuses it");
+
+  driver.press(&key("Enter"));
+
+  assert_eq!(clicks.get(), 2, "Enter activates it");
+
+  driver.press(&key(" "));
+
+  assert_eq!(clicks.get(), 3, "Space activates it");
+}
+
+fn a_checkbox_toggles<D: Driver>(driver: &mut D) {
+  let checked = Signal::new(false);
+
+  driver.mount(move || {
+    RawCheckbox::<D::Platform>::new(Toggle::new().bind_checked(checked))
+      .set_label("Remember me")
+      .into_any()
+  });
+
+  let checkbox = found(driver, Role::CheckBox, "Remember me");
+
+  driver.click(checkbox);
+
+  assert!(checked.get(), "a click checks it");
+
+  driver.press(&key(" "));
+
+  assert!(!checked.get(), "Space unchecks it");
+}
+
+fn tab_moves_through_the_controls<D: Driver>(driver: &mut D) {
+  driver.mount(|| {
+    Column::<D::Platform>::new()
+      .set_children((button::<D>("One"), button::<D>("Two"), button::<D>("Three")))
+      .into_any()
+  });
+
+  let [one, two, three] = ["One", "Two", "Three"].map(|name| found(driver, Role::Button, name));
+
+  driver.press(&key("Tab"));
+
+  assert_eq!(
+    driver.focused(),
+    Some(one),
+    "the first Tab reaches the first"
+  );
+
+  driver.press(&key("Tab"));
+
+  assert_eq!(driver.focused(), Some(two));
+
+  driver.press(&key("Tab"));
+
+  assert_eq!(driver.focused(), Some(three));
+
+  driver.press(&shifted("Tab"));
+
+  assert_eq!(driver.focused(), Some(two), "Shift-Tab goes back");
+}
+
+fn a_disabled_button_is_skipped<D: Driver>(driver: &mut D) {
+  let clicks = Signal::new(0u32);
+
+  driver.mount(move || {
+    Column::<D::Platform>::new()
+      .set_children((
+        button::<D>("One"),
+        button::<D>("Two")
+          .set_disabled(true)
+          .handle_click(move || clicks.update(|count| *count += 1)),
+        button::<D>("Three"),
+      ))
+      .into_any()
+  });
+
+  let [one, two, three] = ["One", "Two", "Three"].map(|name| found(driver, Role::Button, name));
+
+  driver.click(two);
+
+  assert_eq!(clicks.get(), 0, "a click does nothing");
+  assert_ne!(driver.focused(), Some(two), "a click does not focus it");
+
+  driver.focus(one);
+  driver.press(&key("Tab"));
+
+  assert_eq!(driver.focused(), Some(three), "Tab passes over it");
+}
+
+fn typed_text_edits_a_field<D: Driver>(driver: &mut D) {
+  let value = Signal::new(String::new());
+
+  driver.mount(move || {
+    RawTextField::<D::Platform>::new(TextEntry::new().bind_value(value))
+      .set_label("Name")
+      .into_any()
+  });
+
+  let field = found(driver, Role::TextInput, "Name");
+
+  driver.type_text(field, "héllo");
+
+  assert_eq!(value.get(), "héllo", "each cluster lands in order");
+  assert_eq!(driver.focused(), Some(field), "typing starts with a click");
+
+  driver.press(&key("Backspace"));
+
+  assert_eq!(
+    value.get(),
+    "héll",
+    "Backspace removes the cluster before the caret"
+  );
+}
+
+fn the_arrows_choose_within_a_radio_group<D: Driver>(driver: &mut D) {
+  let chosen: Signal<Option<String>> = Signal::new(None);
+
+  driver.mount(move || {
+    RawRadioGroup::<D::Platform>::new(Roving::new().bind_chosen(chosen))
+      .set_accessible_name("Size")
+      .set_child(Column::new().set_children((
+        RawRadio::new(RadioMember::new("s")).set_label("Small"),
+        RawRadio::new(RadioMember::new("m")).set_label("Medium"),
+        RawRadio::new(RadioMember::new("l")).set_label("Large"),
+      )))
+      .into_any()
+  });
+
+  let [small, medium] = ["Small", "Medium"].map(|name| found(driver, Role::RadioButton, name));
+
+  driver.click(small);
+
+  assert_eq!(chosen.get().as_deref(), Some("s"), "a click chooses");
+  assert_eq!(driver.focused(), Some(small));
+
+  driver.press(&key("ArrowDown"));
+
+  assert_eq!(
+    chosen.get().as_deref(),
+    Some("m"),
+    "ArrowDown chooses the next"
+  );
+  assert_eq!(driver.focused(), Some(medium), "focus follows the choice");
+
+  driver.press(&key("ArrowUp"));
+
+  assert_eq!(
+    chosen.get().as_deref(),
+    Some("s"),
+    "ArrowUp chooses the previous"
+  );
+}
+
+fn a_slider_steps_by_its_keys<D: Driver>(driver: &mut D) {
+  let value = Signal::new(50f32);
+
+  driver.mount(move || {
+    RawSlider::<D::Platform>::new(Range::new().bind_value(value))
+      .set_accessible_name("Volume")
+      .into_any()
+  });
+
+  let slider = found(driver, Role::Slider, "Volume");
+
+  driver.focus(slider);
+  driver.press(&key("ArrowRight"));
+
+  assert!(
+    (value.get() - 51.).abs() < f32::EPSILON,
+    "ArrowRight steps up"
+  );
+
+  driver.press(&key("ArrowLeft"));
+
+  assert!(
+    (value.get() - 50.).abs() < f32::EPSILON,
+    "ArrowLeft steps down"
+  );
+
+  driver.press(&key("End"));
+
+  assert!(
+    (value.get() - 100.).abs() < f32::EPSILON,
+    "End reaches the maximum"
+  );
+
+  driver.press(&key("Home"));
+
+  assert!(value.get().abs() < f32::EPSILON, "Home reaches the minimum");
+}
+
+fn a_picker_chooses_and_returns_focus<D: Driver>(driver: &mut D) {
+  let value = Signal::new("b".to_owned());
+
+  driver.mount(move || {
+    RawPicker::<D::Platform>::new()
+      .bind_value(value)
+      .set_label("Letter")
+      .set_options(
+        ["a", "b", "c"].map(|letter| RawOption::new(ListItem::new(letter)).set_label(letter)),
+      )
+      .set_face(|shown| Text::derive(move || shown.get()))
+      .into_any()
+  });
+
+  let face = found(driver, Role::ComboBox, "Letter");
+
+  assert!(
+    driver.find(Role::ListBoxOption, "c").is_none(),
+    "the list starts closed"
+  );
+
+  driver.click(face);
+
+  let chosen = found(driver, Role::ListBoxOption, "b");
+
+  assert_eq!(
+    driver.focused(),
+    Some(chosen),
+    "focus lands on the chosen option"
+  );
+
+  driver.press(&key("ArrowDown"));
+  driver.press(&key("Enter"));
+
+  assert_eq!(value.get(), "c", "Enter chooses the focused option");
+  assert!(
+    driver.find(Role::ListBoxOption, "c").is_none(),
+    "choosing closes the list"
+  );
+  assert_eq!(driver.focused(), Some(face), "focus returns to the face");
+}
+
+fn a_tooltip_shows_on_focus<D: Driver>(driver: &mut D) {
+  driver.mount(|| {
+    Tooltip::<D::Platform>::new("Saves your work")
+      .set_child(button::<D>("Save"))
+      .into_any()
+  });
+
+  assert!(
+    driver.find(Role::Tooltip, "Saves your work").is_none(),
+    "the tooltip starts hidden"
+  );
+
+  driver.press(&key("Tab"));
+
+  assert!(
+    driver.find(Role::Tooltip, "Saves your work").is_some(),
+    "focus shows it at once"
+  );
+
+  driver.press(&key("Escape"));
+
+  assert!(
+    driver.find(Role::Tooltip, "Saves your work").is_none(),
+    "Escape hides it"
+  );
+}
+
+fn a_context_menu_opens_on_shift_f10<D: Driver>(driver: &mut D) {
+  let renamed = Signal::new(false);
+
+  driver.mount(move || {
+    ContextMenu::<D::Platform>::new()
+      .set_items([MenuItem::new("Rename").handle_select(move || renamed.set(true))])
+      .set_child(
+        Container::new()
+          .set_role(Role::Group)
+          .set_label("Note")
+          .set_focus_order(FocusOrder::Auto)
+          .set_child(Text::new("A note")),
+      )
+      .into_any()
+  });
+
+  let note = found(driver, Role::Group, "Note");
+
+  driver.focus(note);
+  driver.press(&shifted("F10"));
+
+  let rename = found(driver, Role::MenuItem, "Rename");
+
+  assert_eq!(driver.focused(), Some(rename), "the first item takes focus");
+
+  driver.press(&key("Escape"));
+
+  assert!(
+    driver.find(Role::MenuItem, "Rename").is_none(),
+    "Escape closes the menu"
+  );
+  assert_eq!(driver.focused(), Some(note), "focus returns to the note");
+  assert!(!renamed.get(), "closing runs nothing");
+}
+
+fn a_tooltip_shows_after_its_delay<D: Driver>(driver: &mut D) {
+  driver.mount(|| {
+    Tooltip::<D::Platform>::new("Saves your work")
+      .set_child(button::<D>("Save"))
+      .into_any()
+  });
+
+  let save = found(driver, Role::Button, "Save");
+
+  driver.hover(save);
+
+  assert!(
+    driver.find(Role::Tooltip, "Saves your work").is_none(),
+    "a pointer arriving shows nothing at once"
+  );
+
+  driver.advance(TOOLTIP_DELAY);
+
+  assert!(
+    driver.find(Role::Tooltip, "Saves your work").is_some(),
+    "the pointer resting for the delay shows it"
+  );
+}
+
+fn a_viewport_condition_follows_a_resize<D: Driver>(driver: &mut D) {
+  let length = <<D::Platform as Platform>::Scalar as Scalar>::from_f32;
+
+  driver.mount(move || {
+    skene_common::Container::<D::Platform>::new()
+      .set_visibility(Visibility::Hidden.when(Media::MinWidth(length(100.)), Visibility::Visible))
+      .set_child(Text::new("Wide"))
+      .into_any()
+  });
+
+  driver.resize(Size::new(length(200.), length(40.)));
+
+  assert!(
+    driver.find_text("Wide").is_some(),
+    "a wide viewport shows it"
+  );
+
+  driver.resize(Size::new(length(50.), length(40.)));
+
+  assert!(driver.find_text("Wide").is_none(), "a narrow one hides it");
+}

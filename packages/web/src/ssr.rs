@@ -1269,11 +1269,7 @@ fn overlay_index(props: &OverlayProps<Web>) -> u32 {
       if let Some(node) = tree.node(index) {
         node.set_attribute("popover", if props.hint { "hint" } else { "manual" });
 
-        // A hint is a tooltip; a popup takes the role its box asks for.
-        if props.hint {
-          node.set_attribute("role", "tooltip");
-        }
-        else if let Some(role) = props.box_props.role.and_then(aria_role) {
+        if let Some(role) = props.role().and_then(aria_role) {
           node.set_attribute("role", role);
         }
       }

@@ -58,6 +58,8 @@ skene-simple     the Simple design language over skene-common, generic over P: t
                  (a TokenSet), the looks, the shape per unit, the terminal marks
                  (SimpleGlyphs) and the Simple* views; an app's explicit dependency;
                  gui and tui alias the types to each facade's ActivePlatform, with a prelude
+skene-conformance  one suite of behaviors every platform shows alike, run through the
+                 Driver a platform implements over its test seams
 skene-macros     #[main], #[lazy], #[derive(Store)]
 skene-cli        the skene command: build and run per target, the dev server, static
                  generation, skene.toml assets
@@ -444,6 +446,17 @@ re-export.
   gallery's overlays open: a tooltip, the picker's popup and a context menu. Disabled controls
   leave the focus order, a deliberate reading of the practices' allowance, recorded
   in `AGENTS.md`.
+- **Parity holds by construction.** `skene-conformance` is one suite of scenarios, each
+  building a view, acting on it as a user does and checking what a reader finds—the
+  signals it is bound to, the node holding focus, what `find_by_role` reaches—through a
+  `Driver` each platform implements over its own seams: mount, find by role and name or
+  by text, hover, click, press, type, focus, resize, advance. A behavior every platform must share is a scenario, and a
+  divergence the suite finds is fixed in the platform, never excused in the suite. The
+  rules those scenarios exercise that a platform realizing its own overlays would
+  otherwise copy live in core: an overlay's role
+  (`OverlayProps::role`: a hint's tooltip, a modal's dialog) and the focus a closing
+  overlay returns, to the node focused when it opened or its anchor's nearest
+  focusable, as a browser's top layer does.
 - **A platform that names its nodes itself names them once.** The browser computes
   accessible names; everywhere else core does (`Scene::accessible_name`), over the
   scene's structure and parts and the facts a platform records of each node

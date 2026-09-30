@@ -152,7 +152,7 @@ impl Platform for Tui {
     let field = props
       .native
       .is_some_and(NativeElement::is_text_entry)
-      .then(|| Field::new(props.placeholder.clone(), props.lines));
+      .then(|| Box::new(Field::new(props.placeholder.clone(), props.lines)));
 
     with_store(|store| {
       store.insert_laid_out(
@@ -190,12 +190,12 @@ impl Platform for Tui {
         Kind::Overlay {
           inner: BoxRecord::new(props.box_props.clone()),
           modal: props.modal,
+          role: props.role(),
           placement: props.placement,
           backdrop: props.backdrop,
           open: false,
           anchor: None,
           position: None,
-          return_focus: None,
         },
       );
       store.overlays.push(node);
@@ -206,12 +206,7 @@ impl Platform for Tui {
     let focus = with_store(|store| store.set_overlay_open(node, open, anchor));
 
     if let interaction::OverlayFocus::Moved(next) = focus {
-      if open {
-        interaction::set_focus(next);
-      }
-      else {
-        interaction::set_focus_restored(next);
-      }
+      interaction::set_focus(next);
     }
   }
 
@@ -381,7 +376,7 @@ impl Platform for Tui {
   }
 
   fn focus(node: NodeId) {
-    interaction::set_focus(Some(node));
+    interaction::set_focus_restored(Some(node));
   }
 
   fn blur(node: NodeId) {

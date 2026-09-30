@@ -15,9 +15,10 @@
 
 use std::time::{Duration, Instant};
 
-use skene_core::{ClipboardAction, RunDisplay};
+use skene_core::{ClipboardAction, RunDisplay, Scene};
 
 use crate::{
+  Tui,
   field::word_bounds,
   layout::{is_inline_box, is_paragraph, paragraph_runs, paragraph_text},
   paint::{line_at_row, line_holding, paragraph_scales, run_scale, wrap_sized},
@@ -291,13 +292,7 @@ impl Store {
         .rev()
         .find(|overlay| ancestors.contains(overlay))?;
 
-      match self.record(popup).map(|record| &record.kind) {
-        Some(Kind::Overlay {
-          return_focus: Some(entry),
-          ..
-        }) if self.is_field(*entry) => Some(*entry),
-        _ => None,
-      }
+      Scene::<Tui>::with(|scene| scene.overlay_opener(popup)).filter(|entry| self.is_field(*entry))
     })
   }
 

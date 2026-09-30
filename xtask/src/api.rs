@@ -60,6 +60,7 @@ struct Snapshot {
 /// leaf on each of theirs.
 const SNAPSHOTS: &[Snapshot] = &[
   Snapshot::new("skene-common", Leaf::Host),
+  Snapshot::new("skene-conformance", Leaf::Host),
   Snapshot::new("skene-core", Leaf::Host),
   Snapshot::new("skene-gui", Leaf::Host),
   Snapshot::new("skene-gui", Leaf::Server),

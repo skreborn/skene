@@ -130,6 +130,19 @@ pub struct OverlayProps<P: Platform> {
   pub box_props: BoxProps<P>,
 }
 
+impl<P: Platform> OverlayProps<P> {
+  /// The role the overlay carries: a hint's tooltip, a modal's dialog unless its box
+  /// states another, else the one its box states.
+  #[must_use]
+  pub fn role(&self) -> Option<Role> {
+    if self.hint {
+      return Some(Role::Tooltip);
+    }
+
+    self.box_props.role.or(self.modal.then_some(Role::Dialog))
+  }
+}
+
 /// The measured sizes of the named query containers, filled by the platform.
 ///
 /// A read tracks, so a condition against a container re-evaluates when the platform

@@ -25,6 +25,7 @@ use skene_core::{
   Plain,
   PointerButtons,
   PointerPrecision,
+  Role,
   RunProps,
   RunStyle,
   Scene,
@@ -459,21 +460,21 @@ pub(crate) enum Kind {
     label: Option<String>,
     inner: BoxRecord,
     state: ControlState,
-    field: Option<Field>,
+    field: Option<Box<Field>>,
     checked: bool,
     label_beside: bool,
   },
   Overlay {
     inner: BoxRecord,
     modal: bool,
+    /// The role the overlay carries.
+    role: Option<Role>,
     placement: Placement,
     backdrop: Option<Color>,
     open: bool,
     anchor: Option<Handle>,
     /// The cell the overlay's top-start corner is pinned to, if it is.
     position: Option<(i64, i64)>,
-    /// The node focused when the overlay opened, for its close to return to.
-    return_focus: Option<Handle>,
   },
   Run {
     props: RunProps<Tui>,
@@ -536,18 +537,18 @@ impl Kind {
 
   /// The editing state of a text entry.
   #[inline(always)]
-  pub(crate) const fn field(&self) -> Option<&Field> {
+  pub(crate) fn field(&self) -> Option<&Field> {
     match self {
-      Self::Control { field, .. } => field.as_ref(),
+      Self::Control { field, .. } => field.as_deref(),
       _ => None,
     }
   }
 
   /// The editing state of a text entry, mutably.
   #[inline(always)]
-  pub(crate) const fn field_mut(&mut self) -> Option<&mut Field> {
+  pub(crate) fn field_mut(&mut self) -> Option<&mut Field> {
     match self {
-      Self::Control { field, .. } => field.as_mut(),
+      Self::Control { field, .. } => field.as_deref_mut(),
       _ => None,
     }
   }
@@ -1417,13 +1418,16 @@ impl Store {
   }
 
   /// The node a press or focus on `handle` lands on: itself when focusable, else its
-  /// enclosing control.
+  /// enclosing control when that is; `None` where neither takes focus, as for a disabled
+  /// control.
   pub(crate) fn focus_holder(&self, handle: Handle) -> Option<Handle> {
     if self.record(handle).is_some_and(Record::is_focusable) {
       return Some(handle);
     }
 
-    self.enclosing_control(handle)
+    self
+      .enclosing_control(handle)
+      .filter(|control| self.record(*control).is_some_and(Record::is_focusable))
   }
 
   /// The interaction state `handle`'s conditions resolve against now, as the scene

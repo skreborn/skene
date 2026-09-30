@@ -86,6 +86,7 @@ pub fn skene_headless::find_all_unnamed() -> alloc::vec::Vec<skene_core::node::N
 pub fn skene_headless::find_by_role(accesskit::Role, &str) -> core::option::Option<skene_core::node::NodeId>
 pub fn skene_headless::find_by_text(&str) -> core::option::Option<skene_core::node::NodeId>
 pub fn skene_headless::focus_order(skene_core::node::NodeId) -> core::option::Option<skene_core::values::focus_order::FocusOrder>
+pub fn skene_headless::focused_node() -> core::option::Option<skene_core::node::NodeId>
 pub fn skene_headless::full_outline(skene_core::node::NodeId) -> alloc::string::String
 pub fn skene_headless::head_elements() -> alloc::vec::Vec<skene_common::gui::head::HeadElement>
 pub fn skene_headless::install_executor()

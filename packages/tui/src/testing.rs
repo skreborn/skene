@@ -209,7 +209,10 @@ fn name_facts(node: NodeId) -> NameFacts {
     }
 
     match &record.kind {
-      Kind::Overlay { open, .. } => facts.hidden |= !open,
+      Kind::Overlay { role, open, .. } => {
+        facts.hidden |= !open;
+        facts.role = *role;
+      }
       Kind::Control {
         native,
         label,

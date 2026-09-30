@@ -878,7 +878,7 @@ pub(crate) fn apply_clustering(confirmed: bool) -> bool {
 }
 
 /// Puts the text measurement on the terminal's text sizing (OSC 66) or off it, every
-/// run measured at its size or at one cell and the frame laid out afresh; `true`
+/// style resolved and every run measured at its size or at one cell afresh; `true`
 /// when that changed it.
 pub(crate) fn apply_sizing(confirmed: bool) -> bool {
   if !text::set_sizing(confirmed) {
@@ -887,8 +887,7 @@ pub(crate) fn apply_sizing(confirmed: bool) -> bool {
 
   with_records(|records| {
     records.remeasure();
-    records.layout_dirty = true;
-    records.paint_dirty = true;
+    records.invalidate_styles();
   });
 
   true

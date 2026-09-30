@@ -43,6 +43,10 @@ impl ResolutionSource<Headless> for Records {
   fn size_token(&self) -> Option<TokenName> {
     Some(typography::SIZE.name())
   }
+
+  fn generation(&self) -> u64 {
+    with_records(|records| records.environment_generation)
+  }
 }
 
 /// What one node's properties resolve against: the environment, the node's interaction

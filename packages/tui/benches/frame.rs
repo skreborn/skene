@@ -1,5 +1,6 @@
 //! The terminal's frame at scale: a scrolled column of sixteen thousand text rows, drawn
-//! with nothing changed and after a pointer move.
+//! with nothing changed, after a pointer move, and resized, which restyles and lays out
+//! every row.
 
 #![cfg_attr(
   not(target_arch = "wasm32"),
@@ -52,6 +53,16 @@ mod frame {
           testing::trigger_mouse_move(1, row);
 
           testing::render_to_text(80, 24)
+        });
+      });
+
+      let mut wide = false;
+
+      criterion.bench_function("resized_frame_16k_rows", |bencher| {
+        bencher.iter(|| {
+          wide = !wide;
+
+          testing::render_to_text(if wide { 81 } else { 80 }, 24)
         });
       });
     });

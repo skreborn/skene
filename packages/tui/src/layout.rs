@@ -5,6 +5,8 @@
 //! style resolved for it differs from the one applied, so a keystroke relays out the
 //! changed subtree and a hover change repaints without a relayout.
 
+use std::cell::OnceCell;
+
 use rustc_hash::FxHashSet;
 use skene_core::{Inset, Layout, Overflow, RunDisplay, Scene};
 use taffy::{
@@ -48,12 +50,89 @@ struct Restyled {
   text: Option<Measured>,
 }
 
-/// What the layout measures a text leaf by: its text, and the scale of each stretch
-/// of it.
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// What the layout measures a text leaf by: its text, the scale of each stretch of it,
+/// and its extents at its narrowest and widest, measured once a layout first asks.
+#[derive(Debug, Clone)]
 pub(crate) struct Measured {
   pub(crate) text: String,
   pub(crate) scales: Scales,
+  extents: OnceCell<Extents>,
+}
+
+impl Measured {
+  /// The measure of `text` at `scales`.
+  pub(crate) const fn new(text: String, scales: Scales) -> Self {
+    Self {
+      text,
+      scales,
+      extents: OnceCell::new(),
+    }
+  }
+
+  /// Forgets the extents measured, after the terminal changed how it measures text.
+  pub(crate) fn forget_extents(&mut self) {
+    self.extents.take();
+  }
+
+  /// The cells and rows the text takes wrapped at `limit` cells: at its widest where
+  /// that fits.
+  fn size_at(&self, limit: usize) -> (usize, usize) {
+    let extents = self.extents();
+
+    if limit >= extents.widest.0 {
+      extents.widest
+    }
+    else if limit == extents.longest_word {
+      extents.narrowest
+    }
+    else {
+      self.wrapped(limit)
+    }
+  }
+
+  /// The text's extents at its narrowest and widest.
+  fn extents(&self) -> Extents {
+    *self.extents.get_or_init(|| {
+      let longest_word = longest_word(&self.text, &self.scales);
+
+      Extents {
+        longest_word,
+        narrowest: self.wrapped(longest_word),
+        widest: self.wrapped(usize::MAX),
+      }
+    })
+  }
+
+  /// The cells and rows the text takes wrapped at `limit` cells.
+  fn wrapped(&self, limit: usize) -> (usize, usize) {
+    let lines = wrap_sized(&self.text, limit, &self.scales);
+
+    (
+      lines
+        .iter()
+        .map(|line| line.cells(&self.scales))
+        .max()
+        .unwrap_or(0),
+      lines.iter().map(|line| line.rows).sum(),
+    )
+  }
+}
+
+impl PartialEq for Measured {
+  fn eq(&self, other: &Self) -> bool {
+    self.text == other.text && self.scales == other.scales
+  }
+}
+
+impl Eq for Measured {}
+
+/// A text's extents: the widest stretch between two breaks, and its cells and rows
+/// wrapped there and unwrapped.
+#[derive(Debug, Clone, Copy)]
+struct Extents {
+  longest_word: usize,
+  narrowest: (usize, usize),
+  widest: (usize, usize),
 }
 
 /// Whether `handle` lays its inline runs out as one paragraph: a flow box whose every
@@ -713,10 +792,10 @@ fn taffy_style_of(records: &Records, handle: Handle) -> Restyled {
         None
       }
       else {
-        Some(Measured {
-          text: record.text.clone(),
-          scales: Scales::uniform(run_scale(records, handle)),
-        })
+        Some(Measured::new(
+          record.text.clone(),
+          Scales::uniform(run_scale(records, handle)),
+        ))
       };
 
       if in_stack {
@@ -742,9 +821,11 @@ fn taffy_style_of(records: &Records, handle: Handle) -> Restyled {
         style.flex_grow = 1.;
       }
 
-      let text = paragraph.then(|| Measured {
-        text: paragraph_text(records, handle),
-        scales: paragraph_scales(records, handle),
+      let text = paragraph.then(|| {
+        Measured::new(
+          paragraph_text(records, handle),
+          paragraph_scales(records, handle),
+        )
       });
 
       if paragraph {
@@ -917,7 +998,7 @@ fn measure_run(
   available: taffy::geometry::Size<AvailableSpace>,
   measured: Option<&Measured>,
 ) -> taffy::geometry::Size<f32> {
-  let Some(Measured { text, scales }) = measured
+  let Some(measured) = measured
   else {
     return taffy::geometry::Size {
       width: known.width.unwrap_or(0.),
@@ -930,28 +1011,21 @@ fn measure_run(
     clippy::cast_sign_loss,
     reason = "a width is clamped non-negative and counts cells far below usize::MAX"
   )]
-  let limit = match (known.width, available.width) {
-    (Some(width), _) | (None, AvailableSpace::Definite(width)) => width.max(0.) as usize,
-    (None, AvailableSpace::MinContent) => longest_word(text, scales),
-    (None, AvailableSpace::MaxContent) => usize::MAX,
+  let (cells, rows) = match (known.width, available.width) {
+    (Some(width), _) | (None, AvailableSpace::Definite(width)) => {
+      measured.size_at(width.max(0.) as usize)
+    }
+    (None, AvailableSpace::MinContent) => measured.extents().narrowest,
+    (None, AvailableSpace::MaxContent) => measured.extents().widest,
   };
-  let lines = wrap_sized(text, limit, scales);
 
   #[expect(
     clippy::cast_precision_loss,
     reason = "a line's length in cells stays far below the integers f32 holds exactly"
   )]
   taffy::geometry::Size {
-    width: known.width.unwrap_or_else(|| {
-      lines
-        .iter()
-        .map(|line| line.cells(scales))
-        .max()
-        .unwrap_or(0) as f32
-    }),
-    height: known
-      .height
-      .unwrap_or(lines.iter().map(|line| line.rows).sum::<usize>() as f32),
+    width: known.width.unwrap_or(cells as f32),
+    height: known.height.unwrap_or(rows as f32),
   }
 }
 

@@ -15,12 +15,13 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use skene_reactive::SnapshotPlace;
 
 pub use self::annotation::{Annotated, Annotation};
+pub(crate) use self::tokens::TokenScope;
 use self::{
   controls::AccessReports,
   drag::DragRecord,
   overlays::OverlayRecord,
   structure::SegmentRecord,
-  tokens::TokenCache,
+  tokens::{ResolvedTokens, TokenCache},
 };
 use crate::{
   ContainerName,
@@ -69,7 +70,7 @@ pub struct NodeRecord<P: Platform> {
   container: Option<ContainerName>,
   handlers: Option<Box<HandlerSet>>,
   segment: Option<Box<SegmentRecord>>,
-  cache: Option<Box<TokenCache<P::TokenValue>>>,
+  cache: Option<Box<TokenCache>>,
   control: Option<ControlState>,
   entry: bool,
   hidden: bool,
@@ -267,6 +268,7 @@ pub struct Scene<P: Platform> {
   focus_visible: bool,
   drag: Option<DragRecord>,
   interaction_generation: u64,
+  resolved_tokens: ResolvedTokens<P::Scalar>,
   #[cfg(debug_assertions)]
   token_kinds: FxHashMap<TokenName, std::mem::Discriminant<P::TokenValue>>,
 }
@@ -305,6 +307,7 @@ impl<P: Platform> Scene<P> {
       focus_visible: true,
       drag: None,
       interaction_generation: 0,
+      resolved_tokens: ResolvedTokens::default(),
       #[cfg(debug_assertions)]
       token_kinds: FxHashMap::default(),
     }

@@ -68,6 +68,10 @@ impl ResolutionSource<Tui> for Records {
   fn size_token(&self) -> Option<TokenName> {
     crate::text::sizing().then(|| skene_common::typography::SIZE.name())
   }
+
+  fn generation(&self) -> u64 {
+    self.generation
+  }
 }
 
 impl Records {

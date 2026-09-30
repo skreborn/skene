@@ -93,11 +93,12 @@ left half-done in a code comment.
     -p skene-tui --bench frame`); selection spans compute once per frame; wrapped lines
     cache per text generation and width, clusters re-segment around an edit, and undo
     stores range diffs.
-    - Token caches take per-scope epochs in place of the global generation, a cached
-    nearest defining node, a token's value cached at its defining scope where each
-    consumer resolves it there afresh today, and interned names, so a palette change
-    costs the number of tokens beyond the web too,
-    written once in core's `ResolutionContext`, which headless and the terminal share.
+    - Token caches take per-scope epochs in place of the generations every
+    redefinition, structure change and environment change moves for every scope today,
+    and interned names, so a palette change costs the number of tokens beyond the web
+    too, in core's `ResolutionContext`, which headless and the terminal share; a
+    resolution reports the environment it read as it reports the interaction, so a
+    resize restyles only what reads the viewport.
     - Constant factors: the UI-thread assertion in debug alone, the iterative pull and
     alien-signals' propagation techniques, estimated to halve a read and a write;
     forced inlining off allocating functions; the lazy list reading a

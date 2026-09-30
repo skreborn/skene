@@ -828,6 +828,7 @@ pub fn trigger_resize(size: Size<f32>) {
   trigger(|| {
     let write = with_records(|records| {
       records.viewport = Some(size);
+      records.environment_generation += 1;
 
       records.media().set_viewport
     });
@@ -842,6 +843,7 @@ pub fn trigger_color_scheme(scheme: ColorScheme) {
   trigger(|| {
     let (write, in_force) = with_records(|records| {
       records.scheme = Some(scheme);
+      records.environment_generation += 1;
 
       (records.media().set_scheme, records.scheme_in_force())
     });
@@ -854,6 +856,7 @@ pub fn trigger_color_scheme(scheme: ColorScheme) {
 fn record_chosen_scheme(scheme: Option<ColorScheme>) {
   let (write, in_force) = with_records(|records| {
     records.chosen_scheme = scheme;
+    records.environment_generation += 1;
 
     (records.media().set_scheme, records.scheme_in_force())
   });
@@ -902,6 +905,7 @@ pub fn trigger_reduced_motion(reduced: bool) {
   trigger(|| {
     let write = with_records(|records| {
       records.reduced_motion = Some(reduced);
+      records.environment_generation += 1;
 
       records.media().set_reduced_motion
     });
@@ -915,6 +919,7 @@ pub fn trigger_reduced_transparency(reduced: bool) {
   trigger(|| {
     let write = with_records(|records| {
       records.reduced_transparency = Some(reduced);
+      records.environment_generation += 1;
 
       records.media().set_reduced_transparency
     });
@@ -928,6 +933,7 @@ pub fn trigger_high_contrast(high: bool) {
   trigger(|| {
     let write = with_records(|records| {
       records.high_contrast = Some(high);
+      records.environment_generation += 1;
 
       records.media().set_high_contrast
     });
@@ -942,6 +948,7 @@ pub fn trigger_pointer_precision(precision: PointerPrecision) {
   trigger(|| {
     let write = with_records(|records| {
       records.pointer = Some(precision);
+      records.environment_generation += 1;
 
       records.media().set_pointer
     });
@@ -955,6 +962,7 @@ pub fn trigger_safe_area(insets: Inset<f32>) {
   trigger(|| {
     let write = with_records(|records| {
       records.safe_area = Some(insets);
+      records.environment_generation += 1;
 
       records.media().set_safe_area
     });
@@ -968,6 +976,7 @@ pub fn trigger_pointer_hovers(hovers: bool) {
   trigger(|| {
     let write = with_records(|records| {
       records.hover = Some(hovers);
+      records.environment_generation += 1;
 
       records.media().set_hover
     });
@@ -1019,7 +1028,11 @@ pub fn trigger_container_size(name: ContainerName, size: Size<f32>) {
 
 /// Records the measured size of the query container `name`.
 fn record_container_size(name: ContainerName, size: Size<f32>) {
-  let sizes = with_records(|records| records.media().signals.container_sizes);
+  let sizes = with_records(|records| {
+    records.environment_generation += 1;
+
+    records.media().signals.container_sizes
+  });
 
   sizes.set(name, size);
 }

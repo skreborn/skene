@@ -6,13 +6,40 @@ use std::any::TypeId;
 use rustc_hash::FxHashMap;
 
 use super::{Mirror, Scene};
-use crate::{ContainerName, Definitions, NodeId, Platform, TokenName};
+use crate::{ContainerName, Definitions, NodeId, Platform, Resolved, Scalar, TokenName};
 
-/// The token definitions a node looked up under one definitions generation, each with
-/// the node defining it.
-pub(super) struct TokenCache<V> {
+/// Where a token in force at a node is defined.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(crate) enum TokenScope {
+  /// On a node: the nearest defining ancestor.
+  Node(NodeId),
+  /// Among the root's definitions.
+  Root,
+}
+
+/// Where each token a node looked up under one definitions generation is defined;
+/// `None` for a token nothing defines.
+pub(super) struct TokenCache {
   pub(super) generation: u64,
-  pub(super) values: FxHashMap<TokenName, Option<(Option<NodeId>, V)>>,
+  pub(super) scopes: FxHashMap<TokenName, Option<TokenScope>>,
+}
+
+/// What tokens resolved to where they are defined, and the font size in force there,
+/// under one stamp: the definitions generation, then the resolution source's.
+pub(super) struct ResolvedTokens<N: Scalar> {
+  stamp: (u64, u64),
+  values: FxHashMap<(TokenScope, TokenName), Option<Resolved<N>>>,
+  font_sizes: FxHashMap<TokenScope, f32>,
+}
+
+impl<N: Scalar> Default for ResolvedTokens<N> {
+  fn default() -> Self {
+    Self {
+      stamp: (0, 0),
+      values: FxHashMap::default(),
+      font_sizes: FxHashMap::default(),
+    }
+  }
 }
 
 impl<P: Platform> Scene<P> {
@@ -124,21 +151,37 @@ impl<P: Platform> Scene<P> {
   /// The definition of `name` in force at `node`, with the node defining it: the
   /// nearest defining ancestor, else `None` for the root.
   ///
-  /// Cached per node until a definition or the tree changes.
+  /// The defining node is cached per node until a definition or the tree changes.
   pub fn resolve_scoped_token(
     &mut self,
     node: NodeId,
     name: TokenName,
   ) -> Option<(Option<NodeId>, P::TokenValue)> {
+    let scope = self.token_scope(node, name)?;
+    let definition = self.definition_on(scope, name)?;
+
+    Some((
+      match scope {
+        TokenScope::Node(node) => Some(node),
+        TokenScope::Root => None,
+      },
+      definition,
+    ))
+  }
+
+  /// Where `name` in force at `node` is defined; `None` where nothing defines it.
+  ///
+  /// Cached per node until a definition or the tree changes.
+  pub(crate) fn token_scope(&mut self, node: NodeId, name: TokenName) -> Option<TokenScope> {
     let generation = self.definitions_generation;
     let cached = self
       .record(node)
       .and_then(|record| record.cache.as_ref())
       .filter(|cache| cache.generation == generation)
-      .and_then(|cache| cache.values.get(&name));
+      .and_then(|cache| cache.scopes.get(&name));
 
-    if let Some(value) = cached {
-      return value.clone();
+    if let Some(scope) = cached {
+      return *scope;
     }
 
     let mut current = Some(node);
@@ -147,12 +190,12 @@ impl<P: Platform> Scene<P> {
     while let Some(visited) = current {
       let record = self.record(visited)?;
 
-      if let Some(value) = record
+      if record
         .definitions
         .as_ref()
-        .and_then(|definitions| definitions.get(name))
+        .is_some_and(|definitions| definitions.get(name).is_some())
       {
-        found = Some((Some(visited), value.clone()));
+        found = Some(TokenScope::Node(visited));
 
         break;
       }
@@ -160,28 +203,98 @@ impl<P: Platform> Scene<P> {
       current = record.parent;
     }
 
-    let found = found.or_else(|| {
-      self
-        .root_definitions
-        .get(name)
-        .map(|value| (None, value.clone()))
-    });
+    let found = found.or_else(|| self.root_definitions.get(name).map(|_| TokenScope::Root));
     let record = self.record_mut(node)?;
     let cache = record.cache.get_or_insert_with(|| {
       Box::new(TokenCache {
         generation,
-        values: FxHashMap::default(),
+        scopes: FxHashMap::default(),
       })
     });
 
     if cache.generation != generation {
       cache.generation = generation;
-      cache.values.clear();
+      cache.scopes.clear();
     }
 
-    cache.values.insert(name, found.clone());
+    cache.scopes.insert(name, found);
 
     found
+  }
+
+  /// The definition `scope` gives `name`.
+  pub(crate) fn definition_on(&self, scope: TokenScope, name: TokenName) -> Option<P::TokenValue> {
+    match scope {
+      TokenScope::Node(node) => self.record(node)?.definitions.as_ref()?.get(name).cloned(),
+      TokenScope::Root => self.root_definitions.get(name).cloned(),
+    }
+  }
+
+  /// What `name` resolved to where `scope` defines it, while neither the definitions
+  /// nor the source's `generation` moved since.
+  #[expect(
+    clippy::option_option,
+    reason = "a resolution is absent until kept, and one kept may have come to nothing"
+  )]
+  pub(crate) fn resolved_token(
+    &mut self,
+    scope: TokenScope,
+    name: TokenName,
+    generation: u64,
+  ) -> Option<Option<Resolved<P::Scalar>>> {
+    self
+      .resolved_under(generation)
+      .values
+      .get(&(scope, name))
+      .cloned()
+  }
+
+  /// Keeps what `name` resolved to where `scope` defines it, under the source's
+  /// `generation`.
+  pub(crate) fn keep_resolved_token(
+    &mut self,
+    scope: TokenScope,
+    name: TokenName,
+    generation: u64,
+    value: Option<Resolved<P::Scalar>>,
+  ) {
+    self
+      .resolved_under(generation)
+      .values
+      .insert((scope, name), value);
+  }
+
+  /// The font size in force where `scope` defines the size token, while neither the
+  /// definitions nor the source's `generation` moved since.
+  pub(crate) fn resolved_font_size(&mut self, scope: TokenScope, generation: u64) -> Option<f32> {
+    self
+      .resolved_under(generation)
+      .font_sizes
+      .get(&scope)
+      .copied()
+  }
+
+  /// Keeps the font size in force where `scope` defines the size token, under the
+  /// source's `generation`.
+  pub(crate) fn keep_font_size(&mut self, scope: TokenScope, generation: u64, size: f32) {
+    self
+      .resolved_under(generation)
+      .font_sizes
+      .insert(scope, size);
+  }
+
+  /// The resolved tokens, emptied where the definitions or the source's `generation`
+  /// moved since they were kept.
+  fn resolved_under(&mut self, generation: u64) -> &mut ResolvedTokens<P::Scalar> {
+    let stamp = (self.definitions_generation, generation);
+
+    if self.resolved_tokens.stamp != stamp {
+      self.resolved_tokens.stamp = stamp;
+      self.resolved_tokens.values.clear();
+      self.resolved_tokens.font_sizes.clear();
+    }
+
+    &mut self.resolved_tokens
   }
 
   /// Names `node` for container queries against its size.
@@ -195,6 +308,7 @@ impl<P: Platform> Scene<P> {
 
 #[cfg(test)]
 mod tests {
+  use super::TokenScope;
   use crate::{
     Color,
     Definition,
@@ -271,9 +385,9 @@ mod tests {
       TestScene::with(|scene| {
         let cache = scene.record(leaf).unwrap().cache.as_ref().unwrap();
 
-        (cache.generation, cache.values.get(&card).cloned())
+        (cache.generation, cache.scopes.get(&card).copied())
       }),
-      (generation, Some(Some((Some(outer), color(0.5)))))
+      (generation, Some(Some(TokenScope::Node(outer))))
     );
     assert_eq!(
       TestScene::with(|scene| scene.resolve_scoped_token(stranger, card)),

@@ -351,6 +351,10 @@ impl Records {
       }
 
       if let Some(taffy) = taffy {
+        if let Some(measured) = self.taffy.get_node_context_mut(taffy) {
+          measured.forget_extents();
+        }
+
         let _ = self.taffy.mark_dirty(taffy);
       }
     }

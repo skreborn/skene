@@ -4746,6 +4746,7 @@ pub trait skene_core::ResolutionSource<P: skene_core::Platform>
 pub const skene_core::ResolutionSource::EM: f32
 pub fn skene_core::ResolutionSource::container_size(&self, skene_core::ContainerName) -> core::option::Option<skene_core::Size<<P as skene_core::Platform>::Scalar>>
 pub fn skene_core::ResolutionSource::environment(&self) -> skene_core::Environment<<P as skene_core::Platform>::Scalar>
+pub fn skene_core::ResolutionSource::generation(&self) -> u64
 pub fn skene_core::ResolutionSource::size_token(&self) -> core::option::Option<skene_core::TokenName>
 pub fn skene_core::ResolutionSource::slot(&self, skene_core::NodeId, skene_core::Slot) -> core::option::Option<skene_core::SlotLeaf<<P as skene_core::Platform>::Scalar, <P as skene_core::Platform>::StyleExt>>
 pub trait skene_core::RunField<X: skene_core::StyleExtension>: 'static

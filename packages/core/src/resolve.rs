@@ -56,6 +56,7 @@ use crate::{
   Value,
   box_style::{BoxField, BoxFieldVisitor},
   run_style::{RunField, RunFieldVisitor},
+  scene::TokenScope,
 };
 
 /// How deep a chain of tokens and expressions naming tokens is followed.
@@ -774,6 +775,10 @@ pub trait ResolutionSource<P: Platform> {
   /// The token naming the font size, where the medium draws text at sizes other than
   /// [`EM`](Self::EM).
   fn size_token(&self) -> Option<TokenName>;
+
+  /// A count that moves whenever the environment, a container's size or the size token
+  /// changes: what a token resolved to where it is defined is kept until it moves.
+  fn generation(&self) -> u64;
 }
 
 /// What one node's properties resolve against: the environment, the node's interaction
@@ -847,43 +852,65 @@ where
     }
   }
 
-  /// The context a token's definition resolves in: the defining node's, else the
+  /// The context a token's definition resolves in: the defining node's, or the
   /// root's.
-  fn of_scope(source: &'a S, scope: Option<NodeId>) -> Option<Self> {
+  fn of_scope(source: &'a S, scope: TokenScope) -> Option<Self> {
     match scope {
-      Some(node) => Self::of(source, node),
-      None => Some(Self::root(source)),
+      TokenScope::Node(node) => Self::of(source, node),
+      TokenScope::Root => Some(Self::root(source)),
     }
   }
 
-  /// The definition of `name` in force here, with the node defining it.
-  fn scoped_token(&self, name: TokenName) -> Option<(Option<NodeId>, P::TokenValue)> {
+  /// Where `name` in force here is defined; `None` where nothing defines it.
+  fn token_scope(&self, name: TokenName) -> Option<TokenScope> {
     match self.node {
-      Some(node) => Scene::<P>::with(|scene| scene.resolve_scoped_token(node, name)),
-      None => Scene::<P>::read(|scene| scene.root_definitions().get(name).cloned())
-        .map(|value| (None, value)),
+      Some(node) => Scene::<P>::with(|scene| scene.token_scope(node, name)),
+      None => {
+        Scene::<P>::read(|scene| scene.root_definitions().get(name).map(|_| TokenScope::Root))
+      }
     }
   }
 
-  /// The value of the token `name` in force here, resolved where it is defined.
+  /// The value of the token `name` in force here, resolved where it is defined, once
+  /// per defining node until the definitions or the source's generation move.
   fn token(&self, name: TokenName) -> Option<Resolved<P::Scalar>> {
-    Resolver::<P::Scalar, P::StyleExt>::nested(|| {
-      let (scope, definition) = self.scoped_token(name)?;
+    let scope = self.token_scope(name)?;
+    let generation = self.source.generation();
+
+    if let Some(value) = Scene::<P>::with(|scene| scene.resolved_token(scope, name, generation)) {
+      return value;
+    }
+
+    let value = Resolver::<P::Scalar, P::StyleExt>::nested(|| {
+      let definition = Scene::<P>::read(|scene| scene.definition_on(scope, name))?;
 
       Self::of_scope(self.source, scope)?.with_resolver(|resolver| resolver.definition(&definition))
-    })
+    });
+
+    Scene::<P>::with(|scene| scene.keep_resolved_token(scope, name, generation, value.clone()));
+
+    value
   }
 
-  /// The font size in force here: the size token's, resolved where it is defined, else
-  /// the source's [`EM`](ResolutionSource::EM).
+  /// The font size in force here: the size token's, resolved where it is defined once
+  /// per defining node, else the source's [`EM`](ResolutionSource::EM).
   fn font_size(&self) -> f32 {
     let Some(size) = self.source.size_token()
     else {
       return S::EM;
     };
+    let Some(scope) = self.token_scope(size)
+    else {
+      return S::EM;
+    };
+    let generation = self.source.generation();
 
-    Resolver::<P::Scalar, P::StyleExt>::nested(|| {
-      let (scope, definition) = self.scoped_token(size)?;
+    if let Some(size) = Scene::<P>::with(|scene| scene.resolved_font_size(scope, generation)) {
+      return size;
+    }
+
+    let resolved = Resolver::<P::Scalar, P::StyleExt>::nested(|| {
+      let definition = Scene::<P>::read(|scene| scene.definition_on(scope, size))?;
 
       Self::of_scope(self.source, scope)?
         .with_resolver_at(S::EM, |resolver| resolver.definition(&definition))
@@ -892,7 +919,11 @@ where
       Resolved::Length(size) => Some(size),
       _ => None,
     })
-    .unwrap_or(S::EM)
+    .unwrap_or(S::EM);
+
+    Scene::<P>::with(|scene| scene.keep_font_size(scope, generation, resolved));
+
+    resolved
   }
 
   /// Whether a resolution in this context has read the interaction: what one that has

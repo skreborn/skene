@@ -177,6 +177,8 @@ pub(crate) struct Records {
   /// The insets the display keeps clear of the viewport's edges, as set; none unless
   /// set.
   pub safe_area: Option<Inset<f32>>,
+  /// A count that moves whenever the environment or a container's size is set.
+  pub environment_generation: u64,
   /// The motion clock, in seconds; stands still until advanced.
   pub clock: f64,
   /// The document's language, as last set.
@@ -212,6 +214,7 @@ impl Default for Records {
       pointer: None,
       hover: None,
       safe_area: None,
+      environment_generation: 0,
       clock: 0.,
       language: None,
       head: Head::default(),

@@ -10,15 +10,6 @@
 use std::{
   cell::Cell,
   future::Future,
-  pin::Pin,
-  sync::{
-    Arc,
-    Mutex,
-    PoisonError,
-    atomic::{AtomicBool, Ordering},
-  },
-  task::{Context, Poll, Waker},
-  thread,
   time::{Duration, Instant},
 };
 
@@ -45,68 +36,14 @@ pub fn set_render_deadline(budget: Duration) {
   BUDGET.with(|current| current.set(budget));
 }
 
-/// A future that completes after `duration`, timed on a thread of its own.
+/// A future that completes after `duration`, timed by one timer thread shared by every
+/// sleep.
 ///
 /// The server leaf's one timing primitive, and how an async load is driven and tested:
 /// the render parks until the timer wakes it, so a resource that waits on it settles
 /// before the page serializes.
 pub fn sleep(duration: Duration) -> impl Future<Output = ()> {
-  Sleep {
-    duration,
-    timer: None,
-  }
-}
-
-/// A sleeping future's timer: whether it fired, and the waker to fire it at.
-struct Timer {
-  done: AtomicBool,
-  waker: Mutex<Option<Waker>>,
-}
-
-struct Sleep {
-  duration: Duration,
-  timer: Option<Arc<Timer>>,
-}
-
-impl Future for Sleep {
-  type Output = ();
-
-  fn poll(self: Pin<&mut Self>, context: &mut Context<'_>) -> Poll<()> {
-    let this = self.get_mut();
-    let timer = this.timer.get_or_insert_with(|| {
-      let timer = Arc::new(Timer {
-        done: AtomicBool::new(false),
-        waker: Mutex::new(None),
-      });
-      let duration = this.duration;
-      let fired = Arc::clone(&timer);
-
-      thread::spawn(move || {
-        thread::sleep(duration);
-        fired.done.store(true, Ordering::Release);
-
-        if let Some(waker) = fired
-          .waker
-          .lock()
-          .unwrap_or_else(PoisonError::into_inner)
-          .take()
-        {
-          waker.wake();
-        }
-      });
-
-      timer
-    });
-
-    *timer.waker.lock().unwrap_or_else(PoisonError::into_inner) = Some(context.waker().clone());
-
-    if timer.done.load(Ordering::Acquire) {
-      Poll::Ready(())
-    }
-    else {
-      Poll::Pending
-    }
-  }
+  futures_timer::Delay::new(duration)
 }
 
 /// Runs `future` to completion on the render's executor; it makes progress only while

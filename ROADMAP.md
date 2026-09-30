@@ -114,8 +114,7 @@ left half-done in a code comment.
     images compressed (`o=z`), rows diffed by run with `CSI K`, and input resumed with
     `memchr` instead of rescanned; the dev control pipe polled beside the tty and the
     wake pipe the signals and the executor notifier share, so the terminal loop stops
-    waking ten times a second; the server's `sleep` on `futures-timer` rather than a
-    thread per call.
+    waking ten times a second.
 5. **The dev reload costs production nothing.** The saved tier is no second API: the
     Android leaf records and writes this snapshot (the native family), and the web and
     the desktop keep none beyond the dev reload.

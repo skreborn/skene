@@ -118,6 +118,26 @@ pub(crate) fn all<D: Driver>() -> Vec<Scenario<D>> {
       name: "a form reads as its roles, names, values and states",
       act: a_form_reads_alike,
     },
+    Scenario {
+      name: "the arrows wrap around a radio group, which Tab passes as one stop",
+      act: the_arrows_wrap_around_a_radio_group,
+    },
+    Scenario {
+      name: "a click on a checkbox's label toggles it, and Enter does not",
+      act: a_checkbox_label_toggles_it,
+    },
+    Scenario {
+      name: "Escape closes a picker's list without choosing and returns focus to its face",
+      act: escape_closes_a_picker_unchosen,
+    },
+    Scenario {
+      name: "a slider pages by PageUp and PageDown",
+      act: a_slider_pages,
+    },
+    Scenario {
+      name: "a click on text outside any control takes focus from the field holding it",
+      act: a_click_outside_blurs,
+    },
   ]
 }
 
@@ -688,4 +708,160 @@ fn a_form_reads_alike<D: Driver>(driver: &mut D) {
     ]
     .join("\n")
   );
+}
+
+fn the_arrows_wrap_around_a_radio_group<D: Driver>(driver: &mut D) {
+  let chosen: Signal<Option<String>> = Signal::new(None);
+
+  driver.mount(move || {
+    Column::<D::Platform>::new()
+      .set_children((
+        BasicRadioGroup::<D::Platform>::new(RadioGroup::new().bind_chosen(chosen))
+          .set_accessible_name("Size")
+          .set_child(Column::new().set_children((
+            BasicRadio::new(Radio::new("s")).set_label("Small"),
+            BasicRadio::new(Radio::new("m")).set_label("Medium"),
+            BasicRadio::new(Radio::new("l")).set_label("Large"),
+          ))),
+        button::<D>("Next"),
+      ))
+      .into_any()
+  });
+
+  let [small, large] = ["Small", "Large"].map(|name| found(driver, Role::RadioButton, name));
+  let next = found(driver, Role::Button, "Next");
+
+  driver.click(large);
+  driver.press(&key("ArrowDown"));
+
+  assert_eq!(
+    chosen.get().as_deref(),
+    Some("s"),
+    "ArrowDown on the last chooses the first"
+  );
+  assert_eq!(driver.focused(), Some(small), "focus follows the choice");
+
+  driver.press(&key("ArrowUp"));
+
+  assert_eq!(
+    chosen.get().as_deref(),
+    Some("l"),
+    "ArrowUp on the first chooses the last"
+  );
+
+  driver.press(&key("Tab"));
+
+  assert_eq!(driver.focused(), Some(next), "Tab leaves the group");
+
+  driver.press(&shifted("Tab"));
+
+  assert_eq!(
+    driver.focused(),
+    Some(large),
+    "Shift-Tab returns to the chosen radio"
+  );
+}
+
+fn a_checkbox_label_toggles_it<D: Driver>(driver: &mut D) {
+  let checked = Signal::new(false);
+
+  driver.mount(move || {
+    BasicCheckbox::<D::Platform>::new(Toggle::new().bind_checked(checked))
+      .set_label("Remember me")
+      .into_any()
+  });
+
+  let label = driver
+    .find_text("Remember me")
+    .expect("the label's text is drawn");
+
+  driver.click(label);
+
+  assert!(checked.get(), "a click on the label checks it");
+
+  driver.press(&key("Enter"));
+
+  assert!(checked.get(), "Enter leaves it as it was");
+}
+
+fn escape_closes_a_picker_unchosen<D: Driver>(driver: &mut D) {
+  let value = Signal::new("b".to_owned());
+
+  driver.mount(move || {
+    BasicPicker::<D::Platform>::new()
+      .bind_value(value)
+      .set_label("Letter")
+      .set_options(
+        ["a", "b", "c"]
+          .map(|letter| BasicListboxOption::new(ListboxOption::new(letter)).set_label(letter)),
+      )
+      .set_face(|shown| Text::derive(move || shown.get()))
+      .into_any()
+  });
+
+  let face = found(driver, Role::ComboBox, "Letter");
+
+  driver.click(face);
+  driver.press(&key("ArrowDown"));
+  driver.press(&key("Escape"));
+
+  assert_eq!(value.get(), "b", "Escape chooses nothing");
+  assert!(
+    driver.find(Role::ListBoxOption, "c").is_none(),
+    "Escape closes the list"
+  );
+  assert_eq!(driver.focused(), Some(face), "focus returns to the face");
+}
+
+fn a_slider_pages<D: Driver>(driver: &mut D) {
+  let value = Signal::new(50f32);
+
+  driver.mount(move || {
+    BasicSlider::<D::Platform>::new(Slider::new().bind_value(value))
+      .set_accessible_name("Volume")
+      .into_any()
+  });
+
+  let slider = found(driver, Role::Slider, "Volume");
+
+  driver.focus(slider);
+  driver.press(&key("PageUp"));
+
+  assert!(
+    (value.get() - 60.).abs() < f32::EPSILON,
+    "PageUp raises it by a tenth of its range, not {}",
+    value.get()
+  );
+
+  driver.press(&key("PageDown"));
+  driver.press(&key("PageDown"));
+
+  assert!(
+    (value.get() - 40.).abs() < f32::EPSILON,
+    "PageDown lowers it by a tenth of its range, not {}",
+    value.get()
+  );
+}
+
+fn a_click_outside_blurs<D: Driver>(driver: &mut D) {
+  driver.mount(|| {
+    Column::<D::Platform>::new()
+      .set_children((
+        BasicTextField::<D::Platform>::new(TextEntry::new()).set_label("Name"),
+        Text::new("Plain words"),
+      ))
+      .into_any()
+  });
+
+  let field = found(driver, Role::TextInput, "Name");
+
+  driver.focus(field);
+
+  assert_eq!(driver.focused(), Some(field));
+
+  let words = driver.find_text("Plain words").expect("the text is drawn");
+
+  driver.click(words);
+
+  assert_eq!(driver.focused(), None, "the field loses focus");
 }

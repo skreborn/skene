@@ -18,6 +18,7 @@ use skene_core::{
   Code,
   EventKind,
   Key,
+  KeyDefault,
   KeyEvent,
   Modifiers,
   NamedKey,
@@ -89,7 +90,8 @@ pub(super) struct Listener {
 impl Listener {
   /// Listens for `name` on `target`, running `handler` with each event as one turn.
   ///
-  /// An event arriving while the scene is borrowed is delivered from a microtask
+  /// An event arriving while the scene or the leaf's own state is borrowed, as a
+  /// focus change made under that borrow dispatches, is delivered from a microtask
   /// instead, once the borrow is released; its verdict then no longer reaches the
   /// platform's default.
   pub(super) fn new(
@@ -100,7 +102,7 @@ impl Listener {
   ) -> Self {
     let handler = Rc::new(handler);
     let closure = Closure::wrap(Box::new(move |event: web_sys::Event| {
-      if Scene::<Web>::is_borrowed() {
+      if Scene::<Web>::is_borrowed() || super::is_dom_borrowed() {
         let handler = Rc::clone(&handler);
 
         wasm_bindgen_futures::spawn_local(async move {
@@ -424,18 +426,20 @@ fn on_key_down(event: &web_sys::Event) {
     return;
   };
 
+  let key = key_event(keyboard);
   let prevented = node_at(event.target())
-    .map(|node| dispatch_key_down::<Web>(node, &key_event(keyboard)))
+    .map(|node| dispatch_key_down::<Web>(node, &key))
     .unwrap_or_default();
 
   apply(prevented, event);
 
-  if keyboard.key() == "Escape"
-    && !prevented.platform
-    && let Some(popup) = topmost_popup()
+  // A modal the scene dismisses on `Escape` is the dialog's own to cancel.
+  if !prevented.platform
+    && let Some(KeyDefault::Dismiss(overlay)) = Scene::<Web>::read(|scene| scene.key_default(&key))
+    && !Scene::<Web>::read(|scene| scene.is_modal(overlay))
   {
     event.prevent_default();
-    notify_dismiss::<Web>(popup);
+    notify_dismiss::<Web>(overlay);
   }
 }
 
@@ -466,18 +470,6 @@ fn key_event(keyboard: &web_sys::KeyboardEvent) -> KeyEvent {
     repeat: keyboard.repeat(),
     composing: keyboard.is_composing(),
   }
-}
-
-/// The node of the popup opened last among those open.
-fn topmost_popup() -> Option<NodeId> {
-  Scene::<Web>::with(|scene| {
-    scene
-      .open_overlays()
-      .iter()
-      .rev()
-      .copied()
-      .find(|overlay| !scene.is_modal(*overlay))
-  })
 }
 
 /// `event` with its local position measured from `element`'s top-left corner.

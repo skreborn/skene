@@ -117,7 +117,13 @@ headless alike: headless applies a `Tab` its handlers leave to the platform. The
 (`Scene::dismissed_by_press`) for every platform: from the top down, each overlay the
 press lands outside of, on neither it nor the anchor it opened from, until one it lands
 inside of, a modal ending the descent and dismissed itself; the web leaves a modal's
-backdrop to its click. The scene holds the interaction every platform reports: the
+backdrop to its click. It answers what a key its handlers leave to the platform does
+(`Scene::key_default`: `Tab` traverses, `Escape` dismisses the topmost overlay, which
+the web leaves to a modal's own cancel, and the menu key or `Shift-F10` asks for a
+context menu), which popups focus leaves as it moves to another node
+(`Scene::popups_left_by`, dismissed by `notify_focus_moved` on every platform), and where
+a modal takes focus as it opens (`Scene::modal_focus`: its first tab stop, else itself,
+as a dialog's focusing steps choose). The scene holds the interaction every platform reports: the
 focused node with whether focus shows (a key sets it, a pointer press clears it, a text
 entry's shows however reached), the pressed node and the hovered one, dropping each
 with its node, and resolves every node's interaction from them (`Scene::interaction`),

@@ -9,9 +9,11 @@ use skene_core::{
   Axis,
   ClickEvent,
   ClipboardAction,
+  KeyDefault,
   KeyEvent,
   Modifiers,
   MouseCursor,
+  NamedKey,
   NodeId,
   Overflow,
   Placement,
@@ -726,37 +728,9 @@ impl Store {
     }
   }
 
-  /// The open anchored popups focus leaves when it moves to `next`: neither the popup
-  /// nor the anchor it opened from holds the new focus, so each asks to close.
-  fn popups_left_by(&self, next: Option<Handle>) -> Vec<NodeId> {
-    let ancestors = next.map(|next| self.ancestors(next)).unwrap_or_default();
-
-    self
-      .open_overlays()
-      .into_iter()
-      .filter_map(|overlay| {
-        let record = self.record(overlay)?;
-        let Kind::Overlay {
-          modal: false,
-          anchor: Some(anchor),
-          ..
-        } = &record.kind
-        else {
-          return None;
-        };
-
-        if ancestors.contains(&overlay) || ancestors.contains(anchor) {
-          return None;
-        }
-
-        record.node
-      })
-      .collect()
-  }
-
   /// Opens or closes an overlay against `anchor`, returning the focus move the change
-  /// asks for: a modal opening takes focus to its first tab stop, or from every node
-  /// when it has none. The scene returns focus as an overlay closes.
+  /// asks for: a modal opening takes focus as the scene chooses
+  /// ([`Scene::modal_focus`]). The scene returns focus as an overlay closes.
   pub(crate) fn set_overlay_open(
     &mut self,
     handle: Handle,
@@ -783,12 +757,11 @@ impl Store {
       return OverlayFocus::Held;
     }
 
-    OverlayFocus::Moved(
-      self
-        .tab_order()
-        .into_iter()
-        .find(|stop| self.ancestors(*stop).contains(&handle)),
-    )
+    let order = self.tab_order();
+
+    OverlayFocus::Moved(Some(Scene::<Tui>::read(|scene| {
+      scene.modal_focus(handle, &order)
+    })))
   }
 
   /// Whether the record is a text entry.
@@ -854,18 +827,11 @@ fn focus_on(next: Option<Handle>, restored: bool) {
       store.reveal = Some(next);
     }
 
-    Some((
-      next.and_then(|next| store.record(next).and_then(|record| record.node)),
-      store.popups_left_by(next),
-    ))
+    Some(next.and_then(|next| store.record(next).and_then(|record| record.node)))
   });
 
-  if let Some((gained, dismissed)) = moved {
+  if let Some(gained) = moved {
     notify_focus_moved::<Tui>(gained);
-
-    for popup in dismissed {
-      notify_dismiss::<Tui>(popup);
-    }
   }
 
   crate::field::report_selections();
@@ -1607,8 +1573,7 @@ pub(crate) fn page_scroll(pages: i64) {
 /// dismissal, page scrolling, the clipboard keys and entry editing.
 pub(crate) fn key(event: &KeyEvent) {
   let target = store(|store| {
-    // A modifier pressed alone shows focus no more than it does in a browser.
-    if !event.is_modifier() {
+    if event.shows_focus() {
       store.set_focus_visible(true);
     }
 
@@ -1673,37 +1638,49 @@ fn key_default(event: &KeyEvent) {
     store(|store| store.mouse_released = false);
   }
 
+  // The most transient layer goes first: a drag, then the scene's defaults, an open
+  // overlay among them, then the selection.
+  if event.is(NamedKey::Escape)
+    && store(|store| {
+      matches!(store.drag, Some(Drag::Item { started: true, .. })) && store.drag.take().is_some()
+    })
+  {
+    end_drag::<Tui>();
+    store(|store| store.restyle_pending = true);
+
+    return;
+  }
+
+  match Scene::<Tui>::read(|scene| scene.key_default(event)) {
+    Some(KeyDefault::Traverse { back }) => {
+      move_focus(if back { -1 } else { 1 });
+
+      return;
+    }
+    Some(KeyDefault::Dismiss(overlay)) => {
+      notify_dismiss::<Tui>(overlay);
+
+      return;
+    }
+    Some(KeyDefault::ContextMenu) => {
+      context_menu_from_keyboard(event.modifiers);
+
+      return;
+    }
+    None => {}
+  }
+
   let offers = |action| store(|store| store.offers(action));
   let ctrl = event.modifiers.ctrl && !event.modifiers.alt;
 
   match event.shortcut_key().as_ref() {
-    "Tab" => {
-      move_focus(if event.modifiers.shift { -1 } else { 1 });
-
-      return;
-    }
     "Enter" if store(|store| store.focused_link()).is_some() => {
       follow_focused_link(event.modifiers);
 
       return;
     }
     "Escape" => {
-      // The most transient layer goes first: a drag, an open overlay, then the
-      // selection.
-      if store(|store| {
-        matches!(store.drag, Some(Drag::Item { started: true, .. })) && store.drag.take().is_some()
-      }) {
-        end_drag::<Tui>();
-        store(|store| store.restyle_pending = true);
-
-        return;
-      }
-
-      let dismissed = store(|store| {
-        if let Some((top, _)) = store.topmost_open_overlay() {
-          return store.record(top).and_then(|record| record.node);
-        }
-
+      store(|store| {
         if store.has_selection() {
           store.clear_selection();
 
@@ -1711,30 +1688,12 @@ fn key_default(event: &KeyEvent) {
             store.collapse_entry_selection(entry);
           }
         }
-
-        None
       });
-
-      if let Some(dismissed) = dismissed {
-        notify_dismiss::<Tui>(dismissed);
-      }
 
       return;
     }
     "PageDown" => page_scroll(1),
     "PageUp" => page_scroll(-1),
-    // The menu key, and `Shift-F10`, ask the focused node for its context menu at its
-    // bottom-start corner, as a browser does.
-    "ContextMenu" => {
-      context_menu_from_keyboard(event.modifiers);
-
-      return;
-    }
-    "F10" if event.modifiers.shift => {
-      context_menu_from_keyboard(event.modifiers);
-
-      return;
-    }
     // The clipboard keys the launch offers: `Ctrl+C` copies whichever selection
     // exists, `Ctrl+X` cuts the focused entry's, `Ctrl+V` pastes into the focused
     // entry; one not offered is an ordinary key.

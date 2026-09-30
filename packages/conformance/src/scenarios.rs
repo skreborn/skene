@@ -9,6 +9,7 @@ use skene_common::{
   ContextMenu,
   ListItem,
   MenuItem,
+  Overlay,
   RadioMember,
   Range,
   RawButton,
@@ -100,6 +101,14 @@ pub(crate) fn all<D: Driver>() -> Vec<Scenario<D>> {
     Scenario {
       name: "a hidden view takes the focus inside it along and gives it back on its return",
       act: a_hidden_view_keeps_its_focus,
+    },
+    Scenario {
+      name: "focus moving to a node outside an open popup closes it",
+      act: focus_leaving_a_popup_closes_it,
+    },
+    Scenario {
+      name: "a modal takes focus to its first stop as it opens and returns it as it closes",
+      act: a_modal_takes_focus_as_it_opens,
     },
     Scenario {
       name: "a form reads as its roles, names, values and states",
@@ -518,6 +527,80 @@ fn a_hidden_view_keeps_its_focus<D: Driver>(driver: &mut D) {
     driver.focused(),
     Some(elsewhere),
     "focus moved on meanwhile stays where it went"
+  );
+}
+
+fn focus_leaving_a_popup_closes_it<D: Driver>(driver: &mut D) {
+  let value = Signal::new("b".to_owned());
+
+  driver.mount(move || {
+    Column::<D::Platform>::new()
+      .set_children((
+        RawPicker::<D::Platform>::new()
+          .bind_value(value)
+          .set_label("Letter")
+          .set_options(
+            ["a", "b", "c"].map(|letter| RawOption::new(ListItem::new(letter)).set_label(letter)),
+          )
+          .set_face(|shown| Text::derive(move || shown.get())),
+        button::<D>("Elsewhere"),
+      ))
+      .into_any()
+  });
+
+  let face = found(driver, Role::ComboBox, "Letter");
+
+  driver.click(face);
+
+  assert!(
+    driver.find(Role::ListBoxOption, "c").is_some(),
+    "a click opens the list"
+  );
+
+  let elsewhere = found(driver, Role::Button, "Elsewhere");
+
+  driver.focus(elsewhere);
+
+  assert!(
+    driver.find(Role::ListBoxOption, "c").is_none(),
+    "focus leaving closes the list"
+  );
+  assert_eq!(driver.focused(), Some(elsewhere));
+}
+
+fn a_modal_takes_focus_as_it_opens<D: Driver>(driver: &mut D) {
+  let open = Signal::new(false);
+
+  driver.mount(move || {
+    Column::<D::Platform>::new()
+      .set_children((
+        button::<D>("Open").handle_click(move || open.set(true)),
+        Overlay::<D::Platform>::modal()
+          .bind_open(open)
+          .set_child(button::<D>("Inside")),
+      ))
+      .into_any()
+  });
+
+  let opener = found(driver, Role::Button, "Open");
+
+  driver.click(opener);
+
+  let inside = found(driver, Role::Button, "Inside");
+
+  assert_eq!(
+    driver.focused(),
+    Some(inside),
+    "the modal's first stop takes focus"
+  );
+
+  driver.press(&key("Escape"));
+
+  assert!(!open.get(), "Escape dismisses it");
+  assert_eq!(
+    driver.focused(),
+    Some(opener),
+    "focus returns to its opener"
   );
 }
 

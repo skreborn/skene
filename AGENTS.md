@@ -274,7 +274,8 @@
   focusing it as a click on an anchor does; `FocusVisible` holds as `:focus-visible`
   does, after a key or in a text entry and not since a pointer press, on the terminal
   and the headless platform alike; popups light-dismiss, except on their own anchor, whose
-  click toggles them; a modal takes focus on open and returns it on close; a key's
+  click toggles them, and close as focus moves to a node outside them and their anchor;
+  a modal takes focus on open and returns it on close; a key's
   default runs after the handlers' writes have taken effect, as after a browser's
   microtask checkpoint; a release dispatches as `KeyUp` with no default, a held key
   repeats its `KeyDown` with `repeat` set, and a modifier alone arrives under its W3C

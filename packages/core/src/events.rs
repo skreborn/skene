@@ -293,6 +293,22 @@ pub struct KeyEvent {
   pub composing: bool,
 }
 
+/// What a key does once its handlers leave it to the platform, where the scene decides
+/// it; a platform's own keys decide the rest.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[must_use]
+pub enum KeyDefault {
+  /// `Tab` moves focus to the next tab stop, or the previous one with `Shift`.
+  Traverse {
+    /// Whether focus moves back.
+    back: bool,
+  },
+  /// `Escape` dismisses the topmost open overlay.
+  Dismiss(crate::NodeId),
+  /// The menu key or `Shift-F10` asks for the context menu where focus is.
+  ContextMenu,
+}
+
 impl KeyEvent {
   /// A press of the key its W3C key value `key` names (`"a"`, `" "`, `"Enter"`), with no
   /// modifier held, not repeating and outside a composition, at the position the key has
@@ -385,6 +401,14 @@ impl KeyEvent {
   #[must_use]
   pub fn matches(&self, shortcut: &Shortcut) -> bool {
     self.modifiers == shortcut.modifiers && self.shortcut_key() == shortcut.key
+  }
+
+  /// Whether the key shows focus, as `:focus-visible` holds after it: any key but a
+  /// modifier pressed alone.
+  #[inline(always)]
+  #[must_use]
+  pub const fn shows_focus(&self) -> bool {
+    !self.is_modifier()
   }
 
   /// Whether the key is a modifier pressed alone.

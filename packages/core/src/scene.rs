@@ -33,7 +33,10 @@ use crate::{
   Inset,
   Interaction,
   ItemAlignment,
+  KeyDefault,
+  KeyEvent,
   Line,
+  NamedKey,
   Registered,
   handler::HandlerSet,
 };
@@ -1539,6 +1542,53 @@ impl<P: Platform> Scene<P> {
   #[inline(always)]
   pub fn open_overlays(&self) -> &[NodeId] {
     &self.open_overlays
+  }
+
+  /// What `event` does once its handlers leave it to the platform, as a browser's
+  /// defaults do: `Tab` traverses, `Escape` dismisses the topmost open overlay, and the
+  /// menu key or `Shift-F10` asks for a context menu; `None` for every other key.
+  pub fn key_default(&self, event: &KeyEvent) -> Option<KeyDefault> {
+    if event.is(NamedKey::Tab) {
+      return Some(KeyDefault::Traverse {
+        back: event.modifiers.shift,
+      });
+    }
+
+    if event.is(NamedKey::Escape) {
+      return self.open_overlays.last().copied().map(KeyDefault::Dismiss);
+    }
+
+    (event.is(NamedKey::ContextMenu) || (event.is(NamedKey::F10) && event.modifiers.shift))
+      .then_some(KeyDefault::ContextMenu)
+  }
+
+  /// The open popups focus leaves as it moves to `next`: each non-modal overlay opened
+  /// against an anchor, where neither the popup nor its anchor holds `next`.
+  #[must_use]
+  pub fn popups_left_by(&self, next: NodeId) -> Vec<NodeId> {
+    let ancestry = self.ancestry(next);
+
+    self
+      .open_overlays
+      .iter()
+      .copied()
+      .filter(|overlay| {
+        !self.is_modal(*overlay)
+          && self
+            .overlay_anchor(*overlay)
+            .is_some_and(|anchor| !ancestry.contains(overlay) && !ancestry.contains(&anchor))
+      })
+      .collect()
+  }
+
+  /// The node the modal `modal` takes focus to as it opens, as a dialog's focusing steps
+  /// choose: its first tab stop in `order`, the tab order, else the modal itself.
+  pub fn modal_focus(&self, modal: NodeId, order: &[NodeId]) -> NodeId {
+    order
+      .iter()
+      .copied()
+      .find(|stop| self.ancestry(*stop).contains(&modal))
+      .unwrap_or(modal)
   }
 
   /// Whether `node` is a modal overlay.

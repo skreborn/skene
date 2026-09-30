@@ -61,11 +61,11 @@ use skene_core::{
   EventKind,
   FocusOrder,
   Inset,
+  KeyDefault,
   KeyEvent,
   Media,
   MediaSignals,
   NameFacts,
-  NamedKey,
   NativeElement,
   NodeId,
   NodeRecord,
@@ -230,10 +230,21 @@ impl Platform for Headless {
   }
 
   fn set_overlay_open(node: NodeId, open: bool, anchor: Option<NodeId>) {
-    with_record(node, |record| {
+    let opened = with_record(node, |record| {
+      let opened = open && !record.open;
+
       record.open = open;
       record.anchor = anchor;
+
+      opened
     });
+
+    if opened == Some(true) && Scene::<Self>::read(|scene| scene.is_modal(node)) {
+      let (_, order) = tab_order(node);
+      let target = Scene::<Self>::read(|scene| scene.modal_focus(node, &order));
+
+      notify_focus_moved::<Self>(Some(target));
+    }
   }
 
   fn set_overlay_placement(node: NodeId, placement: Placement) {
@@ -556,7 +567,9 @@ pub fn trigger_double_click(node: NodeId) -> Prevented {
 /// `Shift-F10` asks `node` for its context menu, the request naming no pointer.
 pub fn trigger_key_down(node: NodeId, event: &KeyEvent) -> Prevented {
   trigger(|| {
-    Scene::<Headless>::with(|scene| scene.set_focus_visible(true));
+    if event.shows_focus() {
+      Scene::<Headless>::with(|scene| scene.set_focus_visible(true));
+    }
 
     let prevented = dispatch_key_down::<Headless>(node, event);
 
@@ -564,24 +577,18 @@ pub fn trigger_key_down(node: NodeId, event: &KeyEvent) -> Prevented {
       return prevented;
     }
 
-    if event.is(NamedKey::Tab) {
-      traverse(node, if event.modifiers.shift { -1 } else { 1 });
-    }
-    else if event.is(NamedKey::Escape) {
-      let topmost = Scene::<Headless>::with(|scene| scene.open_overlays().last().copied());
+    match Scene::<Headless>::read(|scene| scene.key_default(event)) {
+      Some(KeyDefault::Traverse { back }) => traverse(node, if back { -1 } else { 1 }),
+      Some(KeyDefault::Dismiss(overlay)) => notify_dismiss::<Headless>(overlay),
+      Some(KeyDefault::ContextMenu) => {
+        let mut request = PointerEvent::mouse(0., 0.);
 
-      if let Some(overlay) = topmost {
-        notify_dismiss::<Headless>(overlay);
+        request.pointer.pointer_id = None;
+        request.modifiers = event.modifiers;
+
+        let _ = dispatch_context_menu::<Headless>(node, &request);
       }
-    }
-    else if event.is(NamedKey::ContextMenu) || (event.is(NamedKey::F10) && event.modifiers.shift)
-    {
-      let mut request = PointerEvent::mouse(0., 0.);
-
-      request.pointer.pointer_id = None;
-      request.modifiers = event.modifiers;
-
-      let _ = dispatch_context_menu::<Headless>(node, &request);
+      None => {}
     }
 
     prevented
@@ -589,8 +596,19 @@ pub fn trigger_key_down(node: NodeId, event: &KeyEvent) -> Prevented {
 }
 
 /// Moves focus `step` tab stops from where it is along the tab order of the tree `node`
-/// stands in; a hidden box and its content take no stop.
+/// stands in.
 fn traverse(node: NodeId, step: isize) {
+  let (root, order) = tab_order(node);
+  let next = Scene::<Headless>::read(|scene| scene.tab_from(root, &order, scene.focused(), step));
+
+  if let Some(next) = next {
+    notify_focus_moved::<Headless>(Some(next));
+  }
+}
+
+/// The root of the tree `node` stands in, with its tab order; a hidden box and its
+/// content take no stop.
+fn tab_order(node: NodeId) -> (NodeId, Vec<NodeId>) {
   let (root, nodes) = Scene::<Headless>::with(|scene| {
     let root = scene.ancestry(node).last().copied().unwrap_or(node);
     let mut nodes = Vec::new();
@@ -612,16 +630,11 @@ fn traverse(node: NodeId, step: isize) {
       )
     })
     .collect();
-  let next = Scene::<Headless>::with(|scene| {
-    let overlays = scene.open_overlays().to_vec();
-    let order = scene.tab_order(root, &overlays, |node| hidden.contains(&node));
-
-    scene.tab_from(root, &order, scene.focused(), step)
+  let order = Scene::<Headless>::read(|scene| {
+    scene.tab_order(root, scene.open_overlays(), |node| hidden.contains(&node))
   });
 
-  if let Some(next) = next {
-    notify_focus_moved::<Headless>(Some(next));
-  }
+  (root, order)
 }
 
 /// Dispatches a key release at `node`, bubbling through the scene.

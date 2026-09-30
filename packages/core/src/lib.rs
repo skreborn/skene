@@ -133,6 +133,7 @@ pub use events::{
   Bubbling,
   ClickEvent,
   ClickHandler,
+  KeyDefault,
   KeyEvent,
   KeyHandler,
   Modifiers,

@@ -41,15 +41,6 @@ left half-done in a code comment.
     - Controls: `AccessProp` moves onto AccessKit's schema, beside its open `Role`: its
     properties in place of the closed report, so a third party builds switches, tabs,
     comboboxes and trees; parts become styling targets or go.
-    - Defaults: a platform's own response to keys, presses and overlays (Tab traversal,
-    `Escape` dismissing the topmost overlay, the menu key and `Shift-F10`, focus showing
-    after a key, dismissal on a press, a popup closing as focus leaves it, a modal taking
-    focus as it opens) is written once in the scene beside `dismissed_by_press` and
-    `tab_from`, one key classifier deciding each key's default. Headless, the terminal
-    and the web each keep a copy today, and the copies have drifted: headless shows focus
-    on a modifier alone where the terminal does not, the web's `Escape` closes the
-    topmost popup beneath an open modal, only the terminal closes a popup that focus
-    leaves, and headless gives an opening modal no focus.
     - Facts: platform records stop keeping what the scene holds (a control's state, an
     overlay's open, modal and anchor, focus order, the merged accessibility reports, the
     hover path, measured container sizes) and read it there, as the terminal reads its

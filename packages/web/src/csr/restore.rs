@@ -7,7 +7,7 @@ use skene_reactive::Position;
 use wasm_bindgen::JsCast;
 use web_sys::{Element, HtmlElement, HtmlInputElement, HtmlTextAreaElement};
 
-use super::{DOM, Node, Web, with_dom};
+use super::{DOM, Web, with_dom};
 
 /// The snapshot entry's tag.
 const TAG: &str = "skene-web:restore";
@@ -105,24 +105,29 @@ pub fn adopt_restoration() {
     .as_ref()
     .and_then(|(position, selection)| Some((sink_at(position)?, *selection)));
 
-  with_dom(|dom| {
-    for (sink, x, y) in scrolls {
-      if let Some(element) = dom.node(sink).and_then(Node::element) {
-        element.set_scroll_left(x);
-        element.set_scroll_top(y);
-      }
-    }
+  let (scrolled, focused) = with_dom(|dom| {
+    let scrolled: Vec<_> = scrolls
+      .into_iter()
+      .filter_map(|(sink, x, y)| Some((dom.node(sink)?.element()?.clone(), x, y)))
+      .collect();
+    let focused =
+      focused.and_then(|(sink, selection)| Some((dom.node(sink)?.carrier()?.clone(), selection)));
 
-    if let Some((sink, selection)) = focused
-      && let Some(carrier) = dom.node(sink).and_then(Node::carrier)
-    {
-      if let Some(html) = carrier.dyn_ref::<HtmlElement>() {
-        let _ = html.focus();
-      }
-
-      if let Some((start, end)) = selection {
-        select(carrier, start, end);
-      }
-    }
+    (scrolled, focused)
   });
+
+  for (element, x, y) in scrolled {
+    element.set_scroll_left(x);
+    element.set_scroll_top(y);
+  }
+
+  if let Some((carrier, selection)) = focused {
+    if let Some(html) = carrier.dyn_ref::<HtmlElement>() {
+      let _ = html.focus();
+    }
+
+    if let Some((start, end)) = selection {
+      select(&carrier, start, end);
+    }
+  }
 }

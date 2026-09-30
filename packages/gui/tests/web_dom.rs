@@ -627,6 +627,94 @@ fn escape_dismisses_the_topmost_popup_unless_taken() {
   assert!(!outer.get());
 }
 
+/// `Escape` over an open modal is the dialog's own to cancel: the popup beneath the
+/// modal stays open.
+#[wasm_bindgen_test]
+fn escape_over_a_modal_keeps_the_popup_beneath_it() {
+  let (_guard, root) = fresh_root();
+  let popup = Signal::new(false);
+  let modal = Signal::new(false);
+
+  let _ = mount(move || {
+    Column::new()
+      .set_children((
+        Overlay::popup()
+          .bind_open(popup)
+          .set_child(Text::new("popup")),
+        Overlay::modal()
+          .bind_open(modal)
+          .set_child(Text::new("modal")),
+      ))
+      .build()
+  });
+
+  popup.set(true);
+  web::end_turn();
+  modal.set(true);
+  web::end_turn();
+
+  let init = web_sys::KeyboardEventInit::new();
+
+  init.set_bubbles(true);
+  init.set_cancelable(true);
+  init.set_key("Escape");
+
+  let event =
+    web_sys::KeyboardEvent::new_with_keyboard_event_init_dict("keydown", &init).expect("a key");
+  let _ = root.dispatch_event(&event);
+
+  assert!(popup.get(), "the popup beneath the modal stays open");
+}
+
+/// Focus moving to a node outside an open popup and its anchor dismisses the popup, and
+/// focus on the anchor keeps it.
+#[wasm_bindgen_test]
+fn focus_leaving_a_popup_dismisses_it() {
+  let (_guard, root) = fresh_root();
+  let open = Signal::new(false);
+  let anchor = NodeHandle::new();
+
+  let _ = mount(move || {
+    Column::new()
+      .set_children((
+        Container::new()
+          .set_focus_order(skene_gui::FocusOrder::Auto)
+          .bind_handle(anchor)
+          .set_child(Text::new("anchor")),
+        Container::new()
+          .set_focus_order(skene_gui::FocusOrder::Auto)
+          .set_child(Text::new("elsewhere")),
+        Overlay::popup()
+          .set_anchor(anchor)
+          .bind_open(open)
+          .set_child(Text::new("popup")),
+      ))
+      .build()
+  });
+
+  open.set(true);
+  web::end_turn();
+
+  let stops = root
+    .query_selector_all("[tabindex]")
+    .expect("a valid selector");
+  let stop = |index: u32| -> HtmlElement {
+    stops
+      .item(index)
+      .expect("a tab stop")
+      .dyn_into()
+      .expect("an element")
+  };
+
+  stop(0).focus().expect("focus the anchor");
+
+  assert!(open.get(), "focus on the anchor keeps the popup");
+
+  stop(1).focus().expect("focus elsewhere");
+
+  assert!(!open.get(), "focus leaving dismisses the popup");
+}
+
 /// A wrapper's derived property reaches a run as a slot, following its signal.
 #[wasm_bindgen_test]
 fn a_derived_wrapper_property_reaches_a_run() {
@@ -2685,19 +2773,24 @@ async fn a_painted_box_draws_into_its_canvas() {
   next_frame().await;
 
   let painted = only_child(&root);
-  let canvas: HtmlCanvasElement = painted
-    .first_element_child()
-    .expect("the canvas")
-    .dyn_into()
-    .expect("a canvas element");
+  // The canvas in the box now: a GPU canvas that fails is replaced by a fresh one.
+  let current = || -> HtmlCanvasElement {
+    painted
+      .first_element_child()
+      .expect("the canvas")
+      .dyn_into()
+      .expect("a canvas element")
+  };
+  let mut canvas = current();
   let mut pixel = center_pixel(&canvas);
 
-  for _ in 0..100 {
+  for _ in 0..400 {
     if pixel[0..4] == [0, 0, 255, 255] {
       break;
     }
 
     next_frame().await;
+    canvas = current();
     pixel = center_pixel(&canvas);
   }
 

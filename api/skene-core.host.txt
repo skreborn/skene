@@ -1410,6 +1410,20 @@ pub fn skene_core::ItemAlignment::fingerprint<H: core::hash::Hasher>(&self, &mut
 impl<N: skene_core::Scalar, X: skene_core::StyleExtension> skene_core::IntoBoxValue<N, X> for skene_core::ItemAlignment
 pub fn skene_core::ItemAlignment::from_box_value(skene_core::BoxValue<N, X>) -> core::option::Option<Self>
 pub fn skene_core::ItemAlignment::into_box_value(self) -> skene_core::BoxValue<N, X>
+pub enum skene_core::KeyDefault
+pub skene_core::KeyDefault::ContextMenu
+pub skene_core::KeyDefault::Dismiss(skene_core::NodeId)
+pub skene_core::KeyDefault::Traverse
+pub skene_core::KeyDefault::Traverse::back: bool
+impl core::clone::Clone for skene_core::KeyDefault
+pub fn skene_core::KeyDefault::clone(&self) -> skene_core::KeyDefault
+impl core::cmp::Eq for skene_core::KeyDefault
+impl core::cmp::PartialEq for skene_core::KeyDefault
+pub fn skene_core::KeyDefault::eq(&self, &skene_core::KeyDefault) -> bool
+impl core::fmt::Debug for skene_core::KeyDefault
+pub fn skene_core::KeyDefault::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for skene_core::KeyDefault
+impl core::marker::StructuralPartialEq for skene_core::KeyDefault
 pub enum skene_core::Layout
 pub skene_core::Layout::Flex
 pub skene_core::Layout::Flex::direction: skene_core::FlexDirection
@@ -3099,6 +3113,7 @@ pub const fn skene_core::KeyEvent::is_modifier(&self) -> bool
 pub fn skene_core::KeyEvent::matches(&self, &skene_core::Shortcut) -> bool
 pub fn skene_core::KeyEvent::new(&str) -> Self
 pub fn skene_core::KeyEvent::shortcut_key(&self) -> alloc::borrow::Cow<'_, str>
+pub const fn skene_core::KeyEvent::shows_focus(&self) -> bool
 pub fn skene_core::KeyEvent::types(&self, &str) -> bool
 impl core::clone::Clone for skene_core::KeyEvent
 pub fn skene_core::KeyEvent::clone(&self) -> skene_core::KeyEvent
@@ -3730,6 +3745,8 @@ pub fn skene_core::Scene<P>::is_hovered(&self, skene_core::NodeId) -> bool
 pub fn skene_core::Scene<P>::is_modal(&self, skene_core::NodeId) -> bool
 pub fn skene_core::Scene<P>::is_pressed(&self, skene_core::NodeId) -> bool
 pub fn skene_core::Scene<P>::keep_caption_beside(&mut self, skene_core::NodeId)
+pub fn skene_core::Scene<P>::key_default(&self, &skene_core::KeyEvent) -> core::option::Option<skene_core::KeyDefault>
+pub fn skene_core::Scene<P>::modal_focus(&self, skene_core::NodeId, &[skene_core::NodeId]) -> skene_core::NodeId
 pub fn skene_core::Scene<P>::move_focus(&mut self, core::option::Option<skene_core::NodeId>) -> (smallvec::SmallVec<[skene_core::NodeId; 16]>, smallvec::SmallVec<[skene_core::NodeId; 16]>)
 pub fn skene_core::Scene<P>::move_pointer(&mut self, core::option::Option<skene_core::NodeId>) -> (smallvec::SmallVec<[skene_core::NodeId; 16]>, smallvec::SmallVec<[skene_core::NodeId; 16]>)
 pub fn skene_core::Scene<P>::new() -> Self
@@ -3747,6 +3764,7 @@ pub fn skene_core::Scene<P>::part(&self, skene_core::NodeId) -> core::option::Op
 pub fn skene_core::Scene<P>::placed_children(&self, skene_core::NodeId) -> impl core::iter::traits::iterator::Iterator<Item = skene_core::NodeId> + '_
 pub fn skene_core::Scene<P>::placed_parent(&self, skene_core::NodeId) -> core::option::Option<skene_core::NodeId>
 pub fn skene_core::Scene<P>::placement(&self, skene_core::NodeId) -> core::option::Option<skene_core::NodeId>
+pub fn skene_core::Scene<P>::popups_left_by(&self, skene_core::NodeId) -> alloc::vec::Vec<skene_core::NodeId>
 pub const fn skene_core::Scene<P>::pressed(&self) -> core::option::Option<skene_core::NodeId>
 pub fn skene_core::Scene<P>::previous_sibling(&self, skene_core::NodeId) -> core::option::Option<skene_core::NodeId>
 pub fn skene_core::Scene<P>::reachable_under_modal(&self, &[skene_core::NodeId], skene_core::NodeId) -> bool

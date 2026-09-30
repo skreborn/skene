@@ -233,9 +233,15 @@ pub fn notify_pointer_moved<P: Platform>(next: Option<NodeId>) {
 ///
 /// Each node whose subtree held focus and no longer does is blurred, innermost first,
 /// then each whose subtree holds it and did not is focused, outermost first, as
-/// `:focus-within` changes.
+/// `:focus-within` changes; then each popup focus left for another node is dismissed
+/// ([`Scene::popups_left_by`]).
 pub fn notify_focus_moved<P: Platform>(next: Option<NodeId>) {
-  let (left, reached) = Scene::<P>::with(|scene| scene.move_focus(next));
+  let (left, reached, popups) = Scene::<P>::with(|scene| {
+    let (left, reached) = scene.move_focus(next);
+    let popups = next.map_or_else(Vec::new, |next| scene.popups_left_by(next));
+
+    (left, reached, popups)
+  });
   let blur: Pick<PlainHandler> = |handler| match handler {
     Handler::Blur(run) => Some(run),
     _ => None,
@@ -254,6 +260,10 @@ pub fn notify_focus_moved<P: Platform>(next: Option<NodeId>) {
       notify::<P, _>(node, focus, |handler| handler());
     }
   });
+
+  for popup in popups {
+    notify_dismiss::<P>(popup);
+  }
 }
 
 /// Notifies `node` of its new scroll offsets.

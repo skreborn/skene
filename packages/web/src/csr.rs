@@ -624,6 +624,12 @@ pub fn end_turn() {
   skene_core::end_turn();
 }
 
+/// Whether the leaf's own state is borrowed right now, so an event reaching it must
+/// wait for the borrow's release.
+fn is_dom_borrowed() -> bool {
+  DOM.with(|dom| dom.try_borrow_mut().is_err())
+}
+
 /// Runs `operation` on the installed state, if the browser leaf is installed; nothing
 /// of the user's runs inside it.
 fn try_with_dom<R>(operation: impl FnOnce(&mut Dom) -> R) -> Option<R> {
@@ -661,8 +667,11 @@ impl Dom {
       Some(block) => Sheet::adopt(&document, &head, block),
       None => Sheet::new(&document, &head),
     };
-    let events = Events::new(root.clone());
+    let mut events = Events::new(root.clone());
     let mut nodes = NodeMap::new();
+
+    events.ensure(EventKind::Focus);
+    events.ensure(EventKind::Blur);
 
     events::stamp(&root, root_node);
 

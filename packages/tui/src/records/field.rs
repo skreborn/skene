@@ -259,7 +259,7 @@ impl Field {
   /// Moves the caret to `caret`, extending the selection from the anchor—the caret's
   /// old position when none—or collapsing it.
   pub(crate) fn move_caret(&mut self, caret: usize, extend: bool) {
-    let count = self.count();
+    let caret = caret.min(self.count());
 
     if extend {
       let anchor = self.anchor.unwrap_or(self.caret);
@@ -270,7 +270,7 @@ impl Field {
       self.anchor = None;
     }
 
-    self.caret = caret.min(count);
+    self.caret = caret;
     self.run = None;
     self.goal = None;
   }
@@ -334,5 +334,119 @@ impl Records {
     }
 
     reports
+  }
+}
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod properties {
+  use proptest::prelude::*;
+
+  use super::Field;
+  use crate::text::{self, Clusters};
+
+  /// One edit a user makes to an entry.
+  #[derive(Debug, Clone)]
+  enum Step {
+    Type(&'static str),
+    Paste(&'static str),
+    RemoveBefore,
+    RemoveAfter,
+    MoveCaret(usize, bool),
+    SelectAll,
+    Undo,
+    Redo,
+    SetValue(&'static str),
+  }
+
+  /// Edits mostly of the clusters an entry is hard on: wide ones, combining marks
+  /// joining what is before them, and multi-cluster pastes.
+  fn arbitrary_step() -> impl Strategy<Value = Step> {
+    const CLUSTERS: &[&str] = &["a", "b", " ", "日", "e", "\u{301}", "👍"];
+    const PASTES: &[&str] = &["", "xy", "日本 語", "e\u{301}e"];
+
+    prop_oneof![
+      4 => proptest::sample::select(CLUSTERS).prop_map(Step::Type),
+      1 => proptest::sample::select(PASTES).prop_map(Step::Paste),
+      2 => Just(Step::RemoveBefore),
+      1 => Just(Step::RemoveAfter),
+      2 => (0..12_usize, any::<bool>()).prop_map(|(caret, extend)| Step::MoveCaret(caret, extend)),
+      1 => Just(Step::SelectAll),
+      2 => Just(Step::Undo),
+      1 => Just(Step::Redo),
+      1 => proptest::sample::select(PASTES).prop_map(Step::SetValue),
+    ]
+  }
+
+  /// Applies `step` to `field` as the entry's editing does.
+  fn apply(field: &mut Field, step: &Step) {
+    match step {
+      Step::Type(text) | Step::Paste(text) => field.replace_selection(text),
+      Step::RemoveBefore => match field.selection() {
+        Some((from, to)) => field.remove(from, to),
+        None if field.caret > 0 => field.remove(field.caret - 1, field.caret),
+        None => {}
+      },
+      Step::RemoveAfter => match field.selection() {
+        Some((from, to)) => field.remove(from, to),
+        None if field.caret < field.count() => field.remove(field.caret, field.caret + 1),
+        None => {}
+      },
+      Step::MoveCaret(caret, extend) => field.move_caret(*caret, *extend),
+      Step::SelectAll => field.select_all(),
+      Step::Undo => {
+        let _ = field.undo();
+      }
+      Step::Redo => {
+        let _ = field.redo();
+      }
+      Step::SetValue(value) => {
+        let _ = field.set_value(value);
+      }
+    }
+  }
+
+  /// Where each cluster of `clusters` starts, its byte and its cell, the end last.
+  fn boundaries(clusters: &Clusters) -> Vec<(usize, usize)> {
+    (0..=clusters.count())
+      .map(|index| (clusters.byte_of(index), clusters.column_of(index)))
+      .collect()
+  }
+
+  /// The state an undo or redo returns to.
+  fn state(field: &Field) -> (String, usize, Option<usize>) {
+    (field.value.clone(), field.caret, field.anchor)
+  }
+
+  proptest! {
+    #![proptest_config(ProptestConfig::with_cases(1000))]
+
+    /// Any run of edits keeps the caret and the anchor on clusters of the value and the
+    /// clusters true to it, and an undo a redo follows changes nothing.
+    #[test]
+    fn any_run_of_edits_keeps_the_entry_whole(
+      steps in proptest::collection::vec(arbitrary_step(), 0..40),
+    ) {
+      text::reset();
+
+      let mut field = Field::new(None, 1);
+
+      for step in &steps {
+        apply(&mut field, step);
+
+        prop_assert!(field.caret <= field.count(), "{step:?} left the caret past the end");
+        prop_assert!(
+          field.anchor.is_none_or(|anchor| anchor <= field.count() && anchor != field.caret),
+          "{step:?} left the anchor off the value"
+        );
+        prop_assert_eq!(boundaries(&field.clusters), boundaries(&Clusters::of(&field.value)));
+
+        let before = state(&field);
+
+        if field.undo() {
+          prop_assert!(field.redo(), "a redo follows an undo");
+          prop_assert_eq!(state(&field), before, "an undo a redo follows changes nothing");
+        }
+      }
+    }
   }
 }

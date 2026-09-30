@@ -60,6 +60,9 @@ pub(crate) const POP_TITLE: &str = "\x1b[23;0t";
 /// The request for a cursor position report, `CSI 6 n`.
 pub(crate) const REQUEST_CURSOR_POSITION: &str = "\x1b[6n";
 
+/// Erases from the cursor to the end of its line, in the default background.
+pub(crate) const ERASE_TO_LINE_END: &str = "\x1b[K";
+
 /// The primary device attributes request, DA1: every terminal answers it, after the
 /// replies to the queries written before it.
 pub(crate) const REQUEST_PRIMARY_ATTRIBUTES: &str = "\x1b[c";

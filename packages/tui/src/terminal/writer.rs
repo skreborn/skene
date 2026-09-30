@@ -4,6 +4,7 @@
 use std::{
   collections::HashMap,
   io::{self, Write},
+  ops::Range,
 };
 
 use skene_core::{MouseCursor, TextDecorationStyle};
@@ -205,6 +206,53 @@ pub(super) struct Rendition {
 }
 
 impl Rendition {
+  /// Writes the attributes `cell` changes from `current`: its colors, weight,
+  /// decoration and reverse video, and its hyperlink out of `links`, the running one
+  /// closed first.
+  fn write_changes(
+    self,
+    out: &mut impl Write,
+    current: &paint::TerminalCell,
+    cell: &paint::TerminalCell,
+    links: &[String],
+  ) {
+    let color = |rgb: Option<(u8, u8, u8)>| {
+      rgb.map_or(Color::Reset, |rgb| {
+        self.depth.terminal_color(rgb, &self.palette)
+      })
+    };
+
+    if cell.foreground != current.foreground {
+      let _ = write!(out, "{}", Sgr::Foreground(color(cell.foreground)));
+    }
+
+    if cell.background != current.background {
+      let _ = write!(out, "{}", Sgr::Background(color(cell.background)));
+    }
+
+    if cell.bold != current.bold {
+      let _ = write!(out, "{}", Sgr::Bold(cell.bold));
+    }
+
+    if cell.decoration != current.decoration {
+      self.write_decoration(out, current.decoration, cell.decoration);
+    }
+
+    if cell.reverse != current.reverse {
+      let _ = write!(out, "{}", Sgr::Reverse(cell.reverse));
+    }
+
+    if cell.link != current.link {
+      if current.link.is_some() {
+        let _ = write!(out, "{}", escape::Hyperlink(""));
+      }
+
+      if let Some(url) = cell.link.and_then(|index| links.get(usize::from(index))) {
+        let _ = write!(out, "{}", escape::Hyperlink(url));
+      }
+    }
+  }
+
   /// The underline control for `decoration`: the style and color where the terminal
   /// keeps them, a plain single underline elsewhere.
   const fn underline(self, decoration: paint::CellDecoration) -> Underline {
@@ -258,8 +306,8 @@ pub(super) struct Placed {
   pub(super) placements: HashMap<u32, paint::PlacedCells>,
 }
 
-/// Writes a painted frame to the terminal under `rendition`; rows unchanged since the
-/// previous frame are skipped, the pictures are transmitted where their image changed
+/// Writes a painted frame to the terminal under `rendition`; each row writes the span
+/// that changed since the previous frame, the pictures are transmitted where their image changed
 /// and placed where their cells did (every one again without a previous frame), an
 /// image no picture shows any more is freed, and the whole frame sits between the
 /// synchronized-output brackets (mode 2026) when `synchronized`.
@@ -285,11 +333,9 @@ pub(super) fn draw(
   );
 
   for row in 0..buffer.height {
-    if !paint::row_changed(previous, buffer, row) {
-      continue;
+    if let Some(columns) = paint::changed_columns(previous, buffer, row) {
+      draw_row(out, buffer, row, columns, rendition);
     }
-
-    draw_row(out, buffer, row, rendition);
   }
 
   draw_pictures(out, buffer, placed, previous.is_none());
@@ -312,6 +358,9 @@ pub(super) fn draw(
 
   let _ = out.flush();
 }
+
+/// The fewest cells a blank tail is erased with rather than written.
+const ERASED_TAIL: usize = 8;
 
 /// Writes the frame's pictures: an image transmitted where its generation moved on,
 /// placed over its cells where those moved or the frame is written `whole`, and freed
@@ -377,28 +426,52 @@ fn draw_pictures(out: &mut impl Write, buffer: &paint::Buffer, placed: &mut Plac
   }
 }
 
-/// Writes the row `row` of a painted frame under `rendition`: the cursor at its start,
-/// the attributes reset, each glyph after the attributes that change for it, a sized
-/// glyph as a sized run, the cells a glyph's advance covers left to the terminal, and
-/// a block's lower rows stepped over before the next glyph.
-fn draw_row(out: &mut impl Write, buffer: &paint::Buffer, row: usize, rendition: Rendition) {
-  let depth = rendition.depth;
+/// Writes `columns` of the row `row` of a painted frame under `rendition`: the cursor
+/// at their start, the attributes reset, each glyph after the attributes that change
+/// for it, a sized glyph as a sized run, the cells a glyph's advance covers left to the
+/// terminal, and a block's lower rows stepped over before the next glyph; a blank tail
+/// running to the row's end, in a row no picture shows in, is erased rather than
+/// written.
+fn draw_row(
+  out: &mut impl Write,
+  buffer: &paint::Buffer,
+  row: usize,
+  columns: Range<usize>,
+  rendition: Rendition,
+) {
+  let cells = &buffer.cells[row * buffer.width..(row + 1) * buffer.width];
+  let pictured = buffer.pictures.iter().any(|picture| {
+    (usize::from(picture.row)..usize::from(picture.row) + usize::from(picture.rows)).contains(&row)
+  });
+  let erased = (columns.end == buffer.width && !pictured)
+    .then(|| {
+      cells[columns.clone()]
+        .iter()
+        .rposition(|cell| *cell != paint::TerminalCell::EMPTY)
+        .map_or(columns.start, |last| columns.start + last + 1)
+    })
+    .filter(|from| buffer.width - from >= ERASED_TAIL);
+  let written = columns.start..erased.unwrap_or(columns.end);
 
   let _ = write!(
     out,
     "{}{}",
-    move_to(0, u16::try_from(row).unwrap_or(u16::MAX)),
+    move_to(
+      u16::try_from(columns.start).unwrap_or(u16::MAX),
+      u16::try_from(row).unwrap_or(u16::MAX)
+    ),
     Sgr::Reset
   );
 
   let mut current = paint::TerminalCell::EMPTY;
   // The column the terminal's cursor is at: a glyph advances it by its block's
   // columns, and a block's lower rows are stepped over before the next glyph.
-  let mut cursor = 0;
+  let mut cursor = columns.start;
 
-  for (column, cell) in buffer.cells[row * buffer.width..(row + 1) * buffer.width]
+  for (column, cell) in cells[written.clone()]
     .iter()
     .enumerate()
+    .map(|(offset, cell)| (written.start + offset, cell))
   {
     if cell.glyph == Glyph::Continuation {
       continue;
@@ -416,48 +489,7 @@ fn draw_row(out: &mut impl Write, buffer: &paint::Buffer, row: usize, rendition:
     }
 
     cursor = column + cell.glyph.cells() * cell.scale.rows();
-
-    if cell.foreground != current.foreground {
-      let color = cell.foreground.map_or(Color::Reset, |rgb| {
-        depth.terminal_color(rgb, &rendition.palette)
-      });
-
-      let _ = write!(out, "{}", Sgr::Foreground(color));
-    }
-
-    if cell.background != current.background {
-      let color = cell.background.map_or(Color::Reset, |rgb| {
-        depth.terminal_color(rgb, &rendition.palette)
-      });
-
-      let _ = write!(out, "{}", Sgr::Background(color));
-    }
-
-    if cell.bold != current.bold {
-      let _ = write!(out, "{}", Sgr::Bold(cell.bold));
-    }
-
-    if cell.decoration != current.decoration {
-      rendition.write_decoration(out, current.decoration, cell.decoration);
-    }
-
-    if cell.reverse != current.reverse {
-      let _ = write!(out, "{}", Sgr::Reverse(cell.reverse));
-    }
-
-    // OSC 8 anchors: close the running link on any change, open the next.
-    if cell.link != current.link {
-      if current.link.is_some() {
-        let _ = write!(out, "{}", escape::Hyperlink(""));
-      }
-
-      if let Some(url) = cell
-        .link
-        .and_then(|index| buffer.links.get(usize::from(index)))
-      {
-        let _ = write!(out, "{}", escape::Hyperlink(url));
-      }
-    }
+    rendition.write_changes(out, &current, cell, &buffer.links);
 
     let _ = match cell.scale {
       CellScale::ONE => write!(out, "{}", cell.glyph),
@@ -474,6 +506,21 @@ fn draw_row(out: &mut impl Write, buffer: &paint::Buffer, row: usize, rendition:
 
   if current.link.is_some() {
     let _ = write!(out, "{}", escape::Hyperlink(""));
+  }
+
+  if let Some(from) = erased {
+    if cursor != from {
+      let _ = write!(
+        out,
+        "{}",
+        move_to(
+          u16::try_from(from).unwrap_or(u16::MAX),
+          u16::try_from(row).unwrap_or(u16::MAX)
+        )
+      );
+    }
+
+    let _ = write!(out, "{}{}", Sgr::Reset, escape::ERASE_TO_LINE_END);
   }
 }
 
@@ -856,5 +903,58 @@ mod tests {
     );
     assert!(!plain.contains("2026"), "{plain:?}");
     assert!(plain.starts_with("\x1b[?25l"), "{plain:?}");
+  }
+
+  /// A row writes only the span that changed since the previous frame, and a long blank
+  /// tail is erased to the line's end rather than written.
+  #[test]
+  fn a_row_writes_its_changed_span_and_erases_its_blank_tail() {
+    let row = |text: &str| {
+      let mut buffer = paint::Buffer::new(20, 1);
+
+      for (column, character) in text.chars().enumerate() {
+        buffer.cells[column].glyph = Glyph::Char(character);
+      }
+
+      buffer
+    };
+    let mut whole = Vec::new();
+
+    draw(
+      &mut whole,
+      &row("hello"),
+      PLAIN,
+      None,
+      false,
+      &mut Placed::default(),
+    );
+
+    let whole = String::from_utf8(whole).unwrap();
+
+    assert!(
+      whole.contains(&format!("hello{}{}", Sgr::Reset, escape::ERASE_TO_LINE_END)),
+      "{whole:?}"
+    );
+    assert!(!whole.contains("     "), "{whole:?}");
+
+    let mut changed = Vec::new();
+    let previous = row("hello");
+
+    draw(
+      &mut changed,
+      &row("help!"),
+      PLAIN,
+      Some(&previous),
+      false,
+      &mut Placed::default(),
+    );
+
+    let changed = String::from_utf8(changed).unwrap();
+
+    assert!(
+      changed.contains(&format!("{}{}p!", move_to(3, 0), Sgr::Reset)),
+      "{changed:?}"
+    );
+    assert!(!changed.contains("hel"), "{changed:?}");
   }
 }

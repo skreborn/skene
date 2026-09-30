@@ -2546,28 +2546,59 @@ pub(crate) fn terminal_rgb(color: Color) -> Option<(u8, u8, u8)> {
   ))
 }
 
-/// Whether `row` must be rewritten: the previous frame is absent, differently sized, or
-/// differs in that row, a hyperlink compared by its destination.
-pub(crate) fn row_changed(previous: Option<&Buffer>, next: &Buffer, row: usize) -> bool {
-  match previous {
-    Some(previous) if previous.width == next.width && previous.height == next.height => {
-      let span = row * next.width..(row + 1) * next.width;
+/// The columns of `row` that differ from `previous`: from the first cell differing to
+/// the last, widened to whole glyphs, and the whole row where nothing was painted before,
+/// the frame's size moved or a scaled block stands in the row; `None` where none does.
+pub(crate) fn changed_columns(
+  previous: Option<&Buffer>,
+  next: &Buffer,
+  row: usize,
+) -> Option<std::ops::Range<usize>> {
+  let width = next.width;
+  let Some(previous) =
+    previous.filter(|previous| previous.width == next.width && previous.height == next.height)
+  else {
+    return Some(0..width);
+  };
+  let span = row * width..(row + 1) * width;
+  let (before, after) = (&previous.cells[span.clone()], &next.cells[span]);
+  let differs = |column: usize| {
+    let (before, after) = (&before[column], &after[column]);
 
-      previous.cells[span.clone()]
-        .iter()
-        .zip(&next.cells[span])
-        .any(|(before, after)| {
-          TerminalCell {
-            link: None,
-            ..*before
-          } != TerminalCell {
-            link: None,
-            ..*after
-          } || previous.destination(before) != next.destination(after)
-        })
-    }
-    _ => true,
+    TerminalCell {
+      link: None,
+      ..*before
+    } != TerminalCell {
+      link: None,
+      ..*after
+    } || previous.destination(before) != next.destination(after)
+  };
+  let first = (0..width).find(|&column| differs(column))?;
+  let last = (first..width).rev().find(|&column| differs(column))?;
+
+  if before
+    .iter()
+    .chain(after)
+    .any(|cell| cell.scale != CellScale::ONE)
+  {
+    return Some(0..width);
   }
+
+  let continues = |column: usize| {
+    before[column].glyph == Glyph::Continuation || after[column].glyph == Glyph::Continuation
+  };
+  let mut start = first;
+  let mut end = last + 1;
+
+  while start > 0 && continues(start) {
+    start -= 1;
+  }
+
+  while end < width && continues(end) {
+    end += 1;
+  }
+
+  Some(start..end)
 }
 
 /// Whether the control `handle` is a text entry; `None` where it is no control.
@@ -2591,13 +2622,36 @@ mod tests {
     next.cells[1].glyph = Glyph::Char('a');
     next.cells[4].glyph = Glyph::Char('b');
 
-    assert!(!row_changed(Some(&previous), &next, 0));
-    assert!(row_changed(Some(&previous), &next, 1));
-    assert!(row_changed(None, &next, 0));
+    assert_eq!(changed_columns(Some(&previous), &next, 0), None);
+    assert_eq!(changed_columns(Some(&previous), &next, 1), Some(1..2));
+    assert_eq!(changed_columns(None, &next, 0), Some(0..3));
 
     let resized = Buffer::new(2, 2);
 
-    assert!(row_changed(Some(&resized), &next, 0));
+    assert_eq!(changed_columns(Some(&resized), &next, 0), Some(0..3));
+  }
+
+  /// A change inside a wide glyph widens to the whole glyph, and a scaled block's row
+  /// rewrites whole.
+  #[test]
+  fn a_changed_span_covers_whole_glyphs() {
+    text::reset();
+
+    let mut previous = Buffer::new(4, 1);
+
+    previous.put_sized(0, 0, "日", 2, CellScale::ONE, |_| {});
+
+    let mut next = previous.clone();
+
+    next.cells[1].background = Some((255, 0, 0));
+
+    assert_eq!(changed_columns(Some(&previous), &next, 0), Some(0..2));
+
+    let mut scaled = previous.clone();
+
+    scaled.cells[3].scale = CellScale::Whole(2);
+
+    assert_eq!(changed_columns(Some(&previous), &scaled, 0), Some(0..4));
   }
 
   #[test]
@@ -2660,12 +2714,11 @@ mod tests {
       buffer
     };
 
-    assert!(!row_changed(
-      Some(&frame(&["a", "b"], 1)),
-      &frame(&["b"], 0),
-      0
-    ));
-    assert!(row_changed(Some(&frame(&["a"], 0)), &frame(&["b"], 0), 0));
+    assert_eq!(
+      changed_columns(Some(&frame(&["a", "b"], 1)), &frame(&["b"], 0), 0),
+      None
+    );
+    assert!(changed_columns(Some(&frame(&["a"], 0)), &frame(&["b"], 0), 0).is_some());
 
     let kept = frame(&["a"], 0).repainting(&[false]);
 

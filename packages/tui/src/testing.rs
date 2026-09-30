@@ -16,11 +16,9 @@ use skene_core::{
   Modifiers,
   MouseCursor,
   NameFacts,
-  NativeElement,
   NodeId,
   PointerButton,
   Role,
-  RunDisplay,
   Scene,
   TreeUpdate,
 };
@@ -207,47 +205,31 @@ fn name_facts(node: NodeId) -> NameFacts {
     else {
       return NameFacts::default();
     };
-    let mut facts = NameFacts {
-      hidden: store.is_hidden(node),
-      ..NameFacts::default()
-    };
-
-    if let Kind::Run { props, .. } = &record.kind {
-      facts.text = Some(record.text.clone());
-      facts.link = props.link.is_some();
-      facts.role = facts.link.then_some(Role::Link);
-      facts.block = props.display == RunDisplay::Block;
-
-      return facts;
-    }
-
-    if let Some(inner) = record.kind.box_record() {
-      facts.link = inner.props.destination.is_some();
-      facts.role = inner.props.role.or(facts.link.then_some(Role::Link));
-      facts.access = Scene::<Tui>::read(|scene| scene.access(node));
-      facts.block = true;
-    }
-
-    match &record.kind {
-      Kind::Overlay { role, open, .. } => {
-        facts.hidden |= !open;
-        facts.role = *role;
-      }
+    let access = || Scene::<Tui>::read(|scene| scene.access(node));
+    let facts = match &record.kind {
+      Kind::Run { props, .. } => NameFacts::of_run(props, record.text.clone()),
+      Kind::Box(inner) => NameFacts::of_box(&inner.props, access()),
+      Kind::Overlay {
+        inner, role, open, ..
+      } => NameFacts::of_box(&inner.props, access()).with_overlay(*role, *open),
       Kind::Control {
         native,
         label,
+        inner,
         field,
-        ..
-      } => {
-        facts.role = facts.role.or(native.map(NativeElement::role));
-        facts.label.clone_from(label);
-        facts.value = field.as_ref().map(|field| field.value.clone());
-        facts.placeholder = field.as_ref().and_then(|field| field.placeholder.clone());
-      }
-      Kind::Box(_) | Kind::Run { .. } | Kind::Anchor | Kind::Scope => {}
-    }
+      } => NameFacts::of_box(&inner.props, access()).with_control(
+        *native,
+        label.clone(),
+        field.as_ref().and_then(|field| field.placeholder.clone()),
+        field.as_ref().map(|field| field.value.clone()),
+      ),
+      Kind::Anchor | Kind::Scope => NameFacts::default(),
+    };
 
-    facts
+    NameFacts {
+      hidden: facts.hidden || store.is_hidden(node),
+      ..facts
+    }
   })
 }
 

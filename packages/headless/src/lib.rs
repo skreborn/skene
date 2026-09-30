@@ -83,7 +83,6 @@ use skene_core::{
   Property,
   PropertyKey,
   Role,
-  RunDisplay,
   RunProps,
   RunValue,
   Scene,
@@ -1304,38 +1303,17 @@ fn name_facts(node: NodeId) -> NameFacts {
     Some(SlotValue::Box(BoxValue::Visibility(Visibility::Hidden)))
   );
 
+  let access = Scene::<Headless>::read(|scene| scene.access(node));
+
   with_record(node, |record| {
-    let mut facts = NameFacts {
-      hidden,
-      ..NameFacts::default()
-    };
-
-    if let Kind::Run(props) = &record.kind {
-      facts.text = Some(record.text.clone());
-      facts.link = props.link.is_some();
-      facts.role = facts.link.then_some(Role::Link);
-      facts.block = props.display == RunDisplay::Block;
-
-      return facts;
-    }
-
-    if let Some(props) = record.kind.box_props() {
-      facts.link = props.destination.is_some();
-      facts.role = props.role.or(facts.link.then_some(Role::Link));
-      facts.access = Scene::<Headless>::read(|scene| scene.access(node));
-      facts.block = true;
-    }
-
-    match &record.kind {
+    let facts = match &record.kind {
+      Kind::Run(props) => NameFacts::of_run(props, record.text.clone()),
+      Kind::Box(props) => NameFacts::of_box(props, access),
       Kind::Overlay(props) => {
-        facts.hidden |= !record.open;
-        facts.role = props.role();
+        NameFacts::of_box(&props.box_props, access).with_overlay(props.role(), record.open)
       }
       Kind::Control(props) => {
-        facts.role = facts.role.or(props.native.map(NativeElement::role));
-        facts.label.clone_from(&props.label);
-        facts.placeholder.clone_from(&props.placeholder);
-        facts.value = match props.native {
+        let value = match props.native {
           Some(NativeElement::TextField | NativeElement::TextEditor) => Some(record.value.clone()),
           Some(NativeElement::Picker) => record
             .options
@@ -1350,11 +1328,21 @@ fn name_facts(node: NodeId) -> NameFacts {
           )
           | None => None,
         };
-      }
-      Kind::Box(_) | Kind::Run(_) | Kind::Anchor | Kind::Scope => {}
-    }
 
-    facts
+        NameFacts::of_box(&props.box_props, access).with_control(
+          props.native,
+          props.label.clone(),
+          props.placeholder.clone(),
+          value,
+        )
+      }
+      Kind::Anchor | Kind::Scope => NameFacts::default(),
+    };
+
+    NameFacts {
+      hidden: facts.hidden || hidden,
+      ..facts
+    }
   })
   .unwrap_or_default()
 }

@@ -3318,6 +3318,11 @@ pub skene_core::NameFacts::placeholder: core::option::Option<alloc::string::Stri
 pub skene_core::NameFacts::role: core::option::Option<accesskit::Role>
 pub skene_core::NameFacts::text: core::option::Option<alloc::string::String>
 pub skene_core::NameFacts::value: core::option::Option<alloc::string::String>
+impl skene_core::NameFacts
+pub fn skene_core::NameFacts::of_box<P: skene_core::Platform>(&skene_core::BoxProps<P>, alloc::vec::Vec<skene_core::AccessProp>) -> Self
+pub fn skene_core::NameFacts::of_run<P: skene_core::Platform>(&skene_core::RunProps<P>, alloc::string::String) -> Self
+pub fn skene_core::NameFacts::with_control(self, core::option::Option<skene_core::NativeElement>, core::option::Option<alloc::string::String>, core::option::Option<alloc::string::String>, core::option::Option<alloc::string::String>) -> Self
+pub fn skene_core::NameFacts::with_overlay(self, core::option::Option<accesskit::Role>, bool) -> Self
 impl core::clone::Clone for skene_core::NameFacts
 pub fn skene_core::NameFacts::clone(&self) -> skene_core::NameFacts
 impl core::cmp::PartialEq for skene_core::NameFacts

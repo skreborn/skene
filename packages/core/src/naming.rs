@@ -6,7 +6,21 @@ use std::{fmt::Write as _, marker::PhantomData};
 
 use accesskit::{HasPopup, Invalid, Orientation, Toggled, TreeInfo, TreeUpdate};
 
-use super::{AccessProp, Axis, NodeId, Part, Platform, PopupKind, Role, Scene, Toggle};
+use super::{
+  AccessProp,
+  Axis,
+  BoxProps,
+  NativeElement,
+  NodeId,
+  Part,
+  Platform,
+  PopupKind,
+  Role,
+  RunDisplay,
+  RunProps,
+  Scene,
+  Toggle,
+};
 
 /// What the accessible-name computation reads of one node from its platform's records.
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -35,6 +49,62 @@ pub struct NameFacts {
 }
 
 impl NameFacts {
+  /// The facts of a run holding `text`, created with `props`.
+  pub fn of_run<P: Platform>(props: &RunProps<P>, text: String) -> Self {
+    let link = props.link.is_some();
+
+    Self {
+      role: link.then_some(Role::Link),
+      text: Some(text),
+      link,
+      block: props.display == RunDisplay::Block,
+      ..Self::default()
+    }
+  }
+
+  /// The facts of a box, a control or an overlay created with `props`, reporting
+  /// `access`.
+  pub fn of_box<P: Platform>(props: &BoxProps<P>, access: Vec<AccessProp>) -> Self {
+    let link = props.destination.is_some();
+
+    Self {
+      role: props.role.or(link.then_some(Role::Link)),
+      access,
+      link,
+      block: true,
+      ..Self::default()
+    }
+  }
+
+  /// These facts as an overlay's carrying `role`, out of the tree while it is not
+  /// `open`.
+  pub fn with_overlay(self, role: Option<Role>, open: bool) -> Self {
+    Self {
+      role,
+      hidden: self.hidden || !open,
+      ..self
+    }
+  }
+
+  /// These facts as a control's standing for the native element `native`, named
+  /// `label`, hinting `placeholder` while empty and holding `value`: an entry's text or
+  /// a picker's chosen option's name.
+  pub fn with_control(
+    self,
+    native: Option<NativeElement>,
+    label: Option<String>,
+    placeholder: Option<String>,
+    value: Option<String>,
+  ) -> Self {
+    Self {
+      role: self.role.or(native.map(NativeElement::role)),
+      label,
+      placeholder,
+      value,
+      ..self
+    }
+  }
+
   /// Whether the node takes its name from its content, as a link and ARIA's roles
   /// named from contents do.
   fn names_from_content(&self) -> bool {

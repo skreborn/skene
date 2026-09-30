@@ -252,9 +252,8 @@ left half-done in a code comment.
     `Source<T>`; `gui_fields!`, core's `box_fields!` and `run_fields!` and the terminal
     extension's eleven hand-written field impls, into one field macro core exports, with
     a trait-method form of `properties!` for the terminal's eighteen hand-written setter
-    pairs; the accessible-name facts headless and the terminal each derive from core's
-    props, into `NameFacts::of_box`, `of_control`, `of_overlay` and `of_run`, with the
-    seven query seams each repeats; the helpers the browser tests
+    pairs; the seven accessibility query seams headless and the terminal each repeat
+    over the name facts core builds; the helpers the browser tests
     repeat (`document`, `Installed`, `fresh_root`, `computed`, `only_child` and their
     kin), into a `skene_web::testing` beside `skene_tui::testing`, which takes the
     terminal examples' `with_platform` and `locate`.

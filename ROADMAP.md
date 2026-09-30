@@ -55,11 +55,6 @@ left half-done in a code comment.
     hover path, measured container sizes) and read it there, as the terminal reads its
     structure; headless's `user::edit` edits a disabled or read-only entry today, which
     the terminal refuses.
-    - Seams: the document head checks a registered element once, in
-    `skene_common::gui::Head`, where headless skips the check both web leaves apply, so
-    a registration the web rejects passes the headless tests; a platform's turn and
-    teardown follow one routine in core, where headless's reset skips the runtime and
-    root-owner resets the terminal and the browser run.
     - Structure: anchors exist in the scene alone, platforms receiving the next real
     sibling and server output keeping comment pairs only where streaming needs a marker;
     the server's string tree serializes the structure the scene places

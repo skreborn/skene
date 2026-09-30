@@ -4845,6 +4845,8 @@ pub fn skene_core::dispatch_wheel<P: skene_core::Platform>(skene_core::NodeId, &
 pub fn skene_core::drop_drag<P: skene_core::Platform>() -> bool
 pub fn skene_core::empty<P: skene_core::Platform>() -> impl skene_core::View<P>
 pub fn skene_core::end_drag<P: skene_core::Platform>()
+pub fn skene_core::end_turn()
+pub fn skene_core::hold_flushes(impl core::ops::function::Fn() + 'static)
 pub fn skene_core::item_window(f32, f32, f32, usize, usize) -> skene_core::ItemWindow
 pub fn skene_core::item_window_over(f32, f32, &[f32], usize) -> skene_core::ItemWindow
 pub fn skene_core::move_drag<P: skene_core::Platform>(core::option::Option<skene_core::NodeId>) -> core::option::Option<skene_core::NodeId>
@@ -4857,6 +4859,7 @@ pub fn skene_core::notify_selection_change<P: skene_core::Platform>(skene_core::
 pub fn skene_core::notify_toggle<P: skene_core::Platform>(skene_core::NodeId, bool)
 pub fn skene_core::reconcile<P: skene_core::Platform, T, I, K>(skene_core::NodeId, impl core::ops::function::Fn() -> I + 'static, impl core::ops::function::Fn(&T) -> K + 'static, impl core::ops::function::Fn(T) -> skene_core::NodeId + 'static) where I: core::iter::traits::collect::IntoIterator<Item = T>, K: core::cmp::Eq + core::hash::Hash + 'static
 pub fn skene_core::reset_root_owner()
+pub fn skene_core::reset_thread<P: skene_core::Platform>()
 pub fn skene_core::root_owner() -> skene_reactive::owner::Owner
 pub fn skene_core::start_drag<P: skene_core::Platform>(skene_core::NodeId) -> core::option::Option<(skene_core::NodeId, skene_core::DragData)>
 pub type skene_core::Annotated<P, T> = skene_core::Value<T, skene_core::Condition<<P as skene_core::Platform>::Scalar>>

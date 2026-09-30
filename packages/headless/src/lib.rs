@@ -145,8 +145,6 @@ pub type SlotLeaf = skene_core::SlotLeaf<f32, GuiExt>;
 thread_local! {
   static SCENE: RefCell<Scene<Headless>> = RefCell::new(Scene::new());
   static STORE: RefCell<Store> = RefCell::new(Store::default());
-  /// The flush the turn's writes scheduled, run when the turn ends.
-  static TURN: RefCell<Option<Box<dyn FnOnce()>>> = const { RefCell::new(None) };
 }
 
 /// Ends the turn: runs the flush the writes since the last turn's end scheduled, so
@@ -156,11 +154,7 @@ thread_local! {
 /// pending one first; a test calls this where it observes a direct write's effects
 /// some other way.
 pub fn end_turn() {
-  let flush = TURN.with(|turn| turn.borrow_mut().take());
-
-  if let Some(flush) = flush {
-    flush();
-  }
+  skene_core::end_turn();
 }
 
 /// Runs `event` as one turn: what earlier writes scheduled takes effect first, and
@@ -451,11 +445,6 @@ pub fn render_to_pixels(node: NodeId, size: Size<f32>) -> Option<Vec<u8>> {
 /// defaults, installs the executor and holds every flush until its turn ends.
 pub fn reset() {
   end_turn();
-  TURN.with(|turn| *turn.borrow_mut() = None);
-  skene_reactive::Runtime::set_scheduler(|flush| {
-    TURN.with(|turn| *turn.borrow_mut() = Some(flush));
-  });
-  SCENE.with(|scene| *scene.borrow_mut() = Scene::new());
 
   let owner = with_store(Store::reset);
 
@@ -463,7 +452,8 @@ pub fn reset() {
     owner.dispose();
   }
 
-  skene_core::executor::clear();
+  skene_core::reset_thread::<Headless>();
+  skene_core::hold_flushes(|| {});
   install_executor();
 }
 
@@ -492,6 +482,11 @@ pub fn set_head_title(id: HeadId, title: &str) {
 
 /// Registers an element for the document head, in force while it is the latest live
 /// one of what it stands for.
+///
+/// # Panics
+///
+/// Panics when `tag` is not an element a head holds (`base`, `link`, `meta` or
+/// `script`) or an attribute name is not one.
 pub fn add_head_element(tag: &str, attributes: &[(&str, &str)]) -> HeadId {
   with_store(|store| store.head.add_element(HeadElement::new(tag, attributes)))
 }

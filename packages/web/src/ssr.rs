@@ -95,7 +95,6 @@ use super::{
     anchor_text,
     aria_role,
     box_tag,
-    check_head_element,
     drawn_element,
     element_id,
     focus_order_attribute,
@@ -1894,7 +1893,6 @@ pub fn document_closing(state: &str) -> String {
 /// Panics when `tag` is not an element a head holds (`base`, `link`, `meta` or
 /// `script`) or an attribute name is not one.
 pub fn add_head_element(tag: &str, attributes: &[(&str, &str)]) -> HeadId {
-  check_head_element(tag, attributes);
   with_tree(|tree| tree.head.add_element(HeadElement::new(tag, attributes)))
 }
 

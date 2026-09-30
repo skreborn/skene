@@ -140,7 +140,6 @@ pub fn set_head_title(id: HeadId, title: &str) {
 /// Panics when `tag` is not an element a head holds (`base`, `link`, `meta` or
 /// `script`) or an attribute name is not one.
 pub fn add_head_element(tag: &str, attributes: &[(&str, &str)]) -> HeadId {
-  crate::markup::check_head_element(tag, attributes);
   with_head(|head| head.add_element(HeadElement::new(tag, attributes)))
 }
 

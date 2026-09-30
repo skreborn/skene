@@ -206,8 +206,9 @@ impl<A> Timers<A> {
 /// arrive through a platform's extension traits.
 ///
 /// A platform holds every flush until its turn ends—an event, a mount, a round of task
-/// polls—through [`Runtime::set_scheduler`](skene_reactive::Runtime::set_scheduler), so
-/// what a view's build notifies is delivered once the build is whole.
+/// polls—through [`hold_flushes`](crate::hold_flushes), ending each with
+/// [`end_turn`](crate::end_turn), so what a view's build notifies is delivered once the
+/// build is whole, and leaves a thread through [`reset_thread`](crate::reset_thread).
 #[diagnostic::on_unimplemented(
   message = "`{Self}` is not a platform",
   label = "a platform is a zero-sized type realizing the portable vocabulary: boxes, runs, anchors, scopes, tokens and events",

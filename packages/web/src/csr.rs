@@ -613,8 +613,6 @@ struct Timeout {
 thread_local! {
   static SCENE: RefCell<Scene<Web>> = RefCell::new(Scene::new());
   static DOM: RefCell<Option<Dom>> = const { RefCell::new(None) };
-  /// The flush the turn's writes scheduled, run when the turn ends.
-  static TURN: RefCell<Option<Box<dyn FnOnce()>>> = const { RefCell::new(None) };
 }
 
 /// Ends the turn now: runs the flush its writes scheduled, which otherwise runs at the
@@ -623,11 +621,7 @@ thread_local! {
 /// An event, a mount and a hydration each end their own turn; a test calls this where
 /// it reads the page after a direct write.
 pub fn end_turn() {
-  let flush = TURN.with(|turn| turn.borrow_mut().take());
-
-  if let Some(flush) = flush {
-    flush();
-  }
+  skene_core::end_turn();
 }
 
 /// Runs `operation` on the installed state, if the browser leaf is installed; nothing
@@ -2354,10 +2348,7 @@ impl WebDom for Web {
 /// Installs the browser leaf for this thread, rooted at `root`, adopting the server's
 /// nodes under it when `hydrating`.
 fn install_at(root: Element, hydrating: bool) {
-  skene_reactive::Runtime::set_scheduler(|flush| {
-    TURN.with(|turn| *turn.borrow_mut() = Some(flush));
-    wasm_bindgen_futures::spawn_local(async { end_turn() });
-  });
+  skene_core::hold_flushes(|| wasm_bindgen_futures::spawn_local(async { end_turn() }));
   task::install_executor();
 
   let document = web_sys::window()
@@ -2667,8 +2658,5 @@ pub fn uninstall() {
   media::reset();
   view_transition::reset();
   head::reset();
-  Scene::<Web>::with(|scene| *scene = Scene::new());
-  skene_reactive::Runtime::reset();
-  skene_core::reset_root_owner();
-  TURN.with(|turn| *turn.borrow_mut() = None);
+  skene_core::reset_thread::<Web>();
 }

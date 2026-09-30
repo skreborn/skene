@@ -11,9 +11,35 @@ pub struct HeadElement {
   pub attributes: Vec<(String, String)>,
 }
 
+/// The elements a head holds that a registration adds.
+const HEAD_TAGS: [&str; 4] = ["base", "link", "meta", "script"];
+
 impl HeadElement {
   /// An element of `tag` with `attributes`.
+  ///
+  /// # Panics
+  ///
+  /// Panics when `tag` is not an element a head holds (`base`, `link`, `meta` or
+  /// `script`) or an attribute name is not one as HTML reads it: a letter, then
+  /// letters, digits, `-`, `_`, `.` and `:`.
   pub fn new(tag: &str, attributes: &[(&str, &str)]) -> Self {
+    assert!(
+      HEAD_TAGS.contains(&tag),
+      "a head element is one of {HEAD_TAGS:?}, not {tag:?}"
+    );
+
+    for (name, _) in attributes {
+      let mut characters = name.chars();
+      let valid = characters
+        .next()
+        .is_some_and(|first| first.is_ascii_alphabetic())
+        && characters.all(|character| {
+          character.is_ascii_alphanumeric() || matches!(character, '-' | '_' | '.' | ':')
+        });
+
+      assert!(valid, "{name:?} is not an attribute name");
+    }
+
     Self {
       tag: tag.to_owned(),
       attributes: attributes

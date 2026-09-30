@@ -694,8 +694,9 @@ The public API speaks the ecosystem's standard reactive vocabulary:
   its descendants' properties and a disposed descendant never runs; `Effect::watch` is
   the fine-grained binder; a handle disposes or pauses.
 - **A pluggable scheduler, flushed by turns.** Synchronous at write end by default;
-  every platform holds the flush until its turn ends, so what a build notifies is
-  delivered once the build is whole. The terminal's turn is an event, a run of due
+  every platform holds the flush until its turn ends, through core's one routine
+  (`hold_flushes`, `end_turn`, and `reset_thread` to leave a thread), so what a build
+  notifies is delivered once the build is whole. The terminal's turn is an event, a run of due
   timers, a task pump or a render's settling round; the browser's is an event, a
   mount, a hydration or a navigation, and the next microtask checkpoint for anything
   else; the server's is its build and each round of task polls, as a batch. On the

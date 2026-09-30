@@ -31,6 +31,7 @@ use skene_gui::{
   View,
   core::{Color, Dimension, FlexChild, FlexDirection, Layout, Property, PropertyKey},
   headless::{
+    add_head_element,
     box_props,
     children,
     is_open,
@@ -834,4 +835,23 @@ fn a_painted_box_falls_back_where_nothing_is_drawn_as_pixels() {
   );
 
   owner.dispose();
+}
+
+/// A head registration is an element a head holds, with real attribute names, as on
+/// the web.
+#[test]
+#[should_panic(expected = "a head element is one of")]
+fn a_head_registration_names_a_head_element() {
+  reset();
+
+  let _ = add_head_element("img", &[("src", "x")]);
+}
+
+/// An attribute name that is not one is refused, as on the web.
+#[test]
+#[should_panic(expected = "is not an attribute name")]
+fn a_head_registration_refuses_an_attribute_that_is_not_one() {
+  reset();
+
+  let _ = add_head_element("meta", &[("onload=alert(1) x", "y")]);
 }

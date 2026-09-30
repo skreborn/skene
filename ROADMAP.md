@@ -38,20 +38,18 @@ left half-done in a code comment.
     - Controls: `AccessProp` moves onto AccessKit's schema, beside its open `Role`: its
     properties in place of the closed report, so a third party builds switches, tabs,
     comboboxes and trees; parts become styling targets or go.
-    - Structure: the scene owns the platforms' records (`Sink = NodeId`), so the
-    terminal and headless stop mirroring parents, children, tab order and
-    `enclosing_control`, and `bind_node` and three arenas go; anchors exist in the
-    scene alone, platforms receiving the next real sibling and server output keeping
-    comment pairs only where streaming needs a marker; segments are dispatch targets,
-    so a `Tooltip` or `ContextMenu` around `derived`, `Show` or `Enhance` works;
-    `Anchor`, `FocusHandle` and `SizeHandle` merge into one Copy node handle backed by
-    the arena, and `Router` turns Copy too; one segment type replaces the five copies
-    of its skeleton; `HasChild` (one slot, which `set_child`
+    - Structure: the scene owns the platforms' records (`Sink = NodeId`), so the terminal
+    and headless stop mirroring parents, children, tab order and `enclosing_control`,
+    and `bind_node` and three arenas go; anchors exist in the scene alone, platforms
+    receiving the next real sibling and server output keeping comment pairs only where
+    streaming needs a marker; `Anchor`, `FocusHandle` and `SizeHandle` merge into one
+    Copy node handle backed by the arena, and `Router` turns Copy too; one segment type
+    replaces the five copies of its skeleton; `HasChild` (one slot, which `set_child`
     replaces) and `HasChildren` (segments, which `add_child` appends) split by type,
     `Container` implementing the first alone, and property setters live only on the
     `NoChild` state, making children-last a type error for every wrapper view; `Show`
-    builds lazily and detached subtrees pause through `EffectHandle::pause`, catching
-    up on reattach.
+    builds lazily and detached subtrees pause through `EffectHandle::pause`, catching up
+    on reattach.
     - The web's realization: `Platform for Web` is written once over a small sink trait
     that the DOM and the string tree implement, the browser layering adoption and
     events on top, so the two leaves cannot drift; hydration converges, removing

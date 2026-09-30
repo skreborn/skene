@@ -642,6 +642,78 @@ mod tests {
     assert_eq!(*log.borrow(), ["outer"]);
   }
 
+  /// An event at a node mounted in a segment climbs through the start of each segment
+  /// it is mounted in, innermost first, before the parent; a node taken out of the
+  /// segment and attached on its own climbs past it.
+  #[test]
+  fn an_event_in_a_segment_climbs_through_its_start() {
+    TestPlatform::reset();
+
+    let parent = TestBox::node();
+    let (outer, _) = Scene::<TestPlatform>::create_segment();
+    let (inner, _) = Scene::<TestPlatform>::create_segment();
+    let leaf = TestBox::node();
+    let log = Rc::new(RefCell::new(Vec::new()));
+
+    Scene::<TestPlatform>::with(|scene| {
+      scene.insert_in_segment(outer, inner, None);
+      scene.insert_in_segment(inner, leaf, None);
+      scene.attach(parent, outer, None);
+      scene.handle(parent, Handler::Click(record(&log, "parent")));
+      scene.handle(outer, Handler::Click(record(&log, "outer")));
+      scene.handle(inner, Handler::Click(record(&log, "inner")));
+      scene.handle(leaf, Handler::Click(record(&log, "leaf")));
+    });
+
+    let _ = dispatch_click::<TestPlatform>(leaf, &ClickEvent::new(1));
+
+    assert_eq!(
+      std::mem::take(&mut *log.borrow_mut()),
+      ["leaf", "inner", "outer", "parent"]
+    );
+
+    Scene::<TestPlatform>::with(|scene| {
+      scene.remove_from_segment(inner, leaf);
+      scene.attach(parent, leaf, None);
+    });
+
+    let _ = dispatch_click::<TestPlatform>(leaf, &ClickEvent::new(1));
+
+    assert_eq!(*log.borrow(), ["leaf", "parent"]);
+  }
+
+  /// The pointer reaching a segment's content enters the segment, and moving on to the
+  /// node around it leaves the segment.
+  #[test]
+  fn the_pointer_enters_a_segment_through_its_content() {
+    TestPlatform::reset();
+
+    let parent = TestBox::node();
+    let (start, _) = Scene::<TestPlatform>::create_segment();
+    let leaf = TestBox::node();
+    let log = Rc::new(RefCell::new(Vec::new()));
+    let note = |name: &'static str| -> Rc<dyn Fn()> {
+      let log = Rc::clone(&log);
+
+      Rc::new(move || log.borrow_mut().push(name))
+    };
+
+    Scene::<TestPlatform>::with(|scene| {
+      scene.attach(parent, start, None);
+      scene.insert_in_segment(start, leaf, None);
+      scene.handle(start, Handler::PointerEnter(note("enter")));
+      scene.handle(start, Handler::PointerLeave(note("leave")));
+    });
+
+    notify_pointer_moved::<TestPlatform>(Some(leaf));
+
+    assert_eq!(std::mem::take(&mut *log.borrow_mut()), ["enter"]);
+
+    notify_pointer_moved::<TestPlatform>(Some(parent));
+
+    assert_eq!(*log.borrow(), ["leave"]);
+  }
+
   /// A notification runs the node's own handlers only.
   #[test]
   fn notifications_do_not_bubble() {

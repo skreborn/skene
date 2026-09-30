@@ -126,7 +126,12 @@ platform crate, since it is not a shared contract.
   handlers deepest first, folds `Prevented`, and tells the platform what the platform
   may still do. The browser's root delegation, the terminal's hit path and the
   headless platform share one bubbling implementation, so the rule that a view owns the
-  interactions it handles is enforced, and testable, in one place. A node carries one
+  interactions it handles is enforced, and testable, in one place. The path climbs
+  through the start of every segment the node is mounted in before its parent, so a
+  `Tooltip` or a `ContextMenu` around `derived`, `Show` or `Enhance` hears its content;
+  an overlay anchored on a segment or a scope is placed against the first node inside
+  it with a box (`Scene::placement`), and a tooltip describes the node holding focus
+  within its view, moving the description when focus reaches a rebuilt one. A node carries one
   list of `Handler`s, each variant naming its event kind, added through `Scene::handle`;
   a control adds its behavior's handler for each event the behavior acts on before its
   observers, and gates both alike while disabled. A click on a native

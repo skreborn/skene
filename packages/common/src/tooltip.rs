@@ -24,7 +24,7 @@ use skene_core::{
   Value,
   View,
 };
-use skene_reactive::{Effect, Get, Set, Signal, on_cleanup};
+use skene_reactive::{Effect, Get, Set, Signal, on_cleanup, untrack};
 
 use crate::{
   Anchor,
@@ -296,32 +296,54 @@ impl<P: Platform> View<P> for Tooltip<P, AnyView<P>> {
       scene.insert_in_segment(start, node, None);
       scene.insert_in_segment(start, bubble, None);
     });
+    bind_description::<P>(node, bubble, text);
     bind_triggers::<P>(node, bubble, open, delay);
-
-    let holder = Scene::<P>::with(|scene| scene.focus_holder_within(node));
-
-    match text {
-      None => describe::<P>(holder, vec![AccessProp::DescribedBy(vec![bubble])]),
-      Some(Source::Fixed(text)) => describe::<P>(
-        holder,
-        vec![
-          AccessProp::DescribedBy(vec![bubble]),
-          AccessProp::Description(text),
-        ],
-      ),
-      Some(Source::Derived(compute)) => {
-        Effect::render(move |_: Option<()>| {
-          describe::<P>(
-            holder,
-            vec![
-              AccessProp::DescribedBy(vec![bubble]),
-              AccessProp::Description(compute()),
-            ],
-          );
-        });
-      }
-    }
 
     start
   }
+}
+
+/// Describes the node holding focus within `node` by `bubble` and its `text`, where it
+/// has one: the node found as the tooltip builds, then the one focus reaches, so a
+/// description follows content rebuilt in place.
+fn bind_description<P: Platform>(node: NodeId, bubble: NodeId, text: Option<Source<String>>) {
+  let report: Rc<dyn Fn() -> Vec<AccessProp>> = match text {
+    None => Rc::new(move || vec![AccessProp::DescribedBy(vec![bubble])]),
+    Some(Source::Fixed(text)) => Rc::new(move || {
+      vec![
+        AccessProp::DescribedBy(vec![bubble]),
+        AccessProp::Description(text.clone()),
+      ]
+    }),
+    Some(Source::Derived(compute)) => Rc::new(move || {
+      vec![
+        AccessProp::DescribedBy(vec![bubble]),
+        AccessProp::Description(compute()),
+      ]
+    }),
+  };
+  let described = Rc::new(Cell::new(Scene::<P>::with(|scene| {
+    scene.focus_holder_within(node)
+  })));
+
+  Effect::render({
+    let described = Rc::clone(&described);
+    let report = Rc::clone(&report);
+
+    move |_: Option<()>| describe::<P>(described.get(), report())
+  });
+  Scene::<P>::with(|scene| {
+    scene.handle(
+      node,
+      Handler::Focus(Rc::new(move || {
+        let holder = Scene::<P>::with(|scene| scene.focus_holder_within(node));
+        let previous = described.replace(holder);
+
+        if previous != holder {
+          describe::<P>(previous, Vec::new());
+          describe::<P>(holder, untrack(|| report()));
+        }
+      })),
+    );
+  });
 }

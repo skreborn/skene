@@ -197,6 +197,7 @@ struct TokenCache<V> {
 #[must_use]
 pub struct NodeRecord<P: Platform> {
   parent: Option<NodeId>,
+  enclosing: Option<NodeId>,
   children: SmallVec<[NodeId; 4]>,
   kind: NodeKind,
   annotation: Option<Annotation<P>>,
@@ -549,6 +550,7 @@ impl<P: Platform> Scene<P> {
     let position = Position::next();
     let record = NodeRecord {
       parent: None,
+      enclosing: None,
       children: SmallVec::new(),
       kind,
       annotation: None,
@@ -661,17 +663,27 @@ impl<P: Platform> Scene<P> {
       .copied()
   }
 
-  /// `node` and its ancestors, innermost first.
+  /// `node` and the nodes an event at it climbs through, innermost first: the start of
+  /// each segment it is mounted in, innermost first, then its parent, and so on.
   pub fn ancestry(&self, node: NodeId) -> SmallVec<[NodeId; 16]> {
     let mut chain = SmallVec::new();
     let mut current = Some(node);
 
     while let Some(node) = current {
       chain.push(node);
-      current = self.parent(node);
+      current = self
+        .record(node)
+        .and_then(|record| record.enclosing.or(record.parent));
     }
 
     chain
+  }
+
+  /// The start of the segment `node` is mounted in, if it is.
+  #[inline(always)]
+  #[must_use]
+  pub fn enclosing_segment(&self, node: NodeId) -> Option<NodeId> {
+    self.record(node).and_then(|record| record.enclosing)
   }
 
   /// The nodes among `from` and its ancestors that are neither `to` nor among its
@@ -817,40 +829,27 @@ impl<P: Platform> Scene<P> {
   /// unlinking it from any previous parent first; nothing where it already stands there,
   /// or where either is gone.
   ///
-  /// A segment start brings its content and its end anchor along.
+  /// A segment start brings its content and its end anchor along; `child` is mounted in
+  /// no segment after.
   pub fn attach(&mut self, parent: NodeId, child: NodeId, before: Option<NodeId>) {
-    if self.record(parent).is_none()
-      || self.record(child).is_none()
-      || self.stands_before(parent, child, before)
-    {
-      return;
+    if let Some(record) = self.record_mut(child) {
+      record.enclosing = None;
     }
 
-    self.unlink(child);
-    self.link(parent, child, before);
-
-    let segment = self
-      .record_mut(child)
-      .and_then(|record| record.segment.as_mut())
-      .map(|segment| (segment.end, std::mem::take(&mut segment.pending)));
-
-    if let Some((end, pending)) = segment {
-      for node in pending {
-        self.attach(parent, node, before);
-      }
-
-      self.link(parent, end, before);
-    }
-
-    self.definitions_generation += 1;
+    self.place(parent, child, before);
   }
 
-  /// Removes `child` from under `parent`, leaving it detached but live.
+  /// Removes `child` from under `parent`, leaving it detached but live and mounted in
+  /// no segment.
   ///
   /// A segment start takes its content and its end anchor with it.
   pub fn detach(&mut self, parent: NodeId, child: NodeId) {
     if self.parent(child) != Some(parent) {
       return;
+    }
+
+    if let Some(record) = self.record_mut(child) {
+      record.enclosing = None;
     }
 
     self.unlink(child);
@@ -916,32 +915,35 @@ impl<P: Platform> Scene<P> {
     };
 
     if let Some(parent) = parent {
-      self.attach(parent, node, before.or(Some(end)));
+      self.place(parent, node, before.or(Some(end)));
+    }
+    else {
+      self.unlink(node);
 
-      return;
+      let Some(segment) = self
+        .record_mut(start)
+        .and_then(|record| record.segment.as_mut())
+      else {
+        return;
+      };
+
+      segment.pending.retain(|pending| *pending != node);
+
+      let index = before
+        .and_then(|before| {
+          segment
+            .pending
+            .iter()
+            .position(|pending| *pending == before)
+        })
+        .unwrap_or(segment.pending.len());
+
+      segment.pending.insert(index, node);
     }
 
-    self.unlink(node);
-
-    let Some(segment) = self
-      .record_mut(start)
-      .and_then(|record| record.segment.as_mut())
-    else {
-      return;
-    };
-
-    segment.pending.retain(|pending| *pending != node);
-
-    let index = before
-      .and_then(|before| {
-        segment
-          .pending
-          .iter()
-          .position(|pending| *pending == before)
-      })
-      .unwrap_or(segment.pending.len());
-
-    segment.pending.insert(index, node);
+    if let Some(record) = self.record_mut(node) {
+      record.enclosing = Some(start);
+    }
   }
 
   /// Takes `node` out of the segment `start` begins, leaving it detached but live.
@@ -962,6 +964,10 @@ impl<P: Platform> Scene<P> {
       .and_then(|record| record.segment.as_mut())
     {
       segment.pending.retain(|pending| *pending != node);
+    }
+
+    if let Some(record) = self.record_mut(node) {
+      record.enclosing = None;
     }
   }
 
@@ -1252,7 +1258,8 @@ impl<P: Platform> Scene<P> {
 
   /// The node that takes focus for the subtree `node` roots: `node` itself where it
   /// has a place in focus traversal, else the first node beneath it with one, in
-  /// document order; `node` where none has.
+  /// document order, a segment's content counting as beneath its start; `node` where
+  /// none has.
   pub fn focus_holder_within(&self, node: NodeId) -> NodeId {
     let mut stack = vec![node];
 
@@ -1266,7 +1273,12 @@ impl<P: Platform> Scene<P> {
         return current;
       }
 
-      stack.extend(record.children.iter().rev());
+      if record.is_segment_start() {
+        stack.extend(self.segment_nodes(current).into_iter().rev());
+      }
+      else {
+        stack.extend(record.children.iter().rev());
+      }
     }
 
     node
@@ -1288,7 +1300,9 @@ impl<P: Platform> Scene<P> {
   /// it; an opening puts it on top of every open overlay, as a browser's top layer
   /// stacks, and a node of any other kind is left alone.
   pub fn set_overlay_open(&mut self, node: NodeId, open: bool, anchor: Option<NodeId>) {
-    let anchor_sink = anchor.and_then(|anchor| self.sink(anchor));
+    let anchor_sink = anchor
+      .and_then(|anchor| self.placement(anchor))
+      .and_then(|anchor| self.sink(anchor));
     let Some(record) = self.record_mut(node)
     else {
       return;
@@ -1314,6 +1328,21 @@ impl<P: Platform> Scene<P> {
       open,
       anchor: anchor_sink,
     });
+  }
+
+  /// The node an overlay anchored on `node` is placed against: `node` itself, or for a
+  /// segment or a scope, the first node inside it with a box of its own, in document
+  /// order; `None` where there is none.
+  #[must_use]
+  pub fn placement(&self, node: NodeId) -> Option<NodeId> {
+    match self.record(node)?.kind {
+      NodeKind::Anchor => self
+        .segment_nodes(node)
+        .into_iter()
+        .find_map(|inner| self.placement(inner)),
+      NodeKind::Scope => self.children(node).find_map(|child| self.placement(child)),
+      NodeKind::Box | NodeKind::Control | NodeKind::Run | NodeKind::Overlay => Some(node),
+    }
   }
 
   /// The node the overlay `node` opened against, while one is.
@@ -1766,6 +1795,36 @@ impl<P: Platform> Scene<P> {
     Some(record)
   }
 
+  /// Places `child` under `parent`, immediately before `before` when given, else last,
+  /// keeping the segment it is mounted in; a segment start brings its content and its
+  /// end anchor along.
+  fn place(&mut self, parent: NodeId, child: NodeId, before: Option<NodeId>) {
+    if self.record(parent).is_none()
+      || self.record(child).is_none()
+      || self.stands_before(parent, child, before)
+    {
+      return;
+    }
+
+    self.unlink(child);
+    self.link(parent, child, before);
+
+    let segment = self
+      .record_mut(child)
+      .and_then(|record| record.segment.as_mut())
+      .map(|segment| (segment.end, std::mem::take(&mut segment.pending)));
+
+    if let Some((end, pending)) = segment {
+      for node in pending {
+        self.place(parent, node, before);
+      }
+
+      self.link(parent, end, before);
+    }
+
+    self.definitions_generation += 1;
+  }
+
   /// Whether `child` stands under `parent` immediately before `before`, last when
   /// `None`: a segment start by its end anchor, its content between.
   fn stands_before(&self, parent: NodeId, child: NodeId, before: Option<NodeId>) -> bool {
@@ -1942,6 +2001,7 @@ mod tests {
     Definition,
     Definitions,
     FocusOrder,
+    Platform,
     TokenName,
     testing::{Call, Erased, TestBox, TestPlatform, children, sink},
   };
@@ -2224,6 +2284,56 @@ mod tests {
     assert_eq!(
       with(|scene| scene.resolve_token(leaf, card)),
       Some(color(0.))
+    );
+  }
+
+  /// An overlay anchored on a segment or a scope is placed against the first node
+  /// inside it with a box of its own, an empty segment standing for none.
+  #[test]
+  fn a_segment_is_placed_against_its_first_box() {
+    TestPlatform::reset();
+
+    let (outer, _) = Scene::<TestPlatform>::create_segment();
+    let (empty, _) = Scene::<TestPlatform>::create_segment();
+    let sink = <TestPlatform as Platform>::create_scope();
+    let scope = with(|scene| scene.create(NodeKind::Scope, sink));
+    let inside = TestBox::node();
+    let after = TestBox::node();
+
+    with(|scene| {
+      scene.attach(scope, inside, None);
+      scene.insert_in_segment(outer, empty, None);
+      scene.insert_in_segment(outer, scope, None);
+      scene.insert_in_segment(outer, after, None);
+    });
+
+    assert_eq!(with(|scene| scene.placement(outer)), Some(inside));
+    assert_eq!(with(|scene| scene.placement(scope)), Some(inside));
+    assert_eq!(with(|scene| scene.placement(empty)), None);
+    assert_eq!(with(|scene| scene.placement(after)), Some(after));
+  }
+
+  /// The node taking focus for a segment is in the segment's content.
+  #[test]
+  fn the_focus_holder_of_a_segment_is_in_its_content() {
+    TestPlatform::reset();
+
+    let parent = TestBox::node();
+    let (start, _) = Scene::<TestPlatform>::create_segment();
+    let plain = TestBox::node();
+    let focusable = TestBox::node();
+
+    with(|scene| {
+      scene.attach(parent, start, None);
+      scene.insert_in_segment(start, plain, None);
+      scene.insert_in_segment(start, focusable, None);
+      scene.note_focus_order(focusable, Some(FocusOrder::Auto));
+    });
+
+    assert_eq!(with(|scene| scene.focus_holder_within(start)), focusable);
+    assert_eq!(
+      with(|scene| scene.enclosing_segment(focusable)),
+      Some(start)
     );
   }
 

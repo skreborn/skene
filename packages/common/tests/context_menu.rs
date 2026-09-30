@@ -7,6 +7,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use skene_common::{ContextMenu, MenuItem, MenuItemContent};
 use skene_core::{
+  AnyView,
   Availability,
   ClipboardAction,
   Dimension,
@@ -25,6 +26,7 @@ use skene_core::{
   Scene,
   Shortcut,
   View,
+  derived,
 };
 use skene_headless::{
   Headless,
@@ -304,6 +306,30 @@ fn the_deepest_menu_along_the_path_wins() {
 
   assert!(is_open(inner_list), "the closer menu takes the request");
   assert!(!is_open(outer_list), "and the root's never hears it");
+}
+
+/// A menu around a reactive view hears a request from the view's content.
+#[test]
+fn a_context_menu_around_a_reactive_view_hears_its_content() {
+  reset();
+
+  let owner = Owner::new();
+  let start = owner.enter(|| {
+    Menu::new()
+      .set_items([MenuItem::new("Rename")])
+      .set_child(AnyView::<Headless>::new(|| {
+        derived::<Headless>(|| Container::new().set_child(Text::new("note")).build())
+      }))
+      .build()
+  });
+  let (served, list) = parts(start);
+  let content = Scene::<Headless>::with(|scene| scene.segment_nodes(served))[0];
+  let verdict = trigger_context_menu(content, &press(4., 4.));
+
+  assert!(verdict.platform, "the platform's menu is prevented");
+  assert!(is_open(list));
+
+  owner.dispose();
 }
 
 /// Whether a node at or under `node` is `height` tall.

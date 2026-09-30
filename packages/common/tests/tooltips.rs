@@ -7,6 +7,7 @@ mod common;
 use skene_common::{Activate, TOOLTIP_DELAY, TOOLTIP_GRACE};
 use skene_core::{
   AccessProp,
+  AnyView,
   FocusOrder,
   HasChildren,
   KeyEvent,
@@ -16,6 +17,7 @@ use skene_core::{
   PointerEvent,
   Scene,
   View,
+  derived,
 };
 use skene_headless::{
   Headless,
@@ -213,6 +215,69 @@ fn a_tooltip_opens_on_hover_after_its_delay_and_on_focus_at_once() {
     0,
     "a rest still pending dies with the view"
   );
+}
+
+/// A tooltip around a reactive view hears the pointer and focus on the view's content,
+/// opens against the content's box and describes the node holding focus in it, the
+/// description following content rebuilt in place once focus reaches it.
+#[test]
+fn a_tooltip_around_a_reactive_view_hears_its_content() {
+  reset();
+
+  let owner = Owner::new();
+  let version = Signal::new(0);
+  let start = owner.enter(|| {
+    Tooltip::new("Saves your work")
+      .set_child(AnyView::<Headless>::new(move || {
+        derived::<Headless>(move || {
+          let _ = version.get();
+
+          Container::new()
+            .set_focus_order(FocusOrder::Auto)
+            .set_child(Text::new("Save"))
+            .build()
+        })
+      }))
+      .build()
+  });
+  let (described, bubble) = parts(start);
+  let content = || Scene::<Headless>::with(|scene| scene.segment_nodes(described))[0];
+  let described_by = |node| {
+    box_props(node).is_some_and(|props| {
+      props
+        .access
+        .contains(&AccessProp::DescribedBy(vec![bubble]))
+    })
+  };
+
+  assert!(
+    described_by(content()),
+    "the content's focus holder is described"
+  );
+
+  trigger_pointer_enter(content());
+  trigger_frame(TOOLTIP_DELAY);
+
+  assert!(is_open(bubble), "resting on the content opens the bubble");
+  assert_eq!(overlay_anchor(bubble), handle(content()));
+
+  trigger_dismiss(bubble);
+  version.set(1);
+
+  assert!(
+    !described_by(content()),
+    "the rebuilt content is not yet described"
+  );
+
+  trigger_focus(content());
+
+  assert!(
+    described_by(content()),
+    "focus moves the description onto it"
+  );
+  assert!(is_open(bubble), "and opens the bubble");
+
+  owner.dispose();
 }
 
 /// The pointer can move from the described view onto the bubble without closing it:

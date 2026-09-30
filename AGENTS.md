@@ -179,8 +179,10 @@
   - **The scene is the tree.** Every view attaches to its parent's scene node, wrappers
     realize nothing, and `derived`, `Suspense`, `ErrorBoundary`, `Deferred` and `empty`
     mount between **anchors** rather than inside a box, so a reactive subtree contributes
-    its own nodes to its parent's layout. The platform's tree is a sink written from the
-    scene, never read back for structure. Overlays are `<dialog>`/popover promoted to the
+    its own nodes to its parent's layout. An event inside such a segment climbs through
+    its start, and an overlay anchored on one is placed against its first box, so a view
+    wrapping a reactive subtree hears and anchors to its content. The platform's tree is
+    a sink written from the scene, never read back for structure. Overlays are `<dialog>`/popover promoted to the
     top layer *in place* rather than portalled, and only the `<head>` is a real portal;
     an anchored popup is placed by CSS anchor positioning where the engine has it and at
     the anchor's measured rectangle where it does not. A native platform may still realize

@@ -52,6 +52,10 @@ jobs:
             export GECKODRIVER="$GECKOWEBDRIVER/geckodriver"
           fi
 
+          if [ -n "${CHROMEWEBDRIVER:-}" ]; then
+            export CHROMEDRIVER="$CHROMEWEBDRIVER/chromedriver"
+          fi
+
           cargo xtask gate
 
       - name: Keep the logs

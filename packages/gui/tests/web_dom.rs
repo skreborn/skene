@@ -2063,14 +2063,15 @@ fn unselectable_text_computes_user_select_none() {
   let children = only_child(&root).children();
   let run = |index: u32| computed(&children.item(index).expect("a run"), "user-select");
 
-  // A plain run computes `auto`, which resolves to the body's `none` at use time—the
-  // reset is what turns selection off; the opt-in overrides it in place.
+  // The reset turns selection off: a plain run computes `auto`, which resolves to the
+  // body's `none` at use time, or the body's `none` itself where the engine inherits
+  // it, as Chromium does; the opt-in overrides it in place.
   assert_eq!(
     computed(&document().body().expect("a body").into(), "user-select"),
     "none"
   );
   assert_eq!(run(0), "text");
-  assert_eq!(run(1), "auto");
+  assert!(matches!(run(1).as_str(), "auto" | "none"), "{}", run(1));
 }
 
 /// A link is inked in the link ink and underlined, while the base ink never colors it.
@@ -2623,8 +2624,9 @@ async fn a_lazy_column_measures_its_estimated_items() {
 }
 
 /// A painted box carries a canvas the size of the box, drawn through vello on the GPU:
-/// the tier runs Firefox with WebGPU on, so the canvas holds a WebGPU context and no 2d
-/// one, and the fill shows through it. `web_painted` covers the CPU path.
+/// the tier runs each engine with WebGPU on, so the canvas holds a WebGPU context and no
+/// 2d one where the engine keeps its device, and the fill shows through it either way.
+/// `web_painted` covers the CPU path.
 #[wasm_bindgen_test]
 async fn a_painted_box_draws_into_its_canvas() {
   use skene_gui::{Painted, core::Dimension, kurbo::Rect};
@@ -2709,10 +2711,18 @@ async fn a_painted_box_draws_into_its_canvas() {
     "the center pixel is the fill"
   );
 
-  assert!(
-    matches!(canvas.get_context("2d"), Ok(None)),
-    "painted on the GPU, so the canvas holds no 2d context"
-  );
+  // Headless Chromium's software adapter loses its device after the first frame, and a
+  // lost device with no successor paints on the CPU.
+  let software = web_sys::window()
+    .and_then(|window| window.navigator().user_agent().ok())
+    .is_some_and(|agent| agent.contains("HeadlessChrome"));
+
+  if !software {
+    assert!(
+      matches!(canvas.get_context("2d"), Ok(None)),
+      "painted on the GPU, so the canvas holds no 2d context"
+    );
+  }
 }
 
 /// Dispatches a bubbling pointer event of `kind` at `element`.

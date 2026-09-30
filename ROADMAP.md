@@ -76,9 +76,9 @@ left half-done in a code comment.
     wheel latching, field editing, selection, motion) is extracted into a
     medium-generic kit; headless lays out through it and renders pixel snapshots, and
     it is the native family's first prerequisite.
-    - A host-side WebDriver harness in the browser tier, over geckodriver's session,
-    runs the conformance suite (`skene-conformance`) in Firefox through trusted input
-    from WebDriver's actions and takes the screenshot goldens: an event a page
+    - A host-side WebDriver harness in the browser tier, over the WebDriver session,
+    runs the conformance suite (`skene-conformance`) in Firefox and Chromium through
+    trusted input from WebDriver's actions and takes the screenshot goldens: an event a page
     dispatches to itself runs no browser default—no focus on a press, no button's click
     on `Enter`, no text in an entry—so neither can run inside the page. The suite's
     scenarios then name their pages, the harness serving each from one test app and

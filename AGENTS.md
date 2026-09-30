@@ -335,6 +335,11 @@
   platform we target, not because it is the best design**. Parity is a floor. Where a
   browser behavior is merely a browser behavior, we are free to rule otherwise, and we
   record it here when we do.
+- **Share the logic, match the native, then follow Chromium.** Every mechanism is
+  written once, where its facts live, and each platform delegates to it rather than
+  keeping a copy; a platform with a native behavior matches it; where there is no
+  native (the terminal, headless) or engines differ, the most popular browser's
+  behavior, Chromium's, decides.
 - **A view that handles an interaction owns it.** Every control consumes the events it
   acts on: a press on a button is a press on the button, never also on the row it sits
   in. This is a **deliberate divergence**—a DOM `<button>` inside a clickable `<div>`
@@ -617,12 +622,16 @@
   cell's style as a character, and what each stands for), rewritten by
   `INSTA_UPDATE=always` once a change to the frame is meant. The server tier is the server leaf built
   natively, the byte-exact render snapshot among it. The browser tier first links every
-  library's tests for wasm32, so an app's own tests build there, then drives a real Firefox through geckodriver with WebGPU switched on by
-  `packages/gui/webdriver.json`, so a painted box renders on the GPU there; `web_painted`
-  hides `navigator.gpu` before its first box paints, so the CPU blit is proven in the
-  same run. The gate holds each browser binary to the least number of tests it lists for
-  it, so a shrinking suite fails rather than passing quietly, and a new browser test
-  raises its binary's number there. By hand, read each binary's `test result:` line
+  library's tests for wasm32, so an app's own tests build there, then drives every
+  browser binary through a real Firefox (geckodriver) and a real Chromium
+  (chromedriver, from `CHROMEDRIVER`, `PATH` or `~/.local/share/chrome-for-testing`),
+  each with WebGPU switched on by `packages/gui/webdriver.json`, so a painted box
+  renders on the GPU there, where headless Chromium's software adapter keeps its
+  device; `web_painted` hides `navigator.gpu` before its first box paints, so the CPU
+  blit is proven in the same run. The gate holds each browser binary to the least
+  number of tests it lists for it in each engine, so a shrinking suite fails rather
+  than passing quietly, and a new browser test raises its binary's number there. By
+  hand, read each binary's `test result:` line
   rather than cargo's exit code, and run Firefox's snap-bundled geckodriver
   (`GECKODRIVER=/snap/firefox/current/usr/lib/firefox/geckodriver`) with `TMPDIR` on a
   path the snap can read, as the gate does: the snap's own `geckodriver` cannot be

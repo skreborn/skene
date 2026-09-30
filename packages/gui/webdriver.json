@@ -4,5 +4,13 @@
       "dom.webgpu.enabled": true,
       "gfx.webgpu.ignore-blocklist": true
     }
+  },
+  "goog:chromeOptions": {
+    "args": [
+      "--enable-unsafe-webgpu",
+      "--enable-features=Vulkan",
+      "--use-webgpu-adapter=swiftshader",
+      "--enable-unsafe-swiftshader"
+    ]
   }
 }

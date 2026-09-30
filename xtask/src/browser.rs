@@ -1,6 +1,13 @@
-//! The browser tier: every browser test binary, run in Firefox through geckodriver.
+//! The browser tier: every browser test binary, run in Firefox through geckodriver and
+//! in Chromium through chromedriver.
 
-use std::{collections::HashMap, env, fs, path::Path, process::Command};
+use std::{
+  collections::HashMap,
+  env,
+  fs,
+  path::{Path, PathBuf},
+  process::Command,
+};
 
 use crate::{Gate, Log, Outcome, WASM, manifests};
 
@@ -55,6 +62,59 @@ const RUNS: &[Run] = &[
 /// The geckodriver bundled in Firefox's snap, which runs outside the snap's confinement.
 const SNAP_GECKODRIVER: &str = "/snap/firefox/current/usr/lib/firefox/geckodriver";
 
+/// A browser the tier runs every browser binary in.
+struct Engine {
+  /// The browser's name in a report.
+  name: &'static str,
+  /// The variable naming its driver, which the test runner reads.
+  variable: &'static str,
+  /// Where its driver is found when the variable names none.
+  default: fn() -> Option<PathBuf>,
+}
+
+/// Every browser the tier runs in, Firefox first.
+const ENGINES: &[Engine] = &[
+  Engine {
+    name: "Firefox",
+    variable: "GECKODRIVER",
+    default: snap_geckodriver,
+  },
+  Engine {
+    name: "Chromium",
+    variable: "CHROMEDRIVER",
+    default: chromedriver,
+  },
+];
+
+/// The geckodriver Firefox's snap bundles, where it is installed.
+fn snap_geckodriver() -> Option<PathBuf> {
+  Some(PathBuf::from(SNAP_GECKODRIVER)).filter(|path| path.exists())
+}
+
+/// A chromedriver on `PATH`, else the newest Chrome for Testing installed under
+/// `~/.local/share/chrome-for-testing`.
+fn chromedriver() -> Option<PathBuf> {
+  let on_path = env::var_os("PATH").and_then(|path| {
+    env::split_paths(&path)
+      .map(|directory| directory.join("chromedriver"))
+      .find(|driver| driver.is_file())
+  });
+
+  on_path.or_else(|| {
+    let installs =
+      Path::new(&env::var_os("HOME")?).join(".local/share/chrome-for-testing/chromedriver");
+    let mut drivers: Vec<PathBuf> = fs::read_dir(installs)
+      .ok()?
+      .filter_map(Result::ok)
+      .map(|install| install.path().join("chromedriver-linux64/chromedriver"))
+      .filter(|driver| driver.is_file())
+      .collect();
+
+    drivers.sort();
+    drivers.pop()
+  })
+}
+
 /// What one binary reported.
 struct Results {
   passed: usize,
@@ -81,50 +141,75 @@ pub(crate) fn run(gate: &Gate, log: &mut Log) -> Outcome {
 
   let mut problems = Vec::new();
 
-  for run in RUNS {
-    let mut command = gate.cargo([
-      "test",
-      "--locked",
-      "--no-fail-fast",
-      "--target",
-      WASM,
-      "-p",
-      run.package,
-    ]);
+  for engine in ENGINES {
+    let Some(driver) = env::var_os(engine.variable)
+      .map(PathBuf::from)
+      .or_else(engine.default)
+    else {
+      problems.push(format!(
+        "{}: no driver found; set {} to its path",
+        engine.name, engine.variable
+      ));
 
-    command.args(run.arguments).env("TMPDIR", &scratch);
+      continue;
+    };
 
-    if env::var_os("GECKODRIVER").is_none() && Path::new(SNAP_GECKODRIVER).exists() {
-      command.env("GECKODRIVER", SNAP_GECKODRIVER);
-    }
+    for run in RUNS {
+      let mut command = gate.cargo([
+        "test",
+        "--locked",
+        "--no-fail-fast",
+        "--target",
+        WASM,
+        "-p",
+        run.package,
+      ]);
 
-    let ran = log.run(command)?;
-    let results = results(&ran.output);
-    let mut found = Vec::new();
+      command.args(run.arguments).env("TMPDIR", &scratch);
 
-    for &(binary, expected) in run.binaries {
-      match results.get(binary) {
-        None => found.push(format!("{}: `{binary}` reported no results", run.package)),
-        Some(&Results { passed, failed }) => {
-          if failed > 0 {
-            found.push(format!("{}: `{binary}` failed {failed} tests", run.package));
-          }
+      for other in ENGINES {
+        command.env_remove(other.variable);
+      }
 
-          if passed < expected {
-            found.push(format!(
-              "{}: `{binary}` passed {passed} tests, fewer than {expected}",
-              run.package
-            ));
+      command.env(engine.variable, &driver);
+
+      let ran = log.run(command)?;
+      let results = results(&ran.output);
+      let mut found = Vec::new();
+
+      for &(binary, expected) in run.binaries {
+        match results.get(binary) {
+          None => found.push(format!(
+            "{} {}: `{binary}` reported no results",
+            engine.name, run.package
+          )),
+          Some(&Results { passed, failed }) => {
+            if failed > 0 {
+              found.push(format!(
+                "{} {}: `{binary}` failed {failed} tests",
+                engine.name, run.package
+              ));
+            }
+
+            if passed < expected {
+              found.push(format!(
+                "{} {}: `{binary}` passed {passed} tests, fewer than {expected}",
+                engine.name, run.package
+              ));
+            }
           }
         }
       }
-    }
 
-    if !ran.success && found.is_empty() {
-      found.push(format!("{}: `cargo test` failed", run.package));
-    }
+      if !ran.success && found.is_empty() {
+        found.push(format!(
+          "{} {}: `cargo test` failed",
+          engine.name, run.package
+        ));
+      }
 
-    problems.extend(found);
+      problems.extend(found);
+    }
   }
 
   if problems.is_empty() {

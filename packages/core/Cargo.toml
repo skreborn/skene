@@ -10,11 +10,13 @@ async-task = "4"
 color.workspace = true
 keyboard-types.workspace = true
 libm = "0.2"
-longest-increasing-subsequence = "0.1"
 rustc-hash.workspace = true
 skene-reactive.workspace = true
 smallvec.workspace = true
 ui-events.workspace = true
+
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+proptest.workspace = true
 
 [lints]
 workspace = true

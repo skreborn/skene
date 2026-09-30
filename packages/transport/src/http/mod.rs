@@ -78,7 +78,6 @@ pub struct Request {
 
 impl Request {
   /// A request of `method` to `url`, with no headers and an empty body.
-  #[inline(always)]
   pub fn new(method: Method, url: impl Into<String>) -> Self {
     Self {
       method,
@@ -89,37 +88,31 @@ impl Request {
   }
 
   /// A `GET` of `url`.
-  #[inline(always)]
   pub fn get(url: impl Into<String>) -> Self {
     Self::new(Method::Get, url)
   }
 
   /// A `POST` to `url`.
-  #[inline(always)]
   pub fn post(url: impl Into<String>) -> Self {
     Self::new(Method::Post, url)
   }
 
   /// A `PUT` to `url`.
-  #[inline(always)]
   pub fn put(url: impl Into<String>) -> Self {
     Self::new(Method::Put, url)
   }
 
   /// A `PATCH` to `url`.
-  #[inline(always)]
   pub fn patch(url: impl Into<String>) -> Self {
     Self::new(Method::Patch, url)
   }
 
   /// A `DELETE` of `url`.
-  #[inline(always)]
   pub fn delete(url: impl Into<String>) -> Self {
     Self::new(Method::Delete, url)
   }
 
   /// Adds a header; a name given twice is sent twice.
-  #[inline(always)]
   pub fn set_header(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
     self.headers.push((name.into(), value.into()));
 
@@ -127,7 +120,6 @@ impl Request {
   }
 
   /// Sets the body.
-  #[inline(always)]
   pub fn set_body(mut self, body: impl Into<Vec<u8>>) -> Self {
     self.body = body.into();
 

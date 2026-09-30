@@ -346,12 +346,10 @@ macro_rules! box_fields {
 
           const KEY: PropertyKey<X::Property> = PropertyKey::Shared(Property::$property);
 
-          #[inline(always)]
           fn get<S: Shape>(style: &BoxStyle<N, S, X>) -> &S::Of<$value> {
             &style.$field
           }
 
-          #[inline(always)]
           fn get_mut<S: Shape>(style: &mut BoxStyle<N, S, X>) -> &mut S::Of<$value> {
             &mut style.$field
           }
@@ -409,7 +407,6 @@ box_fields!(
 
 impl<N: Scalar, S: Shape, X: StyleExtension> BoxStyle<N, S, X> {
   /// Visits every field with its name.
-  #[inline(always)]
   pub fn visit<V: BoxVisitor<N, S, X>>(&self, visitor: &mut V) {
     Self::for_each_field(&mut Visit {
       style: self,
@@ -426,7 +423,6 @@ struct Visit<'a, N: Scalar, S: Shape, X: StyleExtension, V> {
 impl<N: Scalar, S: Shape, X: StyleExtension, V: BoxVisitor<N, S, X>> BoxFieldVisitor<N, X>
   for Visit<'_, N, S, X, V>
 {
-  #[inline(always)]
   fn field<F: BoxField<N, X>>(&mut self) {
     self.visitor.value::<F::Value>(F::KEY, F::get(self.style));
   }
@@ -446,7 +442,6 @@ struct Overlay<'a, N: Scalar, X: StyleExtension> {
 }
 
 impl<N: Scalar, X: StyleExtension> BoxFieldVisitor<N, X> for Overlay<'_, N, X> {
-  #[inline(always)]
   fn field<F: BoxField<N, X>>(&mut self) {
     if let Some(value) = F::get(self.over) {
       *F::get_mut(self.base) = Some(value.clone());

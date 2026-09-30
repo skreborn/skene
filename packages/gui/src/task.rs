@@ -12,7 +12,6 @@ use skene_reactive::TaskHandle;
 /// it. The future runs on the platform's executor: on the web the event loop, on the UI
 /// thread, so it may touch signals and views directly; on the host the headless
 /// platform's queue, drained by `pump_tasks`.
-#[inline(always)]
 pub fn spawn(future: impl Future<Output = ()> + 'static) -> TaskHandle {
   install_executor();
 

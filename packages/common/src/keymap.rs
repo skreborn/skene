@@ -48,7 +48,6 @@ impl<P: Platform> Keymap<P> {
   }
 
   /// Sets the view the keymap serves.
-  #[inline(always)]
   pub fn set_child(self, child: impl View<P>) -> Keymap<P, AnyView<P>> {
     Keymap {
       bindings: self.bindings,
@@ -92,7 +91,6 @@ impl<P: Platform> Default for Keymap<P> {
 
 impl<P: Platform> Keymap<P> {
   /// Runs `action` when `shortcut` is pressed while focus is inside the view served.
-  #[inline(always)]
   pub fn handle_shortcut(mut self, shortcut: Shortcut, action: impl Fn() + 'static) -> Self {
     self.bindings.push((shortcut, Rc::new(action)));
 

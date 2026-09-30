@@ -52,7 +52,6 @@ impl<P: Platform> SimpleCheckbox<P> {
   }
 
   /// Sets the caption beside the mark, which is also the accessible name.
-  #[inline(always)]
   pub fn set_label(mut self, label: impl Into<String>) -> Self {
     self.label = Some(label.into());
 
@@ -68,7 +67,6 @@ impl<P: Platform> SimpleCheckbox<P> {
   }
 
   /// Derives the checked state from the signals `checked` reads.
-  #[inline(always)]
   pub fn derive_checked(mut self, checked: impl Fn() -> bool + 'static) -> Self {
     self.toggle = self.toggle.derive_checked(checked);
 
@@ -76,7 +74,6 @@ impl<P: Platform> SimpleCheckbox<P> {
   }
 
   /// Runs `action` with the state a flip asks for.
-  #[inline(always)]
   pub fn handle_toggle(mut self, action: impl Fn(bool) + 'static) -> Self {
     self.toggle = self.toggle.handle_toggle(action);
 

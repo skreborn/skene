@@ -61,7 +61,6 @@ impl Toggle {
   }
 
   /// Derives the checked state from the signals `checked` reads.
-  #[inline(always)]
   pub fn derive_checked(mut self, checked: impl Fn() -> bool + 'static) -> Self {
     self.checked.derive(checked);
 
@@ -69,7 +68,6 @@ impl Toggle {
   }
 
   /// Runs `action` with the state a flip asks for.
-  #[inline(always)]
   pub fn handle_toggle(mut self, action: impl Fn(bool) + 'static) -> Self {
     self.checked.handle(action);
 

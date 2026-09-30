@@ -101,7 +101,6 @@ impl<P: Platform> Grid<P> {
   }
 
   /// Sets the alignment of each child within its cell, on both axes.
-  #[inline(always)]
   pub fn set_item_alignment(
     mut self,
     alignment: impl Into<Value<Alignment, Condition<P::Scalar>>>,
@@ -113,7 +112,6 @@ impl<P: Platform> Grid<P> {
 
   /// Derives the alignment of each child within its cell from the signals `alignment`
   /// reads.
-  #[inline(always)]
   pub fn derive_item_alignment<R: Into<StaticLeaf<Alignment>>>(
     mut self,
     alignment: impl Fn() -> R + 'static,

@@ -56,7 +56,6 @@ impl<P: Platform> Show<P> {
 
   /// Shows the child while `shown` returns `true`, re-evaluated whenever a signal it
   /// reads changes.
-  #[inline(always)]
   pub fn derive_shown(mut self, shown: impl Fn() -> bool + 'static) -> Self {
     self.shown = Box::new(shown);
 
@@ -64,7 +63,6 @@ impl<P: Platform> Show<P> {
   }
 
   /// Sets the child.
-  #[inline(always)]
   pub fn set_child(self, child: impl View<P>) -> Show<P, AnyView<P>> {
     Show {
       shown: self.shown,

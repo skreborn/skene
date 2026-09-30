@@ -52,25 +52,21 @@ impl<P: Platform> std::fmt::Debug for Span<P> {
 
 impl<P: Platform> Span<P> {
   /// A run reading `content`.
-  #[inline(always)]
   pub fn new(content: impl Into<String>) -> Self {
     Self::with_content(Content::Text(Source::Fixed(content.into())))
   }
 
   /// A run whose text is recomputed whenever a signal `content` reads changes.
-  #[inline(always)]
   pub fn derive(content: impl Fn() -> String + 'static) -> Self {
     Self::with_content(Content::Text(Source::derive(content)))
   }
 
   /// A group of spans styled as a unit.
-  #[inline(always)]
   pub fn group(spans: impl IntoIterator<Item = Self>) -> Self {
     Self::with_content(Content::Group(spans.into_iter().collect()))
   }
 
   /// A view embedded inline among the surrounding text.
-  #[inline(always)]
   pub fn view(view: impl View<P>) -> Self {
     Self::with_content(Content::View(view.into_any()))
   }
@@ -88,7 +84,6 @@ impl<P: Platform> Span<P> {
 
   /// Runs `action` on a click on the span; its verdict says whether the click carries
   /// on to the ancestors.
-  #[inline(always)]
   pub fn handle_click<R: Into<Bubbling>>(mut self, action: impl Fn() -> R + 'static) -> Self {
     self
       .click
@@ -164,7 +159,6 @@ impl<P: Platform> RichText<P> {
   }
 
   /// Appends spans to the paragraph.
-  #[inline(always)]
   pub fn set_spans(mut self, spans: impl IntoIterator<Item = Span<P>>) -> Self {
     self.spans.extend(spans);
 

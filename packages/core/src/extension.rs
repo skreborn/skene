@@ -97,12 +97,10 @@ macro_rules! extension_fields {
           const KEY: $crate::PropertyKey<super::$property> =
             $crate::PropertyKey::Extension(super::$property::$box_property);
 
-          #[inline(always)]
           fn get<S: $crate::Shape>(style: &$crate::BoxStyle<N, S, super::$ext>) -> &S::Of<$box_value> {
             &style.ext.$box_field
           }
 
-          #[inline(always)]
           fn get_mut<S: $crate::Shape>(
             style: &mut $crate::BoxStyle<N, S, super::$ext>,
           ) -> &mut S::Of<$box_value> {
@@ -122,12 +120,10 @@ macro_rules! extension_fields {
           const KEY: $crate::PropertyKey<super::$property> =
             $crate::PropertyKey::Extension(super::$property::$run_property);
 
-          #[inline(always)]
           fn get<S: $crate::Shape>(style: &$crate::RunStyle<S, super::$ext>) -> &S::Of<$run_value> {
             &style.ext.$run_field
           }
 
-          #[inline(always)]
           fn get_mut<S: $crate::Shape>(
             style: &mut $crate::RunStyle<S, super::$ext>,
           ) -> &mut S::Of<$run_value> {
@@ -137,7 +133,6 @@ macro_rules! extension_fields {
       )*
 
       /// Visits every box property, in declaration order.
-      #[inline(always)]
       pub fn visit_box<N: $crate::Scalar, V: $crate::BoxFieldVisitor<N, super::$ext>>(
         visitor: &mut V,
       ) {
@@ -146,7 +141,6 @@ macro_rules! extension_fields {
       }
 
       /// Visits every run property, in declaration order.
-      #[inline(always)]
       pub fn visit_run<V: $crate::RunFieldVisitor<super::$ext>>(visitor: &mut V) {
         $(visitor.field::<$run_property>();)*
         let _ = visitor;
@@ -176,9 +170,7 @@ impl StyleExtension for () {
   type RunFields<S: Shape> = ();
   type Value = NoValue;
 
-  #[inline(always)]
   fn for_each_box_field<N: Scalar, V: BoxFieldVisitor<N, Self>>(_: &mut V) {}
 
-  #[inline(always)]
   fn for_each_run_field<V: RunFieldVisitor<Self>>(_: &mut V) {}
 }

@@ -34,7 +34,6 @@ impl<P: Platform> SimpleTextEditor<P> {
   }
 
   /// Sets the text.
-  #[inline(always)]
   pub fn set_value(mut self, value: impl Into<String>) -> Self {
     self.entry = self.entry.set_value(value);
 
@@ -42,7 +41,6 @@ impl<P: Platform> SimpleTextEditor<P> {
   }
 
   /// Derives the text from the signals `value` reads.
-  #[inline(always)]
   pub fn derive_value(mut self, value: impl Fn() -> String + 'static) -> Self {
     self.entry = self.entry.derive_value(value);
 
@@ -50,7 +48,6 @@ impl<P: Platform> SimpleTextEditor<P> {
   }
 
   /// Sets the hint shown while the value is empty.
-  #[inline(always)]
   pub fn set_placeholder(mut self, placeholder: impl Into<String>) -> Self {
     self.entry = self.entry.set_placeholder(placeholder);
 
@@ -66,7 +63,6 @@ impl<P: Platform> SimpleTextEditor<P> {
   }
 
   /// Runs `action` with the text an edit asks for.
-  #[inline(always)]
   pub fn handle_change(mut self, action: impl Fn(&str) + 'static) -> Self {
     self.entry = self.entry.handle_change(action);
 

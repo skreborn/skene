@@ -133,7 +133,6 @@ impl<N: Scalar> SimpleLook<N> {
   }
 
   /// Sets the action's surface.
-  #[inline(always)]
   pub fn set_surface(mut self, surface: impl Into<Definition<Color, N>>) -> Self {
     self.surface = self.surface.redefine(surface);
 
@@ -141,7 +140,6 @@ impl<N: Scalar> SimpleLook<N> {
   }
 
   /// Sets the ink on the action's surface.
-  #[inline(always)]
   pub fn set_ink(mut self, ink: impl Into<Definition<Color, N>>) -> Self {
     self.ink = self.ink.redefine(ink);
 
@@ -149,7 +147,6 @@ impl<N: Scalar> SimpleLook<N> {
   }
 
   /// Gives the action a hairline border, making it a bordered variant.
-  #[inline(always)]
   pub fn set_border(mut self, border: impl Into<Definition<Color, N>>) -> Self {
     self.border = Some(Token::new(self.variant.border().name().as_str(), border));
 
@@ -157,7 +154,6 @@ impl<N: Scalar> SimpleLook<N> {
   }
 
   /// Sets the surface shown under the pointer.
-  #[inline(always)]
   pub fn set_hover(mut self, hover: impl Into<Definition<Color, N>>) -> Self {
     self.hover = self.hover.redefine(hover);
 
@@ -165,7 +161,6 @@ impl<N: Scalar> SimpleLook<N> {
   }
 
   /// Sets the surface shown while focused.
-  #[inline(always)]
   pub fn set_focus(mut self, focus: impl Into<Definition<Color, N>>) -> Self {
     self.focus = self.focus.redefine(focus);
 
@@ -337,7 +332,6 @@ impl<N: Scalar> SimplePalette<N> {
   }
 
   /// Sets the page background.
-  #[inline(always)]
   pub fn set_background(mut self, background: impl Into<Definition<Color, N>>) -> Self {
     self.background = self.background.redefine(background);
 
@@ -345,7 +339,6 @@ impl<N: Scalar> SimplePalette<N> {
   }
 
   /// Sets the default text ink.
-  #[inline(always)]
   pub fn set_foreground(mut self, foreground: impl Into<Definition<Color, N>>) -> Self {
     self.foreground = self.foreground.redefine(foreground);
 
@@ -353,7 +346,6 @@ impl<N: Scalar> SimplePalette<N> {
   }
 
   /// Sets the de-emphasized text ink.
-  #[inline(always)]
   pub fn set_muted_foreground(mut self, muted_foreground: impl Into<Definition<Color, N>>) -> Self {
     self.muted_foreground = self.muted_foreground.redefine(muted_foreground);
 
@@ -361,7 +353,6 @@ impl<N: Scalar> SimplePalette<N> {
   }
 
   /// Sets the raised surface.
-  #[inline(always)]
   pub fn set_card(mut self, card: impl Into<Definition<Color, N>>) -> Self {
     self.card = self.card.redefine(card);
 
@@ -369,7 +360,6 @@ impl<N: Scalar> SimplePalette<N> {
   }
 
   /// Sets the hairline border and separator ink.
-  #[inline(always)]
   pub fn set_border(mut self, border: impl Into<Definition<Color, N>>) -> Self {
     self.border = self.border.redefine(border);
 
@@ -377,7 +367,6 @@ impl<N: Scalar> SimplePalette<N> {
   }
 
   /// Sets the focused control's border ink.
-  #[inline(always)]
   pub fn set_ring(mut self, ring: impl Into<Definition<Color, N>>) -> Self {
     self.ring = self.ring.redefine(ring);
 
@@ -385,7 +374,6 @@ impl<N: Scalar> SimplePalette<N> {
   }
 
   /// Sets the ink of a link.
-  #[inline(always)]
   pub fn set_link(mut self, link: impl Into<Definition<Color, N>>) -> Self {
     self.link = self.link.redefine(link);
 
@@ -393,7 +381,6 @@ impl<N: Scalar> SimplePalette<N> {
   }
 
   /// Sets the surface of a control that cannot be operated.
-  #[inline(always)]
   pub fn set_disabled_surface(mut self, surface: impl Into<Definition<Color, N>>) -> Self {
     self.disabled_surface = self.disabled_surface.redefine(surface);
 
@@ -401,7 +388,6 @@ impl<N: Scalar> SimplePalette<N> {
   }
 
   /// Sets the ink of a control that cannot be operated.
-  #[inline(always)]
   pub fn set_disabled_ink(mut self, ink: impl Into<Definition<Color, N>>) -> Self {
     self.disabled_ink = self.disabled_ink.redefine(ink);
 

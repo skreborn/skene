@@ -159,7 +159,6 @@ impl<C: CollectionPolicy> CollectionContext<C> {
   /// A group whose members join `roster` under `P`'s scene, answering `chosen` for the
   /// chosen value and asking `choose` for a choice; provided as context by a control
   /// holding members, its tab stop a memo owned by the current owner.
-  #[inline(always)]
   pub fn new<P: Platform>(
     chosen: impl Fn() -> Option<String> + 'static,
     choose: impl Fn(String) + 'static,
@@ -200,7 +199,6 @@ impl<C: CollectionPolicy> CollectionContext<C> {
   }
 
   /// Asks for `value` to be chosen.
-  #[inline(always)]
   pub fn choose(&self, value: impl Into<String>) {
     (self.choose)(value.into());
   }
@@ -325,7 +323,6 @@ impl<C: CollectionPolicy> Collection<C> {
   }
 
   /// Sets the chosen member's value.
-  #[inline(always)]
   pub fn set_chosen(mut self, chosen: impl Into<String>) -> Self {
     self.chosen.set(Some(chosen.into()));
 
@@ -333,7 +330,6 @@ impl<C: CollectionPolicy> Collection<C> {
   }
 
   /// Derives the chosen member's value from the signals `chosen` reads.
-  #[inline(always)]
   pub fn derive_chosen(mut self, chosen: impl Fn() -> Option<String> + 'static) -> Self {
     self.chosen.derive(chosen);
 
@@ -341,7 +337,6 @@ impl<C: CollectionPolicy> Collection<C> {
   }
 
   /// Runs `action` with the value a choice asks for.
-  #[inline(always)]
   pub fn handle_choose(mut self, action: impl Fn(String) + 'static) -> Self {
     self.chosen.handle(move |value: Option<String>| {
       if let Some(value) = value {
@@ -432,7 +427,6 @@ impl<C: CollectionPolicy> std::fmt::Debug for Member<C> {
 
 impl<C: CollectionPolicy> Member<C> {
   /// A member carrying `value`, the string the collection reports when it is chosen.
-  #[inline(always)]
   pub fn new(value: impl Into<String>) -> Self {
     Self {
       value: value.into(),

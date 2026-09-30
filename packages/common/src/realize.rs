@@ -76,7 +76,6 @@ impl<T: Clone> Clone for Source<T> {
 
 impl<T: 'static> Source<T> {
   /// A source recomputed by `compute`.
-  #[inline(always)]
   pub fn derive(compute: impl Fn() -> T + 'static) -> Self {
     Self::Derived(Rc::new(compute))
   }
@@ -125,7 +124,6 @@ impl<P: Platform> std::fmt::Debug for ChildBuilder<P> {
 
 impl<P: Platform> ChildBuilder<P> {
   /// A builder running `child` when the view builds.
-  #[inline(always)]
   pub fn new<V: View<P>>(child: impl FnOnce() -> V + 'static) -> Self {
     Self(Box::new(move || child().into_any()))
   }

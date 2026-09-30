@@ -94,14 +94,12 @@ impl<T: Tokenable> TokenRef<T> {
   }
 
   /// This token, overridden by `value` while `condition` holds.
-  #[inline(always)]
   pub fn when<C>(self, condition: C, value: impl Into<Leaf<T>>) -> Value<T, C> {
     Value::from(self).when(condition, value)
   }
 
   /// This token, overridden while `condition` holds by a leaf derived from the
   /// signals `compute` reads: a value, a token or an expression.
-  #[inline(always)]
   pub fn derive_when<C, R: Into<StaticLeaf<T>>>(
     self,
     condition: C,
@@ -130,7 +128,6 @@ impl<T: Tokenable> PartialEq for TokenRef<T> {
 impl<T: Tokenable> Eq for TokenRef<T> {}
 
 impl<T: Tokenable> Hash for TokenRef<T> {
-  #[inline(always)]
   fn hash<H: Hasher>(&self, state: &mut H) {
     self.name.hash(state);
   }
@@ -156,7 +153,6 @@ pub struct Token<T: Tokenable, N: Scalar> {
 
 impl<T: Tokenable, N: Scalar> Token<T, N> {
   /// A token named `name`, defined as `definition`.
-  #[inline(always)]
   pub fn new(name: &'static str, definition: impl Into<Definition<T, N>>) -> Self {
     Self {
       reference: TokenRef::new(name),
@@ -165,7 +161,6 @@ impl<T: Tokenable, N: Scalar> Token<T, N> {
   }
 
   /// This token defined anew; the name stays.
-  #[inline(always)]
   pub fn redefine(mut self, definition: impl Into<Definition<T, N>>) -> Self {
     self.definition = Rc::new(definition.into());
 
@@ -202,7 +197,6 @@ impl<T: Tokenable, N: Scalar> Token<T, N> {
   }
 
   /// The token's name with its definition erased into the platform's value `V`.
-  #[inline(always)]
   pub fn define<V>(&self) -> (TokenName, V)
   where
     T: Clone,
@@ -212,14 +206,12 @@ impl<T: Tokenable, N: Scalar> Token<T, N> {
   }
 
   /// This token, overridden by `value` while `condition` holds.
-  #[inline(always)]
   pub fn when<C>(&self, condition: C, value: impl Into<Leaf<T>>) -> Value<T, C> {
     self.reference.when(condition, value)
   }
 
   /// This token, overridden while `condition` holds by a leaf derived from the
   /// signals `compute` reads: a value, a token or an expression.
-  #[inline(always)]
   pub fn derive_when<C, R: Into<StaticLeaf<T>>>(
     &self,
     condition: C,
@@ -271,7 +263,6 @@ pub struct Definitions<V>(Vec<(TokenName, V)>);
 
 impl<V> Definitions<V> {
   /// The definitions of `set`.
-  #[inline(always)]
   pub fn of(set: &impl TokenSet<V>) -> Self {
     Self(set.definitions())
   }
@@ -326,7 +317,6 @@ impl<V> From<Vec<(TokenName, V)>> for Definitions<V> {
 }
 
 impl<V> FromIterator<(TokenName, V)> for Definitions<V> {
-  #[inline(always)]
   fn from_iter<I: IntoIterator<Item = (TokenName, V)>>(iter: I) -> Self {
     Self(iter.into_iter().collect())
   }

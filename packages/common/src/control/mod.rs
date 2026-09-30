@@ -372,7 +372,6 @@ pub struct Label<P: Platform> {
 
 impl<P: Platform> Label<P> {
   /// A caption drawn by `view`; the name is the platform's to read from the part.
-  #[inline(always)]
   pub fn new(view: impl View<P>) -> Self {
     Self {
       view: view.into_any(),
@@ -382,7 +381,6 @@ impl<P: Platform> Label<P> {
 
   /// Sets the accessible name the caption supplies, where its text is not the
   /// platform's to read: what type-ahead matches, and what is reported to assistive technology.
-  #[inline(always)]
   pub fn set_name(mut self, name: impl Into<String>) -> Self {
     self.name = Some(Source::Fixed(name.into()));
 
@@ -390,7 +388,6 @@ impl<P: Platform> Label<P> {
   }
 
   /// Derives the accessible name the caption supplies from the signals `name` reads.
-  #[inline(always)]
   pub fn derive_name(mut self, name: impl Fn() -> String + 'static) -> Self {
     self.name = Some(Source::derive(name));
 
@@ -513,13 +510,11 @@ impl<P: Platform, B: Behavior<P>> Control<P, B> {
   }
 
   /// Sets the drawn body.
-  #[inline(always)]
   pub fn set_child(self, child: impl View<P>) -> Control<P, B, AnyView<P>> {
     self.with_child(child.into_any())
   }
 
   /// Sets the drawn body, built by `child` under the control.
-  #[inline(always)]
   pub fn set_child_builder<V: View<P>>(
     self,
     child: impl FnOnce() -> V + 'static,
@@ -609,7 +604,6 @@ impl<P: Platform, B: Behavior<P>> Control<P, B> {
   ///
   /// A string builds a [`Text`] and names the control; [`Label::new`] mounts any view
   /// and leaves the name to the platform.
-  #[inline(always)]
   pub fn set_label(mut self, label: impl Into<Label<P>>) -> Self {
     self.label = Some(label.into());
 
@@ -618,7 +612,6 @@ impl<P: Platform, B: Behavior<P>> Control<P, B> {
 
   /// Sets the name the control reports to assistive technology, over its caption's: for
   /// a control no caption names, such as a button drawn by an icon alone.
-  #[inline(always)]
   pub fn set_accessible_name(mut self, name: impl Into<String>) -> Self {
     self.accessible_name = Some(Source::Fixed(name.into()));
 
@@ -627,7 +620,6 @@ impl<P: Platform, B: Behavior<P>> Control<P, B> {
 
   /// Derives the name the control reports to assistive technology from the signals
   /// `name` reads.
-  #[inline(always)]
   pub fn derive_accessible_name(mut self, name: impl Fn() -> String + 'static) -> Self {
     self.accessible_name = Some(Source::derive(name));
 
@@ -645,7 +637,6 @@ impl<P: Platform, B: Behavior<P>> Control<P, B> {
   }
 
   /// Derives whether the control is disabled from the signals `disabled` reads.
-  #[inline(always)]
   pub fn derive_disabled(mut self, disabled: impl Fn() -> bool + 'static) -> Self {
     self.disabled = Some(Source::derive(disabled));
 
@@ -661,7 +652,6 @@ impl<P: Platform, B: Behavior<P>> Control<P, B> {
   }
 
   /// Derives whether the control is required from the signals `required` reads.
-  #[inline(always)]
   pub fn derive_required(mut self, required: impl Fn() -> bool + 'static) -> Self {
     self.required = Some(Source::derive(required));
 
@@ -677,7 +667,6 @@ impl<P: Platform, B: Behavior<P>> Control<P, B> {
   }
 
   /// Derives whether the control is read-only from the signals `read_only` reads.
-  #[inline(always)]
   pub fn derive_read_only(mut self, read_only: impl Fn() -> bool + 'static) -> Self {
     self.read_only = Some(Source::derive(read_only));
 
@@ -694,7 +683,6 @@ impl<P: Platform, B: Behavior<P>> Control<P, B> {
   }
 
   /// Derives whether the control is invalid from the signals `invalid` reads.
-  #[inline(always)]
   pub fn derive_invalid(mut self, invalid: impl Fn() -> bool + 'static) -> Self {
     self.invalid = Some(Source::derive(invalid));
 
@@ -728,7 +716,6 @@ impl<P: Platform, B: Behavior<P>> Control<P, B> {
 
   /// Derives the control's place in focus traversal from the signals `focus_order`
   /// reads, over the behavior's default.
-  #[inline(always)]
   pub fn derive_focus_order(mut self, focus_order: impl Fn() -> FocusOrder + 'static) -> Self {
     self.focus_order = Some(Source::derive(focus_order));
 
@@ -737,7 +724,6 @@ impl<P: Platform, B: Behavior<P>> Control<P, B> {
 
   /// Adds `view` as the part `part` of the control, a styling target its conditions
   /// resolve against the control.
-  #[inline(always)]
   pub fn set_part(mut self, part: Part, view: impl View<P>) -> Self {
     self.parts.push((part, view.into_any()));
 
@@ -745,7 +731,6 @@ impl<P: Platform, B: Behavior<P>> Control<P, B> {
   }
 
   /// Runs `action` after the behavior has acted on a click.
-  #[inline(always)]
   pub fn handle_click(mut self, action: impl Fn() + 'static) -> Self {
     self
       .observers
@@ -760,7 +745,6 @@ impl<P: Platform, B: Behavior<P>> Control<P, B> {
 
   /// Runs `action` after the behavior has acted on a key pressed while the control
   /// holds focus.
-  #[inline(always)]
   pub fn handle_key_down(mut self, action: impl Fn(&KeyEvent) + 'static) -> Self {
     self.observers.push(Handler::KeyDown(observe(action)));
 
@@ -768,7 +752,6 @@ impl<P: Platform, B: Behavior<P>> Control<P, B> {
   }
 
   /// Runs `action` on a key released while the control holds focus.
-  #[inline(always)]
   pub fn handle_key_up(mut self, action: impl Fn(&KeyEvent) + 'static) -> Self {
     self.observers.push(Handler::KeyUp(observe(action)));
 
@@ -777,7 +760,6 @@ impl<P: Platform, B: Behavior<P>> Control<P, B> {
 
   /// Runs `action` after the behavior has acted on a pointer button pressed over the
   /// control.
-  #[inline(always)]
   pub fn handle_pointer_down(mut self, action: impl Fn(&PointerEvent) + 'static) -> Self {
     self.observers.push(Handler::PointerDown(observe(action)));
 
@@ -786,7 +768,6 @@ impl<P: Platform, B: Behavior<P>> Control<P, B> {
 
   /// Runs `action` after the behavior has acted on a pointer button released over the
   /// control.
-  #[inline(always)]
   pub fn handle_pointer_up(mut self, action: impl Fn(&PointerEvent) + 'static) -> Self {
     self.observers.push(Handler::PointerUp(observe(action)));
 
@@ -794,7 +775,6 @@ impl<P: Platform, B: Behavior<P>> Control<P, B> {
   }
 
   /// Runs `action` after the behavior has acted on the pointer moving over the control.
-  #[inline(always)]
   pub fn handle_pointer_move(mut self, action: impl Fn(&PointerEvent) + 'static) -> Self {
     self.observers.push(Handler::PointerMove(observe(action)));
 
@@ -803,7 +783,6 @@ impl<P: Platform, B: Behavior<P>> Control<P, B> {
 
   /// Runs `action` after the behavior has acted on a wheel turned over the control,
   /// before the platform scrolls by it.
-  #[inline(always)]
   pub fn handle_wheel(mut self, action: impl Fn(&WheelEvent) + 'static) -> Self {
     self.observers.push(Handler::Wheel(observe(action)));
 
@@ -812,7 +791,6 @@ impl<P: Platform, B: Behavior<P>> Control<P, B> {
 
   /// Runs `action` after the behavior has acted on the platform taking the pointer
   /// pressed over the control for itself, ending the press without a release.
-  #[inline(always)]
   pub fn handle_pointer_cancel(mut self, action: impl Fn(&PointerEvent) + 'static) -> Self {
     self.observers.push(Handler::PointerCancel(observe(action)));
 
@@ -820,7 +798,6 @@ impl<P: Platform, B: Behavior<P>> Control<P, B> {
   }
 
   /// Runs `action` when the pointer enters the control.
-  #[inline(always)]
   pub fn handle_pointer_enter(mut self, action: impl Fn() + 'static) -> Self {
     self.observers.push(Handler::PointerEnter(Rc::new(action)));
 
@@ -828,7 +805,6 @@ impl<P: Platform, B: Behavior<P>> Control<P, B> {
   }
 
   /// Runs `action` when the pointer leaves the control.
-  #[inline(always)]
   pub fn handle_pointer_leave(mut self, action: impl Fn() + 'static) -> Self {
     self.observers.push(Handler::PointerLeave(Rc::new(action)));
 
@@ -836,7 +812,6 @@ impl<P: Platform, B: Behavior<P>> Control<P, B> {
   }
 
   /// Runs `action` when focus enters the control or a node inside it from outside.
-  #[inline(always)]
   pub fn handle_focus(mut self, action: impl Fn() + 'static) -> Self {
     self.observers.push(Handler::Focus(Rc::new(action)));
 
@@ -844,7 +819,6 @@ impl<P: Platform, B: Behavior<P>> Control<P, B> {
   }
 
   /// Runs `action` when focus leaves the control and every node inside it.
-  #[inline(always)]
   pub fn handle_blur(mut self, action: impl Fn() + 'static) -> Self {
     self.observers.push(Handler::Blur(Rc::new(action)));
 
@@ -852,7 +826,6 @@ impl<P: Platform, B: Behavior<P>> Control<P, B> {
   }
 
   /// Runs `action` with the control's new offsets when it scrolls.
-  #[inline(always)]
   pub fn handle_scroll(mut self, action: impl Fn(&ScrollEvent) + 'static) -> Self {
     self.observers.push(Handler::Scroll(Rc::new(action)));
 

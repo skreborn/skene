@@ -56,7 +56,6 @@ impl<P: Platform> Pinned<P> {
 
 impl<P: Platform> Pinned<P> {
   /// Sets the edges the child is pinned to.
-  #[inline(always)]
   pub fn set_edges(
     mut self,
     edges: impl Into<Value<Inset<Dimension<P::Scalar>>, Condition<P::Scalar>>>,
@@ -68,7 +67,6 @@ impl<P: Platform> Pinned<P> {
 
   /// Derives the edges the child is pinned to from the signals `edges` reads: a value,
   /// a token or an expression.
-  #[inline(always)]
   pub fn derive_edges<R: Into<StaticLeaf<Inset<Dimension<P::Scalar>>>>>(
     mut self,
     edges: impl Fn() -> R + 'static,
@@ -79,7 +77,6 @@ impl<P: Platform> Pinned<P> {
   }
 
   /// Sets the child.
-  #[inline(always)]
   pub fn set_child(self, child: impl View<P>) -> Pinned<P, AnyView<P>> {
     Pinned {
       edges: self.edges,

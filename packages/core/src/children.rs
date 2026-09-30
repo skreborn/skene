@@ -110,7 +110,6 @@ impl<P: Platform, Kind: 'static> Children<P, Kind> {
   }
 
   /// Appends a static segment.
-  #[inline(always)]
   pub fn push_static(&mut self, children: impl IntoChildren<P, Kind>) {
     self
       .segments
@@ -118,7 +117,6 @@ impl<P: Platform, Kind: 'static> Children<P, Kind> {
   }
 
   /// Appends a segment rebuilt whenever the signals `child` reads change.
-  #[inline(always)]
   pub fn push_derived<V: IntoChildOf<P, Kind>>(&mut self, child: impl Fn() -> V + 'static) {
     self
       .segments
@@ -188,7 +186,6 @@ pub trait HasChild<P: Platform>: Sized {
   fn child_mut(&mut self, seal: Seal) -> &mut Children<P, Self::Kind>;
 
   /// Sets the child, replacing the one set before.
-  #[inline(always)]
   #[must_use]
   fn set_child(mut self, child: impl IntoChildOf<P, Self::Kind>) -> Self {
     let slot = self.child_mut(Seal(()));
@@ -201,7 +198,6 @@ pub trait HasChild<P: Platform>: Sized {
 
   /// Sets a child rebuilt whenever the signals `child` reads change, replacing the one
   /// set before.
-  #[inline(always)]
   #[must_use]
   fn derive_child<V: IntoChildOf<P, Self::Kind>>(
     mut self,
@@ -229,7 +225,6 @@ pub trait HasChildren<P: Platform>: Sized {
   fn children_mut(&mut self, seal: Seal) -> &mut Children<P, Self::Kind>;
 
   /// Appends one static child.
-  #[inline(always)]
   #[must_use]
   fn add_child(mut self, child: impl IntoChildOf<P, Self::Kind>) -> Self {
     self
@@ -240,7 +235,6 @@ pub trait HasChildren<P: Platform>: Sized {
   }
 
   /// Appends a static set of children.
-  #[inline(always)]
   #[must_use]
   fn set_children(mut self, children: impl IntoChildren<P, Self::Kind>) -> Self {
     self.children_mut(Seal(())).push_static(children);
@@ -249,7 +243,6 @@ pub trait HasChildren<P: Platform>: Sized {
   }
 
   /// Appends one child rebuilt whenever the signals `child` reads change.
-  #[inline(always)]
   #[must_use]
   fn derive_child<V: IntoChildOf<P, Self::Kind>>(
     mut self,
@@ -262,7 +255,6 @@ pub trait HasChildren<P: Platform>: Sized {
 
   /// Appends a keyed set of children: `items` yields the items, `key` gives each a
   /// stable identity, `view` renders one.
-  #[inline(always)]
   #[must_use]
   fn derive_children<T, I, K, V>(
     mut self,
@@ -283,7 +275,6 @@ pub trait HasChildren<P: Platform>: Sized {
   /// Appends one child per entry of a keyed store location, keyed by the entry's key:
   /// `view` renders one from the lens onto its entry, and the set follows the
   /// location's shape; see [`KeyedField::entries`].
-  #[inline(always)]
   #[must_use]
   fn derive_entries<F, V>(mut self, entries: F, view: impl Fn(AtKey<F>) -> V + 'static) -> Self
   where

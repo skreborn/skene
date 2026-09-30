@@ -87,25 +87,21 @@ impl<P: Platform> Tooltip<P> {
   }
 
   /// A tooltip showing `text`.
-  #[inline(always)]
   pub fn new(text: impl Into<String>) -> Self {
     Self::with(Content::Text(Source::Fixed(text.into())))
   }
 
   /// A tooltip whose text is recomputed whenever a signal `text` reads changes.
-  #[inline(always)]
   pub fn derive(text: impl Fn() -> String + 'static) -> Self {
     Self::with(Content::Text(Source::derive(text)))
   }
 
   /// A tooltip showing `content`, a view of any kind.
-  #[inline(always)]
   pub fn view(content: impl View<P>) -> Self {
     Self::with(Content::View(content.into_any()))
   }
 
   /// Sets the view the tooltip describes.
-  #[inline(always)]
   pub fn set_child(self, child: impl View<P>) -> Tooltip<P, AnyView<P>> {
     Tooltip {
       content: self.content,
@@ -129,7 +125,6 @@ impl<P: Platform> Tooltip<P> {
   decoration! { bubble_style_mut }
 
   /// Sets the color of a text tooltip's text; a view tooltip inks its own.
-  #[inline(always)]
   pub fn set_text_color(mut self, color: impl Into<Value<Color, Condition<P::Scalar>>>) -> Self {
     self.text_color = Some(color.into());
 

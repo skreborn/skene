@@ -70,7 +70,6 @@ pub trait Fingerprint {
 macro_rules! hashed {
   ($($type:ty),+ $(,)?) => {$(
     impl Fingerprint for $type {
-      #[inline(always)]
       fn fingerprint<H: Hasher>(&self, state: &mut H) {
         self.hash(state);
       }
@@ -96,28 +95,24 @@ hashed!(
 );
 
 impl<P: PropertyName> Fingerprint for StyleProperty<P> {
-  #[inline(always)]
   fn fingerprint<H: Hasher>(&self, state: &mut H) {
     self.hash(state);
   }
 }
 
 impl<N: Scalar> Fingerprint for N {
-  #[inline(always)]
   fn fingerprint<H: Hasher>(&self, state: &mut H) {
     state.write_u64(self.hash_bits());
   }
 }
 
 impl Fingerprint for Length {
-  #[inline(always)]
   fn fingerprint<H: Hasher>(&self, state: &mut H) {
     self.0.fingerprint(state);
   }
 }
 
 impl<T: Fingerprint> Fingerprint for Axes<T> {
-  #[inline(always)]
   fn fingerprint<H: Hasher>(&self, state: &mut H) {
     self.horizontal.fingerprint(state);
     self.vertical.fingerprint(state);
@@ -125,7 +120,6 @@ impl<T: Fingerprint> Fingerprint for Axes<T> {
 }
 
 impl Fingerprint for AspectRatio {
-  #[inline(always)]
   fn fingerprint<H: Hasher>(&self, state: &mut H) {
     self.0.fingerprint(state);
   }
@@ -397,7 +391,6 @@ impl<C: Clone + PartialEq + Hash + std::fmt::Debug + 'static, X: StyleExtension,
 }
 
 impl<N: Scalar, X: StyleExtension> Fingerprint for BoxStyle<N, Plain, X> {
-  #[inline(always)]
   fn fingerprint<H: Hasher>(&self, state: &mut H) {
     self.visit(&mut Feed { state });
   }
@@ -406,28 +399,24 @@ impl<N: Scalar, X: StyleExtension> Fingerprint for BoxStyle<N, Plain, X> {
 impl<N: Scalar, C: Clone + PartialEq + Hash + std::fmt::Debug + 'static, X: StyleExtension>
   Fingerprint for BoxStyle<N, Static<C>, X>
 {
-  #[inline(always)]
   fn fingerprint<H: Hasher>(&self, state: &mut H) {
     self.visit(&mut Feed { state });
   }
 }
 
 impl<N: Scalar, X: StyleExtension> Fingerprint for BoxStyle<N, Keyframe, X> {
-  #[inline(always)]
   fn fingerprint<H: Hasher>(&self, state: &mut H) {
     self.visit(&mut Feed { state });
   }
 }
 
 impl<X: StyleExtension> Fingerprint for RunStyle<Keyframe, X> {
-  #[inline(always)]
   fn fingerprint<H: Hasher>(&self, state: &mut H) {
     self.visit(&mut Feed { state });
   }
 }
 
 impl<X: StyleExtension> Fingerprint for RunStyle<Plain, X> {
-  #[inline(always)]
   fn fingerprint<H: Hasher>(&self, state: &mut H) {
     self.visit(&mut Feed { state });
   }
@@ -436,7 +425,6 @@ impl<X: StyleExtension> Fingerprint for RunStyle<Plain, X> {
 impl<C: Clone + PartialEq + Hash + std::fmt::Debug + 'static, X: StyleExtension> Fingerprint
   for RunStyle<Static<C>, X>
 {
-  #[inline(always)]
   fn fingerprint<H: Hasher>(&self, state: &mut H) {
     self.visit(&mut Feed { state });
   }

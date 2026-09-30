@@ -61,7 +61,6 @@ pub fn install_router<R: Route>(fallback: R) -> Router<R> {
 /// The enumeration also reaches the build tool, so `skene build web --static` renders
 /// every route without being told them.
 #[cfg(not(skene_gui_platform = "server"))]
-#[inline(always)]
 pub fn install_static_router<R: StaticRoutes>(fallback: R) -> Router<R> {
   install_router(fallback)
 }

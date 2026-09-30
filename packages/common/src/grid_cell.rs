@@ -64,7 +64,6 @@ impl<P: Platform> GridCell<P> {
 
 impl<P: Platform> GridCell<P> {
   /// Sets the row placement.
-  #[inline(always)]
   pub fn set_row(mut self, row: impl Into<Placement<P>>) -> Self {
     self.row = Some(row.into());
 
@@ -73,7 +72,6 @@ impl<P: Platform> GridCell<P> {
 
   /// Derives the row placement from the signals `row` reads: a value, a token or an
   /// expression.
-  #[inline(always)]
   pub fn derive_row<R: Into<StaticLeaf<Line<GridPlacement>>>>(
     mut self,
     row: impl Fn() -> R + 'static,
@@ -84,7 +82,6 @@ impl<P: Platform> GridCell<P> {
   }
 
   /// Sets the column placement.
-  #[inline(always)]
   pub fn set_column(mut self, column: impl Into<Placement<P>>) -> Self {
     self.column = Some(column.into());
 
@@ -93,7 +90,6 @@ impl<P: Platform> GridCell<P> {
 
   /// Derives the column placement from the signals `column` reads: a value, a token or
   /// an expression.
-  #[inline(always)]
   pub fn derive_column<R: Into<StaticLeaf<Line<GridPlacement>>>>(
     mut self,
     column: impl Fn() -> R + 'static,
@@ -104,7 +100,6 @@ impl<P: Platform> GridCell<P> {
   }
 
   /// Sets the child's alignment within its cell, on both axes, overriding the grid's.
-  #[inline(always)]
   pub fn set_alignment(
     mut self,
     alignment: impl Into<Value<Alignment, Condition<P::Scalar>>>,
@@ -116,7 +111,6 @@ impl<P: Platform> GridCell<P> {
 
   /// Derives the child's alignment within its cell from the signals `alignment` reads:
   /// a value, a token or an expression.
-  #[inline(always)]
   pub fn derive_alignment<R: Into<StaticLeaf<Alignment>>>(
     mut self,
     alignment: impl Fn() -> R + 'static,
@@ -127,7 +121,6 @@ impl<P: Platform> GridCell<P> {
   }
 
   /// Sets the child.
-  #[inline(always)]
   pub fn set_child(self, child: impl View<P>) -> GridCell<P, AnyView<P>> {
     GridCell {
       row: self.row,

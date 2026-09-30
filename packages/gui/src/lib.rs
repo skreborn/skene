@@ -172,7 +172,6 @@ skene_common::facade!(ActivePlatform, f32, "logical pixels");
 /// The place for a low-level view that reaches a platform's raw handles, which have no
 /// meaning off the client. `build` returns the node it realizes, exactly as a view's
 /// `build` does.
-#[inline(always)]
 pub fn client_only(build: impl FnOnce() -> NodeId + 'static) -> impl View {
   Enhance::new(media::hydrated()).set_child_builder(build)
 }
@@ -180,7 +179,6 @@ pub fn client_only(build: impl FnOnce() -> NodeId + 'static) -> impl View {
 /// Mounts and runs the application in the browser; a server-rendered page is hydrated
 /// in place.
 #[cfg(skene_gui_platform = "browser")]
-#[inline(always)]
 pub fn launch<V, F>(app: F)
 where
   F: FnOnce() -> V + 'static,
@@ -217,7 +215,6 @@ where
 /// It builds the tree, drives its resources until they settle, and serializes the
 /// result plus the resource state for hydration; see [`skene_web::render_to_string`].
 #[cfg(skene_gui_platform = "server")]
-#[inline(always)]
 pub fn render_to_string<V, F>(app: F) -> Rendered
 where
   F: FnOnce() -> V + 'static,

@@ -60,13 +60,11 @@ impl<T: 'static> Controlled<T> {
   }
 
   /// Reads the value through `read`, tracking the signals it reads.
-  #[inline(always)]
   pub fn derive(&mut self, read: impl Fn() -> T + 'static) {
     self.read = Some(Rc::new(read));
   }
 
   /// Asks `handle` for every change.
-  #[inline(always)]
   pub fn handle(&mut self, handle: impl Fn(T) + 'static) {
     self.handle = Some(Rc::new(handle));
   }

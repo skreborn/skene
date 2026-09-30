@@ -38,7 +38,6 @@ impl<P: Painting> std::fmt::Debug for Painted<P> {
 
 impl<P: Painting> Painted<P> {
   /// A box painted by `painter`.
-  #[inline(always)]
   pub fn new(painter: impl Fn(&mut Canvas, Size<f32>) + 'static) -> Self {
     Self {
       inner: LayoutBox::new(Layout::Flow),
@@ -79,7 +78,6 @@ impl<P: Painting> Painted<P> {
 
   /// Sets what the picture shows, for assistive technology: the box is then a picture
   /// named by `description`; without one it is decoration.
-  #[inline(always)]
   pub fn set_description(mut self, description: impl Into<String>) -> Self {
     self.inner = self.inner.set_role(Role::Image).set_label(description);
 
@@ -87,7 +85,6 @@ impl<P: Painting> Painted<P> {
   }
 
   /// Sets the view built where nothing is drawn as pixels; nothing by default.
-  #[inline(always)]
   pub fn set_fallback<V: View<P>>(mut self, fallback: impl FnOnce() -> V + 'static) -> Self {
     self.fallback = Some(ChildBuilder::new(fallback));
 

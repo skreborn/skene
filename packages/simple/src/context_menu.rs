@@ -45,7 +45,6 @@ impl<P: Platform> SimpleContextMenu<P> {
   }
 
   /// Sets the items, in order.
-  #[inline(always)]
   pub fn set_items(mut self, items: impl IntoIterator<Item = MenuEntry>) -> Self {
     self.raw = self.raw.set_items(items);
 
@@ -53,7 +52,6 @@ impl<P: Platform> SimpleContextMenu<P> {
   }
 
   /// Sets the view the menu serves.
-  #[inline(always)]
   pub fn set_child(self, child: impl View<P>) -> SimpleContextMenu<P, AnyView<P>>
   where
     P::Scalar: SimpleUnit,

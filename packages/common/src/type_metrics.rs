@@ -16,44 +16,36 @@ use skene_core::{Length, Shape, StyleExtension};
 pub trait TypeMetrics: StyleExtension {
   /// Writes `size` into the extension's run fields; nothing, on a medium without type
   /// metrics.
-  #[inline(always)]
   fn set_font_size<S: Shape>(_fields: &mut Self::RunFields<S>, _size: S::Of<Length>) {}
 
   /// Writes `weight` into the extension's run fields; nothing, on a medium without
   /// type metrics.
-  #[inline(always)]
   fn set_font_weight<S: Shape>(_fields: &mut Self::RunFields<S>, _weight: S::Of<f32>) {}
 
   /// Writes `height` into the extension's run fields; nothing, on a medium without
   /// type metrics.
-  #[inline(always)]
   fn set_line_height<S: Shape>(_fields: &mut Self::RunFields<S>, _height: S::Of<f32>) {}
 
   /// Writes `spacing` into the extension's run fields; nothing, on a medium without
   /// type metrics.
-  #[inline(always)]
   fn set_letter_spacing<S: Shape>(_fields: &mut Self::RunFields<S>, _spacing: S::Of<Length>) {}
 
   /// The font size `fields` hold; unset on a medium without type metrics.
-  #[inline(always)]
   fn font_size<S: Shape>(_fields: &Self::RunFields<S>) -> S::Of<Length> {
     S::Of::<Length>::default()
   }
 
   /// The font weight `fields` hold; unset on a medium without type metrics.
-  #[inline(always)]
   fn font_weight<S: Shape>(_fields: &Self::RunFields<S>) -> S::Of<f32> {
     S::Of::<f32>::default()
   }
 
   /// The line height `fields` hold; unset on a medium without type metrics.
-  #[inline(always)]
   fn line_height<S: Shape>(_fields: &Self::RunFields<S>) -> S::Of<f32> {
     S::Of::<f32>::default()
   }
 
   /// The letter spacing `fields` hold; unset on a medium without type metrics.
-  #[inline(always)]
   fn letter_spacing<S: Shape>(_fields: &Self::RunFields<S>) -> S::Of<Length> {
     S::Of::<Length>::default()
   }

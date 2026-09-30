@@ -106,7 +106,6 @@ impl<T> Expr<T> {
 impl<T: ExprOutput> Expr<T> {
   /// The expression's value in `env`, with `resolve` answering each token it names;
   /// `None` when a token is unresolved or the arithmetic has no finite result.
-  #[inline(always)]
   pub fn evaluate(
     &self,
     env: &ExprEnv,
@@ -131,7 +130,6 @@ impl<T> PartialEq for Expr<T> {
 }
 
 impl<T> Hash for Expr<T> {
-  #[inline(always)]
   fn hash<H: Hasher>(&self, state: &mut H) {
     self.node.hash(state);
   }
@@ -378,7 +376,6 @@ impl ExprValue {
     }
   }
 
-  #[inline(always)]
   fn map_color(self, map: impl FnOnce(Color) -> Color) -> Option<Self> {
     self.color().map(|color| Self::Color(map(color)))
   }
@@ -552,7 +549,6 @@ impl<Q: Quantity> Div<f32> for Expr<Q> {
 
 impl<Q: Quantity> Expr<Q> {
   /// The smaller of this and `other`.
-  #[inline(always)]
   pub fn min(self, other: impl Into<Self>) -> Self {
     Self::from_node(ExprNode::Min(
       Box::new(self.node),
@@ -561,7 +557,6 @@ impl<Q: Quantity> Expr<Q> {
   }
 
   /// The larger of this and `other`.
-  #[inline(always)]
   pub fn max(self, other: impl Into<Self>) -> Self {
     Self::from_node(ExprNode::Max(
       Box::new(self.node),
@@ -571,7 +566,6 @@ impl<Q: Quantity> Expr<Q> {
 
   /// This, held between `lower` and `upper`; `lower` wins where the two cross, as in
   /// CSS's `clamp()`.
-  #[inline(always)]
   pub fn clamp(self, lower: impl Into<Self>, upper: impl Into<Self>) -> Self {
     Self::from_node(ExprNode::Clamp(
       Box::new(self.node),
@@ -643,7 +637,6 @@ impl Expr<Length> {
 
 impl Expr<Color> {
   /// This color mixed toward `other` in Oklab: `0.` is this color, `1.` is `other`.
-  #[inline(always)]
   pub fn mix(self, other: impl Into<Self>, amount: f32) -> Self {
     Self::from_node(ExprNode::Mix(
       Box::new(self.node),

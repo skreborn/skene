@@ -91,7 +91,6 @@ impl<P: Platform> Run<P> {
 
   /// Makes the run a link to `destination`; a destination that would run script when
   /// followed, a `javascript:` URL, is never followed.
-  #[inline(always)]
   pub fn set_link(mut self, destination: impl Into<String>) -> Self {
     self.link = Some(destination.into());
 

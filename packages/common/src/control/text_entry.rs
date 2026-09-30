@@ -50,7 +50,6 @@ impl TextEntry {
   }
 
   /// Sets the hint shown while the value is empty.
-  #[inline(always)]
   pub fn set_placeholder(mut self, placeholder: impl Into<String>) -> Self {
     self.placeholder = Some(placeholder.into());
 
@@ -58,7 +57,6 @@ impl TextEntry {
   }
 
   /// Sets the text.
-  #[inline(always)]
   pub fn set_value(mut self, value: impl Into<String>) -> Self {
     self.value.set(value.into());
 
@@ -66,7 +64,6 @@ impl TextEntry {
   }
 
   /// Derives the text from the signals `value` reads.
-  #[inline(always)]
   pub fn derive_value(mut self, value: impl Fn() -> String + 'static) -> Self {
     self.value.derive(value);
 
@@ -74,7 +71,6 @@ impl TextEntry {
   }
 
   /// Runs `action` with the text an edit asks for.
-  #[inline(always)]
   pub fn handle_change(mut self, action: impl Fn(&str) + 'static) -> Self {
     self.value.handle(move |value: String| action(&value));
 
@@ -98,7 +94,6 @@ impl TextEntry {
   }
 
   /// Derives the selection from the signals `selection` reads.
-  #[inline(always)]
   pub fn derive_selection(mut self, selection: impl Fn() -> TextSelection + 'static) -> Self {
     self.selection.derive(selection);
 
@@ -106,7 +101,6 @@ impl TextEntry {
   }
 
   /// Runs `action` with the selection after every move of the caret or its anchor.
-  #[inline(always)]
   pub fn handle_selection_change(mut self, action: impl Fn(TextSelection) + 'static) -> Self {
     self.selection.handle(action);
 

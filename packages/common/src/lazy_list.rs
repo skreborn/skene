@@ -72,7 +72,6 @@ impl Axis {
     }
   }
 
-  #[inline(always)]
   fn extent<N: Scalar>(self, size: Size<N>) -> f32 {
     match self {
       Self::Horizontal => size.width.to_f32(),
@@ -387,7 +386,6 @@ impl<P: Platform> LazyColumn<P> {
   }
 
   /// Sets the height of every item, fixed or estimated, in the medium's unit.
-  #[inline(always)]
   pub fn set_item_height(mut self, item_height: impl Into<ItemExtent>) -> Self {
     self.0.extent = item_height.into();
 
@@ -404,7 +402,6 @@ impl<P: Platform> LazyColumn<P> {
 
   /// Derives the items from a keyed collection: `items` yields them all, `key` gives
   /// each a stable identity, and `view` draws one; only those in the window build.
-  #[inline(always)]
   pub fn derive_items<T, I, K, V>(
     self,
     items: impl Fn() -> I + 'static,
@@ -462,7 +459,6 @@ impl<P: Platform> LazyRow<P> {
   }
 
   /// Sets the width of every item, fixed or estimated, in the medium's unit.
-  #[inline(always)]
   pub fn set_item_width(mut self, item_width: impl Into<ItemExtent>) -> Self {
     self.0.extent = item_width.into();
 
@@ -479,7 +475,6 @@ impl<P: Platform> LazyRow<P> {
 
   /// Derives the items from a keyed collection: `items` yields them all, `key` gives
   /// each a stable identity, and `view` draws one; only those in the window build.
-  #[inline(always)]
   pub fn derive_items<T, I, K, V>(
     self,
     items: impl Fn() -> I + 'static,

@@ -659,7 +659,6 @@ fn layout_declarations(layout: Layout) -> Declarations {
 }
 
 /// The base declarations a box starts from: its layout and its identity.
-#[inline(always)]
 fn box_base<P: PixelPlatform>(props: &BoxProps<P>) -> Declarations {
   box_identity(props, layout_declarations(props.layout))
 }

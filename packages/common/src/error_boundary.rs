@@ -65,7 +65,6 @@ impl<P: Platform> ErrorBoundary<P> {
 impl<P: Platform> ErrorBoundary<P> {
   /// Sets the fallback shown while errors are held, built by `fallback` from the
   /// boundary's handle whenever the held errors change; nothing by default.
-  #[inline(always)]
   pub fn set_fallback_builder<V: View<P>>(
     mut self,
     fallback: impl Fn(Errors) -> V + 'static,
@@ -76,7 +75,6 @@ impl<P: Platform> ErrorBoundary<P> {
   }
 
   /// Sets the content, built by `child` under the boundary.
-  #[inline(always)]
   pub fn set_child_builder<V: View<P>>(
     self,
     child: impl FnOnce() -> V + 'static,

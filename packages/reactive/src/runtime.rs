@@ -349,14 +349,12 @@ impl Drop for BatchGuard<'_> {
 
 /// Runs `operation` with the graph borrowed exclusively.
 #[cfg_attr(debug_assertions, track_caller)]
-#[inline(always)]
 pub(crate) fn with_graph<T>(operation: impl FnOnce(&mut Graph) -> T) -> T {
   RUNTIME.with(|runtime| operation(&mut runtime.graph()))
 }
 
 /// Runs `operation` with the graph borrowed exclusively, or nothing when the runtime is gone.
 #[cfg_attr(debug_assertions, track_caller)]
-#[inline(always)]
 pub(crate) fn try_with_graph<T>(operation: impl FnOnce(&mut Graph) -> T) -> Option<T> {
   RUNTIME
     .try_with(|runtime| operation(&mut runtime.graph()))

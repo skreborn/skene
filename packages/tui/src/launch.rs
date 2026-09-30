@@ -210,7 +210,6 @@ fn serve_standard_menu() {
 /// # Panics
 ///
 /// Panics if the platform is already installed, or when the terminal cannot be set up.
-#[inline(always)]
 pub fn launch<V, F>(app: F)
 where
   F: FnOnce() -> V + 'static,

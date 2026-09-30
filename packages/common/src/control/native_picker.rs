@@ -35,7 +35,6 @@ impl NativePicker {
   }
 
   /// Runs `action` with the value the platform's choice asks for.
-  #[inline(always)]
   pub fn handle_change(mut self, action: impl Fn(String) + 'static) -> Self {
     self.on_change = Some(Rc::new(action));
 

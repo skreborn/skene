@@ -342,7 +342,6 @@ impl<P: Platform> Scene<P> {
   /// # Panics
   ///
   /// Panics if the scene is borrowed by [`with`](Self::with).
-  #[inline(always)]
   pub fn read<R>(operation: impl FnOnce(&Self) -> R) -> R {
     P::scene().with(|cell| operation(&cell.borrow()))
   }

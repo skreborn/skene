@@ -19,7 +19,6 @@ fn start(future: impl Future<Output = ()> + 'static) -> Task<()> {
 }
 
 /// Runs `future` to completion on the browser's event loop, detached.
-#[inline(always)]
 pub fn drive(future: impl Future<Output = ()> + 'static) {
   start(future).detach();
 }

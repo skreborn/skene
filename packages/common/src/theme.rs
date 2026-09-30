@@ -52,7 +52,6 @@ impl<P: Platform, S: TokenSet<P::TokenValue>> Theme<P, S> {
 
   /// A theme defining the palette `palette` returns, recomputed whenever a signal it
   /// reads changes.
-  #[inline(always)]
   pub fn derive(palette: impl Fn() -> S + 'static) -> Self {
     Self {
       palette: Source::derive(palette),
@@ -64,7 +63,6 @@ impl<P: Platform, S: TokenSet<P::TokenValue>> Theme<P, S> {
 
 impl<P: Platform, S: TokenSet<P::TokenValue>> Theme<P, S> {
   /// Sets the child, built by `child` under the theme.
-  #[inline(always)]
   pub fn set_child_builder<V: View<P>>(
     self,
     child: impl FnOnce() -> V + 'static,

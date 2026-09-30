@@ -26,7 +26,6 @@ pub struct SimpleTooltip<P: Platform, C = NoChild> {
 
 impl<P: Platform> SimpleTooltip<P> {
   /// A tooltip showing `text`.
-  #[inline(always)]
   pub fn new(text: impl Into<String>) -> Self {
     Self {
       raw: Tooltip::new(text),
@@ -34,7 +33,6 @@ impl<P: Platform> SimpleTooltip<P> {
   }
 
   /// A tooltip whose text is recomputed whenever a signal `text` reads changes.
-  #[inline(always)]
   pub fn derive(text: impl Fn() -> String + 'static) -> Self {
     Self {
       raw: Tooltip::derive(text),
@@ -42,7 +40,6 @@ impl<P: Platform> SimpleTooltip<P> {
   }
 
   /// A tooltip showing `content`, a view of any kind.
-  #[inline(always)]
   pub fn view(content: impl View<P>) -> Self {
     Self {
       raw: Tooltip::view(content),
@@ -50,7 +47,6 @@ impl<P: Platform> SimpleTooltip<P> {
   }
 
   /// Sets the view the tooltip describes.
-  #[inline(always)]
   pub fn set_child(self, child: impl View<P>) -> SimpleTooltip<P, AnyView<P>>
   where
     P::Scalar: SimpleUnit,

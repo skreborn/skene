@@ -10,7 +10,6 @@
 macro_rules! properties {
   ($access:ident; $($set:ident / $derive:ident ($param:ident) => $field:ident: $type:ty, $doc:literal;)+) => {$(
     #[doc = concat!("Sets ", $doc, ".")]
-    #[inline(always)]
     pub fn $set(
       mut self,
       $param: impl Into<
@@ -23,7 +22,6 @@ macro_rules! properties {
     }
 
     #[doc = concat!("Derives ", $doc, " from the signals `", stringify!($param), "` reads: a value, a token or an expression.")]
-    #[inline(always)]
     pub fn $derive<R: Into<$crate::__core::StaticLeaf<$type>>>(
       mut self,
       $param: impl Fn() -> R + 'static,
@@ -55,7 +53,6 @@ macro_rules! trait_properties {
   ) => {$(
     #[doc = concat!("Sets ", $doc, ".")]
     $(#[doc = ""] #[doc = $detail])?
-    #[inline(always)]
     #[must_use]
     fn $set(mut self, $param: impl Into<$crate::__core::Value<$type, $condition>>) -> Self {
       self.$access().$($field).+ = Some($param.into());
@@ -64,7 +61,6 @@ macro_rules! trait_properties {
     }
 
     #[doc = concat!("Derives ", $doc, " from the signals `", stringify!($param), "` reads: a value, a token or an expression.")]
-    #[inline(always)]
     #[must_use]
     fn $derive<R: Into<$crate::__core::StaticLeaf<$type>>>(
       mut self,
@@ -129,7 +125,6 @@ macro_rules! decoration {
 
     /// Sets the corner radius, a length in the medium's unit, where the medium rounds
     /// corners; a medium without radii accepts and ignores it.
-    #[inline(always)]
     pub fn set_corner_radius(
       mut self,
       radius: impl Into<$crate::__core::Value<$crate::__core::Length, $crate::__core::Condition<P::Scalar>>>,
@@ -147,7 +142,6 @@ macro_rules! decoration {
     /// Derives the corner radius from the signals `radius` reads, as a value, a token
     /// or an expression, where the medium rounds corners; a medium without radii
     /// accepts and ignores it.
-    #[inline(always)]
     pub fn derive_corner_radius<R: Into<$crate::__core::StaticLeaf<$crate::__core::Length>>>(
       mut self,
       radius: impl Fn() -> R + 'static,
@@ -248,7 +242,6 @@ macro_rules! run_setters {
 macro_rules! type_metrics {
   ($access:ident; $($set:ident / $derive:ident ($param:ident: $value:ty) => $write:ident, $doc:literal;)+) => {$(
     #[doc = concat!("Sets ", $doc, ", where the medium sizes type; a medium without type metrics accepts and ignores it.")]
-    #[inline(always)]
     pub fn $set(
       mut self,
       $param: impl Into<$crate::__core::Value<$value, $crate::__core::Condition<P::Scalar>>>,
@@ -264,7 +257,6 @@ macro_rules! type_metrics {
     }
 
     #[doc = concat!("Derives ", $doc, " from the signals `", stringify!($param), "` reads, as a value, a token or an expression, where the medium sizes type; a medium without type metrics accepts and ignores it.")]
-    #[inline(always)]
     pub fn $derive<R: Into<$crate::__core::StaticLeaf<$value>>>(
       mut self,
       $param: impl Fn() -> R + 'static,

@@ -43,7 +43,6 @@ impl std::fmt::Debug for AsyncView {
 
 impl AsyncView {
   /// Creates the view over `load`, run to completion as a task.
-  #[inline(always)]
   pub fn new<V, F>(load: impl FnOnce() -> F + 'static) -> Self
   where
     V: View<ActivePlatform>,
@@ -104,7 +103,6 @@ fn enter_region() -> Region {
 
 /// Runs `work` as the content of `region`, so the resources it creates register or
 /// adopt under the segment.
-#[inline(always)]
 fn within_region<R>(region: &Region, work: impl FnOnce() -> R) -> R {
   #[cfg(not(skene_gui_platform = "headless"))]
   {

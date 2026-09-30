@@ -74,7 +74,6 @@ impl<P: Platform> Default for SimpleRadioGroup<P> {
 
 impl<P: Platform> SimpleRadioGroup<P> {
   /// Sets the chosen member's value.
-  #[inline(always)]
   pub fn set_chosen(mut self, chosen: impl Into<String>) -> Self {
     self.behavior = self.behavior.set_chosen(chosen);
 
@@ -82,7 +81,6 @@ impl<P: Platform> SimpleRadioGroup<P> {
   }
 
   /// Derives the chosen member's value from the signals `chosen` reads.
-  #[inline(always)]
   pub fn derive_chosen(mut self, chosen: impl Fn() -> Option<String> + 'static) -> Self {
     self.behavior = self.behavior.derive_chosen(chosen);
 
@@ -90,7 +88,6 @@ impl<P: Platform> SimpleRadioGroup<P> {
   }
 
   /// Runs `action` with the value a choice asks for.
-  #[inline(always)]
   pub fn handle_choose(mut self, action: impl Fn(String) + 'static) -> Self {
     self.behavior = self.behavior.handle_choose(action);
 
@@ -106,7 +103,6 @@ impl<P: Platform> SimpleRadioGroup<P> {
   }
 
   /// Sets the group's accessible name.
-  #[inline(always)]
   pub fn set_label(mut self, label: impl Into<String>) -> Self {
     self.label = Some(label.into());
 
@@ -114,7 +110,6 @@ impl<P: Platform> SimpleRadioGroup<P> {
   }
 
   /// Sets the view holding the members.
-  #[inline(always)]
   pub fn set_child(self, child: impl View<P>) -> SimpleRadioGroup<P, AnyView<P>> {
     SimpleRadioGroup {
       behavior: self.behavior,
@@ -156,7 +151,6 @@ pub struct SimpleRadio<P: Platform> {
 
 impl<P: Platform> SimpleRadio<P> {
   /// The member standing for `value`, the string the group reports when it is chosen.
-  #[inline(always)]
   pub fn new(value: impl Into<String>) -> Self {
     Self {
       member: Radio::new(value),
@@ -166,7 +160,6 @@ impl<P: Platform> SimpleRadio<P> {
   }
 
   /// Sets the caption beside the ring, which is also the accessible name.
-  #[inline(always)]
   pub fn set_label(mut self, label: impl Into<String>) -> Self {
     self.label = Some(label.into());
 

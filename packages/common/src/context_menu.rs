@@ -132,13 +132,11 @@ impl MenuEntry {
   }
 
   /// A command labelled `label`.
-  #[inline(always)]
   pub fn new(label: impl Into<String>) -> Self {
     Self::with(ItemKind::Command, Source::Fixed(label.into()))
   }
 
   /// A command whose label is recomputed whenever a signal `label` reads changes.
-  #[inline(always)]
   pub fn derive(label: impl Fn() -> String + 'static) -> Self {
     Self::with(ItemKind::Command, Source::derive(label))
   }
@@ -178,7 +176,6 @@ impl MenuEntry {
   }
 
   /// Replaces the label, a standard item's included.
-  #[inline(always)]
   pub fn set_label(mut self, label: impl Into<String>) -> Self {
     self.label = Source::Fixed(label.into());
 
@@ -204,7 +201,6 @@ impl MenuEntry {
   }
 
   /// Derives whether the item is disabled from the signals `disabled` reads.
-  #[inline(always)]
   pub fn derive_disabled(mut self, disabled: impl Fn() -> bool + 'static) -> Self {
     self.disabled = Some(Source::derive(disabled));
 
@@ -212,7 +208,6 @@ impl MenuEntry {
   }
 
   /// Runs `action` when the item is chosen.
-  #[inline(always)]
   pub fn handle_select(mut self, action: impl Fn() + 'static) -> Self {
     self.on_select = Some(Rc::new(action));
 
@@ -279,7 +274,6 @@ impl<P: Platform> ContextMenu<P> {
   }
 
   /// Sets the items, in order.
-  #[inline(always)]
   pub fn set_items(mut self, items: impl IntoIterator<Item = MenuEntry>) -> Self {
     self.items = items.into_iter().collect();
 
@@ -287,7 +281,6 @@ impl<P: Platform> ContextMenu<P> {
   }
 
   /// Sets the view the menu serves.
-  #[inline(always)]
   pub fn set_child(self, child: impl View<P>) -> ContextMenu<P, AnyView<P>> {
     ContextMenu {
       items: self.items,
@@ -350,7 +343,6 @@ impl<P: Platform> ContextMenu<P> {
 
   /// Sets every item's corner radius, a length in the medium's unit, where the medium
   /// rounds corners; a medium without radii accepts and ignores it.
-  #[inline(always)]
   pub fn set_item_corner_radius(
     mut self,
     radius: impl Into<Value<skene_core::Length, Condition<P::Scalar>>>,
@@ -366,7 +358,6 @@ impl<P: Platform> ContextMenu<P> {
   }
 
   /// Sets the color of every item's label.
-  #[inline(always)]
   pub fn set_item_text_color(
     mut self,
     color: impl Into<Value<Color, Condition<P::Scalar>>>,
@@ -377,7 +368,6 @@ impl<P: Platform> ContextMenu<P> {
   }
 
   /// Sets the color of every item's shortcut hint; the label's color unless set.
-  #[inline(always)]
   pub fn set_shortcut_color(
     mut self,
     color: impl Into<Value<Color, Condition<P::Scalar>>>,
@@ -388,7 +378,6 @@ impl<P: Platform> ContextMenu<P> {
   }
 
   /// Sets the color of every separator.
-  #[inline(always)]
   pub fn set_separator_color(
     mut self,
     color: impl Into<Value<Color, Condition<P::Scalar>>>,
@@ -400,7 +389,6 @@ impl<P: Platform> ContextMenu<P> {
 
   /// Sets the thickness of every separator; one unit of the medium unless told
   /// otherwise.
-  #[inline(always)]
   pub fn set_separator_thickness(
     mut self,
     thickness: impl Into<Value<Dimension<P::Scalar>, Condition<P::Scalar>>>,
@@ -423,7 +411,6 @@ impl<P: Platform> ContextMenu<P> {
   /// behavior, its accessible name and when it is listed and enabled. Without one, an
   /// item's label and shortcut sit at its two ends, dressed by the `set_item_*` and
   /// `set_shortcut_*` setters.
-  #[inline(always)]
   pub fn set_item_view<V: View<P>>(
     mut self,
     view: impl Fn(MenuItemContent) -> V + 'static,
@@ -434,7 +421,6 @@ impl<P: Platform> ContextMenu<P> {
   }
 
   /// Sets the spacing between an item's caption and its shortcut hint.
-  #[inline(always)]
   pub fn set_shortcut_spacing(
     mut self,
     spacing: impl Into<Value<Spacing<P::Scalar>, Condition<P::Scalar>>>,

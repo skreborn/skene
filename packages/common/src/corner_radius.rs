@@ -17,7 +17,6 @@ use skene_core::{Length, Shape, StyleExtension};
 pub trait CornerRadius: StyleExtension {
   /// Writes `radius` into the extension's box fields; nothing, on a medium without
   /// radii.
-  #[inline(always)]
   fn set_corner_radius<S: Shape>(_fields: &mut Self::BoxFields<S>, _radius: S::Of<Length>) {}
 }
 

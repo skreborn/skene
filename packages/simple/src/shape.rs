@@ -158,7 +158,6 @@ impl SimpleUnit for u32 {
 }
 
 /// The shape of the platform's unit.
-#[inline(always)]
 pub(crate) const fn shape<P: Platform>() -> SimpleShape<P::Scalar>
 where
   P::Scalar: SimpleUnit,
@@ -168,27 +167,23 @@ where
 
 /// The cursor over a control a click operates: the click cursor, and the default one
 /// while the control is disabled.
-#[inline(always)]
 pub(crate) fn click_cursor<N: Scalar>() -> Value<MouseCursor, Condition<N>> {
   MouseCursor::Click.when(Condition::from(State::Disabled), MouseCursor::Default)
 }
 
 /// A border's width of one unit on every edge.
-#[inline(always)]
 pub(crate) fn hairline<N: Scalar>() -> Inset<N> {
   Inset::all(N::from_f32(1.))
 }
 
 /// The palette in force as a memo, its default defined at the root where no theme
 /// provides one.
-#[inline(always)]
 pub(crate) fn palette<P: Platform>() -> Memo<SimplePalette<P::Scalar>> {
   <SimplePalette<P::Scalar> as ThemedIn<P>>::watch()
 }
 
 /// Defines the default palette at the root where no theme provides one, so a view
 /// referencing the tokens resolves them.
-#[inline(always)]
 pub(crate) fn define_defaults<P: Platform>() {
   let _ = palette::<P>();
 }

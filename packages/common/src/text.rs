@@ -22,7 +22,6 @@ impl<P: Platform> std::fmt::Debug for Text<P> {
 
 impl<P: Platform> Text<P> {
   /// A run reading `content`.
-  #[inline(always)]
   pub fn new(content: impl Into<String>) -> Self {
     Self {
       content: Source::Fixed(content.into()),
@@ -31,7 +30,6 @@ impl<P: Platform> Text<P> {
   }
 
   /// A run whose text is recomputed whenever a signal `content` reads changes.
-  #[inline(always)]
   pub fn derive(content: impl Fn() -> String + 'static) -> Self {
     Self {
       content: Source::derive(content),

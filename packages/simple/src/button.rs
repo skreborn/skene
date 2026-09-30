@@ -74,7 +74,6 @@ impl<P: Platform> std::fmt::Debug for SimpleButton<P> {
 
 impl<P: Platform> SimpleButton<P> {
   /// A button carrying `label`.
-  #[inline(always)]
   pub fn new(label: impl Into<String>) -> Self {
     Self {
       raw: BasicButton::new(Activate::new()),
@@ -85,7 +84,6 @@ impl<P: Platform> SimpleButton<P> {
   }
 
   /// A button whose label is recomputed whenever a signal `label` reads changes.
-  #[inline(always)]
   pub fn derive(label: impl Fn() -> String + 'static) -> Self {
     Self {
       raw: BasicButton::new(Activate::new()),
@@ -104,7 +102,6 @@ impl<P: Platform> SimpleButton<P> {
   }
 
   /// Derives the emphasis variant from the signals `variant` reads.
-  #[inline(always)]
   pub fn derive_variant(mut self, variant: impl Fn() -> SimpleVariant + 'static) -> Self {
     self.variant = Source::derive(variant);
 
@@ -120,7 +117,6 @@ impl<P: Platform> SimpleButton<P> {
   }
 
   /// Derives whether the button is disabled from the signals `disabled` reads.
-  #[inline(always)]
   pub fn derive_disabled(mut self, disabled: impl Fn() -> bool + 'static) -> Self {
     self.disabled = Source::derive(disabled);
 
@@ -129,7 +125,6 @@ impl<P: Platform> SimpleButton<P> {
 
   /// Sets the name the button reports to assistive technology, over its label's: for a
   /// button [`set_child`](Self::set_child) draws with an icon alone.
-  #[inline(always)]
   pub fn set_accessible_name(mut self, name: impl Into<String>) -> Self {
     self.raw = self.raw.set_accessible_name(name);
 
@@ -138,7 +133,6 @@ impl<P: Platform> SimpleButton<P> {
 
   /// Derives the name the button reports to assistive technology from the signals
   /// `name` reads.
-  #[inline(always)]
   pub fn derive_accessible_name(mut self, name: impl Fn() -> String + 'static) -> Self {
     self.raw = self.raw.derive_accessible_name(name);
 
@@ -146,7 +140,6 @@ impl<P: Platform> SimpleButton<P> {
   }
 
   /// Runs `action` on activation by pointer, `Enter` or `Space`.
-  #[inline(always)]
   pub fn handle_click(mut self, action: impl Fn() + 'static) -> Self {
     self.raw = self.raw.handle_click(action);
 
@@ -154,7 +147,6 @@ impl<P: Platform> SimpleButton<P> {
   }
 
   /// Sets a view drawn in the label's place; the button then has no text of its own.
-  #[inline(always)]
   pub fn set_child(mut self, child: impl View<P>) -> Self {
     self.content = Content::View(child.into_any());
 

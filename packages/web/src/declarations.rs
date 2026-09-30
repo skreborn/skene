@@ -50,7 +50,6 @@ impl Declarations {
   /// Sets one declaration to its CSS text, replacing any previous value for that
   /// property. A `&'static str` (a keyword) is stored without allocating; a rendered
   /// `String` is taken by value.
-  #[inline(always)]
   pub fn set(mut self, property: &'static str, value: impl Into<Cow<'static, str>>) -> Self {
     let value = value.into();
 

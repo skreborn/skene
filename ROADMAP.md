@@ -99,7 +99,7 @@ left half-done in a code comment.
     - Constant factors: the UI-thread assertion in debug alone, fused borrows, the
     iterative pull and alien-signals' propagation techniques, estimated to halve a read
     and a write; a lazy first memo run; `reconcile` as a thin generic shim over a
-    non-generic core; forced inlining off generic and allocating functions; variants in
+    non-generic core; forced inlining off allocating functions; variants in
     a thin vector (`Value<Color>` from 112 to about 48 bytes, a box style from 3.5 to
     about 1.4 KB), then presence bitsets; the lazy list reading a data source (a count
     and the item at an index) through a Fenwick tree, and evicting measured extents;

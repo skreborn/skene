@@ -83,7 +83,6 @@ impl<P: Platform> Flexible<P> {
   }
 
   /// Derives the grow weight from the signals `factor` reads.
-  #[inline(always)]
   pub fn derive_grow_factor(mut self, factor: impl Fn() -> f32 + 'static) -> Self {
     self.grow = Source::derive(factor);
 
@@ -99,7 +98,6 @@ impl<P: Platform> Flexible<P> {
   }
 
   /// Sets the child's size before growing and shrinking.
-  #[inline(always)]
   pub fn set_initial(mut self, initial: impl Into<Dimension<P::Scalar>>) -> Self {
     self.initial = initial.into();
 
@@ -107,7 +105,6 @@ impl<P: Platform> Flexible<P> {
   }
 
   /// Sets the child's own cross-axis alignment, overriding the container's.
-  #[inline(always)]
   pub fn set_item_alignment(
     mut self,
     alignment: impl Into<Value<ItemAlignment, Condition<P::Scalar>>>,
@@ -119,7 +116,6 @@ impl<P: Platform> Flexible<P> {
 
   /// Derives the child's own cross-axis alignment from the signals `alignment` reads:
   /// a value, a token or an expression.
-  #[inline(always)]
   pub fn derive_item_alignment<R: Into<StaticLeaf<ItemAlignment>>>(
     mut self,
     alignment: impl Fn() -> R + 'static,
@@ -130,7 +126,6 @@ impl<P: Platform> Flexible<P> {
   }
 
   /// Sets the child.
-  #[inline(always)]
   pub fn set_child(self, child: impl View<P>) -> Flexible<P, AnyView<P>> {
     Flexible {
       initial: self.initial,

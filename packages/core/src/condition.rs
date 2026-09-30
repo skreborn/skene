@@ -101,13 +101,11 @@ pub enum Media<N> {
 
 impl<N: Scalar> Media<N> {
   /// A condition holding while every one of `conditions` holds; empty always holds.
-  #[inline(always)]
   pub fn and(conditions: impl IntoIterator<Item = Self>) -> Self {
     Self::And(conditions.into_iter().collect())
   }
 
   /// A condition holding while any one of `conditions` holds; empty never holds.
-  #[inline(always)]
   pub fn or(conditions: impl IntoIterator<Item = Self>) -> Self {
     Self::Or(conditions.into_iter().collect())
   }
@@ -290,13 +288,11 @@ pub enum Condition<N> {
 
 impl<N: Scalar> Condition<N> {
   /// A condition holding while every one of `conditions` holds; empty always holds.
-  #[inline(always)]
   pub fn and(conditions: impl IntoIterator<Item = Self>) -> Self {
     Self::And(conditions.into_iter().collect())
   }
 
   /// A condition holding while any one of `conditions` holds; empty never holds.
-  #[inline(always)]
   pub fn or(conditions: impl IntoIterator<Item = Self>) -> Self {
     Self::Or(conditions.into_iter().collect())
   }

@@ -44,7 +44,6 @@ pub struct Typography {
 
 impl Typography {
   /// Sets the text color.
-  #[inline(always)]
   pub fn set_ink(mut self, ink: impl Into<Definition<Color>>) -> Self {
     self.ink = self.ink.redefine(ink);
 
@@ -52,7 +51,6 @@ impl Typography {
   }
 
   /// Sets the text color of a link.
-  #[inline(always)]
   pub fn set_link_ink(mut self, ink: impl Into<Definition<Color>>) -> Self {
     self.link_ink = self.link_ink.redefine(ink);
 
@@ -60,7 +58,6 @@ impl Typography {
   }
 
   /// Sets the text color while selected.
-  #[inline(always)]
   pub fn set_selection_ink(mut self, ink: impl Into<Definition<Color>>) -> Self {
     self.selection_ink = self.selection_ink.redefine(ink);
 
@@ -68,7 +65,6 @@ impl Typography {
   }
 
   /// Sets the background behind selected text.
-  #[inline(always)]
   pub fn set_selection_surface(mut self, surface: impl Into<Definition<Color>>) -> Self {
     self.selection_surface = self.selection_surface.redefine(surface);
 
@@ -76,7 +72,6 @@ impl Typography {
   }
 
   /// Sets the text color of a link while its focus shows.
-  #[inline(always)]
   pub fn set_link_focus_ink(mut self, ink: impl Into<Definition<Color>>) -> Self {
     self.link_focus_ink = self.link_focus_ink.redefine(ink);
 
@@ -84,7 +79,6 @@ impl Typography {
   }
 
   /// Sets the background behind a link while its focus shows.
-  #[inline(always)]
   pub fn set_link_focus_surface(mut self, surface: impl Into<Definition<Color>>) -> Self {
     self.link_focus_surface = self.link_focus_surface.redefine(surface);
 
@@ -92,7 +86,6 @@ impl Typography {
   }
 
   /// Sets the font size, in cells.
-  #[inline(always)]
   pub fn set_size(mut self, size: impl Into<Definition<Length>>) -> Self {
     self.size = self.size.redefine(size);
 
@@ -100,7 +93,6 @@ impl Typography {
   }
 
   /// Sets the font weight, `100` to `900`.
-  #[inline(always)]
   pub fn set_weight(mut self, weight: impl Into<Definition<f32>>) -> Self {
     self.weight = self.weight.redefine(weight);
 

@@ -91,7 +91,6 @@ pub struct Transition<P = NoProperty> {
 impl<P> Transition<P> {
   /// A transition of `property` over `duration` seconds, easing with no delay,
   /// respecting reduced motion.
-  #[inline(always)]
   pub fn new(property: impl Into<StyleProperty<P>>, duration: f32) -> Self {
     Self {
       property: property.into(),

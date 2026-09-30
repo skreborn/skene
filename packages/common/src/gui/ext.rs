@@ -132,12 +132,10 @@ impl StyleExtension for GuiStyle {
   type RunFields<S: Shape> = GuiRunFields<S>;
   type Value = f32;
 
-  #[inline(always)]
   fn for_each_box_field<N: Scalar, V: BoxFieldVisitor<N, Self>>(visitor: &mut V) {
     gui_fields::visit_box(visitor);
   }
 
-  #[inline(always)]
   fn for_each_run_field<V: RunFieldVisitor<Self>>(visitor: &mut V) {
     gui_fields::visit_run(visitor);
   }

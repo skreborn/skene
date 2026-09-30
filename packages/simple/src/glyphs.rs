@@ -50,7 +50,6 @@ impl SimpleGlyphs {
   }
 
   /// Sets the checked and unchecked marks of a checkbox.
-  #[inline(always)]
   pub fn set_checkbox(mut self, checked: impl Into<String>, unchecked: impl Into<String>) -> Self {
     self.checkbox_checked = self.checkbox_checked.redefine(checked.into());
     self.checkbox_unchecked = self.checkbox_unchecked.redefine(unchecked.into());
@@ -59,7 +58,6 @@ impl SimpleGlyphs {
   }
 
   /// Sets the checked and unchecked marks of a radio.
-  #[inline(always)]
   pub fn set_radio(mut self, checked: impl Into<String>, unchecked: impl Into<String>) -> Self {
     self.radio_checked = self.radio_checked.redefine(checked.into());
     self.radio_unchecked = self.radio_unchecked.redefine(unchecked.into());
@@ -68,7 +66,6 @@ impl SimpleGlyphs {
   }
 
   /// Sets the indicator after a picker's chosen label.
-  #[inline(always)]
   pub fn set_picker_indicator(mut self, indicator: impl Into<String>) -> Self {
     self.picker_indicator = self.picker_indicator.redefine(indicator.into());
 

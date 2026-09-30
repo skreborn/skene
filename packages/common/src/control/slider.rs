@@ -128,7 +128,6 @@ impl Slider {
   }
 
   /// Derives the value from the signals `value` reads.
-  #[inline(always)]
   pub fn derive_value(mut self, value: impl Fn() -> f32 + 'static) -> Self {
     self.value.derive(value);
 
@@ -136,7 +135,6 @@ impl Slider {
   }
 
   /// Runs `action` with the value a move asks for.
-  #[inline(always)]
   pub fn handle_change(mut self, action: impl Fn(f32) + 'static) -> Self {
     self.value.handle(action);
 

@@ -20,7 +20,6 @@ pub struct Key(u128);
 
 impl Key {
   /// The key of `value`.
-  #[inline(always)]
   pub fn of(value: &impl Hash) -> Self {
     Self(hash::wide_of(value))
   }

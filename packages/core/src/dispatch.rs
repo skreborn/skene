@@ -29,7 +29,6 @@ use crate::{
 };
 
 /// Dispatches a click at `node`.
-#[inline(always)]
 pub fn dispatch_click<P: Platform>(node: NodeId, event: &ClickEvent) -> Prevented {
   bubble::<P, _, _>(
     node,
@@ -51,7 +50,6 @@ pub fn dispatch_click<P: Platform>(node: NodeId, event: &ClickEvent) -> Prevente
 }
 
 /// Dispatches the second click of a double click at `node`, after the click itself.
-#[inline(always)]
 pub fn dispatch_double_click<P: Platform>(node: NodeId, event: &ClickEvent) -> Prevented {
   bubble::<P, _, _>(
     node,
@@ -69,7 +67,6 @@ pub fn dispatch_double_click<P: Platform>(node: NodeId, event: &ClickEvent) -> P
 /// Every click handler up the path runs except the acting ones, and the climb ends at
 /// the first node carrying acting ones, as a control consumes the click it acts on; so
 /// a control's observers see the click and its behavior does not act a second time.
-#[inline(always)]
 pub fn dispatch_click_observed<P: Platform>(node: NodeId, event: &ClickEvent) -> Prevented {
   bubble::<P, _, _>(
     node,
@@ -90,7 +87,6 @@ pub fn dispatch_click_observed<P: Platform>(node: NodeId, event: &ClickEvent) ->
 }
 
 /// Dispatches a key press at `node`, the focused node.
-#[inline(always)]
 pub fn dispatch_key_down<P: Platform>(node: NodeId, event: &KeyEvent) -> Prevented {
   bubble::<P, _, _>(
     node,
@@ -104,7 +100,6 @@ pub fn dispatch_key_down<P: Platform>(node: NodeId, event: &KeyEvent) -> Prevent
 }
 
 /// Dispatches a key release at `node`, the focused node.
-#[inline(always)]
 pub fn dispatch_key_up<P: Platform>(node: NodeId, event: &KeyEvent) -> Prevented {
   bubble::<P, _, _>(
     node,
@@ -118,7 +113,6 @@ pub fn dispatch_key_up<P: Platform>(node: NodeId, event: &KeyEvent) -> Prevented
 }
 
 /// Dispatches a pointer press at `node`.
-#[inline(always)]
 pub fn dispatch_pointer_down<P: Platform>(node: NodeId, event: &PointerEvent) -> Prevented {
   bubble::<P, _, _>(
     node,
@@ -133,7 +127,6 @@ pub fn dispatch_pointer_down<P: Platform>(node: NodeId, event: &PointerEvent) ->
 
 /// Dispatches the cancel of a pointer the platform took for itself at `node`, the node
 /// its press reached.
-#[inline(always)]
 pub fn dispatch_pointer_cancel<P: Platform>(node: NodeId, event: &PointerEvent) -> Prevented {
   bubble::<P, _, _>(
     node,
@@ -148,7 +141,6 @@ pub fn dispatch_pointer_cancel<P: Platform>(node: NodeId, event: &PointerEvent) 
 
 /// Dispatches a wheel's turn at `node`, the deepest node under the pointer, before the
 /// platform scrolls by it.
-#[inline(always)]
 pub fn dispatch_wheel<P: Platform>(node: NodeId, event: &WheelEvent) -> Prevented {
   bubble::<P, _, _>(
     node,
@@ -170,7 +162,6 @@ pub fn dispatch_wheel<P: Platform>(node: NodeId, event: &WheelEvent) -> Prevente
 }
 
 /// Dispatches a pointer release at `node`.
-#[inline(always)]
 pub fn dispatch_pointer_up<P: Platform>(node: NodeId, event: &PointerEvent) -> Prevented {
   bubble::<P, _, _>(
     node,
@@ -184,7 +175,6 @@ pub fn dispatch_pointer_up<P: Platform>(node: NodeId, event: &PointerEvent) -> P
 }
 
 /// Dispatches a pointer move at `node`.
-#[inline(always)]
 pub fn dispatch_pointer_move<P: Platform>(node: NodeId, event: &PointerEvent) -> Prevented {
   bubble::<P, _, _>(
     node,
@@ -267,7 +257,6 @@ pub fn notify_focus_moved<P: Platform>(next: Option<NodeId>) {
 }
 
 /// Notifies `node` of its new scroll offsets.
-#[inline(always)]
 pub fn notify_scroll<P: Platform>(node: NodeId, event: &ScrollEvent) {
   notify::<P, _>(
     node,
@@ -280,7 +269,6 @@ pub fn notify_scroll<P: Platform>(node: NodeId, event: &ScrollEvent) {
 }
 
 /// Notifies `node` of its new textual value.
-#[inline(always)]
 pub fn notify_change<P: Platform>(node: NodeId, value: &str) {
   notify::<P, _>(
     node,
@@ -293,7 +281,6 @@ pub fn notify_change<P: Platform>(node: NodeId, value: &str) {
 }
 
 /// Notifies `node` of its new selection.
-#[inline(always)]
 pub fn notify_selection_change<P: Platform>(node: NodeId, selection: TextSelection) {
   notify::<P, _>(
     node,
@@ -306,7 +293,6 @@ pub fn notify_selection_change<P: Platform>(node: NodeId, selection: TextSelecti
 }
 
 /// Notifies `node` of its new checked state.
-#[inline(always)]
 pub fn notify_toggle<P: Platform>(node: NodeId, checked: bool) {
   notify::<P, _>(
     node,
@@ -319,7 +305,6 @@ pub fn notify_toggle<P: Platform>(node: NodeId, checked: bool) {
 }
 
 /// Notifies the overlay `node` that the platform dismissed it.
-#[inline(always)]
 pub fn notify_dismiss<P: Platform>(node: NodeId) {
   notify::<P, _>(
     node,
@@ -333,7 +318,6 @@ pub fn notify_dismiss<P: Platform>(node: NodeId) {
 
 /// Dispatches a context menu request at `node`: `event` is where the menu is asked
 /// for, the secondary button on a press and no button from the keyboard.
-#[inline(always)]
 pub fn dispatch_context_menu<P: Platform>(node: NodeId, event: &PointerEvent) -> Prevented {
   bubble::<P, _, _>(
     node,

@@ -55,7 +55,6 @@ pub struct Observation {
 
 impl Observation {
   /// An observation `stop` ends.
-  #[inline(always)]
   pub fn new(stop: impl FnOnce() + 'static) -> Self {
     Self {
       stop: Some(Box::new(stop)),

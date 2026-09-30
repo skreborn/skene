@@ -161,7 +161,6 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
 
   /// Sets the alignment of each child on both axes: the horizontal component lands on
   /// the inline axis, the vertical one on the cross or block axis.
-  #[inline(always)]
   pub fn set_alignment(
     mut self,
     alignment: impl Into<Value<Alignment, Condition<P::Scalar>>>,
@@ -176,7 +175,6 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
 
   /// Derives the alignment of each child on both axes from the signals `alignment`
   /// reads: a value, a token or an expression.
-  #[inline(always)]
   pub fn derive_alignment<R: Into<StaticLeaf<Alignment>>>(
     self,
     alignment: impl Fn() -> R + 'static,
@@ -223,7 +221,6 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
 
   /// Derives the box's place in sequential focus traversal from the signals
   /// `focus_order` reads.
-  #[inline(always)]
   pub fn derive_focus_order(mut self, focus_order: impl Fn() -> FocusOrder + 'static) -> Self {
     self.focus_order = Some(Source::derive(focus_order));
 
@@ -231,7 +228,6 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
   }
 
   /// Sets what the box reports to assistive technology, beside its role.
-  #[inline(always)]
   pub fn set_accessibility(mut self, access: impl IntoIterator<Item = AccessProp>) -> Self {
     self.access = Some(Source::Fixed(access.into_iter().collect()));
 
@@ -240,7 +236,6 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
 
   /// Sets the box's accessible name, for a region, a dialog or a picture that no visible
   /// text names.
-  #[inline(always)]
   pub fn set_label(mut self, label: impl Into<String>) -> Self {
     self.label = Some(label.into());
 
@@ -257,7 +252,6 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
 
   /// Derives what the box reports to assistive technology from the signals `access`
   /// reads.
-  #[inline(always)]
   pub fn derive_accessibility(mut self, access: impl Fn() -> Vec<AccessProp> + 'static) -> Self {
     self.access = Some(Source::derive(access));
 
@@ -295,7 +289,6 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
 
   /// Names the box for view transitions: the box is paired with the box of the same
   /// name across a navigation, where the platform animates between them.
-  #[inline(always)]
   pub fn set_transition_name(mut self, name: impl Into<String>) -> Self {
     self.transition_name = Some(name.into());
 
@@ -305,7 +298,6 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
   /// Sets the path the box navigates to when activated; the medium realizes it as a
   /// real link where it has one. A destination that would run script when followed, a
   /// `javascript:` URL, is never followed.
-  #[inline(always)]
   pub fn set_destination(mut self, path: impl Into<String>) -> Self {
     self.destination = Some(path.into());
 
@@ -314,7 +306,6 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
 
   /// Runs `action` on a click; its verdict says whether the click carries on to the
   /// ancestors.
-  #[inline(always)]
   pub fn handle_click<R: Into<Bubbling>>(mut self, action: impl Fn() -> R + 'static) -> Self {
     self
       .handlers
@@ -327,7 +318,6 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
 
   /// Runs `action` on the second click of a double click, after the click itself; its
   /// verdict says whether the double click carries on to the ancestors.
-  #[inline(always)]
   pub fn handle_double_click<R: Into<Bubbling>>(
     mut self,
     action: impl Fn() -> R + 'static,
@@ -343,7 +333,6 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
 
   /// Runs `action` on a key pressed while the box or a descendant holds focus; its
   /// verdict says whether the key carries on to the ancestors.
-  #[inline(always)]
   pub fn handle_key_down<R: Into<Bubbling>>(
     mut self,
     action: impl Fn(&KeyEvent) -> R + 'static,
@@ -357,7 +346,6 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
 
   /// Runs `action` on a key released while the box or a descendant holds focus; its
   /// verdict says whether the release carries on to the ancestors.
-  #[inline(always)]
   pub fn handle_key_up<R: Into<Bubbling>>(
     mut self,
     action: impl Fn(&KeyEvent) -> R + 'static,
@@ -371,7 +359,6 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
 
   /// Runs `action` on a pointer button pressed over the box; its verdict says whether
   /// the press carries on to the ancestors.
-  #[inline(always)]
   pub fn handle_pointer_down<R: Into<Bubbling>>(
     mut self,
     action: impl Fn(&PointerEvent) -> R + 'static,
@@ -387,7 +374,6 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
 
   /// Runs `action` on a pointer button released over the box; its verdict says whether
   /// the release carries on to the ancestors.
-  #[inline(always)]
   pub fn handle_pointer_up<R: Into<Bubbling>>(
     mut self,
     action: impl Fn(&PointerEvent) -> R + 'static,
@@ -401,7 +387,6 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
 
   /// Runs `action` on the pointer moving over the box; its verdict says whether the
   /// move carries on to the ancestors.
-  #[inline(always)]
   pub fn handle_pointer_move<R: Into<Bubbling>>(
     mut self,
     action: impl Fn(&PointerEvent) -> R + 'static,
@@ -417,7 +402,6 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
 
   /// Offers what a drag from the box carries, `data` building it as the drag starts;
   /// the box holds [`State::Dragged`](skene_core::State::Dragged) while the drag lasts.
-  #[inline(always)]
   pub fn set_drag_data(mut self, data: impl Fn() -> DragData + 'static) -> Self {
     self.handlers.push(Handler::DragStart(Rc::new(data)));
 
@@ -427,7 +411,6 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
   /// Takes a drag carrying a `T` dropped on the box, running `action` with the value;
   /// the box holds [`State::Targeted`](skene_core::State::Targeted) while such a drag
   /// is over it.
-  #[inline(always)]
   pub fn handle_drop<T: 'static>(mut self, action: impl Fn(&T) + 'static) -> Self {
     self
       .handlers
@@ -449,7 +432,6 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
 
   /// Runs `action` on a wheel turned over the box, before the platform scrolls by it;
   /// its verdict says whether the turn carries on to the ancestors.
-  #[inline(always)]
   pub fn handle_wheel<R: Into<Bubbling>>(
     mut self,
     action: impl Fn(&WheelEvent) -> R + 'static,
@@ -464,7 +446,6 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
   /// Runs `action` when the platform takes a pointer pressed over the box for itself,
   /// ending the press without a release; its verdict says whether the cancel carries on
   /// to the ancestors.
-  #[inline(always)]
   pub fn handle_pointer_cancel<R: Into<Bubbling>>(
     mut self,
     action: impl Fn(&PointerEvent) -> R + 'static,
@@ -479,7 +460,6 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
   }
 
   /// Runs `action` when the pointer enters the box.
-  #[inline(always)]
   pub fn handle_pointer_enter(mut self, action: impl Fn() + 'static) -> Self {
     self.handlers.push(Handler::PointerEnter(Rc::new(action)));
 
@@ -487,7 +467,6 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
   }
 
   /// Runs `action` when the pointer leaves the box.
-  #[inline(always)]
   pub fn handle_pointer_leave(mut self, action: impl Fn() + 'static) -> Self {
     self.handlers.push(Handler::PointerLeave(Rc::new(action)));
 
@@ -495,7 +474,6 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
   }
 
   /// Runs `action` when focus enters the box or a node inside it from outside.
-  #[inline(always)]
   pub fn handle_focus(mut self, action: impl Fn() + 'static) -> Self {
     self.handlers.push(Handler::Focus(Rc::new(action)));
 
@@ -503,7 +481,6 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
   }
 
   /// Runs `action` when focus leaves the box and every node inside it.
-  #[inline(always)]
   pub fn handle_blur(mut self, action: impl Fn() + 'static) -> Self {
     self.handlers.push(Handler::Blur(Rc::new(action)));
 
@@ -511,7 +488,6 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
   }
 
   /// Runs `action` with the box's new offsets when it scrolls.
-  #[inline(always)]
   pub fn handle_scroll(mut self, action: impl Fn(&ScrollEvent) + 'static) -> Self {
     self.handlers.push(Handler::Scroll(Rc::new(action)));
 
@@ -520,7 +496,6 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
 }
 
 /// A handler's verdict as dispatch stores it.
-#[inline(always)]
 pub(crate) fn verdict<R: Into<Bubbling>>(result: R) -> Prevent {
   let bubbling: Bubbling = result.into();
 

@@ -128,7 +128,6 @@ impl Default for ScrollbarGlyphs {
 }
 
 impl Fingerprint for ScrollbarGlyphs {
-  #[inline(always)]
   fn fingerprint<H: Hasher>(&self, state: &mut H) {
     self.hash(state);
   }
@@ -142,7 +141,6 @@ impl Default for BorderGlyphs {
 }
 
 impl Fingerprint for BorderGlyphs {
-  #[inline(always)]
   fn fingerprint<H: Hasher>(&self, state: &mut H) {
     self.hash(state);
   }
@@ -363,12 +361,10 @@ impl StyleExtension for TuiStyle {
   type RunFields<S: Shape> = TuiRunFields<S>;
   type Value = TuiValue;
 
-  #[inline(always)]
   fn for_each_box_field<N: Scalar, V: BoxFieldVisitor<N, Self>>(visitor: &mut V) {
     tui_fields::visit_box(visitor);
   }
 
-  #[inline(always)]
   fn for_each_run_field<V: RunFieldVisitor<Self>>(visitor: &mut V) {
     tui_fields::visit_run(visitor);
   }
@@ -390,29 +386,24 @@ impl StyleExtension for TuiStyle {
 }
 
 impl CornerRadius for TuiStyle {
-  #[inline(always)]
   fn set_corner_radius<S: Shape>(fields: &mut Self::BoxFields<S>, radius: S::Of<Length>) {
     fields.corner_radius = radius;
   }
 }
 
 impl TypeMetrics for TuiStyle {
-  #[inline(always)]
   fn set_font_size<S: Shape>(fields: &mut Self::RunFields<S>, size: S::Of<Length>) {
     fields.size = size;
   }
 
-  #[inline(always)]
   fn set_font_weight<S: Shape>(fields: &mut Self::RunFields<S>, weight: S::Of<f32>) {
     fields.weight = weight;
   }
 
-  #[inline(always)]
   fn font_size<S: Shape>(fields: &Self::RunFields<S>) -> S::Of<Length> {
     fields.size.clone()
   }
 
-  #[inline(always)]
   fn font_weight<S: Shape>(fields: &Self::RunFields<S>) -> S::Of<f32> {
     fields.weight.clone()
   }

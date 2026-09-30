@@ -47,7 +47,6 @@ impl<P: Platform> Suspense<P> {
 
 impl<P: Platform> Suspense<P> {
   /// Sets the fallback shown while the content's work is pending; nothing by default.
-  #[inline(always)]
   pub fn set_fallback(mut self, fallback: impl View<P>) -> Self {
     self.fallback = Some(fallback.into_any());
 
@@ -55,7 +54,6 @@ impl<P: Platform> Suspense<P> {
   }
 
   /// Sets the content, built by `child` under the boundary.
-  #[inline(always)]
   pub fn set_child_builder<V: View<P>>(
     self,
     child: impl FnOnce() -> V + 'static,

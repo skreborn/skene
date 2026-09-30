@@ -44,7 +44,6 @@ pub fn derived<P: Platform>(build: impl Fn() -> NodeId + 'static) -> NodeId {
 }
 
 /// A view that renders nothing: an empty segment.
-#[inline(always)]
 #[must_use]
 pub fn empty<P: Platform>() -> impl View<P> {
   AnyView::new(|| Segment::<P>::new().start())

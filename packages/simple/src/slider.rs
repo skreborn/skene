@@ -70,7 +70,6 @@ impl<P: Platform> SimpleSlider<P> {
   }
 
   /// Sets the accessible name; nothing visible names a slider.
-  #[inline(always)]
   pub fn set_label(mut self, label: impl Into<String>) -> Self {
     self.label = Some(label.into());
 
@@ -111,7 +110,6 @@ impl<P: Platform> SimpleSlider<P> {
   }
 
   /// Derives the value from the signals `value` reads.
-  #[inline(always)]
   pub fn derive_value(mut self, value: impl Fn() -> f32 + 'static) -> Self {
     self.value = Some(Rc::new(value));
 
@@ -119,7 +117,6 @@ impl<P: Platform> SimpleSlider<P> {
   }
 
   /// Runs `action` with the value a move asks for.
-  #[inline(always)]
   pub fn handle_change(mut self, action: impl Fn(f32) + 'static) -> Self {
     self.on_change = Some(Rc::new(action));
 

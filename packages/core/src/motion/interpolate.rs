@@ -102,7 +102,6 @@ pub trait Interpolate: Clone {
 }
 
 /// The in-between of a discrete pair: `from` until halfway, `to` after.
-#[inline(always)]
 #[must_use]
 pub(crate) fn snap<T: Clone>(from: &T, to: &T, amount: f32) -> T {
   if amount < 0.5 {

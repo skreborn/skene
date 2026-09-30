@@ -64,7 +64,6 @@ impl<P: Platform, K: PartialEq + 'static> Switch<P, K> {
 
   /// Shows the branch whose key `key` returns, re-evaluated whenever a signal it reads
   /// changes.
-  #[inline(always)]
   pub fn derive_key(mut self, key: impl Fn() -> K + 'static) -> Self {
     self.key = Some(Box::new(key));
 
@@ -73,7 +72,6 @@ impl<P: Platform, K: PartialEq + 'static> Switch<P, K> {
 
   /// Adds the branch shown under `key`, built by `case` the first time the key is
   /// current.
-  #[inline(always)]
   pub fn set_case<V: View<P>>(mut self, key: K, case: impl FnOnce() -> V + 'static) -> Self {
     self.cases.push(Case {
       key,

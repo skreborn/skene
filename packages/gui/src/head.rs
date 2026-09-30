@@ -38,7 +38,6 @@ fn hold(id: HeadId) {
 }
 
 /// Sets the document title.
-#[inline(always)]
 pub fn set_title(title: impl Into<String>) {
   hold(add_head_title(&title.into()));
 }
@@ -53,7 +52,6 @@ pub fn derive_title(title: impl Fn() -> String + 'static) {
 
 /// Sets the document's language, a BCP 47 tag such as `en` or `pt-BR`, which a served
 /// page carries on its root.
-#[inline(always)]
 pub fn set_language(language: impl Into<String>) {
   set_document_language(&language.into());
 }

@@ -194,14 +194,12 @@ macro_rules! facade {
 
     /// Mounts a reactive subtree between anchors, rebuilt whenever a signal `build`
     /// reads changes; see [`skene_core::derived`].
-    #[inline(always)]
     pub fn derived(build: impl Fn() -> ::skene_core::NodeId + 'static) -> ::skene_core::NodeId {
       ::skene_core::derived::<$platform>(build)
     }
 
     /// Reactively reconciles the content of the segment `start` begins from a keyed
     /// collection; see [`skene_core::reconcile`].
-    #[inline(always)]
     pub fn reconcile<T, I, K>(
       start: ::skene_core::NodeId,
       items: impl Fn() -> I + 'static,

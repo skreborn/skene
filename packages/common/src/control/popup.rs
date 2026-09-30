@@ -67,7 +67,6 @@ impl Popup {
 
   /// Derives the node the popup shows, reported as the node the control operates once
   /// `controls` yields it.
-  #[inline(always)]
   pub fn derive_controls(mut self, controls: impl Fn() -> Option<NodeId> + 'static) -> Self {
     self.controls = Some(Rc::new(controls));
 
@@ -83,7 +82,6 @@ impl Popup {
   }
 
   /// Derives whether the popup is open from the signals `open` reads.
-  #[inline(always)]
   pub fn derive_open(mut self, open: impl Fn() -> bool + 'static) -> Self {
     self.open.derive(open);
 
@@ -91,7 +89,6 @@ impl Popup {
   }
 
   /// Runs `action` with the open state the face asks for.
-  #[inline(always)]
   pub fn handle_open(mut self, action: impl Fn(bool) + 'static) -> Self {
     self.open.handle(action);
 
@@ -108,7 +105,6 @@ impl Popup {
 
   /// Runs `action` with a key the closed face does not act on itself; `true` from it
   /// consumes the key.
-  #[inline(always)]
   pub fn set_key_fallback(mut self, action: impl Fn(&KeyEvent) -> bool + 'static) -> Self {
     self.on_typed = Some(Rc::new(action));
 

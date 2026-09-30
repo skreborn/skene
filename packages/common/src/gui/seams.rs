@@ -6,49 +6,40 @@ use super::GuiStyle;
 use crate::{CornerRadius, TypeMetrics};
 
 impl CornerRadius for GuiStyle {
-  #[inline(always)]
   fn set_corner_radius<S: Shape>(fields: &mut Self::BoxFields<S>, radius: S::Of<Length>) {
     fields.corner_radius = radius;
   }
 }
 
 impl TypeMetrics for GuiStyle {
-  #[inline(always)]
   fn set_font_size<S: Shape>(fields: &mut Self::RunFields<S>, size: S::Of<Length>) {
     fields.font_size = size;
   }
 
-  #[inline(always)]
   fn set_font_weight<S: Shape>(fields: &mut Self::RunFields<S>, weight: S::Of<f32>) {
     fields.font_weight = weight;
   }
 
-  #[inline(always)]
   fn set_line_height<S: Shape>(fields: &mut Self::RunFields<S>, height: S::Of<f32>) {
     fields.line_height = height;
   }
 
-  #[inline(always)]
   fn set_letter_spacing<S: Shape>(fields: &mut Self::RunFields<S>, spacing: S::Of<Length>) {
     fields.letter_spacing = spacing;
   }
 
-  #[inline(always)]
   fn font_size<S: Shape>(fields: &Self::RunFields<S>) -> S::Of<Length> {
     fields.font_size.clone()
   }
 
-  #[inline(always)]
   fn font_weight<S: Shape>(fields: &Self::RunFields<S>) -> S::Of<f32> {
     fields.font_weight.clone()
   }
 
-  #[inline(always)]
   fn line_height<S: Shape>(fields: &Self::RunFields<S>) -> S::Of<f32> {
     fields.line_height.clone()
   }
 
-  #[inline(always)]
   fn letter_spacing<S: Shape>(fields: &Self::RunFields<S>) -> S::Of<Length> {
     fields.letter_spacing.clone()
   }

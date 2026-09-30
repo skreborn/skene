@@ -103,7 +103,6 @@ pub fn set_scheme(scheme: Option<ColorScheme>) {
 /// Paints the scheme `scheme` reports, following it as it changes; see [`set_scheme`].
 ///
 /// Bind it to the signal holding the reader's setting.
-#[inline(always)]
 pub fn derive_scheme(scheme: impl Fn() -> Option<ColorScheme> + 'static) {
   skene_common::media::derive_scheme::<ActivePlatform>(scheme);
 }

@@ -49,7 +49,6 @@ pub enum Leaf<T> {
 
 impl<T> Leaf<T> {
   /// A leaf recomputed by `compute`, which returns a value, a token or an expression.
-  #[inline(always)]
   pub fn derive<R: Into<StaticLeaf<T>>>(compute: impl Fn() -> R + 'static) -> Self {
     Self::Derived(Rc::new(move || compute().into()))
   }
@@ -159,7 +158,6 @@ impl<L, C> Conditional<L, C> {
   }
 
   /// This value, overridden by `value` while `condition` holds.
-  #[inline(always)]
   pub fn when(mut self, condition: C, value: impl Into<L>) -> Self {
     self.variants.push((condition, value.into()));
 
@@ -217,7 +215,6 @@ impl<L, C> Conditional<L, C> {
 impl<T, C> Value<T, C> {
   /// This value, overridden while `condition` holds by a leaf derived from the signals
   /// `compute` reads: a value, a token or an expression.
-  #[inline(always)]
   pub fn derive_when<R: Into<StaticLeaf<T>>>(
     self,
     condition: C,
@@ -266,14 +263,12 @@ impl<T, C> Value<T, C> {
 /// `Value<f32, Condition<N>>` is.
 pub trait When<T>: Into<Leaf<T>> {
   /// This value, overridden by `value` while `condition` holds.
-  #[inline(always)]
   fn when<C>(self, condition: C, value: impl Into<Leaf<T>>) -> Value<T, C> {
     Conditional::new(self.into()).when(condition, value)
   }
 
   /// This value, overridden while `condition` holds by a leaf derived from the
   /// signals `compute` reads: a value, a token or an expression.
-  #[inline(always)]
   fn derive_when<C, R: Into<StaticLeaf<T>>>(
     self,
     condition: C,

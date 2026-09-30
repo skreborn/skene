@@ -107,7 +107,6 @@ impl<P: Platform> BasicPicker<P> {
   }
 
   /// Sets the view drawing the control closed, built from the chosen value.
-  #[inline(always)]
   pub fn set_face<V: View<P>>(
     self,
     face: impl FnOnce(Memo<String>) -> V + 'static,
@@ -150,7 +149,6 @@ impl<P: Platform, F> BasicPicker<P, F> {
 
   /// Sets the views drawing the list, each [`BasicListboxOption`](crate::BasicListboxOption) among
   /// them an option; anything else draws and nothing more.
-  #[inline(always)]
   pub fn set_options(mut self, options: impl IntoChildren<P>) -> Self {
     self.list = self.list.set_children(options);
 
@@ -159,7 +157,6 @@ impl<P: Platform, F> BasicPicker<P, F> {
 
   /// Derives the list from a keyed collection: `items` yields the items, `key` gives
   /// each a stable identity, and `view` draws one.
-  #[inline(always)]
   pub fn derive_options<T, I, K, V>(
     mut self,
     items: impl Fn() -> I + 'static,
@@ -177,7 +174,6 @@ impl<P: Platform, F> BasicPicker<P, F> {
   }
 
   /// Sets the chosen value.
-  #[inline(always)]
   pub fn set_value(mut self, value: impl Into<String>) -> Self {
     self.value = Some(Source::Fixed(value.into()));
 
@@ -185,7 +181,6 @@ impl<P: Platform, F> BasicPicker<P, F> {
   }
 
   /// Derives the chosen value from the signals `value` reads.
-  #[inline(always)]
   pub fn derive_value(mut self, value: impl Fn() -> String + 'static) -> Self {
     self.value = Some(Source::derive(value));
 
@@ -193,7 +188,6 @@ impl<P: Platform, F> BasicPicker<P, F> {
   }
 
   /// Runs `action` with the value a choice asks for.
-  #[inline(always)]
   pub fn handle_change(mut self, action: impl Fn(String) + 'static) -> Self {
     self.on_change = Some(Rc::new(action));
 
@@ -209,7 +203,6 @@ impl<P: Platform, F> BasicPicker<P, F> {
   }
 
   /// Sets the face's caption, which is also the accessible name.
-  #[inline(always)]
   pub fn set_label(mut self, label: impl Into<Label<P>>) -> Self {
     self.label = Some(label.into());
 
@@ -225,7 +218,6 @@ impl<P: Platform, F> BasicPicker<P, F> {
   }
 
   /// Derives whether the picker is disabled from the signals `disabled` reads.
-  #[inline(always)]
   pub fn derive_disabled(mut self, disabled: impl Fn() -> bool + 'static) -> Self {
     self.disabled = Some(Source::derive(disabled));
 

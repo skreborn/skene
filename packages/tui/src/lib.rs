@@ -175,7 +175,6 @@ pub type ActivePlatform = Tui;
 skene_common::facade!(ActivePlatform, u32, "cells");
 
 /// Sets the terminal title, emitted via OSC 2; terminals without support ignore it.
-#[inline(always)]
 pub fn set_title(title: impl Into<String>) {
   let title = title.into();
 
@@ -186,7 +185,6 @@ pub fn set_title(title: impl Into<String>) {
 }
 
 /// Derives the terminal title, re-emitted whenever it changes.
-#[inline(always)]
 pub fn derive_title(title: impl Fn() -> String + 'static) {
   skene_reactive::Effect::new(move |_: Option<()>| set_title(title()));
 }
@@ -198,7 +196,6 @@ pub fn derive_title(title: impl Fn() -> String + 'static) {
 /// it. The future runs on the terminal thread, pumped by the event loop between events
 /// and at once when woken from another thread, so it may touch signals and views
 /// directly.
-#[inline(always)]
 pub fn spawn(future: impl Future<Output = ()> + 'static) -> skene_reactive::TaskHandle {
   skene_reactive::spawn(future)
 }

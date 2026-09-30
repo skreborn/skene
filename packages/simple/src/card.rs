@@ -50,7 +50,6 @@ where
 
 impl<P: Platform> SimpleCard<P> {
   /// Sets the spacing between the card's children.
-  #[inline(always)]
   pub fn set_spacing(
     mut self,
     spacing: impl Into<Value<Spacing<P::Scalar>, Condition<P::Scalar>>>,
@@ -61,7 +60,6 @@ impl<P: Platform> SimpleCard<P> {
   }
 
   /// Derives the spacing between the card's children from the signals `spacing` reads.
-  #[inline(always)]
   pub fn derive_spacing<R: Into<StaticLeaf<Spacing<P::Scalar>>>>(
     mut self,
     spacing: impl Fn() -> R + 'static,
@@ -72,7 +70,6 @@ impl<P: Platform> SimpleCard<P> {
   }
 
   /// Sets the alignment of the card's children on the horizontal axis.
-  #[inline(always)]
   pub fn set_item_alignment(
     mut self,
     alignment: impl Into<Value<ItemAlignment, Condition<P::Scalar>>>,
@@ -83,7 +80,6 @@ impl<P: Platform> SimpleCard<P> {
   }
 
   /// Derives the alignment of the card's children from the signals `alignment` reads.
-  #[inline(always)]
   pub fn derive_item_alignment<R: Into<StaticLeaf<ItemAlignment>>>(
     mut self,
     alignment: impl Fn() -> R + 'static,

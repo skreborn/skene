@@ -36,7 +36,6 @@ pub trait View<P: Platform>: AnyKind + 'static {
   ///
   /// The key is matched across runs by its hash. Goes after the properties and before
   /// the children: the keyed view still takes them.
-  #[inline(always)]
   fn set_key(self, key: impl Hash) -> Keyed<P, Self>
   where
     Self: Sized,
@@ -74,7 +73,6 @@ enum Inner {
 
 impl<P: Platform> AnyView<P> {
   /// A view built by `build`.
-  #[inline(always)]
   pub fn new(build: impl FnOnce() -> NodeId + 'static) -> Self {
     Self {
       inner: Inner::Build(Box::new(build)),

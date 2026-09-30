@@ -73,7 +73,6 @@ impl<P: Platform> SimplePicker<P> {
   }
 
   /// Sets the options, in order, each a `(value, label)` pair.
-  #[inline(always)]
   pub fn set_options<V: Into<String>, L: Into<String>>(
     mut self,
     options: impl IntoIterator<Item = (V, L)>,
@@ -87,7 +86,6 @@ impl<P: Platform> SimplePicker<P> {
   }
 
   /// Sets the chosen value.
-  #[inline(always)]
   pub fn set_value(mut self, value: impl Into<String>) -> Self {
     self.picker = self.picker.set_value(value);
 
@@ -95,7 +93,6 @@ impl<P: Platform> SimplePicker<P> {
   }
 
   /// Derives the chosen value from the signals `value` reads.
-  #[inline(always)]
   pub fn derive_value(mut self, value: impl Fn() -> String + 'static) -> Self {
     self.picker = self.picker.derive_value(value);
 
@@ -103,7 +100,6 @@ impl<P: Platform> SimplePicker<P> {
   }
 
   /// Runs `action` with the value a choice asks for.
-  #[inline(always)]
   pub fn handle_change(mut self, action: impl Fn(String) + 'static) -> Self {
     self.picker = self.picker.handle_change(action);
 
@@ -119,7 +115,6 @@ impl<P: Platform> SimplePicker<P> {
   }
 
   /// Sets the accessible name.
-  #[inline(always)]
   pub fn set_label(mut self, label: impl Into<String>) -> Self {
     self.picker = self.picker.set_label(label.into());
 
@@ -135,7 +130,6 @@ impl<P: Platform> SimplePicker<P> {
   }
 
   /// Derives whether the picker is disabled from the signals `disabled` reads.
-  #[inline(always)]
   pub fn derive_disabled(mut self, disabled: impl Fn() -> bool + 'static) -> Self {
     self.picker = self.picker.derive_disabled(disabled);
 

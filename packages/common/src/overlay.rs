@@ -105,7 +105,6 @@ impl<P: Platform> Overlay<P> {
   }
 
   /// Sets the content.
-  #[inline(always)]
   pub fn set_child(self, child: impl View<P>) -> Overlay<P, AnyView<P>> {
     Overlay {
       modal: self.modal,
@@ -160,7 +159,6 @@ impl<P: Platform> Overlay<P> {
   }
 
   /// Derives where the overlay sits from the signals `placement` reads.
-  #[inline(always)]
   pub fn derive_placement(mut self, placement: impl Fn() -> Placement + 'static) -> Self {
     self.placement = Source::derive(placement);
 
@@ -195,7 +193,6 @@ impl<P: Platform> Overlay<P> {
 
   /// Derives where the open overlay is pinned from the signals `position` reads;
   /// `None` leaves it to its placement and anchor.
-  #[inline(always)]
   pub fn derive_position(mut self, position: impl Fn() -> Option<Point<f32>> + 'static) -> Self {
     self.position = Some(Rc::new(position));
 
@@ -211,7 +208,6 @@ impl<P: Platform> Overlay<P> {
   }
 
   /// Derives whether the overlay is open from the signals `open` reads.
-  #[inline(always)]
   pub fn derive_open(mut self, open: impl Fn() -> bool + 'static) -> Self {
     self.open = Source::derive(open);
 
@@ -220,7 +216,6 @@ impl<P: Platform> Overlay<P> {
 
   /// Runs `action` when the user asks the overlay to close: `Escape`, a backdrop
   /// click, or a press outside a popup.
-  #[inline(always)]
   pub fn handle_dismiss(mut self, action: impl Fn() + 'static) -> Self {
     self.dismiss.push(Rc::new(action));
 

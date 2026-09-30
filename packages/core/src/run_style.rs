@@ -151,12 +151,10 @@ macro_rules! run_fields {
 
           const KEY: PropertyKey<X::Property> = PropertyKey::Shared(Property::$property);
 
-          #[inline(always)]
           fn get<S: Shape>(style: &RunStyle<S, X>) -> &S::Of<$value> {
             &style.$field
           }
 
-          #[inline(always)]
           fn get_mut<S: Shape>(style: &mut RunStyle<S, X>) -> &mut S::Of<$value> {
             &mut style.$field
           }
@@ -186,7 +184,6 @@ run_fields!(
 
 impl<S: Shape, X: StyleExtension> RunStyle<S, X> {
   /// Visits every field with its name.
-  #[inline(always)]
   pub fn visit<V: RunVisitor<S, X>>(&self, visitor: &mut V) {
     Self::for_each_field(&mut Visit {
       style: self,
@@ -201,7 +198,6 @@ struct Visit<'a, S: Shape, X: StyleExtension, V> {
 }
 
 impl<S: Shape, X: StyleExtension, V: RunVisitor<S, X>> RunFieldVisitor<X> for Visit<'_, S, X, V> {
-  #[inline(always)]
   fn field<F: RunField<X>>(&mut self) {
     self.visitor.value::<F::Value>(F::KEY, F::get(self.style));
   }
@@ -221,7 +217,6 @@ struct Overlay<'a, X: StyleExtension> {
 }
 
 impl<X: StyleExtension> RunFieldVisitor<X> for Overlay<'_, X> {
-  #[inline(always)]
   fn field<F: RunField<X>>(&mut self) {
     if let Some(value) = F::get(self.over) {
       *F::get_mut(self.base) = Some(value.clone());

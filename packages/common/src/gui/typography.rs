@@ -40,7 +40,6 @@ pub struct Typography {
 
 impl Typography {
   /// Sets the text color.
-  #[inline(always)]
   pub fn set_ink(mut self, ink: impl Into<Definition<Color>>) -> Self {
     self.ink = self.ink.redefine(ink);
 
@@ -48,7 +47,6 @@ impl Typography {
   }
 
   /// Sets the text color of a link.
-  #[inline(always)]
   pub fn set_link_ink(mut self, ink: impl Into<Definition<Color>>) -> Self {
     self.link_ink = self.link_ink.redefine(ink);
 
@@ -56,7 +54,6 @@ impl Typography {
   }
 
   /// Sets the text color while selected.
-  #[inline(always)]
   pub fn set_selection_ink(mut self, ink: impl Into<Definition<Color>>) -> Self {
     self.selection_ink = self.selection_ink.redefine(ink);
 
@@ -64,7 +61,6 @@ impl Typography {
   }
 
   /// Sets the background behind selected text.
-  #[inline(always)]
   pub fn set_selection_surface(mut self, surface: impl Into<Definition<Color>>) -> Self {
     self.selection_surface = self.selection_surface.redefine(surface);
 
@@ -72,7 +68,6 @@ impl Typography {
   }
 
   /// Sets the font size, in logical pixels.
-  #[inline(always)]
   pub fn set_size(mut self, size: impl Into<Definition<Length>>) -> Self {
     self.size = self.size.redefine(size);
 
@@ -80,7 +75,6 @@ impl Typography {
   }
 
   /// Sets the font weight, `100` to `900`.
-  #[inline(always)]
   pub fn set_weight(mut self, weight: impl Into<Definition<f32>>) -> Self {
     self.weight = self.weight.redefine(weight);
 
@@ -88,7 +82,6 @@ impl Typography {
   }
 
   /// Sets the line height, as a multiple of the font size.
-  #[inline(always)]
   pub fn set_line_height(mut self, line_height: impl Into<Definition<f32>>) -> Self {
     self.line_height = self.line_height.redefine(line_height);
 
@@ -96,7 +89,6 @@ impl Typography {
   }
 
   /// Sets the extra space between letters, in logical pixels.
-  #[inline(always)]
   pub fn set_letter_spacing(mut self, letter_spacing: impl Into<Definition<Length>>) -> Self {
     self.letter_spacing = self.letter_spacing.redefine(letter_spacing);
 

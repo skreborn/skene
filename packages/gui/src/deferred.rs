@@ -32,7 +32,6 @@ impl std::fmt::Debug for Deferred {
 impl Deferred {
   /// Defers `content`: its async work reports to a boundary of its own, and a
   /// streaming render flushes the surrounding page before it settles.
-  #[inline(always)]
   pub fn new<V: View<ActivePlatform>>(content: impl FnOnce() -> V + 'static) -> Self {
     Self {
       content: Box::new(move || content().build()),

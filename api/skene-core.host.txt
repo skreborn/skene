@@ -4663,14 +4663,16 @@ pub fn skene_core::Platform::create_scope(skene_core::NodeId)
 pub fn skene_core::Platform::define_root_tokens(&skene_core::Definitions<Self::TokenValue>)
 pub fn skene_core::Platform::define_tokens(skene_core::NodeId, &skene_core::Definitions<Self::TokenValue>)
 pub fn skene_core::Platform::destroy(skene_core::NodeId)
-pub fn skene_core::Platform::detach(skene_core::NodeId, skene_core::NodeId)
 pub fn skene_core::Platform::focus(skene_core::NodeId)
 pub fn skene_core::Platform::focus_visible() -> bool
+pub fn skene_core::Platform::hide(skene_core::NodeId, skene_core::NodeId)
 pub fn skene_core::Platform::hydration() -> core::option::Option<skene_reactive::signal::ReadSignal<bool>>
 pub fn skene_core::Platform::listen(skene_core::NodeId, skene_core::EventKind)
 pub fn skene_core::Platform::localize_pointer(skene_core::NodeId, &skene_core::PointerEvent) -> skene_core::PointerEvent
 pub fn skene_core::Platform::media() -> skene_core::MediaSignals<Self::Scalar>
 pub fn skene_core::Platform::observe_size(skene_core::NodeId, alloc::rc::Rc<dyn core::ops::function::Fn(skene_core::Size<Self::Scalar>)>) -> skene_core::Observation
+pub fn skene_core::Platform::relocate(skene_core::NodeId, skene_core::NodeId, core::option::Option<skene_core::NodeId>)
+pub fn skene_core::Platform::remove(skene_core::NodeId, skene_core::NodeId)
 pub fn skene_core::Platform::scene() -> &'static std::thread::local::LocalKey<core::cell::RefCell<skene_core::Scene<Self>>>
 pub fn skene_core::Platform::schedule(core::time::Duration, alloc::boxed::Box<dyn core::ops::function::FnOnce()>) -> skene_core::Timer
 pub fn skene_core::Platform::set_checked(skene_core::NodeId, bool)

@@ -90,7 +90,16 @@ it once the scene is released and before the node takes part in anything else. E
 structural mutation (`attach`, `detach`, `destroy`, reorder) is implemented once in core;
 the platform is called only to mirror it into its records, after core has released its
 own borrow; a platform keeping children of its own (the terminal's store, the server's
-string tree) links them the same way. `NodeId` carries a generation, so a stale id resolves to nothing rather than
+string tree) links them the same way. The scene tells the platform what happens to each
+child: it is attached (new, or returning from being hidden), relocated (a move, which
+the web makes with `moveBefore` where the engine has it, keeping focus and animations,
+and with one `insertBefore` elsewhere), hidden (taken out live, to return) or removed
+(for good, destroyed next), and re-attaching a node where it already stands tells the
+platform nothing. Only a hidden child keeps what leaving loses: the scene keeps the
+focus inside it and gives it back on its return where focus has gone nowhere since, and
+the web keeps the focus and the scroll offsets its elements lose with the document; a
+removal keeps nothing, so clearing a list reads no layout. A hidden node is no root, so
+a reader finds nothing inside it. `NodeId` carries a generation, so a stale id resolves to nothing rather than
 to a recycled node, in the scene and in a platform's records alike. Token resolution and event dispatch walk this tree; nothing reads
 structure back from a platform. The scene also records each node's place in focus
 traversal and each overlay's state, the open ones in the order they opened, as a
@@ -246,9 +255,9 @@ and its cost unjustified.
   builds items untracked; a rebuild closure (`derived`) tracks. The two names say which.
 - **Structural change is a last resort with a cheap alternative.** `derived` destroys
   and rebuilds, disposing the subtree's scope with its state; `Show` and `Switch` build
-  a branch the first time it shows and attach or detach it after, preserving its
-  state, and a branch standing apart pauses its effects (`Owner::pause`) until it shows
-  again, catching up once. Each is a `Segment` of `Piece`s, every piece built under a
+  a branch the first time it shows and hide or attach it after, preserving its
+  state, the focus inside it and its scroll offsets among it, and a branch standing
+  apart pauses its effects (`Owner::pause`) until it shows again, catching up once. Each is a `Segment` of `Piece`s, every piece built under a
   scope of its own whose disposal destroys its nodes, as `Suspense` and
   `ErrorBoundary` are; those two keep their content live while it stands apart, since
   its work is what they wait on.

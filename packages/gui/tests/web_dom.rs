@@ -47,6 +47,7 @@ use skene_gui::{
   Role,
   Roving,
   Row,
+  Show,
   Span,
   Stack,
   TOOLTIP_GRACE,
@@ -1832,11 +1833,76 @@ fn derived_view_swaps_between_trees_on_state_change() {
   assert_eq!(swapped.text_content().as_deref(), Some("welcome"));
 }
 
-/// A scrollable box inside a rebuilt subtree of the same shape: the content that
-/// enters the segment takes the scroll offset and the focus the content that left it
-/// held.
+/// A scrollable box holding a focused box, with the scroll offset set after the focus,
+/// which would otherwise scroll it.
+fn scroller() -> Container {
+  Container::new()
+    .set_height(40.)
+    .set_overflow(skene_gui::core::Overflow::Auto)
+    .set_child(
+      Column::new().set_children((
+        Container::new()
+          .set_min_height(20.)
+          .set_focus_order(skene_gui::FocusOrder::Auto),
+        Container::new().set_min_height(200.),
+      )),
+    )
+}
+
+/// Focuses the focusable box inside `scroller` and scrolls it by 30 pixels.
+fn focus_and_scroll(scroller: &Element) -> Element {
+  let focusable = scroller
+    .query_selector("[tabindex]")
+    .expect("query")
+    .expect("the focusable box");
+
+  html(&focusable).focus().expect("focus the box");
+  scroller.set_scroll_top(30);
+
+  assert_eq!(scroller.scroll_top(), 30);
+  assert_eq!(document().active_element(), Some(focusable.clone()));
+
+  focusable
+}
+
+/// A hidden subtree keeps its scroll offsets and the focus inside it, and gets both back
+/// when it shows again.
 #[wasm_bindgen_test]
-fn a_derived_rebuild_restores_scroll_and_focus() {
+fn a_hidden_subtree_keeps_its_scroll_and_focus() {
+  let (_guard, root) = fresh_root();
+  let shown = Signal::new(true);
+
+  let _ = mount(move || {
+    Show::new()
+      .derive_shown(move || shown.get())
+      .set_child(scroller())
+      .build()
+  });
+
+  let scroller = only_child(&root);
+  let focusable = focus_and_scroll(&scroller);
+
+  shown.set(false);
+  web::end_turn();
+
+  assert!(!scroller.is_connected(), "the subtree left the document");
+
+  shown.set(true);
+  web::end_turn();
+
+  assert_eq!(only_child(&root), scroller, "the same subtree returned");
+  assert_eq!(scroller.scroll_top(), 30, "the offset returned with it");
+  assert_eq!(
+    document().active_element(),
+    Some(focusable),
+    "the focus returned with it"
+  );
+}
+
+/// A rebuilt subtree of the same shape starts afresh: what the content that left held
+/// leaves with it.
+#[wasm_bindgen_test]
+fn a_derived_rebuild_keeps_nothing() {
   let (_guard, root) = fresh_root();
   let generation = Signal::new(0);
 
@@ -1844,49 +1910,59 @@ fn a_derived_rebuild_restores_scroll_and_focus() {
     derived(move || {
       let _ = generation.get();
 
-      Container::new()
-        .set_height(40.)
-        .set_overflow(skene_gui::core::Overflow::Auto)
-        .set_child(
-          Column::new().set_children((
-            Container::new()
-              .set_min_height(20.)
-              .set_focus_order(skene_gui::FocusOrder::Auto),
-            Container::new().set_min_height(200.),
-          )),
-        )
-        .build()
+      scroller().build()
     })
   });
 
   let scroller = only_child(&root);
-  let focusable = scroller
-    .query_selector("[tabindex]")
-    .expect("query")
-    .expect("the focusable box");
-
-  // Focus first: focusing scrolls the box into view, which would undo the offset.
-  html(&focusable).focus().expect("focus the box");
-  scroller.set_scroll_top(30);
-
-  assert_eq!(scroller.scroll_top(), 30);
-  assert_eq!(document().active_element(), Some(focusable));
+  let focusable = focus_and_scroll(&scroller);
 
   generation.set(1);
   web::end_turn();
 
   let rebuilt = only_child(&root);
-  let refocused = rebuilt
-    .query_selector("[tabindex]")
-    .expect("query")
-    .expect("the rebuilt focusable box");
 
   assert!(rebuilt != scroller, "the subtree was rebuilt");
-  assert_eq!(rebuilt.scroll_top(), 30, "the offset carried over");
+  assert_eq!(rebuilt.scroll_top(), 0, "no offset carried over");
+  assert!(
+    document().active_element() != Some(focusable),
+    "no focus carried over"
+  );
+}
+
+/// A reordered list moves its rows in place: a focused row keeps its focus.
+#[wasm_bindgen_test]
+fn a_moved_row_keeps_its_focus() {
+  let (_guard, root) = fresh_root();
+  let items = Signal::new(vec![1, 2, 3]);
+
+  let _ = mount(move || {
+    Column::new()
+      .derive_children(
+        move || items.get(),
+        |item: &i32| *item,
+        |item| {
+          Container::new()
+            .set_focus_order(skene_gui::FocusOrder::Auto)
+            .set_child(Text::new(item.to_string()))
+        },
+      )
+      .build()
+  });
+
+  let parent = only_child(&root);
+  let first = parent.children().item(0).expect("the first row");
+
+  html(&first).focus().expect("focus the first row");
+  items.set(vec![3, 2, 1]);
+  web::end_turn();
+
+  assert_eq!(child_texts(&parent), ["3", "2", "1"]);
+  assert_eq!(parent.children().item(2), Some(first.clone()));
   assert_eq!(
     document().active_element(),
-    Some(refocused),
-    "the focus carried over",
+    Some(first),
+    "the moved row kept its focus"
   );
 }
 

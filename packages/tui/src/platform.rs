@@ -328,25 +328,24 @@ impl Platform for Tui {
     });
   }
 
-  fn detach(parent: NodeId, child: NodeId) {
+  fn relocate(parent: NodeId, child: NodeId, before: Option<NodeId>) {
     with_store(|store| {
-      if store.record(child).and_then(|record| record.captioned) == Some(parent) {
-        store.drop_caption(parent, child);
-
-        return;
+      if let Some(from) = store
+        .record(child)
+        .and_then(|record| record.captioned.or(record.parent))
+      {
+        store.withdraw(from, child);
       }
-
-      if store.parent(child) == Some(parent) {
-        store.unlist(child);
-      }
-
-      if let Some(caption) = store.record(child).and_then(|record| record.caption) {
-        store.unlist(caption);
-      }
-
-      store.structure_dirty = true;
-      store.paint_dirty = true;
     });
+    Self::attach(parent, child, before);
+  }
+
+  fn hide(parent: NodeId, child: NodeId) {
+    with_store(|store| store.withdraw(parent, child));
+  }
+
+  fn remove(parent: NodeId, child: NodeId) {
+    with_store(|store| store.withdraw(parent, child));
   }
 
   fn destroy(node: NodeId) {

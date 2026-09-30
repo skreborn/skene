@@ -1444,6 +1444,27 @@ impl Store {
     }
   }
 
+  /// Takes `child` out from under `parent`, with the caption kept beside it, or out of
+  /// the place beside `parent` where it is the caption `parent` keeps.
+  pub(crate) fn withdraw(&mut self, parent: Handle, child: Handle) {
+    if self.record(child).and_then(|record| record.captioned) == Some(parent) {
+      self.drop_caption(parent, child);
+
+      return;
+    }
+
+    if self.parent(child) == Some(parent) {
+      self.unlist(child);
+    }
+
+    if let Some(caption) = self.record(child).and_then(|record| record.caption) {
+      self.unlist(caption);
+    }
+
+    self.structure_dirty = true;
+    self.paint_dirty = true;
+  }
+
   /// Stops keeping `caption` beside `control`, unlisting it.
   pub(crate) fn drop_caption(&mut self, control: Handle, caption: Handle) {
     if let Some(record) = self.record_mut(control)

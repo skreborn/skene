@@ -1,5 +1,7 @@
 //! The suite's scenarios, each generic over the driver acting it out.
 
+use std::time::Duration;
+
 use skene_common::{
   Activate,
   Column,
@@ -34,6 +36,7 @@ use skene_core::{
   Platform,
   Role,
   Scalar,
+  Show,
   Size,
   View,
   Visibility,
@@ -93,6 +96,10 @@ pub(crate) fn all<D: Driver>() -> Vec<Scenario<D>> {
     Scenario {
       name: "a condition on the viewport's width follows a resize",
       act: a_viewport_condition_follows_a_resize,
+    },
+    Scenario {
+      name: "a hidden view takes the focus inside it along and gives it back on its return",
+      act: a_hidden_view_keeps_its_focus,
     },
     Scenario {
       name: "a form reads as its roles, names, values and states",
@@ -457,6 +464,60 @@ fn a_tooltip_shows_after_its_delay<D: Driver>(driver: &mut D) {
   assert!(
     driver.find(Role::Tooltip, "Saves your work").is_some(),
     "the pointer resting for the delay shows it"
+  );
+}
+
+fn a_hidden_view_keeps_its_focus<D: Driver>(driver: &mut D) {
+  const RETURN: Duration = Duration::from_millis(100);
+
+  let shown = Signal::new(true);
+
+  driver.mount(move || {
+    Column::<D::Platform>::new()
+      .set_children((
+        Show::<D::Platform>::new()
+          .derive_shown(move || shown.get())
+          .set_child(button::<D>("Dismiss").handle_click(move || {
+            shown.set(false);
+
+            let _timer = D::Platform::schedule(RETURN, Box::new(move || shown.set(true)));
+          })),
+        button::<D>("Elsewhere"),
+      ))
+      .into_any()
+  });
+
+  let dismiss = found(driver, Role::Button, "Dismiss");
+
+  driver.focus(dismiss);
+  driver.press(&key("Enter"));
+
+  assert_eq!(driver.focused(), None, "focus leaves with the view");
+  assert_eq!(
+    driver.find(Role::Button, "Dismiss"),
+    None,
+    "a reader finds nothing hidden"
+  );
+
+  driver.advance(RETURN);
+
+  assert_eq!(
+    driver.focused(),
+    Some(dismiss),
+    "focus returns with the view"
+  );
+
+  driver.press(&key("Enter"));
+
+  let elsewhere = found(driver, Role::Button, "Elsewhere");
+
+  driver.focus(elsewhere);
+  driver.advance(RETURN);
+
+  assert_eq!(
+    driver.focused(),
+    Some(elsewhere),
+    "focus moved on meanwhile stays where it went"
   );
 }
 

@@ -211,6 +211,7 @@ pub struct NodeRecord<P: Platform> {
   cache: Option<Box<TokenCache<P::TokenValue>>>,
   control: Option<ControlState>,
   entry: bool,
+  hidden: bool,
   part: Option<Part>,
   position: Position,
   access: Option<Box<AccessReports>>,
@@ -333,7 +334,16 @@ enum Mirror<P: Platform> {
     child: NodeId,
     before: Option<NodeId>,
   },
-  Detach {
+  Relocate {
+    parent: NodeId,
+    child: NodeId,
+    before: Option<NodeId>,
+  },
+  Hide {
+    parent: NodeId,
+    child: NodeId,
+  },
+  Remove {
     parent: NodeId,
     child: NodeId,
   },
@@ -372,7 +382,13 @@ impl<P: Platform> Mirror<P> {
         child,
         before,
       } => P::attach(parent, child, before),
-      Self::Detach { parent, child } => P::detach(parent, child),
+      Self::Relocate {
+        parent,
+        child,
+        before,
+      } => P::relocate(parent, child, before),
+      Self::Hide { parent, child } => P::hide(parent, child),
+      Self::Remove { parent, child } => P::remove(parent, child),
       Self::Destroy(node) => P::destroy(node),
       Self::DefineTokens { scope, definitions } => P::define_tokens(scope, &definitions),
       Self::DefineRootTokens(definitions) => P::define_root_tokens(&definitions),
@@ -383,6 +399,20 @@ impl<P: Platform> Mirror<P> {
       Self::Focus(node) => P::focus(node),
     }
   }
+}
+
+/// How a node comes to stand under a parent: from nowhere, or from under another.
+#[derive(Clone, Copy)]
+enum Arrival {
+  Attach,
+  Relocate,
+}
+
+/// Why a node leaves its parent: to return while it stays live, or for good.
+#[derive(Clone, Copy)]
+enum Departure {
+  Hide,
+  Remove,
 }
 
 /// The retained tree: a generational arena of [`NodeRecord`]s, every mutation mirrored
@@ -410,6 +440,7 @@ pub struct Scene<P: Platform> {
   hovered: Option<NodeId>,
   pressed: Option<NodeId>,
   focused: Option<NodeId>,
+  kept_focus: FxHashMap<NodeId, NodeId>,
   focus_visible: bool,
   drag: Option<DragRecord>,
   #[cfg(debug_assertions)]
@@ -446,6 +477,7 @@ impl<P: Platform> Scene<P> {
       hovered: None,
       pressed: None,
       focused: None,
+      kept_focus: FxHashMap::default(),
       focus_visible: true,
       drag: None,
       #[cfg(debug_assertions)]
@@ -545,6 +577,7 @@ impl<P: Platform> Scene<P> {
       cache: None,
       control: is_control.then_some(ControlState::DEFAULT),
       entry: false,
+      hidden: false,
       part: is_control.then_some(Part::Root),
       position,
       access: None,
@@ -630,7 +663,7 @@ impl<P: Platform> Scene<P> {
   }
 
   /// Every live node standing in no parent and no segment, in index order: each tree's
-  /// root, and each node built and not yet attached.
+  /// root, and each node built and not yet attached; a node hidden while live is none.
   pub fn roots(&self) -> impl Iterator<Item = NodeId> + '_ {
     self
       .entries
@@ -639,7 +672,7 @@ impl<P: Platform> Scene<P> {
       .filter_map(|(index, entry)| {
         let record = entry.record.as_ref()?;
 
-        if record.parent.is_some() || record.enclosing.is_some() {
+        if record.parent.is_some() || record.enclosing.is_some() || record.hidden {
           return None;
         }
 
@@ -854,11 +887,12 @@ impl<P: Platform> Scene<P> {
   }
 
   /// Places `child` under `parent`, immediately before `before` when given, else last,
-  /// unlinking it from any previous parent first; nothing where it already stands there,
-  /// or where either is gone.
+  /// moving it from any previous parent; nothing where it already stands there, or
+  /// where either is gone.
   ///
   /// A segment start brings its content and its end anchor along; `child` is mounted in
-  /// no segment after.
+  /// no segment after. A node detached earlier takes back the focus it held when it
+  /// left, where focus has gone nowhere since.
   pub fn attach(&mut self, parent: NodeId, child: NodeId, before: Option<NodeId>) {
     if let Some(record) = self.record_mut(child) {
       record.enclosing = None;
@@ -867,10 +901,11 @@ impl<P: Platform> Scene<P> {
     self.place(parent, child, before);
   }
 
-  /// Removes `child` from under `parent`, leaving it detached but live and mounted in
-  /// no segment.
+  /// Hides `child` from under `parent`, leaving it detached but live and mounted in no
+  /// segment, to be attached again.
   ///
-  /// A segment start takes its content and its end anchor with it.
+  /// A segment start takes its content and its end anchor with it. Focus held inside it
+  /// leaves with it, kept for its return.
   pub fn detach(&mut self, parent: NodeId, child: NodeId) {
     if self.parent(child) != Some(parent) {
       return;
@@ -880,14 +915,13 @@ impl<P: Platform> Scene<P> {
       record.enclosing = None;
     }
 
-    self.unlink(child);
-    self.definitions_generation += 1;
+    self.hide(child);
   }
 
   /// Destroys `node` and its whole subtree, detaching it first if attached; the
   /// platform releases the record of every node destroyed.
   pub fn destroy(&mut self, node: NodeId) {
-    self.unlink(node);
+    self.unlink(node, Departure::Remove);
 
     let mut stack = vec![node];
 
@@ -919,6 +953,8 @@ impl<P: Platform> Scene<P> {
         }
       }
 
+      self.kept_focus.remove(&node);
+
       if self.drag.as_ref().is_some_and(|drag| drag.source == node) {
         self.drag = None;
       }
@@ -947,7 +983,12 @@ impl<P: Platform> Scene<P> {
       self.place(parent, node, before.or(Some(end)));
     }
     else {
-      self.unlink(node);
+      if self.parent(node).is_some() {
+        self.hide(node);
+      }
+      else {
+        self.unlink(node, Departure::Hide);
+      }
 
       let Some(segment) = self
         .record_mut(start)
@@ -975,14 +1016,17 @@ impl<P: Platform> Scene<P> {
     }
   }
 
-  /// Takes `node` out of the segment `start` begins, leaving it detached but live.
+  /// Hides `node`, mounted in the segment `start` begins or built for it, leaving it
+  /// detached but live.
   pub fn remove_from_segment(&mut self, start: NodeId, node: NodeId) {
     let Some((parent, _)) = self.segment_place(start)
     else {
       return;
     };
 
-    if let Some(parent) = parent {
+    if let Some(parent) = parent
+      && self.parent(node) == Some(parent)
+    {
       self.detach(parent, node);
 
       return;
@@ -997,6 +1041,7 @@ impl<P: Platform> Scene<P> {
 
     if let Some(record) = self.record_mut(node) {
       record.enclosing = None;
+      record.hidden = true;
     }
   }
 
@@ -1043,7 +1088,6 @@ impl<P: Platform> Scene<P> {
   /// Destroys everything mounted in the segment `start` begins.
   pub fn clear_segment(&mut self, start: NodeId) {
     for node in self.segment_nodes(start) {
-      self.remove_from_segment(start, node);
       self.destroy(node);
     }
   }
@@ -1883,8 +1927,18 @@ impl<P: Platform> Scene<P> {
       return;
     }
 
-    self.unlink(child);
-    self.link(parent, child, before);
+    if self.parent(child).is_some() {
+      self.relocate(parent, child, before);
+
+      return;
+    }
+
+    self.unlink(child, Departure::Hide);
+    self.link(parent, child, before, Arrival::Attach);
+
+    if let Some(record) = self.record_mut(child) {
+      record.hidden = false;
+    }
 
     let segment = self
       .record_mut(child)
@@ -1896,10 +1950,74 @@ impl<P: Platform> Scene<P> {
         self.place(parent, node, before);
       }
 
-      self.link(parent, end, before);
+      self.link(parent, end, before, Arrival::Attach);
+    }
+
+    self.return_kept_focus(child);
+    self.definitions_generation += 1;
+  }
+
+  /// Moves `child`, standing under a parent, under `parent` immediately before `before`,
+  /// else last: a segment start with the run of its content and its end anchor, in
+  /// order.
+  fn relocate(&mut self, parent: NodeId, child: NodeId, before: Option<NodeId>) {
+    let mut run: SmallVec<[NodeId; 4]> = SmallVec::new();
+
+    run.push(child);
+
+    if let Some(end) = self.segment_end(child) {
+      let mut next = self.next_sibling(child);
+
+      while let Some(node) = next {
+        run.push(node);
+
+        if node == end {
+          break;
+        }
+
+        next = self.next_sibling(node);
+      }
+    }
+
+    for node in run {
+      if let Some(from) = self.parent(node) {
+        self.sever(from, node);
+      }
+
+      self.link(parent, node, before, Arrival::Relocate);
     }
 
     self.definitions_generation += 1;
+  }
+
+  /// Takes `child`, standing under a parent, out of the tree live, keeping the focus
+  /// held inside it for its return.
+  fn hide(&mut self, child: NodeId) {
+    if let Some(focused) = self.focused
+      && self.ancestry(focused).contains(&child)
+    {
+      self.focused = None;
+      self.kept_focus.insert(child, focused);
+    }
+
+    self.unlink(child, Departure::Hide);
+
+    if let Some(record) = self.record_mut(child) {
+      record.hidden = true;
+    }
+
+    self.definitions_generation += 1;
+  }
+
+  /// Gives the focus `child` kept when it left back to its node, where that node is live
+  /// and focus has gone nowhere since.
+  fn return_kept_focus(&mut self, child: NodeId) {
+    if let Some(focused) = self.kept_focus.remove(&child)
+      && self.focused.is_none()
+      && self.contains(focused)
+    {
+      self.mirrors.push(Mirror::Focus(focused));
+    }
   }
 
   /// Whether `child` stands under `parent` immediately before `before`, last when
@@ -1927,8 +2045,8 @@ impl<P: Platform> Scene<P> {
   }
 
   /// Inserts `child` into `parent`'s children before `before` (else last) and mirrors
-  /// it; `child` must be detached.
-  fn link(&mut self, parent: NodeId, child: NodeId, before: Option<NodeId>) {
+  /// its arrival; `child` must be detached.
+  fn link(&mut self, parent: NodeId, child: NodeId, before: Option<NodeId>, arrival: Arrival) {
     if self.record(child).is_none() || self.record(parent).is_none() {
       return;
     }
@@ -1975,17 +2093,24 @@ impl<P: Platform> Scene<P> {
       }
     }
 
-    self.mirrors.push(Mirror::Attach {
-      parent,
-      child,
-      before,
+    self.mirrors.push(match arrival {
+      Arrival::Attach => Mirror::Attach {
+        parent,
+        child,
+        before,
+      },
+      Arrival::Relocate => Mirror::Relocate {
+        parent,
+        child,
+        before,
+      },
     });
   }
 
-  /// Removes `child` from under its parent, if any, and mirrors it, or from the
-  /// pending content of the detached segment it waits in; a segment start pulls its
+  /// Removes `child` from under its parent, if any, and mirrors its departure, or from
+  /// the pending content of the detached segment it waits in; a segment start pulls its
   /// content and end anchor back into the pending list.
-  fn unlink(&mut self, child: NodeId) {
+  fn unlink(&mut self, child: NodeId, departure: Departure) {
     let Some(record) = self.record(child)
     else {
       return;
@@ -2004,16 +2129,28 @@ impl<P: Platform> Scene<P> {
     };
 
     if record.is_segment_start() {
-      self.unlink_segment(parent, child);
+      self.unlink_segment(parent, child, departure);
 
       return;
     }
 
-    self.unlink_one(parent, child);
+    self.unlink_one(parent, child, departure);
   }
 
-  /// Removes one node from under `parent` and mirrors it.
-  fn unlink_one(&mut self, parent: NodeId, child: NodeId) {
+  /// Removes one node from under `parent` and mirrors its departure.
+  fn unlink_one(&mut self, parent: NodeId, child: NodeId, departure: Departure) {
+    self.sever(parent, child);
+
+    if self.contains(parent) && self.contains(child) {
+      self.mirrors.push(match departure {
+        Departure::Hide => Mirror::Hide { parent, child },
+        Departure::Remove => Mirror::Remove { parent, child },
+      });
+    }
+  }
+
+  /// Removes one node from under `parent`'s children, mirroring nothing.
+  fn sever(&mut self, parent: NodeId, child: NodeId) {
     let links = self
       .record(child)
       .filter(|record| record.parent == Some(parent))
@@ -2052,27 +2189,23 @@ impl<P: Platform> Scene<P> {
       child_record.previous_sibling = None;
       child_record.next_sibling = None;
     }
-
-    if self.contains(parent) && self.contains(child) {
-      self.mirrors.push(Mirror::Detach { parent, child });
-    }
   }
 
   /// Removes a segment start, its content and its end anchor from under `parent`, and
   /// keeps the content pending; a nested segment is unlinked as one, keeping its own
   /// content pending in turn.
-  fn unlink_segment(&mut self, parent: NodeId, start: NodeId) {
+  fn unlink_segment(&mut self, parent: NodeId, start: NodeId, departure: Departure) {
     let content = self.segment_nodes(start);
     let end = self.segment_end(start);
 
-    self.unlink_one(parent, start);
+    self.unlink_one(parent, start, departure);
 
     for node in &content {
-      self.unlink(*node);
+      self.unlink(*node, departure);
     }
 
     if let Some(end) = end {
-      self.unlink_one(parent, end);
+      self.unlink_one(parent, end, departure);
     }
 
     if let Some(segment) = self
@@ -2187,8 +2320,8 @@ mod tests {
     });
   }
 
-  /// Attaching an attached node unlinks it from its previous parent first, in the
-  /// scene and in the platform.
+  /// Attaching an attached node moves it from its previous parent, in the scene and in
+  /// the platform.
   #[test]
   fn attach_unlinks_the_previous_parent() {
     TestPlatform::reset();
@@ -2206,10 +2339,7 @@ mod tests {
     assert_eq!(children(second), [child]);
     assert_eq!(
       TestPlatform::take_log(),
-      [
-        Call::Detach(first, child),
-        Call::Attach(second, child, None),
-      ]
+      [Call::Relocate(second, child, None)]
     );
   }
 
@@ -2264,11 +2394,109 @@ mod tests {
     assert_eq!(children(parent), [second, first]);
     assert_eq!(
       TestPlatform::take_log(),
+      [Call::Relocate(parent, first, None)]
+    );
+  }
+
+  /// Detaching a node hides it, no root while hidden, and attaching it again gives it
+  /// back from nowhere.
+  #[test]
+  fn detach_hides_and_attach_gives_back() {
+    TestPlatform::reset();
+
+    let parent = TestBox::node();
+    let child = TestBox::node();
+
+    with(|scene| scene.attach(parent, child, None));
+    TestPlatform::take_log();
+    with(|scene| scene.detach(parent, child));
+
+    assert_eq!(TestPlatform::take_log(), [Call::Hide(parent, child)]);
+    assert!(
+      !with(|scene| scene.roots().any(|root| root == child)),
+      "a hidden node is no root"
+    );
+
+    with(|scene| scene.attach(parent, child, None));
+
+    assert_eq!(
+      TestPlatform::take_log(),
+      [Call::Attach(parent, child, None)]
+    );
+  }
+
+  /// Moving a segment relocates its start, its content and its end as one run, in
+  /// order.
+  #[test]
+  fn moving_a_segment_relocates_its_run_in_order() {
+    TestPlatform::reset();
+
+    let first = TestBox::node();
+    let second = TestBox::node();
+    let (start, end) = Scene::<TestPlatform>::create_segment();
+    let content = [TestBox::node(), TestBox::node()];
+
+    with(|scene| {
+      scene.attach(first, start, None);
+
+      for node in content {
+        scene.insert_in_segment(start, node, None);
+      }
+    });
+    TestPlatform::take_log();
+    with(|scene| scene.attach(second, start, None));
+
+    assert_eq!(children(first), []);
+    assert_eq!(children(second), [start, content[0], content[1], end]);
+    assert_eq!(
+      TestPlatform::take_log(),
       [
-        Call::Detach(parent, first),
-        Call::Attach(parent, first, None),
+        Call::Relocate(second, start, None),
+        Call::Relocate(second, content[0], None),
+        Call::Relocate(second, content[1], None),
+        Call::Relocate(second, end, None),
       ]
     );
+  }
+
+  /// Hiding a subtree holding focus clears it, and attaching the subtree again gives it
+  /// back where focus has gone nowhere since.
+  #[test]
+  fn a_hidden_subtree_keeps_its_focus_for_its_return() {
+    TestPlatform::reset();
+
+    let root = TestBox::node();
+    let panel = TestBox::node();
+    let field = TestBox::node();
+    let other = TestBox::node();
+
+    with(|scene| {
+      scene.attach(root, panel, None);
+      scene.attach(panel, field, None);
+      scene.attach(root, other, None);
+      let _ = scene.move_focus(Some(field));
+      scene.detach(root, panel);
+    });
+
+    assert_eq!(with(|scene| scene.focused()), None);
+
+    TestPlatform::take_log();
+    with(|scene| scene.attach(root, panel, None));
+
+    assert_eq!(
+      TestPlatform::take_log(),
+      [Call::Attach(root, panel, None), Call::Focus(field)]
+    );
+
+    with(|scene| {
+      let _ = scene.move_focus(Some(field));
+      scene.detach(root, panel);
+      let _ = scene.move_focus(Some(other));
+    });
+    TestPlatform::take_log();
+    with(|scene| scene.attach(root, panel, None));
+
+    assert_eq!(TestPlatform::take_log(), [Call::Attach(root, panel, None)]);
   }
 
   /// Destroying a node takes its whole subtree, releases every record on the platform,
@@ -2302,7 +2530,7 @@ mod tests {
 
     destroyed.sort_unstable();
 
-    assert_eq!(log[0], Call::Detach(root, nodes[0]));
+    assert_eq!(log[0], Call::Remove(root, nodes[0]));
     assert_eq!(destroyed, nodes);
     assert_eq!(children(root), []);
     assert!(with(|scene| scene.record(child).is_none()));

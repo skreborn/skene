@@ -51,8 +51,11 @@ use crate::{
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum Call {
   Attach(NodeId, NodeId, Option<NodeId>),
-  Detach(NodeId, NodeId),
+  Relocate(NodeId, NodeId, Option<NodeId>),
+  Hide(NodeId, NodeId),
+  Remove(NodeId, NodeId),
   Destroy(NodeId),
+  Focus(NodeId),
   Listen(NodeId, EventKind),
   DefineTokens(NodeId, usize),
   DefineRootTokens(usize),
@@ -169,8 +172,16 @@ impl Platform for TestPlatform {
     Self::log(Call::Attach(parent, child, before));
   }
 
-  fn detach(parent: NodeId, child: NodeId) {
-    Self::log(Call::Detach(parent, child));
+  fn relocate(parent: NodeId, child: NodeId, before: Option<NodeId>) {
+    Self::log(Call::Relocate(parent, child, before));
+  }
+
+  fn hide(parent: NodeId, child: NodeId) {
+    Self::log(Call::Hide(parent, child));
+  }
+
+  fn remove(parent: NodeId, child: NodeId) {
+    Self::log(Call::Remove(parent, child));
   }
 
   fn destroy(node: NodeId) {
@@ -203,7 +214,9 @@ impl Platform for TestPlatform {
     })
   }
 
-  fn focus(_: NodeId) {}
+  fn focus(node: NodeId) {
+    Self::log(Call::Focus(node));
+  }
 
   fn blur(_: NodeId) {}
 

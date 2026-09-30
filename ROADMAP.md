@@ -73,12 +73,6 @@ left half-done in a code comment.
     damaged rows, where an unchanged frame costs 55 ms at 16k rows; selection spans
     compute once per frame; wrapped lines cache per text generation and width, clusters
     re-segment around an edit, and undo stores range diffs.
-    - The scene says what happens to a child: move (one `insertBefore` on the web,
-    `moveBefore` where available, keeping focus and animations), hide (reversible, and
-    the only case that saves state), remove (capturing nothing), a no-op for
-    re-attaching in place, and each changed parent's real children in one call at the
-    end of a flush, the batch shape Android needs; the web captures focus and scroll
-    over every detached subtree today, a forced layout per cleared row.
     - Token caches take per-scope epochs in place of the global generation, a cached
     nearest defining node, a token's value cached at its defining scope where each
     consumer resolves it there afresh today, interned names and skipped equal
@@ -432,7 +426,9 @@ left half-done in a code comment.
     the vocabulary, text tooltips are impossible on touch, Tab on macOS reaches text
     boxes alone unless keyboard navigation is on, and a Mac is needed.
     - Android: Views through the Kotlin shim, one JNI call per frame carrying a byte
-    buffer of operations and frames applied in `onLayout`, snapped to device pixels; an
+    buffer of operations and frames applied in `onLayout`, snapped to device pixels, the
+    scene handing each changed parent's real children to the platform in one call at the
+    end of a flush where it hands each child's attach, move, hide or removal today; an
     `EditText` that never rewrites a composing span; `OnBackInvokedCallback` for
     predictive Back; touch mode as focus-visible; `configChanges` including `uiMode`;
     edge-to-edge from API 35. Views are in maintenance mode since May 2026, and remain

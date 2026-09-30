@@ -182,7 +182,10 @@
     its own nodes to its parent's layout. An event inside such a segment climbs through
     its start, and an overlay anchored on one is placed against its first box, so a view
     wrapping a reactive subtree hears and anchors to its content. The platform's tree is
-    a sink written from the scene, never read back for structure. Overlays are `<dialog>`/popover promoted to the
+    a sink written from the scene, never read back for structure, and the scene tells it
+    what happens to each child—attached, relocated, hidden to return, or removed for
+    good—so only a hidden child keeps what leaving loses (the focus inside it, its
+    scroll offsets) and a removal keeps nothing. Overlays are `<dialog>`/popover promoted to the
     top layer *in place* rather than portalled, and only the `<head>` is a real portal;
     an anchored popup is placed by CSS anchor positioning where the engine has it and at
     the anchor's measured rectangle where it does not. A native platform may still realize

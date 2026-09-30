@@ -278,7 +278,11 @@ impl Platform for Headless {
 
   fn attach(_: NodeId, _: NodeId, _: Option<NodeId>) {}
 
-  fn detach(_: NodeId, _: NodeId) {}
+  fn relocate(_: NodeId, _: NodeId, _: Option<NodeId>) {}
+
+  fn hide(_: NodeId, _: NodeId) {}
+
+  fn remove(_: NodeId, _: NodeId) {}
 
   fn destroy(node: NodeId) {
     with_store(|store| store.destroy(node));

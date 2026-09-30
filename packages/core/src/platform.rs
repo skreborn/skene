@@ -299,11 +299,22 @@ pub trait Platform: Copy + Default + 'static {
   /// Realizes the scope `node`: a layout-invisible node token definitions hang off.
   fn create_scope(node: NodeId);
 
-  /// Places `child` under `parent`, immediately before `before` when given, else last.
+  /// Places `child`, standing under no parent, under `parent`, immediately before
+  /// `before` when given, else last: a new node, or a hidden one, given back what the
+  /// platform kept when it was hidden.
   fn attach(parent: NodeId, child: NodeId, before: Option<NodeId>);
 
-  /// Removes `child` from under `parent`.
-  fn detach(parent: NodeId, child: NodeId);
+  /// Moves `child` from under the parent it stands under to under `parent`, immediately
+  /// before `before` when given, else last, keeping what it holds (focus, scroll
+  /// offsets, running animations) where the platform can.
+  fn relocate(parent: NodeId, child: NodeId, before: Option<NodeId>);
+
+  /// Takes `child` from under `parent` while it stays live, to be attached again,
+  /// keeping what taking it out loses, such as the scroll offsets beneath it.
+  fn hide(parent: NodeId, child: NodeId);
+
+  /// Takes `child` from under `parent` for good, keeping nothing: it is destroyed next.
+  fn remove(parent: NodeId, child: NodeId);
 
   /// Releases the record of a node the scene no longer holds.
   fn destroy(node: NodeId);

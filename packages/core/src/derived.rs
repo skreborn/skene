@@ -159,10 +159,7 @@ pub fn reconcile<P: Platform, T, I, K>(
     dropped.sort_unstable_by_key(|(index, _)| std::cmp::Reverse(*index));
 
     for (_, entry) in dropped {
-      Scene::<P>::with(|scene| {
-        scene.remove_from_segment(start, entry.node);
-        scene.destroy(entry.node);
-      });
+      Scene::<P>::with(|scene| scene.destroy(entry.node));
       entry.scope.dispose();
     }
 

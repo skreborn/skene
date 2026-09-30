@@ -200,6 +200,8 @@ struct Node {
   /// The `<label for>` a text entry's caption lives in, kept before the entry among
   /// its siblings.
   caption: Option<Element>,
+  /// The control whose caption it is, while it sits in that control's `<label>`.
+  captioned: Option<NodeId>,
   /// What it is realized as.
   realized: Realized,
   /// The scene node it realizes, once bound.
@@ -228,6 +230,7 @@ impl Node {
       dom: dom.into(),
       carrier: None,
       caption: None,
+      captioned: None,
       realized,
       id: None,
       style_class: None,
@@ -323,8 +326,8 @@ enum Pending {
   Change(String),
 }
 
-/// What content leaving a segment held, keyed by the element's index in the
-/// content's document order: the scrolled offsets and the focused element.
+/// What discarded markup held, keyed by the element's index in its document order: the
+/// scrolled offsets and the focused element.
 struct Saved {
   tags: Vec<String>,
   scrolls: Vec<(usize, f64, f64)>,
@@ -417,6 +420,91 @@ fn subtree_elements(roots: &[web_sys::Node]) -> Vec<Element> {
   elements
 }
 
+/// What a hidden node's subtree held that leaving the document loses: the focused
+/// element and the offsets of its scrolled elements.
+struct Kept {
+  focused: Option<HtmlElement>,
+  scrolls: Vec<(Element, i32, i32)>,
+}
+
+impl Kept {
+  /// What the subtree of `root`, realizing `nodes`, holds; `None` when nothing in it is
+  /// focused or scrolled.
+  fn capture(dom: &Dom, root: &web_sys::Node, nodes: &[NodeId]) -> Option<Self> {
+    let focused = dom
+      .document
+      .active_element()
+      .filter(|active| root.contains(Some(active)))
+      .and_then(|active| active.dyn_into::<HtmlElement>().ok());
+    let scrolls: Vec<_> = nodes
+      .iter()
+      .filter_map(|node| dom.node(*node)?.element().cloned())
+      .filter_map(|element| {
+        let (left, top) = (element.scroll_left(), element.scroll_top());
+
+        (left != 0 || top != 0).then_some((element, left, top))
+      })
+      .collect();
+
+    (focused.is_some() || !scrolls.is_empty()).then_some(Self { focused, scrolls })
+  }
+
+  /// Gives the focus back where it has gone nowhere since, then each element its
+  /// offsets.
+  fn restore(self, document: &Document) {
+    // Focus lands before the offsets, which it would otherwise scroll away.
+    if let Some(focused) = self.focused
+      && document
+        .active_element()
+        .is_none_or(|active| Some(&active) == document.body().as_deref())
+    {
+      let _ = focused.focus();
+    }
+
+    for (element, left, top) in self.scrolls {
+      element.set_scroll_left(left);
+      element.set_scroll_top(top);
+    }
+  }
+}
+
+/// The engine's state-keeping move, `moveBefore`, where it has one.
+#[derive(Clone)]
+struct Mover(Option<js_sys::Function>);
+
+impl Mover {
+  /// The engine's move, looked up once.
+  fn detect() -> Self {
+    let function = js_sys::Reflect::get(&js_sys::global(), &JsValue::from_str("Element"))
+      .and_then(|element| js_sys::Reflect::get(&element, &JsValue::from_str("prototype")))
+      .and_then(|prototype| js_sys::Reflect::get(&prototype, &JsValue::from_str("moveBefore")))
+      .ok()
+      .and_then(|function| function.dyn_into::<js_sys::Function>().ok());
+
+    Self(function)
+  }
+
+  /// Moves `node` under `parent`, immediately before `before` when given, else last:
+  /// in place, keeping its focus and animations, where the engine can, else by one
+  /// insertion.
+  fn move_node(
+    &self,
+    parent: &web_sys::Node,
+    node: &web_sys::Node,
+    before: Option<&web_sys::Node>,
+  ) {
+    let moved = self.0.as_ref().is_some_and(|function| {
+      function
+        .call2(parent, node, before.map_or(&JsValue::NULL, AsRef::as_ref))
+        .is_ok()
+    });
+
+    if !moved {
+      let _ = parent.insert_before(node, before);
+    }
+  }
+}
+
 /// The server's nodes awaiting adoption, and what adoption found.
 struct Hydration {
   elements: FxHashMap<u32, Element>,
@@ -499,8 +587,13 @@ struct Dom {
   resize: Option<SizeObserver>,
   /// The scene node of the mount root.
   root_node: NodeId,
-  /// What content leaving a segment held, by the anchor following it.
+  /// What discarded markup held, by the anchor following it, for the content taking
+  /// its place.
   saved: FxHashMap<NodeId, Saved>,
+  /// What each hidden node's subtree held, for its return.
+  kept: FxHashMap<NodeId, Kept>,
+  /// The engine's state-keeping move.
+  mover: Mover,
   /// The observer reporting each canvas's size, made when the first box paints.
   pixels: Option<canvas::Pixels>,
   /// The overlays asked open before their element was connected, each with its anchor.
@@ -600,6 +693,8 @@ impl Dom {
       resize: None,
       root_node,
       saved: FxHashMap::default(),
+      kept: FxHashMap::default(),
+      mover: Mover::detect(),
       pixels: None,
       pending_open: FxHashMap::default(),
       timers: FxHashMap::default(),
@@ -761,7 +856,11 @@ impl Dom {
 
       caption
     };
-    let Some(child) = self.node(child).map(|node| node.dom.clone())
+    let Some(child) = self.node_mut(child).map(|node| {
+      node.captioned = Some(parent);
+
+      node.dom.clone()
+    })
     else {
       return true;
     };
@@ -780,16 +879,20 @@ impl Dom {
     else {
       return false;
     };
-    let Some(child) = self.node(child).map(|node| node.dom.clone())
+    let Some(child_dom) = self.node(child).map(|node| node.dom.clone())
     else {
       return false;
     };
 
-    if child.parent_node().as_ref() != Some(caption.as_ref()) {
+    if child_dom.parent_node().as_ref() != Some(caption.as_ref()) {
       return false;
     }
 
-    let _ = caption.remove_child(&child);
+    let _ = caption.remove_child(&child_dom);
+
+    if let Some(node) = self.node_mut(child) {
+      node.captioned = None;
+    }
 
     if !caption.has_child_nodes() {
       caption.remove();
@@ -997,8 +1100,8 @@ impl Dom {
     })
   }
 
-  /// Keeps what `roots` hold on the anchor `following` them, for the content that next
-  /// enters the segment before it.
+  /// Keeps what the discarded markup `roots` held on the anchor `following` them, for
+  /// the content that next enters the segment before it.
   fn save(&mut self, roots: &[web_sys::Node], following: Option<web_sys::Node>) {
     let Some(saved) = Saved::capture(&self.document, roots)
     else {
@@ -1678,7 +1781,7 @@ impl Platform for Web {
   }
 
   fn attach(parent: NodeId, child: NodeId, before: Option<NodeId>) {
-    let Some((parent, child, caption, before, saved)) = with_dom(|dom| {
+    let Some((parent, child, caption, before, saved, kept, document)) = with_dom(|dom| {
       if dom.attach_caption(parent, child) {
         return None;
       }
@@ -1690,14 +1793,22 @@ impl Platform for Web {
         return None;
       }
 
-      let child = child_node.dom.clone();
+      let child_dom = child_node.dom.clone();
       let caption = child_node.caption.clone();
       let saved = before.and_then(|before| dom.saved.remove(&before));
       let before = before
         .and_then(|before| dom.node(before))
         .map(|node| node.dom.clone());
 
-      Some((parent, child, caption, before, saved))
+      Some((
+        parent,
+        child_dom,
+        caption,
+        before,
+        saved,
+        dom.kept.remove(&child),
+        dom.document.clone(),
+      ))
     })
     else {
       return;
@@ -1715,12 +1826,89 @@ impl Platform for Web {
       saved.restore(&child);
     }
 
+    if let Some(kept) = kept {
+      kept.restore(&document);
+    }
+
     for (overlay, anchor) in with_dom(Dom::take_connected_opens) {
       Self::set_overlay_open(overlay, true, anchor);
     }
   }
 
-  fn detach(parent: NodeId, child: NodeId) {
+  fn relocate(parent: NodeId, child: NodeId, before: Option<NodeId>) {
+    if let Some(control) = with_dom(|dom| dom.node(child).and_then(|node| node.captioned)) {
+      with_dom(|dom| dom.detach_caption(control, child));
+      Self::attach(parent, child, before);
+
+      return;
+    }
+
+    let Some((parent, child, caption, before, mover)) = with_dom(|dom| {
+      if dom.attach_caption(parent, child) {
+        return None;
+      }
+
+      let parent = dom.node(parent)?.dom.clone();
+      let child_node = dom.node(child)?;
+      let child_dom = child_node.dom.clone();
+      let caption = child_node.caption.clone();
+      let before = before
+        .and_then(|before| dom.node(before))
+        .map(|node| node.dom.clone());
+
+      Some((parent, child_dom, caption, before, dom.mover.clone()))
+    })
+    else {
+      return;
+    };
+
+    mover.move_node(&parent, &child, before.as_ref());
+
+    if let Some(caption) = caption {
+      mover.move_node(&parent, &caption, Some(&child));
+    }
+
+    for (overlay, anchor) in with_dom(Dom::take_connected_opens) {
+      Self::set_overlay_open(overlay, true, anchor);
+    }
+  }
+
+  fn hide(parent: NodeId, child: NodeId) {
+    let (nodes, overlays) = Scene::<Self>::with(|scene| {
+      let mut nodes = vec![child];
+      let mut next = 0;
+
+      while let Some(node) = nodes.get(next).copied() {
+        nodes.extend(scene.children(node));
+        next += 1;
+      }
+
+      let overlays: Vec<_> = scene
+        .open_overlays()
+        .iter()
+        .copied()
+        .filter(|overlay| scene.ancestry(*overlay).contains(&child))
+        .map(|overlay| (overlay, scene.overlay_anchor(overlay)))
+        .collect();
+
+      (nodes, overlays)
+    });
+
+    with_dom(|dom| {
+      if let Some(kept) = dom
+        .node(child)
+        .map(|node| node.dom.clone())
+        .and_then(|root| Kept::capture(dom, &root, &nodes))
+      {
+        dom.kept.insert(child, kept);
+      }
+
+      dom.pending_open.extend(overlays);
+    });
+    Self::remove(parent, child);
+  }
+
+  fn remove(parent: NodeId, child: NodeId) {
     let Some((parent, child, caption)) = with_dom(|dom| {
       if dom.detach_caption(parent, child) {
         return None;
@@ -1737,8 +1925,6 @@ impl Platform for Web {
     };
 
     if child.parent_node().as_ref() == Some(&parent) {
-      with_dom(|dom| dom.save(std::slice::from_ref(&child), child.next_sibling()));
-
       let _ = parent.remove_child(&child);
     }
 
@@ -1771,6 +1957,7 @@ impl Platform for Web {
       }
 
       dom.saved.remove(&sink);
+      dom.kept.remove(&sink);
       dom.pending_open.remove(&sink);
     });
   }

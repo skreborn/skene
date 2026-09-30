@@ -175,8 +175,16 @@ impl Platform for Reentrant {
     reenter("attach");
   }
 
-  fn detach(_: NodeId, _: NodeId) {
-    reenter("detach");
+  fn relocate(_: NodeId, _: NodeId, _: Option<NodeId>) {
+    reenter("relocate");
+  }
+
+  fn hide(_: NodeId, _: NodeId) {
+    reenter("hide");
+  }
+
+  fn remove(_: NodeId, _: NodeId) {
+    reenter("remove");
   }
 
   fn destroy(_: NodeId) {
@@ -340,9 +348,23 @@ fn every_mirrored_call_runs_with_the_scene_released() {
     ]
   );
 
+  let (first, second) = owner.enter(|| {
+    (
+      Container::<Reentrant>::new().build(),
+      Container::<Reentrant>::new().build(),
+    )
+  });
+
+  Scene::<Reentrant>::with(|scene| scene.attach(first, root, None));
+  Scene::<Reentrant>::with(|scene| scene.attach(second, root, None));
+  Scene::<Reentrant>::with(|scene| scene.detach(second, root));
+  Scene::<Reentrant>::with(|scene| scene.attach(second, root, None));
   Scene::<Reentrant>::with(|scene| scene.destroy(root));
 
-  assert!(calls().contains(&"destroy"));
+  for call in ["relocate", "hide", "remove", "destroy"] {
+    assert!(calls().contains(&call), "{call}");
+  }
+
   assert!(!Scene::<Reentrant>::is_borrowed());
 
   owner.dispose();

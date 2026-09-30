@@ -194,6 +194,8 @@ struct Node {
   /// The `<label>` a control's caption is serialized in, before the control, outside
   /// its children, where the control keeps its caption beside it.
   caption: Option<u32>,
+  /// The control whose caption it is, where it is a caption's `<label>`.
+  caption_of: Option<u32>,
   /// A `<select>`'s options.
   options: Vec<PickerOption>,
   /// A `<select>`'s chosen value.
@@ -226,6 +228,7 @@ impl Node {
       options: Vec::new(),
       chosen: None,
       caption: None,
+      caption_of: None,
       realizes: None,
       slots: Rc::from([]),
     }
@@ -564,8 +567,12 @@ impl Tree {
       let caption = self.element("label");
       let id = element_id(node);
 
-      if labels && let Some(label) = self.node_mut(caption) {
-        label.set_attribute("for", &id);
+      if let Some(label) = self.node_mut(caption) {
+        label.caption_of = Some(parent);
+
+        if labels {
+          label.set_attribute("for", &id);
+        }
       }
 
       if let Some(entry) = self.node_mut(parent) {
@@ -610,6 +617,27 @@ impl Tree {
     }
 
     true
+  }
+
+  /// Takes `child` out from under `parent`, or out of the caption `parent` keeps beside
+  /// it.
+  fn withdraw(&mut self, parent: u32, child: u32) {
+    if !self.detach_caption(parent, child) {
+      self.detach(parent, child);
+    }
+  }
+
+  /// Takes `child` out of wherever it stands: under a parent, or in a control's caption.
+  fn take_out(&mut self, child: u32) {
+    let Some(from) = self.node(child).and_then(|node| node.parent)
+    else {
+      return;
+    };
+
+    match self.node(from).and_then(|node| node.caption_of) {
+      Some(control) => self.withdraw(control, child),
+      None => self.detach(from, child),
+    }
   }
 
   /// Removes `child` from the children of the node it is attached under, if any.
@@ -1614,17 +1642,25 @@ impl Platform for Web {
     });
   }
 
-  fn detach(parent: NodeId, child: NodeId) {
+  fn relocate(parent: NodeId, child: NodeId, before: Option<NodeId>) {
+    if let Some(child) = index_of(child) {
+      with_tree(|tree| tree.take_out(child));
+    }
+
+    Self::attach(parent, child, before);
+  }
+
+  fn hide(parent: NodeId, child: NodeId) {
     let (Some(parent), Some(child)) = (index_of(parent), index_of(child))
     else {
       return;
     };
 
-    with_tree(|tree| {
-      if !tree.detach_caption(parent, child) {
-        tree.detach(parent, child);
-      }
-    });
+    with_tree(|tree| tree.withdraw(parent, child));
+  }
+
+  fn remove(parent: NodeId, child: NodeId) {
+    Self::hide(parent, child);
   }
 
   fn destroy(node: NodeId) {

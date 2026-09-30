@@ -1,6 +1,8 @@
 //! The gallery: every built-in view and Simple component, live.
 
-use skene_gui::{ActivePlatform, HasChild, prelude::*};
+use std::fmt;
+
+use skene_gui::{ActivePlatform, HasChild, Link, Resource, prelude::*, router::Route};
 use skene_simple::gui::prelude::*;
 
 /// The gallery page: every built-in view and Simple component, under the palette the
@@ -39,8 +41,14 @@ pub fn app() -> impl IntoView {
                   layouts(),
                   list(),
                   lazy_row(),
-                  painted(),
-                  third_party(),
+                  Column::new().set_spacing(24.).set_children((
+                    context_menu(),
+                    link(),
+                    show_and_switch(),
+                    boundaries(),
+                    painted(),
+                    third_party(),
+                  )),
                 )),
               ),
             ),
@@ -371,6 +379,156 @@ fn lazy_row() -> impl IntoView {
 
 /// A box painted through vello: the portable low-level path for pixel media, drawn on
 /// the CPU into a canvas in the browser and left empty by a server render.
+fn context_menu() -> impl IntoView {
+  let last = Signal::tagged("last command", String::from("nothing yet"));
+  let ran = move |verb: &'static str| move || last.set(verb.to_owned());
+
+  section(
+    "Context menu",
+    Column::new().set_spacing(8.).set_children((
+      SimpleContextMenu::new()
+        .set_items([
+          MenuItem::new("Open").handle_select(ran("Opened")),
+          MenuItem::new("Rename").handle_select(ran("Renamed")),
+          MenuItem::separator(),
+          MenuItem::new("Delete").handle_select(ran("Deleted")),
+        ])
+        .set_child(
+          Container::new()
+            .set_padding(Inset::symmetric(12., 8.))
+            .set_corner_radius(6.)
+            .set_focus_order(FocusOrder::Auto)
+            .set_color(
+              SimplePalette::CARD
+                .when(State::Hovered, SimplePalette::SECONDARY_SURFACE)
+                .when(State::Focused, SimplePalette::SECONDARY_SURFACE),
+            )
+            .set_child(Text::new("Right-click me, or focus me and press Shift-F10")),
+        ),
+      Text::derive(move || format!("last command: {}", last.get()))
+        .set_font_size(13.)
+        .set_color(SimplePalette::MUTED_FOREGROUND),
+    )),
+  )
+}
+
+/// The gallery's one route, which a link returns to.
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum Gallery {
+  /// The top of the page.
+  Top,
+}
+
+impl Route for Gallery {
+  fn parse(path: &str) -> Option<Self> {
+    (path == "/").then_some(Self::Top)
+  }
+
+  fn to_path(&self) -> String {
+    "/".to_owned()
+  }
+}
+
+fn link() -> impl IntoView {
+  section(
+    "Link",
+    Link::new(Gallery::Top).add_child(
+      Text::new("Back to the top")
+        .set_color(SimplePalette::LINK)
+        .set_decoration(TextDecoration::Underline),
+    ),
+  )
+}
+
+fn show_and_switch() -> impl IntoView {
+  let shown = Signal::tagged("details shown", false);
+  let pane = Signal::tagged("pane", String::from("summary"));
+
+  section(
+    "Show & Switch",
+    Column::new().set_spacing(12.).set_children((
+      SimpleCheckbox::new()
+        .set_label("Show the details")
+        .bind_checked(shown),
+      Show::new().derive_shown(move || shown.get()).set_child(
+        Text::new("The details, built the first time they show.")
+          .set_font_size(14.)
+          .set_color(SimplePalette::MUTED_FOREGROUND),
+      ),
+      Row::new().set_spacing(8.).set_children((
+        SimpleButton::new("Summary")
+          .set_variant(SimpleVariant::Outline)
+          .handle_click(move || pane.set(String::from("summary"))),
+        SimpleButton::new("History")
+          .set_variant(SimpleVariant::Outline)
+          .handle_click(move || pane.set(String::from("history"))),
+      )),
+      Switch::new()
+        .derive_key(move || pane.get())
+        .set_case(String::from("summary"), || {
+          Text::new("One case at a time: the summary.").set_font_size(14.)
+        })
+        .set_case(String::from("history"), || {
+          Text::new("And now the history, the summary gone.").set_font_size(14.)
+        }),
+    )),
+  )
+}
+
+/// The error the failing button reports.
+#[derive(Debug)]
+struct Failed;
+
+impl fmt::Display for Failed {
+  fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+    formatter.write_str("the button failed, as asked")
+  }
+}
+
+impl std::error::Error for Failed {}
+
+fn boundaries() -> impl IntoView {
+  section(
+    "Suspense & ErrorBoundary",
+    Column::new().set_spacing(12.).set_children((
+      Suspense::new()
+        .set_fallback(Text::new("Loading…").set_color(SimplePalette::MUTED_FOREGROUND))
+        .set_child_builder(|| {
+          let loaded = Resource::client(|| async { String::from("Loaded in the background.") });
+
+          Text::derive(move || loaded.get().unwrap_or_default()).set_font_size(14.)
+        }),
+      ErrorBoundary::new()
+        .set_fallback_builder(|errors: Errors| {
+          Row::new()
+            .set_spacing(8.)
+            .set_item_alignment(ItemAlignment::Center)
+            .set_children((
+              Text::derive(move || {
+                errors.with(|failed| failed.first().map_or_else(String::new, ToString::to_string))
+              })
+              .set_font_size(14.)
+              .set_color(SimplePalette::DESTRUCTIVE_SURFACE),
+              SimpleButton::new("Recover")
+                .set_variant(SimpleVariant::Outline)
+                .handle_click(move || errors.clear()),
+            ))
+        })
+        .set_child_builder(|| {
+          let errors = Errors::current();
+
+          SimpleButton::new("Fail")
+            .set_variant(SimpleVariant::Destructive)
+            .handle_click(move || {
+              if let Some(errors) = &errors {
+                errors.report(Failed);
+              }
+            })
+        }),
+    )),
+  )
+}
+
 fn painted() -> impl IntoView {
   use skene_gui::kurbo::{Circle, Rect};
 

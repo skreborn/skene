@@ -10,7 +10,7 @@ fn every_control_the_gallery_shows_is_named() {
   tui::install();
 
   let _ = tui::mount(|| tui_gallery::app().into_view().build());
-  let _ = testing::render_to_text(60, 160);
+  let _ = testing::render_to_text(60, 220);
   let unnamed = testing::find_all_unnamed();
 
   tui::uninstall();

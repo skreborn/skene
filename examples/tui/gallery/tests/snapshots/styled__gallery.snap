@@ -148,6 +148,38 @@ expression: styled
 
     ╭───────────────────────────────────────────────────╮
     │                                                   │
+    │  Context menu                                     │
+    │                                                   │
+    │   Right-click me, or focus me and press Shift-    │
+    │   F10                                             │
+    │  last command: nothing yet                        │
+    │                                                   │
+    ╰───────────────────────────────────────────────────╯
+
+    ╭───────────────────────────────────────────────────╮
+    │                                                   │
+    │  Show & Switch                                    │
+    │                                                   │
+    │  [ ] Show the details                             │
+    │                                                   │
+    │   Summary    History                              │
+    │                                                   │
+    │  One case at a time: the summary.                 │
+    │                                                   │
+    ╰───────────────────────────────────────────────────╯
+
+    ╭───────────────────────────────────────────────────╮
+    │                                                   │
+    │  Suspense & ErrorBoundary                         │
+    │                                                   │
+    │  Loaded in the background.                        │
+    │                                                   │
+    │   Fail                                            │
+    │                                                   │
+    ╰───────────────────────────────────────────────────╯
+
+    ╭───────────────────────────────────────────────────╮
+    │                                                   │
     │  Third party                                      │
     │                                                   │
     │   acme-ui   a badge from a library that names no  │
@@ -156,6 +188,34 @@ expression: styled
     │  ▁▃▂▆▄▇▅█▄▂▃▁  a sparkline painted cell by cell   │
     │                                                   │
     ╰───────────────────────────────────────────────────╯
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -309,6 +369,38 @@ aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
 aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddeeeeeeeeeeeedddddddddddddddddddddddddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacdddffffffffffffffffffffffffffffffffffffffffffffddddcaaa
+aaaacdddfffdddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddgggggggggggggggggggggggggddddddddddddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddeeeeeeeeeeeeeddddddddddddddddddddddddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddfffdffffffffffffffffdddddddddddddddddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacdddfffffffddddfffffffddddddddddddddddddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddffffffffffffffffffffffffffffffffdddddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddeeeeeeeeeeeeeeeeeeeeeeeedddddddddddddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddfffffffffffffffffffffffffddddddddddddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddoppppooooooooooooooooooooooooooooooooooooooooooddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
 aaaacddeeeeeeeeeeeddddddddddddddddddddddddddddddddddddddcaaa
 aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
 aaaacddABBBBBBBAddggggggggggggggggggggggggggggggggggggddcaaa
@@ -317,6 +409,34 @@ aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
 aaaacddiiiiiiiiiiiiddggggggggggggggggggggggggggggggggdddcaaa
 aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
 aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa

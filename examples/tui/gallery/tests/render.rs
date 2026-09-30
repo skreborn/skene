@@ -20,14 +20,14 @@ fn the_gallery_renders_and_responds() {
   let (frame, clicked, switched, neutral, indigo) = with_platform(|| {
     let _ = tui::mount(|| tui_gallery::app().into_view().build());
 
-    let frame = testing::render_to_text(60, 160);
-    let neutral = testing::render_to_colors(60, 160);
+    let frame = testing::render_to_text(60, 220);
+    let neutral = testing::render_to_colors(60, 220);
 
     // `Tab` lands on the palette's chosen radio; `ArrowRight` chooses the next palette.
     testing::trigger_key("Tab");
     testing::trigger_key("ArrowRight");
 
-    let indigo = testing::render_to_colors(60, 160);
+    let indigo = testing::render_to_colors(60, 220);
 
     // The next `Tab` is the text section's link, which `Enter` opens.
     testing::trigger_key("Tab");
@@ -42,7 +42,7 @@ fn the_gallery_renders_and_responds() {
     testing::trigger_key("Tab");
     testing::trigger_key("Enter");
 
-    let clicked = testing::render_to_text(60, 160);
+    let clicked = testing::render_to_text(60, 220);
 
     // Back on the radio group, a third palette redefines the tokens beneath the click.
     testing::trigger_key("Shift+Tab");
@@ -52,7 +52,7 @@ fn the_gallery_renders_and_responds() {
     (
       frame,
       clicked,
-      testing::render_to_text(60, 160),
+      testing::render_to_text(60, 220),
       neutral,
       indigo,
     )
@@ -67,6 +67,9 @@ fn the_gallery_renders_and_responds() {
     "BorderGlyphs",
     "Grid, Stack & Overlay",
     "LazyColumn",
+    "Context menu",
+    "Show & Switch",
+    "Suspense & ErrorBoundary",
     "Third party",
   ] {
     assert!(

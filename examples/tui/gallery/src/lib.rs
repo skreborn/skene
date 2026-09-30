@@ -2,8 +2,10 @@
 
 #![cfg(not(target_arch = "wasm32"))]
 
+use std::fmt;
+
 use skene_simple::tui::prelude::*;
-use skene_tui::{ActivePlatform, HasChild, prelude::*};
+use skene_tui::{ActivePlatform, HasChild, Resource, prelude::*};
 
 /// The whole gallery: a scrollable column of titled sections, dressed by one theme
 /// whose palette the gallery switches from inside itself and whose tokens follow the
@@ -77,7 +79,12 @@ fn gallery(palette: Signal<Option<String>>) -> impl IntoView {
                 layouts(),
                 list(),
                 lazy_row(),
-                third_party(),
+                Column::new().set_spacing(1).set_children((
+                  context_menu(),
+                  show_and_switch(),
+                  boundaries(),
+                  third_party(),
+                )),
               )),
           ),
         ),
@@ -375,6 +382,124 @@ fn lazy_row() -> impl IntoView {
 
 /// A component library and a low-level view from outside the framework: the badge is
 /// written once over any platform, the sparkline against the terminal's cells alone.
+fn context_menu() -> impl IntoView {
+  let last = Signal::tagged("last command", String::from("nothing yet"));
+  let ran = move |verb: &'static str| move || last.set(verb.to_owned());
+
+  section(
+    "Context menu",
+    Column::new().set_children((
+      SimpleContextMenu::new()
+        .set_items([
+          MenuItem::new("Open").handle_select(ran("Opened")),
+          MenuItem::new("Rename").handle_select(ran("Renamed")),
+          MenuItem::separator(),
+          MenuItem::new("Delete").handle_select(ran("Deleted")),
+        ])
+        .set_child(
+          Container::new()
+            .set_padding(Inset::symmetric(1, 0))
+            .set_focus_order(FocusOrder::Auto)
+            .set_color(
+              SimplePalette::CARD
+                .when(State::Hovered, SimplePalette::SECONDARY_SURFACE)
+                .when(State::Focused, SimplePalette::SECONDARY_SURFACE),
+            )
+            .set_child(Text::new("Right-click me, or focus me and press Shift-F10")),
+        ),
+      Text::derive(move || format!("last command: {}", last.get()))
+        .set_color(SimplePalette::MUTED_FOREGROUND),
+    )),
+  )
+}
+
+fn show_and_switch() -> impl IntoView {
+  let shown = Signal::tagged("details shown", false);
+  let pane = Signal::tagged("pane", String::from("summary"));
+
+  section(
+    "Show & Switch",
+    Column::new().set_spacing(1).set_children((
+      SimpleCheckbox::new()
+        .set_label("Show the details")
+        .bind_checked(shown),
+      Show::new().derive_shown(move || shown.get()).set_child(
+        Text::new("The details, built the first time they show.")
+          .set_color(SimplePalette::MUTED_FOREGROUND),
+      ),
+      Row::new().set_spacing(2).set_children((
+        SimpleButton::new("Summary")
+          .set_variant(SimpleVariant::Outline)
+          .handle_click(move || pane.set(String::from("summary"))),
+        SimpleButton::new("History")
+          .set_variant(SimpleVariant::Outline)
+          .handle_click(move || pane.set(String::from("history"))),
+      )),
+      Switch::new()
+        .derive_key(move || pane.get())
+        .set_case(String::from("summary"), || {
+          Text::new("One case at a time: the summary.")
+        })
+        .set_case(String::from("history"), || {
+          Text::new("And now the history, the summary gone.")
+        }),
+    )),
+  )
+}
+
+/// The error the failing button reports.
+#[derive(Debug)]
+struct Failed;
+
+impl fmt::Display for Failed {
+  fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+    formatter.write_str("the button failed, as asked")
+  }
+}
+
+impl std::error::Error for Failed {}
+
+fn boundaries() -> impl IntoView {
+  section(
+    "Suspense & ErrorBoundary",
+    Column::new().set_spacing(1).set_children((
+      Suspense::new()
+        .set_fallback(Text::new("Loading…").set_color(SimplePalette::MUTED_FOREGROUND))
+        .set_child_builder(|| {
+          let loaded = Resource::new(|| async { String::from("Loaded in the background.") });
+
+          Text::derive(move || loaded.get().unwrap_or_default())
+        }),
+      ErrorBoundary::new()
+        .set_fallback_builder(|errors: Errors| {
+          Row::new()
+            .set_spacing(2)
+            .set_item_alignment(ItemAlignment::Center)
+            .set_children((
+              Text::derive(move || {
+                errors.with(|failed| failed.first().map_or_else(String::new, ToString::to_string))
+              })
+              .set_color(SimplePalette::DESTRUCTIVE_SURFACE),
+              SimpleButton::new("Recover")
+                .set_variant(SimpleVariant::Outline)
+                .handle_click(move || errors.clear()),
+            ))
+        })
+        .set_child_builder(|| {
+          let errors = Errors::current();
+
+          SimpleButton::new("Fail")
+            .set_variant(SimpleVariant::Destructive)
+            .handle_click(move || {
+              if let Some(errors) = &errors {
+                errors.report(Failed);
+              }
+            })
+        }),
+    )),
+  )
+}
+
 fn third_party() -> impl IntoView {
   section(
     "Third party",

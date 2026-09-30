@@ -405,8 +405,8 @@
   a scrolling box is a tab stop on the web (`tabindex="0"`) as in Chromium. **A
   disabled control takes no focus**—the ARIA practices allow either, and a control
   the user cannot operate is kept out of the way rather than announced; the divergence
-  is deliberate. The gallery runs under axe-core in the browser tier (`web_axe`), the
-  gate for every built-in's semantics. On the web a control that owns a native
+  is deliberate. The gallery runs under axe-core in the browser tier (`web_axe`), as
+  drawn and with each of its overlays open, the gate for every built-in's semantics. On the web a control that owns a native
   input keeps it as its scriptless form—a text field or editor *is* its `<input>` or
   `<textarea>`, its caption a `<label for>` the platform keeps before it among its
   siblings, a checkbox, radio or slider keeps its input inside its label beside the

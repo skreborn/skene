@@ -65,8 +65,6 @@ left half-done in a code comment.
     - A terminal `Device` trait (bytes in and out, size, wake), implemented by the tty
     and a pty harness, runs the real loop end to end under test; the Windows console,
     an SSH session and xterm.js are further implementations.
-    - The gallery shows every built-in (the context menu, `Link`, `Show`, `Switch`,
-    `Suspense` and `ErrorBoundary` are missing), and axe runs with each overlay open.
 4. **The quadratic hot paths.**
     - The store gains `push`, `insert`, `remove` and a keyed `reconcile(value)`, since
     one push re-runs every row reader.

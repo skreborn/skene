@@ -9,6 +9,7 @@ serde = "1"
 serde_json = "1"
 skene-common.workspace = true
 skene-core.workspace = true
+skene-dev.workspace = true
 skene-macros.workspace = true
 skene-reactive.workspace = true
 tracing.workspace = true

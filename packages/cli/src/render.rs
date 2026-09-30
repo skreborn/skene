@@ -10,17 +10,11 @@ use std::{
   time::Duration,
 };
 
+use skene_dev::{DEV_VARIABLE, ROUTES_MARKERS};
+
 /// How long a render may take before its worker is given up on: past the server leaf's
 /// own settling deadline, after which it serializes what it has.
 const RENDER_TIMEOUT: Duration = Duration::from_secs(30);
-
-/// The environment variable that, set, makes the server binary's pages join the dev
-/// loop; the binary's `DEV_VARIABLE`.
-const DEV_VARIABLE: &str = "SKENE_DEV";
-
-/// The first line and the last of the server binary's `--routes` output, the routes
-/// between; the binary's `ROUTES_MARKERS`.
-const ROUTES_MARKERS: [&str; 2] = ["--skene-routes--", "--skene-routes-end--"];
 
 /// The client hints a render reads, as the response asks for them.
 const HINT_NAMES: &str = "Sec-CH-Prefers-Color-Scheme, Sec-CH-Prefers-Reduced-Motion, \

@@ -2,16 +2,16 @@
 //! it at a swap, and the launcher's notices over its control pipe.
 //!
 //! The handshake pairs with the `skene` CLI's `attach`, which spawns the app: it names
-//! the descriptor of an unnamed state file in `SKENE_DEV_STATE` and the read end of its
-//! pipe in `SKENE_DEV_CONTROL`. The app restores the file's snapshot before mounting and
-//! empties the file; on the pipe it hears `notice <text>` (a rebuild failure, shown in a
-//! dismissable modal, `\n` standing for a line break; bare `notice` clears it) and
-//! `swap <path>` (a rebuilt binary), on which it records its snapshot to the file,
-//! restores the terminal and becomes the new binary in place, so the launcher, the
-//! terminal, the file and the pipe carry over and no server holds any state. Where the
-//! process cannot be replaced it exits with [`SWAP_EXIT`] and the launcher spawns the
-//! binary. Without the variables, or with a state descriptor naming no regular file,
-//! every call is a no-op.
+//! the descriptor of an unnamed state file in [`STATE_VARIABLE`] and the read end of
+//! its pipe in [`CONTROL_VARIABLE`]. The app restores the file's snapshot before
+//! mounting and empties the file; on the pipe it hears each [`Control`]: a notice (a
+//! rebuild failure, shown in a dismissable modal, or none to clear it) and a swap (a
+//! rebuilt binary), on which it records its snapshot to the file, restores the
+//! terminal and becomes the new binary in place, so the launcher, the terminal, the
+//! file and the pipe carry over and no server holds any state. Where the process cannot
+//! be replaced it exits with [`SWAP_EXIT`] and the launcher spawns the binary. Without
+//! the variables, or with a state descriptor naming no regular file, every call is a
+//! no-op.
 
 use std::{
   cell::RefCell,
@@ -24,13 +24,10 @@ use std::{
 };
 
 use skene_core::{Color, HasChildren, Scene};
+use skene_dev::{CONTROL_VARIABLE, Control, STATE_VARIABLE, SWAP_EXIT};
 use skene_reactive::{Get, Set, Signal, SnapshotPlace};
 
 use crate::{Column, Overlay, Text, Tui, TuiText, View as _, records::Handle};
-
-/// The exit status telling the launcher the app stopped for a swap it could not
-/// perform in place.
-pub(crate) const SWAP_EXIT: i32 = 75;
 
 /// The snapshot tag carrying every scrolled node's offsets, by position.
 const SCROLL_TAG: &str = "skene-tui:scroll";
@@ -78,7 +75,7 @@ fn state_file(fd: RawFd) -> Option<ManuallyDrop<File>> {
 /// empties it, and listens on the launcher's control pipe; `None` where the launcher did
 /// not start the app.
 pub(crate) fn install() -> Option<()> {
-  let state: RawFd = std::env::var("SKENE_DEV_STATE").ok()?.parse().ok()?;
+  let state: RawFd = std::env::var(STATE_VARIABLE).ok()?.parse().ok()?;
   let mut file = state_file(state)?;
   let mut bytes = Vec::new();
 
@@ -93,7 +90,7 @@ pub(crate) fn install() -> Option<()> {
     let _ = file.set_len(0);
   }
 
-  let control = std::env::var("SKENE_DEV_CONTROL")
+  let control = std::env::var(CONTROL_VARIABLE)
     .ok()
     .and_then(|value| value.parse::<RawFd>().ok())
     .map(|fd| {
@@ -163,22 +160,18 @@ pub(crate) fn control_lines() -> Vec<String> {
 /// Acts on one line the launcher wrote: a notice updates the modal, and a swap names
 /// the binary to become.
 pub(crate) fn handle(line: &str) -> Option<PathBuf> {
-  if let Some(path) = line.strip_prefix("swap ") {
-    return Some(PathBuf::from(path.trim()));
+  match Control::parse(line)? {
+    Control::Swap(path) => Some(path),
+    Control::Notice(notice) => {
+      CHANNEL.with(|channel| {
+        if let Some(channel) = channel.borrow().as_ref() {
+          channel.notice.set(notice);
+        }
+      });
+
+      None
+    }
   }
-
-  if let Some(text) = line.strip_prefix("notice") {
-    let text = text.trim().replace("\\n", "\n");
-    let notice = (!text.is_empty()).then_some(text);
-
-    CHANNEL.with(|channel| {
-      if let Some(channel) = channel.borrow().as_ref() {
-        channel.notice.set(notice);
-      }
-    });
-  }
-
-  None
 }
 
 /// Records the snapshot to the state file and becomes the binary at `path`: in place

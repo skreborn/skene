@@ -240,26 +240,8 @@ where
   render_to_string(app)
 }
 
-/// The environment variable carrying a render's client hints: the request's hint
-/// headers, one `Name: value` per line, read into
-/// [`RenderHints`](skene_web::RenderHints) before the render.
 #[cfg(skene_gui_platform = "server")]
-pub const HINTS_VARIABLE: &str = "SKENE_HINTS";
-
-/// The environment variable carrying the nonce a render's inline scripts carry, as the
-/// response's Content Security Policy names it; see
-/// [`set_script_nonce`](skene_web::set_script_nonce).
-#[cfg(skene_gui_platform = "server")]
-pub const NONCE_VARIABLE: &str = "SKENE_SCRIPT_NONCE";
-
-/// The environment variable that, set, makes the pages join the dev loop of
-/// `skene run web`; see [`set_dev_loop`](skene_web::set_dev_loop).
-#[cfg(skene_gui_platform = "server")]
-pub const DEV_VARIABLE: &str = "SKENE_DEV";
-
-/// The first line and the last of `--routes` output, the routes one per line between.
-#[cfg(skene_gui_platform = "server")]
-pub const ROUTES_MARKERS: [&str; 2] = ["--skene-routes--", "--skene-routes-end--"];
+pub use skene_dev::{DEV_VARIABLE, HINTS_VARIABLE, NONCE_VARIABLE, ROUTES_MARKERS};
 
 /// What `app-server --help` prints.
 #[cfg(skene_gui_platform = "server")]

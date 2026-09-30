@@ -57,7 +57,9 @@ impl Document {
     }
 
     if self.dev {
-      out.push_str("<meta name=\"skene-dev\">");
+      out.push_str("<meta name=\"");
+      out.push_str(skene_dev::DEV_META);
+      out.push_str("\">");
       push_script(&mut out, self.nonce.as_deref(), false, DEV_SCRIPT);
     }
 

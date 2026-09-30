@@ -142,9 +142,6 @@ left half-done in a code comment.
     - The web: `skene run web --ssr` pages get the dev script, and a staged snapshot
     boots a client render instead of a hydration; storage is keyed per app and tab; the
     `pagehide` session-storage copy restores on reloads alone and is cleared at boot.
-    - The protocol (exit status 75, the variable names, the `swap` and `notice` lines
-    and their escaping, the dev meta name, the JavaScript globals, the hint names)
-    lives in one shared module with round-trip tests, and notice escaping is lossless.
     - The dev loop: `skene.toml` reloads per rebuild; the watch follows the app's path
     packages or its dep-info file, not this repository's `packages/`; cargo's `fresh`
     flag gates wasm-bindgen, the splitter and the reload, instead of the whole debug

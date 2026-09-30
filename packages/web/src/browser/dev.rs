@@ -8,6 +8,7 @@
 //! is mounted. Without the marker (a production page) boot runs immediately.
 
 use js_sys::{Reflect, Uint8Array};
+use skene_dev::{DEV_META, SNAPSHOT_GLOBAL, STATE_GLOBAL};
 use wasm_bindgen::{JsCast, JsValue, closure::Closure};
 use wasm_bindgen_futures::JsFuture;
 
@@ -40,7 +41,11 @@ pub fn boot_with_dev_state(boot: impl FnOnce() + 'static) {
 fn dev_marker_present() -> bool {
   web_sys::window()
     .and_then(|window| window.document())
-    .and_then(|document| document.query_selector("meta[name=skene-dev]").ok())
+    .and_then(|document| {
+      document
+        .query_selector(&format!("meta[name={DEV_META}]"))
+        .ok()
+    })
     .flatten()
     .is_some()
 }
@@ -49,7 +54,7 @@ fn dev_marker_present() -> bool {
 /// `skene_state()`, or `None` when there is none.
 async fn fetch_state() -> Option<Vec<u8>> {
   let window = web_sys::window()?;
-  let state = Reflect::get(&window, &JsValue::from_str("skene_state")).ok()?;
+  let state = Reflect::get(&window, &JsValue::from_str(STATE_GLOBAL)).ok()?;
   let state: js_sys::Function = state.dyn_into().ok()?;
   let promise: js_sys::Promise = state.call0(&window).ok()?.dyn_into().ok()?;
   let bytes = JsFuture::from(promise).await.ok()?;
@@ -73,7 +78,7 @@ fn expose_snapshot() {
 
   let _ = Reflect::set(
     &window,
-    &JsValue::from_str("skene_snapshot"),
+    &JsValue::from_str(SNAPSHOT_GLOBAL),
     closure.as_ref(),
   );
 

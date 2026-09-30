@@ -5,12 +5,10 @@
 use std::{thread, time::Duration};
 
 #[cfg(unix)]
-use crate::server::{Binary, fetch};
+use skene_dev::{CONTROL_VARIABLE, Control, STATE_VARIABLE, SWAP_EXIT};
 
-/// The exit status an app ends a swap with where it cannot become the next binary
-/// in place, asking the launcher to spawn it.
 #[cfg(unix)]
-const SWAP_EXIT: i32 = 75;
+use crate::server::{Binary, fetch};
 
 /// Runs the binary the `run tui` loop with id `id` publishes, in this terminal, as its
 /// launcher: the app hears each rebuilt binary and each notice on a control pipe,
@@ -44,8 +42,8 @@ pub(crate) fn attach(id: u32) -> Result<(), String> {
   let spawn = |binary: &Binary| {
     std::process::Command::new(&binary.path)
       .current_dir(&binary.dir)
-      .env("SKENE_DEV_CONTROL", &control)
-      .env("SKENE_DEV_STATE", &state_fd)
+      .env(CONTROL_VARIABLE, &control)
+      .env(STATE_VARIABLE, &state_fd)
       .spawn()
       .map_err(|error| format!("{}: {error}", binary.path.display()))
   };
@@ -77,7 +75,7 @@ pub(crate) fn attach(id: u32) -> Result<(), String> {
       Some(next) if next.generation != current.generation => {
         current = next;
 
-        let _ = writeln!(writer, "swap {}", current.path.display());
+        let _ = writeln!(writer, "{}", Control::Swap(current.path.clone()).to_line());
       }
       Some(_) => {}
       None => {
@@ -94,10 +92,10 @@ pub(crate) fn attach(id: u32) -> Result<(), String> {
       let text = std::str::from_utf8(&body)
         .ok()
         .and_then(|body| body.split_once('\n'))
-        .map(|(_, text)| text.trim_end().replace('\n', "\\n"))
-        .unwrap_or_default();
+        .map(|(_, text)| text.trim_end().to_owned())
+        .filter(|text| !text.is_empty());
 
-      let _ = writeln!(writer, "notice {text}");
+      let _ = writeln!(writer, "{}", Control::Notice(text).to_line());
 
       notice = Some(body);
     }

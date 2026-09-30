@@ -63,6 +63,7 @@ const SNAPSHOTS: &[Snapshot] = &[
   Snapshot::new("skene-common", Leaf::Host),
   Snapshot::new("skene-conformance", Leaf::Host),
   Snapshot::new("skene-core", Leaf::Host),
+  Snapshot::new("skene-dev", Leaf::Host),
   Snapshot::new("skene-gui", Leaf::Host),
   Snapshot::new("skene-gui", Leaf::Server),
   Snapshot::new("skene-gui", Leaf::Browser),

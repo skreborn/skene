@@ -1,0 +1,9 @@
+[package]
+name = "skene-dev"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "The dev loop's protocol between the skene command and the app it runs"
+
+[lints]
+workspace = true

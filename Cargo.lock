@@ -2475,6 +2475,7 @@ dependencies = [
  "percent-encoding",
  "rustix",
  "serde",
+ "skene-dev",
  "skene-web",
  "toml 0.8.23",
  "url",
@@ -2520,6 +2521,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "skene-dev"
+version = "0.1.0"
+
+[[package]]
 name = "skene-gui"
 version = "0.1.0"
 dependencies = [
@@ -2530,6 +2535,7 @@ dependencies = [
  "skene-build",
  "skene-common",
  "skene-core",
+ "skene-dev",
  "skene-headless",
  "skene-macros",
  "skene-reactive",
@@ -2615,6 +2621,7 @@ dependencies = [
  "skene-common",
  "skene-conformance",
  "skene-core",
+ "skene-dev",
  "skene-reactive",
  "skene-simple",
  "smallvec",
@@ -2638,6 +2645,7 @@ dependencies = [
  "skene-build",
  "skene-common",
  "skene-core",
+ "skene-dev",
  "skene-reactive",
  "skene-simple",
  "smallvec",

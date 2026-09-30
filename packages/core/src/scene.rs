@@ -32,7 +32,6 @@ use crate::{
   NodeId,
   Part,
   Platform,
-  TokenName,
   handler::HandlerSet,
 };
 
@@ -270,7 +269,7 @@ pub struct Scene<P: Platform> {
   interaction_generation: u64,
   resolved_tokens: ResolvedTokens<P::Scalar>,
   #[cfg(debug_assertions)]
-  token_kinds: FxHashMap<TokenName, std::mem::Discriminant<P::TokenValue>>,
+  token_kinds: FxHashMap<crate::TokenName, std::mem::Discriminant<P::TokenValue>>,
 }
 
 impl<P: Platform> std::fmt::Debug for Scene<P> {

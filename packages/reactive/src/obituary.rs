@@ -148,7 +148,11 @@ impl Id {
   #[cfg_attr(debug_assertions, track_caller)]
   #[cfg_attr(
     not(debug_assertions),
-    expect(clippy::unused_self, reason = "only a debug build reports the write")
+    expect(
+      clippy::unused_self,
+      clippy::missing_const_for_fn,
+      reason = "only a debug build reports the write"
+    )
   )]
   pub(crate) fn disposed_write(self) {
     #[cfg(debug_assertions)]

@@ -74,6 +74,11 @@ const STEPS: &[Step] = &[
     stamped: true,
   },
   Step {
+    name: "clippy:release",
+    run: clippy_release,
+    stamped: true,
+  },
+  Step {
     name: "clippy:server",
     run: clippy_server,
     stamped: true,
@@ -587,6 +592,19 @@ fn clippy_host(gate: &Gate, log: &mut Log) -> Outcome {
     "--workspace",
     "--all-targets",
     "--locked",
+    "--",
+    "-D",
+    "warnings",
+  ]))
+}
+
+fn clippy_release(gate: &Gate, log: &mut Log) -> Outcome {
+  log.check(gate.cargo([
+    "clippy",
+    "--workspace",
+    "--all-targets",
+    "--locked",
+    "--release",
     "--",
     "-D",
     "warnings",

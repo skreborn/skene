@@ -717,9 +717,19 @@ mod tests {
 
     let first = String::from_utf8(first).unwrap();
 
-    assert!(
-      first.contains("\x1b_Ga=t,f=32,s=2,v=1,i=3,q=2,m=0;/wAA/wAA//8=\x1b\\"),
-      "{first:?}"
+    let transmit = "\x1b_Ga=t,f=32,o=z,s=2,v=1,i=3,q=2,m=0;";
+    let Some((payload, _)) = first
+      .split_once(transmit)
+      .and_then(|(_, rest)| rest.split_once("\x1b\\"))
+    else {
+      panic!("the image transmitted: {first:?}");
+    };
+    let compressed = escape::base64::decode(payload).expect("base64");
+
+    assert_eq!(
+      miniz_oxide::inflate::decompress_to_vec_zlib(&compressed).expect("zlib"),
+      image.pixels,
+      "the pixels, compressed"
     );
     assert!(
       first.contains("\x1b[2;1H\x1b_Ga=p,i=3,p=1,c=2,r=1,x=0,y=0,w=2,h=1,z=0,C=1,q=2\x1b\\"),

@@ -110,8 +110,8 @@ left half-done in a code comment.
     one constructable stylesheet with deferred collection and a set of adopted names;
     release web output through wasm-opt, without `.d.ts` files or name sections,
     precompressed, fingerprinted and preloaded, with
-    one cached stylesheet shared by static pages instead of inlined into each; kitty
-    images compressed (`o=z`), rows diffed by run with `CSI K`, and input resumed with
+    one cached stylesheet shared by static pages instead of inlined into each; rows
+    diffed by run with `CSI K`, and input resumed with
     `memchr` instead of rescanned; the dev control pipe polled beside the tty and the
     wake pipe the signals and the executor notifier share, so the terminal loop stops
     waking ten times a second.

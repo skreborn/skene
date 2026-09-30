@@ -264,6 +264,10 @@ impl Display for PointerShape<'_> {
 /// The largest payload one graphics command carries, in base64 characters.
 const GRAPHICS_CHUNK: usize = 4096;
 
+/// The zlib level an image is compressed at before it is transmitted: the fastest, the
+/// flat surfaces a box paints compressing well at any level.
+const GRAPHICS_COMPRESSION: u8 = 1;
+
 /// The graphics protocol's query: a one-pixel image the terminal never keeps, answered
 /// `OK` under the same id where the protocol is spoken.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -276,8 +280,8 @@ impl Display for GraphicsQuery {
 }
 
 /// Transmits `pixels`, unpremultiplied RGBA8 of `width` by `height`, as the image
-/// `id`, replacing any the terminal holds under it; in chunks, every reply
-/// suppressed.
+/// `id`, replacing any the terminal holds under it; compressed with zlib, in chunks,
+/// every reply suppressed.
 pub(crate) fn write_transmit(
   out: &mut impl std::io::Write,
   id: u32,
@@ -285,7 +289,10 @@ pub(crate) fn write_transmit(
   height: u16,
   pixels: &[u8],
 ) -> std::io::Result<()> {
-  let encoded = base64::encode(pixels);
+  let encoded = base64::encode(&miniz_oxide::deflate::compress_to_vec_zlib(
+    pixels,
+    GRAPHICS_COMPRESSION,
+  ));
   let chunks: Vec<&[u8]> = encoded.as_bytes().chunks(GRAPHICS_CHUNK).collect();
   let last = chunks.len().saturating_sub(1);
 
@@ -295,7 +302,7 @@ pub(crate) fn write_transmit(
     if index == 0 {
       write!(
         out,
-        "\x1b_Ga=t,f=32,s={width},v={height},i={id},q=2,m={more};"
+        "\x1b_Ga=t,f=32,o=z,s={width},v={height},i={id},q=2,m={more};"
       )?;
     }
     else {
@@ -541,23 +548,43 @@ mod tests {
     );
 
     let mut out = Vec::new();
+    let pixels = [255, 0, 0, 255, 0, 0, 255, 255];
 
-    write_transmit(&mut out, 5, 2, 1, &[255, 0, 0, 255, 0, 0, 255, 255]).unwrap();
+    write_transmit(&mut out, 5, 2, 1, &pixels).unwrap();
+
+    let out = String::from_utf8(out).unwrap();
+    let payload = out
+      .strip_prefix("\x1b_Ga=t,f=32,o=z,s=2,v=1,i=5,q=2,m=0;")
+      .and_then(|rest| rest.strip_suffix("\x1b\\"))
+      .unwrap_or_else(|| panic!("one compressed command: {out:?}"));
 
     assert_eq!(
-      String::from_utf8(out).unwrap(),
-      "\x1b_Ga=t,f=32,s=2,v=1,i=5,q=2,m=0;/wAA/wAA//8=\x1b\\"
+      miniz_oxide::inflate::decompress_to_vec_zlib(&base64::decode(payload).unwrap()).unwrap(),
+      pixels
     );
 
     let mut out = Vec::new();
-    let pixels = vec![7; 3 * 4096];
+    let mut state = 0x9e37_79b9_u32;
+    let noise: Vec<u8> = (0..3 * 4096)
+      .map(|_| {
+        state ^= state << 13;
+        state ^= state >> 17;
+        state ^= state << 5;
 
-    write_transmit(&mut out, 5, 64, 48, &pixels).unwrap();
+        state.to_le_bytes()[0]
+      })
+      .collect();
+    let commands = base64::encode(&miniz_oxide::deflate::compress_to_vec_zlib(&noise, 1))
+      .len()
+      .div_ceil(4096);
+
+    write_transmit(&mut out, 5, 64, 48, &noise).unwrap();
 
     let out = String::from_utf8(out).unwrap();
 
-    assert_eq!(out.matches("\x1b_G").count(), 4);
-    assert!(out.starts_with("\x1b_Ga=t,f=32,s=64,v=48,i=5,q=2,m=1;"));
+    assert!(commands > 2, "noise spans several commands");
+    assert_eq!(out.matches("\x1b_G").count(), commands);
+    assert!(out.starts_with("\x1b_Ga=t,f=32,o=z,s=64,v=48,i=5,q=2,m=1;"));
     assert!(out.contains("\x1b\\\x1b_Gm=1;"));
     assert!(out.contains("\x1b\\\x1b_Gm=0;"));
     assert_eq!(

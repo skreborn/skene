@@ -255,7 +255,7 @@
   from then on. Native layers come with the native platform. SSR/SSG render it empty.
   The terminal renders it on the CPU at the box's cells times the cell's pixel size
   and shows it through the kitty graphics protocol where launch's query (`a=q`) was
-  answered `OK`: transmitted once per change, placed over the box's cells cropped to
+  answered `OK`: transmitted once per change, compressed, placed over the box's cells cropped to
   those in view, left out under an open overlay, freed on unmount; elsewhere the
   fallback stands. Where graphics show, a box with a corner radius, a border or a
   shadow paints them as a backdrop image beneath every colored cell, one per box,

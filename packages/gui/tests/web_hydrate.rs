@@ -597,15 +597,82 @@ fn a_structural_mismatch_is_caught_not_silently_adopted() {
 
   hydrate(root.clone(), "", Container::new);
 
-  // The mismatched span is left in place and a fresh div is created rather than
-  // adopted, so the divergence shows up as an extra node instead of a silently
-  // mis-typed one, and is counted.
+  // A fresh div is created rather than the span adopted, the divergence is counted,
+  // and the span is removed once hydration ends, so the page is the client's tree.
   assert_eq!(
     element_count(&root),
-    2,
-    "the mismatch produced a fresh node instead of adopting the wrong one",
+    1,
+    "the mismatch produced a fresh node and dropped the wrong one",
   );
+  assert_eq!(only_child(&root).tag_name().to_lowercase(), "div");
   assert!(web::hydration_mismatches() > 0);
+
+  web::uninstall();
+}
+
+/// Hydration converges on the client's tree: a server element and anchor the client
+/// never built are removed, and an adopted element keeps exactly the client's classes.
+#[wasm_bindgen_test]
+fn hydration_converges_on_the_clients_tree() {
+  let app = || Container::new().set_child(Text::new("kept"));
+  let (markup, _) = served(move || skene_gui::IntoView::into_view(app()));
+  let stale = markup.replacen("class=\"", "class=\"stale ", 1)
+    + "<div data-h=\"99\">gone</div><!--s:99--><!--e:99-->";
+  let root = server_root(&stale);
+
+  hydrate(root.clone(), "", app);
+
+  let html = root.inner_html();
+
+  assert!(
+    !html.contains("gone"),
+    "the unbuilt element was removed: {html}"
+  );
+  assert!(
+    !html.contains("s:99"),
+    "the unbuilt anchors were removed: {html}"
+  );
+  assert!(
+    !html.contains("stale"),
+    "the server's extra class was dropped: {html}"
+  );
+  assert_eq!(web::hydration_mismatches(), 3);
+  assert_eq!(element_count(&root), 2);
+
+  web::uninstall();
+}
+
+/// A resource built after hydration loads rather than adopting a value served for a
+/// resource the client never built.
+#[wasm_bindgen_test]
+async fn a_resource_built_after_hydration_loads() {
+  let root = server_root("<span data-h=\"1\">x</span>");
+  let later: Rc<RefCell<Option<Resource<String>>>> = Rc::new(RefCell::new(None));
+
+  // The server's state holds a second order-keyed value no resource adopts while
+  // hydrating.
+  hydrate(root.clone(), r#"[["\"Ada\"","\"stale\""],[],[]]"#, || {
+    let _first = Resource::new(|| async { "loaded".to_owned() });
+
+    Text::new("hydrated")
+  });
+
+  let created =
+    skene_gui::reactive::Owner::new().enter(|| Resource::new(|| async { "fresh".to_owned() }));
+
+  *later.borrow_mut() = Some(created);
+
+  for _ in 0..4 {
+    tick().await;
+  }
+
+  later.borrow().expect("the resource").with(|value| {
+    assert_eq!(
+      value.map(String::as_str),
+      Some("fresh"),
+      "it loaded instead of adopting"
+    );
+  });
 
   web::uninstall();
 }

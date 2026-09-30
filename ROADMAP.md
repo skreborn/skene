@@ -44,15 +44,13 @@ left half-done in a code comment.
     receiving the next real sibling and server output keeping comment pairs only where
     streaming needs a marker.
     - The web's realization: `Platform for Web` is written once over a small sink trait
-    that the DOM and the string tree implement, the browser layering adoption and
-    events on top, so the two leaves cannot drift; hydration converges, removing
-    unadopted nodes, setting classes wholesale and clearing the adoption queues, and
-    the server tier writes real pages that the browser tier hydrates with zero
-    mismatches, where the browser tests fake the served markup today; structural
-    hydration keys per scope replace the one global counter, so async rebuilds and
-    nested lazy content keep their markers and their server markup; where
-    `appearance: base-select` is supported, the picker is a styled native `<select>`
-    and the hydration swap goes, the drawn face remaining elsewhere.
+    that the DOM and the string tree implement, the browser layering adoption and events
+    on top, so the two leaves cannot drift; the server tier writes real pages that the
+    browser tier hydrates with zero mismatches, where the browser tests fake the served
+    markup today; structural hydration keys per scope replace the one global counter, so
+    async rebuilds and nested lazy content keep their markers and their server markup;
+    where `appearance: base-select` is supported, the picker is a styled native
+    `<select>` and the hydration swap goes, the drawn face remaining elsewhere.
 3. **Tests that exercise what users see.** Headless becomes the GUI's real stand-in,
     and every tier asserts through roles, text and pixels.
     - The terminal's retained runtime (the taffy store, hit testing, focus, capture,

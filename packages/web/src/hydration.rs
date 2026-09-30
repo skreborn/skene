@@ -277,6 +277,14 @@ pub(crate) fn stage(state: &str) {
   TAGGED.with(|adopted| *adopted.borrow_mut() = tagged);
 }
 
+/// Ends hydration: the order-keyed values no resource adopted are dropped, so a
+/// resource built after the served tree loads rather than taking a value served for
+/// another.
+#[cfg(skene_leaf = "browser")]
+pub(crate) fn finish() {
+  ADOPTED.with(|adopted| adopted.borrow_mut().clear());
+}
+
 /// Forgets every registered resource serializer, so a render starts clean.
 #[cfg(skene_leaf = "server")]
 pub(crate) fn reset_sources() {

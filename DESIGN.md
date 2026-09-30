@@ -735,7 +735,10 @@ escape trait exists on the browser leaf alone, so the server leaf *cannot* touch
   `scroll` and enter/leave included), one shared `ResizeObserver`, hydration
   (creation-order `data-h` markers, loud mismatch, the server's stylesheet adopted rather
   than duplicated, a live input value that differs from the serialized one written into
-  its signal), scroll and focus restoration keyed by a segment's end anchor, the
+  its signal, and convergence once the tree is built: every server node the client built
+  differently or never built removed, every adopted element given exactly the client's
+  classes, and the order-keyed resource values no resource adopted dropped), scroll and
+  focus restoration keyed by a segment's end anchor, the
   `WebDom` escape trait, the History binding and the head.
 - **ssr** (`skene_leaf = "server"`)—the serializer. Renders its string tree to HTML plus
   the interned stylesheet; drives async to a fixpoint on the host executor, parked until

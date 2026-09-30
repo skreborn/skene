@@ -23,7 +23,7 @@ const RUNS: &[Run] = &[
     binaries: &[
       ("web_dom", 73),
       ("web_gpu_loss", 1),
-      ("web_hydrate", 13),
+      ("web_hydrate", 15),
       ("web_painted", 3),
       ("web_parity", 1),
       ("web_resource", 5),

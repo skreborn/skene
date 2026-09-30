@@ -248,6 +248,25 @@ impl Node {
     self.dom.dyn_ref::<Element>()
   }
 
+  /// Sets the element's classes to exactly the node's own, dropping any other.
+  fn write_classes(&self) {
+    let Some(element) = self.element()
+    else {
+      return;
+    };
+    let classes: Vec<&str> = [self.style_class.as_deref(), self.token_class.as_deref()]
+      .into_iter()
+      .flatten()
+      .collect();
+
+    if classes.is_empty() {
+      let _ = element.remove_attribute("class");
+    }
+    else {
+      let _ = element.set_attribute("class", &classes.join(" "));
+    }
+  }
+
   /// The element carrying the node's state: its native input, else itself.
   fn carrier(&self) -> Option<&Element> {
     self.carrier.as_ref().or_else(|| self.element())
@@ -404,6 +423,7 @@ fn subtree_elements(roots: &[web_sys::Node]) -> Vec<Element> {
 struct Hydration {
   elements: FxHashMap<u32, Element>,
   comments: FxHashMap<String, web_sys::Node>,
+  stale: Vec<Element>,
   mismatches: u32,
   pending: Vec<(u32, Pending)>,
 }
@@ -449,6 +469,7 @@ impl Hydration {
     Self {
       elements,
       comments,
+      stale: Vec::new(),
       mismatches: 0,
       pending: Vec::new(),
     }
@@ -631,6 +652,7 @@ impl Dom {
             "hydration mismatch: server rendered <{}> where the client builds <{tag}> (marker {marker})",
             element.tag_name().to_lowercase(),
           );
+          hydration.stale.push(element);
         }
         None => {
           tracing::debug!("no serialized <{tag}> for marker {marker}; building fresh");
@@ -1005,8 +1027,10 @@ impl Dom {
     }
   }
 
-  /// Ends hydration: reports what the server rendered and the client never built, and
-  /// forgets which nodes were adopted.
+  /// Ends hydration: reports what the server rendered and the client never built or
+  /// built differently, removes it, so the page converges on the client's tree, gives
+  /// each adopted element exactly the client's classes, and forgets which nodes were
+  /// adopted.
   fn finish_hydration(&mut self) -> Vec<(u32, Pending)> {
     let Some(hydration) = self.hydration.take()
     else {
@@ -1020,9 +1044,25 @@ impl Dom {
 
     self.mismatches = hydration.mismatches + u32::try_from(unadopted).unwrap_or(u32::MAX);
 
+    for element in hydration.elements.into_values().chain(hydration.stale) {
+      element.remove();
+    }
+
+    for comment in hydration.comments.into_values() {
+      if let Some(parent) = comment.parent_node() {
+        let _ = parent.remove_child(&comment);
+      }
+    }
+
     for node in self.nodes.iter_mut().flatten() {
+      if node.adopted {
+        node.write_classes();
+      }
+
       node.adopted = false;
     }
+
+    crate::hydration::finish();
 
     hydration.pending
   }

@@ -57,7 +57,6 @@ use skene_headless::{
   is_focused,
   is_hovered,
   listened,
-  mirrored_children,
   outline,
   reset,
   resolve_color,
@@ -299,7 +298,6 @@ fn derived_children_dispose_a_removed_items_owner_and_keep_the_rest() {
   assert_eq!(after, [before[0], before[3], before[1], before[4]]);
   assert_eq!(inner.try_get(), None);
   assert_eq!(text(before[2]), None);
-  assert_eq!(mirrored_children(root), children(root));
 
   owner.dispose();
 }

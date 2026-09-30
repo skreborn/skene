@@ -96,8 +96,6 @@ pub(crate) struct Record {
   pub definitions: Option<Definitions<TokenValue>>,
   /// The events the node listens to, in `EventKind` order.
   pub listened: Vec<EventKind>,
-  /// The children attached to the node, in order.
-  pub children: Vec<NodeId>,
   /// The reports of the box's size.
   pub size_observers: Vec<Rc<dyn Fn(Size<f32>)>>,
   /// The painter a painted box draws with.
@@ -144,7 +142,6 @@ impl Record {
       slots: FxHashMap::default(),
       definitions: None,
       listened: Vec::new(),
-      children: Vec::new(),
       size_observers: Vec::new(),
       painter: None,
       motion: NodeMotion::default(),

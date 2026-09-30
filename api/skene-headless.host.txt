@@ -85,7 +85,6 @@ pub fn skene_headless::is_open(skene_core::node::NodeId) -> bool
 pub fn skene_headless::is_painted(skene_core::node::NodeId) -> bool
 pub fn skene_headless::is_tab_stop(skene_core::node::NodeId) -> bool
 pub fn skene_headless::listened(skene_core::node::NodeId) -> alloc::vec::Vec<skene_core::props::EventKind>
-pub fn skene_headless::mirrored_children(skene_core::node::NodeId) -> alloc::vec::Vec<skene_core::node::NodeId>
 pub fn skene_headless::options(skene_core::node::NodeId) -> core::option::Option<alloc::vec::Vec<skene_core::control::PickerOption>>
 pub fn skene_headless::outline(skene_core::node::NodeId) -> alloc::string::String
 pub fn skene_headless::overlay_anchor(skene_core::node::NodeId) -> core::option::Option<skene_core::node::NodeId>

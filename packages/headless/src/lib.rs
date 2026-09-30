@@ -266,27 +266,9 @@ impl Platform for Headless {
     with_store(|store| store.insert(node, Record::new(Kind::Scope)));
   }
 
-  fn attach(parent: NodeId, child: NodeId, before: Option<NodeId>) {
-    with_record(parent, |record| {
-      if let Some(index) = position_from_ends(&record.children, child) {
-        let _unlinked = record.children.remove(index);
-      }
+  fn attach(_: NodeId, _: NodeId, _: Option<NodeId>) {}
 
-      let index = before
-        .and_then(|before| position_from_ends(&record.children, before))
-        .unwrap_or(record.children.len());
-
-      record.children.insert(index, child);
-    });
-  }
-
-  fn detach(parent: NodeId, child: NodeId) {
-    with_record(parent, |record| {
-      if let Some(index) = position_from_ends(&record.children, child) {
-        let _unlinked = record.children.remove(index);
-      }
-    });
-  }
+  fn detach(_: NodeId, _: NodeId) {}
 
   fn destroy(node: NodeId) {
     with_store(|store| store.destroy(node));
@@ -1057,7 +1039,8 @@ fn render_outline(node: NodeId, full: bool) -> String {
 }
 
 fn outline_into(node: NodeId, depth: usize, full: bool, out: &mut String) {
-  let Some((line, children)) = with_store(|store| {
+  let children: Vec<NodeId> = Scene::<Headless>::with(|scene| scene.children(node).collect());
+  let Some(line) = with_store(|store| {
     let record = store.record(node)?;
     let line = match &record.kind {
       Kind::Box(_) => Some("Box".to_owned()),
@@ -1071,7 +1054,7 @@ fn outline_into(node: NodeId, depth: usize, full: bool, out: &mut String) {
       Kind::Scope => full.then(|| "Scope".to_owned()),
     };
 
-    Some((line, record.children.clone()))
+    Some(line)
   })
   else {
     return;
@@ -1241,27 +1224,6 @@ pub fn accessible_name(node: NodeId) -> Option<String> {
     .find(|name| !name.is_empty())
 }
 
-/// The index of `handle` among `children`, searched from both ends at once.
-fn position_from_ends(children: &[NodeId], handle: NodeId) -> Option<usize> {
-  let (mut front, mut back) = (0, children.len());
-
-  while front < back {
-    if children[front] == handle {
-      return Some(front);
-    }
-
-    back -= 1;
-
-    if children[back] == handle {
-      return Some(back);
-    }
-
-    front += 1;
-  }
-
-  None
-}
-
 /// The text of every run under `node`, in order.
 fn subtree_text(node: NodeId) -> String {
   let mut out = String::new();
@@ -1380,14 +1342,6 @@ pub fn children(node: NodeId) -> Vec<NodeId> {
   end_turn();
 
   Scene::<Headless>::with(|scene| scene.children(node).collect())
-}
-
-/// The children of `node` as the platform mirrored them, in order.
-#[must_use]
-pub fn mirrored_children(node: NodeId) -> Vec<NodeId> {
-  end_turn();
-
-  with_record(node, |record| record.children.clone()).unwrap_or_default()
 }
 
 /// The color the property `key` of `node` resolves to.

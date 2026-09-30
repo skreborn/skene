@@ -719,12 +719,6 @@ impl Record {
   pub(crate) const fn is_modal_overlay(&self) -> bool {
     matches!(self.kind, Kind::Overlay { modal: true, .. })
   }
-
-  /// Whether the record is a control.
-  #[inline(always)]
-  pub(crate) const fn is_control(&self) -> bool {
-    matches!(self.kind, Kind::Control { .. })
-  }
 }
 
 /// A press-initiated drag in progress, followed by pointer motion until release.
@@ -1269,22 +1263,14 @@ impl Store {
     }
   }
 
-  /// The nearest control at or above `handle`, a caption kept beside a control
-  /// answering to that control.
+  /// The nearest control at or above `handle` in the scene, a caption kept beside a
+  /// control answering to that control.
+  #[expect(
+    clippy::unused_self,
+    reason = "every reader holds the store, and the control is asked of it as of the rest"
+  )]
   pub(crate) fn enclosing_control(&self, handle: Handle) -> Option<Handle> {
-    let mut current = Some(handle);
-
-    while let Some(visited) = current {
-      let record = self.record(visited)?;
-
-      if record.is_control() {
-        return Some(visited);
-      }
-
-      current = record.captioned.or(record.parent);
-    }
-
-    None
+    Scene::<Tui>::with(|scene| scene.enclosing_control(handle))
   }
 
   /// Whether a press's pointer drags `handle`: a box or a control declaring the axes it

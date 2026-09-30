@@ -209,12 +209,8 @@ mod tests {
     NodeId,
     NodeKind,
     Scene,
-    testing::{Call, TestBox, TestPlatform, child_kinds, children},
+    testing::{Call, TestBox, TestPlatform, TestScene, child_kinds, children},
   };
-
-  fn with<R>(operation: impl FnOnce(&mut Scene<TestPlatform>) -> R) -> R {
-    Scene::<TestPlatform>::with(operation)
-  }
 
   /// A derived subtree contributes its content directly to its parent's children,
   /// with nothing between the anchors but the content, and rebuilds in place.
@@ -237,9 +233,9 @@ mod tests {
       })
     });
 
-    with(|scene| scene.attach(parent, start, None));
+    TestScene::with(|scene| scene.attach(parent, start, None));
 
-    let end = with(|scene| scene.segment_end(start)).unwrap();
+    let end = TestScene::with(|scene| scene.segment_end(start)).unwrap();
     let first = children(parent)[1];
 
     assert_eq!(children(parent), [start, first, end]);
@@ -257,7 +253,7 @@ mod tests {
     assert_eq!(built.get(), 2);
     assert_ne!(second, first);
     assert_eq!(children(parent), [start, second, end]);
-    assert!(with(|scene| scene.record(first).is_none()));
+    assert!(TestScene::with(|scene| scene.record(first).is_none()));
     assert!(TestPlatform::take_log().contains(&Call::Destroy(first)));
 
     owner.dispose();
@@ -277,7 +273,7 @@ mod tests {
       ..Annotation::default()
     };
 
-    with(|scene| scene.set_pending_annotation(annotation.clone()));
+    TestScene::with(|scene| scene.set_pending_annotation(annotation.clone()));
 
     let start = owner.enter(|| {
       derived::<TestPlatform>(move || {
@@ -287,18 +283,18 @@ mod tests {
       })
     });
 
-    with(|scene| scene.attach(parent, start, None));
+    TestScene::with(|scene| scene.attach(parent, start, None));
 
     let content = |parent: NodeId| children(parent)[1];
     let annotation_of =
-      |node: NodeId| with(|scene| scene.record(node).unwrap().annotation().cloned());
+      |node: NodeId| TestScene::with(|scene| scene.record(node).unwrap().annotation().cloned());
 
     assert_eq!(annotation_of(content(parent)), Some(annotation.clone()));
 
     set_version.set(1);
 
     assert_eq!(annotation_of(content(parent)), Some(annotation));
-    assert_eq!(with(Scene::take_pending_annotation), None);
+    assert_eq!(TestScene::with(Scene::take_pending_annotation), None);
 
     owner.dispose();
   }
@@ -315,7 +311,7 @@ mod tests {
     let parent = TestBox::node();
     let (start, end) = Scene::<TestPlatform>::create_segment();
 
-    with(|scene| scene.attach(parent, start, None));
+    TestScene::with(|scene| scene.attach(parent, start, None));
     owner.enter(|| {
       let inner = Rc::clone(&inner);
 
@@ -345,7 +341,7 @@ mod tests {
     let after = children(parent);
 
     assert_eq!(after, [start, before[3], before[1], end]);
-    assert!(with(|scene| scene.record(second).is_none()));
+    assert!(TestScene::with(|scene| scene.record(second).is_none()));
     assert_eq!(inner.try_get(), None);
 
     owner.dispose();
@@ -362,7 +358,7 @@ mod tests {
     let parent = TestBox::node();
     let (start, end) = Scene::<TestPlatform>::create_segment();
 
-    with(|scene| scene.attach(parent, start, None));
+    TestScene::with(|scene| scene.attach(parent, start, None));
     owner.enter(|| {
       reconcile::<TestPlatform, _, _, _>(
         start,
@@ -382,7 +378,7 @@ mod tests {
 
     assert_eq!(after, [start, before[3], before[1], end]);
     assert!(
-      with(|scene| scene.record(before[2]).is_none()),
+      TestScene::with(|scene| scene.record(before[2]).is_none()),
       "the second of the repeated items is gone"
     );
 

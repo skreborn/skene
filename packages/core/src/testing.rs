@@ -97,6 +97,9 @@ impl From<Definition<Dimension<f32>, f32>> for Erased {
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub(super) struct TestPlatform;
 
+/// The test platform's scene.
+pub(super) type TestScene = Scene<TestPlatform>;
+
 thread_local! {
   static SCENE: RefCell<Scene<TestPlatform>> = RefCell::new(Scene::new());
   static LOG: RefCell<Vec<Call>> = const { RefCell::new(Vec::new()) };
@@ -278,7 +281,7 @@ impl TestBox {
   /// Mints a box node directly, outside any view, recording the pending annotation as a
   /// box builder does.
   pub(super) fn node() -> NodeId {
-    Scene::<TestPlatform>::with(|scene| {
+    TestScene::with(|scene| {
       let annotation = scene.take_pending_annotation();
       let node = scene.create(NodeKind::Box);
 
@@ -313,12 +316,12 @@ impl View<TestPlatform> for TestBox {
 
 /// The children of `node`, in order.
 pub(super) fn children(node: NodeId) -> Vec<NodeId> {
-  Scene::<TestPlatform>::with(|scene| scene.children(node).collect())
+  TestScene::with(|scene| scene.children(node).collect())
 }
 
 /// The kinds of the children of `node`, in order.
 pub(super) fn child_kinds(node: NodeId) -> Vec<NodeKind> {
-  Scene::<TestPlatform>::with(|scene| {
+  TestScene::with(|scene| {
     scene
       .children(node)
       .map(|child| scene.record(child).expect("live child").kind())

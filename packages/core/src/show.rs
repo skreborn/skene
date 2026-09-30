@@ -128,9 +128,8 @@ mod tests {
   use super::Show;
   use crate::{
     AnyView,
-    Scene,
     View,
-    testing::{TestBox, TestPlatform, children},
+    testing::{TestBox, TestPlatform, TestScene, children},
   };
 
   /// A child hidden from the start is built the first time it shows, and while hidden
@@ -204,7 +203,7 @@ mod tests {
         .build()
     });
 
-    Scene::<TestPlatform>::with(|scene| scene.attach(parent, start, None));
+    TestScene::with(|scene| scene.attach(parent, start, None));
     TestPlatform::take_log();
     set_count.set(2);
 
@@ -228,9 +227,9 @@ mod tests {
         .build()
     });
 
-    Scene::<TestPlatform>::with(|scene| scene.attach(parent, start, None));
+    TestScene::with(|scene| scene.attach(parent, start, None));
 
-    let end = Scene::<TestPlatform>::with(|scene| scene.segment_end(start)).unwrap();
+    let end = TestScene::with(|scene| scene.segment_end(start)).unwrap();
     let child = children(parent)[1];
 
     assert_eq!(children(parent), [start, child, end]);
@@ -238,9 +237,7 @@ mod tests {
     set_shown.set(false);
 
     assert_eq!(children(parent), [start, end]);
-    assert!(Scene::<TestPlatform>::with(|scene| scene
-      .record(child)
-      .is_some()));
+    assert!(TestScene::with(|scene| scene.record(child).is_some()));
 
     set_shown.set(true);
 
@@ -249,8 +246,6 @@ mod tests {
     set_shown.set(false);
     owner.dispose();
 
-    assert!(Scene::<TestPlatform>::with(|scene| scene
-      .record(child)
-      .is_none()));
+    assert!(TestScene::with(|scene| scene.record(child).is_none()));
   }
 }

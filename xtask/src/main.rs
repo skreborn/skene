@@ -5,6 +5,10 @@
 //! step writes its whole output to `target/gate/<step>.log`; the gate prints one line per
 //! step and, for a step that failed, why and the end of its log.
 //!
+//! A step that builds or runs anything is skipped while nothing it reads has changed since
+//! it last passed: every file of the workspace but its documents, the toolchain and the
+//! browser drivers. `--force`, or a `CI` variable, runs every selected step regardless.
+//!
 //! `cargo xtask api` rewrites the public API snapshots the `api` step checks.
 
 mod api;
@@ -16,6 +20,7 @@ use std::{
   env,
   ffi::OsStr,
   fs::{self, File},
+  hash::{DefaultHasher, Hash as _, Hasher as _},
   io::Write as _,
   path::{Path, PathBuf},
   process::{Command, ExitCode},
@@ -31,6 +36,8 @@ struct Step {
   name: &'static str,
   /// Runs the step, writing everything it prints to the log it is given.
   run: fn(&Gate, &mut Log) -> Outcome,
+  /// Whether the step is skipped while its inputs are unchanged since it passed.
+  stamped: bool,
 }
 
 impl Step {
@@ -44,70 +51,82 @@ const STEPS: &[Step] = &[
   Step {
     name: "fmt",
     run: fmt,
+    stamped: false,
   },
   Step {
     name: "manifests",
     run: manifest_rules,
+    stamped: false,
   },
   Step {
     name: "lint",
     run: house_rules,
+    stamped: false,
   },
   Step {
     name: "deps",
     run: dependencies,
+    stamped: false,
   },
   Step {
     name: "clippy:host",
     run: clippy_host,
+    stamped: true,
   },
   Step {
     name: "clippy:server",
     run: clippy_server,
+    stamped: true,
   },
   Step {
     name: "clippy:wasm",
     run: clippy_wasm,
+    stamped: true,
   },
   Step {
     name: "clippy:apple",
     run: clippy_apple,
+    stamped: true,
   },
   Step {
     name: "doc:host",
     run: doc_host,
+    stamped: true,
   },
   Step {
     name: "doc:server",
     run: doc_server,
+    stamped: true,
   },
   Step {
     name: "doc:wasm",
     run: doc_wasm,
+    stamped: true,
   },
   Step {
     name: "api",
     run: api::check,
+    stamped: true,
   },
   Step {
     name: "test:host",
     run: test_host,
+    stamped: true,
   },
   Step {
     name: "test:server",
     run: test_server,
+    stamped: true,
   },
   Step {
     name: "test:browser",
     run: browser::run,
-  },
-  Step {
-    name: "features",
-    run: features,
+    stamped: true,
   },
   Step {
     name: "msrv",
     run: msrv,
+    stamped: true,
   },
 ];
 
@@ -152,7 +171,7 @@ fn main() -> ExitCode {
     Some((command, [])) if command == "api" => write_api(),
     _ => {
       eprintln!(
-        "usage: cargo xtask gate [step ...] | cargo xtask api\nsteps: {}",
+        "usage: cargo xtask gate [--force] [step ...] | cargo xtask api\nsteps: {}",
         step_names()
       );
 
@@ -188,8 +207,14 @@ fn step_names() -> String {
     .join(", ")
 }
 
-fn run_gate(selectors: &[String]) -> ExitCode {
+fn run_gate(arguments: &[String]) -> ExitCode {
   let gate = Gate::new();
+  let force = env::var_os("CI").is_some() || arguments.iter().any(|argument| argument == "--force");
+  let selectors: Vec<&str> = arguments
+    .iter()
+    .map(String::as_str)
+    .filter(|argument| *argument != "--force")
+    .collect();
   let steps: Vec<&Step> = STEPS
     .iter()
     .filter(|step| {
@@ -218,9 +243,30 @@ fn run_gate(selectors: &[String]) -> ExitCode {
     return ExitCode::FAILURE;
   }
 
+  let stamps = logs.join("stamps");
+  let inputs = steps
+    .iter()
+    .any(|step| step.stamped)
+    .then(|| gate.inputs().ok())
+    .flatten();
   let mut failed = Vec::new();
 
   for step in steps {
+    let stamp = stamps.join(step.name.replace(':', "-"));
+
+    if step.stamped
+      && !force
+      && let Some(inputs) = &inputs
+      && fs::read_to_string(&stamp).is_ok_and(|passed| passed == *inputs)
+    {
+      println!(
+        "skip    {:<14}          unchanged since it passed",
+        step.name
+      );
+
+      continue;
+    }
+
     let started = Instant::now();
     let outcome =
       Log::create(logs.join(format!("{}.log", step.name.replace(':', "-")))).map(|mut log| {
@@ -229,6 +275,16 @@ fn run_gate(selectors: &[String]) -> ExitCode {
         (log, outcome)
       });
     let seconds = started.elapsed().as_secs_f32();
+    let passed = matches!(outcome, Ok((_, Ok(()))));
+
+    if step.stamped {
+      let _ = match (&inputs, passed) {
+        (Some(inputs), true) => {
+          fs::create_dir_all(&stamps).and_then(|()| fs::write(&stamp, inputs))
+        }
+        _ => fs::remove_file(&stamp),
+      };
+    }
 
     match outcome {
       Ok((_, Ok(()))) => println!("ok      {:<14}{seconds:>7.1} s", step.name),
@@ -285,6 +341,50 @@ impl Gate {
       env::var_os("CARGO_TARGET_DIR").map_or_else(|| root.join("target"), |dir| root.join(dir));
 
     Self { root, target }
+  }
+
+  /// A hash of everything a stamped step reads: every file of the workspace, listed or
+  /// not ignored, but its documents; the toolchain; and the browser drivers.
+  fn inputs(&self) -> Result<String, String> {
+    let listed = Command::new("git")
+      .args([
+        "ls-files",
+        "-z",
+        "--cached",
+        "--others",
+        "--exclude-standard",
+      ])
+      .current_dir(&self.root)
+      .output()
+      .map_err(|error| format!("git ls-files: {error}"))?;
+    let toolchain = Command::new("rustc")
+      .arg("-vV")
+      .output()
+      .map_err(|error| format!("rustc -vV: {error}"))?;
+    let mut paths: Vec<&[u8]> = listed
+      .stdout
+      .split(|byte| *byte == 0)
+      .filter(|path| !path.is_empty() && !path.ends_with(b".md"))
+      .collect();
+    let mut hasher = DefaultHasher::new();
+
+    paths.sort_unstable();
+    paths.dedup();
+
+    for path in paths {
+      if let Ok(contents) = fs::read(self.root.join(String::from_utf8_lossy(path).as_ref())) {
+        path.hash(&mut hasher);
+        contents.hash(&mut hasher);
+      }
+    }
+
+    toolchain.stdout.hash(&mut hasher);
+
+    for variable in ["GECKODRIVER", "CHROMEDRIVER"] {
+      env::var_os(variable).hash(&mut hasher);
+    }
+
+    Ok(format!("{:016x}", hasher.finish()))
   }
 
   /// A cargo command run in the workspace, printing without color.
@@ -573,17 +673,6 @@ fn test_server(gate: &Gate, log: &mut Log) -> Outcome {
 
   command.args(packages(SERVER_PACKAGES));
   log.check(command)
-}
-
-fn features(gate: &Gate, log: &mut Log) -> Outcome {
-  gate.require("hack", "cargo-hack")?;
-  log.check(gate.cargo([
-    "hack",
-    "--feature-powerset",
-    "check",
-    "--workspace",
-    "--locked",
-  ]))
 }
 
 fn msrv(gate: &Gate, log: &mut Log) -> Outcome {

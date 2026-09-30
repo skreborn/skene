@@ -11,7 +11,8 @@ use toml_edit::{DocumentMut, Item, TableLike};
 const DEPENDENCY_TABLES: [&str; 3] = ["dependencies", "dev-dependencies", "build-dependencies"];
 
 /// Checks every manifest in the workspace: each dependency table lists its crates in
-/// alphabetical order, and each member inherits the workspace's lints and rust-version.
+/// alphabetical order and makes none optional, no manifest declares a cargo feature, and
+/// each member inherits the workspace's lints and rust-version.
 pub(crate) fn check(root: &Path) -> Result<(), String> {
   let mut problems = Vec::new();
   let workspace = root.join("Cargo.toml");
@@ -34,7 +35,21 @@ pub(crate) fn check(root: &Path) -> Result<(), String> {
       }
     }
 
+    if manifest.get("features").is_some() {
+      problems.push(format!(
+        "{name}: declares cargo features (`[features]`), which the workspace has none of"
+      ));
+    }
+
     for (table, entries) in dependency_tables(&manifest) {
+      for (dependency, entry) in entries.iter() {
+        if entry.get("optional").and_then(Item::as_bool) == Some(true) {
+          problems.push(format!(
+            "{name}: [{table}] makes `{dependency}` optional, a cargo feature in all but name"
+          ));
+        }
+      }
+
       let keys: Vec<&str> = entries.iter().map(|(key, _)| key).collect();
       let unordered = keys.windows(2).find_map(|pair| match *pair {
         [earlier, later] if earlier > later => Some((earlier, later)),
@@ -96,6 +111,27 @@ pub(crate) fn locked_version(root: &Path, name: &str) -> Result<String, String> 
     .and_then(Item::as_str)
     .map(str::to_owned)
     .ok_or_else(|| format!("Cargo.lock pins no `{name}`"))
+}
+
+/// The directory of the workspace member named `name`.
+pub(crate) fn package_directory(root: &Path, name: &str) -> Result<PathBuf, String> {
+  for path in manifest_paths(root)? {
+    let manifest = read(&path)?;
+
+    if manifest
+      .get("package")
+      .and_then(|package| package.get("name"))
+      .and_then(Item::as_str)
+      == Some(name)
+    {
+      return path
+        .parent()
+        .map(Path::to_path_buf)
+        .ok_or_else(|| format!("{}: no directory", path.display()));
+    }
+  }
+
+  Err(format!("no workspace member is named `{name}`"))
 }
 
 fn read(path: &Path) -> Result<DocumentMut, String> {

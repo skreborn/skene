@@ -58,8 +58,8 @@
   crates derive from the triple and the cfg; `browser`, `server` or `host`), so the
   server leaf physically cannot touch the DOM. A
   cargo feature may only **add items**: never a trait bound, a type, a variant or a
-  platform. No cargo feature exists in the workspace, and `cargo hack --feature-powerset`
-  is part of the gate so none creeps back in.
+  platform. No cargo feature exists in the workspace, and the gate's manifest check
+  rejects a `[features]` table or an optional dependency so none creeps back in.
 - The **style model is data**: `BoxStyle<N, S, X>` and `RunStyle<S, X>` name every
   shared property once (typed properties, conditions riding the value, transitions,
   keyframes), and the medium's own properties come through its extension `X`. Layout
@@ -598,24 +598,28 @@
   gone variant is the default), derived with `#[derive(Snapshot)]`, never serde.
 - **`cargo xtask gate` is the gate**: every check a change passes, in one command, and a
   change lands only when it reports `gate passed`. It checks formatting, every
-  manifest's dependency order and its inheriting the workspace's lints and
-  `rust-version`, the house rules no compiler checks (em-dashes unspaced, children last,
+  manifest's dependency order, its inheriting the workspace's lints and `rust-version`
+  and its declaring no cargo feature, the house rules no compiler checks (em-dashes unspaced, children last,
   no public name in another framework's vocabulary, fields and variants documented all
   or none, a test double's simulated events named `trigger_`), unused dependencies,
   clippy and rustdoc with warnings denied on all three leaves, each library crate's
   public API against its snapshot under `api/`, read by a pinned nightly and `cargo
   public-api`, clippy on the code written for Apple's platforms (the terminal's, on
-  `aarch64-apple-darwin`), the three test tiers, the feature powerset (so no cargo
-  feature creeps back in) and the workspace on its declared `rust-version`. `cargo xtask
-  gate test:browser` runs one step and `cargo xtask gate clippy` a group; each step logs
-  to `target/gate/<step>.log`, and a failed one prints why beside the end of its log.
+  `aarch64-apple-darwin`), the three test tiers and the workspace on its declared
+  `rust-version`. `cargo xtask gate test:browser` runs one step and `cargo xtask gate
+  clippy` a group; each step logs to `target/gate/<step>.log`, and a failed one prints
+  why beside the end of its log. A step that builds or runs anything is skipped while
+  nothing it reads has changed since it last passed (every file but the documents, the
+  toolchain, the browser drivers); `--force`, or a `CI` variable, runs it regardless.
   `cargo xtask api` rewrites the snapshots once a change to a surface is meant. CI runs
   the same command on every pull request.
 - Tests run in three tiers, and the host tier alone proves nothing about the web: every
   `web_*.rs` is gated to a leaf, so on the host those binaries compile to zero tests, and
   a change can pass every host test while breaking the browser outright. The host tier
   runs through `cargo nextest run`, each test in a process of its own, the doctests
-  beside it through `cargo test --doc`. Among it, `packages/gui/tests/compile_fail`
+  beside it through `cargo test --doc`, and a crate's host integration tests are one
+  binary (`tests/it`), since the process per test isolates them and every binary costs
+  a link. Among it, `packages/gui/tests/compile_fail`
   holds a program per rule the types enforce (layout's static constraints, children
   last, the expression kinds, the derives) beside the diagnostic it must raise,
   rewritten by `TRYBUILD=overwrite` once a change to one is meant, `proptest` drives
@@ -625,7 +629,8 @@
   `INSTA_UPDATE=always` once a change to the frame is meant. The server tier is the server leaf built
   natively, the byte-exact render snapshot among it. The browser tier first links every
   library's tests for wasm32, so an app's own tests build there, then drives every
-  browser binary through a real Firefox (geckodriver) and a real Chromium
+  browser binary, several sessions at once (`SKENE_GATE_BROWSERS` sets how many), through
+  a real Firefox (geckodriver) and a real Chromium
   (chromedriver, from `CHROMEDRIVER`, `PATH` or `~/.local/share/chrome-for-testing`),
   each with WebGPU switched on by `packages/gui/webdriver.json`, so a painted box
   renders on the GPU there, where headless Chromium's software adapter keeps its

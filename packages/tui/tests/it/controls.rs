@@ -1363,3 +1363,53 @@ fn a_text_fields_caption_sits_before_its_box() {
     );
   });
 }
+
+/// The Simple controls take the cell shape: a button is one row with one-cell insets,
+/// a field is framed, and a checkbox's mark is one glyph-sized cell beside its label.
+#[test]
+fn simple_controls_take_the_cell_shape() {
+  with_platform(|| {
+    let _ = tui::mount(|| {
+      Theme::new(SimplePalette::default())
+        .set_child_builder(|| {
+          Column::new().set_children((
+            SimpleButton::new("Go").into_any(),
+            SimpleTextField::new().set_placeholder("name").into_any(),
+            SimpleCheckbox::new().set_label("agree").into_any(),
+          ))
+        })
+        .into_any()
+        .build()
+    });
+
+    let frame = testing::render_to_text(20, 8);
+    let (go_column, go_row) = locate(&frame, "Go");
+    let (_, name_row) = locate(&frame, "name");
+    let (agree_column, agree_row) = locate(&frame, "agree");
+
+    assert_eq!((go_column, go_row), (1, 0), "a one-row button: {frame}");
+    assert!(
+      colors_at(20, 8, 0, 0).1.is_some(),
+      "the inset cell carries the surface"
+    );
+    assert_eq!(name_row, 2, "a framed field beneath: {frame}");
+    assert!(
+      frame
+        .lines()
+        .nth(1)
+        .is_some_and(|line| line.starts_with('╭'))
+    );
+    assert_eq!(
+      (agree_column, agree_row),
+      (4, 4),
+      "a glyph mark, a gap, the label: {frame}"
+    );
+    assert!(
+      frame
+        .lines()
+        .nth(4)
+        .is_some_and(|line| line.starts_with("[ ] agree")),
+      "the mark is the unchecked glyph: {frame}"
+    );
+  });
+}

@@ -468,7 +468,7 @@ re-export.
   popup's role, and a tooltip's bubble carries `role="tooltip"` from the platform. A box
   that scrolls takes `tabindex="0"` unless a focus order is set, as Chromium makes a
   scroller focusable, so the keyboard reaches its content. The gallery runs under
-  axe-core in the browser tier (`web_axe`, the library vendored beside the test), so
+  axe-core in the browser tier (`browser_axe`, the library vendored beside the test), so
   every built-in is checked against the ARIA rules as it is drawn and with each of the
   gallery's overlays open: a tooltip, the picker's popup and a context menu. Disabled controls
   leave the focus order, a deliberate reading of the practices' allowance, recorded

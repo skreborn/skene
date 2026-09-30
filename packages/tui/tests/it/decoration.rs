@@ -1,34 +1,10 @@
-//! The rest of the terminal's surface: the title, a shadow, the glyph tokens, and the
-//! Simple controls' cell shape.
+//! Decoration in cells: a shadow mixing into the cells beneath and moving by its offset,
+//! a box's scrollbars in its own glyphs and colors, a paint mixing against the
+//! terminal's own colors, and a run's decoration lines.
 
-use skene_simple::tui::{glyph, *};
-use skene_tui::{self as tui, CellDecoration, Scene, TokenValue, prelude::*, testing};
+use skene_tui::{self as tui, CellDecoration, prelude::*, testing};
 
-use crate::common::{black, blue, colors_at, locate, red, rgb, with_platform};
-
-/// The terminal title follows `set_title`, and a derived title follows its signal.
-#[test]
-fn title_follows_state() {
-  with_platform(|| {
-    let name = Signal::new("one".to_owned());
-
-    let _ = tui::mount(|| {
-      derive_title(move || format!("app: {}", name.get()));
-
-      Text::new("body").build()
-    });
-
-    assert_eq!(testing::window_title().as_deref(), Some("app: one"));
-
-    name.set("two".to_owned());
-
-    assert_eq!(testing::window_title().as_deref(), Some("app: two"));
-
-    set_title("fixed");
-
-    assert_eq!(testing::window_title().as_deref(), Some("fixed"));
-  });
-}
+use crate::common::{black, blue, colors_at, red, rgb, with_platform};
 
 /// A shadow mixes its color into both colors of the band below and to the right.
 #[test]
@@ -152,89 +128,6 @@ fn a_paint_mixes_against_the_terminals_own_colors() {
       "black over the reported background"
     );
     assert_eq!(colors_at(4, 3, 2, 1).0, Some((110, 110, 110)));
-  });
-}
-
-/// The glyph tokens are a token set: a theme redefines a control's marks beneath it,
-/// and a node under the theme resolves the redefinition.
-#[test]
-fn a_theme_redefines_the_glyph_tokens() {
-  with_platform(|| {
-    let node = tui::mount(|| {
-      Theme::new(SimpleGlyphs::default().set_checkbox("X", "O"))
-        .set_child_builder(|| Text::new("under"))
-        .into_any()
-        .build()
-    });
-    let _ = testing::render_to_text(8, 1);
-
-    let (checked, unchecked) = Scene::<tui::Tui>::with(|scene| {
-      let text = scene.children(node).next().expect("the themed text");
-
-      (
-        scene.resolve_token(text, glyph::CHECKBOX_CHECKED.name()),
-        scene.resolve_token(text, glyph::CHECKBOX_UNCHECKED.name()),
-      )
-    });
-
-    assert_eq!(
-      checked,
-      Some(TokenValue::Text(Definition::from("X".to_owned())))
-    );
-    assert_eq!(
-      unchecked,
-      Some(TokenValue::Text(Definition::from("O".to_owned())))
-    );
-  });
-}
-
-/// The Simple controls take the cell shape: a button is one row with one-cell insets,
-/// a field is framed, and a checkbox's mark is one glyph-sized cell beside its label.
-#[test]
-fn simple_controls_take_the_cell_shape() {
-  with_platform(|| {
-    let _ = tui::mount(|| {
-      Theme::new(SimplePalette::default())
-        .set_child_builder(|| {
-          Column::new().set_children((
-            SimpleButton::new("Go").into_any(),
-            SimpleTextField::new().set_placeholder("name").into_any(),
-            SimpleCheckbox::new().set_label("agree").into_any(),
-          ))
-        })
-        .into_any()
-        .build()
-    });
-
-    let frame = testing::render_to_text(20, 8);
-    let (go_column, go_row) = locate(&frame, "Go");
-    let (_, name_row) = locate(&frame, "name");
-    let (agree_column, agree_row) = locate(&frame, "agree");
-
-    assert_eq!((go_column, go_row), (1, 0), "a one-row button: {frame}");
-    assert!(
-      colors_at(20, 8, 0, 0).1.is_some(),
-      "the inset cell carries the surface"
-    );
-    assert_eq!(name_row, 2, "a framed field beneath: {frame}");
-    assert!(
-      frame
-        .lines()
-        .nth(1)
-        .is_some_and(|line| line.starts_with('╭'))
-    );
-    assert_eq!(
-      (agree_column, agree_row),
-      (4, 4),
-      "a glyph mark, a gap, the label: {frame}"
-    );
-    assert!(
-      frame
-        .lines()
-        .nth(4)
-        .is_some_and(|line| line.starts_with("[ ] agree")),
-      "the mark is the unchecked glyph: {frame}"
-    );
   });
 }
 

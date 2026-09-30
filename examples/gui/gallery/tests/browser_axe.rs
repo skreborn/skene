@@ -2,7 +2,7 @@
 //! mounted live, must raise no accessibility violation.
 //!
 //! Run in a headless browser:
-//! `cargo test -p gallery --target wasm32-unknown-unknown --test web_axe`.
+//! `cargo test -p gallery --target wasm32-unknown-unknown --test browser_axe`.
 #![cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 
 use std::fmt::Write as _;

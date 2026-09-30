@@ -2,7 +2,7 @@
 //! sink, its classes content-addressed and its stylesheet real CSS.
 //!
 //! Run with the server platform selected:
-//! `RUSTFLAGS='--cfg skene_platform="server"' cargo test -p skene-web --test web_ssr`.
+//! `RUSTFLAGS='--cfg skene_platform="server"' cargo test -p skene-web --test server_render`.
 #![cfg(skene_gui_platform = "server")]
 
 use skene_common::{

@@ -5,7 +5,7 @@
 //! the platform and removes the root when it drops, isolating each test.
 //!
 //! Run in a headless browser:
-//! `cargo test -p skene-gui --target wasm32-unknown-unknown --test web_dom`.
+//! `cargo test -p skene-gui --target wasm32-unknown-unknown --test browser_dom`.
 #![cfg(skene_gui_platform = "browser")]
 
 use std::{
@@ -2649,7 +2649,7 @@ async fn a_lazy_column_measures_its_estimated_items() {
 /// A painted box carries a canvas the size of the box, drawn through vello on the GPU:
 /// the tier runs each engine with WebGPU on, so the canvas holds a WebGPU context and no
 /// 2d one where the engine keeps its device, and the fill shows through it either way.
-/// `web_painted` covers the CPU path.
+/// `browser_painted` covers the CPU path.
 #[wasm_bindgen_test]
 async fn a_painted_box_draws_into_its_canvas() {
   use skene_gui::{Painted, core::Dimension, kurbo::Rect};

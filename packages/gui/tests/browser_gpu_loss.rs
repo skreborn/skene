@@ -5,7 +5,7 @@
 //! in a fresh canvas, the old one holding a WebGPU context.
 //!
 //! Run in a headless browser:
-//! `cargo test -p skene-gui --target wasm32-unknown-unknown --test web_gpu_loss`.
+//! `cargo test -p skene-gui --target wasm32-unknown-unknown --test browser_gpu_loss`.
 #![cfg(skene_gui_platform = "browser")]
 
 use skene_gui::{

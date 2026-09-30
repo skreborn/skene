@@ -32,7 +32,7 @@ left half-done in a code comment.
     `Resolver` implement one meaning twice, and the terminal, headless and the web each
     implement focus, press, hover and overlays; each mechanism gets one owner, and the
     browser is the oracle.
-    - The parity harness (`web_parity`) gains a case for each fix below.
+    - The parity harness (`browser_parity`) gains a case for each fix below.
     - Interaction: a group run's state variants reach its spans, as a rule on the
     group's class redefining the ink where the state holds; the token definitions it
     redefines condition on media alone, so this waits on the styling direction.
@@ -235,8 +235,7 @@ left half-done in a code comment.
     - Renames: `Show` and `Switch` to `Visibility` and `OneOf`, where `Visibility`
     already names the style value that hides a box; the choice and activation handlers
     and binders to `choose`/`chosen` for value groups and `activate` for commands, with
-    `bind_` documented as a builder prefix; test files named by tier (`browser_*`,
-    `server_*`), `render_next.rs` renamed and `misc.rs` split by topic.
+    `bind_` documented as a builder prefix.
     - Vocabulary: `FlexDirection`'s reversed variants become an axis plus `reversed`;
     `Overflow` becomes `Clip`, `Scroll` and `ScrollIfNeeded`; `RunDisplay`,
     `GridTrack::Minmax` and `Layout::Flow` lose their CSS names; `Expr::vw`, `vh`,

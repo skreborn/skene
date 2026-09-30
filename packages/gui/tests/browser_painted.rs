@@ -3,10 +3,10 @@
 //! The web leaf asks the page for WebGPU once, when the first box paints, and keeps the
 //! answer for the page's life. This binary hides `navigator.gpu` before any box paints,
 //! so every painted box here renders through vello's CPU renderer and is blitted into
-//! its canvas; `web_dom` covers the GPU path with WebGPU switched on.
+//! its canvas; `browser_dom` covers the GPU path with WebGPU switched on.
 //!
 //! Run in a headless browser:
-//! `cargo test -p skene-gui --target wasm32-unknown-unknown --test web_painted`.
+//! `cargo test -p skene-gui --target wasm32-unknown-unknown --test browser_painted`.
 #![cfg(skene_gui_platform = "browser")]
 
 use skene_gui::{

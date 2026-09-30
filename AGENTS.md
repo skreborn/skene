@@ -417,7 +417,7 @@
   a scrolling box is a tab stop on the web (`tabindex="0"`) as in Chromium. **A
   disabled control takes no focus**—the ARIA practices allow either, and a control
   the user cannot operate is kept out of the way rather than announced; the divergence
-  is deliberate. The gallery runs under axe-core in the browser tier (`web_axe`), as
+  is deliberate. The gallery runs under axe-core in the browser tier (`browser_axe`), as
   drawn and with each of its overlays open, the gate for every built-in's semantics. On the web a control that owns a native
   input keeps it as its scriptless form—a text field or editor *is* its `<input>` or
   `<textarea>`, its caption a `<label for>` the platform keeps before it among its
@@ -622,9 +622,10 @@
   toolchain, the browser drivers); `--force`, or a `CI` variable, runs it regardless.
   `cargo xtask api` rewrites the snapshots once a change to a surface is meant. CI runs
   the same command on every pull request.
-- Tests run in three tiers, and the host tier alone proves nothing about the web: every
-  `web_*.rs` is gated to a leaf, so on the host those binaries compile to zero tests, and
-  a change can pass every host test while breaking the browser outright. The host tier
+- Tests run in three tiers, named by the tier that runs them, and the host tier alone
+  proves nothing about the web: every `browser_*.rs` and `server_*.rs` is gated to a
+  leaf, so on the host those binaries compile to zero tests, and a change can pass
+  every host test while breaking the browser outright. The host tier
   runs through `cargo nextest run`, each test in a process of its own, the doctests
   beside it through `cargo test --doc`, and a crate's host integration tests are one
   binary (`tests/it`), since the process per test isolates them and every binary costs
@@ -643,7 +644,7 @@
   (chromedriver, from `CHROMEDRIVER`, `PATH` or `~/.local/share/chrome-for-testing`),
   each with WebGPU switched on by `packages/gui/webdriver.json`, so a painted box
   renders on the GPU there, where headless Chromium's software adapter keeps its
-  device; `web_painted` hides `navigator.gpu` before its first box paints, so the CPU
+  device; `browser_painted` hides `navigator.gpu` before its first box paints, so the CPU
   blit is proven in the same run. The gate holds each browser binary to the least
   number of tests it lists for it in each engine, so a shrinking suite fails rather
   than passing quietly, and a new browser test raises its binary's number there. By

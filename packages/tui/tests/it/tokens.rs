@@ -2,7 +2,17 @@
 //! a definition naming another token reads it at the defining scope, and a scope
 //! beneath that redefines it changes nothing above.
 
-use skene_tui::{self as tui, Definition, Token, TokenName, prelude::*, testing};
+use skene_simple::tui::{glyph, *};
+use skene_tui::{
+  self as tui,
+  Definition,
+  Scene,
+  Token,
+  TokenName,
+  TokenValue,
+  prelude::*,
+  testing,
+};
 
 use crate::common::with_platform;
 
@@ -73,5 +83,38 @@ fn a_definition_reads_its_tokens_where_it_is_defined() {
 
     assert_eq!(colors[0].1, colors[2].1, "the outer surface, lightened");
     assert_ne!(colors[0].1, colors[4].1, "not the nested one");
+  });
+}
+
+/// The glyph tokens are a token set: a theme redefines a control's marks beneath it,
+/// and a node under the theme resolves the redefinition.
+#[test]
+fn a_theme_redefines_the_glyph_tokens() {
+  with_platform(|| {
+    let node = tui::mount(|| {
+      Theme::new(SimpleGlyphs::default().set_checkbox("X", "O"))
+        .set_child_builder(|| Text::new("under"))
+        .into_any()
+        .build()
+    });
+    let _ = testing::render_to_text(8, 1);
+
+    let (checked, unchecked) = Scene::<tui::Tui>::with(|scene| {
+      let text = scene.children(node).next().expect("the themed text");
+
+      (
+        scene.resolve_token(text, glyph::CHECKBOX_CHECKED.name()),
+        scene.resolve_token(text, glyph::CHECKBOX_UNCHECKED.name()),
+      )
+    });
+
+    assert_eq!(
+      checked,
+      Some(TokenValue::Text(Definition::from("X".to_owned())))
+    );
+    assert_eq!(
+      unchecked,
+      Some(TokenValue::Text(Definition::from("O".to_owned())))
+    );
   });
 }

@@ -5,7 +5,7 @@
 //! builds to the server node carrying its marker.
 //!
 //! Run in a headless browser:
-//! `cargo test -p skene-gui --target wasm32-unknown-unknown --test web_hydrate`.
+//! `cargo test -p skene-gui --target wasm32-unknown-unknown --test browser_hydrate`.
 #![cfg(skene_gui_platform = "browser")]
 
 use std::{

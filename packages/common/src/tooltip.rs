@@ -27,7 +27,7 @@ use skene_core::{
 use skene_reactive::{Effect, Get, Set, Signal, on_cleanup, untrack};
 
 use crate::{
-  Anchor,
+  NodeHandle,
   Overlay,
   Text,
   decoration,
@@ -254,7 +254,7 @@ impl<P: Platform> View<P> for Tooltip<P, AnyView<P>> {
     let (start, _) = Scene::<P>::create_segment();
     let node = child.build();
     let open = Signal::opaque(false);
-    let anchor = Anchor::new();
+    let anchor = NodeHandle::<P>::new();
 
     anchor.assign(node);
 
@@ -284,7 +284,7 @@ impl<P: Platform> View<P> for Tooltip<P, AnyView<P>> {
       Content::View(view) => (view, None),
     };
     let bubble = bubble
-      .set_anchor(&anchor)
+      .set_anchor(anchor)
       .set_placement(placement)
       .derive_open(move || open.get())
       .handle_dismiss(move || open.set(false))

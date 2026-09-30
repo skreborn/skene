@@ -850,8 +850,7 @@ fn picker_popup_anchors_beneath_and_closes_on_blur() {
 fn picker_tab_commits_closes_and_travels_on() {
   with_platform(|| {
     let unit = Signal::new("px".to_owned());
-    let next = FocusHandle::new();
-    let bound = next.clone();
+    let next = NodeHandle::new();
 
     let _ = tui::mount(move || {
       Column::new()
@@ -859,7 +858,7 @@ fn picker_tab_commits_closes_and_travels_on() {
           picker(unit).into_any(),
           RawButton::new(Activate::new())
             .set_label("next")
-            .bind_focus(&bound)
+            .bind_handle(next)
             .into_any(),
         ))
         .into_any()
@@ -1123,8 +1122,7 @@ fn focus_shows_after_a_key_and_not_after_a_pointer_press() {
 #[test]
 fn a_focus_handle_moves_focus() {
   with_platform(|| {
-    let handle = FocusHandle::new();
-    let bound = handle.clone();
+    let handle = NodeHandle::new();
 
     let _ = tui::mount(move || {
       Column::new()
@@ -1132,7 +1130,7 @@ fn a_focus_handle_moves_focus() {
           RawButton::new(Activate::new()).set_label("first"),
           RawButton::new(Activate::new())
             .set_label("second")
-            .bind_focus(&bound),
+            .bind_handle(handle),
         ))
         .into_any()
         .build()
@@ -1193,23 +1191,22 @@ fn a_disabled_control_takes_no_focus_and_no_click() {
 fn tab_leaves_a_control_disabled_while_focused_for_the_next() {
   with_platform(|| {
     let submitting = Signal::new(false);
-    let first = FocusHandle::new();
-    let next = FocusHandle::new();
-    let (bound_first, bound_next) = (first.clone(), next.clone());
+    let first = NodeHandle::new();
+    let next = NodeHandle::new();
 
     let _ = tui::mount(move || {
       Column::new()
         .set_children((
           RawButton::new(Activate::new())
             .set_label("first")
-            .bind_focus(&bound_first),
+            .bind_handle(first),
           RawButton::new(Activate::new())
             .set_label("submit")
             .derive_disabled(move || submitting.get())
             .handle_click(move || submitting.set(true)),
           RawButton::new(Activate::new())
             .set_label("next")
-            .bind_focus(&bound_next),
+            .bind_handle(next),
         ))
         .into_any()
         .build()

@@ -32,7 +32,7 @@ use skene_core::{
   WheelEvent,
 };
 
-use crate::{Anchor, FocusHandle, LayoutBox, SizeHandle, decoration};
+use crate::{LayoutBox, NodeHandle, decoration};
 
 /// Decoration and sizing around exactly one child.
 ///
@@ -170,27 +170,12 @@ impl<P: Platform> Container<P> {
     self
   }
 
-  /// Binds `anchor` to the box once built, so an overlay is placed against it.
+  /// Binds `handle` to the box once built: an overlay is placed against it, focus
+  /// moves to it, which the box takes only with a focus order, and its measured size
+  /// is reported through the handle.
   #[inline(always)]
-  pub fn bind_anchor(mut self, anchor: &Anchor) -> Self {
-    self.inner = self.inner.bind_anchor(anchor);
-
-    self
-  }
-
-  /// Binds `focus` to the box once built, so focus moves to it programmatically; the
-  /// box takes focus only with a focus order.
-  #[inline(always)]
-  pub fn bind_focus(mut self, focus: &FocusHandle<P>) -> Self {
-    self.inner = self.inner.bind_focus(focus);
-
-    self
-  }
-
-  /// Binds `size` to the box once built, so its measured size is reported through it.
-  #[inline(always)]
-  pub fn bind_size(mut self, size: &SizeHandle<P>) -> Self {
-    self.inner = self.inner.bind_size(size);
+  pub fn bind_handle(mut self, handle: NodeHandle<P>) -> Self {
+    self.inner = self.inner.bind_handle(handle);
 
     self
   }

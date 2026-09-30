@@ -622,28 +622,48 @@ fn head_registrations_leave_with_their_owner() {
   assert_eq!(head_elements(), []);
 }
 
-/// A size handle bound to a box reports the box's measured size, tracked, and nothing
-/// before the first measurement.
+/// A handle asked for its size only after its box built measures the box from then.
 #[test]
-fn a_size_handle_reports_the_measured_size() {
-  use skene_gui::{SizeHandle, core::Size, headless::trigger_size};
+fn a_handle_asked_for_its_size_late_measures_from_then() {
+  use skene_gui::{NodeHandle, core::Size, headless::trigger_size};
 
   reset();
 
   let owner = Owner::new();
-  let handle = SizeHandle::new();
+  let handle = NodeHandle::new();
+  let node = owner.enter(|| Container::new().bind_handle(handle).build());
+
+  assert_eq!(handle.node(), Some(node));
+  assert_eq!(handle.size(), None);
+
+  trigger_size(node, Size::new(64., 32.));
+
+  assert_eq!(handle.size(), Some(Size::new(64., 32.)));
+
+  owner.dispose();
+}
+
+/// A handle bound to a box reports the box's measured size, tracked, and nothing
+/// before the first measurement.
+#[test]
+fn a_size_handle_reports_the_measured_size() {
+  use skene_gui::{NodeHandle, core::Size, headless::trigger_size};
+
+  reset();
+
+  let owner = Owner::new();
+  let handle = NodeHandle::new();
   let seen = Rc::new(Cell::new(0));
   let node = owner.enter(|| {
-    let watched = handle.clone();
     let seen = Rc::clone(&seen);
 
     skene_gui::reactive::Effect::new(move |_: Option<()>| {
-      let _ = watched.size();
+      let _ = handle.size();
 
       seen.set(seen.get() + 1);
     });
 
-    Container::new().bind_size(&handle).build()
+    Container::new().bind_handle(handle).build()
   });
 
   assert_eq!(handle.size(), None);

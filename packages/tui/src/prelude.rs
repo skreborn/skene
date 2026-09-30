@@ -77,7 +77,6 @@ pub use skene_reactive::{
 };
 
 pub use crate::{
-  Anchor,
   AnyView,
   BorderGlyphs,
   Clipboard,
@@ -91,7 +90,6 @@ pub use crate::{
   Enhance,
   ErrorBoundary,
   Flexible,
-  FocusHandle,
   Grid,
   GridCell,
   Inset,
@@ -104,6 +102,7 @@ pub use crate::{
   LazyRow,
   Media,
   MenuItem,
+  NodeHandle,
   Overlay,
   Painted,
   Pinned,
@@ -126,7 +125,6 @@ pub use crate::{
   ScrollbarGlyphs,
   Show,
   Size,
-  SizeHandle,
   Spacing,
   Span,
   Stack,

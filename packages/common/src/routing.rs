@@ -5,7 +5,7 @@
 //! router knows nothing of URLs' owners: a platform binds it thinly—the browser to the
 //! History API, a server render to the requested path, a native shell to nothing at all.
 
-use std::{cell::RefCell, rc::Rc};
+use std::rc::Rc;
 
 use skene_reactive::{Get, Set, Signal, provide_context, use_context};
 
@@ -26,21 +26,22 @@ pub trait StaticRoutes: Route {
 
 /// The URL sink a platform installs: called with the new path on programmatic
 /// navigation.
-type Sink = Rc<RefCell<Option<Box<dyn Fn(&str)>>>>;
+type Sink = Option<Rc<dyn Fn(&str)>>;
 
 /// The commit a platform installs: runs a navigation's state change, wrapping it in a
 /// view transition where the platform has one.
-type Commit = Rc<RefCell<Option<Box<dyn Fn(Box<dyn FnOnce()>)>>>>;
+type Commit = Option<Rc<dyn Fn(Box<dyn FnOnce()>)>>;
 
 /// The current route as reactive state.
 ///
-/// Cheap to clone and thread through the reactive context
-/// ([`provide`](Self::provide) / [`get`](Self::get)), so any view can read or navigate.
+/// `Copy`, and threaded through the reactive context ([`provide`](Self::provide) /
+/// [`get`](Self::get)), so any view can read or navigate. It lives as long as the owner
+/// it was made under.
 #[must_use]
 pub struct Router<R: Route> {
   current: Signal<R>,
-  sink: Sink,
-  commit: Commit,
+  sink: Signal<Sink>,
+  commit: Signal<Commit>,
 }
 
 impl<R: Route> std::fmt::Debug for Router<R> {
@@ -49,13 +50,16 @@ impl<R: Route> std::fmt::Debug for Router<R> {
   }
 }
 
+impl<R: Route> Copy for Router<R> {}
+
+#[expect(
+  clippy::expl_impl_clone_on_copy,
+  reason = "a derive would bound the route on Copy"
+)]
 impl<R: Route> Clone for Router<R> {
+  #[inline(always)]
   fn clone(&self) -> Self {
-    Self {
-      current: self.current,
-      sink: Rc::clone(&self.sink),
-      commit: Rc::clone(&self.commit),
-    }
+    *self
   }
 }
 
@@ -64,14 +68,14 @@ impl<R: Route> Router<R> {
   pub fn new(initial: R) -> Self {
     Self {
       current: Signal::opaque(initial),
-      sink: Rc::new(RefCell::new(None)),
-      commit: Rc::new(RefCell::new(None)),
+      sink: Signal::opaque(None),
+      commit: Signal::opaque(None),
     }
   }
 
   /// The current route. Tracks, so a reading view re-runs on navigation.
   #[must_use]
-  pub fn route(&self) -> R {
+  pub fn route(self) -> R {
     self.current.get()
   }
 
@@ -81,10 +85,10 @@ impl<R: Route> Router<R> {
   /// The sink runs first so anything reacting to the state—a derived document title
   /// above all—applies to the new history entry, never retroactively to the departed
   /// one.
-  pub fn navigate(&self, route: R) {
+  pub fn navigate(self, route: R) {
     let path = route.to_path();
 
-    if let Some(sink) = self.sink.borrow().as_ref() {
+    if let Some(sink) = self.sink.get_untracked() {
       sink(&path);
     }
 
@@ -93,11 +97,10 @@ impl<R: Route> Router<R> {
 
   /// Writes `route` into the state, through the platform's commit when one is
   /// installed.
-  fn commit(&self, route: R) {
+  fn commit(self, route: R) {
     let current = self.current;
-    let commit = self.commit.borrow();
 
-    match commit.as_ref() {
+    match self.commit.get_untracked() {
       Some(commit) => commit(Box::new(move || current.set(route))),
       None => current.set(route),
     }
@@ -109,7 +112,7 @@ impl<R: Route> Router<R> {
   /// Trailing slashes are trimmed before parsing (the root stays `/`), so the
   /// directory URLs a statically-hosted route serves under match their route.
   #[must_use = "an unmatched path leaves the route unchanged"]
-  pub fn apply_path(&self, path: &str) -> bool {
+  pub fn apply_path(self, path: &str) -> bool {
     let trimmed = path.trim_end_matches('/');
     let path = if trimmed.is_empty() { "/" } else { trimmed };
 
@@ -125,20 +128,20 @@ impl<R: Route> Router<R> {
 
   /// Installs the platform's URL sink, called with the new path on each
   /// [`navigate`](Self::navigate).
-  pub fn set_sink(&self, sink: impl Fn(&str) + 'static) {
-    *self.sink.borrow_mut() = Some(Box::new(sink));
+  pub fn set_sink(self, sink: impl Fn(&str) + 'static) {
+    self.sink.set(Some(Rc::new(sink)));
   }
 
   /// Installs the platform's commit: every state change of a navigation runs through
   /// it, so a platform with view transitions wraps the change in one.
-  pub fn set_commit(&self, commit: impl Fn(Box<dyn FnOnce()>) + 'static) {
-    *self.commit.borrow_mut() = Some(Box::new(commit));
+  pub fn set_commit(self, commit: impl Fn(Box<dyn FnOnce()>) + 'static) {
+    self.commit.set(Some(Rc::new(commit)));
   }
 
   /// Stores this router in the current reactive scope, for [`get`](Self::get) anywhere
   /// beneath it.
-  pub fn provide(&self) {
-    provide_context(self.clone());
+  pub fn provide(self) {
+    provide_context(self);
   }
 
   /// The router provided by an ancestor scope, if any.
@@ -226,7 +229,6 @@ mod tests {
     let runs = Rc::new(RefCell::new(0));
 
     {
-      let router = router.clone();
       let runs = Rc::clone(&runs);
 
       Effect::new(move |_| {

@@ -2,7 +2,7 @@
 
 use std::{marker::PhantomData, rc::Rc};
 
-use skene_common::{Anchor, Container, CornerRadius, Pinned, Range, RawSlider, Stack};
+use skene_common::{Container, CornerRadius, NodeHandle, Pinned, Range, RawSlider, Stack};
 use skene_core::{
   Alignment,
   AnyKind,
@@ -19,7 +19,7 @@ use skene_core::{
   State,
   View,
 };
-use skene_reactive::{Get, Set, Signal};
+use skene_reactive::{Get, Set, Signal, untrack};
 
 use super::{
   SimplePalette,
@@ -182,8 +182,8 @@ where
         .set_color(SimplePalette::<P::Scalar>::SECONDARY_SURFACE),
     );
     // The thumb is pinned, so the stack builds it; its part is recorded once it is.
-    let thumb_anchor = Anchor::new();
-    let thumb = thumb::<P>(shape, &thumb_anchor);
+    let thumb_handle = NodeHandle::<P>::new();
+    let thumb = thumb::<P>(shape, thumb_handle);
     // Each lane spares the thumb's width at its end, so the fill's fraction and the
     // thumb's travel both span the track less the thumb.
     let lane = || {
@@ -248,7 +248,7 @@ where
       )
       .build();
 
-    if let Some(thumb) = thumb_anchor.node() {
+    if let Some(thumb) = untrack(|| thumb_handle.node()) {
       Scene::<P>::with(|scene| scene.set_part(thumb, Part::Thumb));
     }
 
@@ -257,14 +257,14 @@ where
 }
 
 /// The thumb: a box in the unit's thumb surface, ringed while focus is visible where
-/// the ring has thickness and recolored where it has none, bound to `anchor`.
-fn thumb<P: Platform>(shape: SimpleShape<P::Scalar>, anchor: &Anchor) -> Container<P>
+/// the ring has thickness and recolored where it has none, bound to `handle`.
+fn thumb<P: Platform>(shape: SimpleShape<P::Scalar>, handle: NodeHandle<P>) -> Container<P>
 where
   P::Scalar: SimpleUnit,
   P::StyleExt: CornerRadius,
 {
   Container::<P>::new()
-    .bind_anchor(anchor)
+    .bind_handle(handle)
     .set_width(Dimension::Length(shape.thumb_size))
     .set_height(Dimension::Length(shape.thumb_size))
     .set_corner_radius(shape.thumb_size.to_f32() / 2.)

@@ -30,7 +30,7 @@ use skene_core::{
 };
 use skene_reactive::{Effect, Get, Set, Signal, untrack};
 
-use crate::{Anchor, LayoutBox, decoration, realize::Source};
+use crate::{LayoutBox, NodeHandle, decoration, realize::Source};
 
 /// The backdrop a modal paints unless told otherwise: half-transparent black.
 #[inline(always)]
@@ -56,7 +56,7 @@ pub struct Overlay<P: Platform, C = NoChild> {
   hint: bool,
   placement: Source<Placement>,
   backdrop: Option<Color>,
-  anchor: Option<Anchor>,
+  anchor: Option<NodeHandle<P>>,
   position: Option<Rc<dyn Fn() -> Option<Point<f32>>>>,
   open: Source<bool>,
   dismiss: Vec<Rc<PlainHandler>>,
@@ -214,8 +214,8 @@ impl<P: Platform, C> Overlay<P, C> {
 
   /// Places the open overlay against the view `anchor` is bound to.
   #[inline(always)]
-  pub fn set_anchor(mut self, anchor: &Anchor) -> Self {
-    self.anchor = Some(anchor.clone());
+  pub const fn set_anchor(mut self, anchor: NodeHandle<P>) -> Self {
+    self.anchor = Some(anchor);
 
     self
   }
@@ -322,7 +322,7 @@ impl<P: Platform> View<P> for Overlay<P, AnyView<P>> {
       let placement = placement.as_ref().map(|placement| placement());
       let position = position.as_ref().map(|position| position());
       let open = open();
-      let anchor = anchor.as_ref().and_then(Anchor::node);
+      let anchor = anchor.and_then(|anchor| untrack(|| anchor.node()));
 
       let Some(sink) = Scene::<P>::with(|scene| scene.sink(node))
       else {

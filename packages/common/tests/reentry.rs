@@ -9,7 +9,7 @@ use std::{
   thread::LocalKey,
 };
 
-use skene_common::{Column, Container, FocusHandle, RawCheckbox, Text, Theme, Toggle};
+use skene_common::{Column, Container, NodeHandle, RawCheckbox, Text, Theme, Toggle};
 use skene_core::{
   AccessProp,
   BoxProps,
@@ -314,13 +314,11 @@ fn every_mirrored_call_runs_with_the_scene_released() {
   let palette = Signal::opaque(Palette::default());
   let label = Signal::new("one".to_owned());
   let checked = Signal::new(false);
-  let focus = FocusHandle::<Reentrant>::new();
+  let focus = NodeHandle::<Reentrant>::new();
   let root = owner.enter(|| {
-    let focus = focus.clone();
-
     Theme::<Reentrant, _>::derive(move || palette.get())
       .set_child_builder(move || {
-        Container::<Reentrant>::new().bind_focus(&focus).set_child(
+        Container::<Reentrant>::new().bind_handle(focus).set_child(
           Column::<Reentrant>::new().set_children((
             Text::<Reentrant>::derive(move || label.get()),
             RawCheckbox::<Reentrant>::new(Toggle::new().bind_checked(checked)),

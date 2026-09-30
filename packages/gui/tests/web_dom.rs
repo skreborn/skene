@@ -24,7 +24,6 @@ use skene_gui::{
   Deferred,
   Definition,
   Flexible,
-  FocusHandle,
   Grid,
   GridCell,
   HasChildren,
@@ -32,6 +31,7 @@ use skene_gui::{
   Media,
   MenuItem,
   NamedKey,
+  NodeHandle,
   Overlay,
   Pinned,
   RadioMember,
@@ -1252,16 +1252,12 @@ fn a_head_registration_adopts_the_served_element() {
 #[wasm_bindgen_test]
 fn focus_handle_focuses_the_bound_view() {
   let (_guard, root) = fresh_root();
-  let handle = FocusHandle::new();
+  let handle = NodeHandle::new();
 
-  let _ = mount({
-    let handle = handle.clone();
-
-    move || {
-      RawTextField::new(TextEntry::new())
-        .bind_focus(&handle)
-        .build()
-    }
+  let _ = mount(move || {
+    RawTextField::new(TextEntry::new())
+      .bind_handle(handle)
+      .build()
   });
 
   handle.focus();
@@ -2218,7 +2214,7 @@ fn a_route_change_commits_under_a_view_transition() {
 
     let installed = install_router(Page::Home);
 
-    *held.borrow_mut() = Some(installed.clone());
+    *held.borrow_mut() = Some(installed);
 
     derived(move || match installed.route() {
       Page::Home => Text::new("home page").build(),

@@ -24,16 +24,15 @@ use skene_core::{
 use skene_reactive::{Effect, Get, Memo, Set, Signal, on_cleanup, provide_context, untrack};
 
 use crate::{
-  Anchor,
   Behavior,
   Control,
   Enhance,
-  FocusHandle,
   Label,
   LayoutBox,
   Listbox,
   ListboxGroup,
   NativePicker,
+  NodeHandle,
   Overlay,
   Popup,
   Roster,
@@ -449,11 +448,9 @@ fn build_drawn<P: Platform>(
     Memo::new(move |_| chosen().unwrap_or_default())
   };
   let open = Signal::new(false);
-  let focus = FocusHandle::<P>::new();
-  let anchor = Anchor::new();
+  let face_handle = NodeHandle::<P>::new();
   let listbox = Listbox::new().set_roster(shared.roster.clone());
   let choose = {
-    let focus = focus.clone();
     let on_change = on_change.clone();
 
     move |value: String| {
@@ -462,27 +459,22 @@ fn build_drawn<P: Platform>(
       }
 
       open.set(false);
-      focus.focus();
+      face_handle.focus();
     }
   };
 
   *shared.choose.borrow_mut() = Rc::new(choose);
 
   let roster = shared.roster.clone();
-  let list_anchor = Anchor::new();
-  let list_node: Signal<Option<NodeId>> = Signal::opaque(None);
+  let list_handle = NodeHandle::<P>::new();
   let popup = Popup::new()
     .derive_open(move || open.get())
-    .derive_controls(move || list_node.get())
-    .handle_open({
-      let focus = focus.clone();
+    .derive_controls(move || list_handle.node())
+    .handle_open(move |next| {
+      open.set(next);
 
-      move |next| {
-        open.set(next);
-
-        if !next {
-          focus.focus();
-        }
+      if !next {
+        face_handle.focus();
       }
     })
     .handle_typed(choose_typed::<P>(
@@ -491,26 +483,24 @@ fn build_drawn<P: Platform>(
       on_change,
     ));
   let mut control = Control::new(popup)
-    .bind_anchor(&anchor)
-    .bind_focus(&focus)
+    .bind_handle(face_handle)
     .set_child_builder(move || face(shown));
 
   *control.style_mut() = *face_style;
 
   let node = settings.apply(control).build();
   let overlay = Overlay::<P>::popup()
-    .set_anchor(&anchor)
+    .set_anchor(face_handle)
     .set_placement(placement)
     .bind_open(open)
     .set_child(
       Control::new(listbox)
-        .bind_anchor(&list_anchor)
+        .bind_handle(list_handle)
         .set_child(shared.options),
     )
     .build();
 
   Scene::<P>::with(|scene| scene.attach(node, overlay, None));
-  list_node.set(list_anchor.node());
   Effect::render(move |_: Option<()>| {
     if open.get() {
       untrack(|| roster.focus_value::<P>(chosen().as_deref()));

@@ -24,14 +24,9 @@ pub fn install_router<R: Route>(fallback: R) -> Router<R> {
   router.set_sink(skene_web::push_path);
   router.set_commit(skene_web::commit_navigation);
 
-  {
-    let router = router.clone();
-
-    skene_web::on_pop(move |path| {
-      let _ = router.apply_path(&path);
-    });
-  }
-
+  skene_web::on_pop(move |path| {
+    let _ = router.apply_path(&path);
+  });
   router.provide();
 
   router

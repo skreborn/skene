@@ -72,8 +72,7 @@ fn modal_overlay_covers_blocks_and_dismisses() {
 fn popup_anchors_below_and_light_dismisses() {
   with_platform(|| {
     let open = Signal::new(false);
-    let anchor = Anchor::new();
-    let bound = anchor.clone();
+    let anchor = NodeHandle::new();
     let clicks = Rc::new(Cell::new(0u32));
     let counted = Rc::clone(&clicks);
 
@@ -82,11 +81,11 @@ fn popup_anchors_below_and_light_dismisses() {
         .set_children((
           RawButton::new(Activate::new())
             .set_label("trigger")
-            .bind_anchor(&bound)
+            .bind_handle(anchor)
             .into_any(),
           Overlay::popup()
             .bind_open(open)
-            .set_anchor(&anchor)
+            .set_anchor(anchor)
             .set_placement(Placement::Bottom)
             .set_child(Text::new("menu"))
             .into_any(),
@@ -124,10 +123,8 @@ fn a_nested_popup_anchors_where_its_anchor_shows() {
   with_platform(|| {
     let outer = Signal::new(true);
     let inner = Signal::new(false);
-    let trigger = Anchor::new();
-    let bound_trigger = trigger.clone();
-    let item = Anchor::new();
-    let bound_item = item.clone();
+    let trigger = NodeHandle::new();
+    let item = NodeHandle::new();
 
     let _ = tui::mount(move || {
       Column::new()
@@ -135,23 +132,23 @@ fn a_nested_popup_anchors_where_its_anchor_shows() {
           Text::new("top").into_any(),
           Text::new("trigger").into_any(),
           Container::new()
-            .bind_anchor(&bound_trigger)
+            .bind_handle(trigger)
             .set_child(Text::new("anchor"))
             .into_any(),
           Overlay::popup()
             .bind_open(outer)
-            .set_anchor(&trigger)
+            .set_anchor(trigger)
             .set_placement(Placement::Bottom)
             .set_child(
               Column::new().set_children((
                 Text::new("first").into_any(),
                 Container::new()
-                  .bind_anchor(&bound_item)
+                  .bind_handle(item)
                   .set_child(Text::new("second"))
                   .into_any(),
                 Overlay::popup()
                   .bind_open(inner)
-                  .set_anchor(&item)
+                  .set_anchor(item)
                   .set_placement(Placement::Bottom)
                   .set_child(Text::new("nested"))
                   .into_any(),
@@ -223,23 +220,22 @@ fn modal_scrim_defaults_on_and_disables() {
 fn a_modal_traps_focus() {
   with_platform(|| {
     let open = Signal::new(true);
-    let outside = FocusHandle::new();
-    let inside = FocusHandle::new();
-    let (bound_outside, bound_inside) = (outside.clone(), inside.clone());
+    let outside = NodeHandle::new();
+    let inside = NodeHandle::new();
 
     let _ = tui::mount(move || {
       Column::new()
         .set_children((
           RawButton::new(Activate::new())
             .set_label("outside")
-            .bind_focus(&bound_outside)
+            .bind_handle(outside)
             .into_any(),
           Overlay::modal()
             .bind_open(open)
             .set_child(
               RawButton::new(Activate::new())
                 .set_label("inside")
-                .bind_focus(&bound_inside),
+                .bind_handle(inside),
             )
             .into_any(),
         ))
@@ -272,8 +268,7 @@ fn a_modal_traps_focus() {
 fn the_modal_opened_last_holds_the_tab_order() {
   with_platform(|| {
     let (first_open, second_open) = (Signal::new(false), Signal::new(false));
-    let (first, second) = (FocusHandle::new(), FocusHandle::new());
-    let (bound_first, bound_second) = (first.clone(), second.clone());
+    let (first, second) = (NodeHandle::new(), NodeHandle::new());
 
     let _ = tui::mount(move || {
       Column::new()
@@ -283,7 +278,7 @@ fn the_modal_opened_last_holds_the_tab_order() {
             .set_child(
               RawButton::new(Activate::new())
                 .set_label("first")
-                .bind_focus(&bound_first),
+                .bind_handle(first),
             )
             .into_any(),
           Overlay::modal()
@@ -291,7 +286,7 @@ fn the_modal_opened_last_holds_the_tab_order() {
             .set_child(
               RawButton::new(Activate::new())
                 .set_label("second")
-                .bind_focus(&bound_second),
+                .bind_handle(second),
             )
             .into_any(),
         ))
@@ -325,8 +320,7 @@ fn a_modal_holds_under_a_popup_above_it() {
     let open = Signal::new(false);
     let clicks = Rc::new(Cell::new(0u32));
     let counted = Rc::clone(&clicks);
-    let inside = FocusHandle::new();
-    let bound_inside = inside.clone();
+    let inside = NodeHandle::new();
 
     let _ = tui::mount(move || {
       Column::new()
@@ -343,7 +337,7 @@ fn a_modal_holds_under_a_popup_above_it() {
                 .set_child(
                   RawButton::new(Activate::new())
                     .set_label("inside")
-                    .bind_focus(&bound_inside),
+                    .bind_handle(inside),
                 )
                 .into_any(),
             )
@@ -381,16 +375,15 @@ fn a_modal_holds_under_a_popup_above_it() {
 fn a_modal_takes_focus_on_open_and_returns_it_on_close() {
   with_platform(|| {
     let open = Signal::new(false);
-    let opener = FocusHandle::new();
-    let inside = FocusHandle::new();
-    let (bound_opener, bound_inside) = (opener.clone(), inside.clone());
+    let opener = NodeHandle::new();
+    let inside = NodeHandle::new();
 
     let _ = tui::mount(move || {
       Column::new()
         .set_children((
           RawButton::new(Activate::new())
             .set_label("open")
-            .bind_focus(&bound_opener)
+            .bind_handle(opener)
             .handle_click(move || open.set(true))
             .into_any(),
           Overlay::modal()
@@ -398,7 +391,7 @@ fn a_modal_takes_focus_on_open_and_returns_it_on_close() {
             .set_child(
               RawButton::new(Activate::new())
                 .set_label("close")
-                .bind_focus(&bound_inside)
+                .bind_handle(inside)
                 .handle_click(move || open.set(false)),
             )
             .into_any(),

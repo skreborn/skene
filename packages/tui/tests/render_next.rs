@@ -197,38 +197,34 @@ fn space_on_a_focused_checkbox_flips_the_signal_and_repaints_the_mark() {
 #[test]
 fn tab_reaches_the_controls_in_document_order() {
   with_platform(|| {
-    let first = Anchor::new();
-    let mint = Anchor::new();
-    let last = Anchor::new();
+    let first = NodeHandle::new();
+    let mint = NodeHandle::new();
+    let last = NodeHandle::new();
 
-    let _ = tui::mount({
-      let (first, mint, last) = (first.clone(), mint.clone(), last.clone());
-
-      move || {
-        Column::new()
-          .set_children((
-            RawButton::new(Activate::new())
-              .bind_anchor(&first)
-              .set_label("first")
-              .into_any(),
-            RawRadioGroup::new(Roving::new())
-              .set_child(
-                Row::new().set_spacing(1).set_children((
-                  RawRadio::new(RadioMember::new("mint"))
-                    .bind_anchor(&mint)
-                    .set_label("mint"),
-                  RawRadio::new(RadioMember::new("plum")).set_label("plum"),
-                )),
-              )
-              .into_any(),
-            RawButton::new(Activate::new())
-              .bind_anchor(&last)
-              .set_label("last")
-              .into_any(),
-          ))
-          .into_any()
-          .build()
-      }
+    let _ = tui::mount(move || {
+      Column::new()
+        .set_children((
+          RawButton::new(Activate::new())
+            .bind_handle(first)
+            .set_label("first")
+            .into_any(),
+          RawRadioGroup::new(Roving::new())
+            .set_child(
+              Row::new().set_spacing(1).set_children((
+                RawRadio::new(RadioMember::new("mint"))
+                  .bind_handle(mint)
+                  .set_label("mint"),
+                RawRadio::new(RadioMember::new("plum")).set_label("plum"),
+              )),
+            )
+            .into_any(),
+          RawButton::new(Activate::new())
+            .bind_handle(last)
+            .set_label("last")
+            .into_any(),
+        ))
+        .into_any()
+        .build()
     });
     let _ = tui::render_to_text(30, 6);
 

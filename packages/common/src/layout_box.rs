@@ -53,11 +53,9 @@ use skene_core::{
 use skene_reactive::Effect;
 
 use crate::{
-  Anchor,
-  FocusHandle,
+  NodeHandle,
   properties,
   realize::{Source, bind_box_slot, report_access},
-  size::SizeHandle,
 };
 
 /// A box with a layout mode, a declared style, a role, a container name, focus and
@@ -67,8 +65,8 @@ use crate::{
 /// it exposes the properties its layout honors and delegates its children, and a
 /// third party's layout view does the same. Decoration and sizing are set through
 /// [`style_mut`](Self::style_mut) by the one view that offers them,
-/// [`Container`](crate::Container). An [`Anchor`] or a [`FocusHandle`] bound to the box
-/// names its node once built.
+/// [`Container`](crate::Container). A [`NodeHandle`] bound to the box names its node
+/// once built.
 #[must_use]
 pub struct LayoutBox<P: Platform, Kind = PlainChild> {
   layout: Layout,
@@ -84,9 +82,7 @@ pub struct LayoutBox<P: Platform, Kind = PlainChild> {
   destination: Option<String>,
   drag_axes: Option<DragAxes>,
   handlers: Vec<Handler>,
-  anchor: Option<Anchor>,
-  focus: Option<FocusHandle<P>>,
-  size: Option<SizeHandle<P>>,
+  handles: Vec<NodeHandle<P>>,
   children: Children<P, Kind>,
 }
 
@@ -114,9 +110,7 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
       destination: None,
       drag_axes: None,
       handlers: Vec::new(),
-      anchor: None,
-      focus: None,
-      size: None,
+      handles: Vec::new(),
       children: Children::new(),
     }
   }
@@ -270,26 +264,11 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
     self
   }
 
-  /// Binds `anchor` to the box once built, so an overlay is placed against it.
+  /// Binds `handle` to the box once built: an overlay is placed against it, focus
+  /// moves to it and its measured size is reported through the handle.
   #[inline(always)]
-  pub fn bind_anchor(mut self, anchor: &Anchor) -> Self {
-    self.anchor = Some(anchor.clone());
-
-    self
-  }
-
-  /// Binds `focus` to the box once built, so focus moves to it programmatically.
-  #[inline(always)]
-  pub fn bind_focus(mut self, focus: &FocusHandle<P>) -> Self {
-    self.focus = Some(focus.clone());
-
-    self
-  }
-
-  /// Binds `size` to the box once built, so its measured size is reported through it.
-  #[inline(always)]
-  pub fn bind_size(mut self, size: &SizeHandle<P>) -> Self {
-    self.size = Some(size.clone());
+  pub fn bind_handle(mut self, handle: NodeHandle<P>) -> Self {
+    self.handles.push(handle);
 
     self
   }
@@ -675,16 +654,8 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
       node
     });
 
-    if let Some(anchor) = &self.anchor {
-      anchor.assign(node);
-    }
-
-    if let Some(focus) = &self.focus {
-      focus.assign(node);
-    }
-
-    if let Some(size) = &self.size {
-      size.assign(node);
+    for handle in self.handles {
+      handle.assign(node);
     }
 
     for slot in slots {

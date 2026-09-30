@@ -92,9 +92,8 @@ pub use self::{
   type_ahead::{TYPE_AHEAD_RESET, TypeAhead},
 };
 use crate::{
-  Anchor,
-  FocusHandle,
   LayoutBox,
+  NodeHandle,
   Text,
   decoration,
   properties,
@@ -594,18 +593,11 @@ impl<P: Platform, B: Behavior<P>, C> Control<P, B, C> {
       "where the control's parts, body and label sit on the cross axis; centered unless told otherwise";
   }
 
-  /// Binds `anchor` to the control once built, so an overlay is placed against it.
+  /// Binds `handle` to the control once built: an overlay is placed against it, focus
+  /// moves to it and its measured size is reported through the handle.
   #[inline(always)]
-  pub fn bind_anchor(mut self, anchor: &Anchor) -> Self {
-    self.inner = self.inner.bind_anchor(anchor);
-
-    self
-  }
-
-  /// Binds `focus` to the control once built, so focus moves to it programmatically.
-  #[inline(always)]
-  pub fn bind_focus(mut self, focus: &FocusHandle<P>) -> Self {
-    self.inner = self.inner.bind_focus(focus);
+  pub fn bind_handle(mut self, handle: NodeHandle<P>) -> Self {
+    self.inner = self.inner.bind_handle(handle);
 
     self
   }

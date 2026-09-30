@@ -20,17 +20,15 @@
 //! [`Behavior`] saying what the interaction is; [`Activate`], [`Toggle`], [`Range`],
 //! [`Roving`] with [`RadioMember`], [`Popup`], [`Listbox`] with [`ListItem`], and
 //! [`TextEntry`] ship, and the `Raw*` aliases name the control over each. [`Overlay`]
-//! is content above the app, opened and closed by the app and placed against an
-//! [`Anchor`]; [`RawPicker`] composes a popup face, an overlay and a listbox; a
-//! [`FocusHandle`] moves focus to the view it is bound to, [`SizeHandle`] reports its
-//! measured size. [`LazyColumn`] and [`LazyRow`] scroll a keyed list building only the
-//! slice in view, its items of a fixed or an estimated and measured [`ItemExtent`].
-//! [`CornerRadius`] is what a decorated box asks of a medium's style extension to round its
-//! corners, and [`TypeMetrics`] what a run asks of it to size its type; both are silently declined
-//! by a medium without them. [`LowLevel`] registers a sink a low-level view made against a
-//! platform's escape trait as a node, so it composes like a built-in.
+//! is content above the app, opened and closed by the app and placed against the view
+//! a [`NodeHandle`] is bound to, which focus also moves to and whose measured size it
+//! reports; [`RawPicker`] composes a popup face, an overlay and a listbox. [`LazyColumn`] and
+//! [`LazyRow`] scroll a keyed list building only the slice in view, its items of a fixed or an
+//! estimated and measured [`ItemExtent`]. [`CornerRadius`] is what a decorated box asks of a
+//! medium's style extension to round its corners, and [`TypeMetrics`] what a run asks of it to size
+//! its type; both are silently declined by a medium without them. [`LowLevel`] registers a sink a
+//! low-level view made against a platform's escape trait as a node, so it composes like a built-in.
 
-mod anchor;
 mod container;
 mod context_menu;
 mod control;
@@ -39,7 +37,6 @@ mod enhance;
 mod error_boundary;
 mod flex;
 mod flexible;
-mod focus;
 mod grid;
 mod grid_cell;
 pub mod gui;
@@ -48,6 +45,7 @@ mod layout_box;
 mod lazy_list;
 mod macros;
 pub mod media;
+mod node_handle;
 mod overlay;
 mod painted;
 mod painting;
@@ -56,7 +54,6 @@ mod pinned;
 pub mod realize;
 pub mod routing;
 mod run;
-mod size;
 mod span;
 mod stack;
 mod suspense;
@@ -91,7 +88,6 @@ pub use skene_core::{
 };
 
 pub use crate::{
-  anchor::Anchor,
   container::Container,
   context_menu::{ContextMenu, MenuItem, MenuItemContent},
   control::{
@@ -145,19 +141,18 @@ pub use crate::{
   error_boundary::ErrorBoundary,
   flex::{Column, Row},
   flexible::Flexible,
-  focus::FocusHandle,
   grid::Grid,
   grid_cell::GridCell,
   keymap::Keymap,
   layout_box::LayoutBox,
   lazy_list::{ItemExtent, LazyColumn, LazyRow},
+  node_handle::NodeHandle,
   overlay::Overlay,
   painted::Painted,
   painting::{Canvas, IntoBrush, PaintType, Painter, Painting, Renderer, kurbo, paint, peniko},
   picker::{Face, RawPicker},
   pinned::Pinned,
   realize::{ChildBuilder, LowLevel},
-  size::SizeHandle,
   span::{RichText, Span},
   stack::Stack,
   suspense::Suspense,

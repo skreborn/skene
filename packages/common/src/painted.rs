@@ -8,9 +8,9 @@ use crate::{
   Canvas,
   Enhance,
   LayoutBox,
+  NodeHandle,
   Painter,
   Painting,
-  SizeHandle,
   properties,
   realize::{ChildBuilder, with_sink},
 };
@@ -71,10 +71,11 @@ impl<P: Painting> Painted<P> {
       "the width-to-height ratio the unsized axis follows";
   }
 
-  /// Binds `size` to the box once built, so its measured size is reported through it.
+  /// Binds `handle` to the box once built: its measured size is reported through the
+  /// handle, and an overlay may be placed against it.
   #[inline(always)]
-  pub fn bind_size(mut self, size: &SizeHandle<P>) -> Self {
-    self.inner = self.inner.bind_size(size);
+  pub fn bind_handle(mut self, handle: NodeHandle<P>) -> Self {
+    self.inner = self.inner.bind_handle(handle);
 
     self
   }

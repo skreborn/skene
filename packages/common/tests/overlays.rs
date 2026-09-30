@@ -9,7 +9,7 @@ use std::{
   rc::Rc,
 };
 
-use skene_common::{Activate, Anchor};
+use skene_common::Activate;
 use skene_core::{
   Color,
   EventKind,
@@ -44,7 +44,7 @@ type Column = skene_common::Column<Headless>;
 type Text = skene_common::Text<Headless>;
 type Overlay<C = skene_common::NoChild> = skene_common::Overlay<Headless, C>;
 type RawButton = skene_common::RawButton<Headless>;
-type FocusHandle = skene_common::FocusHandle<Headless>;
+type NodeHandle = skene_common::NodeHandle<Headless>;
 
 /// A modal follows its bound signal through the platform and paints a backdrop; opening
 /// and closing keep the same content node, so a signal created while building the
@@ -164,22 +164,18 @@ fn a_popup_anchored_to_a_bound_box_passes_the_anchors_sink() {
   let owner = Owner::new();
   let open = Signal::new(false);
   let placement = Signal::opaque(Placement::Bottom);
-  let anchor = Anchor::new();
-  let column = owner.enter({
-    let anchor = anchor.clone();
-
-    move || {
-      Column::new()
-        .set_children((
-          Container::new().bind_anchor(&anchor),
-          Overlay::popup()
-            .set_anchor(&anchor)
-            .derive_placement(move || placement.get())
-            .bind_open(open)
-            .set_child(Text::new("popup")),
-        ))
-        .build()
-    }
+  let anchor = NodeHandle::new();
+  let column = owner.enter(move || {
+    Column::new()
+      .set_children((
+        Container::new().bind_handle(anchor),
+        Overlay::popup()
+          .set_anchor(anchor)
+          .derive_placement(move || placement.get())
+          .bind_open(open)
+          .set_child(Text::new("popup")),
+      ))
+      .build()
   });
   let face = children(column)[1];
   let popup = children(column)[2];
@@ -227,22 +223,18 @@ fn a_press_outside_a_popup_dismisses_it() {
 
   let owner = Owner::new();
   let open = Signal::new(false);
-  let anchor = Anchor::new();
-  let column = owner.enter({
-    let anchor = anchor.clone();
-
-    move || {
-      Column::new()
-        .set_children((
-          Container::new().bind_anchor(&anchor),
-          Container::new(),
-          Overlay::popup()
-            .set_anchor(&anchor)
-            .bind_open(open)
-            .set_child(Container::new()),
-        ))
-        .build()
-    }
+  let anchor = NodeHandle::new();
+  let column = owner.enter(move || {
+    Column::new()
+      .set_children((
+        Container::new().bind_handle(anchor),
+        Container::new(),
+        Overlay::popup()
+          .set_anchor(anchor)
+          .bind_open(open)
+          .set_child(Container::new()),
+      ))
+      .build()
   });
   let [face, page, popup] = [1, 2, 3].map(|index| children(column)[index]);
   let inside = only_child(popup);
@@ -269,25 +261,20 @@ fn a_focus_handle_moves_focus_to_its_bound_view() {
   reset();
 
   let owner = Owner::new();
-  let button_focus = FocusHandle::new();
-  let box_focus = FocusHandle::new();
-  let unbound = FocusHandle::new();
-  let column = owner.enter({
-    let button_focus = button_focus.clone();
-    let box_focus = box_focus.clone();
-
-    move || {
-      Column::new()
-        .set_children((
-          RawButton::new(Activate::new())
-            .bind_focus(&button_focus)
-            .set_label("Save"),
-          Container::new()
-            .set_focus_order(FocusOrder::Auto)
-            .bind_focus(&box_focus),
-        ))
-        .build()
-    }
+  let button_focus = NodeHandle::new();
+  let box_focus = NodeHandle::new();
+  let unbound = NodeHandle::new();
+  let column = owner.enter(move || {
+    Column::new()
+      .set_children((
+        RawButton::new(Activate::new())
+          .bind_handle(button_focus)
+          .set_label("Save"),
+        Container::new()
+          .set_focus_order(FocusOrder::Auto)
+          .bind_handle(box_focus),
+      ))
+      .build()
   });
   let button = children(column)[1];
   let plain = children(column)[2];

@@ -42,12 +42,10 @@ left half-done in a code comment.
     and headless stop mirroring parents, children, tab order and `enclosing_control`,
     and `bind_node` and three arenas go; anchors exist in the scene alone, platforms
     receiving the next real sibling and server output keeping comment pairs only where
-    streaming needs a marker; `Anchor`, `FocusHandle` and `SizeHandle` merge into one
-    Copy node handle backed by the arena, and `Router` turns Copy too; `HasChild` (one
-    slot, which `set_child` replaces) and `HasChildren` (segments, which `add_child`
-    appends) split by type, `Container` implementing the first alone, and property
-    setters live only on the `NoChild` state, making children-last a type error for
-    every wrapper view.
+    streaming needs a marker; `HasChild` (one slot, which `set_child` replaces) and
+    `HasChildren` (segments, which `add_child` appends) split by type, `Container`
+    implementing the first alone, and property setters live only on the `NoChild` state,
+    making children-last a type error for every wrapper view.
     - The web's realization: `Platform for Web` is written once over a small sink trait
     that the DOM and the string tree implement, the browser layering adoption and
     events on top, so the two leaves cannot drift; hydration converges, removing
@@ -273,26 +271,25 @@ left half-done in a code comment.
     lines each facade repeats, into one exported `facade!` macro that also makes a
     third party's facade a few lines; the three "fixed or derived" enums, into one
     `Source<T>`.
-    - Renames: `Raw*` to `Basic*`; `Show` and `Switch` to `Visibility` and `OneOf`;
-    `Lazy` to `AsyncView`; `Composable` to `ConditionTree`; the `Range` behavior and
+    - Renames: `Raw*` to `Basic*`; `Show` and `Switch` to `Visibility` and `OneOf`; `Lazy`
+    to `AsyncView`; `Composable` to `ConditionTree`; the `Range` behavior and
     `NativeElement::Range` to `Slider`; `Roving` and `RadioMember` to `RadioGroup` and
     `Radio`; the `ListItem` behavior and `RawOption` to `ListboxOption` and
     `RawListboxOption`, and the menu's `MenuItem` data to `MenuEntry`; core's `Toggle`
-    value to `CheckState`; `Anchor` to `AnchorHandle`, unless the node handle absorbs
-    it; `GuiExt` and `TuiExt` to `GuiStyle` and `TuiStyle`; `AccessProp::Label` to
-    `AccessProp::Name`; `Signal::opaque` to `Signal::transient`; `StoreField::derive`
-    and `try_derive` to `memo` and `try_memo`; `stored_scheme` to `chosen_scheme`,
-    beside a web-only `persisted_scheme`; `Router::get` to `Router::current`;
-    `Popup::handle_typed` to `set_key_fallback`; the terminal's and headless's `Store`
-    to `Records`; `web/src/escape.rs` to `low_level.rs`; `web::csr` and `web::ssr` to
-    `web::browser` and `web::server`, and `skene_leaf` (`browser`, `server`, `host`) to
-    `skene_gui_platform` (`browser`, `server`, `headless`); `web::hydration` to
-    `resource_state`; the reactive crate's `value.rs`, `key()`, `Position` and
-    `provide`/`staged` to `tracked_cell.rs`, `field_key()`, `SnapshotPlace` and
-    `provide_extra`/`take_extra`; the choice and activation handlers and binders to
-    `choose`/`chosen` for value groups and `activate` for commands, with `bind_`
-    documented as a builder prefix; test files named by tier (`browser_*`, `server_*`),
-    `render_next.rs` renamed and `misc.rs` split by topic.
+    value to `CheckState`; `GuiExt` and `TuiExt` to `GuiStyle` and `TuiStyle`;
+    `AccessProp::Label` to `AccessProp::Name`; `Signal::opaque` to `Signal::transient`;
+    `StoreField::derive` and `try_derive` to `memo` and `try_memo`; `stored_scheme` to
+    `chosen_scheme`, beside a web-only `persisted_scheme`; `Router::get` to
+    `Router::current`; `Popup::handle_typed` to `set_key_fallback`; the terminal's and
+    headless's `Store` to `Records`; `web/src/escape.rs` to `low_level.rs`; `web::csr`
+    and `web::ssr` to `web::browser` and `web::server`, and `skene_leaf` (`browser`,
+    `server`, `host`) to `skene_gui_platform` (`browser`, `server`, `headless`);
+    `web::hydration` to `resource_state`; the reactive crate's `value.rs`, `key()`,
+    `Position` and `provide`/`staged` to `tracked_cell.rs`, `field_key()`,
+    `SnapshotPlace` and `provide_extra`/`take_extra`; the choice and activation handlers
+    and binders to `choose`/`chosen` for value groups and `activate` for commands, with
+    `bind_` documented as a builder prefix; test files named by tier (`browser_*`,
+    `server_*`), `render_next.rs` renamed and `misc.rs` split by topic.
     - Vocabulary: `FlexDirection`'s reversed variants become an axis plus `reversed`;
     `Overflow` becomes `Clip`, `Scroll` and `ScrollIfNeeded`; `RunDisplay`,
     `GridTrack::Minmax` and `Layout::Flow` lose their CSS names; `Expr::vw`, `vh`,

@@ -77,7 +77,7 @@ impl<R: Route> View<ActivePlatform> for Link<R> {
             return Prevent::None;
           }
 
-          let Some(router) = router.clone()
+          let Some(router) = router
           else {
             return Prevent::None;
           };

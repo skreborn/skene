@@ -80,7 +80,6 @@ pub use tracing::{debug, error, info, trace, warn};
 #[cfg(skene_leaf = "server")]
 pub use crate::render_to_string;
 pub use crate::{
-  Anchor,
   AnyView,
   Column,
   Condition,
@@ -92,7 +91,6 @@ pub use crate::{
   Enhance,
   ErrorBoundary,
   Flexible,
-  FocusHandle,
   Grid,
   GridCell,
   Inset,
@@ -104,6 +102,7 @@ pub use crate::{
   LazyRow,
   Media,
   MenuItem,
+  NodeHandle,
   Overlay,
   Painted,
   Pinned,
@@ -124,7 +123,6 @@ pub use crate::{
   Row,
   Show,
   Size,
-  SizeHandle,
   Spacing,
   Span,
   Stack,

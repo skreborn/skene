@@ -194,7 +194,7 @@
     `media::safe_area()` are signals on every facade, one `Environment` in core
     holding what they report, `media::watch(&condition)` turns any declared condition
     into a memo, and a box's measured size reaches a view through
-    `Platform::observe_size` and an app through a `SizeHandle` bound to the box. On
+    `Platform::observe_size` and an app through a `NodeHandle` bound to the box. On
     the web they are live after hydration and hold the server's answer before it; the
     server's answer comes from client hints when the render is given them, else from
     documented defaults. Declare what must be right before the bundle arrives; derive

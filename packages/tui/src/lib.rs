@@ -62,7 +62,6 @@ pub use skene_common::tui::{
 };
 pub use skene_common::{
   Activate,
-  Anchor,
   Behavior,
   Canvas,
   ControlChild,
@@ -354,10 +353,8 @@ pub type Keymap<C = NoChild> = skene_common::Keymap<ActivePlatform, C>;
 pub type RawMenu<C = NoChild> = skene_common::RawMenu<ActivePlatform, C>;
 /// One item within a menu; see [`skene_common::RawMenuItem`].
 pub type RawMenuItem<C = NoChild> = skene_common::RawMenuItem<ActivePlatform, C>;
-/// A handle moving focus to a built view; see [`skene_common::FocusHandle`].
-pub type FocusHandle = skene_common::FocusHandle<ActivePlatform>;
-/// A handle reporting a built view's measured size; see [`skene_common::SizeHandle`].
-pub type SizeHandle = skene_common::SizeHandle<ActivePlatform>;
+/// A handle naming the node a view built; see [`skene_common::NodeHandle`].
+pub type NodeHandle = skene_common::NodeHandle<ActivePlatform>;
 /// A box drawn by a paint callback, through the terminal's graphics protocol where
 /// the terminal proved one; see [`skene_common::Painted`].
 pub type Painted = skene_common::Painted<ActivePlatform>;

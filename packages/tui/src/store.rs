@@ -662,23 +662,6 @@ impl Record {
     self.kind.box_record().map(|inner| &inner.props)
   }
 
-  /// The record's place in focus traversal: a box's declared order, a link run's
-  /// automatic one.
-  #[inline(always)]
-  pub(crate) fn focus_order(&self) -> Option<FocusOrder> {
-    match &self.kind {
-      Kind::Run { props, .. } => props.link.as_ref().map(|_| FocusOrder::Auto),
-      _ => self.box_props().and_then(|props| props.focus_order),
-    }
-  }
-
-  /// Whether the record takes focus at all: by traversal, by pointer, or
-  /// programmatically.
-  #[inline(always)]
-  pub(crate) fn is_focusable(&self) -> bool {
-    self.focus_order().is_some()
-  }
-
   /// The layout mode of a box-like record.
   #[inline(always)]
   pub(crate) fn layout(&self) -> Option<Layout> {
@@ -1271,6 +1254,20 @@ impl Store {
     Scene::<Tui>::read(|scene| scene.enclosing_control(handle))
   }
 
+  /// `handle`'s place in focus traversal, as the scene holds it.
+  #[expect(
+    clippy::unused_self,
+    reason = "every reader holds the store, and focus is asked of it as of the rest"
+  )]
+  pub(crate) fn focus_order(&self, handle: Handle) -> Option<FocusOrder> {
+    Scene::<Tui>::read(|scene| scene.focus_order(handle))
+  }
+
+  /// Whether `handle` takes focus at all: by traversal, by pointer, or programmatically.
+  pub(crate) fn is_focusable(&self, handle: Handle) -> bool {
+    self.focus_order(handle).is_some()
+  }
+
   /// Whether a press's pointer drags `handle`: a box or a control declaring the axes it
   /// drags along, which keeps a press's pointer until the release.
   pub(crate) fn drags(&self, handle: Handle) -> bool {
@@ -1341,13 +1338,13 @@ impl Store {
   /// enclosing control when that is; `None` where neither takes focus, as for a disabled
   /// control.
   pub(crate) fn focus_holder(&self, handle: Handle) -> Option<Handle> {
-    if self.record(handle).is_some_and(Record::is_focusable) {
+    if self.is_focusable(handle) {
       return Some(handle);
     }
 
     self
       .enclosing_control(handle)
-      .filter(|control| self.record(*control).is_some_and(Record::is_focusable))
+      .filter(|control| self.is_focusable(*control))
   }
 
   /// The interaction state `handle`'s conditions resolve against now, as the scene

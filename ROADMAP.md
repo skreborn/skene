@@ -42,9 +42,9 @@ left half-done in a code comment.
     properties in place of the closed report, so a third party builds switches, tabs,
     comboboxes and trees; parts become styling targets or go.
     - Facts: platform records stop keeping what the scene holds beyond what the platform
-    realizes (a node's focus order, the merged accessibility reports, the hover path,
-    measured container sizes, headless's overlay anchor) and read it there, as both
-    read control state and editability, and the terminal its overlays and structure.
+    realizes (the hover path, measured container sizes, headless's overlay anchor) and
+    read it there, as both read control state, editability, focus order and the merged
+    accessibility reports, and the terminal its overlays and structure.
     - Structure: anchors exist in the scene alone, platforms receiving the next real
     sibling and server output keeping comment pairs only where streaming needs a marker;
     the server's string tree serializes the structure the scene places

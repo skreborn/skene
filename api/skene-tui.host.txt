@@ -706,9 +706,7 @@ pub fn skene_tui::Tui::set_selection(skene_core::node::NodeId, skene_core::value
 pub fn skene_tui::Tui::set_text(skene_core::node::NodeId, &str)
 pub fn skene_tui::Tui::set_value(skene_core::node::NodeId, &str)
 pub fn skene_tui::Tui::stored_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
-pub fn skene_tui::Tui::update_access(skene_core::node::NodeId, &[skene_core::values::access::AccessProp])
 pub fn skene_tui::Tui::update_box(skene_core::node::NodeId, skene_core::leaf::Slot, &skene_core::leaf::StaticLeaf<skene_core::box_style::BoxValue<u32, skene_common::tui::ext::TuiExt>>)
-pub fn skene_tui::Tui::update_focus_order(skene_core::node::NodeId, core::option::Option<skene_core::values::focus_order::FocusOrder>)
 pub fn skene_tui::Tui::update_run(skene_core::node::NodeId, skene_core::leaf::Slot, &skene_core::leaf::StaticLeaf<skene_core::run_style::RunValue<skene_common::tui::ext::TuiExt>>)
 pub fn skene_tui::Tui::watch_media(&skene_core::condition::Media<u32>) -> skene_reactive::memo::Memo<bool>
 impl skene_tui::CellPainter for skene_tui::Tui

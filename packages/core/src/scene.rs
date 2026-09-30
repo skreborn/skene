@@ -1996,6 +1996,17 @@ impl<P: Platform> Scene<P> {
     reports.merged()
   }
 
+  /// What `node` reports to assistive technology: the view's own report, then its
+  /// description, with their relations folded ([`AccessProp::fold`]).
+  #[must_use]
+  pub fn access(&self, node: NodeId) -> Vec<AccessProp> {
+    self
+      .record(node)
+      .and_then(|record| record.access.as_deref())
+      .map(AccessReports::merged)
+      .unwrap_or_default()
+  }
+
   /// Replaces what a view describing `node` reports with `description`, returning the
   /// whole report the platform is to receive: the node's own, then its description,
   /// with their relations folded ([`AccessProp::fold`]).

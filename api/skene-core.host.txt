@@ -3693,15 +3693,7 @@ impl<X: skene_core::StyleExtension> skene_core::Fingerprint for skene_core::RunS
 pub fn skene_core::RunStyle<skene_core::Plain, X>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 pub struct skene_core::Scene<P: skene_core::Platform>
 impl<P: skene_core::Platform> skene_core::Scene<P>
-pub fn skene_core::Scene<P>::access_outline(impl core::ops::function::Fn(skene_core::NodeId) -> skene_core::NameFacts) -> alloc::string::String
-pub fn skene_core::Scene<P>::access_tree(impl core::ops::function::Fn(skene_core::NodeId) -> skene_core::NameFacts) -> accesskit::TreeUpdate
-impl<P: skene_core::Platform> skene_core::Scene<P>
-pub fn skene_core::Scene<P>::accessible_name(skene_core::NodeId, impl core::ops::function::Fn(skene_core::NodeId) -> skene_core::NameFacts) -> core::option::Option<alloc::string::String>
-pub fn skene_core::Scene<P>::find_all_by_role(accesskit::Role, impl core::ops::function::Fn(skene_core::NodeId) -> skene_core::NameFacts) -> alloc::vec::Vec<skene_core::NodeId>
-pub fn skene_core::Scene<P>::find_all_unnamed(impl core::ops::function::Fn(skene_core::NodeId) -> skene_core::NameFacts) -> alloc::vec::Vec<skene_core::NodeId>
-pub fn skene_core::Scene<P>::find_by_role(accesskit::Role, &str, impl core::ops::function::Fn(skene_core::NodeId) -> skene_core::NameFacts) -> core::option::Option<skene_core::NodeId>
-pub fn skene_core::Scene<P>::find_by_text(&str, impl core::ops::function::Fn(skene_core::NodeId) -> skene_core::NameFacts) -> core::option::Option<skene_core::NodeId>
-impl<P: skene_core::Platform> skene_core::Scene<P>
+pub fn skene_core::Scene<P>::access(&self, skene_core::NodeId) -> alloc::vec::Vec<skene_core::AccessProp>
 pub fn skene_core::Scene<P>::ancestry(&self, skene_core::NodeId) -> smallvec::SmallVec<[skene_core::NodeId; 16]>
 pub fn skene_core::Scene<P>::annotate(impl core::convert::Into<core::option::Option<skene_core::Annotation<P>>>, impl core::ops::function::FnOnce() -> skene_core::NodeId) -> skene_core::NodeId
 pub fn skene_core::Scene<P>::attach(&mut self, skene_core::NodeId, skene_core::NodeId, core::option::Option<skene_core::NodeId>)
@@ -3794,6 +3786,15 @@ pub fn skene_core::Scene<P>::tab_order(&self, skene_core::NodeId, &[skene_core::
 pub const fn skene_core::Scene<P>::take_pending_annotation(&mut self) -> core::option::Option<skene_core::Annotation<P>>
 pub fn skene_core::Scene<P>::topmost_modal(&self, &[skene_core::NodeId]) -> core::option::Option<skene_core::NodeId>
 pub fn skene_core::Scene<P>::with<R>(impl core::ops::function::FnOnce(&mut Self) -> R) -> R
+impl<P: skene_core::Platform> skene_core::Scene<P>
+pub fn skene_core::Scene<P>::access_outline(impl core::ops::function::Fn(skene_core::NodeId) -> skene_core::NameFacts) -> alloc::string::String
+pub fn skene_core::Scene<P>::access_tree(impl core::ops::function::Fn(skene_core::NodeId) -> skene_core::NameFacts) -> accesskit::TreeUpdate
+impl<P: skene_core::Platform> skene_core::Scene<P>
+pub fn skene_core::Scene<P>::accessible_name(skene_core::NodeId, impl core::ops::function::Fn(skene_core::NodeId) -> skene_core::NameFacts) -> core::option::Option<alloc::string::String>
+pub fn skene_core::Scene<P>::find_all_by_role(accesskit::Role, impl core::ops::function::Fn(skene_core::NodeId) -> skene_core::NameFacts) -> alloc::vec::Vec<skene_core::NodeId>
+pub fn skene_core::Scene<P>::find_all_unnamed(impl core::ops::function::Fn(skene_core::NodeId) -> skene_core::NameFacts) -> alloc::vec::Vec<skene_core::NodeId>
+pub fn skene_core::Scene<P>::find_by_role(accesskit::Role, &str, impl core::ops::function::Fn(skene_core::NodeId) -> skene_core::NameFacts) -> core::option::Option<skene_core::NodeId>
+pub fn skene_core::Scene<P>::find_by_text(&str, impl core::ops::function::Fn(skene_core::NodeId) -> skene_core::NameFacts) -> core::option::Option<skene_core::NodeId>
 impl<P: skene_core::Platform> core::default::Default for skene_core::Scene<P>
 pub fn skene_core::Scene<P>::default() -> Self
 impl<P: skene_core::Platform> core::fmt::Debug for skene_core::Scene<P>

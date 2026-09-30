@@ -5,7 +5,6 @@ use std::{cell::RefCell, rc::Rc, thread::LocalKey};
 
 use skene_common::Painting;
 use skene_core::{
-  AccessProp,
   Availability,
   BoxProps,
   BoxValue,
@@ -14,7 +13,6 @@ use skene_core::{
   ControlProps,
   ControlState,
   Definitions,
-  FocusOrder,
   Media,
   MediaSignals,
   NativeElement,
@@ -115,28 +113,6 @@ impl Platform for Tui {
 
         store.layout_dirty = true;
         store.damage(node);
-      }
-    });
-  }
-
-  fn update_focus_order(node: NodeId, focus_order: Option<FocusOrder>) {
-    with_store(|store| {
-      if let Some(inner) = store
-        .record_mut(node)
-        .and_then(|record| record.kind.box_record_mut())
-      {
-        inner.props.focus_order = focus_order;
-      }
-    });
-  }
-
-  fn update_access(node: NodeId, access: &[AccessProp]) {
-    with_store(|store| {
-      if let Some(inner) = store
-        .record_mut(node)
-        .and_then(|record| record.kind.box_record_mut())
-      {
-        access.clone_into(&mut inner.props.access);
       }
     });
   }

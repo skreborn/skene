@@ -43,7 +43,6 @@ use std::{cell::RefCell, fmt::Write as _, rc::Rc, thread::LocalKey, time::Durati
 use skene_common::gui::{Canvas, GuiExt, GuiProperty, Painter, Painting};
 pub use skene_common::gui::{HeadElement, HeadId};
 use skene_core::{
-  AccessProp,
   AspectRatio,
   Availability,
   Axes,
@@ -195,22 +194,6 @@ impl Platform for Headless {
   fn update_box(node: NodeId, slot: Slot, leaf: &StaticLeaf<BoxValue<f32, GuiExt>>) {
     with_record(node, |record| {
       record.slots.insert(slot, leaf.clone().into());
-    });
-  }
-
-  fn update_focus_order(node: NodeId, focus_order: Option<FocusOrder>) {
-    with_record(node, |record| {
-      if let Some(props) = record.kind.box_props_mut() {
-        props.focus_order = focus_order;
-      }
-    });
-  }
-
-  fn update_access(node: NodeId, access: &[AccessProp]) {
-    with_record(node, |record| {
-      if let Some(props) = record.kind.box_props_mut() {
-        access.clone_into(&mut props.access);
-      }
     });
   }
 
@@ -1137,35 +1120,58 @@ pub fn is_live(node: NodeId) -> bool {
   with_store(|store| store.record(node).is_some())
 }
 
-/// The props the box or control `node` was created with, carrying the focus order and
-/// accessibility properties last written to it.
+/// The props the box, control or overlay `node` was created with, carrying the focus
+/// order and accessibility properties the scene holds for it now.
 #[must_use]
 pub fn box_props(node: NodeId) -> Option<BoxProps<Headless>> {
   end_turn();
 
-  with_record(node, |record| record.kind.box_props().cloned())?
+  let mut props = with_record(node, |record| record.kind.box_props().cloned())??;
+
+  current_facts(node, &mut props);
+
+  Some(props)
 }
 
-/// The props the control `node` was created with.
+/// The props the control `node` was created with, carrying the focus order and
+/// accessibility properties the scene holds for it now.
 #[must_use]
 pub fn control_props(node: NodeId) -> Option<ControlProps<Headless>> {
   end_turn();
 
-  with_record(node, |record| match &record.kind {
+  let mut props = with_record(node, |record| match &record.kind {
     Kind::Control(props) => Some((**props).clone()),
     Kind::Box(_) | Kind::Overlay(_) | Kind::Run(_) | Kind::Anchor | Kind::Scope => None,
-  })?
+  })??;
+
+  current_facts(node, &mut props.box_props);
+
+  Some(props)
 }
 
-/// The props the overlay `node` was created with.
+/// The props the overlay `node` was created with, carrying the focus order and
+/// accessibility properties the scene holds for it now.
 #[must_use]
 pub fn overlay_props(node: NodeId) -> Option<OverlayProps<Headless>> {
   end_turn();
 
-  with_record(node, |record| match &record.kind {
+  let mut props = with_record(node, |record| match &record.kind {
     Kind::Overlay(props) => Some((**props).clone()),
     Kind::Box(_) | Kind::Control(_) | Kind::Run(_) | Kind::Anchor | Kind::Scope => None,
-  })?
+  })??;
+
+  current_facts(node, &mut props.box_props);
+
+  Some(props)
+}
+
+/// Writes the focus order and accessibility properties the scene holds for `node` into
+/// `props`.
+fn current_facts(node: NodeId, props: &mut BoxProps<Headless>) {
+  Scene::<Headless>::read(|scene| {
+    props.focus_order = scene.focus_order(node);
+    props.access = scene.access(node);
+  });
 }
 
 /// Whether the overlay `node` is open.
@@ -1209,16 +1215,13 @@ pub fn part(node: NodeId) -> Option<Part> {
   Scene::<Headless>::with(|scene| scene.part(node))
 }
 
-/// The place in focus traversal last written to the box or control `node`, or a link
-/// run's automatic one; `None` when it takes no focus.
+/// The place in focus traversal of `node`, as the scene holds it; `None` when it takes
+/// no focus.
 #[must_use]
 pub fn focus_order(node: NodeId) -> Option<FocusOrder> {
   end_turn();
 
-  match box_props(node) {
-    Some(props) => props.focus_order,
-    None => run_props(node)?.link.map(|_| FocusOrder::Auto),
-  }
+  Scene::<Headless>::read(|scene| scene.focus_order(node))
 }
 
 /// Whether sequential focus traversal reaches `node`: it takes focus and is not
@@ -1319,7 +1322,7 @@ fn name_facts(node: NodeId) -> NameFacts {
     if let Some(props) = record.kind.box_props() {
       facts.link = props.destination.is_some();
       facts.role = props.role.or(facts.link.then_some(Role::Link));
-      facts.access.clone_from(&props.access);
+      facts.access = Scene::<Headless>::read(|scene| scene.access(node));
       facts.block = true;
     }
 

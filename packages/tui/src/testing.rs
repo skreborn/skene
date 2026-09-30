@@ -224,7 +224,7 @@ fn name_facts(node: NodeId) -> NameFacts {
     if let Some(inner) = record.kind.box_record() {
       facts.link = inner.props.destination.is_some();
       facts.role = inner.props.role.or(facts.link.then_some(Role::Link));
-      facts.access.clone_from(&inner.props.access);
+      facts.access = Scene::<Tui>::read(|scene| scene.access(node));
       facts.block = true;
     }
 

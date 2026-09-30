@@ -505,7 +505,7 @@ impl Store {
         None => {}
       }
 
-      if record.is_focusable() {
+      if self.is_focusable(*handle) {
         return Some(MouseCursor::Click);
       }
 
@@ -1062,7 +1062,7 @@ fn press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
         store
           .ancestors(*first)
           .into_iter()
-          .find(|node| store.record(*node).is_some_and(Record::is_focusable))
+          .find(|node| store.is_focusable(*node))
       })
   });
 

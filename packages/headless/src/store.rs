@@ -112,16 +112,6 @@ impl Kind {
       Self::Run(_) | Self::Anchor | Self::Scope => None,
     }
   }
-
-  /// The box props of a box or a control, mutably.
-  pub(crate) fn box_props_mut(&mut self) -> Option<&mut BoxProps<Headless>> {
-    match self {
-      Self::Box(props) => Some(props),
-      Self::Control(props) => Some(&mut props.box_props),
-      Self::Overlay(props) => Some(&mut props.box_props),
-      Self::Run(_) | Self::Anchor | Self::Scope => None,
-    }
-  }
 }
 
 impl Record {

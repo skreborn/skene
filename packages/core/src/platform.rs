@@ -244,11 +244,15 @@ pub trait Platform: Copy + Default + 'static {
     leaf: &StaticLeaf<BoxValue<Self::Scalar, Self::StyleExt>>,
   );
 
-  /// Replaces a box's place in focus traversal; `None` takes it out of focus.
-  fn update_focus_order(node: NodeId, focus_order: Option<FocusOrder>);
+  /// Replaces a box's place in focus traversal; `None` takes it out of focus. A platform
+  /// reading it from the scene ([`Scene::focus_order`]) needs nothing here.
+  #[inline(always)]
+  fn update_focus_order(_node: NodeId, _focus_order: Option<FocusOrder>) {}
 
-  /// Replaces the accessibility properties a box reports.
-  fn update_access(node: NodeId, access: &[AccessProp]);
+  /// Replaces the accessibility properties a box reports. A platform reading them from
+  /// the scene ([`Scene::access`]) needs nothing here.
+  #[inline(always)]
+  fn update_access(_node: NodeId, _access: &[AccessProp]) {}
 
   /// Realizes the control `node`: a box a platform may stand a native element in for.
   fn create_control(node: NodeId, props: &ControlProps<Self>);

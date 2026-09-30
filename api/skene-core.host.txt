@@ -3741,6 +3741,7 @@ pub const fn skene_core::Scene<P>::hovered(&self) -> core::option::Option<skene_
 pub fn skene_core::Scene<P>::insert_in_segment(&mut self, skene_core::NodeId, skene_core::NodeId, core::option::Option<skene_core::NodeId>)
 pub fn skene_core::Scene<P>::interaction(&self, skene_core::NodeId) -> skene_core::Interaction
 pub fn skene_core::Scene<P>::is_borrowed() -> bool
+pub fn skene_core::Scene<P>::is_editable(&self, skene_core::NodeId) -> bool
 pub fn skene_core::Scene<P>::is_hovered(&self, skene_core::NodeId) -> bool
 pub fn skene_core::Scene<P>::is_modal(&self, skene_core::NodeId) -> bool
 pub fn skene_core::Scene<P>::is_pressed(&self, skene_core::NodeId) -> bool

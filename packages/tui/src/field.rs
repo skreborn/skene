@@ -1,20 +1,13 @@
 //! The terminal's editing of a text entry: the caret and the selection over the value,
 //! the visible window, and the keys that move, select and edit.
 
-use skene_core::{
-  AccessProp,
-  ClipboardAction,
-  Key,
-  KeyEvent,
-  notify_change,
-  notify_selection_change,
-};
+use skene_core::{ClipboardAction, Key, KeyEvent, Scene, notify_change, notify_selection_change};
 use unicode_segmentation::UnicodeSegmentation as _;
 
 use crate::{
   Tui,
   paint::wrap_spans,
-  store::{AUTOSCROLL_INTERVAL, Drag, Field, Handle, Kind, Store},
+  store::{AUTOSCROLL_INTERVAL, Drag, Field, Handle, Store},
   text,
   with_store,
 };
@@ -559,13 +552,12 @@ impl Store {
 
   /// Whether the entry at `handle` takes edits to its value: it is neither disabled nor
   /// read-only.
+  #[expect(
+    clippy::unused_self,
+    reason = "every reader holds the store, and an entry's editability is asked of it as of the rest"
+  )]
   pub(crate) fn is_editable(&self, handle: Handle) -> bool {
-    match self.record(handle).map(|record| &record.kind) {
-      Some(Kind::Control { state, inner, .. }) => {
-        !state.disabled && !inner.props.access.contains(&AccessProp::ReadOnly(true))
-      }
-      _ => false,
-    }
+    Scene::<Tui>::read(|scene| scene.is_editable(handle))
   }
 
   /// The inset from an entry's edge to its value: border plus padding.

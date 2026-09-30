@@ -97,39 +97,35 @@ impl Store {
   }
 
   /// The topmost open overlay and whether it is modal.
+  #[expect(
+    clippy::unused_self,
+    reason = "every reader holds the store, and the overlays are asked of it as of the rest"
+  )]
   pub(crate) fn topmost_open_overlay(&self) -> Option<(Handle, bool)> {
-    self.open_overlays().into_iter().rev().find_map(|overlay| {
-      match self.record(overlay).map(|record| &record.kind) {
-        Some(Kind::Overlay { modal, .. }) => Some((overlay, *modal)),
-        _ => None,
-      }
+    Scene::<Tui>::read(|scene| {
+      let top = scene.open_overlays().last().copied()?;
+
+      Some((top, scene.is_modal(top)))
     })
   }
 
   /// The topmost open modal overlay.
+  #[expect(
+    clippy::unused_self,
+    reason = "every reader holds the store, and the overlays are asked of it as of the rest"
+  )]
   pub(crate) fn topmost_modal(&self) -> Option<Handle> {
-    self
-      .open_overlays()
-      .into_iter()
-      .rev()
-      .find(|overlay| self.record(*overlay).is_some_and(Record::is_modal_overlay))
+    Scene::<Tui>::read(|scene| scene.topmost_modal(scene.open_overlays()))
   }
 
   /// Whether `handle` is reachable while the topmost modal is open: inside it, or inside
   /// an overlay opened above it; everything is while no modal is open.
+  #[expect(
+    clippy::unused_self,
+    reason = "every reader holds the store, and the overlays are asked of it as of the rest"
+  )]
   pub(crate) fn reachable_under_modal(&self, handle: Handle) -> bool {
-    let overlays = self.open_overlays();
-    let Some(modal) = overlays
-      .iter()
-      .rposition(|overlay| self.record(*overlay).is_some_and(Record::is_modal_overlay))
-    else {
-      return true;
-    };
-    let ancestors = self.ancestors(handle);
-
-    overlays[modal..]
-      .iter()
-      .any(|overlay| *overlay == handle || ancestors.contains(overlay))
+    Scene::<Tui>::read(|scene| scene.reachable_under_modal(scene.open_overlays(), handle))
   }
 
   /// The tab stops in traversal order, as the scene orders them: positioned ones
@@ -406,14 +402,18 @@ impl Store {
     let (columns, rows) = (i64::from(columns), i64::from(rows));
     let Some(Kind::Overlay {
       placement,
-      anchor,
       position,
       ..
     }) = self.record(handle).map(|record| &record.kind)
     else {
       return (0, 0);
     };
-    let (placement, anchor, position) = (*placement, *anchor, *position);
+    let (placement, position) = (*placement, *position);
+    let anchor = Scene::<Tui>::read(|scene| {
+      scene
+        .overlay_anchor(handle)
+        .and_then(|anchor| scene.placement(anchor))
+    });
     let (width, height) = self.node_size(handle);
 
     // A pinned overlay sits at its cell, shifted back into the screen.
@@ -728,32 +728,21 @@ impl Store {
     }
   }
 
-  /// Opens or closes an overlay against `anchor`, returning the focus move the change
-  /// asks for: a modal opening takes focus as the scene chooses
-  /// ([`Scene::modal_focus`]). The scene returns focus as an overlay closes.
-  pub(crate) fn set_overlay_open(
-    &mut self,
-    handle: Handle,
-    open: bool,
-    anchor: Option<Handle>,
-  ) -> OverlayFocus {
-    let Some(Kind::Overlay {
-      open: held,
-      anchor: bound,
-      modal,
-      ..
-    }) = self.record_mut(handle).map(|record| &mut record.kind)
+  /// Opens or closes an overlay, returning the focus move the change asks for: a modal opening
+  /// takes focus as the scene chooses ([`Scene::modal_focus`]). The scene returns focus as an
+  /// overlay closes.
+  pub(crate) fn set_overlay_open(&mut self, handle: Handle, open: bool) -> OverlayFocus {
+    let Some(Kind::Overlay { open: held, .. }) =
+      self.record_mut(handle).map(|record| &mut record.kind)
     else {
       return OverlayFocus::Held;
     };
     let was_open = std::mem::replace(held, open);
-    let modal = *modal;
 
-    *bound = anchor;
     self.layout_dirty = true;
     self.paint_dirty = true;
 
-    if !open || was_open || !modal {
+    if !open || was_open || !Scene::<Tui>::read(|scene| scene.is_modal(handle)) {
       return OverlayFocus::Held;
     }
 

@@ -1736,8 +1736,8 @@ impl<P: Platform> Scene<P> {
     positions
   }
 
-  /// Writes the state of the control `node` and mirrors it; a node of any other kind
-  /// is left alone.
+  /// Writes the state of the control `node` and mirrors it, bringing the platform back
+  /// to it whether or not it changed; a node of any other kind is left alone.
   pub fn set_control_state(&mut self, node: NodeId, state: ControlState) {
     let Some(record) = self.record_mut(node)
     else {
@@ -1750,6 +1750,23 @@ impl<P: Platform> Scene<P> {
 
     record.control = Some(state);
     self.mirrors.push(Mirror::ControlState { node, state });
+  }
+
+  /// Whether the text entry `node` takes edits to its value: it is neither disabled nor
+  /// read-only.
+  #[must_use]
+  pub fn is_editable(&self, node: NodeId) -> bool {
+    self.record(node).is_some_and(|record| {
+      record.entry
+        && !record.control.is_some_and(|state| state.disabled)
+        && !record.access.as_ref().is_some_and(|reports| {
+          reports
+            .own
+            .iter()
+            .chain(&reports.description)
+            .any(|prop| *prop == AccessProp::ReadOnly(true))
+        })
+    })
   }
 
   /// The state of the control `node`; `None` for a node of any other kind.

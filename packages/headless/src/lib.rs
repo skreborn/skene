@@ -219,10 +219,7 @@ impl Platform for Headless {
   }
 
   fn set_control_state(node: NodeId, state: &ControlState) {
-    with_record(node, |record| {
-      record.control_state = *state;
-      record.checked = state.checked == Toggle::On;
-    });
+    with_record(node, |record| record.checked = state.checked == Toggle::On);
   }
 
   fn create_overlay(node: NodeId, props: &OverlayProps<Self>) {
@@ -1195,15 +1192,12 @@ pub fn overlay_position(node: NodeId) -> Option<Point<f32>> {
   with_record(node, |record| record.position)?
 }
 
-/// The state last mirrored into the control `node`.
+/// The state of the control `node`.
 #[must_use]
 pub fn control_state(node: NodeId) -> Option<ControlState> {
   end_turn();
 
-  with_record(node, |record| match record.kind {
-    Kind::Control(_) => Some(record.control_state),
-    Kind::Box(_) | Kind::Overlay(_) | Kind::Run(_) | Kind::Anchor | Kind::Scope => None,
-  })?
+  Scene::<Headless>::read(|scene| scene.control_state(node))
 }
 
 /// The part of its enclosing control `node` is recorded as; a control node is its own

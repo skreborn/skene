@@ -124,10 +124,12 @@ context menu), which popups focus leaves as it moves to another node
 (`Scene::popups_left_by`, dismissed by `notify_focus_moved` on every platform), and where
 a modal takes focus as it opens (`Scene::modal_focus`: its first tab stop, else itself,
 as a dialog's focusing steps choose). The scene holds the interaction every platform reports: the
-focused node with whether focus shows (a key sets it, a pointer press clears it, a text
-entry's shows however reached), the pressed node and the hovered one, dropping each
-with its node, and resolves every node's interaction from them (`Scene::interaction`),
-so the terminal and headless resolve states alike.
+focused node with whether focus shows (a key but a modifier alone sets it, a pointer
+press clears it, a text entry's shows however reached), the pressed node and the hovered
+one, dropping each with its node, and resolves every node's interaction from them
+(`Scene::interaction`), so the terminal and headless resolve states alike; it decides
+whether an entry takes edits (`Scene::is_editable`: neither disabled nor read-only) from
+the control state and reports it holds, which the platforms read rather than copy.
 
 **`Platform` is a zero-sized trait with associated types**, monomorphized, hidden behind
 each facade's aliases: `Scalar` (`f32` or `u32`), `StyleExt` (the medium's own

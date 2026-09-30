@@ -12,7 +12,6 @@ use skene_core::{
   ColorScheme,
   ContainerName,
   ContainerSizes,
-  ControlState,
   Environment,
   FocusOrder,
   Inset,
@@ -460,19 +459,15 @@ pub(crate) enum Kind {
     /// The name the control's props were created with.
     label: Option<String>,
     inner: BoxRecord,
-    state: ControlState,
     field: Option<Box<Field>>,
-    checked: bool,
   },
   Overlay {
     inner: BoxRecord,
-    modal: bool,
     /// The role the overlay carries.
     role: Option<Role>,
     placement: Placement,
     backdrop: Option<Color>,
     open: bool,
-    anchor: Option<Handle>,
     /// The cell the overlay's top-start corner is pinned to, if it is.
     position: Option<(i64, i64)>,
   },
@@ -706,12 +701,6 @@ impl Record {
   #[inline(always)]
   pub(crate) const fn is_open_overlay(&self) -> bool {
     matches!(self.kind, Kind::Overlay { open: true, .. })
-  }
-
-  /// Whether the record is a modal overlay.
-  #[inline(always)]
-  pub(crate) const fn is_modal_overlay(&self) -> bool {
-    matches!(self.kind, Kind::Overlay { modal: true, .. })
   }
 }
 

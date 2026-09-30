@@ -154,24 +154,16 @@ impl Platform for Tui {
           native: props.native,
           label: props.label.clone(),
           inner: BoxRecord::new(props.box_props.clone()),
-          state: ControlState::DEFAULT,
           field,
-          checked: false,
         },
       );
     });
   }
 
-  fn set_control_state(node: NodeId, state: &ControlState) {
+  fn set_control_state(node: NodeId, _state: &ControlState) {
     with_store(|store| {
-      if let Some(Kind::Control { state: held, .. }) =
-        store.record_mut(node).map(|record| &mut record.kind)
-        && *held != *state
-      {
-        *held = *state;
-        store.layout_dirty = true;
-        store.damage(node);
-      }
+      store.layout_dirty = true;
+      store.damage(node);
     });
   }
 
@@ -181,12 +173,10 @@ impl Platform for Tui {
         node,
         Kind::Overlay {
           inner: BoxRecord::new(props.box_props.clone()),
-          modal: props.modal,
           role: props.role(),
           placement: props.placement,
           backdrop: props.backdrop,
           open: false,
-          anchor: None,
           position: None,
         },
       );
@@ -194,8 +184,8 @@ impl Platform for Tui {
     });
   }
 
-  fn set_overlay_open(node: NodeId, open: bool, anchor: Option<NodeId>) {
-    let focus = with_store(|store| store.set_overlay_open(node, open, anchor));
+  fn set_overlay_open(node: NodeId, open: bool, _anchor: Option<NodeId>) {
+    let focus = with_store(|store| store.set_overlay_open(node, open));
 
     if let interaction::OverlayFocus::Moved(next) = focus {
       interaction::set_focus(next);
@@ -399,15 +389,7 @@ impl Platform for Tui {
     });
   }
 
-  fn set_checked(node: NodeId, checked: bool) {
-    with_store(|store| {
-      if let Some(Kind::Control { checked: held, .. }) =
-        store.record_mut(node).map(|record| &mut record.kind)
-      {
-        *held = checked;
-      }
-    });
-  }
+  fn set_checked(_: NodeId, _: bool) {}
 
   fn observe_size(node: NodeId, report: Rc<dyn Fn(Size<u32>)>) -> Observation {
     let kept = Rc::clone(&report);

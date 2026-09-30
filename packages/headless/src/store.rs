@@ -12,7 +12,6 @@ use skene_core::{
   ContainerName,
   ContainerSizes,
   ControlProps,
-  ControlState,
   Definitions,
   Environment,
   EventKind,
@@ -87,8 +86,6 @@ pub(crate) struct Record {
   pub anchor: Option<NodeId>,
   /// The point an overlay is placed at, where it is pinned to one.
   pub position: Option<Point<f32>>,
-  /// A control's state, as last set.
-  pub control_state: ControlState,
   /// The node's slot values, as last written.
   pub slots: FxHashMap<Slot, SlotLeaf>,
   /// A scope's token definitions, as last written.
@@ -139,7 +136,6 @@ impl Record {
       open: false,
       anchor: None,
       position: None,
-      control_state: ControlState::DEFAULT,
       slots: FxHashMap::default(),
       definitions: None,
       listened: Vec::new(),

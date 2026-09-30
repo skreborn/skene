@@ -71,6 +71,10 @@ pub(crate) fn all<D: Driver>() -> Vec<Scenario<D>> {
       act: typed_text_edits_a_field,
     },
     Scenario {
+      name: "a read-only field takes focus and no typed text",
+      act: a_read_only_field_takes_no_text,
+    },
+    Scenario {
       name: "the arrows choose within a radio group, focus following",
       act: the_arrows_choose_within_a_radio_group,
     },
@@ -269,6 +273,28 @@ fn typed_text_edits_a_field<D: Driver>(driver: &mut D) {
     "héll",
     "Backspace removes the cluster before the caret"
   );
+}
+
+fn a_read_only_field_takes_no_text<D: Driver>(driver: &mut D) {
+  let value = Signal::new("fixed".to_owned());
+
+  driver.mount(move || {
+    RawTextField::<D::Platform>::new(TextEntry::new().bind_value(value))
+      .set_label("Name")
+      .set_read_only(true)
+      .into_any()
+  });
+
+  let field = found(driver, Role::TextInput, "Name");
+
+  driver.type_text(field, "x");
+
+  assert_eq!(value.get(), "fixed", "typed text changes nothing");
+  assert_eq!(driver.focused(), Some(field), "a click still focuses it");
+
+  driver.press(&key("Backspace"));
+
+  assert_eq!(value.get(), "fixed", "Backspace removes nothing");
 }
 
 fn the_arrows_choose_within_a_radio_group<D: Driver>(driver: &mut D) {

@@ -6,11 +6,21 @@
 
 use std::rc::Rc;
 
-use skene_core::{Axis, Color, Inset, Length, NativeElement, TextDecoration, TextDecorationStyle};
+use skene_core::{
+  Axis,
+  Color,
+  Inset,
+  Length,
+  NativeElement,
+  Scene,
+  TextDecoration,
+  TextDecorationStyle,
+};
 
 use crate::{
   BorderGlyphs,
   ScrollbarGlyphs,
+  Tui,
   cells::Cells,
   layout::{
     INLINE_BOX,
@@ -987,12 +997,11 @@ pub(crate) fn paint(store: &Store, buffer: &mut Buffer) {
 /// Paints one open overlay over the frame: its backdrop scrim, then its subtree at its
 /// computed origin.
 fn paint_overlay(store: &Store, buffer: &mut Buffer, overlay: Handle) {
-  let Some(Kind::Overlay {
-    backdrop, modal, ..
-  }) = store.record(overlay).map(|record| &record.kind)
+  let Some(Kind::Overlay { backdrop, .. }) = store.record(overlay).map(|record| &record.kind)
   else {
     return;
   };
+  let modal = Scene::<Tui>::read(|scene| scene.is_modal(overlay));
   let contrast = store.contrast();
 
   if let Some(color) = backdrop {
@@ -1023,7 +1032,7 @@ fn paint_overlay(store: &Store, buffer: &mut Buffer, overlay: Handle) {
       && i64::from(caret_y) >= origin_y
       && i64::from(caret_y) < origin_y + overlay_height;
 
-    if *modal || covered {
+    if modal || covered {
       buffer.caret = None;
     }
   }

@@ -144,13 +144,18 @@ pub fn type_text(node: NodeId, text: &str) {
   }
 }
 
-/// Applies the response of the key `event` to `node` where it is a text entry: a typed
-/// character replaces the selection, `Enter` a newline in a multi-line entry, and
-/// `Backspace` and `Delete` remove the selection or the cluster beside the caret.
+/// Applies the response of the key `event` to `node` where it is a text entry taking
+/// edits: a typed character replaces the selection, `Enter` a newline in a multi-line
+/// entry, and `Backspace` and `Delete` remove the selection or the cluster beside the
+/// caret.
 fn edit(node: NodeId, event: &KeyEvent) {
   let modifiers = event.modifiers;
 
-  if modifiers.ctrl || modifiers.alt || modifiers.meta {
+  if modifiers.ctrl
+    || modifiers.alt
+    || modifiers.meta
+    || !Scene::<Headless>::read(|scene| scene.is_editable(node))
+  {
     return;
   }
 

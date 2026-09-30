@@ -62,6 +62,7 @@ mod values;
 mod view;
 mod window;
 
+pub use accesskit::TreeUpdate;
 pub use boundary::Boundary;
 pub use box_style::{
   BoxDynamics,

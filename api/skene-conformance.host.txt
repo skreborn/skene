@@ -6,6 +6,7 @@ impl<D> core::fmt::Debug for skene_conformance::Scenario<D>
 pub fn skene_conformance::Scenario<D>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub trait skene_conformance::Driver
 pub type skene_conformance::Driver::Platform: skene_core::platform::Platform
+pub fn skene_conformance::Driver::access_outline(&mut self) -> alloc::string::String
 pub fn skene_conformance::Driver::advance(&mut self, core::time::Duration)
 pub fn skene_conformance::Driver::click(&mut self, skene_core::node::NodeId)
 pub fn skene_conformance::Driver::find(&mut self, accesskit::Role, &str) -> core::option::Option<skene_core::node::NodeId>

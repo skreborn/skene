@@ -96,6 +96,7 @@ use skene_core::{
   TextSelection,
   Timer,
   Toggle,
+  TreeUpdate,
   Visibility,
   WheelEvent,
   dispatch_click,
@@ -1235,6 +1236,22 @@ pub fn accessible_name(node: NodeId) -> Option<String> {
   Scene::<Headless>::accessible_name(node, name_facts)
 }
 
+/// The accessibility tree, as AccessKit models it ([`Scene::access_tree`]).
+#[must_use]
+pub fn access_tree() -> TreeUpdate {
+  end_turn();
+
+  Scene::<Headless>::access_tree(name_facts)
+}
+
+/// The accessibility tree as indented text, one node a line ([`Scene::access_outline`]).
+#[must_use]
+pub fn access_outline() -> String {
+  end_turn();
+
+  Scene::<Headless>::access_outline(name_facts)
+}
+
 /// The first node in tree order whose role is `role` and whose accessible name is
 /// `name`, outside hidden boxes and closed overlays.
 #[must_use]
@@ -1287,15 +1304,16 @@ fn name_facts(node: NodeId) -> NameFacts {
     if let Kind::Run(props) = &record.kind {
       facts.text = Some(record.text.clone());
       facts.link = props.link.is_some();
+      facts.role = facts.link.then_some(Role::Link);
       facts.block = props.display == RunDisplay::Block;
 
       return facts;
     }
 
     if let Some(props) = record.kind.box_props() {
-      facts.role = props.role;
-      facts.access.clone_from(&props.access);
       facts.link = props.destination.is_some();
+      facts.role = props.role.or(facts.link.then_some(Role::Link));
+      facts.access.clone_from(&props.access);
       facts.block = true;
     }
 

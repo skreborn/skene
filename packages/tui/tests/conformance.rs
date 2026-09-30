@@ -99,6 +99,12 @@ impl Driver for TerminalDriver {
   fn focused(&mut self) -> Option<NodeId> {
     testing::focused_node()
   }
+
+  fn access_outline(&mut self) -> String {
+    self.paint();
+
+    testing::access_outline()
+  }
 }
 
 #[test]

@@ -452,6 +452,8 @@ pub fn skene_tui::testing::user::double_click(skene_core::node::NodeId)
 pub fn skene_tui::testing::user::hover(skene_core::node::NodeId)
 pub fn skene_tui::testing::user::press_key(&skene_core::events::KeyEvent)
 pub fn skene_tui::testing::user::type_text(skene_core::node::NodeId, &str)
+pub fn skene_tui::testing::access_outline() -> alloc::string::String
+pub fn skene_tui::testing::access_tree() -> accesskit::TreeUpdate
 pub fn skene_tui::testing::accessible_name(skene_core::node::NodeId) -> core::option::Option<alloc::string::String>
 pub fn skene_tui::testing::find_all_by_role(accesskit::Role) -> alloc::vec::Vec<skene_core::node::NodeId>
 pub fn skene_tui::testing::find_all_unnamed() -> alloc::vec::Vec<skene_core::node::NodeId>

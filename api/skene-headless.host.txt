@@ -68,6 +68,8 @@ pub fn skene_headless::Headless::update_box(skene_core::node::NodeId, skene_core
 pub fn skene_headless::Headless::update_focus_order(skene_core::node::NodeId, core::option::Option<skene_core::values::focus_order::FocusOrder>)
 pub fn skene_headless::Headless::update_run(skene_core::node::NodeId, skene_core::leaf::Slot, &skene_core::leaf::StaticLeaf<skene_core::run_style::RunValue<skene_common::gui::ext::GuiExt>>)
 pub fn skene_headless::Headless::watch_media(&skene_core::condition::Media<f32>) -> skene_reactive::memo::Memo<bool>
+pub fn skene_headless::access_outline() -> alloc::string::String
+pub fn skene_headless::access_tree() -> accesskit::TreeUpdate
 pub fn skene_headless::accessible_name(skene_core::node::NodeId) -> core::option::Option<alloc::string::String>
 pub fn skene_headless::add_head_element(&str, &[(&str, &str)]) -> skene_common::gui::head::HeadId
 pub fn skene_headless::add_head_title(&str) -> skene_common::gui::head::HeadId

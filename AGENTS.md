@@ -471,8 +471,9 @@
   runs when a test calls `pump_tasks`, so a `Resource` loads in a test too. A test finds
   what a reader finds and acts as a user acts: `find_by_role`, `find_by_text` and
   `find_all_unnamed` read the accessible names core computes over the scene
-  (`Scene::accessible_name`), and `user` turns a click, a key or typed text into the
-  events a browser dispatches for it, on headless and the terminal alike. Parity is
+  (`Scene::accessible_name`), `access_tree` and `access_outline` read the whole
+  accessibility tree as AccessKit models it, and `user` turns a click, a key or typed
+  text into the events a browser dispatches for it, on headless and the terminal alike. Parity is
   held by construction: `skene-conformance` is one suite of scenarios, each acting as a
   user and checking what a reader finds, run through a `Driver` every platform
   implements over its own seams—a behavior every platform must share is a scenario

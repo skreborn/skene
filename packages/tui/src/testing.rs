@@ -21,6 +21,7 @@ use skene_core::{
   Role,
   RunDisplay,
   Scene,
+  TreeUpdate,
 };
 
 use crate::{
@@ -145,6 +146,22 @@ pub fn accessible_name(node: NodeId) -> Option<String> {
   Scene::<Tui>::accessible_name(node, name_facts)
 }
 
+/// The accessibility tree, as AccessKit models it ([`Scene::access_tree`]).
+#[must_use]
+pub fn access_tree() -> TreeUpdate {
+  end_turn();
+
+  Scene::<Tui>::access_tree(name_facts)
+}
+
+/// The accessibility tree as indented text, one node a line ([`Scene::access_outline`]).
+#[must_use]
+pub fn access_outline() -> String {
+  end_turn();
+
+  Scene::<Tui>::access_outline(name_facts)
+}
+
 /// The first node in tree order whose role is `role` and whose accessible name is
 /// `name`, outside hidden boxes and closed overlays.
 #[must_use]
@@ -196,15 +213,16 @@ fn name_facts(node: NodeId) -> NameFacts {
     if let Kind::Run { props, .. } = &record.kind {
       facts.text = Some(record.text.clone());
       facts.link = props.link.is_some();
+      facts.role = facts.link.then_some(Role::Link);
       facts.block = props.display == RunDisplay::Block;
 
       return facts;
     }
 
     if let Some(inner) = record.kind.box_record() {
-      facts.role = inner.props.role;
-      facts.access.clone_from(&inner.props.access);
       facts.link = inner.props.destination.is_some();
+      facts.role = inner.props.role.or(facts.link.then_some(Role::Link));
+      facts.access.clone_from(&inner.props.access);
       facts.block = true;
     }
 

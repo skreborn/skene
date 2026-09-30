@@ -9,6 +9,7 @@ pub use skene_core::PointerId
 pub use skene_core::PointerInfo
 pub use skene_core::PointerType
 pub use skene_core::Role
+pub use skene_core::TreeUpdate
 pub mod skene_core::box_fields
 pub struct skene_core::box_fields::Arrangement
 impl core::clone::Clone for skene_core::box_fields::Arrangement
@@ -3677,6 +3678,9 @@ pub fn skene_core::RunStyle<skene_core::Keyframe, X>::fingerprint<H: core::hash:
 impl<X: skene_core::StyleExtension> skene_core::Fingerprint for skene_core::RunStyle<skene_core::Plain, X>
 pub fn skene_core::RunStyle<skene_core::Plain, X>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 pub struct skene_core::Scene<P: skene_core::Platform>
+impl<P: skene_core::Platform> skene_core::Scene<P>
+pub fn skene_core::Scene<P>::access_outline(impl core::ops::function::Fn(skene_core::NodeId) -> skene_core::NameFacts) -> alloc::string::String
+pub fn skene_core::Scene<P>::access_tree(impl core::ops::function::Fn(skene_core::NodeId) -> skene_core::NameFacts) -> accesskit::TreeUpdate
 impl<P: skene_core::Platform> skene_core::Scene<P>
 pub fn skene_core::Scene<P>::accessible_name(skene_core::NodeId, impl core::ops::function::Fn(skene_core::NodeId) -> skene_core::NameFacts) -> core::option::Option<alloc::string::String>
 pub fn skene_core::Scene<P>::find_all_by_role(accesskit::Role, impl core::ops::function::Fn(skene_core::NodeId) -> skene_core::NameFacts) -> alloc::vec::Vec<skene_core::NodeId>

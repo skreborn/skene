@@ -469,7 +469,10 @@ re-export.
   field is a text input). The queries a test reads go through the same walk:
   `find_by_role`, `find_by_text`, and `find_all_unnamed`, every link and every node of a
   role ARIA requires a name for that has none, which both galleries assert empty on the
-  host tier as axe does in the browser.
+  host tier as axe does in the browser. The same walk builds the accessibility tree as
+  AccessKit models it (`Scene::access_tree`): each node's role, name, value, states and
+  relations under a window, focus on the focused node—what a native platform hands its
+  screen reader, and, as indented text (`access_outline`), what a test asserts.
 - **Membership is read from the tree.** A grouping control's members live in a `Roster`
   ordered by walking the subtree under its root, so a reconciling set stays in document
   order however it changes and a destroyed member is absent because the walk cannot

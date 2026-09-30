@@ -65,8 +65,6 @@ left half-done in a code comment.
     scenarios then name their pages, the harness serving each from one test app and
     finding what a scenario acts on by WebDriver's computed role and label; the goldens
     need a pinned font and Firefox before they compare across machines.
-    - An AccessKit tree built from the scene's merged reports serves headless
-    assertions.
     - A terminal `Device` trait (bytes in and out, size, wake), implemented by the tty
     and a pty harness, runs the real loop end to end under test; the Windows console,
     an SSH session and xterm.js are further implementations.

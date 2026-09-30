@@ -94,6 +94,10 @@ pub(crate) fn all<D: Driver>() -> Vec<Scenario<D>> {
       name: "a condition on the viewport's width follows a resize",
       act: a_viewport_condition_follows_a_resize,
     },
+    Scenario {
+      name: "a form reads as its roles, names, values and states",
+      act: a_form_reads_alike,
+    },
   ]
 }
 
@@ -476,4 +480,40 @@ fn a_viewport_condition_follows_a_resize<D: Driver>(driver: &mut D) {
   driver.resize(Size::new(length(50.), length(40.)));
 
   assert!(driver.find_text("Wide").is_none(), "a narrow one hides it");
+}
+
+fn a_form_reads_alike<D: Driver>(driver: &mut D) {
+  driver.mount(|| {
+    Column::<D::Platform>::new()
+      .set_children((
+        skene_common::Container::new()
+          .set_role(Role::Heading)
+          .set_child(Text::new("Sign in")),
+        RawTextField::new(TextEntry::new().set_value("ada")).set_label("Name"),
+        RawCheckbox::new(Toggle::new().set_checked(true)).set_label("Remember me"),
+        button::<D>("Continue").set_disabled(true),
+      ))
+      .into_any()
+  });
+
+  let checkbox = found(driver, Role::CheckBox, "Remember me");
+
+  driver.click(checkbox);
+
+  assert_eq!(
+    driver.access_outline(),
+    [
+      "Window",
+      "  Heading \"Sign in\"",
+      "    Label = \"Sign in\"",
+      "  TextInput \"Name\" = \"ada\"",
+      "    Label = \"Name\"",
+      "  CheckBox \"Remember me\" [focused, checked]",
+      "    Label = \"Remember me\"",
+      "  Button \"Continue\" [disabled]",
+      "    Label = \"Continue\"",
+      "",
+    ]
+    .join("\n")
+  );
 }

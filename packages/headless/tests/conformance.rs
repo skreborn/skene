@@ -7,6 +7,7 @@ use skene_conformance::Driver;
 use skene_core::{AnyView, HasChild, KeyEvent, NodeId, Role, Size, View};
 use skene_headless::{
   Headless,
+  access_outline,
   find_by_role,
   find_by_text,
   focused_node,
@@ -94,6 +95,10 @@ impl Driver for HeadlessDriver {
 
   fn focused(&mut self) -> Option<NodeId> {
     focused_node()
+  }
+
+  fn access_outline(&mut self) -> String {
+    access_outline()
   }
 }
 

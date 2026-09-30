@@ -2,15 +2,18 @@
 //! nodes itself: the scene's structure and parts, and what the platform records of
 //! each node.
 
-use std::marker::PhantomData;
+use std::{fmt::Write as _, marker::PhantomData};
 
-use super::{AccessProp, NodeId, Part, Platform, Role, Scene};
+use accesskit::{HasPopup, Invalid, Orientation, Toggled, TreeInfo, TreeUpdate};
+
+use super::{AccessProp, Axis, NodeId, Part, Platform, PopupKind, Role, Scene, Toggle};
 
 /// What the accessible-name computation reads of one node from its platform's records.
 #[derive(Debug, Clone, Default, PartialEq)]
 #[must_use]
 pub struct NameFacts {
-  /// The role the node was created with.
+  /// The role the node carries: the one it was created with, else its native element's,
+  /// its overlay's or a link's.
   pub role: Option<Role>,
   /// What the node reports to assistive technology.
   pub access: Vec<AccessProp>,
@@ -285,6 +288,256 @@ impl<P: Platform> Scene<P> {
 
     nodes
   }
+}
+
+impl<P: Platform> Scene<P> {
+  /// The accessibility tree the scene and `facts` make, as AccessKit models it, for a
+  /// platform exposing it or a test asserting it.
+  ///
+  /// A window holds each tree's root; every node outside what is hidden carries its role
+  /// (a run's a label holding its text, a box of no role a generic container), its
+  /// accessible name, the states and relations it reports, a text entry's value and
+  /// placeholder, and its children in tree order; focus is on the node holding it, else on
+  /// the window.
+  #[must_use]
+  pub fn access_tree(facts: impl Fn(NodeId) -> NameFacts) -> TreeUpdate {
+    let window = accesskit::NodeId(0);
+    let roots = Self::with(|scene| scene.roots().collect::<Vec<_>>());
+    let mut nodes = Vec::new();
+    let children: Vec<_> = roots
+      .into_iter()
+      .filter_map(|root| Self::access_node(root, &facts, &mut nodes))
+      .collect();
+    let mut root = accesskit::Node::new(Role::Window);
+
+    root.set_children(children);
+    nodes.push((window, root));
+
+    let focus = Self::with(|scene| scene.focused())
+      .map(access_id)
+      .filter(|focused| nodes.iter().any(|(id, _)| id == focused))
+      .unwrap_or(window);
+
+    TreeUpdate {
+      nodes,
+      tree: Some(TreeInfo::new(window)),
+      tree_id: accesskit::TreeId::ROOT,
+      focus,
+    }
+  }
+
+  /// [`access_tree`](Self::access_tree) as indented text, one node a line: its role, its
+  /// name quoted, its value after `=`, its states in brackets; a generic container naming
+  /// nothing is left out, its children standing in its place.
+  #[must_use]
+  pub fn access_outline(facts: impl Fn(NodeId) -> NameFacts) -> String {
+    let tree = Self::access_tree(facts);
+    let mut out = String::new();
+
+    if let Some(info) = &tree.tree {
+      outline_into(&tree, info.root, 0, &mut out);
+    }
+
+    out
+  }
+
+  /// Adds the AccessKit node of `node` and its accessible descendants to `nodes`,
+  /// returning its id; `None` where it is hidden.
+  fn access_node(
+    node: NodeId,
+    facts: &impl Fn(NodeId) -> NameFacts,
+    nodes: &mut Vec<(accesskit::NodeId, accesskit::Node)>,
+  ) -> Option<accesskit::NodeId> {
+    let own = facts(node);
+
+    if own.hidden {
+      return None;
+    }
+
+    let role = own.role.unwrap_or(if own.text.is_some() {
+      Role::Label
+    }
+    else {
+      Role::GenericContainer
+    });
+    let mut access = accesskit::Node::new(role);
+
+    if let Some(name) = Self::accessible_name(node, facts) {
+      access.set_label(name);
+    }
+
+    if let Some(text) = own.value.clone().or(own.text.clone()) {
+      access.set_value(text);
+    }
+
+    if let Some(placeholder) = &own.placeholder {
+      access.set_placeholder(placeholder.clone());
+    }
+
+    for prop in &own.access {
+      prop.apply(&mut access);
+    }
+
+    let beneath = Self::with(|scene| {
+      let mut beneath: Vec<_> = scene.children(node).collect();
+
+      if scene.parent(node).is_none() {
+        beneath.extend(scene.segment_nodes(node));
+      }
+
+      beneath
+    });
+    let children: Vec<_> = beneath
+      .into_iter()
+      .filter_map(|child| Self::access_node(child, facts, nodes))
+      .collect();
+
+    access.set_children(children);
+
+    let id = access_id(node);
+
+    nodes.push((id, access));
+
+    Some(id)
+  }
+}
+
+impl AccessProp {
+  /// Writes what this property reports into the AccessKit node `node`; a label is left
+  /// to the accessible-name computation.
+  fn apply(&self, node: &mut accesskit::Node) {
+    match self {
+      Self::Checked(toggle) => node.set_toggled(match toggle {
+        Toggle::On => Toggled::True,
+        Toggle::Off => Toggled::False,
+        Toggle::Mixed => Toggled::Mixed,
+      }),
+      Self::Value(value) => node.set_numeric_value(f64::from(*value)),
+      Self::ValueMin(value) => node.set_min_numeric_value(f64::from(*value)),
+      Self::ValueMax(value) => node.set_max_numeric_value(f64::from(*value)),
+      Self::ValueStep(value) => node.set_numeric_value_step(f64::from(*value)),
+      Self::ValueText(text) => node.set_value(text.clone()),
+      Self::Expanded(expanded) => node.set_expanded(*expanded),
+      Self::Selected(selected) => node.set_selected(*selected),
+      Self::Disabled(true) => node.set_disabled(),
+      Self::Required(true) => node.set_required(),
+      Self::Invalid(true) => node.set_invalid(Invalid::True),
+      Self::ReadOnly(true) => node.set_read_only(),
+      Self::HasPopup(kind) => node.set_has_popup(match kind {
+        PopupKind::Listbox => HasPopup::Listbox,
+        PopupKind::Menu => HasPopup::Menu,
+        PopupKind::Dialog => HasPopup::Dialog,
+      }),
+      Self::Controls(nodes) => {
+        node.set_controls(nodes.iter().copied().map(access_id).collect::<Vec<_>>());
+      }
+      Self::LabelledBy(nodes) => {
+        node.set_labelled_by(nodes.iter().copied().map(access_id).collect::<Vec<_>>());
+      }
+      Self::DescribedBy(nodes) => {
+        node.set_described_by(nodes.iter().copied().map(access_id).collect::<Vec<_>>());
+      }
+      Self::Description(text) => node.set_description(text.clone()),
+      Self::Orientation(axis) => node.set_orientation(match axis {
+        Axis::Horizontal => Orientation::Horizontal,
+        Axis::Vertical => Orientation::Vertical,
+      }),
+      Self::Level(level) => node.set_level(*level),
+      Self::Disabled(false)
+      | Self::Required(false)
+      | Self::Invalid(false)
+      | Self::ReadOnly(false)
+      | Self::Label(_) => {}
+    }
+  }
+}
+
+/// The AccessKit id of `node`: its generation and index, past the window's zero.
+fn access_id(node: NodeId) -> accesskit::NodeId {
+  accesskit::NodeId(((u64::from(node.generation()) << 32) | u64::from(node.index())) + 1)
+}
+
+/// Writes the node `id` of `tree` and its descendants into `out` at `depth`.
+fn outline_into(tree: &TreeUpdate, id: accesskit::NodeId, depth: usize, out: &mut String) {
+  let Some((_, node)) = tree.nodes.iter().find(|(held, _)| *held == id)
+  else {
+    return;
+  };
+  let skipped = node.role() == Role::GenericContainer && node.label().is_none();
+
+  if !skipped {
+    let _ = write!(out, "{}{:?}", "  ".repeat(depth), node.role());
+
+    if let Some(label) = node.label() {
+      let _ = write!(out, " \"{label}\"");
+    }
+
+    if let Some(value) = node.value() {
+      let _ = write!(out, " = \"{value}\"");
+    }
+
+    let states = outline_states(tree, id, node);
+
+    if !states.is_empty() {
+      let _ = write!(out, " [{}]", states.join(", "));
+    }
+
+    out.push('\n');
+  }
+
+  for child in node.children() {
+    outline_into(tree, *child, if skipped { depth } else { depth + 1 }, out);
+  }
+}
+
+/// The states of `node`, the node `id` of `tree`, as an outline names them.
+fn outline_states(tree: &TreeUpdate, id: accesskit::NodeId, node: &accesskit::Node) -> Vec<String> {
+  let mut states = Vec::new();
+
+  if tree.focus == id && id != accesskit::NodeId(0) {
+    states.push("focused".to_owned());
+  }
+
+  match node.toggled() {
+    Some(Toggled::True) => states.push("checked".to_owned()),
+    Some(Toggled::False) => states.push("unchecked".to_owned()),
+    Some(Toggled::Mixed) => states.push("mixed".to_owned()),
+    None => {}
+  }
+
+  if let Some(expanded) = node.is_expanded() {
+    states.push(if expanded { "expanded" } else { "collapsed" }.to_owned());
+  }
+
+  if node.is_selected() == Some(true) {
+    states.push("selected".to_owned());
+  }
+
+  if node.is_disabled() {
+    states.push("disabled".to_owned());
+  }
+
+  if node.is_required() {
+    states.push("required".to_owned());
+  }
+
+  if node.invalid().is_some() {
+    states.push("invalid".to_owned());
+  }
+
+  if node.is_read_only() {
+    states.push("read-only".to_owned());
+  }
+
+  if let Some(value) = node.numeric_value() {
+    states.push(format!("value {value}"));
+  }
+
+  if let Some(level) = node.level() {
+    states.push(format!("level {level}"));
+  }
+
+  states
 }
 
 /// `text` with its whitespace collapsed to single spaces and trimmed; `None` where

@@ -59,6 +59,10 @@ pub trait Driver {
 
   /// The node holding focus.
   fn focused(&mut self) -> Option<NodeId>;
+
+  /// The accessibility tree as indented text, one node a line
+  /// ([`Scene::access_outline`](skene_core::Scene::access_outline)).
+  fn access_outline(&mut self) -> String;
 }
 
 /// One behavior of the suite on the driver `D`: what it shows, and the function acting it

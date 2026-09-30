@@ -1,0 +1,5 @@
+error[E0080]: evaluation panicked: the snapshot keys of `field_10779` and `field_106513` collide; tag one of them
+ --> tests/compile_fail/colliding_snapshot_keys.rs:6:10
+  |
+6 | #[derive(Snapshot)]
+  |          ^^^^^^^^ evaluation of `_` failed here

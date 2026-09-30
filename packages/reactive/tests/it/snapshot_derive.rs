@@ -137,3 +137,70 @@ fn a_generic_struct_derives() {
     Some(Wrapper(3u32, vec![1, 2]))
   );
 }
+
+/// A value that takes no part in snapshots, only a default.
+#[derive(Debug, Default, PartialEq)]
+struct Cache(Vec<u8>);
+
+#[derive(Snapshot, Debug, PartialEq)]
+struct Cached {
+  count: u32,
+  #[snapshot(skip)]
+  cache: Cache,
+}
+
+/// A skipped field needs only a default, never `Snapshot`, and restores as it.
+#[test]
+fn a_skipped_field_restores_its_default() {
+  let cached = Cached {
+    count: 4,
+    cache: Cache(vec![1]),
+  };
+
+  assert_eq!(
+    decode::<Cached>(&encode(&cached)),
+    Some(Cached {
+      count: 4,
+      cache: Cache::default(),
+    })
+  );
+}
+
+/// The derive names `Option` and its variants in full, so a scope shadowing `Some` and
+/// `None` derives as any other.
+mod shadowing {
+  use skene_reactive::{Snapshot, decode, encode};
+
+  #[derive(Debug, PartialEq)]
+  enum Presence {
+    None,
+    Some,
+  }
+
+  use Presence::{None, Some};
+
+  #[derive(Snapshot, Debug, PartialEq)]
+  struct Point {
+    x: i32,
+  }
+
+  #[derive(Snapshot, Debug, PartialEq)]
+  enum Switch {
+    #[snapshot(default)]
+    Off,
+    On(u8),
+  }
+
+  #[test]
+  fn a_scope_shadowing_the_option_variants_derives() {
+    assert_ne!(None, Some);
+    assert_eq!(
+      decode::<Point>(&encode(&Point { x: 3 })),
+      Option::Some(Point { x: 3 })
+    );
+    assert_eq!(
+      decode::<Switch>(&encode(&Switch::On(2))),
+      Option::Some(Switch::On(2))
+    );
+  }
+}

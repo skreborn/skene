@@ -126,11 +126,8 @@ left half-done in a code comment.
     apart from signal positions; in debug, call-site hints aligned first and every
     restore decision logged; the bookkeeping in a side table off the owner records.
     - Encoding: a header (magic, format, app and build id); `Some` tagged, the bare
-    form still read; a `Duration::restore` that never panics; `#[snapshot(skip)]`
-    restoring `Default` without requiring `Snapshot`; the derive checking key
-    collisions and naming `Option`, `Some` and `None` fully qualified; a bridge crate
-    that snapshots a foreign type through serde instead of forcing it `transient`; the
-    picker's `open` `transient`, like every overlay's.
+    form still read; a bridge crate that snapshots a foreign type through serde instead
+    of forcing it `transient`.
     - One serialization for state crossing a boundary: hydration carries through
     `Snapshot` and serde_json leaves the web leaf, or `DESIGN.md` states that network
     data is serde's.

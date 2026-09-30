@@ -91,6 +91,30 @@ struct FieldCode {
   bindings: Vec<syn::Ident>,
   /// Whether the fields are named.
   named: bool,
+  /// Each recorded field's label and the name its key is taken from.
+  keys: Vec<(String, String)>,
+}
+
+/// Asserts at compile time that no two of `keys`, labels beside the names their keys are
+/// taken from, share a key.
+fn collisions(keys: &[(String, String)], reactive: &TokenStream) -> TokenStream {
+  let asserts = keys.iter().enumerate().flat_map(|(index, (label, name))| {
+    keys[index + 1..]
+      .iter()
+      .map(move |(other_label, other_name)| {
+        let message =
+          format!("the snapshot keys of `{label}` and `{other_label}` collide; tag one of them");
+
+        quote! {
+          const _: () = ::core::assert!(
+            #reactive::field_key(#name) != #reactive::field_key(#other_name),
+            #message
+          );
+        }
+      })
+  });
+
+  quote!(#(#asserts)*)
 }
 
 /// The code for `fields`, reading each through `access` (`self.name`, or a binding).
@@ -99,6 +123,7 @@ fn field_code(fields: &Fields, reactive: &TokenStream, bound: bool) -> syn::Resu
   let mut restore = Vec::new();
   let mut absent = Vec::new();
   let mut bindings = Vec::new();
+  let mut keys = Vec::new();
   let named = matches!(fields, Fields::Named(_));
 
   for (position, field) in fields.iter().enumerate() {
@@ -129,23 +154,30 @@ fn field_code(fields: &Fields, reactive: &TokenStream, bound: bool) -> syn::Resu
       record.push(quote! {
         __fields.field(#key, #access);
       });
+      keys.push((label.clone(), name.to_owned()));
     }
 
     let restored = if attributes.skip {
-      quote!(<#ty as #reactive::Snapshot>::absent()?)
+      quote!(<#ty as ::core::default::Default>::default())
     }
     else {
       quote! {
         match __record.field(#key) {
-          Some(__value) => <#ty as #reactive::Snapshot>::restore(__value)
+          ::core::option::Option::Some(__value) => <#ty as #reactive::Snapshot>::restore(__value)
             .or_else(<#ty as #reactive::Snapshot>::absent)?,
-          None => <#ty as #reactive::Snapshot>::absent()?,
+          ::core::option::Option::None => <#ty as #reactive::Snapshot>::absent()?,
         }
       }
     };
+    let absent_value = if attributes.skip {
+      quote!(<#ty as ::core::default::Default>::default())
+    }
+    else {
+      quote!(<#ty as #reactive::Snapshot>::absent()?)
+    };
 
     restore.push(quote!(#target #restored,));
-    absent.push(quote!(#target <#ty as #reactive::Snapshot>::absent()?,));
+    absent.push(quote!(#target #absent_value,));
   }
 
   Ok(FieldCode {
@@ -154,6 +186,7 @@ fn field_code(fields: &Fields, reactive: &TokenStream, bound: bool) -> syn::Resu
     absent: quote!(#(#absent)*),
     bindings,
     named,
+    keys,
   })
 }
 
@@ -183,9 +216,13 @@ pub(crate) fn derive(input: &DeriveInput) -> syn::Result<TokenStream> {
   }
 
   let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+  let mut checks = Vec::new();
   let body = match &input.data {
     Data::Struct(data) => {
       let code = field_code(&data.fields, &reactive, false)?;
+
+      checks.push(collisions(&code.keys, &reactive));
+
       let record = &code.record;
       let restore = construct(&quote!(Self), &data.fields, &code.restore);
       let absent = construct(&quote!(Self), &data.fields, &code.absent);
@@ -195,17 +232,17 @@ pub(crate) fn derive(input: &DeriveInput) -> syn::Result<TokenStream> {
           __recorder.record(|__fields| { #record });
         }
 
-        fn restore(__value: #reactive::Value<'_>) -> Option<Self> {
+        fn restore(__value: #reactive::Value<'_>) -> ::core::option::Option<Self> {
           let #reactive::Value::Record(__record) = __value
           else {
-            return None;
+            return ::core::option::Option::None;
           };
 
-          Some(#restore)
+          ::core::option::Option::Some(#restore)
         }
 
-        fn absent() -> Option<Self> {
-          Some(#absent)
+        fn absent() -> ::core::option::Option<Self> {
+          ::core::option::Option::Some(#absent)
         }
       }
     }
@@ -214,6 +251,7 @@ pub(crate) fn derive(input: &DeriveInput) -> syn::Result<TokenStream> {
       let mut restore_arms = Vec::new();
       let mut restore_constants = Vec::new();
       let mut default_variant = None;
+      let mut variant_keys = Vec::new();
 
       for variant in &data.variants {
         let (default, tag) = variant_attributes(&variant.attrs)?;
@@ -223,6 +261,10 @@ pub(crate) fn derive(input: &DeriveInput) -> syn::Result<TokenStream> {
         let key = quote!(const { #reactive::field_key(#name) });
         let constant = format_ident!("__VARIANT_KEY_{}", restore_constants.len());
         let code = field_code(&variant.fields, &reactive, true)?;
+
+        checks.push(collisions(&code.keys, &reactive));
+        variant_keys.push((label.clone(), name.to_owned()));
+
         let bindings = &code.bindings;
         let path = quote!(Self::#ident);
         let pattern = match &variant.fields {
@@ -243,17 +285,17 @@ pub(crate) fn derive(input: &DeriveInput) -> syn::Result<TokenStream> {
         };
         let restore = construct(&path, &variant.fields, &code.restore);
         let restored = if bindings.is_empty() {
-          quote!(Some(#path))
+          quote!(::core::option::Option::Some(#path))
         }
         else {
           quote! {
             {
               let #reactive::Value::Record(__record) = __payload
               else {
-                return None;
+                return ::core::option::Option::None;
               };
 
-              Some(#restore)
+              ::core::option::Option::Some(#restore)
             }
           }
         };
@@ -283,9 +325,12 @@ pub(crate) fn derive(input: &DeriveInput) -> syn::Result<TokenStream> {
         }
       }
 
-      let fallback = default_variant
-        .as_ref()
-        .map_or_else(|| quote!(None), |ident| quote!(Some(Self::#ident)));
+      checks.push(collisions(&variant_keys, &reactive));
+
+      let fallback = default_variant.as_ref().map_or_else(
+        || quote!(::core::option::Option::None),
+        |ident| quote!(::core::option::Option::Some(Self::#ident)),
+      );
       let absent = fallback.clone();
 
       quote! {
@@ -295,10 +340,10 @@ pub(crate) fn derive(input: &DeriveInput) -> syn::Result<TokenStream> {
           }
         }
 
-        fn restore(__value: #reactive::Value<'_>) -> Option<Self> {
+        fn restore(__value: #reactive::Value<'_>) -> ::core::option::Option<Self> {
           let #reactive::Value::Variant(__key, mut __reader) = __value
           else {
-            return None;
+            return ::core::option::Option::None;
           };
           let __payload = __reader.value()?;
 
@@ -310,7 +355,7 @@ pub(crate) fn derive(input: &DeriveInput) -> syn::Result<TokenStream> {
           }
         }
 
-        fn absent() -> Option<Self> {
+        fn absent() -> ::core::option::Option<Self> {
           #absent
         }
       }
@@ -324,6 +369,8 @@ pub(crate) fn derive(input: &DeriveInput) -> syn::Result<TokenStream> {
   };
 
   Ok(quote! {
+    #(#checks)*
+
     #[automatically_derived]
     impl #impl_generics #reactive::Snapshot for #name #ty_generics #where_clause {
       #body

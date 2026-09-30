@@ -1035,7 +1035,7 @@ impl Snapshot for Duration {
     let seconds = u64::restore(items.next()?)?;
     let nanoseconds = items.next().and_then(u32::restore).unwrap_or(0);
 
-    Some(Self::new(seconds, nanoseconds))
+    Self::from_secs(seconds).checked_add(Self::from_nanos(u64::from(nanoseconds)))
   }
 
   #[inline(always)]

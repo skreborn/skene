@@ -3,7 +3,7 @@
 
 #![cfg(not(target_arch = "wasm32"))]
 
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, time::Duration};
 
 use proptest::prelude::*;
 use skene_reactive::{Snapshot, decode, encode, restore};
@@ -56,8 +56,19 @@ proptest! {
     let _ = decode::<Vec<Option<i32>>>(&bytes);
     let _ = decode::<BTreeMap<String, (bool, f64)>>(&bytes);
     let _ = decode::<Settings>(&bytes);
+    let _ = decode::<Duration>(&bytes);
 
     restore(&bytes);
+  }
+
+  /// Any seconds and nanoseconds restore as a duration or as none: a duration past the
+  /// longest one refuses rather than panics.
+  #[test]
+  fn a_duration_restores_or_refuses(seconds in any::<u64>(), nanoseconds in any::<u32>()) {
+    let restored = decode::<Duration>(&encode(&(seconds, nanoseconds)));
+    let expected = Duration::from_secs(seconds).checked_add(Duration::from_nanos(u64::from(nanoseconds)));
+
+    prop_assert_eq!(restored, expected);
   }
 
   /// A recorded value restores as itself.

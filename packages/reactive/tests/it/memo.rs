@@ -21,20 +21,20 @@ fn unobserved_memo_recomputes_only_when_read() {
     }
   });
 
-  assert_eq!(calls.get(), 1, "initial compute runs once");
+  assert_eq!(calls.get(), 0, "nothing computes before the first read");
 
   // Changing the source leaves an unobserved memo alone.
   source.set(1);
-  assert_eq!(calls.get(), 1, "no reader, no recompute");
+  assert_eq!(calls.get(), 0, "no reader, no compute");
   assert_eq!(memo.get(), 2, "a read pulls the fresh value");
-  assert_eq!(calls.get(), 2, "the read recomputed once");
+  assert_eq!(calls.get(), 1, "the read computed once");
   assert_eq!(memo.get(), 2);
-  assert_eq!(calls.get(), 2, "get does not recompute when fresh");
+  assert_eq!(calls.get(), 1, "get does not recompute when fresh");
 
   source.set(2);
-  assert_eq!(calls.get(), 2, "still no recompute without a read");
+  assert_eq!(calls.get(), 1, "still no recompute without a read");
   assert_eq!(memo.get(), 4);
-  assert_eq!(calls.get(), 3, "recomputed once more for the read");
+  assert_eq!(calls.get(), 2, "recomputed once more for the read");
 }
 
 #[test]
@@ -289,6 +289,7 @@ fn a_long_memo_chain_settles() {
       let previous = last;
 
       last = Memo::new(move |_| previous.get() + 1);
+      let _ = last.get_untracked();
     }
 
     assert_eq!(last.get(), 100_000);

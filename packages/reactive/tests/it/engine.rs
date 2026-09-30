@@ -45,7 +45,8 @@ fn memo_read_inside_batch_computes_once() {
   assert_eq!(computes.get(), 2, "read plus flush computed exactly once");
 }
 
-/// An unobserved memo does not recompute on a source write.
+/// An unobserved memo computes nothing on a source write, and nothing before its first
+/// read.
 #[test]
 fn unobserved_memo_ignores_writes() {
   let source = Signal::new(1);
@@ -60,15 +61,15 @@ fn unobserved_memo_ignores_writes() {
     }
   });
 
-  assert_eq!(computes.get(), 1);
+  assert_eq!(computes.get(), 0);
 
   for value in 2..10 {
     source.set(value);
   }
 
-  assert_eq!(computes.get(), 1, "no reader, no recompute");
+  assert_eq!(computes.get(), 0, "no reader, no compute");
   assert_eq!(memo.get_untracked(), 9);
-  assert_eq!(computes.get(), 2, "one recompute for the read");
+  assert_eq!(computes.get(), 1, "one compute for the read");
 }
 
 /// A comparator other than equality decides what counts as a change.

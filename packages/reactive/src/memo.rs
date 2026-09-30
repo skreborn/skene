@@ -3,16 +3,16 @@ use std::{any::Any, cell::RefCell, fmt, marker::PhantomData, rc::Rc};
 use crate::{
   access::{Get, Track, With},
   computation::{self, Computation},
-  graph::flags::MEMO,
+  graph::flags::{DIRTY, MEMO},
   id::Id,
   runtime::with_graph,
 };
 
 /// A memoized derived value.
 ///
-/// Computed once on creation, then lazily: a read after a dependency changed
-/// recomputes first, and nothing recomputes while nobody reads. Dependents are
-/// notified only when the recomputed value differs under the memo's comparator.
+/// Computed lazily: on its first read, then on a read after a dependency changed, and
+/// never while nobody reads. Dependents are notified only when the recomputed value
+/// differs under the memo's comparator.
 #[must_use]
 pub struct Memo<T: 'static> {
   id: Id,
@@ -93,9 +93,7 @@ impl<T: 'static> Memo<T> {
       compare: Box::new(compare),
       value: RefCell::new(None),
     });
-    let id = computation::create(body, MEMO);
-
-    computation::run(id);
+    let id = computation::create(body, MEMO | DIRTY);
 
     Self {
       id,

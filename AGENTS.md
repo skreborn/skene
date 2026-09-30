@@ -133,7 +133,7 @@
   declared. Nothing below a component library knows what a palette is: `skene-simple`
   owns `SimplePalette` as a struct of `Token`s implementing `TokenSet`, and a third
   party's `AcmePalette` is on identical footing.
-  - **`Theme<P: TokenSet>` is the one theme view**, in `skene-common`:
+  - **`Theme<P, S: TokenSet>` is the one theme view**, in `skene-common`:
     `Theme::new(palette)` or `Theme::derive(|| palette.get())`, then
     `set_child_builder(|| child)`. It realizes one layout-invisible scope node, provides
     `Memo<P>` through context (`P::current()`, `P::watch()`, from `ThemedIn`), and one
@@ -494,7 +494,9 @@
   there, and a divergence it finds is a bug in the platform, never a special case in
   the suite. A third-party platform proves itself the same way. Platforms
   test against their real sinks (web: real DOM via `wasm-bindgen-test`; the server
-  leaf natively under a byte-exact snapshot; native: its toolkit). There is no mock platform.
+  leaf natively under a byte-exact snapshot; native: its toolkit). No mock stands in
+  for a platform; only core's own unit tests run on a double, a `TestPlatform`
+  recording the calls it receives.
 - HTTP, WebSockets and timers are userland. `skene-transport` holds the network clients built on
   the public seams alone, in a crate nothing in the framework knows about, so it stands
   where a third party's would: `fetch` on the web and a thread around `ureq` on every
@@ -661,7 +663,7 @@
 - All reactive-system work keeps the state snapshot in mind: signal identities must be
   able to stay stable across two runs of the same binary. Store/restore is on by default
   and opt-out—the built-in and simple types just work with no tag—so `Signal::new` carries
-  the serde bounds, `Signal::opaque` opts a signal out and asks nothing of its type, and
+  the `Snapshot` bound, `Signal::opaque` opts a signal out and asks nothing of its type, and
   `Signal::tagged` is only an anchor for the positional diff within one owner, and a
   `Key` anchors a whole scope: `reconcile` keys every item's owner by the item's key and
   `View::set_key` builds a view under a keyed owner, one concept for both, so state

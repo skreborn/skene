@@ -1,4 +1,4 @@
-//! Proc-macros for the skene entry, lazy loading, and the reactive store derive.
+//! Proc-macros for the skene entry, lazy loading, and the store and snapshot derives.
 
 mod snapshot;
 mod store;

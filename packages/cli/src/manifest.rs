@@ -48,7 +48,7 @@ pub(crate) struct WebSection {
 pub(crate) struct AppSection {
   /// The cargo package to build; the directory's own package when absent.
   pub package: Option<String>,
-  /// The server binary rendered through the runner for `skene ssg`.
+  /// The server binary the pages render through, for `--ssr` and `--static`.
   pub server_bin: Option<String>,
 }
 

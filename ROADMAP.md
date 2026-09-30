@@ -289,23 +289,18 @@ left half-done in a code comment.
     decision records with a revisit trigger; an architecture page on state (a `Store`,
     a local `Signal` or context, and no view models in context); a guide in an mdbook
     that compiles its snippets, and a `skene new` scaffold.
-    - Wrong claims corrected: the README's server rendering "from the same wasm
-    module"; the native contradictions in `DESIGN.md` (painted-native desktop and
-    mobile, a Linux leaf on winit, selection by triple), settled by the native family's
-    decisions; both documents' `Theme` signature; "`Signal::new` carries the serde
-    bounds"; "there is no mock platform"; "each platform installs its subscriber"; "a
-    palette change costs the number of tokens", until the token caches change; "nothing
-    on the path a built-in takes is crate-private"; `web_axe` as the gate for every
-    built-in's semantics; the mouse key's `Alt-M`; `#[derive(Snapshot)]` missing from
-    the crate lists; the README's uncompiled counter snippet; the undocumented server
-    `main.rs`; the CLI's help, which names "the embedded runner" and `skene dev`.
+    - Wrong claims corrected: the native contradictions in `DESIGN.md` (painted-native
+    desktop and mobile, a Linux leaf on winit, selection by triple), settled by the
+    native family's decisions; "a palette change costs the number of tokens", until the
+    token caches change; "nothing on the path a built-in takes is crate-private"; the
+    README's uncompiled counter snippet; the undocumented server `main.rs`.
     - Doc comments: contracts alone, without rationale or narrated implementation;
-    stale references (the runner, `skene dev`, "the medium's core crate", `Ctrl-C` for
-    `Ctrl-Q`, vanished parameters) and false contracts (`Flexible`, the tooltip,
-    `split.rs`, the setter macro's `derive_` boilerplate) fixed; short first paragraphs; every builder's example a doctest on
-    the headless host. Two rule tensions are settled explicitly: documented
-    `pub(crate)` items against "comment non-public code only when critical", and
-    examples that explain why, as teaching code should.
+    stale references to vanished parameters and false contracts (`Flexible`, the
+    tooltip, `split.rs`, the setter macro's `derive_` boilerplate) fixed; short first
+    paragraphs; every builder's example a doctest on the headless host. Two rule
+    tensions are settled explicitly: documented `pub(crate)` items against "comment
+    non-public code only when critical", and examples that explain why, as teaching code
+    should.
 8. **Pictures beyond direct kitty transmission.** Shared memory or a file where the
     protocol's query over that medium shows the terminal shares the host, sparing the
     base64 for every change; unicode placeholders (`U=1`) through tmux, which passes no

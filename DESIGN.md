@@ -61,7 +61,7 @@ skene-simple     the Simple design language over skene-common, generic over P: t
                  gui and tui alias the types to each facade's ActivePlatform, with a prelude
 skene-conformance  one suite of behaviors every platform shows alike, run through the
                  Driver a platform implements over its test seams
-skene-macros     #[main], #[lazy], #[derive(Store)]
+skene-macros     #[main], #[lazy], #[derive(Store)], #[derive(Snapshot)]
 skene-cli        the skene command: build and run per target, the dev server, static
                  generation, skene.toml assets
 ```
@@ -238,14 +238,15 @@ functions in the platform crate, since it is not a shared contract.
   the vocabulary moves the medium decision (CSS text, native styles) into the platform crate
   while realization is written once above it.
 
-  **No mock platform—but headless tests.** Because the vocabulary carries typed data, the
+  **Headless tests, not a mock platform.** Because the vocabulary carries typed data, the
   host platform (`skene-headless`) realizes exactly what any real platform receives into an
   inspectable record store, resolves a property through core's `Resolver` (the scene's
   tokens, the expression evaluator and the environment), and runs tasks when a test
   pumps them, giving
   view logic fast headless tests without pretending to be a platform. Platforms test against
   their real sinks (web: a browser DOM via `wasm-bindgen-test`; the server leaf
-  natively under a byte-exact snapshot; native: its toolkit).
+  natively under a byte-exact snapshot; native: its toolkit). Only core's own unit tests
+  run on a double, a `TestPlatform` recording the calls it receives.
 
 ## Composition
 
@@ -624,7 +625,7 @@ in lengths, a box's sizes, padding, spacing and margins, its corner radius and a
 font size and letter spacing alike, and a property that is a plain number reads a
 number token alone.
 
-`Theme<P, P: TokenSet>` is the one theme view. It realizes one layout-invisible scope node
+`Theme<P, S: TokenSet>` is the one theme view. It realizes one layout-invisible scope node
 (`display: contents` on the web, a scope record in the terminal), provides `Memo<P>`
 through context, and runs one effect that writes `P::definitions()` onto the scope. A
 palette change therefore costs the number of tokens, never the number of nodes, and
@@ -1234,8 +1235,10 @@ boundary's fallback standing until the module arrives.
 
 ## Logging
 
-Framework and app code log through `tracing`. Each platform installs its subscriber at
-launch. The spine carries no subscriber.
+Framework and app code log through `tracing`. The web leaves install a subscriber at
+launch unless one is set, the browser's writing to the console and the server's to
+standard error; the terminal installs none, its screen being the app's, and headless
+leaves the choice to the test. The spine carries no subscriber.
 
 ## Superseded decisions
 

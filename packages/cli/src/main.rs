@@ -1,8 +1,9 @@
 //! The `skene` command: build, statically generate, and develop skene applications.
 //!
 //! Reads `skene.toml`—the framework manifest—beside the app's `Cargo.toml`; every
-//! setting is optional. `skene dev` is the dev loop: build, serve, watch, rebuild, and
-//! reload the page over SSE.
+//! setting is optional. `skene run web` is the web dev loop: build, serve, watch,
+//! rebuild, and reload the page over SSE; `skene run tui` is the terminal's, whose
+//! binary `skene attach` runs and swaps.
 
 #[cfg(not(target_arch = "wasm32"))]
 mod attach;

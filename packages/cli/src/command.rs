@@ -44,7 +44,7 @@ enum BuildTarget {
   /// The browser wasm and its bindings—or, with `--static`, the statically
   /// generated site—into `dist/web`, replacing the folder wholesale.
   Web {
-    /// Statically generate routes through the embedded runner, assets alongside.
+    /// Statically generate routes through the app's server binary, assets alongside.
     #[arg(long)]
     r#static: bool,
     /// Routes to render (with `--static`); every enumerated route when omitted.

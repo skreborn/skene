@@ -2,8 +2,8 @@
 
 A client-side Rust UI framework: one spine, two facades. A GUI app depends on
 `skene-gui` and runs wherever the build targets it—the browser, client-rendered; a
-server, rendering or statically generating pages from the same wasm module; native as
-it lands. A terminal app depends on `skene-tui`, a facade of equal standing with its own
+server, rendering or statically generating pages from the same app crate built
+natively; native as it lands. A terminal app depends on `skene-tui`, a facade of equal standing with its own
 vocabulary typed to the medium. Every built-in view is written once, generic over the
 platform a facade selects; the reactive engine is signal-based, fine-grained and vdom-free;
 styling is data, compiled to CSS on the web and resolved natively elsewhere, so a
@@ -119,7 +119,7 @@ skene-common          every built-in view once, generic over the platform; the p
 skene-gui             the GUI facade: aliases over the selected platform
 skene-simple          the Simple component library over skene-common, generic; its gui and
                       tui modules alias it to each facade with a prelude
-skene-macros          #[main], #[lazy], #[derive(Store)]
+skene-macros          #[main], #[lazy], #[derive(Store)], #[derive(Snapshot)]
 skene-cli             the `skene` command
 ```
 
@@ -134,7 +134,7 @@ skene-cli             the `skene` command
 | `skene-tui` | `packages/tui` | The terminal facade and platform: `u32` cells, `Tui`, the same aliases, `Typography`, `BorderGlyphs`, `media`, `CellPainter`, `launch`, and `testing`: `render_to_text`, the `trigger_*` seams, `user` and the queries by role, name and text. |
 | `skene-conformance` | `packages/conformance` | One suite of behaviors every platform shows alike, run through the `Driver` a platform implements over its test seams. |
 | `skene-simple` | `packages/simple` | `SimplePalette` (a `TokenSet`), `SimpleLook`, `SimpleVariant`, `SimpleShape`, `SimpleGlyphs` (the terminal marks), and `SimpleButton`, `SimpleCard`, `SimpleCheckbox`, `SimpleRadio`, `SimplePicker`, `SimpleSlider`, `SimpleTextField`, `SimpleTextEditor`, `SimpleTooltip`, `SimpleContextMenu`, generic over the platform; `gui` and `tui` alias them to that facade's `ActivePlatform`, each with a `prelude` an app imports beside the facade's own. |
-| `skene-macros` | `packages/macros` | `#[main]`, `#[lazy]`, `#[derive(Store)]`. |
+| `skene-macros` | `packages/macros` | `#[main]`, `#[lazy]`, `#[derive(Store)]`, `#[derive(Snapshot)]`. |
 | `skene-transport` | `packages/transport` | The clients on the public seams alone: `http` (`Request`, `Response`, `send`; `fetch` on the web, a thread around `ureq` on every other host) and `ws` (`connect`, `send`, `receive`; the browser's `WebSocket` on the web, a thread around `tungstenite` elsewhere). |
 | `skene-cli` | `packages/cli` | `skene build web [--static]`, `skene build tui`, `skene run web [--ssr]`, `skene run tui` and `skene attach <id>`: bundling, the dev server with live reload and state kept across it in the page's own storage, the terminal build loop and the launcher that swaps each binary in place with the state carried across, static generation, `skene.toml` assets. |
 

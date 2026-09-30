@@ -62,7 +62,7 @@ thread_local! {
   /// Whether the app opted into view transitions, so the stylesheet carries the
   /// cross-document rule.
   static VIEW_TRANSITIONS: Cell<bool> = const { Cell::new(false) };
-  /// The path being rendered, as supplied by the runner; `/` when none was.
+  /// The path being rendered, as the render was asked for it; `/` when none was.
   static REQUEST_PATH: RefCell<String> = RefCell::new("/".to_owned());
   /// The nonce the renders' inline scripts carry, if any.
   static SCRIPT_NONCE: RefCell<Option<String>> = const { RefCell::new(None) };

@@ -15,8 +15,8 @@
 //! holds one field per property in a [`Shape`]: what a builder collects, what a platform
 //! receives, or plain values. Every facade fixes the [`Scalar`] its lengths are measured
 //! in and the [`StyleExtension`] holding the properties only its medium has, which its
-//! medium's core crate defines. A style's [`Fingerprint`] keys what a platform compiled
-//! from it. Motion ([`Transition`], [`Animation`]) is data every
+//! medium's module in `skene-common` defines. A style's [`Fingerprint`] keys what a
+//! platform compiled from it. Motion ([`Transition`], [`Animation`]) is data every
 //! platform compiles or runs, and the universal values ([`Color`], the geometry, the
 //! layout vocabulary) are what every medium's properties are made of.
 

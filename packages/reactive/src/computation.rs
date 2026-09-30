@@ -217,12 +217,5 @@ pub(crate) fn track_id(id: Id) -> bool {
     return true;
   }
 
-  match id.state() {
-    Some(state) => {
-      state.subscribe();
-
-      true
-    }
-    None => false,
-  }
+  id.tracked_state().is_some()
 }

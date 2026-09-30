@@ -96,9 +96,9 @@ left half-done in a code comment.
     consumer resolves it there afresh today, interned names and skipped equal
     redefinitions, so a palette change costs the number of tokens beyond the web too,
     written once in core's `ResolutionContext`, which headless and the terminal share.
-    - Constant factors: the UI-thread assertion in debug alone, fused borrows, the
-    iterative pull and alien-signals' propagation techniques, estimated to halve a read
-    and a write; forced inlining off allocating functions; the lazy list reading a
+    - Constant factors: the UI-thread assertion in debug alone, the iterative pull and
+    alien-signals' propagation techniques, estimated to halve a read and a write;
+    forced inlining off allocating functions; the lazy list reading a
     data source (a count and the item at an index) through a Fenwick tree, and evicting
     measured extents;
     one constructable stylesheet with deferred collection and a set of adopted names;

@@ -73,7 +73,7 @@ pub trait Get<T: Clone> {
   where
     T: 'static,
   {
-    self.id().state().map(|state| state.get())
+    self.id().tracked_state().map(|state| state.get_untracked())
   }
 
   /// Clones the current value if the signal is live, without subscribing.
@@ -130,7 +130,10 @@ pub trait With<T> {
   where
     T: 'static,
   {
-    self.id().state().map(|state| state.with(apply))
+    self
+      .id()
+      .tracked_state()
+      .map(|state| state.with_untracked(apply))
   }
 
   /// Passes the current value to `apply` if the signal is live, without subscribing.
@@ -186,11 +189,7 @@ pub trait Read<T> {
   where
     T: 'static,
   {
-    self.id().state().map(|state| {
-      state.subscribe();
-
-      state.read_guard()
-    })
+    self.id().tracked_state().map(|state| state.read_guard())
   }
 
   /// Borrows the value if the signal is live, without subscribing.

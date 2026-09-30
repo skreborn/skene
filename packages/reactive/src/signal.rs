@@ -3,7 +3,6 @@ use std::panic::Location;
 use std::{any::Any, fmt, marker::PhantomData, rc::Rc};
 
 use crate::{
-  computation,
   encode::Snapshot,
   guards::{ReadGuard, WriteGuard},
   id::{Id, Kind},
@@ -176,6 +175,26 @@ impl Id {
       })
     })
   }
+
+  /// The signal state this id names, the running computation subscribed to it in the
+  /// same borrow of the graph.
+  pub(crate) fn tracked_state(self) -> Option<SignalState> {
+    if self.kind() != Kind::Signal {
+      return None;
+    }
+
+    RUNTIME.with(|runtime| {
+      let tracking = runtime.tracking.get();
+      let mut graph = runtime.graph();
+      let value = graph.signal(self)?.value.clone();
+
+      if let Some(sub) = tracking {
+        graph.link(self, sub);
+      }
+
+      Some(SignalState { id: self, value })
+    })
+  }
 }
 
 impl SignalState {
@@ -202,13 +221,6 @@ impl SignalState {
   }
 
   #[cfg_attr(debug_assertions, track_caller)]
-  pub(crate) fn get<T: Clone + 'static>(&self) -> T {
-    self.subscribe();
-
-    self.get_untracked()
-  }
-
-  #[cfg_attr(debug_assertions, track_caller)]
   pub(crate) fn with_untracked<O, T: 'static>(&self, apply: impl FnOnce(&T) -> O) -> O {
     let value = self
       .value
@@ -223,13 +235,6 @@ impl SignalState {
     {
       apply(&value.borrow())
     }
-  }
-
-  #[cfg_attr(debug_assertions, track_caller)]
-  pub(crate) fn with<O, T: 'static>(&self, apply: impl FnOnce(&T) -> O) -> O {
-    self.subscribe();
-
-    self.with_untracked(apply)
   }
 
   /// Mutates the value through `mutate` and notifies subscribers.
@@ -277,11 +282,6 @@ impl SignalState {
       runtime.graph().propagate(self.id);
       runtime.request_flush();
     });
-  }
-
-  /// Subscribes the running computation to this signal.
-  pub(crate) fn subscribe(&self) {
-    computation::subscribe(self.id);
   }
 
   /// The value's cell.

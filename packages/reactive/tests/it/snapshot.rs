@@ -28,13 +28,13 @@ fn across_runs<R: Send + 'static>(
 }
 
 /// Untagged signals restore by position: the same program adopts every value, and
-/// an opaque signal neither serializes nor occupies a position.
+/// a transient signal neither serializes nor occupies a position.
 #[test]
 fn positional_state_round_trips() {
   let (count, name, flag) = across_runs(
     || {
       let count = Signal::new(1u32);
-      let _opaque = Signal::opaque(vec![Box::new(9u8)]);
+      let _transient = Signal::transient(vec![Box::new(9u8)]);
       let name = Signal::new(String::from("fresh"));
       let flag = Signal::new(false);
 

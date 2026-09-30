@@ -7,7 +7,7 @@ use skene_core::{EventKind, NativeElement, Platform, Role};
 use super::{Behavior, ControlHandle};
 
 /// A picker the platform draws and lists itself: the scriptless form of a
-/// [`RawPicker`](crate::RawPicker), realized as the platform's own choice control
+/// [`BasicPicker`](crate::BasicPicker), realized as the platform's own choice control
 /// where it has one.
 ///
 /// The options are written to the platform by whoever builds the control, from the

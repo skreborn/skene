@@ -7,7 +7,7 @@ use crate::{
   ColorScheme,
   Inset,
   Size,
-  composable::{Composable, ConditionShape},
+  condition_tree::{ConditionShape, ConditionTree},
 };
 
 /// The name a box publishes for container queries against its size.
@@ -138,7 +138,7 @@ impl<N: Scalar> Media<N> {
   }
 }
 
-impl<N: Scalar> Composable for Media<N> {
+impl<N: Scalar> ConditionTree for Media<N> {
   #[inline(always)]
   fn shape(&self) -> ConditionShape<'_, Self> {
     match self {
@@ -332,7 +332,7 @@ impl<N: Scalar> Condition<N> {
   }
 }
 
-impl<N: Scalar> Composable for Condition<N> {
+impl<N: Scalar> ConditionTree for Condition<N> {
   #[inline(always)]
   fn shape(&self) -> ConditionShape<'_, Self> {
     match self {
@@ -381,7 +381,7 @@ mod tests {
     PointerPrecision,
     State,
   };
-  use crate::{ColorScheme, Composable, Inset, Size};
+  use crate::{ColorScheme, ConditionTree, Inset, Size};
 
   fn env(container: &dyn Fn(Option<ContainerName>) -> Option<Size<f32>>) -> MediaEnv<'_, f32> {
     MediaEnv {

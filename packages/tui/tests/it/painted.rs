@@ -79,7 +79,7 @@ fn a_picture_is_cropped_to_the_cells_in_view_and_hidden_under_an_overlay() {
             .set_height(2)
             .set_overflow(Overflow::Auto)
             .set_child(Column::new().set_children((Text::new("top"), red_box(4, 3)))),
-          RawButton::new(Activate::new())
+          BasicButton::new(Activate::new())
             .set_label("open")
             .handle_click(move || open.set(true)),
           Overlay::popup()

@@ -14,16 +14,16 @@ use std::{
 };
 
 use skene_gui::{
+  AsyncView,
+  BasicListboxOption,
+  BasicPicker,
   Column,
   Container,
   Enhance,
   HasChild,
   HasChildren,
   Label,
-  Lazy,
-  ListItem,
-  RawOption,
-  RawPicker,
+  ListboxOption,
   Resource,
   Text,
   Tooltip,
@@ -355,7 +355,8 @@ fn a_picker_carries_the_readers_choice_from_the_select() {
     ["a", "b"].map(|value| {
       let name = value.to_uppercase();
 
-      RawOption::new(ListItem::new(value)).set_label(Label::new(Text::new(&name)).set_name(name))
+      BasicListboxOption::new(ListboxOption::new(value))
+        .set_label(Label::new(Text::new(&name)).set_name(name))
     })
   };
   // The option views build before the select and attach nowhere, so the select's
@@ -398,7 +399,7 @@ fn a_picker_carries_the_readers_choice_from_the_select() {
   let value = skene_gui::reactive::Signal::new("a".to_owned());
 
   hydrate(root.clone(), "", move || {
-    RawPicker::new()
+    BasicPicker::new()
       .bind_value(value)
       .set_options(options())
       .set_face(|shown| Text::derive(move || shown.get()))
@@ -438,7 +439,7 @@ async fn a_lazy_view_keeps_server_content_until_it_loads() {
   let server_span = root.query_selector("span").expect("query").expect("a span");
 
   hydrate(root.clone(), "", || {
-    Container::new().set_child(Lazy::new(|| async { Text::new("note") }))
+    Container::new().set_child(AsyncView::new(|| async { Text::new("note") }))
   });
 
   // Claimed: the server content still stands, visible, while the module is pending.
@@ -485,7 +486,7 @@ async fn a_lazy_segments_resources_adopt_their_own_values() {
       let after = Rc::clone(&after);
 
       move || {
-        let lazy = Lazy::new(move || {
+        let lazy = AsyncView::new(move || {
           let inside = Rc::clone(&inside);
 
           async move {
@@ -532,7 +533,7 @@ async fn a_lazy_segments_resources_adopt_their_own_values() {
 /// the label standing before the input in the markup.
 #[wasm_bindgen_test]
 fn hydrate_adopts_a_captioned_text_field() {
-  use skene_gui::{RawTextField, TextEntry};
+  use skene_gui::{BasicTextField, TextEntry};
 
   let root = server_root(
     "<div data-h=\"1\"><!--s:0--><label for=\"x\" data-h=\"4\"><span data-h=\"3\">Name</span></label><input type=\"text\" id=\"x\" data-skene-control=\"\" data-h=\"2\"><!--e:0--></div>",
@@ -547,7 +548,7 @@ fn hydrate_adopts_a_captioned_text_field() {
     .expect("an input");
 
   hydrate(root.clone(), "", || {
-    Container::new().set_child(RawTextField::new(TextEntry::new()).set_label("Name"))
+    Container::new().set_child(BasicTextField::new(TextEntry::new()).set_label("Name"))
   });
 
   assert_eq!(web::hydration_mismatches(), 0);
@@ -598,9 +599,9 @@ fn a_structural_mismatch_is_caught_not_silently_adopted() {
 /// moved into the client's label rather than removed with the server's.
 #[wasm_bindgen_test]
 fn an_adopted_input_moves_into_a_rebuilt_label() {
-  use skene_gui::{RawCheckbox, Toggle};
+  use skene_gui::{BasicCheckbox, Toggle};
 
-  let app = || RawCheckbox::new(Toggle::new());
+  let app = || BasicCheckbox::new(Toggle::new());
   let (markup, _) = served(move || skene_gui::View::into_any(app()));
   let mismatched = markup
     .replacen("<label", "<span", 1)

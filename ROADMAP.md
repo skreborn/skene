@@ -114,7 +114,7 @@ left half-done in a code comment.
 5. **The dev reload costs production nothing.** Snapshot registration happens only
     where something reads it, a dev channel present at startup or the Android leaf's
     saved state, so a production `Signal::new` stops costing 74% more than
-    `Signal::opaque`; meanwhile a function pointer replaces the boxed serializer. The
+    `Signal::transient`; meanwhile a function pointer replaces the boxed serializer. The
     saved tier is no second API: the Android leaf writes this snapshot (the native
     family), and the web and the desktop keep none beyond the dev reload.
     - Identity: typed owner steps aligned per parent, so a `Show` inserted before a
@@ -127,8 +127,8 @@ left half-done in a code comment.
     form still read; a `Duration::restore` that never panics; `#[snapshot(skip)]`
     restoring `Default` without requiring `Snapshot`; the derive checking key
     collisions and naming `Option`, `Some` and `None` fully qualified; a bridge crate
-    that snapshots a foreign type through serde instead of forcing it `opaque`; the
-    picker's `open` `opaque`, like every overlay's.
+    that snapshots a foreign type through serde instead of forcing it `transient`; the
+    picker's `open` `transient`, like every overlay's.
     - One serialization for state crossing a boundary: hydration carries through
     `Snapshot` and serde_json leaves the web leaf, or `DESIGN.md` states that network
     data is serde's.
@@ -213,7 +213,7 @@ left half-done in a code comment.
     typography size token itself, so `ResolutionSource::size_token` goes, the terminal
     keeping only whether it proved text sizing, and the `em` fallback becomes the
     medium's, unless the terminal's logical pixels make it one value.
-    - Moves: `Lazy`, `Deferred`, the hydrating `Resource`, `Link` and the router
+    - Moves: `AsyncView`, `Deferred`, the hydrating `Resource`, `Link` and the router
     binding into the foundation over platform seams, so a generic library can use them
     and the terminal gains `Link`; the title into a shared `window` module, which grows
     into the `Window` handle, while web-only page metadata stays in a web-only module;
@@ -228,19 +228,11 @@ left half-done in a code comment.
     arms reserved, and the CLI picks the crate type per target through
     `cargo rustc --crate-type`, so apps stop declaring crate types and the `cdylib`
     plus `rlib` pair, `__skene_main` and app-level cfgs go.
-    - Renames: `Raw*` to `Basic*`; `Show` and `Switch` to `Visibility` and `OneOf`; `Lazy`
-    to `AsyncView`; `Composable` to `ConditionTree`; the `Range` behavior and
-    `NativeElement::Range` to `Slider`; `Roving` and `RadioMember` to `RadioGroup` and
-    `Radio`; the `ListItem` behavior and `RawOption` to `ListboxOption` and
-    `RawListboxOption`, and the menu's `MenuItem` data to `MenuEntry`; core's `Toggle`
-    value to `CheckState`; `GuiExt` and `TuiExt` to `GuiStyle` and `TuiStyle`;
-    `AccessProp::Label` to `AccessProp::Name`; `Signal::opaque` to `Signal::transient`;
-    `StoreField::derive` and `try_derive` to `memo` and `try_memo`; `stored_scheme` to
-    `chosen_scheme`, beside a web-only `persisted_scheme`; `Router::get` to
-    `Router::current`; `Popup::handle_typed` to `set_key_fallback`; the terminal's and
-    headless's `Store` to `Records`; `web/src/escape.rs` to `low_level.rs`;
-    `skene_leaf` (`browser`, `server`, `host`) to `skene_gui_platform` (`browser`,
-    `server`, `headless`);
+    - Renames: `Show` and `Switch` to `Visibility` and `OneOf`, where `Visibility`
+    already names the style value that hides a box; `stored_scheme` to `chosen_scheme`,
+    beside a web-only `persisted_scheme`; the terminal's and headless's `Store` to
+    `Records`; `web/src/escape.rs` to `low_level.rs`; `skene_leaf` (`browser`,
+    `server`, `host`) to `skene_gui_platform` (`browser`, `server`, `headless`);
     `web::hydration` to `resource_state`; the reactive crate's `value.rs`, `key()`,
     `Position` and `provide`/`staged` to `tracked_cell.rs`, `field_key()`,
     `SnapshotPlace` and `provide_extra`/`take_extra`; the choice and activation handlers
@@ -263,7 +255,7 @@ left half-done in a code comment.
     Into<Value<Flexibility>>)`), the slider (`set_range`, `derive_range`) and
     `Animation` (iterations, alternation, reduced motion); appending setters named
     `add_*` (`set_transition`, `set_animation`, `set_case`, `RichText::set_spans`);
-    children last in `Deferred`, `Lazy` and `Link`; fallbacks spelled one way across
+    children last in `Deferred`, `AsyncView` and `Link`; fallbacks spelled one way across
     `Enhance`, `Painted`, `Suspense` and `ErrorBoundary`; one alignment name across
     `Stack`, `Grid`, `GridCell` and `Flexible`; the same prelude on both facades and
     every leaf.
@@ -324,7 +316,7 @@ left half-done in a code comment.
     - Style: opacity and transforms as compositor-friendly properties of their own,
     gradients, GUI shadows, italic, text alignment, ellipsis and a maximum line count,
     and system colors, shared with stated terminal degradations and the pixel-only ones
-    in `GuiExt`.
+    in `GuiStyle`.
 11. **The terminal's app shell.** Inline mode and declarative terminal modes beside the
     alternate screen the app always takes today; printing above the app; `exec` and
     `suspend`; log capture, to a file or over the attach pipe, since the terminal
@@ -387,7 +379,7 @@ left half-done in a code comment.
     `GtkText`, a XAML `TextBox`) styled to Simple's look as an `<input>` is on the web,
     since selection, IME, autofill and the edit menu are the platform's and mobile
     users notice a replica, a `Native*` control is the platform's own where it has one
-    beside the composed `Raw*` and `Simple*` forms, and only `Painted` draws, in a
+    beside the composed `Basic*` and `Simple*` forms, and only `Painted` draws, in a
     layer-backed view. A `Native*` control takes a small common option set applied
     best-effort (a plain `<input>` on the web) and a per-instance hook handing over the
     platform's own control for everything outside it, so nobody forks a control to set
@@ -406,7 +398,7 @@ left half-done in a code comment.
     the leaves are built for several and embedding into an existing native screen falls
     out; the typed events, with a platform Back request routed to overlays and the
     router; menus and text tooltips as data, through a default-bodied method taking
-    `MenuItem`s that NSMenu, UIMenu, PopupMenu, MenuFlyout and PopoverMenu realize,
+    `MenuEntry`s that NSMenu, UIMenu, PopupMenu, MenuFlyout and PopoverMenu realize,
     since a drawn Paste triggers iOS's paste prompt and macOS 26's pasteboard alert;
     text-entry purposes and the `set_value` contract; the missing vocabulary; the
     executor wake hook; selection by `target_os`; and a native counterpart to "mimic
@@ -593,7 +585,7 @@ every item is proven through tmux and ssh as well as bare.
 - Per-platform view vocabularies (`skene_ios::View`, a Simple per platform): the
   generic `View<P>` is that with the platform as a parameter, coherence forbids two
   impls of one shared view distinguished by a platform's kind, and the `Native*`
-  family beside `Raw*` is the split that was wanted.
+  family beside `Basic*` is the split that was wanted.
 - A capabilities model of typed slots on `Platform` in place of progressive
   enhancement: shelved, since it puts bounds on every shared signature; only a
   low-level view names what a platform can do.
@@ -638,7 +630,7 @@ every item is proven through tmux and ssh as well as bare.
   with the tuple impls, and the same conflict appears with `From`; tuples are not
   optional because children are heterogeneous.
 - A collision check on snapshot keys at every build (see the watched item above).
-- A `&'static str` signal restoring: it is `opaque`, since it cannot be deserialized
+- A `&'static str` signal restoring: it is `transient`, since it cannot be deserialized
   owned.
 - A `HashMap` store field iterating in a stable order: its entries come in its
   iteration order; an ordered list wants a `BTreeMap` or a keyed `Vec`.

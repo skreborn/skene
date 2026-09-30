@@ -252,7 +252,7 @@ impl<P: Platform> View<P> for Tooltip<P, AnyView<P>> {
     } = self;
     let (start, _) = Scene::<P>::create_segment();
     let node = child.build();
-    let open = Signal::opaque(false);
+    let open = Signal::transient(false);
     let anchor = NodeHandle::<P>::new();
 
     anchor.assign(node);

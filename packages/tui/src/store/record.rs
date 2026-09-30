@@ -26,20 +26,20 @@ use skene_core::{
 use super::{CellRect, field::Field};
 use crate::{
   Tui,
-  TuiExt,
+  TuiStyle,
   layout::Measured,
   motion::{BoxMotion, RunMotion},
   paint::Image,
 };
 
 /// A box's style resolved against live state.
-pub(crate) type PlainBox = BoxStyle<u32, Plain, TuiExt>;
+pub(crate) type PlainBox = BoxStyle<u32, Plain, TuiStyle>;
 
 /// A run's style resolved against live state.
-pub(crate) type PlainRun = RunStyle<Plain, TuiExt>;
+pub(crate) type PlainRun = RunStyle<Plain, TuiStyle>;
 
 /// What a derived leaf last wrote into a node's slot; see [`skene_core::SlotLeaf`].
-pub(crate) type SlotLeaf = skene_core::SlotLeaf<u32, TuiExt>;
+pub(crate) type SlotLeaf = skene_core::SlotLeaf<u32, TuiStyle>;
 
 /// A box's style resolved under one generation and interaction: the style presented,
 /// with its motion laid over, and the target it resolved to.

@@ -59,7 +59,7 @@ pub fn safe_area<P: Platform>() -> ReadSignal<Inset<P::Scalar>> {
 /// from the start.
 #[inline(always)]
 pub fn hydrated<P: Platform>() -> ReadSignal<bool> {
-  P::hydration().unwrap_or_else(|| Signal::opaque(true).read_only())
+  P::hydration().unwrap_or_else(|| Signal::transient(true).read_only())
 }
 
 /// Whether `media` holds, as a memo following the environment.

@@ -9,7 +9,7 @@ help: the trait `skene_reactive::Snapshot` is not implemented for `Opaque`
   |
 5 | struct Opaque;
   | ^^^^^^^^^^^^^
-  = note: derive it with `#[derive(Snapshot)]`, or keep the value out of snapshots with `Signal::opaque`
+  = note: derive it with `#[derive(Snapshot)]`, or keep the value out of snapshots with `Signal::transient`
   = help: the following other types implement trait `skene_reactive::Snapshot`:
             ()
             (A, B)
@@ -38,7 +38,7 @@ help: the trait `skene_reactive::Snapshot` is not implemented for `Opaque`
   |
 5 | struct Opaque;
   | ^^^^^^^^^^^^^
-  = note: derive it with `#[derive(Snapshot)]`, or keep the value out of snapshots with `Signal::opaque`
+  = note: derive it with `#[derive(Snapshot)]`, or keep the value out of snapshots with `Signal::transient`
   = help: the following other types implement trait `skene_reactive::Snapshot`:
             ()
             (A, B)
@@ -61,7 +61,7 @@ help: the trait `skene_reactive::Snapshot` is not implemented for `Opaque`
   |
 5 | struct Opaque;
   | ^^^^^^^^^^^^^
-  = note: derive it with `#[derive(Snapshot)]`, or keep the value out of snapshots with `Signal::opaque`
+  = note: derive it with `#[derive(Snapshot)]`, or keep the value out of snapshots with `Signal::transient`
   = help: the following other types implement trait `skene_reactive::Snapshot`:
             ()
             (A, B)

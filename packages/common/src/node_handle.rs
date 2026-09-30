@@ -33,9 +33,9 @@ impl<P: Platform> NodeHandle<P> {
   #[inline(always)]
   pub fn new() -> Self {
     Self {
-      node: Signal::opaque(None),
-      size: Signal::opaque(None),
-      measuring: Signal::opaque(Measuring::Not),
+      node: Signal::transient(None),
+      size: Signal::transient(None),
+      measuring: Signal::transient(Measuring::Not),
     }
   }
 

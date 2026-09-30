@@ -19,9 +19,9 @@ fn a_menu_on_a_view_takes_the_right_press_from_the_standard_one() {
         .set_children((
           ContextMenu::new()
             .set_items([
-              MenuItem::new("Rename").handle_select(move || chosen.set("rename".to_owned())),
-              MenuItem::separator(),
-              MenuItem::new("Delete").handle_select(move || chosen.set("delete".to_owned())),
+              MenuEntry::new("Rename").handle_select(move || chosen.set("rename".to_owned())),
+              MenuEntry::separator(),
+              MenuEntry::new("Delete").handle_select(move || chosen.set("delete".to_owned())),
             ])
             .set_border_width(Inset::all(1))
             .set_border_color(Color::srgb(0.5, 0.5, 0.5))
@@ -83,11 +83,11 @@ fn the_menu_key_opens_at_the_focused_view_and_the_keys_walk_it() {
           Text::new("heading"),
           ContextMenu::new()
             .set_items([
-              MenuItem::new("one").handle_select(move || chosen.set("one".to_owned())),
-              MenuItem::new("two").set_disabled(true),
-              MenuItem::new("three").handle_select(move || chosen.set("three".to_owned())),
+              MenuEntry::new("one").handle_select(move || chosen.set("one".to_owned())),
+              MenuEntry::new("two").set_disabled(true),
+              MenuEntry::new("three").handle_select(move || chosen.set("three".to_owned())),
             ])
-            .set_child(RawButton::new(Activate::new()).set_label("target")),
+            .set_child(BasicButton::new(Activate::new()).set_label("target")),
         ))
         .into_any()
         .build()
@@ -143,7 +143,7 @@ fn the_standard_menu_acts_on_the_entrys_selection() {
   with_platform(|| {
     let value = Signal::new(String::from("alpha beta"));
     let _ = tui::mount(|| {
-      RawTextField::new(TextEntry::new().bind_value(value))
+      BasicTextField::new(TextEntry::new().bind_value(value))
         .set_width(20)
         .into_any()
         .build()

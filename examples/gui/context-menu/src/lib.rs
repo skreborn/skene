@@ -90,14 +90,14 @@ fn note(name: String, notes: Signal<Vec<String>>, last: Signal<String>) -> impl 
 
   SimpleContextMenu::new()
     .set_items([
-      MenuItem::new("Open")
+      MenuEntry::new("Open")
         .set_shortcut(Shortcut::new(Modifiers::NONE, "Enter"))
         .handle_select(ran("Opened")),
-      MenuItem::new("Rename")
+      MenuEntry::new("Rename")
         .set_shortcut(Shortcut::new(Modifiers::NONE, "F2"))
         .handle_select(ran("Renamed")),
-      MenuItem::separator(),
-      MenuItem::new("Delete")
+      MenuEntry::separator(),
+      MenuEntry::new("Delete")
         .set_shortcut(Shortcut::new(Modifiers::NONE, "Delete"))
         .handle_select(move || {
           notes.update(|notes| notes.retain(|held| *held != *deleted));
@@ -127,11 +127,11 @@ fn draft_card(draft: Signal<String>) -> impl View {
       .set_color(SimplePalette::MUTED_FOREGROUND),
     SimpleContextMenu::new()
       .set_items([
-        MenuItem::cut(),
-        MenuItem::copy(),
-        MenuItem::paste(),
-        MenuItem::separator(),
-        MenuItem::new("Clear").handle_select(move || draft.set(String::new())),
+        MenuEntry::cut(),
+        MenuEntry::copy(),
+        MenuEntry::paste(),
+        MenuEntry::separator(),
+        MenuEntry::new("Clear").handle_select(move || draft.set(String::new())),
       ])
       .set_child(
         SimpleTextField::new()

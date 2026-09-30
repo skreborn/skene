@@ -2,7 +2,7 @@
 
 use std::marker::PhantomData;
 
-use skene_common::{CornerRadius, RawTextField, TextEntry};
+use skene_common::{BasicTextField, CornerRadius, TextEntry};
 use skene_core::{AnyKind, NodeId, Platform, View};
 use skene_reactive::Signal;
 
@@ -11,7 +11,7 @@ use super::shape::{SimpleUnit, define_defaults, field_chrome};
 /// A ready-made single-line text field: full-width field chrome whose hairline border
 /// becomes the ring while focused.
 ///
-/// The value flows both ways, exactly as on [`RawTextField`]; for custom chrome,
+/// The value flows both ways, exactly as on [`BasicTextField`]; for custom chrome,
 /// compose the raw control directly.
 #[derive(Debug)]
 #[must_use]
@@ -88,6 +88,6 @@ where
   fn build(self) -> NodeId {
     define_defaults::<P>();
 
-    field_chrome::<P, TextEntry>(RawTextField::new(self.entry)).build()
+    field_chrome::<P, TextEntry>(BasicTextField::new(self.entry)).build()
   }
 }

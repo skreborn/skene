@@ -40,7 +40,7 @@ pub mod user;
 
 use std::{cell::RefCell, fmt::Write as _, rc::Rc, thread::LocalKey, time::Duration};
 
-use skene_common::gui::{Canvas, GuiExt, GuiProperty, Painter, Painting};
+use skene_common::gui::{Canvas, GuiProperty, GuiStyle, Painter, Painting};
 pub use skene_common::gui::{HeadElement, HeadId};
 use skene_core::{
   AspectRatio,
@@ -48,6 +48,7 @@ use skene_core::{
   Axes,
   BoxProps,
   BoxValue,
+  CheckState,
   ClickEvent,
   ClipboardAction,
   Color,
@@ -92,7 +93,6 @@ use skene_core::{
   StaticLeaf,
   TextSelection,
   Timer,
-  Toggle,
   Visibility,
   WheelEvent,
   dispatch_click,
@@ -133,10 +133,10 @@ pub struct Headless;
 pub type TokenValue = skene_core::TokenValue<f32>;
 
 /// A property's value erased over the property; see [`skene_core::SlotValue`].
-pub type SlotValue = skene_core::SlotValue<f32, GuiExt>;
+pub type SlotValue = skene_core::SlotValue<f32, GuiStyle>;
 
 /// What a derived leaf last wrote into a node's slot; see [`skene_core::SlotLeaf`].
-pub type SlotLeaf = skene_core::SlotLeaf<f32, GuiExt>;
+pub type SlotLeaf = skene_core::SlotLeaf<f32, GuiStyle>;
 
 thread_local! {
   static SCENE: RefCell<Scene<Headless>> = RefCell::new(Scene::new());
@@ -177,7 +177,7 @@ fn with_record<R>(node: NodeId, operation: impl FnOnce(&mut Record) -> R) -> Opt
 
 impl Platform for Headless {
   type Scalar = f32;
-  type StyleExt = GuiExt;
+  type StyleExt = GuiStyle;
   type TokenValue = TokenValue;
 
   fn scene() -> &'static LocalKey<RefCell<Scene<Self>>> {
@@ -188,7 +188,7 @@ impl Platform for Headless {
     with_store(|store| store.insert(node, Record::new(Kind::Box(Box::new(props.clone())))));
   }
 
-  fn update_box(node: NodeId, slot: Slot, leaf: &StaticLeaf<BoxValue<f32, GuiExt>>) {
+  fn update_box(node: NodeId, slot: Slot, leaf: &StaticLeaf<BoxValue<f32, GuiStyle>>) {
     with_record(node, |record| {
       record.slots.insert(slot, leaf.clone().into());
     });
@@ -199,7 +199,9 @@ impl Platform for Headless {
   }
 
   fn set_control_state(node: NodeId, state: &ControlState) {
-    with_record(node, |record| record.checked = state.checked == Toggle::On);
+    with_record(node, |record| {
+      record.checked = state.checked == CheckState::On;
+    });
   }
 
   fn create_overlay(node: NodeId, props: &OverlayProps<Self>) {
@@ -239,7 +241,7 @@ impl Platform for Headless {
     with_store(|store| store.insert(node, Record::new(Kind::Run(Box::new(props.clone())))));
   }
 
-  fn update_run(node: NodeId, slot: Slot, leaf: &StaticLeaf<RunValue<GuiExt>>) {
+  fn update_run(node: NodeId, slot: Slot, leaf: &StaticLeaf<RunValue<GuiStyle>>) {
     with_record(node, |record| {
       record.slots.insert(slot, leaf.clone().into());
     });
@@ -1263,7 +1265,7 @@ fn name_facts(node: NodeId) -> NameFacts {
             NativeElement::Button
             | NativeElement::Checkbox
             | NativeElement::Radio
-            | NativeElement::Range,
+            | NativeElement::Slider,
           )
           | None => None,
         };

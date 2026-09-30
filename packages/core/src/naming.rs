@@ -10,6 +10,7 @@ use super::{
   AccessProp,
   Axis,
   BoxProps,
+  CheckState,
   NativeElement,
   NodeId,
   Part,
@@ -19,7 +20,6 @@ use super::{
   RunDisplay,
   RunProps,
   Scene,
-  Toggle,
 };
 
 /// What the accessible-name computation reads of one node from its platform's records.
@@ -230,7 +230,7 @@ impl NameFacts {
   /// The label the node's accessibility properties carry, where it says anything.
   fn access_label(&self) -> Option<&str> {
     self.access.iter().find_map(|prop| match prop {
-      AccessProp::Label(label) if !label.trim().is_empty() => Some(label.as_str()),
+      AccessProp::Name(label) if !label.trim().is_empty() => Some(label.as_str()),
       _ => None,
     })
   }
@@ -478,9 +478,9 @@ impl AccessProp {
   fn apply(&self, node: &mut accesskit::Node) {
     match self {
       Self::Checked(toggle) => node.set_toggled(match toggle {
-        Toggle::On => Toggled::True,
-        Toggle::Off => Toggled::False,
-        Toggle::Mixed => Toggled::Mixed,
+        CheckState::On => Toggled::True,
+        CheckState::Off => Toggled::False,
+        CheckState::Mixed => Toggled::Mixed,
       }),
       Self::Value(value) => node.set_numeric_value(f64::from(*value)),
       Self::ValueMin(value) => node.set_min_numeric_value(f64::from(*value)),
@@ -517,7 +517,7 @@ impl AccessProp {
       | Self::Required(false)
       | Self::Invalid(false)
       | Self::ReadOnly(false)
-      | Self::Label(_) => {}
+      | Self::Name(_) => {}
     }
   }
 }

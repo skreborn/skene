@@ -1,16 +1,16 @@
 //! The terminal's decoration and text setters on the facade's views: border glyphs, a
 //! shadow, scrollbars, boldness.
 
-use skene_common::tui::{BorderGlyphs, ScrollbarGlyphs, TuiExt};
+use skene_common::tui::{BorderGlyphs, ScrollbarGlyphs, TuiStyle};
 use skene_core::{BoxStyle, Color, Condition, Declared, Length, RunStyle};
 
 use crate::Tui;
 
 /// The declared style of a terminal box.
-type DeclaredBox = BoxStyle<u32, Declared<Condition<u32>>, TuiExt>;
+type DeclaredBox = BoxStyle<u32, Declared<Condition<u32>>, TuiStyle>;
 
 /// The declared style of a terminal run.
-type DeclaredRun = RunStyle<Declared<Condition<u32>>, TuiExt>;
+type DeclaredRun = RunStyle<Declared<Condition<u32>>, TuiStyle>;
 
 /// The terminal's own decoration on a box: the glyphs its border draws with, the
 /// shadow it casts and its scrollbars.

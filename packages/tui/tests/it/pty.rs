@@ -61,7 +61,7 @@ fn the_loop_draws_takes_keys_reflows_and_quits_in_a_terminal() {
       let clicks = Signal::new(0u32);
 
       Column::new().set_children((
-        RawButton::new(Activate::new())
+        BasicButton::new(Activate::new())
           .set_label("Press")
           .handle_click(move || clicks.update(|count| *count += 1)),
         Text::derive(move || format!("pressed {} time(s)", clicks.get())),

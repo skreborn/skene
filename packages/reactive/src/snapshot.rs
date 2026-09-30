@@ -171,7 +171,7 @@ impl<T: Snapshot> Signal<T> {
     let value = take_staged(&path, ty, tag)
       .and_then(|bytes| decode::<T>(&bytes))
       .unwrap_or(value);
-    let signal = Self::opaque(value);
+    let signal = Self::transient(value);
 
     with_graph(|graph| graph.mark_snapshotted(signal.id));
     register(

@@ -5,6 +5,7 @@
 use skene_core::{
   AccessProp,
   Axis,
+  CheckState,
   Conditional,
   ControlProps,
   FocusOrder,
@@ -17,7 +18,6 @@ use skene_core::{
   PopupKind,
   Role,
   StaticLeaf,
-  Toggle,
 };
 
 /// The id of the server's `<style>` block, which the browser leaf adopts.
@@ -109,7 +109,7 @@ pub(crate) const fn form_element(native: Option<NativeElement>) -> Option<FormEl
   let (tag, kind) = match native {
     Some(NativeElement::Checkbox) => ("input", Some("checkbox")),
     Some(NativeElement::Radio) => ("input", Some("radio")),
-    Some(NativeElement::Range) => ("input", Some("range")),
+    Some(NativeElement::Slider) => ("input", Some("range")),
     Some(NativeElement::TextField) => ("input", Some("text")),
     Some(NativeElement::TextEditor) => ("textarea", None),
     Some(NativeElement::Picker) => ("select", None),
@@ -240,9 +240,9 @@ fn access_attribute(prop: &AccessProp) -> Option<(&'static str, String)> {
     AccessProp::Checked(toggle) => (
       "aria-checked",
       match toggle {
-        Toggle::On => "true",
-        Toggle::Off => "false",
-        Toggle::Mixed => "mixed",
+        CheckState::On => "true",
+        CheckState::Off => "false",
+        CheckState::Mixed => "mixed",
       }
       .to_owned(),
     ),
@@ -254,7 +254,7 @@ fn access_attribute(prop: &AccessProp) -> Option<(&'static str, String)> {
     AccessProp::Expanded(state) => ("aria-expanded", state.to_string()),
     AccessProp::Selected(state) => ("aria-selected", state.to_string()),
     AccessProp::Disabled(state) => ("aria-disabled", state.to_string()),
-    AccessProp::Label(text) => ("aria-label", text.clone()),
+    AccessProp::Name(text) => ("aria-label", text.clone()),
     AccessProp::Required(state) => ("aria-required", state.to_string()),
     AccessProp::Invalid(state) => ("aria-invalid", state.to_string()),
     AccessProp::ReadOnly(state) => ("aria-readonly", state.to_string()),

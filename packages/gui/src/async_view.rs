@@ -31,17 +31,17 @@ struct Region;
 /// claimed instead: it stays visible, already satisfying the enclosing boundary, until
 /// the module arrives and the real content replaces it in place.
 #[must_use]
-pub struct Lazy {
+pub struct AsyncView {
   load: Box<dyn FnOnce(NodeId)>,
 }
 
-impl std::fmt::Debug for Lazy {
+impl std::fmt::Debug for AsyncView {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    formatter.debug_struct("Lazy").finish_non_exhaustive()
+    formatter.debug_struct("AsyncView").finish_non_exhaustive()
   }
 }
 
-impl Lazy {
+impl AsyncView {
   /// Creates the view over `load`, run to completion as a task.
   #[inline(always)]
   pub fn new<V, F>(load: impl FnOnce() -> F + 'static) -> Self
@@ -187,9 +187,9 @@ fn discard(start: NodeId) {
   let _ = start;
 }
 
-impl AnyKind for Lazy {}
+impl AnyKind for AsyncView {}
 
-impl View<ActivePlatform> for Lazy {
+impl View<ActivePlatform> for AsyncView {
   fn build(self) -> NodeId {
     let (start, _) = Scene::<ActivePlatform>::create_segment();
 

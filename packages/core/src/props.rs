@@ -155,7 +155,7 @@ impl<N: Scalar> ContainerSizes<N> {
   /// An empty lookup, owned by the current owner.
   #[inline(always)]
   pub fn new() -> Self {
-    Self(Signal::opaque(FxHashMap::default()))
+    Self(Signal::transient(FxHashMap::default()))
   }
 
   /// The last size reported for `name`, tracked.
@@ -246,15 +246,16 @@ impl<N: Scalar> MediaSignals<N> {
   /// Signals holding `environment`, owned by the current owner, with no container
   /// measured yet, and their write halves.
   pub fn new(environment: Environment<N>) -> (Self, MediaWriters<N>) {
-    let (viewport, set_viewport) = Signal::opaque(environment.viewport).split();
-    let (scheme, set_scheme) = Signal::opaque(environment.scheme).split();
-    let (reduced_motion, set_reduced_motion) = Signal::opaque(environment.reduced_motion).split();
+    let (viewport, set_viewport) = Signal::transient(environment.viewport).split();
+    let (scheme, set_scheme) = Signal::transient(environment.scheme).split();
+    let (reduced_motion, set_reduced_motion) =
+      Signal::transient(environment.reduced_motion).split();
     let (reduced_transparency, set_reduced_transparency) =
-      Signal::opaque(environment.reduced_transparency).split();
-    let (high_contrast, set_high_contrast) = Signal::opaque(environment.high_contrast).split();
-    let (pointer, set_pointer) = Signal::opaque(environment.pointer).split();
-    let (hover, set_hover) = Signal::opaque(environment.hover).split();
-    let (safe_area, set_safe_area) = Signal::opaque(environment.safe_area).split();
+      Signal::transient(environment.reduced_transparency).split();
+    let (high_contrast, set_high_contrast) = Signal::transient(environment.high_contrast).split();
+    let (pointer, set_pointer) = Signal::transient(environment.pointer).split();
+    let (hover, set_hover) = Signal::transient(environment.hover).split();
+    let (safe_area, set_safe_area) = Signal::transient(environment.safe_area).split();
 
     (
       Self {

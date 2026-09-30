@@ -391,10 +391,10 @@ fn context_menu() -> impl View {
     Column::new().set_children((
       SimpleContextMenu::new()
         .set_items([
-          MenuItem::new("Open").handle_select(ran("Opened")),
-          MenuItem::new("Rename").handle_select(ran("Renamed")),
-          MenuItem::separator(),
-          MenuItem::new("Delete").handle_select(ran("Deleted")),
+          MenuEntry::new("Open").handle_select(ran("Opened")),
+          MenuEntry::new("Rename").handle_select(ran("Renamed")),
+          MenuEntry::separator(),
+          MenuEntry::new("Delete").handle_select(ran("Deleted")),
         ])
         .set_child(
           Container::new()

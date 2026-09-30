@@ -9,7 +9,7 @@
 
 use std::{cell::Cell, rc::Rc};
 
-use skene_common::{Container, Flexible, LowLevel, RawCheckbox, Row, Text, Theme, Toggle, View};
+use skene_common::{BasicCheckbox, Container, Flexible, LowLevel, Row, Text, Theme, Toggle, View};
 use skene_core::{
   AnyKind,
   Color,
@@ -434,7 +434,7 @@ fn a_native_toggle_click_is_observed_once_per_press() {
       Box_::new()
         .handle_click(move || container_clicks.set(container_clicks.get() + 1))
         .set_child(
-          RawCheckbox::<Web>::new(Toggle::new().bind_checked(checked))
+          BasicCheckbox::<Web>::new(Toggle::new().bind_checked(checked))
             .set_label("Agree")
             .handle_click(move || observed.set(observed.get() + 1)),
         )
@@ -761,7 +761,7 @@ fn a_hydrated_scope_drops_its_served_inline_definitions() {
   };
   let (markup, styles) = {
     let (_guard, root) = fresh_root();
-    let palette = Signal::opaque(Palette::with_card(white()));
+    let palette = Signal::transient(Palette::with_card(white()));
 
     let _ = skene_web::mount(move || app(palette)().build());
 
@@ -777,7 +777,7 @@ fn a_hydrated_scope_drops_its_served_inline_definitions() {
   let root = connected_root();
 
   root.set_inner_html(&markup);
-  skene_web::hydrate(root.clone(), "", app(Signal::opaque(Palette::default())));
+  skene_web::hydrate(root.clone(), "", app(Signal::transient(Palette::default())));
 
   let _guard = Installed::on(root.clone());
   let scope = html(&only_child(&root));
@@ -801,7 +801,7 @@ fn a_hydrated_scope_drops_its_served_inline_definitions() {
 #[wasm_bindgen_test]
 fn a_ticked_input_reports_on_hydration() {
   let app = |checked: Signal<bool>| {
-    move || RawCheckbox::<Web>::new(Toggle::new().bind_checked(checked)).set_label("Agree")
+    move || BasicCheckbox::<Web>::new(Toggle::new().bind_checked(checked)).set_label("Agree")
   };
   let (markup, styles) = {
     let (_guard, root) = fresh_root();

@@ -20,7 +20,7 @@ fn modal_overlay_covers_blocks_and_dismisses() {
     let _ = tui::mount(move || {
       Column::new()
         .set_children((
-          RawButton::new(Activate::new())
+          BasicButton::new(Activate::new())
             .set_label("base")
             .handle_click(move || counted.set(counted.get() + 1))
             .into_any(),
@@ -75,7 +75,7 @@ fn popup_anchors_below_and_light_dismisses() {
     let _ = tui::mount(move || {
       Column::new()
         .set_children((
-          RawButton::new(Activate::new())
+          BasicButton::new(Activate::new())
             .set_label("trigger")
             .bind_handle(anchor)
             .into_any(),
@@ -222,14 +222,14 @@ fn a_modal_traps_focus() {
     let _ = tui::mount(move || {
       Column::new()
         .set_children((
-          RawButton::new(Activate::new())
+          BasicButton::new(Activate::new())
             .set_label("outside")
             .bind_handle(outside)
             .into_any(),
           Overlay::modal()
             .bind_open(open)
             .set_child(
-              RawButton::new(Activate::new())
+              BasicButton::new(Activate::new())
                 .set_label("inside")
                 .bind_handle(inside),
             )
@@ -272,7 +272,7 @@ fn the_modal_opened_last_holds_the_tab_order() {
           Overlay::modal()
             .bind_open(first_open)
             .set_child(
-              RawButton::new(Activate::new())
+              BasicButton::new(Activate::new())
                 .set_label("first")
                 .bind_handle(first),
             )
@@ -280,7 +280,7 @@ fn the_modal_opened_last_holds_the_tab_order() {
           Overlay::modal()
             .bind_open(second_open)
             .set_child(
-              RawButton::new(Activate::new())
+              BasicButton::new(Activate::new())
                 .set_label("second")
                 .bind_handle(second),
             )
@@ -321,7 +321,7 @@ fn a_modal_holds_under_a_popup_above_it() {
     let _ = tui::mount(move || {
       Column::new()
         .set_children((
-          RawButton::new(Activate::new())
+          BasicButton::new(Activate::new())
             .set_label("page")
             .handle_click(move || counted.set(counted.get() + 1))
             .into_any(),
@@ -331,7 +331,7 @@ fn a_modal_holds_under_a_popup_above_it() {
             .set_child(
               Tooltip::new("Confirms")
                 .set_child(
-                  RawButton::new(Activate::new())
+                  BasicButton::new(Activate::new())
                     .set_label("inside")
                     .bind_handle(inside),
                 )
@@ -377,7 +377,7 @@ fn a_modal_takes_focus_on_open_and_returns_it_on_close() {
     let _ = tui::mount(move || {
       Column::new()
         .set_children((
-          RawButton::new(Activate::new())
+          BasicButton::new(Activate::new())
             .set_label("open")
             .bind_handle(opener)
             .handle_click(move || open.set(true))
@@ -385,7 +385,7 @@ fn a_modal_takes_focus_on_open_and_returns_it_on_close() {
           Overlay::modal()
             .bind_open(open)
             .set_child(
-              RawButton::new(Activate::new())
+              BasicButton::new(Activate::new())
                 .set_label("close")
                 .bind_handle(inside)
                 .handle_click(move || open.set(false)),

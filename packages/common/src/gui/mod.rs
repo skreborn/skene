@@ -1,6 +1,6 @@
 //! What every pixel platform shares above the spine.
 //!
-//! The pixel style extension ([`GuiExt`]: corner radius and type metrics), the pixel
+//! The pixel style extension ([`GuiStyle`]: corner radius and type metrics), the pixel
 //! [`Typography`] token set and the document [`Head`] as registered; the portable
 //! painting path ([`Painting`], [`Canvas`], [`Painted`]) is the crate root's,
 //! re-exported here. The web and headless platforms implement against it; a facade for
@@ -12,7 +12,7 @@ mod seams;
 mod typography;
 
 pub use self::{
-  ext::{GuiBoxFields, GuiExt, GuiProperty, GuiRunFields, gui_fields},
+  ext::{GuiBoxFields, GuiProperty, GuiRunFields, GuiStyle, gui_fields},
   head::{Head, HeadElement, HeadId},
   typography::Typography,
 };

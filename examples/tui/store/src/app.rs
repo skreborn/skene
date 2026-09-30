@@ -40,7 +40,7 @@ fn card(todos: Store<Todos>) -> impl View {
   let draft = Signal::tagged("draft", String::new());
   let remaining = todos
     .items()
-    .derive(|items| items.iter().filter(|todo| !todo.done).count());
+    .memo(|items| items.iter().filter(|todo| !todo.done).count());
   let add = move || {
     let title = draft.get();
 

@@ -41,7 +41,7 @@ use skene_reactive::{Get, Owner, Set, Signal};
 type Container = skene_common::Container<Headless>;
 type Text = skene_common::Text<Headless>;
 type Tooltip<C = skene_common::NoChild> = skene_common::Tooltip<Headless, C>;
-type RawButton = skene_common::RawButton<Headless>;
+type BasicButton = skene_common::BasicButton<Headless>;
 
 /// The described view and its bubble, mounted in the segment `start` begins.
 fn parts(start: skene_core::NodeId) -> (skene_core::NodeId, skene_core::NodeId) {
@@ -332,7 +332,7 @@ fn a_tooltips_report_sits_beside_the_controls_own() {
   let derived = owner.enter(|| {
     Tooltip::derive(move || text.get())
       .set_child(
-        RawButton::new(Activate::new())
+        BasicButton::new(Activate::new())
           .derive_disabled(move || disabled.get())
           .set_label("Save"),
       )
@@ -393,7 +393,7 @@ fn a_controls_description_and_a_tooltips_fold_into_one_list() {
     let hint = Text::new("Required").build();
     let start = Tooltip::new("Saves")
       .set_child(
-        RawButton::new(Activate::new())
+        BasicButton::new(Activate::new())
           .derive_disabled(move || disabled.get())
           .set_described_by(hint),
       )

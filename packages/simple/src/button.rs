@@ -2,7 +2,7 @@
 
 use std::rc::Rc;
 
-use skene_common::{Activate, CornerRadius, Label, RawButton, Text, realize::Source, typography};
+use skene_common::{Activate, BasicButton, CornerRadius, Label, Text, realize::Source, typography};
 use skene_core::{
   AnyKind,
   AnyView,
@@ -55,10 +55,10 @@ enum Content<P: Platform> {
 /// node, so a change re-inks it without a rebuild. A disabled button takes the
 /// palette's disabled surface and ink whatever its variant, and the default cursor.
 /// [`set_child`](Self::set_child) draws a view in the label's place, inked in the look's ink. For
-/// anything beyond that, compose [`RawButton`] directly.
+/// anything beyond that, compose [`BasicButton`] directly.
 #[must_use]
 pub struct SimpleButton<P: Platform> {
-  raw: RawButton<P>,
+  raw: BasicButton<P>,
   content: Content<P>,
   variant: Source<SimpleVariant>,
   disabled: Source<bool>,
@@ -77,7 +77,7 @@ impl<P: Platform> SimpleButton<P> {
   #[inline(always)]
   pub fn new(label: impl Into<String>) -> Self {
     Self {
-      raw: RawButton::new(Activate::new()),
+      raw: BasicButton::new(Activate::new()),
       content: Content::Text(Source::Fixed(label.into())),
       variant: Source::Fixed(SimpleVariant::Primary),
       disabled: Source::Fixed(false),
@@ -88,7 +88,7 @@ impl<P: Platform> SimpleButton<P> {
   #[inline(always)]
   pub fn derive(label: impl Fn() -> String + 'static) -> Self {
     Self {
-      raw: RawButton::new(Activate::new()),
+      raw: BasicButton::new(Activate::new()),
       content: Content::Text(Source::derive(label)),
       variant: Source::Fixed(SimpleVariant::Primary),
       disabled: Source::Fixed(false),

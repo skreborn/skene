@@ -64,8 +64,8 @@ pub fn main(_attr: TokenStream, item: TokenStream) -> TokenStream {
 /// which a build carrying lazy functions requires; every other target calls the body
 /// directly.
 ///
-/// Pair with [`Lazy`](../skene_gui/struct.Lazy.html) to render a lazy function's view:
-/// `Lazy::new(settings)`.
+/// Pair with [`AsyncView`](../skene_gui/struct.AsyncView.html) to render a lazy function's view:
+/// `AsyncView::new(settings)`.
 #[expect(
   clippy::too_many_lines,
   reason = "one expansion start to end; length is the generated surface, not complexity"

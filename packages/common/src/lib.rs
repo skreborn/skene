@@ -17,12 +17,12 @@
 //! [`Show`], [`Switch`], [`Suspense`] and [`ErrorBoundary`] mount between anchors and
 //! keep the branches they hide. [`Theme`] defines a token set beneath it, and
 //! [`ThemedIn`] reads the set in force. [`Control`] is the one control builder, over a
-//! [`Behavior`] saying what the interaction is; [`Activate`], [`Toggle`], [`Range`],
-//! [`Roving`] with [`RadioMember`], [`Popup`], [`Listbox`] with [`ListItem`], and
-//! [`TextEntry`] ship, and the `Raw*` aliases name the control over each. [`Overlay`]
+//! [`Behavior`] saying what the interaction is; [`Activate`], [`Toggle`], [`Slider`],
+//! [`RadioGroup`] with [`Radio`], [`Popup`], [`Listbox`] with [`ListboxOption`], and
+//! [`TextEntry`] ship, and the `Basic*` aliases name the control over each. [`Overlay`]
 //! is content above the app, opened and closed by the app and placed against the view
 //! a [`NodeHandle`] is bound to, which focus also moves to and whose measured size it
-//! reports; [`RawPicker`] composes a popup face, an overlay and a listbox. [`LazyColumn`] and
+//! reports; [`BasicPicker`] composes a popup face, an overlay and a listbox. [`LazyColumn`] and
 //! [`LazyRow`] scroll a keyed list building only the slice in view, its items of a fixed or an
 //! estimated and measured [`ItemExtent`]. [`CornerRadius`] is what a decorated box asks of a
 //! medium's style extension to round its corners, and [`TypeMetrics`] what a run asks of it to size
@@ -89,12 +89,23 @@ pub use skene_core::{
 
 pub use crate::{
   container::Container,
-  context_menu::{ContextMenu, MenuItem, MenuItemContent},
+  context_menu::{ContextMenu, MenuEntry, MenuItemContent},
   control::{
     Activate,
+    BasicButton,
+    BasicCheckbox,
+    BasicListbox,
+    BasicListboxOption,
+    BasicMenu,
+    BasicMenuItem,
+    BasicRadio,
+    BasicRadioGroup,
+    BasicSlider,
+    BasicTextEditor,
+    BasicTextField,
     Behavior,
     Collection,
-    CollectionGroup,
+    CollectionContext,
     CollectionPolicy,
     Control,
     ControlChild,
@@ -102,35 +113,24 @@ pub use crate::{
     Controlled,
     Label,
     LabelPlacement,
-    ListItem,
     Listbox,
-    ListboxGroup,
+    ListboxContext,
+    ListboxOption,
     ListboxPolicy,
     Member,
     Menu,
-    MenuGroup,
+    MenuContext,
     MenuOption,
     MenuPolicy,
     NativePicker,
     PointerPhase,
     Popup,
-    RadioMember,
+    Radio,
+    RadioGroup,
+    RadioGroupContext,
     RadioPolicy,
-    Range,
-    RawButton,
-    RawCheckbox,
-    RawListbox,
-    RawMenu,
-    RawMenuItem,
-    RawOption,
-    RawRadio,
-    RawRadioGroup,
-    RawSlider,
-    RawTextEditor,
-    RawTextField,
     Roster,
-    Roving,
-    RovingGroup,
+    Slider,
     TYPE_AHEAD_RESET,
     TextEntry,
     Toggle,
@@ -150,7 +150,7 @@ pub use crate::{
   overlay::Overlay,
   painted::Painted,
   painting::{Canvas, IntoBrush, PaintType, Painter, Painting, Renderer, kurbo, paint, peniko},
-  picker::{Face, RawPicker},
+  picker::{BasicPicker, Face},
   pinned::Pinned,
   realize::{ChildBuilder, LowLevel},
   run::Run,

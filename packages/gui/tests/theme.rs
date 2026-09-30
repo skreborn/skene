@@ -6,12 +6,12 @@
 
 use skene_gui::{
   Activate,
+  BasicButton,
   Column,
   Container,
   GuiProperty,
   HasChildren,
   NodeId,
-  RawButton,
   Text,
   Theme,
   ThemedIn,
@@ -92,7 +92,7 @@ fn a_palette_flip_keeps_the_nodes_and_their_state() {
   reset();
 
   let owner = Owner::new();
-  let palette = Signal::opaque(SimplePalette::default());
+  let palette = Signal::transient(SimplePalette::default());
   let root = owner.enter(|| {
     Theme::derive(move || palette.get())
       .set_child_builder(|| {
@@ -101,7 +101,7 @@ fn a_palette_flip_keeps_the_nodes_and_their_state() {
         Column::new().set_children((
           Container::new().set_color(SimplePalette::CARD),
           Text::derive(move || count.get().to_string()),
-          RawButton::new(Activate::new()).handle_click(move || count.update(|value| *value += 1)),
+          BasicButton::new(Activate::new()).handle_click(move || count.update(|value| *value += 1)),
         ))
       })
       .build()

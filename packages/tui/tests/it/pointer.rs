@@ -391,14 +391,14 @@ fn hover_cursor_defaults_follow_the_content() {
     let _ = tui::mount(|| {
       Column::new()
         .set_children((
-          RawButton::new(Activate::new())
+          BasicButton::new(Activate::new())
             .set_label("press")
             .into_any(),
           SimpleCheckbox::new().set_label("check").into_any(),
-          RawTextField::new(TextEntry::new()).into_any(),
+          BasicTextField::new(TextEntry::new()).into_any(),
           Text::new("words").set_selectable(true).into_any(),
           Text::new("chrome").into_any(),
-          RawButton::new(Activate::new())
+          BasicButton::new(Activate::new())
             .set_cursor(MouseCursor::Default)
             .set_label("styled")
             .into_any(),
@@ -509,10 +509,10 @@ fn clicks_complete_on_release_over_the_same_target() {
       Row::new()
         .set_spacing(2)
         .set_children((
-          RawButton::new(Activate::new())
+          BasicButton::new(Activate::new())
             .set_label("one")
             .handle_click(move || one.set(one.get() + 1)),
-          RawButton::new(Activate::new())
+          BasicButton::new(Activate::new())
             .set_label("two")
             .handle_click(move || two.set(two.get() + 1)),
         ))
@@ -542,7 +542,7 @@ fn an_orphan_release_stands_in_for_a_swallowed_click() {
     let counted = Rc::clone(&clicks);
 
     let _ = tui::mount(|| {
-      RawButton::new(Activate::new())
+      BasicButton::new(Activate::new())
         .set_label("go")
         .handle_click(move || counted.set(counted.get() + 1))
         .into_any()

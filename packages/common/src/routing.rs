@@ -35,7 +35,7 @@ type Commit = Option<Rc<dyn Fn(Box<dyn FnOnce()>)>>;
 /// The current route as reactive state.
 ///
 /// `Copy`, and threaded through the reactive context ([`provide`](Self::provide) /
-/// [`get`](Self::get)), so any view can read or navigate. It lives as long as the owner
+/// [`current`](Self::current)), so any view can read or navigate. It lives as long as the owner
 /// it was made under.
 #[must_use]
 pub struct Router<R: Route> {
@@ -67,9 +67,9 @@ impl<R: Route> Router<R> {
   /// Creates a router at `initial`.
   pub fn new(initial: R) -> Self {
     Self {
-      current: Signal::opaque(initial),
-      sink: Signal::opaque(None),
-      commit: Signal::opaque(None),
+      current: Signal::transient(initial),
+      sink: Signal::transient(None),
+      commit: Signal::transient(None),
     }
   }
 
@@ -138,7 +138,7 @@ impl<R: Route> Router<R> {
     self.commit.set(Some(Rc::new(commit)));
   }
 
-  /// Stores this router in the current reactive scope, for [`get`](Self::get) anywhere
+  /// Stores this router in the current reactive scope, for [`current`](Self::current) anywhere
   /// beneath it.
   pub fn provide(self) {
     provide_context(self);
@@ -146,7 +146,7 @@ impl<R: Route> Router<R> {
 
   /// The router provided by an ancestor scope, if any.
   #[must_use]
-  pub fn get() -> Option<Self> {
+  pub fn current() -> Option<Self> {
     use_context::<Self>()
   }
 }

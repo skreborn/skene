@@ -5,8 +5,8 @@ use std::fmt::Write as _;
 
 use skene_core::{
   ColorScheme,
-  Composable,
   Condition,
+  ConditionTree,
   ContainerName,
   ContainerQuery,
   Media,

@@ -104,7 +104,7 @@ pub(crate) fn install() -> Option<()> {
 
   CHANNEL.with(|channel| {
     *channel.borrow_mut() = Some(Channel {
-      notice: Signal::opaque(None),
+      notice: Signal::transient(None),
       state,
       control,
     });

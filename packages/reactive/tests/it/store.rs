@@ -210,7 +210,7 @@ fn a_keyed_reconcile_wakes_what_changed() {
     label: &'static str,
   }
 
-  let rows = Store::opaque(vec![
+  let rows = Store::transient(vec![
     Row { id: 1, label: "a" },
     Row { id: 2, label: "b" },
     Row { id: 3, label: "c" },
@@ -259,7 +259,7 @@ fn an_absent_key_wakes_when_a_shape_write_adds_it() {
     label: &'static str,
   }
 
-  let rows = Store::opaque(vec![Row { id: 1, label: "a" }]);
+  let rows = Store::transient(vec![Row { id: 1, label: "a" }]);
   let keyed = rows.keyed_by(|row| row.id);
   let seen = Rc::new(RefCell::new(Vec::new()));
 
@@ -346,7 +346,7 @@ fn colliding_key_hashes_never_alias() {
   entries.insert(Colliding(1), 1u32);
   entries.insert(Colliding(2), 2u32);
 
-  let store = Store::opaque(entries);
+  let store = Store::transient(entries);
   let first_runs = count_runs(move || {
     let _ = store.key(Colliding(1)).try_get();
   });
@@ -380,7 +380,7 @@ fn derive_surface() {
     set: u32,
     with: u32,
     update: u32,
-    derive: u32,
+    memo: u32,
   }
 
   let pair = Store::new(Pair {
@@ -394,7 +394,7 @@ fn derive_surface() {
     set: 2,
     with: 3,
     update: 4,
-    derive: 5,
+    memo: 5,
   });
 
   pair.first().set(10);
@@ -410,21 +410,21 @@ fn derive_surface() {
       awkward.set_field().get(),
       awkward.with_field().get(),
       awkward.update_field().get(),
-      awkward.derive_field().get(),
+      awkward.memo_field().get(),
     ),
     (10, 20, 3, 4, 5)
   );
 }
 
-/// A derived read is a memo over its location: it recomputes on a write there, and
-/// its readers wake only when the result changed.
+/// A location's memo recomputes on a write there, and its readers wake only when the
+/// result changed.
 #[test]
-fn derived_reads_wake_readers_only_on_a_changed_result() {
+fn a_location_memo_wakes_readers_only_on_a_changed_result() {
   let settings = Store::new(Settings {
     favorites: vec!["a".to_owned(), "b".to_owned()],
     ..Settings::default()
   });
-  let count = settings.favorites().derive(Vec::len);
+  let count = settings.favorites().memo(Vec::len);
   let reader_runs = count_runs(move || {
     let _ = count.get();
   });
@@ -440,9 +440,9 @@ fn derived_reads_wake_readers_only_on_a_changed_result() {
   assert_eq!((count.get(), reader_runs.get()), (3, 2));
 }
 
-/// A fallible derived read is `None` once its location is gone.
+/// A fallible memo is `None` once its location is gone.
 #[test]
-fn a_fallible_derived_read_is_none_once_the_location_is_gone() {
+fn a_fallible_memo_is_none_once_the_location_is_gone() {
   let mut users = HashMap::new();
 
   users.insert(1, User { score: 10 });
@@ -451,7 +451,7 @@ fn a_fallible_derived_read_is_none_once_the_location_is_gone() {
     users,
     ..Settings::default()
   });
-  let score = settings.users().key(1).try_derive(|user| user.score);
+  let score = settings.users().key(1).try_memo(|user| user.score);
 
   assert_eq!(score.get(), Some(10));
 
@@ -475,7 +475,7 @@ fn entries_follow_the_shape_and_each_lens_its_entry() {
   users.insert(1, User { score: 10 });
   users.insert(2, User { score: 20 });
 
-  let store = Store::opaque(users);
+  let store = Store::transient(users);
   let seen = Rc::new(RefCell::new(Vec::new()));
   let entries_runs = {
     let seen = Rc::clone(&seen);
@@ -517,9 +517,9 @@ fn a_vec_keyed_by_its_elements_reads_by_key_across_a_reorder() {
     label: &'static str,
   }
 
-  let rows = Store::opaque(vec![Row { id: 1, label: "a" }, Row { id: 2, label: "b" }]);
+  let rows = Store::transient(vec![Row { id: 1, label: "a" }, Row { id: 2, label: "b" }]);
   let keyed = rows.keyed_by(|row| row.id);
-  let order = keyed.derive(|rows| rows.iter().map(|row| row.id).collect::<Vec<_>>());
+  let order = keyed.memo(|rows| rows.iter().map(|row| row.id).collect::<Vec<_>>());
   let second_runs = count_runs(move || {
     let _ = keyed.key(2).label().get();
   });
@@ -563,7 +563,7 @@ fn keyed_reads_follow_pushes_removals_and_changed_keys() {
     label: &'static str,
   }
 
-  let rows = Store::opaque(vec![Row { id: 1, label: "a" }, Row { id: 2, label: "b" }]);
+  let rows = Store::transient(vec![Row { id: 1, label: "a" }, Row { id: 2, label: "b" }]);
   let keyed = rows.keyed_by(|row| row.id);
 
   assert_eq!(keyed.key(2).label().get(), "b");
@@ -596,7 +596,7 @@ fn a_keyed_element_and_its_position_are_one_location() {
     label: &'static str,
   }
 
-  let rows = Store::opaque(vec![Row { id: 1, label: "a" }, Row { id: 2, label: "b" }]);
+  let rows = Store::transient(vec![Row { id: 1, label: "a" }, Row { id: 2, label: "b" }]);
   let keyed = rows.keyed_by(|row| row.id);
   let by_key_runs = count_runs(move || {
     let _ = keyed.key(2).label().get();
@@ -739,7 +739,7 @@ fn a_row_edit_reruns_only_its_own_effect() {
   let runs = Rc::new(Cell::new(0usize));
   let scope = Owner::new();
   let store = scope.enter(|| {
-    let store = Store::opaque(vec![Row::default(); ROWS]);
+    let store = Store::transient(vec![Row::default(); ROWS]);
 
     for index in 0..ROWS {
       let label = Rc::clone(&runs);

@@ -40,7 +40,7 @@ type Container = skene_common::Container<Headless>;
 type Column = skene_common::Column<Headless>;
 type Text = skene_common::Text<Headless>;
 type Overlay<C = skene_common::NoChild> = skene_common::Overlay<Headless, C>;
-type RawButton = skene_common::RawButton<Headless>;
+type BasicButton = skene_common::BasicButton<Headless>;
 type NodeHandle = skene_common::NodeHandle<Headless>;
 
 /// A modal follows its bound signal through the platform and paints a backdrop; opening
@@ -160,7 +160,7 @@ fn a_popup_anchored_to_a_bound_box_passes_the_anchors_sink() {
 
   let owner = Owner::new();
   let open = Signal::new(false);
-  let placement = Signal::opaque(Placement::Bottom);
+  let placement = Signal::transient(Placement::Bottom);
   let anchor = NodeHandle::new();
   let column = owner.enter(move || {
     Column::new()
@@ -264,7 +264,7 @@ fn a_focus_handle_moves_focus_to_its_bound_view() {
   let column = owner.enter(move || {
     Column::new()
       .set_children((
-        RawButton::new(Activate::new())
+        BasicButton::new(Activate::new())
           .bind_handle(button_focus)
           .set_label("Save"),
         Container::new()

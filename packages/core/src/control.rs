@@ -4,7 +4,7 @@
 use std::fmt::Debug;
 
 use super::{BoxProps, Platform, State};
-use crate::{Role, Toggle};
+use crate::{CheckState, Role};
 
 /// The state a control holds that a box cannot: what the control-scoped [`State`]
 /// conditions of the control and everything inside it resolve against.
@@ -12,7 +12,7 @@ use crate::{Role, Toggle};
 #[must_use]
 pub struct ControlState {
   /// Whether the control is checked.
-  pub checked: Toggle,
+  pub checked: CheckState,
   /// Whether the control is present but not operable.
   pub disabled: bool,
   /// Whether the control holds an invalid value.
@@ -24,7 +24,7 @@ pub struct ControlState {
 impl ControlState {
   /// Unchecked, enabled, valid and closed.
   pub const DEFAULT: Self = Self {
-    checked: Toggle::Off,
+    checked: CheckState::Off,
     disabled: false,
     invalid: false,
     open: false,
@@ -36,8 +36,8 @@ impl ControlState {
   #[must_use]
   pub const fn holds(self, state: State) -> bool {
     match state {
-      State::Checked => matches!(self.checked, Toggle::On),
-      State::Indeterminate => matches!(self.checked, Toggle::Mixed),
+      State::Checked => matches!(self.checked, CheckState::On),
+      State::Indeterminate => matches!(self.checked, CheckState::Mixed),
       State::Disabled => self.disabled,
       State::Invalid => self.invalid,
       State::Open => self.open,
@@ -72,7 +72,7 @@ pub enum NativeElement {
   /// One mutually-exclusive choice within a group.
   Radio,
   /// A number picked within a range.
-  Range,
+  Slider,
   /// A single-line text entry.
   TextField,
   /// A multi-line text entry.
@@ -91,7 +91,7 @@ impl NativeElement {
       Self::Button => Role::Button,
       Self::Checkbox => Role::CheckBox,
       Self::Radio => Role::RadioButton,
-      Self::Range => Role::Slider,
+      Self::Slider => Role::Slider,
       Self::TextField => Role::TextInput,
       Self::TextEditor => Role::MultilineTextInput,
       Self::Picker => Role::ComboBox,

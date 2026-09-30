@@ -23,7 +23,7 @@ fn mount_field(value: Signal<String>, width: u32) {
         .set_selection_surface(highlight()),
     )
     .set_child_builder(move || {
-      RawTextField::new(TextEntry::new().bind_value(value))
+      BasicTextField::new(TextEntry::new().bind_value(value))
         .set_width(width)
         .into_any()
     })
@@ -221,7 +221,7 @@ fn an_editor_pastes_line_breaks_and_breaks_over_a_selection() {
     let value = Signal::new(String::from("ab"));
 
     let _ = tui::mount(move || {
-      RawTextEditor::new(TextEntry::new().set_lines(3).bind_value(value))
+      BasicTextEditor::new(TextEntry::new().set_lines(3).bind_value(value))
         .into_any()
         .build()
     });
@@ -423,7 +423,7 @@ fn a_drag_held_before_the_start_autoscrolls_the_field_back() {
       Row::new()
         .set_children((
           Text::new("> "),
-          RawTextField::new(TextEntry::new().bind_value(value)).set_width(5),
+          BasicTextField::new(TextEntry::new().bind_value(value)).set_width(5),
         ))
         .into_any()
     });
@@ -474,7 +474,7 @@ fn a_drag_held_above_autoscrolls_the_editor() {
       Column::new()
         .set_children((
           Text::new("head"),
-          RawTextEditor::new(TextEntry::new().set_lines(3).bind_value(value)),
+          BasicTextEditor::new(TextEntry::new().set_lines(3).bind_value(value)),
         ))
         .into_any()
     });

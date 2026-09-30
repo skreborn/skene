@@ -55,7 +55,7 @@ impl<K: Eq + Hash + Clone + 'static> Selector<K> {
   pub fn new(source: impl Fn() -> K + 'static) -> Self {
     let owner = Owner::current();
     let current = Memo::new(move |_| source());
-    let keys = Signal::opaque(FxHashMap::<K, Trigger>::default());
+    let keys = Signal::transient(FxHashMap::<K, Trigger>::default());
 
     Effect::render(move |previous: Option<K>| {
       let next = current.get();

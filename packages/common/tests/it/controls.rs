@@ -13,12 +13,12 @@ use skene_common::{
   ControlHandle,
   Label,
   LabelPlacement,
-  ListItem,
   Listbox,
+  ListboxOption,
   Popup,
-  RadioMember,
-  Range,
-  Roving,
+  Radio,
+  RadioGroup,
+  Slider,
   TextEntry,
   Toggle,
 };
@@ -26,6 +26,7 @@ use skene_core::{
   AccessProp,
   AnyView,
   Axes,
+  CheckState,
   Condition,
   Dimension,
   DragAxes,
@@ -51,7 +52,6 @@ use skene_core::{
   Spacing,
   State,
   TextSelection,
-  Toggle as Checked,
   View,
   WheelEvent,
   WheelUnit,
@@ -98,15 +98,15 @@ type Container = skene_common::Container<Headless>;
 type Column = skene_common::Column<Headless>;
 type Text = skene_common::Text<Headless>;
 type Control<B, C = skene_common::NoChild> = skene_common::Control<Headless, B, C>;
-type RawButton = skene_common::RawButton<Headless>;
-type RawCheckbox = skene_common::RawCheckbox<Headless>;
-type RawSlider = skene_common::RawSlider<Headless>;
-type RawRadioGroup = skene_common::RawRadioGroup<Headless>;
-type RawRadio = skene_common::RawRadio<Headless>;
-type RawListbox = skene_common::RawListbox<Headless>;
-type RawOption = skene_common::RawOption<Headless>;
-type RawTextField = skene_common::RawTextField<Headless>;
-type RawTextEditor = skene_common::RawTextEditor<Headless>;
+type BasicButton = skene_common::BasicButton<Headless>;
+type BasicCheckbox = skene_common::BasicCheckbox<Headless>;
+type BasicSlider = skene_common::BasicSlider<Headless>;
+type BasicRadioGroup = skene_common::BasicRadioGroup<Headless>;
+type BasicRadio = skene_common::BasicRadio<Headless>;
+type BasicListbox = skene_common::BasicListbox<Headless>;
+type BasicListboxOption = skene_common::BasicListboxOption<Headless>;
+type BasicTextField = skene_common::BasicTextField<Headless>;
+type BasicTextEditor = skene_common::BasicTextEditor<Headless>;
 
 const CONSUMED: Prevented = Prevented {
   platform: true,
@@ -163,7 +163,7 @@ fn a_button_click_stays_on_the_button_while_a_box_click_climbs() {
       .handle_key_down(note(&log, "outer key").into_key())
       .set_child(
         Column::new().set_children((
-          RawButton::new(Activate::new())
+          BasicButton::new(Activate::new())
             .handle_click(note(&log, "button"))
             .set_label("Save"),
           Container::new().handle_click(note(&log, "box")),
@@ -210,7 +210,7 @@ fn space_activates_a_button_once_on_its_release() {
   let node = owner.enter(|| {
     let clicks = Rc::clone(&clicks);
 
-    RawButton::new(Activate::new())
+    BasicButton::new(Activate::new())
       .handle_click(move || clicks.set(clicks.get() + 1))
       .build()
   });
@@ -261,21 +261,21 @@ fn space_and_a_click_flip_a_bound_checkbox() {
 
   let owner = Owner::new();
   let bound = Signal::new(false);
-  let node = owner.enter(|| RawCheckbox::new(Toggle::new().bind_checked(bound)).build());
+  let node = owner.enter(|| BasicCheckbox::new(Toggle::new().bind_checked(bound)).build());
 
   assert_eq!(
     control_state(node).map(|state| state.checked),
-    Some(Checked::Off)
+    Some(CheckState::Off)
   );
   assert_eq!(trigger_click(node), KEPT);
   assert!(bound.get());
   assert_eq!(
     control_state(node).map(|state| state.checked),
-    Some(Checked::On)
+    Some(CheckState::On)
   );
   assert_eq!(
     box_props(node).map(|props| props.access),
-    Some(vec![AccessProp::Checked(Checked::On)])
+    Some(vec![AccessProp::Checked(CheckState::On)])
   );
   assert_eq!(trigger_key_down(node, &key(" ")), CONSUMED);
   assert!(bound.get());
@@ -288,7 +288,7 @@ fn space_and_a_click_flip_a_bound_checkbox() {
 
   assert_eq!(
     control_state(node).map(|state| state.checked),
-    Some(Checked::On)
+    Some(CheckState::On)
   );
 
   owner.dispose();
@@ -303,7 +303,7 @@ fn a_controlled_checkbox_keeps_its_state_without_a_handler() {
   let owner = Owner::new();
   let bound = Signal::new(false);
   let node =
-    owner.enter(|| RawCheckbox::new(Toggle::new().derive_checked(move || bound.get())).build());
+    owner.enter(|| BasicCheckbox::new(Toggle::new().derive_checked(move || bound.get())).build());
 
   assert_eq!(trigger_click(node), KEPT);
   assert_eq!(trigger_key_down(node, &key(" ")), CONSUMED);
@@ -311,7 +311,7 @@ fn a_controlled_checkbox_keeps_its_state_without_a_handler() {
   assert!(!bound.get());
   assert_eq!(
     control_state(node).map(|state| state.checked),
-    Some(Checked::Off)
+    Some(CheckState::Off)
   );
 
   owner.dispose();
@@ -326,7 +326,7 @@ fn a_press_centers_the_thumb_under_the_pointer() {
   let owner = Owner::new();
   let bound = Signal::new(0.);
   let node =
-    owner.enter(|| RawSlider::new(Range::new().set_thumb_extent(20.).bind_value(bound)).build());
+    owner.enter(|| BasicSlider::new(Slider::new().set_thumb_extent(20.).bind_value(bound)).build());
 
   trigger_size(node, Size::new(200., 20.));
 
@@ -357,7 +357,7 @@ fn a_rejected_edit_leaves_the_platform_showing_the_bound_value() {
   let bound = Signal::new("12".to_owned());
   let disabled = Signal::new(false);
   let node = owner.enter(|| {
-    RawTextField::new(
+    BasicTextField::new(
       TextEntry::new()
         .derive_value(move || bound.get())
         .handle_change(move |value| {
@@ -401,7 +401,7 @@ fn a_rejected_toggle_is_undone_on_the_platform() {
 
   let owner = Owner::new();
   let node = owner
-    .enter(|| RawCheckbox::new(Toggle::new().set_checked(false).handle_toggle(|_| {})).build());
+    .enter(|| BasicCheckbox::new(Toggle::new().set_checked(false).handle_toggle(|_| {})).build());
 
   trigger_toggle(node, true);
 
@@ -417,7 +417,7 @@ fn a_composing_key_never_reaches_the_behavior() {
 
   let owner = Owner::new();
   let bound = Signal::new(50.);
-  let node = owner.enter(|| RawSlider::new(Range::new().bind_value(bound)).build());
+  let node = owner.enter(|| BasicSlider::new(Slider::new().bind_value(bound)).build());
   let composing = KeyEvent {
     composing: true,
     ..key("ArrowRight")
@@ -440,7 +440,7 @@ fn slider_keys_and_a_press_move_the_bound_value_by_the_ranges_rules() {
 
   let owner = Owner::new();
   let bound = Signal::new(50.);
-  let node = owner.enter(|| RawSlider::new(Range::new().set_step(5.).bind_value(bound)).build());
+  let node = owner.enter(|| BasicSlider::new(Slider::new().set_step(5.).bind_value(bound)).build());
 
   assert_eq!(
     box_props(node).and_then(|props| props.drag_axes),
@@ -536,13 +536,13 @@ fn a_radio_groups_tab_stop_follows_the_choice_and_the_membership() {
 
   let owner = Owner::new();
   let chosen: Signal<Option<String>> = Signal::new(None);
-  let items = Signal::opaque(vec!["a", "b"]);
+  let items = Signal::transient(vec!["a", "b"]);
   let group = owner.enter(|| {
-    RawRadioGroup::new(Roving::new().bind_chosen(chosen))
+    BasicRadioGroup::new(RadioGroup::new().bind_chosen(chosen))
       .set_child(Column::new().derive_children(
         move || items.get(),
         |item| *item,
-        |item| RawRadio::new(RadioMember::new(item)).set_label(item),
+        |item| BasicRadio::new(Radio::new(item)).set_label(item),
       ))
       .build()
   });
@@ -560,11 +560,11 @@ fn a_radio_groups_tab_stop_follows_the_choice_and_the_membership() {
   assert!(is_tab_stop(member(1)));
   assert_eq!(
     control_state(member(1)).map(|state| state.checked),
-    Some(Checked::On)
+    Some(CheckState::On)
   );
   assert_eq!(
     control_state(member(0)).map(|state| state.checked),
-    Some(Checked::Off)
+    Some(CheckState::Off)
   );
   assert_eq!(trigger_key_down(member(1), &key("ArrowRight")), CONSUMED);
   assert_eq!(chosen.get().as_deref(), Some("a"));
@@ -601,16 +601,16 @@ fn a_radio_group_passes_over_its_disabled_members() {
   let chosen: Signal<Option<String>> = Signal::new(None);
   let second_disabled = Signal::new(false);
   let group = owner.enter(|| {
-    RawRadioGroup::new(Roving::new().bind_chosen(chosen))
+    BasicRadioGroup::new(RadioGroup::new().bind_chosen(chosen))
       .set_child(
         Column::new().set_children((
-          RawRadio::new(RadioMember::new("a"))
+          BasicRadio::new(Radio::new("a"))
             .set_label("a")
             .set_disabled(true),
-          RawRadio::new(RadioMember::new("b"))
+          BasicRadio::new(Radio::new("b"))
             .set_label("b")
             .derive_disabled(move || second_disabled.get()),
-          RawRadio::new(RadioMember::new("c")).set_label("c"),
+          BasicRadio::new(Radio::new("c")).set_label("c"),
         )),
       )
       .build()
@@ -642,14 +642,14 @@ fn a_listbox_skips_disabled_options_and_tab_chooses_nothing() {
   let owner = Owner::new();
   let chosen: Signal<Option<String>> = Signal::new(None);
   let list = owner.enter(|| {
-    RawListbox::new(Listbox::new().bind_chosen(chosen))
+    BasicListbox::new(Listbox::new().bind_chosen(chosen))
       .set_child(
         Column::new().set_children((
-          RawOption::new(ListItem::new("a")).set_label("a"),
-          RawOption::new(ListItem::new("b"))
+          BasicListboxOption::new(ListboxOption::new("a")).set_label("a"),
+          BasicListboxOption::new(ListboxOption::new("b"))
             .set_label("b")
             .set_disabled(true),
-          RawOption::new(ListItem::new("c")).set_label("c"),
+          BasicListboxOption::new(ListboxOption::new("c")).set_label("c"),
         )),
       )
       .build()
@@ -677,7 +677,7 @@ fn a_parts_focus_and_checked_variants_follow_the_control() {
   let owner = Owner::new();
   let bound = Signal::new(false);
   let node = owner.enter(|| {
-    RawCheckbox::new(Toggle::new().bind_checked(bound))
+    BasicCheckbox::new(Toggle::new().bind_checked(bound))
       .set_part(
         Part::Face,
         Container::new().set_color(red().when(focus_visible(), blue())),
@@ -717,7 +717,7 @@ fn focus_shows_after_a_key_and_not_after_a_pointer_press() {
 
   let owner = Owner::new();
   let node = owner.enter(|| {
-    RawButton::new(Activate::new())
+    BasicButton::new(Activate::new())
       .set_color(red().when(focus_visible(), blue()))
       .set_label("go")
       .build()
@@ -757,7 +757,7 @@ fn focus_in_a_text_entry_shows_after_a_pointer_press() {
 
   let owner = Owner::new();
   let node = owner.enter(|| {
-    RawTextField::new(TextEntry::new())
+    BasicTextField::new(TextEntry::new())
       .set_color(red().when(focus_visible(), blue()))
       .build()
   });
@@ -784,7 +784,7 @@ fn a_disabled_control_reports_it_and_ignores_activation() {
   let node = owner.enter(|| {
     let clicks = Rc::clone(&clicks);
 
-    RawButton::new(Activate::new())
+    BasicButton::new(Activate::new())
       .derive_disabled(move || disabled.get())
       .handle_click(move || clicks.set(clicks.get() + 1))
       .build()
@@ -809,7 +809,7 @@ fn a_disabled_control_reports_it_and_ignores_activation() {
   assert_eq!(trigger_click(node), KEPT);
   assert_eq!(clicks.get(), 1);
 
-  let fixed = owner.enter(|| RawButton::new(Activate::new()).set_disabled(true).build());
+  let fixed = owner.enter(|| BasicButton::new(Activate::new()).set_disabled(true).build());
 
   assert_eq!(focus_order(fixed), None);
 
@@ -823,13 +823,13 @@ fn a_label_part_supplies_the_accessible_name() {
   reset();
 
   let owner = Owner::new();
-  let named = owner.enter(|| RawButton::new(Activate::new()).set_label("Save").build());
+  let named = owner.enter(|| BasicButton::new(Activate::new()).set_label("Save").build());
   let drawn = owner.enter(|| {
-    RawCheckbox::new(Toggle::new())
+    BasicCheckbox::new(Toggle::new())
       .set_label(Label::new(Text::new("Remember me")))
       .build()
   });
-  let unnamed = owner.enter(|| RawButton::new(Activate::new()).build());
+  let unnamed = owner.enter(|| BasicButton::new(Activate::new()).build());
   let label = children(named)[0];
 
   assert_eq!(part(label), Some(Part::Label));
@@ -854,8 +854,9 @@ fn a_text_entrys_selection_binds_both_ways() {
 
   let owner = Owner::new();
   let bound = Signal::new(TextSelection::new(1, 3));
-  let field = owner
-    .enter(|| RawTextField::new(TextEntry::new().set_value("hello").bind_selection(bound)).build());
+  let field = owner.enter(|| {
+    BasicTextField::new(TextEntry::new().set_value("hello").bind_selection(bound)).build()
+  });
 
   assert_eq!(selection(field), Some(TextSelection::new(1, 3)));
   assert!(listened(field).contains(&EventKind::SelectionChange));
@@ -893,7 +894,7 @@ fn a_text_fields_change_writes_the_signal_and_stays_on_its_node() {
   let outer = owner.enter(|| {
     Container::new()
       .handle_click(note(&log, "outer"))
-      .set_child(RawTextField::new(
+      .set_child(BasicTextField::new(
         TextEntry::new().set_placeholder("Name").bind_value(bound),
       ))
       .build()
@@ -920,7 +921,7 @@ fn a_text_fields_change_writes_the_signal_and_stays_on_its_node() {
 
   assert_eq!(value(field), Some("fresh".to_owned()));
 
-  let editor = owner.enter(|| RawTextEditor::new(TextEntry::new().set_lines(4)).build());
+  let editor = owner.enter(|| BasicTextEditor::new(TextEntry::new().set_lines(4)).build());
 
   assert_eq!(
     control_props(editor).map(|props| props.native),
@@ -961,10 +962,10 @@ fn a_behavior_places_its_label() {
   let owner = Owner::new();
   let (field, button, inline) = owner.enter(|| {
     (
-      RawTextField::new(TextEntry::new())
+      BasicTextField::new(TextEntry::new())
         .set_label("Name")
         .build(),
-      RawButton::new(Activate::new()).set_label("Save").build(),
+      BasicButton::new(Activate::new()).set_label("Save").build(),
       Control::new(InlineEntry).set_label("Inline").build(),
     )
   });
@@ -987,7 +988,7 @@ fn a_caption_placed_anywhere_names_a_control() {
   let (caption, own, field) = owner.enter(|| {
     let caption = Text::new("Email").build();
     let own = Text::new("Work").build();
-    let field = RawTextField::new(TextEntry::new())
+    let field = BasicTextField::new(TextEntry::new())
       .set_label(Label::new(AnyView::node(own)))
       .set_labelled_by(caption)
       .build();
@@ -1017,14 +1018,14 @@ fn an_accessible_name_names_a_control_over_its_caption() {
   let name = Signal::new("Close".to_owned());
   let (icon, derived, captioned) = owner.enter(|| {
     (
-      RawButton::new(Activate::new())
+      BasicButton::new(Activate::new())
         .set_accessible_name("Close")
         .set_child(Container::new())
         .build(),
-      RawButton::new(Activate::new())
+      BasicButton::new(Activate::new())
         .derive_accessible_name(move || name.get())
         .build(),
-      RawButton::new(Activate::new())
+      BasicButton::new(Activate::new())
         .set_label("×")
         .set_accessible_name("Close")
         .build(),
@@ -1032,11 +1033,10 @@ fn an_accessible_name_names_a_control_over_its_caption() {
   });
 
   assert_eq!(accessible_name(icon).as_deref(), Some("Close"));
-  assert!(box_props(icon).is_some_and(|props| {
-    props
-      .access
-      .contains(&AccessProp::Label("Close".to_owned()))
-  }));
+  assert!(
+    box_props(icon)
+      .is_some_and(|props| { props.access.contains(&AccessProp::Name("Close".to_owned())) })
+  );
   assert_eq!(accessible_name(derived).as_deref(), Some("Close"));
 
   name.set("Dismiss".to_owned());
@@ -1056,8 +1056,8 @@ fn a_control_lays_out_its_row() {
   let owner = Owner::new();
   let (plain, spaced) = owner.enter(|| {
     (
-      RawButton::new(Activate::new()).set_label("a").build(),
-      RawButton::new(Activate::new())
+      BasicButton::new(Activate::new()).set_label("a").build(),
+      BasicButton::new(Activate::new())
         .set_axis(skene_core::Axis::Vertical)
         .set_spacing(Spacing::all(3.))
         .set_item_alignment(ItemAlignment::Start)
@@ -1124,10 +1124,10 @@ fn only_the_events_a_behavior_or_a_handler_needs_are_listened_to() {
   let owner = Owner::new();
   let (checkbox, slider, field, button) = owner.enter(|| {
     (
-      RawCheckbox::new(Toggle::new()).build(),
-      RawSlider::new(Range::new()).build(),
-      RawTextField::new(TextEntry::new()).build(),
-      RawButton::new(Activate::new())
+      BasicCheckbox::new(Toggle::new()).build(),
+      BasicSlider::new(Slider::new()).build(),
+      BasicTextField::new(TextEntry::new()).build(),
+      BasicButton::new(Activate::new())
         .handle_focus(|| {})
         .handle_pointer_move(|_| {})
         .build(),
@@ -1278,7 +1278,7 @@ fn a_controls_flags_report_as_accessibility_and_state() {
   let invalid = Signal::new(false);
   let (hint, field) = owner.enter(|| {
     let hint = Text::new("Required").build();
-    let field = RawTextField::new(TextEntry::new())
+    let field = BasicTextField::new(TextEntry::new())
       .set_required(true)
       .set_read_only(true)
       .derive_invalid(move || invalid.get())
@@ -1316,8 +1316,8 @@ fn a_vertical_range_reads_the_pointer_bottom_to_top() {
 
   let owner = Owner::new();
   let bound = Signal::new(50.);
-  let node =
-    owner.enter(|| RawSlider::new(Range::new().set_axis(Axis::Vertical).bind_value(bound)).build());
+  let node = owner
+    .enter(|| BasicSlider::new(Slider::new().set_axis(Axis::Vertical).bind_value(bound)).build());
 
   assert!(box_props(node).is_some_and(|props| {
     props

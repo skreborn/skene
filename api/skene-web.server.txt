@@ -136,7 +136,7 @@ pub fn skene_web::Web::available() -> skene_reactive::signal::ReadSignal<bool>
 pub fn skene_web::Web::paint(skene_core::node::NodeId, alloc::boxed::Box<skene_common::painting::Painter>)
 impl skene_core::platform::Platform for skene_web::Web
 pub type skene_web::Web::Scalar = f32
-pub type skene_web::Web::StyleExt = skene_common::gui::ext::GuiExt
+pub type skene_web::Web::StyleExt = skene_common::gui::ext::GuiStyle
 pub type skene_web::Web::TokenValue = skene_web::WebTokenValue
 pub fn skene_web::Web::apply_layout(skene_core::node::NodeId, &skene_core::props::StaticBoxStyle<Self>)
 pub fn skene_web::Web::attach(skene_core::node::NodeId, skene_core::node::NodeId, core::option::Option<skene_core::node::NodeId>)
@@ -171,9 +171,9 @@ pub fn skene_web::Web::set_text(skene_core::node::NodeId, &str)
 pub fn skene_web::Web::set_value(skene_core::node::NodeId, &str)
 pub fn skene_web::Web::stored_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
 pub fn skene_web::Web::update_access(skene_core::node::NodeId, &[skene_core::values::access::AccessProp])
-pub fn skene_web::Web::update_box(skene_core::node::NodeId, skene_core::leaf::Slot, &skene_core::leaf::StaticLeaf<skene_core::box_style::BoxValue<f32, skene_common::gui::ext::GuiExt>>)
+pub fn skene_web::Web::update_box(skene_core::node::NodeId, skene_core::leaf::Slot, &skene_core::leaf::StaticLeaf<skene_core::box_style::BoxValue<f32, skene_common::gui::ext::GuiStyle>>)
 pub fn skene_web::Web::update_focus_order(skene_core::node::NodeId, core::option::Option<skene_core::values::focus_order::FocusOrder>)
-pub fn skene_web::Web::update_run(skene_core::node::NodeId, skene_core::leaf::Slot, &skene_core::leaf::StaticLeaf<skene_core::run_style::RunValue<skene_common::gui::ext::GuiExt>>)
+pub fn skene_web::Web::update_run(skene_core::node::NodeId, skene_core::leaf::Slot, &skene_core::leaf::StaticLeaf<skene_core::run_style::RunValue<skene_common::gui::ext::GuiStyle>>)
 pub fn skene_web::Web::watch_media(&skene_core::condition::Media<f32>) -> skene_reactive::memo::Memo<bool>
 impl skene_web::WebMarkup for skene_web::Web
 pub fn skene_web::Web::create_element(skene_core::node::NodeId, &'static str)

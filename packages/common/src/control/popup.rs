@@ -28,7 +28,7 @@ type Typed = dyn Fn(&KeyEvent) -> bool;
 /// A face opening a list of options is a combobox, and one opening a menu or a dialog a
 /// button. A click, `Enter` or `Space` toggles it, `ArrowDown` and `ArrowUp` open it,
 /// `Escape` closes it, and any other key pressed while it is closed goes to
-/// [`handle_typed`](Self::handle_typed), which `Space` reaches first, toggling only
+/// [`set_key_fallback`](Self::set_key_fallback), which `Space` reaches first, toggling only
 /// where the handler does not take it.
 ///
 /// Controlled: the open state it reports is what [`derive_open`](Self::derive_open)
@@ -109,7 +109,7 @@ impl Popup {
   /// Runs `action` with a key the closed face does not act on itself; `true` from it
   /// consumes the key.
   #[inline(always)]
-  pub fn handle_typed(mut self, action: impl Fn(&KeyEvent) -> bool + 'static) -> Self {
+  pub fn set_key_fallback(mut self, action: impl Fn(&KeyEvent) -> bool + 'static) -> Self {
     self.on_typed = Some(Rc::new(action));
 
     self

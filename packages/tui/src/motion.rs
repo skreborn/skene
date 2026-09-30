@@ -18,21 +18,21 @@ use skene_core::{
 };
 
 use crate::{
-  TuiExt,
   TuiProperty,
+  TuiStyle,
   store::{PlainBox, PlainRun},
 };
 
 /// What a box-like node runs: its properties' motion.
 #[derive(Default)]
 pub(crate) struct BoxMotion {
-  properties: Motion<TuiProperty, BoxValue<u32, TuiExt>>,
+  properties: Motion<TuiProperty, BoxValue<u32, TuiStyle>>,
 }
 
 /// What a run runs: its properties' motion.
 #[derive(Default)]
 pub(crate) struct RunMotion {
-  properties: Motion<TuiProperty, RunValue<TuiExt>>,
+  properties: Motion<TuiProperty, RunValue<TuiStyle>>,
 }
 
 /// What presenting a node at one clock reading produced.
@@ -58,7 +58,7 @@ impl BoxMotion {
     &mut self,
     previous: Option<&PlainBox>,
     target: PlainBox,
-    dynamics: &BoxDynamics<u32, TuiExt>,
+    dynamics: &BoxDynamics<u32, TuiStyle>,
     keyframes: &[Animation<PlainBox>],
     clock: Clock,
   ) -> Presented<PlainBox> {
@@ -98,7 +98,7 @@ impl RunMotion {
     &mut self,
     previous: Option<&PlainRun>,
     target: PlainRun,
-    dynamics: &RunDynamics<TuiExt>,
+    dynamics: &RunDynamics<TuiStyle>,
     keyframes: &[Animation<PlainRun>],
     clock: Clock,
   ) -> Presented<PlainRun> {
@@ -132,15 +132,15 @@ impl RunMotion {
 
 /// Retargets every box property whose target moved.
 struct RetargetBox<'a> {
-  motion: &'a mut Motion<TuiProperty, BoxValue<u32, TuiExt>>,
+  motion: &'a mut Motion<TuiProperty, BoxValue<u32, TuiStyle>>,
   previous: &'a PlainBox,
   target: &'a PlainBox,
   transitions: &'a [Transition<TuiProperty>],
   clock: Clock,
 }
 
-impl BoxFieldVisitor<u32, TuiExt> for RetargetBox<'_> {
-  fn field<F: BoxField<u32, TuiExt>>(&mut self) {
+impl BoxFieldVisitor<u32, TuiStyle> for RetargetBox<'_> {
+  fn field<F: BoxField<u32, TuiStyle>>(&mut self) {
     let (previous, target) = (F::get(self.previous), F::get(self.target));
 
     if previous == target {
@@ -160,14 +160,14 @@ impl BoxFieldVisitor<u32, TuiExt> for RetargetBox<'_> {
 
 /// Writes every box property's running tween and animations over the target.
 struct PresentBox<'a> {
-  motion: &'a mut Motion<TuiProperty, BoxValue<u32, TuiExt>>,
+  motion: &'a mut Motion<TuiProperty, BoxValue<u32, TuiStyle>>,
   style: &'a mut PlainBox,
   keyframes: &'a [Animation<PlainBox>],
   clock: Clock,
 }
 
-impl BoxFieldVisitor<u32, TuiExt> for PresentBox<'_> {
-  fn field<F: BoxField<u32, TuiExt>>(&mut self) {
+impl BoxFieldVisitor<u32, TuiStyle> for PresentBox<'_> {
+  fn field<F: BoxField<u32, TuiStyle>>(&mut self) {
     let tweened = self.motion.sample(F::KEY, self.clock.now);
 
     if tweened.is_none() && self.keyframes.is_empty() {
@@ -190,15 +190,15 @@ impl BoxFieldVisitor<u32, TuiExt> for PresentBox<'_> {
 
 /// Retargets every run property whose target moved.
 struct RetargetRun<'a> {
-  motion: &'a mut Motion<TuiProperty, RunValue<TuiExt>>,
+  motion: &'a mut Motion<TuiProperty, RunValue<TuiStyle>>,
   previous: &'a PlainRun,
   target: &'a PlainRun,
   transitions: &'a [Transition<TuiProperty>],
   clock: Clock,
 }
 
-impl RunFieldVisitor<TuiExt> for RetargetRun<'_> {
-  fn field<F: RunField<TuiExt>>(&mut self) {
+impl RunFieldVisitor<TuiStyle> for RetargetRun<'_> {
+  fn field<F: RunField<TuiStyle>>(&mut self) {
     let (previous, target) = (F::get(self.previous), F::get(self.target));
 
     if previous == target {
@@ -218,14 +218,14 @@ impl RunFieldVisitor<TuiExt> for RetargetRun<'_> {
 
 /// Writes every run property's running tween and animations over the target.
 struct PresentRun<'a> {
-  motion: &'a mut Motion<TuiProperty, RunValue<TuiExt>>,
+  motion: &'a mut Motion<TuiProperty, RunValue<TuiStyle>>,
   style: &'a mut PlainRun,
   keyframes: &'a [Animation<PlainRun>],
   clock: Clock,
 }
 
-impl RunFieldVisitor<TuiExt> for PresentRun<'_> {
-  fn field<F: RunField<TuiExt>>(&mut self) {
+impl RunFieldVisitor<TuiStyle> for PresentRun<'_> {
+  fn field<F: RunField<TuiStyle>>(&mut self) {
     let tweened = self.motion.sample(F::KEY, self.clock.now);
 
     if tweened.is_none() && self.keyframes.is_empty() {

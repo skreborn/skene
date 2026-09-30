@@ -121,7 +121,7 @@ impl<T: Snapshot> Signal<T> {
   /// owner's path and the signal's index among the owner's snapshot signals, plus its
   /// type—so a [`restore`](crate::restore)d run adopts the value a prior run held at
   /// that position, when one was staged and decodes as `T`, and `value` otherwise.
-  /// [`tagged`](Self::tagged) names the position instead; [`opaque`](Self::opaque)
+  /// [`tagged`](Self::tagged) names the position instead; [`transient`](Self::transient)
   /// stays out of snapshots and needs no [`Snapshot`].
   #[cfg_attr(debug_assertions, track_caller)]
   pub fn new(value: T) -> Self {
@@ -137,7 +137,7 @@ impl<T: 'static> Signal<T> {
   /// state the platform owns. It occupies no snapshot position, so adding or removing
   /// one shifts nothing around it.
   #[cfg_attr(debug_assertions, track_caller)]
-  pub fn opaque(value: T) -> Self {
+  pub fn transient(value: T) -> Self {
     let id = SignalState::create(value);
 
     Runtime::adopt_current(id);

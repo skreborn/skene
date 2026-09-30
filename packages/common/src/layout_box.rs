@@ -587,7 +587,7 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
 
     let named: Vec<AccessProp> = self
       .label
-      .map(AccessProp::Label)
+      .map(AccessProp::Name)
       .into_iter()
       .chain(
         self

@@ -1,10 +1,10 @@
 //! Boolean composition of conditions, shared by every facade.
 //!
 //! Each facade owns its condition enum—its leaves are typed to its medium—and adds
-//! `And`/`Or` variants for composition. Implementing [`Composable`] (exposing the shape
-//! of one level) gives it the shared machinery: [`holds`](Composable::holds) for a
+//! `And`/`Or` variants for composition. Implementing [`ConditionTree`] (exposing the shape
+//! of one level) gives it the shared machinery: [`holds`](ConditionTree::holds) for a
 //! platform that interprets conditions against live state, and
-//! [`disjunctive_leaves`](Composable::disjunctive_leaves) for a platform that compiles
+//! [`disjunctive_leaves`](ConditionTree::disjunctive_leaves) for a platform that compiles
 //! them into another language (the web platform's CSS rules).
 
 /// One level of a composed condition: a leaf, or a combination of subconditions.
@@ -19,7 +19,7 @@ pub enum ConditionShape<'condition, C> {
 }
 
 /// A condition type composed of facade-specific leaves under `and`/`or`.
-pub trait Composable: Clone + Sized {
+pub trait ConditionTree: Clone + Sized {
   /// This condition's top-level shape. A value reported as [`ConditionShape::Leaf`] must not be
   /// a composite.
   fn shape(&self) -> ConditionShape<'_, Self>;

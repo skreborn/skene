@@ -13,8 +13,8 @@ const DEFAULT_URL: &str = "wss://echo.websocket.org/";
 #[must_use]
 pub fn app(url: Option<String>) -> impl View {
   let url = url.unwrap_or_else(|| DEFAULT_URL.to_owned());
-  let state = Signal::opaque(String::from("Connecting…"));
-  let received = Signal::opaque(Vec::<String>::new());
+  let state = Signal::transient(String::from("Connecting…"));
+  let received = Signal::transient(Vec::<String>::new());
 
   spawn({
     let url = url.clone();

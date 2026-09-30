@@ -37,7 +37,7 @@ use skene_reactive::{Memo, ReadSignal, Set};
 
 use crate::{
   TokenValue,
-  TuiExt,
+  TuiStyle,
   Typography,
   cells::{CellPainter, Painter},
   interaction,
@@ -91,7 +91,7 @@ pub(crate) fn root_node() -> Option<NodeId> {
 
 impl Platform for Tui {
   type Scalar = u32;
-  type StyleExt = TuiExt;
+  type StyleExt = TuiStyle;
   type TokenValue = skene_core::TokenValue<u32>;
 
   fn scene() -> &'static LocalKey<RefCell<Scene<Self>>> {
@@ -102,7 +102,7 @@ impl Platform for Tui {
     with_store(|store| store.insert_laid_out(node, Kind::Box(BoxRecord::new(props.clone()))));
   }
 
-  fn update_box(node: NodeId, slot: Slot, leaf: &StaticLeaf<BoxValue<u32, TuiExt>>) {
+  fn update_box(node: NodeId, slot: Slot, leaf: &StaticLeaf<BoxValue<u32, TuiStyle>>) {
     with_store(|store| {
       if let Some(record) = store.record_mut(node) {
         record.slots.insert(slot, leaf.clone().into());
@@ -218,7 +218,7 @@ impl Platform for Tui {
     });
   }
 
-  fn update_run(node: NodeId, slot: Slot, leaf: &StaticLeaf<RunValue<TuiExt>>) {
+  fn update_run(node: NodeId, slot: Slot, leaf: &StaticLeaf<RunValue<TuiStyle>>) {
     with_store(|store| {
       if let Some(record) = store.record_mut(node) {
         record.slots.insert(slot, leaf.clone().into());

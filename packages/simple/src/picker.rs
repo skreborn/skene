@@ -3,13 +3,13 @@
 use std::rc::Rc;
 
 use skene_common::{
+  BasicListboxOption,
+  BasicPicker,
   Column,
   Container,
   CornerRadius,
   Label,
-  ListItem,
-  RawOption,
-  RawPicker,
+  ListboxOption,
   Row,
   Text,
 };
@@ -53,13 +53,13 @@ const CHECK: &str = "✓";
 ///
 /// The indicator is the face's [`Part::Face`], the list surface the [`Part::List`] and
 /// each row's check the [`Part::Item`], so all three follow their control's state on
-/// every facade. The chosen value flows both ways, exactly as on [`RawPicker`]; for
+/// every facade. The chosen value flows both ways, exactly as on [`BasicPicker`]; for
 /// custom chrome, compose the raw control directly.
 #[derive(Debug)]
 #[must_use]
 pub struct SimplePicker<P: Platform> {
   options: Vec<(String, String)>,
-  picker: RawPicker<P>,
+  picker: BasicPicker<P>,
 }
 
 impl<P: Platform> SimplePicker<P> {
@@ -68,7 +68,7 @@ impl<P: Platform> SimplePicker<P> {
   pub fn new() -> Self {
     Self {
       options: Vec::new(),
-      picker: RawPicker::new(),
+      picker: BasicPicker::new(),
     }
   }
 
@@ -255,7 +255,7 @@ where
       .when(State::Checked, SimplePalette::<P::Scalar>::PRIMARY_INK),
   );
 
-  RawOption::<P>::new(ListItem::new(value))
+  BasicListboxOption::<P>::new(ListboxOption::new(value))
     .set_padding(shape::<P>().row_inset)
     .set_color(
       Color::TRANSPARENT

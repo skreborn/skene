@@ -28,7 +28,7 @@
   terminal crate beneath, so a reply a new capability needs is parsed in the change
   that asks for it. What every platform of one
   medium shares above the spine lives in that medium's module of `skene-common`—`gui`
-  (`GuiExt`, the pixel `Typography`, `Painting`) and `tui` (`TuiExt`, `BorderGlyphs`,
+  (`GuiStyle`, the pixel `Typography`, `Painting`) and `tui` (`TuiStyle`, `BorderGlyphs`,
   the terminal `Typography`)—never in `skene-core`, which knows no medium.
   Platforms depend on core and common, never on each other; a facade is the
   only place that names its platforms, and it publishes the selected one as `ActivePlatform`.
@@ -352,7 +352,7 @@
   cannot observe its controls' clicks in one place; wrap the group in a `Container`,
   which is a box rather than a control and keeps the choice.
 - **A verdict is the view's, never its user's.** `handle_<event>` takes a plain callback
-  on every control, `Raw*` and `Simple*` alike. A control decides what the platform and
+  on every control, `Basic*` and `Simple*` alike. A control decides what the platform and
   the ancestors are told, once, where its behavior lives, so no app or library author
   asks "am I cancelling a platform default here". `Prevent` belongs to the layer that
   owns behavior (a `Behavior`, a platform); above a platform, nothing states one. A control
@@ -371,17 +371,17 @@
   behavior registered, since the platform's flip arrives as `change`, and the climb
   ends at the control, as the acting one's verdict ends it everywhere else.
 - **A control is `Control<B: Behavior>`**: one builder in `skene-common` carrying focus,
-  events, decoration, label, parts and accessibility once. `Toggle`, `Range`, `Popup`,
+  events, decoration, label, parts and accessibility once. `Toggle`, `Slider`, `Popup`,
   `Activate`, `TextEntry` and `Collection` are the shipped behaviors (`Member` the
-  members'; `Roving`, `Listbox` and `Menu` are collections under a `CollectionPolicy`),
+  members'; `RadioGroup`, `Listbox` and `Menu` are collections under a `CollectionPolicy`),
   `Behavior` is public, and the keyboard tables live in the
   behaviors, so a third party's control and the terminal's slider get the same keys as the
-  browser's. `RawButton`, `RawCheckbox`, `RawSlider`, `RawRadioGroup`/`RawRadio`,
-  `RawListbox`/`RawOption`, `RawTextField` and `RawTextEditor` are aliases over them, and
-  `RawPicker` is composed from them. A listbox and the closed picker face have
+  browser's. `BasicButton`, `BasicCheckbox`, `BasicSlider`, `BasicRadioGroup`/`BasicRadio`,
+  `BasicListbox`/`BasicListboxOption`, `BasicTextField` and `BasicTextEditor` are aliases over them, and
+  `BasicPicker` is composed from them. A listbox and the closed picker face have
   type-ahead (`TypeAhead`, its buffer reset on `Platform::schedule`) over the names the
   options' labels supply as they read now (`Label::set_name`, `Label::derive_name`), and
-  the face's verdict on a typed key is the `Popup` behavior's through `handle_typed`. A
+  the face's verdict on a typed key is the `Popup` behavior's through `set_key_fallback`. A
   control's label sits where its behavior places it (`Behavior::label_placement`):
   leading or trailing in its row, or beside its box—before it among its siblings on
   every platform, answering to the control, as the web's `<label>` does—the default
@@ -442,7 +442,7 @@
   `skene-common`: wrapping is the opt-in, a secondary press, `Shift-F10` or the menu key
   on the wrapped view dispatches `EventKind::ContextMenu`, the deepest wrapper along the
   path opens its `List` pinned at the pointer and prevents the platform's menu, and
-  wherever no wrapper is the browser keeps its own. Items are `MenuItem`s, the standard
+  wherever no wrapper is the browser keeps its own. Items are `MenuEntry`s, the standard
   `copy`/`cut`/`paste` among them, each asking the platform's `clipboard_availability`
   whether it is absent, disabled or enabled and acting through `Platform::clipboard`; the
   list is a `Menu` of `MenuOption` controls (`Role::Menu`/`Role::MenuItem`), the
@@ -573,7 +573,7 @@
   Convenience conversions (`From<f32> for Spacing`) keep the common case terse without
   adding a second path. Conditions ride the value (`value.when(condition, other)`, the
   `When` extension on any value or token), so there is no `set_<prop>_when` family.
-- A type is named for the crate it belongs to, not the medium: `GuiExt` and `TuiExt` with
+- A type is named for the crate it belongs to, not the medium: `GuiStyle` and `TuiStyle` with
   their properties, fields and traits, `SimpleGlyphs` and every other `Simple*` item. A
   bare name is not an option where the facade's prelude already carries it (`Property`,
   `Value`, `Text`), and a scheme that is bare for some names and prefixed for others is
@@ -663,7 +663,7 @@
 - All reactive-system work keeps the state snapshot in mind: signal identities must be
   able to stay stable across two runs of the same binary. Store/restore is on by default
   and opt-out—the built-in and simple types just work with no tag—so `Signal::new` carries
-  the `Snapshot` bound, `Signal::opaque` opts a signal out and asks nothing of its type, and
+  the `Snapshot` bound, `Signal::transient` opts a signal out and asks nothing of its type, and
   `Signal::tagged` is only an anchor for the positional diff within one owner, and a
   `Key` anchors a whole scope: `reconcile` keys every item's owner by the item's key and
   `View::set_key` builds a view under a keyed owner, one concept for both, so state
@@ -671,7 +671,7 @@
   an additive feature can never gate a trait bound.
 - Aim for the absolute least duplication that sacrifices neither ergonomics nor performance:
   when facades need the same machinery over different vocabularies, the spine hosts it once as
-  a small monomorphized generic (`Scene<P>`, `Control<P, B>`, `Composable`), each facade
+  a small monomorphized generic (`Scene<P>`, `Control<P, B>`, `ConditionTree`), each facade
   keeping its own flat, medium-typed surface. Never share via feature-gated variants or
   fields: cargo features are additive and unify across the build graph, so mutually-exclusive
   cfgs break any build containing both facades.

@@ -160,7 +160,7 @@ impl Fingerprint for BorderGlyphs {
 /// without text sizing draws every size at one.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 #[must_use]
-pub struct TuiExt;
+pub struct TuiStyle;
 
 /// A terminal box's own properties, in shape `S`.
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -271,14 +271,14 @@ pub enum TuiValue {
   Number(f32),
 }
 
-impl<N: Scalar> IntoBoxValue<N, TuiExt> for BorderGlyphs {
+impl<N: Scalar> IntoBoxValue<N, TuiStyle> for BorderGlyphs {
   #[inline(always)]
-  fn into_box_value(self) -> BoxValue<N, TuiExt> {
+  fn into_box_value(self) -> BoxValue<N, TuiStyle> {
     BoxValue::Extension(TuiValue::BorderGlyphs(self))
   }
 
   #[inline(always)]
-  fn from_box_value(value: BoxValue<N, TuiExt>) -> Option<Self> {
+  fn from_box_value(value: BoxValue<N, TuiStyle>) -> Option<Self> {
     match value {
       BoxValue::Extension(TuiValue::BorderGlyphs(glyphs)) => Some(glyphs),
       _ => None,
@@ -286,14 +286,14 @@ impl<N: Scalar> IntoBoxValue<N, TuiExt> for BorderGlyphs {
   }
 }
 
-impl<N: Scalar> IntoBoxValue<N, TuiExt> for ScrollbarGlyphs {
+impl<N: Scalar> IntoBoxValue<N, TuiStyle> for ScrollbarGlyphs {
   #[inline(always)]
-  fn into_box_value(self) -> BoxValue<N, TuiExt> {
+  fn into_box_value(self) -> BoxValue<N, TuiStyle> {
     BoxValue::Extension(TuiValue::ScrollbarGlyphs(self))
   }
 
   #[inline(always)]
-  fn from_box_value(value: BoxValue<N, TuiExt>) -> Option<Self> {
+  fn from_box_value(value: BoxValue<N, TuiStyle>) -> Option<Self> {
     match value {
       BoxValue::Extension(TuiValue::ScrollbarGlyphs(glyphs)) => Some(glyphs),
       _ => None,
@@ -301,14 +301,14 @@ impl<N: Scalar> IntoBoxValue<N, TuiExt> for ScrollbarGlyphs {
   }
 }
 
-impl IntoRunValue<TuiExt> for bool {
+impl IntoRunValue<TuiStyle> for bool {
   #[inline(always)]
-  fn into_run_value(self) -> RunValue<TuiExt> {
+  fn into_run_value(self) -> RunValue<TuiStyle> {
     RunValue::Extension(TuiValue::Bold(self))
   }
 
   #[inline(always)]
-  fn from_run_value(value: RunValue<TuiExt>) -> Option<Self> {
+  fn from_run_value(value: RunValue<TuiStyle>) -> Option<Self> {
     match value {
       RunValue::Extension(TuiValue::Bold(bold)) => Some(bold),
       RunValue::Extension(
@@ -322,14 +322,14 @@ impl IntoRunValue<TuiExt> for bool {
   }
 }
 
-impl IntoRunValue<TuiExt> for f32 {
+impl IntoRunValue<TuiStyle> for f32 {
   #[inline(always)]
-  fn into_run_value(self) -> RunValue<TuiExt> {
+  fn into_run_value(self) -> RunValue<TuiStyle> {
     RunValue::Extension(TuiValue::Number(self))
   }
 
   #[inline(always)]
-  fn from_run_value(value: RunValue<TuiExt>) -> Option<Self> {
+  fn from_run_value(value: RunValue<TuiStyle>) -> Option<Self> {
     match value {
       RunValue::Extension(TuiValue::Number(number)) => Some(number),
       RunValue::Extension(
@@ -348,7 +348,7 @@ pub const BOLD_WEIGHT: f32 = 600.;
 
 skene_core::extension_fields! {
   /// The terminal's own properties, addressed by type.
-  pub mod tui_fields for TuiExt, TuiProperty;
+  pub mod tui_fields for TuiStyle, TuiProperty;
   box: border_glyphs: super::BorderGlyphs => BorderGlyphs, corner_radius: Length => CornerRadius,
     shadow: Color => Shadow, shadow_offset: Length => ShadowOffset,
     shadow_softening: Length => ShadowSoftening, scrollbar_thumb: Color => ScrollbarThumb,
@@ -357,7 +357,7 @@ skene_core::extension_fields! {
   run: bold: bool => Bold, size: Length => Size, weight: f32 => Weight,
 }
 
-impl StyleExtension for TuiExt {
+impl StyleExtension for TuiStyle {
   type BoxFields<S: Shape> = TuiBoxFields<S>;
   type Property = TuiProperty;
   type RunFields<S: Shape> = TuiRunFields<S>;
@@ -389,14 +389,14 @@ impl StyleExtension for TuiExt {
   }
 }
 
-impl CornerRadius for TuiExt {
+impl CornerRadius for TuiStyle {
   #[inline(always)]
   fn set_corner_radius<S: Shape>(fields: &mut Self::BoxFields<S>, radius: S::Of<Length>) {
     fields.corner_radius = radius;
   }
 }
 
-impl TypeMetrics for TuiExt {
+impl TypeMetrics for TuiStyle {
   #[inline(always)]
   fn set_font_size<S: Shape>(fields: &mut Self::RunFields<S>, size: S::Of<Length>) {
     fields.size = size;

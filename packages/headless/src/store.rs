@@ -300,8 +300,8 @@ impl Store {
           hover,
           safe_area,
         });
-        let (hydrated, set_hydrated) = Signal::opaque(hydrated).split();
-        let (graphics, set_graphics) = Signal::opaque(graphics).split();
+        let (hydrated, set_hydrated) = Signal::transient(hydrated).split();
+        let (graphics, set_graphics) = Signal::transient(graphics).split();
 
         MediaState {
           owner,

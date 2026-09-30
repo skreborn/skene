@@ -13,7 +13,7 @@
 //! addressed, so tracking and notifying cost the location's depth and nothing of the
 //! number of locations tracked.
 //!
-//! A location derives a [`Memo`] over its value ([`StoreField::derive`]), and a keyed
+//! A location computes a [`Memo`] over its value ([`StoreField::memo`]), and a keyed
 //! location hands out a lens per entry, subscribed to its shape alone
 //! ([`KeyedField::entries`]), so a keyed list follows the collection and each item
 //! follows its entry. A `Vec` is keyed by a key its elements carry
@@ -234,8 +234,8 @@ pub struct StoreCore {
 impl StoreCore {
   fn new() -> Self {
     Self {
-      trie: Signal::opaque(Trie::new()),
-      indexes: Signal::opaque(Indexes::default()),
+      trie: Signal::transient(Trie::new()),
+      indexes: Signal::transient(Indexes::default()),
       owner: Owner::current(),
     }
   }
@@ -448,7 +448,7 @@ impl StoreCore {
 /// Fine-grained reactive state over one plain value.
 ///
 /// Created with [`new`](Self::new), [`tagged`](Self::tagged) or
-/// [`opaque`](Self::opaque), which take part in state snapshots exactly as the
+/// [`transient`](Self::transient), which take part in state snapshots exactly as the
 /// [`Signal`] constructors of the same names do. The store itself is the root
 /// location—[`StoreField`] gives it and every lens the same read/write surface—and
 /// `#[derive(Store)]` on the value's type generates the per-field accessors that
@@ -497,9 +497,9 @@ impl<T: Snapshot> Store<T> {
 
 impl<T: 'static> Store<T> {
   /// Creates a store owned by the current [`Owner`] that takes no part in state
-  /// snapshots; see [`Signal::opaque`].
-  pub fn opaque(value: T) -> Self {
-    Self::over(Signal::opaque(value))
+  /// snapshots; see [`Signal::transient`].
+  pub fn transient(value: T) -> Self {
+    Self::over(Signal::transient(value))
   }
 
   fn over(value: Signal<T>) -> Self {
@@ -515,7 +515,7 @@ impl<T: 'static> Store<T> {
 /// Every location shares one surface: [`get`](Self::get)/[`with`](Self::with)
 /// subscribe the running effect to exactly this location,
 /// [`set`](Self::set)/[`update`](Self::update) notify exactly the readers the write
-/// can affect, and [`derive`](Self::derive) memoizes a read of it. The `try_`
+/// can affect, and [`memo`](Self::memo) memoizes a read of it. The `try_`
 /// variants return `None` where the plain calls panic: when the location no longer
 /// exists (a removed key, an out-of-range index).
 pub trait StoreField: Clone + 'static {
@@ -617,31 +617,28 @@ pub trait StoreField: Clone + 'static {
     self.update(|current| *current = value);
   }
 
-  /// A memo of `derive` over the value, subscribed to this location; its dependents
+  /// A memo of `compute` over the value, subscribed to this location; its dependents
   /// wake only when the result changes.
   ///
   /// # Panics
   ///
   /// The memo panics when it computes while the location no longer exists; see
-  /// [`try_derive`](Self::try_derive).
-  fn derive<R: PartialEq + 'static>(
-    &self,
-    derive: impl Fn(&Self::Value) -> R + 'static,
-  ) -> Memo<R> {
+  /// [`try_memo`](Self::try_memo).
+  fn memo<R: PartialEq + 'static>(&self, compute: impl Fn(&Self::Value) -> R + 'static) -> Memo<R> {
     let location = self.clone();
 
-    Memo::new(move |_| location.with(&derive))
+    Memo::new(move |_| location.with(&compute))
   }
 
-  /// A memo of `derive` over the value, subscribed to this location, `None` while the
+  /// A memo of `compute` over the value, subscribed to this location, `None` while the
   /// location no longer exists; its dependents wake only when the result changes.
-  fn try_derive<R: PartialEq + 'static>(
+  fn try_memo<R: PartialEq + 'static>(
     &self,
-    derive: impl Fn(&Self::Value) -> R + 'static,
+    compute: impl Fn(&Self::Value) -> R + 'static,
   ) -> Memo<Option<R>> {
     let location = self.clone();
 
-    Memo::new(move |_| location.try_with(&derive))
+    Memo::new(move |_| location.try_with(&compute))
   }
 }
 

@@ -2,7 +2,7 @@
 
 use std::marker::PhantomData;
 
-use skene_common::{Container, CornerRadius, RawCheckbox, Text, Toggle};
+use skene_common::{BasicCheckbox, Container, CornerRadius, Text, Toggle};
 use skene_core::{
   Alignment,
   AnyKind,
@@ -31,7 +31,7 @@ use super::{
 ///
 /// The mark is the control's [`Part::Mark`], so it follows the control's state on
 /// every facade. The checked state flows both ways; for a checkbox drawn some other
-/// way, compose [`RawCheckbox`] directly.
+/// way, compose [`BasicCheckbox`] directly.
 #[derive(Debug)]
 #[must_use]
 pub struct SimpleCheckbox<P: Platform> {
@@ -127,7 +127,7 @@ where
         .into_any()
       }
     };
-    let mut control = RawCheckbox::new(self.toggle)
+    let mut control = BasicCheckbox::new(self.toggle)
       .set_cursor(click_cursor())
       .set_part(Part::Mark, mark);
 

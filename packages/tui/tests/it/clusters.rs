@@ -92,7 +92,7 @@ fn a_field_edits_and_places_its_caret_by_cluster() {
     let value = Signal::new("日本x".to_owned());
     let selection = Signal::new(TextSelection::default());
     let _ = tui::mount(move || {
-      RawTextField::new(TextEntry::new().bind_value(value).bind_selection(selection))
+      BasicTextField::new(TextEntry::new().bind_value(value).bind_selection(selection))
         .into_any()
         .build()
     });
@@ -178,7 +178,7 @@ fn a_fields_window_scrolls_by_cells() {
   with_platform(|| {
     let value = Signal::new("日本語".to_owned());
     let _ = tui::mount(move || {
-      RawTextField::new(TextEntry::new().bind_value(value))
+      BasicTextField::new(TextEntry::new().bind_value(value))
         .set_width(4)
         .into_any()
         .build()

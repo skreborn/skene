@@ -5,7 +5,7 @@
 
 use std::{cell::RefCell, rc::Rc, thread::LocalKey};
 
-use skene_common::{Column, Container, NodeHandle, RawCheckbox, Text, Theme, Toggle};
+use skene_common::{BasicCheckbox, Column, Container, NodeHandle, Text, Theme, Toggle};
 use skene_core::{
   AccessProp,
   BoxProps,
@@ -293,7 +293,7 @@ impl TokenSet<Erased> for Palette {
 #[test]
 fn every_mirrored_call_runs_with_the_scene_released() {
   let owner = Owner::new();
-  let palette = Signal::opaque(Palette::default());
+  let palette = Signal::transient(Palette::default());
   let label = Signal::new("one".to_owned());
   let checked = Signal::new(false);
   let focus = NodeHandle::<Reentrant>::new();
@@ -303,7 +303,7 @@ fn every_mirrored_call_runs_with_the_scene_released() {
         Container::<Reentrant>::new().bind_handle(focus).set_child(
           Column::<Reentrant>::new().set_children((
             Text::<Reentrant>::derive(move || label.get()),
-            RawCheckbox::<Reentrant>::new(Toggle::new().bind_checked(checked)),
+            BasicCheckbox::<Reentrant>::new(Toggle::new().bind_checked(checked)),
           )),
         )
       })

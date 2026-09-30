@@ -23,7 +23,7 @@ use crate::{
   BOLD_WEIGHT,
   BorderGlyphs,
   Tui,
-  TuiExt,
+  TuiStyle,
   store::{Handle, Kind, PlainBox, PlainRun, Store},
 };
 
@@ -50,20 +50,20 @@ impl<'a> Env<'a> {
 
   /// Runs `operation` with the resolver of this environment, reading tokens where they
   /// are defined and slots through the store.
-  fn with_resolver<R>(&self, operation: impl FnOnce(&Resolver<'_, u32, TuiExt>) -> R) -> R {
+  fn with_resolver<R>(&self, operation: impl FnOnce(&Resolver<'_, u32, TuiStyle>) -> R) -> R {
     self.context.with_resolver(operation)
   }
 
   /// A box keyframe with every leaf resolved at the node.
   pub(crate) fn resolve_box_keyframe(
     &self,
-    keyframe: &BoxStyle<u32, Keyframe, TuiExt>,
+    keyframe: &BoxStyle<u32, Keyframe, TuiStyle>,
   ) -> PlainBox {
     self.with_resolver(|resolver| resolver.box_keyframe(keyframe))
   }
 
   /// A run keyframe with every leaf resolved at the node.
-  pub(crate) fn resolve_run_keyframe(&self, keyframe: &RunStyle<Keyframe, TuiExt>) -> PlainRun {
+  pub(crate) fn resolve_run_keyframe(&self, keyframe: &RunStyle<Keyframe, TuiStyle>) -> PlainRun {
     self.with_resolver(|resolver| resolver.run_keyframe(keyframe))
   }
 
@@ -112,7 +112,7 @@ impl<'a> Env<'a> {
   /// The box style of the record, every property resolved.
   pub(crate) fn resolve_box(&self) -> Option<PlainBox> {
     let record = self.store.record(self.handle)?;
-    let source: &BoxStyle<u32, Static<Condition<u32>>, TuiExt> =
+    let source: &BoxStyle<u32, Static<Condition<u32>>, TuiStyle> =
       &record.kind.box_record()?.props.style;
     let mut style = self.with_resolver(|resolver| resolver.box_style(source));
 
@@ -133,7 +133,7 @@ impl<'a> Env<'a> {
         token,
       ))))
     };
-    let style = RunStyle::<Static<Condition<u32>>, TuiExt> {
+    let style = RunStyle::<Static<Condition<u32>>, TuiStyle> {
       color: token(typography::INK),
       selection_color: token(typography::SELECTION_INK),
       selection_background: token(typography::SELECTION_SURFACE),

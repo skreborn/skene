@@ -5,9 +5,10 @@
 
 use std::{cell::RefCell, rc::Rc};
 
-use skene_common::{Label, ListItem, TYPE_AHEAD_RESET};
+use skene_common::{Label, ListboxOption, TYPE_AHEAD_RESET};
 use skene_core::{
   AccessProp,
+  CheckState,
   KeyEvent,
   NativeElement,
   NodeId,
@@ -15,7 +16,6 @@ use skene_core::{
   Placement,
   Prevented,
   Role,
-  Toggle as Checked,
   View,
 };
 use skene_headless::{
@@ -44,8 +44,8 @@ use skene_headless::{
 use skene_reactive::{Get, Owner, Set, Signal};
 
 type Text = skene_common::Text<Headless>;
-type RawPicker<F = skene_common::NoChild> = skene_common::RawPicker<Headless, F>;
-type RawOption<C = skene_common::NoChild> = skene_common::RawOption<Headless, C>;
+type BasicPicker<F = skene_common::NoChild> = skene_common::BasicPicker<Headless, F>;
+type BasicListboxOption<C = skene_common::NoChild> = skene_common::BasicListboxOption<Headless, C>;
 
 const CONSUMED: Prevented = Prevented {
   platform: true,
@@ -110,11 +110,12 @@ impl Parts {
 
 fn picker(owner: Owner, value: Signal<String>) -> Parts {
   let start = owner.enter(move || {
-    RawPicker::new()
+    BasicPicker::new()
       .bind_value(value)
       .set_label("Size")
       .set_options(
-        ["a", "b", "c"].map(|value| RawOption::new(ListItem::new(value)).set_label(value)),
+        ["a", "b", "c"]
+          .map(|value| BasicListboxOption::new(ListboxOption::new(value)).set_label(value)),
       )
       .set_face(|shown| Text::derive(move || shown.get()))
       .build()
@@ -171,7 +172,7 @@ fn arrow_down_opens_the_list_with_focus_on_the_chosen_option() {
   assert_eq!(parts.selected(1), Some(true));
   assert_eq!(
     control_state(parts.options[1]).map(|state| state.checked),
-    Some(Checked::On)
+    Some(CheckState::On)
   );
 
   assert_eq!(trigger_key_down(parts.face, &key("ArrowDown")), CONSUMED);
@@ -253,10 +254,13 @@ fn the_value_signal_is_the_truth() {
     let asked = Rc::clone(&asked);
 
     move || {
-      RawPicker::new()
+      BasicPicker::new()
         .set_value("a")
         .handle_change(move |value| asked.borrow_mut().push(value))
-        .set_options(["a", "b"].map(|value| RawOption::new(ListItem::new(value)).set_label(value)))
+        .set_options(
+          ["a", "b"]
+            .map(|value| BasicListboxOption::new(ListboxOption::new(value)).set_label(value)),
+        )
         .set_face(|shown| Text::derive(move || shown.get()))
         .build()
     }
@@ -385,13 +389,13 @@ fn type_ahead_matches_a_derived_name_as_it_reads_now() {
   let value = Signal::new("ba".to_owned());
   let renamed = Signal::new("Apple".to_owned());
   let face = owner.enter(move || {
-    RawPicker::new()
+    BasicPicker::new()
       .bind_value(value)
       .set_options([
-        RawOption::new(ListItem::new("ap")).set_label(
+        BasicListboxOption::new(ListboxOption::new("ap")).set_label(
           Label::new(Text::derive(move || renamed.get())).derive_name(move || renamed.get()),
         ),
-        RawOption::new(ListItem::new("ba"))
+        BasicListboxOption::new(ListboxOption::new("ba"))
           .set_label(Label::new(Text::new("Banana")).set_name("Banana")),
       ])
       .set_face(|shown| Text::derive(move || shown.get()))
@@ -413,12 +417,13 @@ fn named_picker(owner: Owner, value: Signal<String>) -> Parts {
   use skene_common::Label;
 
   let face = owner.enter(move || {
-    RawPicker::new()
+    BasicPicker::new()
       .bind_value(value)
       .set_label("Fruit")
       .set_options(
         [("ap", "Apple"), ("av", "Avocado"), ("ba", "Banana")].map(|(value, name)| {
-          RawOption::new(ListItem::new(value)).set_label(Label::new(Text::new(name)).set_name(name))
+          BasicListboxOption::new(ListboxOption::new(value))
+            .set_label(Label::new(Text::new(name)).set_name(name))
         }),
       )
       .set_face(|shown| Text::derive(move || shown.get()))
@@ -532,13 +537,13 @@ fn until_hydrated_the_picker_is_the_platforms_own() {
   let owner = Owner::new();
   let value = Signal::new("b".to_owned());
   let start = owner.enter(move || {
-    RawPicker::new()
+    BasicPicker::new()
       .bind_value(value)
       .set_label("Size")
       .set_options(["a", "b", "c"].map(|value| {
         let name = value.to_uppercase();
 
-        RawOption::new(ListItem::new(value))
+        BasicListboxOption::new(ListboxOption::new(value))
           .set_disabled(value == "c")
           .set_label(Label::new(Text::new(&name)).set_name(name))
       }))
@@ -593,10 +598,12 @@ fn the_drawn_face_keeps_the_caption_name_and_disabled_setting() {
 
   let owner = Owner::new();
   let start = owner.enter(move || {
-    RawPicker::new()
+    BasicPicker::new()
       .set_label("Size")
       .set_disabled(true)
-      .set_options(["a"].map(|value| RawOption::new(ListItem::new(value)).set_label(value)))
+      .set_options(
+        ["a"].map(|value| BasicListboxOption::new(ListboxOption::new(value)).set_label(value)),
+      )
       .set_face(|shown| Text::derive(move || shown.get()))
       .build()
   });
@@ -647,9 +654,9 @@ fn a_picker_places_its_list() {
   );
 
   let above = Parts::of(form(owner.enter(move || {
-    RawPicker::new()
+    BasicPicker::new()
       .set_placement(Placement::Top)
-      .set_options([RawOption::new(ListItem::new("a")).set_label("a")])
+      .set_options([BasicListboxOption::new(ListboxOption::new("a")).set_label("a")])
       .set_face(|shown| Text::derive(move || shown.get()))
       .build()
   })));

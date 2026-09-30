@@ -2,7 +2,7 @@
 
 use std::marker::PhantomData;
 
-use skene_common::{CornerRadius, RawTextEditor, TextEntry};
+use skene_common::{BasicTextEditor, CornerRadius, TextEntry};
 use skene_core::{AnyKind, NodeId, Platform, View};
 use skene_reactive::Signal;
 
@@ -14,7 +14,7 @@ const LINES: u16 = 3;
 /// A ready-made multi-line text editor: full-width field chrome whose hairline border
 /// becomes the ring while focused, showing several lines at once.
 ///
-/// The value flows both ways, exactly as on [`RawTextEditor`]; for custom chrome,
+/// The value flows both ways, exactly as on [`BasicTextEditor`]; for custom chrome,
 /// compose the raw control directly.
 #[derive(Debug)]
 #[must_use]
@@ -99,6 +99,6 @@ where
   fn build(self) -> NodeId {
     define_defaults::<P>();
 
-    field_chrome::<P, TextEntry>(RawTextEditor::new(self.entry)).build()
+    field_chrome::<P, TextEntry>(BasicTextEditor::new(self.entry)).build()
   }
 }

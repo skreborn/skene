@@ -1,6 +1,7 @@
 mod access;
 mod aspect_ratio;
 mod axis;
+mod check_state;
 mod clipboard;
 mod color;
 mod dimension;
@@ -20,12 +21,12 @@ mod run_display;
 mod size;
 mod text_decoration;
 mod text_selection;
-mod toggle;
 mod visibility;
 
 pub use access::*;
 pub use aspect_ratio::*;
 pub use axis::*;
+pub use check_state::*;
 pub use clipboard::*;
 pub use color::*;
 pub use dimension::*;
@@ -45,7 +46,6 @@ pub use run_display::*;
 pub use size::*;
 pub use text_decoration::*;
 pub use text_selection::*;
-pub use toggle::*;
 pub use visibility::*;
 
 /// Whether `name` is ASCII letters, digits, `_` and `-`, not starting with a digit.

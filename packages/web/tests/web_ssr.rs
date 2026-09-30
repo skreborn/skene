@@ -6,13 +6,13 @@
 #![cfg(skene_leaf = "server")]
 
 use skene_common::{
+  BasicCheckbox,
+  BasicTextEditor,
   Behavior,
   Container,
   Control,
   Flexible,
   LowLevel,
-  RawCheckbox,
-  RawTextEditor,
   Row,
   Text,
   TextEntry,
@@ -335,7 +335,7 @@ fn a_checkbox_is_a_label_over_a_native_input_and_its_parts() {
   let rendered = render_to_string(|| {
     let (checked, set_checked) = signal(true);
 
-    RawCheckbox::<Web>::new(
+    BasicCheckbox::<Web>::new(
       Toggle::new()
         .derive_checked(move || checked.get())
         .handle_toggle(move |next| set_checked.set(next)),
@@ -441,7 +441,7 @@ impl Behavior<Web> for Partial {
 
   fn state(&self) -> ControlState {
     ControlState {
-      checked: skene_core::Toggle::Mixed,
+      checked: skene_core::CheckState::Mixed,
       ..ControlState::DEFAULT
     }
   }
@@ -475,7 +475,7 @@ fn an_indeterminate_checkbox_carries_its_state_in_markup() {
 #[test]
 fn a_text_editor_keeps_a_leading_newline() {
   let rendered = render_to_string(|| {
-    RawTextEditor::<Web>::new(TextEntry::new().set_lines(3).set_value("\nsecond"))
+    BasicTextEditor::<Web>::new(TextEntry::new().set_lines(3).set_value("\nsecond"))
   });
   let body = rendered.body();
 

@@ -1,4 +1,4 @@
-use super::{Axis, Toggle};
+use super::{Axis, CheckState};
 use crate::NodeId;
 
 /// One accessibility property a view reports, for a reactive update.
@@ -12,7 +12,7 @@ use crate::NodeId;
 #[must_use]
 pub enum AccessProp {
   /// Whether a toggle is checked.
-  Checked(Toggle),
+  Checked(CheckState),
   /// The value a range control currently holds.
   Value(f32),
   /// The lowest value that control accepts.
@@ -30,7 +30,7 @@ pub enum AccessProp {
   /// Whether the control is present but not operable.
   Disabled(bool),
   /// The control's accessible name, when nothing visible supplies one.
-  Label(String),
+  Name(String),
   /// Whether a value must be supplied before the form the control is in submits.
   Required(bool),
   /// Whether the control holds an invalid value.

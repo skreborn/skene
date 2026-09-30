@@ -9,8 +9,8 @@ use skene_reactive::Owner;
 type Container = skene_common::Container<Headless>;
 type Row = skene_common::Row<Headless>;
 type Text = skene_common::Text<Headless>;
-type RawButton = skene_common::RawButton<Headless>;
-type RawTextField = skene_common::RawTextField<Headless>;
+type BasicButton = skene_common::BasicButton<Headless>;
+type BasicTextField = skene_common::BasicTextField<Headless>;
 
 /// A region, a dialog-like box and a picture are named by their label or by the node
 /// they are labelled by; a box of no role reads nothing from its content.
@@ -56,7 +56,7 @@ fn a_button_a_heading_and_a_link_are_named_by_their_content() {
   let owner = Owner::new();
   let (button, heading, link) = owner.enter(|| {
     (
-      RawButton::new(Activate::new())
+      BasicButton::new(Activate::new())
         .set_child(
           Row::new().set_children((
             Text::new("Save"),
@@ -93,7 +93,7 @@ fn an_embedded_entry_contributes_its_value() {
     let phrase = Row::new()
       .set_children((
         Text::new("Deliver in"),
-        RawTextField::new(TextEntry::new().set_value("3")),
+        BasicTextField::new(TextEntry::new().set_value("3")),
         Text::new("days"),
       ))
       .build();

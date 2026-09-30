@@ -53,7 +53,7 @@ use crate::{
   realize::Source,
 };
 
-/// What a [`MenuItem`] is.
+/// What a [`MenuEntry`] is.
 enum ItemKind {
   /// A command of the menu's own, running its handler.
   Command,
@@ -106,7 +106,7 @@ impl MenuItemContent {
 /// what the platform holds selected or focused, is listed only where the platform
 /// offers it, and is disabled while it does not apply.
 #[must_use]
-pub struct MenuItem {
+pub struct MenuEntry {
   kind: ItemKind,
   label: Source<String>,
   shortcut: Option<Shortcut>,
@@ -114,13 +114,13 @@ pub struct MenuItem {
   on_select: Option<Rc<dyn Fn()>>,
 }
 
-impl std::fmt::Debug for MenuItem {
+impl std::fmt::Debug for MenuEntry {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    formatter.debug_struct("MenuItem").finish_non_exhaustive()
+    formatter.debug_struct("MenuEntry").finish_non_exhaustive()
   }
 }
 
-impl MenuItem {
+impl MenuEntry {
   fn with(kind: ItemKind, label: Source<String>) -> Self {
     Self {
       kind,
@@ -220,7 +220,7 @@ impl MenuItem {
   }
 }
 
-/// A context menu of [`MenuItem`]s over the view it serves.
+/// A context menu of [`MenuEntry`]s over the view it serves.
 ///
 /// A secondary press over the view opens it beside the pointer, and `Shift-F10` or the
 /// `ContextMenu` key beside the view while focus is inside it; the platform's own menu
@@ -240,7 +240,7 @@ impl MenuItem {
 /// already exists instead.
 #[must_use]
 pub struct ContextMenu<P: Platform, C = NoChild> {
-  items: Vec<MenuItem>,
+  items: Vec<MenuEntry>,
   list: Overlay<P>,
   item_style: Box<DeclaredBoxStyle<P>>,
   item_text_color: Option<Declared<P, Color>>,
@@ -280,7 +280,7 @@ impl<P: Platform> ContextMenu<P> {
 
   /// Sets the items, in order.
   #[inline(always)]
-  pub fn set_items(mut self, items: impl IntoIterator<Item = MenuItem>) -> Self {
+  pub fn set_items(mut self, items: impl IntoIterator<Item = MenuEntry>) -> Self {
     self.items = items.into_iter().collect();
 
     self
@@ -473,10 +473,10 @@ impl<P: Platform, C> ContextMenu<P, C> {
       item_view,
       ..
     } = self;
-    let open = Signal::opaque(false);
-    let position: Signal<Option<Point<f32>>> = Signal::opaque(None);
+    let open = Signal::transient(false);
+    let position: Signal<Option<Point<f32>>> = Signal::transient(None);
     // Bumped at every request, so a standard item re-asks the platform as the menu opens.
-    let generation = Signal::opaque(0u32);
+    let generation = Signal::transient(0u32);
     let dress = RowDress {
       item_style,
       item_text_color,
@@ -636,7 +636,7 @@ struct Verdicts {
   disabled: Predicate,
 }
 
-impl MenuItem {
+impl MenuEntry {
   /// The item's verdicts; a standard item re-asks the platform's clipboard whenever
   /// `generation` moves.
   fn verdicts<P: Platform>(&self, generation: Signal<u32>) -> Verdicts {

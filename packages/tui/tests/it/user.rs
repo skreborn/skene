@@ -19,11 +19,11 @@ fn a_user_clicks_and_types_into_what_it_finds() {
     let _ = tui::mount(move || {
       Column::new()
         .set_children((
-          RawButton::new(Activate::new())
+          BasicButton::new(Activate::new())
             .set_label("Save")
             .handle_click(move || counted.set(counted.get() + 1)),
-          RawButton::new(Activate::new()).set_label("Cancel"),
-          RawTextField::new(TextEntry::new().bind_value(typed))
+          BasicButton::new(Activate::new()).set_label("Cancel"),
+          BasicTextField::new(TextEntry::new().bind_value(typed))
             .set_label("Name")
             .set_width(12),
         ))

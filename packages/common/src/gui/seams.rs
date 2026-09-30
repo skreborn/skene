@@ -2,17 +2,17 @@
 
 use skene_core::{Length, Shape};
 
-use super::GuiExt;
+use super::GuiStyle;
 use crate::{CornerRadius, TypeMetrics};
 
-impl CornerRadius for GuiExt {
+impl CornerRadius for GuiStyle {
   #[inline(always)]
   fn set_corner_radius<S: Shape>(fields: &mut Self::BoxFields<S>, radius: S::Of<Length>) {
     fields.corner_radius = radius;
   }
 }
 
-impl TypeMetrics for GuiExt {
+impl TypeMetrics for GuiStyle {
   #[inline(always)]
   fn set_font_size<S: Shape>(fields: &mut Self::RunFields<S>, size: S::Of<Length>) {
     fields.font_size = size;

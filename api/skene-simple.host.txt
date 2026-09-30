@@ -254,7 +254,7 @@ impl<P: skene_core::platform::Platform> skene_simple::SimpleContextMenu<P>
 pub fn skene_simple::SimpleContextMenu<P>::new() -> Self
 pub fn skene_simple::SimpleContextMenu<P>::serve(self, skene_core::node::NodeId) -> skene_core::node::NodeId where <P as skene_core::platform::Platform>::Scalar: skene_simple::SimpleUnit, <P as skene_core::platform::Platform>::StyleExt: skene_common::corner_radius::CornerRadius
 pub fn skene_simple::SimpleContextMenu<P>::set_child(self, impl skene_core::view::View<P>) -> skene_simple::SimpleContextMenu<P, skene_core::view::AnyView<P>> where <P as skene_core::platform::Platform>::Scalar: skene_simple::SimpleUnit, <P as skene_core::platform::Platform>::StyleExt: skene_common::corner_radius::CornerRadius
-pub fn skene_simple::SimpleContextMenu<P>::set_items(self, impl core::iter::traits::collect::IntoIterator<Item = skene_common::context_menu::MenuItem>) -> Self
+pub fn skene_simple::SimpleContextMenu<P>::set_items(self, impl core::iter::traits::collect::IntoIterator<Item = skene_common::context_menu::MenuEntry>) -> Self
 impl<P: core::fmt::Debug + skene_core::platform::Platform, C: core::fmt::Debug> core::fmt::Debug for skene_simple::SimpleContextMenu<P, C>
 pub fn skene_simple::SimpleContextMenu<P, C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<P: skene_core::platform::Platform, C> skene_core::view::AnyKind for skene_simple::SimpleContextMenu<P, C>

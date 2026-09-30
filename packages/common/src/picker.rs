@@ -29,7 +29,7 @@ use crate::{
   Label,
   LayoutBox,
   Listbox,
-  ListboxGroup,
+  ListboxContext,
   NativePicker,
   NodeHandle,
   Overlay,
@@ -67,9 +67,9 @@ impl<P: Platform> std::fmt::Debug for Face<P> {
 /// [`bind_value`](Self::bind_value) wires both to one signal. Holds [`NoChild`] until
 /// [`set_face`](Self::set_face) supplies the face; the options come from
 /// [`set_options`](Self::set_options) and [`derive_options`](Self::derive_options),
-/// each a [`RawOption`](crate::RawOption) at any depth.
+/// each a [`BasicListboxOption`](crate::BasicListboxOption) at any depth.
 #[must_use]
-pub struct RawPicker<P: Platform, F = NoChild> {
+pub struct BasicPicker<P: Platform, F = NoChild> {
   face_style: Box<DeclaredBoxStyle<P>>,
   label: Option<Label<P>>,
   disabled: Option<Source<bool>>,
@@ -80,13 +80,15 @@ pub struct RawPicker<P: Platform, F = NoChild> {
   face: F,
 }
 
-impl<P: Platform, F> std::fmt::Debug for RawPicker<P, F> {
+impl<P: Platform, F> std::fmt::Debug for BasicPicker<P, F> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    formatter.debug_struct("RawPicker").finish_non_exhaustive()
+    formatter
+      .debug_struct("BasicPicker")
+      .finish_non_exhaustive()
   }
 }
 
-impl<P: Platform> RawPicker<P> {
+impl<P: Platform> BasicPicker<P> {
   /// A picker with no options and nothing chosen.
   #[inline(always)]
   pub fn new() -> Self {
@@ -109,8 +111,8 @@ impl<P: Platform> RawPicker<P> {
   pub fn set_face<V: View<P>>(
     self,
     face: impl FnOnce(Memo<String>) -> V + 'static,
-  ) -> RawPicker<P, Face<P>> {
-    RawPicker {
+  ) -> BasicPicker<P, Face<P>> {
+    BasicPicker {
       face_style: self.face_style,
       label: self.label,
       disabled: self.disabled,
@@ -123,14 +125,14 @@ impl<P: Platform> RawPicker<P> {
   }
 }
 
-impl<P: Platform> Default for RawPicker<P> {
+impl<P: Platform> Default for BasicPicker<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<P: Platform, F> RawPicker<P, F> {
+impl<P: Platform, F> BasicPicker<P, F> {
   #[inline(always)]
   const fn style_mut(&mut self) -> &mut DeclaredBoxStyle<P> {
     &mut self.face_style
@@ -146,8 +148,8 @@ impl<P: Platform, F> RawPicker<P, F> {
     self
   }
 
-  /// Sets the views drawing the list, each [`RawOption`](crate::RawOption) among them
-  /// an option; anything else draws and nothing more.
+  /// Sets the views drawing the list, each [`BasicListboxOption`](crate::BasicListboxOption) among
+  /// them an option; anything else draws and nothing more.
   #[inline(always)]
   pub fn set_options(mut self, options: impl IntoChildren<P>) -> Self {
     self.list = self.list.set_children(options);
@@ -231,7 +233,7 @@ impl<P: Platform, F> RawPicker<P, F> {
   }
 }
 
-impl<P: Platform, F> AnyKind for RawPicker<P, F> {}
+impl<P: Platform, F> AnyKind for BasicPicker<P, F> {}
 
 /// What the picker's two forms take: the decoration, what each form's control carries,
 /// and the face.
@@ -283,7 +285,7 @@ struct Shared<P: Platform> {
   platform: PhantomData<fn() -> P>,
 }
 
-impl<P: Platform> View<P> for RawPicker<P, Face<P>> {
+impl<P: Platform> View<P> for BasicPicker<P, Face<P>> {
   fn build(self) -> NodeId {
     let Self {
       face_style,
@@ -306,7 +308,7 @@ impl<P: Platform> View<P> for RawPicker<P, Face<P>> {
     // The option views build once, under the group both forms answer through, and
     // attach wherever the form in force lists them.
     provide_context(
-      ListboxGroup::new::<P>(
+      ListboxContext::new::<P>(
         {
           let chosen = Rc::clone(&chosen);
 
@@ -473,7 +475,7 @@ fn build_drawn<P: Platform>(
         face_handle.focus();
       }
     })
-    .handle_typed(choose_typed::<P>(
+    .set_key_fallback(choose_typed::<P>(
       roster.clone(),
       Rc::clone(&chosen),
       on_change,

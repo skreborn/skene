@@ -362,7 +362,7 @@ mod tests {
     TestPlatform::reset();
 
     let owner = Owner::new();
-    let store = Store::opaque(BTreeMap::from([(1, "a"), (2, "b")]));
+    let store = Store::transient(BTreeMap::from([(1, "a"), (2, "b")]));
     let builds = Rc::new(Cell::new(0));
     let parent = owner.enter(|| {
       let builds = Rc::clone(&builds);

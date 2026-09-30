@@ -1,10 +1,10 @@
-//! A toggle's reported state.
+//! A checkable control's reported state.
 
-/// What a toggle reports: on, off, or the mixed state a control with partly-checked
-/// descendants stands for.
+/// What a checkable control reports: on, off, or the mixed state a control with
+/// partly-checked descendants stands for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[must_use]
-pub enum Toggle {
+pub enum CheckState {
   /// Not checked.
   Off,
   /// Checked.
@@ -13,7 +13,7 @@ pub enum Toggle {
   Mixed,
 }
 
-impl From<bool> for Toggle {
+impl From<bool> for CheckState {
   #[inline(always)]
   fn from(checked: bool) -> Self {
     if checked { Self::On } else { Self::Off }

@@ -67,7 +67,7 @@ impl<R: Route> View<ActivePlatform> for Link<R> {
     let route = self.route;
     // Captured while building, where an ancestor's `provide` is in scope; a click
     // arrives outside any scope. No router leaves the anchor plain.
-    let router = Router::<R>::get();
+    let router = Router::<R>::current();
 
     Scene::<ActivePlatform>::with(|scene| {
       scene.handle(

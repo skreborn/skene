@@ -14,9 +14,9 @@ pub mod prelude;
 pub mod split;
 pub mod view_transitions;
 
+mod async_view;
 mod deferred;
 pub mod head;
-mod lazy;
 mod link;
 mod resource;
 mod routing;
@@ -26,8 +26,8 @@ mod task;
 /// the painting path.
 pub use skene_common::gui::{
   Canvas,
-  GuiExt,
   GuiProperty,
+  GuiStyle,
   IntoBrush,
   Painter,
   Painting,
@@ -41,21 +41,21 @@ pub use skene_common::{
   ControlChild,
   CornerRadius,
   ItemExtent,
-  ListItem,
   Listbox,
-  ListboxGroup,
+  ListboxContext,
+  ListboxOption,
   Menu,
-  MenuGroup,
-  MenuItem,
+  MenuContext,
+  MenuEntry,
   MenuOption,
   NativePicker,
   PointerPhase,
   Popup,
-  RadioMember,
-  Range,
+  Radio,
+  RadioGroup,
+  RadioGroupContext,
   Roster,
-  Roving,
-  RovingGroup,
+  Slider,
   TOOLTIP_DELAY,
   TOOLTIP_GRACE,
   TextEntry,
@@ -141,8 +141,8 @@ pub use tracing;
 pub use wasm_bindgen;
 
 pub use crate::{
+  async_view::AsyncView,
   deferred::Deferred,
-  lazy::Lazy,
   link::Link,
   media::{derive_scheme, set_scheme, stored_scheme},
   resource::{LoadState, Resource},

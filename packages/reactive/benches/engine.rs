@@ -103,7 +103,7 @@ struct Row {
 fn bench_row_edit(c: &mut Criterion, rows: usize) {
   let owner = Owner::new();
   let store = owner.enter(|| {
-    let store = Store::opaque(vec![Row::default(); rows]);
+    let store = Store::transient(vec![Row::default(); rows]);
 
     for index in 0..rows {
       Effect::new(move |_| {
@@ -142,7 +142,7 @@ struct KeyedRow {
 fn bench_keyed_row_edit(c: &mut Criterion, rows: u32) {
   let owner = Owner::new();
   let keyed = owner.enter(|| {
-    let store = Store::opaque(
+    let store = Store::transient(
       (0..rows)
         .map(|id| KeyedRow { id, label: 0 })
         .collect::<Vec<_>>(),
@@ -180,7 +180,7 @@ fn bench_row_push(c: &mut Criterion, rows: usize) {
       || {
         let owner = Owner::new();
         let store = owner.enter(|| {
-          let store = Store::opaque(vec![Row::default(); rows]);
+          let store = Store::transient(vec![Row::default(); rows]);
 
           for index in 0..rows {
             Effect::new(move |_| {

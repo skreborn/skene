@@ -16,7 +16,7 @@ use std::{
 
 use rustc_hash::{FxHashMap, FxHasher};
 use skene_common::{
-  gui::{GuiExt, GuiProperty},
+  gui::{GuiProperty, GuiStyle},
   typography,
 };
 use skene_core::{
@@ -70,9 +70,9 @@ use super::{
 use crate::{Declarations, declarations::Ident};
 
 /// A platform over pixels with the pixel extension: the one the compiler serves.
-pub(crate) trait PixelPlatform: Platform<Scalar = f32, StyleExt = GuiExt> {}
+pub(crate) trait PixelPlatform: Platform<Scalar = f32, StyleExt = GuiStyle> {}
 
-impl<P: Platform<Scalar = f32, StyleExt = GuiExt>> PixelPlatform for P {}
+impl<P: Platform<Scalar = f32, StyleExt = GuiStyle>> PixelPlatform for P {}
 
 /// A property's key on the web.
 pub(crate) type Key = PropertyKey<GuiProperty>;
@@ -208,7 +208,7 @@ fn token_reference(name: TokenName) -> String {
 }
 
 /// The CSS text of a box property's erased value.
-pub(crate) fn render_box_value(value: &BoxValue<f32, GuiExt>) -> String {
+pub(crate) fn render_box_value(value: &BoxValue<f32, GuiStyle>) -> String {
   match value {
     BoxValue::Dimension(dimension) => Declarations::render_dimension(*dimension),
     BoxValue::Length(length) => format!("{}px", length.0),
@@ -277,7 +277,7 @@ pub(crate) fn render_box_value(value: &BoxValue<f32, GuiExt>) -> String {
 }
 
 /// The CSS text of a run property's erased value.
-pub(crate) fn render_run_value(value: &RunValue<GuiExt>) -> String {
+pub(crate) fn render_run_value(value: &RunValue<GuiStyle>) -> String {
   match value {
     RunValue::Color(color) => Declarations::render_color(*color),
     RunValue::Length(length) => format!("{}px", length.0),
@@ -302,13 +302,13 @@ pub(crate) fn render_run_value(value: &RunValue<GuiExt>) -> String {
 
 /// The CSS text a derived box leaf writes into its slot: a value rendered, a token or
 /// an expression referenced.
-pub(crate) fn render_box_leaf(leaf: &StaticLeaf<BoxValue<f32, GuiExt>>) -> String {
+pub(crate) fn render_box_leaf(leaf: &StaticLeaf<BoxValue<f32, GuiStyle>>) -> String {
   static_leaf_text(leaf, |value| render_box_value(&value))
 }
 
 /// The CSS text a derived run leaf writes into its slot: a value rendered, a token or
 /// an expression referenced.
-pub(crate) fn render_run_leaf(leaf: &StaticLeaf<RunValue<GuiExt>>) -> String {
+pub(crate) fn render_run_leaf(leaf: &StaticLeaf<RunValue<GuiStyle>>) -> String {
   static_leaf_text(leaf, |value| render_run_value(&value))
 }
 
@@ -476,8 +476,8 @@ impl Rules {
 /// Feeds a static box style's properties to the rules.
 struct BoxRules<'a>(&'a mut Rules);
 
-impl BoxVisitor<f32, Static<Condition<f32>>, GuiExt> for BoxRules<'_> {
-  fn value<T: IntoBoxValue<f32, GuiExt>>(
+impl BoxVisitor<f32, Static<Condition<f32>>, GuiStyle> for BoxRules<'_> {
+  fn value<T: IntoBoxValue<f32, GuiStyle>>(
     &mut self,
     key: Key,
     value: &Option<Conditional<PlatformLeaf<T>, Condition<f32>>>,
@@ -493,8 +493,8 @@ impl BoxVisitor<f32, Static<Condition<f32>>, GuiExt> for BoxRules<'_> {
 /// Feeds a static run style's properties to the rules.
 struct RunRules<'a>(&'a mut Rules);
 
-impl RunVisitor<Static<Condition<f32>>, GuiExt> for RunRules<'_> {
-  fn value<T: IntoRunValue<GuiExt>>(
+impl RunVisitor<Static<Condition<f32>>, GuiStyle> for RunRules<'_> {
+  fn value<T: IntoRunValue<GuiStyle>>(
     &mut self,
     key: Key,
     value: &Option<Conditional<PlatformLeaf<T>, Condition<f32>>>,
@@ -510,8 +510,8 @@ impl RunVisitor<Static<Condition<f32>>, GuiExt> for RunRules<'_> {
 /// Renders a box keyframe as declarations.
 struct KeyframeBox(Declarations);
 
-impl BoxVisitor<f32, Keyframe, GuiExt> for KeyframeBox {
-  fn value<T: IntoBoxValue<f32, GuiExt>>(&mut self, key: Key, value: &Option<StaticLeaf<T>>) {
+impl BoxVisitor<f32, Keyframe, GuiStyle> for KeyframeBox {
+  fn value<T: IntoBoxValue<f32, GuiStyle>>(&mut self, key: Key, value: &Option<StaticLeaf<T>>) {
     if let Some(leaf) = value {
       let Target { name, position, .. } = target(key);
       let text = static_leaf_text(leaf, |fixed: T| render_box_value(&fixed.into_box_value()));
@@ -528,8 +528,8 @@ impl BoxVisitor<f32, Keyframe, GuiExt> for KeyframeBox {
 /// Renders a run keyframe as declarations.
 struct KeyframeRun(Declarations);
 
-impl RunVisitor<Keyframe, GuiExt> for KeyframeRun {
-  fn value<T: IntoRunValue<GuiExt>>(&mut self, key: Key, value: &Option<StaticLeaf<T>>) {
+impl RunVisitor<Keyframe, GuiStyle> for KeyframeRun {
+  fn value<T: IntoRunValue<GuiStyle>>(&mut self, key: Key, value: &Option<StaticLeaf<T>>) {
     if let Some(leaf) = value {
       let text = static_leaf_text(leaf, |fixed: T| render_run_value(&fixed.into_run_value()));
 
@@ -538,7 +538,7 @@ impl RunVisitor<Keyframe, GuiExt> for KeyframeRun {
   }
 }
 
-fn box_keyframe_declarations(style: &BoxStyle<f32, Keyframe, GuiExt>) -> Declarations {
+fn box_keyframe_declarations(style: &BoxStyle<f32, Keyframe, GuiStyle>) -> Declarations {
   let mut keyframe = KeyframeBox(Declarations::new());
 
   style.visit(&mut keyframe);
@@ -546,7 +546,7 @@ fn box_keyframe_declarations(style: &BoxStyle<f32, Keyframe, GuiExt>) -> Declara
   keyframe.0
 }
 
-fn run_keyframe_declarations(style: &RunStyle<Keyframe, GuiExt>) -> Declarations {
+fn run_keyframe_declarations(style: &RunStyle<Keyframe, GuiStyle>) -> Declarations {
   let mut keyframe = KeyframeRun(Declarations::new());
 
   style.visit(&mut keyframe);
@@ -1013,22 +1013,22 @@ pub(crate) fn slot_registration(key: Key, position: usize) -> String {
 pub(crate) fn slot_registrations() -> String {
   struct Keys(Vec<Key>);
 
-  impl BoxVisitor<f32, Plain, GuiExt> for Keys {
-    fn value<T: IntoBoxValue<f32, GuiExt>>(&mut self, key: Key, _: &Option<T>) {
+  impl BoxVisitor<f32, Plain, GuiStyle> for Keys {
+    fn value<T: IntoBoxValue<f32, GuiStyle>>(&mut self, key: Key, _: &Option<T>) {
       self.0.push(key);
     }
   }
 
-  impl RunVisitor<Plain, GuiExt> for Keys {
-    fn value<T: IntoRunValue<GuiExt>>(&mut self, key: Key, _: &Option<T>) {
+  impl RunVisitor<Plain, GuiStyle> for Keys {
+    fn value<T: IntoRunValue<GuiStyle>>(&mut self, key: Key, _: &Option<T>) {
       self.0.push(key);
     }
   }
 
   let mut keys = Keys(Vec::new());
 
-  BoxStyle::<f32, Plain, GuiExt>::default().visit(&mut keys);
-  RunStyle::<Plain, GuiExt>::default().visit(&mut keys);
+  BoxStyle::<f32, Plain, GuiStyle>::default().visit(&mut keys);
+  RunStyle::<Plain, GuiStyle>::default().visit(&mut keys);
   keys.0.dedup();
 
   let mut out = String::new();

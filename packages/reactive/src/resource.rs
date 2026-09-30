@@ -94,9 +94,9 @@ impl<T: 'static> Resource<T> {
     F: Future<Output = T> + 'static,
   {
     Self {
-      value: Signal::opaque(value),
-      loader: Signal::opaque(Rc::new(move || Box::pin(load()))),
-      in_flight: Signal::opaque(None),
+      value: Signal::transient(value),
+      loader: Signal::transient(Rc::new(move || Box::pin(load()))),
+      in_flight: Signal::transient(None),
       owner: Owner::current(),
     }
   }

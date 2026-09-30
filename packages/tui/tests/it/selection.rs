@@ -130,7 +130,7 @@ fn control_chrome_and_opted_out_runs_do_not_select() {
     mount_themed(|| {
       Column::new()
         .set_children((
-          RawButton::new(Activate::new())
+          BasicButton::new(Activate::new())
             .set_label(Label::new(Text::new("Press me").set_selectable(true)))
             .into_any(),
           Text::new("plain").into_any(),

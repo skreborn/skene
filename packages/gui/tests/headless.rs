@@ -9,6 +9,9 @@ use std::{
 };
 
 use skene_gui::{
+  BasicRadio,
+  BasicRadioGroup,
+  BasicTextField,
   Bubbling,
   Column,
   Container,
@@ -18,13 +21,10 @@ use skene_gui::{
   LayoutBox,
   LoadState,
   Overlay,
-  RadioMember,
-  RawRadio,
-  RawRadioGroup,
-  RawTextField,
+  Radio,
+  RadioGroup,
   Resource,
   Role,
-  Roving,
   Row,
   Text,
   TextEntry,
@@ -191,7 +191,7 @@ fn change_trigger_commits_into_the_binding() {
 
   let owner = Owner::new();
   let value = Signal::new(String::new());
-  let field = owner.enter(|| RawTextField::new(TextEntry::new().bind_value(value)).build());
+  let field = owner.enter(|| BasicTextField::new(TextEntry::new().bind_value(value)).build());
 
   trigger_change(field, "typed");
 
@@ -273,13 +273,13 @@ fn roster_orders_members_in_tree_order() {
 
   let owner = Owner::new();
   let chosen: Signal<Option<String>> = Signal::new(None);
-  let items = Signal::opaque(vec!["a", "b"]);
+  let items = Signal::transient(vec!["a", "b"]);
   let group = owner.enter(|| {
-    RawRadioGroup::new(Roving::new().bind_chosen(chosen))
+    BasicRadioGroup::new(RadioGroup::new().bind_chosen(chosen))
       .set_child(Column::new().derive_children(
         move || items.get(),
         |item| *item,
-        |item| RawRadio::new(RadioMember::new(item)).set_label(item),
+        |item| BasicRadio::new(Radio::new(item)).set_label(item),
       ))
       .build()
   });
@@ -501,14 +501,14 @@ fn a_deferred_subtree_builds_its_content_on_the_host() {
 /// A lazy subtree mounts its content once its future completes on the headless queue.
 #[test]
 fn a_lazy_subtree_mounts_when_the_tasks_are_pumped() {
-  use skene_gui::Lazy;
+  use skene_gui::AsyncView;
 
   reset();
 
   let owner = Owner::new();
   let root = owner.enter(|| {
     Container::new()
-      .set_child(Lazy::new(|| async { Text::new("loaded") }))
+      .set_child(AsyncView::new(|| async { Text::new("loaded") }))
       .build()
   });
 

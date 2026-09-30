@@ -3,13 +3,13 @@
 use std::marker::PhantomData;
 
 use skene_common::{
+  BasicRadio,
+  BasicRadioGroup,
   Container,
   CornerRadius,
-  RadioMember,
-  RawRadio,
-  RawRadioGroup,
-  Roving,
-  RovingGroup,
+  Radio,
+  RadioGroup,
+  RadioGroupContext,
   Text,
 };
 use skene_core::{
@@ -46,7 +46,7 @@ use super::{
 #[derive(Debug)]
 #[must_use]
 pub struct SimpleRadioGroup<P: Platform, C = NoChild> {
-  roving: Roving,
+  behavior: RadioGroup,
   label: Option<String>,
   child: C,
   platform: PhantomData<fn() -> P>,
@@ -57,7 +57,7 @@ impl<P: Platform> SimpleRadioGroup<P> {
   #[inline(always)]
   pub fn new() -> Self {
     Self {
-      roving: Roving::new(),
+      behavior: RadioGroup::new(),
       label: None,
       child: NoChild,
       platform: PhantomData,
@@ -76,7 +76,7 @@ impl<P: Platform> SimpleRadioGroup<P> {
   /// Sets the chosen member's value.
   #[inline(always)]
   pub fn set_chosen(mut self, chosen: impl Into<String>) -> Self {
-    self.roving = self.roving.set_chosen(chosen);
+    self.behavior = self.behavior.set_chosen(chosen);
 
     self
   }
@@ -84,7 +84,7 @@ impl<P: Platform> SimpleRadioGroup<P> {
   /// Derives the chosen member's value from the signals `chosen` reads.
   #[inline(always)]
   pub fn derive_chosen(mut self, chosen: impl Fn() -> Option<String> + 'static) -> Self {
-    self.roving = self.roving.derive_chosen(chosen);
+    self.behavior = self.behavior.derive_chosen(chosen);
 
     self
   }
@@ -92,7 +92,7 @@ impl<P: Platform> SimpleRadioGroup<P> {
   /// Runs `action` with the value a choice asks for.
   #[inline(always)]
   pub fn handle_choose(mut self, action: impl Fn(String) + 'static) -> Self {
-    self.roving = self.roving.handle_choose(action);
+    self.behavior = self.behavior.handle_choose(action);
 
     self
   }
@@ -100,7 +100,7 @@ impl<P: Platform> SimpleRadioGroup<P> {
   /// Binds the chosen value to `signal` in both directions.
   #[inline(always)]
   pub fn bind_chosen(mut self, signal: Signal<Option<String>>) -> Self {
-    self.roving = self.roving.bind_chosen(signal);
+    self.behavior = self.behavior.bind_chosen(signal);
 
     self
   }
@@ -117,7 +117,7 @@ impl<P: Platform> SimpleRadioGroup<P> {
   #[inline(always)]
   pub fn set_child(self, child: impl View<P>) -> SimpleRadioGroup<P, AnyView<P>> {
     SimpleRadioGroup {
-      roving: self.roving,
+      behavior: self.behavior,
       label: self.label,
       child: child.into_any(),
       platform: PhantomData,
@@ -129,7 +129,7 @@ impl<P: Platform, C> AnyKind for SimpleRadioGroup<P, C> {}
 
 impl<P: Platform> View<P> for SimpleRadioGroup<P, AnyView<P>> {
   fn build(self) -> NodeId {
-    let mut group = RawRadioGroup::new(self.roving);
+    let mut group = BasicRadioGroup::new(self.behavior);
 
     if let Some(label) = self.label {
       group = group.set_label(label);
@@ -144,12 +144,12 @@ impl<P: Platform> View<P> for SimpleRadioGroup<P, AnyView<P>> {
 ///
 /// The ring is the control's [`Part::Mark`], so it follows the control's state on
 /// every facade. Outside a [`SimpleRadioGroup`] it draws, is never chosen and takes
-/// focus like any control. For a radio drawn some other way, compose [`RawRadio`]
+/// focus like any control. For a radio drawn some other way, compose [`BasicRadio`]
 /// directly.
 #[derive(Debug)]
 #[must_use]
 pub struct SimpleRadio<P: Platform> {
-  member: RadioMember,
+  member: Radio,
   label: Option<String>,
   platform: PhantomData<fn() -> P>,
 }
@@ -159,7 +159,7 @@ impl<P: Platform> SimpleRadio<P> {
   #[inline(always)]
   pub fn new(value: impl Into<String>) -> Self {
     Self {
-      member: RadioMember::new(value),
+      member: Radio::new(value),
       label: None,
       platform: PhantomData,
     }
@@ -188,7 +188,7 @@ where
       SimpleMarks::Drawn => drawn_mark::<P>().into_any(),
       SimpleMarks::Glyph => {
         let glyphs = use_context::<Memo<SimpleGlyphs>>();
-        let group = use_context::<RovingGroup>();
+        let group = use_context::<RadioGroupContext>();
         let value = self.member.value().to_owned();
 
         Text::<P>::derive(move || {
@@ -207,7 +207,7 @@ where
         .into_any()
       }
     };
-    let mut control = RawRadio::new(self.member)
+    let mut control = BasicRadio::new(self.member)
       .set_cursor(click_cursor())
       .set_part(Part::Mark, mark);
 

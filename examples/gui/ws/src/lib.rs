@@ -49,10 +49,10 @@ fn heading() -> impl View {
 
 /// The socket to the echo service, a field sending into it, and what came back.
 fn echo_card() -> impl View {
-  let socket = Signal::opaque(None::<Rc<skene_transport::ws::WebSocket>>);
-  let received = Signal::opaque(Vec::<String>::new());
+  let socket = Signal::transient(None::<Rc<skene_transport::ws::WebSocket>>);
+  let received = Signal::transient(Vec::<String>::new());
   let draft = Signal::new(String::from("hello from skene"));
-  let failure = Signal::opaque(None::<String>);
+  let failure = Signal::transient(None::<String>);
   let send = move || {
     let Some(socket) = socket.get()
     else {

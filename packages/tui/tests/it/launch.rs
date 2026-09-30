@@ -23,7 +23,7 @@ fn mount_document(value: Signal<String>) {
       Column::new()
         .set_children((
           Text::new("alpha beta").set_selectable(true),
-          RawTextField::new(TextEntry::new().bind_value(value)).set_width(20),
+          BasicTextField::new(TextEntry::new().bind_value(value)).set_width(20),
         ))
         .into_any()
     })
@@ -226,7 +226,7 @@ fn mouse_off_ignores_every_mouse_event() {
   with_launch(tui::Launch::new().set_mouse(false), || {
     let clicks = Signal::new(0);
     let _ = tui::mount(move || {
-      RawButton::new(Activate::new())
+      BasicButton::new(Activate::new())
         .handle_click(move || clicks.set(clicks.get() + 1))
         .set_label(Label::new(Text::new("Press")))
         .into_any()
@@ -254,7 +254,7 @@ fn mount_button() -> Signal<u32> {
   let clicks = Signal::new(0);
 
   let _ = tui::mount(move || {
-    RawButton::new(Activate::new())
+    BasicButton::new(Activate::new())
       .set_label(Label::new(Text::new("press")))
       .handle_click(move || clicks.update(|count| *count += 1))
       .into_any()

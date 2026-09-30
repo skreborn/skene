@@ -18,7 +18,7 @@ fn a_click_leaves_the_opening_to_the_delay() {
         .set_children((
           Tooltip::new("Saves your work")
             .set_placement(Placement::Bottom)
-            .set_child(RawButton::new(Activate::new()).set_label("save"))
+            .set_child(BasicButton::new(Activate::new()).set_label("save"))
             .into_any(),
           Text::new("below").into_any(),
         ))
@@ -54,7 +54,7 @@ fn a_tooltip_paints_beside_its_anchor_on_hover_and_focus() {
         .set_children((
           Tooltip::new("Saves your work")
             .set_placement(Placement::Bottom)
-            .set_child(RawButton::new(Activate::new()).set_label("save"))
+            .set_child(BasicButton::new(Activate::new()).set_label("save"))
             .into_any(),
           Text::new("below").into_any(),
         ))
@@ -139,7 +139,7 @@ fn a_tooltip_stays_open_while_the_pointer_rests_on_its_bubble() {
         .set_children((
           Tooltip::new("Saves your work")
             .set_placement(Placement::Bottom)
-            .set_child(RawButton::new(Activate::new()).set_label("save"))
+            .set_child(BasicButton::new(Activate::new()).set_label("save"))
             .into_any(),
           Text::new("below").into_any(),
         ))

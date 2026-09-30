@@ -233,7 +233,7 @@ fn a_summary_outlives_the_rows_it_read() {
   let rows = app.child();
   let row = rows.child();
   let item = row.enter(|| Signal::new(3));
-  let items = app.enter(|| Signal::opaque(vec![(1u32, item)]));
+  let items = app.enter(|| Signal::transient(vec![(1u32, item)]));
   let owners = Rc::new(RefCell::new(vec![(1u32, row)]));
   let total =
     app.enter(|| Memo::new(move |_| items.get().iter().map(|(_, item)| item.get()).sum::<i32>()));

@@ -123,7 +123,7 @@ impl CollectionPolicy for MenuPolicy {
 ///
 /// Members may sit at any depth under the collection and still belong to it.
 #[must_use]
-pub struct CollectionGroup<C: CollectionPolicy> {
+pub struct CollectionContext<C: CollectionPolicy> {
   chosen: Rc<dyn Fn() -> Option<String>>,
   choose: Rc<dyn Fn(String)>,
   roster: Roster,
@@ -133,7 +133,7 @@ pub struct CollectionGroup<C: CollectionPolicy> {
   policy: PhantomData<C>,
 }
 
-impl<C: CollectionPolicy> Clone for CollectionGroup<C> {
+impl<C: CollectionPolicy> Clone for CollectionContext<C> {
   fn clone(&self) -> Self {
     Self {
       chosen: Rc::clone(&self.chosen),
@@ -147,15 +147,15 @@ impl<C: CollectionPolicy> Clone for CollectionGroup<C> {
   }
 }
 
-impl<C: CollectionPolicy> std::fmt::Debug for CollectionGroup<C> {
+impl<C: CollectionPolicy> std::fmt::Debug for CollectionContext<C> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter
-      .debug_struct("CollectionGroup")
+      .debug_struct("CollectionContext")
       .finish_non_exhaustive()
   }
 }
 
-impl<C: CollectionPolicy> CollectionGroup<C> {
+impl<C: CollectionPolicy> CollectionContext<C> {
   /// A group whose members join `roster` under `P`'s scene, answering `chosen` for the
   /// chosen value and asking `choose` for a choice; provided as context by a control
   /// holding members, its tab stop a memo owned by the current owner.
@@ -390,7 +390,7 @@ impl<P: Platform, C: CollectionPolicy> Behavior<P> for Collection<C> {
 
     roster.root_at(control.node());
     provide_context(
-      CollectionGroup::<C>::new::<P>(
+      CollectionContext::<C>::new::<P>(
         move || chosen.read().flatten(),
         move |value| choose.ask(Some(value)),
         roster,
@@ -418,7 +418,7 @@ impl<P: Platform, C: CollectionPolicy> Behavior<P> for Collection<C> {
 #[must_use]
 pub struct Member<C: CollectionPolicy> {
   value: String,
-  group: RefCell<Option<CollectionGroup<C>>>,
+  group: RefCell<Option<CollectionContext<C>>>,
 }
 
 impl<C: CollectionPolicy> std::fmt::Debug for Member<C> {
@@ -449,7 +449,7 @@ impl<C: CollectionPolicy> Member<C> {
 
   /// The collection this member found when it attached.
   #[inline(always)]
-  fn group(&self) -> Option<CollectionGroup<C>> {
+  fn group(&self) -> Option<CollectionContext<C>> {
     self.group.borrow().clone()
   }
 
@@ -478,7 +478,7 @@ impl<P: Platform, C: CollectionPolicy> Behavior<P> for Member<C> {
   }
 
   fn attach(&self, control: &ControlHandle<P>) {
-    let Some(group) = use_context::<CollectionGroup<C>>()
+    let Some(group) = use_context::<CollectionContext<C>>()
     else {
       return;
     };
@@ -564,22 +564,22 @@ impl<P: Platform, C: CollectionPolicy> Behavior<P> for Member<C> {
 }
 
 /// A radio group: a [`Collection`] under the [`RadioPolicy`].
-pub type Roving = Collection<RadioPolicy>;
+pub type RadioGroup = Collection<RadioPolicy>;
 /// One choice within a radio group: a [`Member`] under the [`RadioPolicy`].
-pub type RadioMember = Member<RadioPolicy>;
-/// What a radio group shares with its choices: a [`CollectionGroup`] under the
+pub type Radio = Member<RadioPolicy>;
+/// What a radio group shares with its choices: a [`CollectionContext`] under the
 /// [`RadioPolicy`].
-pub type RovingGroup = CollectionGroup<RadioPolicy>;
+pub type RadioGroupContext = CollectionContext<RadioPolicy>;
 /// A listbox: a [`Collection`] under the [`ListboxPolicy`].
 pub type Listbox = Collection<ListboxPolicy>;
 /// One option within a listbox: a [`Member`] under the [`ListboxPolicy`].
-pub type ListItem = Member<ListboxPolicy>;
-/// What a listbox shares with its options: a [`CollectionGroup`] under the
+pub type ListboxOption = Member<ListboxPolicy>;
+/// What a listbox shares with its options: a [`CollectionContext`] under the
 /// [`ListboxPolicy`].
-pub type ListboxGroup = CollectionGroup<ListboxPolicy>;
+pub type ListboxContext = CollectionContext<ListboxPolicy>;
 /// A menu: a [`Collection`] under the [`MenuPolicy`].
 pub type Menu = Collection<MenuPolicy>;
 /// One item within a menu: a [`Member`] under the [`MenuPolicy`].
 pub type MenuOption = Member<MenuPolicy>;
-/// What a menu shares with its items: a [`CollectionGroup`] under the [`MenuPolicy`].
-pub type MenuGroup = CollectionGroup<MenuPolicy>;
+/// What a menu shares with its items: a [`CollectionContext`] under the [`MenuPolicy`].
+pub type MenuContext = CollectionContext<MenuPolicy>;

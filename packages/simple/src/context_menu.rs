@@ -1,6 +1,6 @@
 //! A ready-made context menu in the Simple design language.
 
-use skene_common::{ContextMenu, CornerRadius, MenuItem};
+use skene_common::{ContextMenu, CornerRadius, MenuEntry};
 use skene_core::{
   AnyKind,
   AnyView,
@@ -46,7 +46,7 @@ impl<P: Platform> SimpleContextMenu<P> {
 
   /// Sets the items, in order.
   #[inline(always)]
-  pub fn set_items(mut self, items: impl IntoIterator<Item = MenuItem>) -> Self {
+  pub fn set_items(mut self, items: impl IntoIterator<Item = MenuEntry>) -> Self {
     self.raw = self.raw.set_items(items);
 
     self

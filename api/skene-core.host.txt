@@ -851,7 +851,7 @@ pub fn skene_core::run_fields::TextColor::get_mut<S: skene_core::Shape>(&mut ske
 pub macro skene_core::access_queries!
 pub macro skene_core::extension_fields!
 pub enum skene_core::AccessProp
-pub skene_core::AccessProp::Checked(skene_core::Toggle)
+pub skene_core::AccessProp::Checked(skene_core::CheckState)
 pub skene_core::AccessProp::Controls(alloc::vec::Vec<skene_core::NodeId>)
 pub skene_core::AccessProp::DescribedBy(alloc::vec::Vec<skene_core::NodeId>)
 pub skene_core::AccessProp::Description(alloc::string::String)
@@ -859,9 +859,9 @@ pub skene_core::AccessProp::Disabled(bool)
 pub skene_core::AccessProp::Expanded(bool)
 pub skene_core::AccessProp::HasPopup(skene_core::PopupKind)
 pub skene_core::AccessProp::Invalid(bool)
-pub skene_core::AccessProp::Label(alloc::string::String)
 pub skene_core::AccessProp::LabelledBy(alloc::vec::Vec<skene_core::NodeId>)
 pub skene_core::AccessProp::Level(usize)
+pub skene_core::AccessProp::Name(alloc::string::String)
 pub skene_core::AccessProp::Orientation(skene_core::Axis)
 pub skene_core::AccessProp::ReadOnly(bool)
 pub skene_core::AccessProp::Required(bool)
@@ -985,6 +985,23 @@ impl core::fmt::Debug for skene_core::Bubbling
 pub fn skene_core::Bubbling::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::Copy for skene_core::Bubbling
 impl core::marker::StructuralPartialEq for skene_core::Bubbling
+pub enum skene_core::CheckState
+pub skene_core::CheckState::Mixed
+pub skene_core::CheckState::Off
+pub skene_core::CheckState::On
+impl core::clone::Clone for skene_core::CheckState
+pub fn skene_core::CheckState::clone(&self) -> skene_core::CheckState
+impl core::cmp::Eq for skene_core::CheckState
+impl core::cmp::PartialEq for skene_core::CheckState
+pub fn skene_core::CheckState::eq(&self, &skene_core::CheckState) -> bool
+impl core::convert::From<bool> for skene_core::CheckState
+pub fn skene_core::CheckState::from(bool) -> Self
+impl core::fmt::Debug for skene_core::CheckState
+pub fn skene_core::CheckState::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_core::CheckState
+pub fn skene_core::CheckState::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_core::CheckState
+impl core::marker::StructuralPartialEq for skene_core::CheckState
 pub enum skene_core::ClipboardAction
 pub skene_core::ClipboardAction::Copy
 pub skene_core::ClipboardAction::Cut
@@ -1036,7 +1053,7 @@ impl<N: core::fmt::Debug> core::fmt::Debug for skene_core::Condition<N>
 pub fn skene_core::Condition<N>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<N: skene_core::Scalar> core::hash::Hash for skene_core::Condition<N>
 pub fn skene_core::Condition<N>::hash<H: core::hash::Hasher>(&self, &mut H)
-impl<N: skene_core::Scalar> skene_core::Composable for skene_core::Condition<N>
+impl<N: skene_core::Scalar> skene_core::ConditionTree for skene_core::Condition<N>
 pub fn skene_core::Condition<N>::disjunctive_leaves(&self) -> alloc::vec::Vec<alloc::vec::Vec<&Self>>
 pub fn skene_core::Condition<N>::holds(&self, &impl core::ops::function::Fn(&Self) -> bool) -> bool
 pub fn skene_core::Condition<N>::shape(&self) -> skene_core::ConditionShape<'_, Self>
@@ -1544,7 +1561,7 @@ impl<N: core::fmt::Debug> core::fmt::Debug for skene_core::Media<N>
 pub fn skene_core::Media<N>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<N: skene_core::Scalar> core::hash::Hash for skene_core::Media<N>
 pub fn skene_core::Media<N>::hash<H: core::hash::Hasher>(&self, &mut H)
-impl<N: skene_core::Scalar> skene_core::Composable for skene_core::Media<N>
+impl<N: skene_core::Scalar> skene_core::ConditionTree for skene_core::Media<N>
 pub fn skene_core::Media<N>::disjunctive_leaves(&self) -> alloc::vec::Vec<alloc::vec::Vec<&Self>>
 pub fn skene_core::Media<N>::holds(&self, &impl core::ops::function::Fn(&Self) -> bool) -> bool
 pub fn skene_core::Media<N>::shape(&self) -> skene_core::ConditionShape<'_, Self>
@@ -1577,7 +1594,7 @@ pub skene_core::NativeElement::Button
 pub skene_core::NativeElement::Checkbox
 pub skene_core::NativeElement::Picker
 pub skene_core::NativeElement::Radio
-pub skene_core::NativeElement::Range
+pub skene_core::NativeElement::Slider
 pub skene_core::NativeElement::TextEditor
 pub skene_core::NativeElement::TextField
 impl skene_core::NativeElement
@@ -2100,23 +2117,6 @@ pub fn skene_core::TextDecorationStyle::fingerprint<H: core::hash::Hasher>(&self
 impl<X: skene_core::StyleExtension> skene_core::IntoRunValue<X> for skene_core::TextDecorationStyle
 pub fn skene_core::TextDecorationStyle::from_run_value(skene_core::RunValue<X>) -> core::option::Option<Self>
 pub fn skene_core::TextDecorationStyle::into_run_value(self) -> skene_core::RunValue<X>
-pub enum skene_core::Toggle
-pub skene_core::Toggle::Mixed
-pub skene_core::Toggle::Off
-pub skene_core::Toggle::On
-impl core::clone::Clone for skene_core::Toggle
-pub fn skene_core::Toggle::clone(&self) -> skene_core::Toggle
-impl core::cmp::Eq for skene_core::Toggle
-impl core::cmp::PartialEq for skene_core::Toggle
-pub fn skene_core::Toggle::eq(&self, &skene_core::Toggle) -> bool
-impl core::convert::From<bool> for skene_core::Toggle
-pub fn skene_core::Toggle::from(bool) -> Self
-impl core::fmt::Debug for skene_core::Toggle
-pub fn skene_core::Toggle::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::hash::Hash for skene_core::Toggle
-pub fn skene_core::Toggle::hash<__H: core::hash::Hasher>(&self, &mut __H)
-impl core::marker::Copy for skene_core::Toggle
-impl core::marker::StructuralPartialEq for skene_core::Toggle
 pub enum skene_core::TokenValue<N: skene_core::Scalar>
 pub skene_core::TokenValue::Color(skene_core::Definition<skene_core::Color, N>)
 pub skene_core::TokenValue::Dimension(skene_core::Definition<skene_core::Dimension<N>, N>)
@@ -2623,7 +2623,7 @@ pub fn skene_core::ControlProps<P>::clone(&self) -> Self
 impl<P: skene_core::Platform> core::fmt::Debug for skene_core::ControlProps<P>
 pub fn skene_core::ControlProps<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_core::ControlState
-pub skene_core::ControlState::checked: skene_core::Toggle
+pub skene_core::ControlState::checked: skene_core::CheckState
 pub skene_core::ControlState::disabled: bool
 pub skene_core::ControlState::invalid: bool
 pub skene_core::ControlState::open: bool
@@ -4416,15 +4416,15 @@ pub trait skene_core::BoxFieldVisitor<N: skene_core::Scalar, X: skene_core::Styl
 pub fn skene_core::BoxFieldVisitor::field<F: skene_core::BoxField<N, X>>(&mut self)
 pub trait skene_core::BoxVisitor<N: skene_core::Scalar, S: skene_core::Shape, X: skene_core::StyleExtension>
 pub fn skene_core::BoxVisitor::value<T: skene_core::IntoBoxValue<N, X>>(&mut self, skene_core::PropertyKey<<X as skene_core::StyleExtension>::Property>, &<S as skene_core::Shape>::Of)
-pub trait skene_core::Composable: core::clone::Clone + core::marker::Sized
-pub fn skene_core::Composable::disjunctive_leaves(&self) -> alloc::vec::Vec<alloc::vec::Vec<&Self>>
-pub fn skene_core::Composable::holds(&self, &impl core::ops::function::Fn(&Self) -> bool) -> bool
-pub fn skene_core::Composable::shape(&self) -> skene_core::ConditionShape<'_, Self>
-impl<N: skene_core::Scalar> skene_core::Composable for skene_core::Condition<N>
+pub trait skene_core::ConditionTree: core::clone::Clone + core::marker::Sized
+pub fn skene_core::ConditionTree::disjunctive_leaves(&self) -> alloc::vec::Vec<alloc::vec::Vec<&Self>>
+pub fn skene_core::ConditionTree::holds(&self, &impl core::ops::function::Fn(&Self) -> bool) -> bool
+pub fn skene_core::ConditionTree::shape(&self) -> skene_core::ConditionShape<'_, Self>
+impl<N: skene_core::Scalar> skene_core::ConditionTree for skene_core::Condition<N>
 pub fn skene_core::Condition<N>::disjunctive_leaves(&self) -> alloc::vec::Vec<alloc::vec::Vec<&Self>>
 pub fn skene_core::Condition<N>::holds(&self, &impl core::ops::function::Fn(&Self) -> bool) -> bool
 pub fn skene_core::Condition<N>::shape(&self) -> skene_core::ConditionShape<'_, Self>
-impl<N: skene_core::Scalar> skene_core::Composable for skene_core::Media<N>
+impl<N: skene_core::Scalar> skene_core::ConditionTree for skene_core::Media<N>
 pub fn skene_core::Media<N>::disjunctive_leaves(&self) -> alloc::vec::Vec<alloc::vec::Vec<&Self>>
 pub fn skene_core::Media<N>::holds(&self, &impl core::ops::function::Fn(&Self) -> bool) -> bool
 pub fn skene_core::Media<N>::shape(&self) -> skene_core::ConditionShape<'_, Self>

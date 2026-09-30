@@ -15,7 +15,7 @@ use skene_common::routing::{Route, Router, StaticRoutes};
 ///
 /// Pair the returned router with a [`derived`](crate::derived) subtree or a
 /// [`Switch`](crate::Switch) keyed on [`route`](Router::route); read it anywhere
-/// beneath with [`Router::get`].
+/// beneath with [`Router::current`].
 #[cfg(skene_leaf = "browser")]
 pub fn install_router<R: Route>(fallback: R) -> Router<R> {
   let router = Router::new(fallback);

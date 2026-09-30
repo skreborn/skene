@@ -2,7 +2,7 @@
 
 use std::{marker::PhantomData, rc::Rc};
 
-use skene_common::{Container, CornerRadius, NodeHandle, Pinned, Range, RawSlider, Stack};
+use skene_common::{BasicSlider, Container, CornerRadius, NodeHandle, Pinned, Slider, Stack};
 use skene_core::{
   Alignment,
   AnyKind,
@@ -34,7 +34,7 @@ use super::{
 /// The track, the fill and the thumb are the control's [`Part::Track`], [`Part::Fill`]
 /// and [`Part::Thumb`]; the fill runs to the thumb's leading edge and the thumb travels
 /// the track less its own size, so both stay inside the track at either end. The value
-/// flows both ways. For a slider drawn some other way, compose [`RawSlider`] directly.
+/// flows both ways. For a slider drawn some other way, compose [`BasicSlider`] directly.
 #[must_use]
 pub struct SimpleSlider<P: Platform> {
   label: Option<String>,
@@ -217,7 +217,7 @@ where
             .set_child(thumb),
         ),
       );
-    let mut behavior = Range::new()
+    let mut behavior = Slider::new()
       .set_min(min)
       .set_max(max)
       .set_step(step)
@@ -228,7 +228,7 @@ where
       behavior = behavior.handle_change(move |value| action(value));
     }
 
-    let mut slider = RawSlider::new(behavior);
+    let mut slider = BasicSlider::new(behavior);
 
     if let Some(label) = label {
       slider = slider.set_accessible_name(label);

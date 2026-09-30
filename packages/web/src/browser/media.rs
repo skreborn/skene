@@ -147,7 +147,7 @@ fn query(state: &mut MediaState, text: &str) -> ReadSignal<bool> {
   let list: Option<MediaQueryList> = web_sys::window()
     .and_then(|window| window.match_media(text).ok())
     .flatten();
-  let (read, write) = Signal::opaque(list.as_ref().is_some_and(MediaQueryList::matches)).split();
+  let (read, write) = Signal::transient(list.as_ref().is_some_and(MediaQueryList::matches)).split();
   let listener = match list {
     Some(list) => {
       let source = list.clone();
@@ -210,7 +210,7 @@ fn create() -> MediaState {
     hover: set_hover,
     safe_area: set_safe_area,
   } = writers;
-  let choice = Signal::opaque(None);
+  let choice = Signal::transient(None);
   let resize = Listener::new(
     web_sys::window().expect("a window").into(),
     "resize",
@@ -222,7 +222,7 @@ fn create() -> MediaState {
   );
   let mut state = MediaState {
     signals,
-    live: Signal::opaque(LIVE.with(Cell::get)).split(),
+    live: Signal::transient(LIVE.with(Cell::get)).split(),
     choice,
     queries: FxHashMap::default(),
     _resize: resize,

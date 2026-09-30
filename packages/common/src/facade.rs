@@ -114,30 +114,30 @@ macro_rules! facade {
     pub type ControlHandle = ::skene_common::ControlHandle<$platform>;
     /// A control's label; see [`skene_common::Label`].
     pub type Label = ::skene_common::Label<$platform>;
-    /// A button; see [`skene_common::RawButton`].
-    pub type RawButton<C = ::skene_core::NoChild> = ::skene_common::RawButton<$platform, C>;
-    /// A checkbox; see [`skene_common::RawCheckbox`].
-    pub type RawCheckbox<C = ::skene_core::NoChild> = ::skene_common::RawCheckbox<$platform, C>;
-    /// A slider; see [`skene_common::RawSlider`].
-    pub type RawSlider<C = ::skene_core::NoChild> = ::skene_common::RawSlider<$platform, C>;
-    /// A radio group; see [`skene_common::RawRadioGroup`].
-    pub type RawRadioGroup<C = ::skene_core::NoChild> =
-      ::skene_common::RawRadioGroup<$platform, C>;
-    /// A radio inside a group; see [`skene_common::RawRadio`].
-    pub type RawRadio<C = ::skene_core::NoChild> = ::skene_common::RawRadio<$platform, C>;
-    /// A single-line text entry; see [`skene_common::RawTextField`].
-    pub type RawTextField<C = ::skene_core::NoChild> =
-      ::skene_common::RawTextField<$platform, C>;
-    /// A multi-line text entry; see [`skene_common::RawTextEditor`].
-    pub type RawTextEditor<C = ::skene_core::NoChild> =
-      ::skene_common::RawTextEditor<$platform, C>;
-    /// A listbox; see [`skene_common::RawListbox`].
-    pub type RawListbox<C = ::skene_core::NoChild> = ::skene_common::RawListbox<$platform, C>;
-    /// An option inside a listbox or a picker; see [`skene_common::RawOption`].
-    pub type RawOption<C = ::skene_core::NoChild> = ::skene_common::RawOption<$platform, C>;
+    /// A button; see [`skene_common::BasicButton`].
+    pub type BasicButton<C = ::skene_core::NoChild> = ::skene_common::BasicButton<$platform, C>;
+    /// A checkbox; see [`skene_common::BasicCheckbox`].
+    pub type BasicCheckbox<C = ::skene_core::NoChild> = ::skene_common::BasicCheckbox<$platform, C>;
+    /// A slider; see [`skene_common::BasicSlider`].
+    pub type BasicSlider<C = ::skene_core::NoChild> = ::skene_common::BasicSlider<$platform, C>;
+    /// A radio group; see [`skene_common::BasicRadioGroup`].
+    pub type BasicRadioGroup<C = ::skene_core::NoChild> =
+      ::skene_common::BasicRadioGroup<$platform, C>;
+    /// A radio inside a group; see [`skene_common::BasicRadio`].
+    pub type BasicRadio<C = ::skene_core::NoChild> = ::skene_common::BasicRadio<$platform, C>;
+    /// A single-line text entry; see [`skene_common::BasicTextField`].
+    pub type BasicTextField<C = ::skene_core::NoChild> =
+      ::skene_common::BasicTextField<$platform, C>;
+    /// A multi-line text entry; see [`skene_common::BasicTextEditor`].
+    pub type BasicTextEditor<C = ::skene_core::NoChild> =
+      ::skene_common::BasicTextEditor<$platform, C>;
+    /// A listbox; see [`skene_common::BasicListbox`].
+    pub type BasicListbox<C = ::skene_core::NoChild> = ::skene_common::BasicListbox<$platform, C>;
+    /// An option inside a listbox or a picker; see [`skene_common::BasicListboxOption`].
+    pub type BasicListboxOption<C = ::skene_core::NoChild> = ::skene_common::BasicListboxOption<$platform, C>;
     /// A picker: a popup face, an overlay and a listbox; see
-    /// [`skene_common::RawPicker`].
-    pub type RawPicker<F = ::skene_core::NoChild> = ::skene_common::RawPicker<$platform, F>;
+    /// [`skene_common::BasicPicker`].
+    pub type BasicPicker<F = ::skene_core::NoChild> = ::skene_common::BasicPicker<$platform, F>;
     /// A picker's face; see [`skene_common::Face`].
     pub type Face = ::skene_common::Face<$platform>;
     /// Content above the app; see [`skene_common::Overlay`].
@@ -149,10 +149,10 @@ macro_rules! facade {
     pub type ContextMenu<C = ::skene_core::NoChild> = ::skene_common::ContextMenu<$platform, C>;
     /// Keyboard shortcuts over the view it serves; see [`skene_common::Keymap`].
     pub type Keymap<C = ::skene_core::NoChild> = ::skene_common::Keymap<$platform, C>;
-    /// A menu; see [`skene_common::RawMenu`].
-    pub type RawMenu<C = ::skene_core::NoChild> = ::skene_common::RawMenu<$platform, C>;
-    /// One item within a menu; see [`skene_common::RawMenuItem`].
-    pub type RawMenuItem<C = ::skene_core::NoChild> = ::skene_common::RawMenuItem<$platform, C>;
+    /// A menu; see [`skene_common::BasicMenu`].
+    pub type BasicMenu<C = ::skene_core::NoChild> = ::skene_common::BasicMenu<$platform, C>;
+    /// One item within a menu; see [`skene_common::BasicMenuItem`].
+    pub type BasicMenuItem<C = ::skene_core::NoChild> = ::skene_common::BasicMenuItem<$platform, C>;
     /// A handle naming the node a view built; see [`skene_common::NodeHandle`].
     pub type NodeHandle = ::skene_common::NodeHandle<$platform>;
     /// A box drawn by a paint callback; see [`skene_common::Painted`].

@@ -9,8 +9,8 @@ use skene_tui::{
   Activate,
   ContainerName,
   ContainerQuery,
-  RadioMember,
-  Roving,
+  Radio,
+  RadioGroup,
   Scene,
   TextEntry,
   prelude::*,
@@ -62,7 +62,7 @@ fn a_row_lays_its_children_out_in_cells() {
 #[test]
 fn a_theme_resolves_the_card_color_and_reinks_on_a_palette_flip() {
   with_platform(|| {
-    let palette = Signal::opaque(SimplePalette::default().set_card(red()));
+    let palette = Signal::transient(SimplePalette::default().set_card(red()));
     let builds = Rc::new(Cell::new(0));
     let inner = Rc::new(Cell::new(None::<Signal<u32>>));
     let counted = Rc::clone(&builds);
@@ -201,21 +201,21 @@ fn tab_reaches_the_controls_in_document_order() {
     let _ = tui::mount(move || {
       Column::new()
         .set_children((
-          RawButton::new(Activate::new())
+          BasicButton::new(Activate::new())
             .bind_handle(first)
             .set_label("first")
             .into_any(),
-          RawRadioGroup::new(Roving::new())
+          BasicRadioGroup::new(RadioGroup::new())
             .set_child(
               Row::new().set_spacing(1).set_children((
-                RawRadio::new(RadioMember::new("mint"))
+                BasicRadio::new(Radio::new("mint"))
                   .bind_handle(mint)
                   .set_label("mint"),
-                RawRadio::new(RadioMember::new("plum")).set_label("plum"),
+                BasicRadio::new(Radio::new("plum")).set_label("plum"),
               )),
             )
             .into_any(),
-          RawButton::new(Activate::new())
+          BasicButton::new(Activate::new())
             .bind_handle(last)
             .set_label("last")
             .into_any(),
@@ -317,7 +317,7 @@ fn a_keystroke_restyles_only_the_changed_entry() {
       Column::new()
         .set_children((
           Text::new("label"),
-          RawTextField::new(TextEntry::new().bind_value(name)),
+          BasicTextField::new(TextEntry::new().bind_value(name)),
           Text::new("after"),
         ))
         .into_any()
@@ -365,7 +365,7 @@ fn a_text_field_types_through_trigger_key_and_writes_the_bound_signal() {
     let name = Signal::new(String::new());
 
     let _ = tui::mount(|| {
-      RawTextField::new(TextEntry::new().bind_value(name))
+      BasicTextField::new(TextEntry::new().bind_value(name))
         .into_any()
         .build()
     });
@@ -434,7 +434,7 @@ fn a_key_release_and_a_bare_modifier_reach_their_handlers() {
       Container::new()
         .handle_key_down(move |event| pressed.set(event.key.to_string()))
         .handle_key_up(move |event| released.set(event.key.to_string()))
-        .set_child(RawButton::new(Activate::new()).set_label("press"))
+        .set_child(BasicButton::new(Activate::new()).set_label("press"))
         .into_any()
         .build()
     });
@@ -477,7 +477,7 @@ fn a_hidden_box_keeps_its_place_and_paints_nothing() {
               }
             })
             .set_child(
-              RawButton::new(Activate::new())
+              BasicButton::new(Activate::new())
                 .set_label("hidden")
                 .handle_click(move || counted.set(counted.get() + 1)),
             ),

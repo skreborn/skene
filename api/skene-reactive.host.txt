@@ -48,15 +48,15 @@ impl<Parent: core::marker::Copy, T> core::marker::Copy for skene_reactive::AtInd
 impl<Parent: skene_reactive::StoreField<Value = alloc::vec::Vec<T>>, T: 'static> skene_reactive::StoreField for skene_reactive::AtIndex<Parent, T>
 pub type skene_reactive::AtIndex<Parent, T>::Value = T
 pub fn skene_reactive::AtIndex<Parent, T>::core(&self) -> skene_reactive::StoreCore
-pub fn skene_reactive::AtIndex<Parent, T>::derive<R: core::cmp::PartialEq + 'static>(&self, impl core::ops::function::Fn(&Self::Value) -> R + 'static) -> skene_reactive::Memo<R>
 pub fn skene_reactive::AtIndex<Parent, T>::get(&self) -> Self::Value where Self::Value: core::clone::Clone
 pub fn skene_reactive::AtIndex<Parent, T>::location(&self) -> skene_reactive::StoreLocation
+pub fn skene_reactive::AtIndex<Parent, T>::memo<R: core::cmp::PartialEq + 'static>(&self, impl core::ops::function::Fn(&Self::Value) -> R + 'static) -> skene_reactive::Memo<R>
 pub fn skene_reactive::AtIndex<Parent, T>::read_untracked<R>(&self, impl core::ops::function::FnOnce(&T) -> R) -> core::option::Option<R>
 pub fn skene_reactive::AtIndex<Parent, T>::set(&self, Self::Value)
 pub fn skene_reactive::AtIndex<Parent, T>::track(&self)
 pub fn skene_reactive::AtIndex<Parent, T>::track_shallow(&self)
-pub fn skene_reactive::AtIndex<Parent, T>::try_derive<R: core::cmp::PartialEq + 'static>(&self, impl core::ops::function::Fn(&Self::Value) -> R + 'static) -> skene_reactive::Memo<core::option::Option<R>>
 pub fn skene_reactive::AtIndex<Parent, T>::try_get(&self) -> core::option::Option<Self::Value> where Self::Value: core::clone::Clone
+pub fn skene_reactive::AtIndex<Parent, T>::try_memo<R: core::cmp::PartialEq + 'static>(&self, impl core::ops::function::Fn(&Self::Value) -> R + 'static) -> skene_reactive::Memo<core::option::Option<R>>
 pub fn skene_reactive::AtIndex<Parent, T>::try_update<R>(&self, impl core::ops::function::FnOnce(&mut Self::Value) -> R) -> core::option::Option<R>
 pub fn skene_reactive::AtIndex<Parent, T>::try_with<R>(&self, impl core::ops::function::FnOnce(&Self::Value) -> R) -> core::option::Option<R>
 pub fn skene_reactive::AtIndex<Parent, T>::update(&self, impl core::ops::function::FnOnce(&mut Self::Value))
@@ -73,15 +73,15 @@ pub fn skene_reactive::AtKey<Parent>::clone(&self) -> Self
 impl<Parent: skene_reactive::KeyedField> skene_reactive::StoreField for skene_reactive::AtKey<Parent>
 pub type skene_reactive::AtKey<Parent>::Value = <Parent as skene_reactive::KeyedField>::Entry
 pub fn skene_reactive::AtKey<Parent>::core(&self) -> skene_reactive::StoreCore
-pub fn skene_reactive::AtKey<Parent>::derive<R: core::cmp::PartialEq + 'static>(&self, impl core::ops::function::Fn(&Self::Value) -> R + 'static) -> skene_reactive::Memo<R>
 pub fn skene_reactive::AtKey<Parent>::get(&self) -> Self::Value where Self::Value: core::clone::Clone
 pub fn skene_reactive::AtKey<Parent>::location(&self) -> skene_reactive::StoreLocation
+pub fn skene_reactive::AtKey<Parent>::memo<R: core::cmp::PartialEq + 'static>(&self, impl core::ops::function::Fn(&Self::Value) -> R + 'static) -> skene_reactive::Memo<R>
 pub fn skene_reactive::AtKey<Parent>::read_untracked<R>(&self, impl core::ops::function::FnOnce(&Self::Value) -> R) -> core::option::Option<R>
 pub fn skene_reactive::AtKey<Parent>::set(&self, Self::Value)
 pub fn skene_reactive::AtKey<Parent>::track(&self)
 pub fn skene_reactive::AtKey<Parent>::track_shallow(&self)
-pub fn skene_reactive::AtKey<Parent>::try_derive<R: core::cmp::PartialEq + 'static>(&self, impl core::ops::function::Fn(&Self::Value) -> R + 'static) -> skene_reactive::Memo<core::option::Option<R>>
 pub fn skene_reactive::AtKey<Parent>::try_get(&self) -> core::option::Option<Self::Value> where Self::Value: core::clone::Clone
+pub fn skene_reactive::AtKey<Parent>::try_memo<R: core::cmp::PartialEq + 'static>(&self, impl core::ops::function::Fn(&Self::Value) -> R + 'static) -> skene_reactive::Memo<core::option::Option<R>>
 pub fn skene_reactive::AtKey<Parent>::try_update<R>(&self, impl core::ops::function::FnOnce(&mut Self::Value) -> R) -> core::option::Option<R>
 pub fn skene_reactive::AtKey<Parent>::try_with<R>(&self, impl core::ops::function::FnOnce(&Self::Value) -> R) -> core::option::Option<R>
 pub fn skene_reactive::AtKey<Parent>::update(&self, impl core::ops::function::FnOnce(&mut Self::Value))
@@ -146,15 +146,15 @@ pub fn skene_reactive::KeyedBy<Parent, K, T>::keys(&self, &alloc::vec::Vec<T>) -
 impl<Parent, K, T> skene_reactive::StoreField for skene_reactive::KeyedBy<Parent, K, T> where Parent: skene_reactive::StoreField<Value = alloc::vec::Vec<T>>, K: 'static, T: 'static
 pub type skene_reactive::KeyedBy<Parent, K, T>::Value = alloc::vec::Vec<T>
 pub fn skene_reactive::KeyedBy<Parent, K, T>::core(&self) -> skene_reactive::StoreCore
-pub fn skene_reactive::KeyedBy<Parent, K, T>::derive<R: core::cmp::PartialEq + 'static>(&self, impl core::ops::function::Fn(&Self::Value) -> R + 'static) -> skene_reactive::Memo<R>
 pub fn skene_reactive::KeyedBy<Parent, K, T>::get(&self) -> Self::Value where Self::Value: core::clone::Clone
 pub fn skene_reactive::KeyedBy<Parent, K, T>::location(&self) -> skene_reactive::StoreLocation
+pub fn skene_reactive::KeyedBy<Parent, K, T>::memo<R: core::cmp::PartialEq + 'static>(&self, impl core::ops::function::Fn(&Self::Value) -> R + 'static) -> skene_reactive::Memo<R>
 pub fn skene_reactive::KeyedBy<Parent, K, T>::read_untracked<R>(&self, impl core::ops::function::FnOnce(&alloc::vec::Vec<T>) -> R) -> core::option::Option<R>
 pub fn skene_reactive::KeyedBy<Parent, K, T>::set(&self, Self::Value)
 pub fn skene_reactive::KeyedBy<Parent, K, T>::track(&self)
 pub fn skene_reactive::KeyedBy<Parent, K, T>::track_shallow(&self)
-pub fn skene_reactive::KeyedBy<Parent, K, T>::try_derive<R: core::cmp::PartialEq + 'static>(&self, impl core::ops::function::Fn(&Self::Value) -> R + 'static) -> skene_reactive::Memo<core::option::Option<R>>
 pub fn skene_reactive::KeyedBy<Parent, K, T>::try_get(&self) -> core::option::Option<Self::Value> where Self::Value: core::clone::Clone
+pub fn skene_reactive::KeyedBy<Parent, K, T>::try_memo<R: core::cmp::PartialEq + 'static>(&self, impl core::ops::function::Fn(&Self::Value) -> R + 'static) -> skene_reactive::Memo<core::option::Option<R>>
 pub fn skene_reactive::KeyedBy<Parent, K, T>::try_update<R>(&self, impl core::ops::function::FnOnce(&mut Self::Value) -> R) -> core::option::Option<R>
 pub fn skene_reactive::KeyedBy<Parent, K, T>::try_with<R>(&self, impl core::ops::function::FnOnce(&Self::Value) -> R) -> core::option::Option<R>
 pub fn skene_reactive::KeyedBy<Parent, K, T>::update(&self, impl core::ops::function::FnOnce(&mut Self::Value))
@@ -376,7 +376,7 @@ pub fn skene_reactive::Seq<'a>::next(&mut self) -> core::option::Option<skene_re
 impl<'a> core::marker::Copy for skene_reactive::Seq<'a>
 pub struct skene_reactive::Signal<T>
 impl<T: 'static> skene_reactive::Signal<T>
-pub fn skene_reactive::Signal<T>::opaque(T) -> Self
+pub fn skene_reactive::Signal<T>::transient(T) -> Self
 impl<T: skene_reactive::Snapshot> skene_reactive::Signal<T>
 pub fn skene_reactive::Signal<T>::new(T) -> Self
 impl<T: skene_reactive::Snapshot> skene_reactive::Signal<T>
@@ -432,7 +432,7 @@ pub fn skene_reactive::Signal<T>::try_write(&self) -> core::option::Option<skene
 pub fn skene_reactive::Signal<T>::write(&self) -> skene_reactive::WriteGuard<'_, T> where T: 'static
 pub struct skene_reactive::Store<T: 'static>
 impl<T: 'static> skene_reactive::Store<T>
-pub fn skene_reactive::Store<T>::opaque(T) -> Self
+pub fn skene_reactive::Store<T>::transient(T) -> Self
 impl<T: skene_reactive::Snapshot> skene_reactive::Store<T>
 pub fn skene_reactive::Store<T>::new(T) -> Self
 pub fn skene_reactive::Store<T>::tagged(&'static str, T) -> Self
@@ -444,15 +444,15 @@ impl<T: 'static> core::marker::Copy for skene_reactive::Store<T>
 impl<T: 'static> skene_reactive::StoreField for skene_reactive::Store<T>
 pub type skene_reactive::Store<T>::Value = T
 pub fn skene_reactive::Store<T>::core(&self) -> skene_reactive::StoreCore
-pub fn skene_reactive::Store<T>::derive<R: core::cmp::PartialEq + 'static>(&self, impl core::ops::function::Fn(&Self::Value) -> R + 'static) -> skene_reactive::Memo<R>
 pub fn skene_reactive::Store<T>::get(&self) -> Self::Value where Self::Value: core::clone::Clone
 pub fn skene_reactive::Store<T>::location(&self) -> skene_reactive::StoreLocation
+pub fn skene_reactive::Store<T>::memo<R: core::cmp::PartialEq + 'static>(&self, impl core::ops::function::Fn(&Self::Value) -> R + 'static) -> skene_reactive::Memo<R>
 pub fn skene_reactive::Store<T>::read_untracked<R>(&self, impl core::ops::function::FnOnce(&T) -> R) -> core::option::Option<R>
 pub fn skene_reactive::Store<T>::set(&self, Self::Value)
 pub fn skene_reactive::Store<T>::track(&self)
 pub fn skene_reactive::Store<T>::track_shallow(&self)
-pub fn skene_reactive::Store<T>::try_derive<R: core::cmp::PartialEq + 'static>(&self, impl core::ops::function::Fn(&Self::Value) -> R + 'static) -> skene_reactive::Memo<core::option::Option<R>>
 pub fn skene_reactive::Store<T>::try_get(&self) -> core::option::Option<Self::Value> where Self::Value: core::clone::Clone
+pub fn skene_reactive::Store<T>::try_memo<R: core::cmp::PartialEq + 'static>(&self, impl core::ops::function::Fn(&Self::Value) -> R + 'static) -> skene_reactive::Memo<core::option::Option<R>>
 pub fn skene_reactive::Store<T>::try_update<R>(&self, impl core::ops::function::FnOnce(&mut Self::Value) -> R) -> core::option::Option<R>
 pub fn skene_reactive::Store<T>::try_with<R>(&self, impl core::ops::function::FnOnce(&Self::Value) -> R) -> core::option::Option<R>
 pub fn skene_reactive::Store<T>::update(&self, impl core::ops::function::FnOnce(&mut Self::Value))
@@ -491,15 +491,15 @@ impl<Parent: skene_reactive::StoreField + core::marker::Copy, T> core::marker::C
 impl<Parent: skene_reactive::StoreField, T: 'static> skene_reactive::StoreField for skene_reactive::Subfield<Parent, T>
 pub type skene_reactive::Subfield<Parent, T>::Value = T
 pub fn skene_reactive::Subfield<Parent, T>::core(&self) -> skene_reactive::StoreCore
-pub fn skene_reactive::Subfield<Parent, T>::derive<R: core::cmp::PartialEq + 'static>(&self, impl core::ops::function::Fn(&Self::Value) -> R + 'static) -> skene_reactive::Memo<R>
 pub fn skene_reactive::Subfield<Parent, T>::get(&self) -> Self::Value where Self::Value: core::clone::Clone
 pub fn skene_reactive::Subfield<Parent, T>::location(&self) -> skene_reactive::StoreLocation
+pub fn skene_reactive::Subfield<Parent, T>::memo<R: core::cmp::PartialEq + 'static>(&self, impl core::ops::function::Fn(&Self::Value) -> R + 'static) -> skene_reactive::Memo<R>
 pub fn skene_reactive::Subfield<Parent, T>::read_untracked<R>(&self, impl core::ops::function::FnOnce(&T) -> R) -> core::option::Option<R>
 pub fn skene_reactive::Subfield<Parent, T>::set(&self, Self::Value)
 pub fn skene_reactive::Subfield<Parent, T>::track(&self)
 pub fn skene_reactive::Subfield<Parent, T>::track_shallow(&self)
-pub fn skene_reactive::Subfield<Parent, T>::try_derive<R: core::cmp::PartialEq + 'static>(&self, impl core::ops::function::Fn(&Self::Value) -> R + 'static) -> skene_reactive::Memo<core::option::Option<R>>
 pub fn skene_reactive::Subfield<Parent, T>::try_get(&self) -> core::option::Option<Self::Value> where Self::Value: core::clone::Clone
+pub fn skene_reactive::Subfield<Parent, T>::try_memo<R: core::cmp::PartialEq + 'static>(&self, impl core::ops::function::Fn(&Self::Value) -> R + 'static) -> skene_reactive::Memo<core::option::Option<R>>
 pub fn skene_reactive::Subfield<Parent, T>::try_update<R>(&self, impl core::ops::function::FnOnce(&mut Self::Value) -> R) -> core::option::Option<R>
 pub fn skene_reactive::Subfield<Parent, T>::try_with<R>(&self, impl core::ops::function::FnOnce(&Self::Value) -> R) -> core::option::Option<R>
 pub fn skene_reactive::Subfield<Parent, T>::update(&self, impl core::ops::function::FnOnce(&mut Self::Value))
@@ -906,15 +906,15 @@ pub fn core::option::Option<T>::restore_slice(skene_reactive::Value<'_>) -> core
 pub trait skene_reactive::StoreField: core::clone::Clone + 'static
 pub type skene_reactive::StoreField::Value: 'static
 pub fn skene_reactive::StoreField::core(&self) -> skene_reactive::StoreCore
-pub fn skene_reactive::StoreField::derive<R: core::cmp::PartialEq + 'static>(&self, impl core::ops::function::Fn(&Self::Value) -> R + 'static) -> skene_reactive::Memo<R>
 pub fn skene_reactive::StoreField::get(&self) -> Self::Value where Self::Value: core::clone::Clone
 pub fn skene_reactive::StoreField::location(&self) -> skene_reactive::StoreLocation
+pub fn skene_reactive::StoreField::memo<R: core::cmp::PartialEq + 'static>(&self, impl core::ops::function::Fn(&Self::Value) -> R + 'static) -> skene_reactive::Memo<R>
 pub fn skene_reactive::StoreField::read_untracked<R>(&self, impl core::ops::function::FnOnce(&Self::Value) -> R) -> core::option::Option<R>
 pub fn skene_reactive::StoreField::set(&self, Self::Value)
 pub fn skene_reactive::StoreField::track(&self)
 pub fn skene_reactive::StoreField::track_shallow(&self)
-pub fn skene_reactive::StoreField::try_derive<R: core::cmp::PartialEq + 'static>(&self, impl core::ops::function::Fn(&Self::Value) -> R + 'static) -> skene_reactive::Memo<core::option::Option<R>>
 pub fn skene_reactive::StoreField::try_get(&self) -> core::option::Option<Self::Value> where Self::Value: core::clone::Clone
+pub fn skene_reactive::StoreField::try_memo<R: core::cmp::PartialEq + 'static>(&self, impl core::ops::function::Fn(&Self::Value) -> R + 'static) -> skene_reactive::Memo<core::option::Option<R>>
 pub fn skene_reactive::StoreField::try_update<R>(&self, impl core::ops::function::FnOnce(&mut Self::Value) -> R) -> core::option::Option<R>
 pub fn skene_reactive::StoreField::try_with<R>(&self, impl core::ops::function::FnOnce(&Self::Value) -> R) -> core::option::Option<R>
 pub fn skene_reactive::StoreField::update(&self, impl core::ops::function::FnOnce(&mut Self::Value))
@@ -923,15 +923,15 @@ pub fn skene_reactive::StoreField::write_untracked<R>(&self, impl core::ops::fun
 impl<Parent, K, T> skene_reactive::StoreField for skene_reactive::KeyedBy<Parent, K, T> where Parent: skene_reactive::StoreField<Value = alloc::vec::Vec<T>>, K: 'static, T: 'static
 pub type skene_reactive::KeyedBy<Parent, K, T>::Value = alloc::vec::Vec<T>
 pub fn skene_reactive::KeyedBy<Parent, K, T>::core(&self) -> skene_reactive::StoreCore
-pub fn skene_reactive::KeyedBy<Parent, K, T>::derive<R: core::cmp::PartialEq + 'static>(&self, impl core::ops::function::Fn(&Self::Value) -> R + 'static) -> skene_reactive::Memo<R>
 pub fn skene_reactive::KeyedBy<Parent, K, T>::get(&self) -> Self::Value where Self::Value: core::clone::Clone
 pub fn skene_reactive::KeyedBy<Parent, K, T>::location(&self) -> skene_reactive::StoreLocation
+pub fn skene_reactive::KeyedBy<Parent, K, T>::memo<R: core::cmp::PartialEq + 'static>(&self, impl core::ops::function::Fn(&Self::Value) -> R + 'static) -> skene_reactive::Memo<R>
 pub fn skene_reactive::KeyedBy<Parent, K, T>::read_untracked<R>(&self, impl core::ops::function::FnOnce(&alloc::vec::Vec<T>) -> R) -> core::option::Option<R>
 pub fn skene_reactive::KeyedBy<Parent, K, T>::set(&self, Self::Value)
 pub fn skene_reactive::KeyedBy<Parent, K, T>::track(&self)
 pub fn skene_reactive::KeyedBy<Parent, K, T>::track_shallow(&self)
-pub fn skene_reactive::KeyedBy<Parent, K, T>::try_derive<R: core::cmp::PartialEq + 'static>(&self, impl core::ops::function::Fn(&Self::Value) -> R + 'static) -> skene_reactive::Memo<core::option::Option<R>>
 pub fn skene_reactive::KeyedBy<Parent, K, T>::try_get(&self) -> core::option::Option<Self::Value> where Self::Value: core::clone::Clone
+pub fn skene_reactive::KeyedBy<Parent, K, T>::try_memo<R: core::cmp::PartialEq + 'static>(&self, impl core::ops::function::Fn(&Self::Value) -> R + 'static) -> skene_reactive::Memo<core::option::Option<R>>
 pub fn skene_reactive::KeyedBy<Parent, K, T>::try_update<R>(&self, impl core::ops::function::FnOnce(&mut Self::Value) -> R) -> core::option::Option<R>
 pub fn skene_reactive::KeyedBy<Parent, K, T>::try_with<R>(&self, impl core::ops::function::FnOnce(&Self::Value) -> R) -> core::option::Option<R>
 pub fn skene_reactive::KeyedBy<Parent, K, T>::update(&self, impl core::ops::function::FnOnce(&mut Self::Value))
@@ -940,15 +940,15 @@ pub fn skene_reactive::KeyedBy<Parent, K, T>::write_untracked<R>(&self, impl cor
 impl<Parent: skene_reactive::KeyedField> skene_reactive::StoreField for skene_reactive::AtKey<Parent>
 pub type skene_reactive::AtKey<Parent>::Value = <Parent as skene_reactive::KeyedField>::Entry
 pub fn skene_reactive::AtKey<Parent>::core(&self) -> skene_reactive::StoreCore
-pub fn skene_reactive::AtKey<Parent>::derive<R: core::cmp::PartialEq + 'static>(&self, impl core::ops::function::Fn(&Self::Value) -> R + 'static) -> skene_reactive::Memo<R>
 pub fn skene_reactive::AtKey<Parent>::get(&self) -> Self::Value where Self::Value: core::clone::Clone
 pub fn skene_reactive::AtKey<Parent>::location(&self) -> skene_reactive::StoreLocation
+pub fn skene_reactive::AtKey<Parent>::memo<R: core::cmp::PartialEq + 'static>(&self, impl core::ops::function::Fn(&Self::Value) -> R + 'static) -> skene_reactive::Memo<R>
 pub fn skene_reactive::AtKey<Parent>::read_untracked<R>(&self, impl core::ops::function::FnOnce(&Self::Value) -> R) -> core::option::Option<R>
 pub fn skene_reactive::AtKey<Parent>::set(&self, Self::Value)
 pub fn skene_reactive::AtKey<Parent>::track(&self)
 pub fn skene_reactive::AtKey<Parent>::track_shallow(&self)
-pub fn skene_reactive::AtKey<Parent>::try_derive<R: core::cmp::PartialEq + 'static>(&self, impl core::ops::function::Fn(&Self::Value) -> R + 'static) -> skene_reactive::Memo<core::option::Option<R>>
 pub fn skene_reactive::AtKey<Parent>::try_get(&self) -> core::option::Option<Self::Value> where Self::Value: core::clone::Clone
+pub fn skene_reactive::AtKey<Parent>::try_memo<R: core::cmp::PartialEq + 'static>(&self, impl core::ops::function::Fn(&Self::Value) -> R + 'static) -> skene_reactive::Memo<core::option::Option<R>>
 pub fn skene_reactive::AtKey<Parent>::try_update<R>(&self, impl core::ops::function::FnOnce(&mut Self::Value) -> R) -> core::option::Option<R>
 pub fn skene_reactive::AtKey<Parent>::try_with<R>(&self, impl core::ops::function::FnOnce(&Self::Value) -> R) -> core::option::Option<R>
 pub fn skene_reactive::AtKey<Parent>::update(&self, impl core::ops::function::FnOnce(&mut Self::Value))
@@ -957,15 +957,15 @@ pub fn skene_reactive::AtKey<Parent>::write_untracked<R>(&self, impl core::ops::
 impl<Parent: skene_reactive::StoreField, T: 'static> skene_reactive::StoreField for skene_reactive::Subfield<Parent, T>
 pub type skene_reactive::Subfield<Parent, T>::Value = T
 pub fn skene_reactive::Subfield<Parent, T>::core(&self) -> skene_reactive::StoreCore
-pub fn skene_reactive::Subfield<Parent, T>::derive<R: core::cmp::PartialEq + 'static>(&self, impl core::ops::function::Fn(&Self::Value) -> R + 'static) -> skene_reactive::Memo<R>
 pub fn skene_reactive::Subfield<Parent, T>::get(&self) -> Self::Value where Self::Value: core::clone::Clone
 pub fn skene_reactive::Subfield<Parent, T>::location(&self) -> skene_reactive::StoreLocation
+pub fn skene_reactive::Subfield<Parent, T>::memo<R: core::cmp::PartialEq + 'static>(&self, impl core::ops::function::Fn(&Self::Value) -> R + 'static) -> skene_reactive::Memo<R>
 pub fn skene_reactive::Subfield<Parent, T>::read_untracked<R>(&self, impl core::ops::function::FnOnce(&T) -> R) -> core::option::Option<R>
 pub fn skene_reactive::Subfield<Parent, T>::set(&self, Self::Value)
 pub fn skene_reactive::Subfield<Parent, T>::track(&self)
 pub fn skene_reactive::Subfield<Parent, T>::track_shallow(&self)
-pub fn skene_reactive::Subfield<Parent, T>::try_derive<R: core::cmp::PartialEq + 'static>(&self, impl core::ops::function::Fn(&Self::Value) -> R + 'static) -> skene_reactive::Memo<core::option::Option<R>>
 pub fn skene_reactive::Subfield<Parent, T>::try_get(&self) -> core::option::Option<Self::Value> where Self::Value: core::clone::Clone
+pub fn skene_reactive::Subfield<Parent, T>::try_memo<R: core::cmp::PartialEq + 'static>(&self, impl core::ops::function::Fn(&Self::Value) -> R + 'static) -> skene_reactive::Memo<core::option::Option<R>>
 pub fn skene_reactive::Subfield<Parent, T>::try_update<R>(&self, impl core::ops::function::FnOnce(&mut Self::Value) -> R) -> core::option::Option<R>
 pub fn skene_reactive::Subfield<Parent, T>::try_with<R>(&self, impl core::ops::function::FnOnce(&Self::Value) -> R) -> core::option::Option<R>
 pub fn skene_reactive::Subfield<Parent, T>::update(&self, impl core::ops::function::FnOnce(&mut Self::Value))
@@ -974,15 +974,15 @@ pub fn skene_reactive::Subfield<Parent, T>::write_untracked<R>(&self, impl core:
 impl<Parent: skene_reactive::StoreField<Value = alloc::vec::Vec<T>>, T: 'static> skene_reactive::StoreField for skene_reactive::AtIndex<Parent, T>
 pub type skene_reactive::AtIndex<Parent, T>::Value = T
 pub fn skene_reactive::AtIndex<Parent, T>::core(&self) -> skene_reactive::StoreCore
-pub fn skene_reactive::AtIndex<Parent, T>::derive<R: core::cmp::PartialEq + 'static>(&self, impl core::ops::function::Fn(&Self::Value) -> R + 'static) -> skene_reactive::Memo<R>
 pub fn skene_reactive::AtIndex<Parent, T>::get(&self) -> Self::Value where Self::Value: core::clone::Clone
 pub fn skene_reactive::AtIndex<Parent, T>::location(&self) -> skene_reactive::StoreLocation
+pub fn skene_reactive::AtIndex<Parent, T>::memo<R: core::cmp::PartialEq + 'static>(&self, impl core::ops::function::Fn(&Self::Value) -> R + 'static) -> skene_reactive::Memo<R>
 pub fn skene_reactive::AtIndex<Parent, T>::read_untracked<R>(&self, impl core::ops::function::FnOnce(&T) -> R) -> core::option::Option<R>
 pub fn skene_reactive::AtIndex<Parent, T>::set(&self, Self::Value)
 pub fn skene_reactive::AtIndex<Parent, T>::track(&self)
 pub fn skene_reactive::AtIndex<Parent, T>::track_shallow(&self)
-pub fn skene_reactive::AtIndex<Parent, T>::try_derive<R: core::cmp::PartialEq + 'static>(&self, impl core::ops::function::Fn(&Self::Value) -> R + 'static) -> skene_reactive::Memo<core::option::Option<R>>
 pub fn skene_reactive::AtIndex<Parent, T>::try_get(&self) -> core::option::Option<Self::Value> where Self::Value: core::clone::Clone
+pub fn skene_reactive::AtIndex<Parent, T>::try_memo<R: core::cmp::PartialEq + 'static>(&self, impl core::ops::function::Fn(&Self::Value) -> R + 'static) -> skene_reactive::Memo<core::option::Option<R>>
 pub fn skene_reactive::AtIndex<Parent, T>::try_update<R>(&self, impl core::ops::function::FnOnce(&mut Self::Value) -> R) -> core::option::Option<R>
 pub fn skene_reactive::AtIndex<Parent, T>::try_with<R>(&self, impl core::ops::function::FnOnce(&Self::Value) -> R) -> core::option::Option<R>
 pub fn skene_reactive::AtIndex<Parent, T>::update(&self, impl core::ops::function::FnOnce(&mut Self::Value))
@@ -991,15 +991,15 @@ pub fn skene_reactive::AtIndex<Parent, T>::write_untracked<R>(&self, impl core::
 impl<T: 'static> skene_reactive::StoreField for skene_reactive::Store<T>
 pub type skene_reactive::Store<T>::Value = T
 pub fn skene_reactive::Store<T>::core(&self) -> skene_reactive::StoreCore
-pub fn skene_reactive::Store<T>::derive<R: core::cmp::PartialEq + 'static>(&self, impl core::ops::function::Fn(&Self::Value) -> R + 'static) -> skene_reactive::Memo<R>
 pub fn skene_reactive::Store<T>::get(&self) -> Self::Value where Self::Value: core::clone::Clone
 pub fn skene_reactive::Store<T>::location(&self) -> skene_reactive::StoreLocation
+pub fn skene_reactive::Store<T>::memo<R: core::cmp::PartialEq + 'static>(&self, impl core::ops::function::Fn(&Self::Value) -> R + 'static) -> skene_reactive::Memo<R>
 pub fn skene_reactive::Store<T>::read_untracked<R>(&self, impl core::ops::function::FnOnce(&T) -> R) -> core::option::Option<R>
 pub fn skene_reactive::Store<T>::set(&self, Self::Value)
 pub fn skene_reactive::Store<T>::track(&self)
 pub fn skene_reactive::Store<T>::track_shallow(&self)
-pub fn skene_reactive::Store<T>::try_derive<R: core::cmp::PartialEq + 'static>(&self, impl core::ops::function::Fn(&Self::Value) -> R + 'static) -> skene_reactive::Memo<core::option::Option<R>>
 pub fn skene_reactive::Store<T>::try_get(&self) -> core::option::Option<Self::Value> where Self::Value: core::clone::Clone
+pub fn skene_reactive::Store<T>::try_memo<R: core::cmp::PartialEq + 'static>(&self, impl core::ops::function::Fn(&Self::Value) -> R + 'static) -> skene_reactive::Memo<core::option::Option<R>>
 pub fn skene_reactive::Store<T>::try_update<R>(&self, impl core::ops::function::FnOnce(&mut Self::Value) -> R) -> core::option::Option<R>
 pub fn skene_reactive::Store<T>::try_with<R>(&self, impl core::ops::function::FnOnce(&Self::Value) -> R) -> core::option::Option<R>
 pub fn skene_reactive::Store<T>::update(&self, impl core::ops::function::FnOnce(&mut Self::Value))

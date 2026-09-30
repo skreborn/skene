@@ -267,10 +267,10 @@ impl<P: Platform> LazyList<P> {
       overscan,
       items,
     } = self;
-    let offset = Signal::opaque(0.);
-    let viewport = Signal::opaque(0.);
+    let offset = Signal::transient(0.);
+    let viewport = Signal::transient(0.);
     let measures = Rc::new(Measures {
-      version: Signal::opaque(0),
+      version: Signal::transient(0),
       axis,
     });
     let (count, edges, install) = match items {

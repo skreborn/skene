@@ -5,7 +5,7 @@
 
 use std::{cell::RefCell, rc::Rc};
 
-use skene_common::{ContextMenu, MenuItem, MenuItemContent};
+use skene_common::{ContextMenu, MenuEntry, MenuItemContent};
 use skene_core::{
   AnyView,
   Availability,
@@ -107,15 +107,15 @@ fn a_context_menu_opens_at_the_press_and_runs_the_chosen_item() {
   let start = owner.enter(|| {
     Menu::new()
       .set_items([
-        MenuItem::new("Rename")
+        MenuEntry::new("Rename")
           .set_shortcut(Shortcut::new(Modifiers::NONE, "F2"))
           .handle_select({
             let log = Rc::clone(&log);
 
             move || log.borrow_mut().push("rename")
           }),
-        MenuItem::separator(),
-        MenuItem::new("Delete").handle_select({
+        MenuEntry::separator(),
+        MenuEntry::new("Delete").handle_select({
           let log = Rc::clone(&log);
 
           move || log.borrow_mut().push("delete")
@@ -173,7 +173,7 @@ fn the_keys_walk_the_enabled_items() {
   let owner = Owner::new();
   let start = owner.enter(|| {
     let item = |label: &'static str| {
-      MenuItem::new(label).handle_select(move || chosen.set(label.to_owned()))
+      MenuEntry::new(label).handle_select(move || chosen.set(label.to_owned()))
     };
 
     Menu::new()
@@ -224,7 +224,7 @@ fn a_standard_item_follows_the_platforms_clipboard() {
   let owner = Owner::new();
   let start = owner.enter(|| {
     Menu::new()
-      .set_items([MenuItem::copy(), MenuItem::paste()])
+      .set_items([MenuEntry::copy(), MenuEntry::paste()])
       .set_child(Container::new())
       .build()
   });
@@ -271,7 +271,7 @@ fn the_deepest_menu_along_the_path_wins() {
   let owner = Owner::new();
   let (root, plain, inner_start, outer_list) = owner.enter(|| {
     let inner = Menu::new()
-      .set_items([MenuItem::new("inner")])
+      .set_items([MenuEntry::new("inner")])
       .set_child(Container::new().set_child(Text::new("leaf")));
     let root = skene_common::Column::<Headless>::new()
       .set_children((Text::new("plain"), inner))
@@ -282,7 +282,7 @@ fn the_deepest_menu_along_the_path_wins() {
 
       (children[1], children[2])
     });
-    let outer_list = Menu::new().set_items([MenuItem::new("outer")]).serve(root);
+    let outer_list = Menu::new().set_items([MenuEntry::new("outer")]).serve(root);
 
     (root, plain, inner_start, outer_list)
   });
@@ -317,7 +317,7 @@ fn a_context_menu_around_a_reactive_view_hears_its_content() {
   let owner = Owner::new();
   let start = owner.enter(|| {
     Menu::new()
-      .set_items([MenuItem::new("Rename")])
+      .set_items([MenuEntry::new("Rename")])
       .set_child(AnyView::<Headless>::new(|| {
         derived::<Headless>(|| Container::new().set_child(Text::new("note")).build())
       }))
@@ -353,9 +353,9 @@ fn a_context_menu_places_its_list_and_sizes_its_separators() {
       .set_placement(Placement::BottomEnd)
       .set_separator_thickness(Dimension::Length(3.))
       .set_items([
-        MenuItem::new("A"),
-        MenuItem::separator(),
-        MenuItem::new("B"),
+        MenuEntry::new("A"),
+        MenuEntry::separator(),
+        MenuEntry::new("B"),
       ])
       .set_child(Container::new())
       .build()
@@ -391,7 +391,7 @@ fn an_item_view_draws_each_item() {
             .map_or_else(|| "none".to_owned(), |shortcut| shortcut.to_string())
         ))
       })
-      .set_items([MenuItem::new("Rename").set_shortcut(Shortcut::new(Modifiers::NONE, "F2"))])
+      .set_items([MenuEntry::new("Rename").set_shortcut(Shortcut::new(Modifiers::NONE, "F2"))])
       .set_child(Container::new())
       .build()
   });

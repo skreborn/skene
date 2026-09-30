@@ -199,7 +199,7 @@ fn stack_derived_alignment_drives_both_axes() {
   reset();
 
   let owner = Owner::new();
-  let alignment = Signal::opaque(Alignment::CENTER);
+  let alignment = Signal::transient(Alignment::CENTER);
   let stack = owner.enter(|| {
     Stack::new()
       .derive_alignment(move || alignment.get())

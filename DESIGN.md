@@ -31,10 +31,10 @@ skene-core       the spine: Scene<P> (parents, children, annotations, token defi
       │
 skene-common      every built-in view ONCE, generic over P: Platform—Container, Row/Column/
       │          Grid/Stack/LayoutBox, Flexible/Pinned/GridCell, Text/Span/RichText,
-      │          Control<B: Behavior> and the shipped behaviors, RawPicker, Overlay,
+      │          Control<B: Behavior> and the shipped behaviors, BasicPicker, Overlay,
       │          LazyColumn/LazyRow, Show/Switch/Suspense/ErrorBoundary, Theme, typography,
-      │          LowLevel; gui (GuiExt, the pixel Typography set, Painting/Canvas/
-      │          Painted through vello), tui (TuiExt, BorderGlyphs, the terminal
+      │          LowLevel; gui (GuiStyle, the pixel Typography set, Painting/Canvas/
+      │          Painted through vello), tui (TuiStyle, BorderGlyphs, the terminal
       │          Typography set), routing (a typed route in a signal)
       │
       ├── skene-web       Platform for the web: DOM sink (browser) + HTML/CSS
@@ -51,7 +51,7 @@ skene-common      every built-in view ONCE, generic over P: Platform—Container
 
 skene-gui        the GUI facade: f32, ActivePlatform (the web on wasm32, the headless
                  platform elsewhere), aliases for every view, Typography, media::*,
-                 Resource across the server boundary, Deferred, Lazy, Link, head,
+                 Resource across the server boundary, Deferred, AsyncView, Link, head,
                  view_transitions, launch and the server entries, #[main]
 skene-tui        the terminal facade, EQUAL in standing: u32 cells, Tui, the same
                  aliases, Typography, BorderGlyphs, media::*, launch, testing
@@ -257,7 +257,7 @@ model, and it is kept because fine-grained signals make a diffing view tree unne
 and its cost unjustified.
 
 - **Anchors, not groups.** A reactive subtree—`derived`, `Suspense`, `ErrorBoundary`,
-  `Deferred`, `Lazy`, `empty`—mounts between two anchors (a comment pair on the web, a
+  `Deferred`, `AsyncView`, `empty`—mounts between two anchors (a comment pair on the web, a
   non-layout record in the terminal) rather than inside a box of its own. Its nodes are
   therefore its parent's children for layout, and a wrapper around it annotates the
   content, every rebuild's and each form of a two-form view's: a boundary's fallback,
@@ -334,20 +334,20 @@ interaction *is*—its role, the native element it stands in where a platform ha
 control with none is drawn by its view and named by its role), its keys, its pointer
 handling, what it reports to assistive technology, where it sits in the tab order, and
 which parts it exposes. `Toggle`,
-`Range`, `Popup`, `Activate`, `TextEntry` and `Collection` (with `Member`) ship; a
+`Slider`, `Popup`, `Activate`, `TextEntry` and `Collection` (with `Member`) ship; a
 collection's `CollectionPolicy` says what it and its members are, which keys move
-between the members and what a move and a choice do, and `Roving` (with
-`RadioMember`), `Listbox` (with `ListItem`) and `Menu` (with `MenuOption`) are
+between the members and what a move and a choice do, and `RadioGroup` (with
+`Radio`), `Listbox` (with `ListboxOption`) and `Menu` (with `MenuOption`) are
 collections under the radio, listbox and menu policies, whose members are one tab stop
-and whose moves pass over the disabled members in one place; `RawButton`,
-`RawCheckbox`, `RawSlider`, `RawRadioGroup`,
-`RawRadio`, `RawListbox`, `RawOption`, `RawTextField` and `RawTextEditor` are aliases over
-them, and `RawPicker` composes a `Popup` face with a `Listbox` in an `Overlay`. Both
+and whose moves pass over the disabled members in one place; `BasicButton`,
+`BasicCheckbox`, `BasicSlider`, `BasicRadioGroup`,
+`BasicRadio`, `BasicListbox`, `BasicListboxOption`, `BasicTextField` and `BasicTextEditor` are aliases over
+them, and `BasicPicker` composes a `Popup` face with a `Listbox` in an `Overlay`. Both
 have type-ahead: `TypeAhead` holds the characters typed in quick succession, reset by
 a `Platform::schedule` timer, and `Roster::typed` matches them against the members'
 names (`Label::set_name`, the value standing in), one character cycling through the
 names starting with it and more matching a prefix; the listbox moves focus to the
-match, and the closed face chooses it outright through `Popup::handle_typed`, the
+match, and the closed face chooses it outright through `Popup::set_key_fallback`, the
 behavior's hook for the keys it does not act on itself. A box or a control a press's
 pointer drags declares the axes it drags along (`Container::set_drag_axes`,
 `Behavior::drag_axes`, a slider's its own axis): a primary press keeps the pointer with
@@ -379,12 +379,12 @@ the browser's own menu stays wherever no wrapper is, and an app that wants its o
 everywhere wraps its root. The terminal facade serves the standard menu from the root
 at install, because the terminal has no menu of its own; a deeper wrapper wins over it
 as it wins over the browser's, so replacing the default is the same act on both
-facades. The items are `MenuItem`s: `MenuItem::new(label)` with `handle_select`,
+facades. The items are `MenuEntry`s: `MenuEntry::new(label)` with `handle_select`,
 `set_disabled`/`derive_disabled` and `set_shortcut` (a `Shortcut` the item shows
 beside its label, as its `Display` reads, and binds on the view the menu serves, so
 the key runs a usable item from anywhere focus is inside that view, in place of the
-platform's response), `MenuItem::separator()`, and the standard entries
-`MenuItem::copy()`, `cut()` and `paste()`; a `Keymap` binds shortcuts the same way over
+platform's response), `MenuEntry::separator()`, and the standard entries
+`MenuEntry::copy()`, `cut()` and `paste()`; a `Keymap` binds shortcuts the same way over
 any view, no menu needed. A standard item asks the platform for its `Availability` each time the
 menu is requested: `Absent` hides it, `Disabled` lists it disabled, `Enabled` lists it
 live—outside a text entry only `Copy` exists, and only with a selection; inside one all
@@ -519,8 +519,8 @@ only serialize its current value; style data compiles to real CSS and evaluates 
 **One property model, spelled once.** `BoxStyle<N: Scalar, S: Shape, X: StyleExtension>`
 and `RunStyle<S, X>` name every shared property once; the leaf shape is a type parameter
 (`Declared` for a builder, `Static` for a platform, `Plain` for a keyframe or a resolved
-style) and the medium's own properties come through the extension (`GuiExt`: the corner
-radius and the type metrics; `TuiExt`: border glyphs, the corner radius, a shadow, bold,
+style) and the medium's own properties come through the extension (`GuiStyle`: the corner
+radius and the type metrics; `TuiStyle`: border glyphs, the corner radius, a shadow, bold,
 size and weight). A corner radius, a font size and a letter spacing are lengths
 (`Length`) in the medium's unit, fractions kept, so one length token serves them as it
 serves padding and sizes. The
@@ -569,7 +569,7 @@ Condition     = Media | State | And | Or
   definition admits no closure, which is what keeps a palette plain data that
   serializes, hashes and renders without script.
 - Conditions ride the value: `value.when(condition, other)`. The composition machinery
-  (`Composable`: `holds`, DNF expansion) is one generic in the spine; the web emits one
+  (`ConditionTree`: `holds`, DNF expansion) is one generic in the spine; the web emits one
   rule per conjunction and groups a node's properties by canonical condition, the
   terminal and native evaluate against live state. Container queries are
   `Media::Container` leaves against a box that named itself; the web stamps
@@ -754,7 +754,7 @@ The public API speaks the ecosystem's standard reactive vocabulary:
   siblings, or the `Key` of a keyed owner: a keyed step takes no position, so keying
   a sibling shifts none of the positional ones, and a key is the hash of the value it
   was taken from, so `reconcile`'s item key and a view's `set_key` are one concept.
-  `Signal::opaque` occupies no position, `Signal::tagged` is an anchor the diff aligns
+  `Signal::transient` occupies no position, `Signal::tagged` is an anchor the diff aligns
   around within one owner. Restore aligns per owner as the live side is created, and
   every mismatch defaults, so a stale snapshot reaching an edited program is the
   ordinary case and never fails. A node takes a `Position` from the same sequence when
@@ -836,7 +836,7 @@ and on wasm proved the bits equal.
 
 The host platform: every `Platform` method writes into a record per node, keyed by its
 `NodeId`, while the structure stays the scene's alone; nothing lays out and no platform
-response fires. It is the pixel medium (`StyleExt = GuiExt`), so a corner radius or a
+response fires. It is the pixel medium (`StyleExt = GuiStyle`), so a corner radius or a
 run's font size resolves as set, as it would on the web. Beside the records it keeps what
 a test asks: the outline, read from the scene, the props a node was created with, the
 slot a render effect last wrote, a property resolved through core's `Resolver` under the
@@ -1296,7 +1296,7 @@ Recorded because they were load-bearing and the reasons they fell matter:
   a control.** No first-party code wanted it and it taxed every ordinary handler, because
   the orphan rule blocks `From<()>` for a foreign type. A control decides its verdict.
 - **`Enhanced`: a native `Web*` control rendered without script and swapped for a drawn
-  `Raw*` after hydration.** The scriptless form is the control: a text entry is its
+  `Basic*` after hydration.** The scriptless form is the control: a text entry is its
   native element and a toggle or slider keeps its input inside the label. A view that
   genuinely has two forms declares them through `Enhance`, the picker included.
 - **A derived value as an inline override.** Inline outranks every variant on the web

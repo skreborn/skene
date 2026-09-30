@@ -12,9 +12,9 @@ use std::{cell::Cell, time::Duration};
 
 use skene_common::{
   Activate,
+  BasicButton,
+  BasicCheckbox,
   Container,
-  RawButton,
-  RawCheckbox,
   Text,
   Theme,
   Toggle,
@@ -109,7 +109,7 @@ thread_local! {
 
 /// The box a case reads, where it is not the case's own: named [`TARGET`].
 fn target() -> [AccessProp; 1] {
-  [AccessProp::Label(TARGET.to_owned())]
+  [AccessProp::Name(TARGET.to_owned())]
 }
 
 /// The tokens the cases read, one per kind and one defined under a condition.
@@ -413,14 +413,14 @@ impl Case {
             .set_accessibility(target()),
         )
         .into_any(),
-      Self::CheckedColor => RawCheckbox::<P>::new(Toggle::new().set_checked(true))
+      Self::CheckedColor => BasicCheckbox::<P>::new(Toggle::new().set_checked(true))
         .set_child(Self::state_box::<P>(State::Checked))
         .into_any(),
-      Self::DisabledColor => RawButton::<P>::new(Activate::new())
+      Self::DisabledColor => BasicButton::<P>::new(Activate::new())
         .set_disabled(true)
         .set_child(Self::state_box::<P>(State::Disabled))
         .into_any(),
-      Self::FocusedColor => RawButton::<P>::new(Activate::new())
+      Self::FocusedColor => BasicButton::<P>::new(Activate::new())
         .set_accessible_name(TARGET)
         .set_color(Value::from(blue()).when(State::Focused, orange()))
         .into_any(),
@@ -781,7 +781,7 @@ fn resolved(case: Case, viewport: Size<f32>) -> Reading {
 /// The node under `node` a case names [`TARGET`], if it names one.
 fn headless_target(node: NodeId) -> Option<NodeId> {
   let named = box_props(node)
-    .is_some_and(|props| props.access.contains(&AccessProp::Label(TARGET.to_owned())))
+    .is_some_and(|props| props.access.contains(&AccessProp::Name(TARGET.to_owned())))
     || control_props(node).is_some_and(|props| props.label.as_deref() == Some(TARGET));
 
   if named {

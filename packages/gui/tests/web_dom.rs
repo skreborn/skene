@@ -17,6 +17,12 @@ use std::{
 use skene_gui::{
   Activate,
   AnyView,
+  BasicButton,
+  BasicCheckbox,
+  BasicRadio,
+  BasicRadioGroup,
+  BasicSlider,
+  BasicTextField,
   Color,
   Column,
   Container,
@@ -30,24 +36,18 @@ use skene_gui::{
   HasChildren,
   Inset,
   Media,
-  MenuItem,
+  MenuEntry,
   NamedKey,
   NodeHandle,
   Overlay,
   Pinned,
-  RadioMember,
-  Range,
-  RawButton,
-  RawCheckbox,
-  RawRadio,
-  RawRadioGroup,
-  RawSlider,
-  RawTextField,
+  Radio,
+  RadioGroup,
   RichText,
   Role,
-  Roving,
   Row,
   Show,
+  Slider,
   Span,
   Stack,
   TOOLTIP_GRACE,
@@ -207,7 +207,7 @@ async fn a_text_entrys_selection_binds_both_ways() {
   let selection = Signal::new(TextSelection::new(1, 2));
 
   let _ = mount(move || {
-    RawTextField::new(
+    BasicTextField::new(
       TextEntry::new()
         .set_value("a\u{1f44d}b")
         .bind_selection(selection),
@@ -263,7 +263,7 @@ fn a_key_release_and_a_repeat_reach_the_box() {
     Container::new()
       .handle_key_down(move |event| repeated.set(event.repeat))
       .handle_key_up(move |event| released.set((event.key.to_string(), event.code.to_string())))
-      .set_child(RawTextField::new(TextEntry::new()))
+      .set_child(BasicTextField::new(TextEntry::new()))
       .build()
   });
 
@@ -1002,7 +1002,7 @@ fn a_sliders_native_input_holds_its_range_and_value() {
   let value = Signal::new(150.0f32);
 
   let _ = mount(move || {
-    RawSlider::new(Range::new().set_max(200.).set_step(5.).bind_value(value)).build()
+    BasicSlider::new(Slider::new().set_max(200.).set_step(5.).bind_value(value)).build()
   });
 
   let input: HtmlInputElement = root
@@ -1035,7 +1035,7 @@ fn change_handler_receives_the_committed_value() {
     let seen = Rc::clone(&seen);
 
     move || {
-      RawTextField::new(
+      BasicTextField::new(
         TextEntry::new()
           .set_value("committed")
           .handle_change(move |value| value.clone_into(&mut seen.borrow_mut())),
@@ -1056,16 +1056,18 @@ fn change_handler_receives_the_committed_value() {
 /// `<select>` does, in a `<label>` `for` nothing, since the face is no form element.
 #[wasm_bindgen_test]
 fn a_drawn_face_keeps_its_caption_before_its_box() {
-  use skene_gui::{ListItem, RawOption, RawPicker};
+  use skene_gui::{BasicListboxOption, BasicPicker, ListboxOption};
 
   let (_guard, root) = fresh_root();
   let value = Signal::new("a".to_owned());
 
   let _ = mount(move || {
-    RawPicker::new()
+    BasicPicker::new()
       .bind_value(value)
       .set_label("Size")
-      .set_options(["a", "b"].map(|value| RawOption::new(ListItem::new(value)).set_label(value)))
+      .set_options(
+        ["a", "b"].map(|value| BasicListboxOption::new(ListboxOption::new(value)).set_label(value)),
+      )
       .set_face(|shown| Text::derive(move || shown.get()))
       .build()
   });
@@ -1095,7 +1097,7 @@ fn a_transformed_value_keeps_the_caret() {
   let value = Signal::new("ac".to_owned());
 
   let _ = mount(move || {
-    RawTextField::new(
+    BasicTextField::new(
       TextEntry::new()
         .derive_value(move || value.get())
         .handle_change(move |text| value.set(text.to_uppercase())),
@@ -1130,7 +1132,7 @@ fn checkbox_binding_round_trips() {
   let (_guard, root) = fresh_root();
   let checked = Signal::new(false);
 
-  let _ = mount(move || RawCheckbox::new(Toggle::new().bind_checked(checked)).build());
+  let _ = mount(move || BasicCheckbox::new(Toggle::new().bind_checked(checked)).build());
 
   let target: HtmlInputElement = only_child(&only_child(&root))
     .dyn_into()
@@ -1266,7 +1268,7 @@ fn focus_handle_focuses_the_bound_view() {
   let handle = NodeHandle::new();
 
   let _ = mount(move || {
-    RawTextField::new(TextEntry::new())
+    BasicTextField::new(TextEntry::new())
       .bind_handle(handle)
       .build()
   });
@@ -1486,7 +1488,7 @@ fn a_text_entry_takes_the_typography_ink_and_weight() {
         .set_ink(Color::srgb(1., 0., 0.))
         .set_weight(700.),
     )
-    .set_child_builder(|| RawTextField::new(TextEntry::new().set_value("hi")))
+    .set_child_builder(|| BasicTextField::new(TextEntry::new().set_value("hi")))
     .build()
   });
 
@@ -1684,10 +1686,10 @@ fn a_box_hears_focus_entering_and_leaving_its_subtree() {
           .handle_focus(move || entered.set(entered.get() + 1))
           .handle_blur(move || left.set(left.get() + 1))
           .set_child(Row::new().set_children((
-            RawButton::new(Activate::new()).set_label("a"),
-            RawButton::new(Activate::new()).set_label("b"),
+            BasicButton::new(Activate::new()).set_label("a"),
+            BasicButton::new(Activate::new()).set_label("b"),
           ))),
-        RawButton::new(Activate::new()).set_label("c"),
+        BasicButton::new(Activate::new()).set_label("c"),
       ))
       .build()
   });
@@ -1726,9 +1728,9 @@ fn a_dragging_node_takes_a_touch_along_its_axes() {
   let _ = mount(|| {
     Column::new()
       .set_children((
-        RawSlider::new(Range::new()),
-        RawSlider::new(Range::new().set_axis(Axis::Vertical)),
-        RawCheckbox::new(Toggle::new()),
+        BasicSlider::new(Slider::new()),
+        BasicSlider::new(Slider::new().set_axis(Axis::Vertical)),
+        BasicCheckbox::new(Toggle::new()),
         Container::new().set_drag_axes(DragAxes::Both),
       ))
       .build()
@@ -2161,7 +2163,7 @@ fn a_checkbox_is_a_label_over_a_native_input() {
   let checked = Signal::new(false);
 
   let _ = mount(move || {
-    RawCheckbox::new(Toggle::new().bind_checked(checked))
+    BasicCheckbox::new(Toggle::new().bind_checked(checked))
       .set_label("Subscribed")
       .build()
   });
@@ -2202,11 +2204,11 @@ fn a_radio_group_traverses_in_document_order() {
   let chosen: Signal<Option<String>> = Signal::new(Some(String::from("mint")));
 
   let _ = mount(move || {
-    RawRadioGroup::new(Roving::new().bind_chosen(chosen))
+    BasicRadioGroup::new(RadioGroup::new().bind_chosen(chosen))
       .set_child(Column::new().derive_children(
         move || flavors.get(),
         |flavor: &String| flavor.clone(),
-        |flavor| RawRadio::new(RadioMember::new(flavor.clone())).set_label(flavor),
+        |flavor| BasicRadio::new(Radio::new(flavor.clone())).set_label(flavor),
       ))
       .build()
   });
@@ -2359,7 +2361,7 @@ fn a_route_change_commits_under_a_view_transition() {
 #[wasm_bindgen_test]
 fn a_token_keyframe_animation_applies() {
   use skene_gui::{
-    GuiExt,
+    GuiStyle,
     core::{Animation, BoxStyle, Keyframe},
   };
 
@@ -2368,8 +2370,8 @@ fn a_token_keyframe_animation_applies() {
   let _ = mount(|| {
     Theme::new(SimplePalette::default())
       .set_child_builder(|| {
-        let mut start: BoxStyle<f32, Keyframe, GuiExt> = BoxStyle::default();
-        let mut end: BoxStyle<f32, Keyframe, GuiExt> = BoxStyle::default();
+        let mut start: BoxStyle<f32, Keyframe, GuiStyle> = BoxStyle::default();
+        let mut end: BoxStyle<f32, Keyframe, GuiStyle> = BoxStyle::default();
 
         start.color = Some(SimplePalette::CARD.into());
         end.color = Some(Color::srgb(1., 0., 0.).into());
@@ -2415,8 +2417,8 @@ fn a_token_keyframe_animation_applies() {
 #[wasm_bindgen_test]
 fn focus_and_scroll_survive_a_snapshot_roundtrip() {
   use skene_gui::{
+    BasicTextField,
     NodeId,
-    RawTextField,
     TextEntry,
     core::{Dimension, Overflow},
     reactive,
@@ -2429,7 +2431,7 @@ fn focus_and_scroll_survive_a_snapshot_roundtrip() {
           .set_height(Dimension::Length(40.))
           .set_overflow(Overflow::Scroll)
           .set_child(Container::new().set_height(Dimension::Length(400.))),
-        RawTextField::new(TextEntry::new()),
+        BasicTextField::new(TextEntry::new()),
       ))
       .build()
   }
@@ -2478,14 +2480,14 @@ fn focus_and_scroll_survive_a_snapshot_roundtrip() {
 /// run, the same item's field resumes focused with its selection.
 #[wasm_bindgen_test]
 fn focus_follows_a_keyed_item_across_a_reorder() {
-  use skene_gui::{NodeId, RawTextField, TextEntry, reactive};
+  use skene_gui::{BasicTextField, NodeId, TextEntry, reactive};
 
   fn build(items: Vec<u8>) -> NodeId {
     Column::new()
       .derive_children(
         move || items.clone(),
         |item| *item,
-        |_| RawTextField::new(TextEntry::new().bind_value(Signal::new(String::from("hello")))),
+        |_| BasicTextField::new(TextEntry::new().bind_value(Signal::new(String::from("hello")))),
       )
       .build()
   }
@@ -2547,7 +2549,7 @@ fn a_text_fields_caption_is_a_label_before_the_input() {
     Container::new()
       .set_child(derived(move || {
         if shown.get() {
-          RawTextField::new(TextEntry::new())
+          BasicTextField::new(TextEntry::new())
             .set_label("Name")
             .build()
         }
@@ -2862,9 +2864,9 @@ fn a_context_menu_takes_the_browsers_only_where_a_view_opts_in() {
       .set_children((
         ContextMenu::new()
           .set_items([
-            MenuItem::new("Rename").handle_select(move || chosen.set("rename".to_owned())),
-            MenuItem::separator(),
-            MenuItem::new("Delete").handle_select(move || chosen.set("delete".to_owned())),
+            MenuEntry::new("Rename").handle_select(move || chosen.set("rename".to_owned())),
+            MenuEntry::separator(),
+            MenuEntry::new("Delete").handle_select(move || chosen.set("delete".to_owned())),
           ])
           .set_child(Container::new().set_child(Text::new("note"))),
         Container::new().set_child(Text::new("plain")),

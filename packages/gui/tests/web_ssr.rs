@@ -8,6 +8,11 @@ use std::time::Duration;
 
 use skene_gui::{
   Activate,
+  AsyncView,
+  BasicButton,
+  BasicListbox,
+  BasicListboxOption,
+  BasicSlider,
   Color,
   Column,
   Container,
@@ -17,19 +22,14 @@ use skene_gui::{
   HasChild,
   HasChildren,
   Label,
-  Lazy,
-  ListItem,
   Listbox,
+  ListboxOption,
   Overlay,
   Painted,
-  Range,
-  RawButton,
-  RawListbox,
-  RawOption,
-  RawSlider,
   Resource,
   RichText,
   Row,
+  Slider,
   Span,
   Text,
   Theme,
@@ -151,9 +151,9 @@ fn names_and_roles_reach_the_markup() {
         .set_role(Role::Navigation)
         .set_label("Chapters")
         .set_child(Text::new("one")),
-      RawListbox::new(Listbox::new())
+      BasicListbox::new(Listbox::new())
         .set_label(Label::new(Text::new("Fruit")))
-        .set_child(RawOption::new(ListItem::new("apple")).set_label("Apple")),
+        .set_child(BasicListboxOption::new(ListboxOption::new("apple")).set_label("Apple")),
       Container::new()
         .set_role(Role::Status)
         .set_child(Text::new("saved")),
@@ -205,7 +205,7 @@ fn names_and_roles_reach_the_markup() {
 #[test]
 fn a_named_control_keeps_its_accessible_name() {
   let page = render_to_string(|| {
-    RawButton::new(Activate::new()).set_label(Label::new(Text::new("×")).set_name("Close"))
+    BasicButton::new(Activate::new()).set_label(Label::new(Text::new("×")).set_name("Close"))
   });
   let body = page.body();
 
@@ -216,7 +216,7 @@ fn a_named_control_keeps_its_accessible_name() {
 #[test]
 fn an_icon_button_carries_its_accessible_name() {
   let page = render_to_string(|| {
-    RawButton::new(Activate::new())
+    BasicButton::new(Activate::new())
       .set_accessible_name("Close")
       .set_child(Container::new())
   });
@@ -269,7 +269,7 @@ fn visibility_compiles_to_hidden_or_inherited() {
 #[test]
 fn a_sliders_input_holds_its_range_natively() {
   let page =
-    render_to_string(|| RawSlider::new(Range::new().set_max(200.).set_step(0.).set_value(150.)));
+    render_to_string(|| BasicSlider::new(Slider::new().set_max(200.).set_step(0.).set_value(150.)));
   let body = page.body();
 
   for attribute in ["min=\"0\"", "max=\"200\"", "step=\"any\"", "value=\"150\""] {
@@ -306,14 +306,14 @@ fn a_picker_renders_to_a_select() {
 /// A picker's scriptless `<select>` marks the options that cannot be chosen.
 #[test]
 fn a_pickers_select_marks_its_disabled_options() {
-  use skene_gui::{RawPicker, reactive::Get};
+  use skene_gui::{BasicPicker, reactive::Get};
 
   let page = render_to_string(|| {
-    RawPicker::new()
+    BasicPicker::new()
       .set_value("s")
       .set_options([("", "Choose one", true), ("s", "Small", false)].map(
         |(value, name, disabled)| {
-          RawOption::new(ListItem::new(value))
+          BasicListboxOption::new(ListboxOption::new(value))
             .set_disabled(disabled)
             .set_label(Label::new(Text::new(name)).set_name(name))
         },
@@ -643,16 +643,16 @@ fn resources_serialize_their_state() {
 fn a_lazy_segments_resources_serialize_under_its_place() {
   let page = render_to_string(|| {
     let _before = Resource::new(|| async { "before".to_owned() });
-    let first = Lazy::new(|| async {
+    let first = AsyncView::new(|| async {
       let _inner = Resource::new(|| async { "inner".to_owned() });
 
-      Lazy::new(|| async {
+      AsyncView::new(|| async {
         let _nested = Resource::new(|| async { "nested".to_owned() });
 
         Text::new("nested")
       })
     });
-    let second = Lazy::new(|| async {
+    let second = AsyncView::new(|| async {
       let _second = Resource::new(|| async { "second".to_owned() });
 
       Text::new("second")
@@ -1202,7 +1202,7 @@ fn a_widget_role_and_state_serialize_as_aria() {
         AccessProp::Value(40.),
         AccessProp::ValueMin(0.),
         AccessProp::ValueMax(100.),
-        AccessProp::Label("Volume".to_owned()),
+        AccessProp::Name("Volume".to_owned()),
       ])
   });
 
@@ -1292,9 +1292,9 @@ fn a_page_with_no_chooseable_scheme_carries_no_script() {
 /// `tabindex="-1"`, as the browser writes it.
 #[test]
 fn a_disabled_checkbox_keeps_its_input_out_of_the_tab_order() {
-  use skene_gui::{RawCheckbox, Toggle};
+  use skene_gui::{BasicCheckbox, Toggle};
 
-  let rendered = render_to_string(|| RawCheckbox::new(Toggle::new()).set_disabled(true));
+  let rendered = render_to_string(|| BasicCheckbox::new(Toggle::new()).set_disabled(true));
   let body = rendered.body();
   let input = body
     .split("<input")
@@ -1338,14 +1338,14 @@ fn a_markup_style_and_its_declarations_serialize_as_one_attribute() {
 /// without script, and its description gets the id the field names.
 #[test]
 fn control_flags_serialize_natively_and_references_carry_ids() {
-  use skene_gui::{RawTextField, TextEntry};
+  use skene_gui::{BasicTextField, TextEntry};
 
   let rendered = render_to_string(|| {
     let hint = Text::new("Required").build();
 
     Column::new().set_children((
       skene_gui::core::AnyView::node(hint),
-      RawTextField::new(TextEntry::new())
+      BasicTextField::new(TextEntry::new())
         .set_required(true)
         .set_read_only(true)
         .set_invalid(true)
@@ -1375,7 +1375,7 @@ fn control_flags_serialize_natively_and_references_carry_ids() {
 /// referenced node carrying the id the list names.
 #[test]
 fn descriptions_fold_into_one_reference_list() {
-  use skene_gui::{RawTextField, TextEntry};
+  use skene_gui::{BasicTextField, TextEntry};
 
   let rendered = render_to_string(|| {
     let hint = Text::new("Required").build();
@@ -1383,7 +1383,7 @@ fn descriptions_fold_into_one_reference_list() {
     Column::new().set_children((
       skene_gui::core::AnyView::node(hint),
       Tooltip::new("Your full name")
-        .set_child(RawTextField::new(TextEntry::new()).set_described_by(hint)),
+        .set_child(BasicTextField::new(TextEntry::new()).set_described_by(hint)),
     ))
   });
   let body = rendered.body();

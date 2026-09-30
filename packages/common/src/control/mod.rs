@@ -5,8 +5,8 @@ mod collection;
 mod controlled;
 mod native_picker;
 mod popup;
-mod range;
 mod roster;
+mod slider;
 mod text_entry;
 mod toggle;
 mod type_ahead;
@@ -65,27 +65,27 @@ pub use self::{
   activate::Activate,
   collection::{
     Collection,
-    CollectionGroup,
+    CollectionContext,
     CollectionPolicy,
-    ListItem,
     Listbox,
-    ListboxGroup,
+    ListboxContext,
+    ListboxOption,
     ListboxPolicy,
     Member,
     Menu,
-    MenuGroup,
+    MenuContext,
     MenuOption,
     MenuPolicy,
-    RadioMember,
+    Radio,
+    RadioGroup,
+    RadioGroupContext,
     RadioPolicy,
-    Roving,
-    RovingGroup,
   },
   controlled::Controlled,
   native_picker::NativePicker,
   popup::Popup,
-  range::Range,
   roster::Roster,
+  slider::Slider,
   text_entry::TextEntry,
   toggle::Toggle,
   type_ahead::{TYPE_AHEAD_RESET, TypeAhead},
@@ -1111,7 +1111,7 @@ fn bind_reports<P: Platform, B: Behavior<P>>(
       }
 
       if let Some(name) = &flags.accessible_name {
-        access.push(AccessProp::Label(name()));
+        access.push(AccessProp::Name(name()));
       }
 
       report_access::<P>(node, access);
@@ -1339,25 +1339,25 @@ fn observe<E: ?Sized + 'static>(action: impl Fn(&E) + 'static) -> Rc<Acting<E>> 
 }
 
 /// A button: [`Control`] over [`Activate`].
-pub type RawButton<P, C = NoChild> = Control<P, Activate, C>;
+pub type BasicButton<P, C = NoChild> = Control<P, Activate, C>;
 /// A checkbox: [`Control`] over [`Toggle`].
-pub type RawCheckbox<P, C = NoChild> = Control<P, Toggle, C>;
-/// A slider: [`Control`] over [`Range`].
-pub type RawSlider<P, C = NoChild> = Control<P, Range, C>;
-/// A radio group: [`Control`] over [`Roving`].
-pub type RawRadioGroup<P, C = NoChild> = Control<P, Roving, C>;
-/// One radio choice: [`Control`] over [`RadioMember`].
-pub type RawRadio<P, C = NoChild> = Control<P, RadioMember, C>;
+pub type BasicCheckbox<P, C = NoChild> = Control<P, Toggle, C>;
+/// A slider: [`Control`] over [`Slider`].
+pub type BasicSlider<P, C = NoChild> = Control<P, Slider, C>;
+/// A radio group: [`Control`] over [`RadioGroup`].
+pub type BasicRadioGroup<P, C = NoChild> = Control<P, RadioGroup, C>;
+/// One radio choice: [`Control`] over [`Radio`].
+pub type BasicRadio<P, C = NoChild> = Control<P, Radio, C>;
 /// A single-line text field: [`Control`] over [`TextEntry`].
-pub type RawTextField<P, C = NoChild> = Control<P, TextEntry, C>;
+pub type BasicTextField<P, C = NoChild> = Control<P, TextEntry, C>;
 /// A multi-line text editor: [`Control`] over [`TextEntry`] with
 /// [`set_lines`](TextEntry::set_lines) above one.
-pub type RawTextEditor<P, C = NoChild> = Control<P, TextEntry, C>;
+pub type BasicTextEditor<P, C = NoChild> = Control<P, TextEntry, C>;
 /// A listbox: [`Control`] over [`Listbox`].
-pub type RawListbox<P, C = NoChild> = Control<P, Listbox, C>;
-/// One option within a listbox: [`Control`] over [`ListItem`].
-pub type RawOption<P, C = NoChild> = Control<P, ListItem, C>;
+pub type BasicListbox<P, C = NoChild> = Control<P, Listbox, C>;
+/// One option within a listbox: [`Control`] over [`ListboxOption`].
+pub type BasicListboxOption<P, C = NoChild> = Control<P, ListboxOption, C>;
 /// A menu: [`Control`] over [`Menu`].
-pub type RawMenu<P, C = NoChild> = Control<P, Menu, C>;
+pub type BasicMenu<P, C = NoChild> = Control<P, Menu, C>;
 /// One item within a menu: [`Control`] over [`MenuOption`].
-pub type RawMenuItem<P, C = NoChild> = Control<P, MenuOption, C>;
+pub type BasicMenuItem<P, C = NoChild> = Control<P, MenuOption, C>;

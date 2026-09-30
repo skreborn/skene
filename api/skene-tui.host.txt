@@ -31,13 +31,13 @@ pub use skene_tui::Key
 pub use skene_tui::KeyEvent
 pub use skene_tui::Leaf
 pub use skene_tui::Length
-pub use skene_tui::ListItem
 pub use skene_tui::Listbox
-pub use skene_tui::ListboxGroup
+pub use skene_tui::ListboxContext
+pub use skene_tui::ListboxOption
 pub use skene_tui::LoadState
 pub use skene_tui::Menu
-pub use skene_tui::MenuGroup
-pub use skene_tui::MenuItem
+pub use skene_tui::MenuContext
+pub use skene_tui::MenuEntry
 pub use skene_tui::MenuOption
 pub use skene_tui::Modifiers
 pub use skene_tui::NamedKey
@@ -59,17 +59,17 @@ pub use skene_tui::PointerType
 pub use skene_tui::Popup
 pub use skene_tui::Prevent
 pub use skene_tui::Prevented
-pub use skene_tui::RadioMember
-pub use skene_tui::Range
+pub use skene_tui::Radio
+pub use skene_tui::RadioGroup
+pub use skene_tui::RadioGroupContext
 pub use skene_tui::Resource
 pub use skene_tui::Role
 pub use skene_tui::Roster
-pub use skene_tui::Roving
-pub use skene_tui::RovingGroup
 pub use skene_tui::Scene
 pub use skene_tui::ScrollEvent
 pub use skene_tui::ScrollbarGlyphs
 pub use skene_tui::Shortcut
+pub use skene_tui::Slider
 pub use skene_tui::State
 pub use skene_tui::StaticLeaf
 pub use skene_tui::TOOLTIP_DELAY
@@ -83,9 +83,9 @@ pub use skene_tui::TokenName
 pub use skene_tui::TokenRef
 pub use skene_tui::TokenSet
 pub use skene_tui::TuiBoxFields
-pub use skene_tui::TuiExt
 pub use skene_tui::TuiProperty
 pub use skene_tui::TuiRunFields
+pub use skene_tui::TuiStyle
 pub use skene_tui::TuiValue
 pub use skene_tui::TypeMetrics
 pub use skene_tui::Typography
@@ -156,7 +156,7 @@ pub use skene_tui::prelude::Line
 pub use skene_tui::prelude::LinkAnnotation
 pub use skene_tui::prelude::LinkPolicy
 pub use skene_tui::prelude::Memo
-pub use skene_tui::prelude::MenuItem
+pub use skene_tui::prelude::MenuEntry
 pub use skene_tui::prelude::Modifiers
 pub use skene_tui::prelude::MouseCursor
 pub use skene_tui::prelude::NamedKey
@@ -316,7 +316,7 @@ pub fn skene_tui::prelude::TuiDecoration::set_scrollbar_track(self, impl core::c
 pub fn skene_tui::prelude::TuiDecoration::set_shadow(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
 pub fn skene_tui::prelude::TuiDecoration::set_shadow_offset(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
 pub fn skene_tui::prelude::TuiDecoration::set_shadow_softening(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
-pub fn skene_tui::prelude::TuiDecoration::terminal_style_mut(&mut self) -> &mut skene_core::box_style::BoxStyle<u32, skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::tui::ext::TuiExt>
+pub fn skene_tui::prelude::TuiDecoration::terminal_style_mut(&mut self) -> &mut skene_core::box_style::BoxStyle<u32, skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::tui::ext::TuiStyle>
 impl skene_tui::TuiDecoration for skene_common::container::Container<skene_tui::Tui>
 pub fn skene_common::container::Container<skene_tui::Tui>::derive_border_glyphs<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_common::tui::ext::BorderGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::container::Container<skene_tui::Tui>::derive_scrollbar_glyphs<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_common::tui::ext::ScrollbarGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -332,7 +332,7 @@ pub fn skene_common::container::Container<skene_tui::Tui>::set_scrollbar_track(s
 pub fn skene_common::container::Container<skene_tui::Tui>::set_shadow(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
 pub fn skene_common::container::Container<skene_tui::Tui>::set_shadow_offset(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
 pub fn skene_common::container::Container<skene_tui::Tui>::set_shadow_softening(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
-pub fn skene_common::container::Container<skene_tui::Tui>::terminal_style_mut(&mut self) -> &mut skene_core::box_style::BoxStyle<u32, skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::tui::ext::TuiExt>
+pub fn skene_common::container::Container<skene_tui::Tui>::terminal_style_mut(&mut self) -> &mut skene_core::box_style::BoxStyle<u32, skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::tui::ext::TuiStyle>
 impl skene_tui::TuiDecoration for skene_common::overlay::Overlay<skene_tui::Tui>
 pub fn skene_common::overlay::Overlay<skene_tui::Tui>::derive_border_glyphs<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_common::tui::ext::BorderGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::overlay::Overlay<skene_tui::Tui>::derive_scrollbar_glyphs<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_common::tui::ext::ScrollbarGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -348,7 +348,7 @@ pub fn skene_common::overlay::Overlay<skene_tui::Tui>::set_scrollbar_track(self,
 pub fn skene_common::overlay::Overlay<skene_tui::Tui>::set_shadow(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
 pub fn skene_common::overlay::Overlay<skene_tui::Tui>::set_shadow_offset(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
 pub fn skene_common::overlay::Overlay<skene_tui::Tui>::set_shadow_softening(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
-pub fn skene_common::overlay::Overlay<skene_tui::Tui>::terminal_style_mut(&mut self) -> &mut skene_core::box_style::BoxStyle<u32, skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::tui::ext::TuiExt>
+pub fn skene_common::overlay::Overlay<skene_tui::Tui>::terminal_style_mut(&mut self) -> &mut skene_core::box_style::BoxStyle<u32, skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::tui::ext::TuiStyle>
 impl<B: skene_common::control::Behavior<skene_tui::Tui>> skene_tui::TuiDecoration for skene_common::control::Control<skene_tui::Tui, B>
 pub fn skene_common::control::Control<skene_tui::Tui, B>::derive_border_glyphs<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_common::tui::ext::BorderGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::control::Control<skene_tui::Tui, B>::derive_scrollbar_glyphs<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_common::tui::ext::ScrollbarGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -364,19 +364,19 @@ pub fn skene_common::control::Control<skene_tui::Tui, B>::set_scrollbar_track(se
 pub fn skene_common::control::Control<skene_tui::Tui, B>::set_shadow(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
 pub fn skene_common::control::Control<skene_tui::Tui, B>::set_shadow_offset(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
 pub fn skene_common::control::Control<skene_tui::Tui, B>::set_shadow_softening(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
-pub fn skene_common::control::Control<skene_tui::Tui, B>::terminal_style_mut(&mut self) -> &mut skene_core::box_style::BoxStyle<u32, skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::tui::ext::TuiExt>
+pub fn skene_common::control::Control<skene_tui::Tui, B>::terminal_style_mut(&mut self) -> &mut skene_core::box_style::BoxStyle<u32, skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::tui::ext::TuiStyle>
 pub trait skene_tui::prelude::TuiText: core::marker::Sized
 pub fn skene_tui::prelude::TuiText::derive_bold<R: core::convert::Into<skene_core::leaf::StaticLeaf<bool>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_tui::prelude::TuiText::set_bold(self, impl core::convert::Into<skene_core::leaf::Value<bool, skene_core::condition::Condition<u32>>>) -> Self
-pub fn skene_tui::prelude::TuiText::terminal_style_mut(&mut self) -> &mut skene_core::run_style::RunStyle<skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::tui::ext::TuiExt>
+pub fn skene_tui::prelude::TuiText::terminal_style_mut(&mut self) -> &mut skene_core::run_style::RunStyle<skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::tui::ext::TuiStyle>
 impl skene_tui::TuiText for skene_common::span::Span<skene_tui::Tui>
 pub fn skene_common::span::Span<skene_tui::Tui>::derive_bold<R: core::convert::Into<skene_core::leaf::StaticLeaf<bool>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::span::Span<skene_tui::Tui>::set_bold(self, impl core::convert::Into<skene_core::leaf::Value<bool, skene_core::condition::Condition<u32>>>) -> Self
-pub fn skene_common::span::Span<skene_tui::Tui>::terminal_style_mut(&mut self) -> &mut skene_core::run_style::RunStyle<skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::tui::ext::TuiExt>
+pub fn skene_common::span::Span<skene_tui::Tui>::terminal_style_mut(&mut self) -> &mut skene_core::run_style::RunStyle<skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::tui::ext::TuiStyle>
 impl skene_tui::TuiText for skene_common::text::Text<skene_tui::Tui>
 pub fn skene_common::text::Text<skene_tui::Tui>::derive_bold<R: core::convert::Into<skene_core::leaf::StaticLeaf<bool>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::text::Text<skene_tui::Tui>::set_bold(self, impl core::convert::Into<skene_core::leaf::Value<bool, skene_core::condition::Condition<u32>>>) -> Self
-pub fn skene_common::text::Text<skene_tui::Tui>::terminal_style_mut(&mut self) -> &mut skene_core::run_style::RunStyle<skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::tui::ext::TuiExt>
+pub fn skene_common::text::Text<skene_tui::Tui>::terminal_style_mut(&mut self) -> &mut skene_core::run_style::RunStyle<skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::tui::ext::TuiStyle>
 pub trait skene_tui::prelude::View: skene_core::view::View<skene_tui::ActivePlatform>
 pub fn skene_tui::prelude::View::build(self) -> skene_core::node::NodeId where Self: core::marker::Sized
 pub fn skene_tui::prelude::View::into_any(self) -> skene_tui::AnyView where Self: core::marker::Sized
@@ -394,6 +394,17 @@ pub fn skene_tui::prelude::set_title(impl core::convert::Into<alloc::string::Str
 pub fn skene_tui::prelude::spawn(impl core::future::future::Future<Output = ()> + 'static) -> skene_reactive::spawn::TaskHandle
 pub fn skene_tui::prelude::stored_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
 pub type skene_tui::prelude::AnyView = skene_core::view::AnyView<skene_tui::ActivePlatform>
+pub type skene_tui::prelude::BasicButton<C> = skene_common::control::BasicButton<skene_tui::ActivePlatform, C>
+pub type skene_tui::prelude::BasicCheckbox<C> = skene_common::control::BasicCheckbox<skene_tui::ActivePlatform, C>
+pub type skene_tui::prelude::BasicListboxOption<C> = skene_common::control::BasicListboxOption<skene_tui::ActivePlatform, C>
+pub type skene_tui::prelude::BasicMenu<C> = skene_common::control::BasicMenu<skene_tui::ActivePlatform, C>
+pub type skene_tui::prelude::BasicMenuItem<C> = skene_common::control::BasicMenuItem<skene_tui::ActivePlatform, C>
+pub type skene_tui::prelude::BasicPicker<F> = skene_common::picker::BasicPicker<skene_tui::ActivePlatform, F>
+pub type skene_tui::prelude::BasicRadio<C> = skene_common::control::BasicRadio<skene_tui::ActivePlatform, C>
+pub type skene_tui::prelude::BasicRadioGroup<C> = skene_common::control::BasicRadioGroup<skene_tui::ActivePlatform, C>
+pub type skene_tui::prelude::BasicSlider<C> = skene_common::control::BasicSlider<skene_tui::ActivePlatform, C>
+pub type skene_tui::prelude::BasicTextEditor<C> = skene_common::control::BasicTextEditor<skene_tui::ActivePlatform, C>
+pub type skene_tui::prelude::BasicTextField<C> = skene_common::control::BasicTextField<skene_tui::ActivePlatform, C>
 pub type skene_tui::prelude::Column = skene_common::flex::Column<skene_tui::ActivePlatform>
 pub type skene_tui::prelude::Condition = skene_core::condition::Condition<u32>
 pub type skene_tui::prelude::Container = skene_common::container::Container<skene_tui::ActivePlatform>
@@ -417,17 +428,6 @@ pub type skene_tui::prelude::Overlay<C> = skene_common::overlay::Overlay<skene_t
 pub type skene_tui::prelude::Painted = skene_common::painted::Painted<skene_tui::ActivePlatform>
 pub type skene_tui::prelude::Pinned<C> = skene_common::pinned::Pinned<skene_tui::ActivePlatform, C>
 pub type skene_tui::prelude::Point = skene_core::values::point::Point<u32>
-pub type skene_tui::prelude::RawButton<C> = skene_common::control::RawButton<skene_tui::ActivePlatform, C>
-pub type skene_tui::prelude::RawCheckbox<C> = skene_common::control::RawCheckbox<skene_tui::ActivePlatform, C>
-pub type skene_tui::prelude::RawMenu<C> = skene_common::control::RawMenu<skene_tui::ActivePlatform, C>
-pub type skene_tui::prelude::RawMenuItem<C> = skene_common::control::RawMenuItem<skene_tui::ActivePlatform, C>
-pub type skene_tui::prelude::RawOption<C> = skene_common::control::RawOption<skene_tui::ActivePlatform, C>
-pub type skene_tui::prelude::RawPicker<F> = skene_common::picker::RawPicker<skene_tui::ActivePlatform, F>
-pub type skene_tui::prelude::RawRadio<C> = skene_common::control::RawRadio<skene_tui::ActivePlatform, C>
-pub type skene_tui::prelude::RawRadioGroup<C> = skene_common::control::RawRadioGroup<skene_tui::ActivePlatform, C>
-pub type skene_tui::prelude::RawSlider<C> = skene_common::control::RawSlider<skene_tui::ActivePlatform, C>
-pub type skene_tui::prelude::RawTextEditor<C> = skene_common::control::RawTextEditor<skene_tui::ActivePlatform, C>
-pub type skene_tui::prelude::RawTextField<C> = skene_common::control::RawTextField<skene_tui::ActivePlatform, C>
 pub type skene_tui::prelude::Rect = skene_core::values::rect::Rect<u32>
 pub type skene_tui::prelude::RichText = skene_common::span::RichText<skene_tui::ActivePlatform>
 pub type skene_tui::prelude::Row = skene_common::flex::Row<skene_tui::ActivePlatform>
@@ -669,7 +669,7 @@ pub fn skene_tui::Tui::available() -> skene_reactive::signal::ReadSignal<bool>
 pub fn skene_tui::Tui::paint(skene_core::node::NodeId, alloc::boxed::Box<skene_common::painting::Painter>)
 impl skene_core::platform::Platform for skene_tui::Tui
 pub type skene_tui::Tui::Scalar = u32
-pub type skene_tui::Tui::StyleExt = skene_common::tui::ext::TuiExt
+pub type skene_tui::Tui::StyleExt = skene_common::tui::ext::TuiStyle
 pub type skene_tui::Tui::TokenValue = skene_core::resolve::TokenValue<u32>
 pub fn skene_tui::Tui::attach(skene_core::node::NodeId, skene_core::node::NodeId, core::option::Option<skene_core::node::NodeId>)
 pub fn skene_tui::Tui::blur(skene_core::node::NodeId)
@@ -705,8 +705,8 @@ pub fn skene_tui::Tui::set_selection(skene_core::node::NodeId, skene_core::value
 pub fn skene_tui::Tui::set_text(skene_core::node::NodeId, &str)
 pub fn skene_tui::Tui::set_value(skene_core::node::NodeId, &str)
 pub fn skene_tui::Tui::stored_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
-pub fn skene_tui::Tui::update_box(skene_core::node::NodeId, skene_core::leaf::Slot, &skene_core::leaf::StaticLeaf<skene_core::box_style::BoxValue<u32, skene_common::tui::ext::TuiExt>>)
-pub fn skene_tui::Tui::update_run(skene_core::node::NodeId, skene_core::leaf::Slot, &skene_core::leaf::StaticLeaf<skene_core::run_style::RunValue<skene_common::tui::ext::TuiExt>>)
+pub fn skene_tui::Tui::update_box(skene_core::node::NodeId, skene_core::leaf::Slot, &skene_core::leaf::StaticLeaf<skene_core::box_style::BoxValue<u32, skene_common::tui::ext::TuiStyle>>)
+pub fn skene_tui::Tui::update_run(skene_core::node::NodeId, skene_core::leaf::Slot, &skene_core::leaf::StaticLeaf<skene_core::run_style::RunValue<skene_common::tui::ext::TuiStyle>>)
 pub fn skene_tui::Tui::watch_media(&skene_core::condition::Media<u32>) -> skene_reactive::memo::Memo<bool>
 impl skene_tui::CellPainter for skene_tui::Tui
 pub fn skene_tui::Tui::paint(skene_core::node::NodeId, alloc::boxed::Box<dyn core::ops::function::Fn(&mut skene_tui::Cells<'_>, skene_core::values::rect::Rect<u32>)>)
@@ -766,7 +766,7 @@ pub fn skene_tui::TuiDecoration::set_scrollbar_track(self, impl core::convert::I
 pub fn skene_tui::TuiDecoration::set_shadow(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
 pub fn skene_tui::TuiDecoration::set_shadow_offset(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
 pub fn skene_tui::TuiDecoration::set_shadow_softening(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
-pub fn skene_tui::TuiDecoration::terminal_style_mut(&mut self) -> &mut skene_core::box_style::BoxStyle<u32, skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::tui::ext::TuiExt>
+pub fn skene_tui::TuiDecoration::terminal_style_mut(&mut self) -> &mut skene_core::box_style::BoxStyle<u32, skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::tui::ext::TuiStyle>
 impl skene_tui::TuiDecoration for skene_common::container::Container<skene_tui::Tui>
 pub fn skene_common::container::Container<skene_tui::Tui>::derive_border_glyphs<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_common::tui::ext::BorderGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::container::Container<skene_tui::Tui>::derive_scrollbar_glyphs<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_common::tui::ext::ScrollbarGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -782,7 +782,7 @@ pub fn skene_common::container::Container<skene_tui::Tui>::set_scrollbar_track(s
 pub fn skene_common::container::Container<skene_tui::Tui>::set_shadow(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
 pub fn skene_common::container::Container<skene_tui::Tui>::set_shadow_offset(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
 pub fn skene_common::container::Container<skene_tui::Tui>::set_shadow_softening(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
-pub fn skene_common::container::Container<skene_tui::Tui>::terminal_style_mut(&mut self) -> &mut skene_core::box_style::BoxStyle<u32, skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::tui::ext::TuiExt>
+pub fn skene_common::container::Container<skene_tui::Tui>::terminal_style_mut(&mut self) -> &mut skene_core::box_style::BoxStyle<u32, skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::tui::ext::TuiStyle>
 impl skene_tui::TuiDecoration for skene_common::overlay::Overlay<skene_tui::Tui>
 pub fn skene_common::overlay::Overlay<skene_tui::Tui>::derive_border_glyphs<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_common::tui::ext::BorderGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::overlay::Overlay<skene_tui::Tui>::derive_scrollbar_glyphs<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_common::tui::ext::ScrollbarGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -798,7 +798,7 @@ pub fn skene_common::overlay::Overlay<skene_tui::Tui>::set_scrollbar_track(self,
 pub fn skene_common::overlay::Overlay<skene_tui::Tui>::set_shadow(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
 pub fn skene_common::overlay::Overlay<skene_tui::Tui>::set_shadow_offset(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
 pub fn skene_common::overlay::Overlay<skene_tui::Tui>::set_shadow_softening(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
-pub fn skene_common::overlay::Overlay<skene_tui::Tui>::terminal_style_mut(&mut self) -> &mut skene_core::box_style::BoxStyle<u32, skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::tui::ext::TuiExt>
+pub fn skene_common::overlay::Overlay<skene_tui::Tui>::terminal_style_mut(&mut self) -> &mut skene_core::box_style::BoxStyle<u32, skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::tui::ext::TuiStyle>
 impl<B: skene_common::control::Behavior<skene_tui::Tui>> skene_tui::TuiDecoration for skene_common::control::Control<skene_tui::Tui, B>
 pub fn skene_common::control::Control<skene_tui::Tui, B>::derive_border_glyphs<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_common::tui::ext::BorderGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::control::Control<skene_tui::Tui, B>::derive_scrollbar_glyphs<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_common::tui::ext::ScrollbarGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -814,19 +814,19 @@ pub fn skene_common::control::Control<skene_tui::Tui, B>::set_scrollbar_track(se
 pub fn skene_common::control::Control<skene_tui::Tui, B>::set_shadow(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
 pub fn skene_common::control::Control<skene_tui::Tui, B>::set_shadow_offset(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
 pub fn skene_common::control::Control<skene_tui::Tui, B>::set_shadow_softening(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
-pub fn skene_common::control::Control<skene_tui::Tui, B>::terminal_style_mut(&mut self) -> &mut skene_core::box_style::BoxStyle<u32, skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::tui::ext::TuiExt>
+pub fn skene_common::control::Control<skene_tui::Tui, B>::terminal_style_mut(&mut self) -> &mut skene_core::box_style::BoxStyle<u32, skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::tui::ext::TuiStyle>
 pub trait skene_tui::TuiText: core::marker::Sized
 pub fn skene_tui::TuiText::derive_bold<R: core::convert::Into<skene_core::leaf::StaticLeaf<bool>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_tui::TuiText::set_bold(self, impl core::convert::Into<skene_core::leaf::Value<bool, skene_core::condition::Condition<u32>>>) -> Self
-pub fn skene_tui::TuiText::terminal_style_mut(&mut self) -> &mut skene_core::run_style::RunStyle<skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::tui::ext::TuiExt>
+pub fn skene_tui::TuiText::terminal_style_mut(&mut self) -> &mut skene_core::run_style::RunStyle<skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::tui::ext::TuiStyle>
 impl skene_tui::TuiText for skene_common::span::Span<skene_tui::Tui>
 pub fn skene_common::span::Span<skene_tui::Tui>::derive_bold<R: core::convert::Into<skene_core::leaf::StaticLeaf<bool>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::span::Span<skene_tui::Tui>::set_bold(self, impl core::convert::Into<skene_core::leaf::Value<bool, skene_core::condition::Condition<u32>>>) -> Self
-pub fn skene_common::span::Span<skene_tui::Tui>::terminal_style_mut(&mut self) -> &mut skene_core::run_style::RunStyle<skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::tui::ext::TuiExt>
+pub fn skene_common::span::Span<skene_tui::Tui>::terminal_style_mut(&mut self) -> &mut skene_core::run_style::RunStyle<skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::tui::ext::TuiStyle>
 impl skene_tui::TuiText for skene_common::text::Text<skene_tui::Tui>
 pub fn skene_common::text::Text<skene_tui::Tui>::derive_bold<R: core::convert::Into<skene_core::leaf::StaticLeaf<bool>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::text::Text<skene_tui::Tui>::set_bold(self, impl core::convert::Into<skene_core::leaf::Value<bool, skene_core::condition::Condition<u32>>>) -> Self
-pub fn skene_common::text::Text<skene_tui::Tui>::terminal_style_mut(&mut self) -> &mut skene_core::run_style::RunStyle<skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::tui::ext::TuiExt>
+pub fn skene_common::text::Text<skene_tui::Tui>::terminal_style_mut(&mut self) -> &mut skene_core::run_style::RunStyle<skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::tui::ext::TuiStyle>
 pub trait skene_tui::View: skene_core::view::View<skene_tui::ActivePlatform>
 pub fn skene_tui::View::build(self) -> skene_core::node::NodeId where Self: core::marker::Sized
 pub fn skene_tui::View::into_any(self) -> skene_tui::AnyView where Self: core::marker::Sized
@@ -851,6 +851,18 @@ pub fn skene_tui::stored_scheme() -> core::option::Option<skene_core::values::co
 pub fn skene_tui::uninstall()
 pub type skene_tui::ActivePlatform = skene_tui::Tui
 pub type skene_tui::AnyView = skene_core::view::AnyView<skene_tui::ActivePlatform>
+pub type skene_tui::BasicButton<C> = skene_common::control::BasicButton<skene_tui::ActivePlatform, C>
+pub type skene_tui::BasicCheckbox<C> = skene_common::control::BasicCheckbox<skene_tui::ActivePlatform, C>
+pub type skene_tui::BasicListbox<C> = skene_common::control::BasicListbox<skene_tui::ActivePlatform, C>
+pub type skene_tui::BasicListboxOption<C> = skene_common::control::BasicListboxOption<skene_tui::ActivePlatform, C>
+pub type skene_tui::BasicMenu<C> = skene_common::control::BasicMenu<skene_tui::ActivePlatform, C>
+pub type skene_tui::BasicMenuItem<C> = skene_common::control::BasicMenuItem<skene_tui::ActivePlatform, C>
+pub type skene_tui::BasicPicker<F> = skene_common::picker::BasicPicker<skene_tui::ActivePlatform, F>
+pub type skene_tui::BasicRadio<C> = skene_common::control::BasicRadio<skene_tui::ActivePlatform, C>
+pub type skene_tui::BasicRadioGroup<C> = skene_common::control::BasicRadioGroup<skene_tui::ActivePlatform, C>
+pub type skene_tui::BasicSlider<C> = skene_common::control::BasicSlider<skene_tui::ActivePlatform, C>
+pub type skene_tui::BasicTextEditor<C> = skene_common::control::BasicTextEditor<skene_tui::ActivePlatform, C>
+pub type skene_tui::BasicTextField<C> = skene_common::control::BasicTextField<skene_tui::ActivePlatform, C>
 pub type skene_tui::ChildBuilder = skene_common::realize::ChildBuilder<skene_tui::ActivePlatform>
 pub type skene_tui::Column = skene_common::flex::Column<skene_tui::ActivePlatform>
 pub type skene_tui::Condition = skene_core::condition::Condition<u32>
@@ -880,18 +892,6 @@ pub type skene_tui::Overlay<C> = skene_common::overlay::Overlay<skene_tui::Activ
 pub type skene_tui::Painted = skene_common::painted::Painted<skene_tui::ActivePlatform>
 pub type skene_tui::Pinned<C> = skene_common::pinned::Pinned<skene_tui::ActivePlatform, C>
 pub type skene_tui::Point = skene_core::values::point::Point<u32>
-pub type skene_tui::RawButton<C> = skene_common::control::RawButton<skene_tui::ActivePlatform, C>
-pub type skene_tui::RawCheckbox<C> = skene_common::control::RawCheckbox<skene_tui::ActivePlatform, C>
-pub type skene_tui::RawListbox<C> = skene_common::control::RawListbox<skene_tui::ActivePlatform, C>
-pub type skene_tui::RawMenu<C> = skene_common::control::RawMenu<skene_tui::ActivePlatform, C>
-pub type skene_tui::RawMenuItem<C> = skene_common::control::RawMenuItem<skene_tui::ActivePlatform, C>
-pub type skene_tui::RawOption<C> = skene_common::control::RawOption<skene_tui::ActivePlatform, C>
-pub type skene_tui::RawPicker<F> = skene_common::picker::RawPicker<skene_tui::ActivePlatform, F>
-pub type skene_tui::RawRadio<C> = skene_common::control::RawRadio<skene_tui::ActivePlatform, C>
-pub type skene_tui::RawRadioGroup<C> = skene_common::control::RawRadioGroup<skene_tui::ActivePlatform, C>
-pub type skene_tui::RawSlider<C> = skene_common::control::RawSlider<skene_tui::ActivePlatform, C>
-pub type skene_tui::RawTextEditor<C> = skene_common::control::RawTextEditor<skene_tui::ActivePlatform, C>
-pub type skene_tui::RawTextField<C> = skene_common::control::RawTextField<skene_tui::ActivePlatform, C>
 pub type skene_tui::Rect = skene_core::values::rect::Rect<u32>
 pub type skene_tui::RichText = skene_common::span::RichText<skene_tui::ActivePlatform>
 pub type skene_tui::Row = skene_common::flex::Row<skene_tui::ActivePlatform>

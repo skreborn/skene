@@ -74,7 +74,7 @@ fn router_flows_through_context() {
     let _ = install_router(Page::Home);
 
     derived(|| {
-      let router = Router::<Page>::get().expect("a provided router");
+      let router = Router::<Page>::current().expect("a provided router");
 
       Text::new(router.route().to_path()).build()
     })

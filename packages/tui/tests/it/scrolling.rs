@@ -187,7 +187,7 @@ fn focus_scrolls_into_view() {
               Column::new().set_children(
                 (0..6)
                   .map(|index| {
-                    RawButton::new(Activate::new())
+                    BasicButton::new(Activate::new())
                       .set_label(format!("button {index}"))
                       .into_any()
                   })

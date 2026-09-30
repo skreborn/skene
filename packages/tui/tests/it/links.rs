@@ -32,14 +32,14 @@ fn tab_reaches_links_and_enter_opens_them() {
     let _ = tui::mount(|| {
       Column::new()
         .set_children((
-          RawButton::new(Activate::new()).set_label("first"),
+          BasicButton::new(Activate::new()).set_label("first"),
           Text::new("guide").set_link("https://a.example"),
           RichText::new().set_spans([
             Span::new("see the "),
             Span::new("docs").set_link("https://b.example"),
             Span::new(" here"),
           ]),
-          RawButton::new(Activate::new())
+          BasicButton::new(Activate::new())
             .set_label("last")
             .handle_click(move || counted.set(counted.get() + 1)),
         ))

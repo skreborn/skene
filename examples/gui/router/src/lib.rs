@@ -13,7 +13,7 @@
 
 use skene_gui::{
   AnyView,
-  Lazy,
+  AsyncView,
   Link,
   install_static_router,
   prelude::*,
@@ -71,7 +71,7 @@ fn app() -> impl View {
             )),
             derived(move || match router.route() {
               Page::Home => home().build(),
-              Page::About => Lazy::new(about).build(),
+              Page::About => AsyncView::new(about).build(),
             }),
           )),
       )

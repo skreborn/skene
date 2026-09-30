@@ -286,13 +286,13 @@ fn focus_order_and_accessibility_follow_their_signals() {
   reset();
 
   let owner = Owner::new();
-  let position = Signal::opaque(FocusOrder::Position(1));
+  let position = Signal::transient(FocusOrder::Position(1));
   let expanded = Signal::new(false);
   let (fixed, derived) = owner.enter(|| {
     (
       Container::new()
         .set_focus_order(FocusOrder::Auto)
-        .set_accessibility([AccessProp::Label("fixed".to_owned())])
+        .set_accessibility([AccessProp::Name("fixed".to_owned())])
         .build(),
       Container::new()
         .derive_focus_order(move || position.get())
@@ -303,7 +303,7 @@ fn focus_order_and_accessibility_follow_their_signals() {
   let fixed = box_props(fixed).unwrap();
 
   assert_eq!(fixed.focus_order, Some(FocusOrder::Auto));
-  assert_eq!(fixed.access, [AccessProp::Label("fixed".to_owned())]);
+  assert_eq!(fixed.access, [AccessProp::Name("fixed".to_owned())]);
 
   let props = box_props(derived).unwrap();
 

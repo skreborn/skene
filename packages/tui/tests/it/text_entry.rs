@@ -14,7 +14,7 @@ fn input_binds_a_signal_both_ways() {
     let name = Signal::new(String::new());
 
     let _ = tui::mount(|| {
-      RawTextField::new(TextEntry::new().set_placeholder("name").bind_value(name))
+      BasicTextField::new(TextEntry::new().set_placeholder("name").bind_value(name))
         .into_any()
         .build()
     });
@@ -41,7 +41,7 @@ fn caret_edits_insert_and_delete() {
     let name = Signal::new(String::new());
 
     let _ = tui::mount(|| {
-      RawTextField::new(TextEntry::new().bind_value(name))
+      BasicTextField::new(TextEntry::new().bind_value(name))
         .into_any()
         .build()
     });
@@ -83,7 +83,7 @@ fn caret_jumps_and_deletes_by_word() {
     let name = Signal::new(String::from("alpha beta gamma"));
 
     let _ = tui::mount(|| {
-      RawTextField::new(TextEntry::new().bind_value(name))
+      BasicTextField::new(TextEntry::new().bind_value(name))
         .into_any()
         .build()
     });
@@ -119,7 +119,7 @@ fn word_deletion_follows_unicode_word_boundaries() {
     let name = Signal::new(String::from("say don't foo.bar_baz("));
 
     let _ = tui::mount(|| {
-      RawTextField::new(TextEntry::new().bind_value(name))
+      BasicTextField::new(TextEntry::new().bind_value(name))
         .into_any()
         .build()
     });
@@ -144,7 +144,7 @@ fn caret_windows_long_values_and_follows_clicks() {
     let name = Signal::new(String::new());
 
     let _ = tui::mount(|| {
-      RawTextField::new(TextEntry::new().bind_value(name))
+      BasicTextField::new(TextEntry::new().bind_value(name))
         .set_width(5)
         .into_any()
         .build()
@@ -178,7 +178,7 @@ fn an_editor_breaks_lines_and_moves_between_them() {
     let bio = Signal::new(String::new());
 
     let _ = tui::mount(|| {
-      RawTextEditor::new(TextEntry::new().set_lines(3).bind_value(bio))
+      BasicTextEditor::new(TextEntry::new().set_lines(3).bind_value(bio))
         .into_any()
         .build()
     });
@@ -210,7 +210,7 @@ fn an_editor_windows_its_rows_around_the_caret() {
 
     let _ = tui::mount(|| {
       Column::new()
-        .add_child(RawTextEditor::new(
+        .add_child(BasicTextEditor::new(
           TextEntry::new().set_lines(3).bind_value(bio),
         ))
         .into_any()
@@ -246,7 +246,7 @@ fn the_wheel_scrolls_an_editor_and_leaves_the_caret() {
 
     let _ = tui::mount(|| {
       Column::new()
-        .add_child(RawTextEditor::new(
+        .add_child(BasicTextEditor::new(
           TextEntry::new().set_lines(3).bind_value(bio),
         ))
         .into_any()
@@ -315,7 +315,7 @@ fn the_caret_reports_the_terminal_cursor_cell() {
     let _ = tui::mount(|| {
       Column::new()
         .set_children((
-          RawTextField::new(TextEntry::new()).into_any(),
+          BasicTextField::new(TextEntry::new()).into_any(),
           Overlay::modal()
             .bind_open(open)
             .set_child(Text::new("cover"))
@@ -360,7 +360,7 @@ fn an_overflowing_editor_shows_a_scrollbar_that_drags() {
     let _ = tui::mount(|| {
       Column::new()
         .add_child(
-          RawTextEditor::new(TextEntry::new().set_lines(3).bind_value(bio))
+          BasicTextEditor::new(TextEntry::new().set_lines(3).bind_value(bio))
             .set_width(10)
             .set_border_width(Inset::all(1))
             .set_border_color(white()),
@@ -413,7 +413,7 @@ fn the_horizontal_wheel_scrolls_a_field() {
 
     let _ = tui::mount(|| {
       Column::new()
-        .add_child(RawTextField::new(TextEntry::new().bind_value(name)).set_width(8))
+        .add_child(BasicTextField::new(TextEntry::new().bind_value(name)).set_width(8))
         .into_any()
         .build()
     });
@@ -460,7 +460,7 @@ fn undo_and_redo_step_through_edits() {
     let name = Signal::new("x".to_owned());
 
     let _ = tui::mount(|| {
-      RawTextField::new(TextEntry::new().bind_value(name))
+      BasicTextField::new(TextEntry::new().bind_value(name))
         .into_any()
         .build()
     });
@@ -575,7 +575,7 @@ fn an_editor_shows_its_laid_out_rows_and_sizes_by_its_longest_line() {
     let _ = tui::mount(|| {
       Row::new()
         .set_children((
-          RawTextEditor::new(TextEntry::new().set_lines(2).bind_value(bio)).set_height(3),
+          BasicTextEditor::new(TextEntry::new().set_lines(2).bind_value(bio)).set_height(3),
           Text::new("|"),
         ))
         .into_any()
@@ -600,8 +600,8 @@ fn line_breaks_arrive_as_line_feeds_in_an_editor_and_drop_in_a_field() {
     let _ = tui::mount(|| {
       Column::new()
         .set_children((
-          RawTextEditor::new(TextEntry::new().set_lines(4).bind_value(bio)),
-          RawTextField::new(TextEntry::new().bind_value(name)),
+          BasicTextEditor::new(TextEntry::new().set_lines(4).bind_value(bio)),
+          BasicTextField::new(TextEntry::new().bind_value(name)),
         ))
         .into_any()
         .build()
@@ -631,7 +631,7 @@ fn an_editors_keys_follow_its_rows_and_keep_their_column() {
     let bio = Signal::new("abcdef ghij".to_owned());
 
     let _ = tui::mount(|| {
-      RawTextEditor::new(TextEntry::new().set_lines(3).bind_value(bio))
+      BasicTextEditor::new(TextEntry::new().set_lines(3).bind_value(bio))
         .set_width(8)
         .into_any()
         .build()
@@ -709,8 +709,8 @@ fn an_entry_takes_the_typography_ink_and_weight() {
         .set_child_builder(|| {
           Column::new()
             .set_children((
-              RawTextField::new(TextEntry::new().set_value("hi")),
-              RawTextField::new(TextEntry::new().set_placeholder("name")),
+              BasicTextField::new(TextEntry::new().set_value("hi")),
+              BasicTextField::new(TextEntry::new().set_placeholder("name")),
             ))
             .into_any()
         })
@@ -732,7 +732,7 @@ fn a_read_only_entry_takes_no_edits() {
     let value = Signal::new("abc".to_owned());
 
     let _ = tui::mount(|| {
-      RawTextField::new(TextEntry::new().bind_value(value))
+      BasicTextField::new(TextEntry::new().bind_value(value))
         .set_read_only(true)
         .into_any()
         .build()
@@ -769,10 +769,10 @@ fn a_tab_in_an_entry_reaches_its_stop() {
     let _ = tui::mount(|| {
       Column::new()
         .set_children((
-          RawTextField::new(TextEntry::new().bind_value(name))
+          BasicTextField::new(TextEntry::new().bind_value(name))
             .set_width(20)
             .into_any(),
-          RawTextEditor::new(TextEntry::new().set_lines(2).bind_value(bio)).into_any(),
+          BasicTextEditor::new(TextEntry::new().set_lines(2).bind_value(bio)).into_any(),
         ))
         .into_any()
         .build()

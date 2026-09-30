@@ -41,7 +41,7 @@ use super::{Behavior, ControlHandle, Controlled, PointerPhase};
 /// non-positive step leaves the range continuous, and an arrow then moves by a
 /// hundredth of the span.
 #[must_use]
-pub struct Range {
+pub struct Slider {
   min: f32,
   max: f32,
   step: f32,
@@ -53,13 +53,13 @@ pub struct Range {
   axis: Axis,
 }
 
-impl std::fmt::Debug for Range {
+impl std::fmt::Debug for Slider {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    formatter.debug_struct("Range").finish_non_exhaustive()
+    formatter.debug_struct("Slider").finish_non_exhaustive()
   }
 }
 
-impl Range {
+impl Slider {
   /// A slider over `0..=100` stepping by `1`, holding its minimum.
   #[inline(always)]
   pub fn new() -> Self {
@@ -214,17 +214,17 @@ impl Range {
   }
 }
 
-impl Default for Range {
+impl Default for Slider {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<P: Platform> Behavior<P> for Range {
+impl<P: Platform> Behavior<P> for Slider {
   #[inline(always)]
   fn native(&self) -> Option<NativeElement> {
-    Some(NativeElement::Range)
+    Some(NativeElement::Slider)
   }
 
   #[inline(always)]

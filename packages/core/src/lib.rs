@@ -23,8 +23,8 @@
 mod boundary;
 mod box_style;
 mod children;
-mod composable;
 mod condition;
+mod condition_tree;
 mod control;
 mod derived;
 mod dispatch;
@@ -76,7 +76,6 @@ pub use box_style::{
   box_fields,
 };
 pub use children::{Children, HasChild, HasChildren, IntoChildren, Seal};
-pub use composable::{Composable, ConditionShape};
 pub use condition::{
   Condition,
   ContainerName,
@@ -87,6 +86,7 @@ pub use condition::{
   PointerPrecision,
   State,
 };
+pub use condition_tree::{ConditionShape, ConditionTree};
 pub use control::{
   ControlProps,
   ControlState,
@@ -240,6 +240,7 @@ pub use values::{
   Availability,
   Axes,
   Axis,
+  CheckState,
   ClipboardAction,
   Color,
   ColorScheme,
@@ -276,7 +277,6 @@ pub use values::{
   TextDecoration,
   TextDecorationStyle,
   TextSelection,
-  Toggle,
   TrackLimit,
   Visibility,
   Wrap,

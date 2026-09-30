@@ -5,7 +5,7 @@
 use std::{cell::Cell, rc::Rc};
 
 use skene_simple::tui::prelude::*;
-use skene_tui::{self as tui, Activate, Range, TextEntry, prelude::*, testing};
+use skene_tui::{self as tui, Activate, Slider, TextEntry, prelude::*, testing};
 
 use crate::common::{blue, colors_at, green, locate, red, rgb, white, with_platform};
 
@@ -17,7 +17,7 @@ fn focus_variant_and_enter_click() {
     let counted = Rc::clone(&clicks);
 
     let _ = tui::mount(|| {
-      RawButton::new(Activate::new())
+      BasicButton::new(Activate::new())
         .set_width(6)
         .set_height(3)
         .set_border_width(Inset::all(1))
@@ -54,10 +54,10 @@ fn a_box_hears_focus_entering_and_leaving_its_subtree() {
             .handle_focus(move || entered.set(entered.get() + 1))
             .handle_blur(move || left.set(left.get() + 1))
             .set_child(Row::new().set_children((
-              RawButton::new(Activate::new()).set_label("a"),
-              RawButton::new(Activate::new()).set_label("b"),
+              BasicButton::new(Activate::new()).set_label("a"),
+              BasicButton::new(Activate::new()).set_label("b"),
             ))),
-          RawButton::new(Activate::new()).set_label("c"),
+          BasicButton::new(Activate::new()).set_label("c"),
         ))
         .into_any()
         .build()
@@ -91,11 +91,11 @@ fn mouse_click_hits_and_focuses() {
     let _ = tui::mount(|| {
       Row::new()
         .set_children((
-          RawButton::new(Activate::new())
+          BasicButton::new(Activate::new())
             .set_width(4)
             .set_height(2)
             .handle_click(move || count_first.set(count_first.get() + 1)),
-          RawButton::new(Activate::new())
+          BasicButton::new(Activate::new())
             .set_width(4)
             .set_height(2)
             .handle_click(move || count_second.set(count_second.get() + 1)),
@@ -123,7 +123,7 @@ fn space_clicks_on_the_release_the_terminal_reports_or_at_once() {
     let counted = Rc::clone(&clicks);
 
     let _ = tui::mount(|| {
-      RawButton::new(Activate::new())
+      BasicButton::new(Activate::new())
         .set_width(4)
         .set_height(1)
         .handle_click(move || counted.set(counted.get() + 1))
@@ -258,8 +258,8 @@ fn a_slider_maps_the_pointer_through_its_track() {
     let volume = Signal::new(0.0f32);
 
     let _ = tui::mount(|| {
-      RawSlider::new(
-        Range::new()
+      BasicSlider::new(
+        Slider::new()
           .set_min(0.)
           .set_max(10.)
           .set_step(1.)
@@ -294,8 +294,8 @@ fn slider_nudges_and_jumps() {
     let volume = Signal::new(0.0f32);
 
     let _ = tui::mount(|| {
-      RawSlider::new(
-        Range::new()
+      BasicSlider::new(
+        Slider::new()
           .set_min(0.)
           .set_max(10.)
           .set_step(1.)
@@ -351,8 +351,8 @@ fn slider_drags_to_the_pointer() {
       Container::new()
         .set_width(11)
         .set_child(
-          RawSlider::new(
-            Range::new()
+          BasicSlider::new(
+            Slider::new()
               .set_min(0.)
               .set_max(10.)
               .set_step(1.)
@@ -388,8 +388,8 @@ fn slider_shows_the_grab_cursors() {
     let volume = Signal::new(5.0f32);
 
     let _ = tui::mount(|| {
-      RawSlider::new(
-        Range::new()
+      BasicSlider::new(
+        Slider::new()
           .set_min(0.)
           .set_max(10.)
           .set_step(1.)
@@ -805,7 +805,9 @@ fn picker_popup_anchors_beneath_and_closes_on_blur() {
       Column::new()
         .set_children((
           picker(unit).into_any(),
-          RawButton::new(Activate::new()).set_label("next").into_any(),
+          BasicButton::new(Activate::new())
+            .set_label("next")
+            .into_any(),
         ))
         .into_any()
         .build()
@@ -852,7 +854,7 @@ fn picker_tab_commits_closes_and_travels_on() {
       Column::new()
         .set_children((
           picker(unit).into_any(),
-          RawButton::new(Activate::new())
+          BasicButton::new(Activate::new())
             .set_label("next")
             .bind_handle(next)
             .into_any(),
@@ -1038,7 +1040,7 @@ fn a_control_keeps_its_press_from_an_ancestor() {
 fn authored_state_variants_paint_on_a_control() {
   with_platform(|| {
     let _ = tui::mount(|| {
-      RawButton::new(Activate::new())
+      BasicButton::new(Activate::new())
         .set_width(4)
         .set_height(1)
         .set_color(
@@ -1072,7 +1074,7 @@ fn authored_state_variants_paint_on_a_control() {
 fn focus_shows_after_a_key_and_not_after_a_pointer_press() {
   with_platform(|| {
     let _ = tui::mount(|| {
-      RawButton::new(Activate::new())
+      BasicButton::new(Activate::new())
         .set_width(4)
         .set_height(1)
         .set_color(
@@ -1123,8 +1125,8 @@ fn a_focus_handle_moves_focus() {
     let _ = tui::mount(move || {
       Column::new()
         .set_children((
-          RawButton::new(Activate::new()).set_label("first"),
-          RawButton::new(Activate::new())
+          BasicButton::new(Activate::new()).set_label("first"),
+          BasicButton::new(Activate::new())
             .set_label("second")
             .bind_handle(handle),
         ))
@@ -1155,11 +1157,11 @@ fn a_disabled_control_takes_no_focus_and_no_click() {
     let _ = tui::mount(|| {
       Column::new()
         .set_children((
-          RawButton::new(Activate::new())
+          BasicButton::new(Activate::new())
             .set_label("off")
             .set_disabled(true)
             .handle_click(move || counted.set(counted.get() + 1)),
-          RawButton::new(Activate::new()).set_label("on"),
+          BasicButton::new(Activate::new()).set_label("on"),
         ))
         .into_any()
         .build()
@@ -1193,14 +1195,14 @@ fn tab_leaves_a_control_disabled_while_focused_for_the_next() {
     let _ = tui::mount(move || {
       Column::new()
         .set_children((
-          RawButton::new(Activate::new())
+          BasicButton::new(Activate::new())
             .set_label("first")
             .bind_handle(first),
-          RawButton::new(Activate::new())
+          BasicButton::new(Activate::new())
             .set_label("submit")
             .derive_disabled(move || submitting.get())
             .handle_click(move || submitting.set(true)),
-          RawButton::new(Activate::new())
+          BasicButton::new(Activate::new())
             .set_label("next")
             .bind_handle(next),
         ))
@@ -1333,7 +1335,7 @@ fn a_text_fields_caption_sits_before_its_box() {
     let built = Rc::clone(&node);
 
     let _ = tui::mount(move || {
-      let field = RawTextField::new(TextEntry::new().bind_value(value))
+      let field = BasicTextField::new(TextEntry::new().bind_value(value))
         .set_label("Name")
         .set_width(10)
         .build();

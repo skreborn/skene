@@ -4,13 +4,13 @@
 #![cfg(skene_leaf = "server")]
 
 use skene_gui::{
+  BasicTextField,
   Condition,
   Container,
   FocusOrder,
   HasChild,
   HasChildren,
   Inset,
-  RawTextField,
   Row,
   State,
   Text,
@@ -31,7 +31,7 @@ fn first_class(body: &str) -> &str {
 /// closing tag and no wrapper.
 #[test]
 fn input_is_the_control_and_a_void_element() {
-  let rendered = render_to_string(|| RawTextField::new(TextEntry::new()));
+  let rendered = render_to_string(|| BasicTextField::new(TextEntry::new()));
   let body = rendered.body();
 
   assert!(body.starts_with("<input "), "{body}");
@@ -47,7 +47,7 @@ fn input_is_the_control_and_a_void_element() {
 #[test]
 fn a_caption_is_a_label_before_the_input() {
   fn app() -> impl skene_gui::View {
-    Container::new().set_child(RawTextField::new(TextEntry::new()).set_label("Name"))
+    Container::new().set_child(BasicTextField::new(TextEntry::new()).set_label("Name"))
   }
 
   let rendered = render_to_string(app);
@@ -80,7 +80,7 @@ fn a_caption_is_a_label_before_the_input() {
 #[test]
 fn placeholder_and_value_serialize_as_attributes() {
   let rendered = render_to_string(|| {
-    RawTextField::new(
+    BasicTextField::new(
       TextEntry::new()
         .set_placeholder("Type \"here\"")
         .set_value("a & b"),
@@ -101,7 +101,7 @@ fn placeholder_and_value_serialize_as_attributes() {
 #[test]
 fn input_styling_interns_with_variants() {
   let rendered = render_to_string(|| {
-    RawTextField::new(TextEntry::new())
+    BasicTextField::new(TextEntry::new())
       .set_padding(Inset::all(8.))
       .set_corner_radius(0f32.when(Condition::from(State::Focused), 4.))
   });
@@ -126,7 +126,7 @@ fn input_styling_interns_with_variants() {
 #[test]
 fn focus_attributes_serialize() {
   let rendered = render_to_string(|| {
-    RawTextField::new(TextEntry::new()).set_focus_order(FocusOrder::Position(0))
+    BasicTextField::new(TextEntry::new()).set_focus_order(FocusOrder::Position(0))
   });
 
   let body = rendered.body();
@@ -148,13 +148,13 @@ fn handlers_are_inert_on_the_server() {
       .handle_scroll(|_| {})
       .set_child(Row::new().set_children((
         Text::new("t"),
-        RawTextField::new(TextEntry::new().handle_change(|_| {})).handle_focus(|| {}),
+        BasicTextField::new(TextEntry::new().handle_change(|_| {})).handle_focus(|| {}),
       )))
   });
 
   let plain = render_to_string(|| {
     Container::new()
-      .set_child(Row::new().set_children((Text::new("t"), RawTextField::new(TextEntry::new()))))
+      .set_child(Row::new().set_children((Text::new("t"), BasicTextField::new(TextEntry::new()))))
   });
 
   assert_eq!(rendered.body(), plain.body());

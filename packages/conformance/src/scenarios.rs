@@ -4,23 +4,23 @@ use std::time::Duration;
 
 use skene_common::{
   Activate,
+  BasicButton,
+  BasicCheckbox,
+  BasicListboxOption,
+  BasicPicker,
+  BasicRadio,
+  BasicRadioGroup,
+  BasicSlider,
+  BasicTextField,
   Column,
   Container,
   ContextMenu,
-  ListItem,
-  MenuItem,
+  ListboxOption,
+  MenuEntry,
   Overlay,
-  RadioMember,
-  Range,
-  RawButton,
-  RawCheckbox,
-  RawOption,
-  RawPicker,
-  RawRadio,
-  RawRadioGroup,
-  RawSlider,
-  RawTextField,
-  Roving,
+  Radio,
+  RadioGroup,
+  Slider,
   TOOLTIP_DELAY,
   Text,
   TextEntry,
@@ -143,8 +143,8 @@ fn found<D: Driver>(driver: &mut D, role: Role, name: &str) -> NodeId {
 }
 
 /// A button named `name`.
-fn button<D: Driver>(name: &str) -> RawButton<D::Platform> {
-  RawButton::new(Activate::new()).set_label(name)
+fn button<D: Driver>(name: &str) -> BasicButton<D::Platform> {
+  BasicButton::new(Activate::new()).set_label(name)
 }
 
 fn a_button_activates<D: Driver>(driver: &mut D) {
@@ -176,7 +176,7 @@ fn a_checkbox_toggles<D: Driver>(driver: &mut D) {
   let checked = Signal::new(false);
 
   driver.mount(move || {
-    RawCheckbox::<D::Platform>::new(Toggle::new().bind_checked(checked))
+    BasicCheckbox::<D::Platform>::new(Toggle::new().bind_checked(checked))
       .set_label("Remember me")
       .into_any()
   });
@@ -254,7 +254,7 @@ fn typed_text_edits_a_field<D: Driver>(driver: &mut D) {
   let value = Signal::new(String::new());
 
   driver.mount(move || {
-    RawTextField::<D::Platform>::new(TextEntry::new().bind_value(value))
+    BasicTextField::<D::Platform>::new(TextEntry::new().bind_value(value))
       .set_label("Name")
       .into_any()
   });
@@ -279,7 +279,7 @@ fn a_read_only_field_takes_no_text<D: Driver>(driver: &mut D) {
   let value = Signal::new("fixed".to_owned());
 
   driver.mount(move || {
-    RawTextField::<D::Platform>::new(TextEntry::new().bind_value(value))
+    BasicTextField::<D::Platform>::new(TextEntry::new().bind_value(value))
       .set_label("Name")
       .set_read_only(true)
       .into_any()
@@ -301,12 +301,12 @@ fn the_arrows_choose_within_a_radio_group<D: Driver>(driver: &mut D) {
   let chosen: Signal<Option<String>> = Signal::new(None);
 
   driver.mount(move || {
-    RawRadioGroup::<D::Platform>::new(Roving::new().bind_chosen(chosen))
+    BasicRadioGroup::<D::Platform>::new(RadioGroup::new().bind_chosen(chosen))
       .set_accessible_name("Size")
       .set_child(Column::new().set_children((
-        RawRadio::new(RadioMember::new("s")).set_label("Small"),
-        RawRadio::new(RadioMember::new("m")).set_label("Medium"),
-        RawRadio::new(RadioMember::new("l")).set_label("Large"),
+        BasicRadio::new(Radio::new("s")).set_label("Small"),
+        BasicRadio::new(Radio::new("m")).set_label("Medium"),
+        BasicRadio::new(Radio::new("l")).set_label("Large"),
       )))
       .into_any()
   });
@@ -340,7 +340,7 @@ fn a_slider_steps_by_its_keys<D: Driver>(driver: &mut D) {
   let value = Signal::new(50f32);
 
   driver.mount(move || {
-    RawSlider::<D::Platform>::new(Range::new().bind_value(value))
+    BasicSlider::<D::Platform>::new(Slider::new().bind_value(value))
       .set_accessible_name("Volume")
       .into_any()
   });
@@ -378,11 +378,12 @@ fn a_picker_chooses_and_returns_focus<D: Driver>(driver: &mut D) {
   let value = Signal::new("b".to_owned());
 
   driver.mount(move || {
-    RawPicker::<D::Platform>::new()
+    BasicPicker::<D::Platform>::new()
       .bind_value(value)
       .set_label("Letter")
       .set_options(
-        ["a", "b", "c"].map(|letter| RawOption::new(ListItem::new(letter)).set_label(letter)),
+        ["a", "b", "c"]
+          .map(|letter| BasicListboxOption::new(ListboxOption::new(letter)).set_label(letter)),
       )
       .set_face(|shown| Text::derive(move || shown.get()))
       .into_any()
@@ -448,7 +449,7 @@ fn a_context_menu_opens_on_shift_f10<D: Driver>(driver: &mut D) {
 
   driver.mount(move || {
     ContextMenu::<D::Platform>::new()
-      .set_items([MenuItem::new("Rename").handle_select(move || renamed.set(true))])
+      .set_items([MenuEntry::new("Rename").handle_select(move || renamed.set(true))])
       .set_child(
         Container::new()
           .set_role(Role::Group)
@@ -562,11 +563,12 @@ fn focus_leaving_a_popup_closes_it<D: Driver>(driver: &mut D) {
   driver.mount(move || {
     Column::<D::Platform>::new()
       .set_children((
-        RawPicker::<D::Platform>::new()
+        BasicPicker::<D::Platform>::new()
           .bind_value(value)
           .set_label("Letter")
           .set_options(
-            ["a", "b", "c"].map(|letter| RawOption::new(ListItem::new(letter)).set_label(letter)),
+            ["a", "b", "c"]
+              .map(|letter| BasicListboxOption::new(ListboxOption::new(letter)).set_label(letter)),
           )
           .set_face(|shown| Text::derive(move || shown.get())),
         button::<D>("Elsewhere"),
@@ -659,8 +661,8 @@ fn a_form_reads_alike<D: Driver>(driver: &mut D) {
         skene_common::Container::new()
           .set_role(Role::Heading)
           .set_child(Text::new("Sign in")),
-        RawTextField::new(TextEntry::new().set_value("ada")).set_label("Name"),
-        RawCheckbox::new(Toggle::new().set_checked(true)).set_label("Remember me"),
+        BasicTextField::new(TextEntry::new().set_value("ada")).set_label("Name"),
+        BasicCheckbox::new(Toggle::new().set_checked(true)).set_label("Remember me"),
         button::<D>("Continue").set_disabled(true),
       ))
       .into_any()

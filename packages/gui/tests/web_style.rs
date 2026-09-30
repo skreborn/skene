@@ -10,7 +10,7 @@ use skene_gui::{
   Flexible,
   Grid,
   GridCell,
-  GuiExt,
+  GuiStyle,
   HasChildren,
   Inset,
   Media,
@@ -95,8 +95,8 @@ fn fixed(leaf: &StaticLeaf<Color>) -> Color {
 }
 
 /// A plain box style rounding its corners by `radius`, for a keyframe.
-fn rounded(radius: f32) -> BoxStyle<f32, Keyframe, GuiExt> {
-  let mut style: BoxStyle<f32, Keyframe, GuiExt> = BoxStyle::default();
+fn rounded(radius: f32) -> BoxStyle<f32, Keyframe, GuiStyle> {
+  let mut style: BoxStyle<f32, Keyframe, GuiStyle> = BoxStyle::default();
 
   style.ext.corner_radius = Some(radius.into());
 
@@ -675,8 +675,8 @@ fn reduced_motion_gates_the_motion_that_respects_it() {
 fn a_token_keyframe_renders_its_variable() {
   let rendered = render_to_string(|| {
     Theme::new(SimplePalette::default()).set_child_builder(|| {
-      let mut start: BoxStyle<f32, Keyframe, GuiExt> = BoxStyle::default();
-      let mut end: BoxStyle<f32, Keyframe, GuiExt> = BoxStyle::default();
+      let mut start: BoxStyle<f32, Keyframe, GuiStyle> = BoxStyle::default();
+      let mut end: BoxStyle<f32, Keyframe, GuiStyle> = BoxStyle::default();
 
       start.color = Some(SimplePalette::CARD.into());
       end.color = Some(Color::srgb(1., 0., 0.).into());

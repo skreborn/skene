@@ -58,7 +58,7 @@ pub(super) fn with_media<R>(operation: impl FnOnce(&MediaState) -> R) -> R {
           hover: hints.hover,
           safe_area: Inset::ZERO,
         });
-        let (absent, _) = Signal::opaque(false).split();
+        let (absent, _) = Signal::transient(false).split();
 
         MediaState {
           signals,

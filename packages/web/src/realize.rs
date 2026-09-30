@@ -5,11 +5,12 @@
 
 use std::rc::Rc;
 
-use skene_common::gui::GuiExt;
+use skene_common::gui::GuiStyle;
 use skene_core::{
   AccessProp,
   BoxProps,
   BoxValue,
+  CheckState,
   ControlProps,
   ControlState,
   Definitions,
@@ -26,7 +27,6 @@ use skene_core::{
   Slot,
   StaticBoxStyle,
   StaticLeaf,
-  Toggle,
 };
 
 use crate::{
@@ -514,7 +514,7 @@ impl<S: Sink> Realizer<S> {
     &mut self,
     node: NodeId,
     slot: Slot,
-    leaf: &StaticLeaf<BoxValue<f32, GuiExt>>,
+    leaf: &StaticLeaf<BoxValue<f32, GuiStyle>>,
   ) {
     self.write_slot(node, slot, || render_box_leaf(leaf));
   }
@@ -524,7 +524,7 @@ impl<S: Sink> Realizer<S> {
     &mut self,
     node: NodeId,
     slot: Slot,
-    leaf: &StaticLeaf<RunValue<GuiExt>>,
+    leaf: &StaticLeaf<RunValue<GuiStyle>>,
   ) {
     self.write_slot(node, slot, || render_run_leaf(leaf));
   }
@@ -588,13 +588,13 @@ impl<S: Sink> Realizer<S> {
       return;
     };
     let root = &record.element;
-    let mixed = state.checked == Toggle::Mixed;
+    let mixed = state.checked == CheckState::Mixed;
 
     match &record.carrier {
       None => {
         self
           .sink
-          .set_flag(root, "data-skene-checked", state.checked == Toggle::On);
+          .set_flag(root, "data-skene-checked", state.checked == CheckState::On);
         self.sink.set_flag(root, "data-skene-indeterminate", mixed);
         self
           .sink
@@ -608,7 +608,9 @@ impl<S: Sink> Realizer<S> {
         }
       }
       Some(carrier) => {
-        self.sink.set_checked(carrier, state.checked == Toggle::On);
+        self
+          .sink
+          .set_checked(carrier, state.checked == CheckState::On);
         self.sink.set_indeterminate(carrier, mixed);
         self
           .sink

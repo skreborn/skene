@@ -55,7 +55,7 @@ impl<T: 'static> Resource<T> {
   /// loading again. Resources are matched across the boundary by creation order within
   /// the lazy segment they are built in, so the client must create its resources in
   /// the same order the server did—which it does when it builds the same view, and a
-  /// [`Lazy`](crate::Lazy) content's resources are matched among themselves however
+  /// [`AsyncView`](crate::AsyncView) content's resources are matched among themselves however
   /// late its module arrives. When no server value is present (a plain client render,
   /// or one the server did not settle), it loads normally.
   /// [`tagged`](Self::tagged) pairs the two sides explicitly instead.

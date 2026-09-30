@@ -20,9 +20,9 @@ use skene_reactive::{Get, Owner, Set, Signal};
 type Column = skene_common::Column<Headless>;
 type Container = skene_common::Container<Headless>;
 type Text = skene_common::Text<Headless>;
-type RawButton = skene_common::RawButton<Headless>;
-type RawTextField = skene_common::RawTextField<Headless>;
-type RawTextEditor = skene_common::RawTextEditor<Headless>;
+type BasicButton = skene_common::BasicButton<Headless>;
+type BasicTextField = skene_common::BasicTextField<Headless>;
+type BasicTextEditor = skene_common::BasicTextEditor<Headless>;
 type Overlay = skene_common::Overlay<Headless>;
 
 /// A button found by its role and name takes a user's click: focus moves to it and its
@@ -37,10 +37,10 @@ fn a_click_focuses_and_activates_what_it_finds() {
   let _page = owner.enter(move || {
     Column::new()
       .set_children((
-        RawButton::new(Activate::new())
+        BasicButton::new(Activate::new())
           .set_label("Save")
           .handle_click(move || counted.set(counted.get() + 1)),
-        RawButton::new(Activate::new()).set_label("Cancel"),
+        BasicButton::new(Activate::new()).set_label("Cancel"),
         Container::new().set_child(Text::new("Nothing to press")),
       ))
       .build()
@@ -74,8 +74,8 @@ fn typed_text_edits_a_bound_entry() {
   let lines = Signal::new(String::new());
   let (field, editor) = owner.enter(move || {
     (
-      RawTextField::new(TextEntry::new().bind_value(line)).build(),
-      RawTextEditor::new(TextEntry::new().set_lines(3).bind_value(lines)).build(),
+      BasicTextField::new(TextEntry::new().bind_value(line)).build(),
+      BasicTextEditor::new(TextEntry::new().set_lines(3).bind_value(lines)).build(),
     )
   });
 
@@ -105,8 +105,8 @@ fn a_pressed_tab_moves_focus() {
   let _page = owner.enter(|| {
     Column::new()
       .set_children((
-        RawButton::new(Activate::new()).set_label("First"),
-        RawButton::new(Activate::new()).set_label("Second"),
+        BasicButton::new(Activate::new()).set_label("First"),
+        BasicButton::new(Activate::new()).set_label("Second"),
       ))
       .build()
   });

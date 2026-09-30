@@ -1,6 +1,6 @@
 //! The wrapper giving a flex child its flexibility.
 
-use std::{marker::PhantomData, rc::Rc};
+use std::marker::PhantomData;
 
 use skene_core::{
   Annotation,
@@ -21,11 +21,7 @@ use skene_core::{
   View,
 };
 
-/// A grow weight: fixed, or recomputed from the signals it reads.
-enum Factor {
-  Fixed(f32),
-  Derived(Rc<dyn Fn() -> f32>),
-}
+use crate::realize::Source;
 
 /// Gives the child it wraps its flexibility in a [`Row`](crate::Row) or a
 /// [`Column`](crate::Column).
@@ -37,7 +33,7 @@ enum Factor {
 #[must_use]
 pub struct Flexible<P: Platform, C = NoChild> {
   initial: Dimension<P::Scalar>,
-  grow: Factor,
+  grow: Source<f32>,
   shrink: f32,
   alignment: Option<Value<ItemAlignment, Condition<P::Scalar>>>,
   child: C,
@@ -69,7 +65,7 @@ impl<P: Platform> Flexible<P> {
 
     Self {
       initial,
-      grow: Factor::Fixed(grow_factor),
+      grow: Source::Fixed(grow_factor),
       shrink: shrink_factor,
       alignment: None,
       child: NoChild,
@@ -82,7 +78,7 @@ impl<P: Platform> Flexible<P> {
   /// Sets the weight the child grows by when the container has room to spare.
   #[inline(always)]
   pub fn set_grow_factor(mut self, factor: f32) -> Self {
-    self.grow = Factor::Fixed(factor);
+    self.grow = Source::Fixed(factor);
 
     self
   }
@@ -90,7 +86,7 @@ impl<P: Platform> Flexible<P> {
   /// Derives the grow weight from the signals `factor` reads.
   #[inline(always)]
   pub fn derive_grow_factor(mut self, factor: impl Fn() -> f32 + 'static) -> Self {
-    self.grow = Factor::Derived(Rc::new(factor));
+    self.grow = Source::derive(factor);
 
     self
   }
@@ -154,8 +150,8 @@ impl<P: Platform> IntoChildOf<P, FlexChild> for Flexible<P, AnyView<P>> {
       let initial = self.initial;
       let shrink = self.shrink;
       let flex = match self.grow {
-        Factor::Fixed(grow) => Value::from(Flexibility::new(initial, grow, shrink)),
-        Factor::Derived(grow) => Value::new(Leaf::derive(move || {
+        Source::Fixed(grow) => Value::from(Flexibility::new(initial, grow, shrink)),
+        Source::Derived(grow) => Value::new(Leaf::derive(move || {
           Flexibility::new(initial, grow(), shrink)
         })),
       };

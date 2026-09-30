@@ -17,13 +17,7 @@ use skene_core::{
 };
 use skene_reactive::{Effect, Get, Memo, Owner, With, provide_context, use_context};
 
-use crate::realize::ChildBuilder;
-
-/// A palette: fixed, or recomputed from the signals it reads.
-enum Palette<S> {
-  Fixed(S),
-  Derived(Box<dyn Fn() -> S>),
-}
+use crate::realize::{ChildBuilder, Source};
 
 /// Defines the token set `S` for everything beneath it.
 ///
@@ -35,7 +29,7 @@ enum Palette<S> {
 /// builder closure because it is built under the owner the context is provided on.
 #[must_use]
 pub struct Theme<P: Platform, S: TokenSet<P::TokenValue>, C = NoChild> {
-  palette: Palette<S>,
+  palette: Source<S>,
   child: C,
   platform: PhantomData<fn() -> P>,
 }
@@ -51,7 +45,7 @@ impl<P: Platform, S: TokenSet<P::TokenValue>> Theme<P, S> {
   #[inline(always)]
   pub fn new(palette: S) -> Self {
     Self {
-      palette: Palette::Fixed(palette),
+      palette: Source::Fixed(palette),
       child: NoChild,
       platform: PhantomData,
     }
@@ -62,7 +56,7 @@ impl<P: Platform, S: TokenSet<P::TokenValue>> Theme<P, S> {
   #[inline(always)]
   pub fn derive(palette: impl Fn() -> S + 'static) -> Self {
     Self {
-      palette: Palette::Derived(Box::new(palette)),
+      palette: Source::derive(palette),
       child: NoChild,
       platform: PhantomData,
     }
@@ -98,8 +92,8 @@ impl<P: Platform, S: TokenSet<P::TokenValue>> View<P> for Theme<P, S, ChildBuild
 
     owner.enter(|| {
       let memo = match palette {
-        Palette::Fixed(palette) => Memo::new(move |_| palette.clone()),
-        Palette::Derived(palette) => Memo::new(move |_| palette()),
+        Source::Fixed(palette) => Memo::new(move |_| palette.clone()),
+        Source::Derived(palette) => Memo::new(move |_| palette()),
       };
 
       provide_context(memo);

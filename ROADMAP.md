@@ -260,11 +260,10 @@ left half-done in a code comment.
     - Copies folded: `Container`'s 25 forwarded `LayoutBox` methods and what `Text` and
     `Span` share, into a forwarding macro and a public `Run` builder; the roughly 200
     lines each facade repeats, into one exported `facade!` macro that also makes a
-    third party's facade a few lines; the three "fixed or derived" enums, into one
-    `Source<T>`; the seven accessibility query seams headless and the terminal each repeat
-    over the name facts core builds; the helpers the browser tests
-    repeat (`document`, `Installed`, `fresh_root`, `computed`, `only_child` and their
-    kin), into a `skene_web::testing` beside `skene_tui::testing`, which takes the
+    third party's facade a few lines; the seven accessibility query seams headless and
+    the terminal each repeat over the name facts core builds; the helpers the browser
+    tests repeat (`document`, `Installed`, `fresh_root`, `computed`, `only_child` and
+    their kin), into a `skene_web::testing` beside `skene_tui::testing`, which takes the
     terminal examples' `with_platform` and `locate`.
     - Renames: `Raw*` to `Basic*`; `Show` and `Switch` to `Visibility` and `OneOf`; `Lazy`
     to `AsyncView`; `Composable` to `ConditionTree`; the `Range` behavior and

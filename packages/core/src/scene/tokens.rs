@@ -28,7 +28,8 @@ impl<P: Platform> Scene<P> {
     }
   }
 
-  /// Defines tokens on `node`, replacing what it defined before.
+  /// Defines tokens on `node`, replacing what it defined before; definitions equal to
+  /// those in force change nothing.
   ///
   /// # Panics
   ///
@@ -42,6 +43,10 @@ impl<P: Platform> Scene<P> {
       return;
     };
 
+    if record.definitions.as_deref() == Some(&definitions) {
+      return;
+    }
+
     record.definitions = Some(Box::new(definitions.clone()));
     self.mirrors.push(Mirror::DefineTokens {
       scope: node,
@@ -50,7 +55,8 @@ impl<P: Platform> Scene<P> {
     self.definitions_generation += 1;
   }
 
-  /// Defines the tokens every node falls back to, replacing the previous set.
+  /// Defines the tokens every node falls back to, replacing the previous set;
+  /// definitions equal to those in force change nothing.
   ///
   /// # Panics
   ///
@@ -58,6 +64,10 @@ impl<P: Platform> Scene<P> {
   pub fn define_root_tokens(&mut self, definitions: Definitions<P::TokenValue>) {
     #[cfg(debug_assertions)]
     self.check_kinds(&definitions);
+
+    if self.root_definitions == definitions {
+      return;
+    }
 
     self
       .mirrors
@@ -291,5 +301,37 @@ mod tests {
       TestScene::with(|scene| scene.resolve_token(leaf, card)),
       Some(color(0.))
     );
+  }
+
+  /// Redefining tokens as the ones in force changes nothing: no mirror reaches the
+  /// platform and no cached resolution goes stale.
+  #[test]
+  fn an_equal_redefinition_changes_nothing() {
+    TestPlatform::reset();
+
+    let scope = TestBox::node();
+
+    TestScene::with(|scene| {
+      scene.define_root_tokens(definitions("ink", color(0.1)));
+      scene.define_tokens(scope, definitions("card", color(0.5)));
+    });
+
+    let _ = TestPlatform::take_log();
+    let generation = TestScene::with(|scene| scene.definitions_generation);
+
+    TestScene::with(|scene| {
+      scene.define_root_tokens(definitions("ink", color(0.1)));
+      scene.define_tokens(scope, definitions("card", color(0.5)));
+    });
+
+    assert_eq!(
+      TestScene::with(|scene| scene.definitions_generation),
+      generation
+    );
+    assert_eq!(TestPlatform::take_log(), Vec::<Call>::new());
+
+    TestScene::with(|scene| scene.define_tokens(scope, definitions("card", color(0.6))));
+
+    assert_eq!(TestPlatform::take_log(), vec![Call::DefineTokens(scope, 1)]);
   }
 }

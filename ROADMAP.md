@@ -93,8 +93,8 @@ left half-done in a code comment.
     re-segment around an edit, and undo stores range diffs.
     - Token caches take per-scope epochs in place of the global generation, a cached
     nearest defining node, a token's value cached at its defining scope where each
-    consumer resolves it there afresh today, interned names and skipped equal
-    redefinitions, so a palette change costs the number of tokens beyond the web too,
+    consumer resolves it there afresh today, and interned names, so a palette change
+    costs the number of tokens beyond the web too,
     written once in core's `ResolutionContext`, which headless and the terminal share.
     - Constant factors: the UI-thread assertion in debug alone, the iterative pull and
     alien-signals' propagation techniques, estimated to halve a read and a write;

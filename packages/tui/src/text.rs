@@ -172,20 +172,20 @@ impl Scales {
     }
   }
 
-  /// The cells the cluster at `index` spans on one row.
-  pub(crate) fn cells(&self, index: usize, cluster: &str) -> usize {
-    match self.extent(index) {
-      Extent::Scaled(scale) => width(cluster) * scale.rows(),
-      Extent::Box { cells, .. } => cells,
-    }
+  /// The cells the cluster at `index` advances from the cell `column` of its line: a
+  /// tab to its next stop at its scale, an inline box's placeholder the box's cells,
+  /// and anything else its width at its scale.
+  pub(crate) fn advance(&self, index: usize, cluster: &str, column: usize) -> usize {
+    self.advance_by(index, width(cluster), cluster == "\t", column)
   }
 
-  /// The cells the cluster at `index` advances from the cell `column` of its line: a
-  /// tab to its next stop at its scale, anything else its [`cells`](Self::cells).
-  pub(crate) fn advance(&self, index: usize, cluster: &str, column: usize) -> usize {
+  /// [`advance`](Self::advance) for a cluster at `index` that is a tab where `tab`, and
+  /// `width` cells wide at one cell otherwise.
+  pub(crate) fn advance_by(&self, index: usize, width: usize, tab: bool, column: usize) -> usize {
     match self.extent(index) {
-      Extent::Scaled(scale) if cluster == "\t" => tab_advance(column, scale),
-      _ => self.cells(index, cluster),
+      Extent::Scaled(scale) if tab => tab_advance(column, scale),
+      Extent::Scaled(scale) => width * scale.rows(),
+      Extent::Box { cells, .. } => cells,
     }
   }
 
@@ -640,7 +640,7 @@ mod tests {
     assert_eq!(scales.at(1), CellScale::Whole(2));
     assert_eq!(scales.at(2), CellScale::ONE);
     assert_eq!(scales.at(9), CellScale::ONE);
-    assert_eq!(scales.cells(0, "日"), 4);
+    assert_eq!(scales.advance(0, "日", 0), 4);
     assert_eq!(
       Scales::uniform(CellScale::Whole(3)).at(50),
       CellScale::Whole(3)

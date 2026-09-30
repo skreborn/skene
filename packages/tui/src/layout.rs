@@ -27,15 +27,7 @@ use taffy::{
 use crate::{
   Tui,
   motion::{Clock, Presented},
-  paint::{
-    ShadowPaint,
-    line_holding,
-    longest_word,
-    paragraph_scales,
-    run_scale,
-    sized_rows,
-    wrap_sized,
-  },
+  paint::{ShadowPaint, Shaped, line_holding, paragraph_scales, run_scale, sized_rows, wrap_sized},
   records::{BoxCache, Handle, Kind, PlainBox, PlainRun, Record, Records, RunCache},
   resolve::Env,
   text::{self, Scales},
@@ -56,6 +48,7 @@ struct Restyled {
 pub(crate) struct Measured {
   pub(crate) text: String,
   pub(crate) scales: Scales,
+  shaped: OnceCell<Shaped>,
   extents: OnceCell<Extents>,
 }
 
@@ -65,12 +58,15 @@ impl Measured {
     Self {
       text,
       scales,
+      shaped: OnceCell::new(),
       extents: OnceCell::new(),
     }
   }
 
-  /// Forgets the extents measured, after the terminal changed how it measures text.
+  /// Forgets the shape and the extents measured, after the terminal changed how it
+  /// measures text.
   pub(crate) fn forget_extents(&mut self) {
+    self.shaped.take();
     self.extents.take();
   }
 
@@ -93,7 +89,7 @@ impl Measured {
   /// The text's extents at its narrowest and widest.
   fn extents(&self) -> Extents {
     *self.extents.get_or_init(|| {
-      let longest_word = longest_word(&self.text, &self.scales);
+      let longest_word = self.shaped().longest_word(&self.text, &self.scales);
 
       Extents {
         longest_word,
@@ -103,18 +99,14 @@ impl Measured {
     })
   }
 
+  /// The text split into clusters and the places a line may end.
+  fn shaped(&self) -> &Shaped {
+    self.shaped.get_or_init(|| Shaped::of(&self.text))
+  }
+
   /// The cells and rows the text takes wrapped at `limit` cells.
   fn wrapped(&self, limit: usize) -> (usize, usize) {
-    let lines = wrap_sized(&self.text, limit, &self.scales);
-
-    (
-      lines
-        .iter()
-        .map(|line| line.cells(&self.scales))
-        .max()
-        .unwrap_or(0),
-      lines.iter().map(|line| line.rows).sum(),
-    )
+    self.shaped().extent(&self.text, limit, &self.scales)
   }
 }
 
@@ -1452,5 +1444,129 @@ pub(crate) const fn cell(value: u32) -> f32 {
   )]
   {
     value as f32
+  }
+}
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod properties {
+  use proptest::prelude::*;
+
+  use super::Measured;
+  use crate::{
+    paint::{Shaped, wrap_sized},
+    text::{self, CellScale, Scales},
+  };
+
+  /// Text mostly of the clusters wrapping turns on: words, blanks, tabs, newlines, a
+  /// hyphen, wide and combining clusters.
+  fn arbitrary_text() -> impl Strategy<Value = String> {
+    const PIECES: &[&str] = &[
+      "a", "bc", "word", " ", "  ", "\t", "\n", "-", "日", "本語", "e\u{301}", "(x)",
+    ];
+
+    proptest::collection::vec(proptest::sample::select(PIECES), 0..24)
+      .prop_map(|pieces| pieces.concat())
+  }
+
+  proptest! {
+    #![proptest_config(ProptestConfig::with_cases(2000))]
+
+    /// Any text at any width and scale measures as the lines it wraps into, whether
+    /// from its shape or from the extents a measure keeps.
+    #[test]
+    fn a_measure_matches_its_wrapped_lines(
+      text in arbitrary_text(),
+      width in 0..40_usize,
+      scale in 1..4_u8,
+    ) {
+      text::reset();
+
+      let scales = Scales::uniform(CellScale::Whole(scale));
+      let lines = wrap_sized(&text, width, &scales);
+      let wrapped = (
+        lines
+          .iter()
+          .map(|line| line.advances(&scales).sum::<usize>())
+          .max()
+          .unwrap_or(0),
+        lines.iter().map(|line| line.rows).sum::<usize>(),
+      );
+      let measured = Measured::new(text.clone(), scales.clone());
+
+      prop_assert_eq!(Shaped::of(&text).extent(&text, width, &scales), wrapped);
+      prop_assert_eq!(measured.size_at(width), wrapped);
+    }
+  }
+}
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod wrap_properties {
+  use proptest::prelude::*;
+
+  use crate::{
+    paint::wrap_sized,
+    text::{self, Scales},
+  };
+
+  /// Text mostly of the clusters wrapping turns on.
+  fn arbitrary_text() -> impl Strategy<Value = String> {
+    const PIECES: &[&str] = &[
+      "a", "bc", "word", " ", "  ", "\t", "\n", "-", "日", "本語", "e\u{301}", "(x)",
+    ];
+
+    proptest::collection::vec(proptest::sample::select(PIECES), 0..24)
+      .prop_map(|pieces| pieces.concat())
+  }
+
+  proptest! {
+    #![proptest_config(ProptestConfig::with_cases(2000))]
+
+    /// Any text wraps at any width into lines that fit, but for a lone cluster too wide
+    /// for one, and that leave out nothing but the blanks a line ends in and the
+    /// newlines between paragraphs.
+    #[test]
+    fn a_wrap_fits_and_keeps_the_text(text in arbitrary_text(), width in 1..30_usize) {
+      text::reset();
+
+      let scales = Scales::default();
+      let lines = wrap_sized(&text, width, &scales);
+      let clusters: Vec<&str> = text::clusters(&text).map(|(_, cluster)| cluster).collect();
+      let mut expected_start = 0;
+
+      prop_assert!(!lines.is_empty());
+
+      for line in &lines {
+        let cells: usize = line.advances(&scales).sum();
+        let count = text::count(&line.text);
+
+        prop_assert!(
+          cells <= width || count == 1,
+          "{:?} spans {} cells at width {}",
+          line.text,
+          cells,
+          width
+        );
+
+        prop_assert!(line.start >= expected_start);
+
+        for skipped in &clusters[expected_start..line.start] {
+          prop_assert!(
+            matches!(*skipped, " " | "\t" | "\n" | "\r\n"),
+            "{skipped:?} was left out"
+          );
+        }
+
+        prop_assert_eq!(
+          clusters[line.start..line.start + count].concat(),
+          line.text.clone()
+        );
+
+        expected_start = line.start + count;
+      }
+
+      for skipped in &clusters[expected_start..] {
+        prop_assert!(matches!(*skipped, " " | "\t" | "\n"), "{skipped:?} was left out");
+      }
+    }
   }
 }

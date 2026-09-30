@@ -1,6 +1,6 @@
 //! The terminal's frame at scale: a scrolled column of sixteen thousand text rows, drawn
-//! with nothing changed, after a pointer move, and resized, which restyles and lays out
-//! every row.
+//! with nothing changed, after a pointer move, resized, which restyles and lays out
+//! every row, with a keyed row added or removed, and mounted afresh.
 
 #![cfg_attr(
   not(target_arch = "wasm32"),
@@ -31,6 +31,21 @@ mod frame {
               .collect::<Vec<_>>(),
           ),
         )
+        .build()
+    });
+  }
+
+  /// Mounts a screen-high scroll box over the keyed rows `rows` names.
+  fn mount_keyed_rows(rows: Signal<Vec<usize>>) {
+    let _ = tui::mount(move || {
+      Container::new()
+        .set_height(24)
+        .set_overflow(Overflow::Auto)
+        .set_child(Column::new().derive_children(
+          move || rows.get(),
+          |row| *row,
+          |row| Text::new(format!("row {row}")),
+        ))
         .build()
     });
   }
@@ -66,6 +81,45 @@ mod frame {
         });
       });
     });
+
+    testing::with_platform(|| {
+      let rows = Signal::new((0..ROWS).collect::<Vec<_>>());
+
+      mount_keyed_rows(rows);
+
+      let _ = testing::render_to_text(80, 24);
+      let mut appended = false;
+
+      criterion.bench_function("keyed_row_toggled_frame_16k_rows", |bencher| {
+        bencher.iter(|| {
+          appended = !appended;
+          rows.update(|rows| {
+            if appended {
+              rows.push(ROWS);
+            }
+            else {
+              rows.pop();
+            }
+          });
+
+          testing::render_to_text(80, 24)
+        });
+      });
+    });
+
+    let mut group = criterion.benchmark_group("mount");
+
+    group.sample_size(10);
+    group.bench_function("mounted_first_frame_16k_rows", |bencher| {
+      bencher.iter(|| {
+        testing::with_platform(|| {
+          mount_rows();
+
+          testing::render_to_text(80, 24)
+        })
+      });
+    });
+    group.finish();
   }
 }
 

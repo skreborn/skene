@@ -736,11 +736,6 @@ impl SizedLine {
       })
   }
 
-  /// The cells the line spans, each cluster at its scale.
-  pub(crate) fn cells(&self, scales: &Scales) -> usize {
-    self.advances(scales).sum()
-  }
-
   /// The cluster a hit at the cell `column` lands on: the one whose block holds it,
   /// the count past the line.
   pub(crate) fn cluster_at(&self, column: usize, scales: &Scales) -> Option<usize> {
@@ -818,35 +813,207 @@ fn is_blank(cluster: &str) -> bool {
 /// [`wrap_spans`] with each cluster as wide as its scale makes it, a tab reaching its
 /// stop counted from its line's start, and each line as tall as its tallest cluster.
 pub(crate) fn wrap_sized(text: &str, width: usize, scales: &Scales) -> Vec<SizedLine> {
-  let width = width.max(1);
-  let mut lines = Vec::new();
-  let mut base = 0;
+  Shaped::of(text).wrap(text, width, scales)
+}
 
-  for paragraph in text.split('\n') {
-    let clusters: Vec<&str> = text::clusters(paragraph)
-      .map(|(_, cluster)| cluster)
-      .collect();
-    let advance =
-      |index: usize, column: usize| scales.advance(base + index, clusters[index], column);
-    let line = |from: usize, to: usize| SizedLine {
-      start: base + from,
-      text: clusters[from..to].concat(),
-      rows: (from..to)
-        .map(|index| scales.rows(base + index))
-        .max()
-        .unwrap_or_else(|| scales.rows(base + from)),
-    };
-    if clusters.is_empty() {
-      lines.push(line(0, 0));
-      base += 1;
+/// Wraps text to `width` columns; the lines of [`wrap_spans`], offsets dropped.
+#[cfg(test)]
+pub(crate) fn wrap_text(text: &str, width: usize) -> Vec<String> {
+  wrap_spans(text, width)
+    .into_iter()
+    .map(|(_, line)| line)
+    .collect()
+}
 
-      continue;
+/// The widest stretch between two places a line may end, its trailing spaces aside, in
+/// cells at its scales: the narrowest a wrap can go.
+#[cfg(test)]
+pub(crate) fn longest_word(text: &str, scales: &Scales) -> usize {
+  Shaped::of(text).longest_word(text, scales)
+}
+
+/// A text split once into paragraphs of clusters, with each cluster's width and where a
+/// line may end: it wraps at any width, and measures, without being split again, while
+/// the terminal measures clusters as it did.
+#[derive(Debug, Clone)]
+pub(crate) struct Shaped {
+  paragraphs: Vec<ShapedParagraph>,
+}
+
+/// One paragraph of a [`Shaped`] text: the byte each cluster starts at in the text, the
+/// paragraph's end last, each cluster's cells at one cell, whether a line may end
+/// before each cluster and at the end, as the Unicode line breaking algorithm finds it,
+/// and the index of its first cluster in the text, each newline counting as one.
+#[derive(Debug, Clone)]
+struct ShapedParagraph {
+  bytes: Vec<usize>,
+  widths: Vec<u16>,
+  breaks: Vec<bool>,
+  base: usize,
+}
+
+impl Shaped {
+  /// The shape of `text`.
+  pub(crate) fn of(text: &str) -> Self {
+    let mut paragraphs = Vec::new();
+    let mut base = 0;
+    let mut offset = 0;
+
+    for paragraph in text.split('\n') {
+      let (mut bytes, widths): (Vec<usize>, Vec<u16>) = text::clusters(paragraph)
+        .map(|(byte, cluster)| {
+          (
+            offset + byte,
+            u16::try_from(text::width(cluster)).unwrap_or(u16::MAX),
+          )
+        })
+        .unzip();
+      let count = bytes.len();
+      let mut breaks = vec![false; count + 1];
+
+      for (byte, _) in unicode_linebreak::linebreaks(paragraph) {
+        if byte == paragraph.len() {
+          breaks[count] = true;
+        }
+        else if let Ok(index) = bytes.binary_search(&(offset + byte)) {
+          breaks[index] = true;
+        }
+      }
+
+      bytes.push(offset + paragraph.len());
+      paragraphs.push(ShapedParagraph {
+        bytes,
+        widths,
+        breaks,
+        base,
+      });
+      base += count + 1;
+      offset += paragraph.len() + 1;
     }
 
-    let breaks = line_breaks(paragraph);
+    Self { paragraphs }
+  }
+
+  /// The lines `text`, whose shape this is, wraps into at `width` cells, as
+  /// [`wrap_sized`] wraps it.
+  pub(crate) fn wrap(&self, text: &str, width: usize, scales: &Scales) -> Vec<SizedLine> {
+    let mut lines = Vec::new();
+
+    for paragraph in &self.paragraphs {
+      paragraph.lines(text, width, scales, |from, shown| {
+        lines.push(SizedLine {
+          start: paragraph.base + from,
+          text: text[paragraph.bytes[from]..paragraph.bytes[shown]].to_owned(),
+          rows: paragraph.rows(from, shown, scales),
+        });
+      });
+    }
+
+    lines
+  }
+
+  /// The cells of the widest line and the rows of every line `text`, whose shape this
+  /// is, wraps into at `width` cells.
+  pub(crate) fn extent(&self, text: &str, width: usize, scales: &Scales) -> (usize, usize) {
+    let mut cells = 0;
+    let mut rows = 0;
+
+    for paragraph in &self.paragraphs {
+      paragraph.lines(text, width, scales, |from, shown| {
+        cells = cells.max(paragraph.cells(text, from, shown, scales));
+        rows += paragraph.rows(from, shown, scales);
+      });
+    }
+
+    (cells, rows)
+  }
+
+  /// The widest stretch of `text`, whose shape this is, between two places a line may
+  /// end, its trailing spaces aside, in cells at its scales.
+  pub(crate) fn longest_word(&self, text: &str, scales: &Scales) -> usize {
+    let mut longest = 0;
+
+    for paragraph in &self.paragraphs {
+      let mut word = 0;
+      let mut trailing = 0;
+
+      for index in 0..paragraph.count() {
+        if paragraph.breaks[index] {
+          word = 0;
+          trailing = 0;
+        }
+
+        let cells = paragraph.advance(text, scales, index, word);
+
+        word += cells;
+        trailing = if is_blank(paragraph.cluster(text, index)) {
+          trailing + cells
+        }
+        else {
+          0
+        };
+        longest = longest.max(word - trailing);
+      }
+    }
+
+    longest
+  }
+}
+
+impl ShapedParagraph {
+  /// How many clusters the paragraph holds.
+  const fn count(&self) -> usize {
+    self.bytes.len() - 1
+  }
+
+  /// The cluster at `index` of `text`, whose paragraph this is.
+  fn cluster<'t>(&self, text: &'t str, index: usize) -> &'t str {
+    &text[self.bytes[index]..self.bytes[index + 1]]
+  }
+
+  /// The cells the cluster at `index` advances from the cell `column` of its line.
+  fn advance(&self, text: &str, scales: &Scales, index: usize, column: usize) -> usize {
+    scales.advance_by(
+      self.base + index,
+      usize::from(self.widths[index]),
+      self.cluster(text, index) == "\t",
+      column,
+    )
+  }
+
+  /// The cells the clusters `from..to` span on a line of their own.
+  fn cells(&self, text: &str, from: usize, to: usize, scales: &Scales) -> usize {
+    (from..to).fold(0, |column, index| {
+      column + self.advance(text, scales, index, column)
+    })
+  }
+
+  /// The rows a line of the clusters `from..to` takes: its tallest cluster's, or the
+  /// first cluster's for an empty line.
+  fn rows(&self, from: usize, to: usize, scales: &Scales) -> usize {
+    (from..to)
+      .map(|index| scales.rows(self.base + index))
+      .max()
+      .unwrap_or_else(|| scales.rows(self.base + from))
+  }
+
+  /// Runs `line` on the clusters `from..shown` of each line the paragraph wraps into at
+  /// `width` cells: a line ends at the furthest break that fits, its trailing blanks
+  /// hanging past it; a word wider than the line breaks where the line fills, a
+  /// cluster too wide for a line takes one alone, and an empty paragraph is one line.
+  fn lines(&self, text: &str, width: usize, scales: &Scales, mut line: impl FnMut(usize, usize)) {
+    let width = width.max(1);
+    let count = self.count();
+
+    if count == 0 {
+      line(0, 0);
+
+      return;
+    }
+
     let mut start = 0;
 
-    while start < clusters.len() {
+    while start < count {
       // The furthest break whose line, its trailing spaces aside, fits.
       let mut cells = 0;
       let mut trailing = 0;
@@ -854,18 +1021,18 @@ pub(crate) fn wrap_sized(text: &str, width: usize, scales: &Scales) -> Vec<Sized
       let mut index = start;
 
       loop {
-        if index > start && breaks[index] && cells - trailing <= width {
+        if index > start && self.breaks[index] && cells - trailing <= width {
           furthest = Some(index);
         }
 
-        if index == clusters.len() || cells - trailing > width {
+        if index == count || cells - trailing > width {
           break;
         }
 
-        let cluster_cells = advance(index, cells);
+        let cluster_cells = self.advance(text, scales, index, cells);
 
         cells += cluster_cells;
-        trailing = if is_blank(clusters[index]) {
+        trailing = if is_blank(self.cluster(text, index)) {
           trailing + cluster_cells
         }
         else {
@@ -880,8 +1047,8 @@ pub(crate) fn wrap_sized(text: &str, width: usize, scales: &Scales) -> Vec<Sized
         let mut cells = 0;
         let mut fit = start;
 
-        while fit < clusters.len() && cells + advance(fit, cells) <= width {
-          cells += advance(fit, cells);
+        while fit < count && cells + self.advance(text, scales, fit, cells) <= width {
+          cells += self.advance(text, scales, fit, cells);
           fit += 1;
         }
 
@@ -891,7 +1058,7 @@ pub(crate) fn wrap_sized(text: &str, width: usize, scales: &Scales) -> Vec<Sized
       // they fit at the paragraph's end.
       let advances: Vec<usize> = (start..end)
         .scan(0, |column, index| {
-          let cells = advance(index, *column);
+          let cells = self.advance(text, scales, index, *column);
 
           *column += cells;
 
@@ -902,83 +1069,17 @@ pub(crate) fn wrap_sized(text: &str, width: usize, scales: &Scales) -> Vec<Sized
       let mut cells: usize = advances.iter().sum();
 
       while shown > start
-        && is_blank(clusters[shown - 1])
-        && (end < clusters.len() || cells > width)
+        && is_blank(self.cluster(text, shown - 1))
+        && (end < count || cells > width)
       {
         cells -= advances[shown - 1 - start];
         shown -= 1;
       }
 
-      lines.push(line(start, shown));
+      line(start, shown);
       start = end;
     }
-
-    base += clusters.len() + 1;
   }
-
-  lines
-}
-
-/// Wraps text to `width` columns; the lines of [`wrap_spans`], offsets dropped.
-#[cfg(test)]
-pub(crate) fn wrap_text(text: &str, width: usize) -> Vec<String> {
-  wrap_spans(text, width)
-    .into_iter()
-    .map(|(_, line)| line)
-    .collect()
-}
-
-/// The widest stretch between two places a line may end, its trailing spaces aside, in
-/// cells at its scales: the narrowest a wrap can go.
-pub(crate) fn longest_word(text: &str, scales: &Scales) -> usize {
-  let mut longest = 0;
-  let mut base = 0;
-
-  for paragraph in text.split('\n') {
-    let breaks = line_breaks(paragraph);
-    let mut word = 0;
-    let mut trailing = 0;
-
-    for (index, (_, cluster)) in text::clusters(paragraph).enumerate() {
-      if breaks[index] {
-        word = 0;
-        trailing = 0;
-      }
-
-      let cells = scales.advance(base + index, cluster, word);
-
-      word += cells;
-      trailing = if is_blank(cluster) {
-        trailing + cells
-      }
-      else {
-        0
-      };
-      longest = longest.max(word - trailing);
-    }
-
-    base += text::count(paragraph) + 1;
-  }
-
-  longest
-}
-
-/// Where a line may end in `paragraph`, by cluster, as the Unicode line breaking
-/// algorithm finds it: before the cluster at an index holding `true`, and at the end.
-fn line_breaks(paragraph: &str) -> Vec<bool> {
-  let starts: Vec<usize> = text::clusters(paragraph).map(|(byte, _)| byte).collect();
-  let mut breaks = vec![false; starts.len() + 1];
-
-  for (byte, _) in unicode_linebreak::linebreaks(paragraph) {
-    if byte == paragraph.len() {
-      breaks[starts.len()] = true;
-    }
-    else if let Ok(index) = starts.binary_search(&byte) {
-      breaks[index] = true;
-    }
-  }
-
-  breaks
 }
 
 /// Paints the frame into `buffer`: the tree, then every open overlay, and mends the
@@ -2803,7 +2904,7 @@ mod tests {
     assert_eq!(lines.len(), 2, "{lines:?}");
     assert_eq!((lines[0].text.as_str(), lines[0].rows), ("abc", 2));
     assert_eq!((lines[1].text.as_str(), lines[1].rows), ("de", 1));
-    assert_eq!(lines[0].cells(&scales), 6);
+    assert_eq!(lines[0].advances(&scales).sum::<usize>(), 6);
     assert_eq!(lines[0].cluster_at(3, &scales), Some(1));
     assert_eq!(lines[0].cluster_at(6, &scales), None);
     assert_eq!(lines[0].index_at_column(1, &scales), 1);

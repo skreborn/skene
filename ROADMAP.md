@@ -90,9 +90,9 @@ left half-done in a code comment.
     token and per-container query invalidation, `em` from the node's own font size);
     a hit test and a partial repaint still visit every child of a box, 0.3 ms for a
     pointer move over 16k text rows where an unchanged frame costs 21 µs (`cargo bench
-    -p skene-tui --bench frame`); selection spans compute once per frame; wrapped lines
-    cache per text generation and width, clusters re-segment around an edit, and undo
-    stores range diffs.
+    -p skene-tui --bench frame`); selection spans compute once per frame; paint, hit
+    tests and the selection wrap a run's text afresh where the layout's measure keeps
+    its shape; clusters re-segment around an edit, and undo stores range diffs.
     - Token caches take per-scope epochs in place of the generations every
     redefinition, structure change and environment change moves for every scope today,
     and interned names, so a palette change costs the number of tokens beyond the web

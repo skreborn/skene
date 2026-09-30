@@ -524,17 +524,15 @@ fn measure_containers() -> bool {
       };
       let size = store.client_size(handle);
 
-      if store.container_sizes.get(&name) != Some(&size) {
+      if store.media().signals.container_sizes.get_untracked(name) != Some(size)
+        && !changed.iter().any(|(held, _)| *held == name)
+      {
         changed.push((name, size));
       }
     }
 
     if changed.is_empty() {
       return (false, None);
-    }
-
-    for (name, size) in &changed {
-      store.container_sizes.insert(*name, *size);
     }
 
     store.invalidate_styles();

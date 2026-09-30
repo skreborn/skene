@@ -66,13 +66,15 @@ impl Env {
     with_store(|store| {
       store.record(node)?;
 
+      let sizes = store.media().signals.container_sizes;
+
       Some(Self {
         node: Some(node),
         environment: store.environment(),
         interaction,
         containers: names
           .into_iter()
-          .map(|name| (name, store.container_sizes.get(&name).copied()))
+          .map(|name| (name, sizes.get_untracked(name)))
           .collect(),
       })
     })

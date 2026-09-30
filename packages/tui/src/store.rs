@@ -778,8 +778,6 @@ pub(crate) struct Store {
   pub(crate) root: Handle,
   /// Every overlay, in build order; later entries stack on top.
   pub(crate) overlays: Vec<Handle>,
-  /// The path from the root to the deepest node under the mouse, when known.
-  hovered: Vec<Handle>,
   /// The nodes whose paint changed since the last frame; each repaints the rows it
   /// covered and covers.
   damaged: Vec<Handle>,
@@ -841,8 +839,6 @@ pub(crate) struct Store {
   pub(crate) timers: Timers<Box<dyn FnOnce()>>,
   /// The node to scroll into view once the next layout is computed.
   pub(crate) reveal: Option<Handle>,
-  /// The measured sizes of the named query containers, from the last layout.
-  pub(crate) container_sizes: FxHashMap<ContainerName, Size<u32>>,
   /// The window title the document asks for.
   pub(crate) title: Option<String>,
   /// Whether the title changed since the terminal was last told it.
@@ -948,7 +944,6 @@ impl Store {
       taffy,
       root,
       overlays: Vec::new(),
-      hovered: Vec::new(),
       damaged: Vec::new(),
       damaged_rects: Vec::new(),
       last_frame: None,
@@ -977,7 +972,6 @@ impl Store {
       choice: None,
       timers: Timers::new(),
       reveal: None,
-      container_sizes: FxHashMap::default(),
       title: None,
       title_dirty: false,
       generation: 1,
@@ -1101,8 +1095,6 @@ impl Store {
     }
 
     self.overlays.retain(|overlay| *overlay != handle);
-
-    self.hovered.retain(|hovered| *hovered != handle);
 
     if let Some(rect) = record.painted {
       self.damaged_rects.push(rect);
@@ -1361,13 +1353,17 @@ impl Store {
   /// sizes.
   pub(crate) fn containers_above(&self, handle: Handle) -> Vec<(ContainerName, Option<Size<u32>>)> {
     let mut names = Vec::new();
+    let sizes = self
+      .media
+      .as_ref()
+      .map(|media| media.signals.container_sizes);
 
     Scene::<Tui>::read(|scene| {
       let mut current = scene.placed_parent(handle);
 
       while let Some(ancestor) = current {
         if let Some(name) = self.record(ancestor).and_then(Record::container) {
-          names.push((name, self.container_sizes.get(&name).copied()));
+          names.push((name, sizes.and_then(|sizes| sizes.get_untracked(name))));
         }
 
         current = scene.placed_parent(ancestor);
@@ -1408,17 +1404,9 @@ impl Store {
     displayed
   }
 
-  /// The hover path, from the root to the deepest node under the mouse.
-  #[inline(always)]
-  pub(crate) fn hovered(&self) -> &[Handle] {
-    &self.hovered
-  }
-
-  /// Replaces the hover path; a changed path asks for a restyle, which repaints the nodes
-  /// whose style it changed.
-  pub(crate) fn set_hovered(&mut self, next: Vec<Handle>) {
-    self.restyle_pending |= self.hovered != next;
-    self.hovered = next;
+  /// The hover path, the deepest node under the mouse first, up to the root.
+  pub(crate) fn hovered(&self) -> Vec<Handle> {
+    Scene::<Tui>::read(Scene::hovered).map_or_else(Vec::new, |deepest| self.ancestors(deepest))
   }
 
   /// Marks `handle` for repaint: the rows it covered at the last paint and the rows it

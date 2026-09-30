@@ -9,7 +9,6 @@ use skene_core::{
   BoxProps,
   ClipboardAction,
   ColorScheme,
-  ContainerName,
   ContainerSizes,
   ControlProps,
   Definitions,
@@ -82,8 +81,6 @@ pub(crate) struct Record {
   pub checked: bool,
   /// Whether an overlay is open.
   pub open: bool,
-  /// The node an open overlay was opened against.
-  pub anchor: Option<NodeId>,
   /// The point an overlay is placed at, where it is pinned to one.
   pub position: Option<Point<f32>>,
   /// The node's slot values, as last written.
@@ -124,7 +121,6 @@ impl Record {
       selection: TextSelection::default(),
       checked: false,
       open: false,
-      anchor: None,
       position: None,
       slots: FxHashMap::default(),
       definitions: None,
@@ -163,8 +159,6 @@ pub(crate) struct Store {
   pub root_definitions: Definitions<TokenValue>,
   /// How many times the root definitions have been written.
   pub root_definition_writes: usize,
-  /// The sizes of the named query containers, as set.
-  pub container_sizes: FxHashMap<ContainerName, Size<f32>>,
   /// The viewport, as set; [`DEFAULT_VIEWPORT`] unless set.
   pub viewport: Option<Size<f32>>,
   /// The platform's color scheme, as set; light unless set.
@@ -210,7 +204,6 @@ impl Default for Store {
       records: NodeMap::new(),
       root_definitions: Definitions::from(Vec::new()),
       root_definition_writes: 0,
-      container_sizes: FxHashMap::default(),
       viewport: None,
       scheme: None,
       chosen_scheme: None,

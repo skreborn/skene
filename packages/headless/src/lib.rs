@@ -209,12 +209,11 @@ impl Platform for Headless {
     with_store(|store| store.insert(node, Record::new(Kind::Overlay(Box::new(props.clone())))));
   }
 
-  fn set_overlay_open(node: NodeId, open: bool, anchor: Option<NodeId>) {
+  fn set_overlay_open(node: NodeId, open: bool, _anchor: Option<NodeId>) {
     let opened = with_record(node, |record| {
       let opened = open && !record.open;
 
       record.open = open;
-      record.anchor = anchor;
 
       opened
     });
@@ -1017,11 +1016,7 @@ pub fn trigger_container_size(name: ContainerName, size: Size<f32>) {
 
 /// Records the measured size of the query container `name`.
 fn record_container_size(name: ContainerName, size: Size<f32>) {
-  let sizes = with_store(|store| {
-    store.container_sizes.insert(name, size);
-
-    store.media().signals.container_sizes
-  });
+  let sizes = with_store(|store| store.media().signals.container_sizes);
 
   sizes.set(name, size);
 }
@@ -1182,12 +1177,17 @@ pub fn is_open(node: NodeId) -> bool {
   with_record(node, |record| record.open) == Some(true)
 }
 
-/// The anchor the overlay `node` was last opened or closed against.
+/// The node the overlay `node` is placed against: the first box of the anchor it was
+/// last opened or closed against.
 #[must_use]
 pub fn overlay_anchor(node: NodeId) -> Option<NodeId> {
   end_turn();
 
-  with_record(node, |record| record.anchor)?
+  Scene::<Headless>::read(|scene| {
+    scene
+      .overlay_anchor(node)
+      .and_then(|anchor| scene.placement(anchor))
+  })
 }
 
 /// Where the overlay `node` is pinned, if it is.

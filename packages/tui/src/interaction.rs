@@ -486,7 +486,7 @@ impl Store {
       return Some(MouseCursor::Click);
     }
 
-    self.hovered().iter().rev().find_map(|handle| {
+    self.hovered().iter().find_map(|handle| {
       let record = self.record(*handle)?;
 
       if let Some(style) = record.kind.box_style()
@@ -858,7 +858,9 @@ pub(crate) fn set_hover(x: u16, y: u16) {
     }
 
     let deepest = next.last().and_then(|handle| store.record(*handle)?.node);
-    store.set_hovered(next);
+
+    // A moved hover restyles the nodes whose style it changed.
+    store.restyle_pending |= Scene::<Tui>::read(Scene::hovered) != deepest;
 
     deepest
   });
@@ -1752,8 +1754,7 @@ fn release_mouse() {
     store.drag = None;
     store.pressed_link = None;
     store.buttons.clear();
-
-    store.set_hovered(Vec::new());
+    store.restyle_pending |= Scene::<Tui>::read(Scene::hovered).is_some();
   });
 
   end_drag::<Tui>();

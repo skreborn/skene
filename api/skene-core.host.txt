@@ -2607,6 +2607,7 @@ impl core::marker::StructuralPartialEq for skene_core::ContainerName
 pub struct skene_core::ContainerSizes<N: 'static>(_)
 impl<N: skene_core::Scalar> skene_core::ContainerSizes<N>
 pub fn skene_core::ContainerSizes<N>::get(&self, skene_core::ContainerName) -> core::option::Option<skene_core::Size<N>>
+pub fn skene_core::ContainerSizes<N>::get_untracked(&self, skene_core::ContainerName) -> core::option::Option<skene_core::Size<N>>
 pub fn skene_core::ContainerSizes<N>::new() -> Self
 pub fn skene_core::ContainerSizes<N>::remove(&self, skene_core::ContainerName)
 pub fn skene_core::ContainerSizes<N>::set(&self, skene_core::ContainerName, skene_core::Size<N>)

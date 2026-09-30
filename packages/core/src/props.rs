@@ -165,6 +165,13 @@ impl<N: Scalar> ContainerSizes<N> {
     self.0.with(|sizes| sizes.get(&name).copied())
   }
 
+  /// The last size reported for `name`, read without tracking.
+  #[inline(always)]
+  #[must_use]
+  pub fn get_untracked(&self, name: ContainerName) -> Option<Size<N>> {
+    skene_reactive::untrack(|| self.get(name))
+  }
+
   /// Records the size measured for `name`.
   #[inline(always)]
   pub fn set(&self, name: ContainerName, size: Size<N>) {

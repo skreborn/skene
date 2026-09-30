@@ -21,6 +21,7 @@ use skene_core::{
   RunStyle,
   Size,
   Slot,
+  Visibility,
 };
 
 use super::{CellRect, field::Field};
@@ -151,6 +152,21 @@ impl Kind {
           inner.motion = BoxMotion::default();
         }
       }
+    }
+  }
+
+  /// The generation and the interaction the node's style was resolved under, once a
+  /// frame resolved it.
+  #[inline(always)]
+  pub(crate) fn resolved_under(&self) -> Option<(u64, Interaction)> {
+    match self {
+      Self::Run { cache, .. } => cache
+        .as_ref()
+        .map(|cache| (cache.generation, cache.interaction)),
+      kind => kind
+        .box_record()
+        .and_then(|inner| inner.cache.as_ref())
+        .map(|cache| (cache.generation, cache.interaction)),
     }
   }
 
@@ -326,6 +342,13 @@ impl Record {
   #[inline(always)]
   pub(crate) fn container(&self) -> Option<ContainerName> {
     self.box_props().and_then(|props| props.container)
+  }
+
+  /// Whether the record's box is hidden by its style: it and its content draw nothing
+  /// and take neither the pointer nor focus.
+  #[inline(always)]
+  pub(crate) fn is_invisible(&self) -> bool {
+    self.kind.box_style().and_then(|style| style.visibility) == Some(Visibility::Hidden)
   }
 
   /// Whether the record is an overlay.

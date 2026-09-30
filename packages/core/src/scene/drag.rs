@@ -91,17 +91,23 @@ impl<P: Platform> Scene<P> {
       data,
       target: None,
     });
+    self.interaction_generation += 1;
   }
 
   /// Makes `target` the node taking the drag in progress.
-  pub(crate) const fn set_drag_target(&mut self, target: Option<NodeId>) {
-    if let Some(drag) = &mut self.drag {
+  pub(crate) fn set_drag_target(&mut self, target: Option<NodeId>) {
+    if let Some(drag) = &mut self.drag
+      && drag.target != target
+    {
       drag.target = target;
+      self.interaction_generation += 1;
     }
   }
 
   /// Ends the drag in progress.
   pub(crate) fn finish_drag(&mut self) {
-    self.drag = None;
+    if self.drag.take().is_some() {
+      self.interaction_generation += 1;
+    }
   }
 }

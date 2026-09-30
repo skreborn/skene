@@ -319,8 +319,8 @@ impl Records {
   pub(crate) fn selection_reports(&mut self) -> Vec<(NodeId, TextSelection)> {
     let mut reports = Vec::new();
 
-    for handle in self.handles() {
-      let Some(record) = self.record_mut(handle)
+    for index in 0..self.entries.len() {
+      let Some(record) = self.record_mut(self.entries[index])
       else {
         continue;
       };

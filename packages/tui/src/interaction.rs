@@ -25,7 +25,6 @@ use skene_core::{
   Prevented,
   Scene,
   ScrollEvent,
-  Visibility,
   WheelUnit,
   dispatch_click,
   dispatch_context_menu,
@@ -217,14 +216,14 @@ impl Records {
       return false;
     }
 
-    if self.is_hidden(handle) {
+    if record.is_invisible() {
       return false;
     }
 
-    let (location_x, location_y) = self.node_location(handle);
-    let (origin_x, origin_y) = (offset_x + location_x, offset_y + location_y);
-    let (width, height) = self.node_size(handle);
-    let contains = x >= origin_x && x < origin_x + width && y >= origin_y && y < origin_y + height;
+    let frame = self.frame_of(record);
+    let (origin_x, origin_y) = (offset_x + frame.x, offset_y + frame.y);
+    let contains =
+      x >= origin_x && x < origin_x + frame.width && y >= origin_y && y < origin_y + frame.height;
 
     if handle != self.root && !contains {
       return false;
@@ -540,11 +539,7 @@ impl Records {
   /// Whether the node's box is hidden: it and its content draw nothing and take neither
   /// the pointer nor focus.
   pub(crate) fn is_hidden(&self, handle: Handle) -> bool {
-    self
-      .record(handle)
-      .and_then(|record| record.kind.box_style())
-      .and_then(|style| style.visibility)
-      == Some(Visibility::Hidden)
+    self.record(handle).is_some_and(Record::is_invisible)
   }
 
   /// Whether the node's content scrolls: a box overflowing by its style on either axis,
@@ -637,6 +632,7 @@ impl Records {
   /// editor's window moves instead, notifying nothing.
   fn write_scroll(&mut self, handle: Handle, offsets: (u32, u32)) -> Option<NodeId> {
     self.damage(handle);
+    self.covers_stale = true;
 
     if self.is_editor(handle) {
       self.set_editor_window(handle, offsets.1);
@@ -739,6 +735,7 @@ impl Records {
     };
     let was_open = std::mem::replace(held, open);
 
+    self.restyle_all |= was_open != open;
     self.layout_dirty = true;
     self.paint_dirty = true;
 
@@ -857,12 +854,7 @@ pub(crate) fn set_hover(x: u16, y: u16) {
       records.scroll_latch = None;
     }
 
-    let deepest = next.last().and_then(|handle| records.record(*handle)?.node);
-
-    // A moved hover restyles the nodes whose style it changed.
-    records.restyle_pending |= Scene::<Tui>::read(Scene::hovered) != deepest;
-
-    deepest
+    next.last().and_then(|handle| records.record(*handle)?.node)
   });
 
   notify_pointer_moved::<Tui>(deepest);
@@ -1096,7 +1088,6 @@ fn press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
         target: focus_target,
         count,
       });
-      records.restyle_pending = true;
 
       Scene::<Tui>::with(|scene| scene.set_pressed(node));
     }
@@ -1231,8 +1222,6 @@ pub(crate) fn pointer_release(x: u16, y: u16, button: PointerButton, modifiers: 
   if dragged {
     let _ = drop_drag::<Tui>();
 
-    records(|records| records.restyle_pending = true);
-
     return;
   }
 
@@ -1263,7 +1252,6 @@ pub(crate) fn pointer_release(x: u16, y: u16, button: PointerButton, modifiers: 
       return (None, None, 0);
     };
 
-    records.restyle_pending = true;
     Scene::<Tui>::with(|scene| scene.set_pressed(None));
 
     let released = records.pointer_path(x, y);
@@ -1337,8 +1325,6 @@ fn drag_item(node: NodeId, from: (u16, u16), started: bool, x: u16, y: u16) {
     records.record(handle)?.node
   });
   let _ = move_drag::<Tui>(over);
-
-  records(|records| records.restyle_pending = true);
 }
 
 /// Follows the drag in progress to the pointer at (`x`, `y`), if one is under way: a
@@ -1640,7 +1626,6 @@ fn key_default(event: &KeyEvent) {
     })
   {
     end_drag::<Tui>();
-    records(|records| records.restyle_pending = true);
 
     return;
   }
@@ -1757,7 +1742,6 @@ fn release_mouse() {
     records.drag = None;
     records.pressed_link = None;
     records.buttons.clear();
-    records.restyle_pending |= Scene::<Tui>::read(Scene::hovered).is_some();
   });
 
   end_drag::<Tui>();
@@ -1770,9 +1754,6 @@ fn release_mouse() {
 fn cancel_press() {
   let cancelled = records(|records| {
     let press = records.press.take()?;
-
-    records.restyle_pending = true;
-
     let reached = press.captured.unwrap_or(press.pressed);
 
     Some((

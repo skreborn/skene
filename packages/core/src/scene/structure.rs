@@ -233,6 +233,7 @@ impl<P: Platform> Scene<P> {
       for held in [&mut self.hovered, &mut self.pressed, &mut self.focused] {
         if *held == Some(node) {
           *held = None;
+          self.interaction_generation += 1;
         }
       }
 
@@ -240,12 +241,14 @@ impl<P: Platform> Scene<P> {
 
       if self.drag.as_ref().is_some_and(|drag| drag.source == node) {
         self.drag = None;
+        self.interaction_generation += 1;
       }
 
       if let Some(drag) = &mut self.drag
         && drag.target == Some(node)
       {
         drag.target = None;
+        self.interaction_generation += 1;
       }
 
       self.mirrors.push(Mirror::Destroy(node));
@@ -390,6 +393,11 @@ impl<P: Platform> Scene<P> {
     self
       .record(control)
       .filter(|record| record.caption_beside)?;
+    self.label_child(control)
+  }
+
+  /// The child of `control` recorded as its `Label` part.
+  fn label_child(&self, control: NodeId) -> Option<NodeId> {
     self
       .children(control)
       .find(|child| self.part(*child) == Some(Part::Label))
@@ -399,16 +407,38 @@ impl<P: Platform> Scene<P> {
   /// its control stands before the control among its siblings, not inside it.
   pub fn placed_children(&self, node: NodeId) -> impl Iterator<Item = NodeId> + '_ {
     let caption = self.caption_beside(node);
+    let mut next = self.record(node).and_then(|record| record.first_child);
+    let mut held = None;
 
-    self
-      .children(node)
-      .filter(move |child| Some(*child) != caption)
-      .flat_map(move |child| {
-        self
-          .caption_beside(child)
-          .into_iter()
-          .chain(std::iter::once(child))
-      })
+    std::iter::from_fn(move || {
+      if let Some(child) = held.take() {
+        return Some(child);
+      }
+
+      loop {
+        let current = next?;
+        let record = self.record(current);
+
+        next = record.and_then(|record| record.next_sibling);
+
+        if Some(current) == caption {
+          continue;
+        }
+
+        let beside = record
+          .filter(|record| record.caption_beside)
+          .and_then(|_| self.label_child(current));
+
+        return Some(match beside {
+          Some(label) => {
+            held = Some(current);
+
+            label
+          }
+          None => current,
+        });
+      }
+    })
   }
 
   /// The node `node` is placed under: its parent, or its control's parent where it is
@@ -514,6 +544,7 @@ impl<P: Platform> Scene<P> {
     {
       self.focused = None;
       self.kept_focus.insert(child, focused);
+      self.interaction_generation += 1;
     }
 
     self.unlink(child, Departure::Hide);

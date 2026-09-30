@@ -266,6 +266,7 @@ pub struct Scene<P: Platform> {
   kept_focus: FxHashMap<NodeId, NodeId>,
   focus_visible: bool,
   drag: Option<DragRecord>,
+  interaction_generation: u64,
   #[cfg(debug_assertions)]
   token_kinds: FxHashMap<TokenName, std::mem::Discriminant<P::TokenValue>>,
 }
@@ -303,6 +304,7 @@ impl<P: Platform> Scene<P> {
       kept_focus: FxHashMap::default(),
       focus_visible: true,
       drag: None,
+      interaction_generation: 0,
       #[cfg(debug_assertions)]
       token_kinds: FxHashMap::default(),
     }

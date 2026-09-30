@@ -5,7 +5,8 @@
 //! style resolved for it differs from the one applied, so a keystroke relays out the
 //! changed subtree and a hover change repaints without a relayout.
 
-use skene_core::{Inset, Layout, Overflow, RunDisplay};
+use rustc_hash::FxHashSet;
+use skene_core::{Inset, Layout, Overflow, RunDisplay, Scene};
 use taffy::{
   prelude::{
     AvailableSpace,
@@ -22,8 +23,17 @@ use taffy::{
 };
 
 use crate::{
+  Tui,
   motion::{Clock, Presented},
-  paint::{line_holding, longest_word, paragraph_scales, run_scale, sized_rows, wrap_sized},
+  paint::{
+    ShadowPaint,
+    line_holding,
+    longest_word,
+    paragraph_scales,
+    run_scale,
+    sized_rows,
+    wrap_sized,
+  },
   records::{BoxCache, Handle, Kind, PlainBox, PlainRun, Record, Records, RunCache},
   resolve::Env,
   text::{self, Scales},
@@ -238,6 +248,7 @@ pub(crate) fn measure_inline_boxes(records: &mut Records) -> bool {
       && *extent != Some(size)
     {
       *extent = Some(size);
+      records.queue_restyle(handle);
       changed = true;
     }
   }
@@ -292,27 +303,25 @@ fn collect_runs(records: &Records, handle: Handle, runs: &mut Vec<Handle>) {
   }
 }
 
-/// Resolves every stale node's style and writes the taffy styles that changed; `true`
-/// when any changed.
+/// Resolves the styles that may have moved and writes the taffy styles that changed;
+/// `true` when any changed.
+///
+/// Every node resolves once the definitions, the environment or the display moved;
+/// otherwise the nodes queued since the last restyle, those in motion, and those whose
+/// last resolution read an interaction that has moved since, each with the paragraph
+/// it flows in.
 pub(crate) fn restyle(records: &mut Records) -> bool {
-  let mut handles = records.handles();
+  let (handles, displayed) = revisited(records);
   let mut changed = false;
 
-  // A paragraph measures by its runs' scales, so the runs resolve first.
-  handles.sort_by_key(|handle| {
-    !matches!(
-      records.record(*handle).map(|record| &record.kind),
-      Some(Kind::Run { .. })
-    )
-  });
-
   records.motion_active = false;
-  records.restyle_pending = false;
-
-  let displayed = records.displayed();
 
   for handle in handles {
-    let Some(restyled) = restyle_one(records, handle, displayed.contains(&handle))
+    let shown = match &displayed {
+      Some(displayed) => displayed.contains(&handle),
+      None => records.record(handle).is_some_and(|record| !record.hidden),
+    };
+    let Some(restyled) = restyle_one(records, handle, shown)
     else {
       continue;
     };
@@ -350,6 +359,55 @@ pub(crate) fn restyle(records: &mut Records) -> bool {
   changed
 }
 
+/// The nodes the next restyle revisits, runs first since a paragraph measures by its
+/// runs' scales, with the display where it revisits every node.
+fn revisited(records: &mut Records) -> (Vec<Handle>, Option<FxHashSet<Handle>>) {
+  let interaction = Scene::<Tui>::read(Scene::interaction_generation);
+  let moved = std::mem::replace(&mut records.interaction_seen, interaction) != interaction;
+  let queued = std::mem::take(&mut records.restyle_queue);
+  let moving = std::mem::take(&mut records.moving);
+  let every = std::mem::take(&mut records.restyle_all) || records.structure_dirty;
+  let (mut handles, displayed) = if every {
+    (records.handles(), Some(records.displayed()))
+  }
+  else {
+    let mut handles = queued;
+
+    handles.extend(moving);
+
+    if moved {
+      handles.extend(
+        records
+          .interactive
+          .iter()
+          .copied()
+          .filter(|handle| records.interaction_moved(*handle)),
+      );
+    }
+
+    let paragraphs: Vec<Handle> = handles
+      .iter()
+      .filter(|handle| is_inline_run(records, **handle))
+      .filter_map(|handle| enclosing_paragraph(records, *handle))
+      .collect();
+
+    handles.extend(paragraphs);
+    handles.sort_unstable();
+    handles.dedup();
+
+    (handles, None)
+  };
+
+  handles.sort_by_key(|handle| {
+    !matches!(
+      records.record(*handle).map(|record| &record.kind),
+      Some(Kind::Run { .. })
+    )
+  });
+
+  (handles, displayed)
+}
+
 /// Resolves `handle`'s style if stale or in motion, and returns the taffy style it maps
 /// to; `None` for a node outside the layout. A node out of the display runs no motion
 /// and forgets its presentation, so it shows afresh once `displayed` again.
@@ -368,6 +426,7 @@ fn restyle_one(records: &mut Records, handle: Handle, displayed: bool) -> Option
       record.hidden = true;
       record.in_motion = false;
       record.kind.forget_presentation();
+      records.interactive.remove(&handle);
     }
 
     return Some(taffy_style_of(records, handle));
@@ -376,17 +435,8 @@ fn restyle_one(records: &mut Records, handle: Handle, displayed: bool) -> Option
   record.hidden = false;
 
   let record = records.record(handle)?;
-
   let interaction = records.interaction(handle);
-  let fresh = match &record.kind {
-    Kind::Run { cache, .. } => cache
-      .as_ref()
-      .is_some_and(|cache| cache.generation == generation && cache.interaction == interaction),
-    kind => kind
-      .box_record()
-      .and_then(|inner| inner.cache.as_ref())
-      .is_some_and(|cache| cache.generation == generation && cache.interaction == interaction),
-  };
+  let fresh = record.kind.resolved_under() == Some((generation, interaction));
   let in_motion = record.in_motion;
 
   if !fresh || in_motion {
@@ -396,13 +446,26 @@ fn restyle_one(records: &mut Records, handle: Handle, displayed: bool) -> Option
       resolved_layout,
       box_keyframes,
       run_keyframes,
+      reads_interaction,
     } = targets(records, handle, fresh)?;
+
+    match reads_interaction {
+      Some(true) => {
+        records.interactive.insert(handle);
+      }
+      Some(false) => {
+        records.interactive.remove(&handle);
+      }
+      None => {}
+    }
+
     let record = records.record_mut(handle)?;
     let frame = Frame {
       generation,
       interaction,
       clock: Clock { now, reduced },
     };
+    let reach = record.kind.box_style().map(ShadowPaint::band);
     // A node whose presentation came out different from the last one repaints.
     let (repaint, active) = match &mut record.kind {
       Kind::Run {
@@ -422,7 +485,12 @@ fn restyle_one(records: &mut Records, handle: Handle, displayed: bool) -> Option
     };
 
     record.in_motion = active;
+    records.covers_stale |= record.kind.box_style().map(ShadowPaint::band) != reach;
     records.motion_active |= active;
+
+    if active {
+      records.moving.push(handle);
+    }
 
     if repaint {
       records.damage(handle);
@@ -433,83 +501,80 @@ fn restyle_one(records: &mut Records, handle: Handle, displayed: bool) -> Option
 }
 
 /// What a restyle presents: the resolved box or run target, the wrapper layout of a
-/// run, and the keyframes of each.
+/// run, the keyframes of each, and whether the resolution read the node's interaction,
+/// `None` where nothing resolved.
 struct Targets {
   resolved_box: Option<PlainBox>,
   resolved_run: Option<PlainRun>,
   resolved_layout: PlainBox,
   box_keyframes: Vec<skene_core::Animation<PlainBox>>,
   run_keyframes: Vec<skene_core::Animation<PlainRun>>,
+  reads_interaction: Option<bool>,
 }
 
 /// The targets of `handle`: a fresh node in motion samples its clock over the targets
 /// and keyframes it already resolved; only a stale one resolves again.
 fn targets(records: &mut Records, handle: Handle, fresh: bool) -> Option<Targets> {
   let record = records.record(handle)?;
-  let (resolved_box, resolved_run, resolved_layout, box_keyframes, run_keyframes) = if fresh {
-    match &record.kind {
+
+  if fresh {
+    return Some(match &record.kind {
       Kind::Run { cache, .. } => {
         let cache = cache.as_ref()?;
 
-        (
-          None,
-          Some(cache.target.clone()),
-          cache.layout.clone(),
-          Vec::new(),
-          cache.keyframes.clone(),
-        )
+        Targets {
+          resolved_box: None,
+          resolved_run: Some(cache.target.clone()),
+          resolved_layout: cache.layout.clone(),
+          box_keyframes: Vec::new(),
+          run_keyframes: cache.keyframes.clone(),
+          reads_interaction: None,
+        }
       }
       kind => {
         let cache = kind.box_record()?.cache.as_ref()?;
 
-        (
-          Some(cache.target.clone()),
-          None,
-          PlainBox::default(),
-          cache.keyframes.clone(),
-          Vec::new(),
-        )
+        Targets {
+          resolved_box: Some(cache.target.clone()),
+          resolved_run: None,
+          resolved_layout: PlainBox::default(),
+          box_keyframes: cache.keyframes.clone(),
+          run_keyframes: Vec::new(),
+          reads_interaction: None,
+        }
       }
-    }
+    });
   }
-  else {
-    let env = Env::of(records, handle);
-    let resolved_box = env.resolve_box();
-    let resolved_run = env.resolve_run();
-    let resolved_layout = env.resolve_run_layout();
-    let box_keyframes = record
-      .kind
-      .box_record()
-      .map(|inner| &inner.props)
-      .map(|props| {
-        props
-          .dynamics
-          .animations
-          .iter()
-          .map(|animation| animation.map_keyframes(|frame| env.resolve_box_keyframe(frame)))
-          .collect::<Vec<_>>()
-      })
-      .unwrap_or_default();
-    let run_keyframes = match &record.kind {
-      Kind::Run { props, .. } => props
+
+  let env = Env::of(records, handle);
+  let resolved_box = env.resolve_box();
+  let resolved_run = env.resolve_run();
+  let resolved_layout = env.resolve_run_layout();
+  let box_keyframes = record
+    .kind
+    .box_record()
+    .map(|inner| &inner.props)
+    .map(|props| {
+      props
         .dynamics
         .animations
         .iter()
-        .map(|animation| animation.map_keyframes(|frame| env.resolve_run_keyframe(frame)))
-        .collect::<Vec<_>>(),
-      _ => Vec::new(),
-    };
-
-    records.style_resolutions += 1;
-
-    (
-      resolved_box,
-      resolved_run,
-      resolved_layout,
-      box_keyframes,
-      run_keyframes,
-    )
+        .map(|animation| animation.map_keyframes(|frame| env.resolve_box_keyframe(frame)))
+        .collect::<Vec<_>>()
+    })
+    .unwrap_or_default();
+  let run_keyframes = match &record.kind {
+    Kind::Run { props, .. } => props
+      .dynamics
+      .animations
+      .iter()
+      .map(|animation| animation.map_keyframes(|frame| env.resolve_run_keyframe(frame)))
+      .collect::<Vec<_>>(),
+    _ => Vec::new(),
   };
+  let reads_interaction = Some(env.reads_interaction());
+
+  records.style_resolutions += 1;
 
   Some(Targets {
     resolved_box,
@@ -517,6 +582,7 @@ fn targets(records: &mut Records, handle: Handle, fresh: bool) -> Option<Targets
     resolved_layout,
     box_keyframes,
     run_keyframes,
+    reads_interaction,
   })
 }
 
@@ -839,6 +905,7 @@ pub(crate) fn compute(records: &mut Records, width: u16, height: u16) {
     )
     .expect("compute the layout");
   records.layout_generation += 1;
+  records.covers_stale = true;
 }
 
 /// Measures a text leaf: its text wrapped at the width constraint, in cells, each

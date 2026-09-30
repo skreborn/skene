@@ -1393,19 +1393,18 @@ fn paint_node(
     return;
   }
 
-  if records.is_hidden(handle) {
+  if record.is_invisible() {
     return;
   }
 
-  let (location_x, location_y) = records.node_location(handle);
+  let frame = records.frame_of(record);
   let (x, y) = (
-    offset_x + isize::try_from(location_x).unwrap_or(0),
-    offset_y + isize::try_from(location_y).unwrap_or(0),
+    offset_x + isize::try_from(frame.x).unwrap_or(0),
+    offset_y + isize::try_from(frame.y).unwrap_or(0),
   );
-  let (width, height) = records.node_size(handle);
   let (width, height) = (
-    usize::try_from(width).unwrap_or(0),
-    usize::try_from(height).unwrap_or(0),
+    usize::try_from(frame.width).unwrap_or(0),
+    usize::try_from(frame.height).unwrap_or(0),
   );
   let run = matches!(record.kind, Kind::Run { .. });
   let reach = record.kind.box_style().map_or(0, |style| {

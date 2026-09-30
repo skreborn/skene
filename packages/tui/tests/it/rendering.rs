@@ -307,6 +307,65 @@ fn a_hover_change_repaints_without_a_relayout() {
   });
 }
 
+/// A hover resolves again only the nodes whose conditions read it: moving over a plain
+/// box resolves nothing, and entering and leaving a box with a hover variant resolves
+/// that box alone, once each way.
+#[test]
+fn a_hover_resolves_only_the_nodes_reading_it() {
+  with_platform(|| {
+    let _ = tui::mount(|| {
+      Column::new()
+        .set_children((
+          Container::new().set_height(1).set_child(Text::new("plain")),
+          Container::new()
+            .set_height(1)
+            .set_color(red().when(State::Hovered, blue()))
+            .set_child(Text::new("hover")),
+          Container::new().set_height(1).set_child(Text::new("plain")),
+        ))
+        .into_any()
+        .build()
+    });
+    let _ = testing::render_to_text(10, 3);
+    let resolved = testing::style_resolutions();
+
+    testing::trigger_mouse_move(1, 0);
+    let _ = testing::render_to_text(10, 3);
+
+    assert_eq!(testing::style_resolutions(), resolved);
+
+    testing::trigger_mouse_move(1, 1);
+    let _ = testing::render_to_text(10, 3);
+
+    assert_eq!(testing::style_resolutions(), resolved + 1);
+
+    testing::trigger_mouse_move(1, 2);
+    let _ = testing::render_to_text(10, 3);
+
+    assert_eq!(testing::style_resolutions(), resolved + 2);
+  });
+}
+
+/// A frame with nothing changed since the last one resolves nothing and repaints no
+/// row.
+#[test]
+fn an_unchanged_frame_repaints_nothing() {
+  with_platform(|| {
+    let _ = tui::mount(|| {
+      Column::new()
+        .set_children((Text::new("one"), Text::new("two")))
+        .into_any()
+        .build()
+    });
+    let first = testing::render_to_text(10, 3);
+    let resolved = testing::style_resolutions();
+
+    assert_eq!(testing::render_to_text(10, 3), first);
+    assert_eq!(testing::style_resolutions(), resolved);
+    assert_eq!(testing::repainted_rows(), Vec::<usize>::new());
+  });
+}
+
 /// A keystroke in a text entry restyles the entry alone.
 #[test]
 fn a_keystroke_restyles_only_the_changed_entry() {

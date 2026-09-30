@@ -66,10 +66,11 @@ left half-done in a code comment.
     `ch` and `lh`) spell cell-exact lengths on every medium. The cost: a bare `1.`
     rounds to no cell in the terminal, so its builders need a guard or a lint, and every
     terminal example and snapshot moves to the new unit.
-    - The terminal's retained runtime (the taffy store, hit testing, focus, capture,
-    wheel latching, field editing, selection, motion) is extracted into a
-    medium-generic kit; headless lays out through it and renders pixel snapshots, and
-    it is the native family's first prerequisite.
+    - The terminal's retained runtime (the taffy store, the incremental restyle, the
+    damage and the measured rectangles, hit testing, focus, capture, wheel latching,
+    field editing, selection, motion) is extracted into a medium-generic kit; headless
+    lays out through it and renders pixel snapshots, and it is the native family's
+    first prerequisite.
     - A host-side WebDriver harness in the browser tier, over the WebDriver session,
     runs the conformance suite (`skene-conformance`) in Firefox and Chromium through
     trusted input from WebDriver's actions and takes the screenshot goldens: an event a page
@@ -83,14 +84,15 @@ left half-done in a code comment.
     subtree, focus following a keyed item across a reorder) move into the conformance
     suite once a `Driver` observes what they read.
 4. **The quadratic hot paths.**
-    - The terminal: the runtime kit's resolution becomes incremental and subtree-scoped
-    (per-record dirty bits, restyling only the dirty and moving set, per-scope token
-    and per-container query invalidation, `em` from the node's own font size),
-    and rectangles, measured top-down once a frame, recompute after layout or scroll
-    alone, where an unchanged frame of 16k text rows still restyles and walks every node
-    in 7 ms (`cargo bench -p skene-tui --bench frame`); selection spans compute once per
-    frame; wrapped lines cache per text generation and width, clusters re-segment around
-    an edit, and undo stores range diffs.
+    - The terminal: a structure change, a token's redefinition and a container's resize
+    still restyle every node, and a structure change hands every node its layout
+    children afresh, where each should reach only the subtree it touched (per-scope
+    token and per-container query invalidation, `em` from the node's own font size);
+    a hit test and a partial repaint still visit every child of a box, 0.3 ms for a
+    pointer move over 16k text rows where an unchanged frame costs 21 µs (`cargo bench
+    -p skene-tui --bench frame`); selection spans compute once per frame; wrapped lines
+    cache per text generation and width, clusters re-segment around an edit, and undo
+    stores range diffs.
     - Token caches take per-scope epochs in place of the global generation, a cached
     nearest defining node, a token's value cached at its defining scope where each
     consumer resolves it there afresh today, and interned names, so a palette change

@@ -11,6 +11,7 @@ mod structure;
 
 use std::time::Instant;
 
+use rustc_hash::FxHashSet;
 pub(crate) use skene_core::Interaction;
 use skene_core::{
   BoxDynamics,
@@ -74,6 +75,8 @@ pub(crate) struct Records {
   pub(crate) root: Handle,
   /// Every overlay, in build order; later entries stack on top.
   pub(crate) overlays: Vec<Handle>,
+  /// Every text entry, in build order.
+  pub(crate) entries: Vec<Handle>,
   /// The nodes whose paint changed since the last frame; each repaints the rows it
   /// covered and covers.
   damaged: Vec<Handle>,
@@ -154,9 +157,22 @@ pub(crate) struct Records {
   pub(crate) layout_dirty: bool,
   /// Whether the whole frame repaints; a change confined to a node damages it instead.
   pub(crate) paint_dirty: bool,
-  /// Whether a node's interaction state moved since the last restyle, which may change
-  /// its style though nothing else changed.
-  pub(crate) restyle_pending: bool,
+  /// Whether a node's screen rectangle may have moved since the last paint measured
+  /// them: the layout, a scroll offset or a shadow's reach changed.
+  pub(crate) covers_stale: bool,
+  /// Whether the next restyle resolves every node: the definitions, the environment or
+  /// what is displayed moved.
+  pub(crate) restyle_all: bool,
+  /// The nodes the next restyle revisits beside those in motion: each changed a
+  /// declaration, its text, its value or its measure since the last one.
+  pub(crate) restyle_queue: Vec<Handle>,
+  /// The nodes whose last resolution read their interaction, which the next restyle
+  /// revisits where it moved.
+  pub(crate) interactive: FxHashSet<Handle>,
+  /// The nodes whose motion was still running at the last restyle.
+  pub(crate) moving: Vec<Handle>,
+  /// The scene's interaction generation the last restyle resolved against.
+  pub(crate) interaction_seen: u64,
   /// Whether a key asked the app to quit.
   pub(crate) quit: bool,
   /// The clock motion samples against.
@@ -213,6 +229,7 @@ impl Records {
       taffy,
       root,
       overlays: Vec::new(),
+      entries: Vec::new(),
       damaged: Vec::new(),
       damaged_rects: Vec::new(),
       last_frame: None,
@@ -250,7 +267,12 @@ impl Records {
       structure_dirty: true,
       layout_dirty: true,
       paint_dirty: true,
-      restyle_pending: false,
+      covers_stale: true,
+      restyle_all: true,
+      restyle_queue: Vec::new(),
+      interactive: FxHashSet::default(),
+      moving: Vec::new(),
+      interaction_seen: 0,
       quit: false,
       clock: Clock::Manual(0.),
       reduced_motion: false,
@@ -305,9 +327,18 @@ impl Records {
     self.by_node.get_mut(handle)
   }
 
+  /// Queues `handle` for the next restyle, which resolves it where its resolution is
+  /// stale and hands the layout what it measures by.
+  #[inline(always)]
+  pub(crate) fn queue_restyle(&mut self, handle: Handle) {
+    self.restyle_queue.push(handle);
+  }
+
   /// Measures every node's text again, after the terminal's clustering changed: each
   /// entry's clusters, and each laid-out node's measurement.
   pub(crate) fn remeasure(&mut self) {
+    self.restyle_all = true;
+
     for handle in self.handles() {
       let Some(record) = self.record_mut(handle)
       else {
@@ -342,6 +373,8 @@ impl Records {
     }
 
     self.overlays.retain(|overlay| *overlay != handle);
+    self.entries.retain(|entry| *entry != handle);
+    self.interactive.remove(&handle);
 
     if let Some(rect) = record.painted {
       self.damaged_rects.push(rect);

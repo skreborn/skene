@@ -111,6 +111,7 @@ impl Platform for Tui {
           inner.mark_stale();
         }
 
+        records.queue_restyle(node);
         records.layout_dirty = true;
         records.damage(node);
       }
@@ -123,6 +124,8 @@ impl Platform for Tui {
       .is_some_and(NativeElement::is_text_entry)
       .then(|| Box::new(Field::new(props.placeholder.clone(), props.lines)));
 
+    let entry = field.is_some();
+
     with_records(|records| {
       records.insert_laid_out(
         node,
@@ -133,6 +136,10 @@ impl Platform for Tui {
           field,
         },
       );
+
+      if entry {
+        records.entries.push(node);
+      }
     });
   }
 
@@ -230,6 +237,7 @@ impl Platform for Tui {
           cache.generation = 0;
         }
 
+        records.queue_restyle(node);
         records.layout_dirty = true;
         records.damage(node);
       }
@@ -249,6 +257,7 @@ impl Platform for Tui {
 
       text.clone_into(&mut record.text);
       records.invalidate_selection(node);
+      records.queue_restyle(node);
       records.layout_dirty = true;
       records.damage(node);
     });
@@ -340,6 +349,7 @@ impl Platform for Tui {
       }
 
       records.settle_entry(node);
+      records.queue_restyle(node);
       records.layout_dirty = true;
       records.damage(node);
     });

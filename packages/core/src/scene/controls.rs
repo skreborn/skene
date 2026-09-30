@@ -32,7 +32,10 @@ impl<P: Platform> Scene<P> {
       return;
     }
 
-    record.control = Some(state);
+    if record.control.replace(state) != Some(state) {
+      self.interaction_generation += 1;
+    }
+
     self.mirrors.push(Mirror::ControlState { node, state });
   }
 

@@ -906,6 +906,7 @@ impl Records {
 
     match edit {
       Edit::Value => {
+        self.queue_restyle(entry);
         self.layout_dirty = true;
 
         Some((node?, value))

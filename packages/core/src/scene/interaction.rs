@@ -17,6 +17,14 @@ use crate::{
 };
 
 impl<P: Platform> Scene<P> {
+  /// A count that moves whenever the interaction a node resolves against may have
+  /// changed: its hover, press, focus or drag, or its control's state.
+  #[inline(always)]
+  #[must_use]
+  pub const fn interaction_generation(&self) -> u64 {
+    self.interaction_generation
+  }
+
   /// The deepest node under the pointer.
   #[inline(always)]
   #[must_use]
@@ -31,6 +39,11 @@ impl<P: Platform> Scene<P> {
     next: Option<NodeId>,
   ) -> (SmallVec<[NodeId; 16]>, SmallVec<[NodeId; 16]>) {
     let previous = std::mem::replace(&mut self.hovered, next);
+
+    if previous != next {
+      self.interaction_generation += 1;
+    }
+
     let left = self.crossed(previous, next);
     let mut entered = self.crossed(next, previous);
 
@@ -55,9 +68,11 @@ impl<P: Platform> Scene<P> {
   }
 
   /// Holds a primary press on `node`, or ends the press for `None`.
-  #[inline(always)]
-  pub const fn set_pressed(&mut self, node: Option<NodeId>) {
-    self.pressed = node;
+  pub fn set_pressed(&mut self, node: Option<NodeId>) {
+    if self.pressed != node {
+      self.pressed = node;
+      self.interaction_generation += 1;
+    }
   }
 
   /// Whether a primary press is held on `node` or a node beneath it, as `:active` holds.
@@ -82,6 +97,11 @@ impl<P: Platform> Scene<P> {
     next: Option<NodeId>,
   ) -> (SmallVec<[NodeId; 16]>, SmallVec<[NodeId; 16]>) {
     let previous = std::mem::replace(&mut self.focused, next);
+
+    if previous != next {
+      self.interaction_generation += 1;
+    }
+
     let left = self.crossed(previous, next);
     let mut reached = self.crossed(next, previous);
 
@@ -100,7 +120,10 @@ impl<P: Platform> Scene<P> {
   /// Records whether focus shows while held.
   #[inline(always)]
   pub const fn set_focus_visible(&mut self, visible: bool) {
-    self.focus_visible = visible;
+    if self.focus_visible != visible {
+      self.focus_visible = visible;
+      self.interaction_generation += 1;
+    }
   }
 
   /// Records that the control `node` is a text entry, whose focus shows however it was
@@ -108,6 +131,7 @@ impl<P: Platform> Scene<P> {
   pub fn note_entry(&mut self, node: NodeId) {
     if let Some(record) = self.record_mut(node) {
       record.entry = true;
+      self.interaction_generation += 1;
     }
   }
 

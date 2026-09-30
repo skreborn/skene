@@ -7,6 +7,8 @@
 //! asks it for whole styles or single leaves. The web compiles the same model to CSS
 //! and never resolves.
 
+use std::cell::Cell;
+
 use skene_reactive::untrack;
 
 use crate::{
@@ -341,6 +343,9 @@ pub struct Resolver<'a, N: Scalar, X: StyleExtension = ()> {
   pub environment: Environment<N>,
   /// The node's interaction.
   pub interaction: Interaction,
+  /// Set once a condition reads the interaction: a resolution that leaves it unset
+  /// holds whatever the interaction becomes.
+  pub interaction_read: &'a Cell<bool>,
   /// The named containers above the node, nearest first, with their measured sizes.
   pub containers: &'a [(ContainerName, Option<Size<N>>)],
   /// The font size an `em` evaluates against.
@@ -385,7 +390,12 @@ impl<N: Scalar, X: StyleExtension> Resolver<'_, N, X> {
         .variants()
         .iter()
         .rev()
-        .find(|(condition, _)| condition.holds_in(env, &|state| self.interaction.holds(state)))
+        .find(|(condition, _)| {
+          condition.holds_in(env, &|state| {
+            self.interaction_read.set(true);
+            self.interaction.holds(state)
+          })
+        })
         .map_or(value.base(), |(_, leaf)| leaf)
     })
   }
@@ -774,6 +784,7 @@ pub struct ResolutionContext<'a, P: Platform, S> {
   node: Option<NodeId>,
   environment: Environment<P::Scalar>,
   interaction: Interaction,
+  interaction_read: Cell<bool>,
   containers: Vec<(ContainerName, Option<Size<P::Scalar>>)>,
 }
 
@@ -815,6 +826,7 @@ where
       node: Some(node),
       environment: source.environment(),
       interaction,
+      interaction_read: Cell::new(false),
       containers: names
         .into_iter()
         .map(|name| (name, source.container_size(name)))
@@ -830,6 +842,7 @@ where
       node: None,
       environment: source.environment(),
       interaction: Interaction::default(),
+      interaction_read: Cell::new(false),
       containers: Vec::new(),
     }
   }
@@ -882,6 +895,14 @@ where
     .unwrap_or(S::EM)
   }
 
+  /// Whether a resolution in this context has read the interaction: what one that has
+  /// not resolved holds whatever the interaction becomes.
+  #[inline(always)]
+  #[must_use]
+  pub const fn read_interaction(&self) -> bool {
+    self.interaction_read.get()
+  }
+
   /// Runs `operation` with the resolver of this context, reading tokens where they are
   /// defined and slots through the source.
   pub fn with_resolver<R>(
@@ -904,6 +925,7 @@ where
     operation(&Resolver {
       environment: self.environment,
       interaction: self.interaction,
+      interaction_read: &self.interaction_read,
       containers: &self.containers,
       em,
       token: &token,

@@ -2,27 +2,50 @@
 
 use skene_core::Size;
 
-use super::{Handle, Records};
+use super::{Handle, Record, Records};
+
+/// Where a laid-out node sits in its layout parent and how large it is, in cells.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) struct CellFrame {
+  pub(crate) x: i64,
+  pub(crate) y: i64,
+  pub(crate) width: i64,
+  pub(crate) height: i64,
+}
 
 impl Records {
-  /// A node's laid-out size, in cells.
-  pub(crate) fn node_size(&self, handle: Handle) -> (i64, i64) {
-    let Some(taffy) = self.record(handle).and_then(|record| record.taffy)
+  /// `record`'s frame in its layout parent, as the last layout rounded it; empty for a
+  /// record outside the layout.
+  #[expect(
+    clippy::cast_possible_truncation,
+    reason = "taffy rounds a layout to whole cells, far inside i64"
+  )]
+  pub(crate) fn frame_of(&self, record: &Record) -> CellFrame {
+    let Some(layout) = record.taffy.and_then(|taffy| self.taffy.layout(taffy).ok())
     else {
-      return (0, 0);
+      return CellFrame::default();
     };
 
-    match self.taffy.layout(taffy) {
-      #[expect(
-        clippy::cast_possible_truncation,
-        reason = "a laid-out size is rounded and counts cells far inside i64"
-      )]
-      Ok(layout) => (
-        layout.size.width.round().max(0.) as i64,
-        layout.size.height.round().max(0.) as i64,
-      ),
-      Err(_) => (0, 0),
+    CellFrame {
+      x: layout.location.x as i64,
+      y: layout.location.y as i64,
+      width: layout.size.width.max(0.) as i64,
+      height: layout.size.height.max(0.) as i64,
     }
+  }
+
+  /// `handle`'s frame in its layout parent; empty for a stale handle.
+  pub(crate) fn frame(&self, handle: Handle) -> CellFrame {
+    self
+      .record(handle)
+      .map_or_else(CellFrame::default, |record| self.frame_of(record))
+  }
+
+  /// A node's laid-out size, in cells.
+  pub(crate) fn node_size(&self, handle: Handle) -> (i64, i64) {
+    let frame = self.frame(handle);
+
+    (frame.width, frame.height)
   }
 
   /// A childless box's laid-out span in eighth cells from its parent's origin: where
@@ -58,44 +81,31 @@ impl Records {
 
   /// A node's laid-out position within its layout parent, in cells.
   pub(crate) fn node_location(&self, handle: Handle) -> (i64, i64) {
-    let Some(taffy) = self.record(handle).and_then(|record| record.taffy)
-    else {
-      return (0, 0);
-    };
+    let frame = self.frame(handle);
 
-    match self.taffy.layout(taffy) {
-      #[expect(
-        clippy::cast_possible_truncation,
-        reason = "a laid-out position is rounded and counts cells far inside i64"
-      )]
-      Ok(layout) => (
-        layout.location.x.round() as i64,
-        layout.location.y.round() as i64,
-      ),
-      Err(_) => (0, 0),
-    }
+    (frame.x, frame.y)
   }
 
   /// A node's border widths, in cells: left, top, right, bottom.
+  #[expect(
+    clippy::cast_possible_truncation,
+    reason = "taffy rounds a layout to whole cells, far inside i64"
+  )]
   pub(crate) fn node_border(&self, handle: Handle) -> (i64, i64, i64, i64) {
-    let Some(taffy) = self.record(handle).and_then(|record| record.taffy)
+    let Some(layout) = self
+      .record(handle)
+      .and_then(|record| record.taffy)
+      .and_then(|taffy| self.taffy.layout(taffy).ok())
     else {
       return (0, 0, 0, 0);
     };
 
-    match self.taffy.layout(taffy) {
-      #[expect(
-        clippy::cast_possible_truncation,
-        reason = "a border is rounded and counts cells far inside i64"
-      )]
-      Ok(layout) => (
-        layout.border.left.round() as i64,
-        layout.border.top.round() as i64,
-        layout.border.right.round() as i64,
-        layout.border.bottom.round() as i64,
-      ),
-      Err(_) => (0, 0, 0, 0),
-    }
+    (
+      layout.border.left as i64,
+      layout.border.top as i64,
+      layout.border.right as i64,
+      layout.border.bottom as i64,
+    )
   }
 
   /// A node's size inside its border, in cells: what its size observers hear.

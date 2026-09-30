@@ -3607,6 +3607,7 @@ pub fn skene_core::Reorder::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::f
 pub struct skene_core::ResolutionContext<'a, P: skene_core::Platform, S>
 impl<'a, P, S> skene_core::ResolutionContext<'a, P, S> where P: skene_core::Platform<TokenValue = skene_core::TokenValue<<P as skene_core::Platform>::Scalar>>, S: skene_core::ResolutionSource<P>
 pub fn skene_core::ResolutionContext<'a, P, S>::of(&'a S, skene_core::NodeId) -> core::option::Option<Self>
+pub const fn skene_core::ResolutionContext<'a, P, S>::read_interaction(&self) -> bool
 pub fn skene_core::ResolutionContext<'a, P, S>::root(&'a S) -> Self
 pub fn skene_core::ResolutionContext<'a, P, S>::with_resolver<R>(&self, impl core::ops::function::FnOnce(&skene_core::Resolver<'_, <P as skene_core::Platform>::Scalar, <P as skene_core::Platform>::StyleExt>) -> R) -> R
 impl<P: skene_core::Platform, S> core::fmt::Debug for skene_core::ResolutionContext<'_, P, S>
@@ -3616,6 +3617,7 @@ pub skene_core::Resolver::containers: &'a [(skene_core::ContainerName, core::opt
 pub skene_core::Resolver::em: f32
 pub skene_core::Resolver::environment: skene_core::Environment<N>
 pub skene_core::Resolver::interaction: skene_core::Interaction
+pub skene_core::Resolver::interaction_read: &'a core::cell::Cell<bool>
 pub skene_core::Resolver::slot: &'a dyn core::ops::function::Fn(skene_core::Slot) -> core::option::Option<skene_core::SlotLeaf<N, X>>
 pub skene_core::Resolver::token: &'a dyn core::ops::function::Fn(skene_core::TokenName) -> core::option::Option<skene_core::Resolved<N>>
 impl<N: skene_core::Scalar, X: skene_core::StyleExtension> skene_core::Resolver<'_, N, X>
@@ -3812,6 +3814,7 @@ pub const fn skene_core::Scene<P>::focused(&self) -> core::option::Option<skene_
 pub fn skene_core::Scene<P>::handle(&mut self, skene_core::NodeId, skene_core::Handler)
 pub const fn skene_core::Scene<P>::hovered(&self) -> core::option::Option<skene_core::NodeId>
 pub fn skene_core::Scene<P>::interaction(&self, skene_core::NodeId) -> skene_core::Interaction
+pub const fn skene_core::Scene<P>::interaction_generation(&self) -> u64
 pub fn skene_core::Scene<P>::is_hovered(&self, skene_core::NodeId) -> bool
 pub fn skene_core::Scene<P>::is_pressed(&self, skene_core::NodeId) -> bool
 pub fn skene_core::Scene<P>::key_default(&self, &skene_core::KeyEvent) -> core::option::Option<skene_core::KeyDefault>
@@ -3820,7 +3823,7 @@ pub fn skene_core::Scene<P>::move_pointer(&mut self, core::option::Option<skene_
 pub fn skene_core::Scene<P>::note_entry(&mut self, skene_core::NodeId)
 pub const fn skene_core::Scene<P>::pressed(&self) -> core::option::Option<skene_core::NodeId>
 pub const fn skene_core::Scene<P>::set_focus_visible(&mut self, bool)
-pub const fn skene_core::Scene<P>::set_pressed(&mut self, core::option::Option<skene_core::NodeId>)
+pub fn skene_core::Scene<P>::set_pressed(&mut self, core::option::Option<skene_core::NodeId>)
 impl<P: skene_core::Platform> core::default::Default for skene_core::Scene<P>
 pub fn skene_core::Scene<P>::default() -> Self
 impl<P: skene_core::Platform> core::fmt::Debug for skene_core::Scene<P>

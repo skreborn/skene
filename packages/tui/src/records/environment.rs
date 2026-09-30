@@ -158,6 +158,7 @@ impl Records {
   #[inline(always)]
   pub(crate) const fn invalidate_styles(&mut self) {
     self.generation += 1;
+    self.restyle_all = true;
     self.layout_dirty = true;
     self.paint_dirty = true;
   }

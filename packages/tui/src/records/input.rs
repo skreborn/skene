@@ -165,6 +165,15 @@ impl Records {
     })
   }
 
+  /// Whether `handle`'s interaction moved since its style was resolved; `false` for a
+  /// node presenting nothing.
+  pub(crate) fn interaction_moved(&self, handle: Handle) -> bool {
+    self
+      .record(handle)
+      .and_then(|record| record.kind.resolved_under())
+      .is_some_and(|(_, resolved)| resolved != self.interaction(handle))
+  }
+
   /// Whether the app holds the mouse now: taken at launch and not handed to the
   /// terminal since.
   #[inline(always)]

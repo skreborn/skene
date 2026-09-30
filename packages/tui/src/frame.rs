@@ -69,19 +69,33 @@ pub(crate) fn render(width: u16, height: u16) -> Buffer {
   }
 
   with_records(|records| {
-    render_pictures(records);
-    render_backdrops(records);
-
     let (width, height) = (usize::from(width), usize::from(height));
     let previous = records
       .last_frame
       .take()
       .filter(|frame| frame.width == width && frame.height == height);
     let full = std::mem::take(&mut records.paint_dirty) || previous.is_none();
+    let moved = std::mem::take(&mut records.covers_stale) || full;
+    let (damaged, rects) = records.take_damage();
 
-    measure_covers(records);
+    if let Some(previous) = previous.as_ref().filter(|_| !moved)
+      && damaged.is_empty()
+      && rects.is_empty()
+    {
+      records.repainted = Vec::new();
+      records.last_frame = Some(previous.clone());
 
-    let rows = damaged_rows(records, height);
+      return previous.clone();
+    }
+
+    render_pictures(records);
+    render_backdrops(records);
+
+    if moved {
+      measure_covers(records);
+    }
+
+    let rows = damaged_rows(records, height, damaged, rects, moved);
     let mut buffer = match previous {
       Some(previous) if !full => previous.repainting(&rows),
       _ => Buffer::new(width, height),
@@ -95,7 +109,10 @@ pub(crate) fn render(width: u16, height: u16) -> Buffer {
       .collect();
 
     paint::paint(records, &mut buffer);
-    record_painted(records);
+
+    if moved {
+      record_painted(records);
+    }
 
     records.last_frame = Some(buffer.clone());
 
@@ -103,12 +120,16 @@ pub(crate) fn render(width: u16, height: u16) -> Buffer {
   })
 }
 
-/// The rows the next paint rewrites: those the damaged nodes covered at the last paint
-/// and cover now, those of the rectangles no node covers any more, and those of every
-/// node the layout moved or resized.
-fn damaged_rows(records: &mut Records, height: usize) -> Vec<bool> {
-  let (damaged, mut rects) = records.take_damage();
-
+/// The rows the next paint rewrites: those the `damaged` nodes covered at the last
+/// paint and cover now, the `rects` no node covers any more, and, where the covers
+/// `moved`, those of every node the layout or a scroll moved or resized.
+fn damaged_rows(
+  records: &Records,
+  height: usize,
+  damaged: Vec<Handle>,
+  mut rects: Vec<CellRect>,
+  moved: bool,
+) -> Vec<bool> {
   for handle in damaged {
     let target = paint_owner(records, handle);
 
@@ -118,15 +139,17 @@ fn damaged_rows(records: &mut Records, height: usize) -> Vec<bool> {
     }
   }
 
-  for handle in records.handles() {
-    let Some(record) = records.record(handle)
-    else {
-      continue;
-    };
+  if moved {
+    for handle in records.handles() {
+      let Some(record) = records.record(handle)
+      else {
+        continue;
+      };
 
-    if record.kind.is_laid_out() && record.painted != record.covers {
-      rects.extend(record.painted);
-      rects.extend(record.covers);
+      if record.kind.is_laid_out() && record.painted != record.covers {
+        rects.extend(record.painted);
+        rects.extend(record.covers);
+      }
     }
   }
 

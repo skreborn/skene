@@ -3,7 +3,10 @@
 
 use std::time::Instant;
 
+use skene_core::Scene;
+
 use super::{CellRect, Handle, Records};
+use crate::Tui;
 
 /// How long the loop waits for input between frames while the frame clock runs: the
 /// frame rate's cap.
@@ -53,11 +56,12 @@ impl Records {
   }
 
   /// Whether anything is left to paint: a whole-frame repaint, a pending restyle, a
-  /// layout or structure change, or a damaged node.
-  #[inline(always)]
+  /// moved interaction, a layout or structure change, or a damaged node.
   pub(crate) fn needs_frame(&self) -> bool {
     self.paint_dirty
-      || self.restyle_pending
+      || self.restyle_all
+      || !self.restyle_queue.is_empty()
+      || Scene::<Tui>::read(Scene::interaction_generation) != self.interaction_seen
       || self.layout_dirty
       || self.structure_dirty
       || self.frame_clock_running()

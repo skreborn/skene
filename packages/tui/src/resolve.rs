@@ -48,6 +48,12 @@ impl<'a> Env<'a> {
     }
   }
 
+  /// Whether a resolution in this environment has read the node's interaction.
+  #[inline(always)]
+  pub(crate) const fn reads_interaction(&self) -> bool {
+    self.context.read_interaction()
+  }
+
   /// Runs `operation` with the resolver of this environment, reading tokens where they
   /// are defined and slots through the records.
   fn with_resolver<R>(&self, operation: impl FnOnce(&Resolver<'_, u32, TuiStyle>) -> R) -> R {

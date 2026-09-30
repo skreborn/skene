@@ -11,13 +11,13 @@ use skene_core::{
   BoxValue,
   ClipboardAction,
   ColorScheme,
-  ControlKind,
   ControlProps,
   ControlState,
   Definitions,
   FocusOrder,
   Media,
   MediaSignals,
+  NativeElement,
   NodeId,
   NodeKind,
   Observation,
@@ -164,12 +164,14 @@ impl Platform for Tui {
   }
 
   fn create_control(props: &ControlProps<Self>) -> Handle {
-    let field = matches!(props.kind, ControlKind::TextField | ControlKind::TextEditor)
+    let field = props
+      .native
+      .is_some_and(NativeElement::is_text_entry)
       .then(|| Field::new(props.placeholder.clone(), props.lines));
 
     with_store(|store| {
       store.create_laid_out(Kind::Control {
-        kind: props.kind,
+        native: props.native,
         inner: BoxRecord::new(props.box_props.clone()),
         state: ControlState::DEFAULT,
         field,

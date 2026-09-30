@@ -9,7 +9,6 @@ use skene_core::{
   Axis,
   ClickEvent,
   ClipboardAction,
-  ControlKind,
   KeyEvent,
   Modifiers,
   MouseCursor,
@@ -57,7 +56,7 @@ use crate::{
     paragraph_cluster_at,
     paragraph_run_at,
   },
-  paint::control_kind,
+  paint::control_entry,
   store::{Drag, Handle, Kind, Press, Record, ScrollLatch, Store},
   with_store,
 };
@@ -515,9 +514,9 @@ impl Store {
         return Some(MouseCursor::Grab);
       }
 
-      match control_kind(self, *handle) {
-        Some(ControlKind::TextField | ControlKind::TextEditor) => return Some(MouseCursor::Text),
-        Some(_) => return Some(MouseCursor::Click),
+      match control_entry(self, *handle) {
+        Some(true) => return Some(MouseCursor::Text),
+        Some(false) => return Some(MouseCursor::Click),
         None => {}
       }
 

@@ -285,8 +285,11 @@ and its cost unjustified.
 
 A control is `Control<P, B: Behavior>`: one builder carrying focus, events, decoration,
 label, parts and accessibility once, over a public `Behavior` that says what the
-interaction *is*—its role, its keys, its pointer handling, what it reports to assistive
-technology, where it sits in the tab order, and which parts it exposes. `Toggle`,
+interaction *is*—its role, the native element it stands in where a platform has one
+(`NativeElement`: a button, a checkbox, a radio, a range, a text entry or a picker; a
+control with none is drawn by its view and named by its role), its keys, its pointer
+handling, what it reports to assistive technology, where it sits in the tab order, and
+which parts it exposes. `Toggle`,
 `Range`, `Popup`, `Activate`, `TextEntry` and `Collection` (with `Member`) ship; a
 collection's `CollectionPolicy` says what it and its members are, which keys move
 between the members and what a move and a choice do, and `Roving` (with

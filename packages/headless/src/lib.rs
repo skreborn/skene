@@ -1127,7 +1127,7 @@ fn outline_into(handle: Handle, depth: usize, full: bool, out: &mut String) {
     let record = store.record(handle)?;
     let line = match &record.kind {
       Kind::Box(_) => Some("Box".to_owned()),
-      Kind::Control(props) => Some(format!("Control {:?}", props.kind)),
+      Kind::Control(props) => Some(format!("Control {:?}", props.native)),
       Kind::Overlay(props) => Some(format!(
         "Overlay {}",
         if props.modal { "modal" } else { "popup" }

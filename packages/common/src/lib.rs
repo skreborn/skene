@@ -74,7 +74,6 @@ pub use skene_core::{
   AnyKind,
   AnyView,
   Boundary,
-  ControlKind,
   ControlState,
   Errors,
   HasChildren,

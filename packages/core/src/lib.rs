@@ -83,7 +83,15 @@ pub use condition::{
   PointerPrecision,
   State,
 };
-pub use control::{ControlKind, ControlProps, ControlState, Part, PickerOption, Ring, SliderRange};
+pub use control::{
+  ControlProps,
+  ControlState,
+  NativeElement,
+  Part,
+  PickerOption,
+  Ring,
+  SliderRange,
+};
 pub use derived::{derived, empty, reconcile};
 pub use dispatch::{
   dispatch_click,

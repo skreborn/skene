@@ -12,7 +12,6 @@ pub use skene_gui::Color
 pub use skene_gui::ColorScheme
 pub use skene_gui::ContainerName
 pub use skene_gui::ControlChild
-pub use skene_gui::ControlKind
 pub use skene_gui::ControlState
 pub use skene_gui::CornerRadius
 pub use skene_gui::Definitions
@@ -41,6 +40,7 @@ pub use skene_gui::MenuItem
 pub use skene_gui::MenuOption
 pub use skene_gui::Modifiers
 pub use skene_gui::NamedKey
+pub use skene_gui::NativeElement
 pub use skene_gui::NativePicker
 pub use skene_gui::NoChild
 pub use skene_gui::NodeId

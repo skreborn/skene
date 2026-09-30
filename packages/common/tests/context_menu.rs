@@ -9,7 +9,6 @@ use skene_common::{ContextMenu, MenuItem, MenuItemContent};
 use skene_core::{
   Availability,
   ClipboardAction,
-  ControlKind,
   Dimension,
   FocusOrder,
   HasChildren,
@@ -22,6 +21,7 @@ use skene_core::{
   PointerEvent,
   Property,
   PropertyKey,
+  Role,
   Scene,
   Shortcut,
   View,
@@ -77,7 +77,9 @@ fn items(root: skene_core::NodeId) -> Vec<skene_core::NodeId> {
 
   nodes
     .into_iter()
-    .filter(|node| control_props(*node).is_some_and(|props| props.kind == ControlKind::MenuItem))
+    .filter(|node| {
+      control_props(*node).is_some_and(|props| props.box_props.role == Some(Role::MenuItem))
+    })
     .collect()
 }
 

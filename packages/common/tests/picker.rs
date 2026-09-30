@@ -10,8 +10,8 @@ use std::{cell::RefCell, rc::Rc};
 use skene_common::{Label, ListItem, TYPE_AHEAD_RESET};
 use skene_core::{
   AccessProp,
-  ControlKind,
   KeyEvent,
+  NativeElement,
   NodeId,
   PickerOption,
   Placement,
@@ -146,8 +146,8 @@ fn arrow_down_opens_the_list_with_focus_on_the_chosen_option() {
   let parts = picker(owner, value);
 
   assert_eq!(
-    control_props(parts.face).map(|props| props.kind),
-    Some(ControlKind::Combobox)
+    box_props(parts.face).and_then(|props| props.role),
+    Some(Role::ComboBox)
   );
   assert_eq!(
     box_props(parts.face).and_then(|props| props.role),
@@ -156,12 +156,12 @@ fn arrow_down_opens_the_list_with_focus_on_the_chosen_option() {
   assert_eq!(accessible_name(parts.face), Some("Size".to_owned()));
   assert_eq!(text(parts.shown), Some("b".to_owned()));
   assert_eq!(
-    control_props(parts.listbox).map(|props| props.kind),
-    Some(ControlKind::Listbox)
+    box_props(parts.listbox).and_then(|props| props.role),
+    Some(Role::ListBox)
   );
   assert_eq!(
-    control_props(parts.options[0]).map(|props| props.kind),
-    Some(ControlKind::ListboxOption)
+    box_props(parts.options[0]).and_then(|props| props.role),
+    Some(Role::ListBoxOption)
   );
   assert_eq!(parts.options.len(), 3);
   assert_eq!(parts.expanded(), Some(false));
@@ -553,8 +553,8 @@ fn until_hydrated_the_picker_is_the_platforms_own() {
   let native = form(start);
 
   assert_eq!(
-    control_props(native).map(|props| props.kind),
-    Some(ControlKind::NativePicker)
+    control_props(native).map(|props| props.native),
+    Some(Some(NativeElement::Picker))
   );
   assert_eq!(
     options(native),
@@ -582,8 +582,8 @@ fn until_hydrated_the_picker_is_the_platforms_own() {
   let face = form(start);
 
   assert_eq!(
-    control_props(face).map(|props| props.kind),
-    Some(ControlKind::Combobox),
+    box_props(face).and_then(|props| props.role),
+    Some(Role::ComboBox),
     "the drawn face took the platform's place"
   );
   assert_eq!(text(Parts::of(face).shown).as_deref(), Some("c"));
@@ -623,8 +623,8 @@ fn the_drawn_face_keeps_the_caption_name_and_disabled_setting() {
   let face = form(start);
 
   assert_eq!(
-    control_props(face).map(|props| props.kind),
-    Some(ControlKind::Combobox)
+    box_props(face).and_then(|props| props.role),
+    Some(Role::ComboBox)
   );
   assert_eq!(accessible_name(face).as_deref(), Some("Size"));
   assert!(control_state(face).is_some_and(|state| state.disabled));

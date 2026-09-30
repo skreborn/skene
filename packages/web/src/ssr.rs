@@ -85,9 +85,9 @@ use super::{
   },
   condition::{CLASS_PLACEHOLDER, CONTROL_ATTRIBUTE, DRAGS_ATTRIBUTE, NATIVE_CLASS, drags_value},
   markup::{
+    FormElement,
     MARKER_ATTRIBUTE,
     NATIVE_ACCESS_ATTRIBUTES,
-    NativeElement,
     SCOPE_ATTRIBUTE,
     STYLE_ATTRIBUTE,
     STYLE_ID,
@@ -99,10 +99,10 @@ use super::{
     drawn_element,
     element_id,
     focus_order_attribute,
+    form_element,
     is_form_element,
     link_attributes,
     native_attributes,
-    native_element,
     referenced_nodes,
     replaced_by_access,
     runs_script,
@@ -260,7 +260,7 @@ impl Node {
   }
 
   /// Writes the attributes a control's native element carries.
-  fn write_native_attributes(&mut self, native: NativeElement, props: &ControlProps<Web>) {
+  fn write_native_attributes(&mut self, native: FormElement, props: &ControlProps<Web>) {
     for (name, value) in native_attributes(native, props) {
       self.set_attribute(name, &value);
     }
@@ -1224,7 +1224,7 @@ impl Platform for Web {
 
   fn create_control(props: &ControlProps<Self>) -> u32 {
     let (index, compiled) = with_tree(|tree| {
-      let index = if let Some(native) = native_element(props.kind) {
+      let index = if let Some(native) = form_element(props.native) {
         if native.is_bare() {
           let root = tree.element(native.tag);
 
@@ -1254,7 +1254,7 @@ impl Platform for Web {
         }
       }
       else {
-        let (tag, attribute) = drawn_element(props.kind);
+        let (tag, attribute) = drawn_element(props.native, props.box_props.role);
         let root = tree.element(tag);
 
         if let Some(node) = tree.node(root) {

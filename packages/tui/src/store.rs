@@ -12,13 +12,13 @@ use skene_core::{
   ColorScheme,
   ContainerName,
   ContainerSizes,
-  ControlKind,
   ControlState,
   Environment,
   FocusOrder,
   Inset,
   Layout,
   MediaSignals,
+  NativeElement,
   NodeId,
   Placement,
   Plain,
@@ -473,7 +473,7 @@ impl Field {
 pub(crate) enum Kind {
   Box(BoxRecord),
   Control {
-    kind: ControlKind,
+    native: Option<NativeElement>,
     inner: BoxRecord,
     state: ControlState,
     field: Option<Field>,

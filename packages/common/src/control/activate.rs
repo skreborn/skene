@@ -4,11 +4,11 @@ use std::cell::Cell;
 
 use skene_core::{
   ClickEvent,
-  ControlKind,
   EventKind,
   Key,
   KeyEvent,
   NamedKey,
+  NativeElement,
   Platform,
   Prevent,
   Role,
@@ -41,8 +41,8 @@ impl Activate {
 
 impl<P: Platform> Behavior<P> for Activate {
   #[inline(always)]
-  fn kind(&self) -> ControlKind {
-    ControlKind::Button
+  fn native(&self) -> Option<NativeElement> {
+    Some(NativeElement::Button)
   }
 
   #[inline(always)]

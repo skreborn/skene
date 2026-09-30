@@ -29,7 +29,6 @@ use skene_core::{
   AnyView,
   Axes,
   Condition,
-  ControlKind,
   Dimension,
   DragAxes,
   EventKind,
@@ -39,6 +38,7 @@ use skene_core::{
   Key,
   KeyEvent,
   NamedKey,
+  NativeElement,
   Part,
   PointerButton,
   PointerEvent,
@@ -177,8 +177,8 @@ fn a_button_click_stays_on_the_button_while_a_box_click_climbs() {
   let plain = children(column)[2];
 
   assert_eq!(
-    control_props(button).map(|props| props.kind),
-    Some(ControlKind::Button)
+    control_props(button).map(|props| props.native),
+    Some(Some(NativeElement::Button))
   );
   assert_eq!(
     box_props(button).and_then(|props| props.role),
@@ -880,8 +880,8 @@ fn a_text_fields_change_writes_the_signal_and_stays_on_its_node() {
 
   assert_eq!(value(field), Some(String::new()));
   assert_eq!(
-    control_props(field).map(|props| props.kind),
-    Some(ControlKind::TextField)
+    control_props(field).map(|props| props.native),
+    Some(Some(NativeElement::TextField))
   );
   assert_eq!(
     control_props(field).and_then(|props| props.placeholder),
@@ -901,8 +901,8 @@ fn a_text_fields_change_writes_the_signal_and_stays_on_its_node() {
   let editor = owner.enter(|| RawTextEditor::new(TextEntry::new().set_lines(4)).build());
 
   assert_eq!(
-    control_props(editor).map(|props| props.kind),
-    Some(ControlKind::TextEditor)
+    control_props(editor).map(|props| props.native),
+    Some(Some(NativeElement::TextEditor))
   );
   assert_eq!(control_props(editor).map(|props| props.lines), Some(4));
 
@@ -917,8 +917,8 @@ fn a_behavior_places_its_label() {
   struct InlineEntry;
 
   impl Behavior<Headless> for InlineEntry {
-    fn kind(&self) -> ControlKind {
-      ControlKind::TextField
+    fn native(&self) -> Option<NativeElement> {
+      Some(NativeElement::TextField)
     }
 
     fn role(&self) -> Option<Role> {
@@ -1077,12 +1077,12 @@ fn a_popup_face_is_what_its_popup_makes_it() {
   });
 
   for (kind, face) in faces {
-    let (control, role) = match kind {
-      PopupKind::Listbox => (ControlKind::Combobox, Role::ComboBox),
-      PopupKind::Menu | PopupKind::Dialog => (ControlKind::Button, Role::Button),
+    let (native, role) = match kind {
+      PopupKind::Listbox => (None, Role::ComboBox),
+      PopupKind::Menu | PopupKind::Dialog => (Some(NativeElement::Button), Role::Button),
     };
 
-    assert_eq!(control_props(face).map(|props| props.kind), Some(control));
+    assert_eq!(control_props(face).map(|props| props.native), Some(native));
     assert_eq!(box_props(face).and_then(|props| props.role), Some(role));
     assert!(
       box_props(face).is_some_and(|props| props.access.contains(&AccessProp::HasPopup(kind))),
@@ -1154,8 +1154,8 @@ struct Stepper {
 }
 
 impl Behavior<Headless> for Stepper {
-  fn kind(&self) -> ControlKind {
-    ControlKind::Button
+  fn native(&self) -> Option<NativeElement> {
+    Some(NativeElement::Button)
   }
 
   fn role(&self) -> Option<Role> {

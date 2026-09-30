@@ -27,7 +27,6 @@ use skene_core::{
   BoxVisitor,
   Condition,
   Conditional,
-  ControlKind,
   ControlProps,
   Definitions,
   Fingerprint,
@@ -37,6 +36,7 @@ use skene_core::{
   IntoRunValue,
   Keyframe,
   Layout,
+  NativeElement,
   Overflow,
   OverlayProps,
   Placement,
@@ -732,7 +732,7 @@ pub(crate) fn compile_layout<P: PixelPlatform>(layout: &StaticBoxStyle<P>) -> Co
 /// native element's own chrome; a text entry's value is inked and selected by the
 /// typography inherited at it.
 pub(crate) fn compile_control<P: PixelPlatform>(props: &ControlProps<P>) -> Compiled {
-  let entry = matches!(props.kind, ControlKind::TextField | ControlKind::TextEditor);
+  let entry = props.native.is_some_and(NativeElement::is_text_entry);
   let ink = if entry {
     token_reference(typography::INK.name())
   }
@@ -1060,7 +1060,7 @@ pub(crate) fn control_fingerprint<P: PixelPlatform>(props: &ControlProps<P>) -> 
   let mut hasher = FxHasher::default();
 
   hasher.write_u64(box_fingerprint(&props.box_props, 1));
-  props.kind.hash(&mut hasher);
+  props.native.hash(&mut hasher);
 
   hasher.finish()
 }

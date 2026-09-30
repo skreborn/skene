@@ -5,12 +5,12 @@ use std::{cell::Cell, rc::Rc};
 use skene_core::{
   AccessProp,
   Axis,
-  ControlKind,
   DragAxes,
   EventKind,
   Key,
   KeyEvent,
   NamedKey,
+  NativeElement,
   NodeId,
   Part,
   Platform,
@@ -225,8 +225,8 @@ impl Default for Range {
 
 impl<P: Platform> Behavior<P> for Range {
   #[inline(always)]
-  fn kind(&self) -> ControlKind {
-    ControlKind::Range
+  fn native(&self) -> Option<NativeElement> {
+    Some(NativeElement::Range)
   }
 
   #[inline(always)]

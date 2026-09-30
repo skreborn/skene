@@ -6,11 +6,11 @@ use skene_core::{
   AccessProp,
   Axis,
   Conditional,
-  ControlKind,
   ControlProps,
   FocusOrder,
   LinkAnnotation,
   LinkPolicy,
+  NativeElement,
   NodeId,
   Platform,
   PlatformLeaf,
@@ -78,14 +78,14 @@ pub(crate) const fn element_tag(role: Option<Role>, level: Option<usize>) -> &'s
 /// itself, and every other kind keeps it inside its label.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[must_use]
-pub(crate) struct NativeElement {
+pub(crate) struct FormElement {
   /// The element's tag.
   pub tag: &'static str,
   /// The element's `type` attribute, when it is an `input`.
   pub kind: Option<&'static str>,
 }
 
-impl NativeElement {
+impl FormElement {
   /// Whether the element stands bare: the control's own element, its caption a
   /// `<label for>` beside it, rather than an input kept inside its label.
   #[inline(always)]
@@ -104,47 +104,40 @@ impl NativeElement {
   }
 }
 
-/// The native element a control of `kind` stands in, if the platform has one.
-pub(crate) const fn native_element(kind: ControlKind) -> Option<NativeElement> {
-  let (tag, kind) = match kind {
-    ControlKind::Checkbox => ("input", Some("checkbox")),
-    ControlKind::Radio => ("input", Some("radio")),
-    ControlKind::Range => ("input", Some("range")),
-    ControlKind::TextField => ("input", Some("text")),
-    ControlKind::TextEditor => ("textarea", None),
-    ControlKind::NativePicker => ("select", None),
-    ControlKind::Button
-    | ControlKind::RadioGroup
-    | ControlKind::Listbox
-    | ControlKind::ListboxOption
-    | ControlKind::Combobox
-    | ControlKind::Menu
-    | ControlKind::MenuItem => return None,
+/// The form element a control standing in `native` is realized with, where it is one.
+pub(crate) const fn form_element(native: Option<NativeElement>) -> Option<FormElement> {
+  let (tag, kind) = match native {
+    Some(NativeElement::Checkbox) => ("input", Some("checkbox")),
+    Some(NativeElement::Radio) => ("input", Some("radio")),
+    Some(NativeElement::Range) => ("input", Some("range")),
+    Some(NativeElement::TextField) => ("input", Some("text")),
+    Some(NativeElement::TextEditor) => ("textarea", None),
+    Some(NativeElement::Picker) => ("select", None),
+    Some(NativeElement::Button) | None => return None,
   };
 
-  Some(NativeElement { tag, kind })
+  Some(FormElement { tag, kind })
 }
 
-/// The element a control without a native counterpart is drawn as, and the attribute
-/// naming what it is.
+/// The element a control without a form element is drawn as, and the attribute naming
+/// what it is: a button's own element, else a generic one spelling its `role`.
 pub(crate) const fn drawn_element(
-  kind: ControlKind,
+  native: Option<NativeElement>,
+  role: Option<Role>,
 ) -> (&'static str, Option<(&'static str, &'static str)>) {
-  match kind {
-    ControlKind::Button => ("button", Some(("type", "button"))),
-    ControlKind::RadioGroup => ("div", Some(("role", "radiogroup"))),
-    ControlKind::Listbox => ("div", Some(("role", "listbox"))),
-    ControlKind::ListboxOption => ("div", Some(("role", "option"))),
-    ControlKind::Combobox => ("div", Some(("role", "combobox"))),
-    ControlKind::Menu => ("div", Some(("role", "menu"))),
-    ControlKind::MenuItem => ("div", Some(("role", "menuitem"))),
-    ControlKind::Checkbox
-    | ControlKind::Radio
-    | ControlKind::Range
-    | ControlKind::TextField
-    | ControlKind::TextEditor
-    | ControlKind::NativePicker => ("div", None),
+  if let Some(NativeElement::Button) = native {
+    return ("button", Some(("type", "button")));
   }
+
+  let attribute = match role {
+    Some(role) => match aria_role(role) {
+      Some(aria) => Some(("role", aria)),
+      None => None,
+    },
+    None => None,
+  };
+
+  ("div", attribute)
 }
 
 /// The elements a head holds that a head registration adds.
@@ -366,7 +359,7 @@ pub(crate) fn access_attributes(access: &[AccessProp], form: bool) -> Vec<(&'sta
 /// The attributes a control's native element carries: its `type`, the placeholder and
 /// the lines of a text entry, and the accessible name when nothing visible supplies one.
 pub(crate) fn native_attributes<P: Platform>(
-  native: NativeElement,
+  native: FormElement,
   props: &ControlProps<P>,
 ) -> Vec<(&'static str, String)> {
   let mut attributes = Vec::new();

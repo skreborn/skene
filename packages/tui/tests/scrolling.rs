@@ -69,8 +69,8 @@ fn a_wheel_reaches_the_node_under_it_before_it_scrolls() {
   struct Dial;
 
   impl tui::Behavior<tui::Tui> for Dial {
-    fn kind(&self) -> tui::ControlKind {
-      tui::ControlKind::Button
+    fn native(&self) -> Option<tui::NativeElement> {
+      Some(tui::NativeElement::Button)
     }
 
     fn role(&self) -> Option<tui::Role> {

@@ -1,6 +1,6 @@
 //! A text field's and a text editor's behavior.
 
-use skene_core::{ControlKind, EventKind, Platform, Role, TextSelection};
+use skene_core::{EventKind, NativeElement, Platform, Role, TextSelection};
 use skene_reactive::{Effect, Signal, untrack};
 
 use super::{Behavior, ControlHandle, Controlled};
@@ -132,13 +132,13 @@ impl Default for TextEntry {
 
 impl<P: Platform> Behavior<P> for TextEntry {
   #[inline(always)]
-  fn kind(&self) -> ControlKind {
-    if self.lines > 1 {
-      ControlKind::TextEditor
+  fn native(&self) -> Option<NativeElement> {
+    Some(if self.lines > 1 {
+      NativeElement::TextEditor
     }
     else {
-      ControlKind::TextField
-    }
+      NativeElement::TextField
+    })
   }
 
   #[inline(always)]

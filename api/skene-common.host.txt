@@ -2,7 +2,6 @@ pub mod skene_common
 pub use skene_common::AnyKind
 pub use skene_common::AnyView
 pub use skene_common::Boundary
-pub use skene_common::ControlKind
 pub use skene_common::ControlState
 pub use skene_common::Errors
 pub use skene_common::HasChildren
@@ -976,11 +975,11 @@ pub fn skene_common::Activate::access(&self) -> alloc::vec::Vec<skene_core::valu
 pub fn skene_common::Activate::attach(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Activate::drag_axes(&self) -> core::option::Option<skene_core::values::axis::DragAxes>
 pub fn skene_common::Activate::focus_order(&self) -> core::option::Option<skene_core::values::focus_order::FocusOrder>
-pub fn skene_common::Activate::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::Activate::label_placement(&self) -> skene_common::LabelPlacement
 pub fn skene_common::Activate::lines(&self) -> u16
 pub fn skene_common::Activate::listens(&self) -> &'static [skene_core::props::EventKind]
 pub fn skene_common::Activate::mounted(&self, &skene_common::ControlHandle<P>)
+pub fn skene_common::Activate::native(&self) -> core::option::Option<skene_core::control::NativeElement>
 pub fn skene_common::Activate::on_blur(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Activate::on_change(&self, &str, &skene_common::ControlHandle<P>)
 pub fn skene_common::Activate::on_click(&self, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
@@ -1043,11 +1042,11 @@ pub fn skene_common::Collection<C>::access(&self) -> alloc::vec::Vec<skene_core:
 pub fn skene_common::Collection<C>::attach(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Collection<C>::drag_axes(&self) -> core::option::Option<skene_core::values::axis::DragAxes>
 pub fn skene_common::Collection<C>::focus_order(&self) -> core::option::Option<skene_core::values::focus_order::FocusOrder>
-pub fn skene_common::Collection<C>::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::Collection<C>::label_placement(&self) -> skene_common::LabelPlacement
 pub fn skene_common::Collection<C>::lines(&self) -> u16
 pub fn skene_common::Collection<C>::listens(&self) -> &'static [skene_core::props::EventKind]
 pub fn skene_common::Collection<C>::mounted(&self, &skene_common::ControlHandle<P>)
+pub fn skene_common::Collection<C>::native(&self) -> core::option::Option<skene_core::control::NativeElement>
 pub fn skene_common::Collection<C>::on_blur(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Collection<C>::on_change(&self, &str, &skene_common::ControlHandle<P>)
 pub fn skene_common::Collection<C>::on_click(&self, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
@@ -1621,11 +1620,10 @@ impl core::marker::StructuralPartialEq for skene_common::ListboxPolicy
 impl skene_common::CollectionPolicy for skene_common::ListboxPolicy
 pub const skene_common::ListboxPolicy::CHOOSES_ON_MOVE: bool
 pub const skene_common::ListboxPolicy::HORIZONTAL: bool
-pub const skene_common::ListboxPolicy::KIND: skene_core::control::ControlKind
 pub const skene_common::ListboxPolicy::LISTS: bool
 pub const skene_common::ListboxPolicy::MARKS_CHOSEN: bool
 pub const skene_common::ListboxPolicy::MEMBER_EVENTS: &'static [skene_core::props::EventKind]
-pub const skene_common::ListboxPolicy::MEMBER_KIND: skene_core::control::ControlKind
+pub const skene_common::ListboxPolicy::MEMBER_NATIVE: core::option::Option<skene_core::control::NativeElement>
 pub const skene_common::ListboxPolicy::MEMBER_ROLE: accesskit::Role
 pub const skene_common::ListboxPolicy::ROLE: accesskit::Role
 pub const skene_common::ListboxPolicy::WRAPS: bool
@@ -1646,11 +1644,11 @@ pub fn skene_common::Member<C>::access(&self) -> alloc::vec::Vec<skene_core::val
 pub fn skene_common::Member<C>::attach(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Member<C>::drag_axes(&self) -> core::option::Option<skene_core::values::axis::DragAxes>
 pub fn skene_common::Member<C>::focus_order(&self) -> core::option::Option<skene_core::values::focus_order::FocusOrder>
-pub fn skene_common::Member<C>::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::Member<C>::label_placement(&self) -> skene_common::LabelPlacement
 pub fn skene_common::Member<C>::lines(&self) -> u16
 pub fn skene_common::Member<C>::listens(&self) -> &'static [skene_core::props::EventKind]
 pub fn skene_common::Member<C>::mounted(&self, &skene_common::ControlHandle<P>)
+pub fn skene_common::Member<C>::native(&self) -> core::option::Option<skene_core::control::NativeElement>
 pub fn skene_common::Member<C>::on_blur(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Member<C>::on_change(&self, &str, &skene_common::ControlHandle<P>)
 pub fn skene_common::Member<C>::on_click(&self, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
@@ -1704,11 +1702,10 @@ impl core::marker::StructuralPartialEq for skene_common::MenuPolicy
 impl skene_common::CollectionPolicy for skene_common::MenuPolicy
 pub const skene_common::MenuPolicy::CHOOSES_ON_MOVE: bool
 pub const skene_common::MenuPolicy::HORIZONTAL: bool
-pub const skene_common::MenuPolicy::KIND: skene_core::control::ControlKind
 pub const skene_common::MenuPolicy::LISTS: bool
 pub const skene_common::MenuPolicy::MARKS_CHOSEN: bool
 pub const skene_common::MenuPolicy::MEMBER_EVENTS: &'static [skene_core::props::EventKind]
-pub const skene_common::MenuPolicy::MEMBER_KIND: skene_core::control::ControlKind
+pub const skene_common::MenuPolicy::MEMBER_NATIVE: core::option::Option<skene_core::control::NativeElement>
 pub const skene_common::MenuPolicy::MEMBER_ROLE: accesskit::Role
 pub const skene_common::MenuPolicy::ROLE: accesskit::Role
 pub const skene_common::MenuPolicy::WRAPS: bool
@@ -1726,11 +1723,11 @@ pub fn skene_common::NativePicker::access(&self) -> alloc::vec::Vec<skene_core::
 pub fn skene_common::NativePicker::attach(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::NativePicker::drag_axes(&self) -> core::option::Option<skene_core::values::axis::DragAxes>
 pub fn skene_common::NativePicker::focus_order(&self) -> core::option::Option<skene_core::values::focus_order::FocusOrder>
-pub fn skene_common::NativePicker::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::NativePicker::label_placement(&self) -> skene_common::LabelPlacement
 pub fn skene_common::NativePicker::lines(&self) -> u16
 pub fn skene_common::NativePicker::listens(&self) -> &'static [skene_core::props::EventKind]
 pub fn skene_common::NativePicker::mounted(&self, &skene_common::ControlHandle<P>)
+pub fn skene_common::NativePicker::native(&self) -> core::option::Option<skene_core::control::NativeElement>
 pub fn skene_common::NativePicker::on_blur(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::NativePicker::on_change(&self, &str, &skene_common::ControlHandle<P>)
 pub fn skene_common::NativePicker::on_click(&self, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
@@ -1864,11 +1861,11 @@ pub fn skene_common::Popup::access(&self) -> alloc::vec::Vec<skene_core::values:
 pub fn skene_common::Popup::attach(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Popup::drag_axes(&self) -> core::option::Option<skene_core::values::axis::DragAxes>
 pub fn skene_common::Popup::focus_order(&self) -> core::option::Option<skene_core::values::focus_order::FocusOrder>
-pub fn skene_common::Popup::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::Popup::label_placement(&self) -> skene_common::LabelPlacement
 pub fn skene_common::Popup::lines(&self) -> u16
 pub fn skene_common::Popup::listens(&self) -> &'static [skene_core::props::EventKind]
 pub fn skene_common::Popup::mounted(&self, &skene_common::ControlHandle<P>)
+pub fn skene_common::Popup::native(&self) -> core::option::Option<skene_core::control::NativeElement>
 pub fn skene_common::Popup::on_blur(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Popup::on_change(&self, &str, &skene_common::ControlHandle<P>)
 pub fn skene_common::Popup::on_click(&self, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
@@ -1899,11 +1896,10 @@ impl core::marker::StructuralPartialEq for skene_common::RadioPolicy
 impl skene_common::CollectionPolicy for skene_common::RadioPolicy
 pub const skene_common::RadioPolicy::CHOOSES_ON_MOVE: bool
 pub const skene_common::RadioPolicy::HORIZONTAL: bool
-pub const skene_common::RadioPolicy::KIND: skene_core::control::ControlKind
 pub const skene_common::RadioPolicy::LISTS: bool
 pub const skene_common::RadioPolicy::MARKS_CHOSEN: bool
 pub const skene_common::RadioPolicy::MEMBER_EVENTS: &'static [skene_core::props::EventKind]
-pub const skene_common::RadioPolicy::MEMBER_KIND: skene_core::control::ControlKind
+pub const skene_common::RadioPolicy::MEMBER_NATIVE: core::option::Option<skene_core::control::NativeElement>
 pub const skene_common::RadioPolicy::MEMBER_ROLE: accesskit::Role
 pub const skene_common::RadioPolicy::ROLE: accesskit::Role
 pub const skene_common::RadioPolicy::WRAPS: bool
@@ -1929,11 +1925,11 @@ pub fn skene_common::Range::access(&self) -> alloc::vec::Vec<skene_core::values:
 pub fn skene_common::Range::attach(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Range::drag_axes(&self) -> core::option::Option<skene_core::values::axis::DragAxes>
 pub fn skene_common::Range::focus_order(&self) -> core::option::Option<skene_core::values::focus_order::FocusOrder>
-pub fn skene_common::Range::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::Range::label_placement(&self) -> skene_common::LabelPlacement
 pub fn skene_common::Range::lines(&self) -> u16
 pub fn skene_common::Range::listens(&self) -> &'static [skene_core::props::EventKind]
 pub fn skene_common::Range::mounted(&self, &skene_common::ControlHandle<P>)
+pub fn skene_common::Range::native(&self) -> core::option::Option<skene_core::control::NativeElement>
 pub fn skene_common::Range::on_blur(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Range::on_change(&self, &str, &skene_common::ControlHandle<P>)
 pub fn skene_common::Range::on_click(&self, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
@@ -2208,11 +2204,11 @@ pub fn skene_common::TextEntry::access(&self) -> alloc::vec::Vec<skene_core::val
 pub fn skene_common::TextEntry::attach(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::TextEntry::drag_axes(&self) -> core::option::Option<skene_core::values::axis::DragAxes>
 pub fn skene_common::TextEntry::focus_order(&self) -> core::option::Option<skene_core::values::focus_order::FocusOrder>
-pub fn skene_common::TextEntry::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::TextEntry::label_placement(&self) -> skene_common::LabelPlacement
 pub fn skene_common::TextEntry::lines(&self) -> u16
 pub fn skene_common::TextEntry::listens(&self) -> &'static [skene_core::props::EventKind]
 pub fn skene_common::TextEntry::mounted(&self, &skene_common::ControlHandle<P>)
+pub fn skene_common::TextEntry::native(&self) -> core::option::Option<skene_core::control::NativeElement>
 pub fn skene_common::TextEntry::on_blur(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::TextEntry::on_change(&self, &str, &skene_common::ControlHandle<P>)
 pub fn skene_common::TextEntry::on_click(&self, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
@@ -2254,11 +2250,11 @@ pub fn skene_common::Toggle::access(&self) -> alloc::vec::Vec<skene_core::values
 pub fn skene_common::Toggle::attach(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Toggle::drag_axes(&self) -> core::option::Option<skene_core::values::axis::DragAxes>
 pub fn skene_common::Toggle::focus_order(&self) -> core::option::Option<skene_core::values::focus_order::FocusOrder>
-pub fn skene_common::Toggle::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::Toggle::label_placement(&self) -> skene_common::LabelPlacement
 pub fn skene_common::Toggle::lines(&self) -> u16
 pub fn skene_common::Toggle::listens(&self) -> &'static [skene_core::props::EventKind]
 pub fn skene_common::Toggle::mounted(&self, &skene_common::ControlHandle<P>)
+pub fn skene_common::Toggle::native(&self) -> core::option::Option<skene_core::control::NativeElement>
 pub fn skene_common::Toggle::on_blur(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Toggle::on_change(&self, &str, &skene_common::ControlHandle<P>)
 pub fn skene_common::Toggle::on_click(&self, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
@@ -2340,11 +2336,11 @@ pub fn skene_common::Behavior::access(&self) -> alloc::vec::Vec<skene_core::valu
 pub fn skene_common::Behavior::attach(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Behavior::drag_axes(&self) -> core::option::Option<skene_core::values::axis::DragAxes>
 pub fn skene_common::Behavior::focus_order(&self) -> core::option::Option<skene_core::values::focus_order::FocusOrder>
-pub fn skene_common::Behavior::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::Behavior::label_placement(&self) -> skene_common::LabelPlacement
 pub fn skene_common::Behavior::lines(&self) -> u16
 pub fn skene_common::Behavior::listens(&self) -> &'static [skene_core::props::EventKind]
 pub fn skene_common::Behavior::mounted(&self, &skene_common::ControlHandle<P>)
+pub fn skene_common::Behavior::native(&self) -> core::option::Option<skene_core::control::NativeElement>
 pub fn skene_common::Behavior::on_blur(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Behavior::on_change(&self, &str, &skene_common::ControlHandle<P>)
 pub fn skene_common::Behavior::on_click(&self, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
@@ -2363,11 +2359,11 @@ pub fn skene_common::Collection<C>::access(&self) -> alloc::vec::Vec<skene_core:
 pub fn skene_common::Collection<C>::attach(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Collection<C>::drag_axes(&self) -> core::option::Option<skene_core::values::axis::DragAxes>
 pub fn skene_common::Collection<C>::focus_order(&self) -> core::option::Option<skene_core::values::focus_order::FocusOrder>
-pub fn skene_common::Collection<C>::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::Collection<C>::label_placement(&self) -> skene_common::LabelPlacement
 pub fn skene_common::Collection<C>::lines(&self) -> u16
 pub fn skene_common::Collection<C>::listens(&self) -> &'static [skene_core::props::EventKind]
 pub fn skene_common::Collection<C>::mounted(&self, &skene_common::ControlHandle<P>)
+pub fn skene_common::Collection<C>::native(&self) -> core::option::Option<skene_core::control::NativeElement>
 pub fn skene_common::Collection<C>::on_blur(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Collection<C>::on_change(&self, &str, &skene_common::ControlHandle<P>)
 pub fn skene_common::Collection<C>::on_click(&self, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
@@ -2386,11 +2382,11 @@ pub fn skene_common::Member<C>::access(&self) -> alloc::vec::Vec<skene_core::val
 pub fn skene_common::Member<C>::attach(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Member<C>::drag_axes(&self) -> core::option::Option<skene_core::values::axis::DragAxes>
 pub fn skene_common::Member<C>::focus_order(&self) -> core::option::Option<skene_core::values::focus_order::FocusOrder>
-pub fn skene_common::Member<C>::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::Member<C>::label_placement(&self) -> skene_common::LabelPlacement
 pub fn skene_common::Member<C>::lines(&self) -> u16
 pub fn skene_common::Member<C>::listens(&self) -> &'static [skene_core::props::EventKind]
 pub fn skene_common::Member<C>::mounted(&self, &skene_common::ControlHandle<P>)
+pub fn skene_common::Member<C>::native(&self) -> core::option::Option<skene_core::control::NativeElement>
 pub fn skene_common::Member<C>::on_blur(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Member<C>::on_change(&self, &str, &skene_common::ControlHandle<P>)
 pub fn skene_common::Member<C>::on_click(&self, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
@@ -2409,11 +2405,11 @@ pub fn skene_common::Activate::access(&self) -> alloc::vec::Vec<skene_core::valu
 pub fn skene_common::Activate::attach(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Activate::drag_axes(&self) -> core::option::Option<skene_core::values::axis::DragAxes>
 pub fn skene_common::Activate::focus_order(&self) -> core::option::Option<skene_core::values::focus_order::FocusOrder>
-pub fn skene_common::Activate::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::Activate::label_placement(&self) -> skene_common::LabelPlacement
 pub fn skene_common::Activate::lines(&self) -> u16
 pub fn skene_common::Activate::listens(&self) -> &'static [skene_core::props::EventKind]
 pub fn skene_common::Activate::mounted(&self, &skene_common::ControlHandle<P>)
+pub fn skene_common::Activate::native(&self) -> core::option::Option<skene_core::control::NativeElement>
 pub fn skene_common::Activate::on_blur(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Activate::on_change(&self, &str, &skene_common::ControlHandle<P>)
 pub fn skene_common::Activate::on_click(&self, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
@@ -2432,11 +2428,11 @@ pub fn skene_common::NativePicker::access(&self) -> alloc::vec::Vec<skene_core::
 pub fn skene_common::NativePicker::attach(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::NativePicker::drag_axes(&self) -> core::option::Option<skene_core::values::axis::DragAxes>
 pub fn skene_common::NativePicker::focus_order(&self) -> core::option::Option<skene_core::values::focus_order::FocusOrder>
-pub fn skene_common::NativePicker::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::NativePicker::label_placement(&self) -> skene_common::LabelPlacement
 pub fn skene_common::NativePicker::lines(&self) -> u16
 pub fn skene_common::NativePicker::listens(&self) -> &'static [skene_core::props::EventKind]
 pub fn skene_common::NativePicker::mounted(&self, &skene_common::ControlHandle<P>)
+pub fn skene_common::NativePicker::native(&self) -> core::option::Option<skene_core::control::NativeElement>
 pub fn skene_common::NativePicker::on_blur(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::NativePicker::on_change(&self, &str, &skene_common::ControlHandle<P>)
 pub fn skene_common::NativePicker::on_click(&self, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
@@ -2455,11 +2451,11 @@ pub fn skene_common::Popup::access(&self) -> alloc::vec::Vec<skene_core::values:
 pub fn skene_common::Popup::attach(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Popup::drag_axes(&self) -> core::option::Option<skene_core::values::axis::DragAxes>
 pub fn skene_common::Popup::focus_order(&self) -> core::option::Option<skene_core::values::focus_order::FocusOrder>
-pub fn skene_common::Popup::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::Popup::label_placement(&self) -> skene_common::LabelPlacement
 pub fn skene_common::Popup::lines(&self) -> u16
 pub fn skene_common::Popup::listens(&self) -> &'static [skene_core::props::EventKind]
 pub fn skene_common::Popup::mounted(&self, &skene_common::ControlHandle<P>)
+pub fn skene_common::Popup::native(&self) -> core::option::Option<skene_core::control::NativeElement>
 pub fn skene_common::Popup::on_blur(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Popup::on_change(&self, &str, &skene_common::ControlHandle<P>)
 pub fn skene_common::Popup::on_click(&self, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
@@ -2478,11 +2474,11 @@ pub fn skene_common::Range::access(&self) -> alloc::vec::Vec<skene_core::values:
 pub fn skene_common::Range::attach(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Range::drag_axes(&self) -> core::option::Option<skene_core::values::axis::DragAxes>
 pub fn skene_common::Range::focus_order(&self) -> core::option::Option<skene_core::values::focus_order::FocusOrder>
-pub fn skene_common::Range::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::Range::label_placement(&self) -> skene_common::LabelPlacement
 pub fn skene_common::Range::lines(&self) -> u16
 pub fn skene_common::Range::listens(&self) -> &'static [skene_core::props::EventKind]
 pub fn skene_common::Range::mounted(&self, &skene_common::ControlHandle<P>)
+pub fn skene_common::Range::native(&self) -> core::option::Option<skene_core::control::NativeElement>
 pub fn skene_common::Range::on_blur(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Range::on_change(&self, &str, &skene_common::ControlHandle<P>)
 pub fn skene_common::Range::on_click(&self, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
@@ -2501,11 +2497,11 @@ pub fn skene_common::TextEntry::access(&self) -> alloc::vec::Vec<skene_core::val
 pub fn skene_common::TextEntry::attach(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::TextEntry::drag_axes(&self) -> core::option::Option<skene_core::values::axis::DragAxes>
 pub fn skene_common::TextEntry::focus_order(&self) -> core::option::Option<skene_core::values::focus_order::FocusOrder>
-pub fn skene_common::TextEntry::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::TextEntry::label_placement(&self) -> skene_common::LabelPlacement
 pub fn skene_common::TextEntry::lines(&self) -> u16
 pub fn skene_common::TextEntry::listens(&self) -> &'static [skene_core::props::EventKind]
 pub fn skene_common::TextEntry::mounted(&self, &skene_common::ControlHandle<P>)
+pub fn skene_common::TextEntry::native(&self) -> core::option::Option<skene_core::control::NativeElement>
 pub fn skene_common::TextEntry::on_blur(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::TextEntry::on_change(&self, &str, &skene_common::ControlHandle<P>)
 pub fn skene_common::TextEntry::on_click(&self, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
@@ -2524,11 +2520,11 @@ pub fn skene_common::Toggle::access(&self) -> alloc::vec::Vec<skene_core::values
 pub fn skene_common::Toggle::attach(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Toggle::drag_axes(&self) -> core::option::Option<skene_core::values::axis::DragAxes>
 pub fn skene_common::Toggle::focus_order(&self) -> core::option::Option<skene_core::values::focus_order::FocusOrder>
-pub fn skene_common::Toggle::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::Toggle::label_placement(&self) -> skene_common::LabelPlacement
 pub fn skene_common::Toggle::lines(&self) -> u16
 pub fn skene_common::Toggle::listens(&self) -> &'static [skene_core::props::EventKind]
 pub fn skene_common::Toggle::mounted(&self, &skene_common::ControlHandle<P>)
+pub fn skene_common::Toggle::native(&self) -> core::option::Option<skene_core::control::NativeElement>
 pub fn skene_common::Toggle::on_blur(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Toggle::on_change(&self, &str, &skene_common::ControlHandle<P>)
 pub fn skene_common::Toggle::on_click(&self, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
@@ -2545,11 +2541,10 @@ pub fn skene_common::Toggle::state(&self) -> skene_core::control::ControlState
 pub trait skene_common::CollectionPolicy: 'static
 pub const skene_common::CollectionPolicy::CHOOSES_ON_MOVE: bool
 pub const skene_common::CollectionPolicy::HORIZONTAL: bool
-pub const skene_common::CollectionPolicy::KIND: skene_core::control::ControlKind
 pub const skene_common::CollectionPolicy::LISTS: bool
 pub const skene_common::CollectionPolicy::MARKS_CHOSEN: bool
 pub const skene_common::CollectionPolicy::MEMBER_EVENTS: &'static [skene_core::props::EventKind]
-pub const skene_common::CollectionPolicy::MEMBER_KIND: skene_core::control::ControlKind
+pub const skene_common::CollectionPolicy::MEMBER_NATIVE: core::option::Option<skene_core::control::NativeElement>
 pub const skene_common::CollectionPolicy::MEMBER_ROLE: accesskit::Role
 pub const skene_common::CollectionPolicy::ROLE: accesskit::Role
 pub const skene_common::CollectionPolicy::WRAPS: bool
@@ -2557,11 +2552,10 @@ pub fn skene_common::CollectionPolicy::member_access(bool) -> alloc::vec::Vec<sk
 impl skene_common::CollectionPolicy for skene_common::ListboxPolicy
 pub const skene_common::ListboxPolicy::CHOOSES_ON_MOVE: bool
 pub const skene_common::ListboxPolicy::HORIZONTAL: bool
-pub const skene_common::ListboxPolicy::KIND: skene_core::control::ControlKind
 pub const skene_common::ListboxPolicy::LISTS: bool
 pub const skene_common::ListboxPolicy::MARKS_CHOSEN: bool
 pub const skene_common::ListboxPolicy::MEMBER_EVENTS: &'static [skene_core::props::EventKind]
-pub const skene_common::ListboxPolicy::MEMBER_KIND: skene_core::control::ControlKind
+pub const skene_common::ListboxPolicy::MEMBER_NATIVE: core::option::Option<skene_core::control::NativeElement>
 pub const skene_common::ListboxPolicy::MEMBER_ROLE: accesskit::Role
 pub const skene_common::ListboxPolicy::ROLE: accesskit::Role
 pub const skene_common::ListboxPolicy::WRAPS: bool
@@ -2569,11 +2563,10 @@ pub fn skene_common::ListboxPolicy::member_access(bool) -> alloc::vec::Vec<skene
 impl skene_common::CollectionPolicy for skene_common::MenuPolicy
 pub const skene_common::MenuPolicy::CHOOSES_ON_MOVE: bool
 pub const skene_common::MenuPolicy::HORIZONTAL: bool
-pub const skene_common::MenuPolicy::KIND: skene_core::control::ControlKind
 pub const skene_common::MenuPolicy::LISTS: bool
 pub const skene_common::MenuPolicy::MARKS_CHOSEN: bool
 pub const skene_common::MenuPolicy::MEMBER_EVENTS: &'static [skene_core::props::EventKind]
-pub const skene_common::MenuPolicy::MEMBER_KIND: skene_core::control::ControlKind
+pub const skene_common::MenuPolicy::MEMBER_NATIVE: core::option::Option<skene_core::control::NativeElement>
 pub const skene_common::MenuPolicy::MEMBER_ROLE: accesskit::Role
 pub const skene_common::MenuPolicy::ROLE: accesskit::Role
 pub const skene_common::MenuPolicy::WRAPS: bool
@@ -2581,11 +2574,10 @@ pub fn skene_common::MenuPolicy::member_access(bool) -> alloc::vec::Vec<skene_co
 impl skene_common::CollectionPolicy for skene_common::RadioPolicy
 pub const skene_common::RadioPolicy::CHOOSES_ON_MOVE: bool
 pub const skene_common::RadioPolicy::HORIZONTAL: bool
-pub const skene_common::RadioPolicy::KIND: skene_core::control::ControlKind
 pub const skene_common::RadioPolicy::LISTS: bool
 pub const skene_common::RadioPolicy::MARKS_CHOSEN: bool
 pub const skene_common::RadioPolicy::MEMBER_EVENTS: &'static [skene_core::props::EventKind]
-pub const skene_common::RadioPolicy::MEMBER_KIND: skene_core::control::ControlKind
+pub const skene_common::RadioPolicy::MEMBER_NATIVE: core::option::Option<skene_core::control::NativeElement>
 pub const skene_common::RadioPolicy::MEMBER_ROLE: accesskit::Role
 pub const skene_common::RadioPolicy::ROLE: accesskit::Role
 pub const skene_common::RadioPolicy::WRAPS: bool

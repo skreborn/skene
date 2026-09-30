@@ -4,10 +4,10 @@ use std::{cell::Cell, rc::Rc};
 
 use skene_core::{
   AccessProp,
-  ControlKind,
   ControlState,
   EventKind,
   KeyEvent,
+  NativeElement,
   Platform,
   Prevent,
   Role,
@@ -105,8 +105,8 @@ impl Toggle {
 
 impl<P: Platform> Behavior<P> for Toggle {
   #[inline(always)]
-  fn kind(&self) -> ControlKind {
-    ControlKind::Checkbox
+  fn native(&self) -> Option<NativeElement> {
+    Some(NativeElement::Checkbox)
   }
 
   #[inline(always)]

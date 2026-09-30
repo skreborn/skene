@@ -1,5 +1,5 @@
-//! What a control is to the scene and to a platform: its kind, the state a box cannot
-//! hold, and the parts it exposes.
+//! What a control is to the scene and to a platform: its native element, the state a
+//! box cannot hold, and the parts it exposes.
 
 use std::fmt::Debug;
 
@@ -58,44 +58,45 @@ impl Default for ControlState {
   }
 }
 
-/// What a control is, guiding a platform that realizes some kinds natively.
+/// The native element a control is realized as where a platform has one: the web's
+/// form element, a native platform's own control.
+///
+/// A control with none is drawn by its view and named by its [`Role`](crate::Role).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[must_use]
-pub enum ControlKind {
-  /// A control that activates on press.
+pub enum NativeElement {
+  /// A button.
   Button,
-  /// A control toggling between checked and unchecked.
+  /// A checkbox.
   Checkbox,
-  /// The group a set of mutually-exclusive choices belongs to.
-  RadioGroup,
   /// One mutually-exclusive choice within a group.
   Radio,
-  /// A control picking a number within a range.
+  /// A number picked within a range.
   Range,
   /// A single-line text entry.
   TextField,
   /// A multi-line text entry.
   TextEditor,
-  /// A list of choices to select from.
-  Listbox,
-  /// One choice within a listbox.
-  ListboxOption,
-  /// A control pairing a text entry with a list of choices.
-  Combobox,
   /// A choice among options the platform draws and lists itself.
-  NativePicker,
-  /// A list of commands.
-  Menu,
-  /// One command within a menu.
-  MenuItem,
+  Picker,
 }
 
-/// Everything a platform needs to realize a control: a box with a kind and, where
-/// nothing visible supplies one, an accessible name.
+impl NativeElement {
+  /// Whether the element is a text entry, single-line or not.
+  #[inline(always)]
+  #[must_use]
+  pub const fn is_text_entry(self) -> bool {
+    matches!(self, Self::TextField | Self::TextEditor)
+  }
+}
+
+/// Everything a platform needs to realize a control: a box, the native element it
+/// stands in where it has one and, where nothing visible supplies one, an accessible
+/// name.
 #[must_use]
 pub struct ControlProps<P: Platform> {
-  /// What the control is.
-  pub kind: ControlKind,
+  /// The native element the control stands in; `None` for one its view draws.
+  pub native: Option<NativeElement>,
   /// The box the control is realized as.
   pub box_props: BoxProps<P>,
   /// The accessible name, when nothing visible supplies one.
@@ -112,7 +113,7 @@ pub struct ControlProps<P: Platform> {
 impl<P: Platform> Clone for ControlProps<P> {
   fn clone(&self) -> Self {
     Self {
-      kind: self.kind,
+      native: self.native,
       box_props: self.box_props.clone(),
       label: self.label.clone(),
       placeholder: self.placeholder.clone(),
@@ -126,7 +127,7 @@ impl<P: Platform> Debug for ControlProps<P> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter
       .debug_struct("ControlProps")
-      .field("kind", &self.kind)
+      .field("native", &self.native)
       .field("label", &self.label)
       .field("placeholder", &self.placeholder)
       .field("lines", &self.lines)

@@ -543,15 +543,15 @@ fn escape_dismisses_the_topmost_popup_unless_taken() {
     Behavior,
     Control,
     ControlHandle,
-    core::{ControlKind, EventKind, KeyEvent, Prevent, Role},
+    core::{EventKind, KeyEvent, NativeElement, Prevent, Role},
   };
 
   /// Takes `Escape` and nothing else.
   struct Keeper;
 
   impl Behavior<ActivePlatform> for Keeper {
-    fn kind(&self) -> ControlKind {
-      ControlKind::Button
+    fn native(&self) -> Option<NativeElement> {
+      Some(NativeElement::Button)
     }
 
     fn role(&self) -> Option<Role> {
@@ -768,15 +768,15 @@ fn a_wheel_reaches_the_node_before_it_scrolls() {
     Behavior,
     Control,
     ControlHandle,
-    core::{ControlKind, EventKind, Prevent},
+    core::{EventKind, NativeElement, Prevent},
   };
 
   /// Takes every turn for itself.
   struct Dial;
 
   impl Behavior<ActivePlatform> for Dial {
-    fn kind(&self) -> ControlKind {
-      ControlKind::Button
+    fn native(&self) -> Option<NativeElement> {
+      Some(NativeElement::Button)
     }
 
     fn role(&self) -> Option<Role> {

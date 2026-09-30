@@ -132,9 +132,9 @@ use super::{
   },
   condition::{CONTROL_ATTRIBUTE, DRAGS_ATTRIBUTE, NATIVE_CLASS, drags_value},
   markup::{
+    FormElement,
     MARKER_ATTRIBUTE,
     NATIVE_ACCESS_ATTRIBUTES,
-    NativeElement,
     SCOPE_ATTRIBUTE,
     STYLE_ID,
     access_attributes,
@@ -144,10 +144,10 @@ use super::{
     drawn_element,
     element_id,
     focus_order_attribute,
+    form_element,
     is_form_element,
     link_attributes,
     native_attributes,
-    native_element,
     referenced_nodes,
     replaced_by_access,
     runs_script,
@@ -174,7 +174,7 @@ type SizeReport = (Rc<dyn Fn(Size<f32>)>, Size<f32>);
 enum Realized {
   Box,
   Control {
-    native: Option<NativeElement>,
+    native: Option<FormElement>,
     caption_beside: bool,
   },
   Overlay {
@@ -707,7 +707,7 @@ impl Dom {
       Realized::Control {
         native,
         caption_beside: true,
-      } => Some((entry.id?, native.is_some_and(NativeElement::is_bare))),
+      } => Some((entry.id?, native.is_some_and(FormElement::is_bare))),
       _ => None,
     })
     else {
@@ -888,7 +888,7 @@ impl Dom {
 
   /// Notes what the reader changed on the adopted native `input` of `sink` before the
   /// client arrived, against what the server serialized.
-  fn note_live_state(&mut self, sink: u32, input: &Element, native: NativeElement) {
+  fn note_live_state(&mut self, sink: u32, input: &Element, native: FormElement) {
     let pending = if let Some(input) = input.dyn_ref::<HtmlInputElement>() {
       if native.is_toggle() {
         let serialized = input.has_attribute("checked");
@@ -1042,7 +1042,7 @@ fn swap_class_attribute(element: &Element, previous: Option<&str>, class: &str) 
 }
 
 /// Writes the attributes a control's native `element` carries.
-fn write_native_attributes(element: &Element, native: NativeElement, props: &ControlProps<Web>) {
+fn write_native_attributes(element: &Element, native: FormElement, props: &ControlProps<Web>) {
   for (name, value) in native_attributes(native, props) {
     let _ = element.set_attribute(name, &value);
   }
@@ -1316,7 +1316,7 @@ impl Platform for Web {
 
   fn create_control(props: &ControlProps<Self>) -> u32 {
     with_dom(|dom| {
-      let sink = if let Some(native) = native_element(props.kind) {
+      let sink = if let Some(native) = form_element(props.native) {
         let realized = Realized::Control {
           native: Some(native),
           caption_beside: props.label_beside,
@@ -1362,7 +1362,7 @@ impl Platform for Web {
         }
       }
       else {
-        let (tag, attribute) = drawn_element(props.kind);
+        let (tag, attribute) = drawn_element(props.native, props.box_props.role);
         let root = dom.create_element(
           tag,
           Realized::Control {

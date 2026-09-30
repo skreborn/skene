@@ -4,12 +4,12 @@ use std::rc::Rc;
 
 use skene_core::{
   AccessProp,
-  ControlKind,
   ControlState,
   EventKind,
   Key,
   KeyEvent,
   NamedKey,
+  NativeElement,
   NodeId,
   Platform,
   PopupKind,
@@ -18,7 +18,7 @@ use skene_core::{
 };
 use skene_reactive::Signal;
 
-use super::{Behavior, ControlHandle, Controlled};
+use super::{Behavior, ControlHandle, Controlled, LabelPlacement};
 
 /// A handler of a key the closed face does not act on, answering whether it took it.
 type Typed = dyn Fn(&KeyEvent) -> bool;
@@ -130,10 +130,18 @@ impl Popup {
 
 impl<P: Platform> Behavior<P> for Popup {
   #[inline(always)]
-  fn kind(&self) -> ControlKind {
+  fn native(&self) -> Option<NativeElement> {
     match self.kind {
-      PopupKind::Listbox => ControlKind::Combobox,
-      PopupKind::Menu | PopupKind::Dialog => ControlKind::Button,
+      PopupKind::Listbox => None,
+      PopupKind::Menu | PopupKind::Dialog => Some(NativeElement::Button),
+    }
+  }
+
+  #[inline(always)]
+  fn label_placement(&self) -> LabelPlacement {
+    match self.kind {
+      PopupKind::Listbox => LabelPlacement::Beside,
+      PopupKind::Menu | PopupKind::Dialog => LabelPlacement::Trailing,
     }
   }
 

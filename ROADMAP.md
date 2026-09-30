@@ -35,10 +35,9 @@ left half-done in a code comment.
     redefines condition on media alone, so this waits on the styling direction.
     - Typed events: a gesture arena before touch lands, its exception to "a view that
     handles an interaction owns it" written down.
-    - Controls: `AccessProp` and `ControlKind` move onto AccessKit's schema, beside its
-    open `Role`: its properties in place of the closed report, and a native-element
-    hint in place of the kind, so a third party builds switches, tabs, comboboxes and
-    trees; parts become styling targets or go.
+    - Controls: `AccessProp` moves onto AccessKit's schema, beside its open `Role`: its
+    properties in place of the closed report, so a third party builds switches, tabs,
+    comboboxes and trees; parts become styling targets or go.
     - Structure: the scene owns the platforms' records (`Sink = NodeId`), so the
     terminal and headless stop mirroring parents, children, tab order and
     `enclosing_control`, and `bind_node` and three arenas go; anchors exist in the
@@ -281,7 +280,7 @@ left half-done in a code comment.
     `Source<T>`.
     - Renames: `Raw*` to `Basic*`; `Show` and `Switch` to `Visibility` and `OneOf`;
     `Lazy` to `AsyncView`; `Composable` to `ConditionTree`; the `Range` behavior and
-    `ControlKind::Range` to `Slider`; `Roving` and `RadioMember` to `RadioGroup` and
+    `NativeElement::Range` to `Slider`; `Roving` and `RadioMember` to `RadioGroup` and
     `Radio`; the `ListItem` behavior and `RawOption` to `ListboxOption` and
     `RawListboxOption`, and the menu's `MenuItem` data to `MenuEntry`; core's `Toggle`
     value to `CheckState`; `Anchor` to `AnchorHandle`, unless the node handle absorbs

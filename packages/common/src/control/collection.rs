@@ -5,13 +5,13 @@ use std::{cell::RefCell, marker::PhantomData, rc::Rc};
 
 use skene_core::{
   AccessProp,
-  ControlKind,
   ControlState,
   EventKind,
   FocusOrder,
   Key,
   KeyEvent,
   NamedKey,
+  NativeElement,
   Platform,
   Prevent,
   Ring,
@@ -28,12 +28,10 @@ use crate::realize::with_sink;
 /// Whatever the policy, the members are one tab stop—the chosen member where it is
 /// enabled, else the first enabled one—and a move passes over the disabled ones.
 pub trait CollectionPolicy: 'static {
-  /// What the collection is.
-  const KIND: ControlKind;
   /// The collection's role.
   const ROLE: Role;
-  /// What a member is.
-  const MEMBER_KIND: ControlKind;
+  /// The native element a member stands in, where a platform has one.
+  const MEMBER_NATIVE: Option<NativeElement>;
   /// A member's role.
   const MEMBER_ROLE: Role;
   /// The events a member acts on.
@@ -62,12 +60,11 @@ pub struct RadioPolicy;
 impl CollectionPolicy for RadioPolicy {
   const CHOOSES_ON_MOVE: bool = true;
   const HORIZONTAL: bool = true;
-  const KIND: ControlKind = ControlKind::RadioGroup;
   const LISTS: bool = false;
   const MARKS_CHOSEN: bool = true;
   const MEMBER_EVENTS: &'static [EventKind] =
     &[EventKind::Click, EventKind::KeyDown, EventKind::Toggle];
-  const MEMBER_KIND: ControlKind = ControlKind::Radio;
+  const MEMBER_NATIVE: Option<NativeElement> = Some(NativeElement::Radio);
   const MEMBER_ROLE: Role = Role::RadioButton;
   const ROLE: Role = Role::RadioGroup;
   const WRAPS: bool = true;
@@ -87,11 +84,10 @@ pub struct ListboxPolicy;
 impl CollectionPolicy for ListboxPolicy {
   const CHOOSES_ON_MOVE: bool = false;
   const HORIZONTAL: bool = false;
-  const KIND: ControlKind = ControlKind::Listbox;
   const LISTS: bool = true;
   const MARKS_CHOSEN: bool = true;
   const MEMBER_EVENTS: &'static [EventKind] = &[EventKind::Click, EventKind::KeyDown];
-  const MEMBER_KIND: ControlKind = ControlKind::ListboxOption;
+  const MEMBER_NATIVE: Option<NativeElement> = None;
   const MEMBER_ROLE: Role = Role::ListBoxOption;
   const ROLE: Role = Role::ListBox;
   const WRAPS: bool = false;
@@ -110,11 +106,10 @@ pub struct MenuPolicy;
 impl CollectionPolicy for MenuPolicy {
   const CHOOSES_ON_MOVE: bool = false;
   const HORIZONTAL: bool = false;
-  const KIND: ControlKind = ControlKind::Menu;
   const LISTS: bool = true;
   const MARKS_CHOSEN: bool = false;
   const MEMBER_EVENTS: &'static [EventKind] = &[EventKind::Click, EventKind::KeyDown];
-  const MEMBER_KIND: ControlKind = ControlKind::MenuItem;
+  const MEMBER_NATIVE: Option<NativeElement> = None;
   const MEMBER_ROLE: Role = Role::MenuItem;
   const ROLE: Role = Role::Menu;
   const WRAPS: bool = true;
@@ -376,11 +371,6 @@ impl<C: CollectionPolicy> Default for Collection<C> {
 
 impl<P: Platform, C: CollectionPolicy> Behavior<P> for Collection<C> {
   #[inline(always)]
-  fn kind(&self) -> ControlKind {
-    C::KIND
-  }
-
-  #[inline(always)]
   fn role(&self) -> Option<Role> {
     Some(C::ROLE)
   }
@@ -474,8 +464,8 @@ impl<C: CollectionPolicy> Member<C> {
 
 impl<P: Platform, C: CollectionPolicy> Behavior<P> for Member<C> {
   #[inline(always)]
-  fn kind(&self) -> ControlKind {
-    C::MEMBER_KIND
+  fn native(&self) -> Option<NativeElement> {
+    C::MEMBER_NATIVE
   }
 
   #[inline(always)]

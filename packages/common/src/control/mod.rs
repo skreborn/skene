@@ -24,7 +24,6 @@ use skene_core::{
   ClickEvent,
   Condition,
   ContainerName,
-  ControlKind,
   ControlProps,
   ControlState,
   DeclaredBoxStyle,
@@ -37,6 +36,7 @@ use skene_core::{
   ItemAlignment,
   KeyEvent,
   Layout,
+  NativeElement,
   NoChild,
   NodeId,
   NodeKind,
@@ -158,10 +158,15 @@ pub enum LabelPlacement {
   label = "a behavior states a control's kind, role, the events it acts on, and what it reports"
 )]
 pub trait Behavior<P: Platform>: 'static {
-  /// What the control is.
-  fn kind(&self) -> ControlKind;
+  /// The native element the control stands in, where a platform has one; `None`, the
+  /// default, for a control its view draws.
+  #[inline(always)]
+  fn native(&self) -> Option<NativeElement> {
+    None
+  }
 
-  /// The semantic role the control's node carries; `None` where the kind says enough.
+  /// The semantic role the control's node carries; `None` where the native element says
+  /// enough.
   fn role(&self) -> Option<Role>;
 
   /// The events the behavior acts on.
@@ -188,15 +193,13 @@ pub trait Behavior<P: Platform>: 'static {
   }
 
   /// Where the control's label sits: beside the box of a control whose box holds a
-  /// value—a text entry, a picker, a popup face—and after its parts and body inside
-  /// it otherwise.
+  /// value—a text entry, a picker—and after its parts and body inside it otherwise.
   #[inline(always)]
   fn label_placement(&self) -> LabelPlacement {
-    match self.kind() {
-      ControlKind::TextField
-      | ControlKind::TextEditor
-      | ControlKind::NativePicker
-      | ControlKind::Combobox => LabelPlacement::Beside,
+    match self.native() {
+      Some(native) if native.is_text_entry() || native == NativeElement::Picker => {
+        LabelPlacement::Beside
+      }
       _ => LabelPlacement::Trailing,
     }
   }
@@ -971,7 +974,7 @@ impl<P: Platform, B: Behavior<P>, C: ControlChild<P>> View<P> for Control<P, B, 
     let owner = Owner::current().child();
 
     owner.enter(move || {
-      let kind = behavior.kind();
+      let native = behavior.native();
       let placeholder = behavior.placeholder();
       let lines = behavior.lines();
       let placement = behavior.label_placement();
@@ -994,7 +997,7 @@ impl<P: Platform, B: Behavior<P>, C: ControlChild<P>> View<P> for Control<P, B, 
 
       let node = inner.realize(NodeKind::Control, |box_props| {
         P::create_control(&ControlProps {
-          kind,
+          native,
           box_props,
           label: name.as_ref().map(|name| untrack(|| name())),
           placeholder,
@@ -1003,7 +1006,7 @@ impl<P: Platform, B: Behavior<P>, C: ControlChild<P>> View<P> for Control<P, B, 
         })
       });
 
-      if matches!(kind, ControlKind::TextField | ControlKind::TextEditor) {
+      if native.is_some_and(NativeElement::is_text_entry) {
         Scene::<P>::with(|scene| scene.note_entry(node));
       }
       // A caption whose text is the platform's to read names the control by reference;

@@ -2,7 +2,7 @@
 
 use std::rc::Rc;
 
-use skene_core::{ControlKind, EventKind, Platform, Role};
+use skene_core::{EventKind, NativeElement, Platform, Role};
 
 use super::{Behavior, ControlHandle};
 
@@ -52,8 +52,8 @@ impl Default for NativePicker {
 
 impl<P: Platform> Behavior<P> for NativePicker {
   #[inline(always)]
-  fn kind(&self) -> ControlKind {
-    ControlKind::NativePicker
+  fn native(&self) -> Option<NativeElement> {
+    Some(NativeElement::Picker)
   }
 
   #[inline(always)]

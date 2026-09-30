@@ -1068,31 +1068,6 @@ pub fn skene_core::ContainerQuery<N>::fmt(&self, &mut core::fmt::Formatter<'_>) 
 impl<N: core::marker::Copy> core::marker::Copy for skene_core::ContainerQuery<N>
 impl<N: skene_core::Scalar> core::hash::Hash for skene_core::ContainerQuery<N>
 pub fn skene_core::ContainerQuery<N>::hash<H: core::hash::Hasher>(&self, &mut H)
-pub enum skene_core::ControlKind
-pub skene_core::ControlKind::Button
-pub skene_core::ControlKind::Checkbox
-pub skene_core::ControlKind::Combobox
-pub skene_core::ControlKind::Listbox
-pub skene_core::ControlKind::ListboxOption
-pub skene_core::ControlKind::Menu
-pub skene_core::ControlKind::MenuItem
-pub skene_core::ControlKind::NativePicker
-pub skene_core::ControlKind::Radio
-pub skene_core::ControlKind::RadioGroup
-pub skene_core::ControlKind::Range
-pub skene_core::ControlKind::TextEditor
-pub skene_core::ControlKind::TextField
-impl core::clone::Clone for skene_core::ControlKind
-pub fn skene_core::ControlKind::clone(&self) -> skene_core::ControlKind
-impl core::cmp::Eq for skene_core::ControlKind
-impl core::cmp::PartialEq for skene_core::ControlKind
-pub fn skene_core::ControlKind::eq(&self, &skene_core::ControlKind) -> bool
-impl core::fmt::Debug for skene_core::ControlKind
-pub fn skene_core::ControlKind::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::hash::Hash for skene_core::ControlKind
-pub fn skene_core::ControlKind::hash<__H: core::hash::Hasher>(&self, &mut __H)
-impl core::marker::Copy for skene_core::ControlKind
-impl core::marker::StructuralPartialEq for skene_core::ControlKind
 pub enum skene_core::Dimension<T>
 pub skene_core::Dimension::Auto
 pub skene_core::Dimension::Fraction(f32)
@@ -1554,6 +1529,27 @@ pub fn skene_core::MouseCursor::fingerprint<H: core::hash::Hasher>(&self, &mut H
 impl<N: skene_core::Scalar, X: skene_core::StyleExtension> skene_core::IntoBoxValue<N, X> for skene_core::MouseCursor
 pub fn skene_core::MouseCursor::from_box_value(skene_core::BoxValue<N, X>) -> core::option::Option<Self>
 pub fn skene_core::MouseCursor::into_box_value(self) -> skene_core::BoxValue<N, X>
+pub enum skene_core::NativeElement
+pub skene_core::NativeElement::Button
+pub skene_core::NativeElement::Checkbox
+pub skene_core::NativeElement::Picker
+pub skene_core::NativeElement::Radio
+pub skene_core::NativeElement::Range
+pub skene_core::NativeElement::TextEditor
+pub skene_core::NativeElement::TextField
+impl skene_core::NativeElement
+pub const fn skene_core::NativeElement::is_text_entry(self) -> bool
+impl core::clone::Clone for skene_core::NativeElement
+pub fn skene_core::NativeElement::clone(&self) -> skene_core::NativeElement
+impl core::cmp::Eq for skene_core::NativeElement
+impl core::cmp::PartialEq for skene_core::NativeElement
+pub fn skene_core::NativeElement::eq(&self, &skene_core::NativeElement) -> bool
+impl core::fmt::Debug for skene_core::NativeElement
+pub fn skene_core::NativeElement::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_core::NativeElement
+pub fn skene_core::NativeElement::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_core::NativeElement
+impl core::marker::StructuralPartialEq for skene_core::NativeElement
 pub enum skene_core::NoProperty
 impl core::clone::Clone for skene_core::NoProperty
 pub fn skene_core::NoProperty::clone(&self) -> skene_core::NoProperty
@@ -2573,10 +2569,10 @@ impl<N: skene_core::Scalar> core::default::Default for skene_core::ContainerSize
 pub fn skene_core::ContainerSizes<N>::default() -> Self
 pub struct skene_core::ControlProps<P: skene_core::Platform>
 pub skene_core::ControlProps::box_props: skene_core::BoxProps<P>
-pub skene_core::ControlProps::kind: skene_core::ControlKind
 pub skene_core::ControlProps::label: core::option::Option<alloc::string::String>
 pub skene_core::ControlProps::label_beside: bool
 pub skene_core::ControlProps::lines: u16
+pub skene_core::ControlProps::native: core::option::Option<skene_core::NativeElement>
 pub skene_core::ControlProps::placeholder: core::option::Option<alloc::string::String>
 impl<P: skene_core::Platform> core::clone::Clone for skene_core::ControlProps<P>
 pub fn skene_core::ControlProps<P>::clone(&self) -> Self

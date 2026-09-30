@@ -6,7 +6,7 @@
 
 use std::rc::Rc;
 
-use skene_core::{Axis, Color, ControlKind, Inset, Length, TextDecoration, TextDecorationStyle};
+use skene_core::{Axis, Color, Inset, Length, NativeElement, TextDecoration, TextDecorationStyle};
 
 use crate::{
   BorderGlyphs,
@@ -2414,10 +2414,10 @@ pub(crate) fn row_changed(previous: Option<&Buffer>, next: &Buffer, row: usize) 
   }
 }
 
-/// The kind of the control `handle`, if it is one.
-pub(crate) fn control_kind(store: &Store, handle: Handle) -> Option<ControlKind> {
+/// Whether the control `handle` is a text entry; `None` where it is no control.
+pub(crate) fn control_entry(store: &Store, handle: Handle) -> Option<bool> {
   match store.record(handle)?.kind {
-    Kind::Control { kind, .. } => Some(kind),
+    Kind::Control { native, .. } => Some(native.is_some_and(NativeElement::is_text_entry)),
     _ => None,
   }
 }

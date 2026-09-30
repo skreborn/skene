@@ -25,7 +25,6 @@ use skene_core::{
   Condition,
   ContainerName,
   ContainerQuery,
-  ControlKind,
   ControlState,
   Dimension,
   EventKind,
@@ -33,6 +32,7 @@ use skene_core::{
   HasChildren,
   Length,
   Media,
+  NativeElement,
   NodeId,
   NodeKind,
   Role,
@@ -426,8 +426,8 @@ fn a_low_level_node_takes_its_wrappers_layout() {
 struct Partial;
 
 impl Behavior<Web> for Partial {
-  fn kind(&self) -> ControlKind {
-    ControlKind::Checkbox
+  fn native(&self) -> Option<NativeElement> {
+    Some(NativeElement::Checkbox)
   }
 
   fn role(&self) -> Option<Role> {

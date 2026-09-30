@@ -55,7 +55,6 @@ use skene_core::{
   NodeMap,
   Observation,
   OverlayProps,
-  Part,
   PickerOption,
   Placement,
   Platform,
@@ -173,7 +172,6 @@ enum Realized {
   Box,
   Control {
     native: Option<FormElement>,
-    caption_beside: bool,
   },
   Overlay {
     modal: bool,
@@ -801,31 +799,20 @@ impl Dom {
     connected
   }
 
-  /// The part `sink` is mounted as, when it is one.
-  fn part_of(&self, sink: NodeId) -> Option<Part> {
-    let node = self.node(sink)?.id?;
-
-    Scene::<Web>::with(|scene| scene.part(node))
-  }
-
-  /// Attaches `child` into the caption of `parent` when `parent` keeps its caption
-  /// beside it and `child` is its `Label` part, making the `<label>` on the first,
-  /// `for` the control where it is its own `<input>`, `<textarea>` or `<select>`, and
-  /// placing it before the control; `false` for any other pair, which attaches as
-  /// usual.
+  /// Attaches `child` into the caption of `parent` when `child` is the caption `parent`
+  /// keeps beside it, making the `<label>` on the first, `for` the control where it is
+  /// its own `<input>`, `<textarea>` or `<select>`, and placing it before the control;
+  /// `false` for any other pair, which attaches as usual.
   fn attach_caption(&mut self, parent: NodeId, child: NodeId) -> bool {
     let Some((node, labels)) = self.node(parent).and_then(|entry| match entry.realized {
-      Realized::Control {
-        native,
-        caption_beside: true,
-      } => Some((entry.id?, native.is_some_and(FormElement::is_bare))),
+      Realized::Control { native } => Some((entry.id?, native.is_some_and(FormElement::is_bare))),
       _ => None,
     })
     else {
       return false;
     };
 
-    if self.part_of(child) != Some(Part::Label) {
+    if Scene::<Web>::with(|scene| scene.caption_beside(node)) != Some(child) {
       return false;
     }
 
@@ -1435,7 +1422,6 @@ impl Platform for Web {
       if let Some(native) = form_element(props.native) {
         let realized = Realized::Control {
           native: Some(native),
-          caption_beside: props.label_beside,
         };
 
         if native.is_bare() {
@@ -1477,14 +1463,7 @@ impl Platform for Web {
       else {
         let (tag, attribute) = drawn_element(props.native, props.box_props.role);
 
-        dom.create_element(
-          sink,
-          tag,
-          Realized::Control {
-            native: None,
-            caption_beside: props.label_beside,
-          },
-        );
+        dom.create_element(sink, tag, Realized::Control { native: None });
 
         if let Some(element) = dom.node(sink).and_then(Node::element) {
           if let Some((name, value)) = attribute {

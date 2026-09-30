@@ -76,7 +76,7 @@ impl Store {
   /// Every open overlay reachable from the root, in the order they opened; later
   /// entries stack on top.
   pub(crate) fn open_overlays(&self) -> Vec<Handle> {
-    Scene::<Tui>::with(|scene| scene.open_overlays().to_vec())
+    Scene::<Tui>::read(|scene| scene.open_overlays().to_vec())
       .into_iter()
       .filter(|overlay| self.is_reachable(*overlay))
       .collect()
@@ -151,7 +151,7 @@ impl Store {
       .filter_map(|overlay| self.record(overlay)?.node)
       .collect();
 
-    Scene::<Tui>::with(|scene| {
+    Scene::<Tui>::read(|scene| {
       scene.tab_order(root, &overlays, |node| {
         scene.contains(node) && self.is_hidden(node)
       })
@@ -344,7 +344,7 @@ impl Store {
   /// A node's position within its layout parent: its laid-out location, or for a run
   /// flowing in a paragraph, through any groups, the cell an inline box's placeholder
   /// flowed into and the paragraph's origin for any other.
-  fn inline_location(&self, handle: Handle) -> (i64, i64) {
+  pub(crate) fn inline_location(&self, handle: Handle) -> (i64, i64) {
     let paragraph = is_inline_run(self, handle)
       .then(|| enclosing_paragraph(self, handle))
       .flatten();
@@ -391,7 +391,7 @@ impl Store {
         }
       }
 
-      current = record.parent;
+      current = self.parent(visited);
     }
 
     (x, y)
@@ -882,7 +882,7 @@ pub(crate) fn move_focus(step: isize) {
       .focused()
       .and_then(|focused| store.record(focused)?.node);
 
-    Scene::<Tui>::with(|scene| scene.tab_from(root, &order, from, step))
+    Scene::<Tui>::read(|scene| scene.tab_from(root, &order, from, step))
   });
 
   if next.is_some() {
@@ -1048,7 +1048,7 @@ fn press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
       .into_iter()
       .filter_map(|overlay| store.record(overlay)?.node)
       .collect();
-    let dismissed = Scene::<Tui>::with(|scene| scene.dismissed_by_press(&overlays, deepest));
+    let dismissed = Scene::<Tui>::read(|scene| scene.dismissed_by_press(&overlays, deepest));
     let inside_overlay = store
       .topmost_open_overlay()
       .is_some_and(|(top, _)| store.hit_overlay(top, x, y, &mut Vec::new()));
@@ -1161,7 +1161,7 @@ fn press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
   if button == PointerButton::Primary
     && !prevented.platform
     && let Some(node) = node
-    && Scene::<Tui>::with(|scene| scene.drag_source(node)).is_some()
+    && Scene::<Tui>::read(|scene| scene.drag_source(node)).is_some()
   {
     store(|store| {
       store.drag = Some(Drag::Item {

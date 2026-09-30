@@ -212,6 +212,7 @@ pub struct NodeRecord<P: Platform> {
   control: Option<ControlState>,
   entry: bool,
   hidden: bool,
+  caption_beside: bool,
   part: Option<Part>,
   position: Position,
   access: Option<Box<AccessReports>>,
@@ -513,6 +514,17 @@ impl<P: Platform> Scene<P> {
     })
   }
 
+  /// Runs `f` on the platform's scene for reading; reads may nest, and a read records
+  /// nothing to mirror.
+  ///
+  /// # Panics
+  ///
+  /// Panics if the scene is borrowed by [`with`](Self::with).
+  #[inline(always)]
+  pub fn read<R>(operation: impl FnOnce(&Self) -> R) -> R {
+    P::scene().with(|cell| operation(&cell.borrow()))
+  }
+
   /// Whether the scene is borrowed right now, so a [`with`](Self::with) would panic.
   #[inline(always)]
   #[must_use]
@@ -578,6 +590,7 @@ impl<P: Platform> Scene<P> {
       control: is_control.then_some(ControlState::DEFAULT),
       entry: false,
       hidden: false,
+      caption_beside: false,
       part: is_control.then_some(Part::Root),
       position,
       access: None,
@@ -1755,6 +1768,55 @@ impl<P: Platform> Scene<P> {
     self.record(node).and_then(NodeRecord::part)
   }
 
+  /// Records that the control `control` keeps its caption, its `Label` part, beside it:
+  /// placed before it among its siblings rather than inside it.
+  pub fn keep_caption_beside(&mut self, control: NodeId) {
+    if let Some(record) = self.record_mut(control) {
+      record.caption_beside = true;
+    }
+  }
+
+  /// The caption the control `control` keeps beside it: its child recorded as its
+  /// `Label` part.
+  #[must_use]
+  pub fn caption_beside(&self, control: NodeId) -> Option<NodeId> {
+    self
+      .record(control)
+      .filter(|record| record.caption_beside)?;
+    self
+      .children(control)
+      .find(|child| self.part(*child) == Some(Part::Label))
+  }
+
+  /// The children of `node` as a platform places them, in order: a caption kept beside
+  /// its control stands before the control among its siblings, not inside it.
+  pub fn placed_children(&self, node: NodeId) -> impl Iterator<Item = NodeId> + '_ {
+    let caption = self.caption_beside(node);
+
+    self
+      .children(node)
+      .filter(move |child| Some(*child) != caption)
+      .flat_map(move |child| {
+        self
+          .caption_beside(child)
+          .into_iter()
+          .chain(std::iter::once(child))
+      })
+  }
+
+  /// The node `node` is placed under: its parent, or its control's parent where it is
+  /// the caption the control keeps beside it.
+  #[must_use]
+  pub fn placed_parent(&self, node: NodeId) -> Option<NodeId> {
+    let parent = self.parent(node)?;
+
+    if self.caption_beside(parent) == Some(node) {
+      return self.parent(parent);
+    }
+
+    Some(parent)
+  }
+
   /// Adds `handler` to `node`: it runs as the current owner when an event of its kind
   /// reaches the node, after the node's earlier handlers of that kind.
   pub fn handle(&mut self, node: NodeId, handler: Handler) {
@@ -2242,6 +2304,7 @@ mod tests {
     Definitions,
     FocusOrder,
     NodeId,
+    Part,
     TokenName,
     testing::{Call, Erased, TestBox, TestPlatform, children},
   };
@@ -2497,6 +2560,46 @@ mod tests {
     with(|scene| scene.attach(root, panel, None));
 
     assert_eq!(TestPlatform::take_log(), [Call::Attach(root, panel, None)]);
+  }
+
+  /// A caption kept beside its control is placed before the control among its
+  /// siblings, not inside it.
+  #[test]
+  fn a_caption_kept_beside_is_placed_before_its_control() {
+    TestPlatform::reset();
+
+    let parent = TestBox::node();
+    let control = TestBox::node();
+    let caption = TestBox::node();
+    let track = TestBox::node();
+    let sibling = TestBox::node();
+
+    with(|scene| {
+      scene.attach(parent, control, None);
+      scene.attach(parent, sibling, None);
+      scene.attach(control, caption, None);
+      scene.attach(control, track, None);
+      scene.set_part(caption, Part::Label);
+    });
+
+    assert_eq!(
+      with(|scene| scene.placed_children(parent).collect::<Vec<_>>()),
+      [control, sibling],
+      "a caption kept inside is placed where it stands"
+    );
+
+    with(|scene| scene.keep_caption_beside(control));
+
+    assert_eq!(
+      with(|scene| scene.placed_children(parent).collect::<Vec<_>>()),
+      [caption, control, sibling]
+    );
+    assert_eq!(
+      with(|scene| scene.placed_children(control).collect::<Vec<_>>()),
+      [track]
+    );
+    assert_eq!(with(|scene| scene.placed_parent(caption)), Some(parent));
+    assert_eq!(with(|scene| scene.placed_parent(track)), Some(control));
   }
 
   /// Destroying a node takes its whole subtree, releases every record on the platform,

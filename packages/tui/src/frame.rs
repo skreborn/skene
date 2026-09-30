@@ -77,6 +77,9 @@ pub(crate) fn render(width: u16, height: u16) -> Buffer {
       .take()
       .filter(|frame| frame.width == width && frame.height == height);
     let full = std::mem::take(&mut store.paint_dirty) || previous.is_none();
+
+    measure_covers(store);
+
     let rows = damaged_rows(store, height);
     let mut buffer = match previous {
       Some(previous) if !full => previous.repainting(&rows),
@@ -108,8 +111,10 @@ fn damaged_rows(store: &mut Store, height: usize) -> Vec<bool> {
   for handle in damaged {
     let target = paint_owner(store, handle);
 
-    rects.extend(store.record(target).and_then(|record| record.painted));
-    rects.extend(current_rect(store, target));
+    if let Some(record) = store.record(target) {
+      rects.extend(record.painted);
+      rects.extend(record.covers);
+    }
   }
 
   for handle in store.handles() {
@@ -118,15 +123,9 @@ fn damaged_rows(store: &mut Store, height: usize) -> Vec<bool> {
       continue;
     };
 
-    if !record.kind.is_laid_out() {
-      continue;
-    }
-
-    let current = current_rect(store, handle);
-
-    if record.painted != current {
+    if record.kind.is_laid_out() && record.painted != record.covers {
       rects.extend(record.painted);
-      rects.extend(current);
+      rects.extend(record.covers);
     }
   }
 
@@ -160,16 +159,15 @@ fn paint_owner(store: &Store, handle: Handle) -> Handle {
   owner
 }
 
-/// The screen rectangle `handle` paints now, grown by the cells its shadow reaches;
-/// `None` for a node without extent.
-fn current_rect(store: &Store, handle: Handle) -> Option<CellRect> {
+/// The screen rectangle `handle` paints at `origin`, grown by the cells its shadow
+/// reaches; `None` for a node without extent.
+fn rect_at(store: &Store, handle: Handle, (x, y): (i64, i64)) -> Option<CellRect> {
   let (width, height) = store.node_size(handle);
 
   if width <= 0 || height <= 0 {
     return None;
   }
 
-  let (x, y) = store.screen_origin(handle);
   let band = store
     .record(handle)
     .and_then(|record| record.kind.box_style())
@@ -428,13 +426,68 @@ fn render_backdrop(key: &BackdropKey) -> Vec<u8> {
   canvas.pixels()
 }
 
-/// Records the rectangle every laid-out node covers at this paint.
+/// Measures the rectangle every node under the root covers now, summing each origin
+/// down the tree once; a node outside it covers none.
+fn measure_covers(store: &mut Store) {
+  let mut covers = Vec::new();
+  let mut pending = vec![(store.root, (0, 0), None)];
+
+  while let Some((handle, (base_x, base_y), laid_out_parent)) = pending.pop() {
+    let Some(record) = store.record(handle)
+    else {
+      continue;
+    };
+    let laid_out = record.kind.is_laid_out();
+    let origin = if record.is_overlay() {
+      store.overlay_origin(handle)
+    }
+    else if laid_out {
+      let (x, y) = store.inline_location(handle);
+      let (scroll_x, scroll_y) =
+        laid_out_parent.map_or((0, 0), |parent| store.scroll_offset(parent));
+
+      (
+        base_x + x - i64::from(scroll_x),
+        base_y + y - i64::from(scroll_y),
+      )
+    }
+    else {
+      (base_x, base_y)
+    };
+    let beneath = if laid_out {
+      Some(handle)
+    }
+    else {
+      laid_out_parent
+    };
+
+    covers.push((handle, rect_at(store, handle, origin)));
+    pending.extend(
+      store
+        .children(handle)
+        .into_iter()
+        .map(|child| (child, origin, beneath)),
+    );
+  }
+
+  for handle in store.handles() {
+    if let Some(record) = store.record_mut(handle) {
+      record.covers = None;
+    }
+  }
+
+  for (handle, rect) in covers {
+    if let Some(record) = store.record_mut(handle) {
+      record.covers = rect;
+    }
+  }
+}
+
+/// Records the rectangle every node covers as the one it covered at this paint.
 fn record_painted(store: &mut Store) {
   for handle in store.handles() {
-    let rect = current_rect(store, handle);
-
     if let Some(record) = store.record_mut(handle) {
-      record.painted = rect;
+      record.painted = record.covers;
     }
   }
 }

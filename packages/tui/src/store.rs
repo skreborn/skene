@@ -36,6 +36,7 @@ use skene_core::{
   Timers,
 };
 use skene_reactive::{Owner, ReadSignal, Signal, WriteSignal};
+use smallvec::SmallVec;
 
 use crate::{
   Clipboard,
@@ -462,7 +463,6 @@ pub(crate) enum Kind {
     state: ControlState,
     field: Option<Box<Field>>,
     checked: bool,
-    label_beside: bool,
   },
   Overlay {
     inner: BoxRecord,
@@ -562,16 +562,6 @@ pub(crate) struct Record {
   pub(crate) taffy: Option<taffy::NodeId>,
   /// The scene node the record realizes, once bound.
   pub(crate) node: Option<NodeId>,
-  /// The node it is attached under.
-  pub(crate) parent: Option<Handle>,
-  /// The first child attached to it.
-  pub(crate) first_child: Option<Handle>,
-  /// The last child attached to it.
-  pub(crate) last_child: Option<Handle>,
-  /// The node before it among its parent's children.
-  pub(crate) previous_sibling: Option<Handle>,
-  /// The node after it among its parent's children.
-  pub(crate) next_sibling: Option<Handle>,
   /// The taffy children last handed to the layout tree.
   pub(crate) taffy_children: Vec<taffy::NodeId>,
   /// The text and scales the layout tree carries for a run or a paragraph.
@@ -590,6 +580,8 @@ pub(crate) struct Record {
   pub(crate) scroll: (u32, u32),
   /// The screen rectangle the node covered at the last paint.
   pub(crate) painted: Option<CellRect>,
+  /// The screen rectangle the node covers now, as the frame being painted measured it.
+  pub(crate) covers: Option<CellRect>,
   /// Whether a tween or an animation of the node was still running at the last
   /// restyle, so the next frame resolves it again.
   pub(crate) in_motion: bool,
@@ -603,10 +595,6 @@ pub(crate) struct Record {
   /// The box's decoration painted in pixels beneath its cells, where the terminal
   /// shows graphics and the decoration asks for more than cells draw.
   pub(crate) backdrop: Option<Backdrop>,
-  /// The caption a control keeps beside it, attached before it under its parent.
-  pub(crate) caption: Option<Handle>,
-  /// The control a caption kept beside it names, whose state and focus it answers to.
-  pub(crate) captioned: Option<Handle>,
 }
 
 /// A box's decoration as pixels: what it was rendered from, and the image.
@@ -655,11 +643,6 @@ impl Record {
       kind,
       taffy,
       node: None,
-      parent: None,
-      first_child: None,
-      last_child: None,
-      previous_sibling: None,
-      next_sibling: None,
       taffy_children: Vec::new(),
       measured_text: None,
       applied: None,
@@ -669,13 +652,12 @@ impl Record {
       reported: None,
       scroll: (0, 0),
       painted: None,
+      covers: None,
       in_motion: false,
       hidden: false,
       painter: None,
       picture: None,
       backdrop: None,
-      caption: None,
-      captioned: None,
     }
   }
 
@@ -1137,8 +1119,6 @@ impl Store {
 
   /// Releases the record of `handle`, retiring the handle and every reference to it.
   pub(crate) fn destroy(&mut self, handle: Handle) {
-    self.unlist(handle);
-
     let Some(record) = self.records.remove(handle)
     else {
       return;
@@ -1181,87 +1161,85 @@ impl Store {
     self.paint_dirty = true;
   }
 
-  /// The children of `handle`, in order; empty for a leaf or a stale handle.
-  #[inline(always)]
-  pub(crate) fn children(&self, handle: Handle) -> impl Iterator<Item = Handle> + '_ {
-    let mut next = self.record(handle).and_then(|record| record.first_child);
-
-    std::iter::from_fn(move || {
-      let current = next?;
-
-      next = self.record(current).and_then(|record| record.next_sibling);
-
-      Some(current)
-    })
+  /// The children of `handle` as the scene places them, in order; empty for a leaf or a
+  /// stale handle.
+  #[expect(
+    clippy::unused_self,
+    reason = "every reader holds the store, and structure is asked of it as of the rest"
+  )]
+  pub(crate) fn children(&self, handle: Handle) -> SmallVec<[Handle; 8]> {
+    Scene::<Tui>::read(|scene| scene.placed_children(handle).collect())
   }
 
-  /// The children of `handle`, last first; empty for a leaf or a stale handle.
-  #[inline(always)]
-  pub(crate) fn children_reversed(&self, handle: Handle) -> impl Iterator<Item = Handle> + '_ {
-    let mut previous = self.record(handle).and_then(|record| record.last_child);
-
-    std::iter::from_fn(move || {
-      let current = previous?;
-
-      previous = self
-        .record(current)
-        .and_then(|record| record.previous_sibling);
-
-      Some(current)
-    })
+  /// The children of `handle` as the scene places them, last first.
+  pub(crate) fn children_reversed(&self, handle: Handle) -> impl Iterator<Item = Handle> {
+    self.children(handle).into_iter().rev()
   }
 
-  /// The parent of `handle`.
-  #[inline(always)]
+  /// The node `handle` is placed under.
+  #[expect(
+    clippy::unused_self,
+    reason = "every reader holds the store, and structure is asked of it as of the rest"
+  )]
   pub(crate) fn parent(&self, handle: Handle) -> Option<Handle> {
-    self.record(handle).and_then(|record| record.parent)
+    Scene::<Tui>::read(|scene| scene.placed_parent(handle))
   }
 
   /// The path from `handle` up to the root, `handle` first.
+  #[expect(
+    clippy::unused_self,
+    reason = "every reader holds the store, and structure is asked of it as of the rest"
+  )]
   pub(crate) fn ancestors(&self, handle: Handle) -> Vec<Handle> {
-    let mut path = Vec::new();
-    let mut current = Some(handle);
+    Scene::<Tui>::read(|scene| {
+      let mut path = Vec::new();
+      let mut current = Some(handle);
 
-    while let Some(visited) = current {
-      path.push(visited);
-      current = self.parent(visited);
-    }
+      while let Some(visited) = current {
+        path.push(visited);
+        current = scene.placed_parent(visited);
+      }
 
-    path
+      path
+    })
   }
 
   /// Whether walking up from `handle` reaches the root.
   pub(crate) fn is_reachable(&self, handle: Handle) -> bool {
-    let mut current = Some(handle);
+    Scene::<Tui>::read(|scene| {
+      let mut current = Some(handle);
 
-    while let Some(visited) = current {
-      if visited == self.root {
-        return true;
+      while let Some(visited) = current {
+        if visited == self.root {
+          return true;
+        }
+
+        current = scene.placed_parent(visited);
       }
 
-      current = self.parent(visited);
-    }
-
-    false
+      false
+    })
   }
 
   /// The nearest laid-out ancestor of `handle`: the node whose taffy children include
   /// it.
   pub(crate) fn layout_parent(&self, handle: Handle) -> Option<Handle> {
-    let mut current = self.parent(handle);
+    Scene::<Tui>::read(|scene| {
+      let mut current = scene.placed_parent(handle);
 
-    while let Some(visited) = current {
-      if self
-        .record(visited)
-        .is_some_and(|record| record.kind.is_laid_out())
-      {
-        return Some(visited);
+      while let Some(visited) = current {
+        if self
+          .record(visited)
+          .is_some_and(|record| record.kind.is_laid_out())
+        {
+          return Some(visited);
+        }
+
+        current = scene.placed_parent(visited);
       }
 
-      current = self.parent(visited);
-    }
-
-    None
+      None
+    })
   }
 
   /// The laid-out descendants of `handle` as the layout tree sees them: anchors and
@@ -1301,7 +1279,7 @@ impl Store {
     reason = "every reader holds the store, and the control is asked of it as of the rest"
   )]
   pub(crate) fn enclosing_control(&self, handle: Handle) -> Option<Handle> {
-    Scene::<Tui>::with(|scene| scene.enclosing_control(handle))
+    Scene::<Tui>::read(|scene| scene.enclosing_control(handle))
   }
 
   /// Whether a press's pointer drags `handle`: a box or a control declaring the axes it
@@ -1321,163 +1299,9 @@ impl Store {
     ) && self.drags(handle)
   }
 
-  /// Whether `handle` is a control keeping its caption beside it.
-  pub(crate) fn keeps_caption_beside(&self, handle: Handle) -> bool {
-    matches!(
-      self.record(handle).map(|record| &record.kind),
-      Some(Kind::Control {
-        label_beside: true,
-        ..
-      })
-    )
-  }
-
-  /// Removes `child` from the children of the node it is attached under, if any.
-  pub(crate) fn unlist(&mut self, child: Handle) {
-    let Some((parent, previous, next)) = self
-      .record(child)
-      .and_then(|record| Some((record.parent?, record.previous_sibling, record.next_sibling)))
-    else {
-      return;
-    };
-
-    match previous {
-      Some(previous) => {
-        if let Some(record) = self.record_mut(previous) {
-          record.next_sibling = next;
-        }
-      }
-      None => {
-        if let Some(record) = self.record_mut(parent) {
-          record.first_child = next;
-        }
-      }
-    }
-
-    match next {
-      Some(next) => {
-        if let Some(record) = self.record_mut(next) {
-          record.previous_sibling = previous;
-        }
-      }
-      None => {
-        if let Some(record) = self.record_mut(parent) {
-          record.last_child = previous;
-        }
-      }
-    }
-
-    if let Some(record) = self.record_mut(child) {
-      record.parent = None;
-      record.previous_sibling = None;
-      record.next_sibling = None;
-    }
-  }
-
-  /// Lists `child` under `parent` before `before`, else last, moving it from wherever
-  /// it was listed.
-  pub(crate) fn list(&mut self, parent: Handle, child: Handle, before: Option<Handle>) {
-    self.unlist(child);
-
-    if self.record(parent).is_none() || self.record(child).is_none() {
-      return;
-    }
-
-    let before = before.filter(|before| self.parent(*before) == Some(parent));
-    let previous = match before {
-      Some(before) => self
-        .record(before)
-        .and_then(|record| record.previous_sibling),
-      None => self.record(parent).and_then(|record| record.last_child),
-    };
-
-    if let Some(record) = self.record_mut(child) {
-      record.parent = Some(parent);
-      record.previous_sibling = previous;
-      record.next_sibling = before;
-    }
-
-    match previous {
-      Some(previous) => {
-        if let Some(record) = self.record_mut(previous) {
-          record.next_sibling = Some(child);
-        }
-      }
-      None => {
-        if let Some(record) = self.record_mut(parent) {
-          record.first_child = Some(child);
-        }
-      }
-    }
-
-    match before {
-      Some(before) => {
-        if let Some(record) = self.record_mut(before) {
-          record.previous_sibling = Some(child);
-        }
-      }
-      None => {
-        if let Some(record) = self.record_mut(parent) {
-          record.last_child = Some(child);
-        }
-      }
-    }
-
-    self.structure_dirty = true;
-    self.paint_dirty = true;
-  }
-
-  /// Keeps `caption` beside `control`: listed before it under its parent while it is
-  /// attached, and answering to it.
-  pub(crate) fn keep_caption(&mut self, control: Handle, caption: Handle) {
-    if let Some(record) = self.record_mut(control) {
-      record.caption = Some(caption);
-    }
-
-    if let Some(record) = self.record_mut(caption) {
-      record.captioned = Some(control);
-    }
-
-    match self.parent(control) {
-      Some(parent) => self.list(parent, caption, Some(control)),
-      None => self.unlist(caption),
-    }
-  }
-
-  /// Takes `child` out from under `parent`, with the caption kept beside it, or out of
-  /// the place beside `parent` where it is the caption `parent` keeps.
-  pub(crate) fn withdraw(&mut self, parent: Handle, child: Handle) {
-    if self.record(child).and_then(|record| record.captioned) == Some(parent) {
-      self.drop_caption(parent, child);
-
-      return;
-    }
-
-    if self.parent(child) == Some(parent) {
-      self.unlist(child);
-    }
-
-    if let Some(caption) = self.record(child).and_then(|record| record.caption) {
-      self.unlist(caption);
-    }
-
-    self.structure_dirty = true;
-    self.paint_dirty = true;
-  }
-
-  /// Stops keeping `caption` beside `control`, unlisting it.
-  pub(crate) fn drop_caption(&mut self, control: Handle, caption: Handle) {
-    if let Some(record) = self.record_mut(control)
-      && record.caption == Some(caption)
-    {
-      record.caption = None;
-    }
-
-    if let Some(record) = self.record_mut(caption) {
-      record.captioned = None;
-    }
-
-    self.unlist(caption);
+  /// Notes that the structure the scene places changed: the layout tree follows it
+  /// and the frame repaints.
+  pub(crate) const fn note_structure(&mut self) {
     self.structure_dirty = true;
     self.paint_dirty = true;
   }
@@ -1498,7 +1322,7 @@ impl Store {
     reason = "every reader holds the store, and focus is asked of it as of the rest"
   )]
   pub(crate) fn focused(&self) -> Option<Handle> {
-    Scene::<Tui>::with(|scene| scene.focused())
+    Scene::<Tui>::read(Scene::focused)
   }
 
   /// Whether `handle` holds focus that shows: after a key, or as a text entry, and not
@@ -1506,7 +1330,7 @@ impl Store {
   pub(crate) fn focus_shows(&self, handle: Handle) -> bool {
     let node = self.record(handle).and_then(|record| record.node);
 
-    Scene::<Tui>::with(|scene| node.is_some_and(|node| scene.focus_shows(node)))
+    Scene::<Tui>::read(|scene| node.is_some_and(|node| scene.focus_shows(node)))
   }
 
   /// Records whether focus shows, repainting the focused node when that changes.
@@ -1551,15 +1375,18 @@ impl Store {
   /// sizes.
   pub(crate) fn containers_above(&self, handle: Handle) -> Vec<(ContainerName, Option<Size<u32>>)> {
     let mut names = Vec::new();
-    let mut current = self.parent(handle);
 
-    while let Some(ancestor) = current {
-      if let Some(name) = self.record(ancestor).and_then(Record::container) {
-        names.push((name, self.container_sizes.get(&name).copied()));
+    Scene::<Tui>::read(|scene| {
+      let mut current = scene.placed_parent(handle);
+
+      while let Some(ancestor) = current {
+        if let Some(name) = self.record(ancestor).and_then(Record::container) {
+          names.push((name, self.container_sizes.get(&name).copied()));
+        }
+
+        current = scene.placed_parent(ancestor);
       }
-
-      current = self.parent(ancestor);
-    }
+    });
 
     names
   }
@@ -1576,19 +1403,21 @@ impl Store {
     let mut displayed = FxHashSet::default();
     let mut stack = vec![self.root];
 
-    while let Some(current) = stack.pop() {
-      let Some(record) = self.record(current)
-      else {
-        continue;
-      };
+    Scene::<Tui>::read(|scene| {
+      while let Some(current) = stack.pop() {
+        let Some(record) = self.record(current)
+        else {
+          continue;
+        };
 
-      if record.is_overlay() && !record.is_open_overlay() {
-        continue;
+        if record.is_overlay() && !record.is_open_overlay() {
+          continue;
+        }
+
+        displayed.insert(current);
+        stack.extend(scene.placed_children(current));
       }
-
-      displayed.insert(current);
-      stack.extend(self.children(current));
-    }
+    });
 
     displayed
   }
@@ -1831,7 +1660,7 @@ impl Store {
         .is_some_and(|record| record.kind.is_laid_out())
     };
 
-    if self.children(handle).any(laid_out) {
+    if self.children(handle).into_iter().any(laid_out) {
       return None;
     }
 

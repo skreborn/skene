@@ -292,7 +292,7 @@ impl Store {
         .rev()
         .find(|overlay| ancestors.contains(overlay))?;
 
-      Scene::<Tui>::with(|scene| scene.overlay_opener(popup)).filter(|entry| self.is_field(*entry))
+      Scene::<Tui>::read(|scene| scene.overlay_opener(popup)).filter(|entry| self.is_field(*entry))
     })
   }
 

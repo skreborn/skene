@@ -89,8 +89,13 @@ node by that id (a `NodeMap`: an element, a string-tree index, a taffy leaf), re
 it once the scene is released and before the node takes part in anything else. Every
 structural mutation (`attach`, `detach`, `destroy`, reorder) is implemented once in core;
 the platform is called only to mirror it into its records, after core has released its
-own borrow; a platform keeping children of its own (the terminal's store, the server's
-string tree) links them the same way. The scene tells the platform what happens to each
+own borrow. The scene also says where each node is placed (`Scene::placed_children`,
+`Scene::placed_parent`): where it stands, except the caption a control keeps beside it
+(`Scene::keep_caption_beside`), placed before the control among its siblings on every
+platform. The terminal reads its structure there rather than keeping a copy, through
+`Scene::read`, the shared borrow reads take, which nests and mirrors nothing; the
+server's string tree still links children of its own, the way the scene does, and the
+browser's tree is the DOM. The scene tells the platform what happens to each
 child: it is attached (new, or returning from being hidden), relocated (a move, which
 the web makes with `moveBefore` where the engine has it, keeping focus and animations,
 and with one `insertBefore` elsewhere), hidden (taken out live, to return) or removed

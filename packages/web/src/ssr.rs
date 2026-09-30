@@ -40,7 +40,6 @@ use skene_core::{
   NodeMap,
   Observation,
   OverlayProps,
-  Part,
   PickerOption,
   Platform,
   RunProps,
@@ -146,15 +145,6 @@ enum Content {
   Comment(String),
 }
 
-/// Where a control's label sits.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Captioned {
-  /// Inside the control.
-  Inside,
-  /// Before the control among its siblings, in a `<label>`.
-  Beside,
-}
-
 /// One node of the string tree.
 struct Node {
   /// What the node is.
@@ -184,8 +174,8 @@ struct Node {
   /// The native element carrying a control's state, focus and value, when the control
   /// has one apart from its root.
   carrier: Option<u32>,
-  /// Whether it is a control's root, and then whether its label sits beside it.
-  control: Option<Captioned>,
+  /// Whether it is a control's root.
+  control: bool,
   /// Whether the box scrolls its content, so it takes a place in the focus order.
   scrolls: bool,
   /// Whether the node stands bare: a control that is its own `<input>`, `<textarea>`
@@ -222,7 +212,7 @@ impl Node {
       next_sibling: None,
       parent: None,
       carrier: None,
-      control: None,
+      control: false,
       scrolls: false,
       bare: false,
       options: Vec::new(),
@@ -539,24 +529,23 @@ impl Tree {
     }
   }
 
-  /// Attaches `child` into the caption of `parent` when `parent` keeps its caption
-  /// beside it and `child` is its `Label` part, making the `<label>` on the first, `for`
-  /// the control where it stands bare; `false` for any other pair, which attaches as
-  /// usual.
+  /// Attaches `child` into the caption of `parent` when `child` is the caption `parent`
+  /// keeps beside it, making the `<label>` on the first, `for` the control where it
+  /// stands bare; `false` for any other pair, which attaches as usual.
   fn attach_caption(&mut self, parent: u32, child: u32) -> bool {
     let Some((node, labels)) = self
       .node(parent)
-      .filter(|node| node.control == Some(Captioned::Beside))
+      .filter(|node| node.control)
       .and_then(|node| Some((node.realizes?, node.bare)))
     else {
       return false;
     };
-    let is_label = self
+    let captions = self
       .node(child)
       .and_then(|child| child.realizes)
-      .is_some_and(|child| Scene::<Web>::with(|scene| scene.part(child) == Some(Part::Label)));
+      .is_some_and(|child| Scene::<Web>::with(|scene| scene.caption_beside(node) == Some(child)));
 
-    if !is_label {
+    if !captions {
       return false;
     }
 
@@ -1206,7 +1195,7 @@ fn with_media<R>(operation: impl FnOnce(&MediaState) -> R) -> R {
 /// Writes `focus_order` as `tabindex` on `node`; `None` takes a control out of focus
 /// and leaves a box without one.
 fn write_focus_order(node: &mut Node, focus_order: Option<FocusOrder>) {
-  match focus_order_attribute(focus_order, node.control.is_some(), node.scrolls) {
+  match focus_order_attribute(focus_order, node.control, node.scrolls) {
     Some(tabindex) => node.set_attribute("tabindex", &tabindex),
     None => node.remove_attribute("tabindex"),
   }
@@ -1350,12 +1339,7 @@ fn control_index(props: &ControlProps<Web>) -> u32 {
     };
 
     if let Some(node) = tree.node_mut(index) {
-      node.control = Some(if props.label_beside {
-        Captioned::Beside
-      }
-      else {
-        Captioned::Inside
-      });
+      node.control = true;
       node.set_attribute(CONTROL_ATTRIBUTE, "");
     }
 

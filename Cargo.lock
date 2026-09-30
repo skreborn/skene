@@ -2612,6 +2612,7 @@ dependencies = [
  "skene-core",
  "skene-reactive",
  "skene-simple",
+ "smallvec",
  "taffy",
  "unicode-linebreak",
  "unicode-segmentation",

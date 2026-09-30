@@ -22,7 +22,6 @@ use skene_core::{
   NodeKind,
   Observation,
   OverlayProps,
-  Part,
   Placement,
   Platform,
   Point,
@@ -164,7 +163,6 @@ impl Platform for Tui {
           state: ControlState::DEFAULT,
           field,
           checked: false,
-          label_beside: props.label_beside,
         },
       );
     });
@@ -304,48 +302,20 @@ impl Platform for Tui {
     with_store(|store| store.insert(node, Kind::Scope, None));
   }
 
-  fn attach(parent: NodeId, child: NodeId, before: Option<NodeId>) {
-    let caption = with_store(|store| {
-      store
-        .keeps_caption_beside(parent)
-        .then(|| store.record(child).and_then(|record| record.node))
-        .flatten()
-    })
-    .is_some_and(|node| Scene::<Self>::with(|scene| scene.part(node)) == Some(Part::Label));
-
-    with_store(|store| {
-      if caption {
-        store.keep_caption(parent, child);
-
-        return;
-      }
-
-      store.list(parent, child, before);
-
-      if let Some(caption) = store.record(child).and_then(|record| record.caption) {
-        store.list(parent, caption, Some(child));
-      }
-    });
+  fn attach(_parent: NodeId, _child: NodeId, _before: Option<NodeId>) {
+    with_store(Store::note_structure);
   }
 
-  fn relocate(parent: NodeId, child: NodeId, before: Option<NodeId>) {
-    with_store(|store| {
-      if let Some(from) = store
-        .record(child)
-        .and_then(|record| record.captioned.or(record.parent))
-      {
-        store.withdraw(from, child);
-      }
-    });
-    Self::attach(parent, child, before);
+  fn relocate(_parent: NodeId, _child: NodeId, _before: Option<NodeId>) {
+    with_store(Store::note_structure);
   }
 
-  fn hide(parent: NodeId, child: NodeId) {
-    with_store(|store| store.withdraw(parent, child));
+  fn hide(_parent: NodeId, _child: NodeId) {
+    with_store(Store::note_structure);
   }
 
-  fn remove(parent: NodeId, child: NodeId) {
-    with_store(|store| store.withdraw(parent, child));
+  fn remove(_parent: NodeId, _child: NodeId) {
+    with_store(Store::note_structure);
   }
 
   fn destroy(node: NodeId) {

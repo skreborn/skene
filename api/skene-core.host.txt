@@ -3690,6 +3690,7 @@ impl<P: skene_core::Platform> skene_core::Scene<P>
 pub fn skene_core::Scene<P>::ancestry(&self, skene_core::NodeId) -> smallvec::SmallVec<[skene_core::NodeId; 16]>
 pub fn skene_core::Scene<P>::annotate(impl core::convert::Into<core::option::Option<skene_core::Annotation<P>>>, impl core::ops::function::FnOnce() -> skene_core::NodeId) -> skene_core::NodeId
 pub fn skene_core::Scene<P>::attach(&mut self, skene_core::NodeId, skene_core::NodeId, core::option::Option<skene_core::NodeId>)
+pub fn skene_core::Scene<P>::caption_beside(&self, skene_core::NodeId) -> core::option::Option<skene_core::NodeId>
 pub fn skene_core::Scene<P>::children(&self, skene_core::NodeId) -> impl core::iter::traits::iterator::Iterator<Item = skene_core::NodeId> + '_
 pub fn skene_core::Scene<P>::clear_segment(&mut self, skene_core::NodeId)
 pub fn skene_core::Scene<P>::contains(&self, skene_core::NodeId) -> bool
@@ -3728,6 +3729,7 @@ pub fn skene_core::Scene<P>::is_borrowed() -> bool
 pub fn skene_core::Scene<P>::is_hovered(&self, skene_core::NodeId) -> bool
 pub fn skene_core::Scene<P>::is_modal(&self, skene_core::NodeId) -> bool
 pub fn skene_core::Scene<P>::is_pressed(&self, skene_core::NodeId) -> bool
+pub fn skene_core::Scene<P>::keep_caption_beside(&mut self, skene_core::NodeId)
 pub fn skene_core::Scene<P>::move_focus(&mut self, core::option::Option<skene_core::NodeId>) -> (smallvec::SmallVec<[skene_core::NodeId; 16]>, smallvec::SmallVec<[skene_core::NodeId; 16]>)
 pub fn skene_core::Scene<P>::move_pointer(&mut self, core::option::Option<skene_core::NodeId>) -> (smallvec::SmallVec<[skene_core::NodeId; 16]>, smallvec::SmallVec<[skene_core::NodeId; 16]>)
 pub fn skene_core::Scene<P>::new() -> Self
@@ -3742,10 +3744,13 @@ pub fn skene_core::Scene<P>::overlay_anchor(&self, skene_core::NodeId) -> core::
 pub fn skene_core::Scene<P>::overlay_opener(&self, skene_core::NodeId) -> core::option::Option<skene_core::NodeId>
 pub fn skene_core::Scene<P>::parent(&self, skene_core::NodeId) -> core::option::Option<skene_core::NodeId>
 pub fn skene_core::Scene<P>::part(&self, skene_core::NodeId) -> core::option::Option<skene_core::Part>
+pub fn skene_core::Scene<P>::placed_children(&self, skene_core::NodeId) -> impl core::iter::traits::iterator::Iterator<Item = skene_core::NodeId> + '_
+pub fn skene_core::Scene<P>::placed_parent(&self, skene_core::NodeId) -> core::option::Option<skene_core::NodeId>
 pub fn skene_core::Scene<P>::placement(&self, skene_core::NodeId) -> core::option::Option<skene_core::NodeId>
 pub const fn skene_core::Scene<P>::pressed(&self) -> core::option::Option<skene_core::NodeId>
 pub fn skene_core::Scene<P>::previous_sibling(&self, skene_core::NodeId) -> core::option::Option<skene_core::NodeId>
 pub fn skene_core::Scene<P>::reachable_under_modal(&self, &[skene_core::NodeId], skene_core::NodeId) -> bool
+pub fn skene_core::Scene<P>::read<R>(impl core::ops::function::FnOnce(&Self) -> R) -> R
 pub fn skene_core::Scene<P>::record(&self, skene_core::NodeId) -> core::option::Option<&skene_core::NodeRecord<P>>
 pub fn skene_core::Scene<P>::record_mut(&mut self, skene_core::NodeId) -> core::option::Option<&mut skene_core::NodeRecord<P>>
 pub fn skene_core::Scene<P>::remove_from_segment(&mut self, skene_core::NodeId, skene_core::NodeId)

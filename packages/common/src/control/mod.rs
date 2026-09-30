@@ -976,9 +976,15 @@ impl<P: Platform, B: Behavior<P>, C: ControlChild<P>> View<P> for Control<P, B, 
         );
       });
 
-      if native.is_some_and(NativeElement::is_text_entry) {
-        Scene::<P>::with(|scene| scene.note_entry(node));
-      }
+      Scene::<P>::with(|scene| {
+        if native.is_some_and(NativeElement::is_text_entry) {
+          scene.note_entry(node);
+        }
+
+        if placement == LabelPlacement::Beside {
+          scene.keep_caption_beside(node);
+        }
+      });
       // A caption whose text is the platform's to read names the control by reference;
       // it is built after the control, so the markup keeps the control first.
       let (label, labelled_by) = match label {

@@ -14,6 +14,9 @@ edit among a hundred tracked rows 150 ns, and among ten thousand 147 ns, and by 
 compare only when each is built in its own target directory (a shared one reuses
 another tree's build) and the bench binaries run alternately, pinned to one of the
 fast cores with address randomization off: `setarch -R taskset -c 2 <binary> --bench`.
+Callgrind's instruction counts compare two builds whatever the machine's load, cache
+misses aside: `valgrind --tool=callgrind <binary>`, built with
+`CARGO_PROFILE_RELEASE_STRIP=none` so the profile names its functions.
 
 ## Open
 
@@ -38,14 +41,35 @@ left half-done in a code comment.
     - Controls: `AccessProp` moves onto AccessKit's schema, beside its open `Role`: its
     properties in place of the closed report, so a third party builds switches, tabs,
     comboboxes and trees; parts become styling targets or go.
-    - Structure: the terminal's render tree (parents and children, a caption kept beside
-    its control) derives from the scene's rather than mirroring each attach, where a
-    frame's traversal reads the scene at no more than the mirror costs; anchors exist in
-    the scene alone, platforms receiving the next real sibling and server output keeping
-    comment pairs only where streaming needs a marker.
+    - Defaults: a platform's own response to keys, presses and overlays (Tab traversal,
+    `Escape` dismissing the topmost overlay, the menu key and `Shift-F10`, focus showing
+    after a key, dismissal on a press, a popup closing as focus leaves it, a modal taking
+    focus as it opens) is written once in the scene beside `dismissed_by_press` and
+    `tab_from`, one key classifier deciding each key's default. Headless, the terminal
+    and the web each keep a copy today, and the copies have drifted: headless shows focus
+    on a modifier alone where the terminal does not, the web's `Escape` closes the
+    topmost popup beneath an open modal, only the terminal closes a popup that focus
+    leaves, and headless gives an opening modal no focus.
+    - Facts: platform records stop keeping what the scene holds (a control's state, an
+    overlay's open, modal and anchor, focus order, the merged accessibility reports, the
+    hover path, measured container sizes) and read it there, as the terminal reads its
+    structure; headless's `user::edit` edits a disabled or read-only entry today, which
+    the terminal refuses.
+    - Seams: the document head checks a registered element once, in
+    `skene_common::gui::Head`, where headless skips the check both web leaves apply, so
+    a registration the web rejects passes the headless tests; a platform's turn and
+    teardown follow one routine in core, where headless's reset skips the runtime and
+    root-owner resets the terminal and the browser run.
+    - Structure: anchors exist in the scene alone, platforms receiving the next real
+    sibling and server output keeping comment pairs only where streaming needs a marker;
+    the server's string tree serializes the structure the scene places
+    (`Scene::placed_children`) through its records, as the terminal reads it, rather than
+    linking children of its own.
     - The web's realization: `Platform for Web` is written once over a small sink trait
     that the DOM and the string tree implement, the browser layering adoption and events
-    on top, so the two leaves cannot drift; the server tier writes real pages that the
+    on top, so the two leaves cannot drift, the stylesheet bookkeeping both repeat (the
+    compiled cache, keeping, releasing and registering classes, tokens and slots) moving
+    into the shared layer; the server tier writes real pages that the
     browser tier hydrates with zero mismatches, where the browser tests fake the served
     markup today; structural hydration keys per scope replace the one global counter, so
     async rebuilds and nested lazy content keep their markers and their server markup;
@@ -65,23 +89,32 @@ left half-done in a code comment.
     scenarios then name their pages, the harness serving each from one test app and
     finding what a scenario acts on by WebDriver's computed role and label; the goldens
     need a pinned font and Firefox before they compare across machines.
+    - The behaviors each platform's tests check on their own (focus showing after a key
+    and not after a press, a press held along its path, focus entering and leaving a
+    subtree, focus following a keyed item across a reorder) move into the conformance
+    suite once a `Driver` observes what they read.
 4. **The quadratic hot paths.**
     - The terminal: the runtime kit's resolution becomes incremental and subtree-scoped
     (per-record dirty bits, restyling only the dirty and moving set, per-scope token
     and per-container query invalidation, `em` from the node's own font size),
-    rectangles recompute after layout or scroll alone and paint culls outside the
-    damaged rows, where an unchanged frame costs 55 ms at 16k rows; selection spans
+    rectangles, measured top-down once a frame, recompute after layout or scroll alone
+    and paint culls outside the damaged rows, where an unchanged frame of 16k text rows
+    still restyles and walks every node in 15 ms; selection spans
     compute once per frame; wrapped lines cache per text generation and width, clusters
     re-segment around an edit, and undo stores range diffs.
     - Token caches take per-scope epochs in place of the global generation, a cached
     nearest defining node, a token's value cached at its defining scope where each
     consumer resolves it there afresh today, interned names and skipped equal
-    redefinitions, so a palette change costs the number of tokens beyond the web too.
+    redefinitions, so a palette change costs the number of tokens beyond the web too;
+    the per-node resolution environment headless and the terminal each copy
+    (`of_scope`, `scoped_token`, `font_size`, `with_resolver`) moves into core beside
+    `Resolver` first, so the cache is written once.
     - Constant factors: the UI-thread assertion in debug alone, fused borrows, the
     iterative pull and alien-signals' propagation techniques, estimated to halve a read
     and a write; a lazy first memo run; `reconcile` as a thin generic shim over a
     non-generic core; forced inlining off generic and allocating functions; xxh3-128 in
-    one hash module for the four FNV-1a copies; variants in a thin vector
+    one hash module for the four FNV-1a copies, the macros crate's snapshot field keys
+    moving with the reactive key they must equal; variants in a thin vector
     (`Value<Color>` from 112 to about 48 bytes, a box style from 3.5 to about 1.4 KB),
     then presence bitsets, and the scene record's annotation boxed; the lazy list
     reading a data source (a count and the item at an index) through a Fenwick tree,
@@ -239,7 +272,16 @@ left half-done in a code comment.
     `Span` share, into a forwarding macro and a public `Run` builder; the roughly 200
     lines each facade repeats, into one exported `facade!` macro that also makes a
     third party's facade a few lines; the three "fixed or derived" enums, into one
-    `Source<T>`.
+    `Source<T>`; `gui_fields!`, core's `box_fields!` and `run_fields!` and the terminal
+    extension's eleven hand-written field impls, into one field macro core exports, with
+    a trait-method form of `properties!` for the terminal's eighteen hand-written setter
+    pairs; the accessible-name facts headless and the terminal each derive from core's
+    props, into `NameFacts::of_box`, `of_control`, `of_overlay` and `of_run`, with the
+    seven query seams each repeats; the five hand-built `MediaSignals`, into one
+    constructor returning the signals and their writer; the helpers the browser tests
+    repeat (`document`, `Installed`, `fresh_root`, `computed`, `only_child` and their
+    kin), into a `skene_web::testing` beside `skene_tui::testing`, which takes the
+    terminal examples' `with_platform` and `locate`.
     - Renames: `Raw*` to `Basic*`; `Show` and `Switch` to `Visibility` and `OneOf`; `Lazy`
     to `AsyncView`; `Composable` to `ConditionTree`; the `Range` behavior and
     `NativeElement::Range` to `Slider`; `Roving` and `RadioMember` to `RadioGroup` and

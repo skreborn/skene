@@ -9,29 +9,20 @@
 //! string, whatever was interned before it and whatever is still alive—the parity
 //! hydration relies on.
 //!
-//! Each leaf layers its own sink on the outcomes reported here: the browser adds a rule's
-//! realized text to the document when one is [newly interned](ClassInterner::class_for)
-//! and removes it when it is [collected](ClassInterner::release); the server ignores both
-//! and renders the [live rules](ClassInterner::live_rules) to text once, at the end of a
-//! render, in interning order.
+//! A leaf's stylesheet hears the outcomes reported here through the shared
+//! [`StyleBook`](crate::style_book::StyleBook): a rule's realized text is added when one
+//! is [newly interned](ClassInterner::class_for) and removed when it is
+//! [collected](ClassInterner::release).
 
 use std::rc::Rc;
 
 use rustc_hash::FxHashMap;
 
-/// A generated class rule: the template it was keyed on, how many live nodes use it,
-/// and its place in interning order.
+/// A generated class rule: the template it was keyed on, and how many live nodes use
+/// it.
 struct Rule {
   template: Rc<str>,
   count: u32,
-  #[cfg_attr(
-    all(not(skene_leaf = "host"), not(skene_leaf = "server")),
-    expect(
-      dead_code,
-      reason = "the server orders its rules by it, where the browser inserts each as it comes"
-    )
-  )]
-  order: u64,
 }
 
 /// Interns rule templates to a shared, content-addressed, reference-counted class name.
@@ -40,8 +31,6 @@ pub(crate) struct ClassInterner {
   classes: FxHashMap<Rc<str>, Rc<str>>,
   /// Class name -> its rule and reference count.
   rules: FxHashMap<Rc<str>, Rule>,
-  /// The interning-order stamp the next rule takes.
-  next_order: u64,
 }
 
 /// The 128-bit FNV-1a hash of `text`.
@@ -74,7 +63,6 @@ impl ClassInterner {
     Self {
       classes: FxHashMap::default(),
       rules: FxHashMap::default(),
-      next_order: 0,
     }
   }
 
@@ -100,15 +88,12 @@ impl ClassInterner {
     );
 
     let template: Rc<str> = template.into();
-    let order = self.next_order;
 
-    self.next_order += 1;
     self.rules.insert(
       Rc::clone(&class),
       Rule {
         template: Rc::clone(&template),
         count: 0,
-        order,
       },
     );
 
@@ -145,25 +130,6 @@ impl ClassInterner {
     }
 
     false
-  }
-
-  /// Each live rule as `(class, template)` in interning order, for a leaf that renders
-  /// them in a batch—the server sink only; the browser mirrors rules into the document
-  /// incrementally instead.
-  #[cfg(skene_leaf = "server")]
-  pub(crate) fn live_rules(&self) -> impl Iterator<Item = (&str, &str)> {
-    let mut live: Vec<(&Rule, &str)> = self
-      .rules
-      .iter()
-      .filter(|(_, rule)| rule.count > 0)
-      .map(|(class, rule)| (rule, &**class))
-      .collect();
-
-    live.sort_unstable_by_key(|(rule, _)| rule.order);
-
-    live
-      .into_iter()
-      .map(|(rule, class)| (class, &*rule.template))
   }
 }
 

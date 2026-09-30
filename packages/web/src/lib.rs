@@ -36,7 +36,7 @@ mod gpu;
 mod hints;
 mod hydration;
 #[cfg_attr(
-  skene_leaf = "host",
+  all(skene_leaf = "host", not(test)),
   expect(dead_code, reason = "the interner serves the leaves alone")
 )]
 mod interner;
@@ -45,8 +45,12 @@ mod logging;
 #[cfg(not(skene_leaf = "host"))]
 mod markup;
 mod motion;
+#[cfg(not(skene_leaf = "host"))]
+mod realize;
 #[cfg(skene_leaf = "server")]
 mod ssr;
+#[cfg(not(skene_leaf = "host"))]
+mod style_book;
 #[cfg_attr(
   skene_leaf = "host",
   expect(dead_code, reason = "tokens compile for the leaves alone")

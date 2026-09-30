@@ -236,7 +236,7 @@ impl Dom {
 
   /// The canvas of the painted box `sink`.
   fn canvas_mut(&mut self, sink: NodeId) -> Option<&mut PaintedCanvas> {
-    self.node_mut(sink)?.canvas.as_deref_mut()
+    self.node_mut(sink)?.extra.canvas.as_deref_mut()
   }
 
   /// Gives the box `sink` a canvas over it painted by `painter`, observed, or hands its
@@ -249,7 +249,7 @@ impl Dom {
       return;
     }
 
-    let Some(element) = new_canvas(&self.document)
+    let Some(element) = new_canvas(self.document())
     else {
       return;
     };
@@ -275,7 +275,7 @@ impl Dom {
     )]
     let css = Size::new(rect.width() as f32, rect.height() as f32);
 
-    node.canvas = Some(Box::new(PaintedCanvas {
+    node.extra.canvas = Some(Box::new(PaintedCanvas {
       painter,
       element,
       size: Some(CanvasSize::at_ratio(css)),
@@ -288,7 +288,7 @@ impl Dom {
   /// Puts a fresh canvas element in place of the box `sink`'s, whose context is spoken
   /// for, and forgets the GPU target the old one held.
   fn replace_canvas(&mut self, sink: NodeId) {
-    let Some(fresh) = new_canvas(&self.document)
+    let Some(fresh) = new_canvas(self.document())
     else {
       return;
     };
@@ -450,10 +450,11 @@ fn lost() {
 fn painted_sinks(mut select: impl FnMut(&mut PaintedCanvas) -> bool) -> Vec<NodeId> {
   try_with_dom(|dom| {
     dom
-      .nodes
+      .realizer
+      .records
       .iter_mut()
       .filter_map(|(sink, node)| {
-        let canvas = node.canvas.as_deref_mut()?;
+        let canvas = node.extra.canvas.as_deref_mut()?;
 
         select(canvas).then_some(sink)
       })

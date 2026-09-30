@@ -671,10 +671,11 @@ node, collected when unused; naming never depends on intern order or liveness. I
 styles collapse to one class; both leaves emit rules in interning order, which is build
 order, so the server's stylesheet is byte-compatible with the client's and the cascade
 order is identical, which hydration relies on. A class cache keyed by the hash of the
-typed props renders the template text on a miss only. The interner is pure and shared by
-the web leaves; each layers its sink (csr: one `<style>` element per class; ssr: the live
-templates rendered once at the end, plus a delta `<style>` per streamed chunk for classes
-interned since the previous flush).
+typed props renders the template text on a miss only. The interner, the cache and the
+token and slot registrations are one `StyleBook` both web leaves share, telling each
+leaf's `StyleSink` what to add and remove (csr: one `<style>` element per class; ssr:
+each rule collected as it is interned and emitted with the next flush, the document's
+`<style>` or a streamed chunk's delta).
 
 ## Reactive engine
 
@@ -798,7 +799,11 @@ into a layer and interpolate named pairs.
 Two leaves over one node record, selected by the build and enforced by it: the browser
 leaf compiles on `wasm32-unknown-unknown` alone and the server leaf where the build names
 the server platform (`--cfg skene_platform="server"`, on any host), and the `WebDom`
-escape trait exists on the browser leaf alone, so the server leaf *cannot* touch the DOM:
+escape trait exists on the browser leaf alone, so the server leaf *cannot* touch the DOM.
+What both realize is written once, in a `Realizer` over the `Sink` the DOM and the
+string tree implement: the records, the element choices, attributes, classes, slots,
+token definitions, control state and accessibility, so the two cannot drift; each leaf
+adds only what is its own:
 
 - **csr** (`skene_leaf = "browser"`)—the browser. DOM sink, the stylesheet sink,
   root-level event delegation with a stamped node id (one listener per event type,

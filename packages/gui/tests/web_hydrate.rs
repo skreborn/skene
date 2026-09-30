@@ -610,6 +610,38 @@ fn a_structural_mismatch_is_caught_not_silently_adopted() {
   web::uninstall();
 }
 
+/// A checkbox whose label the client builds afresh keeps the input the server sent,
+/// moved into the client's label rather than removed with the server's.
+#[wasm_bindgen_test]
+fn an_adopted_input_moves_into_a_rebuilt_label() {
+  use skene_gui::{RawCheckbox, Toggle};
+
+  let app = || RawCheckbox::new(Toggle::new());
+  let (markup, _) = served(move || skene_gui::IntoView::into_view(app()));
+  let mismatched = markup
+    .replacen("<label", "<span", 1)
+    .replacen("</label>", "</span>", 1);
+  let root = server_root(&mismatched);
+  let server_input = root
+    .query_selector("input")
+    .expect("query")
+    .expect("an input");
+
+  hydrate(root.clone(), "", app);
+
+  let label = only_child(&root);
+
+  assert_eq!(label.tag_name().to_lowercase(), "label");
+  assert!(
+    label.query_selector("input").expect("query").as_ref() == Some(&server_input),
+    "the adopted input sits in the client's label: {}",
+    root.inner_html()
+  );
+  assert_eq!(web::hydration_mismatches(), 1);
+
+  web::uninstall();
+}
+
 /// Hydration converges on the client's tree: a server element and anchor the client
 /// never built are removed, and an adopted element keeps exactly the client's classes.
 #[wasm_bindgen_test]

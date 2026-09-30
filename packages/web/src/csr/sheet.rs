@@ -1,32 +1,26 @@
-//! The browser's stylesheet sink over the shared interner: one base `<style>` holding
-//! the reset and the registrations, one `<style>` per interned class, and the server's
-//! blocks adopted in place of both when a page hydrates.
+//! The browser's stylesheet: one base `<style>` holding the reset and the
+//! registrations, one `<style>` per interned class, and the server's blocks adopted in
+//! place of both when a page hydrates.
 
 use std::rc::Rc;
 
-use rustc_hash::{FxHashMap, FxHashSet};
-use skene_core::{Definitions, TokenName};
+use rustc_hash::FxHashMap;
 use wasm_bindgen::JsCast;
 use web_sys::{Document, Element, HtmlHeadElement};
 
 use crate::{
   RESET_CSS,
   STYLE_LAYER,
-  compile::{Compiled, Key, SlotBinding, slot_registration, slot_registrations},
+  compile::slot_registrations,
   condition::CLASS_PLACEHOLDER,
-  interner::ClassInterner,
   markup::STYLE_ATTRIBUTE,
-  token::WebTokenValue,
+  style_book::{StyleSink, push_style_text},
 };
 
 pub(super) struct Sheet {
   document: Document,
   head: HtmlHeadElement,
-  interner: ClassInterner,
-  cache: FxHashMap<u64, Rc<Compiled>>,
   elements: FxHashMap<Rc<str>, Element>,
-  registered: FxHashSet<TokenName>,
-  registered_slots: FxHashSet<(Key, usize)>,
   base: Element,
   base_text: String,
   adopted: Option<String>,
@@ -34,7 +28,7 @@ pub(super) struct Sheet {
 }
 
 impl Sheet {
-  /// A sink writing into `head`, starting from the reset and the slot registrations.
+  /// A sheet writing into `head`, starting from the reset and the slot registrations.
   pub(super) fn new(document: &Document, head: &HtmlHeadElement) -> Self {
     let base_text = format!("{RESET_CSS}{}", slot_registrations());
     let base = style_element(document);
@@ -45,11 +39,7 @@ impl Sheet {
     Self {
       document: document.clone(),
       head: head.clone(),
-      interner: ClassInterner::new(),
-      cache: FxHashMap::default(),
       elements: FxHashMap::default(),
-      registered: FxHashSet::default(),
-      registered_slots: FxHashSet::default(),
       base,
       base_text,
       adopted: None,
@@ -57,7 +47,7 @@ impl Sheet {
     }
   }
 
-  /// A sink adopting the server's `block` and the delta blocks a streamed render left
+  /// A sheet adopting the server's `block` and the delta blocks a streamed render left
   /// in the body, which move into the head after it: every rule already in them is left
   /// alone, and only what they lack is added.
   pub(super) fn adopt(document: &Document, head: &HtmlHeadElement, block: Element) -> Self {
@@ -84,11 +74,7 @@ impl Sheet {
     Self {
       document: document.clone(),
       head: head.clone(),
-      interner: ClassInterner::new(),
-      cache: FxHashMap::default(),
       elements: FxHashMap::default(),
-      registered: FxHashSet::default(),
-      registered_slots: FxHashSet::default(),
       base: block,
       base_text,
       adopted: Some(adopted),
@@ -96,128 +82,28 @@ impl Sheet {
     }
   }
 
-  /// The compiled template for `key`, rendered by `compile` on a miss.
-  pub(super) fn compiled(&mut self, key: u64, compile: impl FnOnce() -> Compiled) -> Rc<Compiled> {
-    if let Some(cached) = self.cache.get(&key) {
-      debug_assert!(
-        cached.template == compile().template,
-        "the fingerprint {key:x} names two templates"
-      );
+  /// Whether the adopted blocks carry `text`, as the server wrote it.
+  fn adopted_holds(&self, text: &str) -> bool {
+    let Some(adopted) = &self.adopted
+    else {
+      return false;
+    };
 
-      return Rc::clone(cached);
+    if !text.contains("</") {
+      return adopted.contains(text);
     }
 
-    let compiled = Rc::new(compile());
+    let mut written = String::new();
 
-    self.cache.insert(key, Rc::clone(&compiled));
+    push_style_text(&mut written, text);
 
-    compiled
+    adopted.contains(&written)
   }
 
-  /// Interns `template` and swaps it in for `previous`, returning the class.
-  pub(super) fn swap_class(&mut self, template: &str, previous: Option<&str>) -> Rc<str> {
-    let (class, newly_interned) = self.interner.class_for(template);
-
-    if newly_interned {
-      let realized = template.replace(CLASS_PLACEHOLDER, &class);
-      let present = self
-        .adopted
-        .as_ref()
-        .is_some_and(|adopted| adopted.contains(&realized));
-
-      if !present {
-        let element = style_element(&self.document);
-
-        element.set_text_content(Some(&format!("{STYLE_LAYER}{realized}}}")));
-        let _ = self.head.append_child(&element);
-        self.elements.insert(Rc::clone(&class), element);
-      }
-    }
-
-    if previous != Some(&*class) {
-      self.interner.retain(&class);
-
-      if let Some(previous) = previous {
-        self.release(previous);
-      }
-    }
-
-    class
-  }
-
-  /// Records that one node stopped using `class`, removing its rules once unused.
-  pub(super) fn release(&mut self, class: &str) {
-    if self.interner.release(class)
-      && let Some(element) = self.elements.remove(class)
-    {
-      element.remove();
-    }
-  }
-
-  /// Registers the custom property of every token in `definitions` not registered yet.
-  pub(super) fn register(&mut self, definitions: &Definitions<WebTokenValue>) {
-    let mut added = false;
-
-    for (name, value) in definitions.iter() {
-      if !self.registered.insert(name) {
-        continue;
-      }
-
-      let registration = value.registration(name);
-      let present = self
-        .adopted
-        .as_ref()
-        .is_some_and(|adopted| adopted.contains(&registration));
-
-      if !present {
-        self.base_text.push_str(&registration);
-        added = true;
-      }
-    }
-
-    if added {
-      self.base.set_text_content(Some(&self.base_text));
-    }
-  }
-
-  /// Registers the custom property of every variant slot among `slots` not registered
-  /// yet; the base slots are registered with the reset.
-  pub(super) fn register_slots(&mut self, slots: &[SlotBinding]) {
-    let mut added = false;
-
-    for binding in slots.iter().filter(|binding| binding.position > 0) {
-      if !self
-        .registered_slots
-        .insert((binding.property, binding.position))
-      {
-        continue;
-      }
-
-      let registration = slot_registration(binding.property, binding.position);
-      let present = self
-        .adopted
-        .as_ref()
-        .is_some_and(|adopted| adopted.contains(&registration));
-
-      if !present {
-        self.base_text.push_str(&registration);
-        added = true;
-      }
-    }
-
-    if added {
-      self.base.set_text_content(Some(&self.base_text));
-    }
-  }
-
-  /// Appends `rule` to the base block, unless the adopted blocks already carry it.
-  pub(super) fn add_rule(&mut self, rule: &str) {
-    if self.base_text.contains(rule)
-      || self
-        .adopted
-        .as_ref()
-        .is_some_and(|adopted| adopted.contains(rule))
-    {
+  /// Appends `rule` to the base block, unless it or the adopted blocks carry it
+  /// already.
+  pub(super) fn add_base_rule(&mut self, rule: &str) {
+    if self.base_text.contains(rule) || self.adopted_holds(rule) {
       return;
     }
 
@@ -225,7 +111,7 @@ impl Sheet {
     self.base.set_text_content(Some(&self.base_text));
   }
 
-  /// Removes every `<style>` element the sink owns.
+  /// Removes every `<style>` element the sheet owns.
   pub(super) fn remove_all(&mut self) {
     self.base.remove();
 
@@ -235,6 +121,43 @@ impl Sheet {
 
     for (_, element) in self.elements.drain() {
       element.remove();
+    }
+  }
+}
+
+impl StyleSink for Sheet {
+  fn add_rule(&mut self, class: &Rc<str>, template: &str) {
+    let realized = template.replace(CLASS_PLACEHOLDER, class);
+
+    if self.adopted_holds(&realized) {
+      return;
+    }
+
+    let element = style_element(&self.document);
+
+    element.set_text_content(Some(&format!("{STYLE_LAYER}{realized}}}")));
+    let _ = self.head.append_child(&element);
+    self.elements.insert(Rc::clone(class), element);
+  }
+
+  fn remove_rule(&mut self, class: &str) {
+    if let Some(element) = self.elements.remove(class) {
+      element.remove();
+    }
+  }
+
+  fn add_registrations(&mut self, registrations: impl Iterator<Item = String>) {
+    let mut added = false;
+
+    for registration in registrations {
+      if !self.adopted_holds(&registration) {
+        self.base_text.push_str(&registration);
+        added = true;
+      }
+    }
+
+    if added {
+      self.base.set_text_content(Some(&self.base_text));
     }
   }
 }

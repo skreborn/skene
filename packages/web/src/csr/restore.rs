@@ -25,27 +25,24 @@ fn current() -> Option<Carry> {
   DOM.with(|dom| {
     let dom = dom.borrow();
     let dom = dom.as_ref()?;
-    let active = dom.document.active_element();
+    let active = dom.document().active_element();
     let mut focused = None;
     let mut scrolls = Vec::new();
 
     Scene::<Web>::with(|scene| {
-      for node in dom.nodes.values() {
-        let Some(position) = node
-          .id
-          .and_then(|id| scene.record(id))
-          .map(|record| record.position().clone())
+      for (id, node) in dom.realizer.records.iter() {
+        let Some(position) = scene.record(id).map(|record| record.position().clone())
         else {
           continue;
         };
 
         if let Some(active) = &active
-          && node.carrier() == Some(active)
+          && node.carrier_element() == Some(active)
         {
           focused = Some((position.clone(), selection_of(active)));
         }
 
-        if let Some(element) = node.element() {
+        if let Some(element) = node.dom_element() {
           let (x, y) = (element.scroll_left(), element.scroll_top());
 
           if x != 0 || y != 0 {
@@ -108,10 +105,10 @@ pub fn adopt_restoration() {
   let (scrolled, focused) = with_dom(|dom| {
     let scrolled: Vec<_> = scrolls
       .into_iter()
-      .filter_map(|(sink, x, y)| Some((dom.node(sink)?.element()?.clone(), x, y)))
+      .filter_map(|(sink, x, y)| Some((dom.node(sink)?.dom_element()?.clone(), x, y)))
       .collect();
-    let focused =
-      focused.and_then(|(sink, selection)| Some((dom.node(sink)?.carrier()?.clone(), selection)));
+    let focused = focused
+      .and_then(|(sink, selection)| Some((dom.node(sink)?.carrier_element()?.clone(), selection)));
 
     (scrolled, focused)
   });

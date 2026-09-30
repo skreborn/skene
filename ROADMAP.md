@@ -44,16 +44,12 @@ left half-done in a code comment.
     - Structure: anchors exist in the scene alone, platforms receiving the next real
     sibling and server output keeping comment pairs only where streaming needs a
     marker.
-    - The web's realization: `Platform for Web` is written once over a small sink trait
-    that the DOM and the string tree implement, the browser layering adoption and events
-    on top, so the two leaves cannot drift, the stylesheet bookkeeping both repeat (the
-    compiled cache, keeping, releasing and registering classes, tokens and slots) moving
-    into the shared layer; the server tier writes real pages that the
-    browser tier hydrates with zero mismatches, where the browser tests fake the served
-    markup today; structural hydration keys per scope replace the one global counter, so
-    async rebuilds and nested lazy content keep their markers and their server markup;
-    where `appearance: base-select` is supported, the picker is a styled native
-    `<select>` and the hydration swap goes, the drawn face remaining elsewhere.
+    - The web's hydration: the server tier writes real pages that the browser tier
+    hydrates with zero mismatches, where the browser tests fake the served markup today;
+    structural hydration keys per scope replace the one global counter, so async
+    rebuilds and nested lazy content keep their markers and their server markup; where
+    `appearance: base-select` is supported, the picker is a styled native `<select>` and
+    the hydration swap goes, the drawn face remaining elsewhere.
 3. **Tests that exercise what users see.** Headless becomes the GUI's real stand-in,
     and every tier asserts through roles, text and pixels.
     - The terminal's retained runtime (the taffy store, hit testing, focus, capture,
@@ -583,6 +579,10 @@ Watched, not scheduled:
 - A userland render pool beside `skene-transport`, N `--serve` workers with timeouts,
     respawn and backpressure behind one function a Rust server calls: once someone
     deploys server rendering.
+- Out-of-order streaming: each deferred boundary streams as soon as it settles rather
+    than in document order, behind a switch on by default that an app may turn off,
+    once HTML's declarative out-of-order patching (`<template for>`) is Baseline
+    widely available.
 
 ## The terminal's enhancements, as a whole
 

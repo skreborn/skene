@@ -17,7 +17,7 @@ use std::{
   time::Duration,
 };
 
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashSet;
 use skene_common::gui::{GuiExt, Head, HeadElement, HeadId, Painter, Painting};
 use skene_core::{
   AccessProp,
@@ -40,7 +40,6 @@ use skene_core::{
   NodeMap,
   Observation,
   OverlayProps,
-  Part,
   PickerOption,
   Platform,
   RunProps,
@@ -52,8 +51,6 @@ use skene_core::{
   StaticLeaf,
   TextSelection,
   Timer,
-  Toggle,
-  TokenName,
   View,
 };
 use skene_reactive::{Memo, Owner, ReadSignal, Set, Signal, WriteSignal, batch, provide_context};
@@ -61,54 +58,9 @@ use skene_reactive::{Memo, Owner, ReadSignal, Set, Signal, WriteSignal, batch, p
 pub use self::task::{drive, install_executor, set_render_deadline, sleep};
 use super::{
   Web,
-  compile::{
-    Compiled,
-    Key,
-    SlotBinding,
-    all_unconditional,
-    box_fingerprint,
-    compile_box,
-    compile_control,
-    compile_definitions,
-    compile_layout,
-    compile_overlay,
-    compile_root_definitions,
-    compile_run,
-    control_fingerprint,
-    inline_definitions,
-    layout_fingerprint,
-    overlay_fingerprint,
-    render_box_leaf,
-    render_run_leaf,
-    run_fingerprint,
-    slot_registration,
-    slot_registrations,
-  },
-  condition::{CLASS_PLACEHOLDER, CONTROL_ATTRIBUTE, DRAGS_ATTRIBUTE, NATIVE_CLASS, drags_value},
-  markup::{
-    FormElement,
-    MARKER_ATTRIBUTE,
-    NATIVE_ACCESS_ATTRIBUTES,
-    SCOPE_ATTRIBUTE,
-    STYLE_ATTRIBUTE,
-    STYLE_ID,
-    access_attributes,
-    anchor_text,
-    aria_role,
-    box_tag,
-    drawn_element,
-    element_id,
-    focus_order_attribute,
-    form_element,
-    is_form_element,
-    link_attributes,
-    native_attributes,
-    referenced_nodes,
-    replaced_by_access,
-    runs_script,
-    scrolls,
-    takes_disabled,
-  },
+  compile::slot_registrations,
+  condition::CLASS_PLACEHOLDER,
+  markup::{FormElement, MARKER_ATTRIBUTE, STYLE_ATTRIBUTE, STYLE_ID},
   motion::VIEW_TRANSITION_RULE,
   token::WebTokenValue,
 };
@@ -120,10 +72,11 @@ use crate::{
   STYLE_LAYER,
   WebMarkup,
   document::{escape_attr, escape_text, push_script, state_script},
-  interner::ClassInterner,
+  realize::{Realized, Realizer, Sink},
+  style_book::{StyleSink, push_style_text},
 };
 
-/// The root of the string tree; its children are the page body.
+/// The element of the string tree standing for the page body, which the root realizes.
 const ROOT: u32 = 0;
 
 /// A probe for whether a deferred boundary's content has settled.
@@ -135,82 +88,54 @@ type BoundarySettled = Box<dyn Fn() -> bool>;
 /// gone.
 #[derive(Clone, Copy)]
 struct Frame {
-  index: u32,
+  node: NodeId,
   passed: Option<NodeId>,
   passed_count: usize,
 }
 
-/// What a node is in the string tree.
+/// What an element of the string tree is.
 enum Content {
   Element(&'static str),
   Comment(String),
 }
 
-/// One node of the string tree.
-struct Node {
-  /// What the node is.
+/// One element or comment of the string tree.
+struct Element {
+  /// What it is.
   content: Content,
   /// The element's hydration marker: its place in element creation order.
   marker: u32,
-  /// The element's attributes, in the order first set.
+  /// The element's attributes, in the order first set: `class` holding nothing, its
+  /// place for the classes, and `style` the text it was set to, before the
+  /// declarations.
   attributes: Vec<(String, String)>,
-  /// The class of its compiled style.
-  style_class: Option<Rc<str>>,
-  /// The class of a scope's token definitions.
-  token_class: Option<Rc<str>>,
+  /// The classes, in the order first added.
+  classes: Vec<Rc<str>>,
   /// The inline style declarations, in the order first set.
   inline: Vec<(String, String)>,
   /// The text content: a run's text, or a `<textarea>`'s value.
   text: Option<String>,
-  /// The native element carrying a control's state, focus and value, when the control
-  /// has one apart from its root, serialized first inside it.
-  carrier: Option<u32>,
-  /// Whether it is a control's root.
-  control: bool,
-  /// Whether the box scrolls its content, so it takes a place in the focus order.
-  scrolls: bool,
-  /// Whether the node stands bare: a control that is its own `<input>`, `<textarea>`
-  /// or `<select>`, which its caption's `<label>` is `for`.
-  bare: bool,
-  /// The `<label>` a control's caption is serialized in, before the control, outside
-  /// its children, where the control keeps its caption beside it.
-  caption: Option<u32>,
+  /// The elements the realization placed inside it apart from the scene's children,
+  /// serialized first inside it: a control's native input inside its label.
+  nested: Vec<u32>,
   /// A `<select>`'s options.
   options: Vec<PickerOption>,
   /// A `<select>`'s chosen value.
   chosen: Option<String>,
-  /// The scene node the element realizes.
-  realizes: Option<NodeId>,
-  /// The slots its class references.
-  slots: Rc<[SlotBinding]>,
 }
 
-impl Node {
-  fn element(tag: &'static str) -> Self {
+impl Element {
+  const fn new(content: Content, marker: u32) -> Self {
     Self {
-      content: Content::Element(tag),
-      marker: 0,
+      content,
+      marker,
       attributes: Vec::new(),
-      style_class: None,
-      token_class: None,
+      classes: Vec::new(),
       inline: Vec::new(),
       text: None,
-      carrier: None,
-      control: false,
-      scrolls: false,
-      bare: false,
+      nested: Vec::new(),
       options: Vec::new(),
       chosen: None,
-      caption: None,
-      realizes: None,
-      slots: Rc::from([]),
-    }
-  }
-
-  fn comment(text: String) -> Self {
-    Self {
-      content: Content::Comment(text),
-      ..Self::element("")
     }
   }
 
@@ -221,7 +146,23 @@ impl Node {
     }
   }
 
+  /// Sets the attribute `name` to `value`: `class` replaces the classes and `style`
+  /// the declarations, as a browser parses them.
   fn set_attribute(&mut self, name: &str, value: &str) {
+    let value = match name {
+      "class" => {
+        self.classes = value.split_whitespace().map(Rc::from).collect();
+
+        ""
+      }
+      "style" => {
+        self.inline.clear();
+
+        value
+      }
+      _ => value,
+    };
+
     match self
       .attributes
       .iter_mut()
@@ -232,34 +173,28 @@ impl Node {
     }
   }
 
-  fn remove_attribute(&mut self, name: &str) {
-    self.attributes.retain(|(existing, _)| existing != name);
+  /// Removes every attribute whose name `matches`, the classes or the declarations
+  /// with `class` or `style`.
+  fn remove_attributes(&mut self, matches: impl Fn(&str) -> bool) {
+    if matches("class") {
+      self.classes.clear();
+    }
+
+    if matches("style") {
+      self.inline.clear();
+    }
+
+    self.attributes.retain(|(name, _)| !matches(name));
   }
 
-  fn set_flag(&mut self, name: &str, on: bool) {
-    if on {
-      self.set_attribute(name, "");
-    }
-    else {
-      self.remove_attribute(name);
-    }
-  }
-
-  /// Writes the attributes a control's native element carries.
-  fn write_native_attributes(&mut self, native: FormElement, props: &ControlProps<Web>) {
-    for (name, value) in native_attributes(native, props) {
-      self.set_attribute(name, &value);
-    }
-  }
-
-  fn set_inline(&mut self, property: String, value: String) {
+  fn set_inline(&mut self, property: &str, value: &str) {
     match self
       .inline
       .iter_mut()
-      .find(|(existing, _)| *existing == property)
+      .find(|(existing, _)| existing == property)
     {
-      Some((_, existing)) => *existing = value,
-      None => self.inline.push((property, value)),
+      Some((_, existing)) => value.clone_into(existing),
+      None => self.inline.push((property.to_owned(), value.to_owned())),
     }
   }
 
@@ -267,8 +202,8 @@ impl Node {
     matches!(self.tag(), "input" | "br" | "hr" | "img")
   }
 
-  /// Appends the node's text, escaped; a textarea's leading newline doubled, since the
-  /// parser drops the first.
+  /// Appends the element's text, escaped; a textarea's leading newline doubled, since
+  /// the parser drops the first.
   fn emit_text(&self, text: &str, out: &mut String) {
     if self.tag() == "textarea" && text.starts_with('\n') {
       out.push('\n');
@@ -292,47 +227,85 @@ impl Node {
     out.push_str(&self.marker.to_string());
     out.push('"');
 
+    let mut classes = false;
+    let mut style = false;
+
     for (name, value) in &self.attributes {
-      out.push(' ');
-      out.push_str(name);
+      match name.as_str() {
+        "class" => {
+          classes = true;
+          self.emit_classes(out);
+        }
+        "style" => {
+          style = true;
+          self.emit_style(value, out);
+        }
+        _ => {
+          out.push(' ');
+          out.push_str(name);
 
-      if !value.is_empty() {
-        out.push_str("=\"");
-        escape_attr(value, out);
-        out.push('"');
+          if !value.is_empty() {
+            out.push_str("=\"");
+            escape_attr(value, out);
+            out.push('"');
+          }
+        }
       }
     }
 
-    let classes: Vec<&str> = self
-      .style_class
-      .iter()
-      .chain(&self.token_class)
-      .map(|class| &**class)
-      .collect();
-
-    if !classes.is_empty() {
-      out.push_str(" class=\"");
-      out.push_str(&classes.join(" "));
-      out.push('"');
+    if !classes {
+      self.emit_classes(out);
     }
 
-    if !self.inline.is_empty() {
-      out.push_str(" style=\"");
-
-      let mut style = String::new();
-
-      for (property, value) in &self.inline {
-        style.push_str(property);
-        style.push(':');
-        style.push_str(value);
-        style.push(';');
-      }
-
-      escape_attr(&style, out);
-      out.push('"');
+    if !style {
+      self.emit_style("", out);
     }
 
     out.push('>');
+  }
+
+  /// Writes the `class` attribute, where the element has a class.
+  fn emit_classes(&self, out: &mut String) {
+    if self.classes.is_empty() {
+      return;
+    }
+
+    out.push_str(" class=\"");
+
+    for (index, class) in self.classes.iter().enumerate() {
+      if index > 0 {
+        out.push(' ');
+      }
+
+      out.push_str(class);
+    }
+
+    out.push('"');
+  }
+
+  /// Writes the `style` attribute: the text it was set to, then the declarations;
+  /// nothing where both are empty.
+  fn emit_style(&self, text: &str, out: &mut String) {
+    let mut style = text.to_owned();
+
+    if !style.is_empty() && !self.inline.is_empty() && !style.trim_end().ends_with(';') {
+      style.push(';');
+    }
+
+    for (property, value) in &self.inline {
+      style.push_str(property);
+      style.push(':');
+      style.push_str(value);
+      style.push(';');
+    }
+
+    if style.is_empty() {
+      return;
+    }
+
+    out.push_str(" style=\"");
+    escape_attr(&style, out);
+    out.push('"');
   }
 
   /// Writes a `<select>`'s options, the chosen one and the disabled ones marked.
@@ -367,20 +340,218 @@ impl Node {
   }
 }
 
+/// The server's sink: the string tree's elements by index, the root's first.
+struct StringTree {
+  elements: Vec<Option<Element>>,
+  markers: u32,
+}
+
+impl StringTree {
+  fn new() -> Self {
+    Self {
+      elements: vec![Some(Element::new(Content::Element(""), 0))],
+      markers: 0,
+    }
+  }
+
+  fn element(&self, index: u32) -> Option<&Element> {
+    self.elements.get(index as usize).and_then(Option::as_ref)
+  }
+
+  fn element_mut(&mut self, index: u32) -> Option<&mut Element> {
+    self
+      .elements
+      .get_mut(index as usize)
+      .and_then(Option::as_mut)
+  }
+
+  fn push(&mut self, element: Element) -> u32 {
+    let index = u32::try_from(self.elements.len()).expect("a tree holds at most 2^32 elements");
+
+    self.elements.push(Some(element));
+
+    index
+  }
+
+  /// Runs `write` on the element `index`, if it is live.
+  fn write(&mut self, index: u32, write: impl FnOnce(&mut Element)) {
+    if let Some(element) = self.element_mut(index) {
+      write(element);
+    }
+  }
+}
+
+impl Sink for StringTree {
+  type Element = u32;
+  type Extra = ();
+  type Sheet = Sheet;
+
+  const TITLE_TOOLTIPS: bool = true;
+
+  fn create_element(&mut self, tag: &'static str) -> (u32, bool) {
+    self.markers += 1;
+
+    (
+      self.push(Element::new(Content::Element(tag), self.markers)),
+      false,
+    )
+  }
+
+  fn create_comment(&mut self, text: String) -> (u32, bool) {
+    (self.push(Element::new(Content::Comment(text), 0)), false)
+  }
+
+  fn bind(&mut self, _: &u32, _: NodeId) {}
+
+  fn discard(&mut self, element: &u32) {
+    if let Some(slot) = self.elements.get_mut(*element as usize) {
+      *slot = None;
+    }
+  }
+
+  fn append_child(&mut self, parent: &u32, child: &u32) {
+    self.write(*parent, |parent| {
+      if !parent.nested.contains(child) {
+        parent.nested.push(*child);
+      }
+    });
+  }
+
+  fn set_attribute(&mut self, element: &u32, name: &str, value: &str) {
+    self.write(*element, |element| element.set_attribute(name, value));
+  }
+
+  fn remove_attribute(&mut self, element: &u32, name: &str) {
+    self.write(*element, |element| {
+      element.remove_attributes(|existing| existing == name);
+    });
+  }
+
+  fn remove_attributes(&mut self, element: &u32, matches: impl Fn(&str) -> bool) {
+    self.write(*element, |element| element.remove_attributes(matches));
+  }
+
+  fn set_property(&mut self, element: &u32, property: &str, value: &str) {
+    self.write(*element, |element| element.set_inline(property, value));
+  }
+
+  fn remove_property(&mut self, element: &u32, property: &str) {
+    self.write(*element, |element| {
+      element.inline.retain(|(existing, _)| existing != property);
+    });
+  }
+
+  fn custom_properties(&self, element: &u32) -> Vec<String> {
+    self.element(*element).map_or_else(Vec::new, |element| {
+      element
+        .inline
+        .iter()
+        .filter(|(property, _)| property.starts_with("--"))
+        .map(|(property, _)| property.clone())
+        .collect()
+    })
+  }
+
+  fn text(&self, element: &u32) -> Option<String> {
+    self.element(*element)?.text.clone()
+  }
+
+  fn set_text(&mut self, element: &u32, text: &str) {
+    self.write(*element, |element| element.text = Some(text.to_owned()));
+  }
+
+  fn swap_class(&mut self, element: &u32, previous: Option<&str>, class: &str) {
+    self.write(*element, |element| {
+      if let Some(previous) = previous
+        && previous != class
+      {
+        element.classes.retain(|existing| **existing != *previous);
+      }
+
+      if !element.classes.iter().any(|existing| **existing == *class) {
+        element.classes.push(Rc::from(class));
+      }
+    });
+  }
+
+  fn set_checked(&mut self, element: &u32, checked: bool) {
+    self.set_flag(element, "checked", checked);
+  }
+
+  fn set_indeterminate(&mut self, _: &u32, _: bool) {}
+
+  fn set_value(&mut self, element: &u32, value: &str) {
+    self.write(*element, |element| match element.tag() {
+      "textarea" => element.text = Some(value.to_owned()),
+      "select" => element.chosen = Some(value.to_owned()),
+      _ => element.set_attribute("value", value),
+    });
+  }
+
+  fn set_options(&mut self, element: &u32, options: &[PickerOption]) {
+    self.write(*element, |element| element.options = options.to_vec());
+  }
+
+  fn note_live_state(&mut self, _: NodeId, _: &u32, _: FormElement) {}
+}
+
+/// The server's stylesheet: what each flush emits, and the classes whose rules are
+/// emitted.
+#[derive(Default)]
+struct Sheet {
+  /// The token and slot registrations not emitted yet.
+  registrations: String,
+  /// The rules interned since the last flush and still live, realized, in interning
+  /// order.
+  rules: Vec<(Rc<str>, String)>,
+  /// The classes whose rules are emitted.
+  emitted: FxHashSet<Rc<str>>,
+}
+
+impl Sheet {
+  /// Appends the registrations and rules not emitted yet, the rules in the style
+  /// layer, marking them emitted; no `</` is written, so the text cannot end the
+  /// `<style>` it sits in.
+  fn render_new(&mut self, out: &mut String) {
+    push_style_text(out, &self.registrations);
+    self.registrations.clear();
+
+    if self.rules.is_empty() {
+      return;
+    }
+
+    out.push_str(STYLE_LAYER);
+
+    for (class, rule) in self.rules.drain(..) {
+      push_style_text(out, &rule);
+      self.emitted.insert(class);
+    }
+
+    out.push('}');
+  }
+}
+
+impl StyleSink for Sheet {
+  fn add_rule(&mut self, class: &Rc<str>, template: &str) {
+    if !self.emitted.contains(class) {
+      self
+        .rules
+        .push((Rc::clone(class), template.replace(CLASS_PLACEHOLDER, class)));
+    }
+  }
+
+  fn remove_rule(&mut self, class: &str) {
+    self.rules.retain(|(pending, _)| **pending != *class);
+  }
+
+  fn add_registrations(&mut self, registrations: impl Iterator<Item = String>) {
+    self.registrations.extend(registrations);
+  }
+}
+
 /// The string tree, its stylesheet and the head, for one render.
 struct Tree {
-  nodes: Vec<Option<Node>>,
-  realized: NodeMap<u32>,
-  styles: ClassInterner,
-  cache: FxHashMap<u64, Rc<Compiled>>,
-  registered: FxHashSet<TokenName>,
-  registered_slots: FxHashSet<(Key, usize)>,
-  registrations: String,
-  registrations_emitted: usize,
-  emitted: FxHashSet<Rc<str>>,
-  root_class: Option<Rc<str>>,
-  markers: u32,
-  anchors: u32,
+  realizer: Realizer<StringTree>,
   language: Option<String>,
   head: Head,
 }
@@ -388,235 +559,48 @@ struct Tree {
 impl Tree {
   fn new() -> Self {
     Self {
-      nodes: vec![Some(Node::element(""))],
-      realized: NodeMap::new(),
-      styles: ClassInterner::new(),
-      cache: FxHashMap::default(),
-      registered: FxHashSet::default(),
-      registered_slots: FxHashSet::default(),
-      registrations: String::new(),
-      registrations_emitted: 0,
-      emitted: FxHashSet::default(),
-      root_class: None,
-      markers: 0,
-      anchors: 0,
+      realizer: Realizer::new(StringTree::new(), Sheet::default()),
       language: None,
       head: Head::default(),
     }
   }
 
-  fn create(&mut self, node: Node) -> u32 {
-    let index = u32::try_from(self.nodes.len()).expect("a tree holds at most 2^32 nodes");
+  /// The element realizing `node`, if it is live.
+  fn element_of(&self, node: NodeId) -> Option<&Element> {
+    let record = self.realizer.records.get(node)?;
 
-    self.nodes.push(Some(node));
-
-    index
+    self.realizer.sink.element(record.element)
   }
 
-  fn element(&mut self, tag: &'static str) -> u32 {
-    self.markers += 1;
-
-    let mut node = Node::element(tag);
-
-    node.marker = self.markers;
-
-    self.create(node)
-  }
-
-  fn node(&self, index: u32) -> Option<&Node> {
-    self.nodes.get(index as usize).and_then(Option::as_ref)
-  }
-
-  fn node_mut(&mut self, index: u32) -> Option<&mut Node> {
-    self.nodes.get_mut(index as usize).and_then(Option::as_mut)
-  }
-
-  /// The records of the scene's children of the node `index` realizes, in order: the
-  /// caption a control keeps beside it passed over, which the control serializes.
+  /// The scene's children of `node` the tree realizes, in order: the caption a control
+  /// keeps beside it passed over, which the control serializes.
   fn scene_children<'a>(
     &'a self,
     scene: &'a Scene<Web>,
-    index: u32,
-  ) -> impl Iterator<Item = (NodeId, u32)> + 'a {
-    let node = self.node(index).and_then(|node| node.realizes);
-    let caption = node.and_then(|node| scene.caption_beside(node));
+    node: NodeId,
+  ) -> impl Iterator<Item = NodeId> + 'a {
+    let caption = scene.caption_beside(node);
 
-    node
-      .into_iter()
-      .flat_map(move |node| scene.children(node))
-      .filter(move |child| Some(*child) != caption)
-      .filter_map(|child| Some((child, *self.realized.get(child)?)))
+    scene
+      .children(node)
+      .filter(move |child| Some(*child) != caption && self.realizer.records.contains(*child))
   }
 
-  /// The record of the scene child after `passed` among those of the node `index`
-  /// realizes, the caption a control keeps beside it passed over.
-  fn next_scene_child(
-    &self,
-    scene: &Scene<Web>,
-    index: u32,
-    passed: NodeId,
-  ) -> Option<(NodeId, u32)> {
-    let caption = self
-      .node(index)
-      .and_then(|node| node.realizes)
-      .and_then(|node| scene.caption_beside(node));
+  /// The scene child after `passed` among those of `node` the tree realizes, the
+  /// caption a control keeps beside it passed over.
+  fn next_scene_child(&self, scene: &Scene<Web>, node: NodeId, passed: NodeId) -> Option<NodeId> {
+    let caption = scene.caption_beside(node);
     let mut next = scene.next_sibling(passed);
 
     while let Some(child) = next {
-      if Some(child) != caption
-        && let Some(index) = self.realized.get(child)
-      {
-        return Some((child, *index));
+      if Some(child) != caption && self.realizer.records.contains(child) {
+        return Some(child);
       }
 
       next = scene.next_sibling(child);
     }
 
     None
-  }
-
-  /// The element carrying `index`'s state: its native input, else itself.
-  fn carrier(&self, index: u32) -> u32 {
-    self
-      .node(index)
-      .and_then(|node| node.carrier)
-      .unwrap_or(index)
-  }
-
-  /// The compiled template for `key`, rendered by `compile` on a miss.
-  fn compiled(&mut self, key: u64, compile: impl FnOnce() -> Compiled) -> Rc<Compiled> {
-    if let Some(cached) = self.cache.get(&key) {
-      debug_assert!(
-        cached.template == compile().template,
-        "the fingerprint {key:x} names two templates"
-      );
-
-      return Rc::clone(cached);
-    }
-
-    let compiled = Rc::new(compile());
-
-    self.cache.insert(key, Rc::clone(&compiled));
-
-    compiled
-  }
-
-  /// Interns `template` and swaps it in for `previous`, returning the class.
-  fn swap_class(&mut self, template: &str, previous: Option<&str>) -> Rc<str> {
-    let (class, _) = self.styles.class_for(template);
-
-    if previous != Some(&*class) {
-      self.styles.retain(&class);
-
-      if let Some(previous) = previous {
-        self.styles.release(previous);
-      }
-    }
-
-    class
-  }
-
-  /// Registers the custom property of every variant slot among `slots` not registered
-  /// yet; the base slots are registered with the reset.
-  fn register_slots(&mut self, slots: &[SlotBinding]) {
-    for binding in slots.iter().filter(|binding| binding.position > 0) {
-      if self
-        .registered_slots
-        .insert((binding.property, binding.position))
-      {
-        self
-          .registrations
-          .push_str(&slot_registration(binding.property, binding.position));
-      }
-    }
-  }
-
-  fn assign_style(&mut self, index: u32, compiled: &Rc<Compiled>) {
-    self.register_slots(&compiled.slots);
-
-    let previous = self.node(index).and_then(|node| node.style_class.clone());
-    let class = self.swap_class(&compiled.template, previous.as_deref());
-
-    if let Some(node) = self.node_mut(index) {
-      node.style_class = Some(class);
-      node.slots = Rc::from(compiled.slots.as_slice());
-    }
-  }
-
-  /// Makes the `<label>` the caption `child` is serialized in, before its control
-  /// `parent`, `for` the control where it stands bare, when `child` is the caption
-  /// `parent` keeps beside it and no label stands yet.
-  fn keep_caption(&mut self, parent: u32, child: u32) {
-    let Some((node, labels)) = self
-      .node(parent)
-      .filter(|node| node.control && node.caption.is_none())
-      .and_then(|node| Some((node.realizes?, node.bare)))
-    else {
-      return;
-    };
-    let captions = self
-      .node(child)
-      .and_then(|child| child.realizes)
-      .is_some_and(|child| Scene::<Web>::read(|scene| scene.caption_beside(node) == Some(child)));
-
-    if !captions {
-      return;
-    }
-
-    let caption = self.element("label");
-    let id = element_id(node);
-
-    if labels && let Some(label) = self.node_mut(caption) {
-      label.set_attribute("for", &id);
-    }
-
-    if let Some(entry) = self.node_mut(parent) {
-      if labels {
-        entry.set_attribute("id", &id);
-      }
-
-      entry.caption = Some(caption);
-    }
-  }
-
-  /// Drops the `<label>` of the caption the control `parent` keeps beside it, where
-  /// `child`, leaving it, is its `Label` part.
-  fn drop_caption(&mut self, parent: u32, child: u32) {
-    let labels = self
-      .node(child)
-      .and_then(|child| child.realizes)
-      .is_some_and(|child| Scene::<Web>::read(|scene| scene.part(child) == Some(Part::Label)));
-
-    if labels && let Some(caption) = self.node_mut(parent).and_then(|node| node.caption.take()) {
-      self.destroy(caption);
-    }
-  }
-
-  /// Destroys the record `index` with the elements standing for it alone: a control's
-  /// carrier and its caption's `<label>`.
-  fn destroy(&mut self, index: u32) {
-    let Some(node) = self.nodes.get_mut(index as usize).and_then(Option::take)
-    else {
-      return;
-    };
-
-    for class in node.style_class.iter().chain(&node.token_class) {
-      self.styles.release(class);
-    }
-
-    for companion in node.carrier.into_iter().chain(node.caption) {
-      if companion != index {
-        self.destroy(companion);
-      }
-    }
-  }
-
-  fn register(&mut self, definitions: &Definitions<WebTokenValue>) {
-    for (name, value) in definitions.iter() {
-      if self.registered.insert(name) {
-        self.registrations.push_str(&value.registration(name));
-      }
-    }
   }
 
   /// The `<style>` block a document opens with: the reset, the slot registrations, and
@@ -631,7 +615,7 @@ impl Tree {
       out.push_str(VIEW_TRANSITION_RULE);
     }
 
-    self.render_new_styles(&mut out);
+    self.realizer.book.sheet.render_new(&mut out);
     out.push_str("</style>");
 
     out
@@ -642,38 +626,13 @@ impl Tree {
   fn render_style_delta(&mut self) -> String {
     let mut delta = String::new();
 
-    self.render_new_styles(&mut delta);
+    self.realizer.book.sheet.render_new(&mut delta);
 
     if delta.is_empty() {
       return delta;
     }
 
     format!("<style {STYLE_ATTRIBUTE}>{delta}</style>")
-  }
-
-  /// Appends the token registrations and live rules not emitted yet, the rules in the
-  /// style layer, marking them emitted; no `</` is written, so the text cannot end the
-  /// `<style>` it sits in.
-  fn render_new_styles(&mut self, out: &mut String) {
-    push_style_text(out, &self.registrations[self.registrations_emitted..]);
-    self.registrations_emitted = self.registrations.len();
-
-    let mut rules = String::new();
-
-    for (class, template) in self.styles.live_rules() {
-      if self.emitted.contains(class) {
-        continue;
-      }
-
-      push_style_text(&mut rules, &template.replace(CLASS_PLACEHOLDER, class));
-      self.emitted.insert(Rc::from(class));
-    }
-
-    if !rules.is_empty() {
-      out.push_str(STYLE_LAYER);
-      out.push_str(&rules);
-      out.push('}');
-    }
   }
 
   fn render_head(&self) -> String {
@@ -718,11 +677,12 @@ impl Tree {
     out
   }
 
-  fn render_body(&self) -> String {
+  /// The page body: the scene's children of `root`, serialized.
+  fn render_body(&self, root: NodeId) -> String {
     let mut out = String::new();
 
     Scene::<Web>::read(|scene| {
-      for (_, child) in self.scene_children(scene, ROOT) {
+      for child in self.scene_children(scene, root) {
         self.serialize(scene, child, &mut out);
       }
     });
@@ -730,46 +690,50 @@ impl Tree {
     out
   }
 
-  fn serialize(&self, scene: &Scene<Web>, index: u32, out: &mut String) {
-    let Some(node) = self.node(index)
+  fn serialize(&self, scene: &Scene<Web>, node: NodeId, out: &mut String) {
+    let Some(element) = self.element_of(node)
     else {
       return;
     };
 
-    if let Content::Comment(text) = &node.content {
-      Node::emit_comment(text, out);
+    if let Content::Comment(text) = &element.content {
+      Element::emit_comment(text, out);
 
       return;
     }
 
     self.serialize_caption(scene, node, out);
-    node.emit_open(out);
-    node.emit_options(out);
+    element.emit_open(out);
+    element.emit_options(out);
 
-    if let Some(text) = &node.text {
-      node.emit_text(text, out);
+    if let Some(text) = &element.text {
+      element.emit_text(text, out);
     }
     else {
-      self.serialize_carrier(scene, index, out);
+      self.serialize_nested(element, out);
 
-      for (_, child) in self.scene_children(scene, index) {
+      for child in self.scene_children(scene, node) {
         self.serialize(scene, child, out);
       }
     }
 
-    node.emit_close(out);
+    element.emit_close(out);
   }
 
   /// Serializes the caption `node` keeps beside it in its `<label>`, where it keeps one.
-  fn serialize_caption(&self, scene: &Scene<Web>, node: &Node, out: &mut String) {
-    let Some(label) = node.caption.and_then(|label| self.node(label))
+  fn serialize_caption(&self, scene: &Scene<Web>, node: NodeId, out: &mut String) {
+    let Some(label) = self
+      .realizer
+      .records
+      .get(node)
+      .and_then(|record| record.caption)
+      .and_then(|label| self.realizer.sink.element(label))
     else {
       return;
     };
-    let Some(child) = node
-      .realizes
-      .and_then(|control| scene.caption_beside(control))
-      .and_then(|child| self.realized.get(child).copied())
+    let Some(child) = scene
+      .caption_beside(node)
+      .filter(|child| self.realizer.records.contains(*child))
     else {
       return;
     };
@@ -779,15 +743,24 @@ impl Tree {
     label.emit_close(out);
   }
 
-  /// Serializes the native element carrying the control `index`, where it has one apart
-  /// from its root.
-  fn serialize_carrier(&self, scene: &Scene<Web>, index: u32, out: &mut String) {
-    if let Some(carrier) = self
-      .node(index)
-      .and_then(|node| node.carrier)
-      .filter(|carrier| *carrier != index)
+  /// Serializes the elements the realization placed inside `element`.
+  fn serialize_nested(&self, element: &Element, out: &mut String) {
+    for nested in element
+      .nested
+      .iter()
+      .filter_map(|nested| self.realizer.sink.element(*nested))
     {
-      self.serialize(scene, carrier, out);
+      nested.emit_open(out);
+      nested.emit_options(out);
+
+      if let Some(text) = &nested.text {
+        nested.emit_text(text, out);
+      }
+      else {
+        self.serialize_nested(nested, out);
+      }
+
+      nested.emit_close(out);
     }
   }
 
@@ -802,28 +775,30 @@ impl Tree {
     scene: &Scene<Web>,
     cursor: &mut Vec<Frame>,
     out: &mut String,
-    pending: impl Fn(u32) -> bool,
-  ) -> Option<u32> {
+    pending: impl Fn(NodeId) -> bool,
+  ) -> Option<NodeId> {
     while let Some(frame) = cursor.last_mut() {
-      let Some(node) = self.node(frame.index)
+      let Some(record) = self.realizer.records.get(frame.node)
       else {
         cursor.pop();
 
         continue;
       };
       let next = match frame.passed {
-        None => self.scene_children(scene, frame.index).next(),
-        Some(passed) if scene.parent(passed) == node.realizes => {
-          self.next_scene_child(scene, frame.index, passed)
+        None => self.scene_children(scene, frame.node).next(),
+        Some(passed) if scene.parent(passed) == Some(frame.node) => {
+          self.next_scene_child(scene, frame.node, passed)
         }
         Some(_) => self
-          .scene_children(scene, frame.index)
+          .scene_children(scene, frame.node)
           .nth(frame.passed_count),
       };
-      let Some((scene_child, child)) = next
+      let Some(child) = next
       else {
-        if frame.index != ROOT {
-          node.emit_close(out);
+        if record.element != ROOT
+          && let Some(element) = self.realizer.sink.element(record.element)
+        {
+          element.emit_close(out);
         }
 
         cursor.pop();
@@ -835,39 +810,39 @@ impl Tree {
         return Some(child);
       }
 
-      frame.passed = Some(scene_child);
+      frame.passed = Some(child);
       frame.passed_count += 1;
 
-      let Some(child_node) = self.node(child)
+      let Some(element) = self.element_of(child)
       else {
         continue;
       };
 
-      if let Content::Comment(text) = &child_node.content {
-        Node::emit_comment(text, out);
+      if let Content::Comment(text) = &element.content {
+        Element::emit_comment(text, out);
 
         continue;
       }
 
-      self.serialize_caption(scene, child_node, out);
-      child_node.emit_open(out);
-      child_node.emit_options(out);
+      self.serialize_caption(scene, child, out);
+      element.emit_open(out);
+      element.emit_options(out);
 
-      if let Some(text) = &child_node.text {
-        child_node.emit_text(text, out);
-        child_node.emit_close(out);
+      if let Some(text) = &element.text {
+        element.emit_text(text, out);
+        element.emit_close(out);
 
         continue;
       }
 
-      self.serialize_carrier(scene, child, out);
+      self.serialize_nested(element, out);
 
       if self.scene_children(scene, child).next().is_none() {
-        child_node.emit_close(out);
+        element.emit_close(out);
       }
       else {
         cursor.push(Frame {
-          index: child,
+          node: child,
           passed: None,
           passed_count: 0,
         });
@@ -913,7 +888,7 @@ thread_local! {
   static STATIC_ROUTES: RefCell<Option<Vec<String>>> = const { RefCell::new(None) };
   /// Each deferred boundary's start anchor, mapped to a probe for whether its content
   /// has settled; consulted by the streaming walk to decide where to pause.
-  static BOUNDARIES: RefCell<FxHashMap<u32, BoundarySettled>> = RefCell::new(FxHashMap::default());
+  static BOUNDARIES: RefCell<NodeMap<BoundarySettled>> = const { RefCell::new(NodeMap::new()) };
 }
 
 /// The script that applies a stored scheme choice before the first paint.
@@ -987,44 +962,14 @@ fn forget_static_routes() {
   STATIC_ROUTES.with(|recorded| *recorded.borrow_mut() = None);
 }
 
-/// Appends CSS text to a `<style>` element's content, escaping every `</` so the text
-/// cannot end the element.
-fn push_style_text(out: &mut String, text: &str) {
-  let mut rest = text;
-
-  while let Some(at) = rest.find("</") {
-    out.push_str(&rest[..at]);
-    out.push_str("<\\/");
-    rest = &rest[at + 2..];
-  }
-
-  out.push_str(rest);
-}
-
 /// Runs `operation` on the tree.
 fn with_tree<R>(operation: impl FnOnce(&mut Tree) -> R) -> R {
   TREE.with(|tree| operation(&mut tree.borrow_mut()))
 }
 
-/// Runs `operation` on the node `index`, if it is live.
-fn with_node<R>(index: u32, operation: impl FnOnce(&mut Node) -> R) -> Option<R> {
-  with_tree(|tree| tree.node_mut(index).map(operation))
-}
-
-/// The tree index of the element realizing the scene's `node`, if it is live.
-fn index_of(node: NodeId) -> Option<u32> {
-  with_tree(|tree| tree.realized.get(node).copied())
-}
-
-/// Records that the tree's `index` realizes the scene's `node`.
-fn realize(node: NodeId, index: u32) {
-  with_tree(|tree| {
-    let _replaced = tree.realized.insert(node, index);
-
-    if let Some(record) = tree.node_mut(index) {
-      record.realizes = Some(node);
-    }
-  });
+/// Runs `operation` on the tree's realization.
+fn with_realizer<R>(operation: impl FnOnce(&mut Realizer<StringTree>) -> R) -> R {
+  with_tree(|tree| operation(&mut tree.realizer))
 }
 
 /// Sets the environment the following renders answer with.
@@ -1079,244 +1024,6 @@ fn with_media<R>(operation: impl FnOnce(&MediaState) -> R) -> R {
   })
 }
 
-/// Writes `focus_order` as `tabindex` on `node`; `None` takes a control out of focus
-/// and leaves a box without one.
-fn write_focus_order(node: &mut Node, focus_order: Option<FocusOrder>) {
-  match focus_order_attribute(focus_order, node.control, node.scrolls) {
-    Some(tabindex) => node.set_attribute("tabindex", &tabindex),
-    None => node.remove_attribute("tabindex"),
-  }
-}
-
-/// Replaces the ARIA attributes of `node` with those `access` maps to; a form element
-/// takes the native attribute where one exists.
-fn write_access(node: &mut Node, access: &[AccessProp]) {
-  let form = matches!(node.content, Content::Element(tag) if is_form_element(tag));
-
-  node.attributes.retain(|(name, _)| {
-    let native = form && NATIVE_ACCESS_ATTRIBUTES.contains(&name.as_str());
-
-    !native && !replaced_by_access(name)
-  });
-
-  for (name, value) in access_attributes(access, form) {
-    node.set_attribute(name, &value);
-  }
-}
-
-/// Gives every node `access` refers to the id the reference names.
-fn write_referenced_ids(tree: &mut Tree, access: &[AccessProp]) {
-  for node in referenced_nodes(access) {
-    let Some(sink) = tree.realized.get(node).copied()
-    else {
-      continue;
-    };
-    let target = tree.carrier(sink);
-
-    if let Some(target) = tree.node_mut(target) {
-      target.set_attribute("id", &element_id(node));
-    }
-  }
-}
-
-/// Realizes the props every box-like node shares onto `index`.
-fn finish_box(index: u32, props: &BoxProps<Web>, compiled: &Rc<Compiled>) {
-  with_tree(|tree| {
-    tree.assign_style(index, compiled);
-
-    if let Some(axes) = props.drag_axes
-      && let Some(node) = tree.node_mut(index)
-    {
-      node.set_attribute(DRAGS_ATTRIBUTE, drags_value(axes));
-    }
-
-    let target = tree.carrier(index);
-    let scrolls = scrolls::<Web>(&props.style);
-
-    if let Some(node) = tree.node_mut(target) {
-      node.scrolls = scrolls;
-      write_focus_order(node, props.focus_order);
-      write_access(node, &props.access);
-    }
-
-    write_referenced_ids(tree, &props.access);
-  });
-}
-
-/// The tree index of a fresh element for `create_box`.
-fn box_index(props: &BoxProps<Web>) -> u32 {
-  let (index, compiled) = with_tree(|tree| {
-    let index = tree.element(box_tag(
-      props.role,
-      AccessProp::level_of(&props.access),
-      props.destination.is_some(),
-    ));
-
-    if let Some(node) = tree.node_mut(index) {
-      if let Some(role) = props.role.and_then(aria_role) {
-        node.set_attribute("role", role);
-      }
-
-      if let Some(href) = props
-        .destination
-        .as_deref()
-        .filter(|href| !runs_script(href))
-      {
-        node.set_attribute("href", href);
-      }
-    }
-
-    let compiled = tree.compiled(box_fingerprint(props, 0), || compile_box(props));
-
-    (index, compiled)
-  });
-
-  finish_box(index, props, &compiled);
-
-  index
-}
-
-/// The tree index of a fresh element for `create_control`.
-fn control_index(props: &ControlProps<Web>) -> u32 {
-  let (index, compiled) = with_tree(|tree| {
-    let index = if let Some(native) = form_element(props.native) {
-      if native.is_bare() {
-        let root = tree.element(native.tag);
-
-        if let Some(node) = tree.node_mut(root) {
-          node.write_native_attributes(native, props);
-          node.bare = true;
-        }
-
-        root
-      }
-      else {
-        let root = tree.element("label");
-        let input = tree.element(native.tag);
-
-        if let Some(node) = tree.node_mut(input) {
-          node.write_native_attributes(native, props);
-          node.set_attribute("class", NATIVE_CLASS);
-        }
-
-        if let Some(node) = tree.node_mut(root) {
-          node.carrier = Some(input);
-        }
-
-        root
-      }
-    }
-    else {
-      let (tag, attribute) = drawn_element(props.native, props.box_props.role);
-      let root = tree.element(tag);
-
-      if let Some(node) = tree.node_mut(root) {
-        if let Some((name, value)) = attribute {
-          node.set_attribute(name, value);
-        }
-
-        if let Some(label) = &props.label {
-          node.set_attribute("aria-label", label);
-        }
-      }
-
-      root
-    };
-
-    if let Some(node) = tree.node_mut(index) {
-      node.control = true;
-      node.set_attribute(CONTROL_ATTRIBUTE, "");
-    }
-
-    let compiled = tree.compiled(control_fingerprint(props), || compile_control(props));
-
-    (index, compiled)
-  });
-
-  finish_box(index, &props.box_props, &compiled);
-
-  index
-}
-
-/// The tree index of a fresh element for `create_overlay`.
-fn overlay_index(props: &OverlayProps<Web>) -> u32 {
-  let (index, compiled) = with_tree(|tree| {
-    let index = if props.modal {
-      tree.element("dialog")
-    }
-    else {
-      let index = tree.element("div");
-
-      if let Some(node) = tree.node_mut(index) {
-        node.set_attribute("popover", if props.hint { "hint" } else { "manual" });
-
-        if let Some(role) = props.role().and_then(aria_role) {
-          node.set_attribute("role", role);
-        }
-      }
-
-      index
-    };
-    let compiled = tree.compiled(overlay_fingerprint(props), || compile_overlay(props));
-
-    (index, compiled)
-  });
-
-  finish_box(index, &props.box_props, &compiled);
-
-  index
-}
-
-/// The tree index of a fresh element for `create_run`.
-fn run_index(props: &RunProps<Web>) -> u32 {
-  with_tree(|tree| {
-    let index = match props.link.as_deref() {
-      Some(href) => {
-        let index = tree.element("a");
-
-        if let Some(node) = tree.node_mut(index) {
-          for (name, value) in link_attributes(href, props.link_policy) {
-            node.set_attribute(name, &value);
-          }
-        }
-
-        index
-      }
-      None => tree.element("span"),
-    };
-    let compiled = tree.compiled(run_fingerprint(props), || compile_run(props));
-
-    tree.assign_style(index, &compiled);
-
-    index
-  })
-}
-
-/// The tree index of a fresh element for `create_anchor`.
-fn anchor_index() -> u32 {
-  with_tree(|tree| {
-    let ordinal = tree.anchors;
-
-    tree.anchors += 1;
-
-    tree.create(Node::comment(anchor_text(ordinal)))
-  })
-}
-
-/// The tree index of a fresh element for `create_scope`.
-fn scope_index() -> u32 {
-  with_tree(|tree| {
-    let index = tree.element("div");
-
-    if let Some(node) = tree.node_mut(index) {
-      node.set_attribute(SCOPE_ATTRIBUTE, "");
-      node.set_inline("display".to_owned(), "contents".to_owned());
-    }
-
-    index
-  })
-}
-
 impl Painting for Web {
   fn paint(_node: NodeId, _painter: Box<Painter>) {}
 
@@ -1335,182 +1042,76 @@ impl Platform for Web {
   }
 
   fn create_box(node: NodeId, props: &BoxProps<Self>) {
-    realize(node, box_index(props));
+    with_realizer(|realizer| realizer.create_box(node, props));
   }
 
   fn update_box(node: NodeId, slot: Slot, leaf: &StaticLeaf<BoxValue<f32, GuiExt>>) {
-    let Some(sink) = index_of(node)
-    else {
-      return;
-    };
-
-    with_node(sink, |node| {
-      let binding = node
-        .slots
-        .iter()
-        .find(|binding| binding.slot == slot)
-        .cloned();
-
-      if let Some(binding) = binding {
-        node.set_inline(binding.custom_property(), render_box_leaf(leaf));
-      }
-    });
+    with_realizer(|realizer| realizer.update_box(node, slot, leaf));
   }
 
   fn update_focus_order(node: NodeId, focus_order: Option<FocusOrder>) {
-    let Some(sink) = index_of(node)
-    else {
-      return;
-    };
-
-    with_tree(|tree| {
-      let target = tree.carrier(sink);
-
-      if let Some(node) = tree.node_mut(target) {
-        write_focus_order(node, focus_order);
-      }
-    });
+    with_realizer(|realizer| realizer.update_focus_order(node, focus_order));
   }
 
   fn update_access(node: NodeId, access: &[AccessProp]) {
-    let Some(sink) = index_of(node)
-    else {
-      return;
-    };
-
-    with_tree(|tree| {
-      let target = tree.carrier(sink);
-
-      if let Some(node) = tree.node_mut(target) {
-        write_access(node, access);
-      }
-
-      write_referenced_ids(tree, access);
-    });
+    with_realizer(|realizer| realizer.update_access(node, access));
   }
 
   fn create_control(node: NodeId, props: &ControlProps<Self>) {
-    realize(node, control_index(props));
+    with_realizer(|realizer| realizer.create_control(node, props));
   }
 
   fn set_control_state(node: NodeId, state: &ControlState) {
-    let Some(sink) = index_of(node)
-    else {
-      return;
-    };
-
-    with_tree(|tree| {
-      let root = sink;
-      let carrier = tree.carrier(root);
-
-      if carrier == root {
-        if let Some(node) = tree.node_mut(root) {
-          let disabled_natively = takes_disabled(node.tag());
-
-          node.set_flag("data-skene-checked", state.checked == Toggle::On);
-          node.set_flag("data-skene-indeterminate", state.checked == Toggle::Mixed);
-          node.set_flag("data-skene-disabled", state.disabled);
-          node.set_flag("data-skene-invalid", state.invalid);
-
-          if disabled_natively {
-            node.set_flag("disabled", state.disabled);
-          }
-        }
-      }
-      else if let Some(node) = tree.node_mut(carrier) {
-        node.set_flag("checked", state.checked == Toggle::On);
-        node.set_flag("data-skene-indeterminate", state.checked == Toggle::Mixed);
-        node.set_flag("disabled", state.disabled);
-
-        if state.invalid {
-          node.set_attribute("aria-invalid", "true");
-        }
-        else {
-          node.remove_attribute("aria-invalid");
-        }
-      }
-
-      if let Some(node) = tree.node_mut(root) {
-        node.set_flag("data-skene-open", state.open);
-      }
-    });
+    with_realizer(|realizer| realizer.set_control_state(node, *state));
   }
 
   fn create_overlay(node: NodeId, props: &OverlayProps<Self>) {
-    realize(node, overlay_index(props));
+    with_realizer(|realizer| realizer.create_overlay(node, props));
   }
 
   fn set_overlay_open(_: NodeId, _: bool, _: Option<NodeId>) {}
 
   fn apply_layout(node: NodeId, layout: &StaticBoxStyle<Self>) {
-    let Some(sink) = index_of(node)
-    else {
-      return;
-    };
-
-    with_tree(|tree| {
-      let compiled = tree.compiled(layout_fingerprint::<Self>(layout), || {
-        compile_layout::<Self>(layout)
-      });
-
-      tree.assign_style(sink, &compiled);
-    });
+    with_realizer(|realizer| realizer.apply_layout(node, layout));
   }
 
   fn create_run(node: NodeId, props: &RunProps<Self>) {
-    realize(node, run_index(props));
+    with_realizer(|realizer| realizer.create_run(node, props));
   }
 
   fn update_run(node: NodeId, slot: Slot, leaf: &StaticLeaf<RunValue<GuiExt>>) {
-    let Some(sink) = index_of(node)
-    else {
-      return;
-    };
-
-    with_node(sink, |node| {
-      let binding = node
-        .slots
-        .iter()
-        .find(|binding| binding.slot == slot)
-        .cloned();
-
-      if let Some(binding) = binding {
-        node.set_inline(binding.custom_property(), render_run_leaf(leaf));
-      }
-    });
+    with_realizer(|realizer| realizer.update_run(node, slot, leaf));
   }
 
   fn set_text(node: NodeId, text: &str) {
-    let Some(sink) = index_of(node)
-    else {
-      return;
-    };
-
-    with_node(sink, |node| node.text = Some(text.to_owned()));
+    with_realizer(|realizer| realizer.set_text(node, text));
   }
 
   fn create_anchor(node: NodeId) {
-    realize(node, anchor_index());
+    with_realizer(|realizer| realizer.create_anchor(node));
   }
 
   fn create_scope(node: NodeId) {
-    realize(node, scope_index());
+    with_realizer(|realizer| realizer.create_scope(node));
   }
 
   fn attach(parent: NodeId, child: NodeId, _before: Option<NodeId>) {
-    if let (Some(parent), Some(child)) = (index_of(parent), index_of(child)) {
-      with_tree(|tree| tree.keep_caption(parent, child));
-    }
+    with_realizer(|realizer| {
+      let _label = realizer.enter_caption(parent, child);
+    });
   }
 
   fn relocate(parent: NodeId, child: NodeId, before: Option<NodeId>) {
+    with_realizer(|realizer| {
+      let _left = realizer.leave_caption(child);
+    });
     Self::attach(parent, child, before);
   }
 
-  fn hide(parent: NodeId, child: NodeId) {
-    if let (Some(parent), Some(child)) = (index_of(parent), index_of(child)) {
-      with_tree(|tree| tree.drop_caption(parent, child));
-    }
+  fn hide(_parent: NodeId, child: NodeId) {
+    with_realizer(|realizer| {
+      let _left = realizer.leave_caption(child);
+    });
   }
 
   fn remove(parent: NodeId, child: NodeId) {
@@ -1518,51 +1119,17 @@ impl Platform for Web {
   }
 
   fn destroy(node: NodeId) {
-    with_tree(|tree| {
-      if let Some(sink) = tree.realized.remove(node) {
-        tree.destroy(sink);
-      }
+    with_realizer(|realizer| {
+      let _record = realizer.destroy(node);
     });
   }
 
   fn define_tokens(node: NodeId, definitions: &Definitions<WebTokenValue>) {
-    let Some(scope) = index_of(node)
-    else {
-      return;
-    };
-
-    with_tree(|tree| {
-      tree.register(definitions);
-
-      let previous = tree.node(scope).and_then(|node| node.token_class.clone());
-
-      if previous.is_some() && all_unconditional(definitions) {
-        if let Some(node) = tree.node_mut(scope) {
-          for (property, value) in inline_definitions(definitions) {
-            node.set_inline(property, value);
-          }
-        }
-
-        return;
-      }
-
-      let class = tree.swap_class(&compile_definitions(definitions), previous.as_deref());
-
-      if let Some(node) = tree.node_mut(scope) {
-        node.token_class = Some(class);
-      }
-    });
+    with_realizer(|realizer| realizer.define_tokens(node, definitions));
   }
 
   fn define_root_tokens(definitions: &Definitions<WebTokenValue>) {
-    with_tree(|tree| {
-      tree.register(definitions);
-
-      let previous = tree.root_class.take();
-      let class = tree.swap_class(&compile_root_definitions(definitions), previous.as_deref());
-
-      tree.root_class = Some(class);
-    });
+    with_realizer(|realizer| realizer.define_root_tokens(definitions));
   }
 
   fn listen(_: NodeId, _: EventKind) {}
@@ -1572,58 +1139,17 @@ impl Platform for Web {
   fn blur(_: NodeId) {}
 
   fn set_value(node: NodeId, value: &str) {
-    let Some(sink) = index_of(node)
-    else {
-      return;
-    };
-
-    with_tree(|tree| {
-      let target = tree.carrier(sink);
-
-      if let Some(node) = tree.node_mut(target) {
-        if node.tag() == "textarea" {
-          node.text = Some(value.to_owned());
-        }
-        else if node.tag() == "select" {
-          node.chosen = Some(value.to_owned());
-        }
-        else {
-          node.set_attribute("value", value);
-        }
-      }
-    });
+    with_realizer(|realizer| realizer.set_value(node, value));
   }
 
   fn set_options(node: NodeId, options: &[PickerOption]) {
-    let Some(sink) = index_of(node)
-    else {
-      return;
-    };
-
-    with_tree(|tree| {
-      let target = tree.carrier(sink);
-
-      if let Some(node) = tree.node_mut(target) {
-        node.options = options.to_vec();
-      }
-    });
+    with_realizer(|realizer| realizer.set_options(node, options));
   }
 
   fn set_selection(_: NodeId, _: TextSelection) {}
 
   fn set_checked(node: NodeId, checked: bool) {
-    let Some(sink) = index_of(node)
-    else {
-      return;
-    };
-
-    with_tree(|tree| {
-      let target = tree.carrier(sink);
-
-      if let Some(node) = tree.node_mut(target) {
-        node.set_flag("checked", checked);
-      }
-    });
+    with_realizer(|realizer| realizer.set_checked(node, checked));
   }
 
   fn observe_size(_: NodeId, _: Rc<dyn Fn(Size<f32>)>) -> Observation {
@@ -1660,40 +1186,21 @@ impl Platform for Web {
 
 impl WebMarkup for Web {
   fn create_element(node: NodeId, tag: &'static str) {
-    let index = with_tree(|tree| tree.element(tag));
-
-    realize(node, index);
-  }
-
-  fn set_attribute(node: NodeId, name: &str, value: &str) {
-    let Some(sink) = index_of(node)
-    else {
-      return;
-    };
-
-    with_node(sink, |node| node.set_attribute(name, value));
-  }
-
-  fn set_declarations(node: NodeId, declarations: &Declarations) {
-    let Some(sink) = index_of(node)
-    else {
-      return;
-    };
-
-    with_node(sink, |node| {
-      for (property, value) in declarations.iter() {
-        node.set_inline(property.to_owned(), value.to_owned());
-      }
+    with_realizer(|realizer| {
+      realizer.create_element(node, tag, Realized::Box);
     });
   }
 
-  fn set_text(node: NodeId, text: &str) {
-    let Some(sink) = index_of(node)
-    else {
-      return;
-    };
+  fn set_attribute(node: NodeId, name: &str, value: &str) {
+    with_realizer(|realizer| realizer.set_attribute(node, name, value));
+  }
 
-    with_node(sink, |node| node.text = Some(text.to_owned()));
+  fn set_declarations(node: NodeId, declarations: &Declarations) {
+    with_realizer(|realizer| realizer.set_declarations(node, declarations));
+  }
+
+  fn set_text(node: NodeId, text: &str) {
+    <Self as Platform>::set_text(node, text);
   }
 }
 
@@ -1835,18 +1342,18 @@ impl Rendered {
 /// A streaming render flushes what precedes it, waits until `settled` reports true,
 /// then emits its content in place. A whole render never consults it.
 pub fn register_boundary(start: NodeId, settled: BoundarySettled) {
-  if let Some(sink) = index_of(start) {
-    BOUNDARIES.with(|boundaries| boundaries.borrow_mut().insert(sink, settled));
+  if with_realizer(|realizer| realizer.records.contains(start)) {
+    BOUNDARIES.with(|boundaries| boundaries.borrow_mut().insert(start, settled));
   }
 }
 
-/// Whether `index` starts a boundary whose content has not settled: the streaming
+/// Whether `start` begins a boundary whose content has not settled: the streaming
 /// walk's pause test.
-fn boundary_pending(index: u32) -> bool {
+fn boundary_pending(start: NodeId) -> bool {
   BOUNDARIES.with(|boundaries| {
     boundaries
       .borrow()
-      .get(&index)
+      .get(start)
       .is_some_and(|settled| !settled())
   })
 }
@@ -1864,7 +1371,7 @@ fn begin_render() -> (NodeId, Owner) {
 
   let root = Scene::<Web>::with(|scene| scene.create(NodeKind::Box));
 
-  realize(root, ROOT);
+  with_realizer(|realizer| realizer.insert(root, ROOT, "", Realized::Box, false));
 
   (root, skene_core::root_owner().child())
 }
@@ -1919,7 +1426,7 @@ where
     (
       tree.render_styles(),
       tree.render_head(),
-      tree.render_body(),
+      tree.render_body(root),
       tree.language.clone(),
     )
   });
@@ -1995,14 +1502,11 @@ where
   });
 
   let mut cursor = vec![Frame {
-    index: ROOT,
+    node: root,
     passed: None,
     passed_count: 0,
   }];
 
-  // TODO: once HTML's declarative out-of-order patching (`<template for>`) is Baseline
-  // widely available, stream each deferred boundary as soon as it settles rather than in
-  // document order, behind a switch that is on by default and that an app may turn off.
   loop {
     let mut chunk = String::new();
     let pending = with_tree(|tree| {
@@ -2013,15 +1517,15 @@ where
 
     flush(StreamPiece::Chunk(chunk));
 
-    let Some(index) = pending
+    let Some(start) = pending
     else {
       break;
     };
 
-    task::stabilize_until(|| !boundary_pending(index));
+    task::stabilize_until(|| !boundary_pending(start));
     // Dropped whether or not it settled: settled emits its content, unsettled emits
     // what it has, and either way the walk must not pause on it again.
-    BOUNDARIES.with(|boundaries| boundaries.borrow_mut().remove(&index));
+    BOUNDARIES.with(|boundaries| boundaries.borrow_mut().remove(start));
   }
 
   if with_tree(|tree| tree.render_head()) != head {

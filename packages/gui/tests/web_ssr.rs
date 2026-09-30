@@ -1288,6 +1288,52 @@ fn a_page_with_no_chooseable_scheme_carries_no_script() {
   assert!(!rendered.head().contains("<script>"));
 }
 
+/// A disabled checkbox keeps its native input out of the tab order with
+/// `tabindex="-1"`, as the browser writes it.
+#[test]
+fn a_disabled_checkbox_keeps_its_input_out_of_the_tab_order() {
+  use skene_gui::{RawCheckbox, Toggle};
+
+  let rendered = render_to_string(|| RawCheckbox::new(Toggle::new()).set_disabled(true));
+  let body = rendered.body();
+  let input = body
+    .split("<input")
+    .nth(1)
+    .and_then(|rest| rest.split('>').next())
+    .expect("the checkbox's input");
+
+  assert!(input.contains(" disabled"), "{body}");
+  assert!(input.contains("tabindex=\"-1\""), "{body}");
+}
+
+/// A low-level element's `style` attribute and its declarations serialize as one
+/// attribute, the attribute replacing the declarations set before it, as the browser
+/// holds them.
+#[test]
+fn a_markup_style_and_its_declarations_serialize_as_one_attribute() {
+  use skene_gui::{
+    ActivePlatform,
+    core::{AnyView, NodeKind},
+    web::{Declarations, WebMarkup},
+  };
+
+  let rendered = render_to_string(|| {
+    AnyView::node(skene_common::LowLevel::<ActivePlatform>::realize(
+      NodeKind::Box,
+      |node| {
+        ActivePlatform::create_element(node, "div");
+        ActivePlatform::set_declarations(node, &Declarations::new().set("margin", "0"));
+        ActivePlatform::set_attribute(node, "style", "color: red");
+        ActivePlatform::set_declarations(node, &Declarations::new().set("padding", "0"));
+      },
+    ))
+  });
+  let body = rendered.body();
+
+  assert_eq!(body.matches(" style=").count(), 1, "{body}");
+  assert!(body.contains("style=\"color: red;padding:0;\""), "{body}");
+}
+
 /// A required, read-only text field serializes the native attributes a form enforces
 /// without script, and its description gets the id the field names.
 #[test]

@@ -22,7 +22,7 @@ thread_local! {
 pub fn enable_view_transitions() {
   ENABLED.with(|enabled| enabled.set(true));
 
-  try_with_dom(|dom| dom.sheet.add_rule(VIEW_TRANSITION_RULE));
+  try_with_dom(|dom| dom.realizer.book.sheet.add_base_rule(VIEW_TRANSITION_RULE));
 }
 
 /// Whether the page opted into view transitions.

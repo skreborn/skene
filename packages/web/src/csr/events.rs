@@ -290,7 +290,7 @@ pub(super) fn node_of(element: &Element) -> Option<NodeId> {
   };
   let (index, generation) = (read(INDEX_PROPERTY)?, read(GENERATION_PROPERTY)?);
 
-  with_dom(|dom| dom.nodes.node_at(index)).filter(|node| node.generation() == generation)
+  with_dom(|dom| dom.realizer.records.node_at(index)).filter(|node| node.generation() == generation)
 }
 
 /// The nearest element at or above `target` the scene knows, with its node.
@@ -802,7 +802,7 @@ fn mark_drag(
   let sink = node;
 
   with_dom(|dom| {
-    let element = sink.and_then(|sink| dom.node(sink).and_then(Node::element).cloned());
+    let element = sink.and_then(|sink| dom.node(sink).and_then(Node::dom_element).cloned());
     let held = slot(&mut dom.events);
 
     if *held == element {

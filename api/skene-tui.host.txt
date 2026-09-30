@@ -219,6 +219,7 @@ impl skene_tui::Launch
 pub fn skene_tui::Launch::install(self)
 pub const fn skene_tui::Launch::new() -> Self
 pub fn skene_tui::Launch::run<V, F>(self, F) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_core::view::IntoView<skene_tui::Tui>
+pub fn skene_tui::Launch::run_on<D, V, F>(self, D, F) -> D where D: skene_tui::Device, F: core::ops::function::FnOnce() -> V + 'static, V: skene_core::view::IntoView<skene_tui::Tui>
 pub const fn skene_tui::Launch::set_clipboard(self, skene_tui::Clipboard) -> Self
 pub const fn skene_tui::Launch::set_mouse(self, bool) -> Self
 pub const fn skene_tui::Launch::set_mouse_key(self, core::option::Option<skene_core::events::Shortcut>) -> Self
@@ -277,6 +278,7 @@ impl skene_tui::Launch
 pub fn skene_tui::Launch::install(self)
 pub const fn skene_tui::Launch::new() -> Self
 pub fn skene_tui::Launch::run<V, F>(self, F) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_core::view::IntoView<skene_tui::Tui>
+pub fn skene_tui::Launch::run_on<D, V, F>(self, D, F) -> D where D: skene_tui::Device, F: core::ops::function::FnOnce() -> V + 'static, V: skene_core::view::IntoView<skene_tui::Tui>
 pub const fn skene_tui::Launch::set_clipboard(self, skene_tui::Clipboard) -> Self
 pub const fn skene_tui::Launch::set_mouse(self, bool) -> Self
 pub const fn skene_tui::Launch::set_mouse_key(self, core::option::Option<skene_core::events::Shortcut>) -> Self
@@ -452,6 +454,30 @@ pub fn skene_tui::testing::user::double_click(skene_core::node::NodeId)
 pub fn skene_tui::testing::user::hover(skene_core::node::NodeId)
 pub fn skene_tui::testing::user::press_key(&skene_core::events::KeyEvent)
 pub fn skene_tui::testing::user::type_text(skene_core::node::NodeId, &str)
+pub struct skene_tui::testing::Pty
+impl skene_tui::testing::Pty
+pub fn skene_tui::testing::Pty::open(skene_tui::WindowSize) -> core::io::error::Result<(Self, skene_tui::testing::PtyHost)>
+impl core::fmt::Debug for skene_tui::testing::Pty
+pub fn skene_tui::testing::Pty::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::io::write::Write for skene_tui::testing::Pty
+pub fn skene_tui::testing::Pty::flush(&mut self) -> core::io::error::Result<()>
+pub fn skene_tui::testing::Pty::write(&mut self, &[u8]) -> core::io::error::Result<usize>
+impl core::ops::drop::Drop for skene_tui::testing::Pty
+pub fn skene_tui::testing::Pty::drop(&mut self)
+impl skene_tui::Device for skene_tui::testing::Pty
+pub fn skene_tui::testing::Pty::enter_raw_mode(&mut self) -> core::io::error::Result<()>
+pub fn skene_tui::testing::Pty::restore_mode(&mut self) -> core::io::error::Result<()>
+pub fn skene_tui::testing::Pty::size(&self) -> core::option::Option<skene_tui::WindowSize>
+pub fn skene_tui::testing::Pty::stop(&mut self)
+pub fn skene_tui::testing::Pty::wait(&mut self, core::time::Duration, &mut alloc::vec::Vec<u8>) -> core::io::error::Result<alloc::vec::Vec<skene_tui::Note>>
+pub fn skene_tui::testing::Pty::waker(&self) -> alloc::sync::Arc<(dyn core::ops::function::Fn() + core::marker::Send + core::marker::Sync)>
+pub struct skene_tui::testing::PtyHost
+impl skene_tui::testing::PtyHost
+pub fn skene_tui::testing::PtyHost::drawn(&mut self, core::time::Duration) -> core::io::error::Result<alloc::vec::Vec<u8>>
+pub fn skene_tui::testing::PtyHost::resize(&self, skene_tui::WindowSize) -> core::io::error::Result<()>
+pub fn skene_tui::testing::PtyHost::type_bytes(&mut self, &[u8]) -> core::io::error::Result<()>
+impl core::fmt::Debug for skene_tui::testing::PtyHost
+pub fn skene_tui::testing::PtyHost::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn skene_tui::testing::access_outline() -> alloc::string::String
 pub fn skene_tui::testing::access_tree() -> accesskit::TreeUpdate
 pub fn skene_tui::testing::accessible_name(skene_core::node::NodeId) -> core::option::Option<alloc::string::String>
@@ -524,6 +550,19 @@ impl core::hash::Hash for skene_tui::CellScale
 pub fn skene_tui::CellScale::hash<__H: core::hash::Hasher>(&self, &mut __H)
 impl core::marker::Copy for skene_tui::CellScale
 impl core::marker::StructuralPartialEq for skene_tui::CellScale
+pub enum skene_tui::Note
+pub skene_tui::Note::Continued
+pub skene_tui::Note::EndRequested(i32)
+pub skene_tui::Note::StopRequested
+impl core::clone::Clone for skene_tui::Note
+pub fn skene_tui::Note::clone(&self) -> skene_tui::Note
+impl core::cmp::Eq for skene_tui::Note
+impl core::cmp::PartialEq for skene_tui::Note
+pub fn skene_tui::Note::eq(&self, &skene_tui::Note) -> bool
+impl core::fmt::Debug for skene_tui::Note
+pub fn skene_tui::Note::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for skene_tui::Note
+impl core::marker::StructuralPartialEq for skene_tui::Note
 pub struct skene_tui::CellDecoration
 pub skene_tui::CellDecoration::line_through: bool
 pub skene_tui::CellDecoration::overline: bool
@@ -577,6 +616,7 @@ impl skene_tui::Launch
 pub fn skene_tui::Launch::install(self)
 pub const fn skene_tui::Launch::new() -> Self
 pub fn skene_tui::Launch::run<V, F>(self, F) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_core::view::IntoView<skene_tui::Tui>
+pub fn skene_tui::Launch::run_on<D, V, F>(self, D, F) -> D where D: skene_tui::Device, F: core::ops::function::FnOnce() -> V + 'static, V: skene_core::view::IntoView<skene_tui::Tui>
 pub const fn skene_tui::Launch::set_clipboard(self, skene_tui::Clipboard) -> Self
 pub const fn skene_tui::Launch::set_mouse(self, bool) -> Self
 pub const fn skene_tui::Launch::set_mouse_key(self, core::option::Option<skene_core::events::Shortcut>) -> Self
@@ -671,11 +711,41 @@ pub fn skene_tui::Tui::update_run(skene_core::node::NodeId, skene_core::leaf::Sl
 pub fn skene_tui::Tui::watch_media(&skene_core::condition::Media<u32>) -> skene_reactive::memo::Memo<bool>
 impl skene_tui::CellPainter for skene_tui::Tui
 pub fn skene_tui::Tui::paint(skene_core::node::NodeId, alloc::boxed::Box<dyn core::ops::function::Fn(&mut skene_tui::Cells<'_>, skene_core::values::rect::Rect<u32>)>)
+pub struct skene_tui::WindowSize
+pub skene_tui::WindowSize::columns: u16
+pub skene_tui::WindowSize::pixel_height: core::option::Option<u16>
+pub skene_tui::WindowSize::pixel_width: core::option::Option<u16>
+pub skene_tui::WindowSize::rows: u16
+impl skene_tui::WindowSize
+pub const fn skene_tui::WindowSize::cells(u16, u16) -> Self
+impl core::clone::Clone for skene_tui::WindowSize
+pub fn skene_tui::WindowSize::clone(&self) -> skene_tui::WindowSize
+impl core::cmp::Eq for skene_tui::WindowSize
+impl core::cmp::PartialEq for skene_tui::WindowSize
+pub fn skene_tui::WindowSize::eq(&self, &skene_tui::WindowSize) -> bool
+impl core::fmt::Debug for skene_tui::WindowSize
+pub fn skene_tui::WindowSize::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for skene_tui::WindowSize
+impl core::marker::StructuralPartialEq for skene_tui::WindowSize
 pub const skene_tui::MOUSE_KEY: skene_core::events::Shortcut
 pub trait skene_tui::CellPainter: skene_core::platform::Platform
 pub fn skene_tui::CellPainter::paint(skene_core::node::NodeId, alloc::boxed::Box<dyn core::ops::function::Fn(&mut skene_tui::Cells<'_>, skene_core::values::rect::Rect<u32>)>)
 impl skene_tui::CellPainter for skene_tui::Tui
 pub fn skene_tui::Tui::paint(skene_core::node::NodeId, alloc::boxed::Box<dyn core::ops::function::Fn(&mut skene_tui::Cells<'_>, skene_core::values::rect::Rect<u32>)>)
+pub trait skene_tui::Device: core::io::write::Write
+pub fn skene_tui::Device::enter_raw_mode(&mut self) -> core::io::error::Result<()>
+pub fn skene_tui::Device::restore_mode(&mut self) -> core::io::error::Result<()>
+pub fn skene_tui::Device::size(&self) -> core::option::Option<skene_tui::WindowSize>
+pub fn skene_tui::Device::stop(&mut self)
+pub fn skene_tui::Device::wait(&mut self, core::time::Duration, &mut alloc::vec::Vec<u8>) -> core::io::error::Result<alloc::vec::Vec<skene_tui::Note>>
+pub fn skene_tui::Device::waker(&self) -> alloc::sync::Arc<(dyn core::ops::function::Fn() + core::marker::Send + core::marker::Sync)>
+impl skene_tui::Device for skene_tui::testing::Pty
+pub fn skene_tui::testing::Pty::enter_raw_mode(&mut self) -> core::io::error::Result<()>
+pub fn skene_tui::testing::Pty::restore_mode(&mut self) -> core::io::error::Result<()>
+pub fn skene_tui::testing::Pty::size(&self) -> core::option::Option<skene_tui::WindowSize>
+pub fn skene_tui::testing::Pty::stop(&mut self)
+pub fn skene_tui::testing::Pty::wait(&mut self, core::time::Duration, &mut alloc::vec::Vec<u8>) -> core::io::error::Result<alloc::vec::Vec<skene_tui::Note>>
+pub fn skene_tui::testing::Pty::waker(&self) -> alloc::sync::Arc<(dyn core::ops::function::Fn() + core::marker::Send + core::marker::Sync)>
 pub trait skene_tui::IntoView: skene_core::view::IntoView<skene_tui::ActivePlatform> + skene_core::view::AnyKind
 pub fn skene_tui::IntoView::into_view(self) -> skene_tui::AnyView where Self: core::marker::Sized
 impl<V: skene_core::view::IntoView<skene_tui::ActivePlatform> + skene_core::view::AnyKind> skene_tui::IntoView for V

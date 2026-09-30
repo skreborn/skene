@@ -65,9 +65,6 @@ left half-done in a code comment.
     scenarios then name their pages, the harness serving each from one test app and
     finding what a scenario acts on by WebDriver's computed role and label; the goldens
     need a pinned font and Firefox before they compare across machines.
-    - A terminal `Device` trait (bytes in and out, size, wake), implemented by the tty
-    and a pty harness, runs the real loop end to end under test; the Windows console,
-    an SSH session and xterm.js are further implementations.
 4. **The quadratic hot paths.**
     - The store gains `push`, `insert`, `remove` and a keyed `reconcile(value)`, since
     one push re-runs every row reader.
@@ -360,8 +357,10 @@ left half-done in a code comment.
 11. **The terminal's app shell.** Inline mode and declarative terminal modes beside the
     alternate screen the app always takes today; printing above the app; `exec` and
     `suspend`; log capture, to a file or over the attach pipe, since the terminal
-    installs no `tracing` subscriber; and a screen-reader launch mode mapping the roles
-    controls already report to a linear output, as Ink does.
+    installs no `tracing` subscriber; a screen-reader launch mode mapping the roles
+    controls already report to a linear output, as Ink does; and further `Device`s the
+    loop runs on through `Launch::run_on`: an SSH session's channel, and xterm.js in a
+    page over a socket.
 12. **Devtools on a tee platform.** A `Tee<P>` platform streams every create, attach,
     update and token definition, with owners, handlers, snapshot positions and the
     cause of each effect re-run, over one protocol from any platform; the inspector is
@@ -383,8 +382,8 @@ left half-done in a code comment.
     unwritten, and no Windows machine is at hand; the item waits for one. `skene
     attach` waits with it: the control pipe an app inherits across its swap exists on
     Unix alone, and where a process cannot be replaced the app exits with status 75
-    for the launcher to spawn it. Behind the terminal `Device` trait the console is a
-    second implementation rather than a rewrite.
+    for the launcher to spawn it. The console is a `Device` beside the tty, the loop
+    unchanged: its input as bytes, its resize and end requests as notes.
 16. **The slider's standard parts on the web.** The web slider is drawn, so nothing
     waits on them, but when engines ship `::slider-fill-*` (csswg-drafts#12419) the
     native input's track can be restyled through them instead. Blocked on engines.

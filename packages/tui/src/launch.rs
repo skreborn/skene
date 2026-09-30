@@ -3,7 +3,7 @@
 use skene_common::{ContextMenu, MenuItem, typography};
 use skene_core::{Color, Inset, IntoView, Media, Modifiers, Shortcut, State, When};
 
-use crate::{Tui, terminal, with_store};
+use crate::{Device, Tui, terminal, with_store};
 
 /// The clipboard operations offered.
 ///
@@ -144,6 +144,23 @@ impl Launch {
     V: IntoView<Tui>,
   {
     terminal::run(self, app);
+  }
+
+  /// Mounts and runs a skene application on `terminal` under this configuration until it
+  /// quits or the terminal is gone, then hands the terminal back as it found it and
+  /// returns it: a test's pseudo-terminal, an SSH session or a web terminal in place of
+  /// the process's own.
+  ///
+  /// # Panics
+  ///
+  /// Panics if the platform is already installed, or when the terminal cannot be set up.
+  pub fn run_on<D, V, F>(self, terminal: D, app: F) -> D
+  where
+    D: Device,
+    F: FnOnce() -> V + 'static,
+    V: IntoView<Tui>,
+  {
+    terminal::run_on(terminal, self, app)
   }
 }
 

@@ -27,6 +27,7 @@ pub mod prelude;
 mod cells;
 mod detect;
 mod dev;
+mod device;
 mod escape;
 mod ext;
 mod field;
@@ -158,6 +159,7 @@ pub(crate) use crate::platform::{try_with_store, with_store};
 pub use crate::{
   cells::{CellPainter, Cells},
   dev::{adopt_restoration, notice_view as dev_notice_view},
+  device::{Device, Note, WindowSize},
   ext::{TuiDecoration, TuiText},
   launch::{Clipboard, Launch, MOUSE_KEY, install, launch},
   media::{derive_scheme, set_scheme, stored_scheme},

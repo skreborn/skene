@@ -832,6 +832,16 @@ color, its conditions are cells and
 its own background. Nothing the medium lacks exists to call, so a terminal app is
 first-class at compile time rather than best-effort at run time.
 
+The loop runs on a `Device`: bytes in and out, the window's size, a wake, raw mode, and
+notes for what the device learns besides input (a request to end, a job control stop
+and continue). The loop owns the decoding—the parser, the escape grace, the reply
+windows—so a device carries bytes and nothing it must understand. `launch` runs on the
+process's own terminal (the tty, with its signals); `Launch::run_on` runs on any other,
+and `testing::Pty` is one: a pseudo-terminal whose far side a test types into and reads
+the drawn screen from, so the real loop, raw mode and all, runs end to end under test.
+The dev launcher's control pipe is the dev module's, read after each wait, never the
+device's.
+
 The mouse is in-capability: motion drives `Hovered` variants and pointer handlers, a
 left click hits the topmost node and runs its handlers through core's dispatch, a
 hovered node's `cursor` sets the pointer shape via OSC 22, with the shapes the GUI's

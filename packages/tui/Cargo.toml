@@ -9,7 +9,7 @@ rust-version.workspace = true
 base64 = "0.22"
 libc = "0.2"
 rustc-hash.workspace = true
-rustix = { default-features = false, features = ["event", "std", "stdio", "termios"], version = "1" }
+rustix = { default-features = false, features = ["event", "pty", "std", "stdio", "termios"], version = "1" }
 skene-common.workspace = true
 skene-core.workspace = true
 skene-reactive.workspace = true
@@ -22,6 +22,7 @@ unicode-width = "0.2"
 proptest.workspace = true
 skene-conformance.workspace = true
 skene-simple.workspace = true
+vt100 = "0.16"
 
 [lints]
 workspace = true

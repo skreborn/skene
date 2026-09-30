@@ -5,6 +5,7 @@
 //! form a test reads, `is_<state>` answers a yes-or-no question, and any other read is
 //! named for what it returns; [`user`] composes events into a user's gestures.
 
+mod pty;
 pub mod user;
 
 use std::time::Duration;
@@ -24,6 +25,7 @@ use skene_core::{
   TreeUpdate,
 };
 
+pub use self::pty::{Pty, PtyHost};
 use crate::{
   CellDecoration,
   CellScale,

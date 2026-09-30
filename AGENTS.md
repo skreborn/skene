@@ -24,7 +24,7 @@
 - A **platform** is a crate implementing `Platform`: `skene-web` (the csr and ssr leaves),
   `skene-headless` (the host platform every facade compiles against off its target, driven
   by tests), later `skene-native`; `skene-tui` carries its own, down to the terminal
-  device: its `tty`, `parse` and `escape` modules are the whole terminal layer, no
+  device: its `device`, `tty`, `parse` and `escape` modules are the whole terminal layer, no
   terminal crate beneath, so a reply a new capability needs is parsed in the change
   that asks for it. What every platform of one
   medium shares above the spine lives in that medium's module of `skene-common`—`gui`

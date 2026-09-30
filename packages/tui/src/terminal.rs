@@ -16,7 +16,7 @@ use std::{
   collections::HashMap,
   io::{self, Write},
   str::FromStr,
-  time::Duration,
+  time::{Duration, Instant},
 };
 
 use skene_core::{
@@ -36,21 +36,12 @@ use crate::{
   Tui,
   View as _,
   detect::{self, ColorDepth},
+  device::{Device, WindowSize},
   escape::{self, Color, CursorStyle, DecMode, MoveTo, QueryMode, Sgr, Underline},
   frame,
   interaction::{self, WHEEL_STEP},
   paint,
-  parse::{
-    ClipboardStatus,
-    Event,
-    Key,
-    KeyCode,
-    KeyKind,
-    ModifierKey,
-    Mouse,
-    MouseKind,
-    WindowSize,
-  },
+  parse::{ClipboardStatus, Event, Key, KeyCode, KeyKind, ModifierKey, Mouse, MouseKind, Parser},
   platform::end_turn,
   text::{self, CellScale, Glyph},
   tty::Tty,
@@ -59,6 +50,87 @@ use crate::{
 
 /// How long the loop waits for input while nothing moves.
 const IDLE_POLL: Duration = Duration::from_millis(100);
+
+/// How long an escape the input ends in waits for the rest of its sequence before it
+/// reads as a key, while a lone escape can be one.
+const ESCAPE_GRACE: Duration = Duration::from_millis(50);
+
+/// The terminal's input as the loop reads it: the decoder, when the terminal last sent
+/// anything, whether a lone escape can be a key, and the window size last seen.
+struct Input {
+  parser: Parser,
+  last_read: Instant,
+  unambiguous_escapes: bool,
+  size: Option<WindowSize>,
+}
+
+impl Input {
+  /// Input from a terminal whose window is `size`.
+  fn new(size: Option<WindowSize>) -> Self {
+    Self {
+      parser: Parser::default(),
+      last_read: Instant::now(),
+      unambiguous_escapes: false,
+      size,
+    }
+  }
+
+  /// Opens a reply window for queries just written, which must end with the primary
+  /// device attributes request: until its reply, a string sequence reads as a reply.
+  const fn open_reply_window(&mut self) {
+    self.parser.open_reply_window();
+  }
+
+  /// Sets whether every key arrives as an escape sequence of its own, as under the
+  /// kitty keyboard protocol's flags the loop pushes: then an escape the input ends in
+  /// always waits for the rest of its sequence, and otherwise reads as a key after
+  /// [`ESCAPE_GRACE`] without more input.
+  const fn set_unambiguous_escapes(&mut self, unambiguous: bool) {
+    self.unambiguous_escapes = unambiguous;
+  }
+
+  /// Waits on `terminal` up to `timeout` for input or a note, then takes the notes,
+  /// every event the input so far decodes to, the dev launcher's lines, and a resize
+  /// where the window's size changed since the last call; an error when the terminal
+  /// is gone. An escape the input ends in shortens the wait to what remains of its
+  /// grace.
+  fn wait(&mut self, terminal: &mut impl Device, timeout: Duration) -> io::Result<Vec<Event>> {
+    let held = self.parser.holds_escape() && !self.unambiguous_escapes;
+    let timeout = if held {
+      timeout.min(ESCAPE_GRACE.saturating_sub(self.last_read.elapsed()))
+    }
+    else {
+      timeout
+    };
+    let mut bytes = Vec::new();
+    let notes = terminal.wait(timeout, &mut bytes)?;
+
+    if !bytes.is_empty() {
+      self.last_read = Instant::now();
+      self.parser.feed(&bytes);
+    }
+    else if held && self.last_read.elapsed() >= ESCAPE_GRACE {
+      self.parser.resolve_escape();
+    }
+
+    let mut events: Vec<Event> = notes.into_iter().map(Event::from).collect();
+
+    while let Some(event) = self.parser.pop() {
+      events.push(event);
+    }
+
+    events.extend(crate::dev::control_lines().into_iter().map(Event::Control));
+
+    if let Some(size) = terminal.size()
+      && self.size != Some(size)
+    {
+      self.size = Some(size);
+      events.push(Event::Resized(size));
+    }
+
+    Ok(events)
+  }
+}
 
 /// A DEC private mode set or reset, as one control.
 const fn dec_mode(code: u16, on: bool) -> DecMode {
@@ -204,13 +276,13 @@ fn write_hand_back(out: &mut (impl Write + ?Sized)) -> io::Result<()> {
 }
 
 /// Takes the terminal over: raw mode, the setup controls with the mouse when `mouse`,
-/// and the queries, whose reply window opens.
-fn take_over(terminal: &mut Tty, mouse: bool) -> io::Result<()> {
+/// and the queries, whose reply window opens on `input`.
+fn take_over(terminal: &mut impl Device, input: &mut Input, mouse: bool) -> io::Result<()> {
   terminal.enter_raw_mode()?;
   write_setup(terminal, mouse)?;
   write_queries(terminal)?;
   terminal.flush()?;
-  terminal.open_reply_window();
+  input.open_reply_window();
 
   Ok(())
 }
@@ -276,40 +348,48 @@ fn within(pixel: u16, size: u16) -> f32 {
   (f32::from(pixel % size) + 0.5) / f32::from(size)
 }
 
-/// Mounts and runs a skene application in the terminal under `launch`; see
+/// Mounts and runs a skene application in the process's terminal under `launch`; see
 /// [`Launch::run`].
+pub(crate) fn run<V, F>(launch: Launch, app: F)
+where
+  F: FnOnce() -> V + 'static,
+  V: IntoView<Tui>,
+{
+  let terminal = Tty::open().expect("open the terminal");
+
+  terminal.set_panic_hook(|out| {
+    let _ = write_hand_back(out);
+  });
+  run_on(terminal, launch, app).close();
+}
+
+/// Mounts and runs a skene application on `terminal` under `launch` until it quits or
+/// the terminal is gone, handing the terminal back as it found it; see
+/// [`Launch::run_on`].
 #[expect(
   clippy::too_many_lines,
   reason = "the loop body in one place; length is the event count, not complexity"
 )]
-pub(crate) fn run<V, F>(launch: Launch, app: F)
+pub(crate) fn run_on<D, V, F>(mut terminal: D, launch: Launch, app: F) -> D
 where
+  D: Device,
   F: FnOnce() -> V + 'static,
   V: IntoView<Tui>,
 {
   launch.install();
 
   let mouse = with_store(|store| {
-    store.clock = crate::store::Clock::Real(std::time::Instant::now());
+    store.clock = crate::store::Clock::Real(Instant::now());
 
     store.mouse
   });
 
-  let control = crate::dev::install();
+  let _ = crate::dev::install();
 
   let _ = crate::mount(|| app().into_view().build());
+  let waker = terminal.waker();
 
-  let mut terminal = Tty::open().expect("open the terminal");
-
-  skene_core::executor::set_notifier(crate::tty::wake);
-
-  if let Some(fd) = control {
-    terminal.set_control(fd);
-  }
-
-  terminal.set_panic_hook(|out| {
-    let _ = write_hand_back(out);
-  });
+  skene_core::executor::set_notifier(move || waker());
 
   {
     crate::dev::adopt_restoration();
@@ -319,7 +399,9 @@ where
     }
   }
 
-  take_over(&mut terminal, mouse).expect("take the terminal over");
+  let mut input = Input::new(terminal.size());
+
+  take_over(&mut terminal, &mut input, mouse).expect("take the terminal over");
 
   let mut pixels = PixelMouse {
     cell: None,
@@ -445,7 +527,7 @@ where
     });
 
     if let Some(text) = copy {
-      write_copy(&mut terminal, &text, clipboard_answers);
+      write_copy(&mut terminal, &mut input, &text, clipboard_answers);
     }
 
     if paste_asked {
@@ -459,7 +541,7 @@ where
       let _ = write!(terminal, "{request}{}", escape::REQUEST_PRIMARY_ATTRIBUTES);
       let _ = terminal.flush();
 
-      terminal.open_reply_window();
+      input.open_reply_window();
     }
 
     // Over a remote session the system's link handler is the remote machine's, so a
@@ -469,7 +551,7 @@ where
         open_url(&url);
       }
       else if with_store(|store| store.offers(ClipboardAction::Copy)) {
-        write_copy(&mut terminal, &url, clipboard_answers);
+        write_copy(&mut terminal, &mut input, &url, clipboard_answers);
       }
     }
 
@@ -491,7 +573,7 @@ where
     // Every event already queued is handled before the next frame, and a run of
     // pointer motion collapses to where it ends, as a browser coalesces `pointermove`.
     // The terminal is gone when its input ends.
-    let Ok(events) = terminal.wait(wait)
+    let Ok(events) = input.wait(&mut terminal, wait)
     else {
       break;
     };
@@ -568,11 +650,11 @@ where
 
             let _ = terminal.restore_mode();
 
-            terminal.set_unambiguous_escapes(false);
+            input.set_unambiguous_escapes(false);
             terminal.stop();
           }
 
-          let _ = take_over(&mut terminal, mouse_taken);
+          let _ = take_over(&mut terminal, &mut input, mouse_taken);
 
           pixels = PixelMouse {
             cell: None,
@@ -600,7 +682,7 @@ where
           let _ = write_color_queries(&mut terminal);
           let _ = terminal.flush();
 
-          terminal.open_reply_window();
+          input.open_reply_window();
         }
         // The probe's space advanced the cursor two cells where the terminal sizes
         // text; every size is then honored, and the frame laid out afresh.
@@ -728,7 +810,7 @@ where
             );
             let _ = terminal.flush();
 
-            terminal.set_unambiguous_escapes(true);
+            input.set_unambiguous_escapes(true);
           }
         }
         Event::GraphicRendition(attributes) => {
@@ -756,7 +838,8 @@ where
   }
 
   finish(&mut terminal);
-  terminal.close();
+
+  terminal
 }
 
 /// Runs every scheduled action whose reading has come, earliest due first, as one
@@ -780,7 +863,7 @@ pub(crate) fn run_due_timers() {
 }
 
 /// Frees every picture and hands the terminal back.
-fn finish(terminal: &mut Tty) {
+fn finish(terminal: &mut impl Device) {
   let _ = write_hand_back(terminal);
   let _ = terminal.flush();
 }
@@ -902,12 +985,12 @@ fn is_remote(variable: impl Fn(&str) -> bool) -> bool {
 /// Writes `text` to the clipboard: through the terminal's answering clipboard where it
 /// `answers`, in a reply window of its own, and else through OSC 52, which a terminal
 /// without it ignores and one gating clipboard writes asks the user about.
-fn write_copy(terminal: &mut Tty, text: &str, answers: bool) {
+fn write_copy(terminal: &mut impl Device, input: &mut Input, text: &str, answers: bool) {
   if answers {
     let _ = escape::write_clipboard(terminal, text);
     let _ = write!(terminal, "{}", escape::REQUEST_PRIMARY_ATTRIBUTES);
 
-    terminal.open_reply_window();
+    input.open_reply_window();
   }
   else {
     let _ = write!(terminal, "{}", escape::Copy(text));

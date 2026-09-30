@@ -18,8 +18,9 @@ use std::{
   fs::File,
   io::{Read as _, Seek as _, SeekFrom, Write as _},
   mem::ManuallyDrop,
-  os::fd::{FromRawFd as _, RawFd},
+  os::fd::{AsFd as _, BorrowedFd, FromRawFd as _, RawFd},
   path::{Path, PathBuf},
+  time::Duration,
 };
 
 use skene_core::{Color, HasChildren, Scene};
@@ -43,8 +44,12 @@ type Caret = (usize, Option<usize>);
 
 /// The dev channel, present when the launcher started the app.
 struct Channel {
+  /// The notice the launcher last sent, shown in a modal while set.
   notice: Signal<Option<String>>,
+  /// The state file the launcher handed over, for the snapshot a swap records.
   state: RawFd,
+  /// The launcher's control pipe while it is open, and the partial line read from it.
+  control: Option<(BorrowedFd<'static>, Vec<u8>)>,
 }
 
 thread_local! {
@@ -70,8 +75,9 @@ fn state_file(fd: RawFd) -> Option<ManuallyDrop<File>> {
 }
 
 /// Restores the snapshot the state file holds, when the launcher handed one over,
-/// empties it, and returns the control pipe to listen on.
-pub(crate) fn install() -> Option<RawFd> {
+/// empties it, and listens on the launcher's control pipe; `None` where the launcher did
+/// not start the app.
+pub(crate) fn install() -> Option<()> {
   let state: RawFd = std::env::var("SKENE_DEV_STATE").ok()?.parse().ok()?;
   let mut file = state_file(state)?;
   let mut bytes = Vec::new();
@@ -85,16 +91,71 @@ pub(crate) fn install() -> Option<RawFd> {
     let _ = file.set_len(0);
   }
 
+  let control = std::env::var("SKENE_DEV_CONTROL")
+    .ok()
+    .and_then(|value| value.parse::<RawFd>().ok())
+    .map(|fd| {
+      // SAFETY: the launcher opened the control pipe for this process and never closes
+      // it on its side while the app runs; it is inherited by the next binary too.
+      let fd = unsafe { BorrowedFd::borrow_raw(fd) };
+
+      (fd, Vec::new())
+    });
+
   CHANNEL.with(|channel| {
     *channel.borrow_mut() = Some(Channel {
       notice: Signal::opaque(None),
       state,
+      control,
     });
   });
 
-  std::env::var("SKENE_DEV_CONTROL")
-    .ok()
-    .and_then(|value| value.parse().ok())
+  Some(())
+}
+
+/// Every whole line the launcher wrote on its control pipe since the last call; the
+/// pipe closing means the launcher is gone, and the app runs on without it.
+pub(crate) fn control_lines() -> Vec<String> {
+  CHANNEL.with(|channel| {
+    let mut channel = channel.borrow_mut();
+    let Some((fd, pending)) = channel
+      .as_mut()
+      .and_then(|channel| channel.control.as_mut())
+    else {
+      return Vec::new();
+    };
+    let mut lines = Vec::new();
+    let mut closed = false;
+
+    while crate::tty::ready([fd.as_fd()], Duration::ZERO).is_ok_and(|[ready]| ready) {
+      let mut buffer = [0; crate::tty::READ_SIZE];
+      let read = match rustix::io::read(*fd, &mut buffer) {
+        Ok(read) => read,
+        Err(rustix::io::Errno::INTR) => continue,
+        Err(_) => 0,
+      };
+
+      if read == 0 {
+        closed = true;
+
+        break;
+      }
+
+      pending.extend_from_slice(&buffer[..read]);
+
+      while let Some(end) = pending.iter().position(|byte| *byte == b'\n') {
+        let line: Vec<u8> = pending.drain(..=end).collect();
+
+        lines.push(String::from_utf8_lossy(&line[..line.len() - 1]).into_owned());
+      }
+    }
+
+    if closed && let Some(channel) = channel.as_mut() {
+      channel.control = None;
+    }
+
+    lines
+  })
 }
 
 /// Acts on one line the launcher wrote: a notice updates the modal, and a swap names

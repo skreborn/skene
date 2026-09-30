@@ -1,34 +1,31 @@
-//! The terminal device: raw mode, the window size, the bytes written, the input read
-//! and decoded into events, and the process signals that concern the terminal.
+//! The process's own terminal as a [`Device`]: raw mode, the window size, the bytes
+//! written and read, and the process signals that concern the terminal.
 
 use std::{
   fs,
   io::{self, IsTerminal as _, Read as _, Write},
   mem,
   os::{
-    fd::{AsFd, AsRawFd as _, BorrowedFd, OwnedFd, RawFd},
+    fd::{AsFd, AsRawFd as _, BorrowedFd, OwnedFd},
     unix::net::UnixStream,
   },
   ptr,
   sync::{
+    Arc,
     OnceLock,
     atomic::{AtomicBool, AtomicI32, AtomicU8, Ordering},
   },
   thread,
-  time::{Duration, Instant},
+  time::Duration,
 };
 
 use libc::c_int;
 use rustix::termios::{self, OptionalActions, Termios};
 
-use crate::parse::{Event, Parser, WindowSize};
+use crate::device::{Device, Note, WindowSize};
 
 /// How many bytes one read takes at most.
-const READ_SIZE: usize = 4096;
-
-/// How long an escape the input ends in waits for the rest of its sequence before it
-/// reads as a key, while a lone escape can be one.
-const ESCAPE_GRACE: Duration = Duration::from_millis(50);
+pub(crate) const READ_SIZE: usize = 4096;
 
 /// A descriptor of the terminal: the process's own, or `/dev/tty` opened where the
 /// process's is not a terminal.
@@ -88,13 +85,12 @@ fn open_input() -> io::Result<Fd> {
   }
 }
 
-/// The terminal the loop runs in.
+/// The terminal the loop runs in: the process's own.
 ///
-/// Writes buffer until [`flush`](Write::flush); [`wait`](Self::wait) reads what the
-/// terminal sent and decodes it, with the process signals caught meanwhile. The mode
-/// the terminal was opened in is restored when the value drops, the output still
-/// buffered written unless the thread is panicking, and every signal caught is handed
-/// back as it was.
+/// Writes buffer until [`flush`](Write::flush); [`wait`](Device::wait) reads what the
+/// terminal sent, with the process signals caught meanwhile. The mode the terminal was
+/// opened in is restored when the value drops, the output still buffered written unless
+/// the thread is panicking, and every signal caught is handed back as it was.
 pub(crate) struct Tty {
   /// Where the terminal's input is read.
   input: Fd,
@@ -104,19 +100,8 @@ pub(crate) struct Tty {
   pending: Vec<u8>,
   /// The mode the terminal was opened in.
   original: Termios,
-  /// The decoder of the input read.
-  parser: Parser,
-  /// The window size last reported, so a change reads as a resize.
-  size: Option<WindowSize>,
-  /// The dev launcher's control pipe, and the partial line read from it so far.
-  control: Option<(BorrowedFd<'static>, Vec<u8>)>,
   /// The process signals caught.
   signals: Signals,
-  /// When the terminal last sent anything.
-  last_read: Instant,
-  /// Whether every key arrives as an escape sequence of its own, so a lone escape is
-  /// never a key.
-  unambiguous_escapes: bool,
 }
 
 impl Tty {
@@ -126,158 +111,18 @@ impl Tty {
     let input = open_input()?;
     let output = open_output()?;
     let original = termios::tcgetattr(&output)?;
-    let mut tty = Self {
+
+    Ok(Self {
       input,
       output,
       pending: Vec::with_capacity(READ_SIZE),
       original,
-      parser: Parser::default(),
-      size: None,
-      control: None,
       signals: Signals::catch()?,
-      last_read: Instant::now(),
-      unambiguous_escapes: false,
-    };
-
-    tty.size = tty.size();
-
-    Ok(tty)
-  }
-
-  /// Listens on the dev launcher's control pipe at `fd`, which stays open for the
-  /// process's whole life and across a swap into the next binary.
-  pub(crate) fn set_control(&mut self, fd: RawFd) {
-    // SAFETY: the launcher opened the descriptor for this process and never closes
-    // it on its side while the app runs; it is inherited by the next binary too.
-    let fd = unsafe { BorrowedFd::borrow_raw(fd) };
-
-    self.control = Some((fd, Vec::new()));
-  }
-
-  /// Puts the terminal in raw mode: no echo, no line buffering, no signal keys.
-  pub(crate) fn enter_raw_mode(&mut self) -> io::Result<()> {
-    let mut raw = termios::tcgetattr(&self.output)?;
-
-    raw.make_raw();
-    termios::tcsetattr(&self.output, OptionalActions::Flush, &raw)?;
-
-    Ok(())
-  }
-
-  /// Opens a reply window for queries just written, which must end with the primary
-  /// device attributes request: until its reply, a string sequence reads as a reply.
-  pub(crate) const fn open_reply_window(&mut self) {
-    self.parser.open_reply_window();
-  }
-
-  /// Sets whether every key arrives as an escape sequence of its own, as under the
-  /// kitty keyboard protocol's flags the loop pushes: then an escape the input ends in
-  /// always waits for the rest of its sequence, and otherwise reads as a key after
-  /// [`ESCAPE_GRACE`] without more input.
-  pub(crate) const fn set_unambiguous_escapes(&mut self, unambiguous: bool) {
-    self.unambiguous_escapes = unambiguous;
-  }
-
-  /// Restores the mode the terminal was opened in.
-  pub(crate) fn restore_mode(&mut self) -> io::Result<()> {
-    termios::tcsetattr(&self.output, OptionalActions::Now, &self.original)?;
-
-    Ok(())
-  }
-
-  /// The window's size, when the terminal reports one.
-  pub(crate) fn size(&self) -> Option<WindowSize> {
-    let size = termios::tcgetwinsize(&self.output).ok()?;
-
-    Some(WindowSize {
-      columns: size.ws_col,
-      rows: size.ws_row,
-      pixel_width: Some(size.ws_xpixel).filter(|pixels| *pixels > 0),
-      pixel_height: Some(size.ws_ypixel).filter(|pixels| *pixels > 0),
     })
   }
 
-  /// Waits up to `timeout` for input or a signal, then takes the signals caught and
-  /// every event the input so far decodes to, with a resize where the window's size
-  /// changed since the last call; an error when the terminal is gone. An escape the
-  /// input ends in shortens the wait to what remains of its grace.
-  pub(crate) fn wait(&mut self, timeout: Duration) -> io::Result<Vec<Event>> {
-    let held = self.parser.holds_escape() && !self.unambiguous_escapes;
-    let timeout = if held {
-      timeout.min(ESCAPE_GRACE.saturating_sub(self.last_read.elapsed()))
-    }
-    else {
-      timeout
-    };
-    let [input, _] = ready([self.input.as_fd(), self.signals.wake.as_fd()], timeout)?;
-
-    if input {
-      self.read_available()?;
-
-      while ready([self.input.as_fd()], Duration::ZERO)?[0] {
-        self.read_available()?;
-      }
-    }
-    else if held && self.last_read.elapsed() >= ESCAPE_GRACE {
-      self.parser.resolve_escape();
-    }
-
-    let mut events = self.signals.take();
-
-    while let Some(event) = self.parser.pop() {
-      events.push(event);
-    }
-
-    self.read_control(&mut events)?;
-
-    if let Some(size) = self.size()
-      && self.size != Some(size)
-    {
-      self.size = Some(size);
-      events.push(Event::Resized(size));
-    }
-
-    Ok(events)
-  }
-
-  /// Reads every line the launcher wrote on the control pipe into `events`; the
-  /// pipe closing means the launcher is gone, and the app runs on.
-  fn read_control(&mut self, events: &mut Vec<Event>) -> io::Result<()> {
-    let Some((fd, pending)) = &mut self.control
-    else {
-      return Ok(());
-    };
-
-    while ready([fd.as_fd()], Duration::ZERO)?[0] {
-      let mut buffer = [0; READ_SIZE];
-      let read = match rustix::io::read(*fd, &mut buffer) {
-        Ok(read) => read,
-        Err(rustix::io::Errno::INTR) => continue,
-        Err(error) => return Err(error.into()),
-      };
-
-      if read == 0 {
-        self.control = None;
-
-        return Ok(());
-      }
-
-      pending.extend_from_slice(&buffer[..read]);
-
-      while let Some(end) = pending.iter().position(|byte| *byte == b'\n') {
-        let line: Vec<u8> = pending.drain(..=end).collect();
-
-        events.push(Event::Control(
-          String::from_utf8_lossy(&line[..line.len() - 1]).into_owned(),
-        ));
-      }
-    }
-
-    Ok(())
-  }
-
-  /// Reads what the terminal sent into the parser; the end of input is an error.
-  fn read_available(&mut self) -> io::Result<()> {
+  /// Reads what the terminal sent into `input`; the end of input is an error.
+  fn read_available(&self, input: &mut Vec<u8>) -> io::Result<()> {
     let mut buffer = [0; READ_SIZE];
     let read = loop {
       match rustix::io::read(&self.input, &mut buffer) {
@@ -294,17 +139,9 @@ impl Tty {
       ));
     }
 
-    self.last_read = Instant::now();
-    self.parser.feed(&buffer[..read]);
+    input.extend_from_slice(&buffer[..read]);
 
     Ok(())
-  }
-
-  /// Stops the process as a stop signal's default action does, where the terminal
-  /// catches stops: returns once the process continues, or at once where the system
-  /// refuses the stop, as it does in an orphaned process group.
-  pub(crate) fn stop(&mut self) {
-    self.signals.stop();
   }
 
   /// Closes the terminal as dropping it does; a signal asking the process to end that
@@ -343,6 +180,56 @@ impl Tty {
   }
 }
 
+impl Device for Tty {
+  fn enter_raw_mode(&mut self) -> io::Result<()> {
+    let mut raw = termios::tcgetattr(&self.output)?;
+
+    raw.make_raw();
+    termios::tcsetattr(&self.output, OptionalActions::Flush, &raw)?;
+
+    Ok(())
+  }
+
+  fn restore_mode(&mut self) -> io::Result<()> {
+    termios::tcsetattr(&self.output, OptionalActions::Now, &self.original)?;
+
+    Ok(())
+  }
+
+  fn size(&self) -> Option<WindowSize> {
+    let size = termios::tcgetwinsize(&self.output).ok()?;
+
+    Some(WindowSize {
+      columns: size.ws_col,
+      rows: size.ws_row,
+      pixel_width: Some(size.ws_xpixel).filter(|pixels| *pixels > 0),
+      pixel_height: Some(size.ws_ypixel).filter(|pixels| *pixels > 0),
+    })
+  }
+
+  fn wait(&mut self, timeout: Duration, input: &mut Vec<u8>) -> io::Result<Vec<Note>> {
+    let [readable, _] = ready([self.input.as_fd(), self.signals.wake.as_fd()], timeout)?;
+
+    if readable {
+      self.read_available(input)?;
+
+      while ready([self.input.as_fd()], Duration::ZERO)?[0] {
+        self.read_available(input)?;
+      }
+    }
+
+    Ok(self.signals.take())
+  }
+
+  fn waker(&self) -> Arc<dyn Fn() + Send + Sync> {
+    Arc::new(wake)
+  }
+
+  fn stop(&mut self) {
+    self.signals.stop();
+  }
+}
+
 impl Write for Tty {
   fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
     self.pending.extend_from_slice(bytes);
@@ -366,7 +253,7 @@ impl Drop for Tty {
     }
 
     let _ = self.flush();
-    let _ = self.restore_mode();
+    let _ = Device::restore_mode(self);
   }
 }
 
@@ -475,24 +362,24 @@ impl Signals {
     }
   }
 
-  /// Takes the signals caught since the last call, as events: a request to end first.
-  fn take(&mut self) -> Vec<Event> {
+  /// Takes the signals caught since the last call, as notes: a request to end first.
+  fn take(&mut self) -> Vec<Note> {
     self.drain();
     WOKEN.store(false, Ordering::Release);
 
-    let mut events = Vec::new();
+    let mut notes = Vec::new();
 
     if let Some(signal) = self.ending() {
-      events.push(Event::EndRequested(signal));
+      notes.push(Note::EndRequested(signal));
     }
 
     match JOB.swap(NO_JOB, Ordering::AcqRel) {
-      STOP => events.push(Event::StopRequested),
-      CONTINUE => events.push(Event::Continued),
+      STOP => notes.push(Note::StopRequested),
+      CONTINUE => notes.push(Note::Continued),
       _ => {}
     }
 
-    events
+    notes
   }
 
   /// The signal asking the process to end that was caught, if one was and the value
@@ -516,7 +403,7 @@ impl Signals {
   }
 
   /// Stops the process as a stop signal's default action does, where the value
-  /// catches stops; see [`Tty::stop`].
+  /// catches stops; see [`Device::stop`].
   fn stop(&self) {
     if !self.taken.iter().any(|(taken, _)| *taken == libc::SIGTSTP) {
       return;
@@ -606,7 +493,10 @@ pub(crate) fn wake() {
 
 /// Which of `fds` have input to read, waiting up to `timeout` for one to.
 #[cfg(not(target_os = "macos"))]
-fn ready<const N: usize>(fds: [BorrowedFd<'_>; N], timeout: Duration) -> io::Result<[bool; N]> {
+pub(crate) fn ready<const N: usize>(
+  fds: [BorrowedFd<'_>; N],
+  timeout: Duration,
+) -> io::Result<[bool; N]> {
   use rustix::event::{PollFd, PollFlags, Timespec, poll};
 
   let timespec = Timespec::try_from(timeout).map_err(io::Error::other)?;
@@ -622,7 +512,10 @@ fn ready<const N: usize>(fds: [BorrowedFd<'_>; N], timeout: Duration) -> io::Res
 /// Which of `fds` have input to read, waiting up to `timeout` for one to; `select`,
 /// since `poll` does not watch `/dev/tty` on macOS.
 #[cfg(target_os = "macos")]
-fn ready<const N: usize>(fds: [BorrowedFd<'_>; N], timeout: Duration) -> io::Result<[bool; N]> {
+pub(crate) fn ready<const N: usize>(
+  fds: [BorrowedFd<'_>; N],
+  timeout: Duration,
+) -> io::Result<[bool; N]> {
   use rustix::event::{
     FdSetElement,
     FdSetIter,
@@ -644,7 +537,7 @@ fn ready<const N: usize>(fds: [BorrowedFd<'_>; N], timeout: Duration) -> io::Res
   // SAFETY: `set` holds `count` descriptors' worth of elements, as `select` requires.
   match unsafe { select(count, Some(&mut set), None, None, Some(&timespec)) } {
     Ok(_) => {
-      let ready: Vec<RawFd> = FdSetIter::new(&set).collect();
+      let ready: Vec<std::os::fd::RawFd> = FdSetIter::new(&set).collect();
 
       Ok(raw.map(|fd| ready.contains(&fd)))
     }
@@ -707,13 +600,13 @@ mod tests {
 
     raise(libc::SIGCONT);
 
-    assert_eq!(signals.take(), [Event::Continued]);
+    assert_eq!(signals.take(), [Note::Continued]);
     assert_eq!(signals.take(), []);
 
     raise(libc::SIGTERM);
 
-    assert_eq!(signals.take(), [Event::EndRequested(libc::SIGTERM)]);
-    assert_eq!(signals.take(), [Event::EndRequested(libc::SIGTERM)]);
+    assert_eq!(signals.take(), [Note::EndRequested(libc::SIGTERM)]);
+    assert_eq!(signals.take(), [Note::EndRequested(libc::SIGTERM)]);
 
     drop(signals);
 

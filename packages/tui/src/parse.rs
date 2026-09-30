@@ -13,7 +13,10 @@ use std::collections::VecDeque;
 
 use skene_core::{Modifiers, PointerButton};
 
-use crate::escape::{Color, Sgr, Underline, base64};
+use crate::{
+  device::{Note, WindowSize},
+  escape::{Color, Sgr, Underline, base64},
+};
 
 /// The escape byte.
 const ESC: u8 = 0x1b;
@@ -93,13 +96,14 @@ pub(crate) enum ClipboardStatus {
   Refused,
 }
 
-/// The window's size in cells, and in pixels where the terminal knows them.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) struct WindowSize {
-  pub(crate) columns: u16,
-  pub(crate) rows: u16,
-  pub(crate) pixel_width: Option<u16>,
-  pub(crate) pixel_height: Option<u16>,
+impl From<Note> for Event {
+  fn from(note: Note) -> Self {
+    match note {
+      Note::EndRequested(signal) => Self::EndRequested(signal),
+      Note::StopRequested => Self::StopRequested,
+      Note::Continued => Self::Continued,
+    }
+  }
 }
 
 /// What a DECRPM report says of a mode.

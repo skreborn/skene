@@ -532,7 +532,8 @@
 
 - The spine stays minimal and structural. The built-in views live in `skene-common`,
   written once against `Platform`; a facade aliases them
-  (`type Container = skene_common::Container<ActivePlatform>`). Users extend by composing
+  (`type Container = skene_common::Container<ActivePlatform>`), every alias a facade
+  shares declared by one `skene_common::facade!`. Users extend by composing
   built-ins, painting a `Painted` node, or authoring a view against a platform's escape
   trait.
 - Builder methods: `set_<prop>` for a fixed value, `derive_<prop>` for a reactive one,

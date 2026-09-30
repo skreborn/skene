@@ -910,6 +910,6 @@ pub type skene_tui::Switch<K> = skene_common::switch::Switch<skene_tui::ActivePl
 pub type skene_tui::Text = skene_common::text::Text<skene_tui::ActivePlatform>
 pub type skene_tui::Theme<S, C> = skene_common::theme::Theme<skene_tui::ActivePlatform, S, C>
 pub type skene_tui::Token<T> = skene_core::token::Token<T, u32>
-pub type skene_tui::TokenValue = skene_core::resolve::TokenValue<u32>
+pub type skene_tui::TokenValue = <skene_tui::ActivePlatform as skene_core::platform::Platform>::TokenValue
 pub type skene_tui::Tooltip<C> = skene_common::tooltip::Tooltip<skene_tui::ActivePlatform, C>
 pub type skene_tui::Value<T> = skene_core::leaf::Value<T, skene_tui::Condition>

@@ -92,7 +92,7 @@ pub(crate) fn root_node() -> Option<NodeId> {
 impl Platform for Tui {
   type Scalar = u32;
   type StyleExt = TuiExt;
-  type TokenValue = TokenValue;
+  type TokenValue = skene_core::TokenValue<u32>;
 
   fn scene() -> &'static LocalKey<RefCell<Scene<Self>>> {
     &SCENE

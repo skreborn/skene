@@ -35,6 +35,7 @@ mod control;
 mod corner_radius;
 mod enhance;
 mod error_boundary;
+mod facade;
 mod flex;
 mod flexible;
 mod grid;

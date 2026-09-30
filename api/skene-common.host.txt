@@ -918,6 +918,7 @@ pub const skene_common::typography::SELECTION_SURFACE: skene_core::token::TokenR
 pub const skene_common::typography::SIZE: skene_core::token::TokenRef<skene_core::expr::Length>
 pub const skene_common::typography::WEIGHT: skene_core::token::TokenRef<f32>
 pub macro skene_common::decoration!
+pub macro skene_common::facade!
 pub macro skene_common::forward!
 pub macro skene_common::properties!
 pub macro skene_common::run_setters!

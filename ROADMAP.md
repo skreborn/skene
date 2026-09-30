@@ -66,8 +66,6 @@ left half-done in a code comment.
     finding what a scenario acts on by WebDriver's computed role and label; the goldens
     need a pinned font and Firefox before they compare across machines.
 4. **The quadratic hot paths.**
-    - The store gains `push`, `insert`, `remove` and a keyed `reconcile(value)`, since
-    one push re-runs every row reader.
     - The terminal: the runtime kit's resolution becomes incremental and subtree-scoped
     (per-record dirty bits, restyling only the dirty and moving set, per-scope token
     and per-container query invalidation, `em` from the node's own font size),

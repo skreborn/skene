@@ -1,6 +1,6 @@
-//! Engine microbenchmarks: creation, reads, writes through effects, memo chains, and a
-//! store row's edit among a hundred tracked rows and among ten thousand, by position
-//! and by key.
+//! Engine microbenchmarks: creation, reads, writes through effects, memo chains, a store
+//! row's edit among a hundred tracked rows and among ten thousand, by position and by
+//! key, and a row pushed onto as many.
 
 #![expect(
   missing_docs,
@@ -172,6 +172,46 @@ fn bench_keyed_row_edits(c: &mut Criterion) {
   bench_keyed_row_edit(c, 10_000);
 }
 
+/// A row pushed onto `rows` rows whose label an effect each tracks, and one effect the
+/// length; each run starts from the same `rows`.
+fn bench_row_push(c: &mut Criterion, rows: usize) {
+  c.bench_function(&format!("row_push_among_{rows}"), |bencher| {
+    bencher.iter_batched(
+      || {
+        let owner = Owner::new();
+        let store = owner.enter(|| {
+          let store = Store::opaque(vec![Row::default(); rows]);
+
+          for index in 0..rows {
+            Effect::new(move |_| {
+              let _ = store.at(index).label().get();
+            });
+          }
+
+          Effect::new(move |_| {
+            let _ = store.len();
+          });
+
+          store
+        });
+
+        (owner, store)
+      },
+      |(owner, store)| {
+        store.push(Row::default());
+
+        owner
+      },
+      BatchSize::LargeInput,
+    );
+  });
+}
+
+fn bench_row_pushes(c: &mut Criterion) {
+  bench_row_push(c, 100);
+  bench_row_push(c, 10_000);
+}
+
 criterion_group!(
   benches,
   bench_create,
@@ -179,7 +219,8 @@ criterion_group!(
   bench_set_with_effects,
   bench_memo_chain,
   bench_row_edits,
-  bench_keyed_row_edits
+  bench_keyed_row_edits,
+  bench_row_pushes
 );
 
 criterion_main!(benches);

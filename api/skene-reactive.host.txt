@@ -130,6 +130,8 @@ pub fn skene_reactive::Key::hash<__H: core::hash::Hasher>(&self, &mut __H)
 impl core::marker::Copy for skene_reactive::Key
 impl core::marker::StructuralPartialEq for skene_reactive::Key
 pub struct skene_reactive::KeyedBy<Parent, K, T>
+impl<Parent, K, T> skene_reactive::KeyedBy<Parent, K, T> where Parent: skene_reactive::StoreField<Value = alloc::vec::Vec<T>>, K: core::hash::Hash + core::cmp::Eq + core::clone::Clone + 'static, T: core::cmp::PartialEq + 'static
+pub fn skene_reactive::KeyedBy<Parent, K, T>::reconcile(&self, alloc::vec::Vec<T>)
 impl<Parent, K, T> skene_reactive::KeyedField for skene_reactive::KeyedBy<Parent, K, T> where Parent: skene_reactive::StoreField<Value = alloc::vec::Vec<T>>, K: core::hash::Hash + core::cmp::Eq + core::clone::Clone + 'static, T: 'static
 pub type skene_reactive::KeyedBy<Parent, K, T>::Entry = T
 pub type skene_reactive::KeyedBy<Parent, K, T>::Key = K
@@ -803,10 +805,20 @@ pub fn skene_reactive::Signal<T>::try_get(&self) -> core::option::Option<T> wher
 pub fn skene_reactive::Signal<T>::try_get_untracked(&self) -> core::option::Option<T> where T: 'static
 pub trait skene_reactive::IndexedField<T>: skene_reactive::StoreField<Value = alloc::vec::Vec<T>> + core::marker::Sized
 pub fn skene_reactive::IndexedField::at(self, usize) -> skene_reactive::AtIndex<Self, T>
+pub fn skene_reactive::IndexedField::insert(&self, usize, T)
+pub fn skene_reactive::IndexedField::is_empty(&self) -> bool
 pub fn skene_reactive::IndexedField::keyed_by<K: core::hash::Hash + core::cmp::Eq + core::clone::Clone + 'static>(self, fn(&T) -> K) -> skene_reactive::KeyedBy<Self, K, T>
+pub fn skene_reactive::IndexedField::len(&self) -> usize
+pub fn skene_reactive::IndexedField::push(&self, T)
+pub fn skene_reactive::IndexedField::remove(&self, usize) -> core::option::Option<T>
 impl<S: skene_reactive::StoreField<Value = alloc::vec::Vec<T>>, T: 'static> skene_reactive::IndexedField<T> for S
 pub fn S::at(self, usize) -> skene_reactive::AtIndex<Self, T>
+pub fn S::insert(&self, usize, T)
+pub fn S::is_empty(&self) -> bool
 pub fn S::keyed_by<K: core::hash::Hash + core::cmp::Eq + core::clone::Clone + 'static>(self, fn(&T) -> K) -> skene_reactive::KeyedBy<Self, K, T>
+pub fn S::len(&self) -> usize
+pub fn S::push(&self, T)
+pub fn S::remove(&self, usize) -> core::option::Option<T>
 pub trait skene_reactive::KeyedCollection: 'static
 pub type skene_reactive::KeyedCollection::Entry: 'static
 pub type skene_reactive::KeyedCollection::Key: core::hash::Hash + core::cmp::Eq + core::clone::Clone + 'static

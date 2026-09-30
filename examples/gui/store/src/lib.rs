@@ -52,15 +52,13 @@ fn card(todos: Store<Todos>) -> impl IntoView {
       return;
     }
 
-    todos.update(|todos| {
-      let id = todos.next_id;
+    let id = todos.next_id().get();
 
-      todos.next_id += 1;
-      todos.items.push(Todo {
-        id,
-        title,
-        done: false,
-      });
+    todos.next_id().set(id + 1);
+    todos.items().push(Todo {
+      id,
+      title,
+      done: false,
     });
     draft.set(String::new());
   };
@@ -116,9 +114,13 @@ fn row(todos: Store<Todos>, todo: impl StoreField<Value = Todo> + Copy) -> impl 
         .handle_click(move || {
           let id = todo.id().get();
 
-          todos
+          let index = todos
             .items()
-            .update(|items| items.retain(|todo| todo.id != id));
+            .with(|items| items.iter().position(|todo| todo.id == id));
+
+          if let Some(index) = index {
+            let _ = todos.items().remove(index);
+          }
         }),
     ))
 }

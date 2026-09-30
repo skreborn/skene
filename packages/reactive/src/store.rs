@@ -82,16 +82,20 @@ type Slot = fn(&mut Node) -> &mut Option<Trigger>;
 /// where the read created it.
 type Tracked = SmallVec<[(Trigger, Option<(usize, Slot)>); 8]>;
 
-/// One location: its parent and its two triggers, created on first use.
+/// One location: its parent and its three triggers, created on first use.
 ///
 /// `below` wakes on a write at this location or beneath it; `here` wakes on a write
-/// exactly at this location. A reader tracks its own `below` and every ancestor's
-/// `here`; a write notifies its own `here` and the `below` of itself and every
-/// ancestor.
+/// exactly at this location; `shape` wakes on a change to the collection this location
+/// holds: an element added, removed or moved, or the whole replaced. A reader tracks its
+/// own `below` and every ancestor's `here`, a reader of the shape its own `shape` and
+/// every ancestor's `here`; a write notifies its own `here` and `shape` and the `below`
+/// of itself and every ancestor, and a change of shape notifies the `shape` and the
+/// `below` of itself and every ancestor, and the elements it moved.
 struct Node {
   parent: u32,
   here: Option<Trigger>,
   below: Option<Trigger>,
+  shape: Option<Trigger>,
 }
 
 /// The children of one location sharing an edge hash, with their node ids.
@@ -110,6 +114,7 @@ impl Trie {
         parent: NO_PARENT,
         here: None,
         below: None,
+        shape: None,
       }],
       edges: FxHashMap::default(),
     }
@@ -148,9 +153,53 @@ impl Trie {
       parent,
       here: None,
       below: None,
+      shape: None,
     });
 
     next
+  }
+
+  /// The child of `parent` at `index`, where one was ever addressed.
+  fn existing_index(&self, parent: u32, index: usize) -> Option<u32> {
+    self
+      .edges
+      .get(&(parent, edge_hash(1, index)))?
+      .iter()
+      .find(|(edge, _)| matches!(edge, Edge::Index(existing) if *existing == index))
+      .map(|(_, node)| *node)
+  }
+
+  /// The `below` triggers of `node` and of every location containing it.
+  fn below_upward(&self, mut node: usize, triggers: &mut SmallVec<[Trigger; 8]>) {
+    loop {
+      triggers.extend(self.nodes[node].below);
+
+      let parent = self.nodes[node].parent;
+
+      if parent == NO_PARENT {
+        break;
+      }
+
+      node = parent as usize;
+    }
+  }
+
+  /// The `here` and `below` triggers of the element of `parent` at each of `indexes`
+  /// ever addressed.
+  fn elements(
+    &self,
+    parent: u32,
+    indexes: impl IntoIterator<Item = usize>,
+    triggers: &mut SmallVec<[Trigger; 8]>,
+  ) {
+    for index in indexes {
+      if let Some(element) = self.existing_index(parent, index) {
+        let element = &self.nodes[element as usize];
+
+        triggers.extend(element.here);
+        triggers.extend(element.below);
+      }
+    }
   }
 }
 
@@ -293,6 +342,12 @@ impl StoreCore {
     self.track_with(location, |node| &mut node.here);
   }
 
+  /// Subscribes the running effect to the shape of the collection at `location` and to
+  /// writes at the locations containing it.
+  fn track_shape(&self, location: StoreLocation) {
+    self.track_with(location, |node| &mut node.shape);
+  }
+
   /// Subscribes the running effect, if any, to the trigger `own` picks on `location`
   /// and to `here` on every location containing it; a trigger nothing tracks any more
   /// is dropped.
@@ -335,28 +390,48 @@ impl StoreCore {
     }
   }
 
-  /// Notifies every reader a write at `location` can affect: the location itself, the
-  /// locations containing it, and everything beneath it.
+  /// Notifies every reader a write at `location` can affect: the location itself and
+  /// its shape, the locations containing it, and everything beneath it.
   fn notify(&self, location: StoreLocation) {
+    self.wake(|trie, triggers| {
+      let node = &trie.nodes[location.0 as usize];
+
+      triggers.extend(node.here);
+      triggers.extend(node.shape);
+      trie.below_upward(location.0 as usize, triggers);
+    });
+  }
+
+  /// Notifies every reader a change of shape at `location` can affect: its shape's, its
+  /// own and its ancestors' whole-value readers, and the readers of each element at
+  /// `moved`, the positions whose element the change replaced; an element's readers
+  /// elsewhere sleep.
+  fn notify_shape(&self, location: StoreLocation, moved: std::ops::Range<usize>) {
+    self.wake(|trie, triggers| {
+      triggers.extend(trie.nodes[location.0 as usize].shape);
+      trie.below_upward(location.0 as usize, triggers);
+      trie.elements(location.0, moved, triggers);
+    });
+  }
+
+  /// Notifies the readers of each element of the collection at `location` at
+  /// `changed`, written in place, and the whole-value readers of the collection and of
+  /// every location containing it.
+  fn notify_elements(&self, location: StoreLocation, changed: &[usize]) {
+    self.wake(|trie, triggers| {
+      trie.below_upward(location.0 as usize, triggers);
+      trie.elements(location.0, changed.iter().copied(), triggers);
+    });
+  }
+
+  /// Notifies, as one batch, the triggers `gather` collects from the trie.
+  fn wake(&self, gather: impl FnOnce(&Trie, &mut SmallVec<[Trigger; 8]>)) {
     let triggers: SmallVec<[Trigger; 8]> = self
       .trie
       .try_with_untracked(|trie| {
         let mut triggers = SmallVec::new();
-        let mut node = location.0 as usize;
 
-        triggers.extend(trie.nodes[node].here);
-
-        loop {
-          triggers.extend(trie.nodes[node].below);
-
-          let parent = trie.nodes[node].parent;
-
-          if parent == NO_PARENT {
-            break;
-          }
-
-          node = parent as usize;
-        }
+        gather(trie, &mut triggers);
 
         triggers
       })
@@ -711,7 +786,8 @@ impl<Parent: StoreField<Value = Vec<T>>, T: 'static> StoreField for AtIndex<Pare
   }
 }
 
-/// Index addressing on a store location holding a `Vec`.
+/// Index addressing on a store location holding a `Vec`, and the writes that change
+/// its shape while the readers of the elements they leave in place sleep.
 pub trait IndexedField<T>: StoreField<Value = Vec<T>> + Sized {
   /// The element at `index`, by position.
   fn at(self, index: usize) -> AtIndex<Self, T> {
@@ -720,6 +796,73 @@ pub trait IndexedField<T>: StoreField<Value = Vec<T>> + Sized {
       index,
       element: PhantomData,
     }
+  }
+
+  /// The number of elements, subscribed to the vector's shape alone: a write beneath an
+  /// element leaves it asleep.
+  fn len(&self) -> usize {
+    self.core().track_shape(self.location());
+
+    self.read_untracked(Vec::len).unwrap_or(0)
+  }
+
+  /// Whether the vector is empty, subscribed to its shape alone; see [`len`](Self::len).
+  fn is_empty(&self) -> bool {
+    self.len() == 0
+  }
+
+  /// Appends `element`, waking the vector's shape and whole-value readers and no
+  /// element's.
+  fn push(&self, element: T) {
+    let Some(index) = self.write_untracked(|elements| {
+      elements.push(element);
+
+      elements.len() - 1
+    })
+    else {
+      return;
+    };
+
+    self.core().notify_shape(self.location(), index..index + 1);
+  }
+
+  /// Inserts `element` at `index`, shifting the elements from there on: wakes the
+  /// vector's shape and whole-value readers and the readers of each position from
+  /// `index` on.
+  ///
+  /// # Panics
+  ///
+  /// Panics when `index` is past the end.
+  fn insert(&self, index: usize, element: T) {
+    let Some(end) = self.write_untracked(|elements| {
+      elements.insert(index, element);
+
+      elements.len()
+    })
+    else {
+      return;
+    };
+
+    self.core().notify_shape(self.location(), index..end);
+  }
+
+  /// Removes and returns the element at `index`, shifting the elements after it: wakes
+  /// the vector's shape and whole-value readers and the readers of each position from
+  /// `index` on; `None` where the location no longer exists.
+  ///
+  /// # Panics
+  ///
+  /// Panics when `index` is out of range.
+  fn remove(&self, index: usize) -> Option<T> {
+    let (element, end) = self.write_untracked(|elements| {
+      let end = elements.len();
+
+      (elements.remove(index), end)
+    })?;
+
+    self.core().notify_shape(self.location(), index..end);
+
+    Some(element)
   }
 
   /// The elements by the key `key_of` reads from each; see [`KeyedBy`].
@@ -846,6 +989,57 @@ where
   }
 }
 
+impl<Parent, K, T> KeyedBy<Parent, K, T>
+where
+  Parent: StoreField<Value = Vec<T>>,
+  K: Hash + Eq + Clone + 'static,
+  T: PartialEq + 'static,
+{
+  /// Replaces the elements with `next`, waking what changed alone.
+  ///
+  /// While the keys keep their order, each element whose value changed wakes its
+  /// readers and the rest sleep; where a key is added, removed or moved, the shape's
+  /// readers wake too, with those of every position from the first the change moved.
+  pub fn reconcile(&self, next: Vec<T>) {
+    let key_of = self.key_of;
+    let Some((changed, moved)) = self.parent.write_untracked(|elements| {
+      let shared = elements.len().min(next.len());
+      let first_moved = elements
+        .iter()
+        .zip(&next)
+        .position(|(held, coming)| key_of(held) != key_of(coming))
+        .or((elements.len() != next.len()).then_some(shared));
+      let end = elements.len().max(next.len());
+      let changed: Vec<usize> = elements
+        .iter()
+        .zip(&next)
+        .take(first_moved.unwrap_or(shared))
+        .enumerate()
+        .filter(|(_, (held, coming))| held != coming)
+        .map(|(index, _)| index)
+        .collect();
+
+      *elements = next;
+
+      (changed, first_moved.map(|first| first..end))
+    })
+    else {
+      return;
+    };
+    let location = self.location();
+
+    batch(|| {
+      if !changed.is_empty() {
+        self.core().notify_elements(location, &changed);
+      }
+
+      if let Some(moved) = moved {
+        self.core().notify_shape(location, moved);
+      }
+    });
+  }
+}
+
 impl<Parent, K, T> KeyedField for KeyedBy<Parent, K, T>
 where
   Parent: StoreField<Value = Vec<T>>,
@@ -890,6 +1084,9 @@ where
 
 /// A lens onto one entry of the parent location, by key; built by
 /// [`KeyedField::key`] and [`KeyedField::entries`].
+///
+/// A read of an entry no element carries yet also follows the collection's shape, so it
+/// wakes when a write adds the entry.
 #[derive(Debug)]
 #[must_use]
 pub struct AtKey<Parent: KeyedField> {
@@ -931,6 +1128,14 @@ impl<Parent: KeyedField> StoreField for AtKey<Parent> {
 
   fn location(&self) -> StoreLocation {
     self.parent.entry_location(&self.key)
+  }
+
+  fn track(&self) {
+    self.core().track(self.location());
+
+    if self.read_untracked(|_| ()).is_none() {
+      self.core().track_shape(self.parent.location());
+    }
   }
 
   fn read_untracked<R>(&self, read: impl FnOnce(&Self::Value) -> R) -> Option<R> {
@@ -987,7 +1192,7 @@ pub trait KeyedField: StoreField + Sized {
   /// entry is added or removed, the collection reordered or replaced, never when an
   /// entry is written beneath; each lens subscribes its own readers to its entry.
   fn entries(&self) -> Vec<AtKey<Self>> {
-    self.track_shallow();
+    self.core().track_shape(self.location());
 
     self
       .read_untracked(|value| {

@@ -698,16 +698,23 @@ The public API speaks the ecosystem's standard reactive vocabulary:
   executor wakes, as the transport's clients do. An id carries its runtime's nonce, so
   a handle that outlives its runtime resolves to nothing.
 - **The store is a trie.** One node per location ever addressed, interned to a
-  `StoreLocation`; each node carries a `below` trigger (a write here or beneath) and a
-  `here` trigger (a write exactly here), a reader tracks its own `below` and every
+  `StoreLocation`; each node carries a `below` trigger (a write here or beneath), a
+  `here` trigger (a write exactly here) and a `shape` trigger (the collection here
+  gaining, losing or moving an element); a reader tracks its own `below` and every
   ancestor's `here`, a write notifies the reverse, so a row edit over ten thousand
   tracked cells costs the same as over a hundred. Field keys are a hash of the field
   name (or its `#[store(tag)]`), stable under reordering; the value stays a plain struct.
-  A location derives a memo (`derive`), and a keyed location's `entries` subscribe to
-  its shape alone—its own `here` and its ancestors'—so a keyed list follows the
-  collection while each item follows its entry; `HasChildren::derive_entries` feeds
-  them to `reconcile` keyed by the entry's key, and a `Vec` is keyed by a key its
-  elements carry (`keyed_by`), read by scan.
+  A location derives a memo (`derive`), and a keyed location's `entries` and a vector's
+  `len` subscribe to its shape alone—its own `shape` and its ancestors' `here`—so a
+  keyed list follows the collection while each item follows its entry;
+  `HasChildren::derive_entries` feeds them to `reconcile` keyed by the entry's key, and
+  a `Vec` is keyed by a key its elements carry (`keyed_by`), read through a
+  key-to-index map. The writes that change a shape say what moved: `push` wakes the
+  shape and the whole-value readers and no element's, `insert` and `remove` the
+  elements from their position on, and a keyed vector's `reconcile(value)` each element
+  whose value changed while the keys keep their order, the shape and the moved
+  positions where they do not—where a write through `update` wakes every element, since
+  it could have moved any.
 - **Snapshot identity is positional, and a key anchors it.** A signal registers by the
   path of steps from the runtime's root owner, its index among its owner's snapshot
   signals and the hash of its type name. A step is an owner's position among its

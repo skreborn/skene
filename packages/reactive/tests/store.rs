@@ -141,6 +141,158 @@ fn vec_indices_are_fine_grained_until_structure_changes() {
   assert_eq!(settings.favorites().at(1).get(), "B");
 }
 
+/// A push wakes the length's and the whole vector's readers and no element's; an insert
+/// and a removal wake the elements from their position on and none before it.
+#[test]
+fn shape_writes_wake_only_the_elements_they_move() {
+  let settings = Store::new(Settings {
+    favorites: vec!["a".to_owned(), "b".to_owned(), "c".to_owned()],
+    ..Settings::default()
+  });
+  let first_runs = count_runs(move || {
+    let _ = settings.favorites().at(0).try_get();
+  });
+  let third_runs = count_runs(move || {
+    let _ = settings.favorites().at(2).try_get();
+  });
+  let length_runs = count_runs(move || {
+    let _ = settings.favorites().len();
+  });
+  let whole_runs = count_runs(move || {
+    let _ = settings.favorites().get();
+  });
+  let runs = || {
+    (
+      first_runs.get(),
+      third_runs.get(),
+      length_runs.get(),
+      whole_runs.get(),
+    )
+  };
+
+  settings.favorites().push("d".to_owned());
+
+  assert_eq!(runs(), (1, 1, 2, 2), "a push moves no element");
+  assert_eq!(settings.favorites().len(), 4);
+
+  settings.favorites().insert(1, "x".to_owned());
+
+  assert_eq!(
+    runs(),
+    (1, 2, 3, 3),
+    "an insert moves the elements after it"
+  );
+  assert_eq!(settings.favorites().at(2).get(), "b");
+
+  assert_eq!(settings.favorites().remove(2).as_deref(), Some("b"));
+  assert_eq!(
+    runs(),
+    (1, 3, 4, 4),
+    "a removal moves the elements after it"
+  );
+
+  settings.favorites().at(0).set("A".to_owned());
+
+  assert_eq!(
+    runs(),
+    (2, 3, 4, 5),
+    "an element's write leaves the length asleep"
+  );
+}
+
+/// A keyed reconcile wakes each element whose value changed where the keys keep their
+/// order, and the shape with every moved position where they do not.
+#[test]
+fn a_keyed_reconcile_wakes_what_changed() {
+  #[derive(Store, Clone, PartialEq)]
+  struct Row {
+    id: u32,
+    label: &'static str,
+  }
+
+  let rows = Store::opaque(vec![
+    Row { id: 1, label: "a" },
+    Row { id: 2, label: "b" },
+    Row { id: 3, label: "c" },
+  ]);
+  let keyed = rows.keyed_by(|row| row.id);
+  let label_runs = |id: u32| {
+    count_runs(move || {
+      let _ = keyed.key(id).try_with(|row| row.label);
+    })
+  };
+  let (first, second, third) = (label_runs(1), label_runs(2), label_runs(3));
+  let shape_runs = count_runs(move || {
+    let _ = keyed.entries();
+  });
+  let runs = || (first.get(), second.get(), third.get(), shape_runs.get());
+
+  keyed.reconcile(vec![
+    Row { id: 1, label: "a" },
+    Row { id: 2, label: "B" },
+    Row { id: 3, label: "c" },
+  ]);
+
+  assert_eq!(runs(), (1, 2, 1, 1), "one changed value wakes one row");
+
+  keyed.reconcile(vec![
+    Row { id: 1, label: "a" },
+    Row { id: 3, label: "c" },
+    Row { id: 2, label: "B" },
+  ]);
+
+  assert_eq!(
+    runs(),
+    (1, 3, 2, 2),
+    "a reorder wakes the shape and the moved rows"
+  );
+  assert_eq!(keyed.key(2).label().get(), "B");
+}
+
+/// A read of a key no element carries wakes once a push, an insert or a reconcile adds
+/// one that does.
+#[test]
+fn an_absent_key_wakes_when_a_shape_write_adds_it() {
+  #[derive(Store, Clone, PartialEq)]
+  struct Row {
+    id: u32,
+    label: &'static str,
+  }
+
+  let rows = Store::opaque(vec![Row { id: 1, label: "a" }]);
+  let keyed = rows.keyed_by(|row| row.id);
+  let seen = Rc::new(RefCell::new(Vec::new()));
+
+  {
+    let seen = Rc::clone(&seen);
+
+    Effect::new(move |_| {
+      seen
+        .borrow_mut()
+        .push([2, 3, 4].map(|id| keyed.key(id).try_with(|row| row.label)));
+    });
+  }
+
+  rows.push(Row { id: 2, label: "b" });
+  rows.insert(0, Row { id: 3, label: "c" });
+  keyed.reconcile(vec![
+    Row { id: 3, label: "c" },
+    Row { id: 1, label: "a" },
+    Row { id: 2, label: "b" },
+    Row { id: 4, label: "d" },
+  ]);
+
+  assert_eq!(
+    *seen.borrow(),
+    [
+      [None, None, None],
+      [Some("b"), None, None],
+      [Some("b"), Some("c"), None],
+      [Some("b"), Some("c"), Some("d")],
+    ]
+  );
+}
+
 /// Map entries address by key; a missing key reads `None` and writes nothing.
 #[test]
 fn map_keys_are_fine_grained_and_fallible() {

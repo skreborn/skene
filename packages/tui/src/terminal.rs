@@ -1380,10 +1380,6 @@ fn portable_key(key: &Key) -> KeyEvent {
     _ => KeyEvent::code_of(&key_value),
   };
 
-  if key.code == KeyCode::BackTab {
-    modifiers.shift = true;
-  }
-
   KeyEvent {
     key: key_value,
     code,
@@ -1430,7 +1426,7 @@ fn portable_key_value(key: &Key, code: KeyCode, modifiers: &mut Modifiers) -> Po
     },
     KeyCode::Enter => NamedKey::Enter,
     KeyCode::Backspace => NamedKey::Backspace,
-    KeyCode::Tab | KeyCode::BackTab => NamedKey::Tab,
+    KeyCode::Tab => NamedKey::Tab,
     KeyCode::Escape => NamedKey::Escape,
     KeyCode::Delete => NamedKey::Delete,
     KeyCode::Left => NamedKey::ArrowLeft,

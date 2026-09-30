@@ -88,8 +88,6 @@ pub fn skene_reactive::AtKey<Parent>::update(&self, impl core::ops::function::Fn
 pub fn skene_reactive::AtKey<Parent>::with<R>(&self, impl core::ops::function::FnOnce(&Self::Value) -> R) -> R
 pub fn skene_reactive::AtKey<Parent>::write_untracked<R>(&self, impl core::ops::function::FnOnce(&mut Self::Value) -> R) -> core::option::Option<R>
 pub struct skene_reactive::Effect<T, F> where T: 'static, F: core::ops::function::Fn(core::option::Option<T>) -> T
-impl skene_reactive::Effect<(), fn(core::option::Option<()>)>
-pub fn skene_reactive::Effect<(), fn(core::option::Option<()>)>::watch<R>(impl core::ops::function::Fn() -> R + 'static, impl core::ops::function::Fn(R) + 'static) -> skene_reactive::EffectHandle where R: 'static
 impl<T, F> skene_reactive::Effect<T, F> where T: core::any::Any + 'static, F: core::ops::function::Fn(core::option::Option<T>) -> T + 'static
 pub fn skene_reactive::Effect<T, F>::new(F) -> skene_reactive::EffectHandle
 pub fn skene_reactive::Effect<T, F>::render(F) -> skene_reactive::EffectHandle
@@ -178,12 +176,6 @@ pub fn skene_reactive::Memo<T>::clone(&self) -> Self
 impl<T: 'static> core::fmt::Debug for skene_reactive::Memo<T>
 pub fn skene_reactive::Memo<T>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<T: 'static> core::marker::Copy for skene_reactive::Memo<T>
-impl<T: 'static> core::ops::arith::Neg for skene_reactive::Memo<T> where for<'a> &'a T: core::ops::arith::Neg<Output = T>
-pub type skene_reactive::Memo<T>::Output = T
-pub fn skene_reactive::Memo<T>::neg(self) -> Self::Output
-impl<T: 'static> core::ops::bit::Not for skene_reactive::Memo<T> where for<'a> &'a T: core::ops::bit::Not<Output = T>
-pub type skene_reactive::Memo<T>::Output = T
-pub fn skene_reactive::Memo<T>::not(self) -> Self::Output
 impl<T: 'static> skene_reactive::Track for skene_reactive::Memo<T>
 pub fn skene_reactive::Memo<T>::id(&self) -> skene_reactive::ReactiveId
 pub fn skene_reactive::Memo<T>::track(&self)
@@ -200,53 +192,6 @@ pub fn skene_reactive::Memo<T>::get_untracked(&self) -> T where T: 'static
 pub fn skene_reactive::Memo<T>::id(&self) -> skene_reactive::ReactiveId
 pub fn skene_reactive::Memo<T>::try_get(&self) -> core::option::Option<T>
 pub fn skene_reactive::Memo<T>::try_get_untracked(&self) -> core::option::Option<T>
-impl<T: core::cmp::PartialEq + 'static> core::cmp::PartialEq<T> for skene_reactive::Memo<T>
-pub fn skene_reactive::Memo<T>::eq(&self, &T) -> bool
-impl<T: core::fmt::Display + 'static> core::fmt::Display for skene_reactive::Memo<T>
-pub fn skene_reactive::Memo<T>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl<T: core::ops::arith::Add<Output = T> + 'static> core::ops::arith::Add<T> for skene_reactive::Memo<T> where for<'a> &'a T: core::ops::arith::Add<T, Output = T>
-pub type skene_reactive::Memo<T>::Output = T
-pub fn skene_reactive::Memo<T>::add(self, T) -> Self::Output
-impl<T: core::ops::arith::Div<Output = T> + 'static> core::ops::arith::Div<T> for skene_reactive::Memo<T> where for<'a> &'a T: core::ops::arith::Div<T, Output = T>
-pub type skene_reactive::Memo<T>::Output = T
-pub fn skene_reactive::Memo<T>::div(self, T) -> Self::Output
-impl<T: core::ops::arith::Mul<Output = T> + 'static> core::ops::arith::Mul<T> for skene_reactive::Memo<T> where for<'a> &'a T: core::ops::arith::Mul<T, Output = T>
-pub type skene_reactive::Memo<T>::Output = T
-pub fn skene_reactive::Memo<T>::mul(self, T) -> Self::Output
-impl<T: core::ops::arith::Rem<Output = T> + 'static> core::ops::arith::Rem<T> for skene_reactive::Memo<T> where for<'a> &'a T: core::ops::arith::Rem<T, Output = T>
-pub type skene_reactive::Memo<T>::Output = T
-pub fn skene_reactive::Memo<T>::rem(self, T) -> Self::Output
-impl<T: core::ops::arith::Sub<Output = T> + 'static> core::ops::arith::Sub<T> for skene_reactive::Memo<T> where for<'a> &'a T: core::ops::arith::Sub<T, Output = T>
-pub type skene_reactive::Memo<T>::Output = T
-pub fn skene_reactive::Memo<T>::sub(self, T) -> Self::Output
-impl<T: core::ops::bit::BitAnd<Output = T> + 'static> core::ops::bit::BitAnd<T> for skene_reactive::Memo<T> where for<'a> &'a T: core::ops::bit::BitAnd<T, Output = T>
-pub type skene_reactive::Memo<T>::Output = T
-pub fn skene_reactive::Memo<T>::bitand(self, T) -> Self::Output
-impl<T: core::ops::bit::BitOr<Output = T> + 'static> core::ops::bit::BitOr<T> for skene_reactive::Memo<T> where for<'a> &'a T: core::ops::bit::BitOr<T, Output = T>
-pub type skene_reactive::Memo<T>::Output = T
-pub fn skene_reactive::Memo<T>::bitor(self, T) -> Self::Output
-impl<T: core::ops::bit::BitXor<Output = T> + 'static> core::ops::bit::BitXor<T> for skene_reactive::Memo<T> where for<'a> &'a T: core::ops::bit::BitXor<T, Output = T>
-pub type skene_reactive::Memo<T>::Output = T
-pub fn skene_reactive::Memo<T>::bitxor(self, T) -> Self::Output
-impl<T: core::ops::bit::Shl<Output = T> + 'static> core::ops::bit::Shl<T> for skene_reactive::Memo<T> where for<'a> &'a T: core::ops::bit::Shl<T, Output = T>
-pub type skene_reactive::Memo<T>::Output = T
-pub fn skene_reactive::Memo<T>::shl(self, T) -> Self::Output
-impl<T: core::ops::bit::Shr<Output = T> + 'static> core::ops::bit::Shr<T> for skene_reactive::Memo<T> where for<'a> &'a T: core::ops::bit::Shr<T, Output = T>
-pub type skene_reactive::Memo<T>::Output = T
-pub fn skene_reactive::Memo<T>::shr(self, T) -> Self::Output
-pub struct skene_reactive::OwnedSignal<T: 'static>
-impl<T: 'static> skene_reactive::OwnedSignal<T>
-pub fn skene_reactive::OwnedSignal<T>::new(T) -> Self
-pub const fn skene_reactive::OwnedSignal<T>::read_only(&self) -> skene_reactive::ReadSignal<T>
-pub const fn skene_reactive::OwnedSignal<T>::signal(&self) -> skene_reactive::Signal<T>
-pub const fn skene_reactive::OwnedSignal<T>::write_only(&self) -> skene_reactive::WriteSignal<T>
-impl<T: 'static> core::cmp::Eq for skene_reactive::OwnedSignal<T>
-impl<T: 'static> core::cmp::PartialEq for skene_reactive::OwnedSignal<T>
-pub fn skene_reactive::OwnedSignal<T>::eq(&self, &Self) -> bool
-impl<T: 'static> core::ops::drop::Drop for skene_reactive::OwnedSignal<T>
-pub fn skene_reactive::OwnedSignal<T>::drop(&mut self)
-impl<T: core::fmt::Debug + 'static> core::fmt::Debug for skene_reactive::OwnedSignal<T>
-pub fn skene_reactive::OwnedSignal<T>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_reactive::Owner(_, _)
 impl skene_reactive::Owner
 pub fn skene_reactive::Owner::child(&self) -> Self
@@ -292,14 +237,6 @@ pub fn skene_reactive::Position::record(&self, &mut skene_reactive::Recorder)
 pub fn skene_reactive::Position::record_slice(&[Self], &mut skene_reactive::Recorder)
 pub fn skene_reactive::Position::restore(skene_reactive::Value<'_>) -> core::option::Option<Self>
 pub fn skene_reactive::Position::restore_slice(skene_reactive::Value<'_>) -> core::option::Option<alloc::vec::Vec<Self>>
-pub struct skene_reactive::Reaction
-impl skene_reactive::Reaction
-pub fn skene_reactive::Reaction::new(impl core::ops::function::Fn() + 'static) -> Self
-pub fn skene_reactive::Reaction::track<T: 'static>(&self, impl core::ops::function::FnOnce() -> T) -> T
-impl core::fmt::Debug for skene_reactive::Reaction
-pub fn skene_reactive::Reaction::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::ops::drop::Drop for skene_reactive::Reaction
-pub fn skene_reactive::Reaction::drop(&mut self)
 pub struct skene_reactive::ReactiveId(_)
 impl core::clone::Clone for skene_reactive::ReactiveId
 pub fn skene_reactive::ReactiveId::clone(&self) -> skene_reactive::ReactiveId
@@ -325,52 +262,12 @@ pub fn skene_reactive::ReadGuard<'_, T>::deref(&self) -> &Self::Target
 pub struct skene_reactive::ReadSignal<T>
 impl<T> skene_reactive::ReadSignal<T>
 pub const fn skene_reactive::ReadSignal<T>::id(&self) -> skene_reactive::ReactiveId
-impl<T: 'static> core::ops::arith::Neg for skene_reactive::ReadSignal<T> where for<'a> &'a T: core::ops::arith::Neg<Output = T>
-pub type skene_reactive::ReadSignal<T>::Output = T
-pub fn skene_reactive::ReadSignal<T>::neg(self) -> Self::Output
-impl<T: 'static> core::ops::bit::Not for skene_reactive::ReadSignal<T> where for<'a> &'a T: core::ops::bit::Not<Output = T>
-pub type skene_reactive::ReadSignal<T>::Output = T
-pub fn skene_reactive::ReadSignal<T>::not(self) -> Self::Output
 impl<T: core::clone::Clone> skene_reactive::Get<T> for skene_reactive::ReadSignal<T>
 pub fn skene_reactive::ReadSignal<T>::get(&self) -> T where T: 'static
 pub fn skene_reactive::ReadSignal<T>::get_untracked(&self) -> T where T: 'static
 pub fn skene_reactive::ReadSignal<T>::id(&self) -> skene_reactive::ReactiveId
 pub fn skene_reactive::ReadSignal<T>::try_get(&self) -> core::option::Option<T> where T: 'static
 pub fn skene_reactive::ReadSignal<T>::try_get_untracked(&self) -> core::option::Option<T> where T: 'static
-impl<T: core::cmp::PartialEq + 'static> core::cmp::PartialEq<T> for skene_reactive::ReadSignal<T>
-pub fn skene_reactive::ReadSignal<T>::eq(&self, &T) -> bool
-impl<T: core::fmt::Display + 'static> core::fmt::Display for skene_reactive::ReadSignal<T>
-pub fn skene_reactive::ReadSignal<T>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl<T: core::ops::arith::Add<Output = T> + 'static> core::ops::arith::Add<T> for skene_reactive::ReadSignal<T> where for<'a> &'a T: core::ops::arith::Add<T, Output = T>
-pub type skene_reactive::ReadSignal<T>::Output = T
-pub fn skene_reactive::ReadSignal<T>::add(self, T) -> Self::Output
-impl<T: core::ops::arith::Div<Output = T> + 'static> core::ops::arith::Div<T> for skene_reactive::ReadSignal<T> where for<'a> &'a T: core::ops::arith::Div<T, Output = T>
-pub type skene_reactive::ReadSignal<T>::Output = T
-pub fn skene_reactive::ReadSignal<T>::div(self, T) -> Self::Output
-impl<T: core::ops::arith::Mul<Output = T> + 'static> core::ops::arith::Mul<T> for skene_reactive::ReadSignal<T> where for<'a> &'a T: core::ops::arith::Mul<T, Output = T>
-pub type skene_reactive::ReadSignal<T>::Output = T
-pub fn skene_reactive::ReadSignal<T>::mul(self, T) -> Self::Output
-impl<T: core::ops::arith::Rem<Output = T> + 'static> core::ops::arith::Rem<T> for skene_reactive::ReadSignal<T> where for<'a> &'a T: core::ops::arith::Rem<T, Output = T>
-pub type skene_reactive::ReadSignal<T>::Output = T
-pub fn skene_reactive::ReadSignal<T>::rem(self, T) -> Self::Output
-impl<T: core::ops::arith::Sub<Output = T> + 'static> core::ops::arith::Sub<T> for skene_reactive::ReadSignal<T> where for<'a> &'a T: core::ops::arith::Sub<T, Output = T>
-pub type skene_reactive::ReadSignal<T>::Output = T
-pub fn skene_reactive::ReadSignal<T>::sub(self, T) -> Self::Output
-impl<T: core::ops::bit::BitAnd<Output = T> + 'static> core::ops::bit::BitAnd<T> for skene_reactive::ReadSignal<T> where for<'a> &'a T: core::ops::bit::BitAnd<T, Output = T>
-pub type skene_reactive::ReadSignal<T>::Output = T
-pub fn skene_reactive::ReadSignal<T>::bitand(self, T) -> Self::Output
-impl<T: core::ops::bit::BitOr<Output = T> + 'static> core::ops::bit::BitOr<T> for skene_reactive::ReadSignal<T> where for<'a> &'a T: core::ops::bit::BitOr<T, Output = T>
-pub type skene_reactive::ReadSignal<T>::Output = T
-pub fn skene_reactive::ReadSignal<T>::bitor(self, T) -> Self::Output
-impl<T: core::ops::bit::BitXor<Output = T> + 'static> core::ops::bit::BitXor<T> for skene_reactive::ReadSignal<T> where for<'a> &'a T: core::ops::bit::BitXor<T, Output = T>
-pub type skene_reactive::ReadSignal<T>::Output = T
-pub fn skene_reactive::ReadSignal<T>::bitxor(self, T) -> Self::Output
-impl<T: core::ops::bit::Shl<Output = T> + 'static> core::ops::bit::Shl<T> for skene_reactive::ReadSignal<T> where for<'a> &'a T: core::ops::bit::Shl<T, Output = T>
-pub type skene_reactive::ReadSignal<T>::Output = T
-pub fn skene_reactive::ReadSignal<T>::shl(self, T) -> Self::Output
-impl<T: core::ops::bit::Shr<Output = T> + 'static> core::ops::bit::Shr<T> for skene_reactive::ReadSignal<T> where for<'a> &'a T: core::ops::bit::Shr<T, Output = T>
-pub type skene_reactive::ReadSignal<T>::Output = T
-pub fn skene_reactive::ReadSignal<T>::shr(self, T) -> Self::Output
 impl<T> core::clone::Clone for skene_reactive::ReadSignal<T>
 pub fn skene_reactive::ReadSignal<T>::clone(&self) -> Self
 impl<T> core::cmp::Eq for skene_reactive::ReadSignal<T>
@@ -490,74 +387,14 @@ impl<T> skene_reactive::Signal<T>
 pub const fn skene_reactive::Signal<T>::read_only(&self) -> skene_reactive::ReadSignal<T>
 pub const fn skene_reactive::Signal<T>::split(&self) -> (skene_reactive::ReadSignal<T>, skene_reactive::WriteSignal<T>)
 pub const fn skene_reactive::Signal<T>::write_only(&self) -> skene_reactive::WriteSignal<T>
-impl<T: 'static> core::ops::arith::Neg for skene_reactive::Signal<T> where for<'a> &'a T: core::ops::arith::Neg<Output = T>
-pub type skene_reactive::Signal<T>::Output = T
-pub fn skene_reactive::Signal<T>::neg(self) -> Self::Output
-impl<T: 'static> core::ops::bit::Not for skene_reactive::Signal<T> where for<'a> &'a T: core::ops::bit::Not<Output = T>
-pub type skene_reactive::Signal<T>::Output = T
-pub fn skene_reactive::Signal<T>::not(self) -> Self::Output
 impl<T: core::clone::Clone> skene_reactive::Get<T> for skene_reactive::Signal<T>
 pub fn skene_reactive::Signal<T>::get(&self) -> T where T: 'static
 pub fn skene_reactive::Signal<T>::get_untracked(&self) -> T where T: 'static
 pub fn skene_reactive::Signal<T>::id(&self) -> skene_reactive::ReactiveId
 pub fn skene_reactive::Signal<T>::try_get(&self) -> core::option::Option<T> where T: 'static
 pub fn skene_reactive::Signal<T>::try_get_untracked(&self) -> core::option::Option<T> where T: 'static
-impl<T: core::cmp::PartialEq + 'static> core::cmp::PartialEq<T> for skene_reactive::Signal<T>
-pub fn skene_reactive::Signal<T>::eq(&self, &T) -> bool
 impl<T: core::default::Default + skene_reactive::Snapshot> core::default::Default for skene_reactive::Signal<T>
 pub fn skene_reactive::Signal<T>::default() -> Self
-impl<T: core::fmt::Display + 'static> core::fmt::Display for skene_reactive::Signal<T>
-pub fn skene_reactive::Signal<T>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl<T: core::ops::arith::Add<Output = T> + 'static> core::ops::arith::Add<T> for skene_reactive::Signal<T> where for<'a> &'a T: core::ops::arith::Add<T, Output = T>
-pub type skene_reactive::Signal<T>::Output = T
-pub fn skene_reactive::Signal<T>::add(self, T) -> Self::Output
-impl<T: core::ops::arith::AddAssign + 'static> core::ops::arith::AddAssign<T> for skene_reactive::Signal<T>
-pub fn skene_reactive::Signal<T>::add_assign(&mut self, T)
-impl<T: core::ops::arith::Div<Output = T> + 'static> core::ops::arith::Div<T> for skene_reactive::Signal<T> where for<'a> &'a T: core::ops::arith::Div<T, Output = T>
-pub type skene_reactive::Signal<T>::Output = T
-pub fn skene_reactive::Signal<T>::div(self, T) -> Self::Output
-impl<T: core::ops::arith::DivAssign + 'static> core::ops::arith::DivAssign<T> for skene_reactive::Signal<T>
-pub fn skene_reactive::Signal<T>::div_assign(&mut self, T)
-impl<T: core::ops::arith::Mul<Output = T> + 'static> core::ops::arith::Mul<T> for skene_reactive::Signal<T> where for<'a> &'a T: core::ops::arith::Mul<T, Output = T>
-pub type skene_reactive::Signal<T>::Output = T
-pub fn skene_reactive::Signal<T>::mul(self, T) -> Self::Output
-impl<T: core::ops::arith::MulAssign + 'static> core::ops::arith::MulAssign<T> for skene_reactive::Signal<T>
-pub fn skene_reactive::Signal<T>::mul_assign(&mut self, T)
-impl<T: core::ops::arith::Rem<Output = T> + 'static> core::ops::arith::Rem<T> for skene_reactive::Signal<T> where for<'a> &'a T: core::ops::arith::Rem<T, Output = T>
-pub type skene_reactive::Signal<T>::Output = T
-pub fn skene_reactive::Signal<T>::rem(self, T) -> Self::Output
-impl<T: core::ops::arith::RemAssign + 'static> core::ops::arith::RemAssign<T> for skene_reactive::Signal<T>
-pub fn skene_reactive::Signal<T>::rem_assign(&mut self, T)
-impl<T: core::ops::arith::Sub<Output = T> + 'static> core::ops::arith::Sub<T> for skene_reactive::Signal<T> where for<'a> &'a T: core::ops::arith::Sub<T, Output = T>
-pub type skene_reactive::Signal<T>::Output = T
-pub fn skene_reactive::Signal<T>::sub(self, T) -> Self::Output
-impl<T: core::ops::arith::SubAssign + 'static> core::ops::arith::SubAssign<T> for skene_reactive::Signal<T>
-pub fn skene_reactive::Signal<T>::sub_assign(&mut self, T)
-impl<T: core::ops::bit::BitAnd<Output = T> + 'static> core::ops::bit::BitAnd<T> for skene_reactive::Signal<T> where for<'a> &'a T: core::ops::bit::BitAnd<T, Output = T>
-pub type skene_reactive::Signal<T>::Output = T
-pub fn skene_reactive::Signal<T>::bitand(self, T) -> Self::Output
-impl<T: core::ops::bit::BitAndAssign + 'static> core::ops::bit::BitAndAssign<T> for skene_reactive::Signal<T>
-pub fn skene_reactive::Signal<T>::bitand_assign(&mut self, T)
-impl<T: core::ops::bit::BitOr<Output = T> + 'static> core::ops::bit::BitOr<T> for skene_reactive::Signal<T> where for<'a> &'a T: core::ops::bit::BitOr<T, Output = T>
-pub type skene_reactive::Signal<T>::Output = T
-pub fn skene_reactive::Signal<T>::bitor(self, T) -> Self::Output
-impl<T: core::ops::bit::BitOrAssign + 'static> core::ops::bit::BitOrAssign<T> for skene_reactive::Signal<T>
-pub fn skene_reactive::Signal<T>::bitor_assign(&mut self, T)
-impl<T: core::ops::bit::BitXor<Output = T> + 'static> core::ops::bit::BitXor<T> for skene_reactive::Signal<T> where for<'a> &'a T: core::ops::bit::BitXor<T, Output = T>
-pub type skene_reactive::Signal<T>::Output = T
-pub fn skene_reactive::Signal<T>::bitxor(self, T) -> Self::Output
-impl<T: core::ops::bit::BitXorAssign + 'static> core::ops::bit::BitXorAssign<T> for skene_reactive::Signal<T>
-pub fn skene_reactive::Signal<T>::bitxor_assign(&mut self, T)
-impl<T: core::ops::bit::Shl<Output = T> + 'static> core::ops::bit::Shl<T> for skene_reactive::Signal<T> where for<'a> &'a T: core::ops::bit::Shl<T, Output = T>
-pub type skene_reactive::Signal<T>::Output = T
-pub fn skene_reactive::Signal<T>::shl(self, T) -> Self::Output
-impl<T: core::ops::bit::ShlAssign + 'static> core::ops::bit::ShlAssign<T> for skene_reactive::Signal<T>
-pub fn skene_reactive::Signal<T>::shl_assign(&mut self, T)
-impl<T: core::ops::bit::Shr<Output = T> + 'static> core::ops::bit::Shr<T> for skene_reactive::Signal<T> where for<'a> &'a T: core::ops::bit::Shr<T, Output = T>
-pub type skene_reactive::Signal<T>::Output = T
-pub fn skene_reactive::Signal<T>::shr(self, T) -> Self::Output
-impl<T: core::ops::bit::ShrAssign + 'static> core::ops::bit::ShrAssign<T> for skene_reactive::Signal<T>
-pub fn skene_reactive::Signal<T>::shr_assign(&mut self, T)
 impl<T> core::clone::Clone for skene_reactive::Signal<T>
 pub fn skene_reactive::Signal<T>::clone(&self) -> Self
 impl<T> core::cmp::Eq for skene_reactive::Signal<T>
@@ -593,37 +430,6 @@ impl<T> skene_reactive::Write<T> for skene_reactive::Signal<T>
 pub fn skene_reactive::Signal<T>::id(&self) -> skene_reactive::ReactiveId
 pub fn skene_reactive::Signal<T>::try_write(&self) -> core::option::Option<skene_reactive::WriteGuard<'_, T>> where T: 'static
 pub fn skene_reactive::Signal<T>::write(&self) -> skene_reactive::WriteGuard<'_, T> where T: 'static
-pub struct skene_reactive::Slice<T: 'static, O, GF, UF> where GF: core::ops::function::Fn(&T) -> O + core::clone::Clone + 'static, UF: core::ops::function::Fn(&mut T, &O) + core::clone::Clone + 'static
-impl<T, O, GF, UF> skene_reactive::Slice<T, O, GF, UF> where T: 'static, O: 'static, GF: core::ops::function::Fn(&T) -> O + core::clone::Clone + 'static, UF: core::ops::function::Fn(&mut T, &O) + core::clone::Clone + 'static
-pub fn skene_reactive::Slice<T, O, GF, UF>::new(skene_reactive::Signal<T>, GF, UF) -> Self
-impl<T, O, GF, UF> core::clone::Clone for skene_reactive::Slice<T, O, GF, UF> where GF: core::ops::function::Fn(&T) -> O + core::clone::Clone + 'static, UF: core::ops::function::Fn(&mut T, &O) + core::clone::Clone + 'static
-pub fn skene_reactive::Slice<T, O, GF, UF>::clone(&self) -> Self
-impl<T, O, GF, UF> core::marker::Copy for skene_reactive::Slice<T, O, GF, UF> where GF: core::ops::function::Fn(&T) -> O + core::clone::Clone + 'static, UF: core::ops::function::Fn(&mut T, &O) + core::clone::Clone + 'static
-impl<T, O, GF, UF> skene_reactive::Get<O> for skene_reactive::Slice<T, O, GF, UF> where T: 'static, O: core::clone::Clone + 'static, GF: core::ops::function::Fn(&T) -> O + core::clone::Clone + 'static, UF: core::ops::function::Fn(&mut T, &O) + core::clone::Clone + 'static
-pub fn skene_reactive::Slice<T, O, GF, UF>::get(&self) -> T where T: 'static
-pub fn skene_reactive::Slice<T, O, GF, UF>::get_untracked(&self) -> T where T: 'static
-pub fn skene_reactive::Slice<T, O, GF, UF>::id(&self) -> skene_reactive::ReactiveId
-pub fn skene_reactive::Slice<T, O, GF, UF>::try_get(&self) -> core::option::Option<O>
-pub fn skene_reactive::Slice<T, O, GF, UF>::try_get_untracked(&self) -> core::option::Option<O>
-impl<T, O, GF, UF> skene_reactive::Set<O> for skene_reactive::Slice<T, O, GF, UF> where T: 'static, O: 'static, GF: core::ops::function::Fn(&T) -> O + core::clone::Clone + 'static, UF: core::ops::function::Fn(&mut T, &O) + core::clone::Clone + 'static
-pub fn skene_reactive::Slice<T, O, GF, UF>::id(&self) -> skene_reactive::ReactiveId
-pub fn skene_reactive::Slice<T, O, GF, UF>::set(&self, O)
-impl<T, O, GF, UF> skene_reactive::Track for skene_reactive::Slice<T, O, GF, UF> where T: 'static, GF: core::ops::function::Fn(&T) -> O + core::clone::Clone + 'static, UF: core::ops::function::Fn(&mut T, &O) + core::clone::Clone + 'static
-pub fn skene_reactive::Slice<T, O, GF, UF>::id(&self) -> skene_reactive::ReactiveId
-pub fn skene_reactive::Slice<T, O, GF, UF>::track(&self)
-pub fn skene_reactive::Slice<T, O, GF, UF>::try_track(&self)
-impl<T, O, GF, UF> skene_reactive::Update<O> for skene_reactive::Slice<T, O, GF, UF> where T: 'static, O: 'static, GF: core::ops::function::Fn(&T) -> O + core::clone::Clone + 'static, UF: core::ops::function::Fn(&mut T, &O) + core::clone::Clone + 'static
-pub fn skene_reactive::Slice<T, O, GF, UF>::id(&self) -> skene_reactive::ReactiveId
-pub fn skene_reactive::Slice<T, O, GF, UF>::try_update<O2>(&self, impl core::ops::function::FnOnce(&mut O) -> O2) -> core::option::Option<O2>
-pub fn skene_reactive::Slice<T, O, GF, UF>::update(&self, impl core::ops::function::FnOnce(&mut T)) where T: 'static
-impl<T, O, GF, UF> skene_reactive::With<O> for skene_reactive::Slice<T, O, GF, UF> where T: 'static, O: 'static, GF: core::ops::function::Fn(&T) -> O + core::clone::Clone + 'static, UF: core::ops::function::Fn(&mut T, &O) + core::clone::Clone + 'static
-pub fn skene_reactive::Slice<T, O, GF, UF>::id(&self) -> skene_reactive::ReactiveId
-pub fn skene_reactive::Slice<T, O, GF, UF>::try_with<O2>(&self, impl core::ops::function::FnOnce(&O) -> O2) -> core::option::Option<O2>
-pub fn skene_reactive::Slice<T, O, GF, UF>::try_with_untracked<O2>(&self, impl core::ops::function::FnOnce(&O) -> O2) -> core::option::Option<O2>
-pub fn skene_reactive::Slice<T, O, GF, UF>::with<O>(&self, impl core::ops::function::FnOnce(&T) -> O) -> O where T: 'static
-pub fn skene_reactive::Slice<T, O, GF, UF>::with_untracked<O>(&self, impl core::ops::function::FnOnce(&T) -> O) -> O where T: 'static
-impl<T: 'static, O, GF, UF> core::fmt::Debug for skene_reactive::Slice<T, O, GF, UF> where GF: core::ops::function::Fn(&T) -> O + core::clone::Clone + 'static, UF: core::ops::function::Fn(&mut T, &O) + core::clone::Clone + 'static
-pub fn skene_reactive::Slice<T, O, GF, UF>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_reactive::Store<T: 'static>
 impl<T: 'static> skene_reactive::Store<T>
 pub fn skene_reactive::Store<T>::opaque(T) -> Self
@@ -738,26 +544,6 @@ pub fn skene_reactive::WriteGuard<'_, T>::drop(&mut self)
 pub struct skene_reactive::WriteSignal<T>
 impl<T> skene_reactive::WriteSignal<T>
 pub const fn skene_reactive::WriteSignal<T>::id(&self) -> skene_reactive::ReactiveId
-impl<T: core::ops::arith::AddAssign + 'static> core::ops::arith::AddAssign<T> for skene_reactive::WriteSignal<T>
-pub fn skene_reactive::WriteSignal<T>::add_assign(&mut self, T)
-impl<T: core::ops::arith::DivAssign + 'static> core::ops::arith::DivAssign<T> for skene_reactive::WriteSignal<T>
-pub fn skene_reactive::WriteSignal<T>::div_assign(&mut self, T)
-impl<T: core::ops::arith::MulAssign + 'static> core::ops::arith::MulAssign<T> for skene_reactive::WriteSignal<T>
-pub fn skene_reactive::WriteSignal<T>::mul_assign(&mut self, T)
-impl<T: core::ops::arith::RemAssign + 'static> core::ops::arith::RemAssign<T> for skene_reactive::WriteSignal<T>
-pub fn skene_reactive::WriteSignal<T>::rem_assign(&mut self, T)
-impl<T: core::ops::arith::SubAssign + 'static> core::ops::arith::SubAssign<T> for skene_reactive::WriteSignal<T>
-pub fn skene_reactive::WriteSignal<T>::sub_assign(&mut self, T)
-impl<T: core::ops::bit::BitAndAssign + 'static> core::ops::bit::BitAndAssign<T> for skene_reactive::WriteSignal<T>
-pub fn skene_reactive::WriteSignal<T>::bitand_assign(&mut self, T)
-impl<T: core::ops::bit::BitOrAssign + 'static> core::ops::bit::BitOrAssign<T> for skene_reactive::WriteSignal<T>
-pub fn skene_reactive::WriteSignal<T>::bitor_assign(&mut self, T)
-impl<T: core::ops::bit::BitXorAssign + 'static> core::ops::bit::BitXorAssign<T> for skene_reactive::WriteSignal<T>
-pub fn skene_reactive::WriteSignal<T>::bitxor_assign(&mut self, T)
-impl<T: core::ops::bit::ShlAssign + 'static> core::ops::bit::ShlAssign<T> for skene_reactive::WriteSignal<T>
-pub fn skene_reactive::WriteSignal<T>::shl_assign(&mut self, T)
-impl<T: core::ops::bit::ShrAssign + 'static> core::ops::bit::ShrAssign<T> for skene_reactive::WriteSignal<T>
-pub fn skene_reactive::WriteSignal<T>::shr_assign(&mut self, T)
 impl<T> core::clone::Clone for skene_reactive::WriteSignal<T>
 pub fn skene_reactive::WriteSignal<T>::clone(&self) -> Self
 impl<T> core::cmp::Eq for skene_reactive::WriteSignal<T>
@@ -783,12 +569,6 @@ pub fn skene_reactive::Get::get_untracked(&self) -> T where T: 'static
 pub fn skene_reactive::Get::id(&self) -> skene_reactive::ReactiveId
 pub fn skene_reactive::Get::try_get(&self) -> core::option::Option<T> where T: 'static
 pub fn skene_reactive::Get::try_get_untracked(&self) -> core::option::Option<T> where T: 'static
-impl<T, O, GF, UF> skene_reactive::Get<O> for skene_reactive::Slice<T, O, GF, UF> where T: 'static, O: core::clone::Clone + 'static, GF: core::ops::function::Fn(&T) -> O + core::clone::Clone + 'static, UF: core::ops::function::Fn(&mut T, &O) + core::clone::Clone + 'static
-pub fn skene_reactive::Slice<T, O, GF, UF>::get(&self) -> T where T: 'static
-pub fn skene_reactive::Slice<T, O, GF, UF>::get_untracked(&self) -> T where T: 'static
-pub fn skene_reactive::Slice<T, O, GF, UF>::id(&self) -> skene_reactive::ReactiveId
-pub fn skene_reactive::Slice<T, O, GF, UF>::try_get(&self) -> core::option::Option<O>
-pub fn skene_reactive::Slice<T, O, GF, UF>::try_get_untracked(&self) -> core::option::Option<O>
 impl<T: core::clone::Clone + 'static> skene_reactive::Get<T> for skene_reactive::Memo<T>
 pub fn skene_reactive::Memo<T>::get(&self) -> T where T: 'static
 pub fn skene_reactive::Memo<T>::get_untracked(&self) -> T where T: 'static
@@ -889,9 +669,6 @@ pub fn skene_reactive::Signal<T>::try_read_untracked(&self) -> core::option::Opt
 pub trait skene_reactive::Set<T>
 pub fn skene_reactive::Set::id(&self) -> skene_reactive::ReactiveId
 pub fn skene_reactive::Set::set(&self, T) where T: 'static
-impl<T, O, GF, UF> skene_reactive::Set<O> for skene_reactive::Slice<T, O, GF, UF> where T: 'static, O: 'static, GF: core::ops::function::Fn(&T) -> O + core::clone::Clone + 'static, UF: core::ops::function::Fn(&mut T, &O) + core::clone::Clone + 'static
-pub fn skene_reactive::Slice<T, O, GF, UF>::id(&self) -> skene_reactive::ReactiveId
-pub fn skene_reactive::Slice<T, O, GF, UF>::set(&self, O)
 impl<T> skene_reactive::Set<T> for skene_reactive::Signal<T>
 pub fn skene_reactive::Signal<T>::id(&self) -> skene_reactive::ReactiveId
 pub fn skene_reactive::Signal<T>::set(&self, T) where T: 'static
@@ -1232,10 +1009,6 @@ pub trait skene_reactive::Track
 pub fn skene_reactive::Track::id(&self) -> skene_reactive::ReactiveId
 pub fn skene_reactive::Track::track(&self)
 pub fn skene_reactive::Track::try_track(&self)
-impl<T, O, GF, UF> skene_reactive::Track for skene_reactive::Slice<T, O, GF, UF> where T: 'static, GF: core::ops::function::Fn(&T) -> O + core::clone::Clone + 'static, UF: core::ops::function::Fn(&mut T, &O) + core::clone::Clone + 'static
-pub fn skene_reactive::Slice<T, O, GF, UF>::id(&self) -> skene_reactive::ReactiveId
-pub fn skene_reactive::Slice<T, O, GF, UF>::track(&self)
-pub fn skene_reactive::Slice<T, O, GF, UF>::try_track(&self)
 impl<T: 'static> skene_reactive::Track for skene_reactive::Memo<T>
 pub fn skene_reactive::Memo<T>::id(&self) -> skene_reactive::ReactiveId
 pub fn skene_reactive::Memo<T>::track(&self)
@@ -1252,10 +1025,6 @@ pub trait skene_reactive::Update<T>
 pub fn skene_reactive::Update::id(&self) -> skene_reactive::ReactiveId
 pub fn skene_reactive::Update::try_update<O>(&self, impl core::ops::function::FnOnce(&mut T) -> O) -> core::option::Option<O> where T: 'static
 pub fn skene_reactive::Update::update(&self, impl core::ops::function::FnOnce(&mut T)) where T: 'static
-impl<T, O, GF, UF> skene_reactive::Update<O> for skene_reactive::Slice<T, O, GF, UF> where T: 'static, O: 'static, GF: core::ops::function::Fn(&T) -> O + core::clone::Clone + 'static, UF: core::ops::function::Fn(&mut T, &O) + core::clone::Clone + 'static
-pub fn skene_reactive::Slice<T, O, GF, UF>::id(&self) -> skene_reactive::ReactiveId
-pub fn skene_reactive::Slice<T, O, GF, UF>::try_update<O2>(&self, impl core::ops::function::FnOnce(&mut O) -> O2) -> core::option::Option<O2>
-pub fn skene_reactive::Slice<T, O, GF, UF>::update(&self, impl core::ops::function::FnOnce(&mut T)) where T: 'static
 impl<T> skene_reactive::Update<T> for skene_reactive::Signal<T>
 pub fn skene_reactive::Signal<T>::id(&self) -> skene_reactive::ReactiveId
 pub fn skene_reactive::Signal<T>::try_update<O>(&self, impl core::ops::function::FnOnce(&mut T) -> O) -> core::option::Option<O> where T: 'static
@@ -1270,12 +1039,6 @@ pub fn skene_reactive::With::try_with<O>(&self, impl core::ops::function::FnOnce
 pub fn skene_reactive::With::try_with_untracked<O>(&self, impl core::ops::function::FnOnce(&T) -> O) -> core::option::Option<O> where T: 'static
 pub fn skene_reactive::With::with<O>(&self, impl core::ops::function::FnOnce(&T) -> O) -> O where T: 'static
 pub fn skene_reactive::With::with_untracked<O>(&self, impl core::ops::function::FnOnce(&T) -> O) -> O where T: 'static
-impl<T, O, GF, UF> skene_reactive::With<O> for skene_reactive::Slice<T, O, GF, UF> where T: 'static, O: 'static, GF: core::ops::function::Fn(&T) -> O + core::clone::Clone + 'static, UF: core::ops::function::Fn(&mut T, &O) + core::clone::Clone + 'static
-pub fn skene_reactive::Slice<T, O, GF, UF>::id(&self) -> skene_reactive::ReactiveId
-pub fn skene_reactive::Slice<T, O, GF, UF>::try_with<O2>(&self, impl core::ops::function::FnOnce(&O) -> O2) -> core::option::Option<O2>
-pub fn skene_reactive::Slice<T, O, GF, UF>::try_with_untracked<O2>(&self, impl core::ops::function::FnOnce(&O) -> O2) -> core::option::Option<O2>
-pub fn skene_reactive::Slice<T, O, GF, UF>::with<O>(&self, impl core::ops::function::FnOnce(&T) -> O) -> O where T: 'static
-pub fn skene_reactive::Slice<T, O, GF, UF>::with_untracked<O>(&self, impl core::ops::function::FnOnce(&T) -> O) -> O where T: 'static
 impl<T: 'static> skene_reactive::With<T> for skene_reactive::Memo<T>
 pub fn skene_reactive::Memo<T>::id(&self) -> skene_reactive::ReactiveId
 pub fn skene_reactive::Memo<T>::try_with<O>(&self, impl core::ops::function::FnOnce(&T) -> O) -> core::option::Option<O>

@@ -36,11 +36,6 @@ pub(crate) fn create(body: Rc<dyn Computation>, flags: u8) -> Id {
   })
 }
 
-/// Allocates a computation owned by nobody.
-pub(crate) fn create_detached(body: Rc<dyn Computation>, flags: u8) -> Id {
-  with_graph(|graph| graph.allocate_computation(body, flags))
-}
-
 /// A computation's tracked run: on return or unwind, restores the tracking computation
 /// and the owner it replaced, then drops the edges the run did not read.
 struct Tracked<'a> {
@@ -58,13 +53,9 @@ impl Drop for Tracked<'_> {
   }
 }
 
-/// Runs `operation` as computation `id`: its reads become `id`'s dependencies, replacing last
-/// run's, and anything reactive it creates belongs to `id`.
-pub(crate) fn track<T>(id: Id, operation: impl FnOnce() -> T) -> T {
-  RUNTIME.with(|runtime| track_in(runtime, id, operation))
-}
-
-/// [`track`] on `runtime`, this thread's.
+/// Runs `operation` as computation `id` on `runtime`, this thread's: its reads become
+/// `id`'s dependencies, replacing last run's, and anything reactive it creates belongs to
+/// `id`.
 fn track_in<T>(runtime: &Runtime, id: Id, operation: impl FnOnce() -> T) -> T {
   runtime.graph().start_tracking(id);
 

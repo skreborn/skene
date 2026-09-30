@@ -1,6 +1,5 @@
-use num_traits::ConstZero;
-
 use super::impl_ops;
+use crate::Scalar;
 
 /// A 2D size.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
@@ -12,7 +11,7 @@ pub struct Size<T> {
   pub height: T,
 }
 
-impl<T: ConstZero> Size<T> {
+impl<T: Scalar> Size<T> {
   /// Zero on both axes.
   pub const ZERO: Self = Self {
     width: T::ZERO,

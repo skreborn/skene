@@ -244,7 +244,6 @@ pub fn V::into_any(self) -> skene_gui::AnyView where Self: core::marker::Sized
 pub fn skene_gui::prelude::derive_scheme(impl core::ops::function::Fn() -> core::option::Option<skene_core::values::color::ColorScheme> + 'static)
 pub fn skene_gui::prelude::derived(impl core::ops::function::Fn() -> skene_core::node::NodeId + 'static) -> skene_core::node::NodeId
 pub fn skene_gui::prelude::empty() -> impl skene_gui::View
-pub fn skene_gui::prelude::hydrate_page<V, F>(F) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_gui::IntoView
 pub fn skene_gui::prelude::launch<V, F>(F) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_gui::IntoView
 pub fn skene_gui::prelude::set_scheme(core::option::Option<skene_core::values::color::ColorScheme>)
 pub fn skene_gui::prelude::stored_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
@@ -368,7 +367,6 @@ pub fn skene_gui::client_only(impl core::ops::function::FnOnce() -> skene_core::
 pub fn skene_gui::derive_scheme(impl core::ops::function::Fn() -> core::option::Option<skene_core::values::color::ColorScheme> + 'static)
 pub fn skene_gui::derived(impl core::ops::function::Fn() -> skene_core::node::NodeId + 'static) -> skene_core::node::NodeId
 pub fn skene_gui::empty() -> impl skene_gui::View
-pub fn skene_gui::hydrate_page<V, F>(F) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_gui::IntoView
 pub fn skene_gui::install_router<R: skene_common::routing::Route>(R) -> skene_common::routing::Router<R>
 pub fn skene_gui::install_static_router<R: skene_common::routing::StaticRoutes>(R) -> skene_common::routing::Router<R>
 pub fn skene_gui::launch<V, F>(F) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_gui::IntoView

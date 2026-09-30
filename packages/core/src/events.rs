@@ -75,12 +75,6 @@ impl Prevented {
       }
     }
   }
-
-  /// Folds another accumulated prevention in.
-  pub const fn merge(&mut self, other: Self) {
-    self.platform |= other.platform;
-    self.bubbling |= other.bubbling;
-  }
 }
 
 /// Whether an event carries on to the ancestors after a handler has seen it.

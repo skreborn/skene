@@ -6,7 +6,7 @@ use std::{
   rc::Rc,
 };
 
-use skene_reactive::{Effect, Get, Memo, Owner, Set, Signal, Track};
+use skene_reactive::{Effect, Get, Memo, Owner, Set, Signal, Track, Update};
 
 #[test]
 fn unobserved_memo_recomputes_only_when_read() {
@@ -159,7 +159,7 @@ fn memo_recomputes_before_dependents_use_value() {
 
 #[test]
 fn memo_stays_in_lockstep_with_signal_for_add_assign_updates() {
-  let mut counter = Signal::new(0);
+  let counter = Signal::new(0);
   let memo_runs = Rc::new(RefCell::new(Vec::new()));
 
   let memo = Memo::new({
@@ -184,9 +184,9 @@ fn memo_stays_in_lockstep_with_signal_for_add_assign_updates() {
   assert_eq!(*memo_runs.borrow(), vec![0]);
   assert_eq!(*view_runs.borrow(), vec![(0, 0)]);
 
-  counter += 1;
-  counter += 1;
-  counter += 1;
+  counter.update(|value| *value += 1);
+  counter.update(|value| *value += 1);
+  counter.update(|value| *value += 1);
 
   assert_eq!(*memo_runs.borrow(), vec![0, 1, 2, 3]);
   assert_eq!(*view_runs.borrow(), vec![(0, 0), (1, 1), (2, 2), (3, 3)]);

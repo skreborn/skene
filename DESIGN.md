@@ -705,8 +705,8 @@ The public API speaks the ecosystem's standard reactive vocabulary:
 - **Effects have handles and flavors.** `Effect::render` effects flush before ordinary
   effects in owner-depth order and are what property binders and the structural effects
   (`derived`, `reconcile`, `Show`, `Switch`) are, so a parent's structure settles before
-  its descendants' properties and a disposed descendant never runs; `Effect::watch` is
-  the fine-grained binder; a handle disposes or pauses.
+  its descendants' properties and a disposed descendant never runs; a handle disposes or
+  pauses.
 - **A pluggable scheduler, flushed by turns.** Synchronous at write end by default;
   every platform holds the flush until its turn ends, through core's one routine
   (`hold_flushes`, `end_turn`, and `reset_thread` to leave a thread), so what a build

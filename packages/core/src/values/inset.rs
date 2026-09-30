@@ -1,4 +1,4 @@
-use num_traits::ConstZero;
+use crate::Scalar;
 
 /// Spacing on the four edges of a box.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
@@ -28,7 +28,7 @@ pub enum Edge {
   Left,
 }
 
-impl<T: ConstZero> Inset<T> {
+impl<T: Scalar> Inset<T> {
   /// Zero inset on all sides.
   pub const ZERO: Self = Self {
     top: T::ZERO,
@@ -73,7 +73,7 @@ impl<T: Copy> Inset<T> {
   }
 }
 
-impl<T: Copy + ConstZero> Inset<T> {
+impl<T: Scalar> Inset<T> {
   /// Creates an inset with symmetric values on the horizontal axis.
   #[inline(always)]
   pub const fn horizontal(value: T) -> Self {

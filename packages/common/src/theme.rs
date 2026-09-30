@@ -118,10 +118,8 @@ impl<P: Platform, S: TokenSet<P::TokenValue>> View<P> for Theme<P, S, ChildBuild
 ///
 /// A theme provides `Memo<Self>` through context. On a miss the set's default is
 /// returned and its definitions are laid over the root definitions of `P`'s scene,
-/// once per set, so a consumer below no theme still resolves the tokens. Core's
-/// [`Themed`](skene_core::Themed) reads the context alone and defines nothing: a
-/// root definition lives in one platform's scene, so the trait registering it is bound
-/// on the platform. Every [`TokenSet`] with a default has it.
+/// once per set, so a consumer below no theme still resolves the tokens. Every
+/// [`TokenSet`] with a default has it.
 #[diagnostic::on_unimplemented(
   message = "`{Self}` is not a token set with a default on this platform",
   label = "a palette read without a theme is a `TokenSet` for the platform's token value that implements `Default`"

@@ -12,7 +12,6 @@ accesskit = { default-features = false, version = "0.25" }
 color = "0.3"
 insta = { default-features = false, version = "1" }
 keyboard-types = { default-features = false, features = ["std", "webdriver"], version = "0.8" }
-num-traits = "0.2"
 proc-macro-crate = "3"
 proc-macro2 = "1"
 proptest = { default-features = false, features = ["std"], version = "1" }

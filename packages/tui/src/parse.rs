@@ -198,8 +198,6 @@ pub(crate) enum KeyCode {
   Backspace,
   /// Tab.
   Tab,
-  /// Tab with Shift held, reported as a key of its own.
-  BackTab,
   /// Escape.
   Escape,
   /// The left arrow.
@@ -723,7 +721,7 @@ fn scan_csi(buffer: &[u8], replying: bool, scanned: usize) -> Scan {
     (_, b't') => parse_window_report(parameters),
     (_, b'u') => parse_kitty_key(parameters),
     (_, b'~') => parse_special_key(parameters),
-    (_, b'Z') => Some(Event::Key(Key::new(KeyCode::BackTab).with(Modifiers {
+    (_, b'Z') => Some(Event::Key(Key::new(KeyCode::Tab).with(Modifiers {
       shift: true,
       ..Modifiers::default()
     }))),
@@ -779,7 +777,6 @@ fn parse_kitty_key(parameters: &str) -> Option<Event> {
       match char::from_u32(code_point) {
         Some('\x1b') => KeyCode::Escape,
         Some('\r') => KeyCode::Enter,
-        Some('\t') if modifiers.shift => KeyCode::BackTab,
         Some('\t') => KeyCode::Tab,
         Some('\x7f') => KeyCode::Backspace,
         Some(character) => KeyCode::Char(character),
@@ -1380,7 +1377,7 @@ mod tests {
     assert!(key_of(b"\x1b[1;5C").modifiers.ctrl);
     assert_eq!(key_of(b"\x1b[1;5C").code, KeyCode::Right);
     assert_eq!(key_of(b"\x1b[[B").code, KeyCode::Function(2));
-    assert!(key_of(b"\x1b[Z").modifiers.shift && key_of(b"\x1b[Z").code == KeyCode::BackTab);
+    assert!(key_of(b"\x1b[Z").modifiers.shift && key_of(b"\x1b[Z").code == KeyCode::Tab);
   }
 
   /// A lone escape waits for what follows it and is the key after a pause; a sequence

@@ -18,7 +18,7 @@ use std::collections::VecDeque;
 pub type HydrationSource = Box<dyn Fn() -> Option<String>>;
 
 /// The id of the `<script>` element carrying the hydration state, shared by the server's
-/// page assembly and the client's `hydrate_page`.
+/// page assembly and the client's `launch`.
 pub const STATE_SCRIPT_ID: &str = "skene-state";
 
 /// A lazy segment's place among the hydrating resources.

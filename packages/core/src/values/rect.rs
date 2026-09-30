@@ -1,6 +1,5 @@
-use num_traits::ConstZero;
-
 use super::{Point, Size};
+use crate::Scalar;
 
 /// A positioned, sized rectangle.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
@@ -12,7 +11,7 @@ pub struct Rect<T> {
   pub size: Size<T>,
 }
 
-impl<T: ConstZero> Rect<T> {
+impl<T: Scalar> Rect<T> {
   /// An empty rectangle at the origin.
   pub const ZERO: Self = Self {
     origin: Point::ZERO,

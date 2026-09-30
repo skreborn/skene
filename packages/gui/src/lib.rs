@@ -193,22 +193,6 @@ where
   });
 }
 
-/// Hydrates a server-rendered page: adopts the document body and reads the embedded
-/// state, so the client takes over the server's markup without a rebuild.
-#[cfg(skene_leaf = "browser")]
-#[inline(always)]
-pub fn hydrate_page<V, F>(app: F)
-where
-  F: FnOnce() -> V + 'static,
-  V: IntoView,
-{
-  skene_web::boot_with_dev_state(move || {
-    skene_web::hydrate_page(app);
-
-    tracing::info!("application hydrated");
-  });
-}
-
 /// Builds the application against the headless platform, under the root owner.
 ///
 /// The host has no platform to show it on; this is the entry a host build of an app

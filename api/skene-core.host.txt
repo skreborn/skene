@@ -1025,7 +1025,6 @@ pub skene_core::Condition::State(skene_core::State)
 impl<N: skene_core::Scalar> skene_core::Condition<N>
 pub fn skene_core::Condition<N>::and(impl core::iter::traits::collect::IntoIterator<Item = Self>) -> Self
 pub fn skene_core::Condition<N>::holds_in(&self, &skene_core::MediaEnv<'_, N>, &impl core::ops::function::Fn(skene_core::State) -> bool) -> bool
-pub fn skene_core::Condition<N>::involves_state(&self) -> bool
 pub fn skene_core::Condition<N>::or(impl core::iter::traits::collect::IntoIterator<Item = Self>) -> Self
 pub fn skene_core::Condition<N>::to_media(&self) -> core::option::Option<skene_core::Media<N>>
 impl<N: core::clone::Clone> core::clone::Clone for skene_core::Condition<N>
@@ -1038,11 +1037,8 @@ pub fn skene_core::Condition<N>::fmt(&self, &mut core::fmt::Formatter<'_>) -> co
 impl<N: skene_core::Scalar> core::hash::Hash for skene_core::Condition<N>
 pub fn skene_core::Condition<N>::hash<H: core::hash::Hasher>(&self, &mut H)
 impl<N: skene_core::Scalar> skene_core::Composable for skene_core::Condition<N>
-pub fn skene_core::Condition<N>::both(self, Self) -> Self
-pub fn skene_core::Condition<N>::dark_mode() -> Self
 pub fn skene_core::Condition<N>::disjunctive_leaves(&self) -> alloc::vec::Vec<alloc::vec::Vec<&Self>>
 pub fn skene_core::Condition<N>::holds(&self, &impl core::ops::function::Fn(&Self) -> bool) -> bool
-pub fn skene_core::Condition<N>::involves(&self, &impl core::ops::function::Fn(&Self) -> bool) -> bool
 pub fn skene_core::Condition<N>::shape(&self) -> skene_core::ConditionShape<'_, Self>
 impl<N> core::convert::From<skene_core::Media<N>> for skene_core::Condition<N>
 pub fn skene_core::Condition<N>::from(skene_core::Media<N>) -> Self
@@ -1549,11 +1545,8 @@ pub fn skene_core::Media<N>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::
 impl<N: skene_core::Scalar> core::hash::Hash for skene_core::Media<N>
 pub fn skene_core::Media<N>::hash<H: core::hash::Hasher>(&self, &mut H)
 impl<N: skene_core::Scalar> skene_core::Composable for skene_core::Media<N>
-pub fn skene_core::Media<N>::both(self, Self) -> Self
-pub fn skene_core::Media<N>::dark_mode() -> Self
 pub fn skene_core::Media<N>::disjunctive_leaves(&self) -> alloc::vec::Vec<alloc::vec::Vec<&Self>>
 pub fn skene_core::Media<N>::holds(&self, &impl core::ops::function::Fn(&Self) -> bool) -> bool
-pub fn skene_core::Media<N>::involves(&self, &impl core::ops::function::Fn(&Self) -> bool) -> bool
 pub fn skene_core::Media<N>::shape(&self) -> skene_core::ConditionShape<'_, Self>
 impl<N> core::convert::From<skene_core::Media<N>> for skene_core::Condition<N>
 pub fn skene_core::Condition<N>::from(skene_core::Media<N>) -> Self
@@ -2438,7 +2431,6 @@ impl<N: skene_core::Scalar, S: skene_core::Shape, X: skene_core::StyleExtension>
 pub fn skene_core::BoxStyle<N, S, X>::for_each_field<V: skene_core::BoxFieldVisitor<N, X>>(&mut V)
 impl<N: skene_core::Scalar, S: skene_core::Shape, X: skene_core::StyleExtension> skene_core::BoxStyle<N, S, X>
 pub fn skene_core::BoxStyle<N, S, X>::visit<V: skene_core::BoxVisitor<N, S, X>>(&self, &mut V)
-pub fn skene_core::BoxStyle<N, S, X>::visit_mut<V: skene_core::BoxVisitorMut<N, S, X>>(&mut self, &mut V)
 impl<N: skene_core::Scalar, X: skene_core::StyleExtension> skene_core::BoxStyle<N, skene_core::Plain, X>
 pub fn skene_core::BoxStyle<N, skene_core::Plain, X>::overlay(&mut self, &Self)
 impl<N: skene_core::Scalar, X: skene_core::StyleExtension> skene_core::BoxStyle<N, skene_core::Plain, X>
@@ -2552,7 +2544,6 @@ pub fn skene_core::Color::into_run_value(self) -> skene_core::RunValue<X>
 pub struct skene_core::Conditional<L, C>
 impl<L, C> skene_core::Conditional<L, C>
 pub const fn skene_core::Conditional<L, C>::base(&self) -> &L
-pub fn skene_core::Conditional<L, C>::into_parts(self) -> (L, smallvec::SmallVec<[(C, L); 1]>)
 pub fn skene_core::Conditional<L, C>::leaves(&self) -> impl core::iter::traits::iterator::Iterator<Item = (core::option::Option<&C>, &L)>
 pub fn skene_core::Conditional<L, C>::map<M>(self, impl core::ops::function::FnMut(L) -> M) -> skene_core::Conditional<M, C>
 pub fn skene_core::Conditional<L, C>::map_conditions<M>(self, impl core::ops::function::FnMut(C) -> M) -> skene_core::Conditional<L, M>
@@ -3031,15 +3022,15 @@ pub skene_core::Inset::bottom: T
 pub skene_core::Inset::left: T
 pub skene_core::Inset::right: T
 pub skene_core::Inset::top: T
-impl<T: core::marker::Copy + num_traits::identities::ConstZero> skene_core::Inset<T>
-pub const fn skene_core::Inset<T>::horizontal(T) -> Self
-pub const fn skene_core::Inset<T>::vertical(T) -> Self
 impl<T: core::marker::Copy> skene_core::Inset<T>
 pub const fn skene_core::Inset<T>::all(T) -> Self
 pub const fn skene_core::Inset<T>::edge(&self, skene_core::Edge) -> T
 pub const fn skene_core::Inset<T>::symmetric(T, T) -> Self
-impl<T: num_traits::identities::ConstZero> skene_core::Inset<T>
+impl<T: skene_core::Scalar> skene_core::Inset<T>
 pub const skene_core::Inset<T>::ZERO: Self
+impl<T: skene_core::Scalar> skene_core::Inset<T>
+pub const fn skene_core::Inset<T>::horizontal(T) -> Self
+pub const fn skene_core::Inset<T>::vertical(T) -> Self
 impl<N: skene_core::Scalar, X: skene_core::StyleExtension> skene_core::IntoBoxValue<N, X> for skene_core::Inset<N>
 pub fn skene_core::Inset<N>::from_box_value(skene_core::BoxValue<N, X>) -> core::option::Option<Self>
 pub fn skene_core::Inset<N>::into_box_value(self) -> skene_core::BoxValue<N, X>
@@ -3497,7 +3488,7 @@ impl core::marker::StructuralPartialEq for skene_core::PlainChild
 pub struct skene_core::Point<T>
 pub skene_core::Point::x: T
 pub skene_core::Point::y: T
-impl<T: num_traits::identities::ConstZero> skene_core::Point<T>
+impl<T: skene_core::Scalar> skene_core::Point<T>
 pub const skene_core::Point<T>::ZERO: Self
 impl<T> skene_core::Point<T>
 pub const fn skene_core::Point<T>::new(T, T) -> Self
@@ -3565,7 +3556,6 @@ pub skene_core::Prevented::bubbling: bool
 pub skene_core::Prevented::platform: bool
 impl skene_core::Prevented
 pub const fn skene_core::Prevented::absorb(&mut self, skene_core::Prevent)
-pub const fn skene_core::Prevented::merge(&mut self, Self)
 impl core::clone::Clone for skene_core::Prevented
 pub fn skene_core::Prevented::clone(&self) -> skene_core::Prevented
 impl core::cmp::Eq for skene_core::Prevented
@@ -3580,7 +3570,7 @@ impl core::marker::StructuralPartialEq for skene_core::Prevented
 pub struct skene_core::Rect<T>
 pub skene_core::Rect::origin: skene_core::Point<T>
 pub skene_core::Rect::size: skene_core::Size<T>
-impl<T: num_traits::identities::ConstZero> skene_core::Rect<T>
+impl<T: skene_core::Scalar> skene_core::Rect<T>
 pub const skene_core::Rect<T>::ZERO: Self
 impl<T> skene_core::Rect<T>
 pub const fn skene_core::Rect<T>::new(skene_core::Point<T>, skene_core::Size<T>) -> Self
@@ -3702,7 +3692,6 @@ impl<S: skene_core::Shape, X: skene_core::StyleExtension> skene_core::RunStyle<S
 pub fn skene_core::RunStyle<S, X>::for_each_field<V: skene_core::RunFieldVisitor<X>>(&mut V)
 impl<S: skene_core::Shape, X: skene_core::StyleExtension> skene_core::RunStyle<S, X>
 pub fn skene_core::RunStyle<S, X>::visit<V: skene_core::RunVisitor<S, X>>(&self, &mut V)
-pub fn skene_core::RunStyle<S, X>::visit_mut<V: skene_core::RunVisitorMut<S, X>>(&mut self, &mut V)
 impl<X: skene_core::StyleExtension> skene_core::RunStyle<skene_core::Plain, X>
 pub fn skene_core::RunStyle<skene_core::Plain, X>::overlay(&mut self, &Self)
 impl<X: skene_core::StyleExtension> skene_core::RunStyle<skene_core::Plain, X>
@@ -3758,7 +3747,6 @@ pub fn skene_core::Scene<P>::focus_order(&self, skene_core::NodeId) -> core::opt
 pub fn skene_core::Scene<P>::focus_shows(&self, skene_core::NodeId) -> bool
 pub const fn skene_core::Scene<P>::focus_visible(&self) -> bool
 pub const fn skene_core::Scene<P>::focused(&self) -> core::option::Option<skene_core::NodeId>
-pub fn skene_core::Scene<P>::for_each_child(&self, skene_core::NodeId, impl core::ops::function::FnMut(skene_core::NodeId))
 pub fn skene_core::Scene<P>::handle(&mut self, skene_core::NodeId, skene_core::Handler)
 pub const fn skene_core::Scene<P>::hovered(&self) -> core::option::Option<skene_core::NodeId>
 pub fn skene_core::Scene<P>::insert_in_segment(&mut self, skene_core::NodeId, skene_core::NodeId, core::option::Option<skene_core::NodeId>)
@@ -3893,7 +3881,7 @@ pub fn skene_core::Show<P, skene_core::AnyView<P>>::set_key(self, impl core::has
 pub struct skene_core::Size<T>
 pub skene_core::Size::height: T
 pub skene_core::Size::width: T
-impl<T: num_traits::identities::ConstZero> skene_core::Size<T>
+impl<T: skene_core::Scalar> skene_core::Size<T>
 pub const skene_core::Size<T>::ZERO: Self
 impl<T> skene_core::Size<T>
 pub const fn skene_core::Size<T>::new(T, T) -> Self
@@ -4421,28 +4409,17 @@ pub trait skene_core::BoxFieldVisitor<N: skene_core::Scalar, X: skene_core::Styl
 pub fn skene_core::BoxFieldVisitor::field<F: skene_core::BoxField<N, X>>(&mut self)
 pub trait skene_core::BoxVisitor<N: skene_core::Scalar, S: skene_core::Shape, X: skene_core::StyleExtension>
 pub fn skene_core::BoxVisitor::value<T: skene_core::IntoBoxValue<N, X>>(&mut self, skene_core::PropertyKey<<X as skene_core::StyleExtension>::Property>, &<S as skene_core::Shape>::Of)
-pub trait skene_core::BoxVisitorMut<N: skene_core::Scalar, S: skene_core::Shape, X: skene_core::StyleExtension>
-pub fn skene_core::BoxVisitorMut::value<T: skene_core::IntoBoxValue<N, X>>(&mut self, skene_core::PropertyKey<<X as skene_core::StyleExtension>::Property>, &mut <S as skene_core::Shape>::Of)
 pub trait skene_core::Composable: core::clone::Clone + core::marker::Sized
-pub fn skene_core::Composable::both(self, Self) -> Self
-pub fn skene_core::Composable::dark_mode() -> Self
 pub fn skene_core::Composable::disjunctive_leaves(&self) -> alloc::vec::Vec<alloc::vec::Vec<&Self>>
 pub fn skene_core::Composable::holds(&self, &impl core::ops::function::Fn(&Self) -> bool) -> bool
-pub fn skene_core::Composable::involves(&self, &impl core::ops::function::Fn(&Self) -> bool) -> bool
 pub fn skene_core::Composable::shape(&self) -> skene_core::ConditionShape<'_, Self>
 impl<N: skene_core::Scalar> skene_core::Composable for skene_core::Condition<N>
-pub fn skene_core::Condition<N>::both(self, Self) -> Self
-pub fn skene_core::Condition<N>::dark_mode() -> Self
 pub fn skene_core::Condition<N>::disjunctive_leaves(&self) -> alloc::vec::Vec<alloc::vec::Vec<&Self>>
 pub fn skene_core::Condition<N>::holds(&self, &impl core::ops::function::Fn(&Self) -> bool) -> bool
-pub fn skene_core::Condition<N>::involves(&self, &impl core::ops::function::Fn(&Self) -> bool) -> bool
 pub fn skene_core::Condition<N>::shape(&self) -> skene_core::ConditionShape<'_, Self>
 impl<N: skene_core::Scalar> skene_core::Composable for skene_core::Media<N>
-pub fn skene_core::Media<N>::both(self, Self) -> Self
-pub fn skene_core::Media<N>::dark_mode() -> Self
 pub fn skene_core::Media<N>::disjunctive_leaves(&self) -> alloc::vec::Vec<alloc::vec::Vec<&Self>>
 pub fn skene_core::Media<N>::holds(&self, &impl core::ops::function::Fn(&Self) -> bool) -> bool
-pub fn skene_core::Media<N>::involves(&self, &impl core::ops::function::Fn(&Self) -> bool) -> bool
 pub fn skene_core::Media<N>::shape(&self) -> skene_core::ConditionShape<'_, Self>
 pub trait skene_core::ExprOutput: core::marker::Sized
 pub fn skene_core::ExprOutput::from_expr_value(skene_core::ExprValue) -> core::option::Option<Self>
@@ -4804,17 +4781,18 @@ pub trait skene_core::RunFieldVisitor<X: skene_core::StyleExtension>
 pub fn skene_core::RunFieldVisitor::field<F: skene_core::RunField<X>>(&mut self)
 pub trait skene_core::RunVisitor<S: skene_core::Shape, X: skene_core::StyleExtension>
 pub fn skene_core::RunVisitor::value<T: skene_core::IntoRunValue<X>>(&mut self, skene_core::PropertyKey<<X as skene_core::StyleExtension>::Property>, &<S as skene_core::Shape>::Of)
-pub trait skene_core::RunVisitorMut<S: skene_core::Shape, X: skene_core::StyleExtension>
-pub fn skene_core::RunVisitorMut::value<T: skene_core::IntoRunValue<X>>(&mut self, skene_core::PropertyKey<<X as skene_core::StyleExtension>::Property>, &mut <S as skene_core::Shape>::Of)
-pub trait skene_core::Scalar: core::marker::Copy + core::cmp::PartialEq + core::cmp::PartialOrd + core::fmt::Debug + core::default::Default + num_traits::identities::ConstZero + 'static
+pub trait skene_core::Scalar: core::marker::Copy + core::cmp::PartialEq + core::cmp::PartialOrd + core::fmt::Debug + core::default::Default + 'static
+pub const skene_core::Scalar::ZERO: Self
 pub fn skene_core::Scalar::from_f32(f32) -> Self
 pub fn skene_core::Scalar::hash_bits(self) -> u64
 pub fn skene_core::Scalar::to_f32(self) -> f32
 impl skene_core::Scalar for f32
+pub const f32::ZERO: Self
 pub fn f32::from_f32(f32) -> Self
 pub fn f32::hash_bits(self) -> u64
 pub fn f32::to_f32(self) -> f32
 impl skene_core::Scalar for u32
+pub const u32::ZERO: Self
 pub fn u32::from_f32(f32) -> Self
 pub fn u32::hash_bits(self) -> u64
 pub fn u32::to_f32(self) -> f32
@@ -4846,12 +4824,6 @@ pub fn ()::for_each_box_field<N: skene_core::Scalar, V: skene_core::BoxFieldVisi
 pub fn ()::for_each_run_field<V: skene_core::RunFieldVisitor<Self>>(&mut V)
 pub fn ()::interpolate_value(&Self::Value, &Self::Value, f32) -> core::option::Option<Self::Value>
 pub fn ()::run_value_from_number(f32) -> core::option::Option<skene_core::RunValue<Self>>
-pub trait skene_core::Themed<V>: skene_core::TokenSet<V> + core::default::Default
-pub fn skene_core::Themed::current() -> Self
-pub fn skene_core::Themed::watch() -> skene_reactive::memo::Memo<Self>
-impl<V, P: skene_core::TokenSet<V> + core::default::Default> skene_core::Themed<V> for P
-pub fn P::current() -> Self
-pub fn P::watch() -> skene_reactive::memo::Memo<Self>
 pub trait skene_core::TokenSet<V>: core::clone::Clone + core::cmp::PartialEq + 'static
 pub fn skene_core::TokenSet::definitions(&self) -> alloc::vec::Vec<(skene_core::TokenName, V)>
 pub trait skene_core::Tokenable: 'static

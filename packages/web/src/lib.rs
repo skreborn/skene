@@ -78,7 +78,6 @@ pub use self::csr::{
   enable_view_transitions,
   end_turn,
   hydrate,
-  hydrate_page,
   hydration_mismatches,
   install,
   install_executor,

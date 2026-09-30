@@ -131,12 +131,6 @@ pub trait RunVisitor<S: Shape, X: StyleExtension> {
   fn value<T: IntoRunValue<X>>(&mut self, key: PropertyKey<X::Property>, value: &S::Of<T>);
 }
 
-/// Visits a [`RunStyle`]'s fields by mutable value, each with its name.
-pub trait RunVisitorMut<S: Shape, X: StyleExtension> {
-  /// Visits the field of property `key`, holding a `T`.
-  fn value<T: IntoRunValue<X>>(&mut self, key: PropertyKey<X::Property>, value: &mut S::Of<T>);
-}
-
 /// A derived run leaf a split lifted out.
 pub type RunSlot<X = ()> = DerivedSlot<PropertyKey<<X as StyleExtension>::Property>, RunValue<X>>;
 
@@ -199,15 +193,6 @@ impl<S: Shape, X: StyleExtension> RunStyle<S, X> {
       visitor,
     });
   }
-
-  /// Visits every field mutably with its name.
-  #[inline(always)]
-  pub fn visit_mut<V: RunVisitorMut<S, X>>(&mut self, visitor: &mut V) {
-    Self::for_each_field(&mut VisitMut {
-      style: self,
-      visitor,
-    });
-  }
 }
 
 struct Visit<'a, S: Shape, X: StyleExtension, V> {
@@ -219,22 +204,6 @@ impl<S: Shape, X: StyleExtension, V: RunVisitor<S, X>> RunFieldVisitor<X> for Vi
   #[inline(always)]
   fn field<F: RunField<X>>(&mut self) {
     self.visitor.value::<F::Value>(F::KEY, F::get(self.style));
-  }
-}
-
-struct VisitMut<'a, S: Shape, X: StyleExtension, V> {
-  style: &'a mut RunStyle<S, X>,
-  visitor: &'a mut V,
-}
-
-impl<S: Shape, X: StyleExtension, V: RunVisitorMut<S, X>> RunFieldVisitor<X>
-  for VisitMut<'_, S, X, V>
-{
-  #[inline(always)]
-  fn field<F: RunField<X>>(&mut self) {
-    self
-      .visitor
-      .value::<F::Value>(F::KEY, F::get_mut(self.style));
   }
 }
 

@@ -245,16 +245,9 @@ left half-done in a code comment.
     `browser/` and `server/` trees; `tui/src/terminal.rs` into the loop, the writer
     and key mapping; `tui/src/store.rs`, six concerns in one;
     `cli/src/main.rs`.
-    - Deleted, about 1,000 lines: `slice.rs`, `Reaction`, `create_detached`,
-    `OwnedSignal`, `Effect::watch` unless it becomes the binder primitive, and the
-    operator impls in `ops.rs`, which hide tracked reads; `Themed`, `BoxVisitorMut`,
-    `RunVisitorMut`, `Composable::dark_mode` and `both`, `Condition::involves_state`,
-    `Conditional::into_parts`, `Scene::set_annotation`, `Scene::for_each_child`,
-    `NodeRecord::sink_mut`, `Prevented::merge`, and `IntoView`, whose only impl is the
-    blanket over `View` (`AnyKind` stays); `hydrate_page` and the four-tuple
-    `render_to_stream`; the terminal's `Kind::Control.checked`, `Record::listened`,
-    the `interaction::store` alias and `KeyCode::BackTab`; the
-    CLI's unreachable Windows `Tty` and its `windows-sys`; `num-traits`.
+    - Deleted: `Scene::set_annotation`, the annotation arriving with the node it
+    belongs to, and `IntoView`, whose only impl is the blanket over `View` (`AnyKind`
+    stays).
     - Renames: `Raw*` to `Basic*`; `Show` and `Switch` to `Visibility` and `OneOf`; `Lazy`
     to `AsyncView`; `Composable` to `ConditionTree`; the `Range` behavior and
     `NativeElement::Range` to `Slider`; `Roving` and `RadioMember` to `RadioGroup` and
@@ -325,9 +318,8 @@ left half-done in a code comment.
     `main.rs`; the CLI's help, which names "the embedded runner" and `skene dev`.
     - Doc comments: contracts alone, without rationale or narrated implementation;
     stale references (the runner, `skene dev`, "the medium's core crate", `Ctrl-C` for
-    `Ctrl-Q`, vanished parameters) and false contracts (`Container::set_label`,
-    `Flexible`, the tooltip, `Effect::watch`, `split.rs`, the setter macro's `derive_`
-    boilerplate) fixed; short first paragraphs; every builder's example a doctest on
+    `Ctrl-Q`, vanished parameters) and false contracts (`Flexible`, the tooltip,
+    `split.rs`, the setter macro's `derive_` boilerplate) fixed; short first paragraphs; every builder's example a doctest on
     the headless host. Two rule tensions are settled explicitly: documented
     `pub(crate)` items against "comment non-public code only when critical", and
     examples that explain why, as teaching code should.

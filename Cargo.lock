@@ -2475,7 +2475,6 @@ dependencies = [
  "walkdir",
  "wasm-bindgen-cli-support",
  "wasm-split-cli",
- "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -2508,7 +2507,6 @@ dependencies = [
  "keyboard-types",
  "libm",
  "longest-increasing-subsequence",
- "num-traits",
  "rustc-hash 2.1.3",
  "skene-reactive",
  "smallvec",

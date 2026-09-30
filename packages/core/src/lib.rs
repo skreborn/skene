@@ -72,7 +72,6 @@ pub use box_style::{
   BoxStyle,
   BoxValue,
   BoxVisitor,
-  BoxVisitorMut,
   IntoBoxValue,
   box_fields,
 };
@@ -215,7 +214,6 @@ pub use run_style::{
   RunStyle,
   RunValue,
   RunVisitor,
-  RunVisitorMut,
   run_fields,
 };
 pub use runtime::{end_turn, hold_flushes, reset_root_owner, reset_thread, root_owner};
@@ -225,16 +223,7 @@ pub use segment::{Piece, Segment};
 pub use shape::{Declared, Keyframe, Plain, Shape, Static};
 pub use show::Show;
 pub use task::count_pending;
-pub use token::{
-  Definitions,
-  IntoTokenValue,
-  Themed,
-  Token,
-  TokenName,
-  TokenRef,
-  TokenSet,
-  Tokenable,
-};
+pub use token::{Definitions, IntoTokenValue, Token, TokenName, TokenRef, TokenSet, Tokenable};
 pub use ui_events::pointer::{
   PersistentDeviceId,
   PointerButton,

@@ -7,8 +7,6 @@ use std::{
   rc::Rc,
 };
 
-use skene_reactive::{Get, Memo, use_context};
-
 use super::{Definition, Leaf, Media, Scalar, StaticLeaf, Value};
 use crate::{Color, Dimension, Length, values::is_identifier};
 
@@ -334,36 +332,9 @@ impl<V> FromIterator<(TokenName, V)> for Definitions<V> {
   }
 }
 
-/// A token set read from the theme in force.
-///
-/// A theme provides `Memo<Self>` through context; without one the set's default stands
-/// in, and registering that default at the root is the theme view's job. Every
-/// [`TokenSet`] with a default has it.
-pub trait Themed<V>: TokenSet<V> + Default {
-  /// The set the nearest theme provides, or the default without one.
-  fn current() -> Self;
-
-  /// The nearest theme's set as a memo, or a memo of the default without one.
-  fn watch() -> Memo<Self>;
-}
-
-impl<V, P: TokenSet<V> + Default> Themed<V> for P {
-  #[inline(always)]
-  fn current() -> Self {
-    use_context::<Memo<Self>>().map_or_else(Self::default, |memo| memo.get())
-  }
-
-  #[inline(always)]
-  fn watch() -> Memo<Self> {
-    use_context::<Memo<Self>>().unwrap_or_else(|| Memo::new(|_| Self::default()))
-  }
-}
-
 #[cfg(test)]
 mod tests {
-  use skene_reactive::{Get, Memo, Owner, provide_context};
-
-  use super::{Definitions, Themed, Token, TokenName, TokenRef, TokenSet};
+  use super::{Definitions, Token, TokenName, TokenRef, TokenSet};
   use crate::{Color, Definition, Expr, Media, StaticLeaf};
 
   /// The erased value a facade would keep per token.
@@ -442,29 +413,6 @@ mod tests {
       Some(&Erased::Color(palette.card.definition().clone()))
     );
     assert_eq!(definitions.get(TokenName::new("missing")), None);
-  }
-
-  /// Without a theme the default stands in; with one, the provided set is read.
-  #[test]
-  fn themed_reads_the_provided_set_or_the_default() {
-    let owner = Owner::new();
-
-    owner.enter(|| {
-      assert_eq!(<Palette as Themed<Erased>>::current(), Palette::default());
-
-      let provided = Palette {
-        gutter: Token::new("gutter", 12.),
-        ..Palette::default()
-      };
-      let expected = provided.clone();
-
-      provide_context(Memo::new(move |_| provided.clone()));
-
-      assert_eq!(<Palette as Themed<Erased>>::current(), expected);
-      assert_eq!(<Palette as Themed<Erased>>::watch().get(), expected);
-    });
-
-    owner.dispose();
   }
 
   /// A name that is not an identifier is rejected in debug builds.

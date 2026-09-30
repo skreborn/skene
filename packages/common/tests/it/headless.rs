@@ -6,7 +6,7 @@ use std::{
   rc::Rc,
 };
 
-use skene_common::gui::GuiProperty;
+use skene_common::{ThemedIn, gui::GuiProperty};
 use skene_core::{
   BoxValue,
   Bubbling,
@@ -39,7 +39,6 @@ use skene_core::{
   State,
   StaticLeaf,
   StaticValue,
-  Themed,
   Token,
   TokenName,
   TokenRef,
@@ -451,7 +450,7 @@ fn nested_themes_resolve_the_nearest_palette() {
         Column::new().set_children((
           Container::new().set_color(TestPalette::CARD),
           Theme::new(TestPalette::with_card(red())).set_child_builder(move || {
-            seen.set(Some(<TestPalette as Themed<TokenValue>>::current()));
+            seen.set(Some(<TestPalette as ThemedIn<Headless>>::current()));
 
             Container::new().set_color(TestPalette::CARD)
           }),

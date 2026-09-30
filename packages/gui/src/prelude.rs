@@ -78,6 +78,8 @@ pub use skene_reactive::{
 };
 pub use tracing::{debug, error, info, trace, warn};
 
+#[cfg(skene_leaf = "browser")]
+pub use crate::launch;
 #[cfg(skene_leaf = "server")]
 pub use crate::render_to_string;
 pub use crate::{
@@ -146,5 +148,3 @@ pub use crate::{
   set_scheme,
   stored_scheme,
 };
-#[cfg(skene_leaf = "browser")]
-pub use crate::{hydrate_page, launch};

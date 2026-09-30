@@ -2,8 +2,6 @@
 
 use std::fmt::Debug;
 
-use num_traits::ConstZero;
-
 /// A facade's length unit: logical pixels on pixel media, cells in the terminal.
 ///
 /// Every length-valued property, condition and token is generic over it; an expression
@@ -12,7 +10,10 @@ use num_traits::ConstZero;
   message = "`{Self}` is not a length unit",
   label = "a facade measures lengths in `f32` (logical pixels) or `u32` (cells)"
 )]
-pub trait Scalar: Copy + PartialEq + PartialOrd + Debug + Default + ConstZero + 'static {
+pub trait Scalar: Copy + PartialEq + PartialOrd + Debug + Default + 'static {
+  /// Zero in this unit.
+  const ZERO: Self;
+
   /// This length as an `f32`, for expression evaluation.
   fn to_f32(self) -> f32;
 
@@ -24,6 +25,8 @@ pub trait Scalar: Copy + PartialEq + PartialOrd + Debug + Default + ConstZero + 
 }
 
 impl Scalar for f32 {
+  const ZERO: Self = 0.;
+
   #[inline(always)]
   fn to_f32(self) -> f32 {
     self
@@ -46,6 +49,8 @@ impl Scalar for f32 {
 }
 
 impl Scalar for u32 {
+  const ZERO: Self = 0;
+
   #[inline(always)]
   #[expect(
     clippy::cast_precision_loss,

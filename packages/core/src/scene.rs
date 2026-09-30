@@ -894,14 +894,6 @@ impl<P: Platform> Scene<P> {
     }
   }
 
-  /// Calls `f` with each child of `node`, in order.
-  #[inline(always)]
-  pub fn for_each_child(&self, node: NodeId, mut visit: impl FnMut(NodeId)) {
-    for child in self.children(node) {
-      visit(child);
-    }
-  }
-
   /// Places `child` under `parent`, immediately before `before` when given, else last,
   /// moving it from any previous parent; nothing where it already stands there, or
   /// where either is gone.

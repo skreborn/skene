@@ -1956,11 +1956,7 @@ pub fn hydration_mismatches() -> u32 {
 
 /// Hydrates the server-rendered page: adopts `<body>` and reads the state script the
 /// server's page assembly embedded.
-///
-/// # Panics
-///
-/// Panics if there is no `window`, `document` or `<body>`.
-pub fn hydrate_page<V, F>(app: F)
+fn hydrate_page<V, F>(app: F)
 where
   F: FnOnce() -> V + 'static,
   V: IntoView<Web>,
@@ -1985,7 +1981,7 @@ where
 /// Mounts and runs a skene application in the browser, rooted at `<body>`.
 ///
 /// A server-rendered page, recognized by its embedded state script, is adopted in
-/// place as [`hydrate_page`] does.
+/// place: its `<body>` hydrated with the state the script carries.
 ///
 /// # Panics
 ///

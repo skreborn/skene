@@ -24,17 +24,6 @@ pub trait Composable: Clone + Sized {
   /// a composite.
   fn shape(&self) -> ConditionShape<'_, Self>;
 
-  /// The leaf holding while the platform's dark color scheme is in force.
-  ///
-  /// Every medium answers this one—a browser from the reader's preference, a terminal
-  /// from its own background—so the shared machinery can name it without knowing the
-  /// vocabulary it belongs to.
-  fn dark_mode() -> Self;
-
-  /// The condition holding while both this one and `other` hold.
-  #[must_use]
-  fn both(self, other: Self) -> Self;
-
   /// Whether the condition holds, with `leaf` deciding each leaf.
   fn holds(&self, leaf: &impl Fn(&Self) -> bool) -> bool {
     match self.shape() {
@@ -45,16 +34,6 @@ pub trait Composable: Clone + Sized {
       ConditionShape::Or(subconditions) => subconditions
         .iter()
         .any(|subcondition| subcondition.holds(leaf)),
-    }
-  }
-
-  /// Whether any leaf of the condition satisfies `predicate`.
-  fn involves(&self, predicate: &impl Fn(&Self) -> bool) -> bool {
-    match self.shape() {
-      ConditionShape::Leaf(condition) => predicate(condition),
-      ConditionShape::And(subconditions) | ConditionShape::Or(subconditions) => subconditions
-        .iter()
-        .any(|subcondition| subcondition.involves(predicate)),
     }
   }
 

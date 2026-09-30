@@ -1,8 +1,7 @@
 use std::ops::Neg;
 
-use num_traits::ConstZero;
-
 use super::impl_ops;
+use crate::Scalar;
 
 /// A point in a 2D coordinate space.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
@@ -14,7 +13,7 @@ pub struct Point<T> {
   pub y: T,
 }
 
-impl<T: ConstZero> Point<T> {
+impl<T: Scalar> Point<T> {
   /// The origin.
   pub const ZERO: Self = Self {
     x: T::ZERO,

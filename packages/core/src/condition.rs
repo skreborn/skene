@@ -147,16 +147,6 @@ impl<N: Scalar> Composable for Media<N> {
       _ => ConditionShape::Leaf(self),
     }
   }
-
-  #[inline(always)]
-  fn dark_mode() -> Self {
-    Self::Dark
-  }
-
-  #[inline(always)]
-  fn both(self, other: Self) -> Self {
-    Self::And(vec![self, other])
-  }
 }
 
 impl<N: Scalar> Hash for Media<N> {
@@ -320,12 +310,6 @@ impl<N: Scalar> Condition<N> {
     })
   }
 
-  /// Whether any leaf is a state condition.
-  #[inline(always)]
-  pub fn involves_state(&self) -> bool {
-    self.involves(&|leaf| matches!(leaf, Self::State(_)))
-  }
-
   /// This condition as a [`Media`] condition, where it tests the environment alone: a
   /// media leaf, or any conjunction and disjunction of them; `None` where a state is
   /// among its leaves.
@@ -356,16 +340,6 @@ impl<N: Scalar> Composable for Condition<N> {
       Self::Or(subconditions) => ConditionShape::Or(subconditions),
       _ => ConditionShape::Leaf(self),
     }
-  }
-
-  #[inline(always)]
-  fn dark_mode() -> Self {
-    Self::Media(Media::Dark)
-  }
-
-  #[inline(always)]
-  fn both(self, other: Self) -> Self {
-    Self::And(vec![self, other])
   }
 }
 
@@ -524,9 +498,6 @@ mod tests {
 
     assert!(hovered_in_dark.holds_in(&env, &|state| state == State::Hovered));
     assert!(!hovered_in_dark.holds_in(&env, &|_| false));
-    assert!(hovered_in_dark.involves_state());
-    assert!(!Condition::<f32>::from(Media::Light).involves_state());
-    assert_eq!(Condition::<f32>::dark_mode(), Condition::Media(Media::Dark));
   }
 
   /// The control states are exactly those a plain box cannot have on its own.

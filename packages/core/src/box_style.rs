@@ -325,12 +325,6 @@ pub trait BoxVisitor<N: Scalar, S: Shape, X: StyleExtension> {
   fn value<T: IntoBoxValue<N, X>>(&mut self, key: PropertyKey<X::Property>, value: &S::Of<T>);
 }
 
-/// Visits a [`BoxStyle`]'s fields by mutable value, each with its name.
-pub trait BoxVisitorMut<N: Scalar, S: Shape, X: StyleExtension> {
-  /// Visits the field of property `key`, holding a `T`.
-  fn value<T: IntoBoxValue<N, X>>(&mut self, key: PropertyKey<X::Property>, value: &mut S::Of<T>);
-}
-
 /// A derived box leaf a split lifted out.
 pub type BoxSlot<N, X = ()> =
   DerivedSlot<PropertyKey<<X as StyleExtension>::Property>, BoxValue<N, X>>;
@@ -422,15 +416,6 @@ impl<N: Scalar, S: Shape, X: StyleExtension> BoxStyle<N, S, X> {
       visitor,
     });
   }
-
-  /// Visits every field mutably with its name.
-  #[inline(always)]
-  pub fn visit_mut<V: BoxVisitorMut<N, S, X>>(&mut self, visitor: &mut V) {
-    Self::for_each_field(&mut VisitMut {
-      style: self,
-      visitor,
-    });
-  }
 }
 
 struct Visit<'a, N: Scalar, S: Shape, X: StyleExtension, V> {
@@ -444,22 +429,6 @@ impl<N: Scalar, S: Shape, X: StyleExtension, V: BoxVisitor<N, S, X>> BoxFieldVis
   #[inline(always)]
   fn field<F: BoxField<N, X>>(&mut self) {
     self.visitor.value::<F::Value>(F::KEY, F::get(self.style));
-  }
-}
-
-struct VisitMut<'a, N: Scalar, S: Shape, X: StyleExtension, V> {
-  style: &'a mut BoxStyle<N, S, X>,
-  visitor: &'a mut V,
-}
-
-impl<N: Scalar, S: Shape, X: StyleExtension, V: BoxVisitorMut<N, S, X>> BoxFieldVisitor<N, X>
-  for VisitMut<'_, N, S, X, V>
-{
-  #[inline(always)]
-  fn field<F: BoxField<N, X>>(&mut self) {
-    self
-      .visitor
-      .value::<F::Value>(F::KEY, F::get_mut(self.style));
   }
 }
 

@@ -189,12 +189,6 @@ impl<L, C> Conditional<L, C> {
     )
   }
 
-  /// The base and the variants.
-  #[inline(always)]
-  pub fn into_parts(self) -> (L, SmallVec<[(C, L); 1]>) {
-    (self.base, self.variants)
-  }
-
   /// This value with `map` applied to every leaf, the base first.
   pub fn map<M>(self, mut map: impl FnMut(L) -> M) -> Conditional<M, C> {
     Conditional {

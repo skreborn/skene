@@ -566,7 +566,7 @@ fn a_list_reordered_before_serialization_serializes_in_its_new_order() {
 }
 
 /// A complete document assembles the styles into `<head>`, the tree into `<body>`, and
-/// the state into the script `hydrate_page` reads back.
+/// the state into the script `launch` reads back.
 #[test]
 fn page_assembles_a_full_document() {
   let page = render_to_string(|| {

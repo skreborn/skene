@@ -55,8 +55,9 @@
   unifying nothing, and never a cargo feature. No feature flags. Target-gating is the
   enforcement layer: the browser leaf compiles on `wasm32-unknown-unknown` alone and
   the server leaf where the build names it (`skene_leaf`, one axis the web and GUI
-  crates derive from the triple and the cfg; `browser`, `server` or `host`), so the
-  server leaf physically cannot touch the DOM. A
+  crates derive from the triple and the cfg through the `skene-build` build-dependency;
+  `browser`, `server` or `host`, a build it has no leaf for failing), so the server leaf
+  physically cannot touch the DOM. A
   cargo feature may only **add items**: never a trait bound, a type, a variant or a
   platform. No cargo feature exists in the workspace, and the gate's manifest check
   rejects a `[features]` table or an optional dependency so none creeps back in.

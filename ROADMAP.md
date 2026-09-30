@@ -221,16 +221,9 @@ left half-done in a code comment.
     of the spine; `root_owner` as the reactive crate's `Owner::root()`; `task`,
     `executor` and `boundary` as one module.
     - Edges: `skene-simple` stops depending on both facades, as two tiny alias crates
-    or an alias macro the app invokes; `skene-gui` depends on `skene-web` only where a
-    web leaf builds, through a Cargo target table; painting's GPU stack stops weighing
+    or an alias macro the app invokes; painting's GPU stack stops weighing
     on the build of an app that paints nothing, `vello_hybrid` being over half of a
     clean gallery wasm build.
-    - A tiny `skene-build` build-dependency derives `skene_leaf` and declares the
-    check-cfg for it and for `skene_platform = "server" | "native"`, replacing the two
-    identical `build.rs` files and third-party crates' `unexpected_cfgs` warnings;
-    dependencies are gated by the same expression in Cargo target tables, and an
-    unknown `skene_platform`, or a wasip1, wasip2, emscripten or wasm32v1-none build,
-    is rejected rather than routed to the host leaf.
     - `acme-map` becomes one `Map<P>` over a library-local `MapHost` trait with web and
     headless implementations, deleting the gallery's three `cfg` blocks, and
     `AGENTS.md` states that a view library covers every platform of its medium,
@@ -528,8 +521,7 @@ left half-done in a code comment.
     600–900 lines) waits until someone asks.
     - The render deadline through a clock that works on every target, `Instant`
     natively and the JavaScript clock on `wasm32-unknown-unknown`.
-    - Leaf selection testing the server cfg before the browser triple, and `#[main]`
-    never emitting the browser entry in a server build.
+    - `#[main]` never emitting the browser entry in a server build.
     - All blocking behind one seam: the settle loop async, with a native `block_on`
     over today's condition variable, and `AGENTS.md` stating that the server leaf
     blocks only there.

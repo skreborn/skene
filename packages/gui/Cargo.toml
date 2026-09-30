@@ -11,10 +11,13 @@ skene-common.workspace = true
 skene-core.workspace = true
 skene-macros.workspace = true
 skene-reactive.workspace = true
-skene-web.workspace = true
 tracing.workspace = true
 
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+# The web leaves where the build compiles one, the headless platform on every other host.
+[target.'cfg(any(all(target_arch = "wasm32", target_os = "unknown"), skene_platform = "server"))'.dependencies]
+skene-web.workspace = true
+
+[target.'cfg(not(any(all(target_arch = "wasm32", target_os = "unknown"), skene_platform = "server")))'.dependencies]
 skene-headless.workspace = true
 
 [target.'cfg(unix)'.dependencies]
@@ -66,6 +69,9 @@ web-sys = { version = "0.3", features = [
   "WheelEventInit",
   "Window",
 ] }
+
+[build-dependencies]
+skene-build.workspace = true
 
 [lints]
 workspace = true

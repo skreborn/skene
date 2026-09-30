@@ -59,6 +59,7 @@ struct Snapshot {
 /// Every snapshot: each library crate on the host, and those whose surface differs by
 /// leaf on each of theirs.
 const SNAPSHOTS: &[Snapshot] = &[
+  Snapshot::new("skene-build", Leaf::Host),
   Snapshot::new("skene-common", Leaf::Host),
   Snapshot::new("skene-conformance", Leaf::Host),
   Snapshot::new("skene-core", Leaf::Host),

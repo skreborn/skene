@@ -17,6 +17,7 @@ proc-macro2 = "1"
 proptest = { default-features = false, features = ["std"], version = "1" }
 quote = "1"
 rustc-hash = "2.1"
+skene-build = { path = "packages/build", version = "0.1.0" }
 skene-common = { path = "packages/common", version = "0.1.0" }
 skene-conformance = { path = "packages/conformance", version = "0.1.0" }
 skene-core = { path = "packages/core", version = "0.1.0" }

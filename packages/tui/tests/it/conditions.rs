@@ -200,7 +200,7 @@ fn a_derived_scheme_repaints_without_rebuilding() {
 
     let light = testing::render_to_colors(4, 1);
 
-    assert_eq!(tui::stored_scheme(), Some(ColorScheme::Light));
+    assert_eq!(tui::chosen_scheme(), Some(ColorScheme::Light));
 
     scheme.set(ColorScheme::Dark);
 
@@ -213,6 +213,6 @@ fn a_derived_scheme_repaints_without_rebuilding() {
 
     set_scheme(None);
 
-    assert_eq!(tui::stored_scheme(), None);
+    assert_eq!(tui::chosen_scheme(), None);
   });
 }

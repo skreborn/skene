@@ -35,7 +35,7 @@ use skene_reactive::{Memo, ReadSignal};
 
 use super::{
   SCENE,
-  head::{set_scheme, stored_scheme},
+  head::{persisted_scheme, set_scheme},
   media::{media_signals, with_media},
   with_realizer,
 };
@@ -196,8 +196,8 @@ impl Platform for Web {
 
   fn cancel(_: Timer) {}
 
-  fn stored_scheme() -> Option<ColorScheme> {
-    stored_scheme()
+  fn chosen_scheme() -> Option<ColorScheme> {
+    persisted_scheme()
   }
 }
 

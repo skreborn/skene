@@ -106,6 +106,7 @@ pub fn skene_gui::head::derive_title(impl core::ops::function::Fn() -> alloc::st
 pub fn skene_gui::head::set_language(impl core::convert::Into<alloc::string::String>)
 pub fn skene_gui::head::set_title(impl core::convert::Into<alloc::string::String>)
 pub mod skene_gui::media
+pub fn skene_gui::media::chosen_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
 pub fn skene_gui::media::derive_scheme(impl core::ops::function::Fn() -> core::option::Option<skene_core::values::color::ColorScheme> + 'static)
 pub fn skene_gui::media::high_contrast() -> skene_reactive::signal::ReadSignal<bool>
 pub fn skene_gui::media::hover() -> skene_reactive::signal::ReadSignal<bool>
@@ -116,7 +117,6 @@ pub fn skene_gui::media::reduced_transparency() -> skene_reactive::signal::ReadS
 pub fn skene_gui::media::safe_area() -> skene_reactive::signal::ReadSignal<skene_core::values::inset::Inset<f32>>
 pub fn skene_gui::media::scheme() -> skene_reactive::signal::ReadSignal<skene_core::values::color::ColorScheme>
 pub fn skene_gui::media::set_scheme(core::option::Option<skene_core::values::color::ColorScheme>)
-pub fn skene_gui::media::stored_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
 pub fn skene_gui::media::viewport() -> skene_reactive::signal::ReadSignal<skene_gui::Size>
 pub fn skene_gui::media::watch(&skene_gui::Media) -> skene_reactive::memo::Memo<bool>
 pub mod skene_gui::prelude
@@ -204,6 +204,7 @@ pub use skene_gui::prelude::main
 pub use skene_gui::prelude::trace
 pub use skene_gui::prelude::warn
 pub mod skene_gui::prelude::media
+pub fn skene_gui::prelude::media::chosen_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
 pub fn skene_gui::prelude::media::derive_scheme(impl core::ops::function::Fn() -> core::option::Option<skene_core::values::color::ColorScheme> + 'static)
 pub fn skene_gui::prelude::media::high_contrast() -> skene_reactive::signal::ReadSignal<bool>
 pub fn skene_gui::prelude::media::hover() -> skene_reactive::signal::ReadSignal<bool>
@@ -214,7 +215,6 @@ pub fn skene_gui::prelude::media::reduced_transparency() -> skene_reactive::sign
 pub fn skene_gui::prelude::media::safe_area() -> skene_reactive::signal::ReadSignal<skene_core::values::inset::Inset<f32>>
 pub fn skene_gui::prelude::media::scheme() -> skene_reactive::signal::ReadSignal<skene_core::values::color::ColorScheme>
 pub fn skene_gui::prelude::media::set_scheme(core::option::Option<skene_core::values::color::ColorScheme>)
-pub fn skene_gui::prelude::media::stored_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
 pub fn skene_gui::prelude::media::viewport() -> skene_reactive::signal::ReadSignal<skene_gui::Size>
 pub fn skene_gui::prelude::media::watch(&skene_gui::Media) -> skene_reactive::memo::Memo<bool>
 pub trait skene_gui::prelude::ThemedIn: skene_common::theme::ThemedIn<skene_gui::ActivePlatform>
@@ -229,12 +229,12 @@ pub fn skene_gui::prelude::View::into_any(self) -> skene_gui::AnyView where Self
 impl<V: skene_core::view::View<skene_gui::ActivePlatform>> skene_gui::View for V
 pub fn V::build(self) -> skene_core::node::NodeId where Self: core::marker::Sized
 pub fn V::into_any(self) -> skene_gui::AnyView where Self: core::marker::Sized
+pub fn skene_gui::prelude::chosen_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
 pub fn skene_gui::prelude::derive_scheme(impl core::ops::function::Fn() -> core::option::Option<skene_core::values::color::ColorScheme> + 'static)
 pub fn skene_gui::prelude::derived(impl core::ops::function::Fn() -> skene_core::node::NodeId + 'static) -> skene_core::node::NodeId
 pub fn skene_gui::prelude::empty() -> impl skene_gui::View
 pub fn skene_gui::prelude::render_to_string<V, F>(F) -> skene_web::server::Rendered where F: core::ops::function::FnOnce() -> V + 'static, V: skene_gui::View
 pub fn skene_gui::prelude::set_scheme(core::option::Option<skene_core::values::color::ColorScheme>)
-pub fn skene_gui::prelude::stored_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
 pub type skene_gui::prelude::AnyView = skene_core::view::AnyView<skene_gui::ActivePlatform>
 pub type skene_gui::prelude::BasicButton<C> = skene_common::control::BasicButton<skene_gui::ActivePlatform, C>
 pub type skene_gui::prelude::BasicCheckbox<C> = skene_common::control::BasicCheckbox<skene_gui::ActivePlatform, C>
@@ -350,6 +350,7 @@ pub fn skene_gui::View::into_any(self) -> skene_gui::AnyView where Self: core::m
 impl<V: skene_core::view::View<skene_gui::ActivePlatform>> skene_gui::View for V
 pub fn V::build(self) -> skene_core::node::NodeId where Self: core::marker::Sized
 pub fn V::into_any(self) -> skene_gui::AnyView where Self: core::marker::Sized
+pub fn skene_gui::chosen_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
 pub fn skene_gui::client_only(impl core::ops::function::FnOnce() -> skene_core::node::NodeId + 'static) -> impl skene_gui::View
 pub fn skene_gui::derive_scheme(impl core::ops::function::Fn() -> core::option::Option<skene_core::values::color::ColorScheme> + 'static)
 pub fn skene_gui::derived(impl core::ops::function::Fn() -> skene_core::node::NodeId + 'static) -> skene_core::node::NodeId
@@ -365,7 +366,6 @@ pub fn skene_gui::render_to_string_at<V, F>(&str, F) -> skene_web::server::Rende
 pub fn skene_gui::serve_renders<V, F>(F) where F: core::ops::function::Fn() -> V + core::clone::Clone + 'static, V: skene_gui::View
 pub fn skene_gui::set_scheme(core::option::Option<skene_core::values::color::ColorScheme>)
 pub fn skene_gui::spawn(impl core::future::future::Future<Output = ()> + 'static) -> skene_reactive::spawn::TaskHandle
-pub fn skene_gui::stored_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
 pub type skene_gui::ActivePlatform = skene_web::Web
 pub type skene_gui::AnyView = skene_core::view::AnyView<skene_gui::ActivePlatform>
 pub type skene_gui::BasicButton<C> = skene_common::control::BasicButton<skene_gui::ActivePlatform, C>

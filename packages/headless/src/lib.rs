@@ -392,7 +392,7 @@ impl Platform for Headless {
     with_records(|records| records.clipboard.push(action));
   }
 
-  fn stored_scheme() -> Option<ColorScheme> {
+  fn chosen_scheme() -> Option<ColorScheme> {
     chosen_scheme()
   }
 }

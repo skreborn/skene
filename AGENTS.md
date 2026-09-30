@@ -175,7 +175,7 @@
       its head, applying the stored scheme before the first paint; deferred would run
       after the paint, which is the flash it exists to prevent. It carries the render's
       script nonce, so the page works under a strict Content Security Policy.
-      `stored_scheme()` reads the same key so an app's setting starts where the page
+      `chosen_scheme()` reads the same key so an app's setting starts where the page
       already is.
   - **The scene is the tree.** Every view attaches to its parent's scene node, wrappers
     realize nothing, and `derived`, `Suspense`, `ErrorBoundary`, `Deferred` and `empty`

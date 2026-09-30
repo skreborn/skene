@@ -59,7 +59,7 @@ pub use self::{
     set_head_title,
   },
   history::{current_path, on_pop, push_path},
-  media::{media_query, set_scheme, stored_scheme, watch_media},
+  media::{media_query, persisted_scheme, set_scheme, watch_media},
   restore::adopt_restoration,
   task::{drive, install_executor},
   view_transition::{commit_navigation, enable_view_transitions, view_transitions_enabled},

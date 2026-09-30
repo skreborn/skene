@@ -8,8 +8,9 @@
 //!
 //! The scheme in force is the document's, not a theme's: [`set_scheme`] and
 //! [`derive_scheme`] tell the platform which scheme paints, touching no node, and `None`
-//! returns to following the platform. [`stored_scheme`] reads the choice a previous
-//! visit stored, so an app's setting starts where the page already is.
+//! returns to following the platform. [`chosen_scheme`] reads the choice in force, the
+//! one a previous visit stored included, so an app's setting starts where the page
+//! already is.
 
 use skene_core::{ColorScheme, Inset, PointerPrecision};
 use skene_reactive::{Memo, ReadSignal};
@@ -107,7 +108,8 @@ pub fn derive_scheme(scheme: impl Fn() -> Option<ColorScheme> + 'static) {
   skene_common::media::derive_scheme::<ActivePlatform>(scheme);
 }
 
-/// The color scheme the reader chose on a previous visit, when there is one.
+/// The color scheme chosen for the document, when there is one: the app's choice, or
+/// the reader's on a previous visit.
 ///
 /// Initialize the setting bound to [`derive_scheme`] from this, so the choice the page
 /// was already painted in is the one the app goes on to hold. A server never knows it,
@@ -115,6 +117,6 @@ pub fn derive_scheme(scheme: impl Fn() -> Option<ColorScheme> + 'static) {
 /// which the styling answers with no script at all.
 #[inline(always)]
 #[must_use]
-pub fn stored_scheme() -> Option<ColorScheme> {
-  skene_common::media::stored_scheme::<ActivePlatform>()
+pub fn chosen_scheme() -> Option<ColorScheme> {
+  skene_common::media::chosen_scheme::<ActivePlatform>()
 }

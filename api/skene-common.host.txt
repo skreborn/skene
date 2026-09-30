@@ -366,6 +366,7 @@ pub fn vello_cpu::render::RenderContext::stroke(&mut self, &kurbo::bezpath::BezP
 pub fn skene_common::gui::paint(&peniko::brush::Brush) -> vello_common::paint::PaintType
 pub type skene_common::gui::Painter = dyn core::ops::function::Fn(&mut skene_common::Canvas, skene_core::values::size::Size<f32>)
 pub mod skene_common::media
+pub fn skene_common::media::chosen_scheme<P: skene_core::platform::Platform>() -> core::option::Option<skene_core::values::color::ColorScheme>
 pub fn skene_common::media::derive_scheme<P: skene_core::platform::Platform>(impl core::ops::function::Fn() -> core::option::Option<skene_core::values::color::ColorScheme> + 'static)
 pub fn skene_common::media::high_contrast<P: skene_core::platform::Platform>() -> skene_reactive::signal::ReadSignal<bool>
 pub fn skene_common::media::hover<P: skene_core::platform::Platform>() -> skene_reactive::signal::ReadSignal<bool>
@@ -376,7 +377,6 @@ pub fn skene_common::media::reduced_transparency<P: skene_core::platform::Platfo
 pub fn skene_common::media::safe_area<P: skene_core::platform::Platform>() -> skene_reactive::signal::ReadSignal<skene_core::values::inset::Inset<<P as skene_core::platform::Platform>::Scalar>>
 pub fn skene_common::media::scheme<P: skene_core::platform::Platform>() -> skene_reactive::signal::ReadSignal<skene_core::values::color::ColorScheme>
 pub fn skene_common::media::set_scheme<P: skene_core::platform::Platform>(core::option::Option<skene_core::values::color::ColorScheme>)
-pub fn skene_common::media::stored_scheme<P: skene_core::platform::Platform>() -> core::option::Option<skene_core::values::color::ColorScheme>
 pub fn skene_common::media::viewport<P: skene_core::platform::Platform>() -> skene_reactive::signal::ReadSignal<skene_core::values::size::Size<<P as skene_core::platform::Platform>::Scalar>>
 pub fn skene_common::media::watch<P: skene_core::platform::Platform>(&skene_core::condition::Media<<P as skene_core::platform::Platform>::Scalar>) -> skene_reactive::memo::Memo<bool>
 pub mod skene_common::realize

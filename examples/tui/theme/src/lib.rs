@@ -83,7 +83,7 @@ fn warm(accent_name: Option<&str>) -> SimplePalette {
 pub fn app() -> impl View {
   // The reader's choice, or `None`—which leaves the background the terminal reported in
   // force.
-  let scheme = Signal::new(stored_scheme());
+  let scheme = Signal::new(chosen_scheme());
   // The accent is a signal the theme derives its palette from: a switch redefines the
   // tokens in place and rebuilds nothing beneath the theme.
   let accent = Signal::tagged("accent", Some("indigo".to_owned()));

@@ -32,6 +32,7 @@ pub type skene_headless::Headless::TokenValue = skene_core::resolve::TokenValue<
 pub fn skene_headless::Headless::attach(skene_core::node::NodeId, skene_core::node::NodeId, core::option::Option<skene_core::node::NodeId>)
 pub fn skene_headless::Headless::blur(skene_core::node::NodeId)
 pub fn skene_headless::Headless::cancel(skene_core::platform::Timer)
+pub fn skene_headless::Headless::chosen_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
 pub fn skene_headless::Headless::clipboard(skene_core::values::clipboard::ClipboardAction)
 pub fn skene_headless::Headless::clipboard_availability(skene_core::values::clipboard::ClipboardAction) -> skene_core::values::clipboard::Availability
 pub fn skene_headless::Headless::create_anchor(skene_core::node::NodeId)
@@ -64,7 +65,6 @@ pub fn skene_headless::Headless::set_scheme(core::option::Option<skene_core::val
 pub fn skene_headless::Headless::set_selection(skene_core::node::NodeId, skene_core::values::text_selection::TextSelection)
 pub fn skene_headless::Headless::set_text(skene_core::node::NodeId, &str)
 pub fn skene_headless::Headless::set_value(skene_core::node::NodeId, &str)
-pub fn skene_headless::Headless::stored_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
 pub fn skene_headless::Headless::update_box(skene_core::node::NodeId, skene_core::leaf::Slot, &skene_core::leaf::StaticLeaf<skene_core::box_style::BoxValue<f32, skene_common::gui::ext::GuiStyle>>)
 pub fn skene_headless::Headless::update_run(skene_core::node::NodeId, skene_core::leaf::Slot, &skene_core::leaf::StaticLeaf<skene_core::run_style::RunValue<skene_common::gui::ext::GuiStyle>>)
 pub fn skene_headless::Headless::watch_media(&skene_core::condition::Media<f32>) -> skene_reactive::memo::Memo<bool>

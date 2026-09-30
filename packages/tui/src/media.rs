@@ -96,6 +96,6 @@ pub fn derive_scheme(scheme: impl Fn() -> Option<ColorScheme> + 'static) {
 /// The color scheme the app chose through [`set_scheme`], if any.
 #[inline(always)]
 #[must_use]
-pub fn stored_scheme() -> Option<ColorScheme> {
-  skene_common::media::stored_scheme::<ActivePlatform>()
+pub fn chosen_scheme() -> Option<ColorScheme> {
+  skene_common::media::chosen_scheme::<ActivePlatform>()
 }

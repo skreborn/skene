@@ -145,7 +145,7 @@ fn the_scheme_follows_the_media_choice() {
   media::set_scheme(Some(ColorScheme::Dark));
 
   assert_eq!(media::scheme().get(), ColorScheme::Dark);
-  assert_eq!(media::stored_scheme(), Some(ColorScheme::Dark));
+  assert_eq!(media::chosen_scheme(), Some(ColorScheme::Dark));
   assert_eq!(resolve_color(card, COLOR), Some(card_dark()));
   assert_eq!(children(root)[0], card, "re-inked, not rebuilt");
 

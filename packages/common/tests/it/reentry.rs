@@ -260,7 +260,7 @@ impl Platform for Reentrant {
 
   fn set_scheme(_scheme: Option<skene_core::ColorScheme>) {}
 
-  fn stored_scheme() -> Option<skene_core::ColorScheme> {
+  fn chosen_scheme() -> Option<skene_core::ColorScheme> {
     None
   }
 }

@@ -14,10 +14,10 @@ pub fn set_scheme(_scheme: Option<ColorScheme>) {
   PREEMPT_SCHEME.with(|preempt| preempt.set(true));
 }
 
-/// The color scheme the reader chose on a previous visit; never known to a server.
+/// The color scheme a previous visit persisted; never known to a server.
 #[inline(always)]
 #[must_use]
-pub const fn stored_scheme() -> Option<ColorScheme> {
+pub const fn persisted_scheme() -> Option<ColorScheme> {
   None
 }
 

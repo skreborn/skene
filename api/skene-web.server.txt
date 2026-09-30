@@ -142,6 +142,7 @@ pub fn skene_web::Web::apply_layout(skene_core::node::NodeId, &skene_core::props
 pub fn skene_web::Web::attach(skene_core::node::NodeId, skene_core::node::NodeId, core::option::Option<skene_core::node::NodeId>)
 pub fn skene_web::Web::blur(skene_core::node::NodeId)
 pub fn skene_web::Web::cancel(skene_core::platform::Timer)
+pub fn skene_web::Web::chosen_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
 pub fn skene_web::Web::create_anchor(skene_core::node::NodeId)
 pub fn skene_web::Web::create_box(skene_core::node::NodeId, &skene_core::props::BoxProps<Self>)
 pub fn skene_web::Web::create_control(skene_core::node::NodeId, &skene_core::control::ControlProps<Self>)
@@ -169,7 +170,6 @@ pub fn skene_web::Web::set_scheme(core::option::Option<skene_core::values::color
 pub fn skene_web::Web::set_selection(skene_core::node::NodeId, skene_core::values::text_selection::TextSelection)
 pub fn skene_web::Web::set_text(skene_core::node::NodeId, &str)
 pub fn skene_web::Web::set_value(skene_core::node::NodeId, &str)
-pub fn skene_web::Web::stored_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
 pub fn skene_web::Web::update_access(skene_core::node::NodeId, &[skene_core::values::access::AccessProp])
 pub fn skene_web::Web::update_box(skene_core::node::NodeId, skene_core::leaf::Slot, &skene_core::leaf::StaticLeaf<skene_core::box_style::BoxValue<f32, skene_common::gui::ext::GuiStyle>>)
 pub fn skene_web::Web::update_focus_order(skene_core::node::NodeId, core::option::Option<skene_core::values::focus_order::FocusOrder>)
@@ -206,6 +206,7 @@ pub fn skene_web::enter_lazy() -> skene_web::LazyRegion
 pub fn skene_web::install_executor()
 pub fn skene_web::install_logging()
 pub const fn skene_web::is_server() -> bool
+pub const fn skene_web::persisted_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
 pub fn skene_web::record_static_routes(alloc::vec::Vec<alloc::string::String>)
 pub fn skene_web::recorded_static_routes() -> core::option::Option<alloc::vec::Vec<alloc::string::String>>
 pub fn skene_web::register_boundary(skene_core::node::NodeId, alloc::boxed::Box<dyn core::ops::function::Fn() -> bool>)
@@ -224,6 +225,5 @@ pub fn skene_web::set_request_path(&str)
 pub fn skene_web::set_scheme(core::option::Option<skene_core::values::color::ColorScheme>)
 pub fn skene_web::set_script_nonce(core::option::Option<&str>)
 pub fn skene_web::sleep(core::time::Duration) -> impl core::future::future::Future<Output = ()>
-pub const fn skene_web::stored_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
 pub fn skene_web::within_lazy<R>(&skene_web::LazyRegion, impl core::ops::function::FnOnce() -> R) -> R
 pub type skene_web::HydrationSource = alloc::boxed::Box<dyn core::ops::function::Fn() -> core::option::Option<alloc::string::String>>

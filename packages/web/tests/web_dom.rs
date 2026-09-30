@@ -605,13 +605,13 @@ fn media_reports_the_window() {
       .as_deref(),
     Some("dark")
   );
-  assert_eq!(skene_web::stored_scheme(), Some(ColorScheme::Dark));
+  assert_eq!(skene_web::persisted_scheme(), Some(ColorScheme::Dark));
 
   skene_web::set_scheme(None);
   skene_web::end_turn();
 
   assert_eq!(media.scheme.get(), platform);
-  assert_eq!(skene_web::stored_scheme(), None);
+  assert_eq!(skene_web::persisted_scheme(), None);
 }
 
 /// A low-level view: a `<div>` made through the escape trait.

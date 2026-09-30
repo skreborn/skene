@@ -854,8 +854,8 @@ impl Platform for Web {
     }
   }
 
-  fn stored_scheme() -> Option<ColorScheme> {
-    media::stored_scheme()
+  fn chosen_scheme() -> Option<ColorScheme> {
+    media::chosen_scheme()
   }
 
   fn watch_media(media: &Media<f32>) -> Memo<bool> {

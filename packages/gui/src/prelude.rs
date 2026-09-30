@@ -138,6 +138,7 @@ pub use crate::{
   Typography,
   Value,
   View,
+  chosen_scheme,
   derive_scheme,
   derived,
   empty,
@@ -145,5 +146,4 @@ pub use crate::{
   main,
   media,
   set_scheme,
-  stored_scheme,
 };

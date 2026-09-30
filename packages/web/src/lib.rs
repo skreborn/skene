@@ -85,12 +85,12 @@ pub use self::browser::{
   media_query,
   mount,
   on_pop,
+  persisted_scheme,
   push_path,
   remove_head_entry,
   set_document_language,
   set_head_title,
   set_scheme,
-  stored_scheme,
   view_transitions_enabled,
   watch_media,
 };
@@ -122,6 +122,7 @@ pub use self::server::{
   enable_view_transitions,
   install_executor,
   install_logging,
+  persisted_scheme,
   record_static_routes,
   recorded_static_routes,
   register_boundary,
@@ -138,7 +139,6 @@ pub use self::server::{
   set_scheme,
   set_script_nonce,
   sleep,
-  stored_scheme,
 };
 pub use self::{
   condition::{CONTROL_ATTRIBUTE, SCHEME_ATTRIBUTE},

@@ -140,6 +140,7 @@ pub use crate::{
   Typography,
   Value,
   View,
+  chosen_scheme,
   derive_scheme,
   derive_title,
   derived,
@@ -150,5 +151,4 @@ pub use crate::{
   set_scheme,
   set_title,
   spawn,
-  stored_scheme,
 };

@@ -4688,6 +4688,7 @@ pub fn skene_core::Platform::apply_layout(skene_core::NodeId, &skene_core::Stati
 pub fn skene_core::Platform::attach(skene_core::NodeId, skene_core::NodeId, core::option::Option<skene_core::NodeId>)
 pub fn skene_core::Platform::blur(skene_core::NodeId)
 pub fn skene_core::Platform::cancel(skene_core::Timer)
+pub fn skene_core::Platform::chosen_scheme() -> core::option::Option<skene_core::ColorScheme>
 pub fn skene_core::Platform::clipboard(skene_core::ClipboardAction)
 pub fn skene_core::Platform::clipboard_availability(skene_core::ClipboardAction) -> skene_core::Availability
 pub fn skene_core::Platform::create_anchor(skene_core::NodeId)
@@ -4721,7 +4722,6 @@ pub fn skene_core::Platform::set_scheme(core::option::Option<skene_core::ColorSc
 pub fn skene_core::Platform::set_selection(skene_core::NodeId, skene_core::TextSelection)
 pub fn skene_core::Platform::set_text(skene_core::NodeId, &str)
 pub fn skene_core::Platform::set_value(skene_core::NodeId, &str)
-pub fn skene_core::Platform::stored_scheme() -> core::option::Option<skene_core::ColorScheme>
 pub fn skene_core::Platform::update_access(skene_core::NodeId, &[skene_core::AccessProp])
 pub fn skene_core::Platform::update_box(skene_core::NodeId, skene_core::Slot, &skene_core::StaticLeaf<skene_core::BoxValue<Self::Scalar, Self::StyleExt>>)
 pub fn skene_core::Platform::update_focus_order(skene_core::NodeId, core::option::Option<skene_core::FocusOrder>)

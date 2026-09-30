@@ -100,6 +100,7 @@ pub use skene_tui::router
 pub use skene_tui::tui_fields
 pub use skene_tui::typography
 pub mod skene_tui::media
+pub fn skene_tui::media::chosen_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
 pub fn skene_tui::media::derive_scheme(impl core::ops::function::Fn() -> core::option::Option<skene_core::values::color::ColorScheme> + 'static)
 pub fn skene_tui::media::high_contrast() -> skene_reactive::signal::ReadSignal<bool>
 pub fn skene_tui::media::hover() -> skene_reactive::signal::ReadSignal<bool>
@@ -109,7 +110,6 @@ pub fn skene_tui::media::reduced_transparency() -> skene_reactive::signal::ReadS
 pub fn skene_tui::media::safe_area() -> skene_reactive::signal::ReadSignal<skene_core::values::inset::Inset<u32>>
 pub fn skene_tui::media::scheme() -> skene_reactive::signal::ReadSignal<skene_core::values::color::ColorScheme>
 pub fn skene_tui::media::set_scheme(core::option::Option<skene_core::values::color::ColorScheme>)
-pub fn skene_tui::media::stored_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
 pub fn skene_tui::media::viewport() -> skene_reactive::signal::ReadSignal<skene_tui::Size>
 pub fn skene_tui::media::watch(&skene_tui::Media) -> skene_reactive::memo::Memo<bool>
 pub mod skene_tui::prelude
@@ -240,6 +240,7 @@ pub const skene_tui::prelude::launch::MOUSE_KEY: skene_core::events::Shortcut
 pub fn skene_tui::prelude::launch::install()
 pub fn skene_tui::prelude::launch::launch<V, F>(F) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_core::view::View<skene_tui::Tui>
 pub mod skene_tui::prelude::media
+pub fn skene_tui::prelude::media::chosen_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
 pub fn skene_tui::prelude::media::derive_scheme(impl core::ops::function::Fn() -> core::option::Option<skene_core::values::color::ColorScheme> + 'static)
 pub fn skene_tui::prelude::media::high_contrast() -> skene_reactive::signal::ReadSignal<bool>
 pub fn skene_tui::prelude::media::hover() -> skene_reactive::signal::ReadSignal<bool>
@@ -249,7 +250,6 @@ pub fn skene_tui::prelude::media::reduced_transparency() -> skene_reactive::sign
 pub fn skene_tui::prelude::media::safe_area() -> skene_reactive::signal::ReadSignal<skene_core::values::inset::Inset<u32>>
 pub fn skene_tui::prelude::media::scheme() -> skene_reactive::signal::ReadSignal<skene_core::values::color::ColorScheme>
 pub fn skene_tui::prelude::media::set_scheme(core::option::Option<skene_core::values::color::ColorScheme>)
-pub fn skene_tui::prelude::media::stored_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
 pub fn skene_tui::prelude::media::viewport() -> skene_reactive::signal::ReadSignal<skene_tui::Size>
 pub fn skene_tui::prelude::media::watch(&skene_tui::Media) -> skene_reactive::memo::Memo<bool>
 pub struct skene_tui::prelude::Clipboard
@@ -383,6 +383,7 @@ pub fn skene_tui::prelude::View::into_any(self) -> skene_tui::AnyView where Self
 impl<V: skene_core::view::View<skene_tui::ActivePlatform>> skene_tui::View for V
 pub fn V::build(self) -> skene_core::node::NodeId where Self: core::marker::Sized
 pub fn V::into_any(self) -> skene_tui::AnyView where Self: core::marker::Sized
+pub fn skene_tui::prelude::chosen_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
 pub fn skene_tui::prelude::derive_scheme(impl core::ops::function::Fn() -> core::option::Option<skene_core::values::color::ColorScheme> + 'static)
 pub fn skene_tui::prelude::derive_title(impl core::ops::function::Fn() -> alloc::string::String + 'static)
 pub fn skene_tui::prelude::derived(impl core::ops::function::Fn() -> skene_core::node::NodeId + 'static) -> skene_core::node::NodeId
@@ -392,7 +393,6 @@ pub fn skene_tui::prelude::launch<V, F>(F) where F: core::ops::function::FnOnce(
 pub fn skene_tui::prelude::set_scheme(core::option::Option<skene_core::values::color::ColorScheme>)
 pub fn skene_tui::prelude::set_title(impl core::convert::Into<alloc::string::String>)
 pub fn skene_tui::prelude::spawn(impl core::future::future::Future<Output = ()> + 'static) -> skene_reactive::spawn::TaskHandle
-pub fn skene_tui::prelude::stored_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
 pub type skene_tui::prelude::AnyView = skene_core::view::AnyView<skene_tui::ActivePlatform>
 pub type skene_tui::prelude::BasicButton<C> = skene_common::control::BasicButton<skene_tui::ActivePlatform, C>
 pub type skene_tui::prelude::BasicCheckbox<C> = skene_common::control::BasicCheckbox<skene_tui::ActivePlatform, C>
@@ -674,6 +674,7 @@ pub type skene_tui::Tui::TokenValue = skene_core::resolve::TokenValue<u32>
 pub fn skene_tui::Tui::attach(skene_core::node::NodeId, skene_core::node::NodeId, core::option::Option<skene_core::node::NodeId>)
 pub fn skene_tui::Tui::blur(skene_core::node::NodeId)
 pub fn skene_tui::Tui::cancel(skene_core::platform::Timer)
+pub fn skene_tui::Tui::chosen_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
 pub fn skene_tui::Tui::clipboard(skene_core::values::clipboard::ClipboardAction)
 pub fn skene_tui::Tui::clipboard_availability(skene_core::values::clipboard::ClipboardAction) -> skene_core::values::clipboard::Availability
 pub fn skene_tui::Tui::create_anchor(skene_core::node::NodeId)
@@ -704,7 +705,6 @@ pub fn skene_tui::Tui::set_scheme(core::option::Option<skene_core::values::color
 pub fn skene_tui::Tui::set_selection(skene_core::node::NodeId, skene_core::values::text_selection::TextSelection)
 pub fn skene_tui::Tui::set_text(skene_core::node::NodeId, &str)
 pub fn skene_tui::Tui::set_value(skene_core::node::NodeId, &str)
-pub fn skene_tui::Tui::stored_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
 pub fn skene_tui::Tui::update_box(skene_core::node::NodeId, skene_core::leaf::Slot, &skene_core::leaf::StaticLeaf<skene_core::box_style::BoxValue<u32, skene_common::tui::ext::TuiStyle>>)
 pub fn skene_tui::Tui::update_run(skene_core::node::NodeId, skene_core::leaf::Slot, &skene_core::leaf::StaticLeaf<skene_core::run_style::RunValue<skene_common::tui::ext::TuiStyle>>)
 pub fn skene_tui::Tui::watch_media(&skene_core::condition::Media<u32>) -> skene_reactive::memo::Memo<bool>
@@ -834,6 +834,7 @@ impl<V: skene_core::view::View<skene_tui::ActivePlatform>> skene_tui::View for V
 pub fn V::build(self) -> skene_core::node::NodeId where Self: core::marker::Sized
 pub fn V::into_any(self) -> skene_tui::AnyView where Self: core::marker::Sized
 pub fn skene_tui::adopt_restoration()
+pub fn skene_tui::chosen_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
 pub fn skene_tui::derive_scheme(impl core::ops::function::Fn() -> core::option::Option<skene_core::values::color::ColorScheme> + 'static)
 pub fn skene_tui::derive_title(impl core::ops::function::Fn() -> alloc::string::String + 'static)
 pub fn skene_tui::derived(impl core::ops::function::Fn() -> skene_core::node::NodeId + 'static) -> skene_core::node::NodeId
@@ -847,7 +848,6 @@ pub fn skene_tui::reconcile<T, I, K>(skene_core::node::NodeId, impl core::ops::f
 pub fn skene_tui::set_scheme(core::option::Option<skene_core::values::color::ColorScheme>)
 pub fn skene_tui::set_title(impl core::convert::Into<alloc::string::String>)
 pub fn skene_tui::spawn(impl core::future::future::Future<Output = ()> + 'static) -> skene_reactive::spawn::TaskHandle
-pub fn skene_tui::stored_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
 pub fn skene_tui::uninstall()
 pub type skene_tui::ActivePlatform = skene_tui::Tui
 pub type skene_tui::AnyView = skene_core::view::AnyView<skene_tui::ActivePlatform>

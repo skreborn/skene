@@ -87,6 +87,6 @@ pub fn derive_scheme<P: Platform>(scheme: impl Fn() -> Option<ColorScheme> + 'st
 /// The scheme the app put in force, or a previous run stored, when there is one.
 #[inline(always)]
 #[must_use]
-pub fn stored_scheme<P: Platform>() -> Option<ColorScheme> {
-  P::stored_scheme()
+pub fn chosen_scheme<P: Platform>() -> Option<ColorScheme> {
+  P::chosen_scheme()
 }

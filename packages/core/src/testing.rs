@@ -261,7 +261,7 @@ impl Platform for TestPlatform {
 
   fn set_scheme(_scheme: Option<ColorScheme>) {}
 
-  fn stored_scheme() -> Option<ColorScheme> {
+  fn chosen_scheme() -> Option<ColorScheme> {
     None
   }
 }

@@ -467,7 +467,7 @@ impl Platform for Tui {
     }
   }
 
-  fn stored_scheme() -> Option<ColorScheme> {
+  fn chosen_scheme() -> Option<ColorScheme> {
     with_records(|records| records.choice)
   }
 }

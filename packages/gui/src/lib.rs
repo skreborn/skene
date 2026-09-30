@@ -144,7 +144,7 @@ pub use crate::{
   async_view::AsyncView,
   deferred::Deferred,
   link::Link,
-  media::{derive_scheme, set_scheme, stored_scheme},
+  media::{chosen_scheme, derive_scheme, set_scheme},
   resource::{LoadState, Resource},
   routing::{install_router, install_static_router},
   task::spawn,

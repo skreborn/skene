@@ -356,12 +356,17 @@ pub fn set_scheme(scheme: Option<ColorScheme>) {
   with_media(|state| state.choice).set(scheme);
 }
 
-/// The color scheme the reader chose on a previous visit.
-///
-/// Read it where an app initializes the setting it binds to `derive_scheme`, so the
-/// choice the head script already applied is the one the app goes on to hold.
+/// The color scheme the app chose this run, else the one a previous visit persisted.
+pub(crate) fn chosen_scheme() -> Option<ColorScheme> {
+  with_media(|state| state.choice)
+    .get_untracked()
+    .or_else(persisted_scheme)
+}
+
+/// The color scheme a previous visit persisted, as the head script applies it before the
+/// first paint.
 #[must_use]
-pub fn stored_scheme() -> Option<ColorScheme> {
+pub fn persisted_scheme() -> Option<ColorScheme> {
   match storage()?.get_item(SCHEME_KEY).ok().flatten()?.as_str() {
     "light" => Some(ColorScheme::Light),
     "dark" => Some(ColorScheme::Dark),

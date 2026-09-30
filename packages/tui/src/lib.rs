@@ -162,7 +162,7 @@ pub use crate::{
   device::{Device, Note, WindowSize},
   ext::{TuiDecoration, TuiText},
   launch::{Clipboard, Launch, MOUSE_KEY, install, launch},
-  media::{derive_scheme, set_scheme, stored_scheme},
+  media::{chosen_scheme, derive_scheme, set_scheme},
   paint::{CellDecoration, Picture},
   platform::{Tui, mount, uninstall},
   routing::install_router,

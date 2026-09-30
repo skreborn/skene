@@ -123,6 +123,7 @@ pub fn skene_web::Web::apply_layout(skene_core::node::NodeId, &skene_core::props
 pub fn skene_web::Web::attach(skene_core::node::NodeId, skene_core::node::NodeId, core::option::Option<skene_core::node::NodeId>)
 pub fn skene_web::Web::blur(skene_core::node::NodeId)
 pub fn skene_web::Web::cancel(skene_core::platform::Timer)
+pub fn skene_web::Web::chosen_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
 pub fn skene_web::Web::clipboard(skene_core::values::clipboard::ClipboardAction)
 pub fn skene_web::Web::clipboard_availability(skene_core::values::clipboard::ClipboardAction) -> skene_core::values::clipboard::Availability
 pub fn skene_web::Web::create_anchor(skene_core::node::NodeId)
@@ -156,7 +157,6 @@ pub fn skene_web::Web::set_scheme(core::option::Option<skene_core::values::color
 pub fn skene_web::Web::set_selection(skene_core::node::NodeId, skene_core::values::text_selection::TextSelection)
 pub fn skene_web::Web::set_text(skene_core::node::NodeId, &str)
 pub fn skene_web::Web::set_value(skene_core::node::NodeId, &str)
-pub fn skene_web::Web::stored_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
 pub fn skene_web::Web::update_access(skene_core::node::NodeId, &[skene_core::values::access::AccessProp])
 pub fn skene_web::Web::update_box(skene_core::node::NodeId, skene_core::leaf::Slot, &skene_core::leaf::StaticLeaf<skene_core::box_style::BoxValue<f32, skene_common::gui::ext::GuiStyle>>)
 pub fn skene_web::Web::update_focus_order(skene_core::node::NodeId, core::option::Option<skene_core::values::focus_order::FocusOrder>)
@@ -214,6 +214,7 @@ pub fn skene_web::launch<V, F>(F) where F: core::ops::function::FnOnce() -> V + 
 pub fn skene_web::media_query(&str) -> skene_reactive::signal::ReadSignal<bool>
 pub fn skene_web::mount(impl core::ops::function::FnOnce() -> skene_core::node::NodeId) -> skene_core::node::NodeId
 pub fn skene_web::on_pop(impl core::ops::function::Fn(alloc::string::String) + 'static)
+pub fn skene_web::persisted_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
 pub fn skene_web::push_path(&str)
 pub fn skene_web::register_source(skene_web::HydrationSource)
 pub fn skene_web::register_tagged_source(&str, skene_web::HydrationSource)
@@ -221,7 +222,6 @@ pub fn skene_web::remove_head_entry(skene_common::gui::head::HeadId)
 pub fn skene_web::set_document_language(&str)
 pub fn skene_web::set_head_title(skene_common::gui::head::HeadId, &str)
 pub fn skene_web::set_scheme(core::option::Option<skene_core::values::color::ColorScheme>)
-pub fn skene_web::stored_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
 pub fn skene_web::uninstall()
 pub fn skene_web::view_transitions_enabled() -> bool
 pub fn skene_web::watch_media(&skene_core::condition::Media<f32>) -> skene_reactive::memo::Memo<bool>

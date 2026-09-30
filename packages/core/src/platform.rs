@@ -395,7 +395,7 @@ pub trait Platform: Copy + Default + 'static {
   fn set_scheme(scheme: Option<ColorScheme>);
 
   /// The scheme the app put in force, or a previous run stored, when there is one.
-  fn stored_scheme() -> Option<ColorScheme>;
+  fn chosen_scheme() -> Option<ColorScheme>;
 
   /// Runs `action` once `delay` has passed on the platform's clock, unless cancelled
   /// first; a platform without a clock never runs it.

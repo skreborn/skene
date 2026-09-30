@@ -16,7 +16,7 @@ use skene_simple::gui::prelude::*;
 const ECHO: &str = "wss://echo.websocket.org/";
 
 #[main]
-fn app() -> impl IntoView {
+fn app() -> impl View {
   Theme::new(SimplePalette::default()).set_child_builder(|| {
     Container::new()
       .set_role(Role::Main)
@@ -37,7 +37,7 @@ fn app() -> impl IntoView {
   })
 }
 
-fn heading() -> impl IntoView {
+fn heading() -> impl View {
   Column::new().set_spacing(6.).set_children((
     Text::new("WEBSOCKET")
       .set_font_size(13.)
@@ -48,7 +48,7 @@ fn heading() -> impl IntoView {
 }
 
 /// The socket to the echo service, a field sending into it, and what came back.
-fn echo_card() -> impl IntoView {
+fn echo_card() -> impl View {
   let socket = Signal::opaque(None::<Rc<skene_transport::ws::WebSocket>>);
   let received = Signal::opaque(Vec::<String>::new());
   let draft = Signal::new(String::from("hello from skene"));

@@ -275,7 +275,7 @@ mod tests {
 
     let (outer, _) = Scene::<TestPlatform>::create_segment();
     let (empty, _) = Scene::<TestPlatform>::create_segment();
-    let scope = TestScene::with(|scene| scene.create(NodeKind::Scope));
+    let scope = TestScene::with(|scene| scene.create(NodeKind::Scope, None));
     let inside = TestBox::node();
     let after = TestBox::node();
 

@@ -109,8 +109,8 @@ fn dev_notice_modal_presents_and_dismisses() {
   with_platform(|| {
     let notice = Signal::new(None::<String>);
 
-    let _ = tui::mount(|| Text::new("app content").into_any().build());
-    let _ = tui::mount(|| tui::dev_notice_view(notice).into_view().build());
+    let _ = tui::mount(|| Text::new("app content").build());
+    let _ = tui::mount(|| tui::dev_notice_view(notice).build());
 
     notice.set(Some("expected `;`".to_owned()));
 
@@ -236,7 +236,7 @@ fn focus_follows_a_keyed_item_across_a_reorder() {
 #[test]
 fn a_caret_survives_a_snapshot_roundtrip() {
   fn build(value: Signal<String>) {
-    let _ = tui::mount(move || SimpleTextField::new().bind_value(value).into_any().build());
+    let _ = tui::mount(move || SimpleTextField::new().bind_value(value).build());
   }
 
   let bytes = with_platform(|| {

@@ -6,7 +6,6 @@ use skene_core::{
   AnyKind,
   AnyView,
   Errors,
-  IntoView,
   NoChild,
   NodeId,
   Platform,
@@ -67,18 +66,18 @@ impl<P: Platform> ErrorBoundary<P> {
   /// Sets the fallback shown while errors are held, built by `fallback` from the
   /// boundary's handle whenever the held errors change; nothing by default.
   #[inline(always)]
-  pub fn set_fallback_builder<V: IntoView<P>>(
+  pub fn set_fallback_builder<V: View<P>>(
     mut self,
     fallback: impl Fn(Errors) -> V + 'static,
   ) -> Self {
-    self.fallback = Some(Rc::new(move |errors| fallback(errors).into_view()));
+    self.fallback = Some(Rc::new(move |errors| fallback(errors).into_any()));
 
     self
   }
 
   /// Sets the content, built by `child` under the boundary.
   #[inline(always)]
-  pub fn set_child_builder<V: IntoView<P>>(
+  pub fn set_child_builder<V: View<P>>(
     self,
     child: impl FnOnce() -> V + 'static,
   ) -> ErrorBoundary<P, ChildBuilder<P>> {

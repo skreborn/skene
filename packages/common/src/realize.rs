@@ -6,18 +6,7 @@
 
 use std::{marker::PhantomData, rc::Rc};
 
-use skene_core::{
-  AccessProp,
-  AnyView,
-  BoxSlot,
-  IntoView,
-  NodeId,
-  NodeKind,
-  Platform,
-  RunSlot,
-  Scene,
-  View,
-};
+use skene_core::{AccessProp, AnyView, BoxSlot, NodeId, NodeKind, Platform, RunSlot, Scene, View};
 use skene_reactive::Effect;
 
 /// Binds a render effect that computes `slot`'s leaf and writes it into the box
@@ -137,8 +126,8 @@ impl<P: Platform> std::fmt::Debug for ChildBuilder<P> {
 impl<P: Platform> ChildBuilder<P> {
   /// A builder running `child` when the view builds.
   #[inline(always)]
-  pub fn new<V: IntoView<P>>(child: impl FnOnce() -> V + 'static) -> Self {
-    Self(Box::new(move || child().into_view()))
+  pub fn new<V: View<P>>(child: impl FnOnce() -> V + 'static) -> Self {
+    Self(Box::new(move || child().into_any()))
   }
 
   /// Builds the child.
@@ -168,13 +157,8 @@ impl<P: Platform> LowLevel<P> {
   pub fn realize(kind: NodeKind, make: impl FnOnce(NodeId)) -> NodeId {
     let (node, annotation) = Scene::<P>::with(|scene| {
       let annotation = scene.take_pending_annotation();
-      let node = scene.create(kind);
 
-      if let Some(annotation) = &annotation {
-        scene.set_annotation(node, annotation.clone());
-      }
-
-      (node, annotation)
+      (scene.create(kind, annotation.clone()), annotation)
     });
 
     make(node);

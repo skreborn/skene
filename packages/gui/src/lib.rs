@@ -184,7 +184,7 @@ pub fn client_only(build: impl FnOnce() -> NodeId + 'static) -> impl View {
 pub fn launch<V, F>(app: F)
 where
   F: FnOnce() -> V + 'static,
-  V: IntoView,
+  V: View,
 {
   skene_web::boot_with_dev_state(move || {
     skene_web::launch(app);
@@ -201,12 +201,12 @@ where
 pub fn launch<V, F>(app: F)
 where
   F: FnOnce() -> V + 'static,
-  V: IntoView,
+  V: View,
 {
   skene_headless::install_executor();
 
   skene_core::root_owner().enter(|| {
-    let _ = skene_core::IntoView::into_view(app()).build();
+    let _ = skene_core::View::into_any(app()).build();
   });
 
   tracing::info!("application built against the headless platform");
@@ -221,7 +221,7 @@ where
 pub fn render_to_string<V, F>(app: F) -> Rendered
 where
   F: FnOnce() -> V + 'static,
-  V: IntoView,
+  V: View,
 {
   skene_web::render_to_string(app)
 }
@@ -233,7 +233,7 @@ where
 pub fn render_to_string_at<V, F>(path: &str, app: F) -> Rendered
 where
   F: FnOnce() -> V + 'static,
-  V: IntoView,
+  V: View,
 {
   skene_web::set_request_path(path);
 
@@ -295,7 +295,7 @@ the pages join the dev loop.";
 pub fn render_main<V, F>(bundle: &str, app: F)
 where
   F: Fn() -> V + Clone + 'static,
-  V: IntoView,
+  V: View,
 {
   use std::io::Write as _;
 
@@ -419,7 +419,7 @@ impl Stream {
 pub fn render_to_stream<V, F>(app: F) -> Stream
 where
   F: FnOnce() -> V + 'static,
-  V: IntoView,
+  V: View,
 {
   let mut chunks = Vec::new();
   let mut opening = String::new();
@@ -456,7 +456,7 @@ where
 pub fn render_page_stream<V, F>(app: F, mut sink: impl FnMut(&str))
 where
   F: FnOnce() -> V + 'static,
-  V: IntoView,
+  V: View,
 {
   skene_web::render_to_stream_with(app, |piece| match piece {
     skene_web::StreamPiece::Shell {
@@ -482,7 +482,7 @@ where
 pub fn serve_renders<V, F>(app: F)
 where
   F: Fn() -> V + Clone + 'static,
-  V: IntoView,
+  V: View,
 {
   use std::io::Write as _;
 

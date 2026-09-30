@@ -14,7 +14,7 @@ use skene_simple::gui::prelude::*;
 const QUOTES: &str = "/gui-http/assets/quotes.txt";
 
 #[main]
-fn app() -> impl IntoView {
+fn app() -> impl View {
   Theme::new(SimplePalette::default()).set_child_builder(|| {
     Container::new()
       .set_role(Role::Main)
@@ -35,7 +35,7 @@ fn app() -> impl IntoView {
   })
 }
 
-fn heading() -> impl IntoView {
+fn heading() -> impl View {
   Column::new().set_spacing(6.).set_children((
     Text::new("HTTP")
       .set_font_size(13.)
@@ -46,7 +46,7 @@ fn heading() -> impl IntoView {
 }
 
 /// The quotes fetched into a resource, a line each, with a button fetching them again.
-fn quotes_card() -> impl IntoView {
+fn quotes_card() -> impl View {
   let quotes: Resource<Result<Vec<String>, String>> = Resource::client(|| async {
     let response = skene_transport::http::get(QUOTES)
       .await

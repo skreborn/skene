@@ -14,7 +14,7 @@ fn the_connecting_socket_renders() {
   let frame = with_platform(|| {
     let _ = tui::mount(|| {
       tui_ws::app(Some("ws://127.0.0.1:1/".to_owned()))
-        .into_view()
+        .into_any()
         .build()
     });
 

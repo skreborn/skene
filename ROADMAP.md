@@ -228,9 +228,6 @@ left half-done in a code comment.
     arms reserved, and the CLI picks the crate type per target through
     `cargo rustc --crate-type`, so apps stop declaring crate types and the `cdylib`
     plus `rlib` pair, `__skene_main` and app-level cfgs go.
-    - Deleted: `Scene::set_annotation`, the annotation arriving with the node it
-    belongs to, and `IntoView`, whose only impl is the blanket over `View` (`AnyKind`
-    stays).
     - Renames: `Raw*` to `Basic*`; `Show` and `Switch` to `Visibility` and `OneOf`; `Lazy`
     to `AsyncView`; `Composable` to `ConditionTree`; the `Range` behavior and
     `NativeElement::Range` to `Slider`; `Roving` and `RadioMember` to `RadioGroup` and
@@ -636,11 +633,10 @@ every item is proven through tmux and ssh as well as bare.
   consumed: a browser's caret hangs past such a row into the textarea's padding, and
   the terminal's bar cursor in the cell past it, the padding or the border, shows the
   same position.
-- Replacing `IntoChildren`, `IntoChildOf` and `IntoView` with std traits, checked
-  against the compiler: a blanket `impl<I: IntoIterator<Item = V>> IntoChildren for I`
-  conflicts with the tuple impls, and the same conflict appears with `From`; tuples are
-  not optional because children are heterogeneous. `Into<AnyView>` cannot replace
-  `IntoView` either, since `AnyView` is itself a view.
+- Replacing `IntoChildren` and `IntoChildOf` with std traits, checked against the
+  compiler: a blanket `impl<I: IntoIterator<Item = V>> IntoChildren for I` conflicts
+  with the tuple impls, and the same conflict appears with `From`; tuples are not
+  optional because children are heterogeneous.
 - A collision check on snapshot keys at every build (see the watched item above).
 - A `&'static str` signal restoring: it is `opaque`, since it cannot be deserialized
   owned.

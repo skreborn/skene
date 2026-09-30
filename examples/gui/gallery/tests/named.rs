@@ -10,7 +10,7 @@ fn every_control_the_gallery_shows_is_named() {
   headless::reset();
 
   let owner = Owner::new();
-  let _root = owner.enter(|| gallery::app().into_view().build());
+  let _root = owner.enter(|| gallery::app().build());
   let unnamed: Vec<_> = headless::find_all_unnamed()
     .into_iter()
     .map(|node| (node, headless::box_props(node).and_then(|props| props.role)))

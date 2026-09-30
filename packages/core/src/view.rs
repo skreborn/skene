@@ -21,6 +21,12 @@ pub trait AnyKind {}
 /// and returns its root.
 ///
 /// There is no update path; updates are the effects a build left behind.
+#[diagnostic::on_unimplemented(
+  message = "`{Self}` is not a complete view",
+  label = "not a complete view",
+  note = "check that it is indeed a view type",
+  note = "see its documentation to determine what completes it"
+)]
 pub trait View<P: Platform>: AnyKind + 'static {
   /// Realizes this view and returns its root node.
   fn build(self) -> NodeId;
@@ -117,26 +123,6 @@ impl<P: Platform> View<P> for NodeId {
   }
 }
 
-/// A value that can be turned into a view.
-#[diagnostic::on_unimplemented(
-  message = "`{Self}` is not a complete view",
-  label = "not a complete view",
-  note = "check that it is indeed a view type",
-  note = "see its documentation to determine what completes it"
-)]
-pub trait IntoView<P: Platform> {
-  /// Converts this value into a view.
-  fn into_view(self) -> AnyView<P>;
-}
-
-#[diagnostic::do_not_recommend]
-impl<P: Platform, V: View<P>> IntoView<P> for V {
-  #[inline(always)]
-  fn into_view(self) -> AnyView<P> {
-    self.into_any()
-  }
-}
-
 /// The absence of a child, in a view that requires one.
 ///
 /// A wrapper starts out holding this and cannot build; `set_child` exchanges it for
@@ -162,8 +148,8 @@ pub struct GridChild;
 
 /// A value accepted as one child of a container of kind `Kind`.
 ///
-/// Every view is a child of every kind; a wrapper view implements only the kind of the
-/// container that understands its properties, and is not [`AnyKind`].
+/// Every view is a child of every kind; a wrapper implements it only for the kind of
+/// the container that understands its properties, and is not [`AnyKind`].
 #[diagnostic::on_unimplemented(
   message = "`{Self}` is not a compatible and complete view",
   label = "not a compatible and complete view",
@@ -177,9 +163,9 @@ pub trait IntoChildOf<P: Platform, Kind> {
 }
 
 #[diagnostic::do_not_recommend]
-impl<P: Platform, Kind, V: IntoView<P> + AnyKind> IntoChildOf<P, Kind> for V {
+impl<P: Platform, Kind, V: View<P>> IntoChildOf<P, Kind> for V {
   #[inline(always)]
   fn into_child(self) -> AnyView<P> {
-    self.into_view()
+    self.into_any()
   }
 }

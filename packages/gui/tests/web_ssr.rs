@@ -771,7 +771,7 @@ fn a_page_without_deferred_streams_as_one_chunk() {
 }
 
 /// A page whose slow content sits behind a `Deferred` boundary.
-fn deferred_app() -> impl skene_gui::IntoView {
+fn deferred_app() -> impl skene_gui::View {
   Row::new().set_children([
     Text::new("shell").into_any(),
     Deferred::new(|| {

@@ -3,7 +3,7 @@
 
 use std::cell::RefCell;
 
-use skene_core::{AnyKind, AnyView, IntoView, NoChild, NodeId, Platform, Scene, View, derived};
+use skene_core::{AnyKind, AnyView, NoChild, NodeId, Platform, Scene, View, derived};
 use skene_reactive::{Get, Memo, ReadSignal, untrack};
 
 use crate::realize::ChildBuilder;
@@ -46,7 +46,7 @@ impl<P: Platform> Enhance<P> {
 impl<P: Platform> Enhance<P> {
   /// Sets the form built while `live` is false; nothing by default.
   #[inline(always)]
-  pub fn set_fallback<V: IntoView<P>>(mut self, fallback: impl FnOnce() -> V + 'static) -> Self {
+  pub fn set_fallback<V: View<P>>(mut self, fallback: impl FnOnce() -> V + 'static) -> Self {
     self.fallback = Some(ChildBuilder::new(fallback));
 
     self
@@ -54,7 +54,7 @@ impl<P: Platform> Enhance<P> {
 
   /// Sets the form built once `live` is true.
   #[inline(always)]
-  pub fn set_child_builder<V: IntoView<P>>(
+  pub fn set_child_builder<V: View<P>>(
     self,
     child: impl FnOnce() -> V + 'static,
   ) -> Enhance<P, ChildBuilder<P>> {

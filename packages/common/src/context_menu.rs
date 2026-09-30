@@ -15,7 +15,6 @@ use skene_core::{
   Dimension,
   Handler,
   HasChildren,
-  IntoView,
   ItemAlignment,
   KeyEvent,
   KeyHandler,
@@ -289,7 +288,7 @@ impl<P: Platform> ContextMenu<P> {
 
   /// Sets the view the menu serves.
   #[inline(always)]
-  pub fn set_child(self, child: impl IntoView<P>) -> ContextMenu<P, AnyView<P>> {
+  pub fn set_child(self, child: impl View<P>) -> ContextMenu<P, AnyView<P>> {
     ContextMenu {
       items: self.items,
       list: self.list,
@@ -300,7 +299,7 @@ impl<P: Platform> ContextMenu<P> {
       separator_thickness: self.separator_thickness,
       shortcut_spacing: self.shortcut_spacing,
       item_view: self.item_view,
-      child: child.into_view(),
+      child: child.into_any(),
     }
   }
 
@@ -425,11 +424,11 @@ impl<P: Platform> ContextMenu<P> {
   /// item's label and shortcut sit at its two ends, dressed by the `set_item_*` and
   /// `set_shortcut_*` setters.
   #[inline(always)]
-  pub fn set_item_view<V: IntoView<P>>(
+  pub fn set_item_view<V: View<P>>(
     mut self,
     view: impl Fn(MenuItemContent) -> V + 'static,
   ) -> Self {
-    self.item_view = Some(Rc::new(move |content| view(content).into_view()));
+    self.item_view = Some(Rc::new(move |content| view(content).into_any()));
 
     self
   }
@@ -706,7 +705,7 @@ impl<P: Platform> RowDress<P> {
       rule = rule.set_color(color);
     }
 
-    rule.into_view()
+    rule.into_any()
   }
 
   /// One item's row: a [`MenuOption`] carrying `value`, captioned by `label` with
@@ -745,8 +744,8 @@ impl<P: Platform> RowDress<P> {
 
         move || shown()
       })
-      .set_child(control.into_view())
-      .into_view()
+      .set_child(control.into_any())
+      .into_any()
   }
 
   /// An item's content without a view of the menu's user: the label and the shortcut
@@ -761,7 +760,7 @@ impl<P: Platform> RowDress<P> {
       caption = caption.set_color(color);
     }
 
-    let mut cells = vec![caption.into_view()];
+    let mut cells = vec![caption.into_any()];
 
     if let Some(shortcut) = shortcut {
       let mut hint = Text::<P>::new(shortcut.to_string());
@@ -774,7 +773,7 @@ impl<P: Platform> RowDress<P> {
         hint = hint.set_color(color);
       }
 
-      cells.push(hint.into_view());
+      cells.push(hint.into_any());
     }
 
     let row = Row::<P>::new()
@@ -788,7 +787,7 @@ impl<P: Platform> RowDress<P> {
       )
       .set_children(cells);
 
-    row.into_view()
+    row.into_any()
   }
 }
 

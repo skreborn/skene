@@ -33,7 +33,6 @@ use skene_core::{
   FlexDirection,
   FocusOrder,
   Handler,
-  IntoView,
   ItemAlignment,
   KeyEvent,
   Layout,
@@ -374,9 +373,9 @@ pub struct Label<P: Platform> {
 impl<P: Platform> Label<P> {
   /// A caption drawn by `view`; the name is the platform's to read from the part.
   #[inline(always)]
-  pub fn new(view: impl IntoView<P>) -> Self {
+  pub fn new(view: impl View<P>) -> Self {
     Self {
-      view: view.into_view(),
+      view: view.into_any(),
       name: None,
     }
   }
@@ -410,7 +409,7 @@ impl<P: Platform> From<String> for Label<P> {
   #[inline(always)]
   fn from(text: String) -> Self {
     Self {
-      view: Text::new(text.clone()).into_view(),
+      view: Text::new(text.clone()).into_any(),
       name: Some(Source::Fixed(text)),
     }
   }
@@ -515,17 +514,17 @@ impl<P: Platform, B: Behavior<P>> Control<P, B> {
 
   /// Sets the drawn body.
   #[inline(always)]
-  pub fn set_child(self, child: impl IntoView<P>) -> Control<P, B, AnyView<P>> {
-    self.with_child(child.into_view())
+  pub fn set_child(self, child: impl View<P>) -> Control<P, B, AnyView<P>> {
+    self.with_child(child.into_any())
   }
 
   /// Sets the drawn body, built by `child` under the control.
   #[inline(always)]
-  pub fn set_child_builder<V: IntoView<P>>(
+  pub fn set_child_builder<V: View<P>>(
     self,
     child: impl FnOnce() -> V + 'static,
   ) -> Control<P, B, AnyView<P>> {
-    self.with_child(AnyView::new(move || child().into_view().build()))
+    self.with_child(AnyView::new(move || child().build()))
   }
 
   fn with_child(self, child: AnyView<P>) -> Control<P, B, AnyView<P>> {
@@ -739,8 +738,8 @@ impl<P: Platform, B: Behavior<P>> Control<P, B> {
   /// Adds `view` as the part `part` of the control, a styling target its conditions
   /// resolve against the control.
   #[inline(always)]
-  pub fn set_part(mut self, part: Part, view: impl IntoView<P>) -> Self {
-    self.parts.push((part, view.into_view()));
+  pub fn set_part(mut self, part: Part, view: impl View<P>) -> Self {
+    self.parts.push((part, view.into_any()));
 
     self
   }

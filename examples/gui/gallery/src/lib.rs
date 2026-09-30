@@ -9,7 +9,7 @@ use skene_simple::gui::prelude::*;
 /// reader picks.
 #[main]
 #[must_use]
-pub fn app() -> impl IntoView {
+pub fn app() -> impl View {
   // The palette in force is a signal the gallery switches from inside itself: the theme
   // redefines its tokens in place and rebuilds nothing, so every counter below keeps its
   // value across a switch. Each palette follows the OS scheme per token, and carries
@@ -90,7 +90,7 @@ fn named_palette(name: Option<&str>) -> SimplePalette {
     )
 }
 
-fn palettes(palette: Signal<Option<String>>) -> impl IntoView {
+fn palettes(palette: Signal<Option<String>>) -> impl View {
   section(
     "Palette",
     Column::new().set_spacing(12.).set_children((
@@ -112,7 +112,7 @@ fn palettes(palette: Signal<Option<String>>) -> impl IntoView {
   )
 }
 
-fn typography() -> impl IntoView {
+fn typography() -> impl View {
   section(
     "Text",
     // The paragraph rhythm: text-box trimming removes the leading, so the spacing
@@ -142,7 +142,7 @@ fn typography() -> impl IntoView {
   )
 }
 
-fn buttons() -> impl IntoView {
+fn buttons() -> impl View {
   let count = Signal::tagged("clicks", 0u32);
 
   section(
@@ -167,7 +167,7 @@ fn buttons() -> impl IntoView {
   )
 }
 
-fn tooltips() -> impl IntoView {
+fn tooltips() -> impl View {
   section(
     "Tooltip",
     Row::new()
@@ -197,7 +197,7 @@ fn tooltips() -> impl IntoView {
   )
 }
 
-fn toggles() -> impl IntoView {
+fn toggles() -> impl View {
   let agreed = Signal::tagged("agreed", true);
   let flavor = Signal::tagged("flavor", Some("mint".to_owned()));
 
@@ -234,11 +234,11 @@ fn toggles() -> impl IntoView {
   )
 }
 
-fn radio_choice(value: &'static str) -> impl IntoView {
+fn radio_choice(value: &'static str) -> impl View {
   SimpleRadio::new(value).set_label(value)
 }
 
-fn inputs() -> impl IntoView {
+fn inputs() -> impl View {
   let name = Signal::tagged("name", String::new());
   let bio = Signal::tagged("bio", String::new());
   let volume = Signal::tagged("volume", 40.0f32);
@@ -281,7 +281,7 @@ fn inputs() -> impl IntoView {
   )
 }
 
-fn layouts() -> impl IntoView {
+fn layouts() -> impl View {
   let open = Signal::new(false);
 
   section(
@@ -334,7 +334,7 @@ fn layouts() -> impl IntoView {
   )
 }
 
-fn list() -> impl IntoView {
+fn list() -> impl View {
   section(
     "LazyColumn",
     Container::new().set_height(160.).set_child(
@@ -358,7 +358,7 @@ fn list() -> impl IntoView {
   )
 }
 
-fn lazy_row() -> impl IntoView {
+fn lazy_row() -> impl View {
   section(
     "LazyRow",
     Container::new().set_height(48.).set_child(
@@ -379,7 +379,7 @@ fn lazy_row() -> impl IntoView {
 
 /// A box painted through vello: the portable low-level path for pixel media, drawn on
 /// the CPU into a canvas in the browser and left empty by a server render.
-fn context_menu() -> impl IntoView {
+fn context_menu() -> impl View {
   let last = Signal::tagged("last command", String::from("nothing yet"));
   let ran = move |verb: &'static str| move || last.set(verb.to_owned());
 
@@ -429,7 +429,7 @@ impl Route for Gallery {
   }
 }
 
-fn link() -> impl IntoView {
+fn link() -> impl View {
   section(
     "Link",
     Link::new(Gallery::Top).add_child(
@@ -440,7 +440,7 @@ fn link() -> impl IntoView {
   )
 }
 
-fn show_and_switch() -> impl IntoView {
+fn show_and_switch() -> impl View {
   let shown = Signal::tagged("details shown", false);
   let pane = Signal::tagged("pane", String::from("summary"));
 
@@ -487,7 +487,7 @@ impl fmt::Display for Failed {
 
 impl std::error::Error for Failed {}
 
-fn boundaries() -> impl IntoView {
+fn boundaries() -> impl View {
   section(
     "Suspense & ErrorBoundary",
     Column::new().set_spacing(12.).set_children((
@@ -529,7 +529,7 @@ fn boundaries() -> impl IntoView {
   )
 }
 
-fn painted() -> impl IntoView {
+fn painted() -> impl View {
   use skene_gui::kurbo::{Circle, Rect};
 
   section(
@@ -561,7 +561,7 @@ fn painted() -> impl IntoView {
 
 /// A component library and a low-level view from outside the framework: the badge is
 /// written once over any platform, the map against the browser's DOM alone.
-fn third_party() -> impl IntoView {
+fn third_party() -> impl View {
   section(
     "Third party",
     Column::new().set_spacing(12.).set_children((
@@ -582,12 +582,12 @@ fn third_party() -> impl IntoView {
 }
 
 /// The map, which covers every platform of the pixel medium.
-fn map() -> impl IntoView {
+fn map() -> impl View {
   acme_map::Map::<ActivePlatform>::new()
 }
 
 /// A titled card around one section's content.
-fn section(title: &'static str, content: impl IntoView) -> impl IntoView {
+fn section(title: &'static str, content: impl View) -> impl View {
   SimpleCard::new().set_children((
     Text::new(title)
       .set_font_size(12.)
@@ -603,7 +603,7 @@ fn plain(text: &'static str) -> Span {
     .set_color(SimplePalette::MUTED_FOREGROUND)
 }
 
-fn badge(text: &'static str) -> impl IntoView {
+fn badge(text: &'static str) -> impl View {
   Container::new()
     .set_padding(Inset::symmetric(8., 4.))
     .set_color(SimplePalette::CARD)
@@ -615,7 +615,7 @@ fn badge(text: &'static str) -> impl IntoView {
     )
 }
 
-fn swatch(brightness: f32) -> impl IntoView {
+fn swatch(brightness: f32) -> impl View {
   Container::new()
     .set_height(32.)
     .set_color(Color::srgb(brightness * 0.5, brightness, brightness * 0.55))

@@ -20,7 +20,6 @@ use skene_core::{
   Dimension,
   HasChild,
   Inset,
-  IntoView,
   NoChild,
   NodeId,
   Part,
@@ -116,11 +115,11 @@ impl<P: Platform> SimpleRadioGroup<P> {
 
   /// Sets the view holding the members.
   #[inline(always)]
-  pub fn set_child(self, child: impl IntoView<P>) -> SimpleRadioGroup<P, AnyView<P>> {
+  pub fn set_child(self, child: impl View<P>) -> SimpleRadioGroup<P, AnyView<P>> {
     SimpleRadioGroup {
       roving: self.roving,
       label: self.label,
-      child: child.into_view(),
+      child: child.into_any(),
       platform: PhantomData,
     }
   }
@@ -186,7 +185,7 @@ where
     define_defaults::<P>();
 
     let mark: AnyView<P> = match P::Scalar::MARKS {
-      SimpleMarks::Drawn => drawn_mark::<P>().into_view(),
+      SimpleMarks::Drawn => drawn_mark::<P>().into_any(),
       SimpleMarks::Glyph => {
         let glyphs = use_context::<Memo<SimpleGlyphs>>();
         let group = use_context::<RovingGroup>();
@@ -205,7 +204,7 @@ where
           SimplePalette::<P::Scalar>::FOREGROUND
             .when(State::FocusVisible, SimplePalette::<P::Scalar>::RING),
         )
-        .into_view()
+        .into_any()
       }
     };
     let mut control = RawRadio::new(self.member)

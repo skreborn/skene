@@ -13,7 +13,8 @@ macro_rules! facade {
     /// The erased token definition the active platform stores per token.
     pub type TokenValue = <$platform as ::skene_core::Platform>::TokenValue;
 
-    /// A view on the active platform; see [`skene_core::View`].
+    /// A view on the active platform, accepted as a child of every kind; see
+    /// [`skene_core::View`].
     pub trait View: ::skene_core::View<$platform> {
       /// Realizes this view and returns its root node.
       #[inline(always)]
@@ -35,22 +36,6 @@ macro_rules! facade {
     }
 
     impl<V: ::skene_core::View<$platform>> View for V {}
-
-    /// A value that can be turned into a view on the active platform, accepted as a
-    /// child of every kind; see [`skene_core::IntoView`] and
-    /// [`AnyKind`](skene_core::AnyKind).
-    pub trait IntoView: ::skene_core::IntoView<$platform> + ::skene_core::AnyKind {
-      /// Converts this value into a view.
-      #[inline(always)]
-      fn into_view(self) -> AnyView
-      where
-        Self: Sized,
-      {
-        ::skene_core::IntoView::into_view(self)
-      }
-    }
-
-    impl<V: ::skene_core::IntoView<$platform> + ::skene_core::AnyKind> IntoView for V {}
 
     /// A token set read from the theme in force on the active platform; see
     /// [`skene_common::ThemedIn`].

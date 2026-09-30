@@ -9,7 +9,6 @@ use skene_core::{
   Dimension,
   Inset,
   IntoChildOf,
-  IntoView,
   Leaf,
   NoChild,
   Platform,
@@ -81,10 +80,10 @@ impl<P: Platform> Pinned<P> {
 
   /// Sets the child.
   #[inline(always)]
-  pub fn set_child(self, child: impl IntoView<P>) -> Pinned<P, AnyView<P>> {
+  pub fn set_child(self, child: impl View<P>) -> Pinned<P, AnyView<P>> {
     Pinned {
       edges: self.edges,
-      child: child.into_view(),
+      child: child.into_any(),
       platform: PhantomData,
     }
   }

@@ -10,7 +10,6 @@ use skene_core::{
   FlexChild,
   Flexibility,
   IntoChildOf,
-  IntoView,
   ItemAlignment,
   Leaf,
   NoChild,
@@ -132,13 +131,13 @@ impl<P: Platform> Flexible<P> {
 
   /// Sets the child.
   #[inline(always)]
-  pub fn set_child(self, child: impl IntoView<P>) -> Flexible<P, AnyView<P>> {
+  pub fn set_child(self, child: impl View<P>) -> Flexible<P, AnyView<P>> {
     Flexible {
       initial: self.initial,
       grow: self.grow,
       shrink: self.shrink,
       alignment: self.alignment,
-      child: child.into_view(),
+      child: child.into_any(),
       platform: PhantomData,
     }
   }

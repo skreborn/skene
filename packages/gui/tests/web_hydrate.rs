@@ -115,7 +115,7 @@ fn hydrate_keeps_the_readers_scroll_and_focus() {
         )),
       )
   };
-  let (markup, styles) = served(move || skene_gui::IntoView::into_view(app()));
+  let (markup, styles) = served(move || skene_gui::View::into_any(app()));
   let block = document().create_element("style").expect("a style");
 
   let _ = block.set_attribute("id", "skene-styles");
@@ -601,7 +601,7 @@ fn an_adopted_input_moves_into_a_rebuilt_label() {
   use skene_gui::{RawCheckbox, Toggle};
 
   let app = || RawCheckbox::new(Toggle::new());
-  let (markup, _) = served(move || skene_gui::IntoView::into_view(app()));
+  let (markup, _) = served(move || skene_gui::View::into_any(app()));
   let mismatched = markup
     .replacen("<label", "<span", 1)
     .replacen("</label>", "</span>", 1);
@@ -631,7 +631,7 @@ fn an_adopted_input_moves_into_a_rebuilt_label() {
 #[wasm_bindgen_test]
 fn hydration_converges_on_the_clients_tree() {
   let app = || Container::new().set_child(Text::new("kept"));
-  let (markup, _) = served(move || skene_gui::IntoView::into_view(app()));
+  let (markup, _) = served(move || skene_gui::View::into_any(app()));
   let stale = markup.replacen("class=\"", "class=\"stale ", 1)
     + "<div data-h=\"99\">gone</div><!--s:99--><!--e:99-->";
   let root = server_root(&stale);
@@ -793,7 +793,7 @@ fn hydrate_removes_the_servers_title_from_a_tooltips_child() {
     || Tooltip::new("Saves your work").set_child(Container::new().set_child(Text::new("Save")));
   // The client never writes `title`; the server does, so the served markup carries it
   // by hand where the server would have put it.
-  let (markup, _) = served(move || skene_gui::IntoView::into_view(app()));
+  let (markup, _) = served(move || skene_gui::View::into_any(app()));
   let markup = markup.replacen(
     "aria-describedby=",
     "title=\"Saves your work\" aria-describedby=",

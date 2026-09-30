@@ -15,7 +15,7 @@ fn title_follows_state() {
     let _ = tui::mount(|| {
       derive_title(move || format!("app: {}", name.get()));
 
-      Text::new("body").into_any().build()
+      Text::new("body").build()
     });
 
     assert_eq!(testing::window_title().as_deref(), Some("app: one"));

@@ -26,7 +26,7 @@ use std::{
 use skene_core::{Color, HasChildren, Scene};
 use skene_reactive::{Get, Position, Set, Signal};
 
-use crate::{Column, IntoView as _, Overlay, Text, Tui, TuiText, store::Handle};
+use crate::{Column, Overlay, Text, Tui, TuiText, View as _, store::Handle};
 
 /// The exit status telling the launcher the app stopped for a swap it could not
 /// perform in place.
@@ -362,13 +362,13 @@ pub fn notice_view(notice: Signal<Option<String>>) -> impl crate::View {
         Text::new("Rebuild failed")
           .set_bold(true)
           .set_color(Color::srgb(0.8, 0.2, 0.2))
-          .into_view(),
+          .into_any(),
         Text::derive(move || notice.get().unwrap_or_default())
           .set_selectable(true)
-          .into_view(),
+          .into_any(),
         Text::new("Esc to dismiss")
           .set_color(Color::srgb(0.5, 0.5, 0.5))
-          .into_view(),
+          .into_any(),
       )),
     )
 }

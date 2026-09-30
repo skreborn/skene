@@ -13,7 +13,7 @@ use skene_tui::{
 #[test]
 fn the_menus_open_where_a_view_opts_in() {
   with_platform(|| {
-    let _ = tui::mount(|| tui_context_menu::app().into_view().build());
+    let _ = tui::mount(|| tui_context_menu::app().build());
 
     let frame = testing::render_to_text(60, 40);
 

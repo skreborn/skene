@@ -27,7 +27,7 @@ enum Fetch {
 
 /// The page: the URL, and what fetching it came to.
 #[must_use]
-pub fn app(url: Option<String>) -> impl IntoView {
+pub fn app(url: Option<String>) -> impl View {
   let url = url.unwrap_or_else(|| DEFAULT_URL.to_owned());
   let fetch = Signal::opaque(Fetch::Pending);
 

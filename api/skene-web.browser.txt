@@ -205,12 +205,12 @@ pub fn skene_web::element(skene_core::node::NodeId) -> core::option::Option<web_
 pub fn skene_web::enable_view_transitions()
 pub fn skene_web::end_turn()
 pub fn skene_web::enter_lazy() -> skene_web::LazyRegion
-pub fn skene_web::hydrate<V, F>(web_sys::features::gen_Element::Element, &str, F) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_core::view::IntoView<skene_web::Web>
+pub fn skene_web::hydrate<V, F>(web_sys::features::gen_Element::Element, &str, F) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_core::view::View<skene_web::Web>
 pub fn skene_web::hydration_mismatches() -> u32
 pub fn skene_web::install(web_sys::features::gen_Element::Element)
 pub fn skene_web::install_executor()
 pub const fn skene_web::is_server() -> bool
-pub fn skene_web::launch<V, F>(F) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_core::view::IntoView<skene_web::Web>
+pub fn skene_web::launch<V, F>(F) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_core::view::View<skene_web::Web>
 pub fn skene_web::media_query(&str) -> skene_reactive::signal::ReadSignal<bool>
 pub fn skene_web::mount(impl core::ops::function::FnOnce() -> skene_core::node::NodeId) -> skene_core::node::NodeId
 pub fn skene_web::on_pop(impl core::ops::function::Fn(alloc::string::String) + 'static)

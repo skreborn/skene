@@ -287,7 +287,6 @@ pub use view::{
   FlexChild,
   GridChild,
   IntoChildOf,
-  IntoView,
   NoChild,
   PlainChild,
   StackChild,

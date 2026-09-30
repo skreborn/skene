@@ -15,7 +15,7 @@ use syn::{DeriveInput, FnArg, ItemFn, Pat, ReturnType, parse_macro_input};
 ///
 /// ```ignore
 /// #[skene_gui::main]
-/// fn app() -> impl IntoView {
+/// fn app() -> impl View {
 ///   Text::new("hello")
 /// }
 /// ```

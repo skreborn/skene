@@ -2,7 +2,7 @@
 
 use std::{cell::RefCell, marker::PhantomData};
 
-use skene_core::{AnyKind, AnyView, IntoView, NodeId, Piece, Platform, Segment, View};
+use skene_core::{AnyKind, AnyView, NodeId, Piece, Platform, Segment, View};
 use skene_reactive::{Effect, Owner, untrack};
 
 /// One branch: its key, its builder until it is built, and its piece afterwards.
@@ -74,10 +74,10 @@ impl<P: Platform, K: PartialEq + 'static> Switch<P, K> {
   /// Adds the branch shown under `key`, built by `case` the first time the key is
   /// current.
   #[inline(always)]
-  pub fn set_case<V: IntoView<P>>(mut self, key: K, case: impl FnOnce() -> V + 'static) -> Self {
+  pub fn set_case<V: View<P>>(mut self, key: K, case: impl FnOnce() -> V + 'static) -> Self {
     self.cases.push(Case {
       key,
-      build: Some(Box::new(move || case().into_view())),
+      build: Some(Box::new(move || case().into_any())),
       piece: None,
     });
 

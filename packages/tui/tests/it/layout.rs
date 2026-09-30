@@ -453,20 +453,20 @@ fn a_container_aligns_its_child() {
 /// express responsiveness the same declarative way.
 #[test]
 fn layout_properties_vary_by_condition() {
-  fn row() -> impl IntoView {
+  fn row() -> impl View {
     Row::new()
       .set_spacing(Spacing::from(1).when(Media::MinWidth(10), Spacing::from(3)))
       .set_children((Text::new("ab"), Text::new("cd")))
   }
 
   with_platform(|| {
-    let _ = tui::mount(|| row().into_view().build());
+    let _ = tui::mount(|| row().build());
 
     assert_eq!(testing::render_to_text(12, 2), "ab   cd\n\n");
   });
 
   with_platform(|| {
-    let _ = tui::mount(|| row().into_view().build());
+    let _ = tui::mount(|| row().build());
 
     assert_eq!(testing::render_to_text(8, 2), "ab cd\n\n");
   });

@@ -16,7 +16,7 @@ mod tree;
 
 use std::cell::{Cell, RefCell};
 
-use skene_core::{Boundary, IntoView, NodeId, NodeKind, NodeMap, Scene, View};
+use skene_core::{Boundary, NodeId, NodeKind, NodeMap, Scene, View};
 use skene_reactive::{Owner, batch, provide_context};
 
 pub use self::{
@@ -253,7 +253,7 @@ fn begin_render() -> (NodeId, Owner) {
   forget_static_routes();
   task::install_executor();
 
-  let root = Scene::<Web>::with(|scene| scene.create(NodeKind::Box));
+  let root = Scene::<Web>::with(|scene| scene.create(NodeKind::Box, None));
 
   with_realizer(|realizer| realizer.insert(root, ROOT, "", Realized::Box, false));
 
@@ -265,7 +265,7 @@ fn begin_render() -> (NodeId, Owner) {
 fn build_app<V, F>(root: NodeId, scope: Owner, boundary: Option<Boundary>, app: F)
 where
   F: FnOnce() -> V + 'static,
-  V: IntoView<Web>,
+  V: View<Web>,
 {
   batch(|| {
     scope.enter(|| {
@@ -273,7 +273,7 @@ where
         provide_context(boundary);
       }
 
-      let node = app().into_view().build();
+      let node = app().build();
 
       Scene::<Web>::with(|scene| scene.attach(root, node, None));
     });
@@ -298,7 +298,7 @@ fn end_render(scope: Owner) {
 pub fn render_to_string<V, F>(app: F) -> Rendered
 where
   F: FnOnce() -> V + 'static,
-  V: IntoView<Web>,
+  V: View<Web>,
 {
   let (root, scope) = begin_render();
 
@@ -363,7 +363,7 @@ pub enum StreamPiece<'a> {
 pub fn render_to_stream_with<V, F>(app: F, mut flush: impl FnMut(StreamPiece<'_>))
 where
   F: FnOnce() -> V + 'static,
-  V: IntoView<Web>,
+  V: View<Web>,
 {
   let (root, scope) = begin_render();
   let shell = Boundary::new();

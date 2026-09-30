@@ -32,7 +32,7 @@ use skene_gui::prelude::*;
 use skene_simple::gui::prelude::*;
 
 #[main]
-fn app() -> impl IntoView {
+fn app() -> impl View {
   let count = Signal::tagged("count", 0u64);
 
   Theme::new(SimplePalette::default()).set_child_builder(move || {
@@ -70,7 +70,7 @@ calls `launch` (`examples/tui/counter`):
 use skene_simple::tui::prelude::*;
 use skene_tui::prelude::*;
 
-fn app() -> impl IntoView {
+fn app() -> impl View {
   let count = Signal::tagged("count", 0u64);
 
   Theme::new(SimplePalette::default()).set_child_builder(move || {

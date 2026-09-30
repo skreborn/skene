@@ -203,7 +203,7 @@ fn a_fields_window_scrolls_by_cells() {
 #[test]
 fn the_document_selection_takes_whole_clusters() {
   with_platform(|| {
-    let _ = tui::mount(|| Text::new("日本語").set_selectable(true).into_any().build());
+    let _ = tui::mount(|| Text::new("日本語").set_selectable(true).build());
     let _ = testing::render_to_text(12, 4);
 
     testing::trigger_mouse_press(0, 0);
@@ -235,7 +235,7 @@ fn the_document_selection_takes_whole_clusters() {
 #[test]
 fn a_control_character_paints_as_one_visible_cell() {
   with_platform(|| {
-    let _ = tui::mount(|| marked("a\u{1b}]2;x\u{7}b\rc").into_any().build());
+    let _ = tui::mount(|| marked("a\u{1b}]2;x\u{7}b\rc").build());
 
     for clustering in [false, true] {
       testing::trigger_grapheme_clustering(clustering);
@@ -259,7 +259,7 @@ fn a_control_character_paints_as_one_visible_cell() {
 #[test]
 fn a_tab_advances_to_its_stop() {
   with_platform(|| {
-    let _ = tui::mount(|| marked("ab\tc\td").into_any().build());
+    let _ = tui::mount(|| marked("ab\tc\td").build());
 
     let text = testing::render_to_text(24, 1);
 

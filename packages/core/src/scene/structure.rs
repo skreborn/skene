@@ -35,8 +35,8 @@ impl<P: Platform> Scene<P> {
   /// Returns `(start, end)`; the start stands for the segment everywhere.
   pub fn create_segment() -> (NodeId, NodeId) {
     let (start, end) = Self::with(|scene| {
-      let start = scene.create(NodeKind::Anchor);
-      let end = scene.create(NodeKind::Anchor);
+      let start = scene.create(NodeKind::Anchor, None);
+      let end = scene.create(NodeKind::Anchor, None);
 
       if let Some(record) = scene.record_mut(start) {
         record.segment = Some(Box::new(SegmentRecord {

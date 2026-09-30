@@ -6,7 +6,6 @@ use skene_core::{
   AnyKind,
   AnyView,
   Handler,
-  IntoView,
   KeyEvent,
   NoChild,
   NodeId,
@@ -50,10 +49,10 @@ impl<P: Platform> Keymap<P> {
 
   /// Sets the view the keymap serves.
   #[inline(always)]
-  pub fn set_child(self, child: impl IntoView<P>) -> Keymap<P, AnyView<P>> {
+  pub fn set_child(self, child: impl View<P>) -> Keymap<P, AnyView<P>> {
     Keymap {
       bindings: self.bindings,
-      child: child.into_view(),
+      child: child.into_any(),
       platform: PhantomData,
     }
   }

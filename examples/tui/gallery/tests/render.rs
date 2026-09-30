@@ -11,7 +11,7 @@ use skene_tui::{
 #[test]
 fn the_gallery_renders_and_responds() {
   let (frame, clicked, switched, neutral, indigo) = with_platform(|| {
-    let _ = tui::mount(|| tui_gallery::app().into_view().build());
+    let _ = tui::mount(|| tui_gallery::app().build());
 
     let frame = testing::render_to_text(60, 220);
     let neutral = testing::render_to_colors(60, 220);

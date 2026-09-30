@@ -637,7 +637,7 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
       destination: self.destination,
     };
     let container = self.container;
-    let node = Scene::<P>::with(|scene| scene.create(kind));
+    let node = Scene::<P>::with(|scene| scene.create(kind, None));
 
     create(node, props);
     Scene::<P>::with(|scene| {

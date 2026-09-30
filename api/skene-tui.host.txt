@@ -218,8 +218,8 @@ pub struct skene_tui::prelude::launch::Launch
 impl skene_tui::Launch
 pub fn skene_tui::Launch::install(self)
 pub const fn skene_tui::Launch::new() -> Self
-pub fn skene_tui::Launch::run<V, F>(self, F) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_core::view::IntoView<skene_tui::Tui>
-pub fn skene_tui::Launch::run_on<D, V, F>(self, D, F) -> D where D: skene_tui::Device, F: core::ops::function::FnOnce() -> V + 'static, V: skene_core::view::IntoView<skene_tui::Tui>
+pub fn skene_tui::Launch::run<V, F>(self, F) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_core::view::View<skene_tui::Tui>
+pub fn skene_tui::Launch::run_on<D, V, F>(self, D, F) -> D where D: skene_tui::Device, F: core::ops::function::FnOnce() -> V + 'static, V: skene_core::view::View<skene_tui::Tui>
 pub const fn skene_tui::Launch::set_clipboard(self, skene_tui::Clipboard) -> Self
 pub const fn skene_tui::Launch::set_mouse(self, bool) -> Self
 pub const fn skene_tui::Launch::set_mouse_key(self, core::option::Option<skene_core::events::Shortcut>) -> Self
@@ -238,7 +238,7 @@ impl core::marker::Copy for skene_tui::Launch
 impl core::marker::StructuralPartialEq for skene_tui::Launch
 pub const skene_tui::prelude::launch::MOUSE_KEY: skene_core::events::Shortcut
 pub fn skene_tui::prelude::launch::install()
-pub fn skene_tui::prelude::launch::launch<V, F>(F) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_core::view::IntoView<skene_tui::Tui>
+pub fn skene_tui::prelude::launch::launch<V, F>(F) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_core::view::View<skene_tui::Tui>
 pub mod skene_tui::prelude::media
 pub fn skene_tui::prelude::media::derive_scheme(impl core::ops::function::Fn() -> core::option::Option<skene_core::values::color::ColorScheme> + 'static)
 pub fn skene_tui::prelude::media::high_contrast() -> skene_reactive::signal::ReadSignal<bool>
@@ -277,8 +277,8 @@ pub struct skene_tui::prelude::Launch
 impl skene_tui::Launch
 pub fn skene_tui::Launch::install(self)
 pub const fn skene_tui::Launch::new() -> Self
-pub fn skene_tui::Launch::run<V, F>(self, F) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_core::view::IntoView<skene_tui::Tui>
-pub fn skene_tui::Launch::run_on<D, V, F>(self, D, F) -> D where D: skene_tui::Device, F: core::ops::function::FnOnce() -> V + 'static, V: skene_core::view::IntoView<skene_tui::Tui>
+pub fn skene_tui::Launch::run<V, F>(self, F) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_core::view::View<skene_tui::Tui>
+pub fn skene_tui::Launch::run_on<D, V, F>(self, D, F) -> D where D: skene_tui::Device, F: core::ops::function::FnOnce() -> V + 'static, V: skene_core::view::View<skene_tui::Tui>
 pub const fn skene_tui::Launch::set_clipboard(self, skene_tui::Clipboard) -> Self
 pub const fn skene_tui::Launch::set_mouse(self, bool) -> Self
 pub const fn skene_tui::Launch::set_mouse_key(self, core::option::Option<skene_core::events::Shortcut>) -> Self
@@ -295,10 +295,6 @@ impl core::hash::Hash for skene_tui::Launch
 pub fn skene_tui::Launch::hash<__H: core::hash::Hasher>(&self, &mut __H)
 impl core::marker::Copy for skene_tui::Launch
 impl core::marker::StructuralPartialEq for skene_tui::Launch
-pub trait skene_tui::prelude::IntoView: skene_core::view::IntoView<skene_tui::ActivePlatform> + skene_core::view::AnyKind
-pub fn skene_tui::prelude::IntoView::into_view(self) -> skene_tui::AnyView where Self: core::marker::Sized
-impl<V: skene_core::view::IntoView<skene_tui::ActivePlatform> + skene_core::view::AnyKind> skene_tui::IntoView for V
-pub fn V::into_view(self) -> skene_tui::AnyView where Self: core::marker::Sized
 pub trait skene_tui::prelude::ThemedIn: skene_common::theme::ThemedIn<skene_tui::ActivePlatform>
 pub fn skene_tui::prelude::ThemedIn::current() -> Self
 pub fn skene_tui::prelude::ThemedIn::watch() -> skene_reactive::memo::Memo<Self>
@@ -392,7 +388,7 @@ pub fn skene_tui::prelude::derive_title(impl core::ops::function::Fn() -> alloc:
 pub fn skene_tui::prelude::derived(impl core::ops::function::Fn() -> skene_core::node::NodeId + 'static) -> skene_core::node::NodeId
 pub fn skene_tui::prelude::empty() -> impl skene_tui::View
 pub fn skene_tui::prelude::install_router<R: skene_common::routing::Route>(R) -> skene_common::routing::Router<R>
-pub fn skene_tui::prelude::launch<V, F>(F) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_core::view::IntoView<skene_tui::Tui>
+pub fn skene_tui::prelude::launch<V, F>(F) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_core::view::View<skene_tui::Tui>
 pub fn skene_tui::prelude::set_scheme(core::option::Option<skene_core::values::color::ColorScheme>)
 pub fn skene_tui::prelude::set_title(impl core::convert::Into<alloc::string::String>)
 pub fn skene_tui::prelude::spawn(impl core::future::future::Future<Output = ()> + 'static) -> skene_reactive::spawn::TaskHandle
@@ -618,8 +614,8 @@ pub struct skene_tui::Launch
 impl skene_tui::Launch
 pub fn skene_tui::Launch::install(self)
 pub const fn skene_tui::Launch::new() -> Self
-pub fn skene_tui::Launch::run<V, F>(self, F) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_core::view::IntoView<skene_tui::Tui>
-pub fn skene_tui::Launch::run_on<D, V, F>(self, D, F) -> D where D: skene_tui::Device, F: core::ops::function::FnOnce() -> V + 'static, V: skene_core::view::IntoView<skene_tui::Tui>
+pub fn skene_tui::Launch::run<V, F>(self, F) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_core::view::View<skene_tui::Tui>
+pub fn skene_tui::Launch::run_on<D, V, F>(self, D, F) -> D where D: skene_tui::Device, F: core::ops::function::FnOnce() -> V + 'static, V: skene_core::view::View<skene_tui::Tui>
 pub const fn skene_tui::Launch::set_clipboard(self, skene_tui::Clipboard) -> Self
 pub const fn skene_tui::Launch::set_mouse(self, bool) -> Self
 pub const fn skene_tui::Launch::set_mouse_key(self, core::option::Option<skene_core::events::Shortcut>) -> Self
@@ -749,10 +745,6 @@ pub fn skene_tui::testing::Pty::size(&self) -> core::option::Option<skene_tui::W
 pub fn skene_tui::testing::Pty::stop(&mut self)
 pub fn skene_tui::testing::Pty::wait(&mut self, core::time::Duration, &mut alloc::vec::Vec<u8>) -> core::io::error::Result<alloc::vec::Vec<skene_tui::Note>>
 pub fn skene_tui::testing::Pty::waker(&self) -> alloc::sync::Arc<(dyn core::ops::function::Fn() + core::marker::Send + core::marker::Sync)>
-pub trait skene_tui::IntoView: skene_core::view::IntoView<skene_tui::ActivePlatform> + skene_core::view::AnyKind
-pub fn skene_tui::IntoView::into_view(self) -> skene_tui::AnyView where Self: core::marker::Sized
-impl<V: skene_core::view::IntoView<skene_tui::ActivePlatform> + skene_core::view::AnyKind> skene_tui::IntoView for V
-pub fn V::into_view(self) -> skene_tui::AnyView where Self: core::marker::Sized
 pub trait skene_tui::ThemedIn: skene_common::theme::ThemedIn<skene_tui::ActivePlatform>
 pub fn skene_tui::ThemedIn::current() -> Self
 pub fn skene_tui::ThemedIn::watch() -> skene_reactive::memo::Memo<Self>
@@ -849,7 +841,7 @@ pub fn skene_tui::dev_notice_view(skene_reactive::signal::Signal<core::option::O
 pub fn skene_tui::empty() -> impl skene_tui::View
 pub fn skene_tui::install()
 pub fn skene_tui::install_router<R: skene_common::routing::Route>(R) -> skene_common::routing::Router<R>
-pub fn skene_tui::launch<V, F>(F) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_core::view::IntoView<skene_tui::Tui>
+pub fn skene_tui::launch<V, F>(F) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_core::view::View<skene_tui::Tui>
 pub fn skene_tui::mount(impl core::ops::function::FnOnce() -> skene_core::node::NodeId) -> skene_core::node::NodeId
 pub fn skene_tui::reconcile<T, I, K>(skene_core::node::NodeId, impl core::ops::function::Fn() -> I + 'static, impl core::ops::function::Fn(&T) -> K + 'static, impl core::ops::function::Fn(T) -> skene_core::node::NodeId + 'static) where I: core::iter::traits::collect::IntoIterator<Item = T>, K: core::cmp::Eq + core::hash::Hash + 'static
 pub fn skene_tui::set_scheme(core::option::Option<skene_core::values::color::ColorScheme>)

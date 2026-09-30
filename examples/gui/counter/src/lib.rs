@@ -8,7 +8,7 @@ use skene_gui::prelude::*;
 use skene_simple::gui::prelude::*;
 
 #[main]
-fn app() -> impl IntoView {
+fn app() -> impl View {
   let count = Signal::tagged("count", 0u64);
 
   Theme::new(SimplePalette::default()).set_child_builder(move || {
@@ -23,7 +23,7 @@ fn app() -> impl IntoView {
   })
 }
 
-fn card(count: Signal<u64>) -> impl IntoView {
+fn card(count: Signal<u64>) -> impl View {
   let palette = SimplePalette::current();
 
   SimpleCard::new()

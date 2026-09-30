@@ -22,7 +22,6 @@ use skene_core::{
   HasChild,
   HasChildren,
   Inset,
-  IntoView,
   ItemAlignment,
   MouseCursor,
   NodeId,
@@ -270,5 +269,5 @@ where
     .set_cursor(MouseCursor::Click)
     .set_part(Part::Item, check)
     .set_label(Label::new(caption).set_name(label))
-    .into_view()
+    .into_any()
 }

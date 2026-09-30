@@ -163,12 +163,4 @@ impl<P: Platform> Scene<P> {
   pub const fn take_pending_annotation(&mut self) -> Option<Annotation<P>> {
     self.pending_annotation.take()
   }
-
-  /// Records the annotation a box was built with.
-  #[inline(always)]
-  pub fn set_annotation(&mut self, node: NodeId, annotation: Annotation<P>) {
-    if let Some(record) = self.record_mut(node) {
-      record.annotation = Some(annotation);
-    }
-  }
 }

@@ -6,7 +6,7 @@ use std::{
   task::{Context, Poll},
 };
 
-use skene_core::{AnyKind, IntoView, NodeId, Scene, View};
+use skene_core::{AnyKind, NodeId, Scene, View};
 use skene_reactive::Owner;
 
 use crate::ActivePlatform;
@@ -46,7 +46,7 @@ impl Lazy {
   #[inline(always)]
   pub fn new<V, F>(load: impl FnOnce() -> F + 'static) -> Self
   where
-    V: IntoView<ActivePlatform>,
+    V: View<ActivePlatform>,
     F: Future<Output = V> + 'static,
   {
     Self {
@@ -56,7 +56,7 @@ impl Lazy {
         let owner = Owner::current().child();
         let work = InRegion::new(region, async move {
           let content = load().await;
-          let content = owner.enter(|| content.into_view().build());
+          let content = owner.enter(|| content.build());
 
           if claimed {
             discard(start);

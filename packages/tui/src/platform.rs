@@ -521,7 +521,7 @@ pub(crate) fn install() {
     );
 
     *store = Some(Store::new(Scene::<Tui>::with(|scene| {
-      scene.create(NodeKind::Box)
+      scene.create(NodeKind::Box, None)
     })));
   });
 

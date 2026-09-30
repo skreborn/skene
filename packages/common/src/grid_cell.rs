@@ -10,7 +10,6 @@ use skene_core::{
   GridChild,
   GridPlacement,
   IntoChildOf,
-  IntoView,
   Leaf,
   Line,
   NoChild,
@@ -129,12 +128,12 @@ impl<P: Platform> GridCell<P> {
 
   /// Sets the child.
   #[inline(always)]
-  pub fn set_child(self, child: impl IntoView<P>) -> GridCell<P, AnyView<P>> {
+  pub fn set_child(self, child: impl View<P>) -> GridCell<P, AnyView<P>> {
     GridCell {
       row: self.row,
       column: self.column,
       alignment: self.alignment,
-      child: child.into_view(),
+      child: child.into_any(),
       platform: PhantomData,
     }
   }

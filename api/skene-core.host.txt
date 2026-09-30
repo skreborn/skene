@@ -3757,12 +3757,11 @@ pub fn skene_core::Scene<P>::segment_end(&self, skene_core::NodeId) -> core::opt
 pub fn skene_core::Scene<P>::segment_nodes(&self, skene_core::NodeId) -> alloc::vec::Vec<skene_core::NodeId>
 impl<P: skene_core::Platform> skene_core::Scene<P>
 pub fn skene_core::Scene<P>::annotate(impl core::convert::Into<core::option::Option<skene_core::Annotation<P>>>, impl core::ops::function::FnOnce() -> skene_core::NodeId) -> skene_core::NodeId
-pub fn skene_core::Scene<P>::set_annotation(&mut self, skene_core::NodeId, skene_core::Annotation<P>)
 pub fn skene_core::Scene<P>::set_pending_annotation(&mut self, skene_core::Annotation<P>)
 pub const fn skene_core::Scene<P>::take_pending_annotation(&mut self) -> core::option::Option<skene_core::Annotation<P>>
 impl<P: skene_core::Platform> skene_core::Scene<P>
 pub fn skene_core::Scene<P>::contains(&self, skene_core::NodeId) -> bool
-pub fn skene_core::Scene<P>::create(&mut self, skene_core::NodeKind) -> skene_core::NodeId
+pub fn skene_core::Scene<P>::create(&mut self, skene_core::NodeKind, core::option::Option<skene_core::Annotation<P>>) -> skene_core::NodeId
 pub fn skene_core::Scene<P>::is_borrowed() -> bool
 pub fn skene_core::Scene<P>::new() -> Self
 pub fn skene_core::Scene<P>::node_at(&self, &skene_reactive::path::Position) -> core::option::Option<skene_core::NodeId>
@@ -3873,7 +3872,7 @@ impl core::marker::StructuralPartialEq for skene_core::Shortcut
 pub struct skene_core::Show<P: skene_core::Platform, C>
 impl<P: skene_core::Platform> skene_core::Show<P>
 pub fn skene_core::Show<P>::derive_shown(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
-pub fn skene_core::Show<P>::set_child(self, impl skene_core::IntoView<P>) -> skene_core::Show<P, skene_core::AnyView<P>>
+pub fn skene_core::Show<P>::set_child(self, impl skene_core::View<P>) -> skene_core::Show<P, skene_core::AnyView<P>>
 pub fn skene_core::Show<P>::set_shown(self, bool) -> Self
 impl<P: skene_core::Platform> skene_core::Show<P>
 pub fn skene_core::Show<P>::new() -> Self
@@ -4630,7 +4629,7 @@ pub fn skene_core::Wrap::from_box_value(skene_core::BoxValue<N, X>) -> core::opt
 pub fn skene_core::Wrap::into_box_value(self) -> skene_core::BoxValue<N, X>
 pub trait skene_core::IntoChildOf<P: skene_core::Platform, Kind>
 pub fn skene_core::IntoChildOf::into_child(self) -> skene_core::AnyView<P>
-impl<P: skene_core::Platform, Kind, V: skene_core::IntoView<P> + skene_core::AnyKind> skene_core::IntoChildOf<P, Kind> for V
+impl<P: skene_core::Platform, Kind, V: skene_core::View<P>> skene_core::IntoChildOf<P, Kind> for V
 pub fn V::into_child(self) -> skene_core::AnyView<P>
 pub trait skene_core::IntoChildren<P: skene_core::Platform, Kind>
 pub fn skene_core::IntoChildren::into_children(self) -> alloc::vec::Vec<skene_core::AnyView<P>>
@@ -4681,10 +4680,6 @@ pub trait skene_core::IntoTokenValue<V>
 pub fn skene_core::IntoTokenValue::into_token_value(self) -> V
 impl<P, V: core::convert::From<P>> skene_core::IntoTokenValue<V> for P
 pub fn P::into_token_value(self) -> V
-pub trait skene_core::IntoView<P: skene_core::Platform>
-pub fn skene_core::IntoView::into_view(self) -> skene_core::AnyView<P>
-impl<P: skene_core::Platform, V: skene_core::View<P>> skene_core::IntoView<P> for V
-pub fn V::into_view(self) -> skene_core::AnyView<P>
 pub trait skene_core::Platform: core::marker::Copy + core::default::Default + 'static
 pub type skene_core::Platform::Scalar: skene_core::Scalar
 pub type skene_core::Platform::StyleExt: skene_core::StyleExtension

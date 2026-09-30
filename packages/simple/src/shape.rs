@@ -7,7 +7,6 @@ use skene_core::{
   Condition,
   Dimension,
   Inset,
-  IntoView,
   Length,
   MouseCursor,
   NodeId,
@@ -195,8 +194,8 @@ pub(crate) fn define_defaults<P: Platform>() {
 }
 
 /// Builds `view` and records it as `part` of the control it is mounted under.
-pub(crate) fn as_part<P: Platform>(part: Part, view: impl IntoView<P>) -> NodeId {
-  let node = view.into_view().build();
+pub(crate) fn as_part<P: Platform>(part: Part, view: impl View<P>) -> NodeId {
+  let node = view.build();
 
   Scene::<P>::with(|scene| scene.set_part(node, part));
 

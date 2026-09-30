@@ -2,7 +2,7 @@
 
 use std::{cell::Cell, marker::PhantomData, rc::Rc};
 
-use skene_core::{AnyKind, AnyView, Boundary, IntoView, NoChild, NodeId, Platform, Segment, View};
+use skene_core::{AnyKind, AnyView, Boundary, NoChild, NodeId, Platform, Segment, View};
 use skene_reactive::{Effect, Owner, on_cleanup, provide_context};
 
 use crate::realize::ChildBuilder;
@@ -48,15 +48,15 @@ impl<P: Platform> Suspense<P> {
 impl<P: Platform> Suspense<P> {
   /// Sets the fallback shown while the content's work is pending; nothing by default.
   #[inline(always)]
-  pub fn set_fallback(mut self, fallback: impl IntoView<P>) -> Self {
-    self.fallback = Some(fallback.into_view());
+  pub fn set_fallback(mut self, fallback: impl View<P>) -> Self {
+    self.fallback = Some(fallback.into_any());
 
     self
   }
 
   /// Sets the content, built by `child` under the boundary.
   #[inline(always)]
-  pub fn set_child_builder<V: IntoView<P>>(
+  pub fn set_child_builder<V: View<P>>(
     self,
     child: impl FnOnce() -> V + 'static,
   ) -> Suspense<P, ChildBuilder<P>> {

@@ -94,7 +94,6 @@ pub use crate::{
   Grid,
   GridCell,
   Inset,
-  IntoView,
   ItemExtent,
   Keymap,
   Launch,

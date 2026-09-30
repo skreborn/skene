@@ -3,7 +3,7 @@
 use skene_simple::tui::prelude::*;
 use skene_tui::prelude::*;
 
-pub(crate) fn app() -> impl IntoView {
+pub(crate) fn app() -> impl View {
   let count = Signal::tagged("count", 0u64);
 
   Theme::new(SimplePalette::default()).set_child_builder(move || {
@@ -18,7 +18,7 @@ pub(crate) fn app() -> impl IntoView {
   })
 }
 
-fn card(count: Signal<u64>) -> impl IntoView {
+fn card(count: Signal<u64>) -> impl View {
   SimpleCard::new()
     .set_item_alignment(ItemAlignment::Center)
     .set_children((

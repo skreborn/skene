@@ -52,7 +52,7 @@ impl StaticRoutes for Page {
 }
 
 #[main]
-fn app() -> impl IntoView {
+fn app() -> impl View {
   skene_gui::view_transitions::enable();
 
   let router = install_static_router(Page::Home);
@@ -70,7 +70,7 @@ fn app() -> impl IntoView {
               Link::new(Page::About).add_child(navigation("About")),
             )),
             derived(move || match router.route() {
-              Page::Home => home().into_view().build(),
+              Page::Home => home().build(),
               Page::About => Lazy::new(about).build(),
             }),
           )),
@@ -78,7 +78,7 @@ fn app() -> impl IntoView {
   })
 }
 
-fn home() -> impl IntoView {
+fn home() -> impl View {
   page(
     "HOME",
     "This page ships in the main module; the about page arrives on demand.",
@@ -93,10 +93,10 @@ async fn about() -> AnyView {
     "ABOUT",
     "This page's code lives in a split module, fetched when you first navigated here.",
   )
-  .into_view()
+  .into_any()
 }
 
-fn page(title: &'static str, body: &'static str) -> impl IntoView {
+fn page(title: &'static str, body: &'static str) -> impl View {
   Container::new().set_max_width(420.).set_child(
     SimpleCard::new().set_spacing(12.).set_children((
       Text::new(title)
@@ -110,7 +110,7 @@ fn page(title: &'static str, body: &'static str) -> impl IntoView {
   )
 }
 
-fn navigation(label: &'static str) -> impl IntoView {
+fn navigation(label: &'static str) -> impl View {
   Text::new(label)
     .set_font_size(14.)
     .set_font_weight(600.)

@@ -6,7 +6,6 @@ use std::{any::TypeId, marker::PhantomData};
 use skene_core::{
   AnyKind,
   Definitions,
-  IntoView,
   NoChild,
   NodeId,
   NodeKind,
@@ -66,7 +65,7 @@ impl<P: Platform, S: TokenSet<P::TokenValue>> Theme<P, S> {
 impl<P: Platform, S: TokenSet<P::TokenValue>> Theme<P, S> {
   /// Sets the child, built by `child` under the theme.
   #[inline(always)]
-  pub fn set_child_builder<V: IntoView<P>>(
+  pub fn set_child_builder<V: View<P>>(
     self,
     child: impl FnOnce() -> V + 'static,
   ) -> Theme<P, S, ChildBuilder<P>> {
@@ -82,7 +81,7 @@ impl<P: Platform, S: TokenSet<P::TokenValue>, C> AnyKind for Theme<P, S, C> {}
 
 impl<P: Platform, S: TokenSet<P::TokenValue>> View<P> for Theme<P, S, ChildBuilder<P>> {
   fn build(self) -> NodeId {
-    let scope = Scene::<P>::with(|scene| scene.create(NodeKind::Scope));
+    let scope = Scene::<P>::with(|scene| scene.create(NodeKind::Scope, None));
 
     P::create_scope(scope);
 

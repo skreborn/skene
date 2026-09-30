@@ -37,7 +37,6 @@ use std::{
 use rustc_hash::FxHashMap;
 use skene_core::{
   EventKind,
-  IntoView,
   NodeId,
   NodeKind,
   Scene,
@@ -491,7 +490,7 @@ fn install_at(root: Element, hydrating: bool) {
     *dom = Some(Dom::new(
       document,
       root,
-      Scene::<Web>::with(|scene| scene.create(NodeKind::Box)),
+      Scene::<Web>::with(|scene| scene.create(NodeKind::Box, None)),
       hydration,
     ));
   });
@@ -548,11 +547,11 @@ pub fn mount(view: impl FnOnce() -> NodeId) -> NodeId {
 pub fn hydrate<V, F>(root: Element, state: &str, app: F)
 where
   F: FnOnce() -> V + 'static,
-  V: IntoView<Web>,
+  V: View<Web>,
 {
   install_at(root, true);
   crate::hydration::stage(state);
-  let _ = mount(|| app().into_view().build());
+  let _ = mount(|| app().build());
 
   let pending = with_dom(Dom::finish_hydration);
 
@@ -585,7 +584,7 @@ pub fn hydration_mismatches() -> u32 {
 fn hydrate_page<V, F>(app: F)
 where
   F: FnOnce() -> V + 'static,
-  V: IntoView<Web>,
+  V: View<Web>,
 {
   console_error_panic_hook::set_once();
 
@@ -615,7 +614,7 @@ where
 pub fn launch<V, F>(app: F)
 where
   F: FnOnce() -> V + 'static,
-  V: IntoView<Web>,
+  V: View<Web>,
 {
   let document = web_sys::window()
     .expect("a window")
@@ -636,7 +635,7 @@ where
 
   install(body.into());
 
-  let _ = mount(|| app().into_view().build());
+  let _ = mount(|| app().build());
 }
 
 /// The DOM nodes between the anchors of the segment `start` begins, in order.

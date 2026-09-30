@@ -10,7 +10,6 @@ use skene_core::{
   Definition,
   Definitions,
   Inset,
-  IntoView,
   NodeId,
   Platform,
   Property,
@@ -156,8 +155,8 @@ impl<P: Platform> SimpleButton<P> {
 
   /// Sets a view drawn in the label's place; the button then has no text of its own.
   #[inline(always)]
-  pub fn set_child(mut self, child: impl IntoView<P>) -> Self {
-    self.content = Content::View(child.into_view());
+  pub fn set_child(mut self, child: impl View<P>) -> Self {
+    self.content = Content::View(child.into_any());
 
     self
   }

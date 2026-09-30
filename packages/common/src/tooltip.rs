@@ -11,7 +11,6 @@ use skene_core::{
   Condition,
   DeclaredBoxStyle,
   Handler,
-  IntoView,
   NoChild,
   NodeId,
   Part,
@@ -101,20 +100,20 @@ impl<P: Platform> Tooltip<P> {
 
   /// A tooltip showing `content`, a view of any kind.
   #[inline(always)]
-  pub fn view(content: impl IntoView<P>) -> Self {
-    Self::with(Content::View(content.into_view()))
+  pub fn view(content: impl View<P>) -> Self {
+    Self::with(Content::View(content.into_any()))
   }
 
   /// Sets the view the tooltip describes.
   #[inline(always)]
-  pub fn set_child(self, child: impl IntoView<P>) -> Tooltip<P, AnyView<P>> {
+  pub fn set_child(self, child: impl View<P>) -> Tooltip<P, AnyView<P>> {
     Tooltip {
       content: self.content,
       text_color: self.text_color,
       placement: self.placement,
       delay: self.delay,
       bubble: self.bubble,
-      child: child.into_view(),
+      child: child.into_any(),
     }
   }
 }
@@ -266,7 +265,7 @@ impl<P: Platform> View<P> for Tooltip<P, AnyView<P>> {
           run = run.set_color(color);
         }
 
-        (run.into_view(), Some(Source::Fixed(text)))
+        (run.into_any(), Some(Source::Fixed(text)))
       }
       Content::Text(Source::Derived(compute)) => {
         let mut run = Text::<P>::derive({
@@ -279,7 +278,7 @@ impl<P: Platform> View<P> for Tooltip<P, AnyView<P>> {
           run = run.set_color(color);
         }
 
-        (run.into_view(), Some(Source::Derived(compute)))
+        (run.into_any(), Some(Source::Derived(compute)))
       }
       Content::View(view) => (view, None),
     };

@@ -383,8 +383,8 @@ impl<P: Platform> Scene<P> {
     self.record(node).is_some()
   }
 
-  /// Mints a detached node of `kind`; a control starts in the default
-  /// [`ControlState`].
+  /// Mints a detached node of `kind`, recording the `annotation` a wrapper gave it; a
+  /// control starts in the default [`ControlState`].
   ///
   /// The platform realizes the node, keyed by the id this returns, once the scene is
   /// released and before the node takes part in any other operation.
@@ -392,7 +392,7 @@ impl<P: Platform> Scene<P> {
   /// # Panics
   ///
   /// Panics past 2^32 live nodes.
-  pub fn create(&mut self, kind: NodeKind) -> NodeId {
+  pub fn create(&mut self, kind: NodeKind, annotation: Option<Annotation<P>>) -> NodeId {
     let is_control = kind == NodeKind::Control;
     let position = Position::next();
     let record = NodeRecord {
@@ -403,7 +403,7 @@ impl<P: Platform> Scene<P> {
       previous_sibling: None,
       next_sibling: None,
       kind,
-      annotation: None,
+      annotation,
       definitions: None,
       container: None,
       handlers: None,

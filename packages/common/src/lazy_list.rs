@@ -9,7 +9,6 @@ use skene_core::{
   Flexibility,
   HasChild,
   HasChildren,
-  IntoView,
   ItemWindow,
   Layout,
   NodeId,
@@ -169,7 +168,7 @@ impl<P: Platform> LazyList<P> {
     I: IntoIterator<Item = T>,
     I::IntoIter: ExactSizeIterator,
     K: Eq + Hash + Clone + 'static,
-    V: IntoView<P>,
+    V: View<P>,
   {
     let items = Rc::new(items);
     let key = Rc::new(key);
@@ -220,7 +219,7 @@ impl<P: Platform> LazyList<P> {
           },
           move |item| {
             let item_key = key(&item);
-            let container = rigid(Container::<P>::new().set_child(view(item).into_view()));
+            let container = rigid(Container::<P>::new().set_child(view(item).into_any()));
             let node = match extent {
               ItemExtent::Fixed(length) => axis
                 .sized(container, Dimension::Length(P::Scalar::from_f32(length)))
@@ -417,7 +416,7 @@ impl<P: Platform> LazyColumn<P> {
     I: IntoIterator<Item = T>,
     I::IntoIter: ExactSizeIterator,
     K: Eq + Hash + Clone + 'static,
-    V: IntoView<P>,
+    V: View<P>,
   {
     Self(self.0.derive_items(items, key, view))
   }
@@ -492,7 +491,7 @@ impl<P: Platform> LazyRow<P> {
     I: IntoIterator<Item = T>,
     I::IntoIter: ExactSizeIterator,
     K: Eq + Hash + Clone + 'static,
-    V: IntoView<P>,
+    V: View<P>,
   {
     Self(self.0.derive_items(items, key, view))
   }

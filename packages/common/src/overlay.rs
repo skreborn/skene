@@ -11,7 +11,6 @@ use skene_core::{
   DeclaredBoxStyle,
   Handler,
   HasChildren,
-  IntoView,
   Layout,
   NoChild,
   NodeId,
@@ -107,7 +106,7 @@ impl<P: Platform> Overlay<P> {
 
   /// Sets the content.
   #[inline(always)]
-  pub fn set_child(self, child: impl IntoView<P>) -> Overlay<P, AnyView<P>> {
+  pub fn set_child(self, child: impl View<P>) -> Overlay<P, AnyView<P>> {
     Overlay {
       modal: self.modal,
       hint: self.hint,
@@ -118,7 +117,7 @@ impl<P: Platform> Overlay<P> {
       open: self.open,
       dismiss: self.dismiss,
       inner: self.inner,
-      child: child.into_view(),
+      child: child.into_any(),
     }
   }
 }

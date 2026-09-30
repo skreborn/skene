@@ -13,7 +13,7 @@ use skene_tui::{
 #[test]
 fn the_forms_the_terminal_carries_render() {
   let frame = with_platform(|| {
-    let _ = tui::mount(|| tui_enhance::app().into_view().build());
+    let _ = tui::mount(|| tui_enhance::app().build());
 
     testing::render_to_text(60, 30)
   });
@@ -32,7 +32,7 @@ fn the_forms_the_terminal_carries_render() {
   }
 
   let frame = with_platform(|| {
-    let _ = tui::mount(|| tui_enhance::app().into_view().build());
+    let _ = tui::mount(|| tui_enhance::app().build());
     let _ = testing::render_to_text(60, 30);
 
     testing::trigger_frame(std::time::Duration::from_secs(1));
@@ -47,7 +47,7 @@ fn the_forms_the_terminal_carries_render() {
 #[test]
 fn the_picture_paints_where_the_terminal_proves_graphics() {
   with_platform(|| {
-    let _ = tui::mount(|| tui_enhance::app().into_view().build());
+    let _ = tui::mount(|| tui_enhance::app().build());
 
     assert!(testing::render_to_pictures(60, 30).is_empty());
 

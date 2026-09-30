@@ -9,7 +9,7 @@
 
 #[cfg(skene_leaf = "server")]
 use skene_core::Boundary;
-use skene_core::{AnyKind, IntoView, NodeId, Scene, View};
+use skene_core::{AnyKind, NodeId, Scene, View};
 
 use crate::ActivePlatform;
 
@@ -33,9 +33,9 @@ impl Deferred {
   /// Defers `content`: its async work reports to a boundary of its own, and a
   /// streaming render flushes the surrounding page before it settles.
   #[inline(always)]
-  pub fn new<V: IntoView<ActivePlatform>>(content: impl FnOnce() -> V + 'static) -> Self {
+  pub fn new<V: View<ActivePlatform>>(content: impl FnOnce() -> V + 'static) -> Self {
     Self {
-      content: Box::new(move || content().into_view().build()),
+      content: Box::new(move || content().build()),
     }
   }
 

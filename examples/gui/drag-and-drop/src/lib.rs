@@ -17,7 +17,7 @@ struct Moving {
 }
 
 #[main]
-fn app() -> impl IntoView {
+fn app() -> impl View {
   let todo = Signal::tagged(
     "todo",
     ["Sketch the layout", "Pick the palette", "Write the copy"]
@@ -46,7 +46,7 @@ fn app() -> impl IntoView {
   })
 }
 
-fn heading() -> impl IntoView {
+fn heading() -> impl View {
   Column::new().set_spacing(6.).set_children((
     Text::new("DRAG AND DROP")
       .set_font_size(13.)
@@ -57,7 +57,7 @@ fn heading() -> impl IntoView {
 }
 
 /// The cards in `own`, taking a card dropped on the list from `other`.
-fn list(name: &'static str, own: Signal<Vec<String>>, other: Signal<Vec<String>>) -> impl IntoView {
+fn list(name: &'static str, own: Signal<Vec<String>>, other: Signal<Vec<String>>) -> impl View {
   Container::new()
     .set_width(220.)
     .set_padding(Inset::all(12.))
@@ -80,7 +80,7 @@ fn list(name: &'static str, own: Signal<Vec<String>>, other: Signal<Vec<String>>
 }
 
 /// One card, offering itself and its title as a drag.
-fn card(title: String, list: &'static str) -> impl IntoView {
+fn card(title: String, list: &'static str) -> impl View {
   let moving = Moving {
     title: title.clone(),
     from: list,

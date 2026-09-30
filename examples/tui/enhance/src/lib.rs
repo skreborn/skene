@@ -14,7 +14,7 @@ use skene_tui::{ActivePlatform, HasChild, core::Platform, kurbo::Rect, prelude::
 
 /// The page: a clock over its caption, and a picture over its description.
 #[must_use]
-pub fn app() -> impl IntoView {
+pub fn app() -> impl View {
   Theme::new(SimplePalette::default()).set_child_builder(|| {
     Container::new()
       .set_overflow(Overflow::Auto)
@@ -34,7 +34,7 @@ pub fn app() -> impl IntoView {
   })
 }
 
-fn heading() -> impl IntoView {
+fn heading() -> impl View {
   Column::new().set_children((
     Text::new("ENHANCE")
       .set_bold(true)
@@ -45,7 +45,7 @@ fn heading() -> impl IntoView {
 }
 
 /// A clock the loop keeps, over the caption standing until its first tick.
-fn clock_card() -> impl IntoView {
+fn clock_card() -> impl View {
   let ticked = Signal::new(false);
   let seconds = Signal::new(0u32);
 
@@ -87,7 +87,7 @@ fn tick(ticked: Signal<bool>, seconds: Signal<u32>) {
 
 /// A picture painted where the terminal draws pixels, over the description standing
 /// elsewhere.
-fn picture_card() -> impl IntoView {
+fn picture_card() -> impl View {
   SimpleCard::new().set_spacing(1).set_children((
     Text::new("Picture")
       .set_bold(true)

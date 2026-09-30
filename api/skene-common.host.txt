@@ -7,7 +7,6 @@ pub use skene_common::Errors
 pub use skene_common::HasChildren
 pub use skene_common::IntoChildOf
 pub use skene_common::IntoChildren
-pub use skene_common::IntoView
 pub use skene_common::Keyed
 pub use skene_common::NoChild
 pub use skene_common::NodeKind
@@ -298,7 +297,7 @@ pub fn skene_common::Painted<P>::derive_width<R: core::convert::Into<skene_core:
 pub fn skene_common::Painted<P>::new(impl core::ops::function::Fn(&mut skene_common::Canvas, skene_core::values::size::Size<f32>) + 'static) -> Self
 pub fn skene_common::Painted<P>::set_aspect_ratio(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::aspect_ratio::AspectRatio, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Painted<P>::set_description(self, impl core::convert::Into<alloc::string::String>) -> Self
-pub fn skene_common::Painted<P>::set_fallback<V: skene_core::view::IntoView<P>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> Self
+pub fn skene_common::Painted<P>::set_fallback<V: skene_core::view::View<P>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> Self
 pub fn skene_common::Painted<P>::set_height(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Painted<P>::set_max_height(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Painted<P>::set_max_width(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
@@ -395,7 +394,7 @@ pub fn skene_common::realize::Source<T>::fmt(&self, &mut core::fmt::Formatter<'_
 pub struct skene_common::realize::ChildBuilder<P: skene_core::platform::Platform>(_)
 impl<P: skene_core::platform::Platform> skene_common::realize::ChildBuilder<P>
 pub fn skene_common::realize::ChildBuilder<P>::build(self) -> skene_core::node::NodeId
-pub fn skene_common::realize::ChildBuilder<P>::new<V: skene_core::view::IntoView<P>>(impl core::ops::function::FnOnce() -> V + 'static) -> Self
+pub fn skene_common::realize::ChildBuilder<P>::new<V: skene_core::view::View<P>>(impl core::ops::function::FnOnce() -> V + 'static) -> Self
 impl<P: skene_core::platform::Platform> core::fmt::Debug for skene_common::realize::ChildBuilder<P>
 pub fn skene_common::realize::ChildBuilder<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_common::realize::LowLevel<P: skene_core::platform::Platform>(_)
@@ -1017,7 +1016,7 @@ pub fn skene_common::Canvas::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::
 pub struct skene_common::ChildBuilder<P: skene_core::platform::Platform>(_)
 impl<P: skene_core::platform::Platform> skene_common::realize::ChildBuilder<P>
 pub fn skene_common::realize::ChildBuilder<P>::build(self) -> skene_core::node::NodeId
-pub fn skene_common::realize::ChildBuilder<P>::new<V: skene_core::view::IntoView<P>>(impl core::ops::function::FnOnce() -> V + 'static) -> Self
+pub fn skene_common::realize::ChildBuilder<P>::new<V: skene_core::view::View<P>>(impl core::ops::function::FnOnce() -> V + 'static) -> Self
 impl<P: skene_core::platform::Platform> core::fmt::Debug for skene_common::realize::ChildBuilder<P>
 pub fn skene_common::realize::ChildBuilder<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_common::Collection<C: skene_common::CollectionPolicy>
@@ -1212,7 +1211,7 @@ pub fn skene_common::ContextMenu<P>::set_item_corner_radius(self, impl core::con
 pub fn skene_common::ContextMenu<P>::set_item_cursor(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::mouse_cursor::MouseCursor, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::ContextMenu<P>::set_item_padding(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::inset::Inset<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::ContextMenu<P>::set_item_text_color(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_common::ContextMenu<P>::set_item_view<V: skene_core::view::IntoView<P>>(self, impl core::ops::function::Fn(skene_common::MenuItemContent) -> V + 'static) -> Self
+pub fn skene_common::ContextMenu<P>::set_item_view<V: skene_core::view::View<P>>(self, impl core::ops::function::Fn(skene_common::MenuItemContent) -> V + 'static) -> Self
 pub fn skene_common::ContextMenu<P>::set_margin(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::inset::Inset<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::ContextMenu<P>::set_max_height(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::ContextMenu<P>::set_max_width(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
@@ -1232,7 +1231,7 @@ pub fn skene_common::ContextMenu<P>::set_width(self, impl core::convert::Into<sk
 impl<P: skene_core::platform::Platform> skene_common::ContextMenu<P>
 pub fn skene_common::ContextMenu<P>::new() -> Self
 pub fn skene_common::ContextMenu<P>::serve(self, skene_core::node::NodeId) -> skene_core::node::NodeId
-pub fn skene_common::ContextMenu<P>::set_child(self, impl skene_core::view::IntoView<P>) -> skene_common::ContextMenu<P, skene_core::view::AnyView<P>>
+pub fn skene_common::ContextMenu<P>::set_child(self, impl skene_core::view::View<P>) -> skene_common::ContextMenu<P, skene_core::view::AnyView<P>>
 pub fn skene_common::ContextMenu<P>::set_items(self, impl core::iter::traits::collect::IntoIterator<Item = skene_common::MenuItem>) -> Self
 impl<P: skene_core::platform::Platform, C> core::fmt::Debug for skene_common::ContextMenu<P, C>
 pub fn skene_common::ContextMenu<P, C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
@@ -1312,7 +1311,7 @@ pub fn skene_common::Control<P, B>::set_min_width(self, impl core::convert::Into
 pub fn skene_common::Control<P, B>::set_offset(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::inset::Inset<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Control<P, B>::set_overflow(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::axis::Axes<skene_core::values::overflow::Overflow>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Control<P, B>::set_padding(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::inset::Inset<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_common::Control<P, B>::set_part(self, skene_core::control::Part, impl skene_core::view::IntoView<P>) -> Self
+pub fn skene_common::Control<P, B>::set_part(self, skene_core::control::Part, impl skene_core::view::View<P>) -> Self
 pub fn skene_common::Control<P, B>::set_read_only(self, bool) -> Self
 pub fn skene_common::Control<P, B>::set_required(self, bool) -> Self
 pub fn skene_common::Control<P, B>::set_spacing(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::flex::Spacing<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
@@ -1323,8 +1322,8 @@ pub fn skene_common::Control<P, B>::set_width(self, impl core::convert::Into<ske
 pub const fn skene_common::Control<P, B>::style_mut(&mut self) -> &mut skene_core::props::DeclaredBoxStyle<P>
 impl<P: skene_core::platform::Platform, B: skene_common::Behavior<P>> skene_common::Control<P, B>
 pub fn skene_common::Control<P, B>::new(B) -> Self
-pub fn skene_common::Control<P, B>::set_child(self, impl skene_core::view::IntoView<P>) -> skene_common::Control<P, B, skene_core::view::AnyView<P>>
-pub fn skene_common::Control<P, B>::set_child_builder<V: skene_core::view::IntoView<P>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> skene_common::Control<P, B, skene_core::view::AnyView<P>>
+pub fn skene_common::Control<P, B>::set_child(self, impl skene_core::view::View<P>) -> skene_common::Control<P, B, skene_core::view::AnyView<P>>
+pub fn skene_common::Control<P, B>::set_child_builder<V: skene_core::view::View<P>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> skene_common::Control<P, B, skene_core::view::AnyView<P>>
 impl<P: skene_core::platform::Platform, B: skene_common::Behavior<P> + core::default::Default> core::default::Default for skene_common::Control<P, B>
 pub fn skene_common::Control<P, B>::default() -> Self
 impl<P: skene_core::platform::Platform, B: skene_common::Behavior<P>, C: skene_common::ControlChild<P>> skene_core::view::View<P> for skene_common::Control<P, B, C>
@@ -1365,8 +1364,8 @@ pub struct skene_common::Enhance<P: skene_core::platform::Platform, C>
 impl<P: skene_core::platform::Platform> skene_common::Enhance<P>
 pub const fn skene_common::Enhance<P>::new(skene_reactive::signal::ReadSignal<bool>) -> Self
 impl<P: skene_core::platform::Platform> skene_common::Enhance<P>
-pub fn skene_common::Enhance<P>::set_child_builder<V: skene_core::view::IntoView<P>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> skene_common::Enhance<P, skene_common::realize::ChildBuilder<P>>
-pub fn skene_common::Enhance<P>::set_fallback<V: skene_core::view::IntoView<P>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> Self
+pub fn skene_common::Enhance<P>::set_child_builder<V: skene_core::view::View<P>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> skene_common::Enhance<P, skene_common::realize::ChildBuilder<P>>
+pub fn skene_common::Enhance<P>::set_fallback<V: skene_core::view::View<P>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> Self
 impl<P: core::fmt::Debug + skene_core::platform::Platform, C: core::fmt::Debug> core::fmt::Debug for skene_common::Enhance<P, C>
 pub fn skene_common::Enhance<P, C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<P: skene_core::platform::Platform, C> skene_core::view::AnyKind for skene_common::Enhance<P, C>
@@ -1376,8 +1375,8 @@ pub struct skene_common::ErrorBoundary<P: skene_core::platform::Platform, C>
 impl<P: skene_core::platform::Platform> skene_common::ErrorBoundary<P>
 pub const fn skene_common::ErrorBoundary<P>::new() -> Self
 impl<P: skene_core::platform::Platform> skene_common::ErrorBoundary<P>
-pub fn skene_common::ErrorBoundary<P>::set_child_builder<V: skene_core::view::IntoView<P>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> skene_common::ErrorBoundary<P, skene_common::realize::ChildBuilder<P>>
-pub fn skene_common::ErrorBoundary<P>::set_fallback_builder<V: skene_core::view::IntoView<P>>(self, impl core::ops::function::Fn(skene_core::errors::Errors) -> V + 'static) -> Self
+pub fn skene_common::ErrorBoundary<P>::set_child_builder<V: skene_core::view::View<P>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> skene_common::ErrorBoundary<P, skene_common::realize::ChildBuilder<P>>
+pub fn skene_common::ErrorBoundary<P>::set_fallback_builder<V: skene_core::view::View<P>>(self, impl core::ops::function::Fn(skene_core::errors::Errors) -> V + 'static) -> Self
 impl<P: skene_core::platform::Platform, C> core::fmt::Debug for skene_common::ErrorBoundary<P, C>
 pub fn skene_common::ErrorBoundary<P, C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<P: skene_core::platform::Platform, C> skene_core::view::AnyKind for skene_common::ErrorBoundary<P, C>
@@ -1392,7 +1391,7 @@ pub struct skene_common::Flexible<P: skene_core::platform::Platform, C>
 impl<P: skene_core::platform::Platform> skene_common::Flexible<P>
 pub fn skene_common::Flexible<P>::derive_grow_factor(self, impl core::ops::function::Fn() -> f32 + 'static) -> Self
 pub fn skene_common::Flexible<P>::derive_item_alignment<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::flex::ItemAlignment>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_common::Flexible<P>::set_child(self, impl skene_core::view::IntoView<P>) -> skene_common::Flexible<P, skene_core::view::AnyView<P>>
+pub fn skene_common::Flexible<P>::set_child(self, impl skene_core::view::View<P>) -> skene_common::Flexible<P, skene_core::view::AnyView<P>>
 pub fn skene_common::Flexible<P>::set_grow_factor(self, f32) -> Self
 pub fn skene_common::Flexible<P>::set_initial(self, impl core::convert::Into<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>>) -> Self
 pub fn skene_common::Flexible<P>::set_item_alignment(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::flex::ItemAlignment, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
@@ -1448,7 +1447,7 @@ pub fn skene_common::GridCell<P>::derive_alignment<R: core::convert::Into<skene_
 pub fn skene_common::GridCell<P>::derive_column<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::grid::Line<skene_core::values::grid::GridPlacement>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::GridCell<P>::derive_row<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::grid::Line<skene_core::values::grid::GridPlacement>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::GridCell<P>::set_alignment(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::flex::Alignment, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_common::GridCell<P>::set_child(self, impl skene_core::view::IntoView<P>) -> skene_common::GridCell<P, skene_core::view::AnyView<P>>
+pub fn skene_common::GridCell<P>::set_child(self, impl skene_core::view::View<P>) -> skene_common::GridCell<P, skene_core::view::AnyView<P>>
 pub fn skene_common::GridCell<P>::set_column(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::grid::Line<skene_core::values::grid::GridPlacement>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::GridCell<P>::set_row(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::grid::Line<skene_core::values::grid::GridPlacement>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 impl<P: skene_core::platform::Platform> skene_common::GridCell<P>
@@ -1465,7 +1464,7 @@ pub fn skene_common::Keymap<P>::handle_shortcut(self, skene_core::events::Shortc
 impl<P: skene_core::platform::Platform> skene_common::Keymap<P>
 pub const fn skene_common::Keymap<P>::new() -> Self
 pub fn skene_common::Keymap<P>::serve(self, skene_core::node::NodeId) -> skene_core::node::NodeId
-pub fn skene_common::Keymap<P>::set_child(self, impl skene_core::view::IntoView<P>) -> skene_common::Keymap<P, skene_core::view::AnyView<P>>
+pub fn skene_common::Keymap<P>::set_child(self, impl skene_core::view::View<P>) -> skene_common::Keymap<P, skene_core::view::AnyView<P>>
 impl<P: skene_core::platform::Platform, C> core::fmt::Debug for skene_common::Keymap<P, C>
 pub fn skene_common::Keymap<P, C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<P: skene_core::platform::Platform, C> skene_core::view::AnyKind for skene_common::Keymap<P, C>
@@ -1477,7 +1476,7 @@ pub struct skene_common::Label<P: skene_core::platform::Platform>
 impl<P: skene_core::platform::Platform> skene_common::Label<P>
 pub fn skene_common::Label<P>::derive_name(self, impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
 pub fn skene_common::Label<P>::into_parts(self) -> (skene_core::view::AnyView<P>, core::option::Option<skene_common::realize::Source<alloc::string::String>>)
-pub fn skene_common::Label<P>::new(impl skene_core::view::IntoView<P>) -> Self
+pub fn skene_common::Label<P>::new(impl skene_core::view::View<P>) -> Self
 pub fn skene_common::Label<P>::set_name(self, impl core::convert::Into<alloc::string::String>) -> Self
 impl<P: core::fmt::Debug + skene_core::platform::Platform> core::fmt::Debug for skene_common::Label<P>
 pub fn skene_common::Label<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
@@ -1558,7 +1557,7 @@ impl<P: skene_core::platform::Platform, Kind> core::fmt::Debug for skene_common:
 pub fn skene_common::LayoutBox<P, Kind>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_common::LazyColumn<P: skene_core::platform::Platform>(_)
 impl<P: skene_core::platform::Platform> skene_common::LazyColumn<P>
-pub fn skene_common::LazyColumn<P>::derive_items<T, I, K, V>(self, impl core::ops::function::Fn() -> I + 'static, impl core::ops::function::Fn(&T) -> K + 'static, impl core::ops::function::Fn(T) -> V + 'static) -> Self where T: 'static, I: core::iter::traits::collect::IntoIterator<Item = T>, <I as core::iter::traits::collect::IntoIterator>::IntoIter: core::iter::traits::exact_size::ExactSizeIterator, K: core::cmp::Eq + core::hash::Hash + core::clone::Clone + 'static, V: skene_core::view::IntoView<P>
+pub fn skene_common::LazyColumn<P>::derive_items<T, I, K, V>(self, impl core::ops::function::Fn() -> I + 'static, impl core::ops::function::Fn(&T) -> K + 'static, impl core::ops::function::Fn(T) -> V + 'static) -> Self where T: 'static, I: core::iter::traits::collect::IntoIterator<Item = T>, <I as core::iter::traits::collect::IntoIterator>::IntoIter: core::iter::traits::exact_size::ExactSizeIterator, K: core::cmp::Eq + core::hash::Hash + core::clone::Clone + 'static, V: skene_core::view::View<P>
 pub const fn skene_common::LazyColumn<P>::new() -> Self
 pub fn skene_common::LazyColumn<P>::set_item_height(self, impl core::convert::Into<skene_common::ItemExtent>) -> Self
 pub const fn skene_common::LazyColumn<P>::set_overscan(self, usize) -> Self
@@ -1571,7 +1570,7 @@ impl<P: skene_core::platform::Platform> skene_core::view::View<P> for skene_comm
 pub fn skene_common::LazyColumn<P>::build(self) -> skene_core::node::NodeId
 pub struct skene_common::LazyRow<P: skene_core::platform::Platform>(_)
 impl<P: skene_core::platform::Platform> skene_common::LazyRow<P>
-pub fn skene_common::LazyRow<P>::derive_items<T, I, K, V>(self, impl core::ops::function::Fn() -> I + 'static, impl core::ops::function::Fn(&T) -> K + 'static, impl core::ops::function::Fn(T) -> V + 'static) -> Self where T: 'static, I: core::iter::traits::collect::IntoIterator<Item = T>, <I as core::iter::traits::collect::IntoIterator>::IntoIter: core::iter::traits::exact_size::ExactSizeIterator, K: core::cmp::Eq + core::hash::Hash + core::clone::Clone + 'static, V: skene_core::view::IntoView<P>
+pub fn skene_common::LazyRow<P>::derive_items<T, I, K, V>(self, impl core::ops::function::Fn() -> I + 'static, impl core::ops::function::Fn(&T) -> K + 'static, impl core::ops::function::Fn(T) -> V + 'static) -> Self where T: 'static, I: core::iter::traits::collect::IntoIterator<Item = T>, <I as core::iter::traits::collect::IntoIterator>::IntoIter: core::iter::traits::exact_size::ExactSizeIterator, K: core::cmp::Eq + core::hash::Hash + core::clone::Clone + 'static, V: skene_core::view::View<P>
 pub const fn skene_common::LazyRow<P>::new() -> Self
 pub fn skene_common::LazyRow<P>::set_item_width(self, impl core::convert::Into<skene_common::ItemExtent>) -> Self
 pub const fn skene_common::LazyRow<P>::set_overscan(self, usize) -> Self
@@ -1792,7 +1791,7 @@ impl<P: skene_core::platform::Platform> skene_common::Overlay<P>
 pub fn skene_common::Overlay<P>::hint() -> Self
 pub fn skene_common::Overlay<P>::modal() -> Self
 pub fn skene_common::Overlay<P>::popup() -> Self
-pub fn skene_common::Overlay<P>::set_child(self, impl skene_core::view::IntoView<P>) -> skene_common::Overlay<P, skene_core::view::AnyView<P>>
+pub fn skene_common::Overlay<P>::set_child(self, impl skene_core::view::View<P>) -> skene_common::Overlay<P, skene_core::view::AnyView<P>>
 impl<P: skene_core::platform::Platform, C> core::fmt::Debug for skene_common::Overlay<P, C>
 pub fn skene_common::Overlay<P, C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<P: skene_core::platform::Platform, C> skene_core::view::AnyKind for skene_common::Overlay<P, C>
@@ -1811,7 +1810,7 @@ pub fn skene_common::Painted<P>::derive_width<R: core::convert::Into<skene_core:
 pub fn skene_common::Painted<P>::new(impl core::ops::function::Fn(&mut skene_common::Canvas, skene_core::values::size::Size<f32>) + 'static) -> Self
 pub fn skene_common::Painted<P>::set_aspect_ratio(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::aspect_ratio::AspectRatio, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Painted<P>::set_description(self, impl core::convert::Into<alloc::string::String>) -> Self
-pub fn skene_common::Painted<P>::set_fallback<V: skene_core::view::IntoView<P>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> Self
+pub fn skene_common::Painted<P>::set_fallback<V: skene_core::view::View<P>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> Self
 pub fn skene_common::Painted<P>::set_height(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Painted<P>::set_max_height(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Painted<P>::set_max_width(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
@@ -1826,7 +1825,7 @@ pub fn skene_common::Painted<P>::build(self) -> skene_core::node::NodeId
 pub struct skene_common::Pinned<P: skene_core::platform::Platform, C>
 impl<P: skene_core::platform::Platform> skene_common::Pinned<P>
 pub fn skene_common::Pinned<P>::derive_edges<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::inset::Inset<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_common::Pinned<P>::set_child(self, impl skene_core::view::IntoView<P>) -> skene_common::Pinned<P, skene_core::view::AnyView<P>>
+pub fn skene_common::Pinned<P>::set_child(self, impl skene_core::view::View<P>) -> skene_common::Pinned<P, skene_core::view::AnyView<P>>
 pub fn skene_common::Pinned<P>::set_edges(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::inset::Inset<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 impl<P: skene_core::platform::Platform> skene_common::Pinned<P>
 pub fn skene_common::Pinned<P>::new() -> Self
@@ -1985,7 +1984,7 @@ pub fn skene_common::RawPicker<P, F>::set_visibility(self, impl core::convert::I
 pub fn skene_common::RawPicker<P, F>::set_width(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 impl<P: skene_core::platform::Platform> skene_common::RawPicker<P>
 pub fn skene_common::RawPicker<P>::new() -> Self
-pub fn skene_common::RawPicker<P>::set_face<V: skene_core::view::IntoView<P>>(self, impl core::ops::function::FnOnce(skene_reactive::memo::Memo<alloc::string::String>) -> V + 'static) -> skene_common::RawPicker<P, skene_common::Face<P>>
+pub fn skene_common::RawPicker<P>::set_face<V: skene_core::view::View<P>>(self, impl core::ops::function::FnOnce(skene_reactive::memo::Memo<alloc::string::String>) -> V + 'static) -> skene_common::RawPicker<P, skene_common::Face<P>>
 impl<P: skene_core::platform::Platform, F> core::fmt::Debug for skene_common::RawPicker<P, F>
 pub fn skene_common::RawPicker<P, F>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<P: skene_core::platform::Platform, F> skene_core::view::AnyKind for skene_common::RawPicker<P, F>
@@ -2096,7 +2095,7 @@ pub fn skene_common::Span<P>::set_selection_background(self, impl core::convert:
 pub fn skene_common::Span<P>::set_selection_color(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Span<P>::set_transition(self, skene_core::motion::Transition<<<P as skene_core::platform::Platform>::StyleExt as skene_core::extension::StyleExtension>::Property>) -> Self
 pub const fn skene_common::Span<P>::style_mut(&mut self) -> &mut skene_core::props::DeclaredRunStyle<P>
-pub fn skene_common::Span<P>::view(impl skene_core::view::IntoView<P>) -> Self
+pub fn skene_common::Span<P>::view(impl skene_core::view::View<P>) -> Self
 impl<P: skene_core::platform::Platform> core::fmt::Debug for skene_common::Span<P>
 pub fn skene_common::Span<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<P: skene_core::platform::Platform> skene_core::view::AnyKind for skene_common::Span<P>
@@ -2123,8 +2122,8 @@ pub struct skene_common::Suspense<P: skene_core::platform::Platform, C>
 impl<P: skene_core::platform::Platform> skene_common::Suspense<P>
 pub const fn skene_common::Suspense<P>::new() -> Self
 impl<P: skene_core::platform::Platform> skene_common::Suspense<P>
-pub fn skene_common::Suspense<P>::set_child_builder<V: skene_core::view::IntoView<P>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> skene_common::Suspense<P, skene_common::realize::ChildBuilder<P>>
-pub fn skene_common::Suspense<P>::set_fallback(self, impl skene_core::view::IntoView<P>) -> Self
+pub fn skene_common::Suspense<P>::set_child_builder<V: skene_core::view::View<P>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> skene_common::Suspense<P, skene_common::realize::ChildBuilder<P>>
+pub fn skene_common::Suspense<P>::set_fallback(self, impl skene_core::view::View<P>) -> Self
 impl<P: core::fmt::Debug + skene_core::platform::Platform, C: core::fmt::Debug> core::fmt::Debug for skene_common::Suspense<P, C>
 pub fn skene_common::Suspense<P, C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<P: skene_core::platform::Platform, C> skene_core::view::AnyKind for skene_common::Suspense<P, C>
@@ -2136,7 +2135,7 @@ pub struct skene_common::Switch<P: skene_core::platform::Platform, K>
 impl<P: skene_core::platform::Platform, K: core::cmp::PartialEq + 'static> skene_common::Switch<P, K>
 pub fn skene_common::Switch<P, K>::derive_key(self, impl core::ops::function::Fn() -> K + 'static) -> Self
 pub const fn skene_common::Switch<P, K>::new() -> Self
-pub fn skene_common::Switch<P, K>::set_case<V: skene_core::view::IntoView<P>>(self, K, impl core::ops::function::FnOnce() -> V + 'static) -> Self
+pub fn skene_common::Switch<P, K>::set_case<V: skene_core::view::View<P>>(self, K, impl core::ops::function::FnOnce() -> V + 'static) -> Self
 pub fn skene_common::Switch<P, K>::set_key(self, K) -> Self where K: core::clone::Clone
 impl<P: skene_core::platform::Platform, K: core::cmp::PartialEq + 'static> core::default::Default for skene_common::Switch<P, K>
 pub fn skene_common::Switch<P, K>::default() -> Self
@@ -2225,7 +2224,7 @@ impl<P: skene_core::platform::Platform, S: skene_core::token::TokenSet<<P as ske
 pub fn skene_common::Theme<P, S>::derive(impl core::ops::function::Fn() -> S + 'static) -> Self
 pub fn skene_common::Theme<P, S>::new(S) -> Self
 impl<P: skene_core::platform::Platform, S: skene_core::token::TokenSet<<P as skene_core::platform::Platform>::TokenValue>> skene_common::Theme<P, S>
-pub fn skene_common::Theme<P, S>::set_child_builder<V: skene_core::view::IntoView<P>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> skene_common::Theme<P, S, skene_common::realize::ChildBuilder<P>>
+pub fn skene_common::Theme<P, S>::set_child_builder<V: skene_core::view::View<P>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> skene_common::Theme<P, S, skene_common::realize::ChildBuilder<P>>
 impl<P: skene_core::platform::Platform, S: skene_core::token::TokenSet<<P as skene_core::platform::Platform>::TokenValue>, C> core::fmt::Debug for skene_common::Theme<P, S, C>
 pub fn skene_common::Theme<P, S, C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<P: skene_core::platform::Platform, S: skene_core::token::TokenSet<<P as skene_core::platform::Platform>::TokenValue>, C> skene_core::view::AnyKind for skene_common::Theme<P, S, C>
@@ -2310,8 +2309,8 @@ pub fn skene_common::Tooltip<P>::set_width(self, impl core::convert::Into<skene_
 impl<P: skene_core::platform::Platform> skene_common::Tooltip<P>
 pub fn skene_common::Tooltip<P>::derive(impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
 pub fn skene_common::Tooltip<P>::new(impl core::convert::Into<alloc::string::String>) -> Self
-pub fn skene_common::Tooltip<P>::set_child(self, impl skene_core::view::IntoView<P>) -> skene_common::Tooltip<P, skene_core::view::AnyView<P>>
-pub fn skene_common::Tooltip<P>::view(impl skene_core::view::IntoView<P>) -> Self
+pub fn skene_common::Tooltip<P>::set_child(self, impl skene_core::view::View<P>) -> skene_common::Tooltip<P, skene_core::view::AnyView<P>>
+pub fn skene_common::Tooltip<P>::view(impl skene_core::view::View<P>) -> Self
 impl<P: skene_core::platform::Platform, C> core::fmt::Debug for skene_common::Tooltip<P, C>
 pub fn skene_common::Tooltip<P, C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<P: skene_core::platform::Platform, C> skene_core::view::AnyKind for skene_common::Tooltip<P, C>

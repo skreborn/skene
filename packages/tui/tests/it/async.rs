@@ -16,10 +16,10 @@ fn derived_swaps_content() {
     let _ = tui::mount(|| {
       derived(move || {
         if on.get() {
-          Text::new("on").into_any().build()
+          Text::new("on").build()
         }
         else {
-          Text::new("off").into_any().build()
+          Text::new("off").build()
         }
       })
     });
@@ -45,8 +45,8 @@ fn suspense_swaps_fallback_for_loaded_content() {
 
           AnyView::new(move || {
             derived(move || match value.get() {
-              None => Text::new("hold").into_any().build(),
-              Some(value) => Text::new(format!("value {value}")).into_any().build(),
+              None => Text::new("hold").build(),
+              Some(value) => Text::new(format!("value {value}")).build(),
             })
           })
         })
@@ -89,10 +89,10 @@ fn tasks_end_with_their_scope() {
 
           spawn(async move { landed.set(true) });
 
-          Text::new("on").into_any().build()
+          Text::new("on").build()
         }
         else {
-          Text::new("off").into_any().build()
+          Text::new("off").build()
         }
       })
     });

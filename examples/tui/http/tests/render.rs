@@ -14,7 +14,7 @@ fn the_pending_fetch_renders() {
   let frame = with_platform(|| {
     let _ = tui::mount(|| {
       tui_http::app(Some("http://127.0.0.1:1/".to_owned()))
-        .into_view()
+        .into_any()
         .build()
     });
 

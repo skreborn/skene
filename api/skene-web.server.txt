@@ -212,8 +212,8 @@ pub fn skene_web::register_boundary(skene_core::node::NodeId, alloc::boxed::Box<
 pub fn skene_web::register_source(skene_web::HydrationSource)
 pub fn skene_web::register_tagged_source(&str, skene_web::HydrationSource)
 pub fn skene_web::remove_head_entry(skene_common::gui::head::HeadId)
-pub fn skene_web::render_to_stream_with<V, F>(F, impl core::ops::function::FnMut(skene_web::StreamPiece<'_>)) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_core::view::IntoView<skene_web::Web>
-pub fn skene_web::render_to_string<V, F>(F) -> skene_web::Rendered where F: core::ops::function::FnOnce() -> V + 'static, V: skene_core::view::IntoView<skene_web::Web>
+pub fn skene_web::render_to_stream_with<V, F>(F, impl core::ops::function::FnMut(skene_web::StreamPiece<'_>)) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_core::view::View<skene_web::Web>
+pub fn skene_web::render_to_string<V, F>(F) -> skene_web::Rendered where F: core::ops::function::FnOnce() -> V + 'static, V: skene_core::view::View<skene_web::Web>
 pub fn skene_web::set_client_bundle(core::option::Option<&str>)
 pub fn skene_web::set_dev_loop(bool)
 pub fn skene_web::set_document_language(&str)

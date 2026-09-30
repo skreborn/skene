@@ -5,7 +5,6 @@ use skene_core::{
   AnyKind,
   AnyView,
   Color,
-  IntoView,
   MouseCursor,
   NoChild,
   NodeId,
@@ -55,7 +54,7 @@ impl<P: Platform> SimpleContextMenu<P> {
 
   /// Sets the view the menu serves.
   #[inline(always)]
-  pub fn set_child(self, child: impl IntoView<P>) -> SimpleContextMenu<P, AnyView<P>>
+  pub fn set_child(self, child: impl View<P>) -> SimpleContextMenu<P, AnyView<P>>
   where
     P::Scalar: SimpleUnit,
     P::StyleExt: CornerRadius,

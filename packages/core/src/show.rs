@@ -4,7 +4,7 @@ use std::{cell::Cell, marker::PhantomData};
 
 use skene_reactive::{Effect, Owner, untrack};
 
-use super::{AnyKind, AnyView, IntoView, NoChild, NodeId, Piece, Platform, Segment, View};
+use super::{AnyKind, AnyView, NoChild, NodeId, Piece, Platform, Segment, View};
 
 /// Shows or hides one child, preserving its state.
 ///
@@ -65,10 +65,10 @@ impl<P: Platform> Show<P> {
 
   /// Sets the child.
   #[inline(always)]
-  pub fn set_child(self, child: impl IntoView<P>) -> Show<P, AnyView<P>> {
+  pub fn set_child(self, child: impl View<P>) -> Show<P, AnyView<P>> {
     Show {
       shown: self.shown,
-      child: child.into_view(),
+      child: child.into_any(),
       platform: PhantomData,
     }
   }

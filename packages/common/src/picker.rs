@@ -10,7 +10,6 @@ use skene_core::{
   HasChildren,
   IntoChildOf,
   IntoChildren,
-  IntoView,
   KeyEvent,
   Layout,
   NoChild,
@@ -107,7 +106,7 @@ impl<P: Platform> RawPicker<P> {
 
   /// Sets the view drawing the control closed, built from the chosen value.
   #[inline(always)]
-  pub fn set_face<V: IntoView<P>>(
+  pub fn set_face<V: View<P>>(
     self,
     face: impl FnOnce(Memo<String>) -> V + 'static,
   ) -> RawPicker<P, Face<P>> {
@@ -119,7 +118,7 @@ impl<P: Platform> RawPicker<P> {
       list: self.list,
       value: self.value,
       on_change: self.on_change,
-      face: Face(Box::new(move |value| face(value).into_view())),
+      face: Face(Box::new(move |value| face(value).into_any())),
     }
   }
 }

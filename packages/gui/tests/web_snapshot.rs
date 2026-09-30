@@ -53,7 +53,7 @@ fn rounded(radius: f32) -> BoxStyle<f32, Keyframe, GuiExt> {
 /// A tree exercising every built-in view and property path: static and derived box
 /// properties, roles, stack placement, text styling and links, the typography tokens,
 /// span groups, inline views, and the empty view.
-fn representative_tree() -> impl skene_gui::IntoView {
+fn representative_tree() -> impl skene_gui::View {
   Theme::new(
     Typography::default()
       .set_ink(Color::srgb(0.8, 0.8, 0.8))

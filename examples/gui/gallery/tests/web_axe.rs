@@ -155,7 +155,7 @@ fn open_context_menu(element: &HtmlElement) {
 #[wasm_bindgen_test]
 async fn the_gallery_raises_no_accessibility_violation() {
   let (_guard, _root) = fresh_root();
-  let _ = mount(|| gallery::app().into_view().build());
+  let _ = mount(|| gallery::app().build());
 
   load_axe();
   settle().await;

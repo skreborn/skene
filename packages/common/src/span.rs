@@ -9,7 +9,6 @@ use skene_core::{
   ClickEvent,
   ClickHandler,
   Handler,
-  IntoView,
   Layout,
   NodeId,
   PlainChild,
@@ -72,8 +71,8 @@ impl<P: Platform> Span<P> {
 
   /// A view embedded inline among the surrounding text.
   #[inline(always)]
-  pub fn view(view: impl IntoView<P>) -> Self {
-    Self::with_content(Content::View(view.into_view()))
+  pub fn view(view: impl View<P>) -> Self {
+    Self::with_content(Content::View(view.into_any()))
   }
 
   #[inline(always)]

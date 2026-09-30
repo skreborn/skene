@@ -11,7 +11,7 @@ use skene_tui::{ActivePlatform, HasChild, Resource, prelude::*};
 /// whose palette the gallery switches from inside itself and whose tokens follow the
 /// terminal's own background.
 #[must_use]
-pub fn app() -> impl IntoView {
+pub fn app() -> impl View {
   // The theme redefines its tokens in place and rebuilds nothing, so every counter
   // below keeps its value across a switch.
   let palette = Signal::tagged("palette", Some("neutral".to_owned()));
@@ -53,7 +53,7 @@ fn named_palette(name: Option<&str>) -> SimplePalette {
     )
 }
 
-fn gallery(palette: Signal<Option<String>>) -> impl IntoView {
+fn gallery(palette: Signal<Option<String>>) -> impl View {
   Container::new()
     .set_overflow(Overflow::Auto)
     .set_color(SimplePalette::BACKGROUND)
@@ -91,7 +91,7 @@ fn gallery(palette: Signal<Option<String>>) -> impl IntoView {
     )
 }
 
-fn palettes(palette: Signal<Option<String>>) -> impl IntoView {
+fn palettes(palette: Signal<Option<String>>) -> impl View {
   section(
     "Palette",
     Column::new().set_spacing(1).set_children((
@@ -112,7 +112,7 @@ fn palettes(palette: Signal<Option<String>>) -> impl IntoView {
   )
 }
 
-fn text() -> impl IntoView {
+fn text() -> impl View {
   section(
     "Text",
     Column::new().set_spacing(1).set_children((
@@ -144,7 +144,7 @@ fn text() -> impl IntoView {
   )
 }
 
-fn buttons() -> impl IntoView {
+fn buttons() -> impl View {
   let count = Signal::tagged("clicks", 0u64);
 
   section(
@@ -171,7 +171,7 @@ fn buttons() -> impl IntoView {
   )
 }
 
-fn tooltips() -> impl IntoView {
+fn tooltips() -> impl View {
   section(
     "Tooltip",
     Row::new().set_spacing(2).set_children((
@@ -184,7 +184,7 @@ fn tooltips() -> impl IntoView {
   )
 }
 
-fn toggles() -> impl IntoView {
+fn toggles() -> impl View {
   let agreed = Signal::tagged("agreed", true);
   let flavor = Signal::tagged("flavor", Some("mint".to_owned()));
 
@@ -217,11 +217,11 @@ fn toggles() -> impl IntoView {
   )
 }
 
-fn radio_choice(value: &'static str) -> impl IntoView {
+fn radio_choice(value: &'static str) -> impl View {
   SimpleRadio::new(value).set_label(value)
 }
 
-fn inputs() -> impl IntoView {
+fn inputs() -> impl View {
   let name = Signal::tagged("name", String::new());
   let bio = Signal::tagged("bio", String::new());
   let volume = Signal::tagged("volume", 40.0f32);
@@ -262,7 +262,7 @@ fn inputs() -> impl IntoView {
   )
 }
 
-fn borders() -> impl IntoView {
+fn borders() -> impl View {
   section(
     "BorderGlyphs",
     Row::new()
@@ -279,7 +279,7 @@ fn borders() -> impl IntoView {
   )
 }
 
-fn framed(label: &'static str, glyphs: BorderGlyphs) -> impl IntoView {
+fn framed(label: &'static str, glyphs: BorderGlyphs) -> impl View {
   Container::new()
     .set_padding(Inset::horizontal(1))
     .set_border_width(Inset::all(1))
@@ -288,7 +288,7 @@ fn framed(label: &'static str, glyphs: BorderGlyphs) -> impl IntoView {
     .set_child(Text::new(label).set_color(SimplePalette::MUTED_FOREGROUND))
 }
 
-fn layouts() -> impl IntoView {
+fn layouts() -> impl View {
   let open = Signal::new(false);
 
   section(
@@ -349,7 +349,7 @@ fn layouts() -> impl IntoView {
   )
 }
 
-fn list() -> impl IntoView {
+fn list() -> impl View {
   section(
     "LazyColumn",
     Container::new()
@@ -367,7 +367,7 @@ fn list() -> impl IntoView {
   )
 }
 
-fn lazy_row() -> impl IntoView {
+fn lazy_row() -> impl View {
   section(
     "LazyRow",
     Container::new().set_width(40).set_height(1).set_child(
@@ -382,7 +382,7 @@ fn lazy_row() -> impl IntoView {
 
 /// A component library and a low-level view from outside the framework: the badge is
 /// written once over any platform, the sparkline against the terminal's cells alone.
-fn context_menu() -> impl IntoView {
+fn context_menu() -> impl View {
   let last = Signal::tagged("last command", String::from("nothing yet"));
   let ran = move |verb: &'static str| move || last.set(verb.to_owned());
 
@@ -413,7 +413,7 @@ fn context_menu() -> impl IntoView {
   )
 }
 
-fn show_and_switch() -> impl IntoView {
+fn show_and_switch() -> impl View {
   let shown = Signal::tagged("details shown", false);
   let pane = Signal::tagged("pane", String::from("summary"));
 
@@ -459,7 +459,7 @@ impl fmt::Display for Failed {
 
 impl std::error::Error for Failed {}
 
-fn boundaries() -> impl IntoView {
+fn boundaries() -> impl View {
   section(
     "Suspense & ErrorBoundary",
     Column::new().set_spacing(1).set_children((
@@ -500,7 +500,7 @@ fn boundaries() -> impl IntoView {
   )
 }
 
-fn third_party() -> impl IntoView {
+fn third_party() -> impl View {
   section(
     "Third party",
     Column::new().set_spacing(1).set_children((
@@ -524,7 +524,7 @@ fn third_party() -> impl IntoView {
 
 /// A titled card around one section's content; the width divides the swatch grid into
 /// whole-cell tracks.
-fn section(title: &'static str, content: impl IntoView) -> impl IntoView {
+fn section(title: &'static str, content: impl View) -> impl View {
   Container::new().set_min_width(53).set_child(
     SimpleCard::new().set_children((
       Text::new(title)
@@ -539,7 +539,7 @@ fn muted(text: &'static str) -> Span {
   Span::new(text).set_color(SimplePalette::MUTED_FOREGROUND)
 }
 
-fn swatch(brightness: f32) -> impl IntoView {
+fn swatch(brightness: f32) -> impl View {
   Container::new().set_height(1).set_color(Color::srgb(
     brightness * 0.5,
     brightness,

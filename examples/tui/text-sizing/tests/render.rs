@@ -13,7 +13,7 @@ use skene_tui::{
 #[test]
 fn the_sections_render_at_one_cell_and_size_up_when_proven() {
   with_platform(|| {
-    let _ = tui::mount(|| tui_text_sizing::app().into_view().build());
+    let _ = tui::mount(|| tui_text_sizing::app().build());
 
     let frame = testing::render_to_text(70, 40);
 

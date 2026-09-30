@@ -41,7 +41,7 @@ impl StaticRoutes for Page {
   }
 }
 
-fn app() -> impl skene_gui::IntoView {
+fn app() -> impl skene_gui::View {
   let router = install_router(Page::Home);
 
   derived(move || match router.route() {

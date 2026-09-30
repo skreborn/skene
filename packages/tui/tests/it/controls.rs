@@ -155,7 +155,7 @@ fn checkbox_toggles_by_key_and_click() {
   with_platform(|| {
     let on = Signal::new(false);
 
-    let _ = tui::mount(|| SimpleCheckbox::new().bind_checked(on).into_any().build());
+    let _ = tui::mount(|| SimpleCheckbox::new().bind_checked(on).build());
 
     assert!(testing::render_to_text(6, 1).contains("[ ]"));
 
@@ -664,7 +664,7 @@ fn picker(unit: Signal<String>) -> SimplePicker {
 
 /// Mounts a picker bound to `unit` at the top of the frame.
 fn mount_picker(unit: Signal<String>) {
-  let _ = tui::mount(|| Column::new().add_child(picker(unit)).into_any().build());
+  let _ = tui::mount(|| Column::new().add_child(picker(unit)).build());
 }
 
 /// The row of the last line containing `needle`: the popup's row, beneath the face
@@ -1288,7 +1288,7 @@ fn a_themed_glyph_set_draws_the_marks() {
 #[test]
 fn a_simple_buttons_corners_round_by_a_fraction_of_a_row() {
   with_platform(|| {
-    let _ = tui::mount(|| SimpleButton::new("Save").into_any().build());
+    let _ = tui::mount(|| SimpleButton::new("Save").build());
 
     testing::trigger_graphics(true);
 

@@ -17,7 +17,7 @@ use skene_tui::prelude::*;
 /// The page: a title at three cells, sections at two, body text at one, and a
 /// themed footer.
 #[must_use]
-pub fn app() -> impl IntoView {
+pub fn app() -> impl View {
   Theme::new(SimplePalette::default()).set_child_builder(|| {
     Container::new()
       .set_overflow(Overflow::Auto)
@@ -33,7 +33,7 @@ pub fn app() -> impl IntoView {
   })
 }
 
-fn title() -> impl IntoView {
+fn title() -> impl View {
   Column::new().set_children((
     Text::new("Text sizing")
       .set_font_size(3.)
@@ -45,7 +45,7 @@ fn title() -> impl IntoView {
 }
 
 /// One run per whole scale, and one at a fraction.
-fn scales_card() -> impl IntoView {
+fn scales_card() -> impl View {
   SimpleCard::new().set_spacing(1).set_children((
     Text::new("Scales")
       .set_font_size(2.)
@@ -71,7 +71,7 @@ fn scales_card() -> impl IntoView {
 }
 
 /// A paragraph mixing sizes: the smaller spans sit on the tallest span's baseline.
-fn baseline_card() -> impl IntoView {
+fn baseline_card() -> impl View {
   SimpleCard::new().set_spacing(1).set_children((
     Text::new("Baseline")
       .set_font_size(2.)
@@ -96,7 +96,7 @@ fn baseline_card() -> impl IntoView {
 }
 
 /// A theme whose typography sizes everything beneath it.
-fn footer() -> impl IntoView {
+fn footer() -> impl View {
   Theme::new(Typography::default().set_size(2.))
     .set_child_builder(|| Text::new("Themed at two.").set_color(SimplePalette::MUTED_FOREGROUND))
 }

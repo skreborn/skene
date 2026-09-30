@@ -206,7 +206,7 @@ pub use skene_gui::prelude::warn
 pub mod skene_gui::prelude::lazy
 pub struct skene_gui::prelude::lazy::Lazy
 impl skene_gui::Lazy
-pub fn skene_gui::Lazy::new<V, F>(impl core::ops::function::FnOnce() -> F + 'static) -> Self where V: skene_core::view::IntoView<skene_gui::ActivePlatform>, F: core::future::future::Future<Output = V> + 'static
+pub fn skene_gui::Lazy::new<V, F>(impl core::ops::function::FnOnce() -> F + 'static) -> Self where V: skene_core::view::View<skene_gui::ActivePlatform>, F: core::future::future::Future<Output = V> + 'static
 impl core::fmt::Debug for skene_gui::Lazy
 pub fn skene_gui::Lazy::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_core::view::AnyKind for skene_gui::Lazy
@@ -226,10 +226,6 @@ pub fn skene_gui::prelude::media::set_scheme(core::option::Option<skene_core::va
 pub fn skene_gui::prelude::media::stored_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
 pub fn skene_gui::prelude::media::viewport() -> skene_reactive::signal::ReadSignal<skene_gui::Size>
 pub fn skene_gui::prelude::media::watch(&skene_gui::Media) -> skene_reactive::memo::Memo<bool>
-pub trait skene_gui::prelude::IntoView: skene_core::view::IntoView<skene_gui::ActivePlatform> + skene_core::view::AnyKind
-pub fn skene_gui::prelude::IntoView::into_view(self) -> skene_gui::AnyView where Self: core::marker::Sized
-impl<V: skene_core::view::IntoView<skene_gui::ActivePlatform> + skene_core::view::AnyKind> skene_gui::IntoView for V
-pub fn V::into_view(self) -> skene_gui::AnyView where Self: core::marker::Sized
 pub trait skene_gui::prelude::ThemedIn: skene_common::theme::ThemedIn<skene_gui::ActivePlatform>
 pub fn skene_gui::prelude::ThemedIn::current() -> Self
 pub fn skene_gui::prelude::ThemedIn::watch() -> skene_reactive::memo::Memo<Self>
@@ -245,7 +241,7 @@ pub fn V::into_any(self) -> skene_gui::AnyView where Self: core::marker::Sized
 pub fn skene_gui::prelude::derive_scheme(impl core::ops::function::Fn() -> core::option::Option<skene_core::values::color::ColorScheme> + 'static)
 pub fn skene_gui::prelude::derived(impl core::ops::function::Fn() -> skene_core::node::NodeId + 'static) -> skene_core::node::NodeId
 pub fn skene_gui::prelude::empty() -> impl skene_gui::View
-pub fn skene_gui::prelude::render_to_string<V, F>(F) -> skene_web::server::Rendered where F: core::ops::function::FnOnce() -> V + 'static, V: skene_gui::IntoView
+pub fn skene_gui::prelude::render_to_string<V, F>(F) -> skene_web::server::Rendered where F: core::ops::function::FnOnce() -> V + 'static, V: skene_gui::View
 pub fn skene_gui::prelude::set_scheme(core::option::Option<skene_core::values::color::ColorScheme>)
 pub fn skene_gui::prelude::stored_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
 pub type skene_gui::prelude::AnyView = skene_core::view::AnyView<skene_gui::ActivePlatform>
@@ -302,7 +298,7 @@ pub mod skene_gui::view_transitions
 pub fn skene_gui::view_transitions::enable()
 pub struct skene_gui::Deferred
 impl skene_gui::Deferred
-pub fn skene_gui::Deferred::new<V: skene_core::view::IntoView<skene_gui::ActivePlatform>>(impl core::ops::function::FnOnce() -> V + 'static) -> Self
+pub fn skene_gui::Deferred::new<V: skene_core::view::View<skene_gui::ActivePlatform>>(impl core::ops::function::FnOnce() -> V + 'static) -> Self
 impl core::fmt::Debug for skene_gui::Deferred
 pub fn skene_gui::Deferred::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_core::view::AnyKind for skene_gui::Deferred
@@ -310,7 +306,7 @@ impl skene_core::view::View<skene_web::Web> for skene_gui::Deferred
 pub fn skene_gui::Deferred::build(self) -> skene_core::node::NodeId
 pub struct skene_gui::Lazy
 impl skene_gui::Lazy
-pub fn skene_gui::Lazy::new<V, F>(impl core::ops::function::FnOnce() -> F + 'static) -> Self where V: skene_core::view::IntoView<skene_gui::ActivePlatform>, F: core::future::future::Future<Output = V> + 'static
+pub fn skene_gui::Lazy::new<V, F>(impl core::ops::function::FnOnce() -> F + 'static) -> Self where V: skene_core::view::View<skene_gui::ActivePlatform>, F: core::future::future::Future<Output = V> + 'static
 impl core::fmt::Debug for skene_gui::Lazy
 pub fn skene_gui::Lazy::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_core::view::AnyKind for skene_gui::Lazy
@@ -351,10 +347,6 @@ pub const skene_gui::DEV_VARIABLE: &str
 pub const skene_gui::HINTS_VARIABLE: &str
 pub const skene_gui::NONCE_VARIABLE: &str
 pub const skene_gui::ROUTES_MARKERS: [&str; 2]
-pub trait skene_gui::IntoView: skene_core::view::IntoView<skene_gui::ActivePlatform> + skene_core::view::AnyKind
-pub fn skene_gui::IntoView::into_view(self) -> skene_gui::AnyView where Self: core::marker::Sized
-impl<V: skene_core::view::IntoView<skene_gui::ActivePlatform> + skene_core::view::AnyKind> skene_gui::IntoView for V
-pub fn V::into_view(self) -> skene_gui::AnyView where Self: core::marker::Sized
 pub trait skene_gui::ThemedIn: skene_common::theme::ThemedIn<skene_gui::ActivePlatform>
 pub fn skene_gui::ThemedIn::current() -> Self
 pub fn skene_gui::ThemedIn::watch() -> skene_reactive::memo::Memo<Self>
@@ -374,12 +366,12 @@ pub fn skene_gui::empty() -> impl skene_gui::View
 pub fn skene_gui::install_router<R: skene_common::routing::Route>(R) -> skene_common::routing::Router<R>
 pub fn skene_gui::install_static_router<R: skene_common::routing::StaticRoutes>(R) -> skene_common::routing::Router<R>
 pub fn skene_gui::reconcile<T, I, K>(skene_core::node::NodeId, impl core::ops::function::Fn() -> I + 'static, impl core::ops::function::Fn(&T) -> K + 'static, impl core::ops::function::Fn(T) -> skene_core::node::NodeId + 'static) where I: core::iter::traits::collect::IntoIterator<Item = T>, K: core::cmp::Eq + core::hash::Hash + 'static
-pub fn skene_gui::render_main<V, F>(&str, F) where F: core::ops::function::Fn() -> V + core::clone::Clone + 'static, V: skene_gui::IntoView
-pub fn skene_gui::render_page_stream<V, F>(F, impl core::ops::function::FnMut(&str)) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_gui::IntoView
-pub fn skene_gui::render_to_stream<V, F>(F) -> skene_gui::Stream where F: core::ops::function::FnOnce() -> V + 'static, V: skene_gui::IntoView
-pub fn skene_gui::render_to_string<V, F>(F) -> skene_web::server::Rendered where F: core::ops::function::FnOnce() -> V + 'static, V: skene_gui::IntoView
-pub fn skene_gui::render_to_string_at<V, F>(&str, F) -> skene_web::server::Rendered where F: core::ops::function::FnOnce() -> V + 'static, V: skene_gui::IntoView
-pub fn skene_gui::serve_renders<V, F>(F) where F: core::ops::function::Fn() -> V + core::clone::Clone + 'static, V: skene_gui::IntoView
+pub fn skene_gui::render_main<V, F>(&str, F) where F: core::ops::function::Fn() -> V + core::clone::Clone + 'static, V: skene_gui::View
+pub fn skene_gui::render_page_stream<V, F>(F, impl core::ops::function::FnMut(&str)) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_gui::View
+pub fn skene_gui::render_to_stream<V, F>(F) -> skene_gui::Stream where F: core::ops::function::FnOnce() -> V + 'static, V: skene_gui::View
+pub fn skene_gui::render_to_string<V, F>(F) -> skene_web::server::Rendered where F: core::ops::function::FnOnce() -> V + 'static, V: skene_gui::View
+pub fn skene_gui::render_to_string_at<V, F>(&str, F) -> skene_web::server::Rendered where F: core::ops::function::FnOnce() -> V + 'static, V: skene_gui::View
+pub fn skene_gui::serve_renders<V, F>(F) where F: core::ops::function::Fn() -> V + core::clone::Clone + 'static, V: skene_gui::View
 pub fn skene_gui::set_scheme(core::option::Option<skene_core::values::color::ColorScheme>)
 pub fn skene_gui::spawn(impl core::future::future::Future<Output = ()> + 'static) -> skene_reactive::spawn::TaskHandle
 pub fn skene_gui::stored_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>

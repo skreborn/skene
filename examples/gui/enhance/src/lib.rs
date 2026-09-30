@@ -13,7 +13,7 @@ use skene_gui::{ActivePlatform, HasChild, core::Platform, kurbo::Rect, prelude::
 use skene_simple::gui::prelude::*;
 
 #[main]
-fn app() -> impl IntoView {
+fn app() -> impl View {
   Theme::new(SimplePalette::default()).set_child_builder(|| {
     Container::new()
       .set_color(SimplePalette::BACKGROUND)
@@ -35,7 +35,7 @@ fn app() -> impl IntoView {
   })
 }
 
-fn heading() -> impl IntoView {
+fn heading() -> impl View {
   Column::new().set_spacing(6.).set_children((
     Text::new("ENHANCE")
       .set_font_size(13.)
@@ -46,7 +46,7 @@ fn heading() -> impl IntoView {
 }
 
 /// A clock the bundle keeps, over a caption the server carries.
-fn clock_card() -> impl IntoView {
+fn clock_card() -> impl View {
   SimpleCard::new().set_spacing(12.).set_children((
     Text::new("Clock").set_font_weight(600.),
     Text::new("The server renders the caption; the bundle counts from its arrival.")
@@ -76,7 +76,7 @@ fn tick(seconds: Signal<u32>) {
 }
 
 /// A painted stripe, over a description the server carries.
-fn picture_card() -> impl IntoView {
+fn picture_card() -> impl View {
   SimpleCard::new().set_spacing(12.).set_children((
     Text::new("Picture").set_font_weight(600.),
     Text::new("The server renders the description; the bundle paints the stripes.")

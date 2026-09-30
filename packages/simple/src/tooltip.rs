@@ -3,7 +3,7 @@
 use std::time::Duration;
 
 use skene_common::{CornerRadius, Tooltip};
-use skene_core::{AnyKind, AnyView, IntoView, NoChild, NodeId, Placement, Platform, View};
+use skene_core::{AnyKind, AnyView, NoChild, NodeId, Placement, Platform, View};
 
 use super::{
   SimplePalette,
@@ -43,7 +43,7 @@ impl<P: Platform> SimpleTooltip<P> {
 
   /// A tooltip showing `content`, a view of any kind.
   #[inline(always)]
-  pub fn view(content: impl IntoView<P>) -> Self {
+  pub fn view(content: impl View<P>) -> Self {
     Self {
       raw: Tooltip::view(content),
     }
@@ -51,7 +51,7 @@ impl<P: Platform> SimpleTooltip<P> {
 
   /// Sets the view the tooltip describes.
   #[inline(always)]
-  pub fn set_child(self, child: impl IntoView<P>) -> SimpleTooltip<P, AnyView<P>>
+  pub fn set_child(self, child: impl View<P>) -> SimpleTooltip<P, AnyView<P>>
   where
     P::Scalar: SimpleUnit,
     P::StyleExt: CornerRadius,

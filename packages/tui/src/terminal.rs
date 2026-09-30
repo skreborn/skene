@@ -20,7 +20,7 @@ use std::{
   time::{Duration, Instant},
 };
 
-use skene_core::{ClipboardAction, IntoView};
+use skene_core::{ClipboardAction, View};
 
 pub(crate) use self::keys::{key_event, press};
 use self::{
@@ -45,7 +45,6 @@ use self::{
 use crate::{
   Launch,
   Tui,
-  View as _,
   detect::{self, ColorDepth},
   device::{Device, WindowSize},
   escape::{self, QueryMode},
@@ -221,7 +220,7 @@ fn within(pixel: u16, size: u16) -> f32 {
 pub(crate) fn run<V, F>(launch: Launch, app: F)
 where
   F: FnOnce() -> V + 'static,
-  V: IntoView<Tui>,
+  V: View<Tui>,
 {
   let terminal = Tty::open().expect("open the terminal");
 
@@ -242,7 +241,7 @@ pub(crate) fn run_on<D, V, F>(mut terminal: D, launch: Launch, app: F) -> D
 where
   D: Device,
   F: FnOnce() -> V + 'static,
-  V: IntoView<Tui>,
+  V: View<Tui>,
 {
   launch.install();
 
@@ -254,7 +253,7 @@ where
 
   let _ = crate::dev::install();
 
-  let _ = crate::mount(|| app().into_view().build());
+  let _ = crate::mount(|| app().build());
   let waker = terminal.waker();
 
   skene_core::executor::set_notifier(move || waker());
@@ -263,7 +262,7 @@ where
     crate::dev::adopt_restoration();
 
     if let Some(notice) = crate::dev::notice_signal() {
-      let _ = crate::mount(|| crate::dev::notice_view(notice).into_view().build());
+      let _ = crate::mount(|| crate::dev::notice_view(notice).build());
     }
   }
 

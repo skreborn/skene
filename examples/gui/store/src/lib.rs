@@ -25,7 +25,7 @@ struct Todo {
 }
 
 #[main]
-fn app() -> impl IntoView {
+fn app() -> impl View {
   let todos = Store::tagged("todos", Todos::default());
 
   Theme::new(SimplePalette::default()).set_child_builder(move || {
@@ -40,7 +40,7 @@ fn app() -> impl IntoView {
   })
 }
 
-fn card(todos: Store<Todos>) -> impl IntoView {
+fn card(todos: Store<Todos>) -> impl View {
   let draft = Signal::tagged("draft", String::new());
   let remaining = todos
     .items()
@@ -91,7 +91,7 @@ fn card(todos: Store<Todos>) -> impl IntoView {
 }
 
 /// One todo's row, following its own entry of `todos`.
-fn row(todos: Store<Todos>, todo: impl StoreField<Value = Todo> + Copy) -> impl IntoView {
+fn row(todos: Store<Todos>, todo: impl StoreField<Value = Todo> + Copy) -> impl View {
   Row::new()
     .set_spacing(8.)
     .set_item_alignment(ItemAlignment::Center)

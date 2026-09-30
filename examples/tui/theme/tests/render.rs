@@ -12,7 +12,7 @@ use skene_tui::{
 #[test]
 fn the_theme_renders_and_switches() {
   let (frame, indigo, teal, dark) = with_platform(|| {
-    let _ = tui::mount(|| tui_theme::app().into_view().build());
+    let _ = tui::mount(|| tui_theme::app().build());
 
     let frame = testing::render_to_text(60, 60);
     let indigo = testing::render_to_colors(60, 60);

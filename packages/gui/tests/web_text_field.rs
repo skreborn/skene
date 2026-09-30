@@ -46,7 +46,7 @@ fn input_is_the_control_and_a_void_element() {
 /// input carrying the id it names, and the streamed render agrees byte for byte.
 #[test]
 fn a_caption_is_a_label_before_the_input() {
-  fn app() -> impl skene_gui::IntoView {
+  fn app() -> impl skene_gui::View {
     Container::new().set_child(RawTextField::new(TextEntry::new()).set_label("Name"))
   }
 

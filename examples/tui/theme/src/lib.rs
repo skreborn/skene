@@ -80,7 +80,7 @@ fn warm(accent_name: Option<&str>) -> SimplePalette {
 /// The whole page: the palette the accent selects, the scheme the reader chooses, and
 /// a nested theme beneath.
 #[must_use]
-pub fn app() -> impl IntoView {
+pub fn app() -> impl View {
   // The reader's choice, or `None`—which leaves the background the terminal reported in
   // force.
   let scheme = Signal::new(stored_scheme());
@@ -115,7 +115,7 @@ pub fn app() -> impl IntoView {
   })
 }
 
-fn heading() -> impl IntoView {
+fn heading() -> impl View {
   Column::new().set_children((
     Text::new("THEME")
       .set_bold(true)
@@ -127,7 +127,7 @@ fn heading() -> impl IntoView {
 /// The scheme chooser. `set_scheme` is a facade function rather than a theme method: the
 /// scheme in force is the terminal's, exactly as its detected background is, while the
 /// palette is what nests.
-fn chooser(scheme: Signal<Option<ColorScheme>>) -> impl IntoView {
+fn chooser(scheme: Signal<Option<ColorScheme>>) -> impl View {
   let choice = move |label: &'static str, wanted: Option<ColorScheme>| {
     SimpleButton::new(label)
       .set_variant(SimpleVariant::Outline)
@@ -142,7 +142,7 @@ fn chooser(scheme: Signal<Option<ColorScheme>>) -> impl IntoView {
 }
 
 /// The accent chooser: the radio group writes the signal the theme derives from.
-fn accents(accent: Signal<Option<String>>) -> impl IntoView {
+fn accents(accent: Signal<Option<String>>) -> impl View {
   SimpleRadioGroup::new()
     .bind_chosen(accent)
     .set_label("Accent")
@@ -152,7 +152,7 @@ fn accents(accent: Signal<Option<String>>) -> impl IntoView {
     )))
 }
 
-fn swatches() -> impl IntoView {
+fn swatches() -> impl View {
   let swatch = |token: TokenRef<Color>, label: &'static str| {
     Column::new().set_children((
       Container::new()
@@ -190,7 +190,7 @@ fn swatches() -> impl IntoView {
 
 /// A nested theme follows the same accent, warmed over: it derives its palette from the
 /// signal too, and replaces the palette for its subtree only.
-fn nested(accent: Signal<Option<String>>) -> impl IntoView {
+fn nested(accent: Signal<Option<String>>) -> impl View {
   Theme::derive(move || accent.with(|name| warm(name.as_deref()))).set_child_builder(|| {
     SimpleCard::new().set_spacing(1).set_children((
       Text::new("Nested theme")

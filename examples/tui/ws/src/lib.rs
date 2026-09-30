@@ -11,7 +11,7 @@ const DEFAULT_URL: &str = "wss://echo.websocket.org/";
 
 /// The page: the URL, the connection's state, and what came back.
 #[must_use]
-pub fn app(url: Option<String>) -> impl IntoView {
+pub fn app(url: Option<String>) -> impl View {
   let url = url.unwrap_or_else(|| DEFAULT_URL.to_owned());
   let state = Signal::opaque(String::from("Connecting…"));
   let received = Signal::opaque(Vec::<String>::new());

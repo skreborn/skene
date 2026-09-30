@@ -208,7 +208,7 @@ pub fn skene_simple::SimpleButton<P>::derive_variant(self, impl core::ops::funct
 pub fn skene_simple::SimpleButton<P>::handle_click(self, impl core::ops::function::Fn() + 'static) -> Self
 pub fn skene_simple::SimpleButton<P>::new(impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_simple::SimpleButton<P>::set_accessible_name(self, impl core::convert::Into<alloc::string::String>) -> Self
-pub fn skene_simple::SimpleButton<P>::set_child(self, impl skene_core::view::IntoView<P>) -> Self
+pub fn skene_simple::SimpleButton<P>::set_child(self, impl skene_core::view::View<P>) -> Self
 pub fn skene_simple::SimpleButton<P>::set_disabled(self, bool) -> Self
 pub fn skene_simple::SimpleButton<P>::set_variant(self, skene_simple::SimpleVariant) -> Self
 impl<P: skene_core::platform::Platform> core::fmt::Debug for skene_simple::SimpleButton<P>
@@ -253,7 +253,7 @@ pub struct skene_simple::SimpleContextMenu<P: skene_core::platform::Platform, C>
 impl<P: skene_core::platform::Platform> skene_simple::SimpleContextMenu<P>
 pub fn skene_simple::SimpleContextMenu<P>::new() -> Self
 pub fn skene_simple::SimpleContextMenu<P>::serve(self, skene_core::node::NodeId) -> skene_core::node::NodeId where <P as skene_core::platform::Platform>::Scalar: skene_simple::SimpleUnit, <P as skene_core::platform::Platform>::StyleExt: skene_common::corner_radius::CornerRadius
-pub fn skene_simple::SimpleContextMenu<P>::set_child(self, impl skene_core::view::IntoView<P>) -> skene_simple::SimpleContextMenu<P, skene_core::view::AnyView<P>> where <P as skene_core::platform::Platform>::Scalar: skene_simple::SimpleUnit, <P as skene_core::platform::Platform>::StyleExt: skene_common::corner_radius::CornerRadius
+pub fn skene_simple::SimpleContextMenu<P>::set_child(self, impl skene_core::view::View<P>) -> skene_simple::SimpleContextMenu<P, skene_core::view::AnyView<P>> where <P as skene_core::platform::Platform>::Scalar: skene_simple::SimpleUnit, <P as skene_core::platform::Platform>::StyleExt: skene_common::corner_radius::CornerRadius
 pub fn skene_simple::SimpleContextMenu<P>::set_items(self, impl core::iter::traits::collect::IntoIterator<Item = skene_common::context_menu::MenuItem>) -> Self
 impl<P: core::fmt::Debug + skene_core::platform::Platform, C: core::fmt::Debug> core::fmt::Debug for skene_simple::SimpleContextMenu<P, C>
 pub fn skene_simple::SimpleContextMenu<P, C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
@@ -416,7 +416,7 @@ impl<P: skene_core::platform::Platform> skene_simple::SimpleRadioGroup<P>
 pub fn skene_simple::SimpleRadioGroup<P>::bind_chosen(self, skene_reactive::signal::Signal<core::option::Option<alloc::string::String>>) -> Self
 pub fn skene_simple::SimpleRadioGroup<P>::derive_chosen(self, impl core::ops::function::Fn() -> core::option::Option<alloc::string::String> + 'static) -> Self
 pub fn skene_simple::SimpleRadioGroup<P>::handle_choose(self, impl core::ops::function::Fn(alloc::string::String) + 'static) -> Self
-pub fn skene_simple::SimpleRadioGroup<P>::set_child(self, impl skene_core::view::IntoView<P>) -> skene_simple::SimpleRadioGroup<P, skene_core::view::AnyView<P>>
+pub fn skene_simple::SimpleRadioGroup<P>::set_child(self, impl skene_core::view::View<P>) -> skene_simple::SimpleRadioGroup<P, skene_core::view::AnyView<P>>
 pub fn skene_simple::SimpleRadioGroup<P>::set_chosen(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_simple::SimpleRadioGroup<P>::set_label(self, impl core::convert::Into<alloc::string::String>) -> Self
 impl<P: skene_core::platform::Platform> skene_simple::SimpleRadioGroup<P>
@@ -512,8 +512,8 @@ pub struct skene_simple::SimpleTooltip<P: skene_core::platform::Platform, C>
 impl<P: skene_core::platform::Platform> skene_simple::SimpleTooltip<P>
 pub fn skene_simple::SimpleTooltip<P>::derive(impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
 pub fn skene_simple::SimpleTooltip<P>::new(impl core::convert::Into<alloc::string::String>) -> Self
-pub fn skene_simple::SimpleTooltip<P>::set_child(self, impl skene_core::view::IntoView<P>) -> skene_simple::SimpleTooltip<P, skene_core::view::AnyView<P>> where <P as skene_core::platform::Platform>::Scalar: skene_simple::SimpleUnit, <P as skene_core::platform::Platform>::StyleExt: skene_common::corner_radius::CornerRadius
-pub fn skene_simple::SimpleTooltip<P>::view(impl skene_core::view::IntoView<P>) -> Self
+pub fn skene_simple::SimpleTooltip<P>::set_child(self, impl skene_core::view::View<P>) -> skene_simple::SimpleTooltip<P, skene_core::view::AnyView<P>> where <P as skene_core::platform::Platform>::Scalar: skene_simple::SimpleUnit, <P as skene_core::platform::Platform>::StyleExt: skene_common::corner_radius::CornerRadius
+pub fn skene_simple::SimpleTooltip<P>::view(impl skene_core::view::View<P>) -> Self
 impl<P: skene_core::platform::Platform> skene_simple::SimpleTooltip<P>
 pub fn skene_simple::SimpleTooltip<P>::set_delay(self, core::time::Duration) -> Self
 pub fn skene_simple::SimpleTooltip<P>::set_placement(self, skene_core::values::placement::Placement) -> Self

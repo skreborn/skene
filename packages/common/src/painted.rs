@@ -2,7 +2,7 @@
 
 use std::rc::Rc;
 
-use skene_core::{AnyKind, AnyView, IntoView, Layout, NodeId, Role, Size, View};
+use skene_core::{AnyKind, AnyView, Layout, NodeId, Role, Size, View};
 
 use crate::{
   Canvas,
@@ -88,7 +88,7 @@ impl<P: Painting> Painted<P> {
 
   /// Sets the view built where nothing is drawn as pixels; nothing by default.
   #[inline(always)]
-  pub fn set_fallback<V: IntoView<P>>(mut self, fallback: impl FnOnce() -> V + 'static) -> Self {
+  pub fn set_fallback<V: View<P>>(mut self, fallback: impl FnOnce() -> V + 'static) -> Self {
     self.fallback = Some(ChildBuilder::new(fallback));
 
     self

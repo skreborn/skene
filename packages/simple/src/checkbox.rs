@@ -10,7 +10,6 @@ use skene_core::{
   Dimension,
   HasChild,
   Inset,
-  IntoView,
   NodeId,
   Part,
   Platform,
@@ -111,7 +110,7 @@ where
     define_defaults::<P>();
 
     let mark: AnyView<P> = match P::Scalar::MARKS {
-      SimpleMarks::Drawn => drawn_mark::<P>().into_view(),
+      SimpleMarks::Drawn => drawn_mark::<P>().into_any(),
       SimpleMarks::Glyph => {
         let glyphs = use_context::<Memo<SimpleGlyphs>>();
         let checked = self.toggle.reads_checked();
@@ -125,7 +124,7 @@ where
           SimplePalette::<P::Scalar>::FOREGROUND
             .when(State::FocusVisible, SimplePalette::<P::Scalar>::RING),
         )
-        .into_view()
+        .into_any()
       }
     };
     let mut control = RawCheckbox::new(self.toggle)

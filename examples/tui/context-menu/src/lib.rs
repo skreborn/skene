@@ -16,7 +16,7 @@ use skene_tui::prelude::*;
 /// The app: the notes with their menus, the draft with the clipboard's, and the rest
 /// under the standard menu.
 #[must_use]
-pub fn app() -> impl IntoView {
+pub fn app() -> impl View {
   let notes = Signal::tagged(
     "notes",
     ["Groceries", "Travel plans", "Reading list"]
@@ -52,7 +52,7 @@ pub fn app() -> impl IntoView {
   })
 }
 
-fn heading() -> impl IntoView {
+fn heading() -> impl View {
   Column::new().set_children((
     Text::new("CONTEXT MENU")
       .set_bold(true)
@@ -62,7 +62,7 @@ fn heading() -> impl IntoView {
 }
 
 /// The notes, each wrapped in a menu of its own commands, and the last command run.
-fn notes_card(notes: Signal<Vec<String>>, last: Signal<String>) -> impl IntoView {
+fn notes_card(notes: Signal<Vec<String>>, last: Signal<String>) -> impl View {
   SimpleCard::new().set_spacing(1).set_children((
     Text::new("Notes")
       .set_bold(true)
@@ -82,7 +82,7 @@ fn notes_card(notes: Signal<Vec<String>>, last: Signal<String>) -> impl IntoView
 }
 
 /// One note under a menu of its commands.
-fn note(name: String, notes: Signal<Vec<String>>, last: Signal<String>) -> impl IntoView {
+fn note(name: String, notes: Signal<Vec<String>>, last: Signal<String>) -> impl View {
   let ran = {
     let name = name.clone();
 
@@ -125,7 +125,7 @@ fn note(name: String, notes: Signal<Vec<String>>, last: Signal<String>) -> impl 
 }
 
 /// A field whose menu carries the clipboard's standard items beside a command of its own.
-fn draft_card(draft: Signal<String>) -> impl IntoView {
+fn draft_card(draft: Signal<String>) -> impl View {
   SimpleCard::new().set_spacing(1).set_children((
     Text::new("Draft")
       .set_bold(true)

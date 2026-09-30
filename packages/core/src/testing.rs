@@ -283,13 +283,8 @@ impl TestBox {
   pub(super) fn node() -> NodeId {
     TestScene::with(|scene| {
       let annotation = scene.take_pending_annotation();
-      let node = scene.create(NodeKind::Box);
 
-      if let Some(annotation) = annotation {
-        scene.set_annotation(node, annotation);
-      }
-
-      node
+      scene.create(NodeKind::Box, annotation)
     })
   }
 }

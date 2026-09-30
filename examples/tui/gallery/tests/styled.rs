@@ -11,7 +11,7 @@ use skene_tui::{self as tui, prelude::*, testing};
 fn the_gallery_paints_as_recorded() {
   tui::install();
 
-  let _ = tui::mount(|| tui_gallery::app().into_view().build());
+  let _ = tui::mount(|| tui_gallery::app().build());
   let _ = testing::pump_tasks();
   let styled = testing::render_to_styled(60, 220);
 

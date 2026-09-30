@@ -1,7 +1,7 @@
 //! The launch configuration: what the app takes from the terminal.
 
 use skene_common::{ContextMenu, MenuItem, typography};
-use skene_core::{Color, Inset, IntoView, Media, Modifiers, Shortcut, State, When};
+use skene_core::{Color, Inset, Media, Modifiers, Shortcut, State, View, When};
 
 use crate::{Device, Tui, terminal, with_store};
 
@@ -141,7 +141,7 @@ impl Launch {
   pub fn run<V, F>(self, app: F)
   where
     F: FnOnce() -> V + 'static,
-    V: IntoView<Tui>,
+    V: View<Tui>,
   {
     terminal::run(self, app);
   }
@@ -158,7 +158,7 @@ impl Launch {
   where
     D: Device,
     F: FnOnce() -> V + 'static,
-    V: IntoView<Tui>,
+    V: View<Tui>,
   {
     terminal::run_on(terminal, self, app)
   }
@@ -214,7 +214,7 @@ fn serve_standard_menu() {
 pub fn launch<V, F>(app: F)
 where
   F: FnOnce() -> V + 'static,
-  V: IntoView<Tui>,
+  V: View<Tui>,
 {
   Launch::new().run(app);
 }

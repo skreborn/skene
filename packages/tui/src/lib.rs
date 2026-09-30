@@ -452,6 +452,17 @@ pub fn render_to_text(width: u16, height: u16) -> String {
   frame::render(width, height).to_text()
 }
 
+/// The painted frame at `width` x `height` as text with its styles, for a snapshot file
+/// a test compares.
+///
+/// The text as [`render_to_text`] draws it, then each cell's style as a character, `.`
+/// for a cell painting as the terminal's own, then the colors and attributes each
+/// character stands for.
+#[must_use]
+pub fn render_to_styled(width: u16, height: u16) -> String {
+  frame::render(width, height).to_styled()
+}
+
 /// The painted frame's caret cell at `width` x `height`—where the terminal's bar
 /// cursor shows—for a headless test asserting caret placement.
 #[must_use]

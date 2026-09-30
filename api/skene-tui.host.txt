@@ -745,6 +745,7 @@ pub fn skene_tui::render_to_decorations(u16, u16) -> alloc::vec::Vec<skene_tui::
 pub fn skene_tui::render_to_pictures(u16, u16) -> alloc::vec::Vec<skene_tui::Picture>
 pub fn skene_tui::render_to_reverse(u16, u16) -> alloc::vec::Vec<bool>
 pub fn skene_tui::render_to_scales(u16, u16) -> alloc::vec::Vec<skene_tui::CellScale>
+pub fn skene_tui::render_to_styled(u16, u16) -> alloc::string::String
 pub fn skene_tui::render_to_text(u16, u16) -> alloc::string::String
 pub fn skene_tui::repainted_rows() -> alloc::vec::Vec<usize>
 pub fn skene_tui::set_scheme(core::option::Option<skene_core::values::color::ColorScheme>)

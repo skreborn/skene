@@ -598,8 +598,11 @@
   beside it through `cargo test --doc`. Among it, `packages/gui/tests/compile_fail`
   holds a program per rule the types enforce (layout's static constraints, children
   last, the expression kinds, the derives) beside the diagnostic it must raise,
-  rewritten by `TRYBUILD=overwrite` once a change to one is meant, and `proptest` drives
-  the snapshot codec and the terminal parser with arbitrary input. The server tier is the server leaf built
+  rewritten by `TRYBUILD=overwrite` once a change to one is meant, `proptest` drives
+  the snapshot codec and the terminal parser with arbitrary input, and a terminal frame
+  compares against its snapshot file through `insta` (`render_to_styled`: the text, each
+  cell's style as a character, and what each stands for), rewritten by
+  `INSTA_UPDATE=always` once a change to the frame is meant. The server tier is the server leaf built
   natively, the byte-exact render snapshot among it. The browser tier first links every
   library's tests for wasm32, so an app's own tests build there, then drives a real Firefox through geckodriver with WebGPU switched on by
   `packages/gui/webdriver.json`, so a painted box renders on the GPU there; `web_painted`

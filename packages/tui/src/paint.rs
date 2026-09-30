@@ -212,6 +212,103 @@ impl From<&Placement> for Picture {
   }
 }
 
+/// A cell's look apart from its glyph, as a styled frame names it.
+#[derive(Clone, Copy, PartialEq)]
+struct CellStyle {
+  /// The glyph's ink; `None` for the terminal's own.
+  foreground: Option<(u8, u8, u8)>,
+  /// The cell's surface; `None` for the terminal's own.
+  background: Option<(u8, u8, u8)>,
+  /// Whether the glyph draws bold.
+  bold: bool,
+  /// Whether the cell paints in reverse video.
+  reverse: bool,
+  /// The decoration lines the cell carries.
+  decoration: CellDecoration,
+  /// Whether the cell is part of a hyperlink.
+  link: bool,
+  /// The scale the cell's glyph draws at.
+  scale: CellScale,
+}
+
+impl CellStyle {
+  /// The look of `cell`.
+  const fn of(cell: &TerminalCell) -> Self {
+    Self {
+      foreground: cell.foreground,
+      background: cell.background,
+      bold: cell.bold,
+      reverse: cell.reverse,
+      decoration: cell.decoration,
+      link: cell.link.is_some(),
+      scale: cell.scale,
+    }
+  }
+
+  /// Whether the cell paints as the terminal's own, with nothing on it.
+  fn is_plain(&self) -> bool {
+    *self == Self::of(&TerminalCell::EMPTY)
+  }
+
+  /// The character naming the `index`th style a frame met.
+  fn key(index: usize) -> char {
+    const KEYS: &[u8] = b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+
+    KEYS.get(index).map_or_else(
+      || char::from_u32(0x100 + u32::try_from(index).unwrap_or(0)).unwrap_or('?'),
+      |key| char::from(*key),
+    )
+  }
+}
+
+impl std::fmt::Display for CellStyle {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    let hex = |(red, green, blue): (u8, u8, u8)| format!("#{red:02x}{green:02x}{blue:02x}");
+    let mut parts = Vec::new();
+
+    if let Some(color) = self.foreground {
+      parts.push(format!("ink {}", hex(color)));
+    }
+
+    if let Some(color) = self.background {
+      parts.push(format!("surface {}", hex(color)));
+    }
+
+    if self.bold {
+      parts.push("bold".to_owned());
+    }
+
+    if self.reverse {
+      parts.push("reverse".to_owned());
+    }
+
+    if let Some(style) = self.decoration.underline {
+      parts.push(match self.decoration.underline_color {
+        Some(color) => format!("underline {style:?} {}", hex(color)),
+        None => format!("underline {style:?}"),
+      });
+    }
+
+    if self.decoration.overline {
+      parts.push("overline".to_owned());
+    }
+
+    if self.decoration.line_through {
+      parts.push("line through".to_owned());
+    }
+
+    if self.link {
+      parts.push("link".to_owned());
+    }
+
+    if self.scale != CellScale::ONE {
+      parts.push(format!("{:?}", self.scale));
+    }
+
+    formatter.write_str(&parts.join(", "))
+  }
+}
+
 /// A painted frame: `width` x `height` cells in row-major order.
 #[derive(Clone)]
 pub(crate) struct Buffer {
@@ -523,6 +620,56 @@ impl Buffer {
 
       out.push_str(line.trim_end());
       out.push('\n');
+    }
+
+    out
+  }
+
+  /// The frame as text with its styles, for a file a test compares.
+  ///
+  /// The text as [`to_text`](Self::to_text) draws it; after a blank line, each cell's
+  /// style as a character, `.` for a cell painting as the terminal's own; after another,
+  /// the style each character stands for.
+  pub(crate) fn to_styled(&self) -> String {
+    use std::fmt::Write as _;
+
+    let mut styles: Vec<CellStyle> = Vec::new();
+    let mut out = self.to_text();
+
+    out.push('\n');
+
+    for row in self.cells.chunks(self.width.max(1)) {
+      let mut line = String::new();
+
+      for cell in row {
+        let style = CellStyle::of(cell);
+
+        if style.is_plain() {
+          line.push('.');
+
+          continue;
+        }
+
+        let index = styles
+          .iter()
+          .position(|known| *known == style)
+          .unwrap_or_else(|| {
+            styles.push(style);
+
+            styles.len() - 1
+          });
+
+        line.push(CellStyle::key(index));
+      }
+
+      out.push_str(line.trim_end_matches('.'));
+      out.push('\n');
+    }
+
+    out.push('\n');
+
+    for (index, style) in styles.iter().enumerate() {
+      let _ = writeln!(out, "{} {style}", CellStyle::key(index));
     }
 
     out

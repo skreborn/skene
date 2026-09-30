@@ -1,3 +1,5 @@
 dist
 target
 *.wasm
+*.pending-snap
+*.snap.new

@@ -119,6 +119,8 @@ pub type skene_common::gui::gui_fields::LineHeight::Value = f32
 pub const skene_common::gui::gui_fields::LineHeight::KEY: skene_core::property::PropertyKey<skene_common::gui::GuiProperty>
 pub fn skene_common::gui::gui_fields::LineHeight::get<S: skene_core::shape::Shape>(&skene_core::run_style::RunStyle<S, skene_common::gui::GuiExt>) -> &<S as skene_core::shape::Shape>::Of
 pub fn skene_common::gui::gui_fields::LineHeight::get_mut<S: skene_core::shape::Shape>(&mut skene_core::run_style::RunStyle<S, skene_common::gui::GuiExt>) -> &mut <S as skene_core::shape::Shape>::Of
+pub fn skene_common::gui::gui_fields::visit_box<N: skene_core::scalar::Scalar, V: skene_core::box_style::BoxFieldVisitor<N, skene_common::gui::GuiExt>>(&mut V)
+pub fn skene_common::gui::gui_fields::visit_run<V: skene_core::run_style::RunFieldVisitor<skene_common::gui::GuiExt>>(&mut V)
 pub enum skene_common::gui::GuiProperty
 pub skene_common::gui::GuiProperty::CornerRadius
 pub skene_common::gui::GuiProperty::FontSize
@@ -637,6 +639,8 @@ pub type skene_common::tui::tui_fields::Weight::Value = f32
 pub const skene_common::tui::tui_fields::Weight::KEY: skene_core::property::PropertyKey<skene_common::tui::TuiProperty>
 pub fn skene_common::tui::tui_fields::Weight::get<S: skene_core::shape::Shape>(&skene_core::run_style::RunStyle<S, skene_common::tui::TuiExt>) -> &<S as skene_core::shape::Shape>::Of
 pub fn skene_common::tui::tui_fields::Weight::get_mut<S: skene_core::shape::Shape>(&mut skene_core::run_style::RunStyle<S, skene_common::tui::TuiExt>) -> &mut <S as skene_core::shape::Shape>::Of
+pub fn skene_common::tui::tui_fields::visit_box<N: skene_core::scalar::Scalar, V: skene_core::box_style::BoxFieldVisitor<N, skene_common::tui::TuiExt>>(&mut V)
+pub fn skene_common::tui::tui_fields::visit_run<V: skene_core::run_style::RunFieldVisitor<skene_common::tui::TuiExt>>(&mut V)
 pub enum skene_common::tui::TuiProperty
 pub skene_common::tui::TuiProperty::Bold
 pub skene_common::tui::TuiProperty::BorderGlyphs
@@ -916,6 +920,7 @@ pub const skene_common::typography::WEIGHT: skene_core::token::TokenRef<f32>
 pub macro skene_common::decoration!
 pub macro skene_common::properties!
 pub macro skene_common::run_type_metrics!
+pub macro skene_common::trait_properties!
 pub macro skene_common::type_metrics!
 pub enum skene_common::ItemExtent
 pub skene_common::ItemExtent::Estimated(f32)

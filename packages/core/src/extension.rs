@@ -54,6 +54,107 @@ pub trait StyleExtension: Copy + Default + PartialEq + Debug + 'static {
   }
 }
 
+/// Declares a style extension's properties as types.
+///
+/// It makes the module `$module`, holding one field type per property, a
+/// [`BoxField`](crate::BoxField) or a [`RunField`](crate::RunField) over the extension's
+/// field blocks, and `visit_box` and `visit_run`, visiting them in declaration order, for
+/// the extension's [`for_each_box_field`](StyleExtension::for_each_box_field) and
+/// [`for_each_run_field`](StyleExtension::for_each_run_field).
+///
+/// Each property names its field in the extension's block, its value type, which the
+/// module resolves as the invoking module does, and its variant of the extension's
+/// property enum, which the field type is named for.
+///
+/// ```ignore
+/// skene_core::extension_fields! {
+///   pub mod acme_fields for AcmeExt, AcmeProperty;
+///   box: tint: Color => Tint;
+///   run: tracking: Length => Tracking,
+/// }
+/// ```
+#[macro_export]
+macro_rules! extension_fields {
+  (
+    $(#[$meta:meta])*
+    $vis:vis mod $module:ident for $ext:ident, $property:ident;
+    box: $($box_field:ident: $box_value:ty => $box_property:ident),* $(,)?;
+    run: $($run_field:ident: $run_value:ty => $run_property:ident),* $(,)?
+  ) => {
+    $(#[$meta])*
+    $vis mod $module {
+      #[allow(unused_imports, reason = "the property's value types resolve as the invoking module does")]
+      use super::*;
+
+      $(
+        #[doc = concat!("The `", stringify!($box_field), "` property.")]
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+        pub struct $box_property;
+
+        impl<N: $crate::Scalar> $crate::BoxField<N, super::$ext> for $box_property {
+          type Value = $box_value;
+
+          const KEY: $crate::PropertyKey<super::$property> =
+            $crate::PropertyKey::Extension(super::$property::$box_property);
+
+          #[inline(always)]
+          fn get<S: $crate::Shape>(style: &$crate::BoxStyle<N, S, super::$ext>) -> &S::Of<$box_value> {
+            &style.ext.$box_field
+          }
+
+          #[inline(always)]
+          fn get_mut<S: $crate::Shape>(
+            style: &mut $crate::BoxStyle<N, S, super::$ext>,
+          ) -> &mut S::Of<$box_value> {
+            &mut style.ext.$box_field
+          }
+        }
+      )*
+
+      $(
+        #[doc = concat!("The `", stringify!($run_field), "` property.")]
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+        pub struct $run_property;
+
+        impl $crate::RunField<super::$ext> for $run_property {
+          type Value = $run_value;
+
+          const KEY: $crate::PropertyKey<super::$property> =
+            $crate::PropertyKey::Extension(super::$property::$run_property);
+
+          #[inline(always)]
+          fn get<S: $crate::Shape>(style: &$crate::RunStyle<S, super::$ext>) -> &S::Of<$run_value> {
+            &style.ext.$run_field
+          }
+
+          #[inline(always)]
+          fn get_mut<S: $crate::Shape>(
+            style: &mut $crate::RunStyle<S, super::$ext>,
+          ) -> &mut S::Of<$run_value> {
+            &mut style.ext.$run_field
+          }
+        }
+      )*
+
+      /// Visits every box property, in declaration order.
+      #[inline(always)]
+      pub fn visit_box<N: $crate::Scalar, V: $crate::BoxFieldVisitor<N, super::$ext>>(
+        visitor: &mut V,
+      ) {
+        $(visitor.field::<$box_property>();)*
+        let _ = visitor;
+      }
+
+      /// Visits every run property, in declaration order.
+      #[inline(always)]
+      pub fn visit_run<V: $crate::RunFieldVisitor<super::$ext>>(visitor: &mut V) {
+        $(visitor.field::<$run_property>();)*
+        let _ = visitor;
+      }
+    }
+  };
+}
+
 /// The property names of an extension with no properties.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum NoProperty {}

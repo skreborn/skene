@@ -249,10 +249,7 @@ left half-done in a code comment.
     `Span` share, into a forwarding macro and a public `Run` builder; the roughly 200
     lines each facade repeats, into one exported `facade!` macro that also makes a
     third party's facade a few lines; the three "fixed or derived" enums, into one
-    `Source<T>`; `gui_fields!`, core's `box_fields!` and `run_fields!` and the terminal
-    extension's eleven hand-written field impls, into one field macro core exports, with
-    a trait-method form of `properties!` for the terminal's eighteen hand-written setter
-    pairs; the seven accessibility query seams headless and the terminal each repeat
+    `Source<T>`; the seven accessibility query seams headless and the terminal each repeat
     over the name facts core builds; the helpers the browser tests
     repeat (`document`, `Installed`, `fresh_root`, `computed`, `only_child` and their
     kin), into a `skene_web::testing` beside `skene_tui::testing`, which takes the

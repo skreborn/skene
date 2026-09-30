@@ -118,94 +118,35 @@ impl IntoRunValue<GuiExt> for f32 {
   }
 }
 
-/// The pixel medium's properties as types, and the enumerations walking them.
-macro_rules! gui_fields {
-  (
-    box: $($box_field:ident: $box_value:ty => $box_property:ident),+ $(,)?;
-    run: $($run_field:ident: $run_value:ty => $run_property:ident),+ $(,)?
-  ) => {
-    /// The pixel medium's own properties, addressed by type.
-    pub mod gui_fields {
-      use skene_core::{BoxField, BoxStyle, Length, PropertyKey, RunField, RunStyle, Scalar, Shape};
-
-      use super::{GuiExt, GuiProperty};
-
-      $(
-        #[doc = concat!("The `", stringify!($box_field), "` property.")]
-        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-        pub struct $box_property;
-
-        impl<N: Scalar> BoxField<N, GuiExt> for $box_property {
-          type Value = $box_value;
-
-          const KEY: PropertyKey<GuiProperty> =
-            PropertyKey::Extension(GuiProperty::$box_property);
-
-          #[inline(always)]
-          fn get<S: Shape>(style: &BoxStyle<N, S, GuiExt>) -> &S::Of<$box_value> {
-            &style.ext.$box_field
-          }
-
-          #[inline(always)]
-          fn get_mut<S: Shape>(style: &mut BoxStyle<N, S, GuiExt>) -> &mut S::Of<$box_value> {
-            &mut style.ext.$box_field
-          }
-        }
-      )+
-
-      $(
-        #[doc = concat!("The `", stringify!($run_field), "` property.")]
-        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-        pub struct $run_property;
-
-        impl RunField<GuiExt> for $run_property {
-          type Value = $run_value;
-
-          const KEY: PropertyKey<GuiProperty> =
-            PropertyKey::Extension(GuiProperty::$run_property);
-
-          #[inline(always)]
-          fn get<S: Shape>(style: &RunStyle<S, GuiExt>) -> &S::Of<$run_value> {
-            &style.ext.$run_field
-          }
-
-          #[inline(always)]
-          fn get_mut<S: Shape>(style: &mut RunStyle<S, GuiExt>) -> &mut S::Of<$run_value> {
-            &mut style.ext.$run_field
-          }
-        }
-      )+
-    }
-
-    impl StyleExtension for GuiExt {
-      type BoxFields<S: Shape> = GuiBoxFields<S>;
-      type Property = GuiProperty;
-      type RunFields<S: Shape> = GuiRunFields<S>;
-      type Value = f32;
-
-      #[inline(always)]
-      fn for_each_box_field<N: Scalar, V: BoxFieldVisitor<N, Self>>(visitor: &mut V) {
-        $(visitor.field::<gui_fields::$box_property>();)+
-      }
-
-      #[inline(always)]
-      fn for_each_run_field<V: RunFieldVisitor<Self>>(visitor: &mut V) {
-        $(visitor.field::<gui_fields::$run_property>();)+
-      }
-
-      #[inline(always)]
-      fn interpolate_value(from: &f32, to: &f32, amount: f32) -> Option<f32> {
-        Some(from + (to - from) * amount)
-      }
-    }
-  };
-}
-
-gui_fields!(
+skene_core::extension_fields! {
+  /// The pixel medium's own properties, addressed by type.
+  pub mod gui_fields for GuiExt, GuiProperty;
   box: corner_radius: Length => CornerRadius;
   run: font_size: Length => FontSize, font_weight: f32 => FontWeight,
     line_height: f32 => LineHeight, letter_spacing: Length => LetterSpacing,
-);
+}
+
+impl StyleExtension for GuiExt {
+  type BoxFields<S: Shape> = GuiBoxFields<S>;
+  type Property = GuiProperty;
+  type RunFields<S: Shape> = GuiRunFields<S>;
+  type Value = f32;
+
+  #[inline(always)]
+  fn for_each_box_field<N: Scalar, V: BoxFieldVisitor<N, Self>>(visitor: &mut V) {
+    gui_fields::visit_box(visitor);
+  }
+
+  #[inline(always)]
+  fn for_each_run_field<V: RunFieldVisitor<Self>>(visitor: &mut V) {
+    gui_fields::visit_run(visitor);
+  }
+
+  #[inline(always)]
+  fn interpolate_value(from: &f32, to: &f32, amount: f32) -> Option<f32> {
+    Some(from + (to - from) * amount)
+  }
+}
 
 #[cfg(test)]
 mod tests {

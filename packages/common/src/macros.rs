@@ -37,6 +37,48 @@ macro_rules! properties {
   )+};
 }
 
+/// Generates a provided `set_`/`derive_` pair per property on a trait, for a medium's
+/// own properties over the style `$access` returns.
+///
+/// The setter takes anything convertible into the property's
+/// [`Value`](skene_core::Value) under `$condition`, the deriver a closure over signals,
+/// and both write the field at the path named; a property's optional second literal is
+/// a paragraph its setter's documentation adds.
+#[macro_export]
+macro_rules! trait_properties {
+  (
+    $access:ident, $condition:ty;
+    $(
+      $set:ident / $derive:ident ($param:ident) => $($field:ident).+: $type:ty,
+      $doc:literal $(, $detail:literal)?;
+    )+
+  ) => {$(
+    #[doc = concat!("Sets ", $doc, ".")]
+    $(#[doc = ""] #[doc = $detail])?
+    #[inline(always)]
+    #[must_use]
+    fn $set(mut self, $param: impl Into<$crate::__core::Value<$type, $condition>>) -> Self {
+      self.$access().$($field).+ = Some($param.into());
+
+      self
+    }
+
+    #[doc = concat!("Derives ", $doc, " from the signals `", stringify!($param), "` reads: a value, a token or an expression.")]
+    #[inline(always)]
+    #[must_use]
+    fn $derive<R: Into<$crate::__core::StaticLeaf<$type>>>(
+      mut self,
+      $param: impl Fn() -> R + 'static,
+    ) -> Self {
+      self.$access().$($field).+ = Some($crate::__core::Value::new(
+        $crate::__core::Leaf::derive($param),
+      ));
+
+      self
+    }
+  )+};
+}
+
 /// Generates the decoration and sizing surface the one decorated box and every control
 /// share, over the style `$access` returns.
 #[macro_export]

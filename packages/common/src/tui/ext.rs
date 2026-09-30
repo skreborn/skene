@@ -346,241 +346,15 @@ impl IntoRunValue<TuiExt> for f32 {
 /// The lowest font weight that reads as bold.
 pub const BOLD_WEIGHT: f32 = 600.;
 
-/// The terminal's own properties, addressed by type.
-pub mod tui_fields {
-  use skene_core::{
-    BoxField,
-    BoxStyle,
-    Color,
-    Length,
-    PropertyKey,
-    RunField,
-    RunStyle,
-    Scalar,
-    Shape,
-  };
-
-  use super::{BorderGlyphs as Glyphs, ScrollbarGlyphs as BarGlyphs, TuiExt, TuiProperty};
-
-  /// The `border_glyphs` property.
-  #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-  pub struct BorderGlyphs;
-
-  impl<N: Scalar> BoxField<N, TuiExt> for BorderGlyphs {
-    type Value = Glyphs;
-
-    const KEY: PropertyKey<TuiProperty> = PropertyKey::Extension(TuiProperty::BorderGlyphs);
-
-    #[inline(always)]
-    fn get<S: Shape>(style: &BoxStyle<N, S, TuiExt>) -> &S::Of<Glyphs> {
-      &style.ext.border_glyphs
-    }
-
-    #[inline(always)]
-    fn get_mut<S: Shape>(style: &mut BoxStyle<N, S, TuiExt>) -> &mut S::Of<Glyphs> {
-      &mut style.ext.border_glyphs
-    }
-  }
-
-  /// The `corner_radius` property.
-  #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-  pub struct CornerRadius;
-
-  impl<N: Scalar> BoxField<N, TuiExt> for CornerRadius {
-    type Value = Length;
-
-    const KEY: PropertyKey<TuiProperty> = PropertyKey::Extension(TuiProperty::CornerRadius);
-
-    #[inline(always)]
-    fn get<S: Shape>(style: &BoxStyle<N, S, TuiExt>) -> &S::Of<Length> {
-      &style.ext.corner_radius
-    }
-
-    #[inline(always)]
-    fn get_mut<S: Shape>(style: &mut BoxStyle<N, S, TuiExt>) -> &mut S::Of<Length> {
-      &mut style.ext.corner_radius
-    }
-  }
-
-  /// The `shadow` property.
-  #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-  pub struct Shadow;
-
-  impl<N: Scalar> BoxField<N, TuiExt> for Shadow {
-    type Value = Color;
-
-    const KEY: PropertyKey<TuiProperty> = PropertyKey::Extension(TuiProperty::Shadow);
-
-    #[inline(always)]
-    fn get<S: Shape>(style: &BoxStyle<N, S, TuiExt>) -> &S::Of<Color> {
-      &style.ext.shadow
-    }
-
-    #[inline(always)]
-    fn get_mut<S: Shape>(style: &mut BoxStyle<N, S, TuiExt>) -> &mut S::Of<Color> {
-      &mut style.ext.shadow
-    }
-  }
-
-  /// The `shadow_offset` property.
-  #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-  pub struct ShadowOffset;
-
-  impl<N: Scalar> BoxField<N, TuiExt> for ShadowOffset {
-    type Value = Length;
-
-    const KEY: PropertyKey<TuiProperty> = PropertyKey::Extension(TuiProperty::ShadowOffset);
-
-    #[inline(always)]
-    fn get<S: Shape>(style: &BoxStyle<N, S, TuiExt>) -> &S::Of<Length> {
-      &style.ext.shadow_offset
-    }
-
-    #[inline(always)]
-    fn get_mut<S: Shape>(style: &mut BoxStyle<N, S, TuiExt>) -> &mut S::Of<Length> {
-      &mut style.ext.shadow_offset
-    }
-  }
-
-  /// The `shadow_softening` property.
-  #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-  pub struct ShadowSoftening;
-
-  impl<N: Scalar> BoxField<N, TuiExt> for ShadowSoftening {
-    type Value = Length;
-
-    const KEY: PropertyKey<TuiProperty> = PropertyKey::Extension(TuiProperty::ShadowSoftening);
-
-    #[inline(always)]
-    fn get<S: Shape>(style: &BoxStyle<N, S, TuiExt>) -> &S::Of<Length> {
-      &style.ext.shadow_softening
-    }
-
-    #[inline(always)]
-    fn get_mut<S: Shape>(style: &mut BoxStyle<N, S, TuiExt>) -> &mut S::Of<Length> {
-      &mut style.ext.shadow_softening
-    }
-  }
-
-  /// The `scrollbar_thumb` property.
-  #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-  pub struct ScrollbarThumb;
-
-  impl<N: Scalar> BoxField<N, TuiExt> for ScrollbarThumb {
-    type Value = Color;
-
-    const KEY: PropertyKey<TuiProperty> = PropertyKey::Extension(TuiProperty::ScrollbarThumb);
-
-    #[inline(always)]
-    fn get<S: Shape>(style: &BoxStyle<N, S, TuiExt>) -> &S::Of<Color> {
-      &style.ext.scrollbar_thumb
-    }
-
-    #[inline(always)]
-    fn get_mut<S: Shape>(style: &mut BoxStyle<N, S, TuiExt>) -> &mut S::Of<Color> {
-      &mut style.ext.scrollbar_thumb
-    }
-  }
-
-  /// The `scrollbar_track` property.
-  #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-  pub struct ScrollbarTrack;
-
-  impl<N: Scalar> BoxField<N, TuiExt> for ScrollbarTrack {
-    type Value = Color;
-
-    const KEY: PropertyKey<TuiProperty> = PropertyKey::Extension(TuiProperty::ScrollbarTrack);
-
-    #[inline(always)]
-    fn get<S: Shape>(style: &BoxStyle<N, S, TuiExt>) -> &S::Of<Color> {
-      &style.ext.scrollbar_track
-    }
-
-    #[inline(always)]
-    fn get_mut<S: Shape>(style: &mut BoxStyle<N, S, TuiExt>) -> &mut S::Of<Color> {
-      &mut style.ext.scrollbar_track
-    }
-  }
-
-  /// The `scrollbar_glyphs` property.
-  #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-  pub struct ScrollbarGlyphs;
-
-  impl<N: Scalar> BoxField<N, TuiExt> for ScrollbarGlyphs {
-    type Value = BarGlyphs;
-
-    const KEY: PropertyKey<TuiProperty> = PropertyKey::Extension(TuiProperty::ScrollbarGlyphs);
-
-    #[inline(always)]
-    fn get<S: Shape>(style: &BoxStyle<N, S, TuiExt>) -> &S::Of<BarGlyphs> {
-      &style.ext.scrollbar_glyphs
-    }
-
-    #[inline(always)]
-    fn get_mut<S: Shape>(style: &mut BoxStyle<N, S, TuiExt>) -> &mut S::Of<BarGlyphs> {
-      &mut style.ext.scrollbar_glyphs
-    }
-  }
-
-  /// The `bold` property.
-  #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-  pub struct Bold;
-
-  impl RunField<TuiExt> for Bold {
-    type Value = bool;
-
-    const KEY: PropertyKey<TuiProperty> = PropertyKey::Extension(TuiProperty::Bold);
-
-    #[inline(always)]
-    fn get<S: Shape>(style: &RunStyle<S, TuiExt>) -> &S::Of<bool> {
-      &style.ext.bold
-    }
-
-    #[inline(always)]
-    fn get_mut<S: Shape>(style: &mut RunStyle<S, TuiExt>) -> &mut S::Of<bool> {
-      &mut style.ext.bold
-    }
-  }
-
-  /// The `font_size` property.
-  #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-  pub struct Size;
-
-  impl RunField<TuiExt> for Size {
-    type Value = Length;
-
-    const KEY: PropertyKey<TuiProperty> = PropertyKey::Extension(TuiProperty::Size);
-
-    #[inline(always)]
-    fn get<S: Shape>(style: &RunStyle<S, TuiExt>) -> &S::Of<Length> {
-      &style.ext.size
-    }
-
-    #[inline(always)]
-    fn get_mut<S: Shape>(style: &mut RunStyle<S, TuiExt>) -> &mut S::Of<Length> {
-      &mut style.ext.size
-    }
-  }
-
-  /// The `font_weight` property.
-  #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-  pub struct Weight;
-
-  impl RunField<TuiExt> for Weight {
-    type Value = f32;
-
-    const KEY: PropertyKey<TuiProperty> = PropertyKey::Extension(TuiProperty::Weight);
-
-    #[inline(always)]
-    fn get<S: Shape>(style: &RunStyle<S, TuiExt>) -> &S::Of<f32> {
-      &style.ext.weight
-    }
-
-    #[inline(always)]
-    fn get_mut<S: Shape>(style: &mut RunStyle<S, TuiExt>) -> &mut S::Of<f32> {
-      &mut style.ext.weight
-    }
-  }
+skene_core::extension_fields! {
+  /// The terminal's own properties, addressed by type.
+  pub mod tui_fields for TuiExt, TuiProperty;
+  box: border_glyphs: super::BorderGlyphs => BorderGlyphs, corner_radius: Length => CornerRadius,
+    shadow: Color => Shadow, shadow_offset: Length => ShadowOffset,
+    shadow_softening: Length => ShadowSoftening, scrollbar_thumb: Color => ScrollbarThumb,
+    scrollbar_track: Color => ScrollbarTrack,
+    scrollbar_glyphs: super::ScrollbarGlyphs => ScrollbarGlyphs;
+  run: bold: bool => Bold, size: Length => Size, weight: f32 => Weight,
 }
 
 impl StyleExtension for TuiExt {
@@ -591,21 +365,12 @@ impl StyleExtension for TuiExt {
 
   #[inline(always)]
   fn for_each_box_field<N: Scalar, V: BoxFieldVisitor<N, Self>>(visitor: &mut V) {
-    visitor.field::<tui_fields::BorderGlyphs>();
-    visitor.field::<tui_fields::CornerRadius>();
-    visitor.field::<tui_fields::Shadow>();
-    visitor.field::<tui_fields::ShadowOffset>();
-    visitor.field::<tui_fields::ShadowSoftening>();
-    visitor.field::<tui_fields::ScrollbarThumb>();
-    visitor.field::<tui_fields::ScrollbarTrack>();
-    visitor.field::<tui_fields::ScrollbarGlyphs>();
+    tui_fields::visit_box(visitor);
   }
 
   #[inline(always)]
   fn for_each_run_field<V: RunFieldVisitor<Self>>(visitor: &mut V) {
-    visitor.field::<tui_fields::Bold>();
-    visitor.field::<tui_fields::Size>();
-    visitor.field::<tui_fields::Weight>();
+    tui_fields::visit_run(visitor);
   }
 
   #[inline(always)]

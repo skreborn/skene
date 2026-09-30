@@ -848,6 +848,7 @@ pub type skene_core::run_fields::TextColor::Value = skene_core::Color
 pub const skene_core::run_fields::TextColor::KEY: skene_core::PropertyKey<<X as skene_core::StyleExtension>::Property>
 pub fn skene_core::run_fields::TextColor::get<S: skene_core::Shape>(&skene_core::RunStyle<S, X>) -> &<S as skene_core::Shape>::Of
 pub fn skene_core::run_fields::TextColor::get_mut<S: skene_core::Shape>(&mut skene_core::RunStyle<S, X>) -> &mut <S as skene_core::Shape>::Of
+pub macro skene_core::extension_fields!
 pub enum skene_core::AccessProp
 pub skene_core::AccessProp::Checked(skene_core::Toggle)
 pub skene_core::AccessProp::Controls(alloc::vec::Vec<skene_core::NodeId>)

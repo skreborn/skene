@@ -52,6 +52,19 @@ left half-done in a code comment.
     the hydration swap goes, the drawn face remaining elsewhere.
 3. **Tests that exercise what users see.** Headless becomes the GUI's real stand-in,
     and every tier asserts through roles, text and pixels.
+    - Undecided, before the kit below: the terminal measures lengths in logical pixels,
+    a cell standing for a fixed 8×16 of them, rather than in whole cells. Every
+    platform's scalar is then `f32` and the `Scalar` parameter leaves the spine (the
+    styles, the geometry, tokens, conditions and the environment), a library's literal
+    lengths and font sizes mean the same visual size on both facades (a 16 px font one
+    cell tall, `em` one text row), and corner radii, shadows and the pointer share the
+    GUI's measure. Layout snaps to whole cells per axis (taffy rounding in cell units),
+    text and scroll offsets stay on the grid, and only the graphics layer draws between
+    cells; the cell size the terminal reports scales graphics alone, so a font change
+    keeps an app's cell counts. `Length::characters` and `Length::lines` (the web's
+    `ch` and `lh`) spell cell-exact lengths on every medium. The cost: a bare `1.`
+    rounds to no cell in the terminal, so its builders need a guard or a lint, and every
+    terminal example and snapshot moves to the new unit.
     - The terminal's retained runtime (the taffy store, hit testing, focus, capture,
     wheel latching, field editing, selection, motion) is extracted into a
     medium-generic kit; headless lays out through it and renders pixel snapshots, and
@@ -198,7 +211,10 @@ left half-done in a code comment.
     check keeps the spine modules from importing the medium modules; `skene-reactive`
     stays separate, knowing nothing of UI. The facades stop re-exporting the spine as
     `core`; `AGENTS.md` and `DESIGN.md` follow; `run::Run`, `split_alignment` and
-    `ThemedIn::define_root` stop being crate-private.
+    `ThemedIn::define_root` stop being crate-private. The resolution then names the
+    typography size token itself, so `ResolutionSource::size_token` goes, the terminal
+    keeping only whether it proved text sizing, and the `em` fallback becomes the
+    medium's, unless the terminal's logical pixels make it one value.
     - Moves: `Lazy`, `Deferred`, the hydrating `Resource`, `Link` and the router
     binding into the foundation over platform seams, so a generic library can use them
     and the terminal gains `Link`; the title into a shared `window` module, which grows

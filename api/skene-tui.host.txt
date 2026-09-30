@@ -489,6 +489,7 @@ pub fn skene_tui::testing::focused_node() -> core::option::Option<skene_core::no
 pub fn skene_tui::testing::is_frame_pending() -> bool
 pub fn skene_tui::testing::is_quit_requested() -> bool
 pub fn skene_tui::testing::layout_generation() -> u64
+pub fn skene_tui::testing::locate(&str, &str) -> (u16, u16)
 pub fn skene_tui::testing::mouse_cursor() -> core::option::Option<skene_core::values::mouse_cursor::MouseCursor>
 pub fn skene_tui::testing::pump_tasks() -> bool
 pub fn skene_tui::testing::render_to_bold(u16, u16) -> alloc::vec::Vec<bool>
@@ -530,6 +531,8 @@ pub fn skene_tui::testing::trigger_resize(u16, u16)
 pub fn skene_tui::testing::trigger_terminal_colors((u8, u8, u8), (u8, u8, u8))
 pub fn skene_tui::testing::trigger_text_sizing(bool)
 pub fn skene_tui::testing::window_title() -> core::option::Option<alloc::string::String>
+pub fn skene_tui::testing::with_launch<R>(skene_tui::Launch, impl core::ops::function::FnOnce() -> R) -> R
+pub fn skene_tui::testing::with_platform<R>(impl core::ops::function::FnOnce() -> R) -> R
 pub enum skene_tui::CellScale
 pub skene_tui::CellScale::Fraction(u8, u8)
 pub skene_tui::CellScale::Whole(u8)

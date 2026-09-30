@@ -1,42 +1,8 @@
 //! What the render tests share: the platform install, and the probes reading
 //! a frame back.
 
-use skene_tui::{self as tui, Color, testing};
-
-/// The installed platform, uninstalled when dropped, so a failing test leaves the thread
-/// clean for the next.
-struct Installed;
-
-impl Drop for Installed {
-  fn drop(&mut self) {
-    tui::uninstall();
-  }
-}
-
-/// Installs a fresh platform, runs `body`, and uninstalls afterwards.
-pub(crate) fn with_platform<R>(body: impl FnOnce() -> R) -> R {
-  tui::install();
-
-  let _installed = Installed;
-
-  body()
-}
-
-/// The column and row at which `needle` first appears in a rendered frame.
-pub(crate) fn locate(frame: &str, needle: &str) -> (u16, u16) {
-  for (row, line) in frame.lines().enumerate() {
-    if let Some(column) = line.find(needle) {
-      let column = line[..column].chars().count();
-
-      return (
-        u16::try_from(column).expect("a narrow frame"),
-        u16::try_from(row).expect("a short frame"),
-      );
-    }
-  }
-
-  panic!("{needle:?} did not paint in:\n{frame}");
-}
+pub(crate) use skene_tui::testing::{locate, with_launch, with_platform};
+use skene_tui::{Color, testing};
 
 /// A cell's foreground and background.
 pub(crate) type CellColors = (Option<(u8, u8, u8)>, Option<(u8, u8, u8)>);
@@ -81,15 +47,6 @@ pub(crate) fn rgb(color: Color) -> (u8, u8, u8) {
   };
 
   (channel(red), channel(green), channel(blue))
-}
-
-/// Installs a fresh platform under `launch`, runs `body`, and uninstalls afterwards.
-pub(crate) fn with_launch<R>(launch: tui::Launch, body: impl FnOnce() -> R) -> R {
-  launch.install();
-
-  let _installed = Installed;
-
-  body()
 }
 
 /// A frame's rows without the scrollbar an overflowing editor paints down its last

@@ -4,34 +4,11 @@
 
 #![cfg(not(target_arch = "wasm32"))]
 
-use skene_tui::{self as tui, prelude::*, testing};
-
-/// Installs a fresh platform, runs `body`, and uninstalls afterwards.
-fn with_platform<R>(body: impl FnOnce() -> R) -> R {
-  tui::install();
-
-  let result = body();
-
-  tui::uninstall();
-
-  result
-}
-
-/// The column and row at which `needle` first appears in a rendered frame.
-fn locate(frame: &str, needle: &str) -> (u16, u16) {
-  for (row, line) in frame.lines().enumerate() {
-    if let Some(column) = line.find(needle) {
-      let column = line[..column].chars().count();
-
-      return (
-        u16::try_from(column).expect("a narrow frame"),
-        u16::try_from(row).expect("a short frame"),
-      );
-    }
-  }
-
-  panic!("{needle:?} did not paint in:\n{frame}");
-}
+use skene_tui::{
+  self as tui,
+  prelude::*,
+  testing::{self, locate, with_platform},
+};
 
 #[test]
 fn the_menus_open_where_a_view_opts_in() {

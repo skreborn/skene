@@ -4,6 +4,8 @@
 //! what the app emitted since the last take, `render_to_<form>` paints the frame into a
 //! form a test reads, `is_<state>` answers a yes-or-no question, and any other read is
 //! named for what it returns; [`user`] composes events into a user's gestures.
+//! [`with_platform`] and [`with_launch`] scope a test to a fresh platform, and
+//! [`locate`] finds text in a rendered frame.
 
 mod pty;
 pub mod user;
@@ -45,6 +47,56 @@ use crate::{
   },
   with_store,
 };
+
+/// The installed platform, uninstalled when dropped.
+struct Installed;
+
+impl Drop for Installed {
+  fn drop(&mut self) {
+    crate::uninstall();
+  }
+}
+
+/// Installs a fresh platform, runs `body`, and uninstalls afterwards, a panicking
+/// `body` included.
+pub fn with_platform<R>(body: impl FnOnce() -> R) -> R {
+  crate::install();
+
+  let _installed = Installed;
+
+  body()
+}
+
+/// Installs a fresh platform under `launch`, runs `body`, and uninstalls afterwards, a
+/// panicking `body` included.
+pub fn with_launch<R>(launch: Launch, body: impl FnOnce() -> R) -> R {
+  launch.install();
+
+  let _installed = Installed;
+
+  body()
+}
+
+/// The column and row at which `needle` first appears in a rendered `frame`.
+///
+/// # Panics
+///
+/// Panics if `needle` does not appear in `frame`.
+#[must_use]
+pub fn locate(frame: &str, needle: &str) -> (u16, u16) {
+  for (row, line) in frame.lines().enumerate() {
+    if let Some(column) = line.find(needle) {
+      let column = line[..column].chars().count();
+
+      return (
+        u16::try_from(column).expect("a narrow frame"),
+        u16::try_from(row).expect("a short frame"),
+      );
+    }
+  }
+
+  panic!("{needle:?} did not paint in:\n{frame}");
+}
 
 /// Simulates the terminal's report that it reports key releases (the kitty keyboard
 /// protocol's event types), or that it does not, for a test driving the loop headlessly.

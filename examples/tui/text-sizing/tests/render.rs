@@ -3,18 +3,12 @@
 
 #![cfg(not(target_arch = "wasm32"))]
 
-use skene_tui::{self as tui, CellScale, prelude::*, testing};
-
-/// Installs a fresh platform, runs `body`, and uninstalls afterwards.
-fn with_platform<R>(body: impl FnOnce() -> R) -> R {
-  tui::install();
-
-  let result = body();
-
-  tui::uninstall();
-
-  result
-}
+use skene_tui::{
+  self as tui,
+  CellScale,
+  prelude::*,
+  testing::{self, with_platform},
+};
 
 #[test]
 fn the_sections_render_at_one_cell_and_size_up_when_proven() {

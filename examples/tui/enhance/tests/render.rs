@@ -4,26 +4,11 @@
 
 #![cfg(not(target_arch = "wasm32"))]
 
-use skene_tui::{self as tui, prelude::*, testing};
-
-/// The installed platform, uninstalled when dropped, so a failing test leaves the thread
-/// clean for the next.
-struct Installed;
-
-impl Drop for Installed {
-  fn drop(&mut self) {
-    tui::uninstall();
-  }
-}
-
-/// Installs a fresh platform, runs `body`, and uninstalls afterwards.
-fn with_platform<R>(body: impl FnOnce() -> R) -> R {
-  tui::install();
-
-  let _installed = Installed;
-
-  body()
-}
+use skene_tui::{
+  self as tui,
+  prelude::*,
+  testing::{self, with_platform},
+};
 
 #[test]
 fn the_forms_the_terminal_carries_render() {

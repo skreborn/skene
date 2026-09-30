@@ -31,6 +31,7 @@ use skene_core::{
   FocusOrder,
   HasChild,
   HasChildren,
+  Key,
   KeyEvent,
   Media,
   NodeId,
@@ -39,6 +40,7 @@ use skene_core::{
   Scalar,
   Show,
   Size,
+  TextSelection,
   View,
   Visibility,
   When,
@@ -138,12 +140,24 @@ pub(crate) fn all<D: Driver>() -> Vec<Scenario<D>> {
       name: "a click on text outside any control takes focus from the field holding it",
       act: a_click_outside_blurs,
     },
+    Scenario {
+      name: "a combining mark typed after its base joins it, the caret after the cluster",
+      act: a_combining_mark_joins_its_base,
+    },
   ]
 }
 
 /// The press of the key its W3C value `name` names.
 fn key(name: &str) -> KeyEvent {
   KeyEvent::new(name)
+}
+
+/// The press of the key typing `text`.
+fn typed(text: &str) -> KeyEvent {
+  KeyEvent {
+    key: Key::Character(text.to_owned()),
+    ..KeyEvent::new(text)
+  }
 }
 
 /// The press of the key `name` names with `Shift` held.
@@ -864,4 +878,27 @@ fn a_click_outside_blurs<D: Driver>(driver: &mut D) {
   driver.click(words);
 
   assert_eq!(driver.focused(), None, "the field loses focus");
+}
+
+fn a_combining_mark_joins_its_base<D: Driver>(driver: &mut D) {
+  let value = Signal::new(String::new());
+  let selection = Signal::new(TextSelection::collapsed(0));
+
+  driver.mount(move || {
+    BasicTextField::<D::Platform>::new(TextEntry::new().bind_value(value).bind_selection(selection))
+      .set_label("Name")
+      .into_any()
+  });
+
+  let field = found(driver, Role::TextInput, "Name");
+
+  driver.type_text(field, "e");
+  driver.press(&typed("\u{301}"));
+
+  assert_eq!(value.get(), "e\u{301}", "the mark lands after its base");
+  assert_eq!(
+    selection.get(),
+    TextSelection::collapsed(1),
+    "the caret sits after the one cluster they make"
+  );
 }

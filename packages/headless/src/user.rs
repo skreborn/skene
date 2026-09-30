@@ -186,11 +186,14 @@ fn edit(node: NodeId, event: &KeyEvent) {
     return;
   }
 
-  let next = [&clusters[..from].concat(), insert, &clusters[to..].concat()].concat();
+  let before = clusters[..from].concat();
+  let next = [&before, insert, &clusters[to..].concat()].concat();
+  let end = before.len() + insert.len();
+  let caret = next
+    .grapheme_indices(true)
+    .take_while(|(byte, _)| *byte < end)
+    .count();
 
   trigger_change(node, &next);
-  trigger_selection_change(
-    node,
-    TextSelection::collapsed(from + insert.graphemes(true).count()),
-  );
+  trigger_selection_change(node, TextSelection::collapsed(caret));
 }

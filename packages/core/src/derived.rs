@@ -409,4 +409,97 @@ mod tests {
 
     owner.dispose();
   }
+
+  #[cfg(not(target_arch = "wasm32"))]
+  use proptest::prelude::*;
+
+  #[cfg(not(target_arch = "wasm32"))]
+  proptest! {
+    /// Any run of keyed lists, repeated keys among them, reconciles to nodes in the
+    /// lists' order: an item kept from the list before keeps its node, the nth item of
+    /// a key matching the nth before it, and every node left behind is destroyed.
+    #[test]
+    fn any_run_of_lists_reconciles_like_its_model(
+      lists in proptest::collection::vec(
+        proptest::collection::vec(0..6_u8, 0..10),
+        1..8,
+      ),
+    ) {
+      use std::collections::HashMap;
+
+      TestPlatform::reset();
+
+      let owner = Owner::new();
+      let (items, set_items) = signal(Vec::<u8>::new());
+      let built = Rc::new(std::cell::RefCell::new(HashMap::<NodeId, u8>::new()));
+      let parent = TestBox::node();
+      let (start, end) = Scene::<TestPlatform>::create_segment();
+
+      TestScene::with(|scene| scene.attach(parent, start, None));
+      owner.enter(|| {
+        let built = Rc::clone(&built);
+
+        reconcile::<TestPlatform, _, _, _>(
+          start,
+          move || items.get(),
+          |item| *item,
+          move |item| {
+            let node = TestBox::node();
+
+            built.borrow_mut().insert(node, item);
+
+            node
+          },
+        );
+      });
+
+      let mut previous: Vec<(u8, NodeId)> = Vec::new();
+
+      for list in lists {
+        set_items.set(list.clone());
+
+        let nodes = children(parent);
+
+        prop_assert_eq!(nodes.first(), Some(&start));
+        prop_assert_eq!(nodes.last(), Some(&end));
+
+        let content = &nodes[1..nodes.len() - 1];
+        let keys: Vec<u8> = content.iter().map(|node| built.borrow()[node]).collect();
+
+        prop_assert_eq!(&keys, &list);
+
+        // The nth occurrence of a key keeps the node of the nth occurrence before it.
+        let mut before: HashMap<u8, Vec<NodeId>> = HashMap::new();
+
+        for (key, node) in &previous {
+          before.entry(*key).or_default().push(*node);
+        }
+
+        let mut seen: HashMap<u8, usize> = HashMap::new();
+
+        for (key, node) in keys.iter().zip(content) {
+          let occurrence = seen.entry(*key).or_insert(0);
+
+          if let Some(kept) = before.get(key).and_then(|nodes| nodes.get(*occurrence)) {
+            prop_assert_eq!(kept, node, "the item keeps its node");
+          }
+
+          *occurrence += 1;
+        }
+
+        for (_, node) in &previous {
+          if !content.contains(node) {
+            prop_assert!(
+              TestScene::with(|scene| scene.record(*node).is_none()),
+              "a node left behind is destroyed"
+            );
+          }
+        }
+
+        previous = keys.into_iter().zip(content.iter().copied()).collect();
+      }
+
+      owner.dispose();
+    }
+  }
 }

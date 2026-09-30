@@ -1,7 +1,7 @@
 //! Server rendering of suspense: the render settles through the boundary, so the
 //! content serializes and the fallback never does.
 
-#![cfg(skene_leaf = "server")]
+#![cfg(skene_gui_platform = "server")]
 
 use skene_gui::{ErrorBoundary, Errors, Resource, Suspense, Text, View, derived, render_to_string};
 

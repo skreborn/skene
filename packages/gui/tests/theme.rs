@@ -2,7 +2,7 @@
 //! palettes, a palette flip that rebuilds nothing, and the scheme the app puts in
 //! force.
 
-#![cfg(skene_leaf = "host")]
+#![cfg(skene_gui_platform = "headless")]
 
 use skene_gui::{
   Activate,

@@ -1,6 +1,6 @@
 //! Server rendering of overlays: top-layer elements serialized closed.
 
-#![cfg(skene_leaf = "server")]
+#![cfg(skene_gui_platform = "server")]
 
 use skene_gui::{
   Container,

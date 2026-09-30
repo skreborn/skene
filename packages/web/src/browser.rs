@@ -75,7 +75,7 @@ use super::{
   markup::{MARKER_ATTRIBUTE, STYLE_ID},
   realize::{Realized, Realizer, Record},
 };
-use crate::hydration::STATE_SCRIPT_ID;
+use crate::resource_state::STATE_SCRIPT_ID;
 
 /// The DOM node type of a comment.
 const COMMENT_NODE: u16 = 8;
@@ -460,7 +460,7 @@ impl Dom {
       node.adopted = false;
     }
 
-    crate::hydration::finish();
+    crate::resource_state::finish();
 
     hydration.pending
   }
@@ -550,7 +550,7 @@ where
   V: View<Web>,
 {
   install_at(root, true);
-  crate::hydration::stage(state);
+  crate::resource_state::stage(state);
   let _ = mount(|| app().build());
 
   let pending = with_dom(Dom::finish_hydration);

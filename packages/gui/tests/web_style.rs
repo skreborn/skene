@@ -1,7 +1,7 @@
 //! Declarative style dynamics rendered to CSS: conditional variants, transitions, and
 //! keyframe animations—the no-script styling contract of server-rendered output.
 
-#![cfg(skene_leaf = "server")]
+#![cfg(skene_gui_platform = "server")]
 
 use skene_gui::{
   Column,

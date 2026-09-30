@@ -231,11 +231,9 @@ left half-done in a code comment.
     - Renames: `Show` and `Switch` to `Visibility` and `OneOf`, where `Visibility`
     already names the style value that hides a box; `stored_scheme` to `chosen_scheme`,
     beside a web-only `persisted_scheme`; the terminal's and headless's `Store` to
-    `Records`; `web/src/escape.rs` to `low_level.rs`; `skene_leaf` (`browser`,
-    `server`, `host`) to `skene_gui_platform` (`browser`, `server`, `headless`);
-    `web::hydration` to `resource_state`; the reactive crate's `value.rs`, `key()`,
-    `Position` and `provide`/`staged` to `tracked_cell.rs`, `field_key()`,
-    `SnapshotPlace` and `provide_extra`/`take_extra`; the choice and activation handlers
+    `Records`; the reactive crate's `value.rs`, `key()`, `Position` and
+    `provide`/`staged` to `tracked_cell.rs`, `field_key()`, `SnapshotPlace` and
+    `provide_extra`/`take_extra`; the choice and activation handlers
     and binders to `choose`/`chosen` for value groups and `activate` for commands, with
     `bind_` documented as a builder prefix; test files named by tier (`browser_*`,
     `server_*`), `render_next.rs` renamed and `misc.rs` split by topic.

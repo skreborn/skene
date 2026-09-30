@@ -249,7 +249,7 @@ fn begin_render() -> (NodeId, Owner) {
   Scene::<Web>::with(|scene| *scene = Scene::new());
   PREEMPT_SCHEME.with(|preempt| preempt.set(false));
   BOUNDARIES.with(|boundaries| boundaries.borrow_mut().clear());
-  crate::hydration::reset_sources();
+  crate::resource_state::reset_sources();
   forget_static_routes();
   task::install_executor();
 
@@ -284,7 +284,7 @@ where
 fn end_render(scope: Owner) {
   scope.dispose();
   task::clear();
-  crate::hydration::reset_sources();
+  crate::resource_state::reset_sources();
   BOUNDARIES.with(|boundaries| boundaries.borrow_mut().clear());
   Scene::<Web>::with(|scene| *scene = Scene::new());
   TREE.with(|tree| *tree.borrow_mut() = Tree::new());
@@ -305,7 +305,7 @@ where
   build_app(root, scope, None, app);
   task::stabilize();
 
-  let state = crate::hydration::collect_state();
+  let state = crate::resource_state::collect_state();
   let (styles, head, body, language) = with_tree(|tree| {
     (
       tree.render_styles(),
@@ -419,6 +419,6 @@ where
     );
   }
 
-  flush(StreamPiece::Tail(crate::hydration::collect_state()));
+  flush(StreamPiece::Tail(crate::resource_state::collect_state()));
   end_render(scope);
 }

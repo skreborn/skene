@@ -1,9 +1,9 @@
 //! The skene web platform: the [`Web`] platform type, the shared compiler of the property
 //! model to CSS, and two leaves selected by target.
 //!
-//! The browser leaf (`browser`, `skene_leaf = "browser"`) realizes against a live DOM
-//! and the server leaf (`server`, `skene_leaf = "server"`) against a string tree, both emitting
-//! the same web semantics, so a node styled the same way gets the same
+//! The browser leaf (`browser`, `skene_gui_platform = "browser"`) realizes against a live DOM
+//! and the server leaf (`server`, `skene_gui_platform = "server"`) against a string tree, both
+//! emitting the same web semantics, so a node styled the same way gets the same
 //! content-addressed class on either leaf and a served page hydrates in place. The
 //! compiler and the element choices are shared; each leaf implements
 //! [`Platform`](skene_core::Platform) for [`Web`] and exposes its own entry points beside
@@ -18,52 +18,52 @@
 //! DOM-reaching code fails to compile for the server. [`RenderHints`] is the
 //! environment a server render answers with, parsed from a request's client hints.
 
-#[cfg(skene_leaf = "browser")]
+#[cfg(skene_gui_platform = "browser")]
 mod browser;
 #[cfg_attr(
-  skene_leaf = "host",
+  skene_gui_platform = "headless",
   expect(dead_code, reason = "the compiler serves the leaves alone")
 )]
 mod compile;
 mod condition;
 mod declarations;
-#[cfg(not(skene_leaf = "browser"))]
+#[cfg(not(skene_gui_platform = "browser"))]
 mod document;
-mod escape;
 mod expr;
-#[cfg(skene_leaf = "browser")]
+#[cfg(skene_gui_platform = "browser")]
 mod gpu;
 mod hints;
-mod hydration;
 #[cfg_attr(
-  all(skene_leaf = "host", not(test)),
+  all(skene_gui_platform = "headless", not(test)),
   expect(dead_code, reason = "the interner serves the leaves alone")
 )]
 mod interner;
-#[cfg(not(skene_leaf = "host"))]
+#[cfg(not(skene_gui_platform = "headless"))]
 mod logging;
-#[cfg(not(skene_leaf = "host"))]
+mod low_level;
+#[cfg(not(skene_gui_platform = "headless"))]
 mod markup;
 mod motion;
-#[cfg(not(skene_leaf = "host"))]
+#[cfg(not(skene_gui_platform = "headless"))]
 mod realize;
-#[cfg(skene_leaf = "server")]
+mod resource_state;
+#[cfg(skene_gui_platform = "server")]
 mod server;
-#[cfg(not(skene_leaf = "host"))]
+#[cfg(not(skene_gui_platform = "headless"))]
 mod style_book;
-#[cfg(skene_leaf = "browser")]
+#[cfg(skene_gui_platform = "browser")]
 pub mod testing;
 #[cfg_attr(
-  skene_leaf = "host",
+  skene_gui_platform = "headless",
   expect(dead_code, reason = "tokens compile for the leaves alone")
 )]
 mod token;
 
-#[cfg(skene_leaf = "browser")]
+#[cfg(skene_gui_platform = "browser")]
 pub use self::browser::boot_with_dev_state;
-#[cfg(skene_leaf = "browser")]
+#[cfg(skene_gui_platform = "browser")]
 pub use self::browser::uninstall;
-#[cfg(skene_leaf = "browser")]
+#[cfg(skene_gui_platform = "browser")]
 pub use self::browser::{
   add_head_element,
   add_head_title,
@@ -94,12 +94,12 @@ pub use self::browser::{
   view_transitions_enabled,
   watch_media,
 };
-#[cfg(not(skene_leaf = "browser"))]
+#[cfg(not(skene_gui_platform = "browser"))]
 pub use self::document::Document;
-#[cfg(skene_leaf = "browser")]
-pub use self::escape::WebDom;
-#[cfg(not(skene_leaf = "host"))]
-pub use self::hydration::{
+#[cfg(skene_gui_platform = "browser")]
+pub use self::low_level::WebDom;
+#[cfg(not(skene_gui_platform = "headless"))]
+pub use self::resource_state::{
   LazyRegion,
   adopt_next,
   adopt_tagged,
@@ -109,7 +109,7 @@ pub use self::hydration::{
   register_tagged_source,
   within_lazy,
 };
-#[cfg(skene_leaf = "server")]
+#[cfg(skene_gui_platform = "server")]
 pub use self::server::{
   Rendered,
   StreamPiece,
@@ -143,9 +143,9 @@ pub use self::server::{
 pub use self::{
   condition::{CONTROL_ATTRIBUTE, SCHEME_ATTRIBUTE},
   declarations::Declarations,
-  escape::WebMarkup,
   hints::RenderHints,
-  hydration::{HydrationSource, STATE_SCRIPT_ID},
+  low_level::WebMarkup,
+  resource_state::{HydrationSource, STATE_SCRIPT_ID},
   token::WebTokenValue,
 };
 
@@ -154,11 +154,11 @@ pub use self::{
 ///
 /// It declares the framework's cascade layers and fills `skene.reset`, beneath the
 /// compiled rules' `skene.style`.
-#[cfg(not(skene_leaf = "host"))]
+#[cfg(not(skene_gui_platform = "headless"))]
 const RESET_CSS: &str = include_str!("reset.css");
 
 /// Opens the cascade layer every compiled rule sits in, which a `}` closes.
-#[cfg(not(skene_leaf = "host"))]
+#[cfg(not(skene_gui_platform = "headless"))]
 const STYLE_LAYER: &str = "@layer skene.style{";
 
 /// The web platform: zero-sized, implementing the portable vocabulary over the DOM in the

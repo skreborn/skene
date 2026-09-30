@@ -1,7 +1,7 @@
 //! The document a page is served as: one template for the server leaf's pages and the
 //! CLI's client-rendered shell.
 
-use crate::hydration::STATE_SCRIPT_ID;
+use crate::resource_state::STATE_SCRIPT_ID;
 
 /// The dev loop's script: it keeps the state snapshot in the page's own storage across a
 /// reload—the origin private file system on the dev server's word, session storage as
@@ -131,7 +131,7 @@ pub(crate) fn state_script(state: &str) -> String {
 
 /// Appends `text` with the characters HTML text content reserves escaped.
 #[cfg_attr(
-  skene_leaf = "host",
+  skene_gui_platform = "headless",
   expect(dead_code, reason = "the server leaf alone serializes text")
 )]
 pub(crate) fn escape_text(text: &str, out: &mut String) {

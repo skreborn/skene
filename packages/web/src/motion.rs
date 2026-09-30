@@ -18,7 +18,7 @@ pub(crate) const NO_PREFERENCE: &str = "(prefers-reduced-motion: no-preference)"
 pub(crate) const REDUCE: &str = "(prefers-reduced-motion: reduce)";
 
 /// The rule opting a document into cross-document view transitions.
-#[cfg(not(skene_leaf = "host"))]
+#[cfg(not(skene_gui_platform = "headless"))]
 pub(crate) const VIEW_TRANSITION_RULE: &str = "@view-transition{navigation:auto}";
 
 /// The CSS property name a transition targets.

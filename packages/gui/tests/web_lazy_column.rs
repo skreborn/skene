@@ -1,7 +1,7 @@
 //! Server rendering of the virtual list: an unmeasured viewport serializes only the
 //! overscan margin, the rest as spacer extent.
 
-#![cfg(skene_leaf = "server")]
+#![cfg(skene_gui_platform = "server")]
 
 use skene_gui::{LazyColumn, LazyRow, Text, render_to_string};
 

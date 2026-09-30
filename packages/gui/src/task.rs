@@ -22,8 +22,8 @@ pub fn spawn(future: impl Future<Output = ()> + 'static) -> TaskHandle {
 /// Installs the active platform's executor as this thread's spawner.
 #[inline(always)]
 pub(crate) fn install_executor() {
-  #[cfg(not(skene_leaf = "host"))]
+  #[cfg(not(skene_gui_platform = "headless"))]
   skene_web::install_executor();
-  #[cfg(skene_leaf = "host")]
+  #[cfg(skene_gui_platform = "headless")]
   skene_headless::install_executor();
 }

@@ -1,7 +1,7 @@
 //! Headless view tests: the GUI facade's views realized against the headless platform,
 //! built and driven without a browser.
 
-#![cfg(skene_leaf = "host")]
+#![cfg(skene_gui_platform = "headless")]
 
 use std::{
   cell::{Cell, RefCell},

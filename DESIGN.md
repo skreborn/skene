@@ -807,7 +807,7 @@ string tree implement: the records, the element choices, attributes, classes, sl
 token definitions, control state and accessibility, so the two cannot drift; each leaf
 adds only what is its own:
 
-- **browser** (`skene_leaf = "browser"`)—the browser. DOM sink, the stylesheet sink,
+- **browser** (`skene_gui_platform = "browser"`)—the browser. DOM sink, the stylesheet sink,
   root-level event delegation with a stamped node id (one listener per event type,
   `scroll` and enter/leave included), one shared `ResizeObserver`, hydration
   (creation-order `data-h` markers, loud mismatch, the server's stylesheet adopted rather
@@ -817,7 +817,7 @@ adds only what is its own:
   classes, and the order-keyed resource values no resource adopted dropped), scroll and
   focus restoration keyed by a segment's end anchor, the
   `WebDom` escape trait, the History binding and the head.
-- **server** (`skene_leaf = "server"`)—the serializer. Renders its string tree to HTML plus
+- **server** (`skene_gui_platform = "server"`)—the serializer. Renders its string tree to HTML plus
   the interned stylesheet; drives async to a fixpoint on the host executor, parked until
   a waker fires, before serializing, under a render deadline; streams in document order around `Deferred`
   boundaries with a style delta per chunk; serializes resource state for the client to

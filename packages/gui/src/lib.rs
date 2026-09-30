@@ -10,7 +10,7 @@
 
 pub mod media;
 pub mod prelude;
-#[cfg(skene_leaf = "browser")]
+#[cfg(skene_gui_platform = "browser")]
 pub mod split;
 pub mod view_transitions;
 
@@ -122,7 +122,7 @@ pub use skene_core::{
 };
 /// The host platform's test seams (`trigger_` events, tree inspection), for headless
 /// view tests on the host.
-#[cfg(skene_leaf = "host")]
+#[cfg(skene_gui_platform = "headless")]
 pub use skene_headless as headless;
 pub use skene_macros::{lazy, main};
 pub use skene_reactive as reactive;
@@ -131,9 +131,9 @@ pub use skene_reactive as reactive;
 ///
 /// The only web-specific names the facade exposes, kept out of [`prelude`] so portable
 /// app code never names a platform.
-#[cfg(not(skene_leaf = "host"))]
+#[cfg(not(skene_gui_platform = "headless"))]
 pub use skene_web as web;
-#[cfg(skene_leaf = "server")]
+#[cfg(skene_gui_platform = "server")]
 pub use skene_web::Rendered;
 pub use tracing;
 #[cfg(target_arch = "wasm32")]
@@ -153,12 +153,12 @@ pub use crate::{
 /// The platform the build selected: the web platform in the browser
 /// (`wasm32-unknown-unknown`) and on a server render (`--cfg skene_platform="server"`),
 /// the headless host platform elsewhere.
-#[cfg(not(skene_leaf = "host"))]
+#[cfg(not(skene_gui_platform = "headless"))]
 pub type ActivePlatform = skene_web::Web;
 /// The platform the build selected: the web platform in the browser
 /// (`wasm32-unknown-unknown`) and on a server render (`--cfg skene_platform="server"`),
 /// the headless host platform elsewhere.
-#[cfg(skene_leaf = "host")]
+#[cfg(skene_gui_platform = "headless")]
 pub type ActivePlatform = skene_headless::Headless;
 
 skene_common::facade!(ActivePlatform, f32, "logical pixels");
@@ -179,7 +179,7 @@ pub fn client_only(build: impl FnOnce() -> NodeId + 'static) -> impl View {
 
 /// Mounts and runs the application in the browser; a server-rendered page is hydrated
 /// in place.
-#[cfg(skene_leaf = "browser")]
+#[cfg(skene_gui_platform = "browser")]
 #[inline(always)]
 pub fn launch<V, F>(app: F)
 where
@@ -197,7 +197,7 @@ where
 ///
 /// The host has no platform to show it on; this is the entry a host build of an app
 /// runs, so the same `#[main]` compiles everywhere.
-#[cfg(skene_leaf = "host")]
+#[cfg(skene_gui_platform = "headless")]
 pub fn launch<V, F>(app: F)
 where
   F: FnOnce() -> V + 'static,
@@ -216,7 +216,7 @@ where
 ///
 /// It builds the tree, drives its resources until they settle, and serializes the
 /// result plus the resource state for hydration; see [`skene_web::render_to_string`].
-#[cfg(skene_leaf = "server")]
+#[cfg(skene_gui_platform = "server")]
 #[inline(always)]
 pub fn render_to_string<V, F>(app: F) -> Rendered
 where
@@ -229,7 +229,7 @@ where
 /// Renders the application for the given request path: the router (when installed via
 /// [`install_router`]) resolves against `path`, and the render proceeds as
 /// [`render_to_string`].
-#[cfg(skene_leaf = "server")]
+#[cfg(skene_gui_platform = "server")]
 pub fn render_to_string_at<V, F>(path: &str, app: F) -> Rendered
 where
   F: FnOnce() -> V + 'static,
@@ -243,26 +243,26 @@ where
 /// The environment variable carrying a render's client hints: the request's hint
 /// headers, one `Name: value` per line, read into
 /// [`RenderHints`](skene_web::RenderHints) before the render.
-#[cfg(skene_leaf = "server")]
+#[cfg(skene_gui_platform = "server")]
 pub const HINTS_VARIABLE: &str = "SKENE_HINTS";
 
 /// The environment variable carrying the nonce a render's inline scripts carry, as the
 /// response's Content Security Policy names it; see
 /// [`set_script_nonce`](skene_web::set_script_nonce).
-#[cfg(skene_leaf = "server")]
+#[cfg(skene_gui_platform = "server")]
 pub const NONCE_VARIABLE: &str = "SKENE_SCRIPT_NONCE";
 
 /// The environment variable that, set, makes the pages join the dev loop of
 /// `skene run web`; see [`set_dev_loop`](skene_web::set_dev_loop).
-#[cfg(skene_leaf = "server")]
+#[cfg(skene_gui_platform = "server")]
 pub const DEV_VARIABLE: &str = "SKENE_DEV";
 
 /// The first line and the last of `--routes` output, the routes one per line between.
-#[cfg(skene_leaf = "server")]
+#[cfg(skene_gui_platform = "server")]
 pub const ROUTES_MARKERS: [&str; 2] = ["--skene-routes--", "--skene-routes-end--"];
 
 /// What `app-server --help` prints.
-#[cfg(skene_leaf = "server")]
+#[cfg(skene_gui_platform = "server")]
 const USAGE: &str = "usage: app-server [path | --stream path | --routes | --serve | --help]
 
   path            render the page at path (default /) to stdout
@@ -291,7 +291,7 @@ the pages join the dev loop.";
 ///
 /// This makes the app's server build a plain command—`app-server /some/path` prints
 /// the document—which is exactly the interface a server or a generator embeds.
-#[cfg(skene_leaf = "server")]
+#[cfg(skene_gui_platform = "server")]
 pub fn render_main<V, F>(bundle: &str, app: F)
 where
   F: Fn() -> V + Clone + 'static,
@@ -376,13 +376,13 @@ where
 /// the chunks concatenate, in order, into the markup [`render_to_string`] would
 /// produce with the deltas beside the content they style.
 #[derive(Debug)]
-#[cfg(skene_leaf = "server")]
+#[cfg(skene_gui_platform = "server")]
 #[must_use]
 pub struct Stream {
   chunks: Vec<String>,
 }
 
-#[cfg(skene_leaf = "server")]
+#[cfg(skene_gui_platform = "server")]
 impl Stream {
   /// The chunks, in flush order.
   #[inline(always)]
@@ -415,7 +415,7 @@ impl Stream {
 /// response as they are produced, so the client sees the page progressively without
 /// waiting on the slowest data, and, because the chunks are emitted in document order
 /// with their styles, with no JavaScript required.
-#[cfg(skene_leaf = "server")]
+#[cfg(skene_gui_platform = "server")]
 pub fn render_to_stream<V, F>(app: F) -> Stream
 where
   F: FnOnce() -> V + 'static,
@@ -452,7 +452,7 @@ where
 /// The flushes are the opening shell, a body chunk per settled [`Deferred`] boundary,
 /// and the closing tail, and they concatenate to [`render_to_stream`]'s
 /// [`document`](Stream::document), so writing each one to a response streams the page.
-#[cfg(skene_leaf = "server")]
+#[cfg(skene_gui_platform = "server")]
 pub fn render_page_stream<V, F>(app: F, mut sink: impl FnMut(&str))
 where
   F: FnOnce() -> V + 'static,
@@ -478,7 +478,7 @@ where
 /// nonce the page's inline scripts carry as `Script-Nonce`; a response's are the
 /// complete page. Each is for that request alone, and a request without them renders
 /// against the defaults.
-#[cfg(skene_leaf = "server")]
+#[cfg(skene_gui_platform = "server")]
 pub fn serve_renders<V, F>(app: F)
 where
   F: Fn() -> V + Clone + 'static,
@@ -515,7 +515,7 @@ where
 /// The stream a protocol writes to: the process's standard output, taken aside, and
 /// standard output itself pointed at standard error, so what the app prints stays out of
 /// the protocol's way. Standard output as it is where it cannot be taken aside.
-#[cfg(skene_leaf = "server")]
+#[cfg(skene_gui_platform = "server")]
 fn protocol_output() -> Box<dyn std::io::Write> {
   #[cfg(unix)]
   {
@@ -534,7 +534,7 @@ fn protocol_output() -> Box<dyn std::io::Write> {
 /// Reads one length-framed message: `Content-Length: <bytes>` on a line, an empty
 /// line, and that many bytes of UTF-8; `None` at the end of the input or for a
 /// malformed message.
-#[cfg(skene_leaf = "server")]
+#[cfg(skene_gui_platform = "server")]
 fn read_framed(input: &mut impl std::io::BufRead) -> Option<String> {
   let mut header = String::new();
 

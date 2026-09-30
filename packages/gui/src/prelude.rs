@@ -78,9 +78,9 @@ pub use skene_reactive::{
 };
 pub use tracing::{debug, error, info, trace, warn};
 
-#[cfg(skene_leaf = "browser")]
+#[cfg(skene_gui_platform = "browser")]
 pub use crate::launch;
-#[cfg(skene_leaf = "server")]
+#[cfg(skene_gui_platform = "server")]
 pub use crate::render_to_string;
 pub use crate::{
   AnyView,

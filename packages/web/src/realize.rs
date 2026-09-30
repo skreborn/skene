@@ -173,7 +173,7 @@ pub(crate) enum Realized {
   },
   /// An overlay.
   #[cfg_attr(
-    skene_leaf = "server",
+    skene_gui_platform = "server",
     expect(
       dead_code,
       reason = "the server renders every overlay closed, unplaced"
@@ -226,7 +226,7 @@ pub(crate) struct Record<S: Sink> {
   pub adopted: bool,
   /// What the leaf keeps beside.
   #[cfg_attr(
-    skene_leaf = "server",
+    skene_gui_platform = "server",
     expect(dead_code, reason = "the server keeps nothing beside the record")
   )]
   pub extra: S::Extra,

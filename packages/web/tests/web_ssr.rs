@@ -3,7 +3,7 @@
 //!
 //! Run with the server platform selected:
 //! `RUSTFLAGS='--cfg skene_platform="server"' cargo test -p skene-web --test web_ssr`.
-#![cfg(skene_leaf = "server")]
+#![cfg(skene_gui_platform = "server")]
 
 use skene_common::{
   BasicCheckbox,

@@ -38,7 +38,7 @@ enum Leaf {
 }
 
 impl Leaf {
-  /// The leaf's name, as `skene_leaf` spells it.
+  /// The name its snapshots carry.
   const fn name(self) -> &'static str {
     match self {
       Self::Host => "host",

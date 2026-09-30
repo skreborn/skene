@@ -14,7 +14,7 @@ use skene_common::Container;
 use skene_core::{AnyKind, HasChild, IntoChildOf, NodeId, PlainChild, Platform, Size, View};
 
 /// The sea the map paints, as CSS.
-#[cfg(not(skene_leaf = "host"))]
+#[cfg(not(skene_gui_platform = "headless"))]
 const SEA: &str = "oklch(0.72 0.1 230)";
 
 /// A map, sized by the container around it.
@@ -82,7 +82,7 @@ impl<P: MapHost> View<P> for Map<P> {
   }
 }
 
-#[cfg(not(skene_leaf = "host"))]
+#[cfg(not(skene_gui_platform = "headless"))]
 impl MapHost for skene_web::Web {
   /// The canvas once the page runs script, the sea's box before then and on the
   /// server.
@@ -99,7 +99,7 @@ impl MapHost for skene_web::Web {
   }
 }
 
-#[cfg(not(skene_leaf = "host"))]
+#[cfg(not(skene_gui_platform = "headless"))]
 impl Map<skene_web::Web> {
   /// A node realized as an element of `tag` dressed as the map's surface, then handed
   /// to `draw`, inside a container of the map's size.
@@ -127,7 +127,7 @@ impl Map<skene_web::Web> {
   }
 
   /// The canvas the map paints.
-  #[cfg(skene_leaf = "browser")]
+  #[cfg(skene_gui_platform = "browser")]
   fn canvas(self) -> NodeId {
     use skene_web::{Web, WebDom, WebMarkup};
     use wasm_bindgen::JsCast;
@@ -152,13 +152,13 @@ impl Map<skene_web::Web> {
   }
 
   /// The sea's box: a server render never builds the canvas.
-  #[cfg(skene_leaf = "server")]
+  #[cfg(skene_gui_platform = "server")]
   fn canvas(self) -> NodeId {
     self.surface("div", |_| {})
   }
 }
 
-#[cfg(skene_leaf = "host")]
+#[cfg(skene_gui_platform = "headless")]
 impl MapHost for skene_headless::Headless {
   /// The sea's box, an image named "map".
   fn build_map(map: Map<Self>) -> NodeId {
@@ -174,7 +174,7 @@ impl MapHost for skene_headless::Headless {
 }
 
 /// Paints the map: land over the sea, a road across it.
-#[cfg(skene_leaf = "browser")]
+#[cfg(skene_gui_platform = "browser")]
 fn paint(canvas: &web_sys::HtmlCanvasElement, width: u32, height: u32) {
   use wasm_bindgen::JsCast;
 

@@ -1,6 +1,6 @@
 //! Server rendering of the document head: the title and registered head elements.
 
-#![cfg(skene_leaf = "server")]
+#![cfg(skene_gui_platform = "server")]
 
 use skene_gui::{
   Column,

@@ -4,7 +4,7 @@ use std::{future::Future, ops::Deref};
 
 use serde::{Serialize, de::DeserializeOwned};
 pub use skene_reactive::LoadState;
-#[cfg(not(skene_leaf = "host"))]
+#[cfg(not(skene_gui_platform = "headless"))]
 use skene_web as platform;
 
 use crate::task::install_executor;
@@ -66,7 +66,7 @@ impl<T: 'static> Resource<T> {
   {
     install_executor();
 
-    #[cfg(not(skene_leaf = "host"))]
+    #[cfg(not(skene_gui_platform = "headless"))]
     {
       if let Some(state) = platform::adopt_next()
         && let Ok(adopted) = serde_json::from_str::<T>(&state)
@@ -81,7 +81,7 @@ impl<T: 'static> Resource<T> {
       resource
     }
 
-    #[cfg(skene_leaf = "host")]
+    #[cfg(skene_gui_platform = "headless")]
     Self(skene_reactive::Resource::new(load))
   }
 
@@ -102,7 +102,7 @@ impl<T: 'static> Resource<T> {
   {
     install_executor();
 
-    #[cfg(not(skene_leaf = "host"))]
+    #[cfg(not(skene_gui_platform = "headless"))]
     {
       if let Some(state) = platform::adopt_tagged(tag)
         && let Ok(adopted) = serde_json::from_str::<T>(&state)
@@ -117,7 +117,7 @@ impl<T: 'static> Resource<T> {
       resource
     }
 
-    #[cfg(skene_leaf = "host")]
+    #[cfg(skene_gui_platform = "headless")]
     {
       let _ = tag;
 
@@ -138,7 +138,7 @@ impl<T: 'static> Resource<T> {
   {
     install_executor();
 
-    #[cfg(not(skene_leaf = "host"))]
+    #[cfg(not(skene_gui_platform = "headless"))]
     if platform::is_server() {
       return Self(skene_reactive::Resource::unloaded(load));
     }
@@ -147,7 +147,7 @@ impl<T: 'static> Resource<T> {
   }
 
   /// The serializer a server render drains once this resource settles.
-  #[cfg(not(skene_leaf = "host"))]
+  #[cfg(not(skene_gui_platform = "headless"))]
   fn source(&self) -> platform::HydrationSource
   where
     T: Serialize,

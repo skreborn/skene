@@ -97,7 +97,7 @@ impl FormElement {
   }
 
   /// Whether the element is a checkbox or a radio: one the platform toggles itself.
-  #[cfg(skene_leaf = "browser")]
+  #[cfg(skene_gui_platform = "browser")]
   #[inline(always)]
   pub(crate) fn is_toggle(self) -> bool {
     matches!(self.kind, Some("checkbox" | "radio"))

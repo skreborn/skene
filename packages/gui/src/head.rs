@@ -13,7 +13,7 @@
 //! test to read back.
 
 use skene_common::gui::HeadId;
-#[cfg(skene_leaf = "host")]
+#[cfg(skene_gui_platform = "headless")]
 use skene_headless::{
   add_head_element,
   add_head_title,
@@ -22,7 +22,7 @@ use skene_headless::{
   set_head_title,
 };
 use skene_reactive::{Effect, on_cleanup, untrack};
-#[cfg(not(skene_leaf = "host"))]
+#[cfg(not(skene_gui_platform = "headless"))]
 use skene_web::{
   add_head_element,
   add_head_title,

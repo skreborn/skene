@@ -2,7 +2,7 @@
 //! tree. Guards output parity (interned class names, hydration markers, markup shape)
 //! across refactors of the realization pipeline.
 
-#![cfg(skene_leaf = "server")]
+#![cfg(skene_gui_platform = "server")]
 
 use skene_gui::{
   Column,

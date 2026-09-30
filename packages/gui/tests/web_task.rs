@@ -2,7 +2,7 @@
 //!
 //! Run in a headless browser:
 //! `cargo test -p skene-gui --target wasm32-unknown-unknown`.
-#![cfg(skene_leaf = "browser")]
+#![cfg(skene_gui_platform = "browser")]
 
 use std::{cell::Cell, rc::Rc};
 

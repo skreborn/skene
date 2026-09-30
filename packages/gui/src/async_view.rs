@@ -12,11 +12,11 @@ use skene_reactive::Owner;
 use crate::ActivePlatform;
 
 /// A lazy segment's place among the hydrating resources, on the leaves that hydrate.
-#[cfg(not(skene_leaf = "host"))]
+#[cfg(not(skene_gui_platform = "headless"))]
 type Region = skene_web::LazyRegion;
 
 /// The host has no hydration, so a lazy segment has no place among resources.
-#[cfg(skene_leaf = "host")]
+#[cfg(skene_gui_platform = "headless")]
 struct Region;
 
 /// A subtree whose content arrives asynchronously—typically a [`macro@lazy`](crate::lazy)
@@ -86,19 +86,19 @@ impl AsyncView {
 /// The lazy segment's place among the hydrating resources, taken as it is built.
 #[inline(always)]
 #[cfg_attr(
-  skene_leaf = "host",
+  skene_gui_platform = "headless",
   expect(
     clippy::missing_const_for_fn,
     reason = "the web leaves' body is not const"
   )
 )]
 fn enter_region() -> Region {
-  #[cfg(not(skene_leaf = "host"))]
+  #[cfg(not(skene_gui_platform = "headless"))]
   {
     skene_web::enter_lazy()
   }
 
-  #[cfg(skene_leaf = "host")]
+  #[cfg(skene_gui_platform = "headless")]
   Region
 }
 
@@ -106,12 +106,12 @@ fn enter_region() -> Region {
 /// adopt under the segment.
 #[inline(always)]
 fn within_region<R>(region: &Region, work: impl FnOnce() -> R) -> R {
-  #[cfg(not(skene_leaf = "host"))]
+  #[cfg(not(skene_gui_platform = "headless"))]
   {
     skene_web::within_lazy(region, work)
   }
 
-  #[cfg(skene_leaf = "host")]
+  #[cfg(skene_gui_platform = "headless")]
   {
     let _ = region;
 
@@ -150,19 +150,19 @@ impl<F: Future> Future for InRegion<F> {
 /// Claims the server's markup in the segment, when hydrating over some.
 #[inline(always)]
 #[cfg_attr(
-  not(skene_leaf = "browser"),
+  not(skene_gui_platform = "browser"),
   expect(
     clippy::missing_const_for_fn,
     reason = "the browser leaf's body is not const"
   )
 )]
 fn claim(start: NodeId) -> bool {
-  #[cfg(skene_leaf = "browser")]
+  #[cfg(skene_gui_platform = "browser")]
   {
     skene_web::claim_lazy(start)
   }
 
-  #[cfg(not(skene_leaf = "browser"))]
+  #[cfg(not(skene_gui_platform = "browser"))]
   {
     let _ = start;
 
@@ -173,17 +173,17 @@ fn claim(start: NodeId) -> bool {
 /// Removes the claimed markup, as the real content arrives.
 #[inline(always)]
 #[cfg_attr(
-  not(skene_leaf = "browser"),
+  not(skene_gui_platform = "browser"),
   expect(
     clippy::missing_const_for_fn,
     reason = "the browser leaf's body is not const"
   )
 )]
 fn discard(start: NodeId) {
-  #[cfg(skene_leaf = "browser")]
+  #[cfg(skene_gui_platform = "browser")]
   skene_web::discard_lazy(start);
 
-  #[cfg(not(skene_leaf = "browser"))]
+  #[cfg(not(skene_gui_platform = "browser"))]
   let _ = start;
 }
 

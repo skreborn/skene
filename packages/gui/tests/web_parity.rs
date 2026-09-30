@@ -6,7 +6,7 @@
 //! platform resolving through core shares, the terminal among them. A case in motion
 //! steps both platforms' clocks alike: the headless one by its frame, the engine's by
 //! seeking its animations.
-#![cfg(skene_leaf = "browser")]
+#![cfg(skene_gui_platform = "browser")]
 
 use std::{cell::Cell, time::Duration};
 

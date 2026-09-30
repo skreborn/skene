@@ -16,7 +16,7 @@ use skene_common::routing::{Route, Router, StaticRoutes};
 /// Pair the returned router with a [`derived`](crate::derived) subtree or a
 /// [`Switch`](crate::Switch) keyed on [`route`](Router::route); read it anywhere
 /// beneath with [`Router::current`].
-#[cfg(skene_leaf = "browser")]
+#[cfg(skene_gui_platform = "browser")]
 pub fn install_router<R: Route>(fallback: R) -> Router<R> {
   let router = Router::new(fallback);
   let _ = router.apply_path(&skene_web::current_path());
@@ -34,7 +34,7 @@ pub fn install_router<R: Route>(fallback: R) -> Router<R> {
 
 /// Creates the app's router from the requested path, and provides it to the current
 /// scope. Navigation stays in memory—a server render is one route.
-#[cfg(skene_leaf = "server")]
+#[cfg(skene_gui_platform = "server")]
 pub fn install_router<R: Route>(fallback: R) -> Router<R> {
   let router = Router::new(fallback);
   let _ = router.apply_path(&skene_web::current_path());
@@ -46,7 +46,7 @@ pub fn install_router<R: Route>(fallback: R) -> Router<R> {
 
 /// Creates the app's router at `fallback`, and provides it to the current scope.
 /// Navigation stays in memory—the host owns no URL.
-#[cfg(skene_leaf = "host")]
+#[cfg(skene_gui_platform = "headless")]
 pub fn install_router<R: Route>(fallback: R) -> Router<R> {
   let router = Router::new(fallback);
 
@@ -60,7 +60,7 @@ pub fn install_router<R: Route>(fallback: R) -> Router<R> {
 ///
 /// The enumeration also reaches the build tool, so `skene build web --static` renders
 /// every route without being told them.
-#[cfg(not(skene_leaf = "server"))]
+#[cfg(not(skene_gui_platform = "server"))]
 #[inline(always)]
 pub fn install_static_router<R: StaticRoutes>(fallback: R) -> Router<R> {
   install_router(fallback)
@@ -68,7 +68,7 @@ pub fn install_static_router<R: StaticRoutes>(fallback: R) -> Router<R> {
 
 /// [`install_router`], recording the enumerable routes for the build tool: `skene
 /// build web --static` renders every route without being told them.
-#[cfg(skene_leaf = "server")]
+#[cfg(skene_gui_platform = "server")]
 pub fn install_static_router<R: StaticRoutes>(fallback: R) -> Router<R> {
   skene_web::record_static_routes(R::all().iter().map(Route::to_path).collect());
 

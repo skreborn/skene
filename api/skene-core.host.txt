@@ -3365,6 +3365,22 @@ pub fn skene_core::PickerOption::fmt(&self, &mut core::fmt::Formatter<'_>) -> co
 impl core::hash::Hash for skene_core::PickerOption
 pub fn skene_core::PickerOption::hash<__H: core::hash::Hasher>(&self, &mut __H)
 impl core::marker::StructuralPartialEq for skene_core::PickerOption
+pub struct skene_core::Piece
+impl skene_core::Piece
+pub fn skene_core::Piece::discard(self)
+pub const fn skene_core::Piece::node(self) -> skene_core::NodeId
+pub fn skene_core::Piece::pause(self)
+pub fn skene_core::Piece::resume(self)
+pub const fn skene_core::Piece::scope(self) -> skene_reactive::owner::Owner
+impl core::clone::Clone for skene_core::Piece
+pub fn skene_core::Piece::clone(&self) -> skene_core::Piece
+impl core::cmp::Eq for skene_core::Piece
+impl core::cmp::PartialEq for skene_core::Piece
+pub fn skene_core::Piece::eq(&self, &skene_core::Piece) -> bool
+impl core::fmt::Debug for skene_core::Piece
+pub fn skene_core::Piece::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for skene_core::Piece
+impl core::marker::StructuralPartialEq for skene_core::Piece
 pub struct skene_core::Plain
 impl core::clone::Clone for skene_core::Plain
 pub fn skene_core::Plain::clone(&self) -> skene_core::Plain
@@ -3713,6 +3729,18 @@ impl core::marker::StructuralPartialEq for skene_core::ScrollEvent
 pub struct skene_core::Seal(_)
 impl core::fmt::Debug for skene_core::Seal
 pub fn skene_core::Seal::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_core::Segment<P: skene_core::Platform>
+impl<P: skene_core::Platform> skene_core::Segment<P>
+pub fn skene_core::Segment<P>::build(&self, skene_reactive::owner::Owner, impl core::ops::function::FnOnce() -> skene_core::NodeId) -> skene_core::Piece
+pub fn skene_core::Segment<P>::mount(&self, skene_core::Piece)
+pub fn skene_core::Segment<P>::mount_before(&self, skene_core::Piece, skene_core::Piece)
+pub fn skene_core::Segment<P>::new() -> Self
+pub const fn skene_core::Segment<P>::start(&self) -> skene_core::NodeId
+pub fn skene_core::Segment<P>::unmount(&self, skene_core::Piece)
+impl<P: skene_core::Platform> core::default::Default for skene_core::Segment<P>
+pub fn skene_core::Segment<P>::default() -> Self
+impl<P: skene_core::Platform> core::fmt::Debug for skene_core::Segment<P>
+pub fn skene_core::Segment<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_core::Shortcut
 impl skene_core::Shortcut
 pub const fn skene_core::Shortcut::key(&self) -> &'static str

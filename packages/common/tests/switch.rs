@@ -76,6 +76,48 @@ fn switch_keeps_a_branch_and_its_state_across_a_flip() {
   owner.dispose();
 }
 
+/// A branch not shown pauses its effects and catches up once it shows again.
+#[test]
+fn a_hidden_branch_pauses_until_it_shows() {
+  reset();
+
+  let owner = Owner::new();
+  let key = Signal::opaque("a");
+  let count = Signal::opaque(0);
+  let root = owner.enter(|| {
+    Column::new()
+      .set_child(
+        Switch::new()
+          .derive_key(move || key.get())
+          .set_case("a", move || {
+            Text::derive(move || format!("a {}", count.get()))
+          })
+          .set_case("b", || Text::new("b")),
+      )
+      .build()
+  });
+  let branch = children(root)[2];
+
+  key.set("b");
+  count.set(1);
+
+  assert_eq!(
+    outline(branch),
+    "Run \"a 0\"\n",
+    "a hidden branch does not update"
+  );
+
+  key.set("a");
+
+  assert_eq!(
+    outline(root),
+    "Box\n  Run \"a 1\"\n",
+    "it catches up as it shows"
+  );
+
+  owner.dispose();
+}
+
 /// A wrapper around a switch annotates whichever branch is built, including one built
 /// after a later flip.
 #[test]

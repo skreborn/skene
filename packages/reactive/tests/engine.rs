@@ -172,6 +172,69 @@ fn effect_handle_disposes_pauses_and_resumes() {
   assert_eq!(runs.get(), 2, "a disposed effect never runs again");
 }
 
+/// Pausing an owner pauses every effect beneath it, nested owners and effects created
+/// by an effect's run included, and resuming runs each that missed a write once; an
+/// effect outside the owner runs throughout.
+#[test]
+fn an_owner_pauses_and_resumes_every_effect_beneath_it() {
+  let source = Signal::new(0);
+  let runs = Rc::new(RefCell::new(Vec::new()));
+  let root = Owner::new();
+  let scope = root.child();
+  let nested = scope.child();
+  let note = |label: &'static str| {
+    let runs = runs.clone();
+
+    move |_: Option<()>| {
+      source.track();
+      runs.borrow_mut().push(label);
+    }
+  };
+
+  scope.enter(|| {
+    let inner = note("inner");
+
+    Effect::new(move |_: Option<()>| {
+      Effect::new(inner.clone());
+    });
+  });
+  scope.enter(|| Effect::new(note("scope")));
+  nested.enter(|| Effect::render(note("nested")));
+  root.enter(|| Effect::new(note("outside")));
+  runs.borrow_mut().clear();
+
+  scope.pause();
+  source.set(1);
+  source.set(2);
+
+  assert_eq!(
+    *runs.borrow(),
+    ["outside", "outside"],
+    "only the effect outside runs"
+  );
+
+  runs.borrow_mut().clear();
+  scope.resume();
+
+  let mut resumed = runs.borrow().clone();
+
+  resumed.sort_unstable();
+
+  assert_eq!(
+    resumed,
+    ["inner", "nested", "scope"],
+    "each paused effect runs once"
+  );
+
+  runs.borrow_mut().clear();
+  scope.resume();
+
+  assert!(
+    runs.borrow().is_empty(),
+    "resuming a fresh owner runs nothing"
+  );
+}
+
 /// Render effects run before ordinary effects in one flush, in owner-depth order.
 #[test]
 fn render_effects_run_first_by_depth() {

@@ -49,6 +49,7 @@ mod run_style;
 mod runtime;
 mod scalar;
 mod scene;
+mod segment;
 mod shape;
 mod show;
 mod task;
@@ -203,6 +204,7 @@ pub use run_style::{
 pub use runtime::{reset_root_owner, root_owner};
 pub use scalar::Scalar;
 pub use scene::{Annotated, Annotation, NodeKind, NodeRecord, Scene};
+pub use segment::{Piece, Segment};
 pub use shape::{Declared, Keyframe, Plain, Shape, Static};
 pub use show::Show;
 pub use task::count_pending;

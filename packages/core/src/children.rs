@@ -64,7 +64,7 @@ impl_tuple!(A, B, C, D2, E, F, G, H, I, J, K, L);
 /// parent.
 #[must_use]
 pub struct Children<P: Platform, Kind = PlainChild> {
-  segments: Vec<Segment<P>>,
+  segments: Vec<ChildSegment<P>>,
   kind: PhantomData<fn() -> Kind>,
 }
 
@@ -74,7 +74,7 @@ impl<P: Platform, Kind> std::fmt::Debug for Children<P, Kind> {
   }
 }
 
-enum Segment<P: Platform> {
+enum ChildSegment<P: Platform> {
   Static(Vec<AnyView<P>>),
   Keyed(Box<dyn FnOnce(NodeId)>),
 }
@@ -108,7 +108,7 @@ impl<P: Platform, Kind: 'static> Children<P, Kind> {
   pub fn push_static(&mut self, children: impl IntoChildren<P, Kind>) {
     self
       .segments
-      .push(Segment::Static(children.into_children()));
+      .push(ChildSegment::Static(children.into_children()));
   }
 
   /// Appends a segment rebuilt whenever the signals `child` reads change.
@@ -116,7 +116,7 @@ impl<P: Platform, Kind: 'static> Children<P, Kind> {
   pub fn push_derived<V: IntoChildOf<P, Kind>>(&mut self, child: impl Fn() -> V + 'static) {
     self
       .segments
-      .push(Segment::Static(vec![AnyView::new(move || {
+      .push(ChildSegment::Static(vec![AnyView::new(move || {
         derived::<P>(move || child().into_child().build())
       })]));
   }
@@ -133,11 +133,13 @@ impl<P: Platform, Kind: 'static> Children<P, Kind> {
     K: Eq + Hash + 'static,
     V: IntoChildOf<P, Kind>,
   {
-    self.segments.push(Segment::Keyed(Box::new(move |start| {
-      reconcile::<P, _, _, _>(start, items, key, move |item| {
-        view(item).into_child().build()
-      });
-    })));
+    self
+      .segments
+      .push(ChildSegment::Keyed(Box::new(move |start| {
+        reconcile::<P, _, _, _>(start, items, key, move |item| {
+          view(item).into_child().build()
+        });
+      })));
   }
 
   /// Mounts every segment under `parent`, in order.
@@ -148,14 +150,14 @@ impl<P: Platform, Kind: 'static> Children<P, Kind> {
       Scene::<P>::with(|scene| scene.attach(parent, start, None));
 
       match segment {
-        Segment::Static(views) => {
+        ChildSegment::Static(views) => {
           for view in views {
             let node = view.build();
 
             Scene::<P>::with(|scene| scene.insert_in_segment(start, node, None));
           }
         }
-        Segment::Keyed(install) => install(start),
+        ChildSegment::Keyed(install) => install(start),
       }
     }
   }

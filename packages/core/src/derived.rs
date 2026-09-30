@@ -4,13 +4,12 @@ use std::{
   cell::{Cell, RefCell},
   collections::VecDeque,
   hash::Hash,
-  rc::Rc,
 };
 
 use rustc_hash::FxHashMap;
 use skene_reactive::{Effect, Key, Owner, untrack};
 
-use super::{AnyView, NodeId, Platform, Scene, View};
+use super::{AnyView, NodeId, Piece, Platform, Scene, Segment, View};
 use crate::Reorder;
 
 /// Mounts the node `build` returns between a fresh pair of anchors and returns the
@@ -20,28 +19,25 @@ use crate::Reorder;
 /// the content does not survive it. The annotation pending when the subtree is created
 /// lands on the content of every rebuild.
 pub fn derived<P: Platform>(build: impl Fn() -> NodeId + 'static) -> NodeId {
-  let (start, _) = Scene::<P>::create_segment();
-  let annotation = Scene::<P>::with(Scene::take_pending_annotation);
+  let segment = Segment::<P>::new();
+  let start = segment.start();
   let parent_scope = Owner::current();
-  let current = Rc::new(Cell::new(None::<Owner>));
+  let current = Cell::new(None::<Piece>);
 
   Effect::render(move |_: Option<()>| {
     // The rebuilt content takes the previous content's place in the owner tree, so
     // state under it keeps its snapshot identity across the rebuild.
-    let scope = current
-      .get()
-      .map_or_else(|| parent_scope.child(), |previous| previous.replacement());
+    let scope = current.get().map_or_else(
+      || parent_scope.child(),
+      |previous| previous.scope().replacement(),
+    );
+    let piece = segment.build(scope, &build);
 
-    let node = Scene::<P>::annotate(annotation.clone(), || scope.enter(&build));
-
-    Scene::<P>::with(|scene| {
-      scene.clear_segment(start);
-      scene.insert_in_segment(start, node, None);
-    });
-
-    if let Some(previous) = current.replace(Some(scope)) {
-      previous.dispose();
+    if let Some(previous) = current.replace(Some(piece)) {
+      previous.discard();
     }
+
+    segment.mount(piece);
   });
 
   start
@@ -51,7 +47,7 @@ pub fn derived<P: Platform>(build: impl Fn() -> NodeId + 'static) -> NodeId {
 #[inline(always)]
 #[must_use]
 pub fn empty<P: Platform>() -> impl View<P> {
-  AnyView::new(|| Scene::<P>::create_segment().0)
+  AnyView::new(|| Segment::<P>::new().start())
 }
 
 struct Mounted {

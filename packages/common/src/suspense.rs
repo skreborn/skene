@@ -2,18 +2,7 @@
 
 use std::{cell::Cell, marker::PhantomData, rc::Rc};
 
-use skene_core::{
-  AnyKind,
-  AnyView,
-  Boundary,
-  IntoView,
-  NoChild,
-  NodeId,
-  Platform,
-  Scene,
-  Show,
-  View,
-};
+use skene_core::{AnyKind, AnyView, Boundary, IntoView, NoChild, NodeId, Platform, Segment, View};
 use skene_reactive::{Effect, Owner, on_cleanup, provide_context};
 
 use crate::realize::ChildBuilder;
@@ -83,38 +72,43 @@ impl<P: Platform, C> AnyKind for Suspense<P, C> {}
 
 impl<P: Platform> View<P> for Suspense<P, ChildBuilder<P>> {
   fn build(self) -> NodeId {
-    let (start, _) = Scene::<P>::create_segment();
-    let annotation = Scene::<P>::with(Scene::take_pending_annotation);
+    let segment = Segment::<P>::new();
+    let start = segment.start();
     let boundary = Boundary::new();
     let parent = Boundary::current();
-    let scope = Owner::current().child();
+    let owner = Owner::current();
     let child = self.child;
-    let content = AnyView::<P>::new(move || {
-      scope.enter(|| {
-        provide_context(boundary);
+    let content = segment.build(owner.child(), || {
+      provide_context(boundary);
 
-        child.build()
-      })
+      child.build()
     });
-    let content = Scene::<P>::annotate(annotation.clone(), || {
-      Show::<P>::new()
-        .derive_shown(move || boundary.is_settled())
-        .set_child(content)
-        .build()
+    let fallback = self
+      .fallback
+      .map(|fallback| segment.build(owner.child(), || fallback.build()));
+
+    Effect::render(move |previous: Option<bool>| {
+      let settled = boundary.is_settled();
+
+      if previous != Some(settled) {
+        let (shown, hidden) = if settled {
+          (Some(content), fallback)
+        }
+        else {
+          (fallback, Some(content))
+        };
+
+        if let Some(hidden) = hidden {
+          segment.unmount(hidden);
+        }
+
+        if let Some(shown) = shown {
+          segment.mount(shown);
+        }
+      }
+
+      settled
     });
-
-    Scene::<P>::with(|scene| scene.insert_in_segment(start, content, None));
-
-    if let Some(fallback) = self.fallback {
-      let fallback = Scene::<P>::annotate(annotation, || {
-        Show::<P>::new()
-          .derive_shown(move || !boundary.is_settled())
-          .set_child(fallback)
-          .build()
-      });
-
-      Scene::<P>::with(|scene| scene.insert_in_segment(start, fallback, None));
-    }
 
     if let Some(parent) = parent {
       let entered = Rc::new(Cell::new(false));

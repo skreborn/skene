@@ -1153,6 +1153,30 @@ impl Graph {
     !self.render_queue.is_empty() || !self.queue.is_empty() || !self.unobserved.is_empty()
   }
 
+  /// The effects at or under `id` in the ownership tree.
+  pub(crate) fn owned_effects(&self, id: Id) -> Vec<Id> {
+    let mut effects = Vec::new();
+    let mut stack = vec![id];
+
+    while let Some(current) = stack.pop() {
+      if self
+        .computation(current)
+        .is_some_and(|computation| computation.flags & MEMO == 0)
+      {
+        effects.push(current);
+      }
+
+      if let Some(children) = self
+        .owner_data(current)
+        .and_then(|data| data.children.as_deref())
+      {
+        stack.extend(children.iter().filter(|child| child.kind() != Kind::Signal));
+      }
+    }
+
+    effects
+  }
+
   pub(crate) fn flags(&self, id: Id) -> Option<u8> {
     self.computation(id).map(|computation| computation.flags)
   }

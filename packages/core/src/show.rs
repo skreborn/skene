@@ -1,14 +1,16 @@
 //! A child built once and shown or hidden without rebuilding.
 
-use std::marker::PhantomData;
+use std::{cell::Cell, marker::PhantomData};
 
-use skene_reactive::{Effect, on_cleanup};
+use skene_reactive::{Effect, Owner, untrack};
 
-use super::{AnyKind, AnyView, IntoView, NoChild, NodeId, Platform, Scene, View};
+use super::{AnyKind, AnyView, IntoView, NoChild, NodeId, Piece, Platform, Segment, View};
 
-/// Shows or hides one child, preserving its state: the child is built once and
-/// attached or detached between a pair of anchors when the condition changes, and left
-/// where it stands while it holds.
+/// Shows or hides one child, preserving its state.
+///
+/// The child is built the first time it shows, then attached or detached between a
+/// pair of anchors when the condition changes, and left where it stands while it
+/// holds. While hidden its effects pause, catching up once it shows again.
 ///
 /// Holds [`NoChild`] until `set_child` supplies the child; only then is it a view.
 #[must_use]
@@ -76,24 +78,38 @@ impl<P: Platform, C> AnyKind for Show<P, C> {}
 
 impl<P: Platform> View<P> for Show<P, AnyView<P>> {
   fn build(self) -> NodeId {
-    let (start, _) = Scene::<P>::create_segment();
-    let node = self.child.build();
+    let segment = Segment::<P>::new();
+    let start = segment.start();
+    let scope = Owner::current().child();
     let shown = self.shown;
-
-    on_cleanup(move || Scene::<P>::with(|scene| scene.destroy(node)));
+    let child = Cell::new(Some(self.child));
+    let piece = Cell::new(None::<Piece>);
 
     Effect::render(move |previous: Option<bool>| {
       let visible = shown();
 
-      if previous != Some(visible) {
-        Scene::<P>::with(|scene| {
-          if visible {
-            scene.insert_in_segment(start, node, None);
+      if previous == Some(visible) {
+        return visible;
+      }
+
+      match (visible, piece.get()) {
+        (true, Some(held)) => {
+          segment.mount(held);
+          held.resume();
+        }
+        (true, None) => {
+          if let Some(child) = child.take() {
+            let built = segment.build(scope, || untrack(|| child.build()));
+
+            piece.set(Some(built));
+            segment.mount(built);
           }
-          else {
-            scene.remove_from_segment(start, node);
-          }
-        });
+        }
+        (false, Some(shown)) => {
+          shown.pause();
+          segment.unmount(shown);
+        }
+        (false, None) => {}
       }
 
       visible
@@ -105,14 +121,73 @@ impl<P: Platform> View<P> for Show<P, AnyView<P>> {
 
 #[cfg(test)]
 mod tests {
-  use skene_reactive::{Get, Owner, Set, signal};
+  use std::{cell::Cell, rc::Rc};
+
+  use skene_reactive::{Effect, Get, Owner, Set, signal};
 
   use super::Show;
   use crate::{
+    AnyView,
     Scene,
     View,
     testing::{TestBox, TestPlatform, children},
   };
+
+  /// A child hidden from the start is built the first time it shows, and while hidden
+  /// its effects pause, catching up once, when it shows again.
+  #[test]
+  fn a_hidden_child_builds_when_first_shown_and_pauses_while_hidden() {
+    TestPlatform::reset();
+
+    let owner = Owner::new();
+    let (shown, set_shown) = signal(false);
+    let (source, set_source) = signal(0);
+    let builds = Rc::new(Cell::new(0));
+    let runs = Rc::new(Cell::new(0));
+
+    let _ = owner.enter(|| {
+      let builds = Rc::clone(&builds);
+      let runs = Rc::clone(&runs);
+
+      Show::<TestPlatform>::new()
+        .derive_shown(move || shown.get())
+        .set_child(AnyView::new(move || {
+          let runs = Rc::clone(&runs);
+
+          builds.set(builds.get() + 1);
+          Effect::render(move |_: Option<()>| {
+            let _ = source.get();
+
+            runs.set(runs.get() + 1);
+          });
+
+          TestBox::node()
+        }))
+        .build()
+    });
+
+    assert_eq!(builds.get(), 0, "a hidden child is not built");
+
+    set_shown.set(true);
+
+    assert_eq!((builds.get(), runs.get()), (1, 1));
+
+    set_shown.set(false);
+    set_source.set(1);
+    set_source.set(2);
+
+    assert_eq!(runs.get(), 1, "a hidden child's effects pause");
+
+    set_shown.set(true);
+
+    assert_eq!(
+      (builds.get(), runs.get()),
+      (1, 2),
+      "and catch up once, when it shows"
+    );
+
+    owner.dispose();
+  }
 
   /// A re-run that leaves the condition as it was leaves the child where it stands.
   #[test]

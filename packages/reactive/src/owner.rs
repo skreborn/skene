@@ -1,6 +1,7 @@
 use std::{fmt, marker::PhantomData};
 
 use crate::{
+  graph::flags::PAUSED,
   id::Id,
   path::Key,
   runtime::{RUNTIME, Runtime, with_graph},
@@ -143,6 +144,38 @@ impl Owner {
 
     if let Some(cleanup) = unregistered {
       cleanup();
+    }
+  }
+
+  /// Pauses every effect under this owner, as [`EffectHandle::pause`] pauses one:
+  /// invalidations accumulate and runs wait for [`resume`](Self::resume).
+  ///
+  /// [`EffectHandle::pause`]: crate::EffectHandle::pause
+  pub fn pause(&self) {
+    with_graph(|graph| {
+      for effect in graph.owned_effects(self.0) {
+        graph.update_flags(effect, PAUSED, 0);
+      }
+    });
+  }
+
+  /// Lets every effect under this owner run again, at once for each whose dependency
+  /// changed while it was paused.
+  pub fn resume(&self) {
+    let queued = RUNTIME.with(|runtime| {
+      let mut graph = runtime.graph();
+      let mut queued = false;
+
+      for effect in graph.owned_effects(self.0) {
+        graph.update_flags(effect, 0, PAUSED);
+        queued |= graph.enqueue(effect);
+      }
+
+      queued
+    });
+
+    if queued {
+      RUNTIME.with(Runtime::request_flush);
     }
   }
 

@@ -181,7 +181,7 @@ struct DragRecord {
 
 /// The end of a segment and, while the segment is detached, the content waiting
 /// between its anchors.
-struct Segment {
+struct SegmentRecord {
   end: NodeId,
   pending: Vec<NodeId>,
 }
@@ -205,7 +205,7 @@ pub struct NodeRecord<P: Platform> {
   container: Option<ContainerName>,
   handlers: Option<Box<HandlerSet>>,
   sink: P::Sink,
-  segment: Option<Box<Segment>>,
+  segment: Option<Box<SegmentRecord>>,
   cache: Option<Box<TokenCache<P::TokenValue>>>,
   control: Option<ControlState>,
   entry: bool,
@@ -625,7 +625,7 @@ impl<P: Platform> Scene<P> {
       let end = scene.create(NodeKind::Anchor, end);
 
       if let Some(record) = scene.record_mut(start) {
-        record.segment = Some(Box::new(Segment {
+        record.segment = Some(Box::new(SegmentRecord {
           end,
           pending: Vec::new(),
         }));
@@ -1891,8 +1891,9 @@ impl<P: Platform> Scene<P> {
     });
   }
 
-  /// Removes `child` from under its parent, if any, and mirrors it; a segment start
-  /// pulls its content and end anchor back into the pending list.
+  /// Removes `child` from under its parent, if any, and mirrors it, or from the
+  /// pending content of the detached segment it waits in; a segment start pulls its
+  /// content and end anchor back into the pending list.
   fn unlink(&mut self, child: NodeId) {
     let Some(record) = self.record(child)
     else {
@@ -1900,6 +1901,14 @@ impl<P: Platform> Scene<P> {
     };
     let Some(parent) = record.parent
     else {
+      if let Some(segment) = record
+        .enclosing
+        .and_then(|start| self.record_mut(start))
+        .and_then(|start| start.segment.as_mut())
+      {
+        segment.pending.retain(|pending| *pending != child);
+      }
+
       return;
     };
 
@@ -2285,6 +2294,24 @@ mod tests {
       with(|scene| scene.resolve_token(leaf, card)),
       Some(color(0.))
     );
+  }
+
+  /// A node destroyed while it waits in a detached segment leaves the segment.
+  #[test]
+  fn a_destroyed_node_leaves_the_detached_segment_it_waits_in() {
+    TestPlatform::reset();
+
+    let (start, _) = Scene::<TestPlatform>::create_segment();
+    let first = TestBox::node();
+    let second = TestBox::node();
+
+    with(|scene| {
+      scene.insert_in_segment(start, first, None);
+      scene.insert_in_segment(start, second, None);
+      scene.destroy(first);
+    });
+
+    assert_eq!(with(|scene| scene.segment_nodes(start)), [second]);
   }
 
   /// An overlay anchored on a segment or a scope is placed against the first node

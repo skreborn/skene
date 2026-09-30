@@ -10,13 +10,12 @@ use skene_core::{
   NoChild,
   NodeId,
   Platform,
-  Scene,
-  Show,
+  Segment,
   View,
   derived,
   empty,
 };
-use skene_reactive::{Owner, provide_context};
+use skene_reactive::{Effect, Owner, provide_context};
 
 use crate::realize::ChildBuilder;
 
@@ -95,29 +94,18 @@ impl<P: Platform, C> AnyKind for ErrorBoundary<P, C> {}
 
 impl<P: Platform> View<P> for ErrorBoundary<P, ChildBuilder<P>> {
   fn build(self) -> NodeId {
-    let (start, _) = Scene::<P>::create_segment();
-    let annotation = Scene::<P>::with(Scene::take_pending_annotation);
+    let segment = Segment::<P>::new();
+    let start = segment.start();
     let errors = Errors::new();
-    let scope = Owner::current().child();
+    let owner = Owner::current();
     let child = self.child;
-    let content = AnyView::<P>::new(move || {
-      scope.enter(|| {
-        provide_context(errors);
+    let content = segment.build(owner.child(), || {
+      provide_context(errors);
 
-        child.build()
-      })
+      child.build()
     });
-    let content = Scene::<P>::annotate(annotation.clone(), || {
-      Show::<P>::new()
-        .derive_shown(move || errors.is_empty())
-        .set_child(content)
-        .build()
-    });
-
-    Scene::<P>::with(|scene| scene.insert_in_segment(start, content, None));
-
-    if let Some(fallback) = self.fallback {
-      let fallback = Scene::<P>::annotate(annotation, || {
+    let fallback = self.fallback.map(|fallback| {
+      segment.build(owner.child(), || {
         derived::<P>(move || {
           if errors.is_empty() {
             empty::<P>().build()
@@ -126,10 +114,26 @@ impl<P: Platform> View<P> for ErrorBoundary<P, ChildBuilder<P>> {
             fallback(errors).build()
           }
         })
-      });
+      })
+    });
 
-      Scene::<P>::with(|scene| scene.insert_in_segment(start, fallback, None));
+    if let Some(fallback) = fallback {
+      segment.mount(fallback);
     }
+
+    Effect::render(move |previous: Option<bool>| {
+      let clear = errors.is_empty();
+
+      if previous != Some(clear) {
+        match (clear, fallback) {
+          (true, Some(fallback)) => segment.mount_before(content, fallback),
+          (true, None) => segment.mount(content),
+          (false, _) => segment.unmount(content),
+        }
+      }
+
+      clear
+    });
 
     start
   }

@@ -239,8 +239,12 @@ and its cost unjustified.
   builds items untracked; a rebuild closure (`derived`) tracks. The two names say which.
 - **Structural change is a last resort with a cheap alternative.** `derived` destroys
   and rebuilds, disposing the subtree's scope with its state; `Show` and `Switch` build
-  branches once and attach or detach them, preserving state. `Suspense` and
-  `ErrorBoundary` are built on them and destroy the losing branch on disposal.
+  a branch the first time it shows and attach or detach it after, preserving its
+  state, and a branch standing apart pauses its effects (`Owner::pause`) until it shows
+  again, catching up once. Each is a `Segment` of `Piece`s, every piece built under a
+  scope of its own whose disposal destroys its nodes, as `Suspense` and
+  `ErrorBoundary` are; those two keep their content live while it stands apart, since
+  its work is what they wait on.
 - **A view declares its baseline and its enhancement.** `Enhance` in `skene-common` mounts one of two builders between its anchors:
   `set_fallback(|| baseline)` is the form that works before the environment is ready,
   and `set_child_builder(|| enhancement)` the form built once it is. Which is built

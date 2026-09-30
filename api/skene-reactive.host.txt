@@ -252,7 +252,9 @@ pub fn skene_reactive::Owner::keyed_child(&self, skene_reactive::Key) -> Self
 pub fn skene_reactive::Owner::new() -> Self
 pub fn skene_reactive::Owner::on_cleanup(&self, impl core::ops::function::FnOnce() + 'static)
 pub fn skene_reactive::Owner::parent(&self) -> core::option::Option<Self>
+pub fn skene_reactive::Owner::pause(&self)
 pub fn skene_reactive::Owner::replacement(&self) -> Self
+pub fn skene_reactive::Owner::resume(&self)
 pub fn skene_reactive::Owner::set_parent(&self, Self)
 impl core::clone::Clone for skene_reactive::Owner
 pub fn skene_reactive::Owner::clone(&self) -> skene_reactive::Owner

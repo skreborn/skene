@@ -110,9 +110,7 @@ left half-done in a code comment.
     one constructable stylesheet with deferred collection and a set of adopted names;
     release web output through wasm-opt, without `.d.ts` files or name sections,
     precompressed, fingerprinted and preloaded, with one cached stylesheet shared by
-    static pages instead of inlined into each; the dev control pipe polled beside the
-    tty and the wake pipe the signals and the executor notifier share, so the terminal
-    loop stops waking ten times a second.
+    static pages instead of inlined into each.
 5. **The dev reload costs production nothing.** The saved tier is no second API: the
     Android leaf records and writes this snapshot (the native family), and the web and
     the desktop keep none beyond the dev reload.

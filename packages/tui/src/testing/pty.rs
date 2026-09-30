@@ -24,9 +24,9 @@ use crate::{
 /// The app's side of a pseudo-terminal, a [`Device`] the real loop runs on.
 ///
 /// The loop runs on it through [`Launch::run_on`](crate::Launch::run_on) while a test
-/// drives the other side, its [`PtyHost`], as a user at a terminal would. A wait wakes on input, on
-/// its own waker and on nothing else: a pseudo-terminal raises no signal in the test's process, so
-/// a resize reads at the loop's next wake.
+/// drives the other side, its [`PtyHost`], as a user at a terminal would. A wait wakes on
+/// input, on its own waker and on a resize the host makes, as the window-change signal
+/// a terminal raises wakes the app on a real one.
 #[derive(Debug)]
 pub struct Pty {
   /// The pseudo-terminal's app side.
@@ -45,6 +45,8 @@ pub struct Pty {
 pub struct PtyHost {
   /// The pseudo-terminal's controlling side.
   controller: OwnedFd,
+  /// The app side's wake pipe, woken by a resize.
+  wake: Arc<(UnixStream, UnixStream)>,
 }
 
 impl Pty {
@@ -74,7 +76,11 @@ impl Pty {
     read.set_nonblocking(true)?;
     write.set_nonblocking(true)?;
 
-    let host = PtyHost { controller };
+    let wake = Arc::new((read, write));
+    let host = PtyHost {
+      controller,
+      wake: Arc::clone(&wake),
+    };
 
     host.resize(size)?;
 
@@ -83,7 +89,7 @@ impl Pty {
         terminal,
         pending: Vec::with_capacity(READ_SIZE),
         original,
-        wake: Arc::new((read, write)),
+        wake,
       },
       host,
     ))
@@ -260,7 +266,7 @@ impl PtyHost {
     Ok(drawn)
   }
 
-  /// Resizes the terminal's window to `size`.
+  /// Resizes the terminal's window to `size`, waking the app's side.
   ///
   /// # Errors
   ///
@@ -275,6 +281,8 @@ impl PtyHost {
         ws_ypixel: size.pixel_height.unwrap_or(0),
       },
     )?;
+
+    let _ = (&self.wake.1).write(&[1]);
 
     Ok(())
   }

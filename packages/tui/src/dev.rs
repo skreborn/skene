@@ -18,9 +18,9 @@ use std::{
   fs::File,
   io::{Read as _, Seek as _, SeekFrom, Write as _},
   mem::ManuallyDrop,
-  os::fd::{AsFd as _, BorrowedFd, FromRawFd as _, RawFd},
+  os::fd::{BorrowedFd, FromRawFd as _, RawFd},
   path::{Path, PathBuf},
-  time::Duration,
+  sync::{Arc, Mutex, PoisonError},
 };
 
 use skene_core::{Color, HasChildren, Scene};
@@ -45,8 +45,8 @@ struct Channel {
   notice: Signal<Option<String>>,
   /// The state file the launcher handed over, for the snapshot a swap records.
   state: RawFd,
-  /// The launcher's control pipe while it is open, and the partial line read from it.
-  control: Option<(BorrowedFd<'static>, Vec<u8>)>,
+  /// The lines read from the launcher's control pipe and not yet taken.
+  control: Option<Arc<Mutex<Vec<String>>>>,
 }
 
 thread_local! {
@@ -72,9 +72,9 @@ fn state_file(fd: RawFd) -> Option<ManuallyDrop<File>> {
 }
 
 /// Restores the snapshot the state file holds, when the launcher handed one over,
-/// empties it, and listens on the launcher's control pipe; `None` where the launcher did
-/// not start the app.
-pub(crate) fn install() -> Option<()> {
+/// empties it, and listens on the launcher's control pipe, calling `wake` as its lines
+/// arrive; `None` where the launcher did not start the app.
+pub(crate) fn install(wake: Arc<dyn Fn() + Send + Sync>) -> Option<()> {
   let state: RawFd = std::env::var(STATE_VARIABLE).ok()?.parse().ok()?;
   let mut file = state_file(state)?;
   let mut bytes = Vec::new();
@@ -97,8 +97,13 @@ pub(crate) fn install() -> Option<()> {
       // SAFETY: the launcher opened the control pipe for this process and never closes
       // it on its side while the app runs; it is inherited by the next binary too.
       let fd = unsafe { BorrowedFd::borrow_raw(fd) };
+      let lines = Arc::new(Mutex::new(Vec::new()));
+      let read = Arc::clone(&lines);
+      let _reader = std::thread::Builder::new()
+        .name("skene-dev-control".to_owned())
+        .spawn(move || read_control(fd, &read, &*wake));
 
-      (fd, Vec::new())
+      lines
     });
 
   CHANNEL.with(|channel| {
@@ -116,45 +121,47 @@ pub(crate) fn install() -> Option<()> {
 /// pipe closing means the launcher is gone, and the app runs on without it.
 pub(crate) fn control_lines() -> Vec<String> {
   CHANNEL.with(|channel| {
-    let mut channel = channel.borrow_mut();
-    let Some((fd, pending)) = channel
-      .as_mut()
-      .and_then(|channel| channel.control.as_mut())
-    else {
-      return Vec::new();
-    };
-    let mut lines = Vec::new();
-    let mut closed = false;
-
-    while crate::tty::ready([fd.as_fd()], Duration::ZERO).is_ok_and(|[ready]| ready) {
-      let mut buffer = [0; crate::tty::READ_SIZE];
-      let read = match rustix::io::read(*fd, &mut buffer) {
-        Ok(read) => read,
-        Err(rustix::io::Errno::INTR) => continue,
-        Err(_) => 0,
-      };
-
-      if read == 0 {
-        closed = true;
-
-        break;
-      }
-
-      pending.extend_from_slice(&buffer[..read]);
-
-      while let Some(end) = pending.iter().position(|byte| *byte == b'\n') {
-        let line: Vec<u8> = pending.drain(..=end).collect();
-
-        lines.push(String::from_utf8_lossy(&line[..line.len() - 1]).into_owned());
-      }
-    }
-
-    if closed && let Some(channel) = channel.as_mut() {
-      channel.control = None;
-    }
-
-    lines
+    channel
+      .borrow()
+      .as_ref()
+      .and_then(|channel| channel.control.as_ref())
+      .map(|lines| std::mem::take(&mut *lines.lock().unwrap_or_else(PoisonError::into_inner)))
+      .unwrap_or_default()
   })
+}
+
+/// Reads the control pipe `fd` until it closes, queueing each whole line on `lines` and
+/// calling `wake` for the loop to take it.
+fn read_control(fd: BorrowedFd<'_>, lines: &Mutex<Vec<String>>, wake: &(dyn Fn() + Send + Sync)) {
+  let mut pending = Vec::new();
+  let mut buffer = [0; crate::tty::READ_SIZE];
+
+  loop {
+    let read = match rustix::io::read(fd, &mut buffer) {
+      Ok(0) => return,
+      Ok(read) => read,
+      Err(rustix::io::Errno::INTR) => continue,
+      Err(_) => return,
+    };
+
+    pending.extend_from_slice(&buffer[..read]);
+
+    let mut whole = Vec::new();
+
+    while let Some(end) = memchr::memchr(b'\n', &pending) {
+      let line: Vec<u8> = pending.drain(..=end).collect();
+
+      whole.push(String::from_utf8_lossy(&line[..line.len() - 1]).into_owned());
+    }
+
+    if !whole.is_empty() {
+      lines
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .extend(whole);
+      wake();
+    }
+  }
 }
 
 /// Acts on one line the launcher wrote: a notice updates the modal, and a swap names

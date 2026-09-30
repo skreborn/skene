@@ -71,7 +71,8 @@ pub trait Device: Write {
   /// Where the terminal refuses the mode.
   fn restore_mode(&mut self) -> io::Result<()>;
 
-  /// The window's size, where the terminal reports one.
+  /// The window's size, where the terminal reports one; a change to it wakes a
+  /// [`wait`](Self::wait), as a terminal's window-change signal does.
   fn size(&self) -> Option<WindowSize>;
 
   /// Waits up to `timeout` for input, a wake or a note, appends what the terminal sent

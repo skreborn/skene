@@ -58,8 +58,9 @@ use crate::{
   with_records,
 };
 
-/// How long the loop waits for input while nothing moves.
-const IDLE_POLL: Duration = Duration::from_millis(100);
+/// How long the loop waits while nothing moves and nothing is due; input, a signal,
+/// a task's wake and the launcher's control lines each wake it sooner.
+const IDLE_WAIT: Duration = Duration::from_mins(1);
 
 /// How long an escape the input ends in waits for the rest of its sequence before it
 /// reads as a key, while a lone escape can be one.
@@ -251,7 +252,7 @@ where
     records.mouse
   });
 
-  let _ = crate::dev::install();
+  let _ = crate::dev::install(terminal.waker());
 
   let _ = crate::mount(|| app().build());
   let waker = terminal.waker();
@@ -431,7 +432,7 @@ where
         crate::records::FRAME_INTERVAL
       }
       else {
-        IDLE_POLL
+        IDLE_WAIT
       };
 
       records.next_timer_due().map_or(frame, |due| due.min(frame))

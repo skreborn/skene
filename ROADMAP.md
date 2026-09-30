@@ -228,10 +228,6 @@ left half-done in a code comment.
     arms reserved, and the CLI picks the crate type per target through
     `cargo rustc --crate-type`, so apps stop declaring crate types and the `cdylib`
     plus `rlib` pair, `__skene_main` and app-level cfgs go.
-    - Oversized files split: `reactive/src/graph.rs` into records, ownership, edges and
-    propagation; `core/src/scene.rs`; `tui/src/terminal.rs` into the loop, the writer
-    and key mapping; `tui/src/store.rs`, six concerns in one;
-    `cli/src/main.rs`.
     - Deleted: `Scene::set_annotation`, the annotation arriving with the node it
     belongs to, and `IntoView`, whose only impl is the blanket over `View` (`AnyKind`
     stays).

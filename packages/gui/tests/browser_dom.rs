@@ -2724,12 +2724,9 @@ async fn a_painted_box_draws_into_its_canvas() {
   };
   let mut canvas = current();
   let mut pixel = center_pixel(&canvas);
+  let deadline = js_sys::Date::now() + 60_000.;
 
-  for _ in 0..400 {
-    if pixel[0..4] == [0, 0, 255, 255] {
-      break;
-    }
-
+  while pixel[0..4] != [0, 0, 255, 255] && js_sys::Date::now() < deadline {
     next_frame().await;
     canvas = current();
     pixel = center_pixel(&canvas);

@@ -53,10 +53,6 @@ left half-done in a code comment.
     the hydration swap goes, the drawn face remaining elsewhere.
 3. **Tests that exercise what users see.** Headless becomes the GUI's real stand-in,
     and every tier asserts through roles, text and pixels.
-    - A flake: `a_painted_box_draws_into_its_canvas` once found its canvas blank after
-    400 frames in Chromium with the browser sessions running in parallel, and the
-    failure poisoned the binary's later tests; the wait ends on the canvas reporting a
-    paint rather than on a frame count, or painted tests keep the GPU to themselves.
     - Undecided, before the kit below: the terminal measures lengths in logical pixels,
     a cell standing for a fixed 8×16 of them, rather than in whole cells. Every
     platform's scalar is then `f32` and the `Scalar` parameter leaves the spine (the

@@ -745,3 +745,78 @@ impl<P: Platform, F: Fn(NodeId) -> NameFacts> Naming<'_, P, F> {
     out
   }
 }
+/// Declares a platform's accessibility queries: what a reader finds in the scene of
+/// `$platform` once the turn ends, the accessible-name computation reading each node's
+/// facts through `$facts`.
+///
+/// For a platform's test seams, beside its `trigger_` events and its renders:
+/// `accessible_name`, `access_tree`, `access_outline`, `find_by_role`,
+/// `find_all_by_role`, `find_all_unnamed` and `find_by_text`.
+#[macro_export]
+macro_rules! access_queries {
+  ($platform:ty, $facts:expr) => {
+    /// The name `node` reports to assistive technology, by the accessible-name
+    /// computation ([`Scene::accessible_name`](skene_core::Scene::accessible_name)).
+    #[must_use]
+    pub fn accessible_name(node: $crate::NodeId) -> ::std::option::Option<::std::string::String> {
+      $crate::end_turn();
+
+      $crate::Scene::<$platform>::accessible_name(node, $facts)
+    }
+
+    /// The accessibility tree, as AccessKit models it
+    /// ([`Scene::access_tree`](skene_core::Scene::access_tree)).
+    #[must_use]
+    pub fn access_tree() -> $crate::TreeUpdate {
+      $crate::end_turn();
+
+      $crate::Scene::<$platform>::access_tree($facts)
+    }
+
+    /// The accessibility tree as indented text, one node a line
+    /// ([`Scene::access_outline`](skene_core::Scene::access_outline)).
+    #[must_use]
+    pub fn access_outline() -> ::std::string::String {
+      $crate::end_turn();
+
+      $crate::Scene::<$platform>::access_outline($facts)
+    }
+
+    /// The first node in tree order whose role is `role` and whose accessible name is
+    /// `name`, outside hidden boxes and closed overlays.
+    #[must_use]
+    pub fn find_by_role(role: $crate::Role, name: &str) -> ::std::option::Option<$crate::NodeId> {
+      $crate::end_turn();
+
+      $crate::Scene::<$platform>::find_by_role(role, name, $facts)
+    }
+
+    /// Every node whose role is `role`, in tree order, outside hidden boxes and closed
+    /// overlays.
+    #[must_use]
+    pub fn find_all_by_role(role: $crate::Role) -> ::std::vec::Vec<$crate::NodeId> {
+      $crate::end_turn();
+
+      $crate::Scene::<$platform>::find_all_by_role(role, $facts)
+    }
+
+    /// Every node that must be named and is not, in tree order, outside hidden boxes
+    /// and closed overlays
+    /// ([`Scene::find_all_unnamed`](skene_core::Scene::find_all_unnamed)).
+    #[must_use]
+    pub fn find_all_unnamed() -> ::std::vec::Vec<$crate::NodeId> {
+      $crate::end_turn();
+
+      $crate::Scene::<$platform>::find_all_unnamed($facts)
+    }
+
+    /// The first run in tree order whose own text is `text`, whitespace collapsed on
+    /// both, outside hidden boxes and closed overlays.
+    #[must_use]
+    pub fn find_by_text(text: &str) -> ::std::option::Option<$crate::NodeId> {
+      $crate::end_turn();
+
+      $crate::Scene::<$platform>::find_by_text(text, $facts)
+    }
+  };
+}

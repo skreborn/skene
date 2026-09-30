@@ -18,15 +18,14 @@ use skene_core::{
   NameFacts,
   NodeId,
   PointerButton,
-  Role,
   Scene,
-  TreeUpdate,
 };
 
 pub use self::pty::{Pty, PtyHost};
 use crate::{
   CellDecoration,
   CellScale,
+  Launch,
   Picture,
   Tui,
   frame,
@@ -137,66 +136,7 @@ pub fn focused_node() -> Option<skene_core::NodeId> {
   })
 }
 
-/// The name `node` reports to assistive technology, by the accessible-name computation
-/// ([`Scene::accessible_name`]).
-#[must_use]
-pub fn accessible_name(node: NodeId) -> Option<String> {
-  end_turn();
-
-  Scene::<Tui>::accessible_name(node, name_facts)
-}
-
-/// The accessibility tree, as AccessKit models it ([`Scene::access_tree`]).
-#[must_use]
-pub fn access_tree() -> TreeUpdate {
-  end_turn();
-
-  Scene::<Tui>::access_tree(name_facts)
-}
-
-/// The accessibility tree as indented text, one node a line ([`Scene::access_outline`]).
-#[must_use]
-pub fn access_outline() -> String {
-  end_turn();
-
-  Scene::<Tui>::access_outline(name_facts)
-}
-
-/// The first node in tree order whose role is `role` and whose accessible name is
-/// `name`, outside hidden boxes and closed overlays.
-#[must_use]
-pub fn find_by_role(role: Role, name: &str) -> Option<NodeId> {
-  end_turn();
-
-  Scene::<Tui>::find_by_role(role, name, name_facts)
-}
-
-/// Every node whose role is `role`, in tree order, outside hidden boxes and closed
-/// overlays.
-#[must_use]
-pub fn find_all_by_role(role: Role) -> Vec<NodeId> {
-  end_turn();
-
-  Scene::<Tui>::find_all_by_role(role, name_facts)
-}
-
-/// Every node that must be named and is not, in tree order, outside hidden boxes and
-/// closed overlays ([`Scene::find_all_unnamed`]).
-#[must_use]
-pub fn find_all_unnamed() -> Vec<NodeId> {
-  end_turn();
-
-  Scene::<Tui>::find_all_unnamed(name_facts)
-}
-
-/// The first run in tree order whose own text is `text`, whitespace collapsed on both,
-/// outside hidden boxes and closed overlays.
-#[must_use]
-pub fn find_by_text(text: &str) -> Option<NodeId> {
-  end_turn();
-
-  Scene::<Tui>::find_by_text(text, name_facts)
-}
+skene_core::access_queries!(Tui, name_facts);
 
 /// What the accessible-name computation reads of `node`.
 fn name_facts(node: NodeId) -> NameFacts {

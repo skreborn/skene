@@ -8,7 +8,12 @@ publish = false
 [dependencies]
 skene-common.workspace = true
 skene-core.workspace = true
+
+[target.'cfg(any(all(target_arch = "wasm32", target_os = "unknown"), skene_platform = "server"))'.dependencies]
 skene-web.workspace = true
+
+[target.'cfg(not(any(all(target_arch = "wasm32", target_os = "unknown"), skene_platform = "server")))'.dependencies]
+skene-headless.workspace = true
 
 [target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
 wasm-bindgen.workspace = true
@@ -28,6 +33,9 @@ web-sys = { version = "0.3", features = [
   "Node",
   "Window",
 ] }
+
+[build-dependencies]
+skene-build.workspace = true
 
 [lints]
 workspace = true

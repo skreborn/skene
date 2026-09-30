@@ -228,7 +228,7 @@ against a platform's escape trait (`WebDom`, `WebMarkup`, `CellPainter`) and rea
 through the same scene as a built-in; `Painted` is the portable one for pixels, a
 vello scene the platform renders, the terminal through the kitty graphics protocol
 where it proves one. `examples/third-party` shows all three: `acme-ui`
-(a palette and a badge over any platform), `acme-map` (a canvas on the browser leaf with a
-server placeholder) and `acme-sparkline` (bars painted into the terminal's cells, and as pixels over them
+(a palette and a badge over any platform), `acme-map` (a canvas on the browser leaf, a
+placeholder before it and on the server, an image box on headless) and `acme-sparkline` (bars painted into the terminal's cells, and as pixels over them
 where the terminal proves its graphics), each used by a gallery and tested on its
 platform.

@@ -461,7 +461,9 @@
   rounds where the medium can and writes nothing where it cannot; a capability a library
   *requires* is a hard bound, so the library does not exist on a medium lacking it), and
   works on every facade from one crate. A low-level view is written against a platform's
-  escape trait and selected through the facade's `ActivePlatform`. Nothing on the path a
+  escape trait and selected through the facade's `ActivePlatform`, and a view library
+  covers every platform of its medium, headless included, through a trait of its own each
+  platform implements (`acme-map`'s `MapHost`), so an app writes no `cfg` for it. Nothing on the path a
   built-in takes is crate-private; making something `pub(crate)` on that path is a
   regression. `skene-simple` is held to the same rule from the other side: a facade never
   re-exports it, an app depends on it explicitly, and

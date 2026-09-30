@@ -1104,12 +1104,16 @@ Two guarantees, both properties of what is public rather than of any one API.
   `examples/third-party/acme-ui` is the standing proof: a palette and a badge, used by
   both galleries.
 - **A low-level view, against the platform, like a built-in.** It is written against a
-  platform's escape trait (`impl<P: Platform + WebDom> View for Map<P>`) and realized through
-  the same scene and node ids as a `Container`, so it composes with wrappers, themes,
-  conditions and events. Selecting the platform is what selecting the facade already does.
-  `acme-map` (a canvas on the browser leaf, a placeholder through `WebMarkup` on the
-  server) and `acme-sparkline` (bars through `CellPainter`) are the standing proofs. The
-  portable low-level path for pixel media is `Painted`.
+  platform's escape trait and realized through the same scene and node ids as a
+  `Container`, so it composes with wrappers, themes, conditions and events. A view
+  library covers every platform of its medium, headless included, through a trait of its
+  own that each platform implements (`impl<P: MapHost> View<P> for Map<P>`), so an app
+  names no platform and writes no `cfg`; a blanket impl over one escape trait would allow
+  one per view type and push the cfgs into the app. Selecting the platform is what
+  selecting the facade already does. `acme-map` (a canvas on the browser leaf through
+  `WebDom`, a placeholder through `WebMarkup` before it and on the server, an image box
+  on headless) and `acme-sparkline` (bars through `CellPainter`) are the standing
+  proofs. The portable low-level path for pixel media is `Painted`.
 
 A platform need not be first-party: a crate that implements `Platform`, provides its scalar,
 leaves, extension, a `launch` and aliases over `skene-common` is a facade. `Platform` is not

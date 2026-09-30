@@ -224,11 +224,6 @@ left half-done in a code comment.
     or an alias macro the app invokes; painting's GPU stack stops weighing
     on the build of an app that paints nothing, `vello_hybrid` being over half of a
     clean gallery wasm build.
-    - `acme-map` becomes one `Map<P>` over a library-local `MapHost` trait with web and
-    headless implementations, deleting the gallery's three `cfg` blocks, and
-    `AGENTS.md` states that a view library covers every platform of its medium,
-    headless included; a blanket impl over one escape trait allows one per view type
-    and pushes cfgs into the app.
     - `#[main]` is the only entry point, emitting `fn main` per target with its native
     arms reserved, and the CLI picks the crate type per target through
     `cargo rustc --crate-type`, so apps stop declaring crate types and the `cdylib`

@@ -15,8 +15,10 @@ dependencies = [
 name = "acme-map"
 version = "0.1.0"
 dependencies = [
+ "skene-build",
  "skene-common",
  "skene-core",
+ "skene-headless",
  "skene-web",
  "wasm-bindgen",
  "wasm-bindgen-test",

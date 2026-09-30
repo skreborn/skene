@@ -581,25 +581,9 @@ fn third_party() -> impl IntoView {
   )
 }
 
-/// The map paints a canvas in the browser, serializes as a placeholder on the server,
-/// and has no medium on the host.
+/// The map, which covers every platform of the pixel medium.
 fn map() -> impl IntoView {
-  #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
-  {
-    skene_gui::client_only(|| acme_map::Map::<ActivePlatform>::new().build())
-  }
-
-  #[cfg(skene_platform = "server")]
-  {
-    acme_map::Map::<ActivePlatform>::new().placeholder()
-  }
-
-  #[cfg(not(any(target_arch = "wasm32", skene_platform = "server")))]
-  {
-    Text::new("the map needs a browser")
-      .set_font_size(13.)
-      .set_color(SimplePalette::MUTED_FOREGROUND)
-  }
+  acme_map::Map::<ActivePlatform>::new()
 }
 
 /// A titled card around one section's content.

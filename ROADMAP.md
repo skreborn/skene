@@ -42,10 +42,8 @@ left half-done in a code comment.
     properties in place of the closed report, so a third party builds switches, tabs,
     comboboxes and trees; parts become styling targets or go.
     - Structure: anchors exist in the scene alone, platforms receiving the next real
-    sibling and server output keeping comment pairs only where streaming needs a marker;
-    the server's string tree serializes the structure the scene places
-    (`Scene::placed_children`) through its records, as the terminal reads it, rather than
-    linking children of its own.
+    sibling and server output keeping comment pairs only where streaming needs a
+    marker.
     - The web's realization: `Platform for Web` is written once over a small sink trait
     that the DOM and the string tree implement, the browser layering adoption and events
     on top, so the two leaves cannot drift, the stylesheet bookkeeping both repeat (the

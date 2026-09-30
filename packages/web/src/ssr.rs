@@ -40,6 +40,7 @@ use skene_core::{
   NodeMap,
   Observation,
   OverlayProps,
+  Part,
   PickerOption,
   Platform,
   RunProps,
@@ -129,12 +130,13 @@ const ROOT: u32 = 0;
 type BoundarySettled = Box<dyn Fn() -> bool>;
 
 /// A position in the in-order stream walk: a node whose opening tag is emitted, the
-/// child it last passed, by which it finds its place again among children that changed
-/// while it paused, and how many it passed, where it resumes once that child is gone.
+/// scene child it last passed, by which it finds its place again among children that
+/// changed while it paused, and how many it passed, where it resumes once that child is
+/// gone.
 #[derive(Clone, Copy)]
 struct Frame {
   index: u32,
-  passed: Option<u32>,
+  passed: Option<NodeId>,
   passed_count: usize,
 }
 
@@ -160,18 +162,8 @@ struct Node {
   inline: Vec<(String, String)>,
   /// The text content: a run's text, or a `<textarea>`'s value.
   text: Option<String>,
-  /// Its first child.
-  first_child: Option<u32>,
-  /// Its last child.
-  last_child: Option<u32>,
-  /// The child before it under its parent.
-  previous_sibling: Option<u32>,
-  /// The child after it under its parent.
-  next_sibling: Option<u32>,
-  /// The node it is attached under.
-  parent: Option<u32>,
   /// The native element carrying a control's state, focus and value, when the control
-  /// has one apart from its root.
+  /// has one apart from its root, serialized first inside it.
   carrier: Option<u32>,
   /// Whether it is a control's root.
   control: bool,
@@ -183,8 +175,6 @@ struct Node {
   /// The `<label>` a control's caption is serialized in, before the control, outside
   /// its children, where the control keeps its caption beside it.
   caption: Option<u32>,
-  /// The control whose caption it is, where it is a caption's `<label>`.
-  caption_of: Option<u32>,
   /// A `<select>`'s options.
   options: Vec<PickerOption>,
   /// A `<select>`'s chosen value.
@@ -205,11 +195,6 @@ impl Node {
       token_class: None,
       inline: Vec::new(),
       text: None,
-      first_child: None,
-      last_child: None,
-      previous_sibling: None,
-      next_sibling: None,
-      parent: None,
       carrier: None,
       control: false,
       scrolls: false,
@@ -217,7 +202,6 @@ impl Node {
       options: Vec::new(),
       chosen: None,
       caption: None,
-      caption_of: None,
       realizes: None,
       slots: Rc::from([]),
     }
@@ -447,17 +431,48 @@ impl Tree {
     self.nodes.get_mut(index as usize).and_then(Option::as_mut)
   }
 
-  /// The children of `index`, in order; empty for a leaf or a destroyed node.
-  fn children(&self, index: u32) -> impl Iterator<Item = u32> + '_ {
-    let mut next = self.node(index).and_then(|node| node.first_child);
+  /// The records of the scene's children of the node `index` realizes, in order: the
+  /// caption a control keeps beside it passed over, which the control serializes.
+  fn scene_children<'a>(
+    &'a self,
+    scene: &'a Scene<Web>,
+    index: u32,
+  ) -> impl Iterator<Item = (NodeId, u32)> + 'a {
+    let node = self.node(index).and_then(|node| node.realizes);
+    let caption = node.and_then(|node| scene.caption_beside(node));
 
-    std::iter::from_fn(move || {
-      let current = next?;
+    node
+      .into_iter()
+      .flat_map(move |node| scene.children(node))
+      .filter(move |child| Some(*child) != caption)
+      .filter_map(|child| Some((child, *self.realized.get(child)?)))
+  }
 
-      next = self.node(current).and_then(|node| node.next_sibling);
+  /// The record of the scene child after `passed` among those of the node `index`
+  /// realizes, the caption a control keeps beside it passed over.
+  fn next_scene_child(
+    &self,
+    scene: &Scene<Web>,
+    index: u32,
+    passed: NodeId,
+  ) -> Option<(NodeId, u32)> {
+    let caption = self
+      .node(index)
+      .and_then(|node| node.realizes)
+      .and_then(|node| scene.caption_beside(node));
+    let mut next = scene.next_sibling(passed);
 
-      Some(current)
-    })
+    while let Some(child) = next {
+      if Some(child) != caption
+        && let Some(index) = self.realized.get(child)
+      {
+        return Some((child, *index));
+      }
+
+      next = scene.next_sibling(child);
+    }
+
+    None
   }
 
   /// The element carrying `index`'s state: its native input, else itself.
@@ -528,228 +543,70 @@ impl Tree {
     }
   }
 
-  /// Attaches `child` into the caption of `parent` when `child` is the caption `parent`
-  /// keeps beside it, making the `<label>` on the first, `for` the control where it
-  /// stands bare; `false` for any other pair, which attaches as usual.
-  fn attach_caption(&mut self, parent: u32, child: u32) -> bool {
+  /// Makes the `<label>` the caption `child` is serialized in, before its control
+  /// `parent`, `for` the control where it stands bare, when `child` is the caption
+  /// `parent` keeps beside it and no label stands yet.
+  fn keep_caption(&mut self, parent: u32, child: u32) {
     let Some((node, labels)) = self
       .node(parent)
-      .filter(|node| node.control)
+      .filter(|node| node.control && node.caption.is_none())
       .and_then(|node| Some((node.realizes?, node.bare)))
     else {
-      return false;
+      return;
     };
     let captions = self
       .node(child)
       .and_then(|child| child.realizes)
-      .is_some_and(|child| Scene::<Web>::with(|scene| scene.caption_beside(node) == Some(child)));
+      .is_some_and(|child| Scene::<Web>::read(|scene| scene.caption_beside(node) == Some(child)));
 
     if !captions {
-      return false;
+      return;
     }
 
-    let caption = if let Some(caption) = self.node(parent).and_then(|node| node.caption) {
-      caption
+    let caption = self.element("label");
+    let id = element_id(node);
+
+    if labels && let Some(label) = self.node_mut(caption) {
+      label.set_attribute("for", &id);
     }
-    else {
-      let caption = self.element("label");
-      let id = element_id(node);
 
-      if let Some(label) = self.node_mut(caption) {
-        label.caption_of = Some(parent);
-
-        if labels {
-          label.set_attribute("for", &id);
-        }
+    if let Some(entry) = self.node_mut(parent) {
+      if labels {
+        entry.set_attribute("id", &id);
       }
 
-      if let Some(entry) = self.node_mut(parent) {
-        if labels {
-          entry.set_attribute("id", &id);
-        }
-
-        entry.caption = Some(caption);
-      }
-
-      caption
-    };
-
-    self.attach(caption, child, None);
-
-    true
+      entry.caption = Some(caption);
+    }
   }
 
-  /// Detaches `child` from the caption of `parent` when it sits there, dropping the
-  /// caption once empty; `false` when it does not.
-  fn detach_caption(&mut self, parent: u32, child: u32) -> bool {
-    let Some(caption) = self.node(parent).and_then(|node| node.caption)
-    else {
-      return false;
-    };
+  /// Drops the `<label>` of the caption the control `parent` keeps beside it, where
+  /// `child`, leaving it, is its `Label` part.
+  fn drop_caption(&mut self, parent: u32, child: u32) {
+    let labels = self
+      .node(child)
+      .and_then(|child| child.realizes)
+      .is_some_and(|child| Scene::<Web>::read(|scene| scene.part(child) == Some(Part::Label)));
 
-    if self.node(child).and_then(|node| node.parent) != Some(caption) {
-      return false;
-    }
-
-    self.detach(caption, child);
-
-    if self
-      .node(caption)
-      .is_some_and(|label| label.first_child.is_none())
-    {
+    if labels && let Some(caption) = self.node_mut(parent).and_then(|node| node.caption.take()) {
       self.destroy(caption);
-
-      if let Some(entry) = self.node_mut(parent) {
-        entry.caption = None;
-      }
-    }
-
-    true
-  }
-
-  /// Takes `child` out from under `parent`, or out of the caption `parent` keeps beside
-  /// it.
-  fn withdraw(&mut self, parent: u32, child: u32) {
-    if !self.detach_caption(parent, child) {
-      self.detach(parent, child);
     }
   }
 
-  /// Takes `child` out of wherever it stands: under a parent, or in a control's caption.
-  fn take_out(&mut self, child: u32) {
-    let Some(from) = self.node(child).and_then(|node| node.parent)
-    else {
-      return;
-    };
-
-    match self.node(from).and_then(|node| node.caption_of) {
-      Some(control) => self.withdraw(control, child),
-      None => self.detach(from, child),
-    }
-  }
-
-  /// Removes `child` from the children of the node it is attached under, if any.
-  fn unlink(&mut self, child: u32) {
-    let Some((parent, previous, next)) = self
-      .node(child)
-      .and_then(|node| Some((node.parent?, node.previous_sibling, node.next_sibling)))
-    else {
-      return;
-    };
-
-    match previous {
-      Some(previous) => {
-        if let Some(node) = self.node_mut(previous) {
-          node.next_sibling = next;
-        }
-      }
-      None => {
-        if let Some(node) = self.node_mut(parent) {
-          node.first_child = next;
-        }
-      }
-    }
-
-    match next {
-      Some(next) => {
-        if let Some(node) = self.node_mut(next) {
-          node.previous_sibling = previous;
-        }
-      }
-      None => {
-        if let Some(node) = self.node_mut(parent) {
-          node.last_child = previous;
-        }
-      }
-    }
-
-    if let Some(node) = self.node_mut(child) {
-      node.parent = None;
-      node.previous_sibling = None;
-      node.next_sibling = None;
-    }
-  }
-
-  /// Attaches `child` under `parent` before `before`, else last, moving it from wherever
-  /// it was attached.
-  fn attach(&mut self, parent: u32, child: u32, before: Option<u32>) {
-    self.unlink(child);
-
-    if self.node(parent).is_none() || self.node(child).is_none() {
-      return;
-    }
-
-    let before = before.filter(|before| {
-      self
-        .node(*before)
-        .is_some_and(|node| node.parent == Some(parent))
-    });
-    let previous = match before {
-      Some(before) => self.node(before).and_then(|node| node.previous_sibling),
-      None => self.node(parent).and_then(|node| node.last_child),
-    };
-
-    if let Some(node) = self.node_mut(child) {
-      node.parent = Some(parent);
-      node.previous_sibling = previous;
-      node.next_sibling = before;
-    }
-
-    match previous {
-      Some(previous) => {
-        if let Some(node) = self.node_mut(previous) {
-          node.next_sibling = Some(child);
-        }
-      }
-      None => {
-        if let Some(node) = self.node_mut(parent) {
-          node.first_child = Some(child);
-        }
-      }
-    }
-
-    match before {
-      Some(before) => {
-        if let Some(node) = self.node_mut(before) {
-          node.previous_sibling = Some(child);
-        }
-      }
-      None => {
-        if let Some(node) = self.node_mut(parent) {
-          node.last_child = Some(child);
-        }
-      }
-    }
-  }
-
-  /// Removes `child` from under `parent`, where it is attached there.
-  fn detach(&mut self, parent: u32, child: u32) {
-    if self
-      .node(child)
-      .is_some_and(|node| node.parent == Some(parent))
-    {
-      self.unlink(child);
-    }
-  }
-
-  /// Destroys `index` and everything beneath it, removing it from under its parent.
+  /// Destroys the record `index` with the elements standing for it alone: a control's
+  /// carrier and its caption's `<label>`.
   fn destroy(&mut self, index: u32) {
-    self.unlink(index);
+    let Some(node) = self.nodes.get_mut(index as usize).and_then(Option::take)
+    else {
+      return;
+    };
 
-    let mut stack = vec![index];
+    for class in node.style_class.iter().chain(&node.token_class) {
+      self.styles.release(class);
+    }
 
-    while let Some(current) = stack.pop() {
-      stack.extend(self.children(current));
-
-      let Some(node) = self.nodes.get_mut(current as usize).and_then(Option::take)
-      else {
-        continue;
-      };
-
-      stack.extend(node.caption);
-
-      for class in node.style_class.iter().chain(&node.token_class) {
-        self.styles.release(class);
+    for companion in node.carrier.into_iter().chain(node.caption) {
+      if companion != index {
+        self.destroy(companion);
       }
     }
   }
@@ -864,15 +721,17 @@ impl Tree {
   fn render_body(&self) -> String {
     let mut out = String::new();
 
-    for child in self.children(ROOT) {
-      self.serialize(child, &mut out);
-    }
+    Scene::<Web>::read(|scene| {
+      for (_, child) in self.scene_children(scene, ROOT) {
+        self.serialize(scene, child, &mut out);
+      }
+    });
 
     out
   }
 
-  fn serialize(&self, index: u32, out: &mut String) {
-    let Some(Some(node)) = self.nodes.get(index as usize)
+  fn serialize(&self, scene: &Scene<Web>, index: u32, out: &mut String) {
+    let Some(node) = self.node(index)
     else {
       return;
     };
@@ -883,23 +742,53 @@ impl Tree {
       return;
     }
 
-    if let Some(caption) = node.caption {
-      self.serialize(caption, out);
-    }
-
+    self.serialize_caption(scene, node, out);
     node.emit_open(out);
     node.emit_options(out);
 
-    match &node.text {
-      Some(text) => node.emit_text(text, out),
-      None => {
-        for child in self.children(index) {
-          self.serialize(child, out);
-        }
+    if let Some(text) = &node.text {
+      node.emit_text(text, out);
+    }
+    else {
+      self.serialize_carrier(scene, index, out);
+
+      for (_, child) in self.scene_children(scene, index) {
+        self.serialize(scene, child, out);
       }
     }
 
     node.emit_close(out);
+  }
+
+  /// Serializes the caption `node` keeps beside it in its `<label>`, where it keeps one.
+  fn serialize_caption(&self, scene: &Scene<Web>, node: &Node, out: &mut String) {
+    let Some(label) = node.caption.and_then(|label| self.node(label))
+    else {
+      return;
+    };
+    let Some(child) = node
+      .realizes
+      .and_then(|control| scene.caption_beside(control))
+      .and_then(|child| self.realized.get(child).copied())
+    else {
+      return;
+    };
+
+    label.emit_open(out);
+    self.serialize(scene, child, out);
+    label.emit_close(out);
+  }
+
+  /// Serializes the native element carrying the control `index`, where it has one apart
+  /// from its root.
+  fn serialize_carrier(&self, scene: &Scene<Web>, index: u32, out: &mut String) {
+    if let Some(carrier) = self
+      .node(index)
+      .and_then(|node| node.carrier)
+      .filter(|carrier| *carrier != index)
+    {
+      self.serialize(scene, carrier, out);
+    }
   }
 
   /// Serializes the tree in document order from `cursor`, pausing before a child
@@ -910,6 +799,7 @@ impl Tree {
   /// streamed document expects. `None` means the whole tree is serialized.
   fn stream(
     &self,
+    scene: &Scene<Web>,
     cursor: &mut Vec<Frame>,
     out: &mut String,
     pending: impl Fn(u32) -> bool,
@@ -922,13 +812,15 @@ impl Tree {
         continue;
       };
       let next = match frame.passed {
-        None => node.first_child,
-        Some(passed) => match self.node(passed) {
-          Some(passed) if passed.parent == Some(frame.index) => passed.next_sibling,
-          _ => self.children(frame.index).nth(frame.passed_count),
-        },
+        None => self.scene_children(scene, frame.index).next(),
+        Some(passed) if scene.parent(passed) == node.realizes => {
+          self.next_scene_child(scene, frame.index, passed)
+        }
+        Some(_) => self
+          .scene_children(scene, frame.index)
+          .nth(frame.passed_count),
       };
-      let Some(child) = next
+      let Some((scene_child, child)) = next
       else {
         if frame.index != ROOT {
           node.emit_close(out);
@@ -943,7 +835,7 @@ impl Tree {
         return Some(child);
       }
 
-      frame.passed = Some(child);
+      frame.passed = Some(scene_child);
       frame.passed_count += 1;
 
       let Some(child_node) = self.node(child)
@@ -957,24 +849,28 @@ impl Tree {
         continue;
       }
 
-      if let Some(caption) = child_node.caption {
-        self.serialize(caption, out);
-      }
-
+      self.serialize_caption(scene, child_node, out);
       child_node.emit_open(out);
       child_node.emit_options(out);
 
-      match &child_node.text {
-        Some(text) => {
-          child_node.emit_text(text, out);
-          child_node.emit_close(out);
-        }
-        None if child_node.first_child.is_none() => child_node.emit_close(out),
-        None => cursor.push(Frame {
+      if let Some(text) = &child_node.text {
+        child_node.emit_text(text, out);
+        child_node.emit_close(out);
+
+        continue;
+      }
+
+      self.serialize_carrier(scene, child, out);
+
+      if self.scene_children(scene, child).next().is_none() {
+        child_node.emit_close(out);
+      }
+      else {
+        cursor.push(Frame {
           index: child,
           passed: None,
           passed_count: 0,
-        }),
+        });
       }
     }
 
@@ -1311,8 +1207,6 @@ fn control_index(props: &ControlProps<Web>) -> u32 {
           node.set_attribute("class", NATIVE_CLASS);
         }
 
-        tree.attach(root, input, None);
-
         if let Some(node) = tree.node_mut(root) {
           node.carrier = Some(input);
         }
@@ -1611,35 +1505,20 @@ impl Platform for Web {
     realize(node, scope_index());
   }
 
-  fn attach(parent: NodeId, child: NodeId, before: Option<NodeId>) {
-    let (Some(parent), Some(child)) = (index_of(parent), index_of(child))
-    else {
-      return;
-    };
-    let before = before.and_then(index_of);
-
-    with_tree(|tree| {
-      if !tree.attach_caption(parent, child) {
-        tree.attach(parent, child, before);
-      }
-    });
+  fn attach(parent: NodeId, child: NodeId, _before: Option<NodeId>) {
+    if let (Some(parent), Some(child)) = (index_of(parent), index_of(child)) {
+      with_tree(|tree| tree.keep_caption(parent, child));
+    }
   }
 
   fn relocate(parent: NodeId, child: NodeId, before: Option<NodeId>) {
-    if let Some(child) = index_of(child) {
-      with_tree(|tree| tree.take_out(child));
-    }
-
     Self::attach(parent, child, before);
   }
 
   fn hide(parent: NodeId, child: NodeId) {
-    let (Some(parent), Some(child)) = (index_of(parent), index_of(child))
-    else {
-      return;
-    };
-
-    with_tree(|tree| tree.withdraw(parent, child));
+    if let (Some(parent), Some(child)) = (index_of(parent), index_of(child)) {
+      with_tree(|tree| tree.drop_caption(parent, child));
+    }
   }
 
   fn remove(parent: NodeId, child: NodeId) {
@@ -2137,7 +2016,7 @@ where
     let pending = with_tree(|tree| {
       chunk.push_str(&tree.render_style_delta());
 
-      tree.stream(&mut cursor, &mut chunk, boundary_pending)
+      Scene::<Web>::read(|scene| tree.stream(scene, &mut cursor, &mut chunk, boundary_pending))
     });
 
     flush(StreamPiece::Chunk(chunk));

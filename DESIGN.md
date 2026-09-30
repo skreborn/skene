@@ -93,9 +93,10 @@ own borrow. The scene also says where each node is placed (`Scene::placed_childr
 `Scene::placed_parent`): where it stands, except the caption a control keeps beside it
 (`Scene::keep_caption_beside`), placed before the control among its siblings on every
 platform. The terminal reads its structure there rather than keeping a copy, through
-`Scene::read`, the shared borrow reads take, which nests and mirrors nothing; the
-server's string tree still links children of its own, the way the scene does, and the
-browser's tree is the DOM. The scene tells the platform what happens to each
+`Scene::read`, the shared borrow reads take, which nests and mirrors nothing, and the
+server's string tree serializes the scene's structure through its records, a control's
+carrier and its caption's `<label>` the only elements it adds; the browser's tree is the
+DOM. The scene tells the platform what happens to each
 child: it is attached (new, or returning from being hidden), relocated (a move, which
 the web makes with `moveBefore` where the engine has it, keeping focus and animations,
 and with one `insertBefore` elsewhere), hidden (taken out live, to return) or removed

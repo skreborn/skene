@@ -6,14 +6,14 @@ lands in. What has shipped is not listed: the code, `DESIGN.md` and the tests de
 it.
 
 The reactive engine's baseline, `cargo bench -p skene-reactive --bench engine` on the
-development machine (2026-09-30), against which a change to the engine is measured:
-creating a thousand signals with nothing recording snapshots 51 µs; a signal read
-outside an effect 7.0 ns; a write reaching ten effects 299 ns; a write through a chain
-of ten memos 551 ns; a store row's edit among a hundred tracked rows 185 ns, and among
-ten thousand 162 ns, and by key 232 ns and 230 ns; a row pushed among a hundred 231 ns,
-and among ten thousand 6.5 µs. Versions compare only when each is built in its own
-target directory (a shared one reuses another tree's build) and the bench binaries run
-alternately, pinned to one of the fast cores with address randomization off:
+development machine at rest (2026-10-01), against which a change to the engine is
+measured: creating a thousand signals with nothing recording snapshots 39 µs; a signal
+read outside an effect 4.8 ns; a write reaching ten effects 231 ns; a write through a
+chain of ten memos 405 ns; a store row's edit among a hundred tracked rows 156 ns, and
+among ten thousand 154 ns, and by key 213 ns and 213 ns; a row pushed among a hundred
+213 ns, and among ten thousand 5.9 µs. Versions compare only when each is built in its
+own target directory (a shared one reuses another tree's build) and the bench binaries
+run alternately, pinned to one of the fast cores with address randomization off:
 `setarch -R taskset -c 2 <binary> --bench`.
 Callgrind's instruction counts compare two builds whatever the machine's load, cache
 misses aside: `valgrind --tool=callgrind <binary>`, built with
@@ -99,10 +99,9 @@ left half-done in a code comment.
     too, in core's `ResolutionContext`, which headless and the terminal share; a
     resolution reports the environment it read as it reports the interaction, so a
     resize restyles only what reads the viewport.
-    - Constant factors: the iterative pull and alien-signals' propagation techniques,
-    estimated to halve a read and a write; forced inlining off allocating functions;
-    the lazy list reading a data source (a count and the item at an index) through a
-    Fenwick tree, and evicting measured extents;
+    - Constant factors: forced inlining off allocating functions; the lazy list reading
+    a data source (a count and the item at an index) through a Fenwick tree, and
+    evicting measured extents;
     one constructable stylesheet with deferred collection and a set of adopted names;
     release web output through wasm-opt, without `.d.ts` files or name sections,
     precompressed, fingerprinted and preloaded, with one cached stylesheet shared by

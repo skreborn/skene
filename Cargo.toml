@@ -36,6 +36,12 @@ trybuild = "1"
 ui-events = { default-features = false, features = ["std"], version = "0.3" }
 wasm-bindgen = "0.2"
 
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+debug = false
+
 [profile.release]
 codegen-units = 1
 lto = true

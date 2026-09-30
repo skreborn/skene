@@ -11,7 +11,7 @@ use skene_core::{
   AnyKind,
   Color,
   Definition,
-  HasChildren,
+  HasChild,
   Inset,
   Media,
   NodeId,

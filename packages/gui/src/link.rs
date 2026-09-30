@@ -29,7 +29,7 @@ use crate::ActivePlatform;
 ///
 /// A box whose destination is the route's path, so a page without JavaScript navigates
 /// by full page load, and a running app intercepts the click into [`Router::navigate`]
-/// instead. Takes its content through [`set_child`](HasChildren::set_child).
+/// instead. Takes its content through [`add_child`](HasChildren::add_child).
 ///
 /// A modified click—control, shift, alt, or command held—is left to the platform, so
 /// open-in-new-tab and friends keep working.

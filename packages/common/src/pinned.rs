@@ -55,7 +55,7 @@ impl<P: Platform> Pinned<P> {
   }
 }
 
-impl<P: Platform, C> Pinned<P, C> {
+impl<P: Platform> Pinned<P> {
   /// Sets the edges the child is pinned to.
   #[inline(always)]
   pub fn set_edges(

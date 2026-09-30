@@ -14,6 +14,7 @@ use skene_gui::{
   Deferred,
   Enhance,
   Flexible,
+  HasChild,
   HasChildren,
   Label,
   Lazy,
@@ -884,7 +885,7 @@ fn a_title_registered_after_the_shell_is_warned_about() {
     Warnings(std::sync::Arc::clone(&warnings)),
     || {
       render_to_stream(|| {
-        Row::new().set_child(Deferred::new(|| {
+        Row::new().add_child(Deferred::new(|| {
           let data = Resource::new(|| async {
             web::sleep(Duration::from_millis(1)).await;
 

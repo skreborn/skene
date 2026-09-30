@@ -2442,6 +2442,7 @@ impl<N: skene_core::Scalar, X: skene_core::StyleExtension> skene_core::Fingerpri
 pub fn skene_core::BoxStyle<N, skene_core::Plain, X>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 pub struct skene_core::Children<P: skene_core::Platform, Kind>
 impl<P: skene_core::Platform, Kind: 'static> skene_core::Children<P, Kind>
+pub fn skene_core::Children<P, Kind>::clear(&mut self)
 pub const fn skene_core::Children<P, Kind>::is_empty(&self) -> bool
 pub fn skene_core::Children<P, Kind>::mount(self, skene_core::NodeId)
 pub const fn skene_core::Children<P, Kind>::new() -> Self
@@ -3108,13 +3109,18 @@ impl core::marker::StructuralPartialEq for skene_core::KeyEvent
 pub struct skene_core::Keyed<P: skene_core::Platform, V>
 impl<P: core::fmt::Debug + skene_core::Platform, V: core::fmt::Debug> core::fmt::Debug for skene_core::Keyed<P, V>
 pub fn skene_core::Keyed<P, V>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<P: skene_core::Platform, V: skene_core::HasChild<P>> skene_core::HasChild<P> for skene_core::Keyed<P, V>
+pub type skene_core::Keyed<P, V>::Kind = <V as skene_core::HasChild<P>>::Kind
+pub fn skene_core::Keyed<P, V>::child_mut(&mut self, skene_core::Seal) -> &mut skene_core::Children<P, Self::Kind>
+pub fn skene_core::Keyed<P, V>::derive_child<V: skene_core::IntoChildOf<P, Self::Kind>>(self, impl core::ops::function::Fn() -> V + 'static) -> Self
+pub fn skene_core::Keyed<P, V>::set_child(self, impl skene_core::IntoChildOf<P, Self::Kind>) -> Self
 impl<P: skene_core::Platform, V: skene_core::HasChildren<P>> skene_core::HasChildren<P> for skene_core::Keyed<P, V>
 pub type skene_core::Keyed<P, V>::Kind = <V as skene_core::HasChildren<P>>::Kind
+pub fn skene_core::Keyed<P, V>::add_child(self, impl skene_core::IntoChildOf<P, Self::Kind>) -> Self
 pub fn skene_core::Keyed<P, V>::children_mut(&mut self, skene_core::Seal) -> &mut skene_core::Children<P, Self::Kind>
 pub fn skene_core::Keyed<P, V>::derive_child<V: skene_core::IntoChildOf<P, Self::Kind>>(self, impl core::ops::function::Fn() -> V + 'static) -> Self
 pub fn skene_core::Keyed<P, V>::derive_children<T, I, K, V>(self, impl core::ops::function::Fn() -> I + 'static, impl core::ops::function::Fn(&T) -> K + 'static, impl core::ops::function::Fn(T) -> V + 'static) -> Self where I: core::iter::traits::collect::IntoIterator<Item = T>, K: core::cmp::Eq + core::hash::Hash + 'static, V: skene_core::IntoChildOf<P, Self::Kind>
 pub fn skene_core::Keyed<P, V>::derive_entries<F, V>(self, F, impl core::ops::function::Fn(skene_reactive::store::AtKey<F>) -> V + 'static) -> Self where F: skene_reactive::store::KeyedField, V: skene_core::IntoChildOf<P, Self::Kind>
-pub fn skene_core::Keyed<P, V>::set_child(self, impl skene_core::IntoChildOf<P, Self::Kind>) -> Self
 pub fn skene_core::Keyed<P, V>::set_children(self, impl skene_core::IntoChildren<P, Self::Kind>) -> Self
 impl<P: skene_core::Platform, V: skene_core::View<P>> skene_core::View<P> for skene_core::Keyed<P, V>
 pub fn skene_core::Keyed<P, V>::build(self) -> skene_core::NodeId
@@ -3760,10 +3766,10 @@ pub fn skene_core::Shortcut::hash<__H: core::hash::Hasher>(&self, &mut __H)
 impl core::marker::Copy for skene_core::Shortcut
 impl core::marker::StructuralPartialEq for skene_core::Shortcut
 pub struct skene_core::Show<P: skene_core::Platform, C>
-impl<P: skene_core::Platform, C> skene_core::Show<P, C>
-pub fn skene_core::Show<P, C>::derive_shown(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
-pub fn skene_core::Show<P, C>::set_child(self, impl skene_core::IntoView<P>) -> skene_core::Show<P, skene_core::AnyView<P>>
-pub fn skene_core::Show<P, C>::set_shown(self, bool) -> Self
+impl<P: skene_core::Platform> skene_core::Show<P>
+pub fn skene_core::Show<P>::derive_shown(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
+pub fn skene_core::Show<P>::set_child(self, impl skene_core::IntoView<P>) -> skene_core::Show<P, skene_core::AnyView<P>>
+pub fn skene_core::Show<P>::set_shown(self, bool) -> Self
 impl<P: skene_core::Platform> skene_core::Show<P>
 pub fn skene_core::Show<P>::new() -> Self
 impl<P: skene_core::Platform, C> core::fmt::Debug for skene_core::Show<P, C>
@@ -4439,21 +4445,31 @@ impl<X: skene_core::StyleExtension> skene_core::Fingerprint for skene_core::RunS
 pub fn skene_core::RunStyle<skene_core::Keyframe, X>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 impl<X: skene_core::StyleExtension> skene_core::Fingerprint for skene_core::RunStyle<skene_core::Plain, X>
 pub fn skene_core::RunStyle<skene_core::Plain, X>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
+pub trait skene_core::HasChild<P: skene_core::Platform>: core::marker::Sized
+pub type skene_core::HasChild::Kind: 'static
+pub fn skene_core::HasChild::child_mut(&mut self, skene_core::Seal) -> &mut skene_core::Children<P, Self::Kind>
+pub fn skene_core::HasChild::derive_child<V: skene_core::IntoChildOf<P, Self::Kind>>(self, impl core::ops::function::Fn() -> V + 'static) -> Self
+pub fn skene_core::HasChild::set_child(self, impl skene_core::IntoChildOf<P, Self::Kind>) -> Self
+impl<P: skene_core::Platform, V: skene_core::HasChild<P>> skene_core::HasChild<P> for skene_core::Keyed<P, V>
+pub type skene_core::Keyed<P, V>::Kind = <V as skene_core::HasChild<P>>::Kind
+pub fn skene_core::Keyed<P, V>::child_mut(&mut self, skene_core::Seal) -> &mut skene_core::Children<P, Self::Kind>
+pub fn skene_core::Keyed<P, V>::derive_child<V: skene_core::IntoChildOf<P, Self::Kind>>(self, impl core::ops::function::Fn() -> V + 'static) -> Self
+pub fn skene_core::Keyed<P, V>::set_child(self, impl skene_core::IntoChildOf<P, Self::Kind>) -> Self
 pub trait skene_core::HasChildren<P: skene_core::Platform>: core::marker::Sized
 pub type skene_core::HasChildren::Kind: 'static
+pub fn skene_core::HasChildren::add_child(self, impl skene_core::IntoChildOf<P, Self::Kind>) -> Self
 pub fn skene_core::HasChildren::children_mut(&mut self, skene_core::Seal) -> &mut skene_core::Children<P, Self::Kind>
 pub fn skene_core::HasChildren::derive_child<V: skene_core::IntoChildOf<P, Self::Kind>>(self, impl core::ops::function::Fn() -> V + 'static) -> Self
 pub fn skene_core::HasChildren::derive_children<T, I, K, V>(self, impl core::ops::function::Fn() -> I + 'static, impl core::ops::function::Fn(&T) -> K + 'static, impl core::ops::function::Fn(T) -> V + 'static) -> Self where I: core::iter::traits::collect::IntoIterator<Item = T>, K: core::cmp::Eq + core::hash::Hash + 'static, V: skene_core::IntoChildOf<P, Self::Kind>
 pub fn skene_core::HasChildren::derive_entries<F, V>(self, F, impl core::ops::function::Fn(skene_reactive::store::AtKey<F>) -> V + 'static) -> Self where F: skene_reactive::store::KeyedField, V: skene_core::IntoChildOf<P, Self::Kind>
-pub fn skene_core::HasChildren::set_child(self, impl skene_core::IntoChildOf<P, Self::Kind>) -> Self
 pub fn skene_core::HasChildren::set_children(self, impl skene_core::IntoChildren<P, Self::Kind>) -> Self
 impl<P: skene_core::Platform, V: skene_core::HasChildren<P>> skene_core::HasChildren<P> for skene_core::Keyed<P, V>
 pub type skene_core::Keyed<P, V>::Kind = <V as skene_core::HasChildren<P>>::Kind
+pub fn skene_core::Keyed<P, V>::add_child(self, impl skene_core::IntoChildOf<P, Self::Kind>) -> Self
 pub fn skene_core::Keyed<P, V>::children_mut(&mut self, skene_core::Seal) -> &mut skene_core::Children<P, Self::Kind>
 pub fn skene_core::Keyed<P, V>::derive_child<V: skene_core::IntoChildOf<P, Self::Kind>>(self, impl core::ops::function::Fn() -> V + 'static) -> Self
 pub fn skene_core::Keyed<P, V>::derive_children<T, I, K, V>(self, impl core::ops::function::Fn() -> I + 'static, impl core::ops::function::Fn(&T) -> K + 'static, impl core::ops::function::Fn(T) -> V + 'static) -> Self where I: core::iter::traits::collect::IntoIterator<Item = T>, K: core::cmp::Eq + core::hash::Hash + 'static, V: skene_core::IntoChildOf<P, Self::Kind>
 pub fn skene_core::Keyed<P, V>::derive_entries<F, V>(self, F, impl core::ops::function::Fn(skene_reactive::store::AtKey<F>) -> V + 'static) -> Self where F: skene_reactive::store::KeyedField, V: skene_core::IntoChildOf<P, Self::Kind>
-pub fn skene_core::Keyed<P, V>::set_child(self, impl skene_core::IntoChildOf<P, Self::Kind>) -> Self
 pub fn skene_core::Keyed<P, V>::set_children(self, impl skene_core::IntoChildren<P, Self::Kind>) -> Self
 pub trait skene_core::IntoBoxValue<N: skene_core::Scalar, X: skene_core::StyleExtension>: core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug + skene_core::Fingerprint + 'static
 pub fn skene_core::IntoBoxValue::from_box_value(skene_core::BoxValue<N, X>) -> core::option::Option<Self>

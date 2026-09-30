@@ -185,7 +185,7 @@ fn checkbox_labels_render_and_toggle() {
 
     let _ = tui::mount(|| {
       Column::new()
-        .set_child(
+        .add_child(
           SimpleCheckbox::new()
             .bind_checked(on)
             .set_label("subscribe"),
@@ -505,7 +505,7 @@ fn a_slider_on_a_half_cell_leaves_no_gap_before_its_thumb() {
     let _ = tui::mount(|| {
       Column::new()
         .set_item_alignment(ItemAlignment::Center)
-        .set_child(
+        .add_child(
           Container::new().set_width(21).set_child(
             SimpleSlider::new()
               .set_min(0.)
@@ -668,7 +668,7 @@ fn picker(unit: Signal<String>) -> SimplePicker {
 
 /// Mounts a picker bound to `unit` at the top of the frame.
 fn mount_picker(unit: Signal<String>) {
-  let _ = tui::mount(|| Column::new().set_child(picker(unit)).into_any().build());
+  let _ = tui::mount(|| Column::new().add_child(picker(unit)).into_any().build());
 }
 
 /// The row of the last line containing `needle`: the popup's row, beneath the face
@@ -1345,7 +1345,7 @@ fn a_text_fields_caption_sits_before_its_box() {
       built.set(Some(field));
 
       Column::new()
-        .set_child(AnyView::node(field))
+        .add_child(AnyView::node(field))
         .into_any()
         .build()
     });

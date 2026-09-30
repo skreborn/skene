@@ -63,7 +63,7 @@ impl<P: Platform> ErrorBoundary<P> {
   }
 }
 
-impl<P: Platform, C> ErrorBoundary<P, C> {
+impl<P: Platform> ErrorBoundary<P> {
   /// Sets the fallback shown while errors are held, built by `fallback` from the
   /// boundary's handle whenever the held errors change; nothing by default.
   #[inline(always)]

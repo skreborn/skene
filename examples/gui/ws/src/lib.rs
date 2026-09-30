@@ -9,7 +9,7 @@
 
 use std::rc::Rc;
 
-use skene_gui::{Resource, prelude::*, spawn};
+use skene_gui::{HasChild, Resource, prelude::*, spawn};
 use skene_simple::gui::prelude::*;
 
 /// The echo service the example talks to.
@@ -26,7 +26,7 @@ fn app() -> impl IntoView {
         Column::new()
           .set_item_alignment(ItemAlignment::Center)
           .set_padding(Inset::symmetric(24., 48.))
-          .set_child(
+          .add_child(
             Container::new().set_max_width(460.).set_child(
               Column::new()
                 .set_spacing(24.)

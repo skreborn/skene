@@ -69,7 +69,7 @@ impl<P: Platform, S: TokenSet<P::TokenValue>> Theme<P, S> {
   }
 }
 
-impl<P: Platform, S: TokenSet<P::TokenValue>, C> Theme<P, S, C> {
+impl<P: Platform, S: TokenSet<P::TokenValue>> Theme<P, S> {
   /// Sets the child, built by `child` under the theme.
   #[inline(always)]
   pub fn set_child_builder<V: IntoView<P>>(

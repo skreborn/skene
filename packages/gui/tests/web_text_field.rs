@@ -7,6 +7,7 @@ use skene_gui::{
   Condition,
   Container,
   FocusOrder,
+  HasChild,
   HasChildren,
   Inset,
   RawTextField,

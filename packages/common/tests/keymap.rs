@@ -2,7 +2,7 @@
 
 use std::{cell::Cell, rc::Rc};
 
-use skene_core::{HasChildren, KeyEvent, Modifiers, Prevented, Shortcut, View};
+use skene_core::{HasChild, KeyEvent, Modifiers, Prevented, Shortcut, View};
 use skene_headless::{Headless, children, reset, trigger_key_down};
 use skene_reactive::Owner;
 

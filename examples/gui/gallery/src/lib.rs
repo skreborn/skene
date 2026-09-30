@@ -1,6 +1,6 @@
 //! The gallery: every built-in view and Simple component, live.
 
-use skene_gui::{ActivePlatform, prelude::*};
+use skene_gui::{ActivePlatform, HasChild, prelude::*};
 use skene_simple::gui::prelude::*;
 
 /// The gallery page: every built-in view and Simple component, under the palette the
@@ -23,7 +23,7 @@ pub fn app() -> impl IntoView {
           Column::new()
             .set_item_alignment(ItemAlignment::Center)
             .set_padding(Inset::symmetric(24., 48.))
-            .set_child(
+            .add_child(
               Container::new().set_max_width(560.).set_child(
                 Column::new().set_spacing(24.).set_children((
                   Text::new("GALLERY")
@@ -294,7 +294,7 @@ fn layouts() -> impl IntoView {
         .set_color(SimplePalette::SECONDARY_SURFACE)
         .set_corner_radius(8.)
         .set_child(
-          Stack::new().set_child(
+          Stack::new().add_child(
             Pinned::new()
               .set_edges(Inset {
                 top: Dimension::Auto,
@@ -314,7 +314,7 @@ fn layouts() -> impl IntoView {
         Overlay::modal().bind_open(open).set_child(
           SimpleCard::new().set_spacing(20.).set_children((
             Text::new("A modal overlay; Escape or the backdrop dismisses.").set_font_size(14.),
-            Row::new().set_arrangement(Arrangement::End).set_child(
+            Row::new().set_arrangement(Arrangement::End).add_child(
               SimpleButton::new("Close")
                 .set_variant(SimpleVariant::Secondary)
                 .handle_click(move || open.set(false)),

@@ -7,7 +7,7 @@
 
 mod common;
 
-use skene_tui::{self as tui, CellDecoration, TextEntry, TextSelection, prelude::*};
+use skene_tui::{self as tui, CellDecoration, HasChild, TextEntry, TextSelection, prelude::*};
 
 use crate::common::with_platform;
 

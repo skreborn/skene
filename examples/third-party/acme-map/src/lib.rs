@@ -14,7 +14,7 @@
 use std::marker::PhantomData;
 
 use skene_common::{Container, LowLevel};
-use skene_core::{AnyKind, HasChildren, NodeId, NodeKind, Platform, Size, View};
+use skene_core::{AnyKind, HasChild, NodeId, NodeKind, Platform, Size, View};
 #[cfg(target_os = "unknown")]
 use skene_web::WebDom;
 use skene_web::{Declarations, WebMarkup};

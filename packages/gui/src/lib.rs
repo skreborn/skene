@@ -81,6 +81,7 @@ pub use skene_core::{
   Expr,
   FocusOrder,
   Handler,
+  HasChild,
   HasChildren,
   IntoChildOf,
   IntoChildren,

@@ -123,7 +123,7 @@ impl<P: Platform> Overlay<P> {
   }
 }
 
-impl<P: Platform, C> Overlay<P, C> {
+impl<P: Platform> Overlay<P> {
   /// The declared style of the content box, for a facade's medium-specific setters to
   /// write into.
   #[inline(always)]
@@ -299,7 +299,7 @@ impl<P: Platform> View<P> for Overlay<P, AnyView<P>> {
       Source::Derived(compute) => compute,
     };
     let node = inner
-      .set_child(child)
+      .add_child(child)
       .realize(NodeKind::Overlay, |box_props| {
         P::create_overlay(&OverlayProps {
           modal,

@@ -14,6 +14,7 @@ use skene_core::{
   DragAxes,
   DragData,
   FocusOrder,
+  HasChild,
   HasChildren,
   KeyEvent,
   Layout,
@@ -37,7 +38,7 @@ use crate::{LayoutBox, NodeHandle, decoration};
 /// Decoration and sizing around exactly one child.
 ///
 /// The freely stylable box: decoration, sizing, events, alignment and a single child,
-/// set through [`HasChildren::set_child`] or [`HasChildren::derive_child`]. The child
+/// set through [`HasChild::set_child`] or [`HasChild::derive_child`]. The child
 /// fills the container when the container is sized and the container hugs the child
 /// when it is not; [`set_alignment`](Self::set_alignment) places a child that does
 /// neither. Several children take a layout view, wrapped in a container to decorate it.
@@ -376,11 +377,11 @@ impl<P: Platform> Container<P> {
   }
 }
 
-impl<P: Platform> HasChildren<P> for Container<P> {
+impl<P: Platform> HasChild<P> for Container<P> {
   type Kind = PlainChild;
 
   #[inline(always)]
-  fn children_mut(&mut self, seal: Seal) -> &mut Children<P, PlainChild> {
+  fn child_mut(&mut self, seal: Seal) -> &mut Children<P, PlainChild> {
     self.inner.children_mut(seal)
   }
 }

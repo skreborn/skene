@@ -45,7 +45,7 @@ impl<P: Platform> Default for Show<P> {
   }
 }
 
-impl<P: Platform, C> Show<P, C> {
+impl<P: Platform> Show<P> {
   /// Sets whether the child is shown.
   #[inline(always)]
   pub fn set_shown(mut self, shown: bool) -> Self {

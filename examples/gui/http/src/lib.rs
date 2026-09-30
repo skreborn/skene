@@ -7,7 +7,7 @@
 //! The quotes are a manifest-declared asset, served beside the page, so the example
 //! needs no network beyond the dev server.
 
-use skene_gui::{Resource, prelude::*};
+use skene_gui::{HasChild, Resource, prelude::*};
 use skene_simple::gui::prelude::*;
 
 /// Where the quotes live: the app's declared asset, served at its URI.
@@ -24,7 +24,7 @@ fn app() -> impl IntoView {
         Column::new()
           .set_item_alignment(ItemAlignment::Center)
           .set_padding(Inset::symmetric(24., 48.))
-          .set_child(
+          .add_child(
             Container::new().set_max_width(460.).set_child(
               Column::new()
                 .set_spacing(24.)

@@ -19,6 +19,7 @@ use skene_core::{
   Arrangement,
   Color,
   Dimension,
+  HasChild,
   HasChildren,
   Inset,
   IntoView,

@@ -8,7 +8,7 @@ use std::{cell::Cell, rc::Rc};
 
 use skene_gui::{
   Container,
-  HasChildren,
+  HasChild,
   Resource,
   Text,
   View,

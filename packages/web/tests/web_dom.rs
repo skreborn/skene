@@ -15,6 +15,7 @@ use skene_core::{
   Color,
   ColorScheme,
   Condition,
+  HasChild,
   HasChildren,
   Leaf,
   Media,

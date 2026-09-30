@@ -42,10 +42,7 @@ left half-done in a code comment.
     and headless stop mirroring parents, children, tab order and `enclosing_control`,
     and `bind_node` and three arenas go; anchors exist in the scene alone, platforms
     receiving the next real sibling and server output keeping comment pairs only where
-    streaming needs a marker; `HasChild` (one slot, which `set_child` replaces) and
-    `HasChildren` (segments, which `add_child` appends) split by type, `Container`
-    implementing the first alone, and property setters live only on the `NoChild` state,
-    making children-last a type error for every wrapper view.
+    streaming needs a marker.
     - The web's realization: `Platform for Web` is written once over a small sink trait
     that the DOM and the string tree implement, the browser layering adoption and
     events on top, so the two leaves cannot drift; hydration converges, removing
@@ -302,14 +299,14 @@ left half-done in a code comment.
     the background on `Container`. With `RunDisplay` renamed, `display` joins the
     lint's banned words, which then read the names the `api/` snapshots list, re-exports
     included, rather than the sources' own items.
-    - Shapes: one setter per property for `Flexible`
-    (`set_flexibility(impl Into<Value<Flexibility>>)`), the slider (`set_range`,
-    `derive_range`) and `Animation` (iterations, alternation, reduced motion);
-    appending setters named `add_*` (`set_transition`, `set_animation`, `set_case`,
-    `RichText::set_spans`, `Container::set_child`); children last in `Deferred`, `Lazy`
-    and `Link`; fallbacks spelled one way across `Enhance`, `Painted`, `Suspense` and
-    `ErrorBoundary`; one alignment name across `Stack`, `Grid`, `GridCell` and
-    `Flexible`; the same prelude on both facades and every leaf.
+    - Shapes: one setter per property for `Flexible` (`set_flexibility(impl
+    Into<Value<Flexibility>>)`), the slider (`set_range`, `derive_range`) and
+    `Animation` (iterations, alternation, reduced motion); appending setters named
+    `add_*` (`set_transition`, `set_animation`, `set_case`, `RichText::set_spans`);
+    children last in `Deferred`, `Lazy` and `Link`; fallbacks spelled one way across
+    `Enhance`, `Painted`, `Suspense` and `ErrorBoundary`; one alignment name across
+    `Stack`, `Grid`, `GridCell` and `Flexible`; the same prelude on both facades and
+    every leaf.
     - Manifests: every crate publishable, with a description and a repository, the
     versioned dev-dependency cycles broken, and the CLI publishable, as the README's
     `cargo install` assumes; web-sys, js-sys, wasm-bindgen-test and serde_json

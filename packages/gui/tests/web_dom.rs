@@ -26,6 +26,7 @@ use skene_gui::{
   Flexible,
   Grid,
   GridCell,
+  HasChild,
   HasChildren,
   Inset,
   Media,
@@ -633,7 +634,7 @@ fn a_derived_wrapper_property_reaches_a_run() {
 
   let _ = mount(move || {
     Row::new()
-      .set_child(
+      .add_child(
         Flexible::new()
           .derive_grow_factor(move || grow.get())
           .set_child(Text::new("grows")),

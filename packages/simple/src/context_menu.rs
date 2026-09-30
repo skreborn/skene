@@ -55,9 +55,13 @@ impl<P: Platform> SimpleContextMenu<P> {
 
   /// Sets the view the menu serves.
   #[inline(always)]
-  pub fn set_child(self, child: impl IntoView<P>) -> SimpleContextMenu<P, AnyView<P>> {
+  pub fn set_child(self, child: impl IntoView<P>) -> SimpleContextMenu<P, AnyView<P>>
+  where
+    P::Scalar: SimpleUnit,
+    P::StyleExt: CornerRadius,
+  {
     SimpleContextMenu {
-      raw: self.raw.set_child(child),
+      raw: dress(self.raw).set_child(child),
     }
   }
 
@@ -82,7 +86,7 @@ impl<P: Platform> Default for SimpleContextMenu<P> {
 impl<P: Platform, C> AnyKind for SimpleContextMenu<P, C> {}
 
 /// Decorates `menu` in the Simple language.
-fn dress<P: Platform, C>(menu: ContextMenu<P, C>) -> ContextMenu<P, C>
+fn dress<P: Platform>(menu: ContextMenu<P>) -> ContextMenu<P>
 where
   P::Scalar: SimpleUnit,
   P::StyleExt: CornerRadius,
@@ -126,6 +130,6 @@ where
   P::StyleExt: CornerRadius,
 {
   fn build(self) -> NodeId {
-    dress(self.raw).build()
+    self.raw.build()
   }
 }

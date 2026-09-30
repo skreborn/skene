@@ -21,6 +21,7 @@ pub use skene_tui::Errors
 pub use skene_tui::Expr
 pub use skene_tui::FocusOrder
 pub use skene_tui::Handler
+pub use skene_tui::HasChild
 pub use skene_tui::HasChildren
 pub use skene_tui::IntoBrush
 pub use skene_tui::IntoChildOf
@@ -139,6 +140,7 @@ pub use skene_tui::prelude::GridName
 pub use skene_tui::prelude::GridPlacement
 pub use skene_tui::prelude::GridTemplate
 pub use skene_tui::prelude::GridTrack
+pub use skene_tui::prelude::HasChild
 pub use skene_tui::prelude::HasChildren
 pub use skene_tui::prelude::IndexedField
 pub use skene_tui::prelude::IntoChildOf
@@ -333,38 +335,38 @@ pub fn skene_common::container::Container<skene_tui::Tui>::set_shadow(self, impl
 pub fn skene_common::container::Container<skene_tui::Tui>::set_shadow_offset(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
 pub fn skene_common::container::Container<skene_tui::Tui>::set_shadow_softening(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
 pub fn skene_common::container::Container<skene_tui::Tui>::terminal_style_mut(&mut self) -> &mut skene_core::box_style::BoxStyle<u32, skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::tui::ext::TuiExt>
-impl<B: skene_common::control::Behavior<skene_tui::Tui>, C> skene_tui::TuiDecoration for skene_common::control::Control<skene_tui::Tui, B, C>
-pub fn skene_common::control::Control<skene_tui::Tui, B, C>::derive_border_glyphs<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_common::tui::ext::BorderGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_common::control::Control<skene_tui::Tui, B, C>::derive_scrollbar_glyphs<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_common::tui::ext::ScrollbarGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_common::control::Control<skene_tui::Tui, B, C>::derive_scrollbar_thumb<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_common::control::Control<skene_tui::Tui, B, C>::derive_scrollbar_track<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_common::control::Control<skene_tui::Tui, B, C>::derive_shadow<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_common::control::Control<skene_tui::Tui, B, C>::derive_shadow_offset<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_common::control::Control<skene_tui::Tui, B, C>::derive_shadow_softening<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_common::control::Control<skene_tui::Tui, B, C>::set_border_glyphs(self, impl core::convert::Into<skene_core::leaf::Value<skene_common::tui::ext::BorderGlyphs, skene_core::condition::Condition<u32>>>) -> Self
-pub fn skene_common::control::Control<skene_tui::Tui, B, C>::set_scrollbar_glyphs(self, impl core::convert::Into<skene_core::leaf::Value<skene_common::tui::ext::ScrollbarGlyphs, skene_core::condition::Condition<u32>>>) -> Self
-pub fn skene_common::control::Control<skene_tui::Tui, B, C>::set_scrollbar_thumb(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
-pub fn skene_common::control::Control<skene_tui::Tui, B, C>::set_scrollbar_track(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
-pub fn skene_common::control::Control<skene_tui::Tui, B, C>::set_shadow(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
-pub fn skene_common::control::Control<skene_tui::Tui, B, C>::set_shadow_offset(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
-pub fn skene_common::control::Control<skene_tui::Tui, B, C>::set_shadow_softening(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
-pub fn skene_common::control::Control<skene_tui::Tui, B, C>::terminal_style_mut(&mut self) -> &mut skene_core::box_style::BoxStyle<u32, skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::tui::ext::TuiExt>
-impl<C> skene_tui::TuiDecoration for skene_common::overlay::Overlay<skene_tui::Tui, C>
-pub fn skene_common::overlay::Overlay<skene_tui::Tui, C>::derive_border_glyphs<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_common::tui::ext::BorderGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_common::overlay::Overlay<skene_tui::Tui, C>::derive_scrollbar_glyphs<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_common::tui::ext::ScrollbarGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_common::overlay::Overlay<skene_tui::Tui, C>::derive_scrollbar_thumb<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_common::overlay::Overlay<skene_tui::Tui, C>::derive_scrollbar_track<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_common::overlay::Overlay<skene_tui::Tui, C>::derive_shadow<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_common::overlay::Overlay<skene_tui::Tui, C>::derive_shadow_offset<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_common::overlay::Overlay<skene_tui::Tui, C>::derive_shadow_softening<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_common::overlay::Overlay<skene_tui::Tui, C>::set_border_glyphs(self, impl core::convert::Into<skene_core::leaf::Value<skene_common::tui::ext::BorderGlyphs, skene_core::condition::Condition<u32>>>) -> Self
-pub fn skene_common::overlay::Overlay<skene_tui::Tui, C>::set_scrollbar_glyphs(self, impl core::convert::Into<skene_core::leaf::Value<skene_common::tui::ext::ScrollbarGlyphs, skene_core::condition::Condition<u32>>>) -> Self
-pub fn skene_common::overlay::Overlay<skene_tui::Tui, C>::set_scrollbar_thumb(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
-pub fn skene_common::overlay::Overlay<skene_tui::Tui, C>::set_scrollbar_track(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
-pub fn skene_common::overlay::Overlay<skene_tui::Tui, C>::set_shadow(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
-pub fn skene_common::overlay::Overlay<skene_tui::Tui, C>::set_shadow_offset(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
-pub fn skene_common::overlay::Overlay<skene_tui::Tui, C>::set_shadow_softening(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
-pub fn skene_common::overlay::Overlay<skene_tui::Tui, C>::terminal_style_mut(&mut self) -> &mut skene_core::box_style::BoxStyle<u32, skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::tui::ext::TuiExt>
+impl skene_tui::TuiDecoration for skene_common::overlay::Overlay<skene_tui::Tui>
+pub fn skene_common::overlay::Overlay<skene_tui::Tui>::derive_border_glyphs<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_common::tui::ext::BorderGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::overlay::Overlay<skene_tui::Tui>::derive_scrollbar_glyphs<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_common::tui::ext::ScrollbarGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::overlay::Overlay<skene_tui::Tui>::derive_scrollbar_thumb<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::overlay::Overlay<skene_tui::Tui>::derive_scrollbar_track<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::overlay::Overlay<skene_tui::Tui>::derive_shadow<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::overlay::Overlay<skene_tui::Tui>::derive_shadow_offset<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::overlay::Overlay<skene_tui::Tui>::derive_shadow_softening<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::overlay::Overlay<skene_tui::Tui>::set_border_glyphs(self, impl core::convert::Into<skene_core::leaf::Value<skene_common::tui::ext::BorderGlyphs, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::overlay::Overlay<skene_tui::Tui>::set_scrollbar_glyphs(self, impl core::convert::Into<skene_core::leaf::Value<skene_common::tui::ext::ScrollbarGlyphs, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::overlay::Overlay<skene_tui::Tui>::set_scrollbar_thumb(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::overlay::Overlay<skene_tui::Tui>::set_scrollbar_track(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::overlay::Overlay<skene_tui::Tui>::set_shadow(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::overlay::Overlay<skene_tui::Tui>::set_shadow_offset(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::overlay::Overlay<skene_tui::Tui>::set_shadow_softening(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::overlay::Overlay<skene_tui::Tui>::terminal_style_mut(&mut self) -> &mut skene_core::box_style::BoxStyle<u32, skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::tui::ext::TuiExt>
+impl<B: skene_common::control::Behavior<skene_tui::Tui>> skene_tui::TuiDecoration for skene_common::control::Control<skene_tui::Tui, B>
+pub fn skene_common::control::Control<skene_tui::Tui, B>::derive_border_glyphs<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_common::tui::ext::BorderGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::control::Control<skene_tui::Tui, B>::derive_scrollbar_glyphs<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_common::tui::ext::ScrollbarGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::control::Control<skene_tui::Tui, B>::derive_scrollbar_thumb<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::control::Control<skene_tui::Tui, B>::derive_scrollbar_track<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::control::Control<skene_tui::Tui, B>::derive_shadow<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::control::Control<skene_tui::Tui, B>::derive_shadow_offset<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::control::Control<skene_tui::Tui, B>::derive_shadow_softening<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::control::Control<skene_tui::Tui, B>::set_border_glyphs(self, impl core::convert::Into<skene_core::leaf::Value<skene_common::tui::ext::BorderGlyphs, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::control::Control<skene_tui::Tui, B>::set_scrollbar_glyphs(self, impl core::convert::Into<skene_core::leaf::Value<skene_common::tui::ext::ScrollbarGlyphs, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::control::Control<skene_tui::Tui, B>::set_scrollbar_thumb(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::control::Control<skene_tui::Tui, B>::set_scrollbar_track(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::control::Control<skene_tui::Tui, B>::set_shadow(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::control::Control<skene_tui::Tui, B>::set_shadow_offset(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::control::Control<skene_tui::Tui, B>::set_shadow_softening(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::control::Control<skene_tui::Tui, B>::terminal_style_mut(&mut self) -> &mut skene_core::box_style::BoxStyle<u32, skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::tui::ext::TuiExt>
 pub trait skene_tui::prelude::TuiText: core::marker::Sized
 pub fn skene_tui::prelude::TuiText::derive_bold<R: core::convert::Into<skene_core::leaf::StaticLeaf<bool>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_tui::prelude::TuiText::set_bold(self, impl core::convert::Into<skene_core::leaf::Value<bool, skene_core::condition::Condition<u32>>>) -> Self
@@ -677,38 +679,38 @@ pub fn skene_common::container::Container<skene_tui::Tui>::set_shadow(self, impl
 pub fn skene_common::container::Container<skene_tui::Tui>::set_shadow_offset(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
 pub fn skene_common::container::Container<skene_tui::Tui>::set_shadow_softening(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
 pub fn skene_common::container::Container<skene_tui::Tui>::terminal_style_mut(&mut self) -> &mut skene_core::box_style::BoxStyle<u32, skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::tui::ext::TuiExt>
-impl<B: skene_common::control::Behavior<skene_tui::Tui>, C> skene_tui::TuiDecoration for skene_common::control::Control<skene_tui::Tui, B, C>
-pub fn skene_common::control::Control<skene_tui::Tui, B, C>::derive_border_glyphs<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_common::tui::ext::BorderGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_common::control::Control<skene_tui::Tui, B, C>::derive_scrollbar_glyphs<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_common::tui::ext::ScrollbarGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_common::control::Control<skene_tui::Tui, B, C>::derive_scrollbar_thumb<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_common::control::Control<skene_tui::Tui, B, C>::derive_scrollbar_track<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_common::control::Control<skene_tui::Tui, B, C>::derive_shadow<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_common::control::Control<skene_tui::Tui, B, C>::derive_shadow_offset<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_common::control::Control<skene_tui::Tui, B, C>::derive_shadow_softening<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_common::control::Control<skene_tui::Tui, B, C>::set_border_glyphs(self, impl core::convert::Into<skene_core::leaf::Value<skene_common::tui::ext::BorderGlyphs, skene_core::condition::Condition<u32>>>) -> Self
-pub fn skene_common::control::Control<skene_tui::Tui, B, C>::set_scrollbar_glyphs(self, impl core::convert::Into<skene_core::leaf::Value<skene_common::tui::ext::ScrollbarGlyphs, skene_core::condition::Condition<u32>>>) -> Self
-pub fn skene_common::control::Control<skene_tui::Tui, B, C>::set_scrollbar_thumb(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
-pub fn skene_common::control::Control<skene_tui::Tui, B, C>::set_scrollbar_track(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
-pub fn skene_common::control::Control<skene_tui::Tui, B, C>::set_shadow(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
-pub fn skene_common::control::Control<skene_tui::Tui, B, C>::set_shadow_offset(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
-pub fn skene_common::control::Control<skene_tui::Tui, B, C>::set_shadow_softening(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
-pub fn skene_common::control::Control<skene_tui::Tui, B, C>::terminal_style_mut(&mut self) -> &mut skene_core::box_style::BoxStyle<u32, skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::tui::ext::TuiExt>
-impl<C> skene_tui::TuiDecoration for skene_common::overlay::Overlay<skene_tui::Tui, C>
-pub fn skene_common::overlay::Overlay<skene_tui::Tui, C>::derive_border_glyphs<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_common::tui::ext::BorderGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_common::overlay::Overlay<skene_tui::Tui, C>::derive_scrollbar_glyphs<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_common::tui::ext::ScrollbarGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_common::overlay::Overlay<skene_tui::Tui, C>::derive_scrollbar_thumb<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_common::overlay::Overlay<skene_tui::Tui, C>::derive_scrollbar_track<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_common::overlay::Overlay<skene_tui::Tui, C>::derive_shadow<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_common::overlay::Overlay<skene_tui::Tui, C>::derive_shadow_offset<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_common::overlay::Overlay<skene_tui::Tui, C>::derive_shadow_softening<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_common::overlay::Overlay<skene_tui::Tui, C>::set_border_glyphs(self, impl core::convert::Into<skene_core::leaf::Value<skene_common::tui::ext::BorderGlyphs, skene_core::condition::Condition<u32>>>) -> Self
-pub fn skene_common::overlay::Overlay<skene_tui::Tui, C>::set_scrollbar_glyphs(self, impl core::convert::Into<skene_core::leaf::Value<skene_common::tui::ext::ScrollbarGlyphs, skene_core::condition::Condition<u32>>>) -> Self
-pub fn skene_common::overlay::Overlay<skene_tui::Tui, C>::set_scrollbar_thumb(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
-pub fn skene_common::overlay::Overlay<skene_tui::Tui, C>::set_scrollbar_track(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
-pub fn skene_common::overlay::Overlay<skene_tui::Tui, C>::set_shadow(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
-pub fn skene_common::overlay::Overlay<skene_tui::Tui, C>::set_shadow_offset(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
-pub fn skene_common::overlay::Overlay<skene_tui::Tui, C>::set_shadow_softening(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
-pub fn skene_common::overlay::Overlay<skene_tui::Tui, C>::terminal_style_mut(&mut self) -> &mut skene_core::box_style::BoxStyle<u32, skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::tui::ext::TuiExt>
+impl skene_tui::TuiDecoration for skene_common::overlay::Overlay<skene_tui::Tui>
+pub fn skene_common::overlay::Overlay<skene_tui::Tui>::derive_border_glyphs<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_common::tui::ext::BorderGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::overlay::Overlay<skene_tui::Tui>::derive_scrollbar_glyphs<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_common::tui::ext::ScrollbarGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::overlay::Overlay<skene_tui::Tui>::derive_scrollbar_thumb<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::overlay::Overlay<skene_tui::Tui>::derive_scrollbar_track<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::overlay::Overlay<skene_tui::Tui>::derive_shadow<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::overlay::Overlay<skene_tui::Tui>::derive_shadow_offset<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::overlay::Overlay<skene_tui::Tui>::derive_shadow_softening<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::overlay::Overlay<skene_tui::Tui>::set_border_glyphs(self, impl core::convert::Into<skene_core::leaf::Value<skene_common::tui::ext::BorderGlyphs, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::overlay::Overlay<skene_tui::Tui>::set_scrollbar_glyphs(self, impl core::convert::Into<skene_core::leaf::Value<skene_common::tui::ext::ScrollbarGlyphs, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::overlay::Overlay<skene_tui::Tui>::set_scrollbar_thumb(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::overlay::Overlay<skene_tui::Tui>::set_scrollbar_track(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::overlay::Overlay<skene_tui::Tui>::set_shadow(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::overlay::Overlay<skene_tui::Tui>::set_shadow_offset(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::overlay::Overlay<skene_tui::Tui>::set_shadow_softening(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::overlay::Overlay<skene_tui::Tui>::terminal_style_mut(&mut self) -> &mut skene_core::box_style::BoxStyle<u32, skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::tui::ext::TuiExt>
+impl<B: skene_common::control::Behavior<skene_tui::Tui>> skene_tui::TuiDecoration for skene_common::control::Control<skene_tui::Tui, B>
+pub fn skene_common::control::Control<skene_tui::Tui, B>::derive_border_glyphs<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_common::tui::ext::BorderGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::control::Control<skene_tui::Tui, B>::derive_scrollbar_glyphs<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_common::tui::ext::ScrollbarGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::control::Control<skene_tui::Tui, B>::derive_scrollbar_thumb<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::control::Control<skene_tui::Tui, B>::derive_scrollbar_track<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::control::Control<skene_tui::Tui, B>::derive_shadow<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::control::Control<skene_tui::Tui, B>::derive_shadow_offset<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::control::Control<skene_tui::Tui, B>::derive_shadow_softening<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::control::Control<skene_tui::Tui, B>::set_border_glyphs(self, impl core::convert::Into<skene_core::leaf::Value<skene_common::tui::ext::BorderGlyphs, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::control::Control<skene_tui::Tui, B>::set_scrollbar_glyphs(self, impl core::convert::Into<skene_core::leaf::Value<skene_common::tui::ext::ScrollbarGlyphs, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::control::Control<skene_tui::Tui, B>::set_scrollbar_thumb(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::control::Control<skene_tui::Tui, B>::set_scrollbar_track(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::control::Control<skene_tui::Tui, B>::set_shadow(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::control::Control<skene_tui::Tui, B>::set_shadow_offset(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::control::Control<skene_tui::Tui, B>::set_shadow_softening(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::control::Control<skene_tui::Tui, B>::terminal_style_mut(&mut self) -> &mut skene_core::box_style::BoxStyle<u32, skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::tui::ext::TuiExt>
 pub trait skene_tui::TuiText: core::marker::Sized
 pub fn skene_tui::TuiText::derive_bold<R: core::convert::Into<skene_core::leaf::StaticLeaf<bool>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_tui::TuiText::set_bold(self, impl core::convert::Into<skene_core::leaf::Value<bool, skene_core::condition::Condition<u32>>>) -> Self

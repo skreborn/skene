@@ -17,6 +17,7 @@ use skene_gui::{
   Column,
   Container,
   Enhance,
+  HasChild,
   HasChildren,
   Label,
   Lazy,

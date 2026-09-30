@@ -5,7 +5,7 @@ mod common;
 
 use std::{cell::Cell, fmt, rc::Rc};
 
-use skene_core::{Boundary, Errors, Flexibility, HasChildren, StaticValue, View};
+use skene_core::{Boundary, Errors, Flexibility, HasChild, HasChildren, StaticValue, View};
 use skene_headless::{Headless, box_props, children, end_turn, is_live, outline, reset};
 use skene_reactive::{Get, Owner, Set, Signal};
 

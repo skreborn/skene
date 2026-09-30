@@ -34,7 +34,7 @@ fn app() -> impl IntoView {
         Column::new()
           .set_item_alignment(ItemAlignment::Center)
           .set_padding(Inset::symmetric(24., 48.))
-          .set_child(
+          .add_child(
             Column::new().set_spacing(24.).set_children((
               heading(),
               Row::new()

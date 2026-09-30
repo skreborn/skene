@@ -562,7 +562,7 @@ impl<P: Platform, B: Behavior<P> + Default> Default for Control<P, B> {
   }
 }
 
-impl<P: Platform, B: Behavior<P>, C> Control<P, B, C> {
+impl<P: Platform, B: Behavior<P>> Control<P, B> {
   /// The declared style, for a composite control to write the decoration it forwards
   /// into.
   #[inline(always)]
@@ -600,12 +600,6 @@ impl<P: Platform, B: Behavior<P>, C> Control<P, B, C> {
     self.inner = self.inner.bind_handle(handle);
 
     self
-  }
-
-  /// The behavior driving the control.
-  #[inline(always)]
-  pub const fn behavior(&self) -> &B {
-    &self.behavior
   }
 
   /// Sets where the body sits when it fills neither axis.
@@ -919,6 +913,14 @@ impl<P: Platform, B: Behavior<P>, C> Control<P, B, C> {
     self.observers.push(Handler::Scroll(Rc::new(action)));
 
     self
+  }
+}
+
+impl<P: Platform, B: Behavior<P>, C> Control<P, B, C> {
+  /// The behavior driving the control.
+  #[inline(always)]
+  pub const fn behavior(&self) -> &B {
+    &self.behavior
   }
 }
 

@@ -24,6 +24,7 @@ use skene_core::{
   Dimension,
   EventKind,
   FocusOrder,
+  HasChild,
   HasChildren,
   Inset,
   Length,

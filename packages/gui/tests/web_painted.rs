@@ -236,7 +236,7 @@ async fn a_canvas_never_sizes_its_box() {
   let (_installed, root) = fresh_root();
   let _ = mount(|| {
     skene_gui::Column::new()
-      .set_child(Painted::new(|_, _| {}).set_width(Dimension::Length(40.)))
+      .add_child(Painted::new(|_, _| {}).set_width(Dimension::Length(40.)))
       .build()
   });
 

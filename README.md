@@ -42,7 +42,7 @@ fn app() -> impl IntoView {
         Column::new()
           .set_arrangement(Arrangement::Center)
           .set_item_alignment(ItemAlignment::Center)
-          .set_child(
+          .add_child(
             SimpleCard::new().set_spacing(24.).set_children((
               Text::derive(move || count.get().to_string()).set_font_size(56.),
               Row::new().set_spacing(12.).set_children((

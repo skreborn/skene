@@ -43,7 +43,7 @@ impl<P: Platform> Enhance<P> {
   }
 }
 
-impl<P: Platform, C> Enhance<P, C> {
+impl<P: Platform> Enhance<P> {
   /// Sets the form built while `live` is false; nothing by default.
   #[inline(always)]
   pub fn set_fallback<V: IntoView<P>>(mut self, fallback: impl FnOnce() -> V + 'static) -> Self {

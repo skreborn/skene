@@ -12,6 +12,7 @@ use skene_core::{
   ClipboardAction,
   Dimension,
   FocusOrder,
+  HasChild,
   HasChildren,
   KeyEvent,
   Modifiers,

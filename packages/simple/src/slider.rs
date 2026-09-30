@@ -7,6 +7,7 @@ use skene_core::{
   Alignment,
   AnyKind,
   Dimension,
+  HasChild,
   HasChildren,
   Inset,
   ItemAlignment,
@@ -205,7 +206,7 @@ where
         ItemAlignment::Stretch,
       ))
       .set_child(
-        Stack::new().set_child(
+        Stack::new().add_child(
           Pinned::new()
             .derive_edges(move || Inset {
               top: Dimension::Length(P::Scalar::default()),

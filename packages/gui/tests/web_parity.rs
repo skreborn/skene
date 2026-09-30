@@ -36,7 +36,7 @@ use skene_core::{
   Easing,
   Edge,
   Expr,
-  HasChildren,
+  HasChild,
   Inset,
   Length,
   Media,

@@ -6,7 +6,7 @@
 mod common;
 
 use skene_simple::tui::prelude::*;
-use skene_tui::{self as tui, prelude::*};
+use skene_tui::{self as tui, HasChild, prelude::*};
 
 use crate::common::with_platform;
 

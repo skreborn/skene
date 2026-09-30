@@ -252,10 +252,7 @@ struct ControlSettings {
 
 impl ControlSettings {
   /// `control` carrying the caption and the disabled setting.
-  fn apply<P: Platform, B: Behavior<P>, C>(
-    &self,
-    mut control: Control<P, B, C>,
-  ) -> Control<P, B, C> {
+  fn apply<P: Platform, B: Behavior<P>>(&self, mut control: Control<P, B>) -> Control<P, B> {
     if let Some((node, name)) = &self.caption {
       let label = Label::new(*node);
 
@@ -482,13 +479,14 @@ fn build_drawn<P: Platform>(
       Rc::clone(&chosen),
       on_change,
     ));
-  let mut control = Control::new(popup)
-    .bind_handle(face_handle)
-    .set_child_builder(move || face(shown));
+  let mut control = Control::new(popup).bind_handle(face_handle);
 
   *control.style_mut() = *face_style;
 
-  let node = settings.apply(control).build();
+  let node = settings
+    .apply(control)
+    .set_child_builder(move || face(shown))
+    .build();
   let overlay = Overlay::<P>::popup()
     .set_anchor(face_handle)
     .set_placement(placement)

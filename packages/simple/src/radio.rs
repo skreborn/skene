@@ -18,7 +18,7 @@ use skene_core::{
   AnyView,
   Color,
   Dimension,
-  HasChildren,
+  HasChild,
   Inset,
   IntoView,
   NoChild,
@@ -73,7 +73,7 @@ impl<P: Platform> Default for SimpleRadioGroup<P> {
   }
 }
 
-impl<P: Platform, C> SimpleRadioGroup<P, C> {
+impl<P: Platform> SimpleRadioGroup<P> {
   /// Sets the chosen member's value.
   #[inline(always)]
   pub fn set_chosen(mut self, chosen: impl Into<String>) -> Self {

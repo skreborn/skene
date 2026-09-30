@@ -5,7 +5,7 @@ mod common;
 
 use std::{cell::Cell, rc::Rc};
 
-use skene_core::{Flexibility, HasChildren, StaticValue, View};
+use skene_core::{Flexibility, HasChild, HasChildren, StaticValue, View};
 use skene_headless::{Headless, box_props, children, is_live, outline, reset};
 use skene_reactive::{Get, Owner, Set, Signal};
 
@@ -30,7 +30,7 @@ fn switch_keeps_a_branch_and_its_state_across_a_flip() {
     let local = Rc::clone(&local);
 
     Column::new()
-      .set_child(
+      .add_child(
         Switch::new()
           .derive_key(move || key.get())
           .set_case("a", move || {
@@ -86,7 +86,7 @@ fn a_hidden_branch_pauses_until_it_shows() {
   let count = Signal::opaque(0);
   let root = owner.enter(|| {
     Column::new()
-      .set_child(
+      .add_child(
         Switch::new()
           .derive_key(move || key.get())
           .set_case("a", move || {
@@ -128,7 +128,7 @@ fn switch_forwards_the_pending_annotation_to_every_branch() {
   let key = Signal::new(1);
   let root = owner.enter(|| {
     Column::new()
-      .set_child(
+      .add_child(
         Flexible::new().set_grow_factor(3.).set_child(
           Switch::new()
             .derive_key(move || key.get())

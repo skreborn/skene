@@ -103,6 +103,12 @@ impl<P: Platform, Kind: 'static> Children<P, Kind> {
     self.segments.is_empty()
   }
 
+  /// Removes every segment pushed so far.
+  #[inline(always)]
+  pub fn clear(&mut self) {
+    self.segments.clear();
+  }
+
   /// Appends a static segment.
   #[inline(always)]
   pub fn push_static(&mut self, children: impl IntoChildren<P, Kind>) {
@@ -163,11 +169,52 @@ impl<P: Platform, Kind: 'static> Children<P, Kind> {
   }
 }
 
-/// Proof that a call came from core; only the public setters of [`HasChildren`] hold
-/// one.
+/// Proof that a call came from core; only the public setters of [`HasChild`] and
+/// [`HasChildren`] hold one.
 #[derive(Debug)]
 #[must_use]
 pub struct Seal(());
+
+/// A view holding exactly one child, which each setter replaces.
+///
+/// One method is required and unreachable from outside core: the public setters are
+/// the defaults.
+pub trait HasChild<P: Platform>: Sized {
+  /// The child kind this view accepts; wrapper views carry per-child properties only
+  /// the matching view understands.
+  type Kind: 'static;
+
+  /// The child slot.
+  fn child_mut(&mut self, seal: Seal) -> &mut Children<P, Self::Kind>;
+
+  /// Sets the child, replacing the one set before.
+  #[inline(always)]
+  #[must_use]
+  fn set_child(mut self, child: impl IntoChildOf<P, Self::Kind>) -> Self {
+    let slot = self.child_mut(Seal(()));
+
+    slot.clear();
+    slot.push_static([child.into_child()]);
+
+    self
+  }
+
+  /// Sets a child rebuilt whenever the signals `child` reads change, replacing the one
+  /// set before.
+  #[inline(always)]
+  #[must_use]
+  fn derive_child<V: IntoChildOf<P, Self::Kind>>(
+    mut self,
+    child: impl Fn() -> V + 'static,
+  ) -> Self {
+    let slot = self.child_mut(Seal(()));
+
+    slot.clear();
+    slot.push_derived(child);
+
+    self
+  }
+}
 
 /// A container that has children.
 ///
@@ -184,7 +231,7 @@ pub trait HasChildren<P: Platform>: Sized {
   /// Appends one static child.
   #[inline(always)]
   #[must_use]
-  fn set_child(mut self, child: impl IntoChildOf<P, Self::Kind>) -> Self {
+  fn add_child(mut self, child: impl IntoChildOf<P, Self::Kind>) -> Self {
     self
       .children_mut(Seal(()))
       .push_static([child.into_child()]);
@@ -368,7 +415,7 @@ mod tests {
     let (items, set_items) = signal(vec![1, 2]);
     let parent = owner.enter(|| {
       TestBox::new()
-        .set_child(TestBox::new())
+        .add_child(TestBox::new())
         .derive_children(move || items.get(), |item| *item, |_| TestBox::new())
         .set_children((TestBox::new(), TestBox::new()))
         .build()

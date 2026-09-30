@@ -7,6 +7,7 @@ use skene_core::{
   Dimension,
   FlexDirection,
   Flexibility,
+  HasChild,
   HasChildren,
   IntoView,
   ItemWindow,
@@ -328,7 +329,7 @@ impl<P: Platform> LazyList<P> {
       direction: axis.direction(),
     })
     .handle_scroll(move |event: &ScrollEvent| offset.set(axis.offset(*event)))
-    .set_child(rigid(
+    .add_child(rigid(
       axis.derive_sized(Container::<P>::new(), move || slice.get().leading),
     ));
 
@@ -339,7 +340,7 @@ impl<P: Platform> LazyList<P> {
     }
 
     let node = list
-      .set_child(rigid(
+      .add_child(rigid(
         axis.derive_sized(Container::<P>::new(), move || slice.get().trailing),
       ))
       .build();

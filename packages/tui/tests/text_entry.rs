@@ -214,7 +214,7 @@ fn an_editor_windows_its_rows_around_the_caret() {
 
     let _ = tui::mount(|| {
       Column::new()
-        .set_child(RawTextEditor::new(
+        .add_child(RawTextEditor::new(
           TextEntry::new().set_lines(3).bind_value(bio),
         ))
         .into_any()
@@ -250,7 +250,7 @@ fn the_wheel_scrolls_an_editor_and_leaves_the_caret() {
 
     let _ = tui::mount(|| {
       Column::new()
-        .set_child(RawTextEditor::new(
+        .add_child(RawTextEditor::new(
           TextEntry::new().set_lines(3).bind_value(bio),
         ))
         .into_any()
@@ -363,7 +363,7 @@ fn an_overflowing_editor_shows_a_scrollbar_that_drags() {
 
     let _ = tui::mount(|| {
       Column::new()
-        .set_child(
+        .add_child(
           RawTextEditor::new(TextEntry::new().set_lines(3).bind_value(bio))
             .set_width(10)
             .set_border_width(Inset::all(1))
@@ -417,7 +417,7 @@ fn the_horizontal_wheel_scrolls_a_field() {
 
     let _ = tui::mount(|| {
       Column::new()
-        .set_child(RawTextField::new(TextEntry::new().bind_value(name)).set_width(8))
+        .add_child(RawTextField::new(TextEntry::new().bind_value(name)).set_width(8))
         .into_any()
         .build()
     });

@@ -129,7 +129,7 @@ fn media_condition_on_padding_switches_with_the_viewport() {
     Column::new()
       .set_spacing(Spacing::from(8.).when(Media::MinWidth(900.), 16.))
       .set_padding(Inset::all(4.).when(Media::MinWidth(900.), Inset::all(12.)))
-      .set_child(Container::new().set_aspect_ratio(1f32.when(Media::MinWidth(900.), 2.)))
+      .add_child(Container::new().set_aspect_ratio(1f32.when(Media::MinWidth(900.), 2.)))
       .build()
   });
   let child = children(root)[1];

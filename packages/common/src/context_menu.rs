@@ -323,7 +323,7 @@ impl<P: Platform> Default for ContextMenu<P> {
   }
 }
 
-impl<P: Platform, C> ContextMenu<P, C> {
+impl<P: Platform> ContextMenu<P> {
   /// The declared style of the list, for a facade's medium-specific setters to write
   /// into.
   #[inline(always)]
@@ -456,7 +456,9 @@ impl<P: Platform, C> ContextMenu<P, C> {
 
     self
   }
+}
 
+impl<P: Platform, C> ContextMenu<P, C> {
   /// Builds the list and registers what opens it on `served`; returns the list's node,
   /// attached nowhere yet.
   fn mount(self, served: NodeId) -> NodeId {

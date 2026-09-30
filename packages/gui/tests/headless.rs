@@ -12,6 +12,7 @@ use skene_gui::{
   Bubbling,
   Column,
   Container,
+  HasChild,
   HasChildren,
   LayoutBox,
   LoadState,
@@ -428,7 +429,7 @@ fn a_link_carries_its_destination_and_navigates_the_router() {
   let owner = Owner::new();
   let (router, link) = owner.enter(|| {
     let router = skene_gui::install_router(Page::Home);
-    let link = Link::new(Page::About).set_child(Text::new("about")).build();
+    let link = Link::new(Page::About).add_child(Text::new("about")).build();
 
     (router, link)
   });

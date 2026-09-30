@@ -79,7 +79,7 @@ fn a_theme_resolves_the_card_color_and_reinks_on_a_palette_flip() {
 
           kept.set(Some(count));
 
-          SimpleCard::new().set_child(Text::derive(move || count.get().to_string()))
+          SimpleCard::new().add_child(Text::derive(move || count.get().to_string()))
         })
         .into_any()
         .build()
@@ -173,7 +173,7 @@ fn space_on_a_focused_checkbox_flips_the_signal_and_repaints_the_mark() {
 
     let _ = tui::mount(|| {
       Column::new()
-        .set_child(
+        .add_child(
           SimpleCheckbox::new()
             .bind_checked(agreed)
             .set_label("agree"),

@@ -12,6 +12,7 @@ use skene_core::{
   DragData,
   EventKind,
   FocusOrder,
+  HasChild,
   HasChildren,
   Inset,
   KeyEvent,

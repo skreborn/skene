@@ -28,7 +28,10 @@ use syn::{
 
 /// The methods that give a view its content, which a builder chain ends with.
 const CHILD_SETTERS: &[&str] = &[
+  "add_child",
+  "derive_child",
   "derive_children",
+  "derive_entries",
   "set_child",
   "set_child_builder",
   "set_children",

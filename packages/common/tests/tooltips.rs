@@ -9,7 +9,7 @@ use skene_core::{
   AccessProp,
   AnyView,
   FocusOrder,
-  HasChildren,
+  HasChild,
   KeyEvent,
   Part,
   Placement,

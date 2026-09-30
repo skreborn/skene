@@ -7,7 +7,7 @@
 
 mod common;
 
-use skene_tui::{self as tui, prelude::*};
+use skene_tui::{self as tui, HasChild, prelude::*};
 
 use crate::common::{colors_at, red, with_platform};
 

@@ -10,6 +10,7 @@ use skene_gui::{
   Container,
   Grid,
   GuiExt,
+  HasChild,
   HasChildren,
   Inset,
   Media,
@@ -85,7 +86,7 @@ fn representative_tree() -> impl skene_gui::IntoView {
               .set_height(Dimension::Length(40.))
               .derive_color(|| Color::srgb(0.5, 0.5, 0.5))
               .handle_click(|| {})
-              .set_child(Row::new().set_spacing(4.).set_child(Text::new("Press"))),
+              .set_child(Row::new().set_spacing(4.).add_child(Text::new("Press"))),
             Grid::uniform(3).set_spacing(4.).set_children((
               Text::new("a"),
               Text::new("b"),

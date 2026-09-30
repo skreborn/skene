@@ -18,7 +18,7 @@ fn app() -> impl IntoView {
         Column::new()
           .set_arrangement(Arrangement::Center)
           .set_item_alignment(ItemAlignment::Center)
-          .set_child(card(count)),
+          .add_child(card(count)),
       )
   })
 }

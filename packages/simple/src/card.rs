@@ -6,6 +6,7 @@ use skene_core::{
   Children,
   Condition,
   FlexChild,
+  HasChild,
   HasChildren,
   ItemAlignment,
   NodeId,

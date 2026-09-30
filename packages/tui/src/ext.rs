@@ -186,14 +186,14 @@ impl TuiDecoration for skene_common::Container<Tui> {
   }
 }
 
-impl<B: skene_common::Behavior<Tui>, C> TuiDecoration for skene_common::Control<Tui, B, C> {
+impl<B: skene_common::Behavior<Tui>> TuiDecoration for skene_common::Control<Tui, B> {
   #[inline(always)]
   fn terminal_style_mut(&mut self) -> &mut DeclaredBox {
     self.style_mut()
   }
 }
 
-impl<C> TuiDecoration for skene_common::Overlay<Tui, C> {
+impl TuiDecoration for skene_common::Overlay<Tui> {
   #[inline(always)]
   fn terminal_style_mut(&mut self) -> &mut DeclaredBox {
     self.style_mut()

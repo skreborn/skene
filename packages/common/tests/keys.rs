@@ -5,7 +5,7 @@ mod common;
 
 use std::{cell::RefCell, rc::Rc};
 
-use skene_core::{HasChildren, View};
+use skene_core::{HasChild, HasChildren, View};
 use skene_headless::{Headless, children, reset, text};
 use skene_reactive::{Get, Owner, Set, Signal, restore, snapshot};
 

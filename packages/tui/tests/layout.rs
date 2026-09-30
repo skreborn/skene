@@ -65,7 +65,7 @@ fn pinned_text_honors_its_edges() {
         .set_width(12)
         .set_height(3)
         .set_child(
-          Stack::new().set_child(
+          Stack::new().add_child(
             Pinned::new()
               .set_edges(Inset {
                 top: Dimension::Auto,
@@ -416,7 +416,7 @@ fn a_container_fills_when_sized_and_hugs_when_not() {
     let _ = tui::mount(|| {
       Row::new()
         .set_item_alignment(ItemAlignment::Start)
-        .set_child(
+        .add_child(
           Container::new()
             .set_border_width(Inset::all(1))
             .set_border_color(white())

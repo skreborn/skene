@@ -10,7 +10,7 @@
 use std::time::Duration;
 
 use skene_simple::tui::prelude::*;
-use skene_tui::{ActivePlatform, core::Platform, kurbo::Rect, prelude::*};
+use skene_tui::{ActivePlatform, HasChild, core::Platform, kurbo::Rect, prelude::*};
 
 /// The page: a clock over its caption, and a picture over its description.
 #[must_use]
@@ -22,7 +22,7 @@ pub fn app() -> impl IntoView {
       .set_child(
         Column::new()
           .set_item_alignment(ItemAlignment::Center)
-          .set_child(
+          .add_child(
             Container::new().set_max_width(56).set_child(
               Column::new()
                 .set_spacing(1)

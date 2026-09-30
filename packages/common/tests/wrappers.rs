@@ -6,6 +6,7 @@ mod common;
 use skene_core::{
   Dimension,
   GridPlacement,
+  HasChild,
   HasChildren,
   Inset,
   ItemAlignment,

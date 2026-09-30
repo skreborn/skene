@@ -528,14 +528,17 @@
   web-facing terms of art (`hydrate`, `render_to_string`, the `head` module) in the
   layers that are web by definition.
 - **Children come last.** Every view takes its child or children through a builder
-  method (`set_child`/`set_children`/`derive_children`), never a constructor argument, and
-  a chain ends with them: properties first, content last. This is Flutter's
-  `sort_child_properties_last` rule, and for the same reason—a nested child is visually
-  large, so anything after it is easy to miss. A view that exists only to wrap something
-  (`Flexible`, `Pinned`, `GridCell`, `Theme`) goes further and requires the child in
-  the type system: it holds the child as a type parameter, starting at `NoChild`, and
-  only the form carrying one is a view. `Theme` alone takes its child as a builder
-  closure, `set_child_builder`, because it provides context the child is built under.
+  method, never a constructor argument, and a chain ends with them: properties first,
+  content last. This is Flutter's `sort_child_properties_last` rule, and for the same
+  reason—a nested child is visually large, so anything after it is easy to miss. A view
+  of one child holds it in a slot `set_child` replaces (`HasChild`, `Container` alone);
+  a layout view appends segments (`HasChildren`: `add_child`, `set_children`,
+  `derive_children`). A view that wraps something (`Flexible`, `Pinned`, `GridCell`,
+  `Theme`, `Show`, `Control`, `Overlay`, `Tooltip` and their kin) requires the child in
+  the type system: it holds the child as a type parameter, starting at `NoChild`, its
+  setters exist only in that state, so a property after the child is a type error, and
+  only the form carrying one is a view. `Theme` takes its child as a builder closure,
+  `set_child_builder`, because it provides context the child is built under.
 - **One property, one setter.** Every property is settable exactly one way (plus its
   `derive_` twin). A concept with components gets one shared value type set as a
   whole—`Inset` for padding/margin, `Spacing` for per-axis spacing, `Flexibility` for

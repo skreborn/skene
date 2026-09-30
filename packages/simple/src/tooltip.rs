@@ -51,14 +51,18 @@ impl<P: Platform> SimpleTooltip<P> {
 
   /// Sets the view the tooltip describes.
   #[inline(always)]
-  pub fn set_child(self, child: impl IntoView<P>) -> SimpleTooltip<P, AnyView<P>> {
+  pub fn set_child(self, child: impl IntoView<P>) -> SimpleTooltip<P, AnyView<P>>
+  where
+    P::Scalar: SimpleUnit,
+    P::StyleExt: CornerRadius,
+  {
     SimpleTooltip {
-      raw: self.raw.set_child(child),
+      raw: dress(self.raw).set_child(child),
     }
   }
 }
 
-impl<P: Platform, C> SimpleTooltip<P, C> {
+impl<P: Platform> SimpleTooltip<P> {
   /// Sets where the bubble sits against the described view: above it for `Top`, below
   /// it for `Bottom`.
   #[inline(always)]
@@ -85,14 +89,21 @@ where
   P::StyleExt: CornerRadius,
 {
   fn build(self) -> NodeId {
-    define_defaults::<P>();
-
-    self
-      .raw
-      .set_color(SimplePalette::<P::Scalar>::FOREGROUND)
-      .set_text_color(SimplePalette::<P::Scalar>::BACKGROUND)
-      .set_padding(shape::<P>().tooltip_inset)
-      .set_corner_radius(shape::<P>().mark_radius)
-      .build()
+    self.raw.build()
   }
+}
+
+/// Decorates `tooltip` in the Simple language.
+fn dress<P: Platform>(tooltip: Tooltip<P>) -> Tooltip<P>
+where
+  P::Scalar: SimpleUnit,
+  P::StyleExt: CornerRadius,
+{
+  define_defaults::<P>();
+
+  tooltip
+    .set_color(SimplePalette::<P::Scalar>::FOREGROUND)
+    .set_text_color(SimplePalette::<P::Scalar>::BACKGROUND)
+    .set_padding(shape::<P>().tooltip_inset)
+    .set_corner_radius(shape::<P>().mark_radius)
 }

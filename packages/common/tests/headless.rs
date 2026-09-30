@@ -19,6 +19,7 @@ use skene_core::{
   EventKind,
   Expr,
   Flexibility,
+  HasChild,
   HasChildren,
   Inset,
   Leaf,

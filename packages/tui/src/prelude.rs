@@ -26,6 +26,7 @@ pub use skene_core::{
   GridPlacement,
   GridTemplate,
   GridTrack,
+  HasChild,
   HasChildren,
   IntoChildOf,
   IntoChildren,

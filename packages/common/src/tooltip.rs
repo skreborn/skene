@@ -119,7 +119,7 @@ impl<P: Platform> Tooltip<P> {
   }
 }
 
-impl<P: Platform, C> Tooltip<P, C> {
+impl<P: Platform> Tooltip<P> {
   /// The declared style of the bubble, for a facade's medium-specific setters to write
   /// into.
   #[inline(always)]

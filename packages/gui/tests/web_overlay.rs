@@ -4,7 +4,7 @@
 
 use skene_gui::{
   Container,
-  HasChildren,
+  HasChild,
   Inset,
   Overlay,
   Text,

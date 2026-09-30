@@ -63,7 +63,7 @@ impl<P: Platform> GridCell<P> {
   }
 }
 
-impl<P: Platform, C> GridCell<P, C> {
+impl<P: Platform> GridCell<P> {
   /// Sets the row placement.
   #[inline(always)]
   pub fn set_row(mut self, row: impl Into<Placement<P>>) -> Self {

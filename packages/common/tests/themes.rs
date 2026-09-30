@@ -4,7 +4,7 @@
 mod common;
 
 use skene_common::{ThemedIn, typography};
-use skene_core::{HasChildren, Inset, TokenName, View};
+use skene_core::{HasChild, Inset, TokenName, View};
 use skene_headless::{
   Headless,
   children,

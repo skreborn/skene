@@ -78,7 +78,7 @@ impl<P: Platform> Flexible<P> {
   }
 }
 
-impl<P: Platform, C> Flexible<P, C> {
+impl<P: Platform> Flexible<P> {
   /// Sets the weight the child grows by when the container has room to spare.
   #[inline(always)]
   pub fn set_grow_factor(mut self, factor: f32) -> Self {

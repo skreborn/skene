@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 
 use skene_reactive::{Key, Owner};
 
-use super::{AnyKind, Children, HasChildren, NodeId, Platform, Seal, View};
+use super::{AnyKind, Children, HasChild, HasChildren, NodeId, Platform, Seal, View};
 
 /// The view a [`set_key`](View::set_key) named: built under a scope its key
 /// identifies rather than its position.
@@ -41,6 +41,15 @@ impl<P: Platform, V: View<P>> View<P> for Keyed<P, V> {
     Owner::current()
       .keyed_child(self.key)
       .enter(|| self.view.build())
+  }
+}
+
+impl<P: Platform, V: HasChild<P>> HasChild<P> for Keyed<P, V> {
+  type Kind = V::Kind;
+
+  #[inline(always)]
+  fn child_mut(&mut self, seal: Seal) -> &mut Children<P, Self::Kind> {
+    self.view.child_mut(seal)
   }
 }
 

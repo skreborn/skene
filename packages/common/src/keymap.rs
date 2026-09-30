@@ -91,7 +91,7 @@ impl<P: Platform> Default for Keymap<P> {
   }
 }
 
-impl<P: Platform, C> Keymap<P, C> {
+impl<P: Platform> Keymap<P> {
   /// Runs `action` when `shortcut` is pressed while focus is inside the view served.
   #[inline(always)]
   pub fn handle_shortcut(mut self, shortcut: Shortcut, action: impl Fn() + 'static) -> Self {

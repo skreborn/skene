@@ -45,7 +45,7 @@ impl<P: Platform> Suspense<P> {
   }
 }
 
-impl<P: Platform, C> Suspense<P, C> {
+impl<P: Platform> Suspense<P> {
   /// Sets the fallback shown while the content's work is pending; nothing by default.
   #[inline(always)]
   pub fn set_fallback(mut self, fallback: impl IntoView<P>) -> Self {

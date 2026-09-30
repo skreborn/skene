@@ -73,7 +73,7 @@ pub use box_style::{
   IntoBoxValue,
   box_fields,
 };
-pub use children::{Children, HasChildren, IntoChildren, Seal};
+pub use children::{Children, HasChild, HasChildren, IntoChildren, Seal};
 pub use composable::{Composable, ConditionShape};
 pub use condition::{
   Condition,

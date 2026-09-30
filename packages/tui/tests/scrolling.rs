@@ -7,7 +7,7 @@ mod common;
 
 use std::{cell::RefCell, rc::Rc};
 
-use skene_tui::{self as tui, Activate, prelude::*};
+use skene_tui::{self as tui, Activate, HasChild, prelude::*};
 
 use crate::common::with_platform;
 

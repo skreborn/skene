@@ -33,6 +33,7 @@ use skene_core::{
   DragAxes,
   EventKind,
   FocusOrder,
+  HasChild,
   HasChildren,
   ItemAlignment,
   Key,

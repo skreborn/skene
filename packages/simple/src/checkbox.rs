@@ -8,7 +8,7 @@ use skene_core::{
   AnyKind,
   AnyView,
   Dimension,
-  HasChildren,
+  HasChild,
   Inset,
   IntoView,
   NodeId,

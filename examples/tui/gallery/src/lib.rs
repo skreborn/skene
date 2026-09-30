@@ -3,7 +3,7 @@
 #![cfg(not(target_arch = "wasm32"))]
 
 use skene_simple::tui::prelude::*;
-use skene_tui::{ActivePlatform, prelude::*};
+use skene_tui::{ActivePlatform, HasChild, prelude::*};
 
 /// The whole gallery: a scrollable column of titled sections, dressed by one theme
 /// whose palette the gallery switches from inside itself and whose tokens follow the
@@ -58,7 +58,7 @@ fn gallery(palette: Signal<Option<String>>) -> impl IntoView {
     .set_child(
       Column::new()
         .set_item_alignment(ItemAlignment::Center)
-        .set_child(
+        .add_child(
           Container::new().set_max_width(56).set_child(
             Column::new()
               .set_spacing(1)
@@ -299,7 +299,7 @@ fn layouts() -> impl IntoView {
         .set_height(5)
         .set_color(SimplePalette::SECONDARY_SURFACE)
         .set_child(
-          Stack::new().set_child(
+          Stack::new().add_child(
             Pinned::new()
               .set_edges(Inset {
                 top: Dimension::Auto,
@@ -328,7 +328,7 @@ fn layouts() -> impl IntoView {
           .set_child(
             SimpleCard::new().set_children((
               Text::new("A modal overlay; Escape dismisses.").set_color(SimplePalette::FOREGROUND),
-              Row::new().set_arrangement(Arrangement::End).set_child(
+              Row::new().set_arrangement(Arrangement::End).add_child(
                 SimpleButton::new("Close")
                   .set_variant(SimpleVariant::Secondary)
                   .handle_click(move || open.set(false)),

@@ -21,6 +21,7 @@ pub use skene_gui::FocusOrder
 pub use skene_gui::GuiExt
 pub use skene_gui::GuiProperty
 pub use skene_gui::Handler
+pub use skene_gui::HasChild
 pub use skene_gui::HasChildren
 pub use skene_gui::IntoBrush
 pub use skene_gui::IntoChildOf
@@ -144,6 +145,7 @@ pub use skene_gui::prelude::GridName
 pub use skene_gui::prelude::GridPlacement
 pub use skene_gui::prelude::GridTemplate
 pub use skene_gui::prelude::GridTrack
+pub use skene_gui::prelude::HasChild
 pub use skene_gui::prelude::HasChildren
 pub use skene_gui::prelude::IndexedField
 pub use skene_gui::prelude::IntoChildOf

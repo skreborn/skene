@@ -455,6 +455,8 @@ pub(crate) enum Kind {
   Box(BoxRecord),
   Control {
     native: Option<NativeElement>,
+    /// The name the control's props were created with.
+    label: Option<String>,
     inner: BoxRecord,
     state: ControlState,
     field: Option<Field>,

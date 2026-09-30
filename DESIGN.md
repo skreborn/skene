@@ -443,6 +443,19 @@ re-export.
   every built-in is checked against the ARIA rules as it is drawn. Disabled controls
   leave the focus order, a deliberate reading of the practices' allowance, recorded
   in `AGENTS.md`.
+- **A platform that names its nodes itself names them once.** The browser computes
+  accessible names; everywhere else core does (`Scene::accessible_name`), over the
+  scene's structure and parts and the facts a platform records of each node
+  (`NameFacts`: role, reports, text, placeholder, value, whether it is a link, a block or
+  hidden). It follows the accessible-name computation: the nodes a node is labelled by,
+  its label, a control's caption, a text entry's placeholder, then its content where its
+  role or its link takes the name from content, a block's text set apart, an embedded
+  entry, picker or range giving its value and hidden content giving nothing. A native
+  element's role stands where nothing states another (`NativeElement::role`: a text
+  field is a text input). The queries a test reads go through the same walk:
+  `find_by_role`, `find_by_text`, and `find_all_unnamed`, every link and every node of a
+  role ARIA requires a name for that has none, which both galleries assert empty on the
+  host tier as axe does in the browser.
 - **Membership is read from the tree.** A grouping control's members live in a `Roster`
   ordered by walking the subtree under its root, so a reconciling set stays in document
   order however it changes and a destroyed member is absent because the walk cannot
@@ -768,13 +781,13 @@ a test asks: the outline, read from the scene, the props a node was created with
 slot a render effect last wrote, a property resolved through core's `Resolver` under the
 environment a test set (viewport, scheme, reduced motion, container sizes, hover and
 focus), control state and parts, overlay openness, focus order, bound painters, and any
-node's accessible name in the accessible-name computation's order: the nodes it is
-labelled by, its label, a control's caption, then its content where its role or its
-link takes the name from content, an embedded entry, picker or range giving its value
-and hidden content giving nothing. Events go through `trigger_*` into core's dispatch; a
-frame clock advances on request; an executor, installed by `spawn` and `Resource` alike,
-holds every spawned task until `pump_tasks`. It is what `skene-gui` selects on a host
-target, so an app's `#[main]` compiles everywhere.
+node's accessible name, with the queries over it. Events go through `trigger_*` into
+core's dispatch, and `user` composes them into a user's gestures in a browser's order: a
+click hovers, presses, moves focus to the nearest node taking it (or off the focused
+one), releases and clicks, and a key where focus is carries a text entry's edit where no
+handler suppressed it. A frame clock advances on request; an executor, installed by
+`spawn` and `Resource` alike, holds every spawned task until `pump_tasks`. It is what
+`skene-gui` selects on a host target, so an app's `#[main]` compiles everywhere.
 
 ### Native (`skene-native`, planned)
 

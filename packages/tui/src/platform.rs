@@ -159,6 +159,7 @@ impl Platform for Tui {
         node,
         Kind::Control {
           native: props.native,
+          label: props.label.clone(),
           inner: BoxRecord::new(props.box_props.clone()),
           state: ControlState::DEFAULT,
           field,

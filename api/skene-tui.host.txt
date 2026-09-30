@@ -445,6 +445,12 @@ pub type skene_tui::prelude::Theme<S, C> = skene_common::theme::Theme<skene_tui:
 pub type skene_tui::prelude::Token<T> = skene_core::token::Token<T, u32>
 pub type skene_tui::prelude::Tooltip<C> = skene_common::tooltip::Tooltip<skene_tui::ActivePlatform, C>
 pub type skene_tui::prelude::Value<T> = skene_core::leaf::Value<T, skene_tui::Condition>
+pub mod skene_tui::user
+pub fn skene_tui::user::click(skene_core::node::NodeId)
+pub fn skene_tui::user::double_click(skene_core::node::NodeId)
+pub fn skene_tui::user::hover(skene_core::node::NodeId)
+pub fn skene_tui::user::press_key(&skene_core::events::KeyEvent)
+pub fn skene_tui::user::type_text(skene_core::node::NodeId, &str)
 pub enum skene_tui::CellScale
 pub skene_tui::CellScale::Fraction(u8, u8)
 pub skene_tui::CellScale::Whole(u8)
@@ -709,6 +715,7 @@ pub fn skene_tui::View::into_any(self) -> skene_tui::AnyView where Self: core::m
 impl<V: skene_core::view::View<skene_tui::ActivePlatform>> skene_tui::View for V
 pub fn V::build(self) -> skene_core::node::NodeId where Self: core::marker::Sized
 pub fn V::into_any(self) -> skene_tui::AnyView where Self: core::marker::Sized
+pub fn skene_tui::accessible_name(skene_core::node::NodeId) -> core::option::Option<alloc::string::String>
 pub fn skene_tui::adopt_restoration()
 pub fn skene_tui::current_cursor() -> core::option::Option<skene_core::values::mouse_cursor::MouseCursor>
 pub fn skene_tui::current_title() -> core::option::Option<alloc::string::String>
@@ -717,6 +724,10 @@ pub fn skene_tui::derive_title(impl core::ops::function::Fn() -> alloc::string::
 pub fn skene_tui::derived(impl core::ops::function::Fn() -> skene_core::node::NodeId + 'static) -> skene_core::node::NodeId
 pub fn skene_tui::dev_notice_view(skene_reactive::signal::Signal<core::option::Option<alloc::string::String>>) -> impl skene_tui::View
 pub fn skene_tui::empty() -> impl skene_tui::View
+pub fn skene_tui::find_all_by_role(accesskit::Role) -> alloc::vec::Vec<skene_core::node::NodeId>
+pub fn skene_tui::find_all_unnamed() -> alloc::vec::Vec<skene_core::node::NodeId>
+pub fn skene_tui::find_by_role(accesskit::Role, &str) -> core::option::Option<skene_core::node::NodeId>
+pub fn skene_tui::find_by_text(&str) -> core::option::Option<skene_core::node::NodeId>
 pub fn skene_tui::focused_node() -> core::option::Option<skene_core::node::NodeId>
 pub fn skene_tui::frame_pending() -> bool
 pub fn skene_tui::install()

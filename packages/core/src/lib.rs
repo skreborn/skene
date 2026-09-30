@@ -39,6 +39,7 @@ mod handler;
 mod keyed;
 mod leaf;
 mod motion;
+mod naming;
 mod node;
 mod node_map;
 mod platform;
@@ -171,6 +172,7 @@ pub use leaf::{
   When,
 };
 pub use motion::{Animation, Easing, StyleProperty, Transition, interpolate};
+pub use naming::NameFacts;
 pub use node::NodeId;
 pub use node_map::NodeMap;
 pub use platform::{Observation, Platform, Timer, Timers};

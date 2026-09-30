@@ -22,8 +22,13 @@
 //! opened against ([`overlay_anchor`]); [`control_state`],
 //! [`part`], [`focus_order`], [`is_tab_stop`] and [`accessible_name`] read what the
 //! control and its parts report, and [`trigger_size`] gives a control the measured size
-//! its pointer handling maps a position onto. A painted box records that a painter was
-//! bound to it ([`is_painted`]); nothing is drawn.
+//! its pointer handling maps a position onto. A painted box records the painter bound to
+//! it ([`is_painted`]), which [`paint`] draws to pixels a test reads.
+//!
+//! [`find_by_role`], [`find_all_by_role`] and [`find_by_text`] find nodes as a reader
+//! does, by role and accessible name or by text, [`find_all_unnamed`] those a reader
+//! could not name, and [`user`] drives them as a user does: a click, a key or typed
+//! text becomes the sequence of events a browser dispatches for it.
 //!
 //! Tasks run on an executor that stands still until [`pump_tasks`] drains it:
 //! [`install_executor`] makes it the thread's spawner ([`reset`] does too), so a
@@ -31,6 +36,7 @@
 
 mod resolve;
 mod store;
+pub mod user;
 
 use std::{cell::RefCell, fmt::Write as _, rc::Rc, thread::LocalKey, time::Duration};
 
@@ -58,6 +64,7 @@ use skene_core::{
   KeyEvent,
   Media,
   MediaSignals,
+  NameFacts,
   NamedKey,
   NativeElement,
   NodeId,
@@ -786,7 +793,11 @@ pub fn trigger_size(node: NodeId, size: Size<f32>) {
       record_container_size(name, size);
     }
 
-    let observers = with_record(node, |record| record.size_observers.clone()).unwrap_or_default();
+    let observers = with_record(node, |record| {
+      record.size = Some(size);
+      record.size_observers.clone()
+    })
+    .unwrap_or_default();
 
     for observer in observers {
       observer(size);
@@ -1186,247 +1197,107 @@ pub fn is_tab_stop(node: NodeId) -> bool {
   )
 }
 
-/// The name `node` reports to assistive technology, by the accessible-name computation.
-///
-/// In its order: the text alternatives of the nodes it is labelled by, else the label
-/// its accessibility properties carry, else the label a control's props were created
-/// with (both a platform's `aria-label`), else the text alternative of a control's
-/// [`Part::Label`], else, where its role or its link takes its name from its content,
-/// the text alternatives of its children.
-///
-/// Within content, a run's text is its own, a box's and a block run's are set apart by
-/// spaces, and an embedded entry, picker or range contributes its value. A hidden box or
-/// a closed overlay contributes nothing unless a node is labelled by it. Whitespace
-/// collapses, and an empty name is none.
+/// The name `node` reports to assistive technology, by the accessible-name computation
+/// ([`Scene::accessible_name`]).
 #[must_use]
 pub fn accessible_name(node: NodeId) -> Option<String> {
   end_turn();
 
-  let name = Naming::default().alternative(node, Reach::Root);
-  let name = name.split_whitespace().collect::<Vec<_>>().join(" ");
-
-  (!name.is_empty()).then_some(name)
+  Scene::<Headless>::accessible_name(node, name_facts)
 }
 
-/// How an accessible-name computation reached a node.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Reach {
-  /// The node being named.
-  Root,
-  /// A node the named node is labelled by, or its caption.
-  Reference,
-  /// A node within content a name is taken from.
-  Content,
+/// The first node in tree order whose role is `role` and whose accessible name is
+/// `name`, outside hidden boxes and closed overlays.
+#[must_use]
+pub fn find_by_role(role: Role, name: &str) -> Option<NodeId> {
+  end_turn();
+
+  Scene::<Headless>::find_by_role(role, name, name_facts)
 }
 
-/// One accessible-name computation.
-#[derive(Debug, Default)]
-struct Naming {
-  /// Whether the computation is within a labelled-by traversal, which follows no other.
-  referencing: bool,
+/// Every node whose role is `role`, in tree order, outside hidden boxes and closed
+/// overlays.
+#[must_use]
+pub fn find_all_by_role(role: Role) -> Vec<NodeId> {
+  end_turn();
+
+  Scene::<Headless>::find_all_by_role(role, name_facts)
 }
 
-impl Naming {
-  /// The text alternative of `node`, reached by `reach`.
-  fn alternative(&mut self, node: NodeId, reach: Reach) -> String {
-    if reach != Reach::Reference && is_hidden(node) {
-      return String::new();
-    }
+/// Every node that must be named and is not, in tree order, outside hidden boxes and
+/// closed overlays ([`Scene::find_all_unnamed`]).
+#[must_use]
+pub fn find_all_unnamed() -> Vec<NodeId> {
+  end_turn();
 
-    let access = box_props(node)
-      .map(|props| props.access)
-      .unwrap_or_default();
-
-    if !self.referencing
-      && let Some(nodes) = access.iter().find_map(|prop| match prop {
-        AccessProp::LabelledBy(nodes) => Some(nodes),
-        _ => None,
-      })
-    {
-      let name = self.references(nodes);
-
-      if !name.trim().is_empty() {
-        return name;
-      }
-    }
-
-    if reach != Reach::Root
-      && let Some(value) = embedded_value(node)
-    {
-      return value;
-    }
-
-    let label = access.iter().find_map(|prop| match prop {
-      AccessProp::Label(label) => Some(label.clone()),
-      _ => None,
-    });
-
-    if let Some(label) = label.filter(|label| !label.trim().is_empty()) {
-      return label;
-    }
-
-    if let Some(props) = control_props(node) {
-      if let Some(label) = props.label.filter(|label| !label.trim().is_empty()) {
-        return label;
-      }
-
-      let caption = Scene::<Headless>::with(|scene| {
-        scene
-          .children(node)
-          .find(|child| scene.part(*child) == Some(Part::Label))
-      });
-
-      if let Some(caption) = caption
-        && !self.referencing
-      {
-        let name = self.references(&[caption]);
-
-        if !name.trim().is_empty() {
-          return name;
-        }
-      }
-    }
-
-    if reach != Reach::Root || names_from_content(node) {
-      return self.content(node);
-    }
-
-    String::new()
-  }
-
-  /// The text alternatives of `nodes`, each reached as a reference, joined by spaces.
-  fn references(&mut self, nodes: &[NodeId]) -> String {
-    self.referencing = true;
-
-    let name = nodes
-      .iter()
-      .map(|node| self.alternative(*node, Reach::Reference))
-      .filter(|name| !name.trim().is_empty())
-      .collect::<Vec<_>>()
-      .join(" ");
-
-    self.referencing = false;
-
-    name
-  }
-
-  /// The text of `node` and the text alternatives of its children, in order, a box's and
-  /// a block run's set apart by spaces.
-  fn content(&mut self, node: NodeId) -> String {
-    let mut out = text(node).unwrap_or_default();
-
-    for child in children(node) {
-      let alternative = self.alternative(child, Reach::Content);
-
-      if is_block(child) {
-        out.push(' ');
-        out.push_str(&alternative);
-        out.push(' ');
-      }
-      else {
-        out.push_str(&alternative);
-      }
-    }
-
-    out
-  }
+  Scene::<Headless>::find_all_unnamed(name_facts)
 }
 
-/// Whether `node` is out of the accessibility tree: a box resolving hidden or a closed
-/// overlay.
-fn is_hidden(node: NodeId) -> bool {
-  let closed = with_record(node, |record| {
-    matches!(record.kind, Kind::Overlay(_)) && !record.open
-  });
+/// The first run in tree order whose own text is `text`, whitespace collapsed on both,
+/// outside hidden boxes and closed overlays.
+#[must_use]
+pub fn find_by_text(text: &str) -> Option<NodeId> {
+  end_turn();
 
-  closed == Some(true) || resolve_visibility(node) == Some(Visibility::Hidden)
+  Scene::<Headless>::find_by_text(text, name_facts)
 }
 
-/// Whether `node` lays out as a block: a box, or a run on its own line.
-fn is_block(node: NodeId) -> bool {
-  with_record(node, |record| match &record.kind {
-    Kind::Box(_) | Kind::Control(_) | Kind::Overlay(_) => true,
-    Kind::Run(props) => props.display == RunDisplay::Block,
-    Kind::Anchor | Kind::Scope => false,
-  }) == Some(true)
-}
+/// What the accessible-name computation reads of `node`.
+fn name_facts(node: NodeId) -> NameFacts {
+  let hidden = matches!(
+    resolve::resolve(node, PropertyKey::Shared(Property::Visibility)),
+    Some(SlotValue::Box(BoxValue::Visibility(Visibility::Hidden)))
+  );
 
-/// Whether `node` takes its name from its content, as a link and ARIA's roles named
-/// from contents do.
-fn names_from_content(node: NodeId) -> bool {
   with_record(node, |record| {
+    let mut facts = NameFacts {
+      hidden,
+      ..NameFacts::default()
+    };
+
     if let Kind::Run(props) = &record.kind {
-      return props.link.is_some();
+      facts.text = Some(record.text.clone());
+      facts.link = props.link.is_some();
+      facts.block = props.display == RunDisplay::Block;
+
+      return facts;
     }
 
-    record.kind.box_props().is_some_and(|props| {
-      props.destination.is_some()
-        || props.role.is_some_and(|role| {
-          matches!(
-            role,
-            Role::Button
-              | Role::DefaultButton
-              | Role::CheckBox
-              | Role::RadioButton
-              | Role::Switch
-              | Role::Link
-              | Role::MenuItem
-              | Role::MenuItemCheckBox
-              | Role::MenuItemRadio
-              | Role::ListBoxOption
-              | Role::MenuListOption
-              | Role::Tab
-              | Role::TreeItem
-              | Role::Heading
-              | Role::Cell
-              | Role::GridCell
-              | Role::ColumnHeader
-              | Role::RowHeader
-              | Role::Row
-              | Role::Tooltip
-              | Role::DisclosureTriangle
-              | Role::Comment
-              | Role::DocBackLink
-              | Role::DocBiblioRef
-              | Role::DocGlossRef
-              | Role::DocNoteRef
+    if let Some(props) = record.kind.box_props() {
+      facts.role = props.role;
+      facts.access.clone_from(&props.access);
+      facts.link = props.destination.is_some();
+      facts.block = true;
+    }
+
+    match &record.kind {
+      Kind::Overlay(_) => facts.hidden |= !record.open,
+      Kind::Control(props) => {
+        facts.role = facts.role.or(props.native.map(NativeElement::role));
+        facts.label.clone_from(&props.label);
+        facts.placeholder.clone_from(&props.placeholder);
+        facts.value = match props.native {
+          Some(NativeElement::TextField | NativeElement::TextEditor) => Some(record.value.clone()),
+          Some(NativeElement::Picker) => record
+            .options
+            .iter()
+            .find(|option| option.value == record.value)
+            .map(|option| option.name.clone()),
+          Some(
+            NativeElement::Button
+            | NativeElement::Checkbox
+            | NativeElement::Radio
+            | NativeElement::Range,
           )
-        })
-    })
-  }) == Some(true)
-}
-
-/// The value the control `node` contributes to a name taken from content it sits in:
-/// an entry's text, a picker's chosen option's name, a range's value text or value;
-/// `None` for any other node.
-fn embedded_value(node: NodeId) -> Option<String> {
-  let props = control_props(node)?;
-  let access = &props.box_props.access;
-
-  match props.native {
-    Some(NativeElement::TextField | NativeElement::TextEditor) => value(node),
-    Some(NativeElement::Picker) => {
-      let chosen = value(node)?;
-
-      options(node)?
-        .into_iter()
-        .find(|option| option.value == chosen)
-        .map(|option| option.name)
+          | None => None,
+        };
+      }
+      Kind::Box(_) | Kind::Run(_) | Kind::Anchor | Kind::Scope => {}
     }
-    Some(NativeElement::Range) => access
-      .iter()
-      .find_map(|prop| match prop {
-        AccessProp::ValueText(text) => Some(text.clone()),
-        _ => None,
-      })
-      .or_else(|| {
-        access.iter().find_map(|prop| match prop {
-          AccessProp::Value(value) => Some(value.to_string()),
-          _ => None,
-        })
-      }),
-    Some(NativeElement::Button | NativeElement::Checkbox | NativeElement::Radio) | None => None,
-  }
+
+    facts
+  })
+  .unwrap_or_default()
 }
 
 /// The props the run `node` was created with.

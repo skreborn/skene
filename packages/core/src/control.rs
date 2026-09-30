@@ -4,7 +4,7 @@
 use std::fmt::Debug;
 
 use super::{BoxProps, Platform, State};
-use crate::Toggle;
+use crate::{Role, Toggle};
 
 /// The state a control holds that a box cannot: what the control-scoped [`State`]
 /// conditions of the control and everything inside it resolve against.
@@ -61,7 +61,7 @@ impl Default for ControlState {
 /// The native element a control is realized as where a platform has one: the web's
 /// form element, a native platform's own control.
 ///
-/// A control with none is drawn by its view and named by its [`Role`](crate::Role).
+/// A control with none is drawn by its view and named by its [`Role`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[must_use]
 pub enum NativeElement {
@@ -82,6 +82,22 @@ pub enum NativeElement {
 }
 
 impl NativeElement {
+  /// The role the element carries where nothing states another: a text entry's, a
+  /// button's, a toggle's, a range's or a picker's.
+  #[inline(always)]
+  #[must_use]
+  pub const fn role(self) -> Role {
+    match self {
+      Self::Button => Role::Button,
+      Self::Checkbox => Role::CheckBox,
+      Self::Radio => Role::RadioButton,
+      Self::Range => Role::Slider,
+      Self::TextField => Role::TextInput,
+      Self::TextEditor => Role::MultilineTextInput,
+      Self::Picker => Role::ComboBox,
+    }
+  }
+
   /// Whether the element is a text entry, single-line or not.
   #[inline(always)]
   #[must_use]

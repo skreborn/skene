@@ -233,6 +233,7 @@ fn inputs() -> impl IntoView {
       Row::new().set_spacing(2).set_children((
         Container::new().set_width(20).set_child(
           SimpleSlider::new()
+            .set_label("Volume")
             .set_min(0.)
             .set_max(100.)
             .set_step(1.)
@@ -242,6 +243,7 @@ fn inputs() -> impl IntoView {
           .set_color(SimplePalette::MUTED_FOREGROUND),
       )),
       SimplePicker::new()
+        .set_label("Season")
         .set_options([
           ("spring", "Spring"),
           ("summer", "Summer"),

@@ -28,8 +28,14 @@ use skene_core::{
   KeyEvent,
   Modifiers,
   MouseCursor,
+  NameFacts,
   NamedKey,
+  NativeElement,
+  NodeId,
   PointerButton,
+  Role,
+  RunDisplay,
+  Scene,
   TextDecorationStyle,
 };
 
@@ -54,6 +60,7 @@ use crate::{
     WindowSize,
   },
   platform::end_turn,
+  store::Kind,
   text::{self, CellScale, Glyph},
   tty::Tty,
   with_store,
@@ -1583,6 +1590,98 @@ pub fn focused_node() -> Option<skene_core::NodeId> {
     store
       .focused()
       .and_then(|focused| store.record(focused).and_then(|record| record.node))
+  })
+}
+
+/// The name `node` reports to assistive technology, by the accessible-name computation
+/// ([`Scene::accessible_name`]).
+#[must_use]
+pub fn accessible_name(node: NodeId) -> Option<String> {
+  end_turn();
+
+  Scene::<Tui>::accessible_name(node, name_facts)
+}
+
+/// The first node in tree order whose role is `role` and whose accessible name is
+/// `name`, outside hidden boxes and closed overlays.
+#[must_use]
+pub fn find_by_role(role: Role, name: &str) -> Option<NodeId> {
+  end_turn();
+
+  Scene::<Tui>::find_by_role(role, name, name_facts)
+}
+
+/// Every node whose role is `role`, in tree order, outside hidden boxes and closed
+/// overlays.
+#[must_use]
+pub fn find_all_by_role(role: Role) -> Vec<NodeId> {
+  end_turn();
+
+  Scene::<Tui>::find_all_by_role(role, name_facts)
+}
+
+/// Every node that must be named and is not, in tree order, outside hidden boxes and
+/// closed overlays ([`Scene::find_all_unnamed`]).
+#[must_use]
+pub fn find_all_unnamed() -> Vec<NodeId> {
+  end_turn();
+
+  Scene::<Tui>::find_all_unnamed(name_facts)
+}
+
+/// The first run in tree order whose own text is `text`, whitespace collapsed on both,
+/// outside hidden boxes and closed overlays.
+#[must_use]
+pub fn find_by_text(text: &str) -> Option<NodeId> {
+  end_turn();
+
+  Scene::<Tui>::find_by_text(text, name_facts)
+}
+
+/// What the accessible-name computation reads of `node`.
+fn name_facts(node: NodeId) -> NameFacts {
+  with_store(|store| {
+    let Some(record) = store.record(node)
+    else {
+      return NameFacts::default();
+    };
+    let mut facts = NameFacts {
+      hidden: store.is_hidden(node),
+      ..NameFacts::default()
+    };
+
+    if let Kind::Run { props, .. } = &record.kind {
+      facts.text = Some(record.text.clone());
+      facts.link = props.link.is_some();
+      facts.block = props.display == RunDisplay::Block;
+
+      return facts;
+    }
+
+    if let Some(inner) = record.kind.box_record() {
+      facts.role = inner.props.role;
+      facts.access.clone_from(&inner.props.access);
+      facts.link = inner.props.destination.is_some();
+      facts.block = true;
+    }
+
+    match &record.kind {
+      Kind::Overlay { open, .. } => facts.hidden |= !open,
+      Kind::Control {
+        native,
+        label,
+        field,
+        ..
+      } => {
+        facts.role = facts.role.or(native.map(NativeElement::role));
+        facts.label.clone_from(label);
+        facts.value = field.as_ref().map(|field| field.value.clone());
+        facts.placeholder = field.as_ref().and_then(|field| field.placeholder.clone());
+      }
+      Kind::Box(_) | Kind::Run { .. } | Kind::Anchor | Kind::Scope => {}
+    }
+
+    facts
   })
 }
 

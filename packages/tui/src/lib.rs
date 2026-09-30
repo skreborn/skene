@@ -45,6 +45,7 @@ mod store;
 mod terminal;
 mod text;
 mod tty;
+pub mod user;
 
 /// The terminal medium's shared vocabulary: the style extension, its glyphs and values,
 /// and the typography set.
@@ -164,8 +165,13 @@ pub use crate::{
   platform::{Tui, mount, uninstall},
   routing::install_router,
   terminal::{
+    accessible_name,
     current_cursor,
     current_title,
+    find_all_by_role,
+    find_all_unnamed,
+    find_by_role,
+    find_by_text,
     focused_node,
     frame_pending,
     layout_generation,

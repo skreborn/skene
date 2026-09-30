@@ -1,6 +1,13 @@
 pub mod skene_headless
 pub use skene_headless::HeadElement
 pub use skene_headless::HeadId
+pub mod skene_headless::user
+pub fn skene_headless::user::click(skene_core::node::NodeId)
+pub fn skene_headless::user::double_click(skene_core::node::NodeId)
+pub fn skene_headless::user::hover(skene_core::node::NodeId)
+pub fn skene_headless::user::press_key(&skene_core::events::KeyEvent)
+pub fn skene_headless::user::type_text(skene_core::node::NodeId, &str)
+pub fn skene_headless::user::unhover(skene_core::node::NodeId)
 pub struct skene_headless::Headless
 impl core::clone::Clone for skene_headless::Headless
 pub fn skene_headless::Headless::clone(&self) -> skene_headless::Headless
@@ -74,6 +81,10 @@ pub fn skene_headless::definitions(skene_core::node::NodeId) -> core::option::Op
 pub fn skene_headless::document_language() -> core::option::Option<alloc::string::String>
 pub fn skene_headless::document_title() -> core::option::Option<alloc::string::String>
 pub fn skene_headless::end_turn()
+pub fn skene_headless::find_all_by_role(accesskit::Role) -> alloc::vec::Vec<skene_core::node::NodeId>
+pub fn skene_headless::find_all_unnamed() -> alloc::vec::Vec<skene_core::node::NodeId>
+pub fn skene_headless::find_by_role(accesskit::Role, &str) -> core::option::Option<skene_core::node::NodeId>
+pub fn skene_headless::find_by_text(&str) -> core::option::Option<skene_core::node::NodeId>
 pub fn skene_headless::focus_order(skene_core::node::NodeId) -> core::option::Option<skene_core::values::focus_order::FocusOrder>
 pub fn skene_headless::full_outline(skene_core::node::NodeId) -> alloc::string::String
 pub fn skene_headless::head_elements() -> alloc::vec::Vec<skene_common::gui::head::HeadElement>

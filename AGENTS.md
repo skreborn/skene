@@ -468,7 +468,11 @@
   both degrade to a cut.
 - View logic tests run headless via `skene-headless`, the host platform, which implements
   the whole `Platform` trait so nothing is wasm-gated for want of a platform; its executor
-  runs when a test calls `pump_tasks`, so a `Resource` loads in a test too. Platforms
+  runs when a test calls `pump_tasks`, so a `Resource` loads in a test too. A test finds
+  what a reader finds and acts as a user acts: `find_by_role`, `find_by_text` and
+  `find_all_unnamed` read the accessible names core computes over the scene
+  (`Scene::accessible_name`), and `user` turns a click, a key or typed text into the
+  events a browser dispatches for it, on headless and the terminal alike. Platforms
   test against their real sinks (web: real DOM via `wasm-bindgen-test`; ssr: the server
   leaf natively under a byte-exact snapshot; native: its toolkit). There is no mock platform.
 - HTTP, WebSockets and timers are userland. `skene-transport` holds the network clients built on
@@ -551,7 +555,9 @@
   bare name is not an option where the facade's prelude already carries it (`Property`,
   `Value`, `Text`), and a scheme that is bare for some names and prefixed for others is
   worse than one rule.
-- A test double's method that simulates an external event is named `trigger_<event>`.
+- A test double's method that simulates an external event is named `trigger_<event>`; a
+  user's gesture composed of such events is named for the gesture in the platform's `user`
+  module (`user::click`, `user::type_text`).
 - Make a function or method `const` whenever its body allows it (no trait-method calls such as
   `.into()`, no allocation, no interior mutability). Apply it broadly, and especially to small,
   frequently-constructed types like the geometry and value vocabulary. The API is early and

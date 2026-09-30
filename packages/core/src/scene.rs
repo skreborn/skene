@@ -626,6 +626,24 @@ impl<P: Platform> Scene<P> {
     self.record(node).and_then(NodeRecord::parent)
   }
 
+  /// Every live node standing in no parent and no segment, in index order: each tree's
+  /// root, and each node built and not yet attached.
+  pub fn roots(&self) -> impl Iterator<Item = NodeId> + '_ {
+    self
+      .entries
+      .iter()
+      .enumerate()
+      .filter_map(|(index, entry)| {
+        let record = entry.record.as_ref()?;
+
+        if record.parent.is_some() || record.enclosing.is_some() {
+          return None;
+        }
+
+        Some(NodeId::new(u32::try_from(index).ok()?, entry.generation))
+      })
+  }
+
   /// The children of `node`, in order; empty for a leaf or a stale id.
   #[inline(always)]
   pub fn children(&self, node: NodeId) -> impl Iterator<Item = NodeId> + '_ {

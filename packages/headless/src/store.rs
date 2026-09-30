@@ -97,6 +97,8 @@ pub(crate) struct Record {
   pub listened: Vec<EventKind>,
   /// The reports of the box's size.
   pub size_observers: Vec<Rc<dyn Fn(Size<f32>)>>,
+  /// The size last reported for the box.
+  pub size: Option<Size<f32>>,
   /// The painter a painted box draws with.
   pub painter: Option<Rc<Painter>>,
   /// The motion the node runs.
@@ -142,6 +144,7 @@ impl Record {
       definitions: None,
       listened: Vec::new(),
       size_observers: Vec::new(),
+      size: None,
       painter: None,
       motion: NodeMotion::default(),
     }

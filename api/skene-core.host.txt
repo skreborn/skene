@@ -3383,7 +3383,7 @@ impl<T> core::default::Default for skene_core::NodeMap<T>
 pub fn skene_core::NodeMap<T>::default() -> Self
 pub struct skene_core::NodeRecord<P: skene_core::Platform>
 impl<P: skene_core::Platform> skene_core::NodeRecord<P>
-pub const fn skene_core::NodeRecord<P>::annotation(&self) -> core::option::Option<&skene_core::Annotation<P>>
+pub fn skene_core::NodeRecord<P>::annotation(&self) -> core::option::Option<&skene_core::Annotation<P>>
 pub const fn skene_core::NodeRecord<P>::container(&self) -> core::option::Option<skene_core::ContainerName>
 pub const fn skene_core::NodeRecord<P>::control_state(&self) -> core::option::Option<skene_core::ControlState>
 pub fn skene_core::NodeRecord<P>::definitions(&self) -> core::option::Option<&skene_core::Definitions<<P as skene_core::Platform>::TokenValue>>

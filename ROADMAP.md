@@ -105,11 +105,11 @@ left half-done in a code comment.
     and a write; a lazy first memo run; `reconcile` as a thin generic shim over a
     non-generic core; forced inlining off generic and allocating functions; variants in
     a thin vector (`Value<Color>` from 112 to about 48 bytes, a box style from 3.5 to
-    about 1.4 KB), then presence bitsets, and the scene record's annotation boxed; the lazy list
-    reading a data source (a count and the item at an index) through a Fenwick tree,
-    and evicting measured extents; one constructable stylesheet with deferred
-    collection and a set of adopted names; release web output through wasm-opt, without
-    `.d.ts` files or name sections, precompressed, fingerprinted and preloaded, with
+    about 1.4 KB), then presence bitsets; the lazy list reading a data source (a count
+    and the item at an index) through a Fenwick tree, and evicting measured extents;
+    one constructable stylesheet with deferred collection and a set of adopted names;
+    release web output through wasm-opt, without `.d.ts` files or name sections,
+    precompressed, fingerprinted and preloaded, with
     one cached stylesheet shared by static pages instead of inlined into each; kitty
     images compressed (`o=z`), rows diffed by run with `CSI K`, and input resumed with
     `memchr` instead of rescanned; the dev control pipe polled beside the tty and the

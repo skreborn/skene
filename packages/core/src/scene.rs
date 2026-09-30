@@ -64,7 +64,7 @@ pub struct NodeRecord<P: Platform> {
   previous_sibling: Option<NodeId>,
   next_sibling: Option<NodeId>,
   kind: NodeKind,
-  annotation: Option<Annotation<P>>,
+  annotation: Option<Box<Annotation<P>>>,
   definitions: Option<Box<Definitions<P::TokenValue>>>,
   container: Option<ContainerName>,
   handlers: Option<Box<HandlerSet>>,
@@ -112,8 +112,8 @@ impl<P: Platform> NodeRecord<P> {
   /// The per-child properties a wrapper asked for this box.
   #[inline(always)]
   #[must_use]
-  pub const fn annotation(&self) -> Option<&Annotation<P>> {
-    self.annotation.as_ref()
+  pub fn annotation(&self) -> Option<&Annotation<P>> {
+    self.annotation.as_deref()
   }
 
   /// The token definitions placed on this node.
@@ -403,7 +403,7 @@ impl<P: Platform> Scene<P> {
       previous_sibling: None,
       next_sibling: None,
       kind,
-      annotation,
+      annotation: annotation.map(Box::new),
       definitions: None,
       container: None,
       handlers: None,

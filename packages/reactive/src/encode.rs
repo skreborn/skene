@@ -357,7 +357,7 @@ impl<'a> Reader<'a> {
             reader: inner,
           }),
           tag::MAP => Value::Map(Seq {
-            remaining: inner.length()?,
+            remaining: inner.length()?.checked_mul(2)?,
             reader: inner,
           }),
           tag::RECORD => Value::Record(Record {

@@ -1841,36 +1841,39 @@ mod tests {
     );
     assert_eq!(overlong(b"\x1b[", b'1', MAX_CSI * 4, b"m"), x);
   }
+}
 
-  /// Arbitrary input decodes without panicking, and to the same events fed whole or in
-  /// chunks of any size, a scan resuming where the last left off.
-  #[test]
-  fn any_input_decodes_alike_in_any_chunks() {
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod properties {
+  use proptest::prelude::*;
+
+  use super::*;
+
+  /// Input mostly of the bytes escape sequences are made of, any byte among them.
+  fn arbitrary_input() -> impl Strategy<Value = Vec<u8>> {
     const ALPHABET: &[u8] =
       b"\x1b\x1b\x1b[[]]OP_^X\\\x07\x18\x1a0123456789;:<=>?$~uRMmcyAPZh\xe0\x80\xbfa ";
 
-    let mut state: u64 = 0x9e37_79b9_7f4a_7c15;
-    let mut next = move |bound: usize| {
-      state ^= state << 13;
-      state ^= state >> 7;
-      state ^= state << 17;
+    proptest::collection::vec(
+      prop_oneof![
+        7 => proptest::sample::select(ALPHABET),
+        1 => any::<u8>(),
+      ],
+      0..96,
+    )
+  }
 
-      usize::try_from(state % u64::try_from(bound).expect("a small bound")).expect("in range")
-    };
+  proptest! {
+    #![proptest_config(ProptestConfig::with_cases(4000))]
 
-    for _ in 0..4000 {
-      let length = next(96);
-      let bytes: Vec<u8> = (0..length)
-        .map(|_| {
-          if next(8) == 0 {
-            u8::try_from(next(256)).expect("a byte")
-          }
-          else {
-            ALPHABET[next(ALPHABET.len())]
-          }
-        })
-        .collect();
-      let replying = next(2) == 0;
+    /// Arbitrary input decodes without panicking, and to the same events fed whole or in
+    /// chunks of any size, a scan resuming where the last left off.
+    #[test]
+    fn any_input_decodes_alike_in_any_chunks(
+      bytes in arbitrary_input(),
+      cuts in proptest::collection::vec(any::<proptest::sample::Index>(), 0..8),
+      replying in any::<bool>(),
+    ) {
       let decode = |chunks: &[&[u8]]| {
         let mut parser = Parser::default();
 
@@ -1886,21 +1889,21 @@ mod tests {
 
         std::iter::from_fn(|| parser.pop()).collect::<Vec<_>>()
       };
+      let mut points: Vec<usize> = cuts.iter().map(|cut| cut.index(bytes.len() + 1)).collect();
+
+      points.sort_unstable();
+
       let mut chunks = Vec::new();
-      let mut rest = bytes.as_slice();
+      let mut start = 0;
 
-      while !rest.is_empty() {
-        let (chunk, tail) = rest.split_at(1 + next(rest.len()));
-
-        chunks.push(chunk);
-        rest = tail;
+      for point in points {
+        chunks.push(&bytes[start..point]);
+        start = point;
       }
 
-      assert_eq!(
-        decode(&[&bytes]),
-        decode(&chunks),
-        "{bytes:?} in {chunks:?}"
-      );
+      chunks.push(&bytes[start..]);
+
+      prop_assert_eq!(decode(&[&bytes]), decode(&chunks), "{:?} in {:?}", bytes, chunks);
     }
   }
 }

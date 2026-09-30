@@ -1,0 +1,8 @@
+error: #[derive(Snapshot)] supports structs and enums
+ --> tests/compile_fail/a_snapshot_of_a_union.rs:6:1
+  |
+6 | / union Bits {
+7 | |   whole: u32,
+8 | |   halves: [u16; 2],
+9 | | }
+  | |_^

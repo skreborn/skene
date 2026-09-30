@@ -1,0 +1,6 @@
+error: #[snapshot(default)] names a unit variant
+ --> tests/compile_fail/a_default_variant_carrying_data.rs:7:3
+  |
+7 | /   #[snapshot(default)]
+8 | |   Some(u32),
+  | |___________^

@@ -47,8 +47,15 @@ const BANNED_WORDS: &[&str] = &["backend", "gap", "justify", "widget"];
 /// rather than to simulate an event, exempt from `trigger_` naming.
 const LOOP_TURNS: &[&str] = &["pump_tasks"];
 
-/// Directories never searched for sources.
-const SKIPPED: &[&str] = &[".git", "dist", "node_modules", "target", "vendor"];
+/// Directories never searched for sources, the compile-fail programs among them.
+const SKIPPED: &[&str] = &[
+  ".git",
+  "compile_fail",
+  "dist",
+  "node_modules",
+  "target",
+  "vendor",
+];
 
 /// Checks every Rust source and Markdown document in the workspace against the house rules.
 pub(crate) fn check(root: &Path) -> Result<(), String> {

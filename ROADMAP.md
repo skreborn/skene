@@ -57,10 +57,8 @@ left half-done in a code comment.
     wheel latching, field editing, selection, motion) is extracted into a
     medium-generic kit; headless lays out through it and renders pixel snapshots, and
     it is the native family's first prerequisite.
-    - Terminal snapshot files with colors, and browser screenshot goldens through the
-    browser tier's geckodriver session; `insta`, `trybuild` compile-fail tests for the
-    derives and the static layout constraints, and `proptest` over the snapshot decoder
-    and the terminal parser.
+    - Terminal snapshot files with colors through `insta`, and browser screenshot
+    goldens through the browser tier's geckodriver session.
     - A `Driver` trait (press, type, focus, resize, advance) implemented by headless,
     the terminal and the browser tier runs one behavior suite everywhere, so parity
     holds by construction; an AccessKit tree built from the scene's merged reports

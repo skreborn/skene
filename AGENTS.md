@@ -595,7 +595,11 @@
   `web_*.rs` is gated to a leaf, so on the host those binaries compile to zero tests, and
   a change can pass every host test while breaking the browser outright. The host tier
   runs through `cargo nextest run`, each test in a process of its own, the doctests
-  beside it through `cargo test --doc`. The server tier is the server leaf built
+  beside it through `cargo test --doc`. Among it, `packages/gui/tests/compile_fail`
+  holds a program per rule the types enforce (layout's static constraints, children
+  last, the expression kinds, the derives) beside the diagnostic it must raise,
+  rewritten by `TRYBUILD=overwrite` once a change to one is meant, and `proptest` drives
+  the snapshot codec and the terminal parser with arbitrary input. The server tier is the server leaf built
   natively, the byte-exact render snapshot among it. The browser tier first links every
   library's tests for wasm32, so an app's own tests build there, then drives a real Firefox through geckodriver with WebGPU switched on by
   `packages/gui/webdriver.json`, so a painted box renders on the GPU there; `web_painted`

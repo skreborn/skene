@@ -12,6 +12,9 @@ smallvec.workspace = true
 [dev-dependencies]
 criterion = { default-features = false, features = ["cargo_bench_support"], version = "0.5" }
 
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+proptest.workspace = true
+
 [[bench]]
 name = "engine"
 harness = false

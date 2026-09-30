@@ -1,0 +1,8 @@
+error: #[derive(Store)] supports only structs
+ --> tests/compile_fail/a_store_of_an_enum.rs:6:1
+  |
+6 | / enum Mode {
+7 | |   Light,
+8 | |   Dark,
+9 | | }
+  | |_^

@@ -1,0 +1,75 @@
+error[E0277]: `Opaque` cannot take part in state snapshots
+ --> tests/compile_fail/a_snapshot_field_without_snapshot.rs:7:10
+  |
+7 | #[derive(Snapshot)]
+  |          ^^^^^^^^ a snapshot signal's value implements `Snapshot`
+  |
+help: the trait `skene_reactive::Snapshot` is not implemented for `Opaque`
+ --> tests/compile_fail/a_snapshot_field_without_snapshot.rs:5:1
+  |
+5 | struct Opaque;
+  | ^^^^^^^^^^^^^
+  = note: derive it with `#[derive(Snapshot)]`, or keep the value out of snapshots with `Signal::opaque`
+  = help: the following other types implement trait `skene_reactive::Snapshot`:
+            ()
+            (A, B)
+            (A, B, C)
+            (A, B, C, D)
+            (A, B, C, D, E)
+            (A, B, C, D, E, F)
+            (A,)
+            BTreeMap<K, V>
+          and $N others
+note: required by a bound in `Fields::field`
+ --> $WORKSPACE/packages/reactive/src/encode.rs
+  |
+  |   pub fn field(&mut self, key: u32, value: &impl Snapshot) {
+  |                                                  ^^^^^^^^ required by this bound in `Fields::field`
+  = note: this error originates in the derive macro `Snapshot` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: `Opaque` cannot take part in state snapshots
+ --> tests/compile_fail/a_snapshot_field_without_snapshot.rs:9:11
+  |
+9 |   opaque: Opaque,
+  |           ^^^^^^ a snapshot signal's value implements `Snapshot`
+  |
+help: the trait `skene_reactive::Snapshot` is not implemented for `Opaque`
+ --> tests/compile_fail/a_snapshot_field_without_snapshot.rs:5:1
+  |
+5 | struct Opaque;
+  | ^^^^^^^^^^^^^
+  = note: derive it with `#[derive(Snapshot)]`, or keep the value out of snapshots with `Signal::opaque`
+  = help: the following other types implement trait `skene_reactive::Snapshot`:
+            ()
+            (A, B)
+            (A, B, C)
+            (A, B, C, D)
+            (A, B, C, D, E)
+            (A, B, C, D, E, F)
+            (A,)
+            BTreeMap<K, V>
+          and $N others
+
+error[E0277]: `Opaque` cannot take part in state snapshots
+ --> tests/compile_fail/a_snapshot_field_without_snapshot.rs:7:10
+  |
+7 | #[derive(Snapshot)]
+  |          ^^^^^^^^ a snapshot signal's value implements `Snapshot`
+  |
+help: the trait `skene_reactive::Snapshot` is not implemented for `Opaque`
+ --> tests/compile_fail/a_snapshot_field_without_snapshot.rs:5:1
+  |
+5 | struct Opaque;
+  | ^^^^^^^^^^^^^
+  = note: derive it with `#[derive(Snapshot)]`, or keep the value out of snapshots with `Signal::opaque`
+  = help: the following other types implement trait `skene_reactive::Snapshot`:
+            ()
+            (A, B)
+            (A, B, C)
+            (A, B, C, D)
+            (A, B, C, D, E)
+            (A, B, C, D, E, F)
+            (A,)
+            BTreeMap<K, V>
+          and $N others
+  = note: this error originates in the derive macro `Snapshot` (in Nightly builds, run with -Z macro-backtrace for more info)

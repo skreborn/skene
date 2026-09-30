@@ -19,6 +19,7 @@ unicode-segmentation = "1"
 unicode-width = "0.2"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+proptest.workspace = true
 skene-simple.workspace = true
 
 [lints]

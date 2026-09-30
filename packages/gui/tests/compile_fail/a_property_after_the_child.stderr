@@ -1,0 +1,8 @@
+error[E0599]: no method named `set_grow_factor` found for struct `skene_common::flexible::Flexible<Headless, AnyView<Headless>>` in the current scope
+ --> tests/compile_fail/a_property_after_the_child.rs:6:53
+  |
+6 |   let _ = Flexible::new().set_child(Text::new("a")).set_grow_factor(1.);
+  |                                                     ^^^^^^^^^^^^^^^ method not found in `skene_common::flexible::Flexible<Headless, AnyView<Headless>>`
+  |
+  = note: the method was found for
+          - `skene_common::flexible::Flexible<P>`

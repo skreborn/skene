@@ -343,6 +343,21 @@ left half-done in a code comment.
     replays golden tests. Beneath it a data-only diagnostics tier names signals and
     emits re-run causes as `tracing` spans, and debug builds warn on a signal read
     while building a view, which freezes it, and on a write inside a memo.
+    - Undecided: one terminal for the terminal's dev loop, the viewer hosted in the app.
+    `skene run tui` runs the app in its own terminal as the launcher `attach` is today,
+    building beside it and swapping each binary in place; cargo's output is captured, a
+    failed build reaching the app as its notice and, while no instance runs (a panic at
+    startup), printed on the restored terminal until the next build respawns it. The
+    terminal hosts this item's viewer in-process, as a panel docked beside the app and
+    toggled by a `Launch` key as the mouse key is, the stream's first events being the
+    logs (the dev build's subscriber capturing them), the build's notices and the last
+    crash, the inspector following; a tab or a window of its own hosts the same viewer
+    on the web and native. The panel lives in a scene of its own, so the app's snapshot,
+    focus, accessibility tree and tests never see it; docking shrinks the app's viewport
+    as a browser's docked devtools do; and it compiles only under the dev cfg the CLI
+    sets, so a production build carries none of it. Open: the key (`F12`, as browsers
+    use), whether `attach` stays as the two-terminal form, and whether the first cut is
+    the logs, the build and the last crash alone.
 13. **Design tokens in the DTCG format.** `TokenSet` definitions import from and export
     to the W3C Design Tokens Community Group format, stable since October 2025, so a
     palette travels to and from design tools.

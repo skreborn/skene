@@ -65,9 +65,6 @@ left half-done in a code comment.
     - A terminal `Device` trait (bytes in and out, size, wake), implemented by the tty
     and a pty harness, runs the real loop end to end under test; the Windows console,
     an SSH session and xterm.js are further implementations.
-    - The terminal's 40-odd `trigger_*`, `take_*` and `render_to_*` seams move to
-    `skene_tui::testing`, parallel to `skene_gui::headless`, under one naming rule for
-    both.
     - The gallery shows every built-in (the context menu, `Link`, `Show`, `Switch`,
     `Suspense` and `ErrorBoundary` are missing), and axe runs with each overlay open.
 4. **The quadratic hot paths.**
@@ -238,8 +235,8 @@ left half-done in a code comment.
     plus `rlib` pair, `__skene_main` and app-level cfgs go.
     - Oversized files split: `reactive/src/graph.rs` into records, ownership, edges and
     propagation; `core/src/scene.rs`; `web/src/csr.rs` and `ssr.rs` into parallel
-    `browser/` and `server/` trees; `tui/src/terminal.rs` into the loop, the writer,
-    key mapping and testing; `tui/src/store.rs`, six concerns in one;
+    `browser/` and `server/` trees; `tui/src/terminal.rs` into the loop, the writer
+    and key mapping; `tui/src/store.rs`, six concerns in one;
     `cli/src/main.rs`.
     - Deleted, about 1,000 lines: `slice.rs`, `Reaction`, `create_detached`,
     `OwnedSignal`, `Effect::watch` unless it becomes the binder primitive, and the

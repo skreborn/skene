@@ -8,7 +8,7 @@ mod common;
 
 use std::{cell::Cell, rc::Rc};
 
-use skene_tui::{self as tui, Activate, HasChild, prelude::*};
+use skene_tui::{self as tui, Activate, HasChild, prelude::*, testing};
 
 use crate::common::{black, red, with_platform};
 
@@ -39,30 +39,30 @@ fn modal_overlay_covers_blocks_and_dismisses() {
         .build()
     });
 
-    let closed = tui::render_to_text(12, 5);
+    let closed = testing::render_to_text(12, 5);
 
     assert!(closed.contains("base") && !closed.contains("dialog"));
 
     open.set(true);
 
-    let opened = tui::render_to_text(12, 5);
+    let opened = testing::render_to_text(12, 5);
 
     assert!(opened.contains("dialog") && opened.contains("base"));
 
     // A click where the base button sits is blocked and asks the modal to close.
-    tui::trigger_mouse_click(1, 0);
+    testing::trigger_mouse_click(1, 0);
 
     assert_eq!(clicks.get(), 0);
     assert!(!open.get());
 
     open.set(true);
 
-    let _ = tui::render_to_text(12, 5);
+    let _ = testing::render_to_text(12, 5);
 
-    tui::trigger_key("Escape");
+    testing::trigger_key("Escape");
 
     assert!(!open.get());
-    assert!(!tui::render_to_text(12, 5).contains("dialog"));
+    assert!(!testing::render_to_text(12, 5).contains("dialog"));
   });
 }
 
@@ -98,21 +98,21 @@ fn popup_anchors_below_and_light_dismisses() {
         .into_any()
         .build()
     });
-    let _ = tui::render_to_text(12, 4);
+    let _ = testing::render_to_text(12, 4);
 
     open.set(true);
 
-    let frame = tui::render_to_text(12, 4);
+    let frame = testing::render_to_text(12, 4);
     let lines: Vec<&str> = frame.lines().collect();
 
     assert!(lines[0].contains("trigger"), "{frame}");
     assert!(lines[1].contains("menu"), "{frame}");
 
-    tui::trigger_mouse_click(10, 1);
+    testing::trigger_mouse_click(10, 1);
 
     assert!(!open.get(), "the outside press dismissed");
     assert_eq!(clicks.get(), 1, "and still reached the app");
-    assert!(!tui::render_to_text(12, 4).contains("menu"));
+    assert!(!testing::render_to_text(12, 4).contains("menu"));
   });
 }
 
@@ -159,11 +159,11 @@ fn a_nested_popup_anchors_where_its_anchor_shows() {
         .into_any()
         .build()
     });
-    let _ = tui::render_to_text(12, 8);
+    let _ = testing::render_to_text(12, 8);
 
     inner.set(true);
 
-    let frame = tui::render_to_text(12, 8);
+    let frame = testing::render_to_text(12, 8);
     let lines: Vec<&str> = frame.lines().collect();
 
     assert!(lines[3].starts_with("first"), "{frame}");
@@ -196,11 +196,11 @@ fn modal_scrim_defaults_on_and_disables() {
           .build()
       });
 
-      let before = tui::render_to_colors(6, 3);
+      let before = testing::render_to_colors(6, 3);
 
       open.set(true);
 
-      (before, tui::render_to_colors(6, 3))
+      (before, testing::render_to_colors(6, 3))
     })
   };
 
@@ -242,23 +242,23 @@ fn a_modal_traps_focus() {
         .into_any()
         .build()
     });
-    let _ = tui::render_to_text(12, 4);
+    let _ = testing::render_to_text(12, 4);
 
-    tui::trigger_key("Tab");
+    testing::trigger_key("Tab");
 
-    assert_eq!(tui::focused_node(), inside.node());
+    assert_eq!(testing::focused_node(), inside.node());
 
-    tui::trigger_key("Tab");
+    testing::trigger_key("Tab");
 
-    assert_eq!(tui::focused_node(), inside.node());
+    assert_eq!(testing::focused_node(), inside.node());
 
     open.set(false);
 
-    let _ = tui::render_to_text(12, 4);
+    let _ = testing::render_to_text(12, 4);
 
-    tui::trigger_key("Tab");
+    testing::trigger_key("Tab");
 
-    assert_eq!(tui::focused_node(), outside.node());
+    assert_eq!(testing::focused_node(), outside.node());
   });
 }
 
@@ -293,21 +293,21 @@ fn the_modal_opened_last_holds_the_tab_order() {
         .into_any()
         .build()
     });
-    let _ = tui::render_to_text(12, 4);
+    let _ = testing::render_to_text(12, 4);
 
     second_open.set(true);
 
-    let _ = tui::render_to_text(12, 4);
+    let _ = testing::render_to_text(12, 4);
 
     first_open.set(true);
 
-    let _ = tui::render_to_text(12, 4);
+    let _ = testing::render_to_text(12, 4);
 
-    assert_eq!(tui::focused_node(), first.node());
+    assert_eq!(testing::focused_node(), first.node());
 
-    tui::trigger_key("Tab");
+    testing::trigger_key("Tab");
 
-    assert_eq!(tui::focused_node(), first.node());
+    assert_eq!(testing::focused_node(), first.node());
   });
 }
 
@@ -349,20 +349,20 @@ fn a_modal_holds_under_a_popup_above_it() {
 
     open.set(true);
 
-    let _ = tui::render_to_text(24, 6);
+    let _ = testing::render_to_text(24, 6);
 
-    tui::trigger_key("Tab");
+    testing::trigger_key("Tab");
 
-    let frame = tui::render_to_text(24, 6);
+    let frame = testing::render_to_text(24, 6);
 
-    assert_eq!(tui::focused_node(), inside.node());
+    assert_eq!(testing::focused_node(), inside.node());
     assert!(frame.contains("Confirms"), "the tooltip shows: {frame}");
 
-    tui::trigger_key("Tab");
+    testing::trigger_key("Tab");
 
-    assert_eq!(tui::focused_node(), inside.node());
+    assert_eq!(testing::focused_node(), inside.node());
 
-    tui::trigger_mouse_click(1, 0);
+    testing::trigger_mouse_click(1, 0);
 
     assert_eq!(clicks.get(), 0);
     assert!(!open.get(), "the press outside dismisses the modal too");
@@ -399,19 +399,23 @@ fn a_modal_takes_focus_on_open_and_returns_it_on_close() {
         .into_any()
         .build()
     });
-    let _ = tui::render_to_text(12, 4);
+    let _ = testing::render_to_text(12, 4);
 
-    tui::trigger_key("Tab");
-    tui::trigger_key("Enter");
+    testing::trigger_key("Tab");
+    testing::trigger_key("Enter");
 
     assert!(open.get(), "the opener opened the modal");
-    assert_eq!(tui::focused_node(), inside.node(), "focus landed inside");
+    assert_eq!(
+      testing::focused_node(),
+      inside.node(),
+      "focus landed inside"
+    );
 
-    tui::trigger_key("Enter");
+    testing::trigger_key("Enter");
 
     assert!(!open.get(), "the close button closed the modal");
     assert_eq!(
-      tui::focused_node(),
+      testing::focused_node(),
       opener.node(),
       "focus returned to the opener"
     );

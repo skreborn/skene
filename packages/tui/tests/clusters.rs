@@ -7,7 +7,15 @@
 
 mod common;
 
-use skene_tui::{self as tui, CellDecoration, HasChild, TextEntry, TextSelection, prelude::*};
+use skene_tui::{
+  self as tui,
+  CellDecoration,
+  HasChild,
+  TextEntry,
+  TextSelection,
+  prelude::*,
+  testing,
+};
 
 use crate::common::with_platform;
 
@@ -47,31 +55,31 @@ fn text_is_measured_by_cells_not_characters() {
         .build()
     });
 
-    let decorations = tui::render_to_decorations(12, 5);
+    let decorations = testing::render_to_decorations(12, 5);
 
     assert_eq!(underlined(&decorations, 12, 0), Some(2));
     assert_eq!(underlined(&decorations, 12, 1), Some(4));
     assert_eq!(underlined(&decorations, 12, 2), Some(6));
     assert!(
-      tui::render_to_text(12, 5).starts_with("e\u{301}x|\n日本|\n"),
+      testing::render_to_text(12, 5).starts_with("e\u{301}x|\n日本|\n"),
       "{}",
-      tui::render_to_text(12, 5)
+      testing::render_to_text(12, 5)
     );
     assert!(
-      tui::render_to_text(12, 5).ends_with("日本\n本語\n"),
+      testing::render_to_text(12, 5).ends_with("日本\n本語\n"),
       "{:?}",
-      tui::render_to_text(12, 5)
+      testing::render_to_text(12, 5)
     );
 
-    tui::trigger_grapheme_clustering(true);
+    testing::trigger_grapheme_clustering(true);
 
-    let decorations = tui::render_to_decorations(12, 5);
+    let decorations = testing::render_to_decorations(12, 5);
 
     assert_eq!(underlined(&decorations, 12, 2), Some(2));
 
-    tui::trigger_grapheme_clustering(false);
+    testing::trigger_grapheme_clustering(false);
 
-    let decorations = tui::render_to_decorations(12, 5);
+    let decorations = testing::render_to_decorations(12, 5);
 
     assert_eq!(underlined(&decorations, 12, 2), Some(6));
   });
@@ -92,9 +100,9 @@ fn a_field_edits_and_places_its_caret_by_cluster() {
         .into_any()
         .build()
     });
-    let _ = tui::render_to_text(12, 1);
+    let _ = testing::render_to_text(12, 1);
 
-    tui::trigger_key("Tab");
+    testing::trigger_key("Tab");
 
     assert_eq!(
       selection.get_untracked(),
@@ -102,29 +110,29 @@ fn a_field_edits_and_places_its_caret_by_cluster() {
       "keyboard focus selects the value"
     );
 
-    tui::trigger_key("End");
+    testing::trigger_key("End");
 
-    assert_eq!(tui::render_to_caret(12, 1), Some((5, 0)));
+    assert_eq!(testing::render_to_caret(12, 1), Some((5, 0)));
 
-    tui::trigger_key("ArrowLeft");
-    tui::trigger_key("ArrowLeft");
+    testing::trigger_key("ArrowLeft");
+    testing::trigger_key("ArrowLeft");
 
     assert_eq!(selection.get_untracked(), TextSelection::collapsed(1));
-    assert_eq!(tui::render_to_caret(12, 1), Some((2, 0)));
+    assert_eq!(testing::render_to_caret(12, 1), Some((2, 0)));
 
-    tui::trigger_key("Backspace");
+    testing::trigger_key("Backspace");
 
     assert_eq!(value.get_untracked(), "本x");
 
-    tui::trigger_key("End");
-    tui::trigger_key("e");
-    tui::trigger_key("\u{301}");
+    testing::trigger_key("End");
+    testing::trigger_key("e");
+    testing::trigger_key("\u{301}");
 
     assert_eq!(value.get_untracked(), "本xe\u{301}");
     assert_eq!(selection.get_untracked(), TextSelection::collapsed(3));
-    assert_eq!(tui::render_to_caret(12, 1), Some((4, 0)));
+    assert_eq!(testing::render_to_caret(12, 1), Some((4, 0)));
 
-    tui::trigger_key("Backspace");
+    testing::trigger_key("Backspace");
 
     assert_eq!(
       value.get_untracked(),
@@ -132,7 +140,7 @@ fn a_field_edits_and_places_its_caret_by_cluster() {
       "a removal takes the whole cluster"
     );
 
-    tui::trigger_mouse_click(1, 0);
+    testing::trigger_mouse_click(1, 0);
 
     assert_eq!(
       selection.get_untracked(),
@@ -140,15 +148,15 @@ fn a_field_edits_and_places_its_caret_by_cluster() {
       "a wide cluster's second cell places the caret after it"
     );
 
-    tui::trigger_key("Shift+ArrowLeft");
+    testing::trigger_key("Shift+ArrowLeft");
 
     assert_eq!(selection.get_untracked(), TextSelection::new(1, 0));
 
     selection.set(TextSelection::new(0, 1));
 
-    assert_eq!(tui::render_to_caret(12, 1), Some((2, 0)));
+    assert_eq!(testing::render_to_caret(12, 1), Some((2, 0)));
 
-    tui::trigger_key("y");
+    testing::trigger_key("y");
 
     assert_eq!(
       value.get_untracked(),
@@ -160,7 +168,7 @@ fn a_field_edits_and_places_its_caret_by_cluster() {
     selection.set(TextSelection::collapsed(50));
 
     assert_eq!(
-      tui::render_to_caret(12, 1),
+      testing::render_to_caret(12, 1),
       Some((2, 0)),
       "an offset past the end is the end"
     );
@@ -179,18 +187,18 @@ fn a_fields_window_scrolls_by_cells() {
         .into_any()
         .build()
     });
-    let _ = tui::render_to_text(8, 1);
+    let _ = testing::render_to_text(8, 1);
 
-    tui::trigger_key("Tab");
-    tui::trigger_key("End");
+    testing::trigger_key("Tab");
+    testing::trigger_key("End");
 
-    assert!(tui::render_to_text(8, 1).starts_with("語"));
-    assert_eq!(tui::render_to_caret(8, 1), Some((2, 0)));
+    assert!(testing::render_to_text(8, 1).starts_with("語"));
+    assert_eq!(testing::render_to_caret(8, 1), Some((2, 0)));
 
-    tui::trigger_key("Home");
+    testing::trigger_key("Home");
 
-    assert!(tui::render_to_text(8, 1).starts_with("日本"));
-    assert_eq!(tui::render_to_caret(8, 1), Some((0, 0)));
+    assert!(testing::render_to_text(8, 1).starts_with("日本"));
+    assert_eq!(testing::render_to_caret(8, 1), Some((0, 0)));
   });
 }
 
@@ -200,29 +208,29 @@ fn a_fields_window_scrolls_by_cells() {
 fn the_document_selection_takes_whole_clusters() {
   with_platform(|| {
     let _ = tui::mount(|| Text::new("日本語").set_selectable(true).into_any().build());
-    let _ = tui::render_to_text(12, 4);
+    let _ = testing::render_to_text(12, 4);
 
-    tui::trigger_mouse_press(0, 0);
-    tui::trigger_mouse_drag(5, 0);
-    tui::trigger_mouse_release(5, 0);
-    tui::trigger_mouse_right_click(1, 0);
+    testing::trigger_mouse_press(0, 0);
+    testing::trigger_mouse_drag(5, 0);
+    testing::trigger_mouse_release(5, 0);
+    testing::trigger_mouse_right_click(1, 0);
 
-    let _ = tui::render_to_text(12, 4);
+    let _ = testing::render_to_text(12, 4);
 
-    tui::trigger_mouse_click(3, 1);
+    testing::trigger_mouse_click(3, 1);
 
-    assert_eq!(tui::take_copied().as_deref(), Some("日本語"));
+    assert_eq!(testing::take_copied().as_deref(), Some("日本語"));
 
-    tui::trigger_mouse_press(2, 0);
-    tui::trigger_mouse_drag(3, 0);
-    tui::trigger_mouse_release(3, 0);
-    tui::trigger_mouse_right_click(2, 0);
+    testing::trigger_mouse_press(2, 0);
+    testing::trigger_mouse_drag(3, 0);
+    testing::trigger_mouse_release(3, 0);
+    testing::trigger_mouse_right_click(2, 0);
 
-    let _ = tui::render_to_text(12, 4);
+    let _ = testing::render_to_text(12, 4);
 
-    tui::trigger_mouse_click(4, 1);
+    testing::trigger_mouse_click(4, 1);
 
-    assert_eq!(tui::take_copied().as_deref(), Some("本"));
+    assert_eq!(testing::take_copied().as_deref(), Some("本"));
   });
 }
 
@@ -234,16 +242,16 @@ fn a_control_character_paints_as_one_visible_cell() {
     let _ = tui::mount(|| marked("a\u{1b}]2;x\u{7}b\rc").into_any().build());
 
     for clustering in [false, true] {
-      tui::trigger_grapheme_clustering(clustering);
+      testing::trigger_grapheme_clustering(clustering);
 
-      let text = tui::render_to_text(16, 1);
+      let text = testing::render_to_text(16, 1);
 
       assert_eq!(
         text, "a\u{fffd}]2;x\u{fffd}b c|\n",
         "clustering {clustering}"
       );
       assert_eq!(
-        underlined(&tui::render_to_decorations(16, 1), 16, 0),
+        underlined(&testing::render_to_decorations(16, 1), 16, 0),
         Some(10)
       );
     }
@@ -257,11 +265,11 @@ fn a_tab_advances_to_its_stop() {
   with_platform(|| {
     let _ = tui::mount(|| marked("ab\tc\td").into_any().build());
 
-    let text = tui::render_to_text(24, 1);
+    let text = testing::render_to_text(24, 1);
 
     assert_eq!(text, "ab      c       d|\n");
     assert_eq!(
-      underlined(&tui::render_to_decorations(24, 1), 24, 0),
+      underlined(&testing::render_to_decorations(24, 1), 24, 0),
       Some(17)
     );
   });

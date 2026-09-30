@@ -3,7 +3,7 @@
 
 #![cfg(not(target_arch = "wasm32"))]
 
-use skene_tui::{self as tui, prelude::*};
+use skene_tui::{self as tui, prelude::*, testing};
 
 /// The installed platform, uninstalled when dropped, so a failing test leaves the thread
 /// clean for the next.
@@ -33,7 +33,7 @@ fn the_connecting_socket_renders() {
         .build()
     });
 
-    tui::render_to_text(80, 12)
+    testing::render_to_text(80, 12)
   });
 
   assert!(frame.contains("ws://127.0.0.1:1/"), "{frame}");

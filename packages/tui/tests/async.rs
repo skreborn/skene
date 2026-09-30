@@ -7,7 +7,7 @@ mod common;
 
 use std::{cell::Cell, rc::Rc};
 
-use skene_tui::{self as tui, prelude::*};
+use skene_tui::{self as tui, prelude::*, testing};
 
 use crate::common::with_platform;
 
@@ -28,11 +28,11 @@ fn derived_swaps_content() {
       })
     });
 
-    assert_eq!(tui::render_to_text(6, 1), "off\n");
+    assert_eq!(testing::render_to_text(6, 1), "off\n");
 
     on.set(true);
 
-    assert_eq!(tui::render_to_text(6, 1), "on\n");
+    assert_eq!(testing::render_to_text(6, 1), "on\n");
   });
 }
 
@@ -58,16 +58,16 @@ fn suspense_swaps_fallback_for_loaded_content() {
         .build()
     });
 
-    let loading = tui::render_to_text(12, 2);
+    let loading = testing::render_to_text(12, 2);
 
     assert!(
       loading.contains("LOADING") && !loading.contains("value"),
       "{loading}"
     );
 
-    assert!(tui::pump_tasks());
+    assert!(testing::pump_tasks());
 
-    let loaded = tui::render_to_text(12, 2);
+    let loaded = testing::render_to_text(12, 2);
 
     assert!(
       loaded.contains("value 42") && !loaded.contains("LOADING"),
@@ -103,7 +103,7 @@ fn tasks_end_with_their_scope() {
 
     show.set(false);
 
-    let _ = tui::pump_tasks();
+    let _ = testing::pump_tasks();
   });
 
   assert!(!seen.get());
@@ -131,13 +131,13 @@ fn error_boundary_presents_and_clears_reports() {
         .build()
     });
 
-    assert!(tui::render_to_text(30, 2).contains("CONTENT"));
+    assert!(testing::render_to_text(30, 2).contains("CONTENT"));
 
     let errors = handle.get().expect("a boundary handle");
 
     errors.report(std::io::Error::other("boom"));
 
-    let failed = tui::render_to_text(30, 2);
+    let failed = testing::render_to_text(30, 2);
 
     assert!(
       failed.contains("failed: boom") && !failed.contains("CONTENT"),
@@ -146,7 +146,7 @@ fn error_boundary_presents_and_clears_reports() {
 
     errors.clear();
 
-    let restored = tui::render_to_text(30, 2);
+    let restored = testing::render_to_text(30, 2);
 
     assert!(
       restored.contains("CONTENT") && !restored.contains("failed"),

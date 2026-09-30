@@ -5,7 +5,7 @@
 #![cfg(not(target_arch = "wasm32"))]
 
 use acme_sparkline::Sparkline;
-use skene_tui::{self as tui, Color, View as _};
+use skene_tui::{self as tui, Color, View as _, testing};
 
 /// Serializes the tests: the UI-thread designation is process-wide.
 static PLATFORM: std::sync::Mutex<()> = std::sync::Mutex::new(());
@@ -24,8 +24,8 @@ fn a_sparkline_paints_scaled_bars() {
       .build()
   });
 
-  let frame = tui::render_to_text(10, 2);
-  let colors = tui::render_to_colors(10, 2);
+  let frame = testing::render_to_text(10, 2);
+  let colors = testing::render_to_colors(10, 2);
 
   tui::uninstall();
 
@@ -52,12 +52,12 @@ fn a_sparkline_upgrades_to_pixels_where_graphics_are_proven() {
       .build()
   });
 
-  assert!(tui::render_to_pictures(10, 2).is_empty());
+  assert!(testing::render_to_pictures(10, 2).is_empty());
 
-  tui::trigger_graphics(true);
+  testing::trigger_graphics(true);
 
-  let frame = tui::render_to_text(10, 2);
-  let pictures = tui::render_to_pictures(10, 2);
+  let frame = testing::render_to_text(10, 2);
+  let pictures = testing::render_to_pictures(10, 2);
 
   assert_eq!(frame.lines().next(), Some("▁▅█▃"), "{frame}");
   assert_eq!(pictures.len(), 1);

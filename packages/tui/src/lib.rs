@@ -8,7 +8,7 @@
 //! ([`TuiDecoration`], [`TuiText`]), the escape trait a low-level view is
 //! written against ([`CellPainter`], painting through [`Cells`]) and the entry points:
 //! [`launch`] in a terminal—[`Launch`] configuring what the app takes from it, the
-//! clipboard operations and the mouse—and [`render_to_text`] for a headless test.
+//! clipboard operations and the mouse—and [`testing`] for a headless test.
 //!
 //! Layout is taffy at `1.0 = 1 cell`, the effective style cached per node and written
 //! to the layout tree only on change; frames paint into a cell buffer. Interaction
@@ -43,9 +43,9 @@ mod routing;
 mod selection;
 mod store;
 mod terminal;
+pub mod testing;
 mod text;
 mod tty;
-pub mod user;
 
 /// The terminal medium's shared vocabulary: the style extension, its glyphs and values,
 /// and the typography set.
@@ -164,48 +164,6 @@ pub use crate::{
   paint::{CellDecoration, Picture},
   platform::{Tui, mount, uninstall},
   routing::install_router,
-  terminal::{
-    accessible_name,
-    current_cursor,
-    current_title,
-    find_all_by_role,
-    find_all_unnamed,
-    find_by_role,
-    find_by_text,
-    focused_node,
-    frame_pending,
-    layout_generation,
-    quit_requested,
-    repainted_rows,
-    set_style_calls,
-    style_resolutions,
-    take_copied,
-    take_opened,
-    take_paste_requested,
-    trigger_answering_clipboard,
-    trigger_clipboard_reply,
-    trigger_color_scheme,
-    trigger_frame,
-    trigger_grapheme_clustering,
-    trigger_graphics,
-    trigger_key,
-    trigger_key_event,
-    trigger_key_releases,
-    trigger_key_up,
-    trigger_mouse_click,
-    trigger_mouse_drag,
-    trigger_mouse_drag_within,
-    trigger_mouse_move,
-    trigger_mouse_press,
-    trigger_mouse_release,
-    trigger_mouse_right_click,
-    trigger_mouse_scroll,
-    trigger_paste,
-    trigger_reduced_motion,
-    trigger_resize,
-    trigger_terminal_colors,
-    trigger_text_sizing,
-  },
   text::CellScale,
 };
 
@@ -443,120 +401,6 @@ pub fn set_title(title: impl Into<String>) {
 #[inline(always)]
 pub fn derive_title(title: impl Fn() -> String + 'static) {
   skene_reactive::Effect::new(move |_: Option<()>| set_title(title()));
-}
-
-/// Lays the mounted tree out at `width` x `height` cells and paints it to plain text:
-/// the headless render a test asserts against.
-#[must_use]
-pub fn render_to_text(width: u16, height: u16) -> String {
-  frame::render(width, height).to_text()
-}
-
-/// The painted frame at `width` x `height` as text with its styles, for a snapshot file
-/// a test compares.
-///
-/// The text as [`render_to_text`] draws it, then each cell's style as a character, `.`
-/// for a cell painting as the terminal's own, then the colors and attributes each
-/// character stands for.
-#[must_use]
-pub fn render_to_styled(width: u16, height: u16) -> String {
-  frame::render(width, height).to_styled()
-}
-
-/// The painted frame's caret cell at `width` x `height`—where the terminal's bar
-/// cursor shows—for a headless test asserting caret placement.
-#[must_use]
-pub fn render_to_caret(width: u16, height: u16) -> Option<(u16, u16)> {
-  frame::render(width, height).caret
-}
-
-/// The painted frame's colors at `width` x `height`: each cell's foreground and
-/// background, row-major, for a headless test asserting paint.
-#[must_use]
-#[expect(
-  clippy::type_complexity,
-  reason = "a cell's two colors, plainer spelled out than behind an alias"
-)]
-pub fn render_to_colors(
-  width: u16,
-  height: u16,
-) -> Vec<(Option<(u8, u8, u8)>, Option<(u8, u8, u8)>)> {
-  frame::render(width, height)
-    .cells
-    .iter()
-    .map(|cell| (cell.foreground, cell.background))
-    .collect()
-}
-
-/// The painted frame's bold cells at `width` x `height`, row-major, for a headless test
-/// asserting a run's or an entry's weight.
-#[must_use]
-pub fn render_to_bold(width: u16, height: u16) -> Vec<bool> {
-  frame::render(width, height)
-    .cells
-    .iter()
-    .map(|cell| cell.bold)
-    .collect()
-}
-
-/// The painted frame's reverse-video cells at `width` x `height`, row-major, for a
-/// headless test asserting the emphasis a colorless selection or a colorless focused
-/// link paints in.
-#[must_use]
-pub fn render_to_reverse(width: u16, height: u16) -> Vec<bool> {
-  frame::render(width, height)
-    .cells
-    .iter()
-    .map(|cell| cell.reverse)
-    .collect()
-}
-
-/// The painted frame's decoration lines at `width` x `height`, row-major, for a
-/// headless test asserting an underline's style and color, an overline or a line
-/// through.
-#[must_use]
-pub fn render_to_decorations(width: u16, height: u16) -> Vec<CellDecoration> {
-  frame::render(width, height)
-    .cells
-    .iter()
-    .map(|cell| cell.decoration)
-    .collect()
-}
-
-/// The pictures the painted frame at `width` x `height` places, for a headless test
-/// asserting what a terminal with graphics shows; none until `trigger_graphics`.
-#[must_use]
-pub fn render_to_pictures(width: u16, height: u16) -> Vec<Picture> {
-  frame::render(width, height)
-    .pictures
-    .iter()
-    .map(Picture::from)
-    .collect()
-}
-
-/// The painted frame's text scales at `width` x `height`, row-major, for a headless
-/// test asserting a run's size: a glyph's cell carries its scale, and the other cells
-/// of its block carry one.
-#[must_use]
-pub fn render_to_scales(width: u16, height: u16) -> Vec<CellScale> {
-  frame::render(width, height)
-    .cells
-    .iter()
-    .map(|cell| cell.scale)
-    .collect()
-}
-
-/// Polls every ready task as one turn, as the interactive loop does between events;
-/// `true` when any ran. For a headless test driving async work.
-#[must_use]
-pub fn pump_tasks() -> bool {
-  platform::end_turn();
-
-  let ran = skene_core::executor::pump();
-
-  platform::end_turn();
-
-  ran
 }
 
 /// Runs `future` as a task of the current scope until it finishes, the scope goes or

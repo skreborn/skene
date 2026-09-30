@@ -24,6 +24,7 @@ use skene_tui::{
   Scene,
   TextEntry,
   prelude::*,
+  testing,
 };
 
 use crate::common::{blue, colors_at, red, rgb, with_platform};
@@ -60,10 +61,10 @@ fn pointer_events_carry_cell_coordinates() {
         .into_any()
         .build()
     });
-    let _ = tui::render_to_text(12, 4);
+    let _ = testing::render_to_text(12, 4);
 
-    tui::trigger_mouse_click(6, 1);
-    tui::trigger_mouse_move(7, 2);
+    testing::trigger_mouse_click(6, 1);
+    testing::trigger_mouse_move(7, 2);
 
     assert_eq!(
       down.get(),
@@ -106,12 +107,12 @@ fn the_terminals_pointer_is_the_primary_mouse() {
       );
     });
 
-    let _ = tui::render_to_text(12, 4);
+    let _ = testing::render_to_text(12, 4);
 
-    tui::trigger_mouse_press(1, 1);
-    tui::trigger_mouse_drag(2, 1);
-    tui::trigger_mouse_release(2, 1);
-    tui::trigger_key("Shift+F10");
+    testing::trigger_mouse_press(1, 1);
+    testing::trigger_mouse_drag(2, 1);
+    testing::trigger_mouse_release(2, 1);
+    testing::trigger_key("Shift+F10");
 
     let mouse = PointerEvent::mouse(0., 0.).pointer;
     let seen = seen.borrow();
@@ -182,18 +183,18 @@ fn only_a_dragging_box_keeps_a_press() {
         .into_any()
         .build()
     });
-    let _ = tui::render_to_text(10, 3);
+    let _ = testing::render_to_text(10, 3);
 
-    tui::trigger_mouse_press(1, 0);
-    tui::trigger_mouse_drag(6, 0);
-    tui::trigger_mouse_release(6, 0);
+    testing::trigger_mouse_press(1, 0);
+    testing::trigger_mouse_drag(6, 0);
+    testing::trigger_mouse_release(6, 0);
 
     assert_eq!(*log.borrow(), ["dragging move", "dragging up"]);
 
     log.borrow_mut().clear();
-    tui::trigger_mouse_press(5, 0);
-    tui::trigger_mouse_drag(1, 0);
-    tui::trigger_mouse_release(1, 0);
+    testing::trigger_mouse_press(5, 0);
+    testing::trigger_mouse_drag(1, 0);
+    testing::trigger_mouse_release(1, 0);
 
     assert_eq!(*log.borrow(), ["dragging move", "dragging up"]);
   });
@@ -216,11 +217,11 @@ fn two_quick_clicks_at_one_cell_are_a_double_click() {
         .into_any()
         .build()
     });
-    let _ = tui::render_to_text(10, 3);
+    let _ = testing::render_to_text(10, 3);
 
-    tui::trigger_mouse_click(1, 0);
-    tui::trigger_mouse_click(1, 0);
-    tui::trigger_mouse_click(2, 1);
+    testing::trigger_mouse_click(1, 0);
+    testing::trigger_mouse_click(1, 0);
+    testing::trigger_mouse_click(2, 1);
 
     assert_eq!(*log.borrow(), ["click", "click", "double click", "click"]);
   });
@@ -257,8 +258,8 @@ fn a_drag_moves_between_boxes_and_drops_on_release() {
 
     assert_eq!(target(), Some(rgb(red())));
 
-    tui::trigger_mouse_press(1, 0);
-    tui::trigger_mouse_drag(1, 0);
+    testing::trigger_mouse_press(1, 0);
+    testing::trigger_mouse_drag(1, 0);
 
     assert_eq!(
       *log.borrow(),
@@ -266,16 +267,16 @@ fn a_drag_moves_between_boxes_and_drops_on_release() {
       "no drag within the cell"
     );
 
-    tui::trigger_mouse_drag(5, 0);
+    testing::trigger_mouse_drag(5, 0);
 
     assert_eq!(target(), Some(rgb(blue())));
 
-    tui::trigger_mouse_release(5, 0);
+    testing::trigger_mouse_release(5, 0);
 
     assert_eq!(*log.borrow(), ["cancel", "card"]);
     assert_eq!(target(), Some(rgb(red())));
 
-    tui::trigger_mouse_click(1, 0);
+    testing::trigger_mouse_click(1, 0);
 
     assert_eq!(
       *log.borrow(),
@@ -311,13 +312,13 @@ fn hover_variant_and_pointer_handlers() {
 
     assert_eq!(colors_at(10, 3, 0, 0).1, Some(rgb(red())));
 
-    tui::trigger_mouse_move(1, 0);
-    tui::trigger_mouse_move(2, 1);
+    testing::trigger_mouse_move(1, 0);
+    testing::trigger_mouse_move(2, 1);
 
     assert_eq!(colors_at(10, 3, 0, 0).1, Some(rgb(blue())));
     assert_eq!((enters.get(), leaves.get()), (1, 0));
 
-    tui::trigger_mouse_move(6, 0);
+    testing::trigger_mouse_move(6, 0);
 
     assert_eq!(colors_at(10, 3, 0, 0).1, Some(rgb(red())));
     assert_eq!((enters.get(), leaves.get()), (1, 1));
@@ -347,11 +348,11 @@ fn a_press_holds_pressed_along_its_path() {
 
     assert_eq!(colors(), (Some(rgb(red())), Some(rgb(blue()))));
 
-    tui::trigger_mouse_press(2, 2);
+    testing::trigger_mouse_press(2, 2);
 
     assert_eq!(colors(), (Some(rgb(blue())), Some(rgb(red()))));
 
-    tui::trigger_mouse_release(2, 2);
+    testing::trigger_mouse_release(2, 2);
 
     assert_eq!(colors(), (Some(rgb(red())), Some(rgb(blue()))));
   });
@@ -379,7 +380,7 @@ fn hover_over_an_overlay_holds_on_its_ancestors() {
 
     assert_eq!(colors_at(10, 3, 8, 2).1, Some(rgb(red())));
 
-    tui::trigger_mouse_move(1, 0);
+    testing::trigger_mouse_move(1, 0);
 
     assert_eq!(colors_at(10, 3, 8, 2).1, Some(rgb(blue())));
   });
@@ -409,12 +410,12 @@ fn hover_cursor_defaults_follow_the_content() {
         .into_any()
         .build()
     });
-    let frame = tui::render_to_text(20, 8);
+    let frame = testing::render_to_text(20, 8);
     let cursors: Vec<_> = (0..6)
       .map(|row| {
-        tui::trigger_mouse_move(1, row);
+        testing::trigger_mouse_move(1, row);
 
-        tui::current_cursor()
+        testing::mouse_cursor()
       })
       .collect();
 
@@ -447,22 +448,22 @@ fn link_click_opens_the_destination() {
         .into_any()
         .build()
     });
-    let _ = tui::render_to_text(20, 2);
+    let _ = testing::render_to_text(20, 2);
 
-    tui::trigger_mouse_move(10, 0);
+    testing::trigger_mouse_move(10, 0);
 
-    assert_eq!(tui::current_cursor(), Some(MouseCursor::Click));
+    assert_eq!(testing::mouse_cursor(), Some(MouseCursor::Click));
 
-    tui::trigger_mouse_click(10, 0);
+    testing::trigger_mouse_click(10, 0);
 
     assert_eq!(
-      tui::take_opened().as_deref(),
+      testing::take_opened().as_deref(),
       Some("https://example.com/docs")
     );
 
-    tui::trigger_mouse_click(2, 0);
+    testing::trigger_mouse_click(2, 0);
 
-    assert_eq!(tui::take_opened(), None);
+    assert_eq!(testing::take_opened(), None);
   });
 }
 
@@ -490,9 +491,9 @@ fn a_click_stops_at_the_view_that_took_it() {
         .into_any()
         .build()
     });
-    let _ = tui::render_to_text(6, 1);
+    let _ = testing::render_to_text(6, 1);
 
-    tui::trigger_mouse_click(0, 0);
+    testing::trigger_mouse_click(0, 0);
 
     assert_eq!(inner_runs.get(), 1);
     assert_eq!(outer_runs.get(), 0, "the box that handled it kept it");
@@ -522,14 +523,14 @@ fn clicks_complete_on_release_over_the_same_target() {
         .into_any()
         .build()
     });
-    let _ = tui::render_to_text(20, 3);
+    let _ = testing::render_to_text(20, 3);
 
-    tui::trigger_mouse_press(1, 0);
-    tui::trigger_mouse_release(6, 0);
-    tui::trigger_mouse_press(1, 0);
-    tui::trigger_mouse_release(15, 2);
-    tui::trigger_mouse_press(1, 0);
-    tui::trigger_mouse_release(1, 0);
+    testing::trigger_mouse_press(1, 0);
+    testing::trigger_mouse_release(6, 0);
+    testing::trigger_mouse_press(1, 0);
+    testing::trigger_mouse_release(15, 2);
+    testing::trigger_mouse_press(1, 0);
+    testing::trigger_mouse_release(1, 0);
 
     assert_eq!(first.get(), 1);
     assert_eq!(second.get(), 0);
@@ -551,14 +552,14 @@ fn an_orphan_release_stands_in_for_a_swallowed_click() {
         .into_any()
         .build()
     });
-    let _ = tui::render_to_text(10, 3);
+    let _ = testing::render_to_text(10, 3);
 
     for _ in 0..3 {
-      tui::trigger_mouse_click(1, 0);
+      testing::trigger_mouse_click(1, 0);
     }
 
     for _ in 0..3 {
-      tui::trigger_mouse_release(1, 0);
+      testing::trigger_mouse_release(1, 0);
     }
 
     assert_eq!(clicks.get(), 6);
@@ -586,30 +587,30 @@ fn a_hover_change_repaints_only_its_rows() {
         .build()
     });
 
-    let _ = tui::render_to_text(10, 5);
+    let _ = testing::render_to_text(10, 5);
 
-    assert_eq!(tui::repainted_rows(), vec![0, 1, 2, 3, 4]);
+    assert_eq!(testing::repainted_rows(), vec![0, 1, 2, 3, 4]);
 
-    tui::trigger_mouse_move(1, 1);
+    testing::trigger_mouse_move(1, 1);
 
-    let frame = tui::render_to_text(10, 5);
+    let frame = testing::render_to_text(10, 5);
 
     assert_eq!(frame, "row 0\nrow 1\nrow 2\n\n\n");
-    assert_eq!(tui::repainted_rows(), vec![1]);
+    assert_eq!(testing::repainted_rows(), vec![1]);
     assert_eq!(colors_at(10, 5, 0, 1).1, Some(rgb(blue())));
 
-    tui::trigger_mouse_move(1, 2);
+    testing::trigger_mouse_move(1, 2);
 
-    let _ = tui::render_to_text(10, 5);
+    let _ = testing::render_to_text(10, 5);
 
-    assert_eq!(tui::repainted_rows(), vec![1, 2]);
+    assert_eq!(testing::repainted_rows(), vec![1, 2]);
     assert_eq!(colors_at(10, 5, 0, 1).1, Some(rgb(red())));
     assert_eq!(colors_at(10, 5, 0, 2).1, Some(rgb(blue())));
 
-    tui::trigger_mouse_move(1, 4);
+    testing::trigger_mouse_move(1, 4);
 
-    let _ = tui::render_to_text(10, 5);
+    let _ = testing::render_to_text(10, 5);
 
-    assert_eq!(tui::repainted_rows(), vec![2]);
+    assert_eq!(testing::repainted_rows(), vec![2]);
   });
 }

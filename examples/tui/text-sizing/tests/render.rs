@@ -3,7 +3,7 @@
 
 #![cfg(not(target_arch = "wasm32"))]
 
-use skene_tui::{self as tui, CellScale, prelude::*};
+use skene_tui::{self as tui, CellScale, prelude::*, testing};
 
 /// Installs a fresh platform, runs `body`, and uninstalls afterwards.
 fn with_platform<R>(body: impl FnOnce() -> R) -> R {
@@ -21,7 +21,7 @@ fn the_sections_render_at_one_cell_and_size_up_when_proven() {
   with_platform(|| {
     let _ = tui::mount(|| tui_text_sizing::app().into_view().build());
 
-    let frame = tui::render_to_text(70, 40);
+    let frame = testing::render_to_text(70, 40);
 
     for expected in ["Text sizing", "Scales", "Baseline", "Themed at two."] {
       assert!(
@@ -31,23 +31,23 @@ fn the_sections_render_at_one_cell_and_size_up_when_proven() {
     }
 
     assert!(
-      tui::render_to_scales(70, 40)
+      testing::render_to_scales(70, 40)
         .iter()
         .all(|scale| *scale == CellScale::ONE),
       "unproven, every run is one cell"
     );
 
-    tui::trigger_text_sizing(true);
+    testing::trigger_text_sizing(true);
 
-    let frame = tui::render_to_text(70, 40);
+    let frame = testing::render_to_text(70, 40);
 
     assert!(frame.contains("T  e  x  t"), "{frame}");
     assert!(
-      tui::render_to_scales(70, 40).contains(&CellScale::Whole(3)),
+      testing::render_to_scales(70, 40).contains(&CellScale::Whole(3)),
       "the title draws at three"
     );
     assert!(
-      tui::render_to_scales(70, 40).contains(&CellScale::Fraction(1, 2)),
+      testing::render_to_scales(70, 40).contains(&CellScale::Fraction(1, 2)),
       "the fraction draws at a half"
     );
   });

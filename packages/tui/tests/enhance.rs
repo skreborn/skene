@@ -5,7 +5,7 @@
 
 mod common;
 
-use skene_tui::{self as tui, prelude::*};
+use skene_tui::{self as tui, prelude::*, testing};
 
 use crate::common::with_platform;
 
@@ -21,7 +21,7 @@ fn an_enhancement_swaps_on_its_signal() {
         .build()
     });
 
-    let frame = tui::render_to_text(20, 4);
+    let frame = testing::render_to_text(20, 4);
 
     assert!(
       frame.contains("waiting") && !frame.contains("ready"),
@@ -30,7 +30,7 @@ fn an_enhancement_swaps_on_its_signal() {
 
     ready.set(true);
 
-    let frame = tui::render_to_text(20, 4);
+    let frame = testing::render_to_text(20, 4);
 
     assert!(
       frame.contains("ready") && !frame.contains("waiting"),

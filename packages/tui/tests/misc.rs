@@ -6,7 +6,7 @@
 mod common;
 
 use skene_simple::tui::{glyph, *};
-use skene_tui::{self as tui, CellDecoration, Scene, TokenValue, prelude::*};
+use skene_tui::{self as tui, CellDecoration, Scene, TokenValue, prelude::*, testing};
 
 use crate::common::{black, blue, colors_at, locate, red, rgb, with_platform};
 
@@ -22,15 +22,15 @@ fn title_follows_state() {
       Text::new("body").into_any().build()
     });
 
-    assert_eq!(tui::current_title().as_deref(), Some("app: one"));
+    assert_eq!(testing::window_title().as_deref(), Some("app: one"));
 
     name.set("two".to_owned());
 
-    assert_eq!(tui::current_title().as_deref(), Some("app: two"));
+    assert_eq!(testing::window_title().as_deref(), Some("app: two"));
 
     set_title("fixed");
 
-    assert_eq!(tui::current_title().as_deref(), Some("fixed"));
+    assert_eq!(testing::window_title().as_deref(), Some("fixed"));
   });
 }
 
@@ -51,7 +51,7 @@ fn shadow_mixes_into_the_cells_beneath() {
         .build()
     });
 
-    let colors = tui::render_to_colors(4, 3);
+    let colors = testing::render_to_colors(4, 3);
     let background = |x: usize, y: usize| colors[y * 4 + x].1.expect("a painted background");
     let clean = background(0, 0);
 
@@ -81,7 +81,7 @@ fn a_shadows_offset_moves_it() {
         .build()
     });
 
-    let colors = tui::render_to_colors(5, 4);
+    let colors = testing::render_to_colors(5, 4);
     let background = |x: usize, y: usize| colors[y * 5 + x].1.expect("a painted background");
     let clean = background(0, 0);
 
@@ -117,7 +117,7 @@ fn a_boxs_scrollbars_draw_with_its_glyphs_and_colors() {
         .build()
     });
 
-    let frame = tui::render_to_text(6, 4);
+    let frame = testing::render_to_text(6, 4);
     let column: Vec<char> = frame
       .lines()
       .map(|line| line.chars().nth(5).unwrap_or(' '))
@@ -148,7 +148,7 @@ fn a_paint_mixes_against_the_terminals_own_colors() {
 
     assert_eq!(shadow(2, 1), (0, 0, 0), "black over the assumed black");
 
-    tui::trigger_terminal_colors((220, 220, 220), (40, 42, 54));
+    testing::trigger_terminal_colors((220, 220, 220), (40, 42, 54));
 
     assert_eq!(
       shadow(2, 1),
@@ -170,7 +170,7 @@ fn a_theme_redefines_the_glyph_tokens() {
         .into_any()
         .build()
     });
-    let _ = tui::render_to_text(8, 1);
+    let _ = testing::render_to_text(8, 1);
 
     let (checked, unchecked) = Scene::<tui::Tui>::with(|scene| {
       let text = scene.children(node).next().expect("the themed text");
@@ -210,7 +210,7 @@ fn simple_controls_take_the_cell_shape() {
         .build()
     });
 
-    let frame = tui::render_to_text(20, 8);
+    let frame = testing::render_to_text(20, 8);
     let (go_column, go_row) = locate(&frame, "Go");
     let (_, name_row) = locate(&frame, "name");
     let (agree_column, agree_row) = locate(&frame, "agree");
@@ -269,7 +269,7 @@ fn a_runs_decoration_paints_its_lines_into_the_cells() {
         .build()
     });
 
-    let decorations = tui::render_to_decorations(12, 4);
+    let decorations = testing::render_to_decorations(12, 4);
     let at = |column: usize, row: usize| decorations[row * 12 + column];
 
     assert_eq!(

@@ -4,7 +4,7 @@
 
 #![cfg(not(target_arch = "wasm32"))]
 
-use skene_tui::{self as tui, prelude::*};
+use skene_tui::{self as tui, prelude::*, testing};
 
 /// Installs a fresh platform, runs `body`, and uninstalls afterwards.
 fn with_platform<R>(body: impl FnOnce() -> R) -> R {
@@ -38,7 +38,7 @@ fn the_menus_open_where_a_view_opts_in() {
   with_platform(|| {
     let _ = tui::mount(|| tui_context_menu::app().into_view().build());
 
-    let frame = tui::render_to_text(60, 40);
+    let frame = testing::render_to_text(60, 40);
 
     for title in ["CONTEXT MENU", "Notes", "Groceries", "Draft", "nothing yet"] {
       assert!(
@@ -52,9 +52,9 @@ fn the_menus_open_where_a_view_opts_in() {
     let plain_copies = copies(&frame);
     let (x, y) = locate(&frame, "Travel plans");
 
-    tui::trigger_mouse_right_click(x, y);
+    testing::trigger_mouse_right_click(x, y);
 
-    let menu = tui::render_to_text(60, 40);
+    let menu = testing::render_to_text(60, 40);
 
     assert!(
       menu.contains("Rename") && menu.contains("Delete"),
@@ -68,9 +68,9 @@ fn the_menus_open_where_a_view_opts_in() {
 
     let (x, y) = locate(&menu, "Delete");
 
-    tui::trigger_mouse_click(x, y);
+    testing::trigger_mouse_click(x, y);
 
-    let frame = tui::render_to_text(60, 40);
+    let frame = testing::render_to_text(60, 40);
 
     assert!(
       !frame
@@ -85,12 +85,12 @@ fn the_menus_open_where_a_view_opts_in() {
 
     let (x, y) = locate(&frame, "Right-click around");
 
-    tui::trigger_mouse_press(x, y);
-    tui::trigger_mouse_drag(x + 5, y);
-    tui::trigger_mouse_release(x + 5, y);
-    tui::trigger_mouse_right_click(x + 2, y);
+    testing::trigger_mouse_press(x, y);
+    testing::trigger_mouse_drag(x + 5, y);
+    testing::trigger_mouse_release(x + 5, y);
+    testing::trigger_mouse_right_click(x + 2, y);
 
-    let menu = tui::render_to_text(60, 40);
+    let menu = testing::render_to_text(60, 40);
 
     assert_eq!(
       copies(&menu),

@@ -759,7 +759,7 @@ fn a_painted_box_draws_through_vello() {
   use skene_gui::{
     Painted,
     core::Size,
-    headless::{is_painted, paint},
+    headless::{is_painted, render_to_pixels},
     kurbo::Rect,
   };
 
@@ -780,7 +780,7 @@ fn a_painted_box_draws_through_vello() {
 
   assert!(is_painted(node));
 
-  let pixels = paint(node, Size::new(8., 4.)).expect("a painted box");
+  let pixels = render_to_pixels(node, Size::new(8., 4.)).expect("a painted box");
 
   assert_eq!(pixels.len(), 8 * 4 * 4);
   assert_eq!(

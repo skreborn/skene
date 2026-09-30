@@ -3,7 +3,7 @@
 
 #![cfg(not(target_arch = "wasm32"))]
 
-use skene_tui::{self as tui, prelude::*};
+use skene_tui::{self as tui, prelude::*, testing};
 
 /// Installs a fresh platform, runs `body`, and uninstalls afterwards.
 fn with_platform<R>(body: impl FnOnce() -> R) -> R {
@@ -21,24 +21,24 @@ fn the_theme_renders_and_switches() {
   let (frame, indigo, teal, dark) = with_platform(|| {
     let _ = tui::mount(|| tui_theme::app().into_view().build());
 
-    let frame = tui::render_to_text(60, 60);
-    let indigo = tui::render_to_colors(60, 60);
+    let frame = testing::render_to_text(60, 60);
+    let indigo = testing::render_to_colors(60, 60);
 
     // `Tab` walks the scheme buttons, then lands on the accent's chosen radio;
     // `ArrowRight` chooses teal.
     for _ in 0..4 {
-      tui::trigger_key("Tab");
+      testing::trigger_key("Tab");
     }
 
-    tui::trigger_key("ArrowRight");
+    testing::trigger_key("ArrowRight");
 
-    let teal = tui::render_to_colors(60, 60);
+    let teal = testing::render_to_colors(60, 60);
 
     // Back to the `Dark` button: the scheme changes and the tree stands.
-    tui::trigger_key("Shift+Tab");
-    tui::trigger_key("Enter");
+    testing::trigger_key("Shift+Tab");
+    testing::trigger_key("Enter");
 
-    (frame, indigo, teal, tui::render_to_colors(60, 60))
+    (frame, indigo, teal, testing::render_to_colors(60, 60))
   });
 
   for title in [

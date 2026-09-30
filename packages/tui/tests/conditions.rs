@@ -8,7 +8,7 @@ mod common;
 use std::{cell::Cell, rc::Rc};
 
 use skene_simple::tui::prelude::*;
-use skene_tui::{self as tui, StaticLeaf, prelude::*};
+use skene_tui::{self as tui, StaticLeaf, prelude::*, testing};
 
 use crate::common::{blue, colors_at, red, rgb, white, with_platform};
 
@@ -72,7 +72,7 @@ fn color_scheme_conditions_follow_the_background() {
 
     assert_eq!(colors_at(12, 4, 0, 0).1, Some(rgb(blue())));
 
-    tui::trigger_color_scheme(ColorScheme::Light);
+    testing::trigger_color_scheme(ColorScheme::Light);
 
     assert_eq!(colors_at(12, 4, 0, 0).1, Some(rgb(red())));
   });
@@ -88,7 +88,7 @@ fn the_scheme_signal_and_a_watched_condition_follow_the_background() {
     assert_eq!(tui::media::scheme().get(), ColorScheme::Dark);
     assert!(dark.get());
 
-    tui::trigger_color_scheme(ColorScheme::Light);
+    testing::trigger_color_scheme(ColorScheme::Light);
 
     assert_eq!(tui::media::scheme().get(), ColorScheme::Light);
     assert!(!dark.get());
@@ -111,11 +111,11 @@ fn border_glyphs_select_the_character_set() {
         .build()
     });
 
-    assert_eq!(tui::render_to_text(6, 3), "╭──╮\n│  │\n╰──╯\n");
+    assert_eq!(testing::render_to_text(6, 3), "╭──╮\n│  │\n╰──╯\n");
 
-    tui::trigger_mouse_move(1, 1);
+    testing::trigger_mouse_move(1, 1);
 
-    assert_eq!(tui::render_to_text(6, 3), "+--+\n|  |\n+--+\n");
+    assert_eq!(testing::render_to_text(6, 3), "+--+\n|  |\n+--+\n");
   });
 }
 
@@ -136,11 +136,11 @@ fn an_unconditional_token_ignores_the_terminals_background() {
         .build()
     });
 
-    let dark = tui::render_to_colors(4, 1);
+    let dark = testing::render_to_colors(4, 1);
 
-    tui::trigger_color_scheme(ColorScheme::Light);
+    testing::trigger_color_scheme(ColorScheme::Light);
 
-    assert_eq!(dark, tui::render_to_colors(4, 1));
+    assert_eq!(dark, testing::render_to_colors(4, 1));
   });
 }
 
@@ -202,7 +202,7 @@ fn a_derived_scheme_repaints_without_rebuilding() {
         .build()
     });
 
-    let light = tui::render_to_colors(4, 1);
+    let light = testing::render_to_colors(4, 1);
 
     assert_eq!(tui::stored_scheme(), Some(ColorScheme::Light));
 
@@ -210,7 +210,7 @@ fn a_derived_scheme_repaints_without_rebuilding() {
 
     assert_ne!(
       light,
-      tui::render_to_colors(4, 1),
+      testing::render_to_colors(4, 1),
       "the choice reaches the paint"
     );
     assert_eq!(builds.get(), 1, "without building the subtree again");

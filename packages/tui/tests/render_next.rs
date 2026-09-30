@@ -18,6 +18,7 @@ use skene_tui::{
   Scene,
   TextEntry,
   prelude::*,
+  testing,
 };
 
 use crate::common::{blue, colors_at, locate, red, with_platform};
@@ -38,7 +39,7 @@ fn a_bordered_container_paints_its_border_in_the_border_color() {
         .build()
     });
 
-    assert_eq!(tui::render_to_text(8, 3), "┌────┐\n│ hi │\n└────┘\n");
+    assert_eq!(testing::render_to_text(8, 3), "┌────┐\n│ hi │\n└────┘\n");
     assert_eq!(colors_at(8, 3, 0, 0).0, Some((255, 0, 0)));
     assert_eq!(colors_at(8, 3, 5, 2).0, Some((255, 0, 0)));
   });
@@ -56,7 +57,7 @@ fn a_row_lays_its_children_out_in_cells() {
         .build()
     });
 
-    assert_eq!(tui::render_to_text(12, 2), "ab  cd\n\n");
+    assert_eq!(testing::render_to_text(12, 2), "ab  cd\n\n");
   });
 }
 
@@ -86,7 +87,7 @@ fn a_theme_resolves_the_card_color_and_reinks_on_a_palette_flip() {
     });
     let card = Scene::<tui::Tui>::with(|scene| scene.children(node).next()).unwrap();
 
-    let _ = tui::render_to_text(20, 7);
+    let _ = testing::render_to_text(20, 7);
 
     assert_eq!(colors_at(20, 7, 1, 1).1, Some((255, 0, 0)));
 
@@ -100,7 +101,7 @@ fn a_theme_resolves_the_card_color_and_reinks_on_a_palette_flip() {
       Scene::<tui::Tui>::with(|scene| scene.children(node).next()),
       Some(card)
     );
-    assert!(tui::render_to_text(20, 7).contains('2'));
+    assert!(testing::render_to_text(20, 7).contains('2'));
   });
 }
 
@@ -120,11 +121,11 @@ fn trigger_color_scheme_flips_a_dark_token() {
         .build()
     });
 
-    tui::trigger_color_scheme(ColorScheme::Light);
+    testing::trigger_color_scheme(ColorScheme::Light);
 
     assert_eq!(colors_at(6, 2, 0, 0).1, Some((255, 255, 255)));
 
-    tui::trigger_color_scheme(ColorScheme::Dark);
+    testing::trigger_color_scheme(ColorScheme::Dark);
 
     assert_eq!(colors_at(6, 2, 0, 0).1, Some((24, 24, 27)));
   });
@@ -151,14 +152,14 @@ fn a_button_click_does_not_reach_the_container_around_it() {
         .build()
     });
 
-    let frame = tui::render_to_text(30, 8);
+    let frame = testing::render_to_text(30, 8);
     let (x, y) = locate(&frame, "Go");
 
-    tui::trigger_mouse_click(x, y);
+    testing::trigger_mouse_click(x, y);
 
     assert_eq!((button.get(), outer.get()), (1, 0));
 
-    tui::trigger_mouse_click(0, 0);
+    testing::trigger_mouse_click(0, 0);
 
     assert_eq!((button.get(), outer.get()), (1, 1));
   });
@@ -182,13 +183,13 @@ fn space_on_a_focused_checkbox_flips_the_signal_and_repaints_the_mark() {
         .build()
     });
 
-    assert!(tui::render_to_text(20, 5).starts_with("[ ] agree"));
+    assert!(testing::render_to_text(20, 5).starts_with("[ ] agree"));
 
-    tui::trigger_key("Tab");
-    tui::trigger_key(" ");
+    testing::trigger_key("Tab");
+    testing::trigger_key(" ");
 
     assert!(agreed.get());
-    assert!(tui::render_to_text(20, 5).starts_with("[x] agree"));
+    assert!(testing::render_to_text(20, 5).starts_with("[x] agree"));
   });
 }
 
@@ -226,23 +227,23 @@ fn tab_reaches_the_controls_in_document_order() {
         .into_any()
         .build()
     });
-    let _ = tui::render_to_text(30, 6);
+    let _ = testing::render_to_text(30, 6);
 
-    tui::trigger_key("Tab");
+    testing::trigger_key("Tab");
 
-    assert_eq!(tui::focused_node(), first.node());
+    assert_eq!(testing::focused_node(), first.node());
 
-    tui::trigger_key("Tab");
+    testing::trigger_key("Tab");
 
-    assert_eq!(tui::focused_node(), mint.node());
+    assert_eq!(testing::focused_node(), mint.node());
 
-    tui::trigger_key("Tab");
+    testing::trigger_key("Tab");
 
-    assert_eq!(tui::focused_node(), last.node());
+    assert_eq!(testing::focused_node(), last.node());
 
-    tui::trigger_key("Shift+Tab");
+    testing::trigger_key("Shift+Tab");
 
-    assert_eq!(tui::focused_node(), mint.node());
+    assert_eq!(testing::focused_node(), mint.node());
   });
 }
 
@@ -270,11 +271,11 @@ fn a_container_query_switches_a_padding_when_the_terminal_narrows() {
         .build()
     });
 
-    assert_eq!(tui::render_to_text(80, 5).lines().next(), Some("x"));
+    assert_eq!(testing::render_to_text(80, 5).lines().next(), Some("x"));
 
-    tui::trigger_resize(20, 5);
+    testing::trigger_resize(20, 5);
 
-    assert_eq!(tui::render_to_text(20, 5).lines().nth(2), Some("  x"));
+    assert_eq!(testing::render_to_text(20, 5).lines().nth(2), Some("  x"));
   });
 }
 
@@ -295,15 +296,18 @@ fn a_hover_change_repaints_without_a_relayout() {
 
     assert_eq!(colors_at(12, 4, 1, 1).1, Some((255, 0, 0)));
 
-    let generation = tui::layout_generation();
-    let writes = tui::set_style_calls();
+    let generation = testing::layout_generation();
+    let writes = testing::style_writes();
 
-    tui::trigger_mouse_move(1, 1);
+    testing::trigger_mouse_move(1, 1);
 
-    assert!(tui::frame_pending(), "the hover change schedules a frame");
+    assert!(
+      testing::is_frame_pending(),
+      "the hover change schedules a frame"
+    );
     assert_eq!(colors_at(12, 4, 1, 1).1, Some((0, 0, 255)));
-    assert_eq!(tui::layout_generation(), generation);
-    assert_eq!(tui::set_style_calls(), writes);
+    assert_eq!(testing::layout_generation(), generation);
+    assert_eq!(testing::style_writes(), writes);
   });
 }
 
@@ -323,18 +327,18 @@ fn a_keystroke_restyles_only_the_changed_entry() {
         .into_any()
         .build()
     });
-    let _ = tui::render_to_text(30, 5);
-    tui::trigger_key("Tab");
-    tui::trigger_key("End");
-    let _ = tui::render_to_text(30, 5);
+    let _ = testing::render_to_text(30, 5);
+    testing::trigger_key("Tab");
+    testing::trigger_key("End");
+    let _ = testing::render_to_text(30, 5);
 
-    let writes = tui::set_style_calls();
+    let writes = testing::style_writes();
 
-    tui::trigger_key("i");
-    let _ = tui::render_to_text(30, 5);
+    testing::trigger_key("i");
+    let _ = testing::render_to_text(30, 5);
 
     assert_eq!(name.get(), "abcdefghi");
-    assert_eq!(tui::set_style_calls(), writes + 1);
+    assert_eq!(testing::style_writes(), writes + 1);
   });
 }
 
@@ -353,7 +357,7 @@ fn a_corner_radius_renders_arc_corners() {
         .build()
     });
 
-    assert_eq!(tui::render_to_text(5, 3), "╭──╮\n│  │\n╰──╯\n");
+    assert_eq!(testing::render_to_text(5, 3), "╭──╮\n│  │\n╰──╯\n");
   });
 }
 
@@ -369,17 +373,17 @@ fn a_text_field_types_through_trigger_key_and_writes_the_bound_signal() {
         .into_any()
         .build()
     });
-    let _ = tui::render_to_text(20, 2);
-    tui::trigger_key("Tab");
-    tui::trigger_key("h");
-    tui::trigger_key("i");
+    let _ = testing::render_to_text(20, 2);
+    testing::trigger_key("Tab");
+    testing::trigger_key("h");
+    testing::trigger_key("i");
 
     assert_eq!(name.get(), "hi");
-    assert_eq!(tui::render_to_text(20, 2).lines().next(), Some("hi"));
-    assert_eq!(tui::render_to_caret(20, 2), Some((2, 0)));
+    assert_eq!(testing::render_to_text(20, 2).lines().next(), Some("hi"));
+    assert_eq!(testing::render_to_caret(20, 2), Some((2, 0)));
 
-    tui::trigger_key("ArrowLeft");
-    tui::trigger_key("Backspace");
+    testing::trigger_key("ArrowLeft");
+    testing::trigger_key("Backspace");
 
     assert_eq!(name.get(), "i");
   });
@@ -405,19 +409,19 @@ fn an_overlay_opens_above_content_and_dismisses_on_escape() {
         .build()
     });
 
-    assert!(!tui::render_to_text(20, 5).contains("modal"));
+    assert!(!testing::render_to_text(20, 5).contains("modal"));
 
     open.set(true);
 
-    let frame = tui::render_to_text(20, 5);
+    let frame = testing::render_to_text(20, 5);
 
     assert!(frame.contains("modal"), "{frame}");
     assert!(frame.contains("under"), "{frame}");
 
-    tui::trigger_key("Escape");
+    testing::trigger_key("Escape");
 
     assert!(!open.get());
-    assert!(!tui::render_to_text(20, 5).contains("modal"));
+    assert!(!testing::render_to_text(20, 5).contains("modal"));
   });
 }
 
@@ -438,18 +442,18 @@ fn a_key_release_and_a_bare_modifier_reach_their_handlers() {
         .into_any()
         .build()
     });
-    let _ = tui::render_to_text(20, 2);
+    let _ = testing::render_to_text(20, 2);
 
-    tui::trigger_key_releases(true);
-    tui::trigger_key("Tab");
+    testing::trigger_key_releases(true);
+    testing::trigger_key("Tab");
 
     assert_eq!(released.get_untracked(), "");
 
-    tui::trigger_key_up("Tab");
+    testing::trigger_key_up("Tab");
 
     assert_eq!(released.get_untracked(), "Tab");
 
-    tui::trigger_key("Shift");
+    testing::trigger_key("Shift");
 
     assert_eq!(pressed.get_untracked(), "Shift");
   });
@@ -486,7 +490,7 @@ fn a_hidden_box_keeps_its_place_and_paints_nothing() {
         .into_any()
         .build()
     });
-    let frame = tui::render_to_text(10, 2);
+    let frame = testing::render_to_text(10, 2);
 
     assert!(!frame.contains("hidden"), "{frame}");
     assert!(
@@ -497,9 +501,9 @@ fn a_hidden_box_keeps_its_place_and_paints_nothing() {
       "the box keeps its place: {frame}"
     );
 
-    tui::trigger_mouse_click(1, 0);
-    tui::trigger_key("Tab");
-    tui::trigger_key("Enter");
+    testing::trigger_mouse_click(1, 0);
+    testing::trigger_key("Tab");
+    testing::trigger_key("Enter");
 
     assert_eq!(
       clicks.get(),
@@ -509,9 +513,9 @@ fn a_hidden_box_keeps_its_place_and_paints_nothing() {
 
     shown.set(true);
 
-    assert!(tui::render_to_text(10, 2).contains("hidden"));
+    assert!(testing::render_to_text(10, 2).contains("hidden"));
 
-    tui::trigger_mouse_click(1, 0);
+    testing::trigger_mouse_click(1, 0);
 
     assert_eq!(clicks.get(), 1);
   });

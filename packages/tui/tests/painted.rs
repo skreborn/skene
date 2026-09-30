@@ -6,7 +6,7 @@
 
 mod common;
 
-use skene_tui::{self as tui, Activate, kurbo::Rect, prelude::*};
+use skene_tui::{self as tui, Activate, kurbo::Rect, prelude::*, testing};
 
 use crate::common::with_platform;
 
@@ -38,15 +38,15 @@ fn a_painted_box_falls_back_until_graphics_are_proven() {
         .build()
     });
 
-    let frame = tui::render_to_text(20, 6);
+    let frame = testing::render_to_text(20, 6);
 
     assert!(frame.starts_with("a red box\nafter\n"), "{frame}");
-    assert!(tui::render_to_pictures(20, 6).is_empty());
+    assert!(testing::render_to_pictures(20, 6).is_empty());
 
-    tui::trigger_graphics(true);
+    testing::trigger_graphics(true);
 
-    let frame = tui::render_to_text(20, 6);
-    let pictures = tui::render_to_pictures(20, 6);
+    let frame = testing::render_to_text(20, 6);
+    let pictures = testing::render_to_pictures(20, 6);
 
     assert!(frame.starts_with("\n\nafter\n"), "{frame}");
     assert_eq!(pictures.len(), 1);
@@ -62,9 +62,9 @@ fn a_painted_box_falls_back_until_graphics_are_proven() {
     assert_eq!(picture.pixels.len(), 40 * 40 * 4);
     assert_eq!(&picture.pixels[..4], &[255, 0, 0, 255]);
 
-    tui::trigger_graphics(false);
+    testing::trigger_graphics(false);
 
-    assert!(tui::render_to_pictures(20, 6).is_empty());
+    assert!(testing::render_to_pictures(20, 6).is_empty());
   });
 }
 
@@ -73,7 +73,7 @@ fn a_painted_box_falls_back_until_graphics_are_proven() {
 #[test]
 fn a_picture_is_cropped_to_the_cells_in_view_and_hidden_under_an_overlay() {
   with_platform(|| {
-    tui::trigger_graphics(true);
+    testing::trigger_graphics(true);
 
     let open = Signal::new(false);
     let _ = tui::mount(move || {
@@ -95,7 +95,7 @@ fn a_picture_is_cropped_to_the_cells_in_view_and_hidden_under_an_overlay() {
         .build()
     });
 
-    let pictures = tui::render_to_pictures(20, 8);
+    let pictures = testing::render_to_pictures(20, 8);
 
     assert_eq!(pictures.len(), 1);
     assert_eq!(
@@ -104,9 +104,9 @@ fn a_picture_is_cropped_to_the_cells_in_view_and_hidden_under_an_overlay() {
       "the top row of the picture shows below the text"
     );
 
-    tui::trigger_mouse_scroll(1, 1, 0, 2);
+    testing::trigger_mouse_scroll(1, 1, 0, 2);
 
-    let pictures = tui::render_to_pictures(20, 8);
+    let pictures = testing::render_to_pictures(20, 8);
 
     assert_eq!(pictures.len(), 1);
     assert_eq!(
@@ -115,14 +115,14 @@ fn a_picture_is_cropped_to_the_cells_in_view_and_hidden_under_an_overlay() {
       "scrolled, the lower rows of the picture show"
     );
 
-    tui::trigger_key("Tab");
-    tui::trigger_key("Enter");
+    testing::trigger_key("Tab");
+    testing::trigger_key("Enter");
 
-    let frame = tui::render_to_text(20, 8);
+    let frame = testing::render_to_text(20, 8);
 
     assert!(frame.contains("popup"), "{frame}");
     assert!(
-      tui::render_to_pictures(20, 8).is_empty(),
+      testing::render_to_pictures(20, 8).is_empty(),
       "the popup covers the picture's cells"
     );
   });

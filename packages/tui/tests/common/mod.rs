@@ -6,7 +6,7 @@
   reason = "each test binary uses its own share of the helpers"
 )]
 
-use skene_tui::{self as tui, Color};
+use skene_tui::{self as tui, Color, testing};
 
 /// The installed platform, uninstalled when dropped, so a failing test leaves the thread
 /// clean for the next.
@@ -48,7 +48,7 @@ pub(crate) type CellColors = (Option<(u8, u8, u8)>, Option<(u8, u8, u8)>);
 
 /// The foreground and background of the cell (`x`, `y`) in a `width` x `height` frame.
 pub(crate) fn colors_at(width: u16, height: u16, x: usize, y: usize) -> CellColors {
-  tui::render_to_colors(width, height)[y * usize::from(width) + x]
+  testing::render_to_colors(width, height)[y * usize::from(width) + x]
 }
 
 pub(crate) fn red() -> Color {

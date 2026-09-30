@@ -7,7 +7,7 @@ mod common;
 
 use std::{cell::Cell, rc::Rc};
 
-use skene_tui::{self as tui, Activate, TextEntry, prelude::*, user};
+use skene_tui::{self as tui, Activate, TextEntry, prelude::*, testing, testing::user};
 
 use crate::common::with_platform;
 
@@ -35,24 +35,24 @@ fn a_user_clicks_and_types_into_what_it_finds() {
         .build()
     });
 
-    let _ = tui::render_to_text(20, 5);
-    let save = tui::find_by_role(Role::Button, "Save").expect("the Save button");
+    let _ = testing::render_to_text(20, 5);
+    let save = testing::find_by_role(Role::Button, "Save").expect("the Save button");
 
-    assert_eq!(tui::find_all_by_role(Role::Button).len(), 2);
-    assert_eq!(tui::accessible_name(save).as_deref(), Some("Save"));
-    assert!(tui::find_by_text("Cancel").is_some());
+    assert_eq!(testing::find_all_by_role(Role::Button).len(), 2);
+    assert_eq!(testing::accessible_name(save).as_deref(), Some("Save"));
+    assert!(testing::find_by_text("Cancel").is_some());
 
     user::click(save);
 
     assert_eq!(clicks.get(), 1);
-    assert_eq!(tui::focused_node(), Some(save));
+    assert_eq!(testing::focused_node(), Some(save));
 
-    let field = tui::find_by_role(Role::TextInput, "Name").expect("the Name field");
-    let _ = tui::render_to_text(20, 5);
+    let field = testing::find_by_role(Role::TextInput, "Name").expect("the Name field");
+    let _ = testing::render_to_text(20, 5);
 
     user::type_text(field, "héllo");
 
     assert_eq!(typed.get(), "héllo");
-    assert_eq!(tui::focused_node(), Some(field));
+    assert_eq!(testing::focused_node(), Some(field));
   });
 }

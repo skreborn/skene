@@ -101,11 +101,11 @@ pub fn skene_headless::outline(skene_core::node::NodeId) -> alloc::string::Strin
 pub fn skene_headless::overlay_anchor(skene_core::node::NodeId) -> core::option::Option<skene_core::node::NodeId>
 pub fn skene_headless::overlay_position(skene_core::node::NodeId) -> core::option::Option<skene_core::values::point::Point<f32>>
 pub fn skene_headless::overlay_props(skene_core::node::NodeId) -> core::option::Option<skene_core::props::OverlayProps<skene_headless::Headless>>
-pub fn skene_headless::paint(skene_core::node::NodeId, skene_core::values::size::Size<f32>) -> core::option::Option<alloc::vec::Vec<u8>>
 pub fn skene_headless::part(skene_core::node::NodeId) -> core::option::Option<skene_core::control::Part>
 pub fn skene_headless::pending_timers() -> usize
 pub fn skene_headless::pump_tasks() -> bool
 pub fn skene_headless::remove_head_entry(skene_common::gui::head::HeadId)
+pub fn skene_headless::render_to_pixels(skene_core::node::NodeId, skene_core::values::size::Size<f32>) -> core::option::Option<alloc::vec::Vec<u8>>
 pub fn skene_headless::reset()
 pub fn skene_headless::resolve_aspect_ratio(skene_core::node::NodeId) -> core::option::Option<skene_core::values::aspect_ratio::AspectRatio>
 pub fn skene_headless::resolve_color(skene_core::node::NodeId, skene_core::property::PropertyKey<skene_common::gui::ext::GuiProperty>) -> core::option::Option<skene_core::values::color::Color>

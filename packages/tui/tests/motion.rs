@@ -14,6 +14,7 @@ use skene_tui::{
   State,
   core::{BoxKeyframe, Property},
   prelude::*,
+  testing,
 };
 
 use crate::common::{blue, colors_at, red, rgb, with_platform};
@@ -48,19 +49,19 @@ fn a_hover_transition_steps_a_color_across_frames() {
 
     assert_eq!(colors_at(6, 2, 0, 0).1, Some(rgb(red())));
 
-    tui::trigger_mouse_move(0, 0);
+    testing::trigger_mouse_move(0, 0);
 
     assert_eq!(colors_at(6, 2, 0, 0).1, Some(rgb(red())));
 
-    tui::trigger_frame(Duration::from_millis(500));
+    testing::trigger_frame(Duration::from_millis(500));
 
     assert_eq!(colors_at(6, 2, 0, 0).1, Some(rgb(red().mix(blue(), 0.5))));
 
-    tui::trigger_frame(Duration::from_millis(500));
+    testing::trigger_frame(Duration::from_millis(500));
 
     assert_eq!(colors_at(6, 2, 0, 0).1, Some(rgb(blue())));
 
-    tui::trigger_frame(Duration::from_secs(1));
+    testing::trigger_frame(Duration::from_secs(1));
 
     assert_eq!(colors_at(6, 2, 0, 0).1, Some(rgb(blue())));
   });
@@ -91,12 +92,12 @@ fn a_derived_length_transition_rounds_to_cells() {
     assert!(painted(1));
     assert!(!painted(2));
 
-    tui::trigger_frame(Duration::from_millis(500));
+    testing::trigger_frame(Duration::from_millis(500));
 
     assert!(painted(5));
     assert!(!painted(6));
 
-    tui::trigger_frame(Duration::from_millis(500));
+    testing::trigger_frame(Duration::from_millis(500));
 
     assert!(painted(9));
     assert!(!painted(10));
@@ -126,19 +127,19 @@ fn reduced_motion_cuts_a_respecting_transition() {
         .build()
     });
 
-    tui::trigger_reduced_motion(true);
+    testing::trigger_reduced_motion(true);
 
     assert_eq!(colors_at(6, 2, 0, 0).1, Some(rgb(red())));
 
-    tui::trigger_mouse_move(0, 0);
+    testing::trigger_mouse_move(0, 0);
 
     assert_eq!(colors_at(6, 2, 0, 0).1, Some(rgb(blue())));
 
-    tui::trigger_mouse_move(2, 0);
+    testing::trigger_mouse_move(2, 0);
 
     assert_eq!(colors_at(6, 2, 2, 0).1, Some(rgb(red())));
 
-    tui::trigger_frame(Duration::from_millis(500));
+    testing::trigger_frame(Duration::from_millis(500));
 
     assert_eq!(colors_at(6, 2, 2, 0).1, Some(rgb(red().mix(blue(), 0.5))));
   });
@@ -169,11 +170,11 @@ fn a_palette_flip_transitions_a_token_driven_color() {
 
     assert_eq!(colors_at(6, 2, 0, 0).1, Some(rgb(red())));
 
-    tui::trigger_frame(Duration::from_millis(500));
+    testing::trigger_frame(Duration::from_millis(500));
 
     assert_eq!(colors_at(6, 2, 0, 0).1, Some(rgb(red().mix(blue(), 0.5))));
 
-    tui::trigger_frame(Duration::from_millis(500));
+    testing::trigger_frame(Duration::from_millis(500));
 
     assert_eq!(colors_at(6, 2, 0, 0).1, Some(rgb(blue())));
   });
@@ -202,22 +203,22 @@ fn a_keyframe_animation_samples_its_frames() {
 
     assert_eq!(colors_at(6, 2, 0, 0).1, Some(rgb(red())));
 
-    let resolved = tui::style_resolutions();
+    let resolved = testing::style_resolutions();
 
-    tui::trigger_frame(Duration::from_millis(500));
+    testing::trigger_frame(Duration::from_millis(500));
 
     assert_eq!(colors_at(6, 2, 0, 0).1, Some(rgb(red().mix(blue(), 0.5))));
 
-    tui::trigger_frame(Duration::from_millis(500));
+    testing::trigger_frame(Duration::from_millis(500));
 
     assert_eq!(colors_at(6, 2, 0, 0).1, Some(rgb(blue())));
     assert_eq!(
-      tui::style_resolutions(),
+      testing::style_resolutions(),
       resolved,
       "a running animation samples its resolved keyframes, resolving nothing per frame"
     );
 
-    tui::trigger_frame(Duration::from_secs(2));
+    testing::trigger_frame(Duration::from_secs(2));
 
     assert_eq!(colors_at(6, 2, 0, 0).1, Some(rgb(blue())));
   });
@@ -252,28 +253,31 @@ fn an_overlays_animation_starts_over_when_it_opens() {
         .into_any()
         .build()
     });
-    let _ = tui::render_to_text(6, 2);
+    let _ = testing::render_to_text(6, 2);
 
-    tui::trigger_frame(Duration::from_secs(5));
+    testing::trigger_frame(Duration::from_secs(5));
 
-    let _ = tui::render_to_text(6, 2);
+    let _ = testing::render_to_text(6, 2);
 
-    assert!(!tui::frame_pending(), "a closed overlay runs no motion");
+    assert!(
+      !testing::is_frame_pending(),
+      "a closed overlay runs no motion"
+    );
 
     for _ in 0..2 {
       open.set(true);
 
       assert_eq!(colors_at(6, 2, 0, 0).1, Some(rgb(red())), "the first frame");
 
-      tui::trigger_frame(Duration::from_millis(500));
+      testing::trigger_frame(Duration::from_millis(500));
 
       assert_eq!(colors_at(6, 2, 0, 0).1, Some(rgb(red().mix(blue(), 0.5))));
 
       open.set(false);
 
-      let _ = tui::render_to_text(6, 2);
+      let _ = testing::render_to_text(6, 2);
 
-      tui::trigger_frame(Duration::from_secs(5));
+      testing::trigger_frame(Duration::from_secs(5));
     }
   });
 }

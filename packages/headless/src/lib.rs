@@ -23,7 +23,7 @@
 //! [`part`], [`focus_order`], [`is_tab_stop`] and [`accessible_name`] read what the
 //! control and its parts report, and [`trigger_size`] gives a control the measured size
 //! its pointer handling maps a position onto. A painted box records the painter bound to
-//! it ([`is_painted`]), which [`paint`] draws to pixels a test reads.
+//! it ([`is_painted`]), which [`render_to_pixels`] draws to pixels a test reads.
 //!
 //! [`find_by_role`], [`find_all_by_role`] and [`find_by_text`] find nodes as a reader
 //! does, by role and accessible name or by text, [`find_all_unnamed`] those a reader
@@ -426,7 +426,7 @@ pub fn is_painted(node: NodeId) -> bool {
 /// Paints the box `node` at `size` logical pixels, one device pixel each, and returns
 /// the unpremultiplied RGBA8 pixels row by row; `None` for a box nothing paints.
 #[must_use]
-pub fn paint(node: NodeId, size: Size<f32>) -> Option<Vec<u8>> {
+pub fn render_to_pixels(node: NodeId, size: Size<f32>) -> Option<Vec<u8>> {
   end_turn();
 
   let painter = with_record(node, |record| record.painter.clone())??;

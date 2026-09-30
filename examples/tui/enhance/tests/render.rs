@@ -4,7 +4,7 @@
 
 #![cfg(not(target_arch = "wasm32"))]
 
-use skene_tui::{self as tui, prelude::*};
+use skene_tui::{self as tui, prelude::*, testing};
 
 /// The installed platform, uninstalled when dropped, so a failing test leaves the thread
 /// clean for the next.
@@ -30,7 +30,7 @@ fn the_forms_the_terminal_carries_render() {
   let frame = with_platform(|| {
     let _ = tui::mount(|| tui_enhance::app().into_view().build());
 
-    tui::render_to_text(60, 30)
+    testing::render_to_text(60, 30)
   });
 
   for expected in [
@@ -48,11 +48,11 @@ fn the_forms_the_terminal_carries_render() {
 
   let frame = with_platform(|| {
     let _ = tui::mount(|| tui_enhance::app().into_view().build());
-    let _ = tui::render_to_text(60, 30);
+    let _ = testing::render_to_text(60, 30);
 
-    tui::trigger_frame(std::time::Duration::from_secs(1));
+    testing::trigger_frame(std::time::Duration::from_secs(1));
 
-    tui::render_to_text(60, 30)
+    testing::render_to_text(60, 30)
   });
 
   assert!(frame.contains("0 s since the first tick."), "{frame}");
@@ -64,12 +64,12 @@ fn the_picture_paints_where_the_terminal_proves_graphics() {
   with_platform(|| {
     let _ = tui::mount(|| tui_enhance::app().into_view().build());
 
-    assert!(tui::render_to_pictures(60, 30).is_empty());
+    assert!(testing::render_to_pictures(60, 30).is_empty());
 
-    tui::trigger_graphics(true);
+    testing::trigger_graphics(true);
 
-    let frame = tui::render_to_text(60, 30);
-    let pictures: Vec<_> = tui::render_to_pictures(60, 30)
+    let frame = testing::render_to_text(60, 30);
+    let pictures: Vec<_> = testing::render_to_pictures(60, 30)
       .into_iter()
       .filter(|picture| picture.layer == 0)
       .collect();

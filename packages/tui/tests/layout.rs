@@ -11,6 +11,7 @@ use skene_tui::{
   self as tui,
   core::{AnyKind, Children, FlexChild, Seal},
   prelude::*,
+  testing,
 };
 
 use crate::common::{colors_at, locate, red, rgb, white, with_platform};
@@ -26,7 +27,7 @@ fn column_stacks_runs() {
         .build()
     });
 
-    assert_eq!(tui::render_to_text(12, 4), "alpha\nbeta\n\n\n");
+    assert_eq!(testing::render_to_text(12, 4), "alpha\nbeta\n\n\n");
   });
 }
 
@@ -52,7 +53,11 @@ fn background_fills_cover_content_beneath() {
         .build()
     });
 
-    assert_eq!(tui::render_to_text(6, 1), "\n", "the fill covered the text");
+    assert_eq!(
+      testing::render_to_text(6, 1),
+      "\n",
+      "the fill covered the text"
+    );
   });
 }
 
@@ -80,7 +85,7 @@ fn pinned_text_honors_its_edges() {
         .build()
     });
 
-    assert_eq!(tui::render_to_text(12, 3), "\n\n         pin\n");
+    assert_eq!(testing::render_to_text(12, 3), "\n\n         pin\n");
   });
 }
 
@@ -101,7 +106,7 @@ fn flexible_text_takes_free_space() {
         .build()
     });
 
-    assert_eq!(tui::render_to_text(12, 1), "ab         c\n");
+    assert_eq!(testing::render_to_text(12, 1), "ab         c\n");
   });
 }
 
@@ -117,7 +122,7 @@ fn text_wraps_at_the_container_width() {
         .build()
     });
 
-    assert_eq!(tui::render_to_text(12, 4), "alpha\nbeta\n\n\n");
+    assert_eq!(testing::render_to_text(12, 4), "alpha\nbeta\n\n\n");
   });
 }
 
@@ -136,7 +141,7 @@ fn border_draws_a_frame_and_the_root_child_fills_the_viewport() {
     });
 
     assert_eq!(
-      tui::render_to_text(10, 4),
+      testing::render_to_text(10, 4),
       "┌─────┐\n│hi   │\n│     │\n└─────┘\n"
     );
   });
@@ -157,7 +162,7 @@ fn a_zero_width_border_takes_no_cells() {
         .build()
     });
 
-    assert_eq!(tui::render_to_text(6, 2), "hi\n\n");
+    assert_eq!(testing::render_to_text(6, 2), "hi\n\n");
   });
 }
 
@@ -177,16 +182,16 @@ fn bold_and_derived_text() {
         .build()
     });
 
-    assert_eq!(tui::render_to_text(8, 2), "title\nn=1\n");
+    assert_eq!(testing::render_to_text(8, 2), "title\nn=1\n");
     assert_eq!(
-      tui::render_to_bold(8, 2),
+      testing::render_to_bold(8, 2),
       [[true; 5].as_slice(), &[false; 11]].concat(),
       "the title alone is bold"
     );
 
     count.set(2);
 
-    assert_eq!(tui::render_to_text(8, 2), "title\nn=2\n");
+    assert_eq!(testing::render_to_text(8, 2), "title\nn=2\n");
   });
 }
 
@@ -205,8 +210,8 @@ fn a_groups_weight_reaches_its_spans() {
         .build()
     });
 
-    assert_eq!(tui::render_to_text(4, 1), "abc\n");
-    assert_eq!(tui::render_to_bold(4, 1), [false, true, true, false]);
+    assert_eq!(testing::render_to_text(4, 1), "abc\n");
+    assert_eq!(testing::render_to_bold(4, 1), [false, true, true, false]);
   });
 }
 
@@ -226,7 +231,7 @@ fn grid_tracks_size_columns() {
         .build()
     });
 
-    assert_eq!(tui::render_to_text(12, 1), "a   b   c\n");
+    assert_eq!(testing::render_to_text(12, 1), "a   b   c\n");
   });
 }
 
@@ -247,7 +252,7 @@ fn an_adaptive_grid_fits_its_columns() {
         .build()
     });
 
-    assert_eq!(tui::render_to_text(10, 2), "a    b\nc    d\n");
+    assert_eq!(testing::render_to_text(10, 2), "a    b\nc    d\n");
   });
 }
 
@@ -265,7 +270,7 @@ fn a_second_adaptive_track_drops_the_list() {
         .build()
     });
 
-    assert_eq!(tui::render_to_text(10, 2), "a\nb\n");
+    assert_eq!(testing::render_to_text(10, 2), "a\nb\n");
   });
 }
 
@@ -294,7 +299,7 @@ fn a_named_area_places_its_child() {
         .build()
     });
 
-    assert_eq!(tui::render_to_text(10, 2), "h\n    m\n");
+    assert_eq!(testing::render_to_text(10, 2), "h\n    m\n");
   });
 }
 
@@ -326,7 +331,7 @@ fn named_lines_place_a_child() {
         .build()
     });
 
-    assert_eq!(tui::render_to_text(12, 1), "  middle\n");
+    assert_eq!(testing::render_to_text(12, 1), "  middle\n");
   });
 }
 
@@ -347,7 +352,7 @@ fn grid_placement_spans_tracks() {
         .build()
     });
 
-    assert_eq!(tui::render_to_text(8, 2), "wide\nl   r\n");
+    assert_eq!(testing::render_to_text(8, 2), "wide\nl   r\n");
   });
 }
 
@@ -369,7 +374,7 @@ fn flex_grow_distributes_space() {
         .build()
     });
 
-    assert_eq!(tui::render_to_text(12, 1), "a        b\n");
+    assert_eq!(testing::render_to_text(12, 1), "a        b\n");
   });
 }
 
@@ -389,7 +394,7 @@ fn fraction_width_resolves_against_parent() {
         .build()
     });
 
-    assert_eq!(tui::render_to_text(12, 1), "half  x\n");
+    assert_eq!(testing::render_to_text(12, 1), "half  x\n");
   });
 }
 
@@ -426,7 +431,7 @@ fn a_container_fills_when_sized_and_hugs_when_not() {
         .build()
     });
 
-    assert_eq!(tui::render_to_text(9, 4), "┌──┐\n│hi│\n└──┘\n\n");
+    assert_eq!(testing::render_to_text(9, 4), "┌──┐\n│hi│\n└──┘\n\n");
   });
 }
 
@@ -444,7 +449,7 @@ fn a_container_aligns_its_child() {
         .build()
     });
 
-    assert_eq!(tui::render_to_text(6, 3), "\n\n    ab\n");
+    assert_eq!(testing::render_to_text(6, 3), "\n\n    ab\n");
   });
 }
 
@@ -461,13 +466,13 @@ fn layout_properties_vary_by_condition() {
   with_platform(|| {
     let _ = tui::mount(|| row().into_view().build());
 
-    assert_eq!(tui::render_to_text(12, 2), "ab   cd\n\n");
+    assert_eq!(testing::render_to_text(12, 2), "ab   cd\n\n");
   });
 
   with_platform(|| {
     let _ = tui::mount(|| row().into_view().build());
 
-    assert_eq!(tui::render_to_text(8, 2), "ab cd\n\n");
+    assert_eq!(testing::render_to_text(8, 2), "ab cd\n\n");
   });
 }
 
@@ -531,7 +536,7 @@ fn a_third_party_layout_view_matches_the_built_in() {
         .build()
     });
 
-    tui::render_to_text(14, 3)
+    testing::render_to_text(14, 3)
   });
   let built_in = with_platform(|| {
     let _ = tui::mount(|| {
@@ -548,7 +553,7 @@ fn a_third_party_layout_view_matches_the_built_in() {
         .build()
     });
 
-    tui::render_to_text(14, 3)
+    testing::render_to_text(14, 3)
   });
 
   assert_eq!(third_party, built_in);
@@ -583,7 +588,7 @@ fn an_inline_box_flows_with_the_paragraph() {
         .build()
     });
 
-    let frame = tui::render_to_text(12, 3);
+    let frame = testing::render_to_text(12, 3);
 
     assert_eq!(frame, "see  new\nhere\n\n");
 
@@ -595,7 +600,7 @@ fn an_inline_box_flows_with_the_paragraph() {
     assert_eq!(colors_at(12, 3, 3, 0).1, None);
     assert_eq!(colors_at(12, 3, 9, 0).1, None);
 
-    tui::trigger_mouse_click(column, row);
+    testing::trigger_mouse_click(column, row);
 
     assert_eq!(clicks.get(), 1);
   });
@@ -626,7 +631,7 @@ fn a_tall_inline_box_raises_its_line() {
     });
 
     assert_eq!(
-      tui::render_to_text(12, 4),
+      testing::render_to_text(12, 4),
       "    new\nsee     here\nand more\n\n"
     );
     assert_eq!(colors_at(12, 4, 4, 1).1, Some(rgb(red())));
@@ -648,7 +653,7 @@ fn an_inline_box_never_splits_across_lines() {
         .build()
     });
 
-    assert_eq!(tui::render_to_text(8, 3), "ab\nwide\n\n");
+    assert_eq!(testing::render_to_text(8, 3), "ab\nwide\n\n");
   });
 }
 
@@ -674,12 +679,12 @@ fn a_span_is_hovered_and_clicked() {
 
     assert_eq!(colors_at(12, 1, 6, 0).0, Some(rgb(red())));
 
-    tui::trigger_mouse_move(7, 0);
+    testing::trigger_mouse_move(7, 0);
 
     assert_eq!(colors_at(12, 1, 6, 0).0, Some(rgb(white())));
 
-    tui::trigger_mouse_click(7, 0);
-    tui::trigger_mouse_click(1, 0);
+    testing::trigger_mouse_click(7, 0);
+    testing::trigger_mouse_click(1, 0);
 
     assert_eq!(clicks.get(), 1);
   });
@@ -700,14 +705,14 @@ fn copying_across_an_inline_box_takes_its_text() {
         .into_any()
         .build()
     });
-    let _ = tui::render_to_text(14, 1);
+    let _ = testing::render_to_text(14, 1);
 
-    tui::trigger_mouse_press(0, 0);
-    tui::trigger_mouse_drag(12, 0);
-    tui::trigger_mouse_release(12, 0);
-    tui::trigger_key("Ctrl+c");
+    testing::trigger_mouse_press(0, 0);
+    testing::trigger_mouse_drag(12, 0);
+    testing::trigger_mouse_release(12, 0);
+    testing::trigger_key("Ctrl+c");
 
-    assert_eq!(tui::take_copied().as_deref(), Some("see new here"));
+    assert_eq!(testing::take_copied().as_deref(), Some("see new here"));
   });
 }
 
@@ -733,9 +738,9 @@ fn a_grouped_inline_box_places_its_content() {
         .build()
     });
 
-    assert_eq!(tui::render_to_text(8, 1), "ab box\n");
+    assert_eq!(testing::render_to_text(8, 1), "ab box\n");
 
-    tui::trigger_mouse_press(4, 0);
+    testing::trigger_mouse_press(4, 0);
 
     assert_eq!(pressed.get(), (1.5, 0.5));
   });

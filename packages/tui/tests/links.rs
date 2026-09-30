@@ -7,16 +7,16 @@ mod common;
 
 use std::{cell::Cell, rc::Rc};
 
-use skene_tui::{self as tui, Activate, prelude::*};
+use skene_tui::{self as tui, Activate, prelude::*, testing};
 
 use crate::common::{locate, rgb, white, with_platform};
 
 /// Whether every cell of `needle`'s first appearance in the frame paints in reverse
 /// video.
 fn reversed(width: u16, height: u16, needle: &str) -> bool {
-  let frame = tui::render_to_text(width, height);
+  let frame = testing::render_to_text(width, height);
   let (x, y) = locate(&frame, needle);
-  let reverse = tui::render_to_reverse(width, height);
+  let reverse = testing::render_to_reverse(width, height);
   let start = usize::from(y) * usize::from(width) + usize::from(x);
 
   reverse[start..start + needle.chars().count()]
@@ -50,42 +50,42 @@ fn tab_reaches_links_and_enter_opens_them() {
         .into_any()
         .build()
     });
-    let _ = tui::render_to_text(20, 6);
+    let _ = testing::render_to_text(20, 6);
 
-    tui::trigger_key("Tab");
+    testing::trigger_key("Tab");
 
     assert!(!reversed(20, 6, "guide"), "the first button holds focus");
 
-    tui::trigger_key("Tab");
+    testing::trigger_key("Tab");
 
     assert!(reversed(20, 6, "guide"), "the text link holds focus");
     assert!(!reversed(20, 6, "docs"));
 
-    tui::trigger_key(" ");
+    testing::trigger_key(" ");
 
-    assert_eq!(tui::take_opened(), None, "space is not a link's key");
+    assert_eq!(testing::take_opened(), None, "space is not a link's key");
 
-    tui::trigger_key("Enter");
+    testing::trigger_key("Enter");
 
-    assert_eq!(tui::take_opened().as_deref(), Some("https://a.example"));
+    assert_eq!(testing::take_opened().as_deref(), Some("https://a.example"));
 
-    tui::trigger_key("Tab");
+    testing::trigger_key("Tab");
 
     assert!(reversed(20, 6, "docs"), "the linked span holds focus");
     assert!(!reversed(20, 6, "guide"));
     assert!(!reversed(20, 6, "see the "), "its neighbors do not");
 
-    tui::trigger_key("Enter");
+    testing::trigger_key("Enter");
 
-    assert_eq!(tui::take_opened().as_deref(), Some("https://b.example"));
+    assert_eq!(testing::take_opened().as_deref(), Some("https://b.example"));
 
-    tui::trigger_key("Tab");
-    tui::trigger_key("Enter");
+    testing::trigger_key("Tab");
+    testing::trigger_key("Enter");
 
     assert_eq!(clicks.get(), 1, "the last button follows the links");
-    assert_eq!(tui::take_opened(), None);
+    assert_eq!(testing::take_opened(), None);
 
-    tui::trigger_key("Shift+Tab");
+    testing::trigger_key("Shift+Tab");
 
     assert!(reversed(20, 6, "docs"));
   });
@@ -117,14 +117,14 @@ fn a_typography_colors_the_focused_link() {
       .into_any()
       .build()
     });
-    let frame = tui::render_to_text(20, 4);
+    let frame = testing::render_to_text(20, 4);
     let (guide_x, guide_y) = locate(&frame, "guide");
     let (docs_x, docs_y) = locate(&frame, "docs");
     let at = |x: u16, y: u16| usize::from(y) * 20 + usize::from(x);
 
-    tui::trigger_key("Tab");
+    testing::trigger_key("Tab");
 
-    let colors = tui::render_to_colors(20, 4);
+    let colors = testing::render_to_colors(20, 4);
 
     assert_eq!(
       colors[at(guide_x, guide_y)],
@@ -134,9 +134,9 @@ fn a_typography_colors_the_focused_link() {
     assert!(!reversed(20, 4, "guide"), "and not in reverse video");
     assert_eq!(colors[at(docs_x, docs_y)].1, None);
 
-    tui::trigger_key("Tab");
+    testing::trigger_key("Tab");
 
-    let colors = tui::render_to_colors(20, 4);
+    let colors = testing::render_to_colors(20, 4);
 
     assert_eq!(
       colors[at(docs_x, docs_y)],
@@ -166,29 +166,29 @@ fn click_focuses_a_link_and_enter_is_its_click() {
         .into_any()
         .build()
     });
-    let frame = tui::render_to_text(20, 2);
+    let frame = testing::render_to_text(20, 2);
     let (x, y) = locate(&frame, "docs");
 
-    tui::trigger_mouse_click(x, y);
+    testing::trigger_mouse_click(x, y);
 
-    assert_eq!(tui::take_opened().as_deref(), Some("https://b.example"));
+    assert_eq!(testing::take_opened().as_deref(), Some("https://b.example"));
     assert_eq!(clicks.get(), 1);
     assert!(
       !reversed(20, 2, "docs"),
       "the click focused the link without showing it"
     );
 
-    tui::trigger_key("Enter");
+    testing::trigger_key("Enter");
 
-    assert_eq!(tui::take_opened().as_deref(), Some("https://b.example"));
+    assert_eq!(testing::take_opened().as_deref(), Some("https://b.example"));
     assert_eq!(clicks.get(), 2);
     assert!(reversed(20, 2, "docs"), "the key showed the focused link");
 
-    tui::trigger_mouse_click(0, 0);
-    tui::trigger_key("Enter");
+    testing::trigger_mouse_click(0, 0);
+    testing::trigger_key("Enter");
 
     assert!(!reversed(20, 2, "docs"), "a press elsewhere blurred it");
-    assert_eq!(tui::take_opened(), None, "so Enter opens nothing");
+    assert_eq!(testing::take_opened(), None, "so Enter opens nothing");
   });
 }
 
@@ -215,11 +215,11 @@ fn focus_reveals_a_linked_paragraph() {
         .build()
     });
 
-    assert!(!tui::render_to_text(10, 2).contains("docs"));
+    assert!(!testing::render_to_text(10, 2).contains("docs"));
 
-    tui::trigger_key("Tab");
+    testing::trigger_key("Tab");
 
-    assert!(tui::render_to_text(10, 2).contains("docs"));
+    assert!(testing::render_to_text(10, 2).contains("docs"));
     assert!(reversed(10, 2, "docs"));
   });
 }

@@ -445,12 +445,63 @@ pub type skene_tui::prelude::Theme<S, C> = skene_common::theme::Theme<skene_tui:
 pub type skene_tui::prelude::Token<T> = skene_core::token::Token<T, u32>
 pub type skene_tui::prelude::Tooltip<C> = skene_common::tooltip::Tooltip<skene_tui::ActivePlatform, C>
 pub type skene_tui::prelude::Value<T> = skene_core::leaf::Value<T, skene_tui::Condition>
-pub mod skene_tui::user
-pub fn skene_tui::user::click(skene_core::node::NodeId)
-pub fn skene_tui::user::double_click(skene_core::node::NodeId)
-pub fn skene_tui::user::hover(skene_core::node::NodeId)
-pub fn skene_tui::user::press_key(&skene_core::events::KeyEvent)
-pub fn skene_tui::user::type_text(skene_core::node::NodeId, &str)
+pub mod skene_tui::testing
+pub mod skene_tui::testing::user
+pub fn skene_tui::testing::user::click(skene_core::node::NodeId)
+pub fn skene_tui::testing::user::double_click(skene_core::node::NodeId)
+pub fn skene_tui::testing::user::hover(skene_core::node::NodeId)
+pub fn skene_tui::testing::user::press_key(&skene_core::events::KeyEvent)
+pub fn skene_tui::testing::user::type_text(skene_core::node::NodeId, &str)
+pub fn skene_tui::testing::accessible_name(skene_core::node::NodeId) -> core::option::Option<alloc::string::String>
+pub fn skene_tui::testing::find_all_by_role(accesskit::Role) -> alloc::vec::Vec<skene_core::node::NodeId>
+pub fn skene_tui::testing::find_all_unnamed() -> alloc::vec::Vec<skene_core::node::NodeId>
+pub fn skene_tui::testing::find_by_role(accesskit::Role, &str) -> core::option::Option<skene_core::node::NodeId>
+pub fn skene_tui::testing::find_by_text(&str) -> core::option::Option<skene_core::node::NodeId>
+pub fn skene_tui::testing::focused_node() -> core::option::Option<skene_core::node::NodeId>
+pub fn skene_tui::testing::is_frame_pending() -> bool
+pub fn skene_tui::testing::is_quit_requested() -> bool
+pub fn skene_tui::testing::layout_generation() -> u64
+pub fn skene_tui::testing::mouse_cursor() -> core::option::Option<skene_core::values::mouse_cursor::MouseCursor>
+pub fn skene_tui::testing::pump_tasks() -> bool
+pub fn skene_tui::testing::render_to_bold(u16, u16) -> alloc::vec::Vec<bool>
+pub fn skene_tui::testing::render_to_caret(u16, u16) -> core::option::Option<(u16, u16)>
+pub fn skene_tui::testing::render_to_colors(u16, u16) -> alloc::vec::Vec<(core::option::Option<(u8, u8, u8)>, core::option::Option<(u8, u8, u8)>)>
+pub fn skene_tui::testing::render_to_decorations(u16, u16) -> alloc::vec::Vec<skene_tui::CellDecoration>
+pub fn skene_tui::testing::render_to_pictures(u16, u16) -> alloc::vec::Vec<skene_tui::Picture>
+pub fn skene_tui::testing::render_to_reverse(u16, u16) -> alloc::vec::Vec<bool>
+pub fn skene_tui::testing::render_to_scales(u16, u16) -> alloc::vec::Vec<skene_tui::CellScale>
+pub fn skene_tui::testing::render_to_styled(u16, u16) -> alloc::string::String
+pub fn skene_tui::testing::render_to_text(u16, u16) -> alloc::string::String
+pub fn skene_tui::testing::repainted_rows() -> alloc::vec::Vec<usize>
+pub fn skene_tui::testing::style_resolutions() -> u64
+pub fn skene_tui::testing::style_writes() -> u64
+pub fn skene_tui::testing::take_copied() -> core::option::Option<alloc::string::String>
+pub fn skene_tui::testing::take_opened() -> core::option::Option<alloc::string::String>
+pub fn skene_tui::testing::take_paste_requested() -> bool
+pub fn skene_tui::testing::trigger_answering_clipboard(bool)
+pub fn skene_tui::testing::trigger_clipboard_reply(&str)
+pub fn skene_tui::testing::trigger_color_scheme(skene_core::values::color::ColorScheme)
+pub fn skene_tui::testing::trigger_frame(core::time::Duration)
+pub fn skene_tui::testing::trigger_grapheme_clustering(bool)
+pub fn skene_tui::testing::trigger_graphics(bool)
+pub fn skene_tui::testing::trigger_key(&str)
+pub fn skene_tui::testing::trigger_key_event(&skene_core::events::KeyEvent)
+pub fn skene_tui::testing::trigger_key_releases(bool)
+pub fn skene_tui::testing::trigger_key_up(&str)
+pub fn skene_tui::testing::trigger_mouse_click(u16, u16)
+pub fn skene_tui::testing::trigger_mouse_drag(u16, u16)
+pub fn skene_tui::testing::trigger_mouse_drag_within(u16, u16, (f32, f32))
+pub fn skene_tui::testing::trigger_mouse_move(u16, u16)
+pub fn skene_tui::testing::trigger_mouse_press(u16, u16)
+pub fn skene_tui::testing::trigger_mouse_release(u16, u16)
+pub fn skene_tui::testing::trigger_mouse_right_click(u16, u16)
+pub fn skene_tui::testing::trigger_mouse_scroll(u16, u16, i64, i64)
+pub fn skene_tui::testing::trigger_paste(&str)
+pub fn skene_tui::testing::trigger_reduced_motion(bool)
+pub fn skene_tui::testing::trigger_resize(u16, u16)
+pub fn skene_tui::testing::trigger_terminal_colors((u8, u8, u8), (u8, u8, u8))
+pub fn skene_tui::testing::trigger_text_sizing(bool)
+pub fn skene_tui::testing::window_title() -> core::option::Option<alloc::string::String>
 pub enum skene_tui::CellScale
 pub skene_tui::CellScale::Fraction(u8, u8)
 pub skene_tui::CellScale::Whole(u8)
@@ -715,71 +766,21 @@ pub fn skene_tui::View::into_any(self) -> skene_tui::AnyView where Self: core::m
 impl<V: skene_core::view::View<skene_tui::ActivePlatform>> skene_tui::View for V
 pub fn V::build(self) -> skene_core::node::NodeId where Self: core::marker::Sized
 pub fn V::into_any(self) -> skene_tui::AnyView where Self: core::marker::Sized
-pub fn skene_tui::accessible_name(skene_core::node::NodeId) -> core::option::Option<alloc::string::String>
 pub fn skene_tui::adopt_restoration()
-pub fn skene_tui::current_cursor() -> core::option::Option<skene_core::values::mouse_cursor::MouseCursor>
-pub fn skene_tui::current_title() -> core::option::Option<alloc::string::String>
 pub fn skene_tui::derive_scheme(impl core::ops::function::Fn() -> core::option::Option<skene_core::values::color::ColorScheme> + 'static)
 pub fn skene_tui::derive_title(impl core::ops::function::Fn() -> alloc::string::String + 'static)
 pub fn skene_tui::derived(impl core::ops::function::Fn() -> skene_core::node::NodeId + 'static) -> skene_core::node::NodeId
 pub fn skene_tui::dev_notice_view(skene_reactive::signal::Signal<core::option::Option<alloc::string::String>>) -> impl skene_tui::View
 pub fn skene_tui::empty() -> impl skene_tui::View
-pub fn skene_tui::find_all_by_role(accesskit::Role) -> alloc::vec::Vec<skene_core::node::NodeId>
-pub fn skene_tui::find_all_unnamed() -> alloc::vec::Vec<skene_core::node::NodeId>
-pub fn skene_tui::find_by_role(accesskit::Role, &str) -> core::option::Option<skene_core::node::NodeId>
-pub fn skene_tui::find_by_text(&str) -> core::option::Option<skene_core::node::NodeId>
-pub fn skene_tui::focused_node() -> core::option::Option<skene_core::node::NodeId>
-pub fn skene_tui::frame_pending() -> bool
 pub fn skene_tui::install()
 pub fn skene_tui::install_router<R: skene_common::routing::Route>(R) -> skene_common::routing::Router<R>
 pub fn skene_tui::launch<V, F>(F) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_core::view::IntoView<skene_tui::Tui>
-pub fn skene_tui::layout_generation() -> u64
 pub fn skene_tui::mount(impl core::ops::function::FnOnce() -> skene_core::node::NodeId) -> skene_core::node::NodeId
-pub fn skene_tui::pump_tasks() -> bool
-pub fn skene_tui::quit_requested() -> bool
 pub fn skene_tui::reconcile<T, I, K>(skene_core::node::NodeId, impl core::ops::function::Fn() -> I + 'static, impl core::ops::function::Fn(&T) -> K + 'static, impl core::ops::function::Fn(T) -> skene_core::node::NodeId + 'static) where I: core::iter::traits::collect::IntoIterator<Item = T>, K: core::cmp::Eq + core::hash::Hash + 'static
-pub fn skene_tui::render_to_bold(u16, u16) -> alloc::vec::Vec<bool>
-pub fn skene_tui::render_to_caret(u16, u16) -> core::option::Option<(u16, u16)>
-pub fn skene_tui::render_to_colors(u16, u16) -> alloc::vec::Vec<(core::option::Option<(u8, u8, u8)>, core::option::Option<(u8, u8, u8)>)>
-pub fn skene_tui::render_to_decorations(u16, u16) -> alloc::vec::Vec<skene_tui::CellDecoration>
-pub fn skene_tui::render_to_pictures(u16, u16) -> alloc::vec::Vec<skene_tui::Picture>
-pub fn skene_tui::render_to_reverse(u16, u16) -> alloc::vec::Vec<bool>
-pub fn skene_tui::render_to_scales(u16, u16) -> alloc::vec::Vec<skene_tui::CellScale>
-pub fn skene_tui::render_to_styled(u16, u16) -> alloc::string::String
-pub fn skene_tui::render_to_text(u16, u16) -> alloc::string::String
-pub fn skene_tui::repainted_rows() -> alloc::vec::Vec<usize>
 pub fn skene_tui::set_scheme(core::option::Option<skene_core::values::color::ColorScheme>)
-pub fn skene_tui::set_style_calls() -> u64
 pub fn skene_tui::set_title(impl core::convert::Into<alloc::string::String>)
 pub fn skene_tui::spawn(impl core::future::future::Future<Output = ()> + 'static) -> skene_reactive::spawn::TaskHandle
 pub fn skene_tui::stored_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
-pub fn skene_tui::style_resolutions() -> u64
-pub fn skene_tui::take_copied() -> core::option::Option<alloc::string::String>
-pub fn skene_tui::take_opened() -> core::option::Option<alloc::string::String>
-pub fn skene_tui::take_paste_requested() -> bool
-pub fn skene_tui::trigger_answering_clipboard(bool)
-pub fn skene_tui::trigger_clipboard_reply(&str)
-pub fn skene_tui::trigger_color_scheme(skene_core::values::color::ColorScheme)
-pub fn skene_tui::trigger_frame(core::time::Duration)
-pub fn skene_tui::trigger_grapheme_clustering(bool)
-pub fn skene_tui::trigger_graphics(bool)
-pub fn skene_tui::trigger_key(&str)
-pub fn skene_tui::trigger_key_event(&skene_core::events::KeyEvent)
-pub fn skene_tui::trigger_key_releases(bool)
-pub fn skene_tui::trigger_key_up(&str)
-pub fn skene_tui::trigger_mouse_click(u16, u16)
-pub fn skene_tui::trigger_mouse_drag(u16, u16)
-pub fn skene_tui::trigger_mouse_drag_within(u16, u16, (f32, f32))
-pub fn skene_tui::trigger_mouse_move(u16, u16)
-pub fn skene_tui::trigger_mouse_press(u16, u16)
-pub fn skene_tui::trigger_mouse_release(u16, u16)
-pub fn skene_tui::trigger_mouse_right_click(u16, u16)
-pub fn skene_tui::trigger_mouse_scroll(u16, u16, i64, i64)
-pub fn skene_tui::trigger_paste(&str)
-pub fn skene_tui::trigger_reduced_motion(bool)
-pub fn skene_tui::trigger_resize(u16, u16)
-pub fn skene_tui::trigger_terminal_colors((u8, u8, u8), (u8, u8, u8))
-pub fn skene_tui::trigger_text_sizing(bool)
 pub fn skene_tui::uninstall()
 pub type skene_tui::ActivePlatform = skene_tui::Tui
 pub type skene_tui::AnyView = skene_core::view::AnyView<skene_tui::ActivePlatform>

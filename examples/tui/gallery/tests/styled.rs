@@ -5,14 +5,14 @@
 
 #![cfg(not(target_arch = "wasm32"))]
 
-use skene_tui::{self as tui, prelude::*};
+use skene_tui::{self as tui, prelude::*, testing};
 
 #[test]
 fn the_gallery_paints_as_recorded() {
   tui::install();
 
   let _ = tui::mount(|| tui_gallery::app().into_view().build());
-  let styled = tui::render_to_styled(60, 160);
+  let styled = testing::render_to_styled(60, 160);
 
   tui::uninstall();
 

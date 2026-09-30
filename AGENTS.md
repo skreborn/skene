@@ -555,9 +555,13 @@
   bare name is not an option where the facade's prelude already carries it (`Property`,
   `Value`, `Text`), and a scheme that is bare for some names and prefixed for others is
   worse than one rule.
-- A test double's method that simulates an external event is named `trigger_<event>`; a
-  user's gesture composed of such events is named for the gesture in the platform's `user`
-  module (`user::click`, `user::type_text`).
+- A platform's test seams share one naming rule: `trigger_<event>` simulates what reaches
+  the app from outside, `take_<output>` drains what the app emitted since the last take,
+  `render_to_<form>` paints into a form a test reads, `set_<setting>` configures the
+  double, `is_<state>` answers a yes-or-no question, any other read is named for what it
+  returns, and a user's gesture composed of events is named for the gesture in the
+  platform's `user` module (`user::click`, `user::type_text`). Headless's are the crate's
+  own, reached as `skene_gui::headless`; the terminal's live in `skene_tui::testing`.
 - Make a function or method `const` whenever its body allows it (no trait-method calls such as
   `.into()`, no allocation, no interior mutability). Apply it broadly, and especially to small,
   frequently-constructed types like the geometry and value vocabulary. The API is early and

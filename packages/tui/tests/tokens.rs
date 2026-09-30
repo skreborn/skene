@@ -6,7 +6,7 @@
 
 mod common;
 
-use skene_tui::{self as tui, Definition, Token, TokenName, prelude::*};
+use skene_tui::{self as tui, Definition, Token, TokenName, prelude::*, testing};
 
 use crate::common::with_platform;
 
@@ -73,7 +73,7 @@ fn a_definition_reads_its_tokens_where_it_is_defined() {
       .build()
     });
 
-    let colors = tui::render_to_colors(6, 1);
+    let colors = testing::render_to_colors(6, 1);
 
     assert_eq!(colors[0].1, colors[2].1, "the outer surface, lightened");
     assert_ne!(colors[0].1, colors[4].1, "not the nested one");

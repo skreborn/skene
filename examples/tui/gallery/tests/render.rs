@@ -2,7 +2,7 @@
 
 #![cfg(not(target_arch = "wasm32"))]
 
-use skene_tui::{self as tui, prelude::*};
+use skene_tui::{self as tui, prelude::*, testing};
 
 /// Installs a fresh platform, runs `body`, and uninstalls afterwards.
 fn with_platform<R>(body: impl FnOnce() -> R) -> R {
@@ -20,36 +20,39 @@ fn the_gallery_renders_and_responds() {
   let (frame, clicked, switched, neutral, indigo) = with_platform(|| {
     let _ = tui::mount(|| tui_gallery::app().into_view().build());
 
-    let frame = tui::render_to_text(60, 160);
-    let neutral = tui::render_to_colors(60, 160);
+    let frame = testing::render_to_text(60, 160);
+    let neutral = testing::render_to_colors(60, 160);
 
     // `Tab` lands on the palette's chosen radio; `ArrowRight` chooses the next palette.
-    tui::trigger_key("Tab");
-    tui::trigger_key("ArrowRight");
+    testing::trigger_key("Tab");
+    testing::trigger_key("ArrowRight");
 
-    let indigo = tui::render_to_colors(60, 160);
+    let indigo = testing::render_to_colors(60, 160);
 
     // The next `Tab` is the text section's link, which `Enter` opens.
-    tui::trigger_key("Tab");
-    tui::trigger_key("Enter");
+    testing::trigger_key("Tab");
+    testing::trigger_key("Enter");
 
-    assert_eq!(tui::take_opened().as_deref(), Some("https://example.com"));
+    assert_eq!(
+      testing::take_opened().as_deref(),
+      Some("https://example.com")
+    );
 
     // The next `Tab` is the primary button.
-    tui::trigger_key("Tab");
-    tui::trigger_key("Enter");
+    testing::trigger_key("Tab");
+    testing::trigger_key("Enter");
 
-    let clicked = tui::render_to_text(60, 160);
+    let clicked = testing::render_to_text(60, 160);
 
     // Back on the radio group, a third palette redefines the tokens beneath the click.
-    tui::trigger_key("Shift+Tab");
-    tui::trigger_key("Shift+Tab");
-    tui::trigger_key("ArrowRight");
+    testing::trigger_key("Shift+Tab");
+    testing::trigger_key("Shift+Tab");
+    testing::trigger_key("ArrowRight");
 
     (
       frame,
       clicked,
-      tui::render_to_text(60, 160),
+      testing::render_to_text(60, 160),
       neutral,
       indigo,
     )

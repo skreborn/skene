@@ -6,13 +6,13 @@
 
 mod common;
 
-use skene_tui::{self as tui, CellScale, prelude::*};
+use skene_tui::{self as tui, CellScale, prelude::*, testing};
 
 use crate::common::with_platform;
 
 /// The scale at the cell (`x`, `y`) of a `width` x `height` frame.
 fn scale_at(width: u16, height: u16, x: usize, y: usize) -> CellScale {
-  tui::render_to_scales(width, height)[y * usize::from(width) + x]
+  testing::render_to_scales(width, height)[y * usize::from(width) + x]
 }
 
 /// A sized run measures one cell tall until the terminal proves text sizing; then a
@@ -34,14 +34,14 @@ fn a_size_is_honored_once_the_terminal_proves_it() {
         .build()
     });
 
-    let frame = tui::render_to_text(12, 6);
+    let frame = testing::render_to_text(12, 6);
 
     assert!(frame.starts_with("Big text\nsmall\nafter\n"), "{frame}");
     assert_eq!(scale_at(12, 6, 0, 0), CellScale::ONE);
 
-    tui::trigger_text_sizing(true);
+    testing::trigger_text_sizing(true);
 
-    let frame = tui::render_to_text(12, 6);
+    let frame = testing::render_to_text(12, 6);
 
     assert!(
       frame.starts_with("B i g\n\nt e x t\n\nsmall\nafter\n"),
@@ -56,7 +56,7 @@ fn a_size_is_honored_once_the_terminal_proves_it() {
     assert_eq!(scale_at(12, 6, 2, 0), CellScale::Whole(2), "the next glyph");
     assert_eq!(scale_at(12, 6, 0, 4), CellScale::Fraction(1, 2));
     assert_eq!(
-      tui::render_to_scales(12, 6)
+      testing::render_to_scales(12, 6)
         .iter()
         .filter(|scale| **scale == CellScale::Whole(2))
         .count(),
@@ -64,9 +64,9 @@ fn a_size_is_honored_once_the_terminal_proves_it() {
       "one sized cell per cluster, the space included"
     );
 
-    tui::trigger_text_sizing(false);
+    testing::trigger_text_sizing(false);
 
-    let frame = tui::render_to_text(12, 6);
+    let frame = testing::render_to_text(12, 6);
 
     assert!(frame.starts_with("Big text\nsmall\nafter\n"), "{frame}");
   });
@@ -77,7 +77,7 @@ fn a_size_is_honored_once_the_terminal_proves_it() {
 #[test]
 fn a_paragraph_sets_its_smaller_spans_on_the_baseline() {
   with_platform(|| {
-    tui::trigger_text_sizing(true);
+    testing::trigger_text_sizing(true);
 
     let _ = tui::mount(|| {
       Column::new()
@@ -93,7 +93,7 @@ fn a_paragraph_sets_its_smaller_spans_on_the_baseline() {
         .build()
     });
 
-    let frame = tui::render_to_text(20, 6);
+    let frame = testing::render_to_text(20, 6);
     let (a_x, a_y) = common::locate(&frame, "A");
     let (b_x, b_y) = common::locate(&frame, "b");
     let (c_x, c_y) = common::locate(&frame, "c");
@@ -113,7 +113,7 @@ fn a_paragraph_sets_its_smaller_spans_on_the_baseline() {
 #[test]
 fn the_selection_takes_the_clusters_whose_blocks_are_hit() {
   with_platform(|| {
-    tui::trigger_text_sizing(true);
+    testing::trigger_text_sizing(true);
 
     let _ = tui::mount(|| {
       Text::new("abc")
@@ -122,25 +122,25 @@ fn the_selection_takes_the_clusters_whose_blocks_are_hit() {
         .into_any()
         .build()
     });
-    let _ = tui::render_to_text(12, 4);
+    let _ = testing::render_to_text(12, 4);
 
-    tui::trigger_mouse_press(2, 1);
-    tui::trigger_mouse_drag(5, 0);
-    tui::trigger_mouse_release(5, 0);
+    testing::trigger_mouse_press(2, 1);
+    testing::trigger_mouse_drag(5, 0);
+    testing::trigger_mouse_release(5, 0);
 
-    let reverse = tui::render_to_reverse(12, 4);
+    let reverse = testing::render_to_reverse(12, 4);
 
     assert!(!reverse[0] && reverse[2] && reverse[3] && reverse[12 + 2] && reverse[12 + 5]);
     assert!(!reverse[6], "{reverse:?}");
 
-    tui::trigger_mouse_right_click(3, 1);
+    testing::trigger_mouse_right_click(3, 1);
 
-    let frame = tui::render_to_text(12, 4);
+    let frame = testing::render_to_text(12, 4);
     let (x, y) = common::locate(&frame, "Copy");
 
-    tui::trigger_mouse_click(x, y);
+    testing::trigger_mouse_click(x, y);
 
-    assert_eq!(tui::take_copied().as_deref(), Some("bc"));
+    assert_eq!(testing::take_copied().as_deref(), Some("bc"));
   });
 }
 
@@ -161,11 +161,11 @@ fn an_em_is_the_typography_size_in_cells() {
         .build()
     });
 
-    assert_eq!(tui::render_to_text(12, 2), "   x\n   y\n");
+    assert_eq!(testing::render_to_text(12, 2), "   x\n   y\n");
 
-    tui::trigger_text_sizing(true);
+    testing::trigger_text_sizing(true);
 
-    let frame = tui::render_to_text(12, 3);
+    let frame = testing::render_to_text(12, 3);
 
     assert!(frame.starts_with("   x\n      y"), "{frame}");
   });
@@ -176,7 +176,7 @@ fn an_em_is_the_typography_size_in_cells() {
 #[test]
 fn a_groups_size_reaches_its_spans() {
   with_platform(|| {
-    tui::trigger_text_sizing(true);
+    testing::trigger_text_sizing(true);
 
     let _ = tui::mount(|| {
       RichText::new()
@@ -185,7 +185,7 @@ fn a_groups_size_reaches_its_spans() {
         .build()
     });
 
-    let _ = tui::render_to_text(4, 2);
+    let _ = testing::render_to_text(4, 2);
 
     assert_eq!(scale_at(4, 2, 0, 0), CellScale::Whole(2));
   });

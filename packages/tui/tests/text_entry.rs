@@ -6,7 +6,7 @@
 
 mod common;
 
-use skene_tui::{self as tui, TextEntry, prelude::*};
+use skene_tui::{self as tui, TextEntry, prelude::*, testing};
 
 use crate::common::{colors_at, red, rgb, rows, white, with_platform};
 
@@ -23,18 +23,18 @@ fn input_binds_a_signal_both_ways() {
         .build()
     });
 
-    assert!(tui::render_to_text(10, 1).starts_with("name"));
+    assert!(testing::render_to_text(10, 1).starts_with("name"));
 
-    tui::trigger_key("Tab");
-    tui::trigger_key("h");
-    tui::trigger_key("i");
+    testing::trigger_key("Tab");
+    testing::trigger_key("h");
+    testing::trigger_key("i");
 
     assert_eq!(name.get_untracked(), "hi");
-    assert!(tui::render_to_text(10, 1).starts_with("hi"));
+    assert!(testing::render_to_text(10, 1).starts_with("hi"));
 
     name.set("set".to_owned());
 
-    assert!(tui::render_to_text(10, 1).starts_with("set"));
+    assert!(testing::render_to_text(10, 1).starts_with("set"));
   });
 }
 
@@ -49,31 +49,31 @@ fn caret_edits_insert_and_delete() {
         .into_any()
         .build()
     });
-    let _ = tui::render_to_text(20, 1);
+    let _ = testing::render_to_text(20, 1);
 
-    tui::trigger_key("Tab");
+    testing::trigger_key("Tab");
 
     for key in ["a", "b", "c"] {
-      tui::trigger_key(key);
+      testing::trigger_key(key);
     }
 
-    tui::trigger_key("ArrowLeft");
-    tui::trigger_key("X");
+    testing::trigger_key("ArrowLeft");
+    testing::trigger_key("X");
 
     assert_eq!(name.get_untracked(), "abXc");
 
-    tui::trigger_key("Home");
-    tui::trigger_key("Delete");
+    testing::trigger_key("Home");
+    testing::trigger_key("Delete");
 
     assert_eq!(name.get_untracked(), "bXc");
 
-    tui::trigger_key("End");
-    tui::trigger_key("Backspace");
+    testing::trigger_key("End");
+    testing::trigger_key("Backspace");
 
     assert_eq!(name.get_untracked(), "bX");
 
     // `Ctrl+H` is `0x08`, the legacy byte of `Ctrl+Backspace`: one character deletes.
-    tui::trigger_key("Ctrl+h");
+    testing::trigger_key("Ctrl+h");
 
     assert_eq!(name.get_untracked(), "b");
   });
@@ -91,24 +91,24 @@ fn caret_jumps_and_deletes_by_word() {
         .into_any()
         .build()
     });
-    let _ = tui::render_to_text(20, 1);
+    let _ = testing::render_to_text(20, 1);
 
-    tui::trigger_key("Tab");
-    tui::trigger_key("End");
-    tui::trigger_key("Ctrl+ArrowLeft");
-    tui::trigger_key("Ctrl+Backspace");
+    testing::trigger_key("Tab");
+    testing::trigger_key("End");
+    testing::trigger_key("Ctrl+ArrowLeft");
+    testing::trigger_key("Ctrl+Backspace");
 
     assert_eq!(name.get_untracked(), "alpha gamma");
 
-    tui::trigger_key("Ctrl+ArrowLeft");
-    tui::trigger_key("Ctrl+ArrowRight");
-    tui::trigger_key("Ctrl+Delete");
+    testing::trigger_key("Ctrl+ArrowLeft");
+    testing::trigger_key("Ctrl+ArrowRight");
+    testing::trigger_key("Ctrl+Delete");
 
     assert_eq!(name.get_untracked(), "alpha");
 
     // `Ctrl+W` deletes the word too, for terminals whose keyboard encoding cannot
     // express `Ctrl+Backspace`.
-    tui::trigger_key("Ctrl+w");
+    testing::trigger_key("Ctrl+w");
 
     assert_eq!(name.get_untracked(), "");
   });
@@ -127,13 +127,13 @@ fn word_deletion_follows_unicode_word_boundaries() {
         .into_any()
         .build()
     });
-    let _ = tui::render_to_text(30, 1);
+    let _ = testing::render_to_text(30, 1);
 
-    tui::trigger_key("Tab");
-    tui::trigger_key("End");
+    testing::trigger_key("Tab");
+    testing::trigger_key("End");
 
     for expected in ["say don't foo.bar_baz", "say don't ", "say ", ""] {
-      tui::trigger_key("Ctrl+Backspace");
+      testing::trigger_key("Ctrl+Backspace");
 
       assert_eq!(name.get_untracked(), expected);
     }
@@ -153,22 +153,22 @@ fn caret_windows_long_values_and_follows_clicks() {
         .into_any()
         .build()
     });
-    let _ = tui::render_to_text(10, 1);
+    let _ = testing::render_to_text(10, 1);
 
-    tui::trigger_key("Tab");
+    testing::trigger_key("Tab");
 
     for key in ["a", "b", "c", "d", "e", "f", "g", "h"] {
-      tui::trigger_key(key);
+      testing::trigger_key(key);
     }
 
-    assert_eq!(tui::render_to_text(10, 1), "efgh\n");
+    assert_eq!(testing::render_to_text(10, 1), "efgh\n");
 
-    tui::trigger_key("Home");
+    testing::trigger_key("Home");
 
-    assert_eq!(tui::render_to_text(10, 1), "abcde\n");
+    assert_eq!(testing::render_to_text(10, 1), "abcde\n");
 
-    tui::trigger_mouse_click(2, 0);
-    tui::trigger_key("X");
+    testing::trigger_mouse_click(2, 0);
+    testing::trigger_key("X");
 
     assert_eq!(name.get_untracked(), "abXcdefgh");
   });
@@ -186,20 +186,20 @@ fn an_editor_breaks_lines_and_moves_between_them() {
         .into_any()
         .build()
     });
-    let _ = tui::render_to_text(20, 4);
+    let _ = testing::render_to_text(20, 4);
 
-    tui::trigger_key("Tab");
+    testing::trigger_key("Tab");
 
     for key in ["a", "b", "Enter", "c", "d"] {
-      tui::trigger_key(key);
+      testing::trigger_key(key);
     }
 
     assert_eq!(bio.get_untracked(), "ab\ncd");
-    assert_eq!(tui::render_to_text(20, 4), "ab\ncd\n\n\n");
-    assert_eq!(tui::render_to_caret(20, 4), Some((2, 1)));
+    assert_eq!(testing::render_to_text(20, 4), "ab\ncd\n\n\n");
+    assert_eq!(testing::render_to_caret(20, 4), Some((2, 1)));
 
-    tui::trigger_key("ArrowUp");
-    tui::trigger_key("X");
+    testing::trigger_key("ArrowUp");
+    testing::trigger_key("X");
 
     assert_eq!(bio.get_untracked(), "abX\ncd");
   });
@@ -220,23 +220,23 @@ fn an_editor_windows_its_rows_around_the_caret() {
         .into_any()
         .build()
     });
-    let _ = rows(&tui::render_to_text(20, 4));
+    let _ = rows(&testing::render_to_text(20, 4));
 
-    tui::trigger_key("Tab");
+    testing::trigger_key("Tab");
 
     for key in ["a", "Enter", "b", "Enter", "c", "Enter", "d", "Enter", "e"] {
-      tui::trigger_key(key);
+      testing::trigger_key(key);
     }
 
-    assert_eq!(rows(&tui::render_to_text(20, 4)), "c\nd\ne\n\n");
-    assert_eq!(tui::render_to_caret(20, 4), Some((1, 2)));
+    assert_eq!(rows(&testing::render_to_text(20, 4)), "c\nd\ne\n\n");
+    assert_eq!(testing::render_to_caret(20, 4), Some((1, 2)));
 
     for _ in 0..3 {
-      tui::trigger_key("ArrowUp");
+      testing::trigger_key("ArrowUp");
     }
 
-    assert_eq!(rows(&tui::render_to_text(20, 4)), "b\nc\nd\n\n");
-    assert_eq!(tui::render_to_caret(20, 4), Some((1, 0)));
+    assert_eq!(rows(&testing::render_to_text(20, 4)), "b\nc\nd\n\n");
+    assert_eq!(testing::render_to_caret(20, 4), Some((1, 0)));
   });
 }
 
@@ -257,55 +257,55 @@ fn the_wheel_scrolls_an_editor_and_leaves_the_caret() {
         .build()
     });
 
-    assert_eq!(rows(&tui::render_to_text(20, 4)), "a\nb\nc\n\n");
+    assert_eq!(rows(&testing::render_to_text(20, 4)), "a\nb\nc\n\n");
 
-    tui::trigger_mouse_scroll(1, 1, 0, 1);
+    testing::trigger_mouse_scroll(1, 1, 0, 1);
 
-    assert_eq!(rows(&tui::render_to_text(20, 4)), "b\nc\nd\n\n");
+    assert_eq!(rows(&testing::render_to_text(20, 4)), "b\nc\nd\n\n");
 
-    tui::trigger_mouse_scroll(1, 1, 0, 5);
+    testing::trigger_mouse_scroll(1, 1, 0, 5);
 
     assert_eq!(
-      rows(&tui::render_to_text(20, 4)),
+      rows(&testing::render_to_text(20, 4)),
       "c\nd\ne\n\n",
       "clamped at the end"
     );
 
-    tui::trigger_mouse_scroll(1, 1, 0, -5);
+    testing::trigger_mouse_scroll(1, 1, 0, -5);
 
     assert_eq!(
-      rows(&tui::render_to_text(20, 4)),
+      rows(&testing::render_to_text(20, 4)),
       "a\nb\nc\n\n",
       "clamped at the start"
     );
 
-    tui::trigger_key("Tab");
+    testing::trigger_key("Tab");
 
     assert_eq!(
-      rows(&tui::render_to_text(20, 4)),
+      rows(&testing::render_to_text(20, 4)),
       "c\nd\ne\n\n",
       "focus reveals the caret at the end"
     );
-    assert_eq!(tui::render_to_caret(20, 4), Some((1, 2)));
+    assert_eq!(testing::render_to_caret(20, 4), Some((1, 2)));
 
-    tui::trigger_mouse_scroll(1, 1, 0, -5);
+    testing::trigger_mouse_scroll(1, 1, 0, -5);
 
-    assert_eq!(rows(&tui::render_to_text(20, 4)), "a\nb\nc\n\n");
+    assert_eq!(rows(&testing::render_to_text(20, 4)), "a\nb\nc\n\n");
     assert_eq!(
-      tui::render_to_caret(20, 4),
+      testing::render_to_caret(20, 4),
       None,
       "the caret hides while scrolled out"
     );
 
-    tui::trigger_key("x");
+    testing::trigger_key("x");
 
     assert_eq!(bio.get_untracked(), "a\nb\nc\nd\nex");
     assert_eq!(
-      rows(&tui::render_to_text(20, 4)),
+      rows(&testing::render_to_text(20, 4)),
       "c\nd\nex\n\n",
       "an edit reveals the caret"
     );
-    assert_eq!(tui::render_to_caret(20, 4), Some((2, 2)));
+    assert_eq!(testing::render_to_caret(20, 4), Some((2, 2)));
   });
 }
 
@@ -329,17 +329,17 @@ fn the_caret_reports_the_terminal_cursor_cell() {
         .build()
     });
 
-    assert_eq!(tui::render_to_caret(20, 4), None);
+    assert_eq!(testing::render_to_caret(20, 4), None);
 
-    tui::trigger_key("Tab");
+    testing::trigger_key("Tab");
 
-    assert_eq!(tui::render_to_caret(20, 4), Some((0, 0)));
+    assert_eq!(testing::render_to_caret(20, 4), Some((0, 0)));
 
-    tui::trigger_key("a");
-    tui::trigger_key("b");
+    testing::trigger_key("a");
+    testing::trigger_key("b");
 
     assert_eq!(
-      tui::render_to_caret(20, 4),
+      testing::render_to_caret(20, 4),
       Some((2, 0)),
       "the caret follows the typed value"
     );
@@ -347,7 +347,7 @@ fn the_caret_reports_the_terminal_cursor_cell() {
     open.set(true);
 
     assert_eq!(
-      tui::render_to_caret(20, 4),
+      testing::render_to_caret(20, 4),
       None,
       "a covering modal hides the cursor"
     );
@@ -373,7 +373,7 @@ fn an_overflowing_editor_shows_a_scrollbar_that_drags() {
         .build()
     });
 
-    let frame = tui::render_to_text(12, 5);
+    let frame = testing::render_to_text(12, 5);
     let bar: Vec<char> = frame
       .lines()
       .skip(1)
@@ -388,11 +388,11 @@ fn an_overflowing_editor_shows_a_scrollbar_that_drags() {
     );
     assert!(frame.contains("│a"), "the first row shows: {frame}");
 
-    tui::trigger_mouse_press(9, 1);
-    tui::trigger_mouse_drag(9, 3);
-    tui::trigger_mouse_release(9, 3);
+    testing::trigger_mouse_press(9, 1);
+    testing::trigger_mouse_drag(9, 3);
+    testing::trigger_mouse_release(9, 3);
 
-    let scrolled = tui::render_to_text(12, 5);
+    let scrolled = testing::render_to_text(12, 5);
 
     assert!(
       scrolled.contains("│d") && !scrolled.contains("│a"),
@@ -402,7 +402,7 @@ fn an_overflowing_editor_shows_a_scrollbar_that_drags() {
     bio.set("a\nb".to_owned());
 
     assert!(
-      !tui::render_to_text(12, 5).contains('█'),
+      !testing::render_to_text(12, 5).contains('█'),
       "a fitting value shows no scrollbar"
     );
   });
@@ -422,28 +422,32 @@ fn the_horizontal_wheel_scrolls_a_field() {
         .build()
     });
 
-    assert_eq!(tui::render_to_text(8, 1), "abcdefgh\n");
+    assert_eq!(testing::render_to_text(8, 1), "abcdefgh\n");
 
-    tui::trigger_mouse_scroll(2, 0, 3, 0);
+    testing::trigger_mouse_scroll(2, 0, 3, 0);
 
-    assert_eq!(tui::render_to_text(8, 1), "defghijk\n");
+    assert_eq!(testing::render_to_text(8, 1), "defghijk\n");
 
-    tui::trigger_mouse_scroll(2, 0, 30, 0);
-
-    assert_eq!(tui::render_to_text(8, 1), "jklmnop\n", "clamped at the end");
-
-    tui::trigger_mouse_scroll(2, 0, 0, 3);
+    testing::trigger_mouse_scroll(2, 0, 30, 0);
 
     assert_eq!(
-      tui::render_to_text(8, 1),
+      testing::render_to_text(8, 1),
+      "jklmnop\n",
+      "clamped at the end"
+    );
+
+    testing::trigger_mouse_scroll(2, 0, 0, 3);
+
+    assert_eq!(
+      testing::render_to_text(8, 1),
       "jklmnop\n",
       "the vertical wheel passes"
     );
 
-    tui::trigger_mouse_scroll(2, 0, -30, 0);
+    testing::trigger_mouse_scroll(2, 0, -30, 0);
 
     assert_eq!(
-      tui::render_to_text(8, 1),
+      testing::render_to_text(8, 1),
       "abcdefgh\n",
       "clamped at the start"
     );
@@ -464,25 +468,25 @@ fn undo_and_redo_step_through_edits() {
         .into_any()
         .build()
     });
-    let _ = tui::render_to_text(20, 1);
+    let _ = testing::render_to_text(20, 1);
 
-    tui::trigger_key("Tab");
-    tui::trigger_key("Ctrl+z");
+    testing::trigger_key("Tab");
+    testing::trigger_key("Ctrl+z");
 
     assert_eq!(name.get_untracked(), "x", "the initial value is no step");
 
-    tui::trigger_key("Backspace");
+    testing::trigger_key("Backspace");
 
     for key in ["a", "b", "c"] {
-      tui::trigger_key(key);
+      testing::trigger_key(key);
     }
 
-    tui::trigger_key("ArrowLeft");
-    tui::trigger_key("d");
+    testing::trigger_key("ArrowLeft");
+    testing::trigger_key("d");
 
     assert_eq!(name.get_untracked(), "abdc");
 
-    tui::trigger_key("Ctrl+Z");
+    testing::trigger_key("Ctrl+Z");
 
     assert_eq!(
       name.get_untracked(),
@@ -490,8 +494,8 @@ fn undo_and_redo_step_through_edits() {
       "the character after the move undoes alone, Caps Lock or not"
     );
 
-    tui::trigger_key("Ctrl+y");
-    tui::trigger_key("Ctrl+z");
+    testing::trigger_key("Ctrl+y");
+    testing::trigger_key("Ctrl+z");
 
     assert_eq!(
       name.get_untracked(),
@@ -499,35 +503,35 @@ fn undo_and_redo_step_through_edits() {
       "the character after the move undoes alone"
     );
 
-    tui::trigger_key("Ctrl+z");
+    testing::trigger_key("Ctrl+z");
 
     assert_eq!(name.get_untracked(), "", "the typed run undoes as one");
 
-    tui::trigger_key("Ctrl+z");
+    testing::trigger_key("Ctrl+z");
 
     assert_eq!(name.get_untracked(), "x", "the removal undoes");
 
-    tui::trigger_key("Ctrl+z");
+    testing::trigger_key("Ctrl+z");
 
     assert_eq!(name.get_untracked(), "x", "nothing further to undo");
 
-    tui::trigger_key("Ctrl+Shift+z");
-    tui::trigger_key("Ctrl+Shift+Z");
+    testing::trigger_key("Ctrl+Shift+z");
+    testing::trigger_key("Ctrl+Shift+Z");
 
     assert_eq!(name.get_untracked(), "abc");
 
-    tui::trigger_key("Ctrl+y");
+    testing::trigger_key("Ctrl+y");
 
     assert_eq!(name.get_untracked(), "abdc");
-    assert!(tui::render_to_text(20, 1).starts_with("abdc"));
+    assert!(testing::render_to_text(20, 1).starts_with("abdc"));
 
-    tui::trigger_key("End");
-    tui::trigger_key("Backspace");
-    tui::trigger_key("Backspace");
+    testing::trigger_key("End");
+    testing::trigger_key("Backspace");
+    testing::trigger_key("Backspace");
 
     assert_eq!(name.get_untracked(), "ab");
 
-    tui::trigger_key("Ctrl+z");
+    testing::trigger_key("Ctrl+z");
 
     assert_eq!(
       name.get_untracked(),
@@ -535,11 +539,11 @@ fn undo_and_redo_step_through_edits() {
       "the removed run undoes as one"
     );
 
-    tui::trigger_key("x");
+    testing::trigger_key("x");
 
     assert_eq!(name.get_untracked(), "abdcx");
 
-    tui::trigger_key("Ctrl+y");
+    testing::trigger_key("Ctrl+y");
 
     assert_eq!(
       name.get_untracked(),
@@ -549,9 +553,9 @@ fn undo_and_redo_step_through_edits() {
 
     name.set("set".to_owned());
 
-    assert!(tui::render_to_text(20, 1).starts_with("set"));
+    assert!(testing::render_to_text(20, 1).starts_with("set"));
 
-    tui::trigger_key("Ctrl+z");
+    testing::trigger_key("Ctrl+z");
 
     assert_eq!(
       name.get_untracked(),
@@ -559,7 +563,7 @@ fn undo_and_redo_step_through_edits() {
       "a value from outside is a step of its own"
     );
 
-    tui::trigger_key("Ctrl+y");
+    testing::trigger_key("Ctrl+y");
 
     assert_eq!(name.get_untracked(), "set");
   });
@@ -583,7 +587,7 @@ fn an_editor_shows_its_laid_out_rows_and_sizes_by_its_longest_line() {
     });
 
     assert_eq!(
-      rows(&tui::render_to_text(20, 3)),
+      rows(&testing::render_to_text(20, 3)),
       "alpha       |\nbe\ngamma delta\n"
     );
   });
@@ -607,15 +611,15 @@ fn line_breaks_arrive_as_line_feeds_in_an_editor_and_drop_in_a_field() {
         .build()
     });
 
-    assert_eq!(rows(&tui::render_to_text(20, 5)), "a\nb\nc\n\nxy\n");
+    assert_eq!(rows(&testing::render_to_text(20, 5)), "a\nb\nc\n\nxy\n");
 
-    tui::trigger_key("Tab");
-    tui::trigger_paste("1\r\n2\r3");
+    testing::trigger_key("Tab");
+    testing::trigger_paste("1\r\n2\r3");
 
     assert_eq!(bio.get_untracked(), "a\nb\nc1\n2\n3");
 
-    tui::trigger_key("Tab");
-    tui::trigger_paste("4\r\n5");
+    testing::trigger_key("Tab");
+    testing::trigger_paste("4\r\n5");
 
     assert_eq!(name.get_untracked(), "45");
   });
@@ -636,32 +640,32 @@ fn an_editors_keys_follow_its_rows_and_keep_their_column() {
         .into_any()
         .build()
     });
-    let _ = tui::render_to_text(8, 3);
+    let _ = testing::render_to_text(8, 3);
 
-    tui::trigger_key("Tab");
-    tui::trigger_key("Home");
-    tui::trigger_key("X");
+    testing::trigger_key("Tab");
+    testing::trigger_key("Home");
+    testing::trigger_key("X");
 
     assert_eq!(bio.get_untracked(), "abcdef Xghij", "the row's start");
 
-    tui::trigger_key("ArrowUp");
-    tui::trigger_key("End");
-    tui::trigger_key("Y");
+    testing::trigger_key("ArrowUp");
+    testing::trigger_key("End");
+    testing::trigger_key("Y");
 
     assert_eq!(bio.get_untracked(), "abcdefY Xghij", "the row's end");
 
-    tui::trigger_key("Ctrl+End");
-    tui::trigger_key("Z");
-    tui::trigger_key("Ctrl+Home");
-    tui::trigger_key("W");
+    testing::trigger_key("Ctrl+End");
+    testing::trigger_key("Z");
+    testing::trigger_key("Ctrl+Home");
+    testing::trigger_key("W");
 
     assert_eq!(bio.get_untracked(), "WabcdefY XghijZ", "the value's ends");
 
     bio.set("abcdef\nab\nabcdef".to_owned());
-    tui::trigger_key("Ctrl+End");
-    tui::trigger_key("ArrowUp");
-    tui::trigger_key("ArrowUp");
-    tui::trigger_key("V");
+    testing::trigger_key("Ctrl+End");
+    testing::trigger_key("ArrowUp");
+    testing::trigger_key("ArrowUp");
+    testing::trigger_key("V");
 
     assert_eq!(
       bio.get_untracked(),
@@ -670,14 +674,14 @@ fn an_editors_keys_follow_its_rows_and_keep_their_column() {
     );
 
     bio.set("\u{65e5}\u{672c}\u{8a9e}\nabcdef".to_owned());
-    tui::trigger_key("Ctrl+End");
+    testing::trigger_key("Ctrl+End");
 
     for _ in 0..3 {
-      tui::trigger_key("ArrowLeft");
+      testing::trigger_key("ArrowLeft");
     }
 
-    tui::trigger_key("ArrowUp");
-    tui::trigger_key("U");
+    testing::trigger_key("ArrowUp");
+    testing::trigger_key("U");
 
     assert_eq!(
       bio.get_untracked(),
@@ -685,11 +689,11 @@ fn an_editors_keys_follow_its_rows_and_keep_their_column() {
       "a column inside a wide cluster goes past it"
     );
 
-    tui::trigger_key("ArrowUp");
-    tui::trigger_key("T");
-    tui::trigger_key("ArrowDown");
-    tui::trigger_key("ArrowDown");
-    tui::trigger_key("S");
+    testing::trigger_key("ArrowUp");
+    testing::trigger_key("T");
+    testing::trigger_key("ArrowDown");
+    testing::trigger_key("ArrowDown");
+    testing::trigger_key("S");
 
     assert_eq!(
       bio.get_untracked(),
@@ -719,7 +723,7 @@ fn an_entry_takes_the_typography_ink_and_weight() {
     });
 
     assert_eq!(colors_at(10, 2, 0, 0).0, Some(rgb(red())));
-    assert!(tui::render_to_bold(10, 2)[0]);
+    assert!(testing::render_to_bold(10, 2)[0]);
     assert_eq!(colors_at(10, 2, 0, 1).0, Some((128, 0, 0)));
   });
 }
@@ -737,24 +741,24 @@ fn a_read_only_entry_takes_no_edits() {
         .into_any()
         .build()
     });
-    let _ = tui::render_to_text(10, 1);
+    let _ = testing::render_to_text(10, 1);
 
-    tui::trigger_key("Tab");
+    testing::trigger_key("Tab");
 
     for key in ["x", "Backspace", "Delete", "Ctrl+x", "Ctrl+z"] {
-      tui::trigger_key(key);
+      testing::trigger_key(key);
     }
 
-    tui::trigger_paste("zz");
+    testing::trigger_paste("zz");
 
     assert_eq!(value.get_untracked(), "abc");
 
-    tui::trigger_key("ArrowLeft");
-    tui::trigger_key("Shift+End");
-    tui::trigger_key("x");
+    testing::trigger_key("ArrowLeft");
+    testing::trigger_key("Shift+End");
+    testing::trigger_key("x");
 
     assert_eq!(value.get_untracked(), "abc");
-    assert_eq!(tui::render_to_caret(10, 1), Some((3, 0)));
+    assert_eq!(testing::render_to_caret(10, 1), Some((3, 0)));
   });
 }
 
@@ -778,11 +782,11 @@ fn a_tab_in_an_entry_reaches_its_stop() {
         .build()
     });
 
-    assert_eq!(tui::render_to_text(20, 3), "a       b\na       b\nc\n");
+    assert_eq!(testing::render_to_text(20, 3), "a       b\na       b\nc\n");
 
-    tui::trigger_key("Tab");
-    tui::trigger_key("End");
+    testing::trigger_key("Tab");
+    testing::trigger_key("End");
 
-    assert_eq!(tui::render_to_caret(20, 3), Some((9, 0)));
+    assert_eq!(testing::render_to_caret(20, 3), Some((9, 0)));
   });
 }

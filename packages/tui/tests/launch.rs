@@ -5,7 +5,7 @@
 
 mod common;
 
-use skene_tui::{self as tui, Activate, Label, TextEntry, prelude::*};
+use skene_tui::{self as tui, Activate, Label, TextEntry, prelude::*, testing};
 
 use crate::common::{blue, colors_at, red, rgb, white, with_launch};
 
@@ -34,9 +34,9 @@ fn mount_document(value: Signal<String>) {
     .into_any()
     .build()
   });
-  let _ = tui::render_to_text(20, 4);
+  let _ = testing::render_to_text(20, 4);
 
-  tui::trigger_key("Tab");
+  testing::trigger_key("Tab");
 }
 
 /// A terminal whose clipboard answers offers every operation whatever the launch
@@ -46,25 +46,28 @@ fn an_answering_clipboard_offers_every_operation() {
   with_launch(tui::Launch::new().set_clipboard(Clipboard::NONE), || {
     let value = Signal::new(String::from("value"));
 
-    tui::trigger_answering_clipboard(true);
+    testing::trigger_answering_clipboard(true);
     mount_document(value);
-    tui::trigger_key("Ctrl+c");
+    testing::trigger_key("Ctrl+c");
 
-    assert_eq!(tui::take_copied().as_deref(), Some("value"));
+    assert_eq!(testing::take_copied().as_deref(), Some("value"));
 
-    tui::trigger_key("Ctrl+v");
+    testing::trigger_key("Ctrl+v");
 
-    assert!(tui::take_paste_requested(), "Ctrl+V reads the clipboard");
+    assert!(
+      testing::take_paste_requested(),
+      "Ctrl+V reads the clipboard"
+    );
 
-    tui::trigger_key("Ctrl+x");
+    testing::trigger_key("Ctrl+x");
 
     assert_eq!(value.get_untracked(), "", "Ctrl+X cuts");
 
-    tui::trigger_mouse_press(0, 0);
-    tui::trigger_mouse_drag(4, 0);
-    tui::trigger_mouse_release(4, 0);
+    testing::trigger_mouse_press(0, 0);
+    testing::trigger_mouse_drag(4, 0);
+    testing::trigger_mouse_release(4, 0);
 
-    let colors = tui::render_to_colors(20, 4);
+    let colors = testing::render_to_colors(20, 4);
 
     assert!(
       colors[..4]
@@ -84,7 +87,7 @@ fn no_clipboard_offers_no_selection_menu_or_key() {
 
     mount_document(value);
 
-    let colors = tui::render_to_colors(20, 4);
+    let colors = testing::render_to_colors(20, 4);
 
     assert_eq!(
       colors[20],
@@ -92,26 +95,26 @@ fn no_clipboard_offers_no_selection_menu_or_key() {
       "keyboard focus still selects the field's value"
     );
 
-    tui::trigger_key("Ctrl+c");
+    testing::trigger_key("Ctrl+c");
 
-    assert_eq!(tui::take_copied(), None, "Ctrl+C copies nothing");
+    assert_eq!(testing::take_copied(), None, "Ctrl+C copies nothing");
 
-    tui::trigger_key("Ctrl+x");
+    testing::trigger_key("Ctrl+x");
 
     assert_eq!(value.get_untracked(), "value", "Ctrl+X cuts nothing");
 
-    tui::trigger_key("Ctrl+v");
+    testing::trigger_key("Ctrl+v");
 
-    assert!(!tui::take_paste_requested(), "Ctrl+V reads nothing");
+    assert!(!testing::take_paste_requested(), "Ctrl+V reads nothing");
 
-    tui::trigger_mouse_right_click(2, 1);
+    testing::trigger_mouse_right_click(2, 1);
 
     assert!(
-      !tui::render_to_text(40, 6).contains("Paste"),
+      !testing::render_to_text(40, 6).contains("Paste"),
       "no edit menu opens"
     );
 
-    tui::trigger_paste("x");
+    testing::trigger_paste("x");
 
     assert_eq!(
       value.get_untracked(),
@@ -119,15 +122,19 @@ fn no_clipboard_offers_no_selection_menu_or_key() {
       "the terminal's own paste inserts"
     );
 
-    tui::trigger_mouse_move(2, 0);
+    testing::trigger_mouse_move(2, 0);
 
-    assert_eq!(tui::current_cursor(), None, "the run shows no text cursor");
+    assert_eq!(
+      testing::mouse_cursor(),
+      None,
+      "the run shows no text cursor"
+    );
 
-    tui::trigger_mouse_press(0, 0);
-    tui::trigger_mouse_drag(4, 0);
-    tui::trigger_mouse_release(4, 0);
+    testing::trigger_mouse_press(0, 0);
+    testing::trigger_mouse_drag(4, 0);
+    testing::trigger_mouse_release(4, 0);
 
-    let colors = tui::render_to_colors(20, 4);
+    let colors = testing::render_to_colors(20, 4);
 
     assert!(
       colors[..10]
@@ -135,13 +142,13 @@ fn no_clipboard_offers_no_selection_menu_or_key() {
         .all(|(_, background)| background.is_none()),
       "a drag over the run selects nothing: {:?}\n{}",
       &colors[..10],
-      tui::render_to_text(20, 4)
+      testing::render_to_text(20, 4)
     );
 
-    tui::trigger_mouse_right_click(2, 0);
+    testing::trigger_mouse_right_click(2, 0);
 
     assert!(
-      !tui::render_to_text(40, 6).contains("Copy"),
+      !testing::render_to_text(40, 6).contains("Copy"),
       "no copy menu opens"
     );
   });
@@ -155,27 +162,27 @@ fn copy_alone_offers_cut_and_copy() {
     let value = Signal::new(String::from("value"));
 
     mount_document(value);
-    tui::trigger_key("Ctrl+c");
+    testing::trigger_key("Ctrl+c");
 
-    assert_eq!(tui::take_copied().as_deref(), Some("value"));
+    assert_eq!(testing::take_copied().as_deref(), Some("value"));
 
-    tui::trigger_key("Ctrl+v");
+    testing::trigger_key("Ctrl+v");
 
-    assert!(!tui::take_paste_requested(), "Ctrl+V reads nothing");
+    assert!(!testing::take_paste_requested(), "Ctrl+V reads nothing");
 
-    tui::trigger_mouse_right_click(2, 1);
+    testing::trigger_mouse_right_click(2, 1);
 
-    let menu = tui::render_to_text(40, 6);
+    let menu = testing::render_to_text(40, 6);
 
     assert!(
       menu.contains("Cut") && menu.contains("Copy") && !menu.contains("Paste"),
       "the edit menu lists Cut and Copy alone: {menu}"
     );
 
-    tui::trigger_key("Escape");
-    tui::trigger_key("Ctrl+x");
+    testing::trigger_key("Escape");
+    testing::trigger_key("Ctrl+x");
 
-    assert_eq!(tui::take_copied().as_deref(), Some("value"));
+    assert_eq!(testing::take_copied().as_deref(), Some("value"));
     assert_eq!(value.get_untracked(), "", "Ctrl+X cut the value");
   });
 }
@@ -188,29 +195,29 @@ fn paste_alone_offers_paste() {
     let value = Signal::new(String::from("value"));
 
     mount_document(value);
-    tui::trigger_key("Ctrl+c");
+    testing::trigger_key("Ctrl+c");
 
-    assert_eq!(tui::take_copied(), None, "Ctrl+C copies nothing");
+    assert_eq!(testing::take_copied(), None, "Ctrl+C copies nothing");
 
-    tui::trigger_key("Ctrl+x");
+    testing::trigger_key("Ctrl+x");
 
     assert_eq!(value.get_untracked(), "value", "Ctrl+X cuts nothing");
 
-    tui::trigger_mouse_right_click(2, 1);
+    testing::trigger_mouse_right_click(2, 1);
 
-    let menu = tui::render_to_text(40, 6);
+    let menu = testing::render_to_text(40, 6);
 
     assert!(
       menu.contains("Paste") && !menu.contains("Cut") && !menu.contains("Copy"),
       "the edit menu lists Paste alone: {menu}"
     );
 
-    tui::trigger_key("Escape");
-    tui::trigger_key("Ctrl+v");
+    testing::trigger_key("Escape");
+    testing::trigger_key("Ctrl+v");
 
-    assert!(tui::take_paste_requested(), "Ctrl+V staged a read");
+    assert!(testing::take_paste_requested(), "Ctrl+V staged a read");
 
-    tui::trigger_clipboard_reply("pasted");
+    testing::trigger_clipboard_reply("pasted");
 
     assert_eq!(value.get_untracked(), "pasted");
   });
@@ -229,18 +236,18 @@ fn mouse_off_ignores_every_mouse_event() {
         .into_any()
         .build()
     });
-    let _ = tui::render_to_text(20, 4);
+    let _ = testing::render_to_text(20, 4);
 
-    tui::trigger_mouse_move(1, 0);
+    testing::trigger_mouse_move(1, 0);
 
-    assert_eq!(tui::current_cursor(), None);
+    assert_eq!(testing::mouse_cursor(), None);
 
-    tui::trigger_mouse_click(1, 0);
+    testing::trigger_mouse_click(1, 0);
 
     assert_eq!(clicks.get_untracked(), 0, "a click clicks nothing");
 
-    tui::trigger_key("Tab");
-    tui::trigger_key("Enter");
+    testing::trigger_key("Tab");
+    testing::trigger_key("Enter");
 
     assert_eq!(clicks.get_untracked(), 1, "the keyboard still clicks");
   });
@@ -257,7 +264,7 @@ fn mount_button() -> Signal<u32> {
       .into_any()
       .build()
   });
-  let _ = tui::render_to_text(20, 2);
+  let _ = testing::render_to_text(20, 2);
 
   clicks
 }
@@ -270,33 +277,33 @@ fn the_mouse_key_releases_the_mouse_and_any_key_takes_it_back() {
   with_launch(tui::Launch::new(), || {
     let clicks = mount_button();
 
-    tui::trigger_mouse_move(2, 0);
+    testing::trigger_mouse_move(2, 0);
 
-    assert_eq!(tui::current_cursor(), Some(MouseCursor::Click));
+    assert_eq!(testing::mouse_cursor(), Some(MouseCursor::Click));
 
-    tui::trigger_key("Alt+m");
+    testing::trigger_key("Alt+m");
 
-    assert_eq!(tui::current_cursor(), None, "the hover path empties");
+    assert_eq!(testing::mouse_cursor(), None, "the hover path empties");
 
-    tui::trigger_mouse_move(2, 0);
-    tui::trigger_mouse_click(2, 0);
+    testing::trigger_mouse_move(2, 0);
+    testing::trigger_mouse_click(2, 0);
 
-    assert_eq!(tui::current_cursor(), None);
+    assert_eq!(testing::mouse_cursor(), None);
     assert_eq!(clicks.get_untracked(), 0, "the click never reaches the app");
 
-    tui::trigger_key("Alt+M");
-    tui::trigger_mouse_click(2, 0);
+    testing::trigger_key("Alt+M");
+    testing::trigger_mouse_click(2, 0);
 
     assert_eq!(
       clicks.get_untracked(),
       1,
       "the key, in either case, takes the mouse back"
     );
-    assert_eq!(tui::current_cursor(), Some(MouseCursor::Click));
+    assert_eq!(testing::mouse_cursor(), Some(MouseCursor::Click));
 
-    tui::trigger_key("Alt+m");
-    tui::trigger_key("Tab");
-    tui::trigger_mouse_click(2, 0);
+    testing::trigger_key("Alt+m");
+    testing::trigger_key("Tab");
+    testing::trigger_mouse_click(2, 0);
 
     assert_eq!(clicks.get_untracked(), 2, "any key takes the mouse back");
   });
@@ -322,11 +329,11 @@ fn the_mouse_key_cancels_a_press_in_progress() {
 
     assert_eq!(color(), Some(rgb(red())));
 
-    tui::trigger_mouse_press(1, 0);
+    testing::trigger_mouse_press(1, 0);
 
     assert_eq!(color(), Some(rgb(blue())));
 
-    tui::trigger_key("Alt+m");
+    testing::trigger_key("Alt+m");
 
     assert_eq!(cancels.get_untracked(), 1);
     assert_eq!(color(), Some(rgb(red())), "the press is over");
@@ -342,8 +349,8 @@ fn the_mouse_key_is_the_launches_choice() {
     || {
       let clicks = mount_button();
 
-      tui::trigger_key("Alt+m");
-      tui::trigger_mouse_click(2, 0);
+      testing::trigger_key("Alt+m");
+      testing::trigger_mouse_click(2, 0);
 
       assert_eq!(
         clicks.get_untracked(),
@@ -351,8 +358,8 @@ fn the_mouse_key_is_the_launches_choice() {
         "the default key is an ordinary key"
       );
 
-      tui::trigger_key("F9");
-      tui::trigger_mouse_click(2, 0);
+      testing::trigger_key("F9");
+      testing::trigger_mouse_click(2, 0);
 
       assert_eq!(
         clicks.get_untracked(),
@@ -365,8 +372,8 @@ fn the_mouse_key_is_the_launches_choice() {
   with_launch(tui::Launch::new().set_mouse_key(None), || {
     let clicks = mount_button();
 
-    tui::trigger_key("Alt+m");
-    tui::trigger_mouse_click(2, 0);
+    testing::trigger_key("Alt+m");
+    testing::trigger_mouse_click(2, 0);
 
     assert_eq!(clicks.get_untracked(), 1, "no key releases the mouse");
   });
@@ -374,9 +381,9 @@ fn the_mouse_key_is_the_launches_choice() {
   with_launch(tui::Launch::new().set_mouse(false), || {
     let clicks = mount_button();
 
-    tui::trigger_key("Alt+m");
-    tui::trigger_key("Alt+m");
-    tui::trigger_mouse_click(2, 0);
+    testing::trigger_key("Alt+m");
+    testing::trigger_key("Alt+m");
+    testing::trigger_mouse_click(2, 0);
 
     assert_eq!(clicks.get_untracked(), 0, "the mouse stays the terminal's");
   });
@@ -397,13 +404,13 @@ fn shortcuts_act_by_the_physical_key_under_any_layout() {
       ..tui::KeyEvent::new(key)
     };
 
-    tui::trigger_key_event(&cyrillic("\u{441}", tui::Code::KeyC));
+    testing::trigger_key_event(&cyrillic("\u{441}", tui::Code::KeyC));
 
-    assert_eq!(tui::take_copied().as_deref(), Some("value"));
-    assert!(!tui::quit_requested());
+    assert_eq!(testing::take_copied().as_deref(), Some("value"));
+    assert!(!testing::is_quit_requested());
 
-    tui::trigger_key("Ctrl+Q");
+    testing::trigger_key("Ctrl+Q");
 
-    assert!(tui::quit_requested());
+    assert!(testing::is_quit_requested());
   });
 }

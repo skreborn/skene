@@ -53,7 +53,7 @@ skene-gui        the GUI facade: f32, ActivePlatform (the web on wasm32, the hea
                  Resource across the server boundary, Deferred, Lazy, Link, head,
                  view_transitions, launch and the server entries, #[main]
 skene-tui        the terminal facade, EQUAL in standing: u32 cells, Tui, the same
-                 aliases, Typography, BorderGlyphs, media::*, launch, render_to_text
+                 aliases, Typography, BorderGlyphs, media::*, launch, testing
 skene-simple     the Simple design language over skene-common, generic over P: the palette
                  (a TokenSet), the looks, the shape per unit, the terminal marks
                  (SimpleGlyphs) and the Simple* views; an app's explicit dependency;
@@ -192,7 +192,7 @@ functions in the platform crate, since it is not a shared contract.
   over wgpu where the page has WebGPU, one device shared by every painted box with a
   surface per canvas, asked for afresh when lost, and through vello's CPU renderer
   otherwise, in a fresh canvas where a canvas's GPU path failed; the headless platform renders it to pixels
-  a test reads (`headless::paint`); the server leaf renders it empty; the terminal
+  a test reads (`headless::render_to_pixels`); the server leaf renders it empty; the terminal
   renders it on the CPU and shows it through the kitty graphics protocol where the
   terminal proved one, its fallback standing elsewhere. The native layers sit behind
   the same `Canvas`. `Painted`, `Canvas` and `Painting` live in `skene-common`, since
@@ -1013,8 +1013,8 @@ text as a placeholder of its width, painted and hit at the cells it flowed into.
 edge whose border width is zero takes no cells and draws none, and a border whose color
 is unset draws in the terminal's own ink, as CSS's `currentColor` does. Frames paint into a cell buffer—to the terminal
 through `launch`, or to plain text
-through `render_to_text` for headless tests (`trigger_key`/`trigger_mouse_move`/
-`trigger_mouse_click`/`trigger_frame` drive it without a terminal). Terminal detection is
+through `testing::render_to_text` for headless tests (`trigger_key`/`trigger_mouse_move`/
+`trigger_mouse_click`/`trigger_frame` in `testing` drive it without a terminal). Terminal detection is
 asynchronous; the loop starts immediately and the answers arrive as signal writes. The
 dev loop carries the snapshot across a swap through the launcher's control pipe. Terminal
 apps never cross-compile into the GUI family; the write-once promise belongs to

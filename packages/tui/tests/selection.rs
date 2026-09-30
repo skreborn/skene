@@ -5,7 +5,7 @@
 
 mod common;
 
-use skene_tui::{self as tui, Activate, Label, prelude::*};
+use skene_tui::{self as tui, Activate, Label, prelude::*, testing};
 
 use crate::common::{green, red, rgb, white, with_platform};
 
@@ -43,13 +43,13 @@ fn drag_selects_and_copies_the_source_flow() {
         .set_child(Text::new("alpha beta gamma").set_selectable(true))
         .into_any()
     });
-    let _ = tui::render_to_text(20, 6);
+    let _ = testing::render_to_text(20, 6);
 
-    tui::trigger_mouse_press(1, 0);
-    tui::trigger_mouse_drag(2, 1);
-    tui::trigger_mouse_release(2, 1);
+    testing::trigger_mouse_press(1, 0);
+    testing::trigger_mouse_drag(2, 1);
+    testing::trigger_mouse_release(2, 1);
 
-    let colors = tui::render_to_colors(20, 6);
+    let colors = testing::render_to_colors(20, 6);
 
     assert_eq!(colors[1], (Some(rgb(white())), Some(rgb(highlight()))));
     assert_eq!(colors[0].1, None);
@@ -60,15 +60,15 @@ fn drag_selects_and_copies_the_source_flow() {
     );
     assert_eq!(colors[20 + 2].1, None, "the focus is exclusive");
 
-    tui::trigger_mouse_right_click(2, 1);
+    testing::trigger_mouse_right_click(2, 1);
 
-    let menu = tui::render_to_text(20, 6);
+    let menu = testing::render_to_text(20, 6);
 
     assert!(menu.contains("Copy"), "the menu opened: {menu}");
 
-    tui::trigger_mouse_click(4, 2);
+    testing::trigger_mouse_click(4, 2);
 
-    assert_eq!(tui::take_copied().as_deref(), Some("lpha be"));
+    assert_eq!(testing::take_copied().as_deref(), Some("lpha be"));
   });
 }
 
@@ -78,19 +78,19 @@ fn double_and_triple_click_select_word_and_run() {
   let select = |clicks: usize| {
     with_platform(|| {
       mount_themed(|| Text::new("alpha beta").set_selectable(true).into_any());
-      let _ = tui::render_to_text(20, 4);
+      let _ = testing::render_to_text(20, 4);
 
       for _ in 0..clicks {
-        tui::trigger_mouse_click(7, 0);
+        testing::trigger_mouse_click(7, 0);
       }
 
-      tui::trigger_mouse_right_click(0, 0);
+      testing::trigger_mouse_right_click(0, 0);
 
-      let _ = tui::render_to_text(20, 4);
+      let _ = testing::render_to_text(20, 4);
 
-      tui::trigger_mouse_click(2, 1);
+      testing::trigger_mouse_click(2, 1);
 
-      tui::take_copied()
+      testing::take_copied()
     })
   };
 
@@ -111,18 +111,18 @@ fn selection_spans_runs_in_document_order() {
         ))
         .into_any()
     });
-    let _ = tui::render_to_text(40, 8);
+    let _ = testing::render_to_text(40, 8);
 
-    tui::trigger_mouse_press(2, 0);
-    tui::trigger_mouse_drag(30, 3);
-    tui::trigger_mouse_release(30, 3);
-    tui::trigger_mouse_right_click(3, 3);
+    testing::trigger_mouse_press(2, 0);
+    testing::trigger_mouse_drag(30, 3);
+    testing::trigger_mouse_release(30, 3);
+    testing::trigger_mouse_right_click(3, 3);
 
-    let _ = tui::render_to_text(40, 8);
+    let _ = testing::render_to_text(40, 8);
 
-    tui::trigger_mouse_click(5, 4);
+    testing::trigger_mouse_click(5, 4);
 
-    assert_eq!(tui::take_copied().as_deref(), Some("rst\nsecond"));
+    assert_eq!(testing::take_copied().as_deref(), Some("rst\nsecond"));
   });
 }
 
@@ -141,32 +141,32 @@ fn control_chrome_and_opted_out_runs_do_not_select() {
         ))
         .into_any()
     });
-    let _ = tui::render_to_text(20, 4);
+    let _ = testing::render_to_text(20, 4);
 
-    tui::trigger_mouse_press(1, 0);
-    tui::trigger_mouse_drag(6, 0);
-    tui::trigger_mouse_release(6, 0);
-    tui::trigger_mouse_right_click(1, 0);
+    testing::trigger_mouse_press(1, 0);
+    testing::trigger_mouse_drag(6, 0);
+    testing::trigger_mouse_release(6, 0);
+    testing::trigger_mouse_right_click(1, 0);
 
-    let button_menu = tui::render_to_text(20, 4);
+    let button_menu = testing::render_to_text(20, 4);
 
     assert!(
       !button_menu.contains("Copy"),
       "no menu over a label: {button_menu}"
     );
 
-    tui::trigger_mouse_press(1, 1);
-    tui::trigger_mouse_drag(4, 1);
-    tui::trigger_mouse_release(4, 1);
-    tui::trigger_mouse_right_click(1, 1);
+    testing::trigger_mouse_press(1, 1);
+    testing::trigger_mouse_drag(4, 1);
+    testing::trigger_mouse_release(4, 1);
+    testing::trigger_mouse_right_click(1, 1);
 
-    let plain_menu = tui::render_to_text(20, 4);
+    let plain_menu = testing::render_to_text(20, 4);
 
     assert!(
       !plain_menu.contains("Copy"),
       "no menu over an opt-out: {plain_menu}"
     );
-    assert_eq!(tui::take_copied(), None);
+    assert_eq!(testing::take_copied(), None);
   });
 }
 
@@ -185,23 +185,23 @@ fn typography_sets_selection_colors() {
         ))
         .into_any()
     });
-    let _ = tui::render_to_text(20, 4);
+    let _ = testing::render_to_text(20, 4);
 
     for _ in 0..3 {
-      tui::trigger_mouse_click(0, 0);
+      testing::trigger_mouse_click(0, 0);
     }
 
     assert_eq!(
-      tui::render_to_colors(20, 4)[0],
+      testing::render_to_colors(20, 4)[0],
       (Some(rgb(white())), Some(rgb(highlight())))
     );
 
     for _ in 0..3 {
-      tui::trigger_mouse_click(0, 1);
+      testing::trigger_mouse_click(0, 1);
     }
 
     assert_eq!(
-      tui::render_to_colors(20, 4)[20],
+      testing::render_to_colors(20, 4)[20],
       (Some(rgb(white())), Some(rgb(green())))
     );
   });
@@ -213,29 +213,29 @@ fn typography_sets_selection_colors() {
 fn escape_closes_the_menu_then_clears_the_selection() {
   with_platform(|| {
     mount_themed(|| Text::new("alpha beta").set_selectable(true).into_any());
-    let _ = tui::render_to_text(20, 4);
+    let _ = testing::render_to_text(20, 4);
 
-    tui::trigger_mouse_click(2, 0);
-    tui::trigger_mouse_click(2, 0);
-    tui::trigger_mouse_right_click(0, 0);
+    testing::trigger_mouse_click(2, 0);
+    testing::trigger_mouse_click(2, 0);
+    testing::trigger_mouse_right_click(0, 0);
 
-    assert!(tui::render_to_text(20, 4).contains("Copy"));
+    assert!(testing::render_to_text(20, 4).contains("Copy"));
 
-    tui::trigger_key("Escape");
+    testing::trigger_key("Escape");
 
-    let kept = tui::render_to_colors(20, 4);
+    let kept = testing::render_to_colors(20, 4);
 
-    assert!(!tui::render_to_text(20, 4).contains("Copy"));
+    assert!(!testing::render_to_text(20, 4).contains("Copy"));
     assert_eq!(
       kept[2].1,
       Some(rgb(highlight())),
       "the selection survives the menu"
     );
 
-    tui::trigger_key("Escape");
+    testing::trigger_key("Escape");
 
     assert_eq!(
-      tui::render_to_colors(20, 4)[2].1,
+      testing::render_to_colors(20, 4)[2].1,
       None,
       "the second Escape clears it"
     );
@@ -260,8 +260,8 @@ fn rich_text_flows_wraps_and_selects_as_one_paragraph() {
         .into_any()
     });
 
-    let frame = tui::render_to_text(14, 4);
-    let colors = tui::render_to_colors(14, 4);
+    let frame = testing::render_to_text(14, 4);
+    let colors = testing::render_to_colors(14, 4);
 
     assert_eq!(frame, "plain red\nand docs\n\n\n");
     assert_eq!(colors[6].0, Some(rgb(red())), "the red span keeps its ink");
@@ -285,17 +285,20 @@ fn rich_text_flows_wraps_and_selects_as_one_paragraph() {
         ]))
         .into_any()
     });
-    let _ = tui::render_to_text(14, 4);
+    let _ = testing::render_to_text(14, 4);
 
-    tui::trigger_mouse_press(0, 0);
-    tui::trigger_mouse_drag(8, 1);
-    tui::trigger_mouse_release(8, 1);
-    tui::trigger_mouse_right_click(0, 1);
+    testing::trigger_mouse_press(0, 0);
+    testing::trigger_mouse_drag(8, 1);
+    testing::trigger_mouse_release(8, 1);
+    testing::trigger_mouse_right_click(0, 1);
 
-    let _ = tui::render_to_text(14, 4);
+    let _ = testing::render_to_text(14, 4);
 
-    tui::trigger_mouse_click(2, 2);
+    testing::trigger_mouse_click(2, 2);
 
-    assert_eq!(tui::take_copied().as_deref(), Some("plain red and docs"));
+    assert_eq!(
+      testing::take_copied().as_deref(),
+      Some("plain red and docs")
+    );
   });
 }

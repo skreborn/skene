@@ -8,7 +8,7 @@ mod common;
 
 use std::time::Duration;
 
-use skene_tui::{self as tui, Activate, TOOLTIP_DELAY, TOOLTIP_GRACE, prelude::*};
+use skene_tui::{self as tui, Activate, TOOLTIP_DELAY, TOOLTIP_GRACE, prelude::*, testing};
 
 use crate::common::with_platform;
 
@@ -29,19 +29,19 @@ fn a_click_leaves_the_opening_to_the_delay() {
         .into_any()
         .build()
     });
-    let _ = tui::render_to_text(24, 4);
+    let _ = testing::render_to_text(24, 4);
 
-    tui::trigger_mouse_click(1, 0);
+    testing::trigger_mouse_click(1, 0);
 
     assert!(
-      !tui::render_to_text(24, 4).contains("Saves"),
+      !testing::render_to_text(24, 4).contains("Saves"),
       "focus from a click does not show"
     );
 
-    tui::trigger_frame(TOOLTIP_DELAY);
+    testing::trigger_frame(TOOLTIP_DELAY);
 
     assert!(
-      tui::render_to_text(24, 4).contains("Saves your work"),
+      testing::render_to_text(24, 4).contains("Saves your work"),
       "the pointer rested"
     );
   });
@@ -65,7 +65,7 @@ fn a_tooltip_paints_beside_its_anchor_on_hover_and_focus() {
         .into_any()
         .build()
     });
-    let frame = tui::render_to_text(24, 4);
+    let frame = testing::render_to_text(24, 4);
 
     assert!(
       frame
@@ -76,16 +76,16 @@ fn a_tooltip_paints_beside_its_anchor_on_hover_and_focus() {
     );
     assert!(!frame.contains("Saves"), "{frame}");
 
-    tui::trigger_mouse_move(1, 0);
+    testing::trigger_mouse_move(1, 0);
 
     assert!(
-      !tui::render_to_text(24, 4).contains("Saves"),
+      !testing::render_to_text(24, 4).contains("Saves"),
       "the pointer has not rested"
     );
 
-    tui::trigger_frame(TOOLTIP_DELAY);
+    testing::trigger_frame(TOOLTIP_DELAY);
 
-    let open = tui::render_to_text(24, 4);
+    let open = testing::render_to_text(24, 4);
     let lines: Vec<&str> = open.lines().collect();
 
     assert!(
@@ -93,41 +93,41 @@ fn a_tooltip_paints_beside_its_anchor_on_hover_and_focus() {
       "the bubble sits below: {open}"
     );
 
-    tui::trigger_mouse_move(20, 3);
+    testing::trigger_mouse_move(20, 3);
 
     assert!(
-      tui::render_to_text(24, 4).contains("Saves your work"),
+      testing::render_to_text(24, 4).contains("Saves your work"),
       "open through the grace period"
     );
 
-    tui::trigger_frame(TOOLTIP_GRACE);
+    testing::trigger_frame(TOOLTIP_GRACE);
 
     assert!(
-      !tui::render_to_text(24, 4).contains("Saves"),
+      !testing::render_to_text(24, 4).contains("Saves"),
       "the pointer left"
     );
 
-    tui::trigger_key("Tab");
+    testing::trigger_key("Tab");
 
     assert!(
-      tui::render_to_text(24, 4).contains("Saves your work"),
+      testing::render_to_text(24, 4).contains("Saves your work"),
       "focus opens at once"
     );
 
-    tui::trigger_key("Escape");
+    testing::trigger_key("Escape");
 
     assert!(
-      !tui::render_to_text(24, 4).contains("Saves"),
+      !testing::render_to_text(24, 4).contains("Saves"),
       "escape closed it"
     );
 
-    tui::trigger_mouse_move(1, 0);
-    tui::trigger_frame(Duration::from_millis(100));
-    tui::trigger_mouse_move(20, 3);
-    tui::trigger_frame(TOOLTIP_DELAY);
+    testing::trigger_mouse_move(1, 0);
+    testing::trigger_frame(Duration::from_millis(100));
+    testing::trigger_mouse_move(20, 3);
+    testing::trigger_frame(TOOLTIP_DELAY);
 
     assert!(
-      !tui::render_to_text(24, 4).contains("Saves"),
+      !testing::render_to_text(24, 4).contains("Saves"),
       "a leave before the delay cancels"
     );
   });
@@ -150,12 +150,12 @@ fn a_tooltip_stays_open_while_the_pointer_rests_on_its_bubble() {
         .into_any()
         .build()
     });
-    let _ = tui::render_to_text(24, 4);
+    let _ = testing::render_to_text(24, 4);
 
-    tui::trigger_mouse_move(1, 0);
-    tui::trigger_frame(TOOLTIP_DELAY);
+    testing::trigger_mouse_move(1, 0);
+    testing::trigger_frame(TOOLTIP_DELAY);
 
-    let open = tui::render_to_text(24, 4);
+    let open = testing::render_to_text(24, 4);
     let column = open
       .lines()
       .nth(1)
@@ -163,19 +163,19 @@ fn a_tooltip_stays_open_while_the_pointer_rests_on_its_bubble() {
       .map(|before| before.chars().count())
       .expect("the bubble");
 
-    tui::trigger_mouse_move(u16::try_from(column).expect("a column"), 1);
-    tui::trigger_frame(TOOLTIP_GRACE * 2);
+    testing::trigger_mouse_move(u16::try_from(column).expect("a column"), 1);
+    testing::trigger_frame(TOOLTIP_GRACE * 2);
 
     assert!(
-      tui::render_to_text(24, 4).contains("Saves your work"),
+      testing::render_to_text(24, 4).contains("Saves your work"),
       "open while the pointer rests on the bubble"
     );
 
-    tui::trigger_mouse_move(20, 3);
-    tui::trigger_frame(TOOLTIP_GRACE);
+    testing::trigger_mouse_move(20, 3);
+    testing::trigger_frame(TOOLTIP_GRACE);
 
     assert!(
-      !tui::render_to_text(24, 4).contains("Saves"),
+      !testing::render_to_text(24, 4).contains("Saves"),
       "closed once the pointer left both"
     );
   });

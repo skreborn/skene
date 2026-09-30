@@ -6,7 +6,7 @@
 mod common;
 
 use skene_simple::tui::prelude::*;
-use skene_tui::{self as tui, HasChild, prelude::*};
+use skene_tui::{self as tui, HasChild, prelude::*, testing};
 
 use crate::common::with_platform;
 
@@ -35,11 +35,11 @@ fn scroll_offsets_survive_a_snapshot_roundtrip() {
   let bytes = with_platform(|| {
     build();
 
-    let _ = tui::render_to_text(6, 4);
+    let _ = testing::render_to_text(6, 4);
 
-    tui::trigger_mouse_scroll(2, 2, 0, 3);
+    testing::trigger_mouse_scroll(2, 2, 0, 3);
 
-    assert!(tui::render_to_text(6, 4).contains("r3"));
+    assert!(testing::render_to_text(6, 4).contains("r3"));
 
     tui::reactive::snapshot()
   });
@@ -48,7 +48,7 @@ fn scroll_offsets_survive_a_snapshot_roundtrip() {
     build();
     tui::adopt_restoration();
 
-    tui::render_to_text(6, 4)
+    testing::render_to_text(6, 4)
   });
 
   assert!(
@@ -83,11 +83,11 @@ fn restored_scroll_rebuilds_a_lazy_column_window() {
   let bytes = with_platform(|| {
     build();
 
-    let _ = tui::render_to_text(12, 6);
+    let _ = testing::render_to_text(12, 6);
 
-    tui::trigger_mouse_scroll(2, 1, 0, 500);
+    testing::trigger_mouse_scroll(2, 1, 0, 500);
 
-    assert!(tui::render_to_text(12, 6).contains("row 500"));
+    assert!(testing::render_to_text(12, 6).contains("row 500"));
 
     tui::reactive::snapshot()
   });
@@ -96,9 +96,9 @@ fn restored_scroll_rebuilds_a_lazy_column_window() {
     build();
     tui::adopt_restoration();
 
-    let _ = tui::render_to_text(12, 6);
+    let _ = testing::render_to_text(12, 6);
 
-    tui::render_to_text(12, 6)
+    testing::render_to_text(12, 6)
   });
 
   assert!(
@@ -118,16 +118,16 @@ fn dev_notice_modal_presents_and_dismisses() {
 
     notice.set(Some("expected `;`".to_owned()));
 
-    let open = tui::render_to_text(40, 10);
+    let open = testing::render_to_text(40, 10);
 
     assert!(
       open.contains("Rebuild failed") && open.contains("expected `;`"),
       "the notice presented: {open}"
     );
 
-    tui::trigger_key("Escape");
+    testing::trigger_key("Escape");
 
-    let dismissed = tui::render_to_text(40, 10);
+    let dismissed = testing::render_to_text(40, 10);
 
     assert!(
       !dismissed.contains("Rebuild failed") && dismissed.contains("app content"),
@@ -160,10 +160,10 @@ fn focus_survives_a_snapshot_roundtrip() {
   let bytes = with_platform(|| {
     build(&hits);
 
-    let _ = tui::render_to_text(12, 2);
+    let _ = testing::render_to_text(12, 2);
 
-    tui::trigger_key("Tab");
-    tui::trigger_key("Tab");
+    testing::trigger_key("Tab");
+    testing::trigger_key("Tab");
 
     tui::reactive::snapshot()
   });
@@ -173,9 +173,9 @@ fn focus_survives_a_snapshot_roundtrip() {
     build(&hits);
     tui::adopt_restoration();
 
-    let _ = tui::render_to_text(12, 2);
+    let _ = testing::render_to_text(12, 2);
 
-    tui::trigger_key(" ");
+    testing::trigger_key(" ");
 
     assert_eq!(hits.get(), 1, "the second button resumed focused");
   });
@@ -210,10 +210,10 @@ fn focus_follows_a_keyed_item_across_a_reorder() {
   let bytes = with_platform(|| {
     build(vec![1, 2, 3], &hits);
 
-    let _ = tui::render_to_text(12, 3);
+    let _ = testing::render_to_text(12, 3);
 
-    tui::trigger_key("Tab");
-    tui::trigger_key("Tab");
+    testing::trigger_key("Tab");
+    testing::trigger_key("Tab");
 
     tui::reactive::snapshot()
   });
@@ -223,9 +223,9 @@ fn focus_follows_a_keyed_item_across_a_reorder() {
     build(vec![3, 1, 2], &hits);
     tui::adopt_restoration();
 
-    let _ = tui::render_to_text(12, 3);
+    let _ = testing::render_to_text(12, 3);
 
-    tui::trigger_key(" ");
+    testing::trigger_key(" ");
 
     assert_eq!(
       hits.borrow().as_slice(),
@@ -248,11 +248,11 @@ fn a_caret_survives_a_snapshot_roundtrip() {
 
     build(value);
 
-    let _ = tui::render_to_text(12, 1);
+    let _ = testing::render_to_text(12, 1);
 
-    tui::trigger_key("Tab");
-    tui::trigger_key("End");
-    tui::trigger_key("ArrowLeft");
+    testing::trigger_key("Tab");
+    testing::trigger_key("End");
+    testing::trigger_key("ArrowLeft");
 
     tui::reactive::snapshot()
   });
@@ -264,9 +264,9 @@ fn a_caret_survives_a_snapshot_roundtrip() {
     build(value);
     tui::adopt_restoration();
 
-    let _ = tui::render_to_text(12, 1);
+    let _ = testing::render_to_text(12, 1);
 
-    tui::trigger_key("b");
+    testing::trigger_key("b");
 
     assert_eq!(
       value.get(),
@@ -280,11 +280,11 @@ fn a_caret_survives_a_snapshot_roundtrip() {
 
     build(value);
 
-    let _ = tui::render_to_text(12, 1);
+    let _ = testing::render_to_text(12, 1);
 
-    tui::trigger_key("Tab");
-    tui::trigger_key("End");
-    tui::trigger_key("Ctrl+Shift+ArrowLeft");
+    testing::trigger_key("Tab");
+    testing::trigger_key("End");
+    testing::trigger_key("Ctrl+Shift+ArrowLeft");
 
     tui::reactive::snapshot()
   });
@@ -296,9 +296,9 @@ fn a_caret_survives_a_snapshot_roundtrip() {
     build(value);
     tui::adopt_restoration();
 
-    let _ = tui::render_to_text(12, 1);
+    let _ = testing::render_to_text(12, 1);
 
-    tui::trigger_key("x");
+    testing::trigger_key("x");
 
     assert_eq!(
       value.get(),

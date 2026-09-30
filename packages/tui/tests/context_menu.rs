@@ -7,7 +7,7 @@
 
 mod common;
 
-use skene_tui::{self as tui, Activate, TextEntry, prelude::*};
+use skene_tui::{self as tui, Activate, TextEntry, prelude::*, testing};
 
 use crate::common::with_platform;
 
@@ -35,11 +35,11 @@ fn a_menu_on_a_view_takes_the_right_press_from_the_standard_one() {
         .into_any()
         .build()
     });
-    let _ = tui::render_to_text(30, 8);
+    let _ = testing::render_to_text(30, 8);
 
-    tui::trigger_mouse_right_click(1, 0);
+    testing::trigger_mouse_right_click(1, 0);
 
-    let frame = tui::render_to_text(30, 8);
+    let frame = testing::render_to_text(30, 8);
 
     assert!(
       frame.contains("Rename") && frame.contains("Delete"),
@@ -52,20 +52,20 @@ fn a_menu_on_a_view_takes_the_right_press_from_the_standard_one() {
 
     let (x, y) = common::locate(&frame, "Delete");
 
-    tui::trigger_mouse_click(x, y);
+    testing::trigger_mouse_click(x, y);
 
     assert_eq!(chosen.get_untracked(), "delete");
     assert!(
-      !tui::render_to_text(30, 8).contains("Rename"),
+      !testing::render_to_text(30, 8).contains("Rename"),
       "running an item closes the menu"
     );
 
-    tui::trigger_mouse_press(0, 1);
-    tui::trigger_mouse_drag(9, 1);
-    tui::trigger_mouse_release(9, 1);
-    tui::trigger_mouse_right_click(2, 1);
+    testing::trigger_mouse_press(0, 1);
+    testing::trigger_mouse_drag(9, 1);
+    testing::trigger_mouse_release(9, 1);
+    testing::trigger_mouse_right_click(2, 1);
 
-    let frame = tui::render_to_text(30, 8);
+    let frame = testing::render_to_text(30, 8);
 
     assert!(
       frame.contains("Copy"),
@@ -96,12 +96,12 @@ fn the_menu_key_opens_at_the_focused_view_and_the_keys_walk_it() {
         .into_any()
         .build()
     });
-    let _ = tui::render_to_text(30, 8);
+    let _ = testing::render_to_text(30, 8);
 
-    tui::trigger_key("Tab");
-    tui::trigger_key("Shift+F10");
+    testing::trigger_key("Tab");
+    testing::trigger_key("Shift+F10");
 
-    let frame = tui::render_to_text(30, 8);
+    let frame = testing::render_to_text(30, 8);
     let (_, button_row) = common::locate(&frame, "target");
     let (_, first_row) = common::locate(&frame, "one");
 
@@ -110,8 +110,8 @@ fn the_menu_key_opens_at_the_focused_view_and_the_keys_walk_it() {
       "the menu opens below the button: {frame}"
     );
 
-    tui::trigger_key("ArrowDown");
-    tui::trigger_key("Enter");
+    testing::trigger_key("ArrowDown");
+    testing::trigger_key("Enter");
 
     assert_eq!(
       chosen.get_untracked(),
@@ -119,21 +119,21 @@ fn the_menu_key_opens_at_the_focused_view_and_the_keys_walk_it() {
       "the disabled item is skipped"
     );
     assert!(
-      !tui::render_to_text(30, 8).contains("one"),
+      !testing::render_to_text(30, 8).contains("one"),
       "the menu closed"
     );
 
-    tui::trigger_key("ContextMenu");
+    testing::trigger_key("ContextMenu");
 
     assert!(
-      tui::render_to_text(30, 8).contains("one"),
+      testing::render_to_text(30, 8).contains("one"),
       "the menu key opens it too"
     );
 
-    tui::trigger_key("Escape");
+    testing::trigger_key("Escape");
 
     assert!(
-      !tui::render_to_text(30, 8).contains("one"),
+      !testing::render_to_text(30, 8).contains("one"),
       "Escape closes it"
     );
   });
@@ -152,25 +152,25 @@ fn the_standard_menu_acts_on_the_entrys_selection() {
         .into_any()
         .build()
     });
-    let _ = tui::render_to_text(30, 8);
+    let _ = testing::render_to_text(30, 8);
 
-    tui::trigger_key("Tab");
-    tui::trigger_mouse_right_click(2, 0);
+    testing::trigger_key("Tab");
+    testing::trigger_mouse_right_click(2, 0);
 
-    let frame = tui::render_to_text(30, 8);
+    let frame = testing::render_to_text(30, 8);
 
     assert!(frame.contains("Cut"), "{frame}");
 
-    tui::trigger_key("Escape");
-    tui::trigger_key("Tab");
-    tui::trigger_mouse_right_click(2, 0);
+    testing::trigger_key("Escape");
+    testing::trigger_key("Tab");
+    testing::trigger_mouse_right_click(2, 0);
 
-    let frame = tui::render_to_text(30, 8);
+    let frame = testing::render_to_text(30, 8);
     let (x, y) = common::locate(&frame, "Cut");
 
-    tui::trigger_mouse_click(x, y);
+    testing::trigger_mouse_click(x, y);
 
-    assert_eq!(tui::take_copied().as_deref(), Some("alpha beta"));
+    assert_eq!(testing::take_copied().as_deref(), Some("alpha beta"));
     assert_eq!(value.get_untracked(), "", "Cut removed the selected value");
   });
 }

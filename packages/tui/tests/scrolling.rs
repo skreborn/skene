@@ -7,7 +7,7 @@ mod common;
 
 use std::{cell::RefCell, rc::Rc};
 
-use skene_tui::{self as tui, Activate, HasChild, prelude::*};
+use skene_tui::{self as tui, Activate, HasChild, prelude::*, testing};
 
 use crate::common::with_platform;
 
@@ -41,21 +41,21 @@ fn scroll_box_clips_wheels_and_hit_tests() {
         .build()
     });
 
-    let first = tui::render_to_text(12, 4);
+    let first = testing::render_to_text(12, 4);
 
     assert!(first.contains("item 0") && first.contains("item 2"));
     assert!(!first.contains("item 3"));
     assert!(first.contains('█'));
 
-    tui::trigger_mouse_scroll(2, 1, 0, 2);
+    testing::trigger_mouse_scroll(2, 1, 0, 2);
 
-    let scrolled = tui::render_to_text(12, 4);
+    let scrolled = testing::render_to_text(12, 4);
 
     assert!(!scrolled.contains("item 1"));
     assert!(scrolled.contains("item 2") && scrolled.contains("item 4"));
     assert!(!scrolled.contains("item 5"));
 
-    tui::trigger_mouse_click(2, 1);
+    testing::trigger_mouse_click(2, 1);
 
     assert_eq!(*clicked.borrow(), vec![3]);
   });
@@ -111,22 +111,26 @@ fn a_wheel_reaches_the_node_under_it_before_it_scrolls() {
         .into_any()
         .build()
     });
-    let first = tui::render_to_text(12, 3);
+    let first = testing::render_to_text(12, 3);
 
     assert!(first.contains("dial"));
 
-    tui::trigger_mouse_scroll(1, 0, 0, 2);
+    testing::trigger_mouse_scroll(1, 0, 0, 2);
 
-    assert_eq!(tui::render_to_text(12, 3), first, "the dial takes the turn");
+    assert_eq!(
+      testing::render_to_text(12, 3),
+      first,
+      "the dial takes the turn"
+    );
 
-    tui::trigger_mouse_scroll(1, 1, 0, 2);
+    testing::trigger_mouse_scroll(1, 1, 0, 2);
 
     assert_eq!(
       *turns.borrow(),
       [(Axes::new(0., 2.), tui::core::WheelUnit::Lines)]
     );
     assert!(
-      !tui::render_to_text(12, 3).contains("dial"),
+      !testing::render_to_text(12, 3).contains("dial"),
       "the box scrolled"
     );
   });
@@ -157,17 +161,17 @@ fn overflow_scrolls_on_its_own_axis_alone() {
         .build()
     });
 
-    let first = tui::render_to_text(12, 4);
+    let first = testing::render_to_text(12, 4);
 
     assert!(first.contains("row 0") && !first.contains("row 3"));
 
-    tui::trigger_mouse_scroll(2, 1, 4, 0);
+    testing::trigger_mouse_scroll(2, 1, 4, 0);
 
-    assert_eq!(tui::render_to_text(12, 4), first);
+    assert_eq!(testing::render_to_text(12, 4), first);
 
-    tui::trigger_mouse_scroll(2, 1, 0, 2);
+    testing::trigger_mouse_scroll(2, 1, 0, 2);
 
-    let scrolled = tui::render_to_text(12, 4);
+    let scrolled = testing::render_to_text(12, 4);
 
     assert!(scrolled.contains("row 2") && !scrolled.contains("row 1"));
   });
@@ -198,13 +202,13 @@ fn focus_scrolls_into_view() {
         .into_any()
         .build()
     });
-    let _ = tui::render_to_text(12, 4);
+    let _ = testing::render_to_text(12, 4);
 
     for _ in 0..5 {
-      tui::trigger_key("Tab");
+      testing::trigger_key("Tab");
     }
 
-    let frame = tui::render_to_text(12, 4);
+    let frame = testing::render_to_text(12, 4);
 
     assert!(frame.contains("button 4"), "{frame}");
     assert!(!frame.contains("button 0"), "{frame}");
@@ -240,7 +244,7 @@ fn lazy_column_windows_its_items() {
         .build()
     });
 
-    let first = tui::render_to_text(12, 6);
+    let first = testing::render_to_text(12, 6);
 
     assert!(
       first.contains("row 0") && first.contains("row 3"),
@@ -248,9 +252,9 @@ fn lazy_column_windows_its_items() {
     );
     assert!(!first.contains("row 7"), "{first}");
 
-    tui::trigger_mouse_scroll(2, 1, 0, 500);
+    testing::trigger_mouse_scroll(2, 1, 0, 500);
 
-    let scrolled = tui::render_to_text(12, 6);
+    let scrolled = testing::render_to_text(12, 6);
 
     assert!(
       scrolled.contains("row 500") && scrolled.contains("row 503"),
@@ -290,23 +294,23 @@ fn scrollbar_jumps_and_drags() {
         .into_any()
         .build()
     });
-    let _ = tui::render_to_text(6, 4);
+    let _ = testing::render_to_text(6, 4);
 
-    tui::trigger_mouse_press(5, 3);
+    testing::trigger_mouse_press(5, 3);
 
-    let jumped = tui::render_to_text(6, 4);
+    let jumped = testing::render_to_text(6, 4);
 
     assert!(
       jumped.contains("r8") && !jumped.contains("r0\n"),
       "the track press scrolled to the end: {jumped}"
     );
 
-    tui::trigger_mouse_drag(5, 1);
+    testing::trigger_mouse_drag(5, 1);
 
-    let dragged = tui::render_to_text(6, 4);
-    let colors = tui::render_to_colors(6, 4);
+    let dragged = testing::render_to_text(6, 4);
+    let colors = testing::render_to_colors(6, 4);
 
-    tui::trigger_mouse_release(5, 1);
+    testing::trigger_mouse_release(5, 1);
 
     assert!(
       dragged.contains("r3") && !dragged.contains("r8"),
@@ -354,9 +358,9 @@ fn a_scrollbar_drag_reads_the_pointer_within_its_cell() {
         .into_any()
         .build()
     });
-    let _ = tui::render_to_text(6, 4);
+    let _ = testing::render_to_text(6, 4);
 
-    tui::trigger_mouse_press(5, 0);
+    testing::trigger_mouse_press(5, 0);
 
     let first_row = |frame: String| {
       frame
@@ -366,19 +370,19 @@ fn a_scrollbar_drag_reads_the_pointer_within_its_cell() {
         .map(str::to_owned)
     };
 
-    tui::trigger_mouse_drag_within(5, 1, (0.5, 0.25));
+    testing::trigger_mouse_drag_within(5, 1, (0.5, 0.25));
 
-    let early = first_row(tui::render_to_text(6, 4));
+    let early = first_row(testing::render_to_text(6, 4));
 
-    tui::trigger_mouse_drag(5, 1);
+    testing::trigger_mouse_drag(5, 1);
 
-    let center = first_row(tui::render_to_text(6, 4));
+    let center = first_row(testing::render_to_text(6, 4));
 
-    tui::trigger_mouse_drag_within(5, 1, (0.5, 0.75));
+    testing::trigger_mouse_drag_within(5, 1, (0.5, 0.75));
 
-    let late = first_row(tui::render_to_text(6, 4));
+    let late = first_row(testing::render_to_text(6, 4));
 
-    tui::trigger_mouse_release(5, 1);
+    testing::trigger_mouse_release(5, 1);
 
     assert_eq!(early.as_deref(), Some("r10"), "a quarter cell in");
     assert_eq!(center.as_deref(), Some("r13"), "the cell's center");
@@ -426,23 +430,23 @@ fn wheel_target_latches_until_the_pointer_moves() {
         .into_any()
         .build()
     });
-    let _ = tui::render_to_text(14, 5);
+    let _ = testing::render_to_text(14, 5);
 
-    tui::trigger_mouse_scroll(2, 1, 0, 4);
-    tui::trigger_mouse_scroll(2, 1, 0, 2);
+    testing::trigger_mouse_scroll(2, 1, 0, 4);
+    testing::trigger_mouse_scroll(2, 1, 0, 2);
 
-    let latched = tui::render_to_text(14, 5);
+    let latched = testing::render_to_text(14, 5);
 
     assert!(
       latched.contains("bottom0") && !latched.contains("inner4"),
       "the second wheel kept the page as its target: {latched}"
     );
 
-    tui::trigger_mouse_move(8, 3);
-    tui::trigger_mouse_move(2, 1);
-    tui::trigger_mouse_scroll(2, 1, 0, 1);
+    testing::trigger_mouse_move(8, 3);
+    testing::trigger_mouse_move(2, 1);
+    testing::trigger_mouse_scroll(2, 1, 0, 1);
 
-    let retargeted = tui::render_to_text(14, 5);
+    let retargeted = testing::render_to_text(14, 5);
 
     assert!(
       retargeted.contains("inner4"),
@@ -489,12 +493,12 @@ fn wheel_gesture_holds_at_the_target_limit_then_chains() {
         .into_any()
         .build()
     });
-    let _ = tui::render_to_text(14, 5);
+    let _ = testing::render_to_text(14, 5);
 
-    tui::trigger_mouse_scroll(1, 0, 0, 2);
-    tui::trigger_mouse_scroll(1, 0, 0, 2);
+    testing::trigger_mouse_scroll(1, 0, 0, 2);
+    testing::trigger_mouse_scroll(1, 0, 0, 2);
 
-    let held = tui::render_to_text(14, 5);
+    let held = testing::render_to_text(14, 5);
 
     assert!(
       held.contains("inner2") && held.contains("bottom0"),
@@ -502,9 +506,9 @@ fn wheel_gesture_holds_at_the_target_limit_then_chains() {
     );
 
     std::thread::sleep(std::time::Duration::from_millis(510));
-    tui::trigger_mouse_scroll(1, 0, 0, 1);
+    testing::trigger_mouse_scroll(1, 0, 0, 1);
 
-    let chained = tui::render_to_text(14, 5);
+    let chained = testing::render_to_text(14, 5);
 
     assert!(
       !chained.contains("inner2") && chained.contains("bottom2"),
@@ -533,14 +537,14 @@ fn page_keys_scroll_by_a_viewport_less_a_row() {
         .build()
     });
 
-    assert!(tui::render_to_text(6, 4).starts_with("r0"));
+    assert!(testing::render_to_text(6, 4).starts_with("r0"));
 
-    tui::trigger_key("PageDown");
+    testing::trigger_key("PageDown");
 
-    assert!(tui::render_to_text(6, 4).starts_with("r3"));
+    assert!(testing::render_to_text(6, 4).starts_with("r3"));
 
-    tui::trigger_key("PageUp");
+    testing::trigger_key("PageUp");
 
-    assert!(tui::render_to_text(6, 4).starts_with("r0"));
+    assert!(testing::render_to_text(6, 4).starts_with("r0"));
   });
 }

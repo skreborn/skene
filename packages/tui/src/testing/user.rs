@@ -7,7 +7,8 @@
 use skene_core::{Key, KeyEvent, NodeId};
 use unicode_segmentation::UnicodeSegmentation;
 
-use crate::{trigger_key_event, trigger_mouse_click, trigger_mouse_move, with_store};
+use super::{trigger_key_event, trigger_mouse_click, trigger_mouse_move};
+use crate::with_store;
 
 /// The center cell of the rectangle `node` covered at the last paint.
 ///

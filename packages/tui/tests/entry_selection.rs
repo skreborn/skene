@@ -8,7 +8,7 @@ mod common;
 
 use std::time::Duration;
 
-use skene_tui::{self as tui, TextEntry, prelude::*};
+use skene_tui::{self as tui, TextEntry, prelude::*, testing};
 
 use crate::common::{rgb, rows, white, with_platform};
 
@@ -34,9 +34,9 @@ fn mount_field(value: Signal<String>, width: u32) {
     .into_any()
     .build()
   });
-  let _ = tui::render_to_text(20, 4);
+  let _ = testing::render_to_text(20, 4);
 
-  tui::trigger_key("Tab");
+  testing::trigger_key("Tab");
 }
 
 /// Keyboard focus selects a field's whole value, so typing replaces it; `ArrowRight`
@@ -48,25 +48,25 @@ fn keyboard_focus_selects_the_value_and_typing_replaces_it() {
 
     mount_field(value, 10);
 
-    let colors = tui::render_to_colors(20, 4);
+    let colors = testing::render_to_colors(20, 4);
 
     assert_eq!(colors[0], (Some(rgb(white())), Some(rgb(highlight()))));
     assert_eq!(colors[4].1, Some(rgb(highlight())));
     assert_eq!(colors[5].1, None, "the highlight ends with the value");
 
-    tui::trigger_key("ArrowRight");
-    tui::trigger_key("x");
+    testing::trigger_key("ArrowRight");
+    testing::trigger_key("x");
 
     assert_eq!(value.get_untracked(), "alphax", "collapsed to the end");
 
-    tui::trigger_key("Ctrl+a");
-    tui::trigger_key("ArrowLeft");
-    tui::trigger_key("y");
+    testing::trigger_key("Ctrl+a");
+    testing::trigger_key("ArrowLeft");
+    testing::trigger_key("y");
 
     assert_eq!(value.get_untracked(), "yalphax", "collapsed to the start");
 
-    tui::trigger_key("Ctrl+a");
-    tui::trigger_key("z");
+    testing::trigger_key("Ctrl+a");
+    testing::trigger_key("z");
 
     assert_eq!(value.get_untracked(), "z", "typing replaces the selection");
   });
@@ -80,23 +80,23 @@ fn shift_extends_the_selection_and_backspace_removes_it() {
     let value = Signal::new(String::from("alpha beta gamma"));
 
     mount_field(value, 20);
-    tui::trigger_key("End");
-    tui::trigger_key("Shift+ArrowLeft");
-    tui::trigger_key("Shift+ArrowLeft");
-    tui::trigger_key("Backspace");
+    testing::trigger_key("End");
+    testing::trigger_key("Shift+ArrowLeft");
+    testing::trigger_key("Shift+ArrowLeft");
+    testing::trigger_key("Backspace");
 
     assert_eq!(value.get_untracked(), "alpha beta gam");
 
-    tui::trigger_key("Ctrl+Shift+ArrowLeft");
-    tui::trigger_key("Delete");
+    testing::trigger_key("Ctrl+Shift+ArrowLeft");
+    testing::trigger_key("Delete");
 
     assert_eq!(value.get_untracked(), "alpha beta ");
 
-    tui::trigger_key("Home");
-    tui::trigger_key("Shift+ArrowRight");
-    tui::trigger_key("Shift+End");
-    tui::trigger_key("Shift+ArrowLeft");
-    tui::trigger_key("Ctrl+Backspace");
+    testing::trigger_key("Home");
+    testing::trigger_key("Shift+ArrowRight");
+    testing::trigger_key("Shift+End");
+    testing::trigger_key("Shift+ArrowLeft");
+    testing::trigger_key("Ctrl+Backspace");
 
     assert_eq!(
       value.get_untracked(),
@@ -104,11 +104,11 @@ fn shift_extends_the_selection_and_backspace_removes_it() {
       "a word removal takes the selection alone"
     );
 
-    tui::trigger_key("a");
-    tui::trigger_key("b");
-    tui::trigger_key("Shift+Home");
-    tui::trigger_key("Shift+ArrowRight");
-    tui::trigger_key("x");
+    testing::trigger_key("a");
+    testing::trigger_key("b");
+    testing::trigger_key("Shift+Home");
+    testing::trigger_key("Shift+ArrowRight");
+    testing::trigger_key("x");
 
     assert_eq!(
       value.get_untracked(),
@@ -126,24 +126,24 @@ fn the_mouse_selects_by_drag_word_and_value() {
     let value = Signal::new(String::from("alpha beta"));
 
     mount_field(value, 12);
-    tui::trigger_mouse_press(1, 0);
-    tui::trigger_mouse_drag(4, 0);
-    tui::trigger_mouse_release(4, 0);
+    testing::trigger_mouse_press(1, 0);
+    testing::trigger_mouse_drag(4, 0);
+    testing::trigger_mouse_release(4, 0);
 
-    let colors = tui::render_to_colors(20, 4);
+    let colors = testing::render_to_colors(20, 4);
 
     assert_eq!(colors[0].1, None);
     assert_eq!(colors[1].1, Some(rgb(highlight())));
     assert_eq!(colors[3].1, Some(rgb(highlight())));
     assert_eq!(colors[4].1, None, "the drag end is exclusive");
 
-    tui::trigger_key("x");
+    testing::trigger_key("x");
 
     assert_eq!(value.get_untracked(), "axa beta");
 
-    tui::trigger_mouse_click(4, 0);
-    tui::trigger_mouse_click(4, 0);
-    tui::trigger_key("y");
+    testing::trigger_mouse_click(4, 0);
+    testing::trigger_mouse_click(4, 0);
+    testing::trigger_key("y");
 
     assert_eq!(
       value.get_untracked(),
@@ -152,10 +152,10 @@ fn the_mouse_selects_by_drag_word_and_value() {
     );
 
     for _ in 0..3 {
-      tui::trigger_mouse_click(1, 0);
+      testing::trigger_mouse_click(1, 0);
     }
 
-    tui::trigger_key("z");
+    testing::trigger_key("z");
 
     assert_eq!(value.get_untracked(), "z", "a triple click takes the value");
   });
@@ -170,23 +170,23 @@ fn the_clipboard_keys_copy_cut_and_paste() {
     let value = Signal::new(String::from("alpha beta"));
 
     mount_field(value, 20);
-    tui::trigger_key("End");
-    tui::trigger_key("Ctrl+Shift+ArrowLeft");
-    tui::trigger_key("Ctrl+c");
+    testing::trigger_key("End");
+    testing::trigger_key("Ctrl+Shift+ArrowLeft");
+    testing::trigger_key("Ctrl+c");
 
-    assert_eq!(tui::take_copied().as_deref(), Some("beta"));
+    assert_eq!(testing::take_copied().as_deref(), Some("beta"));
     assert_eq!(
       value.get_untracked(),
       "alpha beta",
       "a copy leaves the value"
     );
 
-    tui::trigger_key("Ctrl+x");
+    testing::trigger_key("Ctrl+x");
 
-    assert_eq!(tui::take_copied().as_deref(), Some("beta"));
+    assert_eq!(testing::take_copied().as_deref(), Some("beta"));
     assert_eq!(value.get_untracked(), "alpha ");
 
-    tui::trigger_clipboard_reply("stray");
+    testing::trigger_clipboard_reply("stray");
 
     assert_eq!(
       value.get_untracked(),
@@ -194,11 +194,11 @@ fn the_clipboard_keys_copy_cut_and_paste() {
       "a reply nobody asked for lands nowhere"
     );
 
-    tui::trigger_key("Ctrl+v");
+    testing::trigger_key("Ctrl+v");
 
-    assert!(tui::take_paste_requested());
+    assert!(testing::take_paste_requested());
 
-    tui::trigger_clipboard_reply("gamma\ndelta");
+    testing::trigger_clipboard_reply("gamma\ndelta");
 
     assert_eq!(
       value.get_untracked(),
@@ -206,8 +206,8 @@ fn the_clipboard_keys_copy_cut_and_paste() {
       "a field drops the pasted line breaks"
     );
 
-    tui::trigger_key("Ctrl+Shift+ArrowLeft");
-    tui::trigger_paste("beta");
+    testing::trigger_key("Ctrl+Shift+ArrowLeft");
+    testing::trigger_paste("beta");
 
     assert_eq!(
       value.get_untracked(),
@@ -229,15 +229,15 @@ fn an_editor_pastes_line_breaks_and_breaks_over_a_selection() {
         .into_any()
         .build()
     });
-    let _ = tui::render_to_text(20, 4);
+    let _ = testing::render_to_text(20, 4);
 
-    tui::trigger_key("Tab");
-    tui::trigger_paste("cd\nef");
+    testing::trigger_key("Tab");
+    testing::trigger_paste("cd\nef");
 
     assert_eq!(value.get_untracked(), "abcd\nef");
 
-    tui::trigger_key("Shift+ArrowUp");
-    tui::trigger_key("Enter");
+    testing::trigger_key("Shift+ArrowUp");
+    testing::trigger_key("Enter");
 
     assert_eq!(
       value.get_untracked(),
@@ -255,9 +255,9 @@ fn the_edit_menu_cuts_copies_and_pastes() {
     let value = Signal::new(String::from("alpha beta"));
 
     mount_field(value, 20);
-    tui::trigger_mouse_right_click(2, 0);
+    testing::trigger_mouse_right_click(2, 0);
 
-    let menu = tui::render_to_text(40, 6);
+    let menu = testing::render_to_text(40, 6);
 
     assert!(
       menu.contains("Cut") && menu.contains("Copy") && menu.contains("Paste"),
@@ -269,22 +269,22 @@ fn the_edit_menu_cuts_copies_and_pastes() {
       "a right press inside the selection keeps it"
     );
 
-    tui::trigger_mouse_click(4, 1);
+    testing::trigger_mouse_click(4, 1);
 
-    assert_eq!(tui::take_copied().as_deref(), Some("alpha beta"));
+    assert_eq!(testing::take_copied().as_deref(), Some("alpha beta"));
     assert_eq!(value.get_untracked(), "", "Cut removed the value");
 
-    tui::trigger_paste("x");
-    tui::trigger_mouse_right_click(0, 0);
-    tui::trigger_mouse_click(4, 3);
+    testing::trigger_paste("x");
+    testing::trigger_mouse_right_click(0, 0);
+    testing::trigger_mouse_click(4, 3);
 
-    assert!(tui::take_paste_requested(), "Paste staged a read");
+    assert!(testing::take_paste_requested(), "Paste staged a read");
     assert!(
-      !tui::render_to_text(40, 6).contains("Cut"),
+      !testing::render_to_text(40, 6).contains("Cut"),
       "the menu closed"
     );
 
-    tui::trigger_clipboard_reply("y");
+    testing::trigger_clipboard_reply("y");
 
     assert_eq!(
       value.get_untracked(),
@@ -302,15 +302,15 @@ fn blur_escape_and_writes_collapse_the_selection() {
     let value = Signal::new(String::from("alpha"));
 
     mount_field(value, 10);
-    tui::trigger_key("Escape");
+    testing::trigger_key("Escape");
 
     assert_eq!(
-      tui::render_to_colors(20, 4)[0].1,
+      testing::render_to_colors(20, 4)[0].1,
       None,
       "Escape collapsed it"
     );
 
-    tui::trigger_key("x");
+    testing::trigger_key("x");
 
     assert_eq!(
       value.get_untracked(),
@@ -318,18 +318,18 @@ fn blur_escape_and_writes_collapse_the_selection() {
       "the caret stayed at the end"
     );
 
-    tui::trigger_key("Ctrl+a");
-    tui::trigger_mouse_click(15, 3);
+    testing::trigger_key("Ctrl+a");
+    testing::trigger_mouse_click(15, 3);
 
     assert_eq!(
-      tui::render_to_colors(20, 4)[0].1,
+      testing::render_to_colors(20, 4)[0].1,
       None,
       "the blur collapsed it"
     );
 
-    tui::trigger_key("Tab");
+    testing::trigger_key("Tab");
     value.set(String::from("beta"));
-    tui::trigger_key("y");
+    testing::trigger_key("y");
 
     assert_eq!(
       value.get_untracked(),
@@ -352,9 +352,9 @@ fn mount_under_typography(child: impl FnOnce() -> AnyView + 'static) {
     .into_any()
     .build()
   });
-  let _ = tui::render_to_text(20, 4);
+  let _ = testing::render_to_text(20, 4);
 
-  tui::trigger_key("Tab");
+  testing::trigger_key("Tab");
 }
 
 /// A drag held past a field's end scrolls its window on the frame clock: the caret
@@ -366,33 +366,33 @@ fn a_drag_held_past_the_end_autoscrolls_the_field() {
     let value = Signal::new(String::from("abcdefghij"));
 
     mount_field(value, 5);
-    tui::trigger_key("Home");
+    testing::trigger_key("Home");
 
-    assert_eq!(tui::render_to_text(20, 4), "abcde\n\n\n\n");
+    assert_eq!(testing::render_to_text(20, 4), "abcde\n\n\n\n");
 
-    tui::trigger_mouse_press(1, 0);
-    tui::trigger_mouse_drag(5, 0);
+    testing::trigger_mouse_press(1, 0);
+    testing::trigger_mouse_drag(5, 0);
 
     assert_eq!(
-      tui::render_to_text(20, 4),
+      testing::render_to_text(20, 4),
       "abcde\n\n\n\n",
       "the crossing itself moves nothing"
     );
     assert_eq!(
-      tui::render_to_caret(20, 4),
+      testing::render_to_caret(20, 4),
       Some((4, 0)),
       "the caret sits at the edge"
     );
 
-    tui::trigger_frame(Duration::from_millis(50));
+    testing::trigger_frame(Duration::from_millis(50));
 
     assert_eq!(
-      tui::render_to_text(20, 4),
+      testing::render_to_text(20, 4),
       "bcdef\n\n\n\n",
       "one interval scrolls by the overshoot"
     );
 
-    let colors = tui::render_to_colors(20, 4);
+    let colors = testing::render_to_colors(20, 4);
 
     assert_eq!(colors[0].1, Some(rgb(highlight())));
     assert_eq!(colors[3].1, Some(rgb(highlight())));
@@ -401,17 +401,17 @@ fn a_drag_held_past_the_end_autoscrolls_the_field() {
       "the caret at the edge is the selection's end"
     );
 
-    tui::trigger_mouse_drag(7, 0);
-    tui::trigger_frame(Duration::from_millis(100));
+    testing::trigger_mouse_drag(7, 0);
+    testing::trigger_frame(Duration::from_millis(100));
 
     assert_eq!(
-      tui::render_to_text(20, 4),
+      testing::render_to_text(20, 4),
       "ghij\n\n\n\n",
       "farther past the edge scrolls faster, and stops at the end"
     );
 
-    tui::trigger_mouse_release(7, 0);
-    tui::trigger_key("x");
+    testing::trigger_mouse_release(7, 0);
+    testing::trigger_key("x");
 
     assert_eq!(value.get_untracked(), "ax");
   });
@@ -433,31 +433,31 @@ fn a_drag_held_before_the_start_autoscrolls_the_field_back() {
     });
 
     assert_eq!(
-      tui::render_to_text(20, 4),
+      testing::render_to_text(20, 4),
       "> ghij\n\n\n\n",
       "focus shows the value's end"
     );
 
-    tui::trigger_mouse_press(6, 0);
-    tui::trigger_mouse_drag(0, 0);
+    testing::trigger_mouse_press(6, 0);
+    testing::trigger_mouse_drag(0, 0);
 
-    let _ = tui::render_to_text(20, 4);
+    let _ = testing::render_to_text(20, 4);
 
-    tui::trigger_frame(Duration::from_millis(50));
+    testing::trigger_frame(Duration::from_millis(50));
 
-    assert_eq!(tui::render_to_text(20, 4), "> efghi\n\n\n\n");
-    assert_eq!(tui::render_to_caret(20, 4), Some((2, 0)));
+    assert_eq!(testing::render_to_text(20, 4), "> efghi\n\n\n\n");
+    assert_eq!(testing::render_to_caret(20, 4), Some((2, 0)));
 
-    tui::trigger_frame(Duration::from_millis(150));
+    testing::trigger_frame(Duration::from_millis(150));
 
     assert_eq!(
-      tui::render_to_text(20, 4),
+      testing::render_to_text(20, 4),
       "> abcde\n\n\n\n",
       "the scroll stops at the start"
     );
 
-    tui::trigger_mouse_release(0, 0);
-    tui::trigger_key("x");
+    testing::trigger_mouse_release(0, 0);
+    testing::trigger_key("x");
 
     assert_eq!(
       value.get_untracked(),
@@ -484,31 +484,31 @@ fn a_drag_held_above_autoscrolls_the_editor() {
     });
 
     assert_eq!(
-      rows(&tui::render_to_text(20, 4)),
+      rows(&testing::render_to_text(20, 4)),
       "head\nd\ne\nf\n",
       "focus shows the last rows"
     );
 
-    tui::trigger_mouse_press(1, 3);
-    tui::trigger_mouse_drag(0, 0);
+    testing::trigger_mouse_press(1, 3);
+    testing::trigger_mouse_drag(0, 0);
 
-    let _ = rows(&tui::render_to_text(20, 4));
+    let _ = rows(&testing::render_to_text(20, 4));
 
-    tui::trigger_frame(Duration::from_millis(50));
+    testing::trigger_frame(Duration::from_millis(50));
 
-    assert_eq!(rows(&tui::render_to_text(20, 4)), "head\nc\nd\ne\n");
-    assert_eq!(tui::render_to_caret(20, 4), Some((0, 1)));
+    assert_eq!(rows(&testing::render_to_text(20, 4)), "head\nc\nd\ne\n");
+    assert_eq!(testing::render_to_caret(20, 4), Some((0, 1)));
 
-    tui::trigger_frame(Duration::from_millis(100));
+    testing::trigger_frame(Duration::from_millis(100));
 
     assert_eq!(
-      rows(&tui::render_to_text(20, 4)),
+      rows(&testing::render_to_text(20, 4)),
       "head\na\nb\nc\n",
       "the scroll stops at the first row"
     );
 
-    tui::trigger_mouse_release(0, 0);
-    tui::trigger_key("x");
+    testing::trigger_mouse_release(0, 0);
+    testing::trigger_key("x");
 
     assert_eq!(
       value.get_untracked(),

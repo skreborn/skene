@@ -54,60 +54,38 @@ struct Mounted {
   scope: Owner,
 }
 
-struct Scratch<K> {
-  old: FxHashMap<K, VecDeque<(usize, Mounted)>>,
-  occurrences: FxHashMap<Key, usize>,
+/// What a keyed reconcile keeps between its runs: the mounted items by key in order,
+/// and the scratch each run reuses.
+#[derive(Default)]
+struct Reconciled {
+  mounted: Vec<(Key, Mounted)>,
+  old: FxHashMap<Key, VecDeque<(usize, Mounted)>>,
+  occurrences: FxHashMap<Key, u32>,
   old_positions: Vec<usize>,
   new_positions: Vec<usize>,
   reorder: Reorder,
 }
 
-impl<K> Default for Scratch<K> {
-  fn default() -> Self {
-    Self {
-      old: FxHashMap::default(),
-      occurrences: FxHashMap::default(),
-      old_positions: Vec::new(),
-      new_positions: Vec::new(),
-      reorder: Reorder::default(),
-    }
-  }
-}
-
-/// Reactively reconciles the content of the segment `start` begins from a keyed
-/// collection.
-///
-/// `items` yields the items, `key` gives each a stable identity, `build` renders one to
-/// a node. Only `items` is tracked. Each build runs untracked in its own scope keyed by
-/// the item's key, so the state under it keeps its snapshot identity across a reorder,
-/// and disposed when the item leaves; kept items on the longest increasing run of
-/// previous positions stay in place, and only displaced or new ones are re-inserted
-/// before their successor.
-///
-/// Keys should be unique, which a debug build warns about once; items sharing one
-/// match the ones before them in order, each under a scope of its own.
-pub fn reconcile<P: Platform, T, I, K>(
-  start: NodeId,
-  items: impl Fn() -> I + 'static,
-  key: impl Fn(&T) -> K + 'static,
-  build: impl Fn(T) -> NodeId + 'static,
-) where
-  I: IntoIterator<Item = T>,
-  K: Eq + Hash + 'static,
-{
-  let parent_scope = Owner::current();
-  let scratch = RefCell::new(Scratch::<K>::default());
-
-  Effect::render(move |previous: Option<Vec<(K, Mounted)>>| {
-    let mut mounted = previous.unwrap_or_default();
-    let mut scratch = scratch.borrow_mut();
-    let Scratch {
+impl Reconciled {
+  /// Brings the content of the segment `start` begins to the items `keys` names in
+  /// order: a kept item stays, a new one is built by `build` from its index in its own
+  /// scope under `parent_scope`, a gone one is destroyed, and only the displaced are
+  /// re-inserted.
+  fn update<P: Platform>(
+    &mut self,
+    start: NodeId,
+    parent_scope: Owner,
+    keys: &[Key],
+    build: &mut dyn FnMut(usize) -> NodeId,
+  ) {
+    let Self {
+      mounted,
       old,
       occurrences,
       old_positions,
       new_positions,
       reorder,
-    } = &mut *scratch;
+    } = self;
 
     for (index, (key, entry)) in mounted.drain(..).enumerate() {
       old.entry(key).or_default().push_back((index, entry));
@@ -117,10 +95,8 @@ pub fn reconcile<P: Platform, T, I, K>(
     old_positions.clear();
     new_positions.clear();
 
-    for item in items() {
-      let key = key(&item);
-      let identity = Key::of(&key);
-      let occurrence = occurrences.entry(identity).or_insert(0);
+    for (index, &key) in keys.iter().enumerate() {
+      let occurrence = occurrences.entry(key).or_insert(0);
       let repeat = *occurrence;
 
       *occurrence += 1;
@@ -131,20 +107,20 @@ pub fn reconcile<P: Platform, T, I, K>(
       }
 
       let kept = old.get_mut(&key).and_then(VecDeque::pop_front);
-      let entry = if let Some((index, entry)) = kept {
-        old_positions.push(index);
+      let entry = if let Some((position, entry)) = kept {
+        old_positions.push(position);
         new_positions.push(mounted.len());
 
         entry
       }
       else {
         let scope = parent_scope.keyed_child(if repeat == 0 {
-          identity
+          key
         }
         else {
-          Key::of(&(identity, repeat))
+          Key::of(&(key, repeat))
         });
-        let node = scope.enter(|| untrack(|| build(item)));
+        let node = scope.enter(|| untrack(|| build(index)));
 
         Mounted { node, scope }
       };
@@ -174,11 +150,56 @@ pub fn reconcile<P: Platform, T, I, K>(
         }
       }
     });
+  }
+}
 
-    drop(stable);
-    drop(scratch);
+/// Reactively reconciles the content of the segment `start` begins from a keyed
+/// collection.
+///
+/// `items` yields the items, `key` gives each a stable identity, `build` renders one to
+/// a node. Only `items` is tracked. Each build runs untracked in its own scope keyed by
+/// the item's key, so the state under it keeps its snapshot identity across a reorder,
+/// and disposed when the item leaves; kept items on the longest increasing run of
+/// previous positions stay in place, and only displaced or new ones are re-inserted
+/// before their successor.
+///
+/// Keys should be unique, which a debug build warns about once; items sharing one
+/// match the ones before them in order, each under a scope of its own.
+pub fn reconcile<P: Platform, T, I, K>(
+  start: NodeId,
+  items: impl Fn() -> I + 'static,
+  key: impl Fn(&T) -> K + 'static,
+  build: impl Fn(T) -> NodeId + 'static,
+) where
+  I: IntoIterator<Item = T>,
+  K: Eq + Hash + 'static,
+{
+  let parent_scope = Owner::current();
+  let reconciled = RefCell::new(Reconciled::default());
 
-    mounted
+  Effect::render(move |_: Option<()>| {
+    let mut pending = Vec::new();
+    let keys: Vec<Key> = items()
+      .into_iter()
+      .map(|item| {
+        let identity = Key::of(&key(&item));
+
+        pending.push(Some(item));
+
+        identity
+      })
+      .collect();
+
+    reconciled
+      .borrow_mut()
+      .update::<P>(start, parent_scope, &keys, &mut |index| {
+        let Some(item) = pending[index].take()
+        else {
+          unreachable!("a reconcile builds each new item once");
+        };
+
+        build(item)
+      });
   });
 }
 

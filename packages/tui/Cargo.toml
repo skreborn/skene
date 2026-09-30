@@ -23,10 +23,15 @@ unicode-segmentation = "1"
 unicode-width = "0.2"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+criterion = { default-features = false, features = ["cargo_bench_support"], version = "0.5" }
 proptest.workspace = true
 skene-conformance.workspace = true
 skene-simple.workspace = true
 vt100 = "0.16"
+
+[[bench]]
+name = "frame"
+harness = false
 
 [lints]
 workspace = true

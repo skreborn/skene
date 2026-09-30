@@ -607,11 +607,11 @@ impl Records {
   /// An editor's window, clamped to its extent in its laid-out area; `None` for any
   /// other node.
   pub(crate) fn editor_window(&self, handle: Handle) -> Option<u32> {
-    let area = self.field_area(handle);
     let field = self
       .record(handle)
       .and_then(|record| record.kind.field())
       .filter(|field| field.lines > 1)?;
+    let area = self.field_area(handle);
 
     u32::try_from(field.window.min(field.window_limit(area))).ok()
   }
@@ -619,11 +619,11 @@ impl Records {
   /// How far an editor's window can scroll in its laid-out area; `None` for any other
   /// node.
   pub(crate) fn editor_window_limit(&self, handle: Handle) -> Option<u32> {
-    let area = self.field_area(handle);
     let field = self
       .record(handle)
       .and_then(|record| record.kind.field())
       .filter(|field| field.lines > 1)?;
+    let area = self.field_area(handle);
 
     u32::try_from(field.window_limit(area)).ok()
   }

@@ -2615,6 +2615,7 @@ name = "skene-tui"
 version = "0.1.0"
 dependencies = [
  "base64 0.22.1",
+ "criterion",
  "libc",
  "memchr",
  "miniz_oxide",

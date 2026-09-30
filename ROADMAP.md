@@ -86,11 +86,11 @@ left half-done in a code comment.
     - The terminal: the runtime kit's resolution becomes incremental and subtree-scoped
     (per-record dirty bits, restyling only the dirty and moving set, per-scope token
     and per-container query invalidation, `em` from the node's own font size),
-    rectangles, measured top-down once a frame, recompute after layout or scroll alone
-    and paint culls outside the damaged rows, where an unchanged frame of 16k text rows
-    still restyles and walks every node in 15 ms; selection spans
-    compute once per frame; wrapped lines cache per text generation and width, clusters
-    re-segment around an edit, and undo stores range diffs.
+    and rectangles, measured top-down once a frame, recompute after layout or scroll
+    alone, where an unchanged frame of 16k text rows still restyles and walks every node
+    in 7 ms (`cargo bench -p skene-tui --bench frame`); selection spans compute once per
+    frame; wrapped lines cache per text generation and width, clusters re-segment around
+    an edit, and undo stores range diffs.
     - Token caches take per-scope epochs in place of the global generation, a cached
     nearest defining node, a token's value cached at its defining scope where each
     consumer resolves it there afresh today, and interned names, so a palette change

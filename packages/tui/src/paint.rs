@@ -373,6 +373,21 @@ impl Buffer {
     self
   }
 
+  /// Whether a repaint rewrites any of the `height` rows from `y`: every row of a whole
+  /// frame, the damaged ones of a partial one.
+  fn repaints(&self, y: isize, height: usize) -> bool {
+    let Some(rows) = &self.rows
+    else {
+      return true;
+    };
+    let top = usize::try_from(y.max(0)).unwrap_or(0).min(rows.len());
+    let bottom = usize::try_from(y.saturating_add_unsigned(height).max(0))
+      .unwrap_or(0)
+      .min(rows.len());
+
+    rows[top..bottom].contains(&true)
+  }
+
   /// The part of the rectangle at (`x`, `y`) of `width` by `height` cells that lies
   /// on the frame and inside the active clip, as its cell and size; `None` when none
   /// of it does.
@@ -1392,275 +1407,302 @@ fn paint_node(
     usize::try_from(width).unwrap_or(0),
     usize::try_from(height).unwrap_or(0),
   );
-  let border = records.node_border(handle);
-  let border = (
-    isize::try_from(border.0).unwrap_or(0),
-    isize::try_from(border.1).unwrap_or(0),
-    isize::try_from(border.2).unwrap_or(0),
-    isize::try_from(border.3).unwrap_or(0),
-  );
+  let run = matches!(record.kind, Kind::Run { .. });
+  let reach = record.kind.box_style().map_or(0, |style| {
+    isize::try_from(ShadowPaint::band(style)).unwrap_or(0)
+  });
+  let shown = buffer
+    .visible(
+      x - reach,
+      y - reach,
+      isize::try_from(width).unwrap_or(isize::MAX) + 2 * reach,
+      isize::try_from(height).unwrap_or(isize::MAX) + 2 * reach,
+    )
+    .is_some();
+  let repainted = !run || buffer.repaints(y, height);
+
+  if (run && !(shown && repainted)) || (!shown && records.clips(handle)) {
+    return;
+  }
+
+  let border = if run {
+    (0, 0, 0, 0)
+  }
+  else {
+    let border = records.node_border(handle);
+
+    (
+      isize::try_from(border.0).unwrap_or(0),
+      isize::try_from(border.1).unwrap_or(0),
+      isize::try_from(border.2).unwrap_or(0),
+      isize::try_from(border.3).unwrap_or(0),
+    )
+  };
   let edges = border;
-  let focused = records.focus_shows(handle);
-  let contrast = records.contrast();
-  let paragraph = is_paragraph(records, handle);
+  let paragraph = !run && is_paragraph(records, handle);
 
-  match node_paint(records, handle, width, focused) {
-    NodePaint::Paragraph {
-      lines,
-      attribution,
-      spans,
-      scales,
-      links,
-      selection,
-    } => {
-      // The paragraph's links join the frame's.
-      let links: Vec<u16> = links.iter().map(|link| buffer.link(link)).collect();
+  if shown && repainted {
+    let focused = records.focus_shows(handle);
+    let contrast = records.contrast();
 
-      for (line, row) in lines.iter().zip(sized_rows(&lines)) {
-        let mut column = 0;
+    match node_paint(records, handle, width, focused) {
+      NodePaint::Paragraph {
+        lines,
+        attribution,
+        spans,
+        scales,
+        links,
+        selection,
+      } => {
+        // The paragraph's links join the frame's.
+        let links: Vec<u16> = links.iter().map(|link| buffer.link(link)).collect();
 
-        for (index, (_, cluster)) in text::clusters(&line.text).enumerate() {
-          let cell_x = x + isize::try_from(column).expect("fits");
-          let offset = line.start + index;
-          let advance = scales.advance(offset, cluster, column);
-          let scale = scales.at(offset);
-          // A smaller cluster sits on the line's bottom rows, as on a baseline.
-          let row_y = y + isize::try_from(row + line.rows - scale.rows()).expect("fits");
+        for (line, row) in lines.iter().zip(sized_rows(&lines)) {
+          let mut column = 0;
 
-          column += advance;
+          for (index, (_, cluster)) in text::clusters(&line.text).enumerate() {
+            let cell_x = x + isize::try_from(column).expect("fits");
+            let offset = line.start + index;
+            let advance = scales.advance(offset, cluster, column);
+            let scale = scales.at(offset);
+            // A smaller cluster sits on the line's bottom rows, as on a baseline.
+            let row_y = y + isize::try_from(row + line.rows - scale.rows()).expect("fits");
 
-          let Some(paint) = attribution
-            .get(offset)
-            .and_then(|index| spans.get(usize::from(*index)))
-          else {
-            continue;
-          };
+            column += advance;
 
-          if cluster.starts_with(INLINE_BOX) {
-            continue;
+            let Some(paint) = attribution
+              .get(offset)
+              .and_then(|index| spans.get(usize::from(*index)))
+            else {
+              continue;
+            };
+
+            if cluster.starts_with(INLINE_BOX) {
+              continue;
+            }
+
+            let selected = selection.is_some_and(|(from, to)| offset >= from && offset < to);
+
+            buffer.put_advancing(cell_x, row_y, cluster, advance, scale, |cell| {
+              if paint.foreground.is_some() {
+                cell.foreground = paint.foreground;
+              }
+
+              cell.bold = paint.bold;
+              cell.decoration = paint.decoration;
+              cell.link = paint
+                .link
+                .and_then(|index| links.get(usize::from(index)).copied());
+
+              if let Some(emphasis) = paint.focused {
+                select_cell(cell, emphasis.colors());
+              }
+
+              if selected {
+                select_cell(cell, paint.selection);
+              }
+            });
+          }
+        }
+
+        // An inline box paints its own layout at the cell its placeholder flowed into.
+        for (run, (cell_x, cell_y)) in inline_box_cells(records, handle) {
+          let (location_x, location_y) = records.node_location(run);
+
+          paint_node(
+            records,
+            buffer,
+            run,
+            x + isize::try_from(cell_x - location_x).unwrap_or(0),
+            y + isize::try_from(cell_y - location_y).unwrap_or(0),
+          );
+        }
+      }
+      NodePaint::Box {
+        background,
+        border,
+        shadow,
+      } => {
+        // A backdrop carries the decoration as pixels beneath the cells, which stay
+        // uncolored and unbordered so it shows through.
+        if place_backdrop(records, buffer, handle, (x, y), (width, height)) {
+          // Nothing in cells.
+        }
+        else {
+          if let Some(shadow) = shadow {
+            draw_shadow(buffer, x, y, width, height, shadow, contrast);
           }
 
-          let selected = selection.is_some_and(|(from, to)| offset >= from && offset < to);
+          // A childless, borderless box paints from its parent's origin by eighths:
+          // whole cells in its color, and a cell an edge crosses as a block glyph
+          // carrying its color beside what lies beneath.
+          match records.smooth_span(handle).filter(|_| border.is_none()) {
+            Some((start, extent)) => {
+              draw_smooth(buffer, offset_x, y, height, start, extent, background);
+            }
+            None => fill(buffer, x, y, width, height, background),
+          }
 
-          buffer.put_advancing(cell_x, row_y, cluster, advance, scale, |cell| {
-            if paint.foreground.is_some() {
-              cell.foreground = paint.foreground;
+          if let Some(border) = border
+            && border.shown
+          {
+            draw_border(buffer, x, y, width, height, &border);
+          }
+        }
+
+        if let Some(painter) = &record.painter {
+          let size = skene_core::Size::new(
+            u32::try_from(isize::try_from(width).unwrap_or(0) - edges.0 - edges.2).unwrap_or(0),
+            u32::try_from(isize::try_from(height).unwrap_or(0) - edges.1 - edges.3).unwrap_or(0),
+          );
+          let mut cells = Cells::new(buffer, (x + edges.0, y + edges.1), size);
+          let rect = cells.rect();
+
+          painter(&mut cells, rect);
+        }
+
+        if let Some(image) = record
+          .picture
+          .as_ref()
+          .and_then(|picture| picture.image.clone())
+          && records.graphics
+        {
+          place_image(
+            records,
+            buffer,
+            handle.index() + 1,
+            image,
+            0,
+            (x + edges.0, y + edges.1),
+            (
+              isize::try_from(width).unwrap_or(0) - edges.0 - edges.2,
+              isize::try_from(height).unwrap_or(0) - edges.1 - edges.3,
+            ),
+          );
+        }
+      }
+      NodePaint::Text {
+        lines,
+        foreground,
+        bold,
+        scale,
+        decoration,
+        link,
+        focused,
+        selection,
+      } => {
+        let link = link.map(|url| buffer.link(&url));
+        let scales = Scales::uniform(scale);
+
+        for (line, row) in lines.iter().zip(sized_rows(&lines)) {
+          let row_y = y + isize::try_from(row).expect("fits");
+
+          draw_sized(buffer, x, row_y, &line.text, scale, |cell| {
+            if foreground.is_some() {
+              cell.foreground = foreground;
             }
 
-            cell.bold = paint.bold;
-            cell.decoration = paint.decoration;
-            cell.link = paint
-              .link
-              .and_then(|index| links.get(usize::from(index)).copied());
+            cell.bold = bold;
 
-            if let Some(emphasis) = paint.focused {
-              select_cell(cell, emphasis.colors());
-            }
+            if link.is_some() || decoration != CellDecoration::NONE {
+              cell.decoration = decoration;
+              cell.link = link;
 
-            if selected {
-              select_cell(cell, paint.selection);
+              if let Some(emphasis) = focused {
+                select_cell(cell, emphasis.colors());
+              }
             }
           });
         }
-      }
 
-      // An inline box paints its own layout at the cell its placeholder flowed into.
-      for (run, (cell_x, cell_y)) in inline_box_cells(records, handle) {
-        let (location_x, location_y) = records.node_location(run);
-
-        paint_node(
-          records,
-          buffer,
-          run,
-          x + isize::try_from(cell_x - location_x).unwrap_or(0),
-          y + isize::try_from(cell_y - location_y).unwrap_or(0),
-        );
-      }
-    }
-    NodePaint::Box {
-      background,
-      border,
-      shadow,
-    } => {
-      // A backdrop carries the decoration as pixels beneath the cells, which stay
-      // uncolored and unbordered so it shows through.
-      if place_backdrop(records, buffer, handle, (x, y), (width, height)) {
-        // Nothing in cells.
-      }
-      else {
-        if let Some(shadow) = shadow {
-          draw_shadow(buffer, x, y, width, height, shadow, contrast);
-        }
-
-        // A childless, borderless box paints from its parent's origin by eighths:
-        // whole cells in its color, and a cell an edge crosses as a block glyph
-        // carrying its color beside what lies beneath.
-        match records.smooth_span(handle).filter(|_| border.is_none()) {
-          Some((start, extent)) => {
-            draw_smooth(buffer, offset_x, y, height, start, extent, background);
-          }
-          None => fill(buffer, x, y, width, height, background),
-        }
-
-        if let Some(border) = border
-          && border.shown
-        {
-          draw_border(buffer, x, y, width, height, &border);
+        if let Some(selection) = selection {
+          draw_selection(buffer, x, y, &lines, &scales, &selection);
         }
       }
-
-      if let Some(painter) = &record.painter {
-        let size = skene_core::Size::new(
-          u32::try_from(isize::try_from(width).unwrap_or(0) - edges.0 - edges.2).unwrap_or(0),
-          u32::try_from(isize::try_from(height).unwrap_or(0) - edges.1 - edges.3).unwrap_or(0),
-        );
-        let mut cells = Cells::new(buffer, (x + edges.0, y + edges.1), size);
-        let rect = cells.rect();
-
-        painter(&mut cells, rect);
-      }
-
-      if let Some(image) = record
-        .picture
-        .as_ref()
-        .and_then(|picture| picture.image.clone())
-        && records.graphics
-      {
-        place_image(
-          records,
-          buffer,
-          handle.index() + 1,
-          image,
-          0,
-          (x + edges.0, y + edges.1),
-          (
-            isize::try_from(width).unwrap_or(0) - edges.0 - edges.2,
-            isize::try_from(height).unwrap_or(0) - edges.1 - edges.3,
-          ),
-        );
-      }
-    }
-    NodePaint::Text {
-      lines,
-      foreground,
-      bold,
-      scale,
-      decoration,
-      link,
-      focused,
-      selection,
-    } => {
-      let link = link.map(|url| buffer.link(&url));
-      let scales = Scales::uniform(scale);
-
-      for (line, row) in lines.iter().zip(sized_rows(&lines)) {
-        let row_y = y + isize::try_from(row).expect("fits");
-
-        draw_sized(buffer, x, row_y, &line.text, scale, |cell| {
-          if foreground.is_some() {
-            cell.foreground = foreground;
+      NodePaint::Field {
+        background,
+        border,
+        shadow,
+        rows,
+        foreground,
+        bold,
+        placeholder,
+        caret,
+        inset,
+        selection,
+      } => {
+        if !place_backdrop(records, buffer, handle, (x, y), (width, height)) {
+          if let Some(shadow) = shadow {
+            draw_shadow(buffer, x, y, width, height, shadow, contrast);
           }
 
-          cell.bold = bold;
+          fill(buffer, x, y, width, height, background);
 
-          if link.is_some() || decoration != CellDecoration::NONE {
-            cell.decoration = decoration;
-            cell.link = link;
-
-            if let Some(emphasis) = focused {
-              select_cell(cell, emphasis.colors());
-            }
+          if let Some(border) = border
+            && border.shown
+          {
+            draw_border(buffer, x, y, width, height, &border);
           }
-        });
-      }
+        }
 
-      if let Some(selection) = selection {
-        draw_selection(buffer, x, y, &lines, &scales, &selection);
+        for (row, text) in rows.iter().enumerate() {
+          draw_sized(
+            buffer,
+            x + inset.0,
+            y + inset.1 + isize::try_from(row).expect("fits"),
+            text,
+            CellScale::ONE,
+            |cell| {
+              cell.foreground = if placeholder {
+                Some(halfway(
+                  foreground.unwrap_or(contrast.ink),
+                  cell.background.unwrap_or(contrast.base),
+                ))
+              }
+              else {
+                foreground
+              };
+              cell.bold = bold;
+            },
+          );
+        }
+
+        if let Some(selection) = selection {
+          let lines: Vec<SizedLine> = rows
+            .iter()
+            .zip(&selection.starts)
+            .map(|(text, start)| SizedLine {
+              start: *start,
+              text: text.clone(),
+              rows: 1,
+            })
+            .collect();
+
+          draw_selection(
+            buffer,
+            x + inset.0,
+            y + inset.1,
+            &lines,
+            &Scales::default(),
+            &selection,
+          );
+        }
+
+        // The caret: the terminal's own bar cursor at the cell, recorded only while the
+        // cell is visible under the current clip.
+        if let Some((row, column)) = caret {
+          let (caret_x, caret_y) = (
+            x + inset.0 + isize::try_from(column).expect("fits"),
+            y + inset.1 + isize::try_from(row).expect("fits"),
+          );
+
+          if buffer.in_clip(caret_x, caret_y) {
+            buffer.caret = u16::try_from(caret_x).ok().zip(u16::try_from(caret_y).ok());
+          }
+        }
       }
+      NodePaint::None => {}
     }
-    NodePaint::Field {
-      background,
-      border,
-      shadow,
-      rows,
-      foreground,
-      bold,
-      placeholder,
-      caret,
-      inset,
-      selection,
-    } => {
-      if !place_backdrop(records, buffer, handle, (x, y), (width, height)) {
-        if let Some(shadow) = shadow {
-          draw_shadow(buffer, x, y, width, height, shadow, contrast);
-        }
-
-        fill(buffer, x, y, width, height, background);
-
-        if let Some(border) = border
-          && border.shown
-        {
-          draw_border(buffer, x, y, width, height, &border);
-        }
-      }
-
-      for (row, text) in rows.iter().enumerate() {
-        draw_sized(
-          buffer,
-          x + inset.0,
-          y + inset.1 + isize::try_from(row).expect("fits"),
-          text,
-          CellScale::ONE,
-          |cell| {
-            cell.foreground = if placeholder {
-              Some(halfway(
-                foreground.unwrap_or(contrast.ink),
-                cell.background.unwrap_or(contrast.base),
-              ))
-            }
-            else {
-              foreground
-            };
-            cell.bold = bold;
-          },
-        );
-      }
-
-      if let Some(selection) = selection {
-        let lines: Vec<SizedLine> = rows
-          .iter()
-          .zip(&selection.starts)
-          .map(|(text, start)| SizedLine {
-            start: *start,
-            text: text.clone(),
-            rows: 1,
-          })
-          .collect();
-
-        draw_selection(
-          buffer,
-          x + inset.0,
-          y + inset.1,
-          &lines,
-          &Scales::default(),
-          &selection,
-        );
-      }
-
-      // The caret: the terminal's own bar cursor at the cell, recorded only while the
-      // cell is visible under the current clip.
-      if let Some((row, column)) = caret {
-        let (caret_x, caret_y) = (
-          x + inset.0 + isize::try_from(column).expect("fits"),
-          y + inset.1 + isize::try_from(row).expect("fits"),
-        );
-
-        if buffer.in_clip(caret_x, caret_y) {
-          buffer.caret = u16::try_from(caret_x).ok().zip(u16::try_from(caret_y).ok());
-        }
-      }
-    }
-    NodePaint::None => {}
   }
 
   if paragraph {

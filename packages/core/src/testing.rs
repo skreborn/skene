@@ -2,14 +2,13 @@
 
 use std::{cell::RefCell, rc::Rc, thread::LocalKey};
 
-use skene_reactive::{Memo, Signal};
+use skene_reactive::Memo;
 
 use super::{
   AnyKind,
   BoxProps,
   BoxValue,
   Children,
-  ContainerSizes,
   ControlProps,
   ControlState,
   Definition,
@@ -38,6 +37,7 @@ use crate::{
   Color,
   ColorScheme,
   Dimension,
+  Environment,
   FocusOrder,
   Inset,
   Length,
@@ -232,20 +232,22 @@ impl Platform for TestPlatform {
 
   fn media() -> MediaSignals<f32> {
     MEDIA.with(|media| {
-      *media.borrow_mut().get_or_insert_with(|| MediaSignals {
-        viewport: Signal::opaque(Size {
-          width: 1024.,
-          height: 768.,
-        })
-        .read_only(),
-        scheme: Signal::opaque(ColorScheme::Light).read_only(),
-        reduced_motion: Signal::opaque(false).read_only(),
-        reduced_transparency: Signal::opaque(false).read_only(),
-        high_contrast: Signal::opaque(false).read_only(),
-        pointer: Signal::opaque(PointerPrecision::Fine).read_only(),
-        hover: Signal::opaque(true).read_only(),
-        safe_area: Signal::opaque(Inset::ZERO).read_only(),
-        container_sizes: ContainerSizes::new(),
+      *media.borrow_mut().get_or_insert_with(|| {
+        let (signals, _) = MediaSignals::new(Environment {
+          viewport: Size {
+            width: 1024.,
+            height: 768.,
+          },
+          scheme: ColorScheme::Light,
+          reduced_motion: false,
+          reduced_transparency: false,
+          high_contrast: false,
+          pointer: PointerPrecision::Fine,
+          hover: true,
+          safe_area: Inset::ZERO,
+        });
+
+        signals
       })
     })
   }

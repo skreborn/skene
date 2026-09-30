@@ -25,10 +25,10 @@ use skene_core::{
   BoxProps,
   BoxValue,
   ColorScheme,
-  ContainerSizes,
   ControlProps,
   ControlState,
   Definitions,
+  Environment,
   EventKind,
   FocusOrder,
   Inset,
@@ -1053,31 +1053,23 @@ fn with_media<R>(operation: impl FnOnce(&MediaState) -> R) -> R {
       let hints = HINTS.with(Cell::get);
 
       skene_core::root_owner().enter(|| {
-        let (viewport, set_viewport) = Signal::opaque(hints.viewport).split();
-        let (scheme, set_scheme) = Signal::opaque(hints.scheme).split();
-        let (reduced_motion, set_reduced_motion) = Signal::opaque(hints.reduced_motion).split();
-        let reduced_transparency = Signal::opaque(hints.reduced_transparency).read_only();
-        let high_contrast = Signal::opaque(false).read_only();
-        let pointer = Signal::opaque(hints.pointer).read_only();
-        let hover = Signal::opaque(hints.hover).read_only();
-        let safe_area = Signal::opaque(Inset::ZERO).read_only();
+        let (signals, writers) = MediaSignals::new(Environment {
+          viewport: hints.viewport,
+          scheme: hints.scheme,
+          reduced_motion: hints.reduced_motion,
+          reduced_transparency: hints.reduced_transparency,
+          high_contrast: false,
+          pointer: hints.pointer,
+          hover: hints.hover,
+          safe_area: Inset::ZERO,
+        });
         let (absent, _) = Signal::opaque(false).split();
 
         MediaState {
-          signals: MediaSignals {
-            viewport,
-            scheme,
-            reduced_motion,
-            reduced_transparency,
-            high_contrast,
-            pointer,
-            hover,
-            safe_area,
-            container_sizes: ContainerSizes::new(),
-          },
-          set_viewport,
-          set_scheme,
-          set_reduced_motion,
+          signals,
+          set_viewport: writers.viewport,
+          set_scheme: writers.scheme,
+          set_reduced_motion: writers.reduced_motion,
           absent,
         }
       })

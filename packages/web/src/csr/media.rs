@@ -5,7 +5,16 @@
 use std::cell::{Cell, RefCell};
 
 use rustc_hash::FxHashMap;
-use skene_core::{ColorScheme, ContainerSizes, Inset, Media, MediaSignals, PointerPrecision, Size};
+use skene_core::{
+  ColorScheme,
+  Environment,
+  Inset,
+  Media,
+  MediaSignals,
+  MediaWriters,
+  PointerPrecision,
+  Size,
+};
 use skene_reactive::{Effect, Get, Memo, ReadSignal, Set, Signal, WriteSignal};
 use wasm_bindgen::JsCast as _;
 use web_sys::MediaQueryList;
@@ -181,14 +190,26 @@ fn with_media<R>(operation: impl FnOnce(&mut MediaState) -> R) -> R {
 
 /// The environment state: its signals, and the effects keeping the composed ones current.
 fn create() -> MediaState {
-  let (viewport, set_viewport) = Signal::opaque(window_size()).split();
-  let (scheme, set_scheme) = Signal::opaque(ColorScheme::Light).split();
-  let (reduced_motion, set_reduced_motion) = Signal::opaque(false).split();
-  let (reduced_transparency, set_reduced_transparency) = Signal::opaque(false).split();
-  let (high_contrast, set_high_contrast) = Signal::opaque(false).split();
-  let (pointer, set_pointer) = Signal::opaque(PointerPrecision::Fine).split();
-  let (hover, set_hover) = Signal::opaque(true).split();
-  let (safe_area, set_safe_area) = Signal::opaque(safe_area()).split();
+  let (signals, writers) = MediaSignals::new(Environment {
+    viewport: window_size(),
+    scheme: ColorScheme::Light,
+    reduced_motion: false,
+    reduced_transparency: false,
+    high_contrast: false,
+    pointer: PointerPrecision::Fine,
+    hover: true,
+    safe_area: safe_area(),
+  });
+  let MediaWriters {
+    viewport: set_viewport,
+    scheme: set_scheme,
+    reduced_motion: set_reduced_motion,
+    reduced_transparency: set_reduced_transparency,
+    high_contrast: set_high_contrast,
+    pointer: set_pointer,
+    hover: set_hover,
+    safe_area: set_safe_area,
+  } = writers;
   let choice = Signal::opaque(None);
   let resize = Listener::new(
     web_sys::window().expect("a window").into(),
@@ -200,17 +221,7 @@ fn create() -> MediaState {
     },
   );
   let mut state = MediaState {
-    signals: MediaSignals {
-      viewport,
-      scheme,
-      reduced_motion,
-      reduced_transparency,
-      high_contrast,
-      pointer,
-      hover,
-      safe_area,
-      container_sizes: ContainerSizes::new(),
-    },
+    signals,
     live: Signal::opaque(LIVE.with(Cell::get)).split(),
     choice,
     queries: FxHashMap::default(),

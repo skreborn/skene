@@ -9,7 +9,6 @@ use skene_core::{
   BoxProps,
   ClipboardAction,
   ColorScheme,
-  ContainerSizes,
   ControlProps,
   Definitions,
   Environment,
@@ -291,43 +290,34 @@ impl Store {
       let owner = Owner::new();
 
       owner.enter(|| {
-        let (viewport, set_viewport) = Signal::opaque(viewport).split();
-        let (scheme, set_scheme) = Signal::opaque(scheme).split();
-        let (reduced_motion, set_reduced_motion) = Signal::opaque(reduced_motion).split();
-        let (reduced_transparency, set_reduced_transparency) =
-          Signal::opaque(reduced_transparency).split();
-        let (high_contrast, set_high_contrast) = Signal::opaque(high_contrast).split();
-        let (pointer, set_pointer) = Signal::opaque(pointer).split();
-        let (hover, set_hover) = Signal::opaque(hover).split();
-        let (safe_area, set_safe_area) = Signal::opaque(safe_area).split();
+        let (signals, writers) = MediaSignals::new(Environment {
+          viewport,
+          scheme,
+          reduced_motion,
+          reduced_transparency,
+          high_contrast,
+          pointer,
+          hover,
+          safe_area,
+        });
         let (hydrated, set_hydrated) = Signal::opaque(hydrated).split();
         let (graphics, set_graphics) = Signal::opaque(graphics).split();
 
         MediaState {
           owner,
-          set_viewport,
-          set_scheme,
-          set_reduced_motion,
-          set_reduced_transparency,
-          set_high_contrast,
-          set_pointer,
-          set_hover,
-          set_safe_area,
+          set_viewport: writers.viewport,
+          set_scheme: writers.scheme,
+          set_reduced_motion: writers.reduced_motion,
+          set_reduced_transparency: writers.reduced_transparency,
+          set_high_contrast: writers.high_contrast,
+          set_pointer: writers.pointer,
+          set_hover: writers.hover,
+          set_safe_area: writers.safe_area,
           set_hydrated,
           set_graphics,
           hydrated,
           graphics,
-          signals: MediaSignals {
-            viewport,
-            scheme,
-            reduced_motion,
-            reduced_transparency,
-            high_contrast,
-            pointer,
-            hover,
-            safe_area,
-            container_sizes: ContainerSizes::new(),
-          },
+          signals,
         }
       })
     })

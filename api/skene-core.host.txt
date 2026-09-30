@@ -3261,12 +3261,28 @@ pub skene_core::MediaSignals::viewport: skene_reactive::signal::ReadSignal<skene
 impl<N: core::clone::Clone + 'static> skene_core::MediaSignals<N>
 pub fn skene_core::MediaSignals<N>::environment(&self) -> skene_core::Environment<N>
 impl<N: skene_core::Scalar> skene_core::MediaSignals<N>
+pub fn skene_core::MediaSignals<N>::new(skene_core::Environment<N>) -> (Self, skene_core::MediaWriters<N>)
+impl<N: skene_core::Scalar> skene_core::MediaSignals<N>
 pub fn skene_core::MediaSignals<N>::watch(&self, &skene_core::Media<N>) -> skene_reactive::memo::Memo<bool>
 impl<N: core::clone::Clone + 'static> core::clone::Clone for skene_core::MediaSignals<N>
 pub fn skene_core::MediaSignals<N>::clone(&self) -> skene_core::MediaSignals<N>
 impl<N: core::fmt::Debug + 'static> core::fmt::Debug for skene_core::MediaSignals<N>
 pub fn skene_core::MediaSignals<N>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<N: core::marker::Copy + 'static> core::marker::Copy for skene_core::MediaSignals<N>
+pub struct skene_core::MediaWriters<N: 'static>
+pub skene_core::MediaWriters::high_contrast: skene_reactive::signal::WriteSignal<bool>
+pub skene_core::MediaWriters::hover: skene_reactive::signal::WriteSignal<bool>
+pub skene_core::MediaWriters::pointer: skene_reactive::signal::WriteSignal<skene_core::PointerPrecision>
+pub skene_core::MediaWriters::reduced_motion: skene_reactive::signal::WriteSignal<bool>
+pub skene_core::MediaWriters::reduced_transparency: skene_reactive::signal::WriteSignal<bool>
+pub skene_core::MediaWriters::safe_area: skene_reactive::signal::WriteSignal<skene_core::Inset<N>>
+pub skene_core::MediaWriters::scheme: skene_reactive::signal::WriteSignal<skene_core::ColorScheme>
+pub skene_core::MediaWriters::viewport: skene_reactive::signal::WriteSignal<skene_core::Size<N>>
+impl<N: core::clone::Clone + 'static> core::clone::Clone for skene_core::MediaWriters<N>
+pub fn skene_core::MediaWriters<N>::clone(&self) -> skene_core::MediaWriters<N>
+impl<N: core::fmt::Debug + 'static> core::fmt::Debug for skene_core::MediaWriters<N>
+pub fn skene_core::MediaWriters<N>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<N: core::marker::Copy + 'static> core::marker::Copy for skene_core::MediaWriters<N>
 pub struct skene_core::Modifiers
 pub skene_core::Modifiers::alt: bool
 pub skene_core::Modifiers::ctrl: bool

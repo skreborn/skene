@@ -11,7 +11,6 @@ use skene_core::{
   Color,
   ColorScheme,
   ContainerName,
-  ContainerSizes,
   Environment,
   FocusOrder,
   Inset,
@@ -1542,34 +1541,26 @@ impl Store {
       let owner = Owner::new();
 
       owner.enter(|| {
-        let (viewport, set_viewport) = Signal::opaque(viewport).split();
-        let (scheme, set_scheme) = Signal::opaque(scheme).split();
-        let (reduced_motion, set_reduced_motion) = Signal::opaque(reduced).split();
-        let reduced_transparency = Signal::opaque(false).read_only();
-        let high_contrast = Signal::opaque(false).read_only();
-        let pointer = Signal::opaque(pointer).read_only();
-        let hover = Signal::opaque(hover).read_only();
-        let safe_area = Signal::opaque(Inset::ZERO).read_only();
+        let (signals, writers) = MediaSignals::new(Environment {
+          viewport,
+          scheme,
+          reduced_motion: reduced,
+          reduced_transparency: false,
+          high_contrast: false,
+          pointer,
+          hover,
+          safe_area: Inset::ZERO,
+        });
         let (graphics, set_graphics) = Signal::opaque(graphics).split();
 
         MediaState {
           owner,
-          set_viewport,
-          set_scheme,
-          set_reduced_motion,
+          set_viewport: writers.viewport,
+          set_scheme: writers.scheme,
+          set_reduced_motion: writers.reduced_motion,
           graphics,
           set_graphics,
-          signals: MediaSignals {
-            viewport,
-            scheme,
-            reduced_motion,
-            reduced_transparency,
-            high_contrast,
-            pointer,
-            hover,
-            safe_area,
-            container_sizes: ContainerSizes::new(),
-          },
+          signals,
         }
       })
     })

@@ -187,6 +187,7 @@ pub use props::{
   DeclaredRunStyle,
   EventKind,
   MediaSignals,
+  MediaWriters,
   OverlayProps,
   RunKeyframe,
   RunProps,

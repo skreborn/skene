@@ -12,12 +12,12 @@ use skene_core::{
   BoxValue,
   Color,
   ColorScheme,
-  ContainerSizes,
   ControlProps,
   ControlState,
   Definition,
   Definitions,
   Dimension,
+  Environment,
   EventKind,
   FocusOrder,
   HasChild,
@@ -235,16 +235,17 @@ impl Platform for Reentrant {
         .borrow_mut()
         .get_or_insert_with(|| {
           let owner = Owner::new();
-          let signals = owner.enter(|| MediaSignals {
-            viewport: Signal::opaque(Size::new(1024., 768.)).read_only(),
-            scheme: Signal::opaque(ColorScheme::Light).read_only(),
-            reduced_motion: Signal::opaque(false).read_only(),
-            reduced_transparency: Signal::opaque(false).read_only(),
-            high_contrast: Signal::opaque(false).read_only(),
-            pointer: Signal::opaque(PointerPrecision::Fine).read_only(),
-            hover: Signal::opaque(true).read_only(),
-            safe_area: Signal::opaque(Inset::ZERO).read_only(),
-            container_sizes: ContainerSizes::new(),
+          let (signals, _) = owner.enter(|| {
+            MediaSignals::new(Environment {
+              viewport: Size::new(1024., 768.),
+              scheme: ColorScheme::Light,
+              reduced_motion: false,
+              reduced_transparency: false,
+              high_contrast: false,
+              pointer: PointerPrecision::Fine,
+              hover: true,
+              safe_area: Inset::ZERO,
+            })
           });
 
           (owner, signals)

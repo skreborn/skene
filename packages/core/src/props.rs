@@ -1,7 +1,7 @@
 //! What a platform receives to realize a node, and what it reports of the environment.
 
 use rustc_hash::FxHashMap;
-use skene_reactive::{Get, Memo, ReadSignal, Signal, Update, With};
+use skene_reactive::{Get, Memo, ReadSignal, Signal, Update, With, WriteSignal};
 
 use super::{
   BoxDynamics,
@@ -218,6 +218,68 @@ pub struct MediaSignals<N: 'static> {
   pub safe_area: ReadSignal<Inset<N>>,
   /// The measured sizes of the named query containers.
   pub container_sizes: ContainerSizes<N>,
+}
+
+/// The write halves of [`MediaSignals`], one per signal of the environment.
+#[derive(Clone, Copy, Debug)]
+#[must_use]
+pub struct MediaWriters<N: 'static> {
+  /// Writes the viewport's size.
+  pub viewport: WriteSignal<Size<N>>,
+  /// Writes the color scheme in force.
+  pub scheme: WriteSignal<ColorScheme>,
+  /// Writes whether the reader prefers reduced motion.
+  pub reduced_motion: WriteSignal<bool>,
+  /// Writes whether the reader prefers reduced transparency.
+  pub reduced_transparency: WriteSignal<bool>,
+  /// Writes whether the reader prefers more contrast.
+  pub high_contrast: WriteSignal<bool>,
+  /// Writes how precisely the reader's primary pointer points.
+  pub pointer: WriteSignal<PointerPrecision>,
+  /// Writes whether the reader's primary pointer hovers.
+  pub hover: WriteSignal<bool>,
+  /// Writes the insets the display keeps clear of the viewport's edges.
+  pub safe_area: WriteSignal<Inset<N>>,
+}
+
+impl<N: Scalar> MediaSignals<N> {
+  /// Signals holding `environment`, owned by the current owner, with no container
+  /// measured yet, and their write halves.
+  pub fn new(environment: Environment<N>) -> (Self, MediaWriters<N>) {
+    let (viewport, set_viewport) = Signal::opaque(environment.viewport).split();
+    let (scheme, set_scheme) = Signal::opaque(environment.scheme).split();
+    let (reduced_motion, set_reduced_motion) = Signal::opaque(environment.reduced_motion).split();
+    let (reduced_transparency, set_reduced_transparency) =
+      Signal::opaque(environment.reduced_transparency).split();
+    let (high_contrast, set_high_contrast) = Signal::opaque(environment.high_contrast).split();
+    let (pointer, set_pointer) = Signal::opaque(environment.pointer).split();
+    let (hover, set_hover) = Signal::opaque(environment.hover).split();
+    let (safe_area, set_safe_area) = Signal::opaque(environment.safe_area).split();
+
+    (
+      Self {
+        viewport,
+        scheme,
+        reduced_motion,
+        reduced_transparency,
+        high_contrast,
+        pointer,
+        hover,
+        safe_area,
+        container_sizes: ContainerSizes::new(),
+      },
+      MediaWriters {
+        viewport: set_viewport,
+        scheme: set_scheme,
+        reduced_motion: set_reduced_motion,
+        reduced_transparency: set_reduced_transparency,
+        high_contrast: set_high_contrast,
+        pointer: set_pointer,
+        hover: set_hover,
+        safe_area: set_safe_area,
+      },
+    )
+  }
 }
 
 impl<N: Clone + 'static> MediaSignals<N> {

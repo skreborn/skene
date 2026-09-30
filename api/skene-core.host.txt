@@ -2547,7 +2547,7 @@ pub const fn skene_core::Conditional<L, C>::base(&self) -> &L
 pub fn skene_core::Conditional<L, C>::leaves(&self) -> impl core::iter::traits::iterator::Iterator<Item = (core::option::Option<&C>, &L)>
 pub fn skene_core::Conditional<L, C>::map<M>(self, impl core::ops::function::FnMut(L) -> M) -> skene_core::Conditional<M, C>
 pub fn skene_core::Conditional<L, C>::map_conditions<M>(self, impl core::ops::function::FnMut(C) -> M) -> skene_core::Conditional<L, M>
-pub fn skene_core::Conditional<L, C>::new(L) -> Self
+pub const fn skene_core::Conditional<L, C>::new(L) -> Self
 pub fn skene_core::Conditional<L, C>::variants(&self) -> &[(C, L)]
 pub fn skene_core::Conditional<L, C>::when(self, C, impl core::convert::Into<L>) -> Self
 impl<T, C> skene_core::Conditional<skene_core::Leaf<T>, C>

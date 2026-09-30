@@ -13,6 +13,7 @@ libm = "0.2"
 rustc-hash.workspace = true
 skene-reactive.workspace = true
 smallvec.workspace = true
+thin-vec = "0.2"
 ui-events.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]

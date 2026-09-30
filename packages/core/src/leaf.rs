@@ -2,7 +2,7 @@
 
 use std::{fmt::Debug, rc::Rc};
 
-use smallvec::SmallVec;
+use thin_vec::ThinVec;
 
 use super::{Condition, Expr, Media, Scalar, State, Token, TokenName, TokenRef, Tokenable};
 use crate::{Axes, Dimension, Spacing};
@@ -123,7 +123,7 @@ impl<K: Debug, V> Debug for DerivedSlot<K, V> {
 #[must_use]
 pub struct Conditional<L, C> {
   base: L,
-  variants: SmallVec<[(C, L); 1]>,
+  variants: ThinVec<(C, L)>,
 }
 
 /// What a builder collects for one property: a [`Leaf`] under the facade's conditions.
@@ -150,10 +150,10 @@ pub type StaticValue<T, C> = Conditional<PlatformLeaf<T>, C>;
 impl<L, C> Conditional<L, C> {
   /// A value with no variants.
   #[inline(always)]
-  pub fn new(base: L) -> Self {
+  pub const fn new(base: L) -> Self {
     Self {
       base,
-      variants: SmallVec::new(),
+      variants: ThinVec::new(),
     }
   }
 

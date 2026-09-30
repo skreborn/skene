@@ -98,10 +98,9 @@ left half-done in a code comment.
     written once in core's `ResolutionContext`, which headless and the terminal share.
     - Constant factors: the UI-thread assertion in debug alone, fused borrows, the
     iterative pull and alien-signals' propagation techniques, estimated to halve a read
-    and a write; forced inlining off allocating functions; variants in
-    a thin vector (`Value<Color>` from 112 to about 48 bytes, a box style from 3.5 to
-    about 1.4 KB), then presence bitsets; the lazy list reading a data source (a count
-    and the item at an index) through a Fenwick tree, and evicting measured extents;
+    and a write; forced inlining off allocating functions; the lazy list reading a
+    data source (a count and the item at an index) through a Fenwick tree, and evicting
+    measured extents;
     one constructable stylesheet with deferred collection and a set of adopted names;
     release web output through wasm-opt, without `.d.ts` files or name sections,
     precompressed, fingerprinted and preloaded, with one cached stylesheet shared by

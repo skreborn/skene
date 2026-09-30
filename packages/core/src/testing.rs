@@ -1,10 +1,6 @@
-//! A platform for core's own tests: sinks are numbers, and every mirrored call is logged.
+//! A platform for core's own tests: every mirrored call is logged.
 
-use std::{
-  cell::{Cell, RefCell},
-  rc::Rc,
-  thread::LocalKey,
-};
+use std::{cell::RefCell, rc::Rc, thread::LocalKey};
 
 use skene_reactive::{Memo, Signal};
 
@@ -54,11 +50,11 @@ use crate::{
 /// One call the platform received.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum Call {
-  Attach(u32, u32, Option<u32>),
-  Detach(u32, u32),
-  Destroy(u32),
-  Listen(u32, EventKind),
-  DefineTokens(u32, usize),
+  Attach(NodeId, NodeId, Option<NodeId>),
+  Detach(NodeId, NodeId),
+  Destroy(NodeId),
+  Listen(NodeId, EventKind),
+  DefineTokens(NodeId, usize),
   DefineRootTokens(usize),
 }
 
@@ -101,9 +97,8 @@ pub(super) struct TestPlatform;
 thread_local! {
   static SCENE: RefCell<Scene<TestPlatform>> = RefCell::new(Scene::new());
   static LOG: RefCell<Vec<Call>> = const { RefCell::new(Vec::new()) };
-  static NEXT_SINK: Cell<u32> = const { Cell::new(1) };
   static MEDIA: RefCell<Option<MediaSignals<f32>>> = const { RefCell::new(None) };
-  static ORIGINS: RefCell<Vec<(u32, f32, f32)>> = const { RefCell::new(Vec::new()) };
+  static ORIGINS: RefCell<Vec<(NodeId, f32, f32)>> = const { RefCell::new(Vec::new()) };
 }
 
 impl TestPlatform {
@@ -111,13 +106,12 @@ impl TestPlatform {
   pub(super) fn reset() {
     SCENE.with(|scene| *scene.borrow_mut() = Scene::new());
     LOG.with(|log| log.borrow_mut().clear());
-    NEXT_SINK.with(|next| next.set(1));
     ORIGINS.with(|origins| origins.borrow_mut().clear());
   }
 
-  /// Places `sink`'s box at (`x`, `y`), for pointer events to localize against.
-  pub(super) fn set_origin(sink: u32, x: f32, y: f32) {
-    ORIGINS.with(|origins| origins.borrow_mut().push((sink, x, y)));
+  /// Places `node`'s box at (`x`, `y`), for pointer events to localize against.
+  pub(super) fn set_origin(node: NodeId, x: f32, y: f32) {
+    ORIGINS.with(|origins| origins.borrow_mut().push((node, x, y)));
   }
 
   /// The calls received since the last reset or take.
@@ -128,21 +122,10 @@ impl TestPlatform {
   fn log(call: Call) {
     LOG.with(|log| log.borrow_mut().push(call));
   }
-
-  fn next_sink() -> u32 {
-    NEXT_SINK.with(|next| {
-      let sink = next.get();
-
-      next.set(sink + 1);
-
-      sink
-    })
-  }
 }
 
 impl Platform for TestPlatform {
   type Scalar = f32;
-  type Sink = u32;
   type StyleExt = ();
   type TokenValue = Erased;
 
@@ -150,33 +133,25 @@ impl Platform for TestPlatform {
     &SCENE
   }
 
-  fn create_box(_: &BoxProps<Self>) -> u32 {
-    Self::next_sink()
-  }
+  fn create_box(_: NodeId, _: &BoxProps<Self>) {}
 
-  fn update_box(_: u32, _: Slot, _: &StaticLeaf<BoxValue<f32>>) {}
+  fn update_box(_: NodeId, _: Slot, _: &StaticLeaf<BoxValue<f32>>) {}
 
-  fn update_focus_order(_: u32, _: Option<FocusOrder>) {}
+  fn update_focus_order(_: NodeId, _: Option<FocusOrder>) {}
 
-  fn update_access(_: u32, _: &[AccessProp]) {}
+  fn update_access(_: NodeId, _: &[AccessProp]) {}
 
-  fn create_control(_: &ControlProps<Self>) -> u32 {
-    Self::next_sink()
-  }
+  fn create_control(_: NodeId, _: &ControlProps<Self>) {}
 
-  fn set_control_state(_: u32, _: &ControlState) {}
+  fn set_control_state(_: NodeId, _: &ControlState) {}
 
-  fn create_overlay(_: &OverlayProps<Self>) -> u32 {
-    Self::next_sink()
-  }
+  fn create_overlay(_: NodeId, _: &OverlayProps<Self>) {}
 
-  fn set_overlay_open(_: u32, _: bool, _: Option<u32>) {}
+  fn set_overlay_open(_: NodeId, _: bool, _: Option<NodeId>) {}
 
-  fn create_run(_: &RunProps<Self>) -> u32 {
-    Self::next_sink()
-  }
+  fn create_run(_: NodeId, _: &RunProps<Self>) {}
 
-  fn update_run(_: u32, _: Slot, _: &StaticLeaf<RunValue>) {}
+  fn update_run(_: NodeId, _: Slot, _: &StaticLeaf<RunValue>) {}
 
   fn schedule(_: std::time::Duration, _: Box<dyn FnOnce()>) -> Timer {
     Timer(0)
@@ -184,29 +159,25 @@ impl Platform for TestPlatform {
 
   fn cancel(_: Timer) {}
 
-  fn set_text(_: u32, _: &str) {}
+  fn set_text(_: NodeId, _: &str) {}
 
-  fn create_anchor() -> u32 {
-    Self::next_sink()
-  }
+  fn create_anchor(_: NodeId) {}
 
-  fn create_scope() -> u32 {
-    Self::next_sink()
-  }
+  fn create_scope(_: NodeId) {}
 
-  fn attach(parent: u32, child: u32, before: Option<u32>) {
+  fn attach(parent: NodeId, child: NodeId, before: Option<NodeId>) {
     Self::log(Call::Attach(parent, child, before));
   }
 
-  fn detach(parent: u32, child: u32) {
+  fn detach(parent: NodeId, child: NodeId) {
     Self::log(Call::Detach(parent, child));
   }
 
-  fn destroy(sink: u32) {
-    Self::log(Call::Destroy(sink));
+  fn destroy(node: NodeId) {
+    Self::log(Call::Destroy(node));
   }
 
-  fn define_tokens(scope: u32, definitions: &Definitions<Erased>) {
+  fn define_tokens(scope: NodeId, definitions: &Definitions<Erased>) {
     Self::log(Call::DefineTokens(scope, definitions.len()));
   }
 
@@ -214,16 +185,16 @@ impl Platform for TestPlatform {
     Self::log(Call::DefineRootTokens(definitions.len()));
   }
 
-  fn listen(sink: u32, kind: EventKind) {
-    Self::log(Call::Listen(sink, kind));
+  fn listen(node: NodeId, kind: EventKind) {
+    Self::log(Call::Listen(node, kind));
   }
 
-  fn localize_pointer(sink: u32, event: &PointerEvent) -> PointerEvent {
+  fn localize_pointer(node: NodeId, event: &PointerEvent) -> PointerEvent {
     ORIGINS.with(|origins| {
       origins
         .borrow()
         .iter()
-        .find(|(placed, _, _)| *placed == sink)
+        .find(|(placed, _, _)| *placed == node)
         .map_or(*event, |(_, x, y)| PointerEvent {
           local_x: event.x - x,
           local_y: event.y - y,
@@ -232,17 +203,17 @@ impl Platform for TestPlatform {
     })
   }
 
-  fn focus(_: u32) {}
+  fn focus(_: NodeId) {}
 
-  fn blur(_: u32) {}
+  fn blur(_: NodeId) {}
 
-  fn set_value(_: u32, _: &str) {}
+  fn set_value(_: NodeId, _: &str) {}
 
-  fn set_selection(_: u32, _: TextSelection) {}
+  fn set_selection(_: NodeId, _: TextSelection) {}
 
-  fn set_checked(_: u32, _: bool) {}
+  fn set_checked(_: NodeId, _: bool) {}
 
-  fn observe_size(_: u32, _: Rc<dyn Fn(Size<f32>)>) -> Observation {
+  fn observe_size(_: NodeId, _: Rc<dyn Fn(Size<f32>)>) -> Observation {
     Observation::unmeasured()
   }
 
@@ -294,7 +265,7 @@ impl TestBox {
   pub(super) fn node() -> NodeId {
     Scene::<TestPlatform>::with(|scene| {
       let annotation = scene.take_pending_annotation();
-      let node = scene.create(NodeKind::Box, TestPlatform::next_sink());
+      let node = scene.create(NodeKind::Box);
 
       if let Some(annotation) = annotation {
         scene.set_annotation(node, annotation);
@@ -323,11 +294,6 @@ impl View<TestPlatform> for TestBox {
 
     node
   }
-}
-
-/// The sink of `node`.
-pub(super) fn sink(node: NodeId) -> u32 {
-  Scene::<TestPlatform>::with(|scene| *scene.record(node).expect("live node").sink())
 }
 
 /// The children of `node`, in order.

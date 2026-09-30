@@ -513,24 +513,6 @@ impl core::hash::Hash for skene_tui::Clipboard
 pub fn skene_tui::Clipboard::hash<__H: core::hash::Hasher>(&self, &mut __H)
 impl core::marker::Copy for skene_tui::Clipboard
 impl core::marker::StructuralPartialEq for skene_tui::Clipboard
-pub struct skene_tui::Handle
-impl skene_tui::Handle
-pub const fn skene_tui::Handle::index(self) -> u32
-impl core::clone::Clone for skene_tui::Handle
-pub fn skene_tui::Handle::clone(&self) -> skene_tui::Handle
-impl core::cmp::Eq for skene_tui::Handle
-impl core::cmp::Ord for skene_tui::Handle
-pub fn skene_tui::Handle::cmp(&self, &skene_tui::Handle) -> core::cmp::Ordering
-impl core::cmp::PartialEq for skene_tui::Handle
-pub fn skene_tui::Handle::eq(&self, &skene_tui::Handle) -> bool
-impl core::cmp::PartialOrd for skene_tui::Handle
-pub fn skene_tui::Handle::partial_cmp(&self, &skene_tui::Handle) -> core::option::Option<core::cmp::Ordering>
-impl core::fmt::Debug for skene_tui::Handle
-pub fn skene_tui::Handle::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::hash::Hash for skene_tui::Handle
-pub fn skene_tui::Handle::hash<__H: core::hash::Hasher>(&self, &mut __H)
-impl core::marker::Copy for skene_tui::Handle
-impl core::marker::StructuralPartialEq for skene_tui::Handle
 pub struct skene_tui::Launch
 impl skene_tui::Launch
 pub fn skene_tui::Launch::install(self)
@@ -586,57 +568,55 @@ impl core::marker::Copy for skene_tui::Tui
 impl core::marker::StructuralPartialEq for skene_tui::Tui
 impl skene_common::painting::Painting for skene_tui::Tui
 pub fn skene_tui::Tui::available() -> skene_reactive::signal::ReadSignal<bool>
-pub fn skene_tui::Tui::paint(skene_tui::Handle, alloc::boxed::Box<skene_common::painting::Painter>)
+pub fn skene_tui::Tui::paint(skene_core::node::NodeId, alloc::boxed::Box<skene_common::painting::Painter>)
 impl skene_core::platform::Platform for skene_tui::Tui
 pub type skene_tui::Tui::Scalar = u32
-pub type skene_tui::Tui::Sink = skene_tui::Handle
 pub type skene_tui::Tui::StyleExt = skene_common::tui::ext::TuiExt
 pub type skene_tui::Tui::TokenValue = skene_core::resolve::TokenValue<u32>
-pub fn skene_tui::Tui::attach(skene_tui::Handle, skene_tui::Handle, core::option::Option<skene_tui::Handle>)
-pub fn skene_tui::Tui::bind_node(skene_tui::Handle, skene_core::node::NodeId)
-pub fn skene_tui::Tui::blur(skene_tui::Handle)
+pub fn skene_tui::Tui::attach(skene_core::node::NodeId, skene_core::node::NodeId, core::option::Option<skene_core::node::NodeId>)
+pub fn skene_tui::Tui::blur(skene_core::node::NodeId)
 pub fn skene_tui::Tui::cancel(skene_core::platform::Timer)
 pub fn skene_tui::Tui::clipboard(skene_core::values::clipboard::ClipboardAction)
 pub fn skene_tui::Tui::clipboard_availability(skene_core::values::clipboard::ClipboardAction) -> skene_core::values::clipboard::Availability
-pub fn skene_tui::Tui::create_anchor() -> skene_tui::Handle
-pub fn skene_tui::Tui::create_box(&skene_core::props::BoxProps<Self>) -> skene_tui::Handle
-pub fn skene_tui::Tui::create_control(&skene_core::control::ControlProps<Self>) -> skene_tui::Handle
-pub fn skene_tui::Tui::create_overlay(&skene_core::props::OverlayProps<Self>) -> skene_tui::Handle
-pub fn skene_tui::Tui::create_run(&skene_core::props::RunProps<Self>) -> skene_tui::Handle
-pub fn skene_tui::Tui::create_scope() -> skene_tui::Handle
+pub fn skene_tui::Tui::create_anchor(skene_core::node::NodeId)
+pub fn skene_tui::Tui::create_box(skene_core::node::NodeId, &skene_core::props::BoxProps<Self>)
+pub fn skene_tui::Tui::create_control(skene_core::node::NodeId, &skene_core::control::ControlProps<Self>)
+pub fn skene_tui::Tui::create_overlay(skene_core::node::NodeId, &skene_core::props::OverlayProps<Self>)
+pub fn skene_tui::Tui::create_run(skene_core::node::NodeId, &skene_core::props::RunProps<Self>)
+pub fn skene_tui::Tui::create_scope(skene_core::node::NodeId)
 pub fn skene_tui::Tui::define_root_tokens(&skene_core::token::Definitions<skene_tui::TokenValue>)
-pub fn skene_tui::Tui::define_tokens(skene_tui::Handle, &skene_core::token::Definitions<skene_tui::TokenValue>)
-pub fn skene_tui::Tui::destroy(skene_tui::Handle)
-pub fn skene_tui::Tui::detach(skene_tui::Handle, skene_tui::Handle)
-pub fn skene_tui::Tui::focus(skene_tui::Handle)
+pub fn skene_tui::Tui::define_tokens(skene_core::node::NodeId, &skene_core::token::Definitions<skene_tui::TokenValue>)
+pub fn skene_tui::Tui::destroy(skene_core::node::NodeId)
+pub fn skene_tui::Tui::detach(skene_core::node::NodeId, skene_core::node::NodeId)
+pub fn skene_tui::Tui::focus(skene_core::node::NodeId)
 pub fn skene_tui::Tui::focus_visible() -> bool
-pub fn skene_tui::Tui::localize_pointer(skene_tui::Handle, &skene_core::events::PointerEvent) -> skene_core::events::PointerEvent
+pub fn skene_tui::Tui::localize_pointer(skene_core::node::NodeId, &skene_core::events::PointerEvent) -> skene_core::events::PointerEvent
 pub fn skene_tui::Tui::media() -> skene_core::props::MediaSignals<u32>
-pub fn skene_tui::Tui::observe_size(skene_tui::Handle, alloc::rc::Rc<dyn core::ops::function::Fn(skene_core::values::size::Size<u32>)>) -> skene_core::platform::Observation
+pub fn skene_tui::Tui::observe_size(skene_core::node::NodeId, alloc::rc::Rc<dyn core::ops::function::Fn(skene_core::values::size::Size<u32>)>) -> skene_core::platform::Observation
 pub fn skene_tui::Tui::scene() -> &'static std::thread::local::LocalKey<core::cell::RefCell<skene_core::scene::Scene<Self>>>
 pub fn skene_tui::Tui::schedule(core::time::Duration, alloc::boxed::Box<dyn core::ops::function::FnOnce()>) -> skene_core::platform::Timer
-pub fn skene_tui::Tui::set_checked(skene_tui::Handle, bool)
-pub fn skene_tui::Tui::set_control_state(skene_tui::Handle, &skene_core::control::ControlState)
-pub fn skene_tui::Tui::set_overlay_open(skene_tui::Handle, bool, core::option::Option<skene_tui::Handle>)
-pub fn skene_tui::Tui::set_overlay_placement(skene_tui::Handle, skene_core::values::placement::Placement)
-pub fn skene_tui::Tui::set_overlay_position(skene_tui::Handle, core::option::Option<skene_core::values::point::Point<f32>>)
+pub fn skene_tui::Tui::set_checked(skene_core::node::NodeId, bool)
+pub fn skene_tui::Tui::set_control_state(skene_core::node::NodeId, &skene_core::control::ControlState)
+pub fn skene_tui::Tui::set_overlay_open(skene_core::node::NodeId, bool, core::option::Option<skene_core::node::NodeId>)
+pub fn skene_tui::Tui::set_overlay_placement(skene_core::node::NodeId, skene_core::values::placement::Placement)
+pub fn skene_tui::Tui::set_overlay_position(skene_core::node::NodeId, core::option::Option<skene_core::values::point::Point<f32>>)
 pub fn skene_tui::Tui::set_scheme(core::option::Option<skene_core::values::color::ColorScheme>)
-pub fn skene_tui::Tui::set_selection(skene_tui::Handle, skene_core::values::text_selection::TextSelection)
-pub fn skene_tui::Tui::set_text(skene_tui::Handle, &str)
-pub fn skene_tui::Tui::set_value(skene_tui::Handle, &str)
+pub fn skene_tui::Tui::set_selection(skene_core::node::NodeId, skene_core::values::text_selection::TextSelection)
+pub fn skene_tui::Tui::set_text(skene_core::node::NodeId, &str)
+pub fn skene_tui::Tui::set_value(skene_core::node::NodeId, &str)
 pub fn skene_tui::Tui::stored_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
-pub fn skene_tui::Tui::update_access(skene_tui::Handle, &[skene_core::values::access::AccessProp])
-pub fn skene_tui::Tui::update_box(skene_tui::Handle, skene_core::leaf::Slot, &skene_core::leaf::StaticLeaf<skene_core::box_style::BoxValue<u32, skene_common::tui::ext::TuiExt>>)
-pub fn skene_tui::Tui::update_focus_order(skene_tui::Handle, core::option::Option<skene_core::values::focus_order::FocusOrder>)
-pub fn skene_tui::Tui::update_run(skene_tui::Handle, skene_core::leaf::Slot, &skene_core::leaf::StaticLeaf<skene_core::run_style::RunValue<skene_common::tui::ext::TuiExt>>)
+pub fn skene_tui::Tui::update_access(skene_core::node::NodeId, &[skene_core::values::access::AccessProp])
+pub fn skene_tui::Tui::update_box(skene_core::node::NodeId, skene_core::leaf::Slot, &skene_core::leaf::StaticLeaf<skene_core::box_style::BoxValue<u32, skene_common::tui::ext::TuiExt>>)
+pub fn skene_tui::Tui::update_focus_order(skene_core::node::NodeId, core::option::Option<skene_core::values::focus_order::FocusOrder>)
+pub fn skene_tui::Tui::update_run(skene_core::node::NodeId, skene_core::leaf::Slot, &skene_core::leaf::StaticLeaf<skene_core::run_style::RunValue<skene_common::tui::ext::TuiExt>>)
 pub fn skene_tui::Tui::watch_media(&skene_core::condition::Media<u32>) -> skene_reactive::memo::Memo<bool>
 impl skene_tui::CellPainter for skene_tui::Tui
-pub fn skene_tui::Tui::paint(skene_tui::Handle, alloc::boxed::Box<dyn core::ops::function::Fn(&mut skene_tui::Cells<'_>, skene_core::values::rect::Rect<u32>)>)
+pub fn skene_tui::Tui::paint(skene_core::node::NodeId, alloc::boxed::Box<dyn core::ops::function::Fn(&mut skene_tui::Cells<'_>, skene_core::values::rect::Rect<u32>)>)
 pub const skene_tui::MOUSE_KEY: skene_core::events::Shortcut
 pub trait skene_tui::CellPainter: skene_core::platform::Platform
-pub fn skene_tui::CellPainter::paint(Self::Sink, alloc::boxed::Box<dyn core::ops::function::Fn(&mut skene_tui::Cells<'_>, skene_core::values::rect::Rect<u32>)>)
+pub fn skene_tui::CellPainter::paint(skene_core::node::NodeId, alloc::boxed::Box<dyn core::ops::function::Fn(&mut skene_tui::Cells<'_>, skene_core::values::rect::Rect<u32>)>)
 impl skene_tui::CellPainter for skene_tui::Tui
-pub fn skene_tui::Tui::paint(skene_tui::Handle, alloc::boxed::Box<dyn core::ops::function::Fn(&mut skene_tui::Cells<'_>, skene_core::values::rect::Rect<u32>)>)
+pub fn skene_tui::Tui::paint(skene_core::node::NodeId, alloc::boxed::Box<dyn core::ops::function::Fn(&mut skene_tui::Cells<'_>, skene_core::values::rect::Rect<u32>)>)
 pub trait skene_tui::IntoView: skene_core::view::IntoView<skene_tui::ActivePlatform> + skene_core::view::AnyKind
 pub fn skene_tui::IntoView::into_view(self) -> skene_tui::AnyView where Self: core::marker::Sized
 impl<V: skene_core::view::IntoView<skene_tui::ActivePlatform> + skene_core::view::AnyKind> skene_tui::IntoView for V
@@ -739,7 +719,6 @@ pub fn skene_tui::dev_notice_view(skene_reactive::signal::Signal<core::option::O
 pub fn skene_tui::empty() -> impl skene_tui::View
 pub fn skene_tui::focused_node() -> core::option::Option<skene_core::node::NodeId>
 pub fn skene_tui::frame_pending() -> bool
-pub fn skene_tui::handle(skene_core::node::NodeId) -> core::option::Option<skene_tui::Handle>
 pub fn skene_tui::install()
 pub fn skene_tui::install_router<R: skene_common::routing::Route>(R) -> skene_common::routing::Router<R>
 pub fn skene_tui::launch<V, F>(F) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_core::view::IntoView<skene_tui::Tui>

@@ -20,6 +20,7 @@ use skene_core::{
   MediaSignals,
   NativeElement,
   NodeId,
+  NodeMap,
   Placement,
   Plain,
   PointerButtons,
@@ -69,28 +70,8 @@ pub(crate) type PlainRun = RunStyle<Plain, TuiExt>;
 /// A rectangle of cells on the screen: its origin, then its size.
 pub(crate) type CellRect = (i64, i64, i64, i64);
 
-/// The platform's sink: the index of a node's record and the generation it was minted
-/// in, so a handle whose record was destroyed reaches nothing.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-#[must_use]
-pub struct Handle {
-  index: u32,
-  generation: u32,
-}
-
-impl Handle {
-  #[inline(always)]
-  const fn new(index: u32, generation: u32) -> Self {
-    Self { index, generation }
-  }
-
-  /// The record's index: its place in creation order.
-  #[inline(always)]
-  #[must_use]
-  pub const fn index(self) -> u32 {
-    self.index
-  }
-}
+/// A node's record's key: the scene's own id for the node.
+pub(crate) type Handle = NodeId;
 
 /// What a derived leaf last wrote into a node's slot; see [`skene_core::SlotLeaf`].
 pub(crate) type SlotLeaf = skene_core::SlotLeaf<u32, TuiExt>;
@@ -746,11 +727,6 @@ impl Record {
   }
 }
 
-struct Entry {
-  generation: u32,
-  record: Option<Record>,
-}
-
 /// A press-initiated drag in progress, followed by pointer motion until release.
 #[derive(Clone, Copy)]
 pub(crate) enum Drag {
@@ -833,10 +809,8 @@ pub(crate) struct MediaState {
   reason = "each flag is an independent fact about the frame or the pointer"
 )]
 pub(crate) struct Store {
-  /// The record slots, indexed by a handle's index.
-  entries: Vec<Entry>,
-  /// The indices of the empty slots, reused before the store grows.
-  free: Vec<u32>,
+  /// The records, by node.
+  records: NodeMap<Record>,
   /// The layout tree; a text run's leaf carries its text and scales as context,
   /// wrapped by the layout's measure function.
   pub(crate) taffy: taffy::TaffyTree<Measured>,
@@ -989,7 +963,8 @@ impl Clock {
 }
 
 impl Store {
-  pub(crate) fn new() -> Self {
+  /// A store whose root box, filling the screen, is the scene's node `root`.
+  pub(crate) fn new(root: NodeId) -> Self {
     let mut taffy = taffy::TaffyTree::new();
     let root_taffy = taffy
       .new_leaf(taffy::style::Style::default())
@@ -1009,10 +984,9 @@ impl Store {
       destination: None,
     };
     let mut store = Self {
-      entries: Vec::new(),
-      free: Vec::new(),
+      records: NodeMap::new(),
       taffy,
-      root: Handle::new(0, 0),
+      root,
       overlays: Vec::new(),
       hovered: Vec::new(),
       damaged: Vec::new(),
@@ -1067,63 +1041,45 @@ impl Store {
       picture_generation: 0,
     };
 
-    store.root = store.create(Kind::Box(BoxRecord::new(root_props)), Some(root_taffy));
+    store.insert(
+      root,
+      Kind::Box(BoxRecord::new(root_props)),
+      Some(root_taffy),
+    );
 
     store
   }
 
-  /// Mints a record over `taffy` and returns its handle.
-  pub(crate) fn create(&mut self, kind: Kind, taffy: Option<taffy::NodeId>) -> Handle {
-    let record = Record::new(kind, taffy);
+  /// Stores a record of `kind` over `taffy` as the record of `node`.
+  pub(crate) fn insert(&mut self, node: NodeId, kind: Kind, taffy: Option<taffy::NodeId>) {
+    let mut record = Record::new(kind, taffy);
 
+    record.node = Some(node);
     self.structure_dirty = true;
 
-    if let Some(index) = self.free.pop() {
-      let entry = &mut self.entries[index as usize];
-
-      entry.record = Some(record);
-
-      return Handle::new(index, entry.generation);
-    }
-
-    let index = u32::try_from(self.entries.len()).expect("a store holds at most 2^32 records");
-
-    self.entries.push(Entry {
-      generation: 0,
-      record: Some(record),
-    });
-
-    Handle::new(index, 0)
+    let _replaced = self.records.insert(node, record);
   }
 
-  /// Mints a record over a fresh taffy leaf.
-  pub(crate) fn create_laid_out(&mut self, kind: Kind) -> Handle {
+  /// Stores a record of `kind` over a fresh taffy leaf as the record of `node`.
+  pub(crate) fn insert_laid_out(&mut self, node: NodeId, kind: Kind) {
     let taffy = self
       .taffy
       .new_leaf(taffy::style::Style::default())
       .expect("create a taffy node");
 
-    self.create(kind, Some(taffy))
+    self.insert(node, kind, Some(taffy));
   }
 
   /// The record of `handle`, if it is live.
   #[inline(always)]
   pub(crate) fn record(&self, handle: Handle) -> Option<&Record> {
-    self
-      .entries
-      .get(handle.index as usize)
-      .filter(|entry| entry.generation == handle.generation)
-      .and_then(|entry| entry.record.as_ref())
+    self.records.get(handle)
   }
 
   /// The record of `handle`, mutably, if it is live.
   #[inline(always)]
   pub(crate) fn record_mut(&mut self, handle: Handle) -> Option<&mut Record> {
-    self
-      .entries
-      .get_mut(handle.index as usize)
-      .filter(|entry| entry.generation == handle.generation)
-      .and_then(|entry| entry.record.as_mut())
+    self.records.get_mut(handle)
   }
 
   /// The selection of every entry whose selection changed since it was last reported
@@ -1168,33 +1124,17 @@ impl Store {
     }
   }
 
-  /// Every live handle, in creation order.
+  /// Every live handle, in index order.
   pub(crate) fn handles(&self) -> Vec<Handle> {
-    self
-      .entries
-      .iter()
-      .enumerate()
-      .filter(|(_, entry)| entry.record.is_some())
-      .map(|(index, entry)| Handle::new(u32::try_from(index).expect("indexed"), entry.generation))
-      .collect()
+    self.records.iter().map(|(handle, _)| handle).collect()
   }
 
   /// Releases the record of `handle`, retiring the handle and every reference to it.
   pub(crate) fn destroy(&mut self, handle: Handle) {
-    let Some(entry) = self
-      .entries
-      .get_mut(handle.index as usize)
-      .filter(|entry| entry.generation == handle.generation)
+    let Some(record) = self.records.remove(handle)
     else {
       return;
     };
-    let Some(record) = entry.record.take()
-    else {
-      return;
-    };
-
-    entry.generation = entry.generation.wrapping_add(1);
-    self.free.push(handle.index);
 
     if let Some(taffy) = record.taffy {
       let _ = self.taffy.remove(taffy);
@@ -1462,7 +1402,7 @@ impl Store {
     reason = "every reader holds the store, and focus is asked of it as of the rest"
   )]
   pub(crate) fn focused(&self) -> Option<Handle> {
-    Scene::<Tui>::with(|scene| scene.focused().and_then(|node| scene.sink(node)))
+    Scene::<Tui>::with(|scene| scene.focused())
   }
 
   /// Whether `handle` holds focus that shows: after a key, or as a text entry, and not

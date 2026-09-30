@@ -73,8 +73,10 @@ use crate::{
   condition::{DRAG_MARKER, DRAGGED_ATTRIBUTE, DRAGS_ATTRIBUTE, TARGETED_ATTRIBUTE},
 };
 
-/// The property stamped on every element the scene knows, holding its sink.
-const SINK_PROPERTY: &str = "__skeneSink";
+/// The properties stamped on every element the scene knows, holding its node's index
+/// and generation.
+const INDEX_PROPERTY: &str = "__skeneIndex";
+const GENERATION_PROPERTY: &str = "__skeneGeneration";
 
 /// A live DOM listener, removed from its target when dropped.
 pub(super) struct Listener {
@@ -257,26 +259,36 @@ impl Events {
   }
 }
 
-/// Stamps `element` with its sink.
-pub(super) fn stamp(element: &Element, sink: u32) {
-  let _ = js_sys::Reflect::set(
-    element,
-    &JsValue::from_str(SINK_PROPERTY),
-    &JsValue::from_f64(f64::from(sink)),
-  );
+/// Stamps `element` with its node.
+pub(super) fn stamp(element: &Element, node: NodeId) {
+  for (property, value) in [
+    (INDEX_PROPERTY, node.index()),
+    (GENERATION_PROPERTY, node.generation()),
+  ] {
+    let _ = js_sys::Reflect::set(
+      element,
+      &JsValue::from_str(property),
+      &JsValue::from_f64(f64::from(value)),
+    );
+  }
 }
 
-/// The sink stamped on `element`, if the scene knows it.
-pub(super) fn sink_of(element: &Element) -> Option<u32> {
+/// The live node stamped on `element`, if the platform holds its record.
+pub(super) fn node_of(element: &Element) -> Option<NodeId> {
   #[expect(
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
-    reason = "a sink is stamped as a whole, non-negative u32"
+    reason = "an index and a generation are stamped as whole, non-negative u32s"
   )]
-  js_sys::Reflect::get(element, &JsValue::from_str(SINK_PROPERTY))
-    .ok()
-    .and_then(|value| value.as_f64())
-    .map(|value| value as u32)
+  let read = |property: &str| {
+    js_sys::Reflect::get(element, &JsValue::from_str(property))
+      .ok()
+      .and_then(|value| value.as_f64())
+      .map(|value| value as u32)
+  };
+  let (index, generation) = (read(INDEX_PROPERTY)?, read(GENERATION_PROPERTY)?);
+
+  with_dom(|dom| dom.nodes.node_at(index)).filter(|node| node.generation() == generation)
 }
 
 /// The nearest element at or above `target` the scene knows, with its node.
@@ -284,10 +296,8 @@ fn resolve(target: Option<EventTarget>) -> Option<(Element, NodeId)> {
   let mut current = target.and_then(|target| target.dyn_into::<Element>().ok());
 
   while let Some(element) = current {
-    if let Some(sink) = sink_of(&element) {
-      let node = with_dom(|dom| dom.node(sink).and_then(|node| node.id));
-
-      return node.map(|node| (element, node));
+    if let Some(node) = node_of(&element) {
+      return Some((element, node));
     }
 
     current = element.parent_element();
@@ -303,12 +313,7 @@ fn node_at(target: Option<EventTarget>) -> Option<NodeId> {
 
 /// Whether `node` sits inside a control the platform toggles itself.
 fn inside_native_toggle(node: NodeId) -> bool {
-  let control = Scene::<Web>::with(|scene| {
-    scene
-      .enclosing_control(node)
-      .and_then(|control| scene.record(control))
-      .map(|record| *record.sink())
-  });
+  let control = Scene::<Web>::with(|scene| scene.enclosing_control(node));
 
   control.is_some_and(|sink| {
     with_dom(|dom| {
@@ -322,15 +327,14 @@ fn inside_native_toggle(node: NodeId) -> bool {
 /// The node of the modal overlay `element` is the root of, when a click at `x`, `y`
 /// lands on its backdrop.
 fn backdrop_dismissal(element: &Element, node: NodeId, x: f64, y: f64) -> Option<NodeId> {
-  let modal =
-    Scene::<Web>::with(|scene| scene.record(node).map(|record| *record.sink())).and_then(|sink| {
-      with_dom(|dom| {
-        dom
-          .node(sink)
-          .is_some_and(|node| matches!(node.realized, Realized::Overlay { modal: true, .. }))
-      })
-      .then_some(())
-    });
+  let modal = Some(node).and_then(|sink| {
+    with_dom(|dom| {
+      dom
+        .node(sink)
+        .is_some_and(|node| matches!(node.realized, Realized::Overlay { modal: true, .. }))
+    })
+    .then_some(())
+  });
 
   modal?;
 
@@ -803,8 +807,7 @@ fn mark_drag(
   node: Option<NodeId>,
   attribute: &str,
 ) {
-  let sink = node
-    .and_then(|node| Scene::<Web>::with(|scene| scene.record(node).map(|record| *record.sink())));
+  let sink = node;
 
   with_dom(|dom| {
     let element = sink.and_then(|sink| dom.node(sink).and_then(Node::element).cloned());

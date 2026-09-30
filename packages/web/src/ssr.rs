@@ -37,6 +37,7 @@ use skene_core::{
   MediaSignals,
   NodeId,
   NodeKind,
+  NodeMap,
   Observation,
   OverlayProps,
   Part,
@@ -384,6 +385,7 @@ impl Node {
 /// The string tree, its stylesheet and the head, for one render.
 struct Tree {
   nodes: Vec<Option<Node>>,
+  realized: NodeMap<u32>,
   styles: ClassInterner,
   cache: FxHashMap<u64, Rc<Compiled>>,
   registered: FxHashSet<TokenName>,
@@ -402,6 +404,7 @@ impl Tree {
   fn new() -> Self {
     Self {
       nodes: vec![Some(Node::element(""))],
+      realized: NodeMap::new(),
       styles: ClassInterner::new(),
       cache: FxHashMap::default(),
       registered: FxHashSet::default(),
@@ -1012,6 +1015,22 @@ fn with_node<R>(index: u32, operation: impl FnOnce(&mut Node) -> R) -> Option<R>
   with_tree(|tree| tree.node(index).map(operation))
 }
 
+/// The tree index of the element realizing the scene's `node`, if it is live.
+fn index_of(node: NodeId) -> Option<u32> {
+  with_tree(|tree| tree.realized.get(node).copied())
+}
+
+/// Records that the tree's `index` realizes the scene's `node`.
+fn realize(node: NodeId, index: u32) {
+  with_tree(|tree| {
+    let _replaced = tree.realized.insert(node, index);
+
+    if let Some(record) = tree.node(index) {
+      record.realizes = Some(node);
+    }
+  });
+}
+
 /// Sets the environment the following renders answer with.
 pub fn set_render_hints(hints: RenderHints) {
   HINTS.with(|current| current.set(hints));
@@ -1100,7 +1119,7 @@ fn write_access(node: &mut Node, access: &[AccessProp]) {
 /// Gives every node `access` refers to the id the reference names.
 fn write_referenced_ids(tree: &mut Tree, access: &[AccessProp]) {
   for node in referenced_nodes(access) {
-    let Some(sink) = Scene::<Web>::with(|scene| scene.sink(node))
+    let Some(sink) = tree.realized.get(node).copied()
     else {
       continue;
     };
@@ -1136,8 +1155,193 @@ fn finish_box(index: u32, props: &BoxProps<Web>, compiled: &Rc<Compiled>) {
   });
 }
 
+/// The tree index of a fresh element for `create_box`.
+fn box_index(props: &BoxProps<Web>) -> u32 {
+  let (index, compiled) = with_tree(|tree| {
+    let index = tree.element(box_tag(
+      props.role,
+      AccessProp::level_of(&props.access),
+      props.destination.is_some(),
+    ));
+
+    if let Some(node) = tree.node(index) {
+      if let Some(role) = props.role.and_then(aria_role) {
+        node.set_attribute("role", role);
+      }
+
+      if let Some(href) = props
+        .destination
+        .as_deref()
+        .filter(|href| !runs_script(href))
+      {
+        node.set_attribute("href", href);
+      }
+    }
+
+    let compiled = tree.compiled(box_fingerprint(props, 0), || compile_box(props));
+
+    (index, compiled)
+  });
+
+  finish_box(index, props, &compiled);
+
+  index
+}
+
+/// The tree index of a fresh element for `create_control`.
+fn control_index(props: &ControlProps<Web>) -> u32 {
+  let (index, compiled) = with_tree(|tree| {
+    let index = if let Some(native) = form_element(props.native) {
+      if native.is_bare() {
+        let root = tree.element(native.tag);
+
+        if let Some(node) = tree.node(root) {
+          node.write_native_attributes(native, props);
+          node.bare = true;
+        }
+
+        root
+      }
+      else {
+        let root = tree.element("label");
+        let input = tree.element(native.tag);
+
+        if let Some(node) = tree.node(input) {
+          node.write_native_attributes(native, props);
+          node.set_attribute("class", NATIVE_CLASS);
+        }
+
+        tree.attach(root, input, None);
+
+        if let Some(node) = tree.node(root) {
+          node.carrier = Some(input);
+        }
+
+        root
+      }
+    }
+    else {
+      let (tag, attribute) = drawn_element(props.native, props.box_props.role);
+      let root = tree.element(tag);
+
+      if let Some(node) = tree.node(root) {
+        if let Some((name, value)) = attribute {
+          node.set_attribute(name, value);
+        }
+
+        if let Some(label) = &props.label {
+          node.set_attribute("aria-label", label);
+        }
+      }
+
+      root
+    };
+
+    if let Some(node) = tree.node(index) {
+      node.control = Some(if props.label_beside {
+        Captioned::Beside
+      }
+      else {
+        Captioned::Inside
+      });
+      node.set_attribute(CONTROL_ATTRIBUTE, "");
+    }
+
+    let compiled = tree.compiled(control_fingerprint(props), || compile_control(props));
+
+    (index, compiled)
+  });
+
+  finish_box(index, &props.box_props, &compiled);
+
+  index
+}
+
+/// The tree index of a fresh element for `create_overlay`.
+fn overlay_index(props: &OverlayProps<Web>) -> u32 {
+  let (index, compiled) = with_tree(|tree| {
+    let index = if props.modal {
+      tree.element("dialog")
+    }
+    else {
+      let index = tree.element("div");
+
+      if let Some(node) = tree.node(index) {
+        node.set_attribute("popover", if props.hint { "hint" } else { "manual" });
+
+        // A hint is a tooltip; a popup takes the role its box asks for.
+        if props.hint {
+          node.set_attribute("role", "tooltip");
+        }
+        else if let Some(role) = props.box_props.role.and_then(aria_role) {
+          node.set_attribute("role", role);
+        }
+      }
+
+      index
+    };
+    let compiled = tree.compiled(overlay_fingerprint(props), || compile_overlay(props));
+
+    (index, compiled)
+  });
+
+  finish_box(index, &props.box_props, &compiled);
+
+  index
+}
+
+/// The tree index of a fresh element for `create_run`.
+fn run_index(props: &RunProps<Web>) -> u32 {
+  with_tree(|tree| {
+    let index = match props.link.as_deref() {
+      Some(href) => {
+        let index = tree.element("a");
+
+        if let Some(node) = tree.node(index) {
+          for (name, value) in link_attributes(href, props.link_policy) {
+            node.set_attribute(name, &value);
+          }
+        }
+
+        index
+      }
+      None => tree.element("span"),
+    };
+    let compiled = tree.compiled(run_fingerprint(props), || compile_run(props));
+
+    tree.assign_style(index, &compiled);
+
+    index
+  })
+}
+
+/// The tree index of a fresh element for `create_anchor`.
+fn anchor_index() -> u32 {
+  with_tree(|tree| {
+    let ordinal = tree.anchors;
+
+    tree.anchors += 1;
+
+    tree.create(Node::comment(anchor_text(ordinal)))
+  })
+}
+
+/// The tree index of a fresh element for `create_scope`.
+fn scope_index() -> u32 {
+  with_tree(|tree| {
+    let index = tree.element("div");
+
+    if let Some(node) = tree.node(index) {
+      node.set_attribute(SCOPE_ATTRIBUTE, "");
+      node.set_inline("display".to_owned(), "contents".to_owned());
+    }
+
+    index
+  })
+}
+
 impl Painting for Web {
-  fn paint(_sink: u32, _painter: Box<Painter>) {}
+  fn paint(_node: NodeId, _painter: Box<Painter>) {}
 
   fn available() -> ReadSignal<bool> {
     with_media(|media| media.absent)
@@ -1146,7 +1350,6 @@ impl Painting for Web {
 
 impl Platform for Web {
   type Scalar = f32;
-  type Sink = u32;
   type StyleExt = GuiExt;
   type TokenValue = WebTokenValue;
 
@@ -1154,39 +1357,16 @@ impl Platform for Web {
     &SCENE
   }
 
-  fn create_box(props: &BoxProps<Self>) -> u32 {
-    let (index, compiled) = with_tree(|tree| {
-      let index = tree.element(box_tag(
-        props.role,
-        AccessProp::level_of(&props.access),
-        props.destination.is_some(),
-      ));
-
-      if let Some(node) = tree.node(index) {
-        if let Some(role) = props.role.and_then(aria_role) {
-          node.set_attribute("role", role);
-        }
-
-        if let Some(href) = props
-          .destination
-          .as_deref()
-          .filter(|href| !runs_script(href))
-        {
-          node.set_attribute("href", href);
-        }
-      }
-
-      let compiled = tree.compiled(box_fingerprint(props, 0), || compile_box(props));
-
-      (index, compiled)
-    });
-
-    finish_box(index, props, &compiled);
-
-    index
+  fn create_box(node: NodeId, props: &BoxProps<Self>) {
+    realize(node, box_index(props));
   }
 
-  fn update_box(sink: u32, slot: Slot, leaf: &StaticLeaf<BoxValue<f32, GuiExt>>) {
+  fn update_box(node: NodeId, slot: Slot, leaf: &StaticLeaf<BoxValue<f32, GuiExt>>) {
+    let Some(sink) = index_of(node)
+    else {
+      return;
+    };
+
     with_node(sink, |node| {
       let binding = node
         .slots
@@ -1200,7 +1380,12 @@ impl Platform for Web {
     });
   }
 
-  fn update_focus_order(sink: u32, focus_order: Option<FocusOrder>) {
+  fn update_focus_order(node: NodeId, focus_order: Option<FocusOrder>) {
+    let Some(sink) = index_of(node)
+    else {
+      return;
+    };
+
     with_tree(|tree| {
       let target = tree.carrier(sink);
 
@@ -1210,7 +1395,12 @@ impl Platform for Web {
     });
   }
 
-  fn update_access(sink: u32, access: &[AccessProp]) {
+  fn update_access(node: NodeId, access: &[AccessProp]) {
+    let Some(sink) = index_of(node)
+    else {
+      return;
+    };
+
     with_tree(|tree| {
       let target = tree.carrier(sink);
 
@@ -1222,75 +1412,16 @@ impl Platform for Web {
     });
   }
 
-  fn create_control(props: &ControlProps<Self>) -> u32 {
-    let (index, compiled) = with_tree(|tree| {
-      let index = if let Some(native) = form_element(props.native) {
-        if native.is_bare() {
-          let root = tree.element(native.tag);
-
-          if let Some(node) = tree.node(root) {
-            node.write_native_attributes(native, props);
-            node.bare = true;
-          }
-
-          root
-        }
-        else {
-          let root = tree.element("label");
-          let input = tree.element(native.tag);
-
-          if let Some(node) = tree.node(input) {
-            node.write_native_attributes(native, props);
-            node.set_attribute("class", NATIVE_CLASS);
-          }
-
-          tree.attach(root, input, None);
-
-          if let Some(node) = tree.node(root) {
-            node.carrier = Some(input);
-          }
-
-          root
-        }
-      }
-      else {
-        let (tag, attribute) = drawn_element(props.native, props.box_props.role);
-        let root = tree.element(tag);
-
-        if let Some(node) = tree.node(root) {
-          if let Some((name, value)) = attribute {
-            node.set_attribute(name, value);
-          }
-
-          if let Some(label) = &props.label {
-            node.set_attribute("aria-label", label);
-          }
-        }
-
-        root
-      };
-
-      if let Some(node) = tree.node(index) {
-        node.control = Some(if props.label_beside {
-          Captioned::Beside
-        }
-        else {
-          Captioned::Inside
-        });
-        node.set_attribute(CONTROL_ATTRIBUTE, "");
-      }
-
-      let compiled = tree.compiled(control_fingerprint(props), || compile_control(props));
-
-      (index, compiled)
-    });
-
-    finish_box(index, &props.box_props, &compiled);
-
-    index
+  fn create_control(node: NodeId, props: &ControlProps<Self>) {
+    realize(node, control_index(props));
   }
 
-  fn set_control_state(sink: u32, state: &ControlState) {
+  fn set_control_state(node: NodeId, state: &ControlState) {
+    let Some(sink) = index_of(node)
+    else {
+      return;
+    };
+
     with_tree(|tree| {
       let root = sink;
       let carrier = tree.carrier(root);
@@ -1328,41 +1459,18 @@ impl Platform for Web {
     });
   }
 
-  fn create_overlay(props: &OverlayProps<Self>) -> u32 {
-    let (index, compiled) = with_tree(|tree| {
-      let index = if props.modal {
-        tree.element("dialog")
-      }
-      else {
-        let index = tree.element("div");
-
-        if let Some(node) = tree.node(index) {
-          node.set_attribute("popover", if props.hint { "hint" } else { "manual" });
-
-          // A hint is a tooltip; a popup takes the role its box asks for.
-          if props.hint {
-            node.set_attribute("role", "tooltip");
-          }
-          else if let Some(role) = props.box_props.role.and_then(aria_role) {
-            node.set_attribute("role", role);
-          }
-        }
-
-        index
-      };
-      let compiled = tree.compiled(overlay_fingerprint(props), || compile_overlay(props));
-
-      (index, compiled)
-    });
-
-    finish_box(index, &props.box_props, &compiled);
-
-    index
+  fn create_overlay(node: NodeId, props: &OverlayProps<Self>) {
+    realize(node, overlay_index(props));
   }
 
-  fn set_overlay_open(_: u32, _: bool, _: Option<u32>) {}
+  fn set_overlay_open(_: NodeId, _: bool, _: Option<NodeId>) {}
 
-  fn apply_layout(sink: u32, layout: &StaticBoxStyle<Self>) {
+  fn apply_layout(node: NodeId, layout: &StaticBoxStyle<Self>) {
+    let Some(sink) = index_of(node)
+    else {
+      return;
+    };
+
     with_tree(|tree| {
       let compiled = tree.compiled(layout_fingerprint::<Self>(layout), || {
         compile_layout::<Self>(layout)
@@ -1372,31 +1480,16 @@ impl Platform for Web {
     });
   }
 
-  fn create_run(props: &RunProps<Self>) -> u32 {
-    with_tree(|tree| {
-      let index = match props.link.as_deref() {
-        Some(href) => {
-          let index = tree.element("a");
-
-          if let Some(node) = tree.node(index) {
-            for (name, value) in link_attributes(href, props.link_policy) {
-              node.set_attribute(name, &value);
-            }
-          }
-
-          index
-        }
-        None => tree.element("span"),
-      };
-      let compiled = tree.compiled(run_fingerprint(props), || compile_run(props));
-
-      tree.assign_style(index, &compiled);
-
-      index
-    })
+  fn create_run(node: NodeId, props: &RunProps<Self>) {
+    realize(node, run_index(props));
   }
 
-  fn update_run(sink: u32, slot: Slot, leaf: &StaticLeaf<RunValue<GuiExt>>) {
+  fn update_run(node: NodeId, slot: Slot, leaf: &StaticLeaf<RunValue<GuiExt>>) {
+    let Some(sink) = index_of(node)
+    else {
+      return;
+    };
+
     with_node(sink, |node| {
       let binding = node
         .slots
@@ -1410,42 +1503,30 @@ impl Platform for Web {
     });
   }
 
-  fn set_text(sink: u32, text: &str) {
+  fn set_text(node: NodeId, text: &str) {
+    let Some(sink) = index_of(node)
+    else {
+      return;
+    };
+
     with_node(sink, |node| node.text = Some(text.to_owned()));
   }
 
-  fn create_anchor() -> u32 {
-    with_tree(|tree| {
-      let ordinal = tree.anchors;
-
-      tree.anchors += 1;
-
-      tree.create(Node::comment(anchor_text(ordinal)))
-    })
+  fn create_anchor(node: NodeId) {
+    realize(node, anchor_index());
   }
 
-  fn create_scope() -> u32 {
-    with_tree(|tree| {
-      let index = tree.element("div");
-
-      if let Some(node) = tree.node(index) {
-        node.set_attribute(SCOPE_ATTRIBUTE, "");
-        node.set_inline("display".to_owned(), "contents".to_owned());
-      }
-
-      index
-    })
+  fn create_scope(node: NodeId) {
+    realize(node, scope_index());
   }
 
-  fn bind_node(sink: u32, node: NodeId) {
-    with_tree(|tree| {
-      if let Some(record) = tree.node(sink) {
-        record.realizes = Some(node);
-      }
-    });
-  }
+  fn attach(parent: NodeId, child: NodeId, before: Option<NodeId>) {
+    let (Some(parent), Some(child)) = (index_of(parent), index_of(child))
+    else {
+      return;
+    };
+    let before = before.and_then(index_of);
 
-  fn attach(parent: u32, child: u32, before: Option<u32>) {
     with_tree(|tree| {
       if !tree.attach_caption(parent, child) {
         tree.attach(parent, child, before);
@@ -1453,7 +1534,12 @@ impl Platform for Web {
     });
   }
 
-  fn detach(parent: u32, child: u32) {
+  fn detach(parent: NodeId, child: NodeId) {
+    let (Some(parent), Some(child)) = (index_of(parent), index_of(child))
+    else {
+      return;
+    };
+
     with_tree(|tree| {
       if !tree.detach_caption(parent, child) {
         tree.detach(parent, child);
@@ -1461,11 +1547,20 @@ impl Platform for Web {
     });
   }
 
-  fn destroy(sink: u32) {
-    with_tree(|tree| tree.destroy(sink));
+  fn destroy(node: NodeId) {
+    with_tree(|tree| {
+      if let Some(sink) = tree.realized.remove(node) {
+        tree.destroy(sink);
+      }
+    });
   }
 
-  fn define_tokens(scope: u32, definitions: &Definitions<WebTokenValue>) {
+  fn define_tokens(node: NodeId, definitions: &Definitions<WebTokenValue>) {
+    let Some(scope) = index_of(node)
+    else {
+      return;
+    };
+
     with_tree(|tree| {
       tree.register(definitions);
 
@@ -1500,13 +1595,18 @@ impl Platform for Web {
     });
   }
 
-  fn listen(_: u32, _: EventKind) {}
+  fn listen(_: NodeId, _: EventKind) {}
 
-  fn focus(_: u32) {}
+  fn focus(_: NodeId) {}
 
-  fn blur(_: u32) {}
+  fn blur(_: NodeId) {}
 
-  fn set_value(sink: u32, value: &str) {
+  fn set_value(node: NodeId, value: &str) {
+    let Some(sink) = index_of(node)
+    else {
+      return;
+    };
+
     with_tree(|tree| {
       let target = tree.carrier(sink);
 
@@ -1524,7 +1624,12 @@ impl Platform for Web {
     });
   }
 
-  fn set_options(sink: u32, options: &[PickerOption]) {
+  fn set_options(node: NodeId, options: &[PickerOption]) {
+    let Some(sink) = index_of(node)
+    else {
+      return;
+    };
+
     with_tree(|tree| {
       let target = tree.carrier(sink);
 
@@ -1534,9 +1639,14 @@ impl Platform for Web {
     });
   }
 
-  fn set_selection(_: u32, _: TextSelection) {}
+  fn set_selection(_: NodeId, _: TextSelection) {}
 
-  fn set_checked(sink: u32, checked: bool) {
+  fn set_checked(node: NodeId, checked: bool) {
+    let Some(sink) = index_of(node)
+    else {
+      return;
+    };
+
     with_tree(|tree| {
       let target = tree.carrier(sink);
 
@@ -1546,7 +1656,7 @@ impl Platform for Web {
     });
   }
 
-  fn observe_size(_: u32, _: Rc<dyn Fn(Size<f32>)>) -> Observation {
+  fn observe_size(_: NodeId, _: Rc<dyn Fn(Size<f32>)>) -> Observation {
     Observation::unmeasured()
   }
 
@@ -1579,15 +1689,27 @@ impl Platform for Web {
 }
 
 impl WebMarkup for Web {
-  fn create_element(tag: &'static str) -> u32 {
-    with_tree(|tree| tree.element(tag))
+  fn create_element(node: NodeId, tag: &'static str) {
+    let index = with_tree(|tree| tree.element(tag));
+
+    realize(node, index);
   }
 
-  fn set_attribute(sink: u32, name: &str, value: &str) {
+  fn set_attribute(node: NodeId, name: &str, value: &str) {
+    let Some(sink) = index_of(node)
+    else {
+      return;
+    };
+
     with_node(sink, |node| node.set_attribute(name, value));
   }
 
-  fn set_declarations(sink: u32, declarations: &Declarations) {
+  fn set_declarations(node: NodeId, declarations: &Declarations) {
+    let Some(sink) = index_of(node)
+    else {
+      return;
+    };
+
     with_node(sink, |node| {
       for (property, value) in declarations.iter() {
         node.set_inline(property.to_owned(), value.to_owned());
@@ -1595,7 +1717,12 @@ impl WebMarkup for Web {
     });
   }
 
-  fn set_text(sink: u32, text: &str) {
+  fn set_text(node: NodeId, text: &str) {
+    let Some(sink) = index_of(node)
+    else {
+      return;
+    };
+
     with_node(sink, |node| node.text = Some(text.to_owned()));
   }
 }
@@ -1739,7 +1866,7 @@ impl Rendered {
 /// A streaming render flushes what precedes it, waits until `settled` reports true,
 /// then emits its content in place. A whole render never consults it.
 pub fn register_boundary(start: NodeId, settled: BoundarySettled) {
-  if let Some(sink) = Scene::<Web>::with(|scene| scene.sink(start)) {
+  if let Some(sink) = index_of(start) {
     BOUNDARIES.with(|boundaries| boundaries.borrow_mut().insert(sink, settled));
   }
 }
@@ -1766,7 +1893,9 @@ fn begin_render() -> (NodeId, Owner) {
   forget_static_routes();
   task::install_executor();
 
-  let root = Scene::<Web>::with(|scene| scene.create(NodeKind::Box, ROOT));
+  let root = Scene::<Web>::with(|scene| scene.create(NodeKind::Box));
+
+  realize(root, ROOT);
 
   (root, skene_core::root_owner().child())
 }

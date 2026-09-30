@@ -1,6 +1,6 @@
 //! The seam between the shared machinery and a medium.
 
-use std::{cell::RefCell, fmt::Debug, hash::Hash, rc::Rc, thread::LocalKey, time::Duration};
+use std::{cell::RefCell, fmt::Debug, rc::Rc, thread::LocalKey, time::Duration};
 
 use skene_reactive::{Memo, ReadSignal};
 
@@ -197,10 +197,12 @@ impl<A> Timers<A> {
 ///
 /// Zero-sized and monomorphized: a facade names exactly one platform, every view is
 /// written once against the trait, and every operation is an associated function over
-/// sinks passed by value. Conditions follow from [`Scalar`](Self::Scalar) as
+/// the [`NodeId`]s the scene mints, each of which the platform keys its own record of
+/// the node by. Conditions follow from [`Scalar`](Self::Scalar) as
 /// `Condition<Self::Scalar>`. Core owns the [`Scene`] and every operation on it; a
 /// platform declares the thread-local holding it and is called only to mirror each
-/// mutation into its sink. `Painted` and embeds are outside this trait: their payloads
+/// mutation into its records, never under the scene's borrow, so it may reach the scene
+/// itself. `Painted` and embeds are outside this trait: their payloads
 /// arrive through a platform's extension traits.
 ///
 /// A platform holds every flush until its turn ends—an event, a mount, a round of task
@@ -212,11 +214,6 @@ impl<A> Timers<A> {
   note = "`Painted` and embeds are outside `Platform`; a platform offers them through its own extension traits"
 )]
 pub trait Platform: Copy + Default + 'static {
-  /// The platform handle a node owns: an element's index, a layout id, a record's.
-  ///
-  /// Copied out of the scene before the platform is called with it, so a platform call
-  /// never runs under the scene's borrow and may reach the scene itself.
-  type Sink: Copy + Eq + Hash + Debug + 'static;
   /// The unit lengths are measured in.
   type Scalar: Scalar;
   /// The properties only this medium has.
@@ -234,89 +231,85 @@ pub trait Platform: Copy + Default + 'static {
   /// The thread-local holding this platform's scene.
   fn scene() -> &'static LocalKey<RefCell<Scene<Self>>>;
 
-  /// Tells the platform the id the scene minted for `sink`, once, right after the sink
-  /// was created.
-  #[inline(always)]
-  fn bind_node(_sink: Self::Sink, _node: NodeId) {}
-
-  /// Realizes a box.
-  fn create_box(props: &BoxProps<Self>) -> Self::Sink;
+  /// Realizes the box `node`.
+  fn create_box(node: NodeId, props: &BoxProps<Self>);
 
   /// Writes the leaf a derived leaf computed into its slot on a box, or in the layout a
   /// wrapper gave a run or a low-level node: a value, or a token or expression the
   /// platform resolves where it reads the slot.
   fn update_box(
-    sink: Self::Sink,
+    node: NodeId,
     slot: Slot,
     leaf: &StaticLeaf<BoxValue<Self::Scalar, Self::StyleExt>>,
   );
 
   /// Replaces a box's place in focus traversal; `None` takes it out of focus.
-  fn update_focus_order(sink: Self::Sink, focus_order: Option<FocusOrder>);
+  fn update_focus_order(node: NodeId, focus_order: Option<FocusOrder>);
 
   /// Replaces the accessibility properties a box reports.
-  fn update_access(sink: Self::Sink, access: &[AccessProp]);
+  fn update_access(node: NodeId, access: &[AccessProp]);
 
-  /// Realizes a control: a box a platform may stand a native element in for.
-  fn create_control(props: &ControlProps<Self>) -> Self::Sink;
+  /// Realizes the control `node`: a box a platform may stand a native element in for.
+  fn create_control(node: NodeId, props: &ControlProps<Self>);
 
   /// Mirrors a control's state, for a platform whose native element holds it too.
-  fn set_control_state(sink: Self::Sink, state: &ControlState);
+  fn set_control_state(node: NodeId, state: &ControlState);
 
-  /// Realizes an overlay: a box shown above the app while open, closed at first.
-  fn create_overlay(props: &OverlayProps<Self>) -> Self::Sink;
+  /// Realizes the overlay `node`: a box shown above the app while open, closed at first.
+  fn create_overlay(node: NodeId, props: &OverlayProps<Self>);
 
   /// Opens or closes an overlay; an open overlay placed against `anchor` sits by it
   /// rather than by the viewport.
-  fn set_overlay_open(sink: Self::Sink, open: bool, anchor: Option<Self::Sink>);
+  fn set_overlay_open(node: NodeId, open: bool, anchor: Option<NodeId>);
 
   /// Replaces where an overlay sits; an open overlay is re-placed by the
   /// [`set_overlay_open`](Self::set_overlay_open) that follows.
   #[inline(always)]
-  fn set_overlay_placement(_sink: Self::Sink, _placement: Placement) {}
+  fn set_overlay_placement(_node: NodeId, _placement: Placement) {}
 
   /// Pins an overlay's top-start corner to `position`, in the units a pointer event
   /// reports, or unpins it for `None`; a pinned overlay ignores its placement and
   /// anchor, and is shifted to stay within the viewport. An open overlay moves at the
   /// [`set_overlay_open`](Self::set_overlay_open) that follows.
   #[inline(always)]
-  fn set_overlay_position(_sink: Self::Sink, _position: Option<Point<f32>>) {}
+  fn set_overlay_position(_node: NodeId, _position: Option<Point<f32>>) {}
 
-  /// Gives the node a low-level view made at `sink` the per-child layout a wrapper
+  /// Gives the node a low-level view made, `node`, the per-child layout a wrapper
   /// annotated it with: its flexibility, alignment, pinning and grid placement, as a
   /// box style holding nothing else, each derived leaf a slot
   /// [`update_box`](Self::update_box) writes. A platform that lays out from the
   /// scene's annotations needs nothing here.
   #[inline(always)]
-  fn apply_layout(_sink: Self::Sink, _layout: &StaticBoxStyle<Self>) {}
+  fn apply_layout(_node: NodeId, _layout: &StaticBoxStyle<Self>) {}
 
-  /// Realizes a text run.
-  fn create_run(props: &RunProps<Self>) -> Self::Sink;
+  /// Realizes the text run `node`.
+  fn create_run(node: NodeId, props: &RunProps<Self>);
 
   /// Writes the leaf a derived leaf computed into its slot on a run: a value, or a
   /// token or expression the platform resolves where it reads the slot.
-  fn update_run(sink: Self::Sink, slot: Slot, leaf: &StaticLeaf<RunValue<Self::StyleExt>>);
+  fn update_run(node: NodeId, slot: Slot, leaf: &StaticLeaf<RunValue<Self::StyleExt>>);
 
   /// Replaces a run's text.
-  fn set_text(sink: Self::Sink, text: &str);
+  fn set_text(node: NodeId, text: &str);
 
-  /// Realizes an anchor: a layout-invisible marker a reactive subtree mounts between.
-  fn create_anchor() -> Self::Sink;
+  /// Realizes the anchor `node`: a layout-invisible marker a reactive subtree mounts
+  /// between.
+  fn create_anchor(node: NodeId);
 
-  /// Realizes a scope: a layout-invisible node token definitions hang off.
-  fn create_scope() -> Self::Sink;
+  /// Realizes the scope `node`: a layout-invisible node token definitions hang off.
+  fn create_scope(node: NodeId);
 
   /// Places `child` under `parent`, immediately before `before` when given, else last.
-  fn attach(parent: Self::Sink, child: Self::Sink, before: Option<Self::Sink>);
+  fn attach(parent: NodeId, child: NodeId, before: Option<NodeId>);
 
   /// Removes `child` from under `parent`.
-  fn detach(parent: Self::Sink, child: Self::Sink);
+  fn detach(parent: NodeId, child: NodeId);
 
-  /// Releases a sink the scene no longer holds.
-  fn destroy(sink: Self::Sink);
+  /// Releases the record of a node the scene no longer holds.
+  fn destroy(node: NodeId);
 
   /// Defines tokens on a scope, replacing what the scope defined before.
-  fn define_tokens(scope: Self::Sink, definitions: &Definitions<Self::TokenValue>);
+  fn define_tokens(scope: NodeId, definitions: &Definitions<Self::TokenValue>);
 
   /// Defines the tokens every node falls back to, replacing the previous set.
   fn define_root_tokens(definitions: &Definitions<Self::TokenValue>);
@@ -324,20 +317,20 @@ pub trait Platform: Copy + Default + 'static {
   /// Notes that a node has a handler for `kind`; dispatch itself is core's, and a
   /// platform whose events need no listener ignores it.
   #[inline(always)]
-  fn listen(_sink: Self::Sink, _kind: EventKind) {}
+  fn listen(_node: NodeId, _kind: EventKind) {}
 
-  /// `event` with its local position measured from `sink`'s top-left corner; unchanged
+  /// `event` with its local position measured from `node`'s top-left corner; unchanged
   /// on a platform that lays nothing out.
   #[inline(always)]
-  fn localize_pointer(_sink: Self::Sink, event: &PointerEvent) -> PointerEvent {
+  fn localize_pointer(_node: NodeId, event: &PointerEvent) -> PointerEvent {
     *event
   }
 
   /// Moves focus to a node.
-  fn focus(sink: Self::Sink);
+  fn focus(node: NodeId);
 
   /// Takes focus off a node.
-  fn blur(sink: Self::Sink);
+  fn blur(node: NodeId);
 
   /// Whether the focus held now shows: reached by the keyboard, or held by a text
   /// entry, and not since a pointer press; `false` where nothing holds focus.
@@ -350,21 +343,21 @@ pub trait Platform: Copy + Default + 'static {
   /// Writes the options a platform-drawn picker offers, in order; a platform without
   /// one ignores them.
   #[inline(always)]
-  fn set_options(_sink: Self::Sink, _options: &[PickerOption]) {}
+  fn set_options(_node: NodeId, _options: &[PickerOption]) {}
 
   /// Writes a control's textual value; a focused entry keeps its caret, clamped into
   /// the value.
-  fn set_value(sink: Self::Sink, value: &str);
+  fn set_value(node: NodeId, value: &str);
 
   /// Writes a text entry's selection.
-  fn set_selection(sink: Self::Sink, selection: TextSelection);
+  fn set_selection(node: NodeId, selection: TextSelection);
 
   /// Writes a control's checked state.
-  fn set_checked(sink: Self::Sink, checked: bool);
+  fn set_checked(node: NodeId, checked: bool);
 
   /// Reports a node's measured size to `report`, now and whenever it changes, until
   /// the observation this returns is stopped or the node is destroyed.
-  fn observe_size(sink: Self::Sink, report: Rc<dyn Fn(Size<Self::Scalar>)>) -> Observation;
+  fn observe_size(node: NodeId, report: Rc<dyn Fn(Size<Self::Scalar>)>) -> Observation;
 
   /// The environment as signals.
   fn media() -> MediaSignals<Self::Scalar>;

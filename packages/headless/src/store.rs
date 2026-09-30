@@ -20,6 +20,7 @@ use skene_core::{
   MediaSignals,
   NoProperty,
   NodeId,
+  NodeMap,
   OverlayProps,
   PickerOption,
   Point,
@@ -34,7 +35,7 @@ use skene_core::{
 };
 use skene_reactive::{Owner, ReadSignal, Signal, WriteSignal};
 
-use crate::{Handle, Headless, SlotLeaf, SlotValue, TokenValue};
+use crate::{Headless, SlotLeaf, SlotValue, TokenValue};
 
 /// The viewport the platform reports until [`trigger_resize`](crate::trigger_resize) is
 /// called.
@@ -60,8 +61,6 @@ pub(crate) enum Kind {
 /// runner its transitions and animations play through.
 #[derive(Default)]
 pub(crate) struct NodeMotion {
-  /// The node the record realizes, once a resolution named it.
-  pub node: Option<NodeId>,
   /// The value last resolved per property, which a change is judged against.
   pub targets: FxHashMap<PropertyKey<NoProperty>, Option<SlotValue>>,
   /// The tweens in flight, and the clock the animations count from: the node's
@@ -73,8 +72,6 @@ pub(crate) struct NodeMotion {
 pub(crate) struct Record {
   /// What the node is, with the props it was created from.
   pub kind: Kind,
-  /// The node the scene minted for the record.
-  pub node: Option<NodeId>,
   /// A run's text, as last set.
   pub text: String,
   /// A control's value, as last set.
@@ -88,7 +85,7 @@ pub(crate) struct Record {
   /// Whether an overlay is open.
   pub open: bool,
   /// The node an open overlay was opened against.
-  pub anchor: Option<Handle>,
+  pub anchor: Option<NodeId>,
   /// The point an overlay is placed at, where it is pinned to one.
   pub position: Option<Point<f32>>,
   /// A control's state, as last set.
@@ -100,7 +97,7 @@ pub(crate) struct Record {
   /// The events the node listens to, in `EventKind` order.
   pub listened: Vec<EventKind>,
   /// The children attached to the node, in order.
-  pub children: Vec<Handle>,
+  pub children: Vec<NodeId>,
   /// The reports of the box's size.
   pub size_observers: Vec<Rc<dyn Fn(Size<f32>)>>,
   /// The painter a painted box draws with.
@@ -135,7 +132,6 @@ impl Record {
   pub(crate) fn new(kind: Kind) -> Self {
     Self {
       kind,
-      node: None,
       text: String::new(),
       value: String::new(),
       options: Vec::new(),
@@ -154,11 +150,6 @@ impl Record {
       motion: NodeMotion::default(),
     }
   }
-}
-
-struct Entry {
-  generation: u32,
-  record: Option<Record>,
 }
 
 /// The environment as signals, with the write halves the seams drive.
@@ -181,10 +172,8 @@ pub(crate) struct MediaState {
 
 /// Every record the platform holds, the focus, the root definitions and the environment.
 pub(crate) struct Store {
-  /// The record slots, indexed by a handle's index.
-  entries: Vec<Entry>,
-  /// The indices of the empty slots, reused before the store grows.
-  free: Vec<u32>,
+  /// The records, by node.
+  records: NodeMap<Record>,
   /// The token definitions on the root, as last written.
   pub root_definitions: Definitions<TokenValue>,
   /// How many times the root definitions have been written.
@@ -233,8 +222,7 @@ pub(crate) struct Store {
 impl Default for Store {
   fn default() -> Self {
     Self {
-      entries: Vec::new(),
-      free: Vec::new(),
+      records: NodeMap::new(),
       root_definitions: Definitions::from(Vec::new()),
       root_definition_writes: 0,
       container_sizes: FxHashMap::default(),
@@ -261,64 +249,28 @@ impl Default for Store {
 }
 
 impl Store {
-  /// Mints a record and returns its handle.
-  pub(crate) fn create(&mut self, mut record: Record) -> Handle {
+  /// Stores `record` as the record of `node`.
+  pub(crate) fn insert(&mut self, node: NodeId, mut record: Record) {
     record.motion.runner = Motion::started_at(self.clock);
 
-    if let Some(index) = self.free.pop() {
-      let entry = &mut self.entries[index as usize];
-
-      entry.record = Some(record);
-
-      return Handle::new(index, entry.generation);
-    }
-
-    let index = u32::try_from(self.entries.len()).expect("a store holds at most 2^32 records");
-
-    self.entries.push(Entry {
-      generation: 0,
-      record: Some(record),
-    });
-
-    Handle::new(index, 0)
+    let _replaced = self.records.insert(node, record);
   }
 
-  /// The record of `handle`, if it is live.
+  /// The record of `node`, if it is live.
   #[inline(always)]
-  pub(crate) fn record(&self, handle: Handle) -> Option<&Record> {
-    self
-      .entries
-      .get(handle.index as usize)
-      .filter(|entry| entry.generation == handle.generation)
-      .and_then(|entry| entry.record.as_ref())
+  pub(crate) fn record(&self, node: NodeId) -> Option<&Record> {
+    self.records.get(node)
   }
 
-  /// The record of `handle`, mutably, if it is live.
+  /// The record of `node`, mutably, if it is live.
   #[inline(always)]
-  pub(crate) fn record_mut(&mut self, handle: Handle) -> Option<&mut Record> {
-    self
-      .entries
-      .get_mut(handle.index as usize)
-      .filter(|entry| entry.generation == handle.generation)
-      .and_then(|entry| entry.record.as_mut())
+  pub(crate) fn record_mut(&mut self, node: NodeId) -> Option<&mut Record> {
+    self.records.get_mut(node)
   }
 
-  /// Releases the record of `handle`, retiring the handle.
-  pub(crate) fn destroy(&mut self, handle: Handle) {
-    let Some(entry) = self
-      .entries
-      .get_mut(handle.index as usize)
-      .filter(|entry| entry.generation == handle.generation)
-    else {
-      return;
-    };
-
-    if entry.record.take().is_none() {
-      return;
-    }
-
-    entry.generation = entry.generation.wrapping_add(1);
-    self.free.push(handle.index);
+  /// Releases the record of `node`.
+  pub(crate) fn destroy(&mut self, node: NodeId) {
+    let _released = self.records.remove(node);
   }
 
   /// The color scheme in force: the app's choice, else the platform's.
@@ -407,11 +359,10 @@ impl Store {
   #[must_use]
   pub(crate) fn tracked(&self) -> Vec<(NodeId, Vec<PropertyKey<NoProperty>>)> {
     self
-      .entries
+      .records
       .iter()
-      .filter_map(|entry| {
-        let motion = &entry.record.as_ref()?.motion;
-        let node = motion.node?;
+      .filter_map(|(node, record)| {
+        let motion = &record.motion;
 
         (!motion.targets.is_empty()).then(|| (node, motion.targets.keys().copied().collect()))
       })

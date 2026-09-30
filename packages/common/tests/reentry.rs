@@ -3,11 +3,7 @@
 //! synchronous (a `focus` that fires a focus event, a removal that fires a blur)
 //! cannot find the scene borrowed.
 
-use std::{
-  cell::{Cell, RefCell},
-  rc::Rc,
-  thread::LocalKey,
-};
+use std::{cell::RefCell, rc::Rc, thread::LocalKey};
 
 use skene_common::{Column, Container, NodeHandle, RawCheckbox, Text, Theme, Toggle};
 use skene_core::{
@@ -90,29 +86,14 @@ impl From<Definition<Dimension<f32>, f32>> for Erased {
 
 thread_local! {
   static SCENE: RefCell<Scene<Reentrant>> = RefCell::new(Scene::new());
-  static NEXT: Cell<u32> = const { Cell::new(1) };
   static CALLS: RefCell<Vec<&'static str>> = const { RefCell::new(Vec::new()) };
   static MEDIA: RefCell<Option<(Owner, MediaSignals<f32>)>> = const { RefCell::new(None) };
 }
 
 /// Re-enters the scene, which panics if the caller still holds it, then logs `call`.
-fn reenter(call: &'static str, sink: u32) {
-  let entered = Scene::<Reentrant>::with(|_| {
-    assert!(Scene::<Reentrant>::is_borrowed());
-
-    sink > 0
-  });
-
-  assert!(entered);
+fn reenter(call: &'static str) {
+  Scene::<Reentrant>::with(|_| assert!(Scene::<Reentrant>::is_borrowed()));
   CALLS.with(|calls| calls.borrow_mut().push(call));
-}
-
-fn mint() -> u32 {
-  let sink = NEXT.get();
-
-  NEXT.set(sink + 1);
-
-  sink
 }
 
 fn calls() -> Vec<&'static str> {
@@ -121,7 +102,6 @@ fn calls() -> Vec<&'static str> {
 
 impl Platform for Reentrant {
   type Scalar = f32;
-  type Sink = u32;
   type StyleExt = ();
   type TokenValue = Erased;
 
@@ -129,52 +109,52 @@ impl Platform for Reentrant {
     &SCENE
   }
 
-  fn create_box(_: &BoxProps<Self>) -> u32 {
-    mint()
+  fn create_box(_: NodeId, _: &BoxProps<Self>) {
+    reenter("create_box");
   }
 
-  fn update_box(sink: u32, _: Slot, _: &StaticLeaf<BoxValue<f32>>) {
-    reenter("update_box", sink);
+  fn update_box(_: NodeId, _: Slot, _: &StaticLeaf<BoxValue<f32>>) {
+    reenter("update_box");
   }
 
-  fn update_focus_order(sink: u32, _: Option<FocusOrder>) {
-    reenter("update_focus_order", sink);
+  fn update_focus_order(_: NodeId, _: Option<FocusOrder>) {
+    reenter("update_focus_order");
   }
 
-  fn update_access(sink: u32, _: &[AccessProp]) {
-    reenter("update_access", sink);
+  fn update_access(_: NodeId, _: &[AccessProp]) {
+    reenter("update_access");
   }
 
-  fn create_control(_: &ControlProps<Self>) -> u32 {
-    mint()
+  fn create_control(_: NodeId, _: &ControlProps<Self>) {
+    reenter("create_control");
   }
 
-  fn set_control_state(sink: u32, _: &ControlState) {
-    reenter("set_control_state", sink);
+  fn set_control_state(_: NodeId, _: &ControlState) {
+    reenter("set_control_state");
   }
 
-  fn create_overlay(_: &OverlayProps<Self>) -> u32 {
-    mint()
+  fn create_overlay(_: NodeId, _: &OverlayProps<Self>) {
+    reenter("create_overlay");
   }
 
-  fn set_overlay_open(sink: u32, _: bool, _: Option<u32>) {
-    reenter("set_overlay_open", sink);
+  fn set_overlay_open(_: NodeId, _: bool, _: Option<NodeId>) {
+    reenter("set_overlay_open");
   }
 
-  fn set_overlay_placement(sink: u32, _: Placement) {
-    reenter("set_overlay_placement", sink);
+  fn set_overlay_placement(_: NodeId, _: Placement) {
+    reenter("set_overlay_placement");
   }
 
-  fn create_run(_: &RunProps<Self>) -> u32 {
-    mint()
+  fn create_run(_: NodeId, _: &RunProps<Self>) {
+    reenter("create_run");
   }
 
-  fn update_run(sink: u32, _: Slot, _: &StaticLeaf<RunValue>) {
-    reenter("update_run", sink);
+  fn update_run(_: NodeId, _: Slot, _: &StaticLeaf<RunValue>) {
+    reenter("update_run");
   }
 
-  fn set_text(sink: u32, _: &str) {
-    reenter("set_text", sink);
+  fn set_text(_: NodeId, _: &str) {
+    reenter("set_text");
   }
 
   fn schedule(_: std::time::Duration, _: Box<dyn FnOnce()>) -> Timer {
@@ -183,68 +163,60 @@ impl Platform for Reentrant {
 
   fn cancel(_: Timer) {}
 
-  fn bind_node(sink: u32, _: NodeId) {
-    reenter("bind_node", sink);
+  fn create_anchor(_: NodeId) {
+    reenter("create_anchor");
   }
 
-  fn create_anchor() -> u32 {
-    let sink = mint();
-
-    reenter("create_anchor", sink);
-
-    sink
+  fn create_scope(_: NodeId) {
+    reenter("create_scope");
   }
 
-  fn create_scope() -> u32 {
-    mint()
+  fn attach(_: NodeId, _: NodeId, _: Option<NodeId>) {
+    reenter("attach");
   }
 
-  fn attach(parent: u32, _: u32, _: Option<u32>) {
-    reenter("attach", parent);
+  fn detach(_: NodeId, _: NodeId) {
+    reenter("detach");
   }
 
-  fn detach(parent: u32, _: u32) {
-    reenter("detach", parent);
+  fn destroy(_: NodeId) {
+    reenter("destroy");
   }
 
-  fn destroy(sink: u32) {
-    reenter("destroy", sink);
-  }
-
-  fn define_tokens(scope: u32, _: &Definitions<Erased>) {
-    reenter("define_tokens", scope);
+  fn define_tokens(_: NodeId, _: &Definitions<Erased>) {
+    reenter("define_tokens");
   }
 
   fn define_root_tokens(_: &Definitions<Erased>) {
-    reenter("define_root_tokens", 1);
+    reenter("define_root_tokens");
   }
 
-  fn listen(sink: u32, _: EventKind) {
-    reenter("listen", sink);
+  fn listen(_: NodeId, _: EventKind) {
+    reenter("listen");
   }
 
-  fn focus(sink: u32) {
-    reenter("focus", sink);
+  fn focus(_: NodeId) {
+    reenter("focus");
   }
 
-  fn blur(sink: u32) {
-    reenter("blur", sink);
+  fn blur(_: NodeId) {
+    reenter("blur");
   }
 
-  fn set_value(sink: u32, _: &str) {
-    reenter("set_value", sink);
+  fn set_value(_: NodeId, _: &str) {
+    reenter("set_value");
   }
 
-  fn set_selection(sink: u32, _: TextSelection) {
-    reenter("set_selection", sink);
+  fn set_selection(_: NodeId, _: TextSelection) {
+    reenter("set_selection");
   }
 
-  fn set_checked(sink: u32, _: bool) {
-    reenter("set_checked", sink);
+  fn set_checked(_: NodeId, _: bool) {
+    reenter("set_checked");
   }
 
-  fn observe_size(sink: u32, _: Rc<dyn Fn(Size<f32>)>) -> Observation {
-    reenter("observe_size", sink);
+  fn observe_size(_: NodeId, _: Rc<dyn Fn(Size<f32>)>) -> Observation {
+    reenter("observe_size");
 
     Observation::unmeasured()
   }
@@ -300,14 +272,14 @@ impl Default for Palette {
 
 impl TokenSet<Erased> for Palette {
   fn definitions(&self) -> Vec<(TokenName, Erased)> {
-    reenter("definitions", 1);
+    reenter("definitions");
 
     vec![self.card.define()]
   }
 }
 
 /// Focus, blur, a rewritten text, a redefined palette, a mirrored control state, the
-/// tree mutations, a node's binding, an anchor, a listener and a token set's definitions
+/// tree mutations, each node's realization, a listener and a token set's definitions
 /// all reach the platform with the scene released.
 #[test]
 fn every_mirrored_call_runs_with_the_scene_released() {
@@ -331,8 +303,11 @@ fn every_mirrored_call_runs_with_the_scene_released() {
 
   for call in [
     "attach",
-    "bind_node",
     "create_anchor",
+    "create_box",
+    "create_control",
+    "create_run",
+    "create_scope",
     "define_tokens",
     "definitions",
     "listen",

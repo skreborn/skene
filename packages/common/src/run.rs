@@ -192,10 +192,10 @@ impl<P: Platform> Run<P> {
       layout,
       dynamics: self.dynamics,
     };
-    let sink = P::create_run(&props);
-    let node = Scene::<P>::with(|scene| {
-      let node = scene.create(NodeKind::Run, sink);
+    let node = Scene::<P>::with(|scene| scene.create(NodeKind::Run));
 
+    P::create_run(node, &props);
+    Scene::<P>::with(|scene| {
       if links {
         scene.note_focus_order(node, Some(FocusOrder::Auto));
       }
@@ -203,8 +203,6 @@ impl<P: Platform> Run<P> {
       if let Some(annotation) = annotation {
         scene.set_annotation(node, annotation);
       }
-
-      node
     });
 
     for slot in slots {

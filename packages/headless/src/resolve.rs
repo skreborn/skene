@@ -43,8 +43,9 @@ pub(crate) struct Env {
 impl Env {
   /// The environment of `node`; `None` for a stale id.
   pub(crate) fn of(node: NodeId) -> Option<Self> {
-    let (handle, interaction, names) = Scene::<Headless>::with(|scene| {
-      let handle = *scene.record(node)?.sink();
+    let (interaction, names) = Scene::<Headless>::with(|scene| {
+      scene.record(node)?;
+
       let interaction = scene.interaction(node);
       let mut names = Vec::new();
       let mut current = scene.parent(node);
@@ -57,11 +58,11 @@ impl Env {
         current = scene.parent(ancestor);
       }
 
-      Some((handle, interaction, names))
+      Some((interaction, names))
     })?;
 
     with_store(|store| {
-      store.record(handle)?;
+      store.record(node)?;
 
       Some(Self {
         node: Some(node),
@@ -139,10 +140,7 @@ impl Env {
     let token = |name| self.token(name);
     let slot = |slot| {
       let node = self.node?;
-      let handle =
-        Scene::<Headless>::with(|scene| scene.record(node).map(|record| *record.sink()))?;
-
-      with_store(|store| store.record(handle)?.slots.get(&slot).cloned())
+      with_store(|store| store.record(node)?.slots.get(&slot).cloned())
     };
 
     operation(&Resolver {
@@ -222,13 +220,12 @@ impl DeclaredMotion {
   }
 }
 
-/// The value `key` of the node behind `handle` presents at the store's clock: the
+/// The value `key` of `node` presents at the store's clock: the
 /// tween in flight where `target` moved under a transition, else `target`, with the
 /// node's animations laid over.
 fn present(
   env: &Env,
   node: NodeId,
-  handle: crate::Handle,
   kind: &Kind,
   key: PropertyKey<NoProperty>,
   target: Option<SlotValue>,
@@ -241,13 +238,11 @@ fn present(
   with_store(|store| {
     let now = store.clock;
     let reduced = store.reduced_motion.unwrap_or(false);
-    let Some(record) = store.record_mut(handle)
+    let Some(record) = store.record_mut(node)
     else {
       return target;
     };
     let motion = &mut record.motion;
-
-    motion.node = Some(node);
 
     if let Some(previous) = motion.targets.insert(key, target.clone()) {
       motion.runner.retarget(
@@ -273,8 +268,7 @@ fn present(
 pub(crate) fn resolve(node: NodeId, key: PropertyKey<NoProperty>) -> Option<SlotValue> {
   let target = resolve_target(node, key);
   let env = Env::of(node)?;
-  let handle = Scene::<Headless>::with(|scene| scene.record(node).map(|record| *record.sink()))?;
-  let kind = with_store(|store| match &store.record(handle)?.kind {
+  let kind = with_store(|store| match &store.record(node)?.kind {
     Kind::Box(props) => Some(Kind::Box(props.clone())),
     Kind::Control(props) => Some(Kind::Control(props.clone())),
     Kind::Overlay(props) => Some(Kind::Overlay(props.clone())),
@@ -282,14 +276,13 @@ pub(crate) fn resolve(node: NodeId, key: PropertyKey<NoProperty>) -> Option<Slot
     Kind::Anchor | Kind::Scope => None,
   })?;
 
-  present(&env, node, handle, &kind, key, target)
+  present(&env, node, &kind, key, target)
 }
 
 /// The property `key` of `node` resolved, motion aside: the value it is heading for.
 fn resolve_target(node: NodeId, key: PropertyKey<NoProperty>) -> Option<SlotValue> {
   let env = Env::of(node)?;
-  let handle = Scene::<Headless>::with(|scene| scene.record(node).map(|record| *record.sink()))?;
-  let kind = with_store(|store| match &store.record(handle)?.kind {
+  let kind = with_store(|store| match &store.record(node)?.kind {
     Kind::Box(props) => Some(Kind::Box(props.clone())),
     Kind::Control(props) => Some(Kind::Control(props.clone())),
     Kind::Overlay(props) => Some(Kind::Overlay(props.clone())),

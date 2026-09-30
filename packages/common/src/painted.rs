@@ -12,7 +12,7 @@ use crate::{
   Painter,
   Painting,
   properties,
-  realize::{ChildBuilder, with_sink},
+  realize::ChildBuilder,
 };
 
 /// A box drawn by a paint callback through the platform's renderer: sized like any box,
@@ -110,11 +110,11 @@ impl<P: Painting> View<P> for Painted<P> {
     let paint = move || {
       let node = inner.build();
 
-      with_sink::<P, _>(node, |sink| {
+      {
         let painter = Rc::clone(&painter);
 
-        P::paint(sink, Box::new(move |canvas, size| painter(canvas, size)));
-      });
+        P::paint(node, Box::new(move |canvas, size| painter(canvas, size)));
+      }
 
       node
     };

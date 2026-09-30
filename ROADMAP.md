@@ -38,11 +38,10 @@ left half-done in a code comment.
     - Controls: `AccessProp` moves onto AccessKit's schema, beside its open `Role`: its
     properties in place of the closed report, so a third party builds switches, tabs,
     comboboxes and trees; parts become styling targets or go.
-    - Structure: the scene owns the platforms' records (`Sink = NodeId`), so the terminal
-    and headless stop mirroring parents, children, tab order and `enclosing_control`,
-    and `bind_node` and three arenas go; anchors exist in the scene alone, platforms
-    receiving the next real sibling and server output keeping comment pairs only where
-    streaming needs a marker.
+    - Structure: the terminal and headless stop mirroring parents, children, tab order
+    and `enclosing_control`, reading the scene's (their records are keyed by its node ids
+    already); anchors exist in the scene alone, platforms receiving the next real sibling
+    and server output keeping comment pairs only where streaming needs a marker.
     - The web's realization: `Platform for Web` is written once over a small sink trait
     that the DOM and the string tree implement, the browser layering adoption and events
     on top, so the two leaves cannot drift; the server tier writes real pages that the

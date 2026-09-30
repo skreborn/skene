@@ -179,10 +179,7 @@ fn arrow_down_opens_the_list_with_focus_on_the_chosen_option() {
   assert_eq!(trigger_key_down(parts.face, &key("ArrowDown")), CONSUMED);
 
   assert!(is_open(parts.overlay));
-  assert_eq!(
-    overlay_anchor(parts.overlay),
-    skene_headless::handle(parts.face)
-  );
+  assert_eq!(overlay_anchor(parts.overlay), Some(parts.face));
   assert_eq!(parts.expanded(), Some(true));
   assert_eq!(
     control_state(parts.face).map(|state| state.open),

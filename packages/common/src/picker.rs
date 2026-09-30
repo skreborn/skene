@@ -38,7 +38,7 @@ use crate::{
   Roster,
   TypeAhead,
   decoration,
-  realize::{Source, with_sink},
+  realize::Source,
 };
 
 /// The builder of a picker's face, given the chosen value.
@@ -412,14 +412,14 @@ fn build_native<P: Platform>(
 
   let options = untrack(|| shared.roster.options::<P>());
 
-  with_sink::<P, _>(node, |sink| P::set_options(sink, &options));
+  P::set_options(node, &options);
   Effect::render({
     let chosen = Rc::clone(&shared.chosen);
 
     move |_: Option<()>| {
       let value = chosen().unwrap_or_default();
 
-      with_sink::<P, _>(node, |sink| P::set_value(sink, &value));
+      P::set_value(node, &value);
     }
   });
 

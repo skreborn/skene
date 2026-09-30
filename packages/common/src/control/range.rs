@@ -25,7 +25,6 @@ use skene_core::{
 use skene_reactive::Signal;
 
 use super::{Behavior, ControlHandle, Controlled, PointerPhase};
-use crate::realize::with_sink;
 
 /// A slider over a closed range.
 ///
@@ -179,8 +178,7 @@ impl Range {
     let event = self
       .track
       .get()
-      .and_then(|track| with_sink::<P, _>(track, |sink| P::localize_pointer(sink, event)))
-      .unwrap_or(*event);
+      .map_or(*event, |track| P::localize_pointer(track, event));
     let extent = self.extent.get();
     let thumb = self.thumb.clamp(0., extent);
     let travel = extent - thumb;
@@ -261,17 +259,15 @@ impl<P: Platform> Behavior<P> for Range {
 
     self.track.set(track);
     // The track where the control has one, the box where it has none.
-    with_sink::<P, _>(track.unwrap_or(node), |sink| {
-      let _observed = P::observe_size(
-        sink,
-        Rc::new(move |size| {
-          extent.set(match axis {
-            Axis::Horizontal => size.width.to_f32(),
-            Axis::Vertical => size.height.to_f32(),
-          });
-        }),
-      );
-    });
+    let _observed = P::observe_size(
+      track.unwrap_or(node),
+      Rc::new(move |size| {
+        extent.set(match axis {
+          Axis::Horizontal => size.width.to_f32(),
+          Axis::Vertical => size.height.to_f32(),
+        });
+      }),
+    );
   }
 
   fn on_key(&self, event: &KeyEvent, _control: &ControlHandle<P>) -> Prevent {

@@ -76,16 +76,10 @@ impl Store {
   /// Every open overlay reachable from the root, in the order they opened; later
   /// entries stack on top.
   pub(crate) fn open_overlays(&self) -> Vec<Handle> {
-    Scene::<Tui>::with(|scene| {
-      scene
-        .open_overlays()
-        .iter()
-        .filter_map(|overlay| scene.sink(*overlay))
-        .collect::<Vec<_>>()
-    })
-    .into_iter()
-    .filter(|overlay| self.is_reachable(*overlay))
-    .collect()
+    Scene::<Tui>::with(|scene| scene.open_overlays().to_vec())
+      .into_iter()
+      .filter(|overlay| self.is_reachable(*overlay))
+      .collect()
   }
 
   /// Whether `handle` sits inside an open overlay.
@@ -141,14 +135,7 @@ impl Store {
   /// boxes excluded, and an open modal containing the whole order with the overlays
   /// opened after it.
   pub(crate) fn tab_order(&self) -> Vec<Handle> {
-    let stops = self.tab_stops();
-
-    Scene::<Tui>::with(|scene| {
-      stops
-        .into_iter()
-        .filter_map(|node| scene.sink(node))
-        .collect()
-    })
+    self.tab_stops()
   }
 
   /// The tab stops' nodes in traversal order, as [`tab_order`](Self::tab_order) orders
@@ -166,9 +153,7 @@ impl Store {
 
     Scene::<Tui>::with(|scene| {
       scene.tab_order(root, &overlays, |node| {
-        scene
-          .sink(node)
-          .is_some_and(|handle| self.is_hidden(handle))
+        scene.contains(node) && self.is_hidden(node)
       })
     })
   }
@@ -927,11 +912,7 @@ pub(crate) fn move_focus(step: isize) {
       .focused()
       .and_then(|focused| store.record(focused)?.node);
 
-    Scene::<Tui>::with(|scene| {
-      scene
-        .tab_from(root, &order, from, step)
-        .and_then(|node| scene.sink(node))
-    })
+    Scene::<Tui>::with(|scene| scene.tab_from(root, &order, from, step))
   });
 
   if next.is_some() {

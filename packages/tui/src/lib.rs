@@ -161,9 +161,8 @@ pub use crate::{
   launch::{Clipboard, Launch, MOUSE_KEY, install, launch},
   media::{derive_scheme, set_scheme, stored_scheme},
   paint::{CellDecoration, Picture},
-  platform::{Tui, handle, mount, uninstall},
+  platform::{Tui, mount, uninstall},
   routing::install_router,
-  store::Handle,
   terminal::{
     current_cursor,
     current_title,

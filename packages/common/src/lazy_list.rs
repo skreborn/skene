@@ -25,7 +25,7 @@ use skene_core::{
 };
 use skene_reactive::{Get, Memo, Set, Signal, Update};
 
-use crate::{Container, LayoutBox, realize::with_sink};
+use crate::{Container, LayoutBox};
 
 /// The extent of every item of a lazy list along its axis, in the medium's unit.
 ///
@@ -232,20 +232,18 @@ impl<P: Platform> LazyList<P> {
               let lengths = Rc::clone(&lengths);
               let measures = Rc::clone(&measures);
 
-              with_sink::<P, _>(node, |sink| {
-                P::observe_size(
-                  sink,
-                  Rc::new(move |size| {
-                    let length = measures.axis.extent(size);
-                    let changed =
-                      lengths.borrow_mut().insert(item_key.clone(), length) != Some(length);
+              let _observed = P::observe_size(
+                node,
+                Rc::new(move |size| {
+                  let length = measures.axis.extent(size);
+                  let changed =
+                    lengths.borrow_mut().insert(item_key.clone(), length) != Some(length);
 
-                    if changed {
-                      measures.version.update(|version| *version += 1);
-                    }
-                  }),
-                );
-              });
+                  if changed {
+                    measures.version.update(|version| *version += 1);
+                  }
+                }),
+              );
             }
 
             node
@@ -345,9 +343,7 @@ impl<P: Platform> LazyList<P> {
       ))
       .build();
 
-    with_sink::<P, _>(node, |sink| {
-      P::observe_size(sink, Rc::new(move |size| viewport.set(axis.extent(size))));
-    });
+    let _observed = P::observe_size(node, Rc::new(move |size| viewport.set(axis.extent(size))));
 
     node
   }

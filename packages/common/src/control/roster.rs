@@ -10,7 +10,6 @@ use skene_core::{NodeId, PickerOption, Platform, Scene};
 use skene_reactive::{Memo, Trigger};
 
 use super::TypeAhead;
-use crate::realize::with_sink;
 
 /// The members a grouping control tracks: a radio group's choices, a listbox's options.
 ///
@@ -109,7 +108,7 @@ impl Roster {
   /// there is one.
   pub fn focus_at<P: Platform>(&self, index: usize) {
     if let Some((node, _)) = self.enabled::<P>().get(index) {
-      with_sink::<P, _>(*node, |sink| P::focus(sink));
+      P::focus(*node);
     }
   }
 
@@ -122,7 +121,7 @@ impl Roster {
       .unwrap_or(0);
 
     if let Some((node, _)) = members.get(index) {
-      with_sink::<P, _>(*node, |sink| P::focus(sink));
+      P::focus(*node);
     }
   }
 

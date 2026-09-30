@@ -3310,6 +3310,26 @@ impl<P: skene_core::Platform> skene_core::View<P> for skene_core::NodeId
 pub fn skene_core::NodeId::build(self) -> skene_core::NodeId
 pub fn skene_core::NodeId::into_any(self) -> skene_core::AnyView<P>
 pub fn skene_core::NodeId::set_key(self, impl core::hash::Hash) -> skene_core::Keyed<P, Self> where Self: core::marker::Sized
+pub struct skene_core::NodeMap<T>
+impl<T> skene_core::NodeMap<T>
+pub fn skene_core::NodeMap<T>::clear(&mut self)
+pub fn skene_core::NodeMap<T>::contains(&self, skene_core::NodeId) -> bool
+pub fn skene_core::NodeMap<T>::get(&self, skene_core::NodeId) -> core::option::Option<&T>
+pub fn skene_core::NodeMap<T>::get_mut(&mut self, skene_core::NodeId) -> core::option::Option<&mut T>
+pub fn skene_core::NodeMap<T>::insert(&mut self, skene_core::NodeId, T) -> core::option::Option<T>
+pub fn skene_core::NodeMap<T>::iter(&self) -> impl core::iter::traits::iterator::Iterator<Item = (skene_core::NodeId, &T)>
+pub fn skene_core::NodeMap<T>::iter_mut(&mut self) -> impl core::iter::traits::iterator::Iterator<Item = (skene_core::NodeId, &mut T)>
+pub const fn skene_core::NodeMap<T>::new() -> Self
+pub fn skene_core::NodeMap<T>::node_at(&self, u32) -> core::option::Option<skene_core::NodeId>
+pub fn skene_core::NodeMap<T>::remove(&mut self, skene_core::NodeId) -> core::option::Option<T>
+pub fn skene_core::NodeMap<T>::values(&self) -> impl core::iter::traits::iterator::Iterator<Item = &T>
+pub fn skene_core::NodeMap<T>::values_mut(&mut self) -> impl core::iter::traits::iterator::Iterator<Item = &mut T>
+impl<T: core::clone::Clone> core::clone::Clone for skene_core::NodeMap<T>
+pub fn skene_core::NodeMap<T>::clone(&self) -> skene_core::NodeMap<T>
+impl<T: core::fmt::Debug> core::fmt::Debug for skene_core::NodeMap<T>
+pub fn skene_core::NodeMap<T>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<T> core::default::Default for skene_core::NodeMap<T>
+pub fn skene_core::NodeMap<T>::default() -> Self
 pub struct skene_core::NodeRecord<P: skene_core::Platform>
 impl<P: skene_core::Platform> skene_core::NodeRecord<P>
 pub const fn skene_core::NodeRecord<P>::annotation(&self) -> core::option::Option<&skene_core::Annotation<P>>
@@ -3321,8 +3341,6 @@ pub const fn skene_core::NodeRecord<P>::kind(&self) -> skene_core::NodeKind
 pub const fn skene_core::NodeRecord<P>::parent(&self) -> core::option::Option<skene_core::NodeId>
 pub const fn skene_core::NodeRecord<P>::part(&self) -> core::option::Option<skene_core::Part>
 pub const fn skene_core::NodeRecord<P>::position(&self) -> &skene_reactive::path::Position
-pub const fn skene_core::NodeRecord<P>::sink(&self) -> &<P as skene_core::Platform>::Sink
-pub const fn skene_core::NodeRecord<P>::sink_mut(&mut self) -> &mut <P as skene_core::Platform>::Sink
 impl<P: skene_core::Platform> core::fmt::Debug for skene_core::NodeRecord<P>
 pub fn skene_core::NodeRecord<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_core::Number(pub f32)
@@ -3643,8 +3661,9 @@ pub fn skene_core::Scene<P>::annotate(impl core::convert::Into<core::option::Opt
 pub fn skene_core::Scene<P>::attach(&mut self, skene_core::NodeId, skene_core::NodeId, core::option::Option<skene_core::NodeId>)
 pub fn skene_core::Scene<P>::children(&self, skene_core::NodeId) -> impl core::iter::traits::iterator::Iterator<Item = skene_core::NodeId> + '_
 pub fn skene_core::Scene<P>::clear_segment(&mut self, skene_core::NodeId)
+pub fn skene_core::Scene<P>::contains(&self, skene_core::NodeId) -> bool
 pub fn skene_core::Scene<P>::control_state(&self, skene_core::NodeId) -> core::option::Option<skene_core::ControlState>
-pub fn skene_core::Scene<P>::create(&mut self, skene_core::NodeKind, <P as skene_core::Platform>::Sink) -> skene_core::NodeId
+pub fn skene_core::Scene<P>::create(&mut self, skene_core::NodeKind) -> skene_core::NodeId
 pub fn skene_core::Scene<P>::create_segment() -> (skene_core::NodeId, skene_core::NodeId)
 pub fn skene_core::Scene<P>::crossed(&self, core::option::Option<skene_core::NodeId>, core::option::Option<skene_core::NodeId>) -> smallvec::SmallVec<[skene_core::NodeId; 16]>
 pub fn skene_core::Scene<P>::define_root_tokens(&mut self, skene_core::Definitions<<P as skene_core::Platform>::TokenValue>)
@@ -3711,7 +3730,6 @@ pub fn skene_core::Scene<P>::set_overlay_open(&mut self, skene_core::NodeId, boo
 pub fn skene_core::Scene<P>::set_part(&mut self, skene_core::NodeId, skene_core::Part)
 pub fn skene_core::Scene<P>::set_pending_annotation(&mut self, skene_core::Annotation<P>)
 pub const fn skene_core::Scene<P>::set_pressed(&mut self, core::option::Option<skene_core::NodeId>)
-pub fn skene_core::Scene<P>::sink(&self, skene_core::NodeId) -> core::option::Option<<P as skene_core::Platform>::Sink>
 pub fn skene_core::Scene<P>::tab_from(&self, skene_core::NodeId, &[skene_core::NodeId], core::option::Option<skene_core::NodeId>, isize) -> core::option::Option<skene_core::NodeId>
 pub fn skene_core::Scene<P>::tab_order(&self, skene_core::NodeId, &[skene_core::NodeId], impl core::ops::function::Fn(skene_core::NodeId) -> bool) -> alloc::vec::Vec<skene_core::NodeId>
 pub const fn skene_core::Scene<P>::take_pending_annotation(&mut self) -> core::option::Option<skene_core::Annotation<P>>
@@ -4593,50 +4611,48 @@ impl<P: skene_core::Platform, V: skene_core::View<P>> skene_core::IntoView<P> fo
 pub fn V::into_view(self) -> skene_core::AnyView<P>
 pub trait skene_core::Platform: core::marker::Copy + core::default::Default + 'static
 pub type skene_core::Platform::Scalar: skene_core::Scalar
-pub type skene_core::Platform::Sink: core::marker::Copy + core::cmp::Eq + core::hash::Hash + core::fmt::Debug + 'static
 pub type skene_core::Platform::StyleExt: skene_core::StyleExtension
 pub type skene_core::Platform::TokenValue: core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug + core::convert::From<skene_core::Definition<skene_core::Color, Self::Scalar>> + core::convert::From<skene_core::Definition<f32, Self::Scalar>> + core::convert::From<skene_core::Definition<skene_core::Length, Self::Scalar>> + core::convert::From<skene_core::Definition<skene_core::Dimension<Self::Scalar>, Self::Scalar>> + 'static
-pub fn skene_core::Platform::apply_layout(Self::Sink, &skene_core::StaticBoxStyle<Self>)
-pub fn skene_core::Platform::attach(Self::Sink, Self::Sink, core::option::Option<Self::Sink>)
-pub fn skene_core::Platform::bind_node(Self::Sink, skene_core::NodeId)
-pub fn skene_core::Platform::blur(Self::Sink)
+pub fn skene_core::Platform::apply_layout(skene_core::NodeId, &skene_core::StaticBoxStyle<Self>)
+pub fn skene_core::Platform::attach(skene_core::NodeId, skene_core::NodeId, core::option::Option<skene_core::NodeId>)
+pub fn skene_core::Platform::blur(skene_core::NodeId)
 pub fn skene_core::Platform::cancel(skene_core::Timer)
 pub fn skene_core::Platform::clipboard(skene_core::ClipboardAction)
 pub fn skene_core::Platform::clipboard_availability(skene_core::ClipboardAction) -> skene_core::Availability
-pub fn skene_core::Platform::create_anchor() -> Self::Sink
-pub fn skene_core::Platform::create_box(&skene_core::BoxProps<Self>) -> Self::Sink
-pub fn skene_core::Platform::create_control(&skene_core::ControlProps<Self>) -> Self::Sink
-pub fn skene_core::Platform::create_overlay(&skene_core::OverlayProps<Self>) -> Self::Sink
-pub fn skene_core::Platform::create_run(&skene_core::RunProps<Self>) -> Self::Sink
-pub fn skene_core::Platform::create_scope() -> Self::Sink
+pub fn skene_core::Platform::create_anchor(skene_core::NodeId)
+pub fn skene_core::Platform::create_box(skene_core::NodeId, &skene_core::BoxProps<Self>)
+pub fn skene_core::Platform::create_control(skene_core::NodeId, &skene_core::ControlProps<Self>)
+pub fn skene_core::Platform::create_overlay(skene_core::NodeId, &skene_core::OverlayProps<Self>)
+pub fn skene_core::Platform::create_run(skene_core::NodeId, &skene_core::RunProps<Self>)
+pub fn skene_core::Platform::create_scope(skene_core::NodeId)
 pub fn skene_core::Platform::define_root_tokens(&skene_core::Definitions<Self::TokenValue>)
-pub fn skene_core::Platform::define_tokens(Self::Sink, &skene_core::Definitions<Self::TokenValue>)
-pub fn skene_core::Platform::destroy(Self::Sink)
-pub fn skene_core::Platform::detach(Self::Sink, Self::Sink)
-pub fn skene_core::Platform::focus(Self::Sink)
+pub fn skene_core::Platform::define_tokens(skene_core::NodeId, &skene_core::Definitions<Self::TokenValue>)
+pub fn skene_core::Platform::destroy(skene_core::NodeId)
+pub fn skene_core::Platform::detach(skene_core::NodeId, skene_core::NodeId)
+pub fn skene_core::Platform::focus(skene_core::NodeId)
 pub fn skene_core::Platform::focus_visible() -> bool
 pub fn skene_core::Platform::hydration() -> core::option::Option<skene_reactive::signal::ReadSignal<bool>>
-pub fn skene_core::Platform::listen(Self::Sink, skene_core::EventKind)
-pub fn skene_core::Platform::localize_pointer(Self::Sink, &skene_core::PointerEvent) -> skene_core::PointerEvent
+pub fn skene_core::Platform::listen(skene_core::NodeId, skene_core::EventKind)
+pub fn skene_core::Platform::localize_pointer(skene_core::NodeId, &skene_core::PointerEvent) -> skene_core::PointerEvent
 pub fn skene_core::Platform::media() -> skene_core::MediaSignals<Self::Scalar>
-pub fn skene_core::Platform::observe_size(Self::Sink, alloc::rc::Rc<dyn core::ops::function::Fn(skene_core::Size<Self::Scalar>)>) -> skene_core::Observation
+pub fn skene_core::Platform::observe_size(skene_core::NodeId, alloc::rc::Rc<dyn core::ops::function::Fn(skene_core::Size<Self::Scalar>)>) -> skene_core::Observation
 pub fn skene_core::Platform::scene() -> &'static std::thread::local::LocalKey<core::cell::RefCell<skene_core::Scene<Self>>>
 pub fn skene_core::Platform::schedule(core::time::Duration, alloc::boxed::Box<dyn core::ops::function::FnOnce()>) -> skene_core::Timer
-pub fn skene_core::Platform::set_checked(Self::Sink, bool)
-pub fn skene_core::Platform::set_control_state(Self::Sink, &skene_core::ControlState)
-pub fn skene_core::Platform::set_options(Self::Sink, &[skene_core::PickerOption])
-pub fn skene_core::Platform::set_overlay_open(Self::Sink, bool, core::option::Option<Self::Sink>)
-pub fn skene_core::Platform::set_overlay_placement(Self::Sink, skene_core::Placement)
-pub fn skene_core::Platform::set_overlay_position(Self::Sink, core::option::Option<skene_core::Point<f32>>)
+pub fn skene_core::Platform::set_checked(skene_core::NodeId, bool)
+pub fn skene_core::Platform::set_control_state(skene_core::NodeId, &skene_core::ControlState)
+pub fn skene_core::Platform::set_options(skene_core::NodeId, &[skene_core::PickerOption])
+pub fn skene_core::Platform::set_overlay_open(skene_core::NodeId, bool, core::option::Option<skene_core::NodeId>)
+pub fn skene_core::Platform::set_overlay_placement(skene_core::NodeId, skene_core::Placement)
+pub fn skene_core::Platform::set_overlay_position(skene_core::NodeId, core::option::Option<skene_core::Point<f32>>)
 pub fn skene_core::Platform::set_scheme(core::option::Option<skene_core::ColorScheme>)
-pub fn skene_core::Platform::set_selection(Self::Sink, skene_core::TextSelection)
-pub fn skene_core::Platform::set_text(Self::Sink, &str)
-pub fn skene_core::Platform::set_value(Self::Sink, &str)
+pub fn skene_core::Platform::set_selection(skene_core::NodeId, skene_core::TextSelection)
+pub fn skene_core::Platform::set_text(skene_core::NodeId, &str)
+pub fn skene_core::Platform::set_value(skene_core::NodeId, &str)
 pub fn skene_core::Platform::stored_scheme() -> core::option::Option<skene_core::ColorScheme>
-pub fn skene_core::Platform::update_access(Self::Sink, &[skene_core::AccessProp])
-pub fn skene_core::Platform::update_box(Self::Sink, skene_core::Slot, &skene_core::StaticLeaf<skene_core::BoxValue<Self::Scalar, Self::StyleExt>>)
-pub fn skene_core::Platform::update_focus_order(Self::Sink, core::option::Option<skene_core::FocusOrder>)
-pub fn skene_core::Platform::update_run(Self::Sink, skene_core::Slot, &skene_core::StaticLeaf<skene_core::RunValue<Self::StyleExt>>)
+pub fn skene_core::Platform::update_access(skene_core::NodeId, &[skene_core::AccessProp])
+pub fn skene_core::Platform::update_box(skene_core::NodeId, skene_core::Slot, &skene_core::StaticLeaf<skene_core::BoxValue<Self::Scalar, Self::StyleExt>>)
+pub fn skene_core::Platform::update_focus_order(skene_core::NodeId, core::option::Option<skene_core::FocusOrder>)
+pub fn skene_core::Platform::update_run(skene_core::NodeId, skene_core::Slot, &skene_core::StaticLeaf<skene_core::RunValue<Self::StyleExt>>)
 pub fn skene_core::Platform::watch_media(&skene_core::Media<Self::Scalar>) -> skene_reactive::memo::Memo<bool>
 pub trait skene_core::PropertyName: core::marker::Copy + core::cmp::Eq + core::hash::Hash + core::fmt::Debug + 'static
 pub fn skene_core::PropertyName::name(&self) -> &'static str

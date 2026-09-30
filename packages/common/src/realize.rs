@@ -20,17 +20,6 @@ use skene_core::{
 };
 use skene_reactive::Effect;
 
-/// Runs `operation` on a copy of the sink of `node`, if the node is live.
-///
-/// The scene is released before `operation` runs, so a platform call inside it may
-/// reach the scene again.
-#[inline(always)]
-pub fn with_sink<P: Platform, R>(node: NodeId, operation: impl FnOnce(P::Sink) -> R) -> Option<R> {
-  let sink = Scene::<P>::with(|scene| scene.sink(node))?;
-
-  Some(operation(sink))
-}
-
 /// Binds a render effect that computes `slot`'s leaf and writes it into the box
 /// `node`, now and whenever a signal the leaf reads changes.
 pub fn bind_box_slot<P: Platform>(node: NodeId, slot: BoxSlot<P::Scalar, P::StyleExt>) {
@@ -39,7 +28,7 @@ pub fn bind_box_slot<P: Platform>(node: NodeId, slot: BoxSlot<P::Scalar, P::Styl
   Effect::render(move |_: Option<()>| {
     let value = compute();
 
-    with_sink::<P, _>(node, |sink| P::update_box(sink, slot, &value));
+    P::update_box(node, slot, &value);
   });
 }
 
@@ -51,7 +40,7 @@ pub fn bind_run_slot<P: Platform>(node: NodeId, slot: RunSlot<P::StyleExt>) {
   Effect::render(move |_: Option<()>| {
     let value = compute();
 
-    with_sink::<P, _>(node, |sink| P::update_run(sink, slot, &value));
+    P::update_run(node, slot, &value);
   });
 }
 
@@ -60,7 +49,7 @@ pub fn bind_run_slot<P: Platform>(node: NodeId, slot: RunSlot<P::StyleExt>) {
 pub fn report_access<P: Platform>(node: NodeId, access: Vec<AccessProp>) {
   let access = Scene::<P>::with(|scene| scene.report_access(node, access));
 
-  with_sink::<P, _>(node, |sink| P::update_access(sink, &access));
+  P::update_access(node, &access);
 }
 
 /// Reports `description` as what a view describing `node` says to assistive
@@ -68,7 +57,7 @@ pub fn report_access<P: Platform>(node: NodeId, access: Vec<AccessProp>) {
 pub fn describe<P: Platform>(node: NodeId, description: Vec<AccessProp>) {
   let access = Scene::<P>::with(|scene| scene.describe(node, description));
 
-  with_sink::<P, _>(node, |sink| P::update_access(sink, &access));
+  P::update_access(node, &access);
 }
 
 /// A setting outside the style model: fixed, or recomputed from the signals it reads.
@@ -117,16 +106,16 @@ impl<T: 'static> Source<T> {
 
   /// Writes the value into `node` through `write`: once for a fixed value, and under a
   /// render effect for a derived one.
-  pub fn bind<P: Platform>(self, node: NodeId, write: impl Fn(P::Sink, &T) + 'static) {
+  pub fn bind(self, node: NodeId, write: impl Fn(NodeId, &T) + 'static) {
     match self {
       Self::Fixed(value) => {
-        with_sink::<P, _>(node, |sink| write(sink, &value));
+        write(node, &value);
       }
       Self::Derived(compute) => {
         Effect::render(move |_: Option<()>| {
           let value = compute();
 
-          with_sink::<P, _>(node, |sink| write(sink, &value));
+          write(node, &value);
         });
       }
     }
@@ -159,8 +148,8 @@ impl<P: Platform> ChildBuilder<P> {
   }
 }
 
-/// The entry a low-level view realizes through: a sink the view made against a
-/// platform's escape trait, registered in the scene as an ordinary node.
+/// The entry a low-level view realizes through: a node the scene mints, realized by the
+/// view against a platform's escape trait, an ordinary node from then on.
 ///
 /// The node it returns is a [`View`], so it composes as a built-in does: as the child
 /// of a [`Container`](crate::Container) that sizes and decorates it, under a theme,
@@ -172,13 +161,14 @@ impl<P: Platform> ChildBuilder<P> {
 pub struct LowLevel<P: Platform>(PhantomData<fn() -> P>);
 
 impl<P: Platform> LowLevel<P> {
-  /// Registers `sink` as a detached node of `kind` and returns its id, recording the
-  /// annotation a wrapper around the view gave it and applying it to the sink as its
-  /// layout; see [`Platform::apply_layout`].
-  pub fn realize(sink: P::Sink, kind: NodeKind) -> NodeId {
+  /// Mints a detached node of `kind`, has `make` realize it against a platform's
+  /// escape trait, and returns its id, recording the annotation a wrapper around the
+  /// view gave it and applying it to the node as its layout; see
+  /// [`Platform::apply_layout`].
+  pub fn realize(kind: NodeKind, make: impl FnOnce(NodeId)) -> NodeId {
     let (node, annotation) = Scene::<P>::with(|scene| {
       let annotation = scene.take_pending_annotation();
-      let node = scene.create(kind, sink);
+      let node = scene.create(kind);
 
       if let Some(annotation) = &annotation {
         scene.set_annotation(node, annotation.clone());
@@ -187,10 +177,12 @@ impl<P: Platform> LowLevel<P> {
       (node, annotation)
     });
 
+    make(node);
+
     if let Some(annotation) = annotation {
       let (layout, slots) = annotation.into_style().split();
 
-      with_sink::<P, _>(node, |sink| P::apply_layout(sink, &layout));
+      P::apply_layout(node, &layout);
 
       for slot in slots {
         bind_box_slot::<P>(node, slot);

@@ -6,10 +6,10 @@
 //! out the live [`Element`](web_sys::Element) and the [`Document`](web_sys::Document),
 //! so a view bound on it does not compile for the server leaf and is wrapped in a
 //! facade's `client_only` (or given a [`WebMarkup`] fallback) by the app that uses it.
-//! A sink either trait creates is registered in the scene through
-//! `skene_common::LowLevel`, and the node composes as a built-in does.
+//! The node an element realizes is minted through `skene_common::LowLevel`, and it
+//! composes as a built-in does.
 
-use skene_core::Platform;
+use skene_core::{NodeId, Platform};
 
 use crate::Declarations;
 
@@ -22,21 +22,21 @@ use crate::Declarations;
   label = "a view bound on `WebMarkup` exists on the web platform's leaves alone"
 )]
 pub trait WebMarkup: Platform {
-  /// Creates a detached element of `tag` and returns its sink.
-  fn create_element(tag: &'static str) -> Self::Sink;
+  /// Realizes `node` as a detached element of `tag`.
+  fn create_element(node: NodeId, tag: &'static str);
 
-  /// Sets the attribute `name` of the element `sink` to `value`.
-  fn set_attribute(sink: Self::Sink, name: &str, value: &str);
+  /// Sets the attribute `name` of the element realizing `node` to `value`.
+  fn set_attribute(node: NodeId, name: &str, value: &str);
 
   /// Writes `declarations` as the element's own inline CSS, each replacing the
   /// property's previous value.
-  fn set_declarations(sink: Self::Sink, declarations: &Declarations);
+  fn set_declarations(node: NodeId, declarations: &Declarations);
 
   /// Replaces the element's text content.
-  fn set_text(sink: Self::Sink, text: &str);
+  fn set_text(node: NodeId, text: &str);
 }
 
-/// The browser leaf: the live DOM behind a sink.
+/// The browser leaf: the live DOM behind a node.
 ///
 /// Not implemented on the server leaf, where no DOM exists, so a view bound on it fails
 /// to compile there rather than at run time.
@@ -46,8 +46,8 @@ pub trait WebMarkup: Platform {
   label = "a view bound on `WebDom` exists on the browser leaf alone; bound on `WebMarkup` it exists on the server leaf too"
 )]
 pub trait WebDom: WebMarkup {
-  /// The element realizing `sink`; `None` for an anchor or a sink no longer live.
-  fn element(sink: Self::Sink) -> Option<web_sys::Element>;
+  /// The element realizing `node`; `None` for an anchor or a node no longer live.
+  fn element(node: NodeId) -> Option<web_sys::Element>;
 
   /// The owning document.
   fn document() -> web_sys::Document;

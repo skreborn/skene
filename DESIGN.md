@@ -78,14 +78,16 @@ facade names only its own platforms and publishes the selected one as `ActivePla
 
 ## The scene and the platform
 
-**Core owns the tree; a platform owns a sink.** `Scene<P: Platform>` is a generational arena
-of node records—parent, children, the annotation a wrapper asked for the child, the
-token definitions a theme placed on the node, the query-container name, the handlers,
-and the platform's sink handle (an element index, a record handle, a taffy id). Every
+**Core owns the tree; a platform keeps a record per node.** `Scene<P: Platform>` is a
+generational arena of node records—parent, children, the annotation a wrapper asked for
+the child, the token definitions a theme placed on the node, the query-container name,
+the handlers. The scene mints every `NodeId`, and the platform keys its own record of the
+node by that id (a `NodeMap`: an element, a string-tree index, a taffy leaf), realizing
+it once the scene is released and before the node takes part in anything else. Every
 structural mutation (`attach`, `detach`, `destroy`, reorder) is implemented once in core;
-the platform is called only to mirror it into the sink, after core has released its own
-borrow. `NodeId` carries a generation, so a stale id resolves to nothing rather than to a
-recycled node. Token resolution and event dispatch walk this tree; nothing reads
+the platform is called only to mirror it into its records, after core has released its
+own borrow. `NodeId` carries a generation, so a stale id resolves to nothing rather than
+to a recycled node, in the scene and in a platform's records alike. Token resolution and event dispatch walk this tree; nothing reads
 structure back from a platform. The scene also records each node's place in focus
 traversal and each overlay's state, the open ones in the order they opened, as a
 browser's top layer stacks them, and computes the tab order from them
@@ -104,15 +106,15 @@ with its node, and resolves every node's interaction from them (`Scene::interact
 so the terminal and headless resolve states alike.
 
 **`Platform` is a zero-sized trait with associated types**, monomorphized, hidden behind
-each facade's aliases: `Sink`, `Scalar` (`f32` or `u32`), `StyleExt` (the medium's own
+each facade's aliases: `Scalar` (`f32` or `u32`), `StyleExt` (the medium's own
 properties), `TokenValue` (the erased definition the medium accepts). Its methods are the
-portable sink vocabulary: create and update boxes, controls, overlays and runs, create
-anchors and scopes, mirror tree mutations, define tokens on a scope and at the root,
-register event kinds, focus, set values, observe sizes, report media. `Painted` and
-embeds are deliberately outside it—their payloads never cross a crate boundary—and
-arrive through extension traits (`Painting`; each platform's escape trait). The leaf-only
-surface (`document`, `element`, `render_to_string`, `launch`) stays free functions in the
-platform crate, since it is not a shared contract.
+portable vocabulary over node ids: realize and update boxes, controls, overlays and
+runs, realize anchors and scopes, mirror tree mutations, define tokens on a scope and at
+the root, register event kinds, focus, set values, observe sizes, report media.
+`Painted` and embeds are deliberately outside it—their payloads never cross a crate
+boundary—and arrive through extension traits (`Painting`; each platform's escape trait).
+The leaf-only surface (`document`, `element`, `render_to_string`, `launch`) stays free
+functions in the platform crate, since it is not a shared contract.
 
 - **Why a trait and not name-resolved free functions.** A missing function is only an
   error on a path that names it, and those paths are target-gated; a trait makes a gap a
@@ -197,8 +199,9 @@ platform crate, since it is not a shared contract.
   both medium cores realize them. Vello is the one renderer, everywhere.
 - **Embeds are platform-specific views**, written against a platform's escape trait: raw DOM
   through `WebDom`, markup through `WebMarkup`, cells through `CellPainter`, later a
-  platform view through `PlatformView`. `LowLevel::realize` registers a platform-made sink
-  as a scene node, so the view composes with wrappers, themes and events. There is no
+  platform view through `PlatformView`. `LowLevel::realize` mints a scene node the view
+  realizes through its escape trait, so the view composes with wrappers, themes and
+  events. There is no
   `Any` and no downcast.
 
   **Why a typed vocabulary and not per-platform realization.** The orphan rule: with
@@ -324,7 +327,7 @@ routes the press's moves and its release to the node—and a touch pans only alo
 other axis (`touch-action: pan-y pinch-zoom` for a horizontal drag), while a press
 anywhere else leaves each move and the release to the node under the pointer, as a
 browser does; the terminal shows a grab cursor over a control that drags. An anchored popup on the web follows its anchor through CSS anchor positioning (the anchor
-named after its sink, the popup placed by `position-area`) where the engine has it, and
+named after its node, the popup placed by `position-area`) where the engine has it, and
 sits at the anchor's measured rectangle as it opens elsewhere. A `Tooltip` wraps the one
 view it describes and mounts that view and a hint overlay, the `Bubble`, in a segment of
 its own: it opens on the platform's clock once the pointer has rested for its delay and

@@ -4,7 +4,6 @@ use skene_core::{EventKind, NativeElement, Platform, Role, TextSelection};
 use skene_reactive::{Effect, Signal, untrack};
 
 use super::{Behavior, ControlHandle, Controlled};
-use crate::realize::with_sink;
 
 /// A text entry: a single-line field, or an editor showing several lines at once.
 ///
@@ -173,7 +172,7 @@ impl<P: Platform> Behavior<P> for TextEntry {
       Effect::render(move |_: Option<()>| {
         let value = value();
 
-        with_sink::<P, _>(node, |sink| P::set_value(sink, &value));
+        P::set_value(node, &value);
       });
     }
 
@@ -181,7 +180,7 @@ impl<P: Platform> Behavior<P> for TextEntry {
       Effect::render(move |_: Option<()>| {
         let selection = selection();
 
-        with_sink::<P, _>(node, |sink| P::set_selection(sink, selection));
+        P::set_selection(node, selection);
       });
     }
   }
@@ -196,11 +195,11 @@ impl<P: Platform> Behavior<P> for TextEntry {
 
   fn reconcile(&self, control: &ControlHandle<P>) {
     if let Some(value) = untrack(|| self.value.read()) {
-      control.with_sink(|sink| P::set_value(sink, &value));
+      P::set_value(control.node(), &value);
     }
 
     if let Some(selection) = untrack(|| self.selection.read()) {
-      control.with_sink(|sink| P::set_selection(sink, selection));
+      P::set_selection(control.node(), selection);
     }
   }
 }

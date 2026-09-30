@@ -5,7 +5,7 @@
 use std::rc::Rc;
 
 use skene_common::gui::{Canvas, Painter, Painting, kurbo::Affine};
-use skene_core::Size;
+use skene_core::{NodeId, Size};
 use skene_reactive::ReadSignal;
 use wasm_bindgen::{JsCast, JsValue, closure::Closure};
 use web_sys::{
@@ -90,14 +90,14 @@ impl Pixels {
   fn new() -> Self {
     let device = reports_device_pixels();
     let callback = Closure::<dyn FnMut(js_sys::Array)>::new(move |entries: js_sys::Array| {
-      let measured: Vec<(u32, CanvasSize)> = entries
+      let measured: Vec<(NodeId, CanvasSize)> = entries
         .iter()
         .filter_map(|entry| {
           let entry: ResizeObserverEntry = entry.unchecked_into();
           let sink = entry
             .target()
             .parent_element()
-            .and_then(|parent| events::sink_of(&parent))?;
+            .and_then(|parent| events::node_of(&parent))?;
           let rect = entry.content_rect();
           #[expect(
             clippy::cast_possible_truncation,
@@ -235,14 +235,14 @@ impl Dom {
   }
 
   /// The canvas of the painted box `sink`.
-  fn canvas_mut(&mut self, sink: u32) -> Option<&mut PaintedCanvas> {
+  fn canvas_mut(&mut self, sink: NodeId) -> Option<&mut PaintedCanvas> {
     self.node_mut(sink)?.canvas.as_deref_mut()
   }
 
   /// Gives the box `sink` a canvas over it painted by `painter`, observed, or hands its
   /// canvas `painter`; the box contains the canvas's layout, so the canvas never sizes
   /// it.
-  fn place_canvas(&mut self, sink: u32, painter: Rc<Painter>) {
+  fn place_canvas(&mut self, sink: NodeId, painter: Rc<Painter>) {
     if let Some(canvas) = self.canvas_mut(sink) {
       canvas.painter = painter;
 
@@ -287,7 +287,7 @@ impl Dom {
 
   /// Puts a fresh canvas element in place of the box `sink`'s, whose context is spoken
   /// for, and forgets the GPU target the old one held.
-  fn replace_canvas(&mut self, sink: u32) {
+  fn replace_canvas(&mut self, sink: NodeId) {
     let Some(fresh) = new_canvas(&self.document)
     else {
       return;
@@ -316,7 +316,7 @@ impl Painting for Web {
     media::live()
   }
 
-  fn paint(sink: u32, painter: Box<Painter>) {
+  fn paint(sink: NodeId, painter: Box<Painter>) {
     with_dom(|dom| dom.place_canvas(sink, Rc::from(painter)));
     repaint(sink);
   }
@@ -324,7 +324,7 @@ impl Painting for Web {
 
 /// Runs the painter of `sink` at its canvas's size: on the GPU where the page has one
 /// and the canvas has not fallen back, else on the CPU.
-fn repaint(sink: u32) {
+fn repaint(sink: NodeId) {
   let Some((painter, size, on_cpu)) = try_with_dom(|dom| {
     let canvas = dom.canvas_mut(sink)?;
 
@@ -391,7 +391,7 @@ fn repaint(sink: u32) {
 
 /// Copies `surface` into the canvas of `sink` through its 2D context, in a fresh canvas
 /// where a context of another kind holds the old one.
-fn blit(sink: u32, surface: &Canvas) {
+fn blit(sink: NodeId, surface: &Canvas) {
   let (width, height) = surface.size();
 
   for _ in 0..2 {
@@ -447,16 +447,15 @@ fn lost() {
 }
 
 /// The painted boxes whose canvas `select` picks, given each canvas to act on.
-fn painted_sinks(mut select: impl FnMut(&mut PaintedCanvas) -> bool) -> Vec<u32> {
+fn painted_sinks(mut select: impl FnMut(&mut PaintedCanvas) -> bool) -> Vec<NodeId> {
   try_with_dom(|dom| {
     dom
       .nodes
       .iter_mut()
-      .enumerate()
       .filter_map(|(sink, node)| {
-        let canvas = node.as_mut()?.canvas.as_deref_mut()?;
+        let canvas = node.canvas.as_deref_mut()?;
 
-        select(canvas).then(|| u32::try_from(sink).ok()).flatten()
+        select(canvas).then_some(sink)
       })
       .collect()
   })

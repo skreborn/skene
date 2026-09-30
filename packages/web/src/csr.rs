@@ -52,6 +52,7 @@ use skene_core::{
   MediaSignals,
   NodeId,
   NodeKind,
+  NodeMap,
   Observation,
   OverlayProps,
   Part,
@@ -157,9 +158,6 @@ use super::{
   token::WebTokenValue,
 };
 use crate::{Declarations, WebDom, WebMarkup, hydration::STATE_SCRIPT_ID};
-
-/// The sink of the mount root; its children are the app.
-const ROOT: u32 = 0;
 
 /// The DOM node type of a comment.
 const COMMENT_NODE: u16 = 8;
@@ -425,7 +423,7 @@ struct Hydration {
   comments: FxHashMap<String, web_sys::Node>,
   stale: Vec<Element>,
   mismatches: u32,
-  pending: Vec<(u32, Pending)>,
+  pending: Vec<(NodeId, Pending)>,
 }
 
 impl Hydration {
@@ -481,10 +479,8 @@ impl Hydration {
 struct Dom {
   /// The document the app mounts in.
   document: Document,
-  /// The node records, indexed by sink.
-  nodes: Vec<Option<Node>>,
-  /// The sinks of the empty records, reused before the records grow.
-  free: Vec<u32>,
+  /// The node records, by node.
+  nodes: NodeMap<Node>,
   /// The hydration marker the next element created takes.
   markers: u32,
   /// The ordinal the next anchor's comment takes.
@@ -502,13 +498,13 @@ struct Dom {
   /// The shared size observer, made when the first size is observed.
   resize: Option<SizeObserver>,
   /// The scene node of the mount root.
-  root_node: Option<NodeId>,
-  /// What content leaving a segment held, by the sink of the anchor following it.
-  saved: FxHashMap<u32, Saved>,
+  root_node: NodeId,
+  /// What content leaving a segment held, by the anchor following it.
+  saved: FxHashMap<NodeId, Saved>,
   /// The observer reporting each canvas's size, made when the first box paints.
   pixels: Option<canvas::Pixels>,
   /// The overlays asked open before their element was connected, each with its anchor.
-  pending_open: FxHashMap<u32, Option<u32>>,
+  pending_open: FxHashMap<NodeId, Option<NodeId>>,
   /// The timeouts of the scheduled actions.
   timers: FxHashMap<Timer, Timeout>,
   /// The id the next scheduled action takes.
@@ -566,7 +562,12 @@ fn with_dom<R>(operation: impl FnOnce(&mut Dom) -> R) -> R {
 }
 
 impl Dom {
-  fn new(document: Document, root: Element, hydration: Option<Hydration>) -> Self {
+  fn new(
+    document: Document,
+    root: Element,
+    root_node: NodeId,
+    hydration: Option<Hydration>,
+  ) -> Self {
     let head = document.head().expect("a head");
     let sheet = match hydration
       .as_ref()
@@ -576,13 +577,19 @@ impl Dom {
       None => Sheet::new(&document, &head),
     };
     let events = Events::new(root.clone());
+    let mut nodes = NodeMap::new();
 
-    events::stamp(&root, ROOT);
+    events::stamp(&root, root_node);
+
+    let mut record = Node::new(root, Realized::Box, false);
+
+    record.id = Some(root_node);
+
+    let _root = nodes.insert(root_node, record);
 
     Self {
       document,
-      nodes: vec![Some(Node::new(root, Realized::Box, false))],
-      free: Vec::new(),
+      nodes,
       markers: 1,
       anchors: 0,
       sheet,
@@ -591,7 +598,7 @@ impl Dom {
       hydration,
       mismatches: 0,
       resize: None,
-      root_node: None,
+      root_node,
       saved: FxHashMap::default(),
       pixels: None,
       pending_open: FxHashMap::default(),
@@ -600,36 +607,23 @@ impl Dom {
     }
   }
 
-  fn node(&self, sink: u32) -> Option<&Node> {
-    self.nodes.get(sink as usize).and_then(Option::as_ref)
+  fn node(&self, sink: NodeId) -> Option<&Node> {
+    self.nodes.get(sink)
   }
 
-  fn node_mut(&mut self, sink: u32) -> Option<&mut Node> {
-    self.nodes.get_mut(sink as usize).and_then(Option::as_mut)
+  fn node_mut(&mut self, sink: NodeId) -> Option<&mut Node> {
+    self.nodes.get_mut(sink)
   }
 
-  fn insert(&mut self, node: Node) -> u32 {
+  /// Stores `node` as the record of `sink`, stamping its element with it.
+  fn insert(&mut self, sink: NodeId, mut node: Node) {
     if let Some(element) = node.element() {
-      let sink = self
-        .free
-        .last()
-        .copied()
-        .unwrap_or_else(|| u32::try_from(self.nodes.len()).expect("at most 2^32 nodes"));
-
       events::stamp(element, sink);
     }
 
-    if let Some(sink) = self.free.pop() {
-      self.nodes[sink as usize] = Some(node);
+    node.id = Some(sink);
 
-      return sink;
-    }
-
-    let sink = u32::try_from(self.nodes.len()).expect("at most 2^32 nodes");
-
-    self.nodes.push(Some(node));
-
-    sink
+    let _replaced = self.nodes.insert(sink, node);
   }
 
   /// The element for the node created next: the server's element at this creation
@@ -680,15 +674,15 @@ impl Dom {
     (self.document.create_comment(text).into(), false)
   }
 
-  fn create_element(&mut self, tag: &str, realized: Realized) -> u32 {
+  fn create_element(&mut self, sink: NodeId, tag: &str, realized: Realized) {
     let (element, adopted) = self.take_element(tag);
 
-    self.insert(Node::new(element, realized, adopted))
+    self.insert(sink, Node::new(element, realized, adopted));
   }
 
   /// Takes the overlays asked open before their element was connected whose element now
   /// is, each with its anchor.
-  fn take_connected_opens(&mut self) -> Vec<(u32, Option<u32>)> {
+  fn take_connected_opens(&mut self) -> Vec<(NodeId, Option<NodeId>)> {
     if self.pending_open.is_empty() {
       return Vec::new();
     }
@@ -713,7 +707,7 @@ impl Dom {
   }
 
   /// The part `sink` is mounted as, when it is one.
-  fn part_of(&self, sink: u32) -> Option<Part> {
+  fn part_of(&self, sink: NodeId) -> Option<Part> {
     let node = self.node(sink)?.id?;
 
     Scene::<Web>::with(|scene| scene.part(node))
@@ -724,7 +718,7 @@ impl Dom {
   /// `for` the control where it is its own `<input>`, `<textarea>` or `<select>`, and
   /// placing it before the control; `false` for any other pair, which attaches as
   /// usual.
-  fn attach_caption(&mut self, parent: u32, child: u32) -> bool {
+  fn attach_caption(&mut self, parent: NodeId, child: NodeId) -> bool {
     let Some((node, labels)) = self.node(parent).and_then(|entry| match entry.realized {
       Realized::Control {
         native,
@@ -781,7 +775,7 @@ impl Dom {
 
   /// Detaches `child` from the caption of `parent` when it sits there, dropping the
   /// caption once empty; `false` when it does not.
-  fn detach_caption(&mut self, parent: u32, child: u32) -> bool {
+  fn detach_caption(&mut self, parent: NodeId, child: NodeId) -> bool {
     let Some(caption) = self.node(parent).and_then(|node| node.caption.clone())
     else {
       return false;
@@ -808,7 +802,7 @@ impl Dom {
     true
   }
 
-  fn assign_style(&mut self, sink: u32, compiled: &Rc<Compiled>) {
+  fn assign_style(&mut self, sink: NodeId, compiled: &Rc<Compiled>) {
     self.sheet.register_slots(&compiled.slots);
 
     let previous = self.node(sink).and_then(|node| node.style_class.clone());
@@ -826,7 +820,7 @@ impl Dom {
     }
   }
 
-  fn write_focus_order(&self, sink: u32, focus_order: Option<FocusOrder>) {
+  fn write_focus_order(&self, sink: NodeId, focus_order: Option<FocusOrder>) {
     if let Some(node) = self.node(sink)
       && let Some(carrier) = node.carrier()
     {
@@ -841,7 +835,7 @@ impl Dom {
     }
   }
 
-  fn write_access(&self, sink: u32, access: &[AccessProp]) {
+  fn write_access(&self, sink: NodeId, access: &[AccessProp]) {
     let Some(carrier) = self.node(sink).and_then(Node::carrier)
     else {
       return;
@@ -879,19 +873,14 @@ impl Dom {
     }
 
     for node in referenced_nodes(access) {
-      let Some(target) = Scene::<Web>::with(|scene| scene.sink(node))
-      else {
-        continue;
-      };
-
-      if let Some(element) = self.node(target).and_then(Node::carrier) {
+      if let Some(element) = self.node(node).and_then(Node::carrier) {
         let _ = element.set_attribute("id", &element_id(node));
       }
     }
   }
 
   /// Realizes the props every box-like node shares onto `sink`.
-  fn finish_box(&mut self, sink: u32, props: &BoxProps<Web>, compiled: &Rc<Compiled>) {
+  fn finish_box(&mut self, sink: NodeId, props: &BoxProps<Web>, compiled: &Rc<Compiled>) {
     self.assign_style(sink, compiled);
 
     if let Some(node) = self.node_mut(sink) {
@@ -910,7 +899,7 @@ impl Dom {
 
   /// Notes what the reader changed on the adopted native `input` of `sink` before the
   /// client arrived, against what the server serialized.
-  fn note_live_state(&mut self, sink: u32, input: &Element, native: FormElement) {
+  fn note_live_state(&mut self, sink: NodeId, input: &Element, native: FormElement) {
     let pending = if let Some(input) = input.dyn_ref::<HtmlInputElement>() {
       if native.is_toggle() {
         let serialized = input.has_attribute("checked");
@@ -959,7 +948,7 @@ impl Dom {
       for entry in entries.iter() {
         let entry: ResizeObserverEntry = entry.unchecked_into();
         let target = entry.target();
-        let Some(sink) = events::sink_of(&target)
+        let Some(sink) = events::node_of(&target)
         else {
           continue;
         };
@@ -997,21 +986,15 @@ impl Dom {
     observer
   }
 
-  /// The sink of the anchor realized as the comment `node`, if any.
-  fn anchor_sink(&self, node: &web_sys::Node) -> Option<u32> {
+  /// The anchor realized as the comment `node`, if any.
+  fn anchor_sink(&self, node: &web_sys::Node) -> Option<NodeId> {
     if node.node_type() != COMMENT_NODE {
       return None;
     }
 
-    self
-      .nodes
-      .iter()
-      .position(|record| {
-        record
-          .as_ref()
-          .is_some_and(|record| matches!(record.realized, Realized::Anchor) && record.dom == *node)
-      })
-      .and_then(|index| u32::try_from(index).ok())
+    self.nodes.iter().find_map(|(anchor, record)| {
+      (matches!(record.realized, Realized::Anchor) && record.dom == *node).then_some(anchor)
+    })
   }
 
   /// Keeps what `roots` hold on the anchor `following` them, for the content that next
@@ -1031,7 +1014,7 @@ impl Dom {
   /// built differently, removes it, so the page converges on the client's tree, gives
   /// each adopted element exactly the client's classes, and forgets which nodes were
   /// adopted.
-  fn finish_hydration(&mut self) -> Vec<(u32, Pending)> {
+  fn finish_hydration(&mut self) -> Vec<(NodeId, Pending)> {
     let Some(hydration) = self.hydration.take()
     else {
       return Vec::new();
@@ -1054,7 +1037,7 @@ impl Dom {
       }
     }
 
-    for node in self.nodes.iter_mut().flatten() {
+    for node in self.nodes.values_mut() {
       if node.adopted {
         node.write_classes();
       }
@@ -1145,12 +1128,12 @@ fn clipboard_entry(dom: &Dom) -> Option<Element> {
   }
 
   let active: &web_sys::Node = &active;
-  let popups: Vec<u32> = Scene::<Web>::with(|scene| {
+  let popups: Vec<NodeId> = Scene::<Web>::with(|scene| {
     scene
       .open_overlays()
       .iter()
       .filter(|overlay| !scene.is_modal(**overlay))
-      .filter_map(|overlay| scene.sink(*overlay))
+      .copied()
       .collect()
   });
   let in_popup = popups.iter().any(|sink| {
@@ -1246,7 +1229,7 @@ fn position_at_point(popup: &HtmlElement, point: Point<f32>) {
   let _ = style.set_property("top", &format!("{y}px"));
 }
 
-fn position_at_anchor(popup: &HtmlElement, anchor: &Element, sink: u32, placement: Placement) {
+fn position_at_anchor(popup: &HtmlElement, anchor: &Element, sink: NodeId, placement: Placement) {
   let area = match placement {
     Placement::Top => "block-start span-inline-end",
     Placement::Bottom => "block-end span-inline-end",
@@ -1261,7 +1244,7 @@ fn position_at_anchor(popup: &HtmlElement, anchor: &Element, sink: u32, placemen
   if anchors_in_css()
     && let Some(anchor) = anchor.dyn_ref::<HtmlElement>()
   {
-    let name = format!("--skene-anchor-{sink}");
+    let name = format!("--skene-anchor-{}-{}", sink.index(), sink.generation());
 
     let _ = anchor.style().set_property("anchor-name", &name);
     let _ = style.set_property("position-anchor", &name);
@@ -1282,7 +1265,6 @@ fn position_at_anchor(popup: &HtmlElement, anchor: &Element, sink: u32, placemen
 
 impl Platform for Web {
   type Scalar = f32;
-  type Sink = u32;
   type StyleExt = GuiExt;
   type TokenValue = WebTokenValue;
 
@@ -1290,17 +1272,10 @@ impl Platform for Web {
     &SCENE
   }
 
-  fn bind_node(sink: u32, node: NodeId) {
+  fn create_box(sink: NodeId, props: &BoxProps<Self>) {
     with_dom(|dom| {
-      if let Some(record) = dom.node_mut(sink) {
-        record.id = Some(node);
-      }
-    });
-  }
-
-  fn create_box(props: &BoxProps<Self>) -> u32 {
-    with_dom(|dom| {
-      let sink = dom.create_element(
+      dom.create_element(
+        sink,
         box_tag(
           props.role,
           AccessProp::level_of(&props.access),
@@ -1328,12 +1303,10 @@ impl Platform for Web {
         .compiled(box_fingerprint(props, 0), || compile_box(props));
 
       dom.finish_box(sink, props, &compiled);
-
-      sink
-    })
+    });
   }
 
-  fn update_box(sink: u32, slot: Slot, leaf: &StaticLeaf<BoxValue<f32, GuiExt>>) {
+  fn update_box(sink: NodeId, slot: Slot, leaf: &StaticLeaf<BoxValue<f32, GuiExt>>) {
     with_dom(|dom| {
       if let Some(node) = dom.node(sink)
         && let Some(binding) = node.slots.iter().find(|binding| binding.slot == slot)
@@ -1346,26 +1319,26 @@ impl Platform for Web {
     });
   }
 
-  fn update_focus_order(sink: u32, focus_order: Option<FocusOrder>) {
+  fn update_focus_order(sink: NodeId, focus_order: Option<FocusOrder>) {
     with_dom(|dom| dom.write_focus_order(sink, focus_order));
   }
 
-  fn update_access(sink: u32, access: &[AccessProp]) {
+  fn update_access(sink: NodeId, access: &[AccessProp]) {
     with_dom(|dom| dom.write_access(sink, access));
   }
 
-  fn create_control(props: &ControlProps<Self>) -> u32 {
+  fn create_control(sink: NodeId, props: &ControlProps<Self>) {
     with_dom(|dom| {
-      let sink = if let Some(native) = form_element(props.native) {
+      if let Some(native) = form_element(props.native) {
         let realized = Realized::Control {
           native: Some(native),
           caption_beside: props.label_beside,
         };
 
         if native.is_bare() {
-          let root = dom.create_element(native.tag, realized);
+          dom.create_element(sink, native.tag, realized);
 
-          if let Some(node) = dom.node(root)
+          if let Some(node) = dom.node(sink)
             && let Some(element) = node.element()
           {
             write_native_attributes(element, native, props);
@@ -1373,14 +1346,13 @@ impl Platform for Web {
             if node.adopted {
               let element = element.clone();
 
-              dom.note_live_state(root, &element, native);
+              dom.note_live_state(sink, &element, native);
             }
           }
-
-          root
         }
         else {
-          let root = dom.create_element("label", realized);
+          dom.create_element(sink, "label", realized);
+
           let (input, adopted) = dom.take_element(native.tag);
 
           write_native_attributes(&input, native, props);
@@ -1388,22 +1360,22 @@ impl Platform for Web {
           let _ = input.set_attribute("class", NATIVE_CLASS);
 
           if adopted {
-            dom.note_live_state(root, &input, native);
+            dom.note_live_state(sink, &input, native);
           }
-          else if let Some(node) = dom.node(root) {
+          else if let Some(node) = dom.node(sink) {
             let _ = node.dom.append_child(&input);
           }
 
-          if let Some(node) = dom.node_mut(root) {
+          if let Some(node) = dom.node_mut(sink) {
             node.carrier = Some(input);
           }
-
-          root
         }
       }
       else {
         let (tag, attribute) = drawn_element(props.native, props.box_props.role);
-        let root = dom.create_element(
+
+        dom.create_element(
+          sink,
           tag,
           Realized::Control {
             native: None,
@@ -1411,7 +1383,7 @@ impl Platform for Web {
           },
         );
 
-        if let Some(element) = dom.node(root).and_then(Node::element) {
+        if let Some(element) = dom.node(sink).and_then(Node::element) {
           if let Some((name, value)) = attribute {
             let _ = element.set_attribute(name, value);
           }
@@ -1420,9 +1392,7 @@ impl Platform for Web {
             let _ = element.set_attribute("aria-label", label);
           }
         }
-
-        root
-      };
+      }
 
       if let Some(element) = dom.node(sink).and_then(Node::element) {
         let _ = element.set_attribute(CONTROL_ATTRIBUTE, "");
@@ -1433,12 +1403,10 @@ impl Platform for Web {
         .compiled(control_fingerprint(props), || compile_control(props));
 
       dom.finish_box(sink, &props.box_props, &compiled);
-
-      sink
-    })
+    });
   }
 
-  fn set_control_state(sink: u32, state: &ControlState) {
+  fn set_control_state(sink: NodeId, state: &ControlState) {
     with_dom(|dom| {
       let Some(node) = dom.node(sink)
       else {
@@ -1492,15 +1460,15 @@ impl Platform for Web {
     });
   }
 
-  fn create_overlay(props: &OverlayProps<Self>) -> u32 {
+  fn create_overlay(sink: NodeId, props: &OverlayProps<Self>) {
     with_dom(|dom| {
       let realized = Realized::Overlay {
         modal: props.modal,
         placement: props.placement,
         position: None,
       };
-      let sink = if props.modal {
-        let sink = dom.create_element("dialog", realized);
+      if props.modal {
+        dom.create_element(sink, "dialog", realized);
 
         if let Some(node) = dom.node_mut(sink)
           && let Some(element) = node.element()
@@ -1518,11 +1486,9 @@ impl Platform for Web {
             },
           ));
         }
-
-        sink
       }
       else {
-        let sink = dom.create_element("div", realized);
+        dom.create_element(sink, "div", realized);
 
         if let Some(element) = dom.node(sink).and_then(Node::element) {
           let _ = element.set_attribute("popover", if props.hint { "hint" } else { "manual" });
@@ -1535,20 +1501,17 @@ impl Platform for Web {
             let _ = element.set_attribute("role", role);
           }
         }
+      }
 
-        sink
-      };
       let compiled = dom
         .sheet
         .compiled(overlay_fingerprint(props), || compile_overlay(props));
 
       dom.finish_box(sink, &props.box_props, &compiled);
-
-      sink
-    })
+    });
   }
 
-  fn set_overlay_open(sink: u32, open: bool, anchor: Option<u32>) {
+  fn set_overlay_open(sink: NodeId, open: bool, anchor: Option<NodeId>) {
     let Some((element, modal, placement, position, anchor)) = with_dom(|dom| {
       let node = dom.node(sink)?;
       let Realized::Overlay {
@@ -1613,7 +1576,7 @@ impl Platform for Web {
     }
   }
 
-  fn set_overlay_position(sink: u32, position: Option<Point<f32>>) {
+  fn set_overlay_position(sink: NodeId, position: Option<Point<f32>>) {
     with_dom(|dom| {
       if let Some(node) = dom.node_mut(sink)
         && let Realized::Overlay { position: held, .. } = &mut node.realized
@@ -1623,7 +1586,7 @@ impl Platform for Web {
     });
   }
 
-  fn set_overlay_placement(sink: u32, placement: Placement) {
+  fn set_overlay_placement(sink: NodeId, placement: Placement) {
     with_dom(|dom| {
       if let Some(node) = dom.node_mut(sink)
         && let Realized::Overlay {
@@ -1635,7 +1598,7 @@ impl Platform for Web {
     });
   }
 
-  fn apply_layout(sink: u32, layout: &StaticBoxStyle<Self>) {
+  fn apply_layout(sink: NodeId, layout: &StaticBoxStyle<Self>) {
     with_dom(|dom| {
       let compiled = dom.sheet.compiled(layout_fingerprint::<Self>(layout), || {
         compile_layout::<Self>(layout)
@@ -1645,33 +1608,30 @@ impl Platform for Web {
     });
   }
 
-  fn create_run(props: &RunProps<Self>) -> u32 {
+  fn create_run(sink: NodeId, props: &RunProps<Self>) {
     with_dom(|dom| {
-      let sink = match props.link.as_deref() {
+      match props.link.as_deref() {
         Some(href) => {
-          let sink = dom.create_element("a", Realized::Run);
+          dom.create_element(sink, "a", Realized::Run);
 
           if let Some(element) = dom.node(sink).and_then(Node::element) {
             for (name, value) in link_attributes(href, props.link_policy) {
               let _ = element.set_attribute(name, &value);
             }
           }
-
-          sink
         }
-        None => dom.create_element("span", Realized::Run),
-      };
+        None => dom.create_element(sink, "span", Realized::Run),
+      }
+
       let compiled = dom
         .sheet
         .compiled(run_fingerprint(props), || compile_run(props));
 
       dom.assign_style(sink, &compiled);
-
-      sink
-    })
+    });
   }
 
-  fn update_run(sink: u32, slot: Slot, leaf: &StaticLeaf<RunValue<GuiExt>>) {
+  fn update_run(sink: NodeId, slot: Slot, leaf: &StaticLeaf<RunValue<GuiExt>>) {
     with_dom(|dom| {
       if let Some(node) = dom.node(sink)
         && let Some(binding) = node.slots.iter().find(|binding| binding.slot == slot)
@@ -1684,7 +1644,7 @@ impl Platform for Web {
     });
   }
 
-  fn set_text(sink: u32, text: &str) {
+  fn set_text(sink: NodeId, text: &str) {
     with_dom(|dom| {
       if let Some(node) = dom.node(sink)
         && !(node.adopted && node.dom.text_content().as_deref() == Some(text))
@@ -1694,7 +1654,7 @@ impl Platform for Web {
     });
   }
 
-  fn create_anchor() -> u32 {
+  fn create_anchor(sink: NodeId) {
     with_dom(|dom| {
       let text = anchor_text(dom.anchors);
 
@@ -1702,13 +1662,13 @@ impl Platform for Web {
 
       let (comment, adopted) = dom.take_comment(&text);
 
-      dom.insert(Node::new(comment, Realized::Anchor, adopted))
-    })
+      dom.insert(sink, Node::new(comment, Realized::Anchor, adopted));
+    });
   }
 
-  fn create_scope() -> u32 {
+  fn create_scope(sink: NodeId) {
     with_dom(|dom| {
-      let sink = dom.create_element("div", Realized::Scope { inline: Vec::new() });
+      dom.create_element(sink, "div", Realized::Scope { inline: Vec::new() });
 
       if let Some(node) = dom.node_mut(sink) {
         node.adopt_inline_definitions();
@@ -1718,12 +1678,10 @@ impl Platform for Web {
         let _ = html.set_attribute(SCOPE_ATTRIBUTE, "");
         let _ = html.style().set_property("display", "contents");
       }
-
-      sink
-    })
+    });
   }
 
-  fn attach(parent: u32, child: u32, before: Option<u32>) {
+  fn attach(parent: NodeId, child: NodeId, before: Option<NodeId>) {
     let Some((parent, child, caption, before, saved)) = with_dom(|dom| {
       if dom.attach_caption(parent, child) {
         return None;
@@ -1766,7 +1724,7 @@ impl Platform for Web {
     }
   }
 
-  fn detach(parent: u32, child: u32) {
+  fn detach(parent: NodeId, child: NodeId) {
     let Some((parent, child, caption)) = with_dom(|dom| {
       if dom.detach_caption(parent, child) {
         return None;
@@ -1795,14 +1753,12 @@ impl Platform for Web {
     }
   }
 
-  fn destroy(sink: u32) {
+  fn destroy(sink: NodeId) {
     with_dom(|dom| {
-      let Some(node) = dom.nodes.get_mut(sink as usize).and_then(Option::take)
+      let Some(node) = dom.nodes.remove(sink)
       else {
         return;
       };
-
-      dom.free.push(sink);
 
       for class in node.style_class.iter().chain(&node.token_class) {
         dom.sheet.release(class);
@@ -1823,7 +1779,7 @@ impl Platform for Web {
     });
   }
 
-  fn define_tokens(scope: u32, definitions: &Definitions<WebTokenValue>) {
+  fn define_tokens(scope: NodeId, definitions: &Definitions<WebTokenValue>) {
     with_dom(|dom| {
       dom.sheet.register(definitions);
 
@@ -1865,7 +1821,7 @@ impl Platform for Web {
     });
   }
 
-  fn listen(sink: u32, kind: EventKind) {
+  fn listen(sink: NodeId, kind: EventKind) {
     with_dom(|dom| {
       dom.events.ensure(kind);
 
@@ -1877,13 +1833,13 @@ impl Platform for Web {
     });
   }
 
-  fn localize_pointer(sink: u32, event: &PointerEvent) -> PointerEvent {
+  fn localize_pointer(sink: NodeId, event: &PointerEvent) -> PointerEvent {
     let element = with_dom(|dom| dom.node(sink).and_then(Node::element).cloned());
 
     element.map_or(*event, |element| events::localized(event, &element))
   }
 
-  fn focus(sink: u32) {
+  fn focus(sink: NodeId) {
     let carrier = with_dom(|dom| dom.node(sink).and_then(Node::carrier).cloned());
 
     if let Some(html) = carrier
@@ -1894,7 +1850,7 @@ impl Platform for Web {
     }
   }
 
-  fn blur(sink: u32) {
+  fn blur(sink: NodeId) {
     let carrier = with_dom(|dom| dom.node(sink).and_then(Node::carrier).cloned());
 
     if let Some(html) = carrier
@@ -1912,7 +1868,7 @@ impl Platform for Web {
       .is_some_and(|element| element.matches(":focus-visible").unwrap_or(false))
   }
 
-  fn set_value(sink: u32, value: &str) {
+  fn set_value(sink: NodeId, value: &str) {
     with_dom(|dom| {
       let Some(carrier) = dom.node(sink).and_then(Node::carrier)
       else {
@@ -1953,7 +1909,7 @@ impl Platform for Web {
     });
   }
 
-  fn set_options(sink: u32, options: &[PickerOption]) {
+  fn set_options(sink: NodeId, options: &[PickerOption]) {
     with_dom(|dom| {
       let Some(select) = dom
         .node(sink)
@@ -1981,7 +1937,7 @@ impl Platform for Web {
     });
   }
 
-  fn set_selection(sink: u32, selection: TextSelection) {
+  fn set_selection(sink: NodeId, selection: TextSelection) {
     with_dom(|dom| {
       let Some(carrier) = dom.node(sink).and_then(Node::carrier)
       else {
@@ -1992,7 +1948,7 @@ impl Platform for Web {
     });
   }
 
-  fn set_checked(sink: u32, checked: bool) {
+  fn set_checked(sink: NodeId, checked: bool) {
     with_dom(|dom| {
       if let Some(input) = dom
         .node(sink)
@@ -2004,7 +1960,7 @@ impl Platform for Web {
     });
   }
 
-  fn observe_size(sink: u32, report: Rc<dyn Fn(Size<f32>)>) -> Observation {
+  fn observe_size(sink: NodeId, report: Rc<dyn Fn(Size<f32>)>) -> Observation {
     let kept = Rc::clone(&report);
 
     with_dom(|dom| {
@@ -2194,11 +2150,11 @@ impl Platform for Web {
 }
 
 impl WebMarkup for Web {
-  fn create_element(tag: &'static str) -> u32 {
-    with_dom(|dom| dom.create_element(tag, Realized::Box))
+  fn create_element(node: NodeId, tag: &'static str) {
+    with_dom(|dom| dom.create_element(node, tag, Realized::Box));
   }
 
-  fn set_attribute(sink: u32, name: &str, value: &str) {
+  fn set_attribute(sink: NodeId, name: &str, value: &str) {
     with_dom(|dom| {
       if let Some(element) = dom.node(sink).and_then(Node::element) {
         let _ = element.set_attribute(name, value);
@@ -2206,7 +2162,7 @@ impl WebMarkup for Web {
     });
   }
 
-  fn set_declarations(sink: u32, declarations: &Declarations) {
+  fn set_declarations(sink: NodeId, declarations: &Declarations) {
     with_dom(|dom| {
       if let Some(html) = dom.node(sink).and_then(Node::html) {
         let style = html.style();
@@ -2218,13 +2174,13 @@ impl WebMarkup for Web {
     });
   }
 
-  fn set_text(sink: u32, text: &str) {
+  fn set_text(sink: NodeId, text: &str) {
     <Self as Platform>::set_text(sink, text);
   }
 }
 
 impl WebDom for Web {
-  fn element(sink: u32) -> Option<Element> {
+  fn element(sink: NodeId) -> Option<Element> {
     with_dom(|dom| dom.node(sink).and_then(Node::element).cloned())
   }
 
@@ -2257,12 +2213,14 @@ fn install_at(root: Element, hydrating: bool) {
       "the web platform is already installed for this thread",
     );
 
-    *dom = Some(Dom::new(document, root, hydration));
+    *dom = Some(Dom::new(
+      document,
+      root,
+      Scene::<Web>::with(|scene| scene.create(NodeKind::Box)),
+      hydration,
+    ));
   });
 
-  let root_node = Scene::<Web>::with(|scene| scene.create(NodeKind::Box, ROOT));
-
-  with_dom(|dom| dom.root_node = Some(root_node));
   restore::provide_restoration();
 }
 
@@ -2286,7 +2244,7 @@ pub fn mount(view: impl FnOnce() -> NodeId) -> NodeId {
 
   let node = skene_core::root_owner().enter(|| {
     let node = view();
-    let root = with_dom(|dom| dom.root_node).expect("the root node exists once installed");
+    let root = with_dom(|dom| dom.root_node);
 
     Scene::<Web>::with(|scene| scene.attach(root, node, None));
 
@@ -2415,7 +2373,7 @@ fn segment_dom(start: NodeId) -> Vec<web_sys::Node> {
   let Some((start, end)) = Scene::<Web>::with(|scene| {
     let end = scene.segment_end(start)?;
 
-    Some((scene.sink(start)?, scene.sink(end)?))
+    Some((start, end))
   })
   else {
     return Vec::new();
@@ -2528,9 +2486,7 @@ pub fn document() -> Document {
 /// The element realizing `node`; `None` for an anchor or a node no longer live.
 #[must_use]
 pub fn element(node: NodeId) -> Option<Element> {
-  let sink = Scene::<Web>::with(|scene| scene.record(node).map(|record| *record.sink()))?;
-
-  with_dom(|dom| dom.node(sink).and_then(Node::element).cloned())
+  with_dom(|dom| dom.node(node).and_then(Node::element).cloned())
 }
 
 /// Uninstalls the browser leaf: removes its stylesheet and listeners, empties the

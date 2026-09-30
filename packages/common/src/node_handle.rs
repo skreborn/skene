@@ -5,8 +5,6 @@ use std::rc::Rc;
 use skene_core::{NodeId, Platform, Size};
 use skene_reactive::{Get, Set, Signal, Update};
 
-use crate::realize::with_sink;
-
 /// Whether a handle measures its node.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Measuring {
@@ -60,14 +58,14 @@ impl<P: Platform> NodeHandle<P> {
   /// Moves focus to the bound view.
   pub fn focus(self) {
     if let Some(node) = self.node.get_untracked() {
-      with_sink::<P, _>(node, |sink| P::focus(sink));
+      P::focus(node);
     }
   }
 
   /// Takes focus off the bound view.
   pub fn blur(self) {
     if let Some(node) = self.node.get_untracked() {
-      with_sink::<P, _>(node, |sink| P::blur(sink));
+      P::blur(node);
     }
   }
 
@@ -95,15 +93,12 @@ impl<P: Platform> NodeHandle<P> {
     self.measuring.set(Measuring::Node(node));
 
     let size = self.size;
-
-    with_sink::<P, _>(node, |sink| {
-      let _observation = P::observe_size(
-        sink,
-        Rc::new(move |measured| {
-          let _ = size.try_update(|size| *size = Some(measured));
-        }),
-      );
-    });
+    let _observation = P::observe_size(
+      node,
+      Rc::new(move |measured| {
+        let _ = size.try_update(|size| *size = Some(measured));
+      }),
+    );
   }
 }
 

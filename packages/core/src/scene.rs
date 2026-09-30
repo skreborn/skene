@@ -204,7 +204,6 @@ pub struct NodeRecord<P: Platform> {
   definitions: Option<Box<Definitions<P::TokenValue>>>,
   container: Option<ContainerName>,
   handlers: Option<Box<HandlerSet>>,
-  sink: P::Sink,
   segment: Option<Box<SegmentRecord>>,
   cache: Option<Box<TokenCache<P::TokenValue>>>,
   control: Option<ControlState>,
@@ -317,20 +316,6 @@ impl<P: Platform> NodeRecord<P> {
     self.part
   }
 
-  /// The platform's handle for this node.
-  #[inline(always)]
-  #[must_use]
-  pub const fn sink(&self) -> &P::Sink {
-    &self.sink
-  }
-
-  /// The platform's handle for this node, mutably.
-  #[inline(always)]
-  #[must_use]
-  pub const fn sink_mut(&mut self) -> &mut P::Sink {
-    &mut self.sink
-  }
-
   /// Whether this node is the start anchor of a segment.
   #[inline(always)]
   const fn is_segment_start(&self) -> bool {
@@ -346,40 +331,36 @@ struct Entry<P: Platform> {
 /// A mutation the scene owes its platform, mirrored once the scene is released.
 enum Mirror<P: Platform> {
   Attach {
-    parent: P::Sink,
-    child: P::Sink,
-    before: Option<P::Sink>,
+    parent: NodeId,
+    child: NodeId,
+    before: Option<NodeId>,
   },
   Detach {
-    parent: P::Sink,
-    child: P::Sink,
+    parent: NodeId,
+    child: NodeId,
   },
-  Destroy(P::Sink),
+  Destroy(NodeId),
   DefineTokens {
-    scope: P::Sink,
+    scope: NodeId,
     definitions: Definitions<P::TokenValue>,
   },
   DefineRootTokens(Definitions<P::TokenValue>),
   ControlState {
-    sink: P::Sink,
+    node: NodeId,
     state: ControlState,
   },
-  BindNode {
-    sink: P::Sink,
-    node: NodeId,
-  },
   Listen {
-    sink: P::Sink,
+    node: NodeId,
     kind: EventKind,
   },
   FocusOrder {
-    sink: P::Sink,
+    node: NodeId,
     order: Option<FocusOrder>,
   },
   OverlayOpen {
-    sink: P::Sink,
+    node: NodeId,
     open: bool,
-    anchor: Option<P::Sink>,
+    anchor: Option<NodeId>,
   },
 }
 
@@ -393,20 +374,19 @@ impl<P: Platform> Mirror<P> {
         before,
       } => P::attach(parent, child, before),
       Self::Detach { parent, child } => P::detach(parent, child),
-      Self::Destroy(sink) => P::destroy(sink),
+      Self::Destroy(node) => P::destroy(node),
       Self::DefineTokens { scope, definitions } => P::define_tokens(scope, &definitions),
       Self::DefineRootTokens(definitions) => P::define_root_tokens(&definitions),
-      Self::ControlState { sink, state } => P::set_control_state(sink, &state),
-      Self::BindNode { sink, node } => P::bind_node(sink, node),
-      Self::Listen { sink, kind } => P::listen(sink, kind),
-      Self::FocusOrder { sink, order } => P::update_focus_order(sink, order),
-      Self::OverlayOpen { sink, open, anchor } => P::set_overlay_open(sink, open, anchor),
+      Self::ControlState { node, state } => P::set_control_state(node, &state),
+      Self::Listen { node, kind } => P::listen(node, kind),
+      Self::FocusOrder { node, order } => P::update_focus_order(node, order),
+      Self::OverlayOpen { node, open, anchor } => P::set_overlay_open(node, open, anchor),
     }
   }
 }
 
 /// The retained tree: a generational arena of [`NodeRecord`]s, every mutation mirrored
-/// into the platform's sink.
+/// into the platform's records, which the platform keys by the same [`NodeId`]s.
 ///
 /// Reached through [`with`](Self::with). No borrow of the scene is held while a user
 /// callback or a platform's mutation runs: dispatch and every handler invocation snapshot
@@ -530,22 +510,23 @@ impl<P: Platform> Scene<P> {
       .and_then(|entry| entry.record.as_mut())
   }
 
-  /// The platform's handle for `node`, cloned out, if the node is live.
-  ///
-  /// Copy it out and release the scene before calling the platform with it.
+  /// Whether `node` is live.
   #[inline(always)]
   #[must_use]
-  pub fn sink(&self, node: NodeId) -> Option<P::Sink> {
-    self.record(node).map(|record| record.sink)
+  pub fn contains(&self, node: NodeId) -> bool {
+    self.record(node).is_some()
   }
 
-  /// Mints a detached node of `kind` owning `sink`; a control starts in the default
+  /// Mints a detached node of `kind`; a control starts in the default
   /// [`ControlState`].
+  ///
+  /// The platform realizes the node, keyed by the id this returns, once the scene is
+  /// released and before the node takes part in any other operation.
   ///
   /// # Panics
   ///
   /// Panics past 2^32 live nodes.
-  pub fn create(&mut self, kind: NodeKind, sink: P::Sink) -> NodeId {
+  pub fn create(&mut self, kind: NodeKind) -> NodeId {
     let is_control = kind == NodeKind::Control;
     let position = Position::next();
     let record = NodeRecord {
@@ -557,7 +538,6 @@ impl<P: Platform> Scene<P> {
       definitions: None,
       container: None,
       handlers: None,
-      sink,
       segment: None,
       cache: None,
       control: is_control.then_some(ControlState::DEFAULT),
@@ -569,31 +549,22 @@ impl<P: Platform> Scene<P> {
       overlay: None,
     };
 
-    let id = if let Some(index) = self.free.pop() {
+    if let Some(index) = self.free.pop() {
       let entry = &mut self.entries[index as usize];
 
       entry.record = Some(record);
 
-      NodeId::new(index, entry.generation)
-    }
-    else {
-      let index = u32::try_from(self.entries.len()).expect("a scene holds at most 2^32 nodes");
-
-      self.entries.push(Entry {
-        generation: 0,
-        record: Some(record),
-      });
-
-      NodeId::new(index, 0)
-    };
-
-    if let Some(record) = self.record(id) {
-      let sink = record.sink;
-
-      self.mirrors.push(Mirror::BindNode { sink, node: id });
+      return NodeId::new(index, entry.generation);
     }
 
-    id
+    let index = u32::try_from(self.entries.len()).expect("a scene holds at most 2^32 nodes");
+
+    self.entries.push(Entry {
+      generation: 0,
+      record: Some(record),
+    });
+
+    NodeId::new(index, 0)
   }
 
   /// The live node created at `position`, if any.
@@ -613,16 +584,14 @@ impl<P: Platform> Scene<P> {
   }
 
   /// Mints a detached segment: a start and an end anchor, attached and detached as one
-  /// with whatever is mounted between them. The platform makes the anchors before the
-  /// scene is borrowed.
+  /// with whatever is mounted between them. The platform realizes the anchors once the
+  /// scene is released.
   ///
   /// Returns `(start, end)`; the start stands for the segment everywhere.
   pub fn create_segment() -> (NodeId, NodeId) {
-    let (start, end) = (P::create_anchor(), P::create_anchor());
-
-    Self::with(|scene| {
-      let start = scene.create(NodeKind::Anchor, start);
-      let end = scene.create(NodeKind::Anchor, end);
+    let (start, end) = Self::with(|scene| {
+      let start = scene.create(NodeKind::Anchor);
+      let end = scene.create(NodeKind::Anchor);
 
       if let Some(record) = scene.record_mut(start) {
         record.segment = Some(Box::new(SegmentRecord {
@@ -632,7 +601,12 @@ impl<P: Platform> Scene<P> {
       }
 
       (start, end)
-    })
+    });
+
+    P::create_anchor(start);
+    P::create_anchor(end);
+
+    (start, end)
   }
 
   /// The end anchor of the segment `start` begins.
@@ -856,8 +830,8 @@ impl<P: Platform> Scene<P> {
     self.definitions_generation += 1;
   }
 
-  /// Destroys `node` and its whole subtree, detaching it first if attached; every
-  /// sink is handed to the platform.
+  /// Destroys `node` and its whole subtree, detaching it first if attached; the
+  /// platform releases the record of every node destroyed.
   pub fn destroy(&mut self, node: NodeId) {
     self.unlink(node);
 
@@ -900,7 +874,7 @@ impl<P: Platform> Scene<P> {
         drag.target = None;
       }
 
-      self.mirrors.push(Mirror::Destroy(record.sink));
+      self.mirrors.push(Mirror::Destroy(node));
     }
 
     self.definitions_generation += 1;
@@ -1085,12 +1059,11 @@ impl<P: Platform> Scene<P> {
       return;
     };
 
-    let scope = record.sink;
-
     record.definitions = Some(Box::new(definitions.clone()));
-    self
-      .mirrors
-      .push(Mirror::DefineTokens { scope, definitions });
+    self.mirrors.push(Mirror::DefineTokens {
+      scope: node,
+      definitions,
+    });
     self.definitions_generation += 1;
   }
 
@@ -1243,10 +1216,7 @@ impl<P: Platform> Scene<P> {
     };
 
     record.focus_order = order;
-
-    let sink = record.sink;
-
-    self.mirrors.push(Mirror::FocusOrder { sink, order });
+    self.mirrors.push(Mirror::FocusOrder { node, order });
   }
 
   /// `node`'s place in focus traversal; `None` for a node focus never reaches.
@@ -1300,9 +1270,7 @@ impl<P: Platform> Scene<P> {
   /// it; an opening puts it on top of every open overlay, as a browser's top layer
   /// stacks, and a node of any other kind is left alone.
   pub fn set_overlay_open(&mut self, node: NodeId, open: bool, anchor: Option<NodeId>) {
-    let anchor_sink = anchor
-      .and_then(|anchor| self.placement(anchor))
-      .and_then(|anchor| self.sink(anchor));
+    let placed = anchor.and_then(|anchor| self.placement(anchor));
     let Some(record) = self.record_mut(node)
     else {
       return;
@@ -1315,8 +1283,6 @@ impl<P: Platform> Scene<P> {
 
     overlay.anchor = anchor;
 
-    let sink = record.sink;
-
     match (was_open, open) {
       (false, true) => self.open_overlays.push(node),
       (true, false) => self.open_overlays.retain(|open| *open != node),
@@ -1324,9 +1290,9 @@ impl<P: Platform> Scene<P> {
     }
 
     self.mirrors.push(Mirror::OverlayOpen {
-      sink,
+      node,
       open,
-      anchor: anchor_sink,
+      anchor: placed,
     });
   }
 
@@ -1554,10 +1520,7 @@ impl<P: Platform> Scene<P> {
     }
 
     record.control = Some(state);
-
-    let sink = record.sink;
-
-    self.mirrors.push(Mirror::ControlState { sink, state });
+    self.mirrors.push(Mirror::ControlState { node, state });
   }
 
   /// The state of the control `node`; `None` for a node of any other kind.
@@ -1641,10 +1604,7 @@ impl<P: Platform> Scene<P> {
     let kind = handler.kind();
 
     record.handlers.get_or_insert_default().push(handler);
-
-    let sink = record.sink;
-
-    self.mirrors.push(Mirror::Listen { sink, kind });
+    self.mirrors.push(Mirror::Listen { node, kind });
   }
 
   /// The nearest node at or above `node` offering drag data, with what builds it.
@@ -1878,11 +1838,7 @@ impl<P: Platform> Scene<P> {
 
     child_record.parent = Some(parent);
 
-    let (Some(parent), Some(child)) = (self.sink(parent), self.sink(child))
-    else {
-      return;
-    };
-    let before = before.and_then(|before| self.sink(before));
+    let before = before.filter(|before| self.contains(*before));
 
     self.mirrors.push(Mirror::Attach {
       parent,
@@ -1933,7 +1889,7 @@ impl<P: Platform> Scene<P> {
       child_record.parent = None;
     }
 
-    if let (Some(parent), Some(child)) = (self.sink(parent), self.sink(child)) {
+    if self.contains(parent) && self.contains(child) {
       self.mirrors.push(Mirror::Detach { parent, child });
     }
   }
@@ -2010,9 +1966,9 @@ mod tests {
     Definition,
     Definitions,
     FocusOrder,
-    Platform,
+    NodeId,
     TokenName,
-    testing::{Call, Erased, TestBox, TestPlatform, children, sink},
+    testing::{Call, Erased, TestBox, TestPlatform, children},
   };
 
   fn with<R>(operation: impl FnOnce(&mut Scene<TestPlatform>) -> R) -> R {
@@ -2109,8 +2065,8 @@ mod tests {
     assert_eq!(
       TestPlatform::take_log(),
       [
-        Call::Detach(sink(first), sink(child)),
-        Call::Attach(sink(second), sink(child), None),
+        Call::Detach(first, child),
+        Call::Attach(second, child, None),
       ]
     );
   }
@@ -2133,8 +2089,8 @@ mod tests {
     assert_eq!(
       TestPlatform::take_log(),
       [
-        Call::Attach(sink(parent), sink(second), None),
-        Call::Attach(sink(parent), sink(first), Some(sink(second))),
+        Call::Attach(parent, second, None),
+        Call::Attach(parent, first, Some(second)),
       ]
     );
   }
@@ -2167,23 +2123,23 @@ mod tests {
     assert_eq!(
       TestPlatform::take_log(),
       [
-        Call::Detach(sink(parent), sink(first)),
-        Call::Attach(sink(parent), sink(first), None),
+        Call::Detach(parent, first),
+        Call::Attach(parent, first, None),
       ]
     );
   }
 
-  /// Destroying a node takes its whole subtree, hands every sink back, and retires
-  /// every id.
+  /// Destroying a node takes its whole subtree, releases every record on the platform,
+  /// and retires every id.
   #[test]
-  fn destroy_takes_the_subtree_and_hands_every_sink_back() {
+  fn destroy_takes_the_subtree_and_releases_every_record() {
     TestPlatform::reset();
 
     let root = TestBox::node();
     let parent = TestBox::node();
     let child = TestBox::node();
     let grandchild = TestBox::node();
-    let sinks = [sink(parent), sink(child), sink(grandchild)];
+    let nodes = [parent, child, grandchild];
 
     with(|scene| {
       scene.attach(root, parent, None);
@@ -2194,18 +2150,18 @@ mod tests {
     with(|scene| scene.destroy(parent));
 
     let log = TestPlatform::take_log();
-    let mut destroyed: Vec<u32> = log
+    let mut destroyed: Vec<NodeId> = log
       .iter()
       .filter_map(|call| match call {
-        Call::Destroy(sink) => Some(*sink),
+        Call::Destroy(node) => Some(*node),
         _ => None,
       })
       .collect();
 
     destroyed.sort_unstable();
 
-    assert_eq!(log[0], Call::Detach(sink(root), sinks[0]));
-    assert_eq!(destroyed, sinks);
+    assert_eq!(log[0], Call::Detach(root, nodes[0]));
+    assert_eq!(destroyed, nodes);
     assert_eq!(children(root), []);
     assert!(with(|scene| scene.record(child).is_none()));
 
@@ -2240,10 +2196,7 @@ mod tests {
 
     assert_eq!(
       TestPlatform::take_log(),
-      [
-        Call::DefineRootTokens(1),
-        Call::DefineTokens(sink(outer), 1)
-      ]
+      [Call::DefineRootTokens(1), Call::DefineTokens(outer, 1)]
     );
     assert_eq!(
       with(|scene| scene.resolve_token(leaf, card)),
@@ -2322,8 +2275,7 @@ mod tests {
 
     let (outer, _) = Scene::<TestPlatform>::create_segment();
     let (empty, _) = Scene::<TestPlatform>::create_segment();
-    let sink = <TestPlatform as Platform>::create_scope();
-    let scope = with(|scene| scene.create(NodeKind::Scope, sink));
+    let scope = with(|scene| scene.create(NodeKind::Scope));
     let inside = TestBox::node();
     let after = TestBox::node();
 
@@ -2400,10 +2352,10 @@ mod tests {
     TestPlatform::take_log();
     with(|scene| scene.destroy(start));
 
-    let mut destroyed: Vec<u32> = TestPlatform::take_log()
+    let mut destroyed: Vec<NodeId> = TestPlatform::take_log()
       .iter()
       .filter_map(|call| match call {
-        Call::Destroy(sink) => Some(*sink),
+        Call::Destroy(node) => Some(*node),
         _ => None,
       })
       .collect();

@@ -39,7 +39,7 @@
   leaves, `WebDom` on the browser leaf only, `CellPainter` in the terminal, later
   `PlatformView`), so a low-level view is written against exactly the bound it needs and
   is realized through the same scene and node ids as a built-in (`skene_common::LowLevel`
-  registers the sink it made as a node). `Painted` (vello) is the portable low-level path
+  mints the node it realizes). `Painted` (vello) is the portable low-level path
   for pixels, through `skene-common`' `Painting` extension: the browser leaf renders the
   scene into a canvas, the headless platform renders it to pixels a test reads, the
   terminal shows it through its graphics protocol where one is proven, the server leaf

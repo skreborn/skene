@@ -15,7 +15,7 @@
 
 use std::marker::PhantomData;
 
-use skene_common::{Container, Painting, kurbo::Rect, realize::with_sink};
+use skene_common::{Container, Painting, kurbo::Rect};
 use skene_core::{AnyKind, Color, NodeId, Platform, View};
 use skene_tui::CellPainter;
 
@@ -62,46 +62,44 @@ impl<P: Platform<Scalar = u32> + CellPainter + Painting> View<P> for Sparkline<P
     let pixel_levels = levels.clone();
     let color = self.color;
 
-    with_sink::<P, _>(node, |sink| {
-      <P as CellPainter>::paint(
-        sink,
-        Box::new(move |cells, _| {
-          for (x, level) in levels.iter().enumerate() {
-            let x = u32::try_from(x).unwrap_or(u32::MAX);
+    <P as CellPainter>::paint(
+      node,
+      Box::new(move |cells, _| {
+        for (x, level) in levels.iter().enumerate() {
+          let x = u32::try_from(x).unwrap_or(u32::MAX);
 
-            cells.put(x, 0, BARS[*level]);
+          cells.put(x, 0, BARS[*level]);
 
-            if let Some(color) = color {
-              cells.set_foreground(x, 0, color);
-            }
+          if let Some(color) = color {
+            cells.set_foreground(x, 0, color);
           }
-        }),
-      );
-      <P as Painting>::paint(
-        sink,
-        Box::new(move |canvas, size| {
-          let count = u32::try_from(pixel_levels.len().max(1)).unwrap_or(u32::MAX);
-          let bar = f64::from(size.width) / f64::from(count);
-          let brush = color.unwrap_or(Color::srgb(0.5, 0.5, 0.5));
+        }
+      }),
+    );
+    <P as Painting>::paint(
+      node,
+      Box::new(move |canvas, size| {
+        let count = u32::try_from(pixel_levels.len().max(1)).unwrap_or(u32::MAX);
+        let bar = f64::from(size.width) / f64::from(count);
+        let brush = color.unwrap_or(Color::srgb(0.5, 0.5, 0.5));
 
-          for (x, level) in pixel_levels.iter().enumerate() {
-            let level = f64::from(u8::try_from(*level).unwrap_or(7));
-            let height = f64::from(size.height) * (level + 1.) / 8.;
-            let left = f64::from(u32::try_from(x).unwrap_or(u32::MAX)) * bar;
+        for (x, level) in pixel_levels.iter().enumerate() {
+          let level = f64::from(u8::try_from(*level).unwrap_or(7));
+          let height = f64::from(size.height) * (level + 1.) / 8.;
+          let left = f64::from(u32::try_from(x).unwrap_or(u32::MAX)) * bar;
 
-            canvas.fill(
-              &Rect::new(
-                left,
-                f64::from(size.height) - height,
-                left + bar,
-                f64::from(size.height),
-              ),
-              brush,
-            );
-          }
-        }),
-      );
-    });
+          canvas.fill(
+            &Rect::new(
+              left,
+              f64::from(size.height) - height,
+              left + bar,
+              f64::from(size.height),
+            ),
+            brush,
+          );
+        }
+      }),
+    );
 
     node
   }

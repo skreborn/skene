@@ -676,7 +676,7 @@ impl AnyKind for Raw {}
 
 impl View<Web> for Raw {
   fn build(self) -> NodeId {
-    LowLevel::<Web>::realize(Web::create_element("div"), NodeKind::Box)
+    LowLevel::<Web>::realize(NodeKind::Box, |node| Web::create_element(node, "div"))
   }
 }
 

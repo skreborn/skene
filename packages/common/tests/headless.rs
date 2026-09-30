@@ -54,7 +54,6 @@ use skene_headless::{
   box_props,
   children,
   full_outline,
-  handle,
   is_focused,
   is_hovered,
   listened,
@@ -280,7 +279,6 @@ fn derived_children_dispose_a_removed_items_owner_and_keep_the_rest() {
       )
       .build()
   });
-  let mirror = |node: NodeId| children(node).into_iter().map(handle).collect::<Vec<_>>();
 
   assert_eq!(
     outline(root),
@@ -301,13 +299,7 @@ fn derived_children_dispose_a_removed_items_owner_and_keep_the_rest() {
   assert_eq!(after, [before[0], before[3], before[1], before[4]]);
   assert_eq!(inner.try_get(), None);
   assert_eq!(text(before[2]), None);
-  assert_eq!(
-    mirrored_children(root)
-      .into_iter()
-      .map(Some)
-      .collect::<Vec<_>>(),
-    mirror(root)
-  );
+  assert_eq!(mirrored_children(root), children(root));
 
   owner.dispose();
 }
@@ -538,9 +530,8 @@ fn a_stopped_size_observation_hears_nothing_more() {
   let heard = Rc::new(RefCell::new(Vec::new()));
   let observation = {
     let heard = Rc::clone(&heard);
-    let sink = skene_core::Scene::<Headless>::with(|scene| scene.sink(node)).unwrap();
 
-    Headless::observe_size(sink, Rc::new(move |size| heard.borrow_mut().push(size)))
+    Headless::observe_size(node, Rc::new(move |size| heard.borrow_mut().push(size)))
   };
 
   trigger_size(node, Size::new(10., 20.));

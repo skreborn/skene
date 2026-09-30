@@ -73,7 +73,7 @@ impl<'a> Env<'a> {
   /// root's.
   fn of_scope(store: &'a Store, scope: Option<NodeId>) -> Option<Self> {
     let handle = match scope {
-      Some(node) => Scene::<Tui>::with(|scene| scene.record(node).map(|record| *record.sink()))?,
+      Some(node) => Scene::<Tui>::with(|scene| scene.contains(node).then_some(node))?,
       None => store.root,
     };
 

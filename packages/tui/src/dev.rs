@@ -153,7 +153,7 @@ fn position_of(handle: Handle) -> Option<Position> {
 
 /// The handle realizing the node at `position`, if it is live.
 fn handle_at(position: &Position) -> Option<Handle> {
-  Scene::<Tui>::with(|scene| scene.node_at(position).and_then(|node| scene.sink(node)))
+  Scene::<Tui>::with(|scene| scene.node_at(position))
 }
 
 /// Every scrolled node's offsets by position, in creation order: the dev loop's carry

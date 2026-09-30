@@ -40,6 +40,7 @@ mod keyed;
 mod leaf;
 mod motion;
 mod node;
+mod node_map;
 mod platform;
 mod property;
 mod props;
@@ -171,6 +172,7 @@ pub use leaf::{
 };
 pub use motion::{Animation, Easing, StyleProperty, Transition, interpolate};
 pub use node::NodeId;
+pub use node_map::NodeMap;
 pub use platform::{Observation, Platform, Timer, Timers};
 pub use property::{Property, PropertyKey, PropertyName};
 pub use props::{

@@ -2,7 +2,7 @@
 //! ride the snapshot by their snapshot positions, so a rebuilt page resumes where the
 //! reader was.
 
-use skene_core::Scene;
+use skene_core::{NodeId, Scene};
 use skene_reactive::Position;
 use wasm_bindgen::JsCast;
 use web_sys::{Element, HtmlElement, HtmlInputElement, HtmlTextAreaElement};
@@ -30,7 +30,7 @@ fn current() -> Option<Carry> {
     let mut scrolls = Vec::new();
 
     Scene::<Web>::with(|scene| {
-      for node in dom.nodes.iter().flatten() {
+      for node in dom.nodes.values() {
         let Some(position) = node
           .id
           .and_then(|id| scene.record(id))
@@ -96,10 +96,8 @@ pub fn adopt_restoration() {
   else {
     return;
   };
-  let sink_at = |position: &Position| {
-    Scene::<Web>::with(|scene| scene.node_at(position).and_then(|node| scene.sink(node)))
-  };
-  let scrolls: Vec<(u32, i32, i32)> = scrolls
+  let sink_at = |position: &Position| Scene::<Web>::with(|scene| scene.node_at(position));
+  let scrolls: Vec<(NodeId, i32, i32)> = scrolls
     .iter()
     .filter_map(|(position, x, y)| Some((sink_at(position)?, *x, *y)))
     .collect();

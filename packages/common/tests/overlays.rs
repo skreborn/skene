@@ -23,7 +23,6 @@ use skene_core::{
 use skene_headless::{
   Headless,
   children,
-  handle,
   is_focused,
   is_live,
   is_open,
@@ -185,12 +184,12 @@ fn a_popup_anchored_to_a_bound_box_passes_the_anchors_sink() {
   assert_eq!(props.backdrop, None);
   assert_eq!(props.placement, Placement::Bottom);
   assert_eq!(anchor.node(), Some(face));
-  assert_eq!(overlay_anchor(popup), handle(face));
+  assert_eq!(overlay_anchor(popup), Some(face));
 
   open.set(true);
 
   assert!(is_open(popup));
-  assert_eq!(overlay_anchor(popup), handle(face));
+  assert_eq!(overlay_anchor(popup), Some(face));
 
   placement.set(Placement::Top);
 

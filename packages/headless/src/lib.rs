@@ -116,41 +116,11 @@ use unicode_segmentation::UnicodeSegmentation;
 
 use crate::store::{Kind, Record, Store};
 
-/// The host platform: a zero-sized [`Platform`] whose sink is a [`Handle`] into this
-/// crate's record store.
+/// The host platform: a zero-sized [`Platform`] keeping a record per node in this
+/// crate's store.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 #[must_use]
 pub struct Headless;
-
-/// The platform's sink: the index of a node's record and the generation it was minted
-/// in, so a handle whose record was destroyed reaches nothing.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-#[must_use]
-pub struct Handle {
-  index: u32,
-  generation: u32,
-}
-
-impl Handle {
-  #[inline(always)]
-  const fn new(index: u32, generation: u32) -> Self {
-    Self { index, generation }
-  }
-
-  /// The record's index.
-  #[inline(always)]
-  #[must_use]
-  pub const fn index(self) -> u32 {
-    self.index
-  }
-
-  /// The generation the handle was minted in.
-  #[inline(always)]
-  #[must_use]
-  pub const fn generation(self) -> u32 {
-    self.generation
-  }
-}
 
 /// The erased token definition the headless platform stores per token; see
 /// [`skene_core::TokenValue`].
@@ -200,22 +170,13 @@ fn with_store<R>(operation: impl FnOnce(&mut Store) -> R) -> R {
   STORE.with(|store| operation(&mut store.borrow_mut()))
 }
 
-/// Runs `operation` on the record of `handle`, if it is live.
-fn with_record<R>(handle: Handle, operation: impl FnOnce(&mut Record) -> R) -> Option<R> {
-  with_store(|store| store.record_mut(handle).map(operation))
-}
-
-/// The handle of `node`, if it is live.
-#[must_use]
-pub fn handle(node: NodeId) -> Option<Handle> {
-  end_turn();
-
-  Scene::<Headless>::with(|scene| scene.record(node).map(|record| *record.sink()))
+/// Runs `operation` on the record of `node`, if it is live.
+fn with_record<R>(node: NodeId, operation: impl FnOnce(&mut Record) -> R) -> Option<R> {
+  with_store(|store| store.record_mut(node).map(operation))
 }
 
 impl Platform for Headless {
   type Scalar = f32;
-  type Sink = Handle;
   type StyleExt = ();
   type TokenValue = TokenValue;
 
@@ -223,93 +184,89 @@ impl Platform for Headless {
     &SCENE
   }
 
-  fn bind_node(sink: Handle, node: NodeId) {
-    with_record(sink, |record| record.node = Some(node));
+  fn create_box(node: NodeId, props: &BoxProps<Self>) {
+    with_store(|store| store.insert(node, Record::new(Kind::Box(Box::new(props.clone())))));
   }
 
-  fn create_box(props: &BoxProps<Self>) -> Handle {
-    with_store(|store| store.create(Record::new(Kind::Box(Box::new(props.clone())))))
-  }
-
-  fn update_box(sink: Handle, slot: Slot, leaf: &StaticLeaf<BoxValue<f32>>) {
-    with_record(sink, |record| {
+  fn update_box(node: NodeId, slot: Slot, leaf: &StaticLeaf<BoxValue<f32>>) {
+    with_record(node, |record| {
       record.slots.insert(slot, leaf.clone().into());
     });
   }
 
-  fn update_focus_order(sink: Handle, focus_order: Option<FocusOrder>) {
-    with_record(sink, |record| {
+  fn update_focus_order(node: NodeId, focus_order: Option<FocusOrder>) {
+    with_record(node, |record| {
       if let Some(props) = record.kind.box_props_mut() {
         props.focus_order = focus_order;
       }
     });
   }
 
-  fn update_access(sink: Handle, access: &[AccessProp]) {
-    with_record(sink, |record| {
+  fn update_access(node: NodeId, access: &[AccessProp]) {
+    with_record(node, |record| {
       if let Some(props) = record.kind.box_props_mut() {
         access.clone_into(&mut props.access);
       }
     });
   }
 
-  fn create_control(props: &ControlProps<Self>) -> Handle {
-    with_store(|store| store.create(Record::new(Kind::Control(Box::new(props.clone())))))
+  fn create_control(node: NodeId, props: &ControlProps<Self>) {
+    with_store(|store| store.insert(node, Record::new(Kind::Control(Box::new(props.clone())))));
   }
 
-  fn set_control_state(sink: Handle, state: &ControlState) {
-    with_record(sink, |record| {
+  fn set_control_state(node: NodeId, state: &ControlState) {
+    with_record(node, |record| {
       record.control_state = *state;
       record.checked = state.checked == Toggle::On;
     });
   }
 
-  fn create_overlay(props: &OverlayProps<Self>) -> Handle {
-    with_store(|store| store.create(Record::new(Kind::Overlay(Box::new(props.clone())))))
+  fn create_overlay(node: NodeId, props: &OverlayProps<Self>) {
+    with_store(|store| store.insert(node, Record::new(Kind::Overlay(Box::new(props.clone())))));
   }
 
-  fn set_overlay_open(sink: Handle, open: bool, anchor: Option<Handle>) {
-    with_record(sink, |record| {
+  fn set_overlay_open(node: NodeId, open: bool, anchor: Option<NodeId>) {
+    with_record(node, |record| {
       record.open = open;
       record.anchor = anchor;
     });
   }
 
-  fn set_overlay_placement(sink: Handle, placement: Placement) {
-    with_record(sink, |record| {
+  fn set_overlay_placement(node: NodeId, placement: Placement) {
+    with_record(node, |record| {
       if let Kind::Overlay(props) = &mut record.kind {
         props.placement = placement;
       }
     });
   }
 
-  fn set_overlay_position(sink: Handle, position: Option<Point<f32>>) {
-    with_record(sink, |record| record.position = position);
+  fn set_overlay_position(node: NodeId, position: Option<Point<f32>>) {
+    with_record(node, |record| record.position = position);
   }
 
-  fn create_run(props: &RunProps<Self>) -> Handle {
-    with_store(|store| store.create(Record::new(Kind::Run(Box::new(props.clone())))))
+  fn create_run(node: NodeId, props: &RunProps<Self>) {
+    with_store(|store| store.insert(node, Record::new(Kind::Run(Box::new(props.clone())))));
   }
 
-  fn update_run(sink: Handle, slot: Slot, leaf: &StaticLeaf<RunValue>) {
-    with_record(sink, |record| {
+  fn update_run(node: NodeId, slot: Slot, leaf: &StaticLeaf<RunValue>) {
+    with_record(node, |record| {
       record.slots.insert(slot, leaf.clone().into());
     });
   }
 
-  fn set_text(sink: Handle, text: &str) {
-    with_record(sink, |record| text.clone_into(&mut record.text));
+  fn set_text(node: NodeId, text: &str) {
+    with_record(node, |record| text.clone_into(&mut record.text));
   }
 
-  fn create_anchor() -> Handle {
-    with_store(|store| store.create(Record::new(Kind::Anchor)))
+  fn create_anchor(node: NodeId) {
+    with_store(|store| store.insert(node, Record::new(Kind::Anchor)));
   }
 
-  fn create_scope() -> Handle {
-    with_store(|store| store.create(Record::new(Kind::Scope)))
+  fn create_scope(node: NodeId) {
+    with_store(|store| store.insert(node, Record::new(Kind::Scope)));
   }
 
-  fn attach(parent: Handle, child: Handle, before: Option<Handle>) {
+  fn attach(parent: NodeId, child: NodeId, before: Option<NodeId>) {
     with_record(parent, |record| {
       if let Some(index) = position_from_ends(&record.children, child) {
         let _unlinked = record.children.remove(index);
@@ -323,7 +280,7 @@ impl Platform for Headless {
     });
   }
 
-  fn detach(parent: Handle, child: Handle) {
+  fn detach(parent: NodeId, child: NodeId) {
     with_record(parent, |record| {
       if let Some(index) = position_from_ends(&record.children, child) {
         let _unlinked = record.children.remove(index);
@@ -331,11 +288,11 @@ impl Platform for Headless {
     });
   }
 
-  fn destroy(sink: Handle) {
-    with_store(|store| store.destroy(sink));
+  fn destroy(node: NodeId) {
+    with_store(|store| store.destroy(node));
   }
 
-  fn define_tokens(scope: Handle, definitions: &Definitions<TokenValue>) {
+  fn define_tokens(scope: NodeId, definitions: &Definitions<TokenValue>) {
     with_record(scope, |record| {
       record.definitions = Some(definitions.clone());
     });
@@ -348,26 +305,22 @@ impl Platform for Headless {
     });
   }
 
-  fn listen(sink: Handle, kind: EventKind) {
-    with_record(sink, |record| {
+  fn listen(node: NodeId, kind: EventKind) {
+    with_record(node, |record| {
       if let Err(at) = record.listened.binary_search(&kind) {
         record.listened.insert(at, kind);
       }
     });
   }
 
-  fn focus(sink: Handle) {
-    if let Some(node) = with_record(sink, |record| record.node).flatten() {
+  fn focus(node: NodeId) {
+    if with_store(|store| store.record(node).is_some()) {
       notify_focus_moved::<Self>(Some(node));
     }
   }
 
-  fn blur(sink: Handle) {
-    let holds = Scene::<Self>::with(|scene| {
-      scene
-        .focused()
-        .is_some_and(|focused| scene.sink(focused) == Some(sink))
-    });
+  fn blur(node: NodeId) {
+    let holds = Scene::<Self>::with(|scene| scene.focused() == Some(node));
 
     if holds {
       notify_focus_moved::<Self>(None);
@@ -382,31 +335,31 @@ impl Platform for Headless {
     })
   }
 
-  fn set_value(sink: Handle, value: &str) {
-    with_record(sink, |record| value.clone_into(&mut record.value));
+  fn set_value(node: NodeId, value: &str) {
+    with_record(node, |record| value.clone_into(&mut record.value));
   }
 
-  fn set_options(sink: Handle, options: &[PickerOption]) {
-    with_record(sink, |record| options.clone_into(&mut record.options));
+  fn set_options(node: NodeId, options: &[PickerOption]) {
+    with_record(node, |record| options.clone_into(&mut record.options));
   }
 
-  fn set_selection(sink: Handle, selection: TextSelection) {
-    with_record(sink, |record| {
+  fn set_selection(node: NodeId, selection: TextSelection) {
+    with_record(node, |record| {
       record.selection = selection.clamped(record.value.graphemes(true).count());
     });
   }
 
-  fn set_checked(sink: Handle, checked: bool) {
-    with_record(sink, |record| record.checked = checked);
+  fn set_checked(node: NodeId, checked: bool) {
+    with_record(node, |record| record.checked = checked);
   }
 
-  fn observe_size(sink: Handle, report: Rc<dyn Fn(Size<f32>)>) -> Observation {
+  fn observe_size(node: NodeId, report: Rc<dyn Fn(Size<f32>)>) -> Observation {
     let kept = Rc::clone(&report);
 
-    with_record(sink, |record| record.size_observers.push(report));
+    with_record(node, |record| record.size_observers.push(report));
 
     Observation::new(move || {
-      with_record(sink, |record| {
+      with_record(node, |record| {
         record
           .size_observers
           .retain(|observer| !Rc::ptr_eq(observer, &kept));
@@ -462,8 +415,8 @@ impl Platform for Headless {
 }
 
 impl Painting for Headless {
-  fn paint(sink: Handle, painter: Box<Painter>) {
-    with_record(sink, |record| record.painter = Some(Rc::from(painter)));
+  fn paint(node: NodeId, painter: Box<Painter>) {
+    with_record(node, |record| record.painter = Some(Rc::from(painter)));
   }
 
   fn available() -> ReadSignal<bool> {
@@ -476,8 +429,7 @@ impl Painting for Headless {
 pub fn is_painted(node: NodeId) -> bool {
   end_turn();
 
-  handle(node)
-    .is_some_and(|handle| with_record(handle, |record| record.painter.is_some()) == Some(true))
+  with_record(node, |record| record.painter.is_some()) == Some(true)
 }
 
 /// Paints the box `node` at `size` logical pixels, one device pixel each, and returns
@@ -486,8 +438,7 @@ pub fn is_painted(node: NodeId) -> bool {
 pub fn paint(node: NodeId, size: Size<f32>) -> Option<Vec<u8>> {
   end_turn();
 
-  let painter =
-    handle(node).and_then(|handle| with_record(handle, |record| record.painter.clone()))??;
+  let painter = with_record(node, |record| record.painter.clone())??;
   #[expect(
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
@@ -784,9 +735,7 @@ pub fn trigger_blur(node: NodeId) {
 /// Records `value` as the node's textual value and notifies its change handlers.
 pub fn trigger_change(node: NodeId, value: &str) {
   trigger(|| {
-    if let Some(handle) = handle(node) {
-      Headless::set_value(handle, value);
-    }
+    Headless::set_value(node, value);
 
     notify_change::<Headless>(node, value);
   });
@@ -795,9 +744,7 @@ pub fn trigger_change(node: NodeId, value: &str) {
 /// Records `selection` as the node's selection and notifies its selection handlers.
 pub fn trigger_selection_change(node: NodeId, selection: TextSelection) {
   trigger(|| {
-    if let Some(handle) = handle(node) {
-      Headless::set_selection(handle, selection);
-    }
+    Headless::set_selection(node, selection);
 
     notify_selection_change::<Headless>(node, selection);
   });
@@ -806,9 +753,7 @@ pub fn trigger_selection_change(node: NodeId, selection: TextSelection) {
 /// Records `checked` as the node's checked state and notifies its toggle handlers.
 pub fn trigger_toggle(node: NodeId, checked: bool) {
   trigger(|| {
-    if let Some(handle) = handle(node) {
-      Headless::set_checked(handle, checked);
-    }
+    Headless::set_checked(node, checked);
 
     notify_toggle::<Headless>(node, checked);
   });
@@ -851,22 +796,13 @@ pub fn set_clipboard_availability(action: ClipboardAction, availability: Availab
 /// named for container queries also publishes it as that container's size.
 pub fn trigger_size(node: NodeId, size: Size<f32>) {
   trigger(|| {
-    let (handle, name) = Scene::<Headless>::with(|scene| {
-      let record = scene.record(node);
-
-      (
-        record.map(|record| *record.sink()),
-        record.and_then(NodeRecord::container),
-      )
-    });
+    let name = Scene::<Headless>::with(|scene| scene.record(node).and_then(NodeRecord::container));
 
     if let Some(name) = name {
       record_container_size(name, size);
     }
 
-    let observers = handle
-      .and_then(|handle| with_record(handle, |record| record.size_observers.clone()))
-      .unwrap_or_default();
+    let observers = with_record(node, |record| record.size_observers.clone()).unwrap_or_default();
 
     for observer in observers {
       observer(size);
@@ -1115,16 +1051,14 @@ pub fn full_outline(node: NodeId) -> String {
 fn render_outline(node: NodeId, full: bool) -> String {
   let mut out = String::new();
 
-  if let Some(handle) = handle(node) {
-    outline_into(handle, 0, full, &mut out);
-  }
+  outline_into(node, 0, full, &mut out);
 
   out
 }
 
-fn outline_into(handle: Handle, depth: usize, full: bool, out: &mut String) {
+fn outline_into(node: NodeId, depth: usize, full: bool, out: &mut String) {
   let Some((line, children)) = with_store(|store| {
-    let record = store.record(handle)?;
+    let record = store.record(node)?;
     let line = match &record.kind {
       Kind::Box(_) => Some("Box".to_owned()),
       Kind::Control(props) => Some(format!("Control {:?}", props.native)),
@@ -1165,7 +1099,7 @@ fn outline_into(handle: Handle, depth: usize, full: bool, out: &mut String) {
 pub fn is_live(node: NodeId) -> bool {
   end_turn();
 
-  handle(node).is_some()
+  with_store(|store| store.record(node).is_some())
 }
 
 /// The props the box or control `node` was created with, carrying the focus order and
@@ -1174,7 +1108,7 @@ pub fn is_live(node: NodeId) -> bool {
 pub fn box_props(node: NodeId) -> Option<BoxProps<Headless>> {
   end_turn();
 
-  with_record(handle(node)?, |record| record.kind.box_props().cloned())?
+  with_record(node, |record| record.kind.box_props().cloned())?
 }
 
 /// The props the control `node` was created with.
@@ -1182,7 +1116,7 @@ pub fn box_props(node: NodeId) -> Option<BoxProps<Headless>> {
 pub fn control_props(node: NodeId) -> Option<ControlProps<Headless>> {
   end_turn();
 
-  with_record(handle(node)?, |record| match &record.kind {
+  with_record(node, |record| match &record.kind {
     Kind::Control(props) => Some((**props).clone()),
     Kind::Box(_) | Kind::Overlay(_) | Kind::Run(_) | Kind::Anchor | Kind::Scope => None,
   })?
@@ -1193,7 +1127,7 @@ pub fn control_props(node: NodeId) -> Option<ControlProps<Headless>> {
 pub fn overlay_props(node: NodeId) -> Option<OverlayProps<Headless>> {
   end_turn();
 
-  with_record(handle(node)?, |record| match &record.kind {
+  with_record(node, |record| match &record.kind {
     Kind::Overlay(props) => Some((**props).clone()),
     Kind::Box(_) | Kind::Control(_) | Kind::Run(_) | Kind::Anchor | Kind::Scope => None,
   })?
@@ -1204,15 +1138,15 @@ pub fn overlay_props(node: NodeId) -> Option<OverlayProps<Headless>> {
 pub fn is_open(node: NodeId) -> bool {
   end_turn();
 
-  handle(node).is_some_and(|handle| with_record(handle, |record| record.open) == Some(true))
+  with_record(node, |record| record.open) == Some(true)
 }
 
 /// The anchor the overlay `node` was last opened or closed against.
 #[must_use]
-pub fn overlay_anchor(node: NodeId) -> Option<Handle> {
+pub fn overlay_anchor(node: NodeId) -> Option<NodeId> {
   end_turn();
 
-  with_record(handle(node)?, |record| record.anchor)?
+  with_record(node, |record| record.anchor)?
 }
 
 /// Where the overlay `node` is pinned, if it is.
@@ -1220,7 +1154,7 @@ pub fn overlay_anchor(node: NodeId) -> Option<Handle> {
 pub fn overlay_position(node: NodeId) -> Option<Point<f32>> {
   end_turn();
 
-  with_record(handle(node)?, |record| record.position)?
+  with_record(node, |record| record.position)?
 }
 
 /// The state last mirrored into the control `node`.
@@ -1228,7 +1162,7 @@ pub fn overlay_position(node: NodeId) -> Option<Point<f32>> {
 pub fn control_state(node: NodeId) -> Option<ControlState> {
   end_turn();
 
-  with_record(handle(node)?, |record| match record.kind {
+  with_record(node, |record| match record.kind {
     Kind::Control(_) => Some(record.control_state),
     Kind::Box(_) | Kind::Overlay(_) | Kind::Run(_) | Kind::Anchor | Kind::Scope => None,
   })?
@@ -1308,7 +1242,7 @@ pub fn accessible_name(node: NodeId) -> Option<String> {
 }
 
 /// The index of `handle` among `children`, searched from both ends at once.
-fn position_from_ends(children: &[Handle], handle: Handle) -> Option<usize> {
+fn position_from_ends(children: &[NodeId], handle: NodeId) -> Option<usize> {
   let (mut front, mut back) = (0, children.len());
 
   while front < back {
@@ -1351,7 +1285,7 @@ fn subtree_text(node: NodeId) -> String {
 pub fn run_props(node: NodeId) -> Option<RunProps<Headless>> {
   end_turn();
 
-  with_record(handle(node)?, |record| match &record.kind {
+  with_record(node, |record| match &record.kind {
     Kind::Run(props) => Some((**props).clone()),
     Kind::Box(_) | Kind::Control(_) | Kind::Overlay(_) | Kind::Anchor | Kind::Scope => None,
   })?
@@ -1362,7 +1296,7 @@ pub fn run_props(node: NodeId) -> Option<RunProps<Headless>> {
 pub fn text(node: NodeId) -> Option<String> {
   end_turn();
 
-  with_record(handle(node)?, |record| match record.kind {
+  with_record(node, |record| match record.kind {
     Kind::Run(_) => Some(record.text.clone()),
     Kind::Box(_) | Kind::Control(_) | Kind::Overlay(_) | Kind::Anchor | Kind::Scope => None,
   })?
@@ -1373,7 +1307,7 @@ pub fn text(node: NodeId) -> Option<String> {
 pub fn value(node: NodeId) -> Option<String> {
   end_turn();
 
-  with_record(handle(node)?, |record| record.value.clone())
+  with_record(node, |record| record.value.clone())
 }
 
 /// The options last written to `node`.
@@ -1381,7 +1315,7 @@ pub fn value(node: NodeId) -> Option<String> {
 pub fn options(node: NodeId) -> Option<Vec<PickerOption>> {
   end_turn();
 
-  with_record(handle(node)?, |record| record.options.clone())
+  with_record(node, |record| record.options.clone())
 }
 
 /// The selection last written to `node`.
@@ -1389,7 +1323,7 @@ pub fn options(node: NodeId) -> Option<Vec<PickerOption>> {
 pub fn selection(node: NodeId) -> Option<TextSelection> {
   end_turn();
 
-  with_record(handle(node)?, |record| record.selection)
+  with_record(node, |record| record.selection)
 }
 
 /// The checked state last written to `node`.
@@ -1397,7 +1331,7 @@ pub fn selection(node: NodeId) -> Option<TextSelection> {
 pub fn checked(node: NodeId) -> Option<bool> {
   end_turn();
 
-  with_record(handle(node)?, |record| record.checked)
+  with_record(node, |record| record.checked)
 }
 
 /// The latest leaf a render effect wrote into `slot` on `node`: a value, or a token or
@@ -1406,7 +1340,7 @@ pub fn checked(node: NodeId) -> Option<bool> {
 pub fn slot_leaf(node: NodeId, slot: Slot) -> Option<SlotLeaf> {
   end_turn();
 
-  with_record(handle(node)?, |record| record.slots.get(&slot).cloned())?
+  with_record(node, |record| record.slots.get(&slot).cloned())?
 }
 
 /// The event kinds `node` has handlers for, in [`EventKind`] order.
@@ -1414,9 +1348,7 @@ pub fn slot_leaf(node: NodeId, slot: Slot) -> Option<SlotLeaf> {
 pub fn listened(node: NodeId) -> Vec<EventKind> {
   end_turn();
 
-  handle(node)
-    .and_then(|handle| with_record(handle, |record| record.listened.clone()))
-    .unwrap_or_default()
+  with_record(node, |record| record.listened.clone()).unwrap_or_default()
 }
 
 /// The token definitions placed on the scope `node`.
@@ -1424,7 +1356,7 @@ pub fn listened(node: NodeId) -> Vec<EventKind> {
 pub fn definitions(node: NodeId) -> Option<Definitions<TokenValue>> {
   end_turn();
 
-  with_record(handle(node)?, |record| record.definitions.clone())?
+  with_record(node, |record| record.definitions.clone())?
 }
 
 /// The token definitions every node falls back to.
@@ -1452,12 +1384,10 @@ pub fn children(node: NodeId) -> Vec<NodeId> {
 
 /// The children of `node` as the platform mirrored them, in order.
 #[must_use]
-pub fn mirrored_children(node: NodeId) -> Vec<Handle> {
+pub fn mirrored_children(node: NodeId) -> Vec<NodeId> {
   end_turn();
 
-  handle(node)
-    .and_then(|handle| with_record(handle, |record| record.children.clone()))
-    .unwrap_or_default()
+  with_record(node, |record| record.children.clone()).unwrap_or_default()
 }
 
 /// The color the property `key` of `node` resolves to.

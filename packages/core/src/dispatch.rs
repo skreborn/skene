@@ -199,9 +199,7 @@ pub fn dispatch_pointer_move<P: Platform>(node: NodeId, event: &PointerEvent) ->
 
 /// `event` local to `node`'s box, as the platform measures it.
 fn localize<P: Platform>(node: NodeId, event: &PointerEvent) -> PointerEvent {
-  let sink = Scene::<P>::with(|scene| scene.sink(node));
-
-  sink.map_or(*event, |sink| P::localize_pointer(sink, event))
+  P::localize_pointer(node, event)
 }
 
 /// Moves the scene's pointer over `next`, the deepest node under it.
@@ -438,7 +436,7 @@ mod tests {
     Prevented,
     Scene,
     count_pending,
-    testing::{Call, TestBox, TestPlatform, sink},
+    testing::{Call, TestBox, TestPlatform},
   };
 
   fn chain() -> (NodeId, NodeId, NodeId) {
@@ -483,9 +481,9 @@ mod tests {
     assert_eq!(
       TestPlatform::take_log(),
       [
-        Call::Listen(sink(outer), EventKind::Click),
-        Call::Listen(sink(inner), EventKind::Click),
-        Call::Listen(sink(inner), EventKind::Click),
+        Call::Listen(outer, EventKind::Click),
+        Call::Listen(inner, EventKind::Click),
+        Call::Listen(inner, EventKind::Click),
       ]
     );
     assert_eq!(
@@ -861,8 +859,8 @@ mod tests {
       scene.handle(outer, Handler::PointerDown(observe("outer")));
       scene.handle(inner, Handler::PointerDown(observe("inner")));
     });
-    TestPlatform::set_origin(sink(outer), 10., 100.);
-    TestPlatform::set_origin(sink(inner), 30., 120.);
+    TestPlatform::set_origin(outer, 10., 100.);
+    TestPlatform::set_origin(inner, 30., 120.);
 
     let event = PointerEvent {
       local_x: 5.,

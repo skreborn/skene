@@ -300,14 +300,17 @@ impl<P: Platform> View<P> for Overlay<P, AnyView<P>> {
     };
     let node = inner
       .add_child(child)
-      .realize(NodeKind::Overlay, |box_props| {
-        P::create_overlay(&OverlayProps {
-          modal,
-          hint,
-          placement: initial,
-          backdrop,
-          box_props,
-        })
+      .realize(NodeKind::Overlay, |node, box_props| {
+        P::create_overlay(
+          node,
+          &OverlayProps {
+            modal,
+            hint,
+            placement: initial,
+            backdrop,
+            box_props,
+          },
+        );
       });
 
     Scene::<P>::with(|scene| {
@@ -324,17 +327,16 @@ impl<P: Platform> View<P> for Overlay<P, AnyView<P>> {
       let open = open();
       let anchor = anchor.and_then(|anchor| untrack(|| anchor.node()));
 
-      let Some(sink) = Scene::<P>::with(|scene| scene.sink(node))
-      else {
+      if !Scene::<P>::with(|scene| scene.contains(node)) {
         return;
-      };
+      }
 
       if let Some(placement) = placement {
-        P::set_overlay_placement(sink, placement);
+        P::set_overlay_placement(node, placement);
       }
 
       if let Some(position) = position {
-        P::set_overlay_position(sink, position);
+        P::set_overlay_position(node, position);
       }
 
       Scene::<P>::with(|scene| scene.set_overlay_open(node, open, anchor));

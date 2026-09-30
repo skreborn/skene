@@ -573,14 +573,14 @@ impl<P: Platform, Kind: 'static> HasChildren<P> for LayoutBox<P, Kind> {
 impl<P: Platform, Kind: 'static> AnyKind for LayoutBox<P, Kind> {}
 
 impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
-  /// Realizes the box as a node of `kind` whose sink `create` mints from the props:
-  /// folds the pending annotation into the style, splits it, binds every derived slot,
-  /// the focus order, the accessibility and the handlers, mounts the children and
-  /// returns the node.
+  /// Realizes the box as a node of `kind`, which `create` realizes on the platform from
+  /// the props: folds the pending annotation into the style, splits it, binds every
+  /// derived slot, the focus order, the accessibility and the handlers, mounts the
+  /// children and returns the node.
   ///
   /// A box builds through this with [`NodeKind::Box`] and [`Platform::create_box`]; a
   /// view realized as another kind supplies its own creation.
-  pub fn realize(mut self, kind: NodeKind, create: impl FnOnce(BoxProps<P>) -> P::Sink) -> NodeId {
+  pub fn realize(mut self, kind: NodeKind, create: impl FnOnce(NodeId, BoxProps<P>)) -> NodeId {
     if let Some(annotation) = Scene::<P>::with(Scene::take_pending_annotation) {
       annotation.apply_to(&mut self.style);
     }
@@ -636,11 +636,11 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
       access,
       destination: self.destination,
     };
-    let sink = create(props);
     let container = self.container;
-    let node = Scene::<P>::with(|scene| {
-      let node = scene.create(kind, sink);
+    let node = Scene::<P>::with(|scene| scene.create(kind));
 
+    create(node, props);
+    Scene::<P>::with(|scene| {
       scene.note_focus_order(node, focus_order);
 
       if let Some(name) = container {
@@ -650,8 +650,6 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
       if let Some(access) = noted {
         scene.note_access(node, access);
       }
-
-      node
     });
 
     for handle in self.handles {
@@ -689,6 +687,6 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
 impl<P: Platform, Kind: 'static> View<P> for LayoutBox<P, Kind> {
   #[inline(always)]
   fn build(self) -> NodeId {
-    self.realize(NodeKind::Box, |props| P::create_box(&props))
+    self.realize(NodeKind::Box, |node, props| P::create_box(node, &props))
   }
 }

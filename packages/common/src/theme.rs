@@ -88,7 +88,10 @@ impl<P: Platform, S: TokenSet<P::TokenValue>, C> AnyKind for Theme<P, S, C> {}
 
 impl<P: Platform, S: TokenSet<P::TokenValue>> View<P> for Theme<P, S, ChildBuilder<P>> {
   fn build(self) -> NodeId {
-    let scope = Scene::<P>::with(|scene| scene.create(NodeKind::Scope, P::create_scope()));
+    let scope = Scene::<P>::with(|scene| scene.create(NodeKind::Scope));
+
+    P::create_scope(scope);
+
     let owner = Owner::current().child();
     let child = self.child;
     let palette = self.palette;

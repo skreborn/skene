@@ -97,7 +97,7 @@ use crate::{
   Text,
   decoration,
   properties,
-  realize::{Source, report_access, with_sink},
+  realize::{Source, report_access},
 };
 
 /// A handler of an event carrying `E`, with its verdict.
@@ -341,17 +341,10 @@ impl<P: Platform> ControlHandle<P> {
     Rc::clone(&self.disabled)
   }
 
-  /// Runs `operation` on a copy of the control's sink, if the node is live; the scene
-  /// is released before it runs.
-  #[inline(always)]
-  pub fn with_sink<R>(&self, operation: impl FnOnce(P::Sink) -> R) -> Option<R> {
-    with_sink::<P, _>(self.node, operation)
-  }
-
   /// Moves focus to the control.
   #[inline(always)]
   pub fn focus(&self) {
-    self.with_sink(|sink| P::focus(sink));
+    P::focus(self.node);
   }
 
   /// Dispatches `event` as a click at the control, so its behavior and handlers see it.
@@ -969,15 +962,18 @@ impl<P: Platform, B: Behavior<P>, C: ControlChild<P>> View<P> for Control<P, B, 
         inner = inner.set_drag_axes(axes);
       }
 
-      let node = inner.realize(NodeKind::Control, |box_props| {
-        P::create_control(&ControlProps {
-          native,
-          box_props,
-          label: name.as_ref().map(|name| untrack(|| name())),
-          placeholder,
-          lines,
-          label_beside: placement == LabelPlacement::Beside,
-        })
+      let node = inner.realize(NodeKind::Control, |node, box_props| {
+        P::create_control(
+          node,
+          &ControlProps {
+            native,
+            box_props,
+            label: name.as_ref().map(|name| untrack(|| name())),
+            placeholder,
+            lines,
+            label_beside: placement == LabelPlacement::Beside,
+          },
+        );
       });
 
       if native.is_some_and(NativeElement::is_text_entry) {
@@ -1018,31 +1014,47 @@ impl<P: Platform, B: Behavior<P>, C: ControlChild<P>> View<P> for Control<P, B, 
       bind_reports(&handle, &behavior, &flags, focus_order);
       behavior.attach(&handle);
       register(node, &behavior, &handle, &disabled, observers);
-
-      let mut label = label;
-
-      if placement == LabelPlacement::Leading
-        && let Some((part, _)) = label.take()
-      {
-        mount_part::<P>(node, Part::Label, part);
-      }
-
-      for (part, view) in parts {
-        mount_part::<P>(node, part, view.build());
-      }
-
-      if let Some(child) = child.build_body() {
-        Scene::<P>::with(|scene| scene.attach(node, child, None));
-      }
-
-      if let Some((part, _)) = label {
-        mount_part::<P>(node, Part::Label, part);
-      }
-
+      mount_contents::<P>(
+        node,
+        placement,
+        label.map(|(part, _)| part),
+        parts,
+        child.build_body(),
+      );
       behavior.mounted(&handle);
 
       node
     })
+  }
+}
+
+/// Mounts what a control holds under `node`, in order: the label where it leads, the
+/// parts, the body, then the label where it trails or sits beside.
+fn mount_contents<P: Platform>(
+  node: NodeId,
+  placement: LabelPlacement,
+  label: Option<NodeId>,
+  parts: Vec<(Part, AnyView<P>)>,
+  body: Option<NodeId>,
+) {
+  let mut label = label;
+
+  if placement == LabelPlacement::Leading
+    && let Some(part) = label.take()
+  {
+    mount_part::<P>(node, Part::Label, part);
+  }
+
+  for (part, view) in parts {
+    mount_part::<P>(node, part, view.build());
+  }
+
+  if let Some(body) = body {
+    Scene::<P>::with(|scene| scene.attach(node, body, None));
+  }
+
+  if let Some(part) = label {
+    mount_part::<P>(node, Part::Label, part);
   }
 }
 

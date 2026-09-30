@@ -3,9 +3,9 @@
 //! A third-party low-level view written against the web platform's escape traits: a
 //! `Map` paints into a `<canvas>` it creates through `WebDom`, so it exists on the
 //! browser leaf alone, and its `Placeholder` renders a box through `WebMarkup`, so
-//! a server-rendered page carries something in its place. Either registers its element
-//! through `LowLevel` and sits inside a `Container` that sizes it, so it composes
-//! with wrappers, themes and events as a built-in does.
+//! a server-rendered page carries something in its place. Either realizes its element
+//! for a node `LowLevel` mints and sits inside a `Container` that sizes it, so it
+//! composes with wrappers, themes and events as a built-in does.
 //!
 //! Web-only: on a host target the crate is empty.
 
@@ -62,24 +62,26 @@ impl<P: Platform> Map<P> {
     Placeholder { map: self }
   }
 
-  /// The element `sink` dressed as the map's surface, inside a container of the map's
-  /// size.
-  fn realize(self, sink: P::Sink) -> NodeId
+  /// A node realized as an element of `tag` dressed as the map's surface, then handed
+  /// to `draw`, inside a container of the map's size.
+  fn realize(self, tag: &'static str, draw: impl FnOnce(NodeId)) -> NodeId
   where
     P: WebMarkup<Scalar = f32>,
   {
-    P::set_attribute(sink, "role", "img");
-    P::set_attribute(sink, "aria-label", "map");
-    P::set_declarations(
-      sink,
-      &Declarations::new()
-        .set("display", "block")
-        .set("width", "100%")
-        .set("height", "100%")
-        .set("background-color", SEA),
-    );
-
-    let node = LowLevel::<P>::realize(sink, NodeKind::Box);
+    let node = LowLevel::<P>::realize(NodeKind::Box, |node| {
+      P::create_element(node, tag);
+      P::set_attribute(node, "role", "img");
+      P::set_attribute(node, "aria-label", "map");
+      P::set_declarations(
+        node,
+        &Declarations::new()
+          .set("display", "block")
+          .set("width", "100%")
+          .set("height", "100%")
+          .set("background-color", SEA),
+      );
+      draw(node);
+    });
 
     Container::<P>::new()
       .set_width(self.size.width)
@@ -95,7 +97,6 @@ impl<P: Platform> AnyKind for Map<P> {}
 impl<P: Platform<Scalar = f32> + WebDom> View<P> for Map<P> {
   fn build(self) -> NodeId {
     use wasm_bindgen::JsCast;
-    let sink = P::create_element("canvas");
 
     #[expect(
       clippy::cast_possible_truncation,
@@ -104,16 +105,16 @@ impl<P: Platform<Scalar = f32> + WebDom> View<P> for Map<P> {
     )]
     let (width, height) = (self.size.width as u32, self.size.height as u32);
 
-    P::set_attribute(sink, "width", &width.to_string());
-    P::set_attribute(sink, "height", &height.to_string());
+    self.realize("canvas", |node| {
+      P::set_attribute(node, "width", &width.to_string());
+      P::set_attribute(node, "height", &height.to_string());
 
-    if let Some(canvas) =
-      P::element(sink).and_then(|element| element.dyn_into::<web_sys::HtmlCanvasElement>().ok())
-    {
-      paint(&canvas, width, height);
-    }
-
-    self.realize(sink)
+      if let Some(canvas) =
+        P::element(node).and_then(|element| element.dyn_into::<web_sys::HtmlCanvasElement>().ok())
+      {
+        paint(&canvas, width, height);
+      }
+    })
   }
 }
 
@@ -156,8 +157,6 @@ impl<P: Platform> AnyKind for Placeholder<P> {}
 
 impl<P: Platform<Scalar = f32> + WebMarkup> View<P> for Placeholder<P> {
   fn build(self) -> NodeId {
-    let sink = P::create_element("div");
-
-    self.map.realize(sink)
+    self.map.realize("div", |_| {})
   }
 }

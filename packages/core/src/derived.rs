@@ -212,7 +212,7 @@ mod tests {
     NodeId,
     NodeKind,
     Scene,
-    testing::{Call, TestBox, TestPlatform, child_kinds, children, sink},
+    testing::{Call, TestBox, TestPlatform, child_kinds, children},
   };
 
   fn with<R>(operation: impl FnOnce(&mut Scene<TestPlatform>) -> R) -> R {
@@ -261,7 +261,7 @@ mod tests {
     assert_ne!(second, first);
     assert_eq!(children(parent), [start, second, end]);
     assert!(with(|scene| scene.record(first).is_none()));
-    assert!(TestPlatform::take_log().contains(&Call::Destroy(sink(second) - 1)));
+    assert!(TestPlatform::take_log().contains(&Call::Destroy(first)));
 
     owner.dispose();
   }

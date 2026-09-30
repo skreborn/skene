@@ -20,7 +20,6 @@ use skene_core::{
 use skene_reactive::{Memo, Signal, With, on_cleanup, provide_context, use_context};
 
 use super::{Behavior, ControlHandle, Controlled, LabelPlacement, Roster, TypeAhead};
-use crate::realize::with_sink;
 
 /// How a [`Collection`] behaves: what it and its members are, which keys move between
 /// the members, and what a move and a choice do.
@@ -245,7 +244,7 @@ impl<C: CollectionPolicy> CollectionGroup<C> {
       self.choose(value);
     }
 
-    with_sink::<P, _>(node, |sink| P::focus(sink));
+    P::focus(node);
   }
 
   /// Feeds a key typed on the member holding `value` into the collection's type-ahead

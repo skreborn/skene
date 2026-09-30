@@ -23,7 +23,6 @@ use skene_headless::{
   Headless,
   box_props,
   children,
-  handle,
   is_open,
   overlay_anchor,
   overlay_props,
@@ -175,7 +174,7 @@ fn a_tooltip_opens_on_hover_after_its_delay_and_on_focus_at_once() {
   trigger_frame(TOOLTIP_DELAY);
 
   assert!(is_open(bubble), "the delay passed");
-  assert_eq!(overlay_anchor(bubble), handle(described));
+  assert_eq!(overlay_anchor(bubble), Some(described));
 
   trigger_pointer_leave(described);
 
@@ -259,7 +258,7 @@ fn a_tooltip_around_a_reactive_view_hears_its_content() {
   trigger_frame(TOOLTIP_DELAY);
 
   assert!(is_open(bubble), "resting on the content opens the bubble");
-  assert_eq!(overlay_anchor(bubble), handle(content()));
+  assert_eq!(overlay_anchor(bubble), Some(content()));
 
   trigger_dismiss(bubble);
   version.set(1);

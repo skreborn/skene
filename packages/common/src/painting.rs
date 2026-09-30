@@ -1,7 +1,7 @@
 //! The portable low-level path for pixels: a paint callback on a box, drawing through
 //! vello, realized by every platform that can show pixels.
 
-use skene_core::{Color, Platform, Size};
+use skene_core::{Color, NodeId, Platform, Size};
 use skene_reactive::ReadSignal;
 pub use vello_cpu::{PaintType, kurbo, peniko};
 use vello_cpu::{Pixmap, RenderContext, Resources};
@@ -231,9 +231,9 @@ pub type Painter = dyn Fn(&mut Canvas, Size<f32>);
   label = "a painted view is written against a platform implementing `Painting`"
 )]
 pub trait Painting: Platform {
-  /// Paints `painter` into the box `sink` at its laid-out size, now and whenever the
+  /// Paints `painter` into the box `node` at its laid-out size, now and whenever the
   /// box repaints; a later call replaces the painter.
-  fn paint(sink: Self::Sink, painter: Box<Painter>);
+  fn paint(node: NodeId, painter: Box<Painter>);
 
   /// Whether a painted box shows as pixels, as a signal: false on the server leaf,
   /// on the browser leaf until it is live and in the terminal until its graphics are

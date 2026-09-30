@@ -229,8 +229,7 @@ left half-done in a code comment.
     `cargo rustc --crate-type`, so apps stop declaring crate types and the `cdylib`
     plus `rlib` pair, `__skene_main` and app-level cfgs go.
     - Oversized files split: `reactive/src/graph.rs` into records, ownership, edges and
-    propagation; `core/src/scene.rs`; `web/src/csr.rs` and `ssr.rs` into parallel
-    `browser/` and `server/` trees; `tui/src/terminal.rs` into the loop, the writer
+    propagation; `core/src/scene.rs`; `tui/src/terminal.rs` into the loop, the writer
     and key mapping; `tui/src/store.rs`, six concerns in one;
     `cli/src/main.rs`.
     - Deleted: `Scene::set_annotation`, the annotation arriving with the node it
@@ -246,9 +245,9 @@ left half-done in a code comment.
     `StoreField::derive` and `try_derive` to `memo` and `try_memo`; `stored_scheme` to
     `chosen_scheme`, beside a web-only `persisted_scheme`; `Router::get` to
     `Router::current`; `Popup::handle_typed` to `set_key_fallback`; the terminal's and
-    headless's `Store` to `Records`; `web/src/escape.rs` to `low_level.rs`; `web::csr`
-    and `web::ssr` to `web::browser` and `web::server`, and `skene_leaf` (`browser`,
-    `server`, `host`) to `skene_gui_platform` (`browser`, `server`, `headless`);
+    headless's `Store` to `Records`; `web/src/escape.rs` to `low_level.rs`;
+    `skene_leaf` (`browser`, `server`, `host`) to `skene_gui_platform` (`browser`,
+    `server`, `headless`);
     `web::hydration` to `resource_state`; the reactive crate's `value.rs`, `key()`,
     `Position` and `provide`/`staged` to `tracked_cell.rs`, `field_key()`,
     `SnapshotPlace` and `provide_extra`/`take_extra`; the choice and activation handlers

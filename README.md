@@ -113,7 +113,7 @@ skene-core            the spine: the scene, the Platform trait, dispatch, the pr
       │
 skene-common          every built-in view once, generic over the platform; the pixel and
       │               terminal media (gui, tui), the router (routing)
-      ├── skene-web        the web platform: browser (csr) and server (ssr) leaves
+      ├── skene-web        the web platform: the browser and server leaves
       ├── skene-headless   the host platform: an inspectable record store for tests
       └── skene-tui        the terminal facade and its platform
 skene-gui             the GUI facade: aliases over the selected platform

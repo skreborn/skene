@@ -37,10 +37,11 @@ skene-common      every built-in view ONCE, generic over P: Platform—Container
       │          Painted through vello), tui (TuiExt, BorderGlyphs, the terminal
       │          Typography set), routing (a typed route in a signal)
       │
-      ├── skene-web       Platform for the web: DOM sink (csr) + HTML/CSS serializer
-      │                   (ssr) over one node record, the compiler, the interner,
-      │                   hydration, streaming, the server executor, client hints;
-      │                   escape traits WebMarkup (both leaves), WebDom (browser)
+      ├── skene-web       Platform for the web: DOM sink (browser) + HTML/CSS
+      │                   serializer (server) over one node record, the compiler,
+      │                   the interner, hydration, streaming, the server executor,
+      │                   client hints; escape traits WebMarkup (both leaves),
+      │                   WebDom (browser)
       ├── skene-headless  Platform for the host: realizes into an inspectable record
       │                   store so view logic tests run without a platform; the
       │                   whole trait, trigger_ seams, the pumped executor
@@ -243,7 +244,7 @@ functions in the platform crate, since it is not a shared contract.
   tokens, the expression evaluator and the environment), and runs tasks when a test
   pumps them, giving
   view logic fast headless tests without pretending to be a platform. Platforms test against
-  their real sinks (web: a browser DOM via `wasm-bindgen-test`; ssr: the server leaf
+  their real sinks (web: a browser DOM via `wasm-bindgen-test`; the server leaf
   natively under a byte-exact snapshot; native: its toolkit).
 
 ## Composition
@@ -673,9 +674,9 @@ order, so the server's stylesheet is byte-compatible with the client's and the c
 order is identical, which hydration relies on. A class cache keyed by the hash of the
 typed props renders the template text on a miss only. The interner, the cache and the
 token and slot registrations are one `StyleBook` both web leaves share, telling each
-leaf's `StyleSink` what to add and remove (csr: one `<style>` element per class; ssr:
-each rule collected as it is interned and emitted with the next flush, the document's
-`<style>` or a streamed chunk's delta).
+leaf's `StyleSink` what to add and remove (the browser: one `<style>` element per
+class; the server: each rule collected as it is interned and emitted with the next
+flush, the document's `<style>` or a streamed chunk's delta).
 
 ## Reactive engine
 
@@ -805,7 +806,7 @@ string tree implement: the records, the element choices, attributes, classes, sl
 token definitions, control state and accessibility, so the two cannot drift; each leaf
 adds only what is its own:
 
-- **csr** (`skene_leaf = "browser"`)—the browser. DOM sink, the stylesheet sink,
+- **browser** (`skene_leaf = "browser"`)—the browser. DOM sink, the stylesheet sink,
   root-level event delegation with a stamped node id (one listener per event type,
   `scroll` and enter/leave included), one shared `ResizeObserver`, hydration
   (creation-order `data-h` markers, loud mismatch, the server's stylesheet adopted rather
@@ -815,7 +816,7 @@ adds only what is its own:
   classes, and the order-keyed resource values no resource adopted dropped), scroll and
   focus restoration keyed by a segment's end anchor, the
   `WebDom` escape trait, the History binding and the head.
-- **ssr** (`skene_leaf = "server"`)—the serializer. Renders its string tree to HTML plus
+- **server** (`skene_leaf = "server"`)—the serializer. Renders its string tree to HTML plus
   the interned stylesheet; drives async to a fixpoint on the host executor, parked until
   a waker fires, before serializing, under a render deadline; streams in document order around `Deferred`
   boundaries with a style delta per chunk; serializes resource state for the client to
@@ -1177,10 +1178,10 @@ during a render lives for that render, as a fetch does. Dropping the socket clos
 ## Router (`skene_common::routing`)
 
 Routing is state: a typed route as a signal, shared by every platform. Each platform binds
-it thinly—web csr to the History API (wrapping a navigation in a view transition when
-the app opts in, through `Router::set_commit`), ssr takes the route as render input,
-the terminal keeps it in memory. SSG enumerates the route table (`StaticRoutes`) to know
-what to render. The router depends on the engine alone.
+it thinly—the browser leaf to the History API (wrapping a navigation in a view
+transition when the app opts in, through `Router::set_commit`), the server leaf takes
+the route as render input, the terminal keeps it in memory. SSG enumerates the route
+table (`StaticRoutes`) to know what to render. The router depends on the engine alone.
 
 ## SSR, SSG, and the server binary
 

@@ -21,7 +21,7 @@
   terminal)—each owning its builder vocabulary, typed to exactly its medium; neither is
   the blessed one. Within a facade, views are realized **once** against its typed platform
   vocabulary—no per-platform `impl View`, no "backend" concept.
-- A **platform** is a crate implementing `Platform`: `skene-web` (the csr and ssr leaves),
+- A **platform** is a crate implementing `Platform`: `skene-web` (the browser and server leaves),
   `skene-headless` (the host platform every facade compiles against off its target, driven
   by tests), later `skene-native`; `skene-tui` carries its own, down to the terminal
   device: its `device`, `tty`, `parse` and `escape` modules are the whole terminal layer, no
@@ -239,8 +239,9 @@
   support it.
 - The **interner contract is load-bearing**: content-addressed class names
   (`skene-{hash:x}` from a wide hash), reference-counted, deterministic and identical
-  across csr and ssr—hydration and stylesheet parity depend on it. The pure core lives
-  in `skene-web` and is shared by both leaves; each layers only its sink.
+  across the browser and server leaves—hydration and stylesheet parity depend on it.
+  The pure core lives in `skene-web` and is shared by both leaves; each layers only its
+  sink.
 - **Painted** content is vello wherever it is realized: a `Canvas` is a vello scene in
   device pixels, drawn with kurbo shapes and peniko brushes, recorded once and replayed
   into whichever `Renderer` the platform owns. The browser leaf renders it into a
@@ -260,10 +261,11 @@
   shadow paints them as a backdrop image beneath every colored cell, one per box,
   its own cells left uncolored so it shows through, and every glyph stays a cell. `Painted`, `Canvas` and `Painting` live in `skene-common`, re-exported
   by its `gui` module. **Embeds** are
-  platform-specific views with platform-exposed constructors (raw DOM element on web csr,
-  real platform controls on native); the payload never crosses a crate boundary. On
-  platforms with a real view hierarchy the platform realizes the tree into it, so embeds
-  and painted layers interleave in z-order by the platform compositor.
+  platform-specific views with platform-exposed constructors (raw DOM element on the
+  web's browser leaf, real platform controls on native); the payload never crosses a
+  crate boundary. On platforms with a real view hierarchy the platform realizes the
+  tree into it, so embeds and painted layers interleave in z-order by the platform
+  compositor.
 - **The TUI targets browser parity.** Wherever the terminal can express it, behavior
   follows a modern browser: layout, features, settings, colors, selection, and every
   interaction's shape—clicks fire on press+release over one target while focus, caret
@@ -491,7 +493,7 @@
   implements over its own seams—a behavior every platform must share is a scenario
   there, and a divergence it finds is a bug in the platform, never a special case in
   the suite. A third-party platform proves itself the same way. Platforms
-  test against their real sinks (web: real DOM via `wasm-bindgen-test`; ssr: the server
+  test against their real sinks (web: real DOM via `wasm-bindgen-test`; the server
   leaf natively under a byte-exact snapshot; native: its toolkit). There is no mock platform.
 - HTTP, WebSockets and timers are userland. `skene-transport` holds the network clients built on
   the public seams alone, in a crate nothing in the framework knows about, so it stands

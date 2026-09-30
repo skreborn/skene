@@ -245,7 +245,7 @@ pub fn V::into_any(self) -> skene_gui::AnyView where Self: core::marker::Sized
 pub fn skene_gui::prelude::derive_scheme(impl core::ops::function::Fn() -> core::option::Option<skene_core::values::color::ColorScheme> + 'static)
 pub fn skene_gui::prelude::derived(impl core::ops::function::Fn() -> skene_core::node::NodeId + 'static) -> skene_core::node::NodeId
 pub fn skene_gui::prelude::empty() -> impl skene_gui::View
-pub fn skene_gui::prelude::render_to_string<V, F>(F) -> skene_web::ssr::Rendered where F: core::ops::function::FnOnce() -> V + 'static, V: skene_gui::IntoView
+pub fn skene_gui::prelude::render_to_string<V, F>(F) -> skene_web::server::Rendered where F: core::ops::function::FnOnce() -> V + 'static, V: skene_gui::IntoView
 pub fn skene_gui::prelude::set_scheme(core::option::Option<skene_core::values::color::ColorScheme>)
 pub fn skene_gui::prelude::stored_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
 pub type skene_gui::prelude::AnyView = skene_core::view::AnyView<skene_gui::ActivePlatform>
@@ -377,8 +377,8 @@ pub fn skene_gui::reconcile<T, I, K>(skene_core::node::NodeId, impl core::ops::f
 pub fn skene_gui::render_main<V, F>(&str, F) where F: core::ops::function::Fn() -> V + core::clone::Clone + 'static, V: skene_gui::IntoView
 pub fn skene_gui::render_page_stream<V, F>(F, impl core::ops::function::FnMut(&str)) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_gui::IntoView
 pub fn skene_gui::render_to_stream<V, F>(F) -> skene_gui::Stream where F: core::ops::function::FnOnce() -> V + 'static, V: skene_gui::IntoView
-pub fn skene_gui::render_to_string<V, F>(F) -> skene_web::ssr::Rendered where F: core::ops::function::FnOnce() -> V + 'static, V: skene_gui::IntoView
-pub fn skene_gui::render_to_string_at<V, F>(&str, F) -> skene_web::ssr::Rendered where F: core::ops::function::FnOnce() -> V + 'static, V: skene_gui::IntoView
+pub fn skene_gui::render_to_string<V, F>(F) -> skene_web::server::Rendered where F: core::ops::function::FnOnce() -> V + 'static, V: skene_gui::IntoView
+pub fn skene_gui::render_to_string_at<V, F>(&str, F) -> skene_web::server::Rendered where F: core::ops::function::FnOnce() -> V + 'static, V: skene_gui::IntoView
 pub fn skene_gui::serve_renders<V, F>(F) where F: core::ops::function::Fn() -> V + core::clone::Clone + 'static, V: skene_gui::IntoView
 pub fn skene_gui::set_scheme(core::option::Option<skene_core::values::color::ColorScheme>)
 pub fn skene_gui::spawn(impl core::future::future::Future<Output = ()> + 'static) -> skene_reactive::spawn::TaskHandle

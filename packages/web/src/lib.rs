@@ -1,8 +1,8 @@
 //! The skene web platform: the [`Web`] platform type, the shared compiler of the property
 //! model to CSS, and two leaves selected by target.
 //!
-//! The browser leaf (`csr`, `skene_leaf = "browser"`) realizes against a live DOM and
-//! the server leaf (`ssr`, `skene_leaf = "server"`) against a string tree, both emitting
+//! The browser leaf (`browser`, `skene_leaf = "browser"`) realizes against a live DOM
+//! and the server leaf (`server`, `skene_leaf = "server"`) against a string tree, both emitting
 //! the same web semantics, so a node styled the same way gets the same
 //! content-addressed class on either leaf and a served page hydrates in place. The
 //! compiler and the element choices are shared; each leaf implements
@@ -18,14 +18,14 @@
 //! DOM-reaching code fails to compile for the server. [`RenderHints`] is the
 //! environment a server render answers with, parsed from a request's client hints.
 
+#[cfg(skene_leaf = "browser")]
+mod browser;
 #[cfg_attr(
   skene_leaf = "host",
   expect(dead_code, reason = "the compiler serves the leaves alone")
 )]
 mod compile;
 mod condition;
-#[cfg(skene_leaf = "browser")]
-mod csr;
 mod declarations;
 #[cfg(not(skene_leaf = "browser"))]
 mod document;
@@ -48,7 +48,7 @@ mod motion;
 #[cfg(not(skene_leaf = "host"))]
 mod realize;
 #[cfg(skene_leaf = "server")]
-mod ssr;
+mod server;
 #[cfg(not(skene_leaf = "host"))]
 mod style_book;
 #[cfg(skene_leaf = "browser")]
@@ -60,11 +60,11 @@ pub mod testing;
 mod token;
 
 #[cfg(skene_leaf = "browser")]
-pub use self::csr::boot_with_dev_state;
+pub use self::browser::boot_with_dev_state;
 #[cfg(skene_leaf = "browser")]
-pub use self::csr::uninstall;
+pub use self::browser::uninstall;
 #[cfg(skene_leaf = "browser")]
-pub use self::csr::{
+pub use self::browser::{
   add_head_element,
   add_head_title,
   adopt_restoration,
@@ -110,7 +110,7 @@ pub use self::hydration::{
   within_lazy,
 };
 #[cfg(skene_leaf = "server")]
-pub use self::ssr::{
+pub use self::server::{
   Rendered,
   StreamPiece,
   add_head_element,

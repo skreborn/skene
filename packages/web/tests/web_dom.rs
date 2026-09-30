@@ -32,10 +32,16 @@ use skene_core::{
 };
 use skene_reactive::{Get, Set, Signal};
 use skene_simple::{SimpleButton, SimpleCheckbox, SimplePicker};
-use skene_web::{Web, WebMarkup, WebTokenValue};
+use skene_web::{
+  Declarations,
+  Web,
+  WebMarkup,
+  WebTokenValue,
+  testing::{Installed, computed, connected_root, document, fresh_root, only_child},
+};
 use wasm_bindgen::JsCast;
 use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
-use web_sys::{Document, Element, HtmlElement, HtmlInputElement, KeyboardEvent, KeyboardEventInit};
+use web_sys::{Element, HtmlElement, HtmlInputElement, KeyboardEvent, KeyboardEventInit};
 
 wasm_bindgen_test_configure!(run_in_browser);
 
@@ -88,67 +94,6 @@ fn red() -> Color {
 
 fn blue() -> Color {
   Color::srgb(0., 0., 1.)
-}
-
-/// A color as the platform renders it.
-fn css(color: Color) -> String {
-  let [lightness, chroma, hue, alpha] = color.to_oklch();
-
-  format!("oklch({lightness} {chroma} {hue} / {alpha})")
-}
-
-fn document() -> Document {
-  web_sys::window()
-    .expect("a window")
-    .document()
-    .expect("a document")
-}
-
-/// Uninstalls the platform and removes the root when it drops, isolating each test.
-struct Installed(Element);
-
-impl Drop for Installed {
-  fn drop(&mut self) {
-    skene_web::uninstall();
-    self.0.remove();
-  }
-}
-
-/// A connected root `<div>`, so computed styles resolve.
-fn connected_root() -> Element {
-  let root = document().create_element("div").expect("a root");
-
-  document()
-    .body()
-    .expect("a body")
-    .append_child(&root)
-    .expect("connect the root");
-
-  root
-}
-
-/// Installs the platform rooted at a fresh connected `<div>`.
-fn fresh_root() -> (Installed, Element) {
-  let root = connected_root();
-
-  skene_web::install(root.clone());
-
-  (Installed(root.clone()), root)
-}
-
-/// The single view element built directly under the root.
-fn only_child(root: &Element) -> Element {
-  root.first_element_child().expect("a built child")
-}
-
-fn computed(element: &Element, property: &str) -> String {
-  web_sys::window()
-    .expect("a window")
-    .get_computed_style(element)
-    .expect("computed style")
-    .expect("a computed style")
-    .get_property_value(property)
-    .expect("a property value")
 }
 
 /// The computed background a `<div>` under `root` gets from the declaration
@@ -250,7 +195,7 @@ fn a_token_color_resolves_through_the_theme() {
   assert_eq!(computed(&scope, "display"), "contents");
   assert_eq!(
     computed(&card, "background-color"),
-    probe(&root, &css(white()))
+    probe(&root, &Declarations::render_color(white()))
   );
   assert!(
     sheet_text().contains(&format!(
@@ -304,7 +249,7 @@ fn a_palette_write_reinks_without_replacing_the_element() {
   assert!(before == after, "the consumer was re-inked, not rebuilt");
   assert_eq!(
     computed(&after, "background-color"),
-    probe(&root, &css(red()))
+    probe(&root, &Declarations::render_color(red()))
   );
   assert_eq!(count.get(), 5);
   assert_eq!(after.text_content().as_deref(), Some("5"));
@@ -331,7 +276,7 @@ fn a_derived_color_stays_below_its_hover_variant() {
 
   assert_eq!(
     computed(&element, "background-color"),
-    probe(&root, &css(white()))
+    probe(&root, &Declarations::render_color(white()))
   );
 
   color.set(blue());
@@ -339,7 +284,7 @@ fn a_derived_color_stays_below_its_hover_variant() {
 
   assert_eq!(
     computed(&element, "background-color"),
-    probe(&root, &css(blue()))
+    probe(&root, &Declarations::render_color(blue()))
   );
 
   let sheet = sheet_text();
@@ -349,7 +294,7 @@ fn a_derived_color_stays_below_its_hover_variant() {
   let hover = sheet
     .find(&format!(
       ".{class}:where(:hover){{background-color:{};}}",
-      css(red())
+      Declarations::render_color(red())
     ))
     .expect("the hover rule holds the variant");
 
@@ -362,7 +307,7 @@ fn a_derived_color_stays_below_its_hover_variant() {
       .style()
       .get_property_value("--skene-color")
       .unwrap(),
-    css(blue())
+    Declarations::render_color(blue())
   );
 }
 
@@ -399,16 +344,16 @@ fn a_derived_token_writes_its_reference_into_the_slot() {
   assert_eq!(slot(), "var(--test-card)");
   assert_eq!(
     computed(&element, "background-color"),
-    probe(&root, &css(white()))
+    probe(&root, &Declarations::render_color(white()))
   );
 
   plain.set(true);
   skene_web::end_turn();
 
-  assert_eq!(slot(), css(red()));
+  assert_eq!(slot(), Declarations::render_color(red()));
   assert_eq!(
     computed(&element, "background-color"),
-    probe(&root, &css(red()))
+    probe(&root, &Declarations::render_color(red()))
   );
 }
 
@@ -782,7 +727,7 @@ fn a_served_page_hydrates_without_mismatch() {
 
   skene_web::hydrate(root.clone(), "", app);
 
-  let guard = Installed(root.clone());
+  let guard = Installed::on(root.clone());
   let card = only_child(&only_child(&root));
 
   assert_eq!(skene_web::hydration_mismatches(), 0);
@@ -793,7 +738,7 @@ fn a_served_page_hydrates_without_mismatch() {
   assert!(block.has_attribute("data-skene-style"));
   assert_eq!(
     computed(&card, "background-color"),
-    probe(&root, &css(white()))
+    probe(&root, &Declarations::render_color(white()))
   );
 
   drop(guard);
@@ -834,7 +779,7 @@ fn a_hydrated_scope_drops_its_served_inline_definitions() {
   root.set_inner_html(&markup);
   skene_web::hydrate(root.clone(), "", app(Signal::opaque(Palette::default())));
 
-  let _guard = Installed(root.clone());
+  let _guard = Installed::on(root.clone());
   let scope = html(&only_child(&root));
 
   assert_eq!(
@@ -847,7 +792,7 @@ fn a_hydrated_scope_drops_its_served_inline_definitions() {
   );
   assert_eq!(
     computed(&only_child(&scope), "background-color"),
-    probe(&root, &css(white()))
+    probe(&root, &Declarations::render_color(white()))
   );
 }
 
@@ -880,7 +825,7 @@ fn a_ticked_input_reports_on_hydration() {
 
   skene_web::hydrate(root.clone(), "", app(checked));
 
-  let _guard = Installed(root.clone());
+  let _guard = Installed::on(root.clone());
 
   assert_eq!(skene_web::hydration_mismatches(), 0);
   assert!(checked.get(), "the reader got there first");

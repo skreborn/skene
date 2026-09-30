@@ -14,45 +14,14 @@ use skene_gui::{
   View,
   derived,
   reactive::Owner,
-  wasm_bindgen::JsValue,
-  web::{self, mount},
+  web::{
+    mount,
+    testing::{fresh_root, tick},
+  },
 };
-use wasm_bindgen_futures::JsFuture;
 use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
-use web_sys::{Document, Element};
 
 wasm_bindgen_test_configure!(run_in_browser);
-
-fn document() -> Document {
-  web_sys::window()
-    .expect("a window")
-    .document()
-    .expect("a document")
-}
-
-/// Uninstalls the platform when it drops, isolating each test.
-struct Installed;
-
-impl Drop for Installed {
-  fn drop(&mut self) {
-    web::uninstall();
-  }
-}
-
-fn fresh_root() -> (Installed, Element) {
-  let root = document().create_element("div").expect("create root div");
-
-  web::install(root.clone());
-
-  (Installed, root)
-}
-
-/// Yields to the event loop, letting a load make progress.
-async fn tick() {
-  JsFuture::from(js_sys::Promise::resolve(&JsValue::UNDEFINED))
-    .await
-    .expect("a resolved promise");
-}
 
 /// Enough turns for a load parked on a few awaits to finish.
 async fn settle() {

@@ -1,4 +1,22 @@
 pub mod skene_web
+pub mod skene_web::testing
+pub struct skene_web::testing::Installed(_)
+impl skene_web::testing::Installed
+pub const fn skene_web::testing::Installed::on(web_sys::features::gen_Element::Element) -> Self
+impl core::fmt::Debug for skene_web::testing::Installed
+pub fn skene_web::testing::Installed::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::ops::drop::Drop for skene_web::testing::Installed
+pub fn skene_web::testing::Installed::drop(&mut self)
+pub fn skene_web::testing::computed(&web_sys::features::gen_Element::Element, &str) -> alloc::string::String
+pub fn skene_web::testing::connected_root() -> web_sys::features::gen_Element::Element
+pub fn skene_web::testing::dispatch(&web_sys::features::gen_Element::Element, &str)
+pub fn skene_web::testing::document() -> web_sys::features::gen_Document::Document
+pub async fn skene_web::testing::frames_until(impl core::ops::function::Fn() -> bool) -> bool
+pub fn skene_web::testing::fresh_root() -> (skene_web::testing::Installed, web_sys::features::gen_Element::Element)
+pub async fn skene_web::testing::next_frame()
+pub fn skene_web::testing::only_child(&web_sys::features::gen_Element::Element) -> web_sys::features::gen_Element::Element
+pub async fn skene_web::testing::tick()
+pub async fn skene_web::testing::wait(core::time::Duration)
 pub enum skene_web::WebTokenValue
 pub skene_web::WebTokenValue::Color(skene_core::leaf::Definition<skene_core::values::color::Color, f32>)
 pub skene_web::WebTokenValue::Dimension(skene_core::leaf::Definition<skene_core::values::dimension::Dimension<f32>, f32>)

@@ -17,70 +17,15 @@ use skene_gui::{
   core::Dimension,
   kurbo::Rect,
   wasm_bindgen::{JsCast, JsValue},
-  web::{self, mount},
+  web::{
+    mount,
+    testing::{frames_until, fresh_root, next_frame},
+  },
 };
 use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
-use web_sys::{CanvasRenderingContext2d, Document, Element, HtmlCanvasElement};
+use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
 
 wasm_bindgen_test_configure!(run_in_browser);
-
-fn document() -> Document {
-  web_sys::window()
-    .expect("a window")
-    .document()
-    .expect("a document")
-}
-
-/// Uninstalls the platform and removes the root when it drops, isolating each test.
-struct Installed(Element);
-
-impl Drop for Installed {
-  fn drop(&mut self) {
-    web::uninstall();
-    self.0.remove();
-  }
-}
-
-/// Installs the platform rooted at a fresh connected `<div>`, returning the guard (drop
-/// it to reset) and that root.
-fn fresh_root() -> (Installed, Element) {
-  let root = document().create_element("div").expect("create root div");
-
-  document()
-    .body()
-    .expect("a body")
-    .append_child(&root)
-    .expect("connect root");
-  web::install(root.clone());
-
-  (Installed(root.clone()), root)
-}
-
-/// Waits for the browser's next rendering step, after which a box is measured and
-/// painted.
-async fn next_frame() {
-  let promise = js_sys::Promise::new(&mut |resolve, _| {
-    let _ = web_sys::window()
-      .expect("a window")
-      .set_timeout_with_callback_and_timeout_and_arguments_0(&resolve, 20);
-  });
-
-  let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
-}
-
-/// Waits for the browser's rendering steps until `condition` holds, for at most two
-/// seconds of them; whether it held.
-async fn frames_until(condition: impl Fn() -> bool) -> bool {
-  for _ in 0..100 {
-    if condition() {
-      return true;
-    }
-
-    next_frame().await;
-  }
-
-  condition()
-}
 
 /// The canvas a painted box at the start of `root` draws into, once it holds one.
 fn canvas_of(root: &web_sys::Element) -> Option<HtmlCanvasElement> {

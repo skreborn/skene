@@ -57,7 +57,11 @@ use skene_core::{
   View,
   Visibility,
 };
-use skene_gui::web::{self, mount};
+use skene_gui::web::{
+  self,
+  mount,
+  testing::{computed, document},
+};
 use skene_headless::{
   Headless,
   box_props,
@@ -76,7 +80,7 @@ use skene_headless::{
 use skene_reactive::{Get, Owner, Set, Signal};
 use wasm_bindgen::JsCast;
 use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
-use web_sys::{Document, Element};
+use web_sys::Element;
 
 wasm_bindgen_test_configure!(run_in_browser);
 
@@ -617,24 +621,6 @@ enum Reading {
   Overflow(Axes<Overflow>),
   /// Nothing: the platform gave no value, or one the harness could not read.
   Missing,
-}
-
-fn document() -> Document {
-  web_sys::window()
-    .expect("a window")
-    .document()
-    .expect("a document")
-}
-
-/// A computed style `property` of `element`.
-fn computed(element: &Element, property: &str) -> String {
-  web_sys::window()
-    .expect("a window")
-    .get_computed_style(element)
-    .expect("computed style")
-    .expect("a computed style")
-    .get_property_value(property)
-    .expect("a property value")
 }
 
 /// Pauses every animation and transition running on `element`, `milliseconds` into

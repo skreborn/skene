@@ -51,6 +51,8 @@ mod realize;
 mod ssr;
 #[cfg(not(skene_leaf = "host"))]
 mod style_book;
+#[cfg(skene_leaf = "browser")]
+pub mod testing;
 #[cfg_attr(
   skene_leaf = "host",
   expect(dead_code, reason = "tokens compile for the leaves alone")

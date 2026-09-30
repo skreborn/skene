@@ -257,11 +257,6 @@ left half-done in a code comment.
     `render_to_stream`; the terminal's `Kind::Control.checked`, `Record::listened`,
     the `interaction::store` alias and `KeyCode::BackTab`; the
     CLI's unreachable Windows `Tty` and its `windows-sys`; `num-traits`.
-    - Copies folded: the seven accessibility query seams headless and the terminal each
-    repeat over the name facts core builds; the helpers the browser tests repeat
-    (`document`, `Installed`, `fresh_root`, `computed`, `only_child` and their kin), into
-    a `skene_web::testing` beside `skene_tui::testing`, which takes the terminal
-    examples' `with_platform` and `locate`.
     - Renames: `Raw*` to `Basic*`; `Show` and `Switch` to `Visibility` and `OneOf`; `Lazy`
     to `AsyncView`; `Composable` to `ConditionTree`; the `Range` behavior and
     `NativeElement::Range` to `Slider`; `Roving` and `RadioMember` to `RadioGroup` and

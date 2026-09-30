@@ -577,7 +577,9 @@
   double, `is_<state>` answers a yes-or-no question, any other read is named for what it
   returns, and a user's gesture composed of events is named for the gesture in the
   platform's `user` module (`user::click`, `user::type_text`). Headless's are the crate's
-  own, reached as `skene_gui::headless`; the terminal's live in `skene_tui::testing`.
+  own, reached as `skene_gui::headless`; the terminal's live in `skene_tui::testing`; a
+  browser test's helpers in `skene_web::testing`; and the accessibility queries every
+  one of them offers are declared by `skene_core::access_queries!`.
 - Make a function or method `const` whenever its body allows it (no trait-method calls such as
   `.into()`, no allocation, no interior mutability). Apply it broadly, and especially to small,
   frequently-constructed types like the geometry and value vocabulary. The API is early and

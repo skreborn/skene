@@ -84,80 +84,18 @@ use skene_gui::{
   head,
   reactive::{Get, Owner, Set, Signal},
   wasm_bindgen::JsCast,
-  web::{self, mount},
+  web::{
+    self,
+    Declarations,
+    mount,
+    testing::{computed, dispatch, document, fresh_root, next_frame, only_child, wait},
+  },
 };
 use skene_simple::gui::prelude::*;
 use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
-use web_sys::{Document, Element, HtmlElement, HtmlInputElement};
+use web_sys::{Element, HtmlElement, HtmlInputElement};
 
 wasm_bindgen_test_configure!(run_in_browser);
-
-fn document() -> Document {
-  web_sys::window()
-    .expect("a window")
-    .document()
-    .expect("a document")
-}
-
-/// Uninstalls the platform and removes the root when it drops, isolating each test.
-struct Installed(Element);
-
-impl Drop for Installed {
-  fn drop(&mut self) {
-    web::uninstall();
-    self.0.remove();
-  }
-}
-
-/// Installs the platform rooted at a fresh connected `<div>`, returning the guard (drop
-/// it to reset) and that root. Build a view under it with [`mount`], then read the
-/// root's subtree; computed styles resolve because the root is connected.
-fn fresh_root() -> (Installed, Element) {
-  let root = document().create_element("div").expect("create root div");
-
-  document()
-    .body()
-    .expect("a body")
-    .append_child(&root)
-    .expect("connect root");
-  web::install(root.clone());
-
-  (Installed(root.clone()), root)
-}
-
-/// The single view element built directly under the root.
-fn only_child(root: &Element) -> Element {
-  root.first_element_child().expect("root has a built child")
-}
-
-/// Waits for the browser's next rendering step, after which a box is measured and
-/// painted.
-async fn next_frame() {
-  wait(Duration::from_millis(20)).await;
-}
-
-/// Waits `duration` on the browser's clock.
-async fn wait(duration: Duration) {
-  let millis = i32::try_from(duration.as_millis()).expect("a short wait");
-  let promise = js_sys::Promise::new(&mut |resolve, _| {
-    let _ = web_sys::window()
-      .expect("a window")
-      .set_timeout_with_callback_and_timeout_and_arguments_0(&resolve, millis);
-  });
-
-  let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
-}
-
-/// A computed style `property` of `element`.
-fn computed(element: &Element, property: &str) -> String {
-  web_sys::window()
-    .expect("a window")
-    .get_computed_style(element)
-    .expect("computed style")
-    .expect("a computed style")
-    .get_property_value(property)
-    .expect("a property value")
-}
 
 /// The computed color a `<div>` under `parent` gets from `color: <value>`, so colors
 /// compare as the engine serializes them.
@@ -174,13 +112,6 @@ fn probe(parent: &Element, value: &str) -> String {
   color
 }
 
-/// A color as the platform renders it.
-fn css(color: Color) -> String {
-  let [lightness, chroma, hue, alpha] = color.to_oklch();
-
-  format!("oklch({lightness} {chroma} {hue} / {alpha})")
-}
-
 fn html(element: &Element) -> HtmlElement {
   element.clone().dyn_into().expect("an HTML element")
 }
@@ -192,16 +123,6 @@ fn child_texts(parent: &Element) -> Vec<String> {
   (0..children.length())
     .map(|index| children.item(index).unwrap().text_content().unwrap())
     .collect()
-}
-
-/// Dispatches a bubbling `name` event on `target`.
-fn dispatch(target: &Element, name: &str) {
-  let init = web_sys::EventInit::new();
-
-  init.set_bubbles(true);
-
-  let event = web_sys::Event::new_with_event_init_dict(name, &init).expect("an event");
-  let _ = target.dispatch_event(&event);
 }
 
 /// A `Deferred` is a streaming boundary only on the server; on the client it builds
@@ -273,7 +194,7 @@ fn a_decorated_text_computes_its_line_style_and_color() {
   assert_eq!(computed(&element, "text-decoration-style"), "wavy");
   assert_eq!(
     computed(&element, "text-decoration-color"),
-    probe(&root, &css(Color::srgb(1., 0., 0.)))
+    probe(&root, &Declarations::render_color(Color::srgb(1., 0., 0.)))
   );
 }
 
@@ -1458,7 +1379,7 @@ fn typography_link_ink_reaches_a_link_and_updates() {
   assert_eq!(link.tag_name(), "A");
   assert_eq!(
     computed(&link, "color"),
-    probe(&scope, &css(Color::srgb(1., 0., 0.)))
+    probe(&scope, &Declarations::render_color(Color::srgb(1., 0., 0.)))
   );
 
   link_ink.set(Color::srgb(0., 0., 1.));
@@ -1466,7 +1387,7 @@ fn typography_link_ink_reaches_a_link_and_updates() {
 
   assert_eq!(
     computed(&link, "color"),
-    probe(&scope, &css(Color::srgb(0., 0., 1.)))
+    probe(&scope, &Declarations::render_color(Color::srgb(0., 0., 1.)))
   );
 }
 
@@ -1500,17 +1421,26 @@ fn a_conditional_palette_after_an_unconditional_one_takes_effect() {
   let scope = only_child(&root);
   let text = only_child(&scope);
 
-  assert_eq!(computed(&text, "color"), probe(&scope, &css(green)));
+  assert_eq!(
+    computed(&text, "color"),
+    probe(&scope, &Declarations::render_color(green))
+  );
 
   conditional.set(false);
   web::end_turn();
 
-  assert_eq!(computed(&text, "color"), probe(&scope, &css(blue)));
+  assert_eq!(
+    computed(&text, "color"),
+    probe(&scope, &Declarations::render_color(blue))
+  );
 
   conditional.set(true);
   web::end_turn();
 
-  assert_eq!(computed(&text, "color"), probe(&scope, &css(green)));
+  assert_eq!(
+    computed(&text, "color"),
+    probe(&scope, &Declarations::render_color(green))
+  );
 }
 
 /// A typography theme sizes, weights, spaces and leads the text beneath it, and a text
@@ -1567,7 +1497,7 @@ fn a_text_entry_takes_the_typography_ink_and_weight() {
 
   assert_eq!(
     computed(&input, "color"),
-    probe(&root, &css(Color::srgb(1., 0., 0.)))
+    probe(&root, &Declarations::render_color(Color::srgb(1., 0., 0.)))
   );
   assert_eq!(computed(&input, "font-weight"), "700");
 }
@@ -1593,7 +1523,7 @@ fn typography_link_ink_skips_non_link_text() {
   );
   assert_ne!(
     computed(&text, "color"),
-    probe(&scope, &css(Color::srgb(1., 0., 0.)))
+    probe(&scope, &Declarations::render_color(Color::srgb(1., 0., 0.)))
   );
 }
 
@@ -2182,7 +2112,10 @@ fn links_are_inked_in_the_link_ink_and_underlined() {
   );
   assert_ne!(
     computed(&link, "color"),
-    probe(&scope, &css(Color::srgb(0.9, 0.9, 0.9)))
+    probe(
+      &scope,
+      &Declarations::render_color(Color::srgb(0.9, 0.9, 0.9))
+    )
   );
   assert_eq!(computed(&link, "text-decoration-line"), "underline");
 }

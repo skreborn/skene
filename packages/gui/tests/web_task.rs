@@ -9,19 +9,11 @@ use std::{cell::Cell, rc::Rc};
 use skene_gui::{
   reactive::{Get, Owner, Set, Signal},
   spawn,
-  wasm_bindgen::JsValue,
+  web::testing::tick,
 };
-use wasm_bindgen_futures::JsFuture;
 use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
 
 wasm_bindgen_test_configure!(run_in_browser);
-
-/// Yields to the event loop, letting spawned work make progress.
-async fn tick() {
-  JsFuture::from(js_sys::Promise::resolve(&JsValue::UNDEFINED))
-    .await
-    .expect("a resolved promise");
-}
 
 /// A task parked on a pending await, so a test can cancel it mid-flight.
 async fn parked() {

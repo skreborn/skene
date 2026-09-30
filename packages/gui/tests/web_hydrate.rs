@@ -28,21 +28,17 @@ use skene_gui::{
   Text,
   Tooltip,
   reactive::Get,
-  wasm_bindgen::{JsCast, JsValue},
-  web::{self, hydrate},
+  wasm_bindgen::JsCast,
+  web::{
+    self,
+    hydrate,
+    testing::{document, only_child, tick},
+  },
 };
-use wasm_bindgen_futures::JsFuture;
 use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
-use web_sys::{Document, Element, HtmlElement};
+use web_sys::{Element, HtmlElement};
 
 wasm_bindgen_test_configure!(run_in_browser);
-
-fn document() -> Document {
-  web_sys::window()
-    .expect("a window")
-    .document()
-    .expect("a document")
-}
 
 /// A detached root holding `markup` as its server-rendered DOM.
 fn server_root(markup: &str) -> Element {
@@ -59,11 +55,6 @@ fn element_count(root: &Element) -> u32 {
     .query_selector_all("*")
     .expect("query descendants")
     .length()
-}
-
-/// The single view element built directly under `root`.
-fn only_child(root: &Element) -> Element {
-  root.first_element_child().expect("a built child")
 }
 
 /// The markup and the stylesheet the server leaf would have produced for `app`:
@@ -289,13 +280,6 @@ fn a_resource_adopts_server_state_without_loading() {
   });
 
   web::uninstall();
-}
-
-/// Yields to the event loop, letting spawned work make progress.
-async fn tick() {
-  JsFuture::from(js_sys::Promise::resolve(&JsValue::UNDEFINED))
-    .await
-    .expect("a resolved promise");
 }
 
 /// An enhancement builds its fallback while hydrating, adopting the server's markup

@@ -10,42 +10,20 @@ use std::fmt::Write as _;
 use js_sys::{Array, Function, Promise, Reflect};
 use skene_gui::{
   prelude::*,
-  web::{self, mount},
+  web::{
+    mount,
+    testing::{document, fresh_root},
+  },
 };
 use wasm_bindgen::{JsCast, JsValue};
 use wasm_bindgen_futures::JsFuture;
 use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
-use web_sys::{
-  Document,
-  Element,
-  HtmlElement,
-  KeyboardEvent,
-  KeyboardEventInit,
-  MouseEvent,
-  MouseEventInit,
-};
+use web_sys::{HtmlElement, KeyboardEvent, KeyboardEventInit, MouseEvent, MouseEventInit};
 
 wasm_bindgen_test_configure!(run_in_browser);
 
 /// axe-core, vendored under `vendor/` with its license.
 const AXE: &str = include_str!("vendor/axe.min.js");
-
-fn document() -> Document {
-  web_sys::window()
-    .expect("a window")
-    .document()
-    .expect("a document")
-}
-
-/// Uninstalls the platform and removes the root when it drops.
-struct Installed(Element);
-
-impl Drop for Installed {
-  fn drop(&mut self) {
-    web::uninstall();
-    self.0.remove();
-  }
-}
 
 /// A property of a JavaScript object as a string, or the empty string.
 fn field(value: &JsValue, name: &str) -> String {
@@ -176,16 +154,7 @@ fn open_context_menu(element: &HtmlElement) {
 /// tooltip, the picker's popup and a context menu.
 #[wasm_bindgen_test]
 async fn the_gallery_raises_no_accessibility_violation() {
-  let root = document().create_element("div").expect("a root");
-
-  document()
-    .body()
-    .expect("a body")
-    .append_child(&root)
-    .expect("connect the root");
-  web::install(root.clone());
-
-  let _guard = Installed(root.clone());
+  let (_guard, _root) = fresh_root();
   let _ = mount(|| gallery::app().into_view().build());
 
   load_axe();

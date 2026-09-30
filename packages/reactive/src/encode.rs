@@ -777,17 +777,23 @@ impl Snapshot for String {
   }
 }
 
+/// The key a present option's value is recorded under.
+const SOME: u32 = crate::hash::field_key("Some");
+
 impl<T: Snapshot> Snapshot for Option<T> {
   fn record(&self, recorder: &mut Recorder) {
     match self {
-      Some(value) => value.record(recorder),
+      Some(value) => recorder.variant(SOME, |recorder| value.record(recorder)),
       None => recorder.unit(),
     }
   }
 
+  /// Restores a present option from its tagged value, or from a bare one as an earlier
+  /// encoding recorded it.
   fn restore(value: Value<'_>) -> Option<Self> {
     match value {
       Value::Unit => Some(None),
+      Value::Variant(SOME, mut reader) => Some(reader.value().and_then(T::restore)),
       other => Some(T::restore(other)),
     }
   }

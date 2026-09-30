@@ -91,3 +91,16 @@ proptest! {
     prop_assert_eq!(decode::<f64>(&encode(&value)).map(f64::to_bits), Some(value.to_bits()));
   }
 }
+
+/// A present option is tagged, so an option of an option and an option of the unit
+/// restore as themselves, and a bare value, as an earlier encoding recorded one,
+/// restores as present.
+#[test]
+fn a_present_option_is_tagged() {
+  assert_eq!(
+    decode::<Option<Option<u8>>>(&encode(&Some(None::<u8>))),
+    Some(Some(None))
+  );
+  assert_eq!(decode::<Option<()>>(&encode(&Some(()))), Some(Some(())));
+  assert_eq!(decode::<Option<u8>>(&encode(&5u8)), Some(Some(5)));
+}

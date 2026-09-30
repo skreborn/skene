@@ -32,6 +32,7 @@ use skene_core::{
   Expr,
   FlexDirection,
   FocusOrder,
+  Handler,
   IntoView,
   ItemAlignment,
   KeyEvent,
@@ -42,16 +43,13 @@ use skene_core::{
   NodeKind,
   Part,
   PlainChild,
-  PlainHandler,
   Platform,
   PointerEvent,
-  PointerHandler,
   Prevent,
   Prevented,
   Role,
   Scene,
   ScrollEvent,
-  ScrollHandler,
   Spacing,
   StaticLeaf,
   StyleExtension,
@@ -103,12 +101,6 @@ use crate::{
   realize::{Source, report_access, with_sink},
 };
 
-/// An observer of an event carrying `E`: a handler with no verdict.
-type Observer<E> = dyn Fn(&E);
-/// A key observer.
-type KeyObserver = Observer<KeyEvent>;
-/// A pointer observer.
-type PointerObserver = Observer<PointerEvent>;
 /// A handler of an event carrying `E`, with its verdict.
 type Acting<E> = dyn Fn(&E) -> Prevent;
 
@@ -463,24 +455,6 @@ impl<P: Platform> ControlChild<P> for AnyView<P> {
   }
 }
 
-/// The handlers a control's user installs, each observing what the behavior did.
-#[derive(Default)]
-struct Observers {
-  click: Vec<Rc<PlainHandler>>,
-  key_down: Vec<Rc<KeyObserver>>,
-  key_up: Vec<Rc<KeyObserver>>,
-  pointer_down: Vec<Rc<PointerObserver>>,
-  pointer_up: Vec<Rc<PointerObserver>>,
-  pointer_move: Vec<Rc<PointerObserver>>,
-  pointer_cancel: Vec<Rc<PointerObserver>>,
-  pointer_enter: Vec<Rc<PlainHandler>>,
-  pointer_leave: Vec<Rc<PlainHandler>>,
-  focus: Vec<Rc<PlainHandler>>,
-  blur: Vec<Rc<PlainHandler>>,
-  wheel: Vec<Rc<Observer<WheelEvent>>>,
-  scroll: Vec<Rc<ScrollHandler>>,
-}
-
 /// A control: focus, events, decoration, a label, parts and accessibility once, over
 /// the [`Behavior`] that says what the interaction is.
 ///
@@ -508,7 +482,7 @@ pub struct Control<P: Platform, B: Behavior<P>, C = NoChild> {
   labelled_by: Option<NodeId>,
   focus_order: Option<Source<FocusOrder>>,
   parts: Vec<(Part, AnyView<P>)>,
-  observers: Observers,
+  observers: Vec<Handler>,
   child: C,
 }
 
@@ -542,7 +516,7 @@ impl<P: Platform, B: Behavior<P>> Control<P, B> {
       accessible_name: None,
       focus_order: None,
       parts: Vec::new(),
-      observers: Observers::default(),
+      observers: Vec::new(),
       child: NoChild,
     }
   }
@@ -843,7 +817,13 @@ impl<P: Platform, B: Behavior<P>, C> Control<P, B, C> {
   /// Runs `action` after the behavior has acted on a click.
   #[inline(always)]
   pub fn handle_click(mut self, action: impl Fn() + 'static) -> Self {
-    self.observers.click.push(Rc::new(action));
+    self
+      .observers
+      .push(Handler::Click(Rc::new(move |_: &ClickEvent| {
+        action();
+
+        Prevent::None
+      })));
 
     self
   }
@@ -852,7 +832,7 @@ impl<P: Platform, B: Behavior<P>, C> Control<P, B, C> {
   /// holds focus.
   #[inline(always)]
   pub fn handle_key_down(mut self, action: impl Fn(&KeyEvent) + 'static) -> Self {
-    self.observers.key_down.push(Rc::new(action));
+    self.observers.push(Handler::KeyDown(observe(action)));
 
     self
   }
@@ -860,7 +840,7 @@ impl<P: Platform, B: Behavior<P>, C> Control<P, B, C> {
   /// Runs `action` on a key released while the control holds focus.
   #[inline(always)]
   pub fn handle_key_up(mut self, action: impl Fn(&KeyEvent) + 'static) -> Self {
-    self.observers.key_up.push(Rc::new(action));
+    self.observers.push(Handler::KeyUp(observe(action)));
 
     self
   }
@@ -869,7 +849,7 @@ impl<P: Platform, B: Behavior<P>, C> Control<P, B, C> {
   /// control.
   #[inline(always)]
   pub fn handle_pointer_down(mut self, action: impl Fn(&PointerEvent) + 'static) -> Self {
-    self.observers.pointer_down.push(Rc::new(action));
+    self.observers.push(Handler::PointerDown(observe(action)));
 
     self
   }
@@ -878,7 +858,7 @@ impl<P: Platform, B: Behavior<P>, C> Control<P, B, C> {
   /// control.
   #[inline(always)]
   pub fn handle_pointer_up(mut self, action: impl Fn(&PointerEvent) + 'static) -> Self {
-    self.observers.pointer_up.push(Rc::new(action));
+    self.observers.push(Handler::PointerUp(observe(action)));
 
     self
   }
@@ -886,7 +866,7 @@ impl<P: Platform, B: Behavior<P>, C> Control<P, B, C> {
   /// Runs `action` after the behavior has acted on the pointer moving over the control.
   #[inline(always)]
   pub fn handle_pointer_move(mut self, action: impl Fn(&PointerEvent) + 'static) -> Self {
-    self.observers.pointer_move.push(Rc::new(action));
+    self.observers.push(Handler::PointerMove(observe(action)));
 
     self
   }
@@ -895,7 +875,7 @@ impl<P: Platform, B: Behavior<P>, C> Control<P, B, C> {
   /// before the platform scrolls by it.
   #[inline(always)]
   pub fn handle_wheel(mut self, action: impl Fn(&WheelEvent) + 'static) -> Self {
-    self.observers.wheel.push(Rc::new(action));
+    self.observers.push(Handler::Wheel(observe(action)));
 
     self
   }
@@ -904,7 +884,7 @@ impl<P: Platform, B: Behavior<P>, C> Control<P, B, C> {
   /// pressed over the control for itself, ending the press without a release.
   #[inline(always)]
   pub fn handle_pointer_cancel(mut self, action: impl Fn(&PointerEvent) + 'static) -> Self {
-    self.observers.pointer_cancel.push(Rc::new(action));
+    self.observers.push(Handler::PointerCancel(observe(action)));
 
     self
   }
@@ -912,7 +892,7 @@ impl<P: Platform, B: Behavior<P>, C> Control<P, B, C> {
   /// Runs `action` when the pointer enters the control.
   #[inline(always)]
   pub fn handle_pointer_enter(mut self, action: impl Fn() + 'static) -> Self {
-    self.observers.pointer_enter.push(Rc::new(action));
+    self.observers.push(Handler::PointerEnter(Rc::new(action)));
 
     self
   }
@@ -920,7 +900,7 @@ impl<P: Platform, B: Behavior<P>, C> Control<P, B, C> {
   /// Runs `action` when the pointer leaves the control.
   #[inline(always)]
   pub fn handle_pointer_leave(mut self, action: impl Fn() + 'static) -> Self {
-    self.observers.pointer_leave.push(Rc::new(action));
+    self.observers.push(Handler::PointerLeave(Rc::new(action)));
 
     self
   }
@@ -928,7 +908,7 @@ impl<P: Platform, B: Behavior<P>, C> Control<P, B, C> {
   /// Runs `action` when focus enters the control or a node inside it from outside.
   #[inline(always)]
   pub fn handle_focus(mut self, action: impl Fn() + 'static) -> Self {
-    self.observers.focus.push(Rc::new(action));
+    self.observers.push(Handler::Focus(Rc::new(action)));
 
     self
   }
@@ -936,7 +916,7 @@ impl<P: Platform, B: Behavior<P>, C> Control<P, B, C> {
   /// Runs `action` when focus leaves the control and every node inside it.
   #[inline(always)]
   pub fn handle_blur(mut self, action: impl Fn() + 'static) -> Self {
-    self.observers.blur.push(Rc::new(action));
+    self.observers.push(Handler::Blur(Rc::new(action)));
 
     self
   }
@@ -944,7 +924,7 @@ impl<P: Platform, B: Behavior<P>, C> Control<P, B, C> {
   /// Runs `action` with the control's new offsets when it scrolls.
   #[inline(always)]
   pub fn handle_scroll(mut self, action: impl Fn(&ScrollEvent) + 'static) -> Self {
-    self.observers.scroll.push(Rc::new(action));
+    self.observers.push(Handler::Scroll(Rc::new(action)));
 
     self
   }
@@ -1231,253 +1211,168 @@ impl<P: Platform, B: Behavior<P>> Actor<P, B> {
     self.behavior.reconcile(&self.handle);
   }
 
-  /// One handler for an event carrying `E`: a disabled control neither acts nor lets the
-  /// observers see it and gives `when_disabled` as its verdict, else the
-  /// behavior acts through `act` when `acts`, the observers see the event after, and
-  /// the behavior's verdict stands.
-  ///
-  /// `None` when neither the behavior nor an observer wants the event.
-  fn handler<E: ?Sized + 'static>(
-    &self,
-    when_disabled: Prevent,
-    acts: bool,
-    act: impl Fn(&B, &E, &ControlHandle<P>) -> Prevent + 'static,
-    observers: Vec<Rc<Observer<E>>>,
-  ) -> Option<Rc<Acting<E>>> {
-    if !acts && observers.is_empty() {
-      return None;
-    }
+  /// The behavior's handler for an event of `kind`, `None` for a kind no behavior
+  /// acts on: a disabled control answers without acting, and a key an input method is
+  /// composing never reaches the behavior.
+  fn acting(&self, kind: EventKind) -> Option<Handler> {
+    let pointer = |phase: PointerPhase| {
+      self.act(kind, move |behavior: &B, event: &PointerEvent, handle| {
+        behavior.on_pointer(phase, event, handle)
+      })
+    };
 
-    let actor = self.clone();
-
-    Some(Rc::new(move |event: &E| {
-      if (actor.disabled)() {
-        return when_disabled;
+    Some(match kind {
+      EventKind::Click => {
+        Handler::ActingClick(self.act(kind, |behavior, _: &ClickEvent, handle| {
+          behavior.on_click(handle)
+        }))
       }
+      EventKind::KeyDown => {
+        Handler::KeyDown(self.act(kind, |behavior, event: &KeyEvent, handle| {
+          if event.composing {
+            Prevent::None
+          }
+          else {
+            behavior.on_key(event, handle)
+          }
+        }))
+      }
+      EventKind::KeyUp => Handler::KeyUp(self.act(kind, |behavior, event: &KeyEvent, handle| {
+        if event.composing {
+          Prevent::None
+        }
+        else {
+          behavior.on_key_up(event, handle)
+        }
+      })),
+      EventKind::PointerDown => Handler::PointerDown(pointer(PointerPhase::Down)),
+      EventKind::PointerUp => Handler::PointerUp(pointer(PointerPhase::Up)),
+      EventKind::PointerMove => Handler::PointerMove(pointer(PointerPhase::Move)),
+      EventKind::PointerCancel => Handler::PointerCancel(pointer(PointerPhase::Cancel)),
+      EventKind::Wheel => Handler::Wheel(self.act(kind, |behavior, event: &WheelEvent, handle| {
+        behavior.on_wheel(event, handle)
+      })),
+      EventKind::Change => {
+        let actor = self.clone();
 
-      let verdict = if acts {
-        act(&actor.behavior, event, &actor.handle)
+        Handler::Change(Rc::new(move |value: &str| {
+          actor.report(|behavior, handle| behavior.on_change(value, handle));
+        }))
+      }
+      EventKind::SelectionChange => {
+        let actor = self.clone();
+
+        Handler::SelectionChange(Rc::new(move |selection: TextSelection| {
+          actor.report(|behavior, handle| behavior.on_selection_change(selection, handle));
+        }))
+      }
+      EventKind::Toggle => {
+        let actor = self.clone();
+
+        Handler::Toggle(Rc::new(move |checked: bool| {
+          actor.report(|behavior, handle| behavior.on_toggle(checked, handle));
+        }))
+      }
+      EventKind::Blur => {
+        let actor = self.clone();
+
+        Handler::Blur(Rc::new(move || actor.behavior.on_blur(&actor.handle)))
+      }
+      _ => return None,
+    })
+  }
+
+  /// `observer` as the control registers it: the events a disabled control answers
+  /// for, it answers without running `observer`.
+  fn gate(&self, observer: Handler) -> Handler {
+    match observer {
+      Handler::Click(run) => Handler::Click(self.gated(EventKind::Click, run)),
+      Handler::KeyDown(run) => Handler::KeyDown(self.gated(EventKind::KeyDown, run)),
+      Handler::KeyUp(run) => Handler::KeyUp(self.gated(EventKind::KeyUp, run)),
+      Handler::PointerDown(run) => Handler::PointerDown(self.gated(EventKind::PointerDown, run)),
+      Handler::PointerUp(run) => Handler::PointerUp(self.gated(EventKind::PointerUp, run)),
+      Handler::PointerMove(run) => Handler::PointerMove(self.gated(EventKind::PointerMove, run)),
+      Handler::PointerCancel(run) => {
+        Handler::PointerCancel(self.gated(EventKind::PointerCancel, run))
+      }
+      Handler::Wheel(run) => Handler::Wheel(self.gated(EventKind::Wheel, run)),
+      observer => observer,
+    }
+  }
+
+  /// `run` for an event of `kind`, answered as a disabled control answers it while
+  /// disabled.
+  fn gated<E: ?Sized + 'static>(&self, kind: EventKind, run: Rc<Acting<E>>) -> Rc<Acting<E>> {
+    self.act(kind, move |_, event, _| run(event))
+  }
+
+  /// A handler for an event of `kind` running `act`, answered as a disabled control
+  /// answers it while disabled: every pointer event and click swallowed, every key and
+  /// wheel let by.
+  fn act<E: ?Sized + 'static>(
+    &self,
+    kind: EventKind,
+    act: impl Fn(&B, &E, &ControlHandle<P>) -> Prevent + 'static,
+  ) -> Rc<Acting<E>> {
+    let actor = self.clone();
+    let when_disabled = match kind {
+      EventKind::Click
+      | EventKind::PointerDown
+      | EventKind::PointerUp
+      | EventKind::PointerMove
+      | EventKind::PointerCancel => Prevent::All,
+      _ => Prevent::None,
+    };
+
+    Rc::new(move |event| {
+      if (actor.disabled)() {
+        when_disabled
       }
       else {
-        Prevent::None
-      };
-
-      for observer in &observers {
-        observer(event);
+        act(&actor.behavior, event, &actor.handle)
       }
-
-      verdict
-    }))
+    })
   }
 }
 
-/// Registers one handler per event the behavior or an observer wants: the behavior
-/// acts first and its verdict stands, the observers see the event after, a key an input
-/// method is composing never reaches the behavior, and a disabled control swallows
-/// every pointer event and click and lets every key by.
-#[expect(
-  clippy::too_many_lines,
-  reason = "one registration per event kind; length is the kind count, not complexity"
-)]
+/// Registers the behavior's handler for each event it acts on, then the observers:
+/// the behavior acts first and its verdict stands, and the observers see what it did.
 fn register<P: Platform, B: Behavior<P>>(
   node: NodeId,
   behavior: &Rc<B>,
   handle: &Rc<ControlHandle<P>>,
   disabled: &Rc<dyn Fn() -> bool>,
-  observers: Observers,
+  observers: Vec<Handler>,
 ) {
-  let listens = behavior.listens();
-  let acts = |kind: EventKind| listens.contains(&kind);
   let actor = Actor {
     behavior: Rc::clone(behavior),
     handle: Rc::clone(handle),
     disabled: Rc::clone(disabled),
   };
-  let Observers {
-    click,
-    key_down,
-    key_up,
-    pointer_down,
-    pointer_up,
-    pointer_move,
-    pointer_cancel,
-    pointer_enter,
-    pointer_leave,
-    focus,
-    blur,
-    wheel,
-    scroll,
-  } = observers;
-  let acting_click = actor.handler(
-    Prevent::All,
-    acts(EventKind::Click),
-    |behavior, (): &(), handle| behavior.on_click(handle),
-    Vec::new(),
-  );
-  let click = actor.handler(
-    Prevent::All,
-    false,
-    |_, (): &(), _| Prevent::None,
-    click
-      .into_iter()
-      .map(|observer| -> Rc<Observer<()>> { Rc::new(move |()| observer()) })
-      .collect(),
-  );
-  let key_down = actor.handler(
-    Prevent::None,
-    acts(EventKind::KeyDown),
-    |behavior: &B, event: &KeyEvent, handle| {
-      if event.composing {
-        Prevent::None
-      }
-      else {
-        behavior.on_key(event, handle)
-      }
-    },
-    key_down,
-  );
-  let key_up = actor.handler(
-    Prevent::None,
-    acts(EventKind::KeyUp),
-    |behavior: &B, event: &KeyEvent, handle| {
-      if event.composing {
-        Prevent::None
-      }
-      else {
-        behavior.on_key_up(event, handle)
-      }
-    },
-    key_up,
-  );
-  let pointer = |phase: PointerPhase, kind: EventKind, observers: Vec<Rc<PointerObserver>>| {
-    actor.handler(
-      Prevent::All,
-      acts(kind),
-      move |behavior: &B, event: &PointerEvent, handle| behavior.on_pointer(phase, event, handle),
-      observers,
-    )
-  };
-  let pointer_down = pointer(PointerPhase::Down, EventKind::PointerDown, pointer_down);
-  let pointer_up = pointer(PointerPhase::Up, EventKind::PointerUp, pointer_up);
-  let pointer_move = pointer(PointerPhase::Move, EventKind::PointerMove, pointer_move);
-  let pointer_cancel = pointer(
-    PointerPhase::Cancel,
-    EventKind::PointerCancel,
-    pointer_cancel,
-  );
-  let wheel = actor.handler(
-    Prevent::None,
-    acts(EventKind::Wheel),
-    |behavior: &B, event: &WheelEvent, handle| behavior.on_wheel(event, handle),
-    wheel,
-  );
-  let change = acts(EventKind::Change).then(|| {
-    let actor = actor.clone();
-
-    Rc::new(move |value: &str| {
-      actor.report(|behavior, handle| behavior.on_change(value, handle));
-    })
-  });
-  let selection_change = acts(EventKind::SelectionChange).then(|| {
-    let actor = actor.clone();
-
-    Rc::new(move |selection: TextSelection| {
-      actor.report(|behavior, handle| behavior.on_selection_change(selection, handle));
-    })
-  });
-  let toggle = acts(EventKind::Toggle).then(|| {
-    let actor = actor.clone();
-
-    Rc::new(move |checked: bool| {
-      actor.report(|behavior, handle| behavior.on_toggle(checked, handle));
-    })
-  });
-  let acting_blur = acts(EventKind::Blur).then(|| {
-    let behavior = Rc::clone(behavior);
-    let handle = Rc::clone(handle);
-
-    Rc::new(move || behavior.on_blur(&handle))
-  });
+  let acting: Vec<Handler> = behavior
+    .listens()
+    .iter()
+    .filter_map(|kind| actor.acting(*kind))
+    .collect();
 
   Scene::<P>::with(|scene| {
-    if let Some(handler) = acting_click {
-      scene.handle_click_acting(node, Rc::new(move |_: &ClickEvent| handler(&())));
+    for handler in acting {
+      scene.handle(node, handler);
     }
 
-    if let Some(handler) = click {
-      scene.handle_click(node, Rc::new(move |_: &ClickEvent| handler(&())));
-    }
-
-    if let Some(handler) = key_down {
-      scene.handle_key_down(node, handler);
-    }
-
-    if let Some(handler) = key_up {
-      scene.handle_key_up(node, handler);
-    }
-
-    if let Some(handler) = pointer_down {
-      scene.handle_pointer_down(node, as_pointer_handler(handler));
-    }
-
-    if let Some(handler) = pointer_up {
-      scene.handle_pointer_up(node, as_pointer_handler(handler));
-    }
-
-    if let Some(handler) = pointer_move {
-      scene.handle_pointer_move(node, as_pointer_handler(handler));
-    }
-
-    if let Some(handler) = pointer_cancel {
-      scene.handle_pointer_cancel(node, as_pointer_handler(handler));
-    }
-
-    if let Some(handler) = change {
-      scene.handle_change(node, handler);
-    }
-
-    if let Some(handler) = selection_change {
-      scene.handle_selection_change(node, handler);
-    }
-
-    if let Some(handler) = toggle {
-      scene.handle_toggle(node, handler);
-    }
-
-    for observer in pointer_enter {
-      scene.handle_pointer_enter(node, observer);
-    }
-
-    for observer in pointer_leave {
-      scene.handle_pointer_leave(node, observer);
-    }
-
-    for observer in focus {
-      scene.handle_focus(node, observer);
-    }
-
-    if let Some(handler) = acting_blur {
-      scene.handle_blur(node, handler);
-    }
-
-    for observer in blur {
-      scene.handle_blur(node, observer);
-    }
-
-    if let Some(handler) = wheel {
-      scene.handle_wheel(node, handler);
-    }
-
-    for observer in scroll {
-      scene.handle_scroll(node, observer);
+    for observer in observers {
+      scene.handle(node, actor.gate(observer));
     }
   });
 }
 
-/// A pointer handler as dispatch stores it.
-#[inline(always)]
-fn as_pointer_handler(handler: Rc<Acting<PointerEvent>>) -> Rc<PointerHandler> {
-  handler
+/// `action` as an observing handler, leaving the verdict to the behavior.
+fn observe<E: ?Sized + 'static>(action: impl Fn(&E) + 'static) -> Rc<Acting<E>> {
+  Rc::new(move |event| {
+    action(event);
+
+    Prevent::None
+  })
 }
 
 /// A button: [`Control`] over [`Activate`].

@@ -1118,8 +1118,8 @@ fn only_the_events_a_behavior_or_a_handler_needs_are_listened_to() {
       EventKind::Click,
       EventKind::KeyDown,
       EventKind::KeyUp,
-      EventKind::Toggle,
       EventKind::Blur,
+      EventKind::Toggle,
     ]
   );
   assert_eq!(

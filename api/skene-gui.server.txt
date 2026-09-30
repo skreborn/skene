@@ -21,6 +21,7 @@ pub use skene_gui::Expr
 pub use skene_gui::FocusOrder
 pub use skene_gui::GuiExt
 pub use skene_gui::GuiProperty
+pub use skene_gui::Handler
 pub use skene_gui::HasChildren
 pub use skene_gui::IntoBrush
 pub use skene_gui::IntoChildOf

@@ -13,6 +13,7 @@ use skene_core::{
   Condition,
   DeclaredBoxStyle,
   Dimension,
+  Handler,
   HasChildren,
   IntoView,
   ItemAlignment,
@@ -551,12 +552,12 @@ impl<P: Platform, C> ContextMenu<P, C> {
       scene.set_part(list, Part::List);
 
       if let Some(bound) = bound {
-        scene.handle_key_down(served, bound);
+        scene.handle(served, Handler::KeyDown(bound));
       }
 
-      scene.handle_context_menu(
+      scene.handle(
         served,
-        Rc::new(move |event: &PointerEvent| {
+        Handler::ContextMenu(Rc::new(move |event: &PointerEvent| {
           generation.set(generation.get_untracked().wrapping_add(1));
 
           if untrack(|| usable.iter().any(|usable| usable())) {
@@ -565,7 +566,7 @@ impl<P: Platform, C> ContextMenu<P, C> {
           }
 
           Prevent::All
-        }),
+        })),
       );
     });
     // The first usable item takes focus as the menu opens; an ordinary effect, so the

@@ -11,6 +11,7 @@ use skene_core::{
   AnyKind,
   Children,
   ClickEvent,
+  Handler,
   HasChildren,
   Layout,
   Modifiers,
@@ -69,9 +70,9 @@ impl<R: Route> View<ActivePlatform> for Link<R> {
     let router = Router::<R>::get();
 
     Scene::<ActivePlatform>::with(|scene| {
-      scene.handle_click(
+      scene.handle(
         node,
-        Rc::new(move |event: &ClickEvent| {
+        Handler::Click(Rc::new(move |event: &ClickEvent| {
           if event.modifiers != Modifiers::NONE {
             return Prevent::None;
           }
@@ -84,7 +85,7 @@ impl<R: Route> View<ActivePlatform> for Link<R> {
           router.navigate(route.clone());
 
           Prevent::Platform
-        }),
+        })),
       );
     });
 

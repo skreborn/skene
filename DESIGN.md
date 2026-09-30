@@ -126,7 +126,10 @@ platform crate, since it is not a shared contract.
   handlers deepest first, folds `Prevented`, and tells the platform what the platform
   may still do. The browser's root delegation, the terminal's hit path and the
   headless platform share one bubbling implementation, so the rule that a view owns the
-  interactions it handles is enforced, and testable, in one place. A click on a native
+  interactions it handles is enforced, and testable, in one place. A node carries one
+  list of `Handler`s, each variant naming its event kind, added through `Scene::handle`;
+  a control adds its behavior's handler for each event the behavior acts on before its
+  observers, and gates both alike while disabled. A click on a native
   web toggle is dispatched *observed* (`dispatch_click_observed`): every handler on the
   path runs except the acting one the behavior registered, since the platform's own flip
   arrives as `change`, and the climb ends at the control, as the acting one's verdict

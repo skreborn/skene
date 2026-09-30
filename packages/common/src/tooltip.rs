@@ -10,6 +10,7 @@ use skene_core::{
   Color,
   Condition,
   DeclaredBoxStyle,
+  Handler,
   IntoView,
   NoChild,
   NodeId,
@@ -220,20 +221,23 @@ fn bind_triggers<P: Platform>(node: NodeId, bubble: NodeId, open: Signal<bool>, 
   };
 
   Scene::<P>::with(|scene| {
-    scene.handle_pointer_enter(node, after(delay, true));
-    scene.handle_pointer_leave(node, after(TOOLTIP_GRACE, false));
-    scene.handle_pointer_enter(bubble, Rc::clone(&cancel));
-    scene.handle_pointer_leave(bubble, after(TOOLTIP_GRACE, false));
-    scene.handle_focus(node, {
-      let open_at_once = at_once(true);
+    scene.handle(node, Handler::PointerEnter(after(delay, true)));
+    scene.handle(node, Handler::PointerLeave(after(TOOLTIP_GRACE, false)));
+    scene.handle(bubble, Handler::PointerEnter(Rc::clone(&cancel)));
+    scene.handle(bubble, Handler::PointerLeave(after(TOOLTIP_GRACE, false)));
+    scene.handle(
+      node,
+      Handler::Focus({
+        let open_at_once = at_once(true);
 
-      Rc::new(move || {
-        if P::focus_visible() {
-          open_at_once();
-        }
-      })
-    });
-    scene.handle_blur(node, at_once(false));
+        Rc::new(move || {
+          if P::focus_visible() {
+            open_at_once();
+          }
+        })
+      }),
+    );
+    scene.handle(node, Handler::Blur(at_once(false)));
   });
 }
 

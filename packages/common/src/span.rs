@@ -11,6 +11,7 @@ use skene_core::{
   ClickHandler,
   Color,
   DeclaredRunStyle,
+  Handler,
   IntoView,
   Layout,
   LinkPolicy,
@@ -197,7 +198,7 @@ where
 
     Scene::<P>::with(|scene| {
       for handler in self.click {
-        scene.handle_click(node, handler);
+        scene.handle(node, Handler::Click(handler));
       }
     });
 

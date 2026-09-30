@@ -14,6 +14,7 @@ use skene_simple::tui::prelude::*;
 use skene_tui::{
   self as tui,
   Activate,
+  Handler,
   PointerButton,
   PointerButtons,
   PointerEvent,
@@ -95,13 +96,13 @@ fn the_terminals_pointer_is_the_primary_mouse() {
     let menu = Rc::clone(&requested);
 
     Scene::<tui::Tui>::with(|scene| {
-      scene.handle_context_menu(
+      scene.handle(
         node,
-        Rc::new(move |event: &PointerEvent| {
+        Handler::ContextMenu(Rc::new(move |event: &PointerEvent| {
           menu.set(Some(event.pointer));
 
           Prevent::None
-        }),
+        })),
       );
     });
 

@@ -350,8 +350,8 @@ impl Platform for Headless {
 
   fn listen(sink: Handle, kind: EventKind) {
     with_record(sink, |record| {
-      if !record.listened.contains(&kind) {
-        record.listened.push(kind);
+      if let Err(at) = record.listened.binary_search(&kind) {
+        record.listened.insert(at, kind);
       }
     });
   }
@@ -1409,7 +1409,7 @@ pub fn slot_leaf(node: NodeId, slot: Slot) -> Option<SlotLeaf> {
   with_record(handle(node)?, |record| record.slots.get(&slot).cloned())?
 }
 
-/// The event kinds `node` has handlers for, in registration order.
+/// The event kinds `node` has handlers for, in [`EventKind`] order.
 #[must_use]
 pub fn listened(node: NodeId) -> Vec<EventKind> {
   end_turn();

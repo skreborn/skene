@@ -5,6 +5,7 @@ use std::{marker::PhantomData, rc::Rc};
 use skene_core::{
   AnyKind,
   AnyView,
+  Handler,
   IntoView,
   KeyEvent,
   NoChild,
@@ -63,9 +64,9 @@ impl<P: Platform> Keymap<P> {
 
     if !bindings.is_empty() {
       Scene::<P>::with(|scene| {
-        scene.handle_key_down(
+        scene.handle(
           node,
-          Rc::new(move |event: &KeyEvent| {
+          Handler::KeyDown(Rc::new(move |event: &KeyEvent| {
             bindings
               .iter()
               .find(|(shortcut, _)| event.matches(shortcut))
@@ -74,7 +75,7 @@ impl<P: Platform> Keymap<P> {
 
                 Prevent::All
               })
-          }),
+          })),
         );
       });
     }

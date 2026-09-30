@@ -235,7 +235,7 @@ impl<N: Scalar> MediaSignals<N> {
 }
 
 /// An event a node can carry handlers for.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[must_use]
 pub enum EventKind {
   /// A press and release on one target.

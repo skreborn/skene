@@ -9,6 +9,7 @@ use skene_core::{
   BoxKeyframe,
   Color,
   DeclaredBoxStyle,
+  Handler,
   HasChildren,
   IntoView,
   Layout,
@@ -313,7 +314,7 @@ impl<P: Platform> View<P> for Overlay<P, AnyView<P>> {
       scene.note_overlay(node, modal);
 
       for handler in dismiss {
-        scene.handle_dismiss(node, handler);
+        scene.handle(node, Handler::Dismiss(handler));
       }
     });
 

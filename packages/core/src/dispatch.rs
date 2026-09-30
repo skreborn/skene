@@ -13,16 +13,18 @@
 use skene_reactive::batch;
 use smallvec::SmallVec;
 
-use super::{Handler, HandlerSet, NodeId, Platform, Scene};
+use super::{Handler, NodeId, Platform, Scene};
 use crate::{
   ClickEvent,
   KeyEvent,
+  PlainHandler,
   PointerEvent,
   Prevent,
   Prevented,
   ScrollEvent,
   TextSelection,
   WheelEvent,
+  handler::{HandlerSet, Pick, Registered},
   task::run_handler,
 };
 
@@ -32,8 +34,14 @@ pub fn dispatch_click<P: Platform>(node: NodeId, event: &ClickEvent) -> Prevente
   bubble::<P, _, _>(
     node,
     |set, out| {
-      out.extend(set.acting_click().iter().cloned());
-      out.extend(set.click().iter().cloned());
+      out.extend(set.select(|handler| match handler {
+        Handler::ActingClick(run) => Some(run),
+        _ => None,
+      }));
+      out.extend(set.select(|handler| match handler {
+        Handler::Click(run) => Some(run),
+        _ => None,
+      }));
 
       false
     },
@@ -47,7 +55,10 @@ pub fn dispatch_click<P: Platform>(node: NodeId, event: &ClickEvent) -> Prevente
 pub fn dispatch_double_click<P: Platform>(node: NodeId, event: &ClickEvent) -> Prevented {
   bubble::<P, _, _>(
     node,
-    all(HandlerSet::double_click),
+    all(|handler| match handler {
+      Handler::DoubleClick(run) => Some(run),
+      _ => None,
+    }),
     |_| (),
     |handler, ()| handler(event),
   )
@@ -63,9 +74,15 @@ pub fn dispatch_click_observed<P: Platform>(node: NodeId, event: &ClickEvent) ->
   bubble::<P, _, _>(
     node,
     |set, out| {
-      out.extend(set.click().iter().cloned());
+      out.extend(set.select(|handler| match handler {
+        Handler::Click(run) => Some(run),
+        _ => None,
+      }));
 
-      !set.acting_click().is_empty()
+      set.has(|handler| match handler {
+        Handler::ActingClick(run) => Some(run),
+        _ => None,
+      })
     },
     |_| (),
     |handler, ()| handler(event),
@@ -77,7 +94,10 @@ pub fn dispatch_click_observed<P: Platform>(node: NodeId, event: &ClickEvent) ->
 pub fn dispatch_key_down<P: Platform>(node: NodeId, event: &KeyEvent) -> Prevented {
   bubble::<P, _, _>(
     node,
-    all(HandlerSet::key_down),
+    all(|handler| match handler {
+      Handler::KeyDown(run) => Some(run),
+      _ => None,
+    }),
     |_| (),
     |handler, ()| handler(event),
   )
@@ -88,7 +108,10 @@ pub fn dispatch_key_down<P: Platform>(node: NodeId, event: &KeyEvent) -> Prevent
 pub fn dispatch_key_up<P: Platform>(node: NodeId, event: &KeyEvent) -> Prevented {
   bubble::<P, _, _>(
     node,
-    all(HandlerSet::key_up),
+    all(|handler| match handler {
+      Handler::KeyUp(run) => Some(run),
+      _ => None,
+    }),
     |_| (),
     |handler, ()| handler(event),
   )
@@ -99,7 +122,10 @@ pub fn dispatch_key_up<P: Platform>(node: NodeId, event: &KeyEvent) -> Prevented
 pub fn dispatch_pointer_down<P: Platform>(node: NodeId, event: &PointerEvent) -> Prevented {
   bubble::<P, _, _>(
     node,
-    all(HandlerSet::pointer_down),
+    all(|handler| match handler {
+      Handler::PointerDown(run) => Some(run),
+      _ => None,
+    }),
     |at| localize::<P>(at, event),
     |handler, event| handler(event),
   )
@@ -111,7 +137,10 @@ pub fn dispatch_pointer_down<P: Platform>(node: NodeId, event: &PointerEvent) ->
 pub fn dispatch_pointer_cancel<P: Platform>(node: NodeId, event: &PointerEvent) -> Prevented {
   bubble::<P, _, _>(
     node,
-    all(HandlerSet::pointer_cancel),
+    all(|handler| match handler {
+      Handler::PointerCancel(run) => Some(run),
+      _ => None,
+    }),
     |at| localize::<P>(at, event),
     |handler, event| handler(event),
   )
@@ -123,7 +152,10 @@ pub fn dispatch_pointer_cancel<P: Platform>(node: NodeId, event: &PointerEvent) 
 pub fn dispatch_wheel<P: Platform>(node: NodeId, event: &WheelEvent) -> Prevented {
   bubble::<P, _, _>(
     node,
-    all(HandlerSet::wheel),
+    all(|handler| match handler {
+      Handler::Wheel(run) => Some(run),
+      _ => None,
+    }),
     |at| {
       let local = localize::<P>(at, &event.position());
 
@@ -142,7 +174,10 @@ pub fn dispatch_wheel<P: Platform>(node: NodeId, event: &WheelEvent) -> Prevente
 pub fn dispatch_pointer_up<P: Platform>(node: NodeId, event: &PointerEvent) -> Prevented {
   bubble::<P, _, _>(
     node,
-    all(HandlerSet::pointer_up),
+    all(|handler| match handler {
+      Handler::PointerUp(run) => Some(run),
+      _ => None,
+    }),
     |at| localize::<P>(at, event),
     |handler, event| handler(event),
   )
@@ -153,7 +188,10 @@ pub fn dispatch_pointer_up<P: Platform>(node: NodeId, event: &PointerEvent) -> P
 pub fn dispatch_pointer_move<P: Platform>(node: NodeId, event: &PointerEvent) -> Prevented {
   bubble::<P, _, _>(
     node,
-    all(HandlerSet::pointer_move),
+    all(|handler| match handler {
+      Handler::PointerMove(run) => Some(run),
+      _ => None,
+    }),
     |at| localize::<P>(at, event),
     |handler, event| handler(event),
   )
@@ -173,14 +211,22 @@ fn localize<P: Platform>(node: NodeId, event: &PointerEvent) -> PointerEvent {
 /// the pointer crossed.
 pub fn notify_pointer_moved<P: Platform>(next: Option<NodeId>) {
   let (left, entered) = Scene::<P>::with(|scene| scene.move_pointer(next));
+  let leave: Pick<PlainHandler> = |handler| match handler {
+    Handler::PointerLeave(run) => Some(run),
+    _ => None,
+  };
+  let enter: Pick<PlainHandler> = |handler| match handler {
+    Handler::PointerEnter(run) => Some(run),
+    _ => None,
+  };
 
   batch(|| {
     for node in left {
-      notify::<P, _>(node, all(HandlerSet::pointer_leave), |handler| handler());
+      notify::<P, _>(node, leave, |handler| handler());
     }
 
     for node in entered {
-      notify::<P, _>(node, all(HandlerSet::pointer_enter), |handler| handler());
+      notify::<P, _>(node, enter, |handler| handler());
     }
   });
 }
@@ -192,14 +238,22 @@ pub fn notify_pointer_moved<P: Platform>(next: Option<NodeId>) {
 /// `:focus-within` changes.
 pub fn notify_focus_moved<P: Platform>(next: Option<NodeId>) {
   let (left, reached) = Scene::<P>::with(|scene| scene.move_focus(next));
+  let blur: Pick<PlainHandler> = |handler| match handler {
+    Handler::Blur(run) => Some(run),
+    _ => None,
+  };
+  let focus: Pick<PlainHandler> = |handler| match handler {
+    Handler::Focus(run) => Some(run),
+    _ => None,
+  };
 
   batch(|| {
     for node in left {
-      notify::<P, _>(node, all(HandlerSet::blur), |handler| handler());
+      notify::<P, _>(node, blur, |handler| handler());
     }
 
     for node in reached {
-      notify::<P, _>(node, all(HandlerSet::focus), |handler| handler());
+      notify::<P, _>(node, focus, |handler| handler());
     }
   });
 }
@@ -207,33 +261,66 @@ pub fn notify_focus_moved<P: Platform>(next: Option<NodeId>) {
 /// Notifies `node` of its new scroll offsets.
 #[inline(always)]
 pub fn notify_scroll<P: Platform>(node: NodeId, event: &ScrollEvent) {
-  notify::<P, _>(node, all(HandlerSet::scroll), |handler| handler(event));
+  notify::<P, _>(
+    node,
+    |handler| match handler {
+      Handler::Scroll(run) => Some(run),
+      _ => None,
+    },
+    |handler| handler(event),
+  );
 }
 
 /// Notifies `node` of its new textual value.
 #[inline(always)]
 pub fn notify_change<P: Platform>(node: NodeId, value: &str) {
-  notify::<P, _>(node, all(HandlerSet::change), |handler| handler(value));
+  notify::<P, _>(
+    node,
+    |handler| match handler {
+      Handler::Change(run) => Some(run),
+      _ => None,
+    },
+    |handler| handler(value),
+  );
 }
 
 /// Notifies `node` of its new selection.
 #[inline(always)]
 pub fn notify_selection_change<P: Platform>(node: NodeId, selection: TextSelection) {
-  notify::<P, _>(node, all(HandlerSet::selection_change), |handler| {
-    handler(selection);
-  });
+  notify::<P, _>(
+    node,
+    |handler| match handler {
+      Handler::SelectionChange(run) => Some(run),
+      _ => None,
+    },
+    |handler| handler(selection),
+  );
 }
 
 /// Notifies `node` of its new checked state.
 #[inline(always)]
 pub fn notify_toggle<P: Platform>(node: NodeId, checked: bool) {
-  notify::<P, _>(node, all(HandlerSet::toggle), |handler| handler(checked));
+  notify::<P, _>(
+    node,
+    |handler| match handler {
+      Handler::Toggle(run) => Some(run),
+      _ => None,
+    },
+    |handler| handler(checked),
+  );
 }
 
 /// Notifies the overlay `node` that the platform dismissed it.
 #[inline(always)]
 pub fn notify_dismiss<P: Platform>(node: NodeId) {
-  notify::<P, _>(node, all(HandlerSet::dismiss), |handler| handler());
+  notify::<P, _>(
+    node,
+    |handler| match handler {
+      Handler::Dismiss(run) => Some(run),
+      _ => None,
+    },
+    |handler| handler(),
+  );
 }
 
 /// Dispatches a context menu request at `node`: `event` is where the menu is asked
@@ -242,21 +329,22 @@ pub fn notify_dismiss<P: Platform>(node: NodeId) {
 pub fn dispatch_context_menu<P: Platform>(node: NodeId, event: &PointerEvent) -> Prevented {
   bubble::<P, _, _>(
     node,
-    all(HandlerSet::context_menu),
+    all(|handler| match handler {
+      Handler::ContextMenu(run) => Some(run),
+      _ => None,
+    }),
     |at| localize::<P>(at, event),
     |handler, event| handler(event),
   )
 }
 
 /// The handlers a dispatch runs on one node, in order.
-type Selected<H> = SmallVec<[Handler<H>; 2]>;
+type Selected<H> = SmallVec<[Registered<H>; 2]>;
 
-/// A selection taking every handler of one list, ending the climb nowhere.
-fn all<H: ?Sized>(
-  list: fn(&HandlerSet) -> &[Handler<H>],
-) -> impl Fn(&HandlerSet, &mut Selected<H>) -> bool {
+/// A selection taking every handler `pick` takes, ending the climb nowhere.
+fn all<H: ?Sized>(pick: Pick<H>) -> impl Fn(&HandlerSet, &mut Selected<H>) -> bool {
   move |set, out| {
-    out.extend(list(set).iter().cloned());
+    out.extend(set.select(pick));
 
     false
   }
@@ -310,13 +398,10 @@ fn bubble<P: Platform, H: ?Sized, E>(
   })
 }
 
-fn notify<P: Platform, H: ?Sized>(
-  node: NodeId,
-  select: impl Fn(&HandlerSet, &mut Selected<H>) -> bool,
-  run: impl Fn(&H),
-) {
+/// Runs the handlers `pick` takes on `node` alone.
+fn notify<P: Platform, H: ?Sized>(node: NodeId, pick: Pick<H>, run: impl Fn(&H)) {
   batch(|| {
-    let (handlers, _) = snapshot::<P, H>(node, select);
+    let (handlers, _) = snapshot::<P, H>(node, all(pick));
 
     for handler in &handlers {
       run_handler(handler.owner(), || run(handler));
@@ -344,6 +429,7 @@ mod tests {
     ClickEvent,
     ClickHandler,
     EventKind,
+    Handler,
     NodeId,
     PointerButton,
     PointerEvent,
@@ -389,9 +475,9 @@ mod tests {
     let log = Rc::new(RefCell::new(Vec::new()));
 
     Scene::<TestPlatform>::with(|scene| {
-      scene.handle_click(outer, record(&log, "outer"));
-      scene.handle_click(inner, record(&log, "inner first"));
-      scene.handle_click(inner, record(&log, "inner second"));
+      scene.handle(outer, Handler::Click(record(&log, "outer")));
+      scene.handle(inner, Handler::Click(record(&log, "inner first")));
+      scene.handle(inner, Handler::Click(record(&log, "inner second")));
     });
 
     assert_eq!(
@@ -427,18 +513,18 @@ mod tests {
     let log = Rc::new(RefCell::new(Vec::new()));
 
     Scene::<TestPlatform>::with(|scene| {
-      scene.handle_click(outer, record(&log, "outer"));
-      scene.handle_click(inner, record(&log, "inner"));
+      scene.handle(outer, Handler::Click(record(&log, "outer")));
+      scene.handle(inner, Handler::Click(record(&log, "inner")));
 
       let stop = Rc::clone(&log);
 
-      scene.handle_click(
+      scene.handle(
         middle,
-        Rc::new(move |_: &ClickEvent| {
+        Handler::Click(Rc::new(move |_: &ClickEvent| {
           stop.borrow_mut().push("middle");
 
           Bubbling::Stop.into()
-        }),
+        })),
       );
     });
 
@@ -462,13 +548,13 @@ mod tests {
     let log = Rc::new(RefCell::new(Vec::new()));
 
     Scene::<TestPlatform>::with(|scene| {
-      scene.handle_click(outer, record(&log, "outer"));
+      scene.handle(outer, Handler::Click(record(&log, "outer")));
 
       let control = Rc::clone(&log);
 
-      scene.handle_click(
+      scene.handle(
         inner,
-        Rc::new(move |_: &ClickEvent| {
+        Handler::Click(Rc::new(move |_: &ClickEvent| {
           let parent = Scene::<TestPlatform>::with(|scene| scene.parent(inner));
 
           control.borrow_mut().push(if parent.is_some() {
@@ -479,7 +565,7 @@ mod tests {
           });
 
           Prevent::Platform
-        }),
+        })),
       );
     });
 
@@ -513,10 +599,10 @@ mod tests {
     };
 
     Scene::<TestPlatform>::with(|scene| {
-      scene.handle_click(inner, record(&log, "inner"));
-      scene.handle_click(middle, record(&log, "observer"));
-      scene.handle_click_acting(middle, acting);
-      scene.handle_click(outer, record(&log, "outer"));
+      scene.handle(inner, Handler::Click(record(&log, "inner")));
+      scene.handle(middle, Handler::Click(record(&log, "observer")));
+      scene.handle(middle, Handler::ActingClick(acting));
+      scene.handle(outer, Handler::Click(record(&log, "outer")));
     });
 
     let _ = dispatch_click::<TestPlatform>(inner, &ClickEvent::new(1));
@@ -540,15 +626,15 @@ mod tests {
     let log = Rc::new(RefCell::new(Vec::new()));
 
     Scene::<TestPlatform>::with(|scene| {
-      scene.handle_click(
+      scene.handle(
         inner,
-        Rc::new(move |_: &ClickEvent| {
+        Handler::Click(Rc::new(move |_: &ClickEvent| {
           Scene::<TestPlatform>::with(|scene| scene.detach(outer, middle));
 
           Prevent::None
-        }),
+        })),
       );
-      scene.handle_click(outer, record(&log, "outer"));
+      scene.handle(outer, Handler::Click(record(&log, "outer")));
     });
 
     let _ = dispatch_click::<TestPlatform>(inner, &ClickEvent::new(1));
@@ -568,8 +654,14 @@ mod tests {
       let outer_log = Rc::clone(&log);
       let inner_log = Rc::clone(&log);
 
-      scene.handle_dismiss(outer, Rc::new(move || outer_log.borrow_mut().push("outer")));
-      scene.handle_dismiss(inner, Rc::new(move || inner_log.borrow_mut().push("inner")));
+      scene.handle(
+        outer,
+        Handler::Dismiss(Rc::new(move || outer_log.borrow_mut().push("outer"))),
+      );
+      scene.handle(
+        inner,
+        Handler::Dismiss(Rc::new(move || inner_log.borrow_mut().push("inner"))),
+      );
     });
 
     notify_dismiss::<TestPlatform>(inner);
@@ -602,8 +694,8 @@ mod tests {
         (inner, "inner enter", "inner leave"),
         (sibling, "sibling enter", "sibling leave"),
       ] {
-        scene.handle_pointer_enter(node, note(enter));
-        scene.handle_pointer_leave(node, note(leave));
+        scene.handle(node, Handler::PointerEnter(note(enter)));
+        scene.handle(node, Handler::PointerLeave(note(leave)));
       }
     });
 
@@ -652,8 +744,8 @@ mod tests {
         (inner, "inner focus", "inner blur"),
         (sibling, "sibling focus", "sibling blur"),
       ] {
-        scene.handle_focus(node, note(focus));
-        scene.handle_blur(node, note(blur));
+        scene.handle(node, Handler::Focus(note(focus)));
+        scene.handle(node, Handler::Blur(note(blur)));
       }
     });
 
@@ -694,8 +786,8 @@ mod tests {
     };
 
     Scene::<TestPlatform>::with(|scene| {
-      scene.handle_pointer_down(outer, observe("outer"));
-      scene.handle_pointer_down(inner, observe("inner"));
+      scene.handle(outer, Handler::PointerDown(observe("outer")));
+      scene.handle(inner, Handler::PointerDown(observe("inner")));
     });
     TestPlatform::set_origin(sink(outer), 10., 100.);
     TestPlatform::set_origin(sink(inner), 30., 120.);
@@ -727,15 +819,15 @@ mod tests {
       let seen = Rc::clone(&seen);
 
       Scene::<TestPlatform>::with(|scene| {
-        scene.handle_click(
+        scene.handle(
           inner,
-          Rc::new(move |_: &ClickEvent| {
+          Handler::Click(Rc::new(move |_: &ClickEvent| {
             seen
               .borrow_mut()
               .push((use_context::<u32>(), Owner::current() == owner));
 
             Prevent::None
-          }),
+          })),
         );
       });
     });
@@ -763,13 +855,13 @@ mod tests {
       let tasks = Rc::clone(&tasks);
 
       Scene::<TestPlatform>::with(|scene| {
-        scene.handle_click(
+        scene.handle(
           inner,
-          Rc::new(move |_: &ClickEvent| {
+          Handler::Click(Rc::new(move |_: &ClickEvent| {
             tasks.borrow_mut().push(count_pending(Box::new(())));
 
             Prevent::None
-          }),
+          })),
         );
       });
     });

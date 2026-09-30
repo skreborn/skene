@@ -46,8 +46,7 @@ left half-done in a code comment.
     so a `Tooltip` or `ContextMenu` around `derived`, `Show` or `Enhance` works;
     `Anchor`, `FocusHandle` and `SizeHandle` merge into one Copy node handle backed by
     the arena, and `Router` turns Copy too; one segment type replaces the five copies
-    of its skeleton, and one `Handler` enum indexed by `EventKind` the three handler
-    tables and 17 `Scene::handle_*` methods; `HasChild` (one slot, which `set_child`
+    of its skeleton; `HasChild` (one slot, which `set_child`
     replaces) and `HasChildren` (segments, which `add_child` appends) split by type,
     `Container` implementing the first alone, and property setters live only on the
     `NoChild` state, making children-last a type error for every wrapper view; `Show`

@@ -21,6 +21,7 @@ pub use skene_tui::DragData
 pub use skene_tui::Errors
 pub use skene_tui::Expr
 pub use skene_tui::FocusOrder
+pub use skene_tui::Handler
 pub use skene_tui::HasChildren
 pub use skene_tui::IntoBrush
 pub use skene_tui::IntoChildOf

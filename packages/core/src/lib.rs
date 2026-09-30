@@ -35,6 +35,7 @@ pub mod executor;
 mod expr;
 mod extension;
 mod fingerprint;
+mod handler;
 mod keyed;
 mod leaf;
 mod motion;
@@ -144,6 +145,15 @@ pub use events::{
 pub use expr::{Expr, ExprEnv, ExprNode, ExprOutput, ExprValue, Length, Number, Quantity};
 pub use extension::{NoProperty, NoValue, StyleExtension};
 pub use fingerprint::Fingerprint;
+pub use handler::{
+  ChangeHandler,
+  Handler,
+  PlainHandler,
+  Registered,
+  ScrollHandler,
+  SelectionHandler,
+  ToggleHandler,
+};
 pub use keyboard_types::{Code, Key, NamedKey};
 pub use keyed::Keyed;
 pub use leaf::{
@@ -192,20 +202,7 @@ pub use run_style::{
 };
 pub use runtime::{reset_root_owner, root_owner};
 pub use scalar::Scalar;
-pub use scene::{
-  Annotated,
-  Annotation,
-  ChangeHandler,
-  Handler,
-  HandlerSet,
-  NodeKind,
-  NodeRecord,
-  PlainHandler,
-  Scene,
-  ScrollHandler,
-  SelectionHandler,
-  ToggleHandler,
-};
+pub use scene::{Annotated, Annotation, NodeKind, NodeRecord, Scene};
 pub use shape::{Declared, Keyframe, Plain, Shape, Static};
 pub use show::Show;
 pub use task::count_pending;

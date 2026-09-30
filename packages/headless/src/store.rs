@@ -97,7 +97,7 @@ pub(crate) struct Record {
   pub slots: FxHashMap<Slot, SlotLeaf>,
   /// A scope's token definitions, as last written.
   pub definitions: Option<Definitions<TokenValue>>,
-  /// The events the node listens to, in the order first asked.
+  /// The events the node listens to, in `EventKind` order.
   pub listened: Vec<EventKind>,
   /// The children attached to the node, in order.
   pub children: Vec<Handle>,

@@ -14,38 +14,32 @@ use skene_core::{
   Bubbling,
   Children,
   ClickEvent,
-  ClickHandler,
   Condition,
   ContainerName,
   DeclaredBoxStyle,
   DragAxes,
   DragData,
-  DragSource,
-  DropHandler,
   DropPhase,
   FocusOrder,
   GridFlow,
   GridTemplate,
   GridTrack,
+  Handler,
   HasChildren,
   Inset,
   ItemAlignment,
   KeyEvent,
-  KeyHandler,
   Layout,
   Leaf,
   NodeId,
   NodeKind,
   PlainChild,
-  PlainHandler,
   Platform,
   PointerEvent,
-  PointerHandler,
   Prevent,
   Role,
   Scene,
   ScrollEvent,
-  ScrollHandler,
   Seal,
   Spacing,
   StaticLeaf,
@@ -54,7 +48,6 @@ use skene_core::{
   Value,
   View,
   WheelEvent,
-  WheelHandler,
   Wrap,
 };
 use skene_reactive::Effect;
@@ -66,27 +59,6 @@ use crate::{
   realize::{Source, bind_box_slot, report_access},
   size::SizeHandle,
 };
-
-/// The handlers a box registers on its node, by event.
-#[derive(Default)]
-struct Handlers {
-  click: Vec<Rc<ClickHandler>>,
-  double_click: Vec<Rc<ClickHandler>>,
-  key_down: Vec<Rc<KeyHandler>>,
-  key_up: Vec<Rc<KeyHandler>>,
-  pointer_down: Vec<Rc<PointerHandler>>,
-  pointer_up: Vec<Rc<PointerHandler>>,
-  pointer_move: Vec<Rc<PointerHandler>>,
-  pointer_cancel: Vec<Rc<PointerHandler>>,
-  pointer_enter: Vec<Rc<PlainHandler>>,
-  pointer_leave: Vec<Rc<PlainHandler>>,
-  focus: Vec<Rc<PlainHandler>>,
-  blur: Vec<Rc<PlainHandler>>,
-  wheel: Vec<Rc<WheelHandler>>,
-  scroll: Vec<Rc<ScrollHandler>>,
-  drag_source: Option<Rc<DragSource>>,
-  drop: Vec<Rc<DropHandler>>,
-}
 
 /// A box with a layout mode, a declared style, a role, a container name, focus and
 /// accessibility, motion, handlers and children of kind `Kind`.
@@ -111,7 +83,7 @@ pub struct LayoutBox<P: Platform, Kind = PlainChild> {
   transition_name: Option<String>,
   destination: Option<String>,
   drag_axes: Option<DragAxes>,
-  handlers: Handlers,
+  handlers: Vec<Handler>,
   anchor: Option<Anchor>,
   focus: Option<FocusHandle<P>>,
   size: Option<SizeHandle<P>>,
@@ -141,7 +113,7 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
       transition_name: None,
       destination: None,
       drag_axes: None,
-      handlers: Handlers::default(),
+      handlers: Vec::new(),
       anchor: None,
       focus: None,
       size: None,
@@ -367,8 +339,9 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
   pub fn handle_click<R: Into<Bubbling>>(mut self, action: impl Fn() -> R + 'static) -> Self {
     self
       .handlers
-      .click
-      .push(Rc::new(move |_: &ClickEvent| verdict(action())));
+      .push(Handler::Click(Rc::new(move |_: &ClickEvent| {
+        verdict(action())
+      })));
 
     self
   }
@@ -382,8 +355,9 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
   ) -> Self {
     self
       .handlers
-      .double_click
-      .push(Rc::new(move |_: &ClickEvent| verdict(action())));
+      .push(Handler::DoubleClick(Rc::new(move |_: &ClickEvent| {
+        verdict(action())
+      })));
 
     self
   }
@@ -395,10 +369,9 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
     mut self,
     action: impl Fn(&KeyEvent) -> R + 'static,
   ) -> Self {
-    self
-      .handlers
-      .key_down
-      .push(Rc::new(move |event| verdict(action(event))));
+    self.handlers.push(Handler::KeyDown(Rc::new(move |event| {
+      verdict(action(event))
+    })));
 
     self
   }
@@ -412,8 +385,7 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
   ) -> Self {
     self
       .handlers
-      .key_up
-      .push(Rc::new(move |event| verdict(action(event))));
+      .push(Handler::KeyUp(Rc::new(move |event| verdict(action(event)))));
 
     self
   }
@@ -427,8 +399,9 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
   ) -> Self {
     self
       .handlers
-      .pointer_down
-      .push(Rc::new(move |event| verdict(action(event))));
+      .push(Handler::PointerDown(Rc::new(move |event| {
+        verdict(action(event))
+      })));
 
     self
   }
@@ -440,10 +413,9 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
     mut self,
     action: impl Fn(&PointerEvent) -> R + 'static,
   ) -> Self {
-    self
-      .handlers
-      .pointer_up
-      .push(Rc::new(move |event| verdict(action(event))));
+    self.handlers.push(Handler::PointerUp(Rc::new(move |event| {
+      verdict(action(event))
+    })));
 
     self
   }
@@ -457,8 +429,9 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
   ) -> Self {
     self
       .handlers
-      .pointer_move
-      .push(Rc::new(move |event| verdict(action(event))));
+      .push(Handler::PointerMove(Rc::new(move |event| {
+        verdict(action(event))
+      })));
 
     self
   }
@@ -467,7 +440,7 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
   /// the box holds [`State::Dragged`](skene_core::State::Dragged) while the drag lasts.
   #[inline(always)]
   pub fn set_drag_data(mut self, data: impl Fn() -> DragData + 'static) -> Self {
-    self.handlers.drag_source = Some(Rc::new(data));
+    self.handlers.push(Handler::DragStart(Rc::new(data)));
 
     self
   }
@@ -479,8 +452,7 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
   pub fn handle_drop<T: 'static>(mut self, action: impl Fn(&T) + 'static) -> Self {
     self
       .handlers
-      .drop
-      .push(Rc::new(move |data: &DragData, phase| {
+      .push(Handler::Drop(Rc::new(move |data: &DragData, phase| {
         let Some(value) = data.value::<T>()
         else {
           return false;
@@ -491,7 +463,7 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
         }
 
         true
-      }));
+      })));
 
     self
   }
@@ -505,8 +477,7 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
   ) -> Self {
     self
       .handlers
-      .wheel
-      .push(Rc::new(move |event| verdict(action(event))));
+      .push(Handler::Wheel(Rc::new(move |event| verdict(action(event)))));
 
     self
   }
@@ -521,8 +492,9 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
   ) -> Self {
     self
       .handlers
-      .pointer_cancel
-      .push(Rc::new(move |event| verdict(action(event))));
+      .push(Handler::PointerCancel(Rc::new(move |event| {
+        verdict(action(event))
+      })));
 
     self
   }
@@ -530,7 +502,7 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
   /// Runs `action` when the pointer enters the box.
   #[inline(always)]
   pub fn handle_pointer_enter(mut self, action: impl Fn() + 'static) -> Self {
-    self.handlers.pointer_enter.push(Rc::new(action));
+    self.handlers.push(Handler::PointerEnter(Rc::new(action)));
 
     self
   }
@@ -538,7 +510,7 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
   /// Runs `action` when the pointer leaves the box.
   #[inline(always)]
   pub fn handle_pointer_leave(mut self, action: impl Fn() + 'static) -> Self {
-    self.handlers.pointer_leave.push(Rc::new(action));
+    self.handlers.push(Handler::PointerLeave(Rc::new(action)));
 
     self
   }
@@ -546,7 +518,7 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
   /// Runs `action` when focus enters the box or a node inside it from outside.
   #[inline(always)]
   pub fn handle_focus(mut self, action: impl Fn() + 'static) -> Self {
-    self.handlers.focus.push(Rc::new(action));
+    self.handlers.push(Handler::Focus(Rc::new(action)));
 
     self
   }
@@ -554,7 +526,7 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
   /// Runs `action` when focus leaves the box and every node inside it.
   #[inline(always)]
   pub fn handle_blur(mut self, action: impl Fn() + 'static) -> Self {
-    self.handlers.blur.push(Rc::new(action));
+    self.handlers.push(Handler::Blur(Rc::new(action)));
 
     self
   }
@@ -562,7 +534,7 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
   /// Runs `action` with the box's new offsets when it scrolls.
   #[inline(always)]
   pub fn handle_scroll(mut self, action: impl Fn(&ScrollEvent) + 'static) -> Self {
-    self.handlers.scroll.push(Rc::new(action));
+    self.handlers.push(Handler::Scroll(Rc::new(action)));
 
     self
   }
@@ -629,10 +601,6 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
   ///
   /// A box builds through this with [`NodeKind::Box`] and [`Platform::create_box`]; a
   /// view realized as another kind supplies its own creation.
-  #[expect(
-    clippy::too_many_lines,
-    reason = "one box's realization in one place; length is the count of what a box carries, not complexity"
-  )]
   pub fn realize(mut self, kind: NodeKind, create: impl FnOnce(BoxProps<P>) -> P::Sink) -> NodeId {
     if let Some(annotation) = Scene::<P>::with(Scene::take_pending_annotation) {
       annotation.apply_to(&mut self.style);
@@ -735,88 +703,9 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
       Effect::render(move |_: Option<()>| report_access::<P>(node, access()));
     }
 
-    let Handlers {
-      click,
-      double_click,
-      key_down,
-      key_up,
-      pointer_down,
-      pointer_up,
-      pointer_move,
-      pointer_cancel,
-      pointer_enter,
-      pointer_leave,
-      focus,
-      blur,
-      wheel,
-      scroll,
-      drag_source,
-      drop,
-    } = self.handlers;
-
     Scene::<P>::with(|scene| {
-      for handler in click {
-        scene.handle_click(node, handler);
-      }
-
-      for handler in double_click {
-        scene.handle_double_click(node, handler);
-      }
-
-      for handler in key_down {
-        scene.handle_key_down(node, handler);
-      }
-
-      for handler in key_up {
-        scene.handle_key_up(node, handler);
-      }
-
-      for handler in pointer_down {
-        scene.handle_pointer_down(node, handler);
-      }
-
-      for handler in pointer_up {
-        scene.handle_pointer_up(node, handler);
-      }
-
-      for handler in pointer_move {
-        scene.handle_pointer_move(node, handler);
-      }
-
-      for handler in pointer_cancel {
-        scene.handle_pointer_cancel(node, handler);
-      }
-
-      for handler in pointer_enter {
-        scene.handle_pointer_enter(node, handler);
-      }
-
-      for handler in pointer_leave {
-        scene.handle_pointer_leave(node, handler);
-      }
-
-      for handler in focus {
-        scene.handle_focus(node, handler);
-      }
-
-      for handler in blur {
-        scene.handle_blur(node, handler);
-      }
-
-      for handler in wheel {
-        scene.handle_wheel(node, handler);
-      }
-
-      for handler in scroll {
-        scene.handle_scroll(node, handler);
-      }
-
-      if let Some(source) = drag_source {
-        scene.handle_drag_source(node, source);
-      }
-
-      for handler in drop {
-        scene.handle_drop(node, handler);
+      for handler in self.handlers {
+        scene.handle(node, handler);
       }
     });
 

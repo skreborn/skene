@@ -99,8 +99,17 @@ impl Snapshot for SnapshotPlace {
 }
 
 impl SnapshotPlace {
-  /// Takes the next place in the current owner's sequence.
+  /// Takes the next place in the current owner's sequence while snapshots are
+  /// recorded, and the root's first place, shared by everything, while they are not;
+  /// see [`record_snapshots`](crate::record_snapshots).
   pub fn next() -> Self {
+    if !crate::snapshot::recording() {
+      return Self {
+        path: UNRECORDED.with(Rc::clone),
+        index: 0,
+      };
+    }
+
     RUNTIME.with(|runtime| {
       let owner = runtime.current_owner.get();
       let mut graph = runtime.graph();
@@ -111,4 +120,9 @@ impl SnapshotPlace {
       }
     })
   }
+}
+
+thread_local! {
+  /// The path every place shares while nothing records.
+  static UNRECORDED: Rc<[Step]> = Rc::from([]);
 }

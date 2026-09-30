@@ -737,7 +737,7 @@ The public API speaks the ecosystem's standard reactive vocabulary:
   ancestor's `here`, a write notifies the reverse, so a row edit over ten thousand
   tracked cells costs the same as over a hundred. Field keys are a hash of the field
   name (or its `#[store(tag)]`), stable under reordering; the value stays a plain struct.
-  A location derives a memo (`derive`), and a keyed location's `entries` and a vector's
+  A location computes a memo (`memo`), and a keyed location's `entries` and a vector's
   `len` subscribe to its shape alone—its own `shape` and its ancestors' `here`—so a
   keyed list follows the collection while each item follows its entry;
   `HasChildren::derive_entries` feeds them to `reconcile` keyed by the entry's key, and
@@ -748,9 +748,11 @@ The public API speaks the ecosystem's standard reactive vocabulary:
   whose value changed while the keys keep their order, the shape and the moved
   positions where they do not—where a write through `update` wakes every element, since
   it could have moved any.
-- **Snapshot identity is positional, and a key anchors it.** A signal registers by the
-  path of steps from the runtime's root owner, its index among its owner's snapshot
-  signals and the hash of its type name. A step is an owner's position among its
+- **Snapshot identity is positional, and a key anchors it.** Nothing registers until
+  something records: a platform calls `record_snapshots` at startup where a dev channel
+  is present, and `restore` implies it, so a production build creates every signal as
+  a transient one. A signal registers by the path of steps from the runtime's root
+  owner, its index among its owner's snapshot signals and the hash of its type name. A step is an owner's position among its
   siblings, or the `Key` of a keyed owner: a keyed step takes no position, so keying
   a sibling shifts none of the positional ones, and a key is the hash of the value it
   was taken from, so `reconcile`'s item key and a view's `set_key` are one concept.

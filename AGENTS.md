@@ -662,8 +662,9 @@
   `rustfmt`/rust-analyzer support, readability, or performance; prefer a function or generic when
   one suffices.
 - All reactive-system work keeps the state snapshot in mind: signal identities must be
-  able to stay stable across two runs of the same binary. Store/restore is on by default
-  and opt-out—the built-in and simple types just work with no tag—so `Signal::new` carries
+  able to stay stable across two runs of the same binary. Store/restore records wherever
+  a dev channel is present at startup, costing a production build nothing, and is
+  opt-out—the built-in and simple types just work with no tag—so `Signal::new` carries
   the `Snapshot` bound, `Signal::transient` opts a signal out and asks nothing of its type, and
   `Signal::tagged` is only an anchor for the positional diff within one owner, and a
   `Key` anchors a whole scope: `reconcile` keys every item's owner by the item's key and

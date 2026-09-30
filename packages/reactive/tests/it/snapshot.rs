@@ -3,7 +3,7 @@
 //! Each test thread carries its own runtime, so a spawned thread stands in for the
 //! next run of the application.
 
-use skene_reactive::{Effect, Get, Key, Owner, Set, Signal, restore, snapshot};
+use skene_reactive::{Effect, Get, Key, Owner, Set, Signal, record_snapshots, restore, snapshot};
 
 /// Runs `first`, then `second` on a fresh runtime with `first`'s snapshot staged.
 fn across_runs<R: Send + 'static>(
@@ -11,6 +11,7 @@ fn across_runs<R: Send + 'static>(
   second: impl FnOnce() -> R + Send + 'static,
 ) -> R {
   let bytes = std::thread::spawn(move || {
+    record_snapshots();
     first();
 
     snapshot()
@@ -268,9 +269,12 @@ fn provided_extras_ride_the_snapshot() {
   assert_eq!(staged, Some(vec![1, 2, 3]));
 }
 
-/// Two live signals of one owner cannot share a tag; two owners may.
+/// Two live signals of one owner cannot share a tag while snapshots are recorded; two
+/// owners may.
 #[test]
 fn tags_are_unique_per_owner() {
+  record_snapshots();
+
   let scope = Owner::new();
   let _first = Signal::tagged("dup", 1u32);
   let _second = scope.enter(|| Signal::tagged("dup", 2u32));

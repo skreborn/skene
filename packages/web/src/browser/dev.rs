@@ -23,6 +23,8 @@ pub fn boot_with_dev_state(boot: impl FnOnce() + 'static) {
     return;
   }
 
+  skene_reactive::record_snapshots();
+
   wasm_bindgen_futures::spawn_local(async move {
     if let Some(bytes) = fetch_state().await {
       skene_reactive::restore(&bytes);

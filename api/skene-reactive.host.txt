@@ -1076,6 +1076,7 @@ pub const fn skene_reactive::field_key(&str) -> u32
 pub fn skene_reactive::on_cleanup(impl core::ops::function::FnOnce() + 'static)
 pub fn skene_reactive::provide_context<T>(T) where T: core::clone::Clone + 'static
 pub fn skene_reactive::provide_extra(&'static str, impl core::ops::function::Fn() -> core::option::Option<alloc::vec::Vec<u8>> + 'static)
+pub fn skene_reactive::record_snapshots()
 pub fn skene_reactive::restore(&[u8])
 pub fn skene_reactive::set_spawner(impl core::ops::function::Fn(skene_reactive::Task) -> skene_reactive::TaskGuard + 'static)
 pub fn skene_reactive::signal<T: skene_reactive::Snapshot>(T) -> (skene_reactive::ReadSignal<T>, skene_reactive::WriteSignal<T>)

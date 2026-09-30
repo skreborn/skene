@@ -82,6 +82,8 @@ pub(crate) fn install() -> Option<()> {
   let mut file = state_file(state)?;
   let mut bytes = Vec::new();
 
+  skene_reactive::record_snapshots();
+
   if file.seek(SeekFrom::Start(0)).is_ok()
     && file.read_to_end(&mut bytes).is_ok()
     && !bytes.is_empty()

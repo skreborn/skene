@@ -6,14 +6,15 @@ lands in. What has shipped is not listed: the code, `DESIGN.md` and the tests de
 it.
 
 The reactive engine's baseline, `cargo bench -p skene-reactive --bench engine` on the
-development machine (2026-09-28), against which a change to the engine is measured:
-creating a thousand signals 71 µs; a signal read outside an effect 4.9 ns; a write
-reaching ten effects 242 ns; a write through a chain of ten memos 414 ns; a store row's
-edit among a hundred tracked rows 150 ns, and among ten thousand 147 ns, and by key
-270 ns and 248 ns (2026-09-29). Versions
-compare only when each is built in its own target directory (a shared one reuses
-another tree's build) and the bench binaries run alternately, pinned to one of the
-fast cores with address randomization off: `setarch -R taskset -c 2 <binary> --bench`.
+development machine (2026-09-30), against which a change to the engine is measured:
+creating a thousand signals with nothing recording snapshots 51 µs; a signal read
+outside an effect 7.0 ns; a write reaching ten effects 299 ns; a write through a chain
+of ten memos 551 ns; a store row's edit among a hundred tracked rows 185 ns, and among
+ten thousand 162 ns, and by key 232 ns and 230 ns; a row pushed among a hundred 231 ns,
+and among ten thousand 6.5 µs. Versions compare only when each is built in its own
+target directory (a shared one reuses another tree's build) and the bench binaries run
+alternately, pinned to one of the fast cores with address randomization off:
+`setarch -R taskset -c 2 <binary> --bench`.
 Callgrind's instruction counts compare two builds whatever the machine's load, cache
 misses aside: `valgrind --tool=callgrind <binary>`, built with
 `CARGO_PROFILE_RELEASE_STRIP=none` so the profile names its functions.
@@ -115,12 +116,9 @@ left half-done in a code comment.
     wake pipe the signals and the executor notifier share, so the terminal loop stops
     waking ten times a second; the server's `sleep` on `futures-timer` rather than a
     thread per call.
-5. **The dev reload costs production nothing.** Snapshot registration happens only
-    where something reads it, a dev channel present at startup or the Android leaf's
-    saved state, so a production `Signal::new` stops costing 74% more than
-    `Signal::transient`; meanwhile a function pointer replaces the boxed serializer. The
-    saved tier is no second API: the Android leaf writes this snapshot (the native
-    family), and the web and the desktop keep none beyond the dev reload.
+5. **The dev reload costs production nothing.** The saved tier is no second API: the
+    Android leaf records and writes this snapshot (the native family), and the web and
+    the desktop keep none beyond the dev reload.
     - Identity: typed owner steps aligned per parent, so a `Show` inserted before a
     component stops resetting everything after it; keyed roots for detached owners and `root_owner`; a
     positional scope per keyed list; grouping by live owner in place of the lossy

@@ -56,7 +56,7 @@ pub use runtime::Runtime;
 pub use selector::Selector;
 pub use signal::{ReadSignal, Signal, WriteSignal, signal};
 pub use skene_macros::{Snapshot, Store};
-pub use snapshot::{provide_extra, restore, snapshot, take_extra};
+pub use snapshot::{provide_extra, record_snapshots, restore, snapshot, take_extra};
 pub use spawn::{Task, TaskGuard, TaskHandle, set_spawner, spawn};
 pub use store::{
   AtIndex,

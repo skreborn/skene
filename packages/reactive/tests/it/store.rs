@@ -675,6 +675,8 @@ fn a_keyed_element_and_its_position_are_one_location() {
 #[test]
 fn store_round_trips_through_a_snapshot() {
   let bytes = std::thread::spawn(|| {
+    skene_reactive::record_snapshots();
+
     let scores = Store::new(vec![0u32; 3]);
 
     scores.at(1).set(7);
@@ -701,6 +703,8 @@ fn store_round_trips_through_a_snapshot() {
 #[test]
 fn tagged_store_round_trips_through_a_snapshot() {
   let bytes = std::thread::spawn(|| {
+    skene_reactive::record_snapshots();
+
     let scores = Store::tagged("store-scores", vec![0u32; 3]);
 
     scores.at(1).set(7);

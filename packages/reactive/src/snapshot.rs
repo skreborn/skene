@@ -18,7 +18,7 @@
 
 use std::{
   any::type_name,
-  cell::RefCell,
+  cell::{Cell, RefCell},
   hash::{Hash, Hasher},
   rc::Rc,
 };
@@ -38,6 +38,9 @@ use crate::{
 /// A snapshot provider's serializer; `None` omits the entry.
 type Serializer = Box<dyn Fn() -> Option<Vec<u8>>>;
 
+/// A snapshot signal's serializer: its value encoded, `None` once it is gone.
+type SignalSerializer = fn(Id) -> Option<Vec<u8>>;
+
 /// One live signal's place in the snapshot.
 struct Registration {
   owner: Id,
@@ -46,7 +49,7 @@ struct Registration {
   order: u64,
   ty: u64,
   tag: Option<&'static str>,
-  serialize: Serializer,
+  serialize: SignalSerializer,
 }
 
 /// One recorded signal, as it crosses runs.
@@ -134,6 +137,23 @@ struct Registry {
 
 thread_local! {
   static REGISTRY: RefCell<Registry> = RefCell::new(Registry::default());
+  static RECORDING: Cell<bool> = const { Cell::new(false) };
+}
+
+/// Registers every snapshot signal created on this thread from now on, so a
+/// [`snapshot`] records it.
+///
+/// A platform calls it at startup where a dev channel is present, before the app
+/// builds; [`restore`] implies it. Until then a snapshot signal is a transient one: it
+/// takes no place and nothing records it.
+pub fn record_snapshots() {
+  RECORDING.set(true);
+}
+
+/// Whether snapshot signals register on this thread.
+#[inline(always)]
+pub(crate) fn recording() -> bool {
+  RECORDING.get()
 }
 
 /// The hash a type is matched by across runs.
@@ -155,16 +175,21 @@ impl<T: Snapshot> Signal<T> {
   ///
   /// # Panics
   ///
-  /// Panics if `tag` is already carried by a live tagged signal of the same owner.
+  /// Panics, while snapshots are recorded, if `tag` is already carried by a live
+  /// tagged signal of the same owner.
   #[cfg_attr(debug_assertions, track_caller)]
   pub fn tagged(tag: &'static str, value: T) -> Self {
     Self::snapshotted(Some(tag), value)
   }
 
   /// Creates a snapshot signal at the current owner's next position, adopting the
-  /// staged value there when one matches.
+  /// staged value there when one matches; a transient one while nothing records.
   #[cfg_attr(debug_assertions, track_caller)]
   pub(crate) fn snapshotted(tag: Option<&'static str>, value: T) -> Self {
+    if !recording() {
+      return Self::transient(value);
+    }
+
     let owner = RUNTIME.with(|runtime| runtime.current_owner.get());
     let SnapshotPlace { path, index } = SnapshotPlace::next();
     let ty = type_hash::<T>();
@@ -174,17 +199,14 @@ impl<T: Snapshot> Signal<T> {
     let signal = Self::transient(value);
 
     with_graph(|graph| graph.mark_snapshotted(signal.id));
-    register(
-      signal.id,
-      owner,
-      path,
-      index,
-      ty,
-      tag,
-      Box::new(move || signal.try_with_untracked(|value| encode(value))),
-    );
+    register(signal.id, owner, path, index, ty, tag, Self::serialize);
 
     signal
+  }
+
+  /// Encodes the value of the snapshot signal `id`, `None` once it is gone.
+  fn serialize(id: Id) -> Option<Vec<u8>> {
+    Self::from_id(id).try_with_untracked(|value| encode(value))
   }
 }
 
@@ -227,7 +249,7 @@ fn register(
   index: u32,
   ty: u64,
   tag: Option<&'static str>,
-  serialize: Serializer,
+  serialize: SignalSerializer,
 ) {
   REGISTRY.with(|registry| {
     let mut registry = registry.borrow_mut();
@@ -304,8 +326,8 @@ pub fn snapshot() -> Vec<u8> {
     let registry = registry.borrow();
     let mut owners: FxHashMap<&[Step], Vec<(u32, u64, Entry)>> = FxHashMap::default();
 
-    for registration in registry.signals.values() {
-      let Some(bytes) = (registration.serialize)()
+    for (id, registration) in &registry.signals {
+      let Some(bytes) = (registration.serialize)(*id)
       else {
         continue;
       };
@@ -353,12 +375,14 @@ pub fn snapshot() -> Vec<u8> {
 }
 
 /// Stages a prior [`snapshot`], so signals created afterwards adopt their staged
-/// values.
+/// values, and records from then on; see [`record_snapshots`].
 ///
 /// Entries whose position never comes up again simply stay unconsumed; bytes that are
 /// not a snapshot stage nothing.
 pub fn restore(bytes: &[u8]) {
   let snapshot: Capture = decode(bytes).unwrap_or_default();
+
+  record_snapshots();
 
   REGISTRY.with(|registry| {
     let mut registry = registry.borrow_mut();
@@ -379,7 +403,9 @@ pub fn restore(bytes: &[u8]) {
   });
 }
 
-/// Clears every registration and staged value, for a runtime reset.
+/// Clears every registration and staged value and stops recording, for a runtime
+/// reset.
 pub(crate) fn clear() {
   let _ = REGISTRY.try_with(|registry| *registry.borrow_mut() = Registry::default());
+  let _ = RECORDING.try_with(|recording| recording.set(false));
 }

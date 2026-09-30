@@ -5,7 +5,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use skene_core::{HasChild, HasChildren, View};
 use skene_headless::{Headless, children, reset, text};
-use skene_reactive::{Get, Owner, Set, Signal, restore, snapshot};
+use skene_reactive::{Get, Owner, Set, Signal, record_snapshots, restore, snapshot};
 
 type Column = skene_common::Column<Headless>;
 type Container = skene_common::Container<Headless>;
@@ -18,6 +18,7 @@ fn across_runs<R: Send + 'static>(
 ) -> R {
   let bytes = std::thread::spawn(move || {
     reset();
+    record_snapshots();
     first();
 
     snapshot()

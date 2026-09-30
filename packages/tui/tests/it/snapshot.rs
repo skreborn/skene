@@ -29,6 +29,7 @@ fn scroll_offsets_survive_a_snapshot_roundtrip() {
   }
 
   let bytes = with_platform(|| {
+    tui::reactive::record_snapshots();
     build();
 
     let _ = testing::render_to_text(6, 4);
@@ -77,6 +78,7 @@ fn restored_scroll_rebuilds_a_lazy_column_window() {
   }
 
   let bytes = with_platform(|| {
+    tui::reactive::record_snapshots();
     build();
 
     let _ = testing::render_to_text(12, 6);
@@ -154,6 +156,7 @@ fn focus_survives_a_snapshot_roundtrip() {
 
   let hits = Rc::new(Cell::new(0));
   let bytes = with_platform(|| {
+    tui::reactive::record_snapshots();
     build(&hits);
 
     let _ = testing::render_to_text(12, 2);
@@ -204,6 +207,7 @@ fn focus_follows_a_keyed_item_across_a_reorder() {
 
   let hits = Rc::new(RefCell::new(Vec::new()));
   let bytes = with_platform(|| {
+    tui::reactive::record_snapshots();
     build(vec![1, 2, 3], &hits);
 
     let _ = testing::render_to_text(12, 3);
@@ -240,6 +244,7 @@ fn a_caret_survives_a_snapshot_roundtrip() {
   }
 
   let bytes = with_platform(|| {
+    tui::reactive::record_snapshots();
     let value = Signal::new(String::from("ac"));
 
     build(value);
@@ -272,6 +277,7 @@ fn a_caret_survives_a_snapshot_roundtrip() {
   });
 
   let bytes = with_platform(|| {
+    tui::reactive::record_snapshots();
     let value = Signal::new(String::from("alpha beta"));
 
     build(value);

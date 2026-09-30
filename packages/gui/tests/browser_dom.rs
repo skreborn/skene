@@ -2438,6 +2438,9 @@ fn focus_and_scroll_survive_a_snapshot_roundtrip() {
 
   let bytes = {
     let (_installed, root) = fresh_root();
+
+    reactive::record_snapshots();
+
     let _ = mount(build);
     let column = only_child(&root);
     let scroller = column.first_element_child().expect("the scroller");
@@ -2504,6 +2507,9 @@ fn focus_follows_a_keyed_item_across_a_reorder() {
 
   let bytes = {
     let (_installed, root) = fresh_root();
+
+    reactive::record_snapshots();
+
     let _ = mount(|| build(vec![1, 2, 3]));
     let field = field_at(&root, 1);
 

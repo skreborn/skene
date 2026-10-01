@@ -18,6 +18,7 @@ skene-macros.workspace = true
 skene-reactive.workspace = true
 smallvec.workspace = true
 taffy = "0.9"
+tracing.workspace = true
 unicode-linebreak = "0.1"
 unicode-segmentation = "1"
 unicode-width = "0.2"

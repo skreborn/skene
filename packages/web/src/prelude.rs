@@ -110,10 +110,6 @@ pub use skene_reactive::{
 };
 pub use tracing::{debug, error, info, trace, warn};
 
-#[cfg(skene_web_platform = "browser")]
-pub use crate::launch;
-#[cfg(skene_web_platform = "server")]
-pub use crate::render_to_string;
 pub use crate::{
   AnyView,
   BasicButton,
@@ -157,6 +153,7 @@ pub use crate::{
   Pinned,
   Point,
   Rect,
+  Resource,
   RichText,
   Row,
   Size,
@@ -177,9 +174,11 @@ pub use crate::{
   derive_scheme,
   derived,
   empty,
+  install_router,
   lazy,
   main,
   media,
   set_scheme,
+  spawn,
   window,
 };

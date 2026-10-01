@@ -264,7 +264,12 @@ pub use skene_terminal::prelude::When
 pub use skene_terminal::prelude::With
 pub use skene_terminal::prelude::Wrap
 pub use skene_terminal::prelude::WriteSignal
+pub use skene_terminal::prelude::debug
+pub use skene_terminal::prelude::error
+pub use skene_terminal::prelude::info
 pub use skene_terminal::prelude::main
+pub use skene_terminal::prelude::trace
+pub use skene_terminal::prelude::warn
 pub mod skene_terminal::prelude::launch
 pub struct skene_terminal::prelude::launch::Clipboard
 pub skene_terminal::prelude::launch::Clipboard::copy: bool

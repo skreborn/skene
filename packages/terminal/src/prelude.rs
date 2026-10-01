@@ -107,6 +107,7 @@ pub use skene_reactive::{
   With,
   WriteSignal,
 };
+pub use tracing::{debug, error, info, trace, warn};
 
 pub use crate::{
   AnyView,

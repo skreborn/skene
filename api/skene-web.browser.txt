@@ -1038,8 +1038,9 @@ pub fn skene_web::prelude::chosen_scheme() -> core::option::Option<skene_foundat
 pub fn skene_web::prelude::derive_scheme(impl core::ops::function::Fn() -> core::option::Option<skene_foundation::spine::values::color::ColorScheme> + 'static)
 pub fn skene_web::prelude::derived(impl core::ops::function::Fn() -> skene_foundation::spine::node::NodeId + 'static) -> skene_foundation::spine::node::NodeId
 pub fn skene_web::prelude::empty() -> impl skene_web::View
-pub fn skene_web::prelude::launch<V, F>(F) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_web::View
+pub fn skene_web::prelude::install_router<R: skene_foundation::routing::Route>(R) -> skene_foundation::routing::Router<R>
 pub fn skene_web::prelude::set_scheme(core::option::Option<skene_foundation::spine::values::color::ColorScheme>)
+pub fn skene_web::prelude::spawn(impl core::future::future::Future<Output = ()> + 'static) -> skene_reactive::spawn::TaskHandle
 pub type skene_web::prelude::AnyView = skene_foundation::spine::view::AnyView<skene_web::ActivePlatform>
 pub type skene_web::prelude::BasicButton<C> = skene_web::Control<skene_foundation::control::activate::Activate, C>
 pub type skene_web::prelude::BasicCheckbox<C> = skene_web::Control<skene_foundation::control::toggle::Toggle, C>
@@ -1060,6 +1061,7 @@ pub type skene_web::prelude::Media = skene_foundation::spine::condition::Media<f
 pub type skene_web::prelude::NodeHandle = skene_foundation::node_handle::NodeHandle<skene_web::ActivePlatform>
 pub type skene_web::prelude::Point = skene_foundation::spine::values::point::Point<f32>
 pub type skene_web::prelude::Rect = skene_foundation::spine::values::rect::Rect<f32>
+pub type skene_web::prelude::Resource<T> = skene_foundation::web::resource::Resource<skene_web::ActivePlatform, T>
 pub type skene_web::prelude::Size = skene_foundation::spine::values::size::Size<f32>
 pub type skene_web::prelude::Spacing = skene_foundation::spine::values::flex::Spacing<f32>
 pub type skene_web::prelude::Token<T> = skene_foundation::spine::token::Token<T, f32>

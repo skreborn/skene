@@ -218,7 +218,7 @@ pub(crate) fn render_box_value(value: &BoxValue<f32, WebStyle>) -> String {
     ),
     BoxValue::Color(color) => Declarations::render_color(*color),
     BoxValue::Cursor(cursor) => Declarations::render_cursor(*cursor).to_owned(),
-    BoxValue::Spacing(spacing) => format!("{}px {}px", spacing.row, spacing.column),
+    BoxValue::Spacing(spacing) => format!("{}px {}px", spacing.vertical, spacing.horizontal),
     BoxValue::Wrap(wrap) => match wrap {
       Wrap::None => "nowrap",
       Wrap::Forward => "wrap",

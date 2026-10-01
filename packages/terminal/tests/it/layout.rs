@@ -490,8 +490,8 @@ fn a_third_party_layout_view_matches_the_built_in() {
 
     fn set_spacing(mut self, spacing: u32) -> Self {
       self.base = self.base.set_spacing(Spacing {
-        row: 0,
-        column: spacing,
+        horizontal: spacing,
+        vertical: 0,
       });
 
       self

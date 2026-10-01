@@ -178,8 +178,8 @@ impl<T: Fingerprint> Fingerprint for Inset<T> {
 
 impl<T: Fingerprint> Fingerprint for Spacing<T> {
   fn fingerprint<H: Hasher>(&self, state: &mut H) {
-    self.row.fingerprint(state);
-    self.column.fingerprint(state);
+    self.horizontal.fingerprint(state);
+    self.vertical.fingerprint(state);
   }
 }
 

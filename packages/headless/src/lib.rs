@@ -1531,7 +1531,7 @@ pub fn resolve_overflow(node: NodeId) -> Option<Axes<Overflow>> {
 }
 
 fn uniform_spacing<T: Copy + PartialEq>(spacing: Spacing<T>) -> Option<T> {
-  (spacing.row == spacing.column).then_some(spacing.row)
+  (spacing.horizontal == spacing.vertical).then_some(spacing.horizontal)
 }
 
 fn uniform_inset<T: Copy + PartialEq>(inset: Inset<T>) -> Option<T> {

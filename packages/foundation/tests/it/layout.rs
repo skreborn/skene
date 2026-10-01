@@ -69,8 +69,8 @@ fn layout_props_reach_box_props_and_a_token_spacing_resolves() {
             .set_item_alignment(ItemAlignment::Center),
           Row::reversed().set_spacing(Expr::<Length>::from(TestPalette::GUTTER) * 2.),
           Row::new().set_spacing(Spacing {
-            row: 1.,
-            column: 2.,
+            horizontal: 2.,
+            vertical: 1.,
           }),
         ))
       })
@@ -113,8 +113,8 @@ fn layout_props_reach_box_props_and_a_token_spacing_resolves() {
   assert_eq!(
     box_props(rows[2]).unwrap().style.spacing,
     Some(StaticValue::from(Spacing {
-      row: 1.,
-      column: 2.
+      horizontal: 2.,
+      vertical: 1.
     }))
   );
   assert_eq!(resolve_length(rows[2], SPACING), None);

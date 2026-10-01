@@ -80,10 +80,10 @@ impl<T> Default for Flexibility<T> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[must_use]
 pub struct Spacing<T> {
-  /// The space between rows.
-  pub row: T,
-  /// The space between columns.
-  pub column: T,
+  /// The horizontal space between neighbors.
+  pub horizontal: T,
+  /// The vertical space between neighbors.
+  pub vertical: T,
 }
 
 impl<T: Copy> Spacing<T> {
@@ -91,8 +91,8 @@ impl<T: Copy> Spacing<T> {
   #[inline(always)]
   pub const fn all(value: T) -> Self {
     Self {
-      row: value,
-      column: value,
+      horizontal: value,
+      vertical: value,
     }
   }
 }

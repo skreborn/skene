@@ -171,8 +171,8 @@ impl<T: Interpolate> Interpolate for Spacing<T> {
   #[inline(always)]
   fn interpolate(&self, to: &Self, amount: f32) -> Option<Self> {
     Some(Self {
-      row: self.row.interpolate(&to.row, amount)?,
-      column: self.column.interpolate(&to.column, amount)?,
+      horizontal: self.horizontal.interpolate(&to.horizontal, amount)?,
+      vertical: self.vertical.interpolate(&to.vertical, amount)?,
     })
   }
 }

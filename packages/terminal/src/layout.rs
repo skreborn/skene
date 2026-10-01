@@ -1305,8 +1305,8 @@ fn apply_box_sizing(out: &mut Style, style: &PlainBox, in_stack: bool) {
 
   if let Some(spacing) = style.spacing {
     out.gap = taffy::geometry::Size {
-      width: length(cell(spacing.column)),
-      height: length(cell(spacing.row)),
+      width: length(cell(spacing.horizontal)),
+      height: length(cell(spacing.vertical)),
     };
   }
 

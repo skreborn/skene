@@ -6173,8 +6173,8 @@ pub fn skene_foundation::Slot::hash<__H: core::hash::Hasher>(&self, &mut __H)
 impl core::marker::Copy for skene_foundation::Slot
 impl core::marker::StructuralPartialEq for skene_foundation::Slot
 pub struct skene_foundation::Spacing<T>
-pub skene_foundation::Spacing::column: T
-pub skene_foundation::Spacing::row: T
+pub skene_foundation::Spacing::horizontal: T
+pub skene_foundation::Spacing::vertical: T
 impl<T: core::marker::Copy> skene_foundation::Spacing<T>
 pub const fn skene_foundation::Spacing<T>::all(T) -> Self
 impl<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension> skene_foundation::IntoBoxValue<N, X> for skene_foundation::Spacing<N>

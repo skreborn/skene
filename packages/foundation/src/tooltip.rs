@@ -127,11 +127,11 @@ impl<P: Platform> Tooltip<P> {
   /// Adds a property transition on the bubble, interpolating that property whenever
   /// its value changes.
   #[inline(always)]
-  pub fn set_transition(
+  pub fn add_transition(
     mut self,
     transition: Transition<<P::StyleExt as StyleExtension>::Property>,
   ) -> Self {
-    self.bubble = self.bubble.set_transition(transition);
+    self.bubble = self.bubble.add_transition(transition);
 
     self
   }
@@ -375,11 +375,11 @@ pub trait TooltipBase<P: Platform>: Wraps<Inner = Tooltip<P>> {
   /// Adds a property transition on the bubble, interpolating that property
   /// whenever its value changes.
   #[must_use]
-  fn set_transition(
+  fn add_transition(
     self,
     transition: Transition<<P::StyleExt as StyleExtension>::Property>,
   ) -> Self {
-    Self::wrap(self.into_inner().set_transition(transition))
+    Self::wrap(self.into_inner().add_transition(transition))
   }
 
   /// Sets where the bubble sits against the described view: above it for `Top`,

@@ -110,7 +110,7 @@ impl<P: Platform> Run<P> {
   /// Adds a property transition, interpolating that property whenever its value
   /// changes.
   #[inline(always)]
-  pub fn set_transition(
+  pub fn add_transition(
     mut self,
     transition: Transition<<P::StyleExt as StyleExtension>::Property>,
   ) -> Self {
@@ -121,7 +121,7 @@ impl<P: Platform> Run<P> {
 
   /// Adds a keyframe animation.
   #[inline(always)]
-  pub fn set_animation(mut self, animation: Animation<RunKeyframe<P>>) -> Self {
+  pub fn add_animation(mut self, animation: Animation<RunKeyframe<P>>) -> Self {
     self.dynamics.animations.push(animation);
 
     self

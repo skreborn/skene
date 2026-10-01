@@ -31,13 +31,13 @@ fn switch_keeps_a_branch_and_its_state_across_a_flip() {
       .add_child(
         OneOf::new()
           .derive_key(move || key.get())
-          .set_case("a", move || {
+          .add_case("a", move || {
             builds.set(builds.get() + 1);
             local.set(Some(Signal::new(1)));
 
             Container::new().set_child(Text::new("a"))
           })
-          .set_case("b", || Text::new("b")),
+          .add_case("b", || Text::new("b")),
       )
       .build()
   });
@@ -87,10 +87,10 @@ fn a_hidden_branch_pauses_until_it_shows() {
       .add_child(
         OneOf::new()
           .derive_key(move || key.get())
-          .set_case("a", move || {
+          .add_case("a", move || {
             Text::derive(move || format!("a {}", count.get()))
           })
-          .set_case("b", || Text::new("b")),
+          .add_case("b", || Text::new("b")),
       )
       .build()
   });
@@ -132,8 +132,8 @@ fn switch_forwards_the_pending_annotation_to_every_branch() {
           .set_child(
             OneOf::new()
               .derive_key(move || key.get())
-              .set_case(1, Container::new)
-              .set_case(2, Container::new),
+              .add_case(1, Container::new)
+              .add_case(2, Container::new),
           ),
       )
       .build()

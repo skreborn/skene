@@ -180,17 +180,17 @@ pub trait MotionBase<P: Platform>: HasLayoutBox<P> {
   /// Adds a property transition, interpolating that property whenever its value
   /// changes.
   #[must_use]
-  fn set_transition(
+  fn add_transition(
     self,
     transition: Transition<<P::StyleExt as StyleExtension>::Property>,
   ) -> Self {
-    self.map_layout_box(|layout| layout.set_transition(transition))
+    self.map_layout_box(|layout| layout.add_transition(transition))
   }
 
   /// Adds a keyframe animation.
   #[must_use]
-  fn set_animation(self, animation: Animation<BoxKeyframe<P>>) -> Self {
-    self.map_layout_box(|layout| layout.set_animation(animation))
+  fn add_animation(self, animation: Animation<BoxKeyframe<P>>) -> Self {
+    self.map_layout_box(|layout| layout.add_animation(animation))
   }
 
   /// Names the box for view transitions: it is paired with the box of the same name
@@ -237,17 +237,17 @@ pub trait RunBase<P: Platform>: HasRun<P> {
   /// Adds a property transition, interpolating that property whenever its value
   /// changes.
   #[must_use]
-  fn set_transition(
+  fn add_transition(
     self,
     transition: Transition<<P::StyleExt as StyleExtension>::Property>,
   ) -> Self {
-    self.map_run(|run| run.set_transition(transition))
+    self.map_run(|run| run.add_transition(transition))
   }
 
   /// Adds a keyframe animation.
   #[must_use]
-  fn set_animation(self, animation: Animation<RunKeyframe<P>>) -> Self {
-    self.map_run(|run| run.set_animation(animation))
+  fn add_animation(self, animation: Animation<RunKeyframe<P>>) -> Self {
+    self.map_run(|run| run.add_animation(animation))
   }
 }
 

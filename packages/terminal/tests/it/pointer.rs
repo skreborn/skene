@@ -449,7 +449,7 @@ fn link_click_opens_the_destination() {
   with_platform(|| {
     let _ = terminal::mount(|| {
       RichText::new()
-        .set_spans([
+        .add_spans([
           Span::new("read the "),
           Span::new("docs").set_link("https://example.com/docs"),
         ])

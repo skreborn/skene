@@ -27,7 +27,9 @@ use syn::{
 
 /// The methods that give a view its content, which a builder chain ends with.
 const CHILD_SETTERS: &[&str] = &[
+  "add_case",
   "add_child",
+  "add_spans",
   "derive_child",
   "derive_children",
   "derive_entries",
@@ -37,7 +39,7 @@ const CHILD_SETTERS: &[&str] = &[
 ];
 
 /// The prefixes of a builder's property and handler methods.
-const PROPERTY_PREFIXES: &[&str] = &["derive_", "handle_", "set_"];
+const PROPERTY_PREFIXES: &[&str] = &["add_", "derive_", "handle_", "set_"];
 
 /// Words the public surface never uses, the framework's own vocabulary standing in.
 const BANNED_WORDS: &[&str] = &["backend", "display", "gap", "justify", "widget"];

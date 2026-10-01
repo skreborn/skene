@@ -3870,8 +3870,8 @@ impl<P: skene_foundation::Platform> skene_foundation::HasLayoutBox<P> for skene_
 pub type skene_foundation::Container<P>::Kind = skene_foundation::PlainChild
 pub fn skene_foundation::Container<P>::map_layout_box(self, impl core::ops::function::FnOnce(skene_foundation::LayoutBox<P, skene_foundation::PlainChild>) -> skene_foundation::LayoutBox<P, skene_foundation::PlainChild>) -> Self
 impl<P: skene_foundation::Platform> skene_foundation::MotionBase<P> for skene_foundation::Container<P>
-pub fn skene_foundation::Container<P>::set_animation(self, skene_foundation::Animation<skene_foundation::BoxKeyframe<P>>) -> Self
-pub fn skene_foundation::Container<P>::set_transition(self, skene_foundation::Transition<<<P as skene_foundation::Platform>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
+pub fn skene_foundation::Container<P>::add_animation(self, skene_foundation::Animation<skene_foundation::BoxKeyframe<P>>) -> Self
+pub fn skene_foundation::Container<P>::add_transition(self, skene_foundation::Transition<<<P as skene_foundation::Platform>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
 pub fn skene_foundation::Container<P>::set_transition_name(self, impl core::convert::Into<alloc::string::String>) -> Self
 impl<P: skene_foundation::Platform> skene_foundation::View<P> for skene_foundation::Container<P>
 pub fn skene_foundation::Container<P>::build(self) -> skene_foundation::NodeId
@@ -3909,6 +3909,7 @@ impl<N: skene_foundation::Scalar> core::default::Default for skene_foundation::C
 pub fn skene_foundation::ContainerSizes<N>::default() -> Self
 pub struct skene_foundation::ContextMenu<P: skene_foundation::Platform, C>
 impl<P: skene_foundation::Platform> skene_foundation::ContextMenu<P>
+pub fn skene_foundation::ContextMenu<P>::add_transition(self, skene_foundation::Transition<<<P as skene_foundation::Platform>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
 pub fn skene_foundation::ContextMenu<P>::derive_item_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::ContextMenu<P>::derive_item_cursor<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::MouseCursor>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::ContextMenu<P>::derive_item_padding<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -3924,7 +3925,6 @@ pub fn skene_foundation::ContextMenu<P>::set_separator_color(self, impl core::co
 pub fn skene_foundation::ContextMenu<P>::set_separator_thickness(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::ContextMenu<P>::set_shortcut_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::ContextMenu<P>::set_shortcut_spacing(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Spacing<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
-pub fn skene_foundation::ContextMenu<P>::set_transition(self, skene_foundation::Transition<<<P as skene_foundation::Platform>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
 impl<P: skene_foundation::Platform> skene_foundation::ContextMenu<P>
 pub fn skene_foundation::ContextMenu<P>::new() -> Self
 pub fn skene_foundation::ContextMenu<P>::serve(self, skene_foundation::NodeId) -> skene_foundation::NodeId
@@ -4068,8 +4068,8 @@ impl<P: skene_foundation::Platform, B: skene_foundation::Behavior<P>> skene_foun
 pub type skene_foundation::Control<P, B>::Kind = skene_foundation::PlainChild
 pub fn skene_foundation::Control<P, B>::map_layout_box(self, impl core::ops::function::FnOnce(skene_foundation::LayoutBox<P, skene_foundation::PlainChild>) -> skene_foundation::LayoutBox<P, skene_foundation::PlainChild>) -> Self
 impl<P: skene_foundation::Platform, B: skene_foundation::Behavior<P>> skene_foundation::MotionBase<P> for skene_foundation::Control<P, B>
-pub fn skene_foundation::Control<P, B>::set_animation(self, skene_foundation::Animation<skene_foundation::BoxKeyframe<P>>) -> Self
-pub fn skene_foundation::Control<P, B>::set_transition(self, skene_foundation::Transition<<<P as skene_foundation::Platform>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
+pub fn skene_foundation::Control<P, B>::add_animation(self, skene_foundation::Animation<skene_foundation::BoxKeyframe<P>>) -> Self
+pub fn skene_foundation::Control<P, B>::add_transition(self, skene_foundation::Transition<<<P as skene_foundation::Platform>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
 pub fn skene_foundation::Control<P, B>::set_transition_name(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub struct skene_foundation::ControlHandle<P: skene_foundation::Platform>
 impl<P: skene_foundation::Platform> skene_foundation::ControlHandle<P>
@@ -4790,6 +4790,8 @@ impl<P: skene_foundation::Platform> core::convert::From<alloc::string::String> f
 pub fn skene_foundation::Label<P>::from(alloc::string::String) -> Self
 pub struct skene_foundation::LayoutBox<P: skene_foundation::Platform, Kind>
 impl<P: skene_foundation::Platform, Kind: 'static> skene_foundation::LayoutBox<P, Kind>
+pub fn skene_foundation::LayoutBox<P, Kind>::add_animation(self, skene_foundation::Animation<skene_foundation::BoxKeyframe<P>>) -> Self
+pub fn skene_foundation::LayoutBox<P, Kind>::add_transition(self, skene_foundation::Transition<<<P as skene_foundation::Platform>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
 pub fn skene_foundation::LayoutBox<P, Kind>::bind_handle(self, skene_foundation::NodeHandle<P>) -> Self
 pub fn skene_foundation::LayoutBox<P, Kind>::derive_accessibility(self, impl core::ops::function::Fn() -> alloc::vec::Vec<skene_foundation::AccessProp> + 'static) -> Self
 pub fn skene_foundation::LayoutBox<P, Kind>::derive_alignment<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Alignment>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -4824,7 +4826,6 @@ pub fn skene_foundation::LayoutBox<P, Kind>::handle_wheel<R: core::convert::Into
 pub fn skene_foundation::LayoutBox<P, Kind>::new(skene_foundation::Layout) -> Self
 pub fn skene_foundation::LayoutBox<P, Kind>::set_accessibility(self, impl core::iter::traits::collect::IntoIterator<Item = skene_foundation::AccessProp>) -> Self
 pub fn skene_foundation::LayoutBox<P, Kind>::set_alignment(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Alignment, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
-pub fn skene_foundation::LayoutBox<P, Kind>::set_animation(self, skene_foundation::Animation<skene_foundation::BoxKeyframe<P>>) -> Self
 pub fn skene_foundation::LayoutBox<P, Kind>::set_arrangement(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Arrangement, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::LayoutBox<P, Kind>::set_columns(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::GridTemplate<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub const fn skene_foundation::LayoutBox<P, Kind>::set_container_name(self, skene_foundation::ContainerName) -> Self
@@ -4845,7 +4846,6 @@ pub fn skene_foundation::LayoutBox<P, Kind>::set_padding(self, impl core::conver
 pub const fn skene_foundation::LayoutBox<P, Kind>::set_role(self, accesskit::Role) -> Self
 pub fn skene_foundation::LayoutBox<P, Kind>::set_rows(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::GridTemplate<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::LayoutBox<P, Kind>::set_spacing(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Spacing<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
-pub fn skene_foundation::LayoutBox<P, Kind>::set_transition(self, skene_foundation::Transition<<<P as skene_foundation::Platform>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
 pub fn skene_foundation::LayoutBox<P, Kind>::set_transition_name(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_foundation::LayoutBox<P, Kind>::set_wrap(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Wrap, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub const fn skene_foundation::LayoutBox<P, Kind>::style_mut(&mut self) -> &mut skene_foundation::DeclaredBoxStyle<P>
@@ -5310,9 +5310,9 @@ impl core::fmt::Debug for skene_foundation::Observation
 pub fn skene_foundation::Observation::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_foundation::OneOf<P: skene_foundation::Platform, K>
 impl<P: skene_foundation::Platform, K: core::cmp::PartialEq + 'static> skene_foundation::OneOf<P, K>
+pub fn skene_foundation::OneOf<P, K>::add_case<V: skene_foundation::View<P>>(self, K, impl core::ops::function::FnOnce() -> V + 'static) -> Self
 pub fn skene_foundation::OneOf<P, K>::derive_key(self, impl core::ops::function::Fn() -> K + 'static) -> Self
 pub const fn skene_foundation::OneOf<P, K>::new() -> Self
-pub fn skene_foundation::OneOf<P, K>::set_case<V: skene_foundation::View<P>>(self, K, impl core::ops::function::FnOnce() -> V + 'static) -> Self
 pub fn skene_foundation::OneOf<P, K>::set_key(self, K) -> Self where K: core::clone::Clone
 impl<P: skene_foundation::Platform, K: core::cmp::PartialEq + 'static> core::default::Default for skene_foundation::OneOf<P, K>
 pub fn skene_foundation::OneOf<P, K>::default() -> Self
@@ -5385,8 +5385,8 @@ impl<P: skene_foundation::Platform> skene_foundation::HasLayoutBox<P> for skene_
 pub type skene_foundation::Overlay<P>::Kind = skene_foundation::PlainChild
 pub fn skene_foundation::Overlay<P>::map_layout_box(self, impl core::ops::function::FnOnce(skene_foundation::LayoutBox<P, skene_foundation::PlainChild>) -> skene_foundation::LayoutBox<P, skene_foundation::PlainChild>) -> Self
 impl<P: skene_foundation::Platform> skene_foundation::MotionBase<P> for skene_foundation::Overlay<P>
-pub fn skene_foundation::Overlay<P>::set_animation(self, skene_foundation::Animation<skene_foundation::BoxKeyframe<P>>) -> Self
-pub fn skene_foundation::Overlay<P>::set_transition(self, skene_foundation::Transition<<<P as skene_foundation::Platform>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
+pub fn skene_foundation::Overlay<P>::add_animation(self, skene_foundation::Animation<skene_foundation::BoxKeyframe<P>>) -> Self
+pub fn skene_foundation::Overlay<P>::add_transition(self, skene_foundation::Transition<<<P as skene_foundation::Platform>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
 pub fn skene_foundation::Overlay<P>::set_transition_name(self, impl core::convert::Into<alloc::string::String>) -> Self
 impl<P: skene_foundation::Platform> skene_foundation::View<P> for skene_foundation::Overlay<P, skene_foundation::AnyView<P>>
 pub fn skene_foundation::Overlay<P, skene_foundation::AnyView<P>>::build(self) -> skene_foundation::NodeId
@@ -5730,8 +5730,8 @@ impl<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension> core::fmt
 pub fn skene_foundation::Resolver<'_, N, X>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_foundation::RichText<P: skene_foundation::Platform>
 impl<P: skene_foundation::Platform> skene_foundation::RichText<P>
+pub fn skene_foundation::RichText<P>::add_spans(self, impl core::iter::traits::collect::IntoIterator<Item = skene_foundation::Span<P>>) -> Self
 pub const fn skene_foundation::RichText<P>::new() -> Self
-pub fn skene_foundation::RichText<P>::set_spans(self, impl core::iter::traits::collect::IntoIterator<Item = skene_foundation::Span<P>>) -> Self
 impl<P: core::fmt::Debug + skene_foundation::Platform> core::fmt::Debug for skene_foundation::RichText<P>
 pub fn skene_foundation::RichText<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<P: skene_foundation::Platform> core::default::Default for skene_foundation::RichText<P>
@@ -5811,14 +5811,14 @@ pub fn skene_foundation::Row<P>::into_any(self) -> skene_foundation::AnyView<P> 
 pub fn skene_foundation::Row<P>::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
 pub struct skene_foundation::Run<P: skene_foundation::Platform>
 impl<P: skene_foundation::Platform> skene_foundation::Run<P>
+pub fn skene_foundation::Run<P>::add_animation(self, skene_foundation::Animation<skene_foundation::RunKeyframe<P>>) -> Self
 pub fn skene_foundation::Run<P>::add_realization(self, impl core::ops::function::FnOnce(skene_foundation::NodeId, &skene_foundation::RunProps<P>) + 'static) -> Self
+pub fn skene_foundation::Run<P>::add_transition(self, skene_foundation::Transition<<<P as skene_foundation::Platform>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
 pub fn skene_foundation::Run<P>::build(self, skene_foundation::RunPlacement) -> skene_foundation::NodeId
 pub fn skene_foundation::Run<P>::build_group(self, skene_foundation::RunPlacement) -> skene_foundation::NodeId where <P as skene_foundation::Platform>::StyleExt: skene_foundation::TypeMetrics
 pub fn skene_foundation::Run<P>::new() -> Self
-pub fn skene_foundation::Run<P>::set_animation(self, skene_foundation::Animation<skene_foundation::RunKeyframe<P>>) -> Self
 pub fn skene_foundation::Run<P>::set_link(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub const fn skene_foundation::Run<P>::set_selectable(self, bool) -> Self
-pub fn skene_foundation::Run<P>::set_transition(self, skene_foundation::Transition<<<P as skene_foundation::Platform>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
 pub const fn skene_foundation::Run<P>::style_mut(&mut self) -> &mut skene_foundation::DeclaredRunStyle<P>
 impl<P: skene_foundation::Platform> core::default::Default for skene_foundation::Run<P>
 pub fn skene_foundation::Run<P>::default() -> Self
@@ -6195,13 +6195,14 @@ impl<P: skene_foundation::Platform> skene_foundation::HasRun<P> for skene_founda
 pub fn skene_foundation::Span<P>::map_run(self, impl core::ops::function::FnOnce(skene_foundation::Run<P>) -> skene_foundation::Run<P>) -> Self
 pub fn skene_foundation::Span<P>::run_style_mut(&mut self) -> &mut skene_foundation::DeclaredRunStyle<P>
 impl<P: skene_foundation::Platform> skene_foundation::RunBase<P> for skene_foundation::Span<P>
+pub fn skene_foundation::Span<P>::add_animation(self, skene_foundation::Animation<skene_foundation::RunKeyframe<P>>) -> Self
+pub fn skene_foundation::Span<P>::add_transition(self, skene_foundation::Transition<<<P as skene_foundation::Platform>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
 pub fn skene_foundation::Span<P>::derive_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Span<P>::derive_decoration<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::TextDecoration>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Span<P>::derive_decoration_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Span<P>::derive_decoration_style<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::TextDecorationStyle>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Span<P>::derive_selection_background<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Span<P>::derive_selection_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::Span<P>::set_animation(self, skene_foundation::Animation<skene_foundation::RunKeyframe<P>>) -> Self
 pub fn skene_foundation::Span<P>::set_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Span<P>::set_decoration(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::TextDecoration, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Span<P>::set_decoration_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
@@ -6210,7 +6211,6 @@ pub fn skene_foundation::Span<P>::set_link(self, impl core::convert::Into<alloc:
 pub fn skene_foundation::Span<P>::set_selectable(self, bool) -> Self
 pub fn skene_foundation::Span<P>::set_selection_background(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Span<P>::set_selection_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
-pub fn skene_foundation::Span<P>::set_transition(self, skene_foundation::Transition<<<P as skene_foundation::Platform>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
 impl<P: skene_foundation::Platform> skene_foundation::View<P> for skene_foundation::Span<P> where <P as skene_foundation::Platform>::StyleExt: skene_foundation::TypeMetrics
 pub fn skene_foundation::Span<P>::build(self) -> skene_foundation::NodeId
 pub fn skene_foundation::Span<P>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
@@ -6299,13 +6299,14 @@ impl<P: skene_foundation::Platform> skene_foundation::HasRun<P> for skene_founda
 pub fn skene_foundation::Text<P>::map_run(self, impl core::ops::function::FnOnce(skene_foundation::Run<P>) -> skene_foundation::Run<P>) -> Self
 pub fn skene_foundation::Text<P>::run_style_mut(&mut self) -> &mut skene_foundation::DeclaredRunStyle<P>
 impl<P: skene_foundation::Platform> skene_foundation::RunBase<P> for skene_foundation::Text<P>
+pub fn skene_foundation::Text<P>::add_animation(self, skene_foundation::Animation<skene_foundation::RunKeyframe<P>>) -> Self
+pub fn skene_foundation::Text<P>::add_transition(self, skene_foundation::Transition<<<P as skene_foundation::Platform>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
 pub fn skene_foundation::Text<P>::derive_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Text<P>::derive_decoration<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::TextDecoration>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Text<P>::derive_decoration_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Text<P>::derive_decoration_style<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::TextDecorationStyle>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Text<P>::derive_selection_background<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Text<P>::derive_selection_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::Text<P>::set_animation(self, skene_foundation::Animation<skene_foundation::RunKeyframe<P>>) -> Self
 pub fn skene_foundation::Text<P>::set_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Text<P>::set_decoration(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::TextDecoration, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Text<P>::set_decoration_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
@@ -6314,7 +6315,6 @@ pub fn skene_foundation::Text<P>::set_link(self, impl core::convert::Into<alloc:
 pub fn skene_foundation::Text<P>::set_selectable(self, bool) -> Self
 pub fn skene_foundation::Text<P>::set_selection_background(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Text<P>::set_selection_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
-pub fn skene_foundation::Text<P>::set_transition(self, skene_foundation::Transition<<<P as skene_foundation::Platform>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
 impl<P: skene_foundation::Platform> skene_foundation::View<P> for skene_foundation::Text<P>
 pub fn skene_foundation::Text<P>::build(self) -> skene_foundation::NodeId
 pub fn skene_foundation::Text<P>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
@@ -6589,15 +6589,15 @@ pub fn skene_foundation::TokenRef<T>::hash<H: core::hash::Hasher>(&self, &mut H)
 impl<T: skene_foundation::Tokenable> core::marker::Copy for skene_foundation::TokenRef<T>
 pub struct skene_foundation::Tooltip<P: skene_foundation::Platform, C>
 impl<P: skene_foundation::Platform> skene_foundation::Tooltip<P>
+pub fn skene_foundation::Tooltip<P>::add_transition(self, skene_foundation::Transition<<<P as skene_foundation::Platform>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
+pub const fn skene_foundation::Tooltip<P>::set_delay(self, core::time::Duration) -> Self
+pub const fn skene_foundation::Tooltip<P>::set_placement(self, skene_foundation::Placement) -> Self
+pub fn skene_foundation::Tooltip<P>::set_text_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+impl<P: skene_foundation::Platform> skene_foundation::Tooltip<P>
 pub fn skene_foundation::Tooltip<P>::derive(impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
 pub fn skene_foundation::Tooltip<P>::new(impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_foundation::Tooltip<P>::set_child(self, impl skene_foundation::View<P>) -> skene_foundation::Tooltip<P, skene_foundation::AnyView<P>>
 pub fn skene_foundation::Tooltip<P>::view(impl skene_foundation::View<P>) -> Self
-impl<P: skene_foundation::Platform> skene_foundation::Tooltip<P>
-pub const fn skene_foundation::Tooltip<P>::set_delay(self, core::time::Duration) -> Self
-pub const fn skene_foundation::Tooltip<P>::set_placement(self, skene_foundation::Placement) -> Self
-pub fn skene_foundation::Tooltip<P>::set_text_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
-pub fn skene_foundation::Tooltip<P>::set_transition(self, skene_foundation::Transition<<<P as skene_foundation::Platform>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
 impl<P: skene_foundation::Platform, C> core::fmt::Debug for skene_foundation::Tooltip<P, C>
 pub fn skene_foundation::Tooltip<P, C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<P: skene_foundation::Platform, C> skene_foundation::AnyKind for skene_foundation::Tooltip<P, C>
@@ -7301,6 +7301,7 @@ pub fn skene_foundation::Container<P>::set_label(self, impl core::convert::Into<
 pub fn skene_foundation::Container<P>::set_labelled_by(self, skene_foundation::NodeId) -> Self
 pub fn skene_foundation::Container<P>::set_role(self, accesskit::Role) -> Self
 pub trait skene_foundation::ContextMenuBase<P: skene_foundation::Platform>: skene_foundation::Wraps<Inner = skene_foundation::ContextMenu<P>>
+pub fn skene_foundation::ContextMenuBase::add_transition(self, skene_foundation::Transition<<<P as skene_foundation::Platform>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
 pub fn skene_foundation::ContextMenuBase::derive_item_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::ContextMenuBase::derive_item_cursor<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::MouseCursor>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::ContextMenuBase::derive_item_padding<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -7317,7 +7318,6 @@ pub fn skene_foundation::ContextMenuBase::set_separator_color(self, impl core::c
 pub fn skene_foundation::ContextMenuBase::set_separator_thickness(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::ContextMenuBase::set_shortcut_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::ContextMenuBase::set_shortcut_spacing(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Spacing<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
-pub fn skene_foundation::ContextMenuBase::set_transition(self, skene_foundation::Transition<<<P as skene_foundation::Platform>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
 pub trait skene_foundation::ContextMenuWithCornerRadius<P: skene_foundation::Platform> where <P as skene_foundation::Platform>::StyleExt: skene_foundation::CornerRadius: skene_foundation::ContextMenuBase<P>
 pub fn skene_foundation::ContextMenuWithCornerRadius::set_item_corner_radius(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Length, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 impl<P: skene_foundation::Platform, T: skene_foundation::ContextMenuBase<P>> skene_foundation::ContextMenuWithCornerRadius<P> for T where <P as skene_foundation::Platform>::StyleExt: skene_foundation::CornerRadius
@@ -8154,25 +8154,25 @@ pub fn skene_foundation::LazyRowBase::set_overscan(self, usize) -> Self
 pub trait skene_foundation::LinkBase<P: skene_foundation::Platform, R: skene_foundation::routing::Route>: skene_foundation::Wraps<Inner = skene_foundation::Link<P, R>>
 pub fn skene_foundation::LinkBase::new(R) -> Self
 pub trait skene_foundation::MotionBase<P: skene_foundation::Platform>: skene_foundation::HasLayoutBox<P>
-pub fn skene_foundation::MotionBase::set_animation(self, skene_foundation::Animation<skene_foundation::BoxKeyframe<P>>) -> Self
-pub fn skene_foundation::MotionBase::set_transition(self, skene_foundation::Transition<<<P as skene_foundation::Platform>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
+pub fn skene_foundation::MotionBase::add_animation(self, skene_foundation::Animation<skene_foundation::BoxKeyframe<P>>) -> Self
+pub fn skene_foundation::MotionBase::add_transition(self, skene_foundation::Transition<<<P as skene_foundation::Platform>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
 pub fn skene_foundation::MotionBase::set_transition_name(self, impl core::convert::Into<alloc::string::String>) -> Self
 impl<P: skene_foundation::Platform, B: skene_foundation::Behavior<P>> skene_foundation::MotionBase<P> for skene_foundation::Control<P, B>
-pub fn skene_foundation::Control<P, B>::set_animation(self, skene_foundation::Animation<skene_foundation::BoxKeyframe<P>>) -> Self
-pub fn skene_foundation::Control<P, B>::set_transition(self, skene_foundation::Transition<<<P as skene_foundation::Platform>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
+pub fn skene_foundation::Control<P, B>::add_animation(self, skene_foundation::Animation<skene_foundation::BoxKeyframe<P>>) -> Self
+pub fn skene_foundation::Control<P, B>::add_transition(self, skene_foundation::Transition<<<P as skene_foundation::Platform>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
 pub fn skene_foundation::Control<P, B>::set_transition_name(self, impl core::convert::Into<alloc::string::String>) -> Self
 impl<P: skene_foundation::Platform> skene_foundation::MotionBase<P> for skene_foundation::Container<P>
-pub fn skene_foundation::Container<P>::set_animation(self, skene_foundation::Animation<skene_foundation::BoxKeyframe<P>>) -> Self
-pub fn skene_foundation::Container<P>::set_transition(self, skene_foundation::Transition<<<P as skene_foundation::Platform>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
+pub fn skene_foundation::Container<P>::add_animation(self, skene_foundation::Animation<skene_foundation::BoxKeyframe<P>>) -> Self
+pub fn skene_foundation::Container<P>::add_transition(self, skene_foundation::Transition<<<P as skene_foundation::Platform>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
 pub fn skene_foundation::Container<P>::set_transition_name(self, impl core::convert::Into<alloc::string::String>) -> Self
 impl<P: skene_foundation::Platform> skene_foundation::MotionBase<P> for skene_foundation::Overlay<P>
-pub fn skene_foundation::Overlay<P>::set_animation(self, skene_foundation::Animation<skene_foundation::BoxKeyframe<P>>) -> Self
-pub fn skene_foundation::Overlay<P>::set_transition(self, skene_foundation::Transition<<<P as skene_foundation::Platform>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
+pub fn skene_foundation::Overlay<P>::add_animation(self, skene_foundation::Animation<skene_foundation::BoxKeyframe<P>>) -> Self
+pub fn skene_foundation::Overlay<P>::add_transition(self, skene_foundation::Transition<<<P as skene_foundation::Platform>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
 pub fn skene_foundation::Overlay<P>::set_transition_name(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub trait skene_foundation::OneOfBase<P: skene_foundation::Platform, K: core::cmp::PartialEq + 'static>: skene_foundation::Wraps<Inner = skene_foundation::OneOf<P, K>>
+pub fn skene_foundation::OneOfBase::add_case<V: skene_foundation::View<P>>(self, K, impl core::ops::function::FnOnce() -> V + 'static) -> Self
 pub fn skene_foundation::OneOfBase::derive_key(self, impl core::ops::function::Fn() -> K + 'static) -> Self
 pub fn skene_foundation::OneOfBase::new() -> Self
-pub fn skene_foundation::OneOfBase::set_case<V: skene_foundation::View<P>>(self, K, impl core::ops::function::FnOnce() -> V + 'static) -> Self
 pub fn skene_foundation::OneOfBase::set_key(self, K) -> Self where K: core::clone::Clone
 pub trait skene_foundation::OverlayBase<P: skene_foundation::Platform>: skene_foundation::Wraps<Inner = skene_foundation::Overlay<P>>
 pub fn skene_foundation::OverlayBase::bind_open(self, skene_reactive::signal::Signal<bool>) -> Self
@@ -8325,19 +8325,20 @@ pub fn skene_foundation::ResolutionSource::generation(&self) -> u64
 pub fn skene_foundation::ResolutionSource::sizes_text(&self) -> bool
 pub fn skene_foundation::ResolutionSource::slot(&self, skene_foundation::NodeId, skene_foundation::Slot) -> core::option::Option<skene_foundation::SlotLeaf<<P as skene_foundation::Platform>::Scalar, <P as skene_foundation::Platform>::StyleExt>>
 pub trait skene_foundation::RichTextBase<P: skene_foundation::Platform>: skene_foundation::Wraps<Inner = skene_foundation::RichText<P>>
+pub fn skene_foundation::RichTextBase::add_spans<S: skene_foundation::Wraps<Inner = skene_foundation::Span<P>>>(self, impl core::iter::traits::collect::IntoIterator<Item = S>) -> Self
 pub fn skene_foundation::RichTextBase::new() -> Self
-pub fn skene_foundation::RichTextBase::set_spans<S: skene_foundation::Wraps<Inner = skene_foundation::Span<P>>>(self, impl core::iter::traits::collect::IntoIterator<Item = S>) -> Self
 pub trait skene_foundation::RowBase<P: skene_foundation::Platform>: skene_foundation::Wraps<Inner = skene_foundation::Row<P>>
 pub fn skene_foundation::RowBase::new() -> Self
 pub fn skene_foundation::RowBase::reversed() -> Self
 pub trait skene_foundation::RunBase<P: skene_foundation::Platform>: skene_foundation::HasRun<P>
+pub fn skene_foundation::RunBase::add_animation(self, skene_foundation::Animation<skene_foundation::RunKeyframe<P>>) -> Self
+pub fn skene_foundation::RunBase::add_transition(self, skene_foundation::Transition<<<P as skene_foundation::Platform>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
 pub fn skene_foundation::RunBase::derive_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::RunBase::derive_decoration<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::TextDecoration>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::RunBase::derive_decoration_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::RunBase::derive_decoration_style<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::TextDecorationStyle>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::RunBase::derive_selection_background<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::RunBase::derive_selection_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::RunBase::set_animation(self, skene_foundation::Animation<skene_foundation::RunKeyframe<P>>) -> Self
 pub fn skene_foundation::RunBase::set_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::RunBase::set_decoration(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::TextDecoration, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::RunBase::set_decoration_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
@@ -8346,15 +8347,15 @@ pub fn skene_foundation::RunBase::set_link(self, impl core::convert::Into<alloc:
 pub fn skene_foundation::RunBase::set_selectable(self, bool) -> Self
 pub fn skene_foundation::RunBase::set_selection_background(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::RunBase::set_selection_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
-pub fn skene_foundation::RunBase::set_transition(self, skene_foundation::Transition<<<P as skene_foundation::Platform>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
 impl<P: skene_foundation::Platform> skene_foundation::RunBase<P> for skene_foundation::Span<P>
+pub fn skene_foundation::Span<P>::add_animation(self, skene_foundation::Animation<skene_foundation::RunKeyframe<P>>) -> Self
+pub fn skene_foundation::Span<P>::add_transition(self, skene_foundation::Transition<<<P as skene_foundation::Platform>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
 pub fn skene_foundation::Span<P>::derive_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Span<P>::derive_decoration<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::TextDecoration>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Span<P>::derive_decoration_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Span<P>::derive_decoration_style<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::TextDecorationStyle>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Span<P>::derive_selection_background<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Span<P>::derive_selection_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::Span<P>::set_animation(self, skene_foundation::Animation<skene_foundation::RunKeyframe<P>>) -> Self
 pub fn skene_foundation::Span<P>::set_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Span<P>::set_decoration(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::TextDecoration, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Span<P>::set_decoration_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
@@ -8363,15 +8364,15 @@ pub fn skene_foundation::Span<P>::set_link(self, impl core::convert::Into<alloc:
 pub fn skene_foundation::Span<P>::set_selectable(self, bool) -> Self
 pub fn skene_foundation::Span<P>::set_selection_background(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Span<P>::set_selection_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
-pub fn skene_foundation::Span<P>::set_transition(self, skene_foundation::Transition<<<P as skene_foundation::Platform>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
 impl<P: skene_foundation::Platform> skene_foundation::RunBase<P> for skene_foundation::Text<P>
+pub fn skene_foundation::Text<P>::add_animation(self, skene_foundation::Animation<skene_foundation::RunKeyframe<P>>) -> Self
+pub fn skene_foundation::Text<P>::add_transition(self, skene_foundation::Transition<<<P as skene_foundation::Platform>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
 pub fn skene_foundation::Text<P>::derive_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Text<P>::derive_decoration<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::TextDecoration>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Text<P>::derive_decoration_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Text<P>::derive_decoration_style<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::TextDecorationStyle>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Text<P>::derive_selection_background<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Text<P>::derive_selection_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::Text<P>::set_animation(self, skene_foundation::Animation<skene_foundation::RunKeyframe<P>>) -> Self
 pub fn skene_foundation::Text<P>::set_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Text<P>::set_decoration(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::TextDecoration, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Text<P>::set_decoration_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
@@ -8380,7 +8381,6 @@ pub fn skene_foundation::Text<P>::set_link(self, impl core::convert::Into<alloc:
 pub fn skene_foundation::Text<P>::set_selectable(self, bool) -> Self
 pub fn skene_foundation::Text<P>::set_selection_background(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Text<P>::set_selection_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
-pub fn skene_foundation::Text<P>::set_transition(self, skene_foundation::Transition<<<P as skene_foundation::Platform>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
 pub trait skene_foundation::RunField<X: skene_foundation::StyleExtension>: 'static
 pub type skene_foundation::RunField::Value: skene_foundation::IntoRunValue<X>
 pub const skene_foundation::RunField::KEY: skene_foundation::PropertyKey<<X as skene_foundation::StyleExtension>::Property>
@@ -8582,12 +8582,12 @@ impl skene_foundation::Tokenable for skene_foundation::Color
 impl skene_foundation::Tokenable for skene_foundation::Length
 impl<N: skene_foundation::Scalar> skene_foundation::Tokenable for skene_foundation::Dimension<N>
 pub trait skene_foundation::TooltipBase<P: skene_foundation::Platform>: skene_foundation::Wraps<Inner = skene_foundation::Tooltip<P>>
+pub fn skene_foundation::TooltipBase::add_transition(self, skene_foundation::Transition<<<P as skene_foundation::Platform>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
 pub fn skene_foundation::TooltipBase::derive(impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
 pub fn skene_foundation::TooltipBase::new(impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_foundation::TooltipBase::set_delay(self, core::time::Duration) -> Self
 pub fn skene_foundation::TooltipBase::set_placement(self, skene_foundation::Placement) -> Self
 pub fn skene_foundation::TooltipBase::set_text_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
-pub fn skene_foundation::TooltipBase::set_transition(self, skene_foundation::Transition<<<P as skene_foundation::Platform>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
 pub fn skene_foundation::TooltipBase::view(impl skene_foundation::View<P>) -> Self
 pub trait skene_foundation::TypeMetrics: skene_foundation::StyleExtension
 pub fn skene_foundation::TypeMetrics::font_size<S: skene_foundation::Shape>(&Self::RunFields) -> <S as skene_foundation::Shape>::Of

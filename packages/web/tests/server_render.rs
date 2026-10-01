@@ -517,7 +517,7 @@ fn a_link_opens_as_its_policy_says() {
   assert!(body.contains("rel=\"noreferrer sponsored\""), "{body}");
 
   let page = render_to_string(|| {
-    RichText::new().set_spans([Span::new("docs")
+    RichText::new().add_spans([Span::new("docs")
       .set_link_policy(LinkPolicy::new().set_new_page(true))
       .set_link("/docs")])
   });
@@ -758,7 +758,7 @@ fn a_client_resource_is_not_serialized() {
 /// `Text`, whose rule does.
 #[test]
 fn an_inline_span_flows_inline_unlike_a_block_text() {
-  let inline = render_to_string(|| RichText::new().set_spans([Span::new("x")]));
+  let inline = render_to_string(|| RichText::new().add_spans([Span::new("x")]));
   let block = render_to_string(|| Text::new("x"));
   let span = classes(inline.body())[1].clone();
 
@@ -783,7 +783,7 @@ fn an_inline_span_flows_inline_unlike_a_block_text() {
 #[test]
 fn rich_text_nests_groups_and_embeds_views() {
   let page = render_to_string(|| {
-    RichText::new().set_spans([
+    RichText::new().add_spans([
       Span::group([Span::new("a"), Span::new("b")]),
       Span::view(Container::new()),
     ])
@@ -1126,7 +1126,7 @@ fn a_streamed_boundary_carries_the_styles_it_introduces() {
 fn a_groups_style_cascades_to_its_children() {
   let red = Color::srgb(1.0, 0.0, 0.0);
   let page = render_to_string(move || {
-    RichText::new().set_spans([Span::group([Span::new("a")]).set_color(red)])
+    RichText::new().add_spans([Span::group([Span::new("a")]).set_color(red)])
   });
   let classes = classes(page.body());
 

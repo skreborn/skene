@@ -78,7 +78,7 @@ fn a_paragraph_sets_its_smaller_spans_on_the_baseline() {
     let _ = terminal::mount(|| {
       Column::new()
         .set_children((
-          RichText::new().set_spans([
+          RichText::new().add_spans([
             Span::new("A").set_font_size(3.),
             Span::new("b").set_font_size(2.),
             Span::new("c"),
@@ -182,7 +182,7 @@ fn a_groups_size_reaches_its_spans() {
 
     let _ = terminal::mount(|| {
       RichText::new()
-        .set_spans([Span::group([Span::new("b")]).set_font_size(2.)])
+        .add_spans([Span::group([Span::new("b")]).set_font_size(2.)])
         .into_any()
         .build()
     });

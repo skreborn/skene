@@ -194,7 +194,7 @@ fn a_groups_weight_reaches_its_spans() {
   with_platform(|| {
     let _ = terminal::mount(|| {
       RichText::new()
-        .set_spans([
+        .add_spans([
           Span::new("a"),
           Span::group([Span::new("bc")]).set_font_weight(700.),
         ])
@@ -567,7 +567,7 @@ fn an_inline_box_flows_with_the_paragraph() {
       Container::new()
         .set_width(10)
         .set_child(
-          RichText::new().set_spans([
+          RichText::new().add_spans([
             Span::new("see "),
             Span::view(
               Container::new()
@@ -610,7 +610,7 @@ fn a_tall_inline_box_raises_its_line() {
       Container::new()
         .set_width(12)
         .set_child(
-          RichText::new().set_spans([
+          RichText::new().add_spans([
             Span::new("see "),
             Span::view(
               Container::new()
@@ -640,7 +640,7 @@ fn an_inline_box_never_splits_across_lines() {
     let _ = terminal::mount(|| {
       Container::new()
         .set_width(6)
-        .set_child(RichText::new().set_spans([
+        .set_child(RichText::new().add_spans([
           Span::new("ab "),
           Span::view(Container::new().set_child(Text::new("wide"))),
         ]))
@@ -662,7 +662,7 @@ fn a_span_is_hovered_and_clicked() {
 
     let _ = terminal::mount(move || {
       RichText::new()
-        .set_spans([
+        .add_spans([
           Span::new("plain "),
           Span::new("click")
             .set_color(red().when(State::Hovered, white()))
@@ -692,7 +692,7 @@ fn copying_across_an_inline_box_takes_its_text() {
   with_platform(|| {
     let _ = terminal::mount(|| {
       RichText::new()
-        .set_spans([
+        .add_spans([
           Span::new("see ").set_selectable(true),
           Span::view(Text::new("new")),
           Span::new(" here"),
@@ -721,7 +721,7 @@ fn a_grouped_inline_box_places_its_content() {
 
     let _ = terminal::mount(move || {
       RichText::new()
-        .set_spans([
+        .add_spans([
           Span::new("ab "),
           Span::group([Span::view(
             Container::new()

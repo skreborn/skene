@@ -82,7 +82,7 @@ fn baseline_card() -> impl View {
       .set_color(SimplePalette::FOREGROUND),
     Text::new("A paragraph's line is as tall as its tallest span.")
       .set_color(SimplePalette::MUTED_FOREGROUND),
-    RichText::new().set_spans([
+    RichText::new().add_spans([
       Span::new("Big ")
         .set_font_size(3.)
         .set_color(SimplePalette::FOREGROUND),

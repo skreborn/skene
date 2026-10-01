@@ -431,11 +431,11 @@ impl<P: Platform> ContextMenu<P> {
   /// Adds a property transition on the list, interpolating that property whenever its
   /// value changes.
   #[inline(always)]
-  pub fn set_transition(
+  pub fn add_transition(
     mut self,
     transition: Transition<<P::StyleExt as StyleExtension>::Property>,
   ) -> Self {
-    self.list = self.list.set_transition(transition);
+    self.list = self.list.add_transition(transition);
 
     self
   }
@@ -952,11 +952,11 @@ pub trait ContextMenuBase<P: Platform>: Wraps<Inner = ContextMenu<P>> {
   /// Adds a property transition on the list, interpolating that property whenever
   /// its value changes.
   #[must_use]
-  fn set_transition(
+  fn add_transition(
     self,
     transition: Transition<<P::StyleExt as StyleExtension>::Property>,
   ) -> Self {
-    Self::wrap(self.into_inner().set_transition(transition))
+    Self::wrap(self.into_inner().add_transition(transition))
   }
 }
 

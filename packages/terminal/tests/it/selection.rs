@@ -247,7 +247,7 @@ fn rich_text_flows_wraps_and_selects_as_one_paragraph() {
     mount_themed(|| {
       Container::new()
         .set_width(12)
-        .set_child(RichText::new().set_spans([
+        .set_child(RichText::new().add_spans([
           Span::new("plain "),
           Span::new("red").set_color(red()),
           Span::new(" and "),
@@ -273,7 +273,7 @@ fn rich_text_flows_wraps_and_selects_as_one_paragraph() {
     mount_themed(|| {
       Container::new()
         .set_width(12)
-        .set_child(RichText::new().set_spans([
+        .set_child(RichText::new().add_spans([
           Span::new("plain ").set_selectable(true),
           Span::new("red").set_color(red()),
           Span::new(" and "),

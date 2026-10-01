@@ -252,7 +252,7 @@ fn border_with_a_token_color_resolves_through_the_theme() {
             start: 4.,
           })
           .set_border_color(TestPalette::CARD)
-          .set_transition(Transition::new(Property::Background, 0.2))
+          .add_transition(Transition::new(Property::Background, 0.2))
       })
       .build()
   });

@@ -164,7 +164,7 @@ impl<P: Platform> RichText<P> {
   }
 
   /// Appends spans to the paragraph.
-  pub fn set_spans(mut self, spans: impl IntoIterator<Item = Span<P>>) -> Self {
+  pub fn add_spans(mut self, spans: impl IntoIterator<Item = Span<P>>) -> Self {
     self.spans.extend(spans);
 
     self
@@ -252,11 +252,11 @@ pub trait RichTextBase<P: Platform>: Wraps<Inner = RichText<P>> {
 
   /// Appends spans to the paragraph, each a facade's newtype over a [`Span`].
   #[must_use]
-  fn set_spans<S: Wraps<Inner = Span<P>>>(self, spans: impl IntoIterator<Item = S>) -> Self {
+  fn add_spans<S: Wraps<Inner = Span<P>>>(self, spans: impl IntoIterator<Item = S>) -> Self {
     Self::wrap(
       self
         .into_inner()
-        .set_spans(spans.into_iter().map(Wraps::into_inner)),
+        .add_spans(spans.into_iter().map(Wraps::into_inner)),
     )
   }
 }

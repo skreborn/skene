@@ -60,8 +60,8 @@ fn derived_writes_transition_across_the_stepped_clock() {
     Container::<Headless>::new()
       .derive_background(move || color.get())
       .derive_width(move || width.get())
-      .set_transition(linear(Property::Background))
-      .set_transition(linear(Property::Width))
+      .add_transition(linear(Property::Background))
+      .add_transition(linear(Property::Width))
       .build()
   });
 
@@ -96,7 +96,7 @@ fn a_palette_flip_transitions_and_reduced_motion_cuts() {
       .set_child_builder(|| {
         Container::new()
           .set_background(TestPalette::CARD)
-          .set_transition(linear(Property::Background))
+          .add_transition(linear(Property::Background))
       })
       .build()
   });
@@ -136,7 +136,7 @@ fn a_token_keyframe_animation_samples_through_the_theme() {
         Container::new()
           .set_background(red())
           .set_transition_name("hero")
-          .set_animation(
+          .add_animation(
             Animation::new(1., [(0., frame(red())), (100., frame(TestPalette::CARD))])
               .set_easing(Easing::Linear),
           )
@@ -173,7 +173,7 @@ fn an_interrupted_transition_reverses_over_what_it_played() {
   let node = owner.enter(|| {
     Container::<Headless>::new()
       .derive_width(move || width.get())
-      .set_transition(linear(Property::Width))
+      .add_transition(linear(Property::Width))
       .build()
   });
 
@@ -206,7 +206,7 @@ fn a_keyframe_missing_its_ends_moves_from_the_resolved_value() {
   let node = owner.enter(|| {
     Container::<Headless>::new()
       .set_background(red())
-      .set_animation(Animation::new(1., [(50., frame(blue()))]).set_easing(Easing::Linear))
+      .add_animation(Animation::new(1., [(50., frame(blue()))]).set_easing(Easing::Linear))
       .build()
   });
 

@@ -126,7 +126,7 @@ fn typography() -> impl View {
       .set_selectable(true)
       .set_font_size(14.)
       .set_color(SimplePalette::MUTED_FOREGROUND),
-      RichText::new().set_spans([
+      RichText::new().add_spans([
         plain("Rich text mixes "),
         plain("weights").set_font_weight(700.),
         plain(", "),
@@ -463,10 +463,10 @@ fn visibility_and_one_of() -> impl View {
       )),
       OneOf::new()
         .derive_key(move || pane.get())
-        .set_case(String::from("summary"), || {
+        .add_case(String::from("summary"), || {
           Text::new("One case at a time: the summary.").set_font_size(14.)
         })
-        .set_case(String::from("history"), || {
+        .add_case(String::from("history"), || {
           Text::new("And now the history, the summary gone.").set_font_size(14.)
         }),
     )),

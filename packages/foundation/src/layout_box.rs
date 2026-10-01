@@ -244,7 +244,7 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
   /// Adds a property transition, interpolating that property whenever its value
   /// changes.
   #[inline(always)]
-  pub fn set_transition(
+  pub fn add_transition(
     mut self,
     transition: Transition<<P::StyleExt as StyleExtension>::Property>,
   ) -> Self {
@@ -255,7 +255,7 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
 
   /// Adds a keyframe animation.
   #[inline(always)]
-  pub fn set_animation(mut self, animation: Animation<BoxKeyframe<P>>) -> Self {
+  pub fn add_animation(mut self, animation: Animation<BoxKeyframe<P>>) -> Self {
     self.dynamics.animations.push(animation);
 
     self

@@ -108,7 +108,7 @@ fn representative_tree() -> impl skene_web::View {
               Text::new("c"),
             )),
             Stack::new().set_children((Text::new("under"), Text::new("over"))),
-            RichText::new().set_spans([
+            RichText::new().add_spans([
               Span::new("plain "),
               Span::group([Span::new("in "), Span::new("group").set_font_weight(600.)])
                 .set_color(Color::srgb(1.0, 0.5, 0.0)),
@@ -133,8 +133,8 @@ fn representative_tree() -> impl skene_web::View {
                     Dimension::Length(40.),
                   ),
               )
-              .set_transition(Transition::new(Property::Width, 0.2))
-              .set_animation(Animation::new(1., [(0., rounded(0.)), (100., rounded(8.))])),
+              .add_transition(Transition::new(Property::Width, 0.2))
+              .add_animation(Animation::new(1., [(0., rounded(0.)), (100., rounded(8.))])),
             empty().into_any(),
           )),
       )

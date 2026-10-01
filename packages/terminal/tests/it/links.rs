@@ -35,7 +35,7 @@ fn tab_reaches_links_and_enter_opens_them() {
         .set_children((
           BasicButton::new(Activate::new()).set_label("first"),
           Text::new("guide").set_link("https://a.example"),
-          RichText::new().set_spans([
+          RichText::new().add_spans([
             Span::new("see the "),
             Span::new("docs").set_link("https://b.example"),
             Span::new(" here"),
@@ -105,7 +105,7 @@ fn a_typography_colors_the_focused_link() {
       .set_child_builder(|| {
         Column::new().set_children((
           Text::new("guide").set_link("https://a.example"),
-          RichText::new().set_spans([
+          RichText::new().add_spans([
             Span::new("see the "),
             Span::new("docs").set_link("https://b.example"),
           ]),
@@ -156,7 +156,7 @@ fn click_focuses_a_link_and_enter_is_its_click() {
     let _ = terminal::mount(|| {
       Container::new()
         .handle_click(move || counted.set(counted.get() + 1))
-        .set_child(RichText::new().set_spans([
+        .set_child(RichText::new().add_spans([
           Span::new("see the "),
           Span::new("docs").set_link("https://b.example"),
         ]))
@@ -203,7 +203,7 @@ fn focus_reveals_a_linked_paragraph() {
           Text::new("r0"),
           Text::new("r1"),
           Text::new("r2"),
-          RichText::new().set_spans([
+          RichText::new().add_spans([
             Span::new("go "),
             Span::new("docs").set_link("https://b.example"),
           ]),

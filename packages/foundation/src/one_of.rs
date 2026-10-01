@@ -73,7 +73,7 @@ impl<P: Platform, K: PartialEq + 'static> OneOf<P, K> {
 
   /// Adds the branch shown under `key`, built by `case` the first time the key is
   /// current.
-  pub fn set_case<V: View<P>>(mut self, key: K, case: impl FnOnce() -> V + 'static) -> Self {
+  pub fn add_case<V: View<P>>(mut self, key: K, case: impl FnOnce() -> V + 'static) -> Self {
     self.cases.push(Case {
       key,
       build: Some(Box::new(move || case().into_any())),
@@ -164,7 +164,7 @@ pub trait OneOfBase<P: Platform, K: PartialEq + 'static>: Wraps<Inner = OneOf<P,
   /// Adds the branch shown under `key`, built by `case` the first time the key is
   /// current.
   #[must_use]
-  fn set_case<V: View<P>>(self, key: K, case: impl FnOnce() -> V + 'static) -> Self {
-    Self::wrap(self.into_inner().set_case(key, case))
+  fn add_case<V: View<P>>(self, key: K, case: impl FnOnce() -> V + 'static) -> Self {
+    Self::wrap(self.into_inner().add_case(key, case))
   }
 }

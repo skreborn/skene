@@ -517,7 +517,7 @@ impl Case {
   /// The case's box in motion, where the case moves; the box as it is otherwise.
   fn moving<P: Platform<Scalar = f32>>(self, container: Container<P>) -> Container<P> {
     match self {
-      Self::NeutralKeyframe => container.set_width(Dimension::Length(40.)).set_animation(
+      Self::NeutralKeyframe => container.set_width(Dimension::Length(40.)).add_animation(
         Animation::new(
           1.,
           [(
@@ -537,7 +537,7 @@ impl Case {
 
         container
           .derive_width(move || Dimension::Length(moving.get()))
-          .set_transition(Transition::new(Property::Width, 1.).set_easing(Easing::Linear))
+          .add_transition(Transition::new(Property::Width, 1.).set_easing(Easing::Linear))
       }
       Self::HiddenTransition => {
         let moving = Signal::new(0f32);
@@ -546,7 +546,7 @@ impl Case {
 
         container
           .derive_hidden(move || moving.get() > 0.)
-          .set_transition(Transition::new(Property::Hidden, 1.).set_easing(Easing::Linear))
+          .add_transition(Transition::new(Property::Hidden, 1.).set_easing(Easing::Linear))
       }
       Self::RatioTransition => {
         let moving = Signal::new(0f32);
@@ -556,7 +556,7 @@ impl Case {
         container
           .set_width(Dimension::Length(40.))
           .derive_aspect_ratio(move || AspectRatio(1. + 3. * moving.get()))
-          .set_transition(Transition::new(Property::AspectRatio, 1.).set_easing(Easing::Linear))
+          .add_transition(Transition::new(Property::AspectRatio, 1.).set_easing(Easing::Linear))
       }
       Self::PaddingTransition => {
         let moving = Signal::new(0f32);
@@ -565,7 +565,7 @@ impl Case {
 
         container
           .derive_padding(move || Inset::all(moving.get()))
-          .set_transition(Transition::new(Property::Padding, 1.).set_easing(Easing::Linear))
+          .add_transition(Transition::new(Property::Padding, 1.).set_easing(Easing::Linear))
       }
       _ => container,
     }

@@ -242,8 +242,8 @@ fn transitions_render_into_the_base_rule() {
   let rendered = render_to_string(|| {
     Container::new()
       .set_width(Dimension::Length(10.))
-      .set_transition(Transition::new(Property::Background, 0.3))
-      .set_transition(
+      .add_transition(Transition::new(Property::Background, 0.3))
+      .add_transition(
         Transition::new(Property::Width, 1.)
           .set_delay(0.5)
           .set_easing(Easing::EaseInOut),
@@ -264,7 +264,7 @@ fn transitions_render_into_the_base_rule() {
 #[test]
 fn animations_render_keyframes_and_reference_them() {
   let rendered = render_to_string(|| {
-    Container::new().set_animation(
+    Container::new().add_animation(
       Animation::new(2., [(0., rounded(0.)), (100., rounded(16.))])
         .set_iterations(Iterations::Infinite)
         .set_alternate(true),
@@ -647,8 +647,8 @@ fn base_rule<'a>(styles: &'a str, class: &str) -> &'a str {
 fn reduced_motion_gates_the_motion_that_respects_it() {
   let rendered = render_to_string(|| {
     Container::new()
-      .set_transition(Transition::new(Property::Background, 0.3))
-      .set_transition(Transition::new(Property::Width, 1.).set_respects_reduced_motion(false))
+      .add_transition(Transition::new(Property::Background, 0.3))
+      .add_transition(Transition::new(Property::Width, 1.).set_respects_reduced_motion(false))
   });
   let class = root_class(rendered.body());
   let styles = rendered.styles();
@@ -666,7 +666,7 @@ fn reduced_motion_gates_the_motion_that_respects_it() {
   );
 
   let respecting = render_to_string(|| {
-    Container::new().set_transition(Transition::new(Property::Background, 0.3))
+    Container::new().add_transition(Transition::new(Property::Background, 0.3))
   });
   let class = root_class(respecting.body());
 
@@ -697,7 +697,7 @@ fn a_token_keyframe_renders_its_variable() {
       start.background = Some(SimplePalette::CARD.into());
       end.background = Some(Color::srgb(1., 0., 0.).into());
 
-      Container::new().set_animation(Animation::new(2., [(0., start), (100., end)]))
+      Container::new().add_animation(Animation::new(2., [(0., start), (100., end)]))
     })
   });
   let styles = rendered.styles();

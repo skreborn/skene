@@ -578,6 +578,7 @@
   for its one kind. Users extend by composing built-ins, painting a `Painted` node, or
   authoring a view against a platform's escape trait.
 - Builder methods: `set_<prop>` for a fixed value, `derive_<prop>` for a reactive one,
+  `add_<item>` for one appended to a list (`add_transition`, `add_child`),
   `handle_<event>` for an event handler (e.g. `Container::handle_click`), and
   `bind_<prop>` for a signal both at once, the value derived from it and each change
   written into it (`bind_checked`). A choice group's value is what it has `chosen`

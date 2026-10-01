@@ -32,7 +32,7 @@ fn a_hover_transition_steps_a_color_across_frames() {
         .set_width(4)
         .set_height(1)
         .set_background(red().when(State::Hovered, blue()))
-        .set_transition(color_transition())
+        .add_transition(color_transition())
         .into_any()
         .build()
     });
@@ -68,7 +68,7 @@ fn a_derived_length_transition_rounds_to_cells() {
         .derive_width(move || Dimension::Length(width.get()))
         .set_height(1)
         .set_background(red())
-        .set_transition(Transition::new(Property::Width, 1.).set_easing(Easing::Linear))
+        .add_transition(Transition::new(Property::Width, 1.).set_easing(Easing::Linear))
         .into_any()
         .build()
     });
@@ -106,12 +106,12 @@ fn reduced_motion_cuts_a_respecting_transition() {
             .set_width(2)
             .set_height(1)
             .set_background(red().when(State::Hovered, blue()))
-            .set_transition(color_transition()),
+            .add_transition(color_transition()),
           Container::new()
             .set_width(2)
             .set_height(1)
             .set_background(red().when(State::Hovered, blue()))
-            .set_transition(color_transition().set_respects_reduced_motion(false)),
+            .add_transition(color_transition().set_respects_reduced_motion(false)),
         ))
         .into_any()
         .build()
@@ -148,7 +148,7 @@ fn a_palette_flip_transitions_a_token_driven_color() {
             .set_width(4)
             .set_height(1)
             .set_background(SimplePalette::CARD)
-            .set_transition(color_transition())
+            .add_transition(color_transition())
         })
         .into_any()
         .build()
@@ -182,7 +182,7 @@ fn a_keyframe_animation_samples_its_frames() {
             .set_width(4)
             .set_height(1)
             .set_background(red())
-            .set_animation(
+            .add_animation(
               Animation::new(1., [(0., frame(red())), (100., frame(SimplePalette::CARD))])
                 .set_easing(Easing::Linear),
             )
@@ -233,7 +233,7 @@ fn an_overlays_animation_starts_over_when_it_opens() {
                 .set_width(4)
                 .set_height(1)
                 .set_background(red())
-                .set_animation(
+                .add_animation(
                   Animation::new(1., [(0., frame(red())), (100., frame(blue()))])
                     .set_easing(Easing::Linear),
                 ),

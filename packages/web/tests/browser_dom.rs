@@ -1330,7 +1330,7 @@ fn a_span_runs_its_click_handler() {
 
   let _ = mount(move || {
     skene_web::RichText::new()
-      .set_spans([
+      .add_spans([
         skene_web::Span::new("plain "),
         skene_web::Span::new("click").handle_click(move || counted.set(counted.get() + 1)),
       ])
@@ -2393,7 +2393,7 @@ fn a_token_keyframe_animation_applies() {
         start.background = Some(SimplePalette::CARD.into());
         end.background = Some(Color::srgb(1., 0., 0.).into());
 
-        Container::new().set_animation(
+        Container::new().add_animation(
           Animation::new(2., [(0., start), (100., end)]).set_respects_reduced_motion(false),
         )
       })
@@ -2991,7 +2991,7 @@ fn a_link_groups_span_takes_the_link_ink() {
   let _ = mount(|| {
     Theme::new(Typography::default().set_link_ink(Color::srgb(1., 0., 0.)))
       .set_child_builder(|| {
-        RichText::new().set_spans([Span::group([Span::new("x")]).set_link("/g")])
+        RichText::new().add_spans([Span::group([Span::new("x")]).set_link("/g")])
       })
       .build()
   });

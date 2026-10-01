@@ -89,7 +89,7 @@ fn rich_text_group_redefines_ink_for_nested_spans_only() {
   let root = owner.enter(|| {
     Theme::new(TestTypography::default())
       .set_child_builder(move || {
-        RichText::new().set_spans([
+        RichText::new().add_spans([
           Span::new("a"),
           Span::group([
             Span::new("b"),
@@ -151,7 +151,7 @@ fn a_link_groups_spans_take_the_link_ink() {
   let root = owner.enter(|| {
     Theme::new(TestTypography::default())
       .set_child_builder(|| {
-        RichText::new().set_spans([Span::group([Span::new("x")]).set_link("/g")])
+        RichText::new().add_spans([Span::group([Span::new("x")]).set_link("/g")])
       })
       .build()
   });
@@ -173,7 +173,7 @@ fn a_groups_compound_media_variant_reaches_its_spans() {
   let root = owner.enter(|| {
     Theme::new(TestTypography::default())
       .set_child_builder(|| {
-        RichText::new().set_spans([Span::group([Span::new("x")]).set_color(
+        RichText::new().add_spans([Span::group([Span::new("x")]).set_color(
           skene_foundation::Value::from(red()).when(
             skene_foundation::Condition::and([
               skene_foundation::Condition::from(skene_foundation::Media::MinWidth(1.)),
@@ -203,7 +203,7 @@ fn span_embeds_a_view_inline_and_derives_its_text() {
   let label = Signal::new("one".to_owned());
   let paragraph = owner.enter(|| {
     RichText::new()
-      .set_spans([
+      .add_spans([
         Span::derive(move || label.get()),
         Span::view(Container::new().set_child(Text::new("boxed"))),
       ])

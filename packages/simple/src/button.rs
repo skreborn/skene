@@ -201,7 +201,7 @@ where
       .set_border_color(BORDER)
       .set_corner_radius(shape.control_radius)
       .set_cursor(click_cursor())
-      .set_transition(Transition::new(Property::Background, SURFACE_SETTLE));
+      .add_transition(Transition::new(Property::Background, SURFACE_SETTLE));
     let node = match self.content {
       Content::Text(Source::Fixed(label)) => raw.set_label(label).build(),
       Content::Text(Source::Derived(label)) => raw

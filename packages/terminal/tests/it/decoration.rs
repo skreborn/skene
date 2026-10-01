@@ -146,7 +146,7 @@ fn a_runs_decoration_paints_its_lines_into_the_cells() {
             .set_decoration_color(red()),
           Text::new("over").set_decoration(TextDecoration::Overline),
           Text::new("gone").set_decoration(TextDecoration::LineThrough),
-          RichText::new().set_spans([
+          RichText::new().add_spans([
             Span::new("a "),
             Span::new("link").set_link("https://example.com"),
             Span::new(" bare")

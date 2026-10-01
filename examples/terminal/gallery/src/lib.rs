@@ -133,7 +133,7 @@ fn text() -> impl View {
       )
       .set_selectable(true)
       .set_color(SimplePalette::MUTED_FOREGROUND),
-      RichText::new().set_spans([
+      RichText::new().add_spans([
         muted("Rich text mixes "),
         Span::new("weights").set_bold(true),
         muted(", "),
@@ -438,10 +438,10 @@ fn visibility_and_one_of() -> impl View {
       )),
       OneOf::new()
         .derive_key(move || pane.get())
-        .set_case(String::from("summary"), || {
+        .add_case(String::from("summary"), || {
           Text::new("One case at a time: the summary.")
         })
-        .set_case(String::from("history"), || {
+        .add_case(String::from("history"), || {
           Text::new("And now the history, the summary gone.")
         }),
     )),

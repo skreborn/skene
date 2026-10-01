@@ -936,7 +936,8 @@ where
 /// A `Vec` location addressed by a key each element carries; built by
 /// [`IndexedField::keyed_by`].
 ///
-/// A read by key finds the first element carrying it, so keys are distinct. An element
+/// Keys are distinct: a read by key finds the element carrying it, and where a key
+/// repeats, one of the elements carrying it. An element
 /// addressed by key and the same element addressed by position
 /// ([`IndexedField::at`]) are one location: a write through either wakes the readers
 /// through both, and a key's location follows its element across a reorder.

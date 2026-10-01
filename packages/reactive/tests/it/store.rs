@@ -774,3 +774,175 @@ fn a_row_edit_reruns_only_its_own_effect() {
 
   scope.dispose();
 }
+
+/// One edit to a store of rows.
+#[cfg(not(target_arch = "wasm32"))]
+#[derive(Debug, Clone)]
+enum Edit {
+  Set(usize, &'static str),
+  Push(u32, &'static str),
+  Insert(usize, u32, &'static str),
+  Remove(usize),
+  Reconcile(Vec<(u32, &'static str)>),
+  Replace(Vec<(u32, &'static str)>),
+}
+
+/// A row a keyed store holds.
+#[cfg(not(target_arch = "wasm32"))]
+#[derive(Store, Clone, PartialEq, Debug)]
+struct Labelled {
+  id: u32,
+  label: &'static str,
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+mod staleness_properties {
+  use std::{cell::RefCell, rc::Rc};
+
+  use proptest::prelude::*;
+  use skene_reactive::{Effect, IndexedField, KeyedField, Store, StoreField};
+
+  use super::{Edit, Labelled};
+
+  /// The labels edits write.
+  const LABELS: &[&str] = &["a", "b", "c"];
+
+  /// Rows of distinct ids below six, as a reconcile or a replacement sets them.
+  fn arbitrary_rows() -> impl Strategy<Value = Vec<(u32, &'static str)>> {
+    proptest::collection::vec((0..6_u32, proptest::sample::select(LABELS)), 0..6).prop_map(
+      |mut rows| {
+        let mut seen = Vec::new();
+
+        rows.retain(|(id, _)| {
+          let fresh = !seen.contains(id);
+
+          seen.push(*id);
+
+          fresh
+        });
+
+        rows
+      },
+    )
+  }
+
+  fn arbitrary_edit() -> impl Strategy<Value = Edit> {
+    prop_oneof![
+      3 => (0..6_usize, proptest::sample::select(LABELS)).prop_map(|(index, label)| Edit::Set(index, label)),
+      2 => (0..6_u32, proptest::sample::select(LABELS)).prop_map(|(id, label)| Edit::Push(id, label)),
+      2 => (0..6_usize, 0..6_u32, proptest::sample::select(LABELS))
+        .prop_map(|(index, id, label)| Edit::Insert(index, id, label)),
+      2 => (0..6_usize).prop_map(Edit::Remove),
+      2 => arbitrary_rows().prop_map(Edit::Reconcile),
+      1 => arbitrary_rows().prop_map(Edit::Replace),
+    ]
+  }
+
+  /// Rows from their ids and labels.
+  fn rows(pairs: &[(u32, &'static str)]) -> Vec<Labelled> {
+    pairs
+      .iter()
+      .map(|(id, label)| Labelled { id: *id, label })
+      .collect()
+  }
+
+  /// A cell an effect keeps what it last read in.
+  type Seen<T> = Rc<RefCell<T>>;
+
+  /// Whether a row of `store` carries `id`, keys being distinct.
+  fn carries(store: Store<Vec<Labelled>>, id: u32) -> bool {
+    store
+      .read_untracked(|rows| rows.iter().any(|row| row.id == id))
+      .unwrap_or(false)
+  }
+
+  proptest! {
+    /// After any run of positional writes, pushes, inserts, removals, keyed reconciles
+    /// and replacements, keys kept distinct, every effect reading a position, a key, the
+    /// length or the whole has last seen what the store holds: no read is left stale.
+    #[test]
+    fn no_reader_is_left_stale(edits in proptest::collection::vec(arbitrary_edit(), 0..16)) {
+      let store = Store::transient(rows(&[(0, "a"), (1, "b")]));
+      let keyed = store.keyed_by(|row| row.id);
+      let positions: Vec<Seen<Option<&'static str>>> = (0..6)
+        .map(|index| {
+          let seen = Rc::new(RefCell::new(None));
+          let kept = Rc::clone(&seen);
+
+          Effect::new(move |_| *kept.borrow_mut() = store.at(index).try_with(|row| row.label));
+
+          seen
+        })
+        .collect();
+      let keys: Vec<Seen<Option<&'static str>>> = (0..6_u32)
+        .map(|id| {
+          let seen = Rc::new(RefCell::new(None));
+          let kept = Rc::clone(&seen);
+
+          Effect::new(move |_| *kept.borrow_mut() = keyed.key(id).try_with(|row| row.label));
+
+          seen
+        })
+        .collect();
+      let length = Rc::new(RefCell::new(0));
+      let whole = Rc::new(RefCell::new(Vec::new()));
+
+      {
+        let (length, whole) = (Rc::clone(&length), Rc::clone(&whole));
+
+        Effect::new(move |_| *length.borrow_mut() = store.len());
+        Effect::new(move |_| *whole.borrow_mut() = store.get());
+      }
+
+      for edit in edits {
+        match &edit {
+          Edit::Set(index, label) => {
+            let _ = store.at(*index).try_update(|row| row.label = label);
+          }
+          Edit::Push(id, label) => {
+            if !carries(store, *id) {
+              store.push(Labelled { id: *id, label });
+            }
+          }
+          Edit::Insert(index, id, label) => {
+            if *index <= store.len() && !carries(store, *id) {
+              store.insert(*index, Labelled { id: *id, label });
+            }
+          }
+          Edit::Remove(index) => {
+            if *index < store.len() {
+              let _ = store.remove(*index);
+            }
+          }
+          Edit::Reconcile(pairs) => keyed.reconcile(rows(pairs)),
+          Edit::Replace(pairs) => store.set(rows(pairs)),
+        }
+
+        let model = store.read_untracked(Clone::clone).expect("the store is live");
+
+        for (index, seen) in positions.iter().enumerate() {
+          prop_assert_eq!(
+            *seen.borrow(),
+            model.get(index).map(|row| row.label),
+            "position {} after {:?}",
+            index,
+            edit
+          );
+        }
+
+        for (id, seen) in (0..6_u32).zip(&keys) {
+          prop_assert_eq!(
+            *seen.borrow(),
+            model.iter().find(|row| row.id == id).map(|row| row.label),
+            "key {} after {:?}",
+            id,
+            edit
+          );
+        }
+
+        prop_assert_eq!(*length.borrow(), model.len(), "length after {:?}", edit);
+        prop_assert_eq!(&*whole.borrow(), &model, "whole after {:?}", edit);
+      }
+    }
+  }
+}

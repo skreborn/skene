@@ -14,9 +14,7 @@ use skene_foundation::{
   RunKeyframe,
   Size,
   Slot,
-  TokenName,
   Transition,
-  typography,
   web::WebProperty,
 };
 
@@ -27,8 +25,6 @@ use crate::{Headless, SlotLeaf, SlotValue, records::Kind, with_records};
 pub(crate) struct Records;
 
 impl ResolutionSource<Headless> for Records {
-  const EM: f32 = 16.;
-
   fn environment(&self) -> Environment<f32> {
     with_records(|records| records.environment())
   }
@@ -41,8 +37,8 @@ impl ResolutionSource<Headless> for Records {
     with_records(|records| records.record(node)?.slots.get(&slot).cloned())
   }
 
-  fn size_token(&self) -> Option<TokenName> {
-    Some(typography::SIZE.name())
+  fn sizes_text(&self) -> bool {
+    true
   }
 
   fn generation(&self) -> u64 {

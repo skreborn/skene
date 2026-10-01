@@ -8,7 +8,7 @@
 //! [`SIZE`], [`WEIGHT`], [`LINE_HEIGHT`] and [`LETTER_SPACING`] are for the text
 //! properties a medium's style extension carries.
 
-use crate::{Color, Length, TokenRef};
+use crate::spine::{Color, Length, TokenRef};
 
 /// The text color.
 pub const INK: TokenRef<Color> = TokenRef::new("typography-ink");

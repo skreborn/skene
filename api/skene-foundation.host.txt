@@ -3698,6 +3698,8 @@ pub fn skene_foundation::Column<P>::build(self) -> skene_foundation::NodeId
 pub fn skene_foundation::Column<P>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
 pub fn skene_foundation::Column<P>::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
 pub struct skene_foundation::Conditional<L, C>
+impl<C: core::clone::Clone> skene_foundation::Conditional<skene_foundation::Leaf<skene_foundation::Alignment>, C>
+pub fn skene_foundation::Conditional<skene_foundation::Leaf<skene_foundation::Alignment>, C>::split_axes(&self) -> (skene_foundation::Value<skene_foundation::ItemAlignment, C>, skene_foundation::Value<skene_foundation::ItemAlignment, C>)
 impl<L, C> skene_foundation::Conditional<L, C>
 pub const fn skene_foundation::Conditional<L, C>::base(&self) -> &L
 pub fn skene_foundation::Conditional<L, C>::leaves(&self) -> impl core::iter::traits::iterator::Iterator<Item = (core::option::Option<&C>, &L)>
@@ -7507,6 +7509,7 @@ pub trait skene_foundation::Platform: core::marker::Copy + core::default::Defaul
 pub type skene_foundation::Platform::Scalar: skene_foundation::Scalar
 pub type skene_foundation::Platform::StyleExt: skene_foundation::StyleExtension
 pub type skene_foundation::Platform::TokenValue: core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug + core::convert::From<skene_foundation::Definition<skene_foundation::Color, Self::Scalar>> + core::convert::From<skene_foundation::Definition<f32, Self::Scalar>> + core::convert::From<skene_foundation::Definition<skene_foundation::Length, Self::Scalar>> + core::convert::From<skene_foundation::Definition<skene_foundation::Dimension<Self::Scalar>, Self::Scalar>> + 'static
+pub const skene_foundation::Platform::EM: f32
 pub fn skene_foundation::Platform::apply_layout(skene_foundation::NodeId, &skene_foundation::StaticBoxStyle<Self>)
 pub fn skene_foundation::Platform::attach(skene_foundation::NodeId, skene_foundation::NodeId, core::option::Option<skene_foundation::NodeId>)
 pub fn skene_foundation::Platform::blur(skene_foundation::NodeId)
@@ -7579,11 +7582,10 @@ pub fn vello_cpu::render::RenderContext::push_clip(&mut self, &kurbo::bezpath::B
 pub fn vello_cpu::render::RenderContext::set_transform(&mut self, kurbo::affine::Affine)
 pub fn vello_cpu::render::RenderContext::stroke(&mut self, &kurbo::bezpath::BezPath, &kurbo::stroke::Stroke, &peniko::brush::Brush)
 pub trait skene_foundation::ResolutionSource<P: skene_foundation::Platform>
-pub const skene_foundation::ResolutionSource::EM: f32
 pub fn skene_foundation::ResolutionSource::container_size(&self, skene_foundation::ContainerName) -> core::option::Option<skene_foundation::Size<<P as skene_foundation::Platform>::Scalar>>
 pub fn skene_foundation::ResolutionSource::environment(&self) -> skene_foundation::Environment<<P as skene_foundation::Platform>::Scalar>
 pub fn skene_foundation::ResolutionSource::generation(&self) -> u64
-pub fn skene_foundation::ResolutionSource::size_token(&self) -> core::option::Option<skene_foundation::TokenName>
+pub fn skene_foundation::ResolutionSource::sizes_text(&self) -> bool
 pub fn skene_foundation::ResolutionSource::slot(&self, skene_foundation::NodeId, skene_foundation::Slot) -> core::option::Option<skene_foundation::SlotLeaf<<P as skene_foundation::Platform>::Scalar, <P as skene_foundation::Platform>::StyleExt>>
 pub trait skene_foundation::RunField<X: skene_foundation::StyleExtension>: 'static
 pub type skene_foundation::RunField::Value: skene_foundation::IntoRunValue<X>
@@ -7722,9 +7724,11 @@ pub fn skene_foundation::web::WebStyle::interpolate_value(&f32, &f32, f32) -> co
 pub fn skene_foundation::web::WebStyle::run_value_from_number(f32) -> core::option::Option<skene_foundation::RunValue<Self>>
 pub trait skene_foundation::ThemedIn<P: skene_foundation::Platform>: skene_foundation::TokenSet<<P as skene_foundation::Platform>::TokenValue> + core::default::Default
 pub fn skene_foundation::ThemedIn::current() -> Self
+pub fn skene_foundation::ThemedIn::define_root()
 pub fn skene_foundation::ThemedIn::watch() -> skene_reactive::memo::Memo<Self>
 impl<P: skene_foundation::Platform, S: skene_foundation::TokenSet<<P as skene_foundation::Platform>::TokenValue> + core::default::Default> skene_foundation::ThemedIn<P> for S
 pub fn S::current() -> S
+pub fn S::define_root()
 pub fn S::watch() -> skene_reactive::memo::Memo<S>
 pub trait skene_foundation::TokenSet<V>: core::clone::Clone + core::cmp::PartialEq + 'static
 pub fn skene_foundation::TokenSet::definitions(&self) -> alloc::vec::Vec<(skene_foundation::TokenName, V)>

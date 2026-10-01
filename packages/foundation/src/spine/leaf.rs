@@ -5,7 +5,7 @@ use std::{fmt::Debug, rc::Rc};
 use thin_vec::ThinVec;
 
 use super::{Condition, Expr, Media, Scalar, State, Token, TokenName, TokenRef, Tokenable};
-use crate::spine::{Axes, Dimension, Spacing};
+use crate::spine::{Alignment, Axes, Dimension, ItemAlignment, Spacing};
 
 /// A value that is data: a literal, a token reference, or an expression.
 ///
@@ -250,6 +250,38 @@ impl<T, C> Value<T, C> {
 
       leaf
     })
+  }
+}
+
+impl<C: Clone> Value<Alignment, C> {
+  /// The value's horizontal and vertical axes, each leaf projected onto its axis and a
+  /// token read by its name on both.
+  pub fn split_axes(&self) -> (Value<ItemAlignment, C>, Value<ItemAlignment, C>) {
+    (
+      self.axis(|alignment| alignment.horizontal),
+      self.axis(|alignment| alignment.vertical),
+    )
+  }
+
+  /// One axis of the value: each leaf projected through `pick`.
+  fn axis(&self, pick: fn(Alignment) -> ItemAlignment) -> Value<ItemAlignment, C> {
+    self.clone().map(|leaf| match leaf {
+      Leaf::Static(leaf) => Leaf::Static(alignment_axis(&leaf, pick)),
+      Leaf::Derived(compute) => Leaf::Derived(Rc::new(move || alignment_axis(&compute(), pick))),
+    })
+  }
+}
+
+/// One axis of a two-axis alignment leaf: a fixed alignment projected through `pick`, a
+/// token read by its name.
+fn alignment_axis(
+  leaf: &StaticLeaf<Alignment>,
+  pick: fn(Alignment) -> ItemAlignment,
+) -> StaticLeaf<ItemAlignment> {
+  match leaf {
+    StaticLeaf::Fixed(alignment) => StaticLeaf::Fixed(pick(*alignment)),
+    StaticLeaf::Token(name) => StaticLeaf::Token(*name),
+    StaticLeaf::Expr(_) => unreachable!("no expression has an alignment type"),
   }
 }
 

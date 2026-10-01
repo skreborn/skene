@@ -131,6 +131,8 @@ impl TestPlatform {
 }
 
 impl Platform for TestPlatform {
+  const EM: f32 = 16.;
+
   type Scalar = f32;
   type StyleExt = ();
   type TokenValue = Erased;

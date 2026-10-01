@@ -90,6 +90,8 @@ pub(crate) fn root_node() -> Option<NodeId> {
 }
 
 impl Platform for Terminal {
+  const EM: f32 = 1.;
+
   type Scalar = u32;
   type StyleExt = TerminalStyle;
   type TokenValue = skene_foundation::TokenValue<u32>;
@@ -536,14 +538,10 @@ pub(crate) fn install() {
   });
 
   let node = with_records(|records| records.root);
+
   // Every run inherits its text properties through the typography tokens, so the
   // terminal's defaults are defined at the root before any theme redefines them.
-  let typography = Definitions::of(&Typography::default());
-
-  Scene::<Terminal>::with(|scene| {
-    scene.define_root_tokens_once(std::any::TypeId::of::<Typography>(), typography);
-  });
-
+  <Typography as skene_foundation::ThemedIn<Terminal>>::define_root();
   ROOT.with(|held| *held.borrow_mut() = Some(node));
 
   crate::dev::provide_restoration();

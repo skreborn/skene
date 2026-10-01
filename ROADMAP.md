@@ -188,10 +188,6 @@ left half-done in a code comment.
     `skene-simple-terminal`) whose views are newtypes over them, and
     `examples/third-party` splits the same way; `AGENTS.md`'s facade, selection,
     third-party and examples rules follow.
-    - The foundation: `split_alignment` and `ThemedIn::define_root` stop being
-    crate-private, and the resolution names the typography size token itself, so
-    `ResolutionSource::size_token` goes, the terminal keeping only whether it proved
-    text sizing, and the `em` fallback becomes the platform's.
     - Moves: `AsyncView`, `Deferred`, the hydrating `Resource`, `Link` and the router
     binding into the foundation over platform seams, so a generic library can use them
     and the terminal gains `Link`; the title into a shared `window` module, which grows

@@ -85,7 +85,6 @@ mod text;
 mod theme;
 mod tooltip;
 mod type_metrics;
-pub mod typography;
 pub mod web;
 
 extern crate self as skene_foundation;

@@ -57,6 +57,7 @@ use crate::spine::{
   box_style::{BoxField, BoxFieldVisitor},
   run_style::{RunField, RunFieldVisitor},
   scene::TokenScope,
+  typography,
 };
 
 /// How deep a chain of tokens and expressions naming tokens is followed.
@@ -753,16 +754,12 @@ impl<X: StyleExtension> RunStyle<Plain, X> {
 }
 
 /// Where a runtime-resolving platform's [`ResolutionContext`] reads what the scene does
-/// not hold: the environment, container sizes, slots and the font size's token.
+/// not hold: the environment, container sizes, slots and whether text takes sizes.
 #[diagnostic::on_unimplemented(
   message = "`{Self}` is no source a platform's resolution reads",
-  label = "a resolution source gives the environment, container sizes, slots and the font size's token"
+  label = "a resolution source gives the environment, container sizes, slots and whether text takes sizes"
 )]
 pub trait ResolutionSource<P: Platform> {
-  /// The font size an `em` evaluates against where no typography defines one, in the
-  /// medium's unit.
-  const EM: f32;
-
   /// The reader's environment.
   fn environment(&self) -> Environment<P::Scalar>;
 
@@ -772,12 +769,13 @@ pub trait ResolutionSource<P: Platform> {
   /// The latest derived write into `slot` on `node`.
   fn slot(&self, node: NodeId, slot: Slot) -> Option<SlotLeaf<P::Scalar, P::StyleExt>>;
 
-  /// The token naming the font size, where the medium draws text at sizes other than
-  /// [`EM`](Self::EM).
-  fn size_token(&self) -> Option<TokenName>;
+  /// Whether the medium draws text at sizes other than [`EM`](Platform::EM), the
+  /// typography's [`SIZE`](typography::SIZE) then giving the font size.
+  fn sizes_text(&self) -> bool;
 
-  /// A count that moves whenever the environment, a container's size or the size token
-  /// changes: what a token resolved to where it is defined is kept until it moves.
+  /// A count that moves whenever the environment, a container's size or whether text
+  /// takes sizes changes: what a token resolved to where it is defined is kept until it
+  /// moves.
   fn generation(&self) -> u64;
 }
 
@@ -892,16 +890,18 @@ where
     value
   }
 
-  /// The font size in force here: the size token's, resolved where it is defined once
-  /// per defining node, else the source's [`EM`](ResolutionSource::EM).
+  /// The font size in force here: the typography's [`SIZE`](typography::SIZE), resolved
+  /// where it is defined once per defining node, where the source sizes text, else the
+  /// platform's [`EM`](Platform::EM).
   fn font_size(&self) -> f32 {
-    let Some(size) = self.source.size_token()
-    else {
-      return S::EM;
-    };
+    if !self.source.sizes_text() {
+      return P::EM;
+    }
+
+    let size = typography::SIZE.name();
     let Some(scope) = self.token_scope(size)
     else {
-      return S::EM;
+      return P::EM;
     };
     let generation = self.source.generation();
 
@@ -913,13 +913,13 @@ where
       let definition = Scene::<P>::read(|scene| scene.definition_on(scope, size))?;
 
       Self::of_scope(self.source, scope)?
-        .with_resolver_at(S::EM, |resolver| resolver.definition(&definition))
+        .with_resolver_at(P::EM, |resolver| resolver.definition(&definition))
     })
     .and_then(|resolved| match resolved {
       Resolved::Length(size) => Some(size),
       _ => None,
     })
-    .unwrap_or(S::EM);
+    .unwrap_or(P::EM);
 
     Scene::<P>::with(|scene| scene.keep_font_size(scope, generation, resolved));
 

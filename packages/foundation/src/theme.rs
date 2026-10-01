@@ -127,6 +127,10 @@ pub trait ThemedIn<P: Platform>: TokenSet<P::TokenValue> + Default {
 
   /// The nearest theme's set as a memo, or a memo of the default without one.
   fn watch() -> Memo<Self>;
+
+  /// Lays the set's default definitions over the root of `P`'s scene, once per set, so
+  /// a node below no theme resolves its tokens.
+  fn define_root();
 }
 
 #[diagnostic::do_not_recommend]
@@ -135,7 +139,7 @@ impl<P: Platform, S: TokenSet<P::TokenValue> + Default> ThemedIn<P> for S {
   fn current() -> Self {
     use_context::<Memo<Self>>().map_or_else(
       || {
-        define_root::<P, Self>();
+        <Self as ThemedIn<P>>::define_root();
 
         Self::default()
       },
@@ -146,23 +150,21 @@ impl<P: Platform, S: TokenSet<P::TokenValue> + Default> ThemedIn<P> for S {
   #[inline(always)]
   fn watch() -> Memo<Self> {
     use_context::<Memo<Self>>().unwrap_or_else(|| {
-      define_root::<P, Self>();
+      <Self as ThemedIn<P>>::define_root();
 
       Memo::new(|_| Self::default())
     })
   }
-}
 
-/// Lays `S`'s default definitions over the root of `P`'s scene, once per set, built
-/// outside the scene's borrow.
-fn define_root<P: Platform, S: TokenSet<P::TokenValue> + Default>() {
-  let set = TypeId::of::<S>();
+  fn define_root() {
+    let set = TypeId::of::<Self>();
 
-  if Scene::<P>::with(|scene| scene.defines_root_set(set)) {
-    return;
+    if Scene::<P>::with(|scene| scene.defines_root_set(set)) {
+      return;
+    }
+
+    let definitions = Definitions::of(&Self::default());
+
+    Scene::<P>::with(|scene| scene.define_root_tokens_once(set, definitions));
   }
-
-  let definitions = Definitions::of(&S::default());
-
-  Scene::<P>::with(|scene| scene.define_root_tokens_once(set, definitions));
 }

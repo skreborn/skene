@@ -39,6 +39,7 @@ mod task;
 #[cfg(test)]
 mod testing;
 mod token;
+pub mod typography;
 mod values;
 mod view;
 mod window;

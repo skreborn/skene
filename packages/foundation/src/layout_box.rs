@@ -163,7 +163,7 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
     mut self,
     alignment: impl Into<Value<Alignment, Condition<P::Scalar>>>,
   ) -> Self {
-    let (horizontal, vertical) = split_alignment(&alignment.into());
+    let (horizontal, vertical) = alignment.into().split_axes();
 
     self.style.item_horizontal_alignment = Some(horizontal);
     self.style.item_alignment = Some(vertical);
@@ -498,40 +498,6 @@ pub(crate) fn verdict<R: Into<Bubbling>>(result: R) -> Prevent {
   let bubbling: Bubbling = result.into();
 
   Prevent::from(bubbling)
-}
-
-/// One axis of a two-axis alignment leaf: a fixed alignment projected through `pick`, a
-/// token read by its name.
-fn alignment_axis_leaf(
-  leaf: &StaticLeaf<Alignment>,
-  pick: fn(Alignment) -> ItemAlignment,
-) -> StaticLeaf<ItemAlignment> {
-  match leaf {
-    StaticLeaf::Fixed(alignment) => StaticLeaf::Fixed(pick(*alignment)),
-    StaticLeaf::Token(name) => StaticLeaf::Token(*name),
-    StaticLeaf::Expr(_) => unreachable!("no expression has an alignment type"),
-  }
-}
-
-/// One axis of a two-axis alignment value: each leaf projected through `pick`.
-fn alignment_axis<C: Clone>(
-  value: &Value<Alignment, C>,
-  pick: fn(Alignment) -> ItemAlignment,
-) -> Value<ItemAlignment, C> {
-  value.clone().map(|leaf| match leaf {
-    Leaf::Static(leaf) => Leaf::Static(alignment_axis_leaf(&leaf, pick)),
-    Leaf::Derived(compute) => Leaf::Derived(Rc::new(move || alignment_axis_leaf(&compute(), pick))),
-  })
-}
-
-/// Splits a two-axis alignment value into its horizontal and vertical axes.
-pub(crate) fn split_alignment<C: Clone>(
-  value: &Value<Alignment, C>,
-) -> (Value<ItemAlignment, C>, Value<ItemAlignment, C>) {
-  (
-    alignment_axis(value, |alignment| alignment.horizontal),
-    alignment_axis(value, |alignment| alignment.vertical),
-  )
 }
 
 impl<P: Platform, Kind: 'static> HasChildren<P> for LayoutBox<P, Kind> {

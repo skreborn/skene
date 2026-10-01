@@ -18,7 +18,6 @@ use crate::{
   StaticLeaf,
   Value,
   View,
-  layout_box::split_alignment,
 };
 
 /// A placement value under the platform's conditions.
@@ -134,7 +133,7 @@ impl<P: Platform> GridCell<P> {
 impl<P: Platform> IntoChildOf<P, GridChild> for GridCell<P, AnyView<P>> {
   fn into_child(self) -> AnyView<P> {
     AnyView::new(move || {
-      let (horizontal, vertical) = match self.alignment.as_ref().map(split_alignment) {
+      let (horizontal, vertical) = match self.alignment.as_ref().map(Value::split_axes) {
         Some((horizontal, vertical)) => (Some(horizontal), Some(vertical)),
         None => (None, None),
       };

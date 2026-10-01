@@ -12,7 +12,6 @@ use skene_foundation::{
   ResolutionSource,
   Size,
   Slot,
-  TokenName,
 };
 use skene_reactive::{Owner, ReadSignal, Signal, WriteSignal};
 
@@ -46,8 +45,6 @@ pub(crate) struct MediaState {
 
 impl ResolutionSource<Terminal> for Records {
   /// The terminal draws every size at one cell where it proves no text sizing.
-  const EM: f32 = 1.;
-
   fn environment(&self) -> Environment<u32> {
     Self::environment(self)
   }
@@ -65,8 +62,8 @@ impl ResolutionSource<Terminal> for Records {
     self.record(node)?.slots.get(&slot).cloned()
   }
 
-  fn size_token(&self) -> Option<TokenName> {
-    crate::text::sizing().then(|| skene_foundation::typography::SIZE.name())
+  fn sizes_text(&self) -> bool {
+    crate::text::sizing()
   }
 
   fn generation(&self) -> u64 {

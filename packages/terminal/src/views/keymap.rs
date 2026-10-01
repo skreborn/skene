@@ -11,6 +11,17 @@ use crate::ActivePlatform;
 /// passed over. Holds [`NoChild`] until [`set_child`](Self::set_child) supplies the view
 /// served; [`serve`](Self::serve) binds the shortcuts on a node that already exists
 /// instead.
+///
+/// ```
+/// use skene_terminal::prelude::*;
+///
+/// let saved = Signal::new(0);
+/// let editor = Keymap::new()
+///   .handle_shortcut(Shortcut::new(Modifiers::CTRL, "s"), move || {
+///     saved.update(|count| *count += 1);
+///   })
+///   .set_child(Text::new("Press Ctrl-S"));
+/// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
 pub struct Keymap<C = NoChild>(skene_foundation::Keymap<ActivePlatform, C>);

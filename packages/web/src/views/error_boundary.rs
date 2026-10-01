@@ -14,6 +14,14 @@ use crate::ActivePlatform;
 /// is disposed. Holds [`NoChild`] until [`set_child_builder`](Self::set_child_builder)
 /// supplies the content; it is a builder closure because it is built under the owner
 /// the handle is provided on.
+///
+/// ```
+/// use skene_web::prelude::*;
+///
+/// let guarded = ErrorBoundary::new()
+///   .set_fallback_builder(|_| Text::new("Something failed"))
+///   .set_child_builder(|| Text::new("Fine"));
+/// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
 pub struct ErrorBoundary<C = NoChild>(skene_foundation::ErrorBoundary<ActivePlatform, C>);

@@ -11,6 +11,16 @@ use crate::ActivePlatform;
 /// keyed, so scrolling reuses the views whose keys stay in the window, and an item
 /// expresses its own reactivity as usual. The item height is fixed or estimated
 /// ([`ItemExtent`](skene_foundation::ItemExtent)); until one is set every item builds.
+///
+/// ```
+/// use skene_web::prelude::*;
+///
+/// let rows = LazyColumn::new().set_item_height(24.).derive_items(
+///   || 0..10_000,
+///   |index| *index,
+///   |index| Text::new(format!("Row {index}")),
+/// );
+/// ```
 #[derive(Debug, Default, View, Wraps)]
 #[must_use]
 pub struct LazyColumn(skene_foundation::LazyColumn<ActivePlatform>);
@@ -24,6 +34,16 @@ impl LazyColumnBase<ActivePlatform> for LazyColumn {}
 /// keyed, so scrolling reuses the views whose keys stay in the window, and an item
 /// expresses its own reactivity as usual. The item width is fixed or estimated
 /// ([`ItemExtent`](skene_foundation::ItemExtent)); until one is set every item builds.
+///
+/// ```
+/// use skene_web::prelude::*;
+///
+/// let strip = LazyRow::new().set_item_width(64.).derive_items(
+///   || 0..1_000,
+///   |index| *index,
+///   |index| Text::new(index.to_string()),
+/// );
+/// ```
 #[derive(Debug, Default, View, Wraps)]
 #[must_use]
 pub struct LazyRow(skene_foundation::LazyRow<ActivePlatform>);

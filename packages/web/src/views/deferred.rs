@@ -16,6 +16,12 @@ use crate::ActivePlatform;
 /// head element registered inside the subtree reaches that page only once the client
 /// hydrates. Holds [`NoChild`] until [`set_child_builder`](Self::set_child_builder)
 /// supplies the content.
+///
+/// ```
+/// use skene_web::{Deferred, prelude::*};
+///
+/// let comments = Deferred::new().set_child_builder(|| Text::new("The comments"));
+/// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
 pub struct Deferred<C = NoChild>(skene_foundation::web::Deferred<ActivePlatform, C>);

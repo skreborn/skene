@@ -15,6 +15,35 @@ use crate::ActivePlatform;
 ///
 /// A modified click or `Enter`—control, shift, alt, or command held—is left to the
 /// browser, so open-in-new-tab and friends keep working.
+///
+/// ```
+/// use skene_web::{prelude::*, router::Route};
+///
+/// #[derive(Clone, PartialEq)]
+/// enum Page {
+///   Home,
+///   About,
+/// }
+///
+/// impl Route for Page {
+///   fn parse(path: &str) -> Option<Self> {
+///     match path {
+///       "/" => Some(Self::Home),
+///       "/about" => Some(Self::About),
+///       _ => None,
+///     }
+///   }
+///
+///   fn to_path(&self) -> String {
+///     match self {
+///       Self::Home => "/".to_owned(),
+///       Self::About => "/about".to_owned(),
+///     }
+///   }
+/// }
+///
+/// let about = Link::new(Page::About).set_child(Text::new("About"));
+/// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
 pub struct Link<R: Route, C = NoChild>(skene_foundation::Link<ActivePlatform, R, C>);

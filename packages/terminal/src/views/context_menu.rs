@@ -23,6 +23,18 @@ use crate::ActivePlatform;
 /// `set_item_*` setters. Holds [`NoChild`] until [`set_child`](Self::set_child)
 /// supplies the view served; [`serve`](Self::serve) attaches the menu to a node that
 /// already exists instead.
+///
+/// ```
+/// use skene_terminal::prelude::*;
+///
+/// let editor = ContextMenu::new()
+///   .set_items([
+///     MenuEntry::copy(),
+///     MenuEntry::separator(),
+///     MenuEntry::new("Inspect"),
+///   ])
+///   .set_child(Text::new("Right-click me"));
+/// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
 pub struct ContextMenu<C = NoChild>(skene_foundation::ContextMenu<ActivePlatform, C>);

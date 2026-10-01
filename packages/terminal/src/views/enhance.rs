@@ -19,6 +19,15 @@ use crate::ActivePlatform;
 /// The signal the built-ins wait on is the terminal's own:
 /// [`Painting::available`](skene_foundation::Painting::available) for a painted box's
 /// pixels, true once the terminal's graphics probe is answered.
+///
+/// ```
+/// use skene_terminal::prelude::*;
+///
+/// let ready = Signal::new(false);
+/// let chart = Enhance::new(ready.read_only())
+///   .set_fallback_builder(|| Text::new("42 visits"))
+///   .set_child_builder(|| Text::new("A chart of the visits"));
+/// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
 pub struct Enhance<C = NoChild>(skene_foundation::Enhance<ActivePlatform, C>);

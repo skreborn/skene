@@ -19,6 +19,14 @@ use crate::ActivePlatform;
 /// The signals the built-ins wait on are the web's own: [`media::hydrated`](crate::media::hydrated)
 /// for a render made without script, and [`Painting::available`](crate::Painting::available)
 /// for a painted box's pixels.
+///
+/// ```
+/// use skene_web::prelude::*;
+///
+/// let clock = Enhance::new(media::hydrated())
+///   .set_fallback_builder(|| Text::new("12:00"))
+///   .set_child_builder(|| Text::new("A ticking clock"));
+/// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
 pub struct Enhance<C = NoChild>(skene_foundation::Enhance<ActivePlatform, C>);

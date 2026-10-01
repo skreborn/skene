@@ -11,6 +11,15 @@ use crate::ActivePlatform;
 /// holds. While hidden its effects pause, catching up once it shows again.
 ///
 /// Holds [`NoChild`] until `set_child` supplies the child; only then is it a view.
+///
+/// ```
+/// use skene_web::prelude::*;
+///
+/// let open = Signal::new(false);
+/// let details = Visibility::new()
+///   .derive_shown(move || open.get())
+///   .set_child(Text::new("The details"));
+/// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
 pub struct Visibility<C = NoChild>(skene_foundation::Visibility<ActivePlatform, C>);

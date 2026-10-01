@@ -16,6 +16,16 @@ use crate::ActivePlatform;
 /// both to one signal. Opening and closing attach nothing and destroy nothing, so state
 /// inside the content survives. Its content box is decorated like a container. Holds
 /// [`NoChild`] until [`set_child`](Self::set_child) supplies the content.
+///
+/// ```
+/// use skene_web::prelude::*;
+///
+/// let open = Signal::new(false);
+/// let dialog = Overlay::modal()
+///   .derive_open(move || open.get())
+///   .set_label("Settings")
+///   .set_child(Text::new("Settings"));
+/// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
 pub struct Overlay<C = NoChild>(skene_foundation::Overlay<ActivePlatform, C>);

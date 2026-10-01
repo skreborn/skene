@@ -15,6 +15,14 @@ use crate::ActivePlatform;
 /// [`NoChild`] until [`set_child_builder`](Self::set_child_builder) supplies the
 /// content; it is a builder closure because it is built under the owner the boundary
 /// is provided on.
+///
+/// ```
+/// use skene_web::prelude::*;
+///
+/// let page = Suspense::new()
+///   .set_fallback_builder(|| Text::new("Loading…"))
+///   .set_child_builder(|| Text::new("Loaded"));
+/// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
 pub struct Suspense<C = NoChild>(skene_foundation::Suspense<ActivePlatform, C>);

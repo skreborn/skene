@@ -10,6 +10,14 @@ use crate::ActivePlatform;
 /// own style, so they compile, condition and derive like any property. The child is
 /// auto-placed on an axis with no placement set. Accepted only where a grid's children
 /// are; holds [`NoChild`] until `set_child` supplies the child.
+///
+/// ```
+/// use skene_web::prelude::*;
+///
+/// let layout = Grid::uniform(3).set_children((GridCell::new()
+///   .set_column(Line::between(1, 3))
+///   .set_child(Text::new("Wide")),));
+/// ```
 #[derive(Debug, Wraps)]
 #[must_use]
 pub struct GridCell<C = NoChild>(skene_foundation::GridCell<ActivePlatform, C>);

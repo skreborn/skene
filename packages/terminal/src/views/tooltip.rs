@@ -16,6 +16,13 @@ use crate::ActivePlatform;
 /// [`Part::Bubble`](skene_foundation::Part::Bubble) of the described view, decorated through the
 /// setters here, and sits where an anchored overlay's [placement](Self::set_placement) puts it.
 /// Holds [`NoChild`] until [`set_child`](Self::set_child) supplies the view it describes.
+///
+/// ```
+/// use skene_terminal::{Activate, prelude::*};
+///
+/// let save = Tooltip::new("Saves the document")
+///   .set_child(BasicButton::new(Activate::new()).set_label("Save"));
+/// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
 pub struct Tooltip<C = NoChild>(skene_foundation::Tooltip<ActivePlatform, C>);

@@ -11,6 +11,17 @@ use crate::ActivePlatform;
 /// style, and the alignment its `self_alignment`, so they compile, condition and derive
 /// like any property. Accepted only where a flex container's children are; holds
 /// [`NoChild`] until `set_child` supplies the child.
+///
+/// ```
+/// use skene_web::prelude::*;
+///
+/// let bar = Row::new().set_children((
+///   Flexible::new()
+///     .set_flexibility(Flexibility::grow(1.))
+///     .set_child(Text::new("Grows")),
+///   Text::new("Stays"),
+/// ));
+/// ```
 #[derive(Debug, Wraps)]
 #[must_use]
 pub struct Flexible<C = NoChild>(skene_foundation::Flexible<ActivePlatform, C>);

@@ -11,6 +11,22 @@ use crate::ActivePlatform;
 /// child where the stack's alignment does on that axis; every edge is `Auto` until
 /// [`set_edges`](Self::set_edges). Accepted only where a stack's children are; holds
 /// [`NoChild`] until `set_child` supplies the child.
+///
+/// ```
+/// use skene_terminal::prelude::*;
+///
+/// let corner = Stack::new().set_children((
+///   Text::new("Content"),
+///   Pinned::new()
+///     .set_edges(Inset {
+///       start: Dimension::Auto,
+///       top: Dimension::Length(0),
+///       end: Dimension::Length(0),
+///       bottom: Dimension::Auto,
+///     })
+///     .set_child(Text::new("New")),
+/// ));
+/// ```
 #[derive(Debug, Wraps)]
 #[must_use]
 pub struct Pinned<C = NoChild>(skene_foundation::Pinned<ActivePlatform, C>);

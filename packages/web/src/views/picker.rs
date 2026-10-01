@@ -30,6 +30,19 @@ use crate::ActivePlatform;
 /// [`set_face`](Self::set_face) supplies the face; the options come from
 /// [`set_options`](Self::set_options) and [`derive_options`](Self::derive_options),
 /// each a [`BasicListboxOption`](crate::BasicListboxOption) at any depth.
+///
+/// ```
+/// use skene_web::{ListboxOption, prelude::*};
+///
+/// let size = Signal::new(String::from("m"));
+/// let picker = BasicPicker::new()
+///   .set_label("Size")
+///   .bind_chosen(size)
+///   .set_options((
+///     BasicListboxOption::new(ListboxOption::new("s")).set_label("Small"),
+///     BasicListboxOption::new(ListboxOption::new("m")).set_label("Medium"),
+///   ));
+/// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
 pub struct BasicPicker<F = NoChild>(skene_foundation::BasicPicker<ActivePlatform, F>);

@@ -12,6 +12,13 @@ use crate::{ActivePlatform, TokenValue};
 /// and nothing rebuilds. Nesting a theme redefines beneath it. Holds [`NoChild`] until
 /// [`set_child_builder`](Self::set_child_builder) supplies the child; the child is a
 /// builder closure because it is built under the owner the context is provided on.
+///
+/// ```
+/// use skene_terminal::prelude::*;
+///
+/// let themed = Theme::new(Typography::default().set_size(2.))
+///   .set_child_builder(|| Text::new("Set twice the cell"));
+/// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
 pub struct Theme<S: TokenSet<TokenValue>, C = NoChild>(

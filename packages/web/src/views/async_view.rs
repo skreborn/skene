@@ -23,6 +23,16 @@ use crate::ActivePlatform;
 /// claimed instead: it stays visible, already satisfying the enclosing boundary, until
 /// the module arrives and the real content replaces it in place. Holds [`NoChild`]
 /// until [`set_child_loader`](Self::set_child_loader) supplies the content.
+///
+/// ```
+/// use skene_web::{AsyncView, prelude::*};
+///
+/// async fn settings() -> Text {
+///   Text::new("Settings")
+/// }
+///
+/// let page = AsyncView::new().set_child_loader(settings);
+/// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
 pub struct AsyncView<C = NoChild>(skene_foundation::web::AsyncView<ActivePlatform, C>);

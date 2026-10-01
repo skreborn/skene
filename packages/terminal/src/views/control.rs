@@ -37,6 +37,15 @@ use crate::ActivePlatform;
 /// sit in one row half an em apart, centered on the cross axis, the label where the
 /// behavior places it ([`Behavior::label_placement`](skene_foundation::Behavior::label_placement)):
 /// leading or trailing in the row, or beside the box, before it among its siblings.
+///
+/// ```
+/// use skene_terminal::{Activate, prelude::*};
+///
+/// let count = Signal::new(0);
+/// let button = BasicButton::new(Activate::new())
+///   .set_label("Add")
+///   .handle_activate(move || count.update(|count| *count += 1));
+/// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
 pub struct Control<B: Behavior<ActivePlatform>, C = NoChild>(

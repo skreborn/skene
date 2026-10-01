@@ -12,6 +12,22 @@ use crate::ActivePlatform;
 ///
 /// Every branch built is destroyed when the owner the switch was built under is
 /// disposed. Nothing is shown while no key is set or no case has the current key.
+///
+/// ```
+/// use skene_web::prelude::*;
+///
+/// #[derive(Clone, Copy, PartialEq, Eq, Hash)]
+/// enum Tab {
+///   Inbox,
+///   Archive,
+/// }
+///
+/// let tab = Signal::transient(Tab::Inbox);
+/// let pane = OneOf::new()
+///   .derive_key(move || tab.get())
+///   .add_case(Tab::Inbox, || Text::new("Inbox"))
+///   .add_case(Tab::Archive, || Text::new("Archive"));
+/// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
 pub struct OneOf<K>(skene_foundation::OneOf<ActivePlatform, K>);

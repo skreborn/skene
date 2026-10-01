@@ -9,6 +9,15 @@ use crate::ActivePlatform;
 /// Carries layout properties and nothing else; decorating it means wrapping it in a
 /// [`Container`](crate::Container). Accepts any view or a [`Flexible`](crate::Flexible)
 /// wrapper as a child.
+///
+/// ```
+/// use skene_terminal::prelude::*;
+///
+/// let toolbar = Row::new()
+///   .set_spacing(1)
+///   .set_item_alignment(ItemAlignment::Center)
+///   .set_children((Text::new("Title"), Text::new("Subtitle")));
+/// ```
 #[derive(Debug, Default, View, Wraps)]
 #[must_use]
 pub struct Row(skene_foundation::Row<ActivePlatform>);
@@ -22,6 +31,15 @@ impl FlexBase<ActivePlatform> for Row {}
 /// Carries layout properties and nothing else; decorating it means wrapping it in a
 /// [`Container`](crate::Container). Accepts any view or a [`Flexible`](crate::Flexible)
 /// wrapper as a child.
+///
+/// ```
+/// use skene_terminal::prelude::*;
+///
+/// let list = Column::new()
+///   .set_spacing(1)
+///   .set_arrangement(Arrangement::Start)
+///   .set_children((Text::new("First"), Text::new("Second")));
+/// ```
 #[derive(Debug, Default, View, Wraps)]
 #[must_use]
 pub struct Column(skene_foundation::Column<ActivePlatform>);

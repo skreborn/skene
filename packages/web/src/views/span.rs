@@ -14,6 +14,16 @@ use crate::{ActivePlatform, LinkPolicy};
 /// leaf is redefined with each value it computes, and a variant conditioned on a state
 /// applies to the group's own run alone. A [view](Self::view) is laid out as an
 /// inline-level box among the surrounding runs.
+///
+/// ```
+/// use skene_web::prelude::*;
+///
+/// let paragraph = RichText::new().add_spans([
+///   Span::new("Read the "),
+///   Span::new("guide").set_link("/guide"),
+///   Span::new(" first."),
+/// ]);
+/// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
 pub struct Span(skene_foundation::Span<ActivePlatform>);
@@ -34,6 +44,15 @@ impl RunBase<ActivePlatform> for Span {}
 ///
 /// Carries no properties of its own; decorating it means wrapping it in a
 /// [`Container`](crate::Container).
+///
+/// ```
+/// use skene_web::prelude::*;
+///
+/// let paragraph = RichText::new().add_spans([
+///   Span::new("Plain, then "),
+///   Span::new("underlined").set_decoration(TextDecoration::Underline),
+/// ]);
+/// ```
 #[derive(Debug, Default, View, Wraps)]
 #[must_use]
 pub struct RichText(skene_foundation::RichText<ActivePlatform>);

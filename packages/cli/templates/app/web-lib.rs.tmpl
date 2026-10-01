@@ -1,0 +1,27 @@
+//! The app's web shell: `skene run web` serves it, `skene build web` builds it.
+
+use {crate}_shared::Counter;
+use skene_simple_web::prelude::*;
+use skene_web::prelude::*;
+
+#[main]
+fn app() -> impl View {
+  let counter = Counter::new();
+
+  Theme::new(SimplePalette::default()).set_child_builder(move || {
+    Container::new()
+      .set_background(SimplePalette::BACKGROUND)
+      .set_child(
+        Column::new()
+          .set_arrangement(Arrangement::Center)
+          .set_item_alignment(ItemAlignment::Center)
+          .add_child(SimpleCard::new().set_spacing(24.).set_children((
+            Text::derive(move || counter.count().to_string()).set_font_size(56.),
+            Row::new().set_spacing(12.).set_children((
+              SimpleButton::new("−").handle_activate(move || counter.decrement()),
+              SimpleButton::new("+").handle_activate(move || counter.increment()),
+            )),
+          ))),
+      )
+  })
+}

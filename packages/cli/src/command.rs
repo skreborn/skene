@@ -9,6 +9,7 @@ use crate::{
   dev::{dev, run_terminal},
   manifest::App,
   pipeline,
+  scaffold::{Platform, Source, new_app},
 };
 
 /// Build, statically generate, and develop skene applications.
@@ -36,6 +37,24 @@ enum Command {
   Attach {
     /// The loop's id, as `run terminal` prints it.
     id: u32,
+  },
+  /// Create a project of a kind, in a new directory under the app directory.
+  #[command(subcommand)]
+  New(NewKind),
+}
+
+#[derive(Subcommand)]
+enum NewKind {
+  /// An app: a crate of logic and state the shells share, and a shell per platform.
+  App {
+    /// The directory to create; its last component names the app.
+    path: PathBuf,
+    /// The platforms to give the app a shell on.
+    #[arg(required = true, value_enum)]
+    platforms: Vec<Platform>,
+    /// Take the skene crates from the checkout at this path instead of crates.io.
+    #[arg(long)]
+    skene: Option<PathBuf>,
   },
 }
 
@@ -93,6 +112,24 @@ impl Cli {
       return attach(id);
     }
 
+    if let Command::New(NewKind::App {
+      path,
+      platforms,
+      skene,
+    }) = self.command
+    {
+      let source = match skene {
+        Some(checkout) => Source::Checkout(
+          checkout
+            .canonicalize()
+            .map_err(|error| format!("{}: {error}", checkout.display()))?,
+        ),
+        None => Source::Registry,
+      };
+
+      return new_app(&self.dir.join(path), &platforms, &source);
+    }
+
     let app = App::load(&self.dir)?;
 
     match self.command {
@@ -120,7 +157,7 @@ impl Cli {
 
       Command::Run(RunTarget::Terminal { release }) => run_terminal(&app, release),
 
-      Command::Attach { .. } => Ok(()),
+      Command::Attach { .. } | Command::New(_) => Ok(()),
     }
   }
 }

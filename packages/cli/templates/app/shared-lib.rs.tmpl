@@ -1,0 +1,39 @@
+//! The state and logic every shell of the app shares, knowing nothing of any platform.
+
+use skene_reactive::{Get, Signal, Update};
+
+/// The app's state: a count that survives a dev reload.
+#[derive(Clone, Copy)]
+pub struct Counter {
+  count: Signal<u64>,
+}
+
+impl Counter {
+  /// A counter at zero.
+  pub fn new() -> Self {
+    Self {
+      count: Signal::tagged("count", 0),
+    }
+  }
+
+  /// The count, tracked.
+  pub fn count(self) -> u64 {
+    self.count.get()
+  }
+
+  /// Adds one.
+  pub fn increment(self) {
+    self.count.update(|count| *count = count.saturating_add(1));
+  }
+
+  /// Takes one away, never below zero.
+  pub fn decrement(self) {
+    self.count.update(|count| *count = count.saturating_sub(1));
+  }
+}
+
+impl Default for Counter {
+  fn default() -> Self {
+    Self::new()
+  }
+}

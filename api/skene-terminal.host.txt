@@ -227,6 +227,7 @@ pub use skene_terminal::prelude::PaintedBase
 pub use skene_terminal::prelude::PinnedBase
 pub use skene_terminal::prelude::Placement
 pub use skene_terminal::prelude::PointerPrecision
+pub use skene_terminal::prelude::Property
 pub use skene_terminal::prelude::ReadSignal
 pub use skene_terminal::prelude::Resource
 pub use skene_terminal::prelude::RichTextBase

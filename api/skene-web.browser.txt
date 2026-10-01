@@ -493,6 +493,7 @@ pub use skene_web::prelude::PaintedBase
 pub use skene_web::prelude::PinnedBase
 pub use skene_web::prelude::Placement
 pub use skene_web::prelude::PointerPrecision
+pub use skene_web::prelude::Property
 pub use skene_web::prelude::ReadSignal
 pub use skene_web::prelude::RichTextBase
 pub use skene_web::prelude::Role

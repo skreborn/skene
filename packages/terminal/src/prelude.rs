@@ -66,6 +66,7 @@ pub use skene_foundation::{
   PinnedBase,
   Placement,
   PointerPrecision,
+  Property,
   RichTextBase,
   Role,
   RowBase,

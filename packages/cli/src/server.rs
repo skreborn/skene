@@ -4,6 +4,7 @@
 //! binary and its notices on.
 
 use std::{
+  borrow::Cow,
   ffi::OsStr,
   fs,
   io::{BufRead, BufReader, Read, Write},
@@ -596,7 +597,7 @@ fn serve_file(stream: &mut TcpStream, app: &App, relative: &str) {
 
   match fs::read(&path) {
     Ok(body) => {
-      let _ = write_response(stream, "200 OK", content_type(&path), &body);
+      let _ = write_response(stream, "200 OK", &content_type(&path), &body);
     }
     Err(_) => {
       let _ = write_response(
@@ -609,17 +610,20 @@ fn serve_file(stream: &mut TcpStream, app: &App, relative: &str) {
   }
 }
 
-fn content_type(path: &Path) -> &'static str {
+/// The `Content-Type` a file is served with, by its extension: text in UTF-8, and
+/// `application/octet-stream` for an extension no media type is registered for.
+fn content_type(path: &Path) -> Cow<'static, str> {
   match path.extension().and_then(OsStr::to_str) {
-    Some("html") => "text/html; charset=utf-8",
-    Some("js" | "mjs") => "text/javascript; charset=utf-8",
-    Some("wasm") => "application/wasm",
-    Some("css") => "text/css; charset=utf-8",
-    Some("json" | "map") => "application/json",
-    Some("svg") => "image/svg+xml",
-    Some("png") => "image/png",
-    Some("woff2") => "font/woff2",
-    _ => "application/octet-stream",
+    Some("html") => "text/html; charset=utf-8".into(),
+    Some("js" | "mjs") => "text/javascript; charset=utf-8".into(),
+    Some("wasm") => "application/wasm".into(),
+    Some("css") => "text/css; charset=utf-8".into(),
+    Some("json" | "map") => "application/json".into(),
+    _ => match mime_guess::from_path(path).first_raw() {
+      Some(text) if text.starts_with("text/") => format!("{text}; charset=utf-8").into(),
+      Some(media) => media.into(),
+      None => "application/octet-stream".into(),
+    },
   }
 }
 
@@ -702,6 +706,24 @@ mod tests {
       "/a%00",
     ] {
       assert_eq!(request_path(target), None, "{target}");
+    }
+  }
+
+  /// A file is served as its extension's media type, text in UTF-8, and an extension
+  /// with none as bytes.
+  #[test]
+  fn a_file_is_served_as_its_media_type() {
+    for (file, expected) in [
+      ("index.html", "text/html; charset=utf-8"),
+      ("app.js", "text/javascript; charset=utf-8"),
+      ("app_bg.wasm", "application/wasm"),
+      ("photo.jpg", "image/jpeg"),
+      ("icon.ico", "image/x-icon"),
+      ("notes.txt", "text/plain; charset=utf-8"),
+      ("font.woff2", "font/woff2"),
+      ("data.unknown-extension", "application/octet-stream"),
+    ] {
+      assert_eq!(content_type(Path::new(file)), expected, "{file}");
     }
   }
 

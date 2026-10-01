@@ -119,8 +119,7 @@ in a code comment.
     flag gates wasm-bindgen, the splitter and the reload, instead of the whole debug
     binary being hashed after every build; steps build into a temporary directory
     renamed on success; `cargo skene` builds with a thin-LTO profile;
-    `notify-debouncer-full` catches saves that rename into place; `mime_guess`
-    completes the MIME table.
+    `notify-debouncer-full` catches saves that rename into place.
 6. **The app layer before 1.0.** Every surveyed framework treats these as table
     stakes, and each is cheaper to design before the native family than after it.
     - Forms: text-entry purposes (password, email, number, search, tel, url) and

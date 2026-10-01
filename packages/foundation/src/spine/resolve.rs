@@ -4,8 +4,7 @@
 //!
 //! A platform builds a [`Resolver`] from what it knows about a node—the environment,
 //! the interaction, the containers above it, and how to look up a token or a slot—and
-//! asks it for whole styles or single leaves. The web compiles the same model to CSS
-//! and never resolves.
+//! asks it for whole styles or single leaves.
 
 use std::cell::Cell;
 

@@ -194,15 +194,14 @@ impl<A> Timers<A> {
 /// anchors, scopes, tree mutations, tokens, event registration, focus, values, sizes,
 /// media and a clock.
 ///
-/// Zero-sized and monomorphized: a facade names exactly one platform, every view is
-/// written once against the trait, and every operation is an associated function over
-/// the [`NodeId`]s the scene mints, each of which the platform keys its own record of
-/// the node by. Conditions follow from [`Scalar`](Self::Scalar) as
-/// `Condition<Self::Scalar>`. Core owns the [`Scene`] and every operation on it; a
-/// platform declares the thread-local holding it and is called only to mirror each
-/// mutation into its records, never under the scene's borrow, so it may reach the scene
-/// itself. `Painted` and embeds are outside this trait: their payloads
-/// arrive through a platform's extension traits.
+/// Zero-sized and monomorphized: a facade names exactly one platform, and every
+/// operation is an associated function over the [`NodeId`]s the scene mints, each of
+/// which the platform keys its own record of the node by. Conditions follow from
+/// [`Scalar`](Self::Scalar) as `Condition<Self::Scalar>`. Core owns the [`Scene`] and
+/// every operation on it; a platform declares the thread-local holding it and is called
+/// only to mirror each mutation into its records, never under the scene's borrow, so it
+/// may reach the scene itself. `Painted` and embeds are outside this trait: their
+/// payloads arrive through a platform's extension traits.
 ///
 /// A platform holds every flush until its turn ends—an event, a mount, a round of task
 /// polls—through [`hold_flushes`](crate::hold_flushes), ending each with
@@ -384,8 +383,8 @@ pub trait Platform: Copy + Default + 'static {
   /// and stays false on a render that never is; `None` where the tree is live from
   /// the start.
   ///
-  /// Only a platform with a scriptless render answers: the web leaves, and the headless
-  /// platform standing in for them under a test. Every other platform keeps the default.
+  /// Only a platform with a scriptless render answers; every other platform keeps the
+  /// default.
   #[inline(always)]
   #[must_use]
   fn hydration() -> Option<ReadSignal<bool>> {
@@ -448,7 +447,7 @@ pub trait Platform: Copy + Default + 'static {
   fn clipboard(_action: ClipboardAction) {}
 
   /// Whether `media` holds, as a memo following the environment; a container condition
-  /// never holds here, since it is answered per node by the box it names.
+  /// never holds here; the box it names answers it per node.
   ///
   /// [`MediaSignals::watch`] answers it from the platform's signals.
   fn watch_media(media: &Media<Self::Scalar>) -> Memo<bool>;

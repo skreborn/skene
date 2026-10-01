@@ -439,7 +439,7 @@ fn grid_tracks_and_placements_render() {
 }
 
 /// An adaptive track renders as an auto-filled repetition, and a flexible minimum as
-/// `auto`, since CSS rejects a flexible one.
+/// `auto`.
 #[test]
 fn adaptive_tracks_and_flexible_minimums_render() {
   let rendered = render_to_string(|| {

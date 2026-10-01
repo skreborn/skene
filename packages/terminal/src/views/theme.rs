@@ -7,11 +7,12 @@ use crate::{ActivePlatform, TokenValue};
 /// Defines the token set `S` for everything beneath it.
 ///
 /// Realizes one layout-invisible scope node, provides `Memo<S>` through context so
-/// [`ThemedIn::current`](crate::ThemedIn::current) and [`ThemedIn::watch`](crate::ThemedIn::watch)
-/// read it, and rewrites the scope's definitions when the palette changes: no consumer is touched
-/// and nothing rebuilds. Nesting a theme redefines beneath it. Holds [`NoChild`] until
-/// [`set_child_builder`](Self::set_child_builder) supplies the child; the child is a
-/// builder closure because it is built under the owner the context is provided on.
+/// [`ThemedIn::current`](crate::ThemedIn::current) and
+/// [`ThemedIn::watch`](crate::ThemedIn::watch) read it, and rewrites the scope's
+/// definitions when the palette changes: no consumer is touched and nothing rebuilds.
+/// Nesting a theme redefines beneath it. Holds [`NoChild`] until
+/// [`set_child_builder`](Self::set_child_builder) supplies the child as a builder
+/// closure, built under the owner the context is provided on.
 ///
 /// ```
 /// use skene_terminal::prelude::*;

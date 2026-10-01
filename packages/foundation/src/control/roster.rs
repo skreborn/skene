@@ -13,9 +13,9 @@ use crate::{NodeId, PickerOption, Platform, Scene};
 
 /// The members a grouping control tracks: a radio group's choices, a listbox's options.
 ///
-/// A member joins as it builds and leaves as it is disposed; order comes from the scene,
-/// not from the order members joined, so a set that reconciles stays in tree order and a
-/// destroyed member is absent because the walk cannot reach it. Membership is reactive:
+/// A member joins as it builds and leaves as it is disposed; order comes from the
+/// scene, not from the order members joined, so a set that reconciles stays in tree
+/// order and a destroyed member is absent. Membership is reactive:
 /// [`ordered`](Self::ordered) tracks every join, leave and rooting, so a focus order or
 /// state derived from it re-evaluates when the set changes.
 #[derive(Clone)]

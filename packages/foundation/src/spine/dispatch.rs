@@ -65,8 +65,7 @@ pub fn dispatch_double_click<P: Platform>(node: NodeId, event: &ClickEvent) -> P
 /// Dispatches a click the platform already acted on at `node`.
 ///
 /// Every click handler up the path runs except the acting ones, and the climb ends at
-/// the first node carrying acting ones, as a control consumes the click it acts on; so
-/// a control's observers see the click and its behavior does not act a second time.
+/// the first node carrying acting ones.
 pub fn dispatch_click_observed<P: Platform>(node: NodeId, event: &ClickEvent) -> Prevented {
   bubble::<P, _, _>(
     node,

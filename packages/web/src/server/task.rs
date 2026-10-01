@@ -1,11 +1,10 @@
 //! The server executor: the host executor driven to a fixpoint per render.
 //!
-//! Off a browser there is no event loop, so this leaf drives futures itself. [`drive`]
-//! fills the platform executor seam; [`stabilize`] polls every ready task, and when none
-//! is ready but tasks are alive it parks the render thread until a waker fires from
-//! wherever the work runs—a thread around a plain client, a [`sleep`]'s timer—so an
-//! async load resolves and the render settles on its *loaded* tree rather than a
-//! placeholder.
+//! This leaf drives futures itself. [`drive`] fills the platform executor seam;
+//! [`stabilize`] polls every ready task, and when none is ready but tasks are alive it
+//! parks the render thread until a waker fires from wherever the work runs—a thread
+//! around a plain client, a [`sleep`]'s timer—so an async load resolves and the render
+//! settles on its *loaded* tree rather than a placeholder.
 
 use std::{
   cell::Cell,
@@ -34,8 +33,7 @@ pub fn set_render_deadline(budget: Duration) {
   BUDGET.with(|current| current.set(budget));
 }
 
-/// A future that completes after `duration`, timed by one timer thread shared by every
-/// sleep.
+/// A future that completes after `duration`.
 ///
 /// The server leaf's one timing primitive, and how an async load is driven and tested:
 /// the render parks until the timer wakes it, so a resource that waits on it settles
@@ -74,9 +72,8 @@ pub(crate) fn stabilize() {
 /// returns—leaving any work `done` does not depend on still outstanding.
 ///
 /// The streaming counterpart to [`stabilize`]: the shell settles against its boundary,
-/// then each deferred boundary settles against its own, so the render can flush what is
-/// ready and block only on the next thing it needs. Like [`stabilize`] it also returns
-/// once nothing is ready and nothing is alive, or after [`MAX_ROUNDS`].
+/// then each deferred boundary against its own. Like [`stabilize`] it also returns once
+/// nothing is ready and nothing is alive, or after [`MAX_ROUNDS`].
 pub(crate) fn stabilize_until(done: impl Fn() -> bool) {
   let budget = BUDGET.with(Cell::get);
   let deadline = Instant::now() + budget;

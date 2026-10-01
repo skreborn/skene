@@ -509,8 +509,7 @@ pub(crate) fn ready<const N: usize>(
   }
 }
 
-/// Which of `fds` have input to read, waiting up to `timeout` for one to; `select`,
-/// since `poll` does not watch `/dev/tty` on macOS.
+/// Which of `fds` have input to read, waiting up to `timeout` for one to.
 #[cfg(target_os = "macos")]
 pub(crate) fn ready<const N: usize>(
   fds: [BorrowedFd<'_>; N],

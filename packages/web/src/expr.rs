@@ -92,7 +92,6 @@ fn sum(node: &ExprNode) -> String {
   }
 }
 
-/// A fraction (`0.` to `1.`) as a percentage number, narrowed so `0.1` reads `10`.
 #[cfg(test)]
 mod tests {
   use skene_foundation::{Color, Edge, Expr, Length, TokenRef};

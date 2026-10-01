@@ -45,8 +45,7 @@ use crate::{
   records::{BoxRecord, Field, Kind, PictureRecord, Records},
 };
 
-/// The terminal platform: a zero-sized [`Platform`] keeping a record per node in this
-/// crate's records.
+/// The terminal platform: a zero-sized [`Platform`].
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 #[must_use]
 pub struct Terminal;

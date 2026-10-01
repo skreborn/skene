@@ -1,17 +1,17 @@
 //! In-app text selection: source-anchored ranges over selectable runs, and the
 //! clipboard actions over them.
 //!
-//! A selection's ends live in source space—a run and a character offset into its
-//! source text—so it survives reflow and copies as the text appears in the source, soft
-//! wraps excluded. A press anchors it, a drag extends it across runs in document order,
-//! a double click takes the word, a triple click the run. A text entry's selection lives
+//! A selection's ends live in source space—a run and a character offset into its source
+//! text—so it survives reflow and copies as the text appears in the source, soft wraps
+//! excluded. A press anchors it, a drag extends it across runs in document order, a
+//! double click takes the word, a triple click the run. A text entry's selection lives
 //! in its [`Field`](crate::records::Field) instead, over its value, and holds while a
 //! popup takes focus from the entry, so the context menu acts on it. `Copy` stages the
 //! text for the terminal loop's OSC 52 write, `Cut` removes it as well, and `Paste`
 //! stages an OSC 52 read whose reply lands in the entry that asked. The launch's
 //! [`Clipboard`](crate::Clipboard) says which actions exist; within it every action is
-//! offered on every terminal, since OSC 52 has no capability query, and a terminal
-//! lacking it ignores the write and answers no read.
+//! offered on every terminal, and a terminal lacking OSC 52 ignores the write and
+//! answers no read.
 
 use std::time::Duration;
 
@@ -64,8 +64,9 @@ impl Records {
   }
 
   /// The node's source text, when it is a selectable, non-empty run or paragraph
-  /// outside every control and `Copy` is offered: a control's label is chrome, whatever
-  /// it opts into, and without `Copy` nothing in the document is selectable.
+  /// outside every control and `Copy` is offered: text inside a control is never
+  /// selectable, whatever it opts into, and without `Copy` nothing in the document is
+  /// selectable.
   pub(crate) fn selectable_text(&self, handle: Handle) -> Option<String> {
     let record = self.record(handle)?;
 

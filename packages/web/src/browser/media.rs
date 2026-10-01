@@ -293,7 +293,7 @@ pub(super) fn reset() {
 
 /// Whether the media query `text` matches, as a signal following the platform.
 ///
-/// One `MediaQueryList` serves every reader of the same text.
+/// Every call with the same text returns the same signal.
 pub fn media_query(text: &str) -> ReadSignal<bool> {
   with_media(|state| query(state, text))
 }

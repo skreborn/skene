@@ -298,7 +298,7 @@ impl<N: Clone + 'static> MediaSignals<N> {
 
 impl<N: Scalar> MediaSignals<N> {
   /// Whether `media` holds, as a memo following these signals; a container condition
-  /// never holds here, since it is answered per node by the box it names.
+  /// never holds here; the box it names answers it per node.
   pub fn watch(&self, media: &Media<N>) -> Memo<bool> {
     let media = media.clone();
     let signals = *self;

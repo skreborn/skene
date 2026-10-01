@@ -1330,8 +1330,7 @@ fn a_dark_scheme_hint_serializes_the_dark_value_of_a_derived_leaf() {
 }
 
 /// A page whose reader may have chosen a scheme carries the script that applies that
-/// choice before the first paint—inline and blocking in the head, since a deferred one
-/// would run after the page had already been painted in the platform's scheme.
+/// choice before the first paint, inline and blocking in the head.
 #[test]
 fn a_chooseable_scheme_preempts_its_own_flash() {
   use skene_foundation::ColorScheme;

@@ -42,10 +42,6 @@ use crate::spine::{
 
 /// A box's style: one field per shared property in shape `S`, lengths in `N`, and the
 /// medium's own properties in `ext`.
-///
-/// Overlay, the static/derived split and every platform's rendering are written against
-/// [`for_each_field`](Self::for_each_field); adding a property touches this struct, the
-/// field list and each platform's mapping only.
 #[derive(Debug, Clone, Default, PartialEq)]
 #[must_use]
 pub struct BoxStyle<N: Scalar, S: Shape, X: StyleExtension = ()> {

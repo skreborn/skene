@@ -81,8 +81,7 @@ impl Prevented {
 ///
 /// The one decision a view's user makes about dispatch, and it is only about onward
 /// travel: a view may handle an event and still let it climb. What the platform is told
-/// belongs to the layer that owns the behavior, so it never appears in a handler's
-/// signature.
+/// never appears in a handler's signature.
 ///
 /// A handler returns anything `Into<Bubbling>`; `()` converts to
 /// [`Continue`](Bubbling::Continue), so an ordinary handler needs no return at all.

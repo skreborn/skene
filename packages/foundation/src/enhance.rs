@@ -25,10 +25,10 @@ use crate::{
 /// the signal never turns, and where it turns later the fallback is destroyed and the
 /// child built in its place, under a replacement owner, so state bound beneath keeps
 /// its snapshot identity. Once built, the child stands whatever the signal does after.
-/// A form builds untracked, so a signal it reads while building never rebuilds it.
-/// With no fallback the segment stays empty until the signal turns. Holds [`NoChild`]
-/// until [`set_child_builder`](Self::set_child_builder) supplies the child; both forms
-/// are builder closures because only one of them is built.
+/// A form builds untracked, so a signal it reads while building never rebuilds it. With
+/// no fallback the segment stays empty until the signal turns. Holds [`NoChild`] until
+/// [`set_child_builder`](Self::set_child_builder) supplies the child; both forms are
+/// builder closures, and only one of them is built.
 ///
 /// The signals the built-ins wait on are a platform's own: the web facade's
 /// `media::hydrated` for a render made without script, and

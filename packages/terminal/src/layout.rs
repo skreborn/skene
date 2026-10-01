@@ -437,8 +437,8 @@ pub(crate) fn restyle(records: &mut Records) -> bool {
   changed
 }
 
-/// The nodes the next restyle revisits, runs first since a paragraph measures by its
-/// runs' scales, with the display where it revisits every node.
+/// The nodes the next restyle revisits, runs first, with the display where it revisits
+/// every node.
 fn revisited(records: &mut Records) -> (Vec<Handle>, Option<FxHashSet<Handle>>) {
   let interaction = Scene::<Terminal>::read(Scene::interaction_generation);
   let moved = std::mem::replace(&mut records.interaction_seen, interaction) != interaction;

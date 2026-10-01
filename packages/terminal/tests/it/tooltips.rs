@@ -15,8 +15,8 @@ use skene_terminal::{
 
 use crate::common::with_platform;
 
-/// A click focuses a described button without opening its bubble at once, since focus
-/// a press gives does not show; the rest before the delay still opens it.
+/// A click focuses a described button without opening its bubble at once; the rest
+/// before the delay still opens it.
 #[test]
 fn a_click_leaves_the_opening_to_the_delay() {
   with_platform(|| {

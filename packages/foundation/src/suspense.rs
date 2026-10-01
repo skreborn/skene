@@ -25,8 +25,7 @@ use crate::{
 /// swaps, and both are destroyed when the owner the view was built under is disposed.
 /// Toward an enclosing boundary the whole subtree counts as one pending task. Holds
 /// [`NoChild`] until [`set_child_builder`](Self::set_child_builder) supplies the
-/// content; it is a builder closure because it is built under the owner the boundary
-/// is provided on.
+/// content as a builder closure, built under the owner the boundary is provided on.
 #[derive(Debug)]
 #[must_use]
 pub struct Suspense<P: Platform, C = NoChild> {

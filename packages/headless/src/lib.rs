@@ -1,11 +1,11 @@
 //! # Headless platform
 //!
-//! The host platform: realizes the portable vocabulary into inspectable records,
-//! so view logic tests run without a platform. Every mirrored call is bookkeeping, not
+//! The host platform: realizes the portable vocabulary into inspectable records, so
+//! view logic tests run without a platform. Every mirrored call is bookkeeping, not
 //! emulation: no layout runs, and no platform response fires. Tests build views exactly
 //! as an app does, then inspect the records ([`outline`], [`box_props`], [`slot_leaf`],
-//! [`resolve_color`]) and drive events through the `trigger_` seams, each routed through
-//! core's dispatch so bubbling is the one implementation every platform shares.
+//! [`resolve_color`]) and drive events through the `trigger_` seams, each bubbling as
+//! on every platform.
 //!
 //! The environment starts at a 1024 by 768 viewport, the light scheme and no reduced
 //! motion; [`trigger_resize`], [`trigger_color_scheme`] and [`trigger_reduced_motion`]

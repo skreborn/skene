@@ -223,8 +223,7 @@ impl<N: Scalar> SimpleLook<N> {
 /// controls. Use the tokens for the chrome around the components too.
 ///
 /// This type is the Simple library's, not the framework's: a third-party component
-/// library defines its own struct of [`Token`]s and is on exactly the same footing, and
-/// [`default`](Self::default) is built from the same public constructors.
+/// library defines its own struct of [`Token`]s.
 #[derive(Debug, Clone, PartialEq)]
 #[must_use]
 pub struct SimplePalette<N: Scalar> {

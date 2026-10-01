@@ -282,8 +282,8 @@ pub(crate) fn fetch(id: u32, path: &str) -> Option<Vec<u8>> {
 }
 
 /// Serves the binary and the notice on a socket in a directory only this user may
-/// enter, for a build loop around a target with no page to serve (the terminal, native
-/// later); returns the loop's id an `attach` names.
+/// enter, for a build loop around a target with no page to serve (the terminal);
+/// returns the loop's id an `attach` names.
 ///
 /// # Errors
 ///
@@ -312,7 +312,7 @@ pub(crate) fn spawn_state_server(dev: Dev) -> Result<u32, String> {
   Ok(id)
 }
 
-/// The state server needs a Unix socket, which exists on Unix alone.
+/// The state server runs on Unix alone.
 ///
 /// # Errors
 ///

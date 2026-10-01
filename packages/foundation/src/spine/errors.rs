@@ -6,8 +6,7 @@ use skene_reactive::{Signal, Update, With, use_context};
 
 /// The errors a subtree carried to its nearest error boundary.
 ///
-/// Capture the handle with [`current`](Self::current) while building—handlers and
-/// tasks run outside the build scope, where the lookup no longer resolves—then
+/// Capture the handle with [`current`](Self::current) while building, then
 /// [`report`](Self::report) into it from anywhere. The boundary presents its fallback
 /// while any errors are held; [`clear`](Self::clear) dismisses them.
 #[derive(Clone, Copy, Debug)]

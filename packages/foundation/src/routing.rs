@@ -116,9 +116,8 @@ impl<R: Route> Router<R> {
   /// Navigates to `route`: reports the new path to the platform's sink (the browser
   /// pushes a history entry), then updates the state through the platform's commit.
   ///
-  /// The sink runs first so anything reacting to the state—a derived document title
-  /// above all—applies to the new history entry, never retroactively to the departed
-  /// one.
+  /// Anything reacting to the state—a derived document title included—applies to the
+  /// new history entry, never retroactively to the departed one.
   pub fn navigate(self, route: R) {
     let path = route.to_path();
 

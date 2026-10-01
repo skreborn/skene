@@ -63,7 +63,7 @@ impl<P: Platform> SimpleTextEditor<P> {
     self
   }
 
-  /// Sets the lines shown at once; at least two, so the entry stays an editor.
+  /// Sets the lines shown at once; at least two.
   #[inline(always)]
   pub fn set_lines(mut self, lines: u16) -> Self {
     self.entry = self.entry.set_lines(lines.max(2));
@@ -134,7 +134,7 @@ pub trait SimpleTextEditorBase<P: Platform>: Wraps<Inner = SimpleTextEditor<P>> 
     Self::wrap(self.into_inner().set_placeholder(placeholder))
   }
 
-  /// Sets the lines shown at once; at least two, so the entry stays an editor.
+  /// Sets the lines shown at once; at least two.
   #[must_use]
   fn set_lines(self, lines: u16) -> Self {
     Self::wrap(self.into_inner().set_lines(lines))

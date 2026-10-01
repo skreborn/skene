@@ -96,8 +96,8 @@ impl CollectionPolicy for ListboxPolicy {
   }
 }
 
-/// A menu's policy: as a listbox's, but a move wraps at the ends, as a browser's menu
-/// does, and a member reports no choice: choosing it runs it.
+/// A menu's policy: as a listbox's, but a move wraps at the ends, and a member reports
+/// no choice: choosing it runs it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct MenuPolicy;
 
@@ -592,8 +592,7 @@ impl Ring {
 
   /// The position `step` places from `from`, wrapping at both ends.
   ///
-  /// `None` when the ring is empty, or when the arithmetic does not fit—there is no
-  /// position to move to in either case.
+  /// `None` when the ring is empty, or when the arithmetic does not fit.
   #[must_use]
   pub fn step_from(&self, from: usize, step: isize) -> Option<usize> {
     if self.0 == 0 {

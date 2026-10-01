@@ -168,7 +168,7 @@ pub(crate) fn adopt_next() -> Option<String> {
   })
 }
 
-/// The server never adopts: it produces the state the client adopts.
+/// The server never adopts.
 #[cfg(skene_web_platform = "server")]
 #[inline(always)]
 #[must_use]
@@ -192,7 +192,7 @@ pub(crate) fn adopt_tagged(tag: &str) -> Option<String> {
   })
 }
 
-/// The server never adopts: it produces the state the client adopts.
+/// The server never adopts.
 #[cfg(skene_web_platform = "server")]
 #[inline(always)]
 #[must_use]
@@ -204,7 +204,7 @@ pub(crate) fn adopt_tagged(_tag: &str) -> Option<String> {
   None
 }
 
-/// A no-op on the client: it adopts server state rather than producing it.
+/// A no-op on the client.
 #[cfg(skene_web_platform = "browser")]
 #[inline(always)]
 pub(crate) fn register_source(_source: HydrationSource) {}
@@ -218,7 +218,7 @@ pub(crate) fn register_source(source: HydrationSource) {
   SOURCES.with(|sources| sources.borrow_mut().push((region, source)));
 }
 
-/// A no-op on the client: it adopts server state rather than producing it.
+/// A no-op on the client.
 #[cfg(skene_web_platform = "browser")]
 #[inline(always)]
 pub(crate) fn register_tagged_source(_tag: &str, _source: HydrationSource) {}
@@ -227,8 +227,7 @@ pub(crate) fn register_tagged_source(_tag: &str, _source: HydrationSource) {}
 ///
 /// # Panics
 ///
-/// Panics when `tag` is already registered in this render: tags pair one server value
-/// with one client resource, so a duplicate has no well-defined owner.
+/// Panics when `tag` is already registered in this render.
 #[cfg(skene_web_platform = "server")]
 pub(crate) fn register_tagged_source(tag: &str, source: HydrationSource) {
   TAGGED_SOURCES.with(|sources| {

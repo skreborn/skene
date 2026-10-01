@@ -19,9 +19,6 @@ use crate::spine::{Animation, Color, Length, TextDecoration, TextDecorationStyle
 
 /// A text run's style: one field per shared property in shape `S`, and the medium's own
 /// properties in `ext`.
-///
-/// Overlay, the static/derived split and every platform's rendering are written against
-/// [`for_each_field`](Self::for_each_field).
 #[derive(Debug, Clone, Default, PartialEq)]
 #[must_use]
 pub struct RunStyle<S: Shape, X: StyleExtension = ()> {

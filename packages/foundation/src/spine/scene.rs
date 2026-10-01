@@ -242,9 +242,8 @@ impl<P: Platform> Mirror<P> {
 /// into the platform's records, which the platform keys by the same [`NodeId`]s.
 ///
 /// Reached through [`with`](Self::with). No borrow of the scene is held while a user
-/// callback or a platform's mutation runs: dispatch and every handler invocation snapshot
-/// what they need and release the scene first, and the mutations the scene mirrors into
-/// the platform ([`attach`](Self::attach), [`detach`](Self::detach),
+/// callback or a platform's mutation runs: the mutations the scene mirrors into the
+/// platform ([`attach`](Self::attach), [`detach`](Self::detach),
 /// [`destroy`](Self::destroy), [`define_tokens`](Self::define_tokens),
 /// [`define_root_tokens`](Self::define_root_tokens),
 /// [`set_control_state`](Self::set_control_state)) reach it in order once the borrow

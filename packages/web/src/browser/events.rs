@@ -731,8 +731,7 @@ fn on_wheel(event: &web_sys::Event) {
 }
 
 /// A drag starting from an element: the nearest node offering drag data builds what it
-/// carries, and the browser is handed its text, or a marker where it has none, since
-/// an engine starts no drag without data.
+/// carries, and the browser is handed its text, or a marker where it has none.
 fn on_drag_start(event: &web_sys::Event) {
   let Some(drag) = event.dyn_ref::<web_sys::DragEvent>()
   else {

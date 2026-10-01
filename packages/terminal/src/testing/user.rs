@@ -14,7 +14,7 @@ use crate::with_records;
 ///
 /// # Panics
 ///
-/// Panics where `node` covered no cell: a user reaches only what is on screen.
+/// Panics where `node` covered no cell.
 fn cell_of(node: NodeId) -> (u16, u16) {
   let rect = with_records(|records| records.record(node).and_then(|record| record.painted));
   let center = rect

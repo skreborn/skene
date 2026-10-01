@@ -164,8 +164,8 @@ pub(crate) fn one_shot<T>(fallback: T) -> (Settler<T>, Promise<T>) {
   )
 }
 
-/// The crypto provider every connection uses, named outright, so a dependency that
-/// compiles in another leaves the choice unambiguous.
+/// The crypto provider every connection uses, even where a dependency compiles in
+/// another.
 pub(crate) fn provider() -> Arc<CryptoProvider> {
   static PROVIDER: OnceLock<Arc<CryptoProvider>> = OnceLock::new();
 

@@ -440,7 +440,7 @@ impl<P: Platform> LazyList<P> {
 }
 
 /// `container` kept at its own extent in the list: a flex item that neither grows nor
-/// shrinks, so the spacers and the items measure the whole content.
+/// shrinks.
 fn rigid<P: Platform>(mut container: Container<P>) -> Container<P> {
   container.box_style_mut().flex = Some(
     Flexibility {

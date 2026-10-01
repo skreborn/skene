@@ -5,9 +5,6 @@ use std::{fmt::Debug, marker::PhantomData};
 use super::{Conditional, PlatformLeaf, StaticLeaf, Value};
 
 /// The stage a style is at, fixing what each of its fields holds.
-///
-/// A style is generic over its shape, so the one struct serves the builder, the platform
-/// and a keyframe alike.
 #[diagnostic::on_unimplemented(
   message = "`{Self}` is not a style shape",
   label = "a style is `Declared` by a builder, `Static` for a platform, a `Keyframe` of an animation, or `Plain`"

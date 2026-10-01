@@ -375,8 +375,7 @@ impl SliderRange {
 
   /// The value `fraction` of the way along the track, snapped and clamped.
   ///
-  /// `fraction` is clamped to `0..=1` first, so a pointer past either end lands on that
-  /// end rather than outside the range.
+  /// `fraction` is clamped to `0..=1` first.
   #[must_use]
   pub fn value_at(&self, fraction: f32) -> f32 {
     let value = self.min + fraction.clamp(0., 1.) * (self.max - self.min);
@@ -386,8 +385,7 @@ impl SliderRange {
 
   /// Where `value` sits along the track, `0..=1`—what a filled run measures.
   ///
-  /// An empty range reads as `0`, so a degenerate slider paints no fill rather than a
-  /// full one.
+  /// An empty range reads as `0`.
   #[must_use]
   pub fn fraction_of(&self, value: f32) -> f32 {
     let span = self.max - self.min;
@@ -402,8 +400,7 @@ impl SliderRange {
 
   /// `value` moved by `steps` steps, snapped and clamped.
   ///
-  /// A continuous range moves by one hundredth of its span instead, so an arrow key
-  /// still moves a slider that declares no step.
+  /// A continuous range moves by one hundredth of its span instead.
   #[must_use]
   pub fn nudge(&self, value: f32, steps: f32) -> f32 {
     let step = if self.step > 0. {

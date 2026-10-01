@@ -2,12 +2,11 @@
 //!
 //! The pure core both web platforms build a stylesheet on: a node's full rule template
 //! (its base declarations plus variants, transitions and keyframes, with the class name
-//! as a placeholder) is interned to a shared class name and reference-counted by its live
-//! users, so an unused rule is collected. The name is a 128-bit hash of the template
-//! text in hex (`skene-{hash:x}`), so it depends on nothing but the template: a node
-//! styled the same way gets the same class whether it renders to a live DOM or an HTML
-//! string, whatever was interned before it and whatever is still alive—the parity
-//! hydration relies on.
+//! as a placeholder) is interned to a shared class name and reference-counted by its
+//! live users, so an unused rule is collected. The name is a 128-bit hash of the
+//! template text in hex (`skene-{hash:x}`), so it depends on nothing but the template:
+//! a node styled the same way gets the same class whether it renders to a live DOM or
+//! an HTML string, whatever was interned before it and whatever is still alive.
 //!
 //! A leaf's stylesheet hears the outcomes reported here through the shared
 //! [`StyleBook`](crate::style_book::StyleBook): a rule's realized text is added when one

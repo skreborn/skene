@@ -1084,7 +1084,7 @@ impl ShapedParagraph {
 
 /// Paints the frame into `buffer`: the tree, then every open overlay, and mends the
 /// wide glyphs a later paint broke into; a picture an open overlay covers in part is
-/// left out, since the terminal draws it over the overlay's cells.
+/// left out.
 pub(crate) fn paint(records: &Records, buffer: &mut Buffer) {
   paint_node(records, buffer, records.root, 0, 0);
 

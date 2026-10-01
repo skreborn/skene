@@ -1,14 +1,14 @@
 //! The property model as CSS: one rule template per node, and the custom-property
 //! vocabulary the templates reference.
 //!
-//! The only place the web platform spells CSS for the new model. A property compiles to
-//! one declaration (a shorthand where the property has components, so a single custom
-//! property can carry a derived value), except an inset, which compiles to its block and
-//! inline halves; a fixed leaf renders as its literal, a token as `var(--<name>)`, an
-//! expression as CSS math, and a derived slot as `var(--skene-<property>)` for the base
-//! and `var(--skene-<property>-<i>)` for the `i`-th variant, an inset's halves suffixed
-//! `-block` and `-inline` before the variant's index. Variants group by their canonical condition
-//! into one rule per conjunction, kept in each property's declaration order.
+//! The only place the web platform spells CSS for the property model. A property
+//! compiles to one declaration (a shorthand where the property has components), except
+//! an inset, which compiles to its block and inline halves; a fixed leaf renders as its
+//! literal, a token as `var(--<name>)`, an expression as CSS math, and a derived slot
+//! as `var(--skene-<property>)` for the base and `var(--skene-<property>-<i>)` for the
+//! `i`-th variant, an inset's halves suffixed `-block` and `-inline` before the
+//! variant's index. Variants group by their canonical condition into one rule per
+//! conjunction, kept in each property's declaration order.
 
 use std::{
   fmt::Write as _,
@@ -747,7 +747,7 @@ fn box_identity<P: PixelPlatform>(props: &BoxProps<P>, mut base: Declarations) -
   base
 }
 
-/// Compiles a box's props with `reset` and `base` ahead of its own declarations.
+/// Compiles a box's props with `base` ahead of its own declarations.
 fn compile_box_with<P: PixelPlatform>(props: &BoxProps<P>, base: Declarations) -> Compiled {
   let mut out = String::new();
   let (base, trailer) = motion(
@@ -1061,8 +1061,7 @@ pub(crate) fn compile_root_definitions(definitions: &Definitions<WebTokenValue>)
 }
 
 /// The `@property` rules registering the slot of `key` at `position`, one per custom
-/// property it is written to: a slot is a per-node value the node's own class reads, so
-/// it does not inherit.
+/// property it is written to; none inherits.
 pub(crate) fn slot_registration(key: Key, position: usize) -> String {
   slot_properties(key, position)
     .into_iter()
@@ -1120,7 +1119,7 @@ pub(crate) fn box_fingerprint<P: PixelPlatform>(props: &BoxProps<P>, reset: u8) 
 }
 
 /// The hash the class cache keys a control's compiled template on: its box's and its
-/// kind's, which the compilation branches on.
+/// kind's.
 pub(crate) fn control_fingerprint<P: PixelPlatform>(props: &ControlProps<P>) -> u64 {
   let mut hasher = FxHasher::default();
 

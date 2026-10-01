@@ -25,8 +25,8 @@ use crate::{
 /// [`ThemedIn::current`] and [`ThemedIn::watch`] read it, and rewrites the scope's
 /// definitions when the palette changes: no consumer is touched and nothing rebuilds.
 /// Nesting a theme redefines beneath it. Holds [`NoChild`] until
-/// [`set_child_builder`](Self::set_child_builder) supplies the child; the child is a
-/// builder closure because it is built under the owner the context is provided on.
+/// [`set_child_builder`](Self::set_child_builder) supplies the child as a builder
+/// closure, built under the owner the context is provided on.
 #[must_use]
 pub struct Theme<P: Platform, S: TokenSet<P::TokenValue>, C = NoChild> {
   palette: Source<S>,

@@ -2,8 +2,7 @@
 //!
 //! A request is built, sent, and awaited inside any task the facade runs—a `Resource`'s
 //! load, a `spawn`ed future—and the answer comes back as a [`Response`] with its
-//! status, its headers and its body. Nothing in the framework knows this crate exists,
-//! so a third-party client sits on exactly the same footing.
+//! status, its headers and its body. Nothing in the framework knows this crate exists.
 //!
 //! The transport is the platform's: the browser's `fetch` on the web, and a plain HTTP
 //! client on every other host, a server render included, one agent keeping connections

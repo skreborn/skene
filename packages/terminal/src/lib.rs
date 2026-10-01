@@ -10,12 +10,11 @@
 //! [`launch`] in a terminal—[`Launch`] configuring what the app takes from it, the
 //! clipboard operations and the mouse—and [`testing`] for a headless test.
 //!
-//! Layout is taffy at `1.0 = 1 cell`, the effective style cached per node and written
-//! to the layout tree only on change; frames paint into a cell buffer. Interaction
+//! Layout is taffy at `1.0 = 1 cell`; frames paint into a cell buffer. Interaction
 //! follows a browser: `Tab`/`Shift-Tab` move focus across the controls, the behaviors
 //! own their keys, a click fires on press and release over one target, `Ctrl-C`,
-//! `Ctrl-X` and `Ctrl-V` copy, cut and paste where the launch offers them, and
-//! `Ctrl-Q` quits. Every dispatch runs inside a reactive batch.
+//! `Ctrl-X` and `Ctrl-V` copy, cut and paste where the launch offers them, and `Ctrl-Q`
+//! quits. Every dispatch runs inside a reactive batch.
 //!
 //! Host-only: on a wasm target the crate is empty.
 

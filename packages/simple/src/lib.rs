@@ -1,11 +1,11 @@
 //! # skene-simple
 //!
 //! The core of the Simple component library, built once over [`skene_foundation`]: one
-//! palette, one shape language, the marks a medium drawing with characters shows, and the
-//! logic of every `Simple*` view, generic over the
-//! [`Platform`](skene_foundation::Platform), its members reached through the `Simple*Base`
-//! trait a platform's crate implements for a view of its own (`skene-simple-web`,
-//! `skene-simple-terminal`), so a third-party library sits on the same footing.
+//! palette, one shape language, the marks a medium drawing with characters shows, and
+//! the logic of every `Simple*` view, generic over the
+//! [`Platform`](skene_foundation::Platform), its members reached through the
+//! `Simple*Base` trait a platform's crate implements for a view of its own
+//! (`skene-simple-web`, `skene-simple-terminal`).
 //!
 //! [`SimplePalette`] is a token set: `Theme::new(SimplePalette::default())` defines it
 //! beneath the theme, every Simple view references its tokens by name, and a Simple

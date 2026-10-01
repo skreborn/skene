@@ -3,8 +3,7 @@
 //! One suite of behaviors every platform shows alike, driven through a [`Driver`]: a
 //! platform implements the trait over its own test seams, and [`run`] builds each
 //! scenario's view on it, acts on it as a user does and checks what the user would
-//! find. Every platform passing the suite behaves alike wherever the suite looks, so
-//! parity holds by construction rather than by comparison.
+//! find. Every platform passing the suite behaves alike wherever the suite looks.
 //!
 //! A scenario finds what it acts on as a reader does, by role and accessible name, and
 //! checks the signals its view is bound to, the node holding focus and what a reader can

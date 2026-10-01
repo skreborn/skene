@@ -267,8 +267,7 @@ impl Display for PointerShape<'_> {
 /// The largest payload one graphics command carries, in base64 characters.
 const GRAPHICS_CHUNK: usize = 4096;
 
-/// The zlib level an image is compressed at before it is transmitted: the fastest, the
-/// flat surfaces a box paints compressing well at any level.
+/// The zlib level an image is compressed at before it is transmitted: the fastest.
 const GRAPHICS_COMPRESSION: u8 = 1;
 
 /// The graphics protocol's query: a one-pixel image the terminal never keeps, answered
@@ -435,8 +434,8 @@ impl Display for Sgr {
   }
 }
 
-/// Writes a foreground (`38`) or background (`48`) color: the base sixteen by their
-/// own codes, the palette by `5`, RGB by `2` with semicolons, as every terminal reads.
+/// Writes a foreground (`38`) or background (`48`) color: the base sixteen by their own
+/// codes, the palette by `5`, RGB by `2` with semicolons.
 fn write_color(out: &mut fmt::Formatter<'_>, code: u8, color: Color) -> fmt::Result {
   match color {
     Color::Reset => write!(out, "{}", code + 1),

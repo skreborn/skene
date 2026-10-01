@@ -5,11 +5,10 @@
 //! markup. The browser leaf (`skene_web_platform = "browser"`) realizes against a live
 //! DOM and the server leaf (`skene_web_platform = "server"`) against a string tree,
 //! both emitting the same web semantics, so a node styled the same way gets the same
-//! content-addressed class on either leaf and a served page hydrates in place. The
-//! compiler and the element choices are shared; each leaf implements
-//! [`Platform`](skene_foundation::Platform) and
-//! [`WebHydration`](skene_foundation::web::WebHydration) for [`Web`] and exposes its own
-//! entry points beside them: the executor (`drive`), the document head and the path
+//! content-addressed class on either leaf and a served page hydrates in place. Each
+//! leaf implements [`Platform`](skene_foundation::Platform) and
+//! [`WebHydration`](skene_foundation::web::WebHydration) for [`Web`] and exposes its
+//! own entry points beside them: the executor (`drive`), the document head and the path
 //! (the browser's history, the server's request).
 //!
 //! A low-level view states an escape trait as its bound: [`WebMarkup`] (an element,

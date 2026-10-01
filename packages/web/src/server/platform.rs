@@ -197,7 +197,7 @@ impl Platform for Web {
     set_scheme(scheme);
   }
 
-  /// The server renders once, so nothing scheduled ever runs.
+  /// Nothing scheduled ever runs.
   fn schedule(_: Duration, _: Box<dyn FnOnce()>) -> Timer {
     Timer(0)
   }

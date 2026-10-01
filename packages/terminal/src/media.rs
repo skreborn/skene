@@ -77,9 +77,8 @@ pub fn watch(media: &Media) -> Memo<bool> {
 /// Paints `scheme` throughout, overriding the background the terminal detected; `None`
 /// returns to following it.
 ///
-/// Every token keeps both values and the paint is told which is in force, so a change
-/// re-inks the next frame without rebuilding anything: the state inside the tree, the
-/// focus, the scroll position and a half-typed entry all survive it.
+/// A change re-inks the next frame without rebuilding anything: the state inside the
+/// tree, the focus, the scroll position and a half-typed entry all survive it.
 #[inline(always)]
 pub fn set_scheme(scheme: Option<ColorScheme>) {
   skene_foundation::media::set_scheme::<ActivePlatform>(scheme);

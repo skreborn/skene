@@ -1,9 +1,9 @@
 //! Terminal state capture and restore, for the dev loop's process swaps.
 //!
-//! A swap kills the running app mid-raw-mode; reapplying the state captured before
-//! the first spawn keeps each next instance's own saved "original" sane, so the final
-//! quit restores a working terminal. Best-effort everywhere: without a terminal, or on
-//! a platform without termios, capture yields `None`.
+//! The state captured before the first spawn is reapplied before each later one, so
+//! every instance starts from a working terminal and the final quit restores it.
+//! Best-effort everywhere: without a terminal, or on a platform without termios,
+//! capture yields `None`.
 
 /// The terminal's captured state: its termios.
 #[cfg(unix)]

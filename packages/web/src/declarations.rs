@@ -1,12 +1,11 @@
 //! Raw CSS declarations: what the compiler renders a style's properties into, and the
 //! escape hatch for styling a node with arbitrary CSS.
 //!
-//! A declaration's value is CSS text the caller renders—`"8px"`,
-//! `"oklch(0.7 0.1 250 / 1)"`, `"flex"`, `"repeat(3, 1fr)"`—so the full open-ended CSS
-//! value space is reachable and nothing is special-cased.
+//! A declaration's value is any CSS text the caller renders: `"8px"`,
+//! `"oklch(0.7 0.1 250 / 1)"`, `"flex"`, `"repeat(3, 1fr)"`.
 //!
-//! Declarations are keyed by property and sorted, so a set is deterministic and
-//! content-addressed for class dedup and server-side rendering.
+//! Declarations are keyed by property and sorted, so a set depends on its declarations
+//! alone, not the order they were set in.
 
 use std::{
   borrow::Cow,
@@ -33,9 +32,8 @@ use smallvec::SmallVec;
 /// A set of CSS declarations (`property: value`), kept sorted by property.
 ///
 /// A value is its final CSS text, borrowed when static (a keyword) or owned when
-/// rendered (a length, a color). Backed by an inline [`SmallVec`], so the small sets a
-/// view has need no heap allocation, and the sorted order makes the set deterministic
-/// and content-addressed for class dedup and server-side rendering.
+/// rendered (a length, a color). Sets holding the same declarations are equal, whatever
+/// order they were set in.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
 #[must_use]
 pub struct Declarations(SmallVec<[(&'static str, Cow<'static, str>); 8]>);

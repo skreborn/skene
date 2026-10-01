@@ -133,9 +133,8 @@ pub type Value<T, C> = Conditional<Leaf<T>, C>;
 /// What a token is defined as: a [`StaticLeaf`] under [`Media`] conditions over the
 /// facade's scalar.
 ///
-/// No closure can enter one, so a palette is data a server can serialize and a platform
-/// can compile once. Only media conditions apply: a token answers the environment, and a
-/// node's own state is the consuming property's to condition on.
+/// No closure can enter one. Only media conditions apply: a token answers the
+/// environment, and a node's own state is the consuming property's to condition on.
 ///
 /// ```compile_fail,E0277
 /// use skene_foundation::{Color, Definition, Leaf};

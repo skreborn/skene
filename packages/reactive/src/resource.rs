@@ -10,8 +10,7 @@ use crate::{
   spawn::{TaskHandle, spawn},
 };
 
-/// A resource's loader, boxed so it can be stored and re-run on
-/// [`reload`](Resource::reload).
+/// A resource's loader, re-run on [`reload`](Resource::reload).
 type Loader<T> = Rc<dyn Fn() -> Pin<Box<dyn Future<Output = T>>>>;
 
 /// Where a resource's load stands.

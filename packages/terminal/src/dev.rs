@@ -6,12 +6,11 @@
 //! its pipe in [`CONTROL_VARIABLE`]. The app restores the file's snapshot before
 //! mounting and empties the file; on the pipe it hears each [`Control`]: a notice (a
 //! rebuild failure, shown in a dismissable modal, or none to clear it) and a swap (a
-//! rebuilt binary), on which it records its snapshot to the file, restores the
-//! terminal and becomes the new binary in place, so the launcher, the terminal, the
-//! file and the pipe carry over and no server holds any state. Where the process cannot
-//! be replaced it exits with [`SWAP_EXIT`] and the launcher spawns the binary. Without
-//! the variables, or with a state descriptor naming no regular file, every call is a
-//! no-op.
+//! rebuilt binary), on which it records its snapshot to the file, restores the terminal
+//! and becomes the new binary in place, so the launcher, the terminal, the file and the
+//! pipe carry over. Where the process cannot be replaced it exits with [`SWAP_EXIT`]
+//! and the launcher spawns the binary. Without the variables, or with a state
+//! descriptor naming no regular file, every call is a no-op.
 
 use std::{
   cell::RefCell,

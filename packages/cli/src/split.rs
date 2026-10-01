@@ -3,9 +3,8 @@
 //! Runs after wasm-bindgen when `skene.toml` sets `[web] split = true`. The split tool
 //! moves each `#[lazy]` body—and the code only lazy bodies reach—out of the main
 //! module, into one module per lazy function plus shared chunks. The loader manifest,
-//! `__wasm_split.js` beside the bindings, fetches and links a module on its first
-//! call. A build carrying `#[lazy]` markers without the opt-in is an error: the
-//! bindings would import loaders that nothing provides.
+//! `__wasm_split.js` beside the bindings, fetches and links a module on its first call.
+//! A build carrying `#[lazy]` markers without the opt-in is an error.
 
 use std::{fmt::Write as _, fs, path::Path};
 

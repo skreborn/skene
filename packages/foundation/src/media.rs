@@ -61,8 +61,7 @@ pub fn watch<P: Platform>(media: &Media<P::Scalar>) -> Memo<bool> {
 
 /// Puts `scheme` in force throughout, overriding the platform's preference.
 ///
-/// `None` returns to following it. Every token keeps both values and the platform is
-/// told which is in force, so a change re-inks without rebuilding anything.
+/// `None` returns to following it. A change re-inks without rebuilding anything.
 pub fn set_scheme<P: Platform>(scheme: Option<ColorScheme>) {
   P::set_scheme(scheme);
 }

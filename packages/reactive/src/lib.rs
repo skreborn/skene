@@ -5,9 +5,8 @@
 //! that created it. Reads inside an effect subscribe it; writes re-run exactly the
 //! subscribed effects, batched by [`batch`] and silenced by [`untrack`].
 //!
-//! Entities live in generational arenas, one set per thread, joined by pooled
-//! dependency edges; every handle stays on the thread that made it, and work on other
-//! threads reaches it through a task that wakes there.
+//! Entities are per thread: every handle stays on the thread that made it, and work on
+//! other threads reaches it through a task that wakes there.
 //!
 //! Every serializable signal takes part in state snapshots by position
 //! ([`snapshot`]/[`restore`]); a [`Key`] anchors a scope's position against edits and

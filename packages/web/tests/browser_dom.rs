@@ -1075,8 +1075,8 @@ fn change_handler_receives_the_committed_value() {
   assert_eq!(&*seen.borrow(), "committed");
 }
 
-/// A picker's drawn face keeps its caption before its box, as its scriptless
-/// `<select>` does, in a `<label>` `for` nothing, since the face is no form element.
+/// A picker's drawn face keeps its caption before its box, as its scriptless `<select>`
+/// does, in a `<label>` `for` nothing.
 #[wasm_bindgen_test]
 fn a_drawn_face_keeps_its_caption_before_its_box() {
   use skene_web::{BasicListboxOption, BasicPicker, ListboxOption};

@@ -8,11 +8,11 @@ use skene_terminal::ActivePlatform;
 /// feedback and the platform's full keyboard behavior.
 ///
 /// Pick the emphasis with [`set_variant`](Self::set_variant) or follow a signal with
-/// [`derive_variant`](Self::derive_variant); the look is redefined on the button's own
-/// node, so a change re-inks it without a rebuild. A disabled button takes the
-/// palette's disabled surface and ink whatever its variant, and the default cursor.
-/// [`set_child`](Self::set_child) draws a view in the label's place, inked in the look's ink. For
-/// anything beyond that, compose [`BasicButton`](skene_terminal::BasicButton) directly.
+/// [`derive_variant`](Self::derive_variant); a change re-inks the button without a
+/// rebuild. A disabled button takes the palette's disabled surface and ink whatever its
+/// variant, and the default cursor. [`set_child`](Self::set_child) draws a view in the
+/// label's place, inked in the look's ink. For anything beyond that, compose
+/// [`BasicButton`](skene_terminal::BasicButton) directly.
 ///
 /// ```
 /// use skene_simple_terminal::prelude::*;

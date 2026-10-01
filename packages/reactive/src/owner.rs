@@ -143,9 +143,8 @@ impl Owner {
   /// order; on an effect or a memo, also before its next run; on an owner already
   /// disposed, at once.
   ///
-  /// The hook for anything the runtime cannot clean up itself—cancelling a spawned
-  /// task, clearing a timer, closing a subscription—so it ends with the owner that
-  /// started it rather than outliving the view.
+  /// The hook for anything the runtime cannot clean up itself: cancelling a spawned
+  /// task, clearing a timer, closing a subscription.
   pub fn on_cleanup(&self, cleanup: impl FnOnce() + 'static) {
     let unregistered = with_graph(|graph| match graph.owner_data_mut(self.0) {
       Some(data) => {

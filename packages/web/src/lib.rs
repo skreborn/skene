@@ -283,9 +283,8 @@ skene_foundation::facade!(ActivePlatform, f32, "logical pixels");
 /// nothing in its place and a hydrating client adopts that empty place before building
 /// it.
 ///
-/// The place for a low-level view that reaches a platform's raw handles, which have no
-/// meaning off the client. `build` returns the node it realizes, exactly as a view's
-/// `build` does.
+/// The place for a low-level view that reaches a platform's raw handles. `build`
+/// returns the node it realizes, exactly as a view's `build` does.
 pub fn client_only(build: impl FnOnce() -> NodeId + 'static) -> impl View {
   Enhance::new(media::hydrated()).set_child_builder(build)
 }
@@ -307,8 +306,7 @@ where
 
 /// Builds the application against the headless platform, under the root owner.
 ///
-/// The host has no platform to show it on; this is the entry a host build of an app
-/// runs, so the same `#[main]` compiles everywhere.
+/// It shows nothing; this is the entry a host build of an app runs.
 #[cfg(skene_web_platform = "headless")]
 pub fn launch<V, F>(app: F)
 where
@@ -382,8 +380,8 @@ the pages join the dev loop.";
 /// makes the pages join the dev loop; `tracing` events, a render's deadline report
 /// among them, go to stderr.
 ///
-/// This makes the app's server build a plain command—`app-server /some/path` prints
-/// the document—which is exactly the interface a server or a generator embeds.
+/// The app's server build is a plain command: `app-server /some/path` prints the
+/// document.
 #[cfg(skene_web_platform = "server")]
 pub fn render_main<V, F>(bundle: &str, app: F)
 where
@@ -464,10 +462,10 @@ where
 ///
 /// The first chunk opens the document and carries the shell; each subsequent one
 /// carries a [`Deferred`] boundary's content, streamed once it settled, behind a
-/// `<style>` delta for the classes it introduces; the last closes the document. A
-/// client with no JavaScript receives a correct, styled document progressively, since
-/// the chunks concatenate, in order, into the markup [`render_to_string`] would
-/// produce with the deltas beside the content they style.
+/// `<style>` delta for the classes it introduces; the last closes the document. The
+/// chunks concatenate, in order, into the markup [`render_to_string`] would produce,
+/// with the deltas beside the content they style: a client with no JavaScript receives
+/// a correct, styled document progressively.
 #[derive(Debug)]
 #[cfg(skene_web_platform = "server")]
 #[must_use]
@@ -504,10 +502,9 @@ impl Stream {
 /// platform.
 ///
 /// Like [`render_to_string`], but flushes the shell before every [`Deferred`]
-/// boundary's slow content: the returned [`Stream`]'s chunks are written to the
-/// response as they are produced, so the client sees the page progressively without
-/// waiting on the slowest data, and, because the chunks are emitted in document order
-/// with their styles, with no JavaScript required.
+/// boundary's slow content: the returned [`Stream`]'s chunks, in document order with
+/// their styles, are written to the response as they are produced, so the client sees
+/// the page progressively, without waiting on the slowest data and without JavaScript.
 #[cfg(skene_web_platform = "server")]
 pub fn render_to_stream<V, F>(app: F) -> Stream
 where
@@ -562,8 +559,8 @@ where
   });
 }
 
-/// Renders requests read from stdin until it closes or sends one malformed, one page per
-/// request to stdout, so a dev server or a generator keeps one process rendering.
+/// Renders requests read from stdin until it closes or sends one malformed, one page
+/// per request to stdout.
 ///
 /// A request and a response are each `Content-Length: <bytes>` on a line, an empty
 /// line, and that many bytes. A request's bytes are the path on a line, percent-encoded

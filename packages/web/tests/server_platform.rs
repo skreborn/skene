@@ -488,8 +488,7 @@ fn a_text_editor_keeps_a_leading_newline() {
   assert!(body.contains(">\n\nsecond</textarea>"), "{body}");
 }
 
-/// Two boxes styled by the same token under two palettes intern one class, since a
-/// consumer emits the name alone.
+/// Two boxes styled by the same token under two palettes intern one class.
 #[test]
 fn two_palettes_share_one_consumer_class() {
   let rendered = render_to_string(|| {

@@ -143,8 +143,7 @@ impl Element {
     matches!(self.tag(), "input" | "br" | "hr" | "img")
   }
 
-  /// Appends the element's text, escaped; a textarea's leading newline doubled, since
-  /// the parser drops the first.
+  /// Appends the element's text, escaped; a textarea's leading newline doubled.
   fn emit_text(&self, text: &str, out: &mut String) {
     if self.tag() == "textarea" && text.starts_with('\n') {
       out.push('\n');

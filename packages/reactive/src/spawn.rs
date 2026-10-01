@@ -27,9 +27,8 @@ thread_local! {
 /// previous one; it outlives a [`Runtime::reset`](crate::Runtime::reset), as the
 /// thread's executor does.
 ///
-/// A platform installs its own, resuming on the UI thread, so a
-/// [`Resource`](crate::Resource) loads the same way on every platform. The guard it
-/// returns for a task cancels the task when dropped.
+/// A platform installs its own, resuming on the UI thread. The guard it returns for a
+/// task cancels the task when dropped.
 pub fn set_spawner(spawner: impl Fn(Task) -> TaskGuard + 'static) {
   let previous = SPAWNER.with(|current| current.borrow_mut().replace(Rc::new(spawner)));
 

@@ -140,7 +140,7 @@ fn unnamed_file() -> Result<std::fs::File, String> {
   Err("no free name for the state file".to_owned())
 }
 
-/// `attach` needs the terminal layer, which exists on Unix alone.
+/// Fails: `attach` runs on Unix alone.
 #[cfg(not(unix))]
 pub(crate) fn attach(_id: u32) -> Result<(), String> {
   Err("`attach` runs on Unix; the terminal has no console layer yet".to_owned())

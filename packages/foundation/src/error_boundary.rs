@@ -27,8 +27,8 @@ use crate::{
 /// arrive and clear, so clearing restores it as it was; the fallback rebuilds whenever
 /// the held errors change; both are destroyed when the owner the view was built under
 /// is disposed. Holds [`NoChild`] until [`set_child_builder`](Self::set_child_builder)
-/// supplies the content; it is a builder closure because it is built under the owner
-/// the handle is provided on.
+/// supplies the content as a builder closure, built under the owner the handle is
+/// provided on.
 #[must_use]
 pub struct ErrorBoundary<P: Platform, C = NoChild> {
   fallback: Option<Rc<dyn Fn(Errors) -> AnyView<P>>>,

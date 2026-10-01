@@ -90,11 +90,10 @@ pub fn watch(media: &Media) -> Memo<bool> {
 /// Paints `scheme` throughout, overriding the reader's preference; `None` returns to
 /// following it.
 ///
-/// Every token keeps both values and the platform is told which is in force, so a
-/// change re-inks the page without rebuilding anything: the state inside the tree,
-/// the focus, the scroll position and a half-typed input all survive it. On the
-/// server leaf it marks the page as one whose reader may choose, so its head carries
-/// the blocking script applying the stored choice before the first paint.
+/// A change re-inks the page without rebuilding anything: the state inside the tree,
+/// the focus, the scroll position and a half-typed input all survive it. On the server
+/// leaf it marks the page as one whose reader may choose, so its head carries the
+/// blocking script applying the stored choice before the first paint.
 #[inline(always)]
 pub fn set_scheme(scheme: Option<ColorScheme>) {
   skene_foundation::media::set_scheme::<ActivePlatform>(scheme);

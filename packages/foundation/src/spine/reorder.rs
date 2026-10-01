@@ -2,9 +2,9 @@
 
 /// Decides which kept entries a reorder can leave in place.
 ///
-/// Holds its working buffers so a repeated reconcile allocates nothing. Platform-agnostic:
-/// a facade's reconciliation feeds it positions and applies the result with its own tree
-/// operations.
+/// Holds its working buffers so a repeated reconcile allocates nothing.
+/// Platform-agnostic: its caller feeds it positions and applies the result with its own
+/// tree operations.
 #[derive(Debug, Default)]
 #[must_use]
 pub struct Reorder {
@@ -17,12 +17,11 @@ impl Reorder {
   /// The positions in the new order that need no re-insertion.
   ///
   /// `previous_positions[i]` is the previous position of the kept entry now at
-  /// `new_positions[i]`; both are in the new order. Entries on the longest increasing run of
-  /// previous positions are already in the right relative order and can stay put—every
-  /// other position must be re-inserted before its successor, which is what makes the
-  /// reorder minimal.
+  /// `new_positions[i]`; both are in the new order. Entries on the longest increasing
+  /// run of previous positions stay put—every other position is re-inserted before its
+  /// successor, the fewest re-insertions that restore the order.
   ///
-  /// The result is in descending order, matching the back-to-front insertion walk.
+  /// The result is in descending order.
   pub fn settled_positions(
     &mut self,
     previous_positions: &[usize],

@@ -140,8 +140,6 @@ impl<P: Platform> Scene<P> {
 
   /// The definition of `name` in force at `node`: the nearest defining ancestor's, else
   /// the root's.
-  ///
-  /// Cached per node until a definition or the tree changes.
   pub fn resolve_token(&mut self, node: NodeId, name: TokenName) -> Option<P::TokenValue> {
     self
       .resolve_scoped_token(node, name)
@@ -150,8 +148,6 @@ impl<P: Platform> Scene<P> {
 
   /// The definition of `name` in force at `node`, with the node defining it: the
   /// nearest defining ancestor, else `None` for the root.
-  ///
-  /// The defining node is cached per node until a definition or the tree changes.
   pub fn resolve_scoped_token(
     &mut self,
     node: NodeId,

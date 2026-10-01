@@ -79,9 +79,9 @@ thread_local! {
 /// The outstanding async work inside a boundary.
 ///
 /// A task spawned within the boundary increments the count; it decrements when the task
-/// finishes or its scope is disposed. The subtree is settled at zero. Threaded through the reactive
-/// context ([`use_context`]), so a task spawner reports to the nearest enclosing boundary without
-/// any view being special.
+/// finishes or its scope is disposed. The subtree is settled at zero. Threaded through
+/// the reactive context ([`use_context`]), so a task spawner reports to the nearest
+/// enclosing boundary.
 #[derive(Clone, Copy, Debug)]
 #[must_use]
 pub struct Boundary {

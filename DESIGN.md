@@ -17,59 +17,10 @@ throughout—there is no separate "widget" concept.
 
 ## Crates
 
-```
-skene-reactive   the engine: signals, memos, effects, owners, contexts, stores, Resource,
-      │          the snapshot, the scheduler and spawner seams
-      │
-skene-foundation the spine: Scene<P> (parents, children, annotations, token definitions,
-      │          generational node ids), the Platform trait, event dispatch over the
-      │          scene, the property model (BoxStyle<N, S, X>, RunStyle<S, X>, visitors),
-      │          Value/Leaf/Expr, Media/State/Condition, Token/TokenSet, Boundary, motion
-      │          and interpolation, generic geometry, universal values, knowing nothing
-      │          of platforms or of the crate around it; and beside it every built-in
-      │          view ONCE, generic over P: Platform—Container, Row/Column/Grid/Stack/
-      │          LayoutBox, Flexible/Pinned/GridCell, Text/Span/RichText, Control<B:
-      │          Behavior> and the shipped behaviors, BasicPicker, Overlay, LazyColumn/
-      │          LazyRow, Visibility/OneOf/Suspense/ErrorBoundary, Theme, typography,
-      │          LowLevel; terminal (TerminalStyle, BorderGlyphs, the terminal
-      │          Typography set), web (WebStyle, the web's Typography set, the document
-      │          Head, Painting/Canvas/Painted through vello, WebHydration with the
-      │          hydrating Resource, Deferred and AsyncView), routing (a typed route
-      │          in a signal)
-      │
-      ├── skene-web       the web facade AND its platform: DOM sink (browser) + HTML/CSS
-      │                   serializer (server) over one node record, the compiler,
-      │                   the interner, hydration, streaming, the server executor,
-      │                   client hints; escape traits WebMarkup (both leaves),
-      │                   WebDom (browser)
-      ├── skene-headless  Platform for the host: realizes into an inspectable record
-      │                   store so view logic tests run without a platform; the
-      │                   whole trait, trigger_ seams, the pumped executor
-      └── skene-terminal  the terminal facade AND its platform: taffy in cells, a
-                          cell buffer, motion on its frame clock; escape trait
-                          CellPainter
-
-skene-web        the web facade: f32, ActivePlatform (the web in the browser and on a
-                 server render, the headless platform elsewhere), its own type per view,
-                 Typography, media::*, Resource across the server boundary, Deferred,
-                 AsyncView, head, view_transitions, launch and the server entries,
-                 #[main], and the platform itself under platform
-skene-terminal   the terminal facade, EQUAL in standing: u32 cells, Terminal, the
-                 same views, Typography, BorderGlyphs, media::*, launch, testing
-skene-simple     the Simple design language's core over skene-foundation: the palette
-                 (a TokenSet), the looks, the shape per unit, the terminal marks
-                 (SimpleGlyphs) and the Simple* views, generic over P and hidden, their
-                 members in a Simple*Base trait each
-skene-simple-web, skene-simple-terminal
-                 the Simple views of each platform's own, newtypes over the core's, with
-                 a prelude; an app's explicit dependency
-skene-conformance  one suite of behaviors every platform shows alike, run through the
-                 Driver a platform implements over its test seams
-skene-macros     #[main], #[lazy], #[derive(Store)], #[derive(Snapshot)],
-                 #[derive(View)], #[derive(Wraps)]
-skene-cli        the skene command: build and run per target, the dev server, static
-                 generation, skene.toml assets
-```
+What each crate holds is the README's crate table. They stack: `skene-reactive` at the
+bottom, `skene-foundation` on it, the platforms (`skene-web`, `skene-terminal`,
+`skene-headless`) and the Simple core on the foundation, each platform's Simple crate on
+its facade, and the macros, the transport and the CLI beside them.
 
 **A facade per platform, one spine.** The web and the terminal are different media, not
 one medium with fallbacks: an app is written for each on purpose, and neither

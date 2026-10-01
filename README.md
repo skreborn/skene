@@ -106,26 +106,6 @@ with the mouse off a plain drag is the terminal's.
 
 ## Crates
 
-```text
-skene-reactive        the engine
-      │
-skene-foundation      the spine (the scene, the Platform trait, dispatch, the property
-      │               model) and every built-in view once over it, generic over the
-      │               platform; the terminal and web media (terminal, web), the router
-      │               (routing)
-      ├── skene-headless   the host platform: an inspectable record store for tests
-      ├── skene-terminal   the terminal facade and its platform
-      └── skene-web        the web facade and its platform, the browser and server
-                           leaves, over the headless platform off its target
-skene-simple          the Simple component library's core over skene-foundation: its
-      │               palette, shapes and marks, and its views, generic and hidden
-      ├── skene-simple-terminal   the Simple views on the terminal, with a prelude
-      └── skene-simple-web        the Simple views on the web, with a prelude
-skene-macros          #[main], #[lazy], #[derive(Store)], #[derive(Snapshot)],
-                      #[derive(View)], #[derive(Wraps)]
-skene-cli             the `skene` command
-```
-
 | Crate | Path | Role |
 |-------|------|------|
 | `skene-reactive` | `packages/reactive` | `Signal`, `Memo`, `Effect`, `Owner`, `Store`, `Resource`, context, batching, snapshot by position with `Key` anchors, the `spawn` seam a platform installs an executor into. |
@@ -139,6 +119,8 @@ skene-cli             the `skene` command
 | `skene-simple-web` | `packages/simple-web` | The Simple views on the web, as on the terminal, the palette in pixels. |
 | `skene-macros` | `packages/macros` | `#[main]`, `#[lazy]`, `#[derive(Store)]`, `#[derive(Snapshot)]`, and `#[derive(View)]` and `#[derive(Wraps)]` for a view over another. |
 | `skene-transport` | `packages/transport` | The clients on the public seams alone: `http` (`Request`, `Response`, `send`; `fetch` on the web, a thread around `ureq` on every other host) and `ws` (`connect`, `send`, `receive`; the browser's `WebSocket` on the web, a thread around `tungstenite` elsewhere). |
+| `skene-build` | `packages/build` | The build script naming the web leaf a build compiles for, a build-dependency of every crate with code per leaf. |
+| `skene-dev` | `packages/dev` | The dev loop's protocol between the `skene` command and the app it runs. |
 | `skene-cli` | `packages/cli` | `skene build web [--static]`, `skene build terminal`, `skene run web [--ssr]`, `skene run terminal` and `skene attach <id>`: bundling, the dev server with live reload and state kept across it in the page's own storage, the terminal build loop and the launcher that swaps each binary in place with the state carried across, static generation, `skene.toml` assets. |
 
 ## Views, controls, themes

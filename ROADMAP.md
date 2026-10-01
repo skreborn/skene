@@ -195,13 +195,13 @@ left half-done in a code comment.
     invariants, each linking its `DESIGN.md` section; `DESIGN.md` one chapter per
     mechanism, each with its contract, mechanism and decisions, the terminal's split by
     concern; fine facts (DECRQM modes, OSC numbers, keyboard tables, hydration markers)
-    in the owning module's rustdoc; `README.md` for users, the crate table drawn once;
-    this file for open items alone, its benchmark baseline moved beside the benchmark
-    and re-measured with the WebGPU split's sizes, since neither reproduces; dated
-    decision records with a revisit trigger; a guide in an mdbook that compiles its
-    snippets, and a `skene new <kind>` scaffold, the kind mandatory so more can join:
-    `app` first, an app's shared crate and a shell per platform it names, as `flutter
-    create` does, then `lib` and a component library's core and per-platform crates.
+    in the owning module's rustdoc; `README.md` for users; this file for open items
+    alone, its benchmark baseline moved beside the benchmark and re-measured with the
+    WebGPU split's sizes, since neither reproduces; dated decision records with a
+    revisit trigger; a guide in an mdbook that compiles its snippets, and a `skene new
+    <kind>` scaffold, the kind mandatory so more can join: `app` first, an app's shared
+    crate and a shell per platform it names, as `flutter create` does, then `lib` and a
+    component library's core and per-platform crates.
     - Doc comments: contracts alone, without rationale or narrated implementation.
 8. **Pictures beyond direct kitty transmission.** Shared memory or a file where the
     protocol's query over that medium shows the terminal shares the host, sparing the

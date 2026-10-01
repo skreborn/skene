@@ -261,7 +261,6 @@ pub use skene_terminal::prelude::TrackLimit
 pub use skene_terminal::prelude::Transition
 pub use skene_terminal::prelude::Typography
 pub use skene_terminal::prelude::Update
-pub use skene_terminal::prelude::Visibility
 pub use skene_terminal::prelude::When
 pub use skene_terminal::prelude::With
 pub use skene_terminal::prelude::Wrap

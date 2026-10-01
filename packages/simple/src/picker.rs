@@ -31,7 +31,6 @@ use skene_foundation::{
   State,
   Text,
   View,
-  Visibility,
   When,
   Wraps,
 };
@@ -246,7 +245,7 @@ where
   P::StyleExt: CornerRadius,
 {
   let check = Container::<P>::new()
-    .set_visibility(Visibility::Hidden.when(State::Checked, Visibility::Visible))
+    .set_hidden(true.when(State::Checked, false))
     .set_child(Text::<P>::new(CHECK).set_color(SimplePalette::<P::Scalar>::PRIMARY_INK));
   let caption = Text::<P>::new(label).set_color(
     SimplePalette::<P::Scalar>::FOREGROUND

@@ -42,7 +42,6 @@ use skene_foundation::{
   Toggle,
   Tooltip,
   View,
-  Visibility,
   When,
 };
 use skene_reactive::{Get, Set, Signal, Update};
@@ -671,7 +670,7 @@ fn a_viewport_condition_follows_a_resize<D: Driver>(driver: &mut D) {
 
   driver.mount(move || {
     skene_foundation::Container::<D::Platform>::new()
-      .set_visibility(Visibility::Hidden.when(Media::MinWidth(length(100.)), Visibility::Visible))
+      .set_hidden(true.when(Media::MinWidth(length(100.)), false))
       .set_child(Text::new("Wide"))
       .into_any()
   });

@@ -273,12 +273,12 @@ fn pointer_conditions_compile_to_their_media_features() {
 /// A hidden box compiles to `visibility: hidden`, and a visible one inherits, so it
 /// shows only where its ancestors do.
 #[test]
-fn visibility_compiles_to_hidden_or_inherited() {
-  use skene_foundation::{State, Visibility, When};
+fn hiding_compiles_to_hidden_or_inherited_visibility() {
+  use skene_foundation::{State, When};
 
   let page = render_to_string(|| {
     Container::new()
-      .set_visibility(Visibility::Hidden.when(State::Hovered, Visibility::Visible))
+      .set_hidden(true.when(State::Hovered, false))
       .set_child(Text::new("x"))
   });
   let styles = page.styles();

@@ -31,7 +31,6 @@ use skene_foundation::{
   Transition,
   Value,
   View,
-  Visibility,
   WheelUnit,
 };
 use skene_headless::{
@@ -396,7 +395,7 @@ fn tab_traverses_the_scenes_tab_order() {
       .set_children((
         Container::new().set_focus_order(FocusOrder::Auto),
         Container::new()
-          .set_visibility(Visibility::Hidden)
+          .set_hidden(true)
           .set_child(Container::new().set_focus_order(FocusOrder::Auto)),
         Container::new().set_focus_order(FocusOrder::Auto),
       ))

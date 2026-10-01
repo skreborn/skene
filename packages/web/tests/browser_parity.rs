@@ -56,7 +56,6 @@ use skene_foundation::{
   Transition,
   Value,
   View,
-  Visibility,
   web::{Typography, WebProperty},
 };
 use skene_headless::{
@@ -66,10 +65,10 @@ use skene_headless::{
   control_props,
   resolve_aspect_ratio,
   resolve_color,
+  resolve_hidden,
   resolve_inset,
   resolve_length,
   resolve_overflow,
-  resolve_visibility,
   trigger_container_size,
   trigger_focus,
   trigger_frame,
@@ -220,8 +219,8 @@ enum Read {
   Border(Edge),
   /// The ink of the run inside the box.
   Ink,
-  /// Whether the box is drawn.
-  Visibility,
+  /// Whether the box is hidden.
+  Hidden,
   /// The box's aspect ratio.
   AspectRatio,
   /// The box's overflow per axis.
@@ -273,7 +272,7 @@ enum Case {
   FocusedColor,
   NeutralKeyframe,
   ReversedTransition,
-  VisibilityTransition,
+  HiddenTransition,
   RatioTransition,
   AxisOverflow,
   VisibleBesideScroll,
@@ -323,7 +322,7 @@ const CASES: &[Case] = &[
   Case::FocusedColor,
   Case::NeutralKeyframe,
   Case::ReversedTransition,
-  Case::VisibilityTransition,
+  Case::HiddenTransition,
   Case::RatioTransition,
   Case::AxisOverflow,
   Case::VisibleBesideScroll,
@@ -373,7 +372,7 @@ impl Case {
       Self::FixedBorder => Read::Border(Edge::Top),
       Self::EdgeBorder => Read::Border(Edge::Left),
       Self::FixedInk | Self::TokenInk => Read::Ink,
-      Self::VisibilityTransition => Read::Visibility,
+      Self::HiddenTransition => Read::Hidden,
       Self::RatioTransition => Read::AspectRatio,
       Self::AxisOverflow | Self::VisibleBesideScroll => Read::Overflow,
     }
@@ -499,7 +498,7 @@ impl Case {
       }
       Self::NeutralKeyframe
       | Self::ReversedTransition
-      | Self::VisibilityTransition
+      | Self::HiddenTransition
       | Self::RatioTransition => self.moving(container),
       Self::TokenInk => container.set_child(Text::new("ink").set_color(ParityPalette::SURFACE)),
       Self::LexicalToken
@@ -537,21 +536,14 @@ impl Case {
           .derive_width(move || Dimension::Length(moving.get()))
           .set_transition(Transition::new(Property::Width, 1.).set_easing(Easing::Linear))
       }
-      Self::VisibilityTransition => {
+      Self::HiddenTransition => {
         let moving = Signal::new(0f32);
 
         MOVING.set(Some(moving));
 
         container
-          .derive_visibility(move || {
-            if moving.get() > 0. {
-              Visibility::Hidden
-            }
-            else {
-              Visibility::Visible
-            }
-          })
-          .set_transition(Transition::new(Property::Visibility, 1.).set_easing(Easing::Linear))
+          .derive_hidden(move || moving.get() > 0.)
+          .set_transition(Transition::new(Property::Hidden, 1.).set_easing(Easing::Linear))
       }
       Self::RatioTransition => {
         let moving = Signal::new(0f32);
@@ -587,7 +579,7 @@ impl Case {
     match self {
       Self::NeutralKeyframe => &[(None, 250)],
       Self::ReversedTransition => &[(Some(100.), 250), (Some(0.), 125)],
-      Self::VisibilityTransition => &[(Some(1.), 250)],
+      Self::HiddenTransition => &[(Some(1.), 250)],
       Self::RatioTransition => &[(Some(1.), 500)],
       _ => &[],
     }
@@ -615,7 +607,7 @@ enum Reading {
   /// A border's width, in pixels, and its color.
   Border(f32, Color),
   /// A visibility.
-  Visibility(Visibility),
+  Hidden(bool),
   /// A width-to-height ratio.
   Ratio(f32),
   /// An overflow per axis.
@@ -758,7 +750,7 @@ fn resolved(case: Case, viewport: Size<f32>) -> Reading {
       .zip(resolve_color(node, BORDER_COLOR))
       .map(|(width, color)| Reading::Border(width.edge(edge), color)),
     Read::Ink => resolve_color(children(node)[1], TEXT_COLOR).map(Reading::Color),
-    Read::Visibility => resolve_visibility(node).map(Reading::Visibility),
+    Read::Hidden => resolve_hidden(node).map(Reading::Hidden),
     Read::AspectRatio => resolve_aspect_ratio(node).map(|ratio| Reading::Ratio(ratio.0)),
     Read::Overflow => resolve_overflow(node).map(Reading::Overflow),
   };
@@ -874,9 +866,9 @@ fn rendered(case: Case) -> Reading {
 
       computed_color(&run, "color")
     }
-    Read::Visibility => match computed(&element, "visibility").as_str() {
-      "visible" => Reading::Visibility(Visibility::Visible),
-      "hidden" => Reading::Visibility(Visibility::Hidden),
+    Read::Hidden => match computed(&element, "visibility").as_str() {
+      "visible" => Reading::Hidden(false),
+      "hidden" => Reading::Hidden(true),
       _ => Reading::Missing,
     },
     Read::AspectRatio => ratio(&computed(&element, "aspect-ratio")),
@@ -911,7 +903,7 @@ fn agree(resolved: &Reading, rendered: &Reading) -> bool {
     (Reading::Border(left_width, left), Reading::Border(right_width, right)) => {
       (left_width - right_width).abs() < 0.01 && same_color(*left, *right)
     }
-    (Reading::Visibility(left), Reading::Visibility(right)) => left == right,
+    (Reading::Hidden(left), Reading::Hidden(right)) => left == right,
     (Reading::Ratio(left), Reading::Ratio(right)) => (left - right).abs() < 0.001,
     (Reading::Overflow(left), Reading::Overflow(right)) => left == right,
     _ => false,

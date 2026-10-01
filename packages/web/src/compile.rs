@@ -53,7 +53,6 @@ use skene_foundation::{
   TextDecoration,
   TextDecorationStyle,
   TokenName,
-  Visibility,
   Wrap,
   typography,
   web::{WebProperty, WebStyle},
@@ -176,7 +175,7 @@ pub(crate) const fn target(key: Key) -> Target {
       Property::GridRowPlacement => plain("grid-row"),
       Property::GridColumnPlacement => plain("grid-column"),
       Property::Overflow => plain("overflow"),
-      Property::Visibility => plain("visibility"),
+      Property::Hidden => plain("visibility"),
       Property::TextColor => plain("color"),
       Property::SelectionColor => Target {
         pseudo: "::selection",
@@ -266,11 +265,7 @@ pub(crate) fn render_box_value(value: &BoxValue<f32, WebStyle>) -> String {
         )
       }
     }
-    BoxValue::Visibility(visibility) => match visibility {
-      Visibility::Visible => "inherit",
-      Visibility::Hidden => "hidden",
-    }
-    .to_owned(),
+    BoxValue::Hidden(hidden) => if *hidden { "hidden" } else { "inherit" }.to_owned(),
   }
 }
 

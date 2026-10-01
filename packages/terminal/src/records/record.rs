@@ -21,7 +21,6 @@ use skene_foundation::{
   RunStyle,
   Size,
   Slot,
-  Visibility,
 };
 
 use super::{CellRect, field::Field};
@@ -348,7 +347,7 @@ impl Record {
   /// and take neither the pointer nor focus.
   #[inline(always)]
   pub(crate) fn is_invisible(&self) -> bool {
-    self.kind.box_style().and_then(|style| style.visibility) == Some(Visibility::Hidden)
+    self.kind.box_style().and_then(|style| style.hidden) == Some(true)
   }
 
   /// Whether the record is an overlay.

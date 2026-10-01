@@ -74,8 +74,8 @@ pub enum Property {
   GridColumnPlacement,
   /// How content exceeding the box's bounds is treated, per axis.
   Overflow,
-  /// Whether the box and its content are drawn.
-  Visibility,
+  /// Whether the box and its content go undrawn, keeping their place in the layout.
+  Hidden,
   /// The text color.
   TextColor,
   /// The text color while selected.
@@ -129,7 +129,7 @@ impl Property {
       Self::GridRowPlacement => "grid_row_placement",
       Self::GridColumnPlacement => "grid_column_placement",
       Self::Overflow => "overflow",
-      Self::Visibility => "visibility",
+      Self::Hidden => "hidden",
       Self::TextColor => "text_color",
       Self::SelectionColor => "selection_color",
       Self::SelectionBackground => "selection_background",

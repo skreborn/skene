@@ -30,7 +30,6 @@ use crate::{
   Transition,
   TypeMetrics,
   Value,
-  Visibility,
   Wraps,
 };
 
@@ -96,7 +95,8 @@ impl<P: Platform, T: Wraps<Inner: HasRun<P>>> HasRun<P> for T {
 
 /// The decoration and sizing of a box.
 ///
-/// Its size, its insets, its colors, its border, its cursor, its overflow and its visibility.
+/// Its size, its insets, its colors, its border, its cursor, its overflow and whether it
+/// is hidden.
 pub trait DecorationBase<P: Platform>: HasBoxStyle<P> + Sized {
   crate::trait_properties! { box_style_mut, Condition<P::Scalar>;
     set_width / derive_width (width) => width: Dimension<P::Scalar>,
@@ -130,8 +130,8 @@ pub trait DecorationBase<P: Platform>: HasBoxStyle<P> + Sized {
     set_overflow / derive_overflow (overflow) => overflow: Axes<Overflow>,
       "how content exceeding the box's bounds is treated on each axis",
       "`Scroll` and `Auto` make an axis scrollable, and one overflow sets both.";
-    set_visibility / derive_visibility (visibility) => visibility: Visibility,
-      "whether the box and its content are drawn",
+    set_hidden / derive_hidden (hidden) => hidden: bool,
+      "whether the box and its content go undrawn",
       "A hidden box keeps its place in the layout.";
   }
 }

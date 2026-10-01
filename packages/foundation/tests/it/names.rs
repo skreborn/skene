@@ -13,7 +13,6 @@ use skene_foundation::{
   RunBase,
   TextEntry,
   View,
-  Visibility,
 };
 use skene_headless::{Headless, accessible_name, reset};
 use skene_reactive::Owner;
@@ -74,7 +73,7 @@ fn a_button_a_heading_and_a_link_are_named_by_their_content() {
             Text::new("Save"),
             Text::new("all"),
             Container::new()
-              .set_visibility(Visibility::Hidden)
+              .set_hidden(true)
               .set_child(Text::new("drafts")),
           )),
         )

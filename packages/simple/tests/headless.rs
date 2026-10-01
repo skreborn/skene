@@ -26,7 +26,6 @@ use skene_foundation::{
   TokenRef,
   TokenSet,
   View,
-  Visibility,
   web::WebProperty,
 };
 use skene_headless::{
@@ -41,8 +40,8 @@ use skene_headless::{
   part,
   reset,
   resolve_color,
+  resolve_hidden,
   resolve_length,
-  resolve_visibility,
   root_definitions,
   slot_leaf,
   text,
@@ -248,8 +247,8 @@ fn a_checkbox_mark_follows_the_checked_state() {
   assert_eq!(resolve_color(mark, COLOR), Some(light(&palette.card)));
   assert_eq!(border(mark), Some((1., light(&palette.border))));
   assert_eq!(
-    resolve_visibility(check),
-    Some(Visibility::Hidden),
+    resolve_hidden(check),
+    Some(true),
     "the unchecked glyph is hidden"
   );
 
@@ -261,7 +260,7 @@ fn a_checkbox_mark_follows_the_checked_state() {
     Some(light(&palette.primary.surface))
   );
   assert_eq!(border(mark), Some((1., light(&palette.primary.surface))));
-  assert_eq!(resolve_visibility(check), Some(Visibility::Visible));
+  assert_eq!(resolve_hidden(check), Some(false));
   assert_eq!(
     resolve_color(glyph, TEXT_COLOR),
     Some(light(&palette.primary.ink))
@@ -618,10 +617,10 @@ fn a_pickers_face_rings_and_its_rows_follow_focus_and_the_choice() {
     Some(light(&palette.primary.ink))
   );
   assert_eq!(resolve_color(row(0), COLOR), Some(Color::TRANSPARENT));
-  assert_eq!(resolve_visibility(check(1)), Some(Visibility::Visible));
+  assert_eq!(resolve_hidden(check(1)), Some(false));
   assert_eq!(
-    resolve_visibility(check(0)),
-    Some(Visibility::Hidden),
+    resolve_hidden(check(0)),
+    Some(true),
     "an unchosen check is hidden"
   );
   assert_eq!(

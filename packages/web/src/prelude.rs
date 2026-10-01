@@ -89,7 +89,6 @@ pub use skene_foundation::{
   TooltipBase,
   TrackLimit,
   Transition,
-  Visibility,
   When,
   Wrap,
   web::{AsyncViewBase, DeferredBase},

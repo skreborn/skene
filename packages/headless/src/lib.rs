@@ -92,7 +92,6 @@ use skene_foundation::{
   StaticLeaf,
   TextSelection,
   Timer,
-  Visibility,
   WheelEvent,
   dispatch_click,
   dispatch_context_menu,
@@ -643,8 +642,8 @@ fn tab_order(node: NodeId) -> (NodeId, Vec<NodeId>) {
     .into_iter()
     .filter(|node| {
       matches!(
-        resolve::resolve(*node, PropertyKey::Shared(Property::Visibility)),
-        Some(SlotValue::Box(BoxValue::Visibility(Visibility::Hidden)))
+        resolve::resolve(*node, PropertyKey::Shared(Property::Hidden)),
+        Some(SlotValue::Box(BoxValue::Hidden(true)))
       )
     })
     .collect();
@@ -1293,8 +1292,8 @@ skene_foundation::access_queries!(Headless, name_facts);
 /// What the accessible-name computation reads of `node`.
 fn name_facts(node: NodeId) -> NameFacts {
   let hidden = matches!(
-    resolve::resolve(node, PropertyKey::Shared(Property::Visibility)),
-    Some(SlotValue::Box(BoxValue::Visibility(Visibility::Hidden)))
+    resolve::resolve(node, PropertyKey::Shared(Property::Hidden)),
+    Some(SlotValue::Box(BoxValue::Hidden(true)))
   );
 
   let access = Scene::<Headless>::read(|scene| scene.access(node));
@@ -1495,14 +1494,14 @@ pub fn resolve_length(node: NodeId, key: PropertyKey<WebProperty>) -> Option<f32
   }
 }
 
-/// The visibility of the box `node`, by the same resolution as [`resolve_color`];
-/// `None` where none is set, which draws the box where its ancestors are drawn.
+/// Whether the box `node` is hidden, by the same resolution as [`resolve_color`];
+/// `None` where nothing is set, which draws the box where its ancestors are drawn.
 #[must_use]
-pub fn resolve_visibility(node: NodeId) -> Option<Visibility> {
+pub fn resolve_hidden(node: NodeId) -> Option<bool> {
   end_turn();
 
-  match resolve::resolve(node, PropertyKey::Shared(Property::Visibility))? {
-    SlotValue::Box(BoxValue::Visibility(visibility)) => Some(visibility),
+  match resolve::resolve(node, PropertyKey::Shared(Property::Hidden))? {
+    SlotValue::Box(BoxValue::Hidden(hidden)) => Some(hidden),
     SlotValue::Box(_) | SlotValue::Run(_) => None,
   }
 }

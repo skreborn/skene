@@ -49,7 +49,6 @@ use crate::spine::{
   TextDecorationStyle,
   TrackLimit,
   Transition,
-  Visibility,
   Wrap,
 };
 
@@ -89,7 +88,6 @@ hashed!(
   GridPlacement,
   GridAreas,
   Overflow,
-  Visibility,
   bool,
   u16,
 );

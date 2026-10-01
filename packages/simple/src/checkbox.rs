@@ -23,7 +23,6 @@ use skene_foundation::{
   Text,
   Toggle,
   View,
-  Visibility,
   When,
   Wraps,
 };
@@ -174,7 +173,7 @@ where
     .set_alignment(Alignment::CENTER)
     .set_child(
       Container::new()
-        .set_visibility(Visibility::Hidden.when(State::Checked, Visibility::Visible))
+        .set_hidden(true.when(State::Checked, false))
         .set_child(Text::new("✓").set_color(SimplePalette::<P::Scalar>::PRIMARY_INK)),
     )
 }

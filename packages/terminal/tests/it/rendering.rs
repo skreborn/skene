@@ -527,14 +527,7 @@ fn a_hidden_box_keeps_its_place_and_paints_nothing() {
       Column::new()
         .set_children((
           Container::new()
-            .derive_visibility(move || {
-              if shown.get() {
-                Visibility::Visible
-              }
-              else {
-                Visibility::Hidden
-              }
-            })
+            .derive_hidden(move || !shown.get())
             .set_child(
               BasicButton::new(Activate::new())
                 .set_label("hidden")

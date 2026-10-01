@@ -22,7 +22,6 @@ use crate::spine::{
   StyleExtension,
   TemplateEntry,
   TrackLimit,
-  Visibility,
 };
 
 /// How many halvings the bezier solve refines the parameter through.
@@ -188,7 +187,9 @@ impl<T: Interpolate> Interpolate for Dimension<T> {
   }
 }
 
-impl Interpolate for Visibility {
+/// Whether a box goes undrawn: drawn through every change to or from drawn, as CSS
+/// interpolates `visibility`.
+impl Interpolate for bool {
   #[inline(always)]
   fn interpolate(&self, to: &Self, amount: f32) -> Option<Self> {
     Some(if self == to || amount <= 0. {
@@ -198,7 +199,7 @@ impl Interpolate for Visibility {
       *to
     }
     else {
-      Self::Visible
+      false
     })
   }
 }
@@ -300,9 +301,7 @@ impl<N: Scalar + Interpolate, X: StyleExtension> Interpolate for BoxValue<N, X> 
       (Self::Template(from), Self::Template(to)) => {
         Some(Self::Template(from.interpolate(to, amount)?))
       }
-      (Self::Visibility(from), Self::Visibility(to)) => {
-        Some(Self::Visibility(from.interpolate(to, amount)?))
-      }
+      (Self::Hidden(from), Self::Hidden(to)) => Some(Self::Hidden(from.interpolate(to, amount)?)),
       (Self::Extension(from), Self::Extension(to)) => {
         Some(Self::Extension(X::interpolate_value(from, to, amount)?))
       }
@@ -676,7 +675,6 @@ mod tests {
     PropertyKey,
     TrackLimit,
     Transition,
-    Visibility,
   };
 
   const WIDTH: PropertyKey<NoProperty> = PropertyKey::Shared(Property::Width);
@@ -932,11 +930,11 @@ mod tests {
     );
   }
 
-  /// A visibility stays visible through a change to or from visible, and grid tracks
-  /// move per track where the lists are as long and each pair moves or matches.
+  /// A box stays drawn through a change to or from drawn, and grid tracks move per
+  /// track where the lists are as long and each pair moves or matches.
   #[test]
-  fn visibility_and_tracks_interpolate_as_css_does() {
-    let (visible, hidden) = (Visibility::Visible, Visibility::Hidden);
+  fn hiding_and_tracks_interpolate_as_css_does() {
+    let (visible, hidden) = (false, true);
 
     assert_eq!(visible.interpolate(&hidden, 0.), Some(visible));
     assert_eq!(visible.interpolate(&hidden, 0.9), Some(visible));

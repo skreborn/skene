@@ -37,7 +37,6 @@ use crate::spine::{
   Overflow,
   Spacing,
   Transition,
-  Visibility,
   Wrap,
 };
 
@@ -120,8 +119,8 @@ pub struct BoxStyle<N: Scalar, S: Shape, X: StyleExtension = ()> {
   pub grid_column_placement: S::Of<Line<GridPlacement>>,
   /// How content exceeding the box's bounds is treated, per axis.
   pub overflow: S::Of<Axes<Overflow>>,
-  /// Whether the box and its content are drawn.
-  pub visibility: S::Of<Visibility>,
+  /// Whether the box and its content go undrawn, keeping their place in the layout.
+  pub hidden: S::Of<bool>,
   /// The medium's own properties.
   pub ext: X::BoxFields<S>,
 }
@@ -169,8 +168,8 @@ pub enum BoxValue<N: Scalar, X: StyleExtension = ()> {
   Placement(Line<GridPlacement>),
   /// An overflow mode per axis.
   Overflow(Axes<Overflow>),
-  /// A visibility.
-  Visibility(Visibility),
+  /// Whether a box goes undrawn.
+  Hidden(bool),
   /// A value of one of the medium's own properties.
   Extension(X::Value),
 }
@@ -286,7 +285,7 @@ box_values!(
   GridFlow => GridFlow;
   Line<GridPlacement> => Placement;
   Axes<Overflow> => Overflow;
-  Visibility => Visibility;
+  bool => Hidden;
 );
 
 /// One property of a [`BoxStyle`], addressed by type, in whatever shape the style is.
@@ -402,7 +401,7 @@ box_fields!(
   grid_row_placement: crate::spine::Line<crate::spine::GridPlacement> => GridRowPlacement,
   grid_column_placement: crate::spine::Line<crate::spine::GridPlacement> => GridColumnPlacement,
   overflow: crate::spine::Axes<crate::spine::Overflow> => Overflow,
-  visibility: crate::spine::Visibility => Visibility,
+  hidden: bool => Hidden,
 );
 
 impl<N: Scalar, S: Shape, X: StyleExtension> BoxStyle<N, S, X> {
@@ -692,7 +691,7 @@ mod tests {
     assert_eq!(names.0[13], ("border_color", false));
     assert_eq!(names.0[15], ("spacing", true));
     assert_eq!(names.0[32], ("overflow", false));
-    assert_eq!(names.0[33], ("visibility", false));
+    assert_eq!(names.0[33], ("hidden", false));
     assert_eq!(
       <box_fields::Spacing as BoxField<f32, ()>>::KEY,
       PropertyKey::Shared(Property::Spacing)

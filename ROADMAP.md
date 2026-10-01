@@ -181,11 +181,9 @@ in a code comment.
     invariants, each linking its `DESIGN.md` section; `DESIGN.md` one chapter per
     mechanism, each with its contract, mechanism and decisions, the terminal's split by
     concern; fine facts (DECRQM modes, OSC numbers, keyboard tables, hydration markers)
-    in the owning module's rustdoc; `README.md` for users; this file for open items
-    alone, its benchmark baseline moved beside the benchmark and re-measured with the
-    WebGPU split's sizes, since neither reproduces; a guide in an mdbook that compiles
-    its snippets, and `skene new lib` beside `skene new app`: a component library's core
-    and its per-platform crates.
+    in the owning module's rustdoc; `README.md` for users; the WebGPU split's sizes
+    re-measured, since they no longer reproduce; the guide's book built by `mdbook` in
+    the gate, so a broken link or chapter fails it.
     - Doc comments: contracts alone, without rationale or narrated implementation.
 8. **Pictures beyond direct kitty transmission.** Shared memory or a file where the
     protocol's query over that medium shows the terminal shares the host, sparing the

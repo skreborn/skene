@@ -10,6 +10,9 @@ vdom-free; styling is data, compiled to CSS on the web and resolved natively els
 so a server-rendered page is responsive, themed, hoverable and animated with no script
 at all.
 
+The guide, an mdbook in `guide/` whose examples compile against these crates, walks
+through building an app and a component library.
+
 ## Reactivity
 
 ```rust,ignore

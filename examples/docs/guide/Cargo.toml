@@ -1,0 +1,29 @@
+[package]
+name = "guide"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dev-dependencies]
+skene-foundation.workspace = true
+skene-reactive.workspace = true
+skene-simple.workspace = true
+skene-simple-terminal.workspace = true
+skene-simple-web.workspace = true
+skene-terminal.workspace = true
+skene-web.workspace = true
+
+[package.metadata.cargo-shear]
+ignored = [
+  "skene-foundation",
+  "skene-reactive",
+  "skene-simple",
+  "skene-simple-terminal",
+  "skene-simple-web",
+  "skene-terminal",
+  "skene-web",
+]
+
+[lints]
+workspace = true

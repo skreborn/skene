@@ -1,0 +1,7 @@
+[book]
+title = "The Skene Guide"
+language = "en"
+src = "src"
+
+[output.html]
+git-repository-url = "https://github.com/skreborn/skene"

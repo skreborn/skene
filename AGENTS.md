@@ -737,7 +737,7 @@
   `examples/third-party` holds the low-level views written from outside the framework,
   one per platform's escape traits; Simple is the component library written the way a
   third party's is. `examples/docs` holds the crates compiling the documents' examples
-  as doctests (`readme`).
+  as doctests (`readme`, `guide`).
 - **What comes next lives in `ROADMAP.md`**, under `Open`: one ordered list of every
   open item, big and small, top first. Nothing shipped is listed there. When asked
   what's next, answer from the top of it. A follow-up a change leaves behind is inserted

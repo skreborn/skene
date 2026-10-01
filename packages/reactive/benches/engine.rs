@@ -46,6 +46,8 @@ fn bench_get(c: &mut Criterion) {
   c.bench_function("get_outside_effect", |bencher| {
     bencher.iter(|| signal.get());
   });
+
+  owner.dispose();
 }
 
 fn bench_set_with_effects(c: &mut Criterion) {
@@ -63,6 +65,8 @@ fn bench_set_with_effects(c: &mut Criterion) {
   c.bench_function("set_with_10_effects", |bencher| {
     bencher.iter(|| signal.update(|value| *value += 1));
   });
+
+  owner.dispose();
 }
 
 fn bench_memo_chain(c: &mut Criterion) {
@@ -90,6 +94,8 @@ fn bench_memo_chain(c: &mut Criterion) {
   c.bench_function("memo_chain_10_update", |bencher| {
     bencher.iter(|| source.update(|value| *value += 1));
   });
+
+  owner.dispose();
 }
 
 #[derive(Store, Clone, Default)]
@@ -124,6 +130,8 @@ fn bench_row_edit(c: &mut Criterion, rows: usize) {
       store.at(rows / 2).label().set(edit);
     });
   });
+
+  owner.dispose();
 }
 
 fn bench_row_edits(c: &mut Criterion) {
@@ -165,11 +173,22 @@ fn bench_keyed_row_edit(c: &mut Criterion, rows: u32) {
       keyed.key(rows / 2).label().set(edit);
     });
   });
+
+  owner.dispose();
 }
 
 fn bench_keyed_row_edits(c: &mut Criterion) {
   bench_keyed_row_edit(c, 100);
   bench_keyed_row_edit(c, 10_000);
+}
+
+/// An owner disposed when dropped.
+struct Disposing(Owner);
+
+impl Drop for Disposing {
+  fn drop(&mut self) {
+    self.0.dispose();
+  }
 }
 
 /// A row pushed onto `rows` rows whose label an effect each tracks, and one effect the
@@ -195,14 +214,14 @@ fn bench_row_push(c: &mut Criterion, rows: usize) {
           store
         });
 
-        (owner, store)
+        (Disposing(owner), store)
       },
       |(owner, store)| {
         store.push(Row::default());
 
         owner
       },
-      BatchSize::LargeInput,
+      BatchSize::NumIterations(16),
     );
   });
 }

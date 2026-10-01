@@ -5,20 +5,6 @@ in `AGENTS.md`, the decisions against in `DECISIONS.md`; this file records none 
 only the work that is open and the shape it lands in. What has shipped is not listed:
 the code, `DESIGN.md` and the tests describe it.
 
-The reactive engine's baseline, `cargo bench -p skene-reactive --bench engine` on the
-development machine at rest (2026-10-01), against which a change to the engine is
-measured: creating a thousand signals with nothing recording snapshots 39 µs; a signal
-read outside an effect 4.8 ns; a write reaching ten effects 231 ns; a write through a
-chain of ten memos 405 ns; a store row's edit among a hundred tracked rows 156 ns, and
-among ten thousand 154 ns, and by key 213 ns and 213 ns; a row pushed among a hundred
-213 ns, and among ten thousand 5.9 µs. Versions compare only when each is built in its
-own target directory (a shared one reuses another tree's build) and the bench binaries
-run alternately, pinned to one of the fast cores with address randomization off:
-`setarch -R taskset -c 2 <binary> --bench`.
-Callgrind's instruction counts compare two builds whatever the machine's load, cache
-misses aside: `valgrind --tool=callgrind <binary>`, built with
-`CARGO_PROFILE_RELEASE_STRIP=none` so the profile names its functions.
-
 ## Open
 
 One list, every item big and small, top first. An item is resolved by landing it, by

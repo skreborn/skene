@@ -254,7 +254,7 @@ fn pointer_conditions_compile_to_their_media_features() {
 
   let page = render_to_string(|| {
     Container::new()
-      .set_color(
+      .set_background(
         Value::from(Color::srgb(1., 0., 0.))
           .when(
             Media::Pointer(PointerPrecision::Coarse),
@@ -807,7 +807,7 @@ fn deferred_app() -> impl skene_web::View {
         data.with(|value| match value {
           None => Text::new("loading").build(),
           Some(text) => Container::new()
-            .set_color(Color::srgb(0.1, 0.2, 0.3))
+            .set_background(Color::srgb(0.1, 0.2, 0.3))
             .set_child(Text::new(text.clone()))
             .build(),
         })
@@ -1260,7 +1260,7 @@ fn a_dark_scheme_hint_serializes_the_dark_value_of_a_derived_leaf() {
   )]));
 
   let page = render_to_string(move || {
-    Container::new().derive_color(move || {
+    Container::new().derive_background(move || {
       if skene_web::media::scheme().get() == ColorScheme::Dark {
         black
       }
@@ -1275,7 +1275,7 @@ fn a_dark_scheme_hint_serializes_the_dark_value_of_a_derived_leaf() {
   assert!(
     page
       .body()
-      .contains(&format!("style=\"--skene-color:{};\"", css(black))),
+      .contains(&format!("style=\"--skene-background:{};\"", css(black))),
     "the dark value is the slot's serialized value: {}",
     page.body(),
   );

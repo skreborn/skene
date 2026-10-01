@@ -185,7 +185,10 @@ fn modal_scrim_defaults_on_and_disables() {
 
         Column::new()
           .set_children((
-            Container::new().set_color(red()).set_height(1).into_any(),
+            Container::new()
+              .set_background(red())
+              .set_height(1)
+              .into_any(),
             modal.set_child(Text::new("hi")).into_any(),
           ))
           .into_any()

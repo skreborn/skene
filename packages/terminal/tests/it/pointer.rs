@@ -256,7 +256,7 @@ fn a_drag_moves_between_boxes_and_drops_on_release() {
           Container::new()
             .set_width(4)
             .set_height(2)
-            .set_color(red().when(State::Targeted, blue()))
+            .set_background(red().when(State::Targeted, blue()))
             .handle_drop(move |card: &String| dropped.borrow_mut().push(card.clone())),
         ))
         .into_any()
@@ -309,7 +309,7 @@ fn hover_variant_and_pointer_handlers() {
           Container::new()
             .set_width(4)
             .set_height(2)
-            .set_color(red().when(State::Hovered, blue()))
+            .set_background(red().when(State::Hovered, blue()))
             .handle_pointer_enter(move || entered.set(entered.get() + 1))
             .handle_pointer_leave(move || left.set(left.get() + 1)),
           Container::new().set_width(4).set_height(2),
@@ -341,12 +341,12 @@ fn a_press_holds_pressed_along_its_path() {
     let _ = terminal::mount(|| {
       Container::new()
         .set_padding(Inset::all(1))
-        .set_color(red().when(State::Pressed, blue()))
+        .set_background(red().when(State::Pressed, blue()))
         .set_child(
           Container::new()
             .set_width(4)
             .set_height(2)
-            .set_color(blue().when(State::Pressed, red())),
+            .set_background(blue().when(State::Pressed, red())),
         )
         .into_any()
         .build()
@@ -375,7 +375,7 @@ fn hover_over_an_overlay_holds_on_its_ancestors() {
       Container::new()
         .set_width(10)
         .set_height(3)
-        .set_color(red().when(State::Hovered, blue()))
+        .set_background(red().when(State::Hovered, blue()))
         .set_child(
           Overlay::popup()
             .set_placement(Placement::TopStart)
@@ -586,7 +586,7 @@ fn a_hover_change_repaints_only_its_rows() {
             .map(|index| {
               Container::new()
                 .set_height(1)
-                .set_color(red().when(State::Hovered, blue()))
+                .set_background(red().when(State::Hovered, blue()))
                 .set_child(Text::new(format!("row {index}")))
             })
             .collect::<Vec<_>>(),

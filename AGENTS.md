@@ -141,8 +141,8 @@
   detail on every platform, never a public hook) of a type a token holds (`Tokenable`:
   a color, a number, a length, a dimension or a text), `Token<T>` pairs the name with
   the definition a palette gives it, and every setter takes `impl Into<Value<T>>`, so
-  `set_color(Color::WHITE)`, `set_color(palette.card)` and
-  `set_color(SimplePalette::CARD)` are the same call and a consumer emits only the name.
+  `set_background(Color::WHITE)`, `set_background(palette.card)` and
+  `set_background(SimplePalette::CARD)` are the same call and a consumer emits only the name.
   A length token (`Token<Length, N>`) serves every property measured in lengths,
   padding, spacing, margins, sizes, corner radii, font sizes and letter spacing alike,
   through its one reference, and a name is one kind wherever it is defined: a debug

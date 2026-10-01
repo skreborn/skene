@@ -176,7 +176,7 @@ impl MapHost for skene_headless::Headless {
     let surface = Container::<Self>::new()
       .set_role(Role::Image)
       .set_label("map")
-      .set_color(Color::srgb(0.44, 0.71, 0.86));
+      .set_background(Color::srgb(0.44, 0.71, 0.86));
 
     map.sized(surface)
   }

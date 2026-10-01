@@ -23,7 +23,7 @@ fn app() -> impl View {
 
   Theme::new(SimplePalette::default()).set_child_builder(move || {
     Container::new()
-      .set_color(SimplePalette::BACKGROUND)
+      .set_background(SimplePalette::BACKGROUND)
       .set_min_height(Dimension::Fraction(1.))
       .set_child(
         Column::new()
@@ -109,7 +109,7 @@ fn note(name: String, notes: Signal<Vec<String>>, last: Signal<String>) -> impl 
         .set_padding(Inset::symmetric(12., 8.))
         .set_corner_radius(6.)
         .set_focus_order(FocusOrder::Auto)
-        .set_color(
+        .set_background(
           SimplePalette::CARD
             .when(State::Hovered, SimplePalette::SECONDARY_SURFACE)
             .when(State::Focused, SimplePalette::SECONDARY_SURFACE),

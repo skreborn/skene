@@ -65,8 +65,8 @@ fn a_modal_opens_and_closes_through_its_signal_without_rebuilding() {
 
       Overlay::modal()
         .bind_open(open)
-        .set_color(red())
-        .set_child(Container::new().derive_color(
+        .set_background(red())
+        .set_child(Container::new().derive_background(
           move || {
             if count.get() > 1 { red() } else { blue() }
           },

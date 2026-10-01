@@ -37,7 +37,7 @@ use skene_web::{
   prelude::{Get, Owner, Set, Signal, Update},
 };
 
-const COLOR: PropertyKey<WebProperty> = PropertyKey::Shared(Property::Color);
+const COLOR: PropertyKey<WebProperty> = PropertyKey::Shared(Property::Background);
 const TEXT_COLOR: PropertyKey<WebProperty> = PropertyKey::Shared(Property::TextColor);
 
 /// The nodes between a container's anchors: its content, in order.
@@ -81,9 +81,9 @@ fn a_nested_theme_replaces_the_palette_beneath_it() {
     Theme::new(SimplePalette::default())
       .set_child_builder(move || {
         Column::new().set_children((
-          Container::new().set_color(SimplePalette::current().card),
+          Container::new().set_background(SimplePalette::current().card),
           Theme::new(SimplePalette::default().set_card(ink))
-            .set_child_builder(|| Container::new().set_color(SimplePalette::CARD)),
+            .set_child_builder(|| Container::new().set_background(SimplePalette::CARD)),
         ))
       })
       .build()
@@ -112,7 +112,7 @@ fn a_palette_flip_keeps_the_nodes_and_their_state() {
         let count = Signal::new(0u32);
 
         Column::new().set_children((
-          Container::new().set_color(SimplePalette::CARD),
+          Container::new().set_background(SimplePalette::CARD),
           Text::derive(move || count.get().to_string()),
           BasicButton::new(Activate::new())
             .handle_activate(move || count.update(|value| *value += 1)),
@@ -148,7 +148,7 @@ fn the_scheme_follows_the_media_choice() {
   let owner = Owner::new();
   let root = owner.enter(|| {
     Theme::new(SimplePalette::default())
-      .set_child_builder(|| Container::new().set_color(SimplePalette::CARD))
+      .set_child_builder(|| Container::new().set_background(SimplePalette::CARD))
       .build()
   });
   let card = children(root)[0];
@@ -184,7 +184,7 @@ fn a_derived_scheme_re_inks_without_a_rebuild() {
     media::derive_scheme(move || scheme.get());
 
     Theme::new(SimplePalette::default())
-      .set_child_builder(|| Container::new().set_color(SimplePalette::CARD))
+      .set_child_builder(|| Container::new().set_background(SimplePalette::CARD))
       .build()
   });
   let card = children(root)[0];

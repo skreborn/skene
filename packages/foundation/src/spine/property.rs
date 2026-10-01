@@ -31,7 +31,7 @@ pub enum Property {
   /// The edges the box is pinned to, out of flow.
   Pinned,
   /// The background color.
-  Color,
+  Background,
   /// The border's width on each edge.
   BorderWidth,
   /// The border's color.
@@ -107,7 +107,7 @@ impl Property {
       Self::Padding => "padding",
       Self::Offset => "offset",
       Self::Pinned => "pinned",
-      Self::Color => "color",
+      Self::Background => "background",
       Self::BorderWidth => "border_width",
       Self::BorderColor => "border_color",
       Self::Cursor => "cursor",
@@ -190,8 +190,8 @@ mod tests {
     assert_eq!(Property::Spacing.name(), "spacing");
     assert_eq!(Property::ItemAlignment.name(), "item_alignment");
     assert_eq!(
-      PropertyKey::<NoProperty>::Shared(Property::Color).name(),
-      "color"
+      PropertyKey::<NoProperty>::Shared(Property::Background).name(),
+      "background"
     );
   }
 }

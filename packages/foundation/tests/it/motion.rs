@@ -42,7 +42,7 @@ fn linear(property: Property) -> Transition<WebProperty> {
 /// A box keyframe of one background color leaf.
 fn frame(color: impl Into<skene_foundation::StaticLeaf<Color>>) -> BoxKeyframe<Headless> {
   BoxKeyframe::<Headless> {
-    color: Some(color.into()),
+    background: Some(color.into()),
     ..Default::default()
   }
 }
@@ -58,9 +58,9 @@ fn derived_writes_transition_across_the_stepped_clock() {
   let width = Signal::new(0f32);
   let node = owner.enter(|| {
     Container::<Headless>::new()
-      .derive_color(move || color.get())
+      .derive_background(move || color.get())
       .derive_width(move || width.get())
-      .set_transition(linear(Property::Color))
+      .set_transition(linear(Property::Background))
       .set_transition(linear(Property::Width))
       .build()
   });
@@ -95,8 +95,8 @@ fn a_palette_flip_transitions_and_reduced_motion_cuts() {
     Theme::<Headless, TestPalette>::derive(move || palette.get())
       .set_child_builder(|| {
         Container::new()
-          .set_color(TestPalette::CARD)
-          .set_transition(linear(Property::Color))
+          .set_background(TestPalette::CARD)
+          .set_transition(linear(Property::Background))
       })
       .build()
   });
@@ -134,7 +134,7 @@ fn a_token_keyframe_animation_samples_through_the_theme() {
     Theme::<Headless, TestPalette>::new(TestPalette::with_card(blue()))
       .set_child_builder(|| {
         Container::new()
-          .set_color(red())
+          .set_background(red())
           .set_transition_name("hero")
           .set_animation(
             Animation::new(1., [(0., frame(red())), (100., frame(TestPalette::CARD))])
@@ -205,7 +205,7 @@ fn a_keyframe_missing_its_ends_moves_from_the_resolved_value() {
   let owner = Owner::new();
   let node = owner.enter(|| {
     Container::<Headless>::new()
-      .set_color(red())
+      .set_background(red())
       .set_animation(Animation::new(1., [(50., frame(blue()))]).set_easing(Easing::Linear))
       .build()
   });

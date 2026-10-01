@@ -86,7 +86,7 @@ wasm_bindgen_test_configure!(run_in_browser);
 
 type Web = skene_web::ActivePlatform;
 
-const COLOR: PropertyKey<WebProperty> = PropertyKey::Shared(Property::Color);
+const COLOR: PropertyKey<WebProperty> = PropertyKey::Shared(Property::Background);
 const TEXT_COLOR: PropertyKey<WebProperty> = PropertyKey::Shared(Property::TextColor);
 const WIDTH: PropertyKey<WebProperty> = PropertyKey::Shared(Property::Width);
 const PADDING: PropertyKey<WebProperty> = PropertyKey::Shared(Property::Padding);
@@ -384,7 +384,7 @@ impl Case {
       Self::LexicalToken => Theme::<P, InnerPalette>::new(InnerPalette {
         surface: Token::new(ParityPalette::SURFACE.name().as_str(), orange()),
       })
-      .set_child_builder(|| Container::<P>::new().set_color(ParityPalette::SHADE))
+      .set_child_builder(|| Container::<P>::new().set_background(ParityPalette::SHADE))
       .into_any(),
       Self::LexicalEm => Theme::<P, Typography>::new(Typography::default().set_size(30.))
         .set_child_builder(|| Container::<P>::new().set_width(ParityPalette::INDENT))
@@ -403,7 +403,7 @@ impl Case {
         .set_container_name(BOX)
         .set_child(
           Container::<P>::new()
-            .set_color(Value::from(blue()).when(
+            .set_background(Value::from(blue()).when(
               Media::Container {
                 name: Some(BOX),
                 query: ContainerQuery::MinWidth(300.),
@@ -422,7 +422,7 @@ impl Case {
         .into_any(),
       Self::FocusedColor => BasicButton::<P>::new(Activate::new())
         .set_accessible_name(TARGET)
-        .set_color(Value::from(blue()).when(State::Focused, orange()))
+        .set_background(Value::from(blue()).when(State::Focused, orange()))
         .into_any(),
       _ => self.container::<P>().into_any(),
     }
@@ -433,34 +433,33 @@ impl Case {
     let container = Container::<P>::new();
 
     match self {
-      Self::FixedColor => container.set_color(blue()),
-      Self::TokenColor => container.set_color(ParityPalette::SURFACE),
-      Self::ConditionalTokenColor => container.set_color(ParityPalette::SHIFTED),
-      Self::MixedColor => {
-        container.set_color(Expr::from(ParityPalette::SURFACE).mix(Color::srgb(1., 1., 1.), 0.25))
-      }
+      Self::FixedColor => container.set_background(blue()),
+      Self::TokenColor => container.set_background(ParityPalette::SURFACE),
+      Self::ConditionalTokenColor => container.set_background(ParityPalette::SHIFTED),
+      Self::MixedColor => container
+        .set_background(Expr::from(ParityPalette::SURFACE).mix(Color::srgb(1., 1., 1.), 0.25)),
       Self::TranslucentMix => {
-        container.set_color(Expr::from(blue().with_alpha(0.2)).mix(orange(), 0.5))
+        container.set_background(Expr::from(blue().with_alpha(0.2)).mix(orange(), 0.5))
       }
-      Self::LighterColor => container.set_color(Expr::from(blue()).lighter(0.1)),
+      Self::LighterColor => container.set_background(Expr::from(blue()).lighter(0.1)),
       Self::LighterThanWhite => {
-        container.set_color(Expr::from(Color::srgb(0.9, 0.9, 0.9)).lighter(0.5))
+        container.set_background(Expr::from(Color::srgb(0.9, 0.9, 0.9)).lighter(0.5))
       }
-      Self::NegativeChroma => container.set_color(Expr::from(blue()).with_chroma(-0.1)),
+      Self::NegativeChroma => container.set_background(Expr::from(blue()).with_chroma(-0.1)),
       Self::GrayWithChroma => {
-        container.set_color(Expr::from(Color::srgb(0.5, 0.5, 0.5)).with_chroma(0.1))
+        container.set_background(Expr::from(Color::srgb(0.5, 0.5, 0.5)).with_chroma(0.1))
       }
-      Self::TranslucentColor => container.set_color(Expr::from(blue()).with_alpha(0.5)),
-      Self::DerivedColor => container.derive_color(blue),
-      Self::DerivedTokenColor => container.derive_color(|| ParityPalette::SURFACE),
+      Self::TranslucentColor => container.set_background(Expr::from(blue()).with_alpha(0.5)),
+      Self::DerivedColor => container.derive_background(blue),
+      Self::DerivedTokenColor => container.derive_background(|| ParityPalette::SURFACE),
       Self::HeldCondition => {
-        container.set_color(Value::from(blue()).when(Media::MinWidth(1.), orange()))
+        container.set_background(Value::from(blue()).when(Media::MinWidth(1.), orange()))
       }
       Self::UnheldCondition => {
-        container.set_color(Value::from(blue()).when(Media::MaxWidth(1.), orange()))
+        container.set_background(Value::from(blue()).when(Media::MaxWidth(1.), orange()))
       }
       Self::DarkUnchosen => {
-        container.set_color(Value::from(blue()).when(Condition::from(Media::Dark), orange()))
+        container.set_background(Value::from(blue()).when(Condition::from(Media::Dark), orange()))
       }
       Self::FixedWidth => container.set_width(Dimension::Length(120.)),
       Self::ViewportWidth => container.set_width(Expr::viewport_width(0.1)),
@@ -564,7 +563,7 @@ impl Case {
     Container::<P>::new()
       .set_width(Dimension::Length(10.))
       .set_height(Dimension::Length(10.))
-      .set_color(Value::from(blue()).when(state, orange()))
+      .set_background(Value::from(blue()).when(state, orange()))
       .set_accessibility(target())
   }
 

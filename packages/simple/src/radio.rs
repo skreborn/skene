@@ -229,14 +229,14 @@ where
     .set_width(Dimension::Length(shape.dot_size))
     .set_height(Dimension::Length(shape.dot_size))
     .set_corner_radius(shape.dot_size.to_f32() / 2.)
-    .set_color(
+    .set_background(
       Color::TRANSPARENT.when(State::Checked, SimplePalette::<P::Scalar>::PRIMARY_SURFACE),
     );
 
   Container::<P>::new()
     .set_width(Dimension::Length(shape.mark_size))
     .set_height(Dimension::Length(shape.mark_size))
-    .set_color(shape.mark_surface)
+    .set_background(shape.mark_surface)
     .set_border_width(Inset::all(shape.mark_ring))
     .set_border_color(
       SimplePalette::<P::Scalar>::BORDER

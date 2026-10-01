@@ -36,9 +36,9 @@ fn themed_in_registers_root_defaults_once_and_a_box_resolves_them() {
 
     (
       Container::new()
-        .set_color(TestPalette::CARD)
+        .set_background(TestPalette::CARD)
         .set_padding(Inset::all(1.))
-        .set_child(Container::new().set_color(typography::INK))
+        .set_child(Container::new().set_background(typography::INK))
         .build(),
       palette,
     )
@@ -71,13 +71,13 @@ fn themed_in_reads_the_theme_and_registers_nothing_under_it() {
           TestPalette::with_card(red())
         );
 
-        Container::new().set_color(TestPalette::CARD)
+        Container::new().set_background(TestPalette::CARD)
       })
       .build();
 
     assert_eq!(root_definition_writes(), 0);
 
-    let bare = Container::new().set_color(TestPalette::CARD).build();
+    let bare = Container::new().set_background(TestPalette::CARD).build();
 
     assert_eq!(resolve_color(bare, COLOR), None);
 

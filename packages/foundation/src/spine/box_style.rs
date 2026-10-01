@@ -73,7 +73,7 @@ pub struct BoxStyle<N: Scalar, S: Shape, X: StyleExtension = ()> {
   /// pinned ancestor; wins when `offset` is also set.
   pub pinned: S::Of<Inset<Dimension<N>>>,
   /// The background color.
-  pub color: S::Of<Color>,
+  pub background: S::Of<Color>,
   /// The border's width on each edge.
   pub border_width: S::Of<Inset<N>>,
   /// The border's color.
@@ -379,7 +379,7 @@ box_fields!(
   padding: crate::spine::Inset<N> => Padding,
   offset: crate::spine::Inset<crate::spine::Dimension<N>> => Offset,
   pinned: crate::spine::Inset<crate::spine::Dimension<N>> => Pinned,
-  color: crate::spine::Color => Color,
+  background: crate::spine::Color => Background,
   border_width: crate::spine::Inset<N> => BorderWidth,
   border_color: crate::spine::Color => BorderColor,
   cursor: crate::spine::MouseCursor => Cursor,
@@ -579,7 +579,7 @@ mod tests {
     let declared = BoxStyle::<f32, Declared<PixelCondition>> {
       width: Some(Value::from(Dimension::from(10.))),
       padding: Some(Value::from(TokenRef::<Length>::new("gutter"))),
-      color: Some(
+      background: Some(
         Value::new(Leaf::derive(|| Color::TRANSPARENT))
           .when(Media::Dark.into(), Color::srgb(0., 0., 0.)),
       ),
@@ -603,7 +603,7 @@ mod tests {
     );
     assert_eq!(fixed.height, None);
 
-    let color = fixed.color.unwrap();
+    let color = fixed.background.unwrap();
 
     assert_eq!(color.base(), &PlatformLeaf::Slot(Slot(1)));
     assert_eq!(
@@ -634,7 +634,7 @@ mod tests {
       StaticLeaf::Fixed(BoxValue::AspectRatio(AspectRatio(2.)))
     );
     assert_eq!(slots[1].slot, Slot(1));
-    assert_eq!(slots[1].property, PropertyKey::Shared(Property::Color));
+    assert_eq!(slots[1].property, PropertyKey::Shared(Property::Background));
     assert_eq!(slots[1].position, 0);
     assert_eq!(
       (slots[1].compute)(),
@@ -649,14 +649,14 @@ mod tests {
     let mut over = BoxStyle::<u32, Plain>::default();
 
     base.width = Some(Dimension::Length(4));
-    base.color = Some(Color::srgb(1., 0., 0.));
-    over.color = Some(Color::srgb(0., 0., 1.));
+    base.background = Some(Color::srgb(1., 0., 0.));
+    over.background = Some(Color::srgb(0., 0., 1.));
     over.padding = Some(Inset::all(1));
 
     base.overlay(&over);
 
     assert_eq!(base.width, Some(Dimension::Length(4)));
-    assert_eq!(base.color, Some(Color::srgb(0., 0., 1.)));
+    assert_eq!(base.background, Some(Color::srgb(0., 0., 1.)));
     assert_eq!(base.padding, Some(Inset::all(1)));
     assert_eq!(base.height, None);
   }

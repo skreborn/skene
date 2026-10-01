@@ -1043,7 +1043,7 @@ fn authored_state_variants_paint_on_a_control() {
       BasicButton::new(Activate::new())
         .set_width(4)
         .set_height(1)
-        .set_color(
+        .set_background(
           red()
             .when(State::Hovered, blue())
             .when(State::FocusVisible, green()),
@@ -1077,7 +1077,7 @@ fn focus_shows_after_a_key_and_not_after_a_pointer_press() {
       BasicButton::new(Activate::new())
         .set_width(4)
         .set_height(1)
-        .set_color(
+        .set_background(
           red()
             .when(State::Focused, blue())
             .when(State::FocusVisible, green()),

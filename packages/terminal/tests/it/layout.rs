@@ -38,7 +38,7 @@ fn background_fills_cover_content_beneath() {
             Container::new()
               .set_width(6)
               .set_height(1)
-              .set_color(Color::srgb(0.5, 0.5, 0.5)),
+              .set_background(Color::srgb(0.5, 0.5, 0.5)),
           )),
         )
         .into_any()
@@ -357,7 +357,7 @@ fn flex_grow_distributes_space() {
         .set_children((
           Flexible::new().set_grow_factor(1.).set_child(
             Container::new()
-              .set_color(Color::srgb(0.2, 0.2, 0.8))
+              .set_background(Color::srgb(0.2, 0.2, 0.8))
               .set_child(Text::new("a")),
           ),
           Container::new().set_width(3).set_child(Text::new("b")),
@@ -400,7 +400,7 @@ fn a_container_fills_when_sized_and_hugs_when_not() {
         .set_height(3)
         .set_border_width(Inset::all(1))
         .set_border_color(white())
-        .set_child(Container::new().set_color(red()))
+        .set_child(Container::new().set_background(red()))
         .into_any()
         .build()
     });
@@ -570,7 +570,7 @@ fn an_inline_box_flows_with_the_paragraph() {
             Span::view(
               Container::new()
                 .set_padding(Inset::horizontal(1))
-                .set_color(red())
+                .set_background(red())
                 .handle_click(move || counted.set(counted.get() + 1))
                 .set_child(Text::new("new")),
             ),
@@ -613,7 +613,7 @@ fn a_tall_inline_box_raises_its_line() {
             Span::view(
               Container::new()
                 .set_height(2)
-                .set_color(red())
+                .set_background(red())
                 .set_child(Text::new("new")),
             ),
             Span::new(" here and more"),

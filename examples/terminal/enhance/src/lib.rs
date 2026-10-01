@@ -21,7 +21,7 @@ pub fn app() -> impl View {
   Theme::new(SimplePalette::default()).set_child_builder(|| {
     Container::new()
       .set_overflow(Overflow::ScrollIfNeeded)
-      .set_color(SimplePalette::BACKGROUND)
+      .set_background(SimplePalette::BACKGROUND)
       .set_child(
         Column::new()
           .set_item_alignment(ItemAlignment::Center)

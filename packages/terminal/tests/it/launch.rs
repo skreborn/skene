@@ -328,7 +328,7 @@ fn the_mouse_key_cancels_a_press_in_progress() {
       Container::new()
         .set_width(4)
         .set_height(2)
-        .set_color(red().when(State::Pressed, blue()))
+        .set_background(red().when(State::Pressed, blue()))
         .handle_pointer_cancel(move |_| cancels.update(|count| *count += 1))
         .into_any()
         .build()

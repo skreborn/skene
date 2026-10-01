@@ -28,7 +28,7 @@ fn app() -> impl View {
 
   Theme::new(SimplePalette::default()).set_child_builder(move || {
     Container::new()
-      .set_color(SimplePalette::BACKGROUND)
+      .set_background(SimplePalette::BACKGROUND)
       .set_min_height(Dimension::Fraction(1.))
       .set_child(
         Column::new()
@@ -62,7 +62,7 @@ fn list(name: &'static str, own: Signal<Vec<String>>, other: Signal<Vec<String>>
     .set_width(220.)
     .set_padding(Inset::all(12.))
     .set_corner_radius(8.)
-    .set_color(SimplePalette::CARD.when(State::Targeted, SimplePalette::SECONDARY_SURFACE))
+    .set_background(SimplePalette::CARD.when(State::Targeted, SimplePalette::SECONDARY_SURFACE))
     .handle_drop(move |card: &Moving| {
       if card.from != name {
         other.update(|cards| cards.retain(|title| *title != card.title));
@@ -90,7 +90,9 @@ fn card(title: String, list: &'static str) -> impl View {
     .set_padding(Inset::symmetric(12., 8.))
     .set_corner_radius(6.)
     .set_cursor(MouseCursor::Grab)
-    .set_color(SimplePalette::BACKGROUND.when(State::Dragged, SimplePalette::SECONDARY_SURFACE))
+    .set_background(
+      SimplePalette::BACKGROUND.when(State::Dragged, SimplePalette::SECONDARY_SURFACE),
+    )
     .set_drag_data(move || DragData::new(moving.clone()).with_text(moving.title.clone()))
     .set_child(Text::new(title))
 }

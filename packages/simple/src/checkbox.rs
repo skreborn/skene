@@ -158,7 +158,7 @@ where
   Container::<P>::new()
     .set_width(Dimension::Length(shape.mark_size))
     .set_height(Dimension::Length(shape.mark_size))
-    .set_color(
+    .set_background(
       shape
         .mark_surface
         .when(State::Checked, SimplePalette::<P::Scalar>::PRIMARY_SURFACE),

@@ -189,7 +189,7 @@ fn serve_standard_menu() {
   skene_reactive::Owner::root().enter(|| {
     let _ = ContextMenu::<Terminal>::new()
       .set_items([MenuEntry::cut(), MenuEntry::copy(), MenuEntry::paste()])
-      .set_color(Color::srgb(1., 1., 1.).when(Media::Dark, Color::srgb(0., 0., 0.)))
+      .set_background(Color::srgb(1., 1., 1.).when(Media::Dark, Color::srgb(0., 0., 0.)))
       .set_border_width(Inset::all(1))
       .set_border_color(gray)
       .set_item_padding(Inset::symmetric(1, 0))

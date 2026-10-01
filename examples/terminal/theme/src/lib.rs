@@ -96,7 +96,7 @@ pub fn app() -> impl View {
 
     Container::new()
       .set_overflow(Overflow::ScrollIfNeeded)
-      .set_color(SimplePalette::BACKGROUND)
+      .set_background(SimplePalette::BACKGROUND)
       .set_child(
         Column::new()
           .set_item_alignment(ItemAlignment::Center)
@@ -160,7 +160,7 @@ fn swatches() -> impl View {
     Column::new().set_children((
       Container::new()
         .set_height(3)
-        .set_color(token)
+        .set_background(token)
         .set_border_width(Inset::all(1))
         .set_border_color(SimplePalette::BORDER)
         .set_border_glyphs(BorderGlyphs::ROUNDED),

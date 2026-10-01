@@ -186,9 +186,8 @@ left half-done in a code comment.
     - Vocabulary: `LinkAnnotation`'s `NoFollow`, `Sponsored` and `Ugc` and the opener
     and referrer policy move to the web escape; `Inset` and `Spacing` take logical
     `start`/`end` and `horizontal`/`vertical` before internationalization makes that
-    breaking; `set_background` ends `set_color` meaning the background on `Container`.
-    `display` joins the lint's banned words, which then read the names the `api/`
-    snapshots list, re-exports included, rather than the sources' own items.
+    breaking. `display` joins the lint's banned words, which then read the names the
+    `api/` snapshots list, re-exports included, rather than the sources' own items.
     - Shapes: one setter per property for `Flexible` (`set_flexibility(impl
     Into<Value<Flexibility>>)`), the slider (`set_range`, `derive_range`) and
     `Animation` (iterations, alternation, reduced motion); appending setters named

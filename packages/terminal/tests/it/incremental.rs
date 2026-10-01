@@ -97,7 +97,7 @@ proptest! {
           .set_children((
             Container::new()
               .set_height(1)
-              .set_color(red().when(State::Hovered, blue()))
+              .set_background(red().when(State::Hovered, blue()))
               .set_child(Text::derive(move || label.get())),
             SimpleButton::new("press"),
             SimpleCheckbox::new().bind_checked(checked).set_label("check"),
@@ -106,7 +106,7 @@ proptest! {
               .derive_shown(move || shown.get())
               .set_child(Text::new("shown")),
             Container::new()
-              .derive_color(move || if painted.get() { green() } else { white() })
+              .derive_background(move || if painted.get() { green() } else { white() })
               .set_child(Text::new("paint")),
             Column::new().derive_children(
               move || rows.get(),
@@ -128,12 +128,12 @@ proptest! {
               .set_options([("spring", "Spring"), ("summer", "Summer"), ("autumn", "Autumn")])
               .bind_chosen(season),
             Container::new()
-              .set_color(SimplePalette::CARD)
+              .set_background(SimplePalette::CARD)
               .set_border_width(Inset::all(1))
               .set_border_color(SimplePalette::BORDER)
               .set_child(Theme::new(warm()).set_child_builder(|| {
                 Container::new()
-                  .set_color(SimplePalette::CARD)
+                  .set_background(SimplePalette::CARD)
                   .set_child(Text::new("nested").set_color(SimplePalette::FOREGROUND))
               })),
           ))

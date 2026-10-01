@@ -153,7 +153,7 @@ pub(crate) const fn target(key: Key) -> Target {
         position: Some("absolute"),
         ..plain("inset")
       },
-      Property::Color => plain("background-color"),
+      Property::Background => plain("background-color"),
       Property::BorderWidth => plain("border-width"),
       Property::BorderColor => plain("border-color"),
       Property::Cursor => plain("cursor"),

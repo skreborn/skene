@@ -72,7 +72,7 @@ pub enum Easing {
 /// An automatic interpolation of one property between its changing values.
 ///
 /// `P` names the medium's own properties; a transition of a shared property is written
-/// the same on every facade: `Transition::new(Property::Color, 0.3)`.
+/// the same on every facade: `Transition::new(Property::Background, 0.3)`.
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[must_use]
 pub struct Transition<P = NoProperty> {
@@ -330,12 +330,12 @@ mod tests {
   /// covers every one.
   #[test]
   fn targets_cover_their_properties() {
-    let transition = Transition::<NoProperty>::new(Property::Color, 0.2);
+    let transition = Transition::<NoProperty>::new(Property::Background, 0.2);
 
     assert!(
       transition
         .property
-        .covers(&PropertyKey::Shared(Property::Color))
+        .covers(&PropertyKey::Shared(Property::Background))
     );
     assert!(
       !transition

@@ -16,7 +16,7 @@ fn media_variant_resolves_against_terminal_size() {
       Container::new()
         .set_width(6)
         .set_height(3)
-        .set_color(red().when(Media::MaxWidth(10), blue()))
+        .set_background(red().when(Media::MaxWidth(10), blue()))
         .into_any()
         .build()
     });
@@ -35,7 +35,7 @@ fn composed_condition_resolves() {
       Container::new()
         .set_width(6)
         .set_height(3)
-        .set_color(red().when(
+        .set_background(red().when(
           Condition::or([
             Media::MaxWidth(10).into(),
             Condition::and([Media::MinHeight(6).into(), Media::MaxHeight(8).into()]),
@@ -61,7 +61,7 @@ fn color_scheme_conditions_follow_the_background() {
       Container::new()
         .set_width(6)
         .set_height(3)
-        .set_color(red().when(Media::Dark, blue()))
+        .set_background(red().when(Media::Dark, blue()))
         .into_any()
         .build()
     });
@@ -126,7 +126,7 @@ fn an_unconditional_token_ignores_the_terminals_background() {
           Container::new()
             .set_width(4)
             .set_height(1)
-            .set_color(SimplePalette::CARD)
+            .set_background(SimplePalette::CARD)
         })
         .into_any()
         .build()
@@ -153,7 +153,7 @@ fn a_derived_token_paints_through_the_theme() {
           Container::new()
             .set_width(4)
             .set_height(1)
-            .derive_color(move || {
+            .derive_background(move || {
               if plain.get() {
                 StaticLeaf::from(red())
               }
@@ -192,7 +192,7 @@ fn a_derived_scheme_repaints_without_rebuilding() {
           Container::new()
             .set_width(4)
             .set_height(1)
-            .set_color(SimplePalette::CARD)
+            .set_background(SimplePalette::CARD)
         })
         .into_any()
         .build()

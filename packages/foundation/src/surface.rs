@@ -119,7 +119,7 @@ pub trait DecorationBase<P: Platform>: HasBoxStyle<P> + Sized {
       "the margin on each edge";
     set_offset / derive_offset (offset) => offset: Inset<Dimension<P::Scalar>>,
       "the shift from each edge, keeping the box in flow";
-    set_color / derive_color (color) => color: Color,
+    set_background / derive_background (color) => background: Color,
       "the background color";
     set_border_width / derive_border_width (width) => border_width: Inset<P::Scalar>,
       "the border's width on each edge; zero draws none";

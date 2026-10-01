@@ -12,7 +12,7 @@ fn card() -> AnyView {
   Container::new()
     .set_width(8)
     .set_height(4)
-    .set_color(red())
+    .set_background(red())
     .set_border_width(Inset::all(1))
     .set_border_color(Color::srgb(0., 1., 0.))
     .set_corner_radius(1.)
@@ -23,7 +23,7 @@ fn card() -> AnyView {
         Container::new()
           .set_width(2)
           .set_height(1)
-          .set_color(Color::srgb(0., 0., 1.)),
+          .set_background(Color::srgb(0., 0., 1.)),
       )),
     )
     .into_any()

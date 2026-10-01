@@ -69,7 +69,7 @@ impl Tokenable for String {}
 
 /// A typed reference to a token: the name a property emits, without any definition.
 ///
-/// A `const` in a component library's palette module, so `set_color(Palette::CARD)`
+/// A `const` in a component library's palette module, so `set_background(Palette::CARD)`
 /// names the slot whatever theme is in force.
 #[must_use]
 pub struct TokenRef<T: Tokenable> {

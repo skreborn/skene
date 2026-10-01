@@ -32,7 +32,7 @@ pub fn app() -> impl View {
   Theme::new(SimplePalette::default()).set_child_builder(move || {
     Container::new()
       .set_overflow(Overflow::ScrollIfNeeded)
-      .set_color(SimplePalette::BACKGROUND)
+      .set_background(SimplePalette::BACKGROUND)
       .set_child(
         Column::new()
           .set_item_alignment(ItemAlignment::Center)
@@ -118,7 +118,7 @@ fn note(name: String, notes: Signal<Vec<String>>, last: Signal<String>) -> impl 
       Container::new()
         .set_padding(Inset::symmetric(1, 0))
         .set_focus_order(FocusOrder::Auto)
-        .set_color(
+        .set_background(
           SimplePalette::CARD
             .when(State::Hovered, SimplePalette::SECONDARY_SURFACE)
             .when(State::Focused, SimplePalette::SECONDARY_SURFACE),

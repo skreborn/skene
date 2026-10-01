@@ -215,7 +215,7 @@ where
   control
     .set_width(Dimension::Fraction(1.))
     .set_padding(shape.control_inset)
-    .set_color(SimplePalette::<P::Scalar>::CARD.when(
+    .set_background(SimplePalette::<P::Scalar>::CARD.when(
       State::Disabled,
       SimplePalette::<P::Scalar>::DISABLED_SURFACE,
     ))

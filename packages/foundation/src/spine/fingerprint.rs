@@ -475,7 +475,7 @@ mod tests {
     let style = |dark: Color| {
       BoxStyle::<f32, Declared<Condition<f32>>> {
         width: Some(Value::from(Dimension::from(10.))),
-        color: Some(
+        background: Some(
           TokenRef::<Color>::new("card")
             .when(Media::Dark.into(), dark)
             .when(State::Hovered.into(), Color::TRANSPARENT),

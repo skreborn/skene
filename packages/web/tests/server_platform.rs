@@ -133,7 +133,7 @@ fn a_token_renders_as_a_custom_property_reference() {
   let rendered = render_to_string(|| {
     Theme::<Web, _>::new(Palette::default()).set_child_builder(|| {
       Box_::new()
-        .set_color(Palette::CARD)
+        .set_background(Palette::CARD)
         .set_corner_radius(Palette::GUTTER)
     })
   });
@@ -171,7 +171,7 @@ fn a_token_renders_as_a_custom_property_reference() {
 fn a_theme_scope_defines_its_tokens_under_both_scheme_guards() {
   let rendered = render_to_string(|| {
     Theme::<Web, _>::new(Palette::default())
-      .set_child_builder(|| Box_::new().set_color(Palette::CARD))
+      .set_child_builder(|| Box_::new().set_background(Palette::CARD))
   });
   let body = rendered.body();
   let styles = rendered.styles();
@@ -220,7 +220,7 @@ fn a_theme_scope_defines_its_tokens_under_both_scheme_guards() {
 fn a_color_expression_renders_as_css_color_functions() {
   let rendered = render_to_string(|| {
     Box_::new()
-      .set_color(Expr::from(Palette::CARD).mix(red(), 0.25).with_alpha(0.5))
+      .set_background(Expr::from(Palette::CARD).mix(red(), 0.25).with_alpha(0.5))
       .set_child(Text::<Web>::new("x"))
   });
 
@@ -241,7 +241,7 @@ fn a_container_condition_renders_an_at_container_block() {
   let rendered = render_to_string(|| {
     Box_::new()
       .set_container_name(ContainerName("sidebar"))
-      .set_child(Box_::new().set_color(white().when(
+      .set_child(Box_::new().set_background(white().when(
         Condition::from(Media::Container {
           name: Some(ContainerName("sidebar")),
           query: ContainerQuery::MinWidth(300.),
@@ -273,29 +273,29 @@ fn a_derived_color_is_a_slot_reference_with_its_value_inline() {
     let (color, _) = signal(red());
 
     Box_::new()
-      .derive_color(move || color.get())
+      .derive_background(move || color.get())
       .set_child(Text::<Web>::new("x"))
   });
   let class = first_class(rendered.body());
 
   assert!(
-    rendered
-      .styles()
-      .contains(&format!(".{class}{{background-color:var(--skene-color);")),
+    rendered.styles().contains(&format!(
+      ".{class}{{background-color:var(--skene-background);"
+    )),
     "{}",
     rendered.styles()
   );
   assert!(
     rendered
       .body()
-      .contains(&format!("style=\"--skene-color:{};\"", css(red()))),
+      .contains(&format!("style=\"--skene-background:{};\"", css(red()))),
     "{}",
     rendered.body()
   );
   assert!(
     rendered
       .styles()
-      .contains("@property --skene-color{syntax:\"*\";inherits:false}"),
+      .contains("@property --skene-background{syntax:\"*\";inherits:false}"),
     "the slot is registered uninherited: {}",
     rendered.styles()
   );
@@ -309,7 +309,7 @@ fn a_derived_token_is_a_slot_reference_written_inline() {
     Theme::<Web, _>::new(Palette::default()).set_child_builder(|| {
       let (plain, _) = signal(false);
 
-      Box_::new().derive_color(move || {
+      Box_::new().derive_background(move || {
         if plain.get() {
           StaticLeaf::from(red())
         }
@@ -323,7 +323,7 @@ fn a_derived_token_is_a_slot_reference_written_inline() {
   assert!(
     rendered
       .body()
-      .contains("style=\"--skene-color:var(--simple-card);\""),
+      .contains("style=\"--skene-background:var(--simple-card);\""),
     "{}",
     rendered.body()
   );
@@ -343,7 +343,7 @@ fn a_checkbox_is_a_label_over_a_native_input_and_its_parts() {
     )
     .set_part(
       skene_foundation::Part::Mark,
-      Box_::new().set_color(white().when(Condition::from(State::Checked), black())),
+      Box_::new().set_background(white().when(Condition::from(State::Checked), black())),
     )
     .set_label("Agree")
   });
@@ -456,7 +456,7 @@ fn an_indeterminate_checkbox_carries_its_state_in_markup() {
     Control::<Web, Partial>::new(Partial)
       .set_part(
         skene_foundation::Part::Mark,
-        Box_::new().set_color(white().when(Condition::from(State::Indeterminate), black())),
+        Box_::new().set_background(white().when(Condition::from(State::Indeterminate), black())),
       )
       .set_label("Some")
   });
@@ -489,9 +489,9 @@ fn a_text_editor_keeps_a_leading_newline() {
 fn two_palettes_share_one_consumer_class() {
   let rendered = render_to_string(|| {
     Theme::<Web, _>::new(Palette::default()).set_child_builder(|| {
-      Box_::new().set_color(Palette::CARD).set_child(
+      Box_::new().set_background(Palette::CARD).set_child(
         Theme::<Web, _>::new(Palette::with_card(red()))
-          .set_child_builder(|| Box_::new().set_color(Palette::CARD)),
+          .set_child_builder(|| Box_::new().set_background(Palette::CARD)),
       )
     })
   });
@@ -522,7 +522,7 @@ fn two_palettes_share_one_consumer_class() {
 fn classes_are_deterministic_and_rules_follow_interning_order() {
   let app = || {
     Box_::new()
-      .set_color(white())
+      .set_background(white())
       .set_child(Box_::new().set_width(Dimension::Length(10.)))
   };
   let first = render_to_string(app);
@@ -534,7 +534,7 @@ fn classes_are_deterministic_and_rules_follow_interning_order() {
   let reversed = render_to_string(|| {
     Box_::new()
       .set_width(Dimension::Length(10.))
-      .set_child(Box_::new().set_color(white()))
+      .set_child(Box_::new().set_background(white()))
   });
   let forward = classes(first.body());
   let backward = classes(reversed.body());

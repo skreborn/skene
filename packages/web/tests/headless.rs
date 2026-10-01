@@ -70,7 +70,7 @@ use skene_web::{
 
 const WIDTH: PropertyKey<WebProperty> = PropertyKey::Shared(Property::Width);
 const HEIGHT: PropertyKey<WebProperty> = PropertyKey::Shared(Property::Height);
-const COLOR: PropertyKey<WebProperty> = PropertyKey::Shared(Property::Color);
+const COLOR: PropertyKey<WebProperty> = PropertyKey::Shared(Property::Background);
 
 /// The nodes between a container's anchors: its content, in order.
 fn content(node: NodeId) -> Vec<NodeId> {
@@ -331,7 +331,7 @@ fn decoration_resolves_verbatim() {
 
   let owner = Owner::new();
   let color = Color::srgb(0.25, 0.5, 0.75);
-  let root = owner.enter(|| Container::new().set_color(color).build());
+  let root = owner.enter(|| Container::new().set_background(color).build());
 
   assert_eq!(resolve_color(root, COLOR), Some(color));
 

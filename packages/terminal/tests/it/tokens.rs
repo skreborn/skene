@@ -64,15 +64,20 @@ fn a_definition_reads_its_tokens_where_it_is_defined() {
           Theme::new(Inner {
             surface: Token::new(SURFACE.name().as_str(), orange),
           })
-          .set_child_builder(|| Container::new().set_width(2).set_height(1).set_color(SHADE)),
+          .set_child_builder(|| {
+            Container::new()
+              .set_width(2)
+              .set_height(1)
+              .set_background(SHADE)
+          }),
           Container::new()
             .set_width(2)
             .set_height(1)
-            .set_color(Expr::from(blue).lighter(0.2)),
+            .set_background(Expr::from(blue).lighter(0.2)),
           Container::new()
             .set_width(2)
             .set_height(1)
-            .set_color(Expr::from(orange).lighter(0.2)),
+            .set_background(Expr::from(orange).lighter(0.2)),
         ))
       })
       .into_any()

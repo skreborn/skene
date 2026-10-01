@@ -322,7 +322,7 @@ fn render_backdrops(records: &mut Records) {
         .saturating_add(band),
       band,
       cell_pixels,
-      background: style.color.and_then(terminal_rgb),
+      background: style.background.and_then(terminal_rgb),
       border,
       border_edges: border_edges(style),
       radius,

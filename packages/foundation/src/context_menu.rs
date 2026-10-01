@@ -332,7 +332,7 @@ impl<P: Platform> ContextMenu<P> {
   properties! { item_style_mut, P;
     set_item_padding / derive_item_padding (padding) => padding: crate::Inset<P::Scalar>,
       "the padding on each edge of every item";
-    set_item_color / derive_item_color (color) => color: Color,
+    set_item_color / derive_item_color (color) => background: Color,
       "the background color of every item";
     set_item_cursor / derive_item_cursor (cursor) => cursor: crate::MouseCursor,
       "the mouse cursor shown over every item";
@@ -686,7 +686,7 @@ impl<P: Platform> RowDress<P> {
     );
 
     if let Some(color) = self.separator_color.clone() {
-      rule = rule.set_color(color);
+      rule = rule.set_background(color);
     }
 
     rule.into_any()

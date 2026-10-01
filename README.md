@@ -38,7 +38,7 @@ fn app() -> impl View {
 
   Theme::new(SimplePalette::default()).set_child_builder(move || {
     Container::new()
-      .set_color(SimplePalette::BACKGROUND)
+      .set_background(SimplePalette::BACKGROUND)
       .set_child(
         Column::new()
           .set_arrangement(Arrangement::Center)

@@ -354,7 +354,7 @@ fn styling_interns_a_generated_class() {
 
   let _ = mount(|| {
     Container::new()
-      .set_color(Color::srgb(1.0, 0.0, 0.0))
+      .set_background(Color::srgb(1.0, 0.0, 0.0))
       .build()
   });
 
@@ -2383,8 +2383,8 @@ fn a_token_keyframe_animation_applies() {
         let mut start: BoxStyle<f32, Keyframe, WebStyle> = BoxStyle::default();
         let mut end: BoxStyle<f32, Keyframe, WebStyle> = BoxStyle::default();
 
-        start.color = Some(SimplePalette::CARD.into());
-        end.color = Some(Color::srgb(1., 0., 0.).into());
+        start.background = Some(SimplePalette::CARD.into());
+        end.background = Some(Color::srgb(1., 0., 0.).into());
 
         Container::new().set_animation(
           Animation::new(2., [(0., start), (100., end)]).set_respect_reduced_motion(false),
@@ -2944,7 +2944,11 @@ fn an_app_rule_outranks_a_compiled_one() {
     .append_child(&sheet)
     .expect("add the app's sheet");
 
-  let _ = mount(|| Container::new().set_color(Color::srgb(1., 0., 0.)).build());
+  let _ = mount(|| {
+    Container::new()
+      .set_background(Color::srgb(1., 0., 0.))
+      .build()
+  });
   let color = computed(&only_child(&root), "background-color");
 
   sheet.remove();

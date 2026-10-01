@@ -16,7 +16,7 @@ use skene_web::{ActivePlatform, HasChild, Platform, kurbo::Rect, prelude::*};
 fn app() -> impl View {
   Theme::new(SimplePalette::default()).set_child_builder(|| {
     Container::new()
-      .set_color(SimplePalette::BACKGROUND)
+      .set_background(SimplePalette::BACKGROUND)
       .set_min_height(Dimension::Fraction(1.))
       .set_child(
         Column::new()

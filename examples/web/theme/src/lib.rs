@@ -88,7 +88,7 @@ fn app() -> impl View {
     derive_scheme(move || scheme.get());
 
     Container::new()
-      .set_color(SimplePalette::BACKGROUND)
+      .set_background(SimplePalette::BACKGROUND)
       .set_min_height(Dimension::Fraction(1.))
       .set_child(
         Column::new()
@@ -151,7 +151,7 @@ fn swatches() -> impl View {
       Container::new()
         .set_height(44.)
         .set_corner_radius(8.)
-        .set_color(token)
+        .set_background(token)
         .set_border_width(Inset::all(1.))
         .set_border_color(SimplePalette::BORDER),
       Text::new(label)

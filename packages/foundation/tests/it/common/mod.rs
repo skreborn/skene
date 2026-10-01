@@ -17,7 +17,7 @@ use skene_foundation::{
 };
 use skene_headless::{TokenValue, children};
 
-pub(crate) const COLOR: PropertyKey<WebProperty> = PropertyKey::Shared(Property::Color);
+pub(crate) const COLOR: PropertyKey<WebProperty> = PropertyKey::Shared(Property::Background);
 pub(crate) const TEXT_COLOR: PropertyKey<WebProperty> = PropertyKey::Shared(Property::TextColor);
 pub(crate) const WIDTH: PropertyKey<WebProperty> = PropertyKey::Shared(Property::Width);
 pub(crate) const PADDING: PropertyKey<WebProperty> = PropertyKey::Shared(Property::Padding);

@@ -111,7 +111,7 @@ fn trigger_color_scheme_flips_a_dark_token() {
           Container::new()
             .set_width(4)
             .set_height(1)
-            .set_color(SimplePalette::CARD)
+            .set_background(SimplePalette::CARD)
         })
         .into_any()
         .build()
@@ -284,7 +284,7 @@ fn a_hover_change_repaints_without_a_relayout() {
       Container::new()
         .set_width(10)
         .set_height(3)
-        .set_color(red().when(State::Hovered, blue()))
+        .set_background(red().when(State::Hovered, blue()))
         .set_child(Text::new("hover"))
         .into_any()
         .build()
@@ -319,7 +319,7 @@ fn a_hover_resolves_only_the_nodes_reading_it() {
           Container::new().set_height(1).set_child(Text::new("plain")),
           Container::new()
             .set_height(1)
-            .set_color(red().when(State::Hovered, blue()))
+            .set_background(red().when(State::Hovered, blue()))
             .set_child(Text::new("hover")),
           Container::new().set_height(1).set_child(Text::new("plain")),
         ))

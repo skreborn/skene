@@ -59,7 +59,7 @@ fn named_palette(name: Option<&str>) -> SimplePalette {
 fn gallery(palette: Signal<Option<String>>) -> impl View {
   Container::new()
     .set_overflow(Overflow::ScrollIfNeeded)
-    .set_color(SimplePalette::BACKGROUND)
+    .set_background(SimplePalette::BACKGROUND)
     .set_child(
       Column::new()
         .set_item_alignment(ItemAlignment::Center)
@@ -309,7 +309,7 @@ fn layouts() -> impl View {
       )),
       Container::new()
         .set_height(5)
-        .set_color(SimplePalette::SECONDARY_SURFACE)
+        .set_background(SimplePalette::SECONDARY_SURFACE)
         .set_child(
           Stack::new().add_child(
             Pinned::new()
@@ -322,7 +322,7 @@ fn layouts() -> impl View {
               .set_child(
                 Container::new()
                   .set_padding(Inset::horizontal(1))
-                  .set_color(SimplePalette::CARD)
+                  .set_background(SimplePalette::CARD)
                   .set_child(Text::new("pinned").set_color(SimplePalette::MUTED_FOREGROUND)),
               ),
           ),
@@ -401,7 +401,7 @@ fn context_menu() -> impl View {
           Container::new()
             .set_padding(Inset::symmetric(1, 0))
             .set_focus_order(FocusOrder::Auto)
-            .set_color(
+            .set_background(
               SimplePalette::CARD
                 .when(State::Hovered, SimplePalette::SECONDARY_SURFACE)
                 .when(State::Focused, SimplePalette::SECONDARY_SURFACE),
@@ -536,7 +536,7 @@ fn muted(text: &'static str) -> Span {
 }
 
 fn swatch(brightness: f32) -> impl View {
-  Container::new().set_height(1).set_color(Color::srgb(
+  Container::new().set_height(1).set_background(Color::srgb(
     brightness * 0.5,
     brightness,
     brightness * 0.55,

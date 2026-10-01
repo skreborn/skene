@@ -13,7 +13,7 @@ fn app() -> impl View {
 
   Theme::new(SimplePalette::default()).set_child_builder(move || {
     Container::new()
-      .set_color(SimplePalette::current().background)
+      .set_background(SimplePalette::current().background)
       .set_child(
         Column::new()
           .set_arrangement(Arrangement::Center)

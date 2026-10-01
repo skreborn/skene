@@ -55,6 +55,25 @@ pub type skene_foundation::box_fields::AspectRatio::Value = skene_foundation::As
 pub const skene_foundation::box_fields::AspectRatio::KEY: skene_foundation::PropertyKey<<X as skene_foundation::StyleExtension>::Property>
 pub fn skene_foundation::box_fields::AspectRatio::get<S: skene_foundation::Shape>(&skene_foundation::BoxStyle<N, S, X>) -> &<S as skene_foundation::Shape>::Of
 pub fn skene_foundation::box_fields::AspectRatio::get_mut<S: skene_foundation::Shape>(&mut skene_foundation::BoxStyle<N, S, X>) -> &mut <S as skene_foundation::Shape>::Of
+pub struct skene_foundation::box_fields::Background
+impl core::clone::Clone for skene_foundation::box_fields::Background
+pub fn skene_foundation::box_fields::Background::clone(&self) -> skene_foundation::box_fields::Background
+impl core::cmp::Eq for skene_foundation::box_fields::Background
+impl core::cmp::PartialEq for skene_foundation::box_fields::Background
+pub fn skene_foundation::box_fields::Background::eq(&self, &skene_foundation::box_fields::Background) -> bool
+impl core::default::Default for skene_foundation::box_fields::Background
+pub fn skene_foundation::box_fields::Background::default() -> skene_foundation::box_fields::Background
+impl core::fmt::Debug for skene_foundation::box_fields::Background
+pub fn skene_foundation::box_fields::Background::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_foundation::box_fields::Background
+pub fn skene_foundation::box_fields::Background::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_foundation::box_fields::Background
+impl core::marker::StructuralPartialEq for skene_foundation::box_fields::Background
+impl<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension> skene_foundation::BoxField<N, X> for skene_foundation::box_fields::Background
+pub type skene_foundation::box_fields::Background::Value = skene_foundation::Color
+pub const skene_foundation::box_fields::Background::KEY: skene_foundation::PropertyKey<<X as skene_foundation::StyleExtension>::Property>
+pub fn skene_foundation::box_fields::Background::get<S: skene_foundation::Shape>(&skene_foundation::BoxStyle<N, S, X>) -> &<S as skene_foundation::Shape>::Of
+pub fn skene_foundation::box_fields::Background::get_mut<S: skene_foundation::Shape>(&mut skene_foundation::BoxStyle<N, S, X>) -> &mut <S as skene_foundation::Shape>::Of
 pub struct skene_foundation::box_fields::BorderColor
 impl core::clone::Clone for skene_foundation::box_fields::BorderColor
 pub fn skene_foundation::box_fields::BorderColor::clone(&self) -> skene_foundation::box_fields::BorderColor
@@ -93,25 +112,6 @@ pub type skene_foundation::box_fields::BorderWidth::Value = skene_foundation::In
 pub const skene_foundation::box_fields::BorderWidth::KEY: skene_foundation::PropertyKey<<X as skene_foundation::StyleExtension>::Property>
 pub fn skene_foundation::box_fields::BorderWidth::get<S: skene_foundation::Shape>(&skene_foundation::BoxStyle<N, S, X>) -> &<S as skene_foundation::Shape>::Of
 pub fn skene_foundation::box_fields::BorderWidth::get_mut<S: skene_foundation::Shape>(&mut skene_foundation::BoxStyle<N, S, X>) -> &mut <S as skene_foundation::Shape>::Of
-pub struct skene_foundation::box_fields::Color
-impl core::clone::Clone for skene_foundation::box_fields::Color
-pub fn skene_foundation::box_fields::Color::clone(&self) -> skene_foundation::box_fields::Color
-impl core::cmp::Eq for skene_foundation::box_fields::Color
-impl core::cmp::PartialEq for skene_foundation::box_fields::Color
-pub fn skene_foundation::box_fields::Color::eq(&self, &skene_foundation::box_fields::Color) -> bool
-impl core::default::Default for skene_foundation::box_fields::Color
-pub fn skene_foundation::box_fields::Color::default() -> skene_foundation::box_fields::Color
-impl core::fmt::Debug for skene_foundation::box_fields::Color
-pub fn skene_foundation::box_fields::Color::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::hash::Hash for skene_foundation::box_fields::Color
-pub fn skene_foundation::box_fields::Color::hash<__H: core::hash::Hasher>(&self, &mut __H)
-impl core::marker::Copy for skene_foundation::box_fields::Color
-impl core::marker::StructuralPartialEq for skene_foundation::box_fields::Color
-impl<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension> skene_foundation::BoxField<N, X> for skene_foundation::box_fields::Color
-pub type skene_foundation::box_fields::Color::Value = skene_foundation::Color
-pub const skene_foundation::box_fields::Color::KEY: skene_foundation::PropertyKey<<X as skene_foundation::StyleExtension>::Property>
-pub fn skene_foundation::box_fields::Color::get<S: skene_foundation::Shape>(&skene_foundation::BoxStyle<N, S, X>) -> &<S as skene_foundation::Shape>::Of
-pub fn skene_foundation::box_fields::Color::get_mut<S: skene_foundation::Shape>(&mut skene_foundation::BoxStyle<N, S, X>) -> &mut <S as skene_foundation::Shape>::Of
 pub struct skene_foundation::box_fields::Cursor
 impl core::clone::Clone for skene_foundation::box_fields::Cursor
 pub fn skene_foundation::box_fields::Cursor::clone(&self) -> skene_foundation::box_fields::Cursor
@@ -2808,9 +2808,9 @@ impl core::marker::StructuralPartialEq for skene_foundation::Prevent
 pub enum skene_foundation::Property
 pub skene_foundation::Property::Arrangement
 pub skene_foundation::Property::AspectRatio
+pub skene_foundation::Property::Background
 pub skene_foundation::Property::BorderColor
 pub skene_foundation::Property::BorderWidth
-pub skene_foundation::Property::Color
 pub skene_foundation::Property::Cursor
 pub skene_foundation::Property::Decoration
 pub skene_foundation::Property::DecorationColor
@@ -3396,9 +3396,9 @@ pub fn skene_foundation::BasicPicker<P, F>::fmt(&self, &mut core::fmt::Formatter
 impl<P: skene_foundation::Platform, F> skene_foundation::AnyKind for skene_foundation::BasicPicker<P, F>
 impl<P: skene_foundation::Platform, F> skene_foundation::DecorationBase<P> for skene_foundation::BasicPicker<P, F>
 pub fn skene_foundation::BasicPicker<P, F>::derive_aspect_ratio<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::AspectRatio>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::BasicPicker<P, F>::derive_background<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::BasicPicker<P, F>::derive_border_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::BasicPicker<P, F>::derive_border_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::derive_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::BasicPicker<P, F>::derive_cursor<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::MouseCursor>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::BasicPicker<P, F>::derive_height<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::BasicPicker<P, F>::derive_hidden<R: core::convert::Into<skene_foundation::StaticLeaf<bool>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -3412,9 +3412,9 @@ pub fn skene_foundation::BasicPicker<P, F>::derive_overflow<R: core::convert::In
 pub fn skene_foundation::BasicPicker<P, F>::derive_padding<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::BasicPicker<P, F>::derive_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::BasicPicker<P, F>::set_aspect_ratio(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::AspectRatio, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::BasicPicker<P, F>::set_background(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::BasicPicker<P, F>::set_border_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::BasicPicker<P, F>::set_border_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::set_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::BasicPicker<P, F>::set_cursor(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::MouseCursor, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::BasicPicker<P, F>::set_height(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::BasicPicker<P, F>::set_hidden(self, impl core::convert::Into<skene_foundation::Value<bool, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
@@ -3481,9 +3481,9 @@ pub fn skene_foundation::BoxProps<P>::fmt(&self, &mut core::fmt::Formatter<'_>) 
 pub struct skene_foundation::BoxStyle<N: skene_foundation::Scalar, S: skene_foundation::Shape, X: skene_foundation::StyleExtension>
 pub skene_foundation::BoxStyle::arrangement: <S as skene_foundation::Shape>::Of
 pub skene_foundation::BoxStyle::aspect_ratio: <S as skene_foundation::Shape>::Of
+pub skene_foundation::BoxStyle::background: <S as skene_foundation::Shape>::Of
 pub skene_foundation::BoxStyle::border_color: <S as skene_foundation::Shape>::Of
 pub skene_foundation::BoxStyle::border_width: <S as skene_foundation::Shape>::Of
-pub skene_foundation::BoxStyle::color: <S as skene_foundation::Shape>::Of
 pub skene_foundation::BoxStyle::cursor: <S as skene_foundation::Shape>::Of
 pub skene_foundation::BoxStyle::ext: <X as skene_foundation::StyleExtension>::BoxFields
 pub skene_foundation::BoxStyle::flex: <S as skene_foundation::Shape>::Of
@@ -3821,9 +3821,9 @@ pub fn skene_foundation::Container<P>::set_labelled_by(self, skene_foundation::N
 pub fn skene_foundation::Container<P>::set_role(self, accesskit::Role) -> Self
 impl<P: skene_foundation::Platform> skene_foundation::DecorationBase<P> for skene_foundation::Container<P>
 pub fn skene_foundation::Container<P>::derive_aspect_ratio<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::AspectRatio>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Container<P>::derive_background<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Container<P>::derive_border_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Container<P>::derive_border_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::Container<P>::derive_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Container<P>::derive_cursor<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::MouseCursor>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Container<P>::derive_height<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Container<P>::derive_hidden<R: core::convert::Into<skene_foundation::StaticLeaf<bool>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -3837,9 +3837,9 @@ pub fn skene_foundation::Container<P>::derive_overflow<R: core::convert::Into<sk
 pub fn skene_foundation::Container<P>::derive_padding<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Container<P>::derive_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Container<P>::set_aspect_ratio(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::AspectRatio, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::Container<P>::set_background(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Container<P>::set_border_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Container<P>::set_border_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
-pub fn skene_foundation::Container<P>::set_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Container<P>::set_cursor(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::MouseCursor, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Container<P>::set_height(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Container<P>::set_hidden(self, impl core::convert::Into<skene_foundation::Value<bool, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
@@ -3930,9 +3930,9 @@ impl<P: skene_foundation::Platform> core::default::Default for skene_foundation:
 pub fn skene_foundation::ContextMenu<P>::default() -> Self
 impl<P: skene_foundation::Platform> skene_foundation::DecorationBase<P> for skene_foundation::ContextMenu<P>
 pub fn skene_foundation::ContextMenu<P>::derive_aspect_ratio<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::AspectRatio>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::ContextMenu<P>::derive_background<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::ContextMenu<P>::derive_border_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::ContextMenu<P>::derive_border_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::ContextMenu<P>::derive_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::ContextMenu<P>::derive_cursor<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::MouseCursor>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::ContextMenu<P>::derive_height<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::ContextMenu<P>::derive_hidden<R: core::convert::Into<skene_foundation::StaticLeaf<bool>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -3946,9 +3946,9 @@ pub fn skene_foundation::ContextMenu<P>::derive_overflow<R: core::convert::Into<
 pub fn skene_foundation::ContextMenu<P>::derive_padding<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::ContextMenu<P>::derive_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::ContextMenu<P>::set_aspect_ratio(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::AspectRatio, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::ContextMenu<P>::set_background(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::ContextMenu<P>::set_border_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::ContextMenu<P>::set_border_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
-pub fn skene_foundation::ContextMenu<P>::set_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::ContextMenu<P>::set_cursor(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::MouseCursor, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::ContextMenu<P>::set_height(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::ContextMenu<P>::set_hidden(self, impl core::convert::Into<skene_foundation::Value<bool, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
@@ -4024,9 +4024,9 @@ pub fn skene_foundation::Control<P, B, C>::fmt(&self, &mut core::fmt::Formatter<
 impl<P: skene_foundation::Platform, B: skene_foundation::Behavior<P>, C> skene_foundation::AnyKind for skene_foundation::Control<P, B, C>
 impl<P: skene_foundation::Platform, B: skene_foundation::Behavior<P>> skene_foundation::DecorationBase<P> for skene_foundation::Control<P, B>
 pub fn skene_foundation::Control<P, B>::derive_aspect_ratio<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::AspectRatio>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Control<P, B>::derive_background<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Control<P, B>::derive_border_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Control<P, B>::derive_border_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::Control<P, B>::derive_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Control<P, B>::derive_cursor<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::MouseCursor>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Control<P, B>::derive_height<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Control<P, B>::derive_hidden<R: core::convert::Into<skene_foundation::StaticLeaf<bool>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -4040,9 +4040,9 @@ pub fn skene_foundation::Control<P, B>::derive_overflow<R: core::convert::Into<s
 pub fn skene_foundation::Control<P, B>::derive_padding<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Control<P, B>::derive_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Control<P, B>::set_aspect_ratio(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::AspectRatio, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::Control<P, B>::set_background(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Control<P, B>::set_border_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Control<P, B>::set_border_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
-pub fn skene_foundation::Control<P, B>::set_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Control<P, B>::set_cursor(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::MouseCursor, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Control<P, B>::set_height(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Control<P, B>::set_hidden(self, impl core::convert::Into<skene_foundation::Value<bool, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
@@ -5365,9 +5365,9 @@ pub fn skene_foundation::Overlay<P, C>::fmt(&self, &mut core::fmt::Formatter<'_>
 impl<P: skene_foundation::Platform, C> skene_foundation::AnyKind for skene_foundation::Overlay<P, C>
 impl<P: skene_foundation::Platform> skene_foundation::DecorationBase<P> for skene_foundation::Overlay<P>
 pub fn skene_foundation::Overlay<P>::derive_aspect_ratio<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::AspectRatio>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Overlay<P>::derive_background<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Overlay<P>::derive_border_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Overlay<P>::derive_border_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::Overlay<P>::derive_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Overlay<P>::derive_cursor<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::MouseCursor>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Overlay<P>::derive_height<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Overlay<P>::derive_hidden<R: core::convert::Into<skene_foundation::StaticLeaf<bool>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -5381,9 +5381,9 @@ pub fn skene_foundation::Overlay<P>::derive_overflow<R: core::convert::Into<sken
 pub fn skene_foundation::Overlay<P>::derive_padding<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Overlay<P>::derive_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Overlay<P>::set_aspect_ratio(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::AspectRatio, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::Overlay<P>::set_background(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Overlay<P>::set_border_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Overlay<P>::set_border_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
-pub fn skene_foundation::Overlay<P>::set_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Overlay<P>::set_cursor(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::MouseCursor, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Overlay<P>::set_height(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Overlay<P>::set_hidden(self, impl core::convert::Into<skene_foundation::Value<bool, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
@@ -6624,9 +6624,9 @@ pub fn skene_foundation::Tooltip<P, C>::fmt(&self, &mut core::fmt::Formatter<'_>
 impl<P: skene_foundation::Platform, C> skene_foundation::AnyKind for skene_foundation::Tooltip<P, C>
 impl<P: skene_foundation::Platform> skene_foundation::DecorationBase<P> for skene_foundation::Tooltip<P>
 pub fn skene_foundation::Tooltip<P>::derive_aspect_ratio<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::AspectRatio>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Tooltip<P>::derive_background<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Tooltip<P>::derive_border_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Tooltip<P>::derive_border_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::Tooltip<P>::derive_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Tooltip<P>::derive_cursor<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::MouseCursor>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Tooltip<P>::derive_height<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Tooltip<P>::derive_hidden<R: core::convert::Into<skene_foundation::StaticLeaf<bool>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -6640,9 +6640,9 @@ pub fn skene_foundation::Tooltip<P>::derive_overflow<R: core::convert::Into<sken
 pub fn skene_foundation::Tooltip<P>::derive_padding<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Tooltip<P>::derive_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Tooltip<P>::set_aspect_ratio(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::AspectRatio, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::Tooltip<P>::set_background(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Tooltip<P>::set_border_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Tooltip<P>::set_border_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
-pub fn skene_foundation::Tooltip<P>::set_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Tooltip<P>::set_cursor(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::MouseCursor, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Tooltip<P>::set_height(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Tooltip<P>::set_hidden(self, impl core::convert::Into<skene_foundation::Value<bool, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
@@ -6993,6 +6993,11 @@ pub type skene_foundation::box_fields::AspectRatio::Value = skene_foundation::As
 pub const skene_foundation::box_fields::AspectRatio::KEY: skene_foundation::PropertyKey<<X as skene_foundation::StyleExtension>::Property>
 pub fn skene_foundation::box_fields::AspectRatio::get<S: skene_foundation::Shape>(&skene_foundation::BoxStyle<N, S, X>) -> &<S as skene_foundation::Shape>::Of
 pub fn skene_foundation::box_fields::AspectRatio::get_mut<S: skene_foundation::Shape>(&mut skene_foundation::BoxStyle<N, S, X>) -> &mut <S as skene_foundation::Shape>::Of
+impl<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension> skene_foundation::BoxField<N, X> for skene_foundation::box_fields::Background
+pub type skene_foundation::box_fields::Background::Value = skene_foundation::Color
+pub const skene_foundation::box_fields::Background::KEY: skene_foundation::PropertyKey<<X as skene_foundation::StyleExtension>::Property>
+pub fn skene_foundation::box_fields::Background::get<S: skene_foundation::Shape>(&skene_foundation::BoxStyle<N, S, X>) -> &<S as skene_foundation::Shape>::Of
+pub fn skene_foundation::box_fields::Background::get_mut<S: skene_foundation::Shape>(&mut skene_foundation::BoxStyle<N, S, X>) -> &mut <S as skene_foundation::Shape>::Of
 impl<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension> skene_foundation::BoxField<N, X> for skene_foundation::box_fields::BorderColor
 pub type skene_foundation::box_fields::BorderColor::Value = skene_foundation::Color
 pub const skene_foundation::box_fields::BorderColor::KEY: skene_foundation::PropertyKey<<X as skene_foundation::StyleExtension>::Property>
@@ -7003,11 +7008,6 @@ pub type skene_foundation::box_fields::BorderWidth::Value = skene_foundation::In
 pub const skene_foundation::box_fields::BorderWidth::KEY: skene_foundation::PropertyKey<<X as skene_foundation::StyleExtension>::Property>
 pub fn skene_foundation::box_fields::BorderWidth::get<S: skene_foundation::Shape>(&skene_foundation::BoxStyle<N, S, X>) -> &<S as skene_foundation::Shape>::Of
 pub fn skene_foundation::box_fields::BorderWidth::get_mut<S: skene_foundation::Shape>(&mut skene_foundation::BoxStyle<N, S, X>) -> &mut <S as skene_foundation::Shape>::Of
-impl<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension> skene_foundation::BoxField<N, X> for skene_foundation::box_fields::Color
-pub type skene_foundation::box_fields::Color::Value = skene_foundation::Color
-pub const skene_foundation::box_fields::Color::KEY: skene_foundation::PropertyKey<<X as skene_foundation::StyleExtension>::Property>
-pub fn skene_foundation::box_fields::Color::get<S: skene_foundation::Shape>(&skene_foundation::BoxStyle<N, S, X>) -> &<S as skene_foundation::Shape>::Of
-pub fn skene_foundation::box_fields::Color::get_mut<S: skene_foundation::Shape>(&mut skene_foundation::BoxStyle<N, S, X>) -> &mut <S as skene_foundation::Shape>::Of
 impl<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension> skene_foundation::BoxField<N, X> for skene_foundation::box_fields::Cursor
 pub type skene_foundation::box_fields::Cursor::Value = skene_foundation::MouseCursor
 pub const skene_foundation::box_fields::Cursor::KEY: skene_foundation::PropertyKey<<X as skene_foundation::StyleExtension>::Property>
@@ -7400,9 +7400,9 @@ impl skene_foundation::CornerRadius for skene_foundation::web::WebStyle
 pub fn skene_foundation::web::WebStyle::set_corner_radius<S: skene_foundation::Shape>(&mut Self::BoxFields, <S as skene_foundation::Shape>::Of)
 pub trait skene_foundation::DecorationBase<P: skene_foundation::Platform>: skene_foundation::HasBoxStyle<P> + core::marker::Sized
 pub fn skene_foundation::DecorationBase::derive_aspect_ratio<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::AspectRatio>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::DecorationBase::derive_background<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::DecorationBase::derive_border_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::DecorationBase::derive_border_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::DecorationBase::derive_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::DecorationBase::derive_cursor<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::MouseCursor>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::DecorationBase::derive_height<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::DecorationBase::derive_hidden<R: core::convert::Into<skene_foundation::StaticLeaf<bool>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -7416,9 +7416,9 @@ pub fn skene_foundation::DecorationBase::derive_overflow<R: core::convert::Into<
 pub fn skene_foundation::DecorationBase::derive_padding<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::DecorationBase::derive_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::DecorationBase::set_aspect_ratio(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::AspectRatio, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::DecorationBase::set_background(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::DecorationBase::set_border_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::DecorationBase::set_border_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
-pub fn skene_foundation::DecorationBase::set_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::DecorationBase::set_cursor(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::MouseCursor, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::DecorationBase::set_height(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::DecorationBase::set_hidden(self, impl core::convert::Into<skene_foundation::Value<bool, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
@@ -7433,9 +7433,9 @@ pub fn skene_foundation::DecorationBase::set_padding(self, impl core::convert::I
 pub fn skene_foundation::DecorationBase::set_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 impl<P: skene_foundation::Platform, B: skene_foundation::Behavior<P>> skene_foundation::DecorationBase<P> for skene_foundation::Control<P, B>
 pub fn skene_foundation::Control<P, B>::derive_aspect_ratio<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::AspectRatio>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Control<P, B>::derive_background<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Control<P, B>::derive_border_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Control<P, B>::derive_border_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::Control<P, B>::derive_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Control<P, B>::derive_cursor<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::MouseCursor>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Control<P, B>::derive_height<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Control<P, B>::derive_hidden<R: core::convert::Into<skene_foundation::StaticLeaf<bool>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -7449,9 +7449,9 @@ pub fn skene_foundation::Control<P, B>::derive_overflow<R: core::convert::Into<s
 pub fn skene_foundation::Control<P, B>::derive_padding<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Control<P, B>::derive_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Control<P, B>::set_aspect_ratio(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::AspectRatio, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::Control<P, B>::set_background(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Control<P, B>::set_border_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Control<P, B>::set_border_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
-pub fn skene_foundation::Control<P, B>::set_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Control<P, B>::set_cursor(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::MouseCursor, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Control<P, B>::set_height(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Control<P, B>::set_hidden(self, impl core::convert::Into<skene_foundation::Value<bool, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
@@ -7466,9 +7466,9 @@ pub fn skene_foundation::Control<P, B>::set_padding(self, impl core::convert::In
 pub fn skene_foundation::Control<P, B>::set_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 impl<P: skene_foundation::Platform, F> skene_foundation::DecorationBase<P> for skene_foundation::BasicPicker<P, F>
 pub fn skene_foundation::BasicPicker<P, F>::derive_aspect_ratio<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::AspectRatio>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::BasicPicker<P, F>::derive_background<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::BasicPicker<P, F>::derive_border_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::BasicPicker<P, F>::derive_border_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::derive_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::BasicPicker<P, F>::derive_cursor<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::MouseCursor>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::BasicPicker<P, F>::derive_height<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::BasicPicker<P, F>::derive_hidden<R: core::convert::Into<skene_foundation::StaticLeaf<bool>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -7482,9 +7482,9 @@ pub fn skene_foundation::BasicPicker<P, F>::derive_overflow<R: core::convert::In
 pub fn skene_foundation::BasicPicker<P, F>::derive_padding<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::BasicPicker<P, F>::derive_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::BasicPicker<P, F>::set_aspect_ratio(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::AspectRatio, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::BasicPicker<P, F>::set_background(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::BasicPicker<P, F>::set_border_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::BasicPicker<P, F>::set_border_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::set_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::BasicPicker<P, F>::set_cursor(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::MouseCursor, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::BasicPicker<P, F>::set_height(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::BasicPicker<P, F>::set_hidden(self, impl core::convert::Into<skene_foundation::Value<bool, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
@@ -7499,9 +7499,9 @@ pub fn skene_foundation::BasicPicker<P, F>::set_padding(self, impl core::convert
 pub fn skene_foundation::BasicPicker<P, F>::set_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 impl<P: skene_foundation::Platform> skene_foundation::DecorationBase<P> for skene_foundation::Container<P>
 pub fn skene_foundation::Container<P>::derive_aspect_ratio<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::AspectRatio>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Container<P>::derive_background<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Container<P>::derive_border_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Container<P>::derive_border_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::Container<P>::derive_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Container<P>::derive_cursor<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::MouseCursor>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Container<P>::derive_height<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Container<P>::derive_hidden<R: core::convert::Into<skene_foundation::StaticLeaf<bool>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -7515,9 +7515,9 @@ pub fn skene_foundation::Container<P>::derive_overflow<R: core::convert::Into<sk
 pub fn skene_foundation::Container<P>::derive_padding<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Container<P>::derive_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Container<P>::set_aspect_ratio(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::AspectRatio, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::Container<P>::set_background(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Container<P>::set_border_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Container<P>::set_border_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
-pub fn skene_foundation::Container<P>::set_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Container<P>::set_cursor(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::MouseCursor, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Container<P>::set_height(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Container<P>::set_hidden(self, impl core::convert::Into<skene_foundation::Value<bool, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
@@ -7532,9 +7532,9 @@ pub fn skene_foundation::Container<P>::set_padding(self, impl core::convert::Int
 pub fn skene_foundation::Container<P>::set_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 impl<P: skene_foundation::Platform> skene_foundation::DecorationBase<P> for skene_foundation::ContextMenu<P>
 pub fn skene_foundation::ContextMenu<P>::derive_aspect_ratio<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::AspectRatio>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::ContextMenu<P>::derive_background<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::ContextMenu<P>::derive_border_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::ContextMenu<P>::derive_border_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::ContextMenu<P>::derive_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::ContextMenu<P>::derive_cursor<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::MouseCursor>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::ContextMenu<P>::derive_height<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::ContextMenu<P>::derive_hidden<R: core::convert::Into<skene_foundation::StaticLeaf<bool>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -7548,9 +7548,9 @@ pub fn skene_foundation::ContextMenu<P>::derive_overflow<R: core::convert::Into<
 pub fn skene_foundation::ContextMenu<P>::derive_padding<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::ContextMenu<P>::derive_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::ContextMenu<P>::set_aspect_ratio(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::AspectRatio, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::ContextMenu<P>::set_background(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::ContextMenu<P>::set_border_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::ContextMenu<P>::set_border_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
-pub fn skene_foundation::ContextMenu<P>::set_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::ContextMenu<P>::set_cursor(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::MouseCursor, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::ContextMenu<P>::set_height(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::ContextMenu<P>::set_hidden(self, impl core::convert::Into<skene_foundation::Value<bool, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
@@ -7565,9 +7565,9 @@ pub fn skene_foundation::ContextMenu<P>::set_padding(self, impl core::convert::I
 pub fn skene_foundation::ContextMenu<P>::set_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 impl<P: skene_foundation::Platform> skene_foundation::DecorationBase<P> for skene_foundation::Overlay<P>
 pub fn skene_foundation::Overlay<P>::derive_aspect_ratio<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::AspectRatio>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Overlay<P>::derive_background<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Overlay<P>::derive_border_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Overlay<P>::derive_border_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::Overlay<P>::derive_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Overlay<P>::derive_cursor<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::MouseCursor>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Overlay<P>::derive_height<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Overlay<P>::derive_hidden<R: core::convert::Into<skene_foundation::StaticLeaf<bool>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -7581,9 +7581,9 @@ pub fn skene_foundation::Overlay<P>::derive_overflow<R: core::convert::Into<sken
 pub fn skene_foundation::Overlay<P>::derive_padding<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Overlay<P>::derive_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Overlay<P>::set_aspect_ratio(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::AspectRatio, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::Overlay<P>::set_background(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Overlay<P>::set_border_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Overlay<P>::set_border_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
-pub fn skene_foundation::Overlay<P>::set_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Overlay<P>::set_cursor(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::MouseCursor, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Overlay<P>::set_height(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Overlay<P>::set_hidden(self, impl core::convert::Into<skene_foundation::Value<bool, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
@@ -7598,9 +7598,9 @@ pub fn skene_foundation::Overlay<P>::set_padding(self, impl core::convert::Into<
 pub fn skene_foundation::Overlay<P>::set_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 impl<P: skene_foundation::Platform> skene_foundation::DecorationBase<P> for skene_foundation::Tooltip<P>
 pub fn skene_foundation::Tooltip<P>::derive_aspect_ratio<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::AspectRatio>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Tooltip<P>::derive_background<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Tooltip<P>::derive_border_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Tooltip<P>::derive_border_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::Tooltip<P>::derive_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Tooltip<P>::derive_cursor<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::MouseCursor>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Tooltip<P>::derive_height<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Tooltip<P>::derive_hidden<R: core::convert::Into<skene_foundation::StaticLeaf<bool>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -7614,9 +7614,9 @@ pub fn skene_foundation::Tooltip<P>::derive_overflow<R: core::convert::Into<sken
 pub fn skene_foundation::Tooltip<P>::derive_padding<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Tooltip<P>::derive_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Tooltip<P>::set_aspect_ratio(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::AspectRatio, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::Tooltip<P>::set_background(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Tooltip<P>::set_border_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Tooltip<P>::set_border_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
-pub fn skene_foundation::Tooltip<P>::set_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Tooltip<P>::set_cursor(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::MouseCursor, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Tooltip<P>::set_height(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Tooltip<P>::set_hidden(self, impl core::convert::Into<skene_foundation::Value<bool, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self

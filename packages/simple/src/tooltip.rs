@@ -111,7 +111,7 @@ where
   define_defaults::<P>();
 
   tooltip
-    .set_color(SimplePalette::<P::Scalar>::FOREGROUND)
+    .set_background(SimplePalette::<P::Scalar>::FOREGROUND)
     .set_text_color(SimplePalette::<P::Scalar>::BACKGROUND)
     .set_padding(shape::<P>().tooltip_inset)
     .set_corner_radius(shape::<P>().mark_radius)

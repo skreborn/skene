@@ -105,7 +105,7 @@ type Text = skene_foundation::Text<Headless>;
 type Flexible<C = NoChild> = skene_foundation::Flexible<Headless, C>;
 type Theme<S, C = NoChild> = skene_foundation::Theme<Headless, S, C>;
 
-const COLOR: PropertyKey<WebProperty> = PropertyKey::Shared(Property::Color);
+const COLOR: PropertyKey<WebProperty> = PropertyKey::Shared(Property::Background);
 const WIDTH: PropertyKey<WebProperty> = PropertyKey::Shared(Property::Width);
 const PADDING: PropertyKey<WebProperty> = PropertyKey::Shared(Property::Padding);
 const SIDEBAR: ContainerName = ContainerName("sidebar");
@@ -454,11 +454,11 @@ fn nested_themes_resolve_the_nearest_palette() {
     Theme::new(TestPalette::default())
       .set_child_builder(move || {
         Column::new().set_children((
-          Container::new().set_color(TestPalette::CARD),
+          Container::new().set_background(TestPalette::CARD),
           Theme::new(TestPalette::with_card(red())).set_child_builder(move || {
             seen.set(Some(<TestPalette as ThemedIn<Headless>>::current()));
 
-            Container::new().set_color(TestPalette::CARD)
+            Container::new().set_background(TestPalette::CARD)
           }),
         ))
       })
@@ -500,7 +500,7 @@ fn derived_theme_redefines_without_rebuilding() {
       .set_child_builder(move || {
         local.set(Some(Signal::new(7)));
 
-        Container::new().set_color(TestPalette::CARD)
+        Container::new().set_background(TestPalette::CARD)
       })
       .build()
   });
@@ -531,7 +531,7 @@ fn expressions_resolve_over_tokens_and_the_environment() {
     Theme::new(TestPalette::default())
       .set_child_builder(|| {
         Container::new()
-          .set_color(Expr::from(TestPalette::CARD).with_alpha(0.5))
+          .set_background(Expr::from(TestPalette::CARD).with_alpha(0.5))
           .set_width(Expr::<Length>::viewport_width(0.5))
           .set_padding(Inset::all(4.))
       })
@@ -584,7 +584,7 @@ fn container_condition_resolves_against_the_named_containers_size() {
   let root = owner.enter(|| {
     Container::new()
       .set_container_name(SIDEBAR)
-      .set_child(Container::new().set_color(WHITE.when(
+      .set_child(Container::new().set_background(WHITE.when(
         Condition::from(Media::Container {
           name: Some(SIDEBAR),
           query: ContainerQuery::MinWidth(400.),
@@ -630,7 +630,7 @@ fn derived_slot_updates_and_a_hover_variant_still_wins() {
   let color = Signal::new(red());
   let node = owner.enter(|| {
     Container::new()
-      .set_color(Value::new(Leaf::derive(move || color.get())).when(hovered(), blue()))
+      .set_background(Value::new(Leaf::derive(move || color.get())).when(hovered(), blue()))
       .build()
   });
   let slot = |node| slot_leaf(node, Slot(0));
@@ -677,7 +677,7 @@ fn a_derived_token_resolves_through_the_theme() {
   let root = owner.enter(|| {
     Theme::new(TestPalette::default())
       .set_child_builder(move || {
-        Container::new().derive_color(move || {
+        Container::new().derive_background(move || {
           if muted.get() {
             StaticLeaf::from(Expr::from(TestPalette::CARD).with_alpha(0.5))
           }
@@ -722,7 +722,7 @@ fn scheme_seam_drives_the_dark_definition_and_the_signal() {
   let owner = Owner::new();
   let root = owner.enter(|| {
     Theme::new(TestPalette::default())
-      .set_child_builder(|| Container::new().set_color(TestPalette::CARD))
+      .set_child_builder(|| Container::new().set_background(TestPalette::CARD))
       .build()
   });
   let card = children(root)[0];
@@ -832,7 +832,7 @@ fn the_transparency_and_contrast_preferences_answer() {
   let owner = Owner::new();
   let (node, contrast) = owner.enter(|| {
     let node = Container::new()
-      .set_color(
+      .set_background(
         Value::from(red())
           .when(Media::ReducedTransparency, green())
           .when(Media::HighContrast, blue()),
@@ -870,7 +870,7 @@ fn the_pointer_precision_and_hover_answer() {
   let owner = Owner::new();
   let (node, hovers) = owner.enter(|| {
     let node = Container::new()
-      .set_color(
+      .set_background(
         Value::from(red())
           .when(Media::Pointer(PointerPrecision::Coarse), green())
           .when(Media::Pointer(PointerPrecision::Absent), blue()),

@@ -717,7 +717,7 @@ fn a_streamed_delta_is_adopted_with_the_stylesheet() {
   // The markup a streamed render leaves: the delta right before the content it styles.
   let app = || {
     Container::new()
-      .set_color(Color::srgb(0.1, 0.2, 0.3))
+      .set_background(Color::srgb(0.1, 0.2, 0.3))
       .set_child(Text::new("late"))
   };
   let (markup, rule) = {

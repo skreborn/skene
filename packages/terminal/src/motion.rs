@@ -255,7 +255,7 @@ mod tests {
 
   fn colored(color: Color) -> PlainBox {
     PlainBox {
-      color: Some(color),
+      background: Some(color),
       ..PlainBox::default()
     }
   }
@@ -274,13 +274,13 @@ mod tests {
     let black = Color::srgb(0., 0., 0.);
     let white = Color::srgb(1., 1., 1.);
     let dynamics = BoxDynamics {
-      transitions: vec![Transition::new(Property::Color, 1.).set_easing(Easing::Linear)],
+      transitions: vec![Transition::new(Property::Background, 1.).set_easing(Easing::Linear)],
       animations: Vec::new(),
     };
     let mut motion = BoxMotion::default();
     let first = motion.present(None, colored(black), &dynamics, &[], at(0.));
 
-    assert_eq!(first.style.color, Some(black));
+    assert_eq!(first.style.background, Some(black));
     assert!(!first.active);
 
     let moved = motion.present(
@@ -291,18 +291,18 @@ mod tests {
       at(0.),
     );
 
-    assert_eq!(moved.style.color, Some(black));
+    assert_eq!(moved.style.background, Some(black));
     assert!(moved.active);
 
     let held = colored(white);
     let midway = motion.present(Some(&held), colored(white), &dynamics, &[], at(0.5));
 
-    assert_eq!(midway.style.color, Some(black.mix(white, 0.5)));
+    assert_eq!(midway.style.background, Some(black.mix(white, 0.5)));
     assert!(midway.active);
 
     let done = motion.present(Some(&held), colored(white), &dynamics, &[], at(1.));
 
-    assert_eq!(done.style.color, Some(white));
+    assert_eq!(done.style.background, Some(white));
     assert!(!done.active);
 
     let reduced = motion.present(
@@ -316,7 +316,7 @@ mod tests {
       },
     );
 
-    assert_eq!(reduced.style.color, Some(black));
+    assert_eq!(reduced.style.background, Some(black));
     assert!(!reduced.active);
   }
 
@@ -331,7 +331,7 @@ mod tests {
     let mut motion = BoxMotion::default();
     let first = motion.present(None, colored(black), &dynamics, &fade, at(0.));
 
-    assert_eq!(first.style.color, Some(black));
+    assert_eq!(first.style.background, Some(black));
     assert!(first.active);
 
     let midway = motion.present(
@@ -342,6 +342,6 @@ mod tests {
       at(0.5),
     );
 
-    assert_eq!(midway.style.color, Some(black.mix(white, 0.5)));
+    assert_eq!(midway.style.background, Some(black.mix(white, 0.5)));
   }
 }

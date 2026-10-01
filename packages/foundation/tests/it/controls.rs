@@ -680,11 +680,11 @@ fn a_parts_focus_and_checked_variants_follow_the_control() {
     BasicCheckbox::new(Toggle::new().bind_checked(bound))
       .set_part(
         Part::Face,
-        Container::new().set_color(red().when(focus_visible(), blue())),
+        Container::new().set_background(red().when(focus_visible(), blue())),
       )
       .set_part(
         Part::Mark,
-        Container::new().set_color(red().when(checked(), green())),
+        Container::new().set_background(red().when(checked(), green())),
       )
       .build()
   });
@@ -718,7 +718,7 @@ fn focus_shows_after_a_key_and_not_after_a_pointer_press() {
   let owner = Owner::new();
   let node = owner.enter(|| {
     BasicButton::new(Activate::new())
-      .set_color(red().when(focus_visible(), blue()))
+      .set_background(red().when(focus_visible(), blue()))
       .set_label("go")
       .build()
   });
@@ -758,7 +758,7 @@ fn focus_in_a_text_entry_shows_after_a_pointer_press() {
   let owner = Owner::new();
   let node = owner.enter(|| {
     BasicTextField::new(TextEntry::new())
-      .set_color(red().when(focus_visible(), blue()))
+      .set_background(red().when(focus_visible(), blue()))
       .build()
   });
 
@@ -1230,7 +1230,7 @@ fn a_third_party_behavior_builds_through_public_types_alone() {
 
     Control::new(Stepper { count })
       .set_width(Dimension::Length(40.))
-      .set_color(red().when(focus_visible(), blue()))
+      .set_background(red().when(focus_visible(), blue()))
       .set_part(Part::Face, Text::new("0"))
       .handle_key_down(move |_| seen.set(seen.get() + 1))
       .set_child(Container::new())

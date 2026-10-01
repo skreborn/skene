@@ -12,7 +12,7 @@ fn shadow_mixes_into_the_cells_beneath() {
   with_platform(|| {
     let _ = terminal::mount(|| {
       Container::new()
-        .set_color(red())
+        .set_background(red())
         .set_child(
           Container::new()
             .set_width(2)
@@ -41,7 +41,7 @@ fn a_shadows_offset_moves_it() {
   with_platform(|| {
     let _ = terminal::mount(|| {
       Container::new()
-        .set_color(red())
+        .set_background(red())
         .set_child(
           Container::new()
             .set_width(2)

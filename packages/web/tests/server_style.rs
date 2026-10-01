@@ -240,7 +240,7 @@ fn transitions_render_into_the_base_rule() {
   let rendered = render_to_string(|| {
     Container::new()
       .set_width(Dimension::Length(10.))
-      .set_transition(Transition::new(Property::Color, 0.3))
+      .set_transition(Transition::new(Property::Background, 0.3))
       .set_transition(
         Transition::new(Property::Width, 1.)
           .set_delay(0.5)
@@ -530,7 +530,7 @@ fn a_templates_line_names_render() {
 fn a_theme_following_the_platform_renders_a_color_scheme_query() {
   let rendered = render_to_string(|| {
     Theme::new(SimplePalette::default())
-      .set_child_builder(|| Container::new().set_color(SimplePalette::current().card))
+      .set_child_builder(|| Container::new().set_background(SimplePalette::current().card))
   });
   let classes = classes(rendered.body());
   let (scope, consumer) = (&classes[0], &classes[1]);
@@ -610,7 +610,7 @@ fn an_unconditional_token_renders_no_color_scheme_query() {
   let flat = Color::srgb(0.2, 0.4, 0.8);
   let rendered = render_to_string(move || {
     Theme::new(SimplePalette::default().set_card(flat))
-      .set_child_builder(|| Container::new().set_color(SimplePalette::current().card))
+      .set_child_builder(|| Container::new().set_background(SimplePalette::current().card))
   });
   let scope = root_class(rendered.body());
   let styles = rendered.styles();
@@ -647,7 +647,7 @@ fn base_rule<'a>(styles: &'a str, class: &str) -> &'a str {
 fn reduced_motion_gates_the_motion_that_respects_it() {
   let rendered = render_to_string(|| {
     Container::new()
-      .set_transition(Transition::new(Property::Color, 0.3))
+      .set_transition(Transition::new(Property::Background, 0.3))
       .set_transition(Transition::new(Property::Width, 1.).set_respect_reduced_motion(false))
   });
   let class = root_class(rendered.body());
@@ -665,8 +665,9 @@ fn reduced_motion_gates_the_motion_that_respects_it() {
     "{styles}"
   );
 
-  let respecting =
-    render_to_string(|| Container::new().set_transition(Transition::new(Property::Color, 0.3)));
+  let respecting = render_to_string(|| {
+    Container::new().set_transition(Transition::new(Property::Background, 0.3))
+  });
   let class = root_class(respecting.body());
 
   assert!(
@@ -693,8 +694,8 @@ fn a_token_keyframe_renders_its_variable() {
       let mut start: BoxStyle<f32, Keyframe, WebStyle> = BoxStyle::default();
       let mut end: BoxStyle<f32, Keyframe, WebStyle> = BoxStyle::default();
 
-      start.color = Some(SimplePalette::CARD.into());
-      end.color = Some(Color::srgb(1., 0., 0.).into());
+      start.background = Some(SimplePalette::CARD.into());
+      end.background = Some(Color::srgb(1., 0., 0.).into());
 
       Container::new().set_animation(Animation::new(2., [(0., start), (100., end)]))
     })
@@ -942,7 +943,7 @@ fn every_rule_has_a_class_specificity() {
     );
 
     Column::new().set_children((
-      Container::new().set_width(width).set_color(
+      Container::new().set_width(width).set_background(
         Color::srgb(0.1, 0.2, 0.3)
           .when(Media::Dark, Color::srgb(0.7, 0.8, 0.9))
           .when(Media::MinWidth(600.), Color::srgb(0.4, 0.5, 0.6)),
@@ -988,7 +989,7 @@ fn every_rule_has_a_class_specificity() {
 #[test]
 fn a_derived_variants_slot_is_registered() {
   let rendered = render_to_string(|| {
-    Container::new().set_color(
+    Container::new().set_background(
       skene_foundation::Value::from(Color::srgb(1., 0., 0.))
         .derive_when(Condition::from(State::Hovered), || Color::srgb(0., 0., 1.)),
     )
@@ -997,7 +998,7 @@ fn a_derived_variants_slot_is_registered() {
   assert!(
     rendered
       .styles()
-      .contains("@property --skene-color-1{syntax:\"*\";inherits:false}"),
+      .contains("@property --skene-background-1{syntax:\"*\";inherits:false}"),
     "{}",
     rendered.styles()
   );

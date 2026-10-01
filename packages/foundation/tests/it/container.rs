@@ -252,7 +252,7 @@ fn border_with_a_token_color_resolves_through_the_theme() {
             left: 4.,
           })
           .set_border_color(TestPalette::CARD)
-          .set_transition(Transition::new(Property::Color, 0.2))
+          .set_transition(Transition::new(Property::Background, 0.2))
       })
       .build()
   });
@@ -275,7 +275,7 @@ fn border_with_a_token_color_resolves_through_the_theme() {
   assert_eq!(props.dynamics.transitions.len(), 1);
   assert_eq!(
     props.dynamics.transitions[0].property,
-    StyleProperty::Shared(Property::Color)
+    StyleProperty::Shared(Property::Background)
   );
 
   owner.dispose();
@@ -332,8 +332,8 @@ fn a_press_holds_pressed_along_its_path() {
   let owner = Owner::new();
   let outer = owner.enter(|| {
     Container::new()
-      .set_color(Value::from(red()).when(State::Pressed, blue()))
-      .set_child(Container::new().set_color(Value::from(blue()).when(State::Pressed, red())))
+      .set_background(Value::from(red()).when(State::Pressed, blue()))
+      .set_child(Container::new().set_background(Value::from(blue()).when(State::Pressed, red())))
       .build()
   });
   let inner = only_child(outer);
@@ -361,8 +361,8 @@ fn hover_holds_on_the_ancestors_of_the_hovered_node() {
   let owner = Owner::new();
   let outer = owner.enter(|| {
     Container::new()
-      .set_color(Value::from(red()).when(State::Hovered, blue()))
-      .set_child(Container::new().set_color(Value::from(blue()).when(State::Hovered, red())))
+      .set_background(Value::from(red()).when(State::Hovered, blue()))
+      .set_child(Container::new().set_background(Value::from(blue()).when(State::Hovered, red())))
       .build()
   });
   let inner = only_child(outer);
@@ -442,11 +442,11 @@ fn a_drag_drops_on_a_box_taking_what_it_carries() {
     skene_foundation::Column::<Headless>::new()
       .set_children((
         Container::new()
-          .set_color(Value::from(red()).when(State::Dragged, blue()))
+          .set_background(Value::from(red()).when(State::Dragged, blue()))
           .set_drag_data(|| DragData::new(7u32).with_text("seven"))
           .set_child(Container::new()),
         Container::new()
-          .set_color(Value::from(red()).when(State::Targeted, blue()))
+          .set_background(Value::from(red()).when(State::Targeted, blue()))
           .handle_drop(move |value: &u32| log.borrow_mut().push(*value)),
         Container::new().handle_drop(|_: &String| {}),
       ))

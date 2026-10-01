@@ -20,7 +20,7 @@ pub fn app() -> impl View {
     move || {
       Container::new()
         .set_role(Role::Main)
-        .set_color(SimplePalette::BACKGROUND)
+        .set_background(SimplePalette::BACKGROUND)
         .set_child(
           Column::new()
             .set_item_alignment(ItemAlignment::Center)
@@ -299,7 +299,7 @@ fn layouts() -> impl View {
       )),
       Container::new()
         .set_height(64.)
-        .set_color(SimplePalette::SECONDARY_SURFACE)
+        .set_background(SimplePalette::SECONDARY_SURFACE)
         .set_corner_radius(8.)
         .set_child(
           Stack::new().add_child(
@@ -396,7 +396,7 @@ fn context_menu() -> impl View {
             .set_padding(Inset::symmetric(12., 8.))
             .set_corner_radius(6.)
             .set_focus_order(FocusOrder::Auto)
-            .set_color(
+            .set_background(
               SimplePalette::CARD
                 .when(State::Hovered, SimplePalette::SECONDARY_SURFACE)
                 .when(State::Focused, SimplePalette::SECONDARY_SURFACE),
@@ -587,7 +587,7 @@ fn plain(text: &'static str) -> Span {
 fn badge(text: &'static str) -> impl View {
   Container::new()
     .set_padding(Inset::symmetric(8., 4.))
-    .set_color(SimplePalette::CARD)
+    .set_background(SimplePalette::CARD)
     .set_corner_radius(6.)
     .set_child(
       Text::new(text)
@@ -599,6 +599,6 @@ fn badge(text: &'static str) -> impl View {
 fn swatch(brightness: f32) -> impl View {
   Container::new()
     .set_height(32.)
-    .set_color(Color::srgb(brightness * 0.5, brightness, brightness * 0.55))
+    .set_background(Color::srgb(brightness * 0.5, brightness, brightness * 0.55))
     .set_corner_radius(6.)
 }

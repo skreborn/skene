@@ -1388,14 +1388,18 @@ fn node_paint(records: &Records, handle: Handle, width: usize, focused: bool) ->
       let style = inner.style();
 
       NodePaint::Box {
-        background: style.and_then(|style| style.color).and_then(terminal_rgb),
+        background: style
+          .and_then(|style| style.background)
+          .and_then(terminal_rgb),
         border: border_paint(records, handle),
         shadow: style.and_then(ShadowPaint::of),
       }
     }
     Kind::Control { inner, field, .. } => {
       let style = inner.style();
-      let background = style.and_then(|style| style.color).and_then(terminal_rgb);
+      let background = style
+        .and_then(|style| style.background)
+        .and_then(terminal_rgb);
       let shadow = style.and_then(ShadowPaint::of);
       let border = border_paint(records, handle);
 

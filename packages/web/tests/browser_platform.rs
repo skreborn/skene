@@ -199,7 +199,7 @@ fn a_token_color_resolves_through_the_theme() {
 
   let _ = platform::mount(|| {
     Theme::<Web, _>::new(Palette::default())
-      .set_child_builder(|| Box_::new().set_color(Palette::CARD))
+      .set_child_builder(|| Box_::new().set_background(Palette::CARD))
       .build()
   });
 
@@ -240,7 +240,7 @@ fn a_palette_write_reinks_without_replacing_the_element() {
           inner.set(Some(count));
 
           Box_::new()
-            .set_color(Palette::CARD)
+            .set_background(Palette::CARD)
             .set_child(Text::<Web>::derive(move || count.get().to_string()))
         })
         .build()
@@ -278,7 +278,7 @@ fn a_derived_color_stays_below_its_hover_variant() {
 
   let _ = platform::mount(move || {
     Box_::new()
-      .set_color(
+      .set_background(
         Value::<Color, Condition<f32>>::new(Leaf::derive(move || color.get()))
           .when(State::Hovered.into(), red()),
       )
@@ -303,7 +303,9 @@ fn a_derived_color_stays_below_its_hover_variant() {
 
   let sheet = sheet_text();
   let base = sheet
-    .find(&format!(".{class}{{background-color:var(--skene-color);"))
+    .find(&format!(
+      ".{class}{{background-color:var(--skene-background);"
+    ))
     .expect("the base rule references the slot");
   let hover = sheet
     .find(&format!(
@@ -319,7 +321,7 @@ fn a_derived_color_stays_below_its_hover_variant() {
   assert_eq!(
     html(&element)
       .style()
-      .get_property_value("--skene-color")
+      .get_property_value("--skene-background")
       .unwrap(),
     Declarations::render_color(blue())
   );
@@ -335,7 +337,7 @@ fn a_derived_token_writes_its_reference_into_the_slot() {
   let _ = platform::mount(move || {
     Theme::<Web, _>::new(Palette::default())
       .set_child_builder(move || {
-        Box_::new().derive_color(move || {
+        Box_::new().derive_background(move || {
           if plain.get() {
             StaticLeaf::from(red())
           }
@@ -351,7 +353,7 @@ fn a_derived_token_writes_its_reference_into_the_slot() {
   let slot = || {
     html(&element)
       .style()
-      .get_property_value("--skene-color")
+      .get_property_value("--skene-background")
       .unwrap()
   };
 
@@ -718,7 +720,7 @@ fn a_served_page_hydrates_without_mismatch() {
   let app = || {
     Theme::<Web, _>::new(Palette::default()).set_child_builder(|| {
       Box_::new()
-        .set_color(Palette::CARD)
+        .set_background(Palette::CARD)
         .set_child(Text::<Web>::new("Hi"))
     })
   };
@@ -768,7 +770,7 @@ fn a_hydrated_scope_drops_its_served_inline_definitions() {
     move || {
       Theme::<Web, _>::derive(move || palette.get()).set_child_builder(|| {
         Box_::new()
-          .set_color(Palette::CARD)
+          .set_background(Palette::CARD)
           .set_child(Text::<Web>::new("Hi"))
       })
     }

@@ -73,7 +73,7 @@ type Column = skene_foundation::Column<Headless>;
 type Text = skene_foundation::Text<Headless>;
 type Theme<P, C = skene_foundation::NoChild> = skene_foundation::Theme<Headless, P, C>;
 
-const COLOR: PropertyKey<WebProperty> = PropertyKey::Shared(Property::Color);
+const COLOR: PropertyKey<WebProperty> = PropertyKey::Shared(Property::Background);
 const TEXT_COLOR: PropertyKey<WebProperty> = PropertyKey::Shared(Property::TextColor);
 const BORDER_WIDTH: PropertyKey<WebProperty> = PropertyKey::Shared(Property::BorderWidth);
 const BORDER_COLOR: PropertyKey<WebProperty> = PropertyKey::Shared(Property::BorderColor);
@@ -410,7 +410,7 @@ fn the_default_palette_answers_the_dark_scheme() {
   let palette = SimplePalette::default();
   let card = themed(owner, || {
     SimpleCard::new().set_children((
-      Container::new().set_color(SimplePalette::BACKGROUND),
+      Container::new().set_background(SimplePalette::BACKGROUND),
       SimpleButton::new("Save"),
     ))
   });
@@ -475,7 +475,7 @@ fn the_default_palette_stands_in_at_the_root_without_a_theme() {
 
     (
       read,
-      Container::new().set_color(SimplePalette::CARD).build(),
+      Container::new().set_background(SimplePalette::CARD).build(),
       SimpleCard::new().build(),
     )
   });
@@ -530,7 +530,7 @@ fn a_third_party_palette_works_under_theme_like_the_simple_one() {
       );
 
       SimpleCard::new().set_children((
-        Container::new().set_color(AcmePalette::ACCENT),
+        Container::new().set_background(AcmePalette::ACCENT),
         SimpleButton::new("Save"),
       ))
     })

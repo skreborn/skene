@@ -128,7 +128,7 @@ where
 
     Container::new()
       .set_padding(shape::<P>().card_inset)
-      .set_color(SimplePalette::<P::Scalar>::CARD)
+      .set_background(SimplePalette::<P::Scalar>::CARD)
       .set_border_width(hairline())
       .set_border_color(SimplePalette::<P::Scalar>::BORDER)
       .set_corner_radius(shape::<P>().card_radius)

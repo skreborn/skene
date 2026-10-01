@@ -11,13 +11,13 @@ use crate::common::{blue, colors_at, red, rgb, with_platform};
 
 /// A one-second linear color transition.
 fn color_transition() -> Transition<terminal::TerminalProperty> {
-  Transition::new(Property::Color, 1.).set_easing(Easing::Linear)
+  Transition::new(Property::Background, 1.).set_easing(Easing::Linear)
 }
 
 /// A box keyframe of one background color.
 fn frame(color: impl Into<skene_terminal::StaticLeaf<Color>>) -> BoxKeyframe<terminal::Terminal> {
   BoxKeyframe::<terminal::Terminal> {
-    color: Some(color.into()),
+    background: Some(color.into()),
     ..Default::default()
   }
 }
@@ -31,7 +31,7 @@ fn a_hover_transition_steps_a_color_across_frames() {
       Container::new()
         .set_width(4)
         .set_height(1)
-        .set_color(red().when(State::Hovered, blue()))
+        .set_background(red().when(State::Hovered, blue()))
         .set_transition(color_transition())
         .into_any()
         .build()
@@ -67,7 +67,7 @@ fn a_derived_length_transition_rounds_to_cells() {
       Container::new()
         .derive_width(move || Dimension::Length(width.get()))
         .set_height(1)
-        .set_color(red())
+        .set_background(red())
         .set_transition(Transition::new(Property::Width, 1.).set_easing(Easing::Linear))
         .into_any()
         .build()
@@ -105,12 +105,12 @@ fn reduced_motion_cuts_a_respecting_transition() {
           Container::new()
             .set_width(2)
             .set_height(1)
-            .set_color(red().when(State::Hovered, blue()))
+            .set_background(red().when(State::Hovered, blue()))
             .set_transition(color_transition()),
           Container::new()
             .set_width(2)
             .set_height(1)
-            .set_color(red().when(State::Hovered, blue()))
+            .set_background(red().when(State::Hovered, blue()))
             .set_transition(color_transition().set_respect_reduced_motion(false)),
         ))
         .into_any()
@@ -147,7 +147,7 @@ fn a_palette_flip_transitions_a_token_driven_color() {
           Container::new()
             .set_width(4)
             .set_height(1)
-            .set_color(SimplePalette::CARD)
+            .set_background(SimplePalette::CARD)
             .set_transition(color_transition())
         })
         .into_any()
@@ -181,7 +181,7 @@ fn a_keyframe_animation_samples_its_frames() {
           Container::new()
             .set_width(4)
             .set_height(1)
-            .set_color(red())
+            .set_background(red())
             .set_animation(
               Animation::new(1., [(0., frame(red())), (100., frame(SimplePalette::CARD))])
                 .set_easing(Easing::Linear),
@@ -232,7 +232,7 @@ fn an_overlays_animation_starts_over_when_it_opens() {
               Container::new()
                 .set_width(4)
                 .set_height(1)
-                .set_color(red())
+                .set_background(red())
                 .set_animation(
                   Animation::new(1., [(0., frame(red())), (100., frame(blue()))])
                     .set_easing(Easing::Linear),

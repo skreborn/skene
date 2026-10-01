@@ -166,7 +166,7 @@ where
       .collect();
     let surface = Container::<P>::new()
       .set_padding(shape.list_inset)
-      .set_color(SimplePalette::<P::Scalar>::CARD)
+      .set_background(SimplePalette::<P::Scalar>::CARD)
       .set_border_width(hairline())
       .set_border_color(SimplePalette::<P::Scalar>::BORDER)
       .set_corner_radius(shape.control_radius)
@@ -175,7 +175,7 @@ where
     picker
       .set_width(Dimension::Fraction(1.))
       .set_padding(shape.control_inset)
-      .set_color(SimplePalette::<P::Scalar>::CARD.when(
+      .set_background(SimplePalette::<P::Scalar>::CARD.when(
         State::Disabled,
         SimplePalette::<P::Scalar>::DISABLED_SURFACE,
       ))
@@ -254,7 +254,7 @@ where
 
   BasicListboxOption::<P>::new(ListboxOption::new(value))
     .set_padding(shape::<P>().row_inset)
-    .set_color(
+    .set_background(
       Color::TRANSPARENT
         .when(
           State::Focused,

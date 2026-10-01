@@ -35,5 +35,9 @@ ureq = { default-features = false, features = ["gzip", "platform-verifier", "rus
 [target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dev-dependencies]
 wasm-bindgen-test.workspace = true
 
+[package.metadata.docs.rs]
+default-target = "wasm32-unknown-unknown"
+targets = ["wasm32-unknown-unknown", "x86_64-unknown-linux-gnu"]
+
 [lints]
 workspace = true

@@ -12,5 +12,9 @@ skene-foundation.workspace = true
 skene-simple.workspace = true
 skene-web.workspace = true
 
+[package.metadata.docs.rs]
+default-target = "wasm32-unknown-unknown"
+targets = ["wasm32-unknown-unknown", "x86_64-unknown-linux-gnu"]
+
 [lints]
 workspace = true

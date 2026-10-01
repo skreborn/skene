@@ -18,7 +18,8 @@ const HEADLESS: &str = "headless";
 /// `skene_platform`.
 ///
 /// The leaf is `server` where the build sets `--cfg skene_platform="server"`, `browser`
-/// on `wasm32-unknown-unknown` otherwise, and `headless` on every other target.
+/// on `wasm32-unknown-unknown` otherwise, and `headless` on every other target but on
+/// docs.rs, where `DOCS_RS` is set and every other target is the `server` leaf.
 ///
 /// # Panics
 ///
@@ -32,12 +33,14 @@ pub fn configure() {
   println!("cargo::rerun-if-env-changed=CARGO_CFG_SKENE_PLATFORM");
   println!("cargo::rerun-if-env-changed=CARGO_CFG_TARGET_ARCH");
   println!("cargo::rerun-if-env-changed=CARGO_CFG_TARGET_OS");
+  println!("cargo::rerun-if-env-changed=DOCS_RS");
 
   let variable = |name: &str| env::var(name).unwrap_or_default();
   let web_platform = web_platform(
     &variable("CARGO_CFG_TARGET_ARCH"),
     &variable("CARGO_CFG_TARGET_OS"),
     &variable("CARGO_CFG_SKENE_PLATFORM"),
+    env::var_os("DOCS_RS").is_some(),
   )
   .unwrap_or_else(|reason| panic!("{reason}"));
 
@@ -45,8 +48,13 @@ pub fn configure() {
 }
 
 /// The web leaf a build for `arch` and `os` compiles for under the platform the build
-/// names.
-fn web_platform(arch: &str, os: &str, platform: &str) -> Result<&'static str, String> {
+/// names, on docs.rs where `docs_rs` holds.
+fn web_platform(
+  arch: &str,
+  os: &str,
+  platform: &str,
+  docs_rs: bool,
+) -> Result<&'static str, String> {
   match platform {
     SERVER => return Ok(SERVER),
     "" => {}
@@ -62,6 +70,7 @@ fn web_platform(arch: &str, os: &str, platform: &str) -> Result<&'static str, St
     ("wasm32" | "wasm64", _) => Err(format!(
       "the web has no leaf for {arch}-{os}: the browser's target is wasm32-unknown-unknown"
     )),
+    _ if docs_rs => Ok(SERVER),
     _ => Ok(HEADLESS),
   }
 }
@@ -74,21 +83,35 @@ mod tests {
   /// leaf and every other host the headless platform.
   #[test]
   fn a_build_names_its_web_platform() {
-    assert_eq!(web_platform("x86_64", "linux", ""), Ok("headless"));
-    assert_eq!(web_platform("aarch64", "macos", ""), Ok("headless"));
-    assert_eq!(web_platform("wasm32", "unknown", ""), Ok("browser"));
-    assert_eq!(web_platform("x86_64", "linux", "server"), Ok("server"));
-    assert_eq!(web_platform("wasm32", "unknown", "server"), Ok("server"));
+    assert_eq!(web_platform("x86_64", "linux", "", false), Ok("headless"));
+    assert_eq!(web_platform("aarch64", "macos", "", false), Ok("headless"));
+    assert_eq!(web_platform("wasm32", "unknown", "", false), Ok("browser"));
+    assert_eq!(
+      web_platform("x86_64", "linux", "server", false),
+      Ok("server")
+    );
+    assert_eq!(
+      web_platform("wasm32", "unknown", "server", false),
+      Ok("server")
+    );
+  }
+
+  /// On docs.rs every host build is the server leaf and the browser's triple still the
+  /// browser leaf.
+  #[test]
+  fn a_docs_rs_build_documents_the_server() {
+    assert_eq!(web_platform("x86_64", "linux", "", true), Ok("server"));
+    assert_eq!(web_platform("wasm32", "unknown", "", true), Ok("browser"));
   }
 
   /// An unknown platform and a wasm target without a web leaf fail the build rather
   /// than landing on the headless platform.
   #[test]
   fn a_build_without_a_web_platform_is_rejected() {
-    assert!(web_platform("x86_64", "linux", "servr").is_err());
-    assert!(web_platform("x86_64", "linux", "native").is_err());
-    assert!(web_platform("wasm32", "wasi", "").is_err());
-    assert!(web_platform("wasm32", "emscripten", "").is_err());
-    assert!(web_platform("wasm32", "none", "").is_err());
+    assert!(web_platform("x86_64", "linux", "servr", false).is_err());
+    assert!(web_platform("x86_64", "linux", "native", false).is_err());
+    assert!(web_platform("wasm32", "wasi", "", false).is_err());
+    assert!(web_platform("wasm32", "emscripten", "", false).is_err());
+    assert!(web_platform("wasm32", "none", "", false).is_err());
   }
 }

@@ -143,5 +143,9 @@ skene-build.workspace = true
 # renderer; without it every painted box paints on the CPU.
 gpu = ["dep:vello_hybrid"]
 
+[package.metadata.docs.rs]
+default-target = "wasm32-unknown-unknown"
+targets = ["wasm32-unknown-unknown", "x86_64-unknown-linux-gnu"]
+
 [lints]
 workspace = true

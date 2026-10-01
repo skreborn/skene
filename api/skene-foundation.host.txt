@@ -4448,11 +4448,11 @@ impl<T> core::default::Default for skene_foundation::Flexibility<T>
 pub fn skene_foundation::Flexibility<T>::default() -> Self
 pub struct skene_foundation::Flexible<P: skene_foundation::Platform, C>
 impl<P: skene_foundation::Platform> skene_foundation::Flexible<P>
+pub fn skene_foundation::Flexible<P>::derive_alignment<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::ItemAlignment>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Flexible<P>::derive_flexibility<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Flexibility<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::Flexible<P>::derive_item_alignment<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::ItemAlignment>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Flexible<P>::set_alignment(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::ItemAlignment, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Flexible<P>::set_child(self, impl skene_foundation::View<P>) -> skene_foundation::Flexible<P, skene_foundation::AnyView<P>>
 pub fn skene_foundation::Flexible<P>::set_flexibility(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Flexibility<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
-pub fn skene_foundation::Flexible<P>::set_item_alignment(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::ItemAlignment, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 impl<P: skene_foundation::Platform> skene_foundation::Flexible<P>
 pub fn skene_foundation::Flexible<P>::new() -> Self
 impl<P: skene_foundation::Platform, C> core::fmt::Debug for skene_foundation::Flexible<P, C>
@@ -6239,10 +6239,10 @@ impl<P: skene_foundation::Platform> skene_foundation::HasLayoutBox<P> for skene_
 pub type skene_foundation::Stack<P>::Kind = skene_foundation::StackChild
 pub fn skene_foundation::Stack<P>::map_layout_box(self, impl core::ops::function::FnOnce(skene_foundation::LayoutBox<P, skene_foundation::StackChild>) -> skene_foundation::LayoutBox<P, skene_foundation::StackChild>) -> Self
 impl<P: skene_foundation::Platform> skene_foundation::StackBase<P> for skene_foundation::Stack<P>
-pub fn skene_foundation::Stack<P>::derive_alignment<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Alignment>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Stack<P>::derive_item_alignment<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Alignment>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Stack<P>::derive_padding<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Stack<P>::new() -> Self where Self: skene_foundation::Wraps<Inner = skene_foundation::Stack<P>>
-pub fn skene_foundation::Stack<P>::set_alignment(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Alignment, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::Stack<P>::set_item_alignment(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Alignment, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Stack<P>::set_padding(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 impl<P: skene_foundation::Platform> skene_foundation::View<P> for skene_foundation::Stack<P>
 pub fn skene_foundation::Stack<P>::build(self) -> skene_foundation::NodeId
@@ -7776,11 +7776,11 @@ pub fn skene_foundation::Row<P>::set_padding(self, impl core::convert::Into<sken
 pub fn skene_foundation::Row<P>::set_spacing(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Spacing<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Row<P>::set_wrap(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Wrap, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub trait skene_foundation::FlexibleBase<P: skene_foundation::Platform>: skene_foundation::Wraps<Inner = skene_foundation::Flexible<P>>
+pub fn skene_foundation::FlexibleBase::derive_alignment<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::ItemAlignment>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::FlexibleBase::derive_flexibility<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Flexibility<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::FlexibleBase::derive_item_alignment<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::ItemAlignment>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::FlexibleBase::new() -> Self
+pub fn skene_foundation::FlexibleBase::set_alignment(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::ItemAlignment, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::FlexibleBase::set_flexibility(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Flexibility<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
-pub fn skene_foundation::FlexibleBase::set_item_alignment(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::ItemAlignment, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub trait skene_foundation::GridBase<P: skene_foundation::Platform>: skene_foundation::HasBoxStyle<P> + core::marker::Sized
 pub fn skene_foundation::GridBase::adaptive(<P as skene_foundation::Platform>::Scalar) -> Self where Self: skene_foundation::Wraps<Inner = skene_foundation::Grid<P>>
 pub fn skene_foundation::GridBase::derive_areas<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::GridAreas>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -8499,16 +8499,16 @@ pub fn skene_foundation::SpanBase::handle_click<R: core::convert::Into<skene_fou
 pub fn skene_foundation::SpanBase::new(impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_foundation::SpanBase::view(impl skene_foundation::View<P>) -> Self
 pub trait skene_foundation::StackBase<P: skene_foundation::Platform>: skene_foundation::HasBoxStyle<P> + skene_foundation::HasLayoutBox<P, Kind = skene_foundation::StackChild>
-pub fn skene_foundation::StackBase::derive_alignment<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Alignment>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::StackBase::derive_item_alignment<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Alignment>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::StackBase::derive_padding<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::StackBase::new() -> Self where Self: skene_foundation::Wraps<Inner = skene_foundation::Stack<P>>
-pub fn skene_foundation::StackBase::set_alignment(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Alignment, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::StackBase::set_item_alignment(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Alignment, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::StackBase::set_padding(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 impl<P: skene_foundation::Platform> skene_foundation::StackBase<P> for skene_foundation::Stack<P>
-pub fn skene_foundation::Stack<P>::derive_alignment<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Alignment>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Stack<P>::derive_item_alignment<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Alignment>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Stack<P>::derive_padding<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Stack<P>::new() -> Self where Self: skene_foundation::Wraps<Inner = skene_foundation::Stack<P>>
-pub fn skene_foundation::Stack<P>::set_alignment(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Alignment, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::Stack<P>::set_item_alignment(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Alignment, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Stack<P>::set_padding(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub trait skene_foundation::StyleExtension: core::marker::Copy + core::default::Default + core::cmp::PartialEq + core::fmt::Debug + 'static
 pub type skene_foundation::StyleExtension::BoxFields<S: skene_foundation::Shape>: core::default::Default + core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug

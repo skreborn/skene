@@ -247,7 +247,7 @@ where
           .set_height(Dimension::Length(shape.thumb_size))
           .set_child(
             Stack::new()
-              .set_alignment(Alignment::new(ItemAlignment::Start, ItemAlignment::Center))
+              .set_item_alignment(Alignment::new(ItemAlignment::Start, ItemAlignment::Center))
               .set_children((track, filled_lane, rail_lane)),
           ),
       )

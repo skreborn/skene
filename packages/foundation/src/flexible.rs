@@ -84,7 +84,7 @@ impl<P: Platform> Flexible<P> {
   }
 
   /// Sets the child's own cross-axis alignment, overriding the container's.
-  pub fn set_item_alignment(
+  pub fn set_alignment(
     mut self,
     alignment: impl Into<Value<ItemAlignment, Condition<P::Scalar>>>,
   ) -> Self {
@@ -95,7 +95,7 @@ impl<P: Platform> Flexible<P> {
 
   /// Derives the child's own cross-axis alignment from the signals `alignment` reads:
   /// a value, a token or an expression.
-  pub fn derive_item_alignment<R: Into<StaticLeaf<ItemAlignment>>>(
+  pub fn derive_alignment<R: Into<StaticLeaf<ItemAlignment>>>(
     mut self,
     alignment: impl Fn() -> R + 'static,
   ) -> Self {
@@ -158,20 +158,17 @@ pub trait FlexibleBase<P: Platform>: Wraps<Inner = Flexible<P>> {
 
   /// Sets the child's own cross-axis alignment, overriding the container's.
   #[must_use]
-  fn set_item_alignment(
-    self,
-    alignment: impl Into<Value<ItemAlignment, Condition<P::Scalar>>>,
-  ) -> Self {
-    Self::wrap(self.into_inner().set_item_alignment(alignment))
+  fn set_alignment(self, alignment: impl Into<Value<ItemAlignment, Condition<P::Scalar>>>) -> Self {
+    Self::wrap(self.into_inner().set_alignment(alignment))
   }
 
   /// Derives the child's own cross-axis alignment from the signals `alignment` reads:
   /// a value, a token or an expression.
   #[must_use]
-  fn derive_item_alignment<R: Into<StaticLeaf<ItemAlignment>>>(
+  fn derive_alignment<R: Into<StaticLeaf<ItemAlignment>>>(
     self,
     alignment: impl Fn() -> R + 'static,
   ) -> Self {
-    Self::wrap(self.into_inner().derive_item_alignment(alignment))
+    Self::wrap(self.into_inner().derive_alignment(alignment))
   }
 }

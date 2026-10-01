@@ -208,7 +208,7 @@ fn stack_derived_alignment_drives_both_axes() {
   let alignment = Signal::transient(Alignment::CENTER);
   let stack = owner.enter(|| {
     Stack::new()
-      .derive_alignment(move || alignment.get())
+      .derive_item_alignment(move || alignment.get())
       .build()
   });
   let props = box_props(stack).unwrap();

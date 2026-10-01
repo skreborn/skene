@@ -112,13 +112,16 @@ pub trait StackBase<P: Platform>: HasBoxStyle<P> + HasLayoutBox<P, Kind = StackC
 
   /// Sets the alignment of the unpinned children within the stack, on both axes.
   #[must_use]
-  fn set_alignment(self, alignment: impl Into<Value<Alignment, Condition<P::Scalar>>>) -> Self {
+  fn set_item_alignment(
+    self,
+    alignment: impl Into<Value<Alignment, Condition<P::Scalar>>>,
+  ) -> Self {
     self.map_layout_box(|layout| layout.set_alignment(alignment))
   }
 
   /// Derives the alignment of the unpinned children from the signals `alignment` reads.
   #[must_use]
-  fn derive_alignment<R: Into<StaticLeaf<Alignment>>>(
+  fn derive_item_alignment<R: Into<StaticLeaf<Alignment>>>(
     self,
     alignment: impl Fn() -> R + 'static,
   ) -> Self {

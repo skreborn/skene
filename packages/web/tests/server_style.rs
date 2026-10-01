@@ -345,7 +345,7 @@ fn flex_properties_render() {
       .set_wrap(Wrap::Forward)
       .set_children((Flexible::new()
         .set_flexibility(Flexibility::new(Dimension::Length(120.), 2., 0.))
-        .set_item_alignment(ItemAlignment::Center)
+        .set_alignment(ItemAlignment::Center)
         .set_child(
           Container::new()
             .set_width(Dimension::Fraction(0.5))

@@ -3,11 +3,12 @@
 //!
 //! The only place the web platform spells CSS for the new model. A property compiles to
 //! one declaration (a shorthand where the property has components, so a single custom
-//! property can carry a derived value); a fixed leaf renders as its literal, a token as
-//! `var(--<name>)`, an expression as CSS math, and a derived slot as
-//! `var(--skene-<property>)` for the base and `var(--skene-<property>-<i>)` for the
-//! `i`-th variant. Variants group by their canonical condition into one rule per
-//! conjunction, kept in each property's declaration order.
+//! property can carry a derived value), except an inset, which compiles to its block and
+//! inline halves; a fixed leaf renders as its literal, a token as `var(--<name>)`, an
+//! expression as CSS math, and a derived slot as `var(--skene-<property>)` for the base
+//! and `var(--skene-<property>-<i>)` for the `i`-th variant, an inset's halves suffixed
+//! `-block` and `-inline` before the variant's index. Variants group by their canonical condition
+//! into one rule per conjunction, kept in each property's declaration order.
 
 use std::{
   fmt::Write as _,
@@ -98,37 +99,84 @@ pub(crate) struct SlotBinding {
 }
 
 impl SlotBinding {
-  /// The custom property the slot is written to.
+  /// The custom properties the slot is written to, one per property its target declares.
   #[must_use]
-  pub(crate) fn custom_property(&self) -> String {
-    slot_property(self.property, self.position)
+  pub(crate) fn custom_properties(&self) -> Vec<String> {
+    slot_properties(self.property, self.position)
   }
 }
 
-/// The custom property standing for the leaf at `position` of `key`.
-fn slot_property(key: Key, position: usize) -> String {
+/// The custom properties standing for the leaf at `position` of `key`, one per property
+/// its target declares.
+fn slot_properties(key: Key, position: usize) -> Vec<String> {
   let name = key.name().replace('_', "-");
+  let index = match position {
+    0 => String::new(),
+    position => format!("-{position}"),
+  };
 
-  if position == 0 {
-    format!("--skene-{name}")
-  }
-  else {
-    format!("--skene-{name}-{position}")
+  match target(key).halves {
+    Some(_) => vec![
+      format!("--skene-{name}-block{index}"),
+      format!("--skene-{name}-inline{index}"),
+    ],
+    None => vec![format!("--skene-{name}{index}")],
   }
 }
 
 /// The CSS a property compiles to.
 pub(crate) struct Target {
+  /// The property a transition names, and the one declared unless the target has halves.
   pub(crate) name: &'static str,
+  /// The block and inline halves declared in place of `name`, for an inset.
+  halves: Option<[&'static str; 2]>,
+  /// The pseudo-element the declarations style; empty for the element itself.
   pseudo: &'static str,
+  /// The positioning declared beside the property, where it needs one.
   position: Option<&'static str>,
+}
+
+impl Target {
+  /// The properties the target declares: its halves where it has them, else its name.
+  const fn declared(&self) -> &[&'static str] {
+    match &self.halves {
+      Some(halves) => halves,
+      None => std::slice::from_ref(&self.name),
+    }
+  }
+
+  /// `declarations` with each property the target declares set to its text in `texts`,
+  /// the shorthand its halves stand in for removed.
+  fn declare(&self, declarations: Declarations, texts: &[String]) -> Declarations {
+    let declarations = match self.halves {
+      Some(_) => declarations.remove(self.name),
+      None => declarations,
+    };
+
+    self
+      .declared()
+      .iter()
+      .zip(texts)
+      .fold(declarations, |declarations, (name, text)| {
+        declarations.set(name, text.clone())
+      })
+  }
 }
 
 const fn plain(name: &'static str) -> Target {
   Target {
     name,
+    halves: None,
     pseudo: "",
     position: None,
+  }
+}
+
+/// A target declaring an inset as its block half and its inline half.
+const fn halved(name: &'static str, block: &'static str, inline: &'static str) -> Target {
+  Target {
+    halves: Some([block, inline]),
+    ..plain(name)
   }
 }
 
@@ -143,18 +191,18 @@ pub(crate) const fn target(key: Key) -> Target {
       Property::MaxWidth => plain("max-width"),
       Property::MaxHeight => plain("max-height"),
       Property::AspectRatio => plain("aspect-ratio"),
-      Property::Margin => plain("margin"),
-      Property::Padding => plain("padding"),
+      Property::Margin => halved("margin", "margin-block", "margin-inline"),
+      Property::Padding => halved("padding", "padding-block", "padding-inline"),
       Property::Offset => Target {
         position: Some("relative"),
-        ..plain("inset")
+        ..halved("inset", "inset-block", "inset-inline")
       },
       Property::Pinned => Target {
         position: Some("absolute"),
-        ..plain("inset")
+        ..halved("inset", "inset-block", "inset-inline")
       },
       Property::Background => plain("background-color"),
-      Property::BorderWidth => plain("border-width"),
+      Property::BorderWidth => halved("border-width", "border-block-width", "border-inline-width"),
       Property::BorderColor => plain("border-color"),
       Property::Cursor => plain("cursor"),
       Property::Spacing => plain("gap"),
@@ -204,18 +252,21 @@ fn token_reference(name: TokenName) -> String {
   format!("var(--{name})")
 }
 
-/// The CSS text of a box property's erased value.
-pub(crate) fn render_box_value(value: &BoxValue<f32, WebStyle>) -> String {
-  match value {
+/// The CSS texts of a box property's erased value, one per property its target
+/// declares: an inset's block and inline halves, any other value whole.
+pub(crate) fn render_box_value(value: &BoxValue<f32, WebStyle>) -> Vec<String> {
+  let whole = match value {
+    BoxValue::DimensionInset(inset) => return Declarations::render_dimension_inset(*inset).into(),
+    BoxValue::Inset(inset) => {
+      return vec![
+        format!("{}px {}px", inset.top, inset.bottom),
+        format!("{}px {}px", inset.start, inset.end),
+      ];
+    }
     BoxValue::Dimension(dimension) => Declarations::render_dimension(*dimension),
     BoxValue::Length(length) => format!("{}px", length.0),
     BoxValue::Number(value) | BoxValue::Extension(value) => value.to_string(),
     BoxValue::AspectRatio(ratio) => ratio.0.to_string(),
-    BoxValue::DimensionInset(inset) => Declarations::render_dimension_inset(*inset),
-    BoxValue::Inset(inset) => format!(
-      "{}px {}px {}px {}px",
-      inset.top, inset.right, inset.bottom, inset.left
-    ),
     BoxValue::Color(color) => Declarations::render_color(*color),
     BoxValue::Cursor(cursor) => Declarations::render_cursor(*cursor).to_owned(),
     BoxValue::Spacing(spacing) => format!("{}px {}px", spacing.vertical, spacing.horizontal),
@@ -266,7 +317,9 @@ pub(crate) fn render_box_value(value: &BoxValue<f32, WebStyle>) -> String {
       }
     }
     BoxValue::Hidden(hidden) => if *hidden { "hidden" } else { "inherit" }.to_owned(),
-  }
+  };
+
+  vec![whole]
 }
 
 /// The CSS text of a run property's erased value.
@@ -293,38 +346,46 @@ pub(crate) fn render_run_value(value: &RunValue<WebStyle>) -> String {
   }
 }
 
-/// The CSS text a derived box leaf writes into its slot: a value rendered, a token or
-/// an expression referenced.
-pub(crate) fn render_box_leaf(leaf: &StaticLeaf<BoxValue<f32, WebStyle>>) -> String {
-  static_leaf_text(leaf, |value| render_box_value(&value))
+/// The CSS texts a derived box leaf writes into the `count` custom properties of its
+/// slot: a value rendered, a token or an expression referenced in each.
+pub(crate) fn render_box_leaf(
+  leaf: &StaticLeaf<BoxValue<f32, WebStyle>>,
+  count: usize,
+) -> Vec<String> {
+  static_leaf_texts(leaf, count, |value| render_box_value(&value))
 }
 
-/// The CSS text a derived run leaf writes into its slot: a value rendered, a token or
-/// an expression referenced.
-pub(crate) fn render_run_leaf(leaf: &StaticLeaf<RunValue<WebStyle>>) -> String {
-  static_leaf_text(leaf, |value| render_run_value(&value))
+/// The CSS texts a derived run leaf writes into the `count` custom properties of its
+/// slot: a value rendered, a token or an expression referenced in each.
+pub(crate) fn render_run_leaf(leaf: &StaticLeaf<RunValue<WebStyle>>, count: usize) -> Vec<String> {
+  static_leaf_texts(leaf, count, |value| vec![render_run_value(&value)])
 }
 
-/// The text of a static leaf: a fixed value through `fixed`, a token or an expression
-/// referenced.
-fn static_leaf_text<T: Clone>(leaf: &StaticLeaf<T>, fixed: impl FnOnce(T) -> String) -> String {
+/// The texts of a static leaf for `count` declarations: a fixed value through `fixed`,
+/// a token or an expression referenced in each.
+fn static_leaf_texts<T: Clone>(
+  leaf: &StaticLeaf<T>,
+  count: usize,
+  fixed: impl FnOnce(T) -> Vec<String>,
+) -> Vec<String> {
   match leaf {
     StaticLeaf::Fixed(value) => fixed(value.clone()),
-    StaticLeaf::Token(name) => token_reference(*name),
-    StaticLeaf::Expr(expr) => render_expr(expr.node()),
+    StaticLeaf::Token(name) => vec![token_reference(*name); count],
+    StaticLeaf::Expr(expr) => vec![render_expr(expr.node()); count],
   }
 }
 
-/// The text of a platform leaf of `key` at `position`, recording a slot it references.
-fn leaf_text<T: Clone>(
+/// The texts of a platform leaf of `key` at `position`, one per property its target
+/// declares, recording a slot it references.
+fn leaf_texts<T: Clone>(
   key: Key,
   position: usize,
   leaf: &PlatformLeaf<T>,
   slots: &mut Vec<SlotBinding>,
-  fixed: impl FnOnce(T) -> String,
-) -> String {
+  fixed: impl FnOnce(T) -> Vec<String>,
+) -> Vec<String> {
   match leaf {
-    PlatformLeaf::Static(leaf) => static_leaf_text(leaf, fixed),
+    PlatformLeaf::Static(leaf) => static_leaf_texts(leaf, target(key).declared().len(), fixed),
     PlatformLeaf::Slot(slot) => {
       slots.push(SlotBinding {
         slot: *slot,
@@ -332,7 +393,10 @@ fn leaf_text<T: Clone>(
         position,
       });
 
-      format!("var({})", slot_property(key, position))
+      slot_properties(key, position)
+        .into_iter()
+        .map(|property| format!("var({property})"))
+        .collect()
     }
   }
 }
@@ -392,16 +456,14 @@ impl Rules {
     &mut self,
     key: Key,
     value: &Conditional<PlatformLeaf<T>, Condition<f32>>,
-    fixed: &impl Fn(T) -> String,
+    fixed: &impl Fn(T) -> Vec<String>,
   ) {
+    let target = target(key);
     let Target {
-      name,
-      pseudo,
-      position,
-      ..
-    } = target(key);
-    let text = leaf_text(key, 0, value.base(), &mut self.slots, fixed);
-    let base = std::mem::take(self.base_of(pseudo)).set(name, text);
+      pseudo, position, ..
+    } = target;
+    let texts = leaf_texts(key, 0, value.base(), &mut self.slots, fixed);
+    let base = target.declare(std::mem::take(self.base_of(pseudo)), &texts);
     let base = match position {
       Some(position) => base.set("position", position),
       None => base,
@@ -412,7 +474,7 @@ impl Rules {
     let mut last = None;
 
     for (index, (condition, leaf)) in value.variants().iter().enumerate() {
-      let text = leaf_text(key, index + 1, leaf, &mut self.slots, fixed);
+      let texts = leaf_texts(key, index + 1, leaf, &mut self.slots, fixed);
 
       for conjunction in Conjunction::of_condition(condition) {
         let lookup = (conjunction, pseudo);
@@ -432,8 +494,10 @@ impl Rules {
             group
           }
         };
-        let declarations =
-          std::mem::take(&mut self.variants[group].declarations).set(name, text.clone());
+        let declarations = target.declare(
+          std::mem::take(&mut self.variants[group].declarations),
+          &texts,
+        );
 
         self.variants[group].declarations = match position {
           Some(position) => declarations.set("position", position),
@@ -494,7 +558,7 @@ impl RunVisitor<Static<Condition<f32>>, WebStyle> for RunRules<'_> {
   ) {
     if let Some(value) = value {
       self.0.property(key, value, &|fixed: T| {
-        render_run_value(&fixed.into_run_value())
+        vec![render_run_value(&fixed.into_run_value())]
       });
     }
   }
@@ -506,11 +570,13 @@ struct KeyframeBox(Declarations);
 impl BoxVisitor<f32, Keyframe, WebStyle> for KeyframeBox {
   fn value<T: IntoBoxValue<f32, WebStyle>>(&mut self, key: Key, value: &Option<StaticLeaf<T>>) {
     if let Some(leaf) = value {
-      let Target { name, position, .. } = target(key);
-      let text = static_leaf_text(leaf, |fixed: T| render_box_value(&fixed.into_box_value()));
-      let declarations = std::mem::take(&mut self.0).set(name, text);
+      let target = target(key);
+      let texts = static_leaf_texts(leaf, target.declared().len(), |fixed: T| {
+        render_box_value(&fixed.into_box_value())
+      });
+      let declarations = target.declare(std::mem::take(&mut self.0), &texts);
 
-      self.0 = match position {
+      self.0 = match target.position {
         Some(position) => declarations.set("position", position),
         None => declarations,
       };
@@ -524,9 +590,12 @@ struct KeyframeRun(Declarations);
 impl RunVisitor<Keyframe, WebStyle> for KeyframeRun {
   fn value<T: IntoRunValue<WebStyle>>(&mut self, key: Key, value: &Option<StaticLeaf<T>>) {
     if let Some(leaf) = value {
-      let text = static_leaf_text(leaf, |fixed: T| render_run_value(&fixed.into_run_value()));
+      let target = target(key);
+      let texts = static_leaf_texts(leaf, target.declared().len(), |fixed: T| {
+        vec![render_run_value(&fixed.into_run_value())]
+      });
 
-      self.0 = std::mem::take(&mut self.0).set(target(key).name, text);
+      self.0 = target.declare(std::mem::take(&mut self.0), &texts);
     }
   }
 }
@@ -991,13 +1060,17 @@ pub(crate) fn compile_root_definitions(definitions: &Definitions<WebTokenValue>)
   compile_definitions_on(":root", definitions)
 }
 
-/// The `@property` rule registering the slot of `key` at `position`: a slot is a per-node
-/// value the node's own class reads, so it does not inherit.
+/// The `@property` rules registering the slot of `key` at `position`, one per custom
+/// property it is written to: a slot is a per-node value the node's own class reads, so
+/// it does not inherit.
 pub(crate) fn slot_registration(key: Key, position: usize) -> String {
-  format!(
-    "@property {}{{syntax:\"*\";inherits:false}}",
-    slot_property(key, position)
-  )
+  slot_properties(key, position)
+    .into_iter()
+    .fold(String::new(), |mut out, property| {
+      let _ = write!(out, "@property {property}{{syntax:\"*\";inherits:false}}");
+
+      out
+    })
 }
 
 /// The `@property` registrations of every property's base slot, appended to the reset;

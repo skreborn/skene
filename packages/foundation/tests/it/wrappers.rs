@@ -35,9 +35,9 @@ fn pinned_annotates_the_content_of_a_derived_subtree() {
   let (version, set_version) = signal(0);
   let edges = Inset {
     top: Dimension::Length(4.),
-    right: Dimension::Auto,
+    end: Dimension::Auto,
     bottom: Dimension::Auto,
-    left: Dimension::Length(8.),
+    start: Dimension::Length(8.),
   };
   let root = owner.enter(|| {
     Stack::new()

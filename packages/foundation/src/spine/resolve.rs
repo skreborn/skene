@@ -473,9 +473,9 @@ impl<N: Scalar, X: StyleExtension> Resolver<'_, N, X> {
       font_size: self.font_size,
       safe_area: Inset {
         top: self.environment.safe_area.top.to_f32(),
-        right: self.environment.safe_area.right.to_f32(),
+        end: self.environment.safe_area.end.to_f32(),
         bottom: self.environment.safe_area.bottom.to_f32(),
-        left: self.environment.safe_area.left.to_f32(),
+        start: self.environment.safe_area.start.to_f32(),
       },
     };
 

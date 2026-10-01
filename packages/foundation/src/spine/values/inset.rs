@@ -1,40 +1,41 @@
 use crate::spine::Scalar;
 
-/// Spacing on the four edges of a box.
+/// Spacing on the four edges of a box, its horizontal edges logical: the start is the
+/// edge text begins at, the left in left-to-right text, and the end the edge it ends at.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 #[must_use]
 pub struct Inset<T> {
+  /// Offset from the start edge.
+  pub start: T,
   /// Offset from the top edge.
   pub top: T,
-  /// Offset from the right edge.
-  pub right: T,
+  /// Offset from the end edge.
+  pub end: T,
   /// Offset from the bottom edge.
   pub bottom: T,
-  /// Offset from the left edge.
-  pub left: T,
 }
 
-/// One edge of a box.
+/// One edge of a box, its horizontal edges logical.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[must_use]
 pub enum Edge {
+  /// The edge text begins at: the left in left-to-right text.
+  Start,
   /// The top edge.
   Top,
-  /// The right edge.
-  Right,
+  /// The edge text ends at: the right in left-to-right text.
+  End,
   /// The bottom edge.
   Bottom,
-  /// The left edge.
-  Left,
 }
 
 impl<T: Scalar> Inset<T> {
   /// Zero inset on all sides.
   pub const ZERO: Self = Self {
+    start: T::ZERO,
     top: T::ZERO,
-    right: T::ZERO,
+    end: T::ZERO,
     bottom: T::ZERO,
-    left: T::ZERO,
   };
 }
 
@@ -43,10 +44,10 @@ impl<T: Copy> Inset<T> {
   #[inline(always)]
   pub const fn edge(&self, edge: Edge) -> T {
     match edge {
+      Edge::Start => self.start,
       Edge::Top => self.top,
-      Edge::Right => self.right,
+      Edge::End => self.end,
       Edge::Bottom => self.bottom,
-      Edge::Left => self.left,
     }
   }
 
@@ -54,10 +55,10 @@ impl<T: Copy> Inset<T> {
   #[inline(always)]
   pub const fn all(value: T) -> Self {
     Self {
+      start: value,
       top: value,
-      right: value,
+      end: value,
       bottom: value,
-      left: value,
     }
   }
 
@@ -65,10 +66,10 @@ impl<T: Copy> Inset<T> {
   #[inline(always)]
   pub const fn symmetric(horizontal: T, vertical: T) -> Self {
     Self {
+      start: horizontal,
       top: vertical,
-      right: horizontal,
+      end: horizontal,
       bottom: vertical,
-      left: horizontal,
     }
   }
 }

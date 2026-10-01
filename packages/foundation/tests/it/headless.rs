@@ -920,9 +920,9 @@ fn a_length_reads_the_safe_area() {
 
   trigger_safe_area(Inset {
     top: 44.,
-    right: 0.,
+    end: 0.,
     bottom: 34.,
-    left: 0.,
+    start: 0.,
   });
 
   assert_eq!(resolve_length(node, PADDING), Some(48.));

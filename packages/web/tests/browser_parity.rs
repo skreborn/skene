@@ -274,6 +274,7 @@ enum Case {
   ReversedTransition,
   HiddenTransition,
   RatioTransition,
+  PaddingTransition,
   AxisOverflow,
   VisibleBesideScroll,
 }
@@ -324,6 +325,7 @@ const CASES: &[Case] = &[
   Case::ReversedTransition,
   Case::HiddenTransition,
   Case::RatioTransition,
+  Case::PaddingTransition,
   Case::AxisOverflow,
   Case::VisibleBesideScroll,
 ];
@@ -368,9 +370,10 @@ impl Case {
       Self::FixedPadding
       | Self::LengthTokenPadding
       | Self::ConditionalPadding
-      | Self::SafeAreaPadding => Read::Padding,
+      | Self::SafeAreaPadding
+      | Self::PaddingTransition => Read::Padding,
       Self::FixedBorder => Read::Border(Edge::Top),
-      Self::EdgeBorder => Read::Border(Edge::Left),
+      Self::EdgeBorder => Read::Border(Edge::Start),
       Self::FixedInk | Self::TokenInk => Read::Ink,
       Self::HiddenTransition => Read::Hidden,
       Self::RatioTransition => Read::AspectRatio,
@@ -485,9 +488,9 @@ impl Case {
       Self::EdgeBorder => container
         .set_border_width(Inset {
           top: 1.,
-          right: 2.,
+          end: 2.,
           bottom: 3.,
-          left: 4.,
+          start: 4.,
         })
         .set_border_color(ParityPalette::SURFACE),
       Self::FixedInk => container.set_child(Text::new("ink").set_color(orange())),
@@ -498,7 +501,8 @@ impl Case {
       Self::NeutralKeyframe
       | Self::ReversedTransition
       | Self::HiddenTransition
-      | Self::RatioTransition => self.moving(container),
+      | Self::RatioTransition
+      | Self::PaddingTransition => self.moving(container),
       Self::TokenInk => container.set_child(Text::new("ink").set_color(ParityPalette::SURFACE)),
       Self::LexicalToken
       | Self::LexicalEm
@@ -554,6 +558,15 @@ impl Case {
           .derive_aspect_ratio(move || AspectRatio(1. + 3. * moving.get()))
           .set_transition(Transition::new(Property::AspectRatio, 1.).set_easing(Easing::Linear))
       }
+      Self::PaddingTransition => {
+        let moving = Signal::new(0f32);
+
+        MOVING.set(Some(moving));
+
+        container
+          .derive_padding(move || Inset::all(moving.get()))
+          .set_transition(Transition::new(Property::Padding, 1.).set_easing(Easing::Linear))
+      }
       _ => container,
     }
   }
@@ -580,6 +593,7 @@ impl Case {
       Self::ReversedTransition => &[(Some(100.), 250), (Some(0.), 125)],
       Self::HiddenTransition => &[(Some(1.), 250)],
       Self::RatioTransition => &[(Some(1.), 500)],
+      Self::PaddingTransition => &[(Some(20.), 250)],
       _ => &[],
     }
   }
@@ -845,9 +859,9 @@ fn rendered(case: Case) -> Reading {
     Read::Border(edge) => {
       let side = match edge {
         Edge::Top => "top",
-        Edge::Right => "right",
+        Edge::End => "right",
         Edge::Bottom => "bottom",
-        Edge::Left => "left",
+        Edge::Start => "left",
       };
 
       match computed_color(&element, &format!("border-{side}-color")) {

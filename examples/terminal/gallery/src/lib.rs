@@ -315,9 +315,9 @@ fn layouts() -> impl View {
             Pinned::new()
               .set_edges(Inset {
                 top: Dimension::Auto,
-                right: Dimension::Length(1),
+                end: Dimension::Length(1),
                 bottom: Dimension::Length(1),
-                left: Dimension::Auto,
+                start: Dimension::Auto,
               })
               .set_child(
                 Container::new()

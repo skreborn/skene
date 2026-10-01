@@ -202,9 +202,9 @@ where
         .set_height(Dimension::Length(shape.thumb_size))
         .set_padding(Inset {
           top: P::Scalar::default(),
-          right: shape.thumb_size,
+          end: shape.thumb_size,
           bottom: P::Scalar::default(),
-          left: P::Scalar::default(),
+          start: P::Scalar::default(),
         })
         .set_alignment(Alignment::new(ItemAlignment::Start, ItemAlignment::Center))
     };
@@ -219,9 +219,9 @@ where
           Pinned::new()
             .derive_edges(move || Inset {
               top: Dimension::Length(P::Scalar::default()),
-              right: Dimension::Auto,
+              end: Dimension::Auto,
               bottom: Dimension::Auto,
-              left: Dimension::Fraction(range.fraction_of(placed())),
+              start: Dimension::Fraction(range.fraction_of(placed())),
             })
             .set_child(thumb),
         ),

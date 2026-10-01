@@ -1414,7 +1414,7 @@ fn node_paint(records: &Records, handle: Handle, width: usize, focused: bool) ->
       let padding = style.and_then(|style| style.padding).unwrap_or_default();
       let border_cells = usize::from(border.is_some());
       let inset = (
-        isize::try_from(border_cells).unwrap_or(0) + isize::try_from(padding.left).unwrap_or(0),
+        isize::try_from(border_cells).unwrap_or(0) + isize::try_from(padding.start).unwrap_or(0),
         isize::try_from(border_cells).unwrap_or(0) + isize::try_from(padding.top).unwrap_or(0),
       );
       let area = records.field_area(handle);
@@ -2381,28 +2381,28 @@ fn draw_border(
   for row in 0..height {
     let cy = y + isize::try_from(row).expect("fits");
 
-    if edges.left {
+    if edges.start {
       put(x, cy, glyphs.vertical);
     }
 
-    if edges.right {
+    if edges.end {
       put(right, cy, glyphs.vertical);
     }
   }
 
-  if edges.top && edges.left {
+  if edges.top && edges.start {
     put(x, y, glyphs.top_left);
   }
 
-  if edges.top && edges.right {
+  if edges.top && edges.end {
     put(right, y, glyphs.top_right);
   }
 
-  if edges.bottom && edges.left {
+  if edges.bottom && edges.start {
     put(x, bottom, glyphs.bottom_left);
   }
 
-  if edges.bottom && edges.right {
+  if edges.bottom && edges.end {
     put(right, bottom, glyphs.bottom_right);
   }
 }

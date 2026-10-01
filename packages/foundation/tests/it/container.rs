@@ -247,9 +247,9 @@ fn border_with_a_token_color_resolves_through_the_theme() {
         Container::new()
           .set_border_width(Inset {
             top: 1.,
-            right: 2.,
+            end: 2.,
             bottom: 3.,
-            left: 4.,
+            start: 4.,
           })
           .set_border_color(TestPalette::CARD)
           .set_transition(Transition::new(Property::Background, 0.2))
@@ -263,9 +263,9 @@ fn border_with_a_token_color_resolves_through_the_theme() {
     resolve_inset(card, PropertyKey::Shared(Property::BorderWidth)),
     Some(Inset {
       top: 1.,
-      right: 2.,
+      end: 2.,
       bottom: 3.,
-      left: 4.,
+      start: 4.,
     })
   );
   assert_eq!(

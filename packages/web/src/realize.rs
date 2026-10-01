@@ -516,7 +516,7 @@ impl<S: Sink> Realizer<S> {
     slot: Slot,
     leaf: &StaticLeaf<BoxValue<f32, WebStyle>>,
   ) {
-    self.write_slot(node, slot, || render_box_leaf(leaf));
+    self.write_slot(node, slot, |count| render_box_leaf(leaf, count));
   }
 
   /// Writes the run slot `slot` of `node` as the custom property its class reads.
@@ -526,7 +526,7 @@ impl<S: Sink> Realizer<S> {
     slot: Slot,
     leaf: &StaticLeaf<RunValue<WebStyle>>,
   ) {
-    self.write_slot(node, slot, || render_run_leaf(leaf));
+    self.write_slot(node, slot, |count| render_run_leaf(leaf, count));
   }
 
   /// Writes `focus_order` on the element carrying `node`'s focus.
@@ -857,18 +857,20 @@ impl<S: Sink> Realizer<S> {
     record.slots = Rc::from(compiled.slots.as_slice());
   }
 
-  /// Writes the leaf of `node`'s slot `slot`, rendered by `render`, as the custom
-  /// property its class reads.
-  fn write_slot(&mut self, node: NodeId, slot: Slot, render: impl FnOnce() -> String) {
+  /// Writes the leaf of `node`'s slot `slot`, rendered by `render` into as many texts as
+  /// it is given, as the custom properties its class reads.
+  fn write_slot(&mut self, node: NodeId, slot: Slot, render: impl FnOnce(usize) -> Vec<String>) {
     let Some(record) = self.records.get(node)
     else {
       return;
     };
 
     if let Some(binding) = record.slots.iter().find(|binding| binding.slot == slot) {
-      self
-        .sink
-        .set_property(&record.element, &binding.custom_property(), &render());
+      let properties = binding.custom_properties();
+
+      for (property, text) in properties.iter().zip(render(properties.len())) {
+        self.sink.set_property(&record.element, property, &text);
+      }
     }
   }
 

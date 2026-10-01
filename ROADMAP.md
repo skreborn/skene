@@ -185,11 +185,9 @@ left half-done in a code comment.
     views by hand.
     - Vocabulary: `LinkAnnotation`'s `NoFollow`, `Sponsored` and `Ugc` and the opener
     and referrer policy move to the web escape, set on the web facade's `Text` and
-    `Span` and written through `WebMarkup`; `Inset { start, top, end, bottom }` and
-    `Edge` take logical edges, the web compiling an inset to its block and inline
-    halves, before internationalization makes that breaking. `display` joins the lint's
-    banned words, which then read the names the `api/` snapshots list, re-exports
-    included, rather than the sources' own items.
+    `Span` and written through `WebMarkup`. `display` joins the lint's banned words,
+    which then read the names the `api/` snapshots list, re-exports included, rather
+    than the sources' own items.
     - Shapes: one setter per property for `Flexible` (`set_flexibility(impl
     Into<Value<Flexibility>>)`), the slider (`set_range`, `derive_range`) and
     `Animation` (iterations, alternation, reduced motion); appending setters named

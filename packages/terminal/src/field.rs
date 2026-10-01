@@ -547,7 +547,7 @@ impl Records {
 
     Area {
       columns: usize::try_from(
-        width - border.0 - border.2 - i64::from(padding.left) - i64::from(padding.right),
+        width - border.0 - border.2 - i64::from(padding.start) - i64::from(padding.end),
       )
       .unwrap_or(0),
       rows: usize::try_from(
@@ -577,7 +577,7 @@ impl Records {
       .unwrap_or_default();
 
     (
-      border.0 + i64::from(padding.left),
+      border.0 + i64::from(padding.start),
       border.1 + i64::from(padding.top),
     )
   }

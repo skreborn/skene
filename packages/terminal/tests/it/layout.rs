@@ -66,9 +66,9 @@ fn pinned_text_honors_its_edges() {
             Pinned::new()
               .set_edges(Inset {
                 top: Dimension::Auto,
-                right: Dimension::Length(0),
+                end: Dimension::Length(0),
                 bottom: Dimension::Length(0),
-                left: Dimension::Auto,
+                start: Dimension::Auto,
               })
               .set_child(Text::new("pin")),
           ),

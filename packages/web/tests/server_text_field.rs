@@ -118,7 +118,10 @@ fn input_styling_interns_with_variants() {
   let base = styles.find(&format!(".{class}{{")).expect("the base rule");
   let base = &styles[base..styles[base..].find('}').expect("rule end") + base];
 
-  assert!(base.contains("padding:8px 8px 8px 8px;"), "{styles}");
+  assert!(
+    base.contains("padding-block:8px 8px;padding-inline:8px 8px;"),
+    "{styles}"
+  );
   assert!(
     styles.contains(&format!(
       ".{class}:where(:is(:focus,:has(> input.skene-native:focus)))"

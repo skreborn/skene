@@ -1535,6 +1535,6 @@ fn uniform_spacing<T: Copy + PartialEq>(spacing: Spacing<T>) -> Option<T> {
 }
 
 fn uniform_inset<T: Copy + PartialEq>(inset: Inset<T>) -> Option<T> {
-  (inset.top == inset.right && inset.top == inset.bottom && inset.top == inset.left)
+  (inset.top == inset.end && inset.top == inset.bottom && inset.top == inset.start)
     .then_some(inset.top)
 }

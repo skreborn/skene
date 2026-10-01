@@ -332,7 +332,7 @@ fn a_slider_fill_follows_the_bound_value_and_its_thumb_rings_when_focused() {
   };
   let thumb_left = || match slot_leaf(thumb, Slot(0)) {
     Some(StaticLeaf::Fixed(SlotValue::Box(BoxValue::DimensionInset(Inset {
-      left: Dimension::Fraction(fraction),
+      start: Dimension::Fraction(fraction),
       ..
     })))) => fraction,
     other => panic!("the thumb's pinned edge is a derived fraction, not {other:?}"),

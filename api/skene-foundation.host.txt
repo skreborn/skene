@@ -2151,8 +2151,8 @@ impl skene_foundation::Fingerprint for skene_foundation::Easing
 pub fn skene_foundation::Easing::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 pub enum skene_foundation::Edge
 pub skene_foundation::Edge::Bottom
-pub skene_foundation::Edge::Left
-pub skene_foundation::Edge::Right
+pub skene_foundation::Edge::End
+pub skene_foundation::Edge::Start
 pub skene_foundation::Edge::Top
 impl core::clone::Clone for skene_foundation::Edge
 pub fn skene_foundation::Edge::clone(&self) -> skene_foundation::Edge
@@ -4620,8 +4620,8 @@ impl<T> core::default::Default for skene_foundation::GridTemplate<T>
 pub fn skene_foundation::GridTemplate<T>::default() -> Self
 pub struct skene_foundation::Inset<T>
 pub skene_foundation::Inset::bottom: T
-pub skene_foundation::Inset::left: T
-pub skene_foundation::Inset::right: T
+pub skene_foundation::Inset::end: T
+pub skene_foundation::Inset::start: T
 pub skene_foundation::Inset::top: T
 impl<T: core::marker::Copy> skene_foundation::Inset<T>
 pub const fn skene_foundation::Inset<T>::all(T) -> Self

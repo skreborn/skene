@@ -64,6 +64,18 @@ impl Declarations {
     self
   }
 
+  /// Removes the declaration of `property`, if there is one.
+  pub fn remove(mut self, property: &'static str) -> Self {
+    if let Ok(index) = self
+      .0
+      .binary_search_by_key(&property, |(existing, _)| *existing)
+    {
+      self.0.remove(index);
+    }
+
+    self
+  }
+
   /// Returns whether no declarations are set.
   #[inline(always)]
   #[must_use]
@@ -159,16 +171,22 @@ impl Declarations {
     }
   }
 
-  /// Renders a dimension inset to its four-value CSS shorthand (`t r b l`).
+  /// Renders a dimension inset to its block and inline halves (`top bottom`, `start
+  /// end`).
   #[must_use]
-  pub fn render_dimension_inset(inset: Inset<Dimension<f32>>) -> String {
-    format!(
-      "{} {} {} {}",
-      Self::render_dimension(inset.top),
-      Self::render_dimension(inset.right),
-      Self::render_dimension(inset.bottom),
-      Self::render_dimension(inset.left),
-    )
+  pub fn render_dimension_inset(inset: Inset<Dimension<f32>>) -> [String; 2] {
+    [
+      format!(
+        "{} {}",
+        Self::render_dimension(inset.top),
+        Self::render_dimension(inset.bottom)
+      ),
+      format!(
+        "{} {}",
+        Self::render_dimension(inset.start),
+        Self::render_dimension(inset.end)
+      ),
+    ]
   }
 
   /// Renders one [`TrackLimit`] of a `minmax()` track.

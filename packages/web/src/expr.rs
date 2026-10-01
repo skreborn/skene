@@ -38,9 +38,9 @@ fn operand(node: &ExprNode) -> String {
       "env(safe-area-inset-{}, 0px)",
       match edge {
         Edge::Top => "top",
-        Edge::Right => "right",
+        Edge::End => "right",
         Edge::Bottom => "bottom",
-        Edge::Left => "left",
+        Edge::Start => "left",
       }
     ),
     ExprNode::Token(name) => format!("var(--{name})"),

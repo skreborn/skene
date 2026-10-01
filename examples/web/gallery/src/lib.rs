@@ -306,9 +306,9 @@ fn layouts() -> impl View {
             Pinned::new()
               .set_edges(Inset {
                 top: Dimension::Auto,
-                right: Dimension::Length(8.),
+                end: Dimension::Length(8.),
                 bottom: Dimension::Length(8.),
-                left: Dimension::Auto,
+                start: Dimension::Auto,
               })
               .set_child(badge("pinned")),
           ),

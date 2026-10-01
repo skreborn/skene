@@ -105,9 +105,9 @@ fn safe_area() -> Inset<f32> {
 
   Inset {
     top: edge("padding-top"),
-    right: edge("padding-right"),
+    end: edge("padding-right"),
     bottom: edge("padding-bottom"),
-    left: edge("padding-left"),
+    start: edge("padding-left"),
   }
 }
 

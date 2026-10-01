@@ -160,9 +160,9 @@ impl<T: Interpolate> Interpolate for Inset<T> {
   fn interpolate(&self, to: &Self, amount: f32) -> Option<Self> {
     Some(Self {
       top: self.top.interpolate(&to.top, amount)?,
-      right: self.right.interpolate(&to.right, amount)?,
+      end: self.end.interpolate(&to.end, amount)?,
       bottom: self.bottom.interpolate(&to.bottom, amount)?,
-      left: self.left.interpolate(&to.left, amount)?,
+      start: self.start.interpolate(&to.start, amount)?,
     })
   }
 }

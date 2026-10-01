@@ -439,9 +439,9 @@ fn render_backdrop(key: &BackdropKey) -> Vec<u8> {
     else {
       for (drawn, x0, y0, x1, y1) in [
         (edges.top, 0., 0., width, line),
-        (edges.right, width - line, 0., width, height),
+        (edges.end, width - line, 0., width, height),
         (edges.bottom, 0., height - line, width, height),
-        (edges.left, 0., 0., line, height),
+        (edges.start, 0., 0., line, height),
       ] {
         if drawn {
           canvas.fill(&Rect::new(x0, y0, x1, y1), ink);

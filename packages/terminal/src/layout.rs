@@ -842,7 +842,7 @@ fn taffy_style_of(records: &Records, handle: Handle) -> Restyled {
             .max(8);
 
           style.size.width = length(cell(
-            u32::try_from(content).unwrap_or(u32::MAX) + chrome.left + chrome.right,
+            u32::try_from(content).unwrap_or(u32::MAX) + chrome.start + chrome.end,
           ));
         }
 
@@ -1076,8 +1076,8 @@ fn dimension_rect(
   inset: skene_foundation::Inset<skene_foundation::Dimension<u32>>,
 ) -> taffy::geometry::Rect<taffy::style::LengthPercentageAuto> {
   taffy::geometry::Rect {
-    left: dimension_lpa(inset.left),
-    right: dimension_lpa(inset.right),
+    left: dimension_lpa(inset.start),
+    right: dimension_lpa(inset.end),
     top: dimension_lpa(inset.top),
     bottom: dimension_lpa(inset.bottom),
   }
@@ -1274,8 +1274,8 @@ fn apply_box_sizing(out: &mut Style, style: &PlainBox, in_stack: bool) {
 
   if let Some(padding) = style.padding {
     out.padding = taffy::geometry::Rect {
-      left: length(cell(padding.left)),
-      right: length(cell(padding.right)),
+      left: length(cell(padding.start)),
+      right: length(cell(padding.end)),
       top: length(cell(padding.top)),
       bottom: length(cell(padding.bottom)),
     };
@@ -1296,8 +1296,8 @@ fn apply_box_sizing(out: &mut Style, style: &PlainBox, in_stack: bool) {
     let edges = border_edges(style);
 
     out.border = taffy::geometry::Rect {
-      left: length(cell(u32::from(edges.left))),
-      right: length(cell(u32::from(edges.right))),
+      left: length(cell(u32::from(edges.start))),
+      right: length(cell(u32::from(edges.end))),
       top: length(cell(u32::from(edges.top))),
       bottom: length(cell(u32::from(edges.bottom))),
     };
@@ -1412,9 +1412,9 @@ pub(crate) fn border_edges(style: &PlainBox) -> Inset<bool> {
 
   Inset {
     top: width.top > 0,
-    right: width.right > 0,
+    end: width.end > 0,
     bottom: width.bottom > 0,
-    left: width.left > 0,
+    start: width.start > 0,
   }
 }
 
@@ -1425,9 +1425,9 @@ fn chrome(style: &PlainBox) -> Inset<u32> {
 
   Inset {
     top: u32::from(edges.top) + padding.top,
-    right: u32::from(edges.right) + padding.right,
+    end: u32::from(edges.end) + padding.end,
     bottom: u32::from(edges.bottom) + padding.bottom,
-    left: u32::from(edges.left) + padding.left,
+    start: u32::from(edges.start) + padding.start,
   }
 }
 

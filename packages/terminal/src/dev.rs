@@ -364,9 +364,9 @@ pub fn notice_view(notice: Signal<Option<String>>) -> impl crate::View {
     .set_border_color(Color::srgb(0.8, 0.2, 0.2))
     .set_padding(crate::Inset {
       top: 1,
-      right: 2,
+      end: 2,
       bottom: 1,
-      left: 2,
+      start: 2,
     })
     .set_max_width(76)
     .set_child(

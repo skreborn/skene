@@ -183,12 +183,13 @@ impl skene_web::platform::Declarations
 pub fn skene_web::platform::Declarations::is_empty(&self) -> bool
 pub fn skene_web::platform::Declarations::iter(&self) -> impl core::iter::traits::iterator::Iterator<Item = (&'static str, &str)>
 pub fn skene_web::platform::Declarations::new() -> Self
+pub fn skene_web::platform::Declarations::remove(self, &'static str) -> Self
 pub fn skene_web::platform::Declarations::render_areas(&skene_foundation::spine::values::grid::GridAreas) -> alloc::string::String
 pub const fn skene_web::platform::Declarations::render_arrangement(skene_foundation::spine::values::flex::Arrangement) -> &'static str
 pub fn skene_web::platform::Declarations::render_color(skene_foundation::spine::values::color::Color) -> alloc::string::String
 pub const fn skene_web::platform::Declarations::render_cursor(skene_foundation::spine::values::mouse_cursor::MouseCursor) -> &'static str
 pub fn skene_web::platform::Declarations::render_dimension(skene_foundation::spine::values::dimension::Dimension<f32>) -> alloc::string::String
-pub fn skene_web::platform::Declarations::render_dimension_inset(skene_foundation::spine::values::inset::Inset<skene_foundation::spine::values::dimension::Dimension<f32>>) -> alloc::string::String
+pub fn skene_web::platform::Declarations::render_dimension_inset(skene_foundation::spine::values::inset::Inset<skene_foundation::spine::values::dimension::Dimension<f32>>) -> [alloc::string::String; 2]
 pub fn skene_web::platform::Declarations::render_grid_line(skene_foundation::spine::values::grid::Line<skene_foundation::spine::values::grid::GridPlacement>) -> alloc::string::String
 pub const fn skene_web::platform::Declarations::render_item_alignment(skene_foundation::spine::values::flex::ItemAlignment) -> &'static str
 pub fn skene_web::platform::Declarations::render_template(&skene_foundation::spine::values::grid::GridTemplate<f32>) -> alloc::string::String

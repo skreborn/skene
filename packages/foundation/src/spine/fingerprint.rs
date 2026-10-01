@@ -170,9 +170,9 @@ impl<N: Scalar> Fingerprint for Dimension<N> {
 impl<T: Fingerprint> Fingerprint for Inset<T> {
   fn fingerprint<H: Hasher>(&self, state: &mut H) {
     self.top.fingerprint(state);
-    self.right.fingerprint(state);
+    self.end.fingerprint(state);
     self.bottom.fingerprint(state);
-    self.left.fingerprint(state);
+    self.start.fingerprint(state);
   }
 }
 

@@ -351,9 +351,9 @@ fn flex_properties_render() {
             .set_width(Dimension::Fraction(0.5))
             .set_margin(Inset {
               top: Dimension::Length(4.),
-              right: Dimension::Auto,
+              end: Dimension::Auto,
               bottom: Dimension::Length(4.),
-              left: Dimension::Auto,
+              start: Dimension::Auto,
             }),
         ),))
   });
@@ -365,7 +365,7 @@ fn flex_properties_render() {
     ".{class}{{display:flex;flex-direction:row;flex-wrap:wrap;}}"
   )));
   assert!(
-    styles.contains("margin:4px auto 4px auto;width:50%;"),
+    styles.contains("margin-block:4px 4px;margin-inline:auto auto;width:50%;"),
     "{styles}"
   );
   assert!(styles.contains("flex:2 0 120px;"), "{styles}");
@@ -379,9 +379,9 @@ fn pinned_child_renders_out_of_flow() {
     Stack::new().set_children((Pinned::new()
       .set_edges(Inset {
         top: Dimension::Length(0.),
-        right: Dimension::Length(8.),
+        end: Dimension::Length(8.),
         bottom: Dimension::Auto,
-        left: Dimension::Fraction(0.1),
+        start: Dimension::Fraction(0.1),
       })
       .set_child(Container::new()),))
   });
@@ -389,7 +389,7 @@ fn pinned_child_renders_out_of_flow() {
   let styles = rendered.styles();
 
   assert!(
-    styles.contains("inset:0px 8px auto 10%;position:absolute;"),
+    styles.contains("inset-block:0px auto;inset-inline:10% 8px;position:absolute;"),
     "{styles}"
   );
 }

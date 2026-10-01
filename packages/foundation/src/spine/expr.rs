@@ -854,7 +854,7 @@ mod tests {
       Some(ExprValue::Length(42.))
     );
     assert_eq!(
-      Expr::<Length>::safe_area(Edge::Left)
+      Expr::<Length>::safe_area(Edge::Start)
         .node()
         .evaluate(&env(), &|_| None),
       Some(ExprValue::Length(0.))
@@ -868,9 +868,9 @@ mod tests {
       font_size: 16.,
       safe_area: Inset {
         top: 44.,
-        right: 0.,
+        end: 0.,
         bottom: 34.,
-        left: 0.,
+        start: 0.,
       },
     }
   }

@@ -46,24 +46,33 @@ pub use self::{
 };
 use crate::{
   AccessProp,
+  Alignment,
   AnyKind,
   AnyView,
   Axis,
   ClickEvent,
+  Condition,
+  ContainerName,
   ControlProps,
   ControlState,
+  DeclaredBoxStyle,
+  DecorationBase,
   DragAxes,
   EventKind,
   Expr,
   FlexDirection,
   FocusOrder,
   Handler,
+  HasBoxStyle,
+  HasLayoutBox,
   ItemAlignment,
   KeyEvent,
   Layout,
   LayoutBox,
+  MotionBase,
   NativeElement,
   NoChild,
+  NodeHandle,
   NodeId,
   NodeKind,
   Part,
@@ -75,10 +84,14 @@ use crate::{
   Role,
   Scene,
   ScrollEvent,
+  Spacing,
+  StaticLeaf,
   Text,
   TextSelection,
+  Value,
   View,
   WheelEvent,
+  Wraps,
   dispatch_click,
   realize::{Source, report_access},
 };
@@ -427,53 +440,6 @@ impl<P: Platform> ControlChild<P> for AnyView<P> {
   }
 }
 
-/// Generates a [`Control`]'s style surface on a type holding a box in `$field`.
-///
-/// The surface is the declared style, the decoration and sizing, the spacing and
-/// alignment of the control's row, and what the box carries for it, on the platform
-/// `$platform`. The foundation's control expands it over its box, and a facade's newtype
-/// over the control it wraps.
-#[macro_export]
-macro_rules! control_surface {
-  ($field:tt, $platform:ty) => {
-    /// The declared style, for a composite control to write the decoration it forwards
-    /// into.
-    #[inline(always)]
-    pub const fn style_mut(&mut self) -> &mut $crate::DeclaredBoxStyle<$platform> {
-      self.$field.style_mut()
-    }
-
-    $crate::decoration! { style_mut, $platform }
-
-    $crate::properties! { style_mut, $platform;
-      set_spacing / derive_spacing (spacing) => spacing: $crate::Spacing<<$platform as $crate::Platform>::Scalar>,
-        "the spacing between the control's parts, body and label; half an em unless told otherwise";
-      set_item_alignment / derive_item_alignment (alignment) => item_alignment: $crate::ItemAlignment,
-        "where the control's parts, body and label sit on the cross axis; centered unless told otherwise";
-    }
-
-    $crate::forward! { $field;
-      /// Binds `handle` to the control once built: an overlay is placed against it, focus
-      /// moves to it and its measured size is reported through the handle.
-      fn bind_handle(handle: $crate::NodeHandle<$platform>);
-      /// Sets where the body sits when it fills neither axis.
-      fn set_alignment(alignment: impl Into<$crate::Value<$crate::Alignment, $crate::Condition<<$platform as $crate::Platform>::Scalar>>>);
-      /// Derives where the body sits from the signals `alignment` reads.
-      fn derive_alignment[R: Into<$crate::StaticLeaf<$crate::Alignment>>](alignment: impl Fn() -> R + 'static);
-      /// Names the control for container queries against its size.
-      fn set_container_name(name: $crate::ContainerName);
-      /// Adds a property transition, interpolating that property whenever its value
-      /// changes.
-      fn set_transition(transition: $crate::Transition<<<$platform as $crate::Platform>::StyleExt as $crate::StyleExtension>::Property>);
-      /// Adds a keyframe animation.
-      fn set_animation(animation: $crate::Animation<$crate::BoxKeyframe<$platform>>);
-      /// Names the box for view transitions: it is paired with the box of the same name
-      /// across a navigation, where the platform animates between them.
-      fn set_transition_name(name: impl Into<String>);
-    }
-  };
-}
-
 /// A control: focus, events, decoration, a label, parts and accessibility once, over
 /// the [`Behavior`] that says what the interaction is.
 ///
@@ -581,7 +547,24 @@ impl<P: Platform, B: Behavior<P> + Default> Default for Control<P, B> {
 }
 
 impl<P: Platform, B: Behavior<P>> Control<P, B> {
-  crate::control_surface! { inner, P }
+  crate::properties! { box_style_mut, P;
+    set_spacing / derive_spacing (spacing) => spacing: Spacing<P::Scalar>,
+      "the spacing between the control's parts, body and label; half an em unless told otherwise";
+    set_item_alignment / derive_item_alignment (alignment) => item_alignment: ItemAlignment,
+      "where the control's parts, body and label sit on the cross axis; centered unless told otherwise";
+  }
+
+  crate::forward! { inner;
+    /// Binds `handle` to the control once built: an overlay is placed against it, focus
+    /// moves to it and its measured size is reported through the handle.
+    fn bind_handle(handle: crate::NodeHandle<P>);
+    /// Sets where the body sits when it fills neither axis.
+    fn set_alignment(alignment: impl Into<crate::Value<crate::Alignment, crate::Condition<P::Scalar>>>);
+    /// Derives where the body sits from the signals `alignment` reads.
+    fn derive_alignment[R: Into<crate::StaticLeaf<crate::Alignment>>](alignment: impl Fn() -> R + 'static);
+    /// Names the control for container queries against its size.
+    fn set_container_name(name: crate::ContainerName);
+  }
 
   /// Sets the axis the control's parts, body and label run along; horizontal unless
   /// told otherwise.
@@ -1332,183 +1315,313 @@ pub type BasicMenu<P, C = NoChild> = Control<P, Menu, C>;
 /// One item within a menu: [`Control`] over [`MenuOption`].
 pub type BasicMenuItem<P, C = NoChild> = Control<P, MenuOption, C>;
 
-/// Implements a facade's newtype `$name<B, C>` over the foundation's [`Control`].
+impl<P: Platform, B: Behavior<P>> HasBoxStyle<P> for Control<P, B> {
+  #[inline(always)]
+  fn box_style_mut(&mut self) -> &mut DeclaredBoxStyle<P> {
+    self.inner.style_mut()
+  }
+}
+
+impl<P: Platform, B: Behavior<P>> HasLayoutBox<P> for Control<P, B> {
+  type Kind = PlainChild;
+
+  #[inline(always)]
+  fn map_layout_box(
+    self,
+    map: impl FnOnce(LayoutBox<P, PlainChild>) -> LayoutBox<P, PlainChild>,
+  ) -> Self {
+    Self {
+      inner: map(self.inner),
+      ..self
+    }
+  }
+}
+
+impl<P: Platform, B: Behavior<P>> DecorationBase<P> for Control<P, B> {}
+
+impl<P: Platform, B: Behavior<P>> MotionBase<P> for Control<P, B> {}
+
+/// What a facade's [`Control`] carries beyond its decoration and motion.
 ///
-/// The newtype holds the control on the platform `$platform` in its field; the macro
-/// implements the constructor, the body, the style surface, the caption, the reported
-/// state, the parts and the handlers, the traits a control meets, and names the
-/// newtype over each shipped behavior: `BasicButton`, `BasicCheckbox` and their kin.
-#[macro_export]
-macro_rules! impl_control {
-  ($name:ident, $platform:ty) => {
-    impl<B: $crate::Behavior<$platform>, C> ::core::fmt::Debug for $name<B, C> {
-      fn fmt(&self, formatter: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        ::core::fmt::Debug::fmt(&self.0, formatter)
-      }
-    }
+/// Its constructor, its row, its caption, its reported state, its parts and its handlers.
+pub trait ControlBase<P: Platform, B: Behavior<P>>: Wraps<Inner = Control<P, B>> {
+  /// A control driven by `behavior`, undecorated and without a body.
+  #[must_use]
+  fn new(behavior: B) -> Self {
+    Self::wrap(Control::new(behavior))
+  }
 
-    impl<B: $crate::Behavior<$platform> + ::core::default::Default> ::core::default::Default
-      for $name<B>
-    {
-      #[inline(always)]
-      fn default() -> Self {
-        Self::new(B::default())
-      }
-    }
+  /// The behavior driving the control.
+  fn behavior(&self) -> &B {
+    self.inner().behavior()
+  }
 
-    impl<B: $crate::Behavior<$platform>> $name<B> {
-      /// A control driven by `behavior`, undecorated and without a body.
-      #[inline(always)]
-      pub fn new(behavior: B) -> Self {
-        Self($crate::Control::new(behavior))
-      }
+  /// Sets the axis the control's parts, body and label run along; horizontal
+  /// unless told otherwise.
+  #[must_use]
+  fn set_axis(self, axis: Axis) -> Self {
+    Self::wrap(self.into_inner().set_axis(axis))
+  }
 
-      /// Sets the drawn body.
-      #[inline(always)]
-      pub fn set_child(
-        self,
-        child: impl $crate::View<$platform>,
-      ) -> $name<B, $crate::AnyView<$platform>> {
-        $name(self.0.set_child(child))
-      }
+  /// Sets the spacing between the control's parts, body and label; half an em unless told
+  /// otherwise.
+  #[must_use]
+  fn set_spacing(
+    self,
+    spacing: impl Into<Value<Spacing<P::Scalar>, Condition<P::Scalar>>>,
+  ) -> Self {
+    Self::wrap(self.into_inner().set_spacing(spacing))
+  }
 
-      /// Sets the drawn body, built by `child` under the control.
-      #[inline(always)]
-      pub fn set_child_builder<V: $crate::View<$platform>>(
-        self,
-        child: impl FnOnce() -> V + 'static,
-      ) -> $name<B, $crate::AnyView<$platform>> {
-        $name(self.0.set_child_builder(child))
-      }
+  /// Derives the spacing between the control's parts, body and label from the signals
+  /// `spacing` reads: a value, a token or an expression.
+  #[must_use]
+  fn derive_spacing<R: Into<StaticLeaf<Spacing<P::Scalar>>>>(
+    self,
+    spacing: impl Fn() -> R + 'static,
+  ) -> Self {
+    Self::wrap(self.into_inner().derive_spacing(spacing))
+  }
 
-      $crate::control_surface! { 0, $platform }
+  /// Sets where the control's parts, body and label sit on the cross axis; centered unless
+  /// told otherwise.
+  #[must_use]
+  fn set_item_alignment(
+    self,
+    alignment: impl Into<Value<ItemAlignment, Condition<P::Scalar>>>,
+  ) -> Self {
+    Self::wrap(self.into_inner().set_item_alignment(alignment))
+  }
 
-      $crate::forward! { 0;
-        /// Sets the axis the control's parts, body and label run along; horizontal
-        /// unless told otherwise.
-        fn set_axis(axis: $crate::Axis);
-        /// Sets the caption: a [`Part::Label`]($crate::Part::Label) child whose text is the
-        /// accessible name.
-        ///
-        /// A string builds a text and names the control; [`Label::new`]($crate::Label::new)
-        /// mounts any view and leaves the name to the platform.
-        fn set_label(label: impl Into<$crate::Label<$platform>>);
-        /// Sets the name the control reports to assistive technology, over its
-        /// caption's: for a control no caption names, such as a button drawn by an icon
-        /// alone.
-        fn set_accessible_name(name: impl Into<String>);
-        /// Derives the name the control reports to assistive technology from the signals
-        /// `name` reads.
-        fn derive_accessible_name(name: impl Fn() -> String + 'static);
-        /// Sets whether the control is present but not operable: a disabled control
-        /// takes no focus, ignores every event it would act on and reports
-        /// [`AccessProp::Disabled`]($crate::AccessProp::Disabled).
-        fn set_disabled(disabled: bool);
-        /// Derives whether the control is disabled from the signals `disabled` reads.
-        fn derive_disabled(disabled: impl Fn() -> bool + 'static);
-        /// Sets whether a value must be supplied before the form the control is in
-        /// submits.
-        fn set_required(required: bool);
-        /// Derives whether the control is required from the signals `required` reads.
-        fn derive_required(required: impl Fn() -> bool + 'static);
-        /// Sets whether the control's value is shown but not editable.
-        fn set_read_only(read_only: bool);
-        /// Derives whether the control is read-only from the signals `read_only` reads.
-        fn derive_read_only(read_only: impl Fn() -> bool + 'static);
-        /// Sets whether the control holds an invalid value; the `Invalid` state inside
-        /// it follows.
-        fn set_invalid(invalid: bool);
-        /// Derives whether the control is invalid from the signals `invalid` reads.
-        fn derive_invalid(invalid: impl Fn() -> bool + 'static);
-        /// Sets the node whose text describes the control, for assistive technology.
-        fn set_described_by(node: $crate::NodeId);
-        /// Names the control by the text of `node`, a caption placed anywhere, after the
-        /// caption [`set_label`](Self::set_label) builds, if any.
-        fn set_labelled_by(node: $crate::NodeId);
-        /// Sets the control's place in focus traversal, over the behavior's default.
-        fn set_focus_order(focus_order: $crate::FocusOrder);
-        /// Derives the control's place in focus traversal from the signals
-        /// `focus_order` reads, over the behavior's default.
-        fn derive_focus_order(focus_order: impl Fn() -> $crate::FocusOrder + 'static);
-        /// Adds `view` as the part `part` of the control, a styling target its
-        /// conditions resolve against the control.
-        fn set_part(part: $crate::Part, view: impl $crate::View<$platform>);
-        /// Runs `action` after the behavior has acted on a click.
-        fn handle_click(action: impl Fn() + 'static);
-        /// Runs `action` after the behavior has acted on a key pressed while the control
-        /// holds focus.
-        fn handle_key_down(action: impl Fn(&$crate::KeyEvent) + 'static);
-        /// Runs `action` on a key released while the control holds focus.
-        fn handle_key_up(action: impl Fn(&$crate::KeyEvent) + 'static);
-        /// Runs `action` after the behavior has acted on a pointer button pressed over
-        /// the control.
-        fn handle_pointer_down(action: impl Fn(&$crate::PointerEvent) + 'static);
-        /// Runs `action` after the behavior has acted on a pointer button released over
-        /// the control.
-        fn handle_pointer_up(action: impl Fn(&$crate::PointerEvent) + 'static);
-        /// Runs `action` after the behavior has acted on the pointer moving over the
-        /// control.
-        fn handle_pointer_move(action: impl Fn(&$crate::PointerEvent) + 'static);
-        /// Runs `action` after the behavior has acted on a wheel turned over the
-        /// control, before the platform scrolls by it.
-        fn handle_wheel(action: impl Fn(&$crate::WheelEvent) + 'static);
-        /// Runs `action` after the behavior has acted on the platform taking the pointer
-        /// pressed over the control for itself, ending the press without a release.
-        fn handle_pointer_cancel(action: impl Fn(&$crate::PointerEvent) + 'static);
-        /// Runs `action` when the pointer enters the control.
-        fn handle_pointer_enter(action: impl Fn() + 'static);
-        /// Runs `action` when the pointer leaves the control.
-        fn handle_pointer_leave(action: impl Fn() + 'static);
-        /// Runs `action` when focus enters the control or a node inside it from outside.
-        fn handle_focus(action: impl Fn() + 'static);
-        /// Runs `action` when focus leaves the control and every node inside it.
-        fn handle_blur(action: impl Fn() + 'static);
-        /// Runs `action` with the control's new offsets when it scrolls.
-        fn handle_scroll(action: impl Fn(&$crate::ScrollEvent) + 'static);
-      }
-    }
+  /// Derives where the control's parts, body and label sit on the cross axis from the
+  /// signals `alignment` reads: a value, a token or an expression.
+  #[must_use]
+  fn derive_item_alignment<R: Into<StaticLeaf<ItemAlignment>>>(
+    self,
+    alignment: impl Fn() -> R + 'static,
+  ) -> Self {
+    Self::wrap(self.into_inner().derive_item_alignment(alignment))
+  }
 
-    impl<B: $crate::Behavior<$platform>, C> $name<B, C> {
-      /// The behavior driving the control.
-      #[inline(always)]
-      pub const fn behavior(&self) -> &B {
-        self.0.behavior()
-      }
-    }
+  /// Binds `handle` to the control once built: an overlay is placed against it, focus
+  /// moves to it and its measured size is reported through the handle.
+  #[must_use]
+  fn bind_handle(self, handle: NodeHandle<P>) -> Self {
+    Self::wrap(self.into_inner().bind_handle(handle))
+  }
 
-    impl<B: $crate::Behavior<$platform>, C> $crate::AnyKind for $name<B, C> {}
+  /// Sets where the body sits when it fills neither axis.
+  #[must_use]
+  fn set_alignment(self, alignment: impl Into<Value<Alignment, Condition<P::Scalar>>>) -> Self {
+    Self::wrap(self.into_inner().set_alignment(alignment))
+  }
 
-    impl<B: $crate::Behavior<$platform>, C: $crate::ControlChild<$platform>> $crate::View<$platform>
-      for $name<B, C>
-    {
-      #[inline(always)]
-      fn build(self) -> $crate::NodeId {
-        $crate::View::build(self.0)
-      }
-    }
+  /// Derives where the body sits from the signals `alignment` reads.
+  #[must_use]
+  fn derive_alignment<R: Into<StaticLeaf<Alignment>>>(
+    self,
+    alignment: impl Fn() -> R + 'static,
+  ) -> Self {
+    Self::wrap(self.into_inner().derive_alignment(alignment))
+  }
 
-    /// A button: a control over [`Activate`]($crate::Activate).
-    pub type BasicButton<C = $crate::NoChild> = $name<$crate::Activate, C>;
-    /// A checkbox: a control over [`Toggle`]($crate::Toggle).
-    pub type BasicCheckbox<C = $crate::NoChild> = $name<$crate::Toggle, C>;
-    /// A slider: a control over [`Slider`]($crate::Slider).
-    pub type BasicSlider<C = $crate::NoChild> = $name<$crate::Slider, C>;
-    /// A radio group: a control over [`RadioGroup`]($crate::RadioGroup).
-    pub type BasicRadioGroup<C = $crate::NoChild> = $name<$crate::RadioGroup, C>;
-    /// A radio inside a group: a control over [`Radio`]($crate::Radio).
-    pub type BasicRadio<C = $crate::NoChild> = $name<$crate::Radio, C>;
-    /// A single-line text entry: a control over [`TextEntry`]($crate::TextEntry).
-    pub type BasicTextField<C = $crate::NoChild> = $name<$crate::TextEntry, C>;
-    /// A multi-line text entry: a control over [`TextEntry`]($crate::TextEntry).
-    pub type BasicTextEditor<C = $crate::NoChild> = $name<$crate::TextEntry, C>;
-    /// A listbox: a control over [`Listbox`]($crate::Listbox).
-    pub type BasicListbox<C = $crate::NoChild> = $name<$crate::Listbox, C>;
-    /// An option inside a listbox or a picker: a control over
-    /// [`ListboxOption`]($crate::ListboxOption).
-    pub type BasicListboxOption<C = $crate::NoChild> = $name<$crate::ListboxOption, C>;
-    /// A menu: a control over [`Menu`]($crate::Menu).
-    pub type BasicMenu<C = $crate::NoChild> = $name<$crate::Menu, C>;
-    /// An item inside a menu: a control over [`MenuOption`]($crate::MenuOption).
-    pub type BasicMenuItem<C = $crate::NoChild> = $name<$crate::MenuOption, C>;
-  };
+  /// Names the control for container queries against its size.
+  #[must_use]
+  fn set_container_name(self, name: ContainerName) -> Self {
+    Self::wrap(self.into_inner().set_container_name(name))
+  }
+
+  /// Sets the caption: a [`Part::Label`](Part::Label) child whose text is the
+  /// accessible name.
+  ///
+  /// A string builds a text and names the control; [`Label::new`](Label::new)
+  /// mounts any view and leaves the name to the platform.
+  #[must_use]
+  fn set_label(self, label: impl Into<Label<P>>) -> Self {
+    Self::wrap(self.into_inner().set_label(label))
+  }
+
+  /// Sets the name the control reports to assistive technology, over its
+  /// caption's: for a control no caption names, such as a button drawn by an icon
+  /// alone.
+  #[must_use]
+  fn set_accessible_name(self, name: impl Into<String>) -> Self {
+    Self::wrap(self.into_inner().set_accessible_name(name))
+  }
+
+  /// Derives the name the control reports to assistive technology from the signals
+  /// `name` reads.
+  #[must_use]
+  fn derive_accessible_name(self, name: impl Fn() -> String + 'static) -> Self {
+    Self::wrap(self.into_inner().derive_accessible_name(name))
+  }
+
+  /// Sets whether the control is present but not operable: a disabled control
+  /// takes no focus, ignores every event it would act on and reports
+  /// [`AccessProp::Disabled`](AccessProp::Disabled).
+  #[must_use]
+  fn set_disabled(self, disabled: bool) -> Self {
+    Self::wrap(self.into_inner().set_disabled(disabled))
+  }
+
+  /// Derives whether the control is disabled from the signals `disabled` reads.
+  #[must_use]
+  fn derive_disabled(self, disabled: impl Fn() -> bool + 'static) -> Self {
+    Self::wrap(self.into_inner().derive_disabled(disabled))
+  }
+
+  /// Sets whether a value must be supplied before the form the control is in
+  /// submits.
+  #[must_use]
+  fn set_required(self, required: bool) -> Self {
+    Self::wrap(self.into_inner().set_required(required))
+  }
+
+  /// Derives whether the control is required from the signals `required` reads.
+  #[must_use]
+  fn derive_required(self, required: impl Fn() -> bool + 'static) -> Self {
+    Self::wrap(self.into_inner().derive_required(required))
+  }
+
+  /// Sets whether the control's value is shown but not editable.
+  #[must_use]
+  fn set_read_only(self, read_only: bool) -> Self {
+    Self::wrap(self.into_inner().set_read_only(read_only))
+  }
+
+  /// Derives whether the control is read-only from the signals `read_only` reads.
+  #[must_use]
+  fn derive_read_only(self, read_only: impl Fn() -> bool + 'static) -> Self {
+    Self::wrap(self.into_inner().derive_read_only(read_only))
+  }
+
+  /// Sets whether the control holds an invalid value; the `Invalid` state inside
+  /// it follows.
+  #[must_use]
+  fn set_invalid(self, invalid: bool) -> Self {
+    Self::wrap(self.into_inner().set_invalid(invalid))
+  }
+
+  /// Derives whether the control is invalid from the signals `invalid` reads.
+  #[must_use]
+  fn derive_invalid(self, invalid: impl Fn() -> bool + 'static) -> Self {
+    Self::wrap(self.into_inner().derive_invalid(invalid))
+  }
+
+  /// Sets the node whose text describes the control, for assistive technology.
+  #[must_use]
+  fn set_described_by(self, node: NodeId) -> Self {
+    Self::wrap(self.into_inner().set_described_by(node))
+  }
+
+  /// Names the control by the text of `node`, a caption placed anywhere, after the
+  /// caption [`set_label`](Self::set_label) builds, if any.
+  #[must_use]
+  fn set_labelled_by(self, node: NodeId) -> Self {
+    Self::wrap(self.into_inner().set_labelled_by(node))
+  }
+
+  /// Sets the control's place in focus traversal, over the behavior's default.
+  #[must_use]
+  fn set_focus_order(self, focus_order: FocusOrder) -> Self {
+    Self::wrap(self.into_inner().set_focus_order(focus_order))
+  }
+
+  /// Derives the control's place in focus traversal from the signals
+  /// `focus_order` reads, over the behavior's default.
+  #[must_use]
+  fn derive_focus_order(self, focus_order: impl Fn() -> FocusOrder + 'static) -> Self {
+    Self::wrap(self.into_inner().derive_focus_order(focus_order))
+  }
+
+  /// Adds `view` as the part `part` of the control, a styling target its
+  /// conditions resolve against the control.
+  #[must_use]
+  fn set_part(self, part: Part, view: impl View<P>) -> Self {
+    Self::wrap(self.into_inner().set_part(part, view))
+  }
+
+  /// Runs `action` after the behavior has acted on a click.
+  #[must_use]
+  fn handle_click(self, action: impl Fn() + 'static) -> Self {
+    Self::wrap(self.into_inner().handle_click(action))
+  }
+
+  /// Runs `action` after the behavior has acted on a key pressed while the control
+  /// holds focus.
+  #[must_use]
+  fn handle_key_down(self, action: impl Fn(&KeyEvent) + 'static) -> Self {
+    Self::wrap(self.into_inner().handle_key_down(action))
+  }
+
+  /// Runs `action` on a key released while the control holds focus.
+  #[must_use]
+  fn handle_key_up(self, action: impl Fn(&KeyEvent) + 'static) -> Self {
+    Self::wrap(self.into_inner().handle_key_up(action))
+  }
+
+  /// Runs `action` after the behavior has acted on a pointer button pressed over
+  /// the control.
+  #[must_use]
+  fn handle_pointer_down(self, action: impl Fn(&PointerEvent) + 'static) -> Self {
+    Self::wrap(self.into_inner().handle_pointer_down(action))
+  }
+
+  /// Runs `action` after the behavior has acted on a pointer button released over
+  /// the control.
+  #[must_use]
+  fn handle_pointer_up(self, action: impl Fn(&PointerEvent) + 'static) -> Self {
+    Self::wrap(self.into_inner().handle_pointer_up(action))
+  }
+
+  /// Runs `action` after the behavior has acted on the pointer moving over the
+  /// control.
+  #[must_use]
+  fn handle_pointer_move(self, action: impl Fn(&PointerEvent) + 'static) -> Self {
+    Self::wrap(self.into_inner().handle_pointer_move(action))
+  }
+
+  /// Runs `action` after the behavior has acted on a wheel turned over the
+  /// control, before the platform scrolls by it.
+  #[must_use]
+  fn handle_wheel(self, action: impl Fn(&WheelEvent) + 'static) -> Self {
+    Self::wrap(self.into_inner().handle_wheel(action))
+  }
+
+  /// Runs `action` after the behavior has acted on the platform taking the pointer
+  /// pressed over the control for itself, ending the press without a release.
+  #[must_use]
+  fn handle_pointer_cancel(self, action: impl Fn(&PointerEvent) + 'static) -> Self {
+    Self::wrap(self.into_inner().handle_pointer_cancel(action))
+  }
+
+  /// Runs `action` when the pointer enters the control.
+  #[must_use]
+  fn handle_pointer_enter(self, action: impl Fn() + 'static) -> Self {
+    Self::wrap(self.into_inner().handle_pointer_enter(action))
+  }
+
+  /// Runs `action` when the pointer leaves the control.
+  #[must_use]
+  fn handle_pointer_leave(self, action: impl Fn() + 'static) -> Self {
+    Self::wrap(self.into_inner().handle_pointer_leave(action))
+  }
+
+  /// Runs `action` when focus enters the control or a node inside it from outside.
+  #[must_use]
+  fn handle_focus(self, action: impl Fn() + 'static) -> Self {
+    Self::wrap(self.into_inner().handle_focus(action))
+  }
+
+  /// Runs `action` when focus leaves the control and every node inside it.
+  #[must_use]
+  fn handle_blur(self, action: impl Fn() + 'static) -> Self {
+    Self::wrap(self.into_inner().handle_blur(action))
+  }
+
+  /// Runs `action` with the control's new offsets when it scrolls.
+  #[must_use]
+  fn handle_scroll(self, action: impl Fn(&ScrollEvent) + 'static) -> Self {
+    Self::wrap(self.into_inner().handle_scroll(action))
+  }
 }

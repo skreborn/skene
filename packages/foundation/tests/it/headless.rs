@@ -35,6 +35,8 @@ use skene_foundation::{
   Prevented,
   Property,
   PropertyKey,
+  RunBase,
+  RunWithTypeMetrics,
   Scene,
   Size,
   Slot,

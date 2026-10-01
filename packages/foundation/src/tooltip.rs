@@ -12,7 +12,10 @@ use crate::{
   Color,
   Condition,
   DeclaredBoxStyle,
+  DecorationBase,
   Handler,
+  HasBoxStyle,
+  MotionBase,
   NoChild,
   NodeHandle,
   NodeId,
@@ -20,6 +23,7 @@ use crate::{
   Part,
   Placement,
   Platform,
+  RunBase,
   Scene,
   StyleExtension,
   Text,
@@ -27,7 +31,7 @@ use crate::{
   Transition,
   Value,
   View,
-  decoration,
+  Wraps,
   realize::{Source, describe},
 };
 
@@ -113,15 +117,6 @@ impl<P: Platform> Tooltip<P> {
 }
 
 impl<P: Platform> Tooltip<P> {
-  /// The declared style of the bubble, for a facade's medium-specific setters to write
-  /// into.
-  #[inline(always)]
-  pub const fn bubble_style_mut(&mut self) -> &mut DeclaredBoxStyle<P> {
-    self.bubble.style_mut()
-  }
-
-  decoration! { bubble_style_mut, P }
-
   /// Sets the color of a text tooltip's text; a view tooltip inks its own.
   pub fn set_text_color(mut self, color: impl Into<Value<Color, Condition<P::Scalar>>>) -> Self {
     self.text_color = Some(color.into());
@@ -159,6 +154,15 @@ impl<P: Platform> Tooltip<P> {
     self
   }
 }
+
+impl<P: Platform> HasBoxStyle<P> for Tooltip<P> {
+  #[inline(always)]
+  fn box_style_mut(&mut self) -> &mut DeclaredBoxStyle<P> {
+    self.bubble.box_style_mut()
+  }
+}
+
+impl<P: Platform> DecorationBase<P> for Tooltip<P> {}
 
 impl<P: Platform, C> AnyKind for Tooltip<P, C> {}
 
@@ -340,76 +344,55 @@ fn bind_description<P: Platform>(node: NodeId, bubble: NodeId, text: Option<Sour
   });
 }
 
-/// Implements a facade's newtype `$name<C>` over the foundation's [`Tooltip`].
+/// What a facade's [`Tooltip`] carries beyond its bubble's decoration.
 ///
-/// The newtype holds the tooltip on the platform `$platform` in its field; the macro
-/// implements the constructors, the described view, the bubble's decoration, the text
-/// color, the motion, the placement, the delay and the traits a tooltip meets.
-#[macro_export]
-macro_rules! impl_tooltip {
-  ($name:ident, $platform:ty) => {
-    impl<C> ::core::fmt::Debug for $name<C> {
-      fn fmt(&self, formatter: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        ::core::fmt::Debug::fmt(&self.0, formatter)
-      }
-    }
+/// Its constructors, its text color, its motion, its placement and its delay.
+pub trait TooltipBase<P: Platform>: Wraps<Inner = Tooltip<P>> {
+  /// A tooltip showing `text`.
+  #[must_use]
+  fn new(text: impl Into<String>) -> Self {
+    Self::wrap(Tooltip::new(text))
+  }
 
-    impl $name {
-      /// A tooltip showing `text`.
-      #[inline(always)]
-      pub fn new(text: impl Into<String>) -> Self {
-        Self($crate::Tooltip::new(text))
-      }
+  /// A tooltip whose text is recomputed whenever a signal `text` reads changes.
+  #[must_use]
+  fn derive(text: impl Fn() -> String + 'static) -> Self {
+    Self::wrap(Tooltip::derive(text))
+  }
 
-      /// A tooltip whose text is recomputed whenever a signal `text` reads changes.
-      #[inline(always)]
-      pub fn derive(text: impl Fn() -> String + 'static) -> Self {
-        Self($crate::Tooltip::derive(text))
-      }
+  /// A tooltip showing `content`, a view of any kind.
+  #[must_use]
+  fn view(content: impl View<P>) -> Self {
+    Self::wrap(Tooltip::view(content))
+  }
 
-      /// A tooltip showing `content`, a view of any kind.
-      #[inline(always)]
-      pub fn view(content: impl $crate::View<$platform>) -> Self {
-        Self($crate::Tooltip::view(content))
-      }
+  /// Sets the color of a text tooltip's text; a view tooltip inks its own.
+  #[must_use]
+  fn set_text_color(self, color: impl Into<Value<Color, Condition<P::Scalar>>>) -> Self {
+    Self::wrap(self.into_inner().set_text_color(color))
+  }
 
-      /// Sets the view the tooltip describes.
-      #[inline(always)]
-      pub fn set_child(self, child: impl $crate::View<$platform>) -> $name<$crate::AnyView<$platform>> {
-        $name(self.0.set_child(child))
-      }
+  /// Adds a property transition on the bubble, interpolating that property
+  /// whenever its value changes.
+  #[must_use]
+  fn set_transition(
+    self,
+    transition: Transition<<P::StyleExt as StyleExtension>::Property>,
+  ) -> Self {
+    Self::wrap(self.into_inner().set_transition(transition))
+  }
 
-      /// The declared style of the bubble, for a facade's medium-specific setters to
-      /// write into.
-      #[inline(always)]
-      pub const fn bubble_style_mut(&mut self) -> &mut $crate::DeclaredBoxStyle<$platform> {
-        self.0.bubble_style_mut()
-      }
+  /// Sets where the bubble sits against the described view: above it for `Top`,
+  /// below it for `Bottom`.
+  #[must_use]
+  fn set_placement(self, placement: Placement) -> Self {
+    Self::wrap(self.into_inner().set_placement(placement))
+  }
 
-      $crate::decoration! { bubble_style_mut, $platform }
-
-      $crate::forward! { 0;
-        /// Sets the color of a text tooltip's text; a view tooltip inks its own.
-        fn set_text_color(color: impl Into<$crate::Value<$crate::Color, $crate::Condition<<$platform as $crate::Platform>::Scalar>>>);
-        /// Adds a property transition on the bubble, interpolating that property
-        /// whenever its value changes.
-        fn set_transition(transition: $crate::Transition<<<$platform as $crate::Platform>::StyleExt as $crate::StyleExtension>::Property>);
-        /// Sets where the bubble sits against the described view: above it for `Top`,
-        /// below it for `Bottom`.
-        fn set_placement(placement: $crate::Placement);
-        /// Sets how long the pointer rests on the described view before the bubble
-        /// opens; focus that shows opens it at once.
-        fn set_delay(delay: ::core::time::Duration);
-      }
-    }
-
-    impl<C> $crate::AnyKind for $name<C> {}
-
-    impl $crate::View<$platform> for $name<$crate::AnyView<$platform>> {
-      #[inline(always)]
-      fn build(self) -> $crate::NodeId {
-        $crate::View::build(self.0)
-      }
-    }
-  };
+  /// Sets how long the pointer rests on the described view before the bubble
+  /// opens; focus that shows opens it at once.
+  #[must_use]
+  fn set_delay(self, delay: std::time::Duration) -> Self {
+    Self::wrap(self.into_inner().set_delay(delay))
+  }
 }

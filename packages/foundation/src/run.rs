@@ -36,7 +36,7 @@ use crate::{
 
 /// What every text view declares of its run: selection, link and style.
 ///
-/// A text view holds one and forwards its surface through [`run_surface!`](crate::run_surface),
+/// A text view holds one and reaches its surface through [`HasRun`](crate::HasRun),
 /// realizing it with [`build`](Self::build) or, for a group, [`build_group`](Self::build_group).
 #[must_use]
 pub struct Run<P: Platform> {

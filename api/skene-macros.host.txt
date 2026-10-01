@@ -1,6 +1,7 @@
 pub mod skene_macros
 pub proc macro skene_macros::#[derive(Snapshot)]
 pub proc macro skene_macros::#[derive(Store)]
+pub proc macro skene_macros::#[derive(View)]
 pub proc macro skene_macros::#[derive(Wraps)]
 pub proc macro skene_macros::#[lazy]
 pub proc macro skene_macros::#[main]

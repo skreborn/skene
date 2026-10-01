@@ -1,7 +1,16 @@
 //! The runs: a run inherits through the typography tokens, a group redefines them for
 //! its own spans, and a span embeds a view inline.
 
-use skene_foundation::{HasChild, RunDisplay, StaticLeaf, StaticValue, ThemedIn, View, typography};
+use skene_foundation::{
+  HasChild,
+  RunBase,
+  RunDisplay,
+  StaticLeaf,
+  StaticValue,
+  ThemedIn,
+  View,
+  typography,
+};
 use skene_headless::{
   Headless,
   children,

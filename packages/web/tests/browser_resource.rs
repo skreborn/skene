@@ -12,6 +12,7 @@ use skene_web::{
   HasChild,
   Resource,
   Text,
+  TextBase,
   View,
   derived,
   platform::mount,

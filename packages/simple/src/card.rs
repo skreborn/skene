@@ -9,6 +9,7 @@ use skene_foundation::{
   CornerRadius,
   DecorationBase,
   DecorationWithCornerRadius,
+  FlexBase,
   FlexChild,
   HasChild,
   HasChildren,

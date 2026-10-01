@@ -17,31 +17,8 @@ use crate::{
   StaticLeaf,
   Value,
   View,
+  Wraps,
 };
-
-/// Generates a [`Pinned`]'s setters on a facade's newtype holding one in `$field`, each
-/// forwarding to the wrapper's own, on the platform `$platform`.
-#[macro_export]
-macro_rules! pinned_surface {
-  ($field:tt, $platform:ty) => {
-    $crate::forward! { $field;
-      /// Sets the edges the child is pinned to.
-      fn set_edges(
-        edges: impl Into<
-          $crate::Value<
-            $crate::Inset<$crate::Dimension<<$platform as $crate::Platform>::Scalar>>,
-            $crate::Condition<<$platform as $crate::Platform>::Scalar>,
-          >,
-        >,
-      );
-      /// Derives the edges the child is pinned to from the signals `edges` reads: a
-      /// value, a token or an expression.
-      fn derive_edges[R: Into<$crate::StaticLeaf<$crate::Inset<$crate::Dimension<<$platform as $crate::Platform>::Scalar>>>>](
-        edges: impl Fn() -> R + 'static,
-      );
-    }
-  };
-}
 
 /// Pins the child it wraps against the edges of a [`Stack`](crate::Stack), out of
 /// flow.
@@ -128,49 +105,30 @@ impl<P: Platform> IntoChildOf<P, StackChild> for Pinned<P, AnyView<P>> {
   }
 }
 
-/// Implements a facade's newtype `$name<C>` over the foundation's [`Pinned`].
-///
-/// The newtype holds the view on the platform `$platform` in its field; the macro
-/// implements the constructor, the setters, the child and the child kind it is accepted
-/// as.
-#[macro_export]
-macro_rules! impl_pinned {
-  ($name:ident, $platform:ty) => {
-    impl<C> ::core::fmt::Debug for $name<C> {
-      fn fmt(&self, formatter: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        ::core::fmt::Debug::fmt(&self.0, formatter)
-      }
-    }
-    impl ::core::default::Default for $name {
-      #[inline(always)]
-      fn default() -> Self {
-        Self::new()
-      }
-    }
-    impl $name {
-      /// A wrapper with every edge `Auto` and no child yet.
-      #[inline(always)]
-      pub fn new() -> Self {
-        Self($crate::Pinned::new())
-      }
+/// What a facade's [`Pinned`] carries: its constructor and its setters.
+pub trait PinnedBase<P: Platform>: Wraps<Inner = Pinned<P>> {
+  /// A wrapper with every edge `Auto` and no child yet.
+  #[must_use]
+  fn new() -> Self {
+    Self::wrap(Pinned::new())
+  }
 
-      $crate::pinned_surface! { 0, $platform }
+  /// Sets the edges the child is pinned to.
+  #[must_use]
+  fn set_edges(
+    self,
+    edges: impl Into<Value<Inset<Dimension<P::Scalar>>, Condition<P::Scalar>>>,
+  ) -> Self {
+    Self::wrap(self.into_inner().set_edges(edges))
+  }
 
-      /// Sets the child.
-      #[inline(always)]
-      pub fn set_child(
-        self,
-        child: impl $crate::View<$platform>,
-      ) -> $name<$crate::AnyView<$platform>> {
-        $name(self.0.set_child(child))
-      }
-    }
-
-    impl $crate::IntoChildOf<$platform, $crate::StackChild> for $name<$crate::AnyView<$platform>> {
-      #[inline(always)]
-      fn into_child(self) -> $crate::AnyView<$platform> {
-        $crate::IntoChildOf::into_child(self.0)
-      }
-    }
-  };
+  /// Derives the edges the child is pinned to from the signals `edges` reads: a
+  /// value, a token or an expression.
+  #[must_use]
+  fn derive_edges<R: Into<StaticLeaf<Inset<Dimension<P::Scalar>>>>>(
+    self,
+    edges: impl Fn() -> R + 'static,
+  ) -> Self {
+    Self::wrap(self.into_inner().derive_edges(edges))
+  }
 }

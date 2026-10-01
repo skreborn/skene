@@ -1,6 +1,6 @@
 //! Commands shown beside the pointer on a secondary press over the view it serves.
 
-use skene_foundation::NoChild;
+use skene_foundation::{AnyView, ContextMenuBase, DecorationBase, NoChild, View, Wraps};
 
 use crate::ActivePlatform;
 
@@ -23,7 +23,25 @@ use crate::ActivePlatform;
 /// `set_item_*` setters. Holds [`NoChild`] until [`set_child`](Self::set_child)
 /// supplies the view served; [`serve`](Self::serve) attaches the menu to a node that
 /// already exists instead.
+#[derive(Debug, View, Wraps)]
 #[must_use]
 pub struct ContextMenu<C = NoChild>(skene_foundation::ContextMenu<ActivePlatform, C>);
 
-skene_foundation::impl_context_menu!(ContextMenu, ActivePlatform);
+impl Default for ContextMenu {
+  #[inline(always)]
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
+impl ContextMenuBase<ActivePlatform> for ContextMenu {}
+
+impl DecorationBase<ActivePlatform> for ContextMenu {}
+
+impl ContextMenu {
+  /// Sets the view the menu serves.
+  #[inline(always)]
+  pub fn set_child(self, child: impl View<ActivePlatform>) -> ContextMenu<AnyView<ActivePlatform>> {
+    ContextMenu(self.0.set_child(child))
+  }
+}

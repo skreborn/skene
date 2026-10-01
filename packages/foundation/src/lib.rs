@@ -87,17 +87,22 @@ mod theme;
 mod tooltip;
 mod type_metrics;
 pub mod web;
-mod wraps;
 
 extern crate self as skene_foundation;
 
-pub use skene_macros::Wraps;
+pub use skene_macros::{View, Wraps};
 pub use skene_reactive as reactive;
 
 pub use self::spine::*;
 pub use crate::{
   container::{Container, ContainerBase},
-  context_menu::{ContextMenu, MenuEntry, MenuItemContent},
+  context_menu::{
+    ContextMenu,
+    ContextMenuBase,
+    ContextMenuWithCornerRadius,
+    MenuEntry,
+    MenuItemContent,
+  },
   control::{
     Activate,
     BasicButton,
@@ -116,6 +121,7 @@ pub use crate::{
     CollectionContext,
     CollectionPolicy,
     Control,
+    ControlBase,
     ControlChild,
     ControlHandle,
     Controlled,
@@ -145,25 +151,25 @@ pub use crate::{
     TypeAhead,
   },
   corner_radius::CornerRadius,
-  enhance::Enhance,
-  error_boundary::ErrorBoundary,
-  flex::{Column, Row},
-  flexible::Flexible,
-  grid::Grid,
-  grid_cell::GridCell,
-  keymap::Keymap,
+  enhance::{Enhance, EnhanceBase},
+  error_boundary::{ErrorBoundary, ErrorBoundaryBase},
+  flex::{Column, ColumnBase, FlexBase, Row, RowBase},
+  flexible::{Flexible, FlexibleBase},
+  grid::{Grid, GridBase},
+  grid_cell::{GridCell, GridCellBase},
+  keymap::{Keymap, KeymapBase},
   layout_box::LayoutBox,
-  lazy_list::{ItemExtent, LazyColumn, LazyRow},
+  lazy_list::{ItemExtent, LazyColumn, LazyColumnBase, LazyRow, LazyRowBase},
   node_handle::NodeHandle,
-  overlay::Overlay,
-  painted::Painted,
+  overlay::{Overlay, OverlayBase},
+  painted::{Painted, PaintedBase},
   painting::{Canvas, IntoBrush, PaintType, Painter, Painting, Renderer, kurbo, paint, peniko},
-  picker::{BasicPicker, Face},
-  pinned::Pinned,
+  picker::{BasicPicker, BasicPickerBase, Face},
+  pinned::{Pinned, PinnedBase},
   realize::{ChildBuilder, LowLevel},
   run::Run,
-  span::{RichText, Span},
-  stack::Stack,
+  span::{RichText, RichTextBase, Span, SpanBase},
+  stack::{Stack, StackBase},
   surface::{
     DecorationBase,
     DecorationWithCornerRadius,
@@ -174,11 +180,10 @@ pub use crate::{
     RunBase,
     RunWithTypeMetrics,
   },
-  suspense::Suspense,
-  switch::Switch,
-  text::Text,
-  theme::{Theme, ThemedIn},
-  tooltip::{TOOLTIP_DELAY, TOOLTIP_GRACE, Tooltip},
+  suspense::{Suspense, SuspenseBase},
+  switch::{Switch, SwitchBase},
+  text::{Text, TextBase},
+  theme::{Theme, ThemeBase, ThemedIn},
+  tooltip::{TOOLTIP_DELAY, TOOLTIP_GRACE, Tooltip, TooltipBase},
   type_metrics::TypeMetrics,
-  wraps::Wraps,
 };

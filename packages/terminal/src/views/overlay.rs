@@ -1,6 +1,15 @@
 //! Content above the app, opened and closed by the app.
 
-use skene_foundation::NoChild;
+use skene_foundation::{
+  AnyView,
+  DecorationBase,
+  HasBoxStyle,
+  MotionBase,
+  NoChild,
+  OverlayBase,
+  View,
+  Wraps,
+};
 
 use crate::ActivePlatform;
 
@@ -16,11 +25,21 @@ use crate::ActivePlatform;
 /// both to one signal. Opening and closing attach nothing and destroy nothing, so state
 /// inside the content survives. Its content box is decorated like a container. Holds
 /// [`NoChild`] until [`set_child`](Self::set_child) supplies the content.
+#[derive(Debug, View, Wraps)]
 #[must_use]
 pub struct Overlay<C = NoChild>(skene_foundation::Overlay<ActivePlatform, C>);
 
-skene_foundation::impl_overlay!(Overlay, ActivePlatform);
+impl OverlayBase<ActivePlatform> for Overlay {}
+
+impl DecorationBase<ActivePlatform> for Overlay {}
+
+impl MotionBase<ActivePlatform> for Overlay {}
 
 impl Overlay {
-  crate::views::terminal_decoration!(style_mut);
+  /// Sets the content.
+  #[inline(always)]
+  pub fn set_child(self, child: impl View<ActivePlatform>) -> Overlay<AnyView<ActivePlatform>> {
+    Overlay(self.0.set_child(child))
+  }
+  crate::views::terminal_decoration!(box_style_mut);
 }

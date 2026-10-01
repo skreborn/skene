@@ -8,16 +8,20 @@ use crate::{
   Bubbling,
   ClickEvent,
   ClickHandler,
+  DeclaredRunStyle,
   Handler,
+  HasRun,
   Layout,
   LayoutBox,
   NodeId,
   PlainChild,
   Platform,
+  RunBase,
   RunDisplay,
   Scene,
   TypeMetrics,
   View,
+  Wraps,
   layout_box::verdict,
   realize::Source,
   run::Run,
@@ -82,8 +86,6 @@ impl<P: Platform> Span<P> {
       click: Vec::new(),
     }
   }
-
-  crate::run_surface! { run, P }
 
   /// Runs `action` on a click on the span; its verdict says whether the click carries
   /// on to the ancestors.
@@ -188,106 +190,73 @@ where
   }
 }
 
-/// Implements a facade's newtype `$name` over the foundation's [`Span`].
-///
-/// The newtype holds the view on the platform `$platform` in its field; the macro
-/// implements the constructors, the builder surface, the click handler and the traits a
-/// span meets.
-#[macro_export]
-macro_rules! impl_span {
-  ($name:ident, $platform:ty) => {
-    impl ::core::fmt::Debug for $name {
-      fn fmt(&self, formatter: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        ::core::fmt::Debug::fmt(&self.0, formatter)
-      }
+impl<P: Platform> HasRun<P> for Span<P> {
+  #[inline(always)]
+  fn run_style_mut(&mut self) -> &mut DeclaredRunStyle<P> {
+    self.run.style_mut()
+  }
+
+  #[inline(always)]
+  fn map_run(self, map: impl FnOnce(Run<P>) -> Run<P>) -> Self {
+    Self {
+      content: self.content,
+      run: map(self.run),
+      click: self.click,
     }
-    impl $name {
-      /// A run reading `content`.
-      #[inline(always)]
-      pub fn new(content: impl Into<String>) -> Self {
-        Self($crate::Span::new(content))
-      }
-
-      /// A run whose text is recomputed whenever a signal `content` reads changes.
-      #[inline(always)]
-      pub fn derive(content: impl Fn() -> String + 'static) -> Self {
-        Self($crate::Span::derive(content))
-      }
-
-      /// A group of spans styled as a unit.
-      pub fn group(spans: impl IntoIterator<Item = Self>) -> Self {
-        Self($crate::Span::group(spans.into_iter().map(|span| span.0)))
-      }
-
-      /// A view embedded inline among the surrounding text.
-      #[inline(always)]
-      pub fn view(view: impl $crate::View<$platform>) -> Self {
-        Self($crate::Span::view(view))
-      }
-
-      $crate::run_surface! { 0, $platform }
-
-      /// Runs `action` on a click on the span; its verdict says whether the click
-      /// carries on to the ancestors.
-      #[inline(always)]
-      pub fn handle_click<R: Into<$crate::Bubbling>>(
-        self,
-        action: impl Fn() -> R + 'static,
-      ) -> Self {
-        Self(self.0.handle_click(action))
-      }
-    }
-
-    impl $crate::AnyKind for $name {}
-
-    impl $crate::View<$platform> for $name {
-      #[inline(always)]
-      fn build(self) -> $crate::NodeId {
-        $crate::View::build(self.0)
-      }
-    }
-  };
+  }
 }
 
-/// Implements a facade's newtype `$name` over the foundation's [`RichText`].
-///
-/// The newtype holds the view on the platform `$platform` in its field, its spans the
-/// facade's newtype `$span`; the macro implements the constructor, the spans and the
-/// traits a paragraph meets.
-#[macro_export]
-macro_rules! impl_rich_text {
-  ($name:ident, $span:ident, $platform:ty) => {
-    impl ::core::fmt::Debug for $name {
-      fn fmt(&self, formatter: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        ::core::fmt::Debug::fmt(&self.0, formatter)
-      }
-    }
-    impl ::core::default::Default for $name {
-      #[inline(always)]
-      fn default() -> Self {
-        Self::new()
-      }
-    }
-    impl $name {
-      /// An empty paragraph.
-      #[inline(always)]
-      pub const fn new() -> Self {
-        Self($crate::RichText::new())
-      }
+impl<P: Platform> RunBase<P> for Span<P> {}
 
-      /// Appends spans to the paragraph.
-      pub fn set_spans(self, spans: impl IntoIterator<Item = $span>) -> Self {
-        Self(self.0.set_spans(spans.into_iter().map(|span| span.0)))
-      }
-    }
+/// What a facade's [`Span`] carries beyond its run: its constructors and its click handler.
+pub trait SpanBase<P: Platform>: Wraps<Inner = Span<P>> {
+  /// A run reading `content`.
+  #[must_use]
+  fn new(content: impl Into<String>) -> Self {
+    Self::wrap(Span::new(content))
+  }
 
-    impl $crate::AnyKind for $name {}
+  /// A run whose text is recomputed whenever a signal `content` reads changes.
+  #[must_use]
+  fn derive(content: impl Fn() -> String + 'static) -> Self {
+    Self::wrap(Span::derive(content))
+  }
 
-    impl $crate::View<$platform> for $name {
-      #[inline(always)]
-      fn build(self) -> $crate::NodeId {
-        $crate::View::build(self.0)
-      }
-    }
-  };
+  /// A group of spans styled as a unit.
+  #[must_use]
+  fn group(spans: impl IntoIterator<Item = Self>) -> Self {
+    Self::wrap(Span::group(spans.into_iter().map(Wraps::into_inner)))
+  }
+
+  /// A view embedded inline among the surrounding text.
+  #[must_use]
+  fn view(view: impl View<P>) -> Self {
+    Self::wrap(Span::view(view))
+  }
+
+  /// Runs `action` on a click on the span; its verdict says whether the click carries
+  /// on to the ancestors.
+  #[must_use]
+  fn handle_click<R: Into<Bubbling>>(self, action: impl Fn() -> R + 'static) -> Self {
+    Self::wrap(self.into_inner().handle_click(action))
+  }
+}
+
+/// What a facade's [`RichText`] carries: its constructor and its spans.
+pub trait RichTextBase<P: Platform>: Wraps<Inner = RichText<P>> {
+  /// An empty paragraph.
+  #[must_use]
+  fn new() -> Self {
+    Self::wrap(RichText::new())
+  }
+
+  /// Appends spans to the paragraph, each a facade's newtype over a [`Span`].
+  #[must_use]
+  fn set_spans<S: Wraps<Inner = Span<P>>>(self, spans: impl IntoIterator<Item = S>) -> Self {
+    Self::wrap(
+      self
+        .into_inner()
+        .set_spans(spans.into_iter().map(Wraps::into_inner)),
+    )
+  }
 }

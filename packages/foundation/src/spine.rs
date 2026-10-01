@@ -43,6 +43,7 @@ pub mod typography;
 mod values;
 mod view;
 mod window;
+mod wraps;
 
 pub use accesskit::TreeUpdate;
 pub use boundary::Boundary;
@@ -203,7 +204,7 @@ pub use scalar::Scalar;
 pub use scene::{Annotated, Annotation, NodeKind, NodeRecord, Scene};
 pub use segment::{Piece, Segment};
 pub use shape::{Declared, Keyframe, Plain, Shape, Static};
-pub use show::Show;
+pub use show::{Show, ShowBase};
 pub use task::count_pending;
 pub use token::{Definitions, IntoTokenValue, Token, TokenName, TokenRef, TokenSet, Tokenable};
 pub use ui_events::pointer::{
@@ -275,3 +276,4 @@ pub use view::{
   View,
 };
 pub use window::{ItemWindow, item_window, item_window_over};
+pub use wraps::Wraps;

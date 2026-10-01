@@ -1,5 +1,7 @@
 //! The stack layout.
 
+use skene_foundation::{StackBase, View, Wraps};
+
 use crate::ActivePlatform;
 
 /// Children overlapping in one cell, stacked in order with the last on top.
@@ -8,7 +10,8 @@ use crate::ActivePlatform;
 /// [`Container`](crate::Container). Accepts any view or a [`Pinned`](crate::Pinned)
 /// wrapper as a child; a pinned child sits against the stack's edges instead of where
 /// the alignment puts it.
+#[derive(Debug, Default, View, Wraps)]
 #[must_use]
 pub struct Stack(skene_foundation::Stack<ActivePlatform>);
 
-skene_foundation::impl_stack!(Stack, ActivePlatform);
+impl StackBase<ActivePlatform> for Stack {}

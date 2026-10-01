@@ -4,8 +4,10 @@
 
 use skene_web::{
   Column,
+  ColumnBase,
   HasChildren,
   Text,
+  TextBase,
   head,
   reactive::{Effect, Get, Set, Signal},
   render_to_string,

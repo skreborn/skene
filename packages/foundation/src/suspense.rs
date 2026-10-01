@@ -13,6 +13,7 @@ use crate::{
   Platform,
   Segment,
   View,
+  Wraps,
   realize::ChildBuilder,
 };
 
@@ -143,55 +144,17 @@ impl<P: Platform> View<P> for Suspense<P, ChildBuilder<P>> {
   }
 }
 
-/// Implements a facade's newtype `$name<C>` over the foundation's [`Suspense`].
-///
-/// The newtype holds the view on the platform `$platform` in its field; the macro
-/// implements the constructor, the fallback, the content and the traits a suspense
-/// meets.
-#[macro_export]
-macro_rules! impl_suspense {
-  ($name:ident, $platform:ty) => {
-    impl<C: ::core::fmt::Debug> ::core::fmt::Debug for $name<C> {
-      fn fmt(&self, formatter: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        ::core::fmt::Debug::fmt(&self.0, formatter)
-      }
-    }
-    impl ::core::default::Default for $name {
-      #[inline(always)]
-      fn default() -> Self {
-        Self::new()
-      }
-    }
-    impl $name {
-      /// A suspense with no fallback and no content yet.
-      #[inline(always)]
-      pub const fn new() -> Self {
-        Self($crate::Suspense::new())
-      }
+/// What a facade's [`Suspense`] carries: its constructor and its fallback.
+pub trait SuspenseBase<P: Platform>: Wraps<Inner = Suspense<P>> {
+  /// A suspense with no fallback and no content yet.
+  #[must_use]
+  fn new() -> Self {
+    Self::wrap(Suspense::new())
+  }
 
-      /// Sets the fallback shown while the content's work is pending; nothing by default.
-      #[inline(always)]
-      pub fn set_fallback(self, fallback: impl $crate::View<$platform>) -> Self {
-        Self(self.0.set_fallback(fallback))
-      }
-
-      /// Sets the content, built by `child` under the boundary.
-      #[inline(always)]
-      pub fn set_child_builder<V: $crate::View<$platform>>(
-        self,
-        child: impl FnOnce() -> V + 'static,
-      ) -> $name<$crate::ChildBuilder<$platform>> {
-        $name(self.0.set_child_builder(child))
-      }
-    }
-
-    impl<C> $crate::AnyKind for $name<C> {}
-
-    impl $crate::View<$platform> for $name<$crate::ChildBuilder<$platform>> {
-      #[inline(always)]
-      fn build(self) -> $crate::NodeId {
-        $crate::View::build(self.0)
-      }
-    }
-  };
+  /// Sets the fallback shown while the content's work is pending; nothing by default.
+  #[must_use]
+  fn set_fallback(self, fallback: impl View<P>) -> Self {
+    Self::wrap(self.into_inner().set_fallback(fallback))
+  }
 }

@@ -1,6 +1,6 @@
 //! A view with two forms: a fallback and the form a signal makes possible.
 
-use skene_foundation::NoChild;
+use skene_foundation::{ChildBuilder, EnhanceBase, NoChild, View, Wraps};
 
 use crate::ActivePlatform;
 
@@ -19,7 +19,19 @@ use crate::ActivePlatform;
 /// The signal the built-ins wait on is the terminal's own:
 /// [`Painting::available`](skene_foundation::Painting::available) for a painted box's
 /// pixels, true once the terminal's graphics probe is answered.
+#[derive(Debug, View, Wraps)]
 #[must_use]
 pub struct Enhance<C = NoChild>(skene_foundation::Enhance<ActivePlatform, C>);
 
-skene_foundation::impl_enhance!(Enhance, ActivePlatform);
+impl EnhanceBase<ActivePlatform> for Enhance {}
+
+impl Enhance {
+  /// Sets the form built once `live` is true.
+  #[inline(always)]
+  pub fn set_child_builder<V: View<ActivePlatform>>(
+    self,
+    child: impl FnOnce() -> V + 'static,
+  ) -> Enhance<ChildBuilder<ActivePlatform>> {
+    Enhance(self.0.set_child_builder(child))
+  }
+}

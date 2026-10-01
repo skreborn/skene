@@ -18,56 +18,8 @@ use crate::{
   StaticLeaf,
   Value,
   View,
+  Wraps,
 };
-
-/// Generates a [`GridCell`]'s setters on a facade's newtype holding one in `$field`, each
-/// forwarding to the wrapper's own, on the platform `$platform`.
-#[macro_export]
-macro_rules! grid_cell_surface {
-  ($field:tt, $platform:ty) => {
-    $crate::forward! { $field;
-      /// Sets the row placement.
-      fn set_row(
-        row: impl Into<
-          $crate::Value<
-            $crate::Line<$crate::GridPlacement>,
-            $crate::Condition<<$platform as $crate::Platform>::Scalar>,
-          >,
-        >,
-      );
-      /// Derives the row placement from the signals `row` reads: a value, a token or an
-      /// expression.
-      fn derive_row[R: Into<$crate::StaticLeaf<$crate::Line<$crate::GridPlacement>>>](
-        row: impl Fn() -> R + 'static,
-      );
-      /// Sets the column placement.
-      fn set_column(
-        column: impl Into<
-          $crate::Value<
-            $crate::Line<$crate::GridPlacement>,
-            $crate::Condition<<$platform as $crate::Platform>::Scalar>,
-          >,
-        >,
-      );
-      /// Derives the column placement from the signals `column` reads: a value, a token
-      /// or an expression.
-      fn derive_column[R: Into<$crate::StaticLeaf<$crate::Line<$crate::GridPlacement>>>](
-        column: impl Fn() -> R + 'static,
-      );
-      /// Sets the child's alignment within its cell, on both axes, overriding the grid's.
-      fn set_alignment(
-        alignment: impl Into<
-          $crate::Value<$crate::Alignment, $crate::Condition<<$platform as $crate::Platform>::Scalar>>,
-        >,
-      );
-      /// Derives the child's alignment within its cell from the signals `alignment`
-      /// reads: a value, a token or an expression.
-      fn derive_alignment[R: Into<$crate::StaticLeaf<$crate::Alignment>>](
-        alignment: impl Fn() -> R + 'static,
-      );
-    }
-  };
-}
 
 /// A placement value under the platform's conditions.
 type Placement<P> = Value<Line<GridPlacement>, Condition<<P as Platform>::Scalar>>;
@@ -205,49 +157,59 @@ impl<P: Platform> IntoChildOf<P, GridChild> for GridCell<P, AnyView<P>> {
   }
 }
 
-/// Implements a facade's newtype `$name<C>` over the foundation's [`GridCell`].
-///
-/// The newtype holds the view on the platform `$platform` in its field; the macro
-/// implements the constructor, the setters, the child and the child kind it is accepted
-/// as.
-#[macro_export]
-macro_rules! impl_grid_cell {
-  ($name:ident, $platform:ty) => {
-    impl<C> ::core::fmt::Debug for $name<C> {
-      fn fmt(&self, formatter: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        ::core::fmt::Debug::fmt(&self.0, formatter)
-      }
-    }
-    impl ::core::default::Default for $name {
-      #[inline(always)]
-      fn default() -> Self {
-        Self::new()
-      }
-    }
-    impl $name {
-      /// A wrapper placing its child automatically, with no child yet.
-      #[inline(always)]
-      pub fn new() -> Self {
-        Self($crate::GridCell::new())
-      }
+/// What a facade's [`GridCell`] carries: its constructor and its setters.
+pub trait GridCellBase<P: Platform>: Wraps<Inner = GridCell<P>> {
+  /// A wrapper placing its child automatically, with no child yet.
+  #[must_use]
+  fn new() -> Self {
+    Self::wrap(GridCell::new())
+  }
 
-      $crate::grid_cell_surface! { 0, $platform }
+  /// Sets the row placement.
+  #[must_use]
+  fn set_row(self, row: impl Into<Value<Line<GridPlacement>, Condition<P::Scalar>>>) -> Self {
+    Self::wrap(self.into_inner().set_row(row))
+  }
 
-      /// Sets the child.
-      #[inline(always)]
-      pub fn set_child(
-        self,
-        child: impl $crate::View<$platform>,
-      ) -> $name<$crate::AnyView<$platform>> {
-        $name(self.0.set_child(child))
-      }
-    }
+  /// Derives the row placement from the signals `row` reads: a value, a token or an
+  /// expression.
+  #[must_use]
+  fn derive_row<R: Into<StaticLeaf<Line<GridPlacement>>>>(
+    self,
+    row: impl Fn() -> R + 'static,
+  ) -> Self {
+    Self::wrap(self.into_inner().derive_row(row))
+  }
 
-    impl $crate::IntoChildOf<$platform, $crate::GridChild> for $name<$crate::AnyView<$platform>> {
-      #[inline(always)]
-      fn into_child(self) -> $crate::AnyView<$platform> {
-        $crate::IntoChildOf::into_child(self.0)
-      }
-    }
-  };
+  /// Sets the column placement.
+  #[must_use]
+  fn set_column(self, column: impl Into<Value<Line<GridPlacement>, Condition<P::Scalar>>>) -> Self {
+    Self::wrap(self.into_inner().set_column(column))
+  }
+
+  /// Derives the column placement from the signals `column` reads: a value, a token
+  /// or an expression.
+  #[must_use]
+  fn derive_column<R: Into<StaticLeaf<Line<GridPlacement>>>>(
+    self,
+    column: impl Fn() -> R + 'static,
+  ) -> Self {
+    Self::wrap(self.into_inner().derive_column(column))
+  }
+
+  /// Sets the child's alignment within its cell, on both axes, overriding the grid's.
+  #[must_use]
+  fn set_alignment(self, alignment: impl Into<Value<Alignment, Condition<P::Scalar>>>) -> Self {
+    Self::wrap(self.into_inner().set_alignment(alignment))
+  }
+
+  /// Derives the child's alignment within its cell from the signals `alignment`
+  /// reads: a value, a token or an expression.
+  #[must_use]
+  fn derive_alignment<R: Into<StaticLeaf<Alignment>>>(
+    self,
+    alignment: impl Fn() -> R + 'static,
+  ) -> Self {
+    Self::wrap(self.into_inner().derive_alignment(alignment))
+  }
 }

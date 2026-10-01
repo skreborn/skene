@@ -1,5 +1,7 @@
 //! One of several branches, by key.
 
+use skene_foundation::{SwitchBase, View, Wraps};
+
 use crate::ActivePlatform;
 
 /// Shows the branch whose key is current, preserving every branch's state.
@@ -10,7 +12,15 @@ use crate::ActivePlatform;
 ///
 /// Every branch built is destroyed when the owner the switch was built under is
 /// disposed. Nothing is shown while no key is set or no case has the current key.
+#[derive(Debug, View, Wraps)]
 #[must_use]
 pub struct Switch<K>(skene_foundation::Switch<ActivePlatform, K>);
 
-skene_foundation::impl_switch!(Switch, ActivePlatform);
+impl<K: PartialEq + 'static> Default for Switch<K> {
+  #[inline(always)]
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
+impl<K: PartialEq + 'static> SwitchBase<ActivePlatform, K> for Switch<K> {}

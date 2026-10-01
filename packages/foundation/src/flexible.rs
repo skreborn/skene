@@ -18,37 +18,9 @@ use crate::{
   StaticLeaf,
   Value,
   View,
+  Wraps,
   realize::Source,
 };
-
-/// Generates a [`Flexible`]'s setters on a facade's newtype holding one in `$field`,
-/// each forwarding to the wrapper's own, on the platform `$platform`.
-#[macro_export]
-macro_rules! flexible_surface {
-  ($field:tt, $platform:ty) => {
-    $crate::forward! { $field;
-      /// Sets the weight the child grows by when the container has room to spare.
-      fn set_grow_factor(factor: f32);
-      /// Derives the grow weight from the signals `factor` reads.
-      fn derive_grow_factor(factor: impl Fn() -> f32 + 'static);
-      /// Sets the weight the child shrinks by when the container runs short.
-      fn set_shrink_factor(factor: f32);
-      /// Sets the child's size before growing and shrinking.
-      fn set_initial(initial: impl Into<$crate::Dimension<<$platform as $crate::Platform>::Scalar>>);
-      /// Sets the child's own cross-axis alignment, overriding the container's.
-      fn set_item_alignment(
-        alignment: impl Into<
-          $crate::Value<$crate::ItemAlignment, $crate::Condition<<$platform as $crate::Platform>::Scalar>>,
-        >,
-      );
-      /// Derives the child's own cross-axis alignment from the signals `alignment` reads:
-      /// a value, a token or an expression.
-      fn derive_item_alignment[R: Into<$crate::StaticLeaf<$crate::ItemAlignment>>](
-        alignment: impl Fn() -> R + 'static,
-      );
-    }
-  };
-}
 
 /// Gives the child it wraps its flexibility in a [`Row`](crate::Row) or a
 /// [`Column`](crate::Column).
@@ -189,49 +161,54 @@ impl<P: Platform> IntoChildOf<P, FlexChild> for Flexible<P, AnyView<P>> {
   }
 }
 
-/// Implements a facade's newtype `$name<C>` over the foundation's [`Flexible`].
-///
-/// The newtype holds the view on the platform `$platform` in its field; the macro
-/// implements the constructor, the setters, the child and the child kind it is accepted
-/// as.
-#[macro_export]
-macro_rules! impl_flexible {
-  ($name:ident, $platform:ty) => {
-    impl<C> ::core::fmt::Debug for $name<C> {
-      fn fmt(&self, formatter: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        ::core::fmt::Debug::fmt(&self.0, formatter)
-      }
-    }
-    impl ::core::default::Default for $name {
-      #[inline(always)]
-      fn default() -> Self {
-        Self::new()
-      }
-    }
-    impl $name {
-      /// A wrapper with the default flexibility and no child yet.
-      #[inline(always)]
-      pub fn new() -> Self {
-        Self($crate::Flexible::new())
-      }
+/// What a facade's [`Flexible`] carries: its constructor and its setters.
+pub trait FlexibleBase<P: Platform>: Wraps<Inner = Flexible<P>> {
+  /// A wrapper with the default flexibility and no child yet.
+  #[must_use]
+  fn new() -> Self {
+    Self::wrap(Flexible::new())
+  }
 
-      $crate::flexible_surface! { 0, $platform }
+  /// Sets the weight the child grows by when the container has room to spare.
+  #[must_use]
+  fn set_grow_factor(self, factor: f32) -> Self {
+    Self::wrap(self.into_inner().set_grow_factor(factor))
+  }
 
-      /// Sets the child.
-      #[inline(always)]
-      pub fn set_child(
-        self,
-        child: impl $crate::View<$platform>,
-      ) -> $name<$crate::AnyView<$platform>> {
-        $name(self.0.set_child(child))
-      }
-    }
+  /// Derives the grow weight from the signals `factor` reads.
+  #[must_use]
+  fn derive_grow_factor(self, factor: impl Fn() -> f32 + 'static) -> Self {
+    Self::wrap(self.into_inner().derive_grow_factor(factor))
+  }
 
-    impl $crate::IntoChildOf<$platform, $crate::FlexChild> for $name<$crate::AnyView<$platform>> {
-      #[inline(always)]
-      fn into_child(self) -> $crate::AnyView<$platform> {
-        $crate::IntoChildOf::into_child(self.0)
-      }
-    }
-  };
+  /// Sets the weight the child shrinks by when the container runs short.
+  #[must_use]
+  fn set_shrink_factor(self, factor: f32) -> Self {
+    Self::wrap(self.into_inner().set_shrink_factor(factor))
+  }
+
+  /// Sets the child's size before growing and shrinking.
+  #[must_use]
+  fn set_initial(self, initial: impl Into<Dimension<P::Scalar>>) -> Self {
+    Self::wrap(self.into_inner().set_initial(initial))
+  }
+
+  /// Sets the child's own cross-axis alignment, overriding the container's.
+  #[must_use]
+  fn set_item_alignment(
+    self,
+    alignment: impl Into<Value<ItemAlignment, Condition<P::Scalar>>>,
+  ) -> Self {
+    Self::wrap(self.into_inner().set_item_alignment(alignment))
+  }
+
+  /// Derives the child's own cross-axis alignment from the signals `alignment` reads:
+  /// a value, a token or an expression.
+  #[must_use]
+  fn derive_item_alignment<R: Into<StaticLeaf<ItemAlignment>>>(
+    self,
+    alignment: impl Fn() -> R + 'static,
+  ) -> Self {
+    Self::wrap(self.into_inner().derive_item_alignment(alignment))
+  }
 }

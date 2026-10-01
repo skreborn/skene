@@ -24,7 +24,17 @@ use std::{
 };
 
 use skene_dev::{CONTROL_VARIABLE, Control, STATE_VARIABLE, SWAP_EXIT};
-use skene_foundation::{Color, HasChildren, Scene};
+use skene_foundation::{
+  Color,
+  ColumnBase,
+  DecorationBase,
+  FlexBase,
+  HasChildren,
+  OverlayBase,
+  RunBase,
+  Scene,
+  TextBase,
+};
 use skene_reactive::{Get, Set, Signal, SnapshotPlace};
 
 use crate::{Column, Overlay, Terminal, Text, View as _, records::Handle};

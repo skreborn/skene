@@ -13,6 +13,7 @@ use crate::{
   Platform,
   Segment,
   View,
+  Wraps,
   derived,
   empty,
   realize::ChildBuilder,
@@ -136,59 +137,18 @@ impl<P: Platform> View<P> for ErrorBoundary<P, ChildBuilder<P>> {
   }
 }
 
-/// Implements a facade's newtype `$name<C>` over the foundation's [`ErrorBoundary`].
-///
-/// The newtype holds the view on the platform `$platform` in its field; the macro
-/// implements the constructor, the fallback, the content and the traits a boundary
-/// meets.
-#[macro_export]
-macro_rules! impl_error_boundary {
-  ($name:ident, $platform:ty) => {
-    impl<C> ::core::fmt::Debug for $name<C> {
-      fn fmt(&self, formatter: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        ::core::fmt::Debug::fmt(&self.0, formatter)
-      }
-    }
-    impl ::core::default::Default for $name {
-      #[inline(always)]
-      fn default() -> Self {
-        Self::new()
-      }
-    }
-    impl $name {
-      /// A boundary with no fallback and no content yet.
-      #[inline(always)]
-      pub const fn new() -> Self {
-        Self($crate::ErrorBoundary::new())
-      }
+/// What a facade's [`ErrorBoundary`] carries: its constructor and its fallback.
+pub trait ErrorBoundaryBase<P: Platform>: Wraps<Inner = ErrorBoundary<P>> {
+  /// A boundary with no fallback and no content yet.
+  #[must_use]
+  fn new() -> Self {
+    Self::wrap(ErrorBoundary::new())
+  }
 
-      /// Sets the fallback shown while errors are held, built by `fallback` from the
-      /// boundary's handle whenever the held errors change; nothing by default.
-      #[inline(always)]
-      pub fn set_fallback_builder<V: $crate::View<$platform>>(
-        self,
-        fallback: impl Fn($crate::Errors) -> V + 'static,
-      ) -> Self {
-        Self(self.0.set_fallback_builder(fallback))
-      }
-
-      /// Sets the content, built by `child` under the boundary.
-      #[inline(always)]
-      pub fn set_child_builder<V: $crate::View<$platform>>(
-        self,
-        child: impl FnOnce() -> V + 'static,
-      ) -> $name<$crate::ChildBuilder<$platform>> {
-        $name(self.0.set_child_builder(child))
-      }
-    }
-
-    impl<C> $crate::AnyKind for $name<C> {}
-
-    impl $crate::View<$platform> for $name<$crate::ChildBuilder<$platform>> {
-      #[inline(always)]
-      fn build(self) -> $crate::NodeId {
-        $crate::View::build(self.0)
-      }
-    }
-  };
+  /// Sets the fallback shown while errors are held, built by `fallback` from the
+  /// boundary's handle whenever the held errors change; nothing by default.
+  #[must_use]
+  fn set_fallback_builder<V: View<P>>(self, fallback: impl Fn(Errors) -> V + 'static) -> Self {
+    Self::wrap(self.into_inner().set_fallback_builder(fallback))
+  }
 }

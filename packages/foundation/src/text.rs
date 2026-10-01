@@ -1,6 +1,18 @@
 //! A text run on its own line.
 
-use crate::{AnyKind, NodeId, Platform, RunDisplay, View, realize::Source, run::Run};
+use crate::{
+  AnyKind,
+  DeclaredRunStyle,
+  HasRun,
+  NodeId,
+  Platform,
+  RunBase,
+  RunDisplay,
+  View,
+  Wraps,
+  realize::Source,
+  run::Run,
+};
 
 /// A run of text on its own line.
 ///
@@ -34,8 +46,6 @@ impl<P: Platform> Text<P> {
       run: Run::new(),
     }
   }
-
-  crate::run_surface! { run, P }
 }
 
 impl<P: Platform> AnyKind for Text<P> {}
@@ -52,41 +62,34 @@ impl<P: Platform> View<P> for Text<P> {
   }
 }
 
-/// Implements a facade's newtype `$name` over the foundation's [`Text`].
-///
-/// The newtype holds the view on the platform `$platform` in its field; the macro
-/// implements the constructors, the builder surface and the traits a text meets.
-#[macro_export]
-macro_rules! impl_text {
-  ($name:ident, $platform:ty) => {
-    impl ::core::fmt::Debug for $name {
-      fn fmt(&self, formatter: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        ::core::fmt::Debug::fmt(&self.0, formatter)
-      }
+impl<P: Platform> HasRun<P> for Text<P> {
+  #[inline(always)]
+  fn run_style_mut(&mut self) -> &mut DeclaredRunStyle<P> {
+    self.run.style_mut()
+  }
+
+  #[inline(always)]
+  fn map_run(self, map: impl FnOnce(Run<P>) -> Run<P>) -> Self {
+    Self {
+      content: self.content,
+      run: map(self.run),
     }
-    impl $name {
-      /// A run reading `content`.
-      #[inline(always)]
-      pub fn new(content: impl Into<String>) -> Self {
-        Self($crate::Text::new(content))
-      }
+  }
+}
 
-      /// A run whose text is recomputed whenever a signal `content` reads changes.
-      #[inline(always)]
-      pub fn derive(content: impl Fn() -> String + 'static) -> Self {
-        Self($crate::Text::derive(content))
-      }
+impl<P: Platform> RunBase<P> for Text<P> {}
 
-      $crate::run_surface! { 0, $platform }
-    }
+/// The constructors of a facade's [`Text`].
+pub trait TextBase<P: Platform>: Wraps<Inner = Text<P>> {
+  /// A run reading `content`.
+  #[must_use]
+  fn new(content: impl Into<String>) -> Self {
+    Self::wrap(Text::new(content))
+  }
 
-    impl $crate::AnyKind for $name {}
-
-    impl $crate::View<$platform> for $name {
-      #[inline(always)]
-      fn build(self) -> $crate::NodeId {
-        $crate::View::build(self.0)
-      }
-    }
-  };
+  /// A run whose text is recomputed whenever a signal `content` reads changes.
+  #[must_use]
+  fn derive(content: impl Fn() -> String + 'static) -> Self {
+    Self::wrap(Text::derive(content))
+  }
 }

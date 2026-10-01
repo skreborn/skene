@@ -1,6 +1,6 @@
 //! Fallback content while a subtree's async work is pending.
 
-use skene_foundation::NoChild;
+use skene_foundation::{ChildBuilder, NoChild, SuspenseBase, View, Wraps};
 
 use crate::ActivePlatform;
 
@@ -15,7 +15,26 @@ use crate::ActivePlatform;
 /// [`NoChild`] until [`set_child_builder`](Self::set_child_builder) supplies the
 /// content; it is a builder closure because it is built under the owner the boundary
 /// is provided on.
+#[derive(Debug, View, Wraps)]
 #[must_use]
 pub struct Suspense<C = NoChild>(skene_foundation::Suspense<ActivePlatform, C>);
 
-skene_foundation::impl_suspense!(Suspense, ActivePlatform);
+impl Default for Suspense {
+  #[inline(always)]
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
+impl SuspenseBase<ActivePlatform> for Suspense {}
+
+impl Suspense {
+  /// Sets the content, built by `child` under the boundary.
+  #[inline(always)]
+  pub fn set_child_builder<V: View<ActivePlatform>>(
+    self,
+    child: impl FnOnce() -> V + 'static,
+  ) -> Suspense<ChildBuilder<ActivePlatform>> {
+    Suspense(self.0.set_child_builder(child))
+  }
+}

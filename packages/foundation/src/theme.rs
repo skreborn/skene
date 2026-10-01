@@ -15,6 +15,7 @@ use crate::{
   Scene,
   TokenSet,
   View,
+  Wraps,
   realize::{ChildBuilder, Source},
 };
 
@@ -169,57 +170,18 @@ impl<P: Platform, S: TokenSet<P::TokenValue> + Default> ThemedIn<P> for S {
   }
 }
 
-/// Implements a facade's newtype `$name<S, C>` over the foundation's [`Theme`].
-///
-/// The newtype holds the view on the platform `$platform` in its field; the macro
-/// implements the constructors, the child and the traits a theme meets.
-#[macro_export]
-macro_rules! impl_theme {
-  ($name:ident, $platform:ty) => {
-    impl<S: $crate::TokenSet<<$platform as $crate::Platform>::TokenValue>, C> ::core::fmt::Debug
-      for $name<S, C>
-    {
-      fn fmt(&self, formatter: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        ::core::fmt::Debug::fmt(&self.0, formatter)
-      }
-    }
+/// The constructors of a facade's [`Theme`].
+pub trait ThemeBase<P: Platform, S: TokenSet<P::TokenValue>>: Wraps<Inner = Theme<P, S>> {
+  /// A theme defining `palette`.
+  #[must_use]
+  fn new(palette: S) -> Self {
+    Self::wrap(Theme::new(palette))
+  }
 
-    impl<S: $crate::TokenSet<<$platform as $crate::Platform>::TokenValue>> $name<S> {
-      /// A theme defining `palette`.
-      #[inline(always)]
-      pub fn new(palette: S) -> Self {
-        Self($crate::Theme::new(palette))
-      }
-
-      /// A theme defining the palette `palette` returns, recomputed whenever a signal it
-      /// reads changes.
-      #[inline(always)]
-      pub fn derive(palette: impl Fn() -> S + 'static) -> Self {
-        Self($crate::Theme::derive(palette))
-      }
-
-      /// Sets the child, built by `child` under the theme.
-      #[inline(always)]
-      pub fn set_child_builder<V: $crate::View<$platform>>(
-        self,
-        child: impl FnOnce() -> V + 'static,
-      ) -> $name<S, $crate::ChildBuilder<$platform>> {
-        $name(self.0.set_child_builder(child))
-      }
-    }
-
-    impl<S: $crate::TokenSet<<$platform as $crate::Platform>::TokenValue>, C> $crate::AnyKind
-      for $name<S, C>
-    {
-    }
-
-    impl<S: $crate::TokenSet<<$platform as $crate::Platform>::TokenValue>> $crate::View<$platform>
-      for $name<S, $crate::ChildBuilder<$platform>>
-    {
-      #[inline(always)]
-      fn build(self) -> $crate::NodeId {
-        $crate::View::build(self.0)
-      }
-    }
-  };
+  /// A theme defining the palette `palette` returns, recomputed whenever a signal it
+  /// reads changes.
+  #[must_use]
+  fn derive(palette: impl Fn() -> S + 'static) -> Self {
+    Self::wrap(Theme::derive(palette))
+  }
 }

@@ -2,48 +2,26 @@
 
 use crate::{
   AnyKind,
+  Arrangement,
   Children,
+  Condition,
+  DeclaredBoxStyle,
   FlexChild,
   FlexDirection,
+  HasBoxStyle,
   HasChildren,
+  Inset,
+  ItemAlignment,
   Layout,
   LayoutBox,
   NodeId,
   Platform,
   Seal,
+  Spacing,
   View,
+  Wrap,
+  Wraps,
 };
-
-/// Generates a flex layout's builder surface on a type holding one in `$field`.
-///
-/// The surface is the declared style and the properties a flex container honors, on the
-/// platform `$platform`. The foundation's [`Row`] and [`Column`] expand it over their
-/// box, and a facade's newtype over the layout it wraps.
-#[macro_export]
-macro_rules! flex_surface {
-  ($field:tt, $platform:ty) => {
-    /// The declared style, for a facade's medium-specific setters to write into.
-    #[inline(always)]
-    pub const fn style_mut(&mut self) -> &mut $crate::DeclaredBoxStyle<$platform> {
-      self.$field.style_mut()
-    }
-
-    $crate::properties! { style_mut, $platform;
-      set_padding / derive_padding (padding) => padding: $crate::Inset<<$platform as $crate::Platform>::Scalar>,
-        "the inset between the box and the children it arranges";
-      set_spacing / derive_spacing (spacing) => spacing: $crate::Spacing<<$platform as $crate::Platform>::Scalar>,
-        "the spacing between children per axis; a plain length spaces both";
-      set_arrangement / derive_arrangement (arrangement) => arrangement: $crate::Arrangement,
-        "the distribution of children along the main axis";
-      set_item_alignment / derive_item_alignment (alignment) => item_alignment: $crate::ItemAlignment,
-        "the alignment of each child on the cross axis";
-      set_line_arrangement / derive_line_arrangement (arrangement) => line_arrangement: $crate::Arrangement,
-        "the distribution of wrapped lines along the cross axis";
-      set_wrap / derive_wrap (wrap) => wrap: $crate::Wrap,
-        "whether and how children wrap onto further lines";
-    }
-  };
-}
 
 /// Generates a flex layout view over [`LayoutBox`], exposing the properties a flex
 /// container honors.
@@ -87,9 +65,16 @@ macro_rules! flex_layout {
           }),
         }
       }
-
-      crate::flex_surface! { inner, P }
     }
+
+    impl<P: Platform> HasBoxStyle<P> for $name<P> {
+      #[inline(always)]
+      fn box_style_mut(&mut self) -> &mut DeclaredBoxStyle<P> {
+        self.inner.style_mut()
+      }
+    }
+
+    impl<P: Platform> FlexBase<P> for $name<P> {}
 
     impl<P: Platform> HasChildren<P> for $name<P> {
       type Kind = FlexChild;
@@ -124,78 +109,53 @@ flex_layout!(
   FlexDirection::ColumnReverse
 );
 
-#[doc(hidden)]
-#[macro_export]
-macro_rules! impl_flex {
-  ($name:ident, $view:ident, $platform:ty, $doc:literal) => {
-    impl ::core::fmt::Debug for $name {
-      fn fmt(&self, formatter: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        ::core::fmt::Debug::fmt(&self.0, formatter)
-      }
-    }
-    impl ::core::default::Default for $name {
-      #[inline(always)]
-      fn default() -> Self {
-        Self::new()
-      }
-    }
-    impl $name {
-      #[doc = concat!("An empty layout running ", $doc, ".")]
-      #[inline(always)]
-      pub fn new() -> Self {
-        Self($crate::$view::new())
-      }
-
-      #[doc = concat!("An empty layout running ", $doc, ", reversed.")]
-      #[inline(always)]
-      pub fn reversed() -> Self {
-        Self($crate::$view::reversed())
-      }
-
-      $crate::flex_surface! { 0, $platform }
-    }
-
-    impl $crate::HasChildren<$platform> for $name {
-      type Kind = $crate::FlexChild;
-
-      #[inline(always)]
-      fn children_mut(
-        &mut self,
-        seal: $crate::Seal,
-      ) -> &mut $crate::Children<$platform, $crate::FlexChild> {
-        $crate::HasChildren::children_mut(&mut self.0, seal)
-      }
-    }
-
-    impl $crate::AnyKind for $name {}
-
-    impl $crate::View<$platform> for $name {
-      #[inline(always)]
-      fn build(self) -> $crate::NodeId {
-        $crate::View::build(self.0)
-      }
-    }
-  };
+/// What a flex layout, a [`Row`] or a [`Column`], carries.
+///
+/// The inset around its children, their spacing, their distribution and alignment, and how
+/// they wrap.
+pub trait FlexBase<P: Platform>: HasBoxStyle<P> + Sized {
+  crate::trait_properties! { box_style_mut, Condition<P::Scalar>;
+    set_padding / derive_padding (padding) => padding: Inset<P::Scalar>,
+      "the inset between the box and the children it arranges";
+    set_spacing / derive_spacing (spacing) => spacing: Spacing<P::Scalar>,
+      "the spacing between children per axis; a plain length spaces both";
+    set_arrangement / derive_arrangement (arrangement) => arrangement: Arrangement,
+      "the distribution of children along the main axis";
+    set_item_alignment / derive_item_alignment (alignment) => item_alignment: ItemAlignment,
+      "the alignment of each child on the cross axis";
+    set_line_arrangement / derive_line_arrangement (arrangement) => line_arrangement: Arrangement,
+      "the distribution of wrapped lines along the cross axis";
+    set_wrap / derive_wrap (wrap) => wrap: Wrap,
+      "whether and how children wrap onto further lines";
+  }
 }
 
-/// Implements a facade's newtype `$name` over the foundation's [`Row`].
-///
-/// The newtype holds the view on the platform `$platform` in its field; the macro
-/// implements the constructors, the builder surface and the traits a flex layout meets.
-#[macro_export]
-macro_rules! impl_row {
-  ($name:ident, $platform:ty) => {
-    $crate::impl_flex!($name, Row, $platform, "left to right");
-  };
+/// The constructors of a facade's [`Row`].
+pub trait RowBase<P: Platform>: Wraps<Inner = Row<P>> {
+  /// An empty layout running left to right.
+  #[must_use]
+  fn new() -> Self {
+    Self::wrap(Row::new())
+  }
+
+  /// An empty layout running left to right, reversed.
+  #[must_use]
+  fn reversed() -> Self {
+    Self::wrap(Row::reversed())
+  }
 }
 
-/// Implements a facade's newtype `$name` over the foundation's [`Column`].
-///
-/// The newtype holds the view on the platform `$platform` in its field; the macro
-/// implements the constructors, the builder surface and the traits a flex layout meets.
-#[macro_export]
-macro_rules! impl_column {
-  ($name:ident, $platform:ty) => {
-    $crate::impl_flex!($name, Column, $platform, "top to bottom");
-  };
+/// The constructors of a facade's [`Column`].
+pub trait ColumnBase<P: Platform>: Wraps<Inner = Column<P>> {
+  /// An empty layout running top to bottom.
+  #[must_use]
+  fn new() -> Self {
+    Self::wrap(Column::new())
+  }
+
+  /// An empty layout running top to bottom, reversed.
+  #[must_use]
+  fn reversed() -> Self {
+    Self::wrap(Column::reversed())
+  }
 }

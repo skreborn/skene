@@ -3,7 +3,15 @@
 
 #![cfg(skene_web_platform = "server")]
 
-use skene_web::{LazyColumn, LazyRow, Text, render_to_string};
+use skene_web::{
+  LazyColumn,
+  LazyColumnBase,
+  LazyRow,
+  LazyRowBase,
+  Text,
+  TextBase,
+  render_to_string,
+};
 
 /// A server render carries the scroll box, the overscan slice, and a trailing spacer
 /// covering every unbuilt item.

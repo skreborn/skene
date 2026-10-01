@@ -1,15 +1,15 @@
 //! A view of a facade's own over the foundation's: a type holding one other as its
 //! whole content, and taking on what that one is.
 
-use crate::{AnyKind, Children, HasChild, HasChildren, NodeId, Platform, Seal, View};
+use crate::spine::{Children, HasChild, HasChildren, Platform, Seal};
 
 /// A type holding one other as its whole content: a facade's view over the
 /// foundation's.
 ///
-/// What the type held is, the holder is: a view, a view of any kind, a box with one
-/// child, a container of children, and what the builder traits reach through (its box
-/// style, its layout box, its run). `#[derive(Wraps)]` implements it for a tuple struct
-/// of one field.
+/// What the type held is, the holder is: a box with one child, a container of children,
+/// and what the builder traits reach through (its box style, its layout box, its run).
+/// `#[derive(Wraps)]` implements it for a tuple struct of one field; `#[derive(View)]`
+/// makes that struct the view it holds.
 pub trait Wraps: Sized {
   /// The type held.
   type Inner;
@@ -17,20 +17,14 @@ pub trait Wraps: Sized {
   /// Holds `inner`.
   fn wrap(inner: Self::Inner) -> Self;
 
+  /// The type held.
+  fn inner(&self) -> &Self::Inner;
+
   /// The type held, to change in place.
   fn inner_mut(&mut self) -> &mut Self::Inner;
 
   /// Gives up the type held.
   fn into_inner(self) -> Self::Inner;
-}
-
-impl<T: Wraps<Inner: AnyKind>> AnyKind for T {}
-
-impl<P: Platform, T: Wraps<Inner: View<P>> + 'static> View<P> for T {
-  #[inline(always)]
-  fn build(self) -> NodeId {
-    self.into_inner().build()
-  }
 }
 
 impl<P: Platform, T: Wraps<Inner: HasChild<P>>> HasChild<P> for T {

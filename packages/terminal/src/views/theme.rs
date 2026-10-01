@@ -1,6 +1,6 @@
 //! The one theme view: a scope defining a token set beneath it.
 
-use skene_foundation::{NoChild, TokenSet};
+use skene_foundation::{ChildBuilder, NoChild, ThemeBase, TokenSet, View, Wraps};
 
 use crate::{ActivePlatform, TokenValue};
 
@@ -12,9 +12,21 @@ use crate::{ActivePlatform, TokenValue};
 /// and nothing rebuilds. Nesting a theme redefines beneath it. Holds [`NoChild`] until
 /// [`set_child_builder`](Self::set_child_builder) supplies the child; the child is a
 /// builder closure because it is built under the owner the context is provided on.
+#[derive(Debug, View, Wraps)]
 #[must_use]
 pub struct Theme<S: TokenSet<TokenValue>, C = NoChild>(
   skene_foundation::Theme<ActivePlatform, S, C>,
 );
 
-skene_foundation::impl_theme!(Theme, ActivePlatform);
+impl<S: TokenSet<TokenValue>> ThemeBase<ActivePlatform, S> for Theme<S> {}
+
+impl<S: TokenSet<TokenValue>> Theme<S> {
+  /// Sets the child, built by `child` under the theme.
+  #[inline(always)]
+  pub fn set_child_builder<V: View<ActivePlatform>>(
+    self,
+    child: impl FnOnce() -> V + 'static,
+  ) -> Theme<S, ChildBuilder<ActivePlatform>> {
+    Theme(self.0.set_child_builder(child))
+  }
+}

@@ -1,6 +1,6 @@
 //! A child shown or hidden by a condition.
 
-use skene_foundation::NoChild;
+use skene_foundation::{AnyView, NoChild, ShowBase, View, Wraps};
 
 use crate::ActivePlatform;
 
@@ -11,7 +11,23 @@ use crate::ActivePlatform;
 /// holds. While hidden its effects pause, catching up once it shows again.
 ///
 /// Holds [`NoChild`] until `set_child` supplies the child; only then is it a view.
+#[derive(Debug, View, Wraps)]
 #[must_use]
 pub struct Show<C = NoChild>(skene_foundation::Show<ActivePlatform, C>);
 
-skene_foundation::impl_show!(Show, ActivePlatform);
+impl Default for Show {
+  #[inline(always)]
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
+impl ShowBase<ActivePlatform> for Show {}
+
+impl Show {
+  /// Sets the child.
+  #[inline(always)]
+  pub fn set_child(self, child: impl View<ActivePlatform>) -> Show<AnyView<ActivePlatform>> {
+    Show(self.0.set_child(child))
+  }
+}

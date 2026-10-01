@@ -1,6 +1,6 @@
 //! Content shown beside the view it describes.
 
-use skene_foundation::NoChild;
+use skene_foundation::{AnyView, DecorationBase, NoChild, TooltipBase, View, Wraps};
 
 use crate::ActivePlatform;
 
@@ -16,7 +16,18 @@ use crate::ActivePlatform;
 /// [`Part::Bubble`](skene_foundation::Part::Bubble) of the described view, decorated through the
 /// setters here, and sits where an anchored overlay's [placement](Self::set_placement) puts it.
 /// Holds [`NoChild`] until [`set_child`](Self::set_child) supplies the view it describes.
+#[derive(Debug, View, Wraps)]
 #[must_use]
 pub struct Tooltip<C = NoChild>(skene_foundation::Tooltip<ActivePlatform, C>);
 
-skene_foundation::impl_tooltip!(Tooltip, ActivePlatform);
+impl TooltipBase<ActivePlatform> for Tooltip {}
+
+impl DecorationBase<ActivePlatform> for Tooltip {}
+
+impl Tooltip {
+  /// Sets the view the tooltip describes.
+  #[inline(always)]
+  pub fn set_child(self, child: impl View<ActivePlatform>) -> Tooltip<AnyView<ActivePlatform>> {
+    Tooltip(self.0.set_child(child))
+  }
+}

@@ -6,6 +6,8 @@ use skene_foundation::{
   Color,
   ContextMenu,
   CornerRadius,
+  DecorationBase,
+  DecorationWithCornerRadius,
   MenuEntry,
   MouseCursor,
   NoChild,

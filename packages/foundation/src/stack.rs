@@ -1,45 +1,26 @@
 //! The stack layout.
 
 use crate::{
+  Alignment,
   AnyKind,
   Children,
+  Condition,
+  DeclaredBoxStyle,
+  HasBoxStyle,
   HasChildren,
+  HasLayoutBox,
+  Inset,
   Layout,
   LayoutBox,
   NodeId,
   Platform,
   Seal,
   StackChild,
+  StaticLeaf,
+  Value,
   View,
+  Wraps,
 };
-
-/// Generates a [`Stack`]'s builder surface on a type holding one in `$field`.
-///
-/// The surface is the declared style, the padding and the alignment of the unpinned
-/// children, on the platform `$platform`. The foundation's stack expands it over its
-/// box, and a facade's newtype over the stack it wraps.
-#[macro_export]
-macro_rules! stack_surface {
-  ($field:tt, $platform:ty) => {
-    /// The declared style, for a facade's medium-specific setters to write into.
-    #[inline(always)]
-    pub const fn style_mut(&mut self) -> &mut $crate::DeclaredBoxStyle<$platform> {
-      self.$field.style_mut()
-    }
-
-    $crate::properties! { style_mut, $platform;
-      set_padding / derive_padding (padding) => padding: $crate::Inset<<$platform as $crate::Platform>::Scalar>,
-        "the inset between the box and the children it arranges";
-    }
-
-    $crate::forward! { $field;
-      /// Sets the alignment of the unpinned children within the stack, on both axes.
-      fn set_alignment(alignment: impl Into<$crate::Value<$crate::Alignment, $crate::Condition<<$platform as $crate::Platform>::Scalar>>>);
-      /// Derives the alignment of the unpinned children from the signals `alignment` reads.
-      fn derive_alignment[R: Into<$crate::StaticLeaf<$crate::Alignment>>](alignment: impl Fn() -> R + 'static);
-    }
-  };
-}
 
 /// Children overlapping in one cell, stacked in order with the last on top.
 ///
@@ -68,8 +49,6 @@ impl<P: Platform> Stack<P> {
       inner: LayoutBox::new(Layout::Stack),
     }
   }
-
-  crate::stack_surface! { inner, P }
 }
 
 impl<P: Platform> HasChildren<P> for Stack<P> {
@@ -90,53 +69,59 @@ impl<P: Platform> View<P> for Stack<P> {
   }
 }
 
-/// Implements a facade's newtype `$name` over the foundation's [`Stack`].
+impl<P: Platform> HasBoxStyle<P> for Stack<P> {
+  #[inline(always)]
+  fn box_style_mut(&mut self) -> &mut DeclaredBoxStyle<P> {
+    self.inner.style_mut()
+  }
+}
+
+impl<P: Platform> HasLayoutBox<P> for Stack<P> {
+  type Kind = StackChild;
+
+  #[inline(always)]
+  fn map_layout_box(
+    self,
+    map: impl FnOnce(LayoutBox<P, StackChild>) -> LayoutBox<P, StackChild>,
+  ) -> Self {
+    Self {
+      inner: map(self.inner),
+    }
+  }
+}
+
+impl<P: Platform> StackBase<P> for Stack<P> {}
+
+/// What a [`Stack`] carries, with its constructor on a facade's newtype.
 ///
-/// The newtype holds the view on the platform `$platform` in its field; the macro
-/// implements the constructor, the builder surface and the traits a stack meets.
-#[macro_export]
-macro_rules! impl_stack {
-  ($name:ident, $platform:ty) => {
-    impl ::core::fmt::Debug for $name {
-      fn fmt(&self, formatter: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        ::core::fmt::Debug::fmt(&self.0, formatter)
-      }
-    }
-    impl ::core::default::Default for $name {
-      #[inline(always)]
-      fn default() -> Self {
-        Self::new()
-      }
-    }
-    impl $name {
-      /// An empty stack.
-      #[inline(always)]
-      pub fn new() -> Self {
-        Self($crate::Stack::new())
-      }
+/// The inset around its children and the alignment of the unpinned ones.
+pub trait StackBase<P: Platform>: HasBoxStyle<P> + HasLayoutBox<P, Kind = StackChild> {
+  /// An empty stack.
+  #[must_use]
+  fn new() -> Self
+  where
+    Self: Wraps<Inner = Stack<P>>,
+  {
+    Self::wrap(Stack::new())
+  }
 
-      $crate::stack_surface! { 0, $platform }
-    }
+  crate::trait_properties! { box_style_mut, Condition<P::Scalar>;
+    set_padding / derive_padding (padding) => padding: Inset<P::Scalar>,
+      "the inset between the box and the children it arranges";
+  }
 
-    impl $crate::HasChildren<$platform> for $name {
-      type Kind = $crate::StackChild;
+  /// Sets the alignment of the unpinned children within the stack, on both axes.
+  #[must_use]
+  fn set_alignment(self, alignment: impl Into<Value<Alignment, Condition<P::Scalar>>>) -> Self {
+    self.map_layout_box(|layout| layout.set_alignment(alignment))
+  }
 
-      #[inline(always)]
-      fn children_mut(
-        &mut self,
-        seal: $crate::Seal,
-      ) -> &mut $crate::Children<$platform, $crate::StackChild> {
-        $crate::HasChildren::children_mut(&mut self.0, seal)
-      }
-    }
-
-    impl $crate::AnyKind for $name {}
-
-    impl $crate::View<$platform> for $name {
-      #[inline(always)]
-      fn build(self) -> $crate::NodeId {
-        $crate::View::build(self.0)
-      }
-    }
-  };
+  /// Derives the alignment of the unpinned children from the signals `alignment` reads.
+  #[must_use]
+  fn derive_alignment<R: Into<StaticLeaf<Alignment>>>(
+    self,
+    alignment: impl Fn() -> R + 'static,
+  ) -> Self {
+    self.map_layout_box(|layout| layout.derive_alignment(alignment))
+  }
 }

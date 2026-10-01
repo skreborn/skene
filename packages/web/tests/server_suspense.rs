@@ -3,7 +3,20 @@
 
 #![cfg(skene_web_platform = "server")]
 
-use skene_web::{ErrorBoundary, Errors, Resource, Suspense, Text, View, derived, render_to_string};
+use skene_web::{
+  ErrorBoundary,
+  ErrorBoundaryBase,
+  Errors,
+  Resource,
+  RowBase,
+  Suspense,
+  SuspenseBase,
+  Text,
+  TextBase,
+  View,
+  derived,
+  render_to_string,
+};
 
 /// The server drives the resource to its value and serializes the settled content.
 #[test]

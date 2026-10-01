@@ -36,8 +36,7 @@
   `TokenValue` and `SlotValue` it reads), the host **executor** a platform installs, generic
   geometry over the platform's scalar, and universal values. Beside the spine the
   foundation hosts every built-in view once, generic over `P: Platform`; each facade
-  exposes them as views of its own, newtypes the foundation's `impl_<view>!` macros
-  implement.
+  exposes them as views of its own, newtypes implementing the foundation's view traits.
 - The canonical building block is a **view** (the `View` trait); never "widget". Two
   equal facades exist—`skene-web` (the web) and `skene-terminal` (the terminal)—each
   owning its builder vocabulary, typed to exactly its medium; neither is the blessed
@@ -562,12 +561,17 @@
 
 - The spine stays minimal and structural. The built-in views live in `skene-foundation`,
   written once against `Platform`; each facade declares a newtype of its own per view
-  (`pub struct Container(skene_foundation::Container<ActivePlatform>);`) with its own
-  documentation, the view's `skene_foundation::impl_<view>!` implementing every member
-  it shares and the facade's own members beside them, and the rest of the surface every
-  facade shares declared by one `skene_foundation::facade!`. Users extend by composing
-  built-ins, painting a `Painted` node, or authoring a view against a platform's escape
-  trait.
+  (`#[derive(View, Wraps)] pub struct Container(skene_foundation::Container<ActivePlatform>);`)
+  with its own documentation and a line per trait it takes its shared members from
+  (`impl ContainerBase<ActivePlatform> for Container {}`), its child transitions and the
+  facade's own members inherent beside them, and the rest of the surface every facade
+  shares declared by one `skene_foundation::facade!`. A view's own members live in
+  `<View>Base`, a surface several views share in its own trait (`DecorationBase`,
+  `MotionBase`, `RunBase`), and what a capability adds in `<Trait>With<Capability>`
+  (`DecorationWithCornerRadius`), implemented wherever the capability is; a wrapper
+  (`Flexible`, `Pinned`, `GridCell`) derives `Wraps` alone and implements `IntoChildOf`
+  for its one kind. Users extend by composing built-ins, painting a `Painted` node, or
+  authoring a view against a platform's escape trait.
 - Builder methods: `set_<prop>` for a fixed value, `derive_<prop>` for a reactive one,
   `handle_<event>` for an event handler (e.g. `Container::handle_click`). A platform
   function that realizes the handler is named the same.

@@ -266,7 +266,22 @@ pub fn derive_snapshot(input: TokenStream) -> TokenStream {
 pub fn derive_wraps(input: TokenStream) -> TokenStream {
   let input = parse_macro_input!(input as DeriveInput);
 
-  wraps::derive(&input)
+  wraps::derive_wraps(&input)
+    .unwrap_or_else(syn::Error::into_compile_error)
+    .into()
+}
+
+/// Derives [`View`](../skene_foundation/trait.View.html) and
+/// [`AnyKind`](../skene_foundation/trait.AnyKind.html) for a tuple struct of one field.
+///
+/// The struct builds as the view it holds, on every platform that one is a view on.
+/// The generated code names the foundation through the deriving crate's direct
+/// dependency on `skene-foundation`.
+#[proc_macro_derive(View)]
+pub fn derive_view(input: TokenStream) -> TokenStream {
+  let input = parse_macro_input!(input as DeriveInput);
+
+  wraps::derive_view(&input)
     .unwrap_or_else(syn::Error::into_compile_error)
     .into()
 }

@@ -1,6 +1,14 @@
 //! A picker: a popup face, an overlay and a listbox.
 
-use skene_foundation::NoChild;
+use skene_foundation::{
+  BasicPickerBase,
+  DecorationBase,
+  Face,
+  NoChild,
+  View,
+  Wraps,
+  reactive::Memo,
+};
 
 use crate::ActivePlatform;
 
@@ -22,7 +30,34 @@ use crate::ActivePlatform;
 /// [`set_face`](Self::set_face) supplies the face; the options come from
 /// [`set_options`](Self::set_options) and [`derive_options`](Self::derive_options),
 /// each a [`BasicListboxOption`](crate::BasicListboxOption) at any depth.
+#[derive(Debug, View, Wraps)]
 #[must_use]
 pub struct BasicPicker<F = NoChild>(skene_foundation::BasicPicker<ActivePlatform, F>);
 
-skene_foundation::impl_basic_picker!(BasicPicker, ActivePlatform);
+impl Default for BasicPicker {
+  #[inline(always)]
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
+impl<F> BasicPickerBase<ActivePlatform, F> for BasicPicker<F> {}
+
+impl<F> DecorationBase<ActivePlatform> for BasicPicker<F> {}
+
+impl BasicPicker {
+  /// A picker with no options and nothing chosen.
+  #[inline(always)]
+  pub fn new() -> Self {
+    Self(skene_foundation::BasicPicker::new())
+  }
+
+  /// Sets the view drawing the control closed, built from the chosen value.
+  #[inline(always)]
+  pub fn set_face<V: View<ActivePlatform>>(
+    self,
+    face: impl FnOnce(Memo<String>) -> V + 'static,
+  ) -> BasicPicker<Face<ActivePlatform>> {
+    BasicPicker(self.0.set_face(face))
+  }
+}

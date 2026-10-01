@@ -1,5 +1,7 @@
 //! A box painted through vello.
 
+use skene_foundation::{PaintedBase, View, Wraps};
+
 use crate::ActivePlatform;
 
 /// A box drawn by a paint callback through the platform's renderer: sized like any box,
@@ -11,7 +13,8 @@ use crate::ActivePlatform;
 /// [`Painting::available`](skene_foundation::Painting::available): the fallback stands where
 /// nothing is drawn as pixels, a server render and a terminal without a graphics protocol included,
 /// and the painted box takes its place once something is.
+#[derive(Debug, View, Wraps)]
 #[must_use]
 pub struct Painted(skene_foundation::Painted<ActivePlatform>);
 
-skene_foundation::impl_painted!(Painted, ActivePlatform);
+impl PaintedBase<ActivePlatform> for Painted {}

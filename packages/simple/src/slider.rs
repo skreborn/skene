@@ -26,6 +26,7 @@ use skene_foundation::{
   Slider,
   SliderRange,
   Stack,
+  StackBase,
   State,
   View,
 };

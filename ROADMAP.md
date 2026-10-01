@@ -180,13 +180,13 @@ left half-done in a code comment.
 7. **Names and structure while the API is unstable.** One rename wave brings the names
     in line with the vocabulary rule, the structure loses its bad edges and copies, and
     the documents shrink to what tooling cannot enforce.
-    - A shell per platform: the facades' views are newtypes the foundation's
-    `impl_<view>!` macros implement, on probation against writing each facade's views
-    by hand. Simple splits into a core of colors, named sizes, behavior defaults and its
-    generic views, hidden from its public surface, and a crate per platform
-    (`skene-simple-web`, `skene-simple-terminal`) whose views are newtypes over them the
-    same way, and `examples/third-party` splits likewise; `AGENTS.md`'s facade,
-    selection, third-party and examples rules follow.
+    - A shell per platform: the facades' views, newtypes implementing the foundation's
+    view traits, stay on probation against writing each facade's views by hand. Simple
+    splits into a core of colors, named sizes, behavior defaults and its generic views,
+    hidden from its public surface, and a crate per platform (`skene-simple-web`,
+    `skene-simple-terminal`) whose views are newtypes over them the same way, and
+    `examples/third-party` splits likewise; `AGENTS.md`'s facade, selection,
+    third-party and examples rules follow.
     - Moves: `AsyncView`, `Deferred`, the hydrating `Resource`, `Link` and the router
     binding into the foundation over platform seams, so a generic library can use them
     and the terminal gains `Link`; the title into a shared `window` module, which grows

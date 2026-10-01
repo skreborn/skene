@@ -6,6 +6,8 @@ use skene_foundation::{
   AnyKind,
   AnyView,
   CornerRadius,
+  DecorationBase,
+  DecorationWithCornerRadius,
   NoChild,
   NodeId,
   Placement,

@@ -3,6 +3,7 @@
 use skene_foundation::{
   Color,
   ContextMenu,
+  DecorationBase,
   Inset,
   Media,
   MenuEntry,

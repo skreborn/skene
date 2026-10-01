@@ -7,6 +7,8 @@ use skene_foundation::{
   Condition,
   Control,
   CornerRadius,
+  DecorationBase,
+  DecorationWithCornerRadius,
   Dimension,
   Inset,
   Length,

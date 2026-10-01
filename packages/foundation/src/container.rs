@@ -208,7 +208,7 @@ pub trait ContainerBase<P: Platform>: HasLayoutBox<P, Kind = PlainChild> {
     self.map_layout_box(|layout| layout.bind_handle(handle))
   }
 
-  /// Runs `action` on a click; return [`Bubbling::Stop`](crate::Bubbling::Stop) to keep the click
+  /// Runs `action` on a click; return [`Bubbling::Stop`](Bubbling::Stop) to keep the click
   /// from the ancestors.
   #[must_use]
   fn handle_click<R: Into<Bubbling>>(self, action: impl Fn() -> R + 'static) -> Self {
@@ -216,28 +216,28 @@ pub trait ContainerBase<P: Platform>: HasLayoutBox<P, Kind = PlainChild> {
   }
 
   /// Runs `action` on the second click of a double click, after the click itself;
-  /// return [`Bubbling::Stop`](crate::Bubbling::Stop) to keep the double click from the ancestors.
+  /// return [`Bubbling::Stop`](Bubbling::Stop) to keep the double click from the ancestors.
   #[must_use]
   fn handle_double_click<R: Into<Bubbling>>(self, action: impl Fn() -> R + 'static) -> Self {
     self.map_layout_box(|layout| layout.handle_double_click(action))
   }
 
   /// Runs `action` on a key pressed while the box or a descendant holds focus; return
-  /// [`Bubbling::Stop`](crate::Bubbling::Stop) to keep the key from the ancestors.
+  /// [`Bubbling::Stop`](Bubbling::Stop) to keep the key from the ancestors.
   #[must_use]
   fn handle_key_down<R: Into<Bubbling>>(self, action: impl Fn(&KeyEvent) -> R + 'static) -> Self {
     self.map_layout_box(|layout| layout.handle_key_down(action))
   }
 
   /// Runs `action` on a key released while the box or a descendant holds focus;
-  /// return [`Bubbling::Stop`](crate::Bubbling::Stop) to keep the release from the ancestors.
+  /// return [`Bubbling::Stop`](Bubbling::Stop) to keep the release from the ancestors.
   #[must_use]
   fn handle_key_up<R: Into<Bubbling>>(self, action: impl Fn(&KeyEvent) -> R + 'static) -> Self {
     self.map_layout_box(|layout| layout.handle_key_up(action))
   }
 
   /// Runs `action` on a pointer button pressed over the box; return
-  /// [`Bubbling::Stop`](crate::Bubbling::Stop) to keep the press from the ancestors.
+  /// [`Bubbling::Stop`](Bubbling::Stop) to keep the press from the ancestors.
   #[must_use]
   fn handle_pointer_down<R: Into<Bubbling>>(
     self,
@@ -247,7 +247,7 @@ pub trait ContainerBase<P: Platform>: HasLayoutBox<P, Kind = PlainChild> {
   }
 
   /// Runs `action` on a pointer button released over the box; return
-  /// [`Bubbling::Stop`](crate::Bubbling::Stop) to keep the release from the ancestors.
+  /// [`Bubbling::Stop`](Bubbling::Stop) to keep the release from the ancestors.
   #[must_use]
   fn handle_pointer_up<R: Into<Bubbling>>(
     self,
@@ -257,7 +257,7 @@ pub trait ContainerBase<P: Platform>: HasLayoutBox<P, Kind = PlainChild> {
   }
 
   /// Runs `action` on the pointer moving over the box; return
-  /// [`Bubbling::Stop`](crate::Bubbling::Stop) to keep the move from the ancestors.
+  /// [`Bubbling::Stop`](Bubbling::Stop) to keep the move from the ancestors.
   #[must_use]
   fn handle_pointer_move<R: Into<Bubbling>>(
     self,
@@ -282,14 +282,14 @@ pub trait ContainerBase<P: Platform>: HasLayoutBox<P, Kind = PlainChild> {
   }
 
   /// Runs `action` on a wheel turned over the box, before the platform scrolls by it;
-  /// return [`Bubbling::Stop`](crate::Bubbling::Stop) to keep the turn from the ancestors.
+  /// return [`Bubbling::Stop`](Bubbling::Stop) to keep the turn from the ancestors.
   #[must_use]
   fn handle_wheel<R: Into<Bubbling>>(self, action: impl Fn(&WheelEvent) -> R + 'static) -> Self {
     self.map_layout_box(|layout| layout.handle_wheel(action))
   }
 
   /// Runs `action` when the platform takes a pointer pressed over the box for itself,
-  /// ending the press without a release; return [`Bubbling::Stop`](crate::Bubbling::Stop) to keep
+  /// ending the press without a release; return [`Bubbling::Stop`](Bubbling::Stop) to keep
   /// the cancel from the ancestors.
   #[must_use]
   fn handle_pointer_cancel<R: Into<Bubbling>>(

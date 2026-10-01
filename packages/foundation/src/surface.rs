@@ -94,8 +94,9 @@ impl<P: Platform, T: Wraps<Inner: HasRun<P>>> HasRun<P> for T {
   }
 }
 
-/// The decoration and sizing of a box: its size, its insets, its colors, its border, its
-/// cursor, its overflow and its visibility.
+/// The decoration and sizing of a box.
+///
+/// Its size, its insets, its colors, its border, its cursor, its overflow and its visibility.
 pub trait DecorationBase<P: Platform>: HasBoxStyle<P> + Sized {
   crate::trait_properties! { box_style_mut, Condition<P::Scalar>;
     set_width / derive_width (width) => width: Dimension<P::Scalar>,
@@ -172,8 +173,10 @@ impl<P: Platform, T: DecorationBase<P>> DecorationWithCornerRadius<P> for T wher
 {
 }
 
-/// The motion of a box: the transitions of its properties, its keyframe animations and
-/// its name across a navigation.
+/// The motion of a box.
+///
+/// The transitions of its properties, its keyframe animations and its name across a
+/// navigation.
 pub trait MotionBase<P: Platform>: HasLayoutBox<P> {
   /// Adds a property transition, interpolating that property whenever its value
   /// changes.
@@ -199,8 +202,9 @@ pub trait MotionBase<P: Platform>: HasLayoutBox<P> {
   }
 }
 
-/// What every text view declares of its run: its colors, its decoration, whether it is
-/// selectable, its link and its motion.
+/// What every text view declares of its run.
+///
+/// Its colors, its decoration, whether it is selectable, its link and its motion.
 pub trait RunBase<P: Platform>: HasRun<P> {
   crate::trait_properties! { run_style_mut, Condition<P::Scalar>;
     set_color / derive_color (color) => color: Color,
@@ -282,8 +286,9 @@ macro_rules! type_metric_pairs {
   )+};
 }
 
-/// The type metrics of a run, where the platform's style sizes type: its font size, its
-/// weight, its line height and its letter spacing.
+/// The type metrics of a run, where the platform's style sizes type.
+///
+/// Its font size, its weight, its line height and its letter spacing.
 pub trait RunWithTypeMetrics<P: Platform>: RunBase<P>
 where
   P::StyleExt: TypeMetrics,

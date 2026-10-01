@@ -4,6 +4,7 @@
 
 use skene_web::{
   Text,
+  TextBase,
   View,
   derived,
   install_router,

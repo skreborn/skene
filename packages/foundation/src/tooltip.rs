@@ -120,7 +120,7 @@ impl<P: Platform> Tooltip<P> {
     self.bubble.style_mut()
   }
 
-  decoration! { bubble_style_mut }
+  decoration! { bubble_style_mut, P }
 
   /// Sets the color of a text tooltip's text; a view tooltip inks its own.
   pub fn set_text_color(mut self, color: impl Into<Value<Color, Condition<P::Scalar>>>) -> Self {

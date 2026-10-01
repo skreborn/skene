@@ -64,6 +64,7 @@ mod task;
   expect(dead_code, reason = "tokens compile for the leaves alone")
 )]
 mod token;
+mod views;
 
 /// The web medium's shared vocabulary: the style extension, the typography set and the
 /// painting path.
@@ -182,6 +183,7 @@ pub use crate::{
   resource::{LoadState, Resource},
   routing::{install_router, install_static_router},
   task::spawn,
+  views::Container,
 };
 
 /// The platform the build selected: the web platform in the browser

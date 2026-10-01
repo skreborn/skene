@@ -75,7 +75,7 @@ impl<P: Platform> Grid<P> {
     self.inner.style_mut()
   }
 
-  properties! { style_mut;
+  properties! { style_mut, P;
     set_padding / derive_padding (padding) => padding: Inset<P::Scalar>,
       "the inset between the box and the children it arranges";
     set_spacing / derive_spacing (spacing) => spacing: Spacing<P::Scalar>,

@@ -321,7 +321,7 @@ impl<P: Platform> ContextMenu<P> {
     self.list.style_mut()
   }
 
-  decoration! { list_style_mut }
+  decoration! { list_style_mut, P }
 
   /// The declared style of every item, for a facade's medium-specific setters to
   /// write into.
@@ -330,7 +330,7 @@ impl<P: Platform> ContextMenu<P> {
     &mut self.item_style
   }
 
-  properties! { item_style_mut;
+  properties! { item_style_mut, P;
     set_item_padding / derive_item_padding (padding) => padding: crate::Inset<P::Scalar>,
       "the padding on each edge of every item";
     set_item_color / derive_item_color (color) => color: Color,

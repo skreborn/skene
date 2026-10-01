@@ -135,7 +135,7 @@ impl<P: Platform, F> BasicPicker<P, F> {
     &mut self.face_style
   }
 
-  decoration! { style_mut }
+  decoration! { style_mut, P }
 
   /// Sets where the list opens against the face; below it unless told otherwise.
   #[inline(always)]

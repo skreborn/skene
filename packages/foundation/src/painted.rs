@@ -55,7 +55,7 @@ impl<P: Painting> Painted<P> {
     self.inner.style_mut()
   }
 
-  properties! { style_mut;
+  properties! { style_mut, P;
     set_width / derive_width (width) => width: crate::Dimension<P::Scalar>,
       "the width";
     set_height / derive_height (height) => height: crate::Dimension<P::Scalar>,

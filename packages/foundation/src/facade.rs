@@ -62,9 +62,6 @@ macro_rules! facade {
 
     /// A type-erased view.
     pub type AnyView = $crate::AnyView<$platform>;
-    /// The one freely-decorated box around exactly one child; see
-    /// [`skene_foundation::Container`].
-    pub type Container = $crate::Container<$platform>;
     /// A horizontal flex layout; see [`skene_foundation::Row`].
     pub type Row = $crate::Row<$platform>;
     /// A vertical flex layout; see [`skene_foundation::Column`].

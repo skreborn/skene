@@ -132,7 +132,7 @@ impl<P: Platform> Overlay<P> {
     self.inner.style_mut()
   }
 
-  decoration! { style_mut }
+  decoration! { style_mut, P }
 
   crate::forward! { inner;
     /// Adds a property transition, interpolating that property whenever its value

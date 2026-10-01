@@ -8,12 +8,12 @@
 /// over signals, and both write the field named on the style `$access` returns.
 #[macro_export]
 macro_rules! properties {
-  ($access:ident; $($set:ident / $derive:ident ($param:ident) => $field:ident: $type:ty, $doc:literal;)+) => {$(
+  ($access:ident, $platform:ty; $($set:ident / $derive:ident ($param:ident) => $field:ident: $type:ty, $doc:literal;)+) => {$(
     #[doc = concat!("Sets ", $doc, ".")]
     pub fn $set(
       mut self,
       $param: impl Into<
-        $crate::Value<$type, $crate::Condition<P::Scalar>>,
+        $crate::Value<$type, $crate::Condition<<$platform as $crate::Platform>::Scalar>>,
       >,
     ) -> Self {
       self.$access().$field = Some($param.into());
@@ -79,37 +79,37 @@ macro_rules! trait_properties {
 /// share, over the style `$access` returns.
 #[macro_export]
 macro_rules! decoration {
-  ($access:ident) => {
-    $crate::properties! { $access;
-      set_width / derive_width (width) => width: $crate::Dimension<P::Scalar>,
+  ($access:ident, $platform:ty) => {
+    $crate::properties! { $access, $platform;
+      set_width / derive_width (width) => width: $crate::Dimension<<$platform as $crate::Platform>::Scalar>,
         "the width";
-      set_height / derive_height (height) => height: $crate::Dimension<P::Scalar>,
+      set_height / derive_height (height) => height: $crate::Dimension<<$platform as $crate::Platform>::Scalar>,
         "the height";
-      set_min_width / derive_min_width (min_width) => min_width: $crate::Dimension<P::Scalar>,
+      set_min_width / derive_min_width (min_width) => min_width: $crate::Dimension<<$platform as $crate::Platform>::Scalar>,
         "the minimum width";
       set_min_height / derive_min_height (min_height)
-        => min_height: $crate::Dimension<P::Scalar>,
+        => min_height: $crate::Dimension<<$platform as $crate::Platform>::Scalar>,
         "the minimum height";
-      set_max_width / derive_max_width (max_width) => max_width: $crate::Dimension<P::Scalar>,
+      set_max_width / derive_max_width (max_width) => max_width: $crate::Dimension<<$platform as $crate::Platform>::Scalar>,
         "the maximum width";
       set_max_height / derive_max_height (max_height)
-        => max_height: $crate::Dimension<P::Scalar>,
+        => max_height: $crate::Dimension<<$platform as $crate::Platform>::Scalar>,
         "the maximum height";
       set_aspect_ratio / derive_aspect_ratio (aspect_ratio)
         => aspect_ratio: $crate::AspectRatio,
         "the width-to-height ratio the unsized axis follows";
-      set_padding / derive_padding (padding) => padding: $crate::Inset<P::Scalar>,
+      set_padding / derive_padding (padding) => padding: $crate::Inset<<$platform as $crate::Platform>::Scalar>,
         "the padding on each edge";
       set_margin / derive_margin (margin)
-        => margin: $crate::Inset<$crate::Dimension<P::Scalar>>,
+        => margin: $crate::Inset<$crate::Dimension<<$platform as $crate::Platform>::Scalar>>,
         "the margin on each edge";
       set_offset / derive_offset (offset)
-        => offset: $crate::Inset<$crate::Dimension<P::Scalar>>,
+        => offset: $crate::Inset<$crate::Dimension<<$platform as $crate::Platform>::Scalar>>,
         "the shift from each edge, keeping the box in flow";
       set_color / derive_color (color) => color: $crate::Color,
         "the background color";
       set_border_width / derive_border_width (width)
-        => border_width: $crate::Inset<P::Scalar>,
+        => border_width: $crate::Inset<<$platform as $crate::Platform>::Scalar>,
         "the border's width on each edge; zero draws none";
       set_border_color / derive_border_color (color) => border_color: $crate::Color,
         "the border's color";
@@ -127,13 +127,13 @@ macro_rules! decoration {
     /// corners; a medium without radii accepts and ignores it.
     pub fn set_corner_radius(
       mut self,
-      radius: impl Into<$crate::Value<$crate::Length, $crate::Condition<P::Scalar>>>,
+      radius: impl Into<$crate::Value<$crate::Length, $crate::Condition<<$platform as $crate::Platform>::Scalar>>>,
     ) -> Self
     where
-      P::StyleExt: $crate::CornerRadius,
+      <$platform as $crate::Platform>::StyleExt: $crate::CornerRadius,
     {
-      <P::StyleExt as $crate::CornerRadius>::set_corner_radius::<
-        $crate::Declared<$crate::Condition<P::Scalar>>,
+      <<$platform as $crate::Platform>::StyleExt as $crate::CornerRadius>::set_corner_radius::<
+        $crate::Declared<$crate::Condition<<$platform as $crate::Platform>::Scalar>>,
       >(&mut self.$access().ext, Some(radius.into()));
 
       self
@@ -147,10 +147,10 @@ macro_rules! decoration {
       radius: impl Fn() -> R + 'static,
     ) -> Self
     where
-      P::StyleExt: $crate::CornerRadius,
+      <$platform as $crate::Platform>::StyleExt: $crate::CornerRadius,
     {
-      <P::StyleExt as $crate::CornerRadius>::set_corner_radius::<
-        $crate::Declared<$crate::Condition<P::Scalar>>,
+      <<$platform as $crate::Platform>::StyleExt as $crate::CornerRadius>::set_corner_radius::<
+        $crate::Declared<$crate::Condition<<$platform as $crate::Platform>::Scalar>>,
       >(
         &mut self.$access().ext,
         Some($crate::Value::new($crate::Leaf::derive(radius))),
@@ -168,7 +168,7 @@ macro_rules! decoration {
 /// `fn handle_click[R: Into<Bubbling>](action: impl Fn() -> R + 'static);`.
 #[macro_export]
 macro_rules! forward {
-  ($field:ident; $(
+  ($field:tt; $(
     $(#[$meta:meta])*
     fn $name:ident $([$($generics:tt)*])? ($($argument:ident: $type:ty),* $(,)?);
   )+) => {$(
@@ -195,7 +195,7 @@ macro_rules! run_setters {
       self.$field.style_mut()
     }
 
-    $crate::properties! { style_mut;
+    $crate::properties! { style_mut, P;
       set_color / derive_color (color) => color: $crate::Color,
         "the text color";
       set_selection_color / derive_selection_color (color) => selection_color: $crate::Color,

@@ -47,6 +47,7 @@ mod selection;
 pub mod testing;
 mod text;
 mod tty;
+mod views;
 
 /// The terminal medium's shared vocabulary: the style extension, its glyphs and values,
 /// and the typography set.
@@ -165,6 +166,7 @@ pub use crate::{
   platform::{Terminal, mount, uninstall},
   routing::install_router,
   text::CellScale,
+  views::Container,
 };
 
 /// The platform the build selected: the terminal platform, on every host target.

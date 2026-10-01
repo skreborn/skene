@@ -555,7 +555,7 @@ impl<P: Platform, B: Behavior<P>> Control<P, B> {
     self.inner.style_mut()
   }
 
-  decoration! { style_mut }
+  decoration! { style_mut, P }
 
   /// Sets the axis the control's parts, body and label run along; horizontal unless
   /// told otherwise.
@@ -571,7 +571,7 @@ impl<P: Platform, B: Behavior<P>> Control<P, B> {
     self
   }
 
-  properties! { style_mut;
+  properties! { style_mut, P;
     set_spacing / derive_spacing (spacing) => spacing: Spacing<P::Scalar>,
       "the spacing between the control's parts, body and label; half an em unless told otherwise";
     set_item_alignment / derive_item_alignment (alignment) => item_alignment: ItemAlignment,

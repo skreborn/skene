@@ -50,7 +50,7 @@ pub trait TerminalDecoration: Sized {
   }
 }
 
-impl TerminalDecoration for skene_foundation::Container<Terminal> {
+impl TerminalDecoration for crate::Container {
   #[inline(always)]
   fn terminal_style_mut(&mut self) -> &mut DeclaredBox {
     self.style_mut()

@@ -1754,6 +1754,7 @@ pub fn vello_cpu::render::RenderContext::stroke(&mut self, &kurbo::bezpath::BezP
 pub fn skene_foundation::web::paint(&peniko::brush::Brush) -> vello_common::paint::PaintType
 pub type skene_foundation::web::Painter = dyn core::ops::function::Fn(&mut skene_foundation::Canvas, skene_foundation::Size<f32>)
 pub macro skene_foundation::access_queries!
+pub macro skene_foundation::container_surface!
 pub macro skene_foundation::decoration!
 pub macro skene_foundation::extension_fields!
 pub macro skene_foundation::facade!

@@ -1,0 +1,910 @@
+pub mod skene_terminal
+pub use skene_terminal::Activate
+pub use skene_terminal::AnyKind
+pub use skene_terminal::BOLD_WEIGHT
+pub use skene_terminal::Behavior
+pub use skene_terminal::BorderGlyphs
+pub use skene_terminal::Bubbling
+pub use skene_terminal::Canvas
+pub use skene_terminal::Children
+pub use skene_terminal::ClickEvent
+pub use skene_terminal::Code
+pub use skene_terminal::Color
+pub use skene_terminal::ColorScheme
+pub use skene_terminal::ContainerName
+pub use skene_terminal::ControlChild
+pub use skene_terminal::ControlState
+pub use skene_terminal::CornerRadius
+pub use skene_terminal::Definitions
+pub use skene_terminal::DragData
+pub use skene_terminal::Errors
+pub use skene_terminal::Expr
+pub use skene_terminal::FocusOrder
+pub use skene_terminal::Handler
+pub use skene_terminal::HasChild
+pub use skene_terminal::HasChildren
+pub use skene_terminal::IntoBrush
+pub use skene_terminal::IntoChildOf
+pub use skene_terminal::IntoChildren
+pub use skene_terminal::ItemExtent
+pub use skene_terminal::Key
+pub use skene_terminal::KeyEvent
+pub use skene_terminal::Leaf
+pub use skene_terminal::Length
+pub use skene_terminal::Listbox
+pub use skene_terminal::ListboxContext
+pub use skene_terminal::ListboxOption
+pub use skene_terminal::LoadState
+pub use skene_terminal::Menu
+pub use skene_terminal::MenuContext
+pub use skene_terminal::MenuEntry
+pub use skene_terminal::MenuOption
+pub use skene_terminal::Modifiers
+pub use skene_terminal::NamedKey
+pub use skene_terminal::NativeElement
+pub use skene_terminal::NativePicker
+pub use skene_terminal::NoChild
+pub use skene_terminal::NodeId
+pub use skene_terminal::Number
+pub use skene_terminal::Painter
+pub use skene_terminal::Painting
+pub use skene_terminal::Part
+pub use skene_terminal::PointerButton
+pub use skene_terminal::PointerButtons
+pub use skene_terminal::PointerEvent
+pub use skene_terminal::PointerId
+pub use skene_terminal::PointerInfo
+pub use skene_terminal::PointerPhase
+pub use skene_terminal::PointerType
+pub use skene_terminal::Popup
+pub use skene_terminal::Prevent
+pub use skene_terminal::Prevented
+pub use skene_terminal::Radio
+pub use skene_terminal::RadioGroup
+pub use skene_terminal::RadioGroupContext
+pub use skene_terminal::Resource
+pub use skene_terminal::Role
+pub use skene_terminal::Roster
+pub use skene_terminal::Scene
+pub use skene_terminal::ScrollEvent
+pub use skene_terminal::ScrollbarGlyphs
+pub use skene_terminal::Shortcut
+pub use skene_terminal::Slider
+pub use skene_terminal::State
+pub use skene_terminal::StaticLeaf
+pub use skene_terminal::TOOLTIP_DELAY
+pub use skene_terminal::TOOLTIP_GRACE
+pub use skene_terminal::TerminalBoxFields
+pub use skene_terminal::TerminalProperty
+pub use skene_terminal::TerminalRunFields
+pub use skene_terminal::TerminalStyle
+pub use skene_terminal::TerminalValue
+pub use skene_terminal::TextDecoration
+pub use skene_terminal::TextDecorationStyle
+pub use skene_terminal::TextEntry
+pub use skene_terminal::TextSelection
+pub use skene_terminal::Toggle
+pub use skene_terminal::TokenName
+pub use skene_terminal::TokenRef
+pub use skene_terminal::TokenSet
+pub use skene_terminal::TypeMetrics
+pub use skene_terminal::Typography
+pub use skene_terminal::WheelEvent
+pub use skene_terminal::WheelUnit
+pub use skene_terminal::When
+pub use skene_terminal::core
+pub use skene_terminal::kurbo
+pub use skene_terminal::peniko
+pub use skene_terminal::reactive
+pub use skene_terminal::router
+pub use skene_terminal::terminal_fields
+pub use skene_terminal::typography
+pub mod skene_terminal::media
+pub fn skene_terminal::media::chosen_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
+pub fn skene_terminal::media::derive_scheme(impl core::ops::function::Fn() -> core::option::Option<skene_core::values::color::ColorScheme> + 'static)
+pub fn skene_terminal::media::high_contrast() -> skene_reactive::signal::ReadSignal<bool>
+pub fn skene_terminal::media::hover() -> skene_reactive::signal::ReadSignal<bool>
+pub fn skene_terminal::media::pointer() -> skene_reactive::signal::ReadSignal<skene_core::condition::PointerPrecision>
+pub fn skene_terminal::media::reduced_motion() -> skene_reactive::signal::ReadSignal<bool>
+pub fn skene_terminal::media::reduced_transparency() -> skene_reactive::signal::ReadSignal<bool>
+pub fn skene_terminal::media::safe_area() -> skene_reactive::signal::ReadSignal<skene_core::values::inset::Inset<u32>>
+pub fn skene_terminal::media::scheme() -> skene_reactive::signal::ReadSignal<skene_core::values::color::ColorScheme>
+pub fn skene_terminal::media::set_scheme(core::option::Option<skene_core::values::color::ColorScheme>)
+pub fn skene_terminal::media::viewport() -> skene_reactive::signal::ReadSignal<skene_terminal::Size>
+pub fn skene_terminal::media::watch(&skene_terminal::Media) -> skene_reactive::memo::Memo<bool>
+pub mod skene_terminal::prelude
+pub use skene_terminal::prelude::AccessProp
+pub use skene_terminal::prelude::Alignment
+pub use skene_terminal::prelude::Animation
+pub use skene_terminal::prelude::Arrangement
+pub use skene_terminal::prelude::AspectRatio
+pub use skene_terminal::prelude::Axes
+pub use skene_terminal::prelude::Axis
+pub use skene_terminal::prelude::BorderGlyphs
+pub use skene_terminal::prelude::Bubbling
+pub use skene_terminal::prelude::Color
+pub use skene_terminal::prelude::ColorScheme
+pub use skene_terminal::prelude::DragAxes
+pub use skene_terminal::prelude::DragData
+pub use skene_terminal::prelude::Easing
+pub use skene_terminal::prelude::Effect
+pub use skene_terminal::prelude::Errors
+pub use skene_terminal::prelude::Expr
+pub use skene_terminal::prelude::FlexDirection
+pub use skene_terminal::prelude::Flexibility
+pub use skene_terminal::prelude::FocusOrder
+pub use skene_terminal::prelude::Get
+pub use skene_terminal::prelude::GridAreas
+pub use skene_terminal::prelude::GridFlow
+pub use skene_terminal::prelude::GridName
+pub use skene_terminal::prelude::GridPlacement
+pub use skene_terminal::prelude::GridTemplate
+pub use skene_terminal::prelude::GridTrack
+pub use skene_terminal::prelude::HasChild
+pub use skene_terminal::prelude::HasChildren
+pub use skene_terminal::prelude::IndexedField
+pub use skene_terminal::prelude::IntoChildOf
+pub use skene_terminal::prelude::IntoChildren
+pub use skene_terminal::prelude::ItemAlignment
+pub use skene_terminal::prelude::ItemExtent
+pub use skene_terminal::prelude::Key
+pub use skene_terminal::prelude::KeyEvent
+pub use skene_terminal::prelude::KeyedField
+pub use skene_terminal::prelude::Layout
+pub use skene_terminal::prelude::Leaf
+pub use skene_terminal::prelude::Line
+pub use skene_terminal::prelude::LinkAnnotation
+pub use skene_terminal::prelude::LinkPolicy
+pub use skene_terminal::prelude::Memo
+pub use skene_terminal::prelude::MenuEntry
+pub use skene_terminal::prelude::Modifiers
+pub use skene_terminal::prelude::MouseCursor
+pub use skene_terminal::prelude::NamedKey
+pub use skene_terminal::prelude::NoChild
+pub use skene_terminal::prelude::Overflow
+pub use skene_terminal::prelude::Owner
+pub use skene_terminal::prelude::Placement
+pub use skene_terminal::prelude::PointerPrecision
+pub use skene_terminal::prelude::ReadSignal
+pub use skene_terminal::prelude::Resource
+pub use skene_terminal::prelude::Role
+pub use skene_terminal::prelude::ScrollbarGlyphs
+pub use skene_terminal::prelude::Set
+pub use skene_terminal::prelude::Shortcut
+pub use skene_terminal::prelude::Signal
+pub use skene_terminal::prelude::Snapshot
+pub use skene_terminal::prelude::Snapshot
+pub use skene_terminal::prelude::State
+pub use skene_terminal::prelude::Store
+pub use skene_terminal::prelude::Store
+pub use skene_terminal::prelude::StoreField
+pub use skene_terminal::prelude::TextDecoration
+pub use skene_terminal::prelude::TextDecorationStyle
+pub use skene_terminal::prelude::TextSelection
+pub use skene_terminal::prelude::TokenRef
+pub use skene_terminal::prelude::TokenSet
+pub use skene_terminal::prelude::TrackLimit
+pub use skene_terminal::prelude::Transition
+pub use skene_terminal::prelude::Typography
+pub use skene_terminal::prelude::Update
+pub use skene_terminal::prelude::Visibility
+pub use skene_terminal::prelude::When
+pub use skene_terminal::prelude::With
+pub use skene_terminal::prelude::Wrap
+pub use skene_terminal::prelude::WriteSignal
+pub mod skene_terminal::prelude::launch
+pub struct skene_terminal::prelude::launch::Clipboard
+pub skene_terminal::prelude::launch::Clipboard::copy: bool
+pub skene_terminal::prelude::launch::Clipboard::paste: bool
+impl skene_terminal::Clipboard
+pub const skene_terminal::Clipboard::ALL: Self
+pub const skene_terminal::Clipboard::COPY: Self
+pub const skene_terminal::Clipboard::NONE: Self
+pub const skene_terminal::Clipboard::PASTE: Self
+impl core::clone::Clone for skene_terminal::Clipboard
+pub fn skene_terminal::Clipboard::clone(&self) -> skene_terminal::Clipboard
+impl core::cmp::Eq for skene_terminal::Clipboard
+impl core::cmp::PartialEq for skene_terminal::Clipboard
+pub fn skene_terminal::Clipboard::eq(&self, &skene_terminal::Clipboard) -> bool
+impl core::default::Default for skene_terminal::Clipboard
+pub fn skene_terminal::Clipboard::default() -> Self
+impl core::fmt::Debug for skene_terminal::Clipboard
+pub fn skene_terminal::Clipboard::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_terminal::Clipboard
+pub fn skene_terminal::Clipboard::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_terminal::Clipboard
+impl core::marker::StructuralPartialEq for skene_terminal::Clipboard
+pub struct skene_terminal::prelude::launch::Launch
+impl skene_terminal::Launch
+pub fn skene_terminal::Launch::install(self)
+pub const fn skene_terminal::Launch::new() -> Self
+pub fn skene_terminal::Launch::run<V, F>(self, F) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_core::view::View<skene_terminal::Terminal>
+pub fn skene_terminal::Launch::run_on<D, V, F>(self, D, F) -> D where D: skene_terminal::Device, F: core::ops::function::FnOnce() -> V + 'static, V: skene_core::view::View<skene_terminal::Terminal>
+pub const fn skene_terminal::Launch::set_clipboard(self, skene_terminal::Clipboard) -> Self
+pub const fn skene_terminal::Launch::set_mouse(self, bool) -> Self
+pub const fn skene_terminal::Launch::set_mouse_key(self, core::option::Option<skene_core::events::Shortcut>) -> Self
+impl core::clone::Clone for skene_terminal::Launch
+pub fn skene_terminal::Launch::clone(&self) -> skene_terminal::Launch
+impl core::cmp::Eq for skene_terminal::Launch
+impl core::cmp::PartialEq for skene_terminal::Launch
+pub fn skene_terminal::Launch::eq(&self, &skene_terminal::Launch) -> bool
+impl core::default::Default for skene_terminal::Launch
+pub fn skene_terminal::Launch::default() -> Self
+impl core::fmt::Debug for skene_terminal::Launch
+pub fn skene_terminal::Launch::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_terminal::Launch
+pub fn skene_terminal::Launch::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_terminal::Launch
+impl core::marker::StructuralPartialEq for skene_terminal::Launch
+pub const skene_terminal::prelude::launch::MOUSE_KEY: skene_core::events::Shortcut
+pub fn skene_terminal::prelude::launch::install()
+pub fn skene_terminal::prelude::launch::launch<V, F>(F) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_core::view::View<skene_terminal::Terminal>
+pub mod skene_terminal::prelude::media
+pub fn skene_terminal::prelude::media::chosen_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
+pub fn skene_terminal::prelude::media::derive_scheme(impl core::ops::function::Fn() -> core::option::Option<skene_core::values::color::ColorScheme> + 'static)
+pub fn skene_terminal::prelude::media::high_contrast() -> skene_reactive::signal::ReadSignal<bool>
+pub fn skene_terminal::prelude::media::hover() -> skene_reactive::signal::ReadSignal<bool>
+pub fn skene_terminal::prelude::media::pointer() -> skene_reactive::signal::ReadSignal<skene_core::condition::PointerPrecision>
+pub fn skene_terminal::prelude::media::reduced_motion() -> skene_reactive::signal::ReadSignal<bool>
+pub fn skene_terminal::prelude::media::reduced_transparency() -> skene_reactive::signal::ReadSignal<bool>
+pub fn skene_terminal::prelude::media::safe_area() -> skene_reactive::signal::ReadSignal<skene_core::values::inset::Inset<u32>>
+pub fn skene_terminal::prelude::media::scheme() -> skene_reactive::signal::ReadSignal<skene_core::values::color::ColorScheme>
+pub fn skene_terminal::prelude::media::set_scheme(core::option::Option<skene_core::values::color::ColorScheme>)
+pub fn skene_terminal::prelude::media::viewport() -> skene_reactive::signal::ReadSignal<skene_terminal::Size>
+pub fn skene_terminal::prelude::media::watch(&skene_terminal::Media) -> skene_reactive::memo::Memo<bool>
+pub struct skene_terminal::prelude::Clipboard
+pub skene_terminal::prelude::Clipboard::copy: bool
+pub skene_terminal::prelude::Clipboard::paste: bool
+impl skene_terminal::Clipboard
+pub const skene_terminal::Clipboard::ALL: Self
+pub const skene_terminal::Clipboard::COPY: Self
+pub const skene_terminal::Clipboard::NONE: Self
+pub const skene_terminal::Clipboard::PASTE: Self
+impl core::clone::Clone for skene_terminal::Clipboard
+pub fn skene_terminal::Clipboard::clone(&self) -> skene_terminal::Clipboard
+impl core::cmp::Eq for skene_terminal::Clipboard
+impl core::cmp::PartialEq for skene_terminal::Clipboard
+pub fn skene_terminal::Clipboard::eq(&self, &skene_terminal::Clipboard) -> bool
+impl core::default::Default for skene_terminal::Clipboard
+pub fn skene_terminal::Clipboard::default() -> Self
+impl core::fmt::Debug for skene_terminal::Clipboard
+pub fn skene_terminal::Clipboard::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_terminal::Clipboard
+pub fn skene_terminal::Clipboard::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_terminal::Clipboard
+impl core::marker::StructuralPartialEq for skene_terminal::Clipboard
+pub struct skene_terminal::prelude::Launch
+impl skene_terminal::Launch
+pub fn skene_terminal::Launch::install(self)
+pub const fn skene_terminal::Launch::new() -> Self
+pub fn skene_terminal::Launch::run<V, F>(self, F) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_core::view::View<skene_terminal::Terminal>
+pub fn skene_terminal::Launch::run_on<D, V, F>(self, D, F) -> D where D: skene_terminal::Device, F: core::ops::function::FnOnce() -> V + 'static, V: skene_core::view::View<skene_terminal::Terminal>
+pub const fn skene_terminal::Launch::set_clipboard(self, skene_terminal::Clipboard) -> Self
+pub const fn skene_terminal::Launch::set_mouse(self, bool) -> Self
+pub const fn skene_terminal::Launch::set_mouse_key(self, core::option::Option<skene_core::events::Shortcut>) -> Self
+impl core::clone::Clone for skene_terminal::Launch
+pub fn skene_terminal::Launch::clone(&self) -> skene_terminal::Launch
+impl core::cmp::Eq for skene_terminal::Launch
+impl core::cmp::PartialEq for skene_terminal::Launch
+pub fn skene_terminal::Launch::eq(&self, &skene_terminal::Launch) -> bool
+impl core::default::Default for skene_terminal::Launch
+pub fn skene_terminal::Launch::default() -> Self
+impl core::fmt::Debug for skene_terminal::Launch
+pub fn skene_terminal::Launch::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_terminal::Launch
+pub fn skene_terminal::Launch::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_terminal::Launch
+impl core::marker::StructuralPartialEq for skene_terminal::Launch
+pub trait skene_terminal::prelude::TerminalDecoration: core::marker::Sized
+pub fn skene_terminal::prelude::TerminalDecoration::derive_border_glyphs<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_common::terminal::ext::BorderGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_terminal::prelude::TerminalDecoration::derive_scrollbar_glyphs<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_common::terminal::ext::ScrollbarGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_terminal::prelude::TerminalDecoration::derive_scrollbar_thumb<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_terminal::prelude::TerminalDecoration::derive_scrollbar_track<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_terminal::prelude::TerminalDecoration::derive_shadow<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_terminal::prelude::TerminalDecoration::derive_shadow_offset<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_terminal::prelude::TerminalDecoration::derive_shadow_softening<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_terminal::prelude::TerminalDecoration::set_border_glyphs(self, impl core::convert::Into<skene_core::leaf::Value<skene_common::terminal::ext::BorderGlyphs, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_terminal::prelude::TerminalDecoration::set_scrollbar_glyphs(self, impl core::convert::Into<skene_core::leaf::Value<skene_common::terminal::ext::ScrollbarGlyphs, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_terminal::prelude::TerminalDecoration::set_scrollbar_thumb(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_terminal::prelude::TerminalDecoration::set_scrollbar_track(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_terminal::prelude::TerminalDecoration::set_shadow(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_terminal::prelude::TerminalDecoration::set_shadow_offset(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_terminal::prelude::TerminalDecoration::set_shadow_softening(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_terminal::prelude::TerminalDecoration::terminal_style_mut(&mut self) -> &mut skene_core::box_style::BoxStyle<u32, skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::terminal::ext::TerminalStyle>
+impl skene_terminal::TerminalDecoration for skene_common::container::Container<skene_terminal::Terminal>
+pub fn skene_common::container::Container<skene_terminal::Terminal>::derive_border_glyphs<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_common::terminal::ext::BorderGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::container::Container<skene_terminal::Terminal>::derive_scrollbar_glyphs<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_common::terminal::ext::ScrollbarGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::container::Container<skene_terminal::Terminal>::derive_scrollbar_thumb<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::container::Container<skene_terminal::Terminal>::derive_scrollbar_track<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::container::Container<skene_terminal::Terminal>::derive_shadow<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::container::Container<skene_terminal::Terminal>::derive_shadow_offset<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::container::Container<skene_terminal::Terminal>::derive_shadow_softening<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::container::Container<skene_terminal::Terminal>::set_border_glyphs(self, impl core::convert::Into<skene_core::leaf::Value<skene_common::terminal::ext::BorderGlyphs, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::container::Container<skene_terminal::Terminal>::set_scrollbar_glyphs(self, impl core::convert::Into<skene_core::leaf::Value<skene_common::terminal::ext::ScrollbarGlyphs, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::container::Container<skene_terminal::Terminal>::set_scrollbar_thumb(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::container::Container<skene_terminal::Terminal>::set_scrollbar_track(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::container::Container<skene_terminal::Terminal>::set_shadow(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::container::Container<skene_terminal::Terminal>::set_shadow_offset(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::container::Container<skene_terminal::Terminal>::set_shadow_softening(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::container::Container<skene_terminal::Terminal>::terminal_style_mut(&mut self) -> &mut skene_core::box_style::BoxStyle<u32, skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::terminal::ext::TerminalStyle>
+impl skene_terminal::TerminalDecoration for skene_common::overlay::Overlay<skene_terminal::Terminal>
+pub fn skene_common::overlay::Overlay<skene_terminal::Terminal>::derive_border_glyphs<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_common::terminal::ext::BorderGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::overlay::Overlay<skene_terminal::Terminal>::derive_scrollbar_glyphs<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_common::terminal::ext::ScrollbarGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::overlay::Overlay<skene_terminal::Terminal>::derive_scrollbar_thumb<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::overlay::Overlay<skene_terminal::Terminal>::derive_scrollbar_track<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::overlay::Overlay<skene_terminal::Terminal>::derive_shadow<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::overlay::Overlay<skene_terminal::Terminal>::derive_shadow_offset<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::overlay::Overlay<skene_terminal::Terminal>::derive_shadow_softening<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::overlay::Overlay<skene_terminal::Terminal>::set_border_glyphs(self, impl core::convert::Into<skene_core::leaf::Value<skene_common::terminal::ext::BorderGlyphs, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::overlay::Overlay<skene_terminal::Terminal>::set_scrollbar_glyphs(self, impl core::convert::Into<skene_core::leaf::Value<skene_common::terminal::ext::ScrollbarGlyphs, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::overlay::Overlay<skene_terminal::Terminal>::set_scrollbar_thumb(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::overlay::Overlay<skene_terminal::Terminal>::set_scrollbar_track(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::overlay::Overlay<skene_terminal::Terminal>::set_shadow(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::overlay::Overlay<skene_terminal::Terminal>::set_shadow_offset(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::overlay::Overlay<skene_terminal::Terminal>::set_shadow_softening(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::overlay::Overlay<skene_terminal::Terminal>::terminal_style_mut(&mut self) -> &mut skene_core::box_style::BoxStyle<u32, skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::terminal::ext::TerminalStyle>
+impl<B: skene_common::control::Behavior<skene_terminal::Terminal>> skene_terminal::TerminalDecoration for skene_common::control::Control<skene_terminal::Terminal, B>
+pub fn skene_common::control::Control<skene_terminal::Terminal, B>::derive_border_glyphs<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_common::terminal::ext::BorderGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::control::Control<skene_terminal::Terminal, B>::derive_scrollbar_glyphs<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_common::terminal::ext::ScrollbarGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::control::Control<skene_terminal::Terminal, B>::derive_scrollbar_thumb<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::control::Control<skene_terminal::Terminal, B>::derive_scrollbar_track<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::control::Control<skene_terminal::Terminal, B>::derive_shadow<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::control::Control<skene_terminal::Terminal, B>::derive_shadow_offset<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::control::Control<skene_terminal::Terminal, B>::derive_shadow_softening<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::control::Control<skene_terminal::Terminal, B>::set_border_glyphs(self, impl core::convert::Into<skene_core::leaf::Value<skene_common::terminal::ext::BorderGlyphs, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::control::Control<skene_terminal::Terminal, B>::set_scrollbar_glyphs(self, impl core::convert::Into<skene_core::leaf::Value<skene_common::terminal::ext::ScrollbarGlyphs, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::control::Control<skene_terminal::Terminal, B>::set_scrollbar_thumb(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::control::Control<skene_terminal::Terminal, B>::set_scrollbar_track(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::control::Control<skene_terminal::Terminal, B>::set_shadow(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::control::Control<skene_terminal::Terminal, B>::set_shadow_offset(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::control::Control<skene_terminal::Terminal, B>::set_shadow_softening(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::control::Control<skene_terminal::Terminal, B>::terminal_style_mut(&mut self) -> &mut skene_core::box_style::BoxStyle<u32, skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::terminal::ext::TerminalStyle>
+pub trait skene_terminal::prelude::TerminalText: core::marker::Sized
+pub fn skene_terminal::prelude::TerminalText::derive_bold<R: core::convert::Into<skene_core::leaf::StaticLeaf<bool>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_terminal::prelude::TerminalText::set_bold(self, impl core::convert::Into<skene_core::leaf::Value<bool, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_terminal::prelude::TerminalText::terminal_style_mut(&mut self) -> &mut skene_core::run_style::RunStyle<skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::terminal::ext::TerminalStyle>
+impl skene_terminal::TerminalText for skene_common::span::Span<skene_terminal::Terminal>
+pub fn skene_common::span::Span<skene_terminal::Terminal>::derive_bold<R: core::convert::Into<skene_core::leaf::StaticLeaf<bool>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::span::Span<skene_terminal::Terminal>::set_bold(self, impl core::convert::Into<skene_core::leaf::Value<bool, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::span::Span<skene_terminal::Terminal>::terminal_style_mut(&mut self) -> &mut skene_core::run_style::RunStyle<skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::terminal::ext::TerminalStyle>
+impl skene_terminal::TerminalText for skene_common::text::Text<skene_terminal::Terminal>
+pub fn skene_common::text::Text<skene_terminal::Terminal>::derive_bold<R: core::convert::Into<skene_core::leaf::StaticLeaf<bool>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::text::Text<skene_terminal::Terminal>::set_bold(self, impl core::convert::Into<skene_core::leaf::Value<bool, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::text::Text<skene_terminal::Terminal>::terminal_style_mut(&mut self) -> &mut skene_core::run_style::RunStyle<skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::terminal::ext::TerminalStyle>
+pub trait skene_terminal::prelude::ThemedIn: skene_common::theme::ThemedIn<skene_terminal::ActivePlatform>
+pub fn skene_terminal::prelude::ThemedIn::current() -> Self
+pub fn skene_terminal::prelude::ThemedIn::watch() -> skene_reactive::memo::Memo<Self>
+impl<S: skene_common::theme::ThemedIn<skene_terminal::ActivePlatform>> skene_terminal::ThemedIn for S
+pub fn S::current() -> Self
+pub fn S::watch() -> skene_reactive::memo::Memo<Self>
+pub trait skene_terminal::prelude::View: skene_core::view::View<skene_terminal::ActivePlatform>
+pub fn skene_terminal::prelude::View::build(self) -> skene_core::node::NodeId where Self: core::marker::Sized
+pub fn skene_terminal::prelude::View::into_any(self) -> skene_terminal::AnyView where Self: core::marker::Sized
+impl<V: skene_core::view::View<skene_terminal::ActivePlatform>> skene_terminal::View for V
+pub fn V::build(self) -> skene_core::node::NodeId where Self: core::marker::Sized
+pub fn V::into_any(self) -> skene_terminal::AnyView where Self: core::marker::Sized
+pub fn skene_terminal::prelude::chosen_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
+pub fn skene_terminal::prelude::derive_scheme(impl core::ops::function::Fn() -> core::option::Option<skene_core::values::color::ColorScheme> + 'static)
+pub fn skene_terminal::prelude::derive_title(impl core::ops::function::Fn() -> alloc::string::String + 'static)
+pub fn skene_terminal::prelude::derived(impl core::ops::function::Fn() -> skene_core::node::NodeId + 'static) -> skene_core::node::NodeId
+pub fn skene_terminal::prelude::empty() -> impl skene_terminal::View
+pub fn skene_terminal::prelude::install_router<R: skene_common::routing::Route>(R) -> skene_common::routing::Router<R>
+pub fn skene_terminal::prelude::launch<V, F>(F) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_core::view::View<skene_terminal::Terminal>
+pub fn skene_terminal::prelude::set_scheme(core::option::Option<skene_core::values::color::ColorScheme>)
+pub fn skene_terminal::prelude::set_title(impl core::convert::Into<alloc::string::String>)
+pub fn skene_terminal::prelude::spawn(impl core::future::future::Future<Output = ()> + 'static) -> skene_reactive::spawn::TaskHandle
+pub type skene_terminal::prelude::AnyView = skene_core::view::AnyView<skene_terminal::ActivePlatform>
+pub type skene_terminal::prelude::BasicButton<C> = skene_common::control::BasicButton<skene_terminal::ActivePlatform, C>
+pub type skene_terminal::prelude::BasicCheckbox<C> = skene_common::control::BasicCheckbox<skene_terminal::ActivePlatform, C>
+pub type skene_terminal::prelude::BasicListboxOption<C> = skene_common::control::BasicListboxOption<skene_terminal::ActivePlatform, C>
+pub type skene_terminal::prelude::BasicMenu<C> = skene_common::control::BasicMenu<skene_terminal::ActivePlatform, C>
+pub type skene_terminal::prelude::BasicMenuItem<C> = skene_common::control::BasicMenuItem<skene_terminal::ActivePlatform, C>
+pub type skene_terminal::prelude::BasicPicker<F> = skene_common::picker::BasicPicker<skene_terminal::ActivePlatform, F>
+pub type skene_terminal::prelude::BasicRadio<C> = skene_common::control::BasicRadio<skene_terminal::ActivePlatform, C>
+pub type skene_terminal::prelude::BasicRadioGroup<C> = skene_common::control::BasicRadioGroup<skene_terminal::ActivePlatform, C>
+pub type skene_terminal::prelude::BasicSlider<C> = skene_common::control::BasicSlider<skene_terminal::ActivePlatform, C>
+pub type skene_terminal::prelude::BasicTextEditor<C> = skene_common::control::BasicTextEditor<skene_terminal::ActivePlatform, C>
+pub type skene_terminal::prelude::BasicTextField<C> = skene_common::control::BasicTextField<skene_terminal::ActivePlatform, C>
+pub type skene_terminal::prelude::Column = skene_common::flex::Column<skene_terminal::ActivePlatform>
+pub type skene_terminal::prelude::Condition = skene_core::condition::Condition<u32>
+pub type skene_terminal::prelude::Container = skene_common::container::Container<skene_terminal::ActivePlatform>
+pub type skene_terminal::prelude::ContextMenu<C> = skene_common::context_menu::ContextMenu<skene_terminal::ActivePlatform, C>
+pub type skene_terminal::prelude::Control<B, C> = skene_common::control::Control<skene_terminal::ActivePlatform, B, C>
+pub type skene_terminal::prelude::Definition<T> = skene_core::leaf::Definition<T, u32>
+pub type skene_terminal::prelude::Dimension = skene_core::values::dimension::Dimension<u32>
+pub type skene_terminal::prelude::Enhance<C> = skene_common::enhance::Enhance<skene_terminal::ActivePlatform, C>
+pub type skene_terminal::prelude::ErrorBoundary<C> = skene_common::error_boundary::ErrorBoundary<skene_terminal::ActivePlatform, C>
+pub type skene_terminal::prelude::Flexible<C> = skene_common::flexible::Flexible<skene_terminal::ActivePlatform, C>
+pub type skene_terminal::prelude::Grid = skene_common::grid::Grid<skene_terminal::ActivePlatform>
+pub type skene_terminal::prelude::GridCell<C> = skene_common::grid_cell::GridCell<skene_terminal::ActivePlatform, C>
+pub type skene_terminal::prelude::Inset<T> = skene_core::values::inset::Inset<T>
+pub type skene_terminal::prelude::Keymap<C> = skene_common::keymap::Keymap<skene_terminal::ActivePlatform, C>
+pub type skene_terminal::prelude::LayoutBox<Kind> = skene_common::layout_box::LayoutBox<skene_terminal::ActivePlatform, Kind>
+pub type skene_terminal::prelude::LazyColumn = skene_common::lazy_list::LazyColumn<skene_terminal::ActivePlatform>
+pub type skene_terminal::prelude::LazyRow = skene_common::lazy_list::LazyRow<skene_terminal::ActivePlatform>
+pub type skene_terminal::prelude::Media = skene_core::condition::Media<u32>
+pub type skene_terminal::prelude::NodeHandle = skene_common::node_handle::NodeHandle<skene_terminal::ActivePlatform>
+pub type skene_terminal::prelude::Overlay<C> = skene_common::overlay::Overlay<skene_terminal::ActivePlatform, C>
+pub type skene_terminal::prelude::Painted = skene_common::painted::Painted<skene_terminal::ActivePlatform>
+pub type skene_terminal::prelude::Pinned<C> = skene_common::pinned::Pinned<skene_terminal::ActivePlatform, C>
+pub type skene_terminal::prelude::Point = skene_core::values::point::Point<u32>
+pub type skene_terminal::prelude::Rect = skene_core::values::rect::Rect<u32>
+pub type skene_terminal::prelude::RichText = skene_common::span::RichText<skene_terminal::ActivePlatform>
+pub type skene_terminal::prelude::Row = skene_common::flex::Row<skene_terminal::ActivePlatform>
+pub type skene_terminal::prelude::Show<C> = skene_core::show::Show<skene_terminal::ActivePlatform, C>
+pub type skene_terminal::prelude::Size = skene_core::values::size::Size<u32>
+pub type skene_terminal::prelude::Spacing = skene_core::values::flex::Spacing<u32>
+pub type skene_terminal::prelude::Span = skene_common::span::Span<skene_terminal::ActivePlatform>
+pub type skene_terminal::prelude::Stack = skene_common::stack::Stack<skene_terminal::ActivePlatform>
+pub type skene_terminal::prelude::Suspense<C> = skene_common::suspense::Suspense<skene_terminal::ActivePlatform, C>
+pub type skene_terminal::prelude::Switch<K> = skene_common::switch::Switch<skene_terminal::ActivePlatform, K>
+pub type skene_terminal::prelude::Text = skene_common::text::Text<skene_terminal::ActivePlatform>
+pub type skene_terminal::prelude::Theme<S, C> = skene_common::theme::Theme<skene_terminal::ActivePlatform, S, C>
+pub type skene_terminal::prelude::Token<T> = skene_core::token::Token<T, u32>
+pub type skene_terminal::prelude::Tooltip<C> = skene_common::tooltip::Tooltip<skene_terminal::ActivePlatform, C>
+pub type skene_terminal::prelude::Value<T> = skene_core::leaf::Value<T, skene_terminal::Condition>
+pub mod skene_terminal::testing
+pub mod skene_terminal::testing::user
+pub fn skene_terminal::testing::user::click(skene_core::node::NodeId)
+pub fn skene_terminal::testing::user::double_click(skene_core::node::NodeId)
+pub fn skene_terminal::testing::user::hover(skene_core::node::NodeId)
+pub fn skene_terminal::testing::user::press_key(&skene_core::events::KeyEvent)
+pub fn skene_terminal::testing::user::type_text(skene_core::node::NodeId, &str)
+pub struct skene_terminal::testing::Pty
+impl skene_terminal::testing::Pty
+pub fn skene_terminal::testing::Pty::open(skene_terminal::WindowSize) -> core::io::error::Result<(Self, skene_terminal::testing::PtyHost)>
+impl core::fmt::Debug for skene_terminal::testing::Pty
+pub fn skene_terminal::testing::Pty::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::io::write::Write for skene_terminal::testing::Pty
+pub fn skene_terminal::testing::Pty::flush(&mut self) -> core::io::error::Result<()>
+pub fn skene_terminal::testing::Pty::write(&mut self, &[u8]) -> core::io::error::Result<usize>
+impl core::ops::drop::Drop for skene_terminal::testing::Pty
+pub fn skene_terminal::testing::Pty::drop(&mut self)
+impl skene_terminal::Device for skene_terminal::testing::Pty
+pub fn skene_terminal::testing::Pty::enter_raw_mode(&mut self) -> core::io::error::Result<()>
+pub fn skene_terminal::testing::Pty::restore_mode(&mut self) -> core::io::error::Result<()>
+pub fn skene_terminal::testing::Pty::size(&self) -> core::option::Option<skene_terminal::WindowSize>
+pub fn skene_terminal::testing::Pty::stop(&mut self)
+pub fn skene_terminal::testing::Pty::wait(&mut self, core::time::Duration, &mut alloc::vec::Vec<u8>) -> core::io::error::Result<alloc::vec::Vec<skene_terminal::Note>>
+pub fn skene_terminal::testing::Pty::waker(&self) -> alloc::sync::Arc<(dyn core::ops::function::Fn() + core::marker::Send + core::marker::Sync)>
+pub struct skene_terminal::testing::PtyHost
+impl skene_terminal::testing::PtyHost
+pub fn skene_terminal::testing::PtyHost::drawn(&mut self, core::time::Duration) -> core::io::error::Result<alloc::vec::Vec<u8>>
+pub fn skene_terminal::testing::PtyHost::resize(&self, skene_terminal::WindowSize) -> core::io::error::Result<()>
+pub fn skene_terminal::testing::PtyHost::type_bytes(&mut self, &[u8]) -> core::io::error::Result<()>
+impl core::fmt::Debug for skene_terminal::testing::PtyHost
+pub fn skene_terminal::testing::PtyHost::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn skene_terminal::testing::access_outline() -> alloc::string::String
+pub fn skene_terminal::testing::access_tree() -> accesskit::TreeUpdate
+pub fn skene_terminal::testing::accessible_name(skene_core::node::NodeId) -> core::option::Option<alloc::string::String>
+pub fn skene_terminal::testing::find_all_by_role(accesskit::Role) -> alloc::vec::Vec<skene_core::node::NodeId>
+pub fn skene_terminal::testing::find_all_unnamed() -> alloc::vec::Vec<skene_core::node::NodeId>
+pub fn skene_terminal::testing::find_by_role(accesskit::Role, &str) -> core::option::Option<skene_core::node::NodeId>
+pub fn skene_terminal::testing::find_by_text(&str) -> core::option::Option<skene_core::node::NodeId>
+pub fn skene_terminal::testing::focused_node() -> core::option::Option<skene_core::node::NodeId>
+pub fn skene_terminal::testing::is_frame_pending() -> bool
+pub fn skene_terminal::testing::is_quit_requested() -> bool
+pub fn skene_terminal::testing::layout_generation() -> u64
+pub fn skene_terminal::testing::locate(&str, &str) -> (u16, u16)
+pub fn skene_terminal::testing::mouse_cursor() -> core::option::Option<skene_core::values::mouse_cursor::MouseCursor>
+pub fn skene_terminal::testing::pump_tasks() -> bool
+pub fn skene_terminal::testing::render_to_bold(u16, u16) -> alloc::vec::Vec<bool>
+pub fn skene_terminal::testing::render_to_caret(u16, u16) -> core::option::Option<(u16, u16)>
+pub fn skene_terminal::testing::render_to_colors(u16, u16) -> alloc::vec::Vec<(core::option::Option<(u8, u8, u8)>, core::option::Option<(u8, u8, u8)>)>
+pub fn skene_terminal::testing::render_to_decorations(u16, u16) -> alloc::vec::Vec<skene_terminal::CellDecoration>
+pub fn skene_terminal::testing::render_to_pictures(u16, u16) -> alloc::vec::Vec<skene_terminal::Picture>
+pub fn skene_terminal::testing::render_to_reverse(u16, u16) -> alloc::vec::Vec<bool>
+pub fn skene_terminal::testing::render_to_scales(u16, u16) -> alloc::vec::Vec<skene_terminal::CellScale>
+pub fn skene_terminal::testing::render_to_styled(u16, u16) -> alloc::string::String
+pub fn skene_terminal::testing::render_to_text(u16, u16) -> alloc::string::String
+pub fn skene_terminal::testing::repainted_rows() -> alloc::vec::Vec<usize>
+pub fn skene_terminal::testing::style_resolutions() -> u64
+pub fn skene_terminal::testing::style_writes() -> u64
+pub fn skene_terminal::testing::take_copied() -> core::option::Option<alloc::string::String>
+pub fn skene_terminal::testing::take_opened() -> core::option::Option<alloc::string::String>
+pub fn skene_terminal::testing::take_paste_requested() -> bool
+pub fn skene_terminal::testing::trigger_answering_clipboard(bool)
+pub fn skene_terminal::testing::trigger_clipboard_reply(&str)
+pub fn skene_terminal::testing::trigger_color_scheme(skene_core::values::color::ColorScheme)
+pub fn skene_terminal::testing::trigger_frame(core::time::Duration)
+pub fn skene_terminal::testing::trigger_grapheme_clustering(bool)
+pub fn skene_terminal::testing::trigger_graphics(bool)
+pub fn skene_terminal::testing::trigger_key(&str)
+pub fn skene_terminal::testing::trigger_key_event(&skene_core::events::KeyEvent)
+pub fn skene_terminal::testing::trigger_key_releases(bool)
+pub fn skene_terminal::testing::trigger_key_up(&str)
+pub fn skene_terminal::testing::trigger_mouse_click(u16, u16)
+pub fn skene_terminal::testing::trigger_mouse_drag(u16, u16)
+pub fn skene_terminal::testing::trigger_mouse_drag_within(u16, u16, (f32, f32))
+pub fn skene_terminal::testing::trigger_mouse_move(u16, u16)
+pub fn skene_terminal::testing::trigger_mouse_press(u16, u16)
+pub fn skene_terminal::testing::trigger_mouse_release(u16, u16)
+pub fn skene_terminal::testing::trigger_mouse_right_click(u16, u16)
+pub fn skene_terminal::testing::trigger_mouse_scroll(u16, u16, i64, i64)
+pub fn skene_terminal::testing::trigger_paste(&str)
+pub fn skene_terminal::testing::trigger_reduced_motion(bool)
+pub fn skene_terminal::testing::trigger_resize(u16, u16)
+pub fn skene_terminal::testing::trigger_terminal_colors((u8, u8, u8), (u8, u8, u8))
+pub fn skene_terminal::testing::trigger_text_sizing(bool)
+pub fn skene_terminal::testing::window_title() -> core::option::Option<alloc::string::String>
+pub fn skene_terminal::testing::with_launch<R>(skene_terminal::Launch, impl core::ops::function::FnOnce() -> R) -> R
+pub fn skene_terminal::testing::with_platform<R>(impl core::ops::function::FnOnce() -> R) -> R
+pub enum skene_terminal::CellScale
+pub skene_terminal::CellScale::Fraction(u8, u8)
+pub skene_terminal::CellScale::Whole(u8)
+impl skene_terminal::CellScale
+pub const skene_terminal::CellScale::ONE: Self
+pub fn skene_terminal::CellScale::of(f32) -> Self
+pub const fn skene_terminal::CellScale::rows(self) -> usize
+impl core::clone::Clone for skene_terminal::CellScale
+pub fn skene_terminal::CellScale::clone(&self) -> skene_terminal::CellScale
+impl core::cmp::Eq for skene_terminal::CellScale
+impl core::cmp::PartialEq for skene_terminal::CellScale
+pub fn skene_terminal::CellScale::eq(&self, &skene_terminal::CellScale) -> bool
+impl core::default::Default for skene_terminal::CellScale
+pub fn skene_terminal::CellScale::default() -> Self
+impl core::fmt::Debug for skene_terminal::CellScale
+pub fn skene_terminal::CellScale::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_terminal::CellScale
+pub fn skene_terminal::CellScale::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_terminal::CellScale
+impl core::marker::StructuralPartialEq for skene_terminal::CellScale
+pub enum skene_terminal::Note
+pub skene_terminal::Note::Continued
+pub skene_terminal::Note::EndRequested(i32)
+pub skene_terminal::Note::StopRequested
+impl core::clone::Clone for skene_terminal::Note
+pub fn skene_terminal::Note::clone(&self) -> skene_terminal::Note
+impl core::cmp::Eq for skene_terminal::Note
+impl core::cmp::PartialEq for skene_terminal::Note
+pub fn skene_terminal::Note::eq(&self, &skene_terminal::Note) -> bool
+impl core::fmt::Debug for skene_terminal::Note
+pub fn skene_terminal::Note::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for skene_terminal::Note
+impl core::marker::StructuralPartialEq for skene_terminal::Note
+pub struct skene_terminal::CellDecoration
+pub skene_terminal::CellDecoration::line_through: bool
+pub skene_terminal::CellDecoration::overline: bool
+pub skene_terminal::CellDecoration::underline: core::option::Option<skene_core::values::text_decoration::TextDecorationStyle>
+pub skene_terminal::CellDecoration::underline_color: core::option::Option<(u8, u8, u8)>
+impl skene_terminal::CellDecoration
+pub const skene_terminal::CellDecoration::NONE: Self
+impl core::clone::Clone for skene_terminal::CellDecoration
+pub fn skene_terminal::CellDecoration::clone(&self) -> skene_terminal::CellDecoration
+impl core::cmp::Eq for skene_terminal::CellDecoration
+impl core::cmp::PartialEq for skene_terminal::CellDecoration
+pub fn skene_terminal::CellDecoration::eq(&self, &skene_terminal::CellDecoration) -> bool
+impl core::default::Default for skene_terminal::CellDecoration
+pub fn skene_terminal::CellDecoration::default() -> skene_terminal::CellDecoration
+impl core::fmt::Debug for skene_terminal::CellDecoration
+pub fn skene_terminal::CellDecoration::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for skene_terminal::CellDecoration
+impl core::marker::StructuralPartialEq for skene_terminal::CellDecoration
+pub struct skene_terminal::Cells<'a>
+impl<'a> skene_terminal::Cells<'a>
+pub fn skene_terminal::Cells<'a>::put(&mut self, u32, u32, char)
+pub fn skene_terminal::Cells<'a>::rect(&self) -> skene_core::values::rect::Rect<u32>
+pub fn skene_terminal::Cells<'a>::set_background(&mut self, u32, u32, skene_core::values::color::Color)
+pub fn skene_terminal::Cells<'a>::set_foreground(&mut self, u32, u32, skene_core::values::color::Color)
+pub const fn skene_terminal::Cells<'a>::size(&self) -> skene_core::values::size::Size<u32>
+impl core::fmt::Debug for skene_terminal::Cells<'_>
+pub fn skene_terminal::Cells<'_>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_terminal::Clipboard
+pub skene_terminal::Clipboard::copy: bool
+pub skene_terminal::Clipboard::paste: bool
+impl skene_terminal::Clipboard
+pub const skene_terminal::Clipboard::ALL: Self
+pub const skene_terminal::Clipboard::COPY: Self
+pub const skene_terminal::Clipboard::NONE: Self
+pub const skene_terminal::Clipboard::PASTE: Self
+impl core::clone::Clone for skene_terminal::Clipboard
+pub fn skene_terminal::Clipboard::clone(&self) -> skene_terminal::Clipboard
+impl core::cmp::Eq for skene_terminal::Clipboard
+impl core::cmp::PartialEq for skene_terminal::Clipboard
+pub fn skene_terminal::Clipboard::eq(&self, &skene_terminal::Clipboard) -> bool
+impl core::default::Default for skene_terminal::Clipboard
+pub fn skene_terminal::Clipboard::default() -> Self
+impl core::fmt::Debug for skene_terminal::Clipboard
+pub fn skene_terminal::Clipboard::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_terminal::Clipboard
+pub fn skene_terminal::Clipboard::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_terminal::Clipboard
+impl core::marker::StructuralPartialEq for skene_terminal::Clipboard
+pub struct skene_terminal::Launch
+impl skene_terminal::Launch
+pub fn skene_terminal::Launch::install(self)
+pub const fn skene_terminal::Launch::new() -> Self
+pub fn skene_terminal::Launch::run<V, F>(self, F) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_core::view::View<skene_terminal::Terminal>
+pub fn skene_terminal::Launch::run_on<D, V, F>(self, D, F) -> D where D: skene_terminal::Device, F: core::ops::function::FnOnce() -> V + 'static, V: skene_core::view::View<skene_terminal::Terminal>
+pub const fn skene_terminal::Launch::set_clipboard(self, skene_terminal::Clipboard) -> Self
+pub const fn skene_terminal::Launch::set_mouse(self, bool) -> Self
+pub const fn skene_terminal::Launch::set_mouse_key(self, core::option::Option<skene_core::events::Shortcut>) -> Self
+impl core::clone::Clone for skene_terminal::Launch
+pub fn skene_terminal::Launch::clone(&self) -> skene_terminal::Launch
+impl core::cmp::Eq for skene_terminal::Launch
+impl core::cmp::PartialEq for skene_terminal::Launch
+pub fn skene_terminal::Launch::eq(&self, &skene_terminal::Launch) -> bool
+impl core::default::Default for skene_terminal::Launch
+pub fn skene_terminal::Launch::default() -> Self
+impl core::fmt::Debug for skene_terminal::Launch
+pub fn skene_terminal::Launch::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_terminal::Launch
+pub fn skene_terminal::Launch::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_terminal::Launch
+impl core::marker::StructuralPartialEq for skene_terminal::Launch
+pub struct skene_terminal::Picture
+pub skene_terminal::Picture::column: u16
+pub skene_terminal::Picture::columns: u16
+pub skene_terminal::Picture::crop: (u16, u16, u16, u16)
+pub skene_terminal::Picture::height: u16
+pub skene_terminal::Picture::layer: i32
+pub skene_terminal::Picture::pixels: alloc::vec::Vec<u8>
+pub skene_terminal::Picture::row: u16
+pub skene_terminal::Picture::rows: u16
+pub skene_terminal::Picture::width: u16
+impl core::clone::Clone for skene_terminal::Picture
+pub fn skene_terminal::Picture::clone(&self) -> skene_terminal::Picture
+impl core::cmp::Eq for skene_terminal::Picture
+impl core::cmp::PartialEq for skene_terminal::Picture
+pub fn skene_terminal::Picture::eq(&self, &skene_terminal::Picture) -> bool
+impl core::fmt::Debug for skene_terminal::Picture
+pub fn skene_terminal::Picture::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for skene_terminal::Picture
+pub struct skene_terminal::Terminal
+impl core::clone::Clone for skene_terminal::Terminal
+pub fn skene_terminal::Terminal::clone(&self) -> skene_terminal::Terminal
+impl core::cmp::Eq for skene_terminal::Terminal
+impl core::cmp::PartialEq for skene_terminal::Terminal
+pub fn skene_terminal::Terminal::eq(&self, &skene_terminal::Terminal) -> bool
+impl core::default::Default for skene_terminal::Terminal
+pub fn skene_terminal::Terminal::default() -> skene_terminal::Terminal
+impl core::fmt::Debug for skene_terminal::Terminal
+pub fn skene_terminal::Terminal::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_terminal::Terminal
+pub fn skene_terminal::Terminal::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_terminal::Terminal
+impl core::marker::StructuralPartialEq for skene_terminal::Terminal
+impl skene_common::painting::Painting for skene_terminal::Terminal
+pub fn skene_terminal::Terminal::available() -> skene_reactive::signal::ReadSignal<bool>
+pub fn skene_terminal::Terminal::paint(skene_core::node::NodeId, alloc::boxed::Box<skene_common::painting::Painter>)
+impl skene_core::platform::Platform for skene_terminal::Terminal
+pub type skene_terminal::Terminal::Scalar = u32
+pub type skene_terminal::Terminal::StyleExt = skene_common::terminal::ext::TerminalStyle
+pub type skene_terminal::Terminal::TokenValue = skene_core::resolve::TokenValue<u32>
+pub fn skene_terminal::Terminal::attach(skene_core::node::NodeId, skene_core::node::NodeId, core::option::Option<skene_core::node::NodeId>)
+pub fn skene_terminal::Terminal::blur(skene_core::node::NodeId)
+pub fn skene_terminal::Terminal::cancel(skene_core::platform::Timer)
+pub fn skene_terminal::Terminal::chosen_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
+pub fn skene_terminal::Terminal::clipboard(skene_core::values::clipboard::ClipboardAction)
+pub fn skene_terminal::Terminal::clipboard_availability(skene_core::values::clipboard::ClipboardAction) -> skene_core::values::clipboard::Availability
+pub fn skene_terminal::Terminal::create_anchor(skene_core::node::NodeId)
+pub fn skene_terminal::Terminal::create_box(skene_core::node::NodeId, &skene_core::props::BoxProps<Self>)
+pub fn skene_terminal::Terminal::create_control(skene_core::node::NodeId, &skene_core::control::ControlProps<Self>)
+pub fn skene_terminal::Terminal::create_overlay(skene_core::node::NodeId, &skene_core::props::OverlayProps<Self>)
+pub fn skene_terminal::Terminal::create_run(skene_core::node::NodeId, &skene_core::props::RunProps<Self>)
+pub fn skene_terminal::Terminal::create_scope(skene_core::node::NodeId)
+pub fn skene_terminal::Terminal::define_root_tokens(&skene_core::token::Definitions<skene_terminal::TokenValue>)
+pub fn skene_terminal::Terminal::define_tokens(skene_core::node::NodeId, &skene_core::token::Definitions<skene_terminal::TokenValue>)
+pub fn skene_terminal::Terminal::destroy(skene_core::node::NodeId)
+pub fn skene_terminal::Terminal::focus(skene_core::node::NodeId)
+pub fn skene_terminal::Terminal::focus_visible() -> bool
+pub fn skene_terminal::Terminal::hide(skene_core::node::NodeId, skene_core::node::NodeId)
+pub fn skene_terminal::Terminal::localize_pointer(skene_core::node::NodeId, &skene_core::events::PointerEvent) -> skene_core::events::PointerEvent
+pub fn skene_terminal::Terminal::media() -> skene_core::props::MediaSignals<u32>
+pub fn skene_terminal::Terminal::observe_size(skene_core::node::NodeId, alloc::rc::Rc<dyn core::ops::function::Fn(skene_core::values::size::Size<u32>)>) -> skene_core::platform::Observation
+pub fn skene_terminal::Terminal::relocate(skene_core::node::NodeId, skene_core::node::NodeId, core::option::Option<skene_core::node::NodeId>)
+pub fn skene_terminal::Terminal::remove(skene_core::node::NodeId, skene_core::node::NodeId)
+pub fn skene_terminal::Terminal::scene() -> &'static std::thread::local::LocalKey<core::cell::RefCell<skene_core::scene::Scene<Self>>>
+pub fn skene_terminal::Terminal::schedule(core::time::Duration, alloc::boxed::Box<dyn core::ops::function::FnOnce()>) -> skene_core::platform::Timer
+pub fn skene_terminal::Terminal::set_checked(skene_core::node::NodeId, bool)
+pub fn skene_terminal::Terminal::set_control_state(skene_core::node::NodeId, &skene_core::control::ControlState)
+pub fn skene_terminal::Terminal::set_overlay_open(skene_core::node::NodeId, bool, core::option::Option<skene_core::node::NodeId>)
+pub fn skene_terminal::Terminal::set_overlay_placement(skene_core::node::NodeId, skene_core::values::placement::Placement)
+pub fn skene_terminal::Terminal::set_overlay_position(skene_core::node::NodeId, core::option::Option<skene_core::values::point::Point<f32>>)
+pub fn skene_terminal::Terminal::set_scheme(core::option::Option<skene_core::values::color::ColorScheme>)
+pub fn skene_terminal::Terminal::set_selection(skene_core::node::NodeId, skene_core::values::text_selection::TextSelection)
+pub fn skene_terminal::Terminal::set_text(skene_core::node::NodeId, &str)
+pub fn skene_terminal::Terminal::set_value(skene_core::node::NodeId, &str)
+pub fn skene_terminal::Terminal::update_box(skene_core::node::NodeId, skene_core::leaf::Slot, &skene_core::leaf::StaticLeaf<skene_core::box_style::BoxValue<u32, skene_common::terminal::ext::TerminalStyle>>)
+pub fn skene_terminal::Terminal::update_run(skene_core::node::NodeId, skene_core::leaf::Slot, &skene_core::leaf::StaticLeaf<skene_core::run_style::RunValue<skene_common::terminal::ext::TerminalStyle>>)
+pub fn skene_terminal::Terminal::watch_media(&skene_core::condition::Media<u32>) -> skene_reactive::memo::Memo<bool>
+impl skene_terminal::CellPainter for skene_terminal::Terminal
+pub fn skene_terminal::Terminal::paint(skene_core::node::NodeId, alloc::boxed::Box<dyn core::ops::function::Fn(&mut skene_terminal::Cells<'_>, skene_core::values::rect::Rect<u32>)>)
+pub struct skene_terminal::WindowSize
+pub skene_terminal::WindowSize::columns: u16
+pub skene_terminal::WindowSize::pixel_height: core::option::Option<u16>
+pub skene_terminal::WindowSize::pixel_width: core::option::Option<u16>
+pub skene_terminal::WindowSize::rows: u16
+impl skene_terminal::WindowSize
+pub const fn skene_terminal::WindowSize::cells(u16, u16) -> Self
+impl core::clone::Clone for skene_terminal::WindowSize
+pub fn skene_terminal::WindowSize::clone(&self) -> skene_terminal::WindowSize
+impl core::cmp::Eq for skene_terminal::WindowSize
+impl core::cmp::PartialEq for skene_terminal::WindowSize
+pub fn skene_terminal::WindowSize::eq(&self, &skene_terminal::WindowSize) -> bool
+impl core::fmt::Debug for skene_terminal::WindowSize
+pub fn skene_terminal::WindowSize::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for skene_terminal::WindowSize
+impl core::marker::StructuralPartialEq for skene_terminal::WindowSize
+pub const skene_terminal::MOUSE_KEY: skene_core::events::Shortcut
+pub trait skene_terminal::CellPainter: skene_core::platform::Platform
+pub fn skene_terminal::CellPainter::paint(skene_core::node::NodeId, alloc::boxed::Box<dyn core::ops::function::Fn(&mut skene_terminal::Cells<'_>, skene_core::values::rect::Rect<u32>)>)
+impl skene_terminal::CellPainter for skene_terminal::Terminal
+pub fn skene_terminal::Terminal::paint(skene_core::node::NodeId, alloc::boxed::Box<dyn core::ops::function::Fn(&mut skene_terminal::Cells<'_>, skene_core::values::rect::Rect<u32>)>)
+pub trait skene_terminal::Device: core::io::write::Write
+pub fn skene_terminal::Device::enter_raw_mode(&mut self) -> core::io::error::Result<()>
+pub fn skene_terminal::Device::restore_mode(&mut self) -> core::io::error::Result<()>
+pub fn skene_terminal::Device::size(&self) -> core::option::Option<skene_terminal::WindowSize>
+pub fn skene_terminal::Device::stop(&mut self)
+pub fn skene_terminal::Device::wait(&mut self, core::time::Duration, &mut alloc::vec::Vec<u8>) -> core::io::error::Result<alloc::vec::Vec<skene_terminal::Note>>
+pub fn skene_terminal::Device::waker(&self) -> alloc::sync::Arc<(dyn core::ops::function::Fn() + core::marker::Send + core::marker::Sync)>
+impl skene_terminal::Device for skene_terminal::testing::Pty
+pub fn skene_terminal::testing::Pty::enter_raw_mode(&mut self) -> core::io::error::Result<()>
+pub fn skene_terminal::testing::Pty::restore_mode(&mut self) -> core::io::error::Result<()>
+pub fn skene_terminal::testing::Pty::size(&self) -> core::option::Option<skene_terminal::WindowSize>
+pub fn skene_terminal::testing::Pty::stop(&mut self)
+pub fn skene_terminal::testing::Pty::wait(&mut self, core::time::Duration, &mut alloc::vec::Vec<u8>) -> core::io::error::Result<alloc::vec::Vec<skene_terminal::Note>>
+pub fn skene_terminal::testing::Pty::waker(&self) -> alloc::sync::Arc<(dyn core::ops::function::Fn() + core::marker::Send + core::marker::Sync)>
+pub trait skene_terminal::TerminalDecoration: core::marker::Sized
+pub fn skene_terminal::TerminalDecoration::derive_border_glyphs<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_common::terminal::ext::BorderGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_terminal::TerminalDecoration::derive_scrollbar_glyphs<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_common::terminal::ext::ScrollbarGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_terminal::TerminalDecoration::derive_scrollbar_thumb<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_terminal::TerminalDecoration::derive_scrollbar_track<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_terminal::TerminalDecoration::derive_shadow<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_terminal::TerminalDecoration::derive_shadow_offset<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_terminal::TerminalDecoration::derive_shadow_softening<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_terminal::TerminalDecoration::set_border_glyphs(self, impl core::convert::Into<skene_core::leaf::Value<skene_common::terminal::ext::BorderGlyphs, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_terminal::TerminalDecoration::set_scrollbar_glyphs(self, impl core::convert::Into<skene_core::leaf::Value<skene_common::terminal::ext::ScrollbarGlyphs, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_terminal::TerminalDecoration::set_scrollbar_thumb(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_terminal::TerminalDecoration::set_scrollbar_track(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_terminal::TerminalDecoration::set_shadow(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_terminal::TerminalDecoration::set_shadow_offset(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_terminal::TerminalDecoration::set_shadow_softening(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_terminal::TerminalDecoration::terminal_style_mut(&mut self) -> &mut skene_core::box_style::BoxStyle<u32, skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::terminal::ext::TerminalStyle>
+impl skene_terminal::TerminalDecoration for skene_common::container::Container<skene_terminal::Terminal>
+pub fn skene_common::container::Container<skene_terminal::Terminal>::derive_border_glyphs<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_common::terminal::ext::BorderGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::container::Container<skene_terminal::Terminal>::derive_scrollbar_glyphs<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_common::terminal::ext::ScrollbarGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::container::Container<skene_terminal::Terminal>::derive_scrollbar_thumb<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::container::Container<skene_terminal::Terminal>::derive_scrollbar_track<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::container::Container<skene_terminal::Terminal>::derive_shadow<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::container::Container<skene_terminal::Terminal>::derive_shadow_offset<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::container::Container<skene_terminal::Terminal>::derive_shadow_softening<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::container::Container<skene_terminal::Terminal>::set_border_glyphs(self, impl core::convert::Into<skene_core::leaf::Value<skene_common::terminal::ext::BorderGlyphs, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::container::Container<skene_terminal::Terminal>::set_scrollbar_glyphs(self, impl core::convert::Into<skene_core::leaf::Value<skene_common::terminal::ext::ScrollbarGlyphs, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::container::Container<skene_terminal::Terminal>::set_scrollbar_thumb(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::container::Container<skene_terminal::Terminal>::set_scrollbar_track(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::container::Container<skene_terminal::Terminal>::set_shadow(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::container::Container<skene_terminal::Terminal>::set_shadow_offset(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::container::Container<skene_terminal::Terminal>::set_shadow_softening(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::container::Container<skene_terminal::Terminal>::terminal_style_mut(&mut self) -> &mut skene_core::box_style::BoxStyle<u32, skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::terminal::ext::TerminalStyle>
+impl skene_terminal::TerminalDecoration for skene_common::overlay::Overlay<skene_terminal::Terminal>
+pub fn skene_common::overlay::Overlay<skene_terminal::Terminal>::derive_border_glyphs<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_common::terminal::ext::BorderGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::overlay::Overlay<skene_terminal::Terminal>::derive_scrollbar_glyphs<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_common::terminal::ext::ScrollbarGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::overlay::Overlay<skene_terminal::Terminal>::derive_scrollbar_thumb<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::overlay::Overlay<skene_terminal::Terminal>::derive_scrollbar_track<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::overlay::Overlay<skene_terminal::Terminal>::derive_shadow<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::overlay::Overlay<skene_terminal::Terminal>::derive_shadow_offset<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::overlay::Overlay<skene_terminal::Terminal>::derive_shadow_softening<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::overlay::Overlay<skene_terminal::Terminal>::set_border_glyphs(self, impl core::convert::Into<skene_core::leaf::Value<skene_common::terminal::ext::BorderGlyphs, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::overlay::Overlay<skene_terminal::Terminal>::set_scrollbar_glyphs(self, impl core::convert::Into<skene_core::leaf::Value<skene_common::terminal::ext::ScrollbarGlyphs, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::overlay::Overlay<skene_terminal::Terminal>::set_scrollbar_thumb(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::overlay::Overlay<skene_terminal::Terminal>::set_scrollbar_track(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::overlay::Overlay<skene_terminal::Terminal>::set_shadow(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::overlay::Overlay<skene_terminal::Terminal>::set_shadow_offset(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::overlay::Overlay<skene_terminal::Terminal>::set_shadow_softening(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::overlay::Overlay<skene_terminal::Terminal>::terminal_style_mut(&mut self) -> &mut skene_core::box_style::BoxStyle<u32, skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::terminal::ext::TerminalStyle>
+impl<B: skene_common::control::Behavior<skene_terminal::Terminal>> skene_terminal::TerminalDecoration for skene_common::control::Control<skene_terminal::Terminal, B>
+pub fn skene_common::control::Control<skene_terminal::Terminal, B>::derive_border_glyphs<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_common::terminal::ext::BorderGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::control::Control<skene_terminal::Terminal, B>::derive_scrollbar_glyphs<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_common::terminal::ext::ScrollbarGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::control::Control<skene_terminal::Terminal, B>::derive_scrollbar_thumb<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::control::Control<skene_terminal::Terminal, B>::derive_scrollbar_track<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::control::Control<skene_terminal::Terminal, B>::derive_shadow<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::control::Control<skene_terminal::Terminal, B>::derive_shadow_offset<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::control::Control<skene_terminal::Terminal, B>::derive_shadow_softening<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::control::Control<skene_terminal::Terminal, B>::set_border_glyphs(self, impl core::convert::Into<skene_core::leaf::Value<skene_common::terminal::ext::BorderGlyphs, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::control::Control<skene_terminal::Terminal, B>::set_scrollbar_glyphs(self, impl core::convert::Into<skene_core::leaf::Value<skene_common::terminal::ext::ScrollbarGlyphs, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::control::Control<skene_terminal::Terminal, B>::set_scrollbar_thumb(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::control::Control<skene_terminal::Terminal, B>::set_scrollbar_track(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::control::Control<skene_terminal::Terminal, B>::set_shadow(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::control::Control<skene_terminal::Terminal, B>::set_shadow_offset(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::control::Control<skene_terminal::Terminal, B>::set_shadow_softening(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::control::Control<skene_terminal::Terminal, B>::terminal_style_mut(&mut self) -> &mut skene_core::box_style::BoxStyle<u32, skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::terminal::ext::TerminalStyle>
+pub trait skene_terminal::TerminalText: core::marker::Sized
+pub fn skene_terminal::TerminalText::derive_bold<R: core::convert::Into<skene_core::leaf::StaticLeaf<bool>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_terminal::TerminalText::set_bold(self, impl core::convert::Into<skene_core::leaf::Value<bool, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_terminal::TerminalText::terminal_style_mut(&mut self) -> &mut skene_core::run_style::RunStyle<skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::terminal::ext::TerminalStyle>
+impl skene_terminal::TerminalText for skene_common::span::Span<skene_terminal::Terminal>
+pub fn skene_common::span::Span<skene_terminal::Terminal>::derive_bold<R: core::convert::Into<skene_core::leaf::StaticLeaf<bool>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::span::Span<skene_terminal::Terminal>::set_bold(self, impl core::convert::Into<skene_core::leaf::Value<bool, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::span::Span<skene_terminal::Terminal>::terminal_style_mut(&mut self) -> &mut skene_core::run_style::RunStyle<skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::terminal::ext::TerminalStyle>
+impl skene_terminal::TerminalText for skene_common::text::Text<skene_terminal::Terminal>
+pub fn skene_common::text::Text<skene_terminal::Terminal>::derive_bold<R: core::convert::Into<skene_core::leaf::StaticLeaf<bool>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::text::Text<skene_terminal::Terminal>::set_bold(self, impl core::convert::Into<skene_core::leaf::Value<bool, skene_core::condition::Condition<u32>>>) -> Self
+pub fn skene_common::text::Text<skene_terminal::Terminal>::terminal_style_mut(&mut self) -> &mut skene_core::run_style::RunStyle<skene_core::shape::Declared<skene_core::condition::Condition<u32>>, skene_common::terminal::ext::TerminalStyle>
+pub trait skene_terminal::ThemedIn: skene_common::theme::ThemedIn<skene_terminal::ActivePlatform>
+pub fn skene_terminal::ThemedIn::current() -> Self
+pub fn skene_terminal::ThemedIn::watch() -> skene_reactive::memo::Memo<Self>
+impl<S: skene_common::theme::ThemedIn<skene_terminal::ActivePlatform>> skene_terminal::ThemedIn for S
+pub fn S::current() -> Self
+pub fn S::watch() -> skene_reactive::memo::Memo<Self>
+pub trait skene_terminal::View: skene_core::view::View<skene_terminal::ActivePlatform>
+pub fn skene_terminal::View::build(self) -> skene_core::node::NodeId where Self: core::marker::Sized
+pub fn skene_terminal::View::into_any(self) -> skene_terminal::AnyView where Self: core::marker::Sized
+impl<V: skene_core::view::View<skene_terminal::ActivePlatform>> skene_terminal::View for V
+pub fn V::build(self) -> skene_core::node::NodeId where Self: core::marker::Sized
+pub fn V::into_any(self) -> skene_terminal::AnyView where Self: core::marker::Sized
+pub fn skene_terminal::adopt_restoration()
+pub fn skene_terminal::chosen_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
+pub fn skene_terminal::derive_scheme(impl core::ops::function::Fn() -> core::option::Option<skene_core::values::color::ColorScheme> + 'static)
+pub fn skene_terminal::derive_title(impl core::ops::function::Fn() -> alloc::string::String + 'static)
+pub fn skene_terminal::derived(impl core::ops::function::Fn() -> skene_core::node::NodeId + 'static) -> skene_core::node::NodeId
+pub fn skene_terminal::dev_notice_view(skene_reactive::signal::Signal<core::option::Option<alloc::string::String>>) -> impl skene_terminal::View
+pub fn skene_terminal::empty() -> impl skene_terminal::View
+pub fn skene_terminal::install()
+pub fn skene_terminal::install_router<R: skene_common::routing::Route>(R) -> skene_common::routing::Router<R>
+pub fn skene_terminal::launch<V, F>(F) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_core::view::View<skene_terminal::Terminal>
+pub fn skene_terminal::mount(impl core::ops::function::FnOnce() -> skene_core::node::NodeId) -> skene_core::node::NodeId
+pub fn skene_terminal::reconcile<T, I, K>(skene_core::node::NodeId, impl core::ops::function::Fn() -> I + 'static, impl core::ops::function::Fn(&T) -> K + 'static, impl core::ops::function::Fn(T) -> skene_core::node::NodeId + 'static) where I: core::iter::traits::collect::IntoIterator<Item = T>, K: core::cmp::Eq + core::hash::Hash + 'static
+pub fn skene_terminal::set_scheme(core::option::Option<skene_core::values::color::ColorScheme>)
+pub fn skene_terminal::set_title(impl core::convert::Into<alloc::string::String>)
+pub fn skene_terminal::spawn(impl core::future::future::Future<Output = ()> + 'static) -> skene_reactive::spawn::TaskHandle
+pub fn skene_terminal::uninstall()
+pub type skene_terminal::ActivePlatform = skene_terminal::Terminal
+pub type skene_terminal::AnyView = skene_core::view::AnyView<skene_terminal::ActivePlatform>
+pub type skene_terminal::BasicButton<C> = skene_common::control::BasicButton<skene_terminal::ActivePlatform, C>
+pub type skene_terminal::BasicCheckbox<C> = skene_common::control::BasicCheckbox<skene_terminal::ActivePlatform, C>
+pub type skene_terminal::BasicListbox<C> = skene_common::control::BasicListbox<skene_terminal::ActivePlatform, C>
+pub type skene_terminal::BasicListboxOption<C> = skene_common::control::BasicListboxOption<skene_terminal::ActivePlatform, C>
+pub type skene_terminal::BasicMenu<C> = skene_common::control::BasicMenu<skene_terminal::ActivePlatform, C>
+pub type skene_terminal::BasicMenuItem<C> = skene_common::control::BasicMenuItem<skene_terminal::ActivePlatform, C>
+pub type skene_terminal::BasicPicker<F> = skene_common::picker::BasicPicker<skene_terminal::ActivePlatform, F>
+pub type skene_terminal::BasicRadio<C> = skene_common::control::BasicRadio<skene_terminal::ActivePlatform, C>
+pub type skene_terminal::BasicRadioGroup<C> = skene_common::control::BasicRadioGroup<skene_terminal::ActivePlatform, C>
+pub type skene_terminal::BasicSlider<C> = skene_common::control::BasicSlider<skene_terminal::ActivePlatform, C>
+pub type skene_terminal::BasicTextEditor<C> = skene_common::control::BasicTextEditor<skene_terminal::ActivePlatform, C>
+pub type skene_terminal::BasicTextField<C> = skene_common::control::BasicTextField<skene_terminal::ActivePlatform, C>
+pub type skene_terminal::ChildBuilder = skene_common::realize::ChildBuilder<skene_terminal::ActivePlatform>
+pub type skene_terminal::Column = skene_common::flex::Column<skene_terminal::ActivePlatform>
+pub type skene_terminal::Condition = skene_core::condition::Condition<u32>
+pub type skene_terminal::Container = skene_common::container::Container<skene_terminal::ActivePlatform>
+pub type skene_terminal::ContainerQuery = skene_core::condition::ContainerQuery<u32>
+pub type skene_terminal::ContextMenu<C> = skene_common::context_menu::ContextMenu<skene_terminal::ActivePlatform, C>
+pub type skene_terminal::Control<B, C> = skene_common::control::Control<skene_terminal::ActivePlatform, B, C>
+pub type skene_terminal::ControlHandle = skene_common::control::ControlHandle<skene_terminal::ActivePlatform>
+pub type skene_terminal::Definition<T> = skene_core::leaf::Definition<T, u32>
+pub type skene_terminal::Dimension = skene_core::values::dimension::Dimension<u32>
+pub type skene_terminal::Enhance<C> = skene_common::enhance::Enhance<skene_terminal::ActivePlatform, C>
+pub type skene_terminal::ErrorBoundary<C> = skene_common::error_boundary::ErrorBoundary<skene_terminal::ActivePlatform, C>
+pub type skene_terminal::Face = skene_common::picker::Face<skene_terminal::ActivePlatform>
+pub type skene_terminal::Flexible<C> = skene_common::flexible::Flexible<skene_terminal::ActivePlatform, C>
+pub type skene_terminal::Grid = skene_common::grid::Grid<skene_terminal::ActivePlatform>
+pub type skene_terminal::GridCell<C> = skene_common::grid_cell::GridCell<skene_terminal::ActivePlatform, C>
+pub type skene_terminal::Inset<T> = skene_core::values::inset::Inset<T>
+pub type skene_terminal::Keyed<V> = skene_core::keyed::Keyed<skene_terminal::ActivePlatform, V>
+pub type skene_terminal::Keymap<C> = skene_common::keymap::Keymap<skene_terminal::ActivePlatform, C>
+pub type skene_terminal::Label = skene_common::control::Label<skene_terminal::ActivePlatform>
+pub type skene_terminal::LayoutBox<Kind> = skene_common::layout_box::LayoutBox<skene_terminal::ActivePlatform, Kind>
+pub type skene_terminal::LazyColumn = skene_common::lazy_list::LazyColumn<skene_terminal::ActivePlatform>
+pub type skene_terminal::LazyRow = skene_common::lazy_list::LazyRow<skene_terminal::ActivePlatform>
+pub type skene_terminal::Media = skene_core::condition::Media<u32>
+pub type skene_terminal::NodeHandle = skene_common::node_handle::NodeHandle<skene_terminal::ActivePlatform>
+pub type skene_terminal::Overlay<C> = skene_common::overlay::Overlay<skene_terminal::ActivePlatform, C>
+pub type skene_terminal::Painted = skene_common::painted::Painted<skene_terminal::ActivePlatform>
+pub type skene_terminal::Pinned<C> = skene_common::pinned::Pinned<skene_terminal::ActivePlatform, C>
+pub type skene_terminal::Point = skene_core::values::point::Point<u32>
+pub type skene_terminal::Rect = skene_core::values::rect::Rect<u32>
+pub type skene_terminal::RichText = skene_common::span::RichText<skene_terminal::ActivePlatform>
+pub type skene_terminal::Row = skene_common::flex::Row<skene_terminal::ActivePlatform>
+pub type skene_terminal::Show<C> = skene_core::show::Show<skene_terminal::ActivePlatform, C>
+pub type skene_terminal::Size = skene_core::values::size::Size<u32>
+pub type skene_terminal::Spacing = skene_core::values::flex::Spacing<u32>
+pub type skene_terminal::Span = skene_common::span::Span<skene_terminal::ActivePlatform>
+pub type skene_terminal::Stack = skene_common::stack::Stack<skene_terminal::ActivePlatform>
+pub type skene_terminal::Suspense<C> = skene_common::suspense::Suspense<skene_terminal::ActivePlatform, C>
+pub type skene_terminal::Switch<K> = skene_common::switch::Switch<skene_terminal::ActivePlatform, K>
+pub type skene_terminal::Text = skene_common::text::Text<skene_terminal::ActivePlatform>
+pub type skene_terminal::Theme<S, C> = skene_common::theme::Theme<skene_terminal::ActivePlatform, S, C>
+pub type skene_terminal::Token<T> = skene_core::token::Token<T, u32>
+pub type skene_terminal::TokenValue = <skene_terminal::ActivePlatform as skene_core::platform::Platform>::TokenValue
+pub type skene_terminal::Tooltip<C> = skene_common::tooltip::Tooltip<skene_terminal::ActivePlatform, C>
+pub type skene_terminal::Value<T> = skene_core::leaf::Value<T, skene_terminal::Condition>

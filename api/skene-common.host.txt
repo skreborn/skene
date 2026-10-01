@@ -427,484 +427,484 @@ pub fn skene_common::routing::Route::parse(&str) -> core::option::Option<Self>
 pub fn skene_common::routing::Route::to_path(&self) -> alloc::string::String
 pub trait skene_common::routing::StaticRoutes: skene_common::routing::Route
 pub fn skene_common::routing::StaticRoutes::all() -> alloc::vec::Vec<Self>
-pub mod skene_common::tui
-pub mod skene_common::tui::tui_fields
-pub struct skene_common::tui::tui_fields::Bold
-impl core::clone::Clone for skene_common::tui::tui_fields::Bold
-pub fn skene_common::tui::tui_fields::Bold::clone(&self) -> skene_common::tui::tui_fields::Bold
-impl core::cmp::Eq for skene_common::tui::tui_fields::Bold
-impl core::cmp::PartialEq for skene_common::tui::tui_fields::Bold
-pub fn skene_common::tui::tui_fields::Bold::eq(&self, &skene_common::tui::tui_fields::Bold) -> bool
-impl core::default::Default for skene_common::tui::tui_fields::Bold
-pub fn skene_common::tui::tui_fields::Bold::default() -> skene_common::tui::tui_fields::Bold
-impl core::fmt::Debug for skene_common::tui::tui_fields::Bold
-pub fn skene_common::tui::tui_fields::Bold::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::hash::Hash for skene_common::tui::tui_fields::Bold
-pub fn skene_common::tui::tui_fields::Bold::hash<__H: core::hash::Hasher>(&self, &mut __H)
-impl core::marker::Copy for skene_common::tui::tui_fields::Bold
-impl core::marker::StructuralPartialEq for skene_common::tui::tui_fields::Bold
-impl skene_core::run_style::RunField<skene_common::tui::TuiStyle> for skene_common::tui::tui_fields::Bold
-pub type skene_common::tui::tui_fields::Bold::Value = bool
-pub const skene_common::tui::tui_fields::Bold::KEY: skene_core::property::PropertyKey<skene_common::tui::TuiProperty>
-pub fn skene_common::tui::tui_fields::Bold::get<S: skene_core::shape::Shape>(&skene_core::run_style::RunStyle<S, skene_common::tui::TuiStyle>) -> &<S as skene_core::shape::Shape>::Of
-pub fn skene_common::tui::tui_fields::Bold::get_mut<S: skene_core::shape::Shape>(&mut skene_core::run_style::RunStyle<S, skene_common::tui::TuiStyle>) -> &mut <S as skene_core::shape::Shape>::Of
-pub struct skene_common::tui::tui_fields::BorderGlyphs
-impl core::clone::Clone for skene_common::tui::tui_fields::BorderGlyphs
-pub fn skene_common::tui::tui_fields::BorderGlyphs::clone(&self) -> skene_common::tui::tui_fields::BorderGlyphs
-impl core::cmp::Eq for skene_common::tui::tui_fields::BorderGlyphs
-impl core::cmp::PartialEq for skene_common::tui::tui_fields::BorderGlyphs
-pub fn skene_common::tui::tui_fields::BorderGlyphs::eq(&self, &skene_common::tui::tui_fields::BorderGlyphs) -> bool
-impl core::default::Default for skene_common::tui::tui_fields::BorderGlyphs
-pub fn skene_common::tui::tui_fields::BorderGlyphs::default() -> skene_common::tui::tui_fields::BorderGlyphs
-impl core::fmt::Debug for skene_common::tui::tui_fields::BorderGlyphs
-pub fn skene_common::tui::tui_fields::BorderGlyphs::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::hash::Hash for skene_common::tui::tui_fields::BorderGlyphs
-pub fn skene_common::tui::tui_fields::BorderGlyphs::hash<__H: core::hash::Hasher>(&self, &mut __H)
-impl core::marker::Copy for skene_common::tui::tui_fields::BorderGlyphs
-impl core::marker::StructuralPartialEq for skene_common::tui::tui_fields::BorderGlyphs
-impl<N: skene_core::scalar::Scalar> skene_core::box_style::BoxField<N, skene_common::tui::TuiStyle> for skene_common::tui::tui_fields::BorderGlyphs
-pub type skene_common::tui::tui_fields::BorderGlyphs::Value = skene_common::tui::BorderGlyphs
-pub const skene_common::tui::tui_fields::BorderGlyphs::KEY: skene_core::property::PropertyKey<skene_common::tui::TuiProperty>
-pub fn skene_common::tui::tui_fields::BorderGlyphs::get<S: skene_core::shape::Shape>(&skene_core::box_style::BoxStyle<N, S, skene_common::tui::TuiStyle>) -> &<S as skene_core::shape::Shape>::Of
-pub fn skene_common::tui::tui_fields::BorderGlyphs::get_mut<S: skene_core::shape::Shape>(&mut skene_core::box_style::BoxStyle<N, S, skene_common::tui::TuiStyle>) -> &mut <S as skene_core::shape::Shape>::Of
-pub struct skene_common::tui::tui_fields::CornerRadius
-impl core::clone::Clone for skene_common::tui::tui_fields::CornerRadius
-pub fn skene_common::tui::tui_fields::CornerRadius::clone(&self) -> skene_common::tui::tui_fields::CornerRadius
-impl core::cmp::Eq for skene_common::tui::tui_fields::CornerRadius
-impl core::cmp::PartialEq for skene_common::tui::tui_fields::CornerRadius
-pub fn skene_common::tui::tui_fields::CornerRadius::eq(&self, &skene_common::tui::tui_fields::CornerRadius) -> bool
-impl core::default::Default for skene_common::tui::tui_fields::CornerRadius
-pub fn skene_common::tui::tui_fields::CornerRadius::default() -> skene_common::tui::tui_fields::CornerRadius
-impl core::fmt::Debug for skene_common::tui::tui_fields::CornerRadius
-pub fn skene_common::tui::tui_fields::CornerRadius::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::hash::Hash for skene_common::tui::tui_fields::CornerRadius
-pub fn skene_common::tui::tui_fields::CornerRadius::hash<__H: core::hash::Hasher>(&self, &mut __H)
-impl core::marker::Copy for skene_common::tui::tui_fields::CornerRadius
-impl core::marker::StructuralPartialEq for skene_common::tui::tui_fields::CornerRadius
-impl<N: skene_core::scalar::Scalar> skene_core::box_style::BoxField<N, skene_common::tui::TuiStyle> for skene_common::tui::tui_fields::CornerRadius
-pub type skene_common::tui::tui_fields::CornerRadius::Value = skene_core::expr::Length
-pub const skene_common::tui::tui_fields::CornerRadius::KEY: skene_core::property::PropertyKey<skene_common::tui::TuiProperty>
-pub fn skene_common::tui::tui_fields::CornerRadius::get<S: skene_core::shape::Shape>(&skene_core::box_style::BoxStyle<N, S, skene_common::tui::TuiStyle>) -> &<S as skene_core::shape::Shape>::Of
-pub fn skene_common::tui::tui_fields::CornerRadius::get_mut<S: skene_core::shape::Shape>(&mut skene_core::box_style::BoxStyle<N, S, skene_common::tui::TuiStyle>) -> &mut <S as skene_core::shape::Shape>::Of
-pub struct skene_common::tui::tui_fields::ScrollbarGlyphs
-impl core::clone::Clone for skene_common::tui::tui_fields::ScrollbarGlyphs
-pub fn skene_common::tui::tui_fields::ScrollbarGlyphs::clone(&self) -> skene_common::tui::tui_fields::ScrollbarGlyphs
-impl core::cmp::Eq for skene_common::tui::tui_fields::ScrollbarGlyphs
-impl core::cmp::PartialEq for skene_common::tui::tui_fields::ScrollbarGlyphs
-pub fn skene_common::tui::tui_fields::ScrollbarGlyphs::eq(&self, &skene_common::tui::tui_fields::ScrollbarGlyphs) -> bool
-impl core::default::Default for skene_common::tui::tui_fields::ScrollbarGlyphs
-pub fn skene_common::tui::tui_fields::ScrollbarGlyphs::default() -> skene_common::tui::tui_fields::ScrollbarGlyphs
-impl core::fmt::Debug for skene_common::tui::tui_fields::ScrollbarGlyphs
-pub fn skene_common::tui::tui_fields::ScrollbarGlyphs::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::hash::Hash for skene_common::tui::tui_fields::ScrollbarGlyphs
-pub fn skene_common::tui::tui_fields::ScrollbarGlyphs::hash<__H: core::hash::Hasher>(&self, &mut __H)
-impl core::marker::Copy for skene_common::tui::tui_fields::ScrollbarGlyphs
-impl core::marker::StructuralPartialEq for skene_common::tui::tui_fields::ScrollbarGlyphs
-impl<N: skene_core::scalar::Scalar> skene_core::box_style::BoxField<N, skene_common::tui::TuiStyle> for skene_common::tui::tui_fields::ScrollbarGlyphs
-pub type skene_common::tui::tui_fields::ScrollbarGlyphs::Value = skene_common::tui::ScrollbarGlyphs
-pub const skene_common::tui::tui_fields::ScrollbarGlyphs::KEY: skene_core::property::PropertyKey<skene_common::tui::TuiProperty>
-pub fn skene_common::tui::tui_fields::ScrollbarGlyphs::get<S: skene_core::shape::Shape>(&skene_core::box_style::BoxStyle<N, S, skene_common::tui::TuiStyle>) -> &<S as skene_core::shape::Shape>::Of
-pub fn skene_common::tui::tui_fields::ScrollbarGlyphs::get_mut<S: skene_core::shape::Shape>(&mut skene_core::box_style::BoxStyle<N, S, skene_common::tui::TuiStyle>) -> &mut <S as skene_core::shape::Shape>::Of
-pub struct skene_common::tui::tui_fields::ScrollbarThumb
-impl core::clone::Clone for skene_common::tui::tui_fields::ScrollbarThumb
-pub fn skene_common::tui::tui_fields::ScrollbarThumb::clone(&self) -> skene_common::tui::tui_fields::ScrollbarThumb
-impl core::cmp::Eq for skene_common::tui::tui_fields::ScrollbarThumb
-impl core::cmp::PartialEq for skene_common::tui::tui_fields::ScrollbarThumb
-pub fn skene_common::tui::tui_fields::ScrollbarThumb::eq(&self, &skene_common::tui::tui_fields::ScrollbarThumb) -> bool
-impl core::default::Default for skene_common::tui::tui_fields::ScrollbarThumb
-pub fn skene_common::tui::tui_fields::ScrollbarThumb::default() -> skene_common::tui::tui_fields::ScrollbarThumb
-impl core::fmt::Debug for skene_common::tui::tui_fields::ScrollbarThumb
-pub fn skene_common::tui::tui_fields::ScrollbarThumb::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::hash::Hash for skene_common::tui::tui_fields::ScrollbarThumb
-pub fn skene_common::tui::tui_fields::ScrollbarThumb::hash<__H: core::hash::Hasher>(&self, &mut __H)
-impl core::marker::Copy for skene_common::tui::tui_fields::ScrollbarThumb
-impl core::marker::StructuralPartialEq for skene_common::tui::tui_fields::ScrollbarThumb
-impl<N: skene_core::scalar::Scalar> skene_core::box_style::BoxField<N, skene_common::tui::TuiStyle> for skene_common::tui::tui_fields::ScrollbarThumb
-pub type skene_common::tui::tui_fields::ScrollbarThumb::Value = skene_core::values::color::Color
-pub const skene_common::tui::tui_fields::ScrollbarThumb::KEY: skene_core::property::PropertyKey<skene_common::tui::TuiProperty>
-pub fn skene_common::tui::tui_fields::ScrollbarThumb::get<S: skene_core::shape::Shape>(&skene_core::box_style::BoxStyle<N, S, skene_common::tui::TuiStyle>) -> &<S as skene_core::shape::Shape>::Of
-pub fn skene_common::tui::tui_fields::ScrollbarThumb::get_mut<S: skene_core::shape::Shape>(&mut skene_core::box_style::BoxStyle<N, S, skene_common::tui::TuiStyle>) -> &mut <S as skene_core::shape::Shape>::Of
-pub struct skene_common::tui::tui_fields::ScrollbarTrack
-impl core::clone::Clone for skene_common::tui::tui_fields::ScrollbarTrack
-pub fn skene_common::tui::tui_fields::ScrollbarTrack::clone(&self) -> skene_common::tui::tui_fields::ScrollbarTrack
-impl core::cmp::Eq for skene_common::tui::tui_fields::ScrollbarTrack
-impl core::cmp::PartialEq for skene_common::tui::tui_fields::ScrollbarTrack
-pub fn skene_common::tui::tui_fields::ScrollbarTrack::eq(&self, &skene_common::tui::tui_fields::ScrollbarTrack) -> bool
-impl core::default::Default for skene_common::tui::tui_fields::ScrollbarTrack
-pub fn skene_common::tui::tui_fields::ScrollbarTrack::default() -> skene_common::tui::tui_fields::ScrollbarTrack
-impl core::fmt::Debug for skene_common::tui::tui_fields::ScrollbarTrack
-pub fn skene_common::tui::tui_fields::ScrollbarTrack::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::hash::Hash for skene_common::tui::tui_fields::ScrollbarTrack
-pub fn skene_common::tui::tui_fields::ScrollbarTrack::hash<__H: core::hash::Hasher>(&self, &mut __H)
-impl core::marker::Copy for skene_common::tui::tui_fields::ScrollbarTrack
-impl core::marker::StructuralPartialEq for skene_common::tui::tui_fields::ScrollbarTrack
-impl<N: skene_core::scalar::Scalar> skene_core::box_style::BoxField<N, skene_common::tui::TuiStyle> for skene_common::tui::tui_fields::ScrollbarTrack
-pub type skene_common::tui::tui_fields::ScrollbarTrack::Value = skene_core::values::color::Color
-pub const skene_common::tui::tui_fields::ScrollbarTrack::KEY: skene_core::property::PropertyKey<skene_common::tui::TuiProperty>
-pub fn skene_common::tui::tui_fields::ScrollbarTrack::get<S: skene_core::shape::Shape>(&skene_core::box_style::BoxStyle<N, S, skene_common::tui::TuiStyle>) -> &<S as skene_core::shape::Shape>::Of
-pub fn skene_common::tui::tui_fields::ScrollbarTrack::get_mut<S: skene_core::shape::Shape>(&mut skene_core::box_style::BoxStyle<N, S, skene_common::tui::TuiStyle>) -> &mut <S as skene_core::shape::Shape>::Of
-pub struct skene_common::tui::tui_fields::Shadow
-impl core::clone::Clone for skene_common::tui::tui_fields::Shadow
-pub fn skene_common::tui::tui_fields::Shadow::clone(&self) -> skene_common::tui::tui_fields::Shadow
-impl core::cmp::Eq for skene_common::tui::tui_fields::Shadow
-impl core::cmp::PartialEq for skene_common::tui::tui_fields::Shadow
-pub fn skene_common::tui::tui_fields::Shadow::eq(&self, &skene_common::tui::tui_fields::Shadow) -> bool
-impl core::default::Default for skene_common::tui::tui_fields::Shadow
-pub fn skene_common::tui::tui_fields::Shadow::default() -> skene_common::tui::tui_fields::Shadow
-impl core::fmt::Debug for skene_common::tui::tui_fields::Shadow
-pub fn skene_common::tui::tui_fields::Shadow::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::hash::Hash for skene_common::tui::tui_fields::Shadow
-pub fn skene_common::tui::tui_fields::Shadow::hash<__H: core::hash::Hasher>(&self, &mut __H)
-impl core::marker::Copy for skene_common::tui::tui_fields::Shadow
-impl core::marker::StructuralPartialEq for skene_common::tui::tui_fields::Shadow
-impl<N: skene_core::scalar::Scalar> skene_core::box_style::BoxField<N, skene_common::tui::TuiStyle> for skene_common::tui::tui_fields::Shadow
-pub type skene_common::tui::tui_fields::Shadow::Value = skene_core::values::color::Color
-pub const skene_common::tui::tui_fields::Shadow::KEY: skene_core::property::PropertyKey<skene_common::tui::TuiProperty>
-pub fn skene_common::tui::tui_fields::Shadow::get<S: skene_core::shape::Shape>(&skene_core::box_style::BoxStyle<N, S, skene_common::tui::TuiStyle>) -> &<S as skene_core::shape::Shape>::Of
-pub fn skene_common::tui::tui_fields::Shadow::get_mut<S: skene_core::shape::Shape>(&mut skene_core::box_style::BoxStyle<N, S, skene_common::tui::TuiStyle>) -> &mut <S as skene_core::shape::Shape>::Of
-pub struct skene_common::tui::tui_fields::ShadowOffset
-impl core::clone::Clone for skene_common::tui::tui_fields::ShadowOffset
-pub fn skene_common::tui::tui_fields::ShadowOffset::clone(&self) -> skene_common::tui::tui_fields::ShadowOffset
-impl core::cmp::Eq for skene_common::tui::tui_fields::ShadowOffset
-impl core::cmp::PartialEq for skene_common::tui::tui_fields::ShadowOffset
-pub fn skene_common::tui::tui_fields::ShadowOffset::eq(&self, &skene_common::tui::tui_fields::ShadowOffset) -> bool
-impl core::default::Default for skene_common::tui::tui_fields::ShadowOffset
-pub fn skene_common::tui::tui_fields::ShadowOffset::default() -> skene_common::tui::tui_fields::ShadowOffset
-impl core::fmt::Debug for skene_common::tui::tui_fields::ShadowOffset
-pub fn skene_common::tui::tui_fields::ShadowOffset::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::hash::Hash for skene_common::tui::tui_fields::ShadowOffset
-pub fn skene_common::tui::tui_fields::ShadowOffset::hash<__H: core::hash::Hasher>(&self, &mut __H)
-impl core::marker::Copy for skene_common::tui::tui_fields::ShadowOffset
-impl core::marker::StructuralPartialEq for skene_common::tui::tui_fields::ShadowOffset
-impl<N: skene_core::scalar::Scalar> skene_core::box_style::BoxField<N, skene_common::tui::TuiStyle> for skene_common::tui::tui_fields::ShadowOffset
-pub type skene_common::tui::tui_fields::ShadowOffset::Value = skene_core::expr::Length
-pub const skene_common::tui::tui_fields::ShadowOffset::KEY: skene_core::property::PropertyKey<skene_common::tui::TuiProperty>
-pub fn skene_common::tui::tui_fields::ShadowOffset::get<S: skene_core::shape::Shape>(&skene_core::box_style::BoxStyle<N, S, skene_common::tui::TuiStyle>) -> &<S as skene_core::shape::Shape>::Of
-pub fn skene_common::tui::tui_fields::ShadowOffset::get_mut<S: skene_core::shape::Shape>(&mut skene_core::box_style::BoxStyle<N, S, skene_common::tui::TuiStyle>) -> &mut <S as skene_core::shape::Shape>::Of
-pub struct skene_common::tui::tui_fields::ShadowSoftening
-impl core::clone::Clone for skene_common::tui::tui_fields::ShadowSoftening
-pub fn skene_common::tui::tui_fields::ShadowSoftening::clone(&self) -> skene_common::tui::tui_fields::ShadowSoftening
-impl core::cmp::Eq for skene_common::tui::tui_fields::ShadowSoftening
-impl core::cmp::PartialEq for skene_common::tui::tui_fields::ShadowSoftening
-pub fn skene_common::tui::tui_fields::ShadowSoftening::eq(&self, &skene_common::tui::tui_fields::ShadowSoftening) -> bool
-impl core::default::Default for skene_common::tui::tui_fields::ShadowSoftening
-pub fn skene_common::tui::tui_fields::ShadowSoftening::default() -> skene_common::tui::tui_fields::ShadowSoftening
-impl core::fmt::Debug for skene_common::tui::tui_fields::ShadowSoftening
-pub fn skene_common::tui::tui_fields::ShadowSoftening::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::hash::Hash for skene_common::tui::tui_fields::ShadowSoftening
-pub fn skene_common::tui::tui_fields::ShadowSoftening::hash<__H: core::hash::Hasher>(&self, &mut __H)
-impl core::marker::Copy for skene_common::tui::tui_fields::ShadowSoftening
-impl core::marker::StructuralPartialEq for skene_common::tui::tui_fields::ShadowSoftening
-impl<N: skene_core::scalar::Scalar> skene_core::box_style::BoxField<N, skene_common::tui::TuiStyle> for skene_common::tui::tui_fields::ShadowSoftening
-pub type skene_common::tui::tui_fields::ShadowSoftening::Value = skene_core::expr::Length
-pub const skene_common::tui::tui_fields::ShadowSoftening::KEY: skene_core::property::PropertyKey<skene_common::tui::TuiProperty>
-pub fn skene_common::tui::tui_fields::ShadowSoftening::get<S: skene_core::shape::Shape>(&skene_core::box_style::BoxStyle<N, S, skene_common::tui::TuiStyle>) -> &<S as skene_core::shape::Shape>::Of
-pub fn skene_common::tui::tui_fields::ShadowSoftening::get_mut<S: skene_core::shape::Shape>(&mut skene_core::box_style::BoxStyle<N, S, skene_common::tui::TuiStyle>) -> &mut <S as skene_core::shape::Shape>::Of
-pub struct skene_common::tui::tui_fields::Size
-impl core::clone::Clone for skene_common::tui::tui_fields::Size
-pub fn skene_common::tui::tui_fields::Size::clone(&self) -> skene_common::tui::tui_fields::Size
-impl core::cmp::Eq for skene_common::tui::tui_fields::Size
-impl core::cmp::PartialEq for skene_common::tui::tui_fields::Size
-pub fn skene_common::tui::tui_fields::Size::eq(&self, &skene_common::tui::tui_fields::Size) -> bool
-impl core::default::Default for skene_common::tui::tui_fields::Size
-pub fn skene_common::tui::tui_fields::Size::default() -> skene_common::tui::tui_fields::Size
-impl core::fmt::Debug for skene_common::tui::tui_fields::Size
-pub fn skene_common::tui::tui_fields::Size::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::hash::Hash for skene_common::tui::tui_fields::Size
-pub fn skene_common::tui::tui_fields::Size::hash<__H: core::hash::Hasher>(&self, &mut __H)
-impl core::marker::Copy for skene_common::tui::tui_fields::Size
-impl core::marker::StructuralPartialEq for skene_common::tui::tui_fields::Size
-impl skene_core::run_style::RunField<skene_common::tui::TuiStyle> for skene_common::tui::tui_fields::Size
-pub type skene_common::tui::tui_fields::Size::Value = skene_core::expr::Length
-pub const skene_common::tui::tui_fields::Size::KEY: skene_core::property::PropertyKey<skene_common::tui::TuiProperty>
-pub fn skene_common::tui::tui_fields::Size::get<S: skene_core::shape::Shape>(&skene_core::run_style::RunStyle<S, skene_common::tui::TuiStyle>) -> &<S as skene_core::shape::Shape>::Of
-pub fn skene_common::tui::tui_fields::Size::get_mut<S: skene_core::shape::Shape>(&mut skene_core::run_style::RunStyle<S, skene_common::tui::TuiStyle>) -> &mut <S as skene_core::shape::Shape>::Of
-pub struct skene_common::tui::tui_fields::Weight
-impl core::clone::Clone for skene_common::tui::tui_fields::Weight
-pub fn skene_common::tui::tui_fields::Weight::clone(&self) -> skene_common::tui::tui_fields::Weight
-impl core::cmp::Eq for skene_common::tui::tui_fields::Weight
-impl core::cmp::PartialEq for skene_common::tui::tui_fields::Weight
-pub fn skene_common::tui::tui_fields::Weight::eq(&self, &skene_common::tui::tui_fields::Weight) -> bool
-impl core::default::Default for skene_common::tui::tui_fields::Weight
-pub fn skene_common::tui::tui_fields::Weight::default() -> skene_common::tui::tui_fields::Weight
-impl core::fmt::Debug for skene_common::tui::tui_fields::Weight
-pub fn skene_common::tui::tui_fields::Weight::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::hash::Hash for skene_common::tui::tui_fields::Weight
-pub fn skene_common::tui::tui_fields::Weight::hash<__H: core::hash::Hasher>(&self, &mut __H)
-impl core::marker::Copy for skene_common::tui::tui_fields::Weight
-impl core::marker::StructuralPartialEq for skene_common::tui::tui_fields::Weight
-impl skene_core::run_style::RunField<skene_common::tui::TuiStyle> for skene_common::tui::tui_fields::Weight
-pub type skene_common::tui::tui_fields::Weight::Value = f32
-pub const skene_common::tui::tui_fields::Weight::KEY: skene_core::property::PropertyKey<skene_common::tui::TuiProperty>
-pub fn skene_common::tui::tui_fields::Weight::get<S: skene_core::shape::Shape>(&skene_core::run_style::RunStyle<S, skene_common::tui::TuiStyle>) -> &<S as skene_core::shape::Shape>::Of
-pub fn skene_common::tui::tui_fields::Weight::get_mut<S: skene_core::shape::Shape>(&mut skene_core::run_style::RunStyle<S, skene_common::tui::TuiStyle>) -> &mut <S as skene_core::shape::Shape>::Of
-pub fn skene_common::tui::tui_fields::visit_box<N: skene_core::scalar::Scalar, V: skene_core::box_style::BoxFieldVisitor<N, skene_common::tui::TuiStyle>>(&mut V)
-pub fn skene_common::tui::tui_fields::visit_run<V: skene_core::run_style::RunFieldVisitor<skene_common::tui::TuiStyle>>(&mut V)
-pub enum skene_common::tui::TuiProperty
-pub skene_common::tui::TuiProperty::Bold
-pub skene_common::tui::TuiProperty::BorderGlyphs
-pub skene_common::tui::TuiProperty::CornerRadius
-pub skene_common::tui::TuiProperty::ScrollbarGlyphs
-pub skene_common::tui::TuiProperty::ScrollbarThumb
-pub skene_common::tui::TuiProperty::ScrollbarTrack
-pub skene_common::tui::TuiProperty::Shadow
-pub skene_common::tui::TuiProperty::ShadowOffset
-pub skene_common::tui::TuiProperty::ShadowSoftening
-pub skene_common::tui::TuiProperty::Size
-pub skene_common::tui::TuiProperty::Weight
-impl skene_common::tui::TuiProperty
-pub const fn skene_common::tui::TuiProperty::name(self) -> &'static str
-impl core::clone::Clone for skene_common::tui::TuiProperty
-pub fn skene_common::tui::TuiProperty::clone(&self) -> skene_common::tui::TuiProperty
-impl core::cmp::Eq for skene_common::tui::TuiProperty
-impl core::cmp::Ord for skene_common::tui::TuiProperty
-pub fn skene_common::tui::TuiProperty::cmp(&self, &skene_common::tui::TuiProperty) -> core::cmp::Ordering
-impl core::cmp::PartialEq for skene_common::tui::TuiProperty
-pub fn skene_common::tui::TuiProperty::eq(&self, &skene_common::tui::TuiProperty) -> bool
-impl core::cmp::PartialOrd for skene_common::tui::TuiProperty
-pub fn skene_common::tui::TuiProperty::partial_cmp(&self, &skene_common::tui::TuiProperty) -> core::option::Option<core::cmp::Ordering>
-impl core::fmt::Debug for skene_common::tui::TuiProperty
-pub fn skene_common::tui::TuiProperty::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::hash::Hash for skene_common::tui::TuiProperty
-pub fn skene_common::tui::TuiProperty::hash<__H: core::hash::Hasher>(&self, &mut __H)
-impl core::marker::Copy for skene_common::tui::TuiProperty
-impl core::marker::StructuralPartialEq for skene_common::tui::TuiProperty
-impl skene_core::property::PropertyName for skene_common::tui::TuiProperty
-pub fn skene_common::tui::TuiProperty::name(&self) -> &'static str
-pub enum skene_common::tui::TuiValue
-pub skene_common::tui::TuiValue::Bold(bool)
-pub skene_common::tui::TuiValue::BorderGlyphs(skene_common::tui::BorderGlyphs)
-pub skene_common::tui::TuiValue::Number(f32)
-pub skene_common::tui::TuiValue::ScrollbarGlyphs(skene_common::tui::ScrollbarGlyphs)
-impl core::clone::Clone for skene_common::tui::TuiValue
-pub fn skene_common::tui::TuiValue::clone(&self) -> skene_common::tui::TuiValue
-impl core::cmp::PartialEq for skene_common::tui::TuiValue
-pub fn skene_common::tui::TuiValue::eq(&self, &skene_common::tui::TuiValue) -> bool
-impl core::fmt::Debug for skene_common::tui::TuiValue
-pub fn skene_common::tui::TuiValue::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::marker::Copy for skene_common::tui::TuiValue
-impl core::marker::StructuralPartialEq for skene_common::tui::TuiValue
-pub struct skene_common::tui::BorderGlyphs
-pub skene_common::tui::BorderGlyphs::bottom_left: char
-pub skene_common::tui::BorderGlyphs::bottom_right: char
-pub skene_common::tui::BorderGlyphs::horizontal: char
-pub skene_common::tui::BorderGlyphs::top_left: char
-pub skene_common::tui::BorderGlyphs::top_right: char
-pub skene_common::tui::BorderGlyphs::vertical: char
-impl skene_common::tui::BorderGlyphs
-pub const skene_common::tui::BorderGlyphs::ASCII: Self
-pub const skene_common::tui::BorderGlyphs::DOUBLE: Self
-pub const skene_common::tui::BorderGlyphs::HEAVY: Self
-pub const skene_common::tui::BorderGlyphs::LIGHT: Self
-pub const skene_common::tui::BorderGlyphs::ROUNDED: Self
-pub const fn skene_common::tui::BorderGlyphs::new(char, char, char, char, char, char) -> Self
-impl core::clone::Clone for skene_common::tui::BorderGlyphs
-pub fn skene_common::tui::BorderGlyphs::clone(&self) -> skene_common::tui::BorderGlyphs
-impl core::cmp::Eq for skene_common::tui::BorderGlyphs
-impl core::cmp::PartialEq for skene_common::tui::BorderGlyphs
-pub fn skene_common::tui::BorderGlyphs::eq(&self, &skene_common::tui::BorderGlyphs) -> bool
-impl core::default::Default for skene_common::tui::BorderGlyphs
-pub fn skene_common::tui::BorderGlyphs::default() -> Self
-impl core::fmt::Debug for skene_common::tui::BorderGlyphs
-pub fn skene_common::tui::BorderGlyphs::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::hash::Hash for skene_common::tui::BorderGlyphs
-pub fn skene_common::tui::BorderGlyphs::hash<__H: core::hash::Hasher>(&self, &mut __H)
-impl core::marker::Copy for skene_common::tui::BorderGlyphs
-impl core::marker::StructuralPartialEq for skene_common::tui::BorderGlyphs
-impl skene_core::fingerprint::Fingerprint for skene_common::tui::BorderGlyphs
-pub fn skene_common::tui::BorderGlyphs::fingerprint<H: core::hash::Hasher>(&self, &mut H)
-impl<N: skene_core::scalar::Scalar> skene_core::box_style::IntoBoxValue<N, skene_common::tui::TuiStyle> for skene_common::tui::BorderGlyphs
-pub fn skene_common::tui::BorderGlyphs::from_box_value(skene_core::box_style::BoxValue<N, skene_common::tui::TuiStyle>) -> core::option::Option<Self>
-pub fn skene_common::tui::BorderGlyphs::into_box_value(self) -> skene_core::box_style::BoxValue<N, skene_common::tui::TuiStyle>
-pub struct skene_common::tui::ScrollbarGlyphs
-pub skene_common::tui::ScrollbarGlyphs::horizontal_thumb: char
-pub skene_common::tui::ScrollbarGlyphs::horizontal_track: char
-pub skene_common::tui::ScrollbarGlyphs::vertical_thumb: char
-pub skene_common::tui::ScrollbarGlyphs::vertical_track: char
-impl skene_common::tui::ScrollbarGlyphs
-pub const skene_common::tui::ScrollbarGlyphs::BLOCK: Self
-pub const skene_common::tui::ScrollbarGlyphs::LINE: Self
-pub const fn skene_common::tui::ScrollbarGlyphs::new(char, char, char, char) -> Self
-impl core::clone::Clone for skene_common::tui::ScrollbarGlyphs
-pub fn skene_common::tui::ScrollbarGlyphs::clone(&self) -> skene_common::tui::ScrollbarGlyphs
-impl core::cmp::Eq for skene_common::tui::ScrollbarGlyphs
-impl core::cmp::PartialEq for skene_common::tui::ScrollbarGlyphs
-pub fn skene_common::tui::ScrollbarGlyphs::eq(&self, &skene_common::tui::ScrollbarGlyphs) -> bool
-impl core::default::Default for skene_common::tui::ScrollbarGlyphs
-pub fn skene_common::tui::ScrollbarGlyphs::default() -> Self
-impl core::fmt::Debug for skene_common::tui::ScrollbarGlyphs
-pub fn skene_common::tui::ScrollbarGlyphs::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::hash::Hash for skene_common::tui::ScrollbarGlyphs
-pub fn skene_common::tui::ScrollbarGlyphs::hash<__H: core::hash::Hasher>(&self, &mut __H)
-impl core::marker::Copy for skene_common::tui::ScrollbarGlyphs
-impl core::marker::StructuralPartialEq for skene_common::tui::ScrollbarGlyphs
-impl skene_core::fingerprint::Fingerprint for skene_common::tui::ScrollbarGlyphs
-pub fn skene_common::tui::ScrollbarGlyphs::fingerprint<H: core::hash::Hasher>(&self, &mut H)
-impl<N: skene_core::scalar::Scalar> skene_core::box_style::IntoBoxValue<N, skene_common::tui::TuiStyle> for skene_common::tui::ScrollbarGlyphs
-pub fn skene_common::tui::ScrollbarGlyphs::from_box_value(skene_core::box_style::BoxValue<N, skene_common::tui::TuiStyle>) -> core::option::Option<Self>
-pub fn skene_common::tui::ScrollbarGlyphs::into_box_value(self) -> skene_core::box_style::BoxValue<N, skene_common::tui::TuiStyle>
-pub struct skene_common::tui::TuiBoxFields<S: skene_core::shape::Shape>
-pub skene_common::tui::TuiBoxFields::border_glyphs: <S as skene_core::shape::Shape>::Of
-pub skene_common::tui::TuiBoxFields::corner_radius: <S as skene_core::shape::Shape>::Of
-pub skene_common::tui::TuiBoxFields::scrollbar_glyphs: <S as skene_core::shape::Shape>::Of
-pub skene_common::tui::TuiBoxFields::scrollbar_thumb: <S as skene_core::shape::Shape>::Of
-pub skene_common::tui::TuiBoxFields::scrollbar_track: <S as skene_core::shape::Shape>::Of
-pub skene_common::tui::TuiBoxFields::shadow: <S as skene_core::shape::Shape>::Of
-pub skene_common::tui::TuiBoxFields::shadow_offset: <S as skene_core::shape::Shape>::Of
-pub skene_common::tui::TuiBoxFields::shadow_softening: <S as skene_core::shape::Shape>::Of
-impl<S: core::clone::Clone + skene_core::shape::Shape> core::clone::Clone for skene_common::tui::TuiBoxFields<S> where <S as skene_core::shape::Shape>::Of: core::clone::Clone, <S as skene_core::shape::Shape>::Of: core::clone::Clone, <S as skene_core::shape::Shape>::Of: core::clone::Clone, <S as skene_core::shape::Shape>::Of: core::clone::Clone
-pub fn skene_common::tui::TuiBoxFields<S>::clone(&self) -> skene_common::tui::TuiBoxFields<S>
-impl<S: core::cmp::PartialEq + skene_core::shape::Shape> core::cmp::PartialEq for skene_common::tui::TuiBoxFields<S> where <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq, <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq, <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq, <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq
-pub fn skene_common::tui::TuiBoxFields<S>::eq(&self, &skene_common::tui::TuiBoxFields<S>) -> bool
-impl<S: core::cmp::PartialEq + skene_core::shape::Shape> core::marker::StructuralPartialEq for skene_common::tui::TuiBoxFields<S> where <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq, <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq, <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq, <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq
-impl<S: core::default::Default + skene_core::shape::Shape> core::default::Default for skene_common::tui::TuiBoxFields<S> where <S as skene_core::shape::Shape>::Of: core::default::Default, <S as skene_core::shape::Shape>::Of: core::default::Default, <S as skene_core::shape::Shape>::Of: core::default::Default, <S as skene_core::shape::Shape>::Of: core::default::Default
-pub fn skene_common::tui::TuiBoxFields<S>::default() -> skene_common::tui::TuiBoxFields<S>
-impl<S: core::fmt::Debug + skene_core::shape::Shape> core::fmt::Debug for skene_common::tui::TuiBoxFields<S> where <S as skene_core::shape::Shape>::Of: core::fmt::Debug, <S as skene_core::shape::Shape>::Of: core::fmt::Debug, <S as skene_core::shape::Shape>::Of: core::fmt::Debug, <S as skene_core::shape::Shape>::Of: core::fmt::Debug
-pub fn skene_common::tui::TuiBoxFields<S>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub struct skene_common::tui::TuiRunFields<S: skene_core::shape::Shape>
-pub skene_common::tui::TuiRunFields::bold: <S as skene_core::shape::Shape>::Of
-pub skene_common::tui::TuiRunFields::size: <S as skene_core::shape::Shape>::Of
-pub skene_common::tui::TuiRunFields::weight: <S as skene_core::shape::Shape>::Of
-impl<S: core::clone::Clone + skene_core::shape::Shape> core::clone::Clone for skene_common::tui::TuiRunFields<S> where <S as skene_core::shape::Shape>::Of: core::clone::Clone, <S as skene_core::shape::Shape>::Of: core::clone::Clone, <S as skene_core::shape::Shape>::Of: core::clone::Clone
-pub fn skene_common::tui::TuiRunFields<S>::clone(&self) -> skene_common::tui::TuiRunFields<S>
-impl<S: core::cmp::PartialEq + skene_core::shape::Shape> core::cmp::PartialEq for skene_common::tui::TuiRunFields<S> where <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq, <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq, <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq
-pub fn skene_common::tui::TuiRunFields<S>::eq(&self, &skene_common::tui::TuiRunFields<S>) -> bool
-impl<S: core::cmp::PartialEq + skene_core::shape::Shape> core::marker::StructuralPartialEq for skene_common::tui::TuiRunFields<S> where <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq, <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq, <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq
-impl<S: core::default::Default + skene_core::shape::Shape> core::default::Default for skene_common::tui::TuiRunFields<S> where <S as skene_core::shape::Shape>::Of: core::default::Default, <S as skene_core::shape::Shape>::Of: core::default::Default, <S as skene_core::shape::Shape>::Of: core::default::Default
-pub fn skene_common::tui::TuiRunFields<S>::default() -> skene_common::tui::TuiRunFields<S>
-impl<S: core::fmt::Debug + skene_core::shape::Shape> core::fmt::Debug for skene_common::tui::TuiRunFields<S> where <S as skene_core::shape::Shape>::Of: core::fmt::Debug, <S as skene_core::shape::Shape>::Of: core::fmt::Debug, <S as skene_core::shape::Shape>::Of: core::fmt::Debug
-pub fn skene_common::tui::TuiRunFields<S>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub struct skene_common::tui::TuiStyle
-impl core::clone::Clone for skene_common::tui::TuiStyle
-pub fn skene_common::tui::TuiStyle::clone(&self) -> skene_common::tui::TuiStyle
-impl core::cmp::Eq for skene_common::tui::TuiStyle
-impl core::cmp::PartialEq for skene_common::tui::TuiStyle
-pub fn skene_common::tui::TuiStyle::eq(&self, &skene_common::tui::TuiStyle) -> bool
-impl core::default::Default for skene_common::tui::TuiStyle
-pub fn skene_common::tui::TuiStyle::default() -> skene_common::tui::TuiStyle
-impl core::fmt::Debug for skene_common::tui::TuiStyle
-pub fn skene_common::tui::TuiStyle::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::hash::Hash for skene_common::tui::TuiStyle
-pub fn skene_common::tui::TuiStyle::hash<__H: core::hash::Hasher>(&self, &mut __H)
-impl core::marker::Copy for skene_common::tui::TuiStyle
-impl core::marker::StructuralPartialEq for skene_common::tui::TuiStyle
-impl skene_common::CornerRadius for skene_common::tui::TuiStyle
-pub fn skene_common::tui::TuiStyle::set_corner_radius<S: skene_core::shape::Shape>(&mut Self::BoxFields, <S as skene_core::shape::Shape>::Of)
-impl skene_common::TypeMetrics for skene_common::tui::TuiStyle
-pub fn skene_common::tui::TuiStyle::font_size<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
-pub fn skene_common::tui::TuiStyle::font_weight<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
-pub fn skene_common::tui::TuiStyle::letter_spacing<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
-pub fn skene_common::tui::TuiStyle::line_height<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
-pub fn skene_common::tui::TuiStyle::set_font_size<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
-pub fn skene_common::tui::TuiStyle::set_font_weight<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
-pub fn skene_common::tui::TuiStyle::set_letter_spacing<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
-pub fn skene_common::tui::TuiStyle::set_line_height<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
-impl skene_core::extension::StyleExtension for skene_common::tui::TuiStyle
-pub type skene_common::tui::TuiStyle::BoxFields<S: skene_core::shape::Shape> = skene_common::tui::TuiBoxFields<S>
-pub type skene_common::tui::TuiStyle::Property = skene_common::tui::TuiProperty
-pub type skene_common::tui::TuiStyle::RunFields<S: skene_core::shape::Shape> = skene_common::tui::TuiRunFields<S>
-pub type skene_common::tui::TuiStyle::Value = skene_common::tui::TuiValue
-pub fn skene_common::tui::TuiStyle::for_each_box_field<N: skene_core::scalar::Scalar, V: skene_core::box_style::BoxFieldVisitor<N, Self>>(&mut V)
-pub fn skene_common::tui::TuiStyle::for_each_run_field<V: skene_core::run_style::RunFieldVisitor<Self>>(&mut V)
-pub fn skene_common::tui::TuiStyle::interpolate_value(&skene_common::tui::TuiValue, &skene_common::tui::TuiValue, f32) -> core::option::Option<skene_common::tui::TuiValue>
-pub fn skene_common::tui::TuiStyle::run_value_from_number(f32) -> core::option::Option<skene_core::run_style::RunValue<Self>>
-impl skene_core::run_style::IntoRunValue<skene_common::tui::TuiStyle> for bool
-pub fn bool::from_run_value(skene_core::run_style::RunValue<skene_common::tui::TuiStyle>) -> core::option::Option<Self>
-pub fn bool::into_run_value(self) -> skene_core::run_style::RunValue<skene_common::tui::TuiStyle>
-impl skene_core::run_style::IntoRunValue<skene_common::tui::TuiStyle> for f32
-pub fn f32::from_run_value(skene_core::run_style::RunValue<skene_common::tui::TuiStyle>) -> core::option::Option<Self>
-pub fn f32::into_run_value(self) -> skene_core::run_style::RunValue<skene_common::tui::TuiStyle>
-impl skene_core::run_style::RunField<skene_common::tui::TuiStyle> for skene_common::tui::tui_fields::Bold
-pub type skene_common::tui::tui_fields::Bold::Value = bool
-pub const skene_common::tui::tui_fields::Bold::KEY: skene_core::property::PropertyKey<skene_common::tui::TuiProperty>
-pub fn skene_common::tui::tui_fields::Bold::get<S: skene_core::shape::Shape>(&skene_core::run_style::RunStyle<S, skene_common::tui::TuiStyle>) -> &<S as skene_core::shape::Shape>::Of
-pub fn skene_common::tui::tui_fields::Bold::get_mut<S: skene_core::shape::Shape>(&mut skene_core::run_style::RunStyle<S, skene_common::tui::TuiStyle>) -> &mut <S as skene_core::shape::Shape>::Of
-impl skene_core::run_style::RunField<skene_common::tui::TuiStyle> for skene_common::tui::tui_fields::Size
-pub type skene_common::tui::tui_fields::Size::Value = skene_core::expr::Length
-pub const skene_common::tui::tui_fields::Size::KEY: skene_core::property::PropertyKey<skene_common::tui::TuiProperty>
-pub fn skene_common::tui::tui_fields::Size::get<S: skene_core::shape::Shape>(&skene_core::run_style::RunStyle<S, skene_common::tui::TuiStyle>) -> &<S as skene_core::shape::Shape>::Of
-pub fn skene_common::tui::tui_fields::Size::get_mut<S: skene_core::shape::Shape>(&mut skene_core::run_style::RunStyle<S, skene_common::tui::TuiStyle>) -> &mut <S as skene_core::shape::Shape>::Of
-impl skene_core::run_style::RunField<skene_common::tui::TuiStyle> for skene_common::tui::tui_fields::Weight
-pub type skene_common::tui::tui_fields::Weight::Value = f32
-pub const skene_common::tui::tui_fields::Weight::KEY: skene_core::property::PropertyKey<skene_common::tui::TuiProperty>
-pub fn skene_common::tui::tui_fields::Weight::get<S: skene_core::shape::Shape>(&skene_core::run_style::RunStyle<S, skene_common::tui::TuiStyle>) -> &<S as skene_core::shape::Shape>::Of
-pub fn skene_common::tui::tui_fields::Weight::get_mut<S: skene_core::shape::Shape>(&mut skene_core::run_style::RunStyle<S, skene_common::tui::TuiStyle>) -> &mut <S as skene_core::shape::Shape>::Of
-impl<N: skene_core::scalar::Scalar> skene_core::box_style::BoxField<N, skene_common::tui::TuiStyle> for skene_common::tui::tui_fields::BorderGlyphs
-pub type skene_common::tui::tui_fields::BorderGlyphs::Value = skene_common::tui::BorderGlyphs
-pub const skene_common::tui::tui_fields::BorderGlyphs::KEY: skene_core::property::PropertyKey<skene_common::tui::TuiProperty>
-pub fn skene_common::tui::tui_fields::BorderGlyphs::get<S: skene_core::shape::Shape>(&skene_core::box_style::BoxStyle<N, S, skene_common::tui::TuiStyle>) -> &<S as skene_core::shape::Shape>::Of
-pub fn skene_common::tui::tui_fields::BorderGlyphs::get_mut<S: skene_core::shape::Shape>(&mut skene_core::box_style::BoxStyle<N, S, skene_common::tui::TuiStyle>) -> &mut <S as skene_core::shape::Shape>::Of
-impl<N: skene_core::scalar::Scalar> skene_core::box_style::BoxField<N, skene_common::tui::TuiStyle> for skene_common::tui::tui_fields::CornerRadius
-pub type skene_common::tui::tui_fields::CornerRadius::Value = skene_core::expr::Length
-pub const skene_common::tui::tui_fields::CornerRadius::KEY: skene_core::property::PropertyKey<skene_common::tui::TuiProperty>
-pub fn skene_common::tui::tui_fields::CornerRadius::get<S: skene_core::shape::Shape>(&skene_core::box_style::BoxStyle<N, S, skene_common::tui::TuiStyle>) -> &<S as skene_core::shape::Shape>::Of
-pub fn skene_common::tui::tui_fields::CornerRadius::get_mut<S: skene_core::shape::Shape>(&mut skene_core::box_style::BoxStyle<N, S, skene_common::tui::TuiStyle>) -> &mut <S as skene_core::shape::Shape>::Of
-impl<N: skene_core::scalar::Scalar> skene_core::box_style::BoxField<N, skene_common::tui::TuiStyle> for skene_common::tui::tui_fields::ScrollbarGlyphs
-pub type skene_common::tui::tui_fields::ScrollbarGlyphs::Value = skene_common::tui::ScrollbarGlyphs
-pub const skene_common::tui::tui_fields::ScrollbarGlyphs::KEY: skene_core::property::PropertyKey<skene_common::tui::TuiProperty>
-pub fn skene_common::tui::tui_fields::ScrollbarGlyphs::get<S: skene_core::shape::Shape>(&skene_core::box_style::BoxStyle<N, S, skene_common::tui::TuiStyle>) -> &<S as skene_core::shape::Shape>::Of
-pub fn skene_common::tui::tui_fields::ScrollbarGlyphs::get_mut<S: skene_core::shape::Shape>(&mut skene_core::box_style::BoxStyle<N, S, skene_common::tui::TuiStyle>) -> &mut <S as skene_core::shape::Shape>::Of
-impl<N: skene_core::scalar::Scalar> skene_core::box_style::BoxField<N, skene_common::tui::TuiStyle> for skene_common::tui::tui_fields::ScrollbarThumb
-pub type skene_common::tui::tui_fields::ScrollbarThumb::Value = skene_core::values::color::Color
-pub const skene_common::tui::tui_fields::ScrollbarThumb::KEY: skene_core::property::PropertyKey<skene_common::tui::TuiProperty>
-pub fn skene_common::tui::tui_fields::ScrollbarThumb::get<S: skene_core::shape::Shape>(&skene_core::box_style::BoxStyle<N, S, skene_common::tui::TuiStyle>) -> &<S as skene_core::shape::Shape>::Of
-pub fn skene_common::tui::tui_fields::ScrollbarThumb::get_mut<S: skene_core::shape::Shape>(&mut skene_core::box_style::BoxStyle<N, S, skene_common::tui::TuiStyle>) -> &mut <S as skene_core::shape::Shape>::Of
-impl<N: skene_core::scalar::Scalar> skene_core::box_style::BoxField<N, skene_common::tui::TuiStyle> for skene_common::tui::tui_fields::ScrollbarTrack
-pub type skene_common::tui::tui_fields::ScrollbarTrack::Value = skene_core::values::color::Color
-pub const skene_common::tui::tui_fields::ScrollbarTrack::KEY: skene_core::property::PropertyKey<skene_common::tui::TuiProperty>
-pub fn skene_common::tui::tui_fields::ScrollbarTrack::get<S: skene_core::shape::Shape>(&skene_core::box_style::BoxStyle<N, S, skene_common::tui::TuiStyle>) -> &<S as skene_core::shape::Shape>::Of
-pub fn skene_common::tui::tui_fields::ScrollbarTrack::get_mut<S: skene_core::shape::Shape>(&mut skene_core::box_style::BoxStyle<N, S, skene_common::tui::TuiStyle>) -> &mut <S as skene_core::shape::Shape>::Of
-impl<N: skene_core::scalar::Scalar> skene_core::box_style::BoxField<N, skene_common::tui::TuiStyle> for skene_common::tui::tui_fields::Shadow
-pub type skene_common::tui::tui_fields::Shadow::Value = skene_core::values::color::Color
-pub const skene_common::tui::tui_fields::Shadow::KEY: skene_core::property::PropertyKey<skene_common::tui::TuiProperty>
-pub fn skene_common::tui::tui_fields::Shadow::get<S: skene_core::shape::Shape>(&skene_core::box_style::BoxStyle<N, S, skene_common::tui::TuiStyle>) -> &<S as skene_core::shape::Shape>::Of
-pub fn skene_common::tui::tui_fields::Shadow::get_mut<S: skene_core::shape::Shape>(&mut skene_core::box_style::BoxStyle<N, S, skene_common::tui::TuiStyle>) -> &mut <S as skene_core::shape::Shape>::Of
-impl<N: skene_core::scalar::Scalar> skene_core::box_style::BoxField<N, skene_common::tui::TuiStyle> for skene_common::tui::tui_fields::ShadowOffset
-pub type skene_common::tui::tui_fields::ShadowOffset::Value = skene_core::expr::Length
-pub const skene_common::tui::tui_fields::ShadowOffset::KEY: skene_core::property::PropertyKey<skene_common::tui::TuiProperty>
-pub fn skene_common::tui::tui_fields::ShadowOffset::get<S: skene_core::shape::Shape>(&skene_core::box_style::BoxStyle<N, S, skene_common::tui::TuiStyle>) -> &<S as skene_core::shape::Shape>::Of
-pub fn skene_common::tui::tui_fields::ShadowOffset::get_mut<S: skene_core::shape::Shape>(&mut skene_core::box_style::BoxStyle<N, S, skene_common::tui::TuiStyle>) -> &mut <S as skene_core::shape::Shape>::Of
-impl<N: skene_core::scalar::Scalar> skene_core::box_style::BoxField<N, skene_common::tui::TuiStyle> for skene_common::tui::tui_fields::ShadowSoftening
-pub type skene_common::tui::tui_fields::ShadowSoftening::Value = skene_core::expr::Length
-pub const skene_common::tui::tui_fields::ShadowSoftening::KEY: skene_core::property::PropertyKey<skene_common::tui::TuiProperty>
-pub fn skene_common::tui::tui_fields::ShadowSoftening::get<S: skene_core::shape::Shape>(&skene_core::box_style::BoxStyle<N, S, skene_common::tui::TuiStyle>) -> &<S as skene_core::shape::Shape>::Of
-pub fn skene_common::tui::tui_fields::ShadowSoftening::get_mut<S: skene_core::shape::Shape>(&mut skene_core::box_style::BoxStyle<N, S, skene_common::tui::TuiStyle>) -> &mut <S as skene_core::shape::Shape>::Of
-impl<N: skene_core::scalar::Scalar> skene_core::box_style::IntoBoxValue<N, skene_common::tui::TuiStyle> for skene_common::tui::BorderGlyphs
-pub fn skene_common::tui::BorderGlyphs::from_box_value(skene_core::box_style::BoxValue<N, skene_common::tui::TuiStyle>) -> core::option::Option<Self>
-pub fn skene_common::tui::BorderGlyphs::into_box_value(self) -> skene_core::box_style::BoxValue<N, skene_common::tui::TuiStyle>
-impl<N: skene_core::scalar::Scalar> skene_core::box_style::IntoBoxValue<N, skene_common::tui::TuiStyle> for skene_common::tui::ScrollbarGlyphs
-pub fn skene_common::tui::ScrollbarGlyphs::from_box_value(skene_core::box_style::BoxValue<N, skene_common::tui::TuiStyle>) -> core::option::Option<Self>
-pub fn skene_common::tui::ScrollbarGlyphs::into_box_value(self) -> skene_core::box_style::BoxValue<N, skene_common::tui::TuiStyle>
-pub struct skene_common::tui::Typography
-pub skene_common::tui::Typography::ink: skene_core::token::Token<skene_core::values::color::Color, u32>
-pub skene_common::tui::Typography::link_focus_ink: skene_core::token::Token<skene_core::values::color::Color, u32>
-pub skene_common::tui::Typography::link_focus_surface: skene_core::token::Token<skene_core::values::color::Color, u32>
-pub skene_common::tui::Typography::link_ink: skene_core::token::Token<skene_core::values::color::Color, u32>
-pub skene_common::tui::Typography::selection_ink: skene_core::token::Token<skene_core::values::color::Color, u32>
-pub skene_common::tui::Typography::selection_surface: skene_core::token::Token<skene_core::values::color::Color, u32>
-pub skene_common::tui::Typography::size: skene_core::token::Token<skene_core::expr::Length, u32>
-pub skene_common::tui::Typography::weight: skene_core::token::Token<f32, u32>
-impl skene_common::tui::Typography
-pub fn skene_common::tui::Typography::set_ink(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, u32>>) -> Self
-pub fn skene_common::tui::Typography::set_link_focus_ink(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, u32>>) -> Self
-pub fn skene_common::tui::Typography::set_link_focus_surface(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, u32>>) -> Self
-pub fn skene_common::tui::Typography::set_link_ink(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, u32>>) -> Self
-pub fn skene_common::tui::Typography::set_selection_ink(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, u32>>) -> Self
-pub fn skene_common::tui::Typography::set_selection_surface(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, u32>>) -> Self
-pub fn skene_common::tui::Typography::set_size(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::expr::Length, u32>>) -> Self
-pub fn skene_common::tui::Typography::set_weight(self, impl core::convert::Into<skene_core::leaf::Definition<f32, u32>>) -> Self
-impl core::clone::Clone for skene_common::tui::Typography
-pub fn skene_common::tui::Typography::clone(&self) -> skene_common::tui::Typography
-impl core::cmp::PartialEq for skene_common::tui::Typography
-pub fn skene_common::tui::Typography::eq(&self, &skene_common::tui::Typography) -> bool
-impl core::default::Default for skene_common::tui::Typography
-pub fn skene_common::tui::Typography::default() -> Self
-impl core::fmt::Debug for skene_common::tui::Typography
-pub fn skene_common::tui::Typography::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::marker::StructuralPartialEq for skene_common::tui::Typography
-impl<V> skene_core::token::TokenSet<V> for skene_common::tui::Typography where V: core::convert::From<skene_core::leaf::Definition<skene_core::values::color::Color, u32>> + core::convert::From<skene_core::leaf::Definition<f32, u32>> + core::convert::From<skene_core::leaf::Definition<skene_core::expr::Length, u32>> + 'static
-pub fn skene_common::tui::Typography::definitions(&self) -> alloc::vec::Vec<(skene_core::token::TokenName, V)>
-pub const skene_common::tui::BOLD_WEIGHT: f32
+pub mod skene_common::terminal
+pub mod skene_common::terminal::terminal_fields
+pub struct skene_common::terminal::terminal_fields::Bold
+impl core::clone::Clone for skene_common::terminal::terminal_fields::Bold
+pub fn skene_common::terminal::terminal_fields::Bold::clone(&self) -> skene_common::terminal::terminal_fields::Bold
+impl core::cmp::Eq for skene_common::terminal::terminal_fields::Bold
+impl core::cmp::PartialEq for skene_common::terminal::terminal_fields::Bold
+pub fn skene_common::terminal::terminal_fields::Bold::eq(&self, &skene_common::terminal::terminal_fields::Bold) -> bool
+impl core::default::Default for skene_common::terminal::terminal_fields::Bold
+pub fn skene_common::terminal::terminal_fields::Bold::default() -> skene_common::terminal::terminal_fields::Bold
+impl core::fmt::Debug for skene_common::terminal::terminal_fields::Bold
+pub fn skene_common::terminal::terminal_fields::Bold::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_common::terminal::terminal_fields::Bold
+pub fn skene_common::terminal::terminal_fields::Bold::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_common::terminal::terminal_fields::Bold
+impl core::marker::StructuralPartialEq for skene_common::terminal::terminal_fields::Bold
+impl skene_core::run_style::RunField<skene_common::terminal::TerminalStyle> for skene_common::terminal::terminal_fields::Bold
+pub type skene_common::terminal::terminal_fields::Bold::Value = bool
+pub const skene_common::terminal::terminal_fields::Bold::KEY: skene_core::property::PropertyKey<skene_common::terminal::TerminalProperty>
+pub fn skene_common::terminal::terminal_fields::Bold::get<S: skene_core::shape::Shape>(&skene_core::run_style::RunStyle<S, skene_common::terminal::TerminalStyle>) -> &<S as skene_core::shape::Shape>::Of
+pub fn skene_common::terminal::terminal_fields::Bold::get_mut<S: skene_core::shape::Shape>(&mut skene_core::run_style::RunStyle<S, skene_common::terminal::TerminalStyle>) -> &mut <S as skene_core::shape::Shape>::Of
+pub struct skene_common::terminal::terminal_fields::BorderGlyphs
+impl core::clone::Clone for skene_common::terminal::terminal_fields::BorderGlyphs
+pub fn skene_common::terminal::terminal_fields::BorderGlyphs::clone(&self) -> skene_common::terminal::terminal_fields::BorderGlyphs
+impl core::cmp::Eq for skene_common::terminal::terminal_fields::BorderGlyphs
+impl core::cmp::PartialEq for skene_common::terminal::terminal_fields::BorderGlyphs
+pub fn skene_common::terminal::terminal_fields::BorderGlyphs::eq(&self, &skene_common::terminal::terminal_fields::BorderGlyphs) -> bool
+impl core::default::Default for skene_common::terminal::terminal_fields::BorderGlyphs
+pub fn skene_common::terminal::terminal_fields::BorderGlyphs::default() -> skene_common::terminal::terminal_fields::BorderGlyphs
+impl core::fmt::Debug for skene_common::terminal::terminal_fields::BorderGlyphs
+pub fn skene_common::terminal::terminal_fields::BorderGlyphs::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_common::terminal::terminal_fields::BorderGlyphs
+pub fn skene_common::terminal::terminal_fields::BorderGlyphs::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_common::terminal::terminal_fields::BorderGlyphs
+impl core::marker::StructuralPartialEq for skene_common::terminal::terminal_fields::BorderGlyphs
+impl<N: skene_core::scalar::Scalar> skene_core::box_style::BoxField<N, skene_common::terminal::TerminalStyle> for skene_common::terminal::terminal_fields::BorderGlyphs
+pub type skene_common::terminal::terminal_fields::BorderGlyphs::Value = skene_common::terminal::BorderGlyphs
+pub const skene_common::terminal::terminal_fields::BorderGlyphs::KEY: skene_core::property::PropertyKey<skene_common::terminal::TerminalProperty>
+pub fn skene_common::terminal::terminal_fields::BorderGlyphs::get<S: skene_core::shape::Shape>(&skene_core::box_style::BoxStyle<N, S, skene_common::terminal::TerminalStyle>) -> &<S as skene_core::shape::Shape>::Of
+pub fn skene_common::terminal::terminal_fields::BorderGlyphs::get_mut<S: skene_core::shape::Shape>(&mut skene_core::box_style::BoxStyle<N, S, skene_common::terminal::TerminalStyle>) -> &mut <S as skene_core::shape::Shape>::Of
+pub struct skene_common::terminal::terminal_fields::CornerRadius
+impl core::clone::Clone for skene_common::terminal::terminal_fields::CornerRadius
+pub fn skene_common::terminal::terminal_fields::CornerRadius::clone(&self) -> skene_common::terminal::terminal_fields::CornerRadius
+impl core::cmp::Eq for skene_common::terminal::terminal_fields::CornerRadius
+impl core::cmp::PartialEq for skene_common::terminal::terminal_fields::CornerRadius
+pub fn skene_common::terminal::terminal_fields::CornerRadius::eq(&self, &skene_common::terminal::terminal_fields::CornerRadius) -> bool
+impl core::default::Default for skene_common::terminal::terminal_fields::CornerRadius
+pub fn skene_common::terminal::terminal_fields::CornerRadius::default() -> skene_common::terminal::terminal_fields::CornerRadius
+impl core::fmt::Debug for skene_common::terminal::terminal_fields::CornerRadius
+pub fn skene_common::terminal::terminal_fields::CornerRadius::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_common::terminal::terminal_fields::CornerRadius
+pub fn skene_common::terminal::terminal_fields::CornerRadius::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_common::terminal::terminal_fields::CornerRadius
+impl core::marker::StructuralPartialEq for skene_common::terminal::terminal_fields::CornerRadius
+impl<N: skene_core::scalar::Scalar> skene_core::box_style::BoxField<N, skene_common::terminal::TerminalStyle> for skene_common::terminal::terminal_fields::CornerRadius
+pub type skene_common::terminal::terminal_fields::CornerRadius::Value = skene_core::expr::Length
+pub const skene_common::terminal::terminal_fields::CornerRadius::KEY: skene_core::property::PropertyKey<skene_common::terminal::TerminalProperty>
+pub fn skene_common::terminal::terminal_fields::CornerRadius::get<S: skene_core::shape::Shape>(&skene_core::box_style::BoxStyle<N, S, skene_common::terminal::TerminalStyle>) -> &<S as skene_core::shape::Shape>::Of
+pub fn skene_common::terminal::terminal_fields::CornerRadius::get_mut<S: skene_core::shape::Shape>(&mut skene_core::box_style::BoxStyle<N, S, skene_common::terminal::TerminalStyle>) -> &mut <S as skene_core::shape::Shape>::Of
+pub struct skene_common::terminal::terminal_fields::ScrollbarGlyphs
+impl core::clone::Clone for skene_common::terminal::terminal_fields::ScrollbarGlyphs
+pub fn skene_common::terminal::terminal_fields::ScrollbarGlyphs::clone(&self) -> skene_common::terminal::terminal_fields::ScrollbarGlyphs
+impl core::cmp::Eq for skene_common::terminal::terminal_fields::ScrollbarGlyphs
+impl core::cmp::PartialEq for skene_common::terminal::terminal_fields::ScrollbarGlyphs
+pub fn skene_common::terminal::terminal_fields::ScrollbarGlyphs::eq(&self, &skene_common::terminal::terminal_fields::ScrollbarGlyphs) -> bool
+impl core::default::Default for skene_common::terminal::terminal_fields::ScrollbarGlyphs
+pub fn skene_common::terminal::terminal_fields::ScrollbarGlyphs::default() -> skene_common::terminal::terminal_fields::ScrollbarGlyphs
+impl core::fmt::Debug for skene_common::terminal::terminal_fields::ScrollbarGlyphs
+pub fn skene_common::terminal::terminal_fields::ScrollbarGlyphs::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_common::terminal::terminal_fields::ScrollbarGlyphs
+pub fn skene_common::terminal::terminal_fields::ScrollbarGlyphs::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_common::terminal::terminal_fields::ScrollbarGlyphs
+impl core::marker::StructuralPartialEq for skene_common::terminal::terminal_fields::ScrollbarGlyphs
+impl<N: skene_core::scalar::Scalar> skene_core::box_style::BoxField<N, skene_common::terminal::TerminalStyle> for skene_common::terminal::terminal_fields::ScrollbarGlyphs
+pub type skene_common::terminal::terminal_fields::ScrollbarGlyphs::Value = skene_common::terminal::ScrollbarGlyphs
+pub const skene_common::terminal::terminal_fields::ScrollbarGlyphs::KEY: skene_core::property::PropertyKey<skene_common::terminal::TerminalProperty>
+pub fn skene_common::terminal::terminal_fields::ScrollbarGlyphs::get<S: skene_core::shape::Shape>(&skene_core::box_style::BoxStyle<N, S, skene_common::terminal::TerminalStyle>) -> &<S as skene_core::shape::Shape>::Of
+pub fn skene_common::terminal::terminal_fields::ScrollbarGlyphs::get_mut<S: skene_core::shape::Shape>(&mut skene_core::box_style::BoxStyle<N, S, skene_common::terminal::TerminalStyle>) -> &mut <S as skene_core::shape::Shape>::Of
+pub struct skene_common::terminal::terminal_fields::ScrollbarThumb
+impl core::clone::Clone for skene_common::terminal::terminal_fields::ScrollbarThumb
+pub fn skene_common::terminal::terminal_fields::ScrollbarThumb::clone(&self) -> skene_common::terminal::terminal_fields::ScrollbarThumb
+impl core::cmp::Eq for skene_common::terminal::terminal_fields::ScrollbarThumb
+impl core::cmp::PartialEq for skene_common::terminal::terminal_fields::ScrollbarThumb
+pub fn skene_common::terminal::terminal_fields::ScrollbarThumb::eq(&self, &skene_common::terminal::terminal_fields::ScrollbarThumb) -> bool
+impl core::default::Default for skene_common::terminal::terminal_fields::ScrollbarThumb
+pub fn skene_common::terminal::terminal_fields::ScrollbarThumb::default() -> skene_common::terminal::terminal_fields::ScrollbarThumb
+impl core::fmt::Debug for skene_common::terminal::terminal_fields::ScrollbarThumb
+pub fn skene_common::terminal::terminal_fields::ScrollbarThumb::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_common::terminal::terminal_fields::ScrollbarThumb
+pub fn skene_common::terminal::terminal_fields::ScrollbarThumb::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_common::terminal::terminal_fields::ScrollbarThumb
+impl core::marker::StructuralPartialEq for skene_common::terminal::terminal_fields::ScrollbarThumb
+impl<N: skene_core::scalar::Scalar> skene_core::box_style::BoxField<N, skene_common::terminal::TerminalStyle> for skene_common::terminal::terminal_fields::ScrollbarThumb
+pub type skene_common::terminal::terminal_fields::ScrollbarThumb::Value = skene_core::values::color::Color
+pub const skene_common::terminal::terminal_fields::ScrollbarThumb::KEY: skene_core::property::PropertyKey<skene_common::terminal::TerminalProperty>
+pub fn skene_common::terminal::terminal_fields::ScrollbarThumb::get<S: skene_core::shape::Shape>(&skene_core::box_style::BoxStyle<N, S, skene_common::terminal::TerminalStyle>) -> &<S as skene_core::shape::Shape>::Of
+pub fn skene_common::terminal::terminal_fields::ScrollbarThumb::get_mut<S: skene_core::shape::Shape>(&mut skene_core::box_style::BoxStyle<N, S, skene_common::terminal::TerminalStyle>) -> &mut <S as skene_core::shape::Shape>::Of
+pub struct skene_common::terminal::terminal_fields::ScrollbarTrack
+impl core::clone::Clone for skene_common::terminal::terminal_fields::ScrollbarTrack
+pub fn skene_common::terminal::terminal_fields::ScrollbarTrack::clone(&self) -> skene_common::terminal::terminal_fields::ScrollbarTrack
+impl core::cmp::Eq for skene_common::terminal::terminal_fields::ScrollbarTrack
+impl core::cmp::PartialEq for skene_common::terminal::terminal_fields::ScrollbarTrack
+pub fn skene_common::terminal::terminal_fields::ScrollbarTrack::eq(&self, &skene_common::terminal::terminal_fields::ScrollbarTrack) -> bool
+impl core::default::Default for skene_common::terminal::terminal_fields::ScrollbarTrack
+pub fn skene_common::terminal::terminal_fields::ScrollbarTrack::default() -> skene_common::terminal::terminal_fields::ScrollbarTrack
+impl core::fmt::Debug for skene_common::terminal::terminal_fields::ScrollbarTrack
+pub fn skene_common::terminal::terminal_fields::ScrollbarTrack::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_common::terminal::terminal_fields::ScrollbarTrack
+pub fn skene_common::terminal::terminal_fields::ScrollbarTrack::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_common::terminal::terminal_fields::ScrollbarTrack
+impl core::marker::StructuralPartialEq for skene_common::terminal::terminal_fields::ScrollbarTrack
+impl<N: skene_core::scalar::Scalar> skene_core::box_style::BoxField<N, skene_common::terminal::TerminalStyle> for skene_common::terminal::terminal_fields::ScrollbarTrack
+pub type skene_common::terminal::terminal_fields::ScrollbarTrack::Value = skene_core::values::color::Color
+pub const skene_common::terminal::terminal_fields::ScrollbarTrack::KEY: skene_core::property::PropertyKey<skene_common::terminal::TerminalProperty>
+pub fn skene_common::terminal::terminal_fields::ScrollbarTrack::get<S: skene_core::shape::Shape>(&skene_core::box_style::BoxStyle<N, S, skene_common::terminal::TerminalStyle>) -> &<S as skene_core::shape::Shape>::Of
+pub fn skene_common::terminal::terminal_fields::ScrollbarTrack::get_mut<S: skene_core::shape::Shape>(&mut skene_core::box_style::BoxStyle<N, S, skene_common::terminal::TerminalStyle>) -> &mut <S as skene_core::shape::Shape>::Of
+pub struct skene_common::terminal::terminal_fields::Shadow
+impl core::clone::Clone for skene_common::terminal::terminal_fields::Shadow
+pub fn skene_common::terminal::terminal_fields::Shadow::clone(&self) -> skene_common::terminal::terminal_fields::Shadow
+impl core::cmp::Eq for skene_common::terminal::terminal_fields::Shadow
+impl core::cmp::PartialEq for skene_common::terminal::terminal_fields::Shadow
+pub fn skene_common::terminal::terminal_fields::Shadow::eq(&self, &skene_common::terminal::terminal_fields::Shadow) -> bool
+impl core::default::Default for skene_common::terminal::terminal_fields::Shadow
+pub fn skene_common::terminal::terminal_fields::Shadow::default() -> skene_common::terminal::terminal_fields::Shadow
+impl core::fmt::Debug for skene_common::terminal::terminal_fields::Shadow
+pub fn skene_common::terminal::terminal_fields::Shadow::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_common::terminal::terminal_fields::Shadow
+pub fn skene_common::terminal::terminal_fields::Shadow::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_common::terminal::terminal_fields::Shadow
+impl core::marker::StructuralPartialEq for skene_common::terminal::terminal_fields::Shadow
+impl<N: skene_core::scalar::Scalar> skene_core::box_style::BoxField<N, skene_common::terminal::TerminalStyle> for skene_common::terminal::terminal_fields::Shadow
+pub type skene_common::terminal::terminal_fields::Shadow::Value = skene_core::values::color::Color
+pub const skene_common::terminal::terminal_fields::Shadow::KEY: skene_core::property::PropertyKey<skene_common::terminal::TerminalProperty>
+pub fn skene_common::terminal::terminal_fields::Shadow::get<S: skene_core::shape::Shape>(&skene_core::box_style::BoxStyle<N, S, skene_common::terminal::TerminalStyle>) -> &<S as skene_core::shape::Shape>::Of
+pub fn skene_common::terminal::terminal_fields::Shadow::get_mut<S: skene_core::shape::Shape>(&mut skene_core::box_style::BoxStyle<N, S, skene_common::terminal::TerminalStyle>) -> &mut <S as skene_core::shape::Shape>::Of
+pub struct skene_common::terminal::terminal_fields::ShadowOffset
+impl core::clone::Clone for skene_common::terminal::terminal_fields::ShadowOffset
+pub fn skene_common::terminal::terminal_fields::ShadowOffset::clone(&self) -> skene_common::terminal::terminal_fields::ShadowOffset
+impl core::cmp::Eq for skene_common::terminal::terminal_fields::ShadowOffset
+impl core::cmp::PartialEq for skene_common::terminal::terminal_fields::ShadowOffset
+pub fn skene_common::terminal::terminal_fields::ShadowOffset::eq(&self, &skene_common::terminal::terminal_fields::ShadowOffset) -> bool
+impl core::default::Default for skene_common::terminal::terminal_fields::ShadowOffset
+pub fn skene_common::terminal::terminal_fields::ShadowOffset::default() -> skene_common::terminal::terminal_fields::ShadowOffset
+impl core::fmt::Debug for skene_common::terminal::terminal_fields::ShadowOffset
+pub fn skene_common::terminal::terminal_fields::ShadowOffset::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_common::terminal::terminal_fields::ShadowOffset
+pub fn skene_common::terminal::terminal_fields::ShadowOffset::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_common::terminal::terminal_fields::ShadowOffset
+impl core::marker::StructuralPartialEq for skene_common::terminal::terminal_fields::ShadowOffset
+impl<N: skene_core::scalar::Scalar> skene_core::box_style::BoxField<N, skene_common::terminal::TerminalStyle> for skene_common::terminal::terminal_fields::ShadowOffset
+pub type skene_common::terminal::terminal_fields::ShadowOffset::Value = skene_core::expr::Length
+pub const skene_common::terminal::terminal_fields::ShadowOffset::KEY: skene_core::property::PropertyKey<skene_common::terminal::TerminalProperty>
+pub fn skene_common::terminal::terminal_fields::ShadowOffset::get<S: skene_core::shape::Shape>(&skene_core::box_style::BoxStyle<N, S, skene_common::terminal::TerminalStyle>) -> &<S as skene_core::shape::Shape>::Of
+pub fn skene_common::terminal::terminal_fields::ShadowOffset::get_mut<S: skene_core::shape::Shape>(&mut skene_core::box_style::BoxStyle<N, S, skene_common::terminal::TerminalStyle>) -> &mut <S as skene_core::shape::Shape>::Of
+pub struct skene_common::terminal::terminal_fields::ShadowSoftening
+impl core::clone::Clone for skene_common::terminal::terminal_fields::ShadowSoftening
+pub fn skene_common::terminal::terminal_fields::ShadowSoftening::clone(&self) -> skene_common::terminal::terminal_fields::ShadowSoftening
+impl core::cmp::Eq for skene_common::terminal::terminal_fields::ShadowSoftening
+impl core::cmp::PartialEq for skene_common::terminal::terminal_fields::ShadowSoftening
+pub fn skene_common::terminal::terminal_fields::ShadowSoftening::eq(&self, &skene_common::terminal::terminal_fields::ShadowSoftening) -> bool
+impl core::default::Default for skene_common::terminal::terminal_fields::ShadowSoftening
+pub fn skene_common::terminal::terminal_fields::ShadowSoftening::default() -> skene_common::terminal::terminal_fields::ShadowSoftening
+impl core::fmt::Debug for skene_common::terminal::terminal_fields::ShadowSoftening
+pub fn skene_common::terminal::terminal_fields::ShadowSoftening::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_common::terminal::terminal_fields::ShadowSoftening
+pub fn skene_common::terminal::terminal_fields::ShadowSoftening::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_common::terminal::terminal_fields::ShadowSoftening
+impl core::marker::StructuralPartialEq for skene_common::terminal::terminal_fields::ShadowSoftening
+impl<N: skene_core::scalar::Scalar> skene_core::box_style::BoxField<N, skene_common::terminal::TerminalStyle> for skene_common::terminal::terminal_fields::ShadowSoftening
+pub type skene_common::terminal::terminal_fields::ShadowSoftening::Value = skene_core::expr::Length
+pub const skene_common::terminal::terminal_fields::ShadowSoftening::KEY: skene_core::property::PropertyKey<skene_common::terminal::TerminalProperty>
+pub fn skene_common::terminal::terminal_fields::ShadowSoftening::get<S: skene_core::shape::Shape>(&skene_core::box_style::BoxStyle<N, S, skene_common::terminal::TerminalStyle>) -> &<S as skene_core::shape::Shape>::Of
+pub fn skene_common::terminal::terminal_fields::ShadowSoftening::get_mut<S: skene_core::shape::Shape>(&mut skene_core::box_style::BoxStyle<N, S, skene_common::terminal::TerminalStyle>) -> &mut <S as skene_core::shape::Shape>::Of
+pub struct skene_common::terminal::terminal_fields::Size
+impl core::clone::Clone for skene_common::terminal::terminal_fields::Size
+pub fn skene_common::terminal::terminal_fields::Size::clone(&self) -> skene_common::terminal::terminal_fields::Size
+impl core::cmp::Eq for skene_common::terminal::terminal_fields::Size
+impl core::cmp::PartialEq for skene_common::terminal::terminal_fields::Size
+pub fn skene_common::terminal::terminal_fields::Size::eq(&self, &skene_common::terminal::terminal_fields::Size) -> bool
+impl core::default::Default for skene_common::terminal::terminal_fields::Size
+pub fn skene_common::terminal::terminal_fields::Size::default() -> skene_common::terminal::terminal_fields::Size
+impl core::fmt::Debug for skene_common::terminal::terminal_fields::Size
+pub fn skene_common::terminal::terminal_fields::Size::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_common::terminal::terminal_fields::Size
+pub fn skene_common::terminal::terminal_fields::Size::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_common::terminal::terminal_fields::Size
+impl core::marker::StructuralPartialEq for skene_common::terminal::terminal_fields::Size
+impl skene_core::run_style::RunField<skene_common::terminal::TerminalStyle> for skene_common::terminal::terminal_fields::Size
+pub type skene_common::terminal::terminal_fields::Size::Value = skene_core::expr::Length
+pub const skene_common::terminal::terminal_fields::Size::KEY: skene_core::property::PropertyKey<skene_common::terminal::TerminalProperty>
+pub fn skene_common::terminal::terminal_fields::Size::get<S: skene_core::shape::Shape>(&skene_core::run_style::RunStyle<S, skene_common::terminal::TerminalStyle>) -> &<S as skene_core::shape::Shape>::Of
+pub fn skene_common::terminal::terminal_fields::Size::get_mut<S: skene_core::shape::Shape>(&mut skene_core::run_style::RunStyle<S, skene_common::terminal::TerminalStyle>) -> &mut <S as skene_core::shape::Shape>::Of
+pub struct skene_common::terminal::terminal_fields::Weight
+impl core::clone::Clone for skene_common::terminal::terminal_fields::Weight
+pub fn skene_common::terminal::terminal_fields::Weight::clone(&self) -> skene_common::terminal::terminal_fields::Weight
+impl core::cmp::Eq for skene_common::terminal::terminal_fields::Weight
+impl core::cmp::PartialEq for skene_common::terminal::terminal_fields::Weight
+pub fn skene_common::terminal::terminal_fields::Weight::eq(&self, &skene_common::terminal::terminal_fields::Weight) -> bool
+impl core::default::Default for skene_common::terminal::terminal_fields::Weight
+pub fn skene_common::terminal::terminal_fields::Weight::default() -> skene_common::terminal::terminal_fields::Weight
+impl core::fmt::Debug for skene_common::terminal::terminal_fields::Weight
+pub fn skene_common::terminal::terminal_fields::Weight::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_common::terminal::terminal_fields::Weight
+pub fn skene_common::terminal::terminal_fields::Weight::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_common::terminal::terminal_fields::Weight
+impl core::marker::StructuralPartialEq for skene_common::terminal::terminal_fields::Weight
+impl skene_core::run_style::RunField<skene_common::terminal::TerminalStyle> for skene_common::terminal::terminal_fields::Weight
+pub type skene_common::terminal::terminal_fields::Weight::Value = f32
+pub const skene_common::terminal::terminal_fields::Weight::KEY: skene_core::property::PropertyKey<skene_common::terminal::TerminalProperty>
+pub fn skene_common::terminal::terminal_fields::Weight::get<S: skene_core::shape::Shape>(&skene_core::run_style::RunStyle<S, skene_common::terminal::TerminalStyle>) -> &<S as skene_core::shape::Shape>::Of
+pub fn skene_common::terminal::terminal_fields::Weight::get_mut<S: skene_core::shape::Shape>(&mut skene_core::run_style::RunStyle<S, skene_common::terminal::TerminalStyle>) -> &mut <S as skene_core::shape::Shape>::Of
+pub fn skene_common::terminal::terminal_fields::visit_box<N: skene_core::scalar::Scalar, V: skene_core::box_style::BoxFieldVisitor<N, skene_common::terminal::TerminalStyle>>(&mut V)
+pub fn skene_common::terminal::terminal_fields::visit_run<V: skene_core::run_style::RunFieldVisitor<skene_common::terminal::TerminalStyle>>(&mut V)
+pub enum skene_common::terminal::TerminalProperty
+pub skene_common::terminal::TerminalProperty::Bold
+pub skene_common::terminal::TerminalProperty::BorderGlyphs
+pub skene_common::terminal::TerminalProperty::CornerRadius
+pub skene_common::terminal::TerminalProperty::ScrollbarGlyphs
+pub skene_common::terminal::TerminalProperty::ScrollbarThumb
+pub skene_common::terminal::TerminalProperty::ScrollbarTrack
+pub skene_common::terminal::TerminalProperty::Shadow
+pub skene_common::terminal::TerminalProperty::ShadowOffset
+pub skene_common::terminal::TerminalProperty::ShadowSoftening
+pub skene_common::terminal::TerminalProperty::Size
+pub skene_common::terminal::TerminalProperty::Weight
+impl skene_common::terminal::TerminalProperty
+pub const fn skene_common::terminal::TerminalProperty::name(self) -> &'static str
+impl core::clone::Clone for skene_common::terminal::TerminalProperty
+pub fn skene_common::terminal::TerminalProperty::clone(&self) -> skene_common::terminal::TerminalProperty
+impl core::cmp::Eq for skene_common::terminal::TerminalProperty
+impl core::cmp::Ord for skene_common::terminal::TerminalProperty
+pub fn skene_common::terminal::TerminalProperty::cmp(&self, &skene_common::terminal::TerminalProperty) -> core::cmp::Ordering
+impl core::cmp::PartialEq for skene_common::terminal::TerminalProperty
+pub fn skene_common::terminal::TerminalProperty::eq(&self, &skene_common::terminal::TerminalProperty) -> bool
+impl core::cmp::PartialOrd for skene_common::terminal::TerminalProperty
+pub fn skene_common::terminal::TerminalProperty::partial_cmp(&self, &skene_common::terminal::TerminalProperty) -> core::option::Option<core::cmp::Ordering>
+impl core::fmt::Debug for skene_common::terminal::TerminalProperty
+pub fn skene_common::terminal::TerminalProperty::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_common::terminal::TerminalProperty
+pub fn skene_common::terminal::TerminalProperty::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_common::terminal::TerminalProperty
+impl core::marker::StructuralPartialEq for skene_common::terminal::TerminalProperty
+impl skene_core::property::PropertyName for skene_common::terminal::TerminalProperty
+pub fn skene_common::terminal::TerminalProperty::name(&self) -> &'static str
+pub enum skene_common::terminal::TerminalValue
+pub skene_common::terminal::TerminalValue::Bold(bool)
+pub skene_common::terminal::TerminalValue::BorderGlyphs(skene_common::terminal::BorderGlyphs)
+pub skene_common::terminal::TerminalValue::Number(f32)
+pub skene_common::terminal::TerminalValue::ScrollbarGlyphs(skene_common::terminal::ScrollbarGlyphs)
+impl core::clone::Clone for skene_common::terminal::TerminalValue
+pub fn skene_common::terminal::TerminalValue::clone(&self) -> skene_common::terminal::TerminalValue
+impl core::cmp::PartialEq for skene_common::terminal::TerminalValue
+pub fn skene_common::terminal::TerminalValue::eq(&self, &skene_common::terminal::TerminalValue) -> bool
+impl core::fmt::Debug for skene_common::terminal::TerminalValue
+pub fn skene_common::terminal::TerminalValue::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for skene_common::terminal::TerminalValue
+impl core::marker::StructuralPartialEq for skene_common::terminal::TerminalValue
+pub struct skene_common::terminal::BorderGlyphs
+pub skene_common::terminal::BorderGlyphs::bottom_left: char
+pub skene_common::terminal::BorderGlyphs::bottom_right: char
+pub skene_common::terminal::BorderGlyphs::horizontal: char
+pub skene_common::terminal::BorderGlyphs::top_left: char
+pub skene_common::terminal::BorderGlyphs::top_right: char
+pub skene_common::terminal::BorderGlyphs::vertical: char
+impl skene_common::terminal::BorderGlyphs
+pub const skene_common::terminal::BorderGlyphs::ASCII: Self
+pub const skene_common::terminal::BorderGlyphs::DOUBLE: Self
+pub const skene_common::terminal::BorderGlyphs::HEAVY: Self
+pub const skene_common::terminal::BorderGlyphs::LIGHT: Self
+pub const skene_common::terminal::BorderGlyphs::ROUNDED: Self
+pub const fn skene_common::terminal::BorderGlyphs::new(char, char, char, char, char, char) -> Self
+impl core::clone::Clone for skene_common::terminal::BorderGlyphs
+pub fn skene_common::terminal::BorderGlyphs::clone(&self) -> skene_common::terminal::BorderGlyphs
+impl core::cmp::Eq for skene_common::terminal::BorderGlyphs
+impl core::cmp::PartialEq for skene_common::terminal::BorderGlyphs
+pub fn skene_common::terminal::BorderGlyphs::eq(&self, &skene_common::terminal::BorderGlyphs) -> bool
+impl core::default::Default for skene_common::terminal::BorderGlyphs
+pub fn skene_common::terminal::BorderGlyphs::default() -> Self
+impl core::fmt::Debug for skene_common::terminal::BorderGlyphs
+pub fn skene_common::terminal::BorderGlyphs::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_common::terminal::BorderGlyphs
+pub fn skene_common::terminal::BorderGlyphs::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_common::terminal::BorderGlyphs
+impl core::marker::StructuralPartialEq for skene_common::terminal::BorderGlyphs
+impl skene_core::fingerprint::Fingerprint for skene_common::terminal::BorderGlyphs
+pub fn skene_common::terminal::BorderGlyphs::fingerprint<H: core::hash::Hasher>(&self, &mut H)
+impl<N: skene_core::scalar::Scalar> skene_core::box_style::IntoBoxValue<N, skene_common::terminal::TerminalStyle> for skene_common::terminal::BorderGlyphs
+pub fn skene_common::terminal::BorderGlyphs::from_box_value(skene_core::box_style::BoxValue<N, skene_common::terminal::TerminalStyle>) -> core::option::Option<Self>
+pub fn skene_common::terminal::BorderGlyphs::into_box_value(self) -> skene_core::box_style::BoxValue<N, skene_common::terminal::TerminalStyle>
+pub struct skene_common::terminal::ScrollbarGlyphs
+pub skene_common::terminal::ScrollbarGlyphs::horizontal_thumb: char
+pub skene_common::terminal::ScrollbarGlyphs::horizontal_track: char
+pub skene_common::terminal::ScrollbarGlyphs::vertical_thumb: char
+pub skene_common::terminal::ScrollbarGlyphs::vertical_track: char
+impl skene_common::terminal::ScrollbarGlyphs
+pub const skene_common::terminal::ScrollbarGlyphs::BLOCK: Self
+pub const skene_common::terminal::ScrollbarGlyphs::LINE: Self
+pub const fn skene_common::terminal::ScrollbarGlyphs::new(char, char, char, char) -> Self
+impl core::clone::Clone for skene_common::terminal::ScrollbarGlyphs
+pub fn skene_common::terminal::ScrollbarGlyphs::clone(&self) -> skene_common::terminal::ScrollbarGlyphs
+impl core::cmp::Eq for skene_common::terminal::ScrollbarGlyphs
+impl core::cmp::PartialEq for skene_common::terminal::ScrollbarGlyphs
+pub fn skene_common::terminal::ScrollbarGlyphs::eq(&self, &skene_common::terminal::ScrollbarGlyphs) -> bool
+impl core::default::Default for skene_common::terminal::ScrollbarGlyphs
+pub fn skene_common::terminal::ScrollbarGlyphs::default() -> Self
+impl core::fmt::Debug for skene_common::terminal::ScrollbarGlyphs
+pub fn skene_common::terminal::ScrollbarGlyphs::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_common::terminal::ScrollbarGlyphs
+pub fn skene_common::terminal::ScrollbarGlyphs::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_common::terminal::ScrollbarGlyphs
+impl core::marker::StructuralPartialEq for skene_common::terminal::ScrollbarGlyphs
+impl skene_core::fingerprint::Fingerprint for skene_common::terminal::ScrollbarGlyphs
+pub fn skene_common::terminal::ScrollbarGlyphs::fingerprint<H: core::hash::Hasher>(&self, &mut H)
+impl<N: skene_core::scalar::Scalar> skene_core::box_style::IntoBoxValue<N, skene_common::terminal::TerminalStyle> for skene_common::terminal::ScrollbarGlyphs
+pub fn skene_common::terminal::ScrollbarGlyphs::from_box_value(skene_core::box_style::BoxValue<N, skene_common::terminal::TerminalStyle>) -> core::option::Option<Self>
+pub fn skene_common::terminal::ScrollbarGlyphs::into_box_value(self) -> skene_core::box_style::BoxValue<N, skene_common::terminal::TerminalStyle>
+pub struct skene_common::terminal::TerminalBoxFields<S: skene_core::shape::Shape>
+pub skene_common::terminal::TerminalBoxFields::border_glyphs: <S as skene_core::shape::Shape>::Of
+pub skene_common::terminal::TerminalBoxFields::corner_radius: <S as skene_core::shape::Shape>::Of
+pub skene_common::terminal::TerminalBoxFields::scrollbar_glyphs: <S as skene_core::shape::Shape>::Of
+pub skene_common::terminal::TerminalBoxFields::scrollbar_thumb: <S as skene_core::shape::Shape>::Of
+pub skene_common::terminal::TerminalBoxFields::scrollbar_track: <S as skene_core::shape::Shape>::Of
+pub skene_common::terminal::TerminalBoxFields::shadow: <S as skene_core::shape::Shape>::Of
+pub skene_common::terminal::TerminalBoxFields::shadow_offset: <S as skene_core::shape::Shape>::Of
+pub skene_common::terminal::TerminalBoxFields::shadow_softening: <S as skene_core::shape::Shape>::Of
+impl<S: core::clone::Clone + skene_core::shape::Shape> core::clone::Clone for skene_common::terminal::TerminalBoxFields<S> where <S as skene_core::shape::Shape>::Of: core::clone::Clone, <S as skene_core::shape::Shape>::Of: core::clone::Clone, <S as skene_core::shape::Shape>::Of: core::clone::Clone, <S as skene_core::shape::Shape>::Of: core::clone::Clone
+pub fn skene_common::terminal::TerminalBoxFields<S>::clone(&self) -> skene_common::terminal::TerminalBoxFields<S>
+impl<S: core::cmp::PartialEq + skene_core::shape::Shape> core::cmp::PartialEq for skene_common::terminal::TerminalBoxFields<S> where <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq, <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq, <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq, <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq
+pub fn skene_common::terminal::TerminalBoxFields<S>::eq(&self, &skene_common::terminal::TerminalBoxFields<S>) -> bool
+impl<S: core::cmp::PartialEq + skene_core::shape::Shape> core::marker::StructuralPartialEq for skene_common::terminal::TerminalBoxFields<S> where <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq, <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq, <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq, <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq
+impl<S: core::default::Default + skene_core::shape::Shape> core::default::Default for skene_common::terminal::TerminalBoxFields<S> where <S as skene_core::shape::Shape>::Of: core::default::Default, <S as skene_core::shape::Shape>::Of: core::default::Default, <S as skene_core::shape::Shape>::Of: core::default::Default, <S as skene_core::shape::Shape>::Of: core::default::Default
+pub fn skene_common::terminal::TerminalBoxFields<S>::default() -> skene_common::terminal::TerminalBoxFields<S>
+impl<S: core::fmt::Debug + skene_core::shape::Shape> core::fmt::Debug for skene_common::terminal::TerminalBoxFields<S> where <S as skene_core::shape::Shape>::Of: core::fmt::Debug, <S as skene_core::shape::Shape>::Of: core::fmt::Debug, <S as skene_core::shape::Shape>::Of: core::fmt::Debug, <S as skene_core::shape::Shape>::Of: core::fmt::Debug
+pub fn skene_common::terminal::TerminalBoxFields<S>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_common::terminal::TerminalRunFields<S: skene_core::shape::Shape>
+pub skene_common::terminal::TerminalRunFields::bold: <S as skene_core::shape::Shape>::Of
+pub skene_common::terminal::TerminalRunFields::size: <S as skene_core::shape::Shape>::Of
+pub skene_common::terminal::TerminalRunFields::weight: <S as skene_core::shape::Shape>::Of
+impl<S: core::clone::Clone + skene_core::shape::Shape> core::clone::Clone for skene_common::terminal::TerminalRunFields<S> where <S as skene_core::shape::Shape>::Of: core::clone::Clone, <S as skene_core::shape::Shape>::Of: core::clone::Clone, <S as skene_core::shape::Shape>::Of: core::clone::Clone
+pub fn skene_common::terminal::TerminalRunFields<S>::clone(&self) -> skene_common::terminal::TerminalRunFields<S>
+impl<S: core::cmp::PartialEq + skene_core::shape::Shape> core::cmp::PartialEq for skene_common::terminal::TerminalRunFields<S> where <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq, <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq, <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq
+pub fn skene_common::terminal::TerminalRunFields<S>::eq(&self, &skene_common::terminal::TerminalRunFields<S>) -> bool
+impl<S: core::cmp::PartialEq + skene_core::shape::Shape> core::marker::StructuralPartialEq for skene_common::terminal::TerminalRunFields<S> where <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq, <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq, <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq
+impl<S: core::default::Default + skene_core::shape::Shape> core::default::Default for skene_common::terminal::TerminalRunFields<S> where <S as skene_core::shape::Shape>::Of: core::default::Default, <S as skene_core::shape::Shape>::Of: core::default::Default, <S as skene_core::shape::Shape>::Of: core::default::Default
+pub fn skene_common::terminal::TerminalRunFields<S>::default() -> skene_common::terminal::TerminalRunFields<S>
+impl<S: core::fmt::Debug + skene_core::shape::Shape> core::fmt::Debug for skene_common::terminal::TerminalRunFields<S> where <S as skene_core::shape::Shape>::Of: core::fmt::Debug, <S as skene_core::shape::Shape>::Of: core::fmt::Debug, <S as skene_core::shape::Shape>::Of: core::fmt::Debug
+pub fn skene_common::terminal::TerminalRunFields<S>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_common::terminal::TerminalStyle
+impl core::clone::Clone for skene_common::terminal::TerminalStyle
+pub fn skene_common::terminal::TerminalStyle::clone(&self) -> skene_common::terminal::TerminalStyle
+impl core::cmp::Eq for skene_common::terminal::TerminalStyle
+impl core::cmp::PartialEq for skene_common::terminal::TerminalStyle
+pub fn skene_common::terminal::TerminalStyle::eq(&self, &skene_common::terminal::TerminalStyle) -> bool
+impl core::default::Default for skene_common::terminal::TerminalStyle
+pub fn skene_common::terminal::TerminalStyle::default() -> skene_common::terminal::TerminalStyle
+impl core::fmt::Debug for skene_common::terminal::TerminalStyle
+pub fn skene_common::terminal::TerminalStyle::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_common::terminal::TerminalStyle
+pub fn skene_common::terminal::TerminalStyle::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_common::terminal::TerminalStyle
+impl core::marker::StructuralPartialEq for skene_common::terminal::TerminalStyle
+impl skene_common::CornerRadius for skene_common::terminal::TerminalStyle
+pub fn skene_common::terminal::TerminalStyle::set_corner_radius<S: skene_core::shape::Shape>(&mut Self::BoxFields, <S as skene_core::shape::Shape>::Of)
+impl skene_common::TypeMetrics for skene_common::terminal::TerminalStyle
+pub fn skene_common::terminal::TerminalStyle::font_size<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
+pub fn skene_common::terminal::TerminalStyle::font_weight<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
+pub fn skene_common::terminal::TerminalStyle::letter_spacing<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
+pub fn skene_common::terminal::TerminalStyle::line_height<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
+pub fn skene_common::terminal::TerminalStyle::set_font_size<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
+pub fn skene_common::terminal::TerminalStyle::set_font_weight<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
+pub fn skene_common::terminal::TerminalStyle::set_letter_spacing<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
+pub fn skene_common::terminal::TerminalStyle::set_line_height<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
+impl skene_core::extension::StyleExtension for skene_common::terminal::TerminalStyle
+pub type skene_common::terminal::TerminalStyle::BoxFields<S: skene_core::shape::Shape> = skene_common::terminal::TerminalBoxFields<S>
+pub type skene_common::terminal::TerminalStyle::Property = skene_common::terminal::TerminalProperty
+pub type skene_common::terminal::TerminalStyle::RunFields<S: skene_core::shape::Shape> = skene_common::terminal::TerminalRunFields<S>
+pub type skene_common::terminal::TerminalStyle::Value = skene_common::terminal::TerminalValue
+pub fn skene_common::terminal::TerminalStyle::for_each_box_field<N: skene_core::scalar::Scalar, V: skene_core::box_style::BoxFieldVisitor<N, Self>>(&mut V)
+pub fn skene_common::terminal::TerminalStyle::for_each_run_field<V: skene_core::run_style::RunFieldVisitor<Self>>(&mut V)
+pub fn skene_common::terminal::TerminalStyle::interpolate_value(&skene_common::terminal::TerminalValue, &skene_common::terminal::TerminalValue, f32) -> core::option::Option<skene_common::terminal::TerminalValue>
+pub fn skene_common::terminal::TerminalStyle::run_value_from_number(f32) -> core::option::Option<skene_core::run_style::RunValue<Self>>
+impl skene_core::run_style::IntoRunValue<skene_common::terminal::TerminalStyle> for bool
+pub fn bool::from_run_value(skene_core::run_style::RunValue<skene_common::terminal::TerminalStyle>) -> core::option::Option<Self>
+pub fn bool::into_run_value(self) -> skene_core::run_style::RunValue<skene_common::terminal::TerminalStyle>
+impl skene_core::run_style::IntoRunValue<skene_common::terminal::TerminalStyle> for f32
+pub fn f32::from_run_value(skene_core::run_style::RunValue<skene_common::terminal::TerminalStyle>) -> core::option::Option<Self>
+pub fn f32::into_run_value(self) -> skene_core::run_style::RunValue<skene_common::terminal::TerminalStyle>
+impl skene_core::run_style::RunField<skene_common::terminal::TerminalStyle> for skene_common::terminal::terminal_fields::Bold
+pub type skene_common::terminal::terminal_fields::Bold::Value = bool
+pub const skene_common::terminal::terminal_fields::Bold::KEY: skene_core::property::PropertyKey<skene_common::terminal::TerminalProperty>
+pub fn skene_common::terminal::terminal_fields::Bold::get<S: skene_core::shape::Shape>(&skene_core::run_style::RunStyle<S, skene_common::terminal::TerminalStyle>) -> &<S as skene_core::shape::Shape>::Of
+pub fn skene_common::terminal::terminal_fields::Bold::get_mut<S: skene_core::shape::Shape>(&mut skene_core::run_style::RunStyle<S, skene_common::terminal::TerminalStyle>) -> &mut <S as skene_core::shape::Shape>::Of
+impl skene_core::run_style::RunField<skene_common::terminal::TerminalStyle> for skene_common::terminal::terminal_fields::Size
+pub type skene_common::terminal::terminal_fields::Size::Value = skene_core::expr::Length
+pub const skene_common::terminal::terminal_fields::Size::KEY: skene_core::property::PropertyKey<skene_common::terminal::TerminalProperty>
+pub fn skene_common::terminal::terminal_fields::Size::get<S: skene_core::shape::Shape>(&skene_core::run_style::RunStyle<S, skene_common::terminal::TerminalStyle>) -> &<S as skene_core::shape::Shape>::Of
+pub fn skene_common::terminal::terminal_fields::Size::get_mut<S: skene_core::shape::Shape>(&mut skene_core::run_style::RunStyle<S, skene_common::terminal::TerminalStyle>) -> &mut <S as skene_core::shape::Shape>::Of
+impl skene_core::run_style::RunField<skene_common::terminal::TerminalStyle> for skene_common::terminal::terminal_fields::Weight
+pub type skene_common::terminal::terminal_fields::Weight::Value = f32
+pub const skene_common::terminal::terminal_fields::Weight::KEY: skene_core::property::PropertyKey<skene_common::terminal::TerminalProperty>
+pub fn skene_common::terminal::terminal_fields::Weight::get<S: skene_core::shape::Shape>(&skene_core::run_style::RunStyle<S, skene_common::terminal::TerminalStyle>) -> &<S as skene_core::shape::Shape>::Of
+pub fn skene_common::terminal::terminal_fields::Weight::get_mut<S: skene_core::shape::Shape>(&mut skene_core::run_style::RunStyle<S, skene_common::terminal::TerminalStyle>) -> &mut <S as skene_core::shape::Shape>::Of
+impl<N: skene_core::scalar::Scalar> skene_core::box_style::BoxField<N, skene_common::terminal::TerminalStyle> for skene_common::terminal::terminal_fields::BorderGlyphs
+pub type skene_common::terminal::terminal_fields::BorderGlyphs::Value = skene_common::terminal::BorderGlyphs
+pub const skene_common::terminal::terminal_fields::BorderGlyphs::KEY: skene_core::property::PropertyKey<skene_common::terminal::TerminalProperty>
+pub fn skene_common::terminal::terminal_fields::BorderGlyphs::get<S: skene_core::shape::Shape>(&skene_core::box_style::BoxStyle<N, S, skene_common::terminal::TerminalStyle>) -> &<S as skene_core::shape::Shape>::Of
+pub fn skene_common::terminal::terminal_fields::BorderGlyphs::get_mut<S: skene_core::shape::Shape>(&mut skene_core::box_style::BoxStyle<N, S, skene_common::terminal::TerminalStyle>) -> &mut <S as skene_core::shape::Shape>::Of
+impl<N: skene_core::scalar::Scalar> skene_core::box_style::BoxField<N, skene_common::terminal::TerminalStyle> for skene_common::terminal::terminal_fields::CornerRadius
+pub type skene_common::terminal::terminal_fields::CornerRadius::Value = skene_core::expr::Length
+pub const skene_common::terminal::terminal_fields::CornerRadius::KEY: skene_core::property::PropertyKey<skene_common::terminal::TerminalProperty>
+pub fn skene_common::terminal::terminal_fields::CornerRadius::get<S: skene_core::shape::Shape>(&skene_core::box_style::BoxStyle<N, S, skene_common::terminal::TerminalStyle>) -> &<S as skene_core::shape::Shape>::Of
+pub fn skene_common::terminal::terminal_fields::CornerRadius::get_mut<S: skene_core::shape::Shape>(&mut skene_core::box_style::BoxStyle<N, S, skene_common::terminal::TerminalStyle>) -> &mut <S as skene_core::shape::Shape>::Of
+impl<N: skene_core::scalar::Scalar> skene_core::box_style::BoxField<N, skene_common::terminal::TerminalStyle> for skene_common::terminal::terminal_fields::ScrollbarGlyphs
+pub type skene_common::terminal::terminal_fields::ScrollbarGlyphs::Value = skene_common::terminal::ScrollbarGlyphs
+pub const skene_common::terminal::terminal_fields::ScrollbarGlyphs::KEY: skene_core::property::PropertyKey<skene_common::terminal::TerminalProperty>
+pub fn skene_common::terminal::terminal_fields::ScrollbarGlyphs::get<S: skene_core::shape::Shape>(&skene_core::box_style::BoxStyle<N, S, skene_common::terminal::TerminalStyle>) -> &<S as skene_core::shape::Shape>::Of
+pub fn skene_common::terminal::terminal_fields::ScrollbarGlyphs::get_mut<S: skene_core::shape::Shape>(&mut skene_core::box_style::BoxStyle<N, S, skene_common::terminal::TerminalStyle>) -> &mut <S as skene_core::shape::Shape>::Of
+impl<N: skene_core::scalar::Scalar> skene_core::box_style::BoxField<N, skene_common::terminal::TerminalStyle> for skene_common::terminal::terminal_fields::ScrollbarThumb
+pub type skene_common::terminal::terminal_fields::ScrollbarThumb::Value = skene_core::values::color::Color
+pub const skene_common::terminal::terminal_fields::ScrollbarThumb::KEY: skene_core::property::PropertyKey<skene_common::terminal::TerminalProperty>
+pub fn skene_common::terminal::terminal_fields::ScrollbarThumb::get<S: skene_core::shape::Shape>(&skene_core::box_style::BoxStyle<N, S, skene_common::terminal::TerminalStyle>) -> &<S as skene_core::shape::Shape>::Of
+pub fn skene_common::terminal::terminal_fields::ScrollbarThumb::get_mut<S: skene_core::shape::Shape>(&mut skene_core::box_style::BoxStyle<N, S, skene_common::terminal::TerminalStyle>) -> &mut <S as skene_core::shape::Shape>::Of
+impl<N: skene_core::scalar::Scalar> skene_core::box_style::BoxField<N, skene_common::terminal::TerminalStyle> for skene_common::terminal::terminal_fields::ScrollbarTrack
+pub type skene_common::terminal::terminal_fields::ScrollbarTrack::Value = skene_core::values::color::Color
+pub const skene_common::terminal::terminal_fields::ScrollbarTrack::KEY: skene_core::property::PropertyKey<skene_common::terminal::TerminalProperty>
+pub fn skene_common::terminal::terminal_fields::ScrollbarTrack::get<S: skene_core::shape::Shape>(&skene_core::box_style::BoxStyle<N, S, skene_common::terminal::TerminalStyle>) -> &<S as skene_core::shape::Shape>::Of
+pub fn skene_common::terminal::terminal_fields::ScrollbarTrack::get_mut<S: skene_core::shape::Shape>(&mut skene_core::box_style::BoxStyle<N, S, skene_common::terminal::TerminalStyle>) -> &mut <S as skene_core::shape::Shape>::Of
+impl<N: skene_core::scalar::Scalar> skene_core::box_style::BoxField<N, skene_common::terminal::TerminalStyle> for skene_common::terminal::terminal_fields::Shadow
+pub type skene_common::terminal::terminal_fields::Shadow::Value = skene_core::values::color::Color
+pub const skene_common::terminal::terminal_fields::Shadow::KEY: skene_core::property::PropertyKey<skene_common::terminal::TerminalProperty>
+pub fn skene_common::terminal::terminal_fields::Shadow::get<S: skene_core::shape::Shape>(&skene_core::box_style::BoxStyle<N, S, skene_common::terminal::TerminalStyle>) -> &<S as skene_core::shape::Shape>::Of
+pub fn skene_common::terminal::terminal_fields::Shadow::get_mut<S: skene_core::shape::Shape>(&mut skene_core::box_style::BoxStyle<N, S, skene_common::terminal::TerminalStyle>) -> &mut <S as skene_core::shape::Shape>::Of
+impl<N: skene_core::scalar::Scalar> skene_core::box_style::BoxField<N, skene_common::terminal::TerminalStyle> for skene_common::terminal::terminal_fields::ShadowOffset
+pub type skene_common::terminal::terminal_fields::ShadowOffset::Value = skene_core::expr::Length
+pub const skene_common::terminal::terminal_fields::ShadowOffset::KEY: skene_core::property::PropertyKey<skene_common::terminal::TerminalProperty>
+pub fn skene_common::terminal::terminal_fields::ShadowOffset::get<S: skene_core::shape::Shape>(&skene_core::box_style::BoxStyle<N, S, skene_common::terminal::TerminalStyle>) -> &<S as skene_core::shape::Shape>::Of
+pub fn skene_common::terminal::terminal_fields::ShadowOffset::get_mut<S: skene_core::shape::Shape>(&mut skene_core::box_style::BoxStyle<N, S, skene_common::terminal::TerminalStyle>) -> &mut <S as skene_core::shape::Shape>::Of
+impl<N: skene_core::scalar::Scalar> skene_core::box_style::BoxField<N, skene_common::terminal::TerminalStyle> for skene_common::terminal::terminal_fields::ShadowSoftening
+pub type skene_common::terminal::terminal_fields::ShadowSoftening::Value = skene_core::expr::Length
+pub const skene_common::terminal::terminal_fields::ShadowSoftening::KEY: skene_core::property::PropertyKey<skene_common::terminal::TerminalProperty>
+pub fn skene_common::terminal::terminal_fields::ShadowSoftening::get<S: skene_core::shape::Shape>(&skene_core::box_style::BoxStyle<N, S, skene_common::terminal::TerminalStyle>) -> &<S as skene_core::shape::Shape>::Of
+pub fn skene_common::terminal::terminal_fields::ShadowSoftening::get_mut<S: skene_core::shape::Shape>(&mut skene_core::box_style::BoxStyle<N, S, skene_common::terminal::TerminalStyle>) -> &mut <S as skene_core::shape::Shape>::Of
+impl<N: skene_core::scalar::Scalar> skene_core::box_style::IntoBoxValue<N, skene_common::terminal::TerminalStyle> for skene_common::terminal::BorderGlyphs
+pub fn skene_common::terminal::BorderGlyphs::from_box_value(skene_core::box_style::BoxValue<N, skene_common::terminal::TerminalStyle>) -> core::option::Option<Self>
+pub fn skene_common::terminal::BorderGlyphs::into_box_value(self) -> skene_core::box_style::BoxValue<N, skene_common::terminal::TerminalStyle>
+impl<N: skene_core::scalar::Scalar> skene_core::box_style::IntoBoxValue<N, skene_common::terminal::TerminalStyle> for skene_common::terminal::ScrollbarGlyphs
+pub fn skene_common::terminal::ScrollbarGlyphs::from_box_value(skene_core::box_style::BoxValue<N, skene_common::terminal::TerminalStyle>) -> core::option::Option<Self>
+pub fn skene_common::terminal::ScrollbarGlyphs::into_box_value(self) -> skene_core::box_style::BoxValue<N, skene_common::terminal::TerminalStyle>
+pub struct skene_common::terminal::Typography
+pub skene_common::terminal::Typography::ink: skene_core::token::Token<skene_core::values::color::Color, u32>
+pub skene_common::terminal::Typography::link_focus_ink: skene_core::token::Token<skene_core::values::color::Color, u32>
+pub skene_common::terminal::Typography::link_focus_surface: skene_core::token::Token<skene_core::values::color::Color, u32>
+pub skene_common::terminal::Typography::link_ink: skene_core::token::Token<skene_core::values::color::Color, u32>
+pub skene_common::terminal::Typography::selection_ink: skene_core::token::Token<skene_core::values::color::Color, u32>
+pub skene_common::terminal::Typography::selection_surface: skene_core::token::Token<skene_core::values::color::Color, u32>
+pub skene_common::terminal::Typography::size: skene_core::token::Token<skene_core::expr::Length, u32>
+pub skene_common::terminal::Typography::weight: skene_core::token::Token<f32, u32>
+impl skene_common::terminal::Typography
+pub fn skene_common::terminal::Typography::set_ink(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, u32>>) -> Self
+pub fn skene_common::terminal::Typography::set_link_focus_ink(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, u32>>) -> Self
+pub fn skene_common::terminal::Typography::set_link_focus_surface(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, u32>>) -> Self
+pub fn skene_common::terminal::Typography::set_link_ink(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, u32>>) -> Self
+pub fn skene_common::terminal::Typography::set_selection_ink(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, u32>>) -> Self
+pub fn skene_common::terminal::Typography::set_selection_surface(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, u32>>) -> Self
+pub fn skene_common::terminal::Typography::set_size(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::expr::Length, u32>>) -> Self
+pub fn skene_common::terminal::Typography::set_weight(self, impl core::convert::Into<skene_core::leaf::Definition<f32, u32>>) -> Self
+impl core::clone::Clone for skene_common::terminal::Typography
+pub fn skene_common::terminal::Typography::clone(&self) -> skene_common::terminal::Typography
+impl core::cmp::PartialEq for skene_common::terminal::Typography
+pub fn skene_common::terminal::Typography::eq(&self, &skene_common::terminal::Typography) -> bool
+impl core::default::Default for skene_common::terminal::Typography
+pub fn skene_common::terminal::Typography::default() -> Self
+impl core::fmt::Debug for skene_common::terminal::Typography
+pub fn skene_common::terminal::Typography::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for skene_common::terminal::Typography
+impl<V> skene_core::token::TokenSet<V> for skene_common::terminal::Typography where V: core::convert::From<skene_core::leaf::Definition<skene_core::values::color::Color, u32>> + core::convert::From<skene_core::leaf::Definition<f32, u32>> + core::convert::From<skene_core::leaf::Definition<skene_core::expr::Length, u32>> + 'static
+pub fn skene_common::terminal::Typography::definitions(&self) -> alloc::vec::Vec<(skene_core::token::TokenName, V)>
+pub const skene_common::terminal::BOLD_WEIGHT: f32
 pub mod skene_common::typography
 pub const skene_common::typography::INK: skene_core::token::TokenRef<skene_core::values::color::Color>
 pub const skene_common::typography::LETTER_SPACING: skene_core::token::TokenRef<skene_core::expr::Length>
@@ -2591,8 +2591,8 @@ impl skene_common::CornerRadius for ()
 pub fn ()::set_corner_radius<S: skene_core::shape::Shape>(&mut Self::BoxFields, <S as skene_core::shape::Shape>::Of)
 impl skene_common::CornerRadius for skene_common::gui::GuiStyle
 pub fn skene_common::gui::GuiStyle::set_corner_radius<S: skene_core::shape::Shape>(&mut Self::BoxFields, <S as skene_core::shape::Shape>::Of)
-impl skene_common::CornerRadius for skene_common::tui::TuiStyle
-pub fn skene_common::tui::TuiStyle::set_corner_radius<S: skene_core::shape::Shape>(&mut Self::BoxFields, <S as skene_core::shape::Shape>::Of)
+impl skene_common::CornerRadius for skene_common::terminal::TerminalStyle
+pub fn skene_common::terminal::TerminalStyle::set_corner_radius<S: skene_core::shape::Shape>(&mut Self::BoxFields, <S as skene_core::shape::Shape>::Of)
 pub trait skene_common::IntoBrush
 pub fn skene_common::IntoBrush::into_brush(self) -> peniko::brush::Brush
 impl skene_common::IntoBrush for peniko::Color
@@ -2622,8 +2622,8 @@ pub trait skene_common::ThemedIn<P: skene_core::platform::Platform>: skene_core:
 pub fn skene_common::ThemedIn::current() -> Self
 pub fn skene_common::ThemedIn::watch() -> skene_reactive::memo::Memo<Self>
 impl<P: skene_core::platform::Platform, S: skene_core::token::TokenSet<<P as skene_core::platform::Platform>::TokenValue> + core::default::Default> skene_common::ThemedIn<P> for S
-pub fn S::current() -> S
-pub fn S::watch() -> skene_reactive::memo::Memo<S>
+pub fn S::current() -> Self
+pub fn S::watch() -> skene_reactive::memo::Memo<Self>
 pub trait skene_common::TypeMetrics: skene_core::extension::StyleExtension
 pub fn skene_common::TypeMetrics::font_size<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
 pub fn skene_common::TypeMetrics::font_weight<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
@@ -2651,15 +2651,15 @@ pub fn skene_common::gui::GuiStyle::set_font_size<S: skene_core::shape::Shape>(&
 pub fn skene_common::gui::GuiStyle::set_font_weight<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
 pub fn skene_common::gui::GuiStyle::set_letter_spacing<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
 pub fn skene_common::gui::GuiStyle::set_line_height<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
-impl skene_common::TypeMetrics for skene_common::tui::TuiStyle
-pub fn skene_common::tui::TuiStyle::font_size<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
-pub fn skene_common::tui::TuiStyle::font_weight<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
-pub fn skene_common::tui::TuiStyle::letter_spacing<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
-pub fn skene_common::tui::TuiStyle::line_height<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
-pub fn skene_common::tui::TuiStyle::set_font_size<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
-pub fn skene_common::tui::TuiStyle::set_font_weight<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
-pub fn skene_common::tui::TuiStyle::set_letter_spacing<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
-pub fn skene_common::tui::TuiStyle::set_line_height<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
+impl skene_common::TypeMetrics for skene_common::terminal::TerminalStyle
+pub fn skene_common::terminal::TerminalStyle::font_size<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
+pub fn skene_common::terminal::TerminalStyle::font_weight<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
+pub fn skene_common::terminal::TerminalStyle::letter_spacing<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
+pub fn skene_common::terminal::TerminalStyle::line_height<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
+pub fn skene_common::terminal::TerminalStyle::set_font_size<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
+pub fn skene_common::terminal::TerminalStyle::set_font_weight<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
+pub fn skene_common::terminal::TerminalStyle::set_letter_spacing<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
+pub fn skene_common::terminal::TerminalStyle::set_line_height<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
 pub fn skene_common::paint(&peniko::brush::Brush) -> vello_common::paint::PaintType
 pub type skene_common::BasicButton<P, C> = skene_common::Control<P, skene_common::Activate, C>
 pub type skene_common::BasicCheckbox<P, C> = skene_common::Control<P, skene_common::Toggle, C>

@@ -8,7 +8,7 @@ publish = false
 [dependencies]
 skene-common.workspace = true
 skene-core.workspace = true
-skene-tui.workspace = true
+skene-terminal.workspace = true
 
 [lints]
 workspace = true

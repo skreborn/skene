@@ -31,7 +31,7 @@ version = "0.1.0"
 dependencies = [
  "skene-common",
  "skene-core",
- "skene-tui",
+ "skene-terminal",
 ]
 
 [[package]]
@@ -2592,26 +2592,11 @@ dependencies = [
  "skene-gui",
  "skene-headless",
  "skene-reactive",
- "skene-tui",
+ "skene-terminal",
 ]
 
 [[package]]
-name = "skene-transport"
-version = "0.1.0"
-dependencies = [
- "js-sys",
- "rustls",
- "rustls-platform-verifier",
- "tungstenite",
- "ureq",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "wasm-bindgen-test",
- "web-sys",
-]
-
-[[package]]
-name = "skene-tui"
+name = "skene-terminal"
 version = "0.1.0"
 dependencies = [
  "base64 0.22.1",
@@ -2634,6 +2619,21 @@ dependencies = [
  "unicode-segmentation",
  "unicode-width",
  "vt100",
+]
+
+[[package]]
+name = "skene-transport"
+version = "0.1.0"
+dependencies = [
+ "js-sys",
+ "rustls",
+ "rustls-platform-verifier",
+ "tungstenite",
+ "ureq",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "wasm-bindgen-test",
+ "web-sys",
 ]
 
 [[package]]
@@ -2819,6 +2819,91 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "06794f8f6c5c898b3275aebefa6b8a1cb24cd2c6c79397ab15774837a0bc5755"
 dependencies = [
  "winapi-util",
+]
+
+[[package]]
+name = "terminal-context-menu"
+version = "0.1.0"
+dependencies = [
+ "skene-simple",
+ "skene-terminal",
+]
+
+[[package]]
+name = "terminal-counter"
+version = "0.1.0"
+dependencies = [
+ "skene-simple",
+ "skene-terminal",
+]
+
+[[package]]
+name = "terminal-drag-and-drop"
+version = "0.1.0"
+dependencies = [
+ "skene-simple",
+ "skene-terminal",
+]
+
+[[package]]
+name = "terminal-enhance"
+version = "0.1.0"
+dependencies = [
+ "skene-simple",
+ "skene-terminal",
+]
+
+[[package]]
+name = "terminal-gallery"
+version = "0.1.0"
+dependencies = [
+ "acme-sparkline",
+ "acme-ui",
+ "insta",
+ "skene-simple",
+ "skene-terminal",
+]
+
+[[package]]
+name = "terminal-http"
+version = "0.1.0"
+dependencies = [
+ "skene-simple",
+ "skene-terminal",
+ "skene-transport",
+]
+
+[[package]]
+name = "terminal-store"
+version = "0.1.0"
+dependencies = [
+ "skene-simple",
+ "skene-terminal",
+]
+
+[[package]]
+name = "terminal-text-sizing"
+version = "0.1.0"
+dependencies = [
+ "skene-simple",
+ "skene-terminal",
+]
+
+[[package]]
+name = "terminal-theme"
+version = "0.1.0"
+dependencies = [
+ "skene-simple",
+ "skene-terminal",
+]
+
+[[package]]
+name = "terminal-ws"
+version = "0.1.0"
+dependencies = [
+ "skene-simple",
+ "skene-terminal",
+ "skene-transport",
 ]
 
 [[package]]
@@ -3035,91 +3120,6 @@ dependencies = [
  "target-tuple",
  "termcolor",
  "toml 1.1.6+spec-1.1.0",
-]
-
-[[package]]
-name = "tui-context-menu"
-version = "0.1.0"
-dependencies = [
- "skene-simple",
- "skene-tui",
-]
-
-[[package]]
-name = "tui-counter"
-version = "0.1.0"
-dependencies = [
- "skene-simple",
- "skene-tui",
-]
-
-[[package]]
-name = "tui-drag-and-drop"
-version = "0.1.0"
-dependencies = [
- "skene-simple",
- "skene-tui",
-]
-
-[[package]]
-name = "tui-enhance"
-version = "0.1.0"
-dependencies = [
- "skene-simple",
- "skene-tui",
-]
-
-[[package]]
-name = "tui-gallery"
-version = "0.1.0"
-dependencies = [
- "acme-sparkline",
- "acme-ui",
- "insta",
- "skene-simple",
- "skene-tui",
-]
-
-[[package]]
-name = "tui-http"
-version = "0.1.0"
-dependencies = [
- "skene-simple",
- "skene-transport",
- "skene-tui",
-]
-
-[[package]]
-name = "tui-store"
-version = "0.1.0"
-dependencies = [
- "skene-simple",
- "skene-tui",
-]
-
-[[package]]
-name = "tui-text-sizing"
-version = "0.1.0"
-dependencies = [
- "skene-simple",
- "skene-tui",
-]
-
-[[package]]
-name = "tui-theme"
-version = "0.1.0"
-dependencies = [
- "skene-simple",
- "skene-tui",
-]
-
-[[package]]
-name = "tui-ws"
-version = "0.1.0"
-dependencies = [
- "skene-simple",
- "skene-transport",
- "skene-tui",
 ]
 
 [[package]]

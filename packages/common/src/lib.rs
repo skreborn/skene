@@ -3,7 +3,7 @@
 //! Every built-in view once, generic over the [`Platform`] a facade names. A facade
 //! aliases them (`type Container = skene_common::Container<ActivePlatform>`); a component
 //! library writes against them exactly as a facade does. What every platform of one
-//! medium shares above the spine is a module here: [`gui`] for pixels and [`tui`] for the
+//! medium shares above the spine is a module here: [`gui`] for pixels and [`terminal`] for the
 //! terminal; [`routing`] is the router every facade binds.
 //!
 //! A view's build folds the annotation a wrapper left pending into its declared style,
@@ -59,10 +59,10 @@ mod span;
 mod stack;
 mod suspense;
 mod switch;
+pub mod terminal;
 mod text;
 mod theme;
 mod tooltip;
-pub mod tui;
 mod type_metrics;
 pub mod typography;
 

@@ -82,7 +82,7 @@ left half-done in a code comment.
     token and per-container query invalidation, `em` from the node's own font size);
     a hit test and a partial repaint still visit every child of a box, 0.3 ms for a
     pointer move over 16k text rows where an unchanged frame costs 21 µs (`cargo bench
-    -p skene-tui --bench frame`); selection spans compute once per frame; paint, hit
+    -p skene-terminal --bench frame`); selection spans compute once per frame; paint, hit
     tests and the selection wrap a run's text afresh where the layout's measure keeps
     its shape; clusters re-segment around an edit, and undo stores range diffs.
     - Token caches take per-scope epochs in place of the generations every
@@ -181,9 +181,8 @@ left half-done in a code comment.
     in line with the vocabulary rule, the structure loses its bad edges and copies, and
     the documents shrink to what tooling cannot enforce.
     - A shell per platform: `skene-gui` folds into `skene-web`, the one crate a web
-    developer imports, re-exporting the foundation; `skene-tui` becomes
-    `skene-terminal`; `examples/gui` and `examples/tui` become `examples/web` and
-    `examples/terminal`; each facade exposes its views as types of its own, the
+    developer imports, re-exporting the foundation, and `examples/gui` becomes
+    `examples/web`; each facade exposes its views as types of its own, the
     foundation's generic implementations behind them where the platforms share their
     semantics; Simple splits into a core of colors, named sizes and behavior defaults
     and a crate per platform (`skene-simple-web`, `skene-simple-terminal`), and
@@ -313,20 +312,20 @@ left half-done in a code comment.
     emits re-run causes as `tracing` spans, and debug builds warn on a signal read
     while building a view, which freezes it, and on a write inside a memo.
     - Undecided: one terminal for the terminal's dev loop, the viewer hosted in the app.
-    `skene run tui` runs the app in its own terminal as the launcher `attach` is today,
-    building beside it and swapping each binary in place; cargo's output is captured, a
-    failed build reaching the app as its notice and, while no instance runs (a panic at
-    startup), printed on the restored terminal until the next build respawns it. The
-    terminal hosts this item's viewer in-process, as a panel docked beside the app and
-    toggled by a `Launch` key as the mouse key is, the stream's first events being the
-    logs (the dev build's subscriber capturing them), the build's notices and the last
-    crash, the inspector following; a tab or a window of its own hosts the same viewer
-    on the web and native. The panel lives in a scene of its own, so the app's snapshot,
-    focus, accessibility tree and tests never see it; docking shrinks the app's viewport
-    as a browser's docked devtools do; and it compiles only under the dev cfg the CLI
-    sets, so a production build carries none of it. Open: the key (`F12`, as browsers
-    use), whether `attach` stays as the two-terminal form, and whether the first cut is
-    the logs, the build and the last crash alone.
+    `skene run terminal` runs the app in its own terminal as the launcher `attach` is
+    today, building beside it and swapping each binary in place; cargo's output is
+    captured, a failed build reaching the app as its notice and, while no instance runs
+    (a panic at startup), printed on the restored terminal until the next build respawns
+    it. The terminal hosts this item's viewer in-process, as a panel docked beside the
+    app and toggled by a `Launch` key as the mouse key is, the stream's first events
+    being the logs (the dev build's subscriber capturing them), the build's notices and
+    the last crash, the inspector following; a tab or a window of its own hosts the same
+    viewer on the web and native. The panel lives in a scene of its own, so the app's
+    snapshot, focus, accessibility tree and tests never see it; docking shrinks the
+    app's viewport as a browser's docked devtools do; and it compiles only under the dev
+    cfg the CLI sets, so a production build carries none of it. Open: the key (`F12`, as
+    browsers use), whether `attach` stays as the two-terminal form, and whether the
+    first cut is the logs, the build and the last crash alone.
 13. **Themes split by platform, and design tokens in the DTCG format.** A theme's
     core is plain constants shared by every shell (its colors, and its sizes named
     rather than measured, since cells, points, dp and pixels share no unit), and each

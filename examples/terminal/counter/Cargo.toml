@@ -1,0 +1,13 @@
+[package]
+name = "terminal-counter"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+skene-simple.workspace = true
+skene-terminal.workspace = true
+
+[lints]
+workspace = true

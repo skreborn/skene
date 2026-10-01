@@ -2,7 +2,7 @@
 //!
 //! Reads `skene.toml`—the framework manifest—beside the app's `Cargo.toml`; every
 //! setting is optional. `skene run web` is the web dev loop: build, serve, watch,
-//! rebuild, and reload the page over SSE; `skene run tui` is the terminal's, whose
+//! rebuild, and reload the page over SSE; `skene run terminal` is the terminal's, whose
 //! binary `skene attach` runs and swaps.
 
 #[cfg(not(target_arch = "wasm32"))]

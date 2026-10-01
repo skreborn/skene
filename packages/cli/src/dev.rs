@@ -73,9 +73,9 @@ fn load_renderer(app: &App, release: bool) -> Result<crate::render::Renderer, St
 /// The terminal build loop: build, publish the binary for an attached terminal, and
 /// on each change rebuild and publish the next—the CLI-held state carries across
 /// the swap. Runs until interrupted.
-pub(crate) fn run_tui(app: &App, release: bool) -> Result<(), String> {
-  let binary =
-    pipeline::build_tui_binary(app, release).map_err(|error| format!("build failed:\n{error}"))?;
+pub(crate) fn run_terminal(app: &App, release: bool) -> Result<(), String> {
+  let binary = pipeline::build_terminal_binary(app, release)
+    .map_err(|error| format!("build failed:\n{error}"))?;
   let dev = Dev::default();
   let id = spawn_state_server(dev.clone())?;
   let (changes, _watcher) = watch_sources(app)?;
@@ -94,7 +94,7 @@ pub(crate) fn run_tui(app: &App, release: bool) -> Result<(), String> {
     // A rebuild the change did not reach—an unrelated file, a comment elsewhere—
     // leaves the binary identical, and the attached app (and its state) stays up
     // instead of restarting for nothing.
-    match pipeline::build_tui_binary(app, release) {
+    match pipeline::build_terminal_binary(app, release) {
       Ok(binary) => {
         dev.clear_notice();
 

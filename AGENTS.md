@@ -20,8 +20,8 @@
   they diverge. There is no cross-platform vocabulary: an app is a shared crate of
   logic and state with a shell per platform, and a component library a core of colors,
   named sizes and logic with a presentation crate per platform. Until the rename wave
-  in `ROADMAP.md` lands, the web's facade is `skene-gui` and the terminal's
-  `skene-tui`, and the paragraphs below still describe that layout.
+  in `ROADMAP.md` lands, the web's facade is `skene-gui`, and the paragraphs below
+  still describe that layout.
 - The spine (`skene-reactive` + `skene-core` + `skene-common`) stays platform-agnostic: no
   platform assumptions or nomenclature. Core hosts the retained **scene** (`Scene<P>`:
   parents, children, per-child annotations, token definitions, generational node ids), the
@@ -34,19 +34,20 @@
   geometry over the platform's scalar, and universal values. `skene-common` hosts every
   built-in view once, generic over `P: Platform`; a facade aliases them.
 - The canonical building block is a **view** (the `View` trait); never "widget". Two
-  equal facades exist—`skene-gui` (pixel media: web, native later) and `skene-tui` (the
-  terminal)—each owning its builder vocabulary, typed to exactly its medium; neither is
-  the blessed one. Within a facade, views are realized **once** against its typed platform
-  vocabulary—no per-platform `impl View`, no "backend" concept.
+  equal facades exist—`skene-gui` (pixel media: web, native later) and
+  `skene-terminal` (the terminal)—each owning its builder vocabulary, typed to exactly
+  its medium; neither is the blessed one. Within a facade, views are realized
+  **once** against its typed platform vocabulary—no per-platform `impl View`, no
+  "backend" concept.
 - A **platform** is a crate implementing `Platform`: `skene-web` (the browser and server leaves),
   `skene-headless` (the host platform every facade compiles against off its target, driven
-  by tests), later `skene-native`; `skene-tui` carries its own, down to the terminal
+  by tests), later `skene-native`; `skene-terminal` carries its own, down to the terminal
   device: its `device`, `tty`, `parse` and `escape` modules are the whole terminal layer, no
   terminal crate beneath, so a reply a new capability needs is parsed in the change
-  that asks for it. What every platform of one
-  medium shares above the spine lives in that medium's module of `skene-common`—`gui`
-  (`GuiStyle`, the pixel `Typography`, `Painting`) and `tui` (`TuiStyle`, `BorderGlyphs`,
-  the terminal `Typography`)—never in `skene-core`, which knows no medium.
+  that asks for it. What every platform of one medium shares above the spine lives in
+  that medium's module of `skene-common`—`gui` (`GuiStyle`, the pixel `Typography`,
+  `Painting`) and `terminal` (`TerminalStyle`, `BorderGlyphs`, the terminal
+  `Typography`)—never in `skene-core`, which knows no medium.
   Platforms depend on core and common, never on each other; a facade is the
   only place that names its platforms, and it publishes the selected one as `ActivePlatform`.
   The trait is zero-sized and monomorphized: no `dyn` platform, no downcast, no runtime
@@ -62,7 +63,7 @@
   terminal shows it through its graphics protocol where one is proven, the server leaf
   renders it empty; the native realization comes with the native platform.
 - Selection: by **facade dependency** (GUI apps depend on `skene-gui`, terminal apps on
-  `skene-tui`), then by target within a facade (`wasm32-unknown-unknown` → the web's
+  `skene-terminal`), then by target within a facade (`wasm32-unknown-unknown` → the web's
   browser leaf; native triples → the native platform, later; every other host → the
   headless platform), and where one triple hosts several platforms the build names the
   platform by a cfg: `--cfg skene_platform="server"` selects the web's server leaf
@@ -283,7 +284,7 @@
   crate boundary. On platforms with a real view hierarchy the platform realizes the
   tree into it, so embeds and painted layers interleave in z-order by the platform
   compositor.
-- **The TUI targets browser parity.** Wherever the terminal can express it, behavior
+- **The terminal targets browser parity.** Wherever the terminal can express it, behavior
   follows a modern browser: layout, features, settings, colors, selection, and every
   interaction's shape—clicks fire on press+release over one target while focus, caret
   placement, and drags act on press; wheel gestures latch their scroll target and
@@ -486,7 +487,7 @@
   built-in takes is crate-private; making something `pub(crate)` on that path is a
   regression. `skene-simple` is held to the same rule from the other side: a facade never
   re-exports it, an app depends on it explicitly, and
-  its `gui` and `tui` modules are only a `prelude` of aliases over that facade's
+  its `gui` and `terminal` modules are only a `prelude` of aliases over that facade's
   `ActivePlatform`, which is exactly what a third-party library may ship beside its generic
   crate. `examples/third-party` is the standing proof and part of the gate.
 - **Motion is declared once and runs everywhere.** `Transition` and keyframe `Animation`
@@ -590,7 +591,7 @@
   Convenience conversions (`From<f32> for Spacing`) keep the common case terse without
   adding a second path. Conditions ride the value (`value.when(condition, other)`, the
   `When` extension on any value or token), so there is no `set_<prop>_when` family.
-- A type is named for the crate it belongs to, not the medium: `GuiStyle` and `TuiStyle` with
+- A type is named for the crate it belongs to, not the medium: `GuiStyle` and `TerminalStyle` with
   their properties, fields and traits, `SimpleGlyphs` and every other `Simple*` item. A
   bare name is not an option where the facade's prelude already carries it (`Property`,
   `Value`, `Text`), and a scheme that is bare for some names and prefixed for others is
@@ -601,7 +602,7 @@
   double, `is_<state>` answers a yes-or-no question, any other read is named for what it
   returns, and a user's gesture composed of events is named for the gesture in the
   platform's `user` module (`user::click`, `user::type_text`). Headless's are the crate's
-  own, reached as `skene_gui::headless`; the terminal's live in `skene_tui::testing`; a
+  own, reached as `skene_gui::headless`; the terminal's live in `skene_terminal::testing`; a
   browser test's helpers in `skene_web::testing`; and the accessibility queries every
   one of them offers are declared by `skene_core::access_queries!`.
 - Make a function or method `const` whenever its body allows it (no trait-method calls such as
@@ -696,7 +697,7 @@
   fields: cargo features are additive and unify across the build graph, so mutually-exclusive
   cfgs break any build containing both facades.
 - Examples are targeted: one per feature, under `examples/gui/<name>` and
-  `examples/tui/<name>` (folder names without facade suffixes, the same name on both
+  `examples/terminal/<name>` (folder names without facade suffixes, the same name on both
   facades where the feature exists), never crammed into an existing example. Every common
   user-facing capability gets one; the `gallery` example shows off every built-in view and
   control with minimal but pretty styling, and `theme` shows the token model.

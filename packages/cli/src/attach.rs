@@ -1,4 +1,4 @@
-//! The launcher `attach` runs: the terminal app a `run tui` loop builds, each rebuilt
+//! The launcher `attach` runs: the terminal app a `run terminal` loop builds, each rebuilt
 //! binary swapped in with the state carried across.
 
 #[cfg(unix)]
@@ -10,7 +10,7 @@ use skene_dev::{CONTROL_VARIABLE, Control, STATE_VARIABLE, SWAP_EXIT};
 #[cfg(unix)]
 use crate::server::{Binary, fetch};
 
-/// Runs the binary the `run tui` loop with id `id` publishes, in this terminal, as its
+/// Runs the binary the `run terminal` loop with id `id` publishes, in this terminal, as its
 /// launcher: the app hears each rebuilt binary and each notice on a control pipe,
 /// records its state to an unnamed file it inherits and becomes the next binary in
 /// place, so the terminal, the pipe and the state carry across every swap. Ends when
@@ -22,7 +22,7 @@ pub(crate) fn attach(id: u32) -> Result<(), String> {
   let published =
     || fetch(id, "/skene:binary").and_then(|body| Binary::parse(&String::from_utf8_lossy(&body)));
   let mut current = published().ok_or_else(|| {
-    format!("no `run tui` loop answers as {id}; start one and attach to the id it prints")
+    format!("no `run terminal` loop answers as {id}; start one and attach to the id it prints")
   })?;
   let (reader, mut writer) =
     std::io::pipe().map_err(|error| format!("open the control pipe: {error}"))?;

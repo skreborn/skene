@@ -42,7 +42,7 @@ struct Notice {
   text: Option<String>,
 }
 
-/// The terminal binary a `run tui` loop built: a generation bumped on every swap, the
+/// The terminal binary a `run terminal` loop built: a generation bumped on every swap, the
 /// binary's path, and the directory it runs in.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Binary {
@@ -238,7 +238,7 @@ fn socket_dir() -> Result<PathBuf, String> {
   Ok(dir)
 }
 
-/// The socket the `run tui` loop with id `id` serves its state on.
+/// The socket the `run terminal` loop with id `id` serves its state on.
 ///
 /// # Errors
 ///
@@ -248,7 +248,7 @@ fn state_socket(id: u32) -> Result<PathBuf, String> {
   Ok(socket_dir()?.join(format!("{id}.sock")))
 }
 
-/// Fetches `path` from the state server of the `run tui` loop with id `id`: the body of
+/// Fetches `path` from the state server of the `run terminal` loop with id `id`: the body of
 /// a `200` reply, `None` for any other or for no server.
 #[cfg(unix)]
 pub(crate) fn fetch(id: u32, path: &str) -> Option<Vec<u8>> {
@@ -319,7 +319,7 @@ pub(crate) fn spawn_state_server(dev: Dev) -> Result<u32, String> {
 /// Always.
 #[cfg(not(unix))]
 pub fn spawn_state_server(_dev: Dev) -> Result<u32, String> {
-  Err("`run tui` serves its state on a Unix socket, which this system lacks".to_owned())
+  Err("`run terminal` serves its state on a Unix socket, which this system lacks".to_owned())
 }
 
 /// Handles one request against the binary and the notice alone.

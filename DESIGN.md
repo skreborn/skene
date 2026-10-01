@@ -34,8 +34,8 @@ skene-common      every built-in view ONCE, generic over P: Platform—Container
       │          Control<B: Behavior> and the shipped behaviors, BasicPicker, Overlay,
       │          LazyColumn/LazyRow, Show/Switch/Suspense/ErrorBoundary, Theme, typography,
       │          LowLevel; gui (GuiStyle, the pixel Typography set, Painting/Canvas/
-      │          Painted through vello), tui (TuiStyle, BorderGlyphs, the terminal
-      │          Typography set), routing (a typed route in a signal)
+      │          Painted through vello), terminal (TerminalStyle, BorderGlyphs, the
+      │          terminal Typography set), routing (a typed route in a signal)
       │
       ├── skene-web       Platform for the web: DOM sink (browser) + HTML/CSS
       │                   serializer (server) over one node record, the compiler,
@@ -45,7 +45,7 @@ skene-common      every built-in view ONCE, generic over P: Platform—Container
       ├── skene-headless  Platform for the host: realizes into an inspectable record
       │                   store so view logic tests run without a platform; the
       │                   whole trait, trigger_ seams, the pumped executor
-      └── skene-tui       the terminal facade AND its platform: taffy in cells, a
+      └── skene-terminal  the terminal facade AND its platform: taffy in cells, a
                           cell buffer, motion on its frame clock; escape trait
                           CellPainter
 
@@ -53,12 +53,13 @@ skene-gui        the GUI facade: f32, ActivePlatform (the web on wasm32, the hea
                  platform elsewhere), aliases for every view, Typography, media::*,
                  Resource across the server boundary, Deferred, AsyncView, Link, head,
                  view_transitions, launch and the server entries, #[main]
-skene-tui        the terminal facade, EQUAL in standing: u32 cells, Tui, the same
-                 aliases, Typography, BorderGlyphs, media::*, launch, testing
+skene-terminal   the terminal facade, EQUAL in standing: u32 cells, Terminal, the
+                 same aliases, Typography, BorderGlyphs, media::*, launch, testing
 skene-simple     the Simple design language over skene-common, generic over P: the palette
                  (a TokenSet), the looks, the shape per unit, the terminal marks
                  (SimpleGlyphs) and the Simple* views; an app's explicit dependency;
-                 gui and tui alias the types to each facade's ActivePlatform, with a prelude
+                 gui and terminal alias the types to each facade's ActivePlatform,
+                 with a prelude
 skene-conformance  one suite of behaviors every platform shows alike, run through the
                  Driver a platform implements over its test seams
 skene-macros     #[main], #[lazy], #[derive(Store)], #[derive(Snapshot)]
@@ -66,7 +67,7 @@ skene-cli        the skene command: build and run per target, the dev server, st
                  generation, skene.toml assets
 ```
 
-**Two facades, one spine.** GUI and TUI are different media, not one medium with
+**Two facades, one spine.** GUI and the terminal are different media, not one medium with
 fallbacks: a GUI app targets any combination of web and native and genuinely converges;
 a terminal app is written for the terminal on purpose, and never cross-compiles into the
 other family. Each facade therefore owns its builder vocabulary outright, typed to
@@ -520,7 +521,7 @@ only serialize its current value; style data compiles to real CSS and evaluates 
 and `RunStyle<S, X>` name every shared property once; the leaf shape is a type parameter
 (`Declared` for a builder, `Static` for a platform, `Plain` for a keyframe or a resolved
 style) and the medium's own properties come through the extension (`GuiStyle`: the corner
-radius and the type metrics; `TuiStyle`: border glyphs, the corner radius, a shadow, bold,
+radius and the type metrics; `TerminalStyle`: border glyphs, the corner radius, a shadow, bold,
 size and weight). A corner radius, a font size and a letter spacing are lengths
 (`Length`) in the medium's unit, fractions kept, so one length token serves them as it
 serves padding and sizes. The
@@ -869,7 +870,7 @@ parley; accessibility is AccessKit; per-OS glue (IME, clipboard, menus) lives in
 leaf. Off-thread work uses the engine's scheduler wired to the event-loop proxy, and a
 loop-integrated timer is fair game here (the loop is ours).
 
-### TUI (`skene-tui`)
+### The terminal (`skene-terminal`)
 
 A facade in its own right, not a platform of the GUI vocabulary. Its views are the shared
 ones typed to the terminal: lengths are `u32` cells, text is a color plus a `bool` bold,
@@ -1013,7 +1014,7 @@ by whole cells), and the shadow's offset and softening (`set_shadow_offset`,
 `set_shadow_softening`, half a cell each where unset): the cells take the shadow at its
 offset rounded up, and the pixels place it exactly and soften its edge.
 
-The terminal itself is spoken to through three modules of `skene-tui`, with no
+The terminal itself is spoken to through three modules of `skene-terminal`, with no
 terminal crate beneath them: `tty` opens the device (standard input and output, or
 `/dev/tty` where those are not terminals), puts it in raw mode with `rustix`, polls
 it with a timeout, reads what arrived and restores its mode on drop and in a panic
@@ -1127,7 +1128,7 @@ headless platform is exactly such a crate in all but ownership.
 ## Selection and entry
 
 Selection is by **facade dependency** first—a GUI app depends on `skene-gui`, a
-terminal app on `skene-tui`—and by target within a facade: `skene-gui` resolves
+terminal app on `skene-terminal`—and by target within a facade: `skene-gui` resolves
 `wasm32-unknown-unknown` to the web's browser leaf, a build naming the server platform
 (`--cfg skene_platform="server"`) to its server leaf on any host, every other host to the
 headless platform, and will resolve native triples to the native platform, with no
@@ -1212,7 +1213,7 @@ render as `RenderHints` and names the response headers that request them. A rend
 that thread's, and starts from a clean one every time. SSG is the same binary run at build
 time by `skene build web --static`; the CLI's dev server (`skene run web`, `--ssr` to
 render per request through a `--serve` worker) is where the development conveniences
-live. The terminal splits the same way: `skene run tui` keeps the build loop and its
+live. The terminal splits the same way: `skene run terminal` keeps the build loop and its
 logs in the invoking terminal and publishes each built binary and each failure on a
 socket in a directory only its user may enter, and `skene attach <id>` launches the app
 in a second terminal and forwards both over a pipe the app inherits.
@@ -1252,7 +1253,7 @@ Recorded because they were load-bearing and the reasons they fell matter:
   vocabulary. Taffy-everywhere plus no-JS responsive SSG *is* a shared vocabulary by
   requirement; the model is framework-defined, and a medium extends it through its
   typed extension.
-- **"Selection is the target, only"** cannot distinguish desktop from TUI on one triple.
+- **"Selection is the target, only"** cannot distinguish desktop from the terminal on one triple.
   Target-gating is demoted from selector to enforcement.
 - **A `Backend` trait object** cost `unsafe`, `Box::leak`, and a fallible downcast. Still
   rejected: platforms are statically selected and the platform parameter monomorphizes.

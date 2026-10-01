@@ -6,7 +6,7 @@ use clap::{Parser, Subcommand};
 
 use crate::{
   attach::attach,
-  dev::{dev, run_tui},
+  dev::{dev, run_terminal},
   manifest::App,
   pipeline,
 };
@@ -31,10 +31,10 @@ enum Command {
   /// Run the app on a target: the web dev loop, or the terminal build loop.
   #[command(subcommand)]
   Run(RunTarget),
-  /// Attach the terminal app a `run tui` loop builds, in this terminal: runs the
+  /// Attach the terminal app a `run terminal` loop builds, in this terminal: runs the
   /// binary, and swaps each rebuilt one in with the state carried across.
   Attach {
-    /// The loop's id, as `run tui` prints it.
+    /// The loop's id, as `run terminal` prints it.
     id: u32,
   },
 }
@@ -54,8 +54,8 @@ enum BuildTarget {
     #[arg(long)]
     debug: bool,
   },
-  /// The terminal binary, into `dist/tui`.
-  Tui {
+  /// The terminal binary, into `dist/terminal`.
+  Terminal {
     /// Build without optimizations instead of `--release`.
     #[arg(long)]
     debug: bool,
@@ -79,7 +79,7 @@ enum RunTarget {
   },
   /// The terminal build loop: build, rebuild on change, and hand each binary to
   /// the terminal `attach` runs it in—state carried across the swap.
-  Tui {
+  Terminal {
     /// Build with optimizations (dev builds are unoptimized by default).
     #[arg(long)]
     release: bool,
@@ -114,11 +114,11 @@ impl Cli {
         debug,
       }) => pipeline::build_static(&app, &path, !debug),
 
-      Command::Build(BuildTarget::Tui { debug }) => pipeline::build_tui(&app, !debug),
+      Command::Build(BuildTarget::Terminal { debug }) => pipeline::build_terminal(&app, !debug),
 
       Command::Run(RunTarget::Web { port, release, ssr }) => dev(app, port, release, ssr),
 
-      Command::Run(RunTarget::Tui { release }) => run_tui(&app, release),
+      Command::Run(RunTarget::Terminal { release }) => run_terminal(&app, release),
 
       Command::Attach { .. } => Ok(()),
     }

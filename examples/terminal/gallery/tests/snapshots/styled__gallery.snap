@@ -1,0 +1,474 @@
+---
+source: examples/terminal/gallery/tests/styled.rs
+expression: styled
+---
+
+    GALLERY
+
+    ╭───────────────────────────────────────────────────╮
+    │                                                   │
+    │  Palette                                          │
+    │                                                   │
+    │  Palette (x) neutral  ( ) indigo  ( ) rose        │
+    │                                                   │
+    │  The theme redefines its tokens in place:         │
+    │  switch, and the click count below keeps its      │
+    │  value.                                           │
+    │                                                   │
+    ╰───────────────────────────────────────────────────╯
+
+    ╭───────────────────────────────────────────────────╮
+    │                                                   │
+    │  Text                                             │
+    │                                                   │
+    │  A run of text with a color and a bold flag.      │
+    │                                                   │
+    │  Long runs wrap at the available width, breaking  │
+    │  at spaces, so a paragraph reads naturally in     │
+    │  however many columns it gets.                    │
+    │                                                   │
+    │  This paragraph opts into selection: drag to      │
+    │  select—double-click a word, triple-click a run—  │
+    │  and right-click to copy it as it appears in the  │
+    │  source.                                          │
+    │                                                   │
+    │  Rich text mixes weights, colors, and links in    │
+    │  one paragraph.                                   │
+    │                                                   │
+    ╰───────────────────────────────────────────────────╯
+
+    ╭───────────────────────────────────────────────────╮
+    │                                                   │
+    │  Button                                           │
+    │                                                   │
+    │   Primary    Secondary    Outline    Ghost        │
+    │                                                   │
+    │                                                   │
+    │   Destructive    Disabled                         │
+    │                                                   │
+    │  the primary one clicked 0 time(s)                │
+    │                                                   │
+    ╰───────────────────────────────────────────────────╯
+
+    ╭───────────────────────────────────────────────────╮
+    │                                                   │
+    │  Tooltip                                          │
+    │                                                   │
+    │   Save    Hover me                                │
+    │                                                   │
+    ╰───────────────────────────────────────────────────╯
+
+    ╭───────────────────────────────────────────────────╮
+    │                                                   │
+    │  Checkbox & Radio                                 │
+    │                                                   │
+    │  [x] subscribed  checked                          │
+    │                                                   │
+    │  Flavor (x) mint  ( ) vanilla  ( ) plum           │
+    │                                                   │
+    ╰───────────────────────────────────────────────────╯
+
+    ╭───────────────────────────────────────────────────╮
+    │                                                   │
+    │  TextField, TextEditor, Slider & Picker           │
+    │                                                   │
+    │  ╭─────────────────────────────────────────────╮  │
+    │  │ Your name                                   │  │
+    │  ╰─────────────────────────────────────────────╯  │
+    │                                                   │
+    │  ╭─────────────────────────────────────────────╮  │
+    │  │ A few lines about you                       │  │
+    │  │                                             │  │
+    │  │                                             │  │
+    │  ╰─────────────────────────────────────────────╯  │
+    │                                                   │
+    │         ▋▋             40%                        │
+    │                                                   │
+    │  Season                                           │
+    │                                                   │
+    │  ╭─────────────────────────────────────────────╮  │
+    │  │ Summer ▾                                    │  │
+    │  ╰─────────────────────────────────────────────╯  │
+    │                                                   │
+    ╰───────────────────────────────────────────────────╯
+
+    ╭───────────────────────────────────────────────────╮
+    │                                                   │
+    │  BorderGlyphs                                     │
+    │                                                   │
+    │  ┌───────┐  ╭───────╮  ╔════════╗  ┏━━━━━━━┓      │
+    │  │ light │  │ round │  ║ double ║  ┃ heavy ┃      │
+    │  └───────┘  ╰───────╯  ╚════════╝  ┗━━━━━━━┛      │
+    │                                                   │
+    │                                                   │
+    │  +-------+                                        │
+    │  | ascii |                                        │
+    │  +-------+                                        │
+    │                                                   │
+    ╰───────────────────────────────────────────────────╯
+
+    ╭───────────────────────────────────────────────────╮
+    │                                                   │
+    │  Grid, Stack & Overlay                            │
+    │                                                   │
+    │                                                   │
+    │                                                   │
+    │                                                   │
+    │                                                   │
+    │                                                   │
+    │                                                   │
+    │                                                   │
+    │                                         pinned    │
+    │                                                   │
+    │                                                   │
+    │   Open a modal                                    │
+    │                                                   │
+    ╰───────────────────────────────────────────────────╯
+
+    ╭───────────────────────────────────────────────────╮
+    │                                                   │
+    │  LazyColumn                                       │
+    │                                                   │
+    │  Row 0 virtualized                             █  │
+    │  Row 1 virtualized                                │
+    │  Row 2 virtualized                                │
+    │  Row 3 virtualized                                │
+    │  Row 4 virtualized                                │
+    │  Row 5 virtualized                                │
+    │                                                   │
+    ╰───────────────────────────────────────────────────╯
+
+    ╭───────────────────────────────────────────────────╮
+    │                                                   │
+    │  LazyRow                                          │
+    │                                                   │
+    │  █                                                │
+    │                                                   │
+    ╰───────────────────────────────────────────────────╯
+
+    ╭───────────────────────────────────────────────────╮
+    │                                                   │
+    │  Context menu                                     │
+    │                                                   │
+    │   Right-click me, or focus me and press Shift-    │
+    │   F10                                             │
+    │  last command: nothing yet                        │
+    │                                                   │
+    ╰───────────────────────────────────────────────────╯
+
+    ╭───────────────────────────────────────────────────╮
+    │                                                   │
+    │  Show & Switch                                    │
+    │                                                   │
+    │  [ ] Show the details                             │
+    │                                                   │
+    │   Summary    History                              │
+    │                                                   │
+    │  One case at a time: the summary.                 │
+    │                                                   │
+    ╰───────────────────────────────────────────────────╯
+
+    ╭───────────────────────────────────────────────────╮
+    │                                                   │
+    │  Suspense & ErrorBoundary                         │
+    │                                                   │
+    │  Loaded in the background.                        │
+    │                                                   │
+    │   Fail                                            │
+    │                                                   │
+    ╰───────────────────────────────────────────────────╯
+
+    ╭───────────────────────────────────────────────────╮
+    │                                                   │
+    │  Third party                                      │
+    │                                                   │
+    │   acme-ui   a badge from a library that names no  │
+    │             platform                              │
+    │                                                   │
+    │  ▁▃▂▆▄▇▅█▄▂▃▁  a sparkline painted cell by cell   │
+    │                                                   │
+    ╰───────────────────────────────────────────────────╯
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaabbbbbbbaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddeeeeeeeddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddfffffffdfffdfffffffddfffdffffffddfffdffffddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddggggggggggggggggggggggggggggggggggggggggdddddddddcaaa
+aaaacddgggggggggggggggggggggggggggggggggggggggggggddddddcaaa
+aaaacddggggggdddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddeeeedddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddgggggggggggggggggggggggggggggggggggggggggggggggddcaaa
+aaaacddggggggggggggggggggggggggggggggggggggggggggggdddddcaaa
+aaaacddgggggggggggggggggggggggggggggddddddddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddgggggggggggggggggggggggggggggggggggggggggggddddddcaaa
+aaaacddgggggggggggggggggggggggggggggggggggggggggggggggddcaaa
+aaaacddgggggggggggggggggggggggggggggggggggggggggggggggddcaaa
+aaaacddgggggggddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddgggggggggggggggghhhhhhhggiiiiiiggggggjjjjjgggddddcaaa
+aaaacddggggggggggggggdddddddddddddddddddddddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddeeeeeedddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddklllllllkddmnnnnnnnnnmdddfffffffddddfffffddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddopppppppppppoddqrrrrrrrrqddddddddddddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddgggggggggggggggggggggggggggggggggddddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddeeeeeeeddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddmnnnnmdddffffffffddddddddddddddddddddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddeeeeeeeeeeeeeeeedddddddddddddddddddddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddfffdffffffffffddgggggggddddddddddddddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddffffffdfffdffffddfffdfffffffddfffdffffdddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeedddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddcccccccccccccccccccccccccccccccccccccccccccccccddcaaa
+aaaacddcdsssssssssdddddddddddddddddddddddddddddddddddcddcaaa
+aaaacddcccccccccccccccccccccccccccccccccccccccccccccccddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddcccccccccccccccccccccccccccccccccccccccccccccccddcaaa
+aaaacddcdsssssssssssssssssssssdddddddddddddddddddddddcddcaaa
+aaaacddcdddddddddddddddddddddddddddddddddddddddddddddcddcaaa
+aaaacddcdddddddddddddddddddddddddddddddddddddddddddddcddcaaa
+aaaacddcccccccccccccccccccccccccccccccccccccccccccccccddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddkkkkkkktummmmmmmmmmmddgggddddddddddddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddffffffdddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddcccccccccccccccccccccccccccccccccccccccccccccccddcaaa
+aaaacddcdffffffdgddddddddddddddddddddddddddddddddddddcddcaaa
+aaaacddcccccccccccccccccccccccccccccccccccccccccccccccddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddeeeeeeeeeeeedddddddddddddddddddddddddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddcccccccccddcccccccccddccccccccccddcccccccccddddddcaaa
+aaaacddcdgggggdcddcdgggggdcddcdggggggdcddcdgggggdcddddddcaaa
+aaaacddcccccccccddcccccccccddccccccccccddcccccccccddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddcccccccccddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddcdgggggdcddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddcccccccccddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddeeeeeeeeeeeeeeeeeeeeeddddddddddddddddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddvvvvvvvvvvvdwwwwwwwwwwwdxxxxxxxxxxxdyyyyyyyyyyyddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddyyyyyyyyyyydxxxxxxxxxxxdwwwwwwwwwwwdvvvvvvvvvvvddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmddcaaa
+aaaacddmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmddcaaa
+aaaacddmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmddcaaa
+aaaacddmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmdggggggdmddcaaa
+aaaacddmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddmnnnnnnnnnnnnmdddddddddddddddddddddddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddeeeeeeeeeedddddddddddddddddddddddddddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddfffffdgggggggggggdddddddddddddddddddddddddddddzddcaaa
+aaaacddfffffdgggggggggggdddddddddddddddddddddddddddddzddcaaa
+aaaacddfffffdgggggggggggdddddddddddddddddddddddddddddzddcaaa
+aaaacddfffffdgggggggggggdddddddddddddddddddddddddddddzddcaaa
+aaaacddfffffdgggggggggggdddddddddddddddddddddddddddddzddcaaa
+aaaacddfffffdgggggggggggdddddddddddddddddddddddddddddzddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddeeeeeeeddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzdddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddeeeeeeeeeeeedddddddddddddddddddddddddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacdddffffffffffffffffffffffffffffffffffffffffffffddddcaaa
+aaaacdddfffdddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddgggggggggggggggggggggggggddddddddddddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddeeeeeeeeeeeeeddddddddddddddddddddddddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddfffdffffffffffffffffdddddddddddddddddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacdddfffffffddddfffffffddddddddddddddddddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddffffffffffffffffffffffffffffffffdddddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddeeeeeeeeeeeeeeeeeeeeeeeedddddddddddddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddfffffffffffffffffffffffffddddddddddddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddoppppooooooooooooooooooooooooooooooooooooooooooddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddeeeeeeeeeeeddddddddddddddddddddddddddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddABBBBBBBAddggggggggggggggggggggggggggggggggggggddcaaa
+aaaacddAAAAAAAAAddggggggggddddddddddddddddddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddiiiiiiiiiiiiddggggggggggggggggggggggggggggggggdddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+
+a surface #09090b
+b ink #a1a1aa, surface #09090b, bold
+c ink #27272a, surface #18181b
+d surface #18181b
+e ink #a1a1aa, surface #18181b, bold
+f ink #fafafa, surface #18181b
+g ink #a1a1aa, surface #18181b
+h ink #fafafa, surface #18181b, bold
+i ink #ff9e40, surface #18181b
+j ink #60a5fa, surface #18181b, underline Solid, link
+k surface #fafafa
+l ink #18181b, surface #fafafa
+m surface #27272a
+n ink #fafafa, surface #27272a
+o surface #dc2626
+p ink #fafafa, surface #dc2626
+q surface #3f3f46
+r ink #a1a1aa, surface #3f3f46
+s ink #89898b, surface #18181b
+t ink #fafafa, surface #a1a1aa
+u ink #a1a1aa, surface #27272a
+v surface #264c2a
+w surface #336638
+x surface #408046
+y surface #4d9954
+z ink #ffffff, surface #525254
+A surface #1f1705
+B ink #fabf2e, surface #1f1705

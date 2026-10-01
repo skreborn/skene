@@ -14,7 +14,7 @@
 //! the lengths come from the [`SimpleShape`] of the medium's unit.
 //!
 //! An app depends on this crate as it would on any component library and names the
-//! platform once; the `gui` and `tui` modules are that naming done for a
+//! platform once; the `gui` and `terminal` modules are that naming done for a
 //! facade, a `prelude` of aliases over its `ActivePlatform` that sits beside the facade's
 //! own.
 
@@ -29,11 +29,11 @@ mod picker;
 mod radio;
 mod shape;
 mod slider;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod terminal;
 mod text_editor;
 mod text_field;
 mod tooltip;
-#[cfg(not(target_arch = "wasm32"))]
-pub mod tui;
 
 pub use self::{
   button::SimpleButton,

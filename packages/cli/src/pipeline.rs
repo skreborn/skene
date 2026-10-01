@@ -134,7 +134,7 @@ fn executable(artifacts: &[Artifact], name: &str) -> Result<PathBuf, String> {
 
 /// Builds the app's terminal binary for the host, quietly, and returns its path; on
 /// failure returns cargo's diagnostics.
-pub(crate) fn build_tui_binary(app: &App, release: bool) -> Result<PathBuf, String> {
+pub(crate) fn build_terminal_binary(app: &App, release: bool) -> Result<PathBuf, String> {
   let mut command = Command::new("cargo");
 
   command.current_dir(&app.workspace_root).args([
@@ -155,10 +155,10 @@ pub(crate) fn build_tui_binary(app: &App, release: bool) -> Result<PathBuf, Stri
   executable(&artifacts, &app.package)
 }
 
-/// Builds the app's terminal binary and places it in `<app>/dist/tui`.
-pub(crate) fn build_tui(app: &App, release: bool) -> Result<(), String> {
-  let binary = build_tui_binary(app, release)?;
-  let out_dir = app.dir.join("dist/tui");
+/// Builds the app's terminal binary and places it in `<app>/dist/terminal`.
+pub(crate) fn build_terminal(app: &App, release: bool) -> Result<(), String> {
+  let binary = build_terminal_binary(app, release)?;
+  let out_dir = app.dir.join("dist/terminal");
 
   fs::create_dir_all(&out_dir).map_err(|error| error.to_string())?;
 

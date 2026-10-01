@@ -143,7 +143,7 @@ const APPLE: &str = "aarch64-apple-darwin";
 
 /// The crates with code of their own for Apple's platforms, none of which compiles C,
 /// which would need Apple's SDK.
-const APPLE_PACKAGES: &[&str] = &["skene-tui"];
+const APPLE_PACKAGES: &[&str] = &["skene-terminal"];
 
 /// The flag that names the web's server leaf in a build.
 const SERVER_CFG: &str = r#"--cfg skene_platform="server""#;

@@ -663,15 +663,6 @@ pub type skene_foundation::box_fields::Wrap::Value = skene_foundation::Wrap
 pub const skene_foundation::box_fields::Wrap::KEY: skene_foundation::PropertyKey<<X as skene_foundation::StyleExtension>::Property>
 pub fn skene_foundation::box_fields::Wrap::get<S: skene_foundation::Shape>(&skene_foundation::BoxStyle<N, S, X>) -> &<S as skene_foundation::Shape>::Of
 pub fn skene_foundation::box_fields::Wrap::get_mut<S: skene_foundation::Shape>(&mut skene_foundation::BoxStyle<N, S, X>) -> &mut <S as skene_foundation::Shape>::Of
-pub mod skene_foundation::executor
-pub fn skene_foundation::executor::clear()
-pub fn skene_foundation::executor::drive(impl core::future::future::Future<Output = ()> + 'static)
-pub fn skene_foundation::executor::install()
-pub fn skene_foundation::executor::pump() -> bool
-pub fn skene_foundation::executor::set_notifier(impl core::ops::function::Fn() + core::marker::Send + core::marker::Sync + 'static)
-pub fn skene_foundation::executor::start(impl core::future::future::Future<Output = ()> + 'static) -> async_task::task::Task<()>
-pub fn skene_foundation::executor::task_count() -> usize
-pub fn skene_foundation::executor::wait(core::time::Duration) -> bool
 pub mod skene_foundation::interpolate
 pub struct skene_foundation::interpolate::Motion<P, V>
 impl<P, V> skene_foundation::interpolate::Motion<P, V>
@@ -916,6 +907,30 @@ pub type skene_foundation::run_fields::TextColor::Value = skene_foundation::Colo
 pub const skene_foundation::run_fields::TextColor::KEY: skene_foundation::PropertyKey<<X as skene_foundation::StyleExtension>::Property>
 pub fn skene_foundation::run_fields::TextColor::get<S: skene_foundation::Shape>(&skene_foundation::RunStyle<S, X>) -> &<S as skene_foundation::Shape>::Of
 pub fn skene_foundation::run_fields::TextColor::get_mut<S: skene_foundation::Shape>(&mut skene_foundation::RunStyle<S, X>) -> &mut <S as skene_foundation::Shape>::Of
+pub mod skene_foundation::task
+pub struct skene_foundation::task::Boundary
+impl skene_foundation::task::Boundary
+pub fn skene_foundation::task::Boundary::current() -> core::option::Option<Self>
+pub fn skene_foundation::task::Boundary::enter(self)
+pub fn skene_foundation::task::Boundary::is_settled(self) -> bool
+pub fn skene_foundation::task::Boundary::leave(self)
+pub fn skene_foundation::task::Boundary::new() -> Self
+impl core::clone::Clone for skene_foundation::task::Boundary
+pub fn skene_foundation::task::Boundary::clone(&self) -> skene_foundation::task::Boundary
+impl core::default::Default for skene_foundation::task::Boundary
+pub fn skene_foundation::task::Boundary::default() -> Self
+impl core::fmt::Debug for skene_foundation::task::Boundary
+pub fn skene_foundation::task::Boundary::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for skene_foundation::task::Boundary
+pub fn skene_foundation::task::alive() -> usize
+pub fn skene_foundation::task::clear()
+pub fn skene_foundation::task::count_pending(skene_reactive::spawn::TaskGuard) -> skene_reactive::spawn::TaskGuard
+pub fn skene_foundation::task::drive(impl core::future::future::Future<Output = ()> + 'static)
+pub fn skene_foundation::task::install()
+pub fn skene_foundation::task::pump() -> bool
+pub fn skene_foundation::task::set_notifier(impl core::ops::function::Fn() + core::marker::Send + core::marker::Sync + 'static)
+pub fn skene_foundation::task::start(impl core::future::future::Future<Output = ()> + 'static) -> async_task::task::Task<()>
+pub fn skene_foundation::task::wait(core::time::Duration) -> bool
 pub mod skene_foundation::terminal
 pub mod skene_foundation::terminal::terminal_fields
 pub struct skene_foundation::terminal::terminal_fields::Bold
@@ -3405,19 +3420,19 @@ pub fn skene_foundation::BasicPicker<P, skene_foundation::Face<P>>::build(self) 
 pub fn skene_foundation::BasicPicker<P, skene_foundation::Face<P>>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
 pub fn skene_foundation::BasicPicker<P, skene_foundation::Face<P>>::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
 pub struct skene_foundation::Boundary
-impl skene_foundation::Boundary
-pub fn skene_foundation::Boundary::current() -> core::option::Option<Self>
-pub fn skene_foundation::Boundary::enter(self)
-pub fn skene_foundation::Boundary::is_settled(self) -> bool
-pub fn skene_foundation::Boundary::leave(self)
-pub fn skene_foundation::Boundary::new() -> Self
-impl core::clone::Clone for skene_foundation::Boundary
-pub fn skene_foundation::Boundary::clone(&self) -> skene_foundation::Boundary
-impl core::default::Default for skene_foundation::Boundary
-pub fn skene_foundation::Boundary::default() -> Self
-impl core::fmt::Debug for skene_foundation::Boundary
-pub fn skene_foundation::Boundary::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::marker::Copy for skene_foundation::Boundary
+impl skene_foundation::task::Boundary
+pub fn skene_foundation::task::Boundary::current() -> core::option::Option<Self>
+pub fn skene_foundation::task::Boundary::enter(self)
+pub fn skene_foundation::task::Boundary::is_settled(self) -> bool
+pub fn skene_foundation::task::Boundary::leave(self)
+pub fn skene_foundation::task::Boundary::new() -> Self
+impl core::clone::Clone for skene_foundation::task::Boundary
+pub fn skene_foundation::task::Boundary::clone(&self) -> skene_foundation::task::Boundary
+impl core::default::Default for skene_foundation::task::Boundary
+pub fn skene_foundation::task::Boundary::default() -> Self
+impl core::fmt::Debug for skene_foundation::task::Boundary
+pub fn skene_foundation::task::Boundary::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for skene_foundation::task::Boundary
 pub struct skene_foundation::BoxDynamics<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension>
 pub skene_foundation::BoxDynamics::animations: alloc::vec::Vec<skene_foundation::Animation<skene_foundation::BoxStyle<N, skene_foundation::Keyframe, X>>>
 pub skene_foundation::BoxDynamics::transitions: alloc::vec::Vec<skene_foundation::Transition<<X as skene_foundation::StyleExtension>::Property>>

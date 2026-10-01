@@ -521,7 +521,7 @@ impl CellPainter for Terminal {
 /// Panics if it is already installed.
 pub(crate) fn install() {
   skene_foundation::hold_flushes(|| {});
-  skene_foundation::executor::install();
+  skene_foundation::task::install();
   crate::text::reset();
 
   STORE.with(|records| {

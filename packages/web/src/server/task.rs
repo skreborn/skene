@@ -13,8 +13,6 @@ use std::{
   time::{Duration, Instant},
 };
 
-use skene_foundation::executor;
-
 /// The upper bound on polling rounds, so a task that always wakes itself (an unbounded
 /// resource waterfall) fails the render rather than hanging its caller forever.
 const MAX_ROUNDS: u32 = 1024;
@@ -49,7 +47,7 @@ pub fn sleep(duration: Duration) -> impl Future<Output = ()> {
 /// Runs `future` to completion on the render's executor; it makes progress only while
 /// a render settles.
 pub fn drive(future: impl Future<Output = ()> + 'static) {
-  executor::drive(future);
+  skene_foundation::task::drive(future);
 }
 
 /// Installs this leaf's executor as the engine's task seam, once per thread: every
@@ -60,7 +58,7 @@ pub fn install_executor() {
     return;
   }
 
-  executor::install();
+  skene_foundation::task::install();
 }
 
 /// Polls every ready task, each round of polls one turn, parking until a waker fires
@@ -96,15 +94,15 @@ pub(crate) fn stabilize_until(done: impl Fn() -> bool) {
       return;
     }
 
-    if skene_reactive::batch(executor::pump) {
+    if skene_reactive::batch(skene_foundation::task::pump) {
       continue;
     }
 
-    if executor::task_count() == 0 {
+    if skene_foundation::task::alive() == 0 {
       return;
     }
 
-    let _ = executor::wait(deadline - now);
+    let _ = skene_foundation::task::wait(deadline - now);
   }
 
   report_unsettled("its polling bound", budget);
@@ -113,12 +111,12 @@ pub(crate) fn stabilize_until(done: impl Fn() -> bool) {
 /// Reports a render cut off before its async work settled: what stopped it and what is
 /// still alive. The render serializes as it stands—placeholders included.
 fn report_unsettled(cutoff: &str, budget: Duration) {
-  let tasks = executor::task_count();
+  let tasks = skene_foundation::task::alive();
 
   tracing::error!("render hit {cutoff} (budget {budget:?}) before settling: {tasks} task(s) alive");
 }
 
 /// Drops every task, readying the executor for the next render.
 pub(crate) fn clear() {
-  executor::clear();
+  skene_foundation::task::clear();
 }

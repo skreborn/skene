@@ -455,14 +455,14 @@ pub fn reset() {
 /// Installs the headless executor as this thread's spawner: every task `spawn` and
 /// `Resource` start on this thread queues here until [`pump_tasks`] polls it.
 pub fn install_executor() {
-  skene_foundation::executor::install();
+  skene_foundation::task::install();
 }
 
 /// Polls every queued task until none is ready, so a resource whose loader is ready
 /// lands its value; `true` when any task ran.
 #[must_use]
 pub fn pump_tasks() -> bool {
-  trigger(skene_foundation::executor::pump)
+  trigger(skene_foundation::task::pump)
 }
 
 /// Registers `title` for the document, in force while it is the latest live one.

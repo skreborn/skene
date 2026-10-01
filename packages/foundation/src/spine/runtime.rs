@@ -2,7 +2,7 @@ use std::cell::{Cell, RefCell};
 
 use skene_reactive::{Owner, Runtime};
 
-use crate::spine::{Platform, Scene, executor};
+use crate::spine::{Platform, Scene, task};
 
 thread_local! {
   static ROOT_OWNER: Cell<Option<Owner>> = const { Cell::new(None) };
@@ -65,5 +65,5 @@ pub fn reset_thread<P: Platform>() {
   Scene::<P>::with(|scene| *scene = Scene::new());
   Runtime::reset();
   reset_root_owner();
-  executor::clear();
+  task::clear();
 }

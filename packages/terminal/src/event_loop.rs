@@ -257,7 +257,7 @@ where
   let _ = crate::mount(|| app().build());
   let waker = terminal.waker();
 
-  skene_foundation::executor::set_notifier(move || waker());
+  skene_foundation::task::set_notifier(move || waker());
 
   {
     crate::dev::adopt_restoration();
@@ -338,7 +338,7 @@ where
       let _ = terminal.flush();
     }
 
-    let _ = skene_foundation::executor::pump();
+    let _ = skene_foundation::task::pump();
 
     end_turn();
 

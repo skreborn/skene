@@ -561,7 +561,7 @@ pub fn render_to_scales(width: u16, height: u16) -> Vec<CellScale> {
 pub fn pump_tasks() -> bool {
   platform::end_turn();
 
-  let ran = skene_foundation::executor::pump();
+  let ran = skene_foundation::task::pump();
 
   platform::end_turn();
 

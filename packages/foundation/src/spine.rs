@@ -1,7 +1,6 @@
 //! The spine: the scene, the platform seam, event dispatch, composition, and the
 //! property, condition, expression and token model, naming nothing outside itself.
 
-mod boundary;
 mod box_style;
 mod children;
 mod condition;
@@ -12,7 +11,6 @@ mod dispatch;
 mod drag;
 mod errors;
 mod events;
-pub mod executor;
 mod expr;
 mod extension;
 mod fingerprint;
@@ -35,7 +33,7 @@ mod scene;
 mod segment;
 mod shape;
 mod show;
-mod task;
+pub mod task;
 #[cfg(test)]
 mod testing;
 mod token;
@@ -46,7 +44,6 @@ mod window;
 mod wraps;
 
 pub use accesskit::TreeUpdate;
-pub use boundary::Boundary;
 pub use box_style::{
   BoxDynamics,
   BoxField,
@@ -205,7 +202,7 @@ pub use scene::{Annotated, Annotation, NodeKind, NodeRecord, Scene};
 pub use segment::{Piece, Segment};
 pub use shape::{Declared, Keyframe, Plain, Shape, Static};
 pub use show::{Show, ShowBase};
-pub use task::count_pending;
+pub use task::{Boundary, count_pending};
 pub use token::{Definitions, IntoTokenValue, Token, TokenName, TokenRef, TokenSet, Tokenable};
 pub use ui_events::pointer::{
   PersistentDeviceId,

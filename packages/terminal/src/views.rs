@@ -1,12 +1,14 @@
 //! The views of the terminal's own, each forwarding to the foundation's implementation.
 
 mod container;
+mod control;
 mod enhance;
 mod error_boundary;
 mod flex;
 mod flexible;
 mod grid;
 mod grid_cell;
+mod picker;
 mod pinned;
 mod show;
 mod span;
@@ -18,12 +20,27 @@ mod theme;
 
 pub use self::{
   container::Container,
+  control::{
+    BasicButton,
+    BasicCheckbox,
+    BasicListbox,
+    BasicListboxOption,
+    BasicMenu,
+    BasicMenuItem,
+    BasicRadio,
+    BasicRadioGroup,
+    BasicSlider,
+    BasicTextEditor,
+    BasicTextField,
+    Control,
+  },
   enhance::Enhance,
   error_boundary::ErrorBoundary,
   flex::{Column, Row},
   flexible::Flexible,
   grid::Grid,
   grid_cell::GridCell,
+  picker::BasicPicker,
   pinned::Pinned,
   show::Show,
   span::{RichText, Span},
@@ -33,3 +50,32 @@ pub use self::{
   text::Text,
   theme::Theme,
 };
+
+/// Generates the terminal's own decoration on a view with a declared box style: the
+/// glyphs its border draws with, the shadow it casts and its scrollbars.
+macro_rules! terminal_decoration {
+  () => {
+    ::skene_foundation::properties! { style_mut, crate::ActivePlatform;
+      set_border_glyphs / derive_border_glyphs (glyphs) => ext.border_glyphs: ::skene_foundation::terminal::BorderGlyphs,
+        "the characters the border draws with";
+      set_shadow / derive_shadow (shadow) => ext.shadow: ::skene_foundation::Color,
+        "the shadow color",
+        "Its alpha is the strength of the mix into the colors beneath where the shadow falls.";
+      set_shadow_offset / derive_shadow_offset (offset) => ext.shadow_offset: ::skene_foundation::Length,
+        "how far the shadow falls down and right, in cells",
+        "It reaches the cells the offset rounded up covers, and its exact place where the \
+         terminal shows graphics.";
+      set_shadow_softening / derive_shadow_softening (softening) => ext.shadow_softening: ::skene_foundation::Length,
+        "how far the shadow's edge softens past its offset, in cells, where the terminal \
+         shows graphics";
+      set_scrollbar_thumb / derive_scrollbar_thumb (thumb) => ext.scrollbar_thumb: ::skene_foundation::Color,
+        "the color of the scrollbars' thumbs";
+      set_scrollbar_track / derive_scrollbar_track (track) => ext.scrollbar_track: ::skene_foundation::Color,
+        "the color of the scrollbars' tracks";
+      set_scrollbar_glyphs / derive_scrollbar_glyphs (glyphs) => ext.scrollbar_glyphs: ::skene_foundation::terminal::ScrollbarGlyphs,
+        "the characters the scrollbars draw with";
+    }
+  };
+}
+
+pub(crate) use terminal_decoration;

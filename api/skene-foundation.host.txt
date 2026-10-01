@@ -1756,6 +1756,7 @@ pub type skene_foundation::web::Painter = dyn core::ops::function::Fn(&mut skene
 pub macro skene_foundation::access_queries!
 pub macro skene_foundation::alignment_properties!
 pub macro skene_foundation::container_surface!
+pub macro skene_foundation::control_surface!
 pub macro skene_foundation::decoration!
 pub macro skene_foundation::extension_fields!
 pub macro skene_foundation::facade!
@@ -1764,8 +1765,10 @@ pub macro skene_foundation::flexible_surface!
 pub macro skene_foundation::forward!
 pub macro skene_foundation::grid_cell_surface!
 pub macro skene_foundation::grid_surface!
+pub macro skene_foundation::impl_basic_picker!
 pub macro skene_foundation::impl_column!
 pub macro skene_foundation::impl_container!
+pub macro skene_foundation::impl_control!
 pub macro skene_foundation::impl_enhance!
 pub macro skene_foundation::impl_error_boundary!
 pub macro skene_foundation::impl_flexible!
@@ -3409,6 +3412,7 @@ pub const fn skene_foundation::BasicPicker<P, F>::set_placement(self, skene_foun
 pub fn skene_foundation::BasicPicker<P, F>::set_value(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_foundation::BasicPicker<P, F>::set_visibility(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Visibility, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::BasicPicker<P, F>::set_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub const fn skene_foundation::BasicPicker<P, F>::style_mut(&mut self) -> &mut skene_foundation::DeclaredBoxStyle<P>
 impl<P: skene_foundation::Platform> skene_foundation::BasicPicker<P>
 pub fn skene_foundation::BasicPicker<P>::new() -> Self
 pub fn skene_foundation::BasicPicker<P>::set_face<V: skene_foundation::View<P>>(self, impl core::ops::function::FnOnce(skene_reactive::memo::Memo<alloc::string::String>) -> V + 'static) -> skene_foundation::BasicPicker<P, skene_foundation::Face<P>>

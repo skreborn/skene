@@ -18,8 +18,8 @@ type DeclaredBox = BoxStyle<u32, Declared<Condition<u32>>, TerminalStyle>;
 /// The terminal's own decoration on a box: the glyphs its border draws with, the
 /// shadow it casts and its scrollbars.
 ///
-/// The decorated views on the active platform without the decoration of their own have
-/// it: [`Control`](crate::Control) and [`Overlay`](crate::Overlay).
+/// The decorated view on the active platform without the decoration of its own has it:
+/// [`Overlay`](crate::Overlay).
 pub trait TerminalDecoration: Sized {
   /// The declared style the decoration lands on.
   fn terminal_style_mut(&mut self) -> &mut DeclaredBox;
@@ -43,15 +43,6 @@ pub trait TerminalDecoration: Sized {
       "the color of the scrollbars' tracks";
     set_scrollbar_glyphs / derive_scrollbar_glyphs (glyphs) => ext.scrollbar_glyphs: ScrollbarGlyphs,
       "the characters the scrollbars draw with";
-  }
-}
-
-impl<B: skene_foundation::Behavior<Terminal>> TerminalDecoration
-  for skene_foundation::Control<Terminal, B>
-{
-  #[inline(always)]
-  fn terminal_style_mut(&mut self) -> &mut DeclaredBox {
-    self.style_mut()
   }
 }
 

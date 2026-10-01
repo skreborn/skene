@@ -68,36 +68,10 @@ macro_rules! facade {
     /// The view a `set_key` named, built under a keyed scope; see
     /// [`skene_foundation::Keyed`].
     pub type Keyed<V> = $crate::Keyed<$platform, V>;
-    /// The one control builder over a behavior; see [`skene_foundation::Control`].
-    pub type Control<B, C = $crate::NoChild> = $crate::Control<$platform, B, C>;
     /// A built control, for a behavior to act on; see [`skene_foundation::ControlHandle`].
     pub type ControlHandle = $crate::ControlHandle<$platform>;
     /// A control's label; see [`skene_foundation::Label`].
     pub type Label = $crate::Label<$platform>;
-    /// A button; see [`skene_foundation::BasicButton`].
-    pub type BasicButton<C = $crate::NoChild> = $crate::BasicButton<$platform, C>;
-    /// A checkbox; see [`skene_foundation::BasicCheckbox`].
-    pub type BasicCheckbox<C = $crate::NoChild> = $crate::BasicCheckbox<$platform, C>;
-    /// A slider; see [`skene_foundation::BasicSlider`].
-    pub type BasicSlider<C = $crate::NoChild> = $crate::BasicSlider<$platform, C>;
-    /// A radio group; see [`skene_foundation::BasicRadioGroup`].
-    pub type BasicRadioGroup<C = $crate::NoChild> =
-      $crate::BasicRadioGroup<$platform, C>;
-    /// A radio inside a group; see [`skene_foundation::BasicRadio`].
-    pub type BasicRadio<C = $crate::NoChild> = $crate::BasicRadio<$platform, C>;
-    /// A single-line text entry; see [`skene_foundation::BasicTextField`].
-    pub type BasicTextField<C = $crate::NoChild> =
-      $crate::BasicTextField<$platform, C>;
-    /// A multi-line text entry; see [`skene_foundation::BasicTextEditor`].
-    pub type BasicTextEditor<C = $crate::NoChild> =
-      $crate::BasicTextEditor<$platform, C>;
-    /// A listbox; see [`skene_foundation::BasicListbox`].
-    pub type BasicListbox<C = $crate::NoChild> = $crate::BasicListbox<$platform, C>;
-    /// An option inside a listbox or a picker; see [`skene_foundation::BasicListboxOption`].
-    pub type BasicListboxOption<C = $crate::NoChild> = $crate::BasicListboxOption<$platform, C>;
-    /// A picker: a popup face, an overlay and a listbox; see
-    /// [`skene_foundation::BasicPicker`].
-    pub type BasicPicker<F = $crate::NoChild> = $crate::BasicPicker<$platform, F>;
     /// A picker's face; see [`skene_foundation::Face`].
     pub type Face = $crate::Face<$platform>;
     /// Content above the app; see [`skene_foundation::Overlay`].
@@ -109,10 +83,6 @@ macro_rules! facade {
     pub type ContextMenu<C = $crate::NoChild> = $crate::ContextMenu<$platform, C>;
     /// Keyboard shortcuts over the view it serves; see [`skene_foundation::Keymap`].
     pub type Keymap<C = $crate::NoChild> = $crate::Keymap<$platform, C>;
-    /// A menu; see [`skene_foundation::BasicMenu`].
-    pub type BasicMenu<C = $crate::NoChild> = $crate::BasicMenu<$platform, C>;
-    /// One item within a menu; see [`skene_foundation::BasicMenuItem`].
-    pub type BasicMenuItem<C = $crate::NoChild> = $crate::BasicMenuItem<$platform, C>;
     /// A handle naming the node a view built; see [`skene_foundation::NodeHandle`].
     pub type NodeHandle = $crate::NodeHandle<$platform>;
     /// A box drawn by a paint callback; see [`skene_foundation::Painted`].

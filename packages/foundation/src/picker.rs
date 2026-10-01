@@ -130,8 +130,9 @@ impl<P: Platform> Default for BasicPicker<P> {
 }
 
 impl<P: Platform, F> BasicPicker<P, F> {
+  /// The face's declared style, for a facade's medium-specific setters to write into.
   #[inline(always)]
-  const fn style_mut(&mut self) -> &mut DeclaredBoxStyle<P> {
+  pub const fn style_mut(&mut self) -> &mut DeclaredBoxStyle<P> {
     &mut self.face_style
   }
 
@@ -523,4 +524,102 @@ fn choose_typed<P: Platform>(
 
     true
   }
+}
+
+/// Implements a facade's newtype `$name<F>` over the foundation's [`BasicPicker`].
+///
+/// The newtype holds the picker on the platform `$platform` in its field; the macro
+/// implements the constructor, the face, the face's decoration, the list, the value, the
+/// caption and the traits a picker meets.
+#[macro_export]
+macro_rules! impl_basic_picker {
+  ($name:ident, $platform:ty) => {
+    impl<F> ::core::fmt::Debug for $name<F> {
+      fn fmt(&self, formatter: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+        ::core::fmt::Debug::fmt(&self.0, formatter)
+      }
+    }
+
+    impl ::core::default::Default for $name {
+      #[inline(always)]
+      fn default() -> Self {
+        Self::new()
+      }
+    }
+
+    impl $name {
+      /// A picker with no options and nothing chosen.
+      #[inline(always)]
+      pub fn new() -> Self {
+        Self($crate::BasicPicker::new())
+      }
+
+      /// Sets the view drawing the control closed, built from the chosen value.
+      #[inline(always)]
+      pub fn set_face<V: $crate::View<$platform>>(
+        self,
+        face: impl FnOnce($crate::reactive::Memo<String>) -> V + 'static,
+      ) -> $name<$crate::Face<$platform>> {
+        $name(self.0.set_face(face))
+      }
+    }
+
+    impl<F> $name<F> {
+      /// The face's declared style, for a facade's medium-specific setters to write into.
+      #[inline(always)]
+      pub const fn style_mut(&mut self) -> &mut $crate::DeclaredBoxStyle<$platform> {
+        self.0.style_mut()
+      }
+
+      $crate::decoration! { style_mut, $platform }
+
+      $crate::forward! { 0;
+        /// Sets where the list opens against the face; below it unless told otherwise.
+        fn set_placement(placement: $crate::Placement);
+        /// Sets the views drawing the list, each listbox option among them an option;
+        /// anything else draws and nothing more.
+        fn set_options(options: impl $crate::IntoChildren<$platform>);
+        /// Sets the chosen value.
+        fn set_value(value: impl Into<String>);
+        /// Derives the chosen value from the signals `value` reads.
+        fn derive_value(value: impl Fn() -> String + 'static);
+        /// Runs `action` with the value a choice asks for.
+        fn handle_change(action: impl Fn(String) + 'static);
+        /// Binds the chosen value to `signal` in both directions.
+        fn bind_value(signal: $crate::reactive::Signal<String>);
+        /// Sets the face's caption, which is also the accessible name.
+        fn set_label(label: impl Into<$crate::Label<$platform>>);
+        /// Sets whether the picker is present but not operable.
+        fn set_disabled(disabled: bool);
+        /// Derives whether the picker is disabled from the signals `disabled` reads.
+        fn derive_disabled(disabled: impl Fn() -> bool + 'static);
+      }
+
+      /// Derives the list from a keyed collection: `items` yields the items, `key` gives
+      /// each a stable identity, and `view` draws one.
+      #[inline(always)]
+      pub fn derive_options<T, I, K, V>(
+        self,
+        items: impl Fn() -> I + 'static,
+        key: impl Fn(&T) -> K + 'static,
+        view: impl Fn(T) -> V + 'static,
+      ) -> Self
+      where
+        I: IntoIterator<Item = T>,
+        K: Eq + ::core::hash::Hash + 'static,
+        V: $crate::IntoChildOf<$platform, $crate::PlainChild>,
+      {
+        Self(self.0.derive_options(items, key, view))
+      }
+    }
+
+    impl<F> $crate::AnyKind for $name<F> {}
+
+    impl $crate::View<$platform> for $name<$crate::Face<$platform>> {
+      #[inline(always)]
+      fn build(self) -> $crate::NodeId {
+        $crate::View::build(self.0)
+      }
+    }
+  };
 }

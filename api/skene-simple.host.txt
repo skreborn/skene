@@ -280,6 +280,7 @@ pub fn skene_simple::SimpleTextEditorBase::bind_value(self, skene_reactive::sign
 pub fn skene_simple::SimpleTextEditorBase::derive_value(self, impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
 pub fn skene_simple::SimpleTextEditorBase::handle_change(self, impl core::ops::function::Fn(&str) + 'static) -> Self
 pub fn skene_simple::SimpleTextEditorBase::new() -> Self
+pub fn skene_simple::SimpleTextEditorBase::set_label(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_simple::SimpleTextEditorBase::set_lines(self, u16) -> Self
 pub fn skene_simple::SimpleTextEditorBase::set_placeholder(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_simple::SimpleTextEditorBase::set_value(self, impl core::convert::Into<alloc::string::String>) -> Self
@@ -288,6 +289,7 @@ pub fn skene_simple::SimpleTextFieldBase::bind_value(self, skene_reactive::signa
 pub fn skene_simple::SimpleTextFieldBase::derive_value(self, impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
 pub fn skene_simple::SimpleTextFieldBase::handle_change(self, impl core::ops::function::Fn(&str) + 'static) -> Self
 pub fn skene_simple::SimpleTextFieldBase::new() -> Self
+pub fn skene_simple::SimpleTextFieldBase::set_label(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_simple::SimpleTextFieldBase::set_placeholder(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_simple::SimpleTextFieldBase::set_value(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub trait skene_simple::SimpleTooltipBase<P: skene_foundation::spine::platform::Platform>: skene_foundation::spine::wraps::Wraps<Inner = SimpleTooltip<P>>

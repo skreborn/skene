@@ -26,6 +26,7 @@ use super::shape::{SimpleUnit, define_defaults, field_chrome};
 #[must_use]
 pub struct SimpleTextField<P: Platform> {
   entry: TextEntry,
+  label: Option<String>,
   platform: PhantomData<fn() -> P>,
 }
 
@@ -35,8 +36,16 @@ impl<P: Platform> SimpleTextField<P> {
   pub fn new() -> Self {
     Self {
       entry: TextEntry::new(),
+      label: None,
       platform: PhantomData,
     }
+  }
+
+  /// Sets the caption placed before the field, which is also its accessible name.
+  pub fn set_label(mut self, label: impl Into<String>) -> Self {
+    self.label = Some(label.into());
+
+    self
   }
 
   /// Sets the text.
@@ -93,7 +102,13 @@ where
   fn build(self) -> NodeId {
     define_defaults::<P>();
 
-    field_chrome::<P, TextEntry>(BasicTextField::new(self.entry)).build()
+    let mut control = field_chrome::<P, TextEntry>(BasicTextField::new(self.entry));
+
+    if let Some(label) = self.label {
+      control = control.set_label(label);
+    }
+
+    control.build()
   }
 }
 
@@ -103,6 +118,12 @@ pub trait SimpleTextFieldBase<P: Platform>: Wraps<Inner = SimpleTextField<P>> {
   #[must_use]
   fn new() -> Self {
     Self::wrap(SimpleTextField::new())
+  }
+
+  /// Sets the caption placed before the field, which is also its accessible name.
+  #[must_use]
+  fn set_label(self, label: impl Into<String>) -> Self {
+    Self::wrap(self.into_inner().set_label(label))
   }
 
   /// Sets the text.

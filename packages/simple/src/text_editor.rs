@@ -29,6 +29,7 @@ const LINES: u16 = 3;
 #[must_use]
 pub struct SimpleTextEditor<P: Platform> {
   entry: TextEntry,
+  label: Option<String>,
   platform: PhantomData<fn() -> P>,
 }
 
@@ -38,8 +39,16 @@ impl<P: Platform> SimpleTextEditor<P> {
   pub fn new() -> Self {
     Self {
       entry: TextEntry::new().set_lines(LINES),
+      label: None,
       platform: PhantomData,
     }
+  }
+
+  /// Sets the caption placed before the editor, which is also its accessible name.
+  pub fn set_label(mut self, label: impl Into<String>) -> Self {
+    self.label = Some(label.into());
+
+    self
   }
 
   /// Sets the text.
@@ -104,7 +113,13 @@ where
   fn build(self) -> NodeId {
     define_defaults::<P>();
 
-    field_chrome::<P, TextEntry>(BasicTextEditor::new(self.entry)).build()
+    let mut control = field_chrome::<P, TextEntry>(BasicTextEditor::new(self.entry));
+
+    if let Some(label) = self.label {
+      control = control.set_label(label);
+    }
+
+    control.build()
   }
 }
 
@@ -114,6 +129,12 @@ pub trait SimpleTextEditorBase<P: Platform>: Wraps<Inner = SimpleTextEditor<P>> 
   #[must_use]
   fn new() -> Self {
     Self::wrap(SimpleTextEditor::new())
+  }
+
+  /// Sets the caption placed before the editor, which is also its accessible name.
+  #[must_use]
+  fn set_label(self, label: impl Into<String>) -> Self {
+    Self::wrap(self.into_inner().set_label(label))
   }
 
   /// Sets the text.

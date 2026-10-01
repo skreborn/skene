@@ -15,6 +15,7 @@ mod controls;
 mod decoration;
 mod enhance;
 mod entry_selection;
+mod incremental;
 mod launch;
 mod layout;
 mod links;

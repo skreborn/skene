@@ -183,7 +183,7 @@ pub use crate::{
   resource::{LoadState, Resource},
   routing::{install_router, install_static_router},
   task::spawn,
-  views::Container,
+  views::{Column, Container, Flexible, Grid, GridCell, Pinned, Row, Stack},
 };
 
 /// The platform the build selected: the web platform in the browser

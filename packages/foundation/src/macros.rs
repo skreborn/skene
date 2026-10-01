@@ -75,6 +75,43 @@ macro_rules! trait_properties {
   )+};
 }
 
+/// Generates a `set_`/`derive_` pair for a two-axis alignment, split onto the
+/// horizontal and the vertical item alignment of the style `$access` returns.
+///
+/// The optional second literal is a paragraph the setter's documentation adds.
+#[macro_export]
+macro_rules! alignment_properties {
+  ($access:ident, $platform:ty; $set:ident / $derive:ident, $doc:literal $(, $detail:literal)?) => {
+    #[doc = concat!("Sets ", $doc, ", on both axes.")]
+    $(#[doc = ""] #[doc = $detail])?
+    pub fn $set(
+      mut self,
+      alignment: impl Into<
+        $crate::Value<$crate::Alignment, $crate::Condition<<$platform as $crate::Platform>::Scalar>>,
+      >,
+    ) -> Self {
+      let (horizontal, vertical) = alignment.into().split_axes();
+      let style = self.$access();
+
+      style.item_horizontal_alignment = Some(horizontal);
+      style.item_alignment = Some(vertical);
+
+      self
+    }
+
+    #[doc = concat!("Derives ", $doc, " from the signals `alignment` reads: a value, a token or an expression.")]
+    pub fn $derive<R: Into<$crate::StaticLeaf<$crate::Alignment>>>(
+      self,
+      alignment: impl Fn() -> R + 'static,
+    ) -> Self {
+      self.$set($crate::Value::<
+        $crate::Alignment,
+        $crate::Condition<<$platform as $crate::Platform>::Scalar>,
+      >::new($crate::Leaf::derive(alignment)))
+    }
+  };
+}
+
 /// Generates the decoration and sizing surface the one decorated box and every control
 /// share, over the style `$access` returns.
 #[macro_export]

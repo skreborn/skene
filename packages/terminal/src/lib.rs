@@ -166,7 +166,7 @@ pub use crate::{
   platform::{Terminal, mount, uninstall},
   routing::install_router,
   text::CellScale,
-  views::Container,
+  views::{Column, Container, Flexible, Grid, GridCell, Pinned, Row, Stack},
 };
 
 /// The platform the build selected: the terminal platform, on every host target.

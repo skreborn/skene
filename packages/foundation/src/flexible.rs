@@ -21,6 +21,35 @@ use crate::{
   realize::Source,
 };
 
+/// Generates a [`Flexible`]'s setters on a facade's newtype holding one in `$field`,
+/// each forwarding to the wrapper's own, on the platform `$platform`.
+#[macro_export]
+macro_rules! flexible_surface {
+  ($field:tt, $platform:ty) => {
+    $crate::forward! { $field;
+      /// Sets the weight the child grows by when the container has room to spare.
+      fn set_grow_factor(factor: f32);
+      /// Derives the grow weight from the signals `factor` reads.
+      fn derive_grow_factor(factor: impl Fn() -> f32 + 'static);
+      /// Sets the weight the child shrinks by when the container runs short.
+      fn set_shrink_factor(factor: f32);
+      /// Sets the child's size before growing and shrinking.
+      fn set_initial(initial: impl Into<$crate::Dimension<<$platform as $crate::Platform>::Scalar>>);
+      /// Sets the child's own cross-axis alignment, overriding the container's.
+      fn set_item_alignment(
+        alignment: impl Into<
+          $crate::Value<$crate::ItemAlignment, $crate::Condition<<$platform as $crate::Platform>::Scalar>>,
+        >,
+      );
+      /// Derives the child's own cross-axis alignment from the signals `alignment` reads:
+      /// a value, a token or an expression.
+      fn derive_item_alignment[R: Into<$crate::StaticLeaf<$crate::ItemAlignment>>](
+        alignment: impl Fn() -> R + 'static,
+      );
+    }
+  };
+}
+
 /// Gives the child it wraps its flexibility in a [`Row`](crate::Row) or a
 /// [`Column`](crate::Column).
 ///

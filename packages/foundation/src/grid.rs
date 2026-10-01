@@ -1,31 +1,64 @@
 //! The grid layout.
 
 use crate::{
-  Alignment,
   AnyKind,
-  Arrangement,
   Children,
-  Condition,
-  DeclaredBoxStyle,
-  GridAreas,
   GridChild,
-  GridFlow,
-  GridTemplate,
   GridTrack,
   HasChildren,
-  Inset,
   Layout,
   LayoutBox,
   NodeId,
   Platform,
   Seal,
-  Spacing,
-  StaticLeaf,
   TrackLimit,
-  Value,
   View,
-  properties,
 };
+
+/// Generates a [`Grid`]'s builder surface on a type holding one in `$field`.
+///
+/// The surface is the declared style, the properties a grid honors and the alignment of
+/// its children, on the platform `$platform`. The foundation's grid expands it over its
+/// box, and a facade's newtype over the grid it wraps.
+#[macro_export]
+macro_rules! grid_surface {
+  ($field:tt, $platform:ty) => {
+    /// The declared style, for a facade's medium-specific setters to write into.
+    #[inline(always)]
+    pub const fn style_mut(&mut self) -> &mut $crate::DeclaredBoxStyle<$platform> {
+      self.$field.style_mut()
+    }
+
+    $crate::properties! { style_mut, $platform;
+      set_padding / derive_padding (padding) => padding: $crate::Inset<<$platform as $crate::Platform>::Scalar>,
+        "the inset between the box and the children it arranges";
+      set_spacing / derive_spacing (spacing) => spacing: $crate::Spacing<<$platform as $crate::Platform>::Scalar>,
+        "the spacing between tracks per axis; a plain length spaces both";
+      set_columns / derive_columns (tracks) => grid_columns: $crate::GridTemplate<<$platform as $crate::Platform>::Scalar>,
+        "the explicit column tracks, with the names of their lines; a list of tracks names none";
+      set_rows / derive_rows (tracks) => grid_rows: $crate::GridTemplate<<$platform as $crate::Platform>::Scalar>,
+        "the explicit row tracks, with the names of their lines; a list of tracks names none";
+      set_areas / derive_areas (areas) => grid_areas: $crate::GridAreas,
+        "the named areas over the grid's cells, which a child's placement names";
+      set_implicit_columns / derive_implicit_columns (tracks)
+        => grid_implicit_columns: Vec<$crate::GridTrack<<$platform as $crate::Platform>::Scalar>>,
+        "the sizes given to implicitly created columns, cycled";
+      set_implicit_rows / derive_implicit_rows (tracks)
+        => grid_implicit_rows: Vec<$crate::GridTrack<<$platform as $crate::Platform>::Scalar>>,
+        "the sizes given to implicitly created rows, cycled";
+      set_flow / derive_flow (flow) => grid_flow: $crate::GridFlow,
+        "the direction auto-placed children fill";
+      set_column_arrangement / derive_column_arrangement (arrangement) => arrangement: $crate::Arrangement,
+        "the horizontal distribution of the column tracks";
+      set_row_arrangement / derive_row_arrangement (arrangement) => line_arrangement: $crate::Arrangement,
+        "the vertical distribution of the row tracks";
+    }
+
+    $crate::alignment_properties! { style_mut, $platform;
+      set_item_alignment / derive_item_alignment, "the alignment of each child within its cell"
+    }
+  };
+}
 
 /// Children placed into tracks.
 ///
@@ -70,56 +103,7 @@ impl<P: Platform> Grid<P> {
     )])
   }
 
-  #[inline(always)]
-  const fn style_mut(&mut self) -> &mut DeclaredBoxStyle<P> {
-    self.inner.style_mut()
-  }
-
-  properties! { style_mut, P;
-    set_padding / derive_padding (padding) => padding: Inset<P::Scalar>,
-      "the inset between the box and the children it arranges";
-    set_spacing / derive_spacing (spacing) => spacing: Spacing<P::Scalar>,
-      "the spacing between tracks per axis; a plain length spaces both";
-    set_columns / derive_columns (tracks) => grid_columns: GridTemplate<P::Scalar>,
-      "the explicit column tracks, with the names of their lines; a list of tracks names none";
-    set_rows / derive_rows (tracks) => grid_rows: GridTemplate<P::Scalar>,
-      "the explicit row tracks, with the names of their lines; a list of tracks names none";
-    set_areas / derive_areas (areas) => grid_areas: GridAreas,
-      "the named areas over the grid's cells, which a child's placement names";
-    set_implicit_columns / derive_implicit_columns (tracks)
-      => grid_implicit_columns: Vec<GridTrack<P::Scalar>>,
-      "the sizes given to implicitly created columns, cycled";
-    set_implicit_rows / derive_implicit_rows (tracks)
-      => grid_implicit_rows: Vec<GridTrack<P::Scalar>>,
-      "the sizes given to implicitly created rows, cycled";
-    set_flow / derive_flow (flow) => grid_flow: GridFlow,
-      "the direction auto-placed children fill";
-    set_column_arrangement / derive_column_arrangement (arrangement) => arrangement: Arrangement,
-      "the horizontal distribution of the column tracks";
-    set_row_arrangement / derive_row_arrangement (arrangement) => line_arrangement: Arrangement,
-      "the vertical distribution of the row tracks";
-  }
-
-  /// Sets the alignment of each child within its cell, on both axes.
-  pub fn set_item_alignment(
-    mut self,
-    alignment: impl Into<Value<Alignment, Condition<P::Scalar>>>,
-  ) -> Self {
-    self.inner = self.inner.set_alignment(alignment);
-
-    self
-  }
-
-  /// Derives the alignment of each child within its cell from the signals `alignment`
-  /// reads.
-  pub fn derive_item_alignment<R: Into<StaticLeaf<Alignment>>>(
-    mut self,
-    alignment: impl Fn() -> R + 'static,
-  ) -> Self {
-    self.inner = self.inner.derive_alignment(alignment);
-
-    self
-  }
+  crate::grid_surface! { inner, P }
 }
 
 impl<P: Platform> HasChildren<P> for Grid<P> {

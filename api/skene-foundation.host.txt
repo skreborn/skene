@@ -1754,14 +1754,21 @@ pub fn vello_cpu::render::RenderContext::stroke(&mut self, &kurbo::bezpath::BezP
 pub fn skene_foundation::web::paint(&peniko::brush::Brush) -> vello_common::paint::PaintType
 pub type skene_foundation::web::Painter = dyn core::ops::function::Fn(&mut skene_foundation::Canvas, skene_foundation::Size<f32>)
 pub macro skene_foundation::access_queries!
+pub macro skene_foundation::alignment_properties!
 pub macro skene_foundation::container_surface!
 pub macro skene_foundation::decoration!
 pub macro skene_foundation::extension_fields!
 pub macro skene_foundation::facade!
+pub macro skene_foundation::flex_surface!
+pub macro skene_foundation::flexible_surface!
 pub macro skene_foundation::forward!
+pub macro skene_foundation::grid_cell_surface!
+pub macro skene_foundation::grid_surface!
+pub macro skene_foundation::pinned_surface!
 pub macro skene_foundation::properties!
 pub macro skene_foundation::run_setters!
 pub macro skene_foundation::run_type_metrics!
+pub macro skene_foundation::stack_surface!
 pub macro skene_foundation::trait_properties!
 pub macro skene_foundation::type_metrics!
 pub enum skene_foundation::AccessProp
@@ -3681,6 +3688,7 @@ pub fn skene_foundation::Column<P>::set_line_arrangement(self, impl core::conver
 pub fn skene_foundation::Column<P>::set_padding(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Column<P>::set_spacing(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Spacing<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Column<P>::set_wrap(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Wrap, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub const fn skene_foundation::Column<P>::style_mut(&mut self) -> &mut skene_foundation::DeclaredBoxStyle<P>
 impl<P: core::fmt::Debug + skene_foundation::Platform> core::fmt::Debug for skene_foundation::Column<P>
 pub fn skene_foundation::Column<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<P: skene_foundation::Platform> core::default::Default for skene_foundation::Column<P>
@@ -4422,6 +4430,7 @@ pub fn skene_foundation::Grid<P>::set_padding(self, impl core::convert::Into<ske
 pub fn skene_foundation::Grid<P>::set_row_arrangement(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Arrangement, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Grid<P>::set_rows(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::GridTemplate<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Grid<P>::set_spacing(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Spacing<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub const fn skene_foundation::Grid<P>::style_mut(&mut self) -> &mut skene_foundation::DeclaredBoxStyle<P>
 pub fn skene_foundation::Grid<P>::uniform(u16) -> Self
 impl<P: core::fmt::Debug + skene_foundation::Platform> core::fmt::Debug for skene_foundation::Grid<P>
 pub fn skene_foundation::Grid<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
@@ -4486,7 +4495,7 @@ pub fn skene_foundation::GridCell<P>::set_column(self, impl core::convert::Into<
 pub fn skene_foundation::GridCell<P>::set_row(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Line<skene_foundation::GridPlacement>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 impl<P: skene_foundation::Platform> skene_foundation::GridCell<P>
 pub fn skene_foundation::GridCell<P>::new() -> Self
-impl<P: core::fmt::Debug + skene_foundation::Platform, C: core::fmt::Debug> core::fmt::Debug for skene_foundation::GridCell<P, C> where <P as skene_foundation::Platform>::Scalar: core::fmt::Debug
+impl<P: skene_foundation::Platform, C> core::fmt::Debug for skene_foundation::GridCell<P, C>
 pub fn skene_foundation::GridCell<P, C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<P: skene_foundation::Platform> core::default::Default for skene_foundation::GridCell<P>
 pub fn skene_foundation::GridCell<P>::default() -> Self
@@ -5391,7 +5400,7 @@ pub fn skene_foundation::Pinned<P>::set_child(self, impl skene_foundation::View<
 pub fn skene_foundation::Pinned<P>::set_edges(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 impl<P: skene_foundation::Platform> skene_foundation::Pinned<P>
 pub fn skene_foundation::Pinned<P>::new() -> Self
-impl<P: core::fmt::Debug + skene_foundation::Platform, C: core::fmt::Debug> core::fmt::Debug for skene_foundation::Pinned<P, C> where <P as skene_foundation::Platform>::Scalar: core::fmt::Debug
+impl<P: skene_foundation::Platform, C> core::fmt::Debug for skene_foundation::Pinned<P, C>
 pub fn skene_foundation::Pinned<P, C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<P: skene_foundation::Platform> core::default::Default for skene_foundation::Pinned<P>
 pub fn skene_foundation::Pinned<P>::default() -> Self
@@ -5704,6 +5713,7 @@ pub fn skene_foundation::Row<P>::set_line_arrangement(self, impl core::convert::
 pub fn skene_foundation::Row<P>::set_padding(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Row<P>::set_spacing(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Spacing<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Row<P>::set_wrap(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Wrap, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub const fn skene_foundation::Row<P>::style_mut(&mut self) -> &mut skene_foundation::DeclaredBoxStyle<P>
 impl<P: core::fmt::Debug + skene_foundation::Platform> core::fmt::Debug for skene_foundation::Row<P>
 pub fn skene_foundation::Row<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<P: skene_foundation::Platform> core::default::Default for skene_foundation::Row<P>
@@ -6158,6 +6168,7 @@ pub fn skene_foundation::Stack<P>::derive_padding<R: core::convert::Into<skene_f
 pub fn skene_foundation::Stack<P>::new() -> Self
 pub fn skene_foundation::Stack<P>::set_alignment(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Alignment, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Stack<P>::set_padding(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub const fn skene_foundation::Stack<P>::style_mut(&mut self) -> &mut skene_foundation::DeclaredBoxStyle<P>
 impl<P: core::fmt::Debug + skene_foundation::Platform> core::fmt::Debug for skene_foundation::Stack<P>
 pub fn skene_foundation::Stack<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<P: skene_foundation::Platform> core::default::Default for skene_foundation::Stack<P>

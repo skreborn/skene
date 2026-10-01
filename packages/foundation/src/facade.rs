@@ -62,23 +62,9 @@ macro_rules! facade {
 
     /// A type-erased view.
     pub type AnyView = $crate::AnyView<$platform>;
-    /// A horizontal flex layout; see [`skene_foundation::Row`].
-    pub type Row = $crate::Row<$platform>;
-    /// A vertical flex layout; see [`skene_foundation::Column`].
-    pub type Column = $crate::Column<$platform>;
-    /// A grid layout; see [`skene_foundation::Grid`].
-    pub type Grid = $crate::Grid<$platform>;
-    /// A stack layout; see [`skene_foundation::Stack`].
-    pub type Stack = $crate::Stack<$platform>;
     /// The box every layout view is built from, accepting children of `Kind`; see
     /// [`skene_foundation::LayoutBox`].
     pub type LayoutBox<Kind> = $crate::LayoutBox<$platform, Kind>;
-    /// A flex child's grow, shrink and initial size; see [`skene_foundation::Flexible`].
-    pub type Flexible<C = $crate::NoChild> = $crate::Flexible<$platform, C>;
-    /// A stack child pinned to its edges; see [`skene_foundation::Pinned`].
-    pub type Pinned<C = $crate::NoChild> = $crate::Pinned<$platform, C>;
-    /// A grid child's placement; see [`skene_foundation::GridCell`].
-    pub type GridCell<C = $crate::NoChild> = $crate::GridCell<$platform, C>;
     /// A run of text on its own line; see [`skene_foundation::Text`].
     pub type Text = $crate::Text<$platform>;
     /// A run inside a paragraph; see [`skene_foundation::Span`].

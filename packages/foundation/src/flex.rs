@@ -2,24 +2,48 @@
 
 use crate::{
   AnyKind,
-  Arrangement,
   Children,
-  DeclaredBoxStyle,
   FlexChild,
   FlexDirection,
   HasChildren,
-  Inset,
-  ItemAlignment,
   Layout,
   LayoutBox,
   NodeId,
   Platform,
   Seal,
-  Spacing,
   View,
-  Wrap,
-  properties,
 };
+
+/// Generates a flex layout's builder surface on a type holding one in `$field`.
+///
+/// The surface is the declared style and the properties a flex container honors, on the
+/// platform `$platform`. The foundation's [`Row`] and [`Column`] expand it over their
+/// box, and a facade's newtype over the layout it wraps.
+#[macro_export]
+macro_rules! flex_surface {
+  ($field:tt, $platform:ty) => {
+    /// The declared style, for a facade's medium-specific setters to write into.
+    #[inline(always)]
+    pub const fn style_mut(&mut self) -> &mut $crate::DeclaredBoxStyle<$platform> {
+      self.$field.style_mut()
+    }
+
+    $crate::properties! { style_mut, $platform;
+      set_padding / derive_padding (padding) => padding: $crate::Inset<<$platform as $crate::Platform>::Scalar>,
+        "the inset between the box and the children it arranges";
+      set_spacing / derive_spacing (spacing) => spacing: $crate::Spacing<<$platform as $crate::Platform>::Scalar>,
+        "the spacing between children per axis; a plain length spaces both";
+      set_arrangement / derive_arrangement (arrangement) => arrangement: $crate::Arrangement,
+        "the distribution of children along the main axis";
+      set_item_alignment / derive_item_alignment (alignment) => item_alignment: $crate::ItemAlignment,
+        "the alignment of each child on the cross axis";
+      set_line_arrangement / derive_line_arrangement (arrangement) => line_arrangement: $crate::Arrangement,
+        "the distribution of wrapped lines along the cross axis";
+      set_wrap / derive_wrap (wrap) => wrap: $crate::Wrap,
+        "whether and how children wrap onto further lines";
+    }
+  };
+}
 
 /// Generates a flex layout view over [`LayoutBox`], exposing the properties a flex
 /// container honors.
@@ -64,25 +88,7 @@ macro_rules! flex_layout {
         }
       }
 
-      #[inline(always)]
-      const fn style_mut(&mut self) -> &mut DeclaredBoxStyle<P> {
-        self.inner.style_mut()
-      }
-
-      properties! { style_mut, P;
-        set_padding / derive_padding (padding) => padding: Inset<P::Scalar>,
-          "the inset between the box and the children it arranges";
-        set_spacing / derive_spacing (spacing) => spacing: Spacing<P::Scalar>,
-          "the spacing between children per axis; a plain length spaces both";
-        set_arrangement / derive_arrangement (arrangement) => arrangement: Arrangement,
-          "the distribution of children along the main axis";
-        set_item_alignment / derive_item_alignment (alignment) => item_alignment: ItemAlignment,
-          "the alignment of each child on the cross axis";
-        set_line_arrangement / derive_line_arrangement (arrangement) => line_arrangement: Arrangement,
-          "the distribution of wrapped lines along the cross axis";
-        set_wrap / derive_wrap (wrap) => wrap: Wrap,
-          "whether and how children wrap onto further lines";
-      }
+      crate::flex_surface! { inner, P }
     }
 
     impl<P: Platform> HasChildren<P> for $name<P> {

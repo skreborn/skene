@@ -6,7 +6,6 @@ use skene_reactive::Effect;
 
 use crate::{
   AccessProp,
-  Alignment,
   Animation,
   AnyKind,
   Arrangement,
@@ -16,7 +15,6 @@ use crate::{
   Bubbling,
   Children,
   ClickEvent,
-  Condition,
   ContainerName,
   DeclaredBoxStyle,
   DragAxes,
@@ -32,7 +30,6 @@ use crate::{
   ItemAlignment,
   KeyEvent,
   Layout,
-  Leaf,
   NodeHandle,
   NodeId,
   NodeKind,
@@ -45,10 +42,8 @@ use crate::{
   ScrollEvent,
   Seal,
   Spacing,
-  StaticLeaf,
   StyleExtension,
   Transition,
-  Value,
   View,
   WheelEvent,
   Wrap,
@@ -157,29 +152,10 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
       "the direction auto-placed children fill";
   }
 
-  /// Sets the alignment of each child on both axes: the horizontal component lands on
-  /// the inline axis, the vertical one on the cross or block axis.
-  pub fn set_alignment(
-    mut self,
-    alignment: impl Into<Value<Alignment, Condition<P::Scalar>>>,
-  ) -> Self {
-    let (horizontal, vertical) = alignment.into().split_axes();
-
-    self.style.item_horizontal_alignment = Some(horizontal);
-    self.style.item_alignment = Some(vertical);
-
-    self
-  }
-
-  /// Derives the alignment of each child on both axes from the signals `alignment`
-  /// reads: a value, a token or an expression.
-  pub fn derive_alignment<R: Into<StaticLeaf<Alignment>>>(
-    self,
-    alignment: impl Fn() -> R + 'static,
-  ) -> Self {
-    self.set_alignment(Value::<Alignment, Condition<P::Scalar>>::new(Leaf::derive(
-      alignment,
-    )))
+  crate::alignment_properties! { style_mut, P;
+    set_alignment / derive_alignment, "the alignment of each child",
+    "The horizontal component lands on the inline axis, the vertical one on the cross or \
+     block axis."
   }
 
   /// Sets the semantic role, guiding the platform's concrete choice of element.

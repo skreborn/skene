@@ -20,6 +20,55 @@ use crate::{
   View,
 };
 
+/// Generates a [`GridCell`]'s setters on a facade's newtype holding one in `$field`, each
+/// forwarding to the wrapper's own, on the platform `$platform`.
+#[macro_export]
+macro_rules! grid_cell_surface {
+  ($field:tt, $platform:ty) => {
+    $crate::forward! { $field;
+      /// Sets the row placement.
+      fn set_row(
+        row: impl Into<
+          $crate::Value<
+            $crate::Line<$crate::GridPlacement>,
+            $crate::Condition<<$platform as $crate::Platform>::Scalar>,
+          >,
+        >,
+      );
+      /// Derives the row placement from the signals `row` reads: a value, a token or an
+      /// expression.
+      fn derive_row[R: Into<$crate::StaticLeaf<$crate::Line<$crate::GridPlacement>>>](
+        row: impl Fn() -> R + 'static,
+      );
+      /// Sets the column placement.
+      fn set_column(
+        column: impl Into<
+          $crate::Value<
+            $crate::Line<$crate::GridPlacement>,
+            $crate::Condition<<$platform as $crate::Platform>::Scalar>,
+          >,
+        >,
+      );
+      /// Derives the column placement from the signals `column` reads: a value, a token
+      /// or an expression.
+      fn derive_column[R: Into<$crate::StaticLeaf<$crate::Line<$crate::GridPlacement>>>](
+        column: impl Fn() -> R + 'static,
+      );
+      /// Sets the child's alignment within its cell, on both axes, overriding the grid's.
+      fn set_alignment(
+        alignment: impl Into<
+          $crate::Value<$crate::Alignment, $crate::Condition<<$platform as $crate::Platform>::Scalar>>,
+        >,
+      );
+      /// Derives the child's alignment within its cell from the signals `alignment`
+      /// reads: a value, a token or an expression.
+      fn derive_alignment[R: Into<$crate::StaticLeaf<$crate::Alignment>>](
+        alignment: impl Fn() -> R + 'static,
+      );
+    }
+  };
+}
+
 /// A placement value under the platform's conditions.
 type Placement<P> = Value<Line<GridPlacement>, Condition<<P as Platform>::Scalar>>;
 
@@ -29,7 +78,6 @@ type Placement<P> = Value<Line<GridPlacement>, Condition<<P as Platform>::Scalar
 /// own style, so they compile, condition and derive like any property. The child is
 /// auto-placed on an axis with no placement set. Accepted only where a grid's children
 /// are; holds [`NoChild`] until `set_child` supplies the child.
-#[derive(Debug)]
 #[must_use]
 pub struct GridCell<P: Platform, C = NoChild> {
   row: Option<Placement<P>>,
@@ -37,6 +85,12 @@ pub struct GridCell<P: Platform, C = NoChild> {
   alignment: Option<Value<Alignment, Condition<P::Scalar>>>,
   child: C,
   platform: PhantomData<fn() -> P>,
+}
+
+impl<P: Platform, C> std::fmt::Debug for GridCell<P, C> {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("GridCell").finish_non_exhaustive()
+  }
 }
 
 impl<P: Platform> Default for GridCell<P> {

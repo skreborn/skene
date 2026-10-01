@@ -1,6 +1,6 @@
 //! # acme-map
 //!
-//! A third-party low-level view covering every platform of the pixel medium through a
+//! A third-party low-level view covering every platform of the web medium through a
 //! library-local [`MapHost`] trait: on the web a `Map` paints into a `<canvas>` it
 //! creates through `WebDom` once the page runs script, a box of the sea's color
 //! standing in its place through `WebMarkup` before then and on the server, and
@@ -63,10 +63,10 @@ impl<P: Platform> Map<P> {
   }
 }
 
-/// A platform a [`Map`] realizes on: every platform of the pixel medium.
+/// A platform a [`Map`] realizes on: every platform of the web medium.
 #[diagnostic::on_unimplemented(
   message = "`{Self}` is no platform a map realizes on",
-  label = "a map covers the pixel medium's platforms: the web and headless"
+  label = "a map covers the web medium's platforms: its leaves and headless"
 )]
 pub trait MapHost: Platform<Scalar = f32> {
   /// Realizes `map`, returning its node.

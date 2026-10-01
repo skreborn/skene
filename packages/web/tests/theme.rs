@@ -10,7 +10,6 @@ use skene_web::{
   BasicButton,
   Column,
   Container,
-  GuiProperty,
   HasChildren,
   NodeId,
   Text,
@@ -18,14 +17,15 @@ use skene_web::{
   ThemedIn,
   Typography,
   View,
+  WebProperty,
   core::{Color, ColorScheme, Media, Property, PropertyKey, StaticLeaf},
   headless::{children, end_turn, reset, resolve_color, text, trigger_click},
   media,
   prelude::{Get, Owner, Set, Signal, Update},
 };
 
-const COLOR: PropertyKey<GuiProperty> = PropertyKey::Shared(Property::Color);
-const TEXT_COLOR: PropertyKey<GuiProperty> = PropertyKey::Shared(Property::TextColor);
+const COLOR: PropertyKey<WebProperty> = PropertyKey::Shared(Property::Color);
+const TEXT_COLOR: PropertyKey<WebProperty> = PropertyKey::Shared(Property::TextColor);
 
 /// The nodes between a container's anchors: its content, in order.
 fn content(node: NodeId) -> Vec<NodeId> {

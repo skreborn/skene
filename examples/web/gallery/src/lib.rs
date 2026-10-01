@@ -581,7 +581,7 @@ fn third_party() -> impl View {
   )
 }
 
-/// The map, which covers every platform of the pixel medium.
+/// The map, which covers every platform of the web medium.
 fn map() -> impl View {
   acme_map::Map::<ActivePlatform>::new()
 }

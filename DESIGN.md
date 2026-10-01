@@ -32,9 +32,10 @@ skene-common      every built-in view ONCE, generic over P: Platform—Container
       │          Grid/Stack/LayoutBox, Flexible/Pinned/GridCell, Text/Span/RichText,
       │          Control<B: Behavior> and the shipped behaviors, BasicPicker, Overlay,
       │          LazyColumn/LazyRow, Show/Switch/Suspense/ErrorBoundary, Theme, typography,
-      │          LowLevel; gui (GuiStyle, the pixel Typography set, Painting/Canvas/
-      │          Painted through vello), terminal (TerminalStyle, BorderGlyphs, the
-      │          terminal Typography set), routing (a typed route in a signal)
+      │          LowLevel; terminal (TerminalStyle, BorderGlyphs, the terminal
+      │          Typography set), web (WebStyle, the web's Typography set, the document
+      │          Head, Painting/Canvas/Painted through vello), routing (a typed route
+      │          in a signal)
       │
       ├── skene-web       the web facade AND its platform: DOM sink (browser) + HTML/CSS
       │                   serializer (server) over one node record, the compiler,
@@ -58,7 +59,7 @@ skene-terminal   the terminal facade, EQUAL in standing: u32 cells, Terminal, th
 skene-simple     the Simple design language over skene-common, generic over P: the palette
                  (a TokenSet), the looks, the shape per unit, the terminal marks
                  (SimpleGlyphs) and the Simple* views; an app's explicit dependency;
-                 gui and terminal alias the types to each facade's ActivePlatform,
+                 terminal and web alias the types to each facade's ActivePlatform,
                  with a prelude
 skene-conformance  one suite of behaviors every platform shows alike, run through the
                  Driver a platform implements over its test seams
@@ -519,7 +520,7 @@ only serialize its current value; style data compiles to real CSS and evaluates 
 **One property model, spelled once.** `BoxStyle<N: Scalar, S: Shape, X: StyleExtension>`
 and `RunStyle<S, X>` name every shared property once; the leaf shape is a type parameter
 (`Declared` for a builder, `Static` for a platform, `Plain` for a keyframe or a resolved
-style) and the medium's own properties come through the extension (`GuiStyle`: the corner
+style) and the medium's own properties come through the extension (`WebStyle`: the corner
 radius and the type metrics; `TerminalStyle`: border glyphs, the corner radius, a shadow, bold,
 size and weight). A corner radius, a font size and a letter spacing are lengths
 (`Length`) in the medium's unit, fractions kept, so one length token serves them as it
@@ -838,7 +839,7 @@ and on wasm proved the bits equal.
 
 The host platform: every `Platform` method writes into a record per node, keyed by its
 `NodeId`, while the structure stays the scene's alone; nothing lays out and no platform
-response fires. It is the pixel medium (`StyleExt = GuiStyle`), so a corner radius or a
+response fires. It is the web medium (`StyleExt = WebStyle`), so a corner radius or a
 run's font size resolves as set, as it would on the web. Beside the records it keeps what
 a test asks: the outline, read from the scene, the props a node was created with, the
 slot a render effect last wrote, a property resolved through core's `Resolver` under the
@@ -1194,7 +1195,7 @@ the body ends in the hydration state and the module script booting the bundle, a
 in the dev loop carries the dev marker and the dev script, and every inline script
 carries the render's nonce. A head registration (`head::set_title`, `add_meta` and
 their kin) holds while the owner that made it lives, in one registry the web leaves
-and the headless platform share, `skene_common::gui::Head`: the latest live title is in
+and the headless platform share, `skene_common::web::Head`: the latest live title is in
 force, and so is the latest live element of what it stands for, so a route's head
 leaves with the route; the server serializes what is in force, and the browser applies
 it to the live head, adopting the elements a server render left. The app's server binary is built natively with the

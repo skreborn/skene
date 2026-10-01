@@ -65,16 +65,16 @@ mod task;
 )]
 mod token;
 
-/// The pixel medium's shared vocabulary: the style extension, the typography set and
-/// the painting path.
-pub use skene_common::gui::{
+/// The web medium's shared vocabulary: the style extension, the typography set and the
+/// painting path.
+pub use skene_common::web::{
   Canvas,
-  GuiProperty,
-  GuiStyle,
   IntoBrush,
   Painter,
   Painting,
   Typography,
+  WebProperty,
+  WebStyle,
   kurbo,
   peniko,
 };

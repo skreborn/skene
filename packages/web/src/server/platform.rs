@@ -3,7 +3,7 @@
 
 use std::{cell::RefCell, rc::Rc, thread::LocalKey, time::Duration};
 
-use skene_common::gui::{GuiStyle, Painter, Painting};
+use skene_common::web::{Painter, Painting, WebStyle};
 use skene_core::{
   AccessProp,
   BoxProps,
@@ -57,7 +57,7 @@ impl Painting for Web {
 
 impl Platform for Web {
   type Scalar = f32;
-  type StyleExt = GuiStyle;
+  type StyleExt = WebStyle;
   type TokenValue = WebTokenValue;
 
   fn scene() -> &'static LocalKey<RefCell<Scene<Self>>> {
@@ -68,7 +68,7 @@ impl Platform for Web {
     with_realizer(|realizer| realizer.create_box(node, props));
   }
 
-  fn update_box(node: NodeId, slot: Slot, leaf: &StaticLeaf<BoxValue<f32, GuiStyle>>) {
+  fn update_box(node: NodeId, slot: Slot, leaf: &StaticLeaf<BoxValue<f32, WebStyle>>) {
     with_realizer(|realizer| realizer.update_box(node, slot, leaf));
   }
 
@@ -102,7 +102,7 @@ impl Platform for Web {
     with_realizer(|realizer| realizer.create_run(node, props));
   }
 
-  fn update_run(node: NodeId, slot: Slot, leaf: &StaticLeaf<RunValue<GuiStyle>>) {
+  fn update_run(node: NodeId, slot: Slot, leaf: &StaticLeaf<RunValue<WebStyle>>) {
     with_realizer(|realizer| realizer.update_run(node, slot, leaf));
   }
 

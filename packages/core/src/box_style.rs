@@ -571,13 +571,13 @@ mod tests {
     When,
   };
 
-  type GuiCondition = Condition<f32>;
+  type PixelCondition = Condition<f32>;
 
   /// Splitting keeps every static leaf, replaces each derived one with a numbered slot,
   /// and lists the slots with their property and position.
   #[test]
   fn split_yields_the_static_part_and_the_slot_list() {
-    let declared = BoxStyle::<f32, Declared<GuiCondition>> {
+    let declared = BoxStyle::<f32, Declared<PixelCondition>> {
       width: Some(Value::from(Dimension::from(10.))),
       padding: Some(Value::from(TokenRef::<Length>::new("gutter"))),
       color: Some(
@@ -610,7 +610,7 @@ mod tests {
     assert_eq!(
       color.variants(),
       &[(
-        GuiCondition::Media(Media::Dark),
+        PixelCondition::Media(Media::Dark),
         PlatformLeaf::Static(StaticLeaf::Fixed(Color::srgb(0., 0., 0.))),
       )]
     );

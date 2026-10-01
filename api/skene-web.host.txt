@@ -18,8 +18,6 @@ pub use skene_web::DragData
 pub use skene_web::Errors
 pub use skene_web::Expr
 pub use skene_web::FocusOrder
-pub use skene_web::GuiProperty
-pub use skene_web::GuiStyle
 pub use skene_web::Handler
 pub use skene_web::HasChild
 pub use skene_web::HasChildren
@@ -82,6 +80,8 @@ pub use skene_web::TokenRef
 pub use skene_web::TokenSet
 pub use skene_web::TypeMetrics
 pub use skene_web::Typography
+pub use skene_web::WebProperty
+pub use skene_web::WebStyle
 pub use skene_web::WheelEvent
 pub use skene_web::WheelUnit
 pub use skene_web::When

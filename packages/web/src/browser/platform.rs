@@ -9,7 +9,7 @@ use std::{
   time::Duration,
 };
 
-use skene_common::gui::GuiStyle;
+use skene_common::web::WebStyle;
 use skene_core::{
   AccessProp,
   Availability,
@@ -259,7 +259,7 @@ fn position_at_anchor(popup: &HtmlElement, anchor: &Element, sink: NodeId, place
 
 impl Platform for Web {
   type Scalar = f32;
-  type StyleExt = GuiStyle;
+  type StyleExt = WebStyle;
   type TokenValue = WebTokenValue;
 
   fn scene() -> &'static LocalKey<RefCell<Scene<Self>>> {
@@ -270,7 +270,7 @@ impl Platform for Web {
     with_dom(|dom| dom.realizer.create_box(sink, props));
   }
 
-  fn update_box(sink: NodeId, slot: Slot, leaf: &StaticLeaf<BoxValue<f32, GuiStyle>>) {
+  fn update_box(sink: NodeId, slot: Slot, leaf: &StaticLeaf<BoxValue<f32, WebStyle>>) {
     with_dom(|dom| dom.realizer.update_box(sink, slot, leaf));
   }
 
@@ -408,7 +408,7 @@ impl Platform for Web {
     with_dom(|dom| dom.realizer.create_run(sink, props));
   }
 
-  fn update_run(sink: NodeId, slot: Slot, leaf: &StaticLeaf<RunValue<GuiStyle>>) {
+  fn update_run(sink: NodeId, slot: Slot, leaf: &StaticLeaf<RunValue<WebStyle>>) {
     with_dom(|dom| dom.realizer.update_run(sink, slot, leaf));
   }
 

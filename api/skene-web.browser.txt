@@ -18,8 +18,6 @@ pub use skene_web::DragData
 pub use skene_web::Errors
 pub use skene_web::Expr
 pub use skene_web::FocusOrder
-pub use skene_web::GuiProperty
-pub use skene_web::GuiStyle
 pub use skene_web::Handler
 pub use skene_web::HasChild
 pub use skene_web::HasChildren
@@ -82,6 +80,8 @@ pub use skene_web::TokenRef
 pub use skene_web::TokenSet
 pub use skene_web::TypeMetrics
 pub use skene_web::Typography
+pub use skene_web::WebProperty
+pub use skene_web::WebStyle
 pub use skene_web::WheelEvent
 pub use skene_web::WheelUnit
 pub use skene_web::When
@@ -218,7 +218,7 @@ pub fn skene_web::platform::Web::available() -> skene_reactive::signal::ReadSign
 pub fn skene_web::platform::Web::paint(skene_core::node::NodeId, alloc::boxed::Box<skene_common::painting::Painter>)
 impl skene_core::platform::Platform for skene_web::platform::Web
 pub type skene_web::platform::Web::Scalar = f32
-pub type skene_web::platform::Web::StyleExt = skene_common::gui::ext::GuiStyle
+pub type skene_web::platform::Web::StyleExt = skene_common::web::ext::WebStyle
 pub type skene_web::platform::Web::TokenValue = skene_web::platform::WebTokenValue
 pub fn skene_web::platform::Web::apply_layout(skene_core::node::NodeId, &skene_core::props::StaticBoxStyle<Self>)
 pub fn skene_web::platform::Web::attach(skene_core::node::NodeId, skene_core::node::NodeId, core::option::Option<skene_core::node::NodeId>)
@@ -259,9 +259,9 @@ pub fn skene_web::platform::Web::set_selection(skene_core::node::NodeId, skene_c
 pub fn skene_web::platform::Web::set_text(skene_core::node::NodeId, &str)
 pub fn skene_web::platform::Web::set_value(skene_core::node::NodeId, &str)
 pub fn skene_web::platform::Web::update_access(skene_core::node::NodeId, &[skene_core::values::access::AccessProp])
-pub fn skene_web::platform::Web::update_box(skene_core::node::NodeId, skene_core::leaf::Slot, &skene_core::leaf::StaticLeaf<skene_core::box_style::BoxValue<f32, skene_common::gui::ext::GuiStyle>>)
+pub fn skene_web::platform::Web::update_box(skene_core::node::NodeId, skene_core::leaf::Slot, &skene_core::leaf::StaticLeaf<skene_core::box_style::BoxValue<f32, skene_common::web::ext::WebStyle>>)
 pub fn skene_web::platform::Web::update_focus_order(skene_core::node::NodeId, core::option::Option<skene_core::values::focus_order::FocusOrder>)
-pub fn skene_web::platform::Web::update_run(skene_core::node::NodeId, skene_core::leaf::Slot, &skene_core::leaf::StaticLeaf<skene_core::run_style::RunValue<skene_common::gui::ext::GuiStyle>>)
+pub fn skene_web::platform::Web::update_run(skene_core::node::NodeId, skene_core::leaf::Slot, &skene_core::leaf::StaticLeaf<skene_core::run_style::RunValue<skene_common::web::ext::WebStyle>>)
 pub fn skene_web::platform::Web::watch_media(&skene_core::condition::Media<f32>) -> skene_reactive::memo::Memo<bool>
 impl skene_core::view::View<skene_web::platform::Web> for skene_web::AsyncView
 pub fn skene_web::AsyncView::build(self) -> skene_core::node::NodeId
@@ -299,8 +299,8 @@ pub fn skene_web::platform::Web::create_element(skene_core::node::NodeId, &'stat
 pub fn skene_web::platform::Web::set_attribute(skene_core::node::NodeId, &str, &str)
 pub fn skene_web::platform::Web::set_declarations(skene_core::node::NodeId, &skene_web::platform::Declarations)
 pub fn skene_web::platform::Web::set_text(skene_core::node::NodeId, &str)
-pub fn skene_web::platform::add_head_element(&str, &[(&str, &str)]) -> skene_common::gui::head::HeadId
-pub fn skene_web::platform::add_head_title(&str) -> skene_common::gui::head::HeadId
+pub fn skene_web::platform::add_head_element(&str, &[(&str, &str)]) -> skene_common::web::head::HeadId
+pub fn skene_web::platform::add_head_title(&str) -> skene_common::web::head::HeadId
 pub fn skene_web::platform::adopt_next() -> core::option::Option<alloc::string::String>
 pub fn skene_web::platform::adopt_restoration()
 pub fn skene_web::platform::adopt_tagged(&str) -> core::option::Option<alloc::string::String>
@@ -328,9 +328,9 @@ pub fn skene_web::platform::persisted_scheme() -> core::option::Option<skene_cor
 pub fn skene_web::platform::push_path(&str)
 pub fn skene_web::platform::register_source(skene_web::platform::HydrationSource)
 pub fn skene_web::platform::register_tagged_source(&str, skene_web::platform::HydrationSource)
-pub fn skene_web::platform::remove_head_entry(skene_common::gui::head::HeadId)
+pub fn skene_web::platform::remove_head_entry(skene_common::web::head::HeadId)
 pub fn skene_web::platform::set_document_language(&str)
-pub fn skene_web::platform::set_head_title(skene_common::gui::head::HeadId, &str)
+pub fn skene_web::platform::set_head_title(skene_common::web::head::HeadId, &str)
 pub fn skene_web::platform::set_scheme(core::option::Option<skene_core::values::color::ColorScheme>)
 pub fn skene_web::platform::uninstall()
 pub fn skene_web::platform::view_transitions_enabled() -> bool

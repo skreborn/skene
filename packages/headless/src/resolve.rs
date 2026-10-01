@@ -2,7 +2,7 @@
 //! feed the shared [`Resolver`], and the presented value lays the node's motion over
 //! what it resolved to.
 
-use skene_common::{gui::GuiProperty, typography};
+use skene_common::{typography, web::WebProperty};
 use skene_core::{
   Animation,
   BoxKeyframe,
@@ -57,7 +57,7 @@ pub(crate) type Env = ResolutionContext<'static, Headless, Records>;
 fn box_frames(
   env: &Env,
   animation: &Animation<BoxKeyframe<Headless>>,
-  key: PropertyKey<GuiProperty>,
+  key: PropertyKey<WebProperty>,
 ) -> Animation<Option<SlotValue>> {
   animation.map_keyframes(|style| {
     env
@@ -70,7 +70,7 @@ fn box_frames(
 fn run_frames(
   env: &Env,
   animation: &Animation<RunKeyframe<Headless>>,
-  key: PropertyKey<GuiProperty>,
+  key: PropertyKey<WebProperty>,
 ) -> Animation<Option<SlotValue>> {
   animation.map_keyframes(|style| {
     env
@@ -82,13 +82,13 @@ fn run_frames(
 /// The motion declared on a node that bears on one property: its transitions, and its
 /// animations reading the property from each keyframe, resolved.
 struct DeclaredMotion {
-  transitions: Vec<Transition<GuiProperty>>,
+  transitions: Vec<Transition<WebProperty>>,
   animations: Vec<Animation<Option<SlotValue>>>,
 }
 
 impl DeclaredMotion {
   /// The motion of `kind` bearing on `key`; `None` for a node with no style.
-  fn of(env: &Env, kind: &Kind, key: PropertyKey<GuiProperty>) -> Option<Self> {
+  fn of(env: &Env, kind: &Kind, key: PropertyKey<WebProperty>) -> Option<Self> {
     let box_props = match kind {
       Kind::Box(props) => &**props,
       Kind::Control(props) => &props.box_props,
@@ -126,7 +126,7 @@ fn present(
   env: &Env,
   node: NodeId,
   kind: &Kind,
-  key: PropertyKey<GuiProperty>,
+  key: PropertyKey<WebProperty>,
   target: Option<SlotValue>,
 ) -> Option<SlotValue> {
   let Some(declared) = DeclaredMotion::of(env, kind, key)
@@ -164,7 +164,7 @@ fn present(
 
 /// The property `key` of `node` resolved and presented: a box's as a [`BoxValue`], a
 /// run's as a [`RunValue`], in flight where a transition or an animation moves it.
-pub(crate) fn resolve(node: NodeId, key: PropertyKey<GuiProperty>) -> Option<SlotValue> {
+pub(crate) fn resolve(node: NodeId, key: PropertyKey<WebProperty>) -> Option<SlotValue> {
   let target = resolve_target(node, key);
   let env = Env::of(&Records, node)?;
   let kind = with_records(|records| match &records.record(node)?.kind {
@@ -179,7 +179,7 @@ pub(crate) fn resolve(node: NodeId, key: PropertyKey<GuiProperty>) -> Option<Slo
 }
 
 /// The property `key` of `node` resolved, motion aside: the value it is heading for.
-fn resolve_target(node: NodeId, key: PropertyKey<GuiProperty>) -> Option<SlotValue> {
+fn resolve_target(node: NodeId, key: PropertyKey<WebProperty>) -> Option<SlotValue> {
   let env = Env::of(&Records, node)?;
   let kind = with_records(|records| match &records.record(node)?.kind {
     Kind::Box(props) => Some(Kind::Box(props.clone())),

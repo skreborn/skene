@@ -12,7 +12,7 @@
 //! element a server render left. Off the web the headless platform records them for a
 //! test to read back.
 
-use skene_common::gui::HeadId;
+use skene_common::web::HeadId;
 #[cfg(skene_web_platform = "headless")]
 use skene_headless::{
   add_head_element,

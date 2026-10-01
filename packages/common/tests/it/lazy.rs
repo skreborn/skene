@@ -4,7 +4,7 @@
 
 use std::{cell::Cell, rc::Rc};
 
-use skene_common::{ItemExtent, gui::GuiProperty};
+use skene_common::{ItemExtent, web::WebProperty};
 use skene_core::{EventKind, NodeId, Property, PropertyKey, ScrollEvent, Size, View};
 use skene_headless::{
   Headless,
@@ -18,8 +18,8 @@ use skene_headless::{
 };
 use skene_reactive::{Get, Owner, Set, Signal};
 
-const HEIGHT: PropertyKey<GuiProperty> = PropertyKey::Shared(Property::Height);
-const WIDTH: PropertyKey<GuiProperty> = PropertyKey::Shared(Property::Width);
+const HEIGHT: PropertyKey<WebProperty> = PropertyKey::Shared(Property::Height);
+const WIDTH: PropertyKey<WebProperty> = PropertyKey::Shared(Property::Width);
 const ITEM_HEIGHT: f32 = 10.;
 const OVERSCAN: usize = 3;
 const COUNT: usize = 10_000;

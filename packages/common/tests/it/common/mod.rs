@@ -1,7 +1,7 @@
 //! What the view tests share: a component library's palette, a typography set, and
 //! the property keys the seams are asked about.
 
-use skene_common::{gui::GuiProperty, typography};
+use skene_common::{typography, web::WebProperty};
 use skene_core::{
   Color,
   Length,
@@ -16,11 +16,11 @@ use skene_core::{
 };
 use skene_headless::{TokenValue, children};
 
-pub(crate) const COLOR: PropertyKey<GuiProperty> = PropertyKey::Shared(Property::Color);
-pub(crate) const TEXT_COLOR: PropertyKey<GuiProperty> = PropertyKey::Shared(Property::TextColor);
-pub(crate) const WIDTH: PropertyKey<GuiProperty> = PropertyKey::Shared(Property::Width);
-pub(crate) const PADDING: PropertyKey<GuiProperty> = PropertyKey::Shared(Property::Padding);
-pub(crate) const SPACING: PropertyKey<GuiProperty> = PropertyKey::Shared(Property::Spacing);
+pub(crate) const COLOR: PropertyKey<WebProperty> = PropertyKey::Shared(Property::Color);
+pub(crate) const TEXT_COLOR: PropertyKey<WebProperty> = PropertyKey::Shared(Property::TextColor);
+pub(crate) const WIDTH: PropertyKey<WebProperty> = PropertyKey::Shared(Property::Width);
+pub(crate) const PADDING: PropertyKey<WebProperty> = PropertyKey::Shared(Property::Padding);
+pub(crate) const SPACING: PropertyKey<WebProperty> = PropertyKey::Shared(Property::Spacing);
 
 pub(crate) const WHITE: Color = Color::TRANSPARENT;
 

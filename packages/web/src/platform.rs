@@ -114,7 +114,7 @@ pub use crate::{
 /// browser and over a string tree on the server.
 ///
 /// Lengths are logical pixels ([`Scalar`](skene_core::Platform::Scalar) `f32`), the
-/// style extension is [`GuiStyle`](skene_common::gui::GuiStyle), and a token is a
+/// style extension is [`WebStyle`](skene_common::web::WebStyle), and a token is a
 /// [`WebTokenValue`].
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 #[must_use]

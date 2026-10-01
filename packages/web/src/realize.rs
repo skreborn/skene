@@ -5,7 +5,7 @@
 
 use std::rc::Rc;
 
-use skene_common::gui::GuiStyle;
+use skene_common::web::WebStyle;
 use skene_core::{
   AccessProp,
   BoxProps,
@@ -514,7 +514,7 @@ impl<S: Sink> Realizer<S> {
     &mut self,
     node: NodeId,
     slot: Slot,
-    leaf: &StaticLeaf<BoxValue<f32, GuiStyle>>,
+    leaf: &StaticLeaf<BoxValue<f32, WebStyle>>,
   ) {
     self.write_slot(node, slot, || render_box_leaf(leaf));
   }
@@ -524,7 +524,7 @@ impl<S: Sink> Realizer<S> {
     &mut self,
     node: NodeId,
     slot: Slot,
-    leaf: &StaticLeaf<RunValue<GuiStyle>>,
+    leaf: &StaticLeaf<RunValue<WebStyle>>,
   ) {
     self.write_slot(node, slot, || render_run_leaf(leaf));
   }

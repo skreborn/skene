@@ -23,8 +23,8 @@ pub const PICKER_INDICATOR: TokenRef<String> = TokenRef::new("simple-glyph-picke
 /// where the medium draws with characters: a token set a theme defines beneath it, in
 /// cells.
 ///
-/// It exists only for a platform whose tokens hold text over cells—the terminal—so a
-/// pixel medium, which draws its marks, cannot theme it. Every default is one cell per
+/// It exists only for a platform whose tokens hold text over cells—the terminal—so the
+/// web, which draws its marks, cannot theme it. Every default is one cell per
 /// character in every terminal. Box-symbol marks (`☑`, `◉`) render two cells wide in
 /// some emulators; a theme opting into them takes that on itself.
 #[derive(Debug, Clone, PartialEq)]

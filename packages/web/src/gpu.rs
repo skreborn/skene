@@ -3,7 +3,7 @@
 
 use std::{cell::RefCell, rc::Rc};
 
-use skene_common::gui::{Canvas, Renderer, kurbo, paint, peniko};
+use skene_common::web::{Canvas, Renderer, kurbo, paint, peniko};
 use vello_hybrid::{RenderSize, RenderTargetConfig, Resources, Scene, TextureBindings};
 use wasm_bindgen::JsValue;
 use web_sys::HtmlCanvasElement;

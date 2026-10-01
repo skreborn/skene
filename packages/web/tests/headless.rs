@@ -15,7 +15,6 @@ use skene_web::{
   Bubbling,
   Column,
   Container,
-  GuiProperty,
   HasChild,
   HasChildren,
   LayoutBox,
@@ -29,6 +28,7 @@ use skene_web::{
   Text,
   TextEntry,
   View,
+  WebProperty,
   core::{Color, Dimension, FlexChild, FlexDirection, Layout, Property, PropertyKey},
   headless::{
     add_head_element,
@@ -49,9 +49,9 @@ use skene_web::{
   prelude::{Get, Owner, Set, Signal},
 };
 
-const WIDTH: PropertyKey<GuiProperty> = PropertyKey::Shared(Property::Width);
-const HEIGHT: PropertyKey<GuiProperty> = PropertyKey::Shared(Property::Height);
-const COLOR: PropertyKey<GuiProperty> = PropertyKey::Shared(Property::Color);
+const WIDTH: PropertyKey<WebProperty> = PropertyKey::Shared(Property::Width);
+const HEIGHT: PropertyKey<WebProperty> = PropertyKey::Shared(Property::Height);
+const COLOR: PropertyKey<WebProperty> = PropertyKey::Shared(Property::Color);
 
 /// The nodes between a container's anchors: its content, in order.
 fn content(node: NodeId) -> Vec<NodeId> {
@@ -698,7 +698,7 @@ fn a_size_handle_reports_the_measured_size() {
 /// A platform's renderer takes the canvas's steps in the order they were drawn.
 #[test]
 fn a_canvas_replays_its_scene_into_a_renderer() {
-  use skene_common::gui::Renderer;
+  use skene_common::web::Renderer;
   use skene_web::{
     Canvas,
     kurbo::{Affine, BezPath, Rect, Stroke},

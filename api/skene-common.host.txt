@@ -18,353 +18,6 @@ pub use skene_common::Show
 pub use skene_common::View
 pub use skene_common::kurbo
 pub use skene_common::peniko
-pub mod skene_common::gui
-pub use skene_common::gui::PaintType
-pub use skene_common::gui::kurbo
-pub use skene_common::gui::peniko
-pub mod skene_common::gui::gui_fields
-pub struct skene_common::gui::gui_fields::CornerRadius
-impl core::clone::Clone for skene_common::gui::gui_fields::CornerRadius
-pub fn skene_common::gui::gui_fields::CornerRadius::clone(&self) -> skene_common::gui::gui_fields::CornerRadius
-impl core::cmp::Eq for skene_common::gui::gui_fields::CornerRadius
-impl core::cmp::PartialEq for skene_common::gui::gui_fields::CornerRadius
-pub fn skene_common::gui::gui_fields::CornerRadius::eq(&self, &skene_common::gui::gui_fields::CornerRadius) -> bool
-impl core::default::Default for skene_common::gui::gui_fields::CornerRadius
-pub fn skene_common::gui::gui_fields::CornerRadius::default() -> skene_common::gui::gui_fields::CornerRadius
-impl core::fmt::Debug for skene_common::gui::gui_fields::CornerRadius
-pub fn skene_common::gui::gui_fields::CornerRadius::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::hash::Hash for skene_common::gui::gui_fields::CornerRadius
-pub fn skene_common::gui::gui_fields::CornerRadius::hash<__H: core::hash::Hasher>(&self, &mut __H)
-impl core::marker::Copy for skene_common::gui::gui_fields::CornerRadius
-impl core::marker::StructuralPartialEq for skene_common::gui::gui_fields::CornerRadius
-impl<N: skene_core::scalar::Scalar> skene_core::box_style::BoxField<N, skene_common::gui::GuiStyle> for skene_common::gui::gui_fields::CornerRadius
-pub type skene_common::gui::gui_fields::CornerRadius::Value = skene_core::expr::Length
-pub const skene_common::gui::gui_fields::CornerRadius::KEY: skene_core::property::PropertyKey<skene_common::gui::GuiProperty>
-pub fn skene_common::gui::gui_fields::CornerRadius::get<S: skene_core::shape::Shape>(&skene_core::box_style::BoxStyle<N, S, skene_common::gui::GuiStyle>) -> &<S as skene_core::shape::Shape>::Of
-pub fn skene_common::gui::gui_fields::CornerRadius::get_mut<S: skene_core::shape::Shape>(&mut skene_core::box_style::BoxStyle<N, S, skene_common::gui::GuiStyle>) -> &mut <S as skene_core::shape::Shape>::Of
-pub struct skene_common::gui::gui_fields::FontSize
-impl core::clone::Clone for skene_common::gui::gui_fields::FontSize
-pub fn skene_common::gui::gui_fields::FontSize::clone(&self) -> skene_common::gui::gui_fields::FontSize
-impl core::cmp::Eq for skene_common::gui::gui_fields::FontSize
-impl core::cmp::PartialEq for skene_common::gui::gui_fields::FontSize
-pub fn skene_common::gui::gui_fields::FontSize::eq(&self, &skene_common::gui::gui_fields::FontSize) -> bool
-impl core::default::Default for skene_common::gui::gui_fields::FontSize
-pub fn skene_common::gui::gui_fields::FontSize::default() -> skene_common::gui::gui_fields::FontSize
-impl core::fmt::Debug for skene_common::gui::gui_fields::FontSize
-pub fn skene_common::gui::gui_fields::FontSize::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::hash::Hash for skene_common::gui::gui_fields::FontSize
-pub fn skene_common::gui::gui_fields::FontSize::hash<__H: core::hash::Hasher>(&self, &mut __H)
-impl core::marker::Copy for skene_common::gui::gui_fields::FontSize
-impl core::marker::StructuralPartialEq for skene_common::gui::gui_fields::FontSize
-impl skene_core::run_style::RunField<skene_common::gui::GuiStyle> for skene_common::gui::gui_fields::FontSize
-pub type skene_common::gui::gui_fields::FontSize::Value = skene_core::expr::Length
-pub const skene_common::gui::gui_fields::FontSize::KEY: skene_core::property::PropertyKey<skene_common::gui::GuiProperty>
-pub fn skene_common::gui::gui_fields::FontSize::get<S: skene_core::shape::Shape>(&skene_core::run_style::RunStyle<S, skene_common::gui::GuiStyle>) -> &<S as skene_core::shape::Shape>::Of
-pub fn skene_common::gui::gui_fields::FontSize::get_mut<S: skene_core::shape::Shape>(&mut skene_core::run_style::RunStyle<S, skene_common::gui::GuiStyle>) -> &mut <S as skene_core::shape::Shape>::Of
-pub struct skene_common::gui::gui_fields::FontWeight
-impl core::clone::Clone for skene_common::gui::gui_fields::FontWeight
-pub fn skene_common::gui::gui_fields::FontWeight::clone(&self) -> skene_common::gui::gui_fields::FontWeight
-impl core::cmp::Eq for skene_common::gui::gui_fields::FontWeight
-impl core::cmp::PartialEq for skene_common::gui::gui_fields::FontWeight
-pub fn skene_common::gui::gui_fields::FontWeight::eq(&self, &skene_common::gui::gui_fields::FontWeight) -> bool
-impl core::default::Default for skene_common::gui::gui_fields::FontWeight
-pub fn skene_common::gui::gui_fields::FontWeight::default() -> skene_common::gui::gui_fields::FontWeight
-impl core::fmt::Debug for skene_common::gui::gui_fields::FontWeight
-pub fn skene_common::gui::gui_fields::FontWeight::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::hash::Hash for skene_common::gui::gui_fields::FontWeight
-pub fn skene_common::gui::gui_fields::FontWeight::hash<__H: core::hash::Hasher>(&self, &mut __H)
-impl core::marker::Copy for skene_common::gui::gui_fields::FontWeight
-impl core::marker::StructuralPartialEq for skene_common::gui::gui_fields::FontWeight
-impl skene_core::run_style::RunField<skene_common::gui::GuiStyle> for skene_common::gui::gui_fields::FontWeight
-pub type skene_common::gui::gui_fields::FontWeight::Value = f32
-pub const skene_common::gui::gui_fields::FontWeight::KEY: skene_core::property::PropertyKey<skene_common::gui::GuiProperty>
-pub fn skene_common::gui::gui_fields::FontWeight::get<S: skene_core::shape::Shape>(&skene_core::run_style::RunStyle<S, skene_common::gui::GuiStyle>) -> &<S as skene_core::shape::Shape>::Of
-pub fn skene_common::gui::gui_fields::FontWeight::get_mut<S: skene_core::shape::Shape>(&mut skene_core::run_style::RunStyle<S, skene_common::gui::GuiStyle>) -> &mut <S as skene_core::shape::Shape>::Of
-pub struct skene_common::gui::gui_fields::LetterSpacing
-impl core::clone::Clone for skene_common::gui::gui_fields::LetterSpacing
-pub fn skene_common::gui::gui_fields::LetterSpacing::clone(&self) -> skene_common::gui::gui_fields::LetterSpacing
-impl core::cmp::Eq for skene_common::gui::gui_fields::LetterSpacing
-impl core::cmp::PartialEq for skene_common::gui::gui_fields::LetterSpacing
-pub fn skene_common::gui::gui_fields::LetterSpacing::eq(&self, &skene_common::gui::gui_fields::LetterSpacing) -> bool
-impl core::default::Default for skene_common::gui::gui_fields::LetterSpacing
-pub fn skene_common::gui::gui_fields::LetterSpacing::default() -> skene_common::gui::gui_fields::LetterSpacing
-impl core::fmt::Debug for skene_common::gui::gui_fields::LetterSpacing
-pub fn skene_common::gui::gui_fields::LetterSpacing::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::hash::Hash for skene_common::gui::gui_fields::LetterSpacing
-pub fn skene_common::gui::gui_fields::LetterSpacing::hash<__H: core::hash::Hasher>(&self, &mut __H)
-impl core::marker::Copy for skene_common::gui::gui_fields::LetterSpacing
-impl core::marker::StructuralPartialEq for skene_common::gui::gui_fields::LetterSpacing
-impl skene_core::run_style::RunField<skene_common::gui::GuiStyle> for skene_common::gui::gui_fields::LetterSpacing
-pub type skene_common::gui::gui_fields::LetterSpacing::Value = skene_core::expr::Length
-pub const skene_common::gui::gui_fields::LetterSpacing::KEY: skene_core::property::PropertyKey<skene_common::gui::GuiProperty>
-pub fn skene_common::gui::gui_fields::LetterSpacing::get<S: skene_core::shape::Shape>(&skene_core::run_style::RunStyle<S, skene_common::gui::GuiStyle>) -> &<S as skene_core::shape::Shape>::Of
-pub fn skene_common::gui::gui_fields::LetterSpacing::get_mut<S: skene_core::shape::Shape>(&mut skene_core::run_style::RunStyle<S, skene_common::gui::GuiStyle>) -> &mut <S as skene_core::shape::Shape>::Of
-pub struct skene_common::gui::gui_fields::LineHeight
-impl core::clone::Clone for skene_common::gui::gui_fields::LineHeight
-pub fn skene_common::gui::gui_fields::LineHeight::clone(&self) -> skene_common::gui::gui_fields::LineHeight
-impl core::cmp::Eq for skene_common::gui::gui_fields::LineHeight
-impl core::cmp::PartialEq for skene_common::gui::gui_fields::LineHeight
-pub fn skene_common::gui::gui_fields::LineHeight::eq(&self, &skene_common::gui::gui_fields::LineHeight) -> bool
-impl core::default::Default for skene_common::gui::gui_fields::LineHeight
-pub fn skene_common::gui::gui_fields::LineHeight::default() -> skene_common::gui::gui_fields::LineHeight
-impl core::fmt::Debug for skene_common::gui::gui_fields::LineHeight
-pub fn skene_common::gui::gui_fields::LineHeight::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::hash::Hash for skene_common::gui::gui_fields::LineHeight
-pub fn skene_common::gui::gui_fields::LineHeight::hash<__H: core::hash::Hasher>(&self, &mut __H)
-impl core::marker::Copy for skene_common::gui::gui_fields::LineHeight
-impl core::marker::StructuralPartialEq for skene_common::gui::gui_fields::LineHeight
-impl skene_core::run_style::RunField<skene_common::gui::GuiStyle> for skene_common::gui::gui_fields::LineHeight
-pub type skene_common::gui::gui_fields::LineHeight::Value = f32
-pub const skene_common::gui::gui_fields::LineHeight::KEY: skene_core::property::PropertyKey<skene_common::gui::GuiProperty>
-pub fn skene_common::gui::gui_fields::LineHeight::get<S: skene_core::shape::Shape>(&skene_core::run_style::RunStyle<S, skene_common::gui::GuiStyle>) -> &<S as skene_core::shape::Shape>::Of
-pub fn skene_common::gui::gui_fields::LineHeight::get_mut<S: skene_core::shape::Shape>(&mut skene_core::run_style::RunStyle<S, skene_common::gui::GuiStyle>) -> &mut <S as skene_core::shape::Shape>::Of
-pub fn skene_common::gui::gui_fields::visit_box<N: skene_core::scalar::Scalar, V: skene_core::box_style::BoxFieldVisitor<N, skene_common::gui::GuiStyle>>(&mut V)
-pub fn skene_common::gui::gui_fields::visit_run<V: skene_core::run_style::RunFieldVisitor<skene_common::gui::GuiStyle>>(&mut V)
-pub enum skene_common::gui::GuiProperty
-pub skene_common::gui::GuiProperty::CornerRadius
-pub skene_common::gui::GuiProperty::FontSize
-pub skene_common::gui::GuiProperty::FontWeight
-pub skene_common::gui::GuiProperty::LetterSpacing
-pub skene_common::gui::GuiProperty::LineHeight
-impl skene_common::gui::GuiProperty
-pub const skene_common::gui::GuiProperty::ALL: [Self; 5]
-pub const fn skene_common::gui::GuiProperty::name(self) -> &'static str
-impl core::clone::Clone for skene_common::gui::GuiProperty
-pub fn skene_common::gui::GuiProperty::clone(&self) -> skene_common::gui::GuiProperty
-impl core::cmp::Eq for skene_common::gui::GuiProperty
-impl core::cmp::Ord for skene_common::gui::GuiProperty
-pub fn skene_common::gui::GuiProperty::cmp(&self, &skene_common::gui::GuiProperty) -> core::cmp::Ordering
-impl core::cmp::PartialEq for skene_common::gui::GuiProperty
-pub fn skene_common::gui::GuiProperty::eq(&self, &skene_common::gui::GuiProperty) -> bool
-impl core::cmp::PartialOrd for skene_common::gui::GuiProperty
-pub fn skene_common::gui::GuiProperty::partial_cmp(&self, &skene_common::gui::GuiProperty) -> core::option::Option<core::cmp::Ordering>
-impl core::convert::From<skene_common::gui::GuiProperty> for skene_core::motion::StyleProperty<skene_common::gui::GuiProperty>
-pub fn skene_core::motion::StyleProperty<skene_common::gui::GuiProperty>::from(skene_common::gui::GuiProperty) -> Self
-impl core::fmt::Debug for skene_common::gui::GuiProperty
-pub fn skene_common::gui::GuiProperty::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::hash::Hash for skene_common::gui::GuiProperty
-pub fn skene_common::gui::GuiProperty::hash<__H: core::hash::Hasher>(&self, &mut __H)
-impl core::marker::Copy for skene_common::gui::GuiProperty
-impl core::marker::StructuralPartialEq for skene_common::gui::GuiProperty
-impl skene_core::property::PropertyName for skene_common::gui::GuiProperty
-pub fn skene_common::gui::GuiProperty::name(&self) -> &'static str
-pub struct skene_common::gui::Canvas
-impl skene_common::Canvas
-pub fn skene_common::Canvas::fill(&mut self, &impl kurbo::shape::Shape, impl skene_common::IntoBrush)
-pub const fn skene_common::Canvas::new(u16, u16) -> Self
-pub fn skene_common::Canvas::pixels(&self) -> alloc::vec::Vec<u8>
-pub fn skene_common::Canvas::pop(&mut self)
-pub fn skene_common::Canvas::push_clip(&mut self, &impl kurbo::shape::Shape)
-pub fn skene_common::Canvas::replay(&self, &mut impl skene_common::Renderer)
-pub fn skene_common::Canvas::set_transform(&mut self, kurbo::affine::Affine)
-pub const fn skene_common::Canvas::size(&self) -> (u16, u16)
-pub fn skene_common::Canvas::stroke(&mut self, &impl kurbo::shape::Shape, &kurbo::stroke::Stroke, impl skene_common::IntoBrush)
-impl core::fmt::Debug for skene_common::Canvas
-pub fn skene_common::Canvas::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub struct skene_common::gui::GuiBoxFields<S: skene_core::shape::Shape>
-pub skene_common::gui::GuiBoxFields::corner_radius: <S as skene_core::shape::Shape>::Of
-impl<S: core::clone::Clone + skene_core::shape::Shape> core::clone::Clone for skene_common::gui::GuiBoxFields<S> where <S as skene_core::shape::Shape>::Of: core::clone::Clone
-pub fn skene_common::gui::GuiBoxFields<S>::clone(&self) -> skene_common::gui::GuiBoxFields<S>
-impl<S: core::cmp::PartialEq + skene_core::shape::Shape> core::cmp::PartialEq for skene_common::gui::GuiBoxFields<S> where <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq
-pub fn skene_common::gui::GuiBoxFields<S>::eq(&self, &skene_common::gui::GuiBoxFields<S>) -> bool
-impl<S: core::cmp::PartialEq + skene_core::shape::Shape> core::marker::StructuralPartialEq for skene_common::gui::GuiBoxFields<S> where <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq
-impl<S: core::default::Default + skene_core::shape::Shape> core::default::Default for skene_common::gui::GuiBoxFields<S> where <S as skene_core::shape::Shape>::Of: core::default::Default
-pub fn skene_common::gui::GuiBoxFields<S>::default() -> skene_common::gui::GuiBoxFields<S>
-impl<S: core::fmt::Debug + skene_core::shape::Shape> core::fmt::Debug for skene_common::gui::GuiBoxFields<S> where <S as skene_core::shape::Shape>::Of: core::fmt::Debug
-pub fn skene_common::gui::GuiBoxFields<S>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub struct skene_common::gui::GuiRunFields<S: skene_core::shape::Shape>
-pub skene_common::gui::GuiRunFields::font_size: <S as skene_core::shape::Shape>::Of
-pub skene_common::gui::GuiRunFields::font_weight: <S as skene_core::shape::Shape>::Of
-pub skene_common::gui::GuiRunFields::letter_spacing: <S as skene_core::shape::Shape>::Of
-pub skene_common::gui::GuiRunFields::line_height: <S as skene_core::shape::Shape>::Of
-impl<S: core::clone::Clone + skene_core::shape::Shape> core::clone::Clone for skene_common::gui::GuiRunFields<S> where <S as skene_core::shape::Shape>::Of: core::clone::Clone, <S as skene_core::shape::Shape>::Of: core::clone::Clone
-pub fn skene_common::gui::GuiRunFields<S>::clone(&self) -> skene_common::gui::GuiRunFields<S>
-impl<S: core::cmp::PartialEq + skene_core::shape::Shape> core::cmp::PartialEq for skene_common::gui::GuiRunFields<S> where <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq, <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq
-pub fn skene_common::gui::GuiRunFields<S>::eq(&self, &skene_common::gui::GuiRunFields<S>) -> bool
-impl<S: core::cmp::PartialEq + skene_core::shape::Shape> core::marker::StructuralPartialEq for skene_common::gui::GuiRunFields<S> where <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq, <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq
-impl<S: core::default::Default + skene_core::shape::Shape> core::default::Default for skene_common::gui::GuiRunFields<S> where <S as skene_core::shape::Shape>::Of: core::default::Default, <S as skene_core::shape::Shape>::Of: core::default::Default
-pub fn skene_common::gui::GuiRunFields<S>::default() -> skene_common::gui::GuiRunFields<S>
-impl<S: core::fmt::Debug + skene_core::shape::Shape> core::fmt::Debug for skene_common::gui::GuiRunFields<S> where <S as skene_core::shape::Shape>::Of: core::fmt::Debug, <S as skene_core::shape::Shape>::Of: core::fmt::Debug
-pub fn skene_common::gui::GuiRunFields<S>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub struct skene_common::gui::GuiStyle
-impl core::clone::Clone for skene_common::gui::GuiStyle
-pub fn skene_common::gui::GuiStyle::clone(&self) -> skene_common::gui::GuiStyle
-impl core::cmp::Eq for skene_common::gui::GuiStyle
-impl core::cmp::PartialEq for skene_common::gui::GuiStyle
-pub fn skene_common::gui::GuiStyle::eq(&self, &skene_common::gui::GuiStyle) -> bool
-impl core::default::Default for skene_common::gui::GuiStyle
-pub fn skene_common::gui::GuiStyle::default() -> skene_common::gui::GuiStyle
-impl core::fmt::Debug for skene_common::gui::GuiStyle
-pub fn skene_common::gui::GuiStyle::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::hash::Hash for skene_common::gui::GuiStyle
-pub fn skene_common::gui::GuiStyle::hash<__H: core::hash::Hasher>(&self, &mut __H)
-impl core::marker::Copy for skene_common::gui::GuiStyle
-impl core::marker::StructuralPartialEq for skene_common::gui::GuiStyle
-impl skene_common::CornerRadius for skene_common::gui::GuiStyle
-pub fn skene_common::gui::GuiStyle::set_corner_radius<S: skene_core::shape::Shape>(&mut Self::BoxFields, <S as skene_core::shape::Shape>::Of)
-impl skene_common::TypeMetrics for skene_common::gui::GuiStyle
-pub fn skene_common::gui::GuiStyle::font_size<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
-pub fn skene_common::gui::GuiStyle::font_weight<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
-pub fn skene_common::gui::GuiStyle::letter_spacing<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
-pub fn skene_common::gui::GuiStyle::line_height<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
-pub fn skene_common::gui::GuiStyle::set_font_size<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
-pub fn skene_common::gui::GuiStyle::set_font_weight<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
-pub fn skene_common::gui::GuiStyle::set_letter_spacing<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
-pub fn skene_common::gui::GuiStyle::set_line_height<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
-impl skene_core::extension::StyleExtension for skene_common::gui::GuiStyle
-pub type skene_common::gui::GuiStyle::BoxFields<S: skene_core::shape::Shape> = skene_common::gui::GuiBoxFields<S>
-pub type skene_common::gui::GuiStyle::Property = skene_common::gui::GuiProperty
-pub type skene_common::gui::GuiStyle::RunFields<S: skene_core::shape::Shape> = skene_common::gui::GuiRunFields<S>
-pub type skene_common::gui::GuiStyle::Value = f32
-pub fn skene_common::gui::GuiStyle::for_each_box_field<N: skene_core::scalar::Scalar, V: skene_core::box_style::BoxFieldVisitor<N, Self>>(&mut V)
-pub fn skene_common::gui::GuiStyle::for_each_run_field<V: skene_core::run_style::RunFieldVisitor<Self>>(&mut V)
-pub fn skene_common::gui::GuiStyle::interpolate_value(&f32, &f32, f32) -> core::option::Option<f32>
-impl skene_core::run_style::IntoRunValue<skene_common::gui::GuiStyle> for f32
-pub fn f32::from_run_value(skene_core::run_style::RunValue<skene_common::gui::GuiStyle>) -> core::option::Option<Self>
-pub fn f32::into_run_value(self) -> skene_core::run_style::RunValue<skene_common::gui::GuiStyle>
-impl skene_core::run_style::RunField<skene_common::gui::GuiStyle> for skene_common::gui::gui_fields::FontSize
-pub type skene_common::gui::gui_fields::FontSize::Value = skene_core::expr::Length
-pub const skene_common::gui::gui_fields::FontSize::KEY: skene_core::property::PropertyKey<skene_common::gui::GuiProperty>
-pub fn skene_common::gui::gui_fields::FontSize::get<S: skene_core::shape::Shape>(&skene_core::run_style::RunStyle<S, skene_common::gui::GuiStyle>) -> &<S as skene_core::shape::Shape>::Of
-pub fn skene_common::gui::gui_fields::FontSize::get_mut<S: skene_core::shape::Shape>(&mut skene_core::run_style::RunStyle<S, skene_common::gui::GuiStyle>) -> &mut <S as skene_core::shape::Shape>::Of
-impl skene_core::run_style::RunField<skene_common::gui::GuiStyle> for skene_common::gui::gui_fields::FontWeight
-pub type skene_common::gui::gui_fields::FontWeight::Value = f32
-pub const skene_common::gui::gui_fields::FontWeight::KEY: skene_core::property::PropertyKey<skene_common::gui::GuiProperty>
-pub fn skene_common::gui::gui_fields::FontWeight::get<S: skene_core::shape::Shape>(&skene_core::run_style::RunStyle<S, skene_common::gui::GuiStyle>) -> &<S as skene_core::shape::Shape>::Of
-pub fn skene_common::gui::gui_fields::FontWeight::get_mut<S: skene_core::shape::Shape>(&mut skene_core::run_style::RunStyle<S, skene_common::gui::GuiStyle>) -> &mut <S as skene_core::shape::Shape>::Of
-impl skene_core::run_style::RunField<skene_common::gui::GuiStyle> for skene_common::gui::gui_fields::LetterSpacing
-pub type skene_common::gui::gui_fields::LetterSpacing::Value = skene_core::expr::Length
-pub const skene_common::gui::gui_fields::LetterSpacing::KEY: skene_core::property::PropertyKey<skene_common::gui::GuiProperty>
-pub fn skene_common::gui::gui_fields::LetterSpacing::get<S: skene_core::shape::Shape>(&skene_core::run_style::RunStyle<S, skene_common::gui::GuiStyle>) -> &<S as skene_core::shape::Shape>::Of
-pub fn skene_common::gui::gui_fields::LetterSpacing::get_mut<S: skene_core::shape::Shape>(&mut skene_core::run_style::RunStyle<S, skene_common::gui::GuiStyle>) -> &mut <S as skene_core::shape::Shape>::Of
-impl skene_core::run_style::RunField<skene_common::gui::GuiStyle> for skene_common::gui::gui_fields::LineHeight
-pub type skene_common::gui::gui_fields::LineHeight::Value = f32
-pub const skene_common::gui::gui_fields::LineHeight::KEY: skene_core::property::PropertyKey<skene_common::gui::GuiProperty>
-pub fn skene_common::gui::gui_fields::LineHeight::get<S: skene_core::shape::Shape>(&skene_core::run_style::RunStyle<S, skene_common::gui::GuiStyle>) -> &<S as skene_core::shape::Shape>::Of
-pub fn skene_common::gui::gui_fields::LineHeight::get_mut<S: skene_core::shape::Shape>(&mut skene_core::run_style::RunStyle<S, skene_common::gui::GuiStyle>) -> &mut <S as skene_core::shape::Shape>::Of
-impl<N: skene_core::scalar::Scalar> skene_core::box_style::BoxField<N, skene_common::gui::GuiStyle> for skene_common::gui::gui_fields::CornerRadius
-pub type skene_common::gui::gui_fields::CornerRadius::Value = skene_core::expr::Length
-pub const skene_common::gui::gui_fields::CornerRadius::KEY: skene_core::property::PropertyKey<skene_common::gui::GuiProperty>
-pub fn skene_common::gui::gui_fields::CornerRadius::get<S: skene_core::shape::Shape>(&skene_core::box_style::BoxStyle<N, S, skene_common::gui::GuiStyle>) -> &<S as skene_core::shape::Shape>::Of
-pub fn skene_common::gui::gui_fields::CornerRadius::get_mut<S: skene_core::shape::Shape>(&mut skene_core::box_style::BoxStyle<N, S, skene_common::gui::GuiStyle>) -> &mut <S as skene_core::shape::Shape>::Of
-pub struct skene_common::gui::Head
-impl skene_common::gui::Head
-pub fn skene_common::gui::Head::add_element(&mut self, skene_common::gui::HeadElement) -> skene_common::gui::HeadId
-pub fn skene_common::gui::Head::add_title(&mut self, alloc::string::String) -> skene_common::gui::HeadId
-pub fn skene_common::gui::Head::elements(&self) -> impl core::iter::traits::iterator::Iterator<Item = &skene_common::gui::HeadElement>
-pub fn skene_common::gui::Head::remove(&mut self, skene_common::gui::HeadId)
-pub fn skene_common::gui::Head::set_title(&mut self, skene_common::gui::HeadId, alloc::string::String)
-pub fn skene_common::gui::Head::title(&self) -> core::option::Option<&str>
-impl core::default::Default for skene_common::gui::Head
-pub fn skene_common::gui::Head::default() -> skene_common::gui::Head
-impl core::fmt::Debug for skene_common::gui::Head
-pub fn skene_common::gui::Head::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub struct skene_common::gui::HeadElement
-pub skene_common::gui::HeadElement::attributes: alloc::vec::Vec<(alloc::string::String, alloc::string::String)>
-pub skene_common::gui::HeadElement::tag: alloc::string::String
-impl skene_common::gui::HeadElement
-pub fn skene_common::gui::HeadElement::new(&str, &[(&str, &str)]) -> Self
-impl core::clone::Clone for skene_common::gui::HeadElement
-pub fn skene_common::gui::HeadElement::clone(&self) -> skene_common::gui::HeadElement
-impl core::cmp::Eq for skene_common::gui::HeadElement
-impl core::cmp::PartialEq for skene_common::gui::HeadElement
-pub fn skene_common::gui::HeadElement::eq(&self, &skene_common::gui::HeadElement) -> bool
-impl core::fmt::Debug for skene_common::gui::HeadElement
-pub fn skene_common::gui::HeadElement::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::marker::StructuralPartialEq for skene_common::gui::HeadElement
-pub struct skene_common::gui::HeadId(_)
-impl core::clone::Clone for skene_common::gui::HeadId
-pub fn skene_common::gui::HeadId::clone(&self) -> skene_common::gui::HeadId
-impl core::cmp::Eq for skene_common::gui::HeadId
-impl core::cmp::PartialEq for skene_common::gui::HeadId
-pub fn skene_common::gui::HeadId::eq(&self, &skene_common::gui::HeadId) -> bool
-impl core::fmt::Debug for skene_common::gui::HeadId
-pub fn skene_common::gui::HeadId::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::hash::Hash for skene_common::gui::HeadId
-pub fn skene_common::gui::HeadId::hash<__H: core::hash::Hasher>(&self, &mut __H)
-impl core::marker::Copy for skene_common::gui::HeadId
-impl core::marker::StructuralPartialEq for skene_common::gui::HeadId
-pub struct skene_common::gui::Painted<P: skene_common::Painting>
-impl<P: skene_common::Painting> skene_common::Painted<P>
-pub fn skene_common::Painted<P>::bind_handle(self, skene_common::NodeHandle<P>) -> Self
-pub fn skene_common::Painted<P>::derive_aspect_ratio<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::aspect_ratio::AspectRatio>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_common::Painted<P>::derive_height<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_common::Painted<P>::derive_max_height<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_common::Painted<P>::derive_max_width<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_common::Painted<P>::derive_min_height<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_common::Painted<P>::derive_min_width<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_common::Painted<P>::derive_width<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_common::Painted<P>::new(impl core::ops::function::Fn(&mut skene_common::Canvas, skene_core::values::size::Size<f32>) + 'static) -> Self
-pub fn skene_common::Painted<P>::set_aspect_ratio(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::aspect_ratio::AspectRatio, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_common::Painted<P>::set_description(self, impl core::convert::Into<alloc::string::String>) -> Self
-pub fn skene_common::Painted<P>::set_fallback<V: skene_core::view::View<P>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> Self
-pub fn skene_common::Painted<P>::set_height(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_common::Painted<P>::set_max_height(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_common::Painted<P>::set_max_width(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_common::Painted<P>::set_min_height(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_common::Painted<P>::set_min_width(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_common::Painted<P>::set_width(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
-impl<P: skene_common::Painting> core::fmt::Debug for skene_common::Painted<P>
-pub fn skene_common::Painted<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl<P: skene_common::Painting> skene_core::view::AnyKind for skene_common::Painted<P>
-impl<P: skene_common::Painting> skene_core::view::View<P> for skene_common::Painted<P>
-pub fn skene_common::Painted<P>::build(self) -> skene_core::node::NodeId
-pub struct skene_common::gui::Typography
-pub skene_common::gui::Typography::ink: skene_core::token::Token<skene_core::values::color::Color, f32>
-pub skene_common::gui::Typography::letter_spacing: skene_core::token::Token<skene_core::expr::Length, f32>
-pub skene_common::gui::Typography::line_height: skene_core::token::Token<f32, f32>
-pub skene_common::gui::Typography::link_ink: skene_core::token::Token<skene_core::values::color::Color, f32>
-pub skene_common::gui::Typography::selection_ink: skene_core::token::Token<skene_core::values::color::Color, f32>
-pub skene_common::gui::Typography::selection_surface: skene_core::token::Token<skene_core::values::color::Color, f32>
-pub skene_common::gui::Typography::size: skene_core::token::Token<skene_core::expr::Length, f32>
-pub skene_common::gui::Typography::weight: skene_core::token::Token<f32, f32>
-impl skene_common::gui::Typography
-pub fn skene_common::gui::Typography::set_ink(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, f32>>) -> Self
-pub fn skene_common::gui::Typography::set_letter_spacing(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::expr::Length, f32>>) -> Self
-pub fn skene_common::gui::Typography::set_line_height(self, impl core::convert::Into<skene_core::leaf::Definition<f32, f32>>) -> Self
-pub fn skene_common::gui::Typography::set_link_ink(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, f32>>) -> Self
-pub fn skene_common::gui::Typography::set_selection_ink(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, f32>>) -> Self
-pub fn skene_common::gui::Typography::set_selection_surface(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, f32>>) -> Self
-pub fn skene_common::gui::Typography::set_size(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::expr::Length, f32>>) -> Self
-pub fn skene_common::gui::Typography::set_weight(self, impl core::convert::Into<skene_core::leaf::Definition<f32, f32>>) -> Self
-impl core::clone::Clone for skene_common::gui::Typography
-pub fn skene_common::gui::Typography::clone(&self) -> skene_common::gui::Typography
-impl core::cmp::PartialEq for skene_common::gui::Typography
-pub fn skene_common::gui::Typography::eq(&self, &skene_common::gui::Typography) -> bool
-impl core::default::Default for skene_common::gui::Typography
-pub fn skene_common::gui::Typography::default() -> Self
-impl core::fmt::Debug for skene_common::gui::Typography
-pub fn skene_common::gui::Typography::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::marker::StructuralPartialEq for skene_common::gui::Typography
-impl<V> skene_core::token::TokenSet<V> for skene_common::gui::Typography where V: core::convert::From<skene_core::leaf::Definition<skene_core::values::color::Color, f32>> + core::convert::From<skene_core::leaf::Definition<f32, f32>> + core::convert::From<skene_core::leaf::Definition<skene_core::expr::Length, f32>> + 'static
-pub fn skene_common::gui::Typography::definitions(&self) -> alloc::vec::Vec<(skene_core::token::TokenName, V)>
-pub trait skene_common::gui::IntoBrush
-pub fn skene_common::gui::IntoBrush::into_brush(self) -> peniko::brush::Brush
-impl skene_common::IntoBrush for peniko::Color
-pub fn peniko::Color::into_brush(self) -> peniko::brush::Brush
-impl skene_common::IntoBrush for peniko::brush::Brush
-pub fn peniko::brush::Brush::into_brush(self) -> peniko::brush::Brush
-impl skene_common::IntoBrush for peniko::gradient::Gradient
-pub fn peniko::gradient::Gradient::into_brush(self) -> peniko::brush::Brush
-impl skene_common::IntoBrush for skene_core::values::color::Color
-pub fn skene_core::values::color::Color::into_brush(self) -> peniko::brush::Brush
-pub trait skene_common::gui::Painting: skene_core::platform::Platform
-pub fn skene_common::gui::Painting::available() -> skene_reactive::signal::ReadSignal<bool>
-pub fn skene_common::gui::Painting::paint(skene_core::node::NodeId, alloc::boxed::Box<skene_common::Painter>)
-pub trait skene_common::gui::Renderer
-pub fn skene_common::gui::Renderer::fill(&mut self, &kurbo::bezpath::BezPath, &peniko::brush::Brush)
-pub fn skene_common::gui::Renderer::pop(&mut self)
-pub fn skene_common::gui::Renderer::push_clip(&mut self, &kurbo::bezpath::BezPath)
-pub fn skene_common::gui::Renderer::set_transform(&mut self, kurbo::affine::Affine)
-pub fn skene_common::gui::Renderer::stroke(&mut self, &kurbo::bezpath::BezPath, &kurbo::stroke::Stroke, &peniko::brush::Brush)
-impl skene_common::Renderer for vello_cpu::render::RenderContext
-pub fn vello_cpu::render::RenderContext::fill(&mut self, &kurbo::bezpath::BezPath, &peniko::brush::Brush)
-pub fn vello_cpu::render::RenderContext::pop(&mut self)
-pub fn vello_cpu::render::RenderContext::push_clip(&mut self, &kurbo::bezpath::BezPath)
-pub fn vello_cpu::render::RenderContext::set_transform(&mut self, kurbo::affine::Affine)
-pub fn vello_cpu::render::RenderContext::stroke(&mut self, &kurbo::bezpath::BezPath, &kurbo::stroke::Stroke, &peniko::brush::Brush)
-pub fn skene_common::gui::paint(&peniko::brush::Brush) -> vello_common::paint::PaintType
-pub type skene_common::gui::Painter = dyn core::ops::function::Fn(&mut skene_common::Canvas, skene_core::values::size::Size<f32>)
 pub mod skene_common::media
 pub fn skene_common::media::chosen_scheme<P: skene_core::platform::Platform>() -> core::option::Option<skene_core::values::color::ColorScheme>
 pub fn skene_common::media::derive_scheme<P: skene_core::platform::Platform>(impl core::ops::function::Fn() -> core::option::Option<skene_core::values::color::ColorScheme> + 'static)
@@ -916,6 +569,353 @@ pub const skene_common::typography::SELECTION_INK: skene_core::token::TokenRef<s
 pub const skene_common::typography::SELECTION_SURFACE: skene_core::token::TokenRef<skene_core::values::color::Color>
 pub const skene_common::typography::SIZE: skene_core::token::TokenRef<skene_core::expr::Length>
 pub const skene_common::typography::WEIGHT: skene_core::token::TokenRef<f32>
+pub mod skene_common::web
+pub use skene_common::web::PaintType
+pub use skene_common::web::kurbo
+pub use skene_common::web::peniko
+pub mod skene_common::web::web_fields
+pub struct skene_common::web::web_fields::CornerRadius
+impl core::clone::Clone for skene_common::web::web_fields::CornerRadius
+pub fn skene_common::web::web_fields::CornerRadius::clone(&self) -> skene_common::web::web_fields::CornerRadius
+impl core::cmp::Eq for skene_common::web::web_fields::CornerRadius
+impl core::cmp::PartialEq for skene_common::web::web_fields::CornerRadius
+pub fn skene_common::web::web_fields::CornerRadius::eq(&self, &skene_common::web::web_fields::CornerRadius) -> bool
+impl core::default::Default for skene_common::web::web_fields::CornerRadius
+pub fn skene_common::web::web_fields::CornerRadius::default() -> skene_common::web::web_fields::CornerRadius
+impl core::fmt::Debug for skene_common::web::web_fields::CornerRadius
+pub fn skene_common::web::web_fields::CornerRadius::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_common::web::web_fields::CornerRadius
+pub fn skene_common::web::web_fields::CornerRadius::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_common::web::web_fields::CornerRadius
+impl core::marker::StructuralPartialEq for skene_common::web::web_fields::CornerRadius
+impl<N: skene_core::scalar::Scalar> skene_core::box_style::BoxField<N, skene_common::web::WebStyle> for skene_common::web::web_fields::CornerRadius
+pub type skene_common::web::web_fields::CornerRadius::Value = skene_core::expr::Length
+pub const skene_common::web::web_fields::CornerRadius::KEY: skene_core::property::PropertyKey<skene_common::web::WebProperty>
+pub fn skene_common::web::web_fields::CornerRadius::get<S: skene_core::shape::Shape>(&skene_core::box_style::BoxStyle<N, S, skene_common::web::WebStyle>) -> &<S as skene_core::shape::Shape>::Of
+pub fn skene_common::web::web_fields::CornerRadius::get_mut<S: skene_core::shape::Shape>(&mut skene_core::box_style::BoxStyle<N, S, skene_common::web::WebStyle>) -> &mut <S as skene_core::shape::Shape>::Of
+pub struct skene_common::web::web_fields::FontSize
+impl core::clone::Clone for skene_common::web::web_fields::FontSize
+pub fn skene_common::web::web_fields::FontSize::clone(&self) -> skene_common::web::web_fields::FontSize
+impl core::cmp::Eq for skene_common::web::web_fields::FontSize
+impl core::cmp::PartialEq for skene_common::web::web_fields::FontSize
+pub fn skene_common::web::web_fields::FontSize::eq(&self, &skene_common::web::web_fields::FontSize) -> bool
+impl core::default::Default for skene_common::web::web_fields::FontSize
+pub fn skene_common::web::web_fields::FontSize::default() -> skene_common::web::web_fields::FontSize
+impl core::fmt::Debug for skene_common::web::web_fields::FontSize
+pub fn skene_common::web::web_fields::FontSize::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_common::web::web_fields::FontSize
+pub fn skene_common::web::web_fields::FontSize::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_common::web::web_fields::FontSize
+impl core::marker::StructuralPartialEq for skene_common::web::web_fields::FontSize
+impl skene_core::run_style::RunField<skene_common::web::WebStyle> for skene_common::web::web_fields::FontSize
+pub type skene_common::web::web_fields::FontSize::Value = skene_core::expr::Length
+pub const skene_common::web::web_fields::FontSize::KEY: skene_core::property::PropertyKey<skene_common::web::WebProperty>
+pub fn skene_common::web::web_fields::FontSize::get<S: skene_core::shape::Shape>(&skene_core::run_style::RunStyle<S, skene_common::web::WebStyle>) -> &<S as skene_core::shape::Shape>::Of
+pub fn skene_common::web::web_fields::FontSize::get_mut<S: skene_core::shape::Shape>(&mut skene_core::run_style::RunStyle<S, skene_common::web::WebStyle>) -> &mut <S as skene_core::shape::Shape>::Of
+pub struct skene_common::web::web_fields::FontWeight
+impl core::clone::Clone for skene_common::web::web_fields::FontWeight
+pub fn skene_common::web::web_fields::FontWeight::clone(&self) -> skene_common::web::web_fields::FontWeight
+impl core::cmp::Eq for skene_common::web::web_fields::FontWeight
+impl core::cmp::PartialEq for skene_common::web::web_fields::FontWeight
+pub fn skene_common::web::web_fields::FontWeight::eq(&self, &skene_common::web::web_fields::FontWeight) -> bool
+impl core::default::Default for skene_common::web::web_fields::FontWeight
+pub fn skene_common::web::web_fields::FontWeight::default() -> skene_common::web::web_fields::FontWeight
+impl core::fmt::Debug for skene_common::web::web_fields::FontWeight
+pub fn skene_common::web::web_fields::FontWeight::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_common::web::web_fields::FontWeight
+pub fn skene_common::web::web_fields::FontWeight::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_common::web::web_fields::FontWeight
+impl core::marker::StructuralPartialEq for skene_common::web::web_fields::FontWeight
+impl skene_core::run_style::RunField<skene_common::web::WebStyle> for skene_common::web::web_fields::FontWeight
+pub type skene_common::web::web_fields::FontWeight::Value = f32
+pub const skene_common::web::web_fields::FontWeight::KEY: skene_core::property::PropertyKey<skene_common::web::WebProperty>
+pub fn skene_common::web::web_fields::FontWeight::get<S: skene_core::shape::Shape>(&skene_core::run_style::RunStyle<S, skene_common::web::WebStyle>) -> &<S as skene_core::shape::Shape>::Of
+pub fn skene_common::web::web_fields::FontWeight::get_mut<S: skene_core::shape::Shape>(&mut skene_core::run_style::RunStyle<S, skene_common::web::WebStyle>) -> &mut <S as skene_core::shape::Shape>::Of
+pub struct skene_common::web::web_fields::LetterSpacing
+impl core::clone::Clone for skene_common::web::web_fields::LetterSpacing
+pub fn skene_common::web::web_fields::LetterSpacing::clone(&self) -> skene_common::web::web_fields::LetterSpacing
+impl core::cmp::Eq for skene_common::web::web_fields::LetterSpacing
+impl core::cmp::PartialEq for skene_common::web::web_fields::LetterSpacing
+pub fn skene_common::web::web_fields::LetterSpacing::eq(&self, &skene_common::web::web_fields::LetterSpacing) -> bool
+impl core::default::Default for skene_common::web::web_fields::LetterSpacing
+pub fn skene_common::web::web_fields::LetterSpacing::default() -> skene_common::web::web_fields::LetterSpacing
+impl core::fmt::Debug for skene_common::web::web_fields::LetterSpacing
+pub fn skene_common::web::web_fields::LetterSpacing::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_common::web::web_fields::LetterSpacing
+pub fn skene_common::web::web_fields::LetterSpacing::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_common::web::web_fields::LetterSpacing
+impl core::marker::StructuralPartialEq for skene_common::web::web_fields::LetterSpacing
+impl skene_core::run_style::RunField<skene_common::web::WebStyle> for skene_common::web::web_fields::LetterSpacing
+pub type skene_common::web::web_fields::LetterSpacing::Value = skene_core::expr::Length
+pub const skene_common::web::web_fields::LetterSpacing::KEY: skene_core::property::PropertyKey<skene_common::web::WebProperty>
+pub fn skene_common::web::web_fields::LetterSpacing::get<S: skene_core::shape::Shape>(&skene_core::run_style::RunStyle<S, skene_common::web::WebStyle>) -> &<S as skene_core::shape::Shape>::Of
+pub fn skene_common::web::web_fields::LetterSpacing::get_mut<S: skene_core::shape::Shape>(&mut skene_core::run_style::RunStyle<S, skene_common::web::WebStyle>) -> &mut <S as skene_core::shape::Shape>::Of
+pub struct skene_common::web::web_fields::LineHeight
+impl core::clone::Clone for skene_common::web::web_fields::LineHeight
+pub fn skene_common::web::web_fields::LineHeight::clone(&self) -> skene_common::web::web_fields::LineHeight
+impl core::cmp::Eq for skene_common::web::web_fields::LineHeight
+impl core::cmp::PartialEq for skene_common::web::web_fields::LineHeight
+pub fn skene_common::web::web_fields::LineHeight::eq(&self, &skene_common::web::web_fields::LineHeight) -> bool
+impl core::default::Default for skene_common::web::web_fields::LineHeight
+pub fn skene_common::web::web_fields::LineHeight::default() -> skene_common::web::web_fields::LineHeight
+impl core::fmt::Debug for skene_common::web::web_fields::LineHeight
+pub fn skene_common::web::web_fields::LineHeight::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_common::web::web_fields::LineHeight
+pub fn skene_common::web::web_fields::LineHeight::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_common::web::web_fields::LineHeight
+impl core::marker::StructuralPartialEq for skene_common::web::web_fields::LineHeight
+impl skene_core::run_style::RunField<skene_common::web::WebStyle> for skene_common::web::web_fields::LineHeight
+pub type skene_common::web::web_fields::LineHeight::Value = f32
+pub const skene_common::web::web_fields::LineHeight::KEY: skene_core::property::PropertyKey<skene_common::web::WebProperty>
+pub fn skene_common::web::web_fields::LineHeight::get<S: skene_core::shape::Shape>(&skene_core::run_style::RunStyle<S, skene_common::web::WebStyle>) -> &<S as skene_core::shape::Shape>::Of
+pub fn skene_common::web::web_fields::LineHeight::get_mut<S: skene_core::shape::Shape>(&mut skene_core::run_style::RunStyle<S, skene_common::web::WebStyle>) -> &mut <S as skene_core::shape::Shape>::Of
+pub fn skene_common::web::web_fields::visit_box<N: skene_core::scalar::Scalar, V: skene_core::box_style::BoxFieldVisitor<N, skene_common::web::WebStyle>>(&mut V)
+pub fn skene_common::web::web_fields::visit_run<V: skene_core::run_style::RunFieldVisitor<skene_common::web::WebStyle>>(&mut V)
+pub enum skene_common::web::WebProperty
+pub skene_common::web::WebProperty::CornerRadius
+pub skene_common::web::WebProperty::FontSize
+pub skene_common::web::WebProperty::FontWeight
+pub skene_common::web::WebProperty::LetterSpacing
+pub skene_common::web::WebProperty::LineHeight
+impl skene_common::web::WebProperty
+pub const skene_common::web::WebProperty::ALL: [Self; 5]
+pub const fn skene_common::web::WebProperty::name(self) -> &'static str
+impl core::clone::Clone for skene_common::web::WebProperty
+pub fn skene_common::web::WebProperty::clone(&self) -> skene_common::web::WebProperty
+impl core::cmp::Eq for skene_common::web::WebProperty
+impl core::cmp::Ord for skene_common::web::WebProperty
+pub fn skene_common::web::WebProperty::cmp(&self, &skene_common::web::WebProperty) -> core::cmp::Ordering
+impl core::cmp::PartialEq for skene_common::web::WebProperty
+pub fn skene_common::web::WebProperty::eq(&self, &skene_common::web::WebProperty) -> bool
+impl core::cmp::PartialOrd for skene_common::web::WebProperty
+pub fn skene_common::web::WebProperty::partial_cmp(&self, &skene_common::web::WebProperty) -> core::option::Option<core::cmp::Ordering>
+impl core::convert::From<skene_common::web::WebProperty> for skene_core::motion::StyleProperty<skene_common::web::WebProperty>
+pub fn skene_core::motion::StyleProperty<skene_common::web::WebProperty>::from(skene_common::web::WebProperty) -> Self
+impl core::fmt::Debug for skene_common::web::WebProperty
+pub fn skene_common::web::WebProperty::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_common::web::WebProperty
+pub fn skene_common::web::WebProperty::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_common::web::WebProperty
+impl core::marker::StructuralPartialEq for skene_common::web::WebProperty
+impl skene_core::property::PropertyName for skene_common::web::WebProperty
+pub fn skene_common::web::WebProperty::name(&self) -> &'static str
+pub struct skene_common::web::Canvas
+impl skene_common::Canvas
+pub fn skene_common::Canvas::fill(&mut self, &impl kurbo::shape::Shape, impl skene_common::IntoBrush)
+pub const fn skene_common::Canvas::new(u16, u16) -> Self
+pub fn skene_common::Canvas::pixels(&self) -> alloc::vec::Vec<u8>
+pub fn skene_common::Canvas::pop(&mut self)
+pub fn skene_common::Canvas::push_clip(&mut self, &impl kurbo::shape::Shape)
+pub fn skene_common::Canvas::replay(&self, &mut impl skene_common::Renderer)
+pub fn skene_common::Canvas::set_transform(&mut self, kurbo::affine::Affine)
+pub const fn skene_common::Canvas::size(&self) -> (u16, u16)
+pub fn skene_common::Canvas::stroke(&mut self, &impl kurbo::shape::Shape, &kurbo::stroke::Stroke, impl skene_common::IntoBrush)
+impl core::fmt::Debug for skene_common::Canvas
+pub fn skene_common::Canvas::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_common::web::Head
+impl skene_common::web::Head
+pub fn skene_common::web::Head::add_element(&mut self, skene_common::web::HeadElement) -> skene_common::web::HeadId
+pub fn skene_common::web::Head::add_title(&mut self, alloc::string::String) -> skene_common::web::HeadId
+pub fn skene_common::web::Head::elements(&self) -> impl core::iter::traits::iterator::Iterator<Item = &skene_common::web::HeadElement>
+pub fn skene_common::web::Head::remove(&mut self, skene_common::web::HeadId)
+pub fn skene_common::web::Head::set_title(&mut self, skene_common::web::HeadId, alloc::string::String)
+pub fn skene_common::web::Head::title(&self) -> core::option::Option<&str>
+impl core::default::Default for skene_common::web::Head
+pub fn skene_common::web::Head::default() -> skene_common::web::Head
+impl core::fmt::Debug for skene_common::web::Head
+pub fn skene_common::web::Head::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_common::web::HeadElement
+pub skene_common::web::HeadElement::attributes: alloc::vec::Vec<(alloc::string::String, alloc::string::String)>
+pub skene_common::web::HeadElement::tag: alloc::string::String
+impl skene_common::web::HeadElement
+pub fn skene_common::web::HeadElement::new(&str, &[(&str, &str)]) -> Self
+impl core::clone::Clone for skene_common::web::HeadElement
+pub fn skene_common::web::HeadElement::clone(&self) -> skene_common::web::HeadElement
+impl core::cmp::Eq for skene_common::web::HeadElement
+impl core::cmp::PartialEq for skene_common::web::HeadElement
+pub fn skene_common::web::HeadElement::eq(&self, &skene_common::web::HeadElement) -> bool
+impl core::fmt::Debug for skene_common::web::HeadElement
+pub fn skene_common::web::HeadElement::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for skene_common::web::HeadElement
+pub struct skene_common::web::HeadId(_)
+impl core::clone::Clone for skene_common::web::HeadId
+pub fn skene_common::web::HeadId::clone(&self) -> skene_common::web::HeadId
+impl core::cmp::Eq for skene_common::web::HeadId
+impl core::cmp::PartialEq for skene_common::web::HeadId
+pub fn skene_common::web::HeadId::eq(&self, &skene_common::web::HeadId) -> bool
+impl core::fmt::Debug for skene_common::web::HeadId
+pub fn skene_common::web::HeadId::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_common::web::HeadId
+pub fn skene_common::web::HeadId::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_common::web::HeadId
+impl core::marker::StructuralPartialEq for skene_common::web::HeadId
+pub struct skene_common::web::Painted<P: skene_common::Painting>
+impl<P: skene_common::Painting> skene_common::Painted<P>
+pub fn skene_common::Painted<P>::bind_handle(self, skene_common::NodeHandle<P>) -> Self
+pub fn skene_common::Painted<P>::derive_aspect_ratio<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::aspect_ratio::AspectRatio>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::Painted<P>::derive_height<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::Painted<P>::derive_max_height<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::Painted<P>::derive_max_width<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::Painted<P>::derive_min_height<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::Painted<P>::derive_min_width<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::Painted<P>::derive_width<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::Painted<P>::new(impl core::ops::function::Fn(&mut skene_common::Canvas, skene_core::values::size::Size<f32>) + 'static) -> Self
+pub fn skene_common::Painted<P>::set_aspect_ratio(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::aspect_ratio::AspectRatio, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
+pub fn skene_common::Painted<P>::set_description(self, impl core::convert::Into<alloc::string::String>) -> Self
+pub fn skene_common::Painted<P>::set_fallback<V: skene_core::view::View<P>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> Self
+pub fn skene_common::Painted<P>::set_height(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
+pub fn skene_common::Painted<P>::set_max_height(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
+pub fn skene_common::Painted<P>::set_max_width(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
+pub fn skene_common::Painted<P>::set_min_height(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
+pub fn skene_common::Painted<P>::set_min_width(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
+pub fn skene_common::Painted<P>::set_width(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
+impl<P: skene_common::Painting> core::fmt::Debug for skene_common::Painted<P>
+pub fn skene_common::Painted<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<P: skene_common::Painting> skene_core::view::AnyKind for skene_common::Painted<P>
+impl<P: skene_common::Painting> skene_core::view::View<P> for skene_common::Painted<P>
+pub fn skene_common::Painted<P>::build(self) -> skene_core::node::NodeId
+pub struct skene_common::web::Typography
+pub skene_common::web::Typography::ink: skene_core::token::Token<skene_core::values::color::Color, f32>
+pub skene_common::web::Typography::letter_spacing: skene_core::token::Token<skene_core::expr::Length, f32>
+pub skene_common::web::Typography::line_height: skene_core::token::Token<f32, f32>
+pub skene_common::web::Typography::link_ink: skene_core::token::Token<skene_core::values::color::Color, f32>
+pub skene_common::web::Typography::selection_ink: skene_core::token::Token<skene_core::values::color::Color, f32>
+pub skene_common::web::Typography::selection_surface: skene_core::token::Token<skene_core::values::color::Color, f32>
+pub skene_common::web::Typography::size: skene_core::token::Token<skene_core::expr::Length, f32>
+pub skene_common::web::Typography::weight: skene_core::token::Token<f32, f32>
+impl skene_common::web::Typography
+pub fn skene_common::web::Typography::set_ink(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, f32>>) -> Self
+pub fn skene_common::web::Typography::set_letter_spacing(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::expr::Length, f32>>) -> Self
+pub fn skene_common::web::Typography::set_line_height(self, impl core::convert::Into<skene_core::leaf::Definition<f32, f32>>) -> Self
+pub fn skene_common::web::Typography::set_link_ink(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, f32>>) -> Self
+pub fn skene_common::web::Typography::set_selection_ink(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, f32>>) -> Self
+pub fn skene_common::web::Typography::set_selection_surface(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, f32>>) -> Self
+pub fn skene_common::web::Typography::set_size(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::expr::Length, f32>>) -> Self
+pub fn skene_common::web::Typography::set_weight(self, impl core::convert::Into<skene_core::leaf::Definition<f32, f32>>) -> Self
+impl core::clone::Clone for skene_common::web::Typography
+pub fn skene_common::web::Typography::clone(&self) -> skene_common::web::Typography
+impl core::cmp::PartialEq for skene_common::web::Typography
+pub fn skene_common::web::Typography::eq(&self, &skene_common::web::Typography) -> bool
+impl core::default::Default for skene_common::web::Typography
+pub fn skene_common::web::Typography::default() -> Self
+impl core::fmt::Debug for skene_common::web::Typography
+pub fn skene_common::web::Typography::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for skene_common::web::Typography
+impl<V> skene_core::token::TokenSet<V> for skene_common::web::Typography where V: core::convert::From<skene_core::leaf::Definition<skene_core::values::color::Color, f32>> + core::convert::From<skene_core::leaf::Definition<f32, f32>> + core::convert::From<skene_core::leaf::Definition<skene_core::expr::Length, f32>> + 'static
+pub fn skene_common::web::Typography::definitions(&self) -> alloc::vec::Vec<(skene_core::token::TokenName, V)>
+pub struct skene_common::web::WebBoxFields<S: skene_core::shape::Shape>
+pub skene_common::web::WebBoxFields::corner_radius: <S as skene_core::shape::Shape>::Of
+impl<S: core::clone::Clone + skene_core::shape::Shape> core::clone::Clone for skene_common::web::WebBoxFields<S> where <S as skene_core::shape::Shape>::Of: core::clone::Clone
+pub fn skene_common::web::WebBoxFields<S>::clone(&self) -> skene_common::web::WebBoxFields<S>
+impl<S: core::cmp::PartialEq + skene_core::shape::Shape> core::cmp::PartialEq for skene_common::web::WebBoxFields<S> where <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq
+pub fn skene_common::web::WebBoxFields<S>::eq(&self, &skene_common::web::WebBoxFields<S>) -> bool
+impl<S: core::cmp::PartialEq + skene_core::shape::Shape> core::marker::StructuralPartialEq for skene_common::web::WebBoxFields<S> where <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq
+impl<S: core::default::Default + skene_core::shape::Shape> core::default::Default for skene_common::web::WebBoxFields<S> where <S as skene_core::shape::Shape>::Of: core::default::Default
+pub fn skene_common::web::WebBoxFields<S>::default() -> skene_common::web::WebBoxFields<S>
+impl<S: core::fmt::Debug + skene_core::shape::Shape> core::fmt::Debug for skene_common::web::WebBoxFields<S> where <S as skene_core::shape::Shape>::Of: core::fmt::Debug
+pub fn skene_common::web::WebBoxFields<S>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_common::web::WebRunFields<S: skene_core::shape::Shape>
+pub skene_common::web::WebRunFields::font_size: <S as skene_core::shape::Shape>::Of
+pub skene_common::web::WebRunFields::font_weight: <S as skene_core::shape::Shape>::Of
+pub skene_common::web::WebRunFields::letter_spacing: <S as skene_core::shape::Shape>::Of
+pub skene_common::web::WebRunFields::line_height: <S as skene_core::shape::Shape>::Of
+impl<S: core::clone::Clone + skene_core::shape::Shape> core::clone::Clone for skene_common::web::WebRunFields<S> where <S as skene_core::shape::Shape>::Of: core::clone::Clone, <S as skene_core::shape::Shape>::Of: core::clone::Clone
+pub fn skene_common::web::WebRunFields<S>::clone(&self) -> skene_common::web::WebRunFields<S>
+impl<S: core::cmp::PartialEq + skene_core::shape::Shape> core::cmp::PartialEq for skene_common::web::WebRunFields<S> where <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq, <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq
+pub fn skene_common::web::WebRunFields<S>::eq(&self, &skene_common::web::WebRunFields<S>) -> bool
+impl<S: core::cmp::PartialEq + skene_core::shape::Shape> core::marker::StructuralPartialEq for skene_common::web::WebRunFields<S> where <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq, <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq
+impl<S: core::default::Default + skene_core::shape::Shape> core::default::Default for skene_common::web::WebRunFields<S> where <S as skene_core::shape::Shape>::Of: core::default::Default, <S as skene_core::shape::Shape>::Of: core::default::Default
+pub fn skene_common::web::WebRunFields<S>::default() -> skene_common::web::WebRunFields<S>
+impl<S: core::fmt::Debug + skene_core::shape::Shape> core::fmt::Debug for skene_common::web::WebRunFields<S> where <S as skene_core::shape::Shape>::Of: core::fmt::Debug, <S as skene_core::shape::Shape>::Of: core::fmt::Debug
+pub fn skene_common::web::WebRunFields<S>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_common::web::WebStyle
+impl core::clone::Clone for skene_common::web::WebStyle
+pub fn skene_common::web::WebStyle::clone(&self) -> skene_common::web::WebStyle
+impl core::cmp::Eq for skene_common::web::WebStyle
+impl core::cmp::PartialEq for skene_common::web::WebStyle
+pub fn skene_common::web::WebStyle::eq(&self, &skene_common::web::WebStyle) -> bool
+impl core::default::Default for skene_common::web::WebStyle
+pub fn skene_common::web::WebStyle::default() -> skene_common::web::WebStyle
+impl core::fmt::Debug for skene_common::web::WebStyle
+pub fn skene_common::web::WebStyle::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_common::web::WebStyle
+pub fn skene_common::web::WebStyle::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_common::web::WebStyle
+impl core::marker::StructuralPartialEq for skene_common::web::WebStyle
+impl skene_common::CornerRadius for skene_common::web::WebStyle
+pub fn skene_common::web::WebStyle::set_corner_radius<S: skene_core::shape::Shape>(&mut Self::BoxFields, <S as skene_core::shape::Shape>::Of)
+impl skene_common::TypeMetrics for skene_common::web::WebStyle
+pub fn skene_common::web::WebStyle::font_size<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
+pub fn skene_common::web::WebStyle::font_weight<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
+pub fn skene_common::web::WebStyle::letter_spacing<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
+pub fn skene_common::web::WebStyle::line_height<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
+pub fn skene_common::web::WebStyle::set_font_size<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
+pub fn skene_common::web::WebStyle::set_font_weight<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
+pub fn skene_common::web::WebStyle::set_letter_spacing<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
+pub fn skene_common::web::WebStyle::set_line_height<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
+impl skene_core::extension::StyleExtension for skene_common::web::WebStyle
+pub type skene_common::web::WebStyle::BoxFields<S: skene_core::shape::Shape> = skene_common::web::WebBoxFields<S>
+pub type skene_common::web::WebStyle::Property = skene_common::web::WebProperty
+pub type skene_common::web::WebStyle::RunFields<S: skene_core::shape::Shape> = skene_common::web::WebRunFields<S>
+pub type skene_common::web::WebStyle::Value = f32
+pub fn skene_common::web::WebStyle::for_each_box_field<N: skene_core::scalar::Scalar, V: skene_core::box_style::BoxFieldVisitor<N, Self>>(&mut V)
+pub fn skene_common::web::WebStyle::for_each_run_field<V: skene_core::run_style::RunFieldVisitor<Self>>(&mut V)
+pub fn skene_common::web::WebStyle::interpolate_value(&f32, &f32, f32) -> core::option::Option<f32>
+impl skene_core::run_style::IntoRunValue<skene_common::web::WebStyle> for f32
+pub fn f32::from_run_value(skene_core::run_style::RunValue<skene_common::web::WebStyle>) -> core::option::Option<Self>
+pub fn f32::into_run_value(self) -> skene_core::run_style::RunValue<skene_common::web::WebStyle>
+impl skene_core::run_style::RunField<skene_common::web::WebStyle> for skene_common::web::web_fields::FontSize
+pub type skene_common::web::web_fields::FontSize::Value = skene_core::expr::Length
+pub const skene_common::web::web_fields::FontSize::KEY: skene_core::property::PropertyKey<skene_common::web::WebProperty>
+pub fn skene_common::web::web_fields::FontSize::get<S: skene_core::shape::Shape>(&skene_core::run_style::RunStyle<S, skene_common::web::WebStyle>) -> &<S as skene_core::shape::Shape>::Of
+pub fn skene_common::web::web_fields::FontSize::get_mut<S: skene_core::shape::Shape>(&mut skene_core::run_style::RunStyle<S, skene_common::web::WebStyle>) -> &mut <S as skene_core::shape::Shape>::Of
+impl skene_core::run_style::RunField<skene_common::web::WebStyle> for skene_common::web::web_fields::FontWeight
+pub type skene_common::web::web_fields::FontWeight::Value = f32
+pub const skene_common::web::web_fields::FontWeight::KEY: skene_core::property::PropertyKey<skene_common::web::WebProperty>
+pub fn skene_common::web::web_fields::FontWeight::get<S: skene_core::shape::Shape>(&skene_core::run_style::RunStyle<S, skene_common::web::WebStyle>) -> &<S as skene_core::shape::Shape>::Of
+pub fn skene_common::web::web_fields::FontWeight::get_mut<S: skene_core::shape::Shape>(&mut skene_core::run_style::RunStyle<S, skene_common::web::WebStyle>) -> &mut <S as skene_core::shape::Shape>::Of
+impl skene_core::run_style::RunField<skene_common::web::WebStyle> for skene_common::web::web_fields::LetterSpacing
+pub type skene_common::web::web_fields::LetterSpacing::Value = skene_core::expr::Length
+pub const skene_common::web::web_fields::LetterSpacing::KEY: skene_core::property::PropertyKey<skene_common::web::WebProperty>
+pub fn skene_common::web::web_fields::LetterSpacing::get<S: skene_core::shape::Shape>(&skene_core::run_style::RunStyle<S, skene_common::web::WebStyle>) -> &<S as skene_core::shape::Shape>::Of
+pub fn skene_common::web::web_fields::LetterSpacing::get_mut<S: skene_core::shape::Shape>(&mut skene_core::run_style::RunStyle<S, skene_common::web::WebStyle>) -> &mut <S as skene_core::shape::Shape>::Of
+impl skene_core::run_style::RunField<skene_common::web::WebStyle> for skene_common::web::web_fields::LineHeight
+pub type skene_common::web::web_fields::LineHeight::Value = f32
+pub const skene_common::web::web_fields::LineHeight::KEY: skene_core::property::PropertyKey<skene_common::web::WebProperty>
+pub fn skene_common::web::web_fields::LineHeight::get<S: skene_core::shape::Shape>(&skene_core::run_style::RunStyle<S, skene_common::web::WebStyle>) -> &<S as skene_core::shape::Shape>::Of
+pub fn skene_common::web::web_fields::LineHeight::get_mut<S: skene_core::shape::Shape>(&mut skene_core::run_style::RunStyle<S, skene_common::web::WebStyle>) -> &mut <S as skene_core::shape::Shape>::Of
+impl<N: skene_core::scalar::Scalar> skene_core::box_style::BoxField<N, skene_common::web::WebStyle> for skene_common::web::web_fields::CornerRadius
+pub type skene_common::web::web_fields::CornerRadius::Value = skene_core::expr::Length
+pub const skene_common::web::web_fields::CornerRadius::KEY: skene_core::property::PropertyKey<skene_common::web::WebProperty>
+pub fn skene_common::web::web_fields::CornerRadius::get<S: skene_core::shape::Shape>(&skene_core::box_style::BoxStyle<N, S, skene_common::web::WebStyle>) -> &<S as skene_core::shape::Shape>::Of
+pub fn skene_common::web::web_fields::CornerRadius::get_mut<S: skene_core::shape::Shape>(&mut skene_core::box_style::BoxStyle<N, S, skene_common::web::WebStyle>) -> &mut <S as skene_core::shape::Shape>::Of
+pub trait skene_common::web::IntoBrush
+pub fn skene_common::web::IntoBrush::into_brush(self) -> peniko::brush::Brush
+impl skene_common::IntoBrush for peniko::Color
+pub fn peniko::Color::into_brush(self) -> peniko::brush::Brush
+impl skene_common::IntoBrush for peniko::brush::Brush
+pub fn peniko::brush::Brush::into_brush(self) -> peniko::brush::Brush
+impl skene_common::IntoBrush for peniko::gradient::Gradient
+pub fn peniko::gradient::Gradient::into_brush(self) -> peniko::brush::Brush
+impl skene_common::IntoBrush for skene_core::values::color::Color
+pub fn skene_core::values::color::Color::into_brush(self) -> peniko::brush::Brush
+pub trait skene_common::web::Painting: skene_core::platform::Platform
+pub fn skene_common::web::Painting::available() -> skene_reactive::signal::ReadSignal<bool>
+pub fn skene_common::web::Painting::paint(skene_core::node::NodeId, alloc::boxed::Box<skene_common::Painter>)
+pub trait skene_common::web::Renderer
+pub fn skene_common::web::Renderer::fill(&mut self, &kurbo::bezpath::BezPath, &peniko::brush::Brush)
+pub fn skene_common::web::Renderer::pop(&mut self)
+pub fn skene_common::web::Renderer::push_clip(&mut self, &kurbo::bezpath::BezPath)
+pub fn skene_common::web::Renderer::set_transform(&mut self, kurbo::affine::Affine)
+pub fn skene_common::web::Renderer::stroke(&mut self, &kurbo::bezpath::BezPath, &kurbo::stroke::Stroke, &peniko::brush::Brush)
+impl skene_common::Renderer for vello_cpu::render::RenderContext
+pub fn vello_cpu::render::RenderContext::fill(&mut self, &kurbo::bezpath::BezPath, &peniko::brush::Brush)
+pub fn vello_cpu::render::RenderContext::pop(&mut self)
+pub fn vello_cpu::render::RenderContext::push_clip(&mut self, &kurbo::bezpath::BezPath)
+pub fn vello_cpu::render::RenderContext::set_transform(&mut self, kurbo::affine::Affine)
+pub fn vello_cpu::render::RenderContext::stroke(&mut self, &kurbo::bezpath::BezPath, &kurbo::stroke::Stroke, &peniko::brush::Brush)
+pub fn skene_common::web::paint(&peniko::brush::Brush) -> vello_common::paint::PaintType
+pub type skene_common::web::Painter = dyn core::ops::function::Fn(&mut skene_common::Canvas, skene_core::values::size::Size<f32>)
 pub macro skene_common::decoration!
 pub macro skene_common::facade!
 pub macro skene_common::forward!
@@ -2589,10 +2589,10 @@ pub trait skene_common::CornerRadius: skene_core::extension::StyleExtension
 pub fn skene_common::CornerRadius::set_corner_radius<S: skene_core::shape::Shape>(&mut Self::BoxFields, <S as skene_core::shape::Shape>::Of)
 impl skene_common::CornerRadius for ()
 pub fn ()::set_corner_radius<S: skene_core::shape::Shape>(&mut Self::BoxFields, <S as skene_core::shape::Shape>::Of)
-impl skene_common::CornerRadius for skene_common::gui::GuiStyle
-pub fn skene_common::gui::GuiStyle::set_corner_radius<S: skene_core::shape::Shape>(&mut Self::BoxFields, <S as skene_core::shape::Shape>::Of)
 impl skene_common::CornerRadius for skene_common::terminal::TerminalStyle
 pub fn skene_common::terminal::TerminalStyle::set_corner_radius<S: skene_core::shape::Shape>(&mut Self::BoxFields, <S as skene_core::shape::Shape>::Of)
+impl skene_common::CornerRadius for skene_common::web::WebStyle
+pub fn skene_common::web::WebStyle::set_corner_radius<S: skene_core::shape::Shape>(&mut Self::BoxFields, <S as skene_core::shape::Shape>::Of)
 pub trait skene_common::IntoBrush
 pub fn skene_common::IntoBrush::into_brush(self) -> peniko::brush::Brush
 impl skene_common::IntoBrush for peniko::Color
@@ -2622,8 +2622,8 @@ pub trait skene_common::ThemedIn<P: skene_core::platform::Platform>: skene_core:
 pub fn skene_common::ThemedIn::current() -> Self
 pub fn skene_common::ThemedIn::watch() -> skene_reactive::memo::Memo<Self>
 impl<P: skene_core::platform::Platform, S: skene_core::token::TokenSet<<P as skene_core::platform::Platform>::TokenValue> + core::default::Default> skene_common::ThemedIn<P> for S
-pub fn S::current() -> Self
-pub fn S::watch() -> skene_reactive::memo::Memo<Self>
+pub fn S::current() -> S
+pub fn S::watch() -> skene_reactive::memo::Memo<S>
 pub trait skene_common::TypeMetrics: skene_core::extension::StyleExtension
 pub fn skene_common::TypeMetrics::font_size<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
 pub fn skene_common::TypeMetrics::font_weight<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
@@ -2642,15 +2642,6 @@ pub fn ()::set_font_size<S: skene_core::shape::Shape>(&mut Self::RunFields, <S a
 pub fn ()::set_font_weight<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
 pub fn ()::set_letter_spacing<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
 pub fn ()::set_line_height<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
-impl skene_common::TypeMetrics for skene_common::gui::GuiStyle
-pub fn skene_common::gui::GuiStyle::font_size<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
-pub fn skene_common::gui::GuiStyle::font_weight<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
-pub fn skene_common::gui::GuiStyle::letter_spacing<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
-pub fn skene_common::gui::GuiStyle::line_height<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
-pub fn skene_common::gui::GuiStyle::set_font_size<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
-pub fn skene_common::gui::GuiStyle::set_font_weight<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
-pub fn skene_common::gui::GuiStyle::set_letter_spacing<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
-pub fn skene_common::gui::GuiStyle::set_line_height<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
 impl skene_common::TypeMetrics for skene_common::terminal::TerminalStyle
 pub fn skene_common::terminal::TerminalStyle::font_size<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
 pub fn skene_common::terminal::TerminalStyle::font_weight<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
@@ -2660,6 +2651,15 @@ pub fn skene_common::terminal::TerminalStyle::set_font_size<S: skene_core::shape
 pub fn skene_common::terminal::TerminalStyle::set_font_weight<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
 pub fn skene_common::terminal::TerminalStyle::set_letter_spacing<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
 pub fn skene_common::terminal::TerminalStyle::set_line_height<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
+impl skene_common::TypeMetrics for skene_common::web::WebStyle
+pub fn skene_common::web::WebStyle::font_size<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
+pub fn skene_common::web::WebStyle::font_weight<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
+pub fn skene_common::web::WebStyle::letter_spacing<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
+pub fn skene_common::web::WebStyle::line_height<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
+pub fn skene_common::web::WebStyle::set_font_size<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
+pub fn skene_common::web::WebStyle::set_font_weight<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
+pub fn skene_common::web::WebStyle::set_letter_spacing<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
+pub fn skene_common::web::WebStyle::set_line_height<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
 pub fn skene_common::paint(&peniko::brush::Brush) -> vello_common::paint::PaintType
 pub type skene_common::BasicButton<P, C> = skene_common::Control<P, skene_common::Activate, C>
 pub type skene_common::BasicCheckbox<P, C> = skene_common::Control<P, skene_common::Toggle, C>

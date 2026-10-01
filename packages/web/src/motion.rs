@@ -2,7 +2,7 @@
 
 use std::fmt::Write as _;
 
-use skene_common::gui::GuiProperty;
+use skene_common::web::WebProperty;
 use skene_core::{Animation, Easing, PropertyKey, StyleProperty, Transition};
 
 use crate::{
@@ -22,7 +22,7 @@ pub(crate) const REDUCE: &str = "(prefers-reduced-motion: reduce)";
 pub(crate) const VIEW_TRANSITION_RULE: &str = "@view-transition{navigation:auto}";
 
 /// The CSS property name a transition targets.
-const fn style_property_name(property: StyleProperty<GuiProperty>) -> &'static str {
+const fn style_property_name(property: StyleProperty<WebProperty>) -> &'static str {
   let key: Key = match property {
     StyleProperty::All => return "all",
     StyleProperty::Shared(property) => PropertyKey::Shared(property),
@@ -46,7 +46,7 @@ fn render_easing(easing: Easing) -> String {
 
 /// The `transition` declaration value for a set of transitions.
 pub(crate) fn render_transitions<'a>(
-  transitions: impl IntoIterator<Item = &'a Transition<GuiProperty>>,
+  transitions: impl IntoIterator<Item = &'a Transition<WebProperty>>,
 ) -> String {
   let mut out = String::new();
 

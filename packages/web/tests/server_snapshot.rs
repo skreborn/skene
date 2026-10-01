@@ -9,7 +9,6 @@ use skene_web::{
   Condition,
   Container,
   Grid,
-  GuiStyle,
   HasChild,
   HasChildren,
   Inset,
@@ -24,6 +23,7 @@ use skene_web::{
   Theme,
   Typography,
   View,
+  WebStyle,
   When,
   core::{
     Animation,
@@ -42,8 +42,8 @@ use skene_web::{
 };
 
 /// A plain box style rounding its corners by `radius`, for a keyframe.
-fn rounded(radius: f32) -> BoxStyle<f32, Keyframe, GuiStyle> {
-  let mut style: BoxStyle<f32, Keyframe, GuiStyle> = BoxStyle::default();
+fn rounded(radius: f32) -> BoxStyle<f32, Keyframe, WebStyle> {
+  let mut style: BoxStyle<f32, Keyframe, WebStyle> = BoxStyle::default();
 
   style.ext.corner_radius = Some(radius.into());
 

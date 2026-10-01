@@ -1,17 +1,17 @@
-//! What the pixel medium answers of the seams a component library asks a medium for.
+//! What the web medium answers of the seams a component library asks a medium for.
 
 use skene_core::{Length, Shape};
 
-use super::GuiStyle;
+use super::WebStyle;
 use crate::{CornerRadius, TypeMetrics};
 
-impl CornerRadius for GuiStyle {
+impl CornerRadius for WebStyle {
   fn set_corner_radius<S: Shape>(fields: &mut Self::BoxFields<S>, radius: S::Of<Length>) {
     fields.corner_radius = radius;
   }
 }
 
-impl TypeMetrics for GuiStyle {
+impl TypeMetrics for WebStyle {
   fn set_font_size<S: Shape>(fields: &mut Self::RunFields<S>, size: S::Of<Length>) {
     fields.font_size = size;
   }

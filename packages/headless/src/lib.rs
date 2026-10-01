@@ -40,8 +40,8 @@ pub mod user;
 
 use std::{cell::RefCell, fmt::Write as _, rc::Rc, thread::LocalKey, time::Duration};
 
-use skene_common::gui::{Canvas, GuiProperty, GuiStyle, Painter, Painting};
-pub use skene_common::gui::{HeadElement, HeadId};
+use skene_common::web::{Canvas, Painter, Painting, WebProperty, WebStyle};
+pub use skene_common::web::{HeadElement, HeadId};
 use skene_core::{
   AspectRatio,
   Availability,
@@ -133,10 +133,10 @@ pub struct Headless;
 pub type TokenValue = skene_core::TokenValue<f32>;
 
 /// A property's value erased over the property; see [`skene_core::SlotValue`].
-pub type SlotValue = skene_core::SlotValue<f32, GuiStyle>;
+pub type SlotValue = skene_core::SlotValue<f32, WebStyle>;
 
 /// What a derived leaf last wrote into a node's slot; see [`skene_core::SlotLeaf`].
-pub type SlotLeaf = skene_core::SlotLeaf<f32, GuiStyle>;
+pub type SlotLeaf = skene_core::SlotLeaf<f32, WebStyle>;
 
 thread_local! {
   static SCENE: RefCell<Scene<Headless>> = RefCell::new(Scene::new());
@@ -177,7 +177,7 @@ fn with_record<R>(node: NodeId, operation: impl FnOnce(&mut Record) -> R) -> Opt
 
 impl Platform for Headless {
   type Scalar = f32;
-  type StyleExt = GuiStyle;
+  type StyleExt = WebStyle;
   type TokenValue = TokenValue;
 
   fn scene() -> &'static LocalKey<RefCell<Scene<Self>>> {
@@ -188,7 +188,7 @@ impl Platform for Headless {
     with_records(|records| records.insert(node, Record::new(Kind::Box(Box::new(props.clone())))));
   }
 
-  fn update_box(node: NodeId, slot: Slot, leaf: &StaticLeaf<BoxValue<f32, GuiStyle>>) {
+  fn update_box(node: NodeId, slot: Slot, leaf: &StaticLeaf<BoxValue<f32, WebStyle>>) {
     with_record(node, |record| {
       record.slots.insert(slot, leaf.clone().into());
     });
@@ -245,7 +245,7 @@ impl Platform for Headless {
     with_records(|records| records.insert(node, Record::new(Kind::Run(Box::new(props.clone())))));
   }
 
-  fn update_run(node: NodeId, slot: Slot, leaf: &StaticLeaf<RunValue<GuiStyle>>) {
+  fn update_run(node: NodeId, slot: Slot, leaf: &StaticLeaf<RunValue<WebStyle>>) {
     with_record(node, |record| {
       record.slots.insert(slot, leaf.clone().into());
     });
@@ -1413,7 +1413,7 @@ pub fn children(node: NodeId) -> Vec<NodeId> {
 /// then its leaf through the scene's tokens, the expression evaluator or the recorded
 /// slot value.
 #[must_use]
-pub fn resolve_color(node: NodeId, key: PropertyKey<GuiProperty>) -> Option<Color> {
+pub fn resolve_color(node: NodeId, key: PropertyKey<WebProperty>) -> Option<Color> {
   end_turn();
 
   match resolve::resolve(node, key)? {
@@ -1425,7 +1425,7 @@ pub fn resolve_color(node: NodeId, key: PropertyKey<GuiProperty>) -> Option<Colo
 /// The inset the property `key` of `node` resolves to, by the same resolution as
 /// [`resolve_color`]: a padding, a border's width, or a single length on every edge.
 #[must_use]
-pub fn resolve_inset(node: NodeId, key: PropertyKey<GuiProperty>) -> Option<Inset<f32>> {
+pub fn resolve_inset(node: NodeId, key: PropertyKey<WebProperty>) -> Option<Inset<f32>> {
   end_turn();
 
   match resolve::resolve(node, key)? {
@@ -1440,7 +1440,7 @@ pub fn resolve_inset(node: NodeId, key: PropertyKey<GuiProperty>) -> Option<Inse
 /// [`resolve_color`]: a box's length, fixed-length dimension, number, or uniform inset or
 /// spacing, or a run's length.
 #[must_use]
-pub fn resolve_length(node: NodeId, key: PropertyKey<GuiProperty>) -> Option<f32> {
+pub fn resolve_length(node: NodeId, key: PropertyKey<WebProperty>) -> Option<f32> {
   end_turn();
 
   match resolve::resolve(node, key)? {

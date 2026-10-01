@@ -1,4 +1,4 @@
-//! The properties only pixel media have: rounded corners and type metrics.
+//! The web medium's own style properties: rounded corners and type metrics.
 
 use std::fmt::Debug;
 
@@ -15,27 +15,27 @@ use skene_core::{
   StyleProperty,
 };
 
-/// The style extension of a pixel medium: a box rounds its corners, and a run carries
+/// The style extension of the web: a box rounds its corners, and a run carries
 /// its type metrics.
 ///
 /// Lengths are logical pixels; `font_weight` and `line_height` are plain numbers, the
 /// latter a multiple of the font size.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 #[must_use]
-pub struct GuiStyle;
+pub struct WebStyle;
 
-/// A pixel box's own properties, in shape `S`.
+/// A web box's own properties, in shape `S`.
 #[derive(Debug, Clone, Default, PartialEq)]
 #[must_use]
-pub struct GuiBoxFields<S: Shape> {
+pub struct WebBoxFields<S: Shape> {
   /// The corner radius, in logical pixels.
   pub corner_radius: S::Of<Length>,
 }
 
-/// A pixel run's own properties, in shape `S`.
+/// A web run's own properties, in shape `S`.
 #[derive(Debug, Clone, Default, PartialEq)]
 #[must_use]
-pub struct GuiRunFields<S: Shape> {
+pub struct WebRunFields<S: Shape> {
   /// The font size, in logical pixels.
   pub font_size: S::Of<Length>,
   /// The font weight, `100` to `900`.
@@ -46,10 +46,10 @@ pub struct GuiRunFields<S: Shape> {
   pub letter_spacing: S::Of<Length>,
 }
 
-/// The names of a pixel medium's own properties.
+/// The names of the web medium's own properties.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[must_use]
-pub enum GuiProperty {
+pub enum WebProperty {
   /// The corner radius.
   CornerRadius,
   /// The font size.
@@ -62,7 +62,7 @@ pub enum GuiProperty {
   LetterSpacing,
 }
 
-impl GuiProperty {
+impl WebProperty {
   /// Every property, in declaration order.
   pub const ALL: [Self; 5] = [
     Self::CornerRadius,
@@ -86,28 +86,28 @@ impl GuiProperty {
   }
 }
 
-impl PropertyName for GuiProperty {
+impl PropertyName for WebProperty {
   #[inline(always)]
   fn name(&self) -> &'static str {
     Self::name(*self)
   }
 }
 
-impl From<GuiProperty> for StyleProperty<GuiProperty> {
+impl From<WebProperty> for StyleProperty<WebProperty> {
   #[inline(always)]
-  fn from(property: GuiProperty) -> Self {
+  fn from(property: WebProperty) -> Self {
     Self::Extension(property)
   }
 }
 
-impl IntoRunValue<GuiStyle> for f32 {
+impl IntoRunValue<WebStyle> for f32 {
   #[inline(always)]
-  fn into_run_value(self) -> RunValue<GuiStyle> {
+  fn into_run_value(self) -> RunValue<WebStyle> {
     RunValue::Extension(self)
   }
 
   #[inline(always)]
-  fn from_run_value(value: RunValue<GuiStyle>) -> Option<Self> {
+  fn from_run_value(value: RunValue<WebStyle>) -> Option<Self> {
     match value {
       RunValue::Extension(number) => Some(number),
       RunValue::Color(_)
@@ -119,25 +119,25 @@ impl IntoRunValue<GuiStyle> for f32 {
 }
 
 skene_core::extension_fields! {
-  /// The pixel medium's own properties, addressed by type.
-  pub mod gui_fields for GuiStyle, GuiProperty;
+  /// The web medium's own properties, addressed by type.
+  pub mod web_fields for WebStyle, WebProperty;
   box: corner_radius: Length => CornerRadius;
   run: font_size: Length => FontSize, font_weight: f32 => FontWeight,
     line_height: f32 => LineHeight, letter_spacing: Length => LetterSpacing,
 }
 
-impl StyleExtension for GuiStyle {
-  type BoxFields<S: Shape> = GuiBoxFields<S>;
-  type Property = GuiProperty;
-  type RunFields<S: Shape> = GuiRunFields<S>;
+impl StyleExtension for WebStyle {
+  type BoxFields<S: Shape> = WebBoxFields<S>;
+  type Property = WebProperty;
+  type RunFields<S: Shape> = WebRunFields<S>;
   type Value = f32;
 
   fn for_each_box_field<N: Scalar, V: BoxFieldVisitor<N, Self>>(visitor: &mut V) {
-    gui_fields::visit_box(visitor);
+    web_fields::visit_box(visitor);
   }
 
   fn for_each_run_field<V: RunFieldVisitor<Self>>(visitor: &mut V) {
-    gui_fields::visit_run(visitor);
+    web_fields::visit_run(visitor);
   }
 
   #[inline(always)]
@@ -166,17 +166,17 @@ mod tests {
     When,
   };
 
-  use super::{GuiProperty, GuiStyle};
+  use super::{WebProperty, WebStyle};
 
   /// The extension's fields follow the shared ones in a visit, under their own names.
   #[test]
   fn visit_reaches_the_extension_fields() {
     struct Names(Vec<&'static str>);
 
-    impl<S: Shape> BoxVisitor<f32, S, GuiStyle> for Names {
-      fn value<T: IntoBoxValue<f32, GuiStyle>>(
+    impl<S: Shape> BoxVisitor<f32, S, WebStyle> for Names {
+      fn value<T: IntoBoxValue<f32, WebStyle>>(
         &mut self,
-        key: PropertyKey<GuiProperty>,
+        key: PropertyKey<WebProperty>,
         _: &S::Of<T>,
       ) {
         self.0.push(key.name());
@@ -185,7 +185,7 @@ mod tests {
 
     let mut names = Names(Vec::new());
 
-    BoxStyle::<f32, Plain, GuiStyle>::default().visit(&mut names);
+    BoxStyle::<f32, Plain, WebStyle>::default().visit(&mut names);
 
     assert_eq!(names.0.len(), 35);
     assert_eq!(names.0[34], "corner_radius");
@@ -195,7 +195,7 @@ mod tests {
   /// value erases into the variant of its type.
   #[test]
   fn extension_leaves_split_into_slots() {
-    let mut style = BoxStyle::<f32, Declared<Condition<f32>>, GuiStyle>::default();
+    let mut style = BoxStyle::<f32, Declared<Condition<f32>>, WebStyle>::default();
 
     style.ext.corner_radius = Some(Length(4.).derive_when(State::Hovered.into(), || 8.));
 
@@ -204,14 +204,14 @@ mod tests {
     assert_eq!(slots.len(), 1);
     assert_eq!(
       slots[0].property,
-      PropertyKey::Extension(GuiProperty::CornerRadius)
+      PropertyKey::Extension(WebProperty::CornerRadius)
     );
     assert_eq!(
       (slots[0].compute)(),
       StaticLeaf::Fixed(BoxValue::Length(Length(8.)))
     );
 
-    let mut run = RunStyle::<Declared<Condition<f32>>, GuiStyle>::default();
+    let mut run = RunStyle::<Declared<Condition<f32>>, WebStyle>::default();
 
     run.ext.font_size = Some(Length(16.).derive_when(State::Hovered.into(), || 18.));
 
@@ -219,7 +219,7 @@ mod tests {
 
     assert_eq!(
       slots[0].property,
-      PropertyKey::Extension(GuiProperty::FontSize)
+      PropertyKey::Extension(WebProperty::FontSize)
     );
     assert_eq!(
       (slots[0].compute)(),

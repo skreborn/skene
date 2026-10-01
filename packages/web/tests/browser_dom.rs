@@ -2357,7 +2357,7 @@ fn a_route_change_commits_under_a_view_transition() {
 #[wasm_bindgen_test]
 fn a_token_keyframe_animation_applies() {
   use skene_web::{
-    GuiStyle,
+    WebStyle,
     core::{Animation, BoxStyle, Keyframe},
   };
 
@@ -2366,8 +2366,8 @@ fn a_token_keyframe_animation_applies() {
   let _ = mount(|| {
     Theme::new(SimplePalette::default())
       .set_child_builder(|| {
-        let mut start: BoxStyle<f32, Keyframe, GuiStyle> = BoxStyle::default();
-        let mut end: BoxStyle<f32, Keyframe, GuiStyle> = BoxStyle::default();
+        let mut start: BoxStyle<f32, Keyframe, WebStyle> = BoxStyle::default();
+        let mut end: BoxStyle<f32, Keyframe, WebStyle> = BoxStyle::default();
 
         start.color = Some(SimplePalette::CARD.into());
         end.color = Some(Color::srgb(1., 0., 0.).into());

@@ -45,10 +45,10 @@
   `parse` and `escape` modules are the whole terminal layer, no terminal crate beneath,
   so a reply a new capability needs is parsed in the change that asks for it.
   `skene-headless` is the host platform the web compiles against off its target, driven
-  by tests. What every platform of one medium shares above the spine lives in
-  that medium's module of `skene-common`—`gui` (`GuiStyle`, the pixel `Typography`,
-  `Painting`) and `terminal` (`TerminalStyle`, `BorderGlyphs`, the terminal
-  `Typography`)—never in `skene-core`, which knows no medium.
+  by tests. What every platform of one medium shares above the spine lives in that
+  medium's module of `skene-common`—`terminal` (`TerminalStyle`, `BorderGlyphs`, the
+  terminal `Typography`) and `web` (`WebStyle`, the web's `Typography`, `Painting`, the
+  document `Head`)—never in `skene-core`, which knows no medium.
   Platforms depend on core and common, never on each other; a facade is the
   only place that names its platforms, and it publishes the selected one as `ActivePlatform`.
   The trait is zero-sized and monomorphized: no `dyn` platform, no downcast, no runtime
@@ -278,7 +278,7 @@
   fallback stands. Where graphics show, a box with a corner radius, a border or a
   shadow paints them as a backdrop image beneath every colored cell, one per box,
   its own cells left uncolored so it shows through, and every glyph stays a cell. `Painted`, `Canvas` and `Painting` live in `skene-common`, re-exported
-  by its `gui` module. **Embeds** are
+  by its `web` module. **Embeds** are
   platform-specific views with platform-exposed constructors (raw DOM element on the
   web's browser leaf, real platform controls on native); the payload never crosses a
   crate boundary. On platforms with a real view hierarchy the platform realizes the
@@ -591,11 +591,11 @@
   Convenience conversions (`From<f32> for Spacing`) keep the common case terse without
   adding a second path. Conditions ride the value (`value.when(condition, other)`, the
   `When` extension on any value or token), so there is no `set_<prop>_when` family.
-- A type is named for the crate it belongs to, not the medium: `GuiStyle` and `TerminalStyle` with
-  their properties, fields and traits, `SimpleGlyphs` and every other `Simple*` item. A
-  bare name is not an option where the facade's prelude already carries it (`Property`,
-  `Value`, `Text`), and a scheme that is bare for some names and prefixed for others is
-  worse than one rule.
+- A type is named for the crate it belongs to, not the medium: `TerminalStyle` and
+  `WebStyle` with their properties, fields and traits, `SimpleGlyphs` and every other
+  `Simple*` item. A bare name is not an option where the facade's prelude already
+  carries it (`Property`, `Value`, `Text`), and a scheme that is bare for some names
+  and prefixed for others is worse than one rule.
 - A platform's test seams share one naming rule: `trigger_<event>` simulates what reaches
   the app from outside, `take_<output>` drains what the app emitted since the last take,
   `render_to_<form>` paints into a form a test reads, `set_<setting>` configures the

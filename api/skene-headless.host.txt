@@ -27,7 +27,7 @@ pub fn skene_headless::Headless::available() -> skene_reactive::signal::ReadSign
 pub fn skene_headless::Headless::paint(skene_core::node::NodeId, alloc::boxed::Box<skene_common::painting::Painter>)
 impl skene_core::platform::Platform for skene_headless::Headless
 pub type skene_headless::Headless::Scalar = f32
-pub type skene_headless::Headless::StyleExt = skene_common::gui::ext::GuiStyle
+pub type skene_headless::Headless::StyleExt = skene_common::web::ext::WebStyle
 pub type skene_headless::Headless::TokenValue = skene_core::resolve::TokenValue<f32>
 pub fn skene_headless::Headless::attach(skene_core::node::NodeId, skene_core::node::NodeId, core::option::Option<skene_core::node::NodeId>)
 pub fn skene_headless::Headless::blur(skene_core::node::NodeId)
@@ -65,14 +65,14 @@ pub fn skene_headless::Headless::set_scheme(core::option::Option<skene_core::val
 pub fn skene_headless::Headless::set_selection(skene_core::node::NodeId, skene_core::values::text_selection::TextSelection)
 pub fn skene_headless::Headless::set_text(skene_core::node::NodeId, &str)
 pub fn skene_headless::Headless::set_value(skene_core::node::NodeId, &str)
-pub fn skene_headless::Headless::update_box(skene_core::node::NodeId, skene_core::leaf::Slot, &skene_core::leaf::StaticLeaf<skene_core::box_style::BoxValue<f32, skene_common::gui::ext::GuiStyle>>)
-pub fn skene_headless::Headless::update_run(skene_core::node::NodeId, skene_core::leaf::Slot, &skene_core::leaf::StaticLeaf<skene_core::run_style::RunValue<skene_common::gui::ext::GuiStyle>>)
+pub fn skene_headless::Headless::update_box(skene_core::node::NodeId, skene_core::leaf::Slot, &skene_core::leaf::StaticLeaf<skene_core::box_style::BoxValue<f32, skene_common::web::ext::WebStyle>>)
+pub fn skene_headless::Headless::update_run(skene_core::node::NodeId, skene_core::leaf::Slot, &skene_core::leaf::StaticLeaf<skene_core::run_style::RunValue<skene_common::web::ext::WebStyle>>)
 pub fn skene_headless::Headless::watch_media(&skene_core::condition::Media<f32>) -> skene_reactive::memo::Memo<bool>
 pub fn skene_headless::access_outline() -> alloc::string::String
 pub fn skene_headless::access_tree() -> accesskit::TreeUpdate
 pub fn skene_headless::accessible_name(skene_core::node::NodeId) -> core::option::Option<alloc::string::String>
-pub fn skene_headless::add_head_element(&str, &[(&str, &str)]) -> skene_common::gui::head::HeadId
-pub fn skene_headless::add_head_title(&str) -> skene_common::gui::head::HeadId
+pub fn skene_headless::add_head_element(&str, &[(&str, &str)]) -> skene_common::web::head::HeadId
+pub fn skene_headless::add_head_title(&str) -> skene_common::web::head::HeadId
 pub fn skene_headless::box_props(skene_core::node::NodeId) -> core::option::Option<skene_core::props::BoxProps<skene_headless::Headless>>
 pub fn skene_headless::checked(skene_core::node::NodeId) -> core::option::Option<bool>
 pub fn skene_headless::children(skene_core::node::NodeId) -> alloc::vec::Vec<skene_core::node::NodeId>
@@ -90,7 +90,7 @@ pub fn skene_headless::find_by_text(&str) -> core::option::Option<skene_core::no
 pub fn skene_headless::focus_order(skene_core::node::NodeId) -> core::option::Option<skene_core::values::focus_order::FocusOrder>
 pub fn skene_headless::focused_node() -> core::option::Option<skene_core::node::NodeId>
 pub fn skene_headless::full_outline(skene_core::node::NodeId) -> alloc::string::String
-pub fn skene_headless::head_elements() -> alloc::vec::Vec<skene_common::gui::head::HeadElement>
+pub fn skene_headless::head_elements() -> alloc::vec::Vec<skene_common::web::head::HeadElement>
 pub fn skene_headless::install_executor()
 pub fn skene_headless::is_focused(skene_core::node::NodeId) -> bool
 pub fn skene_headless::is_hovered(skene_core::node::NodeId) -> bool
@@ -107,13 +107,13 @@ pub fn skene_headless::overlay_props(skene_core::node::NodeId) -> core::option::
 pub fn skene_headless::part(skene_core::node::NodeId) -> core::option::Option<skene_core::control::Part>
 pub fn skene_headless::pending_timers() -> usize
 pub fn skene_headless::pump_tasks() -> bool
-pub fn skene_headless::remove_head_entry(skene_common::gui::head::HeadId)
+pub fn skene_headless::remove_head_entry(skene_common::web::head::HeadId)
 pub fn skene_headless::render_to_pixels(skene_core::node::NodeId, skene_core::values::size::Size<f32>) -> core::option::Option<alloc::vec::Vec<u8>>
 pub fn skene_headless::reset()
 pub fn skene_headless::resolve_aspect_ratio(skene_core::node::NodeId) -> core::option::Option<skene_core::values::aspect_ratio::AspectRatio>
-pub fn skene_headless::resolve_color(skene_core::node::NodeId, skene_core::property::PropertyKey<skene_common::gui::ext::GuiProperty>) -> core::option::Option<skene_core::values::color::Color>
-pub fn skene_headless::resolve_inset(skene_core::node::NodeId, skene_core::property::PropertyKey<skene_common::gui::ext::GuiProperty>) -> core::option::Option<skene_core::values::inset::Inset<f32>>
-pub fn skene_headless::resolve_length(skene_core::node::NodeId, skene_core::property::PropertyKey<skene_common::gui::ext::GuiProperty>) -> core::option::Option<f32>
+pub fn skene_headless::resolve_color(skene_core::node::NodeId, skene_core::property::PropertyKey<skene_common::web::ext::WebProperty>) -> core::option::Option<skene_core::values::color::Color>
+pub fn skene_headless::resolve_inset(skene_core::node::NodeId, skene_core::property::PropertyKey<skene_common::web::ext::WebProperty>) -> core::option::Option<skene_core::values::inset::Inset<f32>>
+pub fn skene_headless::resolve_length(skene_core::node::NodeId, skene_core::property::PropertyKey<skene_common::web::ext::WebProperty>) -> core::option::Option<f32>
 pub fn skene_headless::resolve_overflow(skene_core::node::NodeId) -> core::option::Option<skene_core::values::axis::Axes<skene_core::values::overflow::Overflow>>
 pub fn skene_headless::resolve_visibility(skene_core::node::NodeId) -> core::option::Option<skene_core::values::visibility::Visibility>
 pub fn skene_headless::root_definition_writes() -> usize
@@ -122,7 +122,7 @@ pub fn skene_headless::run_props(skene_core::node::NodeId) -> core::option::Opti
 pub fn skene_headless::selection(skene_core::node::NodeId) -> core::option::Option<skene_core::values::text_selection::TextSelection>
 pub fn skene_headless::set_clipboard_availability(skene_core::values::clipboard::ClipboardAction, skene_core::values::clipboard::Availability)
 pub fn skene_headless::set_document_language(&str)
-pub fn skene_headless::set_head_title(skene_common::gui::head::HeadId, &str)
+pub fn skene_headless::set_head_title(skene_common::web::head::HeadId, &str)
 pub fn skene_headless::slot_leaf(skene_core::node::NodeId, skene_core::leaf::Slot) -> core::option::Option<skene_headless::SlotLeaf>
 pub fn skene_headless::take_clipboard_actions() -> alloc::vec::Vec<skene_core::values::clipboard::ClipboardAction>
 pub fn skene_headless::text(skene_core::node::NodeId) -> core::option::Option<alloc::string::String>
@@ -164,6 +164,6 @@ pub fn skene_headless::trigger_size(skene_core::node::NodeId, skene_core::values
 pub fn skene_headless::trigger_toggle(skene_core::node::NodeId, bool)
 pub fn skene_headless::trigger_wheel(skene_core::node::NodeId, &skene_core::events::WheelEvent) -> skene_core::events::Prevented
 pub fn skene_headless::value(skene_core::node::NodeId) -> core::option::Option<alloc::string::String>
-pub type skene_headless::SlotLeaf = skene_core::resolve::SlotLeaf<f32, skene_common::gui::ext::GuiStyle>
-pub type skene_headless::SlotValue = skene_core::resolve::SlotValue<f32, skene_common::gui::ext::GuiStyle>
+pub type skene_headless::SlotLeaf = skene_core::resolve::SlotLeaf<f32, skene_common::web::ext::WebStyle>
+pub type skene_headless::SlotValue = skene_core::resolve::SlotValue<f32, skene_common::web::ext::WebStyle>
 pub type skene_headless::TokenValue = skene_core::resolve::TokenValue<f32>

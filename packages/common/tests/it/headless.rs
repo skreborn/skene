@@ -6,7 +6,7 @@ use std::{
   rc::Rc,
 };
 
-use skene_common::{ThemedIn, gui::GuiProperty};
+use skene_common::{ThemedIn, web::WebProperty};
 use skene_core::{
   BoxValue,
   Bubbling,
@@ -99,9 +99,9 @@ type Text = skene_common::Text<Headless>;
 type Flexible<C = NoChild> = skene_common::Flexible<Headless, C>;
 type Theme<S, C = NoChild> = skene_common::Theme<Headless, S, C>;
 
-const COLOR: PropertyKey<GuiProperty> = PropertyKey::Shared(Property::Color);
-const WIDTH: PropertyKey<GuiProperty> = PropertyKey::Shared(Property::Width);
-const PADDING: PropertyKey<GuiProperty> = PropertyKey::Shared(Property::Padding);
+const COLOR: PropertyKey<WebProperty> = PropertyKey::Shared(Property::Color);
+const WIDTH: PropertyKey<WebProperty> = PropertyKey::Shared(Property::Width);
+const PADDING: PropertyKey<WebProperty> = PropertyKey::Shared(Property::Padding);
 const SIDEBAR: ContainerName = ContainerName("sidebar");
 
 const WHITE: Color = Color::TRANSPARENT;
@@ -161,7 +161,7 @@ fn only_child(node: NodeId) -> NodeId {
   children(node)[1]
 }
 
-/// The host platform takes the pixel media's own properties: a box's corner radius and
+/// The host platform takes the web medium's own properties: a box's corner radius and
 /// a run's font size resolve as set, the size an `em` measures against.
 #[test]
 fn the_pixel_properties_resolve_on_the_host() {
@@ -177,11 +177,11 @@ fn the_pixel_properties_resolve_on_the_host() {
   let run = only_child(node);
 
   assert_eq!(
-    resolve_length(node, PropertyKey::Extension(GuiProperty::CornerRadius)),
+    resolve_length(node, PropertyKey::Extension(WebProperty::CornerRadius)),
     Some(8.)
   );
   assert_eq!(
-    resolve_length(run, PropertyKey::Extension(GuiProperty::FontSize)),
+    resolve_length(run, PropertyKey::Extension(WebProperty::FontSize)),
     Some(24.)
   );
 

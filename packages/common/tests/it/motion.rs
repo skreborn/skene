@@ -6,7 +6,7 @@
 
 use std::time::Duration;
 
-use skene_common::{Container, Theme, gui::GuiProperty};
+use skene_common::{Container, Theme, web::WebProperty};
 use skene_core::{Animation, BoxKeyframe, Color, Easing, Property, Transition, View};
 use skene_headless::{
   Headless,
@@ -23,7 +23,7 @@ use skene_reactive::{Get, Owner, Set, Signal};
 use crate::common::{COLOR, TestPalette, WIDTH, blue, red};
 
 /// A one-second linear transition of `property`.
-fn linear(property: Property) -> Transition<GuiProperty> {
+fn linear(property: Property) -> Transition<WebProperty> {
   Transition::new(property, 1.).set_easing(Easing::Linear)
 }
 

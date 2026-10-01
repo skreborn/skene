@@ -751,6 +751,7 @@ pub skene_foundation::realize::Source::Fixed(T)
 impl<T: 'static> skene_foundation::realize::Source<T>
 pub fn skene_foundation::realize::Source<T>::bind(self, skene_foundation::NodeId, impl core::ops::function::Fn(skene_foundation::NodeId, &T) + 'static)
 pub fn skene_foundation::realize::Source<T>::derive(impl core::ops::function::Fn() -> T + 'static) -> Self
+pub fn skene_foundation::realize::Source<T>::get(&self) -> T where T: core::clone::Clone
 pub fn skene_foundation::realize::Source<T>::into_read(self) -> alloc::rc::Rc<dyn core::ops::function::Fn() -> T> where T: core::clone::Clone
 impl<T: core::clone::Clone> core::clone::Clone for skene_foundation::realize::Source<T>
 pub fn skene_foundation::realize::Source<T>::clone(&self) -> Self
@@ -6064,13 +6065,12 @@ pub fn skene_foundation::Size<T>::sub(self, Self) -> Self
 pub struct skene_foundation::Slider
 impl skene_foundation::Slider
 pub fn skene_foundation::Slider::bind_value(self, skene_reactive::signal::Signal<f32>) -> Self
+pub fn skene_foundation::Slider::derive_range(self, impl core::ops::function::Fn() -> skene_foundation::SliderRange + 'static) -> Self
 pub fn skene_foundation::Slider::derive_value(self, impl core::ops::function::Fn() -> f32 + 'static) -> Self
 pub fn skene_foundation::Slider::handle_change(self, impl core::ops::function::Fn(f32) + 'static) -> Self
 pub fn skene_foundation::Slider::new() -> Self
 pub const fn skene_foundation::Slider::set_axis(self, skene_foundation::Axis) -> Self
-pub const fn skene_foundation::Slider::set_max(self, f32) -> Self
-pub const fn skene_foundation::Slider::set_min(self, f32) -> Self
-pub const fn skene_foundation::Slider::set_step(self, f32) -> Self
+pub fn skene_foundation::Slider::set_range(self, skene_foundation::SliderRange) -> Self
 pub const fn skene_foundation::Slider::set_thumb_extent(self, f32) -> Self
 pub fn skene_foundation::Slider::set_value(self, f32) -> Self
 impl core::default::Default for skene_foundation::Slider

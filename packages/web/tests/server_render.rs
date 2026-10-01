@@ -56,6 +56,7 @@ use skene_web::{
   RichText,
   Row,
   Slider,
+  SliderRange,
   Span,
   Text,
   Theme,
@@ -293,8 +294,13 @@ fn hiding_compiles_to_hidden_or_inherited_visibility() {
 /// A slider's scriptless input holds the slider's range, step and value natively.
 #[test]
 fn a_sliders_input_holds_its_range_natively() {
-  let page =
-    render_to_string(|| BasicSlider::new(Slider::new().set_max(200.).set_step(0.).set_value(150.)));
+  let page = render_to_string(|| {
+    BasicSlider::new(
+      Slider::new()
+        .set_range(SliderRange::new(0., 200., 0.))
+        .set_value(150.),
+    )
+  });
   let body = page.body();
 
   for attribute in ["min=\"0\"", "max=\"200\"", "step=\"any\"", "value=\"150\""] {

@@ -7,7 +7,7 @@
 use std::fmt;
 
 use skene_simple_terminal::prelude::*;
-use skene_terminal::{ActivePlatform, HasChild, Resource, prelude::*};
+use skene_terminal::{ActivePlatform, HasChild, Resource, SliderRange, prelude::*};
 
 /// The whole gallery: a scrollable column of titled sections, dressed by one theme
 /// whose palette the gallery switches from inside itself and whose tokens follow the
@@ -244,9 +244,7 @@ fn inputs() -> impl View {
         Container::new().set_width(20).set_child(
           SimpleSlider::new()
             .set_label("Volume")
-            .set_min(0.)
-            .set_max(100.)
-            .set_step(1.)
+            .set_range(SliderRange::new(0., 100., 1.))
             .bind_value(volume),
         ),
         Text::derive(move || format!("{:.0}%", volume.get()))

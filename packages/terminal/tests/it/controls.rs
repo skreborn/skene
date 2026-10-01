@@ -5,7 +5,15 @@
 use std::{cell::Cell, rc::Rc};
 
 use skene_simple_terminal::prelude::*;
-use skene_terminal::{self as terminal, Activate, Slider, TextEntry, prelude::*, testing};
+use skene_terminal::{
+  self as terminal,
+  Activate,
+  Slider,
+  SliderRange,
+  TextEntry,
+  prelude::*,
+  testing,
+};
 
 use crate::common::{blue, colors_at, green, locate, red, rgb, white, with_platform};
 
@@ -260,9 +268,7 @@ fn a_slider_maps_the_pointer_through_its_track() {
     let _ = terminal::mount(|| {
       BasicSlider::new(
         Slider::new()
-          .set_min(0.)
-          .set_max(10.)
-          .set_step(1.)
+          .set_range(SliderRange::new(0., 10., 1.))
           .bind_value(volume),
       )
       .set_width(12)
@@ -296,9 +302,7 @@ fn slider_nudges_and_jumps() {
     let _ = terminal::mount(|| {
       BasicSlider::new(
         Slider::new()
-          .set_min(0.)
-          .set_max(10.)
-          .set_step(1.)
+          .set_range(SliderRange::new(0., 10., 1.))
           .bind_value(volume),
       )
       .set_width(11)
@@ -353,9 +357,7 @@ fn slider_drags_to_the_pointer() {
         .set_child(
           BasicSlider::new(
             Slider::new()
-              .set_min(0.)
-              .set_max(10.)
-              .set_step(1.)
+              .set_range(SliderRange::new(0., 10., 1.))
               .bind_value(volume),
           )
           .set_height(1),
@@ -390,9 +392,7 @@ fn slider_shows_the_grab_cursors() {
     let _ = terminal::mount(|| {
       BasicSlider::new(
         Slider::new()
-          .set_min(0.)
-          .set_max(10.)
-          .set_step(1.)
+          .set_range(SliderRange::new(0., 10., 1.))
           .bind_value(volume),
       )
       .set_width(11)
@@ -430,9 +430,7 @@ fn a_slider_fills_to_a_thumb_of_its_own_color() {
         .set_width(20)
         .set_child(
           SimpleSlider::new()
-            .set_min(0.)
-            .set_max(100.)
-            .set_step(1.)
+            .set_range(SliderRange::new(0., 100., 1.))
             .bind_value(volume),
         )
         .into_any()
@@ -504,9 +502,7 @@ fn a_slider_on_a_half_cell_leaves_no_gap_before_its_thumb() {
         .add_child(
           Container::new().set_width(21).set_child(
             SimpleSlider::new()
-              .set_min(0.)
-              .set_max(100.)
-              .set_step(1.)
+              .set_range(SliderRange::new(0., 100., 1.))
               .bind_value(volume),
           ),
         )
@@ -552,9 +548,7 @@ fn a_slider_drag_reads_the_pointer_within_its_cell() {
         .set_width(25)
         .set_child(
           SimpleSlider::new()
-            .set_min(0.)
-            .set_max(100.)
-            .set_step(1.)
+            .set_range(SliderRange::new(0., 100., 1.))
             .bind_value(volume),
         )
         .into_any()
@@ -593,9 +587,7 @@ fn a_sliders_end_cells_reach_its_ends() {
         .set_child(
           SimpleSlider::new()
             .set_label("Volume")
-            .set_min(0.)
-            .set_max(100.)
-            .set_step(1.)
+            .set_range(SliderRange::new(0., 100., 1.))
             .bind_value(volume),
         )
         .into_any()
@@ -626,9 +618,7 @@ fn a_slider_released_off_itself_stops_sliding() {
         .set_children((
           Container::new().set_width(20).set_child(
             SimpleSlider::new()
-              .set_min(0.)
-              .set_max(100.)
-              .set_step(1.)
+              .set_range(SliderRange::new(0., 100., 1.))
               .bind_value(volume),
           ),
           Text::new("below"),

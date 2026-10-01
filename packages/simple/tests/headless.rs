@@ -18,6 +18,7 @@ use skene_foundation::{
   Property,
   PropertyKey,
   RunBase,
+  SliderRange,
   Slot,
   StaticLeaf,
   ThemedIn,
@@ -318,7 +319,9 @@ fn a_slider_fill_follows_the_bound_value_and_its_thumb_rings_when_focused() {
   let palette = SimplePalette::default();
   let bound = Signal::new(50.);
   let slider = themed(owner, move || {
-    SimpleSlider::new().set_max(200.).bind_value(bound)
+    SimpleSlider::new()
+      .set_range(SliderRange::new(0., 200., 1.))
+      .bind_value(bound)
   });
   let stack = children(children(slider)[0])[1];
   let track = children(stack)[1];

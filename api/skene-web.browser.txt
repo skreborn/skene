@@ -99,6 +99,7 @@ pub use skene_web::Scene
 pub use skene_web::ScrollEvent
 pub use skene_web::Shortcut
 pub use skene_web::Slider
+pub use skene_web::SliderRange
 pub use skene_web::SpanBase
 pub use skene_web::StackBase
 pub use skene_web::State

@@ -3,7 +3,7 @@
 use std::fmt;
 
 use skene_simple_web::prelude::*;
-use skene_web::{ActivePlatform, HasChild, Link, Resource, prelude::*, router::Route};
+use skene_web::{ActivePlatform, HasChild, Link, Resource, SliderRange, prelude::*, router::Route};
 
 /// The gallery page: every built-in view and Simple component, under the palette the
 /// reader picks.
@@ -260,9 +260,7 @@ fn inputs() -> impl View {
         .set_children((
           SimpleSlider::new()
             .set_label("Volume")
-            .set_min(0.)
-            .set_max(100.)
-            .set_step(1.)
+            .set_range(SliderRange::new(0., 100., 1.))
             .bind_value(volume),
           Text::derive(move || format!("{:.0}%", volume.get()))
             .set_font_size(13.)

@@ -101,6 +101,7 @@ pub use skene_terminal::ScrollEvent
 pub use skene_terminal::ScrollbarGlyphs
 pub use skene_terminal::Shortcut
 pub use skene_terminal::Slider
+pub use skene_terminal::SliderRange
 pub use skene_terminal::SpanBase
 pub use skene_terminal::StackBase
 pub use skene_terminal::State

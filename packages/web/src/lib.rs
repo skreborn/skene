@@ -172,6 +172,7 @@ pub use skene_foundation::{
   ScrollEvent,
   Shortcut,
   Slider,
+  SliderRange,
   SpanBase,
   StackBase,
   State,

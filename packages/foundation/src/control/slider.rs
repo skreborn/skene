@@ -23,6 +23,7 @@ use crate::{
   Role,
   Scalar,
   Scene,
+  realize::Source,
 };
 
 /// A slider over a closed range.
@@ -41,9 +42,7 @@ use crate::{
 /// hundredth of the span.
 #[must_use]
 pub struct Slider {
-  min: f32,
-  max: f32,
-  step: f32,
+  range: Source<SliderRange>,
   value: Controlled<f32>,
   extent: Rc<Cell<f32>>,
   track: Rc<Cell<Option<NodeId>>>,
@@ -63,9 +62,7 @@ impl Slider {
   #[inline(always)]
   pub fn new() -> Self {
     Self {
-      min: 0.,
-      max: 100.,
-      step: 1.,
+      range: Source::Fixed(SliderRange::new(0., 100., 1.)),
       value: Controlled::new(),
       extent: Rc::new(Cell::new(0.)),
       track: Rc::new(Cell::new(None)),
@@ -93,27 +90,17 @@ impl Slider {
     self
   }
 
-  /// Sets the lowest value.
+  /// Sets the range: its bounds and the step values snap to.
   #[inline(always)]
-  pub const fn set_min(mut self, min: f32) -> Self {
-    self.min = min;
+  pub fn set_range(mut self, range: SliderRange) -> Self {
+    self.range = Source::Fixed(range);
 
     self
   }
 
-  /// Sets the highest value.
-  #[inline(always)]
-  pub const fn set_max(mut self, max: f32) -> Self {
-    self.max = max;
-
-    self
-  }
-
-  /// Sets the step a key moves by and values snap to; non-positive for a continuous
-  /// range.
-  #[inline(always)]
-  pub const fn set_step(mut self, step: f32) -> Self {
-    self.step = step;
+  /// Derives the range from the signals `range` reads.
+  pub fn derive_range(mut self, range: impl Fn() -> SliderRange + 'static) -> Self {
+    self.range = Source::derive(range);
 
     self
   }
@@ -148,16 +135,16 @@ impl Slider {
     self
   }
 
-  /// The range as the value model reads it.
+  /// The range as of now.
   #[inline(always)]
-  const fn range(&self) -> SliderRange {
-    SliderRange::new(self.min, self.max, self.step)
+  fn range(&self) -> SliderRange {
+    self.range.get()
   }
 
   /// The value currently reported.
   #[inline(always)]
   fn read(&self) -> f32 {
-    self.value.read().unwrap_or(self.min)
+    self.value.read().unwrap_or_else(|| self.range().min())
   }
 
   /// Asks for `next` when it differs from the held value.
@@ -326,11 +313,13 @@ impl<P: Platform> Behavior<P> for Slider {
   }
 
   fn access(&self) -> Vec<AccessProp> {
+    let range = self.range();
+
     vec![
       AccessProp::Value(self.read()),
-      AccessProp::ValueMin(self.min),
-      AccessProp::ValueMax(self.max),
-      AccessProp::ValueStep(self.step),
+      AccessProp::ValueMin(range.min()),
+      AccessProp::ValueMax(range.max()),
+      AccessProp::ValueStep(range.step()),
       AccessProp::Orientation(self.axis),
     ]
   }

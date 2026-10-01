@@ -30,6 +30,7 @@ use skene_foundation::{
   State,
   View,
   Wraps,
+  realize::Source,
 };
 use skene_reactive::{Get, Set, Signal, untrack};
 
@@ -50,9 +51,7 @@ use super::{
 #[must_use]
 pub struct SimpleSlider<P: Platform> {
   label: Option<String>,
-  min: f32,
-  max: f32,
-  step: f32,
+  range: Source<SliderRange>,
   value: Option<Rc<dyn Fn() -> f32>>,
   on_change: Option<Rc<dyn Fn(f32)>>,
   platform: PhantomData<fn() -> P>,
@@ -72,9 +71,7 @@ impl<P: Platform> SimpleSlider<P> {
   pub fn new() -> Self {
     Self {
       label: None,
-      min: 0.,
-      max: 100.,
-      step: 1.,
+      range: Source::Fixed(SliderRange::new(0., 100., 1.)),
       value: None,
       on_change: None,
       platform: PhantomData,
@@ -88,27 +85,17 @@ impl<P: Platform> SimpleSlider<P> {
     self
   }
 
-  /// Sets the lowest value.
+  /// Sets the range: its bounds and the step values snap to.
   #[inline(always)]
-  pub const fn set_min(mut self, min: f32) -> Self {
-    self.min = min;
+  pub fn set_range(mut self, range: SliderRange) -> Self {
+    self.range = Source::Fixed(range);
 
     self
   }
 
-  /// Sets the highest value.
-  #[inline(always)]
-  pub const fn set_max(mut self, max: f32) -> Self {
-    self.max = max;
-
-    self
-  }
-
-  /// Sets the step a key moves by and values snap to; non-positive for a continuous
-  /// range.
-  #[inline(always)]
-  pub const fn set_step(mut self, step: f32) -> Self {
-    self.step = step;
+  /// Derives the range from the signals `range` reads.
+  pub fn derive_range(mut self, range: impl Fn() -> SliderRange + 'static) -> Self {
+    self.range = Source::derive(range);
 
     self
   }
@@ -164,21 +151,27 @@ where
     let shape = shape::<P>();
     let Self {
       label,
-      min,
-      max,
-      step,
+      range,
       value,
       on_change,
       ..
     } = self;
-    let range = SliderRange::new(min, max, step);
-    let value: Rc<dyn Fn() -> f32> = value.unwrap_or_else(|| Rc::new(move || min));
+    let range = range.into_read();
+    let value: Rc<dyn Fn() -> f32> = value.unwrap_or_else(|| {
+      let range = Rc::clone(&range);
+
+      Rc::new(move || range().min())
+    });
     let filled = Rc::clone(&value);
     let placed = Rc::clone(&value);
     let fill = as_part::<P>(
       Part::Fill,
       Container::<P>::new()
-        .derive_width(move || Dimension::Fraction(range.fraction_of(filled())))
+        .derive_width({
+          let range = Rc::clone(&range);
+
+          move || Dimension::Fraction(range().fraction_of(filled()))
+        })
         .set_height(Dimension::Length(shape.track_height))
         .set_corner_radius(shape.track_height.to_f32() / 2.)
         .set_background(SimplePalette::<P::Scalar>::PRIMARY_SURFACE),
@@ -217,19 +210,21 @@ where
       .set_child(
         Stack::new().add_child(
           Pinned::new()
-            .derive_edges(move || Inset {
-              top: Dimension::Length(P::Scalar::default()),
-              end: Dimension::Auto,
-              bottom: Dimension::Auto,
-              start: Dimension::Fraction(range.fraction_of(placed())),
+            .derive_edges({
+              let range = Rc::clone(&range);
+
+              move || Inset {
+                top: Dimension::Length(P::Scalar::default()),
+                end: Dimension::Auto,
+                bottom: Dimension::Auto,
+                start: Dimension::Fraction(range().fraction_of(placed())),
+              }
             })
             .set_child(thumb),
         ),
       );
     let mut behavior = Slider::new()
-      .set_min(min)
-      .set_max(max)
-      .set_step(step)
+      .derive_range(move || range())
       .set_thumb_extent(shape.thumb_size.to_f32())
       .derive_value(move || value());
 
@@ -304,23 +299,16 @@ pub trait SimpleSliderBase<P: Platform>: Wraps<Inner = SimpleSlider<P>> {
     Self::wrap(self.into_inner().set_label(label))
   }
 
-  /// Sets the lowest value.
+  /// Sets the range: its bounds and the step values snap to.
   #[must_use]
-  fn set_min(self, min: f32) -> Self {
-    Self::wrap(self.into_inner().set_min(min))
+  fn set_range(self, range: SliderRange) -> Self {
+    Self::wrap(self.into_inner().set_range(range))
   }
 
-  /// Sets the highest value.
+  /// Derives the range from the signals `range` reads.
   #[must_use]
-  fn set_max(self, max: f32) -> Self {
-    Self::wrap(self.into_inner().set_max(max))
-  }
-
-  /// Sets the step a key moves by and values snap to; non-positive for a continuous
-  /// range.
-  #[must_use]
-  fn set_step(self, step: f32) -> Self {
-    Self::wrap(self.into_inner().set_step(step))
+  fn derive_range(self, range: impl Fn() -> SliderRange + 'static) -> Self {
+    Self::wrap(self.into_inner().derive_range(range))
   }
 
   /// Sets the value.

@@ -183,16 +183,16 @@ left half-done in a code comment.
     - A shell per platform: the facades' views and Simple's, newtypes implementing the
     traits of the core beneath them, stay on probation against writing each platform's
     views by hand.
-    - Shapes: one setter per property for the slider (`set_range`, `derive_range`) and
-    `Animation` (`set_iterations(impl Into<Iterations>)`, `set_alternate(bool)` and
-    `set_respects_reduced_motion(bool)`, on `Transition` too); appending setters named
-    `add_*` (`set_transition`, `set_animation`, `set_case`, `RichText::set_spans`);
-    children last in `Deferred` (`set_child_builder`), `AsyncView` (`set_child_loader`)
-    and `Link` (exactly one child, through `set_child`); fallbacks spelled
-    `set_fallback_builder` across `Enhance`, `Painted`, `Suspense` and `ErrorBoundary`;
-    alignment named by role, `set_item_alignment` on a container (`Stack` renamed) and
-    `set_alignment` on a wrapper (`Flexible` renamed); the foundation's items under one
-    name in every platform's prelude.
+    - Shapes: one setter per property for `Animation` (`set_iterations(impl
+    Into<Iterations>)`, `set_alternate(bool)` and `set_respects_reduced_motion(bool)`,
+    on `Transition` too); appending setters named `add_*` (`set_transition`,
+    `set_animation`, `set_case`, `RichText::set_spans`); children last in `Deferred`
+    (`set_child_builder`), `AsyncView` (`set_child_loader`) and `Link` (exactly one
+    child, through `set_child`); fallbacks spelled `set_fallback_builder` across
+    `Enhance`, `Painted`, `Suspense` and `ErrorBoundary`; alignment named by role,
+    `set_item_alignment` on a container (`Stack` renamed) and `set_alignment` on a
+    wrapper (`Flexible` renamed); the foundation's items under one name in every
+    platform's prelude.
     - Manifests: every crate publishable, with a description and a repository, the
     versioned dev-dependency cycles broken, and the CLI publishable, as the README's
     `cargo install` assumes; web-sys, js-sys, wasm-bindgen-test and serde_json

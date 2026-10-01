@@ -92,6 +92,7 @@ use skene_web::{
   Role,
   Row,
   Slider,
+  SliderRange,
   Span,
   Stack,
   TOOLTIP_GRACE,
@@ -1015,7 +1016,12 @@ fn a_sliders_native_input_holds_its_range_and_value() {
   let value = Signal::new(150.0f32);
 
   let _ = mount(move || {
-    BasicSlider::new(Slider::new().set_max(200.).set_step(5.).bind_value(value)).build()
+    BasicSlider::new(
+      Slider::new()
+        .set_range(SliderRange::new(0., 200., 5.))
+        .bind_value(value),
+    )
+    .build()
   });
 
   let input: HtmlInputElement = root

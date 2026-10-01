@@ -47,6 +47,7 @@ use skene_foundation::{
   Role,
   Size,
   Slider,
+  SliderRange,
   Spacing,
   State,
   TextEntry,
@@ -440,7 +441,14 @@ fn slider_keys_and_a_press_move_the_bound_value_by_the_ranges_rules() {
 
   let owner = Owner::new();
   let bound = Signal::new(50.);
-  let node = owner.enter(|| BasicSlider::new(Slider::new().set_step(5.).bind_value(bound)).build());
+  let node = owner.enter(|| {
+    BasicSlider::new(
+      Slider::new()
+        .set_range(SliderRange::new(0., 100., 5.))
+        .bind_value(bound),
+    )
+    .build()
+  });
 
   assert_eq!(
     box_props(node).and_then(|props| props.drag_axes),

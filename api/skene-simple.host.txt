@@ -268,13 +268,12 @@ pub fn skene_simple::SimpleRadioGroupBase::set_chosen(self, impl core::convert::
 pub fn skene_simple::SimpleRadioGroupBase::set_label(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub trait skene_simple::SimpleSliderBase<P: skene_foundation::spine::platform::Platform>: skene_foundation::spine::wraps::Wraps<Inner = SimpleSlider<P>>
 pub fn skene_simple::SimpleSliderBase::bind_value(self, skene_reactive::signal::Signal<f32>) -> Self
+pub fn skene_simple::SimpleSliderBase::derive_range(self, impl core::ops::function::Fn() -> skene_foundation::control::slider::SliderRange + 'static) -> Self
 pub fn skene_simple::SimpleSliderBase::derive_value(self, impl core::ops::function::Fn() -> f32 + 'static) -> Self
 pub fn skene_simple::SimpleSliderBase::handle_change(self, impl core::ops::function::Fn(f32) + 'static) -> Self
 pub fn skene_simple::SimpleSliderBase::new() -> Self
 pub fn skene_simple::SimpleSliderBase::set_label(self, impl core::convert::Into<alloc::string::String>) -> Self
-pub fn skene_simple::SimpleSliderBase::set_max(self, f32) -> Self
-pub fn skene_simple::SimpleSliderBase::set_min(self, f32) -> Self
-pub fn skene_simple::SimpleSliderBase::set_step(self, f32) -> Self
+pub fn skene_simple::SimpleSliderBase::set_range(self, skene_foundation::control::slider::SliderRange) -> Self
 pub fn skene_simple::SimpleSliderBase::set_value(self, f32) -> Self
 pub trait skene_simple::SimpleTextEditorBase<P: skene_foundation::spine::platform::Platform>: skene_foundation::spine::wraps::Wraps<Inner = SimpleTextEditor<P>>
 pub fn skene_simple::SimpleTextEditorBase::bind_value(self, skene_reactive::signal::Signal<alloc::string::String>) -> Self

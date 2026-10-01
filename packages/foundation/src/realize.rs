@@ -81,6 +81,19 @@ impl<T: 'static> Source<T> {
     Self::Derived(Rc::new(compute))
   }
 
+  /// The value as of now: the fixed one, cloned, or the one the derived closure
+  /// computes, tracked.
+  #[inline(always)]
+  pub fn get(&self) -> T
+  where
+    T: Clone,
+  {
+    match self {
+      Self::Fixed(value) => value.clone(),
+      Self::Derived(compute) => compute(),
+    }
+  }
+
   /// The source as a read: the fixed value, cloned, or the derived closure.
   #[inline(always)]
   pub fn into_read(self) -> Rc<dyn Fn() -> T>

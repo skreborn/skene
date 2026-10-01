@@ -161,8 +161,9 @@
     `set_child_builder(|| child)`. It realizes one layout-invisible scope node, provides
     `Memo<P>` through context (`P::current()`, `P::watch()`, from `ThemedIn`), and one
     effect rewrites its definitions when the palette changes: no consumer is touched and
-    nothing rebuilds, so a palette change costs the number of tokens, never the number
-    of nodes. Nesting a theme redefines beneath it. The child is a builder closure
+    nothing rebuilds, so on the web a palette change costs the number of tokens, never
+    the number of nodes (the terminal re-resolves every node beneath the scope until its
+    token caches take per-scope epochs). Nesting a theme redefines beneath it. The child is a builder closure
     because context is owner-scoped and an argument is evaluated before the call it
     belongs to. `Typography` (all text inheritance, on both facades) and the terminal's
     `SimpleGlyphs` (the Simple library's terminal marks) are token sets on the same

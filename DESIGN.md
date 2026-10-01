@@ -632,9 +632,10 @@ number token alone.
 
 `Theme<P, S: TokenSet>` is the one theme view. It realizes one layout-invisible scope node
 (`display: contents` on the web, a scope record in the terminal), provides `Memo<P>`
-through context, and runs one effect that writes `P::definitions()` onto the scope. A
-palette change therefore costs the number of tokens, never the number of nodes, and
-nothing rebuilds; nesting a theme redefines beneath it. On the web the static definitions
+through context, and runs one effect that writes `P::definitions()` onto the scope, so
+nothing rebuilds. On the web a palette change therefore costs the number of tokens, never
+the number of nodes; the terminal still re-resolves every node beneath the scope until its
+token caches take per-scope epochs. Nesting a theme redefines beneath it. On the web the static definitions
 are an interned class on the scope element (with `@media` blocks and the scheme double
 emission where a definition conditions on the scheme) and each token kind registers its
 custom property with `@property`, so it interpolates and inherits as a typed value; a
@@ -857,22 +858,23 @@ handler suppressed it. A frame clock advances on request; an executor, installed
 `spawn` and `Resource` alike, holds every spawned task until `pump_tasks`. It is what
 `skene-web` selects on a host target, so an app's `#[main]` compiles everywhere.
 
-### Native (`skene-native`, planned)
+### Native (planned)
 
-One family; the design premise is that **the platform composites**. Where the OS has a
-real view hierarchy (iOS, Android, macOS), the platform realizes the tree *into* it: taffy
-computes frames, painted content renders through vello into layers that are themselves
-views in that hierarchy, and an embed is an ordinary native view. Sibling order is
-z-order, so custom-painted content and real platform controls interleave for free. The
-platform decides its own realization granularity internally; the invariant is only that
-tree order maps to compositor order. The resolution cache tells it whether a
-layout-affecting value moved, so a palette write restyles taffy only when it must.
-
-The Linux desktop leaf has no native control set to embed, so it is the plain
-winit + single-vello-surface case; Windows sits between and its leaf chooses. Text is
-parley; accessibility is AccessKit; per-OS glue (IME, clipboard, menus) lives in each
-leaf. Off-thread work uses the engine's scheduler wired to the event-loop proxy, and a
-loop-integrated timer is fair game here (the loop is ours).
+One shell per OS—`skene-ios`, `skene-android`, `skene-windows`, `skene-macos` and
+`skene-linux`—each its own crate and facade, with a vocabulary for that OS's controls,
+structure and navigation. An app's shell depends on its OS's crate, which builds for that
+OS's triples alone, so no cfg names the platform. Every shell realizes the tree into the
+OS's own view hierarchy and composites it there: a box is a view with its layers, a text
+entry is the platform's own (`UITextField`, `EditText`, `GtkText`, a XAML `TextBox`), and
+only `Painted` draws, through vello into a layer-backed view. Native text entries, menus
+and clipboard, scroll views with their physics, and accessibility are the platform's on
+every OS, and no realization is a hybrid of painted content around embedded native
+controls, so no shell is drawn: Linux is GTK4. Layout is the platform's own containers
+beside taffy, behind a small library the platform's layout primitives call; the resolution
+cache tells a shell whether a layout-affecting value moved, so a palette write relays out
+only when it must. Off-thread work uses the engine's scheduler wired to the event-loop
+proxy, and a loop-integrated timer is fair game there, the loop being the shell's. The
+plan, its prerequisites and its order are in `ROADMAP.md`.
 
 ### The terminal (`skene-terminal`)
 
@@ -1135,10 +1137,12 @@ Selection is by **facade dependency** first—a web app depends on `skene-web`, 
 terminal app on `skene-terminal`—and by target within a facade: `skene-web` resolves
 `wasm32-unknown-unknown` to the web's browser leaf, a build naming the server platform
 (`--cfg skene_platform="server"`) to its server leaf on any host, every other host to the
-headless platform, with no feature flag anywhere. Where one triple hosts several platforms the build names the
-platform by a cfg, chosen once and unifying nothing, as `getrandom` names its backend.
-Target-gating stays the enforcement layer where it applies. A cargo feature may only add items; never a bound, a
-type, a variant or a platform; the workspace has none.
+headless platform, and no cargo feature selects any of them. Where one triple hosts
+several platforms the build names the platform by a cfg, chosen once and unifying
+nothing, as `getrandom` names its backend. Target-gating stays the enforcement layer
+where it applies. A cargo feature is an opt-in upgrade that enables optional
+dependencies alone, never a bound, a type, a variant or a platform, and none is on by
+default: `skene-web`'s `gpu` is the one there is.
 
 A facade is the one place allowed to name its platforms, which is why the shared
 platform-adjacent surface lives there: `launch`, `#[main]` (per-platform entry glue),

@@ -710,16 +710,16 @@ fn resources_serialize_their_state() {
 fn a_lazy_segments_resources_serialize_under_its_place() {
   let page = render_to_string(|| {
     let _before = Resource::new(|| async { "before".to_owned() });
-    let first = AsyncView::new(|| async {
+    let first = AsyncView::new().set_child_loader(|| async {
       let _inner = Resource::new(|| async { "inner".to_owned() });
 
-      AsyncView::new(|| async {
+      AsyncView::new().set_child_loader(|| async {
         let _nested = Resource::new(|| async { "nested".to_owned() });
 
         Text::new("nested")
       })
     });
-    let second = AsyncView::new(|| async {
+    let second = AsyncView::new().set_child_loader(|| async {
       let _second = Resource::new(|| async { "second".to_owned() });
 
       Text::new("second")
@@ -841,24 +841,25 @@ fn a_page_without_deferred_streams_as_one_chunk() {
 fn deferred_app() -> impl skene_web::View {
   Row::new().set_children([
     Text::new("shell").into_any(),
-    Deferred::new(|| {
-      let data = Resource::new(|| async {
-        platform::sleep(Duration::from_millis(5)).await;
+    Deferred::new()
+      .set_child_builder(|| {
+        let data = Resource::new(|| async {
+          platform::sleep(Duration::from_millis(5)).await;
 
-        "late".to_owned()
-      });
+          "late".to_owned()
+        });
 
-      derived(move || {
-        data.with(|value| match value {
-          None => Text::new("loading").build(),
-          Some(text) => Container::new()
-            .set_background(Color::srgb(0.1, 0.2, 0.3))
-            .set_child(Text::new(text.clone()))
-            .build(),
+        derived(move || {
+          data.with(|value| match value {
+            None => Text::new("loading").build(),
+            Some(text) => Container::new()
+              .set_background(Color::srgb(0.1, 0.2, 0.3))
+              .set_child(Text::new(text.clone()))
+              .build(),
+          })
         })
       })
-    })
-    .into_any(),
+      .into_any(),
   ])
 }
 
@@ -879,21 +880,22 @@ fn a_stream_resumes_where_it_stood_among_changed_siblings() {
         .derive_shown(move || grown.get())
         .set_child(Text::new("grown"))
         .into_any(),
-      Deferred::new(move || {
-        skene_web::spawn(async move {
-          platform::sleep(Duration::from_millis(1)).await;
-          grown.set(true);
-        });
+      Deferred::new()
+        .set_child_builder(move || {
+          skene_web::spawn(async move {
+            platform::sleep(Duration::from_millis(1)).await;
+            grown.set(true);
+          });
 
-        let data = Resource::new(|| async {
-          platform::sleep(Duration::from_millis(5)).await;
+          let data = Resource::new(|| async {
+            platform::sleep(Duration::from_millis(5)).await;
 
-          "late".to_owned()
-        });
+            "late".to_owned()
+          });
 
-        derived(move || data.with(|value| Text::new(value.cloned().unwrap_or_default()).build()))
-      })
-      .into_any(),
+          derived(move || data.with(|value| Text::new(value.cloned().unwrap_or_default()).build()))
+        })
+        .into_any(),
       Text::new("after").into_any(),
     ])
   });
@@ -980,7 +982,7 @@ fn a_title_registered_after_the_shell_is_warned_about() {
     Warnings(std::sync::Arc::clone(&warnings)),
     || {
       render_to_stream(|| {
-        Row::new().add_child(Deferred::new(|| {
+        Row::new().add_child(Deferred::new().set_child_builder(|| {
           let data = Resource::new(|| async {
             platform::sleep(Duration::from_millis(1)).await;
 

@@ -428,7 +428,7 @@ impl Route for Gallery {
 fn link() -> impl View {
   section(
     "Link",
-    Link::new(Gallery::Top).add_child(
+    Link::new(Gallery::Top).set_child(
       Text::new("Back to the top")
         .set_color(SimplePalette::LINK)
         .set_decoration(TextDecoration::Underline),

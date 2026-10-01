@@ -445,7 +445,7 @@ async fn a_lazy_view_keeps_server_content_until_it_loads() {
   let server_span = root.query_selector("span").expect("query").expect("a span");
 
   hydrate(root.clone(), "", || {
-    Container::new().set_child(AsyncView::new(|| async { Text::new("note") }))
+    Container::new().set_child(AsyncView::new().set_child_loader(|| async { Text::new("note") }))
   });
 
   // Claimed: the server content still stands, visible, while the module is pending.
@@ -492,7 +492,7 @@ async fn a_lazy_segments_resources_adopt_their_own_values() {
       let after = Rc::clone(&after);
 
       move || {
-        let lazy = AsyncView::new(move || {
+        let lazy = AsyncView::new().set_child_loader(move || {
           let inside = Rc::clone(&inside);
 
           async move {

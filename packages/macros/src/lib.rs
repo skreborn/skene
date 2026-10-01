@@ -95,7 +95,7 @@ pub fn terminal_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
 /// directly.
 ///
 /// Pair with [`AsyncView`](../skene_web/struct.AsyncView.html) to render a lazy function's view:
-/// `AsyncView::new(settings)`.
+/// `AsyncView::new().set_child_loader(settings)`.
 #[expect(
   clippy::too_many_lines,
   reason = "one expansion start to end; length is the generated surface, not complexity"

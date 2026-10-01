@@ -465,7 +465,7 @@ fn a_link_carries_its_destination_and_navigates_the_router() {
   let owner = Owner::new();
   let (router, link) = owner.enter(|| {
     let router = skene_web::install_router(Page::Home);
-    let link = Link::new(Page::About).add_child(Text::new("about")).build();
+    let link = Link::new(Page::About).set_child(Text::new("about")).build();
 
     (router, link)
   });
@@ -517,7 +517,7 @@ fn a_deferred_subtree_builds_its_content_on_the_host() {
   let owner = Owner::new();
   let root = owner.enter(|| {
     Container::new()
-      .set_child(Deferred::new(|| Text::new("late")))
+      .set_child(Deferred::new().set_child_builder(|| Text::new("late")))
       .build()
   });
 
@@ -536,7 +536,7 @@ fn a_lazy_subtree_mounts_when_the_tasks_are_pumped() {
   let owner = Owner::new();
   let root = owner.enter(|| {
     Container::new()
-      .set_child(AsyncView::new(|| async { Text::new("loaded") }))
+      .set_child(AsyncView::new().set_child_loader(|| async { Text::new("loaded") }))
       .build()
   });
 

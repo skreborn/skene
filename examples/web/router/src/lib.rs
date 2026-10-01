@@ -66,12 +66,12 @@ fn app() -> impl View {
           .set_padding(Inset::all(48.))
           .set_children((
             Row::new().set_spacing(16.).set_children((
-              Link::new(Page::Home).add_child(navigation("Home")),
-              Link::new(Page::About).add_child(navigation("About")),
+              Link::new(Page::Home).set_child(navigation("Home")),
+              Link::new(Page::About).set_child(navigation("About")),
             )),
             derived(move || match router.route() {
               Page::Home => home().build(),
-              Page::About => AsyncView::new(about).build(),
+              Page::About => AsyncView::new().set_child_loader(about).build(),
             }),
           )),
       )

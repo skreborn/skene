@@ -76,23 +76,24 @@ fn suspense_inside_a_deferred_boundary_settles_its_chunk() {
   let stream = skene_web::render_to_stream(|| {
     Row::new().set_children([
       Text::new("shell").into_any(),
-      Deferred::new(|| {
-        Suspense::new()
-          .set_fallback(Text::new("FALLBACK"))
-          .set_child_builder(|| {
-            let value = Resource::new(|| async {
-              platform::sleep(Duration::from_millis(5)).await;
+      Deferred::new()
+        .set_child_builder(|| {
+          Suspense::new()
+            .set_fallback(Text::new("FALLBACK"))
+            .set_child_builder(|| {
+              let value = Resource::new(|| async {
+                platform::sleep(Duration::from_millis(5)).await;
 
-              5u32
-            });
+                5u32
+              });
 
-            derived(move || match value.get() {
-              None => Text::new("hold").build(),
-              Some(value) => Text::new(format!("deferred {value}")).build(),
+              derived(move || match value.get() {
+                None => Text::new("hold").build(),
+                Some(value) => Text::new(format!("deferred {value}")).build(),
+              })
             })
-          })
-      })
-      .into_any(),
+        })
+        .into_any(),
     ])
   });
 

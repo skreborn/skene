@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use crate::{
   AnyKind,
-  Children,
+  AnyView,
   ClickEvent,
   Handler,
   HasChildren,
@@ -13,12 +13,11 @@ use crate::{
   LayoutBox,
   Modifiers,
   NamedKey,
+  NoChild,
   NodeId,
-  PlainChild,
   Platform,
   Prevent,
   Scene,
-  Seal,
   View,
   Wraps,
   routing::{Route, Router},
@@ -29,16 +28,17 @@ use crate::{
 /// A box whose destination is the route's path, so where the platform has real links a
 /// page without script follows it by loading that path, and a running app navigates
 /// the [`Router`] instead: on a click, or on `Enter` while it holds focus, the link
-/// being a tab stop. Takes its content through
-/// [`add_child`](HasChildren::add_child).
+/// being a tab stop. Holds [`NoChild`] until [`set_child`](Self::set_child) supplies the
+/// one view it links.
 ///
 /// A modified click or `Enter`—control, shift, alt, or command held—is left to the
 /// platform, so open-in-new-tab and friends keep working.
 #[derive(Debug)]
 #[must_use]
-pub struct Link<P: Platform, R: Route> {
+pub struct Link<P: Platform, R: Route, C = NoChild> {
   route: R,
   inner: LayoutBox<P>,
+  child: C,
 }
 
 impl<P: Platform, R: Route> Link<P, R> {
@@ -47,24 +47,28 @@ impl<P: Platform, R: Route> Link<P, R> {
   pub fn new(route: R) -> Self {
     let inner = LayoutBox::new(Layout::Document).set_destination(route.to_path());
 
-    Self { route, inner }
+    Self {
+      route,
+      inner,
+      child: NoChild,
+    }
+  }
+
+  /// Sets the view the link holds.
+  pub fn set_child(self, child: impl View<P>) -> Link<P, R, AnyView<P>> {
+    Link {
+      route: self.route,
+      inner: self.inner,
+      child: child.into_any(),
+    }
   }
 }
 
-impl<P: Platform, R: Route> HasChildren<P> for Link<P, R> {
-  type Kind = PlainChild;
+impl<P: Platform, R: Route> AnyKind for Link<P, R, AnyView<P>> {}
 
-  #[inline(always)]
-  fn children_mut(&mut self, seal: Seal) -> &mut Children<P, PlainChild> {
-    self.inner.children_mut(seal)
-  }
-}
-
-impl<P: Platform, R: Route> AnyKind for Link<P, R> {}
-
-impl<P: Platform, R: Route> View<P> for Link<P, R> {
+impl<P: Platform, R: Route> View<P> for Link<P, R, AnyView<P>> {
   fn build(self) -> NodeId {
-    let node = self.inner.build();
+    let node = self.inner.add_child(self.child).build();
     // Captured while building, where an ancestor's `provide` is in scope; an event
     // arrives outside any scope. No router leaves the link to the platform.
     let router = Router::<R>::current();

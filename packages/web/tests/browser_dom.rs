@@ -155,7 +155,11 @@ fn child_texts(parent: &Element) -> Vec<String> {
 fn deferred_builds_its_content_on_the_client() {
   let (_guard, root) = fresh_root();
 
-  let _ = mount(|| Deferred::new(|| Text::new("content")).build());
+  let _ = mount(|| {
+    Deferred::new()
+      .set_child_builder(|| Text::new("content"))
+      .build()
+  });
 
   let content = only_child(&root);
 

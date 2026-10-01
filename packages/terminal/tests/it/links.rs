@@ -257,7 +257,7 @@ fn a_route_link_follows_on_enter_and_a_click() {
       installed.set(Some(install_router(Page::Home)));
 
       Column::new()
-        .add_child(Link::new(Page::About).add_child(Text::new("about")))
+        .add_child(Link::new(Page::About).set_child(Text::new("about")))
         .build()
     });
     let router = router.get().expect("the mount installed the router");

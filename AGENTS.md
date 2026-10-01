@@ -601,11 +601,13 @@
   of one child holds it in a slot `set_child` replaces (`HasChild`, `Container` alone);
   a layout view appends segments (`HasChildren`: `add_child`, `set_children`,
   `derive_children`). A view that wraps something (`Flexible`, `Pinned`, `GridCell`,
-  `Theme`, `Visibility`, `Control`, `Overlay`, `Tooltip` and their kin) requires the child in
-  the type system: it holds the child as a type parameter, starting at `NoChild`, its
-  setters exist only in that state, so a property after the child is a type error, and
-  only the form carrying one is a view. `Theme` takes its child as a builder closure,
-  `set_child_builder`, because it provides context the child is built under.
+  `Theme`, `Visibility`, `Control`, `Overlay`, `Tooltip`, `Link` and their kin)
+  requires the child in the type system: it holds the child as a type parameter,
+  starting at `NoChild`, its setters exist only in that state, so a property after the
+  child is a type error, and only the form carrying one is a view. `Theme` and
+  `Deferred` take their child as a builder closure, `set_child_builder`, because it is
+  built under the context or the boundary they provide, and `AsyncView` as a future's
+  loader, `set_child_loader`.
 - **One property, one setter.** Every property is settable exactly one way (plus its
   `derive_` twin). A concept with components gets one shared value type set as a
   whole—`Inset` for padding/margin, `Spacing` for per-axis spacing, `Flexibility` for

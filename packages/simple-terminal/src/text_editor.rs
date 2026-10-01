@@ -9,6 +9,17 @@ use skene_terminal::ActivePlatform;
 ///
 /// The value flows both ways, exactly as on [`BasicTextEditor`](skene_terminal::BasicTextEditor);
 /// for custom chrome, compose the raw control directly.
+///
+/// ```
+/// use skene_simple_terminal::prelude::*;
+/// use skene_terminal::prelude::*;
+///
+/// let notes = Signal::new(String::new());
+/// let editor = SimpleTextEditor::new()
+///   .set_lines(4)
+///   .set_placeholder("Notes")
+///   .bind_value(notes);
+/// ```
 #[derive(Debug, Default, View, Wraps)]
 #[must_use]
 pub struct SimpleTextEditor(skene_simple::SimpleTextEditor<ActivePlatform>);

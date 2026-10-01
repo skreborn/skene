@@ -14,6 +14,15 @@ use skene_terminal::ActivePlatform;
 /// [`set_child`](Self::set_child), so any view takes a menu by wrapping, or
 /// [`serve`](Self::serve) attaches it to a node that already exists. For anything
 /// beyond that, compose [`ContextMenu`](skene_terminal::ContextMenu) directly.
+///
+/// ```no_run
+/// use skene_simple_terminal::prelude::*;
+/// use skene_terminal::prelude::*;
+///
+/// let text = SimpleContextMenu::new()
+///   .set_items([MenuEntry::copy(), MenuEntry::paste()])
+///   .set_child(Text::new("Right-click me"));
+/// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
 pub struct SimpleContextMenu<C = NoChild>(skene_simple::SimpleContextMenu<ActivePlatform, C>);

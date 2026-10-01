@@ -10,6 +10,20 @@ use skene_terminal::ActivePlatform;
 /// Members are [`SimpleRadio`]s at any depth inside the child, so one may be wrapped
 /// or interleaved with anything. The chosen value flows both ways. Holds [`NoChild`]
 /// until [`set_child`](Self::set_child) supplies the view holding the members.
+///
+/// ```
+/// use skene_simple_terminal::prelude::*;
+/// use skene_terminal::prelude::*;
+///
+/// let size = Signal::new(Some(String::from("m")));
+/// let sizes =
+///   SimpleRadioGroup::new()
+///     .bind_chosen(size)
+///     .set_child(Column::new().set_spacing(1).set_children((
+///       SimpleRadio::new("s").set_label("Small"),
+///       SimpleRadio::new("m").set_label("Medium"),
+///     )));
+/// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
 pub struct SimpleRadioGroup<C = NoChild>(skene_simple::SimpleRadioGroup<ActivePlatform, C>);
@@ -41,6 +55,13 @@ impl SimpleRadioGroup {
 /// control's state. Outside a [`SimpleRadioGroup`] it draws, is never chosen and
 /// takes focus like any control. For a radio drawn some other way, compose
 /// [`BasicRadio`](skene_terminal::BasicRadio) directly.
+///
+/// ```
+/// use skene_simple_terminal::prelude::*;
+/// use skene_terminal::prelude::*;
+///
+/// let small = SimpleRadio::new("s").set_label("Small");
+/// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
 pub struct SimpleRadio(skene_simple::SimpleRadio<ActivePlatform>);

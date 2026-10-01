@@ -12,6 +12,13 @@ use skene_terminal::ActivePlatform;
 /// and [`view`](Self::view) any view; the described view comes last through
 /// [`set_child`](Self::set_child), so any view takes a tooltip by wrapping. For
 /// anything beyond that, compose [`Tooltip`](skene_terminal::Tooltip) directly.
+///
+/// ```no_run
+/// use skene_simple_terminal::prelude::*;
+/// use skene_terminal::prelude::*;
+///
+/// let save = SimpleTooltip::new("Saves the document").set_child(SimpleButton::new("Save"));
+/// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
 pub struct SimpleTooltip<C = NoChild>(skene_simple::SimpleTooltip<ActivePlatform, C>);

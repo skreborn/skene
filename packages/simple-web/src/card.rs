@@ -10,6 +10,15 @@ use skene_web::ActivePlatform;
 /// Its own properties shape the column; wrap it in a [`Container`](skene_web::Container) to change
 /// the surface itself. Accepts any view or a [`Flexible`](skene_web::Flexible) wrapper as
 /// a child.
+///
+/// ```
+/// use skene_simple_web::prelude::*;
+/// use skene_web::prelude::*;
+///
+/// let card = SimpleCard::new()
+///   .set_spacing(12.)
+///   .set_children((Text::new("Title"), Text::new("Body")));
+/// ```
 #[derive(Debug, Default, View, Wraps)]
 #[must_use]
 pub struct SimpleCard(skene_simple::SimpleCard<ActivePlatform>);

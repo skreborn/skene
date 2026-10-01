@@ -13,6 +13,16 @@ use skene_terminal::ActivePlatform;
 /// palette's disabled surface and ink whatever its variant, and the default cursor.
 /// [`set_child`](Self::set_child) draws a view in the label's place, inked in the look's ink. For
 /// anything beyond that, compose [`BasicButton`](skene_terminal::BasicButton) directly.
+///
+/// ```
+/// use skene_simple_terminal::prelude::*;
+/// use skene_terminal::prelude::*;
+///
+/// let removed = Signal::new(0);
+/// let delete = SimpleButton::new("Delete")
+///   .set_variant(SimpleVariant::Destructive)
+///   .handle_activate(move || removed.update(|count| *count += 1));
+/// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
 pub struct SimpleButton(skene_simple::SimpleButton<ActivePlatform>);

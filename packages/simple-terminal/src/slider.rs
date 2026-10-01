@@ -14,6 +14,17 @@ use skene_terminal::ActivePlatform;
 /// the thumb travels the track less its own size, so both stay inside the track at either end. The
 /// value flows both ways. For a slider drawn some other way, compose
 /// [`BasicSlider`](skene_terminal::BasicSlider) directly.
+///
+/// ```
+/// use skene_simple_terminal::prelude::*;
+/// use skene_terminal::{SliderRange, prelude::*};
+///
+/// let volume = Signal::new(50.);
+/// let slider = SimpleSlider::new()
+///   .set_label("Volume")
+///   .set_range(SliderRange::new(0., 100., 5.))
+///   .bind_value(volume);
+/// ```
 #[derive(Debug, Default, View, Wraps)]
 #[must_use]
 pub struct SimpleSlider(skene_simple::SimpleSlider<ActivePlatform>);

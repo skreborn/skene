@@ -9,6 +9,16 @@ use skene_web::ActivePlatform;
 ///
 /// The value flows both ways, exactly as on [`BasicTextField`](skene_web::BasicTextField); for
 /// custom chrome, compose the raw control directly.
+///
+/// ```
+/// use skene_simple_web::prelude::*;
+/// use skene_web::prelude::*;
+///
+/// let name = Signal::new(String::new());
+/// let field = SimpleTextField::new()
+///   .set_placeholder("Your name")
+///   .bind_value(name);
+/// ```
 #[derive(Debug, Default, View, Wraps)]
 #[must_use]
 pub struct SimpleTextField(skene_simple::SimpleTextField<ActivePlatform>);

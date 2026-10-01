@@ -207,8 +207,7 @@ left half-done in a code comment.
     more can join: `app` first, an app's shared crate and a shell per platform it
     names, as `flutter create` does, then `lib` and a component library's core and
     per-platform crates.
-    - Doc comments: contracts alone, without rationale or narrated implementation; every
-    builder's example a doctest on the headless host.
+    - Doc comments: contracts alone, without rationale or narrated implementation.
 8. **Pictures beyond direct kitty transmission.** Shared memory or a file where the
     protocol's query over that medium shows the terminal shares the host, sparing the
     base64 for every change; unicode placeholders (`U=1`) through tmux, which passes no

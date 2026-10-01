@@ -15,6 +15,17 @@ use skene_terminal::ActivePlatform;
 /// [`Part::Item`](skene_terminal::Part::Item), so all three follow their control's state. The
 /// chosen value flows both ways, exactly as on [`BasicPicker`](skene_terminal::BasicPicker); for
 /// custom chrome, compose the raw control directly.
+///
+/// ```
+/// use skene_simple_terminal::prelude::*;
+/// use skene_terminal::prelude::*;
+///
+/// let size = Signal::new(String::from("m"));
+/// let picker = SimplePicker::new()
+///   .set_label("Size")
+///   .set_options([("s", "Small"), ("m", "Medium"), ("l", "Large")])
+///   .bind_chosen(size);
+/// ```
 #[derive(Debug, Default, View, Wraps)]
 #[must_use]
 pub struct SimplePicker(skene_simple::SimplePicker<ActivePlatform>);

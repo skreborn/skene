@@ -1,7 +1,6 @@
 //! A view with two forms: a fallback and the form a signal makes possible.
 
-use skene_foundation::{AnyKind, ChildBuilder, NoChild, NodeId, View};
-use skene_reactive::ReadSignal;
+use skene_foundation::NoChild;
 
 use crate::ActivePlatform;
 
@@ -20,41 +19,7 @@ use crate::ActivePlatform;
 /// The signals the built-ins wait on are the web's own: [`media::hydrated`](crate::media::hydrated)
 /// for a render made without script, and [`Painting::available`](crate::Painting::available)
 /// for a painted box's pixels.
-#[derive(Debug)]
 #[must_use]
 pub struct Enhance<C = NoChild>(skene_foundation::Enhance<ActivePlatform, C>);
 
-impl Enhance {
-  /// An enhancement waiting on `live`, with no forms yet.
-  #[inline(always)]
-  pub const fn new(live: ReadSignal<bool>) -> Self {
-    Self(skene_foundation::Enhance::new(live))
-  }
-
-  /// Sets the form built while `live` is false; nothing by default.
-  #[inline(always)]
-  pub fn set_fallback<V: View<ActivePlatform>>(
-    self,
-    fallback: impl FnOnce() -> V + 'static,
-  ) -> Self {
-    Self(self.0.set_fallback(fallback))
-  }
-
-  /// Sets the form built once `live` is true.
-  #[inline(always)]
-  pub fn set_child_builder<V: View<ActivePlatform>>(
-    self,
-    child: impl FnOnce() -> V + 'static,
-  ) -> Enhance<ChildBuilder<ActivePlatform>> {
-    Enhance(self.0.set_child_builder(child))
-  }
-}
-
-impl<C> AnyKind for Enhance<C> {}
-
-impl View<ActivePlatform> for Enhance<ChildBuilder<ActivePlatform>> {
-  #[inline(always)]
-  fn build(self) -> NodeId {
-    self.0.build()
-  }
-}
+skene_foundation::impl_enhance!(Enhance, ActivePlatform);

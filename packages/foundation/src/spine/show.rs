@@ -117,6 +117,65 @@ impl<P: Platform> View<P> for Show<P, AnyView<P>> {
   }
 }
 
+/// Implements a facade's newtype `$name<C>` over the foundation's [`Show`].
+///
+/// The newtype holds the view on the platform `$platform` in its field; the macro
+/// implements the constructor, the condition, the child and the traits a show meets.
+#[macro_export]
+macro_rules! impl_show {
+  ($name:ident, $platform:ty) => {
+    impl<C> ::core::fmt::Debug for $name<C> {
+      fn fmt(&self, formatter: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+        ::core::fmt::Debug::fmt(&self.0, formatter)
+      }
+    }
+    impl ::core::default::Default for $name {
+      #[inline(always)]
+      fn default() -> Self {
+        Self::new()
+      }
+    }
+    impl $name {
+      /// A `Show` with no child yet, shown until told otherwise.
+      #[inline(always)]
+      pub fn new() -> Self {
+        Self($crate::Show::new())
+      }
+
+      /// Sets whether the child is shown.
+      #[inline(always)]
+      pub fn set_shown(self, shown: bool) -> Self {
+        Self(self.0.set_shown(shown))
+      }
+
+      /// Shows the child while `shown` returns `true`, re-evaluated whenever a signal it
+      /// reads changes.
+      #[inline(always)]
+      pub fn derive_shown(self, shown: impl Fn() -> bool + 'static) -> Self {
+        Self(self.0.derive_shown(shown))
+      }
+
+      /// Sets the child.
+      #[inline(always)]
+      pub fn set_child(
+        self,
+        child: impl $crate::View<$platform>,
+      ) -> $name<$crate::AnyView<$platform>> {
+        $name(self.0.set_child(child))
+      }
+    }
+
+    impl<C> $crate::AnyKind for $name<C> {}
+
+    impl $crate::View<$platform> for $name<$crate::AnyView<$platform>> {
+      #[inline(always)]
+      fn build(self) -> $crate::NodeId {
+        $crate::View::build(self.0)
+      }
+    }
+  };
+}
+
 #[cfg(test)]
 mod tests {
   use std::{cell::Cell, rc::Rc};

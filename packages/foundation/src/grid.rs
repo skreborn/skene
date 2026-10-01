@@ -123,3 +123,67 @@ impl<P: Platform> View<P> for Grid<P> {
     self.inner.build()
   }
 }
+
+/// Implements a facade's newtype `$name` over the foundation's [`Grid`].
+///
+/// The newtype holds the view on the platform `$platform` in its field; the macro
+/// implements the constructors, the builder surface and the traits a grid meets.
+#[macro_export]
+macro_rules! impl_grid {
+  ($name:ident, $platform:ty) => {
+    impl ::core::fmt::Debug for $name {
+      fn fmt(&self, formatter: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+        ::core::fmt::Debug::fmt(&self.0, formatter)
+      }
+    }
+    impl ::core::default::Default for $name {
+      #[inline(always)]
+      fn default() -> Self {
+        Self::new()
+      }
+    }
+    impl $name {
+      /// A grid with no explicit tracks.
+      #[inline(always)]
+      pub fn new() -> Self {
+        Self($crate::Grid::new())
+      }
+
+      /// A grid with `count` columns of equal width.
+      #[inline(always)]
+      pub fn uniform(count: u16) -> Self {
+        Self($crate::Grid::uniform(count))
+      }
+
+      /// A grid with as many columns as fit, each at least `minimum` wide, sharing what
+      /// width remains equally.
+      #[inline(always)]
+      pub fn adaptive(minimum: <$platform as $crate::Platform>::Scalar) -> Self {
+        Self($crate::Grid::adaptive(minimum))
+      }
+
+      $crate::grid_surface! { 0, $platform }
+    }
+
+    impl $crate::HasChildren<$platform> for $name {
+      type Kind = $crate::GridChild;
+
+      #[inline(always)]
+      fn children_mut(
+        &mut self,
+        seal: $crate::Seal,
+      ) -> &mut $crate::Children<$platform, $crate::GridChild> {
+        $crate::HasChildren::children_mut(&mut self.0, seal)
+      }
+    }
+
+    impl $crate::AnyKind for $name {}
+
+    impl $crate::View<$platform> for $name {
+      #[inline(always)]
+      fn build(self) -> $crate::NodeId {
+        $crate::View::build(self.0)
+      }
+    }
+  };
+}

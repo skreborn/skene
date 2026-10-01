@@ -171,3 +171,54 @@ impl<P: Platform> View<P> for Container<P> {
     self.inner.build()
   }
 }
+
+/// Implements a facade's newtype `$name` over the foundation's [`Container`].
+///
+/// The newtype holds the view on the platform `$platform` in its field; the macro
+/// implements the constructor, the builder surface and the traits a container meets.
+#[macro_export]
+macro_rules! impl_container {
+  ($name:ident, $platform:ty) => {
+    impl ::core::fmt::Debug for $name {
+      fn fmt(&self, formatter: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+        ::core::fmt::Debug::fmt(&self.0, formatter)
+      }
+    }
+    impl ::core::default::Default for $name {
+      #[inline(always)]
+      fn default() -> Self {
+        Self::new()
+      }
+    }
+    impl $name {
+      /// An undecorated container.
+      #[inline(always)]
+      pub fn new() -> Self {
+        Self($crate::Container::new())
+      }
+
+      $crate::container_surface! { 0, $platform }
+    }
+
+    impl $crate::HasChild<$platform> for $name {
+      type Kind = $crate::PlainChild;
+
+      #[inline(always)]
+      fn child_mut(
+        &mut self,
+        seal: $crate::Seal,
+      ) -> &mut $crate::Children<$platform, $crate::PlainChild> {
+        $crate::HasChild::child_mut(&mut self.0, seal)
+      }
+    }
+
+    impl $crate::AnyKind for $name {}
+
+    impl $crate::View<$platform> for $name {
+      #[inline(always)]
+      fn build(self) -> $crate::NodeId {
+        $crate::View::build(self.0)
+      }
+    }
+  };
+}

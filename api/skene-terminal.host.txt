@@ -291,7 +291,7 @@ pub fn skene_terminal::Column::set_spacing(self, impl core::convert::Into<skene_
 pub fn skene_terminal::Column::set_wrap(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::flex::Wrap, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub const fn skene_terminal::Column::style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredBoxStyle<skene_terminal::ActivePlatform>
 impl core::default::Default for skene_terminal::Column
-pub fn skene_terminal::Column::default() -> skene_terminal::Column
+pub fn skene_terminal::Column::default() -> Self
 impl core::fmt::Debug for skene_terminal::Column
 pub fn skene_terminal::Column::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::spine::children::HasChildren<skene_terminal::Terminal> for skene_terminal::Column
@@ -307,7 +307,6 @@ pub fn skene_terminal::Container::derive_accessibility(self, impl core::ops::fun
 pub fn skene_terminal::Container::derive_alignment<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::flex::Alignment>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Container::derive_aspect_ratio<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::aspect_ratio::AspectRatio>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Container::derive_border_color<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_terminal::Container::derive_border_glyphs<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::terminal::ext::BorderGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Container::derive_border_width<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::inset::Inset<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Container::derive_color<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Container::derive_corner_radius<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self where <skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::corner_radius::CornerRadius
@@ -322,12 +321,6 @@ pub fn skene_terminal::Container::derive_min_width<R: core::convert::Into<skene_
 pub fn skene_terminal::Container::derive_offset<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::inset::Inset<skene_foundation::spine::values::dimension::Dimension<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Container::derive_overflow<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::axis::Axes<skene_foundation::spine::values::overflow::Overflow>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Container::derive_padding<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::inset::Inset<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_terminal::Container::derive_scrollbar_glyphs<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::terminal::ext::ScrollbarGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_terminal::Container::derive_scrollbar_thumb<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_terminal::Container::derive_scrollbar_track<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_terminal::Container::derive_shadow<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_terminal::Container::derive_shadow_offset<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_terminal::Container::derive_shadow_softening<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Container::derive_visibility<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::visibility::Visibility>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Container::derive_width<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::dimension::Dimension<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Container::handle_blur(self, impl core::ops::function::Fn() + 'static) -> Self
@@ -351,7 +344,6 @@ pub fn skene_terminal::Container::set_alignment(self, impl core::convert::Into<s
 pub fn skene_terminal::Container::set_animation(self, skene_foundation::spine::motion::Animation<skene_foundation::spine::props::BoxKeyframe<skene_terminal::ActivePlatform>>) -> Self
 pub fn skene_terminal::Container::set_aspect_ratio(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::aspect_ratio::AspectRatio, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_terminal::Container::set_border_color(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_terminal::Container::set_border_glyphs(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::terminal::ext::BorderGlyphs, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_terminal::Container::set_border_width(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::inset::Inset<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_terminal::Container::set_color(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_terminal::Container::set_container_name(self, skene_foundation::spine::condition::ContainerName) -> Self
@@ -372,19 +364,28 @@ pub fn skene_terminal::Container::set_offset(self, impl core::convert::Into<sken
 pub fn skene_terminal::Container::set_overflow(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::axis::Axes<skene_foundation::spine::values::overflow::Overflow>, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_terminal::Container::set_padding(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::inset::Inset<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_terminal::Container::set_role(self, accesskit::Role) -> Self
+pub fn skene_terminal::Container::set_transition(self, skene_foundation::spine::motion::Transition<<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt as skene_foundation::spine::extension::StyleExtension>::Property>) -> Self
+pub fn skene_terminal::Container::set_transition_name(self, impl core::convert::Into<alloc::string::String>) -> Self
+pub fn skene_terminal::Container::set_visibility(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::visibility::Visibility, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
+pub fn skene_terminal::Container::set_width(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::dimension::Dimension<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
+pub const fn skene_terminal::Container::style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredBoxStyle<skene_terminal::ActivePlatform>
+impl skene_terminal::Container
+pub fn skene_terminal::Container::derive_border_glyphs<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::terminal::ext::BorderGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_terminal::Container::derive_scrollbar_glyphs<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::terminal::ext::ScrollbarGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_terminal::Container::derive_scrollbar_thumb<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_terminal::Container::derive_scrollbar_track<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_terminal::Container::derive_shadow<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_terminal::Container::derive_shadow_offset<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_terminal::Container::derive_shadow_softening<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_terminal::Container::set_border_glyphs(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::terminal::ext::BorderGlyphs, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_terminal::Container::set_scrollbar_glyphs(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::terminal::ext::ScrollbarGlyphs, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_terminal::Container::set_scrollbar_thumb(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_terminal::Container::set_scrollbar_track(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_terminal::Container::set_shadow(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_terminal::Container::set_shadow_offset(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::expr::Length, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_terminal::Container::set_shadow_softening(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::expr::Length, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_terminal::Container::set_transition(self, skene_foundation::spine::motion::Transition<<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt as skene_foundation::spine::extension::StyleExtension>::Property>) -> Self
-pub fn skene_terminal::Container::set_transition_name(self, impl core::convert::Into<alloc::string::String>) -> Self
-pub fn skene_terminal::Container::set_visibility(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::visibility::Visibility, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_terminal::Container::set_width(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::dimension::Dimension<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
-pub const fn skene_terminal::Container::style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredBoxStyle<skene_terminal::ActivePlatform>
 impl core::default::Default for skene_terminal::Container
-pub fn skene_terminal::Container::default() -> skene_terminal::Container
+pub fn skene_terminal::Container::default() -> Self
 impl core::fmt::Debug for skene_terminal::Container
 pub fn skene_terminal::Container::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::spine::children::HasChild<skene_terminal::Terminal> for skene_terminal::Container
@@ -460,7 +461,7 @@ pub fn skene_terminal::Grid::set_spacing(self, impl core::convert::Into<skene_fo
 pub const fn skene_terminal::Grid::style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredBoxStyle<skene_terminal::ActivePlatform>
 pub fn skene_terminal::Grid::uniform(u16) -> Self
 impl core::default::Default for skene_terminal::Grid
-pub fn skene_terminal::Grid::default() -> skene_terminal::Grid
+pub fn skene_terminal::Grid::default() -> Self
 impl core::fmt::Debug for skene_terminal::Grid
 pub fn skene_terminal::Grid::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::spine::children::HasChildren<skene_terminal::Terminal> for skene_terminal::Grid
@@ -524,7 +525,7 @@ impl skene_terminal::RichText
 pub const fn skene_terminal::RichText::new() -> Self
 pub fn skene_terminal::RichText::set_spans(self, impl core::iter::traits::collect::IntoIterator<Item = skene_terminal::Span>) -> Self
 impl core::default::Default for skene_terminal::RichText
-pub fn skene_terminal::RichText::default() -> skene_terminal::RichText
+pub fn skene_terminal::RichText::default() -> Self
 impl core::fmt::Debug for skene_terminal::RichText
 pub fn skene_terminal::RichText::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::spine::view::AnyKind for skene_terminal::RichText
@@ -548,7 +549,7 @@ pub fn skene_terminal::Row::set_spacing(self, impl core::convert::Into<skene_fou
 pub fn skene_terminal::Row::set_wrap(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::flex::Wrap, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub const fn skene_terminal::Row::style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredBoxStyle<skene_terminal::ActivePlatform>
 impl core::default::Default for skene_terminal::Row
-pub fn skene_terminal::Row::default() -> skene_terminal::Row
+pub fn skene_terminal::Row::default() -> Self
 impl core::fmt::Debug for skene_terminal::Row
 pub fn skene_terminal::Row::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::spine::children::HasChildren<skene_terminal::Terminal> for skene_terminal::Row
@@ -573,7 +574,6 @@ impl<C> skene_foundation::spine::view::AnyKind for skene_terminal::Show<C>
 pub struct skene_terminal::prelude::Span(_)
 impl skene_terminal::Span
 pub fn skene_terminal::Span::derive(impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
-pub fn skene_terminal::Span::derive_bold<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<bool>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Span::derive_color<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Span::derive_decoration<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::text_decoration::TextDecoration>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Span::derive_decoration_color<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -588,7 +588,6 @@ pub fn skene_terminal::Span::group(impl core::iter::traits::collect::IntoIterato
 pub fn skene_terminal::Span::handle_click<R: core::convert::Into<skene_foundation::spine::events::Bubbling>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Span::new(impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_terminal::Span::set_animation(self, skene_foundation::spine::motion::Animation<skene_foundation::spine::props::RunKeyframe<skene_terminal::ActivePlatform>>) -> Self
-pub fn skene_terminal::Span::set_bold(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<bool, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_terminal::Span::set_color(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_terminal::Span::set_decoration(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::text_decoration::TextDecoration, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_terminal::Span::set_decoration_color(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
@@ -605,6 +604,9 @@ pub fn skene_terminal::Span::set_selection_color(self, impl core::convert::Into<
 pub fn skene_terminal::Span::set_transition(self, skene_foundation::spine::motion::Transition<<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt as skene_foundation::spine::extension::StyleExtension>::Property>) -> Self
 pub const fn skene_terminal::Span::style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredRunStyle<skene_terminal::ActivePlatform>
 pub fn skene_terminal::Span::view(impl skene_foundation::spine::view::View<skene_terminal::ActivePlatform>) -> Self
+impl skene_terminal::Span
+pub fn skene_terminal::Span::derive_bold<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<bool>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_terminal::Span::set_bold(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<bool, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 impl core::fmt::Debug for skene_terminal::Span
 pub fn skene_terminal::Span::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::spine::view::AnyKind for skene_terminal::Span
@@ -619,7 +621,7 @@ pub fn skene_terminal::Stack::set_alignment(self, impl core::convert::Into<skene
 pub fn skene_terminal::Stack::set_padding(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::inset::Inset<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub const fn skene_terminal::Stack::style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredBoxStyle<skene_terminal::ActivePlatform>
 impl core::default::Default for skene_terminal::Stack
-pub fn skene_terminal::Stack::default() -> skene_terminal::Stack
+pub fn skene_terminal::Stack::default() -> Self
 impl core::fmt::Debug for skene_terminal::Stack
 pub fn skene_terminal::Stack::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::spine::children::HasChildren<skene_terminal::Terminal> for skene_terminal::Stack
@@ -656,7 +658,6 @@ impl<K> skene_foundation::spine::view::AnyKind for skene_terminal::Switch<K>
 pub struct skene_terminal::prelude::Text(_)
 impl skene_terminal::Text
 pub fn skene_terminal::Text::derive(impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
-pub fn skene_terminal::Text::derive_bold<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<bool>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Text::derive_color<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Text::derive_decoration<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::text_decoration::TextDecoration>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Text::derive_decoration_color<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -669,7 +670,6 @@ pub fn skene_terminal::Text::derive_selection_background<R: core::convert::Into<
 pub fn skene_terminal::Text::derive_selection_color<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Text::new(impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_terminal::Text::set_animation(self, skene_foundation::spine::motion::Animation<skene_foundation::spine::props::RunKeyframe<skene_terminal::ActivePlatform>>) -> Self
-pub fn skene_terminal::Text::set_bold(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<bool, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_terminal::Text::set_color(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_terminal::Text::set_decoration(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::text_decoration::TextDecoration, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_terminal::Text::set_decoration_color(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
@@ -685,20 +685,23 @@ pub fn skene_terminal::Text::set_selection_background(self, impl core::convert::
 pub fn skene_terminal::Text::set_selection_color(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_terminal::Text::set_transition(self, skene_foundation::spine::motion::Transition<<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt as skene_foundation::spine::extension::StyleExtension>::Property>) -> Self
 pub const fn skene_terminal::Text::style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredRunStyle<skene_terminal::ActivePlatform>
+impl skene_terminal::Text
+pub fn skene_terminal::Text::derive_bold<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<bool>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_terminal::Text::set_bold(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<bool, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 impl core::fmt::Debug for skene_terminal::Text
 pub fn skene_terminal::Text::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::spine::view::AnyKind for skene_terminal::Text
 impl skene_foundation::spine::view::View<skene_terminal::Terminal> for skene_terminal::Text
 pub fn skene_terminal::Text::build(self) -> skene_foundation::spine::node::NodeId
 pub struct skene_terminal::prelude::Theme<S: skene_foundation::spine::token::TokenSet<skene_terminal::TokenValue>, C>(_)
-impl<S: skene_foundation::spine::token::TokenSet<skene_terminal::TokenValue>> skene_terminal::Theme<S>
+impl<S: skene_foundation::spine::token::TokenSet<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::TokenValue>> skene_terminal::Theme<S>
 pub fn skene_terminal::Theme<S>::derive(impl core::ops::function::Fn() -> S + 'static) -> Self
 pub fn skene_terminal::Theme<S>::new(S) -> Self
 pub fn skene_terminal::Theme<S>::set_child_builder<V: skene_foundation::spine::view::View<skene_terminal::ActivePlatform>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> skene_terminal::Theme<S, skene_foundation::realize::ChildBuilder<skene_terminal::ActivePlatform>>
-impl<S: skene_foundation::spine::token::TokenSet<skene_terminal::TokenValue>, C> core::fmt::Debug for skene_terminal::Theme<S, C>
+impl<S: skene_foundation::spine::token::TokenSet<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::TokenValue>, C> core::fmt::Debug for skene_terminal::Theme<S, C>
 pub fn skene_terminal::Theme<S, C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl<S: skene_foundation::spine::token::TokenSet<skene_terminal::TokenValue>, C> skene_foundation::spine::view::AnyKind for skene_terminal::Theme<S, C>
-impl<S: skene_foundation::spine::token::TokenSet<skene_terminal::TokenValue>> skene_foundation::spine::view::View<skene_terminal::Terminal> for skene_terminal::Theme<S, skene_foundation::realize::ChildBuilder<skene_terminal::ActivePlatform>>
+impl<S: skene_foundation::spine::token::TokenSet<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::TokenValue>, C> skene_foundation::spine::view::AnyKind for skene_terminal::Theme<S, C>
+impl<S: skene_foundation::spine::token::TokenSet<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::TokenValue>> skene_foundation::spine::view::View<skene_terminal::Terminal> for skene_terminal::Theme<S, skene_foundation::realize::ChildBuilder<skene_terminal::ActivePlatform>>
 pub fn skene_terminal::Theme<S, skene_foundation::realize::ChildBuilder<skene_terminal::ActivePlatform>>::build(self) -> skene_foundation::spine::node::NodeId
 pub trait skene_terminal::prelude::TerminalDecoration: core::marker::Sized
 pub fn skene_terminal::prelude::TerminalDecoration::derive_border_glyphs<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::terminal::ext::BorderGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -988,7 +991,7 @@ pub fn skene_terminal::Column::set_spacing(self, impl core::convert::Into<skene_
 pub fn skene_terminal::Column::set_wrap(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::flex::Wrap, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub const fn skene_terminal::Column::style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredBoxStyle<skene_terminal::ActivePlatform>
 impl core::default::Default for skene_terminal::Column
-pub fn skene_terminal::Column::default() -> skene_terminal::Column
+pub fn skene_terminal::Column::default() -> Self
 impl core::fmt::Debug for skene_terminal::Column
 pub fn skene_terminal::Column::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::spine::children::HasChildren<skene_terminal::Terminal> for skene_terminal::Column
@@ -1004,7 +1007,6 @@ pub fn skene_terminal::Container::derive_accessibility(self, impl core::ops::fun
 pub fn skene_terminal::Container::derive_alignment<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::flex::Alignment>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Container::derive_aspect_ratio<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::aspect_ratio::AspectRatio>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Container::derive_border_color<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_terminal::Container::derive_border_glyphs<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::terminal::ext::BorderGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Container::derive_border_width<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::inset::Inset<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Container::derive_color<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Container::derive_corner_radius<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self where <skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::corner_radius::CornerRadius
@@ -1019,12 +1021,6 @@ pub fn skene_terminal::Container::derive_min_width<R: core::convert::Into<skene_
 pub fn skene_terminal::Container::derive_offset<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::inset::Inset<skene_foundation::spine::values::dimension::Dimension<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Container::derive_overflow<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::axis::Axes<skene_foundation::spine::values::overflow::Overflow>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Container::derive_padding<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::inset::Inset<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_terminal::Container::derive_scrollbar_glyphs<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::terminal::ext::ScrollbarGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_terminal::Container::derive_scrollbar_thumb<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_terminal::Container::derive_scrollbar_track<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_terminal::Container::derive_shadow<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_terminal::Container::derive_shadow_offset<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_terminal::Container::derive_shadow_softening<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Container::derive_visibility<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::visibility::Visibility>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Container::derive_width<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::dimension::Dimension<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Container::handle_blur(self, impl core::ops::function::Fn() + 'static) -> Self
@@ -1048,7 +1044,6 @@ pub fn skene_terminal::Container::set_alignment(self, impl core::convert::Into<s
 pub fn skene_terminal::Container::set_animation(self, skene_foundation::spine::motion::Animation<skene_foundation::spine::props::BoxKeyframe<skene_terminal::ActivePlatform>>) -> Self
 pub fn skene_terminal::Container::set_aspect_ratio(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::aspect_ratio::AspectRatio, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_terminal::Container::set_border_color(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_terminal::Container::set_border_glyphs(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::terminal::ext::BorderGlyphs, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_terminal::Container::set_border_width(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::inset::Inset<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_terminal::Container::set_color(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_terminal::Container::set_container_name(self, skene_foundation::spine::condition::ContainerName) -> Self
@@ -1069,19 +1064,28 @@ pub fn skene_terminal::Container::set_offset(self, impl core::convert::Into<sken
 pub fn skene_terminal::Container::set_overflow(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::axis::Axes<skene_foundation::spine::values::overflow::Overflow>, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_terminal::Container::set_padding(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::inset::Inset<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_terminal::Container::set_role(self, accesskit::Role) -> Self
+pub fn skene_terminal::Container::set_transition(self, skene_foundation::spine::motion::Transition<<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt as skene_foundation::spine::extension::StyleExtension>::Property>) -> Self
+pub fn skene_terminal::Container::set_transition_name(self, impl core::convert::Into<alloc::string::String>) -> Self
+pub fn skene_terminal::Container::set_visibility(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::visibility::Visibility, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
+pub fn skene_terminal::Container::set_width(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::dimension::Dimension<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
+pub const fn skene_terminal::Container::style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredBoxStyle<skene_terminal::ActivePlatform>
+impl skene_terminal::Container
+pub fn skene_terminal::Container::derive_border_glyphs<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::terminal::ext::BorderGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_terminal::Container::derive_scrollbar_glyphs<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::terminal::ext::ScrollbarGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_terminal::Container::derive_scrollbar_thumb<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_terminal::Container::derive_scrollbar_track<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_terminal::Container::derive_shadow<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_terminal::Container::derive_shadow_offset<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_terminal::Container::derive_shadow_softening<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_terminal::Container::set_border_glyphs(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::terminal::ext::BorderGlyphs, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_terminal::Container::set_scrollbar_glyphs(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::terminal::ext::ScrollbarGlyphs, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_terminal::Container::set_scrollbar_thumb(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_terminal::Container::set_scrollbar_track(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_terminal::Container::set_shadow(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_terminal::Container::set_shadow_offset(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::expr::Length, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_terminal::Container::set_shadow_softening(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::expr::Length, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_terminal::Container::set_transition(self, skene_foundation::spine::motion::Transition<<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt as skene_foundation::spine::extension::StyleExtension>::Property>) -> Self
-pub fn skene_terminal::Container::set_transition_name(self, impl core::convert::Into<alloc::string::String>) -> Self
-pub fn skene_terminal::Container::set_visibility(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::visibility::Visibility, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_terminal::Container::set_width(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::dimension::Dimension<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
-pub const fn skene_terminal::Container::style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredBoxStyle<skene_terminal::ActivePlatform>
 impl core::default::Default for skene_terminal::Container
-pub fn skene_terminal::Container::default() -> skene_terminal::Container
+pub fn skene_terminal::Container::default() -> Self
 impl core::fmt::Debug for skene_terminal::Container
 pub fn skene_terminal::Container::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::spine::children::HasChild<skene_terminal::Terminal> for skene_terminal::Container
@@ -1157,7 +1161,7 @@ pub fn skene_terminal::Grid::set_spacing(self, impl core::convert::Into<skene_fo
 pub const fn skene_terminal::Grid::style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredBoxStyle<skene_terminal::ActivePlatform>
 pub fn skene_terminal::Grid::uniform(u16) -> Self
 impl core::default::Default for skene_terminal::Grid
-pub fn skene_terminal::Grid::default() -> skene_terminal::Grid
+pub fn skene_terminal::Grid::default() -> Self
 impl core::fmt::Debug for skene_terminal::Grid
 pub fn skene_terminal::Grid::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::spine::children::HasChildren<skene_terminal::Terminal> for skene_terminal::Grid
@@ -1239,7 +1243,7 @@ impl skene_terminal::RichText
 pub const fn skene_terminal::RichText::new() -> Self
 pub fn skene_terminal::RichText::set_spans(self, impl core::iter::traits::collect::IntoIterator<Item = skene_terminal::Span>) -> Self
 impl core::default::Default for skene_terminal::RichText
-pub fn skene_terminal::RichText::default() -> skene_terminal::RichText
+pub fn skene_terminal::RichText::default() -> Self
 impl core::fmt::Debug for skene_terminal::RichText
 pub fn skene_terminal::RichText::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::spine::view::AnyKind for skene_terminal::RichText
@@ -1263,7 +1267,7 @@ pub fn skene_terminal::Row::set_spacing(self, impl core::convert::Into<skene_fou
 pub fn skene_terminal::Row::set_wrap(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::flex::Wrap, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub const fn skene_terminal::Row::style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredBoxStyle<skene_terminal::ActivePlatform>
 impl core::default::Default for skene_terminal::Row
-pub fn skene_terminal::Row::default() -> skene_terminal::Row
+pub fn skene_terminal::Row::default() -> Self
 impl core::fmt::Debug for skene_terminal::Row
 pub fn skene_terminal::Row::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::spine::children::HasChildren<skene_terminal::Terminal> for skene_terminal::Row
@@ -1288,7 +1292,6 @@ impl<C> skene_foundation::spine::view::AnyKind for skene_terminal::Show<C>
 pub struct skene_terminal::Span(_)
 impl skene_terminal::Span
 pub fn skene_terminal::Span::derive(impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
-pub fn skene_terminal::Span::derive_bold<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<bool>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Span::derive_color<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Span::derive_decoration<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::text_decoration::TextDecoration>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Span::derive_decoration_color<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -1303,7 +1306,6 @@ pub fn skene_terminal::Span::group(impl core::iter::traits::collect::IntoIterato
 pub fn skene_terminal::Span::handle_click<R: core::convert::Into<skene_foundation::spine::events::Bubbling>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Span::new(impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_terminal::Span::set_animation(self, skene_foundation::spine::motion::Animation<skene_foundation::spine::props::RunKeyframe<skene_terminal::ActivePlatform>>) -> Self
-pub fn skene_terminal::Span::set_bold(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<bool, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_terminal::Span::set_color(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_terminal::Span::set_decoration(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::text_decoration::TextDecoration, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_terminal::Span::set_decoration_color(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
@@ -1320,6 +1322,9 @@ pub fn skene_terminal::Span::set_selection_color(self, impl core::convert::Into<
 pub fn skene_terminal::Span::set_transition(self, skene_foundation::spine::motion::Transition<<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt as skene_foundation::spine::extension::StyleExtension>::Property>) -> Self
 pub const fn skene_terminal::Span::style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredRunStyle<skene_terminal::ActivePlatform>
 pub fn skene_terminal::Span::view(impl skene_foundation::spine::view::View<skene_terminal::ActivePlatform>) -> Self
+impl skene_terminal::Span
+pub fn skene_terminal::Span::derive_bold<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<bool>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_terminal::Span::set_bold(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<bool, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 impl core::fmt::Debug for skene_terminal::Span
 pub fn skene_terminal::Span::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::spine::view::AnyKind for skene_terminal::Span
@@ -1334,7 +1339,7 @@ pub fn skene_terminal::Stack::set_alignment(self, impl core::convert::Into<skene
 pub fn skene_terminal::Stack::set_padding(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::inset::Inset<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub const fn skene_terminal::Stack::style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredBoxStyle<skene_terminal::ActivePlatform>
 impl core::default::Default for skene_terminal::Stack
-pub fn skene_terminal::Stack::default() -> skene_terminal::Stack
+pub fn skene_terminal::Stack::default() -> Self
 impl core::fmt::Debug for skene_terminal::Stack
 pub fn skene_terminal::Stack::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::spine::children::HasChildren<skene_terminal::Terminal> for skene_terminal::Stack
@@ -1476,12 +1481,11 @@ impl skene_terminal::CellPainter for skene_terminal::Terminal
 pub fn skene_terminal::Terminal::paint(skene_foundation::spine::node::NodeId, alloc::boxed::Box<dyn core::ops::function::Fn(&mut skene_terminal::Cells<'_>, skene_foundation::spine::values::rect::Rect<u32>)>)
 impl<K: core::cmp::PartialEq + 'static> skene_foundation::spine::view::View<skene_terminal::Terminal> for skene_terminal::Switch<K>
 pub fn skene_terminal::Switch<K>::build(self) -> skene_foundation::spine::node::NodeId
-impl<S: skene_foundation::spine::token::TokenSet<skene_terminal::TokenValue>> skene_foundation::spine::view::View<skene_terminal::Terminal> for skene_terminal::Theme<S, skene_foundation::realize::ChildBuilder<skene_terminal::ActivePlatform>>
+impl<S: skene_foundation::spine::token::TokenSet<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::TokenValue>> skene_foundation::spine::view::View<skene_terminal::Terminal> for skene_terminal::Theme<S, skene_foundation::realize::ChildBuilder<skene_terminal::ActivePlatform>>
 pub fn skene_terminal::Theme<S, skene_foundation::realize::ChildBuilder<skene_terminal::ActivePlatform>>::build(self) -> skene_foundation::spine::node::NodeId
 pub struct skene_terminal::Text(_)
 impl skene_terminal::Text
 pub fn skene_terminal::Text::derive(impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
-pub fn skene_terminal::Text::derive_bold<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<bool>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Text::derive_color<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Text::derive_decoration<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::text_decoration::TextDecoration>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Text::derive_decoration_color<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -1494,7 +1498,6 @@ pub fn skene_terminal::Text::derive_selection_background<R: core::convert::Into<
 pub fn skene_terminal::Text::derive_selection_color<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Text::new(impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_terminal::Text::set_animation(self, skene_foundation::spine::motion::Animation<skene_foundation::spine::props::RunKeyframe<skene_terminal::ActivePlatform>>) -> Self
-pub fn skene_terminal::Text::set_bold(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<bool, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_terminal::Text::set_color(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_terminal::Text::set_decoration(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::text_decoration::TextDecoration, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_terminal::Text::set_decoration_color(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
@@ -1510,20 +1513,23 @@ pub fn skene_terminal::Text::set_selection_background(self, impl core::convert::
 pub fn skene_terminal::Text::set_selection_color(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_terminal::Text::set_transition(self, skene_foundation::spine::motion::Transition<<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt as skene_foundation::spine::extension::StyleExtension>::Property>) -> Self
 pub const fn skene_terminal::Text::style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredRunStyle<skene_terminal::ActivePlatform>
+impl skene_terminal::Text
+pub fn skene_terminal::Text::derive_bold<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<bool>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_terminal::Text::set_bold(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<bool, skene_foundation::spine::condition::Condition<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 impl core::fmt::Debug for skene_terminal::Text
 pub fn skene_terminal::Text::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::spine::view::AnyKind for skene_terminal::Text
 impl skene_foundation::spine::view::View<skene_terminal::Terminal> for skene_terminal::Text
 pub fn skene_terminal::Text::build(self) -> skene_foundation::spine::node::NodeId
 pub struct skene_terminal::Theme<S: skene_foundation::spine::token::TokenSet<skene_terminal::TokenValue>, C>(_)
-impl<S: skene_foundation::spine::token::TokenSet<skene_terminal::TokenValue>> skene_terminal::Theme<S>
+impl<S: skene_foundation::spine::token::TokenSet<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::TokenValue>> skene_terminal::Theme<S>
 pub fn skene_terminal::Theme<S>::derive(impl core::ops::function::Fn() -> S + 'static) -> Self
 pub fn skene_terminal::Theme<S>::new(S) -> Self
 pub fn skene_terminal::Theme<S>::set_child_builder<V: skene_foundation::spine::view::View<skene_terminal::ActivePlatform>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> skene_terminal::Theme<S, skene_foundation::realize::ChildBuilder<skene_terminal::ActivePlatform>>
-impl<S: skene_foundation::spine::token::TokenSet<skene_terminal::TokenValue>, C> core::fmt::Debug for skene_terminal::Theme<S, C>
+impl<S: skene_foundation::spine::token::TokenSet<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::TokenValue>, C> core::fmt::Debug for skene_terminal::Theme<S, C>
 pub fn skene_terminal::Theme<S, C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl<S: skene_foundation::spine::token::TokenSet<skene_terminal::TokenValue>, C> skene_foundation::spine::view::AnyKind for skene_terminal::Theme<S, C>
-impl<S: skene_foundation::spine::token::TokenSet<skene_terminal::TokenValue>> skene_foundation::spine::view::View<skene_terminal::Terminal> for skene_terminal::Theme<S, skene_foundation::realize::ChildBuilder<skene_terminal::ActivePlatform>>
+impl<S: skene_foundation::spine::token::TokenSet<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::TokenValue>, C> skene_foundation::spine::view::AnyKind for skene_terminal::Theme<S, C>
+impl<S: skene_foundation::spine::token::TokenSet<<skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::TokenValue>> skene_foundation::spine::view::View<skene_terminal::Terminal> for skene_terminal::Theme<S, skene_foundation::realize::ChildBuilder<skene_terminal::ActivePlatform>>
 pub fn skene_terminal::Theme<S, skene_foundation::realize::ChildBuilder<skene_terminal::ActivePlatform>>::build(self) -> skene_foundation::spine::node::NodeId
 pub struct skene_terminal::WindowSize
 pub skene_terminal::WindowSize::columns: u16

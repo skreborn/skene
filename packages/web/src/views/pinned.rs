@@ -1,6 +1,6 @@
 //! The wrapper pinning a stack child to the stack's edges.
 
-use skene_foundation::{AnyView, IntoChildOf, NoChild, StackChild, View};
+use skene_foundation::NoChild;
 
 use crate::ActivePlatform;
 
@@ -14,37 +14,4 @@ use crate::ActivePlatform;
 #[must_use]
 pub struct Pinned<C = NoChild>(skene_foundation::Pinned<ActivePlatform, C>);
 
-impl<C> std::fmt::Debug for Pinned<C> {
-  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    self.0.fmt(formatter)
-  }
-}
-
-impl Default for Pinned {
-  #[inline(always)]
-  fn default() -> Self {
-    Self::new()
-  }
-}
-
-impl Pinned {
-  /// A wrapper with every edge `Auto` and no child yet.
-  #[inline(always)]
-  pub fn new() -> Self {
-    Self(skene_foundation::Pinned::new())
-  }
-
-  skene_foundation::pinned_surface! { 0, ActivePlatform }
-
-  /// Sets the child.
-  pub fn set_child(self, child: impl View<ActivePlatform>) -> Pinned<AnyView<ActivePlatform>> {
-    Pinned(self.0.set_child(child))
-  }
-}
-
-impl IntoChildOf<ActivePlatform, StackChild> for Pinned<AnyView<ActivePlatform>> {
-  #[inline(always)]
-  fn into_child(self) -> AnyView<ActivePlatform> {
-    self.0.into_child()
-  }
-}
+skene_foundation::impl_pinned!(Pinned, ActivePlatform);

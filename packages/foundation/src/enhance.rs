@@ -102,3 +102,52 @@ impl<P: Platform> View<P> for Enhance<P, ChildBuilder<P>> {
     })
   }
 }
+
+/// Implements a facade's newtype `$name<C>` over the foundation's [`Enhance`].
+///
+/// The newtype holds the view on the platform `$platform` in its field; the macro
+/// implements the constructor, both forms and the traits an enhancement meets.
+#[macro_export]
+macro_rules! impl_enhance {
+  ($name:ident, $platform:ty) => {
+    impl<C: ::core::fmt::Debug> ::core::fmt::Debug for $name<C> {
+      fn fmt(&self, formatter: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+        ::core::fmt::Debug::fmt(&self.0, formatter)
+      }
+    }
+    impl $name {
+      /// An enhancement waiting on `live`, with no forms yet.
+      #[inline(always)]
+      pub const fn new(live: $crate::reactive::ReadSignal<bool>) -> Self {
+        Self($crate::Enhance::new(live))
+      }
+
+      /// Sets the form built while `live` is false; nothing by default.
+      #[inline(always)]
+      pub fn set_fallback<V: $crate::View<$platform>>(
+        self,
+        fallback: impl FnOnce() -> V + 'static,
+      ) -> Self {
+        Self(self.0.set_fallback(fallback))
+      }
+
+      /// Sets the form built once `live` is true.
+      #[inline(always)]
+      pub fn set_child_builder<V: $crate::View<$platform>>(
+        self,
+        child: impl FnOnce() -> V + 'static,
+      ) -> $name<$crate::ChildBuilder<$platform>> {
+        $name(self.0.set_child_builder(child))
+      }
+    }
+
+    impl<C> $crate::AnyKind for $name<C> {}
+
+    impl $crate::View<$platform> for $name<$crate::ChildBuilder<$platform>> {
+      #[inline(always)]
+      fn build(self) -> $crate::NodeId {
+        $crate::View::build(self.0)
+      }
+    }
+  };
+}

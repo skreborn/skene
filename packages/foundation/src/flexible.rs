@@ -188,3 +188,50 @@ impl<P: Platform> IntoChildOf<P, FlexChild> for Flexible<P, AnyView<P>> {
     })
   }
 }
+
+/// Implements a facade's newtype `$name<C>` over the foundation's [`Flexible`].
+///
+/// The newtype holds the view on the platform `$platform` in its field; the macro
+/// implements the constructor, the setters, the child and the child kind it is accepted
+/// as.
+#[macro_export]
+macro_rules! impl_flexible {
+  ($name:ident, $platform:ty) => {
+    impl<C> ::core::fmt::Debug for $name<C> {
+      fn fmt(&self, formatter: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+        ::core::fmt::Debug::fmt(&self.0, formatter)
+      }
+    }
+    impl ::core::default::Default for $name {
+      #[inline(always)]
+      fn default() -> Self {
+        Self::new()
+      }
+    }
+    impl $name {
+      /// A wrapper with the default flexibility and no child yet.
+      #[inline(always)]
+      pub fn new() -> Self {
+        Self($crate::Flexible::new())
+      }
+
+      $crate::flexible_surface! { 0, $platform }
+
+      /// Sets the child.
+      #[inline(always)]
+      pub fn set_child(
+        self,
+        child: impl $crate::View<$platform>,
+      ) -> $name<$crate::AnyView<$platform>> {
+        $name(self.0.set_child(child))
+      }
+    }
+
+    impl $crate::IntoChildOf<$platform, $crate::FlexChild> for $name<$crate::AnyView<$platform>> {
+      #[inline(always)]
+      fn into_child(self) -> $crate::AnyView<$platform> {
+        $crate::IntoChildOf::into_child(self.0)
+      }
+    }
+  };
+}

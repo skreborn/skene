@@ -136,3 +136,67 @@ impl<P: Platform, K: PartialEq + 'static> View<P> for Switch<P, K> {
     start
   }
 }
+
+/// Implements a facade's newtype `$name<K>` over the foundation's [`Switch`].
+///
+/// The newtype holds the view on the platform `$platform` in its field; the macro
+/// implements the constructor, the key, the cases and the traits a switch meets.
+#[macro_export]
+macro_rules! impl_switch {
+  ($name:ident, $platform:ty) => {
+    impl<K> ::core::fmt::Debug for $name<K> {
+      fn fmt(&self, formatter: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+        ::core::fmt::Debug::fmt(&self.0, formatter)
+      }
+    }
+    impl<K: PartialEq + 'static> ::core::default::Default for $name<K> {
+      #[inline(always)]
+      fn default() -> Self {
+        Self::new()
+      }
+    }
+    impl<K: PartialEq + 'static> $name<K> {
+      /// A switch with no key and no cases.
+      #[inline(always)]
+      pub const fn new() -> Self {
+        Self($crate::Switch::new())
+      }
+
+      /// Sets the key of the branch shown.
+      #[inline(always)]
+      pub fn set_key(self, key: K) -> Self
+      where
+        K: Clone,
+      {
+        Self(self.0.set_key(key))
+      }
+
+      /// Shows the branch whose key `key` returns, re-evaluated whenever a signal it
+      /// reads changes.
+      #[inline(always)]
+      pub fn derive_key(self, key: impl Fn() -> K + 'static) -> Self {
+        Self(self.0.derive_key(key))
+      }
+
+      /// Adds the branch shown under `key`, built by `case` the first time the key is
+      /// current.
+      #[inline(always)]
+      pub fn set_case<V: $crate::View<$platform>>(
+        self,
+        key: K,
+        case: impl FnOnce() -> V + 'static,
+      ) -> Self {
+        Self(self.0.set_case(key, case))
+      }
+    }
+
+    impl<K> $crate::AnyKind for $name<K> {}
+
+    impl<K: PartialEq + 'static> $crate::View<$platform> for $name<K> {
+      #[inline(always)]
+      fn build(self) -> $crate::NodeId {
+        $crate::View::build(self.0)
+      }
+    }
+  };
+}

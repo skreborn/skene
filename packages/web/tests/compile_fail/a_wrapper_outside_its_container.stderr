@@ -9,10 +9,15 @@ error[E0277]: `skene_web::GridCell<skene_foundation::spine::view::AnyView<Headle
   = note: see its documentation to determine what completes it
 help: the trait `IntoChildOf<Headless, skene_foundation::spine::view::FlexChild>` is not implemented for `skene_web::GridCell<skene_foundation::spine::view::AnyView<Headless>>`
       but trait `IntoChildOf<Headless, skene_foundation::spine::view::GridChild>` is implemented for it
- --> src/views/grid_cell.rs
+ --> $WORKSPACE/packages/foundation/src/grid_cell.rs
   |
-  | impl IntoChildOf<ActivePlatform, GridChild> for GridCell<AnyView<ActivePlatform>> {
-  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |     impl $crate::IntoChildOf<$platform, $crate::GridChild> for $name<$crate::AnyView<$platform>> {
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+ ::: src/views/grid_cell.rs
+  |
+  | skene_foundation::impl_grid_cell!(GridCell, ActivePlatform);
+  | ----------------------------------------------------------- in this macro invocation
   = help: for that trait implementation, expected `skene_foundation::spine::view::GridChild`, found `skene_foundation::spine::view::FlexChild`
   = note: required for `(skene_web::GridCell<skene_foundation::spine::view::AnyView<Headless>>,)` to implement `IntoChildren<Headless, skene_foundation::spine::view::FlexChild>`
 note: required by a bound in `set_children`
@@ -20,3 +25,4 @@ note: required by a bound in `set_children`
   |
   |   fn set_children(mut self, children: impl IntoChildren<P, Self::Kind>) -> Self {
   |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `HasChildren::set_children`
+  = note: this error originates in the macro `skene_foundation::impl_grid_cell` (in Nightly builds, run with -Z macro-backtrace for more info)

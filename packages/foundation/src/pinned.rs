@@ -127,3 +127,50 @@ impl<P: Platform> IntoChildOf<P, StackChild> for Pinned<P, AnyView<P>> {
     })
   }
 }
+
+/// Implements a facade's newtype `$name<C>` over the foundation's [`Pinned`].
+///
+/// The newtype holds the view on the platform `$platform` in its field; the macro
+/// implements the constructor, the setters, the child and the child kind it is accepted
+/// as.
+#[macro_export]
+macro_rules! impl_pinned {
+  ($name:ident, $platform:ty) => {
+    impl<C> ::core::fmt::Debug for $name<C> {
+      fn fmt(&self, formatter: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+        ::core::fmt::Debug::fmt(&self.0, formatter)
+      }
+    }
+    impl ::core::default::Default for $name {
+      #[inline(always)]
+      fn default() -> Self {
+        Self::new()
+      }
+    }
+    impl $name {
+      /// A wrapper with every edge `Auto` and no child yet.
+      #[inline(always)]
+      pub fn new() -> Self {
+        Self($crate::Pinned::new())
+      }
+
+      $crate::pinned_surface! { 0, $platform }
+
+      /// Sets the child.
+      #[inline(always)]
+      pub fn set_child(
+        self,
+        child: impl $crate::View<$platform>,
+      ) -> $name<$crate::AnyView<$platform>> {
+        $name(self.0.set_child(child))
+      }
+    }
+
+    impl $crate::IntoChildOf<$platform, $crate::StackChild> for $name<$crate::AnyView<$platform>> {
+      #[inline(always)]
+      fn into_child(self) -> $crate::AnyView<$platform> {
+        $crate::IntoChildOf::into_child(self.0)
+      }
+    }
+  };
+}

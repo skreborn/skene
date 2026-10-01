@@ -328,7 +328,7 @@ pub type skene_web::Link<R>::Kind = skene_foundation::spine::view::PlainChild
 pub fn skene_web::Link<R>::children_mut(&mut self, skene_foundation::spine::children::Seal) -> &mut skene_foundation::spine::children::Children<skene_web::ActivePlatform, skene_foundation::spine::view::PlainChild>
 impl<R: skene_foundation::routing::Route> skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Link<R>
 pub fn skene_web::Link<R>::build(self) -> skene_foundation::spine::node::NodeId
-impl<S: skene_foundation::spine::token::TokenSet<skene_web::TokenValue>> skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Theme<S, skene_foundation::realize::ChildBuilder<skene_web::ActivePlatform>>
+impl<S: skene_foundation::spine::token::TokenSet<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::TokenValue>> skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Theme<S, skene_foundation::realize::ChildBuilder<skene_web::ActivePlatform>>
 pub fn skene_web::Theme<S, skene_foundation::realize::ChildBuilder<skene_web::ActivePlatform>>::build(self) -> skene_foundation::spine::node::NodeId
 pub const skene_web::platform::CONTROL_ATTRIBUTE: &str
 pub const skene_web::platform::SCHEME_ATTRIBUTE: &str
@@ -503,7 +503,7 @@ pub fn skene_web::Column::set_spacing(self, impl core::convert::Into<skene_found
 pub fn skene_web::Column::set_wrap(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::flex::Wrap, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub const fn skene_web::Column::style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredBoxStyle<skene_web::ActivePlatform>
 impl core::default::Default for skene_web::Column
-pub fn skene_web::Column::default() -> skene_web::Column
+pub fn skene_web::Column::default() -> Self
 impl core::fmt::Debug for skene_web::Column
 pub fn skene_web::Column::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::spine::children::HasChildren<skene_web::platform::Web> for skene_web::Column
@@ -582,7 +582,7 @@ pub fn skene_web::Container::set_visibility(self, impl core::convert::Into<skene
 pub fn skene_web::Container::set_width(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::dimension::Dimension<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub const fn skene_web::Container::style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredBoxStyle<skene_web::ActivePlatform>
 impl core::default::Default for skene_web::Container
-pub fn skene_web::Container::default() -> skene_web::Container
+pub fn skene_web::Container::default() -> Self
 impl core::fmt::Debug for skene_web::Container
 pub fn skene_web::Container::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::spine::children::HasChild<skene_web::platform::Web> for skene_web::Container
@@ -658,7 +658,7 @@ pub fn skene_web::Grid::set_spacing(self, impl core::convert::Into<skene_foundat
 pub const fn skene_web::Grid::style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredBoxStyle<skene_web::ActivePlatform>
 pub fn skene_web::Grid::uniform(u16) -> Self
 impl core::default::Default for skene_web::Grid
-pub fn skene_web::Grid::default() -> skene_web::Grid
+pub fn skene_web::Grid::default() -> Self
 impl core::fmt::Debug for skene_web::Grid
 pub fn skene_web::Grid::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::spine::children::HasChildren<skene_web::platform::Web> for skene_web::Grid
@@ -700,7 +700,7 @@ impl skene_web::RichText
 pub const fn skene_web::RichText::new() -> Self
 pub fn skene_web::RichText::set_spans(self, impl core::iter::traits::collect::IntoIterator<Item = skene_web::Span>) -> Self
 impl core::default::Default for skene_web::RichText
-pub fn skene_web::RichText::default() -> skene_web::RichText
+pub fn skene_web::RichText::default() -> Self
 impl core::fmt::Debug for skene_web::RichText
 pub fn skene_web::RichText::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::spine::view::AnyKind for skene_web::RichText
@@ -724,7 +724,7 @@ pub fn skene_web::Row::set_spacing(self, impl core::convert::Into<skene_foundati
 pub fn skene_web::Row::set_wrap(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::flex::Wrap, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub const fn skene_web::Row::style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredBoxStyle<skene_web::ActivePlatform>
 impl core::default::Default for skene_web::Row
-pub fn skene_web::Row::default() -> skene_web::Row
+pub fn skene_web::Row::default() -> Self
 impl core::fmt::Debug for skene_web::Row
 pub fn skene_web::Row::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::spine::children::HasChildren<skene_web::platform::Web> for skene_web::Row
@@ -793,7 +793,7 @@ pub fn skene_web::Stack::set_alignment(self, impl core::convert::Into<skene_foun
 pub fn skene_web::Stack::set_padding(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::inset::Inset<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub const fn skene_web::Stack::style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredBoxStyle<skene_web::ActivePlatform>
 impl core::default::Default for skene_web::Stack
-pub fn skene_web::Stack::default() -> skene_web::Stack
+pub fn skene_web::Stack::default() -> Self
 impl core::fmt::Debug for skene_web::Stack
 pub fn skene_web::Stack::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::spine::children::HasChildren<skene_web::platform::Web> for skene_web::Stack
@@ -863,14 +863,14 @@ impl skene_foundation::spine::view::AnyKind for skene_web::Text
 impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Text
 pub fn skene_web::Text::build(self) -> skene_foundation::spine::node::NodeId
 pub struct skene_web::prelude::Theme<S: skene_foundation::spine::token::TokenSet<skene_web::TokenValue>, C>(_)
-impl<S: skene_foundation::spine::token::TokenSet<skene_web::TokenValue>> skene_web::Theme<S>
+impl<S: skene_foundation::spine::token::TokenSet<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::TokenValue>> skene_web::Theme<S>
 pub fn skene_web::Theme<S>::derive(impl core::ops::function::Fn() -> S + 'static) -> Self
 pub fn skene_web::Theme<S>::new(S) -> Self
 pub fn skene_web::Theme<S>::set_child_builder<V: skene_foundation::spine::view::View<skene_web::ActivePlatform>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> skene_web::Theme<S, skene_foundation::realize::ChildBuilder<skene_web::ActivePlatform>>
-impl<S: skene_foundation::spine::token::TokenSet<skene_web::TokenValue>, C> core::fmt::Debug for skene_web::Theme<S, C>
+impl<S: skene_foundation::spine::token::TokenSet<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::TokenValue>, C> core::fmt::Debug for skene_web::Theme<S, C>
 pub fn skene_web::Theme<S, C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl<S: skene_foundation::spine::token::TokenSet<skene_web::TokenValue>, C> skene_foundation::spine::view::AnyKind for skene_web::Theme<S, C>
-impl<S: skene_foundation::spine::token::TokenSet<skene_web::TokenValue>> skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Theme<S, skene_foundation::realize::ChildBuilder<skene_web::ActivePlatform>>
+impl<S: skene_foundation::spine::token::TokenSet<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::TokenValue>, C> skene_foundation::spine::view::AnyKind for skene_web::Theme<S, C>
+impl<S: skene_foundation::spine::token::TokenSet<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::TokenValue>> skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Theme<S, skene_foundation::realize::ChildBuilder<skene_web::ActivePlatform>>
 pub fn skene_web::Theme<S, skene_foundation::realize::ChildBuilder<skene_web::ActivePlatform>>::build(self) -> skene_foundation::spine::node::NodeId
 pub trait skene_web::prelude::ThemedIn: skene_foundation::theme::ThemedIn<skene_web::ActivePlatform>
 pub fn skene_web::prelude::ThemedIn::current() -> Self
@@ -977,7 +977,7 @@ pub fn skene_web::Column::set_spacing(self, impl core::convert::Into<skene_found
 pub fn skene_web::Column::set_wrap(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::flex::Wrap, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub const fn skene_web::Column::style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredBoxStyle<skene_web::ActivePlatform>
 impl core::default::Default for skene_web::Column
-pub fn skene_web::Column::default() -> skene_web::Column
+pub fn skene_web::Column::default() -> Self
 impl core::fmt::Debug for skene_web::Column
 pub fn skene_web::Column::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::spine::children::HasChildren<skene_web::platform::Web> for skene_web::Column
@@ -1056,7 +1056,7 @@ pub fn skene_web::Container::set_visibility(self, impl core::convert::Into<skene
 pub fn skene_web::Container::set_width(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::dimension::Dimension<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub const fn skene_web::Container::style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredBoxStyle<skene_web::ActivePlatform>
 impl core::default::Default for skene_web::Container
-pub fn skene_web::Container::default() -> skene_web::Container
+pub fn skene_web::Container::default() -> Self
 impl core::fmt::Debug for skene_web::Container
 pub fn skene_web::Container::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::spine::children::HasChild<skene_web::platform::Web> for skene_web::Container
@@ -1140,7 +1140,7 @@ pub fn skene_web::Grid::set_spacing(self, impl core::convert::Into<skene_foundat
 pub const fn skene_web::Grid::style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredBoxStyle<skene_web::ActivePlatform>
 pub fn skene_web::Grid::uniform(u16) -> Self
 impl core::default::Default for skene_web::Grid
-pub fn skene_web::Grid::default() -> skene_web::Grid
+pub fn skene_web::Grid::default() -> Self
 impl core::fmt::Debug for skene_web::Grid
 pub fn skene_web::Grid::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::spine::children::HasChildren<skene_web::platform::Web> for skene_web::Grid
@@ -1206,7 +1206,7 @@ impl skene_web::RichText
 pub const fn skene_web::RichText::new() -> Self
 pub fn skene_web::RichText::set_spans(self, impl core::iter::traits::collect::IntoIterator<Item = skene_web::Span>) -> Self
 impl core::default::Default for skene_web::RichText
-pub fn skene_web::RichText::default() -> skene_web::RichText
+pub fn skene_web::RichText::default() -> Self
 impl core::fmt::Debug for skene_web::RichText
 pub fn skene_web::RichText::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::spine::view::AnyKind for skene_web::RichText
@@ -1230,7 +1230,7 @@ pub fn skene_web::Row::set_spacing(self, impl core::convert::Into<skene_foundati
 pub fn skene_web::Row::set_wrap(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::flex::Wrap, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub const fn skene_web::Row::style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredBoxStyle<skene_web::ActivePlatform>
 impl core::default::Default for skene_web::Row
-pub fn skene_web::Row::default() -> skene_web::Row
+pub fn skene_web::Row::default() -> Self
 impl core::fmt::Debug for skene_web::Row
 pub fn skene_web::Row::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::spine::children::HasChildren<skene_web::platform::Web> for skene_web::Row
@@ -1299,7 +1299,7 @@ pub fn skene_web::Stack::set_alignment(self, impl core::convert::Into<skene_foun
 pub fn skene_web::Stack::set_padding(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::inset::Inset<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
 pub const fn skene_web::Stack::style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredBoxStyle<skene_web::ActivePlatform>
 impl core::default::Default for skene_web::Stack
-pub fn skene_web::Stack::default() -> skene_web::Stack
+pub fn skene_web::Stack::default() -> Self
 impl core::fmt::Debug for skene_web::Stack
 pub fn skene_web::Stack::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::spine::children::HasChildren<skene_web::platform::Web> for skene_web::Stack
@@ -1369,14 +1369,14 @@ impl skene_foundation::spine::view::AnyKind for skene_web::Text
 impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Text
 pub fn skene_web::Text::build(self) -> skene_foundation::spine::node::NodeId
 pub struct skene_web::Theme<S: skene_foundation::spine::token::TokenSet<skene_web::TokenValue>, C>(_)
-impl<S: skene_foundation::spine::token::TokenSet<skene_web::TokenValue>> skene_web::Theme<S>
+impl<S: skene_foundation::spine::token::TokenSet<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::TokenValue>> skene_web::Theme<S>
 pub fn skene_web::Theme<S>::derive(impl core::ops::function::Fn() -> S + 'static) -> Self
 pub fn skene_web::Theme<S>::new(S) -> Self
 pub fn skene_web::Theme<S>::set_child_builder<V: skene_foundation::spine::view::View<skene_web::ActivePlatform>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> skene_web::Theme<S, skene_foundation::realize::ChildBuilder<skene_web::ActivePlatform>>
-impl<S: skene_foundation::spine::token::TokenSet<skene_web::TokenValue>, C> core::fmt::Debug for skene_web::Theme<S, C>
+impl<S: skene_foundation::spine::token::TokenSet<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::TokenValue>, C> core::fmt::Debug for skene_web::Theme<S, C>
 pub fn skene_web::Theme<S, C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl<S: skene_foundation::spine::token::TokenSet<skene_web::TokenValue>, C> skene_foundation::spine::view::AnyKind for skene_web::Theme<S, C>
-impl<S: skene_foundation::spine::token::TokenSet<skene_web::TokenValue>> skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Theme<S, skene_foundation::realize::ChildBuilder<skene_web::ActivePlatform>>
+impl<S: skene_foundation::spine::token::TokenSet<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::TokenValue>, C> skene_foundation::spine::view::AnyKind for skene_web::Theme<S, C>
+impl<S: skene_foundation::spine::token::TokenSet<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::TokenValue>> skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Theme<S, skene_foundation::realize::ChildBuilder<skene_web::ActivePlatform>>
 pub fn skene_web::Theme<S, skene_foundation::realize::ChildBuilder<skene_web::ActivePlatform>>::build(self) -> skene_foundation::spine::node::NodeId
 pub trait skene_web::ThemedIn: skene_foundation::theme::ThemedIn<skene_web::ActivePlatform>
 pub fn skene_web::ThemedIn::current() -> Self

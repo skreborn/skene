@@ -1,6 +1,6 @@
 //! The wrapper giving a flex child its flexibility.
 
-use skene_foundation::{AnyView, FlexChild, IntoChildOf, NoChild, View};
+use skene_foundation::NoChild;
 
 use crate::ActivePlatform;
 
@@ -14,37 +14,4 @@ use crate::ActivePlatform;
 #[must_use]
 pub struct Flexible<C = NoChild>(skene_foundation::Flexible<ActivePlatform, C>);
 
-impl<C> std::fmt::Debug for Flexible<C> {
-  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    self.0.fmt(formatter)
-  }
-}
-
-impl Default for Flexible {
-  #[inline(always)]
-  fn default() -> Self {
-    Self::new()
-  }
-}
-
-impl Flexible {
-  /// A wrapper with the default flexibility and no child yet.
-  #[inline(always)]
-  pub fn new() -> Self {
-    Self(skene_foundation::Flexible::new())
-  }
-
-  skene_foundation::flexible_surface! { 0, ActivePlatform }
-
-  /// Sets the child.
-  pub fn set_child(self, child: impl View<ActivePlatform>) -> Flexible<AnyView<ActivePlatform>> {
-    Flexible(self.0.set_child(child))
-  }
-}
-
-impl IntoChildOf<ActivePlatform, FlexChild> for Flexible<AnyView<ActivePlatform>> {
-  #[inline(always)]
-  fn into_child(self) -> AnyView<ActivePlatform> {
-    self.0.into_child()
-  }
-}
+skene_foundation::impl_flexible!(Flexible, ActivePlatform);

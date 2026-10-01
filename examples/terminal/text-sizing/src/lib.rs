@@ -11,7 +11,7 @@
 
 #![cfg(not(target_arch = "wasm32"))]
 
-use skene_simple::terminal::prelude::*;
+use skene_simple_terminal::prelude::*;
 use skene_terminal::prelude::*;
 
 /// The page: a title at three cells, sections at two, body text at one, and a

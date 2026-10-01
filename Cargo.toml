@@ -25,6 +25,8 @@ skene-headless = { path = "packages/headless", version = "0.1.0" }
 skene-macros = { path = "packages/macros", version = "0.1.0" }
 skene-reactive = { path = "packages/reactive", version = "0.1.0" }
 skene-simple = { path = "packages/simple", version = "0.1.0" }
+skene-simple-terminal = { path = "packages/simple-terminal", version = "0.1.0" }
+skene-simple-web = { path = "packages/simple-web", version = "0.1.0" }
 skene-terminal = { path = "packages/terminal", version = "0.1.0" }
 skene-transport = { path = "packages/transport", version = "0.1.0" }
 skene-web = { path = "packages/web", version = "0.1.0" }

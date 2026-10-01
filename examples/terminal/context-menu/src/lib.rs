@@ -10,7 +10,7 @@
 
 #![cfg(not(target_arch = "wasm32"))]
 
-use skene_simple::terminal::prelude::*;
+use skene_simple_terminal::prelude::*;
 use skene_terminal::prelude::*;
 
 /// The app: the notes with their menus, the draft with the clipboard's, and the rest

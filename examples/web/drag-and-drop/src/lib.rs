@@ -6,7 +6,7 @@
 //! `Dragged` and the list under the pointer that would take it `Targeted`, so both are
 //! styled as any state is.
 
-use skene_simple::web::prelude::*;
+use skene_simple_web::prelude::*;
 use skene_web::prelude::*;
 
 /// A card on its way from one list to another: its title and the list it leaves.

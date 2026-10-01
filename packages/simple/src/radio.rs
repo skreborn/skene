@@ -30,6 +30,7 @@ use skene_foundation::{
   Text,
   View,
   When,
+  Wraps,
 };
 use skene_reactive::{Get, Memo, Signal, use_context};
 
@@ -45,6 +46,7 @@ use super::{
 /// Members are [`SimpleRadio`]s at any depth inside the child, so one may be wrapped
 /// or interleaved with anything. The chosen value flows both ways. Holds [`NoChild`]
 /// until [`set_child`](Self::set_child) supplies the view holding the members.
+#[doc(hidden)]
 #[derive(Debug)]
 #[must_use]
 pub struct SimpleRadioGroup<P: Platform, C = NoChild> {
@@ -143,6 +145,7 @@ impl<P: Platform> View<P> for SimpleRadioGroup<P, AnyView<P>> {
 /// every facade. Outside a [`SimpleRadioGroup`] it draws, is never chosen and takes
 /// focus like any control. For a radio drawn some other way, compose [`BasicRadio`]
 /// directly.
+#[doc(hidden)]
 #[derive(Debug)]
 #[must_use]
 pub struct SimpleRadio<P: Platform> {
@@ -243,4 +246,58 @@ where
     .set_corner_radius(shape.mark_size.to_f32() / 2.)
     .set_alignment(Alignment::CENTER)
     .set_child(dot)
+}
+
+/// What a platform's `SimpleRadioGroup` carries.
+pub trait SimpleRadioGroupBase<P: Platform>: Wraps<Inner = SimpleRadioGroup<P>> {
+  /// A group with nothing chosen.
+  #[must_use]
+  fn new() -> Self {
+    Self::wrap(SimpleRadioGroup::new())
+  }
+
+  /// Sets the chosen member's value.
+  #[must_use]
+  fn set_chosen(self, chosen: impl Into<String>) -> Self {
+    Self::wrap(self.into_inner().set_chosen(chosen))
+  }
+
+  /// Derives the chosen member's value from the signals `chosen` reads.
+  #[must_use]
+  fn derive_chosen(self, chosen: impl Fn() -> Option<String> + 'static) -> Self {
+    Self::wrap(self.into_inner().derive_chosen(chosen))
+  }
+
+  /// Runs `action` with the value a choice asks for.
+  #[must_use]
+  fn handle_choose(self, action: impl Fn(String) + 'static) -> Self {
+    Self::wrap(self.into_inner().handle_choose(action))
+  }
+
+  /// Binds the chosen value to `signal` in both directions.
+  #[must_use]
+  fn bind_chosen(self, signal: Signal<Option<String>>) -> Self {
+    Self::wrap(self.into_inner().bind_chosen(signal))
+  }
+
+  /// Sets the group's accessible name.
+  #[must_use]
+  fn set_label(self, label: impl Into<String>) -> Self {
+    Self::wrap(self.into_inner().set_label(label))
+  }
+}
+
+/// What a platform's `SimpleRadio` carries.
+pub trait SimpleRadioBase<P: Platform>: Wraps<Inner = SimpleRadio<P>> {
+  /// The member standing for `value`, the string the group reports when it is chosen.
+  #[must_use]
+  fn new(value: impl Into<String>) -> Self {
+    Self::wrap(SimpleRadio::new(value))
+  }
+
+  /// Sets the caption beside the ring, which is also the accessible name.
+  #[must_use]
+  fn set_label(self, label: impl Into<String>) -> Self {
+    Self::wrap(self.into_inner().set_label(label))
+  }
 }

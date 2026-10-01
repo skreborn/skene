@@ -7,7 +7,7 @@
 
 #![cfg(not(target_arch = "wasm32"))]
 
-use skene_simple::terminal::prelude::*;
+use skene_simple_terminal::prelude::*;
 use skene_terminal::prelude::*;
 
 /// The URL fetched when none is given.

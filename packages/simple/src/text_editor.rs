@@ -2,7 +2,16 @@
 
 use std::marker::PhantomData;
 
-use skene_foundation::{AnyKind, BasicTextEditor, CornerRadius, NodeId, Platform, TextEntry, View};
+use skene_foundation::{
+  AnyKind,
+  BasicTextEditor,
+  CornerRadius,
+  NodeId,
+  Platform,
+  TextEntry,
+  View,
+  Wraps,
+};
 use skene_reactive::Signal;
 
 use super::shape::{SimpleUnit, define_defaults, field_chrome};
@@ -15,6 +24,7 @@ const LINES: u16 = 3;
 ///
 /// The value flows both ways, exactly as on [`BasicTextEditor`]; for custom chrome,
 /// compose the raw control directly.
+#[doc(hidden)]
 #[derive(Debug)]
 #[must_use]
 pub struct SimpleTextEditor<P: Platform> {
@@ -95,5 +105,50 @@ where
     define_defaults::<P>();
 
     field_chrome::<P, TextEntry>(BasicTextEditor::new(self.entry)).build()
+  }
+}
+
+/// What a platform's `SimpleTextEditor` carries.
+pub trait SimpleTextEditorBase<P: Platform>: Wraps<Inner = SimpleTextEditor<P>> {
+  /// An empty editor showing three lines.
+  #[must_use]
+  fn new() -> Self {
+    Self::wrap(SimpleTextEditor::new())
+  }
+
+  /// Sets the text.
+  #[must_use]
+  fn set_value(self, value: impl Into<String>) -> Self {
+    Self::wrap(self.into_inner().set_value(value))
+  }
+
+  /// Derives the text from the signals `value` reads.
+  #[must_use]
+  fn derive_value(self, value: impl Fn() -> String + 'static) -> Self {
+    Self::wrap(self.into_inner().derive_value(value))
+  }
+
+  /// Sets the hint shown while the value is empty.
+  #[must_use]
+  fn set_placeholder(self, placeholder: impl Into<String>) -> Self {
+    Self::wrap(self.into_inner().set_placeholder(placeholder))
+  }
+
+  /// Sets the lines shown at once; at least two, so the entry stays an editor.
+  #[must_use]
+  fn set_lines(self, lines: u16) -> Self {
+    Self::wrap(self.into_inner().set_lines(lines))
+  }
+
+  /// Runs `action` with the text an edit asks for.
+  #[must_use]
+  fn handle_change(self, action: impl Fn(&str) + 'static) -> Self {
+    Self::wrap(self.into_inner().handle_change(action))
+  }
+
+  /// Binds the text to `signal` in both directions.
+  #[must_use]
+  fn bind_value(self, signal: Signal<String>) -> Self {
+    Self::wrap(self.into_inner().bind_value(signal))
   }
 }

@@ -29,6 +29,7 @@ use skene_foundation::{
   StackBase,
   State,
   View,
+  Wraps,
 };
 use skene_reactive::{Get, Set, Signal, untrack};
 
@@ -45,6 +46,7 @@ use super::{
 /// and [`Part::Thumb`]; the fill runs to the thumb's leading edge and the thumb travels
 /// the track less its own size, so both stay inside the track at either end. The value
 /// flows both ways. For a slider drawn some other way, compose [`BasicSlider`] directly.
+#[doc(hidden)]
 #[must_use]
 pub struct SimpleSlider<P: Platform> {
   label: Option<String>,
@@ -286,4 +288,62 @@ where
       SimplePalette::<P::Scalar>::BACKGROUND
         .when(State::FocusVisible, SimplePalette::<P::Scalar>::RING),
     )
+}
+
+/// What a platform's `SimpleSlider` carries.
+pub trait SimpleSliderBase<P: Platform>: Wraps<Inner = SimpleSlider<P>> {
+  /// A slider over `0..=100` stepping by `1`, holding its minimum.
+  #[must_use]
+  fn new() -> Self {
+    Self::wrap(SimpleSlider::new())
+  }
+
+  /// Sets the accessible name; nothing visible names a slider.
+  #[must_use]
+  fn set_label(self, label: impl Into<String>) -> Self {
+    Self::wrap(self.into_inner().set_label(label))
+  }
+
+  /// Sets the lowest value.
+  #[must_use]
+  fn set_min(self, min: f32) -> Self {
+    Self::wrap(self.into_inner().set_min(min))
+  }
+
+  /// Sets the highest value.
+  #[must_use]
+  fn set_max(self, max: f32) -> Self {
+    Self::wrap(self.into_inner().set_max(max))
+  }
+
+  /// Sets the step a key moves by and values snap to; non-positive for a continuous
+  /// range.
+  #[must_use]
+  fn set_step(self, step: f32) -> Self {
+    Self::wrap(self.into_inner().set_step(step))
+  }
+
+  /// Sets the value.
+  #[must_use]
+  fn set_value(self, value: f32) -> Self {
+    Self::wrap(self.into_inner().set_value(value))
+  }
+
+  /// Derives the value from the signals `value` reads.
+  #[must_use]
+  fn derive_value(self, value: impl Fn() -> f32 + 'static) -> Self {
+    Self::wrap(self.into_inner().derive_value(value))
+  }
+
+  /// Runs `action` with the value a move asks for.
+  #[must_use]
+  fn handle_change(self, action: impl Fn(f32) + 'static) -> Self {
+    Self::wrap(self.into_inner().handle_change(action))
+  }
+
+  /// Binds the value to `signal` in both directions.
+  #[must_use]
+  fn bind_value(self, signal: Signal<f32>) -> Self {
+    Self::wrap(self.into_inner().bind_value(signal))
+  }
 }

@@ -41,7 +41,14 @@ use skene_foundation::{
   View,
 };
 use skene_reactive::{Get, Set, Signal};
-use skene_simple::{SimpleButton, SimpleCheckbox, SimplePicker};
+use skene_simple_web::{
+  SimpleButton,
+  SimpleButtonBase,
+  SimpleCheckbox,
+  SimpleCheckboxBase,
+  SimplePicker,
+  SimplePickerBase,
+};
 use skene_web::{
   platform::{self, Declarations, Web, WebMarkup, WebTokenValue},
   testing::{Installed, computed, connected_root, document, fresh_root, only_child},
@@ -376,7 +383,7 @@ fn a_checkbox_flips_once_per_click() {
     let flips = Rc::clone(&flips);
 
     move || {
-      SimpleCheckbox::<Web>::new()
+      SimpleCheckbox::new()
         .set_label("Agree")
         .derive_checked(move || checked.get())
         .handle_toggle(move |next| {
@@ -486,8 +493,7 @@ fn a_button_click_does_not_reach_the_container() {
       Box_::new()
         .handle_click(move || container_clicks.set(container_clicks.get() + 1))
         .set_child(
-          SimpleButton::<Web>::new("Go")
-            .handle_click(move || button_clicks.set(button_clicks.get() + 1)),
+          SimpleButton::new("Go").handle_click(move || button_clicks.set(button_clicks.get() + 1)),
         )
         .build()
     }
@@ -513,7 +519,7 @@ fn a_button_click_does_not_reach_the_container() {
 fn a_focus_visible_variant_anchors_on_the_input() {
   let (_guard, root) = fresh_root();
 
-  let _ = platform::mount(|| SimpleCheckbox::<Web>::new().set_label("Agree").build());
+  let _ = platform::mount(|| SimpleCheckbox::new().set_label("Agree").build());
 
   let label = only_child(&root);
   let input: HtmlInputElement = only_child(&label).dyn_into().expect("an input");
@@ -871,7 +877,7 @@ fn a_picker_opens_and_chooses_with_the_keyboard() {
   let value = Signal::new("md".to_owned());
 
   let _ = platform::mount(move || {
-    SimplePicker::<Web>::new()
+    SimplePicker::new()
       .set_options([("sm", "Small"), ("md", "Medium"), ("lg", "Large")])
       .bind_value(value)
       .build()

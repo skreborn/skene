@@ -4,7 +4,7 @@
 //! In the browser `#[main]` launches it; on the server leaf the same entry renders a
 //! requested path to stdout; on the host it builds against the headless platform.
 
-use skene_simple::web::prelude::*;
+use skene_simple_web::prelude::*;
 use skene_web::prelude::*;
 
 #[main]

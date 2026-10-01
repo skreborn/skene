@@ -33,6 +33,7 @@ use skene_foundation::{
   View,
   Visibility,
   When,
+  Wraps,
 };
 use skene_reactive::{Get, Memo, Signal, use_context};
 
@@ -57,6 +58,7 @@ const CHECK: &str = "✓";
 /// each row's check the [`Part::Item`], so all three follow their control's state on
 /// every facade. The chosen value flows both ways, exactly as on [`BasicPicker`]; for
 /// custom chrome, compose the raw control directly.
+#[doc(hidden)]
 #[derive(Debug)]
 #[must_use]
 pub struct SimplePicker<P: Platform> {
@@ -266,4 +268,64 @@ where
     .set_part(Part::Item, check)
     .set_label(Label::new(caption).set_name(label))
     .into_any()
+}
+
+/// What a platform's `SimplePicker` carries.
+pub trait SimplePickerBase<P: Platform>: Wraps<Inner = SimplePicker<P>> {
+  /// A picker with no options and nothing chosen.
+  #[must_use]
+  fn new() -> Self {
+    Self::wrap(SimplePicker::new())
+  }
+
+  /// Sets the options, in order, each a `(value, label)` pair.
+  #[must_use]
+  fn set_options<V: Into<String>, L: Into<String>>(
+    self,
+    options: impl IntoIterator<Item = (V, L)>,
+  ) -> Self {
+    Self::wrap(self.into_inner().set_options(options))
+  }
+
+  /// Sets the chosen value.
+  #[must_use]
+  fn set_value(self, value: impl Into<String>) -> Self {
+    Self::wrap(self.into_inner().set_value(value))
+  }
+
+  /// Derives the chosen value from the signals `value` reads.
+  #[must_use]
+  fn derive_value(self, value: impl Fn() -> String + 'static) -> Self {
+    Self::wrap(self.into_inner().derive_value(value))
+  }
+
+  /// Runs `action` with the value a choice asks for.
+  #[must_use]
+  fn handle_change(self, action: impl Fn(String) + 'static) -> Self {
+    Self::wrap(self.into_inner().handle_change(action))
+  }
+
+  /// Binds the chosen value to `signal` in both directions.
+  #[must_use]
+  fn bind_value(self, signal: Signal<String>) -> Self {
+    Self::wrap(self.into_inner().bind_value(signal))
+  }
+
+  /// Sets the accessible name.
+  #[must_use]
+  fn set_label(self, label: impl Into<String>) -> Self {
+    Self::wrap(self.into_inner().set_label(label))
+  }
+
+  /// Sets whether the picker is present but not operable.
+  #[must_use]
+  fn set_disabled(self, disabled: bool) -> Self {
+    Self::wrap(self.into_inner().set_disabled(disabled))
+  }
+
+  /// Derives whether the picker is disabled from the signals `disabled` reads.
+  #[must_use]
+  fn derive_disabled(self, disabled: impl Fn() -> bool + 'static) -> Self {
+    Self::wrap(self.into_inner().derive_disabled(disabled))
+  }
 }

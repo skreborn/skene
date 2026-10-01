@@ -6,7 +6,7 @@
 use std::time::Duration;
 
 use proptest::prelude::*;
-use skene_simple::terminal::prelude::*;
+use skene_simple_terminal::prelude::*;
 use skene_terminal::{self as terminal, prelude::*, testing};
 
 use crate::common::{blue, green, red, white, with_platform};

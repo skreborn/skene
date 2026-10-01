@@ -1,6 +1,6 @@
 //! The counter's views, in cells.
 
-use skene_simple::terminal::prelude::*;
+use skene_simple_terminal::prelude::*;
 use skene_terminal::prelude::*;
 
 pub(crate) fn app() -> impl View {

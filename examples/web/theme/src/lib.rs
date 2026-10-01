@@ -7,7 +7,7 @@
 //! toggle re-inks it without rebuilding anything. A palette change is the same: the
 //! theme redefines its tokens in place, and the tree beneath it stands.
 
-use skene_simple::web::prelude::*;
+use skene_simple_web::prelude::*;
 use skene_web::prelude::*;
 
 /// A definition taking `dark`'s value under the dark scheme and `light`'s otherwise.

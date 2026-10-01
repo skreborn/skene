@@ -159,6 +159,7 @@ const WASM_DOCS: &[&str] = &[
   "skene-foundation",
   "skene-reactive",
   "skene-simple",
+  "skene-simple-web",
   "skene-transport",
   "skene-web",
 ];

@@ -13,7 +13,7 @@ name = "context-menu-server"
 path = "src/main.rs"
 
 [dependencies]
-skene-simple.workspace = true
+skene-simple-web.workspace = true
 skene-web = { workspace = true }
 
 [lints]

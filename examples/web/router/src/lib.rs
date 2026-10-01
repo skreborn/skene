@@ -11,7 +11,7 @@
 
 #![cfg(any(target_arch = "wasm32", skene_platform = "server"))]
 
-use skene_simple::web::prelude::*;
+use skene_simple_web::prelude::*;
 use skene_web::{
   AnyView,
   AsyncView,

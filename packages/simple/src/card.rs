@@ -21,6 +21,7 @@ use skene_foundation::{
   StaticLeaf,
   Value,
   View,
+  Wraps,
 };
 
 use super::{
@@ -34,6 +35,7 @@ use super::{
 /// Its own properties shape the column; wrap it in a [`Container`] to change the
 /// surface itself. Accepts any view or a [`Flexible`](skene_foundation::Flexible) wrapper as
 /// a child.
+#[doc(hidden)]
 #[derive(Debug)]
 #[must_use]
 pub struct SimpleCard<P: Platform> {
@@ -132,5 +134,53 @@ where
       .set_corner_radius(shape::<P>().card_radius)
       .set_child(self.column)
       .build()
+  }
+}
+
+/// What a platform's `SimpleCard` carries.
+pub trait SimpleCardBase<P: Platform>: Wraps<Inner = SimpleCard<P>> {
+  /// An empty card.
+  #[must_use]
+  fn new() -> Self
+  where
+    P::Scalar: SimpleUnit,
+  {
+    Self::wrap(SimpleCard::new())
+  }
+
+  /// Sets the spacing between the card's children.
+  #[must_use]
+  fn set_spacing(
+    self,
+    spacing: impl Into<Value<Spacing<P::Scalar>, Condition<P::Scalar>>>,
+  ) -> Self {
+    Self::wrap(self.into_inner().set_spacing(spacing))
+  }
+
+  /// Derives the spacing between the card's children from the signals `spacing` reads.
+  #[must_use]
+  fn derive_spacing<R: Into<StaticLeaf<Spacing<P::Scalar>>>>(
+    self,
+    spacing: impl Fn() -> R + 'static,
+  ) -> Self {
+    Self::wrap(self.into_inner().derive_spacing(spacing))
+  }
+
+  /// Sets the alignment of the card's children on the horizontal axis.
+  #[must_use]
+  fn set_item_alignment(
+    self,
+    alignment: impl Into<Value<ItemAlignment, Condition<P::Scalar>>>,
+  ) -> Self {
+    Self::wrap(self.into_inner().set_item_alignment(alignment))
+  }
+
+  /// Derives the alignment of the card's children from the signals `alignment` reads.
+  #[must_use]
+  fn derive_item_alignment<R: Into<StaticLeaf<ItemAlignment>>>(
+    self,
+    alignment: impl Fn() -> R + 'static,
+  ) -> Self {
+    Self::wrap(self.into_inner().derive_item_alignment(alignment))
   }
 }

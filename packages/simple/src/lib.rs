@@ -1,9 +1,11 @@
 //! # skene-simple
 //!
-//! The Simple component library built once over [`skene_foundation`], generic over the
-//! [`Platform`](skene_foundation::Platform) a facade names: one palette, one shape language, and
-//! every `Simple*` view composed from the public views alone, so a third-party library
-//! sits on the same footing.
+//! The core of the Simple component library, built once over [`skene_foundation`]: one
+//! palette, one shape language, the marks a medium drawing with characters shows, and the
+//! logic of every `Simple*` view, generic over the
+//! [`Platform`](skene_foundation::Platform), its members reached through the `Simple*Base`
+//! trait a platform's crate implements for a view of its own (`skene-simple-web`,
+//! `skene-simple-terminal`), so a third-party library sits on the same footing.
 //!
 //! [`SimplePalette`] is a token set: `Theme::new(SimplePalette::default())` defines it
 //! beneath the theme, every Simple view references its tokens by name, and a Simple
@@ -12,11 +14,6 @@
 //! palette's foreground. Corners round where the medium has a
 //! [`CornerRadius`](skene_foundation::CornerRadius) and stay square where it has none, and
 //! the lengths come from the [`SimpleShape`] of the medium's unit.
-//!
-//! An app depends on this crate as it would on any component library and names the
-//! platform once; the `terminal` and `web` modules are that naming done for a
-//! facade, a `prelude` of aliases over its `ActivePlatform` that sits beside the facade's
-//! own.
 
 mod button;
 mod card;
@@ -28,25 +25,22 @@ mod picker;
 mod radio;
 mod shape;
 mod slider;
-#[cfg(not(target_arch = "wasm32"))]
-pub mod terminal;
 mod text_editor;
 mod text_field;
 mod tooltip;
-pub mod web;
 
 pub use self::{
-  button::SimpleButton,
-  card::SimpleCard,
-  checkbox::SimpleCheckbox,
-  context_menu::SimpleContextMenu,
+  button::{SimpleButton, SimpleButtonBase},
+  card::{SimpleCard, SimpleCardBase},
+  checkbox::{SimpleCheckbox, SimpleCheckboxBase},
+  context_menu::{SimpleContextMenu, SimpleContextMenuBase},
   glyphs::SimpleGlyphs,
   palette::{SimpleLook, SimplePalette, SimpleVariant},
-  picker::SimplePicker,
-  radio::{SimpleRadio, SimpleRadioGroup},
+  picker::{SimplePicker, SimplePickerBase},
+  radio::{SimpleRadio, SimpleRadioBase, SimpleRadioGroup, SimpleRadioGroupBase},
   shape::{SimpleMarks, SimpleShape, SimpleUnit},
-  slider::SimpleSlider,
-  text_editor::SimpleTextEditor,
-  text_field::SimpleTextField,
-  tooltip::SimpleTooltip,
+  slider::{SimpleSlider, SimpleSliderBase},
+  text_editor::{SimpleTextEditor, SimpleTextEditorBase},
+  text_field::{SimpleTextField, SimpleTextFieldBase},
+  tooltip::{SimpleTooltip, SimpleTooltipBase},
 };

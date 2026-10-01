@@ -2,7 +2,7 @@
 //! a definition naming another token reads it at the defining scope, and a scope
 //! beneath that redefines it changes nothing above.
 
-use skene_simple::terminal::{glyph, *};
+use skene_simple_terminal::{glyph, *};
 use skene_terminal::{
   self as terminal,
   Definition,

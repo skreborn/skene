@@ -9,7 +9,7 @@
 
 use std::rc::Rc;
 
-use skene_simple::web::prelude::*;
+use skene_simple_web::prelude::*;
 use skene_web::{HasChild, Resource, prelude::*, spawn};
 
 /// The echo service the example talks to.

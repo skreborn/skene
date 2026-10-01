@@ -13,7 +13,7 @@ name = "ws-server"
 path = "src/main.rs"
 
 [dependencies]
-skene-simple.workspace = true
+skene-simple-web.workspace = true
 skene-transport.workspace = true
 skene-web.workspace = true
 

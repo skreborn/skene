@@ -87,7 +87,7 @@ futures-timer = "3"
 rustix = { features = ["stdio"], version = "1" }
 
 [dev-dependencies]
-skene-simple.workspace = true
+skene-simple-web.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 skene-headless.workspace = true

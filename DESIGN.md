@@ -55,14 +55,17 @@ skene-web        the web facade: f32, ActivePlatform (the web in the browser and
                  #[main], and the platform itself under platform
 skene-terminal   the terminal facade, EQUAL in standing: u32 cells, Terminal, the
                  same views, Typography, BorderGlyphs, media::*, launch, testing
-skene-simple     the Simple design language over skene-foundation, generic over P: the
-                 palette (a TokenSet), the looks, the shape per unit, the terminal marks
-                 (SimpleGlyphs) and the Simple* views; an app's explicit dependency;
-                 terminal and web alias the types to each facade's ActivePlatform,
-                 with a prelude
+skene-simple     the Simple design language's core over skene-foundation: the palette
+                 (a TokenSet), the looks, the shape per unit, the terminal marks
+                 (SimpleGlyphs) and the Simple* views, generic over P and hidden, their
+                 members in a Simple*Base trait each
+skene-simple-web, skene-simple-terminal
+                 the Simple views of each platform's own, newtypes over the core's, with
+                 a prelude; an app's explicit dependency
 skene-conformance  one suite of behaviors every platform shows alike, run through the
                  Driver a platform implements over its test seams
-skene-macros     #[main], #[lazy], #[derive(Store)], #[derive(Snapshot)]
+skene-macros     #[main], #[lazy], #[derive(Store)], #[derive(Snapshot)],
+                 #[derive(View)], #[derive(Wraps)]
 skene-cli        the skene command: build and run per target, the dev server, static
                  generation, skene.toml assets
 ```

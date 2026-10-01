@@ -18,7 +18,7 @@ use skene_foundation::{
   TextBase,
   ThemeBase,
 };
-use skene_simple::web::prelude::*;
+use skene_simple_web::prelude::*;
 use skene_web::{
   Activate,
   BasicButton,

@@ -16,6 +16,7 @@ use skene_foundation::{
   State,
   View,
   When,
+  Wraps,
 };
 
 use super::{
@@ -33,6 +34,7 @@ use super::{
 /// [`set_child`](Self::set_child), so any view takes a menu by wrapping, or
 /// [`serve`](Self::serve) attaches it to a node that already exists. For anything
 /// beyond that, compose [`ContextMenu`] directly.
+#[doc(hidden)]
 #[derive(Debug)]
 #[must_use]
 pub struct SimpleContextMenu<P: Platform, C = NoChild> {
@@ -132,5 +134,29 @@ where
 {
   fn build(self) -> NodeId {
     self.raw.build()
+  }
+}
+
+/// What a platform's `SimpleContextMenu` carries.
+pub trait SimpleContextMenuBase<P: Platform>: Wraps<Inner = SimpleContextMenu<P>> {
+  /// A menu with no items yet.
+  #[must_use]
+  fn new() -> Self {
+    Self::wrap(SimpleContextMenu::new())
+  }
+
+  /// Sets the items, in order.
+  #[must_use]
+  fn set_items(self, items: impl IntoIterator<Item = MenuEntry>) -> Self {
+    Self::wrap(self.into_inner().set_items(items))
+  }
+
+  /// Attaches the menu to `node`, a view that already exists; returns the list's node.
+  fn serve(self, node: NodeId) -> NodeId
+  where
+    P::Scalar: SimpleUnit,
+    P::StyleExt: CornerRadius,
+  {
+    self.into_inner().serve(node)
   }
 }

@@ -8,7 +8,7 @@
 
 #![cfg(not(target_arch = "wasm32"))]
 
-use skene_simple::terminal::prelude::*;
+use skene_simple_terminal::prelude::*;
 use skene_terminal::prelude::*;
 
 /// A card on its way from one list to another: its title and the list it leaves.

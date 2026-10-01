@@ -7,7 +7,7 @@
 //! The quotes are a manifest-declared asset, served beside the page, so the example
 //! needs no network beyond the dev server.
 
-use skene_simple::web::prelude::*;
+use skene_simple_web::prelude::*;
 use skene_web::{HasChild, Resource, prelude::*};
 
 /// Where the quotes live: the app's declared asset, served at its URI.

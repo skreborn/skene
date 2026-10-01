@@ -4,7 +4,7 @@
 use std::time::Duration;
 
 use skene_foundation::{BoxKeyframe, Property};
-use skene_simple::terminal::prelude::*;
+use skene_simple_terminal::prelude::*;
 use skene_terminal::{self as terminal, Color, State, prelude::*, testing};
 
 use crate::common::{blue, colors_at, red, rgb, with_platform};

@@ -472,7 +472,7 @@ checksum = "a6ef517f0926dd24a1582492c791b6a4818a4d94e789a334894aa15b0d12f55c"
 name = "context-menu"
 version = "0.1.0"
 dependencies = [
- "skene-simple",
+ "skene-simple-web",
  "skene-web",
 ]
 
@@ -505,7 +505,7 @@ checksum = "773648b94d0e5d620f64f280777445740e61fe701025087ec8b57f45c791888b"
 name = "counter"
 version = "0.1.0"
 dependencies = [
- "skene-simple",
+ "skene-simple-web",
  "skene-web",
 ]
 
@@ -700,7 +700,7 @@ checksum = "d8b14ccef22fc6f5a8f4d7d768562a182c04ce9a3b3157b91390b52ddfdf1a76"
 name = "drag-and-drop"
 version = "0.1.0"
 dependencies = [
- "skene-simple",
+ "skene-simple-web",
  "skene-web",
 ]
 
@@ -723,7 +723,7 @@ dependencies = [
 name = "enhance"
 version = "0.1.0"
 dependencies = [
- "skene-simple",
+ "skene-simple-web",
  "skene-web",
 ]
 
@@ -881,7 +881,7 @@ dependencies = [
  "acme-map",
  "acme-ui",
  "js-sys",
- "skene-simple",
+ "skene-simple-web",
  "skene-web",
  "wasm-bindgen",
  "wasm-bindgen-futures",
@@ -2117,7 +2117,7 @@ dependencies = [
 name = "router"
 version = "0.1.0"
 dependencies = [
- "skene-simple",
+ "skene-simple-web",
  "skene-web",
 ]
 
@@ -2535,7 +2535,23 @@ dependencies = [
  "skene-foundation",
  "skene-headless",
  "skene-reactive",
+]
+
+[[package]]
+name = "skene-simple-terminal"
+version = "0.1.0"
+dependencies = [
+ "skene-foundation",
+ "skene-simple",
  "skene-terminal",
+]
+
+[[package]]
+name = "skene-simple-web"
+version = "0.1.0"
+dependencies = [
+ "skene-foundation",
+ "skene-simple",
  "skene-web",
 ]
 
@@ -2555,7 +2571,7 @@ dependencies = [
  "skene-dev",
  "skene-foundation",
  "skene-reactive",
- "skene-simple",
+ "skene-simple-terminal",
  "smallvec",
  "taffy",
  "unicode-linebreak",
@@ -2598,7 +2614,7 @@ dependencies = [
  "skene-headless",
  "skene-macros",
  "skene-reactive",
- "skene-simple",
+ "skene-simple-web",
  "smallvec",
  "tracing",
  "trybuild",
@@ -2658,7 +2674,7 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 name = "store"
 version = "0.1.0"
 dependencies = [
- "skene-simple",
+ "skene-simple-web",
  "skene-web",
 ]
 
@@ -2772,7 +2788,7 @@ dependencies = [
 name = "terminal-context-menu"
 version = "0.1.0"
 dependencies = [
- "skene-simple",
+ "skene-simple-terminal",
  "skene-terminal",
 ]
 
@@ -2780,7 +2796,7 @@ dependencies = [
 name = "terminal-counter"
 version = "0.1.0"
 dependencies = [
- "skene-simple",
+ "skene-simple-terminal",
  "skene-terminal",
 ]
 
@@ -2788,7 +2804,7 @@ dependencies = [
 name = "terminal-drag-and-drop"
 version = "0.1.0"
 dependencies = [
- "skene-simple",
+ "skene-simple-terminal",
  "skene-terminal",
 ]
 
@@ -2796,7 +2812,7 @@ dependencies = [
 name = "terminal-enhance"
 version = "0.1.0"
 dependencies = [
- "skene-simple",
+ "skene-simple-terminal",
  "skene-terminal",
 ]
 
@@ -2807,7 +2823,7 @@ dependencies = [
  "acme-sparkline",
  "acme-ui",
  "insta",
- "skene-simple",
+ "skene-simple-terminal",
  "skene-terminal",
 ]
 
@@ -2815,7 +2831,7 @@ dependencies = [
 name = "terminal-http"
 version = "0.1.0"
 dependencies = [
- "skene-simple",
+ "skene-simple-terminal",
  "skene-terminal",
  "skene-transport",
 ]
@@ -2824,7 +2840,7 @@ dependencies = [
 name = "terminal-store"
 version = "0.1.0"
 dependencies = [
- "skene-simple",
+ "skene-simple-terminal",
  "skene-terminal",
 ]
 
@@ -2832,7 +2848,7 @@ dependencies = [
 name = "terminal-text-sizing"
 version = "0.1.0"
 dependencies = [
- "skene-simple",
+ "skene-simple-terminal",
  "skene-terminal",
 ]
 
@@ -2840,7 +2856,7 @@ dependencies = [
 name = "terminal-theme"
 version = "0.1.0"
 dependencies = [
- "skene-simple",
+ "skene-simple-terminal",
  "skene-terminal",
 ]
 
@@ -2848,7 +2864,7 @@ dependencies = [
 name = "terminal-ws"
 version = "0.1.0"
 dependencies = [
- "skene-simple",
+ "skene-simple-terminal",
  "skene-terminal",
  "skene-transport",
 ]
@@ -2857,7 +2873,7 @@ dependencies = [
 name = "theme"
 version = "0.1.0"
 dependencies = [
- "skene-simple",
+ "skene-simple-web",
  "skene-web",
 ]
 
@@ -3581,7 +3597,7 @@ dependencies = [
 name = "web-http"
 version = "0.1.0"
 dependencies = [
- "skene-simple",
+ "skene-simple-web",
  "skene-transport",
  "skene-web",
 ]
@@ -3600,7 +3616,7 @@ dependencies = [
 name = "web-ws"
 version = "0.1.0"
 dependencies = [
- "skene-simple",
+ "skene-simple-web",
  "skene-transport",
  "skene-web",
 ]

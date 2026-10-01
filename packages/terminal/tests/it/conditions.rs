@@ -3,7 +3,7 @@
 
 use std::{cell::Cell, rc::Rc};
 
-use skene_simple::terminal::prelude::*;
+use skene_simple_terminal::prelude::*;
 use skene_terminal::{self as terminal, StaticLeaf, prelude::*, testing};
 
 use crate::common::{blue, colors_at, red, rgb, white, with_platform};

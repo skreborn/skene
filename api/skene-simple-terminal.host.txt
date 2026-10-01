@@ -1,0 +1,184 @@
+pub mod skene_simple_terminal
+pub use skene_simple_terminal::SimpleButtonBase
+pub use skene_simple_terminal::SimpleCardBase
+pub use skene_simple_terminal::SimpleCheckboxBase
+pub use skene_simple_terminal::SimpleContextMenuBase
+pub use skene_simple_terminal::SimpleGlyphs
+pub use skene_simple_terminal::SimplePickerBase
+pub use skene_simple_terminal::SimpleRadioBase
+pub use skene_simple_terminal::SimpleRadioGroupBase
+pub use skene_simple_terminal::SimpleSliderBase
+pub use skene_simple_terminal::SimpleTextEditorBase
+pub use skene_simple_terminal::SimpleTextFieldBase
+pub use skene_simple_terminal::SimpleTooltipBase
+pub use skene_simple_terminal::SimpleVariant
+pub use skene_simple_terminal::glyph
+pub mod skene_simple_terminal::prelude
+pub use skene_simple_terminal::prelude::<<super::*>>
+pub struct skene_simple_terminal::SimpleButton(_)
+impl core::fmt::Debug for skene_simple_terminal::SimpleButton
+pub fn skene_simple_terminal::SimpleButton::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl skene_foundation::spine::view::AnyKind for skene_simple_terminal::SimpleButton
+impl skene_foundation::spine::wraps::Wraps for skene_simple_terminal::SimpleButton
+pub type skene_simple_terminal::SimpleButton::Inner = skene_simple::button::SimpleButton<skene_terminal::platform::Terminal>
+pub fn skene_simple_terminal::SimpleButton::inner(&self) -> &Self::Inner
+pub fn skene_simple_terminal::SimpleButton::inner_mut(&mut self) -> &mut Self::Inner
+pub fn skene_simple_terminal::SimpleButton::into_inner(self) -> Self::Inner
+pub fn skene_simple_terminal::SimpleButton::wrap(Self::Inner) -> Self
+impl skene_simple::button::SimpleButtonBase<skene_terminal::platform::Terminal> for skene_simple_terminal::SimpleButton
+impl<__P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::View<__P> for skene_simple_terminal::SimpleButton where skene_simple::button::SimpleButton<skene_terminal::ActivePlatform>: skene_foundation::spine::view::View<__P>, Self: 'static
+pub fn skene_simple_terminal::SimpleButton::build(self) -> skene_foundation::spine::node::NodeId
+pub struct skene_simple_terminal::SimpleCard(_)
+impl core::default::Default for skene_simple_terminal::SimpleCard
+pub fn skene_simple_terminal::SimpleCard::default() -> skene_simple_terminal::SimpleCard
+impl core::fmt::Debug for skene_simple_terminal::SimpleCard
+pub fn skene_simple_terminal::SimpleCard::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl skene_foundation::spine::view::AnyKind for skene_simple_terminal::SimpleCard
+impl skene_foundation::spine::wraps::Wraps for skene_simple_terminal::SimpleCard
+pub type skene_simple_terminal::SimpleCard::Inner = skene_simple::card::SimpleCard<skene_terminal::platform::Terminal>
+pub fn skene_simple_terminal::SimpleCard::inner(&self) -> &Self::Inner
+pub fn skene_simple_terminal::SimpleCard::inner_mut(&mut self) -> &mut Self::Inner
+pub fn skene_simple_terminal::SimpleCard::into_inner(self) -> Self::Inner
+pub fn skene_simple_terminal::SimpleCard::wrap(Self::Inner) -> Self
+impl skene_simple::card::SimpleCardBase<skene_terminal::platform::Terminal> for skene_simple_terminal::SimpleCard
+impl<__P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::View<__P> for skene_simple_terminal::SimpleCard where skene_simple::card::SimpleCard<skene_terminal::ActivePlatform>: skene_foundation::spine::view::View<__P>, Self: 'static
+pub fn skene_simple_terminal::SimpleCard::build(self) -> skene_foundation::spine::node::NodeId
+pub struct skene_simple_terminal::SimpleCheckbox(_)
+impl core::default::Default for skene_simple_terminal::SimpleCheckbox
+pub fn skene_simple_terminal::SimpleCheckbox::default() -> skene_simple_terminal::SimpleCheckbox
+impl core::fmt::Debug for skene_simple_terminal::SimpleCheckbox
+pub fn skene_simple_terminal::SimpleCheckbox::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl skene_foundation::spine::view::AnyKind for skene_simple_terminal::SimpleCheckbox
+impl skene_foundation::spine::wraps::Wraps for skene_simple_terminal::SimpleCheckbox
+pub type skene_simple_terminal::SimpleCheckbox::Inner = skene_simple::checkbox::SimpleCheckbox<skene_terminal::platform::Terminal>
+pub fn skene_simple_terminal::SimpleCheckbox::inner(&self) -> &Self::Inner
+pub fn skene_simple_terminal::SimpleCheckbox::inner_mut(&mut self) -> &mut Self::Inner
+pub fn skene_simple_terminal::SimpleCheckbox::into_inner(self) -> Self::Inner
+pub fn skene_simple_terminal::SimpleCheckbox::wrap(Self::Inner) -> Self
+impl skene_simple::checkbox::SimpleCheckboxBase<skene_terminal::platform::Terminal> for skene_simple_terminal::SimpleCheckbox
+impl<__P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::View<__P> for skene_simple_terminal::SimpleCheckbox where skene_simple::checkbox::SimpleCheckbox<skene_terminal::ActivePlatform>: skene_foundation::spine::view::View<__P>, Self: 'static
+pub fn skene_simple_terminal::SimpleCheckbox::build(self) -> skene_foundation::spine::node::NodeId
+pub struct skene_simple_terminal::SimpleContextMenu<C>(_)
+impl skene_simple_terminal::SimpleContextMenu
+pub fn skene_simple_terminal::SimpleContextMenu::set_child(self, impl skene_foundation::spine::view::View<skene_terminal::ActivePlatform>) -> skene_simple_terminal::SimpleContextMenu<skene_foundation::spine::view::AnyView<skene_terminal::ActivePlatform>>
+impl core::default::Default for skene_simple_terminal::SimpleContextMenu
+pub fn skene_simple_terminal::SimpleContextMenu::default() -> Self
+impl skene_simple::context_menu::SimpleContextMenuBase<skene_terminal::platform::Terminal> for skene_simple_terminal::SimpleContextMenu
+impl<C, __P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::View<__P> for skene_simple_terminal::SimpleContextMenu<C> where skene_simple::context_menu::SimpleContextMenu<skene_terminal::ActivePlatform, C>: skene_foundation::spine::view::View<__P>, Self: 'static
+pub fn skene_simple_terminal::SimpleContextMenu<C>::build(self) -> skene_foundation::spine::node::NodeId
+impl<C: core::fmt::Debug> core::fmt::Debug for skene_simple_terminal::SimpleContextMenu<C>
+pub fn skene_simple_terminal::SimpleContextMenu<C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<C> skene_foundation::spine::view::AnyKind for skene_simple_terminal::SimpleContextMenu<C>
+impl<C> skene_foundation::spine::wraps::Wraps for skene_simple_terminal::SimpleContextMenu<C>
+pub type skene_simple_terminal::SimpleContextMenu<C>::Inner = skene_simple::context_menu::SimpleContextMenu<skene_terminal::platform::Terminal, C>
+pub fn skene_simple_terminal::SimpleContextMenu<C>::inner(&self) -> &Self::Inner
+pub fn skene_simple_terminal::SimpleContextMenu<C>::inner_mut(&mut self) -> &mut Self::Inner
+pub fn skene_simple_terminal::SimpleContextMenu<C>::into_inner(self) -> Self::Inner
+pub fn skene_simple_terminal::SimpleContextMenu<C>::wrap(Self::Inner) -> Self
+pub struct skene_simple_terminal::SimplePicker(_)
+impl core::default::Default for skene_simple_terminal::SimplePicker
+pub fn skene_simple_terminal::SimplePicker::default() -> skene_simple_terminal::SimplePicker
+impl core::fmt::Debug for skene_simple_terminal::SimplePicker
+pub fn skene_simple_terminal::SimplePicker::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl skene_foundation::spine::view::AnyKind for skene_simple_terminal::SimplePicker
+impl skene_foundation::spine::wraps::Wraps for skene_simple_terminal::SimplePicker
+pub type skene_simple_terminal::SimplePicker::Inner = skene_simple::picker::SimplePicker<skene_terminal::platform::Terminal>
+pub fn skene_simple_terminal::SimplePicker::inner(&self) -> &Self::Inner
+pub fn skene_simple_terminal::SimplePicker::inner_mut(&mut self) -> &mut Self::Inner
+pub fn skene_simple_terminal::SimplePicker::into_inner(self) -> Self::Inner
+pub fn skene_simple_terminal::SimplePicker::wrap(Self::Inner) -> Self
+impl skene_simple::picker::SimplePickerBase<skene_terminal::platform::Terminal> for skene_simple_terminal::SimplePicker
+impl<__P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::View<__P> for skene_simple_terminal::SimplePicker where skene_simple::picker::SimplePicker<skene_terminal::ActivePlatform>: skene_foundation::spine::view::View<__P>, Self: 'static
+pub fn skene_simple_terminal::SimplePicker::build(self) -> skene_foundation::spine::node::NodeId
+pub struct skene_simple_terminal::SimpleRadio(_)
+impl core::fmt::Debug for skene_simple_terminal::SimpleRadio
+pub fn skene_simple_terminal::SimpleRadio::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl skene_foundation::spine::view::AnyKind for skene_simple_terminal::SimpleRadio
+impl skene_foundation::spine::wraps::Wraps for skene_simple_terminal::SimpleRadio
+pub type skene_simple_terminal::SimpleRadio::Inner = skene_simple::radio::SimpleRadio<skene_terminal::platform::Terminal>
+pub fn skene_simple_terminal::SimpleRadio::inner(&self) -> &Self::Inner
+pub fn skene_simple_terminal::SimpleRadio::inner_mut(&mut self) -> &mut Self::Inner
+pub fn skene_simple_terminal::SimpleRadio::into_inner(self) -> Self::Inner
+pub fn skene_simple_terminal::SimpleRadio::wrap(Self::Inner) -> Self
+impl skene_simple::radio::SimpleRadioBase<skene_terminal::platform::Terminal> for skene_simple_terminal::SimpleRadio
+impl<__P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::View<__P> for skene_simple_terminal::SimpleRadio where skene_simple::radio::SimpleRadio<skene_terminal::ActivePlatform>: skene_foundation::spine::view::View<__P>, Self: 'static
+pub fn skene_simple_terminal::SimpleRadio::build(self) -> skene_foundation::spine::node::NodeId
+pub struct skene_simple_terminal::SimpleRadioGroup<C>(_)
+impl skene_simple_terminal::SimpleRadioGroup
+pub fn skene_simple_terminal::SimpleRadioGroup::set_child(self, impl skene_foundation::spine::view::View<skene_terminal::ActivePlatform>) -> skene_simple_terminal::SimpleRadioGroup<skene_foundation::spine::view::AnyView<skene_terminal::ActivePlatform>>
+impl core::default::Default for skene_simple_terminal::SimpleRadioGroup
+pub fn skene_simple_terminal::SimpleRadioGroup::default() -> Self
+impl skene_simple::radio::SimpleRadioGroupBase<skene_terminal::platform::Terminal> for skene_simple_terminal::SimpleRadioGroup
+impl<C, __P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::View<__P> for skene_simple_terminal::SimpleRadioGroup<C> where skene_simple::radio::SimpleRadioGroup<skene_terminal::ActivePlatform, C>: skene_foundation::spine::view::View<__P>, Self: 'static
+pub fn skene_simple_terminal::SimpleRadioGroup<C>::build(self) -> skene_foundation::spine::node::NodeId
+impl<C: core::fmt::Debug> core::fmt::Debug for skene_simple_terminal::SimpleRadioGroup<C>
+pub fn skene_simple_terminal::SimpleRadioGroup<C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<C> skene_foundation::spine::view::AnyKind for skene_simple_terminal::SimpleRadioGroup<C>
+impl<C> skene_foundation::spine::wraps::Wraps for skene_simple_terminal::SimpleRadioGroup<C>
+pub type skene_simple_terminal::SimpleRadioGroup<C>::Inner = skene_simple::radio::SimpleRadioGroup<skene_terminal::platform::Terminal, C>
+pub fn skene_simple_terminal::SimpleRadioGroup<C>::inner(&self) -> &Self::Inner
+pub fn skene_simple_terminal::SimpleRadioGroup<C>::inner_mut(&mut self) -> &mut Self::Inner
+pub fn skene_simple_terminal::SimpleRadioGroup<C>::into_inner(self) -> Self::Inner
+pub fn skene_simple_terminal::SimpleRadioGroup<C>::wrap(Self::Inner) -> Self
+pub struct skene_simple_terminal::SimpleSlider(_)
+impl core::default::Default for skene_simple_terminal::SimpleSlider
+pub fn skene_simple_terminal::SimpleSlider::default() -> skene_simple_terminal::SimpleSlider
+impl core::fmt::Debug for skene_simple_terminal::SimpleSlider
+pub fn skene_simple_terminal::SimpleSlider::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl skene_foundation::spine::view::AnyKind for skene_simple_terminal::SimpleSlider
+impl skene_foundation::spine::wraps::Wraps for skene_simple_terminal::SimpleSlider
+pub type skene_simple_terminal::SimpleSlider::Inner = skene_simple::slider::SimpleSlider<skene_terminal::platform::Terminal>
+pub fn skene_simple_terminal::SimpleSlider::inner(&self) -> &Self::Inner
+pub fn skene_simple_terminal::SimpleSlider::inner_mut(&mut self) -> &mut Self::Inner
+pub fn skene_simple_terminal::SimpleSlider::into_inner(self) -> Self::Inner
+pub fn skene_simple_terminal::SimpleSlider::wrap(Self::Inner) -> Self
+impl skene_simple::slider::SimpleSliderBase<skene_terminal::platform::Terminal> for skene_simple_terminal::SimpleSlider
+impl<__P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::View<__P> for skene_simple_terminal::SimpleSlider where skene_simple::slider::SimpleSlider<skene_terminal::ActivePlatform>: skene_foundation::spine::view::View<__P>, Self: 'static
+pub fn skene_simple_terminal::SimpleSlider::build(self) -> skene_foundation::spine::node::NodeId
+pub struct skene_simple_terminal::SimpleTextEditor(_)
+impl core::default::Default for skene_simple_terminal::SimpleTextEditor
+pub fn skene_simple_terminal::SimpleTextEditor::default() -> skene_simple_terminal::SimpleTextEditor
+impl core::fmt::Debug for skene_simple_terminal::SimpleTextEditor
+pub fn skene_simple_terminal::SimpleTextEditor::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl skene_foundation::spine::view::AnyKind for skene_simple_terminal::SimpleTextEditor
+impl skene_foundation::spine::wraps::Wraps for skene_simple_terminal::SimpleTextEditor
+pub type skene_simple_terminal::SimpleTextEditor::Inner = skene_simple::text_editor::SimpleTextEditor<skene_terminal::platform::Terminal>
+pub fn skene_simple_terminal::SimpleTextEditor::inner(&self) -> &Self::Inner
+pub fn skene_simple_terminal::SimpleTextEditor::inner_mut(&mut self) -> &mut Self::Inner
+pub fn skene_simple_terminal::SimpleTextEditor::into_inner(self) -> Self::Inner
+pub fn skene_simple_terminal::SimpleTextEditor::wrap(Self::Inner) -> Self
+impl skene_simple::text_editor::SimpleTextEditorBase<skene_terminal::platform::Terminal> for skene_simple_terminal::SimpleTextEditor
+impl<__P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::View<__P> for skene_simple_terminal::SimpleTextEditor where skene_simple::text_editor::SimpleTextEditor<skene_terminal::ActivePlatform>: skene_foundation::spine::view::View<__P>, Self: 'static
+pub fn skene_simple_terminal::SimpleTextEditor::build(self) -> skene_foundation::spine::node::NodeId
+pub struct skene_simple_terminal::SimpleTextField(_)
+impl core::default::Default for skene_simple_terminal::SimpleTextField
+pub fn skene_simple_terminal::SimpleTextField::default() -> skene_simple_terminal::SimpleTextField
+impl core::fmt::Debug for skene_simple_terminal::SimpleTextField
+pub fn skene_simple_terminal::SimpleTextField::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl skene_foundation::spine::view::AnyKind for skene_simple_terminal::SimpleTextField
+impl skene_foundation::spine::wraps::Wraps for skene_simple_terminal::SimpleTextField
+pub type skene_simple_terminal::SimpleTextField::Inner = skene_simple::text_field::SimpleTextField<skene_terminal::platform::Terminal>
+pub fn skene_simple_terminal::SimpleTextField::inner(&self) -> &Self::Inner
+pub fn skene_simple_terminal::SimpleTextField::inner_mut(&mut self) -> &mut Self::Inner
+pub fn skene_simple_terminal::SimpleTextField::into_inner(self) -> Self::Inner
+pub fn skene_simple_terminal::SimpleTextField::wrap(Self::Inner) -> Self
+impl skene_simple::text_field::SimpleTextFieldBase<skene_terminal::platform::Terminal> for skene_simple_terminal::SimpleTextField
+impl<__P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::View<__P> for skene_simple_terminal::SimpleTextField where skene_simple::text_field::SimpleTextField<skene_terminal::ActivePlatform>: skene_foundation::spine::view::View<__P>, Self: 'static
+pub fn skene_simple_terminal::SimpleTextField::build(self) -> skene_foundation::spine::node::NodeId
+pub struct skene_simple_terminal::SimpleTooltip<C>(_)
+impl skene_simple_terminal::SimpleTooltip
+pub fn skene_simple_terminal::SimpleTooltip::set_child(self, impl skene_foundation::spine::view::View<skene_terminal::ActivePlatform>) -> skene_simple_terminal::SimpleTooltip<skene_foundation::spine::view::AnyView<skene_terminal::ActivePlatform>>
+impl skene_simple::tooltip::SimpleTooltipBase<skene_terminal::platform::Terminal> for skene_simple_terminal::SimpleTooltip
+impl<C, __P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::View<__P> for skene_simple_terminal::SimpleTooltip<C> where skene_simple::tooltip::SimpleTooltip<skene_terminal::ActivePlatform, C>: skene_foundation::spine::view::View<__P>, Self: 'static
+pub fn skene_simple_terminal::SimpleTooltip<C>::build(self) -> skene_foundation::spine::node::NodeId
+impl<C: core::fmt::Debug> core::fmt::Debug for skene_simple_terminal::SimpleTooltip<C>
+pub fn skene_simple_terminal::SimpleTooltip<C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<C> skene_foundation::spine::view::AnyKind for skene_simple_terminal::SimpleTooltip<C>
+impl<C> skene_foundation::spine::wraps::Wraps for skene_simple_terminal::SimpleTooltip<C>
+pub type skene_simple_terminal::SimpleTooltip<C>::Inner = skene_simple::tooltip::SimpleTooltip<skene_terminal::platform::Terminal, C>
+pub fn skene_simple_terminal::SimpleTooltip<C>::inner(&self) -> &Self::Inner
+pub fn skene_simple_terminal::SimpleTooltip<C>::inner_mut(&mut self) -> &mut Self::Inner
+pub fn skene_simple_terminal::SimpleTooltip<C>::into_inner(self) -> Self::Inner
+pub fn skene_simple_terminal::SimpleTooltip<C>::wrap(Self::Inner) -> Self
+pub type skene_simple_terminal::SimpleLook = skene_simple::palette::SimpleLook<u32>
+pub type skene_simple_terminal::SimplePalette = skene_simple::palette::SimplePalette<u32>

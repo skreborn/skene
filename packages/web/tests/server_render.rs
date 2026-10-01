@@ -26,7 +26,7 @@ use skene_foundation::{
   ThemeBase,
   TooltipBase,
 };
-use skene_simple::web::prelude::*;
+use skene_simple_web::prelude::*;
 use skene_web::{
   Activate,
   AsyncView,

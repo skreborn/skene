@@ -9,7 +9,7 @@
 
 use std::time::Duration;
 
-use skene_simple::web::prelude::*;
+use skene_simple_web::prelude::*;
 use skene_web::{ActivePlatform, HasChild, Platform, kurbo::Rect, prelude::*};
 
 #[main]

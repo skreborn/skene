@@ -56,7 +56,7 @@ use skene_foundation::{
   WheelEvent,
   WheelUnit,
 };
-use skene_simple::web::prelude::*;
+use skene_simple_web::prelude::*;
 use skene_web::{
   Activate,
   AnyView,

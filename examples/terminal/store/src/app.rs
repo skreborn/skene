@@ -5,7 +5,7 @@
 //! the count beneath the list, and nothing else runs. The list follows the shape of
 //! the `Vec` alone, keyed by the id each todo carries.
 
-use skene_simple::terminal::prelude::*;
+use skene_simple_terminal::prelude::*;
 use skene_terminal::prelude::*;
 
 #[derive(Store, Clone, Default, Snapshot)]

@@ -6,7 +6,7 @@ rust-version.workspace = true
 publish = false
 
 [dependencies]
-skene-simple.workspace = true
+skene-simple-terminal.workspace = true
 skene-terminal.workspace = true
 
 [lints]

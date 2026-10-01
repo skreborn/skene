@@ -25,11 +25,11 @@ dev-loop restart resumes where the last run stood; a keyed list item or a view g
 ## A web app
 
 A web app depends on `skene-web` and, for the ready-made components, on
-`skene-simple`; it marks its entry with `#[main]` and names no platform
+`skene-simple-web`; it marks its entry with `#[main]` and names no platform
 (`examples/web/counter`):
 
 ```rust
-use skene_simple::web::prelude::*;
+use skene_simple_web::prelude::*;
 use skene_web::prelude::*;
 
 #[main]
@@ -64,11 +64,11 @@ host it builds the tree against the headless platform, which is what view tests 
 
 ## A terminal app
 
-A terminal app depends on `skene-terminal` (and `skene-simple` for the components) and
+A terminal app depends on `skene-terminal` (and `skene-simple-terminal` for the components) and
 calls `launch` (`examples/terminal/counter`):
 
 ```rust
-use skene_simple::terminal::prelude::*;
+use skene_simple_terminal::prelude::*;
 use skene_terminal::prelude::*;
 
 fn app() -> impl View {
@@ -118,9 +118,12 @@ skene-foundation      the spine (the scene, the Platform trait, dispatch, the pr
       ├── skene-terminal   the terminal facade and its platform
       └── skene-web        the web facade and its platform, the browser and server
                            leaves, over the headless platform off its target
-skene-simple          the Simple component library over skene-foundation, generic; its
-                      terminal and web modules alias it to each facade with a prelude
-skene-macros          #[main], #[lazy], #[derive(Store)], #[derive(Snapshot)]
+skene-simple          the Simple component library's core over skene-foundation: its
+      │               palette, shapes and marks, and its views, generic and hidden
+      ├── skene-simple-terminal   the Simple views on the terminal, with a prelude
+      └── skene-simple-web        the Simple views on the web, with a prelude
+skene-macros          #[main], #[lazy], #[derive(Store)], #[derive(Snapshot)],
+                      #[derive(View)], #[derive(Wraps)]
 skene-cli             the `skene` command
 ```
 
@@ -132,8 +135,10 @@ skene-cli             the `skene` command
 | `skene-web` | `packages/web` | The web facade and platform: `f32`, `ActivePlatform`, a type of its own for every view, `Typography`, `media`, `Resource` across the server boundary, `Deferred`, `AsyncView`, `Link`, `head`, `view_transitions`, `launch`/`render_to_string`/`render_main` and `#[main]`; and `platform`, the web `Platform`: a DOM sink in the browser, a string tree on the server, one compiler, the content-addressed interner, hydration, streaming, the server executor, client hints, the `WebMarkup` and `WebDom` escape traits. |
 | `skene-terminal` | `packages/terminal` | The terminal facade and platform: `u32` cells, `Terminal`, the same views, its own decoration on them, `Typography`, `BorderGlyphs`, `media`, `CellPainter`, `launch`, and `testing`: `render_to_text`, the `trigger_*` seams, `user` and the queries by role, name and text. |
 | `skene-conformance` | `packages/conformance` | One suite of behaviors every platform shows alike, run through the `Driver` a platform implements over its test seams. |
-| `skene-simple` | `packages/simple` | `SimplePalette` (a `TokenSet`), `SimpleLook`, `SimpleVariant`, `SimpleShape`, `SimpleGlyphs` (the terminal marks), and `SimpleButton`, `SimpleCard`, `SimpleCheckbox`, `SimpleRadio`, `SimplePicker`, `SimpleSlider`, `SimpleTextField`, `SimpleTextEditor`, `SimpleTooltip`, `SimpleContextMenu`, generic over the platform; `terminal` and `web` alias them to that facade's `ActivePlatform`, each with a `prelude` an app imports beside the facade's own. |
-| `skene-macros` | `packages/macros` | `#[main]`, `#[lazy]`, `#[derive(Store)]`, `#[derive(Snapshot)]`. |
+| `skene-simple` | `packages/simple` | The Simple core: `SimplePalette` (a `TokenSet`), `SimpleLook`, `SimpleVariant`, `SimpleShape`, `SimpleGlyphs` (the terminal marks), and the views, generic over the platform and hidden, their members in a `Simple*Base` trait each. |
+| `skene-simple-terminal` | `packages/simple-terminal` | The Simple views on the terminal: `SimpleButton`, `SimpleCard`, `SimpleCheckbox`, `SimpleRadio`, `SimplePicker`, `SimpleSlider`, `SimpleTextField`, `SimpleTextEditor`, `SimpleTooltip`, `SimpleContextMenu`, the palette in cells, and a `prelude` an app imports beside the facade's own. |
+| `skene-simple-web` | `packages/simple-web` | The Simple views on the web, as on the terminal, the palette in pixels. |
+| `skene-macros` | `packages/macros` | `#[main]`, `#[lazy]`, `#[derive(Store)]`, `#[derive(Snapshot)]`, and `#[derive(View)]` and `#[derive(Wraps)]` for a view over another. |
 | `skene-transport` | `packages/transport` | The clients on the public seams alone: `http` (`Request`, `Response`, `send`; `fetch` on the web, a thread around `ureq` on every other host) and `ws` (`connect`, `send`, `receive`; the browser's `WebSocket` on the web, a thread around `tungstenite` elsewhere). |
 | `skene-cli` | `packages/cli` | `skene build web [--static]`, `skene build terminal`, `skene run web [--ssr]`, `skene run terminal` and `skene attach <id>`: bundling, the dev server with live reload and state kept across it in the page's own storage, the terminal build loop and the launcher that swaps each binary in place with the state carried across, static generation, `skene.toml` assets. |
 

@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use skene_simple::web::prelude::*;
+use skene_simple_web::prelude::*;
 use skene_web::{ActivePlatform, HasChild, Link, Resource, prelude::*, router::Route};
 
 /// The gallery page: every built-in view and Simple component, under the palette the

@@ -14,6 +14,7 @@ use skene_foundation::{
   Platform,
   Tooltip,
   View,
+  Wraps,
 };
 
 use super::{
@@ -29,6 +30,7 @@ use super::{
 /// and [`view`](Self::view) any view; the described view comes last through
 /// [`set_child`](Self::set_child), so any view takes a tooltip by wrapping. For
 /// anything beyond that, compose [`Tooltip`] directly.
+#[doc(hidden)]
 #[derive(Debug)]
 #[must_use]
 pub struct SimpleTooltip<P: Platform, C = NoChild> {
@@ -113,4 +115,38 @@ where
     .set_text_color(SimplePalette::<P::Scalar>::BACKGROUND)
     .set_padding(shape::<P>().tooltip_inset)
     .set_corner_radius(shape::<P>().mark_radius)
+}
+
+/// What a platform's `SimpleTooltip` carries.
+pub trait SimpleTooltipBase<P: Platform>: Wraps<Inner = SimpleTooltip<P>> {
+  /// A tooltip showing `text`.
+  #[must_use]
+  fn new(text: impl Into<String>) -> Self {
+    Self::wrap(SimpleTooltip::new(text))
+  }
+
+  /// A tooltip whose text is recomputed whenever a signal `text` reads changes.
+  #[must_use]
+  fn derive(text: impl Fn() -> String + 'static) -> Self {
+    Self::wrap(SimpleTooltip::derive(text))
+  }
+
+  /// A tooltip showing `content`, a view of any kind.
+  #[must_use]
+  fn view(content: impl View<P>) -> Self {
+    Self::wrap(SimpleTooltip::view(content))
+  }
+
+  /// Sets where the bubble sits against the described view: above it for `Top`, below
+  /// it for `Bottom`.
+  #[must_use]
+  fn set_placement(self, placement: Placement) -> Self {
+    Self::wrap(self.into_inner().set_placement(placement))
+  }
+
+  /// Sets how long the pointer rests on the described view before the bubble opens.
+  #[must_use]
+  fn set_delay(self, delay: Duration) -> Self {
+    Self::wrap(self.into_inner().set_delay(delay))
+  }
 }

@@ -1,7 +1,7 @@
 //! The state snapshot in cells: scroll offsets and focus riding it into a fresh platform,
 //! and the dev loop's rebuild notice.
 
-use skene_simple::terminal::prelude::*;
+use skene_simple_terminal::prelude::*;
 use skene_terminal::{self as terminal, HasChild, prelude::*, testing};
 
 use crate::common::with_platform;

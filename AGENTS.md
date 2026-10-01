@@ -490,10 +490,11 @@
   platform implements (`acme-map`'s `MapHost`), so an app writes no `cfg` for it. Nothing on the path a
   built-in takes is crate-private; making something `pub(crate)` on that path is a
   regression. `skene-simple` is held to the same rule from the other side: a facade never
-  re-exports it, an app depends on it explicitly, and
-  its `terminal` and `web` modules are only a `prelude` of aliases over that facade's
-  `ActivePlatform`, which is exactly what a third-party library may ship beside its generic
-  crate. `examples/third-party` is the standing proof and part of the gate.
+  re-exports it, an app depends on its platform's crate explicitly (`skene-simple-web`,
+  `skene-simple-terminal`), and each is only a newtype per view over the core's hidden
+  generic one, its members from the core's `Simple*Base` traits, and a `prelude`, which is
+  exactly what a third-party library may ship beside its core. `examples/third-party` is
+  the standing proof and part of the gate.
 - **Motion is declared once and runs everywhere.** `Transition` and keyframe `Animation`
   are data. The web compiles them to CSS; native and the terminal run them on the
   platform's frame clock from the resolution point that reports a changed value, never

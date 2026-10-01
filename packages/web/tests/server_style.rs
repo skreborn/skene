@@ -41,7 +41,7 @@ use skene_foundation::{
   Transition,
   Wrap,
 };
-use skene_simple::web::prelude::*;
+use skene_simple_web::prelude::*;
 use skene_web::{
   Column,
   Condition,

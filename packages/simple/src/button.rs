@@ -25,6 +25,7 @@ use skene_foundation::{
   TokenRef,
   Transition,
   View,
+  Wraps,
   realize::Source,
   typography,
 };
@@ -65,6 +66,7 @@ enum Content<P: Platform> {
 /// palette's disabled surface and ink whatever its variant, and the default cursor.
 /// [`set_child`](Self::set_child) draws a view in the label's place, inked in the look's ink. For
 /// anything beyond that, compose [`BasicButton`] directly.
+#[doc(hidden)]
 #[must_use]
 pub struct SimpleButton<P: Platform> {
   raw: BasicButton<P>,
@@ -276,4 +278,69 @@ fn look_definitions<P: Platform>(look: &SimpleLook<P::Scalar>) -> Definitions<P:
     alias(FOCUS, look.focus.reference()),
     alias(typography::INK, INK),
   ])
+}
+
+/// What a platform's `SimpleButton` carries.
+pub trait SimpleButtonBase<P: Platform>: Wraps<Inner = SimpleButton<P>> {
+  /// A button carrying `label`.
+  #[must_use]
+  fn new(label: impl Into<String>) -> Self {
+    Self::wrap(SimpleButton::new(label))
+  }
+
+  /// A button whose label is recomputed whenever a signal `label` reads changes.
+  #[must_use]
+  fn derive(label: impl Fn() -> String + 'static) -> Self {
+    Self::wrap(SimpleButton::derive(label))
+  }
+
+  /// Sets the emphasis variant.
+  #[must_use]
+  fn set_variant(self, variant: SimpleVariant) -> Self {
+    Self::wrap(self.into_inner().set_variant(variant))
+  }
+
+  /// Derives the emphasis variant from the signals `variant` reads.
+  #[must_use]
+  fn derive_variant(self, variant: impl Fn() -> SimpleVariant + 'static) -> Self {
+    Self::wrap(self.into_inner().derive_variant(variant))
+  }
+
+  /// Sets whether the button is present but not operable.
+  #[must_use]
+  fn set_disabled(self, disabled: bool) -> Self {
+    Self::wrap(self.into_inner().set_disabled(disabled))
+  }
+
+  /// Derives whether the button is disabled from the signals `disabled` reads.
+  #[must_use]
+  fn derive_disabled(self, disabled: impl Fn() -> bool + 'static) -> Self {
+    Self::wrap(self.into_inner().derive_disabled(disabled))
+  }
+
+  /// Sets the name the button reports to assistive technology, over its label's: for a
+  /// button [`set_child`](Self::set_child) draws with an icon alone.
+  #[must_use]
+  fn set_accessible_name(self, name: impl Into<String>) -> Self {
+    Self::wrap(self.into_inner().set_accessible_name(name))
+  }
+
+  /// Derives the name the button reports to assistive technology from the signals
+  /// `name` reads.
+  #[must_use]
+  fn derive_accessible_name(self, name: impl Fn() -> String + 'static) -> Self {
+    Self::wrap(self.into_inner().derive_accessible_name(name))
+  }
+
+  /// Runs `action` on activation by pointer, `Enter` or `Space`.
+  #[must_use]
+  fn handle_click(self, action: impl Fn() + 'static) -> Self {
+    Self::wrap(self.into_inner().handle_click(action))
+  }
+
+  /// Sets a view drawn in the label's place; the button then has no text of its own.
+  #[must_use]
+  fn set_child(self, child: impl View<P>) -> Self {
+    Self::wrap(self.into_inner().set_child(child))
+  }
 }

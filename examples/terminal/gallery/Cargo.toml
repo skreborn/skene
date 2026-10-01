@@ -8,7 +8,7 @@ publish = false
 [dependencies]
 acme-sparkline = { path = "../../third-party/acme-sparkline" }
 acme-ui = { path = "../../third-party/acme-ui" }
-skene-simple.workspace = true
+skene-simple-terminal.workspace = true
 skene-terminal.workspace = true
 
 [dev-dependencies]

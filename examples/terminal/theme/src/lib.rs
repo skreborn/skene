@@ -9,7 +9,7 @@
 
 #![cfg(not(target_arch = "wasm32"))]
 
-use skene_simple::terminal::prelude::*;
+use skene_simple_terminal::prelude::*;
 use skene_terminal::prelude::*;
 
 /// A definition taking `dark`'s value under the dark scheme and `light`'s otherwise.

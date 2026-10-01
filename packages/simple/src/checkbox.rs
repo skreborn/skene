@@ -25,6 +25,7 @@ use skene_foundation::{
   View,
   Visibility,
   When,
+  Wraps,
 };
 use skene_reactive::{Get, Memo, Signal, use_context};
 
@@ -40,6 +41,7 @@ use super::{
 /// The mark is the control's [`Part::Mark`], so it follows the control's state on
 /// every facade. The checked state flows both ways; for a checkbox drawn some other
 /// way, compose [`BasicCheckbox`] directly.
+#[doc(hidden)]
 #[derive(Debug)]
 #[must_use]
 pub struct SimpleCheckbox<P: Platform> {
@@ -175,4 +177,43 @@ where
         .set_visibility(Visibility::Hidden.when(State::Checked, Visibility::Visible))
         .set_child(Text::new("✓").set_color(SimplePalette::<P::Scalar>::PRIMARY_INK)),
     )
+}
+
+/// What a platform's `SimpleCheckbox` carries.
+pub trait SimpleCheckboxBase<P: Platform>: Wraps<Inner = SimpleCheckbox<P>> {
+  /// An unchecked checkbox.
+  #[must_use]
+  fn new() -> Self {
+    Self::wrap(SimpleCheckbox::new())
+  }
+
+  /// Sets the caption beside the mark, which is also the accessible name.
+  #[must_use]
+  fn set_label(self, label: impl Into<String>) -> Self {
+    Self::wrap(self.into_inner().set_label(label))
+  }
+
+  /// Sets the checked state.
+  #[must_use]
+  fn set_checked(self, checked: bool) -> Self {
+    Self::wrap(self.into_inner().set_checked(checked))
+  }
+
+  /// Derives the checked state from the signals `checked` reads.
+  #[must_use]
+  fn derive_checked(self, checked: impl Fn() -> bool + 'static) -> Self {
+    Self::wrap(self.into_inner().derive_checked(checked))
+  }
+
+  /// Runs `action` with the state a flip asks for.
+  #[must_use]
+  fn handle_toggle(self, action: impl Fn(bool) + 'static) -> Self {
+    Self::wrap(self.into_inner().handle_toggle(action))
+  }
+
+  /// Binds the checked state to `signal` in both directions.
+  #[must_use]
+  fn bind_checked(self, signal: Signal<bool>) -> Self {
+    Self::wrap(self.into_inner().bind_checked(signal))
+  }
 }

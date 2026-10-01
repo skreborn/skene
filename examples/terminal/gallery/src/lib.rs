@@ -4,7 +4,7 @@
 
 use std::fmt;
 
-use skene_simple::terminal::prelude::*;
+use skene_simple_terminal::prelude::*;
 use skene_terminal::{ActivePlatform, HasChild, Resource, prelude::*};
 
 /// The whole gallery: a scrollable column of titled sections, dressed by one theme

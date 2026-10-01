@@ -8,7 +8,7 @@
 //! reorder moves them—keyed by the id each todo carries, so state under a row keeps
 //! its identity wherever the row sits.
 
-use skene_simple::web::prelude::*;
+use skene_simple_web::prelude::*;
 use skene_web::prelude::*;
 
 #[derive(Store, Clone, Default, Snapshot)]

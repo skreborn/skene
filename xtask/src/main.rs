@@ -632,6 +632,18 @@ fn clippy_wasm(gate: &Gate, log: &mut Log) -> Outcome {
     "--",
     "-D",
     "warnings",
+  ]))?;
+  log.check(gate.cargo([
+    "clippy",
+    "-p",
+    "skene-web",
+    "--lib",
+    "--locked",
+    "--target",
+    WASM,
+    "--",
+    "-D",
+    "warnings",
   ]))
 }
 

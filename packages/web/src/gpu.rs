@@ -8,6 +8,18 @@ use vello_hybrid::{RenderSize, RenderTargetConfig, Resources, Scene, TextureBind
 use wasm_bindgen::JsValue;
 use web_sys::HtmlCanvasElement;
 
+/// A canvas's state on the GPU path: the target painted into once made, whether it waits
+/// on the answer to the ask for a GPU, and whether it fell back to the CPU.
+#[derive(Default)]
+pub(crate) struct CanvasGpu {
+  /// The GPU target painted into, once made.
+  pub(crate) target: Option<Target>,
+  /// Whether it waits on the answer to the ask for a GPU.
+  pub(crate) awaiting: bool,
+  /// Whether it paints on the CPU alone, its GPU path having failed.
+  pub(crate) on_cpu: bool,
+}
+
 /// Whether the browser renders painted content on its GPU.
 pub(crate) enum Availability {
   /// Asked, not yet answered; nothing paints until it is.

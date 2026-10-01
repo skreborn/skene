@@ -33,7 +33,7 @@ mod declarations;
 #[cfg(not(skene_web_platform = "browser"))]
 mod document;
 mod expr;
-#[cfg(skene_web_platform = "browser")]
+#[cfg(all(skene_web_platform = "browser", feature = "gpu"))]
 mod gpu;
 mod hints;
 #[cfg_attr(

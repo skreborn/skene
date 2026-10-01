@@ -27,7 +27,7 @@ struct Run {
 const RUNS: &[Run] = &[
   Run {
     package: "skene-web",
-    arguments: &[],
+    arguments: &["--features", "gpu"],
     binaries: &[
       ("browser_dom", 77),
       ("browser_gpu_loss", 1),

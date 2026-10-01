@@ -231,8 +231,9 @@ and states what it needs from a medium as a bound on the platform's associated t
 each platform's crate declares a newtype per view over the core's. A low-level view is written
 against a platform's escape trait (`WebDom`, `WebMarkup`, `CellPainter`) and realized
 through the same scene as a built-in; `Painted` is the portable one for pixels, a
-vello scene the platform renders, the terminal through the kitty graphics protocol
-where it proves one. `examples/third-party` shows both escape paths: `acme-map` (a canvas
+vello scene the platform renders, the web on the CPU or, with `skene-web`'s `gpu`
+feature, on the GPU where the page has WebGPU, and the terminal through the kitty
+graphics protocol where it proves one. `examples/third-party` shows both escape paths: `acme-map` (a canvas
 on the browser leaf, a placeholder before it and on the server, an image box on headless)
 and `acme-sparkline` (bars painted into the terminal's cells, and as pixels over them
 where the terminal proves its graphics), each used by its platform's gallery and tested

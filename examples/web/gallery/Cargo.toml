@@ -11,7 +11,7 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 acme-map = { path = "../../third-party/acme-map" }
 skene-simple-web.workspace = true
-skene-web.workspace = true
+skene-web = { features = ["gpu"], workspace = true }
 
 [target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dev-dependencies]
 js-sys = "0.3"

@@ -73,15 +73,17 @@
   natively, set by the CLI for a server build through the host target's rustflags, so
   it never reaches a build script or a proc macro, and through `RUSTFLAGS` or
   `.cargo/config.toml` by hand. A cfg is a build fact like the triple, chosen once,
-  unifying nothing, and never a cargo feature. No feature flags. Target-gating is the
+  unifying nothing, and never a cargo feature. Target-gating is the
   enforcement layer: the browser leaf compiles on `wasm32-unknown-unknown` alone and
   the server leaf where the build names it (`skene_web_platform`, one axis `skene-web`
   and a library with code per leaf derive from the triple and the cfg through the
   `skene-build` build-dependency; `browser`, `server` or `headless`, a build it has no
-  leaf for failing), so the server leaf physically cannot touch the DOM. A
-  cargo feature may only **add items**: never a trait bound, a type, a variant or a
-  platform. No cargo feature exists in the workspace, and the gate's manifest check
-  rejects a `[features]` table or an optional dependency so none creeps back in.
+  leaf for failing), so the server leaf physically cannot touch the DOM. A cargo
+  feature is an **opt-in upgrade** and nothing more: it enables optional dependencies
+  and the code reaching them, never a trait bound, a type, a variant, a platform or an
+  item an app names, so the build without it is complete and merely slower or larger
+  (`skene-web`'s `gpu`, painting on the GPU where the page has WebGPU). None is on by
+  default, and the gate's manifest check holds a feature to `dep:` crates alone.
 - The **style model is data**: `BoxStyle<N, S, X>` and `RunStyle<S, X>` name every
   shared property once (typed properties, conditions riding the value, transitions,
   keyframes), and the medium's own properties come through its extension `X`. Layout
@@ -269,7 +271,8 @@
   `<canvas>` placed over the box and out of its flow, sized in the device pixels the
   engine reports (the content box times the pixel ratio where it reports none),
   repainting when either changes: through vello's hybrid renderer over wgpu where the
-  page has WebGPU—one device shared by every painted box, a surface per canvas—and
+  app enables `skene-web`'s `gpu` feature and the page has WebGPU—one device shared by
+  every painted box, a surface per canvas—and
   through vello's CPU renderer otherwise. The choice is made once per page when the
   first box paints, and a box paints nothing until it is made; a lost device is asked
   for afresh, and a canvas whose GPU path fails paints on the CPU in a fresh canvas
@@ -639,7 +642,7 @@
 - **`cargo xtask gate` is the gate**: every check a change passes, in one command, and a
   change lands only when it reports `gate passed`. It checks formatting, every
   manifest's dependency order, its inheriting the workspace's lints and `rust-version`
-  and its declaring no cargo feature, the house rules no compiler checks (em-dashes unspaced, children last,
+  and its features enabling optional dependencies alone, the house rules no compiler checks (em-dashes unspaced, children last,
   no public name in another framework's vocabulary, fields and variants documented all
   or none, a test double's simulated events named `trigger_`), unused dependencies,
   clippy and rustdoc with warnings denied on all three leaves, clippy on the host in

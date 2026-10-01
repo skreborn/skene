@@ -24,13 +24,14 @@ use web_sys::{
 };
 
 use super::{Dom, Web, events, events::Listener, media, try_with_dom, with_dom};
+#[cfg(feature = "gpu")]
 use crate::gpu;
 
 /// How a canvas is placed: over its whole box, out of the box's flow.
 const CANVAS_STYLE: &str = "position:absolute;inset:0;width:100%;height:100%;display:block";
 
-/// A painted box's canvas: the painter, the element and its last measured size, the GPU
-/// target, and which path paints it.
+/// A painted box's canvas: the painter, the element and its last measured size, and its
+/// state on the GPU path where the build paints on the GPU.
 pub(super) struct PaintedCanvas {
   /// The painter the box draws with.
   painter: Rc<Painter>,
@@ -38,12 +39,9 @@ pub(super) struct PaintedCanvas {
   pub(super) element: HtmlCanvasElement,
   /// The size last measured; `None` before the first measure.
   size: Option<CanvasSize>,
-  /// The GPU target painted into, once made.
-  gpu: Option<gpu::Target>,
-  /// Whether it waits on the answer to the ask for a GPU.
-  awaiting_gpu: bool,
-  /// Whether it paints on the CPU alone, its GPU path having failed.
-  on_cpu: bool,
+  /// Its state on the GPU path.
+  #[cfg(feature = "gpu")]
+  gpu: gpu::CanvasGpu,
 }
 
 /// A canvas's size: in CSS pixels, which its painter draws in, and in device pixels.
@@ -282,9 +280,8 @@ impl Dom {
       painter,
       element,
       size: Some(CanvasSize::at_ratio(css)),
-      gpu: None,
-      awaiting_gpu: false,
-      on_cpu: false,
+      #[cfg(feature = "gpu")]
+      gpu: gpu::CanvasGpu::default(),
     }));
   }
 
@@ -304,7 +301,10 @@ impl Dom {
     };
     let old = std::mem::replace(&mut canvas.element, fresh.clone());
 
-    canvas.gpu = None;
+    #[cfg(feature = "gpu")]
+    {
+      canvas.gpu.target = None;
+    }
 
     let _ = old.replace_with_with_node_1(&fresh);
 
@@ -325,13 +325,13 @@ impl Painting for Web {
   }
 }
 
-/// Runs the painter of `sink` at its canvas's size: on the GPU where the page has one
-/// and the canvas has not fallen back, else on the CPU.
+/// Runs the painter of `sink` at its canvas's size: on the GPU where the build paints
+/// on one, the page has one and the canvas has not fallen back, else on the CPU.
 fn repaint(sink: NodeId) {
-  let Some((painter, size, on_cpu)) = try_with_dom(|dom| {
+  let Some((painter, size)) = try_with_dom(|dom| {
     let canvas = dom.canvas_mut(sink)?;
 
-    Some((Rc::clone(&canvas.painter), canvas.size?, canvas.on_cpu))
+    Some((Rc::clone(&canvas.painter), canvas.size?))
   })
   .flatten()
   else {
@@ -351,45 +351,61 @@ fn repaint(sink: NodeId) {
   ));
   painter(&mut surface, size.css);
 
-  if !on_cpu {
-    match gpu::renderer(repaint_awaiting, lost) {
-      gpu::Availability::Pending => {
-        with_dom(|dom| {
-          if let Some(canvas) = dom.canvas_mut(sink) {
-            canvas.awaiting_gpu = true;
-          }
-        });
-
-        return;
-      }
-      gpu::Availability::Ready(context) => {
-        let rendered = with_dom(|dom| {
-          let canvas = dom.canvas_mut(sink)?;
-
-          if canvas.gpu.is_none() {
-            canvas.gpu = Some(context.target(&canvas.element, width, height)?);
-          }
-
-          Some(context.render(canvas.gpu.as_mut()?, &surface))
-        });
-
-        if rendered == Some(true) {
-          return;
-        }
-
-        with_dom(|dom| {
-          if let Some(canvas) = dom.canvas_mut(sink) {
-            canvas.on_cpu = true;
-          }
-
-          dom.replace_canvas(sink);
-        });
-      }
-      gpu::Availability::Unavailable => {}
-    }
+  #[cfg(feature = "gpu")]
+  if paint_on_gpu(sink, &surface) {
+    return;
   }
 
   blit(sink, &surface);
+}
+
+/// Paints `surface` into the canvas of `sink` on the GPU where the page has one and the
+/// canvas has not fallen back: `true` once painted there or while the answer to the ask
+/// for a GPU is awaited, `false` where the CPU paints it.
+#[cfg(feature = "gpu")]
+fn paint_on_gpu(sink: NodeId, surface: &Canvas) -> bool {
+  if with_dom(|dom| dom.canvas_mut(sink).is_none_or(|canvas| canvas.gpu.on_cpu)) {
+    return false;
+  }
+
+  match gpu::renderer(repaint_awaiting, lost) {
+    gpu::Availability::Pending => {
+      with_dom(|dom| {
+        if let Some(canvas) = dom.canvas_mut(sink) {
+          canvas.gpu.awaiting = true;
+        }
+      });
+
+      true
+    }
+    gpu::Availability::Ready(context) => {
+      let (width, height) = surface.size();
+      let rendered = with_dom(|dom| {
+        let canvas = dom.canvas_mut(sink)?;
+
+        if canvas.gpu.target.is_none() {
+          canvas.gpu.target = Some(context.target(&canvas.element, width, height)?);
+        }
+
+        Some(context.render(canvas.gpu.target.as_mut()?, surface))
+      });
+
+      if rendered == Some(true) {
+        return true;
+      }
+
+      with_dom(|dom| {
+        if let Some(canvas) = dom.canvas_mut(sink) {
+          canvas.gpu.on_cpu = true;
+        }
+
+        dom.replace_canvas(sink);
+      });
+
+      false
+    }
+    gpu::Availability::Unavailable => false,
+  }
 }
 
 /// Copies `surface` into the canvas of `sink` through its 2D context, in a fresh canvas
@@ -427,8 +443,9 @@ fn blit(sink: NodeId, surface: &Canvas) {
 }
 
 /// Repaints every box that waited on the GPU's answer.
+#[cfg(feature = "gpu")]
 fn repaint_awaiting() {
-  let awaiting = painted_sinks(|canvas| std::mem::take(&mut canvas.awaiting_gpu));
+  let awaiting = painted_sinks(|canvas| std::mem::take(&mut canvas.gpu.awaiting));
 
   for sink in awaiting {
     repaint(sink);
@@ -437,9 +454,10 @@ fn repaint_awaiting() {
 
 /// Forgets every canvas's GPU target once the device is lost, and repaints every box
 /// through the renderer asked for afresh.
+#[cfg(feature = "gpu")]
 fn lost() {
   let painted = painted_sinks(|canvas| {
-    canvas.gpu = None;
+    canvas.gpu.target = None;
 
     true
   });

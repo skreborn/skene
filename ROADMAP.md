@@ -183,8 +183,6 @@ left half-done in a code comment.
     - A shell per platform: the facades' views and Simple's, newtypes implementing the
     traits of the core beneath them, stay on probation against writing each platform's
     views by hand.
-    - Edges: painting's GPU stack stops weighing on the build of an app that paints
-    nothing, `vello_hybrid` being over half of a clean gallery wasm build.
     - `#[main]` is the only entry point, emitting `fn main` per target with its native
     arms reserved, and the CLI picks the crate type per target through
     `cargo rustc --crate-type`, so apps stop declaring crate types and the `cdylib`

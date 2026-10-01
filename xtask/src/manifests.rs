@@ -11,8 +11,9 @@ use toml_edit::{DocumentMut, Item, TableLike};
 const DEPENDENCY_TABLES: [&str; 3] = ["dependencies", "dev-dependencies", "build-dependencies"];
 
 /// Checks every manifest in the workspace: each dependency table lists its crates in
-/// alphabetical order and makes none optional, no manifest declares a cargo feature, and
-/// each member inherits the workspace's lints and rust-version.
+/// alphabetical order, a cargo feature enables optional dependencies alone and none is
+/// on by default, a crate is optional only where a feature enables it, and each member
+/// inherits the workspace's lints and rust-version.
 pub(crate) fn check(root: &Path) -> Result<(), String> {
   let mut problems = Vec::new();
   let workspace = root.join("Cargo.toml");
@@ -35,17 +36,16 @@ pub(crate) fn check(root: &Path) -> Result<(), String> {
       }
     }
 
-    if manifest.get("features").is_some() {
-      problems.push(format!(
-        "{name}: declares cargo features (`[features]`), which the workspace has none of"
-      ));
-    }
+    let enabled = features(&manifest, &name.to_string(), &mut problems);
 
     for (table, entries) in dependency_tables(&manifest) {
       for (dependency, entry) in entries.iter() {
-        if entry.get("optional").and_then(Item::as_bool) == Some(true) {
+        if entry.get("optional").and_then(Item::as_bool) == Some(true)
+          && !enabled.iter().any(|crate_name| crate_name == dependency)
+        {
           problems.push(format!(
-            "{name}: [{table}] makes `{dependency}` optional, a cargo feature in all but name"
+            "{name}: [{table}] makes `{dependency}` optional with no feature enabling it \
+             (`dep:{dependency}`)"
           ));
         }
       }
@@ -70,6 +70,42 @@ pub(crate) fn check(root: &Path) -> Result<(), String> {
   else {
     Err(problems.join("\n"))
   }
+}
+
+/// The optional dependencies the features of `manifest` (named `name`) enable, a
+/// problem noted for a default feature and for a feature enabling anything else.
+fn features(manifest: &DocumentMut, name: &str, problems: &mut Vec<String>) -> Vec<String> {
+  let mut enabled = Vec::new();
+  let Some(features) = manifest.get("features").and_then(Item::as_table_like)
+  else {
+    return enabled;
+  };
+
+  for (feature, enables) in features.iter() {
+    if feature == "default" {
+      problems.push(format!(
+        "{name}: turns features on by default, so the build without them is not the default"
+      ));
+
+      continue;
+    }
+
+    let dependencies: Option<Vec<&str>> = enables.as_array().and_then(|array| {
+      array
+        .iter()
+        .map(|value| value.as_str().and_then(|value| value.strip_prefix("dep:")))
+        .collect()
+    });
+
+    match dependencies {
+      Some(dependencies) => enabled.extend(dependencies.into_iter().map(str::to_owned)),
+      None => problems.push(format!(
+        "{name}: feature `{feature}` enables more than optional dependencies (`dep:` crates)"
+      )),
+    }
+  }
+
+  enabled
 }
 
 /// Whether the key at `path` in `manifest` is `true`.

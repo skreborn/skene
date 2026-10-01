@@ -547,7 +547,10 @@
   semantically makes sense.
 - Apply `#[inline(always)]` wherever appropriate: the framework has a great many tiny functions
   that are best inlined across crate boundaries.
-- Document every public API; comment non-public code only when critical.
+- Document every public API; comment non-public code only when critical. An item
+  visible across modules (`pub(crate)`, `pub(super)`) is an interface between them and is
+  documented as a public one is; an item private to its module is commented only when
+  critical.
 - Give a purpose-built trait a `#[diagnostic::on_unimplemented]` message: these traits
   exist to express one rule, so a failed bound should state that rule rather than the
   mechanics. Where a blanket impl would be blamed instead, mark it
@@ -556,6 +559,8 @@
   `Self(value)`, `-> Self`). Its name may still appear for a *different* type, e.g. the source type
   in a `From` impl.
 - Comments state contracts only, never history, rationale, "why", or implementation.
+  Examples teach: the comments of an example under `examples/`, of a doc example and of
+  the guide may say why, as teaching code should.
 - A comment's first line is a short summary; add further lines only when needed to use the item.
 - Split a comment into paragraphs when it is long or covers distinct points.
 - Comment a struct's fields or an enum's variants all or none: never document some siblings and

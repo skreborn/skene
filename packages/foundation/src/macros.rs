@@ -28,7 +28,7 @@ macro_rules! properties {
       self
     }
 
-    #[doc = concat!("Derives ", $doc, " from the signals `", stringify!($param), "` reads: a value, a token or an expression.")]
+    #[doc = concat!("Derives ", $doc, " from the signals `", stringify!($param), "` reads: a value, or a token or an expression where the property takes one.")]
     pub fn $derive<R: Into<$crate::StaticLeaf<$type>>>(
       mut self,
       $param: impl Fn() -> R + 'static,
@@ -67,7 +67,7 @@ macro_rules! trait_properties {
       self
     }
 
-    #[doc = concat!("Derives ", $doc, " from the signals `", stringify!($param), "` reads: a value, a token or an expression.")]
+    #[doc = concat!("Derives ", $doc, " from the signals `", stringify!($param), "` reads: a value, or a token or an expression where the property takes one.")]
     #[must_use]
     fn $derive<R: Into<$crate::StaticLeaf<$type>>>(
       mut self,
@@ -106,7 +106,7 @@ macro_rules! alignment_properties {
       self
     }
 
-    #[doc = concat!("Derives ", $doc, " from the signals `alignment` reads: a value, a token or an expression.")]
+    #[doc = concat!("Derives ", $doc, " from the signals `alignment` reads.")]
     pub fn $derive<R: Into<$crate::StaticLeaf<$crate::Alignment>>>(
       self,
       alignment: impl Fn() -> R + 'static,

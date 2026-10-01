@@ -175,7 +175,7 @@ pub trait GridBase<P: Platform>: HasBoxStyle<P> + Sized {
   }
 
   /// Derives the alignment of each child within its cell from the signals `alignment`
-  /// reads: a value, a token or an expression.
+  /// reads.
   #[must_use]
   fn derive_item_alignment<R: Into<StaticLeaf<Alignment>>>(
     self,

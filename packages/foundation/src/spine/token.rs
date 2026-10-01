@@ -99,7 +99,7 @@ impl<T: Tokenable> TokenRef<T> {
   }
 
   /// This token, overridden while `condition` holds by a leaf derived from the
-  /// signals `compute` reads: a value, a token or an expression.
+  /// signals `compute` reads: a value, or a token or an expression where its type takes one.
   pub fn derive_when<C, R: Into<StaticLeaf<T>>>(
     self,
     condition: C,
@@ -211,7 +211,7 @@ impl<T: Tokenable, N: Scalar> Token<T, N> {
   }
 
   /// This token, overridden while `condition` holds by a leaf derived from the
-  /// signals `compute` reads: a value, a token or an expression.
+  /// signals `compute` reads: a value, or a token or an expression where its type takes one.
   pub fn derive_when<C, R: Into<StaticLeaf<T>>>(
     &self,
     condition: C,

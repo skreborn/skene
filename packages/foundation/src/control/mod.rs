@@ -1394,7 +1394,7 @@ pub trait ControlBase<P: Platform, B: Behavior<P>>: Wraps<Inner = Control<P, B>>
   }
 
   /// Derives where the control's parts, body and label sit on the cross axis from the
-  /// signals `alignment` reads: a value, a token or an expression.
+  /// signals `alignment` reads.
   #[must_use]
   fn derive_item_alignment<R: Into<StaticLeaf<ItemAlignment>>>(
     self,

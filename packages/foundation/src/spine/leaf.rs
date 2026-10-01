@@ -48,7 +48,8 @@ pub enum Leaf<T> {
 }
 
 impl<T> Leaf<T> {
-  /// A leaf recomputed by `compute`, which returns a value, a token or an expression.
+  /// A leaf recomputed by `compute`, which returns a value, or a token or an expression where its
+  /// type takes one.
   pub fn derive<R: Into<StaticLeaf<T>>>(compute: impl Fn() -> R + 'static) -> Self {
     Self::Derived(Rc::new(move || compute().into()))
   }
@@ -214,7 +215,7 @@ impl<L, C> Conditional<L, C> {
 
 impl<T, C> Value<T, C> {
   /// This value, overridden while `condition` holds by a leaf derived from the signals
-  /// `compute` reads: a value, a token or an expression.
+  /// `compute` reads: a value, or a token or an expression where its type takes one.
   pub fn derive_when<R: Into<StaticLeaf<T>>>(
     self,
     condition: C,
@@ -300,7 +301,7 @@ pub trait When<T>: Into<Leaf<T>> {
   }
 
   /// This value, overridden while `condition` holds by a leaf derived from the
-  /// signals `compute` reads: a value, a token or an expression.
+  /// signals `compute` reads: a value, or a token or an expression where its type takes one.
   fn derive_when<C, R: Into<StaticLeaf<T>>>(
     self,
     condition: C,

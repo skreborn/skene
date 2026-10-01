@@ -266,7 +266,7 @@ macro_rules! type_metric_pairs {
       self
     }
 
-    #[doc = concat!("Derives ", $doc, " from the signals `", stringify!($param), "` reads: a value, a token or an expression.")]
+    #[doc = concat!("Derives ", $doc, " from the signals `", stringify!($param), "` reads: a value, or a token or an expression where the property takes one.")]
     #[must_use]
     fn $derive<R: Into<StaticLeaf<$value>>>(mut self, $param: impl Fn() -> R + 'static) -> Self {
       <P::StyleExt as TypeMetrics>::$write::<Declared<Condition<P::Scalar>>>(

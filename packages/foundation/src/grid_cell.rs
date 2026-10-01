@@ -113,8 +113,7 @@ impl<P: Platform> GridCell<P> {
     self
   }
 
-  /// Derives the child's alignment within its cell from the signals `alignment` reads:
-  /// a value, a token or an expression.
+  /// Derives the child's alignment within its cell from the signals `alignment` reads.
   pub fn derive_alignment<R: Into<StaticLeaf<Alignment>>>(
     mut self,
     alignment: impl Fn() -> R + 'static,
@@ -204,7 +203,7 @@ pub trait GridCellBase<P: Platform>: Wraps<Inner = GridCell<P>> {
   }
 
   /// Derives the child's alignment within its cell from the signals `alignment`
-  /// reads: a value, a token or an expression.
+  /// reads.
   #[must_use]
   fn derive_alignment<R: Into<StaticLeaf<Alignment>>>(
     self,

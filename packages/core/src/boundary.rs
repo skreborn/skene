@@ -35,9 +35,10 @@ impl Boundary {
     self.pending.update(|pending| *pending += 1);
   }
 
-  /// Records a task inside the boundary finishing or being cancelled.
+  /// Records a task inside the boundary finishing or being cancelled; nothing once the
+  /// boundary is gone.
   pub fn leave(self) {
-    self.pending.update(|pending| *pending -= 1);
+    let _ = self.pending.try_update(|pending| *pending -= 1);
   }
 
   /// Whether all the boundary's work has settled. Tracks, so a reactive reader—a

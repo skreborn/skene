@@ -83,7 +83,7 @@ impl<P: Platform> Span<P> {
     }
   }
 
-  crate::run_setters! { run }
+  crate::run_surface! { run, P }
 
   /// Runs `action` on a click on the span; its verdict says whether the click carries
   /// on to the ancestors.

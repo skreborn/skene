@@ -131,7 +131,6 @@ pub use crate::{
   Suspense,
   Switch,
   TerminalDecoration,
-  TerminalText,
   Text,
   Theme,
   ThemedIn,

@@ -27,7 +27,7 @@ use skene_dev::{CONTROL_VARIABLE, Control, STATE_VARIABLE, SWAP_EXIT};
 use skene_foundation::{Color, HasChildren, Scene};
 use skene_reactive::{Get, Set, Signal, SnapshotPlace};
 
-use crate::{Column, Overlay, Terminal, TerminalText, Text, View as _, records::Handle};
+use crate::{Column, Overlay, Terminal, Text, View as _, records::Handle};
 
 /// The snapshot tag carrying every scrolled node's offsets, by position.
 const SCROLL_TAG: &str = "skene-terminal:scroll";

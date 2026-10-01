@@ -1,5 +1,5 @@
-//! The terminal's decoration and text setters on the facade's views: border glyphs, a
-//! shadow, scrollbars, boldness.
+//! The terminal's decoration on the facade's views without it of their own: border
+//! glyphs, a shadow, scrollbars.
 
 use skene_foundation::{
   BoxStyle,
@@ -7,7 +7,6 @@ use skene_foundation::{
   Condition,
   Declared,
   Length,
-  RunStyle,
   terminal::{BorderGlyphs, ScrollbarGlyphs, TerminalStyle},
 };
 
@@ -16,14 +15,11 @@ use crate::Terminal;
 /// The declared style of a terminal box.
 type DeclaredBox = BoxStyle<u32, Declared<Condition<u32>>, TerminalStyle>;
 
-/// The declared style of a terminal run.
-type DeclaredRun = RunStyle<Declared<Condition<u32>>, TerminalStyle>;
-
 /// The terminal's own decoration on a box: the glyphs its border draws with, the
 /// shadow it casts and its scrollbars.
 ///
-/// Every view with a decorated box on the active platform has it: [`Container`](crate::Container),
-/// [`Control`](crate::Control) and [`Overlay`](crate::Overlay).
+/// The decorated views on the active platform without the decoration of their own have
+/// it: [`Control`](crate::Control) and [`Overlay`](crate::Overlay).
 pub trait TerminalDecoration: Sized {
   /// The declared style the decoration lands on.
   fn terminal_style_mut(&mut self) -> &mut DeclaredBox;
@@ -50,13 +46,6 @@ pub trait TerminalDecoration: Sized {
   }
 }
 
-impl TerminalDecoration for crate::Container {
-  #[inline(always)]
-  fn terminal_style_mut(&mut self) -> &mut DeclaredBox {
-    self.style_mut()
-  }
-}
-
 impl<B: skene_foundation::Behavior<Terminal>> TerminalDecoration
   for skene_foundation::Control<Terminal, B>
 {
@@ -69,33 +58,6 @@ impl<B: skene_foundation::Behavior<Terminal>> TerminalDecoration
 impl TerminalDecoration for skene_foundation::Overlay<Terminal> {
   #[inline(always)]
   fn terminal_style_mut(&mut self) -> &mut DeclaredBox {
-    self.style_mut()
-  }
-}
-
-/// The terminal's own text property: whether a run is bold.
-///
-/// Every text view on the active platform has it: [`Text`](crate::Text) and
-/// [`Span`](crate::Span).
-pub trait TerminalText: Sized {
-  /// The declared style the weight lands on.
-  fn terminal_style_mut(&mut self) -> &mut DeclaredRun;
-
-  skene_foundation::trait_properties! { terminal_style_mut, Condition<u32>;
-    set_bold / derive_bold (bold) => ext.bold: bool, "whether the text is bold";
-  }
-}
-
-impl TerminalText for skene_foundation::Text<Terminal> {
-  #[inline(always)]
-  fn terminal_style_mut(&mut self) -> &mut DeclaredRun {
-    self.style_mut()
-  }
-}
-
-impl TerminalText for skene_foundation::Span<Terminal> {
-  #[inline(always)]
-  fn terminal_style_mut(&mut self) -> &mut DeclaredRun {
     self.style_mut()
   }
 }

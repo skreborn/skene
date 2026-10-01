@@ -330,10 +330,16 @@ impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web
 pub fn skene_web::Deferred::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Grid
 pub fn skene_web::Grid::build(self) -> skene_foundation::spine::node::NodeId
+impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::RichText
+pub fn skene_web::RichText::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Row
 pub fn skene_web::Row::build(self) -> skene_foundation::spine::node::NodeId
+impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Span
+pub fn skene_web::Span::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Stack
 pub fn skene_web::Stack::build(self) -> skene_foundation::spine::node::NodeId
+impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Text
+pub fn skene_web::Text::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_web::platform::WebMarkup for skene_web::platform::Web
 pub fn skene_web::platform::Web::create_element(skene_foundation::spine::node::NodeId, &'static str)
 pub fn skene_web::platform::Web::set_attribute(skene_foundation::spine::node::NodeId, &str, &str)
@@ -677,6 +683,17 @@ impl skene_foundation::spine::view::IntoChildOf<skene_web::platform::Web, skene_
 pub fn skene_web::Pinned<skene_foundation::spine::view::AnyView<skene_web::ActivePlatform>>::into_child(self) -> skene_foundation::spine::view::AnyView<skene_web::ActivePlatform>
 impl<C> core::fmt::Debug for skene_web::Pinned<C>
 pub fn skene_web::Pinned<C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_web::prelude::RichText(_)
+impl skene_web::RichText
+pub const fn skene_web::RichText::new() -> Self
+pub fn skene_web::RichText::set_spans(self, impl core::iter::traits::collect::IntoIterator<Item = skene_web::Span>) -> Self
+impl core::default::Default for skene_web::RichText
+pub fn skene_web::RichText::default() -> skene_web::RichText
+impl core::fmt::Debug for skene_web::RichText
+pub fn skene_web::RichText::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl skene_foundation::spine::view::AnyKind for skene_web::RichText
+impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::RichText
+pub fn skene_web::RichText::build(self) -> skene_foundation::spine::node::NodeId
 pub struct skene_web::prelude::Row(_)
 impl skene_web::Row
 pub fn skene_web::Row::derive_arrangement<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::flex::Arrangement>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -704,6 +721,44 @@ pub fn skene_web::Row::children_mut(&mut self, skene_foundation::spine::children
 impl skene_foundation::spine::view::AnyKind for skene_web::Row
 impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Row
 pub fn skene_web::Row::build(self) -> skene_foundation::spine::node::NodeId
+pub struct skene_web::prelude::Span(_)
+impl skene_web::Span
+pub fn skene_web::Span::derive(impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
+pub fn skene_web::Span::derive_color<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_web::Span::derive_decoration<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::text_decoration::TextDecoration>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_web::Span::derive_decoration_color<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_web::Span::derive_decoration_style<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::text_decoration::TextDecorationStyle>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_web::Span::derive_font_size<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self where <skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::type_metrics::TypeMetrics
+pub fn skene_web::Span::derive_font_weight<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<f32>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self where <skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::type_metrics::TypeMetrics
+pub fn skene_web::Span::derive_letter_spacing<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self where <skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::type_metrics::TypeMetrics
+pub fn skene_web::Span::derive_line_height<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<f32>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self where <skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::type_metrics::TypeMetrics
+pub fn skene_web::Span::derive_selection_background<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_web::Span::derive_selection_color<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_web::Span::group(impl core::iter::traits::collect::IntoIterator<Item = Self>) -> Self
+pub fn skene_web::Span::handle_click<R: core::convert::Into<skene_foundation::spine::events::Bubbling>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_web::Span::new(impl core::convert::Into<alloc::string::String>) -> Self
+pub fn skene_web::Span::set_animation(self, skene_foundation::spine::motion::Animation<skene_foundation::spine::props::RunKeyframe<skene_web::ActivePlatform>>) -> Self
+pub fn skene_web::Span::set_color(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
+pub fn skene_web::Span::set_decoration(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::text_decoration::TextDecoration, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
+pub fn skene_web::Span::set_decoration_color(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
+pub fn skene_web::Span::set_decoration_style(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::text_decoration::TextDecorationStyle, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
+pub fn skene_web::Span::set_font_size(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::expr::Length, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self where <skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::type_metrics::TypeMetrics
+pub fn skene_web::Span::set_font_weight(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<f32, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self where <skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::type_metrics::TypeMetrics
+pub fn skene_web::Span::set_letter_spacing(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::expr::Length, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self where <skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::type_metrics::TypeMetrics
+pub fn skene_web::Span::set_line_height(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<f32, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self where <skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::type_metrics::TypeMetrics
+pub fn skene_web::Span::set_link(self, impl core::convert::Into<alloc::string::String>) -> Self
+pub fn skene_web::Span::set_link_policy(self, skene_foundation::spine::values::link::LinkPolicy) -> Self
+pub fn skene_web::Span::set_selectable(self, bool) -> Self
+pub fn skene_web::Span::set_selection_background(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
+pub fn skene_web::Span::set_selection_color(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
+pub fn skene_web::Span::set_transition(self, skene_foundation::spine::motion::Transition<<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt as skene_foundation::spine::extension::StyleExtension>::Property>) -> Self
+pub const fn skene_web::Span::style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredRunStyle<skene_web::ActivePlatform>
+pub fn skene_web::Span::view(impl skene_foundation::spine::view::View<skene_web::ActivePlatform>) -> Self
+impl core::fmt::Debug for skene_web::Span
+pub fn skene_web::Span::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl skene_foundation::spine::view::AnyKind for skene_web::Span
+impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Span
+pub fn skene_web::Span::build(self) -> skene_foundation::spine::node::NodeId
 pub struct skene_web::prelude::Stack(_)
 impl skene_web::Stack
 pub fn skene_web::Stack::derive_alignment<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::flex::Alignment>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -722,6 +777,41 @@ pub fn skene_web::Stack::children_mut(&mut self, skene_foundation::spine::childr
 impl skene_foundation::spine::view::AnyKind for skene_web::Stack
 impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Stack
 pub fn skene_web::Stack::build(self) -> skene_foundation::spine::node::NodeId
+pub struct skene_web::prelude::Text(_)
+impl skene_web::Text
+pub fn skene_web::Text::derive(impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
+pub fn skene_web::Text::derive_color<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_web::Text::derive_decoration<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::text_decoration::TextDecoration>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_web::Text::derive_decoration_color<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_web::Text::derive_decoration_style<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::text_decoration::TextDecorationStyle>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_web::Text::derive_font_size<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self where <skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::type_metrics::TypeMetrics
+pub fn skene_web::Text::derive_font_weight<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<f32>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self where <skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::type_metrics::TypeMetrics
+pub fn skene_web::Text::derive_letter_spacing<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self where <skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::type_metrics::TypeMetrics
+pub fn skene_web::Text::derive_line_height<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<f32>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self where <skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::type_metrics::TypeMetrics
+pub fn skene_web::Text::derive_selection_background<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_web::Text::derive_selection_color<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_web::Text::new(impl core::convert::Into<alloc::string::String>) -> Self
+pub fn skene_web::Text::set_animation(self, skene_foundation::spine::motion::Animation<skene_foundation::spine::props::RunKeyframe<skene_web::ActivePlatform>>) -> Self
+pub fn skene_web::Text::set_color(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
+pub fn skene_web::Text::set_decoration(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::text_decoration::TextDecoration, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
+pub fn skene_web::Text::set_decoration_color(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
+pub fn skene_web::Text::set_decoration_style(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::text_decoration::TextDecorationStyle, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
+pub fn skene_web::Text::set_font_size(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::expr::Length, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self where <skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::type_metrics::TypeMetrics
+pub fn skene_web::Text::set_font_weight(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<f32, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self where <skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::type_metrics::TypeMetrics
+pub fn skene_web::Text::set_letter_spacing(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::expr::Length, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self where <skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::type_metrics::TypeMetrics
+pub fn skene_web::Text::set_line_height(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<f32, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self where <skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::type_metrics::TypeMetrics
+pub fn skene_web::Text::set_link(self, impl core::convert::Into<alloc::string::String>) -> Self
+pub fn skene_web::Text::set_link_policy(self, skene_foundation::spine::values::link::LinkPolicy) -> Self
+pub fn skene_web::Text::set_selectable(self, bool) -> Self
+pub fn skene_web::Text::set_selection_background(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
+pub fn skene_web::Text::set_selection_color(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
+pub fn skene_web::Text::set_transition(self, skene_foundation::spine::motion::Transition<<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt as skene_foundation::spine::extension::StyleExtension>::Property>) -> Self
+pub const fn skene_web::Text::style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredRunStyle<skene_web::ActivePlatform>
+impl core::fmt::Debug for skene_web::Text
+pub fn skene_web::Text::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl skene_foundation::spine::view::AnyKind for skene_web::Text
+impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Text
+pub fn skene_web::Text::build(self) -> skene_foundation::spine::node::NodeId
 pub trait skene_web::prelude::ThemedIn: skene_foundation::theme::ThemedIn<skene_web::ActivePlatform>
 pub fn skene_web::prelude::ThemedIn::current() -> Self
 pub fn skene_web::prelude::ThemedIn::watch() -> skene_reactive::memo::Memo<Self>
@@ -770,14 +860,11 @@ pub type skene_web::prelude::Overlay<C> = skene_foundation::overlay::Overlay<ske
 pub type skene_web::prelude::Painted = skene_foundation::painted::Painted<skene_web::ActivePlatform>
 pub type skene_web::prelude::Point = skene_foundation::spine::values::point::Point<f32>
 pub type skene_web::prelude::Rect = skene_foundation::spine::values::rect::Rect<f32>
-pub type skene_web::prelude::RichText = skene_foundation::span::RichText<skene_web::ActivePlatform>
 pub type skene_web::prelude::Show<C> = skene_foundation::spine::show::Show<skene_web::ActivePlatform, C>
 pub type skene_web::prelude::Size = skene_foundation::spine::values::size::Size<f32>
 pub type skene_web::prelude::Spacing = skene_foundation::spine::values::flex::Spacing<f32>
-pub type skene_web::prelude::Span = skene_foundation::span::Span<skene_web::ActivePlatform>
 pub type skene_web::prelude::Suspense<C> = skene_foundation::suspense::Suspense<skene_web::ActivePlatform, C>
 pub type skene_web::prelude::Switch<K> = skene_foundation::switch::Switch<skene_web::ActivePlatform, K>
-pub type skene_web::prelude::Text = skene_foundation::text::Text<skene_web::ActivePlatform>
 pub type skene_web::prelude::Theme<S, C> = skene_foundation::theme::Theme<skene_web::ActivePlatform, S, C>
 pub type skene_web::prelude::Token<T> = skene_foundation::spine::token::Token<T, f32>
 pub type skene_web::prelude::Tooltip<C> = skene_foundation::tooltip::Tooltip<skene_web::ActivePlatform, C>
@@ -1022,6 +1109,17 @@ pub type skene_web::Resource<T>::Target = skene_reactive::resource::Resource<T>
 pub fn skene_web::Resource<T>::deref(&self) -> &Self::Target
 impl<T: core::fmt::Debug + 'static> core::fmt::Debug for skene_web::Resource<T>
 pub fn skene_web::Resource<T>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_web::RichText(_)
+impl skene_web::RichText
+pub const fn skene_web::RichText::new() -> Self
+pub fn skene_web::RichText::set_spans(self, impl core::iter::traits::collect::IntoIterator<Item = skene_web::Span>) -> Self
+impl core::default::Default for skene_web::RichText
+pub fn skene_web::RichText::default() -> skene_web::RichText
+impl core::fmt::Debug for skene_web::RichText
+pub fn skene_web::RichText::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl skene_foundation::spine::view::AnyKind for skene_web::RichText
+impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::RichText
+pub fn skene_web::RichText::build(self) -> skene_foundation::spine::node::NodeId
 pub struct skene_web::Row(_)
 impl skene_web::Row
 pub fn skene_web::Row::derive_arrangement<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::flex::Arrangement>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -1049,6 +1147,44 @@ pub fn skene_web::Row::children_mut(&mut self, skene_foundation::spine::children
 impl skene_foundation::spine::view::AnyKind for skene_web::Row
 impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Row
 pub fn skene_web::Row::build(self) -> skene_foundation::spine::node::NodeId
+pub struct skene_web::Span(_)
+impl skene_web::Span
+pub fn skene_web::Span::derive(impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
+pub fn skene_web::Span::derive_color<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_web::Span::derive_decoration<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::text_decoration::TextDecoration>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_web::Span::derive_decoration_color<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_web::Span::derive_decoration_style<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::text_decoration::TextDecorationStyle>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_web::Span::derive_font_size<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self where <skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::type_metrics::TypeMetrics
+pub fn skene_web::Span::derive_font_weight<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<f32>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self where <skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::type_metrics::TypeMetrics
+pub fn skene_web::Span::derive_letter_spacing<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self where <skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::type_metrics::TypeMetrics
+pub fn skene_web::Span::derive_line_height<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<f32>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self where <skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::type_metrics::TypeMetrics
+pub fn skene_web::Span::derive_selection_background<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_web::Span::derive_selection_color<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_web::Span::group(impl core::iter::traits::collect::IntoIterator<Item = Self>) -> Self
+pub fn skene_web::Span::handle_click<R: core::convert::Into<skene_foundation::spine::events::Bubbling>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_web::Span::new(impl core::convert::Into<alloc::string::String>) -> Self
+pub fn skene_web::Span::set_animation(self, skene_foundation::spine::motion::Animation<skene_foundation::spine::props::RunKeyframe<skene_web::ActivePlatform>>) -> Self
+pub fn skene_web::Span::set_color(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
+pub fn skene_web::Span::set_decoration(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::text_decoration::TextDecoration, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
+pub fn skene_web::Span::set_decoration_color(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
+pub fn skene_web::Span::set_decoration_style(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::text_decoration::TextDecorationStyle, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
+pub fn skene_web::Span::set_font_size(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::expr::Length, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self where <skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::type_metrics::TypeMetrics
+pub fn skene_web::Span::set_font_weight(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<f32, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self where <skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::type_metrics::TypeMetrics
+pub fn skene_web::Span::set_letter_spacing(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::expr::Length, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self where <skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::type_metrics::TypeMetrics
+pub fn skene_web::Span::set_line_height(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<f32, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self where <skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::type_metrics::TypeMetrics
+pub fn skene_web::Span::set_link(self, impl core::convert::Into<alloc::string::String>) -> Self
+pub fn skene_web::Span::set_link_policy(self, skene_foundation::spine::values::link::LinkPolicy) -> Self
+pub fn skene_web::Span::set_selectable(self, bool) -> Self
+pub fn skene_web::Span::set_selection_background(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
+pub fn skene_web::Span::set_selection_color(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
+pub fn skene_web::Span::set_transition(self, skene_foundation::spine::motion::Transition<<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt as skene_foundation::spine::extension::StyleExtension>::Property>) -> Self
+pub const fn skene_web::Span::style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredRunStyle<skene_web::ActivePlatform>
+pub fn skene_web::Span::view(impl skene_foundation::spine::view::View<skene_web::ActivePlatform>) -> Self
+impl core::fmt::Debug for skene_web::Span
+pub fn skene_web::Span::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl skene_foundation::spine::view::AnyKind for skene_web::Span
+impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Span
+pub fn skene_web::Span::build(self) -> skene_foundation::spine::node::NodeId
 pub struct skene_web::Stack(_)
 impl skene_web::Stack
 pub fn skene_web::Stack::derive_alignment<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::flex::Alignment>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -1074,6 +1210,41 @@ pub fn skene_web::Stream::document(&self) -> alloc::string::String
 pub fn skene_web::Stream::into_chunks(self) -> alloc::vec::Vec<alloc::string::String>
 impl core::fmt::Debug for skene_web::Stream
 pub fn skene_web::Stream::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_web::Text(_)
+impl skene_web::Text
+pub fn skene_web::Text::derive(impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
+pub fn skene_web::Text::derive_color<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_web::Text::derive_decoration<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::text_decoration::TextDecoration>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_web::Text::derive_decoration_color<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_web::Text::derive_decoration_style<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::text_decoration::TextDecorationStyle>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_web::Text::derive_font_size<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self where <skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::type_metrics::TypeMetrics
+pub fn skene_web::Text::derive_font_weight<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<f32>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self where <skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::type_metrics::TypeMetrics
+pub fn skene_web::Text::derive_letter_spacing<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self where <skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::type_metrics::TypeMetrics
+pub fn skene_web::Text::derive_line_height<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<f32>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self where <skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::type_metrics::TypeMetrics
+pub fn skene_web::Text::derive_selection_background<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_web::Text::derive_selection_color<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_web::Text::new(impl core::convert::Into<alloc::string::String>) -> Self
+pub fn skene_web::Text::set_animation(self, skene_foundation::spine::motion::Animation<skene_foundation::spine::props::RunKeyframe<skene_web::ActivePlatform>>) -> Self
+pub fn skene_web::Text::set_color(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
+pub fn skene_web::Text::set_decoration(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::text_decoration::TextDecoration, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
+pub fn skene_web::Text::set_decoration_color(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
+pub fn skene_web::Text::set_decoration_style(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::text_decoration::TextDecorationStyle, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
+pub fn skene_web::Text::set_font_size(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::expr::Length, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self where <skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::type_metrics::TypeMetrics
+pub fn skene_web::Text::set_font_weight(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<f32, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self where <skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::type_metrics::TypeMetrics
+pub fn skene_web::Text::set_letter_spacing(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::expr::Length, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self where <skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::type_metrics::TypeMetrics
+pub fn skene_web::Text::set_line_height(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<f32, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self where <skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::type_metrics::TypeMetrics
+pub fn skene_web::Text::set_link(self, impl core::convert::Into<alloc::string::String>) -> Self
+pub fn skene_web::Text::set_link_policy(self, skene_foundation::spine::values::link::LinkPolicy) -> Self
+pub fn skene_web::Text::set_selectable(self, bool) -> Self
+pub fn skene_web::Text::set_selection_background(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
+pub fn skene_web::Text::set_selection_color(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
+pub fn skene_web::Text::set_transition(self, skene_foundation::spine::motion::Transition<<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt as skene_foundation::spine::extension::StyleExtension>::Property>) -> Self
+pub const fn skene_web::Text::style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredRunStyle<skene_web::ActivePlatform>
+impl core::fmt::Debug for skene_web::Text
+pub fn skene_web::Text::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl skene_foundation::spine::view::AnyKind for skene_web::Text
+impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Text
+pub fn skene_web::Text::build(self) -> skene_foundation::spine::node::NodeId
 pub trait skene_web::ThemedIn: skene_foundation::theme::ThemedIn<skene_web::ActivePlatform>
 pub fn skene_web::ThemedIn::current() -> Self
 pub fn skene_web::ThemedIn::watch() -> skene_reactive::memo::Memo<Self>
@@ -1140,14 +1311,11 @@ pub type skene_web::Overlay<C> = skene_foundation::overlay::Overlay<skene_web::A
 pub type skene_web::Painted = skene_foundation::painted::Painted<skene_web::ActivePlatform>
 pub type skene_web::Point = skene_foundation::spine::values::point::Point<f32>
 pub type skene_web::Rect = skene_foundation::spine::values::rect::Rect<f32>
-pub type skene_web::RichText = skene_foundation::span::RichText<skene_web::ActivePlatform>
 pub type skene_web::Show<C> = skene_foundation::spine::show::Show<skene_web::ActivePlatform, C>
 pub type skene_web::Size = skene_foundation::spine::values::size::Size<f32>
 pub type skene_web::Spacing = skene_foundation::spine::values::flex::Spacing<f32>
-pub type skene_web::Span = skene_foundation::span::Span<skene_web::ActivePlatform>
 pub type skene_web::Suspense<C> = skene_foundation::suspense::Suspense<skene_web::ActivePlatform, C>
 pub type skene_web::Switch<K> = skene_foundation::switch::Switch<skene_web::ActivePlatform, K>
-pub type skene_web::Text = skene_foundation::text::Text<skene_web::ActivePlatform>
 pub type skene_web::Theme<S, C> = skene_foundation::theme::Theme<skene_web::ActivePlatform, S, C>
 pub type skene_web::Token<T> = skene_foundation::spine::token::Token<T, f32>
 pub type skene_web::TokenValue = <skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::TokenValue

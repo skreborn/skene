@@ -35,7 +35,7 @@ impl<P: Platform> Text<P> {
     }
   }
 
-  crate::run_setters! { run }
+  crate::run_surface! { run, P }
 }
 
 impl<P: Platform> AnyKind for Text<P> {}

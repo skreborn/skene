@@ -65,12 +65,6 @@ macro_rules! facade {
     /// The box every layout view is built from, accepting children of `Kind`; see
     /// [`skene_foundation::LayoutBox`].
     pub type LayoutBox<Kind> = $crate::LayoutBox<$platform, Kind>;
-    /// A run of text on its own line; see [`skene_foundation::Text`].
-    pub type Text = $crate::Text<$platform>;
-    /// A run inside a paragraph; see [`skene_foundation::Span`].
-    pub type Span = $crate::Span<$platform>;
-    /// A paragraph of spans; see [`skene_foundation::RichText`].
-    pub type RichText = $crate::RichText<$platform>;
     /// A branch shown or hidden by a condition; see [`skene_foundation::Show`].
     pub type Show<C = $crate::NoChild> = $crate::Show<$platform, C>;
     /// The view a `set_key` named, built under a keyed scope; see

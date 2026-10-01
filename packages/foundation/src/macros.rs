@@ -8,15 +8,22 @@
 /// over signals, and both write the field named on the style `$access` returns.
 #[macro_export]
 macro_rules! properties {
-  ($access:ident, $platform:ty; $($set:ident / $derive:ident ($param:ident) => $field:ident: $type:ty, $doc:literal;)+) => {$(
+  (
+    $access:ident, $platform:ty;
+    $(
+      $set:ident / $derive:ident ($param:ident) => $($field:ident).+: $type:ty,
+      $doc:literal $(, $detail:literal)?;
+    )+
+  ) => {$(
     #[doc = concat!("Sets ", $doc, ".")]
+    $(#[doc = ""] #[doc = $detail])?
     pub fn $set(
       mut self,
       $param: impl Into<
         $crate::Value<$type, $crate::Condition<<$platform as $crate::Platform>::Scalar>>,
       >,
     ) -> Self {
-      self.$access().$field = Some($param.into());
+      self.$access().$($field).+ = Some($param.into());
 
       self
     }
@@ -26,7 +33,7 @@ macro_rules! properties {
       mut self,
       $param: impl Fn() -> R + 'static,
     ) -> Self {
-      self.$access().$field = Some($crate::Value::new(
+      self.$access().$($field).+ = Some($crate::Value::new(
         $crate::Leaf::derive($param),
       ));
 
@@ -219,20 +226,22 @@ macro_rules! forward {
   )+};
 }
 
-/// Generates what every text view shares over the [`Run`](crate::Run) in `$field`.
+/// Generates a text view's builder surface on a type holding a run in `$field`.
 ///
-/// The declared style, the color, selection and decoration setters, the type metrics,
-/// selectability, the link and motion.
+/// The surface is the declared style, the color, selection and decoration setters, the
+/// type metrics, selectability, the link and motion, on the platform `$platform`. The
+/// foundation's text views expand it over their [`Run`](crate::Run), and a facade's
+/// newtype over the view it wraps.
 #[macro_export]
-macro_rules! run_setters {
-  ($field:ident) => {
+macro_rules! run_surface {
+  ($field:tt, $platform:ty) => {
     /// The declared style, for a facade's medium-specific setters to write into.
     #[inline(always)]
-    pub const fn style_mut(&mut self) -> &mut $crate::DeclaredRunStyle<P> {
+    pub const fn style_mut(&mut self) -> &mut $crate::DeclaredRunStyle<$platform> {
       self.$field.style_mut()
     }
 
-    $crate::properties! { style_mut, P;
+    $crate::properties! { style_mut, $platform;
       set_color / derive_color (color) => color: $crate::Color,
         "the text color";
       set_selection_color / derive_selection_color (color) => selection_color: $crate::Color,
@@ -249,7 +258,7 @@ macro_rules! run_setters {
         "the decoration line's color; the text color unless set";
     }
 
-    $crate::run_type_metrics! { style_mut }
+    $crate::run_type_metrics! { style_mut, $platform }
 
     $crate::forward! { $field;
       /// Sets whether the reader can select and copy the text; off by default.
@@ -264,11 +273,11 @@ macro_rules! run_setters {
       /// changes.
       fn set_transition(
         transition: $crate::Transition<
-          <P::StyleExt as $crate::StyleExtension>::Property,
+          <<$platform as $crate::Platform>::StyleExt as $crate::StyleExtension>::Property,
         >,
       );
       /// Adds a keyframe animation.
-      fn set_animation(animation: $crate::Animation<$crate::RunKeyframe<P>>);
+      fn set_animation(animation: $crate::Animation<$crate::RunKeyframe<$platform>>);
     }
   };
 }
@@ -277,17 +286,17 @@ macro_rules! run_setters {
 /// returns, each writing through the extension's [`TypeMetrics`](crate::TypeMetrics).
 #[macro_export]
 macro_rules! type_metrics {
-  ($access:ident; $($set:ident / $derive:ident ($param:ident: $value:ty) => $write:ident, $doc:literal;)+) => {$(
+  ($access:ident, $platform:ty; $($set:ident / $derive:ident ($param:ident: $value:ty) => $write:ident, $doc:literal;)+) => {$(
     #[doc = concat!("Sets ", $doc, ", where the medium sizes type; a medium without type metrics accepts and ignores it.")]
     pub fn $set(
       mut self,
-      $param: impl Into<$crate::Value<$value, $crate::Condition<P::Scalar>>>,
+      $param: impl Into<$crate::Value<$value, $crate::Condition<<$platform as $crate::Platform>::Scalar>>>,
     ) -> Self
     where
-      P::StyleExt: $crate::TypeMetrics,
+      <$platform as $crate::Platform>::StyleExt: $crate::TypeMetrics,
     {
-      <P::StyleExt as $crate::TypeMetrics>::$write::<
-        $crate::Declared<$crate::Condition<P::Scalar>>,
+      <<$platform as $crate::Platform>::StyleExt as $crate::TypeMetrics>::$write::<
+        $crate::Declared<$crate::Condition<<$platform as $crate::Platform>::Scalar>>,
       >(&mut self.$access().ext, Some($param.into()));
 
       self
@@ -299,10 +308,10 @@ macro_rules! type_metrics {
       $param: impl Fn() -> R + 'static,
     ) -> Self
     where
-      P::StyleExt: $crate::TypeMetrics,
+      <$platform as $crate::Platform>::StyleExt: $crate::TypeMetrics,
     {
-      <P::StyleExt as $crate::TypeMetrics>::$write::<
-        $crate::Declared<$crate::Condition<P::Scalar>>,
+      <<$platform as $crate::Platform>::StyleExt as $crate::TypeMetrics>::$write::<
+        $crate::Declared<$crate::Condition<<$platform as $crate::Platform>::Scalar>>,
       >(
         &mut self.$access().ext,
         Some($crate::Value::new($crate::Leaf::derive($param))),
@@ -316,8 +325,8 @@ macro_rules! type_metrics {
 /// The four type-metric setter pairs a run exposes.
 #[macro_export]
 macro_rules! run_type_metrics {
-  ($access:ident) => {
-    $crate::type_metrics! { $access;
+  ($access:ident, $platform:ty) => {
+    $crate::type_metrics! { $access, $platform;
       set_font_size / derive_font_size (size: $crate::Length) => set_font_size,
         "the font size, a length in the medium's unit";
       set_font_weight / derive_font_weight (weight: f32) => set_font_weight,

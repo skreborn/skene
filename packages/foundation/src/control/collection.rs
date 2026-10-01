@@ -17,7 +17,6 @@ use crate::{
   NativeElement,
   Platform,
   Prevent,
-  Ring,
   Role,
 };
 
@@ -577,3 +576,50 @@ pub type Menu = Collection<MenuPolicy>;
 pub type MenuOption = Member<MenuPolicy>;
 /// What a menu shares with its items: a [`CollectionContext`] under the [`MenuPolicy`].
 pub type MenuContext = CollectionContext<MenuPolicy>;
+
+/// A ring of positions stepped through by wrapping moves: a radio group's members, a
+/// picker's options.
+#[must_use]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct Ring(usize);
+
+impl Ring {
+  /// Creates a ring of `count` positions.
+  #[inline(always)]
+  pub const fn new(count: usize) -> Self {
+    Self(count)
+  }
+
+  /// The position `step` places from `from`, wrapping at both ends.
+  ///
+  /// `None` when the ring is empty, or when the arithmetic does not fit—there is no
+  /// position to move to in either case.
+  #[must_use]
+  pub fn step_from(&self, from: usize, step: isize) -> Option<usize> {
+    if self.0 == 0 {
+      return None;
+    }
+
+    let count = isize::try_from(self.0).ok()?;
+    let from = isize::try_from(from).ok()?;
+
+    usize::try_from((from + step).rem_euclid(count)).ok()
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::Ring;
+
+  /// Stepping wraps at both ends, and an empty ring has nowhere to go.
+  #[test]
+  fn stepping_wraps_at_both_ends() {
+    let ring = Ring::new(3);
+
+    assert_eq!(ring.step_from(0, 1), Some(1));
+    assert_eq!(ring.step_from(2, 1), Some(0), "forward past the end wraps");
+    assert_eq!(ring.step_from(0, -1), Some(2), "back past the start wraps");
+    assert_eq!(ring.step_from(0, 5), Some(2), "a long step still wraps");
+    assert_eq!(Ring::new(0).step_from(0, 1), None);
+  }
+}

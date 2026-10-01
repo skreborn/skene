@@ -75,6 +75,7 @@ mod pinned;
 pub mod realize;
 pub mod routing;
 mod run;
+mod show;
 mod span;
 mod spine;
 mod stack;
@@ -143,8 +144,10 @@ pub use crate::{
     RadioGroup,
     RadioGroupContext,
     RadioPolicy,
+    Ring,
     Roster,
     Slider,
+    SliderRange,
     TYPE_AHEAD_RESET,
     TextEntry,
     Toggle,
@@ -159,7 +162,16 @@ pub use crate::{
   grid_cell::{GridCell, GridCellBase},
   keymap::{Keymap, KeymapBase},
   layout_box::LayoutBox,
-  lazy_list::{ItemExtent, LazyColumn, LazyColumnBase, LazyRow, LazyRowBase},
+  lazy_list::{
+    ItemExtent,
+    ItemWindow,
+    LazyColumn,
+    LazyColumnBase,
+    LazyRow,
+    LazyRowBase,
+    item_window,
+    item_window_over,
+  },
   node_handle::NodeHandle,
   overlay::{Overlay, OverlayBase},
   painted::{Painted, PaintedBase},
@@ -168,6 +180,7 @@ pub use crate::{
   pinned::{Pinned, PinnedBase},
   realize::{ChildBuilder, LowLevel},
   run::Run,
+  show::{Show, ShowBase},
   span::{RichText, RichTextBase, Span, SpanBase},
   stack::{Stack, StackBase},
   surface::{

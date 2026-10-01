@@ -708,14 +708,14 @@ impl skene_terminal::Show
 pub fn skene_terminal::Show::set_child(self, impl skene_foundation::spine::view::View<skene_terminal::ActivePlatform>) -> skene_terminal::Show<skene_foundation::spine::view::AnyView<skene_terminal::ActivePlatform>>
 impl core::default::Default for skene_terminal::Show
 pub fn skene_terminal::Show::default() -> Self
-impl skene_foundation::spine::show::ShowBase<skene_terminal::Terminal> for skene_terminal::Show
-impl<C, __P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::View<__P> for skene_terminal::Show<C> where skene_foundation::spine::show::Show<skene_terminal::ActivePlatform, C>: skene_foundation::spine::view::View<__P>, Self: 'static
+impl skene_foundation::show::ShowBase<skene_terminal::Terminal> for skene_terminal::Show
+impl<C, __P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::View<__P> for skene_terminal::Show<C> where skene_foundation::show::Show<skene_terminal::ActivePlatform, C>: skene_foundation::spine::view::View<__P>, Self: 'static
 pub fn skene_terminal::Show<C>::build(self) -> skene_foundation::spine::node::NodeId
 impl<C: core::fmt::Debug> core::fmt::Debug for skene_terminal::Show<C>
 pub fn skene_terminal::Show<C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<C> skene_foundation::spine::view::AnyKind for skene_terminal::Show<C>
 impl<C> skene_foundation::spine::wraps::Wraps for skene_terminal::Show<C>
-pub type skene_terminal::Show<C>::Inner = skene_foundation::spine::show::Show<skene_terminal::Terminal, C>
+pub type skene_terminal::Show<C>::Inner = skene_foundation::show::Show<skene_terminal::Terminal, C>
 pub fn skene_terminal::Show<C>::inner(&self) -> &Self::Inner
 pub fn skene_terminal::Show<C>::inner_mut(&mut self) -> &mut Self::Inner
 pub fn skene_terminal::Show<C>::into_inner(self) -> Self::Inner
@@ -1427,14 +1427,14 @@ impl skene_terminal::Show
 pub fn skene_terminal::Show::set_child(self, impl skene_foundation::spine::view::View<skene_terminal::ActivePlatform>) -> skene_terminal::Show<skene_foundation::spine::view::AnyView<skene_terminal::ActivePlatform>>
 impl core::default::Default for skene_terminal::Show
 pub fn skene_terminal::Show::default() -> Self
-impl skene_foundation::spine::show::ShowBase<skene_terminal::Terminal> for skene_terminal::Show
-impl<C, __P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::View<__P> for skene_terminal::Show<C> where skene_foundation::spine::show::Show<skene_terminal::ActivePlatform, C>: skene_foundation::spine::view::View<__P>, Self: 'static
+impl skene_foundation::show::ShowBase<skene_terminal::Terminal> for skene_terminal::Show
+impl<C, __P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::View<__P> for skene_terminal::Show<C> where skene_foundation::show::Show<skene_terminal::ActivePlatform, C>: skene_foundation::spine::view::View<__P>, Self: 'static
 pub fn skene_terminal::Show<C>::build(self) -> skene_foundation::spine::node::NodeId
 impl<C: core::fmt::Debug> core::fmt::Debug for skene_terminal::Show<C>
 pub fn skene_terminal::Show<C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<C> skene_foundation::spine::view::AnyKind for skene_terminal::Show<C>
 impl<C> skene_foundation::spine::wraps::Wraps for skene_terminal::Show<C>
-pub type skene_terminal::Show<C>::Inner = skene_foundation::spine::show::Show<skene_terminal::Terminal, C>
+pub type skene_terminal::Show<C>::Inner = skene_foundation::show::Show<skene_terminal::Terminal, C>
 pub fn skene_terminal::Show<C>::inner(&self) -> &Self::Inner
 pub fn skene_terminal::Show<C>::inner_mut(&mut self) -> &mut Self::Inner
 pub fn skene_terminal::Show<C>::into_inner(self) -> Self::Inner
@@ -1537,6 +1537,7 @@ impl skene_foundation::painting::Painting for skene_terminal::Terminal
 pub fn skene_terminal::Terminal::available() -> skene_reactive::signal::ReadSignal<bool>
 pub fn skene_terminal::Terminal::paint(skene_foundation::spine::node::NodeId, alloc::boxed::Box<skene_foundation::painting::Painter>)
 impl skene_foundation::pinned::PinnedBase<skene_terminal::Terminal> for skene_terminal::Pinned
+impl skene_foundation::show::ShowBase<skene_terminal::Terminal> for skene_terminal::Show
 impl skene_foundation::span::RichTextBase<skene_terminal::Terminal> for skene_terminal::RichText
 impl skene_foundation::span::SpanBase<skene_terminal::Terminal> for skene_terminal::Span
 impl skene_foundation::spine::platform::Platform for skene_terminal::Terminal
@@ -1581,7 +1582,6 @@ pub fn skene_terminal::Terminal::set_value(skene_foundation::spine::node::NodeId
 pub fn skene_terminal::Terminal::update_box(skene_foundation::spine::node::NodeId, skene_foundation::spine::leaf::Slot, &skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::box_style::BoxValue<u32, skene_foundation::terminal::ext::TerminalStyle>>)
 pub fn skene_terminal::Terminal::update_run(skene_foundation::spine::node::NodeId, skene_foundation::spine::leaf::Slot, &skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::run_style::RunValue<skene_foundation::terminal::ext::TerminalStyle>>)
 pub fn skene_terminal::Terminal::watch_media(&skene_foundation::spine::condition::Media<u32>) -> skene_reactive::memo::Memo<bool>
-impl skene_foundation::spine::show::ShowBase<skene_terminal::Terminal> for skene_terminal::Show
 impl skene_foundation::spine::view::IntoChildOf<skene_terminal::Terminal, skene_foundation::spine::view::FlexChild> for skene_terminal::Flexible<skene_foundation::spine::view::AnyView<skene_terminal::ActivePlatform>>
 pub fn skene_terminal::Flexible<skene_foundation::spine::view::AnyView<skene_terminal::ActivePlatform>>::into_child(self) -> skene_foundation::spine::view::AnyView<skene_terminal::ActivePlatform>
 impl skene_foundation::spine::view::IntoChildOf<skene_terminal::Terminal, skene_foundation::spine::view::GridChild> for skene_terminal::GridCell<skene_foundation::spine::view::AnyView<skene_terminal::ActivePlatform>>

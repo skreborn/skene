@@ -17,6 +17,7 @@ mod names;
 mod overlays;
 mod picker;
 mod reentry;
+mod show;
 mod switch;
 mod text;
 mod themes;

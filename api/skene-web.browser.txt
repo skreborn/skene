@@ -271,6 +271,7 @@ impl skene_foundation::painting::Painting for skene_web::platform::Web
 pub fn skene_web::platform::Web::available() -> skene_reactive::signal::ReadSignal<bool>
 pub fn skene_web::platform::Web::paint(skene_foundation::spine::node::NodeId, alloc::boxed::Box<skene_foundation::painting::Painter>)
 impl skene_foundation::pinned::PinnedBase<skene_web::platform::Web> for skene_web::Pinned
+impl skene_foundation::show::ShowBase<skene_web::platform::Web> for skene_web::Show
 impl skene_foundation::span::RichTextBase<skene_web::platform::Web> for skene_web::RichText
 impl skene_foundation::span::SpanBase<skene_web::platform::Web> for skene_web::Span
 impl skene_foundation::spine::platform::Platform for skene_web::platform::Web
@@ -321,7 +322,6 @@ pub fn skene_web::platform::Web::update_box(skene_foundation::spine::node::NodeI
 pub fn skene_web::platform::Web::update_focus_order(skene_foundation::spine::node::NodeId, core::option::Option<skene_foundation::spine::values::focus_order::FocusOrder>)
 pub fn skene_web::platform::Web::update_run(skene_foundation::spine::node::NodeId, skene_foundation::spine::leaf::Slot, &skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::run_style::RunValue<skene_foundation::web::ext::WebStyle>>)
 pub fn skene_web::platform::Web::watch_media(&skene_foundation::spine::condition::Media<f32>) -> skene_reactive::memo::Memo<bool>
-impl skene_foundation::spine::show::ShowBase<skene_web::platform::Web> for skene_web::Show
 impl skene_foundation::spine::view::IntoChildOf<skene_web::platform::Web, skene_foundation::spine::view::FlexChild> for skene_web::Flexible<skene_foundation::spine::view::AnyView<skene_web::ActivePlatform>>
 pub fn skene_web::Flexible<skene_foundation::spine::view::AnyView<skene_web::ActivePlatform>>::into_child(self) -> skene_foundation::spine::view::AnyView<skene_web::ActivePlatform>
 impl skene_foundation::spine::view::IntoChildOf<skene_web::platform::Web, skene_foundation::spine::view::GridChild> for skene_web::GridCell<skene_foundation::spine::view::AnyView<skene_web::ActivePlatform>>
@@ -850,14 +850,14 @@ impl skene_web::Show
 pub fn skene_web::Show::set_child(self, impl skene_foundation::spine::view::View<skene_web::ActivePlatform>) -> skene_web::Show<skene_foundation::spine::view::AnyView<skene_web::ActivePlatform>>
 impl core::default::Default for skene_web::Show
 pub fn skene_web::Show::default() -> Self
-impl skene_foundation::spine::show::ShowBase<skene_web::platform::Web> for skene_web::Show
-impl<C, __P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::View<__P> for skene_web::Show<C> where skene_foundation::spine::show::Show<skene_web::ActivePlatform, C>: skene_foundation::spine::view::View<__P>, Self: 'static
+impl skene_foundation::show::ShowBase<skene_web::platform::Web> for skene_web::Show
+impl<C, __P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::View<__P> for skene_web::Show<C> where skene_foundation::show::Show<skene_web::ActivePlatform, C>: skene_foundation::spine::view::View<__P>, Self: 'static
 pub fn skene_web::Show<C>::build(self) -> skene_foundation::spine::node::NodeId
 impl<C: core::fmt::Debug> core::fmt::Debug for skene_web::Show<C>
 pub fn skene_web::Show<C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<C> skene_foundation::spine::view::AnyKind for skene_web::Show<C>
 impl<C> skene_foundation::spine::wraps::Wraps for skene_web::Show<C>
-pub type skene_web::Show<C>::Inner = skene_foundation::spine::show::Show<skene_web::platform::Web, C>
+pub type skene_web::Show<C>::Inner = skene_foundation::show::Show<skene_web::platform::Web, C>
 pub fn skene_web::Show<C>::inner(&self) -> &Self::Inner
 pub fn skene_web::Show<C>::inner_mut(&mut self) -> &mut Self::Inner
 pub fn skene_web::Show<C>::into_inner(self) -> Self::Inner
@@ -1376,14 +1376,14 @@ impl skene_web::Show
 pub fn skene_web::Show::set_child(self, impl skene_foundation::spine::view::View<skene_web::ActivePlatform>) -> skene_web::Show<skene_foundation::spine::view::AnyView<skene_web::ActivePlatform>>
 impl core::default::Default for skene_web::Show
 pub fn skene_web::Show::default() -> Self
-impl skene_foundation::spine::show::ShowBase<skene_web::platform::Web> for skene_web::Show
-impl<C, __P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::View<__P> for skene_web::Show<C> where skene_foundation::spine::show::Show<skene_web::ActivePlatform, C>: skene_foundation::spine::view::View<__P>, Self: 'static
+impl skene_foundation::show::ShowBase<skene_web::platform::Web> for skene_web::Show
+impl<C, __P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::View<__P> for skene_web::Show<C> where skene_foundation::show::Show<skene_web::ActivePlatform, C>: skene_foundation::spine::view::View<__P>, Self: 'static
 pub fn skene_web::Show<C>::build(self) -> skene_foundation::spine::node::NodeId
 impl<C: core::fmt::Debug> core::fmt::Debug for skene_web::Show<C>
 pub fn skene_web::Show<C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<C> skene_foundation::spine::view::AnyKind for skene_web::Show<C>
 impl<C> skene_foundation::spine::wraps::Wraps for skene_web::Show<C>
-pub type skene_web::Show<C>::Inner = skene_foundation::spine::show::Show<skene_web::platform::Web, C>
+pub type skene_web::Show<C>::Inner = skene_foundation::show::Show<skene_web::platform::Web, C>
 pub fn skene_web::Show<C>::inner(&self) -> &Self::Inner
 pub fn skene_web::Show<C>::inner_mut(&mut self) -> &mut Self::Inner
 pub fn skene_web::Show<C>::into_inner(self) -> Self::Inner

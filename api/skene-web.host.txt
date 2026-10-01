@@ -699,14 +699,14 @@ impl skene_web::Show
 pub fn skene_web::Show::set_child(self, impl skene_foundation::spine::view::View<skene_web::ActivePlatform>) -> skene_web::Show<skene_foundation::spine::view::AnyView<skene_web::ActivePlatform>>
 impl core::default::Default for skene_web::Show
 pub fn skene_web::Show::default() -> Self
-impl skene_foundation::spine::show::ShowBase<skene_headless::Headless> for skene_web::Show
-impl<C, __P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::View<__P> for skene_web::Show<C> where skene_foundation::spine::show::Show<skene_web::ActivePlatform, C>: skene_foundation::spine::view::View<__P>, Self: 'static
+impl skene_foundation::show::ShowBase<skene_headless::Headless> for skene_web::Show
+impl<C, __P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::View<__P> for skene_web::Show<C> where skene_foundation::show::Show<skene_web::ActivePlatform, C>: skene_foundation::spine::view::View<__P>, Self: 'static
 pub fn skene_web::Show<C>::build(self) -> skene_foundation::spine::node::NodeId
 impl<C: core::fmt::Debug> core::fmt::Debug for skene_web::Show<C>
 pub fn skene_web::Show<C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<C> skene_foundation::spine::view::AnyKind for skene_web::Show<C>
 impl<C> skene_foundation::spine::wraps::Wraps for skene_web::Show<C>
-pub type skene_web::Show<C>::Inner = skene_foundation::spine::show::Show<skene_headless::Headless, C>
+pub type skene_web::Show<C>::Inner = skene_foundation::show::Show<skene_headless::Headless, C>
 pub fn skene_web::Show<C>::inner(&self) -> &Self::Inner
 pub fn skene_web::Show<C>::inner_mut(&mut self) -> &mut Self::Inner
 pub fn skene_web::Show<C>::into_inner(self) -> Self::Inner
@@ -1198,14 +1198,14 @@ impl skene_web::Show
 pub fn skene_web::Show::set_child(self, impl skene_foundation::spine::view::View<skene_web::ActivePlatform>) -> skene_web::Show<skene_foundation::spine::view::AnyView<skene_web::ActivePlatform>>
 impl core::default::Default for skene_web::Show
 pub fn skene_web::Show::default() -> Self
-impl skene_foundation::spine::show::ShowBase<skene_headless::Headless> for skene_web::Show
-impl<C, __P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::View<__P> for skene_web::Show<C> where skene_foundation::spine::show::Show<skene_web::ActivePlatform, C>: skene_foundation::spine::view::View<__P>, Self: 'static
+impl skene_foundation::show::ShowBase<skene_headless::Headless> for skene_web::Show
+impl<C, __P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::View<__P> for skene_web::Show<C> where skene_foundation::show::Show<skene_web::ActivePlatform, C>: skene_foundation::spine::view::View<__P>, Self: 'static
 pub fn skene_web::Show<C>::build(self) -> skene_foundation::spine::node::NodeId
 impl<C: core::fmt::Debug> core::fmt::Debug for skene_web::Show<C>
 pub fn skene_web::Show<C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<C> skene_foundation::spine::view::AnyKind for skene_web::Show<C>
 impl<C> skene_foundation::spine::wraps::Wraps for skene_web::Show<C>
-pub type skene_web::Show<C>::Inner = skene_foundation::spine::show::Show<skene_headless::Headless, C>
+pub type skene_web::Show<C>::Inner = skene_foundation::show::Show<skene_headless::Headless, C>
 pub fn skene_web::Show<C>::inner(&self) -> &Self::Inner
 pub fn skene_web::Show<C>::inner_mut(&mut self) -> &mut Self::Inner
 pub fn skene_web::Show<C>::into_inner(self) -> Self::Inner

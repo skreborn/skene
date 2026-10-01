@@ -32,7 +32,6 @@ mod scalar;
 mod scene;
 mod segment;
 mod shape;
-mod show;
 pub mod task;
 #[cfg(test)]
 mod testing;
@@ -40,7 +39,6 @@ mod token;
 pub mod typography;
 mod values;
 mod view;
-mod window;
 mod wraps;
 
 pub use accesskit::TreeUpdate;
@@ -67,15 +65,7 @@ pub use condition::{
   State,
 };
 pub use condition_tree::{ConditionShape, ConditionTree};
-pub use control::{
-  ControlProps,
-  ControlState,
-  NativeElement,
-  Part,
-  PickerOption,
-  Ring,
-  SliderRange,
-};
+pub use control::{ControlProps, ControlState, NativeElement, Part, PickerOption};
 pub use derived::{derived, empty, reconcile};
 pub use dispatch::{
   dispatch_click,
@@ -201,7 +191,6 @@ pub use scalar::Scalar;
 pub use scene::{Annotated, Annotation, NodeKind, NodeRecord, Scene};
 pub use segment::{Piece, Segment};
 pub use shape::{Declared, Keyframe, Plain, Shape, Static};
-pub use show::{Show, ShowBase};
 pub use task::{Boundary, count_pending};
 pub use token::{Definitions, IntoTokenValue, Token, TokenName, TokenRef, TokenSet, Tokenable};
 pub use ui_events::pointer::{
@@ -272,5 +261,4 @@ pub use view::{
   StackChild,
   View,
 };
-pub use window::{ItemWindow, item_window, item_window_over};
 pub use wraps::Wraps;

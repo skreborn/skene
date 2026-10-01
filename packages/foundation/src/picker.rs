@@ -7,12 +7,12 @@ use skene_reactive::{Effect, Get, Memo, Set, Signal, on_cleanup, provide_context
 use crate::{
   AnyKind,
   AnyView,
+  Axis,
   Behavior,
   Control,
   DeclaredBoxStyle,
   DecorationBase,
   Enhance,
-  FlexDirection,
   HasBoxStyle,
   HasChildren,
   IntoChildOf,
@@ -98,7 +98,8 @@ impl<P: Platform> BasicPicker<P> {
       disabled: None,
       placement: Placement::Bottom,
       list: LayoutBox::new(Layout::Flex {
-        direction: FlexDirection::Column,
+        axis: Axis::Vertical,
+        reversed: false,
       }),
       value: None,
       on_change: None,

@@ -5,12 +5,12 @@ use skene_foundation::{
   Alignment,
   Arrangement,
   AspectRatio,
+  Axis,
   BoxValue,
   Condition,
   DecorationBase,
   Expr,
   FlexBase,
-  FlexDirection,
   GridBase,
   GridTemplate,
   GridTrack,
@@ -83,7 +83,8 @@ fn layout_props_reach_box_props_and_a_token_spacing_resolves() {
   assert_eq!(
     tokened.layout,
     Layout::Flex {
-      direction: FlexDirection::Row,
+      axis: Axis::Horizontal,
+      reversed: false,
     }
   );
   assert_eq!(
@@ -104,7 +105,8 @@ fn layout_props_reach_box_props_and_a_token_spacing_resolves() {
   assert_eq!(
     box_props(rows[1]).unwrap().layout,
     Layout::Flex {
-      direction: FlexDirection::RowReverse,
+      axis: Axis::Horizontal,
+      reversed: true,
     }
   );
   assert_eq!(resolve_length(rows[1], SPACING), Some(16.));

@@ -2251,22 +2251,6 @@ impl core::marker::Copy for skene_foundation::ExprValue
 impl core::marker::StructuralPartialEq for skene_foundation::ExprValue
 impl<N: skene_foundation::Scalar> core::convert::From<skene_foundation::ExprValue> for skene_foundation::Resolved<N>
 pub fn skene_foundation::Resolved<N>::from(skene_foundation::ExprValue) -> Self
-pub enum skene_foundation::FlexDirection
-pub skene_foundation::FlexDirection::Column
-pub skene_foundation::FlexDirection::ColumnReverse
-pub skene_foundation::FlexDirection::Row
-pub skene_foundation::FlexDirection::RowReverse
-impl core::clone::Clone for skene_foundation::FlexDirection
-pub fn skene_foundation::FlexDirection::clone(&self) -> skene_foundation::FlexDirection
-impl core::cmp::Eq for skene_foundation::FlexDirection
-impl core::cmp::PartialEq for skene_foundation::FlexDirection
-pub fn skene_foundation::FlexDirection::eq(&self, &skene_foundation::FlexDirection) -> bool
-impl core::fmt::Debug for skene_foundation::FlexDirection
-pub fn skene_foundation::FlexDirection::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::hash::Hash for skene_foundation::FlexDirection
-pub fn skene_foundation::FlexDirection::hash<__H: core::hash::Hasher>(&self, &mut __H)
-impl core::marker::Copy for skene_foundation::FlexDirection
-impl core::marker::StructuralPartialEq for skene_foundation::FlexDirection
 pub enum skene_foundation::Focus
 pub skene_foundation::Focus::Held
 pub skene_foundation::Focus::None
@@ -2462,7 +2446,8 @@ impl core::marker::StructuralPartialEq for skene_foundation::LabelPlacement
 pub enum skene_foundation::Layout
 pub skene_foundation::Layout::Document
 pub skene_foundation::Layout::Flex
-pub skene_foundation::Layout::Flex::direction: skene_foundation::FlexDirection
+pub skene_foundation::Layout::Flex::axis: skene_foundation::Axis
+pub skene_foundation::Layout::Flex::reversed: bool
 pub skene_foundation::Layout::Grid
 pub skene_foundation::Layout::Single
 pub skene_foundation::Layout::Stack

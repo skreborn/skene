@@ -3,11 +3,11 @@
 use crate::{
   AnyKind,
   Arrangement,
+  Axis,
   Children,
   Condition,
   DeclaredBoxStyle,
   FlexChild,
-  FlexDirection,
   HasBoxStyle,
   HasChildren,
   Inset,
@@ -26,7 +26,7 @@ use crate::{
 /// Generates a flex layout view over [`LayoutBox`], exposing the properties a flex
 /// container honors.
 macro_rules! flex_layout {
-  ($name:ident, $doc:literal, $direction:expr, $reversed:expr) => {
+  ($name:ident, $doc:literal, $axis:expr) => {
     #[doc = concat!("Children laid out ", $doc, ".")]
     ///
     /// Carries layout properties and nothing else; decorating it means wrapping it in
@@ -51,7 +51,8 @@ macro_rules! flex_layout {
       pub fn new() -> Self {
         Self {
           inner: LayoutBox::new(Layout::Flex {
-            direction: $direction,
+            axis: $axis,
+            reversed: false,
           }),
         }
       }
@@ -61,7 +62,8 @@ macro_rules! flex_layout {
       pub fn reversed() -> Self {
         Self {
           inner: LayoutBox::new(Layout::Flex {
-            direction: $reversed,
+            axis: $axis,
+            reversed: true,
           }),
         }
       }
@@ -96,18 +98,8 @@ macro_rules! flex_layout {
   };
 }
 
-flex_layout!(
-  Row,
-  "left to right",
-  FlexDirection::Row,
-  FlexDirection::RowReverse
-);
-flex_layout!(
-  Column,
-  "top to bottom",
-  FlexDirection::Column,
-  FlexDirection::ColumnReverse
-);
+flex_layout!(Row, "left to right", Axis::Horizontal);
+flex_layout!(Column, "top to bottom", Axis::Vertical);
 
 /// What a flex layout, a [`Row`] or a [`Column`], carries.
 ///

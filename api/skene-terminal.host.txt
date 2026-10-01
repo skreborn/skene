@@ -181,7 +181,6 @@ pub use skene_terminal::prelude::ErrorBoundaryBase
 pub use skene_terminal::prelude::Errors
 pub use skene_terminal::prelude::Expr
 pub use skene_terminal::prelude::FlexBase
-pub use skene_terminal::prelude::FlexDirection
 pub use skene_terminal::prelude::Flexibility
 pub use skene_terminal::prelude::FlexibleBase
 pub use skene_terminal::prelude::FocusOrder

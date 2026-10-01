@@ -28,7 +28,6 @@ pub use skene_foundation::{
   Errors,
   Expr,
   FlexBase,
-  FlexDirection,
   Flexibility,
   FlexibleBase,
   FocusOrder,

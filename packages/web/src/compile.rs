@@ -17,6 +17,7 @@ use std::{
 use rustc_hash::{FxHashMap, FxHasher};
 use skene_foundation::{
   Animation,
+  Axis,
   BoxProps,
   BoxStyle,
   BoxValue,
@@ -26,7 +27,6 @@ use skene_foundation::{
   ControlProps,
   Definitions,
   Fingerprint,
-  FlexDirection,
   GridFlow,
   IntoBoxValue,
   IntoRunValue,
@@ -631,13 +631,13 @@ fn motion<S>(
 fn layout_declarations(layout: Layout) -> Declarations {
   match layout {
     Layout::Document => Declarations::new().set("display", "flow-root"),
-    Layout::Flex { direction } => Declarations::new().set("display", "flex").set(
+    Layout::Flex { axis, reversed } => Declarations::new().set("display", "flex").set(
       "flex-direction",
-      match direction {
-        FlexDirection::Row => "row",
-        FlexDirection::Column => "column",
-        FlexDirection::RowReverse => "row-reverse",
-        FlexDirection::ColumnReverse => "column-reverse",
+      match (axis, reversed) {
+        (Axis::Horizontal, false) => "row",
+        (Axis::Vertical, false) => "column",
+        (Axis::Horizontal, true) => "row-reverse",
+        (Axis::Vertical, true) => "column-reverse",
       },
     ),
     Layout::Grid => Declarations::new().set("display", "grid"),

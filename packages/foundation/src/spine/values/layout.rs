@@ -1,4 +1,4 @@
-use super::FlexDirection;
+use super::Axis;
 
 /// The layout mode of a box.
 ///
@@ -9,10 +9,12 @@ use super::FlexDirection;
 pub enum Layout {
   /// Children in document order, one after another, contained within the box.
   Document,
-  /// Flex: children laid out along `direction`.
+  /// Flex: children laid out one after another along `axis`.
   Flex {
-    /// The main axis, and whether it runs reversed.
-    direction: FlexDirection,
+    /// The main axis.
+    axis: Axis,
+    /// Whether the children run from the axis's end: right to left, or bottom to top.
+    reversed: bool,
   },
   /// Grid: children placed into the style's tracks.
   Grid,

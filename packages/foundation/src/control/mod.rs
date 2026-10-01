@@ -61,7 +61,6 @@ use crate::{
   DragAxes,
   EventKind,
   Expr,
-  FlexDirection,
   FocusOrder,
   Handler,
   HasBoxStyle,
@@ -483,7 +482,8 @@ impl<P: Platform, B: Behavior<P>> Control<P, B> {
   #[inline(always)]
   pub fn new(behavior: B) -> Self {
     let mut inner = LayoutBox::new(Layout::Flex {
-      direction: FlexDirection::Row,
+      axis: Axis::Horizontal,
+      reversed: false,
     });
 
     inner.style_mut().item_alignment = Some(ItemAlignment::Center.into());
@@ -572,10 +572,8 @@ impl<P: Platform, B: Behavior<P>> Control<P, B> {
   #[inline(always)]
   pub fn set_axis(mut self, axis: Axis) -> Self {
     self.inner = self.inner.set_layout(Layout::Flex {
-      direction: match axis {
-        Axis::Horizontal => FlexDirection::Row,
-        Axis::Vertical => FlexDirection::Column,
-      },
+      axis,
+      reversed: false,
     });
 
     self

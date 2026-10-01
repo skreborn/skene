@@ -482,7 +482,8 @@ fn a_third_party_layout_view_matches_the_built_in() {
     fn new() -> Self {
       Self {
         base: LayoutBox::new(Layout::Flex {
-          direction: FlexDirection::Row,
+          axis: Axis::Horizontal,
+          reversed: false,
         }),
       }
     }

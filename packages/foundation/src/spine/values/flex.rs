@@ -1,19 +1,5 @@
 use super::Dimension;
 
-/// The main axis of a flex container, and whether it runs reversed.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[must_use]
-pub enum FlexDirection {
-  /// Left to right.
-  Row,
-  /// Top to bottom.
-  Column,
-  /// Right to left.
-  RowReverse,
-  /// Bottom to top.
-  ColumnReverse,
-}
-
 /// Whether and how a flex container wraps its children onto multiple lines.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[must_use]

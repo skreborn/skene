@@ -217,7 +217,6 @@ pub use values::{
   Dimension,
   DragAxes,
   Edge,
-  FlexDirection,
   Flexibility,
   FocusOrder,
   GridArea,

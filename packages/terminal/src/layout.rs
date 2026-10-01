@@ -8,7 +8,7 @@
 use std::cell::OnceCell;
 
 use rustc_hash::FxHashSet;
-use skene_foundation::{Inset, Layout, Overflow, RunPlacement, Scene};
+use skene_foundation::{Axis, Inset, Layout, Overflow, RunPlacement, Scene};
 use taffy::{
   prelude::{
     AvailableSpace,
@@ -1039,12 +1039,12 @@ pub(crate) fn box_taffy_style(layout: Layout, style: &PlainBox, in_stack: bool) 
     out.grid_template_rows = single;
   }
 
-  if let Layout::Flex { direction } = layout {
-    out.flex_direction = match direction {
-      skene_foundation::FlexDirection::Row => taffy::style::FlexDirection::Row,
-      skene_foundation::FlexDirection::Column => taffy::style::FlexDirection::Column,
-      skene_foundation::FlexDirection::RowReverse => taffy::style::FlexDirection::RowReverse,
-      skene_foundation::FlexDirection::ColumnReverse => taffy::style::FlexDirection::ColumnReverse,
+  if let Layout::Flex { axis, reversed } = layout {
+    out.flex_direction = match (axis, reversed) {
+      (Axis::Horizontal, false) => taffy::style::FlexDirection::Row,
+      (Axis::Vertical, false) => taffy::style::FlexDirection::Column,
+      (Axis::Horizontal, true) => taffy::style::FlexDirection::RowReverse,
+      (Axis::Vertical, true) => taffy::style::FlexDirection::ColumnReverse,
     };
   }
 

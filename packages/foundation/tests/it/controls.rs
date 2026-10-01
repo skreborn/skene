@@ -1066,23 +1066,17 @@ fn a_control_lays_out_its_row() {
     )
   });
   let spacing = PropertyKey::Shared(Property::Spacing);
-  let direction = |node| {
+  let axis = |node| {
     box_props(node).map(|props| match props.layout {
-      skene_foundation::Layout::Flex { direction } => Some(direction),
+      skene_foundation::Layout::Flex { axis, .. } => Some(axis),
       _ => None,
     })
   };
 
   assert_eq!(resolve_length(plain, spacing), Some(8.));
   assert_eq!(resolve_length(spaced, spacing), Some(3.));
-  assert_eq!(
-    direction(plain),
-    Some(Some(skene_foundation::FlexDirection::Row))
-  );
-  assert_eq!(
-    direction(spaced),
-    Some(Some(skene_foundation::FlexDirection::Column))
-  );
+  assert_eq!(axis(plain), Some(Some(skene_foundation::Axis::Horizontal)));
+  assert_eq!(axis(spaced), Some(Some(skene_foundation::Axis::Vertical)));
 
   owner.dispose();
 }

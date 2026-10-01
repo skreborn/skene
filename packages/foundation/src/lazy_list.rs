@@ -6,10 +6,10 @@ use skene_reactive::{Get, Memo, Set, Signal, Update};
 
 use crate::{
   AnyKind,
+  Axis,
   Container,
   DecorationBase,
   Dimension,
-  FlexDirection,
   Flexibility,
   HasBoxStyle,
   HasChild,
@@ -139,17 +139,22 @@ impl From<f32> for ItemExtent {
 
 /// The axis a lazy list scrolls along.
 #[derive(Clone, Copy)]
-enum Axis {
+enum ScrollAxis {
   Horizontal,
   Vertical,
 }
 
-impl Axis {
+impl ScrollAxis {
   #[inline(always)]
-  const fn direction(self) -> FlexDirection {
-    match self {
-      Self::Horizontal => FlexDirection::Row,
-      Self::Vertical => FlexDirection::Column,
+  const fn layout(self) -> Layout {
+    let axis = match self {
+      Self::Horizontal => Axis::Horizontal,
+      Self::Vertical => Axis::Vertical,
+    };
+
+    Layout::Flex {
+      axis,
+      reversed: false,
     }
   }
 
@@ -208,7 +213,7 @@ struct Slice {
 /// The measured extents of the items built so far, bumping `version` on a change.
 struct Measures {
   version: Signal<u32>,
-  axis: Axis,
+  axis: ScrollAxis,
 }
 
 /// Installs the keyed segment over the slice onto the list.
@@ -229,14 +234,14 @@ struct Items<P: Platform> {
 
 /// The list both public forms share: the axis, the item extent and the overscan.
 struct LazyList<P: Platform> {
-  axis: Axis,
+  axis: ScrollAxis,
   extent: ItemExtent,
   overscan: usize,
   items: Option<Items<P>>,
 }
 
 impl<P: Platform> LazyList<P> {
-  const fn new(axis: Axis) -> Self {
+  const fn new(axis: ScrollAxis) -> Self {
     Self {
       axis,
       extent: ItemExtent::Fixed(0.),
@@ -410,13 +415,11 @@ impl<P: Platform> LazyList<P> {
         }
       }
     });
-    let mut list = LayoutBox::<P, PlainChild>::new(Layout::Flex {
-      direction: axis.direction(),
-    })
-    .handle_scroll(move |event: &ScrollEvent| offset.set(axis.offset(*event)))
-    .add_child(rigid(
-      axis.derive_sized(Container::<P>::new(), move || slice.get().leading),
-    ));
+    let mut list = LayoutBox::<P, PlainChild>::new(axis.layout())
+      .handle_scroll(move |event: &ScrollEvent| offset.set(axis.offset(*event)))
+      .add_child(rigid(
+        axis.derive_sized(Container::<P>::new(), move || slice.get().leading),
+      ));
 
     list.style_mut().overflow = Some(Overflow::Auto.into());
 
@@ -471,7 +474,7 @@ impl<P: Platform> LazyColumn<P> {
   /// An empty column with an overscan of three items.
   #[inline(always)]
   pub const fn new() -> Self {
-    Self(LazyList::new(Axis::Vertical))
+    Self(LazyList::new(ScrollAxis::Vertical))
   }
 
   /// Sets the height of every item, fixed or estimated, in the medium's unit.
@@ -544,7 +547,7 @@ impl<P: Platform> LazyRow<P> {
   /// An empty row with an overscan of three items.
   #[inline(always)]
   pub const fn new() -> Self {
-    Self(LazyList::new(Axis::Horizontal))
+    Self(LazyList::new(ScrollAxis::Horizontal))
   }
 
   /// Sets the width of every item, fixed or estimated, in the medium's unit.

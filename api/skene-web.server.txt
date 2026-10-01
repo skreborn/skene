@@ -464,7 +464,6 @@ pub use skene_web::prelude::ErrorBoundaryBase
 pub use skene_web::prelude::Errors
 pub use skene_web::prelude::Expr
 pub use skene_web::prelude::FlexBase
-pub use skene_web::prelude::FlexDirection
 pub use skene_web::prelude::Flexibility
 pub use skene_web::prelude::FlexibleBase
 pub use skene_web::prelude::FocusOrder

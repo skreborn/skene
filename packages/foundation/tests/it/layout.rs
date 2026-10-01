@@ -7,6 +7,7 @@ use skene_foundation::{
   AspectRatio,
   BoxValue,
   Condition,
+  DecorationBase,
   Expr,
   FlexDirection,
   GridTemplate,

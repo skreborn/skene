@@ -63,11 +63,11 @@ pub use self::{
   tooltip::Tooltip,
 };
 
-/// Generates the terminal's own decoration on a view with a declared box style: the
-/// glyphs its border draws with, the shadow it casts and its scrollbars.
+/// Generates the terminal's own decoration on a view whose declared box style `$access`
+/// returns: the glyphs its border draws with, the shadow it casts and its scrollbars.
 macro_rules! terminal_decoration {
-  () => {
-    ::skene_foundation::properties! { style_mut, crate::ActivePlatform;
+  ($access:ident) => {
+    ::skene_foundation::properties! { $access, crate::ActivePlatform;
       set_border_glyphs / derive_border_glyphs (glyphs) => ext.border_glyphs: ::skene_foundation::terminal::BorderGlyphs,
         "the characters the border draws with";
       set_shadow / derive_shadow (shadow) => ext.shadow: ::skene_foundation::Color,

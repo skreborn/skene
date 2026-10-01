@@ -5,6 +5,7 @@ use std::{cell::Cell, rc::Rc};
 
 use skene_foundation::{
   Activate,
+  ContainerBase,
   HasChild,
   HasChildren,
   KeyEvent,

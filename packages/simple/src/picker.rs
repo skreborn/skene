@@ -12,6 +12,8 @@ use skene_foundation::{
   Column,
   Container,
   CornerRadius,
+  DecorationBase,
+  DecorationWithCornerRadius,
   Dimension,
   HasChild,
   HasChildren,

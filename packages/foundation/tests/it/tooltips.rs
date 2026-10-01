@@ -6,6 +6,7 @@ use skene_foundation::{
   AccessProp,
   Activate,
   AnyView,
+  ContainerBase,
   FocusOrder,
   HasChild,
   KeyEvent,

@@ -1,11 +1,23 @@
-error[E0599]: no method named `set_children` found for struct `skene_web::Container` in the current scope
+error[E0599]: the method `set_children` exists for struct `skene_web::Container`, but its trait bounds were not satisfied
  --> tests/compile_fail/a_container_with_two_children.rs:6:28
   |
 6 |   let _ = Container::new().set_children((Text::new("a"), Text::new("b")));
   |                            ^^^^^^^^^^^^
   |
-help: there is a method `set_child` with a similar name
+ ::: src/views/container.rs
   |
-6 -   let _ = Container::new().set_children((Text::new("a"), Text::new("b")));
-6 +   let _ = Container::new().set_child((Text::new("a"), Text::new("b")));
+  | pub struct Container(skene_foundation::Container<ActivePlatform>);
+  | -------------------- doesn't satisfy `skene_web::Container: skene_web::HasChildren<_>`
   |
+ ::: $WORKSPACE/packages/foundation/src/container.rs
+  |
+  | pub struct Container<P: Platform> {
+  | --------------------------------- doesn't satisfy `_: HasChildren<_>`
+  |
+  = note: the following trait bounds were not satisfied:
+          `skene_foundation::container::Container<Headless>: skene_web::HasChildren<_>`
+          which is required by `skene_web::Container: skene_web::HasChildren<_>`
+          `&skene_web::Container: Wraps`
+          which is required by `&skene_web::Container: skene_web::HasChildren<_>`
+          `&mut skene_web::Container: Wraps`
+          which is required by `&mut skene_web::Container: skene_web::HasChildren<_>`

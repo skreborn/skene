@@ -11,6 +11,8 @@ use skene_foundation::{
   Color,
   Container,
   CornerRadius,
+  DecorationBase,
+  DecorationWithCornerRadius,
   Definition,
   HasChild,
   Inset,

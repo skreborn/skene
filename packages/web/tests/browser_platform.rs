@@ -16,6 +16,8 @@ use skene_foundation::{
   ColorScheme,
   Condition,
   Container,
+  ContainerBase,
+  DecorationBase,
   Flexible,
   HasChild,
   HasChildren,

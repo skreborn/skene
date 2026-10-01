@@ -4,7 +4,16 @@
 
 #![cfg(skene_web_platform = "headless")]
 
-use skene_foundation::{Color, ColorScheme, Media, Property, PropertyKey, StaticLeaf};
+use skene_foundation::{
+  Color,
+  ColorScheme,
+  ContainerBase,
+  DecorationBase,
+  Media,
+  Property,
+  PropertyKey,
+  StaticLeaf,
+};
 use skene_simple::web::prelude::*;
 use skene_web::{
   Activate,

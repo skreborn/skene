@@ -17,6 +17,8 @@ use std::{
 use skene_foundation::{
   Axes,
   Axis,
+  ContainerBase,
+  DecorationBase,
   Dimension,
   DragAxes,
   DragData,
@@ -26,6 +28,7 @@ use skene_foundation::{
   GridTemplate,
   GridTrack,
   Line,
+  MotionBase,
   PointerButton,
   PointerId,
   PointerType,

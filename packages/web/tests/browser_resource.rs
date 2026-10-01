@@ -8,6 +8,7 @@ use std::{cell::Cell, rc::Rc};
 
 use skene_web::{
   Container,
+  ContainerBase,
   HasChild,
   Resource,
   Text,

@@ -11,6 +11,7 @@ pub use skene_foundation::PointerInfo
 pub use skene_foundation::PointerType
 pub use skene_foundation::Role
 pub use skene_foundation::TreeUpdate
+pub use skene_foundation::Wraps
 pub use skene_foundation::kurbo
 pub use skene_foundation::peniko
 pub use skene_foundation::reactive
@@ -1756,7 +1757,6 @@ pub fn skene_foundation::web::paint(&peniko::brush::Brush) -> vello_common::pain
 pub type skene_foundation::web::Painter = dyn core::ops::function::Fn(&mut skene_foundation::Canvas, skene_foundation::Size<f32>)
 pub macro skene_foundation::access_queries!
 pub macro skene_foundation::alignment_properties!
-pub macro skene_foundation::container_surface!
 pub macro skene_foundation::control_surface!
 pub macro skene_foundation::decoration!
 pub macro skene_foundation::extension_fields!
@@ -1768,7 +1768,6 @@ pub macro skene_foundation::grid_cell_surface!
 pub macro skene_foundation::grid_surface!
 pub macro skene_foundation::impl_basic_picker!
 pub macro skene_foundation::impl_column!
-pub macro skene_foundation::impl_container!
 pub macro skene_foundation::impl_context_menu!
 pub macro skene_foundation::impl_control!
 pub macro skene_foundation::impl_enhance!
@@ -3781,27 +3780,17 @@ impl<T, N> core::convert::From<skene_foundation::Conditional<skene_foundation::S
 pub fn skene_foundation::Value<T, skene_foundation::Condition<N>>::from(skene_foundation::Definition<T, N>) -> Self
 pub struct skene_foundation::Container<P: skene_foundation::Platform>
 impl<P: skene_foundation::Platform> skene_foundation::Container<P>
+pub fn skene_foundation::Container<P>::new() -> Self
+impl<P: core::fmt::Debug + skene_foundation::Platform> core::fmt::Debug for skene_foundation::Container<P>
+pub fn skene_foundation::Container<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<P: skene_foundation::Platform> core::default::Default for skene_foundation::Container<P>
+pub fn skene_foundation::Container<P>::default() -> Self
+impl<P: skene_foundation::Platform> skene_foundation::AnyKind for skene_foundation::Container<P>
+impl<P: skene_foundation::Platform> skene_foundation::ContainerBase<P> for skene_foundation::Container<P>
 pub fn skene_foundation::Container<P>::bind_handle(self, skene_foundation::NodeHandle<P>) -> Self
 pub fn skene_foundation::Container<P>::derive_accessibility(self, impl core::ops::function::Fn() -> alloc::vec::Vec<skene_foundation::AccessProp> + 'static) -> Self
 pub fn skene_foundation::Container<P>::derive_alignment<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Alignment>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::Container<P>::derive_aspect_ratio<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::AspectRatio>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::Container<P>::derive_border_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::Container<P>::derive_border_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::Container<P>::derive_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::Container<P>::derive_corner_radius<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self where <P as skene_foundation::Platform>::StyleExt: skene_foundation::CornerRadius
-pub fn skene_foundation::Container<P>::derive_cursor<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::MouseCursor>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Container<P>::derive_focus_order(self, impl core::ops::function::Fn() -> skene_foundation::FocusOrder + 'static) -> Self
-pub fn skene_foundation::Container<P>::derive_height<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::Container<P>::derive_margin<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::Container<P>::derive_max_height<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::Container<P>::derive_max_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::Container<P>::derive_min_height<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::Container<P>::derive_min_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::Container<P>::derive_offset<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::Container<P>::derive_overflow<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Axes<skene_foundation::Overflow>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::Container<P>::derive_padding<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::Container<P>::derive_visibility<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Visibility>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::Container<P>::derive_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Container<P>::handle_blur(self, impl core::ops::function::Fn() + 'static) -> Self
 pub fn skene_foundation::Container<P>::handle_click<R: core::convert::Into<skene_foundation::Bubbling>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Container<P>::handle_double_click<R: core::convert::Into<skene_foundation::Bubbling>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -3817,23 +3806,39 @@ pub fn skene_foundation::Container<P>::handle_pointer_move<R: core::convert::Int
 pub fn skene_foundation::Container<P>::handle_pointer_up<R: core::convert::Into<skene_foundation::Bubbling>>(self, impl core::ops::function::Fn(&skene_foundation::PointerEvent) -> R + 'static) -> Self
 pub fn skene_foundation::Container<P>::handle_scroll(self, impl core::ops::function::Fn(&skene_foundation::ScrollEvent) + 'static) -> Self
 pub fn skene_foundation::Container<P>::handle_wheel<R: core::convert::Into<skene_foundation::Bubbling>>(self, impl core::ops::function::Fn(&skene_foundation::WheelEvent) -> R + 'static) -> Self
-pub fn skene_foundation::Container<P>::new() -> Self
+pub fn skene_foundation::Container<P>::new() -> Self where Self: skene_foundation::Wraps<Inner = skene_foundation::Container<P>>
 pub fn skene_foundation::Container<P>::set_accessibility(self, impl core::iter::traits::collect::IntoIterator<Item = skene_foundation::AccessProp>) -> Self
 pub fn skene_foundation::Container<P>::set_alignment(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Alignment, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
-pub fn skene_foundation::Container<P>::set_animation(self, skene_foundation::Animation<skene_foundation::BoxKeyframe<P>>) -> Self
+pub fn skene_foundation::Container<P>::set_container_name(self, skene_foundation::ContainerName) -> Self
+pub fn skene_foundation::Container<P>::set_drag_axes(self, skene_foundation::DragAxes) -> Self
+pub fn skene_foundation::Container<P>::set_drag_data(self, impl core::ops::function::Fn() -> skene_foundation::DragData + 'static) -> Self
+pub fn skene_foundation::Container<P>::set_focus_order(self, skene_foundation::FocusOrder) -> Self
+pub fn skene_foundation::Container<P>::set_label(self, impl core::convert::Into<alloc::string::String>) -> Self
+pub fn skene_foundation::Container<P>::set_labelled_by(self, skene_foundation::NodeId) -> Self
+pub fn skene_foundation::Container<P>::set_role(self, accesskit::Role) -> Self
+impl<P: skene_foundation::Platform> skene_foundation::DecorationBase<P> for skene_foundation::Container<P>
+pub fn skene_foundation::Container<P>::derive_aspect_ratio<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::AspectRatio>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Container<P>::derive_border_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Container<P>::derive_border_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Container<P>::derive_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Container<P>::derive_cursor<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::MouseCursor>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Container<P>::derive_height<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Container<P>::derive_margin<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Container<P>::derive_max_height<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Container<P>::derive_max_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Container<P>::derive_min_height<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Container<P>::derive_min_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Container<P>::derive_offset<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Container<P>::derive_overflow<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Axes<skene_foundation::Overflow>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Container<P>::derive_padding<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Container<P>::derive_visibility<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Visibility>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Container<P>::derive_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Container<P>::set_aspect_ratio(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::AspectRatio, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Container<P>::set_border_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Container<P>::set_border_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Container<P>::set_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
-pub fn skene_foundation::Container<P>::set_container_name(self, skene_foundation::ContainerName) -> Self
-pub fn skene_foundation::Container<P>::set_corner_radius(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Length, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self where <P as skene_foundation::Platform>::StyleExt: skene_foundation::CornerRadius
 pub fn skene_foundation::Container<P>::set_cursor(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::MouseCursor, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
-pub fn skene_foundation::Container<P>::set_drag_axes(self, skene_foundation::DragAxes) -> Self
-pub fn skene_foundation::Container<P>::set_drag_data(self, impl core::ops::function::Fn() -> skene_foundation::DragData + 'static) -> Self
-pub fn skene_foundation::Container<P>::set_focus_order(self, skene_foundation::FocusOrder) -> Self
 pub fn skene_foundation::Container<P>::set_height(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
-pub fn skene_foundation::Container<P>::set_label(self, impl core::convert::Into<alloc::string::String>) -> Self
-pub fn skene_foundation::Container<P>::set_labelled_by(self, skene_foundation::NodeId) -> Self
 pub fn skene_foundation::Container<P>::set_margin(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Container<P>::set_max_height(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Container<P>::set_max_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
@@ -3842,22 +3847,22 @@ pub fn skene_foundation::Container<P>::set_min_width(self, impl core::convert::I
 pub fn skene_foundation::Container<P>::set_offset(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Container<P>::set_overflow(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Axes<skene_foundation::Overflow>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Container<P>::set_padding(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
-pub fn skene_foundation::Container<P>::set_role(self, accesskit::Role) -> Self
-pub fn skene_foundation::Container<P>::set_transition(self, skene_foundation::Transition<<<P as skene_foundation::Platform>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
-pub fn skene_foundation::Container<P>::set_transition_name(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_foundation::Container<P>::set_visibility(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Visibility, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Container<P>::set_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
-pub const fn skene_foundation::Container<P>::style_mut(&mut self) -> &mut skene_foundation::DeclaredBoxStyle<P>
-impl<P: core::fmt::Debug + skene_foundation::Platform> core::fmt::Debug for skene_foundation::Container<P>
-pub fn skene_foundation::Container<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl<P: skene_foundation::Platform> core::default::Default for skene_foundation::Container<P>
-pub fn skene_foundation::Container<P>::default() -> Self
-impl<P: skene_foundation::Platform> skene_foundation::AnyKind for skene_foundation::Container<P>
+impl<P: skene_foundation::Platform> skene_foundation::HasBoxStyle<P> for skene_foundation::Container<P>
+pub fn skene_foundation::Container<P>::box_style_mut(&mut self) -> &mut skene_foundation::DeclaredBoxStyle<P>
 impl<P: skene_foundation::Platform> skene_foundation::HasChild<P> for skene_foundation::Container<P>
 pub type skene_foundation::Container<P>::Kind = skene_foundation::PlainChild
 pub fn skene_foundation::Container<P>::child_mut(&mut self, skene_foundation::Seal) -> &mut skene_foundation::Children<P, skene_foundation::PlainChild>
 pub fn skene_foundation::Container<P>::derive_child<V: skene_foundation::IntoChildOf<P, Self::Kind>>(self, impl core::ops::function::Fn() -> V + 'static) -> Self
 pub fn skene_foundation::Container<P>::set_child(self, impl skene_foundation::IntoChildOf<P, Self::Kind>) -> Self
+impl<P: skene_foundation::Platform> skene_foundation::HasLayoutBox<P> for skene_foundation::Container<P>
+pub type skene_foundation::Container<P>::Kind = skene_foundation::PlainChild
+pub fn skene_foundation::Container<P>::map_layout_box(self, impl core::ops::function::FnOnce(skene_foundation::LayoutBox<P, skene_foundation::PlainChild>) -> skene_foundation::LayoutBox<P, skene_foundation::PlainChild>) -> Self
+impl<P: skene_foundation::Platform> skene_foundation::MotionBase<P> for skene_foundation::Container<P>
+pub fn skene_foundation::Container<P>::set_animation(self, skene_foundation::Animation<skene_foundation::BoxKeyframe<P>>) -> Self
+pub fn skene_foundation::Container<P>::set_transition(self, skene_foundation::Transition<<<P as skene_foundation::Platform>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
+pub fn skene_foundation::Container<P>::set_transition_name(self, impl core::convert::Into<alloc::string::String>) -> Self
 impl<P: skene_foundation::Platform> skene_foundation::View<P> for skene_foundation::Container<P>
 pub fn skene_foundation::Container<P>::build(self) -> skene_foundation::NodeId
 pub fn skene_foundation::Container<P>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
@@ -6713,6 +6718,7 @@ impl<P: skene_foundation::Platform> skene_foundation::AnyKind for skene_foundati
 impl<P: skene_foundation::Platform> skene_foundation::AnyKind for skene_foundation::Span<P>
 impl<P: skene_foundation::Platform> skene_foundation::AnyKind for skene_foundation::Stack<P>
 impl<P: skene_foundation::Platform> skene_foundation::AnyKind for skene_foundation::Text<P>
+impl<T: skene_foundation::Wraps<Innerskene_foundation::AnyKind>> skene_foundation::AnyKind for T
 pub trait skene_foundation::Behavior<P: skene_foundation::Platform>: 'static
 pub fn skene_foundation::Behavior::access(&self) -> alloc::vec::Vec<skene_foundation::AccessProp>
 pub fn skene_foundation::Behavior::attach(&self, &skene_foundation::ControlHandle<P>)
@@ -7200,6 +7206,66 @@ impl<N: skene_foundation::Scalar> skene_foundation::ConditionTree for skene_foun
 pub fn skene_foundation::Media<N>::disjunctive_leaves(&self) -> alloc::vec::Vec<alloc::vec::Vec<&Self>>
 pub fn skene_foundation::Media<N>::holds(&self, &impl core::ops::function::Fn(&Self) -> bool) -> bool
 pub fn skene_foundation::Media<N>::shape(&self) -> skene_foundation::ConditionShape<'_, Self>
+pub trait skene_foundation::ContainerBase<P: skene_foundation::Platform>: skene_foundation::HasLayoutBox<P, Kind = skene_foundation::PlainChild>
+pub fn skene_foundation::ContainerBase::bind_handle(self, skene_foundation::NodeHandle<P>) -> Self
+pub fn skene_foundation::ContainerBase::derive_accessibility(self, impl core::ops::function::Fn() -> alloc::vec::Vec<skene_foundation::AccessProp> + 'static) -> Self
+pub fn skene_foundation::ContainerBase::derive_alignment<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Alignment>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::ContainerBase::derive_focus_order(self, impl core::ops::function::Fn() -> skene_foundation::FocusOrder + 'static) -> Self
+pub fn skene_foundation::ContainerBase::handle_blur(self, impl core::ops::function::Fn() + 'static) -> Self
+pub fn skene_foundation::ContainerBase::handle_click<R: core::convert::Into<skene_foundation::Bubbling>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::ContainerBase::handle_double_click<R: core::convert::Into<skene_foundation::Bubbling>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::ContainerBase::handle_drop<T: 'static>(self, impl core::ops::function::Fn(&T) + 'static) -> Self
+pub fn skene_foundation::ContainerBase::handle_focus(self, impl core::ops::function::Fn() + 'static) -> Self
+pub fn skene_foundation::ContainerBase::handle_key_down<R: core::convert::Into<skene_foundation::Bubbling>>(self, impl core::ops::function::Fn(&skene_foundation::KeyEvent) -> R + 'static) -> Self
+pub fn skene_foundation::ContainerBase::handle_key_up<R: core::convert::Into<skene_foundation::Bubbling>>(self, impl core::ops::function::Fn(&skene_foundation::KeyEvent) -> R + 'static) -> Self
+pub fn skene_foundation::ContainerBase::handle_pointer_cancel<R: core::convert::Into<skene_foundation::Bubbling>>(self, impl core::ops::function::Fn(&skene_foundation::PointerEvent) -> R + 'static) -> Self
+pub fn skene_foundation::ContainerBase::handle_pointer_down<R: core::convert::Into<skene_foundation::Bubbling>>(self, impl core::ops::function::Fn(&skene_foundation::PointerEvent) -> R + 'static) -> Self
+pub fn skene_foundation::ContainerBase::handle_pointer_enter(self, impl core::ops::function::Fn() + 'static) -> Self
+pub fn skene_foundation::ContainerBase::handle_pointer_leave(self, impl core::ops::function::Fn() + 'static) -> Self
+pub fn skene_foundation::ContainerBase::handle_pointer_move<R: core::convert::Into<skene_foundation::Bubbling>>(self, impl core::ops::function::Fn(&skene_foundation::PointerEvent) -> R + 'static) -> Self
+pub fn skene_foundation::ContainerBase::handle_pointer_up<R: core::convert::Into<skene_foundation::Bubbling>>(self, impl core::ops::function::Fn(&skene_foundation::PointerEvent) -> R + 'static) -> Self
+pub fn skene_foundation::ContainerBase::handle_scroll(self, impl core::ops::function::Fn(&skene_foundation::ScrollEvent) + 'static) -> Self
+pub fn skene_foundation::ContainerBase::handle_wheel<R: core::convert::Into<skene_foundation::Bubbling>>(self, impl core::ops::function::Fn(&skene_foundation::WheelEvent) -> R + 'static) -> Self
+pub fn skene_foundation::ContainerBase::new() -> Self where Self: skene_foundation::Wraps<Inner = skene_foundation::Container<P>>
+pub fn skene_foundation::ContainerBase::set_accessibility(self, impl core::iter::traits::collect::IntoIterator<Item = skene_foundation::AccessProp>) -> Self
+pub fn skene_foundation::ContainerBase::set_alignment(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Alignment, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::ContainerBase::set_container_name(self, skene_foundation::ContainerName) -> Self
+pub fn skene_foundation::ContainerBase::set_drag_axes(self, skene_foundation::DragAxes) -> Self
+pub fn skene_foundation::ContainerBase::set_drag_data(self, impl core::ops::function::Fn() -> skene_foundation::DragData + 'static) -> Self
+pub fn skene_foundation::ContainerBase::set_focus_order(self, skene_foundation::FocusOrder) -> Self
+pub fn skene_foundation::ContainerBase::set_label(self, impl core::convert::Into<alloc::string::String>) -> Self
+pub fn skene_foundation::ContainerBase::set_labelled_by(self, skene_foundation::NodeId) -> Self
+pub fn skene_foundation::ContainerBase::set_role(self, accesskit::Role) -> Self
+impl<P: skene_foundation::Platform> skene_foundation::ContainerBase<P> for skene_foundation::Container<P>
+pub fn skene_foundation::Container<P>::bind_handle(self, skene_foundation::NodeHandle<P>) -> Self
+pub fn skene_foundation::Container<P>::derive_accessibility(self, impl core::ops::function::Fn() -> alloc::vec::Vec<skene_foundation::AccessProp> + 'static) -> Self
+pub fn skene_foundation::Container<P>::derive_alignment<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Alignment>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Container<P>::derive_focus_order(self, impl core::ops::function::Fn() -> skene_foundation::FocusOrder + 'static) -> Self
+pub fn skene_foundation::Container<P>::handle_blur(self, impl core::ops::function::Fn() + 'static) -> Self
+pub fn skene_foundation::Container<P>::handle_click<R: core::convert::Into<skene_foundation::Bubbling>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Container<P>::handle_double_click<R: core::convert::Into<skene_foundation::Bubbling>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Container<P>::handle_drop<T: 'static>(self, impl core::ops::function::Fn(&T) + 'static) -> Self
+pub fn skene_foundation::Container<P>::handle_focus(self, impl core::ops::function::Fn() + 'static) -> Self
+pub fn skene_foundation::Container<P>::handle_key_down<R: core::convert::Into<skene_foundation::Bubbling>>(self, impl core::ops::function::Fn(&skene_foundation::KeyEvent) -> R + 'static) -> Self
+pub fn skene_foundation::Container<P>::handle_key_up<R: core::convert::Into<skene_foundation::Bubbling>>(self, impl core::ops::function::Fn(&skene_foundation::KeyEvent) -> R + 'static) -> Self
+pub fn skene_foundation::Container<P>::handle_pointer_cancel<R: core::convert::Into<skene_foundation::Bubbling>>(self, impl core::ops::function::Fn(&skene_foundation::PointerEvent) -> R + 'static) -> Self
+pub fn skene_foundation::Container<P>::handle_pointer_down<R: core::convert::Into<skene_foundation::Bubbling>>(self, impl core::ops::function::Fn(&skene_foundation::PointerEvent) -> R + 'static) -> Self
+pub fn skene_foundation::Container<P>::handle_pointer_enter(self, impl core::ops::function::Fn() + 'static) -> Self
+pub fn skene_foundation::Container<P>::handle_pointer_leave(self, impl core::ops::function::Fn() + 'static) -> Self
+pub fn skene_foundation::Container<P>::handle_pointer_move<R: core::convert::Into<skene_foundation::Bubbling>>(self, impl core::ops::function::Fn(&skene_foundation::PointerEvent) -> R + 'static) -> Self
+pub fn skene_foundation::Container<P>::handle_pointer_up<R: core::convert::Into<skene_foundation::Bubbling>>(self, impl core::ops::function::Fn(&skene_foundation::PointerEvent) -> R + 'static) -> Self
+pub fn skene_foundation::Container<P>::handle_scroll(self, impl core::ops::function::Fn(&skene_foundation::ScrollEvent) + 'static) -> Self
+pub fn skene_foundation::Container<P>::handle_wheel<R: core::convert::Into<skene_foundation::Bubbling>>(self, impl core::ops::function::Fn(&skene_foundation::WheelEvent) -> R + 'static) -> Self
+pub fn skene_foundation::Container<P>::new() -> Self where Self: skene_foundation::Wraps<Inner = skene_foundation::Container<P>>
+pub fn skene_foundation::Container<P>::set_accessibility(self, impl core::iter::traits::collect::IntoIterator<Item = skene_foundation::AccessProp>) -> Self
+pub fn skene_foundation::Container<P>::set_alignment(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Alignment, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::Container<P>::set_container_name(self, skene_foundation::ContainerName) -> Self
+pub fn skene_foundation::Container<P>::set_drag_axes(self, skene_foundation::DragAxes) -> Self
+pub fn skene_foundation::Container<P>::set_drag_data(self, impl core::ops::function::Fn() -> skene_foundation::DragData + 'static) -> Self
+pub fn skene_foundation::Container<P>::set_focus_order(self, skene_foundation::FocusOrder) -> Self
+pub fn skene_foundation::Container<P>::set_label(self, impl core::convert::Into<alloc::string::String>) -> Self
+pub fn skene_foundation::Container<P>::set_labelled_by(self, skene_foundation::NodeId) -> Self
+pub fn skene_foundation::Container<P>::set_role(self, accesskit::Role) -> Self
 pub trait skene_foundation::ControlChild<P: skene_foundation::Platform>: 'static
 pub fn skene_foundation::ControlChild::build_body(self) -> core::option::Option<skene_foundation::NodeId>
 impl<P: skene_foundation::Platform> skene_foundation::ControlChild<P> for skene_foundation::AnyView<P>
@@ -7214,6 +7280,78 @@ impl skene_foundation::CornerRadius for skene_foundation::terminal::TerminalStyl
 pub fn skene_foundation::terminal::TerminalStyle::set_corner_radius<S: skene_foundation::Shape>(&mut Self::BoxFields, <S as skene_foundation::Shape>::Of)
 impl skene_foundation::CornerRadius for skene_foundation::web::WebStyle
 pub fn skene_foundation::web::WebStyle::set_corner_radius<S: skene_foundation::Shape>(&mut Self::BoxFields, <S as skene_foundation::Shape>::Of)
+pub trait skene_foundation::DecorationBase<P: skene_foundation::Platform>: skene_foundation::HasBoxStyle<P> + core::marker::Sized
+pub fn skene_foundation::DecorationBase::derive_aspect_ratio<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::AspectRatio>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::DecorationBase::derive_border_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::DecorationBase::derive_border_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::DecorationBase::derive_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::DecorationBase::derive_cursor<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::MouseCursor>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::DecorationBase::derive_height<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::DecorationBase::derive_margin<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::DecorationBase::derive_max_height<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::DecorationBase::derive_max_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::DecorationBase::derive_min_height<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::DecorationBase::derive_min_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::DecorationBase::derive_offset<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::DecorationBase::derive_overflow<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Axes<skene_foundation::Overflow>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::DecorationBase::derive_padding<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::DecorationBase::derive_visibility<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Visibility>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::DecorationBase::derive_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::DecorationBase::set_aspect_ratio(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::AspectRatio, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::DecorationBase::set_border_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::DecorationBase::set_border_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::DecorationBase::set_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::DecorationBase::set_cursor(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::MouseCursor, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::DecorationBase::set_height(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::DecorationBase::set_margin(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::DecorationBase::set_max_height(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::DecorationBase::set_max_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::DecorationBase::set_min_height(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::DecorationBase::set_min_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::DecorationBase::set_offset(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::DecorationBase::set_overflow(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Axes<skene_foundation::Overflow>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::DecorationBase::set_padding(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::DecorationBase::set_visibility(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Visibility, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::DecorationBase::set_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+impl<P: skene_foundation::Platform> skene_foundation::DecorationBase<P> for skene_foundation::Container<P>
+pub fn skene_foundation::Container<P>::derive_aspect_ratio<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::AspectRatio>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Container<P>::derive_border_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Container<P>::derive_border_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Container<P>::derive_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Container<P>::derive_cursor<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::MouseCursor>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Container<P>::derive_height<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Container<P>::derive_margin<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Container<P>::derive_max_height<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Container<P>::derive_max_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Container<P>::derive_min_height<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Container<P>::derive_min_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Container<P>::derive_offset<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Container<P>::derive_overflow<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Axes<skene_foundation::Overflow>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Container<P>::derive_padding<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Container<P>::derive_visibility<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Visibility>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Container<P>::derive_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Container<P>::set_aspect_ratio(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::AspectRatio, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::Container<P>::set_border_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::Container<P>::set_border_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::Container<P>::set_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::Container<P>::set_cursor(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::MouseCursor, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::Container<P>::set_height(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::Container<P>::set_margin(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::Container<P>::set_max_height(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::Container<P>::set_max_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::Container<P>::set_min_height(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::Container<P>::set_min_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::Container<P>::set_offset(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::Container<P>::set_overflow(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Axes<skene_foundation::Overflow>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::Container<P>::set_padding(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::Container<P>::set_visibility(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Visibility, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::Container<P>::set_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub trait skene_foundation::DecorationWithCornerRadius<P: skene_foundation::Platform> where <P as skene_foundation::Platform>::StyleExt: skene_foundation::CornerRadius: skene_foundation::DecorationBase<P>
+pub fn skene_foundation::DecorationWithCornerRadius::derive_corner_radius<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::DecorationWithCornerRadius::set_corner_radius(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Length, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+impl<P: skene_foundation::Platform, T: skene_foundation::DecorationBase<P>> skene_foundation::DecorationWithCornerRadius<P> for T where <P as skene_foundation::Platform>::StyleExt: skene_foundation::CornerRadius
+pub fn T::derive_corner_radius<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn T::set_corner_radius(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Length, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub trait skene_foundation::ExprOutput: core::marker::Sized
 pub fn skene_foundation::ExprOutput::from_expr_value(skene_foundation::ExprValue) -> core::option::Option<Self>
 impl skene_foundation::ExprOutput for f32
@@ -7328,11 +7466,22 @@ impl<X: skene_foundation::StyleExtension> skene_foundation::Fingerprint for sken
 pub fn skene_foundation::RunStyle<skene_foundation::Keyframe, X>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 impl<X: skene_foundation::StyleExtension> skene_foundation::Fingerprint for skene_foundation::RunStyle<skene_foundation::Plain, X>
 pub fn skene_foundation::RunStyle<skene_foundation::Plain, X>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
+pub trait skene_foundation::HasBoxStyle<P: skene_foundation::Platform>
+pub fn skene_foundation::HasBoxStyle::box_style_mut(&mut self) -> &mut skene_foundation::DeclaredBoxStyle<P>
+impl<P: skene_foundation::Platform, T: skene_foundation::Wraps<Innerskene_foundation::HasBoxStyle<P>>> skene_foundation::HasBoxStyle<P> for T
+pub fn T::box_style_mut(&mut self) -> &mut skene_foundation::DeclaredBoxStyle<P>
+impl<P: skene_foundation::Platform> skene_foundation::HasBoxStyle<P> for skene_foundation::Container<P>
+pub fn skene_foundation::Container<P>::box_style_mut(&mut self) -> &mut skene_foundation::DeclaredBoxStyle<P>
 pub trait skene_foundation::HasChild<P: skene_foundation::Platform>: core::marker::Sized
 pub type skene_foundation::HasChild::Kind: 'static
 pub fn skene_foundation::HasChild::child_mut(&mut self, skene_foundation::Seal) -> &mut skene_foundation::Children<P, Self::Kind>
 pub fn skene_foundation::HasChild::derive_child<V: skene_foundation::IntoChildOf<P, Self::Kind>>(self, impl core::ops::function::Fn() -> V + 'static) -> Self
 pub fn skene_foundation::HasChild::set_child(self, impl skene_foundation::IntoChildOf<P, Self::Kind>) -> Self
+impl<P: skene_foundation::Platform, T: skene_foundation::Wraps<Innerskene_foundation::HasChild<P>>> skene_foundation::HasChild<P> for T
+pub type T::Kind = <<T as skene_foundation::Wraps>::Inner as skene_foundation::HasChild<P>>::Kind
+pub fn T::child_mut(&mut self, skene_foundation::Seal) -> &mut skene_foundation::Children<P, Self::Kind>
+pub fn T::derive_child<V: skene_foundation::IntoChildOf<P, Self::Kind>>(self, impl core::ops::function::Fn() -> V + 'static) -> Self
+pub fn T::set_child(self, impl skene_foundation::IntoChildOf<P, Self::Kind>) -> Self
 impl<P: skene_foundation::Platform, V: skene_foundation::HasChild<P>> skene_foundation::HasChild<P> for skene_foundation::Keyed<P, V>
 pub type skene_foundation::Keyed<P, V>::Kind = <V as skene_foundation::HasChild<P>>::Kind
 pub fn skene_foundation::Keyed<P, V>::child_mut(&mut self, skene_foundation::Seal) -> &mut skene_foundation::Children<P, Self::Kind>
@@ -7359,6 +7508,14 @@ pub fn skene_foundation::LayoutBox<P, Kind>::derive_child<V: skene_foundation::I
 pub fn skene_foundation::LayoutBox<P, Kind>::derive_children<T, I, K, V>(self, impl core::ops::function::Fn() -> I + 'static, impl core::ops::function::Fn(&T) -> K + 'static, impl core::ops::function::Fn(T) -> V + 'static) -> Self where I: core::iter::traits::collect::IntoIterator<Item = T>, K: core::cmp::Eq + core::hash::Hash + 'static, V: skene_foundation::IntoChildOf<P, Self::Kind>
 pub fn skene_foundation::LayoutBox<P, Kind>::derive_entries<F, V>(self, F, impl core::ops::function::Fn(skene_reactive::store::AtKey<F>) -> V + 'static) -> Self where F: skene_reactive::store::KeyedField, V: skene_foundation::IntoChildOf<P, Self::Kind>
 pub fn skene_foundation::LayoutBox<P, Kind>::set_children(self, impl skene_foundation::IntoChildren<P, Self::Kind>) -> Self
+impl<P: skene_foundation::Platform, T: skene_foundation::Wraps<Innerskene_foundation::HasChildren<P>>> skene_foundation::HasChildren<P> for T
+pub type T::Kind = <<T as skene_foundation::Wraps>::Inner as skene_foundation::HasChildren<P>>::Kind
+pub fn T::add_child(self, impl skene_foundation::IntoChildOf<P, Self::Kind>) -> Self
+pub fn T::children_mut(&mut self, skene_foundation::Seal) -> &mut skene_foundation::Children<P, Self::Kind>
+pub fn T::derive_child<V: skene_foundation::IntoChildOf<P, Self::Kind>>(self, impl core::ops::function::Fn() -> V + 'static) -> Self
+pub fn T::derive_children<T, I, K, V>(self, impl core::ops::function::Fn() -> I + 'static, impl core::ops::function::Fn(&T) -> K + 'static, impl core::ops::function::Fn(T) -> V + 'static) -> Self where I: core::iter::traits::collect::IntoIterator<Item = T>, K: core::cmp::Eq + core::hash::Hash + 'static, V: skene_foundation::IntoChildOf<P, Self::Kind>
+pub fn T::derive_entries<F, V>(self, F, impl core::ops::function::Fn(skene_reactive::store::AtKey<F>) -> V + 'static) -> Self where F: skene_reactive::store::KeyedField, V: skene_foundation::IntoChildOf<P, Self::Kind>
+pub fn T::set_children(self, impl skene_foundation::IntoChildren<P, Self::Kind>) -> Self
 impl<P: skene_foundation::Platform, V: skene_foundation::HasChildren<P>> skene_foundation::HasChildren<P> for skene_foundation::Keyed<P, V>
 pub type skene_foundation::Keyed<P, V>::Kind = <V as skene_foundation::HasChildren<P>>::Kind
 pub fn skene_foundation::Keyed<P, V>::add_child(self, impl skene_foundation::IntoChildOf<P, Self::Kind>) -> Self
@@ -7399,6 +7556,21 @@ pub fn skene_foundation::Stack<P>::derive_child<V: skene_foundation::IntoChildOf
 pub fn skene_foundation::Stack<P>::derive_children<T, I, K, V>(self, impl core::ops::function::Fn() -> I + 'static, impl core::ops::function::Fn(&T) -> K + 'static, impl core::ops::function::Fn(T) -> V + 'static) -> Self where I: core::iter::traits::collect::IntoIterator<Item = T>, K: core::cmp::Eq + core::hash::Hash + 'static, V: skene_foundation::IntoChildOf<P, Self::Kind>
 pub fn skene_foundation::Stack<P>::derive_entries<F, V>(self, F, impl core::ops::function::Fn(skene_reactive::store::AtKey<F>) -> V + 'static) -> Self where F: skene_reactive::store::KeyedField, V: skene_foundation::IntoChildOf<P, Self::Kind>
 pub fn skene_foundation::Stack<P>::set_children(self, impl skene_foundation::IntoChildren<P, Self::Kind>) -> Self
+pub trait skene_foundation::HasLayoutBox<P: skene_foundation::Platform>: core::marker::Sized
+pub type skene_foundation::HasLayoutBox::Kind: 'static
+pub fn skene_foundation::HasLayoutBox::map_layout_box(self, impl core::ops::function::FnOnce(skene_foundation::LayoutBox<P, Self::Kind>) -> skene_foundation::LayoutBox<P, Self::Kind>) -> Self
+impl<P: skene_foundation::Platform, T: skene_foundation::Wraps<Innerskene_foundation::HasLayoutBox<P>>> skene_foundation::HasLayoutBox<P> for T
+pub type T::Kind = <<T as skene_foundation::Wraps>::Inner as skene_foundation::HasLayoutBox<P>>::Kind
+pub fn T::map_layout_box(self, impl core::ops::function::FnOnce(skene_foundation::LayoutBox<P, Self::Kind>) -> skene_foundation::LayoutBox<P, Self::Kind>) -> Self
+impl<P: skene_foundation::Platform> skene_foundation::HasLayoutBox<P> for skene_foundation::Container<P>
+pub type skene_foundation::Container<P>::Kind = skene_foundation::PlainChild
+pub fn skene_foundation::Container<P>::map_layout_box(self, impl core::ops::function::FnOnce(skene_foundation::LayoutBox<P, skene_foundation::PlainChild>) -> skene_foundation::LayoutBox<P, skene_foundation::PlainChild>) -> Self
+pub trait skene_foundation::HasRun<P: skene_foundation::Platform>: core::marker::Sized
+pub fn skene_foundation::HasRun::map_run(self, impl core::ops::function::FnOnce(skene_foundation::Run<P>) -> skene_foundation::Run<P>) -> Self
+pub fn skene_foundation::HasRun::run_style_mut(&mut self) -> &mut skene_foundation::DeclaredRunStyle<P>
+impl<P: skene_foundation::Platform, T: skene_foundation::Wraps<Innerskene_foundation::HasRun<P>>> skene_foundation::HasRun<P> for T
+pub fn T::map_run(self, impl core::ops::function::FnOnce(skene_foundation::Run<P>) -> skene_foundation::Run<P>) -> Self
+pub fn T::run_style_mut(&mut self) -> &mut skene_foundation::DeclaredRunStyle<P>
 pub trait skene_foundation::IntoBoxValue<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension>: core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug + skene_foundation::Fingerprint + 'static
 pub fn skene_foundation::IntoBoxValue::from_box_value(skene_foundation::BoxValue<N, X>) -> core::option::Option<Self>
 pub fn skene_foundation::IntoBoxValue::into_box_value(self) -> skene_foundation::BoxValue<N, X>
@@ -7546,6 +7718,14 @@ pub trait skene_foundation::IntoTokenValue<V>
 pub fn skene_foundation::IntoTokenValue::into_token_value(self) -> V
 impl<P, V: core::convert::From<P>> skene_foundation::IntoTokenValue<V> for P
 pub fn P::into_token_value(self) -> V
+pub trait skene_foundation::MotionBase<P: skene_foundation::Platform>: skene_foundation::HasLayoutBox<P>
+pub fn skene_foundation::MotionBase::set_animation(self, skene_foundation::Animation<skene_foundation::BoxKeyframe<P>>) -> Self
+pub fn skene_foundation::MotionBase::set_transition(self, skene_foundation::Transition<<<P as skene_foundation::Platform>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
+pub fn skene_foundation::MotionBase::set_transition_name(self, impl core::convert::Into<alloc::string::String>) -> Self
+impl<P: skene_foundation::Platform> skene_foundation::MotionBase<P> for skene_foundation::Container<P>
+pub fn skene_foundation::Container<P>::set_animation(self, skene_foundation::Animation<skene_foundation::BoxKeyframe<P>>) -> Self
+pub fn skene_foundation::Container<P>::set_transition(self, skene_foundation::Transition<<<P as skene_foundation::Platform>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
+pub fn skene_foundation::Container<P>::set_transition_name(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub trait skene_foundation::Painting: skene_foundation::Platform
 pub fn skene_foundation::Painting::available() -> skene_reactive::signal::ReadSignal<bool>
 pub fn skene_foundation::Painting::paint(skene_foundation::NodeId, alloc::boxed::Box<skene_foundation::Painter>)
@@ -7631,6 +7811,24 @@ pub fn skene_foundation::ResolutionSource::environment(&self) -> skene_foundatio
 pub fn skene_foundation::ResolutionSource::generation(&self) -> u64
 pub fn skene_foundation::ResolutionSource::sizes_text(&self) -> bool
 pub fn skene_foundation::ResolutionSource::slot(&self, skene_foundation::NodeId, skene_foundation::Slot) -> core::option::Option<skene_foundation::SlotLeaf<<P as skene_foundation::Platform>::Scalar, <P as skene_foundation::Platform>::StyleExt>>
+pub trait skene_foundation::RunBase<P: skene_foundation::Platform>: skene_foundation::HasRun<P>
+pub fn skene_foundation::RunBase::derive_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::RunBase::derive_decoration<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::TextDecoration>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::RunBase::derive_decoration_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::RunBase::derive_decoration_style<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::TextDecorationStyle>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::RunBase::derive_selection_background<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::RunBase::derive_selection_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::RunBase::set_animation(self, skene_foundation::Animation<skene_foundation::RunKeyframe<P>>) -> Self
+pub fn skene_foundation::RunBase::set_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::RunBase::set_decoration(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::TextDecoration, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::RunBase::set_decoration_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::RunBase::set_decoration_style(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::TextDecorationStyle, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::RunBase::set_link(self, impl core::convert::Into<alloc::string::String>) -> Self
+pub fn skene_foundation::RunBase::set_link_policy(self, skene_foundation::LinkPolicy) -> Self
+pub fn skene_foundation::RunBase::set_selectable(self, bool) -> Self
+pub fn skene_foundation::RunBase::set_selection_background(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::RunBase::set_selection_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::RunBase::set_transition(self, skene_foundation::Transition<<<P as skene_foundation::Platform>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
 pub trait skene_foundation::RunField<X: skene_foundation::StyleExtension>: 'static
 pub type skene_foundation::RunField::Value: skene_foundation::IntoRunValue<X>
 pub const skene_foundation::RunField::KEY: skene_foundation::PropertyKey<<X as skene_foundation::StyleExtension>::Property>
@@ -7705,6 +7903,24 @@ pub trait skene_foundation::RunFieldVisitor<X: skene_foundation::StyleExtension>
 pub fn skene_foundation::RunFieldVisitor::field<F: skene_foundation::RunField<X>>(&mut self)
 pub trait skene_foundation::RunVisitor<S: skene_foundation::Shape, X: skene_foundation::StyleExtension>
 pub fn skene_foundation::RunVisitor::value<T: skene_foundation::IntoRunValue<X>>(&mut self, skene_foundation::PropertyKey<<X as skene_foundation::StyleExtension>::Property>, &<S as skene_foundation::Shape>::Of)
+pub trait skene_foundation::RunWithTypeMetrics<P: skene_foundation::Platform> where <P as skene_foundation::Platform>::StyleExt: skene_foundation::TypeMetrics: skene_foundation::RunBase<P>
+pub fn skene_foundation::RunWithTypeMetrics::derive_font_size<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::RunWithTypeMetrics::derive_font_weight<R: core::convert::Into<skene_foundation::StaticLeaf<f32>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::RunWithTypeMetrics::derive_letter_spacing<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::RunWithTypeMetrics::derive_line_height<R: core::convert::Into<skene_foundation::StaticLeaf<f32>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::RunWithTypeMetrics::set_font_size(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Length, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::RunWithTypeMetrics::set_font_weight(self, impl core::convert::Into<skene_foundation::Value<f32, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::RunWithTypeMetrics::set_letter_spacing(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Length, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::RunWithTypeMetrics::set_line_height(self, impl core::convert::Into<skene_foundation::Value<f32, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+impl<P: skene_foundation::Platform, T: skene_foundation::RunBase<P>> skene_foundation::RunWithTypeMetrics<P> for T where <P as skene_foundation::Platform>::StyleExt: skene_foundation::TypeMetrics
+pub fn T::derive_font_size<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn T::derive_font_weight<R: core::convert::Into<skene_foundation::StaticLeaf<f32>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn T::derive_letter_spacing<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn T::derive_line_height<R: core::convert::Into<skene_foundation::StaticLeaf<f32>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn T::set_font_size(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Length, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn T::set_font_weight(self, impl core::convert::Into<skene_foundation::Value<f32, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn T::set_letter_spacing(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Length, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn T::set_line_height(self, impl core::convert::Into<skene_foundation::Value<f32, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub trait skene_foundation::Scalar: core::marker::Copy + core::cmp::PartialEq + core::cmp::PartialOrd + core::fmt::Debug + core::default::Default + 'static
 pub const skene_foundation::Scalar::ZERO: Self
 pub fn skene_foundation::Scalar::from_f32(f32) -> Self
@@ -7846,6 +8062,10 @@ impl<P: skene_foundation::Platform, S: skene_foundation::TokenSet<<P as skene_fo
 pub fn skene_foundation::Theme<P, S, skene_foundation::realize::ChildBuilder<P>>::build(self) -> skene_foundation::NodeId
 pub fn skene_foundation::Theme<P, S, skene_foundation::realize::ChildBuilder<P>>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
 pub fn skene_foundation::Theme<P, S, skene_foundation::realize::ChildBuilder<P>>::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
+impl<P: skene_foundation::Platform, T: skene_foundation::Wraps<Innerskene_foundation::View<P>> + 'static> skene_foundation::View<P> for T
+pub fn T::build(self) -> skene_foundation::NodeId
+pub fn T::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
+pub fn T::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
 impl<P: skene_foundation::Platform, V: skene_foundation::View<P>> skene_foundation::View<P> for skene_foundation::Keyed<P, V>
 pub fn skene_foundation::Keyed<P, V>::build(self) -> skene_foundation::NodeId
 pub fn skene_foundation::Keyed<P, V>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
@@ -7940,6 +8160,11 @@ pub fn skene_foundation::When::when<C>(self, C, impl core::convert::Into<skene_f
 impl<T, L: core::convert::Into<skene_foundation::Leaf<T>>> skene_foundation::When<T> for L
 pub fn L::derive_when<C, R: core::convert::Into<skene_foundation::StaticLeaf<T>>>(self, C, impl core::ops::function::Fn() -> R + 'static) -> skene_foundation::Value<T, C>
 pub fn L::when<C>(self, C, impl core::convert::Into<skene_foundation::Leaf<T>>) -> skene_foundation::Value<T, C>
+pub trait skene_foundation::Wraps: core::marker::Sized
+pub type skene_foundation::Wraps::Inner
+pub fn skene_foundation::Wraps::inner_mut(&mut self) -> &mut Self::Inner
+pub fn skene_foundation::Wraps::into_inner(self) -> Self::Inner
+pub fn skene_foundation::Wraps::wrap(Self::Inner) -> Self
 pub fn skene_foundation::count_pending(skene_reactive::spawn::TaskGuard) -> skene_reactive::spawn::TaskGuard
 pub fn skene_foundation::derived<P: skene_foundation::Platform>(impl core::ops::function::Fn() -> skene_foundation::NodeId + 'static) -> skene_foundation::NodeId
 pub fn skene_foundation::dispatch_click<P: skene_foundation::Platform>(skene_foundation::NodeId, &skene_foundation::ClickEvent) -> skene_foundation::Prevented

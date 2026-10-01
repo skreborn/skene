@@ -2,7 +2,7 @@
 
 #![cfg(skene_web_platform = "server")]
 
-use skene_foundation::{Color, Placement};
+use skene_foundation::{Color, ContainerBase, Placement};
 use skene_web::{Container, HasChild, Inset, Overlay, Text, Tooltip, render_to_string};
 
 /// The class of the first classed element in `body`.

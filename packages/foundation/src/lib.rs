@@ -78,6 +78,7 @@ mod run;
 mod span;
 mod spine;
 mod stack;
+mod surface;
 mod suspense;
 mod switch;
 pub mod terminal;
@@ -86,14 +87,16 @@ mod theme;
 mod tooltip;
 mod type_metrics;
 pub mod web;
+mod wraps;
 
 extern crate self as skene_foundation;
 
+pub use skene_macros::Wraps;
 pub use skene_reactive as reactive;
 
 pub use self::spine::*;
 pub use crate::{
-  container::Container,
+  container::{Container, ContainerBase},
   context_menu::{ContextMenu, MenuEntry, MenuItemContent},
   control::{
     Activate,
@@ -161,10 +164,21 @@ pub use crate::{
   run::Run,
   span::{RichText, Span},
   stack::Stack,
+  surface::{
+    DecorationBase,
+    DecorationWithCornerRadius,
+    HasBoxStyle,
+    HasLayoutBox,
+    HasRun,
+    MotionBase,
+    RunBase,
+    RunWithTypeMetrics,
+  },
   suspense::Suspense,
   switch::Switch,
   text::Text,
   theme::{Theme, ThemedIn},
   tooltip::{TOOLTIP_DELAY, TOOLTIP_GRACE, Tooltip},
   type_metrics::TypeMetrics,
+  wraps::Wraps,
 };

@@ -2487,6 +2487,7 @@ dependencies = [
  "proptest",
  "rustc-hash 2.1.3",
  "skene-headless",
+ "skene-macros",
  "skene-reactive",
  "smallvec",
  "thin-vec",

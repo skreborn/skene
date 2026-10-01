@@ -17,6 +17,7 @@ use crate::{
   Container,
   Control,
   DeclaredBoxStyle,
+  DecorationBase,
   Dimension,
   Handler,
   HasChildren,

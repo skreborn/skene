@@ -3,6 +3,8 @@
 
 use skene_foundation::{
   Activate,
+  ContainerBase,
+  DecorationBase,
   HasChild,
   HasChildren,
   Painted,

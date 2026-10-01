@@ -2,6 +2,7 @@
 
 mod snapshot;
 mod store;
+mod wraps;
 
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
@@ -250,6 +251,22 @@ pub fn derive_snapshot(input: TokenStream) -> TokenStream {
   let input = parse_macro_input!(input as DeriveInput);
 
   snapshot::derive(&input)
+    .unwrap_or_else(syn::Error::into_compile_error)
+    .into()
+}
+
+/// Derives [`Wraps`](../skene_foundation/trait.Wraps.html) for a tuple struct of one
+/// field, the struct holding that field as its whole content: a facade's view over the
+/// foundation's.
+///
+/// The generated code names `Wraps` through the deriving crate's direct dependency on
+/// `skene-foundation`, or through the re-export of the facade (`skene-web`,
+/// `skene-terminal`) it depends on.
+#[proc_macro_derive(Wraps)]
+pub fn derive_wraps(input: TokenStream) -> TokenStream {
+  let input = parse_macro_input!(input as DeriveInput);
+
+  wraps::derive(&input)
     .unwrap_or_else(syn::Error::into_compile_error)
     .into()
 }

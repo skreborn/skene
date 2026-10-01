@@ -7,6 +7,8 @@ use skene_foundation::{
   Condition,
   Container,
   CornerRadius,
+  DecorationBase,
+  DecorationWithCornerRadius,
   FlexChild,
   HasChild,
   HasChildren,

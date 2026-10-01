@@ -19,6 +19,8 @@ use skene_web::{
   BasicPicker,
   Column,
   Container,
+  ContainerBase,
+  DecorationBase,
   Enhance,
   HasChild,
   HasChildren,

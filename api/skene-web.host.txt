@@ -9,10 +9,13 @@ pub use skene_web::ClickEvent
 pub use skene_web::Code
 pub use skene_web::Color
 pub use skene_web::ColorScheme
+pub use skene_web::ContainerBase
 pub use skene_web::ContainerName
 pub use skene_web::ControlChild
 pub use skene_web::ControlState
 pub use skene_web::CornerRadius
+pub use skene_web::DecorationBase
+pub use skene_web::DecorationWithCornerRadius
 pub use skene_web::Definitions
 pub use skene_web::DragData
 pub use skene_web::Errors
@@ -38,6 +41,7 @@ pub use skene_web::MenuContext
 pub use skene_web::MenuEntry
 pub use skene_web::MenuOption
 pub use skene_web::Modifiers
+pub use skene_web::MotionBase
 pub use skene_web::NamedKey
 pub use skene_web::NativeElement
 pub use skene_web::NativePicker
@@ -86,6 +90,8 @@ pub use skene_web::WebStyle
 pub use skene_web::WheelEvent
 pub use skene_web::WheelUnit
 pub use skene_web::When
+pub use skene_web::Wraps
+pub use skene_web::Wraps
 pub use skene_web::headless
 pub use skene_web::kurbo
 pub use skene_web::lazy
@@ -243,6 +249,9 @@ pub use skene_web::prelude::Axis
 pub use skene_web::prelude::Bubbling
 pub use skene_web::prelude::Color
 pub use skene_web::prelude::ColorScheme
+pub use skene_web::prelude::ContainerBase
+pub use skene_web::prelude::DecorationBase
+pub use skene_web::prelude::DecorationWithCornerRadius
 pub use skene_web::prelude::DragAxes
 pub use skene_web::prelude::DragData
 pub use skene_web::prelude::Easing
@@ -277,6 +286,7 @@ pub use skene_web::prelude::LinkPolicy
 pub use skene_web::prelude::Memo
 pub use skene_web::prelude::MenuEntry
 pub use skene_web::prelude::Modifiers
+pub use skene_web::prelude::MotionBase
 pub use skene_web::prelude::MouseCursor
 pub use skene_web::prelude::NamedKey
 pub use skene_web::prelude::NoChild
@@ -415,84 +425,18 @@ impl skene_foundation::spine::view::AnyKind for skene_web::Column
 impl skene_foundation::spine::view::View<skene_headless::Headless> for skene_web::Column
 pub fn skene_web::Column::build(self) -> skene_foundation::spine::node::NodeId
 pub struct skene_web::prelude::Container(_)
-impl skene_web::Container
-pub fn skene_web::Container::bind_handle(self, skene_foundation::node_handle::NodeHandle<skene_web::ActivePlatform>) -> Self
-pub fn skene_web::Container::derive_accessibility(self, impl core::ops::function::Fn() -> alloc::vec::Vec<skene_foundation::spine::values::access::AccessProp> + 'static) -> Self
-pub fn skene_web::Container::derive_alignment<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::flex::Alignment>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_web::Container::derive_aspect_ratio<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::aspect_ratio::AspectRatio>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_web::Container::derive_border_color<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_web::Container::derive_border_width<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::inset::Inset<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_web::Container::derive_color<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_web::Container::derive_corner_radius<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self where <skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::corner_radius::CornerRadius
-pub fn skene_web::Container::derive_cursor<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::mouse_cursor::MouseCursor>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_web::Container::derive_focus_order(self, impl core::ops::function::Fn() -> skene_foundation::spine::values::focus_order::FocusOrder + 'static) -> Self
-pub fn skene_web::Container::derive_height<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::dimension::Dimension<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_web::Container::derive_margin<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::inset::Inset<skene_foundation::spine::values::dimension::Dimension<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_web::Container::derive_max_height<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::dimension::Dimension<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_web::Container::derive_max_width<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::dimension::Dimension<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_web::Container::derive_min_height<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::dimension::Dimension<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_web::Container::derive_min_width<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::dimension::Dimension<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_web::Container::derive_offset<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::inset::Inset<skene_foundation::spine::values::dimension::Dimension<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_web::Container::derive_overflow<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::axis::Axes<skene_foundation::spine::values::overflow::Overflow>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_web::Container::derive_padding<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::inset::Inset<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_web::Container::derive_visibility<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::visibility::Visibility>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_web::Container::derive_width<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::dimension::Dimension<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_web::Container::handle_blur(self, impl core::ops::function::Fn() + 'static) -> Self
-pub fn skene_web::Container::handle_click<R: core::convert::Into<skene_foundation::spine::events::Bubbling>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_web::Container::handle_double_click<R: core::convert::Into<skene_foundation::spine::events::Bubbling>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_web::Container::handle_drop<T: 'static>(self, impl core::ops::function::Fn(&T) + 'static) -> Self
-pub fn skene_web::Container::handle_focus(self, impl core::ops::function::Fn() + 'static) -> Self
-pub fn skene_web::Container::handle_key_down<R: core::convert::Into<skene_foundation::spine::events::Bubbling>>(self, impl core::ops::function::Fn(&skene_foundation::spine::events::KeyEvent) -> R + 'static) -> Self
-pub fn skene_web::Container::handle_key_up<R: core::convert::Into<skene_foundation::spine::events::Bubbling>>(self, impl core::ops::function::Fn(&skene_foundation::spine::events::KeyEvent) -> R + 'static) -> Self
-pub fn skene_web::Container::handle_pointer_cancel<R: core::convert::Into<skene_foundation::spine::events::Bubbling>>(self, impl core::ops::function::Fn(&skene_foundation::spine::events::PointerEvent) -> R + 'static) -> Self
-pub fn skene_web::Container::handle_pointer_down<R: core::convert::Into<skene_foundation::spine::events::Bubbling>>(self, impl core::ops::function::Fn(&skene_foundation::spine::events::PointerEvent) -> R + 'static) -> Self
-pub fn skene_web::Container::handle_pointer_enter(self, impl core::ops::function::Fn() + 'static) -> Self
-pub fn skene_web::Container::handle_pointer_leave(self, impl core::ops::function::Fn() + 'static) -> Self
-pub fn skene_web::Container::handle_pointer_move<R: core::convert::Into<skene_foundation::spine::events::Bubbling>>(self, impl core::ops::function::Fn(&skene_foundation::spine::events::PointerEvent) -> R + 'static) -> Self
-pub fn skene_web::Container::handle_pointer_up<R: core::convert::Into<skene_foundation::spine::events::Bubbling>>(self, impl core::ops::function::Fn(&skene_foundation::spine::events::PointerEvent) -> R + 'static) -> Self
-pub fn skene_web::Container::handle_scroll(self, impl core::ops::function::Fn(&skene_foundation::spine::events::ScrollEvent) + 'static) -> Self
-pub fn skene_web::Container::handle_wheel<R: core::convert::Into<skene_foundation::spine::events::Bubbling>>(self, impl core::ops::function::Fn(&skene_foundation::spine::events::WheelEvent) -> R + 'static) -> Self
-pub fn skene_web::Container::new() -> Self
-pub fn skene_web::Container::set_accessibility(self, impl core::iter::traits::collect::IntoIterator<Item = skene_foundation::spine::values::access::AccessProp>) -> Self
-pub fn skene_web::Container::set_alignment(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::flex::Alignment, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_web::Container::set_animation(self, skene_foundation::spine::motion::Animation<skene_foundation::spine::props::BoxKeyframe<skene_web::ActivePlatform>>) -> Self
-pub fn skene_web::Container::set_aspect_ratio(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::aspect_ratio::AspectRatio, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_web::Container::set_border_color(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_web::Container::set_border_width(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::inset::Inset<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_web::Container::set_color(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_web::Container::set_container_name(self, skene_foundation::spine::condition::ContainerName) -> Self
-pub fn skene_web::Container::set_corner_radius(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::expr::Length, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self where <skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::corner_radius::CornerRadius
-pub fn skene_web::Container::set_cursor(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::mouse_cursor::MouseCursor, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_web::Container::set_drag_axes(self, skene_foundation::spine::values::axis::DragAxes) -> Self
-pub fn skene_web::Container::set_drag_data(self, impl core::ops::function::Fn() -> skene_foundation::spine::drag::DragData + 'static) -> Self
-pub fn skene_web::Container::set_focus_order(self, skene_foundation::spine::values::focus_order::FocusOrder) -> Self
-pub fn skene_web::Container::set_height(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::dimension::Dimension<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_web::Container::set_label(self, impl core::convert::Into<alloc::string::String>) -> Self
-pub fn skene_web::Container::set_labelled_by(self, skene_foundation::spine::node::NodeId) -> Self
-pub fn skene_web::Container::set_margin(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::inset::Inset<skene_foundation::spine::values::dimension::Dimension<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_web::Container::set_max_height(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::dimension::Dimension<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_web::Container::set_max_width(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::dimension::Dimension<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_web::Container::set_min_height(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::dimension::Dimension<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_web::Container::set_min_width(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::dimension::Dimension<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_web::Container::set_offset(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::inset::Inset<skene_foundation::spine::values::dimension::Dimension<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_web::Container::set_overflow(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::axis::Axes<skene_foundation::spine::values::overflow::Overflow>, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_web::Container::set_padding(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::inset::Inset<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_web::Container::set_role(self, accesskit::Role) -> Self
-pub fn skene_web::Container::set_transition(self, skene_foundation::spine::motion::Transition<<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt as skene_foundation::spine::extension::StyleExtension>::Property>) -> Self
-pub fn skene_web::Container::set_transition_name(self, impl core::convert::Into<alloc::string::String>) -> Self
-pub fn skene_web::Container::set_visibility(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::visibility::Visibility, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_web::Container::set_width(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::dimension::Dimension<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
-pub const fn skene_web::Container::style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredBoxStyle<skene_web::ActivePlatform>
 impl core::default::Default for skene_web::Container
-pub fn skene_web::Container::default() -> Self
+pub fn skene_web::Container::default() -> skene_web::Container
 impl core::fmt::Debug for skene_web::Container
 pub fn skene_web::Container::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl skene_foundation::spine::children::HasChild<skene_headless::Headless> for skene_web::Container
-pub type skene_web::Container::Kind = skene_foundation::spine::view::PlainChild
-pub fn skene_web::Container::child_mut(&mut self, skene_foundation::spine::children::Seal) -> &mut skene_foundation::spine::children::Children<skene_web::ActivePlatform, skene_foundation::spine::view::PlainChild>
-impl skene_foundation::spine::view::AnyKind for skene_web::Container
-impl skene_foundation::spine::view::View<skene_headless::Headless> for skene_web::Container
-pub fn skene_web::Container::build(self) -> skene_foundation::spine::node::NodeId
+impl skene_foundation::container::ContainerBase<skene_headless::Headless> for skene_web::Container
+impl skene_foundation::surface::DecorationBase<skene_headless::Headless> for skene_web::Container
+impl skene_foundation::surface::MotionBase<skene_headless::Headless> for skene_web::Container
+impl skene_foundation::wraps::Wraps for skene_web::Container
+pub type skene_web::Container::Inner = skene_foundation::container::Container<skene_headless::Headless>
+pub fn skene_web::Container::inner_mut(&mut self) -> &mut Self::Inner
+pub fn skene_web::Container::into_inner(self) -> Self::Inner
+pub fn skene_web::Container::wrap(Self::Inner) -> Self
 pub struct skene_web::prelude::ContextMenu<C>(_)
 impl skene_web::ContextMenu
 pub fn skene_web::ContextMenu::derive_aspect_ratio<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::aspect_ratio::AspectRatio>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -1241,84 +1185,18 @@ impl skene_foundation::spine::view::AnyKind for skene_web::Column
 impl skene_foundation::spine::view::View<skene_headless::Headless> for skene_web::Column
 pub fn skene_web::Column::build(self) -> skene_foundation::spine::node::NodeId
 pub struct skene_web::Container(_)
-impl skene_web::Container
-pub fn skene_web::Container::bind_handle(self, skene_foundation::node_handle::NodeHandle<skene_web::ActivePlatform>) -> Self
-pub fn skene_web::Container::derive_accessibility(self, impl core::ops::function::Fn() -> alloc::vec::Vec<skene_foundation::spine::values::access::AccessProp> + 'static) -> Self
-pub fn skene_web::Container::derive_alignment<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::flex::Alignment>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_web::Container::derive_aspect_ratio<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::aspect_ratio::AspectRatio>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_web::Container::derive_border_color<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_web::Container::derive_border_width<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::inset::Inset<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_web::Container::derive_color<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_web::Container::derive_corner_radius<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self where <skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::corner_radius::CornerRadius
-pub fn skene_web::Container::derive_cursor<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::mouse_cursor::MouseCursor>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_web::Container::derive_focus_order(self, impl core::ops::function::Fn() -> skene_foundation::spine::values::focus_order::FocusOrder + 'static) -> Self
-pub fn skene_web::Container::derive_height<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::dimension::Dimension<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_web::Container::derive_margin<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::inset::Inset<skene_foundation::spine::values::dimension::Dimension<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_web::Container::derive_max_height<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::dimension::Dimension<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_web::Container::derive_max_width<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::dimension::Dimension<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_web::Container::derive_min_height<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::dimension::Dimension<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_web::Container::derive_min_width<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::dimension::Dimension<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_web::Container::derive_offset<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::inset::Inset<skene_foundation::spine::values::dimension::Dimension<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_web::Container::derive_overflow<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::axis::Axes<skene_foundation::spine::values::overflow::Overflow>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_web::Container::derive_padding<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::inset::Inset<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_web::Container::derive_visibility<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::visibility::Visibility>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_web::Container::derive_width<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::dimension::Dimension<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_web::Container::handle_blur(self, impl core::ops::function::Fn() + 'static) -> Self
-pub fn skene_web::Container::handle_click<R: core::convert::Into<skene_foundation::spine::events::Bubbling>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_web::Container::handle_double_click<R: core::convert::Into<skene_foundation::spine::events::Bubbling>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_web::Container::handle_drop<T: 'static>(self, impl core::ops::function::Fn(&T) + 'static) -> Self
-pub fn skene_web::Container::handle_focus(self, impl core::ops::function::Fn() + 'static) -> Self
-pub fn skene_web::Container::handle_key_down<R: core::convert::Into<skene_foundation::spine::events::Bubbling>>(self, impl core::ops::function::Fn(&skene_foundation::spine::events::KeyEvent) -> R + 'static) -> Self
-pub fn skene_web::Container::handle_key_up<R: core::convert::Into<skene_foundation::spine::events::Bubbling>>(self, impl core::ops::function::Fn(&skene_foundation::spine::events::KeyEvent) -> R + 'static) -> Self
-pub fn skene_web::Container::handle_pointer_cancel<R: core::convert::Into<skene_foundation::spine::events::Bubbling>>(self, impl core::ops::function::Fn(&skene_foundation::spine::events::PointerEvent) -> R + 'static) -> Self
-pub fn skene_web::Container::handle_pointer_down<R: core::convert::Into<skene_foundation::spine::events::Bubbling>>(self, impl core::ops::function::Fn(&skene_foundation::spine::events::PointerEvent) -> R + 'static) -> Self
-pub fn skene_web::Container::handle_pointer_enter(self, impl core::ops::function::Fn() + 'static) -> Self
-pub fn skene_web::Container::handle_pointer_leave(self, impl core::ops::function::Fn() + 'static) -> Self
-pub fn skene_web::Container::handle_pointer_move<R: core::convert::Into<skene_foundation::spine::events::Bubbling>>(self, impl core::ops::function::Fn(&skene_foundation::spine::events::PointerEvent) -> R + 'static) -> Self
-pub fn skene_web::Container::handle_pointer_up<R: core::convert::Into<skene_foundation::spine::events::Bubbling>>(self, impl core::ops::function::Fn(&skene_foundation::spine::events::PointerEvent) -> R + 'static) -> Self
-pub fn skene_web::Container::handle_scroll(self, impl core::ops::function::Fn(&skene_foundation::spine::events::ScrollEvent) + 'static) -> Self
-pub fn skene_web::Container::handle_wheel<R: core::convert::Into<skene_foundation::spine::events::Bubbling>>(self, impl core::ops::function::Fn(&skene_foundation::spine::events::WheelEvent) -> R + 'static) -> Self
-pub fn skene_web::Container::new() -> Self
-pub fn skene_web::Container::set_accessibility(self, impl core::iter::traits::collect::IntoIterator<Item = skene_foundation::spine::values::access::AccessProp>) -> Self
-pub fn skene_web::Container::set_alignment(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::flex::Alignment, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_web::Container::set_animation(self, skene_foundation::spine::motion::Animation<skene_foundation::spine::props::BoxKeyframe<skene_web::ActivePlatform>>) -> Self
-pub fn skene_web::Container::set_aspect_ratio(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::aspect_ratio::AspectRatio, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_web::Container::set_border_color(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_web::Container::set_border_width(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::inset::Inset<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_web::Container::set_color(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_web::Container::set_container_name(self, skene_foundation::spine::condition::ContainerName) -> Self
-pub fn skene_web::Container::set_corner_radius(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::expr::Length, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self where <skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::corner_radius::CornerRadius
-pub fn skene_web::Container::set_cursor(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::mouse_cursor::MouseCursor, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_web::Container::set_drag_axes(self, skene_foundation::spine::values::axis::DragAxes) -> Self
-pub fn skene_web::Container::set_drag_data(self, impl core::ops::function::Fn() -> skene_foundation::spine::drag::DragData + 'static) -> Self
-pub fn skene_web::Container::set_focus_order(self, skene_foundation::spine::values::focus_order::FocusOrder) -> Self
-pub fn skene_web::Container::set_height(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::dimension::Dimension<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_web::Container::set_label(self, impl core::convert::Into<alloc::string::String>) -> Self
-pub fn skene_web::Container::set_labelled_by(self, skene_foundation::spine::node::NodeId) -> Self
-pub fn skene_web::Container::set_margin(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::inset::Inset<skene_foundation::spine::values::dimension::Dimension<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_web::Container::set_max_height(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::dimension::Dimension<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_web::Container::set_max_width(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::dimension::Dimension<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_web::Container::set_min_height(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::dimension::Dimension<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_web::Container::set_min_width(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::dimension::Dimension<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_web::Container::set_offset(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::inset::Inset<skene_foundation::spine::values::dimension::Dimension<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_web::Container::set_overflow(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::axis::Axes<skene_foundation::spine::values::overflow::Overflow>, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_web::Container::set_padding(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::inset::Inset<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_web::Container::set_role(self, accesskit::Role) -> Self
-pub fn skene_web::Container::set_transition(self, skene_foundation::spine::motion::Transition<<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::StyleExt as skene_foundation::spine::extension::StyleExtension>::Property>) -> Self
-pub fn skene_web::Container::set_transition_name(self, impl core::convert::Into<alloc::string::String>) -> Self
-pub fn skene_web::Container::set_visibility(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::visibility::Visibility, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_web::Container::set_width(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::dimension::Dimension<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>, skene_foundation::spine::condition::Condition<<skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
-pub const fn skene_web::Container::style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredBoxStyle<skene_web::ActivePlatform>
 impl core::default::Default for skene_web::Container
-pub fn skene_web::Container::default() -> Self
+pub fn skene_web::Container::default() -> skene_web::Container
 impl core::fmt::Debug for skene_web::Container
 pub fn skene_web::Container::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl skene_foundation::spine::children::HasChild<skene_headless::Headless> for skene_web::Container
-pub type skene_web::Container::Kind = skene_foundation::spine::view::PlainChild
-pub fn skene_web::Container::child_mut(&mut self, skene_foundation::spine::children::Seal) -> &mut skene_foundation::spine::children::Children<skene_web::ActivePlatform, skene_foundation::spine::view::PlainChild>
-impl skene_foundation::spine::view::AnyKind for skene_web::Container
-impl skene_foundation::spine::view::View<skene_headless::Headless> for skene_web::Container
-pub fn skene_web::Container::build(self) -> skene_foundation::spine::node::NodeId
+impl skene_foundation::container::ContainerBase<skene_headless::Headless> for skene_web::Container
+impl skene_foundation::surface::DecorationBase<skene_headless::Headless> for skene_web::Container
+impl skene_foundation::surface::MotionBase<skene_headless::Headless> for skene_web::Container
+impl skene_foundation::wraps::Wraps for skene_web::Container
+pub type skene_web::Container::Inner = skene_foundation::container::Container<skene_headless::Headless>
+pub fn skene_web::Container::inner_mut(&mut self) -> &mut Self::Inner
+pub fn skene_web::Container::into_inner(self) -> Self::Inner
+pub fn skene_web::Container::wrap(Self::Inner) -> Self
 pub struct skene_web::ContextMenu<C>(_)
 impl skene_web::ContextMenu
 pub fn skene_web::ContextMenu::derive_aspect_ratio<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::aspect_ratio::AspectRatio>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self

@@ -25,5 +25,5 @@ pub struct Control<B: Behavior<ActivePlatform>, C = NoChild>(
 skene_foundation::impl_control!(Control, ActivePlatform);
 
 impl<B: Behavior<ActivePlatform>> Control<B> {
-  crate::views::terminal_decoration!();
+  crate::views::terminal_decoration!(style_mut);
 }

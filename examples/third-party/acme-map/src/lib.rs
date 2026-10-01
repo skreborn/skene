@@ -13,6 +13,7 @@ use std::marker::PhantomData;
 use skene_foundation::{
   AnyKind,
   Container,
+  DecorationBase,
   HasChild,
   IntoChildOf,
   NodeId,
@@ -170,7 +171,7 @@ impl Map<skene_web::platform::Web> {
 impl MapHost for skene_headless::Headless {
   /// The sea's box, an image named "map".
   fn build_map(map: Map<Self>) -> NodeId {
-    use skene_foundation::{Color, Role};
+    use skene_foundation::{Color, ContainerBase, Role};
 
     let surface = Container::<Self>::new()
       .set_role(Role::Image)

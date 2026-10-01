@@ -1,7 +1,7 @@
 //! Reading a token set with no theme above: the defaults land at the root once per set,
 //! and a consumer resolves them.
 
-use skene_foundation::{HasChild, Inset, ThemedIn, TokenName, View, typography};
+use skene_foundation::{DecorationBase, HasChild, Inset, ThemedIn, TokenName, View, typography};
 use skene_headless::{
   Headless,
   children,

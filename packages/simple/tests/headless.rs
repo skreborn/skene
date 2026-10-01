@@ -8,6 +8,7 @@ use skene_foundation::{
   BoxValue,
   Color,
   ColorScheme,
+  DecorationBase,
   Dimension,
   HasChildren,
   Inset,

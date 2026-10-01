@@ -6,6 +6,7 @@
 
 use std::time::Duration;
 
+use skene_foundation::{ContainerBase, DecorationBase, MotionBase};
 use skene_simple::web::prelude::*;
 use skene_web::{
   Activate,

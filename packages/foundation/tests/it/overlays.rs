@@ -10,6 +10,8 @@ use std::{
 use skene_foundation::{
   Activate,
   Color,
+  ContainerBase,
+  DecorationBase,
   EventKind,
   FocusOrder,
   HasChildren,

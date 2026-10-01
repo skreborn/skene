@@ -22,5 +22,5 @@ pub struct Overlay<C = NoChild>(skene_foundation::Overlay<ActivePlatform, C>);
 skene_foundation::impl_overlay!(Overlay, ActivePlatform);
 
 impl Overlay {
-  crate::views::terminal_decoration!();
+  crate::views::terminal_decoration!(style_mut);
 }

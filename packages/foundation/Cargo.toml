@@ -11,6 +11,7 @@ color.workspace = true
 keyboard-types.workspace = true
 libm = "0.2"
 rustc-hash.workspace = true
+skene-macros.workspace = true
 skene-reactive.workspace = true
 smallvec.workspace = true
 thin-vec = "0.2"

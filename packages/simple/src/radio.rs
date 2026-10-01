@@ -2,21 +2,15 @@
 
 use std::marker::PhantomData;
 
-use skene_common::{
-  BasicRadio,
-  BasicRadioGroup,
-  Container,
-  CornerRadius,
-  Radio,
-  RadioGroup,
-  RadioGroupContext,
-  Text,
-};
-use skene_core::{
+use skene_foundation::{
   Alignment,
   AnyKind,
   AnyView,
+  BasicRadio,
+  BasicRadioGroup,
   Color,
+  Container,
+  CornerRadius,
   Dimension,
   HasChild,
   Inset,
@@ -24,8 +18,12 @@ use skene_core::{
   NodeId,
   Part,
   Platform,
+  Radio,
+  RadioGroup,
+  RadioGroupContext,
   Scalar,
   State,
+  Text,
   View,
   When,
 };

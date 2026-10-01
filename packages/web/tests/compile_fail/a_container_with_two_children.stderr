@@ -1,4 +1,4 @@
-error[E0599]: no method named `set_children` found for struct `skene_common::container::Container<P>` in the current scope
+error[E0599]: no method named `set_children` found for struct `skene_foundation::container::Container<P>` in the current scope
  --> tests/compile_fail/a_container_with_two_children.rs:6:28
   |
 6 |   let _ = Container::new().set_children((Text::new("a"), Text::new("b")));

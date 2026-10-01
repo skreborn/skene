@@ -2,9 +2,8 @@
 
 use std::time::Duration;
 
-use skene_common::Container;
 use skene_conformance::Driver;
-use skene_core::{AnyView, HasChild, KeyEvent, NodeId, Role, Size, View};
+use skene_foundation::{AnyView, Container, HasChild, KeyEvent, NodeId, Role, Size, View};
 use skene_headless::{
   Headless,
   access_outline,

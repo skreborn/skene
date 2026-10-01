@@ -8,7 +8,7 @@
 use std::cell::OnceCell;
 
 use rustc_hash::FxHashSet;
-use skene_core::{Inset, Layout, Overflow, RunDisplay, Scene};
+use skene_foundation::{Inset, Layout, Overflow, RunDisplay, Scene};
 use taffy::{
   prelude::{
     AvailableSpace,
@@ -578,8 +578,8 @@ struct Targets {
   resolved_box: Option<PlainBox>,
   resolved_run: Option<PlainRun>,
   resolved_layout: PlainBox,
-  box_keyframes: Vec<skene_core::Animation<PlainBox>>,
-  run_keyframes: Vec<skene_core::Animation<PlainRun>>,
+  box_keyframes: Vec<skene_foundation::Animation<PlainBox>>,
+  run_keyframes: Vec<skene_foundation::Animation<PlainRun>>,
   reads_interaction: Option<bool>,
 }
 
@@ -667,11 +667,11 @@ struct Frame {
 
 /// Presents a run's resolution over its motion and caches it; `(repaint, active)`.
 fn present_run(
-  props: &skene_core::RunProps<crate::Terminal>,
+  props: &skene_foundation::RunProps<crate::Terminal>,
   cache: &mut Option<RunCache>,
   motion: &mut crate::motion::RunMotion,
   resolved: Option<(PlainRun, PlainBox)>,
-  keyframes: &[skene_core::Animation<PlainRun>],
+  keyframes: &[skene_foundation::Animation<PlainRun>],
   frame: &Frame,
 ) -> (bool, bool) {
   let mut active = false;
@@ -711,7 +711,7 @@ fn present_run(
 fn present_box(
   inner: &mut crate::records::BoxRecord,
   resolved: Option<PlainBox>,
-  keyframes: &[skene_core::Animation<PlainBox>],
+  keyframes: &[skene_foundation::Animation<PlainBox>],
   frame: &Frame,
 ) -> (bool, bool) {
   let Some(target) = resolved
@@ -1041,10 +1041,10 @@ pub(crate) fn box_taffy_style(layout: Layout, style: &PlainBox, in_stack: bool) 
 
   if let Layout::Flex { direction } = layout {
     out.flex_direction = match direction {
-      skene_core::FlexDirection::Row => taffy::style::FlexDirection::Row,
-      skene_core::FlexDirection::Column => taffy::style::FlexDirection::Column,
-      skene_core::FlexDirection::RowReverse => taffy::style::FlexDirection::RowReverse,
-      skene_core::FlexDirection::ColumnReverse => taffy::style::FlexDirection::ColumnReverse,
+      skene_foundation::FlexDirection::Row => taffy::style::FlexDirection::Row,
+      skene_foundation::FlexDirection::Column => taffy::style::FlexDirection::Column,
+      skene_foundation::FlexDirection::RowReverse => taffy::style::FlexDirection::RowReverse,
+      skene_foundation::FlexDirection::ColumnReverse => taffy::style::FlexDirection::ColumnReverse,
     };
   }
 
@@ -1053,27 +1053,27 @@ pub(crate) fn box_taffy_style(layout: Layout, style: &PlainBox, in_stack: bool) 
   out
 }
 
-/// A [`Dimension`](skene_core::Dimension) in cells as a taffy dimension.
-fn dimension(value: skene_core::Dimension<u32>) -> taffy::style::Dimension {
+/// A [`Dimension`](skene_foundation::Dimension) in cells as a taffy dimension.
+fn dimension(value: skene_foundation::Dimension<u32>) -> taffy::style::Dimension {
   match value {
-    skene_core::Dimension::Length(cells) => length(cell(cells)),
-    skene_core::Dimension::Fraction(value) => percent(value),
-    skene_core::Dimension::Auto => taffy::style::Dimension::AUTO,
+    skene_foundation::Dimension::Length(cells) => length(cell(cells)),
+    skene_foundation::Dimension::Fraction(value) => percent(value),
+    skene_foundation::Dimension::Auto => taffy::style::Dimension::AUTO,
   }
 }
 
-/// A [`Dimension`](skene_core::Dimension) in cells as a taffy auto-capable length.
-fn dimension_lpa(value: skene_core::Dimension<u32>) -> taffy::style::LengthPercentageAuto {
+/// A [`Dimension`](skene_foundation::Dimension) in cells as a taffy auto-capable length.
+fn dimension_lpa(value: skene_foundation::Dimension<u32>) -> taffy::style::LengthPercentageAuto {
   match value {
-    skene_core::Dimension::Length(cells) => length(cell(cells)),
-    skene_core::Dimension::Fraction(value) => percent(value),
-    skene_core::Dimension::Auto => taffy::style::LengthPercentageAuto::AUTO,
+    skene_foundation::Dimension::Length(cells) => length(cell(cells)),
+    skene_foundation::Dimension::Fraction(value) => percent(value),
+    skene_foundation::Dimension::Auto => taffy::style::LengthPercentageAuto::AUTO,
   }
 }
 
 /// A dimension inset as a taffy rect.
 fn dimension_rect(
-  inset: skene_core::Inset<skene_core::Dimension<u32>>,
+  inset: skene_foundation::Inset<skene_foundation::Dimension<u32>>,
 ) -> taffy::geometry::Rect<taffy::style::LengthPercentageAuto> {
   taffy::geometry::Rect {
     left: dimension_lpa(inset.left),
@@ -1083,44 +1083,44 @@ fn dimension_rect(
   }
 }
 
-/// One [`TrackLimit`](skene_core::TrackLimit) as a taffy min-track sizing function.
-fn min_track(limit: skene_core::TrackLimit<u32>) -> taffy::style::MinTrackSizingFunction {
+/// One [`TrackLimit`](skene_foundation::TrackLimit) as a taffy min-track sizing function.
+fn min_track(limit: skene_foundation::TrackLimit<u32>) -> taffy::style::MinTrackSizingFunction {
   match limit {
-    skene_core::TrackLimit::Length(cells) => length(cell(cells)),
-    skene_core::TrackLimit::Fraction(value) => percent(value),
-    skene_core::TrackLimit::Flex(_) | skene_core::TrackLimit::Auto => {
+    skene_foundation::TrackLimit::Length(cells) => length(cell(cells)),
+    skene_foundation::TrackLimit::Fraction(value) => percent(value),
+    skene_foundation::TrackLimit::Flex(_) | skene_foundation::TrackLimit::Auto => {
       taffy::style::MinTrackSizingFunction::AUTO
     }
-    skene_core::TrackLimit::MinContent => taffy::prelude::min_content(),
-    skene_core::TrackLimit::MaxContent => taffy::prelude::max_content(),
+    skene_foundation::TrackLimit::MinContent => taffy::prelude::min_content(),
+    skene_foundation::TrackLimit::MaxContent => taffy::prelude::max_content(),
   }
 }
 
-/// One [`TrackLimit`](skene_core::TrackLimit) as a taffy max-track sizing function.
-fn max_track(limit: skene_core::TrackLimit<u32>) -> taffy::style::MaxTrackSizingFunction {
+/// One [`TrackLimit`](skene_foundation::TrackLimit) as a taffy max-track sizing function.
+fn max_track(limit: skene_foundation::TrackLimit<u32>) -> taffy::style::MaxTrackSizingFunction {
   match limit {
-    skene_core::TrackLimit::Length(cells) => length(cell(cells)),
-    skene_core::TrackLimit::Fraction(value) => percent(value),
-    skene_core::TrackLimit::Flex(value) => fr(value),
-    skene_core::TrackLimit::Auto => taffy::style::MaxTrackSizingFunction::AUTO,
-    skene_core::TrackLimit::MinContent => taffy::prelude::min_content(),
-    skene_core::TrackLimit::MaxContent => taffy::prelude::max_content(),
+    skene_foundation::TrackLimit::Length(cells) => length(cell(cells)),
+    skene_foundation::TrackLimit::Fraction(value) => percent(value),
+    skene_foundation::TrackLimit::Flex(value) => fr(value),
+    skene_foundation::TrackLimit::Auto => taffy::style::MaxTrackSizingFunction::AUTO,
+    skene_foundation::TrackLimit::MinContent => taffy::prelude::min_content(),
+    skene_foundation::TrackLimit::MaxContent => taffy::prelude::max_content(),
   }
 }
 
-/// One [`GridTrack`](skene_core::GridTrack) as a taffy track sizing function; `None`
+/// One [`GridTrack`](skene_foundation::GridTrack) as a taffy track sizing function; `None`
 /// for an adaptive track, which only a template holds.
-fn track(value: skene_core::GridTrack<u32>) -> Option<taffy::style::TrackSizingFunction> {
+fn track(value: skene_foundation::GridTrack<u32>) -> Option<taffy::style::TrackSizingFunction> {
   Some(match value {
-    skene_core::GridTrack::Length(cells) => length(cell(cells)),
-    skene_core::GridTrack::Fraction(value) => percent(value),
-    skene_core::GridTrack::Flex(value) => fr(value),
-    skene_core::GridTrack::Auto => taffy::style::TrackSizingFunction::AUTO,
-    skene_core::GridTrack::MinContent => taffy::prelude::min_content(),
-    skene_core::GridTrack::MaxContent => taffy::prelude::max_content(),
-    skene_core::GridTrack::FitContent(cells) => fit_content(length(cell(cells))),
-    skene_core::GridTrack::Minmax(min, max) => minmax(min_track(min), max_track(max)),
-    skene_core::GridTrack::Adaptive(..) => return None,
+    skene_foundation::GridTrack::Length(cells) => length(cell(cells)),
+    skene_foundation::GridTrack::Fraction(value) => percent(value),
+    skene_foundation::GridTrack::Flex(value) => fr(value),
+    skene_foundation::GridTrack::Auto => taffy::style::TrackSizingFunction::AUTO,
+    skene_foundation::GridTrack::MinContent => taffy::prelude::min_content(),
+    skene_foundation::GridTrack::MaxContent => taffy::prelude::max_content(),
+    skene_foundation::GridTrack::FitContent(cells) => fit_content(length(cell(cells))),
+    skene_foundation::GridTrack::Minmax(min, max) => minmax(min_track(min), max_track(max)),
+    skene_foundation::GridTrack::Adaptive(..) => return None,
   })
 }
 
@@ -1128,7 +1128,7 @@ fn track(value: skene_core::GridTrack<u32>) -> Option<taffy::style::TrackSizingF
 /// both empty where CSS drops the list: more than one adaptive track, or one with
 /// neither limit a length or a fraction.
 fn explicit(
-  template: &skene_core::GridTemplate<u32>,
+  template: &skene_foundation::GridTemplate<u32>,
 ) -> (
   Vec<taffy::style::GridTemplateComponent<String>>,
   Vec<Vec<String>>,
@@ -1136,12 +1136,12 @@ fn explicit(
   let fixed = |limit| {
     matches!(
       limit,
-      skene_core::TrackLimit::Length(_) | skene_core::TrackLimit::Fraction(_)
+      skene_foundation::TrackLimit::Length(_) | skene_foundation::TrackLimit::Fraction(_)
     )
   };
   let adaptive = template
     .tracks()
-    .filter(|entry| matches!(entry, skene_core::GridTrack::Adaptive(..)))
+    .filter(|entry| matches!(entry, skene_foundation::GridTrack::Adaptive(..)))
     .count();
 
   if adaptive > 1 {
@@ -1151,7 +1151,7 @@ fn explicit(
   let tracks: Option<Vec<_>> = template
     .tracks()
     .map(|entry| match entry {
-      skene_core::GridTrack::Adaptive(min, max) => (fixed(min) || fixed(max)).then(|| {
+      skene_foundation::GridTrack::Adaptive(min, max) => (fixed(min) || fixed(max)).then(|| {
         taffy::style::GridTemplateComponent::Repeat(taffy::style::GridTemplateRepetition {
           count: taffy::style::RepetitionCount::AutoFill,
           tracks: vec![minmax(min_track(min), max_track(max))],
@@ -1186,7 +1186,7 @@ fn explicit(
 
 /// A track list as taffy's implicit tracks; empty where CSS drops the list, an adaptive
 /// track in it.
-fn implicit(tracks: &[skene_core::GridTrack<u32>]) -> Vec<taffy::style::TrackSizingFunction> {
+fn implicit(tracks: &[skene_foundation::GridTrack<u32>]) -> Vec<taffy::style::TrackSizingFunction> {
   tracks
     .iter()
     .map(|entry| track(*entry))
@@ -1194,42 +1194,44 @@ fn implicit(tracks: &[skene_core::GridTrack<u32>]) -> Vec<taffy::style::TrackSiz
     .unwrap_or_default()
 }
 
-/// One [`GridPlacement`](skene_core::GridPlacement) as taffy's.
-fn placement(value: skene_core::GridPlacement) -> taffy::style::GridPlacement<String> {
+/// One [`GridPlacement`](skene_foundation::GridPlacement) as taffy's.
+fn placement(value: skene_foundation::GridPlacement) -> taffy::style::GridPlacement<String> {
   match value {
-    skene_core::GridPlacement::Auto => taffy::style::GridPlacement::Auto,
-    skene_core::GridPlacement::Line(index) => taffy::style::GridPlacement::from_line_index(index),
-    skene_core::GridPlacement::Span(count) => taffy::style::GridPlacement::from_span(count),
-    skene_core::GridPlacement::Named(name, index) => {
+    skene_foundation::GridPlacement::Auto => taffy::style::GridPlacement::Auto,
+    skene_foundation::GridPlacement::Line(index) => {
+      taffy::style::GridPlacement::from_line_index(index)
+    }
+    skene_foundation::GridPlacement::Span(count) => taffy::style::GridPlacement::from_span(count),
+    skene_foundation::GridPlacement::Named(name, index) => {
       taffy::style::GridPlacement::NamedLine(name.as_str().to_owned(), index)
     }
-    skene_core::GridPlacement::NamedSpan(name, count) => {
+    skene_foundation::GridPlacement::NamedSpan(name, count) => {
       taffy::style::GridPlacement::NamedSpan(name.as_str().to_owned(), count)
     }
   }
 }
 
-/// An [`Arrangement`](skene_core::Arrangement) as taffy's content alignment.
-const fn arrangement(value: skene_core::Arrangement) -> taffy::style::AlignContent {
+/// An [`Arrangement`](skene_foundation::Arrangement) as taffy's content alignment.
+const fn arrangement(value: skene_foundation::Arrangement) -> taffy::style::AlignContent {
   match value {
-    skene_core::Arrangement::Start => taffy::style::AlignContent::Start,
-    skene_core::Arrangement::End => taffy::style::AlignContent::End,
-    skene_core::Arrangement::Center => taffy::style::AlignContent::Center,
-    skene_core::Arrangement::Stretch => taffy::style::AlignContent::Stretch,
-    skene_core::Arrangement::SpaceBetween => taffy::style::AlignContent::SpaceBetween,
-    skene_core::Arrangement::SpaceAround => taffy::style::AlignContent::SpaceAround,
-    skene_core::Arrangement::SpaceEvenly => taffy::style::AlignContent::SpaceEvenly,
+    skene_foundation::Arrangement::Start => taffy::style::AlignContent::Start,
+    skene_foundation::Arrangement::End => taffy::style::AlignContent::End,
+    skene_foundation::Arrangement::Center => taffy::style::AlignContent::Center,
+    skene_foundation::Arrangement::Stretch => taffy::style::AlignContent::Stretch,
+    skene_foundation::Arrangement::SpaceBetween => taffy::style::AlignContent::SpaceBetween,
+    skene_foundation::Arrangement::SpaceAround => taffy::style::AlignContent::SpaceAround,
+    skene_foundation::Arrangement::SpaceEvenly => taffy::style::AlignContent::SpaceEvenly,
   }
 }
 
-/// An [`ItemAlignment`](skene_core::ItemAlignment) as taffy's item alignment.
-const fn item(value: skene_core::ItemAlignment) -> taffy::style::AlignItems {
+/// An [`ItemAlignment`](skene_foundation::ItemAlignment) as taffy's item alignment.
+const fn item(value: skene_foundation::ItemAlignment) -> taffy::style::AlignItems {
   match value {
-    skene_core::ItemAlignment::Start => taffy::style::AlignItems::Start,
-    skene_core::ItemAlignment::End => taffy::style::AlignItems::End,
-    skene_core::ItemAlignment::Center => taffy::style::AlignItems::Center,
-    skene_core::ItemAlignment::Baseline => taffy::style::AlignItems::Baseline,
-    skene_core::ItemAlignment::Stretch => taffy::style::AlignItems::Stretch,
+    skene_foundation::ItemAlignment::Start => taffy::style::AlignItems::Start,
+    skene_foundation::ItemAlignment::End => taffy::style::AlignItems::End,
+    skene_foundation::ItemAlignment::Center => taffy::style::AlignItems::Center,
+    skene_foundation::ItemAlignment::Baseline => taffy::style::AlignItems::Baseline,
+    skene_foundation::ItemAlignment::Stretch => taffy::style::AlignItems::Stretch,
   }
 }
 
@@ -1324,9 +1326,9 @@ fn apply_box_sizing(out: &mut Style, style: &PlainBox, in_stack: bool) {
 
   if let Some(wrap) = style.wrap {
     out.flex_wrap = match wrap {
-      skene_core::Wrap::None => taffy::style::FlexWrap::NoWrap,
-      skene_core::Wrap::Forward => taffy::style::FlexWrap::Wrap,
-      skene_core::Wrap::Reverse => taffy::style::FlexWrap::WrapReverse,
+      skene_foundation::Wrap::None => taffy::style::FlexWrap::NoWrap,
+      skene_foundation::Wrap::Forward => taffy::style::FlexWrap::Wrap,
+      skene_foundation::Wrap::Reverse => taffy::style::FlexWrap::WrapReverse,
     };
   }
 
@@ -1376,10 +1378,10 @@ fn apply_box_sizing(out: &mut Style, style: &PlainBox, in_stack: bool) {
 
   if let Some(flow) = style.grid_flow {
     out.grid_auto_flow = match flow {
-      skene_core::GridFlow::Rows => taffy::style::GridAutoFlow::Row,
-      skene_core::GridFlow::Columns => taffy::style::GridAutoFlow::Column,
-      skene_core::GridFlow::DenseRows => taffy::style::GridAutoFlow::RowDense,
-      skene_core::GridFlow::DenseColumns => taffy::style::GridAutoFlow::ColumnDense,
+      skene_foundation::GridFlow::Rows => taffy::style::GridAutoFlow::Row,
+      skene_foundation::GridFlow::Columns => taffy::style::GridAutoFlow::Column,
+      skene_foundation::GridFlow::DenseRows => taffy::style::GridAutoFlow::RowDense,
+      skene_foundation::GridFlow::DenseColumns => taffy::style::GridAutoFlow::ColumnDense,
     };
   }
 

@@ -15,11 +15,7 @@ use std::{
 };
 
 use rustc_hash::{FxHashMap, FxHasher};
-use skene_common::{
-  typography,
-  web::{WebProperty, WebStyle},
-};
-use skene_core::{
+use skene_foundation::{
   Animation,
   BoxProps,
   BoxStyle,
@@ -59,6 +55,8 @@ use skene_core::{
   TokenName,
   Visibility,
   Wrap,
+  typography,
+  web::{WebProperty, WebStyle},
 };
 
 use super::{
@@ -562,7 +560,7 @@ fn run_keyframe_declarations(style: &RunStyle<Keyframe, WebStyle>) -> Declaratio
 fn motion<S>(
   out: &mut String,
   base: Declarations,
-  transitions: &[skene_core::Transition<WebProperty>],
+  transitions: &[skene_foundation::Transition<WebProperty>],
   animations: &[Animation<S>],
   declarations: &impl Fn(&S) -> Declarations,
 ) -> (Declarations, String) {
@@ -570,7 +568,7 @@ fn motion<S>(
   let mut respecting = Declarations::new();
   let mut resting = Declarations::new();
   let insistent =
-    |transition: &skene_core::Transition<WebProperty>| !transition.respects_reduced_motion;
+    |transition: &skene_foundation::Transition<WebProperty>| !transition.respects_reduced_motion;
 
   if !transitions.is_empty() {
     if transitions.iter().any(&insistent) {
@@ -850,7 +848,7 @@ pub(crate) fn compile_run<P: PixelPlatform>(props: &RunProps<P>) -> Compiled {
 /// The text of a token definition's leaf.
 fn definition_leaf(value: &WebTokenValue, position: usize) -> Option<String> {
   fn leaf<T: Clone>(
-    definition: &skene_core::Definition<T, f32>,
+    definition: &skene_foundation::Definition<T, f32>,
     position: usize,
     fixed: impl FnOnce(T) -> String,
   ) -> Option<String> {
@@ -881,7 +879,7 @@ fn definition_leaf(value: &WebTokenValue, position: usize) -> Option<String> {
 }
 
 /// The media conditions of a definition's variants, in order.
-fn definition_conditions(value: &WebTokenValue) -> Vec<skene_core::Media<f32>> {
+fn definition_conditions(value: &WebTokenValue) -> Vec<skene_foundation::Media<f32>> {
   match value {
     WebTokenValue::Color(definition) => definition
       .variants()

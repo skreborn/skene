@@ -4,7 +4,7 @@
 use std::rc::Rc;
 
 use rustc_hash::FxHashMap;
-use skene_core::{
+use skene_foundation::{
   BoxProps,
   BoxStyle,
   Color,
@@ -39,8 +39,8 @@ pub(crate) type PlainBox = BoxStyle<u32, Plain, TerminalStyle>;
 /// A run's style resolved against live state.
 pub(crate) type PlainRun = RunStyle<Plain, TerminalStyle>;
 
-/// What a derived leaf last wrote into a node's slot; see [`skene_core::SlotLeaf`].
-pub(crate) type SlotLeaf = skene_core::SlotLeaf<u32, TerminalStyle>;
+/// What a derived leaf last wrote into a node's slot; see [`skene_foundation::SlotLeaf`].
+pub(crate) type SlotLeaf = skene_foundation::SlotLeaf<u32, TerminalStyle>;
 
 /// A box's style resolved under one generation and interaction: the style presented,
 /// with its motion laid over, and the target it resolved to.
@@ -54,7 +54,7 @@ pub(crate) struct BoxCache {
   /// The style the resolution produced, which a change is judged against.
   pub(crate) target: PlainBox,
   /// The keyframes resolved at the node, reused across the frames of a running motion.
-  pub(crate) keyframes: Vec<skene_core::Animation<PlainBox>>,
+  pub(crate) keyframes: Vec<skene_foundation::Animation<PlainBox>>,
 }
 
 /// A run's style resolved under one generation and interaction, with the per-child
@@ -71,7 +71,7 @@ pub(crate) struct RunCache {
   /// The per-child layout properties a wrapper annotated the run with.
   pub(crate) layout: PlainBox,
   /// The keyframes resolved at the node, reused across the frames of a running motion.
-  pub(crate) keyframes: Vec<skene_core::Animation<PlainRun>>,
+  pub(crate) keyframes: Vec<skene_foundation::Animation<PlainRun>>,
 }
 
 /// A box-like node's props, its resolution and its motion.
@@ -298,7 +298,7 @@ pub(crate) struct BackdropKey {
 /// A painted box's picture: its painter, and the image last rendered from it, dropped
 /// when the painter is replaced and stale when the box's pixel size differs.
 pub(crate) struct PictureRecord {
-  pub(crate) painter: Rc<skene_common::Painter>,
+  pub(crate) painter: Rc<skene_foundation::Painter>,
   pub(crate) image: Option<Rc<Image>>,
 }
 

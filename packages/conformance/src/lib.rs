@@ -18,7 +18,7 @@ use std::{
   time::Duration,
 };
 
-use skene_core::{AnyView, KeyEvent, NodeId, Platform, Role, Size};
+use skene_foundation::{AnyView, KeyEvent, NodeId, Platform, Role, Size};
 
 /// A platform driven as a user drives it, for the suite [`run`] runs.
 pub trait Driver {
@@ -61,7 +61,7 @@ pub trait Driver {
   fn focused(&mut self) -> Option<NodeId>;
 
   /// The accessibility tree as indented text, one node a line
-  /// ([`Scene::access_outline`](skene_core::Scene::access_outline)).
+  /// ([`Scene::access_outline`](skene_foundation::Scene::access_outline)).
   fn access_outline(&mut self) -> String;
 }
 

@@ -9,7 +9,7 @@
 //! `cargo test -p skene-web --target wasm32-unknown-unknown --test browser_painted`.
 #![cfg(skene_web_platform = "browser")]
 
-use skene_core::Dimension;
+use skene_foundation::Dimension;
 use skene_web::{
   Color,
   HasChildren,

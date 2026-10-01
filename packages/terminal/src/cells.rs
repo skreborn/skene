@@ -1,7 +1,7 @@
 //! The escape trait a low-level terminal view states as its bound, and the handle it
 //! paints through.
 
-use skene_core::{Color, NodeId, Platform, Point, Rect, Size};
+use skene_foundation::{Color, NodeId, Platform, Point, Rect, Size};
 
 use crate::{
   paint::{Buffer, terminal_rgb},

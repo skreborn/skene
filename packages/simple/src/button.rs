@@ -2,22 +2,28 @@
 
 use std::rc::Rc;
 
-use skene_common::{Activate, BasicButton, CornerRadius, Label, Text, realize::Source, typography};
-use skene_core::{
+use skene_foundation::{
+  Activate,
   AnyKind,
   AnyView,
+  BasicButton,
   Color,
+  CornerRadius,
   Definition,
   Definitions,
   Inset,
+  Label,
   NodeId,
   Platform,
   Property,
   Scene,
   State,
+  Text,
   TokenRef,
   Transition,
   View,
+  realize::Source,
+  typography,
 };
 use skene_reactive::{Effect, With};
 

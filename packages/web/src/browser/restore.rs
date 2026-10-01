@@ -2,7 +2,7 @@
 //! ride the snapshot by their snapshot positions, so a rebuilt page resumes where the
 //! reader was.
 
-use skene_core::{NodeId, Scene};
+use skene_foundation::{NodeId, Scene};
 use skene_reactive::SnapshotPlace;
 use wasm_bindgen::JsCast;
 use web_sys::{Element, HtmlElement, HtmlInputElement, HtmlTextAreaElement};

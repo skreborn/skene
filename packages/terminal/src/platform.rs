@@ -3,8 +3,7 @@
 
 use std::{cell::RefCell, rc::Rc, thread::LocalKey};
 
-use skene_common::Painting;
-use skene_core::{
+use skene_foundation::{
   Availability,
   BoxProps,
   BoxValue,
@@ -20,6 +19,7 @@ use skene_core::{
   NodeKind,
   Observation,
   OverlayProps,
+  Painting,
   Placement,
   Platform,
   Point,
@@ -60,7 +60,7 @@ thread_local! {
 /// Ends the turn: runs the flush its writes scheduled, so their effects have taken hold
 /// before the next event, frame or query.
 pub(crate) fn end_turn() {
-  skene_core::end_turn();
+  skene_foundation::end_turn();
 }
 
 /// Runs `operation` on the installed records; nothing of the user's runs inside it.
@@ -92,7 +92,7 @@ pub(crate) fn root_node() -> Option<NodeId> {
 impl Platform for Terminal {
   type Scalar = u32;
   type StyleExt = TerminalStyle;
-  type TokenValue = skene_core::TokenValue<u32>;
+  type TokenValue = skene_foundation::TokenValue<u32>;
 
   fn scene() -> &'static LocalKey<RefCell<Scene<Self>>> {
     &SCENE
@@ -205,7 +205,7 @@ impl Platform for Terminal {
   }
 
   fn create_run(node: NodeId, props: &RunProps<Self>) {
-    let inline_box = props.display == skene_core::RunDisplay::InlineBox;
+    let inline_box = props.display == skene_foundation::RunDisplay::InlineBox;
 
     with_records(|records| {
       records.insert_laid_out(
@@ -487,7 +487,7 @@ impl Painting for Terminal {
     with_records(|records| records.media().graphics)
   }
 
-  fn paint(node: NodeId, painter: Box<skene_common::Painter>) {
+  fn paint(node: NodeId, painter: Box<skene_foundation::Painter>) {
     with_records(|records| {
       if let Some(record) = records.record_mut(node) {
         record.picture = Some(PictureRecord {
@@ -518,8 +518,8 @@ impl CellPainter for Terminal {
 ///
 /// Panics if it is already installed.
 pub(crate) fn install() {
-  skene_core::hold_flushes(|| {});
-  skene_core::executor::install();
+  skene_foundation::hold_flushes(|| {});
+  skene_foundation::executor::install();
   crate::text::reset();
 
   STORE.with(|records| {
@@ -563,7 +563,7 @@ pub fn uninstall() {
     owner.dispose();
   }
 
-  skene_core::reset_thread::<Terminal>();
+  skene_foundation::reset_thread::<Terminal>();
   ROOT.with(|root| *root.borrow_mut() = None);
   STORE.with(|records| *records.borrow_mut() = None);
 }
@@ -576,7 +576,7 @@ pub fn uninstall() {
 pub fn mount(view: impl FnOnce() -> NodeId) -> NodeId {
   end_turn();
 
-  let node = skene_core::root_owner().enter(|| {
+  let node = skene_foundation::root_owner().enter(|| {
     let node = view();
     let root = root_node().expect("the root node exists once installed");
 

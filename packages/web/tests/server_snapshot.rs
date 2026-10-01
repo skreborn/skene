@@ -4,7 +4,7 @@
 
 #![cfg(skene_web_platform = "server")]
 
-use skene_core::{
+use skene_foundation::{
   Animation,
   Arrangement,
   BoxStyle,

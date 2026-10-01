@@ -35,7 +35,7 @@ use std::{
 };
 
 use rustc_hash::FxHashMap;
-use skene_core::{
+use skene_foundation::{
   EventKind,
   NodeId,
   NodeKind,
@@ -186,7 +186,7 @@ thread_local! {
 /// An event, a mount and a hydration each end their own turn; a test calls this where
 /// it reads the page after a direct write.
 pub fn end_turn() {
-  skene_core::end_turn();
+  skene_foundation::end_turn();
 }
 
 /// Whether the leaf's own state is borrowed right now, so an event reaching it must
@@ -469,7 +469,7 @@ impl Dom {
 /// Installs the browser leaf for this thread, rooted at `root`, adopting the server's
 /// nodes under it when `hydrating`.
 fn install_at(root: Element, hydrating: bool) {
-  skene_core::hold_flushes(|| wasm_bindgen_futures::spawn_local(async { end_turn() }));
+  skene_foundation::hold_flushes(|| wasm_bindgen_futures::spawn_local(async { end_turn() }));
   task::install_executor();
 
   let document = web_sys::window()
@@ -516,7 +516,7 @@ pub fn install(root: Element) {
 pub fn mount(view: impl FnOnce() -> NodeId) -> NodeId {
   end_turn();
 
-  let node = skene_core::root_owner().enter(|| {
+  let node = skene_foundation::root_owner().enter(|| {
     let node = view();
     let root = with_dom(|dom| dom.root_node);
 
@@ -775,5 +775,5 @@ pub fn uninstall() {
   media::reset();
   view_transition::reset();
   head::reset();
-  skene_core::reset_thread::<Web>();
+  skene_foundation::reset_thread::<Web>();
 }

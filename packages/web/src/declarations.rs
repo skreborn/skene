@@ -13,7 +13,7 @@ use std::{
   fmt::{self, Display, Formatter, Write as _},
 };
 
-use skene_core::{
+use skene_foundation::{
   Arrangement,
   Color,
   Dimension,

@@ -1,6 +1,6 @@
 //! The token definitions the web accepts, and their custom-property registrations.
 
-use skene_core::{Color, Definition, Dimension, Length, TokenName};
+use skene_foundation::{Color, Definition, Dimension, Length, TokenName};
 
 /// The erased token definition the web platform stores per token: a color, a number, a
 /// length, or a dimension.

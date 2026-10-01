@@ -1,7 +1,7 @@
 //! Motion on the terminal's frame clock: core's runner, given each property as the
 //! node's resolution changes it and laid over the resolved style.
 
-use skene_core::{
+use skene_foundation::{
   Animation,
   BoxDynamics,
   BoxField,
@@ -248,7 +248,7 @@ impl RunFieldVisitor<TerminalStyle> for PresentRun<'_> {
 
 #[cfg(test)]
 mod tests {
-  use skene_core::{Animation, BoxDynamics, Color, Easing, Property, Transition};
+  use skene_foundation::{Animation, BoxDynamics, Color, Easing, Property, Transition};
 
   use super::{BoxMotion, Clock};
   use crate::records::PlainBox;

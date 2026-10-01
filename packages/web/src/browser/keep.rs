@@ -2,7 +2,7 @@
 //! focus of discarded markup and of a hidden subtree, and the engine's state-keeping
 //! move.
 
-use skene_core::NodeId;
+use skene_foundation::NodeId;
 use wasm_bindgen::{JsCast, JsValue};
 use web_sys::{Document, Element, HtmlElement};
 

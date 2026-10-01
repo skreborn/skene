@@ -10,8 +10,8 @@ mod record;
 mod structure;
 
 use rustc_hash::FxHashSet;
-pub(crate) use skene_core::Interaction;
-use skene_core::{
+pub(crate) use skene_foundation::Interaction;
+use skene_foundation::{
   BoxDynamics,
   BoxProps,
   BoxStyle,
@@ -211,7 +211,7 @@ impl Records {
       .expect("create the root taffy node");
     let root_props = BoxProps {
       layout: Layout::Flex {
-        direction: skene_core::FlexDirection::Column,
+        direction: skene_foundation::FlexDirection::Column,
       },
       role: None,
       style: BoxStyle::default(),

@@ -15,8 +15,7 @@
 
 use std::marker::PhantomData;
 
-use skene_common::{Container, Painting, kurbo::Rect};
-use skene_core::{AnyKind, Color, NodeId, Platform, View};
+use skene_foundation::{AnyKind, Color, Container, NodeId, Painting, Platform, View, kurbo::Rect};
 use skene_terminal::CellPainter;
 
 /// The bar glyphs, lowest to highest.

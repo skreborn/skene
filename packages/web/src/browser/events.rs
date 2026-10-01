@@ -12,7 +12,7 @@
 use std::{rc::Rc, str::FromStr};
 
 use rustc_hash::FxHashMap;
-use skene_core::{
+use skene_foundation::{
   Axes,
   ClickEvent,
   Code,

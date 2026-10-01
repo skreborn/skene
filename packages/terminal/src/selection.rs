@@ -15,7 +15,7 @@
 
 use std::time::Duration;
 
-use skene_core::{ClipboardAction, RunDisplay, Scene};
+use skene_foundation::{ClipboardAction, RunDisplay, Scene};
 
 use crate::{
   Terminal,

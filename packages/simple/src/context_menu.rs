@@ -1,10 +1,12 @@
 //! A ready-made context menu in the Simple design language.
 
-use skene_common::{ContextMenu, CornerRadius, MenuEntry};
-use skene_core::{
+use skene_foundation::{
   AnyKind,
   AnyView,
   Color,
+  ContextMenu,
+  CornerRadius,
+  MenuEntry,
   MouseCursor,
   NoChild,
   NodeId,

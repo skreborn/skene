@@ -3,11 +3,14 @@
 
 use std::rc::Rc;
 
-use skene_common::{
+use skene_foundation::{
   Canvas,
+  Color,
+  ContainerName,
+  Inset,
+  Size,
   kurbo::{Rect, RoundedRect, Stroke},
 };
-use skene_core::{Color, ContainerName, Inset, Size};
 use skene_reactive::Set;
 
 use crate::{

@@ -40,9 +40,8 @@ pub mod user;
 
 use std::{cell::RefCell, fmt::Write as _, rc::Rc, thread::LocalKey, time::Duration};
 
-use skene_common::web::{Canvas, Painter, Painting, WebProperty, WebStyle};
-pub use skene_common::web::{HeadElement, HeadId};
-use skene_core::{
+pub use skene_foundation::web::{HeadElement, HeadId};
+use skene_foundation::{
   AspectRatio,
   Availability,
   Axes,
@@ -116,6 +115,7 @@ use skene_core::{
   notify_selection_change,
   notify_toggle,
   start_drag,
+  web::{Canvas, Painter, Painting, WebProperty, WebStyle},
 };
 use skene_reactive::{Memo, ReadSignal, Set};
 use unicode_segmentation::UnicodeSegmentation;
@@ -129,14 +129,14 @@ use crate::records::{Kind, Record, Records};
 pub struct Headless;
 
 /// The erased token definition the headless platform stores per token; see
-/// [`skene_core::TokenValue`].
-pub type TokenValue = skene_core::TokenValue<f32>;
+/// [`skene_foundation::TokenValue`].
+pub type TokenValue = skene_foundation::TokenValue<f32>;
 
-/// A property's value erased over the property; see [`skene_core::SlotValue`].
-pub type SlotValue = skene_core::SlotValue<f32, WebStyle>;
+/// A property's value erased over the property; see [`skene_foundation::SlotValue`].
+pub type SlotValue = skene_foundation::SlotValue<f32, WebStyle>;
 
-/// What a derived leaf last wrote into a node's slot; see [`skene_core::SlotLeaf`].
-pub type SlotLeaf = skene_core::SlotLeaf<f32, WebStyle>;
+/// What a derived leaf last wrote into a node's slot; see [`skene_foundation::SlotLeaf`].
+pub type SlotLeaf = skene_foundation::SlotLeaf<f32, WebStyle>;
 
 thread_local! {
   static SCENE: RefCell<Scene<Headless>> = RefCell::new(Scene::new());
@@ -150,7 +150,7 @@ thread_local! {
 /// pending one first; a test calls this where it observes a direct write's effects
 /// some other way.
 pub fn end_turn() {
-  skene_core::end_turn();
+  skene_foundation::end_turn();
 }
 
 /// Runs `event` as one turn: what earlier writes scheduled takes effect first, and
@@ -445,22 +445,22 @@ pub fn reset() {
     owner.dispose();
   }
 
-  skene_core::reset_thread::<Headless>();
-  skene_core::hold_flushes(|| {});
+  skene_foundation::reset_thread::<Headless>();
+  skene_foundation::hold_flushes(|| {});
   install_executor();
 }
 
 /// Installs the headless executor as this thread's spawner: every task `spawn` and
 /// `Resource` start on this thread queues here until [`pump_tasks`] polls it.
 pub fn install_executor() {
-  skene_core::executor::install();
+  skene_foundation::executor::install();
 }
 
 /// Polls every queued task until none is ready, so a resource whose loader is ready
 /// lands its value; `true` when any task ran.
 #[must_use]
 pub fn pump_tasks() -> bool {
-  trigger(skene_core::executor::pump)
+  trigger(skene_foundation::executor::pump)
 }
 
 /// Registers `title` for the document, in force while it is the latest live one.
@@ -1252,7 +1252,7 @@ pub fn is_tab_stop(node: NodeId) -> bool {
   )
 }
 
-skene_core::access_queries!(Headless, name_facts);
+skene_foundation::access_queries!(Headless, name_facts);
 
 /// What the accessible-name computation reads of `node`.
 fn name_facts(node: NodeId) -> NameFacts {

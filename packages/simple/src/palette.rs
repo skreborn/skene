@@ -1,8 +1,17 @@
 //! The Simple design language's tokens: the palette as a token set, the emphasis
 //! looks, and the default every facade starts from.
 
-use skene_common::typography;
-use skene_core::{Color, Definition, Media, Scalar, Token, TokenName, TokenRef, TokenSet};
+use skene_foundation::{
+  Color,
+  Definition,
+  Media,
+  Scalar,
+  Token,
+  TokenName,
+  TokenRef,
+  TokenSet,
+  typography,
+};
 
 /// A Simple action's emphasis, selecting its surface and ink.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -569,7 +578,7 @@ fn alias<N: Scalar, V: From<Definition<Color, N>>>(
 
 #[cfg(test)]
 mod tests {
-  use skene_core::{Color, Definition, TokenName, TokenSet};
+  use skene_foundation::{Color, Definition, TokenName, TokenSet};
 
   use super::{SimpleLook, SimplePalette, SimpleVariant};
 

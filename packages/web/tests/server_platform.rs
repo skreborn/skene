@@ -5,40 +5,38 @@
 //! `RUSTFLAGS='--cfg skene_platform="server"' cargo test -p skene-web --test server_platform`.
 #![cfg(skene_web_platform = "server")]
 
-use skene_common::{
+use skene_foundation::{
+  AnyKind,
   BasicCheckbox,
   BasicTextEditor,
   Behavior,
-  Container,
-  Control,
-  Flexible,
-  LowLevel,
-  Row,
-  Text,
-  TextEntry,
-  Theme,
-  Toggle,
-};
-use skene_core::{
-  AnyKind,
   Color,
   Condition,
+  Container,
   ContainerName,
   ContainerQuery,
+  Control,
   ControlState,
   Dimension,
   EventKind,
   Expr,
+  Flexible,
   HasChild,
   HasChildren,
   Length,
+  LowLevel,
   Media,
   NativeElement,
   NodeId,
   NodeKind,
   Role,
+  Row,
   State,
   StaticLeaf,
+  Text,
+  TextEntry,
+  Theme,
+  Toggle,
   Token,
   TokenName,
   TokenRef,
@@ -341,7 +339,7 @@ fn a_checkbox_is_a_label_over_a_native_input_and_its_parts() {
         .handle_toggle(move |next| set_checked.set(next)),
     )
     .set_part(
-      skene_common::Part::Mark,
+      skene_foundation::Part::Mark,
       Box_::new().set_color(white().when(Condition::from(State::Checked), black())),
     )
     .set_label("Agree")
@@ -398,7 +396,7 @@ struct Raw;
 
 impl AnyKind for Raw {}
 
-impl skene_common::View<Web> for Raw {
+impl skene_foundation::View<Web> for Raw {
   fn build(self) -> NodeId {
     LowLevel::<Web>::realize(NodeKind::Box, |node| Web::create_element(node, "div"))
   }
@@ -441,7 +439,7 @@ impl Behavior<Web> for Partial {
 
   fn state(&self) -> ControlState {
     ControlState {
-      checked: skene_core::CheckState::Mixed,
+      checked: skene_foundation::CheckState::Mixed,
       ..ControlState::DEFAULT
     }
   }
@@ -454,7 +452,7 @@ fn an_indeterminate_checkbox_carries_its_state_in_markup() {
   let rendered = render_to_string(|| {
     Control::<Web, Partial>::new(Partial)
       .set_part(
-        skene_common::Part::Mark,
+        skene_foundation::Part::Mark,
         Box_::new().set_color(white().when(Condition::from(State::Indeterminate), black())),
       )
       .set_label("Some")

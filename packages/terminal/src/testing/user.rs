@@ -4,7 +4,7 @@
 //! A pointer acts at the center cell of the rectangle a node covered at the last paint;
 //! a key acts where focus is.
 
-use skene_core::{Key, KeyEvent, NodeId};
+use skene_foundation::{Key, KeyEvent, NodeId};
 use unicode_segmentation::UnicodeSegmentation;
 
 use super::{trigger_key_event, trigger_mouse_click, trigger_mouse_move};

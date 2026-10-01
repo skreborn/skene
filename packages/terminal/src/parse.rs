@@ -11,7 +11,7 @@
 
 use std::collections::VecDeque;
 
-use skene_core::{Modifiers, PointerButton};
+use skene_foundation::{Modifiers, PointerButton};
 
 use crate::{
   device::{Note, WindowSize},

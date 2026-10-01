@@ -2,15 +2,14 @@
 //! default lands at the root without one.
 
 use acme_ui::{AcmeBadge, AcmePalette};
-use skene_common::web::WebProperty;
-use skene_core::{Color, NodeId, Property, PropertyKey, View};
+use skene_foundation::{Color, NodeId, Property, PropertyKey, View, web::WebProperty};
 use skene_headless::{Headless, children, reset, resolve_color, text};
 use skene_reactive::Owner;
 
 const COLOR: PropertyKey<WebProperty> = PropertyKey::Shared(Property::Color);
 const TEXT_COLOR: PropertyKey<WebProperty> = PropertyKey::Shared(Property::TextColor);
 
-type Theme<P, C = skene_common::NoChild> = skene_common::Theme<Headless, P, C>;
+type Theme<P, C = skene_foundation::NoChild> = skene_foundation::Theme<Headless, P, C>;
 
 fn red() -> Color {
   Color::srgb(1., 0., 0.)

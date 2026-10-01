@@ -1,6 +1,6 @@
 //! Expressions as CSS math and color functions.
 
-use skene_core::{Edge, ExprNode};
+use skene_foundation::{Edge, ExprNode};
 
 use crate::declarations::Declarations;
 
@@ -97,7 +97,7 @@ fn percent(value: f32) -> f32 {
 
 #[cfg(test)]
 mod tests {
-  use skene_core::{Color, Edge, Expr, Length, TokenRef};
+  use skene_foundation::{Color, Edge, Expr, Length, TokenRef};
 
   use super::render_expr;
   use crate::declarations::Declarations;

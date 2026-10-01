@@ -29,7 +29,7 @@ left half-done in a code comment.
     `cargo deny check licenses` has nothing to hold the dependencies to. Neither CI
     workflow, the gate on every pull request nor the weekly RustSec advisories, has run
     yet.
-2. **One owner for style and interaction semantics.** The web compiler and core's
+2. **One owner for style and interaction semantics.** The web compiler and the spine's
     `Resolver` implement one meaning twice, and the terminal, headless and the web each
     implement focus, press, hover and overlays; each mechanism gets one owner, and the
     browser is the oracle.
@@ -88,7 +88,7 @@ left half-done in a code comment.
     - Token caches take per-scope epochs in place of the generations every
     redefinition, structure change and environment change moves for every scope today,
     and interned names, so a palette change costs the number of tokens beyond the web
-    too, in core's `ResolutionContext`, which headless and the terminal share; a
+    too, in the spine's `ResolutionContext`, which headless and the terminal share; a
     resolution reports the environment it read as it reports the interaction, so a
     resize restyles only what reads the viewport.
     - Constant factors: forced inlining off allocating functions; the lazy list reading
@@ -112,7 +112,7 @@ left half-done in a code comment.
     - One serialization for state crossing a boundary: hydration carries through
     `Snapshot` and serde_json leaves the web leaf, or `DESIGN.md` states that network
     data is serde's.
-    - Restoration in core: focus, selection with its direction, and scroll restore by
+    - Restoration in the spine: focus, selection with its direction, and scroll restore by
     snapshot position through platform methods, testable in headless and shared by the
     web and the terminal.
     - The terminal's swap: the launcher owns the state file, keeps it on an abnormal
@@ -188,15 +188,10 @@ left half-done in a code comment.
     `skene-simple-terminal`) whose views are newtypes over them, and
     `examples/third-party` splits the same way; `AGENTS.md`'s facade, selection,
     third-party and examples rules follow.
-    - `skene-core` and `skene-common` merge into `skene-foundation`, since every
-    consumer depends on both: scene internals stay behind module visibility
-    (`pub(in crate::spine)`), so built-in views still use only the public API, and a
-    check keeps the spine modules from importing the medium modules; `skene-reactive`
-    stays separate, knowing nothing of UI; `AGENTS.md` and `DESIGN.md` follow;
-    `split_alignment` and `ThemedIn::define_root` stop being crate-private. The resolution then names the
-    typography size token itself, so `ResolutionSource::size_token` goes, the terminal
-    keeping only whether it proved text sizing, and the `em` fallback becomes the
-    platform's.
+    - The foundation: `split_alignment` and `ThemedIn::define_root` stop being
+    crate-private, and the resolution names the typography size token itself, so
+    `ResolutionSource::size_token` goes, the terminal keeping only whether it proved
+    text sizing, and the `em` fallback becomes the platform's.
     - Moves: `AsyncView`, `Deferred`, the hydrating `Resource`, `Link` and the router
     binding into the foundation over platform seams, so a generic library can use them
     and the terminal gains `Link`; the title into a shared `window` module, which grows
@@ -434,7 +429,7 @@ left half-done in a code comment.
     commit.
     - Shared machinery beside it: vello paint for `Painted`, AccessKit only where a
     painted layer needs it since native views carry their own accessibility, the frame
-    clock running `skene_core::interpolate` as the terminal does, `Condition`
+    clock running `skene_foundation::interpolate` as the terminal does, `Condition`
     resolution against window and pointer signals through the one resolution point.
     Opacity, transform and color transitions run on the compositor, the frame clock
     their floor.
@@ -640,8 +635,7 @@ every item is proven through tmux and ssh as well as bare.
   vello unify it with `std`; its CSS semantics are taken instead.
 - A view macro beside the builders (`rsx!`): a macro costs rustfmt and rust-analyzer,
   and Freya left rsx for builders in 2026; the effort goes into diagnostics.
-- Collapsing the crates beyond `skene-core` and `skene-common`: separate crates compile
-  in parallel.
+- Collapsing the crates beyond `skene-foundation`: separate crates compile in parallel.
 - One app serving both media: the two galleries still differ on 431 of 893 lines once
   numbers are stripped.
 - A stable plugin ABI: nobody asks for one.

@@ -7,7 +7,7 @@ use std::{
   ops::Range,
 };
 
-use skene_core::{MouseCursor, TextDecorationStyle};
+use skene_foundation::{MouseCursor, TextDecorationStyle};
 
 use crate::{
   detect::{self, ColorDepth},

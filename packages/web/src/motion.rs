@@ -2,8 +2,14 @@
 
 use std::fmt::Write as _;
 
-use skene_common::web::WebProperty;
-use skene_core::{Animation, Easing, PropertyKey, StyleProperty, Transition};
+use skene_foundation::{
+  Animation,
+  Easing,
+  PropertyKey,
+  StyleProperty,
+  Transition,
+  web::WebProperty,
+};
 
 use crate::{
   compile::{Key, target},

@@ -1,5 +1,5 @@
 //! The web platform: [`Web`], its escape traits and its seams beyond the
-//! [`Platform`](skene_core::Platform) trait.
+//! [`Platform`](skene_foundation::Platform) trait.
 //!
 //! For a library author writing a view directly against the browser DOM or the server's
 //! markup. The browser leaf (`skene_web_platform = "browser"`) realizes against a live
@@ -7,7 +7,7 @@
 //! both emitting the same web semantics, so a node styled the same way gets the same
 //! content-addressed class on either leaf and a served page hydrates in place. The
 //! compiler and the element choices are shared; each leaf implements
-//! [`Platform`](skene_core::Platform) for [`Web`] and exposes its own entry points
+//! [`Platform`](skene_foundation::Platform) for [`Web`] and exposes its own entry points
 //! beside the seams a satellite such as [`Link`](crate::Link) needs beyond the
 //! platform: the executor (`drive`), the hydration state channel (`adopt_next`,
 //! `register_source` and their tagged twins, `is_server`), the document head, the path
@@ -113,8 +113,8 @@ pub use crate::{
 /// The web platform: zero-sized, implementing the portable vocabulary over the DOM in the
 /// browser and over a string tree on the server.
 ///
-/// Lengths are logical pixels ([`Scalar`](skene_core::Platform::Scalar) `f32`), the
-/// style extension is [`WebStyle`](skene_common::web::WebStyle), and a token is a
+/// Lengths are logical pixels ([`Scalar`](skene_foundation::Platform::Scalar) `f32`), the
+/// style extension is [`WebStyle`](skene_foundation::web::WebStyle), and a token is a
 /// [`WebTokenValue`].
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 #[must_use]

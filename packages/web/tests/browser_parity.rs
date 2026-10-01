@@ -10,25 +10,19 @@
 
 use std::{cell::Cell, time::Duration};
 
-use skene_common::{
-  Activate,
-  BasicButton,
-  BasicCheckbox,
-  Container,
-  Text,
-  Theme,
-  Toggle,
-  web::{Typography, WebProperty},
-};
-use skene_core::{
+use skene_foundation::{
   AccessProp,
+  Activate,
   Animation,
   AnyView,
   AspectRatio,
   Axes,
+  BasicButton,
+  BasicCheckbox,
   BoxKeyframe,
   Color,
   Condition,
+  Container,
   ContainerName,
   ContainerQuery,
   Definition,
@@ -48,6 +42,9 @@ use skene_core::{
   Size,
   State,
   StaticLeaf,
+  Text,
+  Theme,
+  Toggle,
   Token,
   TokenName,
   TokenRef,
@@ -56,6 +53,7 @@ use skene_core::{
   Value,
   View,
   Visibility,
+  web::{Typography, WebProperty},
 };
 use skene_headless::{
   Headless,

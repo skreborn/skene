@@ -6,10 +6,10 @@
 //! out the live [`Element`](web_sys::Element) and the [`Document`](web_sys::Document),
 //! so a view bound on it does not compile for the server leaf and is wrapped in a
 //! facade's `client_only` (or given a [`WebMarkup`] fallback) by the app that uses it.
-//! The node an element realizes is minted through `skene_common::LowLevel`, and it
+//! The node an element realizes is minted through `skene_foundation::LowLevel`, and it
 //! composes as a built-in does.
 
-use skene_core::{NodeId, Platform};
+use skene_foundation::{NodeId, Platform};
 
 use crate::declarations::Declarations;
 

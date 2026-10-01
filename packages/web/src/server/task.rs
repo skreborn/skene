@@ -13,7 +13,7 @@ use std::{
   time::{Duration, Instant},
 };
 
-use skene_core::executor;
+use skene_foundation::executor;
 
 /// The upper bound on polling rounds, so a task that always wakes itself (an unbounded
 /// resource waterfall) fails the render rather than hanging its caller forever.

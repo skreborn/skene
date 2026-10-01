@@ -6,8 +6,8 @@ error[E0369]: cannot add `skene_web::Expr<skene_web::Color>` to `skene_web::Expr
   |           |
   |           skene_web::Expr<skene_web::Color>
   |
-note: `skene_web::Color` does not implement `skene_core::expr::Quantity`
- --> $WORKSPACE/packages/core/src/values/color.rs
+note: `skene_web::Color` does not implement `skene_foundation::spine::expr::Quantity`
+ --> $WORKSPACE/packages/foundation/src/spine/values/color.rs
   |
   | pub struct Color {
   | ^^^^^^^^^^^^^^^^ `skene_web::Color` is defined in another crate

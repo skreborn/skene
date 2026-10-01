@@ -2,7 +2,7 @@
 
 use std::time::Duration;
 
-use skene_common::{
+use skene_foundation::{
   Activate,
   BasicButton,
   BasicCheckbox,
@@ -15,32 +15,30 @@ use skene_common::{
   Column,
   Container,
   ContextMenu,
-  ListboxOption,
-  MenuEntry,
-  Overlay,
-  Radio,
-  RadioGroup,
-  Slider,
-  TOOLTIP_DELAY,
-  Text,
-  TextEntry,
-  Toggle,
-  Tooltip,
-};
-use skene_core::{
   FocusOrder,
   HasChild,
   HasChildren,
   Key,
   KeyEvent,
+  ListboxOption,
   Media,
+  MenuEntry,
   NodeId,
+  Overlay,
   Platform,
+  Radio,
+  RadioGroup,
   Role,
   Scalar,
   Show,
   Size,
+  Slider,
+  TOOLTIP_DELAY,
+  Text,
+  TextEntry,
   TextSelection,
+  Toggle,
+  Tooltip,
   View,
   Visibility,
   When,
@@ -670,7 +668,7 @@ fn a_viewport_condition_follows_a_resize<D: Driver>(driver: &mut D) {
   let length = <<D::Platform as Platform>::Scalar as Scalar>::from_f32;
 
   driver.mount(move || {
-    skene_common::Container::<D::Platform>::new()
+    skene_foundation::Container::<D::Platform>::new()
       .set_visibility(Visibility::Hidden.when(Media::MinWidth(length(100.)), Visibility::Visible))
       .set_child(Text::new("Wide"))
       .into_any()
@@ -692,7 +690,7 @@ fn a_form_reads_alike<D: Driver>(driver: &mut D) {
   driver.mount(|| {
     Column::<D::Platform>::new()
       .set_children((
-        skene_common::Container::new()
+        skene_foundation::Container::new()
           .set_role(Role::Heading)
           .set_child(Text::new("Sign in")),
         BasicTextField::new(TextEntry::new().set_value("ada")).set_label("Name"),

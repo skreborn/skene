@@ -2,7 +2,7 @@
 
 use std::str::FromStr;
 
-use skene_core::{Code, Key as PortableKey, KeyEvent, Modifiers, NamedKey};
+use skene_foundation::{Code, Key as PortableKey, KeyEvent, Modifiers, NamedKey};
 
 use crate::{
   escape,

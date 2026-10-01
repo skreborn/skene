@@ -4,8 +4,11 @@
 
 use std::rc::Rc;
 
-use skene_common::web::{Canvas, Painter, Painting, kurbo::Affine};
-use skene_core::{NodeId, Size};
+use skene_foundation::{
+  NodeId,
+  Size,
+  web::{Canvas, Painter, Painting, kurbo::Affine},
+};
 use skene_reactive::ReadSignal;
 use wasm_bindgen::{JsCast, JsValue, closure::Closure};
 use web_sys::{

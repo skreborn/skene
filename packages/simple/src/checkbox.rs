@@ -2,11 +2,13 @@
 
 use std::marker::PhantomData;
 
-use skene_common::{BasicCheckbox, Container, CornerRadius, Text, Toggle};
-use skene_core::{
+use skene_foundation::{
   Alignment,
   AnyKind,
   AnyView,
+  BasicCheckbox,
+  Container,
+  CornerRadius,
   Dimension,
   HasChild,
   Inset,
@@ -14,6 +16,8 @@ use skene_core::{
   Part,
   Platform,
   State,
+  Text,
+  Toggle,
   View,
   Visibility,
   When,

@@ -3,7 +3,7 @@
 
 use std::cell::RefCell;
 
-use skene_common::web::{Head, HeadElement, HeadId};
+use skene_foundation::web::{Head, HeadElement, HeadId};
 use web_sys::{Element, HtmlHeadElement};
 
 thread_local! {

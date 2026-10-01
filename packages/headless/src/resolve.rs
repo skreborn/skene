@@ -2,8 +2,7 @@
 //! feed the shared [`Resolver`], and the presented value lays the node's motion over
 //! what it resolved to.
 
-use skene_common::{typography, web::WebProperty};
-use skene_core::{
+use skene_foundation::{
   Animation,
   BoxKeyframe,
   ContainerName,
@@ -17,6 +16,8 @@ use skene_core::{
   Slot,
   TokenName,
   Transition,
+  typography,
+  web::WebProperty,
 };
 
 use crate::{Headless, SlotLeaf, SlotValue, records::Kind, with_records};

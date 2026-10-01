@@ -2,32 +2,30 @@
 
 use std::rc::Rc;
 
-use skene_common::{
-  BasicListboxOption,
-  BasicPicker,
-  Column,
-  Container,
-  CornerRadius,
-  Label,
-  ListboxOption,
-  Row,
-  Text,
-};
-use skene_core::{
+use skene_foundation::{
   AnyKind,
   AnyView,
   Arrangement,
+  BasicListboxOption,
+  BasicPicker,
   Color,
+  Column,
+  Container,
+  CornerRadius,
   Dimension,
   HasChild,
   HasChildren,
   Inset,
   ItemAlignment,
+  Label,
+  ListboxOption,
   MouseCursor,
   NodeId,
   Part,
   Platform,
+  Row,
   State,
+  Text,
   View,
   Visibility,
   When,

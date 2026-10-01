@@ -6,7 +6,7 @@ error[E0277]: cannot add `skene_web::Expr<skene_web::Number>` to `skene_web::Exp
   |
   = help: the trait `Add<skene_web::Expr<skene_web::Number>>` is not implemented for `skene_web::Expr<skene_web::Length>`
 help: the following other types implement trait `Add<Rhs>`
- --> $WORKSPACE/packages/core/src/expr.rs
+ --> $WORKSPACE/packages/foundation/src/spine/expr.rs
   |
   | impl<Q: Quantity> Add for Expr<Q> {
   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `skene_web::Expr<Q>` implements `Add`

@@ -6,7 +6,7 @@ use std::{
   task::{Context, Poll},
 };
 
-use skene_core::{AnyKind, NodeId, Scene, View};
+use skene_foundation::{AnyKind, NodeId, Scene, View};
 use skene_reactive::Owner;
 
 use crate::ActivePlatform;
@@ -70,7 +70,7 @@ impl AsyncView {
           let scope = Owner::current().child();
 
           scope.enter(|| {
-            skene_reactive::provide_context(skene_core::Boundary::new());
+            skene_reactive::provide_context(skene_foundation::Boundary::new());
             crate::spawn(work);
           });
         }

@@ -2,8 +2,17 @@
 
 use std::time::Duration;
 
-use skene_common::{CornerRadius, Tooltip};
-use skene_core::{AnyKind, AnyView, NoChild, NodeId, Placement, Platform, View};
+use skene_foundation::{
+  AnyKind,
+  AnyView,
+  CornerRadius,
+  NoChild,
+  NodeId,
+  Placement,
+  Platform,
+  Tooltip,
+  View,
+};
 
 use super::{
   SimplePalette,

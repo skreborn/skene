@@ -1,6 +1,6 @@
 //! A text entry's editing state: its value, caret, selection and undo history.
 
-use skene_core::{NodeId, TextSelection};
+use skene_foundation::{NodeId, TextSelection};
 
 use super::Records;
 use crate::{

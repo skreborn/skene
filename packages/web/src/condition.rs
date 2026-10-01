@@ -3,7 +3,7 @@
 
 use std::fmt::Write as _;
 
-use skene_core::{
+use skene_foundation::{
   ColorScheme,
   Condition,
   ConditionTree,
@@ -43,11 +43,11 @@ pub(crate) const DRAGS_ATTRIBUTE: &str = "data-skene-drags";
 
 /// The value of [`DRAGS_ATTRIBUTE`] naming `axes`.
 #[cfg(any(skene_web_platform = "browser", skene_web_platform = "server"))]
-pub(crate) const fn drags_value(axes: skene_core::DragAxes) -> &'static str {
+pub(crate) const fn drags_value(axes: skene_foundation::DragAxes) -> &'static str {
   match axes {
-    skene_core::DragAxes::Horizontal => "horizontal",
-    skene_core::DragAxes::Vertical => "vertical",
-    skene_core::DragAxes::Both => "both",
+    skene_foundation::DragAxes::Horizontal => "horizontal",
+    skene_foundation::DragAxes::Vertical => "vertical",
+    skene_foundation::DragAxes::Both => "both",
   }
 }
 
@@ -523,7 +523,7 @@ const fn chosen_guard(scheme: ColorScheme) -> &'static str {
 
 #[cfg(test)]
 mod tests {
-  use skene_core::{Condition, ContainerName, ContainerQuery, Media, State};
+  use skene_foundation::{Condition, ContainerName, ContainerQuery, Media, State};
 
   use super::{CLASS_PLACEHOLDER, Conjunction, selectors};
 

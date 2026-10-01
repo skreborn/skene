@@ -1,0 +1,171 @@
+//! # skene-foundation
+//!
+//! What every platform shares: the spine, and every built-in view once over it.
+//!
+//! The spine owns the retained tree: a [`Scene`] of [`NodeRecord`]s addressed by generational
+//! [`NodeId`]s, every mutation mirrored into the sink of the one [`Platform`] a facade
+//! names. Dispatch ([`dispatch_click`] and its kin) climbs that tree once for every
+//! platform. A [`View`] builds into a node; reactive content ([`derived`], [`reconcile`],
+//! [`Show`]) mounts between a segment's anchors, and a container's [`Children`] is a
+//! list of such segments.
+//!
+//! A property's value is a [`Value`]: a [`Leaf`]—fixed, a token reference, an expression,
+//! or derived from signals—under conditions ([`Condition`]) that pick a variant. A
+//! [`Token`]'s [`Definition`] is the same shape without the derived leaf and with only
+//! [`Media`] conditions, so a palette is plain data. A style ([`BoxStyle`], [`RunStyle`])
+//! holds one field per property in a [`Shape`]: what a builder collects, what a platform
+//! receives, or plain values. Every facade fixes the [`Scalar`] its lengths are measured
+//! in and the [`StyleExtension`] holding the properties only its medium has, which its
+//! medium's module here defines. A style's [`Fingerprint`] keys what a
+//! platform compiled from it. Motion ([`Transition`], [`Animation`]) is data every
+//! platform compiles or runs, and the universal values ([`Color`], the geometry, the
+//! layout vocabulary) are what every medium's properties are made of.
+//!
+//! Every built-in view once, generic over the [`Platform`] a facade names. A facade
+//! aliases them (`type Container = skene_foundation::Container<ActivePlatform>`); a component
+//! library writes against them exactly as a facade does. What every platform of one
+//! medium shares above the spine is a module here: [`terminal`] for the terminal and
+//! [`web`] for the web; [`routing`] is the router every facade binds.
+//!
+//! A view's build folds the annotation a wrapper left pending into its declared style,
+//! splits the style into the static part a platform compiles and the derived slots render
+//! effects write, creates its node, registers it in the [`Scene`], binds each slot,
+//! registers its handlers, mounts its children and returns its id. [`LayoutBox`] is that
+//! build for a box; [`Container`], [`Row`], [`Column`], [`Grid`] and [`Stack`] are thin
+//! vocabularies over it, and a third party's layout view is built from it the same way.
+//! [`Flexible`], [`Pinned`] and [`GridCell`] annotate the box built under them. A run
+//! ([`Text`], [`Span`], [`RichText`]) inherits through the [`typography`] tokens.
+//! [`Show`], [`Switch`], [`Suspense`] and [`ErrorBoundary`] mount between anchors and
+//! keep the branches they hide. [`Theme`] defines a token set beneath it, and
+//! [`ThemedIn`] reads the set in force. [`Control`] is the one control builder, over a
+//! [`Behavior`] saying what the interaction is; [`Activate`], [`Toggle`], [`Slider`],
+//! [`RadioGroup`] with [`Radio`], [`Popup`], [`Listbox`] with [`ListboxOption`], and
+//! [`TextEntry`] ship, and the `Basic*` aliases name the control over each. [`Overlay`]
+//! is content above the app, opened and closed by the app and placed against the view
+//! a [`NodeHandle`] is bound to, which focus also moves to and whose measured size it
+//! reports; [`BasicPicker`] composes a popup face, an overlay and a listbox. [`LazyColumn`] and
+//! [`LazyRow`] scroll a keyed list building only the slice in view, its items of a fixed or an
+//! estimated and measured [`ItemExtent`]. [`CornerRadius`] is what a decorated box asks of a
+//! medium's style extension to round its corners, and [`TypeMetrics`] what a run asks of it to size
+//! its type; both are silently declined by a medium without them. [`LowLevel`] registers a sink a
+//! low-level view made against a platform's escape trait as a node, so it composes like a built-in.
+
+mod container;
+mod context_menu;
+mod control;
+mod corner_radius;
+mod enhance;
+mod error_boundary;
+mod facade;
+mod flex;
+mod flexible;
+mod grid;
+mod grid_cell;
+mod keymap;
+mod layout_box;
+mod lazy_list;
+mod macros;
+pub mod media;
+mod node_handle;
+mod overlay;
+mod painted;
+mod painting;
+mod picker;
+mod pinned;
+pub mod realize;
+pub mod routing;
+mod run;
+mod span;
+mod spine;
+mod stack;
+mod suspense;
+mod switch;
+pub mod terminal;
+mod text;
+mod theme;
+mod tooltip;
+mod type_metrics;
+pub mod typography;
+pub mod web;
+
+extern crate self as skene_foundation;
+
+pub use skene_reactive as reactive;
+
+pub use self::spine::*;
+pub use crate::{
+  container::Container,
+  context_menu::{ContextMenu, MenuEntry, MenuItemContent},
+  control::{
+    Activate,
+    BasicButton,
+    BasicCheckbox,
+    BasicListbox,
+    BasicListboxOption,
+    BasicMenu,
+    BasicMenuItem,
+    BasicRadio,
+    BasicRadioGroup,
+    BasicSlider,
+    BasicTextEditor,
+    BasicTextField,
+    Behavior,
+    Collection,
+    CollectionContext,
+    CollectionPolicy,
+    Control,
+    ControlChild,
+    ControlHandle,
+    Controlled,
+    Label,
+    LabelPlacement,
+    Listbox,
+    ListboxContext,
+    ListboxOption,
+    ListboxPolicy,
+    Member,
+    Menu,
+    MenuContext,
+    MenuOption,
+    MenuPolicy,
+    NativePicker,
+    PointerPhase,
+    Popup,
+    Radio,
+    RadioGroup,
+    RadioGroupContext,
+    RadioPolicy,
+    Roster,
+    Slider,
+    TYPE_AHEAD_RESET,
+    TextEntry,
+    Toggle,
+    TypeAhead,
+  },
+  corner_radius::CornerRadius,
+  enhance::Enhance,
+  error_boundary::ErrorBoundary,
+  flex::{Column, Row},
+  flexible::Flexible,
+  grid::Grid,
+  grid_cell::GridCell,
+  keymap::Keymap,
+  layout_box::LayoutBox,
+  lazy_list::{ItemExtent, LazyColumn, LazyRow},
+  node_handle::NodeHandle,
+  overlay::Overlay,
+  painted::Painted,
+  painting::{Canvas, IntoBrush, PaintType, Painter, Painting, Renderer, kurbo, paint, peniko},
+  picker::{BasicPicker, Face},
+  pinned::Pinned,
+  realize::{ChildBuilder, LowLevel},
+  run::Run,
+  span::{RichText, Span},
+  stack::Stack,
+  suspense::Suspense,
+  switch::Switch,
+  text::Text,
+  theme::{Theme, ThemedIn},
+  tooltip::{TOOLTIP_DELAY, TOOLTIP_GRACE, Tooltip},
+  type_metrics::TypeMetrics,
+};

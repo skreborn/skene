@@ -67,7 +67,7 @@ mod token;
 
 /// The web medium's shared vocabulary: the style extension, the typography set and the
 /// painting path.
-pub use skene_common::web::{
+pub use skene_foundation::web::{
   Canvas,
   IntoBrush,
   Painter,
@@ -78,37 +78,10 @@ pub use skene_common::web::{
   kurbo,
   peniko,
 };
-pub use skene_common::{
+pub use skene_foundation::{
   Activate,
-  Behavior,
-  ControlChild,
-  CornerRadius,
-  ItemExtent,
-  Listbox,
-  ListboxContext,
-  ListboxOption,
-  Menu,
-  MenuContext,
-  MenuEntry,
-  MenuOption,
-  NativePicker,
-  PointerPhase,
-  Popup,
-  Radio,
-  RadioGroup,
-  RadioGroupContext,
-  Roster,
-  Slider,
-  TOOLTIP_DELAY,
-  TOOLTIP_GRACE,
-  TextEntry,
-  Toggle,
-  TypeMetrics,
-  routing as router,
-  typography,
-};
-pub use skene_core::{
   AnyKind,
+  Behavior,
   Bubbling,
   Children,
   ClickEvent,
@@ -116,7 +89,9 @@ pub use skene_core::{
   Color,
   ColorScheme,
   ContainerName,
+  ControlChild,
   ControlState,
+  CornerRadius,
   Definitions,
   DragData,
   Errors,
@@ -127,13 +102,22 @@ pub use skene_core::{
   HasChildren,
   IntoChildOf,
   IntoChildren,
+  ItemExtent,
   Key,
   KeyEvent,
   Leaf,
   Length,
+  Listbox,
+  ListboxContext,
+  ListboxOption,
+  Menu,
+  MenuContext,
+  MenuEntry,
+  MenuOption,
   Modifiers,
   NamedKey,
   NativeElement,
+  NativePicker,
   NoChild,
   NodeId,
   Number,
@@ -144,24 +128,38 @@ pub use skene_core::{
   PointerEvent,
   PointerId,
   PointerInfo,
+  PointerPhase,
   PointerType,
+  Popup,
   Prevent,
   Prevented,
+  Radio,
+  RadioGroup,
+  RadioGroupContext,
   Role,
+  Roster,
   Scene,
   ScrollEvent,
   Shortcut,
+  Slider,
   State,
   StaticLeaf,
+  TOOLTIP_DELAY,
+  TOOLTIP_GRACE,
   TextDecoration,
   TextDecorationStyle,
+  TextEntry,
   TextSelection,
+  Toggle,
   TokenName,
   TokenRef,
   TokenSet,
+  TypeMetrics,
   WheelEvent,
   WheelUnit,
   When,
+  routing as router,
+  typography,
 };
 /// The host platform's test seams (`trigger_` events, tree inspection), for headless
 /// view tests on the host.
@@ -197,7 +195,7 @@ pub type ActivePlatform = platform::Web;
 #[cfg(skene_web_platform = "headless")]
 pub type ActivePlatform = skene_headless::Headless;
 
-skene_common::facade!(ActivePlatform, f32, "logical pixels");
+skene_foundation::facade!(ActivePlatform, f32, "logical pixels");
 
 /// Wraps a view that only a client can realize.
 ///
@@ -239,8 +237,8 @@ where
 {
   skene_headless::install_executor();
 
-  skene_core::root_owner().enter(|| {
-    let _ = skene_core::View::into_any(app()).build();
+  skene_foundation::root_owner().enter(|| {
+    let _ = skene_foundation::View::into_any(app()).build();
   });
 
   tracing::info!("application built against the headless platform");

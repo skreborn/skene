@@ -1,7 +1,7 @@
 //! The environment a server render answers with, parsed from the client hints a
 //! request carries.
 
-use skene_core::{ColorScheme, PointerPrecision, Size};
+use skene_foundation::{ColorScheme, PointerPrecision, Size};
 
 /// The environment a render answers with: what the client hints say, else the
 /// defaults.
@@ -155,7 +155,7 @@ fn positive(value: &str) -> Option<f32> {
 
 #[cfg(test)]
 mod tests {
-  use skene_core::{ColorScheme, Size};
+  use skene_foundation::{ColorScheme, Size};
 
   use super::RenderHints;
 

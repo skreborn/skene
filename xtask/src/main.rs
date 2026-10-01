@@ -156,8 +156,7 @@ const SERVER_PACKAGES: &[&str] = &["skene-web"];
 const WASM_DOCS: &[&str] = &[
   "acme-map",
   "acme-ui",
-  "skene-common",
-  "skene-core",
+  "skene-foundation",
   "skene-reactive",
   "skene-simple",
   "skene-transport",

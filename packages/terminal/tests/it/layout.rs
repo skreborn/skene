@@ -3,7 +3,7 @@
 
 use std::{cell::Cell, rc::Rc};
 
-use skene_core::{AnyKind, Children, FlexChild, Seal};
+use skene_foundation::{AnyKind, Children, FlexChild, Seal};
 use skene_terminal::{self as terminal, prelude::*, testing};
 
 use crate::common::{colors_at, locate, red, rgb, white, with_platform};
@@ -507,9 +507,9 @@ fn a_third_party_layout_view_matches_the_built_in() {
 
   impl AnyKind for Toolbar {}
 
-  impl skene_core::View<terminal::Terminal> for Toolbar {
+  impl skene_foundation::View<terminal::Terminal> for Toolbar {
     fn build(self) -> terminal::NodeId {
-      skene_core::View::build(self.base)
+      skene_foundation::View::build(self.base)
     }
   }
 

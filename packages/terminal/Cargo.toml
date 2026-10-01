@@ -12,9 +12,8 @@ memchr = "2"
 miniz_oxide = "0.9"
 rustc-hash.workspace = true
 rustix = { default-features = false, features = ["event", "pty", "std", "stdio", "termios"], version = "1" }
-skene-common.workspace = true
-skene-core.workspace = true
 skene-dev.workspace = true
+skene-foundation.workspace = true
 skene-reactive.workspace = true
 smallvec.workspace = true
 taffy = "0.9"

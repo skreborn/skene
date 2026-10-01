@@ -9,8 +9,7 @@ use std::{
   time::Duration,
 };
 
-use skene_common::web::WebStyle;
-use skene_core::{
+use skene_foundation::{
   AccessProp,
   Availability,
   BoxProps,
@@ -42,6 +41,7 @@ use skene_core::{
   TextSelection,
   Timer,
   notify_dismiss,
+  web::WebStyle,
 };
 use skene_reactive::{Memo, ReadSignal};
 use wasm_bindgen::{JsCast, JsValue, closure::Closure};

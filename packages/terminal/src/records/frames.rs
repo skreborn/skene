@@ -3,7 +3,7 @@
 
 use std::time::Instant;
 
-use skene_core::Scene;
+use skene_foundation::Scene;
 
 use super::{CellRect, Handle, Records};
 use crate::Terminal;
@@ -97,7 +97,7 @@ impl Records {
 mod tests {
   use std::time::Duration;
 
-  use skene_core::Platform as _;
+  use skene_foundation::Platform as _;
 
   use crate::{Terminal, with_records};
 

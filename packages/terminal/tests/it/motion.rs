@@ -3,7 +3,7 @@
 
 use std::time::Duration;
 
-use skene_core::{BoxKeyframe, Property};
+use skene_foundation::{BoxKeyframe, Property};
 use skene_simple::terminal::prelude::*;
 use skene_terminal::{self as terminal, Color, State, prelude::*, testing};
 

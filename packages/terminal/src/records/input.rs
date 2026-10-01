@@ -1,7 +1,7 @@
 //! The input state: focus as the scene holds it, the press awaiting its release, the
 //! drag in progress, the wheel's latched target and the hover path.
 
-use skene_core::{FocusOrder, Interaction, NodeId, Scene};
+use skene_foundation::{FocusOrder, Interaction, NodeId, Scene};
 
 use super::{
   Handle,
@@ -19,7 +19,7 @@ pub(crate) enum Drag {
   /// A scrollbar's thumb: motion scrolls so the grabbed spot follows the pointer.
   Scrollbar {
     node: Handle,
-    axis: skene_core::Axis,
+    axis: skene_foundation::Axis,
     /// The grabbed position within the thumb, in track cells, exact where the
     /// terminal reports pixels.
     grab: f32,

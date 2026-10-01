@@ -8,8 +8,8 @@
 //! content builds directly; hydration adopts the server's already-settled markup.
 
 #[cfg(skene_web_platform = "server")]
-use skene_core::Boundary;
-use skene_core::{AnyKind, NodeId, Scene, View};
+use skene_foundation::Boundary;
+use skene_foundation::{AnyKind, NodeId, Scene, View};
 
 use crate::ActivePlatform;
 

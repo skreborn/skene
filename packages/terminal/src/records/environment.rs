@@ -1,7 +1,7 @@
 //! The environment the terminal reports: the scheme in force and its colors, the
 //! viewport and the pointer, as values and as signals, and the resolution's source.
 
-use skene_core::{
+use skene_foundation::{
   ColorScheme,
   ContainerName,
   Environment,
@@ -66,7 +66,7 @@ impl ResolutionSource<Terminal> for Records {
   }
 
   fn size_token(&self) -> Option<TokenName> {
-    crate::text::sizing().then(|| skene_common::typography::SIZE.name())
+    crate::text::sizing().then(|| skene_foundation::typography::SIZE.name())
   }
 
   fn generation(&self) -> u64 {

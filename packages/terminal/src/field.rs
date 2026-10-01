@@ -1,7 +1,14 @@
 //! The terminal's editing of a text entry: the caret and the selection over the value,
 //! the visible window, and the keys that move, select and edit.
 
-use skene_core::{ClipboardAction, Key, KeyEvent, Scene, notify_change, notify_selection_change};
+use skene_foundation::{
+  ClipboardAction,
+  Key,
+  KeyEvent,
+  Scene,
+  notify_change,
+  notify_selection_change,
+};
 use unicode_segmentation::UnicodeSegmentation as _;
 
 use crate::{
@@ -879,7 +886,7 @@ impl Records {
   fn edit_focused_entry(
     &mut self,
     edit: impl FnOnce(&mut Field, Area, bool) -> Option<Edit>,
-  ) -> Option<(skene_core::NodeId, String)> {
+  ) -> Option<(skene_foundation::NodeId, String)> {
     let focused = self.focused()?;
 
     self.edit_entry(focused, edit)
@@ -892,7 +899,7 @@ impl Records {
     &mut self,
     entry: Handle,
     edit: impl FnOnce(&mut Field, Area, bool) -> Option<Edit>,
-  ) -> Option<(skene_core::NodeId, String)> {
+  ) -> Option<(skene_foundation::NodeId, String)> {
     let area = self.field_area(entry);
     let editable = self.is_editable(entry);
     let record = self.record_mut(entry)?;

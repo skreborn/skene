@@ -1,7 +1,7 @@
 //! Common imports for a GUI application: the view vocabulary, value types, reactive
 //! primitives, logging macros, and the entry point.
 
-pub use skene_core::{
+pub use skene_foundation::{
   AccessProp,
   Alignment,
   Animation,

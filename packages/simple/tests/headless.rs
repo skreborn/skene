@@ -4,8 +4,7 @@
 
 use std::time::Duration;
 
-use skene_common::{ThemedIn, web::WebProperty};
-use skene_core::{
+use skene_foundation::{
   BoxValue,
   Color,
   ColorScheme,
@@ -19,12 +18,14 @@ use skene_core::{
   PropertyKey,
   Slot,
   StaticLeaf,
+  ThemedIn,
   Token,
   TokenName,
   TokenRef,
   TokenSet,
   View,
   Visibility,
+  web::WebProperty,
 };
 use skene_headless::{
   Headless,
@@ -66,10 +67,10 @@ type SimpleSlider = skene_simple::SimpleSlider<Headless>;
 type SimpleTextField = skene_simple::SimpleTextField<Headless>;
 type SimpleTextEditor = skene_simple::SimpleTextEditor<Headless>;
 type SimplePicker = skene_simple::SimplePicker<Headless>;
-type Container = skene_common::Container<Headless>;
-type Column = skene_common::Column<Headless>;
-type Text = skene_common::Text<Headless>;
-type Theme<P, C = skene_common::NoChild> = skene_common::Theme<Headless, P, C>;
+type Container = skene_foundation::Container<Headless>;
+type Column = skene_foundation::Column<Headless>;
+type Text = skene_foundation::Text<Headless>;
+type Theme<P, C = skene_foundation::NoChild> = skene_foundation::Theme<Headless, P, C>;
 
 const COLOR: PropertyKey<WebProperty> = PropertyKey::Shared(Property::Color);
 const TEXT_COLOR: PropertyKey<WebProperty> = PropertyKey::Shared(Property::TextColor);
@@ -77,7 +78,7 @@ const BORDER_WIDTH: PropertyKey<WebProperty> = PropertyKey::Shared(Property::Bor
 const BORDER_COLOR: PropertyKey<WebProperty> = PropertyKey::Shared(Property::BorderColor);
 
 /// The border of the box `node`: its width, the same on every edge, and its color.
-fn border(node: skene_core::NodeId) -> Option<(f32, Color)> {
+fn border(node: skene_foundation::NodeId) -> Option<(f32, Color)> {
   Some((
     resolve_length(node, BORDER_WIDTH)?,
     resolve_color(node, BORDER_COLOR)?,
@@ -117,7 +118,7 @@ fn dark(token: &Token<Color, f32>) -> Color {
 fn themed<V: View<Headless>>(
   owner: Owner,
   view: impl FnOnce() -> V + 'static,
-) -> skene_core::NodeId {
+) -> skene_foundation::NodeId {
   let theme = owner.enter(|| {
     Theme::new(SimplePalette::default())
       .set_child_builder(view)
@@ -570,7 +571,7 @@ fn a_pickers_face_rings_and_its_rows_follow_focus_and_the_choice() {
       .bind_value(value)
   });
   // The picker builds its form in a segment of its own.
-  let picker = skene_core::Scene::<Headless>::with(|scene| scene.segment_nodes(picker))[0];
+  let picker = skene_foundation::Scene::<Headless>::with(|scene| scene.segment_nodes(picker))[0];
   let face = children(picker)[0];
   let shown = children(face)[1];
   let indicator = children(face)[2];

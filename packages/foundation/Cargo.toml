@@ -1,0 +1,27 @@
+[package]
+name = "skene-foundation"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+accesskit.workspace = true
+async-task = "4"
+color.workspace = true
+keyboard-types.workspace = true
+libm = "0.2"
+rustc-hash.workspace = true
+skene-reactive.workspace = true
+smallvec.workspace = true
+thin-vec = "0.2"
+ui-events.workspace = true
+vello_cpu = { default-features = false, features = ["std", "u8_pipeline"], version = "0.2" }
+
+[dev-dependencies]
+skene-headless.workspace = true
+
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+proptest.workspace = true
+
+[lints]
+workspace = true

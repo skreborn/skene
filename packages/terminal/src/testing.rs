@@ -12,7 +12,7 @@ pub mod user;
 
 use std::time::Duration;
 
-use skene_core::{
+use skene_foundation::{
   ColorScheme,
   KeyEvent,
   Modifiers,
@@ -179,7 +179,7 @@ pub fn trigger_key_up(key: &str) {
 
 /// The node holding focus, for a test asserting focus movement.
 #[must_use]
-pub fn focused_node() -> Option<skene_core::NodeId> {
+pub fn focused_node() -> Option<skene_foundation::NodeId> {
   end_turn();
   with_records(|records| {
     records
@@ -188,7 +188,7 @@ pub fn focused_node() -> Option<skene_core::NodeId> {
   })
 }
 
-skene_core::access_queries!(Terminal, name_facts);
+skene_foundation::access_queries!(Terminal, name_facts);
 
 /// What the accessible-name computation reads of `node`.
 fn name_facts(node: NodeId) -> NameFacts {
@@ -561,7 +561,7 @@ pub fn render_to_scales(width: u16, height: u16) -> Vec<CellScale> {
 pub fn pump_tasks() -> bool {
   platform::end_turn();
 
-  let ran = skene_core::executor::pump();
+  let ran = skene_foundation::executor::pump();
 
   platform::end_turn();
 

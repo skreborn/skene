@@ -5,8 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-skene-common.workspace = true
-skene-core.workspace = true
+skene-foundation.workspace = true
 skene-reactive.workspace = true
 
 [lints]

@@ -73,13 +73,13 @@ fn a_wheel_reaches_the_node_under_it_before_it_scrolls() {
       None
     }
 
-    fn listens(&self) -> &'static [skene_core::EventKind] {
-      &[skene_core::EventKind::Wheel]
+    fn listens(&self) -> &'static [skene_foundation::EventKind] {
+      &[skene_foundation::EventKind::Wheel]
     }
 
     fn on_wheel(
       &self,
-      _: &skene_core::WheelEvent,
+      _: &skene_foundation::WheelEvent,
       _: &terminal::ControlHandle,
     ) -> terminal::Prevent {
       terminal::Prevent::All
@@ -127,7 +127,7 @@ fn a_wheel_reaches_the_node_under_it_before_it_scrolls() {
 
     assert_eq!(
       *turns.borrow(),
-      [(Axes::new(0., 2.), skene_core::WheelUnit::Lines)]
+      [(Axes::new(0., 2.), skene_foundation::WheelUnit::Lines)]
     );
     assert!(
       !testing::render_to_text(12, 3).contains("dial"),

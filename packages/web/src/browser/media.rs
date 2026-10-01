@@ -5,7 +5,7 @@
 use std::cell::{Cell, RefCell};
 
 use rustc_hash::FxHashMap;
-use skene_core::{
+use skene_foundation::{
   ColorScheme,
   Environment,
   Inset,
@@ -177,7 +177,7 @@ fn with_media<R>(operation: impl FnOnce(&mut MediaState) -> R) -> R {
     let mut media = media.borrow_mut();
 
     if media.is_none() {
-      *media = Some(skene_core::root_owner().enter(create));
+      *media = Some(skene_foundation::root_owner().enter(create));
     }
 
     operation(

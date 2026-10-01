@@ -8,7 +8,7 @@ use std::{
   rc::Rc,
 };
 
-use skene_core::{Color, Dimension, FlexChild, FlexDirection, Layout, Property, PropertyKey};
+use skene_foundation::{Color, Dimension, FlexChild, FlexDirection, Layout, Property, PropertyKey};
 use skene_web::{
   BasicRadio,
   BasicRadioGroup,
@@ -346,7 +346,7 @@ fn a_third_party_layout_view_matches_the_built_in() {
 
   impl skene_web::AnyKind for Toolbar {}
 
-  impl skene_core::View<skene_web::ActivePlatform> for Toolbar {
+  impl skene_foundation::View<skene_web::ActivePlatform> for Toolbar {
     fn build(self) -> NodeId {
       skene_web::View::build(self.base)
     }
@@ -433,7 +433,7 @@ impl skene_web::router::Route for Page {
 /// pointer or a key, leaves both to the platform.
 #[test]
 fn a_link_carries_its_destination_and_navigates_the_router() {
-  use skene_core::{ClickEvent, Modifiers};
+  use skene_foundation::{ClickEvent, Modifiers};
   use skene_web::{Link, headless::trigger_click_event};
 
   reset();
@@ -638,7 +638,7 @@ fn head_registrations_leave_with_their_owner() {
 /// A handle asked for its size only after its box built measures the box from then.
 #[test]
 fn a_handle_asked_for_its_size_late_measures_from_then() {
-  use skene_core::Size;
+  use skene_foundation::Size;
   use skene_web::{NodeHandle, headless::trigger_size};
 
   reset();
@@ -661,7 +661,7 @@ fn a_handle_asked_for_its_size_late_measures_from_then() {
 /// before the first measurement.
 #[test]
 fn a_size_handle_reports_the_measured_size() {
-  use skene_core::Size;
+  use skene_foundation::Size;
   use skene_web::{NodeHandle, headless::trigger_size};
 
   reset();
@@ -697,7 +697,7 @@ fn a_size_handle_reports_the_measured_size() {
 /// A platform's renderer takes the canvas's steps in the order they were drawn.
 #[test]
 fn a_canvas_replays_its_scene_into_a_renderer() {
-  use skene_common::web::Renderer;
+  use skene_foundation::web::Renderer;
   use skene_web::{
     Canvas,
     kurbo::{Affine, BezPath, Rect, Stroke},
@@ -756,7 +756,7 @@ fn a_canvas_replays_its_scene_into_a_renderer() {
 
 #[test]
 fn a_painted_box_draws_through_vello() {
-  use skene_core::Size;
+  use skene_foundation::Size;
   use skene_web::{
     Painted,
     headless::{is_painted, render_to_pixels},
@@ -801,7 +801,7 @@ fn a_painted_box_draws_through_vello() {
 /// and the painted box once something is.
 #[test]
 fn a_painted_box_falls_back_where_nothing_is_drawn_as_pixels() {
-  use skene_core::Scene;
+  use skene_foundation::Scene;
   use skene_web::{
     Painted,
     headless::{is_painted, trigger_graphics},

@@ -2,7 +2,7 @@
 //! layout tree's view of them, and what is in the display.
 
 use rustc_hash::FxHashSet;
-use skene_core::Scene;
+use skene_foundation::Scene;
 use smallvec::SmallVec;
 
 use super::{Handle, Records};

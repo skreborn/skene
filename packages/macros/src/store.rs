@@ -20,7 +20,7 @@ pub(crate) fn reactive() -> TokenStream {
     };
   }
 
-  for facade in ["skene-web", "skene-terminal", "skene-common"] {
+  for facade in ["skene-web", "skene-terminal", "skene-foundation"] {
     if let Ok(FoundCrate::Name(name)) = crate_name(facade) {
       let name = format_ident!("{name}");
 

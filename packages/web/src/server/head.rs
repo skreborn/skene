@@ -1,8 +1,10 @@
 //! The page head a server render serializes: the title, the elements added through the
 //! head module, the language, and the document around the body.
 
-use skene_common::web::{HeadElement, HeadId};
-use skene_core::ColorScheme;
+use skene_foundation::{
+  ColorScheme,
+  web::{HeadElement, HeadId},
+};
 
 use super::{PREEMPT_SCHEME, VIEW_TRANSITIONS, served_document, with_tree};
 
@@ -77,7 +79,7 @@ pub fn document_closing(state: &str) -> String {
 /// Panics when `tag` is not an element a head holds (`base`, `link`, `meta` or
 /// `script`) or an attribute name is not one.
 ///
-/// [`Head`]: skene_common::web::Head
+/// [`Head`]: skene_foundation::web::Head
 pub fn add_head_element(tag: &str, attributes: &[(&str, &str)]) -> HeadId {
   with_tree(|tree| tree.head.add_element(HeadElement::new(tag, attributes)))
 }

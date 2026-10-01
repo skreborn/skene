@@ -2,7 +2,7 @@
 
 use std::cell::Cell;
 
-use skene_core::{ColorScheme, Environment, Inset, MediaSignals, Size};
+use skene_foundation::{ColorScheme, Environment, Inset, MediaSignals, Size};
 use skene_reactive::{ReadSignal, Set, Signal, WriteSignal};
 
 use super::{HINTS, MEDIA};
@@ -47,7 +47,7 @@ pub(super) fn with_media<R>(operation: impl FnOnce(&MediaState) -> R) -> R {
     let media = media.get_or_insert_with(|| {
       let hints = HINTS.with(Cell::get);
 
-      skene_core::root_owner().enter(|| {
+      skene_foundation::root_owner().enter(|| {
         let (signals, writers) = MediaSignals::new(Environment {
           viewport: hints.viewport,
           scheme: hints.scheme,

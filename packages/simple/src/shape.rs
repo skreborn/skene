@@ -1,10 +1,12 @@
 //! The Simple shape language: the lengths, radii and chrome every Simple view is drawn
 //! with, spelled once per medium in the medium's own unit.
 
-use skene_common::{Behavior, Control, CornerRadius, ThemedIn};
-use skene_core::{
+use skene_foundation::{
+  Behavior,
   Color,
   Condition,
+  Control,
+  CornerRadius,
   Dimension,
   Inset,
   Length,
@@ -15,6 +17,7 @@ use skene_core::{
   Scalar,
   Scene,
   State,
+  ThemedIn,
   TokenRef,
   Value,
   View,

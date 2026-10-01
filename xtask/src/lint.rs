@@ -1,6 +1,7 @@
 //! The house rules no compiler checks: unspaced em-dashes, children last, the
-//! framework's own vocabulary, fields and variants documented all or none, and a test
-//! double's simulated events named `trigger_`.
+//! framework's own vocabulary, fields and variants documented all or none, a test
+//! double's simulated events named `trigger_`, and the spine naming nothing of the
+//! foundation outside itself.
 
 use std::{
   fs,
@@ -22,6 +23,9 @@ use syn::{
   ItemStruct,
   ItemTrait,
   ItemType,
+  Path as SynPath,
+  UsePath,
+  UseTree,
   Visibility,
   visit::{self, Visit},
 };
@@ -46,6 +50,12 @@ const BANNED_WORDS: &[&str] = &["backend", "gap", "justify", "widget"];
 /// The public functions that run a test double's `trigger` helper to turn its own loop
 /// rather than to simulate an event, exempt from `trigger_` naming.
 const LOOP_TURNS: &[&str] = &["pump_tasks"];
+
+/// The foundation's spine: its module file and the directory of its modules.
+const SPINE: [&str; 2] = [
+  "packages/foundation/src/spine.rs",
+  "packages/foundation/src/spine",
+];
 
 /// Directories never searched for sources, the compile-fail programs among them.
 const SKIPPED: &[&str] = &[
@@ -78,6 +88,7 @@ pub(crate) fn check(root: &Path) -> Result<(), String> {
           syn::parse_file(&text).map_err(|error| format!("{}: {error}", relative.display()))?;
         let mut rules = Rules {
           public_surface: is_framework_source(&relative),
+          spine: is_spine_source(&relative),
           path: &relative,
           findings: &mut findings,
         };
@@ -151,6 +162,9 @@ struct Rules<'a> {
   /// Whether the file is a framework crate's source, whose public names the vocabulary
   /// binds.
   public_surface: bool,
+  /// Whether the file is the foundation's spine, which names nothing of its crate
+  /// outside itself.
+  spine: bool,
   /// The file's path from the workspace root.
   path: &'a Path,
   /// Where the rules report what they find.
@@ -215,6 +229,26 @@ impl Rules<'_> {
     }
   }
 
+  /// Reports a path in the spine naming something of its crate outside the spine:
+  /// `crate` followed by anything but `spine`, `pub(crate)` among them.
+  fn check_spine_path(&mut self, span: Span, segments: &[String]) {
+    if !self.spine || segments.first().is_none_or(|first| first != "crate") {
+      return;
+    }
+
+    if segments.get(1).is_some_and(|second| second == "spine") {
+      return;
+    }
+
+    self.report(
+      span,
+      &format!(
+        "`{}` names the foundation outside the spine, which names nothing beyond itself",
+        segments.join("::")
+      ),
+    );
+  }
+
   /// Reports a public name made of a banned word.
   fn check_name(&mut self, visibility: &Visibility, ident: &Ident) {
     if !self.public_surface || !matches!(visibility, Visibility::Public(_)) {
@@ -233,6 +267,30 @@ impl Rules<'_> {
 }
 
 impl<'ast> Visit<'ast> for Rules<'_> {
+  fn visit_path(&mut self, path: &'ast SynPath) {
+    let segments: Vec<String> = path
+      .segments
+      .iter()
+      .map(|segment| segment.ident.to_string())
+      .collect();
+
+    if let Some(first) = path.segments.first() {
+      self.check_spine_path(first.ident.span(), &segments);
+    }
+
+    visit::visit_path(self, path);
+  }
+
+  fn visit_use_path(&mut self, item: &'ast UsePath) {
+    if item.ident == "crate" {
+      for second in use_heads(&item.tree) {
+        self.check_spine_path(item.ident.span(), &["crate".to_owned(), second]);
+      }
+    }
+
+    visit::visit_use_path(self, item);
+  }
+
   fn visit_item_mod(&mut self, item: &'ast ItemMod) {
     let public_surface = self.public_surface;
 
@@ -356,6 +414,22 @@ fn is_framework_source(path: &Path) -> bool {
     && components.next() == Some("src".as_ref())
 }
 
+/// Whether `path`, relative to the workspace, is the foundation's spine.
+fn is_spine_source(path: &Path) -> bool {
+  path == Path::new(SPINE[0]) || path.starts_with(SPINE[1])
+}
+
+/// The first name of every path a use tree imports.
+fn use_heads(tree: &UseTree) -> Vec<String> {
+  match tree {
+    UseTree::Path(path) => vec![path.ident.to_string()],
+    UseTree::Name(name) => vec![name.ident.to_string()],
+    UseTree::Rename(rename) => vec![rename.ident.to_string()],
+    UseTree::Glob(_) => vec!["*".to_owned()],
+    UseTree::Group(group) => group.items.iter().flat_map(use_heads).collect(),
+  }
+}
+
 /// Whether `attribute` is documentation, as a `///` comment is.
 fn is_doc(attribute: &Attribute) -> bool {
   attribute.path().is_ident("doc")
@@ -404,6 +478,7 @@ mod tests {
 
     Rules {
       public_surface,
+      spine: false,
       path: Path::new("test.rs"),
       findings: &mut findings,
     }
@@ -490,6 +565,46 @@ mod tests {
         "pub fn trigger_resize() { trigger(|| ()); } pub fn pump_tasks() -> bool { \
          trigger(pump) } fn resize() { trigger(|| ()); }",
         false
+      )
+      .is_empty()
+    );
+  }
+
+  /// What the rules find in `source` read as the spine's.
+  fn spine_findings(source: &str) -> Vec<String> {
+    let file = syn::parse_file(source).expect("the source parses");
+    let mut findings = Vec::new();
+
+    Rules {
+      public_surface: true,
+      spine: true,
+      path: Path::new("test.rs"),
+      findings: &mut findings,
+    }
+    .visit_file(&file);
+
+    findings
+  }
+
+  #[test]
+  fn the_spine_naming_the_crate_outside_itself_is_reported() {
+    assert_eq!(
+      spine_findings("use crate::{spine::Scene, container::Container};").len(),
+      1
+    );
+    assert_eq!(
+      spine_findings("fn build() { crate::theme::define(); }").len(),
+      1
+    );
+    assert_eq!(spine_findings("pub(crate) fn helper() {}").len(), 1);
+  }
+
+  #[test]
+  fn the_spine_naming_itself_passes() {
+    assert!(
+      spine_findings(
+        "use crate::spine::{scene::Scene, view::View}; pub(in crate::spine) fn helper() { \
+         crate::spine::runtime::end_turn(); }"
       )
       .is_empty()
     );

@@ -6,8 +6,7 @@ rust-version.workspace = true
 publish = false
 
 [dependencies]
-skene-common.workspace = true
-skene-core.workspace = true
+skene-foundation.workspace = true
 skene-terminal.workspace = true
 
 [lints]

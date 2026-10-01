@@ -3,17 +3,14 @@
 
 use std::rc::Rc;
 
-use skene_common::{
-  LayoutBox,
-  routing::{Route, Router},
-};
-use skene_core::{
+use skene_foundation::{
   AnyKind,
   Children,
   ClickEvent,
   Handler,
   HasChildren,
   Layout,
+  LayoutBox,
   Modifiers,
   NodeId,
   PlainChild,
@@ -21,6 +18,7 @@ use skene_core::{
   Scene,
   Seal,
   View,
+  routing::{Route, Router},
 };
 
 use crate::ActivePlatform;

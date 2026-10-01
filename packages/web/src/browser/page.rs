@@ -2,7 +2,7 @@
 //! server's markup, and what the reader changed before the client arrived.
 
 use rustc_hash::FxHashMap;
-use skene_core::{NodeId, PickerOption};
+use skene_foundation::{NodeId, PickerOption};
 use wasm_bindgen::JsCast;
 use web_sys::{
   Document,

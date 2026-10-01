@@ -4,7 +4,7 @@
 //! No borrow of the records is held while a handler runs: every entry point reads what
 //! it needs, releases the records, dispatches, then writes the outcome back.
 
-use skene_core::{
+use skene_foundation::{
   Axes,
   Axis,
   ClickEvent,

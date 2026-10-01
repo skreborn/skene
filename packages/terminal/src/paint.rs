@@ -6,7 +6,7 @@
 
 use std::rc::Rc;
 
-use skene_core::{
+use skene_foundation::{
   Axis,
   Color,
   Inset,
@@ -1651,7 +1651,7 @@ fn paint_node(
         }
 
         if let Some(painter) = &record.painter {
-          let size = skene_core::Size::new(
+          let size = skene_foundation::Size::new(
             u32::try_from(isize::try_from(width).unwrap_or(0) - edges.0 - edges.2).unwrap_or(0),
             u32::try_from(isize::try_from(height).unwrap_or(0) - edges.1 - edges.3).unwrap_or(0),
           );

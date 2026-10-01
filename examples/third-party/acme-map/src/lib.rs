@@ -10,8 +10,17 @@
 
 use std::marker::PhantomData;
 
-use skene_common::Container;
-use skene_core::{AnyKind, HasChild, IntoChildOf, NodeId, PlainChild, Platform, Size, View};
+use skene_foundation::{
+  AnyKind,
+  Container,
+  HasChild,
+  IntoChildOf,
+  NodeId,
+  PlainChild,
+  Platform,
+  Size,
+  View,
+};
 
 /// The sea the map paints, as CSS.
 #[cfg(not(skene_web_platform = "headless"))]
@@ -87,7 +96,7 @@ impl MapHost for skene_web::platform::Web {
   /// The canvas once the page runs script, the sea's box before then and on the
   /// server.
   fn build_map(map: Map<Self>) -> NodeId {
-    use skene_common::Enhance;
+    use skene_foundation::Enhance;
 
     let size = map.size;
     let live = Self::hydration().expect("the web answers whether the page runs script");
@@ -104,8 +113,7 @@ impl Map<skene_web::platform::Web> {
   /// A node realized as an element of `tag` dressed as the map's surface, then handed
   /// to `draw`, inside a container of the map's size.
   fn surface(self, tag: &'static str, draw: impl FnOnce(NodeId)) -> NodeId {
-    use skene_common::LowLevel;
-    use skene_core::NodeKind;
+    use skene_foundation::{LowLevel, NodeKind};
     use skene_web::platform::{Declarations, Web, WebMarkup};
 
     let node = LowLevel::<Web>::realize(NodeKind::Box, |node| {
@@ -123,7 +131,7 @@ impl Map<skene_web::platform::Web> {
       draw(node);
     });
 
-    self.sized(skene_core::AnyView::<Web>::node(node))
+    self.sized(skene_foundation::AnyView::<Web>::node(node))
   }
 
   /// The canvas the map paints.
@@ -162,7 +170,7 @@ impl Map<skene_web::platform::Web> {
 impl MapHost for skene_headless::Headless {
   /// The sea's box, an image named "map".
   fn build_map(map: Map<Self>) -> NodeId {
-    use skene_core::{Color, Role};
+    use skene_foundation::{Color, Role};
 
     let surface = Container::<Self>::new()
       .set_role(Role::Image)

@@ -7,7 +7,7 @@ use std::{
 };
 
 use rustc_hash::FxHashMap;
-use skene_core::Length;
+use skene_foundation::Length;
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 

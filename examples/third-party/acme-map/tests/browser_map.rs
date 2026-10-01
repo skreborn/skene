@@ -5,7 +5,7 @@
 #![cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 
 use acme_map::Map;
-use skene_core::{Size, View};
+use skene_foundation::{Size, View};
 use skene_web::{
   platform::{self, Web},
   testing::{computed, fresh_root},

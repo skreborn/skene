@@ -1,7 +1,18 @@
 //! The launch configuration: what the app takes from the terminal.
 
-use skene_common::{ContextMenu, MenuEntry, typography};
-use skene_core::{Color, Inset, Media, Modifiers, Shortcut, State, View, When};
+use skene_foundation::{
+  Color,
+  ContextMenu,
+  Inset,
+  Media,
+  MenuEntry,
+  Modifiers,
+  Shortcut,
+  State,
+  View,
+  When,
+  typography,
+};
 
 use crate::{Device, Terminal, event_loop, with_records};
 
@@ -174,7 +185,7 @@ fn serve_standard_menu() {
   };
   let gray = Color::srgb(0.5, 0.5, 0.5);
 
-  skene_core::root_owner().enter(|| {
+  skene_foundation::root_owner().enter(|| {
     let _ = ContextMenu::<Terminal>::new()
       .set_items([MenuEntry::cut(), MenuEntry::copy(), MenuEntry::paste()])
       .set_color(Color::srgb(1., 1., 1.).when(Media::Dark, Color::srgb(0., 0., 0.)))

@@ -16,7 +16,7 @@ use std::{
   time::Duration,
 };
 
-use skene_core::Platform as _;
+use skene_foundation::Platform as _;
 
 use crate::ActivePlatform;
 

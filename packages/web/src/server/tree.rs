@@ -4,8 +4,12 @@
 use std::{cell::Cell, rc::Rc};
 
 use rustc_hash::FxHashSet;
-use skene_common::web::{Head, HeadElement};
-use skene_core::{NodeId, PickerOption, Scene};
+use skene_foundation::{
+  NodeId,
+  PickerOption,
+  Scene,
+  web::{Head, HeadElement},
+};
 
 use super::{PREEMPT_SCHEME, PREEMPT_SCHEME_SCRIPT, ROOT, SCRIPT_NONCE, VIEW_TRANSITIONS};
 use crate::{

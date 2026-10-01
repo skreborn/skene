@@ -6,7 +6,7 @@
 use std::rc::Rc;
 
 use rustc_hash::{FxHashMap, FxHashSet};
-use skene_core::{Definitions, TokenName};
+use skene_foundation::{Definitions, TokenName};
 
 use crate::{
   compile::{Compiled, Key, SlotBinding, slot_registration},

@@ -6,8 +6,7 @@ rust-version.workspace = true
 
 [dependencies]
 rustc-hash.workspace = true
-skene-common.workspace = true
-skene-core.workspace = true
+skene-foundation.workspace = true
 skene-reactive.workspace = true
 unicode-segmentation = "1"
 

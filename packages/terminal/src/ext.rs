@@ -1,8 +1,15 @@
 //! The terminal's decoration and text setters on the facade's views: border glyphs, a
 //! shadow, scrollbars, boldness.
 
-use skene_common::terminal::{BorderGlyphs, ScrollbarGlyphs, TerminalStyle};
-use skene_core::{BoxStyle, Color, Condition, Declared, Length, RunStyle};
+use skene_foundation::{
+  BoxStyle,
+  Color,
+  Condition,
+  Declared,
+  Length,
+  RunStyle,
+  terminal::{BorderGlyphs, ScrollbarGlyphs, TerminalStyle},
+};
 
 use crate::Terminal;
 
@@ -21,7 +28,7 @@ pub trait TerminalDecoration: Sized {
   /// The declared style the decoration lands on.
   fn terminal_style_mut(&mut self) -> &mut DeclaredBox;
 
-  skene_common::trait_properties! { terminal_style_mut, Condition<u32>;
+  skene_foundation::trait_properties! { terminal_style_mut, Condition<u32>;
     set_border_glyphs / derive_border_glyphs (glyphs) => ext.border_glyphs: BorderGlyphs,
       "the characters the border draws with";
     set_shadow / derive_shadow (shadow) => ext.shadow: Color,
@@ -43,15 +50,15 @@ pub trait TerminalDecoration: Sized {
   }
 }
 
-impl TerminalDecoration for skene_common::Container<Terminal> {
+impl TerminalDecoration for skene_foundation::Container<Terminal> {
   #[inline(always)]
   fn terminal_style_mut(&mut self) -> &mut DeclaredBox {
     self.style_mut()
   }
 }
 
-impl<B: skene_common::Behavior<Terminal>> TerminalDecoration
-  for skene_common::Control<Terminal, B>
+impl<B: skene_foundation::Behavior<Terminal>> TerminalDecoration
+  for skene_foundation::Control<Terminal, B>
 {
   #[inline(always)]
   fn terminal_style_mut(&mut self) -> &mut DeclaredBox {
@@ -59,7 +66,7 @@ impl<B: skene_common::Behavior<Terminal>> TerminalDecoration
   }
 }
 
-impl TerminalDecoration for skene_common::Overlay<Terminal> {
+impl TerminalDecoration for skene_foundation::Overlay<Terminal> {
   #[inline(always)]
   fn terminal_style_mut(&mut self) -> &mut DeclaredBox {
     self.style_mut()
@@ -74,19 +81,19 @@ pub trait TerminalText: Sized {
   /// The declared style the weight lands on.
   fn terminal_style_mut(&mut self) -> &mut DeclaredRun;
 
-  skene_common::trait_properties! { terminal_style_mut, Condition<u32>;
+  skene_foundation::trait_properties! { terminal_style_mut, Condition<u32>;
     set_bold / derive_bold (bold) => ext.bold: bool, "whether the text is bold";
   }
 }
 
-impl TerminalText for skene_common::Text<Terminal> {
+impl TerminalText for skene_foundation::Text<Terminal> {
   #[inline(always)]
   fn terminal_style_mut(&mut self) -> &mut DeclaredRun {
     self.style_mut()
   }
 }
 
-impl TerminalText for skene_common::Span<Terminal> {
+impl TerminalText for skene_foundation::Span<Terminal> {
   #[inline(always)]
   fn terminal_style_mut(&mut self) -> &mut DeclaredRun {
     self.style_mut()

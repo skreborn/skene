@@ -3,8 +3,7 @@
 use std::rc::Rc;
 
 use rustc_hash::FxHashMap;
-use skene_common::web::{Head, Painter, WebProperty};
-use skene_core::{
+use skene_foundation::{
   Availability,
   BoxProps,
   ClipboardAction,
@@ -28,6 +27,7 @@ use skene_core::{
   TextSelection,
   Timers,
   interpolate::Motion,
+  web::{Head, Painter, WebProperty},
 };
 use skene_reactive::{Owner, ReadSignal, Signal, WriteSignal};
 

@@ -1,7 +1,7 @@
 //! The glyphs the Simple controls show their marks as where the medium draws with
 //! characters, as a token set.
 
-use skene_core::{Definition, StaticLeaf, Token, TokenName, TokenRef, TokenSet};
+use skene_foundation::{Definition, StaticLeaf, Token, TokenName, TokenRef, TokenSet};
 use skene_reactive::{Get, Memo, use_context};
 
 /// A checkbox's checked mark.

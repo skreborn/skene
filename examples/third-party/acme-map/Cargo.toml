@@ -6,8 +6,7 @@ rust-version.workspace = true
 publish = false
 
 [dependencies]
-skene-common.workspace = true
-skene-core.workspace = true
+skene-foundation.workspace = true
 
 [target.'cfg(any(all(target_arch = "wasm32", target_os = "unknown"), skene_platform = "server"))'.dependencies]
 skene-web.workspace = true

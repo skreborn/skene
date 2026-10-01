@@ -20,7 +20,7 @@ use std::{
   time::{Duration, Instant},
 };
 
-use skene_core::{ClipboardAction, View};
+use skene_foundation::{ClipboardAction, View};
 
 pub(crate) use self::keys::{key_event, press};
 use self::{
@@ -257,7 +257,7 @@ where
   let _ = crate::mount(|| app().build());
   let waker = terminal.waker();
 
-  skene_core::executor::set_notifier(move || waker());
+  skene_foundation::executor::set_notifier(move || waker());
 
   {
     crate::dev::adopt_restoration();
@@ -338,7 +338,7 @@ where
       let _ = terminal.flush();
     }
 
-    let _ = skene_core::executor::pump();
+    let _ = skene_foundation::executor::pump();
 
     end_turn();
 
@@ -932,7 +932,7 @@ fn set_cell_pixels(size: &WindowSize) {
 
 #[cfg(test)]
 mod tests {
-  use skene_core::Modifiers;
+  use skene_foundation::Modifiers;
 
   use super::*;
 

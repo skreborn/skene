@@ -2,7 +2,7 @@
 //! realizes as, the attributes a link, a focus order and an accessibility property
 //! carry, and the markers hydration matches by.
 
-use skene_core::{
+use skene_foundation::{
   AccessProp,
   Axis,
   CheckState,
@@ -408,7 +408,7 @@ pub(crate) fn focus_order_attribute(
 
 /// Whether a box's declared style scrolls its content: an overflow fixed on the base
 /// value that scrolls on either axis once computed.
-pub(crate) fn scrolls<P: Platform>(style: &skene_core::StaticBoxStyle<P>) -> bool {
+pub(crate) fn scrolls<P: Platform>(style: &skene_foundation::StaticBoxStyle<P>) -> bool {
   matches!(
     style.overflow.as_ref().map(Conditional::base),
     Some(PlatformLeaf::Static(StaticLeaf::Fixed(overflow))) if overflow.scrolls()

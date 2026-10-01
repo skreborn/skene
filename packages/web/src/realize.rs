@@ -5,8 +5,7 @@
 
 use std::rc::Rc;
 
-use skene_common::web::WebStyle;
-use skene_core::{
+use skene_foundation::{
   AccessProp,
   BoxProps,
   BoxValue,
@@ -27,6 +26,7 @@ use skene_core::{
   Slot,
   StaticBoxStyle,
   StaticLeaf,
+  web::WebStyle,
 };
 
 use crate::{

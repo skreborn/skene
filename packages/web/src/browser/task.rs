@@ -35,5 +35,5 @@ pub fn install_executor() {
     return;
   }
 
-  skene_reactive::set_spawner(|task| skene_core::count_pending(Box::new(start(task))));
+  skene_reactive::set_spawner(|task| skene_foundation::count_pending(Box::new(start(task))));
 }

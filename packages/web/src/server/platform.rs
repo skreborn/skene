@@ -3,8 +3,7 @@
 
 use std::{cell::RefCell, rc::Rc, thread::LocalKey, time::Duration};
 
-use skene_common::web::{Painter, Painting, WebStyle};
-use skene_core::{
+use skene_foundation::{
   AccessProp,
   BoxProps,
   BoxValue,
@@ -30,6 +29,7 @@ use skene_core::{
   StaticLeaf,
   TextSelection,
   Timer,
+  web::{Painter, Painting, WebStyle},
 };
 use skene_reactive::{Memo, ReadSignal};
 

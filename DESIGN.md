@@ -21,17 +21,16 @@ throughout—there is no separate "widget" concept.
 skene-reactive   the engine: signals, memos, effects, owners, contexts, stores, Resource,
       │          the snapshot, the scheduler and spawner seams
       │
-skene-core       the spine: Scene<P> (parents, children, annotations, token definitions,
+skene-foundation the spine: Scene<P> (parents, children, annotations, token definitions,
       │          generational node ids), the Platform trait, event dispatch over the
       │          scene, the property model (BoxStyle<N, S, X>, RunStyle<S, X>, visitors),
       │          Value/Leaf/Expr, Media/State/Condition, Token/TokenSet, Boundary, motion
-      │          and interpolation, Painting, generic geometry, universal values. Knows
-      │          nothing of platforms.
-      │
-skene-common      every built-in view ONCE, generic over P: Platform—Container, Row/Column/
-      │          Grid/Stack/LayoutBox, Flexible/Pinned/GridCell, Text/Span/RichText,
-      │          Control<B: Behavior> and the shipped behaviors, BasicPicker, Overlay,
-      │          LazyColumn/LazyRow, Show/Switch/Suspense/ErrorBoundary, Theme, typography,
+      │          and interpolation, generic geometry, universal values, knowing nothing
+      │          of platforms or of the crate around it; and beside it every built-in
+      │          view ONCE, generic over P: Platform—Container, Row/Column/Grid/Stack/
+      │          LayoutBox, Flexible/Pinned/GridCell, Text/Span/RichText, Control<B:
+      │          Behavior> and the shipped behaviors, BasicPicker, Overlay, LazyColumn/
+      │          LazyRow, Show/Switch/Suspense/ErrorBoundary, Theme, typography,
       │          LowLevel; terminal (TerminalStyle, BorderGlyphs, the terminal
       │          Typography set), web (WebStyle, the web's Typography set, the document
       │          Head, Painting/Canvas/Painted through vello), routing (a typed route
@@ -56,8 +55,8 @@ skene-web        the web facade: f32, ActivePlatform (the web in the browser and
                  #[main], and the platform itself under platform
 skene-terminal   the terminal facade, EQUAL in standing: u32 cells, Terminal, the
                  same aliases, Typography, BorderGlyphs, media::*, launch, testing
-skene-simple     the Simple design language over skene-common, generic over P: the palette
-                 (a TokenSet), the looks, the shape per unit, the terminal marks
+skene-simple     the Simple design language over skene-foundation, generic over P: the
+                 palette (a TokenSet), the looks, the shape per unit, the terminal marks
                  (SimpleGlyphs) and the Simple* views; an app's explicit dependency;
                  terminal and web alias the types to each facade's ActivePlatform,
                  with a prelude
@@ -77,21 +76,21 @@ the properties only that medium has, the platform it selects, and the aliases th
 app code a flat, medium-typed surface. What a medium lacks is absent at compile time
 because the platform's associated types say so.
 
-Dependency arrows only point down; a platform depends on core, never on another
+Dependency arrows only point down; a platform depends on the foundation, never on another
 platform; each facade names only its own platforms, the web's naming the headless one
 it compiles against off its target, and publishes the selected one as `ActivePlatform`.
 
 ## The scene and the platform
 
-**Core owns the tree; a platform keeps a record per node.** `Scene<P: Platform>` is a
+**The spine owns the tree; a platform keeps a record per node.** `Scene<P: Platform>` is a
 generational arena of node records—parent, children as a list of linked siblings (a move
 relinks a few records and shifts nothing), the annotation a wrapper asked for the child,
 the token definitions a theme placed on the node, the query-container name, the
 handlers. The scene mints every `NodeId`, and the platform keys its own record of the
 node by that id (a `NodeMap`: an element, a string-tree index, a taffy leaf), realizing
 it once the scene is released and before the node takes part in anything else. Every
-structural mutation (`attach`, `detach`, `destroy`, reorder) is implemented once in core;
-the platform is called only to mirror it into its records, after core has released its
+structural mutation (`attach`, `detach`, `destroy`, reorder) is implemented once in the spine;
+the platform is called only to mirror it into its records, after the spine has released its
 own borrow. The scene also says where each node is placed (`Scene::placed_children`,
 `Scene::placed_parent`): where it stands, except the caption a control keeps beside it
 (`Scene::keep_caption_beside`), placed before the control among its siblings on every
@@ -150,10 +149,10 @@ functions in the platform crate, since it is not a shared contract.
   error on a path that names it, and those paths are target-gated; a trait makes a gap a
   hard error. That is what makes the host platform complete, so every view and `Resource`
   are testable headlessly.
-- **Why the scene is in core.** The scene *calls* nothing: core mutates it and then
+- **Why the scene is in the spine.** The scene *calls* nothing: the spine mutates it and then
   calls the platform through the generic parameter. Every platform needs the structure; one
   implementation is smaller and has one reparent semantics.
-- **Dispatch is core's.** A platform reports an event at a node; core walks the
+- **Dispatch is the spine's.** A platform reports an event at a node; the spine walks the
   parents the node had when the dispatch began, as the DOM fixes an event's path, runs
   handlers deepest first, folds `Prevented`, and tells the platform what the platform
   may still do. The browser's root delegation, the terminal's hit path and the
@@ -191,11 +190,11 @@ functions in the platform crate, since it is not a shared contract.
   click carries its modifiers and its place in a run of quick clicks at one spot
   (`ClickEvent`, `0` for a key's), and the second click of a double dispatches
   `DoubleClick` after itself, as `dblclick` follows `click`.
-- **Drag and drop is core's too.** A box offers what a drag from it carries
+- **Drag and drop is the spine's too.** A box offers what a drag from it carries
   (`Container::set_drag_data`, a `DragData` of the app's value and any text another
   app may read, built as the drag starts), and the platform recognizes the gesture—the
   browser's own drag and drop, the terminal once a press's pointer leaves its cell,
-  cancelling the press—while core carries the drag over the scene (`start_drag`,
+  cancelling the press—while the spine carries the drag over the scene (`start_drag`,
   `move_drag`, `drop_drag`, `end_drag`): the nearest node at or above the pointer that
   takes what it carries (`Container::handle_drop`, taking a `T`) is its target, the
   source holding `Dragged` and the target `Targeted` while it lasts, and a drop runs
@@ -225,7 +224,7 @@ functions in the platform crate, since it is not a shared contract.
   a test reads (`headless::render_to_pixels`); the server leaf renders it empty; the terminal
   renders it on the CPU and shows it through the kitty graphics protocol where the
   terminal proved one, its fallback standing elsewhere. The native layers sit behind
-  the same `Canvas`. `Painted`, `Canvas` and `Painting` live in `skene-common`, since
+  the same `Canvas`. `Painted`, `Canvas` and `Painting` live in `skene-foundation`, since
   both medium cores realize them. Vello is the one renderer, everywhere.
 - **Embeds are platform-specific views**, written against a platform's escape trait: raw DOM
   through `WebDom`, markup through `WebMarkup`, cells through `CellPainter`, later a
@@ -242,12 +241,12 @@ functions in the platform crate, since it is not a shared contract.
 
   **Headless tests, not a mock platform.** Because the vocabulary carries typed data, the
   host platform (`skene-headless`) realizes exactly what any real platform receives into an
-  inspectable record store, resolves a property through core's `Resolver` (the scene's
+  inspectable record store, resolves a property through the spine's `Resolver` (the scene's
   tokens, the expression evaluator and the environment), and runs tasks when a test
   pumps them, giving
   view logic fast headless tests without pretending to be a platform. Platforms test against
   their real sinks (web: a browser DOM via `wasm-bindgen-test`; the server leaf
-  natively under a byte-exact snapshot; native: its toolkit). Only core's own unit tests
+  natively under a byte-exact snapshot; native: its toolkit). Only the spine's own unit tests
   run on a double, a `TestPlatform` recording the calls it receives.
 
 ## Composition
@@ -279,7 +278,7 @@ and its cost unjustified.
   scope of its own whose disposal destroys its nodes, as `Suspense` and
   `ErrorBoundary` are; those two keep their content live while it stands apart, since
   its work is what they wait on.
-- **A view declares its baseline and its enhancement.** `Enhance` in `skene-common` mounts one of two builders between its anchors:
+- **A view declares its baseline and its enhancement.** `Enhance` in `skene-foundation` mounts one of two builders between its anchors:
   `set_fallback(|| baseline)` is the form that works before the environment is ready,
   and `set_child_builder(|| enhancement)` the form built once it is. Which is built
   follows a signal the enhancement is given (`Enhance::new(live)`), and the signals
@@ -367,7 +366,7 @@ text) of the node that takes focus within the view (`Scene::focus_holder_within`
 report merged in the scene with that node's own; the web's server leaf renders the text
 as `title` and hydration removes it.
 
-A **context menu is a view of the same shape**. `ContextMenu` in `skene-common` wraps
+A **context menu is a view of the same shape**. `ContextMenu` in `skene-foundation` wraps
 the one view it serves and mounts that view and a popup overlay, the `List`, in a
 segment of its own, exactly as `Tooltip` does; `serve(node)` attaches the list under a
 node that already exists instead, for an app that wants a menu over its root. Wrapping
@@ -481,12 +480,12 @@ re-export.
   by text, hover, click, press, type, focus, resize, advance. A behavior every platform must share is a scenario, and a
   divergence the suite finds is fixed in the platform, never excused in the suite. The
   rules those scenarios exercise that a platform realizing its own overlays would
-  otherwise copy live in core: an overlay's role
+  otherwise copy live in the spine: an overlay's role
   (`OverlayProps::role`: a hint's tooltip, a modal's dialog) and the focus a closing
   overlay returns, to the node focused when it opened or its anchor's nearest
   focusable, as a browser's top layer does.
 - **A platform that names its nodes itself names them once.** The browser computes
-  accessible names; everywhere else core does (`Scene::accessible_name`), over the
+  accessible names; everywhere else the spine does (`Scene::accessible_name`), over the
   scene's structure and parts and the facts a platform records of each node
   (`NameFacts`: role, reports, text, placeholder, value, whether it is a link, a block or
   hidden). It follows the accessible-name computation: the nodes a node is labelled by,
@@ -602,7 +601,7 @@ Condition     = Media | State | And | Or
   `@media`, `@container` and pseudo-class rules, `transition:`, content-addressed
   `@keyframes`, `var()` for tokens and slots. State-, media- and theme-driven styling
   therefore works in a static document with zero script.
-- **Terminal** (and native) resolve every property at one point through core's
+- **Terminal** (and native) resolve every property at one point through the spine's
   `Resolver`—variant overlay against the environment and the node's `Interaction`, token
   lookup through the scene, expression evaluation, slot reads—handing it the medium's
   unit, its token and slot lookups and its `em`. The terminal caches the result per
@@ -711,7 +710,7 @@ The public API speaks the ecosystem's standard reactive vocabulary:
   its descendants' properties and a disposed descendant never runs; a handle disposes or
   pauses.
 - **A pluggable scheduler, flushed by turns.** Synchronous at write end by default;
-  every platform holds the flush until its turn ends, through core's one routine
+  every platform holds the flush until its turn ends, through the spine's one routine
   (`hold_flushes`, `end_turn`, and `reset_thread` to leave a thread), so what a build
   notifies is delivered once the build is whole. The terminal's turn is an event, a run of due
   timers, a task pump or a render's settling round; the browser's is an event, a
@@ -779,7 +778,7 @@ The public API speaks the ecosystem's standard reactive vocabulary:
 
 `Transition` and keyframe `Animation` are data. The web compiles them to CSS; every
 platform running motion on its own clock runs it through one runner,
-`skene_core::interpolate::Motion`: the terminal on its frame clock (quantized to cells and
+`skene_foundation::interpolate::Motion`: the terminal on its frame clock (quantized to cells and
 truecolor), the headless platform under a clock a test advances, native later. A
 platform hands the runner each property from the resolution point that reports a
 changed value—never through the reactive graph per frame—and it interpolates per value
@@ -842,11 +841,11 @@ The host platform: every `Platform` method writes into a record per node, keyed 
 response fires. It is the web medium (`StyleExt = WebStyle`), so a corner radius or a
 run's font size resolves as set, as it would on the web. Beside the records it keeps what
 a test asks: the outline, read from the scene, the props a node was created with, the
-slot a render effect last wrote, a property resolved through core's `Resolver` under the
+slot a render effect last wrote, a property resolved through the spine's `Resolver` under the
 environment a test set (viewport, scheme, reduced motion, container sizes, hover and
 focus), control state and parts, overlay openness, focus order, bound painters, and any
 node's accessible name, with the queries over it. Events go through `trigger_*` into
-core's dispatch, and `user` composes them into a user's gestures in a browser's order: a
+the spine's dispatch, and `user` composes them into a user's gestures in a browser's order: a
 click hovers, presses, moves focus to the nearest node taking it (or off the focused
 one), releases and clicks, and a key where focus is carries a text entry's edit where no
 handler suppressed it. A frame clock advances on request; an executor, installed by
@@ -890,7 +889,7 @@ The dev launcher's control pipe is the dev module's, read after each wait, never
 device's.
 
 The mouse is in-capability: motion drives `Hovered` variants and pointer handlers, a
-left click hits the topmost node and runs its handlers through core's dispatch, a
+left click hits the topmost node and runs its handlers through the spine's dispatch, a
 hovered node's `cursor` sets the pointer shape via OSC 22, with the shapes a browser's
 pointer takes implied where none is set (the I-beam over selectable text and a text
 entry, the hand over a control or a link, the open hand over a slider and the closed
@@ -1098,7 +1097,7 @@ apps never cross-compile into the web.
 Two guarantees, both properties of what is public rather than of any one API.
 
 - **A component library, for every platform, from one crate.** It depends on
-  `skene-common`, writes generic over `P: Platform` exactly as the built-ins are written, and
+  `skene-foundation`, writes generic over `P: Platform` exactly as the built-ins are written, and
   states what it needs from a medium as a bound on the platform's associated types
   (`P::StyleExt: CornerRadius`). Each facade's aliases make it concrete for the app
   that uses it. Nothing on the path a built-in takes is crate-private: the setter
@@ -1120,7 +1119,7 @@ Two guarantees, both properties of what is public rather than of any one API.
   proofs. The portable low-level path for pixel media is `Painted`.
 
 A platform need not be first-party: a crate that implements `Platform`, provides its scalar,
-leaves, extension, a `launch` and aliases over `skene-common` is a facade. `Platform` is not
+leaves, extension, a `launch` and aliases over `skene-foundation` is a facade. `Platform` is not
 sealed, and the shared machinery bounds only on it and the public extension traits; the
 headless platform is exactly such a crate in all but ownership.
 
@@ -1177,7 +1176,7 @@ once the socket has closed; the browser's `WebSocket` on the web and a thread ar
 included, so a page whose data arrives over a socket renders with it. A socket opened
 during a render lives for that render, as a fetch does. Dropping the socket closes it.
 
-## Router (`skene_common::routing`)
+## Router (`skene_foundation::routing`)
 
 Routing is state: a typed route as a signal, shared by every platform. Each platform binds
 it thinly—the browser leaf to the History API (wrapping a navigation in a view
@@ -1195,7 +1194,7 @@ the body ends in the hydration state and the module script booting the bundle, a
 in the dev loop carries the dev marker and the dev script, and every inline script
 carries the render's nonce. A head registration (`head::set_title`, `add_meta` and
 their kin) holds while the owner that made it lives, in one registry the web leaves
-and the headless platform share, `skene_common::web::Head`: the latest live title is in
+and the headless platform share, `skene_foundation::web::Head`: the latest live title is in
 force, and so is the latest live element of what it stands for, so a route's head
 leaves with the route; the server serializes what is in force, and the browser applies
 it to the live head, adopting the elements a server render left. The app's server binary is built natively with the
@@ -1258,7 +1257,7 @@ Recorded because they were load-bearing and the reasons they fell matter:
 - **"The built-in views live in the umbrella."** True with one facade; with two it
   produced two umbrellas and two copies, sixty-five percent of them character-identical.
   The generic parameter already used for `Children` is applied to every view in
-  `skene-common`.
+  `skene-foundation`.
 - **"No persistent scene tree in core."** The objection stood for a tree that calls
   platforms. The scene calls none; every platform kept the structure anyway, four ways.
 - **"The vocabulary is free functions resolved by name."** A missing function was only an

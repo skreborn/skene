@@ -5,7 +5,7 @@
 //! ([`trigger_size`](crate::trigger_size)), or at its corner where none was; a key acts
 //! where focus is.
 
-use skene_core::{
+use skene_foundation::{
   Key,
   KeyEvent,
   NamedKey,

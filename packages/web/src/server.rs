@@ -16,7 +16,7 @@ mod tree;
 
 use std::cell::{Cell, RefCell};
 
-use skene_core::{Boundary, NodeId, NodeKind, NodeMap, Scene, View};
+use skene_foundation::{Boundary, NodeId, NodeKind, NodeMap, Scene, View};
 use skene_reactive::{Owner, batch, provide_context};
 
 pub use self::{
@@ -256,7 +256,7 @@ fn begin_render() -> (NodeId, Owner) {
 
   with_realizer(|realizer| realizer.insert(root, ROOT, "", Realized::Box, false));
 
-  (root, skene_core::root_owner().child())
+  (root, skene_foundation::root_owner().child())
 }
 
 /// Builds `app` under `scope` as the child of `root`, as one turn, with `boundary` in

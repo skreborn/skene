@@ -2,8 +2,7 @@
 
 use std::marker::PhantomData;
 
-use skene_common::{BasicTextEditor, CornerRadius, TextEntry};
-use skene_core::{AnyKind, NodeId, Platform, View};
+use skene_foundation::{AnyKind, BasicTextEditor, CornerRadius, NodeId, Platform, TextEntry, View};
 use skene_reactive::Signal;
 
 use super::shape::{SimpleUnit, define_defaults, field_chrome};

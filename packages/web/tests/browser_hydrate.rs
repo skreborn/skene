@@ -102,7 +102,7 @@ fn hydrate_keeps_the_readers_scroll_and_focus() {
   let app = || {
     Container::new()
       .set_height(40.)
-      .set_overflow(skene_core::Overflow::Auto)
+      .set_overflow(skene_foundation::Overflow::Auto)
       .set_child(
         skene_web::Column::new().set_children((
           Container::new()

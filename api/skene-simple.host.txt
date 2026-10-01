@@ -1,11 +1,11 @@
 pub mod skene_simple
 pub mod skene_simple::glyphs
 pub struct skene_simple::glyphs::SimpleGlyphs
-pub skene_simple::glyphs::SimpleGlyphs::checkbox_checked: skene_core::token::Token<alloc::string::String, u32>
-pub skene_simple::glyphs::SimpleGlyphs::checkbox_unchecked: skene_core::token::Token<alloc::string::String, u32>
-pub skene_simple::glyphs::SimpleGlyphs::picker_indicator: skene_core::token::Token<alloc::string::String, u32>
-pub skene_simple::glyphs::SimpleGlyphs::radio_checked: skene_core::token::Token<alloc::string::String, u32>
-pub skene_simple::glyphs::SimpleGlyphs::radio_unchecked: skene_core::token::Token<alloc::string::String, u32>
+pub skene_simple::glyphs::SimpleGlyphs::checkbox_checked: skene_foundation::spine::token::Token<alloc::string::String, u32>
+pub skene_simple::glyphs::SimpleGlyphs::checkbox_unchecked: skene_foundation::spine::token::Token<alloc::string::String, u32>
+pub skene_simple::glyphs::SimpleGlyphs::picker_indicator: skene_foundation::spine::token::Token<alloc::string::String, u32>
+pub skene_simple::glyphs::SimpleGlyphs::radio_checked: skene_foundation::spine::token::Token<alloc::string::String, u32>
+pub skene_simple::glyphs::SimpleGlyphs::radio_unchecked: skene_foundation::spine::token::Token<alloc::string::String, u32>
 impl skene_simple::glyphs::SimpleGlyphs
 pub fn skene_simple::glyphs::SimpleGlyphs::checkbox(&self, bool) -> alloc::string::String
 pub fn skene_simple::glyphs::SimpleGlyphs::current() -> Self
@@ -23,21 +23,21 @@ pub fn skene_simple::glyphs::SimpleGlyphs::default() -> Self
 impl core::fmt::Debug for skene_simple::glyphs::SimpleGlyphs
 pub fn skene_simple::glyphs::SimpleGlyphs::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::StructuralPartialEq for skene_simple::glyphs::SimpleGlyphs
-impl<V: core::convert::From<skene_core::leaf::Definition<alloc::string::String, u32>> + 'static> skene_core::token::TokenSet<V> for skene_simple::glyphs::SimpleGlyphs
-pub fn skene_simple::glyphs::SimpleGlyphs::definitions(&self) -> alloc::vec::Vec<(skene_core::token::TokenName, V)>
-pub const skene_simple::glyphs::CHECKBOX_CHECKED: skene_core::token::TokenRef<alloc::string::String>
-pub const skene_simple::glyphs::CHECKBOX_UNCHECKED: skene_core::token::TokenRef<alloc::string::String>
-pub const skene_simple::glyphs::PICKER_INDICATOR: skene_core::token::TokenRef<alloc::string::String>
-pub const skene_simple::glyphs::RADIO_CHECKED: skene_core::token::TokenRef<alloc::string::String>
-pub const skene_simple::glyphs::RADIO_UNCHECKED: skene_core::token::TokenRef<alloc::string::String>
+impl<V: core::convert::From<skene_foundation::spine::leaf::Definition<alloc::string::String, u32>> + 'static> skene_foundation::spine::token::TokenSet<V> for skene_simple::glyphs::SimpleGlyphs
+pub fn skene_simple::glyphs::SimpleGlyphs::definitions(&self) -> alloc::vec::Vec<(skene_foundation::spine::token::TokenName, V)>
+pub const skene_simple::glyphs::CHECKBOX_CHECKED: skene_foundation::spine::token::TokenRef<alloc::string::String>
+pub const skene_simple::glyphs::CHECKBOX_UNCHECKED: skene_foundation::spine::token::TokenRef<alloc::string::String>
+pub const skene_simple::glyphs::PICKER_INDICATOR: skene_foundation::spine::token::TokenRef<alloc::string::String>
+pub const skene_simple::glyphs::RADIO_CHECKED: skene_foundation::spine::token::TokenRef<alloc::string::String>
+pub const skene_simple::glyphs::RADIO_UNCHECKED: skene_foundation::spine::token::TokenRef<alloc::string::String>
 pub mod skene_simple::terminal
 pub mod skene_simple::terminal::glyph
 pub struct skene_simple::terminal::glyph::SimpleGlyphs
-pub skene_simple::terminal::glyph::SimpleGlyphs::checkbox_checked: skene_core::token::Token<alloc::string::String, u32>
-pub skene_simple::terminal::glyph::SimpleGlyphs::checkbox_unchecked: skene_core::token::Token<alloc::string::String, u32>
-pub skene_simple::terminal::glyph::SimpleGlyphs::picker_indicator: skene_core::token::Token<alloc::string::String, u32>
-pub skene_simple::terminal::glyph::SimpleGlyphs::radio_checked: skene_core::token::Token<alloc::string::String, u32>
-pub skene_simple::terminal::glyph::SimpleGlyphs::radio_unchecked: skene_core::token::Token<alloc::string::String, u32>
+pub skene_simple::terminal::glyph::SimpleGlyphs::checkbox_checked: skene_foundation::spine::token::Token<alloc::string::String, u32>
+pub skene_simple::terminal::glyph::SimpleGlyphs::checkbox_unchecked: skene_foundation::spine::token::Token<alloc::string::String, u32>
+pub skene_simple::terminal::glyph::SimpleGlyphs::picker_indicator: skene_foundation::spine::token::Token<alloc::string::String, u32>
+pub skene_simple::terminal::glyph::SimpleGlyphs::radio_checked: skene_foundation::spine::token::Token<alloc::string::String, u32>
+pub skene_simple::terminal::glyph::SimpleGlyphs::radio_unchecked: skene_foundation::spine::token::Token<alloc::string::String, u32>
 impl skene_simple::glyphs::SimpleGlyphs
 pub fn skene_simple::glyphs::SimpleGlyphs::checkbox(&self, bool) -> alloc::string::String
 pub fn skene_simple::glyphs::SimpleGlyphs::current() -> Self
@@ -55,13 +55,13 @@ pub fn skene_simple::glyphs::SimpleGlyphs::default() -> Self
 impl core::fmt::Debug for skene_simple::glyphs::SimpleGlyphs
 pub fn skene_simple::glyphs::SimpleGlyphs::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::StructuralPartialEq for skene_simple::glyphs::SimpleGlyphs
-impl<V: core::convert::From<skene_core::leaf::Definition<alloc::string::String, u32>> + 'static> skene_core::token::TokenSet<V> for skene_simple::glyphs::SimpleGlyphs
-pub fn skene_simple::glyphs::SimpleGlyphs::definitions(&self) -> alloc::vec::Vec<(skene_core::token::TokenName, V)>
-pub const skene_simple::terminal::glyph::CHECKBOX_CHECKED: skene_core::token::TokenRef<alloc::string::String>
-pub const skene_simple::terminal::glyph::CHECKBOX_UNCHECKED: skene_core::token::TokenRef<alloc::string::String>
-pub const skene_simple::terminal::glyph::PICKER_INDICATOR: skene_core::token::TokenRef<alloc::string::String>
-pub const skene_simple::terminal::glyph::RADIO_CHECKED: skene_core::token::TokenRef<alloc::string::String>
-pub const skene_simple::terminal::glyph::RADIO_UNCHECKED: skene_core::token::TokenRef<alloc::string::String>
+impl<V: core::convert::From<skene_foundation::spine::leaf::Definition<alloc::string::String, u32>> + 'static> skene_foundation::spine::token::TokenSet<V> for skene_simple::glyphs::SimpleGlyphs
+pub fn skene_simple::glyphs::SimpleGlyphs::definitions(&self) -> alloc::vec::Vec<(skene_foundation::spine::token::TokenName, V)>
+pub const skene_simple::terminal::glyph::CHECKBOX_CHECKED: skene_foundation::spine::token::TokenRef<alloc::string::String>
+pub const skene_simple::terminal::glyph::CHECKBOX_UNCHECKED: skene_foundation::spine::token::TokenRef<alloc::string::String>
+pub const skene_simple::terminal::glyph::PICKER_INDICATOR: skene_foundation::spine::token::TokenRef<alloc::string::String>
+pub const skene_simple::terminal::glyph::RADIO_CHECKED: skene_foundation::spine::token::TokenRef<alloc::string::String>
+pub const skene_simple::terminal::glyph::RADIO_UNCHECKED: skene_foundation::spine::token::TokenRef<alloc::string::String>
 pub mod skene_simple::terminal::prelude
 pub use skene_simple::terminal::prelude::<<super::*>>
 pub enum skene_simple::terminal::SimpleVariant
@@ -71,11 +71,11 @@ pub skene_simple::terminal::SimpleVariant::Outline
 pub skene_simple::terminal::SimpleVariant::Primary
 pub skene_simple::terminal::SimpleVariant::Secondary
 impl skene_simple::SimpleVariant
-pub const fn skene_simple::SimpleVariant::border(self) -> skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const fn skene_simple::SimpleVariant::focus(self) -> skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const fn skene_simple::SimpleVariant::hover(self) -> skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const fn skene_simple::SimpleVariant::ink(self) -> skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const fn skene_simple::SimpleVariant::surface(self) -> skene_core::token::TokenRef<skene_core::values::color::Color>
+pub const fn skene_simple::SimpleVariant::border(self) -> skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const fn skene_simple::SimpleVariant::focus(self) -> skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const fn skene_simple::SimpleVariant::hover(self) -> skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const fn skene_simple::SimpleVariant::ink(self) -> skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const fn skene_simple::SimpleVariant::surface(self) -> skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
 impl core::clone::Clone for skene_simple::SimpleVariant
 pub fn skene_simple::SimpleVariant::clone(&self) -> skene_simple::SimpleVariant
 impl core::cmp::Eq for skene_simple::SimpleVariant
@@ -88,11 +88,11 @@ pub fn skene_simple::SimpleVariant::fmt(&self, &mut core::fmt::Formatter<'_>) ->
 impl core::marker::Copy for skene_simple::SimpleVariant
 impl core::marker::StructuralPartialEq for skene_simple::SimpleVariant
 pub struct skene_simple::terminal::SimpleGlyphs
-pub skene_simple::terminal::SimpleGlyphs::checkbox_checked: skene_core::token::Token<alloc::string::String, u32>
-pub skene_simple::terminal::SimpleGlyphs::checkbox_unchecked: skene_core::token::Token<alloc::string::String, u32>
-pub skene_simple::terminal::SimpleGlyphs::picker_indicator: skene_core::token::Token<alloc::string::String, u32>
-pub skene_simple::terminal::SimpleGlyphs::radio_checked: skene_core::token::Token<alloc::string::String, u32>
-pub skene_simple::terminal::SimpleGlyphs::radio_unchecked: skene_core::token::Token<alloc::string::String, u32>
+pub skene_simple::terminal::SimpleGlyphs::checkbox_checked: skene_foundation::spine::token::Token<alloc::string::String, u32>
+pub skene_simple::terminal::SimpleGlyphs::checkbox_unchecked: skene_foundation::spine::token::Token<alloc::string::String, u32>
+pub skene_simple::terminal::SimpleGlyphs::picker_indicator: skene_foundation::spine::token::Token<alloc::string::String, u32>
+pub skene_simple::terminal::SimpleGlyphs::radio_checked: skene_foundation::spine::token::Token<alloc::string::String, u32>
+pub skene_simple::terminal::SimpleGlyphs::radio_unchecked: skene_foundation::spine::token::Token<alloc::string::String, u32>
 impl skene_simple::glyphs::SimpleGlyphs
 pub fn skene_simple::glyphs::SimpleGlyphs::checkbox(&self, bool) -> alloc::string::String
 pub fn skene_simple::glyphs::SimpleGlyphs::current() -> Self
@@ -110,8 +110,8 @@ pub fn skene_simple::glyphs::SimpleGlyphs::default() -> Self
 impl core::fmt::Debug for skene_simple::glyphs::SimpleGlyphs
 pub fn skene_simple::glyphs::SimpleGlyphs::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::StructuralPartialEq for skene_simple::glyphs::SimpleGlyphs
-impl<V: core::convert::From<skene_core::leaf::Definition<alloc::string::String, u32>> + 'static> skene_core::token::TokenSet<V> for skene_simple::glyphs::SimpleGlyphs
-pub fn skene_simple::glyphs::SimpleGlyphs::definitions(&self) -> alloc::vec::Vec<(skene_core::token::TokenName, V)>
+impl<V: core::convert::From<skene_foundation::spine::leaf::Definition<alloc::string::String, u32>> + 'static> skene_foundation::spine::token::TokenSet<V> for skene_simple::glyphs::SimpleGlyphs
+pub fn skene_simple::glyphs::SimpleGlyphs::definitions(&self) -> alloc::vec::Vec<(skene_foundation::spine::token::TokenName, V)>
 pub type skene_simple::terminal::SimpleButton = skene_simple::SimpleButton<skene_terminal::ActivePlatform>
 pub type skene_simple::terminal::SimpleCard = skene_simple::SimpleCard<skene_terminal::ActivePlatform>
 pub type skene_simple::terminal::SimpleCheckbox = skene_simple::SimpleCheckbox<skene_terminal::ActivePlatform>
@@ -135,11 +135,11 @@ pub skene_simple::web::SimpleVariant::Outline
 pub skene_simple::web::SimpleVariant::Primary
 pub skene_simple::web::SimpleVariant::Secondary
 impl skene_simple::SimpleVariant
-pub const fn skene_simple::SimpleVariant::border(self) -> skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const fn skene_simple::SimpleVariant::focus(self) -> skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const fn skene_simple::SimpleVariant::hover(self) -> skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const fn skene_simple::SimpleVariant::ink(self) -> skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const fn skene_simple::SimpleVariant::surface(self) -> skene_core::token::TokenRef<skene_core::values::color::Color>
+pub const fn skene_simple::SimpleVariant::border(self) -> skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const fn skene_simple::SimpleVariant::focus(self) -> skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const fn skene_simple::SimpleVariant::hover(self) -> skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const fn skene_simple::SimpleVariant::ink(self) -> skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const fn skene_simple::SimpleVariant::surface(self) -> skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
 impl core::clone::Clone for skene_simple::SimpleVariant
 pub fn skene_simple::SimpleVariant::clone(&self) -> skene_simple::SimpleVariant
 impl core::cmp::Eq for skene_simple::SimpleVariant
@@ -183,11 +183,11 @@ pub skene_simple::SimpleVariant::Outline
 pub skene_simple::SimpleVariant::Primary
 pub skene_simple::SimpleVariant::Secondary
 impl skene_simple::SimpleVariant
-pub const fn skene_simple::SimpleVariant::border(self) -> skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const fn skene_simple::SimpleVariant::focus(self) -> skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const fn skene_simple::SimpleVariant::hover(self) -> skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const fn skene_simple::SimpleVariant::ink(self) -> skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const fn skene_simple::SimpleVariant::surface(self) -> skene_core::token::TokenRef<skene_core::values::color::Color>
+pub const fn skene_simple::SimpleVariant::border(self) -> skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const fn skene_simple::SimpleVariant::focus(self) -> skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const fn skene_simple::SimpleVariant::hover(self) -> skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const fn skene_simple::SimpleVariant::ink(self) -> skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const fn skene_simple::SimpleVariant::surface(self) -> skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
 impl core::clone::Clone for skene_simple::SimpleVariant
 pub fn skene_simple::SimpleVariant::clone(&self) -> skene_simple::SimpleVariant
 impl core::cmp::Eq for skene_simple::SimpleVariant
@@ -199,8 +199,8 @@ impl core::fmt::Debug for skene_simple::SimpleVariant
 pub fn skene_simple::SimpleVariant::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::Copy for skene_simple::SimpleVariant
 impl core::marker::StructuralPartialEq for skene_simple::SimpleVariant
-pub struct skene_simple::SimpleButton<P: skene_core::platform::Platform>
-impl<P: skene_core::platform::Platform> skene_simple::SimpleButton<P>
+pub struct skene_simple::SimpleButton<P: skene_foundation::spine::platform::Platform>
+impl<P: skene_foundation::spine::platform::Platform> skene_simple::SimpleButton<P>
 pub fn skene_simple::SimpleButton<P>::derive(impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
 pub fn skene_simple::SimpleButton<P>::derive_accessible_name(self, impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
 pub fn skene_simple::SimpleButton<P>::derive_disabled(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
@@ -208,66 +208,66 @@ pub fn skene_simple::SimpleButton<P>::derive_variant(self, impl core::ops::funct
 pub fn skene_simple::SimpleButton<P>::handle_click(self, impl core::ops::function::Fn() + 'static) -> Self
 pub fn skene_simple::SimpleButton<P>::new(impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_simple::SimpleButton<P>::set_accessible_name(self, impl core::convert::Into<alloc::string::String>) -> Self
-pub fn skene_simple::SimpleButton<P>::set_child(self, impl skene_core::view::View<P>) -> Self
+pub fn skene_simple::SimpleButton<P>::set_child(self, impl skene_foundation::spine::view::View<P>) -> Self
 pub fn skene_simple::SimpleButton<P>::set_disabled(self, bool) -> Self
 pub fn skene_simple::SimpleButton<P>::set_variant(self, skene_simple::SimpleVariant) -> Self
-impl<P: skene_core::platform::Platform> core::fmt::Debug for skene_simple::SimpleButton<P>
+impl<P: skene_foundation::spine::platform::Platform> core::fmt::Debug for skene_simple::SimpleButton<P>
 pub fn skene_simple::SimpleButton<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl<P: skene_core::platform::Platform> skene_core::view::AnyKind for skene_simple::SimpleButton<P>
-impl<P: skene_core::platform::Platform> skene_core::view::View<P> for skene_simple::SimpleButton<P> where <P as skene_core::platform::Platform>::Scalar: skene_simple::SimpleUnit, <P as skene_core::platform::Platform>::StyleExt: skene_common::corner_radius::CornerRadius
-pub fn skene_simple::SimpleButton<P>::build(self) -> skene_core::node::NodeId
-pub struct skene_simple::SimpleCard<P: skene_core::platform::Platform>
-impl<P: skene_core::platform::Platform> skene_simple::SimpleCard<P> where <P as skene_core::platform::Platform>::Scalar: skene_simple::SimpleUnit
+impl<P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::AnyKind for skene_simple::SimpleButton<P>
+impl<P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::View<P> for skene_simple::SimpleButton<P> where <P as skene_foundation::spine::platform::Platform>::Scalar: skene_simple::SimpleUnit, <P as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::corner_radius::CornerRadius
+pub fn skene_simple::SimpleButton<P>::build(self) -> skene_foundation::spine::node::NodeId
+pub struct skene_simple::SimpleCard<P: skene_foundation::spine::platform::Platform>
+impl<P: skene_foundation::spine::platform::Platform> skene_simple::SimpleCard<P> where <P as skene_foundation::spine::platform::Platform>::Scalar: skene_simple::SimpleUnit
 pub fn skene_simple::SimpleCard<P>::new() -> Self
-impl<P: skene_core::platform::Platform> skene_simple::SimpleCard<P>
-pub fn skene_simple::SimpleCard<P>::derive_item_alignment<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::flex::ItemAlignment>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_simple::SimpleCard<P>::derive_spacing<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::flex::Spacing<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_simple::SimpleCard<P>::set_item_alignment(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::flex::ItemAlignment, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_simple::SimpleCard<P>::set_spacing(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::flex::Spacing<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
-impl<P: core::fmt::Debug + skene_core::platform::Platform> core::fmt::Debug for skene_simple::SimpleCard<P>
+impl<P: skene_foundation::spine::platform::Platform> skene_simple::SimpleCard<P>
+pub fn skene_simple::SimpleCard<P>::derive_item_alignment<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::flex::ItemAlignment>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_simple::SimpleCard<P>::derive_spacing<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::flex::Spacing<<P as skene_foundation::spine::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_simple::SimpleCard<P>::set_item_alignment(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::flex::ItemAlignment, skene_foundation::spine::condition::Condition<<P as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
+pub fn skene_simple::SimpleCard<P>::set_spacing(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::flex::Spacing<<P as skene_foundation::spine::platform::Platform>::Scalar>, skene_foundation::spine::condition::Condition<<P as skene_foundation::spine::platform::Platform>::Scalar>>>) -> Self
+impl<P: core::fmt::Debug + skene_foundation::spine::platform::Platform> core::fmt::Debug for skene_simple::SimpleCard<P>
 pub fn skene_simple::SimpleCard<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl<P: skene_core::platform::Platform> core::default::Default for skene_simple::SimpleCard<P> where <P as skene_core::platform::Platform>::Scalar: skene_simple::SimpleUnit
+impl<P: skene_foundation::spine::platform::Platform> core::default::Default for skene_simple::SimpleCard<P> where <P as skene_foundation::spine::platform::Platform>::Scalar: skene_simple::SimpleUnit
 pub fn skene_simple::SimpleCard<P>::default() -> Self
-impl<P: skene_core::platform::Platform> skene_core::children::HasChildren<P> for skene_simple::SimpleCard<P>
-pub type skene_simple::SimpleCard<P>::Kind = skene_core::view::FlexChild
-pub fn skene_simple::SimpleCard<P>::children_mut(&mut self, skene_core::children::Seal) -> &mut skene_core::children::Children<P, skene_core::view::FlexChild>
-impl<P: skene_core::platform::Platform> skene_core::view::AnyKind for skene_simple::SimpleCard<P>
-impl<P: skene_core::platform::Platform> skene_core::view::View<P> for skene_simple::SimpleCard<P> where <P as skene_core::platform::Platform>::Scalar: skene_simple::SimpleUnit, <P as skene_core::platform::Platform>::StyleExt: skene_common::corner_radius::CornerRadius
-pub fn skene_simple::SimpleCard<P>::build(self) -> skene_core::node::NodeId
-pub struct skene_simple::SimpleCheckbox<P: skene_core::platform::Platform>
-impl<P: skene_core::platform::Platform> skene_simple::SimpleCheckbox<P>
+impl<P: skene_foundation::spine::platform::Platform> skene_foundation::spine::children::HasChildren<P> for skene_simple::SimpleCard<P>
+pub type skene_simple::SimpleCard<P>::Kind = skene_foundation::spine::view::FlexChild
+pub fn skene_simple::SimpleCard<P>::children_mut(&mut self, skene_foundation::spine::children::Seal) -> &mut skene_foundation::spine::children::Children<P, skene_foundation::spine::view::FlexChild>
+impl<P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::AnyKind for skene_simple::SimpleCard<P>
+impl<P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::View<P> for skene_simple::SimpleCard<P> where <P as skene_foundation::spine::platform::Platform>::Scalar: skene_simple::SimpleUnit, <P as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::corner_radius::CornerRadius
+pub fn skene_simple::SimpleCard<P>::build(self) -> skene_foundation::spine::node::NodeId
+pub struct skene_simple::SimpleCheckbox<P: skene_foundation::spine::platform::Platform>
+impl<P: skene_foundation::spine::platform::Platform> skene_simple::SimpleCheckbox<P>
 pub fn skene_simple::SimpleCheckbox<P>::bind_checked(self, skene_reactive::signal::Signal<bool>) -> Self
 pub fn skene_simple::SimpleCheckbox<P>::derive_checked(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
 pub fn skene_simple::SimpleCheckbox<P>::handle_toggle(self, impl core::ops::function::Fn(bool) + 'static) -> Self
 pub fn skene_simple::SimpleCheckbox<P>::new() -> Self
 pub fn skene_simple::SimpleCheckbox<P>::set_checked(self, bool) -> Self
 pub fn skene_simple::SimpleCheckbox<P>::set_label(self, impl core::convert::Into<alloc::string::String>) -> Self
-impl<P: core::fmt::Debug + skene_core::platform::Platform> core::fmt::Debug for skene_simple::SimpleCheckbox<P>
+impl<P: core::fmt::Debug + skene_foundation::spine::platform::Platform> core::fmt::Debug for skene_simple::SimpleCheckbox<P>
 pub fn skene_simple::SimpleCheckbox<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl<P: skene_core::platform::Platform> core::default::Default for skene_simple::SimpleCheckbox<P>
+impl<P: skene_foundation::spine::platform::Platform> core::default::Default for skene_simple::SimpleCheckbox<P>
 pub fn skene_simple::SimpleCheckbox<P>::default() -> Self
-impl<P: skene_core::platform::Platform> skene_core::view::AnyKind for skene_simple::SimpleCheckbox<P>
-impl<P: skene_core::platform::Platform> skene_core::view::View<P> for skene_simple::SimpleCheckbox<P> where <P as skene_core::platform::Platform>::Scalar: skene_simple::SimpleUnit, <P as skene_core::platform::Platform>::StyleExt: skene_common::corner_radius::CornerRadius
-pub fn skene_simple::SimpleCheckbox<P>::build(self) -> skene_core::node::NodeId
-pub struct skene_simple::SimpleContextMenu<P: skene_core::platform::Platform, C>
-impl<P: skene_core::platform::Platform> skene_simple::SimpleContextMenu<P>
+impl<P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::AnyKind for skene_simple::SimpleCheckbox<P>
+impl<P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::View<P> for skene_simple::SimpleCheckbox<P> where <P as skene_foundation::spine::platform::Platform>::Scalar: skene_simple::SimpleUnit, <P as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::corner_radius::CornerRadius
+pub fn skene_simple::SimpleCheckbox<P>::build(self) -> skene_foundation::spine::node::NodeId
+pub struct skene_simple::SimpleContextMenu<P: skene_foundation::spine::platform::Platform, C>
+impl<P: skene_foundation::spine::platform::Platform> skene_simple::SimpleContextMenu<P>
 pub fn skene_simple::SimpleContextMenu<P>::new() -> Self
-pub fn skene_simple::SimpleContextMenu<P>::serve(self, skene_core::node::NodeId) -> skene_core::node::NodeId where <P as skene_core::platform::Platform>::Scalar: skene_simple::SimpleUnit, <P as skene_core::platform::Platform>::StyleExt: skene_common::corner_radius::CornerRadius
-pub fn skene_simple::SimpleContextMenu<P>::set_child(self, impl skene_core::view::View<P>) -> skene_simple::SimpleContextMenu<P, skene_core::view::AnyView<P>> where <P as skene_core::platform::Platform>::Scalar: skene_simple::SimpleUnit, <P as skene_core::platform::Platform>::StyleExt: skene_common::corner_radius::CornerRadius
-pub fn skene_simple::SimpleContextMenu<P>::set_items(self, impl core::iter::traits::collect::IntoIterator<Item = skene_common::context_menu::MenuEntry>) -> Self
-impl<P: core::fmt::Debug + skene_core::platform::Platform, C: core::fmt::Debug> core::fmt::Debug for skene_simple::SimpleContextMenu<P, C>
+pub fn skene_simple::SimpleContextMenu<P>::serve(self, skene_foundation::spine::node::NodeId) -> skene_foundation::spine::node::NodeId where <P as skene_foundation::spine::platform::Platform>::Scalar: skene_simple::SimpleUnit, <P as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::corner_radius::CornerRadius
+pub fn skene_simple::SimpleContextMenu<P>::set_child(self, impl skene_foundation::spine::view::View<P>) -> skene_simple::SimpleContextMenu<P, skene_foundation::spine::view::AnyView<P>> where <P as skene_foundation::spine::platform::Platform>::Scalar: skene_simple::SimpleUnit, <P as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::corner_radius::CornerRadius
+pub fn skene_simple::SimpleContextMenu<P>::set_items(self, impl core::iter::traits::collect::IntoIterator<Item = skene_foundation::context_menu::MenuEntry>) -> Self
+impl<P: core::fmt::Debug + skene_foundation::spine::platform::Platform, C: core::fmt::Debug> core::fmt::Debug for skene_simple::SimpleContextMenu<P, C>
 pub fn skene_simple::SimpleContextMenu<P, C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl<P: skene_core::platform::Platform, C> skene_core::view::AnyKind for skene_simple::SimpleContextMenu<P, C>
-impl<P: skene_core::platform::Platform> core::default::Default for skene_simple::SimpleContextMenu<P>
+impl<P: skene_foundation::spine::platform::Platform, C> skene_foundation::spine::view::AnyKind for skene_simple::SimpleContextMenu<P, C>
+impl<P: skene_foundation::spine::platform::Platform> core::default::Default for skene_simple::SimpleContextMenu<P>
 pub fn skene_simple::SimpleContextMenu<P>::default() -> Self
-impl<P: skene_core::platform::Platform> skene_core::view::View<P> for skene_simple::SimpleContextMenu<P, skene_core::view::AnyView<P>> where <P as skene_core::platform::Platform>::Scalar: skene_simple::SimpleUnit, <P as skene_core::platform::Platform>::StyleExt: skene_common::corner_radius::CornerRadius
-pub fn skene_simple::SimpleContextMenu<P, skene_core::view::AnyView<P>>::build(self) -> skene_core::node::NodeId
+impl<P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::View<P> for skene_simple::SimpleContextMenu<P, skene_foundation::spine::view::AnyView<P>> where <P as skene_foundation::spine::platform::Platform>::Scalar: skene_simple::SimpleUnit, <P as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::corner_radius::CornerRadius
+pub fn skene_simple::SimpleContextMenu<P, skene_foundation::spine::view::AnyView<P>>::build(self) -> skene_foundation::spine::node::NodeId
 pub struct skene_simple::SimpleGlyphs
-pub skene_simple::SimpleGlyphs::checkbox_checked: skene_core::token::Token<alloc::string::String, u32>
-pub skene_simple::SimpleGlyphs::checkbox_unchecked: skene_core::token::Token<alloc::string::String, u32>
-pub skene_simple::SimpleGlyphs::picker_indicator: skene_core::token::Token<alloc::string::String, u32>
-pub skene_simple::SimpleGlyphs::radio_checked: skene_core::token::Token<alloc::string::String, u32>
-pub skene_simple::SimpleGlyphs::radio_unchecked: skene_core::token::Token<alloc::string::String, u32>
+pub skene_simple::SimpleGlyphs::checkbox_checked: skene_foundation::spine::token::Token<alloc::string::String, u32>
+pub skene_simple::SimpleGlyphs::checkbox_unchecked: skene_foundation::spine::token::Token<alloc::string::String, u32>
+pub skene_simple::SimpleGlyphs::picker_indicator: skene_foundation::spine::token::Token<alloc::string::String, u32>
+pub skene_simple::SimpleGlyphs::radio_checked: skene_foundation::spine::token::Token<alloc::string::String, u32>
+pub skene_simple::SimpleGlyphs::radio_unchecked: skene_foundation::spine::token::Token<alloc::string::String, u32>
 impl skene_simple::glyphs::SimpleGlyphs
 pub fn skene_simple::glyphs::SimpleGlyphs::checkbox(&self, bool) -> alloc::string::String
 pub fn skene_simple::glyphs::SimpleGlyphs::current() -> Self
@@ -285,107 +285,107 @@ pub fn skene_simple::glyphs::SimpleGlyphs::default() -> Self
 impl core::fmt::Debug for skene_simple::glyphs::SimpleGlyphs
 pub fn skene_simple::glyphs::SimpleGlyphs::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::StructuralPartialEq for skene_simple::glyphs::SimpleGlyphs
-impl<V: core::convert::From<skene_core::leaf::Definition<alloc::string::String, u32>> + 'static> skene_core::token::TokenSet<V> for skene_simple::glyphs::SimpleGlyphs
-pub fn skene_simple::glyphs::SimpleGlyphs::definitions(&self) -> alloc::vec::Vec<(skene_core::token::TokenName, V)>
-pub struct skene_simple::SimpleLook<N: skene_core::scalar::Scalar>
-pub skene_simple::SimpleLook::border: core::option::Option<skene_core::token::Token<skene_core::values::color::Color, N>>
-pub skene_simple::SimpleLook::focus: skene_core::token::Token<skene_core::values::color::Color, N>
-pub skene_simple::SimpleLook::hover: skene_core::token::Token<skene_core::values::color::Color, N>
-pub skene_simple::SimpleLook::ink: skene_core::token::Token<skene_core::values::color::Color, N>
-pub skene_simple::SimpleLook::surface: skene_core::token::Token<skene_core::values::color::Color, N>
-impl<N: skene_core::scalar::Scalar> skene_simple::SimpleLook<N>
-pub fn skene_simple::SimpleLook<N>::new(skene_simple::SimpleVariant, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, N>>, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, N>>) -> Self
-pub fn skene_simple::SimpleLook<N>::set_border(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, N>>) -> Self
-pub fn skene_simple::SimpleLook<N>::set_focus(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, N>>) -> Self
-pub fn skene_simple::SimpleLook<N>::set_hover(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, N>>) -> Self
-pub fn skene_simple::SimpleLook<N>::set_ink(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, N>>) -> Self
-pub fn skene_simple::SimpleLook<N>::set_surface(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, N>>) -> Self
+impl<V: core::convert::From<skene_foundation::spine::leaf::Definition<alloc::string::String, u32>> + 'static> skene_foundation::spine::token::TokenSet<V> for skene_simple::glyphs::SimpleGlyphs
+pub fn skene_simple::glyphs::SimpleGlyphs::definitions(&self) -> alloc::vec::Vec<(skene_foundation::spine::token::TokenName, V)>
+pub struct skene_simple::SimpleLook<N: skene_foundation::spine::scalar::Scalar>
+pub skene_simple::SimpleLook::border: core::option::Option<skene_foundation::spine::token::Token<skene_foundation::spine::values::color::Color, N>>
+pub skene_simple::SimpleLook::focus: skene_foundation::spine::token::Token<skene_foundation::spine::values::color::Color, N>
+pub skene_simple::SimpleLook::hover: skene_foundation::spine::token::Token<skene_foundation::spine::values::color::Color, N>
+pub skene_simple::SimpleLook::ink: skene_foundation::spine::token::Token<skene_foundation::spine::values::color::Color, N>
+pub skene_simple::SimpleLook::surface: skene_foundation::spine::token::Token<skene_foundation::spine::values::color::Color, N>
+impl<N: skene_foundation::spine::scalar::Scalar> skene_simple::SimpleLook<N>
+pub fn skene_simple::SimpleLook<N>::new(skene_simple::SimpleVariant, impl core::convert::Into<skene_foundation::spine::leaf::Definition<skene_foundation::spine::values::color::Color, N>>, impl core::convert::Into<skene_foundation::spine::leaf::Definition<skene_foundation::spine::values::color::Color, N>>) -> Self
+pub fn skene_simple::SimpleLook<N>::set_border(self, impl core::convert::Into<skene_foundation::spine::leaf::Definition<skene_foundation::spine::values::color::Color, N>>) -> Self
+pub fn skene_simple::SimpleLook<N>::set_focus(self, impl core::convert::Into<skene_foundation::spine::leaf::Definition<skene_foundation::spine::values::color::Color, N>>) -> Self
+pub fn skene_simple::SimpleLook<N>::set_hover(self, impl core::convert::Into<skene_foundation::spine::leaf::Definition<skene_foundation::spine::values::color::Color, N>>) -> Self
+pub fn skene_simple::SimpleLook<N>::set_ink(self, impl core::convert::Into<skene_foundation::spine::leaf::Definition<skene_foundation::spine::values::color::Color, N>>) -> Self
+pub fn skene_simple::SimpleLook<N>::set_surface(self, impl core::convert::Into<skene_foundation::spine::leaf::Definition<skene_foundation::spine::values::color::Color, N>>) -> Self
 pub const fn skene_simple::SimpleLook<N>::variant(&self) -> skene_simple::SimpleVariant
-impl<N: core::clone::Clone + skene_core::scalar::Scalar> core::clone::Clone for skene_simple::SimpleLook<N>
+impl<N: core::clone::Clone + skene_foundation::spine::scalar::Scalar> core::clone::Clone for skene_simple::SimpleLook<N>
 pub fn skene_simple::SimpleLook<N>::clone(&self) -> skene_simple::SimpleLook<N>
-impl<N: core::cmp::PartialEq + skene_core::scalar::Scalar> core::cmp::PartialEq for skene_simple::SimpleLook<N>
+impl<N: core::cmp::PartialEq + skene_foundation::spine::scalar::Scalar> core::cmp::PartialEq for skene_simple::SimpleLook<N>
 pub fn skene_simple::SimpleLook<N>::eq(&self, &skene_simple::SimpleLook<N>) -> bool
-impl<N: core::cmp::PartialEq + skene_core::scalar::Scalar> core::marker::StructuralPartialEq for skene_simple::SimpleLook<N>
-impl<N: core::fmt::Debug + skene_core::scalar::Scalar> core::fmt::Debug for skene_simple::SimpleLook<N>
+impl<N: core::cmp::PartialEq + skene_foundation::spine::scalar::Scalar> core::marker::StructuralPartialEq for skene_simple::SimpleLook<N>
+impl<N: core::fmt::Debug + skene_foundation::spine::scalar::Scalar> core::fmt::Debug for skene_simple::SimpleLook<N>
 pub fn skene_simple::SimpleLook<N>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub struct skene_simple::SimplePalette<N: skene_core::scalar::Scalar>
-pub skene_simple::SimplePalette::background: skene_core::token::Token<skene_core::values::color::Color, N>
-pub skene_simple::SimplePalette::border: skene_core::token::Token<skene_core::values::color::Color, N>
-pub skene_simple::SimplePalette::card: skene_core::token::Token<skene_core::values::color::Color, N>
+pub struct skene_simple::SimplePalette<N: skene_foundation::spine::scalar::Scalar>
+pub skene_simple::SimplePalette::background: skene_foundation::spine::token::Token<skene_foundation::spine::values::color::Color, N>
+pub skene_simple::SimplePalette::border: skene_foundation::spine::token::Token<skene_foundation::spine::values::color::Color, N>
+pub skene_simple::SimplePalette::card: skene_foundation::spine::token::Token<skene_foundation::spine::values::color::Color, N>
 pub skene_simple::SimplePalette::destructive: skene_simple::SimpleLook<N>
-pub skene_simple::SimplePalette::disabled_ink: skene_core::token::Token<skene_core::values::color::Color, N>
-pub skene_simple::SimplePalette::disabled_surface: skene_core::token::Token<skene_core::values::color::Color, N>
-pub skene_simple::SimplePalette::foreground: skene_core::token::Token<skene_core::values::color::Color, N>
+pub skene_simple::SimplePalette::disabled_ink: skene_foundation::spine::token::Token<skene_foundation::spine::values::color::Color, N>
+pub skene_simple::SimplePalette::disabled_surface: skene_foundation::spine::token::Token<skene_foundation::spine::values::color::Color, N>
+pub skene_simple::SimplePalette::foreground: skene_foundation::spine::token::Token<skene_foundation::spine::values::color::Color, N>
 pub skene_simple::SimplePalette::ghost: skene_simple::SimpleLook<N>
-pub skene_simple::SimplePalette::link: skene_core::token::Token<skene_core::values::color::Color, N>
-pub skene_simple::SimplePalette::muted_foreground: skene_core::token::Token<skene_core::values::color::Color, N>
+pub skene_simple::SimplePalette::link: skene_foundation::spine::token::Token<skene_foundation::spine::values::color::Color, N>
+pub skene_simple::SimplePalette::muted_foreground: skene_foundation::spine::token::Token<skene_foundation::spine::values::color::Color, N>
 pub skene_simple::SimplePalette::outline: skene_simple::SimpleLook<N>
 pub skene_simple::SimplePalette::primary: skene_simple::SimpleLook<N>
-pub skene_simple::SimplePalette::ring: skene_core::token::Token<skene_core::values::color::Color, N>
+pub skene_simple::SimplePalette::ring: skene_foundation::spine::token::Token<skene_foundation::spine::values::color::Color, N>
 pub skene_simple::SimplePalette::secondary: skene_simple::SimpleLook<N>
-impl<N: skene_core::scalar::Scalar> skene_simple::SimplePalette<N>
-pub const skene_simple::SimplePalette<N>::BACKGROUND: skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const skene_simple::SimplePalette<N>::BORDER: skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const skene_simple::SimplePalette<N>::CARD: skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const skene_simple::SimplePalette<N>::DESTRUCTIVE_BORDER: skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const skene_simple::SimplePalette<N>::DESTRUCTIVE_FOCUS: skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const skene_simple::SimplePalette<N>::DESTRUCTIVE_HOVER: skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const skene_simple::SimplePalette<N>::DESTRUCTIVE_INK: skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const skene_simple::SimplePalette<N>::DESTRUCTIVE_SURFACE: skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const skene_simple::SimplePalette<N>::DISABLED_INK: skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const skene_simple::SimplePalette<N>::DISABLED_SURFACE: skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const skene_simple::SimplePalette<N>::FOREGROUND: skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const skene_simple::SimplePalette<N>::GHOST_BORDER: skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const skene_simple::SimplePalette<N>::GHOST_FOCUS: skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const skene_simple::SimplePalette<N>::GHOST_HOVER: skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const skene_simple::SimplePalette<N>::GHOST_INK: skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const skene_simple::SimplePalette<N>::GHOST_SURFACE: skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const skene_simple::SimplePalette<N>::LINK: skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const skene_simple::SimplePalette<N>::MUTED_FOREGROUND: skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const skene_simple::SimplePalette<N>::OUTLINE_BORDER: skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const skene_simple::SimplePalette<N>::OUTLINE_FOCUS: skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const skene_simple::SimplePalette<N>::OUTLINE_HOVER: skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const skene_simple::SimplePalette<N>::OUTLINE_INK: skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const skene_simple::SimplePalette<N>::OUTLINE_SURFACE: skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const skene_simple::SimplePalette<N>::PRIMARY_BORDER: skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const skene_simple::SimplePalette<N>::PRIMARY_FOCUS: skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const skene_simple::SimplePalette<N>::PRIMARY_HOVER: skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const skene_simple::SimplePalette<N>::PRIMARY_INK: skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const skene_simple::SimplePalette<N>::PRIMARY_SURFACE: skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const skene_simple::SimplePalette<N>::RING: skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const skene_simple::SimplePalette<N>::SECONDARY_BORDER: skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const skene_simple::SimplePalette<N>::SECONDARY_FOCUS: skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const skene_simple::SimplePalette<N>::SECONDARY_HOVER: skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const skene_simple::SimplePalette<N>::SECONDARY_INK: skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const skene_simple::SimplePalette<N>::SECONDARY_SURFACE: skene_core::token::TokenRef<skene_core::values::color::Color>
+impl<N: skene_foundation::spine::scalar::Scalar> skene_simple::SimplePalette<N>
+pub const skene_simple::SimplePalette<N>::BACKGROUND: skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const skene_simple::SimplePalette<N>::BORDER: skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const skene_simple::SimplePalette<N>::CARD: skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const skene_simple::SimplePalette<N>::DESTRUCTIVE_BORDER: skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const skene_simple::SimplePalette<N>::DESTRUCTIVE_FOCUS: skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const skene_simple::SimplePalette<N>::DESTRUCTIVE_HOVER: skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const skene_simple::SimplePalette<N>::DESTRUCTIVE_INK: skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const skene_simple::SimplePalette<N>::DESTRUCTIVE_SURFACE: skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const skene_simple::SimplePalette<N>::DISABLED_INK: skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const skene_simple::SimplePalette<N>::DISABLED_SURFACE: skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const skene_simple::SimplePalette<N>::FOREGROUND: skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const skene_simple::SimplePalette<N>::GHOST_BORDER: skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const skene_simple::SimplePalette<N>::GHOST_FOCUS: skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const skene_simple::SimplePalette<N>::GHOST_HOVER: skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const skene_simple::SimplePalette<N>::GHOST_INK: skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const skene_simple::SimplePalette<N>::GHOST_SURFACE: skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const skene_simple::SimplePalette<N>::LINK: skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const skene_simple::SimplePalette<N>::MUTED_FOREGROUND: skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const skene_simple::SimplePalette<N>::OUTLINE_BORDER: skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const skene_simple::SimplePalette<N>::OUTLINE_FOCUS: skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const skene_simple::SimplePalette<N>::OUTLINE_HOVER: skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const skene_simple::SimplePalette<N>::OUTLINE_INK: skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const skene_simple::SimplePalette<N>::OUTLINE_SURFACE: skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const skene_simple::SimplePalette<N>::PRIMARY_BORDER: skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const skene_simple::SimplePalette<N>::PRIMARY_FOCUS: skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const skene_simple::SimplePalette<N>::PRIMARY_HOVER: skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const skene_simple::SimplePalette<N>::PRIMARY_INK: skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const skene_simple::SimplePalette<N>::PRIMARY_SURFACE: skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const skene_simple::SimplePalette<N>::RING: skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const skene_simple::SimplePalette<N>::SECONDARY_BORDER: skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const skene_simple::SimplePalette<N>::SECONDARY_FOCUS: skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const skene_simple::SimplePalette<N>::SECONDARY_HOVER: skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const skene_simple::SimplePalette<N>::SECONDARY_INK: skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const skene_simple::SimplePalette<N>::SECONDARY_SURFACE: skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
 pub const fn skene_simple::SimplePalette<N>::look(&self, skene_simple::SimpleVariant) -> &skene_simple::SimpleLook<N>
-pub fn skene_simple::SimplePalette<N>::set_background(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, N>>) -> Self
-pub fn skene_simple::SimplePalette<N>::set_border(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, N>>) -> Self
-pub fn skene_simple::SimplePalette<N>::set_card(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, N>>) -> Self
+pub fn skene_simple::SimplePalette<N>::set_background(self, impl core::convert::Into<skene_foundation::spine::leaf::Definition<skene_foundation::spine::values::color::Color, N>>) -> Self
+pub fn skene_simple::SimplePalette<N>::set_border(self, impl core::convert::Into<skene_foundation::spine::leaf::Definition<skene_foundation::spine::values::color::Color, N>>) -> Self
+pub fn skene_simple::SimplePalette<N>::set_card(self, impl core::convert::Into<skene_foundation::spine::leaf::Definition<skene_foundation::spine::values::color::Color, N>>) -> Self
 pub fn skene_simple::SimplePalette<N>::set_destructive(self, skene_simple::SimpleLook<N>) -> Self
-pub fn skene_simple::SimplePalette<N>::set_disabled_ink(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, N>>) -> Self
-pub fn skene_simple::SimplePalette<N>::set_disabled_surface(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, N>>) -> Self
-pub fn skene_simple::SimplePalette<N>::set_foreground(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, N>>) -> Self
+pub fn skene_simple::SimplePalette<N>::set_disabled_ink(self, impl core::convert::Into<skene_foundation::spine::leaf::Definition<skene_foundation::spine::values::color::Color, N>>) -> Self
+pub fn skene_simple::SimplePalette<N>::set_disabled_surface(self, impl core::convert::Into<skene_foundation::spine::leaf::Definition<skene_foundation::spine::values::color::Color, N>>) -> Self
+pub fn skene_simple::SimplePalette<N>::set_foreground(self, impl core::convert::Into<skene_foundation::spine::leaf::Definition<skene_foundation::spine::values::color::Color, N>>) -> Self
 pub fn skene_simple::SimplePalette<N>::set_ghost(self, skene_simple::SimpleLook<N>) -> Self
-pub fn skene_simple::SimplePalette<N>::set_link(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, N>>) -> Self
-pub fn skene_simple::SimplePalette<N>::set_muted_foreground(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, N>>) -> Self
+pub fn skene_simple::SimplePalette<N>::set_link(self, impl core::convert::Into<skene_foundation::spine::leaf::Definition<skene_foundation::spine::values::color::Color, N>>) -> Self
+pub fn skene_simple::SimplePalette<N>::set_muted_foreground(self, impl core::convert::Into<skene_foundation::spine::leaf::Definition<skene_foundation::spine::values::color::Color, N>>) -> Self
 pub fn skene_simple::SimplePalette<N>::set_outline(self, skene_simple::SimpleLook<N>) -> Self
 pub fn skene_simple::SimplePalette<N>::set_primary(self, skene_simple::SimpleLook<N>) -> Self
-pub fn skene_simple::SimplePalette<N>::set_ring(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, N>>) -> Self
+pub fn skene_simple::SimplePalette<N>::set_ring(self, impl core::convert::Into<skene_foundation::spine::leaf::Definition<skene_foundation::spine::values::color::Color, N>>) -> Self
 pub fn skene_simple::SimplePalette<N>::set_secondary(self, skene_simple::SimpleLook<N>) -> Self
-impl<N: core::clone::Clone + skene_core::scalar::Scalar> core::clone::Clone for skene_simple::SimplePalette<N>
+impl<N: core::clone::Clone + skene_foundation::spine::scalar::Scalar> core::clone::Clone for skene_simple::SimplePalette<N>
 pub fn skene_simple::SimplePalette<N>::clone(&self) -> skene_simple::SimplePalette<N>
-impl<N: core::cmp::PartialEq + skene_core::scalar::Scalar> core::cmp::PartialEq for skene_simple::SimplePalette<N>
+impl<N: core::cmp::PartialEq + skene_foundation::spine::scalar::Scalar> core::cmp::PartialEq for skene_simple::SimplePalette<N>
 pub fn skene_simple::SimplePalette<N>::eq(&self, &skene_simple::SimplePalette<N>) -> bool
-impl<N: core::cmp::PartialEq + skene_core::scalar::Scalar> core::marker::StructuralPartialEq for skene_simple::SimplePalette<N>
-impl<N: core::fmt::Debug + skene_core::scalar::Scalar> core::fmt::Debug for skene_simple::SimplePalette<N>
+impl<N: core::cmp::PartialEq + skene_foundation::spine::scalar::Scalar> core::marker::StructuralPartialEq for skene_simple::SimplePalette<N>
+impl<N: core::fmt::Debug + skene_foundation::spine::scalar::Scalar> core::fmt::Debug for skene_simple::SimplePalette<N>
 pub fn skene_simple::SimplePalette<N>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl<N: skene_core::scalar::Scalar, V: core::convert::From<skene_core::leaf::Definition<skene_core::values::color::Color, N>>> skene_core::token::TokenSet<V> for skene_simple::SimplePalette<N>
-pub fn skene_simple::SimplePalette<N>::definitions(&self) -> alloc::vec::Vec<(skene_core::token::TokenName, V)>
-impl<N: skene_core::scalar::Scalar> core::default::Default for skene_simple::SimplePalette<N>
+impl<N: skene_foundation::spine::scalar::Scalar, V: core::convert::From<skene_foundation::spine::leaf::Definition<skene_foundation::spine::values::color::Color, N>>> skene_foundation::spine::token::TokenSet<V> for skene_simple::SimplePalette<N>
+pub fn skene_simple::SimplePalette<N>::definitions(&self) -> alloc::vec::Vec<(skene_foundation::spine::token::TokenName, V)>
+impl<N: skene_foundation::spine::scalar::Scalar> core::default::Default for skene_simple::SimplePalette<N>
 pub fn skene_simple::SimplePalette<N>::default() -> Self
-pub struct skene_simple::SimplePicker<P: skene_core::platform::Platform>
-impl<P: skene_core::platform::Platform> skene_simple::SimplePicker<P>
+pub struct skene_simple::SimplePicker<P: skene_foundation::spine::platform::Platform>
+impl<P: skene_foundation::spine::platform::Platform> skene_simple::SimplePicker<P>
 pub fn skene_simple::SimplePicker<P>::bind_value(self, skene_reactive::signal::Signal<alloc::string::String>) -> Self
 pub fn skene_simple::SimplePicker<P>::derive_disabled(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
 pub fn skene_simple::SimplePicker<P>::derive_value(self, impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
@@ -395,61 +395,61 @@ pub fn skene_simple::SimplePicker<P>::set_disabled(self, bool) -> Self
 pub fn skene_simple::SimplePicker<P>::set_label(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_simple::SimplePicker<P>::set_options<V: core::convert::Into<alloc::string::String>, L: core::convert::Into<alloc::string::String>>(self, impl core::iter::traits::collect::IntoIterator<Item = (V, L)>) -> Self
 pub fn skene_simple::SimplePicker<P>::set_value(self, impl core::convert::Into<alloc::string::String>) -> Self
-impl<P: core::fmt::Debug + skene_core::platform::Platform> core::fmt::Debug for skene_simple::SimplePicker<P>
+impl<P: core::fmt::Debug + skene_foundation::spine::platform::Platform> core::fmt::Debug for skene_simple::SimplePicker<P>
 pub fn skene_simple::SimplePicker<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl<P: skene_core::platform::Platform> core::default::Default for skene_simple::SimplePicker<P>
+impl<P: skene_foundation::spine::platform::Platform> core::default::Default for skene_simple::SimplePicker<P>
 pub fn skene_simple::SimplePicker<P>::default() -> Self
-impl<P: skene_core::platform::Platform> skene_core::view::AnyKind for skene_simple::SimplePicker<P>
-impl<P: skene_core::platform::Platform> skene_core::view::View<P> for skene_simple::SimplePicker<P> where <P as skene_core::platform::Platform>::Scalar: skene_simple::SimpleUnit, <P as skene_core::platform::Platform>::StyleExt: skene_common::corner_radius::CornerRadius
-pub fn skene_simple::SimplePicker<P>::build(self) -> skene_core::node::NodeId
-pub struct skene_simple::SimpleRadio<P: skene_core::platform::Platform>
-impl<P: skene_core::platform::Platform> skene_simple::SimpleRadio<P>
+impl<P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::AnyKind for skene_simple::SimplePicker<P>
+impl<P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::View<P> for skene_simple::SimplePicker<P> where <P as skene_foundation::spine::platform::Platform>::Scalar: skene_simple::SimpleUnit, <P as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::corner_radius::CornerRadius
+pub fn skene_simple::SimplePicker<P>::build(self) -> skene_foundation::spine::node::NodeId
+pub struct skene_simple::SimpleRadio<P: skene_foundation::spine::platform::Platform>
+impl<P: skene_foundation::spine::platform::Platform> skene_simple::SimpleRadio<P>
 pub fn skene_simple::SimpleRadio<P>::new(impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_simple::SimpleRadio<P>::set_label(self, impl core::convert::Into<alloc::string::String>) -> Self
-impl<P: core::fmt::Debug + skene_core::platform::Platform> core::fmt::Debug for skene_simple::SimpleRadio<P>
+impl<P: core::fmt::Debug + skene_foundation::spine::platform::Platform> core::fmt::Debug for skene_simple::SimpleRadio<P>
 pub fn skene_simple::SimpleRadio<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl<P: skene_core::platform::Platform> skene_core::view::AnyKind for skene_simple::SimpleRadio<P>
-impl<P: skene_core::platform::Platform> skene_core::view::View<P> for skene_simple::SimpleRadio<P> where <P as skene_core::platform::Platform>::Scalar: skene_simple::SimpleUnit, <P as skene_core::platform::Platform>::StyleExt: skene_common::corner_radius::CornerRadius
-pub fn skene_simple::SimpleRadio<P>::build(self) -> skene_core::node::NodeId
-pub struct skene_simple::SimpleRadioGroup<P: skene_core::platform::Platform, C>
-impl<P: skene_core::platform::Platform> skene_simple::SimpleRadioGroup<P>
+impl<P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::AnyKind for skene_simple::SimpleRadio<P>
+impl<P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::View<P> for skene_simple::SimpleRadio<P> where <P as skene_foundation::spine::platform::Platform>::Scalar: skene_simple::SimpleUnit, <P as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::corner_radius::CornerRadius
+pub fn skene_simple::SimpleRadio<P>::build(self) -> skene_foundation::spine::node::NodeId
+pub struct skene_simple::SimpleRadioGroup<P: skene_foundation::spine::platform::Platform, C>
+impl<P: skene_foundation::spine::platform::Platform> skene_simple::SimpleRadioGroup<P>
 pub fn skene_simple::SimpleRadioGroup<P>::bind_chosen(self, skene_reactive::signal::Signal<core::option::Option<alloc::string::String>>) -> Self
 pub fn skene_simple::SimpleRadioGroup<P>::derive_chosen(self, impl core::ops::function::Fn() -> core::option::Option<alloc::string::String> + 'static) -> Self
 pub fn skene_simple::SimpleRadioGroup<P>::handle_choose(self, impl core::ops::function::Fn(alloc::string::String) + 'static) -> Self
-pub fn skene_simple::SimpleRadioGroup<P>::set_child(self, impl skene_core::view::View<P>) -> skene_simple::SimpleRadioGroup<P, skene_core::view::AnyView<P>>
+pub fn skene_simple::SimpleRadioGroup<P>::set_child(self, impl skene_foundation::spine::view::View<P>) -> skene_simple::SimpleRadioGroup<P, skene_foundation::spine::view::AnyView<P>>
 pub fn skene_simple::SimpleRadioGroup<P>::set_chosen(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_simple::SimpleRadioGroup<P>::set_label(self, impl core::convert::Into<alloc::string::String>) -> Self
-impl<P: skene_core::platform::Platform> skene_simple::SimpleRadioGroup<P>
+impl<P: skene_foundation::spine::platform::Platform> skene_simple::SimpleRadioGroup<P>
 pub fn skene_simple::SimpleRadioGroup<P>::new() -> Self
-impl<P: core::fmt::Debug + skene_core::platform::Platform, C: core::fmt::Debug> core::fmt::Debug for skene_simple::SimpleRadioGroup<P, C>
+impl<P: core::fmt::Debug + skene_foundation::spine::platform::Platform, C: core::fmt::Debug> core::fmt::Debug for skene_simple::SimpleRadioGroup<P, C>
 pub fn skene_simple::SimpleRadioGroup<P, C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl<P: skene_core::platform::Platform, C> skene_core::view::AnyKind for skene_simple::SimpleRadioGroup<P, C>
-impl<P: skene_core::platform::Platform> core::default::Default for skene_simple::SimpleRadioGroup<P>
+impl<P: skene_foundation::spine::platform::Platform, C> skene_foundation::spine::view::AnyKind for skene_simple::SimpleRadioGroup<P, C>
+impl<P: skene_foundation::spine::platform::Platform> core::default::Default for skene_simple::SimpleRadioGroup<P>
 pub fn skene_simple::SimpleRadioGroup<P>::default() -> Self
-impl<P: skene_core::platform::Platform> skene_core::view::View<P> for skene_simple::SimpleRadioGroup<P, skene_core::view::AnyView<P>>
-pub fn skene_simple::SimpleRadioGroup<P, skene_core::view::AnyView<P>>::build(self) -> skene_core::node::NodeId
+impl<P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::View<P> for skene_simple::SimpleRadioGroup<P, skene_foundation::spine::view::AnyView<P>>
+pub fn skene_simple::SimpleRadioGroup<P, skene_foundation::spine::view::AnyView<P>>::build(self) -> skene_foundation::spine::node::NodeId
 pub struct skene_simple::SimpleShape<N>
-pub skene_simple::SimpleShape::card_inset: skene_core::values::inset::Inset<N>
-pub skene_simple::SimpleShape::card_radius: skene_core::expr::Length
+pub skene_simple::SimpleShape::card_inset: skene_foundation::spine::values::inset::Inset<N>
+pub skene_simple::SimpleShape::card_radius: skene_foundation::spine::expr::Length
 pub skene_simple::SimpleShape::card_spacing: N
-pub skene_simple::SimpleShape::control_inset: skene_core::values::inset::Inset<N>
-pub skene_simple::SimpleShape::control_radius: skene_core::expr::Length
+pub skene_simple::SimpleShape::control_inset: skene_foundation::spine::values::inset::Inset<N>
+pub skene_simple::SimpleShape::control_radius: skene_foundation::spine::expr::Length
 pub skene_simple::SimpleShape::control_ring: N
 pub skene_simple::SimpleShape::dot_size: N
 pub skene_simple::SimpleShape::field_ring: N
 pub skene_simple::SimpleShape::indicator_spacing: N
-pub skene_simple::SimpleShape::list_inset: skene_core::values::inset::Inset<N>
-pub skene_simple::SimpleShape::mark_radius: skene_core::expr::Length
+pub skene_simple::SimpleShape::list_inset: skene_foundation::spine::values::inset::Inset<N>
+pub skene_simple::SimpleShape::mark_radius: skene_foundation::spine::expr::Length
 pub skene_simple::SimpleShape::mark_ring: N
 pub skene_simple::SimpleShape::mark_size: N
-pub skene_simple::SimpleShape::mark_surface: skene_core::token::TokenRef<skene_core::values::color::Color>
-pub skene_simple::SimpleShape::row_inset: skene_core::values::inset::Inset<N>
+pub skene_simple::SimpleShape::mark_surface: skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub skene_simple::SimpleShape::row_inset: skene_foundation::spine::values::inset::Inset<N>
 pub skene_simple::SimpleShape::shortcut_spacing: N
-pub skene_simple::SimpleShape::thumb_focus: skene_core::token::TokenRef<skene_core::values::color::Color>
+pub skene_simple::SimpleShape::thumb_focus: skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
 pub skene_simple::SimpleShape::thumb_ring: N
 pub skene_simple::SimpleShape::thumb_size: N
-pub skene_simple::SimpleShape::thumb_surface: skene_core::token::TokenRef<skene_core::values::color::Color>
-pub skene_simple::SimpleShape::tooltip_inset: skene_core::values::inset::Inset<N>
+pub skene_simple::SimpleShape::thumb_surface: skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub skene_simple::SimpleShape::tooltip_inset: skene_foundation::spine::values::inset::Inset<N>
 pub skene_simple::SimpleShape::track_height: N
 impl<N: core::clone::Clone> core::clone::Clone for skene_simple::SimpleShape<N>
 pub fn skene_simple::SimpleShape<N>::clone(&self) -> skene_simple::SimpleShape<N>
@@ -459,8 +459,8 @@ impl<N: core::cmp::PartialEq> core::marker::StructuralPartialEq for skene_simple
 impl<N: core::fmt::Debug> core::fmt::Debug for skene_simple::SimpleShape<N>
 pub fn skene_simple::SimpleShape<N>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<N: core::marker::Copy> core::marker::Copy for skene_simple::SimpleShape<N>
-pub struct skene_simple::SimpleSlider<P: skene_core::platform::Platform>
-impl<P: skene_core::platform::Platform> skene_simple::SimpleSlider<P>
+pub struct skene_simple::SimpleSlider<P: skene_foundation::spine::platform::Platform>
+impl<P: skene_foundation::spine::platform::Platform> skene_simple::SimpleSlider<P>
 pub fn skene_simple::SimpleSlider<P>::bind_value(self, skene_reactive::signal::Signal<f32>) -> Self
 pub fn skene_simple::SimpleSlider<P>::derive_value(self, impl core::ops::function::Fn() -> f32 + 'static) -> Self
 pub fn skene_simple::SimpleSlider<P>::handle_change(self, impl core::ops::function::Fn(f32) + 'static) -> Self
@@ -470,15 +470,15 @@ pub const fn skene_simple::SimpleSlider<P>::set_max(self, f32) -> Self
 pub const fn skene_simple::SimpleSlider<P>::set_min(self, f32) -> Self
 pub const fn skene_simple::SimpleSlider<P>::set_step(self, f32) -> Self
 pub fn skene_simple::SimpleSlider<P>::set_value(self, f32) -> Self
-impl<P: skene_core::platform::Platform> core::default::Default for skene_simple::SimpleSlider<P>
+impl<P: skene_foundation::spine::platform::Platform> core::default::Default for skene_simple::SimpleSlider<P>
 pub fn skene_simple::SimpleSlider<P>::default() -> Self
-impl<P: skene_core::platform::Platform> core::fmt::Debug for skene_simple::SimpleSlider<P>
+impl<P: skene_foundation::spine::platform::Platform> core::fmt::Debug for skene_simple::SimpleSlider<P>
 pub fn skene_simple::SimpleSlider<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl<P: skene_core::platform::Platform> skene_core::view::AnyKind for skene_simple::SimpleSlider<P>
-impl<P: skene_core::platform::Platform> skene_core::view::View<P> for skene_simple::SimpleSlider<P> where <P as skene_core::platform::Platform>::Scalar: skene_simple::SimpleUnit, <P as skene_core::platform::Platform>::StyleExt: skene_common::corner_radius::CornerRadius
-pub fn skene_simple::SimpleSlider<P>::build(self) -> skene_core::node::NodeId
-pub struct skene_simple::SimpleTextEditor<P: skene_core::platform::Platform>
-impl<P: skene_core::platform::Platform> skene_simple::SimpleTextEditor<P>
+impl<P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::AnyKind for skene_simple::SimpleSlider<P>
+impl<P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::View<P> for skene_simple::SimpleSlider<P> where <P as skene_foundation::spine::platform::Platform>::Scalar: skene_simple::SimpleUnit, <P as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::corner_radius::CornerRadius
+pub fn skene_simple::SimpleSlider<P>::build(self) -> skene_foundation::spine::node::NodeId
+pub struct skene_simple::SimpleTextEditor<P: skene_foundation::spine::platform::Platform>
+impl<P: skene_foundation::spine::platform::Platform> skene_simple::SimpleTextEditor<P>
 pub fn skene_simple::SimpleTextEditor<P>::bind_value(self, skene_reactive::signal::Signal<alloc::string::String>) -> Self
 pub fn skene_simple::SimpleTextEditor<P>::derive_value(self, impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
 pub fn skene_simple::SimpleTextEditor<P>::handle_change(self, impl core::ops::function::Fn(&str) + 'static) -> Self
@@ -486,43 +486,43 @@ pub fn skene_simple::SimpleTextEditor<P>::new() -> Self
 pub fn skene_simple::SimpleTextEditor<P>::set_lines(self, u16) -> Self
 pub fn skene_simple::SimpleTextEditor<P>::set_placeholder(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_simple::SimpleTextEditor<P>::set_value(self, impl core::convert::Into<alloc::string::String>) -> Self
-impl<P: core::fmt::Debug + skene_core::platform::Platform> core::fmt::Debug for skene_simple::SimpleTextEditor<P>
+impl<P: core::fmt::Debug + skene_foundation::spine::platform::Platform> core::fmt::Debug for skene_simple::SimpleTextEditor<P>
 pub fn skene_simple::SimpleTextEditor<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl<P: skene_core::platform::Platform> core::default::Default for skene_simple::SimpleTextEditor<P>
+impl<P: skene_foundation::spine::platform::Platform> core::default::Default for skene_simple::SimpleTextEditor<P>
 pub fn skene_simple::SimpleTextEditor<P>::default() -> Self
-impl<P: skene_core::platform::Platform> skene_core::view::AnyKind for skene_simple::SimpleTextEditor<P>
-impl<P: skene_core::platform::Platform> skene_core::view::View<P> for skene_simple::SimpleTextEditor<P> where <P as skene_core::platform::Platform>::Scalar: skene_simple::SimpleUnit, <P as skene_core::platform::Platform>::StyleExt: skene_common::corner_radius::CornerRadius
-pub fn skene_simple::SimpleTextEditor<P>::build(self) -> skene_core::node::NodeId
-pub struct skene_simple::SimpleTextField<P: skene_core::platform::Platform>
-impl<P: skene_core::platform::Platform> skene_simple::SimpleTextField<P>
+impl<P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::AnyKind for skene_simple::SimpleTextEditor<P>
+impl<P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::View<P> for skene_simple::SimpleTextEditor<P> where <P as skene_foundation::spine::platform::Platform>::Scalar: skene_simple::SimpleUnit, <P as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::corner_radius::CornerRadius
+pub fn skene_simple::SimpleTextEditor<P>::build(self) -> skene_foundation::spine::node::NodeId
+pub struct skene_simple::SimpleTextField<P: skene_foundation::spine::platform::Platform>
+impl<P: skene_foundation::spine::platform::Platform> skene_simple::SimpleTextField<P>
 pub fn skene_simple::SimpleTextField<P>::bind_value(self, skene_reactive::signal::Signal<alloc::string::String>) -> Self
 pub fn skene_simple::SimpleTextField<P>::derive_value(self, impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
 pub fn skene_simple::SimpleTextField<P>::handle_change(self, impl core::ops::function::Fn(&str) + 'static) -> Self
 pub fn skene_simple::SimpleTextField<P>::new() -> Self
 pub fn skene_simple::SimpleTextField<P>::set_placeholder(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_simple::SimpleTextField<P>::set_value(self, impl core::convert::Into<alloc::string::String>) -> Self
-impl<P: core::fmt::Debug + skene_core::platform::Platform> core::fmt::Debug for skene_simple::SimpleTextField<P>
+impl<P: core::fmt::Debug + skene_foundation::spine::platform::Platform> core::fmt::Debug for skene_simple::SimpleTextField<P>
 pub fn skene_simple::SimpleTextField<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl<P: skene_core::platform::Platform> core::default::Default for skene_simple::SimpleTextField<P>
+impl<P: skene_foundation::spine::platform::Platform> core::default::Default for skene_simple::SimpleTextField<P>
 pub fn skene_simple::SimpleTextField<P>::default() -> Self
-impl<P: skene_core::platform::Platform> skene_core::view::AnyKind for skene_simple::SimpleTextField<P>
-impl<P: skene_core::platform::Platform> skene_core::view::View<P> for skene_simple::SimpleTextField<P> where <P as skene_core::platform::Platform>::Scalar: skene_simple::SimpleUnit, <P as skene_core::platform::Platform>::StyleExt: skene_common::corner_radius::CornerRadius
-pub fn skene_simple::SimpleTextField<P>::build(self) -> skene_core::node::NodeId
-pub struct skene_simple::SimpleTooltip<P: skene_core::platform::Platform, C>
-impl<P: skene_core::platform::Platform> skene_simple::SimpleTooltip<P>
+impl<P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::AnyKind for skene_simple::SimpleTextField<P>
+impl<P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::View<P> for skene_simple::SimpleTextField<P> where <P as skene_foundation::spine::platform::Platform>::Scalar: skene_simple::SimpleUnit, <P as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::corner_radius::CornerRadius
+pub fn skene_simple::SimpleTextField<P>::build(self) -> skene_foundation::spine::node::NodeId
+pub struct skene_simple::SimpleTooltip<P: skene_foundation::spine::platform::Platform, C>
+impl<P: skene_foundation::spine::platform::Platform> skene_simple::SimpleTooltip<P>
 pub fn skene_simple::SimpleTooltip<P>::derive(impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
 pub fn skene_simple::SimpleTooltip<P>::new(impl core::convert::Into<alloc::string::String>) -> Self
-pub fn skene_simple::SimpleTooltip<P>::set_child(self, impl skene_core::view::View<P>) -> skene_simple::SimpleTooltip<P, skene_core::view::AnyView<P>> where <P as skene_core::platform::Platform>::Scalar: skene_simple::SimpleUnit, <P as skene_core::platform::Platform>::StyleExt: skene_common::corner_radius::CornerRadius
-pub fn skene_simple::SimpleTooltip<P>::view(impl skene_core::view::View<P>) -> Self
-impl<P: skene_core::platform::Platform> skene_simple::SimpleTooltip<P>
+pub fn skene_simple::SimpleTooltip<P>::set_child(self, impl skene_foundation::spine::view::View<P>) -> skene_simple::SimpleTooltip<P, skene_foundation::spine::view::AnyView<P>> where <P as skene_foundation::spine::platform::Platform>::Scalar: skene_simple::SimpleUnit, <P as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::corner_radius::CornerRadius
+pub fn skene_simple::SimpleTooltip<P>::view(impl skene_foundation::spine::view::View<P>) -> Self
+impl<P: skene_foundation::spine::platform::Platform> skene_simple::SimpleTooltip<P>
 pub fn skene_simple::SimpleTooltip<P>::set_delay(self, core::time::Duration) -> Self
-pub fn skene_simple::SimpleTooltip<P>::set_placement(self, skene_core::values::placement::Placement) -> Self
-impl<P: core::fmt::Debug + skene_core::platform::Platform, C: core::fmt::Debug> core::fmt::Debug for skene_simple::SimpleTooltip<P, C>
+pub fn skene_simple::SimpleTooltip<P>::set_placement(self, skene_foundation::spine::values::placement::Placement) -> Self
+impl<P: core::fmt::Debug + skene_foundation::spine::platform::Platform, C: core::fmt::Debug> core::fmt::Debug for skene_simple::SimpleTooltip<P, C>
 pub fn skene_simple::SimpleTooltip<P, C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl<P: skene_core::platform::Platform, C> skene_core::view::AnyKind for skene_simple::SimpleTooltip<P, C>
-impl<P: skene_core::platform::Platform> skene_core::view::View<P> for skene_simple::SimpleTooltip<P, skene_core::view::AnyView<P>> where <P as skene_core::platform::Platform>::Scalar: skene_simple::SimpleUnit, <P as skene_core::platform::Platform>::StyleExt: skene_common::corner_radius::CornerRadius
-pub fn skene_simple::SimpleTooltip<P, skene_core::view::AnyView<P>>::build(self) -> skene_core::node::NodeId
-pub trait skene_simple::SimpleUnit: skene_core::scalar::Scalar
+impl<P: skene_foundation::spine::platform::Platform, C> skene_foundation::spine::view::AnyKind for skene_simple::SimpleTooltip<P, C>
+impl<P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::View<P> for skene_simple::SimpleTooltip<P, skene_foundation::spine::view::AnyView<P>> where <P as skene_foundation::spine::platform::Platform>::Scalar: skene_simple::SimpleUnit, <P as skene_foundation::spine::platform::Platform>::StyleExt: skene_foundation::corner_radius::CornerRadius
+pub fn skene_simple::SimpleTooltip<P, skene_foundation::spine::view::AnyView<P>>::build(self) -> skene_foundation::spine::node::NodeId
+pub trait skene_simple::SimpleUnit: skene_foundation::spine::scalar::Scalar
 pub const skene_simple::SimpleUnit::MARKS: skene_simple::SimpleMarks
 pub const skene_simple::SimpleUnit::SHAPE: skene_simple::SimpleShape<Self>
 impl skene_simple::SimpleUnit for f32

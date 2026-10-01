@@ -3,7 +3,7 @@
 
 #![cfg(skene_web_platform = "server")]
 
-use skene_core::{
+use skene_foundation::{
   Animation,
   Axes,
   BoxStyle,
@@ -909,7 +909,7 @@ fn every_rule_has_a_class_specificity() {
       State::Invalid,
       State::Open,
     ];
-    let mut width = skene_core::Value::from(Dimension::Length(10.));
+    let mut width = skene_foundation::Value::from(Dimension::Length(10.));
 
     for (index, state) in (0u8..).zip(states) {
       width = width.when(
@@ -974,7 +974,7 @@ fn every_rule_has_a_class_specificity() {
 fn a_derived_variants_slot_is_registered() {
   let rendered = render_to_string(|| {
     Container::new().set_color(
-      skene_core::Value::from(Color::srgb(1., 0., 0.))
+      skene_foundation::Value::from(Color::srgb(1., 0., 0.))
         .derive_when(Condition::from(State::Hovered), || Color::srgb(0., 0., 1.)),
     )
   });

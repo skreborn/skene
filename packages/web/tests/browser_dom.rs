@@ -14,7 +14,7 @@ use std::{
   time::Duration,
 };
 
-use skene_core::{
+use skene_foundation::{
   Axes,
   Axis,
   Dimension,
@@ -457,7 +457,7 @@ fn overlays_open_at_build_open_and_a_modal_prevents_cancel() {
 /// and one a control inside a popup takes dismisses nothing.
 #[wasm_bindgen_test]
 fn escape_dismisses_the_topmost_popup_unless_taken() {
-  use skene_core::{EventKind, KeyEvent, NativeElement, Prevent, Role};
+  use skene_foundation::{EventKind, KeyEvent, NativeElement, Prevent, Role};
   use skene_web::{ActivePlatform, Behavior, Control, ControlHandle};
 
   /// Takes `Escape` and nothing else.
@@ -765,7 +765,7 @@ fn a_pointer_event_carries_its_pointer_buttons_and_pressure() {
 /// behavior taking the turn keeps it from happening.
 #[wasm_bindgen_test]
 fn a_wheel_reaches_the_node_before_it_scrolls() {
-  use skene_core::{EventKind, NativeElement, Prevent};
+  use skene_foundation::{EventKind, NativeElement, Prevent};
   use skene_web::{ActivePlatform, Behavior, Control, ControlHandle};
 
   /// Takes every turn for itself.
@@ -945,7 +945,7 @@ fn a_pointer_cancel_reaches_the_box() {
 /// 200, the thumb's 16-pixel center travelling 184, is 77.
 #[wasm_bindgen_test]
 async fn a_press_on_the_thumb_slides_by_the_slider_box() {
-  use skene_core::Dimension;
+  use skene_foundation::Dimension;
 
   let (_guard, root) = fresh_root();
   let value = Signal::new(40.0f32);
@@ -1844,7 +1844,7 @@ fn derived_view_swaps_between_trees_on_state_change() {
 fn scroller() -> Container {
   Container::new()
     .set_height(40.)
-    .set_overflow(skene_core::Overflow::Auto)
+    .set_overflow(skene_foundation::Overflow::Auto)
     .set_child(
       Column::new().set_children((
         Container::new()
@@ -2110,7 +2110,7 @@ fn links_are_inked_in_the_link_ink_and_underlined() {
 
 #[wasm_bindgen_test]
 fn a_widget_role_and_state_reach_the_real_dom() {
-  use skene_core::AccessProp;
+  use skene_foundation::AccessProp;
 
   let (_guard, root) = fresh_root();
   let checked = Signal::new(false);
@@ -2346,7 +2346,7 @@ fn a_route_change_commits_under_a_view_transition() {
 /// keyframes referencing the token's variable.
 #[wasm_bindgen_test]
 fn a_token_keyframe_animation_applies() {
-  use skene_core::{Animation, BoxStyle, Keyframe};
+  use skene_foundation::{Animation, BoxStyle, Keyframe};
   use skene_web::WebStyle;
 
   let (_guard, root) = fresh_root();
@@ -2400,7 +2400,7 @@ fn a_token_keyframe_animation_applies() {
 /// the same tree, the same field holds focus and the same box holds its offset.
 #[wasm_bindgen_test]
 fn focus_and_scroll_survive_a_snapshot_roundtrip() {
-  use skene_core::{Dimension, Overflow};
+  use skene_foundation::{Dimension, Overflow};
   use skene_web::{BasicTextField, NodeId, TextEntry, reactive};
 
   fn build() -> NodeId {
@@ -2637,7 +2637,7 @@ async fn a_lazy_column_measures_its_estimated_items() {
 /// `browser_painted` covers the CPU path.
 #[wasm_bindgen_test]
 async fn a_painted_box_draws_into_its_canvas() {
-  use skene_core::Dimension;
+  use skene_foundation::Dimension;
   use skene_web::{Painted, kurbo::Rect};
   use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
 

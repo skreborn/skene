@@ -1,10 +1,12 @@
 //! A ready-made card surface in the Simple design language.
 
-use skene_common::{Column, Container, CornerRadius};
-use skene_core::{
+use skene_foundation::{
   AnyKind,
   Children,
+  Column,
   Condition,
+  Container,
+  CornerRadius,
   FlexChild,
   HasChild,
   HasChildren,
@@ -27,7 +29,7 @@ use super::{
 /// content, laid out as a column.
 ///
 /// Its own properties shape the column; wrap it in a [`Container`] to change the
-/// surface itself. Accepts any view or a [`Flexible`](skene_common::Flexible) wrapper as
+/// surface itself. Accepts any view or a [`Flexible`](skene_foundation::Flexible) wrapper as
 /// a child.
 #[derive(Debug)]
 #[must_use]

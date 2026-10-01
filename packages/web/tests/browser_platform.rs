@@ -9,26 +9,34 @@
 
 use std::{cell::Cell, rc::Rc};
 
-use skene_common::{BasicCheckbox, Container, Flexible, LowLevel, Row, Text, Theme, Toggle, View};
-use skene_core::{
+use skene_foundation::{
   AnyKind,
+  BasicCheckbox,
   Color,
   ColorScheme,
   Condition,
+  Container,
+  Flexible,
   HasChild,
   HasChildren,
   Leaf,
+  LowLevel,
   Media,
   NodeId,
   NodeKind,
   Platform,
+  Row,
   State,
   StaticLeaf,
+  Text,
+  Theme,
+  Toggle,
   Token,
   TokenName,
   TokenRef,
   TokenSet,
   Value,
+  View,
 };
 use skene_reactive::{Get, Set, Signal};
 use skene_simple::{SimpleButton, SimpleCheckbox, SimplePicker};

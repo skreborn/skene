@@ -5,18 +5,18 @@ pub skene_conformance::Scenario::name: &'static str
 impl<D> core::fmt::Debug for skene_conformance::Scenario<D>
 pub fn skene_conformance::Scenario<D>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub trait skene_conformance::Driver
-pub type skene_conformance::Driver::Platform: skene_core::platform::Platform
+pub type skene_conformance::Driver::Platform: skene_foundation::spine::platform::Platform
 pub fn skene_conformance::Driver::access_outline(&mut self) -> alloc::string::String
 pub fn skene_conformance::Driver::advance(&mut self, core::time::Duration)
-pub fn skene_conformance::Driver::click(&mut self, skene_core::node::NodeId)
-pub fn skene_conformance::Driver::find(&mut self, accesskit::Role, &str) -> core::option::Option<skene_core::node::NodeId>
-pub fn skene_conformance::Driver::find_text(&mut self, &str) -> core::option::Option<skene_core::node::NodeId>
-pub fn skene_conformance::Driver::focus(&mut self, skene_core::node::NodeId)
-pub fn skene_conformance::Driver::focused(&mut self) -> core::option::Option<skene_core::node::NodeId>
-pub fn skene_conformance::Driver::hover(&mut self, skene_core::node::NodeId)
-pub fn skene_conformance::Driver::mount(&mut self, impl core::ops::function::FnOnce() -> skene_core::view::AnyView<Self::Platform> + 'static)
-pub fn skene_conformance::Driver::press(&mut self, &skene_core::events::KeyEvent)
-pub fn skene_conformance::Driver::resize(&mut self, skene_core::values::size::Size<<Self::Platform as skene_core::platform::Platform>::Scalar>)
-pub fn skene_conformance::Driver::type_text(&mut self, skene_core::node::NodeId, &str)
+pub fn skene_conformance::Driver::click(&mut self, skene_foundation::spine::node::NodeId)
+pub fn skene_conformance::Driver::find(&mut self, accesskit::Role, &str) -> core::option::Option<skene_foundation::spine::node::NodeId>
+pub fn skene_conformance::Driver::find_text(&mut self, &str) -> core::option::Option<skene_foundation::spine::node::NodeId>
+pub fn skene_conformance::Driver::focus(&mut self, skene_foundation::spine::node::NodeId)
+pub fn skene_conformance::Driver::focused(&mut self) -> core::option::Option<skene_foundation::spine::node::NodeId>
+pub fn skene_conformance::Driver::hover(&mut self, skene_foundation::spine::node::NodeId)
+pub fn skene_conformance::Driver::mount(&mut self, impl core::ops::function::FnOnce() -> skene_foundation::spine::view::AnyView<Self::Platform> + 'static)
+pub fn skene_conformance::Driver::press(&mut self, &skene_foundation::spine::events::KeyEvent)
+pub fn skene_conformance::Driver::resize(&mut self, skene_foundation::spine::values::size::Size<<Self::Platform as skene_foundation::spine::platform::Platform>::Scalar>)
+pub fn skene_conformance::Driver::type_text(&mut self, skene_foundation::spine::node::NodeId, &str)
 pub fn skene_conformance::run<D: skene_conformance::Driver>(impl core::ops::function::FnMut() -> D)
 pub fn skene_conformance::scenarios<D: skene_conformance::Driver>() -> alloc::vec::Vec<skene_conformance::Scenario<D>>

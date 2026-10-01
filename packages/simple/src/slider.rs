@@ -2,21 +2,27 @@
 
 use std::{marker::PhantomData, rc::Rc};
 
-use skene_common::{BasicSlider, Container, CornerRadius, NodeHandle, Pinned, Slider, Stack};
-use skene_core::{
+use skene_foundation::{
   Alignment,
   AnyKind,
+  BasicSlider,
+  Container,
+  CornerRadius,
   Dimension,
   HasChild,
   HasChildren,
   Inset,
   ItemAlignment,
+  NodeHandle,
   NodeId,
   Part,
+  Pinned,
   Platform,
   Scalar,
   Scene,
+  Slider,
   SliderRange,
+  Stack,
   State,
   View,
 };

@@ -1,6 +1,6 @@
 //! What the last layout measured of a node, in cells.
 
-use skene_core::Size;
+use skene_foundation::Size;
 
 use super::{Handle, Record, Records};
 

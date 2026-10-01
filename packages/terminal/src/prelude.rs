@@ -1,7 +1,7 @@
 //! Common imports for a terminal application: the view vocabulary, cell types,
 //! reactive primitives, and the entry point.
 
-pub use skene_core::{
+pub use skene_foundation::{
   AccessProp,
   Alignment,
   Animation,

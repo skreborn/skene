@@ -1,0 +1,9 @@
+[package]
+name = "{name}-terminal"
+version.workspace = true
+edition.workspace = true
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+{name}.workspace = true
+skene-foundation.workspace = true
+skene-terminal.workspace = true

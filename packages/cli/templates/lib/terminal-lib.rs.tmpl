@@ -1,0 +1,32 @@
+//! {name} on the terminal: every view of [`{crate}`] as a view of the terminal's own,
+//! the palette in the terminal's unit, and a [`prelude`] an app imports beside the
+//! facade's own.
+
+#![cfg(not(target_arch = "wasm32"))]
+
+use skene_foundation::{View, Wraps};
+use skene_terminal::ActivePlatform;
+
+pub use {crate}::{Type}BadgeBase;
+
+/// A badge: a short label on a rounded, tinted surface.
+///
+/// ```
+/// use {crate}_terminal::prelude::*;
+///
+/// let badge = {Type}Badge::new("New");
+/// ```
+#[derive(Debug, View, Wraps)]
+#[must_use]
+pub struct {Type}Badge({crate}::{Type}Badge<ActivePlatform>);
+
+impl {Type}BadgeBase<ActivePlatform> for {Type}Badge {}
+
+/// The palette in the terminal's unit; see [`{crate}::{Type}Palette`].
+pub type {Type}Palette = {crate}::{Type}Palette<u32>;
+
+/// Everything above, for `use {crate}_terminal::prelude::*` beside the facade's own
+/// prelude.
+pub mod prelude {
+  pub use super::*;
+}

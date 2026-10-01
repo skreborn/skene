@@ -1091,7 +1091,9 @@ Two guarantees, both properties of what is public rather than of any one API.
   `trait_properties!`) and the surfaces they share (`DecorationBase`, `RunBase`) are
   public, so a third-party layout view built on `LayoutBox` spells its surface the way
   `Row` does. Simple is the standing proof, `skene-simple` its core and
-  `skene-simple-web` and `skene-simple-terminal` its platforms' crates.
+  `skene-simple-web` and `skene-simple-terminal` its platforms' crates, and
+  `skene new lib` creates the same shape: a core holding a palette, a unit trait and a
+  view, and a crate per platform named.
 - **A low-level view, against the platform, like a built-in.** It is written against a
   platform's escape trait and realized through the same scene and node ids as a
   `Container`, so it composes with wrappers, themes, conditions and events. A view

@@ -9,7 +9,7 @@ use crate::{
   dev::{dev, run_terminal},
   manifest::App,
   pipeline,
-  scaffold::{Platform, Source, new_app},
+  scaffold::{Kind, Platform, Source},
 };
 
 /// Build, statically generate, and develop skene applications.
@@ -50,6 +50,18 @@ enum NewKind {
     /// The directory to create; its last component names the app.
     path: PathBuf,
     /// The platforms to give the app a shell on.
+    #[arg(required = true, value_enum)]
+    platforms: Vec<Platform>,
+    /// Take the skene crates from the checkout at this path instead of crates.io.
+    #[arg(long)]
+    skene: Option<PathBuf>,
+  },
+  /// A component library: a core of colors, sizes and views, and a crate per platform
+  /// exposing the views as its own.
+  Lib {
+    /// The directory to create; its last component names the library.
+    path: PathBuf,
+    /// The platforms to give the library a crate on.
     #[arg(required = true, value_enum)]
     platforms: Vec<Platform>,
     /// Take the skene crates from the checkout at this path instead of crates.io.
@@ -112,12 +124,19 @@ impl Cli {
       return attach(id);
     }
 
-    if let Command::New(NewKind::App {
-      path,
-      platforms,
-      skene,
-    }) = self.command
-    {
+    if let Command::New(new) = self.command {
+      let (kind, path, platforms, skene) = match new {
+        NewKind::App {
+          path,
+          platforms,
+          skene,
+        } => (Kind::App, path, platforms, skene),
+        NewKind::Lib {
+          path,
+          platforms,
+          skene,
+        } => (Kind::Library, path, platforms, skene),
+      };
       let source = match skene {
         Some(checkout) => Source::Checkout(
           checkout
@@ -127,7 +146,7 @@ impl Cli {
         None => Source::Registry,
       };
 
-      return new_app(&self.dir.join(path), &platforms, &source);
+      return kind.create(&self.dir.join(path), &platforms, &source);
     }
 
     let app = App::load(&self.dir)?;

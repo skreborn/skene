@@ -1,0 +1,28 @@
+//! {name} on the web: every view of [`{crate}`] as a view of the web's own, the palette
+//! in the web's unit, and a [`prelude`] an app imports beside the facade's own.
+
+use skene_foundation::{View, Wraps};
+use skene_web::ActivePlatform;
+
+pub use {crate}::{Type}BadgeBase;
+
+/// A badge: a short label on a rounded, tinted surface.
+///
+/// ```
+/// use {crate}_web::prelude::*;
+///
+/// let badge = {Type}Badge::new("New");
+/// ```
+#[derive(Debug, View, Wraps)]
+#[must_use]
+pub struct {Type}Badge({crate}::{Type}Badge<ActivePlatform>);
+
+impl {Type}BadgeBase<ActivePlatform> for {Type}Badge {}
+
+/// The palette in the web's unit; see [`{crate}::{Type}Palette`].
+pub type {Type}Palette = {crate}::{Type}Palette<f32>;
+
+/// Everything above, for `use {crate}_web::prelude::*` beside the facade's own prelude.
+pub mod prelude {
+  pub use super::*;
+}

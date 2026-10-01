@@ -185,10 +185,12 @@ left half-done in a code comment.
     - A shell per platform: the facades' views and Simple's, newtypes implementing the
     traits of the core beneath them, stay on probation against writing each platform's
     views by hand.
-    - Manifests: taffy 0.14 (with right-to-left) and wgpu 30, the duplicate syn and
-    hashbrown versions gone. Criterion stays at 0.5 while 0.8 builds alloca's C on every
-    unix target, which the Apple clippy check cannot cross-compile on Linux; base64
-    stays doubled while sfv 0.15 holds 0.22.
+    - Manifests: wgpu 30 once vello_hybrid moves past the 29 it pins; the duplicate syn
+    (serde's and clap's derives on 2, thiserror's on 3) and hashbrown versions
+    (wasm-split-cli's walrus 0.23 beside wasm-bindgen's 0.26) gone as their dependents
+    converge. Criterion stays at 0.5 while 0.8 builds alloca's C on every unix target,
+    which the Apple clippy check cannot cross-compile on Linux; base64 stays doubled
+    while sfv 0.15 holds 0.22.
     - The documents: `AGENTS.md` at 150 lines or fewer of numbered
     one-to-three-sentence invariants, each linking its `DESIGN.md` section; `DESIGN.md`
     one chapter per mechanism, each with its contract, mechanism and decisions, the

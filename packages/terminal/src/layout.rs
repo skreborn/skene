@@ -22,6 +22,7 @@ use taffy::{
     percent,
   },
   style::{Display, Style},
+  tree::LayoutOutput,
 };
 
 use crate::{
@@ -304,7 +305,13 @@ pub(crate) fn measure_inline_boxes(records: &mut Records) -> bool {
           width: AvailableSpace::MaxContent,
           height: AvailableSpace::MaxContent,
         },
-        |known, available, _, measured, _| measure_run(known, available, measured.as_deref()),
+        |input, _, measured, _| {
+          LayoutOutput::from_outer_size(measure_run(
+            input.known_dimensions,
+            input.available_space,
+            measured.as_deref(),
+          ))
+        },
       )
       .expect("compute an inline box's layout");
 
@@ -974,7 +981,13 @@ pub(crate) fn compute(records: &mut Records, width: u16, height: u16) {
         width: AvailableSpace::Definite(f32::from(width)),
         height: AvailableSpace::Definite(f32::from(height)),
       },
-      |known, available, _, measured, _| measure_run(known, available, measured.as_deref()),
+      |input, _, measured, _| {
+        LayoutOutput::from_outer_size(measure_run(
+          input.known_dimensions,
+          input.available_space,
+          measured.as_deref(),
+        ))
+      },
     )
     .expect("compute the layout");
   records.layout_generation += 1;
@@ -1214,24 +1227,24 @@ fn placement(value: skene_foundation::GridPlacement) -> taffy::style::GridPlacem
 /// An [`Arrangement`](skene_foundation::Arrangement) as taffy's content alignment.
 const fn arrangement(value: skene_foundation::Arrangement) -> taffy::style::AlignContent {
   match value {
-    skene_foundation::Arrangement::Start => taffy::style::AlignContent::Start,
-    skene_foundation::Arrangement::End => taffy::style::AlignContent::End,
-    skene_foundation::Arrangement::Center => taffy::style::AlignContent::Center,
-    skene_foundation::Arrangement::Stretch => taffy::style::AlignContent::Stretch,
-    skene_foundation::Arrangement::SpaceBetween => taffy::style::AlignContent::SpaceBetween,
-    skene_foundation::Arrangement::SpaceAround => taffy::style::AlignContent::SpaceAround,
-    skene_foundation::Arrangement::SpaceEvenly => taffy::style::AlignContent::SpaceEvenly,
+    skene_foundation::Arrangement::Start => taffy::style::AlignContent::START,
+    skene_foundation::Arrangement::End => taffy::style::AlignContent::END,
+    skene_foundation::Arrangement::Center => taffy::style::AlignContent::CENTER,
+    skene_foundation::Arrangement::Stretch => taffy::style::AlignContent::STRETCH,
+    skene_foundation::Arrangement::SpaceBetween => taffy::style::AlignContent::SPACE_BETWEEN,
+    skene_foundation::Arrangement::SpaceAround => taffy::style::AlignContent::SPACE_AROUND,
+    skene_foundation::Arrangement::SpaceEvenly => taffy::style::AlignContent::SPACE_EVENLY,
   }
 }
 
 /// An [`ItemAlignment`](skene_foundation::ItemAlignment) as taffy's item alignment.
 const fn item(value: skene_foundation::ItemAlignment) -> taffy::style::AlignItems {
   match value {
-    skene_foundation::ItemAlignment::Start => taffy::style::AlignItems::Start,
-    skene_foundation::ItemAlignment::End => taffy::style::AlignItems::End,
-    skene_foundation::ItemAlignment::Center => taffy::style::AlignItems::Center,
-    skene_foundation::ItemAlignment::Baseline => taffy::style::AlignItems::Baseline,
-    skene_foundation::ItemAlignment::Stretch => taffy::style::AlignItems::Stretch,
+    skene_foundation::ItemAlignment::Start => taffy::style::AlignItems::START,
+    skene_foundation::ItemAlignment::End => taffy::style::AlignItems::END,
+    skene_foundation::ItemAlignment::Center => taffy::style::AlignItems::CENTER,
+    skene_foundation::ItemAlignment::Baseline => taffy::style::AlignItems::BASELINE,
+    skene_foundation::ItemAlignment::Stretch => taffy::style::AlignItems::STRETCH,
   }
 }
 
@@ -1251,19 +1264,19 @@ fn apply_box_sizing(out: &mut Style, style: &PlainBox, in_stack: bool) {
   out.min_size = taffy::geometry::Size {
     width: style
       .min_width
-      .map_or(taffy::style::Dimension::AUTO, dimension),
+      .map_or(taffy::style::LengthPercentageAuto::AUTO, dimension_lpa),
     height: style
       .min_height
-      .map_or(taffy::style::Dimension::AUTO, dimension),
+      .map_or(taffy::style::LengthPercentageAuto::AUTO, dimension_lpa),
   };
 
   out.max_size = taffy::geometry::Size {
     width: style
       .max_width
-      .map_or(taffy::style::Dimension::AUTO, dimension),
+      .map_or(taffy::style::LengthPercentageAuto::AUTO, dimension_lpa),
     height: style
       .max_height
-      .map_or(taffy::style::Dimension::AUTO, dimension),
+      .map_or(taffy::style::LengthPercentageAuto::AUTO, dimension_lpa),
   };
 
   out.aspect_ratio = style.aspect_ratio.map(|ratio| ratio.0);
@@ -1354,18 +1367,24 @@ fn apply_box_sizing(out: &mut Style, style: &PlainBox, in_stack: bool) {
   }
 
   if let Some(areas) = &style.grid_areas {
-    out.grid_template_areas = areas
-      .areas()
-      .unwrap_or_default()
-      .into_iter()
-      .map(|area| taffy::style::GridTemplateArea {
-        name: area.name.as_str().to_owned(),
-        row_start: area.rows.start,
-        row_end: area.rows.end,
-        column_start: area.columns.start,
-        column_end: area.columns.end,
-      })
-      .collect();
+    let rows = areas.rows();
+
+    out.grid_template_areas = Some(taffy::style::GridTemplateAreas {
+      areas: areas
+        .areas()
+        .unwrap_or_default()
+        .into_iter()
+        .map(|area| taffy::style::GridTemplateArea {
+          name: area.name.as_str().to_owned(),
+          row_start: area.rows.start,
+          row_end: area.rows.end,
+          column_start: area.columns.start,
+          column_end: area.columns.end,
+        })
+        .collect(),
+      row_count: u16::try_from(rows.len()).unwrap_or(u16::MAX),
+      column_count: u16::try_from(rows.first().map_or(0, Vec::len)).unwrap_or(u16::MAX),
+    });
   }
 
   if let Some(tracks) = &style.grid_implicit_columns {

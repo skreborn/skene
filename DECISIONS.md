@@ -56,13 +56,13 @@ and the condition that reopens it. A reopened decision becomes an item in `ROADM
   non-goal. Not revisited while Skene is a client-side framework.
 - **A webview desktop shell** (2026-09-16): a desktop gets a native shell of its own.
   Revisit when the native desktop shells are given up.
-- **A lazy split of the WebGPU renderer** (2026-09-16), measured 2026-09-15 on release
-  builds after `wasm-bindgen`: an app that paints nothing (`counter`) ships 911 KB
-  carrying 10.6 KB of wgpu code and no shader text, since the linker drops what no box
-  reaches; an app that paints (`gallery`) ships 1.9 MB carrying 135 KB for the GPU path
-  beside the 271 KB CPU renderer it needs either way. Nothing worth a split. Revisit
-  when an app that paints nothing carries more than a few kilobytes of the GPU path, or
-  a painting app's GPU path outweighs its CPU renderer.
+- **A lazy split of the WebGPU renderer** (2026-09-16), measured again 2026-10-02 on
+  release builds after `wasm-bindgen`: the GPU path is the `gpu` feature an app opts
+  into, so an app leaving it off carries none of it and no shader text, whether it
+  paints nothing (`counter`, 1.27 MB) or paints on the CPU (`enhance`, 1.75 MB, 246 KB
+  of it the CPU renderer); an app enabling it (`gallery`, 2.92 MB) carries 116 KB for
+  the GPU path beside the 254 KB CPU renderer it needs either way. Nothing worth a
+  split. Revisit when a painting app's GPU path outweighs its CPU renderer.
 - **Rendering the whole terminal frame as one image** (2026-09-16): the text would then
   be ours to rasterize, and the terminal's font, selection, copy and accessibility would
   go with it, a poor GUI in place of a good terminal. Revisit when a terminal lets an

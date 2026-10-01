@@ -85,7 +85,9 @@ in a code comment.
     one constructable stylesheet with deferred collection and a set of adopted names;
     release web output through wasm-opt, without `.d.ts` files or name sections,
     precompressed, fingerprinted and preloaded, with one cached stylesheet shared by
-    static pages instead of inlined into each.
+    static pages instead of inlined into each; a bundle budget the gate holds, a
+    release `counter` after `wasm-bindgen` having grown from 911 KB to 1.27 MB between
+    2026-09-15 and 2026-10-02, `skene-web` and `skene-foundation` most of it.
 5. **The dev reload costs production nothing.** The saved tier is no second API: the
     Android leaf records and writes this snapshot (the native family), and the web and
     the desktop keep none beyond the dev reload.
@@ -181,9 +183,8 @@ in a code comment.
     invariants, each linking its `DESIGN.md` section; `DESIGN.md` one chapter per
     mechanism, each with its contract, mechanism and decisions, the terminal's split by
     concern; fine facts (DECRQM modes, OSC numbers, keyboard tables, hydration markers)
-    in the owning module's rustdoc; `README.md` for users; the WebGPU split's sizes
-    re-measured, since they no longer reproduce; the guide's book built by `mdbook` in
-    the gate, so a broken link or chapter fails it.
+    in the owning module's rustdoc; `README.md` for users; the guide's book built by
+    `mdbook` in the gate, so a broken link or chapter fails it.
     - Doc comments: contracts alone, without rationale or narrated implementation.
 8. **Pictures beyond direct kitty transmission.** Shared memory or a file where the
     protocol's query over that medium shows the terminal shares the host, sparing the

@@ -54,10 +54,10 @@ pub(crate) const fn element_tag(role: Option<Role>, level: Option<usize>) -> &'s
   match role {
     Some(Role::Navigation) => "nav",
     Some(Role::Main) => "main",
-    Some(Role::Header) => "header",
-    Some(Role::Footer) => "footer",
+    Some(Role::Banner | Role::Header) => "header",
+    Some(Role::ContentInfo | Role::Footer) => "footer",
     Some(Role::Complementary) => "aside",
-    Some(Role::Section) => "section",
+    Some(Role::Region | Role::Section) => "section",
     Some(Role::Article) => "article",
     Some(Role::Heading) => match level {
       Some(0 | 1) => "h1",
@@ -444,7 +444,6 @@ pub(crate) const fn aria_role(role: Role) -> Option<&'static str> {
     Role::Alert => "alert",
     Role::AlertDialog => "alertdialog",
     Role::Application => "application",
-    Role::Banner => "banner",
     Role::Blockquote => "blockquote",
     Role::Button | Role::DefaultButton => "button",
     Role::Caption | Role::FigureCaption => "caption",
@@ -455,7 +454,6 @@ pub(crate) const fn aria_role(role: Role) -> Option<&'static str> {
     Role::ComboBox | Role::EditableComboBox => "combobox",
     Role::Comment => "comment",
     Role::ContentDeletion => "deletion",
-    Role::ContentInfo => "contentinfo",
     Role::ContentInsertion => "insertion",
     Role::Definition => "definition",
     Role::Dialog => "dialog",
@@ -487,7 +485,6 @@ pub(crate) const fn aria_role(role: Role) -> Option<&'static str> {
     Role::ProgressIndicator => "progressbar",
     Role::RadioButton => "radio",
     Role::RadioGroup => "radiogroup",
-    Role::Region => "region",
     Role::Row | Role::LayoutTableRow => "row",
     Role::RowGroup => "rowgroup",
     Role::RowHeader => "rowheader",
@@ -519,7 +516,26 @@ pub(crate) const fn aria_role(role: Role) -> Option<&'static str> {
 
 #[cfg(test)]
 mod tests {
-  use super::{leaves_origin, runs_script};
+  use skene_foundation::Role;
+
+  use super::{aria_role, element_tag, leaves_origin, runs_script};
+
+  /// A landmark is realized as its sectioning element under ARIA's name and the
+  /// element's alike, and spells no role of its own.
+  #[test]
+  fn a_landmark_is_realized_as_its_element() {
+    for (roles, tag) in [
+      ([Role::Banner, Role::Header], "header"),
+      ([Role::ContentInfo, Role::Footer], "footer"),
+      ([Role::Region, Role::Section], "section"),
+      ([Role::Complementary, Role::Complementary], "aside"),
+    ] {
+      for role in roles {
+        assert_eq!(element_tag(Some(role), None), tag);
+        assert_eq!(aria_role(role), None);
+      }
+    }
+  }
 
   /// A link leaves the origin by where it points, read as a browser reads it, and not
   /// by containing `://` anywhere.

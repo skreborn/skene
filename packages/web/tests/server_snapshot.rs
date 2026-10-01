@@ -95,7 +95,7 @@ fn representative_tree() -> impl skene_web::View {
               .set_color(Color::srgb(0.9, 0.9, 0.9)),
             Text::new("linked").set_link("https://example.com/?a=1&b=2"),
             Container::new()
-              .set_role(Role::Section)
+              .set_role(Role::Region)
               .set_cursor(MouseCursor::Click)
               .set_width(Dimension::Length(120.))
               .set_height(Dimension::Length(40.))

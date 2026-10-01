@@ -1781,7 +1781,7 @@ fn a_low_level_view_reaches_the_platform_directly() {
 
   let _ = mount(|| {
     AnyView::new(|| {
-      let node = Container::new().set_role(Role::Section).build();
+      let node = Container::new().set_role(Role::Region).build();
       let element = platform::element(node).expect("the realized element");
 
       element.set_text_content(Some("raw"));

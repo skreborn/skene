@@ -29,7 +29,7 @@ use crate::{
 /// until [`set_child_builder`](Self::set_child_builder) supplies the child; both forms
 /// are builder closures because only one of them is built.
 ///
-/// The signals the built-ins wait on are a platform's own: the GUI facade's
+/// The signals the built-ins wait on are a platform's own: the web facade's
 /// `media::hydrated` for a render made without script, and
 /// [`Painting::available`](crate::Painting::available) for a painted box's pixels.
 #[derive(Debug)]

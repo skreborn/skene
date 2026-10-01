@@ -293,16 +293,24 @@ impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web
 pub fn skene_web::Container::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Deferred
 pub fn skene_web::Deferred::build(self) -> skene_foundation::spine::node::NodeId
+impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Enhance<skene_foundation::realize::ChildBuilder<skene_web::ActivePlatform>>
+pub fn skene_web::Enhance<skene_foundation::realize::ChildBuilder<skene_web::ActivePlatform>>::build(self) -> skene_foundation::spine::node::NodeId
+impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::ErrorBoundary<skene_foundation::realize::ChildBuilder<skene_web::ActivePlatform>>
+pub fn skene_web::ErrorBoundary<skene_foundation::realize::ChildBuilder<skene_web::ActivePlatform>>::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Grid
 pub fn skene_web::Grid::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::RichText
 pub fn skene_web::RichText::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Row
 pub fn skene_web::Row::build(self) -> skene_foundation::spine::node::NodeId
+impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Show<skene_foundation::spine::view::AnyView<skene_web::ActivePlatform>>
+pub fn skene_web::Show<skene_foundation::spine::view::AnyView<skene_web::ActivePlatform>>::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Span
 pub fn skene_web::Span::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Stack
 pub fn skene_web::Stack::build(self) -> skene_foundation::spine::node::NodeId
+impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Suspense<skene_foundation::realize::ChildBuilder<skene_web::ActivePlatform>>
+pub fn skene_web::Suspense<skene_foundation::realize::ChildBuilder<skene_web::ActivePlatform>>::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Text
 pub fn skene_web::Text::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_web::platform::WebDom for skene_web::platform::Web
@@ -313,11 +321,15 @@ pub fn skene_web::platform::Web::create_element(skene_foundation::spine::node::N
 pub fn skene_web::platform::Web::set_attribute(skene_foundation::spine::node::NodeId, &str, &str)
 pub fn skene_web::platform::Web::set_declarations(skene_foundation::spine::node::NodeId, &skene_web::platform::Declarations)
 pub fn skene_web::platform::Web::set_text(skene_foundation::spine::node::NodeId, &str)
+impl<K: core::cmp::PartialEq + 'static> skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Switch<K>
+pub fn skene_web::Switch<K>::build(self) -> skene_foundation::spine::node::NodeId
 impl<R: skene_foundation::routing::Route> skene_foundation::spine::children::HasChildren<skene_web::platform::Web> for skene_web::Link<R>
 pub type skene_web::Link<R>::Kind = skene_foundation::spine::view::PlainChild
 pub fn skene_web::Link<R>::children_mut(&mut self, skene_foundation::spine::children::Seal) -> &mut skene_foundation::spine::children::Children<skene_web::ActivePlatform, skene_foundation::spine::view::PlainChild>
 impl<R: skene_foundation::routing::Route> skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Link<R>
 pub fn skene_web::Link<R>::build(self) -> skene_foundation::spine::node::NodeId
+impl<S: skene_foundation::spine::token::TokenSet<skene_web::TokenValue>> skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Theme<S, skene_foundation::realize::ChildBuilder<skene_web::ActivePlatform>>
+pub fn skene_web::Theme<S, skene_foundation::realize::ChildBuilder<skene_web::ActivePlatform>>::build(self) -> skene_foundation::spine::node::NodeId
 pub const skene_web::platform::CONTROL_ATTRIBUTE: &str
 pub const skene_web::platform::SCHEME_ATTRIBUTE: &str
 pub const skene_web::platform::STATE_SCRIPT_ID: &str
@@ -579,6 +591,28 @@ pub fn skene_web::Container::child_mut(&mut self, skene_foundation::spine::child
 impl skene_foundation::spine::view::AnyKind for skene_web::Container
 impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Container
 pub fn skene_web::Container::build(self) -> skene_foundation::spine::node::NodeId
+pub struct skene_web::prelude::Enhance<C>(_)
+impl skene_web::Enhance
+pub const fn skene_web::Enhance::new(skene_reactive::signal::ReadSignal<bool>) -> Self
+pub fn skene_web::Enhance::set_child_builder<V: skene_foundation::spine::view::View<skene_web::ActivePlatform>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> skene_web::Enhance<skene_foundation::realize::ChildBuilder<skene_web::ActivePlatform>>
+pub fn skene_web::Enhance::set_fallback<V: skene_foundation::spine::view::View<skene_web::ActivePlatform>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> Self
+impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Enhance<skene_foundation::realize::ChildBuilder<skene_web::ActivePlatform>>
+pub fn skene_web::Enhance<skene_foundation::realize::ChildBuilder<skene_web::ActivePlatform>>::build(self) -> skene_foundation::spine::node::NodeId
+impl<C: core::fmt::Debug> core::fmt::Debug for skene_web::Enhance<C>
+pub fn skene_web::Enhance<C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<C> skene_foundation::spine::view::AnyKind for skene_web::Enhance<C>
+pub struct skene_web::prelude::ErrorBoundary<C>(_)
+impl skene_web::ErrorBoundary
+pub const fn skene_web::ErrorBoundary::new() -> Self
+pub fn skene_web::ErrorBoundary::set_child_builder<V: skene_foundation::spine::view::View<skene_web::ActivePlatform>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> skene_web::ErrorBoundary<skene_foundation::realize::ChildBuilder<skene_web::ActivePlatform>>
+pub fn skene_web::ErrorBoundary::set_fallback_builder<V: skene_foundation::spine::view::View<skene_web::ActivePlatform>>(self, impl core::ops::function::Fn(skene_foundation::spine::errors::Errors) -> V + 'static) -> Self
+impl core::default::Default for skene_web::ErrorBoundary
+pub fn skene_web::ErrorBoundary::default() -> Self
+impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::ErrorBoundary<skene_foundation::realize::ChildBuilder<skene_web::ActivePlatform>>
+pub fn skene_web::ErrorBoundary<skene_foundation::realize::ChildBuilder<skene_web::ActivePlatform>>::build(self) -> skene_foundation::spine::node::NodeId
+impl<C> core::fmt::Debug for skene_web::ErrorBoundary<C>
+pub fn skene_web::ErrorBoundary<C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<C> skene_foundation::spine::view::AnyKind for skene_web::ErrorBoundary<C>
 pub struct skene_web::prelude::Flexible<C>(_)
 impl skene_web::Flexible
 pub fn skene_web::Flexible::derive_grow_factor(self, impl core::ops::function::Fn() -> f32 + 'static) -> Self
@@ -699,6 +733,19 @@ pub fn skene_web::Row::children_mut(&mut self, skene_foundation::spine::children
 impl skene_foundation::spine::view::AnyKind for skene_web::Row
 impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Row
 pub fn skene_web::Row::build(self) -> skene_foundation::spine::node::NodeId
+pub struct skene_web::prelude::Show<C>(_)
+impl skene_web::Show
+pub fn skene_web::Show::derive_shown(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
+pub fn skene_web::Show::new() -> Self
+pub fn skene_web::Show::set_child(self, impl skene_foundation::spine::view::View<skene_web::ActivePlatform>) -> skene_web::Show<skene_foundation::spine::view::AnyView<skene_web::ActivePlatform>>
+pub fn skene_web::Show::set_shown(self, bool) -> Self
+impl core::default::Default for skene_web::Show
+pub fn skene_web::Show::default() -> Self
+impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Show<skene_foundation::spine::view::AnyView<skene_web::ActivePlatform>>
+pub fn skene_web::Show<skene_foundation::spine::view::AnyView<skene_web::ActivePlatform>>::build(self) -> skene_foundation::spine::node::NodeId
+impl<C> core::fmt::Debug for skene_web::Show<C>
+pub fn skene_web::Show<C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<C> skene_foundation::spine::view::AnyKind for skene_web::Show<C>
 pub struct skene_web::prelude::Span(_)
 impl skene_web::Span
 pub fn skene_web::Span::derive(impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
@@ -755,6 +802,31 @@ pub fn skene_web::Stack::children_mut(&mut self, skene_foundation::spine::childr
 impl skene_foundation::spine::view::AnyKind for skene_web::Stack
 impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Stack
 pub fn skene_web::Stack::build(self) -> skene_foundation::spine::node::NodeId
+pub struct skene_web::prelude::Suspense<C>(_)
+impl skene_web::Suspense
+pub const fn skene_web::Suspense::new() -> Self
+pub fn skene_web::Suspense::set_child_builder<V: skene_foundation::spine::view::View<skene_web::ActivePlatform>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> skene_web::Suspense<skene_foundation::realize::ChildBuilder<skene_web::ActivePlatform>>
+pub fn skene_web::Suspense::set_fallback(self, impl skene_foundation::spine::view::View<skene_web::ActivePlatform>) -> Self
+impl core::default::Default for skene_web::Suspense
+pub fn skene_web::Suspense::default() -> Self
+impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Suspense<skene_foundation::realize::ChildBuilder<skene_web::ActivePlatform>>
+pub fn skene_web::Suspense<skene_foundation::realize::ChildBuilder<skene_web::ActivePlatform>>::build(self) -> skene_foundation::spine::node::NodeId
+impl<C: core::fmt::Debug> core::fmt::Debug for skene_web::Suspense<C>
+pub fn skene_web::Suspense<C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<C> skene_foundation::spine::view::AnyKind for skene_web::Suspense<C>
+pub struct skene_web::prelude::Switch<K>(_)
+impl<K: core::cmp::PartialEq + 'static> skene_web::Switch<K>
+pub fn skene_web::Switch<K>::derive_key(self, impl core::ops::function::Fn() -> K + 'static) -> Self
+pub const fn skene_web::Switch<K>::new() -> Self
+pub fn skene_web::Switch<K>::set_case<V: skene_foundation::spine::view::View<skene_web::ActivePlatform>>(self, K, impl core::ops::function::FnOnce() -> V + 'static) -> Self
+pub fn skene_web::Switch<K>::set_key(self, K) -> Self where K: core::clone::Clone
+impl<K: core::cmp::PartialEq + 'static> core::default::Default for skene_web::Switch<K>
+pub fn skene_web::Switch<K>::default() -> Self
+impl<K: core::cmp::PartialEq + 'static> skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Switch<K>
+pub fn skene_web::Switch<K>::build(self) -> skene_foundation::spine::node::NodeId
+impl<K> core::fmt::Debug for skene_web::Switch<K>
+pub fn skene_web::Switch<K>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<K> skene_foundation::spine::view::AnyKind for skene_web::Switch<K>
 pub struct skene_web::prelude::Text(_)
 impl skene_web::Text
 pub fn skene_web::Text::derive(impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
@@ -790,6 +862,16 @@ pub fn skene_web::Text::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::
 impl skene_foundation::spine::view::AnyKind for skene_web::Text
 impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Text
 pub fn skene_web::Text::build(self) -> skene_foundation::spine::node::NodeId
+pub struct skene_web::prelude::Theme<S: skene_foundation::spine::token::TokenSet<skene_web::TokenValue>, C>(_)
+impl<S: skene_foundation::spine::token::TokenSet<skene_web::TokenValue>> skene_web::Theme<S>
+pub fn skene_web::Theme<S>::derive(impl core::ops::function::Fn() -> S + 'static) -> Self
+pub fn skene_web::Theme<S>::new(S) -> Self
+pub fn skene_web::Theme<S>::set_child_builder<V: skene_foundation::spine::view::View<skene_web::ActivePlatform>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> skene_web::Theme<S, skene_foundation::realize::ChildBuilder<skene_web::ActivePlatform>>
+impl<S: skene_foundation::spine::token::TokenSet<skene_web::TokenValue>, C> core::fmt::Debug for skene_web::Theme<S, C>
+pub fn skene_web::Theme<S, C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<S: skene_foundation::spine::token::TokenSet<skene_web::TokenValue>, C> skene_foundation::spine::view::AnyKind for skene_web::Theme<S, C>
+impl<S: skene_foundation::spine::token::TokenSet<skene_web::TokenValue>> skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Theme<S, skene_foundation::realize::ChildBuilder<skene_web::ActivePlatform>>
+pub fn skene_web::Theme<S, skene_foundation::realize::ChildBuilder<skene_web::ActivePlatform>>::build(self) -> skene_foundation::spine::node::NodeId
 pub trait skene_web::prelude::ThemedIn: skene_foundation::theme::ThemedIn<skene_web::ActivePlatform>
 pub fn skene_web::prelude::ThemedIn::current() -> Self
 pub fn skene_web::prelude::ThemedIn::watch() -> skene_reactive::memo::Memo<Self>
@@ -825,8 +907,6 @@ pub type skene_web::prelude::ContextMenu<C> = skene_foundation::context_menu::Co
 pub type skene_web::prelude::Control<B, C> = skene_foundation::control::Control<skene_web::ActivePlatform, B, C>
 pub type skene_web::prelude::Definition<T> = skene_foundation::spine::leaf::Definition<T, f32>
 pub type skene_web::prelude::Dimension = skene_foundation::spine::values::dimension::Dimension<f32>
-pub type skene_web::prelude::Enhance<C> = skene_foundation::enhance::Enhance<skene_web::ActivePlatform, C>
-pub type skene_web::prelude::ErrorBoundary<C> = skene_foundation::error_boundary::ErrorBoundary<skene_web::ActivePlatform, C>
 pub type skene_web::prelude::Inset<T> = skene_foundation::spine::values::inset::Inset<T>
 pub type skene_web::prelude::Keymap<C> = skene_foundation::keymap::Keymap<skene_web::ActivePlatform, C>
 pub type skene_web::prelude::LayoutBox<Kind> = skene_foundation::layout_box::LayoutBox<skene_web::ActivePlatform, Kind>
@@ -838,12 +918,8 @@ pub type skene_web::prelude::Overlay<C> = skene_foundation::overlay::Overlay<ske
 pub type skene_web::prelude::Painted = skene_foundation::painted::Painted<skene_web::ActivePlatform>
 pub type skene_web::prelude::Point = skene_foundation::spine::values::point::Point<f32>
 pub type skene_web::prelude::Rect = skene_foundation::spine::values::rect::Rect<f32>
-pub type skene_web::prelude::Show<C> = skene_foundation::spine::show::Show<skene_web::ActivePlatform, C>
 pub type skene_web::prelude::Size = skene_foundation::spine::values::size::Size<f32>
 pub type skene_web::prelude::Spacing = skene_foundation::spine::values::flex::Spacing<f32>
-pub type skene_web::prelude::Suspense<C> = skene_foundation::suspense::Suspense<skene_web::ActivePlatform, C>
-pub type skene_web::prelude::Switch<K> = skene_foundation::switch::Switch<skene_web::ActivePlatform, K>
-pub type skene_web::prelude::Theme<S, C> = skene_foundation::theme::Theme<skene_web::ActivePlatform, S, C>
 pub type skene_web::prelude::Token<T> = skene_foundation::spine::token::Token<T, f32>
 pub type skene_web::prelude::Tooltip<C> = skene_foundation::tooltip::Tooltip<skene_web::ActivePlatform, C>
 pub type skene_web::prelude::Value<T> = skene_foundation::spine::leaf::Value<T, skene_web::Condition>
@@ -997,6 +1073,28 @@ pub fn skene_web::Deferred::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::f
 impl skene_foundation::spine::view::AnyKind for skene_web::Deferred
 impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Deferred
 pub fn skene_web::Deferred::build(self) -> skene_foundation::spine::node::NodeId
+pub struct skene_web::Enhance<C>(_)
+impl skene_web::Enhance
+pub const fn skene_web::Enhance::new(skene_reactive::signal::ReadSignal<bool>) -> Self
+pub fn skene_web::Enhance::set_child_builder<V: skene_foundation::spine::view::View<skene_web::ActivePlatform>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> skene_web::Enhance<skene_foundation::realize::ChildBuilder<skene_web::ActivePlatform>>
+pub fn skene_web::Enhance::set_fallback<V: skene_foundation::spine::view::View<skene_web::ActivePlatform>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> Self
+impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Enhance<skene_foundation::realize::ChildBuilder<skene_web::ActivePlatform>>
+pub fn skene_web::Enhance<skene_foundation::realize::ChildBuilder<skene_web::ActivePlatform>>::build(self) -> skene_foundation::spine::node::NodeId
+impl<C: core::fmt::Debug> core::fmt::Debug for skene_web::Enhance<C>
+pub fn skene_web::Enhance<C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<C> skene_foundation::spine::view::AnyKind for skene_web::Enhance<C>
+pub struct skene_web::ErrorBoundary<C>(_)
+impl skene_web::ErrorBoundary
+pub const fn skene_web::ErrorBoundary::new() -> Self
+pub fn skene_web::ErrorBoundary::set_child_builder<V: skene_foundation::spine::view::View<skene_web::ActivePlatform>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> skene_web::ErrorBoundary<skene_foundation::realize::ChildBuilder<skene_web::ActivePlatform>>
+pub fn skene_web::ErrorBoundary::set_fallback_builder<V: skene_foundation::spine::view::View<skene_web::ActivePlatform>>(self, impl core::ops::function::Fn(skene_foundation::spine::errors::Errors) -> V + 'static) -> Self
+impl core::default::Default for skene_web::ErrorBoundary
+pub fn skene_web::ErrorBoundary::default() -> Self
+impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::ErrorBoundary<skene_foundation::realize::ChildBuilder<skene_web::ActivePlatform>>
+pub fn skene_web::ErrorBoundary<skene_foundation::realize::ChildBuilder<skene_web::ActivePlatform>>::build(self) -> skene_foundation::spine::node::NodeId
+impl<C> core::fmt::Debug for skene_web::ErrorBoundary<C>
+pub fn skene_web::ErrorBoundary<C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<C> skene_foundation::spine::view::AnyKind for skene_web::ErrorBoundary<C>
 pub struct skene_web::Flexible<C>(_)
 impl skene_web::Flexible
 pub fn skene_web::Flexible::derive_grow_factor(self, impl core::ops::function::Fn() -> f32 + 'static) -> Self
@@ -1141,6 +1239,19 @@ pub fn skene_web::Row::children_mut(&mut self, skene_foundation::spine::children
 impl skene_foundation::spine::view::AnyKind for skene_web::Row
 impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Row
 pub fn skene_web::Row::build(self) -> skene_foundation::spine::node::NodeId
+pub struct skene_web::Show<C>(_)
+impl skene_web::Show
+pub fn skene_web::Show::derive_shown(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
+pub fn skene_web::Show::new() -> Self
+pub fn skene_web::Show::set_child(self, impl skene_foundation::spine::view::View<skene_web::ActivePlatform>) -> skene_web::Show<skene_foundation::spine::view::AnyView<skene_web::ActivePlatform>>
+pub fn skene_web::Show::set_shown(self, bool) -> Self
+impl core::default::Default for skene_web::Show
+pub fn skene_web::Show::default() -> Self
+impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Show<skene_foundation::spine::view::AnyView<skene_web::ActivePlatform>>
+pub fn skene_web::Show<skene_foundation::spine::view::AnyView<skene_web::ActivePlatform>>::build(self) -> skene_foundation::spine::node::NodeId
+impl<C> core::fmt::Debug for skene_web::Show<C>
+pub fn skene_web::Show<C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<C> skene_foundation::spine::view::AnyKind for skene_web::Show<C>
 pub struct skene_web::Span(_)
 impl skene_web::Span
 pub fn skene_web::Span::derive(impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
@@ -1197,6 +1308,31 @@ pub fn skene_web::Stack::children_mut(&mut self, skene_foundation::spine::childr
 impl skene_foundation::spine::view::AnyKind for skene_web::Stack
 impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Stack
 pub fn skene_web::Stack::build(self) -> skene_foundation::spine::node::NodeId
+pub struct skene_web::Suspense<C>(_)
+impl skene_web::Suspense
+pub const fn skene_web::Suspense::new() -> Self
+pub fn skene_web::Suspense::set_child_builder<V: skene_foundation::spine::view::View<skene_web::ActivePlatform>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> skene_web::Suspense<skene_foundation::realize::ChildBuilder<skene_web::ActivePlatform>>
+pub fn skene_web::Suspense::set_fallback(self, impl skene_foundation::spine::view::View<skene_web::ActivePlatform>) -> Self
+impl core::default::Default for skene_web::Suspense
+pub fn skene_web::Suspense::default() -> Self
+impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Suspense<skene_foundation::realize::ChildBuilder<skene_web::ActivePlatform>>
+pub fn skene_web::Suspense<skene_foundation::realize::ChildBuilder<skene_web::ActivePlatform>>::build(self) -> skene_foundation::spine::node::NodeId
+impl<C: core::fmt::Debug> core::fmt::Debug for skene_web::Suspense<C>
+pub fn skene_web::Suspense<C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<C> skene_foundation::spine::view::AnyKind for skene_web::Suspense<C>
+pub struct skene_web::Switch<K>(_)
+impl<K: core::cmp::PartialEq + 'static> skene_web::Switch<K>
+pub fn skene_web::Switch<K>::derive_key(self, impl core::ops::function::Fn() -> K + 'static) -> Self
+pub const fn skene_web::Switch<K>::new() -> Self
+pub fn skene_web::Switch<K>::set_case<V: skene_foundation::spine::view::View<skene_web::ActivePlatform>>(self, K, impl core::ops::function::FnOnce() -> V + 'static) -> Self
+pub fn skene_web::Switch<K>::set_key(self, K) -> Self where K: core::clone::Clone
+impl<K: core::cmp::PartialEq + 'static> core::default::Default for skene_web::Switch<K>
+pub fn skene_web::Switch<K>::default() -> Self
+impl<K: core::cmp::PartialEq + 'static> skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Switch<K>
+pub fn skene_web::Switch<K>::build(self) -> skene_foundation::spine::node::NodeId
+impl<K> core::fmt::Debug for skene_web::Switch<K>
+pub fn skene_web::Switch<K>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<K> skene_foundation::spine::view::AnyKind for skene_web::Switch<K>
 pub struct skene_web::Text(_)
 impl skene_web::Text
 pub fn skene_web::Text::derive(impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
@@ -1232,6 +1368,16 @@ pub fn skene_web::Text::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::
 impl skene_foundation::spine::view::AnyKind for skene_web::Text
 impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Text
 pub fn skene_web::Text::build(self) -> skene_foundation::spine::node::NodeId
+pub struct skene_web::Theme<S: skene_foundation::spine::token::TokenSet<skene_web::TokenValue>, C>(_)
+impl<S: skene_foundation::spine::token::TokenSet<skene_web::TokenValue>> skene_web::Theme<S>
+pub fn skene_web::Theme<S>::derive(impl core::ops::function::Fn() -> S + 'static) -> Self
+pub fn skene_web::Theme<S>::new(S) -> Self
+pub fn skene_web::Theme<S>::set_child_builder<V: skene_foundation::spine::view::View<skene_web::ActivePlatform>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> skene_web::Theme<S, skene_foundation::realize::ChildBuilder<skene_web::ActivePlatform>>
+impl<S: skene_foundation::spine::token::TokenSet<skene_web::TokenValue>, C> core::fmt::Debug for skene_web::Theme<S, C>
+pub fn skene_web::Theme<S, C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<S: skene_foundation::spine::token::TokenSet<skene_web::TokenValue>, C> skene_foundation::spine::view::AnyKind for skene_web::Theme<S, C>
+impl<S: skene_foundation::spine::token::TokenSet<skene_web::TokenValue>> skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Theme<S, skene_foundation::realize::ChildBuilder<skene_web::ActivePlatform>>
+pub fn skene_web::Theme<S, skene_foundation::realize::ChildBuilder<skene_web::ActivePlatform>>::build(self) -> skene_foundation::spine::node::NodeId
 pub trait skene_web::ThemedIn: skene_foundation::theme::ThemedIn<skene_web::ActivePlatform>
 pub fn skene_web::ThemedIn::current() -> Self
 pub fn skene_web::ThemedIn::watch() -> skene_reactive::memo::Memo<Self>
@@ -1277,8 +1423,6 @@ pub type skene_web::Control<B, C> = skene_foundation::control::Control<skene_web
 pub type skene_web::ControlHandle = skene_foundation::control::ControlHandle<skene_web::ActivePlatform>
 pub type skene_web::Definition<T> = skene_foundation::spine::leaf::Definition<T, f32>
 pub type skene_web::Dimension = skene_foundation::spine::values::dimension::Dimension<f32>
-pub type skene_web::Enhance<C> = skene_foundation::enhance::Enhance<skene_web::ActivePlatform, C>
-pub type skene_web::ErrorBoundary<C> = skene_foundation::error_boundary::ErrorBoundary<skene_web::ActivePlatform, C>
 pub type skene_web::Face = skene_foundation::picker::Face<skene_web::ActivePlatform>
 pub type skene_web::Inset<T> = skene_foundation::spine::values::inset::Inset<T>
 pub type skene_web::Keyed<V> = skene_foundation::spine::keyed::Keyed<skene_web::ActivePlatform, V>
@@ -1293,12 +1437,8 @@ pub type skene_web::Overlay<C> = skene_foundation::overlay::Overlay<skene_web::A
 pub type skene_web::Painted = skene_foundation::painted::Painted<skene_web::ActivePlatform>
 pub type skene_web::Point = skene_foundation::spine::values::point::Point<f32>
 pub type skene_web::Rect = skene_foundation::spine::values::rect::Rect<f32>
-pub type skene_web::Show<C> = skene_foundation::spine::show::Show<skene_web::ActivePlatform, C>
 pub type skene_web::Size = skene_foundation::spine::values::size::Size<f32>
 pub type skene_web::Spacing = skene_foundation::spine::values::flex::Spacing<f32>
-pub type skene_web::Suspense<C> = skene_foundation::suspense::Suspense<skene_web::ActivePlatform, C>
-pub type skene_web::Switch<K> = skene_foundation::switch::Switch<skene_web::ActivePlatform, K>
-pub type skene_web::Theme<S, C> = skene_foundation::theme::Theme<skene_web::ActivePlatform, S, C>
 pub type skene_web::Token<T> = skene_foundation::spine::token::Token<T, f32>
 pub type skene_web::TokenValue = <skene_web::ActivePlatform as skene_foundation::spine::platform::Platform>::TokenValue
 pub type skene_web::Tooltip<C> = skene_foundation::tooltip::Tooltip<skene_web::ActivePlatform, C>

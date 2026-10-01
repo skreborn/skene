@@ -65,26 +65,9 @@ macro_rules! facade {
     /// The box every layout view is built from, accepting children of `Kind`; see
     /// [`skene_foundation::LayoutBox`].
     pub type LayoutBox<Kind> = $crate::LayoutBox<$platform, Kind>;
-    /// A branch shown or hidden by a condition; see [`skene_foundation::Show`].
-    pub type Show<C = $crate::NoChild> = $crate::Show<$platform, C>;
     /// The view a `set_key` named, built under a keyed scope; see
     /// [`skene_foundation::Keyed`].
     pub type Keyed<V> = $crate::Keyed<$platform, V>;
-    /// One of several branches, by key; see [`skene_foundation::Switch`].
-    pub type Switch<K> = $crate::Switch<$platform, K>;
-    /// Fallback content while a subtree's async work is pending; see
-    /// [`skene_foundation::Suspense`].
-    pub type Suspense<C = $crate::NoChild> = $crate::Suspense<$platform, C>;
-    /// The form a signal makes possible over the one that needs none; see
-    /// [`skene_foundation::Enhance`].
-    pub type Enhance<C = $crate::NoChild> = $crate::Enhance<$platform, C>;
-    /// Fallback content when a subtree reports an error; see
-    /// [`skene_foundation::ErrorBoundary`].
-    pub type ErrorBoundary<C = $crate::NoChild> =
-      $crate::ErrorBoundary<$platform, C>;
-    /// The one theme view, defining the token set `S` beneath it; see
-    /// [`skene_foundation::Theme`].
-    pub type Theme<S, C = $crate::NoChild> = $crate::Theme<$platform, S, C>;
     /// The one control builder over a behavior; see [`skene_foundation::Control`].
     pub type Control<B, C = $crate::NoChild> = $crate::Control<$platform, B, C>;
     /// A built control, for a behavior to act on; see [`skene_foundation::ControlHandle`].

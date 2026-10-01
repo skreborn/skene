@@ -393,6 +393,28 @@ pub fn skene_terminal::Container::child_mut(&mut self, skene_foundation::spine::
 impl skene_foundation::spine::view::AnyKind for skene_terminal::Container
 impl skene_foundation::spine::view::View<skene_terminal::Terminal> for skene_terminal::Container
 pub fn skene_terminal::Container::build(self) -> skene_foundation::spine::node::NodeId
+pub struct skene_terminal::prelude::Enhance<C>(_)
+impl skene_terminal::Enhance
+pub const fn skene_terminal::Enhance::new(skene_reactive::signal::ReadSignal<bool>) -> Self
+pub fn skene_terminal::Enhance::set_child_builder<V: skene_foundation::spine::view::View<skene_terminal::ActivePlatform>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> skene_terminal::Enhance<skene_foundation::realize::ChildBuilder<skene_terminal::ActivePlatform>>
+pub fn skene_terminal::Enhance::set_fallback<V: skene_foundation::spine::view::View<skene_terminal::ActivePlatform>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> Self
+impl skene_foundation::spine::view::View<skene_terminal::Terminal> for skene_terminal::Enhance<skene_foundation::realize::ChildBuilder<skene_terminal::ActivePlatform>>
+pub fn skene_terminal::Enhance<skene_foundation::realize::ChildBuilder<skene_terminal::ActivePlatform>>::build(self) -> skene_foundation::spine::node::NodeId
+impl<C: core::fmt::Debug> core::fmt::Debug for skene_terminal::Enhance<C>
+pub fn skene_terminal::Enhance<C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<C> skene_foundation::spine::view::AnyKind for skene_terminal::Enhance<C>
+pub struct skene_terminal::prelude::ErrorBoundary<C>(_)
+impl skene_terminal::ErrorBoundary
+pub const fn skene_terminal::ErrorBoundary::new() -> Self
+pub fn skene_terminal::ErrorBoundary::set_child_builder<V: skene_foundation::spine::view::View<skene_terminal::ActivePlatform>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> skene_terminal::ErrorBoundary<skene_foundation::realize::ChildBuilder<skene_terminal::ActivePlatform>>
+pub fn skene_terminal::ErrorBoundary::set_fallback_builder<V: skene_foundation::spine::view::View<skene_terminal::ActivePlatform>>(self, impl core::ops::function::Fn(skene_foundation::spine::errors::Errors) -> V + 'static) -> Self
+impl core::default::Default for skene_terminal::ErrorBoundary
+pub fn skene_terminal::ErrorBoundary::default() -> Self
+impl skene_foundation::spine::view::View<skene_terminal::Terminal> for skene_terminal::ErrorBoundary<skene_foundation::realize::ChildBuilder<skene_terminal::ActivePlatform>>
+pub fn skene_terminal::ErrorBoundary<skene_foundation::realize::ChildBuilder<skene_terminal::ActivePlatform>>::build(self) -> skene_foundation::spine::node::NodeId
+impl<C> core::fmt::Debug for skene_terminal::ErrorBoundary<C>
+pub fn skene_terminal::ErrorBoundary<C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<C> skene_foundation::spine::view::AnyKind for skene_terminal::ErrorBoundary<C>
 pub struct skene_terminal::prelude::Flexible<C>(_)
 impl skene_terminal::Flexible
 pub fn skene_terminal::Flexible::derive_grow_factor(self, impl core::ops::function::Fn() -> f32 + 'static) -> Self
@@ -535,6 +557,19 @@ pub fn skene_terminal::Row::children_mut(&mut self, skene_foundation::spine::chi
 impl skene_foundation::spine::view::AnyKind for skene_terminal::Row
 impl skene_foundation::spine::view::View<skene_terminal::Terminal> for skene_terminal::Row
 pub fn skene_terminal::Row::build(self) -> skene_foundation::spine::node::NodeId
+pub struct skene_terminal::prelude::Show<C>(_)
+impl skene_terminal::Show
+pub fn skene_terminal::Show::derive_shown(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
+pub fn skene_terminal::Show::new() -> Self
+pub fn skene_terminal::Show::set_child(self, impl skene_foundation::spine::view::View<skene_terminal::ActivePlatform>) -> skene_terminal::Show<skene_foundation::spine::view::AnyView<skene_terminal::ActivePlatform>>
+pub fn skene_terminal::Show::set_shown(self, bool) -> Self
+impl core::default::Default for skene_terminal::Show
+pub fn skene_terminal::Show::default() -> Self
+impl skene_foundation::spine::view::View<skene_terminal::Terminal> for skene_terminal::Show<skene_foundation::spine::view::AnyView<skene_terminal::ActivePlatform>>
+pub fn skene_terminal::Show<skene_foundation::spine::view::AnyView<skene_terminal::ActivePlatform>>::build(self) -> skene_foundation::spine::node::NodeId
+impl<C> core::fmt::Debug for skene_terminal::Show<C>
+pub fn skene_terminal::Show<C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<C> skene_foundation::spine::view::AnyKind for skene_terminal::Show<C>
 pub struct skene_terminal::prelude::Span(_)
 impl skene_terminal::Span
 pub fn skene_terminal::Span::derive(impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
@@ -593,6 +628,31 @@ pub fn skene_terminal::Stack::children_mut(&mut self, skene_foundation::spine::c
 impl skene_foundation::spine::view::AnyKind for skene_terminal::Stack
 impl skene_foundation::spine::view::View<skene_terminal::Terminal> for skene_terminal::Stack
 pub fn skene_terminal::Stack::build(self) -> skene_foundation::spine::node::NodeId
+pub struct skene_terminal::prelude::Suspense<C>(_)
+impl skene_terminal::Suspense
+pub const fn skene_terminal::Suspense::new() -> Self
+pub fn skene_terminal::Suspense::set_child_builder<V: skene_foundation::spine::view::View<skene_terminal::ActivePlatform>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> skene_terminal::Suspense<skene_foundation::realize::ChildBuilder<skene_terminal::ActivePlatform>>
+pub fn skene_terminal::Suspense::set_fallback(self, impl skene_foundation::spine::view::View<skene_terminal::ActivePlatform>) -> Self
+impl core::default::Default for skene_terminal::Suspense
+pub fn skene_terminal::Suspense::default() -> Self
+impl skene_foundation::spine::view::View<skene_terminal::Terminal> for skene_terminal::Suspense<skene_foundation::realize::ChildBuilder<skene_terminal::ActivePlatform>>
+pub fn skene_terminal::Suspense<skene_foundation::realize::ChildBuilder<skene_terminal::ActivePlatform>>::build(self) -> skene_foundation::spine::node::NodeId
+impl<C: core::fmt::Debug> core::fmt::Debug for skene_terminal::Suspense<C>
+pub fn skene_terminal::Suspense<C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<C> skene_foundation::spine::view::AnyKind for skene_terminal::Suspense<C>
+pub struct skene_terminal::prelude::Switch<K>(_)
+impl<K: core::cmp::PartialEq + 'static> skene_terminal::Switch<K>
+pub fn skene_terminal::Switch<K>::derive_key(self, impl core::ops::function::Fn() -> K + 'static) -> Self
+pub const fn skene_terminal::Switch<K>::new() -> Self
+pub fn skene_terminal::Switch<K>::set_case<V: skene_foundation::spine::view::View<skene_terminal::ActivePlatform>>(self, K, impl core::ops::function::FnOnce() -> V + 'static) -> Self
+pub fn skene_terminal::Switch<K>::set_key(self, K) -> Self where K: core::clone::Clone
+impl<K: core::cmp::PartialEq + 'static> core::default::Default for skene_terminal::Switch<K>
+pub fn skene_terminal::Switch<K>::default() -> Self
+impl<K: core::cmp::PartialEq + 'static> skene_foundation::spine::view::View<skene_terminal::Terminal> for skene_terminal::Switch<K>
+pub fn skene_terminal::Switch<K>::build(self) -> skene_foundation::spine::node::NodeId
+impl<K> core::fmt::Debug for skene_terminal::Switch<K>
+pub fn skene_terminal::Switch<K>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<K> skene_foundation::spine::view::AnyKind for skene_terminal::Switch<K>
 pub struct skene_terminal::prelude::Text(_)
 impl skene_terminal::Text
 pub fn skene_terminal::Text::derive(impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
@@ -630,6 +690,16 @@ pub fn skene_terminal::Text::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::
 impl skene_foundation::spine::view::AnyKind for skene_terminal::Text
 impl skene_foundation::spine::view::View<skene_terminal::Terminal> for skene_terminal::Text
 pub fn skene_terminal::Text::build(self) -> skene_foundation::spine::node::NodeId
+pub struct skene_terminal::prelude::Theme<S: skene_foundation::spine::token::TokenSet<skene_terminal::TokenValue>, C>(_)
+impl<S: skene_foundation::spine::token::TokenSet<skene_terminal::TokenValue>> skene_terminal::Theme<S>
+pub fn skene_terminal::Theme<S>::derive(impl core::ops::function::Fn() -> S + 'static) -> Self
+pub fn skene_terminal::Theme<S>::new(S) -> Self
+pub fn skene_terminal::Theme<S>::set_child_builder<V: skene_foundation::spine::view::View<skene_terminal::ActivePlatform>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> skene_terminal::Theme<S, skene_foundation::realize::ChildBuilder<skene_terminal::ActivePlatform>>
+impl<S: skene_foundation::spine::token::TokenSet<skene_terminal::TokenValue>, C> core::fmt::Debug for skene_terminal::Theme<S, C>
+pub fn skene_terminal::Theme<S, C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<S: skene_foundation::spine::token::TokenSet<skene_terminal::TokenValue>, C> skene_foundation::spine::view::AnyKind for skene_terminal::Theme<S, C>
+impl<S: skene_foundation::spine::token::TokenSet<skene_terminal::TokenValue>> skene_foundation::spine::view::View<skene_terminal::Terminal> for skene_terminal::Theme<S, skene_foundation::realize::ChildBuilder<skene_terminal::ActivePlatform>>
+pub fn skene_terminal::Theme<S, skene_foundation::realize::ChildBuilder<skene_terminal::ActivePlatform>>::build(self) -> skene_foundation::spine::node::NodeId
 pub trait skene_terminal::prelude::TerminalDecoration: core::marker::Sized
 pub fn skene_terminal::prelude::TerminalDecoration::derive_border_glyphs<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::terminal::ext::BorderGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::prelude::TerminalDecoration::derive_scrollbar_glyphs<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::terminal::ext::ScrollbarGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -717,8 +787,6 @@ pub type skene_terminal::prelude::ContextMenu<C> = skene_foundation::context_men
 pub type skene_terminal::prelude::Control<B, C> = skene_foundation::control::Control<skene_terminal::ActivePlatform, B, C>
 pub type skene_terminal::prelude::Definition<T> = skene_foundation::spine::leaf::Definition<T, u32>
 pub type skene_terminal::prelude::Dimension = skene_foundation::spine::values::dimension::Dimension<u32>
-pub type skene_terminal::prelude::Enhance<C> = skene_foundation::enhance::Enhance<skene_terminal::ActivePlatform, C>
-pub type skene_terminal::prelude::ErrorBoundary<C> = skene_foundation::error_boundary::ErrorBoundary<skene_terminal::ActivePlatform, C>
 pub type skene_terminal::prelude::Inset<T> = skene_foundation::spine::values::inset::Inset<T>
 pub type skene_terminal::prelude::Keymap<C> = skene_foundation::keymap::Keymap<skene_terminal::ActivePlatform, C>
 pub type skene_terminal::prelude::LayoutBox<Kind> = skene_foundation::layout_box::LayoutBox<skene_terminal::ActivePlatform, Kind>
@@ -730,12 +798,8 @@ pub type skene_terminal::prelude::Overlay<C> = skene_foundation::overlay::Overla
 pub type skene_terminal::prelude::Painted = skene_foundation::painted::Painted<skene_terminal::ActivePlatform>
 pub type skene_terminal::prelude::Point = skene_foundation::spine::values::point::Point<u32>
 pub type skene_terminal::prelude::Rect = skene_foundation::spine::values::rect::Rect<u32>
-pub type skene_terminal::prelude::Show<C> = skene_foundation::spine::show::Show<skene_terminal::ActivePlatform, C>
 pub type skene_terminal::prelude::Size = skene_foundation::spine::values::size::Size<u32>
 pub type skene_terminal::prelude::Spacing = skene_foundation::spine::values::flex::Spacing<u32>
-pub type skene_terminal::prelude::Suspense<C> = skene_foundation::suspense::Suspense<skene_terminal::ActivePlatform, C>
-pub type skene_terminal::prelude::Switch<K> = skene_foundation::switch::Switch<skene_terminal::ActivePlatform, K>
-pub type skene_terminal::prelude::Theme<S, C> = skene_foundation::theme::Theme<skene_terminal::ActivePlatform, S, C>
 pub type skene_terminal::prelude::Token<T> = skene_foundation::spine::token::Token<T, u32>
 pub type skene_terminal::prelude::Tooltip<C> = skene_foundation::tooltip::Tooltip<skene_terminal::ActivePlatform, C>
 pub type skene_terminal::prelude::Value<T> = skene_foundation::spine::leaf::Value<T, skene_terminal::Condition>
@@ -1026,6 +1090,28 @@ pub fn skene_terminal::Container::child_mut(&mut self, skene_foundation::spine::
 impl skene_foundation::spine::view::AnyKind for skene_terminal::Container
 impl skene_foundation::spine::view::View<skene_terminal::Terminal> for skene_terminal::Container
 pub fn skene_terminal::Container::build(self) -> skene_foundation::spine::node::NodeId
+pub struct skene_terminal::Enhance<C>(_)
+impl skene_terminal::Enhance
+pub const fn skene_terminal::Enhance::new(skene_reactive::signal::ReadSignal<bool>) -> Self
+pub fn skene_terminal::Enhance::set_child_builder<V: skene_foundation::spine::view::View<skene_terminal::ActivePlatform>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> skene_terminal::Enhance<skene_foundation::realize::ChildBuilder<skene_terminal::ActivePlatform>>
+pub fn skene_terminal::Enhance::set_fallback<V: skene_foundation::spine::view::View<skene_terminal::ActivePlatform>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> Self
+impl skene_foundation::spine::view::View<skene_terminal::Terminal> for skene_terminal::Enhance<skene_foundation::realize::ChildBuilder<skene_terminal::ActivePlatform>>
+pub fn skene_terminal::Enhance<skene_foundation::realize::ChildBuilder<skene_terminal::ActivePlatform>>::build(self) -> skene_foundation::spine::node::NodeId
+impl<C: core::fmt::Debug> core::fmt::Debug for skene_terminal::Enhance<C>
+pub fn skene_terminal::Enhance<C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<C> skene_foundation::spine::view::AnyKind for skene_terminal::Enhance<C>
+pub struct skene_terminal::ErrorBoundary<C>(_)
+impl skene_terminal::ErrorBoundary
+pub const fn skene_terminal::ErrorBoundary::new() -> Self
+pub fn skene_terminal::ErrorBoundary::set_child_builder<V: skene_foundation::spine::view::View<skene_terminal::ActivePlatform>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> skene_terminal::ErrorBoundary<skene_foundation::realize::ChildBuilder<skene_terminal::ActivePlatform>>
+pub fn skene_terminal::ErrorBoundary::set_fallback_builder<V: skene_foundation::spine::view::View<skene_terminal::ActivePlatform>>(self, impl core::ops::function::Fn(skene_foundation::spine::errors::Errors) -> V + 'static) -> Self
+impl core::default::Default for skene_terminal::ErrorBoundary
+pub fn skene_terminal::ErrorBoundary::default() -> Self
+impl skene_foundation::spine::view::View<skene_terminal::Terminal> for skene_terminal::ErrorBoundary<skene_foundation::realize::ChildBuilder<skene_terminal::ActivePlatform>>
+pub fn skene_terminal::ErrorBoundary<skene_foundation::realize::ChildBuilder<skene_terminal::ActivePlatform>>::build(self) -> skene_foundation::spine::node::NodeId
+impl<C> core::fmt::Debug for skene_terminal::ErrorBoundary<C>
+pub fn skene_terminal::ErrorBoundary<C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<C> skene_foundation::spine::view::AnyKind for skene_terminal::ErrorBoundary<C>
 pub struct skene_terminal::Flexible<C>(_)
 impl skene_terminal::Flexible
 pub fn skene_terminal::Flexible::derive_grow_factor(self, impl core::ops::function::Fn() -> f32 + 'static) -> Self
@@ -1186,6 +1272,19 @@ pub fn skene_terminal::Row::children_mut(&mut self, skene_foundation::spine::chi
 impl skene_foundation::spine::view::AnyKind for skene_terminal::Row
 impl skene_foundation::spine::view::View<skene_terminal::Terminal> for skene_terminal::Row
 pub fn skene_terminal::Row::build(self) -> skene_foundation::spine::node::NodeId
+pub struct skene_terminal::Show<C>(_)
+impl skene_terminal::Show
+pub fn skene_terminal::Show::derive_shown(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
+pub fn skene_terminal::Show::new() -> Self
+pub fn skene_terminal::Show::set_child(self, impl skene_foundation::spine::view::View<skene_terminal::ActivePlatform>) -> skene_terminal::Show<skene_foundation::spine::view::AnyView<skene_terminal::ActivePlatform>>
+pub fn skene_terminal::Show::set_shown(self, bool) -> Self
+impl core::default::Default for skene_terminal::Show
+pub fn skene_terminal::Show::default() -> Self
+impl skene_foundation::spine::view::View<skene_terminal::Terminal> for skene_terminal::Show<skene_foundation::spine::view::AnyView<skene_terminal::ActivePlatform>>
+pub fn skene_terminal::Show<skene_foundation::spine::view::AnyView<skene_terminal::ActivePlatform>>::build(self) -> skene_foundation::spine::node::NodeId
+impl<C> core::fmt::Debug for skene_terminal::Show<C>
+pub fn skene_terminal::Show<C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<C> skene_foundation::spine::view::AnyKind for skene_terminal::Show<C>
 pub struct skene_terminal::Span(_)
 impl skene_terminal::Span
 pub fn skene_terminal::Span::derive(impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
@@ -1244,6 +1343,31 @@ pub fn skene_terminal::Stack::children_mut(&mut self, skene_foundation::spine::c
 impl skene_foundation::spine::view::AnyKind for skene_terminal::Stack
 impl skene_foundation::spine::view::View<skene_terminal::Terminal> for skene_terminal::Stack
 pub fn skene_terminal::Stack::build(self) -> skene_foundation::spine::node::NodeId
+pub struct skene_terminal::Suspense<C>(_)
+impl skene_terminal::Suspense
+pub const fn skene_terminal::Suspense::new() -> Self
+pub fn skene_terminal::Suspense::set_child_builder<V: skene_foundation::spine::view::View<skene_terminal::ActivePlatform>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> skene_terminal::Suspense<skene_foundation::realize::ChildBuilder<skene_terminal::ActivePlatform>>
+pub fn skene_terminal::Suspense::set_fallback(self, impl skene_foundation::spine::view::View<skene_terminal::ActivePlatform>) -> Self
+impl core::default::Default for skene_terminal::Suspense
+pub fn skene_terminal::Suspense::default() -> Self
+impl skene_foundation::spine::view::View<skene_terminal::Terminal> for skene_terminal::Suspense<skene_foundation::realize::ChildBuilder<skene_terminal::ActivePlatform>>
+pub fn skene_terminal::Suspense<skene_foundation::realize::ChildBuilder<skene_terminal::ActivePlatform>>::build(self) -> skene_foundation::spine::node::NodeId
+impl<C: core::fmt::Debug> core::fmt::Debug for skene_terminal::Suspense<C>
+pub fn skene_terminal::Suspense<C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<C> skene_foundation::spine::view::AnyKind for skene_terminal::Suspense<C>
+pub struct skene_terminal::Switch<K>(_)
+impl<K: core::cmp::PartialEq + 'static> skene_terminal::Switch<K>
+pub fn skene_terminal::Switch<K>::derive_key(self, impl core::ops::function::Fn() -> K + 'static) -> Self
+pub const fn skene_terminal::Switch<K>::new() -> Self
+pub fn skene_terminal::Switch<K>::set_case<V: skene_foundation::spine::view::View<skene_terminal::ActivePlatform>>(self, K, impl core::ops::function::FnOnce() -> V + 'static) -> Self
+pub fn skene_terminal::Switch<K>::set_key(self, K) -> Self where K: core::clone::Clone
+impl<K: core::cmp::PartialEq + 'static> core::default::Default for skene_terminal::Switch<K>
+pub fn skene_terminal::Switch<K>::default() -> Self
+impl<K: core::cmp::PartialEq + 'static> skene_foundation::spine::view::View<skene_terminal::Terminal> for skene_terminal::Switch<K>
+pub fn skene_terminal::Switch<K>::build(self) -> skene_foundation::spine::node::NodeId
+impl<K> core::fmt::Debug for skene_terminal::Switch<K>
+pub fn skene_terminal::Switch<K>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<K> skene_foundation::spine::view::AnyKind for skene_terminal::Switch<K>
 pub struct skene_terminal::Terminal
 impl core::clone::Clone for skene_terminal::Terminal
 pub fn skene_terminal::Terminal::clone(&self) -> skene_terminal::Terminal
@@ -1328,20 +1452,32 @@ impl skene_foundation::spine::view::View<skene_terminal::Terminal> for skene_ter
 pub fn skene_terminal::Column::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_foundation::spine::view::View<skene_terminal::Terminal> for skene_terminal::Container
 pub fn skene_terminal::Container::build(self) -> skene_foundation::spine::node::NodeId
+impl skene_foundation::spine::view::View<skene_terminal::Terminal> for skene_terminal::Enhance<skene_foundation::realize::ChildBuilder<skene_terminal::ActivePlatform>>
+pub fn skene_terminal::Enhance<skene_foundation::realize::ChildBuilder<skene_terminal::ActivePlatform>>::build(self) -> skene_foundation::spine::node::NodeId
+impl skene_foundation::spine::view::View<skene_terminal::Terminal> for skene_terminal::ErrorBoundary<skene_foundation::realize::ChildBuilder<skene_terminal::ActivePlatform>>
+pub fn skene_terminal::ErrorBoundary<skene_foundation::realize::ChildBuilder<skene_terminal::ActivePlatform>>::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_foundation::spine::view::View<skene_terminal::Terminal> for skene_terminal::Grid
 pub fn skene_terminal::Grid::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_foundation::spine::view::View<skene_terminal::Terminal> for skene_terminal::RichText
 pub fn skene_terminal::RichText::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_foundation::spine::view::View<skene_terminal::Terminal> for skene_terminal::Row
 pub fn skene_terminal::Row::build(self) -> skene_foundation::spine::node::NodeId
+impl skene_foundation::spine::view::View<skene_terminal::Terminal> for skene_terminal::Show<skene_foundation::spine::view::AnyView<skene_terminal::ActivePlatform>>
+pub fn skene_terminal::Show<skene_foundation::spine::view::AnyView<skene_terminal::ActivePlatform>>::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_foundation::spine::view::View<skene_terminal::Terminal> for skene_terminal::Span
 pub fn skene_terminal::Span::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_foundation::spine::view::View<skene_terminal::Terminal> for skene_terminal::Stack
 pub fn skene_terminal::Stack::build(self) -> skene_foundation::spine::node::NodeId
+impl skene_foundation::spine::view::View<skene_terminal::Terminal> for skene_terminal::Suspense<skene_foundation::realize::ChildBuilder<skene_terminal::ActivePlatform>>
+pub fn skene_terminal::Suspense<skene_foundation::realize::ChildBuilder<skene_terminal::ActivePlatform>>::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_foundation::spine::view::View<skene_terminal::Terminal> for skene_terminal::Text
 pub fn skene_terminal::Text::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_terminal::CellPainter for skene_terminal::Terminal
 pub fn skene_terminal::Terminal::paint(skene_foundation::spine::node::NodeId, alloc::boxed::Box<dyn core::ops::function::Fn(&mut skene_terminal::Cells<'_>, skene_foundation::spine::values::rect::Rect<u32>)>)
+impl<K: core::cmp::PartialEq + 'static> skene_foundation::spine::view::View<skene_terminal::Terminal> for skene_terminal::Switch<K>
+pub fn skene_terminal::Switch<K>::build(self) -> skene_foundation::spine::node::NodeId
+impl<S: skene_foundation::spine::token::TokenSet<skene_terminal::TokenValue>> skene_foundation::spine::view::View<skene_terminal::Terminal> for skene_terminal::Theme<S, skene_foundation::realize::ChildBuilder<skene_terminal::ActivePlatform>>
+pub fn skene_terminal::Theme<S, skene_foundation::realize::ChildBuilder<skene_terminal::ActivePlatform>>::build(self) -> skene_foundation::spine::node::NodeId
 pub struct skene_terminal::Text(_)
 impl skene_terminal::Text
 pub fn skene_terminal::Text::derive(impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
@@ -1379,6 +1515,16 @@ pub fn skene_terminal::Text::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::
 impl skene_foundation::spine::view::AnyKind for skene_terminal::Text
 impl skene_foundation::spine::view::View<skene_terminal::Terminal> for skene_terminal::Text
 pub fn skene_terminal::Text::build(self) -> skene_foundation::spine::node::NodeId
+pub struct skene_terminal::Theme<S: skene_foundation::spine::token::TokenSet<skene_terminal::TokenValue>, C>(_)
+impl<S: skene_foundation::spine::token::TokenSet<skene_terminal::TokenValue>> skene_terminal::Theme<S>
+pub fn skene_terminal::Theme<S>::derive(impl core::ops::function::Fn() -> S + 'static) -> Self
+pub fn skene_terminal::Theme<S>::new(S) -> Self
+pub fn skene_terminal::Theme<S>::set_child_builder<V: skene_foundation::spine::view::View<skene_terminal::ActivePlatform>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> skene_terminal::Theme<S, skene_foundation::realize::ChildBuilder<skene_terminal::ActivePlatform>>
+impl<S: skene_foundation::spine::token::TokenSet<skene_terminal::TokenValue>, C> core::fmt::Debug for skene_terminal::Theme<S, C>
+pub fn skene_terminal::Theme<S, C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<S: skene_foundation::spine::token::TokenSet<skene_terminal::TokenValue>, C> skene_foundation::spine::view::AnyKind for skene_terminal::Theme<S, C>
+impl<S: skene_foundation::spine::token::TokenSet<skene_terminal::TokenValue>> skene_foundation::spine::view::View<skene_terminal::Terminal> for skene_terminal::Theme<S, skene_foundation::realize::ChildBuilder<skene_terminal::ActivePlatform>>
+pub fn skene_terminal::Theme<S, skene_foundation::realize::ChildBuilder<skene_terminal::ActivePlatform>>::build(self) -> skene_foundation::spine::node::NodeId
 pub struct skene_terminal::WindowSize
 pub skene_terminal::WindowSize::columns: u16
 pub skene_terminal::WindowSize::pixel_height: core::option::Option<u16>
@@ -1512,8 +1658,6 @@ pub type skene_terminal::Control<B, C> = skene_foundation::control::Control<sken
 pub type skene_terminal::ControlHandle = skene_foundation::control::ControlHandle<skene_terminal::ActivePlatform>
 pub type skene_terminal::Definition<T> = skene_foundation::spine::leaf::Definition<T, u32>
 pub type skene_terminal::Dimension = skene_foundation::spine::values::dimension::Dimension<u32>
-pub type skene_terminal::Enhance<C> = skene_foundation::enhance::Enhance<skene_terminal::ActivePlatform, C>
-pub type skene_terminal::ErrorBoundary<C> = skene_foundation::error_boundary::ErrorBoundary<skene_terminal::ActivePlatform, C>
 pub type skene_terminal::Face = skene_foundation::picker::Face<skene_terminal::ActivePlatform>
 pub type skene_terminal::Inset<T> = skene_foundation::spine::values::inset::Inset<T>
 pub type skene_terminal::Keyed<V> = skene_foundation::spine::keyed::Keyed<skene_terminal::ActivePlatform, V>
@@ -1528,12 +1672,8 @@ pub type skene_terminal::Overlay<C> = skene_foundation::overlay::Overlay<skene_t
 pub type skene_terminal::Painted = skene_foundation::painted::Painted<skene_terminal::ActivePlatform>
 pub type skene_terminal::Point = skene_foundation::spine::values::point::Point<u32>
 pub type skene_terminal::Rect = skene_foundation::spine::values::rect::Rect<u32>
-pub type skene_terminal::Show<C> = skene_foundation::spine::show::Show<skene_terminal::ActivePlatform, C>
 pub type skene_terminal::Size = skene_foundation::spine::values::size::Size<u32>
 pub type skene_terminal::Spacing = skene_foundation::spine::values::flex::Spacing<u32>
-pub type skene_terminal::Suspense<C> = skene_foundation::suspense::Suspense<skene_terminal::ActivePlatform, C>
-pub type skene_terminal::Switch<K> = skene_foundation::switch::Switch<skene_terminal::ActivePlatform, K>
-pub type skene_terminal::Theme<S, C> = skene_foundation::theme::Theme<skene_terminal::ActivePlatform, S, C>
 pub type skene_terminal::Token<T> = skene_foundation::spine::token::Token<T, u32>
 pub type skene_terminal::TokenValue = <skene_terminal::ActivePlatform as skene_foundation::spine::platform::Platform>::TokenValue
 pub type skene_terminal::Tooltip<C> = skene_foundation::tooltip::Tooltip<skene_terminal::ActivePlatform, C>

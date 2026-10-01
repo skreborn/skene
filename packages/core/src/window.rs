@@ -143,4 +143,72 @@ mod tests {
     assert_eq!(item_window(1000.0, 100.0, 10.0, 3, 1).start, 3);
     assert!(item_window(0.0, 10.0, 5.0, 0, 3).is_empty());
   }
+
+  #[cfg(not(target_arch = "wasm32"))]
+  use proptest::prelude::*;
+
+  /// Whether the item `[from, to)` shows in a viewport of `viewport` at `offset`.
+  #[cfg(not(target_arch = "wasm32"))]
+  fn shows(from: f32, to: f32, offset: f32, viewport: f32) -> bool {
+    to > from && viewport > 0.0 && from < offset + viewport && to > offset
+  }
+
+  #[cfg(not(target_arch = "wasm32"))]
+  proptest! {
+    /// Over any items of measured extents, the window stays in bounds and takes every
+    /// item a positive viewport shows.
+    #[test]
+    fn a_window_over_edges_takes_every_item_shown(
+      lengths in proptest::collection::vec(0..20_u8, 0..40),
+      offset in 0..800_u16,
+      viewport in 0..200_u16,
+      overscan in 0..4_usize,
+    ) {
+      let mut edges = vec![0.0_f32];
+
+      for length in &lengths {
+        edges.push(edges.last().copied().unwrap_or(0.0) + f32::from(*length));
+      }
+
+      let (offset, viewport) = (f32::from(offset), f32::from(viewport));
+      let window = item_window_over(offset, viewport, &edges, overscan);
+
+      prop_assert!(window.start <= window.end && window.end <= lengths.len(), "{window:?}");
+
+      for item in 0..lengths.len() {
+        if shows(edges[item], edges[item + 1], offset, viewport) {
+          prop_assert!(window.start <= item && item < window.end, "{item} outside {window:?}");
+        }
+      }
+    }
+
+    /// Over items of one whole extent, the window over their edges is the window by the
+    /// extent, and takes every item a positive viewport shows.
+    #[test]
+    fn a_uniform_window_takes_every_item_shown(
+      extent in 1..20_u8,
+      count in 0..40_usize,
+      offset in 0..800_u16,
+      viewport in 0..200_u16,
+      overscan in 0..4_usize,
+    ) {
+      let extent = f32::from(extent);
+      #[expect(clippy::cast_precision_loss, reason = "a test's item count is small")]
+      let edges: Vec<f32> = (0..=count).map(|item| item as f32 * extent).collect();
+      let (offset, viewport) = (f32::from(offset), f32::from(viewport));
+      let window = item_window(offset, viewport, extent, count, overscan);
+
+      prop_assert!(window.start <= window.end && window.end <= count, "{window:?}");
+
+      for item in 0..count {
+        if shows(edges[item], edges[item + 1], offset, viewport) {
+          prop_assert!(window.start <= item && item < window.end, "{item} outside {window:?}");
+        }
+      }
+
+      if viewport > 0.0 && offset < edges[count] {
+        prop_assert_eq!(window, item_window_over(offset, viewport, &edges, overscan));
+      }
+    }
+  }
 }

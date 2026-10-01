@@ -53,6 +53,10 @@ left half-done in a code comment.
     the hydration swap goes, the drawn face remaining elsewhere.
 3. **Tests that exercise what users see.** Headless becomes the web's real stand-in,
     and every tier asserts through roles, text and pixels.
+    - The browser tier's painted-canvas test (`a_painted_box_draws_into_its_canvas`)
+    now and then reads a transparent center pixel in Chromium after its minute's wait,
+    and its panic fails the twenty tests after it in that binary; its first GPU paint
+    gets a wait the test drives rather than a deadline.
     - The terminal's retained runtime (the taffy store, the incremental restyle, the
     damage and the measured rectangles, hit testing, focus, capture, wheel latching,
     field editing, selection, motion) is extracted into a kit generic over the

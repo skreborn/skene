@@ -24,7 +24,7 @@ use skene_web::{
 fn suspense_serializes_settled_content() {
   let rendered = render_to_string(|| {
     Suspense::new()
-      .set_fallback(Text::new("FALLBACK"))
+      .set_fallback_builder(|| Text::new("FALLBACK"))
       .set_child_builder(|| {
         let value = Resource::new(|| async { 7u32 });
 
@@ -48,7 +48,7 @@ fn suspense_serializes_settled_content() {
 fn suspense_settles_through_the_stream() {
   let stream = skene_web::render_to_stream(|| {
     Suspense::new()
-      .set_fallback(Text::new("FALLBACK"))
+      .set_fallback_builder(|| Text::new("FALLBACK"))
       .set_child_builder(|| {
         let value = Resource::new(|| async { 3u32 });
 
@@ -79,7 +79,7 @@ fn suspense_inside_a_deferred_boundary_settles_its_chunk() {
       Deferred::new()
         .set_child_builder(|| {
           Suspense::new()
-            .set_fallback(Text::new("FALLBACK"))
+            .set_fallback_builder(|| Text::new("FALLBACK"))
             .set_child_builder(|| {
               let value = Resource::new(|| async {
                 platform::sleep(Duration::from_millis(5)).await;

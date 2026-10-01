@@ -231,7 +231,7 @@
   belongs to the platform when the floor is its own drawing (the terminal's backdrop in
   cells then in pixels, text at one cell then sized, truecolor over sixteen colors, a
   WebGPU canvas over a CPU one, anchor positioning over a measured rectangle) and to
-  the view when the floor is another view (`Painted::set_fallback`, the picker's
+  the view when the floor is another view (`Painted::set_fallback_builder`, the picker's
   `<select>`, `Enhance`). A low-level view hands a platform both forms where it has
   both, as `acme-sparkline` hands the terminal a cell painter and a pixel painter for
   one box, and the platform shows the upgrade where it proved it. Only a low-level
@@ -243,8 +243,8 @@
   markup (`#[lazy]` bodies included—the server leaf never splits), navigation works as
   real links, and the client bundle layers interactivity on top by hydrating in
   place—content is never gated on JS. **A view with two forms declares both**:
-  `Enhance` in `skene-foundation` builds `set_fallback` while the signal it is given is
-  false and `set_child_builder` once it is true, each at most once. There is no
+  `Enhance` in `skene-foundation` builds `set_fallback_builder` while the signal it is
+  given is false and `set_child_builder` once it is true, each at most once. There is no
   capability vocabulary: each signal belongs to what can lack it, and a web-only fact
   is named for the web. `Platform::hydration()` is the web's, `None` by default (the
   terminal and the native platforms never answer, so the terminal facade cannot name
@@ -255,9 +255,9 @@
   reads it as `media::hydrated()`.
   `Painting::available()` is the pixels': false on the server and in the terminal until
   its graphics probe is answered, true on the browser leaf once live, `trigger_graphics`
-  on the headless platform; it is what `Painted::set_fallback` waits for, and the
-  picker's prerendered `<select>` waits on `hydration()`, drawn outright where there is
-  none. Prefer the latest CSS standards and pay nothing for obscure or ancient engines;
+  on the headless platform; it is what `Painted::set_fallback_builder` waits for, and
+  the picker's prerendered `<select>` waits on `hydration()`, drawn outright where
+  there is none. Prefer the latest CSS standards and pay nothing for obscure or ancient engines;
   when a slightly older engine can be supported without giving anything up in new ones,
   support it.
 - The **interner contract is load-bearing**: content-addressed class names

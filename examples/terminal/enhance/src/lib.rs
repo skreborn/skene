@@ -61,7 +61,7 @@ fn clock_card() -> impl View {
     Text::new("The caption stands until the clock's first tick.")
       .set_color(SimplePalette::MUTED_FOREGROUND),
     Enhance::new(ticked.read_only())
-      .set_fallback(|| {
+      .set_fallback_builder(|| {
         Text::new("Waiting for the first tick.").set_color(SimplePalette::FOREGROUND)
       })
       .set_child_builder(move || {
@@ -112,7 +112,7 @@ fn picture_card() -> impl View {
       }
     })
     .set_height(3)
-    .set_fallback(|| {
+    .set_fallback_builder(|| {
       Text::new("Eight blue stripes, lightening from left to right.")
         .set_color(SimplePalette::FOREGROUND)
     }),

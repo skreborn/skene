@@ -27,7 +27,7 @@ fn a_painted_box_falls_back_until_graphics_are_proven() {
     let _ = terminal::mount(|| {
       Column::new()
         .set_children((
-          red_box(4, 2).set_fallback(|| Text::new("a red box")),
+          red_box(4, 2).set_fallback_builder(|| Text::new("a red box")),
           Text::new("after"),
         ))
         .into_any()

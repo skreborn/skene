@@ -238,7 +238,7 @@ pub trait Painting: Platform {
 
   /// Whether a painted box shows as pixels, as a signal: false on the server leaf,
   /// on the browser leaf until it is live and in the terminal until its graphics are
-  /// proven, true once they are; what [`Painted::set_fallback`](crate::Painted::set_fallback)
-  /// waits on.
+  /// proven, true once they are; what
+  /// [`Painted::set_fallback_builder`](crate::Painted::set_fallback_builder) waits on.
   fn available() -> ReadSignal<bool>;
 }

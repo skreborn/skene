@@ -37,7 +37,7 @@ fn the_fallback_stands_until_the_signal_turns() {
   let owner = Owner::new();
   let start = owner.enter(|| {
     Enhance::<Headless>::new(ready.read_only())
-      .set_fallback({
+      .set_fallback_builder({
         let fallbacks = Rc::clone(&fallbacks);
 
         move || {
@@ -84,7 +84,7 @@ fn a_signal_read_while_building_rebuilds_nothing() {
   let owner = Owner::new();
   let start = owner.enter(|| {
     Enhance::<Headless>::new(ready.read_only())
-      .set_fallback({
+      .set_fallback_builder({
         let builds = Rc::clone(&builds);
 
         move || {
@@ -128,7 +128,7 @@ fn a_signal_true_from_the_start_never_builds_the_fallback() {
   let (live, bare) = owner.enter(|| {
     (
       Enhance::<Headless>::new(Signal::new(true).read_only())
-        .set_fallback({
+        .set_fallback_builder({
           let fallbacks = Rc::clone(&fallbacks);
 
           move || {
@@ -163,7 +163,7 @@ fn hydration_is_answered_by_the_platform() {
   let owner = Owner::new();
   let start = owner.enter(|| {
     Enhance::<Headless>::new(media::hydrated::<Headless>())
-      .set_fallback(|| Text::new("markup"))
+      .set_fallback_builder(|| Text::new("markup"))
       .set_child_builder(|| Text::new("hydrated"))
       .build()
   });

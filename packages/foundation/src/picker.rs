@@ -436,7 +436,7 @@ impl<P: Platform> View<P> for BasicPicker<P, Face<P>> {
     let parts = Rc::new(RefCell::new(Some(parts)));
 
     Enhance::<P>::new(hydrated)
-      .set_fallback({
+      .set_fallback_builder({
         let parts = Rc::clone(&parts);
         let shared = Rc::clone(&shared);
         let on_change = on_change.clone();

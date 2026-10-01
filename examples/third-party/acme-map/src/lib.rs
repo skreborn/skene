@@ -103,7 +103,7 @@ impl MapHost for skene_web::platform::Web {
     let live = Self::hydration().expect("the web answers whether the page runs script");
 
     Enhance::<Self>::new(live)
-      .set_fallback(move || Map::<Self>::new().set_size(size).surface("div", |_| {}))
+      .set_fallback_builder(move || Map::<Self>::new().set_size(size).surface("div", |_| {}))
       .set_child_builder(move || Map::<Self>::new().set_size(size).canvas())
       .build()
   }

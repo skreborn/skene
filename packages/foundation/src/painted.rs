@@ -31,7 +31,7 @@ use crate::{
 /// painted at its laid-out size now and whenever that size changes.
 ///
 /// The portable low-level path for pixels; it exists only where the platform
-/// implements [`Painting`]. With a [`fallback`](Self::set_fallback) it is an
+/// implements [`Painting`]. With a [`fallback`](Self::set_fallback_builder) it is an
 /// [`Enhance`] on [`Painting::available`]: the fallback stands where nothing is drawn
 /// as pixels, a server render and a terminal without a graphics protocol included,
 /// and the painted box takes its place once something is.
@@ -59,7 +59,10 @@ impl<P: Painting> Painted<P> {
   }
 
   /// Sets the view built where nothing is drawn as pixels; nothing by default.
-  pub fn set_fallback<V: View<P>>(mut self, fallback: impl FnOnce() -> V + 'static) -> Self {
+  pub fn set_fallback_builder<V: View<P>>(
+    mut self,
+    fallback: impl FnOnce() -> V + 'static,
+  ) -> Self {
     self.fallback = Some(ChildBuilder::new(fallback));
 
     self
@@ -116,7 +119,7 @@ impl<P: Painting> View<P> for Painted<P> {
     };
 
     Enhance::<P>::new(P::available())
-      .set_fallback(move || AnyView::<P>::new(move || fallback.build()))
+      .set_fallback_builder(move || AnyView::<P>::new(move || fallback.build()))
       .set_child_builder(move || AnyView::<P>::new(paint))
       .build()
   }
@@ -168,10 +171,10 @@ pub trait PaintedBase<P: Painting>: HasBoxStyle<P> + HasLayoutBox<P> {
 
   /// Sets the view built where nothing is drawn as pixels; nothing by default.
   #[must_use]
-  fn set_fallback<V: View<P>>(self, fallback: impl FnOnce() -> V + 'static) -> Self
+  fn set_fallback_builder<V: View<P>>(self, fallback: impl FnOnce() -> V + 'static) -> Self
   where
     Self: Wraps<Inner = Painted<P>>,
   {
-    Self::wrap(self.into_inner().set_fallback(fallback))
+    Self::wrap(self.into_inner().set_fallback_builder(fallback))
   }
 }

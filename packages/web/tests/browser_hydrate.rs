@@ -305,7 +305,7 @@ fn an_enhancement_adopts_its_fallback_then_builds_its_child() {
       );
 
       Enhance::new(skene_web::media::hydrated())
-        .set_fallback(|| Text::new("baseline"))
+        .set_fallback_builder(|| Text::new("baseline"))
         .set_child_builder(move || {
           children.set(children.get() + 1);
 

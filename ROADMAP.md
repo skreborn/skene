@@ -183,10 +183,9 @@ left half-done in a code comment.
     - A shell per platform: the facades' views and Simple's, newtypes implementing the
     traits of the core beneath them, stay on probation against writing each platform's
     views by hand.
-    - Shapes: fallbacks spelled `set_fallback_builder` across `Enhance`, `Painted`,
-    `Suspense` and `ErrorBoundary`; alignment named by role, `set_item_alignment` on a
-    container (`Stack` renamed) and `set_alignment` on a wrapper (`Flexible` renamed);
-    the foundation's items under one name in every platform's prelude.
+    - Shapes: alignment named by role, `set_item_alignment` on a container (`Stack`
+    renamed) and `set_alignment` on a wrapper (`Flexible` renamed); the foundation's
+    items under one name in every platform's prelude.
     - Manifests: every crate publishable, with a description and a repository, the
     versioned dev-dependency cycles broken, and the CLI publishable, as the README's
     `cargo install` assumes; web-sys, js-sys, wasm-bindgen-test and serde_json

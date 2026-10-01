@@ -39,7 +39,7 @@ fn suspense_swaps_fallback_for_loaded_content() {
   with_platform(|| {
     let _ = terminal::mount(|| {
       Suspense::new()
-        .set_fallback(Text::new("LOADING"))
+        .set_fallback_builder(|| Text::new("LOADING"))
         .set_child_builder(|| {
           let value = Resource::new(|| async { 42u32 });
 

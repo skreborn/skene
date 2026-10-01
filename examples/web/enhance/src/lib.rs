@@ -53,7 +53,7 @@ fn clock_card() -> impl View {
       .set_font_size(13.)
       .set_color(SimplePalette::MUTED_FOREGROUND),
     Enhance::new(skene_web::media::hydrated())
-      .set_fallback(|| Text::new("Waiting for the bundle."))
+      .set_fallback_builder(|| Text::new("Waiting for the bundle."))
       .set_child_builder(|| {
         let seconds = Signal::new(0u32);
 
@@ -97,6 +97,6 @@ fn picture_card() -> impl View {
       }
     })
     .set_height(Dimension::Length(48.))
-    .set_fallback(|| Text::new("Eight blue stripes, lightening from left to right.")),
+    .set_fallback_builder(|| Text::new("Eight blue stripes, lightening from left to right.")),
   ))
 }

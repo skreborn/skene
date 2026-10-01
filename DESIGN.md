@@ -283,8 +283,8 @@ and its cost unjustified.
   `ErrorBoundary` are; those two keep their content live while it stands apart, since
   its work is what they wait on.
 - **A view declares its baseline and its enhancement.** `Enhance` in `skene-foundation` mounts one of two builders between its anchors:
-  `set_fallback(|| baseline)` is the form that works before the environment is ready,
-  and `set_child_builder(|| enhancement)` the form built once it is. Which is built
+  `set_fallback_builder(|| baseline)` is the form that works before the environment is
+  ready, and `set_child_builder(|| enhancement)` the form built once it is. Which is built
   follows a signal the enhancement is given (`Enhance::new(live)`), and the signals
   the built-ins wait on belong to the things that can lack them, never to a shared
   capability vocabulary. **Hydration** is the web's: `Platform::hydration()` returns
@@ -306,7 +306,7 @@ and its cost unjustified.
   graphics probe is answered, and the headless platform's from `trigger_graphics`. Only
   the branch in force is ever built, so an enhancement may touch the browser and a
   baseline may be the whole view where the signal never turns. The seam is the
-  built-ins' own: `Painted` takes `set_fallback`, the view drawn where no pixels
+  built-ins' own: `Painted` takes `set_fallback_builder`, the view drawn where no pixels
   show, so a painted box has a no-JS form on the web and a cell form in the terminal
   through the one mechanism, and the picker's prerendered `<select>` is the same swap
   over `hydration()`, drawn outright on a platform that has none. What the

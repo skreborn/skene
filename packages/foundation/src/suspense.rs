@@ -6,7 +6,6 @@ use skene_reactive::{Effect, Owner, on_cleanup, provide_context};
 
 use crate::{
   AnyKind,
-  AnyView,
   Boundary,
   NoChild,
   NodeId,
@@ -31,7 +30,7 @@ use crate::{
 #[derive(Debug)]
 #[must_use]
 pub struct Suspense<P: Platform, C = NoChild> {
-  fallback: Option<AnyView<P>>,
+  fallback: Option<ChildBuilder<P>>,
   child: C,
   platform: PhantomData<fn() -> P>,
 }
@@ -56,9 +55,13 @@ impl<P: Platform> Suspense<P> {
 }
 
 impl<P: Platform> Suspense<P> {
-  /// Sets the fallback shown while the content's work is pending; nothing by default.
-  pub fn set_fallback(mut self, fallback: impl View<P>) -> Self {
-    self.fallback = Some(fallback.into_any());
+  /// Sets the fallback shown while the content's work is pending, built by `fallback`;
+  /// nothing by default.
+  pub fn set_fallback_builder<V: View<P>>(
+    mut self,
+    fallback: impl FnOnce() -> V + 'static,
+  ) -> Self {
+    self.fallback = Some(ChildBuilder::new(fallback));
 
     self
   }
@@ -152,9 +155,10 @@ pub trait SuspenseBase<P: Platform>: Wraps<Inner = Suspense<P>> {
     Self::wrap(Suspense::new())
   }
 
-  /// Sets the fallback shown while the content's work is pending; nothing by default.
+  /// Sets the fallback shown while the content's work is pending, built by `fallback`;
+  /// nothing by default.
   #[must_use]
-  fn set_fallback(self, fallback: impl View<P>) -> Self {
-    Self::wrap(self.into_inner().set_fallback(fallback))
+  fn set_fallback_builder<V: View<P>>(self, fallback: impl FnOnce() -> V + 'static) -> Self {
+    Self::wrap(self.into_inner().set_fallback_builder(fallback))
   }
 }

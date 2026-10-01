@@ -55,7 +55,10 @@ impl<P: Platform> Enhance<P> {
 
 impl<P: Platform> Enhance<P> {
   /// Sets the form built while `live` is false; nothing by default.
-  pub fn set_fallback<V: View<P>>(mut self, fallback: impl FnOnce() -> V + 'static) -> Self {
+  pub fn set_fallback_builder<V: View<P>>(
+    mut self,
+    fallback: impl FnOnce() -> V + 'static,
+  ) -> Self {
     self.fallback = Some(ChildBuilder::new(fallback));
 
     self
@@ -114,7 +117,7 @@ pub trait EnhanceBase<P: Platform>: Wraps<Inner = Enhance<P>> {
 
   /// Sets the form built while `live` is false; nothing by default.
   #[must_use]
-  fn set_fallback<V: View<P>>(self, fallback: impl FnOnce() -> V + 'static) -> Self {
-    Self::wrap(self.into_inner().set_fallback(fallback))
+  fn set_fallback_builder<V: View<P>>(self, fallback: impl FnOnce() -> V + 'static) -> Self {
+    Self::wrap(self.into_inner().set_fallback_builder(fallback))
   }
 }

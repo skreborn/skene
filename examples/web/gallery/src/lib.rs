@@ -490,7 +490,7 @@ fn boundaries() -> impl View {
     "Suspense & ErrorBoundary",
     Column::new().set_spacing(12.).set_children((
       Suspense::new()
-        .set_fallback(Text::new("Loading…").set_color(SimplePalette::MUTED_FOREGROUND))
+        .set_fallback_builder(|| Text::new("Loading…").set_color(SimplePalette::MUTED_FOREGROUND))
         .set_child_builder(|| {
           let loaded = Resource::client(|| async { String::from("Loaded in the background.") });
 

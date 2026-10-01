@@ -122,14 +122,15 @@ fn css(color: Color) -> String {
 fn an_enhancement_renders_its_fallback() {
   let page = render_to_string(|| {
     Enhance::new(skene_web::media::hydrated())
-      .set_fallback(|| Text::new("baseline"))
+      .set_fallback_builder(|| Text::new("baseline"))
       .set_child_builder(|| Text::new("live"))
   });
 
   assert!(page.body().contains(">baseline</span>"), "{}", page.body());
   assert!(!page.body().contains("live"), "{}", page.body());
 
-  let page = render_to_string(|| Painted::new(|_, _| {}).set_fallback(|| Text::new("a picture")));
+  let page =
+    render_to_string(|| Painted::new(|_, _| {}).set_fallback_builder(|| Text::new("a picture")));
 
   assert!(page.body().contains(">a picture</span>"), "{}", page.body());
   assert!(!page.body().contains("<canvas"), "{}", page.body());

@@ -11,7 +11,7 @@ fn an_enhancement_swaps_on_its_signal() {
     let ready = Signal::new(false);
     let _ = terminal::mount(move || {
       Enhance::new(ready.read_only())
-        .set_fallback(|| Text::new("waiting"))
+        .set_fallback_builder(|| Text::new("waiting"))
         .set_child_builder(|| Text::new("ready"))
         .into_any()
         .build()

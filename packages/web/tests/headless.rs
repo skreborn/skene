@@ -846,7 +846,7 @@ fn a_painted_box_falls_back_where_nothing_is_drawn_as_pixels() {
   let owner = Owner::new();
   let start = owner.enter(|| {
     Painted::new(|_, _| {})
-      .set_fallback(|| Text::new("a red box"))
+      .set_fallback_builder(|| Text::new("a red box"))
       .build()
   });
   let nodes = || Scene::<skene_web::ActivePlatform>::with(|scene| scene.segment_nodes(start));

@@ -43,7 +43,7 @@ fn a_wrapper_annotates_a_boundarys_content_and_fallback() {
           .set_flexibility(Flexibility::grow(2.))
           .set_child(
             Suspense::new()
-              .set_fallback(Container::new())
+              .set_fallback_builder(Container::new)
               .set_child_builder(move || {
                 boundary.set(Boundary::current());
 
@@ -103,7 +103,7 @@ fn suspense_swap_preserves_the_content_and_disposal_destroys_the_fallback() {
     Container::new()
       .set_child(
         Suspense::new()
-          .set_fallback(Text::new("loading"))
+          .set_fallback_builder(|| Text::new("loading"))
           .set_child_builder(move || {
             boundary.set(Boundary::current());
             local.set(Some(Signal::new(1)));
@@ -164,12 +164,12 @@ fn nested_suspense_pends_the_enclosing_boundary_once() {
     Container::new()
       .set_child(
         Suspense::new()
-          .set_fallback(Text::new("outer loading"))
+          .set_fallback_builder(|| Text::new("outer loading"))
           .set_child_builder(move || {
             outer.set(Boundary::current());
 
             Suspense::new()
-              .set_fallback(Text::new("inner loading"))
+              .set_fallback_builder(|| Text::new("inner loading"))
               .set_child_builder(move || {
                 inner.set(Boundary::current());
 

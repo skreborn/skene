@@ -1634,7 +1634,7 @@ impl core::marker::StructuralPartialEq for skene_foundation::web::HeadId
 pub struct skene_foundation::web::Painted<P: skene_foundation::Painting>
 impl<P: skene_foundation::Painting> skene_foundation::Painted<P>
 pub fn skene_foundation::Painted<P>::new(impl core::ops::function::Fn(&mut skene_foundation::Canvas, skene_foundation::Size<f32>) + 'static) -> Self
-pub fn skene_foundation::Painted<P>::set_fallback<V: skene_foundation::View<P>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> Self
+pub fn skene_foundation::Painted<P>::set_fallback_builder<V: skene_foundation::View<P>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> Self
 impl<P: skene_foundation::Painting> core::fmt::Debug for skene_foundation::Painted<P>
 pub fn skene_foundation::Painted<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<P: skene_foundation::Painting> skene_foundation::AnyKind for skene_foundation::Painted<P>
@@ -1655,7 +1655,7 @@ pub fn skene_foundation::Painted<P>::derive_width<R: core::convert::Into<skene_f
 pub fn skene_foundation::Painted<P>::new(impl core::ops::function::Fn(&mut skene_foundation::Canvas, skene_foundation::Size<f32>) + 'static) -> Self where Self: skene_foundation::Wraps<Inner = skene_foundation::Painted<P>>
 pub fn skene_foundation::Painted<P>::set_aspect_ratio(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::AspectRatio, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Painted<P>::set_description(self, impl core::convert::Into<alloc::string::String>) -> Self
-pub fn skene_foundation::Painted<P>::set_fallback<V: skene_foundation::View<P>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> Self where Self: skene_foundation::Wraps<Inner = skene_foundation::Painted<P>>
+pub fn skene_foundation::Painted<P>::set_fallback_builder<V: skene_foundation::View<P>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> Self where Self: skene_foundation::Wraps<Inner = skene_foundation::Painted<P>>
 pub fn skene_foundation::Painted<P>::set_height(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Painted<P>::set_max_height(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Painted<P>::set_max_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
@@ -4201,7 +4201,7 @@ impl<P: skene_foundation::Platform> skene_foundation::Enhance<P>
 pub const fn skene_foundation::Enhance<P>::new(skene_reactive::signal::ReadSignal<bool>) -> Self
 impl<P: skene_foundation::Platform> skene_foundation::Enhance<P>
 pub fn skene_foundation::Enhance<P>::set_child_builder<V: skene_foundation::View<P>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> skene_foundation::Enhance<P, skene_foundation::realize::ChildBuilder<P>>
-pub fn skene_foundation::Enhance<P>::set_fallback<V: skene_foundation::View<P>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> Self
+pub fn skene_foundation::Enhance<P>::set_fallback_builder<V: skene_foundation::View<P>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> Self
 impl<P: core::fmt::Debug + skene_foundation::Platform, C: core::fmt::Debug> core::fmt::Debug for skene_foundation::Enhance<P, C>
 pub fn skene_foundation::Enhance<P, C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<P: skene_foundation::Platform, C> skene_foundation::AnyKind for skene_foundation::Enhance<P, C>
@@ -5409,7 +5409,7 @@ pub fn skene_foundation::OverlayProps<P>::fmt(&self, &mut core::fmt::Formatter<'
 pub struct skene_foundation::Painted<P: skene_foundation::Painting>
 impl<P: skene_foundation::Painting> skene_foundation::Painted<P>
 pub fn skene_foundation::Painted<P>::new(impl core::ops::function::Fn(&mut skene_foundation::Canvas, skene_foundation::Size<f32>) + 'static) -> Self
-pub fn skene_foundation::Painted<P>::set_fallback<V: skene_foundation::View<P>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> Self
+pub fn skene_foundation::Painted<P>::set_fallback_builder<V: skene_foundation::View<P>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> Self
 impl<P: skene_foundation::Painting> core::fmt::Debug for skene_foundation::Painted<P>
 pub fn skene_foundation::Painted<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<P: skene_foundation::Painting> skene_foundation::AnyKind for skene_foundation::Painted<P>
@@ -5430,7 +5430,7 @@ pub fn skene_foundation::Painted<P>::derive_width<R: core::convert::Into<skene_f
 pub fn skene_foundation::Painted<P>::new(impl core::ops::function::Fn(&mut skene_foundation::Canvas, skene_foundation::Size<f32>) + 'static) -> Self where Self: skene_foundation::Wraps<Inner = skene_foundation::Painted<P>>
 pub fn skene_foundation::Painted<P>::set_aspect_ratio(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::AspectRatio, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Painted<P>::set_description(self, impl core::convert::Into<alloc::string::String>) -> Self
-pub fn skene_foundation::Painted<P>::set_fallback<V: skene_foundation::View<P>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> Self where Self: skene_foundation::Wraps<Inner = skene_foundation::Painted<P>>
+pub fn skene_foundation::Painted<P>::set_fallback_builder<V: skene_foundation::View<P>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> Self where Self: skene_foundation::Wraps<Inner = skene_foundation::Painted<P>>
 pub fn skene_foundation::Painted<P>::set_height(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Painted<P>::set_max_height(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Painted<P>::set_max_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
@@ -6280,7 +6280,7 @@ impl<P: skene_foundation::Platform> skene_foundation::Suspense<P>
 pub const fn skene_foundation::Suspense<P>::new() -> Self
 impl<P: skene_foundation::Platform> skene_foundation::Suspense<P>
 pub fn skene_foundation::Suspense<P>::set_child_builder<V: skene_foundation::View<P>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> skene_foundation::Suspense<P, skene_foundation::realize::ChildBuilder<P>>
-pub fn skene_foundation::Suspense<P>::set_fallback(self, impl skene_foundation::View<P>) -> Self
+pub fn skene_foundation::Suspense<P>::set_fallback_builder<V: skene_foundation::View<P>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> Self
 impl<P: core::fmt::Debug + skene_foundation::Platform, C: core::fmt::Debug> core::fmt::Debug for skene_foundation::Suspense<P, C>
 pub fn skene_foundation::Suspense<P, C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<P: skene_foundation::Platform, C> skene_foundation::AnyKind for skene_foundation::Suspense<P, C>
@@ -7618,7 +7618,7 @@ pub fn T::derive_corner_radius<R: core::convert::Into<skene_foundation::StaticLe
 pub fn T::set_corner_radius(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Length, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub trait skene_foundation::EnhanceBase<P: skene_foundation::Platform>: skene_foundation::Wraps<Inner = skene_foundation::Enhance<P>>
 pub fn skene_foundation::EnhanceBase::new(skene_reactive::signal::ReadSignal<bool>) -> Self
-pub fn skene_foundation::EnhanceBase::set_fallback<V: skene_foundation::View<P>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> Self
+pub fn skene_foundation::EnhanceBase::set_fallback_builder<V: skene_foundation::View<P>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> Self
 pub trait skene_foundation::ErrorBoundaryBase<P: skene_foundation::Platform>: skene_foundation::Wraps<Inner = skene_foundation::ErrorBoundary<P>>
 pub fn skene_foundation::ErrorBoundaryBase::new() -> Self
 pub fn skene_foundation::ErrorBoundaryBase::set_fallback_builder<V: skene_foundation::View<P>>(self, impl core::ops::function::Fn(skene_foundation::Errors) -> V + 'static) -> Self
@@ -8197,7 +8197,7 @@ pub fn skene_foundation::PaintedBase::derive_width<R: core::convert::Into<skene_
 pub fn skene_foundation::PaintedBase::new(impl core::ops::function::Fn(&mut skene_foundation::Canvas, skene_foundation::Size<f32>) + 'static) -> Self where Self: skene_foundation::Wraps<Inner = skene_foundation::Painted<P>>
 pub fn skene_foundation::PaintedBase::set_aspect_ratio(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::AspectRatio, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::PaintedBase::set_description(self, impl core::convert::Into<alloc::string::String>) -> Self
-pub fn skene_foundation::PaintedBase::set_fallback<V: skene_foundation::View<P>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> Self where Self: skene_foundation::Wraps<Inner = skene_foundation::Painted<P>>
+pub fn skene_foundation::PaintedBase::set_fallback_builder<V: skene_foundation::View<P>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> Self where Self: skene_foundation::Wraps<Inner = skene_foundation::Painted<P>>
 pub fn skene_foundation::PaintedBase::set_height(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::PaintedBase::set_max_height(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::PaintedBase::set_max_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
@@ -8216,7 +8216,7 @@ pub fn skene_foundation::Painted<P>::derive_width<R: core::convert::Into<skene_f
 pub fn skene_foundation::Painted<P>::new(impl core::ops::function::Fn(&mut skene_foundation::Canvas, skene_foundation::Size<f32>) + 'static) -> Self where Self: skene_foundation::Wraps<Inner = skene_foundation::Painted<P>>
 pub fn skene_foundation::Painted<P>::set_aspect_ratio(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::AspectRatio, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Painted<P>::set_description(self, impl core::convert::Into<alloc::string::String>) -> Self
-pub fn skene_foundation::Painted<P>::set_fallback<V: skene_foundation::View<P>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> Self where Self: skene_foundation::Wraps<Inner = skene_foundation::Painted<P>>
+pub fn skene_foundation::Painted<P>::set_fallback_builder<V: skene_foundation::View<P>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> Self where Self: skene_foundation::Wraps<Inner = skene_foundation::Painted<P>>
 pub fn skene_foundation::Painted<P>::set_height(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Painted<P>::set_max_height(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Painted<P>::set_max_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
@@ -8548,7 +8548,7 @@ pub fn skene_foundation::web::WebStyle::interpolate_value(&f32, &f32, f32) -> co
 pub fn skene_foundation::web::WebStyle::run_value_from_number(f32) -> core::option::Option<skene_foundation::RunValue<Self>>
 pub trait skene_foundation::SuspenseBase<P: skene_foundation::Platform>: skene_foundation::Wraps<Inner = skene_foundation::Suspense<P>>
 pub fn skene_foundation::SuspenseBase::new() -> Self
-pub fn skene_foundation::SuspenseBase::set_fallback(self, impl skene_foundation::View<P>) -> Self
+pub fn skene_foundation::SuspenseBase::set_fallback_builder<V: skene_foundation::View<P>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> Self
 pub trait skene_foundation::TextBase<P: skene_foundation::Platform>: skene_foundation::Wraps<Inner = skene_foundation::Text<P>>
 pub fn skene_foundation::TextBase::derive(impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
 pub fn skene_foundation::TextBase::new(impl core::convert::Into<alloc::string::String>) -> Self

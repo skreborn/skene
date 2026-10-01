@@ -14,7 +14,7 @@ skene-reactive.workspace = true
 unicode-segmentation = "1"
 
 [dev-dependencies]
-skene-conformance.workspace = true
+skene-conformance = { path = "../conformance" }
 
 [lints]
 workspace = true

@@ -14,11 +14,23 @@ const DEPENDENCY_TABLES: [&str; 3] = ["dependencies", "dev-dependencies", "build
 /// alphabetical order, a cargo feature enables optional dependencies alone and none is
 /// on by default, a crate is optional only where a feature enables it, each member
 /// inherits the workspace's lints and rust-version, a crate under `packages/` declares a
-/// description and inherits the license and the repository, and every other member is
-/// never published.
+/// description, inherits the license and the repository and names a workspace crate it
+/// tests against by its path alone, and every other member is never published.
 pub(crate) fn check(root: &Path) -> Result<(), String> {
   let mut problems = Vec::new();
   let workspace = root.join("Cargo.toml");
+  let members: Vec<String> = manifest_paths(root)?
+    .iter()
+    .filter_map(|path| {
+      let manifest = read(path).ok()?;
+
+      manifest
+        .get("package")?
+        .get("name")?
+        .as_str()
+        .map(str::to_owned)
+    })
+    .collect();
 
   for path in manifest_paths(root)? {
     let manifest = read(&path)?;
@@ -37,29 +49,14 @@ pub(crate) fn check(root: &Path) -> Result<(), String> {
         ));
       }
 
-      let package = manifest.get("package");
-
       if path
         .strip_prefix(root)
         .is_ok_and(|relative| relative.starts_with("packages"))
       {
-        if package
-          .and_then(|package| package.get("description"))
-          .and_then(Item::as_str)
-          .is_none()
-        {
-          problems.push(format!("{name}: declares no description"));
-        }
-
-        for key in ["license", "repository"] {
-          if !inherits(&manifest, &["package", key, "workspace"]) {
-            problems.push(format!(
-              "{name}: inherits no {key} (`{key}.workspace = true`)"
-            ));
-          }
-        }
+        check_publishable(&name.to_string(), &manifest, &members, &mut problems);
       }
-      else if package
+      else if manifest
+        .get("package")
         .and_then(|package| package.get("publish"))
         .and_then(Item::as_bool)
         != Some(false)
@@ -103,6 +100,52 @@ pub(crate) fn check(root: &Path) -> Result<(), String> {
   }
   else {
     Err(problems.join("\n"))
+  }
+}
+
+/// Notes what the crate under `packages/` that `manifest` (named `name`) lacks to
+/// publish: a description, the workspace's license and repository, and its path alone
+/// for each of the workspace's `members` it tests against.
+fn check_publishable(
+  name: &str,
+  manifest: &DocumentMut,
+  members: &[String],
+  problems: &mut Vec<String>,
+) {
+  if manifest
+    .get("package")
+    .and_then(|package| package.get("description"))
+    .and_then(Item::as_str)
+    .is_none()
+  {
+    problems.push(format!("{name}: declares no description"));
+  }
+
+  for key in ["license", "repository"] {
+    if !inherits(manifest, &["package", key, "workspace"]) {
+      problems.push(format!(
+        "{name}: inherits no {key} (`{key}.workspace = true`)"
+      ));
+    }
+  }
+
+  for (table, entries) in dependency_tables(manifest) {
+    if !table.ends_with("dev-dependencies") {
+      continue;
+    }
+
+    for (dependency, entry) in entries.iter() {
+      if members.iter().any(|member| member == dependency)
+        && (entry.get("path").is_none()
+          || entry.get("version").is_some()
+          || entry.get("workspace").is_some())
+      {
+        problems.push(format!(
+          "{name}: [{table}] names the workspace's `{dependency}` by more than its path, \
+           which a publish would wait on (`{{ path = \"..\" }}`)"
+        ));
+      }
+    }
   }
 }
 

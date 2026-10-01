@@ -89,10 +89,10 @@ futures-timer = "3"
 rustix = { features = ["stdio"], version = "1" }
 
 [dev-dependencies]
-skene-simple-web.workspace = true
+skene-simple-web = { path = "../simple-web" }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-skene-headless.workspace = true
+skene-headless = { path = "../headless" }
 trybuild.workspace = true
 
 [package.metadata.cargo-shear]
@@ -100,7 +100,7 @@ ignored-paths = ["tests/compile_fail/*.rs"]
 
 [target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dev-dependencies]
 js-sys = "0.3"
-skene-headless.workspace = true
+skene-headless = { path = "../headless" }
 wasm-bindgen-test = "0.3"
 web-sys = { version = "0.3", features = [
   "CanvasRenderingContext2d",

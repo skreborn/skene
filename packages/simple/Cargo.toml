@@ -12,7 +12,7 @@ skene-foundation.workspace = true
 skene-reactive.workspace = true
 
 [dev-dependencies]
-skene-headless.workspace = true
+skene-headless = { path = "../headless" }
 
 [lints]
 workspace = true

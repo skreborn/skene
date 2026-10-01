@@ -30,45 +30,6 @@ pub const skene_simple::glyphs::CHECKBOX_UNCHECKED: skene_core::token::TokenRef<
 pub const skene_simple::glyphs::PICKER_INDICATOR: skene_core::token::TokenRef<alloc::string::String>
 pub const skene_simple::glyphs::RADIO_CHECKED: skene_core::token::TokenRef<alloc::string::String>
 pub const skene_simple::glyphs::RADIO_UNCHECKED: skene_core::token::TokenRef<alloc::string::String>
-pub mod skene_simple::gui
-pub mod skene_simple::gui::prelude
-pub use skene_simple::gui::prelude::<<super::*>>
-pub enum skene_simple::gui::SimpleVariant
-pub skene_simple::gui::SimpleVariant::Destructive
-pub skene_simple::gui::SimpleVariant::Ghost
-pub skene_simple::gui::SimpleVariant::Outline
-pub skene_simple::gui::SimpleVariant::Primary
-pub skene_simple::gui::SimpleVariant::Secondary
-impl skene_simple::SimpleVariant
-pub const fn skene_simple::SimpleVariant::border(self) -> skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const fn skene_simple::SimpleVariant::focus(self) -> skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const fn skene_simple::SimpleVariant::hover(self) -> skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const fn skene_simple::SimpleVariant::ink(self) -> skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const fn skene_simple::SimpleVariant::surface(self) -> skene_core::token::TokenRef<skene_core::values::color::Color>
-impl core::clone::Clone for skene_simple::SimpleVariant
-pub fn skene_simple::SimpleVariant::clone(&self) -> skene_simple::SimpleVariant
-impl core::cmp::Eq for skene_simple::SimpleVariant
-impl core::cmp::PartialEq for skene_simple::SimpleVariant
-pub fn skene_simple::SimpleVariant::eq(&self, &skene_simple::SimpleVariant) -> bool
-impl core::default::Default for skene_simple::SimpleVariant
-pub fn skene_simple::SimpleVariant::default() -> skene_simple::SimpleVariant
-impl core::fmt::Debug for skene_simple::SimpleVariant
-pub fn skene_simple::SimpleVariant::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::marker::Copy for skene_simple::SimpleVariant
-impl core::marker::StructuralPartialEq for skene_simple::SimpleVariant
-pub type skene_simple::gui::SimpleButton = skene_simple::SimpleButton<skene_gui::ActivePlatform>
-pub type skene_simple::gui::SimpleCard = skene_simple::SimpleCard<skene_gui::ActivePlatform>
-pub type skene_simple::gui::SimpleCheckbox = skene_simple::SimpleCheckbox<skene_gui::ActivePlatform>
-pub type skene_simple::gui::SimpleContextMenu<C> = skene_simple::SimpleContextMenu<skene_gui::ActivePlatform, C>
-pub type skene_simple::gui::SimpleLook = skene_simple::SimpleLook<f32>
-pub type skene_simple::gui::SimplePalette = skene_simple::SimplePalette<f32>
-pub type skene_simple::gui::SimplePicker = skene_simple::SimplePicker<skene_gui::ActivePlatform>
-pub type skene_simple::gui::SimpleRadio = skene_simple::SimpleRadio<skene_gui::ActivePlatform>
-pub type skene_simple::gui::SimpleRadioGroup<C> = skene_simple::SimpleRadioGroup<skene_gui::ActivePlatform, C>
-pub type skene_simple::gui::SimpleSlider = skene_simple::SimpleSlider<skene_gui::ActivePlatform>
-pub type skene_simple::gui::SimpleTextEditor = skene_simple::SimpleTextEditor<skene_gui::ActivePlatform>
-pub type skene_simple::gui::SimpleTextField = skene_simple::SimpleTextField<skene_gui::ActivePlatform>
-pub type skene_simple::gui::SimpleTooltip<C> = skene_simple::SimpleTooltip<skene_gui::ActivePlatform, C>
 pub mod skene_simple::terminal
 pub mod skene_simple::terminal::glyph
 pub struct skene_simple::terminal::glyph::SimpleGlyphs
@@ -164,6 +125,45 @@ pub type skene_simple::terminal::SimpleSlider = skene_simple::SimpleSlider<skene
 pub type skene_simple::terminal::SimpleTextEditor = skene_simple::SimpleTextEditor<skene_terminal::ActivePlatform>
 pub type skene_simple::terminal::SimpleTextField = skene_simple::SimpleTextField<skene_terminal::ActivePlatform>
 pub type skene_simple::terminal::SimpleTooltip<C> = skene_simple::SimpleTooltip<skene_terminal::ActivePlatform, C>
+pub mod skene_simple::web
+pub mod skene_simple::web::prelude
+pub use skene_simple::web::prelude::<<super::*>>
+pub enum skene_simple::web::SimpleVariant
+pub skene_simple::web::SimpleVariant::Destructive
+pub skene_simple::web::SimpleVariant::Ghost
+pub skene_simple::web::SimpleVariant::Outline
+pub skene_simple::web::SimpleVariant::Primary
+pub skene_simple::web::SimpleVariant::Secondary
+impl skene_simple::SimpleVariant
+pub const fn skene_simple::SimpleVariant::border(self) -> skene_core::token::TokenRef<skene_core::values::color::Color>
+pub const fn skene_simple::SimpleVariant::focus(self) -> skene_core::token::TokenRef<skene_core::values::color::Color>
+pub const fn skene_simple::SimpleVariant::hover(self) -> skene_core::token::TokenRef<skene_core::values::color::Color>
+pub const fn skene_simple::SimpleVariant::ink(self) -> skene_core::token::TokenRef<skene_core::values::color::Color>
+pub const fn skene_simple::SimpleVariant::surface(self) -> skene_core::token::TokenRef<skene_core::values::color::Color>
+impl core::clone::Clone for skene_simple::SimpleVariant
+pub fn skene_simple::SimpleVariant::clone(&self) -> skene_simple::SimpleVariant
+impl core::cmp::Eq for skene_simple::SimpleVariant
+impl core::cmp::PartialEq for skene_simple::SimpleVariant
+pub fn skene_simple::SimpleVariant::eq(&self, &skene_simple::SimpleVariant) -> bool
+impl core::default::Default for skene_simple::SimpleVariant
+pub fn skene_simple::SimpleVariant::default() -> skene_simple::SimpleVariant
+impl core::fmt::Debug for skene_simple::SimpleVariant
+pub fn skene_simple::SimpleVariant::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for skene_simple::SimpleVariant
+impl core::marker::StructuralPartialEq for skene_simple::SimpleVariant
+pub type skene_simple::web::SimpleButton = skene_simple::SimpleButton<skene_web::ActivePlatform>
+pub type skene_simple::web::SimpleCard = skene_simple::SimpleCard<skene_web::ActivePlatform>
+pub type skene_simple::web::SimpleCheckbox = skene_simple::SimpleCheckbox<skene_web::ActivePlatform>
+pub type skene_simple::web::SimpleContextMenu<C> = skene_simple::SimpleContextMenu<skene_web::ActivePlatform, C>
+pub type skene_simple::web::SimpleLook = skene_simple::SimpleLook<f32>
+pub type skene_simple::web::SimplePalette = skene_simple::SimplePalette<f32>
+pub type skene_simple::web::SimplePicker = skene_simple::SimplePicker<skene_web::ActivePlatform>
+pub type skene_simple::web::SimpleRadio = skene_simple::SimpleRadio<skene_web::ActivePlatform>
+pub type skene_simple::web::SimpleRadioGroup<C> = skene_simple::SimpleRadioGroup<skene_web::ActivePlatform, C>
+pub type skene_simple::web::SimpleSlider = skene_simple::SimpleSlider<skene_web::ActivePlatform>
+pub type skene_simple::web::SimpleTextEditor = skene_simple::SimpleTextEditor<skene_web::ActivePlatform>
+pub type skene_simple::web::SimpleTextField = skene_simple::SimpleTextField<skene_web::ActivePlatform>
+pub type skene_simple::web::SimpleTooltip<C> = skene_simple::SimpleTooltip<skene_web::ActivePlatform, C>
 pub enum skene_simple::SimpleMarks
 pub skene_simple::SimpleMarks::Drawn
 pub skene_simple::SimpleMarks::Glyph

@@ -70,8 +70,8 @@ use web_sys::{
 
 use super::{Node, Realized, end_turn, with_dom};
 use crate::{
-  Web,
   condition::{DRAG_MARKER, DRAGGED_ATTRIBUTE, DRAGS_ATTRIBUTE, TARGETED_ATTRIBUTE},
+  platform::Web,
 };
 
 /// The properties stamped on every element the scene knows, holding its node's index

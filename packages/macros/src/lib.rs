@@ -10,11 +10,11 @@ use syn::{DeriveInput, FnArg, ItemFn, Pat, ReturnType, parse_macro_input};
 /// Marks the application entry point.
 ///
 /// Apply to a function returning a view. Expands to the selected platform's entry glue,
-/// which calls `skene_gui::launch` with the function, so the app runs on whatever GUI
-/// platform the build targets.
+/// which calls `skene_web::launch` with the function, so the app runs on whichever leaf
+/// the build targets.
 ///
 /// ```ignore
-/// #[skene_gui::main]
+/// #[skene_web::main]
 /// fn app() -> impl View {
 ///   Text::new("hello")
 /// }
@@ -38,17 +38,17 @@ pub fn main(_attr: TokenStream, item: TokenStream) -> TokenStream {
     #[allow(unexpected_cfgs)]
     #[cfg_attr(
       all(target_arch = "wasm32", target_os = "unknown"),
-      ::skene_gui::wasm_bindgen::prelude::wasm_bindgen(start, wasm_bindgen = ::skene_gui::wasm_bindgen)
+      ::skene_web::wasm_bindgen::prelude::wasm_bindgen(start, wasm_bindgen = ::skene_web::wasm_bindgen)
     )]
     pub fn __skene_main() {
       #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
-      ::skene_gui::launch(#name);
+      ::skene_web::launch(#name);
 
       #[cfg(skene_platform = "server")]
-      ::skene_gui::render_main(env!("CARGO_CRATE_NAME"), #name);
+      ::skene_web::render_main(env!("CARGO_CRATE_NAME"), #name);
 
       #[cfg(not(any(all(target_arch = "wasm32", target_os = "unknown"), skene_platform = "server")))]
-      ::skene_gui::launch(#name);
+      ::skene_web::launch(#name);
     }
   }
   .into()
@@ -64,7 +64,7 @@ pub fn main(_attr: TokenStream, item: TokenStream) -> TokenStream {
 /// which a build carrying lazy functions requires; every other target calls the body
 /// directly.
 ///
-/// Pair with [`AsyncView`](../skene_gui/struct.AsyncView.html) to render a lazy function's view:
+/// Pair with [`AsyncView`](../skene_web/struct.AsyncView.html) to render a lazy function's view:
 /// `AsyncView::new(settings)`.
 #[expect(
   clippy::too_many_lines,
@@ -189,11 +189,11 @@ pub fn lazy(args: TokenStream, item: TokenStream) -> TokenStream {
       }
 
       ::std::thread_local! {
-        static #loader: ::skene_gui::split::SplitLoader =
-          unsafe { ::skene_gui::split::SplitLoader::new(#load) };
+        static #loader: ::skene_web::split::SplitLoader =
+          unsafe { ::skene_web::split::SplitLoader::new(#load) };
       }
 
-      ::skene_gui::split::SplitLoader::ensure(&#loader).await;
+      ::skene_web::split::SplitLoader::ensure(&#loader).await;
 
       unsafe { #import(#(#arguments),*) }.await
     }
@@ -220,7 +220,7 @@ pub fn lazy(args: TokenStream, item: TokenStream) -> TokenStream {
 /// `#[store(tag = "name")]` keys it by `name` instead, so the location survives a
 /// rename, and `#[store(skip)]` generates no accessor for the field. The generated code
 /// names `skene_reactive` through the deriving crate's direct dependency on it, or
-/// through the `reactive` re-export of the facade (`skene-gui`, `skene-terminal`) or
+/// through the `reactive` re-export of the facade (`skene-web`, `skene-terminal`) or
 /// `skene-common` it depends on.
 #[proc_macro_derive(Store, attributes(store))]
 pub fn derive_store(input: TokenStream) -> TokenStream {

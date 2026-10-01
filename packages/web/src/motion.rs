@@ -6,8 +6,8 @@ use skene_common::gui::GuiProperty;
 use skene_core::{Animation, Easing, PropertyKey, StyleProperty, Transition};
 
 use crate::{
-  Declarations,
   compile::{Key, target},
+  declarations::Declarations,
 };
 
 /// The media query under which motion respecting the reduced-motion preference runs.
@@ -18,7 +18,7 @@ pub(crate) const NO_PREFERENCE: &str = "(prefers-reduced-motion: no-preference)"
 pub(crate) const REDUCE: &str = "(prefers-reduced-motion: reduce)";
 
 /// The rule opting a document into cross-document view transitions.
-#[cfg(not(skene_gui_platform = "headless"))]
+#[cfg(not(skene_web_platform = "headless"))]
 pub(crate) const VIEW_TRANSITION_RULE: &str = "@view-transition{navigation:auto}";
 
 /// The CSS property name a transition targets.

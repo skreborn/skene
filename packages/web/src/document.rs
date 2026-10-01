@@ -133,7 +133,7 @@ pub(crate) fn state_script(state: &str) -> String {
 
 /// Appends `text` with the characters HTML text content reserves escaped.
 #[cfg_attr(
-  skene_gui_platform = "headless",
+  skene_web_platform = "headless",
   expect(dead_code, reason = "the server leaf alone serializes text")
 )]
 pub(crate) fn escape_text(text: &str, out: &mut String) {

@@ -71,8 +71,8 @@ use self::{
   sheet::Sheet,
 };
 use super::{
-  Web,
   markup::{MARKER_ATTRIBUTE, STYLE_ID},
+  platform::Web,
   realize::{Realized, Realizer, Record},
 };
 use crate::resource_state::STATE_SCRIPT_ID;

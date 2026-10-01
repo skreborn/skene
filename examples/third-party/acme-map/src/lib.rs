@@ -14,7 +14,7 @@ use skene_common::Container;
 use skene_core::{AnyKind, HasChild, IntoChildOf, NodeId, PlainChild, Platform, Size, View};
 
 /// The sea the map paints, as CSS.
-#[cfg(not(skene_gui_platform = "headless"))]
+#[cfg(not(skene_web_platform = "headless"))]
 const SEA: &str = "oklch(0.72 0.1 230)";
 
 /// A map, sized by the container around it.
@@ -82,8 +82,8 @@ impl<P: MapHost> View<P> for Map<P> {
   }
 }
 
-#[cfg(not(skene_gui_platform = "headless"))]
-impl MapHost for skene_web::Web {
+#[cfg(not(skene_web_platform = "headless"))]
+impl MapHost for skene_web::platform::Web {
   /// The canvas once the page runs script, the sea's box before then and on the
   /// server.
   fn build_map(map: Map<Self>) -> NodeId {
@@ -99,14 +99,14 @@ impl MapHost for skene_web::Web {
   }
 }
 
-#[cfg(not(skene_gui_platform = "headless"))]
-impl Map<skene_web::Web> {
+#[cfg(not(skene_web_platform = "headless"))]
+impl Map<skene_web::platform::Web> {
   /// A node realized as an element of `tag` dressed as the map's surface, then handed
   /// to `draw`, inside a container of the map's size.
   fn surface(self, tag: &'static str, draw: impl FnOnce(NodeId)) -> NodeId {
     use skene_common::LowLevel;
     use skene_core::NodeKind;
-    use skene_web::{Declarations, Web, WebMarkup};
+    use skene_web::platform::{Declarations, Web, WebMarkup};
 
     let node = LowLevel::<Web>::realize(NodeKind::Box, |node| {
       Web::create_element(node, tag);
@@ -127,9 +127,9 @@ impl Map<skene_web::Web> {
   }
 
   /// The canvas the map paints.
-  #[cfg(skene_gui_platform = "browser")]
+  #[cfg(skene_web_platform = "browser")]
   fn canvas(self) -> NodeId {
-    use skene_web::{Web, WebDom, WebMarkup};
+    use skene_web::platform::{Web, WebDom, WebMarkup};
     use wasm_bindgen::JsCast;
 
     #[expect(
@@ -152,13 +152,13 @@ impl Map<skene_web::Web> {
   }
 
   /// The sea's box: a server render never builds the canvas.
-  #[cfg(skene_gui_platform = "server")]
+  #[cfg(skene_web_platform = "server")]
   fn canvas(self) -> NodeId {
     self.surface("div", |_| {})
   }
 }
 
-#[cfg(skene_gui_platform = "headless")]
+#[cfg(skene_web_platform = "headless")]
 impl MapHost for skene_headless::Headless {
   /// The sea's box, an image named "map".
   fn build_map(map: Map<Self>) -> NodeId {
@@ -174,7 +174,7 @@ impl MapHost for skene_headless::Headless {
 }
 
 /// Paints the map: land over the sea, a road across it.
-#[cfg(skene_gui_platform = "browser")]
+#[cfg(skene_web_platform = "browser")]
 fn paint(canvas: &web_sys::HtmlCanvasElement, width: u32, height: u32) {
   use wasm_bindgen::JsCast;
 

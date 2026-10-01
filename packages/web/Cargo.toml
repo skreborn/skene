@@ -6,14 +6,20 @@ rust-version.workspace = true
 
 [dependencies]
 rustc-hash.workspace = true
+serde = "1"
 serde_json = "1"
 sfv = "0.15"
 skene-common.workspace = true
 skene-core.workspace = true
 skene-dev.workspace = true
+skene-macros.workspace = true
 skene-reactive.workspace = true
 smallvec.workspace = true
 tracing.workspace = true
+
+# The headless platform on every host the build compiles no web leaf for.
+[target.'cfg(not(any(all(target_arch = "wasm32", target_os = "unknown"), skene_platform = "server")))'.dependencies]
+skene-headless.workspace = true
 
 [target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
 async-task = "4"
@@ -78,26 +84,43 @@ wgpu = { default-features = false, features = ["std", "webgpu", "wgsl"], version
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 futures-timer = "3"
 
+[target.'cfg(unix)'.dependencies]
+rustix = { features = ["stdio"], version = "1" }
+
 [dev-dependencies]
-skene-reactive.workspace = true
 skene-simple.workspace = true
+
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+skene-headless.workspace = true
+trybuild.workspace = true
+
+[package.metadata.cargo-shear]
+ignored-paths = ["tests/compile_fail/*.rs"]
 
 [target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dev-dependencies]
 js-sys = "0.3"
+skene-headless.workspace = true
 wasm-bindgen-test = "0.3"
 web-sys = { version = "0.3", features = [
+  "CanvasRenderingContext2d",
   "css",
   "CssStyleDeclaration",
+  "DataTransfer",
   "Document",
   "DomRect",
   "DomTokenList",
+  "DragEvent",
+  "DragEventInit",
   "Element",
   "Event",
   "EventInit",
+  "HtmlCanvasElement",
   "HtmlCollection",
   "HtmlElement",
   "HtmlHeadElement",
   "HtmlInputElement",
+  "HtmlSelectElement",
+  "ImageData",
   "KeyboardEvent",
   "KeyboardEventInit",
   "MouseEvent",
@@ -106,6 +129,8 @@ web-sys = { version = "0.3", features = [
   "NodeList",
   "PointerEvent",
   "PointerEventInit",
+  "WheelEvent",
+  "WheelEventInit",
   "Window",
 ] }
 

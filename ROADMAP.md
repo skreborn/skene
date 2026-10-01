@@ -180,9 +180,7 @@ left half-done in a code comment.
 7. **Names and structure while the API is unstable.** One rename wave brings the names
     in line with the vocabulary rule, the structure loses its bad edges and copies, and
     the documents shrink to what tooling cannot enforce.
-    - A shell per platform: `skene-gui` folds into `skene-web`, the one crate a web
-    developer imports, re-exporting the foundation, and `examples/gui` becomes
-    `examples/web`; each facade exposes its views as types of its own, the
+    - A shell per platform: each facade exposes its views as types of its own, the
     foundation's generic implementations behind them where the platforms share their
     semantics; Simple splits into a core of colors, named sizes and behavior defaults
     and a crate per platform (`skene-simple-web`, `skene-simple-terminal`), and

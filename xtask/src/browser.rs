@@ -26,7 +26,7 @@ struct Run {
 /// browser test raises its binary's count here.
 const RUNS: &[Run] = &[
   Run {
-    package: "skene-gui",
+    package: "skene-web",
     arguments: &[],
     binaries: &[
       ("browser_dom", 77),
@@ -34,14 +34,10 @@ const RUNS: &[Run] = &[
       ("browser_hydrate", 16),
       ("browser_painted", 3),
       ("browser_parity", 1),
+      ("browser_platform", 15),
       ("browser_resource", 5),
       ("browser_task", 4),
     ],
-  },
-  Run {
-    package: "skene-web",
-    arguments: &[],
-    binaries: &[("browser_dom", 15)],
   },
   Run {
     package: "skene-transport",

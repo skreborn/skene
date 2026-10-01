@@ -6,7 +6,7 @@ use skene_core::{ColorScheme, Environment, Inset, MediaSignals, Size};
 use skene_reactive::{ReadSignal, Set, Signal, WriteSignal};
 
 use super::{HINTS, MEDIA};
-use crate::RenderHints;
+use crate::hints::RenderHints;
 
 /// The environment's signals with their write halves.
 pub(super) struct MediaState {

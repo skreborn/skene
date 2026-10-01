@@ -14,7 +14,7 @@
 //! the lengths come from the [`SimpleShape`] of the medium's unit.
 //!
 //! An app depends on this crate as it would on any component library and names the
-//! platform once; the `gui` and `terminal` modules are that naming done for a
+//! platform once; the `terminal` and `web` modules are that naming done for a
 //! facade, a `prelude` of aliases over its `ActivePlatform` that sits beside the facade's
 //! own.
 
@@ -23,7 +23,6 @@ mod card;
 mod checkbox;
 mod context_menu;
 pub mod glyphs;
-pub mod gui;
 mod palette;
 mod picker;
 mod radio;
@@ -34,6 +33,7 @@ pub mod terminal;
 mod text_editor;
 mod text_field;
 mod tooltip;
+pub mod web;
 
 pub use self::{
   button::SimpleButton,

@@ -4,10 +4,9 @@ The architecture of skene: facts and the reasons behind the load-bearing decisio
 Conventions and invariants live in `AGENTS.md`; what is open and what is planned in
 `ROADMAP.md`.
 
-Skene is a **client-side** GUI framework. One app, written against one dependency, runs on
-whatever platform the build selects: the web (client-rendered, server-rendered, or
-statically generated), the terminal, and painted-native desktop and mobile when that
-platform lands. The reactive engine is signal-based and fine-grained; there is no virtual
+Skene is a **client-side** UI framework. An app's shell for each platform depends on that
+platform's facade, over one foundation: the web (client-rendered, server-rendered, or
+statically generated) and the terminal, with a shell per desktop and mobile OS to come. The reactive engine is signal-based and fine-grained; there is no virtual
 DOM and no tree diffing. The framework ships no server-side features—no server functions,
 no backend integrations. What it ships instead is a render the app's own server binary
 performs as a plain command, so any server can serve a skene frontend without the
@@ -37,7 +36,7 @@ skene-common      every built-in view ONCE, generic over P: Platform—Container
       │          Painted through vello), terminal (TerminalStyle, BorderGlyphs, the
       │          terminal Typography set), routing (a typed route in a signal)
       │
-      ├── skene-web       Platform for the web: DOM sink (browser) + HTML/CSS
+      ├── skene-web       the web facade AND its platform: DOM sink (browser) + HTML/CSS
       │                   serializer (server) over one node record, the compiler,
       │                   the interner, hydration, streaming, the server executor,
       │                   client hints; escape traits WebMarkup (both leaves),
@@ -49,10 +48,11 @@ skene-common      every built-in view ONCE, generic over P: Platform—Container
                           cell buffer, motion on its frame clock; escape trait
                           CellPainter
 
-skene-gui        the GUI facade: f32, ActivePlatform (the web on wasm32, the headless
-                 platform elsewhere), aliases for every view, Typography, media::*,
-                 Resource across the server boundary, Deferred, AsyncView, Link, head,
-                 view_transitions, launch and the server entries, #[main]
+skene-web        the web facade: f32, ActivePlatform (the web in the browser and on a
+                 server render, the headless platform elsewhere), aliases for every view,
+                 Typography, media::*, Resource across the server boundary, Deferred,
+                 AsyncView, Link, head, view_transitions, launch and the server entries,
+                 #[main], and the platform itself under platform
 skene-terminal   the terminal facade, EQUAL in standing: u32 cells, Terminal, the
                  same aliases, Typography, BorderGlyphs, media::*, launch, testing
 skene-simple     the Simple design language over skene-common, generic over P: the palette
@@ -67,18 +67,18 @@ skene-cli        the skene command: build and run per target, the dev server, st
                  generation, skene.toml assets
 ```
 
-**Two facades, one spine.** GUI and the terminal are different media, not one medium with
-fallbacks: a GUI app targets any combination of web and native and genuinely converges;
-a terminal app is written for the terminal on purpose, and never cross-compiles into the
-other family. Each facade therefore owns its builder vocabulary outright, typed to
+**A facade per platform, one spine.** The web and the terminal are different media, not
+one medium with fallbacks: an app is written for each on purpose, and neither
+cross-compiles into the other. Each facade therefore owns its builder vocabulary outright, typed to
 exactly its capabilities—and everything beneath it is written once in the spine. The
 facade's own contribution is small by design: a scalar, the medium's condition leaves,
 the properties only that medium has, the platform it selects, and the aliases that give
 app code a flat, medium-typed surface. What a medium lacks is absent at compile time
 because the platform's associated types say so.
 
-Dependency arrows only point down; platforms depend on core (never on each other); each
-facade names only its own platforms and publishes the selected one as `ActivePlatform`.
+Dependency arrows only point down; a platform depends on core, never on another
+platform; each facade names only its own platforms, the web's naming the headless one
+it compiles against off its target, and publishes the selected one as `ActivePlatform`.
 
 ## The scene and the platform
 
@@ -287,8 +287,7 @@ and its cost unjustified.
   the signal that turns true once a render made without script has been hydrated,
   and `None` by default, which every platform whose tree is live from the start keeps,
   the terminal and the native platforms among them, so nothing on the terminal facade
-  can name it. The GUI facade reads it as `media::hydrated()`, true from the start on
-  native. The server leaf answers false forever, so a server render and a static page
+  can name it. The web facade reads it as `media::hydrated()`. The server leaf answers false forever, so a server render and a static page
   carry the baseline as markup; the browser leaf answers false while a hydration
   adopts the server's markup and flips to true once it has finished and the adopted
   live values have reached their signals, so the baseline is built once more on the
@@ -416,7 +415,7 @@ the server leaf renders nothing for the menu: with no script the browser's menu 
 menu, as progressive enhancement asks.
 The
 `Simple*` components (`skene-simple`) are the ready-made library over the same builder:
-one palette, one shape language, shared across the GUI and the terminal wherever the
+one palette, one shape language, shared across the web and the terminal wherever the
 medium allows, and deliberately nothing a third-party library could not build on the
 same footing—including how an app reaches it: an explicit dependency, never a facade
 re-export.
@@ -810,7 +809,7 @@ string tree implement: the records, the element choices, attributes, classes, sl
 token definitions, control state and accessibility, so the two cannot drift; each leaf
 adds only what is its own:
 
-- **browser** (`skene_gui_platform = "browser"`)—the browser. DOM sink, the stylesheet sink,
+- **browser** (`skene_web_platform = "browser"`)—the browser. DOM sink, the stylesheet sink,
   root-level event delegation with a stamped node id (one listener per event type,
   `scroll` and enter/leave included), one shared `ResizeObserver`, hydration
   (creation-order `data-h` markers, loud mismatch, the server's stylesheet adopted rather
@@ -820,7 +819,7 @@ adds only what is its own:
   classes, and the order-keyed resource values no resource adopted dropped), scroll and
   focus restoration keyed by a segment's end anchor, the
   `WebDom` escape trait, the History binding and the head.
-- **server** (`skene_gui_platform = "server"`)—the serializer. Renders its string tree to HTML plus
+- **server** (`skene_web_platform = "server"`)—the serializer. Renders its string tree to HTML plus
   the interned stylesheet; drives async to a fixpoint on the host executor, parked until
   a waker fires, before serializing, under a render deadline; streams in document order around `Deferred`
   boundaries with a style delta per chunk; serializes resource state for the client to
@@ -851,7 +850,7 @@ click hovers, presses, moves focus to the nearest node taking it (or off the foc
 one), releases and clicks, and a key where focus is carries a text entry's edit where no
 handler suppressed it. A frame clock advances on request; an executor, installed by
 `spawn` and `Resource` alike, holds every spawned task until `pump_tasks`. It is what
-`skene-gui` selects on a host target, so an app's `#[main]` compiles everywhere.
+`skene-web` selects on a host target, so an app's `#[main]` compiles everywhere.
 
 ### Native (`skene-native`, planned)
 
@@ -872,7 +871,7 @@ loop-integrated timer is fair game here (the loop is ours).
 
 ### The terminal (`skene-terminal`)
 
-A facade in its own right, not a platform of the GUI vocabulary. Its views are the shared
+A facade in its own right, not a platform of the web's vocabulary. Its views are the shared
 ones typed to the terminal: lengths are `u32` cells, text is a color plus a `bool` bold,
 a border is one cell of box-drawing characters on each edge its width names, in its own
 color, its conditions are cells and
@@ -891,7 +890,7 @@ device's.
 
 The mouse is in-capability: motion drives `Hovered` variants and pointer handlers, a
 left click hits the topmost node and runs its handlers through core's dispatch, a
-hovered node's `cursor` sets the pointer shape via OSC 22, with the shapes the GUI's
+hovered node's `cursor` sets the pointer shape via OSC 22, with the shapes a browser's
 pointer takes implied where none is set (the I-beam over selectable text and a text
 entry, the hand over a control or a link, the open hand over a slider and the closed
 one through a slider, scrollbar or caret drag), written once per change after the
@@ -971,7 +970,7 @@ the mouse back and asks for them afresh. The terminal's own selection—a drag w
 iTerm2—bypasses the app on every terminal that has it, so a terminal without OSC 52
 still copies; with the mouse off a plain drag does. `Ctrl-Q` is the one unconditional
 key. Focus belongs to controls, which are composed trees with roles
-and focus order, exactly as on the GUI, and to link runs, which sit in the tab order as
+and focus order, exactly as on the web, and to link runs, which sit in the tab order as
 an anchor does: `Enter` is a focused link's click, staged for the system handler unless
 a handler prevented it, a press on its cell focuses it, and while its focus shows it
 paints in the typography's focused-link ink and surface, reverse video where those are
@@ -1091,8 +1090,7 @@ through `testing::render_to_text` for headless tests (`trigger_key`/`trigger_mou
 `trigger_mouse_click`/`trigger_frame` in `testing` drive it without a terminal). Terminal detection is
 asynchronous; the loop starts immediately and the answers arrive as signal writes. The
 dev loop carries the snapshot across a swap through the launcher's control pipe. Terminal
-apps never cross-compile into the GUI family; the write-once promise belongs to
-web+native.
+apps never cross-compile into the web.
 
 ## Third parties and platforms
 
@@ -1127,12 +1125,11 @@ headless platform is exactly such a crate in all but ownership.
 
 ## Selection and entry
 
-Selection is by **facade dependency** first—a GUI app depends on `skene-gui`, a
-terminal app on `skene-terminal`—and by target within a facade: `skene-gui` resolves
+Selection is by **facade dependency** first—a web app depends on `skene-web`, a
+terminal app on `skene-terminal`—and by target within a facade: `skene-web` resolves
 `wasm32-unknown-unknown` to the web's browser leaf, a build naming the server platform
 (`--cfg skene_platform="server"`) to its server leaf on any host, every other host to the
-headless platform, and will resolve native triples to the native platform, with no
-feature flag anywhere. Where one triple hosts several platforms the build names the
+headless platform, with no feature flag anywhere. Where one triple hosts several platforms the build names the
 platform by a cfg, chosen once and unifying nothing, as `getrandom` names its backend.
 Target-gating stays the enforcement layer where it applies. A cargo feature may only add items; never a bound, a
 type, a variant or a platform; the workspace has none.
@@ -1154,7 +1151,7 @@ sit on exactly the footing first-party ones would:
   it returns: the window's timeout on the web, the loop's wait in the terminal, the
   hand-stepped clock under the headless platform, and never on the server.
 - `Resource`—in the engine: load into a signal with a `Loading`/`Ready`/`Refetching`
-  state that keeps the last value; the GUI facade's newtype adds hydration across the
+  state that keeps the last value; the web facade's newtype adds hydration across the
   SSR boundary (`new` by order, `tagged` by tag, `client` opting out).
 - The server leaf's executor—`sleep`, and a render deadline (`set_render_deadline`) that
   bounds every render's settling.
@@ -1268,7 +1265,7 @@ Recorded because they were load-bearing and the reasons they fell matter:
   zero-sized trait makes the contract complete.
 - **A recording platform (`skene-record`) beside the real ones.** It ran only the target's
   handlers, did not unlink on reparent, and could not be complete because nothing forced
-  it to be. The headless platform implements the whole trait and is selected by the GUI
+  it to be. The headless platform implements the whole trait and is selected by the web
   facade on the host, so it cannot drift.
 - **Group nodes for reactive subtrees.** A real `<div>` and a real taffy node made every
   derived subtree one flex item. Subtrees mount between anchors.

@@ -54,7 +54,7 @@ pub fn set_document_language(language: &str) {
 /// is set: see [`Document::opening`], the document carrying the bundle, the dev loop
 /// and the nonce set for the renders.
 ///
-/// [`Document::opening`]: crate::Document::opening
+/// [`Document::opening`]: crate::document::Document::opening
 #[must_use]
 pub fn document_opening(language: Option<&str>, head: &str, styles: &str) -> String {
   served_document(language).opening(head, styles)
@@ -63,7 +63,7 @@ pub fn document_opening(language: Option<&str>, head: &str, styles: &str) -> Str
 /// The closing of a served document from the hydration `state`: see
 /// [`Document::closing`].
 ///
-/// [`Document::closing`]: crate::Document::closing
+/// [`Document::closing`]: crate::document::Document::closing
 #[must_use]
 pub fn document_closing(state: &str) -> String {
   served_document(None).closing(Some(state))

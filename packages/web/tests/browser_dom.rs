@@ -1,988 +1,2986 @@
-//! The browser leaf over the new model, against a real DOM: tokens and palettes
-//! through the theme, derived slots beside variants, controls over their native
-//! inputs, delegated events through core's dispatch, the environment's signals, and
-//! hydration of the server leaf's markup.
+//! Real-DOM integration tests for the web realization of the built-in views.
+//!
+//! Each test installs the web platform rooted at a connected `<div>`, builds a view under
+//! it, and asserts against the actual DOM the browser produced. The guard uninstalls
+//! the platform and removes the root when it drops, isolating each test.
 //!
 //! Run in a headless browser:
 //! `cargo test -p skene-web --target wasm32-unknown-unknown --test browser_dom`.
-#![cfg(skene_gui_platform = "browser")]
+#![cfg(skene_web_platform = "browser")]
 
-use std::{cell::Cell, rc::Rc};
+use std::{
+  cell::{Cell, RefCell},
+  rc::Rc,
+  time::Duration,
+};
 
-use skene_common::{BasicCheckbox, Container, Flexible, LowLevel, Row, Text, Theme, Toggle, View};
-use skene_core::{
-  AnyKind,
+use skene_simple::web::prelude::*;
+use skene_web::{
+  Activate,
+  AnyView,
+  BasicButton,
+  BasicCheckbox,
+  BasicRadio,
+  BasicRadioGroup,
+  BasicSlider,
+  BasicTextField,
   Color,
-  ColorScheme,
-  Condition,
+  Column,
+  Container,
+  ContextMenu,
+  Deferred,
+  Definition,
+  Flexible,
+  Grid,
+  GridCell,
   HasChild,
   HasChildren,
-  Leaf,
+  Inset,
   Media,
-  NodeId,
-  NodeKind,
-  Platform,
-  State,
-  StaticLeaf,
-  Token,
-  TokenName,
-  TokenRef,
-  TokenSet,
-  Value,
+  MenuEntry,
+  NamedKey,
+  NodeHandle,
+  Overlay,
+  Pinned,
+  Radio,
+  RadioGroup,
+  RichText,
+  Role,
+  Row,
+  Show,
+  Slider,
+  Span,
+  Stack,
+  TOOLTIP_GRACE,
+  Text,
+  TextDecoration,
+  TextDecorationStyle,
+  TextEntry,
+  TextSelection,
+  Theme,
+  Toggle,
+  Tooltip,
+  Typography,
+  View,
+  core::{
+    Axes,
+    Axis,
+    Dimension,
+    DragAxes,
+    DragData,
+    GridAreas,
+    GridName,
+    GridPlacement,
+    GridTemplate,
+    GridTrack,
+    Line,
+    PointerButton,
+    PointerId,
+    PointerType,
+    WheelEvent,
+    WheelUnit,
+  },
+  derived,
+  empty,
+  head,
+  platform::{self, Declarations, mount},
+  reactive::{Get, Owner, Set, Signal},
+  testing::{computed, dispatch, document, fresh_root, next_frame, only_child, wait},
+  wasm_bindgen::JsCast,
 };
-use skene_reactive::{Get, Set, Signal};
-use skene_simple::{SimpleButton, SimpleCheckbox, SimplePicker};
-use skene_web::{
-  Declarations,
-  Web,
-  WebMarkup,
-  WebTokenValue,
-  testing::{Installed, computed, connected_root, document, fresh_root, only_child},
-};
-use wasm_bindgen::JsCast;
 use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
-use web_sys::{Element, HtmlElement, HtmlInputElement, KeyboardEvent, KeyboardEventInit};
+use web_sys::{Element, HtmlElement, HtmlInputElement};
 
 wasm_bindgen_test_configure!(run_in_browser);
 
-type Box_ = Container<Web>;
-
-/// A component library's palette: a card color answering the scheme, and a gutter.
-#[derive(Debug, Clone, PartialEq)]
-struct Palette {
-  card: Token<Color, f32>,
-  gutter: Token<f32, f32>,
-}
-
-impl Palette {
-  const CARD: TokenRef<Color> = TokenRef::new("test-card");
-
-  fn with_card(card: Color) -> Self {
-    Self {
-      card: Token::new("test-card", card),
-      ..Self::default()
-    }
-  }
-}
-
-impl Default for Palette {
-  fn default() -> Self {
-    Self {
-      card: Token::new("test-card", white()).define_when(Media::Dark, black()),
-      gutter: Token::new("test-gutter", 8.),
-    }
-  }
-}
-
-impl TokenSet<WebTokenValue> for Palette {
-  fn definitions(&self) -> Vec<(TokenName, WebTokenValue)> {
-    vec![self.card.define(), self.gutter.define()]
-  }
-}
-
-fn white() -> Color {
-  Color::srgb(1., 1., 1.)
-}
-
-fn black() -> Color {
-  Color::srgb(0., 0., 0.)
-}
-
-fn red() -> Color {
-  Color::srgb(1., 0., 0.)
-}
-
-fn blue() -> Color {
-  Color::srgb(0., 0., 1.)
-}
-
-/// The computed background a `<div>` under `root` gets from the declaration
-/// `background-color: <value>`, so colors compare as the engine serializes them.
-fn probe(root: &Element, value: &str) -> String {
+/// The computed color a `<div>` under `parent` gets from `color: <value>`, so colors
+/// compare as the engine serializes them.
+fn probe(parent: &Element, value: &str) -> String {
   let element = document().create_element("div").expect("a probe");
 
-  let _ = element.set_attribute("style", &format!("background-color:{value}"));
-  let _ = root.append_child(&element);
+  let _ = element.set_attribute("style", &format!("color:{value}"));
+  let _ = parent.append_child(&element);
 
-  let color = computed(&element, "background-color");
+  let color = computed(&element, "color");
 
   element.remove();
 
   color
 }
 
-/// The text of every `<style>` the platform owns, in document order.
-fn sheet_text() -> String {
-  let styles = document()
-    .query_selector_all("style[data-skene-style]")
-    .expect("query the styles");
-
-  (0..styles.length())
-    .filter_map(|index| styles.item(index))
-    .filter_map(|style| style.text_content())
-    .collect()
-}
-
-/// How many `<style>` elements the platform owns.
-fn sheet_count() -> u32 {
-  document()
-    .query_selector_all("style[data-skene-style]")
-    .expect("query the styles")
-    .length()
-}
-
-/// The first `skene-` class of `element`.
-fn class_of(element: &Element) -> String {
-  element
-    .get_attribute("class")
-    .unwrap_or_default()
-    .split(' ')
-    .find(|class| class.starts_with("skene-"))
-    .expect("a styled element")
-    .to_owned()
-}
-
 fn html(element: &Element) -> HtmlElement {
   element.clone().dyn_into().expect("an HTML element")
 }
 
-/// The markup the server leaf would have produced for the tree under `root`: every
-/// element marked in document order, which is creation order for a static tree.
-fn as_served(root: &Element) -> String {
-  let elements = root.query_selector_all("*").expect("query the elements");
+/// The text content of each of `parent`'s element children, in order.
+fn child_texts(parent: &Element) -> Vec<String> {
+  let children = parent.children();
 
-  for index in 0..elements.length() {
-    if let Some(element) = elements
-      .item(index)
-      .and_then(|node| node.dyn_into::<Element>().ok())
-    {
-      let _ = element.set_attribute("data-h", &(index + 1).to_string());
-    }
-  }
-
-  root.inner_html()
+  (0..children.length())
+    .map(|index| children.item(index).unwrap().text_content().unwrap())
+    .collect()
 }
 
-/// Installs the server's `<style>` block holding `text` in the head.
-fn serve_styles(text: &str) -> Element {
-  let block = document().create_element("style").expect("a style");
-
-  let _ = block.set_attribute("id", "skene-styles");
-  block.set_text_content(Some(text));
-  document()
-    .head()
-    .expect("a head")
-    .append_child(&block)
-    .expect("append the block");
-
-  block
-}
-
-/// A token color under a theme is the element's computed background.
+/// A `Deferred` is a streaming boundary only on the server; on the client it builds
+/// its content directly, between anchors of its own.
 #[wasm_bindgen_test]
-fn a_token_color_resolves_through_the_theme() {
+fn deferred_builds_its_content_on_the_client() {
   let (_guard, root) = fresh_root();
 
-  let _ = skene_web::mount(|| {
-    Theme::<Web, _>::new(Palette::default())
-      .set_child_builder(|| Box_::new().set_color(Palette::CARD))
-      .build()
-  });
+  let _ = mount(|| Deferred::new(|| Text::new("content")).build());
 
-  let scope = only_child(&root);
-  let card = only_child(&scope);
+  let content = only_child(&root);
 
-  assert_eq!(computed(&scope, "display"), "contents");
+  assert_eq!(content.tag_name(), "SPAN");
+  assert_eq!(content.text_content().as_deref(), Some("content"));
   assert_eq!(
-    computed(&card, "background-color"),
-    probe(&root, &Declarations::render_color(white()))
-  );
-  assert!(
-    sheet_text().contains(&format!(
-      ".{}{{background-color:var(--test-card);",
-      class_of(&card)
-    )),
-    "{}",
-    sheet_text()
+    root.child_nodes().length(),
+    3,
+    "the content between its two anchors"
   );
 }
 
-/// A palette write re-inks the consumer in place: the same element, a signal inside
-/// keeping its value.
 #[wasm_bindgen_test]
-fn a_palette_write_reinks_without_replacing_the_element() {
+fn container_is_a_div() {
   let (_guard, root) = fresh_root();
-  let card = Signal::new(white());
-  let inner: Rc<Cell<Option<Signal<i32>>>> = Rc::new(Cell::new(None));
 
-  let _ = skene_web::mount({
-    let inner = Rc::clone(&inner);
+  let _ = mount(|| Container::new().build());
 
-    move || {
-      Theme::<Web, _>::derive(move || Palette::with_card(card.get()))
-        .set_child_builder(move || {
-          let count = Signal::new(1);
-
-          inner.set(Some(count));
-
-          Box_::new()
-            .set_color(Palette::CARD)
-            .set_child(Text::<Web>::derive(move || count.get().to_string()))
-        })
-        .build()
-    }
-  });
-
-  let before = only_child(&only_child(&root));
-  let count = inner.get().expect("the inner signal");
-
-  count.set(5);
-  skene_web::end_turn();
-
-  assert_eq!(before.text_content().as_deref(), Some("5"));
-
-  card.set(red());
-  skene_web::end_turn();
-
-  let after = only_child(&only_child(&root));
-
-  assert!(before == after, "the consumer was re-inked, not rebuilt");
-  assert_eq!(
-    computed(&after, "background-color"),
-    probe(&root, &Declarations::render_color(red()))
-  );
-  assert_eq!(count.get(), 5);
-  assert_eq!(after.text_content().as_deref(), Some("5"));
+  assert_eq!(only_child(&root).tag_name(), "DIV");
 }
 
-/// A derived base writes its slot and a hover variant on the same property is a later
-/// rule over the slot reference, so it still wins.
 #[wasm_bindgen_test]
-fn a_derived_color_stays_below_its_hover_variant() {
+fn role_realizes_its_semantic_element() {
   let (_guard, root) = fresh_root();
-  let color = Signal::new(white());
 
-  let _ = skene_web::mount(move || {
-    Box_::new()
-      .set_color(
-        Value::<Color, Condition<f32>>::new(Leaf::derive(move || color.get()))
-          .when(State::Hovered.into(), red()),
-      )
+  let _ = mount(|| Container::new().set_role(Role::Navigation).build());
+
+  assert_eq!(only_child(&root).tag_name(), "NAV");
+}
+
+#[wasm_bindgen_test]
+fn text_is_a_span_with_its_content() {
+  let (_guard, root) = fresh_root();
+
+  let _ = mount(|| Text::new("hello").build());
+
+  let element = only_child(&root);
+
+  assert_eq!(element.tag_name(), "SPAN");
+  assert_eq!(element.text_content().as_deref(), Some("hello"));
+}
+
+/// A run's decoration compiles to the `text-decoration` longhands: the line, its style
+/// and its color, each its own property.
+#[wasm_bindgen_test]
+fn a_decorated_text_computes_its_line_style_and_color() {
+  let (_guard, root) = fresh_root();
+
+  let _ = mount(|| {
+    Text::new("marked")
+      .set_decoration(TextDecoration::Underline)
+      .set_decoration_style(TextDecorationStyle::Wavy)
+      .set_decoration_color(Color::srgb(1., 0., 0.))
       .build()
   });
 
   let element = only_child(&root);
-  let class = class_of(&element);
 
+  assert_eq!(computed(&element, "text-decoration-line"), "underline");
+  assert_eq!(computed(&element, "text-decoration-style"), "wavy");
   assert_eq!(
-    computed(&element, "background-color"),
-    probe(&root, &Declarations::render_color(white()))
-  );
-
-  color.set(blue());
-  skene_web::end_turn();
-
-  assert_eq!(
-    computed(&element, "background-color"),
-    probe(&root, &Declarations::render_color(blue()))
-  );
-
-  let sheet = sheet_text();
-  let base = sheet
-    .find(&format!(".{class}{{background-color:var(--skene-color);"))
-    .expect("the base rule references the slot");
-  let hover = sheet
-    .find(&format!(
-      ".{class}:where(:hover){{background-color:{};}}",
-      Declarations::render_color(red())
-    ))
-    .expect("the hover rule holds the variant");
-
-  assert!(
-    base < hover,
-    "the variant is emitted after the base: {sheet}"
-  );
-  assert_eq!(
-    html(&element)
-      .style()
-      .get_property_value("--skene-color")
-      .unwrap(),
-    Declarations::render_color(blue())
+    computed(&element, "text-decoration-color"),
+    probe(&root, &Declarations::render_color(Color::srgb(1., 0., 0.)))
   );
 }
 
-/// A derived leaf naming a token writes the token's reference into its slot, so the
-/// theme in force answers it, and a fixed value written later replaces the reference.
+/// A text entry's selection is controlled on the web: the bound signal selects inside
+/// the input, cluster indices mapped to UTF-16 units and the direction kept, and the
+/// browser's selection change writes the signal back in clusters.
 #[wasm_bindgen_test]
-fn a_derived_token_writes_its_reference_into_the_slot() {
+async fn a_text_entrys_selection_binds_both_ways() {
   let (_guard, root) = fresh_root();
-  let plain = Signal::new(false);
+  let selection = Signal::new(TextSelection::new(1, 2));
 
-  let _ = skene_web::mount(move || {
-    Theme::<Web, _>::new(Palette::default())
-      .set_child_builder(move || {
-        Box_::new().derive_color(move || {
-          if plain.get() {
-            StaticLeaf::from(red())
-          }
-          else {
-            StaticLeaf::from(Palette::CARD)
-          }
-        })
-      })
+  let _ = mount(move || {
+    BasicTextField::new(
+      TextEntry::new()
+        .set_value("a\u{1f44d}b")
+        .bind_selection(selection),
+    )
+    .build()
+  });
+
+  let input = root
+    .query_selector("input")
+    .expect("query")
+    .expect("the input")
+    .dyn_into::<HtmlInputElement>()
+    .expect("an input");
+  let range = |input: &HtmlInputElement| {
+    (
+      input.selection_start().expect("a start"),
+      input.selection_end().expect("an end"),
+      input.selection_direction().expect("a direction"),
+    )
+  };
+
+  assert_eq!(
+    range(&input),
+    (Some(1), Some(3), Some("forward".to_owned()))
+  );
+
+  selection.set(TextSelection::new(9, 1));
+  platform::end_turn();
+
+  assert_eq!(
+    range(&input),
+    (Some(1), Some(4), Some("backward".to_owned())),
+    "an index past the value clamps to its end"
+  );
+
+  let _ = input.focus();
+  let _ = input.set_selection_range(0, 3);
+
+  next_frame().await;
+
+  assert_eq!(selection.get(), TextSelection::new(0, 2));
+}
+
+/// A `keyup` reaches the box's key-up handler through dispatch, and a `keydown`
+/// carries the browser's repeat flag.
+#[wasm_bindgen_test]
+fn a_key_release_and_a_repeat_reach_the_box() {
+  let (_guard, root) = fresh_root();
+  let released = Signal::new((String::new(), String::new()));
+  let repeated = Signal::new(false);
+
+  let _ = mount(move || {
+    Container::new()
+      .handle_key_down(move |event| repeated.set(event.repeat))
+      .handle_key_up(move |event| released.set((event.key.to_string(), event.code.to_string())))
+      .set_child(BasicTextField::new(TextEntry::new()))
       .build()
   });
 
-  let element = only_child(&only_child(&root));
-  let slot = || {
-    html(&element)
-      .style()
-      .get_property_value("--skene-color")
-      .unwrap()
+  let input = root
+    .query_selector("input")
+    .expect("query")
+    .expect("the input");
+  let key = |kind: &str, key: &str, repeat: bool| {
+    let init = web_sys::KeyboardEventInit::new();
+
+    init.set_bubbles(true);
+    init.set_key(key);
+    init.set_code("KeyQ");
+    init.set_repeat(repeat);
+
+    let event =
+      web_sys::KeyboardEvent::new_with_keyboard_event_init_dict(kind, &init).expect("a key");
+
+    let _ = input.dispatch_event(&event);
   };
 
-  assert_eq!(slot(), "var(--test-card)");
-  assert_eq!(
-    computed(&element, "background-color"),
-    probe(&root, &Declarations::render_color(white()))
-  );
+  key("keydown", "a", true);
+  key("keyup", "a", false);
 
-  plain.set(true);
-  skene_web::end_turn();
-
-  assert_eq!(slot(), Declarations::render_color(red()));
+  assert!(repeated.get(), "the repeat flag came through");
   assert_eq!(
-    computed(&element, "background-color"),
-    probe(&root, &Declarations::render_color(red()))
+    released.get(),
+    ("a".to_owned(), "KeyQ".to_owned()),
+    "the key and its physical code came through"
   );
 }
 
-/// A checkbox is a label over its native input; one click on the input flips the
-/// bound signal once, and the mark's color follows the control's state.
 #[wasm_bindgen_test]
-fn a_checkbox_flips_once_per_click() {
+fn linked_text_is_an_anchor_element() {
   let (_guard, root) = fresh_root();
-  let checked = Signal::new(false);
-  let flips = Rc::new(Cell::new(0));
 
-  let _ = skene_web::mount({
-    let flips = Rc::clone(&flips);
+  let _ = mount(|| Text::new("go").set_link("https://example.com/").build());
 
-    move || {
-      SimpleCheckbox::<Web>::new()
-        .set_label("Agree")
-        .derive_checked(move || checked.get())
-        .handle_toggle(move |next| {
-          flips.set(flips.get() + 1);
-          checked.set(next);
-        })
-        .build()
-    }
-  });
+  let element = only_child(&root);
 
-  let label = only_child(&root);
-
-  assert_eq!(label.tag_name(), "LABEL");
-
-  let input = only_child(&label);
-
-  assert_eq!(input.tag_name(), "INPUT");
-  assert_eq!(input.get_attribute("type").as_deref(), Some("checkbox"));
-
-  let input: HtmlInputElement = input.dyn_into().expect("an input");
-  let mark = input.next_element_sibling().expect("the mark");
-  let card = probe(&root, "var(--simple-card)");
-  let primary = probe(&root, "var(--simple-primary-surface)");
-
-  assert_ne!(card, primary);
-  assert_eq!(computed(&mark, "background-color"), card);
-
-  input.click();
-
-  assert_eq!(flips.get(), 1, "one press is one flip");
-  assert!(checked.get());
-  assert!(input.checked());
-  assert_eq!(computed(&mark, "background-color"), primary);
-
-  let caption = mark.next_element_sibling().expect("the caption");
-
-  assert_eq!(caption.text_content().as_deref(), Some("Agree"));
-  html(&caption).click();
-
-  assert_eq!(flips.get(), 2, "a click on the caption is one flip too");
-  assert!(!checked.get());
-  assert!(!input.checked());
-  assert_eq!(computed(&mark, "background-color"), card);
+  assert_eq!(element.tag_name(), "A");
+  assert_eq!(
+    element.get_attribute("href").as_deref(),
+    Some("https://example.com/"),
+  );
 }
 
-/// A click on a native toggle is observed, not acted on: the platform flipped it once,
-/// the control's own observer hears one click per press, whether the press lands on the
-/// input or on its caption, and the click ends at the control, never reaching the
-/// container above it.
 #[wasm_bindgen_test]
-fn a_native_toggle_click_is_observed_once_per_press() {
+fn children_mount_in_order() {
   let (_guard, root) = fresh_root();
-  let checked = Signal::new(false);
-  let observed = Rc::new(Cell::new(0));
-  let container_clicks = Rc::new(Cell::new(0));
 
-  let _ = skene_web::mount({
-    let observed = Rc::clone(&observed);
-    let container_clicks = Rc::clone(&container_clicks);
-
-    move || {
-      Box_::new()
-        .handle_click(move || container_clicks.set(container_clicks.get() + 1))
-        .set_child(
-          BasicCheckbox::<Web>::new(Toggle::new().bind_checked(checked))
-            .set_label("Agree")
-            .handle_click(move || observed.set(observed.get() + 1)),
-        )
-        .build()
-    }
+  let _ = mount(|| {
+    Row::new()
+      .set_children((Text::new("a"), Text::new("b"), Text::new("c")))
+      .build()
   });
 
   let container = only_child(&root);
-  let label = only_child(&container);
-  let input: HtmlInputElement = only_child(&label).dyn_into().expect("an input");
 
-  input.click();
-
-  assert_eq!(observed.get(), 1, "the observer hears the press once");
-  assert_eq!(container_clicks.get(), 0, "the click ends at the control");
-  assert!(checked.get(), "the platform's flip reached the signal");
-  assert!(input.checked(), "the platform's flip stands");
-
-  // A press on the label reaches the root twice: at the label, then synthesized at
-  // the input.
-  html(&label).click();
-
-  assert_eq!(observed.get(), 2, "a press on the caption is one click too");
-  assert_eq!(container_clicks.get(), 0);
-  assert!(!checked.get());
-  assert!(!input.checked());
+  assert_eq!(child_texts(&container), ["a", "b", "c"]);
 }
 
-/// A button owns its click: the container around it never sees it, while a click on
-/// the container itself does reach it.
 #[wasm_bindgen_test]
-fn a_button_click_does_not_reach_the_container() {
+fn styling_interns_a_generated_class() {
   let (_guard, root) = fresh_root();
-  let container_clicks = Rc::new(Cell::new(0));
-  let button_clicks = Rc::new(Cell::new(0));
 
-  let _ = skene_web::mount({
-    let container_clicks = Rc::clone(&container_clicks);
-    let button_clicks = Rc::clone(&button_clicks);
-
-    move || {
-      Box_::new()
-        .handle_click(move || container_clicks.set(container_clicks.get() + 1))
-        .set_child(
-          SimpleButton::<Web>::new("Go")
-            .handle_click(move || button_clicks.set(button_clicks.get() + 1)),
-        )
-        .build()
-    }
+  let _ = mount(|| {
+    Container::new()
+      .set_color(Color::srgb(1.0, 0.0, 0.0))
+      .build()
   });
 
-  let container = only_child(&root);
-  let button = only_child(&container);
+  let class = only_child(&root)
+    .get_attribute("class")
+    .expect("styled node has a class");
 
-  assert_eq!(button.tag_name(), "BUTTON");
-  html(&button).click();
-
-  assert_eq!(button_clicks.get(), 1);
-  assert_eq!(container_clicks.get(), 0);
-
-  html(&container).click();
-
-  assert_eq!(container_clicks.get(), 1);
-  assert_eq!(button_clicks.get(), 1);
+  assert!(
+    class
+      .split_whitespace()
+      .any(|name| name.starts_with("skene-")),
+    "expected a generated `skene-` class, got {class:?}",
+  );
 }
 
-/// A part's focus-visible variant anchors on the control's native input.
 #[wasm_bindgen_test]
-fn a_focus_visible_variant_anchors_on_the_input() {
+fn interned_class_actually_applies_its_style() {
   let (_guard, root) = fresh_root();
 
-  let _ = skene_web::mount(|| SimpleCheckbox::<Web>::new().set_label("Agree").build());
+  let _ = mount(|| {
+    Container::new()
+      .set_padding(Inset::all(10.0))
+      .set_border_width(Inset::all(2.0))
+      .set_border_color(Color::srgb(0.0, 0.0, 0.0))
+      .build()
+  });
 
-  let label = only_child(&root);
-  let input: HtmlInputElement = only_child(&label).dyn_into().expect("an input");
-  let mark = input.next_element_sibling().expect("the mark");
-  let class = class_of(&mark);
-  let sheet = sheet_text();
+  let element = only_child(&root);
 
-  assert!(
-    sheet.contains(&format!(
-      ":where(input.skene-native:focus-visible) ~ .{class}"
-    )),
-    "{sheet}"
-  );
-  assert!(
-    sheet.contains(&format!(
-      ":where([data-skene-control]:is(:focus-visible)) .{class}"
-    )),
-    "{sheet}"
-  );
-
-  let ring = probe(&root, "var(--simple-ring)");
-  let border = probe(&root, "var(--simple-border)");
-
-  assert_ne!(ring, border);
-  assert_eq!(computed(&mark, "border-top-color"), border);
-  input.focus().expect("focus the input");
-
-  assert_eq!(
-    document().active_element().as_ref(),
-    Some(input.unchecked_ref())
-  );
-
-  if input.matches(":focus-visible").unwrap_or(false) {
-    assert_eq!(computed(&mark, "border-top-color"), ring);
-  }
+  assert_eq!(computed(&element, "padding-top"), "10px");
+  assert_eq!(computed(&element, "border-top-width"), "2px");
 }
 
-/// The environment reports the window: the viewport signal is its inner size, a
-/// width watch answers as its media query does, and the scheme composes the app's
-/// choice with the platform's preference.
+/// A stack's children share its one grid cell, so they overlap.
 #[wasm_bindgen_test]
-fn media_reports_the_window() {
-  let (_guard, _root) = fresh_root();
-  let window = web_sys::window().expect("a window");
-  let width = window.inner_width().unwrap().as_f64().unwrap();
-  let height = window.inner_height().unwrap().as_f64().unwrap();
-  let media = Web::media();
-
-  assert!((f64::from(media.viewport.get().width) - width).abs() < f64::EPSILON);
-  assert!((f64::from(media.viewport.get().height) - height).abs() < f64::EPSILON);
-
-  #[expect(
-    clippy::cast_possible_truncation,
-    reason = "a viewport width is precise enough in f32"
-  )]
-  let below = (width - 1.) as f32;
-  #[expect(
-    clippy::cast_possible_truncation,
-    reason = "a viewport width is precise enough in f32"
-  )]
-  let above = (width + 1.) as f32;
-
-  assert!(skene_web::watch_media(&Media::MinWidth(below)).get());
-  assert!(!skene_web::watch_media(&Media::MinWidth(above)).get());
-  assert!(
-    skene_web::watch_media(&Media::or([Media::MinWidth(above), Media::MaxWidth(above)])).get()
-  );
-  assert!(skene_web::media_query(&format!("(min-width: {below}px)")).get());
-  assert!(!skene_web::media_query(&format!("(min-width: {above}px)")).get());
-
-  let platform_dark = window
-    .match_media("(prefers-color-scheme: dark)")
-    .unwrap()
-    .is_some_and(|list| list.matches());
-  let platform = if platform_dark {
-    ColorScheme::Dark
-  }
-  else {
-    ColorScheme::Light
-  };
-  let dark = skene_web::watch_media(&Media::Dark);
-
-  assert_eq!(media.scheme.get(), platform);
-  assert_eq!(dark.get(), platform_dark);
-
-  skene_web::set_scheme(Some(ColorScheme::Dark));
-  skene_web::end_turn();
-
-  assert_eq!(media.scheme.get(), ColorScheme::Dark);
-  assert!(dark.get());
-  assert_eq!(
-    document()
-      .document_element()
-      .unwrap()
-      .get_attribute("data-skene-scheme")
-      .as_deref(),
-    Some("dark")
-  );
-  assert_eq!(skene_web::persisted_scheme(), Some(ColorScheme::Dark));
-
-  skene_web::set_scheme(None);
-  skene_web::end_turn();
-
-  assert_eq!(media.scheme.get(), platform);
-  assert_eq!(skene_web::persisted_scheme(), None);
-}
-
-/// A low-level view: a `<div>` made through the escape trait.
-struct Raw;
-
-impl AnyKind for Raw {}
-
-impl View<Web> for Raw {
-  fn build(self) -> NodeId {
-    LowLevel::<Web>::realize(NodeKind::Box, |node| Web::create_element(node, "div"))
-  }
-}
-
-/// A low-level node's element takes the layout its wrapper gave it, a derived property
-/// following its signal.
-#[wasm_bindgen_test]
-fn a_low_level_node_takes_its_wrappers_layout() {
+fn stack_children_share_one_grid_cell() {
   let (_guard, root) = fresh_root();
-  let grow = Signal::new(2.0f32);
 
-  let _ = skene_web::mount(move || {
-    Row::<Web>::new()
+  let _ = mount(|| {
+    Stack::new()
+      .set_children((Text::new("under"), Text::new("over")))
+      .build()
+  });
+
+  let stack = only_child(&root);
+  let children = stack.children();
+
+  assert_eq!(children.length(), 2);
+
+  for index in 0..2 {
+    let child = children.item(index).expect("a child");
+
+    assert_eq!(computed(&child, "grid-row-start"), "1");
+    assert_eq!(computed(&child, "grid-column-start"), "1");
+  }
+}
+
+/// A stack's cell reaches a child beneath a theme's scope.
+#[wasm_bindgen_test]
+fn a_themed_stack_child_shares_the_cell() {
+  let (_guard, root) = fresh_root();
+
+  let _ = mount(|| {
+    Stack::new()
       .set_children((
-        Flexible::<Web>::new().set_grow_factor(3.).set_child(Raw),
-        Flexible::<Web>::new()
-          .derive_grow_factor(move || grow.get())
-          .set_child(Raw),
+        Text::new("under"),
+        Theme::new(Typography::default()).set_child_builder(|| Text::new("over")),
       ))
       .build()
   });
 
-  let row = only_child(&root);
-  let fixed = row.first_element_child().expect("the fixed child");
-  let derived = row.last_element_child().expect("the derived child");
+  let stack = only_child(&root);
+  let under = stack.first_element_child().expect("the first child");
+  let over = only_child(&stack.last_element_child().expect("the theme's scope"));
 
-  assert_eq!(computed(&fixed, "flex-grow"), "3");
-  assert_eq!(computed(&derived, "flex-grow"), "2");
-
-  grow.set(5.);
-  skene_web::end_turn();
-
-  assert_eq!(computed(&derived, "flex-grow"), "5");
+  assert_eq!(computed(&over, "grid-row-start"), "1");
+  assert_eq!(computed(&over, "grid-column-start"), "1");
+  assert!(
+    (over.get_bounding_client_rect().top() - under.get_bounding_client_rect().top()).abs() < 0.5
+  );
 }
 
-/// Choosing a scheme sets the document's `color-scheme` and leaves the rest of its
-/// inline style alone.
+/// A modal and a popup open at build open once connected, and the modal prevents a
+/// cancel though nothing handles its dismissal.
 #[wasm_bindgen_test]
-fn choosing_a_scheme_keeps_the_documents_inline_style() {
-  let (_guard, _root) = fresh_root();
-  let html: HtmlElement = document()
-    .document_element()
-    .expect("a document element")
-    .dyn_into()
-    .expect("an HTML element");
-  let style = html.style();
-
-  let _ = style.set_property("--kept", "1");
-
-  skene_web::set_scheme(Some(ColorScheme::Dark));
-  skene_web::end_turn();
-
-  assert_eq!(
-    style.get_property_value("color-scheme").ok().as_deref(),
-    Some("dark")
-  );
-  assert_eq!(
-    style.get_property_value("--kept").ok().as_deref(),
-    Some("1")
-  );
-
-  skene_web::set_scheme(None);
-  skene_web::end_turn();
-
-  assert_eq!(
-    style.get_property_value("color-scheme").ok().as_deref(),
-    Some("")
-  );
-  assert_eq!(
-    style.get_property_value("--kept").ok().as_deref(),
-    Some("1")
-  );
-
-  let _ = style.remove_property("--kept");
-}
-
-/// A page the server leaf rendered hydrates with no mismatch: its elements are
-/// adopted in place and its one `<style>` block is the only stylesheet.
-#[wasm_bindgen_test]
-fn a_served_page_hydrates_without_mismatch() {
-  let app = || {
-    Theme::<Web, _>::new(Palette::default()).set_child_builder(|| {
-      Box_::new()
-        .set_color(Palette::CARD)
-        .set_child(Text::<Web>::new("Hi"))
-    })
-  };
-  let (markup, styles) = {
-    let (_guard, root) = fresh_root();
-
-    let _ = skene_web::mount(move || app().build());
-
-    (as_served(&root), sheet_text())
-  };
-
-  assert!(markup.contains("data-h=\"1\""), "{markup}");
-
-  let block = serve_styles(&styles);
-  let root = connected_root();
-
-  root.set_inner_html(&markup);
-
-  let served_card = only_child(&only_child(&root));
-
-  skene_web::hydrate(root.clone(), "", app);
-
-  let guard = Installed::on(root.clone());
-  let card = only_child(&only_child(&root));
-
-  assert_eq!(skene_web::hydration_mismatches(), 0);
-  assert!(served_card == card, "the card was adopted, not rebuilt");
-  assert_eq!(card.get_attribute("data-h"), None);
-  assert_eq!(card.text_content().as_deref(), Some("Hi"));
-  assert_eq!(sheet_count(), 1, "the server's block is the one stylesheet");
-  assert!(block.has_attribute("data-skene-style"));
-  assert_eq!(
-    computed(&card, "background-color"),
-    probe(&root, &Declarations::render_color(white()))
-  );
-
-  drop(guard);
-
-  assert!(!block.is_connected());
-}
-
-/// A served scope that defines its palette inline gives those definitions up to the
-/// class the client assigns on adoption.
-#[wasm_bindgen_test]
-fn a_hydrated_scope_drops_its_served_inline_definitions() {
-  let app = |palette: Signal<Palette>| {
-    move || {
-      Theme::<Web, _>::derive(move || palette.get()).set_child_builder(|| {
-        Box_::new()
-          .set_color(Palette::CARD)
-          .set_child(Text::<Web>::new("Hi"))
-      })
-    }
-  };
-  let (markup, styles) = {
-    let (_guard, root) = fresh_root();
-    let palette = Signal::transient(Palette::with_card(white()));
-
-    let _ = skene_web::mount(move || app(palette)().build());
-
-    palette.set(Palette::with_card(black()));
-    skene_web::end_turn();
-
-    (as_served(&root), sheet_text())
-  };
-
-  assert!(markup.contains("--test-card"), "{markup}");
-
-  let _block = serve_styles(&styles);
-  let root = connected_root();
-
-  root.set_inner_html(&markup);
-  skene_web::hydrate(root.clone(), "", app(Signal::transient(Palette::default())));
-
-  let _guard = Installed::on(root.clone());
-  let scope = html(&only_child(&root));
-
-  assert_eq!(
-    scope
-      .style()
-      .get_property_value("--test-card")
-      .ok()
-      .as_deref(),
-    Some("")
-  );
-  assert_eq!(
-    computed(&only_child(&scope), "background-color"),
-    probe(&root, &Declarations::render_color(white()))
-  );
-}
-
-/// An input the reader ticked before the client arrived reports its live state into
-/// the bound signal on adoption.
-#[wasm_bindgen_test]
-fn a_ticked_input_reports_on_hydration() {
-  let app = |checked: Signal<bool>| {
-    move || BasicCheckbox::<Web>::new(Toggle::new().bind_checked(checked)).set_label("Agree")
-  };
-  let (markup, styles) = {
-    let (_guard, root) = fresh_root();
-
-    let _ = skene_web::mount(move || app(Signal::new(false))().build());
-
-    (as_served(&root), sheet_text())
-  };
-
-  let _block = serve_styles(&styles);
-  let root = connected_root();
-
-  root.set_inner_html(&markup);
-
-  let input: HtmlInputElement = only_child(&only_child(&root)).dyn_into().expect("an input");
-
-  assert!(!input.has_attribute("checked"), "{markup}");
-  input.set_checked(true);
-
-  let checked = Signal::new(false);
-
-  skene_web::hydrate(root.clone(), "", app(checked));
-
-  let _guard = Installed::on(root.clone());
-
-  assert_eq!(skene_web::hydration_mismatches(), 0);
-  assert!(checked.get(), "the reader got there first");
-  assert!(input.checked());
-
-  checked.set(false);
-  skene_web::end_turn();
-
-  assert!(!input.checked());
-}
-
-/// Presses `key` on `element`, as the keyboard would: a bubbling `keydown`.
-fn press(element: &Element, key: &str) {
-  let init = KeyboardEventInit::new();
-
-  init.set_key(key);
-  init.set_bubbles(true);
-  init.set_cancelable(true);
-
-  let event =
-    KeyboardEvent::new_with_keyboard_event_init_dict("keydown", &init).expect("a key event");
-
-  let _ = element.dispatch_event(&event);
-}
-
-/// A picker's face is a combobox over a manual popover: `ArrowDown` opens it with
-/// focus on the chosen option, the arrows move focus, and `Enter` chooses, closes and
-/// returns focus to the face with the signal written.
-#[wasm_bindgen_test]
-#[expect(
-  clippy::too_many_lines,
-  reason = "one keyboard walk: open, move, choose and return focus"
-)]
-fn a_picker_opens_and_chooses_with_the_keyboard() {
+fn overlays_open_at_build_open_and_a_modal_prevents_cancel() {
   let (_guard, root) = fresh_root();
-  let value = Signal::new("md".to_owned());
 
-  let _ = skene_web::mount(move || {
-    SimplePicker::<Web>::new()
-      .set_options([("sm", "Small"), ("md", "Medium"), ("lg", "Large")])
-      .bind_value(value)
+  let _ = mount(|| {
+    Column::new()
+      .set_children((
+        Overlay::modal()
+          .set_open(true)
+          .set_child(Text::new("modal")),
+        Overlay::popup()
+          .set_open(true)
+          .set_child(Text::new("popup")),
+      ))
       .build()
   });
 
-  let face = only_child(&root);
+  let dialog = root
+    .query_selector("dialog")
+    .expect("a valid selector")
+    .expect("the modal");
+  let popup = root
+    .query_selector("[popover]")
+    .expect("a valid selector")
+    .expect("the popup");
 
-  assert_eq!(face.get_attribute("role").as_deref(), Some("combobox"));
-  assert_eq!(
-    face.get_attribute("aria-expanded").as_deref(),
-    Some("false")
-  );
+  assert!(dialog.has_attribute("open"));
+  assert!(popup.matches(":popover-open").expect("a valid selector"));
 
-  let popup = face.last_element_child().expect("the popup");
+  let init = web_sys::EventInit::new();
 
-  assert_eq!(popup.get_attribute("popover").as_deref(), Some("manual"));
-  assert!(!popup.matches(":popover-open").unwrap_or(true));
+  init.set_cancelable(true);
 
-  let options = popup
-    .query_selector_all("[role=option]")
-    .expect("the options");
+  let cancel = web_sys::Event::new_with_event_init_dict("cancel", &init).expect("an event");
+  let _ = dialog.dispatch_event(&cancel);
 
-  assert_eq!(options.length(), 3);
+  assert!(cancel.default_prevented());
+  assert!(dialog.has_attribute("open"));
+}
 
-  let option = |index: u32| -> Element {
-    options
+/// An `Escape` nothing prevents dismisses the popup opened last and that one alone,
+/// and one a control inside a popup takes dismisses nothing.
+#[wasm_bindgen_test]
+fn escape_dismisses_the_topmost_popup_unless_taken() {
+  use skene_web::{
+    ActivePlatform,
+    Behavior,
+    Control,
+    ControlHandle,
+    core::{EventKind, KeyEvent, NativeElement, Prevent, Role},
+  };
+
+  /// Takes `Escape` and nothing else.
+  struct Keeper;
+
+  impl Behavior<ActivePlatform> for Keeper {
+    fn native(&self) -> Option<NativeElement> {
+      Some(NativeElement::Button)
+    }
+
+    fn role(&self) -> Option<Role> {
+      None
+    }
+
+    fn listens(&self) -> &'static [EventKind] {
+      &[EventKind::KeyDown]
+    }
+
+    fn on_key(&self, event: &KeyEvent, _: &ControlHandle) -> Prevent {
+      if event.is(NamedKey::Escape) {
+        Prevent::All
+      }
+      else {
+        Prevent::None
+      }
+    }
+  }
+
+  let (_guard, root) = fresh_root();
+  let outer = Signal::new(false);
+  let inner = Signal::new(false);
+
+  let _ = mount(move || {
+    Column::new()
+      .set_children((
+        Overlay::popup()
+          .bind_open(outer)
+          .set_child(Text::new("outer")),
+        Overlay::popup()
+          .bind_open(inner)
+          .set_child(Control::new(Keeper).set_child(Text::new("keeper"))),
+      ))
+      .build()
+  });
+
+  outer.set(true);
+  platform::end_turn();
+  inner.set(true);
+  platform::end_turn();
+
+  let escape = |target: &Element| {
+    let init = web_sys::KeyboardEventInit::new();
+
+    init.set_bubbles(true);
+    init.set_cancelable(true);
+    init.set_key("Escape");
+
+    let event =
+      web_sys::KeyboardEvent::new_with_keyboard_event_init_dict("keydown", &init).expect("a key");
+
+    let _ = target.dispatch_event(&event);
+  };
+  let keeper = root
+    .query_selector("[data-skene-control]")
+    .expect("a valid selector")
+    .expect("the keeper");
+
+  escape(&keeper);
+
+  assert!(outer.get() && inner.get(), "the keeper took it");
+
+  escape(&root);
+
+  assert!(outer.get(), "only the topmost closes");
+  assert!(!inner.get());
+
+  escape(&root);
+
+  assert!(!outer.get());
+}
+
+/// `Escape` over an open modal is the dialog's own to cancel: the popup beneath the
+/// modal stays open.
+#[wasm_bindgen_test]
+fn escape_over_a_modal_keeps_the_popup_beneath_it() {
+  let (_guard, root) = fresh_root();
+  let popup = Signal::new(false);
+  let modal = Signal::new(false);
+
+  let _ = mount(move || {
+    Column::new()
+      .set_children((
+        Overlay::popup()
+          .bind_open(popup)
+          .set_child(Text::new("popup")),
+        Overlay::modal()
+          .bind_open(modal)
+          .set_child(Text::new("modal")),
+      ))
+      .build()
+  });
+
+  popup.set(true);
+  platform::end_turn();
+  modal.set(true);
+  platform::end_turn();
+
+  let init = web_sys::KeyboardEventInit::new();
+
+  init.set_bubbles(true);
+  init.set_cancelable(true);
+  init.set_key("Escape");
+
+  let event =
+    web_sys::KeyboardEvent::new_with_keyboard_event_init_dict("keydown", &init).expect("a key");
+  let _ = root.dispatch_event(&event);
+
+  assert!(popup.get(), "the popup beneath the modal stays open");
+}
+
+/// Focus moving to a node outside an open popup and its anchor dismisses the popup, and
+/// focus on the anchor keeps it.
+#[wasm_bindgen_test]
+fn focus_leaving_a_popup_dismisses_it() {
+  let (_guard, root) = fresh_root();
+  let open = Signal::new(false);
+  let anchor = NodeHandle::new();
+
+  let _ = mount(move || {
+    Column::new()
+      .set_children((
+        Container::new()
+          .set_focus_order(skene_web::FocusOrder::Auto)
+          .bind_handle(anchor)
+          .set_child(Text::new("anchor")),
+        Container::new()
+          .set_focus_order(skene_web::FocusOrder::Auto)
+          .set_child(Text::new("elsewhere")),
+        Overlay::popup()
+          .set_anchor(anchor)
+          .bind_open(open)
+          .set_child(Text::new("popup")),
+      ))
+      .build()
+  });
+
+  open.set(true);
+  platform::end_turn();
+
+  let stops = root
+    .query_selector_all("[tabindex]")
+    .expect("a valid selector");
+  let stop = |index: u32| -> HtmlElement {
+    stops
       .item(index)
-      .expect("an option")
+      .expect("a tab stop")
       .dyn_into()
       .expect("an element")
   };
 
-  assert_eq!(
-    option(1).get_attribute("aria-selected").as_deref(),
-    Some("true")
-  );
-  html(&face).focus().expect("focus the face");
-  press(&face, "ArrowDown");
+  stop(0).focus().expect("focus the anchor");
 
-  assert!(popup.matches(":popover-open").unwrap_or(false));
-  assert_eq!(face.get_attribute("aria-expanded").as_deref(), Some("true"));
+  assert!(open.get(), "focus on the anchor keeps the popup");
+
+  stop(1).focus().expect("focus elsewhere");
+
+  assert!(!open.get(), "focus leaving dismisses the popup");
+}
+
+/// A wrapper's derived property reaches a run as a slot, following its signal.
+#[wasm_bindgen_test]
+fn a_derived_wrapper_property_reaches_a_run() {
+  let (_guard, root) = fresh_root();
+  let grow = Signal::new(2.0f32);
+
+  let _ = mount(move || {
+    Row::new()
+      .add_child(
+        Flexible::new()
+          .derive_grow_factor(move || grow.get())
+          .set_child(Text::new("grows")),
+      )
+      .build()
+  });
+
+  let text = only_child(&only_child(&root));
+
+  assert_eq!(computed(&text, "flex-grow"), "2");
+
+  grow.set(5.);
+  platform::end_turn();
+
+  assert_eq!(computed(&text, "flex-grow"), "5");
+}
+
+#[wasm_bindgen_test]
+fn click_handler_runs_on_a_real_click() {
+  let (_guard, root) = fresh_root();
+  let clicks = Rc::new(Cell::new(0u32));
+
+  let _ = mount({
+    let clicks = Rc::clone(&clicks);
+
+    move || {
+      Container::new()
+        .handle_click(move || clicks.set(clicks.get() + 1))
+        .build()
+    }
+  });
+
+  let button = html(&only_child(&root));
+
+  button.click();
+  button.click();
+
+  assert_eq!(clicks.get(), 2);
+}
+
+/// A delegated pointer-down handler receives the event with its position and button.
+#[wasm_bindgen_test]
+fn pointer_down_handler_receives_the_event() {
+  let (_guard, root) = fresh_root();
+  let seen = Rc::new(Cell::new(None));
+
+  let _ = mount({
+    let seen = Rc::clone(&seen);
+
+    move || {
+      Container::new()
+        .handle_pointer_down(move |event| seen.set(Some((event.x, event.y, event.button))))
+        .build()
+    }
+  });
+
+  let target = only_child(&root);
+  let init = web_sys::PointerEventInit::new();
+
+  init.set_bubbles(true);
+  init.set_client_x(11);
+  init.set_client_y(7);
+  init.set_button(0);
+
+  let event =
+    web_sys::PointerEvent::new_with_event_init_dict("pointerdown", &init).expect("a pointer event");
+
+  let _ = target.dispatch_event(&event);
+
+  assert_eq!(seen.get(), Some((11., 7., Some(PointerButton::Primary))));
+}
+
+/// A pointer event carries its pointer's id and kind, the buttons held and the
+/// pressure: a pen that is not the primary pointer is named past the primary one, and
+/// the primary pointer is `PointerId::PRIMARY`.
+#[wasm_bindgen_test]
+fn a_pointer_event_carries_its_pointer_buttons_and_pressure() {
+  let (_guard, root) = fresh_root();
+  let seen = Rc::new(Cell::new(None));
+
+  let _ = mount({
+    let seen = Rc::clone(&seen);
+
+    move || {
+      Container::new()
+        .handle_pointer_down(move |event| {
+          seen.set(Some((event.pointer, event.buttons, event.pressure)));
+        })
+        .build()
+    }
+  });
+
+  let target = only_child(&root);
+  let press = |primary: bool| {
+    let init = web_sys::PointerEventInit::new();
+
+    init.set_bubbles(true);
+    init.set_pointer_id(7);
+    init.set_pointer_type("pen");
+    init.set_is_primary(primary);
+    init.set_pressure(0.75);
+    init.set_button(0);
+    init.set_buttons(1 | 32);
+
+    let event = web_sys::PointerEvent::new_with_event_init_dict("pointerdown", &init)
+      .expect("a pointer event");
+
+    let _ = target.dispatch_event(&event);
+
+    seen.take().expect("the press reached the handler")
+  };
+  let (pointer, buttons, pressure) = press(false);
+
+  assert_eq!(pointer.pointer_id, PointerId::new(9));
+  assert_eq!(pointer.pointer_type, PointerType::Pen);
   assert_eq!(
-    document().active_element().as_ref(),
-    Some(option(1).unchecked_ref())
+    buttons,
+    PointerButton::Primary | PointerButton::PenEraser,
+    "the buttons held"
+  );
+  assert!((pressure - 0.75).abs() < f32::EPSILON, "{pressure}");
+  assert_eq!(press(true).0.pointer_id, Some(PointerId::PRIMARY));
+}
+
+/// A `wheel` reaches the node under the pointer in the unit the browser counts before
+/// the browser scrolls by it: a box's handler leaves the scroll to the browser, and a
+/// behavior taking the turn keeps it from happening.
+#[wasm_bindgen_test]
+fn a_wheel_reaches_the_node_before_it_scrolls() {
+  use skene_web::{
+    ActivePlatform,
+    Behavior,
+    Control,
+    ControlHandle,
+    core::{EventKind, NativeElement, Prevent},
+  };
+
+  /// Takes every turn for itself.
+  struct Dial;
+
+  impl Behavior<ActivePlatform> for Dial {
+    fn native(&self) -> Option<NativeElement> {
+      Some(NativeElement::Button)
+    }
+
+    fn role(&self) -> Option<Role> {
+      None
+    }
+
+    fn listens(&self) -> &'static [EventKind] {
+      &[EventKind::Wheel]
+    }
+
+    fn on_wheel(&self, _: &WheelEvent, _: &ControlHandle) -> Prevent {
+      Prevent::All
+    }
+  }
+
+  let (_guard, root) = fresh_root();
+  let seen = Rc::new(Cell::new(None));
+
+  let _ = mount({
+    let seen = Rc::clone(&seen);
+
+    move || {
+      Column::new()
+        .set_children((
+          Container::new().handle_wheel(move |event| seen.set(Some((event.delta, event.unit)))),
+          Control::new(Dial).set_child(Text::new("dial")),
+        ))
+        .build()
+    }
+  });
+
+  let turn = |target: &Element| {
+    let init = web_sys::WheelEventInit::new();
+
+    init.set_bubbles(true);
+    init.set_cancelable(true);
+    init.set_delta_y(3.);
+    init.set_delta_mode(web_sys::WheelEvent::DOM_DELTA_LINE);
+
+    let event =
+      web_sys::WheelEvent::new_with_event_init_dict("wheel", &init).expect("a wheel event");
+
+    let _ = target.dispatch_event(&event);
+
+    event.default_prevented()
+  };
+  let column = only_child(&root);
+  let child = |index| column.children().item(index).expect("a child");
+
+  assert!(!turn(&child(0)), "the browser scrolls");
+  assert_eq!(seen.get(), Some((Axes::new(0., 3.), WheelUnit::Lines)));
+  assert!(turn(&child(1)), "the dial takes the turn");
+}
+
+/// A drag from a box offering data drops on a box taking it: the browser is handed the
+/// drag's text, the target lets the drop happen and holds `Targeted` while the drag is
+/// over it, and the drop runs its action.
+#[wasm_bindgen_test]
+fn a_drag_drops_on_a_box_taking_it() {
+  let (_guard, root) = fresh_root();
+  let dropped = Rc::new(RefCell::new(Vec::new()));
+
+  let _ = mount({
+    let dropped = Rc::clone(&dropped);
+
+    move || {
+      Column::new()
+        .set_children((
+          Container::new().set_drag_data(|| DragData::new(String::from("card")).with_text("card")),
+          Container::new()
+            .handle_drop(move |card: &String| dropped.borrow_mut().push(card.clone())),
+        ))
+        .build()
+    }
+  });
+
+  let column = only_child(&root);
+  let child = |index| column.children().item(index).expect("a child");
+  let transfer = web_sys::DataTransfer::new().expect("a data transfer");
+  let drag = |target: &Element, kind: &str| {
+    let init = web_sys::DragEventInit::new();
+
+    init.set_bubbles(true);
+    init.set_cancelable(true);
+    init.set_data_transfer(Some(&transfer));
+
+    let event = web_sys::DragEvent::new_with_event_init_dict(kind, &init).expect("a drag event");
+
+    let _ = target.dispatch_event(&event);
+
+    event.default_prevented()
+  };
+
+  assert_eq!(child(0).get_attribute("draggable").as_deref(), Some("true"));
+
+  let _ = drag(&child(0), "dragstart");
+
+  assert_eq!(
+    transfer.get_data("text/plain").ok().as_deref(),
+    Some("card")
+  );
+  assert!(child(0).has_attribute("data-skene-dragged"));
+  assert!(
+    drag(&child(1), "dragover"),
+    "the target lets the drop happen"
+  );
+  assert!(child(1).has_attribute("data-skene-targeted"));
+
+  let _ = drag(&child(1), "drop");
+  let _ = drag(&child(0), "dragend");
+
+  assert_eq!(*dropped.borrow(), ["card"]);
+  assert!(!child(1).has_attribute("data-skene-targeted"));
+  assert!(!child(0).has_attribute("data-skene-dragged"));
+}
+
+/// A `dblclick` reaches the box's double-click handler through dispatch.
+#[wasm_bindgen_test]
+fn a_double_click_reaches_the_box() {
+  let (_guard, root) = fresh_root();
+  let doubles = Rc::new(Cell::new(0));
+
+  let _ = mount({
+    let doubles = Rc::clone(&doubles);
+
+    move || {
+      Container::new()
+        .handle_double_click(move || doubles.set(doubles.get() + 1))
+        .build()
+    }
+  });
+
+  let init = web_sys::MouseEventInit::new();
+
+  init.set_bubbles(true);
+  init.set_detail(2);
+
+  let event =
+    web_sys::MouseEvent::new_with_mouse_event_init_dict("dblclick", &init).expect("a mouse event");
+
+  let _ = only_child(&root).dispatch_event(&event);
+
+  assert_eq!(doubles.get(), 1);
+}
+
+/// A `pointercancel` reaches the box's cancel handler through dispatch.
+#[wasm_bindgen_test]
+fn a_pointer_cancel_reaches_the_box() {
+  let (_guard, root) = fresh_root();
+  let cancels = Rc::new(Cell::new(0));
+
+  let _ = mount({
+    let cancels = Rc::clone(&cancels);
+
+    move || {
+      Container::new()
+        .handle_pointer_cancel(move |_| cancels.set(cancels.get() + 1))
+        .build()
+    }
+  });
+
+  pointer(&only_child(&root), "pointercancel");
+
+  assert_eq!(cancels.get(), 1);
+}
+
+/// A press on a slider's thumb asks for the value whose thumb centers under the
+/// pointer, measured from the slider's own box rather than the thumb's: 150 pixels into
+/// 200, the thumb's 16-pixel center travelling 184, is 77.
+#[wasm_bindgen_test]
+async fn a_press_on_the_thumb_slides_by_the_slider_box() {
+  use skene_web::core::Dimension;
+
+  let (_guard, root) = fresh_root();
+  let value = Signal::new(40.0f32);
+
+  let _ = mount(move || {
+    Container::new()
+      .set_width(Dimension::Length(200.))
+      .set_child(SimpleSlider::new().bind_value(value))
+      .build()
+  });
+
+  next_frame().await;
+
+  let slider = only_child(&only_child(&root));
+  let stack = only_child(&slider.last_element_child().expect("the drawn body"));
+  let thumb = only_child(&stack.last_element_child().expect("the rail"));
+  let init = web_sys::PointerEventInit::new();
+
+  init.set_bubbles(true);
+  #[expect(
+    clippy::cast_possible_truncation,
+    reason = "a coordinate inside the test page fits an i32"
+  )]
+  init.set_client_x((slider.get_bounding_client_rect().left() + 150.).round() as i32);
+  init.set_button(0);
+
+  let event =
+    web_sys::PointerEvent::new_with_event_init_dict("pointerdown", &init).expect("a pointer event");
+
+  let _ = thumb.dispatch_event(&event);
+
+  assert!((value.get() - 77.).abs() < f32::EPSILON, "{}", value.get());
+}
+
+/// A slider's native input holds the slider's range, step and value, and follows the
+/// value.
+#[wasm_bindgen_test]
+fn a_sliders_native_input_holds_its_range_and_value() {
+  let (_guard, root) = fresh_root();
+  let value = Signal::new(150.0f32);
+
+  let _ = mount(move || {
+    BasicSlider::new(Slider::new().set_max(200.).set_step(5.).bind_value(value)).build()
+  });
+
+  let input: HtmlInputElement = root
+    .query_selector("input")
+    .expect("a valid selector")
+    .expect("the slider's input")
+    .dyn_into()
+    .expect("an input");
+
+  assert_eq!(input.get_attribute("min").as_deref(), Some("0"));
+  assert_eq!(input.get_attribute("max").as_deref(), Some("200"));
+  assert_eq!(input.get_attribute("step").as_deref(), Some("5"));
+  assert_eq!(input.value(), "150");
+  assert!(!input.has_attribute("aria-valuenow"));
+
+  value.set(185.);
+  platform::end_turn();
+
+  assert_eq!(input.value(), "185");
+}
+
+/// A change handler receives the value, in real time, when an input event fires on
+/// the text field's native input.
+#[wasm_bindgen_test]
+fn change_handler_receives_the_committed_value() {
+  let (_guard, root) = fresh_root();
+  let seen = Rc::new(RefCell::new(String::new()));
+
+  let _ = mount({
+    let seen = Rc::clone(&seen);
+
+    move || {
+      BasicTextField::new(
+        TextEntry::new()
+          .set_value("committed")
+          .handle_change(move |value| value.clone_into(&mut seen.borrow_mut())),
+      )
+      .build()
+    }
+  });
+
+  let input = only_child(&root);
+
+  assert_eq!(input.tag_name(), "INPUT");
+  dispatch(&input, "input");
+
+  assert_eq!(&*seen.borrow(), "committed");
+}
+
+/// A picker's drawn face keeps its caption before its box, as its scriptless
+/// `<select>` does, in a `<label>` `for` nothing, since the face is no form element.
+#[wasm_bindgen_test]
+fn a_drawn_face_keeps_its_caption_before_its_box() {
+  use skene_web::{BasicListboxOption, BasicPicker, ListboxOption};
+
+  let (_guard, root) = fresh_root();
+  let value = Signal::new("a".to_owned());
+
+  let _ = mount(move || {
+    BasicPicker::new()
+      .bind_value(value)
+      .set_label("Size")
+      .set_options(
+        ["a", "b"].map(|value| BasicListboxOption::new(ListboxOption::new(value)).set_label(value)),
+      )
+      .set_face(|shown| Text::derive(move || shown.get()))
+      .build()
+  });
+
+  let face = root
+    .query_selector("[role=combobox]")
+    .expect("query")
+    .expect("the drawn face");
+  let caption = face
+    .previous_element_sibling()
+    .expect("the caption before the face");
+
+  assert_eq!(caption.tag_name(), "LABEL");
+  assert_eq!(caption.text_content().as_deref(), Some("Size"));
+  assert!(!caption.has_attribute("for"));
+  assert!(
+    face.query_selector("label").expect("query").is_none(),
+    "nothing captions the face from inside"
+  );
+}
+
+/// A value written into a focused entry keeps the caret where the browser would move
+/// it to the end: an uppercasing handler leaves it after the character typed.
+#[wasm_bindgen_test]
+fn a_transformed_value_keeps_the_caret() {
+  let (_guard, root) = fresh_root();
+  let value = Signal::new("ac".to_owned());
+
+  let _ = mount(move || {
+    BasicTextField::new(
+      TextEntry::new()
+        .derive_value(move || value.get())
+        .handle_change(move |text| value.set(text.to_uppercase())),
+    )
+    .build()
+  });
+
+  let input = only_child(&root)
+    .dyn_into::<HtmlInputElement>()
+    .expect("an input");
+
+  let _ = input.focus();
+
+  input.set_value("abc");
+
+  let _ = input.set_selection_range(2, 2);
+
+  dispatch(&input, "input");
+  platform::end_turn();
+
+  assert_eq!(input.value(), "ABC");
+  assert_eq!(
+    (input.selection_start(), input.selection_end()),
+    (Ok(Some(2)), Ok(Some(2)))
+  );
+}
+
+/// A checkbox bound to a signal reflects it on its native input and writes toggles
+/// back through a real change event.
+#[wasm_bindgen_test]
+fn checkbox_binding_round_trips() {
+  let (_guard, root) = fresh_root();
+  let checked = Signal::new(false);
+
+  let _ = mount(move || BasicCheckbox::new(Toggle::new().bind_checked(checked)).build());
+
+  let target: HtmlInputElement = only_child(&only_child(&root))
+    .dyn_into()
+    .expect("an input element");
+
+  assert_eq!(target.get_attribute("type").as_deref(), Some("checkbox"));
+  assert!(!target.checked());
+
+  checked.set(true);
+  platform::end_turn();
+
+  assert!(target.checked());
+
+  target.set_checked(false);
+  dispatch(&target, "change");
+
+  assert!(!checked.get());
+}
+
+/// Head registrations set the live document title and language and add each element
+/// once.
+#[wasm_bindgen_test]
+fn head_registrations_apply_once() {
+  let (_guard, _root) = fresh_root();
+
+  head::set_title("Live title");
+  head::set_language("fr");
+  head::add_meta("live-test", "value");
+  head::add_meta("live-test", "value");
+
+  assert_eq!(document().title(), "Live title");
+  assert_eq!(
+    document()
+      .document_element()
+      .and_then(|root| root.get_attribute("lang"))
+      .as_deref(),
+    Some("fr")
   );
 
-  let face_rect = face.get_bounding_client_rect();
-  let popup_rect = popup.get_bounding_client_rect();
+  let head = document().head().expect("a head");
+  let mut matches = 0;
+
+  for index in 0..head.children().length() {
+    let element = head.children().item(index).expect("an element");
+
+    if element.get_attribute("name").as_deref() == Some("live-test") {
+      matches += 1;
+
+      element.remove();
+    }
+  }
+
+  assert_eq!(matches, 1);
+}
+
+/// A registration leaves the live head with its owner, and the title and description it
+/// replaced return.
+#[wasm_bindgen_test]
+fn head_registrations_leave_with_their_owner() {
+  let (_guard, _root) = fresh_root();
+  let outer = Owner::new();
+  let inner = Owner::new();
+  let scoped = || {
+    let found = document()
+      .head()
+      .expect("a head")
+      .query_selector_all("meta[name=scoped-test]")
+      .expect("a valid selector");
+
+    (0..found.length())
+      .filter_map(|index| found.item(index))
+      .filter_map(|node| node.dyn_into::<Element>().ok())
+      .filter_map(|meta| meta.get_attribute("content"))
+      .collect::<Vec<_>>()
+  };
+
+  outer.enter(|| {
+    head::set_title("Outer");
+    head::add_meta("scoped-test", "outer");
+  });
+  inner.enter(|| {
+    head::set_title("Inner");
+    head::add_meta("scoped-test", "inner");
+  });
+
+  assert_eq!(document().title(), "Inner");
+  assert_eq!(scoped(), ["inner"]);
+
+  inner.dispose();
+
+  assert_eq!(document().title(), "Outer");
+  assert_eq!(scoped(), ["outer"]);
+
+  outer.dispose();
+
+  assert!(scoped().is_empty());
+}
+
+/// A registration adopts the identical element a server render left in the head, and
+/// takes it along when its owner goes.
+#[wasm_bindgen_test]
+fn a_head_registration_adopts_the_served_element() {
+  let (_guard, _root) = fresh_root();
+  let parent = document().head().expect("a head");
+  let served = document().create_element("meta").expect("a meta");
+
+  let _ = served.set_attribute("name", "adopt-test");
+  let _ = served.set_attribute("content", "x");
+  let _ = parent.append_child(&served);
+
+  let owner = Owner::new();
+
+  owner.enter(|| head::add_meta("adopt-test", "x"));
+
+  assert_eq!(
+    parent
+      .query_selector_all("meta[name=adopt-test]")
+      .expect("a valid selector")
+      .length(),
+    1
+  );
+  assert!(served.is_connected());
+
+  owner.dispose();
+
+  assert!(!served.is_connected());
+}
+
+/// A focus handle moves real keyboard focus to the native input of its bound control.
+#[wasm_bindgen_test]
+fn focus_handle_focuses_the_bound_view() {
+  let (_guard, root) = fresh_root();
+  let handle = NodeHandle::new();
+
+  let _ = mount(move || {
+    BasicTextField::new(TextEntry::new())
+      .bind_handle(handle)
+      .build()
+  });
+
+  handle.focus();
+
+  let input = only_child(&root);
+
+  assert_eq!(document().active_element(), Some(input.clone()));
+
+  handle.blur();
+
+  assert_ne!(document().active_element(), Some(input));
+}
+
+/// A handler may re-enter the platform—building nodes from inside one does not deadlock
+/// the scene or the DOM state.
+#[wasm_bindgen_test]
+fn a_click_handler_may_build_nodes() {
+  let (_guard, root) = fresh_root();
+
+  let _ = mount(|| {
+    Container::new()
+      .handle_click(|| {
+        let _ = Container::new().build();
+      })
+      .build()
+  });
+
+  html(&only_child(&root)).click();
+}
+
+/// A span's click handler runs for a click on the span, and not for one on the
+/// paragraph beside it.
+#[wasm_bindgen_test]
+fn a_span_runs_its_click_handler() {
+  let (_guard, root) = fresh_root();
+  let clicks = Rc::new(Cell::new(0u32));
+  let counted = Rc::clone(&clicks);
+
+  let _ = mount(move || {
+    skene_web::RichText::new()
+      .set_spans([
+        skene_web::Span::new("plain "),
+        skene_web::Span::new("click").handle_click(move || counted.set(counted.get() + 1)),
+      ])
+      .build()
+  });
+
+  let paragraph = only_child(&root);
+  let span = paragraph.last_element_child().expect("the clickable span");
+
+  html(&span).click();
+  html(&paragraph).click();
+
+  assert_eq!(clicks.get(), 1);
+}
+
+#[wasm_bindgen_test]
+fn derived_text_updates_the_dom_on_change() {
+  let (_guard, root) = fresh_root();
+  let count = Signal::new(0);
+
+  let _ = mount(move || Text::derive(move || count.get().to_string()).build());
+
+  let element = only_child(&root);
+
+  assert_eq!(element.text_content().as_deref(), Some("0"));
+
+  count.set(5);
+  platform::end_turn();
+
+  assert_eq!(element.text_content().as_deref(), Some("5"));
+}
+
+/// A derived property writes its slot on change, and the class reading the slot
+/// applies it.
+#[wasm_bindgen_test]
+fn derived_style_updates_its_slot_on_change() {
+  let (_guard, root) = fresh_root();
+  let size = Signal::new(12.0f32);
+
+  let _ = mount(move || Text::new("t").derive_font_size(move || size.get()).build());
+
+  let element = only_child(&root);
+
+  assert_eq!(computed(&element, "font-size"), "12px");
+
+  size.set(20.0);
+  platform::end_turn();
+
+  assert_eq!(computed(&element, "font-size"), "20px");
+}
+
+/// The typography's link ink reaches a link and follows the palette as it changes.
+#[wasm_bindgen_test]
+fn typography_link_ink_reaches_a_link_and_updates() {
+  let (_guard, root) = fresh_root();
+  let link_ink = Signal::new(Color::srgb(1., 0., 0.));
+
+  let _ = mount(move || {
+    Theme::derive(move || Typography::default().set_link_ink(link_ink.get()))
+      .set_child_builder(|| Text::new("go").set_link("https://example.com/"))
+      .build()
+  });
+
+  let scope = only_child(&root);
+  let link = only_child(&scope);
+
+  assert_eq!(link.tag_name(), "A");
+  assert_eq!(
+    computed(&link, "color"),
+    probe(&scope, &Declarations::render_color(Color::srgb(1., 0., 0.)))
+  );
+
+  link_ink.set(Color::srgb(0., 0., 1.));
+  platform::end_turn();
+
+  assert_eq!(
+    computed(&link, "color"),
+    probe(&scope, &Declarations::render_color(Color::srgb(0., 0., 1.)))
+  );
+}
+
+/// A palette that switches from inline definitions back to conditional ones takes effect.
+#[wasm_bindgen_test]
+fn a_conditional_palette_after_an_unconditional_one_takes_effect() {
+  let (_guard, root) = fresh_root();
+  let conditional = Signal::new(true);
+  let green = Color::srgb(0., 1., 0.);
+  let blue = Color::srgb(0., 0., 1.);
+
+  let _ = mount(move || {
+    Theme::derive(move || {
+      let ink = if conditional.get() {
+        Definition::from(Color::srgb(1., 0., 0.)).when(Media::MinWidth(1.), green)
+      }
+      else {
+        Definition::from(blue)
+      };
+
+      Typography::default()
+        .set_ink(ink)
+        .set_link_ink(blue)
+        .set_selection_ink(blue)
+        .set_selection_surface(blue)
+    })
+    .set_child_builder(|| Text::new("ink"))
+    .build()
+  });
+
+  let scope = only_child(&root);
+  let text = only_child(&scope);
+
+  assert_eq!(
+    computed(&text, "color"),
+    probe(&scope, &Declarations::render_color(green))
+  );
+
+  conditional.set(false);
+  platform::end_turn();
+
+  assert_eq!(
+    computed(&text, "color"),
+    probe(&scope, &Declarations::render_color(blue))
+  );
+
+  conditional.set(true);
+  platform::end_turn();
+
+  assert_eq!(
+    computed(&text, "color"),
+    probe(&scope, &Declarations::render_color(green))
+  );
+}
+
+/// A typography theme sizes, weights, spaces and leads the text beneath it, and a text
+/// setting its own size keeps it.
+#[wasm_bindgen_test]
+fn a_typography_theme_reaches_the_text_beneath_it() {
+  let (_guard, root) = fresh_root();
+
+  let _ = mount(|| {
+    Theme::new(
+      Typography::default()
+        .set_size(20.)
+        .set_weight(700.)
+        .set_line_height(2.)
+        .set_letter_spacing(1.),
+    )
+    .set_child_builder(|| {
+      Column::new().set_children((Text::new("themed"), Text::new("own").set_font_size(12.)))
+    })
+    .build()
+  });
+
+  let scope = only_child(&root);
+  let column = only_child(&scope);
+  let themed = column.first_element_child().expect("the themed text");
+  let own = column.last_element_child().expect("the sized text");
+
+  assert_eq!(computed(&themed, "font-size"), "20px");
+  assert_eq!(computed(&themed, "font-weight"), "700");
+  assert_eq!(computed(&themed, "line-height"), "40px");
+  assert_eq!(computed(&themed, "letter-spacing"), "1px");
+  assert_eq!(computed(&own, "font-size"), "12px");
+}
+
+/// A text entry's value is inked and weighted by the typography in force, as a run is.
+#[wasm_bindgen_test]
+fn a_text_entry_takes_the_typography_ink_and_weight() {
+  let (_guard, root) = fresh_root();
+
+  let _ = mount(|| {
+    Theme::new(
+      Typography::default()
+        .set_ink(Color::srgb(1., 0., 0.))
+        .set_weight(700.),
+    )
+    .set_child_builder(|| BasicTextField::new(TextEntry::new().set_value("hi")))
+    .build()
+  });
+
+  let input = root
+    .query_selector("input")
+    .expect("a valid selector")
+    .expect("the entry's input");
+
+  assert_eq!(
+    computed(&input, "color"),
+    probe(&root, &Declarations::render_color(Color::srgb(1., 0., 0.)))
+  );
+  assert_eq!(computed(&input, "font-weight"), "700");
+}
+
+/// The link ink never reaches a run that is not a link.
+#[wasm_bindgen_test]
+fn typography_link_ink_skips_non_link_text() {
+  let (_guard, root) = fresh_root();
+
+  let _ = mount(|| {
+    Theme::new(Typography::default().set_link_ink(Color::srgb(1., 0., 0.)))
+      .set_child_builder(|| Text::new("plain"))
+      .build()
+  });
+
+  let scope = only_child(&root);
+  let text = only_child(&scope);
+
+  assert_eq!(text.tag_name(), "SPAN");
+  assert_eq!(
+    computed(&text, "color"),
+    probe(&scope, "var(--typography-ink)")
+  );
+  assert_ne!(
+    computed(&text, "color"),
+    probe(&scope, &Declarations::render_color(Color::srgb(1., 0., 0.)))
+  );
+}
+
+#[wasm_bindgen_test]
+fn container_is_a_single_cell_grid() {
+  let (_guard, root) = fresh_root();
+
+  let _ = mount(|| Container::new().build());
+
+  let element = only_child(&root);
+
+  assert_eq!(computed(&element, "display"), "grid");
+
+  // One track each way. The resolved size follows the viewport; the count does not.
+  let tracks = |axis| computed(&element, axis).split_whitespace().count();
+
+  assert_eq!(tracks("grid-template-columns"), 1);
+  assert_eq!(tracks("grid-template-rows"), 1);
+}
+
+#[wasm_bindgen_test]
+fn column_container_is_a_flex_column() {
+  let (_guard, root) = fresh_root();
+
+  let _ = mount(|| Column::new().build());
+
+  let element = only_child(&root);
+
+  assert_eq!(computed(&element, "display"), "flex");
+  assert_eq!(computed(&element, "flex-direction"), "column");
+}
+
+#[wasm_bindgen_test]
+fn grid_container_is_a_grid() {
+  let (_guard, root) = fresh_root();
+
+  let _ = mount(|| Grid::uniform(2).build());
+
+  assert_eq!(computed(&only_child(&root), "display"), "grid");
+}
+
+/// A child placed by an area's name lands on the area's tracks, and an adaptive grid fits
+/// as many columns as its minimum allows.
+#[wasm_bindgen_test]
+fn named_areas_and_adaptive_tracks_lay_out() {
+  const HEAD: GridName = GridName::new("head");
+  const MAIN: GridName = GridName::new("main");
+
+  let (_guard, root) = fresh_root();
+  let cell = || Container::new().set_height(Dimension::Length(10.));
+
+  let _ = mount(move || {
+    Column::new()
+      .set_children((
+        Container::new()
+          .set_width(Dimension::Length(300.))
+          .set_child(
+            Grid::new()
+              .set_columns(vec![GridTrack::Length(100.), GridTrack::Flex(1.)])
+              .set_areas(GridAreas::new(["head head", "nav main"]))
+              .set_children((
+                GridCell::new()
+                  .set_row(MAIN)
+                  .set_column(MAIN)
+                  .set_child(cell()),
+                GridCell::new()
+                  .set_row(HEAD)
+                  .set_column(HEAD)
+                  .set_child(cell()),
+              )),
+          ),
+        Container::new()
+          .set_width(Dimension::Length(250.))
+          .set_child(Grid::adaptive(80.).set_children((cell(), cell(), cell(), cell()))),
+      ))
+      .build()
+  });
+
+  let column = only_child(&root);
+  let areas = column
+    .first_element_child()
+    .and_then(|container| container.first_element_child())
+    .expect("the areas' grid");
+  let adaptive = column
+    .last_element_child()
+    .and_then(|container| container.first_element_child())
+    .expect("the adaptive grid");
+  let rect = |element: &Element| element.get_bounding_client_rect();
+  let origin = rect(&areas);
+  let (main, head) = (
+    rect(&areas.children().item(0).expect("main")),
+    rect(&areas.children().item(1).expect("head")),
+  );
+
+  assert!((main.left() - origin.left() - 100.).abs() < 0.5);
+  assert!((head.width() - 300.).abs() < 0.5);
+  assert!(main.top() > head.top());
+
+  let (first, fourth) = (
+    rect(&adaptive.children().item(0).expect("first")),
+    rect(&adaptive.children().item(3).expect("fourth")),
+  );
+
+  assert!((first.width() - 250. / 3.).abs() < 0.5);
+  assert!(fourth.top() > first.top());
+}
+
+/// A child placed between named lines lands on the tracks between them.
+#[wasm_bindgen_test]
+fn named_lines_place_a_child() {
+  const CONTENT: GridName = GridName::new("content");
+  const END: GridName = GridName::new("end");
+
+  let (_guard, root) = fresh_root();
+
+  let _ = mount(|| {
+    Grid::new()
+      .set_columns(
+        GridTemplate::new()
+          .add_track(GridTrack::Length(100.))
+          .add_line(CONTENT)
+          .add_track(GridTrack::Length(100.))
+          .add_line(END)
+          .add_track(GridTrack::Length(100.)),
+      )
+      .set_children((GridCell::new()
+        .set_column(Line {
+          start: GridPlacement::Named(CONTENT, 1),
+          end: GridPlacement::Named(END, 1),
+        })
+        .set_child(Container::new().set_height(Dimension::Length(10.))),))
+      .build()
+  });
+
+  let grid = only_child(&root);
+  let child = only_child(&grid);
+  let (origin, placed) = (
+    grid.get_bounding_client_rect(),
+    child.get_bounding_client_rect(),
+  );
+
+  assert!((placed.left() - origin.left() - 100.).abs() < 0.5);
+  assert!((placed.width() - 100.).abs() < 0.5);
+}
+
+/// A box hears focus when focus enters its subtree and blur when focus leaves it, not
+/// as focus moves between the controls inside it, as `:focus-within` changes.
+#[wasm_bindgen_test]
+fn a_box_hears_focus_entering_and_leaving_its_subtree() {
+  let (_guard, root) = fresh_root();
+  let (focuses, blurs) = (Rc::new(Cell::new(0)), Rc::new(Cell::new(0)));
+  let (entered, left) = (Rc::clone(&focuses), Rc::clone(&blurs));
+
+  let _ = mount(move || {
+    Column::new()
+      .set_children((
+        Container::new()
+          .handle_focus(move || entered.set(entered.get() + 1))
+          .handle_blur(move || left.set(left.get() + 1))
+          .set_child(Row::new().set_children((
+            BasicButton::new(Activate::new()).set_label("a"),
+            BasicButton::new(Activate::new()).set_label("b"),
+          ))),
+        BasicButton::new(Activate::new()).set_label("c"),
+      ))
+      .build()
+  });
+
+  let buttons = root.query_selector_all("button").expect("the buttons");
+  let focus = |index| {
+    let button: HtmlElement = buttons
+      .item(index)
+      .expect("a button")
+      .dyn_into()
+      .expect("an element");
+
+    button.focus().expect("focus");
+  };
+
+  focus(0);
+
+  assert_eq!((focuses.get(), blurs.get()), (1, 0));
+
+  focus(1);
+
+  assert_eq!((focuses.get(), blurs.get()), (1, 0));
+
+  focus(2);
+
+  assert_eq!((focuses.get(), blurs.get()), (1, 1));
+}
+
+/// A node a press's pointer drags takes a touch along the axes it drags and leaves the
+/// others to the page's pan: a slider along its axis, a box along those it declares; a
+/// checkbox, which drags nothing, is left to the page.
+#[wasm_bindgen_test]
+fn a_dragging_node_takes_a_touch_along_its_axes() {
+  let (_guard, root) = fresh_root();
+
+  let _ = mount(|| {
+    Column::new()
+      .set_children((
+        BasicSlider::new(Slider::new()),
+        BasicSlider::new(Slider::new().set_axis(Axis::Vertical)),
+        BasicCheckbox::new(Toggle::new()),
+        Container::new().set_drag_axes(DragAxes::Both),
+      ))
+      .build()
+  });
+
+  let column = only_child(&root);
+  let child = |index| -> Element { column.children().item(index).expect("a child") };
+  let drags = |index| child(index).get_attribute("data-skene-drags");
+
+  assert_eq!(drags(0).as_deref(), Some("horizontal"));
+  assert_eq!(computed(&child(0), "touch-action"), "pan-y pinch-zoom");
+  assert_eq!(drags(1).as_deref(), Some("vertical"));
+  assert_eq!(computed(&child(1), "touch-action"), "pan-x pinch-zoom");
+  assert_eq!(drags(2), None);
+  assert_eq!(computed(&child(2), "touch-action"), "auto");
+  assert_eq!(drags(3).as_deref(), Some("both"));
+  assert_eq!(computed(&child(3), "touch-action"), "pinch-zoom");
+}
+
+/// `empty` renders no element at all: an empty segment, its two anchors alone.
+#[wasm_bindgen_test]
+fn empty_renders_no_element() {
+  let (_guard, root) = fresh_root();
+
+  let _ = mount(|| empty().build());
+
+  assert_eq!(root.children().length(), 0);
+  assert_eq!(root.child_nodes().length(), 2);
+}
+
+/// The escape hatch: a view that builds a node and then reaches its real element
+/// through the platform, no trait involved.
+#[wasm_bindgen_test]
+fn a_low_level_view_reaches_the_platform_directly() {
+  let (_guard, root) = fresh_root();
+
+  let _ = mount(|| {
+    AnyView::new(|| {
+      let node = Container::new().set_role(Role::Section).build();
+      let element = platform::element(node).expect("the realized element");
+
+      element.set_text_content(Some("raw"));
+
+      node
+    })
+    .build()
+  });
+
+  let element = only_child(&root);
+
+  assert_eq!(element.tag_name(), "SECTION");
+  assert_eq!(element.text_content().as_deref(), Some("raw"));
+}
+
+#[wasm_bindgen_test]
+fn reconcile_reorders_the_real_dom_preserving_nodes() {
+  let (_guard, root) = fresh_root();
+  let items = Signal::new(vec![1, 2, 3]);
+
+  let _ = mount(move || {
+    Column::new()
+      .derive_children(
+        move || items.get(),
+        |item: &i32| *item,
+        |item| Text::new(item.to_string()),
+      )
+      .build()
+  });
+
+  let parent = only_child(&root);
+
+  assert_eq!(child_texts(&parent), ["1", "2", "3"]);
+
+  // Mark the "2" node so a rebuild (rather than a move) would drop the marker.
+  parent
+    .children()
+    .item(1)
+    .unwrap()
+    .set_attribute("data-keep", "yes")
+    .unwrap();
+
+  items.set(vec![3, 1, 2]);
+  platform::end_turn();
+
+  assert_eq!(child_texts(&parent), ["3", "1", "2"]);
+
+  let moved = parent.children().item(2).unwrap();
+
+  assert_eq!(moved.text_content().as_deref(), Some("2"));
+  assert_eq!(moved.get_attribute("data-keep").as_deref(), Some("yes"));
+}
+
+/// The primitive a library user reaches for: swap between two whole trees on a state
+/// change, in place between the subtree's anchors.
+#[wasm_bindgen_test]
+fn derived_view_swaps_between_trees_on_state_change() {
+  let (_guard, root) = fresh_root();
+  let logged_in = Signal::new(false);
+
+  let _ = mount(move || {
+    derived(move || {
+      if logged_in.get() {
+        Text::new("welcome").build()
+      }
+      else {
+        Container::new().set_role(Role::Navigation).build()
+      }
+    })
+  });
+
+  assert_eq!(only_child(&root).tag_name(), "NAV");
+
+  logged_in.set(true);
+  platform::end_turn();
+
+  let swapped = only_child(&root);
+
+  assert_eq!(root.children().length(), 1, "the old tree is torn down");
+  assert_eq!(swapped.tag_name(), "SPAN");
+  assert_eq!(swapped.text_content().as_deref(), Some("welcome"));
+}
+
+/// A scrollable box holding a focused box, with the scroll offset set after the focus,
+/// which would otherwise scroll it.
+fn scroller() -> Container {
+  Container::new()
+    .set_height(40.)
+    .set_overflow(skene_web::core::Overflow::Auto)
+    .set_child(
+      Column::new().set_children((
+        Container::new()
+          .set_min_height(20.)
+          .set_focus_order(skene_web::FocusOrder::Auto),
+        Container::new().set_min_height(200.),
+      )),
+    )
+}
+
+/// Focuses the focusable box inside `scroller` and scrolls it by 30 pixels.
+fn focus_and_scroll(scroller: &Element) -> Element {
+  let focusable = scroller
+    .query_selector("[tabindex]")
+    .expect("query")
+    .expect("the focusable box");
+
+  html(&focusable).focus().expect("focus the box");
+  scroller.set_scroll_top(30);
+
+  assert_eq!(scroller.scroll_top(), 30);
+  assert_eq!(document().active_element(), Some(focusable.clone()));
+
+  focusable
+}
+
+/// A hidden subtree keeps its scroll offsets and the focus inside it, and gets both back
+/// when it shows again.
+#[wasm_bindgen_test]
+fn a_hidden_subtree_keeps_its_scroll_and_focus() {
+  let (_guard, root) = fresh_root();
+  let shown = Signal::new(true);
+
+  let _ = mount(move || {
+    Show::new()
+      .derive_shown(move || shown.get())
+      .set_child(scroller())
+      .build()
+  });
+
+  let scroller = only_child(&root);
+  let focusable = focus_and_scroll(&scroller);
+
+  shown.set(false);
+  platform::end_turn();
+
+  assert!(!scroller.is_connected(), "the subtree left the document");
+
+  shown.set(true);
+  platform::end_turn();
+
+  assert_eq!(only_child(&root), scroller, "the same subtree returned");
+  assert_eq!(scroller.scroll_top(), 30, "the offset returned with it");
+  assert_eq!(
+    document().active_element(),
+    Some(focusable),
+    "the focus returned with it"
+  );
+}
+
+/// A rebuilt subtree of the same shape starts afresh: what the content that left held
+/// leaves with it.
+#[wasm_bindgen_test]
+fn a_derived_rebuild_keeps_nothing() {
+  let (_guard, root) = fresh_root();
+  let generation = Signal::new(0);
+
+  let _ = mount(move || {
+    derived(move || {
+      let _ = generation.get();
+
+      scroller().build()
+    })
+  });
+
+  let scroller = only_child(&root);
+  let focusable = focus_and_scroll(&scroller);
+
+  generation.set(1);
+  platform::end_turn();
+
+  let rebuilt = only_child(&root);
+
+  assert!(rebuilt != scroller, "the subtree was rebuilt");
+  assert_eq!(rebuilt.scroll_top(), 0, "no offset carried over");
+  assert!(
+    document().active_element() != Some(focusable),
+    "no focus carried over"
+  );
+}
+
+/// A reordered list moves its rows in place: a focused row keeps its focus.
+#[wasm_bindgen_test]
+fn a_moved_row_keeps_its_focus() {
+  let (_guard, root) = fresh_root();
+  let items = Signal::new(vec![1, 2, 3]);
+
+  let _ = mount(move || {
+    Column::new()
+      .derive_children(
+        move || items.get(),
+        |item: &i32| *item,
+        |item| {
+          Container::new()
+            .set_focus_order(skene_web::FocusOrder::Auto)
+            .set_child(Text::new(item.to_string()))
+        },
+      )
+      .build()
+  });
+
+  let parent = only_child(&root);
+  let first = parent.children().item(0).expect("the first row");
+
+  html(&first).focus().expect("focus the first row");
+  items.set(vec![3, 2, 1]);
+  platform::end_turn();
+
+  assert_eq!(child_texts(&parent), ["3", "2", "1"]);
+  assert_eq!(parent.children().item(2), Some(first.clone()));
+  assert_eq!(
+    document().active_element(),
+    Some(first),
+    "the moved row kept its focus"
+  );
+}
+
+/// Only `items` decides when the list is diffed: a signal an item happens to read while
+/// building must not subscribe the reconcile effect and re-run the whole diff.
+#[wasm_bindgen_test]
+fn an_items_own_signal_does_not_re_run_the_list_diff() {
+  let (_guard, root) = fresh_root();
+  let items = Signal::new(vec![1, 2]);
+  let extra = Signal::new(0u32);
+  let runs = Rc::new(Cell::new(0u32));
+
+  let _ = mount({
+    let runs = Rc::clone(&runs);
+
+    move || {
+      Column::new()
+        .derive_children(
+          {
+            let runs = Rc::clone(&runs);
+
+            move || {
+              runs.set(runs.get() + 1);
+
+              items.get()
+            }
+          },
+          |item: &i32| *item,
+          // Read a signal directly while building this item.
+          move |item| Text::new(format!("{item}-{}", extra.get())),
+        )
+        .build()
+    }
+  });
+
+  assert_eq!(runs.get(), 1, "one diff on mount");
+
+  extra.set(9);
+  platform::end_turn();
+
+  assert_eq!(
+    runs.get(),
+    1,
+    "an item's own signal must not re-run the list diff"
+  );
+
+  // The list itself still drives the diff.
+  items.set(vec![1, 2, 3]);
+  platform::end_turn();
+
+  assert_eq!(runs.get(), 2, "changing the list re-runs the diff");
+  assert_eq!(child_texts(&only_child(&root)).len(), 3);
+}
+
+/// The flip side: untracking an item's build must not muzzle the item's *own* effects. A
+/// `derive_` property inside a reconciled item still tracks and updates.
+#[wasm_bindgen_test]
+fn a_derived_property_inside_an_item_still_updates() {
+  let (_guard, root) = fresh_root();
+  let items = Signal::new(vec![1]);
+  let size = Signal::new(12.0f32);
+
+  let _ = mount(move || {
+    Column::new()
+      .derive_children(
+        move || items.get(),
+        |item: &i32| *item,
+        move |item| Text::new(item.to_string()).derive_font_size(move || size.get()),
+      )
+      .build()
+  });
+
+  let item = only_child(&only_child(&root));
+
+  assert_eq!(computed(&item, "font-size"), "12px");
+
+  size.set(24.0);
+  platform::end_turn();
+
+  assert_eq!(computed(&item, "font-size"), "24px");
+}
+
+/// Selection is opt-in: a plain run computes `user-select: none` through the reset,
+/// and `set_selectable(true)` restores it.
+#[wasm_bindgen_test]
+fn unselectable_text_computes_user_select_none() {
+  let (_guard, root) = fresh_root();
+
+  let _ = mount(|| {
+    Column::new()
+      .set_children((
+        Text::new("content").set_selectable(true),
+        Text::new("chrome"),
+      ))
+      .build()
+  });
+
+  let children = only_child(&root).children();
+  let run = |index: u32| computed(&children.item(index).expect("a run"), "user-select");
+
+  // The reset turns selection off: a plain run computes `auto`, which resolves to the
+  // body's `none` at use time, or the body's `none` itself where the engine inherits
+  // it, as Chromium does; the opt-in overrides it in place.
+  assert_eq!(
+    computed(&document().body().expect("a body").into(), "user-select"),
+    "none"
+  );
+  assert_eq!(run(0), "text");
+  assert!(matches!(run(1).as_str(), "auto" | "none"), "{}", run(1));
+}
+
+/// A link is inked in the link ink and underlined, while the base ink never colors it.
+#[wasm_bindgen_test]
+fn links_are_inked_in_the_link_ink_and_underlined() {
+  let (_guard, root) = fresh_root();
+
+  let _ = mount(|| {
+    Theme::new(Typography::default().set_ink(Color::srgb(0.9, 0.9, 0.9)))
+      .set_child_builder(|| Text::new("docs").set_link("https://example.com"))
+      .build()
+  });
+
+  let scope = only_child(&root);
+  let link = only_child(&scope);
+
+  assert_eq!(
+    computed(&link, "color"),
+    probe(&scope, "var(--typography-link-ink)")
+  );
+  assert_ne!(
+    computed(&link, "color"),
+    probe(
+      &scope,
+      &Declarations::render_color(Color::srgb(0.9, 0.9, 0.9))
+    )
+  );
+  assert_eq!(computed(&link, "text-decoration-line"), "underline");
+}
+
+#[wasm_bindgen_test]
+fn a_widget_role_and_state_reach_the_real_dom() {
+  use skene_web::core::AccessProp;
+
+  let (_guard, root) = fresh_root();
+  let checked = Signal::new(false);
+
+  let _ = mount(move || {
+    Container::new()
+      .set_role(Role::CheckBox)
+      .derive_accessibility(move || vec![AccessProp::Checked(checked.get().into())])
+      .build()
+  });
+
+  let element = only_child(&root);
+
+  assert_eq!(element.tag_name(), "DIV");
+  assert_eq!(element.get_attribute("role").as_deref(), Some("checkbox"));
+  assert_eq!(
+    element.get_attribute("aria-checked").as_deref(),
+    Some("false"),
+  );
+
+  checked.set(true);
+  platform::end_turn();
+
+  assert_eq!(
+    element.get_attribute("aria-checked").as_deref(),
+    Some("true"),
+    "the attribute follows the signal in the live DOM",
+  );
+}
+
+/// A checkbox is a label over the browser's own input, which carries its focus, its
+/// accessible name and its state; a real click on it flips the bound signal.
+#[wasm_bindgen_test]
+fn a_checkbox_is_a_label_over_a_native_input() {
+  let (_guard, root) = fresh_root();
+  let checked = Signal::new(false);
+
+  let _ = mount(move || {
+    BasicCheckbox::new(Toggle::new().bind_checked(checked))
+      .set_label("Subscribed")
+      .build()
+  });
+
+  let label = only_child(&root);
+  let input = only_child(&label);
+
+  assert_eq!(label.tag_name(), "LABEL");
+  assert_eq!(input.tag_name(), "INPUT");
+  assert_eq!(input.get_attribute("type").as_deref(), Some("checkbox"));
+  assert_eq!(input.get_attribute("tabindex").as_deref(), Some("0"));
+  assert_eq!(
+    input.get_attribute("aria-label").as_deref(),
+    Some("Subscribed"),
+  );
+
+  html(&input).click();
+
+  assert!(checked.get(), "a real click toggles it");
+  assert!(
+    input
+      .dyn_ref::<HtmlInputElement>()
+      .expect("an input")
+      .checked()
+  );
+}
+
+/// A radio group's arrow traversal follows document order, including a member
+/// reconciled into the middle of the set after the group was built.
+///
+/// The host tier pins the same thing against the headless platform. This pins it against
+/// the browser's: real reconcile, real elements, and a real `keydown`, so the order the
+/// platform reports is checked against the order the document actually renders.
+#[wasm_bindgen_test]
+fn a_radio_group_traverses_in_document_order() {
+  let (_guard, root) = fresh_root();
+  let flavors = Signal::new(vec![String::from("mint"), String::from("fig")]);
+  let chosen: Signal<Option<String>> = Signal::new(Some(String::from("mint")));
+
+  let _ = mount(move || {
+    BasicRadioGroup::new(RadioGroup::new().bind_chosen(chosen))
+      .set_child(Column::new().derive_children(
+        move || flavors.get(),
+        |flavor: &String| flavor.clone(),
+        |flavor| BasicRadio::new(Radio::new(flavor.clone())).set_label(flavor),
+      ))
+      .build()
+  });
+
+  let column = only_child(&only_child(&root));
+  let rows = || {
+    let children = column.children();
+
+    (0..children.length())
+      .filter_map(|index| children.item(index))
+      .collect::<Vec<_>>()
+  };
+  let press = |target: &Element, key: &str| {
+    let init = web_sys::KeyboardEventInit::new();
+
+    init.set_bubbles(true);
+    init.set_key(key);
+
+    let event =
+      web_sys::KeyboardEvent::new_with_keyboard_event_init_dict("keydown", &init).expect("a key");
+
+    let _ = target.dispatch_event(&event);
+  };
+
+  assert_eq!(rows().len(), 2);
+
+  press(&rows()[0], "ArrowDown");
+
+  assert_eq!(chosen.get().as_deref(), Some("fig"));
+
+  chosen.set(Some(String::from("mint")));
+  flavors.set(vec![
+    String::from("mint"),
+    String::from("plum"),
+    String::from("fig"),
+  ]);
+
+  platform::end_turn();
+
+  assert_eq!(rows().len(), 3, "the newcomer is in the document");
+  assert_eq!(
+    only_child(&rows()[1]).get_attribute("type").as_deref(),
+    Some("radio"),
+    "and it is the middle one",
+  );
+
+  press(&rows()[0], "ArrowDown");
+
+  assert_eq!(
+    chosen.get().as_deref(),
+    Some("plum"),
+    "traversal follows the document, not the order members joined",
+  );
+}
+
+/// Every page of the routed test app.
+#[derive(Clone, PartialEq)]
+enum Page {
+  Home,
+  About,
+}
+
+impl skene_web::router::Route for Page {
+  fn parse(path: &str) -> Option<Self> {
+    match path {
+      "/about" => Some(Self::About),
+      _ => Some(Self::Home),
+    }
+  }
+
+  fn to_path(&self) -> String {
+    match self {
+      Self::Home => "/".to_owned(),
+      Self::About => "/about".to_owned(),
+    }
+  }
+}
+
+/// With the opt-in, a route change commits inside `document.startViewTransition`, and
+/// the new route is in the DOM once the transition's callback ran.
+#[wasm_bindgen_test]
+fn a_route_change_commits_under_a_view_transition() {
+  use skene_web::{install_router, router::Router, view_transitions};
+  use wasm_bindgen::{JsValue, closure::Closure};
+
+  let (_guard, root) = fresh_root();
+  let calls = Rc::new(Cell::new(0u32));
+  let counted = Rc::clone(&calls);
+  let stub = Closure::wrap(Box::new(move |callback: js_sys::Function| {
+    counted.set(counted.get() + 1);
+
+    let _ = callback.call0(&JsValue::NULL);
+  }) as Box<dyn FnMut(js_sys::Function)>);
+  let document: JsValue = document().into();
+  let key = JsValue::from_str("startViewTransition");
+  let had_native = js_sys::Reflect::has(&document, &key).unwrap_or(false);
+
+  js_sys::Reflect::set(&document, &key, stub.as_ref()).expect("stub the transition");
+
+  let router: Rc<RefCell<Option<Router<Page>>>> = Rc::new(RefCell::new(None));
+  let held = Rc::clone(&router);
+  let _ = mount(move || {
+    view_transitions::enable();
+
+    let installed = install_router(Page::Home);
+
+    *held.borrow_mut() = Some(installed);
+
+    derived(move || match installed.route() {
+      Page::Home => Text::new("home page").build(),
+      Page::About => Text::new("about page").build(),
+    })
+  });
 
   assert!(
-    (popup_rect.top() - face_rect.bottom()).abs() < 1.
-      && (popup_rect.left() - face_rect.left()).abs() < 1.,
-    "the popup opens below the face, start-aligned: popup {:?} face {:?}",
-    (popup_rect.left(), popup_rect.top()),
-    (face_rect.left(), face_rect.bottom())
+    root
+      .text_content()
+      .unwrap_or_default()
+      .contains("home page")
   );
 
-  if web_sys::css::supports_with_value("position-area", "block-end").unwrap_or(false) {
-    let name = html(&face)
-      .style()
-      .get_property_value("anchor-name")
-      .unwrap();
+  router
+    .borrow()
+    .as_ref()
+    .expect("a router")
+    .navigate(Page::About);
 
-    assert!(name.starts_with("--skene-anchor-"), "{name}");
-    assert_eq!(
-      html(&popup)
-        .style()
-        .get_property_value("position-anchor")
-        .unwrap(),
-      name,
-      "the popup follows the face through CSS anchor positioning"
-    );
-    assert_eq!(
-      html(&popup)
-        .style()
-        .get_property_value("position-area")
-        .unwrap(),
-      "block-end span-inline-end"
-    );
-    assert_eq!(
-      html(&popup).style().get_property_value("top").unwrap(),
-      "auto",
-      "no measured position is written where the engine anchors"
+  assert_eq!(calls.get(), 1, "the navigation ran under the transition");
+  assert!(
+    root
+      .text_content()
+      .unwrap_or_default()
+      .contains("about page")
+  );
+
+  let _ = router.borrow().as_ref().expect("a router").apply_path("/");
+
+  assert_eq!(calls.get(), 2, "an applied path commits the same way");
+  platform::push_path("/");
+
+  if !had_native {
+    let _ = js_sys::Reflect::delete_property(&document.unchecked_into::<js_sys::Object>(), &key);
+  }
+
+  drop(stub);
+}
+
+/// A keyframe animation whose frames hold a token applies in the real engine, its
+/// keyframes referencing the token's variable.
+#[wasm_bindgen_test]
+fn a_token_keyframe_animation_applies() {
+  use skene_web::{
+    GuiStyle,
+    core::{Animation, BoxStyle, Keyframe},
+  };
+
+  let (_guard, root) = fresh_root();
+
+  let _ = mount(|| {
+    Theme::new(SimplePalette::default())
+      .set_child_builder(|| {
+        let mut start: BoxStyle<f32, Keyframe, GuiStyle> = BoxStyle::default();
+        let mut end: BoxStyle<f32, Keyframe, GuiStyle> = BoxStyle::default();
+
+        start.color = Some(SimplePalette::CARD.into());
+        end.color = Some(Color::srgb(1., 0., 0.).into());
+
+        Container::new().set_animation(
+          Animation::new(2., [(0., start), (100., end)]).set_respect_reduced_motion(false),
+        )
+      })
+      .build()
+  });
+
+  let scope = only_child(&root);
+  let element = only_child(&scope);
+
+  assert!(
+    computed(&element, "animation-name").starts_with("skene-k-"),
+    "{}",
+    computed(&element, "animation-name")
+  );
+
+  let sheets = document()
+    .query_selector_all("style[data-skene-style]")
+    .expect("the style blocks");
+  let mut text = String::new();
+
+  for index in 0..sheets.length() {
+    text.push_str(
+      &sheets
+        .item(index)
+        .and_then(|node| node.text_content())
+        .unwrap_or_default(),
     );
   }
-  else {
+
+  assert!(
+    text.contains("0%{background-color:var(--simple-card);}"),
+    "{text}"
+  );
+}
+
+/// Focus and scroll offsets ride the state snapshot: restored into a fresh install of
+/// the same tree, the same field holds focus and the same box holds its offset.
+#[wasm_bindgen_test]
+fn focus_and_scroll_survive_a_snapshot_roundtrip() {
+  use skene_web::{
+    BasicTextField,
+    NodeId,
+    TextEntry,
+    core::{Dimension, Overflow},
+    reactive,
+  };
+
+  fn build() -> NodeId {
+    Column::new()
+      .set_children((
+        Container::new()
+          .set_height(Dimension::Length(40.))
+          .set_overflow(Overflow::Scroll)
+          .set_child(Container::new().set_height(Dimension::Length(400.))),
+        BasicTextField::new(TextEntry::new()),
+      ))
+      .build()
+  }
+
+  let bytes = {
+    let (_installed, root) = fresh_root();
+
+    reactive::record_snapshots();
+
+    let _ = mount(build);
+    let column = only_child(&root);
+    let scroller = column.first_element_child().expect("the scroller");
+    let field = column
+      .query_selector("input")
+      .expect("query")
+      .expect("the field");
+
+    scroller.set_scroll_top(120);
+    html(&field).focus().expect("focus the field");
+
+    assert_eq!(document().active_element().as_ref(), Some(&field));
+
+    reactive::snapshot()
+  };
+  let (_installed, root) = fresh_root();
+
+  reactive::restore(&bytes);
+
+  let _ = mount(build);
+
+  platform::adopt_restoration();
+
+  let column = only_child(&root);
+  let scroller = column.first_element_child().expect("the scroller");
+  let field = column
+    .query_selector("input")
+    .expect("query")
+    .expect("the field");
+
+  assert_eq!(scroller.scroll_top(), 120, "the offset resumed");
+  assert_eq!(
+    document().active_element().as_ref(),
+    Some(&field),
+    "focus resumed on the field"
+  );
+}
+
+/// Focus and the selection follow a keyed item's key: the list reordered on the next
+/// run, the same item's field resumes focused with its selection.
+#[wasm_bindgen_test]
+fn focus_follows_a_keyed_item_across_a_reorder() {
+  use skene_web::{BasicTextField, NodeId, TextEntry, reactive};
+
+  fn build(items: Vec<u8>) -> NodeId {
+    Column::new()
+      .derive_children(
+        move || items.clone(),
+        |item| *item,
+        |_| BasicTextField::new(TextEntry::new().bind_value(Signal::new(String::from("hello")))),
+      )
+      .build()
+  }
+
+  /// The `index`th field under `root`.
+  fn field_at(root: &Element, index: u32) -> HtmlInputElement {
+    only_child(root)
+      .query_selector_all("input")
+      .expect("query")
+      .get(index)
+      .and_then(|node| node.dyn_into::<HtmlInputElement>().ok())
+      .expect("the field")
+  }
+
+  let bytes = {
+    let (_installed, root) = fresh_root();
+
+    reactive::record_snapshots();
+
+    let _ = mount(|| build(vec![1, 2, 3]));
+    let field = field_at(&root, 1);
+
+    field.focus().expect("focus the field");
+    field.set_selection_range(1, 3).expect("select");
+
+    assert_eq!(document().active_element().as_deref(), Some(field.as_ref()));
+
+    reactive::snapshot()
+  };
+  let (_installed, root) = fresh_root();
+
+  reactive::restore(&bytes);
+
+  let _ = mount(|| build(vec![3, 1, 2]));
+
+  platform::adopt_restoration();
+
+  let field = field_at(&root, 2);
+
+  assert_eq!(
+    document().active_element().as_deref(),
+    Some(field.as_ref()),
+    "focus resumed on the same item's field at its new place"
+  );
+  assert_eq!(
+    (
+      field.selection_start().ok().flatten(),
+      field.selection_end().ok().flatten()
+    ),
+    (Some(1), Some(3)),
+    "the selection resumed"
+  );
+}
+
+/// A text field's caption is a `<label for>` placed before the input among its
+/// siblings, naming the input's id, and it leaves with the field.
+#[wasm_bindgen_test]
+fn a_text_fields_caption_is_a_label_before_the_input() {
+  let (_installed, root) = fresh_root();
+  let shown = Signal::new(true);
+  let _ = mount(move || {
+    Container::new()
+      .set_child(derived(move || {
+        if shown.get() {
+          BasicTextField::new(TextEntry::new())
+            .set_label("Name")
+            .build()
+        }
+        else {
+          empty().build()
+        }
+      }))
+      .build()
+  });
+
+  let container = only_child(&root);
+  let label = container
+    .query_selector("label")
+    .expect("query")
+    .expect("the caption");
+  let input = container
+    .query_selector("input")
+    .expect("query")
+    .expect("the input");
+
+  assert_eq!(
+    label.next_element_sibling().as_ref(),
+    Some(&input),
+    "the label sits right before the input"
+  );
+  assert_eq!(label.get_attribute("for"), Some(input.id()));
+  assert!(!input.id().is_empty(), "the input carries an id");
+  assert_eq!(label.text_content().as_deref(), Some("Name"));
+  assert_eq!(
+    input.child_element_count(),
+    0,
+    "nothing lands inside the input"
+  );
+
+  shown.set(false);
+  platform::end_turn();
+
+  assert!(
+    container.query_selector("label").expect("query").is_none(),
+    "the caption left with the field"
+  );
+  assert!(container.query_selector("input").expect("query").is_none());
+}
+
+/// A lazy column of estimated items measures each one it builds through the browser's
+/// size observation: taller measures shrink the window and grow the trailing spacer.
+#[wasm_bindgen_test]
+async fn a_lazy_column_measures_its_estimated_items() {
+  use skene_web::{ItemExtent, LazyColumn};
+
+  let (_installed, root) = fresh_root();
+  let _ = mount(|| {
+    Container::new()
+      .set_height(50.)
+      .set_child(
+        LazyColumn::new()
+          .set_item_height(ItemExtent::Estimated(10.))
+          .set_overscan(0)
+          .derive_items(
+            || 0..100,
+            |index| *index,
+            |index| {
+              Container::new()
+                .set_height(20.)
+                .set_child(Text::new(index.to_string()))
+            },
+          ),
+      )
+      .build()
+  });
+
+  let list = only_child(&root).first_element_child().expect("the list");
+  let items = |list: &Element| list.child_element_count() - 2;
+
+  // The viewport measures first, five items of the estimate build, and their measures
+  // arrive next, each through the browser's observer.
+  for _ in 0..20 {
+    if items(&list) == 3 {
+      break;
+    }
+
+    next_frame().await;
+  }
+
+  assert_eq!(items(&list), 3, "three measured items fill the 50 pixels");
+
+  let trailing = list.last_element_child().expect("the trailing spacer");
+
+  assert_eq!(
+    computed(&trailing, "height"),
+    "990px",
+    "the observer reported all five before the window shrank, so five measures and \
+     ninety-five estimates make the spacer"
+  );
+}
+
+/// A painted box carries a canvas the size of the box, drawn through vello on the GPU:
+/// the tier runs each engine with WebGPU on, so the canvas holds a WebGPU context and no
+/// 2d one where the engine keeps its device, and the fill shows through it either way.
+/// `browser_painted` covers the CPU path.
+#[wasm_bindgen_test]
+async fn a_painted_box_draws_into_its_canvas() {
+  use skene_web::{Painted, core::Dimension, kurbo::Rect};
+  use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
+
+  /// The canvas's center pixel, read through a scratch 2d canvas so a WebGPU canvas
+  /// reads the same as a blitted one.
+  fn center_pixel(canvas: &HtmlCanvasElement) -> Vec<u8> {
+    let scratch: HtmlCanvasElement = web_sys::window()
+      .expect("a window")
+      .document()
+      .expect("a document")
+      .create_element("canvas")
+      .expect("a canvas")
+      .dyn_into()
+      .expect("a canvas element");
+
+    scratch.set_width(canvas.width());
+    scratch.set_height(canvas.height());
+
+    let context: CanvasRenderingContext2d = scratch
+      .get_context("2d")
+      .expect("a context")
+      .expect("the 2d context")
+      .dyn_into()
+      .expect("a 2d context");
+
+    context
+      .draw_image_with_html_canvas_element(canvas, 0., 0.)
+      .expect("the canvas drawn");
+    context
+      .get_image_data(
+        f64::from(canvas.width() / 2),
+        f64::from(canvas.height() / 2),
+        1.,
+        1.,
+      )
+      .expect("image data")
+      .data()
+      .to_vec()
+  }
+
+  let (_installed, root) = fresh_root();
+  let _ = mount(|| {
+    Painted::new(|canvas, size| {
+      canvas.fill(
+        &Rect::new(0., 0., f64::from(size.width), f64::from(size.height)),
+        Color::srgb(0., 0., 1.),
+      );
+    })
+    .set_width(Dimension::Length(40.))
+    .set_height(Dimension::Length(20.))
+    .build()
+  });
+  next_frame().await;
+  next_frame().await;
+
+  let painted = only_child(&root);
+  // The canvas in the box now: a GPU canvas that fails is replaced by a fresh one.
+  let current = || -> HtmlCanvasElement {
+    painted
+      .first_element_child()
+      .expect("the canvas")
+      .dyn_into()
+      .expect("a canvas element")
+  };
+  let mut canvas = current();
+  let mut pixel = center_pixel(&canvas);
+  let deadline = js_sys::Date::now() + 60_000.;
+
+  while pixel[0..4] != [0, 0, 255, 255] && js_sys::Date::now() < deadline {
+    next_frame().await;
+    canvas = current();
+    pixel = center_pixel(&canvas);
+  }
+
+  assert!(
+    canvas.width() >= 40 && canvas.height() >= 20,
+    "sized to the box"
+  );
+  assert_eq!(
+    &pixel[0..4],
+    &[0, 0, 255, 255],
+    "the center pixel is the fill"
+  );
+
+  // Headless Chromium's software adapter loses its device after the first frame, and a
+  // lost device with no successor paints on the CPU.
+  let software = web_sys::window()
+    .and_then(|window| window.navigator().user_agent().ok())
+    .is_some_and(|agent| agent.contains("HeadlessChrome"));
+
+  if !software {
     assert!(
-      html(&popup)
-        .style()
-        .get_property_value("top")
-        .unwrap()
-        .ends_with("px"),
-      "the measured placement stands in for the engine's"
+      matches!(canvas.get_context("2d"), Ok(None)),
+      "painted on the GPU, so the canvas holds no 2d context"
     );
   }
+}
 
-  press(&option(1), "ArrowUp");
+/// Dispatches a bubbling pointer event of `kind` at `element`.
+fn pointer(element: &Element, kind: &str) {
+  let init = web_sys::PointerEventInit::new();
 
+  init.set_bubbles(true);
+
+  let event =
+    web_sys::PointerEvent::new_with_event_init_dict(kind, &init).expect("a pointer event");
+
+  let _ = element.dispatch_event(&event);
+}
+
+/// A hydrated tooltip carries no `title`: the bubble is a hint popover the described
+/// box names, opening once the pointer has rested for the delay, staying open while the
+/// pointer rests on it, closing the grace period after the pointer leaves both, and
+/// opening at once on focus.
+#[wasm_bindgen_test]
+async fn a_tooltip_opens_on_hover_after_its_delay_and_on_focus_at_once() {
+  let (_guard, root) = fresh_root();
+
+  let _ = mount(|| {
+    Tooltip::new("Saves your work")
+      .set_delay(Duration::from_millis(10))
+      .set_child(
+        Container::new()
+          .set_focus_order(skene_web::FocusOrder::Auto)
+          .set_child(Text::new("Save")),
+      )
+      .build()
+  });
+
+  let described = root
+    .query_selector("[aria-describedby]")
+    .expect("query")
+    .expect("the described box");
+  let bubble = root
+    .query_selector("[popover]")
+    .expect("query")
+    .expect("the bubble");
+  let open = || bubble.matches(":popover-open").unwrap_or(false);
+
+  assert_eq!(described.get_attribute("title"), None, "no browser tooltip");
   assert_eq!(
-    document().active_element().as_ref(),
-    Some(option(0).unchecked_ref())
+    described.get_attribute("aria-describedby"),
+    bubble.get_attribute("id")
+  );
+  assert_eq!(bubble.get_attribute("popover").as_deref(), Some("hint"));
+  assert!(!open());
+
+  pointer(&described, "pointerover");
+
+  assert!(!open(), "the pointer has not rested yet");
+
+  next_frame().await;
+
+  assert!(open(), "the delay passed");
+
+  pointer(&described, "pointerout");
+
+  assert!(open(), "open through the grace period");
+
+  pointer(&bubble, "pointerover");
+  wait(TOOLTIP_GRACE * 2).await;
+
+  assert!(open(), "open while the pointer rests on the bubble");
+
+  pointer(&bubble, "pointerout");
+  wait(TOOLTIP_GRACE * 2).await;
+
+  assert!(!open(), "the pointer left both");
+
+  html(&described).focus().expect("focus the box");
+
+  assert!(open(), "focus opens at once");
+
+  html(&described).blur().expect("blur the box");
+
+  assert!(!open());
+}
+
+/// Dispatches a bubbling, cancelable `contextmenu` from a secondary button at
+/// `element`, returning whether the browser's own menu was prevented.
+fn context_menu(element: &Element) -> bool {
+  let init = web_sys::MouseEventInit::new();
+
+  init.set_bubbles(true);
+  init.set_cancelable(true);
+  init.set_button(2);
+  init.set_client_x(30);
+  init.set_client_y(20);
+
+  let event = web_sys::MouseEvent::new_with_mouse_event_init_dict("contextmenu", &init)
+    .expect("a mouse event");
+  let _ = element.dispatch_event(&event);
+
+  event.default_prevented()
+}
+
+/// A context menu is opted into per view: a `contextmenu` on the wrapped view opens
+/// the menu's list as a popover pinned at the pointer with the browser's own menu
+/// prevented, an item runs and closes it, and a view outside the wrapper keeps the
+/// browser's menu.
+#[wasm_bindgen_test]
+fn a_context_menu_takes_the_browsers_only_where_a_view_opts_in() {
+  let (_guard, root) = fresh_root();
+  let chosen = Signal::new(String::new());
+  let _ = mount(|| {
+    Column::new()
+      .set_children((
+        ContextMenu::new()
+          .set_items([
+            MenuEntry::new("Rename").handle_select(move || chosen.set("rename".to_owned())),
+            MenuEntry::separator(),
+            MenuEntry::new("Delete").handle_select(move || chosen.set("delete".to_owned())),
+          ])
+          .set_child(Container::new().set_child(Text::new("note"))),
+        Container::new().set_child(Text::new("plain")),
+      ))
+      .build()
+  });
+  let column = only_child(&root);
+  let served = column.first_element_child().expect("the served box");
+  let plain = column.last_element_child().expect("the plain box");
+  let list = root
+    .query_selector("[popover]")
+    .expect("query")
+    .expect("the list");
+  let open = || list.matches(":popover-open").unwrap_or(false);
+
+  assert!(
+    list.query_selector("[role=menu]").expect("query").is_some(),
+    "the list holds a menu"
+  );
+  assert!(!open());
+  assert!(
+    !context_menu(&plain),
+    "a plain box keeps the browser's menu"
+  );
+  assert!(!open());
+  assert!(context_menu(&served), "the wrapped box prevents it");
+  assert!(open(), "and opens the list");
+
+  let style = html(&list).style();
+
+  assert_eq!(style.get_property_value("position").as_deref(), Ok("fixed"));
+  assert_eq!(style.get_property_value("left").as_deref(), Ok("30px"));
+  assert_eq!(style.get_property_value("top").as_deref(), Ok("20px"));
+
+  let items = list.query_selector_all("[role=menuitem]").expect("query");
+
+  assert_eq!(items.length(), 2, "a separator is no item");
+
+  let first: Element = items.item(0).expect("the first item").unchecked_into();
+  let second: Element = items.item(1).expect("the second item").unchecked_into();
+
+  assert!(
+    document()
+      .active_element()
+      .is_some_and(|active| active == first),
+    "the first item takes focus"
   );
 
-  press(&option(0), "Enter");
+  html(&second).click();
 
-  assert_eq!(value.get(), "sm");
-  assert!(!popup.matches(":popover-open").unwrap_or(true));
-  assert_eq!(
-    option(0).get_attribute("aria-selected").as_deref(),
-    Some("true")
-  );
-  assert_eq!(
-    document().active_element().as_ref(),
-    Some(face.unchecked_ref())
-  );
+  assert_eq!(chosen.get(), "delete");
+  assert!(!open(), "running an item closes the list");
+}
 
-  press(&face, "l");
+/// An app's own rule outranks a compiled one more specific than it, every compiled
+/// rule sitting in the `skene.style` layer.
+#[wasm_bindgen_test]
+fn an_app_rule_outranks_a_compiled_one() {
+  let (_installed, root) = fresh_root();
+  let sheet = document().create_element("style").expect("a style element");
 
-  assert_eq!(value.get(), "lg", "type-ahead chooses over the closed face");
-  assert!(!popup.matches(":popover-open").unwrap_or(true));
+  sheet.set_text_content(Some("div { background-color: rgb(0, 0, 255); }"));
+  document()
+    .head()
+    .expect("a head")
+    .append_child(&sheet)
+    .expect("add the app's sheet");
+
+  let _ = mount(|| Container::new().set_color(Color::srgb(1., 0., 0.)).build());
+  let color = computed(&only_child(&root), "background-color");
+
+  sheet.remove();
+
+  assert_eq!(color, "rgb(0, 0, 255)");
+}
+
+/// A pinned checkbox leaves the flow, the reset positioning its label sitting in a layer
+/// beneath the compiled rules.
+#[wasm_bindgen_test]
+fn a_pinned_checkbox_leaves_the_flow() {
+  let (_installed, root) = fresh_root();
+  let _ = mount(|| {
+    Stack::new()
+      .set_children((Pinned::new()
+        .set_edges(Inset::all(Dimension::Length(0.)))
+        .set_child(SimpleCheckbox::new().set_label("pinned")),))
+      .build()
+  });
+  let label = root
+    .query_selector("label[data-skene-control]")
+    .ok()
+    .flatten()
+    .expect("the checkbox's label");
+
+  assert_eq!(computed(&label, "position"), "absolute");
+}
+
+/// The span inside a link group takes the link's ink, as the link's own text does.
+#[wasm_bindgen_test]
+fn a_link_groups_span_takes_the_link_ink() {
+  let (_installed, root) = fresh_root();
+  let _ = mount(|| {
+    Theme::new(Typography::default().set_link_ink(Color::srgb(1., 0., 0.)))
+      .set_child_builder(|| {
+        RichText::new().set_spans([Span::group([Span::new("x")]).set_link("/g")])
+      })
+      .build()
+  });
+  let link = root.query_selector("a").ok().flatten().expect("the link");
+  let span = link
+    .first_element_child()
+    .expect("the span inside the link");
+
+  let paragraph = link.parent_element().expect("the paragraph");
+
+  assert_ne!(computed(&link, "color"), computed(&paragraph, "color"));
+  assert_eq!(computed(&span, "color"), computed(&link, "color"));
 }

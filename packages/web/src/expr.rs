@@ -2,7 +2,7 @@
 
 use skene_core::{Edge, ExprNode};
 
-use crate::Declarations;
+use crate::declarations::Declarations;
 
 /// The CSS text of an expression: a literal, `var()`, a math function or a color
 /// function.
@@ -100,7 +100,7 @@ mod tests {
   use skene_core::{Color, Edge, Expr, Length, TokenRef};
 
   use super::render_expr;
-  use crate::Declarations;
+  use crate::declarations::Declarations;
 
   /// Ring arithmetic renders as `calc()`, nested sums parenthesized, and the math
   /// functions take their operands bare.

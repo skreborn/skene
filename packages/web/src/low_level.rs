@@ -11,7 +11,7 @@
 
 use skene_core::{NodeId, Platform};
 
-use crate::Declarations;
+use crate::declarations::Declarations;
 
 /// A web platform: an element for a low-level view, on either leaf.
 ///
@@ -40,7 +40,7 @@ pub trait WebMarkup: Platform {
 ///
 /// Not implemented on the server leaf, where no DOM exists, so a view bound on it fails
 /// to compile there rather than at run time.
-#[cfg(skene_gui_platform = "browser")]
+#[cfg(skene_web_platform = "browser")]
 #[diagnostic::on_unimplemented(
   message = "`{Self}` has no DOM",
   label = "a view bound on `WebDom` exists on the browser leaf alone; bound on `WebMarkup` it exists on the server leaf too"

@@ -149,7 +149,7 @@ const APPLE_PACKAGES: &[&str] = &["skene-terminal"];
 const SERVER_CFG: &str = r#"--cfg skene_platform="server""#;
 
 /// The crates whose items depend on the server leaf.
-const SERVER_PACKAGES: &[&str] = &["skene-gui", "skene-web"];
+const SERVER_PACKAGES: &[&str] = &["skene-web"];
 
 /// The crates documented for the browser leaf: every crate an app there reaches, and the
 /// third-party proofs written for it.
@@ -158,7 +158,6 @@ const WASM_DOCS: &[&str] = &[
   "acme-ui",
   "skene-common",
   "skene-core",
-  "skene-gui",
   "skene-reactive",
   "skene-simple",
   "skene-transport",

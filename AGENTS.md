@@ -19,9 +19,9 @@
   facade exposing it as a type of its own, and a platform realizes its own the moment
   they diverge. There is no cross-platform vocabulary: an app is a shared crate of
   logic and state with a shell per platform, and a component library a core of colors,
-  named sizes and logic with a presentation crate per platform. Until the rename wave
-  in `ROADMAP.md` lands, the web's facade is `skene-gui`, and the paragraphs below
-  still describe that layout.
+  named sizes and logic with a presentation crate per platform. Until the rest of the
+  rename wave in `ROADMAP.md` lands, the paragraphs below still describe the facades
+  aliasing one vocabulary from `skene-common`.
 - The spine (`skene-reactive` + `skene-core` + `skene-common`) stays platform-agnostic: no
   platform assumptions or nomenclature. Core hosts the retained **scene** (`Scene<P>`:
   parents, children, per-child annotations, token definitions, generational node ids), the
@@ -34,17 +34,18 @@
   geometry over the platform's scalar, and universal values. `skene-common` hosts every
   built-in view once, generic over `P: Platform`; a facade aliases them.
 - The canonical building block is a **view** (the `View` trait); never "widget". Two
-  equal facades exist—`skene-gui` (pixel media: web, native later) and
-  `skene-terminal` (the terminal)—each owning its builder vocabulary, typed to exactly
-  its medium; neither is the blessed one. Within a facade, views are realized
+  equal facades exist—`skene-web` (the web) and `skene-terminal` (the terminal)—each
+  owning its builder vocabulary, typed to exactly its medium; neither is the blessed
+  one. Within a facade, views are realized
   **once** against its typed platform vocabulary—no per-platform `impl View`, no
   "backend" concept.
-- A **platform** is a crate implementing `Platform`: `skene-web` (the browser and server leaves),
-  `skene-headless` (the host platform every facade compiles against off its target, driven
-  by tests), later `skene-native`; `skene-terminal` carries its own, down to the terminal
-  device: its `device`, `tty`, `parse` and `escape` modules are the whole terminal layer, no
-  terminal crate beneath, so a reply a new capability needs is parsed in the change
-  that asks for it. What every platform of one medium shares above the spine lives in
+- A **platform** is a type implementing `Platform`, carried by its facade's crate:
+  `skene-web` carries the web's (`platform::Web`, its browser and server leaves) and
+  `skene-terminal` the terminal's, down to the terminal device: its `device`, `tty`,
+  `parse` and `escape` modules are the whole terminal layer, no terminal crate beneath,
+  so a reply a new capability needs is parsed in the change that asks for it.
+  `skene-headless` is the host platform the web compiles against off its target, driven
+  by tests. What every platform of one medium shares above the spine lives in
   that medium's module of `skene-common`—`gui` (`GuiStyle`, the pixel `Typography`,
   `Painting`) and `terminal` (`TerminalStyle`, `BorderGlyphs`, the terminal
   `Typography`)—never in `skene-core`, which knows no medium.
@@ -62,20 +63,19 @@
   scene into a canvas, the headless platform renders it to pixels a test reads, the
   terminal shows it through its graphics protocol where one is proven, the server leaf
   renders it empty; the native realization comes with the native platform.
-- Selection: by **facade dependency** (GUI apps depend on `skene-gui`, terminal apps on
+- Selection: by **facade dependency** (web apps depend on `skene-web`, terminal apps on
   `skene-terminal`), then by target within a facade (`wasm32-unknown-unknown` → the web's
-  browser leaf; native triples → the native platform, later; every other host → the
-  headless platform), and where one triple hosts several platforms the build names the
+  browser leaf; every other host → the headless platform), and where one triple hosts several platforms the build names the
   platform by a cfg: `--cfg skene_platform="server"` selects the web's server leaf
   natively, set by the CLI for a server build through the host target's rustflags, so
   it never reaches a build script or a proc macro, and through `RUSTFLAGS` or
   `.cargo/config.toml` by hand. A cfg is a build fact like the triple, chosen once,
   unifying nothing, and never a cargo feature. No feature flags. Target-gating is the
   enforcement layer: the browser leaf compiles on `wasm32-unknown-unknown` alone and
-  the server leaf where the build names it (`skene_gui_platform`, one axis the web and
-  GUI crates derive from the triple and the cfg through the `skene-build`
-  build-dependency; `browser`, `server` or `headless`, a build it has no platform for
-  failing), so the server leaf physically cannot touch the DOM. A
+  the server leaf where the build names it (`skene_web_platform`, one axis `skene-web`
+  and a library with code per leaf derive from the triple and the cfg through the
+  `skene-build` build-dependency; `browser`, `server` or `headless`, a build it has no
+  leaf for failing), so the server leaf physically cannot touch the DOM. A
   cargo feature may only **add items**: never a trait bound, a type, a variant or a
   platform. No cargo feature exists in the workspace, and the gate's manifest check
   rejects a `[features]` table or an optional dependency so none creeps back in.
@@ -246,8 +246,8 @@
   it): the web leaves return the signal that is false on the server leaf and while a
   hydration adopts the server's markup and true once it has finished (so the fallback
   is adopted, then rebuilt into the child in place, under a replacement owner), the
-  headless platform returns one a test flips (`trigger_hydrated`), and the GUI facade
-  reads it as `media::hydrated()`, true from the start on native.
+  headless platform returns one a test flips (`trigger_hydrated`), and the web facade
+  reads it as `media::hydrated()`.
   `Painting::available()` is the pixels': false on the server and in the terminal until
   its graphics probe is answered, true on the browser leaf once live, `trigger_graphics`
   on the headless platform; it is what `Painted::set_fallback` waits for, and the
@@ -444,7 +444,7 @@
   every engine, is an `Enhance` over its `NativePicker` form, a `<select>` the server
   renders and the reader's choice in it carries across the swap. The
   terminal's controls are composed trees painted by the same box and run painters as
-  everything else, so they carry roles, accessibility and focus order like the GUI's.
+  everything else, so they carry roles, accessibility and focus order like the web's.
   **A tooltip is a view**, `Tooltip` in `skene-common`, wrapping the one view it
   describes and showing text or any view in a `Bubble` beside it: open after a delay on
   hover and at once on focus that shows, open while the pointer rests on the view or
@@ -487,7 +487,7 @@
   built-in takes is crate-private; making something `pub(crate)` on that path is a
   regression. `skene-simple` is held to the same rule from the other side: a facade never
   re-exports it, an app depends on it explicitly, and
-  its `gui` and `terminal` modules are only a `prelude` of aliases over that facade's
+  its `terminal` and `web` modules are only a `prelude` of aliases over that facade's
   `ActivePlatform`, which is exactly what a third-party library may ship beside its generic
   crate. `examples/third-party` is the standing proof and part of the gate.
 - **Motion is declared once and runs everywhere.** `Transition` and keyframe `Animation`
@@ -602,7 +602,7 @@
   double, `is_<state>` answers a yes-or-no question, any other read is named for what it
   returns, and a user's gesture composed of events is named for the gesture in the
   platform's `user` module (`user::click`, `user::type_text`). Headless's are the crate's
-  own, reached as `skene_gui::headless`; the terminal's live in `skene_terminal::testing`; a
+  own, reached as `skene_web::headless`; the terminal's live in `skene_terminal::testing`; a
   browser test's helpers in `skene_web::testing`; and the accessibility queries every
   one of them offers are declared by `skene_core::access_queries!`.
 - Make a function or method `const` whenever its body allows it (no trait-method calls such as
@@ -648,7 +648,7 @@
   runs through `cargo nextest run`, each test in a process of its own, the doctests
   beside it through `cargo test --doc`, and a crate's host integration tests are one
   binary (`tests/it`), since the process per test isolates them and every binary costs
-  a link. Among it, `packages/gui/tests/compile_fail`
+  a link. Among it, `packages/web/tests/compile_fail`
   holds a program per rule the types enforce (layout's static constraints, children
   last, the expression kinds, the derives) beside the diagnostic it must raise,
   rewritten by `TRYBUILD=overwrite` once a change to one is meant, `proptest` drives
@@ -661,7 +661,7 @@
   browser binary, several sessions at once (`SKENE_GATE_BROWSERS` sets how many), through
   a real Firefox (geckodriver) and a real Chromium
   (chromedriver, from `CHROMEDRIVER`, `PATH` or `~/.local/share/chrome-for-testing`),
-  each with WebGPU switched on by `packages/gui/webdriver.json`, so a painted box
+  each with WebGPU switched on by `packages/web/webdriver.json`, so a painted box
   renders on the GPU there, where headless Chromium's software adapter keeps its
   device; `browser_painted` hides `navigator.gpu` before its first box paints, so the CPU
   blit is proven in the same run. The gate holds each browser binary to the least
@@ -696,7 +696,7 @@
   keeping its own flat, medium-typed surface. Never share via feature-gated variants or
   fields: cargo features are additive and unify across the build graph, so mutually-exclusive
   cfgs break any build containing both facades.
-- Examples are targeted: one per feature, under `examples/gui/<name>` and
+- Examples are targeted: one per feature, under `examples/web/<name>` and
   `examples/terminal/<name>` (folder names without facade suffixes, the same name on both
   facades where the feature exists), never crammed into an existing example. Every common
   user-facing capability gets one; the `gallery` example shows off every built-in view and

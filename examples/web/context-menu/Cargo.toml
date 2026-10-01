@@ -1,0 +1,20 @@
+[package]
+name = "context-menu"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "context-menu-server"
+path = "src/main.rs"
+
+[dependencies]
+skene-simple.workspace = true
+skene-web = { workspace = true }
+
+[lints]
+workspace = true

@@ -1,13 +1,14 @@
 # Skene
 
-A client-side Rust UI framework: one spine, two facades. A GUI app depends on
-`skene-gui` and runs wherever the build targets it—the browser, client-rendered; a
-server, rendering or statically generating pages from the same app crate built
-natively; native as it lands. A terminal app depends on `skene-terminal`, a facade of equal standing with its own
+A client-side Rust UI framework: one spine, a facade per platform. A web app depends on
+`skene-web` and runs wherever the build targets it—the browser, client-rendered; a
+server, rendering or statically generating pages from the same app crate built natively.
+A terminal app depends on `skene-terminal`, a facade of equal standing with its own
 vocabulary typed to the medium. Every built-in view is written once, generic over the
-platform a facade selects; the reactive engine is signal-based, fine-grained and vdom-free;
-styling is data, compiled to CSS on the web and resolved natively elsewhere, so a
-server-rendered page is responsive, themed, hoverable and animated with no script at all.
+platform a facade selects; the reactive engine is signal-based, fine-grained and
+vdom-free; styling is data, compiled to CSS on the web and resolved natively elsewhere,
+so a server-rendered page is responsive, themed, hoverable and animated with no script
+at all.
 
 ## Reactivity
 
@@ -21,15 +22,15 @@ the node it owns—no virtual DOM, no tree diffing. Signals snapshot by default,
 dev-loop restart resumes where the last run stood; a keyed list item or a view given
 `set_key` keeps its state by key rather than by position.
 
-## A GUI app
+## A web app
 
-A GUI app depends on `skene-gui` and, for the ready-made components, on
+A web app depends on `skene-web` and, for the ready-made components, on
 `skene-simple`; it marks its entry with `#[main]` and names no platform
-(`examples/gui/counter`):
+(`examples/web/counter`):
 
 ```rust
-use skene_gui::prelude::*;
-use skene_simple::gui::prelude::*;
+use skene_simple::web::prelude::*;
+use skene_web::prelude::*;
 
 #[main]
 fn app() -> impl View {
@@ -113,12 +114,12 @@ skene-core            the spine: the scene, the Platform trait, dispatch, the pr
       │
 skene-common          every built-in view once, generic over the platform; the pixel and
       │               terminal media (gui, terminal), the router (routing)
-      ├── skene-web        the web platform: the browser and server leaves
       ├── skene-headless   the host platform: an inspectable record store for tests
-      └── skene-terminal   the terminal facade and its platform
-skene-gui             the GUI facade: aliases over the selected platform
-skene-simple          the Simple component library over skene-common, generic; its gui and
-                      terminal modules alias it to each facade with a prelude
+      ├── skene-terminal   the terminal facade and its platform
+      └── skene-web        the web facade and its platform, the browser and server
+                           leaves, over the headless platform off its target
+skene-simple          the Simple component library over skene-common, generic; its
+                      terminal and web modules alias it to each facade with a prelude
 skene-macros          #[main], #[lazy], #[derive(Store)], #[derive(Snapshot)]
 skene-cli             the `skene` command
 ```
@@ -128,12 +129,11 @@ skene-cli             the `skene` command
 | `skene-reactive` | `packages/reactive` | `Signal`, `Memo`, `Effect`, `Owner`, `Store`, `Resource`, context, batching, snapshot by position with `Key` anchors, the `spawn` seam a platform installs an executor into. |
 | `skene-core` | `packages/core` | `Scene<P>`, the zero-sized `Platform` trait, event dispatch over the scene, `BoxStyle`/`RunStyle` with their visitors, `Value`/`Leaf`/`Expr`, `Media`/`State`/`Condition`, `Token`/`TokenSet`, `Boundary`, motion and interpolation, generic geometry and values. Knows nothing of platforms. |
 | `skene-common` | `packages/common` | `Container`, `Row`/`Column`/`Grid`/`Stack`/`LayoutBox`, `Flexible`/`Pinned`/`GridCell`, `Text`/`Span`/`RichText`, `Control<B: Behavior>` with `Toggle`/`Slider`/`RadioGroup`/`Popup`/`Activate`/`TextEntry`/`NativePicker` and the `Basic*` aliases, `Overlay`, `Tooltip`, `ContextMenu` with `MenuEntry` and the `Menu`/`MenuOption` behaviors, `LazyColumn`/`LazyRow`, `Show`/`Switch`/`Suspense`/`ErrorBoundary`/`Enhance`, `Theme`, `typography`, and the painting path (`Painting`, `Canvas`, `Painted` with its fallback, `IntoBrush`, the `Renderer` a canvas replays into) through vello; `gui` (`GuiStyle`, the pixel `Typography`), `terminal` (`TerminalStyle`, `BorderGlyphs`, the terminal `Typography`) and `routing` (`Route`, `StaticRoutes`, `Router`: a typed route in a signal with a sink seam each facade binds). |
-| `skene-web` | `packages/web` | The web `Platform`: a DOM sink in the browser, a string tree on the server, one compiler, the content-addressed interner, hydration, streaming, the server executor, client hints; the `WebMarkup` and `WebDom` escape traits. |
 | `skene-headless` | `packages/headless` | The host `Platform`: records what any platform receives, resolves properties through tokens and conditions, drives events through `trigger_*` seams and a user's gestures through `user`, finds nodes by role, name and text, runs tasks on `pump_tasks`. |
-| `skene-gui` | `packages/gui` | The GUI facade: `f32`, `ActivePlatform`, aliases for every view, `Typography`, `media`, `Resource` across the server boundary, `Deferred`, `AsyncView`, `Link`, `head`, `view_transitions`, `launch`/`render_to_string`/`render_main` and `#[main]`. |
+| `skene-web` | `packages/web` | The web facade and platform: `f32`, `ActivePlatform`, aliases for every view, `Typography`, `media`, `Resource` across the server boundary, `Deferred`, `AsyncView`, `Link`, `head`, `view_transitions`, `launch`/`render_to_string`/`render_main` and `#[main]`; and `platform`, the web `Platform`: a DOM sink in the browser, a string tree on the server, one compiler, the content-addressed interner, hydration, streaming, the server executor, client hints, the `WebMarkup` and `WebDom` escape traits. |
 | `skene-terminal` | `packages/terminal` | The terminal facade and platform: `u32` cells, `Terminal`, the same aliases, `Typography`, `BorderGlyphs`, `media`, `CellPainter`, `launch`, and `testing`: `render_to_text`, the `trigger_*` seams, `user` and the queries by role, name and text. |
 | `skene-conformance` | `packages/conformance` | One suite of behaviors every platform shows alike, run through the `Driver` a platform implements over its test seams. |
-| `skene-simple` | `packages/simple` | `SimplePalette` (a `TokenSet`), `SimpleLook`, `SimpleVariant`, `SimpleShape`, `SimpleGlyphs` (the terminal marks), and `SimpleButton`, `SimpleCard`, `SimpleCheckbox`, `SimpleRadio`, `SimplePicker`, `SimpleSlider`, `SimpleTextField`, `SimpleTextEditor`, `SimpleTooltip`, `SimpleContextMenu`, generic over the platform; `gui` and `terminal` alias them to that facade's `ActivePlatform`, each with a `prelude` an app imports beside the facade's own. |
+| `skene-simple` | `packages/simple` | `SimplePalette` (a `TokenSet`), `SimpleLook`, `SimpleVariant`, `SimpleShape`, `SimpleGlyphs` (the terminal marks), and `SimpleButton`, `SimpleCard`, `SimpleCheckbox`, `SimpleRadio`, `SimplePicker`, `SimpleSlider`, `SimpleTextField`, `SimpleTextEditor`, `SimpleTooltip`, `SimpleContextMenu`, generic over the platform; `terminal` and `web` alias them to that facade's `ActivePlatform`, each with a `prelude` an app imports beside the facade's own. |
 | `skene-macros` | `packages/macros` | `#[main]`, `#[lazy]`, `#[derive(Store)]`, `#[derive(Snapshot)]`. |
 | `skene-transport` | `packages/transport` | The clients on the public seams alone: `http` (`Request`, `Response`, `send`; `fetch` on the web, a thread around `ureq` on every other host) and `ws` (`connect`, `send`, `receive`; the browser's `WebSocket` on the web, a thread around `tungstenite` elsewhere). |
 | `skene-cli` | `packages/cli` | `skene build web [--static]`, `skene build terminal`, `skene run web [--ssr]`, `skene run terminal` and `skene attach <id>`: bundling, the dev server with live reload and state kept across it in the page's own storage, the terminal build loop and the launcher that swaps each binary in place with the state carried across, static generation, `skene.toml` assets. |
@@ -169,13 +169,13 @@ in force for the whole document.
 ```sh
 rustup target add wasm32-unknown-unknown
 
-cargo skene --dir examples/gui/counter run web             # build, serve on :8080, live-reload
-cargo skene --dir examples/gui/router build web --static   # statically generate the routed site
+cargo skene --dir examples/web/counter run web             # build, serve on :8080, live-reload
+cargo skene --dir examples/web/router build web --static   # statically generate the routed site
 cargo skene --dir examples/terminal/counter run terminal   # build, rebuild on change, print the attach command
 cargo skene attach <id>                                    # run the app here, swapped on each rebuild
 ```
 
-Examples live under `examples/gui` and `examples/terminal`, one folder per feature, the same
+Examples live under `examples/web` and `examples/terminal`, one folder per feature, the same
 names on both facades where the feature exists: `counter` (state, snapshot-preserving
 reloads), `gallery` (every built-in view and control, a live palette switch), `theme`
 (a palette built per property, an accent the reader switches, a nested theme, the color
@@ -184,13 +184,13 @@ following the shape, a memoized count), `context-menu` (a menu each view opts in
 clipboard's standard items, the platform's menu everywhere else), `enhance` (a view's
 baseline and its enhancement, swapped as the page hydrates or pixels come), `http` (a
 resource or a task fetching through `skene_transport::http`), `ws` (a socket to an echo service
-through `skene_transport::ws`), the GUI-only `router` (typed routes behind real links, the about page split
+through `skene_transport::ws`), the web-only `router` (typed routes behind real links, the about page split
 out with `#[lazy]`), and the terminal-only `text-sizing` (font sizes as scales of the
 cell, drawn where the terminal proves the text sizing protocol). `examples/third-party` holds the crates written from outside the
 framework. Every output lands under `<app>/dist/<target>`; `cargo skene` runs the
 workspace-local CLI (`cargo install --path packages/cli` makes it `skene`).
 
-The server build of a GUI app is a plain, native command, with no integration at all:
+The server build of a web app is a plain, native command, with no integration at all:
 
 ```sh
 RUSTFLAGS='--cfg skene_platform="server"' cargo build -p counter --bin counter-server

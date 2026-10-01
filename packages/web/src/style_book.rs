@@ -14,6 +14,16 @@ use crate::{
   token::WebTokenValue,
 };
 
+/// The reset stylesheet every web leaf applies: injected into a `<style>` by the
+/// browser, serialized into the document by a server.
+///
+/// It declares the framework's cascade layers and fills `skene.reset`, beneath the
+/// compiled rules' `skene.style`.
+pub(crate) const RESET_CSS: &str = include_str!("reset.css");
+
+/// Opens the cascade layer every compiled rule sits in, which a `}` closes.
+pub(crate) const STYLE_LAYER: &str = "@layer skene.style{";
+
 /// Where a web leaf's stylesheet goes: the rules and registrations a [`StyleBook`]
 /// adds, and the rules it collects.
 pub(crate) trait StyleSink {

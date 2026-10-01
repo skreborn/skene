@@ -22,15 +22,15 @@ pub(crate) const CLASS_PLACEHOLDER: char = '\u{1}';
 pub const SCHEME_ATTRIBUTE: &str = "data-skene-scheme";
 
 /// The attribute the element of the node a drag in progress started from carries.
-#[cfg(skene_gui_platform = "browser")]
+#[cfg(skene_web_platform = "browser")]
 pub(crate) const DRAGGED_ATTRIBUTE: &str = "data-skene-dragged";
 
 /// The attribute the element of the node taking the drag in progress carries.
-#[cfg(skene_gui_platform = "browser")]
+#[cfg(skene_web_platform = "browser")]
 pub(crate) const TARGETED_ATTRIBUTE: &str = "data-skene-targeted";
 
 /// The type a drag hands the browser where it carries no text.
-#[cfg(skene_gui_platform = "browser")]
+#[cfg(skene_web_platform = "browser")]
 pub(crate) const DRAG_MARKER: &str = "application/x-skene-drag";
 
 /// The attribute every control's root element carries.
@@ -38,11 +38,11 @@ pub const CONTROL_ATTRIBUTE: &str = "data-skene-control";
 
 /// The attribute the element of a node a press's pointer drags carries, naming the axes
 /// it drags along.
-#[cfg(any(skene_gui_platform = "browser", skene_gui_platform = "server"))]
+#[cfg(any(skene_web_platform = "browser", skene_web_platform = "server"))]
 pub(crate) const DRAGS_ATTRIBUTE: &str = "data-skene-drags";
 
 /// The value of [`DRAGS_ATTRIBUTE`] naming `axes`.
-#[cfg(any(skene_gui_platform = "browser", skene_gui_platform = "server"))]
+#[cfg(any(skene_web_platform = "browser", skene_web_platform = "server"))]
 pub(crate) const fn drags_value(axes: skene_core::DragAxes) -> &'static str {
   match axes {
     skene_core::DragAxes::Horizontal => "horizontal",
@@ -128,7 +128,7 @@ impl Conjunction {
   /// What a live query of this conjunction asks the environment: the media features
   /// as one query text (`None` without any), the scheme it names, and whether it has
   /// container queries, which no media query answers.
-  #[cfg(skene_gui_platform = "browser")]
+  #[cfg(skene_web_platform = "browser")]
   pub(crate) fn query(&self) -> (Option<String>, Option<ColorScheme>, bool) {
     let text = (!self.media.is_empty()).then(|| self.media.join(" and "));
 

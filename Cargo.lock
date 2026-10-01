@@ -475,8 +475,8 @@ checksum = "a6ef517f0926dd24a1582492c791b6a4818a4d94e789a334894aa15b0d12f55c"
 name = "context-menu"
 version = "0.1.0"
 dependencies = [
- "skene-gui",
  "skene-simple",
+ "skene-web",
 ]
 
 [[package]]
@@ -508,8 +508,8 @@ checksum = "773648b94d0e5d620f64f280777445740e61fe701025087ec8b57f45c791888b"
 name = "counter"
 version = "0.1.0"
 dependencies = [
- "skene-gui",
  "skene-simple",
+ "skene-web",
 ]
 
 [[package]]
@@ -703,8 +703,8 @@ checksum = "d8b14ccef22fc6f5a8f4d7d768562a182c04ce9a3b3157b91390b52ddfdf1a76"
 name = "drag-and-drop"
 version = "0.1.0"
 dependencies = [
- "skene-gui",
  "skene-simple",
+ "skene-web",
 ]
 
 [[package]]
@@ -726,8 +726,8 @@ dependencies = [
 name = "enhance"
 version = "0.1.0"
 dependencies = [
- "skene-gui",
  "skene-simple",
+ "skene-web",
 ]
 
 [[package]]
@@ -884,8 +884,8 @@ dependencies = [
  "acme-map",
  "acme-ui",
  "js-sys",
- "skene-gui",
  "skene-simple",
+ "skene-web",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "wasm-bindgen-test",
@@ -986,24 +986,6 @@ name = "grid"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b40ca9252762c466af32d0b1002e91e4e1bc5398f77455e55474deb466355ff5"
-
-[[package]]
-name = "gui-http"
-version = "0.1.0"
-dependencies = [
- "skene-gui",
- "skene-simple",
- "skene-transport",
-]
-
-[[package]]
-name = "gui-ws"
-version = "0.1.0"
-dependencies = [
- "skene-gui",
- "skene-simple",
- "skene-transport",
-]
 
 [[package]]
 name = "guillotiere"
@@ -2138,8 +2120,8 @@ dependencies = [
 name = "router"
 version = "0.1.0"
 dependencies = [
- "skene-gui",
  "skene-simple",
+ "skene-web",
 ]
 
 [[package]]
@@ -2526,30 +2508,6 @@ name = "skene-dev"
 version = "0.1.0"
 
 [[package]]
-name = "skene-gui"
-version = "0.1.0"
-dependencies = [
- "js-sys",
- "rustix",
- "serde",
- "serde_json",
- "skene-build",
- "skene-common",
- "skene-core",
- "skene-dev",
- "skene-headless",
- "skene-macros",
- "skene-reactive",
- "skene-simple",
- "skene-web",
- "tracing",
- "trybuild",
- "wasm-bindgen",
- "wasm-bindgen-test",
- "web-sys",
-]
-
-[[package]]
 name = "skene-headless"
 version = "0.1.0"
 dependencies = [
@@ -2589,10 +2547,10 @@ version = "0.1.0"
 dependencies = [
  "skene-common",
  "skene-core",
- "skene-gui",
  "skene-headless",
  "skene-reactive",
  "skene-terminal",
+ "skene-web",
 ]
 
 [[package]]
@@ -2645,16 +2603,21 @@ dependencies = [
  "futures-timer",
  "js-sys",
  "rustc-hash 2.1.3",
+ "rustix",
+ "serde",
  "serde_json",
  "sfv",
  "skene-build",
  "skene-common",
  "skene-core",
  "skene-dev",
+ "skene-headless",
+ "skene-macros",
  "skene-reactive",
  "skene-simple",
  "smallvec",
  "tracing",
+ "trybuild",
  "unicode-segmentation",
  "vello_hybrid",
  "wasm-bindgen",
@@ -2711,8 +2674,8 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 name = "store"
 version = "0.1.0"
 dependencies = [
- "skene-gui",
  "skene-simple",
+ "skene-web",
 ]
 
 [[package]]
@@ -2910,8 +2873,8 @@ dependencies = [
 name = "theme"
 version = "0.1.0"
 dependencies = [
- "skene-gui",
  "skene-simple",
+ "skene-web",
 ]
 
 [[package]]
@@ -3631,6 +3594,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "web-http"
+version = "0.1.0"
+dependencies = [
+ "skene-simple",
+ "skene-transport",
+ "skene-web",
+]
+
+[[package]]
 name = "web-sys"
 version = "0.3.103"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3638,6 +3610,15 @@ checksum = "8622dcb61c0bcc9fffa6938bed81210af2da9a7e4a1a834b2e37a59b6dfb6141"
 dependencies = [
  "js-sys",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "web-ws"
+version = "0.1.0"
+dependencies = [
+ "skene-simple",
+ "skene-transport",
+ "skene-web",
 ]
 
 [[package]]

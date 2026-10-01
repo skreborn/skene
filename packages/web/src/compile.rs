@@ -67,7 +67,7 @@ use super::{
   motion::{NO_PREFERENCE, REDUCE, render_animation_values, render_keyframes, render_transitions},
   token::WebTokenValue,
 };
-use crate::{Declarations, declarations::Ident};
+use crate::declarations::{Declarations, Ident};
 
 /// A platform over pixels with the pixel extension: the one the compiler serves.
 pub(crate) trait PixelPlatform: Platform<Scalar = f32, StyleExt = GuiStyle> {}

@@ -9,16 +9,14 @@ use skene_core::{NodeId, PickerOption, Scene};
 
 use super::{PREEMPT_SCHEME, PREEMPT_SCHEME_SCRIPT, ROOT, SCRIPT_NONCE, VIEW_TRANSITIONS};
 use crate::{
-  RESET_CSS,
-  STYLE_LAYER,
-  Web,
   compile::slot_registrations,
   condition::CLASS_PLACEHOLDER,
   document::{escape_attr, escape_text, push_script},
   markup::{FormElement, MARKER_ATTRIBUTE, STYLE_ATTRIBUTE, STYLE_ID},
   motion::VIEW_TRANSITION_RULE,
+  platform::Web,
   realize::{Realizer, Sink},
-  style_book::{StyleSink, push_style_text},
+  style_book::{RESET_CSS, STYLE_LAYER, StyleSink, push_style_text},
 };
 
 /// A position in the in-order stream walk: a node whose opening tag is emitted, the

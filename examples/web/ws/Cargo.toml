@@ -1,0 +1,21 @@
+[package]
+name = "web-ws"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "ws-server"
+path = "src/main.rs"
+
+[dependencies]
+skene-simple.workspace = true
+skene-transport.workspace = true
+skene-web.workspace = true
+
+[lints]
+workspace = true

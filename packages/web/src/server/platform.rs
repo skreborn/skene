@@ -39,7 +39,13 @@ use super::{
   media::{media_signals, with_media},
   with_realizer,
 };
-use crate::{Declarations, Web, WebMarkup, realize::Realized, token::WebTokenValue};
+use crate::{
+  declarations::Declarations,
+  low_level::WebMarkup,
+  platform::Web,
+  realize::Realized,
+  token::WebTokenValue,
+};
 
 impl Painting for Web {
   fn paint(_node: NodeId, _painter: Box<Painter>) {}

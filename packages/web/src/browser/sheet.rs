@@ -9,12 +9,10 @@ use wasm_bindgen::JsCast;
 use web_sys::{Document, Element, HtmlHeadElement};
 
 use crate::{
-  RESET_CSS,
-  STYLE_LAYER,
   compile::slot_registrations,
   condition::CLASS_PLACEHOLDER,
   markup::STYLE_ATTRIBUTE,
-  style_book::{StyleSink, push_style_text},
+  style_book::{RESET_CSS, STYLE_LAYER, StyleSink, push_style_text},
 };
 
 pub(super) struct Sheet {

@@ -30,8 +30,6 @@ use skene_core::{
 };
 
 use crate::{
-  Declarations,
-  Web,
   compile::{
     Compiled,
     SlotBinding,
@@ -53,6 +51,7 @@ use crate::{
     run_fingerprint,
   },
   condition::{CONTROL_ATTRIBUTE, DRAGS_ATTRIBUTE, NATIVE_CLASS, drags_value},
+  declarations::Declarations,
   markup::{
     FormElement,
     NATIVE_ACCESS_ATTRIBUTES,
@@ -74,6 +73,7 @@ use crate::{
     scrolls,
     takes_disabled,
   },
+  platform::Web,
   style_book::{StyleBook, StyleSink},
   token::WebTokenValue,
 };
@@ -173,7 +173,7 @@ pub(crate) enum Realized {
   },
   /// An overlay.
   #[cfg_attr(
-    skene_gui_platform = "server",
+    skene_web_platform = "server",
     expect(
       dead_code,
       reason = "the server renders every overlay closed, unplaced"
@@ -226,7 +226,7 @@ pub(crate) struct Record<S: Sink> {
   pub adopted: bool,
   /// What the leaf keeps beside.
   #[cfg_attr(
-    skene_gui_platform = "server",
+    skene_web_platform = "server",
     expect(dead_code, reason = "the server keeps nothing beside the record")
   )]
   pub extra: S::Extra,

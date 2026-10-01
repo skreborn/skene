@@ -40,10 +40,10 @@ fn clear_web_out(app: &App) {
 /// body, titled after the package, booting the bundle and, in `dev`, joining the dev
 /// loop.
 fn write_page(app: &App, dev: bool) -> Result<(), String> {
-  let document = skene_web::Document {
+  let document = skene_web::platform::Document {
     bundle: Some(app.stem.clone()),
     dev,
-    ..skene_web::Document::default()
+    ..skene_web::platform::Document::default()
   };
   let mut title = String::from("<title>");
 

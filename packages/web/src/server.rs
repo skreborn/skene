@@ -39,11 +39,10 @@ use self::{
   media::MediaState,
   tree::{Frame, StringTree, Tree},
 };
-use super::Web;
 use crate::{
-  Document,
-  RenderHints,
-  document::state_script,
+  document::{Document, state_script},
+  hints::RenderHints,
+  platform::Web,
   realize::{Realized, Realizer},
 };
 

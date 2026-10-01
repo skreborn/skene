@@ -22,7 +22,6 @@ skene-common = { path = "packages/common", version = "0.1.0" }
 skene-conformance = { path = "packages/conformance", version = "0.1.0" }
 skene-core = { path = "packages/core", version = "0.1.0" }
 skene-dev = { path = "packages/dev", version = "0.1.0" }
-skene-gui = { path = "packages/gui", version = "0.1.0" }
 skene-headless = { path = "packages/headless", version = "0.1.0" }
 skene-macros = { path = "packages/macros", version = "0.1.0" }
 skene-reactive = { path = "packages/reactive", version = "0.1.0" }

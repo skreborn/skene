@@ -34,7 +34,7 @@ impl Installed {
 
 impl Drop for Installed {
   fn drop(&mut self) {
-    crate::uninstall();
+    crate::browser::uninstall();
     self.0.remove();
   }
 }
@@ -66,7 +66,7 @@ pub fn connected_root() -> Element {
 pub fn fresh_root() -> (Installed, Element) {
   let root = connected_root();
 
-  crate::install(root.clone());
+  crate::browser::install(root.clone());
 
   (Installed(root.clone()), root)
 }

@@ -67,7 +67,13 @@ use super::{
   try_with_dom,
   with_dom,
 };
-use crate::{Declarations, Web, WebDom, WebMarkup, realize::Realized, token::WebTokenValue};
+use crate::{
+  declarations::Declarations,
+  low_level::{WebDom, WebMarkup},
+  platform::Web,
+  realize::Realized,
+  token::WebTokenValue,
+};
 
 /// Whether the engine places a box against a CSS anchor (`position-area`), decided
 /// once per page.

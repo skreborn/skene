@@ -238,3 +238,7 @@ on the browser leaf, a placeholder before it and on the server, an image box on 
 and `acme-sparkline` (bars painted into the terminal's cells, and as pixels over them
 where the terminal proves its graphics), each used by its platform's gallery and tested
 on its platform.
+
+## License
+
+MIT; see [`LICENSE`](LICENSE).

@@ -3,6 +3,9 @@ name = "skene-conformance"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
+description = "One suite of behaviors every skene platform shows alike, run through the driver each implements"
+license.workspace = true
+repository.workspace = true
 
 [dependencies]
 skene-foundation.workspace = true

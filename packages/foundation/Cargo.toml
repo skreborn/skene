@@ -3,6 +3,9 @@ name = "skene-foundation"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
+description = "skene's platform-agnostic foundation: the scene, dispatch, the style model, tokens, motion and every built-in view"
+license.workspace = true
+repository.workspace = true
 
 [dependencies]
 accesskit.workspace = true

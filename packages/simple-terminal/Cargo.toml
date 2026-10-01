@@ -3,6 +3,9 @@ name = "skene-simple-terminal"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
+description = "Simple's views on skene's terminal facade"
+license.workspace = true
+repository.workspace = true
 
 # Host-only: the terminal platform never itself compiles to wasm.
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

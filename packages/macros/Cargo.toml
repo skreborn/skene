@@ -3,6 +3,9 @@ name = "skene-macros"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
+description = "skene's macros: the entry point, lazy splitting and the derives"
+license.workspace = true
+repository.workspace = true
 
 [lib]
 proc-macro = true

@@ -69,6 +69,11 @@ const STEPS: &[Step] = &[
     stamped: false,
   },
   Step {
+    name: "licenses",
+    run: licenses,
+    stamped: false,
+  },
+  Step {
     name: "clippy:host",
     run: clippy_host,
     stamped: true,
@@ -582,6 +587,11 @@ fn house_rules(gate: &Gate, _: &mut Log) -> Outcome {
 fn dependencies(gate: &Gate, log: &mut Log) -> Outcome {
   gate.require("shear", "cargo-shear")?;
   log.check(gate.cargo(["shear", "--deny-warnings", "--locked"]))
+}
+
+fn licenses(gate: &Gate, log: &mut Log) -> Outcome {
+  gate.require("deny", "cargo-deny")?;
+  log.check(gate.cargo(["deny", "--locked", "check", "licenses"]))
 }
 
 fn clippy_host(gate: &Gate, log: &mut Log) -> Outcome {

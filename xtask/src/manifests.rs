@@ -12,8 +12,10 @@ const DEPENDENCY_TABLES: [&str; 3] = ["dependencies", "dev-dependencies", "build
 
 /// Checks every manifest in the workspace: each dependency table lists its crates in
 /// alphabetical order, a cargo feature enables optional dependencies alone and none is
-/// on by default, a crate is optional only where a feature enables it, and each member
-/// inherits the workspace's lints and rust-version.
+/// on by default, a crate is optional only where a feature enables it, each member
+/// inherits the workspace's lints and rust-version, a crate under `packages/` declares a
+/// description and inherits the license and the repository, and every other member is
+/// never published.
 pub(crate) fn check(root: &Path) -> Result<(), String> {
   let mut problems = Vec::new();
   let workspace = root.join("Cargo.toml");
@@ -32,6 +34,38 @@ pub(crate) fn check(root: &Path) -> Result<(), String> {
       if !inherits(&manifest, &["package", "rust-version", "workspace"]) {
         problems.push(format!(
           "{name}: inherits no rust-version (`rust-version.workspace = true`)"
+        ));
+      }
+
+      let package = manifest.get("package");
+
+      if path
+        .strip_prefix(root)
+        .is_ok_and(|relative| relative.starts_with("packages"))
+      {
+        if package
+          .and_then(|package| package.get("description"))
+          .and_then(Item::as_str)
+          .is_none()
+        {
+          problems.push(format!("{name}: declares no description"));
+        }
+
+        for key in ["license", "repository"] {
+          if !inherits(&manifest, &["package", key, "workspace"]) {
+            problems.push(format!(
+              "{name}: inherits no {key} (`{key}.workspace = true`)"
+            ));
+          }
+        }
+      }
+      else if package
+        .and_then(|package| package.get("publish"))
+        .and_then(Item::as_bool)
+        != Some(false)
+      {
+        problems.push(format!(
+          "{name}: lies outside `packages/` yet may be published (`publish = false`)"
         ));
       }
     }

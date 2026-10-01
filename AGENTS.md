@@ -649,10 +649,12 @@
   gone variant is the default), derived with `#[derive(Snapshot)]`, never serde.
 - **`cargo xtask gate` is the gate**: every check a change passes, in one command, and a
   change lands only when it reports `gate passed`. It checks formatting, every
-  manifest's dependency order, its inheriting the workspace's lints and `rust-version`
-  and its features enabling optional dependencies alone, the house rules no compiler checks (em-dashes unspaced, children last,
-  no public name in another framework's vocabulary, fields and variants documented all
-  or none, a test double's simulated events named `trigger_`), unused dependencies,
+  manifest's dependency order, its inheriting the workspace's lints and `rust-version`,
+  its features enabling optional dependencies alone and a published crate's
+  description, license and repository, the house rules no compiler checks (em-dashes
+  unspaced, children last, no public name in another framework's vocabulary, fields and
+  variants documented all or none, a test double's simulated events named `trigger_`),
+  the dependencies' licenses against the workspace's MIT, unused dependencies,
   clippy and rustdoc with warnings denied on all three leaves, clippy on the host in
   release as well, where code built for debug assertions alone drops out, each library
   crate's public API against its snapshot under `api/`, read by a pinned nightly and

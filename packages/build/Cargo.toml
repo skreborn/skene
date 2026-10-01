@@ -3,7 +3,9 @@ name = "skene-build"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-description = "The build script naming the GUI platform a build compiles for"
+description = "The build script naming the web platform leaf a build compiles for"
+license.workspace = true
+repository.workspace = true
 
 [lints]
 workspace = true

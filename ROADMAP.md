@@ -25,10 +25,8 @@ One list, every item big and small, top first. An item is resolved by landing it
 proving it unnecessary, or by recording it under the decisions at the end; it is never
 left half-done in a code comment.
 
-1. **A license and the first CI runs.** The workspace declares no license, so
-    `cargo deny check licenses` has nothing to hold the dependencies to. Neither CI
-    workflow, the gate on every pull request nor the weekly RustSec advisories, has run
-    yet.
+1. **The first CI runs.** Neither CI workflow, the gate on every pull request nor the
+    weekly RustSec advisories, has run yet.
 2. **One owner for style and interaction semantics.** The web compiler and the spine's
     `Resolver` implement one meaning twice, and the terminal, headless and the web each
     implement focus, press, hover and overlays; each mechanism gets one owner, and the
@@ -187,12 +185,11 @@ left half-done in a code comment.
     - A shell per platform: the facades' views and Simple's, newtypes implementing the
     traits of the core beneath them, stay on probation against writing each platform's
     views by hand.
-    - Manifests: every crate publishable, with a description and a repository, the
-    versioned dev-dependency cycles broken, and the CLI publishable, as the README's
-    `cargo install` assumes; web-sys, js-sys, wasm-bindgen-test and serde_json
-    inherited from the workspace; docs.rs building wasm32 and the server cfg; taffy
-    0.14 (with right-to-left), wgpu 30, base64 0.23, toml 1.x, criterion 0.8 and
-    wasm-bindgen 0.2.129, the duplicate syn and hashbrown versions gone.
+    - Manifests: the versioned dev-dependency cycles broken; web-sys, js-sys,
+    wasm-bindgen-test and serde_json inherited from the workspace; docs.rs building
+    wasm32 and the server cfg; taffy 0.14 (with right-to-left), wgpu 30, base64 0.23,
+    toml 1.x, criterion 0.8 and wasm-bindgen 0.2.129, the duplicate syn and hashbrown
+    versions gone.
     - The documents: `AGENTS.md` at 150 lines or fewer of numbered
     one-to-three-sentence invariants, each linking its `DESIGN.md` section; `DESIGN.md`
     one chapter per mechanism, each with its contract, mechanism and decisions, the

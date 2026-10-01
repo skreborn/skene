@@ -3,6 +3,9 @@ name = "skene-simple-web"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
+description = "Simple's views on skene's web facade"
+license.workspace = true
+repository.workspace = true
 
 [dependencies]
 skene-foundation.workspace = true

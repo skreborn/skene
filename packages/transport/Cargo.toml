@@ -3,6 +3,9 @@ name = "skene-transport"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
+description = "HTTP and WebSocket clients for skene apps, on the web and on every other host"
+license.workspace = true
+repository.workspace = true
 
 [dependencies]
 

@@ -3,7 +3,9 @@ name = "skene-cli"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-publish = false
+description = "The skene command: builds, dev servers with live reload, the terminal launcher and static generation"
+license.workspace = true
+repository.workspace = true
 
 [[bin]]
 name = "skene"

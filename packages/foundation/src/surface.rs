@@ -17,7 +17,6 @@ use crate::{
   LayoutBox,
   Leaf,
   Length,
-  LinkPolicy,
   MouseCursor,
   Overflow,
   Platform,
@@ -227,18 +226,12 @@ pub trait RunBase<P: Platform>: HasRun<P> {
     self.map_run(|run| run.set_selectable(selectable))
   }
 
-  /// Makes the text a link to `destination`, inked in the link color unless styled and
-  /// opening per its [`LinkPolicy`]; a destination that would run script when followed,
-  /// a `javascript:` URL, is never followed.
+  /// Makes the text a link to `destination`, inked in the link color unless styled; a
+  /// destination that would run script when followed, a `javascript:` URL, is never
+  /// followed.
   #[must_use]
   fn set_link(self, destination: impl Into<String>) -> Self {
     self.map_run(|run| run.set_link(destination))
-  }
-
-  /// Sets how the link opens and what it discloses.
-  #[must_use]
-  fn set_link_policy(self, link_policy: LinkPolicy) -> Self {
-    self.map_run(|run| run.set_link_policy(link_policy))
   }
 
   /// Adds a property transition, interpolating that property whenever its value

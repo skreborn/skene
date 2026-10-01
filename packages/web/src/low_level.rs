@@ -28,6 +28,9 @@ pub trait WebMarkup: Platform {
   /// Sets the attribute `name` of the element realizing `node` to `value`.
   fn set_attribute(node: NodeId, name: &str, value: &str);
 
+  /// Removes the attribute `name` of the element realizing `node`.
+  fn remove_attribute(node: NodeId, name: &str);
+
   /// Writes `declarations` as the element's own inline CSS, each replacing the
   /// property's previous value.
   fn set_declarations(node: NodeId, declarations: &Declarations);

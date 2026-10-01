@@ -951,6 +951,10 @@ impl WebMarkup for Web {
     with_dom(|dom| dom.realizer.set_attribute(sink, name, value));
   }
 
+  fn remove_attribute(sink: NodeId, name: &str) {
+    with_dom(|dom| dom.realizer.remove_attribute(sink, name));
+  }
+
   fn set_declarations(sink: NodeId, declarations: &Declarations) {
     with_dom(|dom| dom.realizer.set_declarations(sink, declarations));
   }

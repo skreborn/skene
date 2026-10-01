@@ -45,6 +45,8 @@ use skene_web::{
   HasChild,
   HasChildren,
   Label,
+  LinkAnnotation,
+  LinkPolicy,
   Listbox,
   ListboxOption,
   Overlay,
@@ -480,6 +482,42 @@ fn a_script_destination_is_never_followed() {
 
   assert!(!page.body().contains("href"), "{}", page.body());
   assert!(page.body().contains(">site<"), "{}", page.body());
+}
+
+/// A link opens as its policy says: the default keeps an external page from reaching
+/// back to ours or learning where the reader came from, and a policy rewrites what it
+/// changes, on a text and a span alike.
+#[test]
+fn a_link_opens_as_its_policy_says() {
+  let page = render_to_string(|| Text::new("site").set_link("https://example.com"));
+  let body = page.body();
+
+  assert!(body.contains("target=\"_blank\""), "{body}");
+  assert!(body.contains("rel=\"noopener noreferrer\""), "{body}");
+
+  let page = render_to_string(|| {
+    Text::new("site")
+      .set_link("https://example.com")
+      .set_link_policy(
+        LinkPolicy::new()
+          .set_new_page(false)
+          .set_annotation(LinkAnnotation::Sponsored),
+      )
+  });
+  let body = page.body();
+
+  assert!(!body.contains("target="), "{body}");
+  assert!(body.contains("rel=\"noreferrer sponsored\""), "{body}");
+
+  let page = render_to_string(|| {
+    RichText::new().set_spans([Span::new("docs")
+      .set_link_policy(LinkPolicy::new().set_new_page(true))
+      .set_link("/docs")])
+  });
+  let body = page.body();
+
+  assert!(body.contains("href=\"/docs\" target=\"_blank\""), "{body}");
+  assert!(body.contains("rel=\"noopener\""), "{body}");
 }
 
 /// A transition name is written as a CSS identifier, so no name ends the rule or the

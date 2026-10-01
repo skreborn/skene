@@ -9,8 +9,6 @@ use skene_foundation::{
   Conditional,
   ControlProps,
   FocusOrder,
-  LinkAnnotation,
-  LinkPolicy,
   NativeElement,
   NodeId,
   Platform,
@@ -194,44 +192,6 @@ pub(crate) fn leaves_origin(href: &str) -> bool {
     }
     None => network_path(&href),
   }
-}
-
-/// The attributes of a link to `href` under `policy`: `href`, `target` and `rel`, with
-/// no `href` where following it would run script.
-pub(crate) fn link_attributes(href: &str, policy: LinkPolicy) -> Vec<(&'static str, String)> {
-  let external = leaves_origin(href);
-  let new_page = policy.new_page.unwrap_or(external);
-  let mut rel = Vec::new();
-  let mut attributes = Vec::new();
-
-  if !runs_script(href) {
-    attributes.push(("href", href.to_owned()));
-  }
-
-  if new_page && !policy.expose_opener {
-    rel.push("noopener");
-  }
-
-  if external && !policy.send_referrer {
-    rel.push("noreferrer");
-  }
-
-  match policy.annotation {
-    Some(LinkAnnotation::NoFollow) => rel.push("nofollow"),
-    Some(LinkAnnotation::Sponsored) => rel.push("sponsored"),
-    Some(LinkAnnotation::Ugc) => rel.push("ugc"),
-    None => {}
-  }
-
-  if new_page {
-    attributes.push(("target", "_blank".to_owned()));
-  }
-
-  if !rel.is_empty() {
-    attributes.push(("rel", rel.join(" ")));
-  }
-
-  attributes
 }
 
 /// The ARIA attribute carrying `prop` and its value, where one exists.

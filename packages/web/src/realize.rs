@@ -30,6 +30,7 @@ use skene_foundation::{
 };
 
 use crate::{
+  LinkPolicy,
   compile::{
     Compiled,
     SlotBinding,
@@ -65,7 +66,6 @@ use crate::{
     focus_order_attribute,
     form_element,
     is_form_element,
-    link_attributes,
     native_attributes,
     referenced_nodes,
     replaced_by_access,
@@ -467,7 +467,7 @@ impl<S: Sink> Realizer<S> {
       Some(href) => {
         let (element, _) = self.create_element(node, "a", Realized::Run);
 
-        for (name, value) in link_attributes(href, props.link_policy) {
+        for (name, value) in LinkPolicy::default().attributes(href) {
           self.sink.set_attribute(&element, name, &value);
         }
       }
@@ -719,6 +719,13 @@ impl<S: Sink> Realizer<S> {
   pub(crate) fn set_attribute(&mut self, node: NodeId, name: &str, value: &str) {
     if let Some(record) = self.records.get(node) {
       self.sink.set_attribute(&record.element, name, value);
+    }
+  }
+
+  /// Removes the attribute `name` of the element realizing `node`.
+  pub(crate) fn remove_attribute(&mut self, node: NodeId, name: &str) {
+    if let Some(record) = self.records.get(node) {
+      self.sink.remove_attribute(&record.element, name);
     }
   }
 

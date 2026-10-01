@@ -280,6 +280,10 @@ impl WebMarkup for Web {
     with_realizer(|realizer| realizer.set_attribute(node, name, value));
   }
 
+  fn remove_attribute(node: NodeId, name: &str) {
+    with_realizer(|realizer| realizer.remove_attribute(node, name));
+  }
+
   fn set_declarations(node: NodeId, declarations: &Declarations) {
     with_realizer(|realizer| realizer.set_declarations(node, declarations));
   }

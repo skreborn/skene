@@ -12,7 +12,6 @@ use crate::{
   Definitions,
   FocusOrder,
   Leaf,
-  LinkPolicy,
   NodeId,
   NodeKind,
   Platform,
@@ -42,10 +41,12 @@ use crate::{
 pub struct Run<P: Platform> {
   selectable: bool,
   link: Option<String>,
-  link_policy: LinkPolicy,
   style: DeclaredRunStyle<P>,
   dynamics: RunDynamics<P::StyleExt>,
+  realizations: Vec<Realization<P>>,
 }
+
+type Realization<P> = Box<dyn FnOnce(NodeId, &RunProps<P>)>;
 
 impl<P: Platform> std::fmt::Debug for Run<P> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -67,9 +68,9 @@ impl<P: Platform> Run<P> {
     Self {
       selectable: false,
       link: None,
-      link_policy: LinkPolicy::new(),
       style: DeclaredRunStyle::<P>::default(),
       dynamics: RunDynamics::default(),
+      realizations: Vec::new(),
     }
   }
 
@@ -95,10 +96,13 @@ impl<P: Platform> Run<P> {
     self
   }
 
-  /// Sets how the link opens and what it discloses.
-  #[inline(always)]
-  pub const fn set_link_policy(mut self, link_policy: LinkPolicy) -> Self {
-    self.link_policy = link_policy;
+  /// Adds `realization`, called with the run's node and props once the platform has
+  /// realized the run, after the realizations added before it.
+  pub fn add_realization(
+    mut self,
+    realization: impl FnOnce(NodeId, &RunProps<P>) + 'static,
+  ) -> Self {
+    self.realizations.push(Box::new(realization));
 
     self
   }
@@ -204,7 +208,6 @@ impl<P: Platform> Run<P> {
       placement,
       selectable: self.selectable,
       link: self.link,
-      link_policy: self.link_policy,
       style,
       layout,
       dynamics: self.dynamics,
@@ -212,6 +215,10 @@ impl<P: Platform> Run<P> {
     let node = Scene::<P>::with(|scene| scene.create(NodeKind::Run, annotation));
 
     P::create_run(node, &props);
+
+    for realization in self.realizations {
+      realization(node, &props);
+    }
 
     if links {
       Scene::<P>::with(|scene| scene.note_focus_order(node, Some(FocusOrder::Auto)));

@@ -28,7 +28,6 @@ use crate::spine::{
   ColorScheme,
   FocusOrder,
   Layout,
-  LinkPolicy,
   Placement,
   Role,
   RunPlacement,
@@ -101,8 +100,6 @@ pub struct RunProps<P: Platform> {
   pub selectable: bool,
   /// The link destination, when the run is a link.
   pub link: Option<String>,
-  /// How the link opens and what it discloses; meaningful only when `link` is set.
-  pub link_policy: LinkPolicy,
   /// The static style: every derived leaf already replaced by its slot.
   pub style: StaticRunStyle<P>,
   /// The static per-child layout a wrapper gave the run (its flexibility, alignment,

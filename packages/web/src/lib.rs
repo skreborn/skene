@@ -41,6 +41,7 @@ mod hints;
   expect(dead_code, reason = "the interner serves the leaves alone")
 )]
 mod interner;
+mod link_policy;
 #[cfg(not(skene_web_platform = "headless"))]
 mod logging;
 mod low_level;
@@ -213,6 +214,7 @@ pub use wasm_bindgen;
 #[cfg(skene_web_platform = "server")]
 pub use self::platform::Rendered;
 pub use crate::{
+  link_policy::{LinkAnnotation, LinkPolicy},
   media::{chosen_scheme, derive_scheme, set_scheme},
   resource::{LoadState, Resource},
   routing::{install_router, install_static_router},

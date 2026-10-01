@@ -209,9 +209,7 @@ pub use skene_terminal::prelude::LazyColumnBase
 pub use skene_terminal::prelude::LazyRowBase
 pub use skene_terminal::prelude::Leaf
 pub use skene_terminal::prelude::Line
-pub use skene_terminal::prelude::LinkAnnotation
 pub use skene_terminal::prelude::LinkBase
-pub use skene_terminal::prelude::LinkPolicy
 pub use skene_terminal::prelude::Memo
 pub use skene_terminal::prelude::MenuEntry
 pub use skene_terminal::prelude::Modifiers

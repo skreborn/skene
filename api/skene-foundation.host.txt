@@ -2523,19 +2523,6 @@ impl<T> core::convert::From<skene_foundation::Expr<T>> for skene_foundation::Lea
 pub fn skene_foundation::Leaf<T>::from(skene_foundation::Expr<T>) -> Self
 impl<T> core::convert::From<skene_foundation::StaticLeaf<T>> for skene_foundation::Leaf<T>
 pub fn skene_foundation::Leaf<T>::from(skene_foundation::StaticLeaf<T>) -> Self
-pub enum skene_foundation::LinkAnnotation
-pub skene_foundation::LinkAnnotation::NoFollow
-pub skene_foundation::LinkAnnotation::Sponsored
-pub skene_foundation::LinkAnnotation::Ugc
-impl core::clone::Clone for skene_foundation::LinkAnnotation
-pub fn skene_foundation::LinkAnnotation::clone(&self) -> skene_foundation::LinkAnnotation
-impl core::cmp::Eq for skene_foundation::LinkAnnotation
-impl core::cmp::PartialEq for skene_foundation::LinkAnnotation
-pub fn skene_foundation::LinkAnnotation::eq(&self, &skene_foundation::LinkAnnotation) -> bool
-impl core::fmt::Debug for skene_foundation::LinkAnnotation
-pub fn skene_foundation::LinkAnnotation::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::marker::Copy for skene_foundation::LinkAnnotation
-impl core::marker::StructuralPartialEq for skene_foundation::LinkAnnotation
 pub enum skene_foundation::Media<N>
 pub skene_foundation::Media::And(alloc::vec::Vec<Self>)
 pub skene_foundation::Media::Container
@@ -4966,28 +4953,6 @@ impl<P: skene_foundation::Platform, R: skene_foundation::routing::Route> skene_f
 pub fn skene_foundation::Link<P, R>::build(self) -> skene_foundation::NodeId
 pub fn skene_foundation::Link<P, R>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
 pub fn skene_foundation::Link<P, R>::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
-pub struct skene_foundation::LinkPolicy
-pub skene_foundation::LinkPolicy::annotation: core::option::Option<skene_foundation::LinkAnnotation>
-pub skene_foundation::LinkPolicy::expose_opener: bool
-pub skene_foundation::LinkPolicy::new_page: core::option::Option<bool>
-pub skene_foundation::LinkPolicy::send_referrer: bool
-impl skene_foundation::LinkPolicy
-pub fn skene_foundation::LinkPolicy::new() -> Self
-pub const fn skene_foundation::LinkPolicy::set_annotation(self, skene_foundation::LinkAnnotation) -> Self
-pub const fn skene_foundation::LinkPolicy::set_expose_opener(self, bool) -> Self
-pub const fn skene_foundation::LinkPolicy::set_new_page(self, bool) -> Self
-pub const fn skene_foundation::LinkPolicy::set_send_referrer(self, bool) -> Self
-impl core::clone::Clone for skene_foundation::LinkPolicy
-pub fn skene_foundation::LinkPolicy::clone(&self) -> skene_foundation::LinkPolicy
-impl core::cmp::Eq for skene_foundation::LinkPolicy
-impl core::cmp::PartialEq for skene_foundation::LinkPolicy
-pub fn skene_foundation::LinkPolicy::eq(&self, &skene_foundation::LinkPolicy) -> bool
-impl core::default::Default for skene_foundation::LinkPolicy
-pub fn skene_foundation::LinkPolicy::default() -> skene_foundation::LinkPolicy
-impl core::fmt::Debug for skene_foundation::LinkPolicy
-pub fn skene_foundation::LinkPolicy::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::marker::Copy for skene_foundation::LinkPolicy
-impl core::marker::StructuralPartialEq for skene_foundation::LinkPolicy
 pub struct skene_foundation::ListboxPolicy
 impl core::clone::Clone for skene_foundation::ListboxPolicy
 pub fn skene_foundation::ListboxPolicy::clone(&self) -> skene_foundation::ListboxPolicy
@@ -5828,12 +5793,12 @@ pub fn skene_foundation::Row<P>::into_any(self) -> skene_foundation::AnyView<P> 
 pub fn skene_foundation::Row<P>::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
 pub struct skene_foundation::Run<P: skene_foundation::Platform>
 impl<P: skene_foundation::Platform> skene_foundation::Run<P>
+pub fn skene_foundation::Run<P>::add_realization(self, impl core::ops::function::FnOnce(skene_foundation::NodeId, &skene_foundation::RunProps<P>) + 'static) -> Self
 pub fn skene_foundation::Run<P>::build(self, skene_foundation::RunPlacement) -> skene_foundation::NodeId
 pub fn skene_foundation::Run<P>::build_group(self, skene_foundation::RunPlacement) -> skene_foundation::NodeId where <P as skene_foundation::Platform>::StyleExt: skene_foundation::TypeMetrics
 pub fn skene_foundation::Run<P>::new() -> Self
 pub fn skene_foundation::Run<P>::set_animation(self, skene_foundation::Animation<skene_foundation::RunKeyframe<P>>) -> Self
 pub fn skene_foundation::Run<P>::set_link(self, impl core::convert::Into<alloc::string::String>) -> Self
-pub const fn skene_foundation::Run<P>::set_link_policy(self, skene_foundation::LinkPolicy) -> Self
 pub const fn skene_foundation::Run<P>::set_selectable(self, bool) -> Self
 pub fn skene_foundation::Run<P>::set_transition(self, skene_foundation::Transition<<<P as skene_foundation::Platform>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
 pub const fn skene_foundation::Run<P>::style_mut(&mut self) -> &mut skene_foundation::DeclaredRunStyle<P>
@@ -5859,7 +5824,6 @@ pub struct skene_foundation::RunProps<P: skene_foundation::Platform>
 pub skene_foundation::RunProps::dynamics: skene_foundation::RunDynamics<<P as skene_foundation::Platform>::StyleExt>
 pub skene_foundation::RunProps::layout: core::option::Option<alloc::boxed::Box<skene_foundation::StaticBoxStyle<P>>>
 pub skene_foundation::RunProps::link: core::option::Option<alloc::string::String>
-pub skene_foundation::RunProps::link_policy: skene_foundation::LinkPolicy
 pub skene_foundation::RunProps::placement: skene_foundation::RunPlacement
 pub skene_foundation::RunProps::selectable: bool
 pub skene_foundation::RunProps::style: skene_foundation::StaticRunStyle<P>
@@ -6226,7 +6190,6 @@ pub fn skene_foundation::Span<P>::set_decoration(self, impl core::convert::Into<
 pub fn skene_foundation::Span<P>::set_decoration_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Span<P>::set_decoration_style(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::TextDecorationStyle, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Span<P>::set_link(self, impl core::convert::Into<alloc::string::String>) -> Self
-pub fn skene_foundation::Span<P>::set_link_policy(self, skene_foundation::LinkPolicy) -> Self
 pub fn skene_foundation::Span<P>::set_selectable(self, bool) -> Self
 pub fn skene_foundation::Span<P>::set_selection_background(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Span<P>::set_selection_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
@@ -6331,7 +6294,6 @@ pub fn skene_foundation::Text<P>::set_decoration(self, impl core::convert::Into<
 pub fn skene_foundation::Text<P>::set_decoration_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Text<P>::set_decoration_style(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::TextDecorationStyle, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Text<P>::set_link(self, impl core::convert::Into<alloc::string::String>) -> Self
-pub fn skene_foundation::Text<P>::set_link_policy(self, skene_foundation::LinkPolicy) -> Self
 pub fn skene_foundation::Text<P>::set_selectable(self, bool) -> Self
 pub fn skene_foundation::Text<P>::set_selection_background(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Text<P>::set_selection_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
@@ -8364,7 +8326,6 @@ pub fn skene_foundation::RunBase::set_decoration(self, impl core::convert::Into<
 pub fn skene_foundation::RunBase::set_decoration_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::RunBase::set_decoration_style(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::TextDecorationStyle, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::RunBase::set_link(self, impl core::convert::Into<alloc::string::String>) -> Self
-pub fn skene_foundation::RunBase::set_link_policy(self, skene_foundation::LinkPolicy) -> Self
 pub fn skene_foundation::RunBase::set_selectable(self, bool) -> Self
 pub fn skene_foundation::RunBase::set_selection_background(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::RunBase::set_selection_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
@@ -8382,7 +8343,6 @@ pub fn skene_foundation::Span<P>::set_decoration(self, impl core::convert::Into<
 pub fn skene_foundation::Span<P>::set_decoration_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Span<P>::set_decoration_style(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::TextDecorationStyle, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Span<P>::set_link(self, impl core::convert::Into<alloc::string::String>) -> Self
-pub fn skene_foundation::Span<P>::set_link_policy(self, skene_foundation::LinkPolicy) -> Self
 pub fn skene_foundation::Span<P>::set_selectable(self, bool) -> Self
 pub fn skene_foundation::Span<P>::set_selection_background(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Span<P>::set_selection_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
@@ -8400,7 +8360,6 @@ pub fn skene_foundation::Text<P>::set_decoration(self, impl core::convert::Into<
 pub fn skene_foundation::Text<P>::set_decoration_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Text<P>::set_decoration_style(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::TextDecorationStyle, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Text<P>::set_link(self, impl core::convert::Into<alloc::string::String>) -> Self
-pub fn skene_foundation::Text<P>::set_link_policy(self, skene_foundation::LinkPolicy) -> Self
 pub fn skene_foundation::Text<P>::set_selectable(self, bool) -> Self
 pub fn skene_foundation::Text<P>::set_selection_background(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Text<P>::set_selection_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self

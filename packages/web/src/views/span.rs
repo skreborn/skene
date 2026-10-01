@@ -1,8 +1,8 @@
 //! Inline runs, and the paragraph they flow in.
 
-use skene_foundation::{RichTextBase, RunBase, SpanBase, View, Wraps};
+use skene_foundation::{HasRun, RichTextBase, RunBase, SpanBase, View, Wraps};
 
-use crate::ActivePlatform;
+use crate::{ActivePlatform, LinkPolicy};
 
 /// An inline run within a [`RichText`]: text, a group of spans styled as a unit, or a
 /// view embedded among the text.
@@ -17,6 +17,14 @@ use crate::ActivePlatform;
 #[derive(Debug, View, Wraps)]
 #[must_use]
 pub struct Span(skene_foundation::Span<ActivePlatform>);
+
+impl Span {
+  /// Sets how the link opens and what it discloses; a link left without one follows the
+  /// default [`LinkPolicy`].
+  pub fn set_link_policy(self, policy: LinkPolicy) -> Self {
+    self.map_run(|run| run.add_realization(move |node, props| policy.realize(node, props)))
+  }
+}
 
 impl SpanBase<ActivePlatform> for Span {}
 

@@ -16,7 +16,7 @@ use crate::ActivePlatform;
 /// no URL.
 ///
 /// Pair the returned router with a [`derived`](crate::derived) subtree or a
-/// [`Switch`](crate::Switch) keyed on [`route`](Router::route); read it anywhere
+/// [`OneOf`](crate::OneOf) keyed on [`route`](Router::route); read it anywhere
 /// beneath with [`Router::current`].
 #[inline(always)]
 pub fn install_router<R: Route>(fallback: R) -> Router<R> {

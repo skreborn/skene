@@ -101,7 +101,7 @@ left half-done in a code comment.
 5. **The dev reload costs production nothing.** The saved tier is no second API: the
     Android leaf records and writes this snapshot (the native family), and the web and
     the desktop keep none beyond the dev reload.
-    - Identity: typed owner steps aligned per parent, so a `Show` inserted before a
+    - Identity: typed owner steps aligned per parent, so a `Visibility` inserted before a
     component stops resetting everything after it; keyed roots for detached owners and `root_owner`; a
     positional scope per keyed list; grouping by live owner in place of the lossy
     dedup; a tagged match leaving the untagged cursor alone; node positions counted
@@ -164,7 +164,7 @@ left half-done in a code comment.
     `popstate` handled; per-entry scroll and state on the snapshot's positions; a
     pending signal, the commit waiting until code and data settle; preloading and
     `aria-current`; `not_found()` and `redirect()` setting a status on `Rendered`, and
-    a `404.html` from static generation; a keep-alive policy for `Switch` that pauses
+    a `404.html` from static generation; a keep-alive policy for `OneOf` that pauses
     detached pages and bounds them LRU.
     - Async that holds: `Suspense` shows its fallback until the first settle alone,
     later work raising `Boundary::is_pending()` while the content stays, with a
@@ -183,10 +183,9 @@ left half-done in a code comment.
     - A shell per platform: the facades' views and Simple's, newtypes implementing the
     traits of the core beneath them, stay on probation against writing each platform's
     views by hand.
-    - Renames: `Show` and `Switch` to `Visibility` and `OneOf`, where `Visibility`
-    already names the style value that hides a box; the choice and activation handlers
-    and binders to `choose`/`chosen` for value groups and `activate` for commands, with
-    `bind_` documented as a builder prefix.
+    - Renames: the choice and activation handlers and binders to `choose`/`chosen` for
+    value groups and `activate` for commands, with `bind_` documented as a builder
+    prefix.
     - Vocabulary: `FlexDirection`'s reversed variants become an axis plus `reversed`;
     `Overflow` becomes `Clip`, `Scroll` and `ScrollIfNeeded`; `RunDisplay`,
     `GridTrack::Minmax` and `Layout::Flow` lose their CSS names; `Expr::vw`, `vh`,

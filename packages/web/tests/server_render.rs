@@ -20,11 +20,11 @@ use skene_foundation::{
   RichTextBase,
   RowBase,
   RunBase,
-  ShowBase,
   SpanBase,
   TextBase,
   ThemeBase,
   TooltipBase,
+  VisibilityBase,
 };
 use skene_simple_web::prelude::*;
 use skene_web::{
@@ -822,7 +822,7 @@ fn deferred_app() -> impl skene_web::View {
 #[test]
 fn a_stream_resumes_where_it_stood_among_changed_siblings() {
   use skene_web::{
-    Show,
+    Visibility,
     reactive::{Get, Set, Signal},
   };
 
@@ -830,7 +830,7 @@ fn a_stream_resumes_where_it_stood_among_changed_siblings() {
     let grown = Signal::new(false);
 
     Row::new().set_children([
-      Show::new()
+      Visibility::new()
         .derive_shown(move || grown.get())
         .set_child(Text::new("grown"))
         .into_any(),

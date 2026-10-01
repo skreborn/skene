@@ -14,18 +14,18 @@ mod grid_cell;
 mod keymap;
 mod lazy_list;
 mod link;
+mod one_of;
 mod overlay;
 mod painted;
 mod picker;
 mod pinned;
-mod show;
 mod span;
 mod stack;
 mod suspense;
-mod switch;
 mod text;
 mod theme;
 mod tooltip;
+mod visibility;
 
 pub use self::{
   async_view::AsyncView,
@@ -55,16 +55,16 @@ pub use self::{
   keymap::Keymap,
   lazy_list::{LazyColumn, LazyRow},
   link::Link,
+  one_of::OneOf,
   overlay::Overlay,
   painted::Painted,
   picker::BasicPicker,
   pinned::Pinned,
-  show::Show,
   span::{RichText, Span},
   stack::Stack,
   suspense::Suspense,
-  switch::Switch,
   text::Text,
   theme::Theme,
   tooltip::Tooltip,
+  visibility::Visibility,
 };

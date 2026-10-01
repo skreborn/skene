@@ -84,7 +84,7 @@ fn gallery(palette: Signal<Option<String>>) -> impl View {
                 lazy_row(),
                 Column::new().set_spacing(1).set_children((
                   context_menu(),
-                  show_and_switch(),
+                  visibility_and_one_of(),
                   boundaries(),
                   third_party(),
                 )),
@@ -414,20 +414,22 @@ fn context_menu() -> impl View {
   )
 }
 
-fn show_and_switch() -> impl View {
+fn visibility_and_one_of() -> impl View {
   let shown = Signal::tagged("details shown", false);
   let pane = Signal::tagged("pane", String::from("summary"));
 
   section(
-    "Show & Switch",
+    "Visibility & OneOf",
     Column::new().set_spacing(1).set_children((
       SimpleCheckbox::new()
         .set_label("Show the details")
         .bind_checked(shown),
-      Show::new().derive_shown(move || shown.get()).set_child(
-        Text::new("The details, built the first time they show.")
-          .set_color(SimplePalette::MUTED_FOREGROUND),
-      ),
+      Visibility::new()
+        .derive_shown(move || shown.get())
+        .set_child(
+          Text::new("The details, built the first time they show.")
+            .set_color(SimplePalette::MUTED_FOREGROUND),
+        ),
       Row::new().set_spacing(2).set_children((
         SimpleButton::new("Summary")
           .set_variant(SimpleVariant::Outline)
@@ -436,7 +438,7 @@ fn show_and_switch() -> impl View {
           .set_variant(SimpleVariant::Outline)
           .handle_click(move || pane.set(String::from("history"))),
       )),
-      Switch::new()
+      OneOf::new()
         .derive_key(move || pane.get())
         .set_case(String::from("summary"), || {
           Text::new("One case at a time: the summary.")

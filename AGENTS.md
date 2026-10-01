@@ -595,7 +595,7 @@
   of one child holds it in a slot `set_child` replaces (`HasChild`, `Container` alone);
   a layout view appends segments (`HasChildren`: `add_child`, `set_children`,
   `derive_children`). A view that wraps something (`Flexible`, `Pinned`, `GridCell`,
-  `Theme`, `Show`, `Control`, `Overlay`, `Tooltip` and their kin) requires the child in
+  `Theme`, `Visibility`, `Control`, `Overlay`, `Tooltip` and their kin) requires the child in
   the type system: it holds the child as a type parameter, starting at `NoChild`, its
   setters exist only in that state, so a property after the child is a type error, and
   only the form carrying one is a view. `Theme` takes its child as a builder closure,

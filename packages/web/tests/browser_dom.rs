@@ -47,12 +47,12 @@ use skene_foundation::{
   RowBase,
   RunBase,
   RunWithTypeMetrics,
-  ShowBase,
   SpanBase,
   StackBase,
   TextBase,
   ThemeBase,
   TooltipBase,
+  VisibilityBase,
   WheelEvent,
   WheelUnit,
 };
@@ -90,7 +90,6 @@ use skene_web::{
   RichText,
   Role,
   Row,
-  Show,
   Slider,
   Span,
   Stack,
@@ -105,6 +104,7 @@ use skene_web::{
   Tooltip,
   Typography,
   View,
+  Visibility,
   derived,
   empty,
   head,
@@ -1905,7 +1905,7 @@ fn a_hidden_subtree_keeps_its_scroll_and_focus() {
   let shown = Signal::new(true);
 
   let _ = mount(move || {
-    Show::new()
+    Visibility::new()
       .derive_shown(move || shown.get())
       .set_child(scroller())
       .build()

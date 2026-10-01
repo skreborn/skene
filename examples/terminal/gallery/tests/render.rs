@@ -61,7 +61,7 @@ fn the_gallery_renders_and_responds() {
     "Grid, Stack & Overlay",
     "LazyColumn",
     "Context menu",
-    "Show & Switch",
+    "Visibility & OneOf",
     "Suspense & ErrorBoundary",
     "Third party",
   ] {

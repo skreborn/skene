@@ -30,7 +30,7 @@ skene-foundation the spine: Scene<P> (parents, children, annotations, token defi
       │          view ONCE, generic over P: Platform—Container, Row/Column/Grid/Stack/
       │          LayoutBox, Flexible/Pinned/GridCell, Text/Span/RichText, Control<B:
       │          Behavior> and the shipped behaviors, BasicPicker, Overlay, LazyColumn/
-      │          LazyRow, Show/Switch/Suspense/ErrorBoundary, Theme, typography,
+      │          LazyRow, Visibility/OneOf/Suspense/ErrorBoundary, Theme, typography,
       │          LowLevel; terminal (TerminalStyle, BorderGlyphs, the terminal
       │          Typography set), web (WebStyle, the web's Typography set, the document
       │          Head, Painting/Canvas/Painted through vello, WebHydration with the
@@ -163,7 +163,7 @@ functions in the platform crate, since it is not a shared contract.
   headless platform share one bubbling implementation, so the rule that a view owns the
   interactions it handles is enforced, and testable, in one place. The path climbs
   through the start of every segment the node is mounted in before its parent, so a
-  `Tooltip` or a `ContextMenu` around `derived`, `Show` or `Enhance` hears its content;
+  `Tooltip` or a `ContextMenu` around `derived`, `Visibility` or `Enhance` hears its content;
   an overlay anchored on a segment or a scope is placed against the first node inside
   it with a box (`Scene::placement`), and a tooltip describes the node holding focus
   within its view, moving the description when focus reaches a rebuilt one. A node carries one
@@ -275,7 +275,7 @@ and its cost unjustified.
 - **Keyed reconcile** keeps its LIS-minimal reorder, its reused scratch buffers, and
   builds items untracked; a rebuild closure (`derived`) tracks. The two names say which.
 - **Structural change is a last resort with a cheap alternative.** `derived` destroys
-  and rebuilds, disposing the subtree's scope with its state; `Show` and `Switch` build
+  and rebuilds, disposing the subtree's scope with its state; `Visibility` and `OneOf` build
   a branch the first time it shows and hide or attach it after, preserving its
   state, the focus inside it and its scroll offsets among it, and a branch standing
   apart pauses its effects (`Owner::pause`) until it shows again, catching up once. Each is a `Segment` of `Piece`s, every piece built under a
@@ -711,7 +711,7 @@ The public API speaks the ecosystem's standard reactive vocabulary:
   once nothing tracks it.
 - **Effects have handles and flavors.** `Effect::render` effects flush before ordinary
   effects in owner-depth order and are what property binders and the structural effects
-  (`derived`, `reconcile`, `Show`, `Switch`) are, so a parent's structure settles before
+  (`derived`, `reconcile`, `Visibility`, `OneOf`) are, so a parent's structure settles before
   its descendants' properties and a disposed descendant never runs; a handle disposes or
   pauses.
 - **A pluggable scheduler, flushed by turns.** Synchronous at write end by default;

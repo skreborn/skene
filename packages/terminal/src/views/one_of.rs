@@ -1,6 +1,6 @@
 //! One of several branches, by key.
 
-use skene_foundation::{SwitchBase, View, Wraps};
+use skene_foundation::{OneOfBase, View, Wraps};
 
 use crate::ActivePlatform;
 
@@ -14,13 +14,13 @@ use crate::ActivePlatform;
 /// disposed. Nothing is shown while no key is set or no case has the current key.
 #[derive(Debug, View, Wraps)]
 #[must_use]
-pub struct Switch<K>(skene_foundation::Switch<ActivePlatform, K>);
+pub struct OneOf<K>(skene_foundation::OneOf<ActivePlatform, K>);
 
-impl<K: PartialEq + 'static> Default for Switch<K> {
+impl<K: PartialEq + 'static> Default for OneOf<K> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<K: PartialEq + 'static> SwitchBase<ActivePlatform, K> for Switch<K> {}
+impl<K: PartialEq + 'static> OneOfBase<ActivePlatform, K> for OneOf<K> {}

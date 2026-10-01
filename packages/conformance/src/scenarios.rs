@@ -32,7 +32,6 @@ use skene_foundation::{
   RadioGroup,
   Role,
   Scalar,
-  Show,
   Size,
   Slider,
   TOOLTIP_DELAY,
@@ -42,6 +41,7 @@ use skene_foundation::{
   Toggle,
   Tooltip,
   View,
+  Visibility,
   When,
 };
 use skene_reactive::{Get, Set, Signal, Update};
@@ -544,7 +544,7 @@ fn a_hidden_view_keeps_its_focus<D: Driver>(driver: &mut D) {
   driver.mount(move || {
     Column::<D::Platform>::new()
       .set_children((
-        Show::<D::Platform>::new()
+        Visibility::<D::Platform>::new()
           .derive_shown(move || shown.get())
           .set_child(button::<D>("Dismiss").handle_click(move || {
             shown.set(false);

@@ -11,7 +11,7 @@ type Container = skene_foundation::Container<Headless>;
 type Column = skene_foundation::Column<Headless>;
 type Text = skene_foundation::Text<Headless>;
 type Flexible<C = skene_foundation::NoChild> = skene_foundation::Flexible<Headless, C>;
-type Switch<K> = skene_foundation::Switch<Headless, K>;
+type OneOf<K> = skene_foundation::OneOf<Headless, K>;
 
 /// Flipping away and back reattaches the same branch node with its signal intact, the
 /// branch builds exactly once, and an unknown key shows nothing.
@@ -29,7 +29,7 @@ fn switch_keeps_a_branch_and_its_state_across_a_flip() {
 
     Column::new()
       .add_child(
-        Switch::new()
+        OneOf::new()
           .derive_key(move || key.get())
           .set_case("a", move || {
             builds.set(builds.get() + 1);
@@ -85,7 +85,7 @@ fn a_hidden_branch_pauses_until_it_shows() {
   let root = owner.enter(|| {
     Column::new()
       .add_child(
-        Switch::new()
+        OneOf::new()
           .derive_key(move || key.get())
           .set_case("a", move || {
             Text::derive(move || format!("a {}", count.get()))
@@ -128,7 +128,7 @@ fn switch_forwards_the_pending_annotation_to_every_branch() {
     Column::new()
       .add_child(
         Flexible::new().set_grow_factor(3.).set_child(
-          Switch::new()
+          OneOf::new()
             .derive_key(move || key.get())
             .set_case(1, Container::new)
             .set_case(2, Container::new),

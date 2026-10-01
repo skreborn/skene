@@ -46,7 +46,6 @@ use crate::{
   Scalar,
   Scene,
   Shortcut,
-  Show,
   Spacing,
   StaticLeaf,
   StyleExtension,
@@ -54,6 +53,7 @@ use crate::{
   Transition,
   Value,
   View,
+  Visibility,
   Wraps,
   properties,
   realize::Source,
@@ -722,7 +722,7 @@ impl<P: Platform> RowDress<P> {
 
     *control.box_style_mut() = (*self.item_style).clone();
 
-    Show::<P>::new()
+    Visibility::<P>::new()
       .derive_shown({
         let shown = Rc::clone(&verdicts.shown);
 

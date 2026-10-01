@@ -8,7 +8,7 @@ use skene_headless::{Headless, children, end_turn, is_live, reset};
 use skene_reactive::{Effect, Get, Owner, Set, signal};
 
 type Container = skene_foundation::Container<Headless>;
-type Show<C = skene_foundation::NoChild> = skene_foundation::Show<Headless, C>;
+type Visibility<C = skene_foundation::NoChild> = skene_foundation::Visibility<Headless, C>;
 
 /// A box with the segment `start` begins attached beneath it.
 fn parent_of(start: NodeId) -> NodeId {
@@ -35,7 +35,7 @@ fn a_hidden_child_builds_when_first_shown_and_pauses_while_hidden() {
     let builds = Rc::clone(&builds);
     let runs = Rc::clone(&runs);
 
-    Show::new()
+    Visibility::new()
       .derive_shown(move || shown.get())
       .set_child(AnyView::new(move || {
         let runs = Rc::clone(&runs);
@@ -89,7 +89,7 @@ fn an_unchanged_condition_keeps_the_child_where_it_stands() {
   let owner = Owner::new();
   let (count, set_count) = signal(1);
   let start = owner.enter(|| {
-    Show::new()
+    Visibility::new()
       .derive_shown(move || count.get() > 0)
       .set_child(Container::new())
       .build()
@@ -113,7 +113,7 @@ fn show_detaches_and_reattaches_the_same_node() {
   let owner = Owner::new();
   let (shown, set_shown) = signal(true);
   let start = owner.enter(|| {
-    Show::new()
+    Visibility::new()
       .derive_shown(move || shown.get())
       .set_child(Container::new())
       .build()

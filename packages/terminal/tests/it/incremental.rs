@@ -102,7 +102,7 @@ proptest! {
             SimpleButton::new("press"),
             SimpleCheckbox::new().bind_checked(checked).set_label("check"),
             SimpleTextField::new().bind_value(value),
-            Show::new()
+            Visibility::new()
               .derive_shown(move || shown.get())
               .set_child(Text::new("shown")),
             Container::new()

@@ -14,20 +14,20 @@ use crate::{AnyKind, AnyView, NoChild, NodeId, Piece, Platform, Segment, View, W
 ///
 /// Holds [`NoChild`] until `set_child` supplies the child; only then is it a view.
 #[must_use]
-pub struct Show<P: Platform, C = NoChild> {
+pub struct Visibility<P: Platform, C = NoChild> {
   shown: Box<dyn Fn() -> bool>,
   child: C,
   platform: PhantomData<fn() -> P>,
 }
 
-impl<P: Platform, C> std::fmt::Debug for Show<P, C> {
+impl<P: Platform, C> std::fmt::Debug for Visibility<P, C> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    formatter.debug_struct("Show").finish_non_exhaustive()
+    formatter.debug_struct("Visibility").finish_non_exhaustive()
   }
 }
 
-impl<P: Platform> Show<P> {
-  /// A `Show` with no child yet, shown until told otherwise.
+impl<P: Platform> Visibility<P> {
+  /// A `Visibility` with no child yet, shown until told otherwise.
   #[inline(always)]
   pub fn new() -> Self {
     Self {
@@ -38,14 +38,14 @@ impl<P: Platform> Show<P> {
   }
 }
 
-impl<P: Platform> Default for Show<P> {
+impl<P: Platform> Default for Visibility<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<P: Platform> Show<P> {
+impl<P: Platform> Visibility<P> {
   /// Sets whether the child is shown.
   #[inline(always)]
   pub fn set_shown(mut self, shown: bool) -> Self {
@@ -63,8 +63,8 @@ impl<P: Platform> Show<P> {
   }
 
   /// Sets the child.
-  pub fn set_child(self, child: impl View<P>) -> Show<P, AnyView<P>> {
-    Show {
+  pub fn set_child(self, child: impl View<P>) -> Visibility<P, AnyView<P>> {
+    Visibility {
       shown: self.shown,
       child: child.into_any(),
       platform: PhantomData,
@@ -72,9 +72,9 @@ impl<P: Platform> Show<P> {
   }
 }
 
-impl<P: Platform, C> AnyKind for Show<P, C> {}
+impl<P: Platform, C> AnyKind for Visibility<P, C> {}
 
-impl<P: Platform> View<P> for Show<P, AnyView<P>> {
+impl<P: Platform> View<P> for Visibility<P, AnyView<P>> {
   fn build(self) -> NodeId {
     let segment = Segment::<P>::new();
     let start = segment.start();
@@ -117,12 +117,12 @@ impl<P: Platform> View<P> for Show<P, AnyView<P>> {
   }
 }
 
-/// What a facade's [`Show`] carries: its constructor and its condition.
-pub trait ShowBase<P: Platform>: Wraps<Inner = Show<P>> {
-  /// A `Show` with no child yet, shown until told otherwise.
+/// What a facade's [`Visibility`] carries: its constructor and its condition.
+pub trait VisibilityBase<P: Platform>: Wraps<Inner = Visibility<P>> {
+  /// A `Visibility` with no child yet, shown until told otherwise.
   #[must_use]
   fn new() -> Self {
-    Self::wrap(Show::new())
+    Self::wrap(Visibility::new())
   }
 
   /// Sets whether the child is shown.

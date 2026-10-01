@@ -22,26 +22,26 @@ struct Case<P: Platform, K> {
 /// Every branch built is destroyed when the owner the switch was built under is
 /// disposed. Nothing is shown while no key is set or no case has the current key.
 #[must_use]
-pub struct Switch<P: Platform, K> {
+pub struct OneOf<P: Platform, K> {
   key: Option<Box<dyn Fn() -> K>>,
   cases: Vec<Case<P, K>>,
   platform: PhantomData<fn() -> P>,
 }
 
-impl<P: Platform, K> std::fmt::Debug for Switch<P, K> {
+impl<P: Platform, K> std::fmt::Debug for OneOf<P, K> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    formatter.debug_struct("Switch").finish_non_exhaustive()
+    formatter.debug_struct("OneOf").finish_non_exhaustive()
   }
 }
 
-impl<P: Platform, K: PartialEq + 'static> Default for Switch<P, K> {
+impl<P: Platform, K: PartialEq + 'static> Default for OneOf<P, K> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<P: Platform, K: PartialEq + 'static> Switch<P, K> {
+impl<P: Platform, K: PartialEq + 'static> OneOf<P, K> {
   /// A switch with no key and no cases.
   #[inline(always)]
   pub const fn new() -> Self {
@@ -84,9 +84,9 @@ impl<P: Platform, K: PartialEq + 'static> Switch<P, K> {
   }
 }
 
-impl<P: Platform, K> AnyKind for Switch<P, K> {}
+impl<P: Platform, K> AnyKind for OneOf<P, K> {}
 
-impl<P: Platform, K: PartialEq + 'static> View<P> for Switch<P, K> {
+impl<P: Platform, K: PartialEq + 'static> View<P> for OneOf<P, K> {
   fn build(self) -> NodeId {
     let segment = Segment::<P>::new();
     let start = segment.start();
@@ -137,12 +137,12 @@ impl<P: Platform, K: PartialEq + 'static> View<P> for Switch<P, K> {
   }
 }
 
-/// What a facade's [`Switch`] carries: its constructor, its key and its cases.
-pub trait SwitchBase<P: Platform, K: PartialEq + 'static>: Wraps<Inner = Switch<P, K>> {
+/// What a facade's [`OneOf`] carries: its constructor, its key and its cases.
+pub trait OneOfBase<P: Platform, K: PartialEq + 'static>: Wraps<Inner = OneOf<P, K>> {
   /// A switch with no key and no cases.
   #[must_use]
   fn new() -> Self {
-    Self::wrap(Switch::new())
+    Self::wrap(OneOf::new())
   }
 
   /// Sets the key of the branch shown.

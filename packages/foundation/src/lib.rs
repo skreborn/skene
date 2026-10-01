@@ -6,7 +6,7 @@
 //! [`NodeId`]s, every mutation mirrored into the sink of the one [`Platform`] a facade
 //! names. Dispatch ([`dispatch_click`] and its kin) climbs that tree once for every
 //! platform. A [`View`] builds into a node; reactive content ([`derived`], [`reconcile`],
-//! [`Show`]) mounts between a segment's anchors, and a container's [`Children`] is a
+//! [`Visibility`]) mounts between a segment's anchors, and a container's [`Children`] is a
 //! list of such segments.
 //!
 //! A property's value is a [`Value`]: a [`Leaf`]—fixed, a token reference, an expression,
@@ -35,7 +35,7 @@
 //! vocabularies over it, and a third party's layout view is built from it the same way.
 //! [`Flexible`], [`Pinned`] and [`GridCell`] annotate the box built under them. A run
 //! ([`Text`], [`Span`], [`RichText`]) inherits through the [`typography`] tokens.
-//! [`Show`], [`Switch`], [`Suspense`] and [`ErrorBoundary`] mount between anchors and
+//! [`Visibility`], [`OneOf`], [`Suspense`] and [`ErrorBoundary`] mount between anchors and
 //! keep the branches they hide. [`Theme`] defines a token set beneath it, and
 //! [`ThemedIn`] reads the set in force. [`Control`] is the one control builder, over a
 //! [`Behavior`] saying what the interaction is; [`Activate`], [`Toggle`], [`Slider`],
@@ -68,6 +68,7 @@ mod link;
 mod macros;
 pub mod media;
 mod node_handle;
+mod one_of;
 mod overlay;
 mod painted;
 mod painting;
@@ -76,18 +77,17 @@ mod pinned;
 pub mod realize;
 pub mod routing;
 mod run;
-mod show;
 mod span;
 mod spine;
 mod stack;
 mod surface;
 mod suspense;
-mod switch;
 pub mod terminal;
 mod text;
 mod theme;
 mod tooltip;
 mod type_metrics;
+mod visibility;
 pub mod web;
 
 extern crate self as skene_foundation;
@@ -175,6 +175,7 @@ pub use crate::{
   },
   link::{Link, LinkBase},
   node_handle::NodeHandle,
+  one_of::{OneOf, OneOfBase},
   overlay::{Overlay, OverlayBase},
   painted::{Painted, PaintedBase},
   painting::{Canvas, IntoBrush, PaintType, Painter, Painting, Renderer, kurbo, paint, peniko},
@@ -182,7 +183,6 @@ pub use crate::{
   pinned::{Pinned, PinnedBase},
   realize::{ChildBuilder, LowLevel},
   run::Run,
-  show::{Show, ShowBase},
   span::{RichText, RichTextBase, Span, SpanBase},
   stack::{Stack, StackBase},
   surface::{
@@ -196,9 +196,9 @@ pub use crate::{
     RunWithTypeMetrics,
   },
   suspense::{Suspense, SuspenseBase},
-  switch::{Switch, SwitchBase},
   text::{Text, TextBase},
   theme::{Theme, ThemeBase, ThemedIn},
   tooltip::{TOOLTIP_DELAY, TOOLTIP_GRACE, Tooltip, TooltipBase},
   type_metrics::TypeMetrics,
+  visibility::{Visibility, VisibilityBase},
 };

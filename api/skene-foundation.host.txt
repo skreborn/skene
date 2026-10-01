@@ -2413,6 +2413,26 @@ impl core::fmt::Debug for skene_foundation::ItemExtent
 pub fn skene_foundation::ItemExtent::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::Copy for skene_foundation::ItemExtent
 impl core::marker::StructuralPartialEq for skene_foundation::ItemExtent
+pub enum skene_foundation::Iterations
+pub skene_foundation::Iterations::Count(u32)
+pub skene_foundation::Iterations::Infinite
+impl skene_foundation::Iterations
+pub const fn skene_foundation::Iterations::count(self) -> core::option::Option<u32>
+impl core::clone::Clone for skene_foundation::Iterations
+pub fn skene_foundation::Iterations::clone(&self) -> skene_foundation::Iterations
+impl core::cmp::Eq for skene_foundation::Iterations
+impl core::cmp::PartialEq for skene_foundation::Iterations
+pub fn skene_foundation::Iterations::eq(&self, &skene_foundation::Iterations) -> bool
+impl core::convert::From<u32> for skene_foundation::Iterations
+pub fn skene_foundation::Iterations::from(u32) -> Self
+impl core::fmt::Debug for skene_foundation::Iterations
+pub fn skene_foundation::Iterations::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_foundation::Iterations
+pub fn skene_foundation::Iterations::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_foundation::Iterations
+impl core::marker::StructuralPartialEq for skene_foundation::Iterations
+impl skene_foundation::Fingerprint for skene_foundation::Iterations
+pub fn skene_foundation::Iterations::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 pub enum skene_foundation::KeyDefault
 pub skene_foundation::KeyDefault::ContextMenu
 pub skene_foundation::KeyDefault::Dismiss(skene_foundation::NodeId)
@@ -3258,7 +3278,7 @@ pub skene_foundation::Animation::alternate: bool
 pub skene_foundation::Animation::delay: f32
 pub skene_foundation::Animation::duration: f32
 pub skene_foundation::Animation::easing: skene_foundation::Easing
-pub skene_foundation::Animation::iterations: core::option::Option<u32>
+pub skene_foundation::Animation::iterations: skene_foundation::Iterations
 pub skene_foundation::Animation::keyframes: alloc::vec::Vec<(f32, S)>
 pub skene_foundation::Animation::respects_reduced_motion: bool
 impl<S> skene_foundation::Animation<S>
@@ -3267,12 +3287,11 @@ pub fn skene_foundation::Animation<S>::map_keyframes<T>(&self, impl core::ops::f
 pub fn skene_foundation::Animation<S>::new(f32, impl core::iter::traits::collect::IntoIterator<Item = (f32, S)>) -> Self
 pub fn skene_foundation::Animation<S>::offset(&self, f64) -> f32
 pub fn skene_foundation::Animation<S>::rest_offset(&self) -> f32
-pub const fn skene_foundation::Animation<S>::set_alternate(self) -> Self
+pub const fn skene_foundation::Animation<S>::set_alternate(self, bool) -> Self
 pub const fn skene_foundation::Animation<S>::set_delay(self, f32) -> Self
 pub const fn skene_foundation::Animation<S>::set_easing(self, skene_foundation::Easing) -> Self
-pub const fn skene_foundation::Animation<S>::set_infinite(self) -> Self
-pub const fn skene_foundation::Animation<S>::set_iterations(self, u32) -> Self
-pub const fn skene_foundation::Animation<S>::set_respect_reduced_motion(self, bool) -> Self
+pub fn skene_foundation::Animation<S>::set_iterations(self, impl core::convert::Into<skene_foundation::Iterations>) -> Self
+pub const fn skene_foundation::Animation<S>::set_respects_reduced_motion(self, bool) -> Self
 impl<S: core::clone::Clone> core::clone::Clone for skene_foundation::Animation<S>
 pub fn skene_foundation::Animation<S>::clone(&self) -> skene_foundation::Animation<S>
 impl<S: core::cmp::PartialEq> core::cmp::PartialEq for skene_foundation::Animation<S>
@@ -6631,7 +6650,7 @@ impl<P> skene_foundation::Transition<P>
 pub fn skene_foundation::Transition<P>::new(impl core::convert::Into<skene_foundation::StyleProperty<P>>, f32) -> Self
 pub const fn skene_foundation::Transition<P>::set_delay(self, f32) -> Self
 pub const fn skene_foundation::Transition<P>::set_easing(self, skene_foundation::Easing) -> Self
-pub const fn skene_foundation::Transition<P>::set_respect_reduced_motion(self, bool) -> Self
+pub const fn skene_foundation::Transition<P>::set_respects_reduced_motion(self, bool) -> Self
 impl<P: core::clone::Clone> core::clone::Clone for skene_foundation::Transition<P>
 pub fn skene_foundation::Transition<P>::clone(&self) -> skene_foundation::Transition<P>
 impl<P: core::cmp::PartialEq> core::cmp::PartialEq for skene_foundation::Transition<P>
@@ -7641,6 +7660,8 @@ impl skene_foundation::Fingerprint for skene_foundation::GridPlacement
 pub fn skene_foundation::GridPlacement::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 impl skene_foundation::Fingerprint for skene_foundation::ItemAlignment
 pub fn skene_foundation::ItemAlignment::fingerprint<H: core::hash::Hasher>(&self, &mut H)
+impl skene_foundation::Fingerprint for skene_foundation::Iterations
+pub fn skene_foundation::Iterations::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 impl skene_foundation::Fingerprint for skene_foundation::Length
 pub fn skene_foundation::Length::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 impl skene_foundation::Fingerprint for skene_foundation::MouseCursor

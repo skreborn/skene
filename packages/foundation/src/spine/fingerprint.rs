@@ -38,6 +38,7 @@ use crate::spine::{
   GridTrack,
   Inset,
   ItemAlignment,
+  Iterations,
   Length,
   Line,
   MouseCursor,
@@ -88,6 +89,7 @@ hashed!(
   GridPlacement,
   GridAreas,
   Overflow,
+  Iterations,
   bool,
   u16,
 );

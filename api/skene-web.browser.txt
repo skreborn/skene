@@ -467,6 +467,7 @@ pub use skene_web::prelude::IntoChildOf
 pub use skene_web::prelude::IntoChildren
 pub use skene_web::prelude::ItemAlignment
 pub use skene_web::prelude::ItemExtent
+pub use skene_web::prelude::Iterations
 pub use skene_web::prelude::Key
 pub use skene_web::prelude::KeyEvent
 pub use skene_web::prelude::KeyedField

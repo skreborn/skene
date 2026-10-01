@@ -5,6 +5,7 @@ use std::fmt::Write as _;
 use skene_foundation::{
   Animation,
   Easing,
+  Iterations,
   PropertyKey,
   StyleProperty,
   Transition,
@@ -135,8 +136,8 @@ pub(crate) fn render_animation_values<'a, S: 'a>(
       render_easing(animation.easing),
       delay,
       match animation.iterations {
-        Some(count) => count.to_string(),
-        None => "infinite".to_owned(),
+        Iterations::Count(count) => count.to_string(),
+        Iterations::Infinite => "infinite".to_owned(),
       },
       if animation.alternate {
         "alternate"

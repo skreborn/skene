@@ -111,7 +111,7 @@ fn reduced_motion_cuts_a_respecting_transition() {
             .set_width(2)
             .set_height(1)
             .set_background(red().when(State::Hovered, blue()))
-            .set_transition(color_transition().set_respect_reduced_motion(false)),
+            .set_transition(color_transition().set_respects_reduced_motion(false)),
         ))
         .into_any()
         .build()

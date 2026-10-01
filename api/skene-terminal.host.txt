@@ -201,6 +201,7 @@ pub use skene_terminal::prelude::IntoChildOf
 pub use skene_terminal::prelude::IntoChildren
 pub use skene_terminal::prelude::ItemAlignment
 pub use skene_terminal::prelude::ItemExtent
+pub use skene_terminal::prelude::Iterations
 pub use skene_terminal::prelude::Key
 pub use skene_terminal::prelude::KeyEvent
 pub use skene_terminal::prelude::KeyedField

@@ -143,7 +143,7 @@ pub use leaf::{
   Value,
   When,
 };
-pub use motion::{Animation, Easing, StyleProperty, Transition, interpolate};
+pub use motion::{Animation, Easing, Iterations, StyleProperty, Transition, interpolate};
 pub use naming::NameFacts;
 pub use node::NodeId;
 pub use node_map::NodeMap;

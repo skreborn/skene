@@ -25,6 +25,7 @@ use skene_foundation::{
   GridTemplate,
   GridTrack,
   ItemAlignment,
+  Iterations,
   Keyframe,
   Line,
   MotionBase,
@@ -265,8 +266,8 @@ fn animations_render_keyframes_and_reference_them() {
   let rendered = render_to_string(|| {
     Container::new().set_animation(
       Animation::new(2., [(0., rounded(0.)), (100., rounded(16.))])
-        .set_infinite()
-        .set_alternate(),
+        .set_iterations(Iterations::Infinite)
+        .set_alternate(true),
     )
   });
 
@@ -647,7 +648,7 @@ fn reduced_motion_gates_the_motion_that_respects_it() {
   let rendered = render_to_string(|| {
     Container::new()
       .set_transition(Transition::new(Property::Background, 0.3))
-      .set_transition(Transition::new(Property::Width, 1.).set_respect_reduced_motion(false))
+      .set_transition(Transition::new(Property::Width, 1.).set_respects_reduced_motion(false))
   });
   let class = root_class(rendered.body());
   let styles = rendered.styles();

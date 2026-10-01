@@ -120,10 +120,39 @@ impl<P> Transition<P> {
   /// Sets whether a reader preferring reduced motion sees the change as a cut; on by
   /// default.
   #[inline(always)]
-  pub const fn set_respect_reduced_motion(mut self, respect: bool) -> Self {
-    self.respects_reduced_motion = respect;
+  pub const fn set_respects_reduced_motion(mut self, respects: bool) -> Self {
+    self.respects_reduced_motion = respects;
 
     self
+  }
+}
+
+/// How many times an animation plays.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[must_use]
+pub enum Iterations {
+  /// This many times.
+  Count(u32),
+  /// Forever.
+  Infinite,
+}
+
+impl Iterations {
+  /// The number of plays; `None` for an animation playing forever.
+  #[inline(always)]
+  #[must_use]
+  pub const fn count(self) -> Option<u32> {
+    match self {
+      Self::Count(count) => Some(count),
+      Self::Infinite => None,
+    }
+  }
+}
+
+impl From<u32> for Iterations {
+  #[inline(always)]
+  fn from(count: u32) -> Self {
+    Self::Count(count)
   }
 }
 
@@ -143,8 +172,8 @@ pub struct Animation<S> {
   pub delay: f32,
   /// The timing curve.
   pub easing: Easing,
-  /// How many times it plays, or `None` to repeat forever.
-  pub iterations: Option<u32>,
+  /// How many times it plays.
+  pub iterations: Iterations,
   /// Whether every other cycle plays in reverse.
   pub alternate: bool,
   /// Whether a reader preferring reduced motion sees the final frame alone.
@@ -160,7 +189,7 @@ impl<S> Animation<S> {
       duration,
       delay: 0.,
       easing: Easing::Ease,
-      iterations: Some(1),
+      iterations: Iterations::Count(1),
       alternate: false,
       respects_reduced_motion: true,
     }
@@ -182,26 +211,18 @@ impl<S> Animation<S> {
     self
   }
 
-  /// Sets how many times the animation plays.
+  /// Sets how many times the animation plays: a count, or [`Iterations::Infinite`].
   #[inline(always)]
-  pub const fn set_iterations(mut self, iterations: u32) -> Self {
-    self.iterations = Some(iterations);
+  pub fn set_iterations(mut self, iterations: impl Into<Iterations>) -> Self {
+    self.iterations = iterations.into();
 
     self
   }
 
-  /// Makes the animation repeat forever.
+  /// Sets whether every other cycle plays in reverse; off by default.
   #[inline(always)]
-  pub const fn set_infinite(mut self) -> Self {
-    self.iterations = None;
-
-    self
-  }
-
-  /// Makes every other cycle play in reverse.
-  #[inline(always)]
-  pub const fn set_alternate(mut self) -> Self {
-    self.alternate = true;
+  pub const fn set_alternate(mut self, alternate: bool) -> Self {
+    self.alternate = alternate;
 
     self
   }
@@ -209,8 +230,8 @@ impl<S> Animation<S> {
   /// Sets whether a reader preferring reduced motion sees the final frame alone; on by
   /// default.
   #[inline(always)]
-  pub const fn set_respect_reduced_motion(mut self, respect: bool) -> Self {
-    self.respects_reduced_motion = respect;
+  pub const fn set_respects_reduced_motion(mut self, respects: bool) -> Self {
+    self.respects_reduced_motion = respects;
 
     self
   }
@@ -235,6 +256,7 @@ impl<S> Animation<S> {
 
     if self
       .iterations
+      .count()
       .is_some_and(|iterations| cycles >= f64::from(iterations))
     {
       return self.rest_offset();
@@ -262,10 +284,10 @@ impl<S> Animation<S> {
   #[must_use]
   pub fn is_done(&self, elapsed: f64) -> bool {
     match self.iterations {
-      Some(iterations) => {
+      Iterations::Count(iterations) => {
         elapsed >= f64::from(self.delay) + f64::from(self.duration) * f64::from(iterations)
       }
-      None => false,
+      Iterations::Infinite => false,
     }
   }
 
@@ -274,7 +296,7 @@ impl<S> Animation<S> {
   /// motion sees this frame alone.
   #[must_use]
   pub fn rest_offset(&self) -> f32 {
-    let last = self.iterations.unwrap_or(1).saturating_sub(1);
+    let last = self.iterations.count().unwrap_or(1).saturating_sub(1);
 
     if self.alternate && last % 2 == 1 {
       0.
@@ -323,7 +345,7 @@ impl<S> Animation<S> {
 
 #[cfg(test)]
 mod tests {
-  use super::{Animation, Easing, Property, StyleProperty, Transition};
+  use super::{Animation, Easing, Iterations, Property, StyleProperty, Transition};
   use crate::spine::{NoProperty, PropertyKey};
 
   /// A transition named after a shared property covers exactly that property; `All`
@@ -357,7 +379,7 @@ mod tests {
     let animation = Animation::new(1., [(0., ()), (100., ())])
       .set_easing(Easing::Linear)
       .set_iterations(2)
-      .set_alternate()
+      .set_alternate(true)
       .set_delay(0.5);
 
     assert_eq!(animation.offset(0.), 0.);
@@ -369,7 +391,7 @@ mod tests {
     assert!(animation.is_done(2.5));
     assert!(!animation.is_done(2.4));
 
-    let forever = Animation::new(1., [(0., ()), (100., ())]).set_infinite();
+    let forever = Animation::new(1., [(0., ()), (100., ())]).set_iterations(Iterations::Infinite);
 
     assert!(!forever.is_done(1e6));
   }

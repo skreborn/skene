@@ -44,6 +44,7 @@ pub use skene_foundation::{
   IntoChildOf,
   IntoChildren,
   ItemAlignment,
+  Iterations,
   Key,
   KeyEvent,
   KeymapBase,

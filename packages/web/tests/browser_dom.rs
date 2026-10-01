@@ -2394,7 +2394,7 @@ fn a_token_keyframe_animation_applies() {
         end.background = Some(Color::srgb(1., 0., 0.).into());
 
         Container::new().set_animation(
-          Animation::new(2., [(0., start), (100., end)]).set_respect_reduced_motion(false),
+          Animation::new(2., [(0., start), (100., end)]).set_respects_reduced_motion(false),
         )
       })
       .build()

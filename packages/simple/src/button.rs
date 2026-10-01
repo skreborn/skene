@@ -151,8 +151,8 @@ impl<P: Platform> SimpleButton<P> {
   }
 
   /// Runs `action` on activation by pointer, `Enter` or `Space`.
-  pub fn handle_click(mut self, action: impl Fn() + 'static) -> Self {
-    self.raw = self.raw.handle_click(action);
+  pub fn handle_activate(mut self, action: impl Fn() + 'static) -> Self {
+    self.raw = self.raw.handle_activate(action);
 
     self
   }
@@ -334,8 +334,8 @@ pub trait SimpleButtonBase<P: Platform>: Wraps<Inner = SimpleButton<P>> {
 
   /// Runs `action` on activation by pointer, `Enter` or `Space`.
   #[must_use]
-  fn handle_click(self, action: impl Fn() + 'static) -> Self {
-    Self::wrap(self.into_inner().handle_click(action))
+  fn handle_activate(self, action: impl Fn() + 'static) -> Self {
+    Self::wrap(self.into_inner().handle_activate(action))
   }
 
   /// Sets a view drawn in the label's place; the button then has no text of its own.

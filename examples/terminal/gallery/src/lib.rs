@@ -159,7 +159,7 @@ fn buttons() -> impl View {
         .set_line_arrangement(Arrangement::Start)
         .set_item_alignment(ItemAlignment::Center)
         .set_children((
-          SimpleButton::new("Primary").handle_click(move || {
+          SimpleButton::new("Primary").handle_activate(move || {
             count.update(|value| *value += 1);
           }),
           SimpleButton::new("Secondary").set_variant(SimpleVariant::Secondary),
@@ -260,7 +260,7 @@ fn inputs() -> impl View {
           ("autumn", "Autumn"),
           ("winter", "Winter"),
         ])
-        .bind_value(season),
+        .bind_chosen(season),
     )),
   )
 }
@@ -330,7 +330,7 @@ fn layouts() -> impl View {
       Row::new().set_children((
         SimpleButton::new("Open a modal")
           .set_variant(SimpleVariant::Secondary)
-          .handle_click(move || open.set(true)),
+          .handle_activate(move || open.set(true)),
         // The overlay is layering and dismissal alone: the surface is a card inside it,
         // which is what dresses a popup in the Simple design language. Only the shadow
         // stays on the overlay itself, since a cast shadow is no palette's token.
@@ -343,7 +343,7 @@ fn layouts() -> impl View {
               Row::new().set_arrangement(Arrangement::End).add_child(
                 SimpleButton::new("Close")
                   .set_variant(SimpleVariant::Secondary)
-                  .handle_click(move || open.set(false)),
+                  .handle_activate(move || open.set(false)),
               ),
             )),
           ),
@@ -392,10 +392,10 @@ fn context_menu() -> impl View {
     Column::new().set_children((
       SimpleContextMenu::new()
         .set_items([
-          MenuEntry::new("Open").handle_select(ran("Opened")),
-          MenuEntry::new("Rename").handle_select(ran("Renamed")),
+          MenuEntry::new("Open").handle_activate(ran("Opened")),
+          MenuEntry::new("Rename").handle_activate(ran("Renamed")),
           MenuEntry::separator(),
-          MenuEntry::new("Delete").handle_select(ran("Deleted")),
+          MenuEntry::new("Delete").handle_activate(ran("Deleted")),
         ])
         .set_child(
           Container::new()
@@ -433,10 +433,10 @@ fn visibility_and_one_of() -> impl View {
       Row::new().set_spacing(2).set_children((
         SimpleButton::new("Summary")
           .set_variant(SimpleVariant::Outline)
-          .handle_click(move || pane.set(String::from("summary"))),
+          .handle_activate(move || pane.set(String::from("summary"))),
         SimpleButton::new("History")
           .set_variant(SimpleVariant::Outline)
-          .handle_click(move || pane.set(String::from("history"))),
+          .handle_activate(move || pane.set(String::from("history"))),
       )),
       OneOf::new()
         .derive_key(move || pane.get())
@@ -485,7 +485,7 @@ fn boundaries() -> impl View {
               .set_color(SimplePalette::DESTRUCTIVE_SURFACE),
               SimpleButton::new("Recover")
                 .set_variant(SimpleVariant::Outline)
-                .handle_click(move || errors.clear()),
+                .handle_activate(move || errors.clear()),
             ))
         })
         .set_child_builder(|| {
@@ -493,7 +493,7 @@ fn boundaries() -> impl View {
 
           SimpleButton::new("Fail")
             .set_variant(SimpleVariant::Destructive)
-            .handle_click(move || {
+            .handle_activate(move || {
               if let Some(errors) = &errors {
                 errors.report(Failed);
               }

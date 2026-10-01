@@ -569,7 +569,7 @@ fn a_pickers_face_rings_and_its_rows_follow_focus_and_the_choice() {
   let picker = themed(owner, move || {
     SimplePicker::new()
       .set_options([("sm", "Small"), ("md", "Medium"), ("lg", "Large")])
-      .bind_value(value)
+      .bind_chosen(value)
   });
   // The picker builds its form in a segment of its own.
   let picker = skene_foundation::Scene::<Headless>::with(|scene| scene.segment_nodes(picker))[0];

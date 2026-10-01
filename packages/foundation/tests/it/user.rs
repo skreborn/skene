@@ -49,7 +49,7 @@ fn a_click_focuses_and_activates_what_it_finds() {
       .set_children((
         BasicButton::new(Activate::new())
           .set_label("Save")
-          .handle_click(move || counted.set(counted.get() + 1)),
+          .handle_activate(move || counted.set(counted.get() + 1)),
         BasicButton::new(Activate::new()).set_label("Cancel"),
         Container::new().set_child(Text::new("Nothing to press")),
       ))

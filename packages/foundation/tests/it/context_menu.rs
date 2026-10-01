@@ -116,13 +116,13 @@ fn a_context_menu_opens_at_the_press_and_runs_the_chosen_item() {
       .set_items([
         MenuEntry::new("Rename")
           .set_shortcut(Shortcut::new(Modifiers::NONE, "F2"))
-          .handle_select({
+          .handle_activate({
             let log = Rc::clone(&log);
 
             move || log.borrow_mut().push("rename")
           }),
         MenuEntry::separator(),
-        MenuEntry::new("Delete").handle_select({
+        MenuEntry::new("Delete").handle_activate({
           let log = Rc::clone(&log);
 
           move || log.borrow_mut().push("delete")
@@ -180,7 +180,7 @@ fn the_keys_walk_the_enabled_items() {
   let owner = Owner::new();
   let start = owner.enter(|| {
     let item = |label: &'static str| {
-      MenuEntry::new(label).handle_select(move || chosen.set(label.to_owned()))
+      MenuEntry::new(label).handle_activate(move || chosen.set(label.to_owned()))
     };
 
     Menu::new()

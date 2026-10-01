@@ -141,7 +141,7 @@ fn a_button_click_does_not_reach_the_container_around_it() {
       Container::new()
         .set_padding(Inset::all(1))
         .handle_click(move || outer_clicks.set(outer_clicks.get() + 1))
-        .set_child(SimpleButton::new("Go").handle_click(move || {
+        .set_child(SimpleButton::new("Go").handle_activate(move || {
           button_clicks.set(button_clicks.get() + 1);
         }))
         .into_any()
@@ -531,7 +531,7 @@ fn a_hidden_box_keeps_its_place_and_paints_nothing() {
             .set_child(
               BasicButton::new(Activate::new())
                 .set_label("hidden")
-                .handle_click(move || counted.set(counted.get() + 1)),
+                .handle_activate(move || counted.set(counted.get() + 1)),
             ),
           Text::new("below"),
         ))

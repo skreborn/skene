@@ -77,7 +77,7 @@ fn card(todos: Store<Todos>) -> impl View {
             .set_placeholder("What needs doing?")
             .bind_value(draft),
         ),
-        SimpleButton::new("Add").handle_click(add),
+        SimpleButton::new("Add").handle_activate(add),
       )),
     Column::new()
       .set_spacing(8.)
@@ -111,7 +111,7 @@ fn row(todos: Store<Todos>, todo: impl StoreField<Value = Todo> + Copy) -> impl 
       ),
       SimpleButton::new("×")
         .set_variant(SimpleVariant::Outline)
-        .handle_click(move || {
+        .handle_activate(move || {
           let id = todo.id().get();
 
           let index = todos

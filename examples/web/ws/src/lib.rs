@@ -102,7 +102,7 @@ fn echo_card() -> impl View {
     SimpleTextField::new()
       .set_placeholder("A message")
       .bind_value(draft),
-    SimpleButton::new("Send").handle_click(send),
+    SimpleButton::new("Send").handle_activate(send),
     derived(move || {
       Column::new()
         .set_spacing(4.)

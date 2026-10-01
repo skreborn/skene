@@ -114,7 +114,8 @@ fn a_palette_flip_keeps_the_nodes_and_their_state() {
         Column::new().set_children((
           Container::new().set_color(SimplePalette::CARD),
           Text::derive(move || count.get().to_string()),
-          BasicButton::new(Activate::new()).handle_click(move || count.update(|value| *value += 1)),
+          BasicButton::new(Activate::new())
+            .handle_activate(move || count.update(|value| *value += 1)),
         ))
       })
       .build()

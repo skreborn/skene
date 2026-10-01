@@ -147,7 +147,7 @@ fn focus_survives_a_snapshot_roundtrip() {
       Column::new()
         .set_children((
           SimpleButton::new("first"),
-          SimpleButton::new("second").handle_click(move || hits.set(hits.get() + 1)),
+          SimpleButton::new("second").handle_activate(move || hits.set(hits.get() + 1)),
         ))
         .into_any()
         .build()
@@ -197,7 +197,8 @@ fn focus_follows_a_keyed_item_across_a_reorder() {
           move |item| {
             let hits = Rc::clone(&hits);
 
-            SimpleButton::new(format!("b{item}")).handle_click(move || hits.borrow_mut().push(item))
+            SimpleButton::new(format!("b{item}"))
+              .handle_activate(move || hits.borrow_mut().push(item))
           },
         )
         .into_any()

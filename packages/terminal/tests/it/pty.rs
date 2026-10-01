@@ -63,7 +63,7 @@ fn the_loop_draws_takes_keys_reflows_and_quits_in_a_terminal() {
       Column::new().set_children((
         BasicButton::new(Activate::new())
           .set_label("Press")
-          .handle_click(move || clicks.update(|count| *count += 1)),
+          .handle_activate(move || clicks.update(|count| *count += 1)),
         Text::derive(move || format!("pressed {} time(s)", clicks.get())),
       ))
     })

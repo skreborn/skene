@@ -968,7 +968,7 @@ fn every_rule_has_a_class_specificity() {
       SimplePicker::new()
         .set_label("picker")
         .set_options([("a", "A"), ("b", "B")])
-        .bind_value(Signal::new("a".to_owned())),
+        .bind_chosen(Signal::new("a".to_owned())),
       SimpleTooltip::new("described").set_child(SimpleButton::new("Described")),
     ))
   });

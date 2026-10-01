@@ -81,7 +81,7 @@ fn a_picture_is_cropped_to_the_cells_in_view_and_hidden_under_an_overlay() {
             .set_child(Column::new().set_children((Text::new("top"), red_box(4, 3)))),
           BasicButton::new(Activate::new())
             .set_label("open")
-            .handle_click(move || open.set(true)),
+            .handle_activate(move || open.set(true)),
           Overlay::popup()
             .set_position(skene_foundation::Point::new(0., 0.))
             .derive_open(move || open.get())

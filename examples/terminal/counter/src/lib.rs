@@ -35,12 +35,12 @@ fn card(count: Signal<u64>) -> impl View {
       Row::new().set_spacing(2).set_children((
         SimpleButton::new("-")
           .set_variant(SimpleVariant::Outline)
-          .handle_click(move || {
+          .handle_activate(move || {
             count.update(|value| *value = value.saturating_sub(1));
           }),
         SimpleButton::new("+")
           .set_variant(SimpleVariant::Outline)
-          .handle_click(move || {
+          .handle_activate(move || {
             count.update(|value| *value = value.saturating_add(1));
           }),
       )),

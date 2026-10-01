@@ -308,7 +308,7 @@ fn a_picker_renders_to_a_select() {
   let page = render_to_string(|| {
     SimplePicker::new()
       .set_options([("s", "Small"), ("m", "Medium")])
-      .set_value("m")
+      .set_chosen("m")
       .set_label("Size")
   });
   let body = page.body();
@@ -332,7 +332,7 @@ fn a_pickers_select_marks_its_disabled_options() {
 
   let page = render_to_string(|| {
     BasicPicker::new()
-      .set_value("s")
+      .set_chosen("s")
       .set_options([("", "Choose one", true), ("s", "Small", false)].map(
         |(value, name, disabled)| {
           BasicListboxOption::new(ListboxOption::new(value))

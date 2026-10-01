@@ -24,9 +24,9 @@ use crate::ActivePlatform;
 /// whose name the characters begin, a character repeated cycling through the options
 /// starting with it; typing over the open list moves focus the same way.
 ///
-/// Controlled: the chosen value is what [`derive_value`](Self::derive_value) reads, and
-/// a choice only calls [`handle_change`](Self::handle_change) with the value asked for;
-/// [`bind_value`](Self::bind_value) wires both to one signal. Holds [`NoChild`] until
+/// Controlled: the chosen value is what [`derive_chosen`](Self::derive_chosen) reads, and
+/// a choice only calls [`handle_choose`](Self::handle_choose) with the value asked for;
+/// [`bind_chosen`](Self::bind_chosen) wires both to one signal. Holds [`NoChild`] until
 /// [`set_face`](Self::set_face) supplies the face; the options come from
 /// [`set_options`](Self::set_options) and [`derive_options`](Self::derive_options),
 /// each a [`BasicListboxOption`](crate::BasicListboxOption) at any depth.

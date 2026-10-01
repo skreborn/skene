@@ -134,7 +134,7 @@ fn chooser(scheme: Signal<Option<ColorScheme>>) -> impl View {
   let choice = move |label: &'static str, wanted: Option<ColorScheme>| {
     SimpleButton::new(label)
       .set_variant(SimpleVariant::Outline)
-      .handle_click(move || scheme.set(wanted))
+      .handle_activate(move || scheme.set(wanted))
   };
 
   Row::new().set_spacing(2).set_children((

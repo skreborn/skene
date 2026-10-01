@@ -89,30 +89,30 @@ impl<P: Platform> SimplePicker<P> {
   }
 
   /// Sets the chosen value.
-  pub fn set_value(mut self, value: impl Into<String>) -> Self {
-    self.picker = self.picker.set_value(value);
+  pub fn set_chosen(mut self, value: impl Into<String>) -> Self {
+    self.picker = self.picker.set_chosen(value);
 
     self
   }
 
   /// Derives the chosen value from the signals `value` reads.
-  pub fn derive_value(mut self, value: impl Fn() -> String + 'static) -> Self {
-    self.picker = self.picker.derive_value(value);
+  pub fn derive_chosen(mut self, value: impl Fn() -> String + 'static) -> Self {
+    self.picker = self.picker.derive_chosen(value);
 
     self
   }
 
   /// Runs `action` with the value a choice asks for.
-  pub fn handle_change(mut self, action: impl Fn(String) + 'static) -> Self {
-    self.picker = self.picker.handle_change(action);
+  pub fn handle_choose(mut self, action: impl Fn(String) + 'static) -> Self {
+    self.picker = self.picker.handle_choose(action);
 
     self
   }
 
   /// Binds the chosen value to `signal` in both directions.
   #[inline(always)]
-  pub fn bind_value(mut self, signal: Signal<String>) -> Self {
-    self.picker = self.picker.bind_value(signal);
+  pub fn bind_chosen(mut self, signal: Signal<String>) -> Self {
+    self.picker = self.picker.bind_chosen(signal);
 
     self
   }
@@ -288,26 +288,26 @@ pub trait SimplePickerBase<P: Platform>: Wraps<Inner = SimplePicker<P>> {
 
   /// Sets the chosen value.
   #[must_use]
-  fn set_value(self, value: impl Into<String>) -> Self {
-    Self::wrap(self.into_inner().set_value(value))
+  fn set_chosen(self, value: impl Into<String>) -> Self {
+    Self::wrap(self.into_inner().set_chosen(value))
   }
 
   /// Derives the chosen value from the signals `value` reads.
   #[must_use]
-  fn derive_value(self, value: impl Fn() -> String + 'static) -> Self {
-    Self::wrap(self.into_inner().derive_value(value))
+  fn derive_chosen(self, value: impl Fn() -> String + 'static) -> Self {
+    Self::wrap(self.into_inner().derive_chosen(value))
   }
 
   /// Runs `action` with the value a choice asks for.
   #[must_use]
-  fn handle_change(self, action: impl Fn(String) + 'static) -> Self {
-    Self::wrap(self.into_inner().handle_change(action))
+  fn handle_choose(self, action: impl Fn(String) + 'static) -> Self {
+    Self::wrap(self.into_inner().handle_choose(action))
   }
 
   /// Binds the chosen value to `signal` in both directions.
   #[must_use]
-  fn bind_value(self, signal: Signal<String>) -> Self {
-    Self::wrap(self.into_inner().bind_value(signal))
+  fn bind_chosen(self, signal: Signal<String>) -> Self {
+    Self::wrap(self.into_inner().bind_chosen(signal))
   }
 
   /// Sets the accessible name.

@@ -74,7 +74,7 @@ fn card(todos: Store<Todos>) -> impl View {
           .set_placeholder("What needs doing?")
           .bind_value(draft),
       ),
-      SimpleButton::new("Add").handle_click(add),
+      SimpleButton::new("Add").handle_activate(add),
     )),
     Column::new().derive_entries(todos.items().keyed_by(|todo| todo.id), move |todo| {
       row(todos, todo)
@@ -102,7 +102,7 @@ fn row(todos: Store<Todos>, todo: impl StoreField<Value = Todo> + Copy) -> impl 
     ),
     SimpleButton::new("x")
       .set_variant(SimpleVariant::Outline)
-      .handle_click(move || {
+      .handle_activate(move || {
         let id = todo.id().get();
 
         let index = todos

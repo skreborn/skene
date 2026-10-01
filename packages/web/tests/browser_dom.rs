@@ -1075,7 +1075,7 @@ fn a_drawn_face_keeps_its_caption_before_its_box() {
 
   let _ = mount(move || {
     BasicPicker::new()
-      .bind_value(value)
+      .bind_chosen(value)
       .set_label("Size")
       .set_options(
         ["a", "b"].map(|value| BasicListboxOption::new(ListboxOption::new(value)).set_label(value)),
@@ -2873,9 +2873,9 @@ fn a_context_menu_takes_the_browsers_only_where_a_view_opts_in() {
       .set_children((
         ContextMenu::new()
           .set_items([
-            MenuEntry::new("Rename").handle_select(move || chosen.set("rename".to_owned())),
+            MenuEntry::new("Rename").handle_activate(move || chosen.set("rename".to_owned())),
             MenuEntry::separator(),
-            MenuEntry::new("Delete").handle_select(move || chosen.set("delete".to_owned())),
+            MenuEntry::new("Delete").handle_activate(move || chosen.set("delete".to_owned())),
           ])
           .set_child(Container::new().set_child(Text::new("note"))),
         Container::new().set_child(Text::new("plain")),

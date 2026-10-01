@@ -239,7 +239,7 @@ fn mouse_off_ignores_every_mouse_event() {
     let clicks = Signal::new(0);
     let _ = terminal::mount(move || {
       BasicButton::new(Activate::new())
-        .handle_click(move || clicks.set(clicks.get() + 1))
+        .handle_activate(move || clicks.set(clicks.get() + 1))
         .set_label(Label::new(Text::new("Press")))
         .into_any()
         .build()
@@ -268,7 +268,7 @@ fn mount_button() -> Signal<u32> {
   let _ = terminal::mount(move || {
     BasicButton::new(Activate::new())
       .set_label(Label::new(Text::new("press")))
-      .handle_click(move || clicks.update(|count| *count += 1))
+      .handle_activate(move || clicks.update(|count| *count += 1))
       .into_any()
       .build()
   });

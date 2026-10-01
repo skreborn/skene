@@ -711,8 +711,9 @@ impl<P: Platform, B: Behavior<P>> Control<P, B> {
     self
   }
 
-  /// Runs `action` after the behavior has acted on a click.
-  pub fn handle_click(mut self, action: impl Fn() + 'static) -> Self {
+  /// Runs `action` after the behavior has acted on an activation: a click, or a key the
+  /// behavior activates on.
+  pub fn handle_activate(mut self, action: impl Fn() + 'static) -> Self {
     self
       .observers
       .push(Handler::Click(Rc::new(move |_: &ClickEvent| {
@@ -1542,10 +1543,11 @@ pub trait ControlBase<P: Platform, B: Behavior<P>>: Wraps<Inner = Control<P, B>>
     Self::wrap(self.into_inner().set_part(part, view))
   }
 
-  /// Runs `action` after the behavior has acted on a click.
+  /// Runs `action` after the behavior has acted on an activation: a click, or a key the
+  /// behavior activates on.
   #[must_use]
-  fn handle_click(self, action: impl Fn() + 'static) -> Self {
-    Self::wrap(self.into_inner().handle_click(action))
+  fn handle_activate(self, action: impl Fn() + 'static) -> Self {
+    Self::wrap(self.into_inner().handle_activate(action))
   }
 
   /// Runs `action` after the behavior has acted on a key pressed while the control

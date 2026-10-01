@@ -450,7 +450,7 @@ fn a_native_toggle_click_is_observed_once_per_press() {
         .set_child(
           BasicCheckbox::<Web>::new(Toggle::new().bind_checked(checked))
             .set_label("Agree")
-            .handle_click(move || observed.set(observed.get() + 1)),
+            .handle_activate(move || observed.set(observed.get() + 1)),
         )
         .build()
     }
@@ -493,7 +493,8 @@ fn a_button_click_does_not_reach_the_container() {
       Box_::new()
         .handle_click(move || container_clicks.set(container_clicks.get() + 1))
         .set_child(
-          SimpleButton::new("Go").handle_click(move || button_clicks.set(button_clicks.get() + 1)),
+          SimpleButton::new("Go")
+            .handle_activate(move || button_clicks.set(button_clicks.get() + 1)),
         )
         .build()
     }
@@ -879,7 +880,7 @@ fn a_picker_opens_and_chooses_with_the_keyboard() {
   let _ = platform::mount(move || {
     SimplePicker::new()
       .set_options([("sm", "Small"), ("md", "Medium"), ("lg", "Large")])
-      .bind_value(value)
+      .bind_chosen(value)
       .build()
   });
 

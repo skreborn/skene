@@ -22,7 +22,7 @@ fn modal_overlay_covers_blocks_and_dismisses() {
         .set_children((
           BasicButton::new(Activate::new())
             .set_label("base")
-            .handle_click(move || counted.set(counted.get() + 1))
+            .handle_activate(move || counted.set(counted.get() + 1))
             .into_any(),
           Overlay::modal()
             .bind_open(open)
@@ -323,7 +323,7 @@ fn a_modal_holds_under_a_popup_above_it() {
         .set_children((
           BasicButton::new(Activate::new())
             .set_label("page")
-            .handle_click(move || counted.set(counted.get() + 1))
+            .handle_activate(move || counted.set(counted.get() + 1))
             .into_any(),
           Overlay::modal()
             .bind_open(open)
@@ -380,7 +380,7 @@ fn a_modal_takes_focus_on_open_and_returns_it_on_close() {
           BasicButton::new(Activate::new())
             .set_label("open")
             .bind_handle(opener)
-            .handle_click(move || open.set(true))
+            .handle_activate(move || open.set(true))
             .into_any(),
           Overlay::modal()
             .bind_open(open)
@@ -388,7 +388,7 @@ fn a_modal_takes_focus_on_open_and_returns_it_on_close() {
               BasicButton::new(Activate::new())
                 .set_label("close")
                 .bind_handle(inside)
-                .handle_click(move || open.set(false)),
+                .handle_activate(move || open.set(false)),
             )
             .into_any(),
         ))

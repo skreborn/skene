@@ -114,7 +114,7 @@ impl Parts {
 fn picker(owner: Owner, value: Signal<String>) -> Parts {
   let start = owner.enter(move || {
     BasicPicker::new()
-      .bind_value(value)
+      .bind_chosen(value)
       .set_label("Size")
       .set_options(
         ["a", "b", "c"]
@@ -258,8 +258,8 @@ fn the_value_signal_is_the_truth() {
 
     move || {
       BasicPicker::new()
-        .set_value("a")
-        .handle_change(move |value| asked.borrow_mut().push(value))
+        .set_chosen("a")
+        .handle_choose(move |value| asked.borrow_mut().push(value))
         .set_options(
           ["a", "b"]
             .map(|value| BasicListboxOption::new(ListboxOption::new(value)).set_label(value)),
@@ -393,7 +393,7 @@ fn type_ahead_matches_a_derived_name_as_it_reads_now() {
   let renamed = Signal::new("Apple".to_owned());
   let face = owner.enter(move || {
     BasicPicker::new()
-      .bind_value(value)
+      .bind_chosen(value)
       .set_options([
         BasicListboxOption::new(ListboxOption::new("ap")).set_label(
           Label::new(Text::derive(move || renamed.get())).derive_name(move || renamed.get()),
@@ -421,7 +421,7 @@ fn named_picker(owner: Owner, value: Signal<String>) -> Parts {
 
   let face = owner.enter(move || {
     BasicPicker::new()
-      .bind_value(value)
+      .bind_chosen(value)
       .set_label("Fruit")
       .set_options(
         [("ap", "Apple"), ("av", "Avocado"), ("ba", "Banana")].map(|(value, name)| {
@@ -541,7 +541,7 @@ fn until_hydrated_the_picker_is_the_platforms_own() {
   let value = Signal::new("b".to_owned());
   let start = owner.enter(move || {
     BasicPicker::new()
-      .bind_value(value)
+      .bind_chosen(value)
       .set_label("Size")
       .set_options(["a", "b", "c"].map(|value| {
         let name = value.to_uppercase();

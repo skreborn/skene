@@ -164,7 +164,7 @@ fn a_button_click_stays_on_the_button_while_a_box_click_climbs() {
       .set_child(
         Column::new().set_children((
           BasicButton::new(Activate::new())
-            .handle_click(note(&log, "button"))
+            .handle_activate(note(&log, "button"))
             .set_label("Save"),
           Container::new().handle_click(note(&log, "box")),
         )),
@@ -211,7 +211,7 @@ fn space_activates_a_button_once_on_its_release() {
     let clicks = Rc::clone(&clicks);
 
     BasicButton::new(Activate::new())
-      .handle_click(move || clicks.set(clicks.get() + 1))
+      .handle_activate(move || clicks.set(clicks.get() + 1))
       .build()
   });
   let repeat = |name| KeyEvent {
@@ -786,7 +786,7 @@ fn a_disabled_control_reports_it_and_ignores_activation() {
 
     BasicButton::new(Activate::new())
       .derive_disabled(move || disabled.get())
-      .handle_click(move || clicks.set(clicks.get() + 1))
+      .handle_activate(move || clicks.set(clicks.get() + 1))
       .build()
   });
 

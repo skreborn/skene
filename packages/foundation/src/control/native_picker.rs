@@ -11,7 +11,7 @@ use crate::{EventKind, NativeElement, Platform, Role};
 ///
 /// The options are written to the platform by whoever builds the control, from the
 /// [`Roster`](super::Roster) the option controls join; the platform's choice arrives
-/// as a change and only calls [`handle_change`](Self::handle_change), so the bound
+/// as a change and only calls [`handle_choose`](Self::handle_choose), so the bound
 /// value stays the truth.
 #[must_use]
 pub struct NativePicker {
@@ -34,7 +34,7 @@ impl NativePicker {
   }
 
   /// Runs `action` with the value the platform's choice asks for.
-  pub fn handle_change(mut self, action: impl Fn(String) + 'static) -> Self {
+  pub fn handle_choose(mut self, action: impl Fn(String) + 'static) -> Self {
     self.on_change = Some(Rc::new(action));
 
     self

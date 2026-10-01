@@ -21,7 +21,7 @@ fn a_user_clicks_and_types_into_what_it_finds() {
         .set_children((
           BasicButton::new(Activate::new())
             .set_label("Save")
-            .handle_click(move || counted.set(counted.get() + 1)),
+            .handle_activate(move || counted.set(counted.get() + 1)),
           BasicButton::new(Activate::new()).set_label("Cancel"),
           BasicTextField::new(TextEntry::new().bind_value(typed))
             .set_label("Name")

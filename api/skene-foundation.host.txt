@@ -3393,16 +3393,16 @@ impl<T: skene_foundation::Fingerprint> skene_foundation::Fingerprint for skene_f
 pub fn skene_foundation::Axes<T>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 pub struct skene_foundation::BasicPicker<P: skene_foundation::Platform, F>
 impl<P: skene_foundation::Platform, F> skene_foundation::BasicPicker<P, F>
-pub fn skene_foundation::BasicPicker<P, F>::bind_value(self, skene_reactive::signal::Signal<alloc::string::String>) -> Self
+pub fn skene_foundation::BasicPicker<P, F>::bind_chosen(self, skene_reactive::signal::Signal<alloc::string::String>) -> Self
+pub fn skene_foundation::BasicPicker<P, F>::derive_chosen(self, impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
 pub fn skene_foundation::BasicPicker<P, F>::derive_disabled(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
 pub fn skene_foundation::BasicPicker<P, F>::derive_options<T, I, K, V>(self, impl core::ops::function::Fn() -> I + 'static, impl core::ops::function::Fn(&T) -> K + 'static, impl core::ops::function::Fn(T) -> V + 'static) -> Self where I: core::iter::traits::collect::IntoIterator<Item = T>, K: core::cmp::Eq + core::hash::Hash + 'static, V: skene_foundation::IntoChildOf<P, skene_foundation::PlainChild>
-pub fn skene_foundation::BasicPicker<P, F>::derive_value(self, impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::handle_change(self, impl core::ops::function::Fn(alloc::string::String) + 'static) -> Self
+pub fn skene_foundation::BasicPicker<P, F>::handle_choose(self, impl core::ops::function::Fn(alloc::string::String) + 'static) -> Self
+pub fn skene_foundation::BasicPicker<P, F>::set_chosen(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_foundation::BasicPicker<P, F>::set_disabled(self, bool) -> Self
 pub fn skene_foundation::BasicPicker<P, F>::set_label(self, impl core::convert::Into<skene_foundation::Label<P>>) -> Self
 pub fn skene_foundation::BasicPicker<P, F>::set_options(self, impl skene_foundation::IntoChildren<P>) -> Self
 pub const fn skene_foundation::BasicPicker<P, F>::set_placement(self, skene_foundation::Placement) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::set_value(self, impl core::convert::Into<alloc::string::String>) -> Self
 impl<P: skene_foundation::Platform> skene_foundation::BasicPicker<P>
 pub fn skene_foundation::BasicPicker<P>::new() -> Self
 pub fn skene_foundation::BasicPicker<P>::set_face<V: skene_foundation::View<P>>(self, impl core::ops::function::FnOnce(skene_reactive::memo::Memo<alloc::string::String>) -> V + 'static) -> skene_foundation::BasicPicker<P, skene_foundation::Face<P>>
@@ -3996,8 +3996,8 @@ pub fn skene_foundation::Control<P, B>::derive_item_alignment<R: core::convert::
 pub fn skene_foundation::Control<P, B>::derive_read_only(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
 pub fn skene_foundation::Control<P, B>::derive_required(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
 pub fn skene_foundation::Control<P, B>::derive_spacing<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Spacing<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Control<P, B>::handle_activate(self, impl core::ops::function::Fn() + 'static) -> Self
 pub fn skene_foundation::Control<P, B>::handle_blur(self, impl core::ops::function::Fn() + 'static) -> Self
-pub fn skene_foundation::Control<P, B>::handle_click(self, impl core::ops::function::Fn() + 'static) -> Self
 pub fn skene_foundation::Control<P, B>::handle_focus(self, impl core::ops::function::Fn() + 'static) -> Self
 pub fn skene_foundation::Control<P, B>::handle_key_down(self, impl core::ops::function::Fn(&skene_foundation::KeyEvent) + 'static) -> Self
 pub fn skene_foundation::Control<P, B>::handle_key_up(self, impl core::ops::function::Fn(&skene_foundation::KeyEvent) + 'static) -> Self
@@ -5111,7 +5111,7 @@ pub fn skene_foundation::MenuEntry::copy() -> Self
 pub fn skene_foundation::MenuEntry::cut() -> Self
 pub fn skene_foundation::MenuEntry::derive(impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
 pub fn skene_foundation::MenuEntry::derive_disabled(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
-pub fn skene_foundation::MenuEntry::handle_select(self, impl core::ops::function::Fn() + 'static) -> Self
+pub fn skene_foundation::MenuEntry::handle_activate(self, impl core::ops::function::Fn() + 'static) -> Self
 pub fn skene_foundation::MenuEntry::new(impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_foundation::MenuEntry::paste() -> Self
 pub fn skene_foundation::MenuEntry::separator() -> Self
@@ -5204,7 +5204,7 @@ pub fn skene_foundation::NameFacts::fmt(&self, &mut core::fmt::Formatter<'_>) ->
 impl core::marker::StructuralPartialEq for skene_foundation::NameFacts
 pub struct skene_foundation::NativePicker
 impl skene_foundation::NativePicker
-pub fn skene_foundation::NativePicker::handle_change(self, impl core::ops::function::Fn(alloc::string::String) + 'static) -> Self
+pub fn skene_foundation::NativePicker::handle_choose(self, impl core::ops::function::Fn(alloc::string::String) + 'static) -> Self
 pub const fn skene_foundation::NativePicker::new() -> Self
 impl core::default::Default for skene_foundation::NativePicker
 pub fn skene_foundation::NativePicker::default() -> Self
@@ -6776,16 +6776,16 @@ impl<P: skene_foundation::Platform> skene_foundation::AnyKind for skene_foundati
 impl<P: skene_foundation::web::WebHydration> skene_foundation::AnyKind for skene_foundation::web::AsyncView<P>
 impl<P: skene_foundation::web::WebHydration> skene_foundation::AnyKind for skene_foundation::web::Deferred<P>
 pub trait skene_foundation::BasicPickerBase<P: skene_foundation::Platform, F>: skene_foundation::Wraps<Inner = skene_foundation::BasicPicker<P, F>>
-pub fn skene_foundation::BasicPickerBase::bind_value(self, skene_reactive::signal::Signal<alloc::string::String>) -> Self
+pub fn skene_foundation::BasicPickerBase::bind_chosen(self, skene_reactive::signal::Signal<alloc::string::String>) -> Self
+pub fn skene_foundation::BasicPickerBase::derive_chosen(self, impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
 pub fn skene_foundation::BasicPickerBase::derive_disabled(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
 pub fn skene_foundation::BasicPickerBase::derive_options<T, I, K, V>(self, impl core::ops::function::Fn() -> I + 'static, impl core::ops::function::Fn(&T) -> K + 'static, impl core::ops::function::Fn(T) -> V + 'static) -> Self where I: core::iter::traits::collect::IntoIterator<Item = T>, K: core::cmp::Eq + core::hash::Hash + 'static, V: skene_foundation::IntoChildOf<P, skene_foundation::PlainChild>
-pub fn skene_foundation::BasicPickerBase::derive_value(self, impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
-pub fn skene_foundation::BasicPickerBase::handle_change(self, impl core::ops::function::Fn(alloc::string::String) + 'static) -> Self
+pub fn skene_foundation::BasicPickerBase::handle_choose(self, impl core::ops::function::Fn(alloc::string::String) + 'static) -> Self
+pub fn skene_foundation::BasicPickerBase::set_chosen(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_foundation::BasicPickerBase::set_disabled(self, bool) -> Self
 pub fn skene_foundation::BasicPickerBase::set_label(self, impl core::convert::Into<skene_foundation::Label<P>>) -> Self
 pub fn skene_foundation::BasicPickerBase::set_options(self, impl skene_foundation::IntoChildren<P>) -> Self
 pub fn skene_foundation::BasicPickerBase::set_placement(self, skene_foundation::Placement) -> Self
-pub fn skene_foundation::BasicPickerBase::set_value(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub trait skene_foundation::Behavior<P: skene_foundation::Platform>: 'static
 pub fn skene_foundation::Behavior::access(&self) -> alloc::vec::Vec<skene_foundation::AccessProp>
 pub fn skene_foundation::Behavior::attach(&self, &skene_foundation::ControlHandle<P>)
@@ -7370,8 +7370,8 @@ pub fn skene_foundation::ControlBase::derive_item_alignment<R: core::convert::In
 pub fn skene_foundation::ControlBase::derive_read_only(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
 pub fn skene_foundation::ControlBase::derive_required(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
 pub fn skene_foundation::ControlBase::derive_spacing<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Spacing<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::ControlBase::handle_activate(self, impl core::ops::function::Fn() + 'static) -> Self
 pub fn skene_foundation::ControlBase::handle_blur(self, impl core::ops::function::Fn() + 'static) -> Self
-pub fn skene_foundation::ControlBase::handle_click(self, impl core::ops::function::Fn() + 'static) -> Self
 pub fn skene_foundation::ControlBase::handle_focus(self, impl core::ops::function::Fn() + 'static) -> Self
 pub fn skene_foundation::ControlBase::handle_key_down(self, impl core::ops::function::Fn(&skene_foundation::KeyEvent) + 'static) -> Self
 pub fn skene_foundation::ControlBase::handle_key_up(self, impl core::ops::function::Fn(&skene_foundation::KeyEvent) + 'static) -> Self

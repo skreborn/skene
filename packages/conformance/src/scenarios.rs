@@ -185,7 +185,7 @@ fn a_button_activates<D: Driver>(driver: &mut D) {
 
   driver.mount(move || {
     button::<D>("Save")
-      .handle_click(move || clicks.update(|count| *count += 1))
+      .handle_activate(move || clicks.update(|count| *count += 1))
       .into_any()
   });
 
@@ -264,7 +264,7 @@ fn a_disabled_button_is_skipped<D: Driver>(driver: &mut D) {
         button::<D>("One"),
         button::<D>("Two")
           .set_disabled(true)
-          .handle_click(move || clicks.update(|count| *count += 1)),
+          .handle_activate(move || clicks.update(|count| *count += 1)),
         button::<D>("Three"),
       ))
       .into_any()
@@ -412,7 +412,7 @@ fn a_picker_chooses_and_returns_focus<D: Driver>(driver: &mut D) {
 
   driver.mount(move || {
     BasicPicker::<D::Platform>::new()
-      .bind_value(value)
+      .bind_chosen(value)
       .set_label("Letter")
       .set_options(
         ["a", "b", "c"]
@@ -482,7 +482,7 @@ fn a_context_menu_opens_on_shift_f10<D: Driver>(driver: &mut D) {
 
   driver.mount(move || {
     ContextMenu::<D::Platform>::new()
-      .set_items([MenuEntry::new("Rename").handle_select(move || renamed.set(true))])
+      .set_items([MenuEntry::new("Rename").handle_activate(move || renamed.set(true))])
       .set_child(
         Container::new()
           .set_role(Role::Group)
@@ -546,7 +546,7 @@ fn a_hidden_view_keeps_its_focus<D: Driver>(driver: &mut D) {
       .set_children((
         Visibility::<D::Platform>::new()
           .derive_shown(move || shown.get())
-          .set_child(button::<D>("Dismiss").handle_click(move || {
+          .set_child(button::<D>("Dismiss").handle_activate(move || {
             shown.set(false);
 
             let _timer = D::Platform::schedule(RETURN, Box::new(move || shown.set(true)));
@@ -597,7 +597,7 @@ fn focus_leaving_a_popup_closes_it<D: Driver>(driver: &mut D) {
     Column::<D::Platform>::new()
       .set_children((
         BasicPicker::<D::Platform>::new()
-          .bind_value(value)
+          .bind_chosen(value)
           .set_label("Letter")
           .set_options(
             ["a", "b", "c"]
@@ -635,7 +635,7 @@ fn a_modal_takes_focus_as_it_opens<D: Driver>(driver: &mut D) {
   driver.mount(move || {
     Column::<D::Platform>::new()
       .set_children((
-        button::<D>("Open").handle_click(move || open.set(true)),
+        button::<D>("Open").handle_activate(move || open.set(true)),
         Overlay::<D::Platform>::modal()
           .bind_open(open)
           .set_child(button::<D>("Inside")),
@@ -802,7 +802,7 @@ fn escape_closes_a_picker_unchosen<D: Driver>(driver: &mut D) {
 
   driver.mount(move || {
     BasicPicker::<D::Platform>::new()
-      .bind_value(value)
+      .bind_chosen(value)
       .set_label("Letter")
       .set_options(
         ["a", "b", "c"]

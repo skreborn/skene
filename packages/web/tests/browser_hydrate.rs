@@ -406,7 +406,7 @@ fn a_picker_carries_the_readers_choice_from_the_select() {
 
   hydrate(root.clone(), "", move || {
     BasicPicker::new()
-      .bind_value(value)
+      .bind_chosen(value)
       .set_options(options())
       .set_face(|shown| Text::derive(move || shown.get()))
   });

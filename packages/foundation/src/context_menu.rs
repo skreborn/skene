@@ -107,7 +107,7 @@ impl MenuItemContent {
 /// One entry of a [`ContextMenu`]: a command with a label, a standard clipboard
 /// action, or a separator.
 ///
-/// A command runs [`handle_select`](Self::handle_select) when chosen. A standard
+/// A command runs [`handle_activate`](Self::handle_activate) when activated. A standard
 /// action ([`copy`](Self::copy), [`cut`](Self::cut), [`paste`](Self::paste)) acts on
 /// what the platform holds selected or focused, is listed only where the platform
 /// offers it, and is disabled while it does not apply.
@@ -213,8 +213,8 @@ impl MenuEntry {
     self
   }
 
-  /// Runs `action` when the item is chosen.
-  pub fn handle_select(mut self, action: impl Fn() + 'static) -> Self {
+  /// Runs `action` when the item is activated.
+  pub fn handle_activate(mut self, action: impl Fn() + 'static) -> Self {
     self.on_select = Some(Rc::new(action));
 
     self

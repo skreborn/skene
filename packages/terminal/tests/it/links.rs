@@ -42,7 +42,7 @@ fn tab_reaches_links_and_enter_opens_them() {
           ]),
           BasicButton::new(Activate::new())
             .set_label("last")
-            .handle_click(move || counted.set(counted.get() + 1)),
+            .handle_activate(move || counted.set(counted.get() + 1)),
         ))
         .into_any()
         .build()

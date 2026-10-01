@@ -92,14 +92,14 @@ fn note(name: String, notes: Signal<Vec<String>>, last: Signal<String>) -> impl 
     .set_items([
       MenuEntry::new("Open")
         .set_shortcut(Shortcut::new(Modifiers::NONE, "Enter"))
-        .handle_select(ran("Opened")),
+        .handle_activate(ran("Opened")),
       MenuEntry::new("Rename")
         .set_shortcut(Shortcut::new(Modifiers::NONE, "F2"))
-        .handle_select(ran("Renamed")),
+        .handle_activate(ran("Renamed")),
       MenuEntry::separator(),
       MenuEntry::new("Delete")
         .set_shortcut(Shortcut::new(Modifiers::NONE, "Delete"))
-        .handle_select(move || {
+        .handle_activate(move || {
           notes.update(|notes| notes.retain(|held| *held != *deleted));
           record();
         }),
@@ -131,7 +131,7 @@ fn draft_card(draft: Signal<String>) -> impl View {
         MenuEntry::copy(),
         MenuEntry::paste(),
         MenuEntry::separator(),
-        MenuEntry::new("Clear").handle_select(move || draft.set(String::new())),
+        MenuEntry::new("Clear").handle_activate(move || draft.set(String::new())),
       ])
       .set_child(
         SimpleTextField::new()

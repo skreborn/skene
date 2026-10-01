@@ -22,7 +22,7 @@ fn focus_variant_and_enter_click() {
         .set_height(3)
         .set_border_width(Inset::all(1))
         .set_border_color(Color::TRANSPARENT.when(State::Focused, white()))
-        .handle_click(move || counted.set(counted.get() + 1))
+        .handle_activate(move || counted.set(counted.get() + 1))
         .into_any()
         .build()
     });
@@ -94,11 +94,11 @@ fn mouse_click_hits_and_focuses() {
           BasicButton::new(Activate::new())
             .set_width(4)
             .set_height(2)
-            .handle_click(move || count_first.set(count_first.get() + 1)),
+            .handle_activate(move || count_first.set(count_first.get() + 1)),
           BasicButton::new(Activate::new())
             .set_width(4)
             .set_height(2)
-            .handle_click(move || count_second.set(count_second.get() + 1)),
+            .handle_activate(move || count_second.set(count_second.get() + 1)),
         ))
         .into_any()
         .build()
@@ -126,7 +126,7 @@ fn space_clicks_on_the_release_the_terminal_reports_or_at_once() {
       BasicButton::new(Activate::new())
         .set_width(4)
         .set_height(1)
-        .handle_click(move || counted.set(counted.get() + 1))
+        .handle_activate(move || counted.set(counted.get() + 1))
         .into_any()
         .build()
     });
@@ -659,7 +659,7 @@ fn a_slider_released_off_itself_stops_sliding() {
 fn picker(unit: Signal<String>) -> SimplePicker {
   SimplePicker::new()
     .set_options([("px", "pixels"), ("cell", "cells"), ("pt", "points")])
-    .bind_value(unit)
+    .bind_chosen(unit)
 }
 
 /// Mounts a picker bound to `unit` at the top of the frame.
@@ -1160,7 +1160,7 @@ fn a_disabled_control_takes_no_focus_and_no_click() {
           BasicButton::new(Activate::new())
             .set_label("off")
             .set_disabled(true)
-            .handle_click(move || counted.set(counted.get() + 1)),
+            .handle_activate(move || counted.set(counted.get() + 1)),
           BasicButton::new(Activate::new()).set_label("on"),
         ))
         .into_any()
@@ -1201,7 +1201,7 @@ fn tab_leaves_a_control_disabled_while_focused_for_the_next() {
           BasicButton::new(Activate::new())
             .set_label("submit")
             .derive_disabled(move || submitting.get())
-            .handle_click(move || submitting.set(true)),
+            .handle_activate(move || submitting.set(true)),
           BasicButton::new(Activate::new())
             .set_label("next")
             .bind_handle(next),

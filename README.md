@@ -47,8 +47,8 @@ fn app() -> impl View {
             SimpleCard::new().set_spacing(24.).set_children((
               Text::derive(move || count.get().to_string()).set_font_size(56.),
               Row::new().set_spacing(12.).set_children((
-                SimpleButton::new("−").handle_click(move || count.update(|n| *n = n.saturating_sub(1))),
-                SimpleButton::new("+").handle_click(move || count.update(|n| *n = n.saturating_add(1))),
+                SimpleButton::new("−").handle_activate(move || count.update(|n| *n = n.saturating_sub(1))),
+                SimpleButton::new("+").handle_activate(move || count.update(|n| *n = n.saturating_add(1))),
               )),
             )),
           ),
@@ -80,8 +80,8 @@ fn app() -> impl View {
     SimpleCard::new().set_children((
       Text::derive(move || count.get().to_string()).set_color(SimplePalette::FOREGROUND),
       Row::new().set_spacing(2).set_children((
-        SimpleButton::new("-").handle_click(move || count.update(|n| *n = n.saturating_sub(1))),
-        SimpleButton::new("+").handle_click(move || count.update(|n| *n = n.saturating_add(1))),
+        SimpleButton::new("-").handle_activate(move || count.update(|n| *n = n.saturating_sub(1))),
+        SimpleButton::new("+").handle_activate(move || count.update(|n| *n = n.saturating_add(1))),
       )),
     ))
   })
@@ -157,8 +157,8 @@ exactly one child. A control is `Control<B: Behavior>`; `BasicButton`, `BasicChe
 aliases over the shipped behaviors, and the `Simple*` components dress them:
 
 ```rust
-SimpleButton::new("Save").handle_click(save),
-SimpleButton::new("Delete").set_variant(SimpleVariant::Destructive).handle_click(delete),
+SimpleButton::new("Save").handle_activate(save),
+SimpleButton::new("Delete").set_variant(SimpleVariant::Destructive).handle_activate(delete),
 ```
 
 `Theme::new(palette)` defines a token set beneath it and `Theme::derive(|| palette.get())`

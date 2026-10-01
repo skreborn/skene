@@ -81,6 +81,6 @@ fn quotes_card() -> impl View {
         )
         .build(),
     }),
-    SimpleButton::new("Fetch again").handle_click(move || quotes.reload()),
+    SimpleButton::new("Fetch again").handle_activate(move || quotes.reload()),
   ))
 }

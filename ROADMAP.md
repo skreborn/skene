@@ -183,9 +183,6 @@ left half-done in a code comment.
     - A shell per platform: the facades' views and Simple's, newtypes implementing the
     traits of the core beneath them, stay on probation against writing each platform's
     views by hand.
-    - Renames: the choice and activation handlers and binders to `choose`/`chosen` for
-    value groups and `activate` for commands, with `bind_` documented as a builder
-    prefix.
     - Vocabulary: `FlexDirection`'s reversed variants become an axis plus `reversed`;
     `Overflow` becomes `Clip`, `Scroll` and `ScrollIfNeeded`; `RunDisplay`,
     `GridTrack::Minmax` and `Layout::Flow` lose their CSS names; `Expr::vw`, `vh`,

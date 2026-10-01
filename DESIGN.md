@@ -383,7 +383,7 @@ the browser's own menu stays wherever no wrapper is, and an app that wants its o
 everywhere wraps its root. The terminal facade serves the standard menu from the root
 at install, because the terminal has no menu of its own; a deeper wrapper wins over it
 as it wins over the browser's, so replacing the default is the same act on both
-facades. The items are `MenuEntry`s: `MenuEntry::new(label)` with `handle_select`,
+facades. The items are `MenuEntry`s: `MenuEntry::new(label)` with `handle_activate`,
 `set_disabled`/`derive_disabled` and `set_shortcut` (a `Shortcut` the item shows
 beside its label, as its `Display` reads, and binds on the view the menu serves, so
 the key runs a usable item from anywhere focus is inside that view, in place of the

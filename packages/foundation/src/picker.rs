@@ -62,9 +62,9 @@ impl<P: Platform> std::fmt::Debug for Face<P> {
 /// whose name the characters begin, a character repeated cycling through the options
 /// starting with it; typing over the open list moves focus the same way.
 ///
-/// Controlled: the chosen value is what [`derive_value`](Self::derive_value) reads, and
-/// a choice only calls [`handle_change`](Self::handle_change) with the value asked for;
-/// [`bind_value`](Self::bind_value) wires both to one signal. Holds [`NoChild`] until
+/// Controlled: the chosen value is what [`derive_chosen`](Self::derive_chosen) reads, and
+/// a choice only calls [`handle_choose`](Self::handle_choose) with the value asked for;
+/// [`bind_chosen`](Self::bind_chosen) wires both to one signal. Holds [`NoChild`] until
 /// [`set_face`](Self::set_face) supplies the face; the options come from
 /// [`set_options`](Self::set_options) and [`derive_options`](Self::derive_options),
 /// each a [`BasicListboxOption`](crate::BasicListboxOption) at any depth.
@@ -167,21 +167,21 @@ impl<P: Platform, F> BasicPicker<P, F> {
   }
 
   /// Sets the chosen value.
-  pub fn set_value(mut self, value: impl Into<String>) -> Self {
+  pub fn set_chosen(mut self, value: impl Into<String>) -> Self {
     self.value = Some(Source::Fixed(value.into()));
 
     self
   }
 
   /// Derives the chosen value from the signals `value` reads.
-  pub fn derive_value(mut self, value: impl Fn() -> String + 'static) -> Self {
+  pub fn derive_chosen(mut self, value: impl Fn() -> String + 'static) -> Self {
     self.value = Some(Source::derive(value));
 
     self
   }
 
   /// Runs `action` with the value a choice asks for.
-  pub fn handle_change(mut self, action: impl Fn(String) + 'static) -> Self {
+  pub fn handle_choose(mut self, action: impl Fn(String) + 'static) -> Self {
     self.on_change = Some(Rc::new(action));
 
     self
@@ -189,10 +189,10 @@ impl<P: Platform, F> BasicPicker<P, F> {
 
   /// Binds the chosen value to `signal` in both directions.
   #[inline(always)]
-  pub fn bind_value(self, signal: Signal<String>) -> Self {
+  pub fn bind_chosen(self, signal: Signal<String>) -> Self {
     self
-      .derive_value(move || signal.get())
-      .handle_change(move |value| signal.set(value))
+      .derive_chosen(move || signal.get())
+      .handle_choose(move |value| signal.set(value))
   }
 
   /// Sets the face's caption, which is also the accessible name.
@@ -249,26 +249,26 @@ pub trait BasicPickerBase<P: Platform, F>: Wraps<Inner = BasicPicker<P, F>> {
 
   /// Sets the chosen value.
   #[must_use]
-  fn set_value(self, value: impl Into<String>) -> Self {
-    Self::wrap(self.into_inner().set_value(value))
+  fn set_chosen(self, value: impl Into<String>) -> Self {
+    Self::wrap(self.into_inner().set_chosen(value))
   }
 
   /// Derives the chosen value from the signals `value` reads.
   #[must_use]
-  fn derive_value(self, value: impl Fn() -> String + 'static) -> Self {
-    Self::wrap(self.into_inner().derive_value(value))
+  fn derive_chosen(self, value: impl Fn() -> String + 'static) -> Self {
+    Self::wrap(self.into_inner().derive_chosen(value))
   }
 
   /// Runs `action` with the value a choice asks for.
   #[must_use]
-  fn handle_change(self, action: impl Fn(String) + 'static) -> Self {
-    Self::wrap(self.into_inner().handle_change(action))
+  fn handle_choose(self, action: impl Fn(String) + 'static) -> Self {
+    Self::wrap(self.into_inner().handle_choose(action))
   }
 
   /// Binds the chosen value to `signal` in both directions.
   #[must_use]
-  fn bind_value(self, signal: skene_reactive::Signal<String>) -> Self {
-    Self::wrap(self.into_inner().bind_value(signal))
+  fn bind_chosen(self, signal: skene_reactive::Signal<String>) -> Self {
+    Self::wrap(self.into_inner().bind_chosen(signal))
   }
 
   /// Sets the face's caption, which is also the accessible name.
@@ -475,7 +475,7 @@ fn build_native<P: Platform>(
 
   *shared.choose.borrow_mut() = Rc::new(choose.clone());
 
-  let mut control = Control::<P, _>::new(NativePicker::new().handle_change(choose));
+  let mut control = Control::<P, _>::new(NativePicker::new().handle_choose(choose));
 
   *control.box_style_mut() = (*parts.face_style).clone();
 

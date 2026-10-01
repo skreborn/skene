@@ -523,10 +523,10 @@ fn clicks_complete_on_release_over_the_same_target() {
         .set_children((
           BasicButton::new(Activate::new())
             .set_label("one")
-            .handle_click(move || one.set(one.get() + 1)),
+            .handle_activate(move || one.set(one.get() + 1)),
           BasicButton::new(Activate::new())
             .set_label("two")
-            .handle_click(move || two.set(two.get() + 1)),
+            .handle_activate(move || two.set(two.get() + 1)),
         ))
         .into_any()
         .build()
@@ -556,7 +556,7 @@ fn an_orphan_release_stands_in_for_a_swallowed_click() {
     let _ = terminal::mount(|| {
       BasicButton::new(Activate::new())
         .set_label("go")
-        .handle_click(move || counted.set(counted.get() + 1))
+        .handle_activate(move || counted.set(counted.get() + 1))
         .into_any()
         .build()
     });

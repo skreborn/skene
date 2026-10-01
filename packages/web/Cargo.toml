@@ -80,7 +80,7 @@ web-sys = { workspace = true, features = [
   "WheelEvent",
   "Window",
 ] }
-wgpu = { default-features = false, features = ["std", "webgpu", "wgsl"], version = "29" }
+wgpu = { default-features = false, features = ["std", "webgpu", "wgsl"], optional = true, version = "29" }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 futures-timer = "3"
@@ -141,7 +141,7 @@ skene-build.workspace = true
 [features]
 # Paints a painted box on the GPU where the page has WebGPU, through vello's hybrid
 # renderer; without it every painted box paints on the CPU.
-gpu = ["dep:vello_hybrid"]
+gpu = ["dep:vello_hybrid", "dep:wgpu"]
 
 [package.metadata.docs.rs]
 default-target = "wasm32-unknown-unknown"

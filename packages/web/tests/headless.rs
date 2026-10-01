@@ -573,6 +573,7 @@ fn head_registrations_are_recorded_on_the_host() {
   use skene_web::{
     head,
     headless::{HeadElement, document_language, document_title, head_elements},
+    window,
   };
 
   reset();
@@ -581,7 +582,7 @@ fn head_registrations_are_recorded_on_the_host() {
   let title = Signal::new("Home".to_owned());
 
   owner.enter(|| {
-    head::derive_title(move || format!("{} — skene", title.get()));
+    window::derive_title(move || format!("{} — skene", title.get()));
     head::add_meta("description", "A tiny page");
     head::add_stylesheet("/site.css");
     head::set_language("en");
@@ -618,6 +619,7 @@ fn head_registrations_leave_with_their_owner() {
   use skene_web::{
     head,
     headless::{HeadElement, document_title, head_elements},
+    window,
   };
 
   reset();
@@ -629,12 +631,12 @@ fn head_registrations_leave_with_their_owner() {
   let stylesheet = HeadElement::new("link", &[("rel", "stylesheet"), ("href", "/site.css")]);
 
   outer.enter(|| {
-    head::set_title("Outer");
+    window::set_title("Outer");
     head::add_meta("description", "outer");
     head::add_stylesheet("/site.css");
   });
   inner.enter(|| {
-    head::set_title("Inner");
+    window::set_title("Inner");
     head::add_meta("description", "inner");
     head::add_stylesheet("/site.css");
   });

@@ -482,6 +482,13 @@ impl Platform for Terminal {
   fn chosen_scheme() -> Option<ColorScheme> {
     with_records(|records| records.choice)
   }
+
+  fn set_window_title(title: Option<&str>) {
+    with_records(|records| {
+      records.title = title.map(str::to_owned);
+      records.title_dirty = true;
+    });
+  }
 }
 
 impl Painting for Terminal {

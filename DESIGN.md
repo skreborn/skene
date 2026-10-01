@@ -1197,12 +1197,13 @@ Server-side rendering is a *capability*, not a server: `render_to_string` /
 page, the CLI's client-rendered shell among them: the head preloads the client bundle,
 the body ends in the hydration state and the module script booting the bundle, a page
 in the dev loop carries the dev marker and the dev script, and every inline script
-carries the render's nonce. A head registration (`head::set_title`, `add_meta` and
-their kin) holds while the owner that made it lives, in one registry the web leaves
-and the headless platform share, `skene_foundation::web::Head`: the latest live title is in
-force, and so is the latest live element of what it stands for, so a route's head
-leaves with the route; the server serializes what is in force, and the browser applies
-it to the live head, adopting the elements a server render left. The app's server binary is built natively with the
+carries the render's nonce. A head registration (`add_meta` and its kin) holds while the
+owner that made it lives, in one registry the web leaves and the headless platform
+share, `skene_foundation::web::Head`: the latest live element of what it stands for is in
+force, so a route's head leaves with the route; the server serializes what is in force,
+and the browser applies it to the live head, adopting the elements a server render
+left. The title is the window's (`window::set_title`), shared with the terminal: the
+latest live one is in force, and each platform shows it, the web in the head. The app's server binary is built natively with the
 server platform named (`skene build web --static` and `skene run web --ssr` do it, for
 the host target alone so build scripts and proc macros never see the cfg; by hand,
 `RUSTFLAGS='--cfg skene_platform="server"' cargo build --bin app-server`), and

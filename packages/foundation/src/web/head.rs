@@ -1,5 +1,5 @@
-//! The document head as an app registers it: titles and elements, each live until
-//! removed, the latest of what each stands for in force.
+//! The document head: the window's title in force, and the elements an app registers,
+//! each live until removed, the latest of what each stands for in force.
 
 /// An element registered for the document head: its tag and its attributes.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -84,59 +84,44 @@ impl HeadElement {
 #[must_use]
 pub struct HeadId(u64);
 
-/// The document head as registered: titles and elements, each live until removed.
+/// The document head: the window's title in force, and the elements registered, each
+/// live until removed.
 ///
-/// The latest live title is the one in force, and so is the latest live element of
-/// what it stands for, in its registration's place: a nested route's description
-/// replaces its parent's until it leaves, and identical registrations write one
-/// element.
+/// The latest live element of what it stands for is in force, in its registration's
+/// place: a nested route's description replaces its parent's until it leaves, and
+/// identical registrations write one element.
 #[derive(Debug, Default)]
 pub struct Head {
-  entries: Vec<(HeadId, Entry)>,
+  title: Option<String>,
+  entries: Vec<(HeadId, HeadElement)>,
   next: u64,
 }
 
-/// One registration.
-#[derive(Debug)]
-enum Entry {
-  Title(String),
-  Element(HeadElement),
-}
-
 impl Head {
-  /// Registers `title`.
-  pub fn add_title(&mut self, title: String) -> HeadId {
-    self.add(Entry::Title(title))
+  /// Sets the window's title in force; `None` sets none.
+  pub fn set_title(&mut self, title: Option<String>) {
+    self.title = title;
+  }
+
+  /// The window's title in force.
+  #[must_use]
+  pub fn title(&self) -> Option<&str> {
+    self.title.as_deref()
   }
 
   /// Registers `element`.
   pub fn add_element(&mut self, element: HeadElement) -> HeadId {
-    self.add(Entry::Element(element))
-  }
+    let id = HeadId(self.next);
 
-  /// Rewrites the title registration `id`; any other registration is left as it is.
-  pub fn set_title(&mut self, id: HeadId, title: String) {
-    if let Some((_, Entry::Title(current))) = self.entries.iter_mut().find(|(at, _)| *at == id) {
-      *current = title;
-    }
+    self.next += 1;
+    self.entries.push((id, element));
+
+    id
   }
 
   /// Removes the registration `id`.
   pub fn remove(&mut self, id: HeadId) {
     self.entries.retain(|(at, _)| *at != id);
-  }
-
-  /// The title in force.
-  #[must_use]
-  pub fn title(&self) -> Option<&str> {
-    self
-      .entries
-      .iter()
-      .rev()
-      .find_map(|(_, entry)| match entry {
-        Entry::Title(title) => Some(title.as_str()),
-        Entry::Element(_) => None,
-      })
   }
 
   /// The elements in force, in their registrations' order.
@@ -145,27 +130,13 @@ impl Head {
       .entries
       .iter()
       .enumerate()
-      .filter_map(|(at, (_, entry))| {
-        let Entry::Element(element) = entry
-        else {
-          return None;
-        };
+      .filter_map(|(at, (_, element))| {
         let replaced = self.entries[at + 1..]
           .iter()
-          .any(|(_, later)| matches!(later, Entry::Element(later) if later.stands_for(element)));
+          .any(|(_, later)| later.stands_for(element));
 
         (!replaced).then_some(element)
       })
-  }
-
-  /// Registers `entry`.
-  fn add(&mut self, entry: Entry) -> HeadId {
-    let id = HeadId(self.next);
-
-    self.next += 1;
-    self.entries.push((id, entry));
-
-    id
   }
 }
 
@@ -179,25 +150,6 @@ mod tests {
 
   fn stylesheet(href: &str) -> HeadElement {
     HeadElement::new("link", &[("rel", "stylesheet"), ("href", href)])
-  }
-
-  /// The latest live title is in force, and removing it restores the one before.
-  #[test]
-  fn titles_stack() {
-    let mut head = Head::default();
-    let outer = head.add_title("Outer".to_owned());
-    let inner = head.add_title("Inner".to_owned());
-
-    assert_eq!(head.title(), Some("Inner"));
-
-    head.set_title(outer, "Outer 2".to_owned());
-    head.remove(inner);
-
-    assert_eq!(head.title(), Some("Outer 2"));
-
-    head.remove(outer);
-
-    assert_eq!(head.title(), None);
   }
 
   /// A later meta of one name replaces the earlier in its own place until it leaves,

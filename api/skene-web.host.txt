@@ -139,9 +139,7 @@ pub fn skene_web::head::add_meta(&str, &str)
 pub fn skene_web::head::add_meta_property(&str, &str)
 pub fn skene_web::head::add_script(&str)
 pub fn skene_web::head::add_stylesheet(&str)
-pub fn skene_web::head::derive_title(impl core::ops::function::Fn() -> alloc::string::String + 'static)
 pub fn skene_web::head::set_language(impl core::convert::Into<alloc::string::String>)
-pub fn skene_web::head::set_title(impl core::convert::Into<alloc::string::String>)
 pub mod skene_web::media
 pub fn skene_web::media::chosen_scheme() -> core::option::Option<skene_foundation::spine::values::color::ColorScheme>
 pub fn skene_web::media::derive_scheme(impl core::ops::function::Fn() -> core::option::Option<skene_foundation::spine::values::color::ColorScheme> + 'static)
@@ -401,6 +399,9 @@ pub fn skene_web::prelude::media::scheme() -> skene_reactive::signal::ReadSignal
 pub fn skene_web::prelude::media::set_scheme(core::option::Option<skene_foundation::spine::values::color::ColorScheme>)
 pub fn skene_web::prelude::media::viewport() -> skene_reactive::signal::ReadSignal<skene_web::Size>
 pub fn skene_web::prelude::media::watch(&skene_web::Media) -> skene_reactive::memo::Memo<bool>
+pub mod skene_web::prelude::window
+pub fn skene_web::prelude::window::derive_title(impl core::ops::function::Fn() -> alloc::string::String + 'static)
+pub fn skene_web::prelude::window::set_title(impl core::convert::Into<alloc::string::String>)
 pub struct skene_web::prelude::BasicPicker<F>(_)
 impl skene_web::BasicPicker
 pub fn skene_web::BasicPicker::new() -> Self
@@ -860,6 +861,9 @@ pub type skene_web::prelude::Token<T> = skene_foundation::spine::token::Token<T,
 pub type skene_web::prelude::Value<T> = skene_foundation::spine::leaf::Value<T, skene_web::Condition>
 pub mod skene_web::view_transitions
 pub fn skene_web::view_transitions::enable()
+pub mod skene_web::window
+pub fn skene_web::window::derive_title(impl core::ops::function::Fn() -> alloc::string::String + 'static)
+pub fn skene_web::window::set_title(impl core::convert::Into<alloc::string::String>)
 pub struct skene_web::AsyncView
 impl skene_web::AsyncView
 pub fn skene_web::AsyncView::new<V, F>(impl core::ops::function::FnOnce() -> F + 'static) -> Self where V: skene_foundation::spine::view::View<skene_web::ActivePlatform>, F: core::future::future::Future<Output = V> + 'static

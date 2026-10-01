@@ -22,14 +22,12 @@ use skene_reactive::{Owner, batch, provide_context};
 pub use self::{
   head::{
     add_head_element,
-    add_head_title,
     document_closing,
     document_opening,
     enable_view_transitions,
     persisted_scheme,
     remove_head_entry,
     set_document_language,
-    set_head_title,
     set_scheme,
   },
   media::set_render_hints,

@@ -62,6 +62,7 @@ use super::{
   document,
   events,
   events::Listener,
+  head,
   keep::Kept,
   media,
   try_with_dom,
@@ -864,6 +865,10 @@ impl Platform for Web {
 
   fn chosen_scheme() -> Option<ColorScheme> {
     media::chosen_scheme()
+  }
+
+  fn set_window_title(title: Option<&str>) {
+    head::set_window_title(title);
   }
 
   fn watch_media(media: &Media<f32>) -> Memo<bool> {

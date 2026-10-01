@@ -397,6 +397,10 @@ impl Platform for Headless {
   fn chosen_scheme() -> Option<ColorScheme> {
     chosen_scheme()
   }
+
+  fn set_window_title(title: Option<&str>) {
+    with_records(|records| records.head.set_title(title.map(str::to_owned)));
+  }
 }
 
 impl Painting for Headless {
@@ -465,16 +469,6 @@ pub fn pump_tasks() -> bool {
   trigger(skene_foundation::task::pump)
 }
 
-/// Registers `title` for the document, in force while it is the latest live one.
-pub fn add_head_title(title: &str) -> HeadId {
-  with_records(|records| records.head.add_title(title.to_owned()))
-}
-
-/// Rewrites the title registration `id`.
-pub fn set_head_title(id: HeadId, title: &str) {
-  with_records(|records| records.head.set_title(id, title.to_owned()));
-}
-
 /// Registers an element for the document head, in force while it is the latest live
 /// one of what it stands for.
 ///
@@ -496,7 +490,7 @@ pub fn set_document_language(language: &str) {
   with_records(|records| records.language = Some(language.to_owned()));
 }
 
-/// The document title in force.
+/// The window's title in force, the document's.
 #[must_use]
 pub fn document_title() -> Option<String> {
   end_turn();

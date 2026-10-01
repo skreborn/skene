@@ -323,6 +323,9 @@ pub fn skene_terminal::prelude::media::scheme() -> skene_reactive::signal::ReadS
 pub fn skene_terminal::prelude::media::set_scheme(core::option::Option<skene_foundation::spine::values::color::ColorScheme>)
 pub fn skene_terminal::prelude::media::viewport() -> skene_reactive::signal::ReadSignal<skene_terminal::Size>
 pub fn skene_terminal::prelude::media::watch(&skene_terminal::Media) -> skene_reactive::memo::Memo<bool>
+pub mod skene_terminal::prelude::window
+pub fn skene_terminal::prelude::window::derive_title(impl core::ops::function::Fn() -> alloc::string::String + 'static)
+pub fn skene_terminal::prelude::window::set_title(impl core::convert::Into<alloc::string::String>)
 pub struct skene_terminal::prelude::BasicPicker<F>(_)
 impl skene_terminal::BasicPicker
 pub fn skene_terminal::BasicPicker::new() -> Self
@@ -846,13 +849,11 @@ pub fn V::build(self) -> skene_foundation::spine::node::NodeId where Self: core:
 pub fn V::into_any(self) -> skene_terminal::AnyView where Self: core::marker::Sized
 pub fn skene_terminal::prelude::chosen_scheme() -> core::option::Option<skene_foundation::spine::values::color::ColorScheme>
 pub fn skene_terminal::prelude::derive_scheme(impl core::ops::function::Fn() -> core::option::Option<skene_foundation::spine::values::color::ColorScheme> + 'static)
-pub fn skene_terminal::prelude::derive_title(impl core::ops::function::Fn() -> alloc::string::String + 'static)
 pub fn skene_terminal::prelude::derived(impl core::ops::function::Fn() -> skene_foundation::spine::node::NodeId + 'static) -> skene_foundation::spine::node::NodeId
 pub fn skene_terminal::prelude::empty() -> impl skene_terminal::View
 pub fn skene_terminal::prelude::install_router<R: skene_foundation::routing::Route>(R) -> skene_foundation::routing::Router<R>
 pub fn skene_terminal::prelude::launch<V, F>(F) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_foundation::spine::view::View<skene_terminal::Terminal>
 pub fn skene_terminal::prelude::set_scheme(core::option::Option<skene_foundation::spine::values::color::ColorScheme>)
-pub fn skene_terminal::prelude::set_title(impl core::convert::Into<alloc::string::String>)
 pub fn skene_terminal::prelude::spawn(impl core::future::future::Future<Output = ()> + 'static) -> skene_reactive::spawn::TaskHandle
 pub type skene_terminal::prelude::AnyView = skene_foundation::spine::view::AnyView<skene_terminal::ActivePlatform>
 pub type skene_terminal::prelude::BasicButton<C> = skene_terminal::Control<skene_foundation::control::activate::Activate, C>
@@ -964,6 +965,9 @@ pub fn skene_terminal::testing::trigger_text_sizing(bool)
 pub fn skene_terminal::testing::window_title() -> core::option::Option<alloc::string::String>
 pub fn skene_terminal::testing::with_launch<R>(skene_terminal::Launch, impl core::ops::function::FnOnce() -> R) -> R
 pub fn skene_terminal::testing::with_platform<R>(impl core::ops::function::FnOnce() -> R) -> R
+pub mod skene_terminal::window
+pub fn skene_terminal::window::derive_title(impl core::ops::function::Fn() -> alloc::string::String + 'static)
+pub fn skene_terminal::window::set_title(impl core::convert::Into<alloc::string::String>)
 pub enum skene_terminal::CellScale
 pub skene_terminal::CellScale::Fraction(u8, u8)
 pub skene_terminal::CellScale::Whole(u8)
@@ -1579,6 +1583,7 @@ pub fn skene_terminal::Terminal::set_scheme(core::option::Option<skene_foundatio
 pub fn skene_terminal::Terminal::set_selection(skene_foundation::spine::node::NodeId, skene_foundation::spine::values::text_selection::TextSelection)
 pub fn skene_terminal::Terminal::set_text(skene_foundation::spine::node::NodeId, &str)
 pub fn skene_terminal::Terminal::set_value(skene_foundation::spine::node::NodeId, &str)
+pub fn skene_terminal::Terminal::set_window_title(core::option::Option<&str>)
 pub fn skene_terminal::Terminal::update_box(skene_foundation::spine::node::NodeId, skene_foundation::spine::leaf::Slot, &skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::box_style::BoxValue<u32, skene_foundation::terminal::ext::TerminalStyle>>)
 pub fn skene_terminal::Terminal::update_run(skene_foundation::spine::node::NodeId, skene_foundation::spine::leaf::Slot, &skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::run_style::RunValue<skene_foundation::terminal::ext::TerminalStyle>>)
 pub fn skene_terminal::Terminal::watch_media(&skene_foundation::spine::condition::Media<u32>) -> skene_reactive::memo::Memo<bool>
@@ -1707,7 +1712,6 @@ pub fn V::into_any(self) -> skene_terminal::AnyView where Self: core::marker::Si
 pub fn skene_terminal::adopt_restoration()
 pub fn skene_terminal::chosen_scheme() -> core::option::Option<skene_foundation::spine::values::color::ColorScheme>
 pub fn skene_terminal::derive_scheme(impl core::ops::function::Fn() -> core::option::Option<skene_foundation::spine::values::color::ColorScheme> + 'static)
-pub fn skene_terminal::derive_title(impl core::ops::function::Fn() -> alloc::string::String + 'static)
 pub fn skene_terminal::derived(impl core::ops::function::Fn() -> skene_foundation::spine::node::NodeId + 'static) -> skene_foundation::spine::node::NodeId
 pub fn skene_terminal::dev_notice_view(skene_reactive::signal::Signal<core::option::Option<alloc::string::String>>) -> impl skene_terminal::View
 pub fn skene_terminal::empty() -> impl skene_terminal::View
@@ -1717,7 +1721,6 @@ pub fn skene_terminal::launch<V, F>(F) where F: core::ops::function::FnOnce() ->
 pub fn skene_terminal::mount(impl core::ops::function::FnOnce() -> skene_foundation::spine::node::NodeId) -> skene_foundation::spine::node::NodeId
 pub fn skene_terminal::reconcile<T, I, K>(skene_foundation::spine::node::NodeId, impl core::ops::function::Fn() -> I + 'static, impl core::ops::function::Fn(&T) -> K + 'static, impl core::ops::function::Fn(T) -> skene_foundation::spine::node::NodeId + 'static) where I: core::iter::traits::collect::IntoIterator<Item = T>, K: core::cmp::Eq + core::hash::Hash + 'static
 pub fn skene_terminal::set_scheme(core::option::Option<skene_foundation::spine::values::color::ColorScheme>)
-pub fn skene_terminal::set_title(impl core::convert::Into<alloc::string::String>)
 pub fn skene_terminal::spawn(impl core::future::future::Future<Output = ()> + 'static) -> skene_reactive::spawn::TaskHandle
 pub fn skene_terminal::uninstall()
 pub type skene_terminal::ActivePlatform = skene_terminal::Terminal

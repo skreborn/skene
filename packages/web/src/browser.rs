@@ -51,13 +51,7 @@ use web_sys::{Document, Element, HtmlElement, ResizeObserver, ResizeObserverEntr
 
 pub use self::{
   dev::boot_with_dev_state,
-  head::{
-    add_head_element,
-    add_head_title,
-    remove_head_entry,
-    set_document_language,
-    set_head_title,
-  },
+  head::{add_head_element, remove_head_entry, set_document_language},
   history::{current_path, on_pop, push_path},
   media::{media_query, persisted_scheme, set_scheme, watch_media},
   restore::adopt_restoration,

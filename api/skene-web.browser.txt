@@ -138,9 +138,7 @@ pub fn skene_web::head::add_meta(&str, &str)
 pub fn skene_web::head::add_meta_property(&str, &str)
 pub fn skene_web::head::add_script(&str)
 pub fn skene_web::head::add_stylesheet(&str)
-pub fn skene_web::head::derive_title(impl core::ops::function::Fn() -> alloc::string::String + 'static)
 pub fn skene_web::head::set_language(impl core::convert::Into<alloc::string::String>)
-pub fn skene_web::head::set_title(impl core::convert::Into<alloc::string::String>)
 pub mod skene_web::media
 pub fn skene_web::media::chosen_scheme() -> core::option::Option<skene_foundation::spine::values::color::ColorScheme>
 pub fn skene_web::media::derive_scheme(impl core::ops::function::Fn() -> core::option::Option<skene_foundation::spine::values::color::ColorScheme> + 'static)
@@ -317,6 +315,7 @@ pub fn skene_web::platform::Web::set_scheme(core::option::Option<skene_foundatio
 pub fn skene_web::platform::Web::set_selection(skene_foundation::spine::node::NodeId, skene_foundation::spine::values::text_selection::TextSelection)
 pub fn skene_web::platform::Web::set_text(skene_foundation::spine::node::NodeId, &str)
 pub fn skene_web::platform::Web::set_value(skene_foundation::spine::node::NodeId, &str)
+pub fn skene_web::platform::Web::set_window_title(core::option::Option<&str>)
 pub fn skene_web::platform::Web::update_access(skene_foundation::spine::node::NodeId, &[skene_foundation::spine::values::access::AccessProp])
 pub fn skene_web::platform::Web::update_box(skene_foundation::spine::node::NodeId, skene_foundation::spine::leaf::Slot, &skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::box_style::BoxValue<f32, skene_foundation::web::ext::WebStyle>>)
 pub fn skene_web::platform::Web::update_focus_order(skene_foundation::spine::node::NodeId, core::option::Option<skene_foundation::spine::values::focus_order::FocusOrder>)
@@ -384,7 +383,6 @@ pub fn skene_web::platform::Web::set_attribute(skene_foundation::spine::node::No
 pub fn skene_web::platform::Web::set_declarations(skene_foundation::spine::node::NodeId, &skene_web::platform::Declarations)
 pub fn skene_web::platform::Web::set_text(skene_foundation::spine::node::NodeId, &str)
 pub fn skene_web::platform::add_head_element(&str, &[(&str, &str)]) -> skene_foundation::web::head::HeadId
-pub fn skene_web::platform::add_head_title(&str) -> skene_foundation::web::head::HeadId
 pub fn skene_web::platform::adopt_next() -> core::option::Option<alloc::string::String>
 pub fn skene_web::platform::adopt_restoration()
 pub fn skene_web::platform::adopt_tagged(&str) -> core::option::Option<alloc::string::String>
@@ -414,7 +412,6 @@ pub fn skene_web::platform::register_source(skene_web::platform::HydrationSource
 pub fn skene_web::platform::register_tagged_source(&str, skene_web::platform::HydrationSource)
 pub fn skene_web::platform::remove_head_entry(skene_foundation::web::head::HeadId)
 pub fn skene_web::platform::set_document_language(&str)
-pub fn skene_web::platform::set_head_title(skene_foundation::web::head::HeadId, &str)
 pub fn skene_web::platform::set_scheme(core::option::Option<skene_foundation::spine::values::color::ColorScheme>)
 pub fn skene_web::platform::uninstall()
 pub fn skene_web::platform::view_transitions_enabled() -> bool
@@ -552,6 +549,9 @@ pub fn skene_web::prelude::media::scheme() -> skene_reactive::signal::ReadSignal
 pub fn skene_web::prelude::media::set_scheme(core::option::Option<skene_foundation::spine::values::color::ColorScheme>)
 pub fn skene_web::prelude::media::viewport() -> skene_reactive::signal::ReadSignal<skene_web::Size>
 pub fn skene_web::prelude::media::watch(&skene_web::Media) -> skene_reactive::memo::Memo<bool>
+pub mod skene_web::prelude::window
+pub fn skene_web::prelude::window::derive_title(impl core::ops::function::Fn() -> alloc::string::String + 'static)
+pub fn skene_web::prelude::window::set_title(impl core::convert::Into<alloc::string::String>)
 pub struct skene_web::prelude::BasicPicker<F>(_)
 impl skene_web::BasicPicker
 pub fn skene_web::BasicPicker::new() -> Self
@@ -1038,6 +1038,9 @@ pub async fn skene_web::testing::tick()
 pub async fn skene_web::testing::wait(core::time::Duration)
 pub mod skene_web::view_transitions
 pub fn skene_web::view_transitions::enable()
+pub mod skene_web::window
+pub fn skene_web::window::derive_title(impl core::ops::function::Fn() -> alloc::string::String + 'static)
+pub fn skene_web::window::set_title(impl core::convert::Into<alloc::string::String>)
 pub struct skene_web::AsyncView
 impl skene_web::AsyncView
 pub fn skene_web::AsyncView::new<V, F>(impl core::ops::function::FnOnce() -> F + 'static) -> Self where V: skene_foundation::spine::view::View<skene_web::ActivePlatform>, F: core::future::future::Future<Output = V> + 'static

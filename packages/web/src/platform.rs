@@ -27,7 +27,6 @@ pub use crate::browser::uninstall;
 #[cfg(skene_web_platform = "browser")]
 pub use crate::browser::{
   add_head_element,
-  add_head_title,
   adopt_restoration,
   claim_lazy,
   commit_navigation,
@@ -50,7 +49,6 @@ pub use crate::browser::{
   push_path,
   remove_head_entry,
   set_document_language,
-  set_head_title,
   set_scheme,
   view_transitions_enabled,
   watch_media,
@@ -75,7 +73,6 @@ pub use crate::server::{
   Rendered,
   StreamPiece,
   add_head_element,
-  add_head_title,
   current_path,
   document_closing,
   document_opening,
@@ -93,7 +90,6 @@ pub use crate::server::{
   set_client_bundle,
   set_dev_loop,
   set_document_language,
-  set_head_title,
   set_render_deadline,
   set_render_hints,
   set_request_path,

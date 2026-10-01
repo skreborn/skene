@@ -185,8 +185,7 @@ left half-done in a code comment.
     views by hand.
     - Moves: `AsyncView`, `Deferred`, the hydrating `Resource`, `Link` and the router
     binding into the foundation over platform seams, so a generic library can use them
-    and the terminal gains `Link`; the title into a shared `window` module, which grows
-    into the `Window` handle, while web-only page metadata stays in a web-only module.
+    and the terminal gains `Link`.
     - Edges: painting's GPU stack stops weighing on the build of an app that paints
     nothing, `vello_hybrid` being over half of a clean gallery wasm build.
     - `#[main]` is the only entry point, emitting `fn main` per target with its native

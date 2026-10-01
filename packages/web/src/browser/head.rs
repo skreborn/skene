@@ -1,5 +1,5 @@
-//! The document head in the browser: the registered titles and elements applied to the
-//! live document, and its language.
+//! The document head in the browser: the window's title and the registered elements
+//! applied to the live document, and its language.
 
 use std::cell::RefCell;
 
@@ -20,7 +20,7 @@ struct Applied {
 }
 
 impl Applied {
-  /// Writes the registrations in force into the live document: the title, and each
+  /// Writes what is in force into the live document: the title, and each
   /// element as the one already standing for it, an identical one in the head (as a
   /// server render leaves), or a new one placed before the next in force; an element no
   /// longer in force leaves.
@@ -119,14 +119,10 @@ fn with_head<R>(change: impl FnOnce(&mut Head) -> R) -> R {
   })
 }
 
-/// Registers `title` for the document, in force while it is the latest live one.
-pub fn add_head_title(title: &str) -> HeadId {
-  with_head(|head| head.add_title(title.to_owned()))
-}
-
-/// Rewrites the title registration `id`.
-pub fn set_head_title(id: HeadId, title: &str) {
-  with_head(|head| head.set_title(id, title.to_owned()));
+/// Shows `title` as the document's title, the window's title in force; `None` leaves the
+/// document's as it stands.
+pub(crate) fn set_window_title(title: Option<&str>) {
+  with_head(|head| head.set_title(title.map(str::to_owned)));
 }
 
 /// Registers an element for the document head, in force while it is the latest live one

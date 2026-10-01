@@ -400,6 +400,10 @@ pub trait Platform: Copy + Default + 'static {
   /// The scheme the app put in force, or a previous run stored, when there is one.
   fn chosen_scheme() -> Option<ColorScheme>;
 
+  /// Shows `title` as the window's title, the one the latest live owner set, or `None`
+  /// once no live owner sets one; a platform with no window title shows nothing.
+  fn set_window_title(_title: Option<&str>) {}
+
   /// Runs `action` once `delay` has passed on the platform's clock, unless cancelled
   /// first; a platform without a clock never runs it.
   fn schedule(delay: Duration, action: Box<dyn FnOnce()>) -> Timer;

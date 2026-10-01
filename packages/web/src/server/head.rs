@@ -32,14 +32,9 @@ pub fn enable_view_transitions() {
   VIEW_TRANSITIONS.with(|enabled| enabled.set(true));
 }
 
-/// Registers `title` for the page, in force while it is the latest live one.
-pub fn add_head_title(title: &str) -> HeadId {
-  with_tree(|tree| tree.head.add_title(title.to_owned()))
-}
-
-/// Rewrites the title registration `id`.
-pub fn set_head_title(id: HeadId, title: &str) {
-  with_tree(|tree| tree.head.set_title(id, title.to_owned()));
+/// Writes `title` as the page's title, the window's title in force; `None` writes none.
+pub(crate) fn set_window_title(title: Option<&str>) {
+  with_tree(|tree| tree.head.set_title(title.map(str::to_owned)));
 }
 
 /// Removes the head registration `id`.

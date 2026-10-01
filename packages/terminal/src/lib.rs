@@ -47,6 +47,7 @@ pub mod testing;
 mod text;
 mod tty;
 mod views;
+pub mod window;
 
 /// The terminal medium's shared vocabulary: the style extension, its glyphs and values,
 /// and the typography set.
@@ -246,21 +247,6 @@ pub use crate::{
 pub type ActivePlatform = Terminal;
 
 skene_foundation::facade!(ActivePlatform, u32, "cells");
-
-/// Sets the terminal title, emitted via OSC 2; terminals without support ignore it.
-pub fn set_title(title: impl Into<String>) {
-  let title = title.into();
-
-  with_records(move |records| {
-    records.title = Some(title);
-    records.title_dirty = true;
-  });
-}
-
-/// Derives the terminal title, re-emitted whenever it changes.
-pub fn derive_title(title: impl Fn() -> String + 'static) {
-  skene_reactive::Effect::new(move |_: Option<()>| set_title(title()));
-}
 
 /// Runs `future` as a task of the current scope until it finishes, the scope goes or
 /// the returned handle cancels it; once it ends it is never polled again.

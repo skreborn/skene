@@ -11,13 +11,14 @@ use skene_web::{
   head,
   reactive::{Effect, Get, Set, Signal},
   render_to_string,
+  window,
 };
 
 /// The title and head elements serialize into the head, in registration order.
 #[test]
 fn head_registrations_serialize() {
   let rendered = render_to_string(|| {
-    head::set_title("Home — skene");
+    window::set_title("Home — skene");
     head::add_meta("description", "A tiny page");
     head::add_meta_property("og:title", "Home");
     head::add_stylesheet("/assets/site.css");
@@ -50,14 +51,14 @@ fn a_replaced_subtree_takes_its_head_along() {
   let rendered = render_to_string(|| {
     let replaced = Signal::new(false);
 
-    head::set_title("Site");
+    window::set_title("Site");
     head::add_meta("description", "The site");
     Effect::new(move |_: Option<()>| replaced.set(true));
 
     Column::new().derive_child(move || {
       let name = if replaced.get() { "new" } else { "old" };
 
-      head::set_title(format!("{name} — Site"));
+      window::set_title(format!("{name} — Site"));
       head::add_meta("description", &format!("The {name} page"));
       head::add_stylesheet(&format!("/{name}.css"));
 
@@ -79,7 +80,7 @@ fn derived_title_reads_signals() {
   let rendered = render_to_string(|| {
     let count = Signal::new(3u32);
 
-    head::derive_title(move || format!("{} items", count.get()));
+    window::derive_title(move || format!("{} items", count.get()));
 
     Text::new("body")
   });
@@ -91,7 +92,7 @@ fn derived_title_reads_signals() {
 #[test]
 fn head_content_escapes() {
   let rendered = render_to_string(|| {
-    head::set_title("a < b & c");
+    window::set_title("a < b & c");
     head::add_meta("description", "say \"hi\" & <leave>");
 
     Text::new("body")

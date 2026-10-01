@@ -19,6 +19,7 @@ pub mod split;
 #[cfg(skene_web_platform = "browser")]
 pub mod testing;
 pub mod view_transitions;
+pub mod window;
 
 mod async_view;
 #[cfg(skene_web_platform = "browser")]

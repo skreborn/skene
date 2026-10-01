@@ -2,7 +2,7 @@ use std::cell::RefCell;
 
 use skene_reactive::Runtime;
 
-use crate::spine::{Platform, Scene, task};
+use crate::spine::{Platform, Scene, task, window};
 
 thread_local! {
   /// The flush the turn's writes scheduled, run when the turn ends.
@@ -32,11 +32,12 @@ pub fn end_turn() {
 
 /// Resets what running the platform `P` left on this thread.
 ///
-/// The turn is dropped unflushed, and the scene, the reactive runtime, the root scope
-/// and the tasks start over, so one thread can run many independent mounts.
+/// The turn is dropped unflushed, and the scene, the reactive runtime, the root scope,
+/// the tasks and the window's titles start over, so one thread can run many independent mounts.
 pub fn reset_thread<P: Platform>() {
   TURN.with(|turn| *turn.borrow_mut() = None);
   Scene::<P>::with(|scene| *scene = Scene::new());
   Runtime::reset();
   task::clear();
+  window::clear();
 }

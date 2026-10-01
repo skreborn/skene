@@ -179,4 +179,5 @@ pub use crate::{
   main,
   media,
   set_scheme,
+  window,
 };

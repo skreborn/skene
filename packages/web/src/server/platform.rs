@@ -35,7 +35,7 @@ use skene_reactive::{Memo, ReadSignal};
 
 use super::{
   SCENE,
-  head::{persisted_scheme, set_scheme},
+  head::{persisted_scheme, set_scheme, set_window_title},
   media::{media_signals, with_media},
   with_realizer,
 };
@@ -206,6 +206,10 @@ impl Platform for Web {
 
   fn chosen_scheme() -> Option<ColorScheme> {
     persisted_scheme()
+  }
+
+  fn set_window_title(title: Option<&str>) {
+    set_window_title(title);
   }
 }
 

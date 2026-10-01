@@ -4,14 +4,15 @@ use skene_terminal::{self as terminal, prelude::*, testing};
 
 use crate::common::with_platform;
 
-/// The terminal title follows `set_title`, and a derived title follows its signal.
+/// The terminal title follows the latest title set, and a derived title follows its
+/// signal.
 #[test]
 fn title_follows_state() {
   with_platform(|| {
     let name = Signal::new("one".to_owned());
 
     let _ = terminal::mount(|| {
-      derive_title(move || format!("app: {}", name.get()));
+      window::derive_title(move || format!("app: {}", name.get()));
 
       Text::new("body").build()
     });
@@ -22,7 +23,7 @@ fn title_follows_state() {
 
     assert_eq!(testing::window_title().as_deref(), Some("app: two"));
 
-    set_title("fixed");
+    window::set_title("fixed");
 
     assert_eq!(testing::window_title().as_deref(), Some("fixed"));
   });

@@ -1566,10 +1566,9 @@ pub fn skene_foundation::Canvas::fmt(&self, &mut core::fmt::Formatter<'_>) -> co
 pub struct skene_foundation::web::Head
 impl skene_foundation::web::Head
 pub fn skene_foundation::web::Head::add_element(&mut self, skene_foundation::web::HeadElement) -> skene_foundation::web::HeadId
-pub fn skene_foundation::web::Head::add_title(&mut self, alloc::string::String) -> skene_foundation::web::HeadId
 pub fn skene_foundation::web::Head::elements(&self) -> impl core::iter::traits::iterator::Iterator<Item = &skene_foundation::web::HeadElement>
 pub fn skene_foundation::web::Head::remove(&mut self, skene_foundation::web::HeadId)
-pub fn skene_foundation::web::Head::set_title(&mut self, skene_foundation::web::HeadId, alloc::string::String)
+pub fn skene_foundation::web::Head::set_title(&mut self, core::option::Option<alloc::string::String>)
 pub fn skene_foundation::web::Head::title(&self) -> core::option::Option<&str>
 impl core::default::Default for skene_foundation::web::Head
 pub fn skene_foundation::web::Head::default() -> skene_foundation::web::Head
@@ -1778,6 +1777,9 @@ pub fn vello_cpu::render::RenderContext::set_transform(&mut self, kurbo::affine:
 pub fn vello_cpu::render::RenderContext::stroke(&mut self, &kurbo::bezpath::BezPath, &kurbo::stroke::Stroke, &peniko::brush::Brush)
 pub fn skene_foundation::web::paint(&peniko::brush::Brush) -> vello_common::paint::PaintType
 pub type skene_foundation::web::Painter = dyn core::ops::function::Fn(&mut skene_foundation::Canvas, skene_foundation::Size<f32>)
+pub mod skene_foundation::window
+pub fn skene_foundation::window::derive_title<P: skene_foundation::Platform>(impl core::ops::function::Fn() -> alloc::string::String + 'static)
+pub fn skene_foundation::window::set_title<P: skene_foundation::Platform>(impl core::convert::Into<alloc::string::String>)
 pub macro skene_foundation::access_queries!
 pub macro skene_foundation::alignment_properties!
 pub macro skene_foundation::extension_fields!
@@ -8250,6 +8252,7 @@ pub fn skene_foundation::Platform::set_scheme(core::option::Option<skene_foundat
 pub fn skene_foundation::Platform::set_selection(skene_foundation::NodeId, skene_foundation::TextSelection)
 pub fn skene_foundation::Platform::set_text(skene_foundation::NodeId, &str)
 pub fn skene_foundation::Platform::set_value(skene_foundation::NodeId, &str)
+pub fn skene_foundation::Platform::set_window_title(core::option::Option<&str>)
 pub fn skene_foundation::Platform::update_access(skene_foundation::NodeId, &[skene_foundation::AccessProp])
 pub fn skene_foundation::Platform::update_box(skene_foundation::NodeId, skene_foundation::Slot, &skene_foundation::StaticLeaf<skene_foundation::BoxValue<Self::Scalar, Self::StyleExt>>)
 pub fn skene_foundation::Platform::update_focus_order(skene_foundation::NodeId, core::option::Option<skene_foundation::FocusOrder>)

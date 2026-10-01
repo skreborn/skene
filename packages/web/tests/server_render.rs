@@ -926,7 +926,7 @@ impl skene_web::tracing::Subscriber for Warnings {
 /// misses the streamed page and is warned about.
 #[test]
 fn a_title_registered_after_the_shell_is_warned_about() {
-  use skene_web::head;
+  use skene_web::window;
 
   let warnings = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
   let stream = skene_web::tracing::subscriber::with_default(
@@ -942,7 +942,7 @@ fn a_title_registered_after_the_shell_is_warned_about() {
 
           derived(move || {
             if data.with(|value| value.is_some()) {
-              head::set_title("Late");
+              window::set_title("Late");
             }
 
             Text::new("x").build()

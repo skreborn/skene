@@ -111,6 +111,7 @@ use skene_web::{
   reactive::{Get, Owner, Set, Signal},
   testing::{computed, dispatch, document, fresh_root, next_frame, only_child, wait},
   wasm_bindgen::JsCast,
+  window,
 };
 use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
 use web_sys::{Element, HtmlElement, HtmlInputElement};
@@ -1168,7 +1169,7 @@ fn checkbox_binding_round_trips() {
 fn head_registrations_apply_once() {
   let (_guard, _root) = fresh_root();
 
-  head::set_title("Live title");
+  window::set_title("Live title");
   head::set_language("fr");
   head::add_meta("live-test", "value");
   head::add_meta("live-test", "value");
@@ -1220,11 +1221,11 @@ fn head_registrations_leave_with_their_owner() {
   };
 
   outer.enter(|| {
-    head::set_title("Outer");
+    window::set_title("Outer");
     head::add_meta("scoped-test", "outer");
   });
   inner.enter(|| {
-    head::set_title("Inner");
+    window::set_title("Inner");
     head::add_meta("scoped-test", "inner");
   });
 

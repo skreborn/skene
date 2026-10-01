@@ -148,9 +148,15 @@ fn an_em_is_the_typography_size_in_cells() {
     let _ = terminal::mount(|| {
       Column::new()
         .set_children((
-          Row::new().set_children((Container::new().set_width(Expr::em(3.)), Text::new("x"))),
+          Row::new().set_children((
+            Container::new().set_width(Expr::font_size(3.)),
+            Text::new("x"),
+          )),
           Theme::new(Typography::default().set_size(2.)).set_child_builder(|| {
-            Row::new().set_children((Container::new().set_width(Expr::em(3.)), Text::new("y")))
+            Row::new().set_children((
+              Container::new().set_width(Expr::font_size(3.)),
+              Text::new("y"),
+            ))
           }),
         ))
         .into_any()

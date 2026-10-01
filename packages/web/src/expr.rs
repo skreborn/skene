@@ -21,11 +21,19 @@ fn operand(node: &ExprNode) -> String {
   match node {
     ExprNode::Number(value) => value.to_string(),
     ExprNode::Length(value) => format!("{value}px"),
-    ExprNode::ViewportWidth(percent) => format!("{percent}vw"),
-    ExprNode::ViewportHeight(percent) => format!("{percent}vh"),
-    ExprNode::ContainerWidth(percent) => format!("{percent}cqw"),
-    ExprNode::ContainerHeight(percent) => format!("{percent}cqh"),
-    ExprNode::Em(multiple) => format!("{multiple}em"),
+    ExprNode::ViewportWidth(fraction) => {
+      format!("{}vw", Declarations::render_percentage(*fraction))
+    }
+    ExprNode::ViewportHeight(fraction) => {
+      format!("{}vh", Declarations::render_percentage(*fraction))
+    }
+    ExprNode::ContainerWidth(fraction) => {
+      format!("{}cqw", Declarations::render_percentage(*fraction))
+    }
+    ExprNode::ContainerHeight(fraction) => {
+      format!("{}cqh", Declarations::render_percentage(*fraction))
+    }
+    ExprNode::FontSize(multiple) => format!("{multiple}em"),
     ExprNode::SafeArea(edge) => format!(
       "env(safe-area-inset-{}, 0px)",
       match edge {
@@ -49,7 +57,7 @@ fn operand(node: &ExprNode) -> String {
       "color-mix(in oklab, {}, {} {}%)",
       operand(lhs),
       operand(rhs),
-      percent(*amount),
+      Declarations::render_percentage(*amount),
     ),
     ExprNode::WithAlpha(color, alpha) => {
       format!("oklch(from {} l c h / {alpha})", operand(color))
@@ -85,16 +93,6 @@ fn sum(node: &ExprNode) -> String {
 }
 
 /// A fraction (`0.` to `1.`) as a percentage number, narrowed so `0.1` reads `10`.
-fn percent(value: f32) -> f32 {
-  #[expect(
-    clippy::cast_possible_truncation,
-    reason = "a fraction's percentage is precise enough in f32"
-  )]
-  let percent = (f64::from(value) * 100.) as f32;
-
-  percent
-}
-
 #[cfg(test)]
 mod tests {
   use skene_foundation::{Color, Edge, Expr, Length, TokenRef};
@@ -106,7 +104,8 @@ mod tests {
   /// functions take their operands bare.
   #[test]
   fn arithmetic_renders_as_calc() {
-    let width = (Expr::<Length>::vw(50.) + 10.) * Expr::from(TokenRef::<f32>::new("ratio"));
+    let width =
+      (Expr::<Length>::viewport_width(0.5) + 10.) * Expr::from(TokenRef::<f32>::new("ratio"));
 
     assert_eq!(
       render_expr(width.node()),
@@ -115,13 +114,17 @@ mod tests {
     assert_eq!(
       render_expr(
         Expr::from(TokenRef::<Length>::new("gutter"))
-          .clamp(Expr::cqw(10.), 40.)
+          .clamp(Expr::container_width(0.1), 40.)
           .node()
       ),
       "clamp(10cqw, var(--gutter), 40px)"
     );
     assert_eq!(
-      render_expr(Expr::<Length>::em(1.).min(Expr::vh(2.) / 3.).node()),
+      render_expr(
+        Expr::<Length>::font_size(1.)
+          .min(Expr::viewport_height(0.02) / 3.)
+          .node()
+      ),
       "min(1em, 2vh / 3)"
     );
   }

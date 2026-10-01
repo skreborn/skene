@@ -214,9 +214,8 @@ impl<A> Timers<A> {
   note = "`Painted` and embeds are outside `Platform`; a platform offers them through its own extension traits"
 )]
 pub trait Platform: Copy + Default + 'static {
-  /// The font size an `em` evaluates against where no typography defines one, in the
-  /// medium's unit.
-  const EM: f32;
+  /// The font size in force where no typography defines one, in the medium's unit.
+  const FONT_SIZE: f32;
 
   /// The unit lengths are measured in.
   type Scalar: Scalar;

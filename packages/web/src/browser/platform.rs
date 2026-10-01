@@ -259,7 +259,7 @@ fn position_at_anchor(popup: &HtmlElement, anchor: &Element, sink: NodeId, place
 }
 
 impl Platform for Web {
-  const EM: f32 = 16.;
+  const FONT_SIZE: f32 = 16.;
 
   type Scalar = f32;
   type StyleExt = WebStyle;

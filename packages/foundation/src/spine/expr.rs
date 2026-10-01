@@ -72,7 +72,7 @@ impl Quantity for Number {
 /// ```compile_fail,E0277
 /// use skene_foundation::{Expr, Length};
 ///
-/// let width = Expr::<Length>::vw(50.);
+/// let width = Expr::<Length>::viewport_width(0.5);
 /// let _area = width.clone() * width;
 /// ```
 #[must_use]
@@ -143,9 +143,9 @@ impl<T> Debug for Expr<T> {
 
 /// One node of an expression tree.
 ///
-/// Lengths are in the facade's scalar unit; the relative units are percentages of their
-/// reference, and `Em` a multiple of the font size. Color amounts follow the [`Color`]
-/// helpers they evaluate through.
+/// Lengths are in the facade's scalar unit; the relative lengths are fractions of their
+/// reference, and `FontSize` a multiple of the font size. Color amounts follow the
+/// [`Color`] helpers they evaluate through.
 #[derive(Debug, Clone, PartialEq)]
 #[must_use]
 pub enum ExprNode {
@@ -153,16 +153,16 @@ pub enum ExprNode {
   Number(f32),
   /// A length, in the facade's scalar unit.
   Length(f32),
-  /// A percentage of the viewport's width.
+  /// A fraction of the viewport's width.
   ViewportWidth(f32),
-  /// A percentage of the viewport's height.
+  /// A fraction of the viewport's height.
   ViewportHeight(f32),
-  /// A percentage of the nearest named container's width; the viewport's without one.
+  /// A fraction of the nearest named container's width; the viewport's without one.
   ContainerWidth(f32),
-  /// A percentage of the nearest named container's height; the viewport's without one.
+  /// A fraction of the nearest named container's height; the viewport's without one.
   ContainerHeight(f32),
   /// A multiple of the font size in force.
-  Em(f32),
+  FontSize(f32),
   /// The inset the display keeps clear at an edge of the viewport.
   SafeArea(Edge),
   /// A token's value.
@@ -210,13 +210,11 @@ impl ExprNode {
     match self {
       Self::Number(value) => Some(ExprValue::Number(*value)),
       Self::Length(value) => Some(ExprValue::Length(*value)),
-      Self::ViewportWidth(percent) => Some(ExprValue::Length(env.viewport.width * percent / 100.)),
-      Self::ViewportHeight(percent) => {
-        Some(ExprValue::Length(env.viewport.height * percent / 100.))
-      }
-      Self::ContainerWidth(percent) => Some(ExprValue::Length(container.width * percent / 100.)),
-      Self::ContainerHeight(percent) => Some(ExprValue::Length(container.height * percent / 100.)),
-      Self::Em(multiple) => Some(ExprValue::Length(env.em * multiple)),
+      Self::ViewportWidth(fraction) => Some(ExprValue::Length(env.viewport.width * fraction)),
+      Self::ViewportHeight(fraction) => Some(ExprValue::Length(env.viewport.height * fraction)),
+      Self::ContainerWidth(fraction) => Some(ExprValue::Length(container.width * fraction)),
+      Self::ContainerHeight(fraction) => Some(ExprValue::Length(container.height * fraction)),
+      Self::FontSize(multiple) => Some(ExprValue::Length(env.font_size * multiple)),
       Self::SafeArea(edge) => Some(ExprValue::Length(env.safe_area.edge(*edge))),
       Self::Token(name) => resolve(*name),
       Self::Color(color) => Some(ExprValue::Color(*color)),
@@ -278,7 +276,7 @@ impl Hash for ExprNode {
       | Self::ViewportHeight(value)
       | Self::ContainerWidth(value)
       | Self::ContainerHeight(value)
-      | Self::Em(value) => state.write_u64(value.hash_bits()),
+      | Self::FontSize(value) => state.write_u64(value.hash_bits()),
       Self::SafeArea(edge) => edge.hash(state),
       Self::Token(name) => name.hash(state),
       Self::Color(color) => color.hash(state),
@@ -390,7 +388,7 @@ pub struct ExprEnv {
   /// The nearest named container's size, when the node is inside one.
   pub container: Option<Size<f32>>,
   /// The font size in force, in the facade's scalar unit.
-  pub em: f32,
+  pub font_size: f32,
   /// The insets the display keeps clear of the viewport's edges, in the facade's scalar
   /// unit.
   pub safe_area: Inset<f32>,
@@ -597,28 +595,30 @@ impl From<TokenRef<f32>> for Expr<Number> {
 }
 
 impl Expr<Length> {
-  /// `percent` of the viewport's width.
+  /// `fraction` of the viewport's width: `0.5` is half of it.
   #[inline(always)]
-  pub const fn vw(percent: f32) -> Self {
-    Self::from_node(ExprNode::ViewportWidth(percent))
+  pub const fn viewport_width(fraction: f32) -> Self {
+    Self::from_node(ExprNode::ViewportWidth(fraction))
   }
 
-  /// `percent` of the viewport's height.
+  /// `fraction` of the viewport's height: `0.5` is half of it.
   #[inline(always)]
-  pub const fn vh(percent: f32) -> Self {
-    Self::from_node(ExprNode::ViewportHeight(percent))
+  pub const fn viewport_height(fraction: f32) -> Self {
+    Self::from_node(ExprNode::ViewportHeight(fraction))
   }
 
-  /// `percent` of the nearest named container's width; the viewport's without one.
+  /// `fraction` of the nearest named container's width, the viewport's without one:
+  /// `0.5` is half of it.
   #[inline(always)]
-  pub const fn cqw(percent: f32) -> Self {
-    Self::from_node(ExprNode::ContainerWidth(percent))
+  pub const fn container_width(fraction: f32) -> Self {
+    Self::from_node(ExprNode::ContainerWidth(fraction))
   }
 
-  /// `percent` of the nearest named container's height; the viewport's without one.
+  /// `fraction` of the nearest named container's height, the viewport's without one:
+  /// `0.5` is half of it.
   #[inline(always)]
-  pub const fn cqh(percent: f32) -> Self {
-    Self::from_node(ExprNode::ContainerHeight(percent))
+  pub const fn container_height(fraction: f32) -> Self {
+    Self::from_node(ExprNode::ContainerHeight(fraction))
   }
 
   /// The inset the display keeps clear at `edge` of the viewport—for a notch, rounded
@@ -630,8 +630,8 @@ impl Expr<Length> {
 
   /// `multiple` of the font size in force.
   #[inline(always)]
-  pub const fn em(multiple: f32) -> Self {
-    Self::from_node(ExprNode::Em(multiple))
+  pub const fn font_size(multiple: f32) -> Self {
+    Self::from_node(ExprNode::FontSize(multiple))
   }
 }
 
@@ -865,7 +865,7 @@ mod tests {
     ExprEnv {
       viewport: Size::new(1000., 500.),
       container: Some(Size::new(200., 100.)),
-      em: 16.,
+      font_size: 16.,
       safe_area: Inset {
         top: 44.,
         right: 0.,
@@ -888,7 +888,7 @@ mod tests {
   /// in the property type of either facade.
   #[test]
   fn clamp_over_a_token_and_a_container_unit() {
-    let expr = Expr::from(TokenRef::<Length>::new("gutter")).clamp(Expr::cqw(10.), 40.);
+    let expr = Expr::from(TokenRef::<Length>::new("gutter")).clamp(Expr::container_width(0.1), 40.);
 
     assert_eq!(
       Expr::<Dimension<f32>>::from(expr.clone()).evaluate(&env(), &tokens),
@@ -928,15 +928,16 @@ mod tests {
   /// Ring arithmetic follows the environment, and a missing token yields nothing.
   #[test]
   fn arithmetic_follows_the_environment() {
-    let width = (Expr::<Length>::vw(50.) + 10.) * Expr::from(TokenRef::<f32>::new("ratio"));
+    let width =
+      (Expr::<Length>::viewport_width(0.5) + 10.) * Expr::from(TokenRef::<f32>::new("ratio"));
 
     assert_eq!(width.evaluate(&env(), &tokens), Some(Length(765.)));
     assert_eq!(
-      (Expr::<Length>::em(2.) / 4.).evaluate(&env(), &tokens),
+      (Expr::<Length>::font_size(2.) / 4.).evaluate(&env(), &tokens),
       Some(Length(8.))
     );
     assert_eq!(
-      (Expr::<Length>::vh(10.) - Expr::from(TokenRef::<Length>::new("missing")))
+      (Expr::<Length>::viewport_height(0.1) - Expr::from(TokenRef::<Length>::new("missing")))
         .evaluate(&env(), &tokens),
       None
     );
@@ -954,7 +955,10 @@ mod tests {
       ..env()
     };
 
-    assert_eq!(Expr::cqh(50.).evaluate(&env, &tokens), Some(Length(250.)));
+    assert_eq!(
+      Expr::container_height(0.5).evaluate(&env, &tokens),
+      Some(Length(250.))
+    );
   }
 
   /// Mixing interpolates every Oklab component linearly toward the other color.
@@ -1001,7 +1005,7 @@ mod tests {
   /// Equal trees compare and hash alike whatever their phantom.
   #[test]
   fn trees_compare_by_structure() {
-    let make = || Expr::<Length>::vw(10.).min(Expr::em(1.)) + 4.;
+    let make = || Expr::<Length>::viewport_width(0.1).min(Expr::font_size(1.)) + 4.;
 
     assert_eq!(make(), make());
     assert_ne!(make(), make() + 1.);

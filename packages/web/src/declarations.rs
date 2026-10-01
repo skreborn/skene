@@ -118,18 +118,35 @@ impl Declarations {
   }
 
   /// Renders a fraction (`0.` to `1.`) as CSS percentage text.
-  ///
-  /// Widened for the multiply, then narrowed back so `0.1` renders as `10`, not
-  /// `10.000001`.
   #[must_use]
   fn render_fraction(value: f32) -> String {
-    #[expect(
-      clippy::cast_possible_truncation,
-      reason = "a fraction's percentage is precise enough in f32"
-    )]
-    let percent = (f64::from(value) * 100.) as f32;
+    format!("{}%", Self::render_percentage(value))
+  }
 
-    format!("{percent}%")
+  /// Renders a fraction as the number of its percentage, in the fraction's own digits:
+  /// `0.3` renders as `30`, never `30.000002`.
+  #[must_use]
+  pub(crate) fn render_percentage(fraction: f32) -> String {
+    let text = fraction.to_string();
+    let (sign, digits) = match text.strip_prefix('-') {
+      Some(digits) => ("-", digits),
+      None => ("", text.as_str()),
+    };
+    let (whole, decimals) = digits.split_once('.').unwrap_or((digits, ""));
+    let decimals = format!("{decimals:0<2}");
+    let (shifted, rest) = decimals.split_at(2);
+    let whole = format!("{whole}{shifted}");
+    let whole = match whole.trim_start_matches('0') {
+      "" => "0",
+      trimmed => trimmed,
+    };
+
+    if rest.is_empty() {
+      format!("{sign}{whole}")
+    }
+    else {
+      format!("{sign}{whole}.{rest}")
+    }
   }
 
   /// Renders a [`Dimension`] to its CSS length text.
@@ -358,6 +375,22 @@ mod tests {
       Ident("x}</style><img src=x>").to_string(),
       "x\\}\\<\\/style\\>\\<img\\ src\\=x\\>"
     );
+  }
+
+  /// A fraction's percentage keeps the fraction's own digits, whatever its size or sign.
+  #[test]
+  fn a_percentage_keeps_the_fractions_digits() {
+    for (fraction, percentage) in [
+      (0.3, "30"),
+      (0.125, "12.5"),
+      (1., "100"),
+      (0., "0"),
+      (0.005, "0.5"),
+      (12.5, "1250"),
+      (-0.3, "-30"),
+    ] {
+      assert_eq!(Declarations::render_percentage(fraction), percentage);
+    }
   }
 
   /// Identical sets render identically regardless of insertion order, so they dedup.

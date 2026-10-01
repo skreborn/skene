@@ -90,7 +90,7 @@ pub(crate) fn root_node() -> Option<NodeId> {
 }
 
 impl Platform for Terminal {
-  const EM: f32 = 1.;
+  const FONT_SIZE: f32 = 1.;
 
   type Scalar = u32;
   type StyleExt = TerminalStyle;

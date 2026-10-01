@@ -183,15 +183,14 @@ left half-done in a code comment.
     - A shell per platform: the facades' views and Simple's, newtypes implementing the
     traits of the core beneath them, stay on probation against writing each platform's
     views by hand.
-    - Vocabulary: `Expr::vw`, `vh`, `cqw`, `cqh` and `em` become `viewport_width(0.5)`
-    and its kin, fractions from 0 to 1; `Role`'s HTML sections become ARIA's `Banner`,
-    `ContentInfo`, `Complementary` and `Region`; `LinkAnnotation`'s `NoFollow`,
-    `Sponsored` and `Ugc` and the opener and referrer policy move to the web escape;
-    `Role::is_spelled` leaves the spine; `Inset` and `Spacing` take logical
-    `start`/`end` and `horizontal`/`vertical` before internationalization makes that
-    breaking; `set_background` ends `set_color` meaning the background on `Container`.
-    `display` joins the lint's banned words, which then read the names the `api/`
-    snapshots list, re-exports included, rather than the sources' own items.
+    - Vocabulary: `Role`'s HTML sections become ARIA's `Banner`, `ContentInfo`,
+    `Complementary` and `Region`; `LinkAnnotation`'s `NoFollow`, `Sponsored` and `Ugc`
+    and the opener and referrer policy move to the web escape; `Role::is_spelled` leaves
+    the spine; `Inset` and `Spacing` take logical `start`/`end` and
+    `horizontal`/`vertical` before internationalization makes that breaking;
+    `set_background` ends `set_color` meaning the background on `Container`. `display`
+    joins the lint's banned words, which then read the names the `api/` snapshots list,
+    re-exports included, rather than the sources' own items.
     - Shapes: one setter per property for `Flexible` (`set_flexibility(impl
     Into<Value<Flexibility>>)`), the slider (`set_range`, `derive_range`) and
     `Animation` (iterations, alternation, reduced motion); appending setters named

@@ -350,8 +350,8 @@ pub struct Resolver<'a, N: Scalar, X: StyleExtension = ()> {
   pub interaction_read: &'a Cell<bool>,
   /// The named containers above the node, nearest first, with their measured sizes.
   pub containers: &'a [(ContainerName, Option<Size<N>>)],
-  /// The font size an `em` evaluates against.
-  pub em: f32,
+  /// The font size in force, which a multiple of the font size evaluates against.
+  pub font_size: f32,
   /// The value of the token in force at the node, resolved where it is defined.
   pub token: &'a dyn Fn(TokenName) -> Option<Resolved<N>>,
   /// The node's latest derived write into a slot.
@@ -470,7 +470,7 @@ impl<N: Scalar, X: StyleExtension> Resolver<'_, N, X> {
       container: self
         .container(None)
         .map(|size| Size::new(size.width.to_f32(), size.height.to_f32())),
-      em: self.em,
+      font_size: self.font_size,
       safe_area: Inset {
         top: self.environment.safe_area.top.to_f32(),
         right: self.environment.safe_area.right.to_f32(),
@@ -769,7 +769,8 @@ pub trait ResolutionSource<P: Platform> {
   /// The latest derived write into `slot` on `node`.
   fn slot(&self, node: NodeId, slot: Slot) -> Option<SlotLeaf<P::Scalar, P::StyleExt>>;
 
-  /// Whether the medium draws text at sizes other than [`EM`](Platform::EM), the
+  /// Whether the medium draws text at sizes other than its
+  /// [`FONT_SIZE`](Platform::FONT_SIZE), the
   /// typography's [`SIZE`](typography::SIZE) then giving the font size.
   fn sizes_text(&self) -> bool;
 
@@ -892,16 +893,16 @@ where
 
   /// The font size in force here: the typography's [`SIZE`](typography::SIZE), resolved
   /// where it is defined once per defining node, where the source sizes text, else the
-  /// platform's [`EM`](Platform::EM).
+  /// platform's [`FONT_SIZE`](Platform::FONT_SIZE).
   fn font_size(&self) -> f32 {
     if !self.source.sizes_text() {
-      return P::EM;
+      return P::FONT_SIZE;
     }
 
     let size = typography::SIZE.name();
     let Some(scope) = self.token_scope(size)
     else {
-      return P::EM;
+      return P::FONT_SIZE;
     };
     let generation = self.source.generation();
 
@@ -913,13 +914,13 @@ where
       let definition = Scene::<P>::read(|scene| scene.definition_on(scope, size))?;
 
       Self::of_scope(self.source, scope)?
-        .with_resolver_at(P::EM, |resolver| resolver.definition(&definition))
+        .with_resolver_at(P::FONT_SIZE, |resolver| resolver.definition(&definition))
     })
     .and_then(|resolved| match resolved {
       Resolved::Length(size) => Some(size),
       _ => None,
     })
-    .unwrap_or(P::EM);
+    .unwrap_or(P::FONT_SIZE);
 
     Scene::<P>::with(|scene| scene.keep_font_size(scope, generation, resolved));
 
@@ -943,11 +944,11 @@ where
     self.with_resolver_at(self.font_size(), operation)
   }
 
-  /// Runs `operation` with the resolver of this context, an `em` evaluating against
-  /// `em`.
+  /// Runs `operation` with the resolver of this context, a multiple of the font size
+  /// evaluating against `font_size`.
   fn with_resolver_at<R>(
     &self,
-    em: f32,
+    font_size: f32,
     operation: impl FnOnce(&Resolver<'_, P::Scalar, P::StyleExt>) -> R,
   ) -> R {
     let token = |name| self.token(name);
@@ -958,7 +959,7 @@ where
       interaction: self.interaction,
       interaction_read: &self.interaction_read,
       containers: &self.containers,
-      em,
+      font_size,
       token: &token,
       slot: &slot,
     })

@@ -29,7 +29,7 @@ impl skene_foundation::spine::platform::Platform for skene_headless::Headless
 pub type skene_headless::Headless::Scalar = f32
 pub type skene_headless::Headless::StyleExt = skene_foundation::web::ext::WebStyle
 pub type skene_headless::Headless::TokenValue = skene_foundation::spine::resolve::TokenValue<f32>
-pub const skene_headless::Headless::EM: f32
+pub const skene_headless::Headless::FONT_SIZE: f32
 pub fn skene_headless::Headless::attach(skene_foundation::spine::node::NodeId, skene_foundation::spine::node::NodeId, core::option::Option<skene_foundation::spine::node::NodeId>)
 pub fn skene_headless::Headless::blur(skene_foundation::spine::node::NodeId)
 pub fn skene_headless::Headless::cancel(skene_foundation::spine::platform::Timer)

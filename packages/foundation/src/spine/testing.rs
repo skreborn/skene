@@ -131,7 +131,7 @@ impl TestPlatform {
 }
 
 impl Platform for TestPlatform {
-  const EM: f32 = 16.;
+  const FONT_SIZE: f32 = 16.;
 
   type Scalar = f32;
   type StyleExt = ();

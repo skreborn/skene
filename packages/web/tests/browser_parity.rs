@@ -159,7 +159,7 @@ impl Default for ParityPalette {
         Self::SHADE.name().as_str(),
         Expr::from(Self::SURFACE).lighter(0.2),
       ),
-      indent: Token::new(Self::INDENT.name().as_str(), Expr::<Length>::em(2.)),
+      indent: Token::new(Self::INDENT.name().as_str(), Expr::<Length>::font_size(2.)),
     }
   }
 }
@@ -249,7 +249,7 @@ enum Case {
   ViewportWidth,
   ClampedWidth,
   CrossedClampWidth,
-  EmWidth,
+  FontSizeWidth,
   TokenWidth,
   LengthTokenWidth,
   LengthTokenExpressionWidth,
@@ -299,7 +299,7 @@ const CASES: &[Case] = &[
   Case::ViewportWidth,
   Case::ClampedWidth,
   Case::CrossedClampWidth,
-  Case::EmWidth,
+  Case::FontSizeWidth,
   Case::TokenWidth,
   Case::LengthTokenWidth,
   Case::LengthTokenExpressionWidth,
@@ -355,7 +355,7 @@ impl Case {
       | Self::ViewportWidth
       | Self::ClampedWidth
       | Self::CrossedClampWidth
-      | Self::EmWidth
+      | Self::FontSizeWidth
       | Self::TokenWidth
       | Self::LengthTokenWidth
       | Self::LengthTokenExpressionWidth
@@ -394,7 +394,7 @@ impl Case {
         .set_container_name(BOX)
         .set_child(
           Container::<P>::new()
-            .set_width(Expr::cqw(25.))
+            .set_width(Expr::container_width(0.25))
             .set_accessibility(target()),
         )
         .into_any(),
@@ -463,10 +463,10 @@ impl Case {
         container.set_color(Value::from(blue()).when(Condition::from(Media::Dark), orange()))
       }
       Self::FixedWidth => container.set_width(Dimension::Length(120.)),
-      Self::ViewportWidth => container.set_width(Expr::vw(10.)),
+      Self::ViewportWidth => container.set_width(Expr::viewport_width(0.1)),
       Self::ClampedWidth => container.set_width(Expr::<Length>::from(100.).clamp(20., 80.)),
       Self::CrossedClampWidth => container.set_width(Expr::<Length>::from(50.).clamp(80., 20.)),
-      Self::EmWidth => container.set_width(Expr::em(3.)),
+      Self::FontSizeWidth => container.set_width(Expr::font_size(3.)),
       Self::TokenWidth => container.set_width(ParityPalette::WIDE),
       Self::LengthTokenWidth => container.set_width(ParityPalette::GAP),
       Self::LengthTokenExpressionWidth => container.set_width(Expr::from(ParityPalette::GAP) * 3.),

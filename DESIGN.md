@@ -608,7 +608,7 @@ Condition     = Media | State | And | Or
 - **Terminal** (and native) resolve every property at one point through the spine's
   `Resolver`—variant overlay against the environment and the node's `Interaction`, token
   lookup through the scene, expression evaluation, slot reads—handing it the medium's
-  unit, its token and slot lookups and its `em`. The terminal caches the result per
+  unit, its token and slot lookups and its font size. The terminal caches the result per
   node under a generation covering environment, interaction and definitions, and
   reports whether the resolved value changed; that report is where a transition
   starts. The headless platform resolves through the same `Resolver`, so a test's answer

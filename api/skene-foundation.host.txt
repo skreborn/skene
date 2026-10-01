@@ -2210,7 +2210,7 @@ pub skene_foundation::ExprNode::ContainerHeight(f32)
 pub skene_foundation::ExprNode::ContainerWidth(f32)
 pub skene_foundation::ExprNode::Darker(alloc::boxed::Box<Self>, f32)
 pub skene_foundation::ExprNode::Div(alloc::boxed::Box<Self>, alloc::boxed::Box<Self>)
-pub skene_foundation::ExprNode::Em(f32)
+pub skene_foundation::ExprNode::FontSize(f32)
 pub skene_foundation::ExprNode::Length(f32)
 pub skene_foundation::ExprNode::Lighter(alloc::boxed::Box<Self>, f32)
 pub skene_foundation::ExprNode::Max(alloc::boxed::Box<Self>, alloc::boxed::Box<Self>)
@@ -4249,12 +4249,12 @@ pub fn skene_foundation::Expr<skene_foundation::Color>::with_alpha(self, f32) ->
 pub fn skene_foundation::Expr<skene_foundation::Color>::with_chroma(self, f32) -> Self
 pub fn skene_foundation::Expr<skene_foundation::Color>::with_hue(self, f32) -> Self
 impl skene_foundation::Expr<skene_foundation::Length>
-pub const fn skene_foundation::Expr<skene_foundation::Length>::cqh(f32) -> Self
-pub const fn skene_foundation::Expr<skene_foundation::Length>::cqw(f32) -> Self
-pub const fn skene_foundation::Expr<skene_foundation::Length>::em(f32) -> Self
+pub const fn skene_foundation::Expr<skene_foundation::Length>::container_height(f32) -> Self
+pub const fn skene_foundation::Expr<skene_foundation::Length>::container_width(f32) -> Self
+pub const fn skene_foundation::Expr<skene_foundation::Length>::font_size(f32) -> Self
 pub const fn skene_foundation::Expr<skene_foundation::Length>::safe_area(skene_foundation::Edge) -> Self
-pub const fn skene_foundation::Expr<skene_foundation::Length>::vh(f32) -> Self
-pub const fn skene_foundation::Expr<skene_foundation::Length>::vw(f32) -> Self
+pub const fn skene_foundation::Expr<skene_foundation::Length>::viewport_height(f32) -> Self
+pub const fn skene_foundation::Expr<skene_foundation::Length>::viewport_width(f32) -> Self
 impl<Q: skene_foundation::Quantity> skene_foundation::Expr<Q>
 pub fn skene_foundation::Expr<Q>::clamp(self, impl core::convert::Into<Self>, impl core::convert::Into<Self>) -> Self
 pub fn skene_foundation::Expr<Q>::max(self, impl core::convert::Into<Self>) -> Self
@@ -4376,7 +4376,7 @@ impl<T> core::hash::Hash for skene_foundation::Expr<T>
 pub fn skene_foundation::Expr<T>::hash<H: core::hash::Hasher>(&self, &mut H)
 pub struct skene_foundation::ExprEnv
 pub skene_foundation::ExprEnv::container: core::option::Option<skene_foundation::Size<f32>>
-pub skene_foundation::ExprEnv::em: f32
+pub skene_foundation::ExprEnv::font_size: f32
 pub skene_foundation::ExprEnv::safe_area: skene_foundation::Inset<f32>
 pub skene_foundation::ExprEnv::viewport: skene_foundation::Size<f32>
 impl core::clone::Clone for skene_foundation::ExprEnv
@@ -5718,8 +5718,8 @@ impl<P: skene_foundation::Platform, S> core::fmt::Debug for skene_foundation::Re
 pub fn skene_foundation::ResolutionContext<'_, P, S>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_foundation::Resolver<'a, N: skene_foundation::Scalar, X: skene_foundation::StyleExtension>
 pub skene_foundation::Resolver::containers: &'a [(skene_foundation::ContainerName, core::option::Option<skene_foundation::Size<N>>)]
-pub skene_foundation::Resolver::em: f32
 pub skene_foundation::Resolver::environment: skene_foundation::Environment<N>
+pub skene_foundation::Resolver::font_size: f32
 pub skene_foundation::Resolver::interaction: skene_foundation::Interaction
 pub skene_foundation::Resolver::interaction_read: &'a core::cell::Cell<bool>
 pub skene_foundation::Resolver::slot: &'a dyn core::ops::function::Fn(skene_foundation::Slot) -> core::option::Option<skene_foundation::SlotLeaf<N, X>>
@@ -8261,7 +8261,7 @@ pub trait skene_foundation::Platform: core::marker::Copy + core::default::Defaul
 pub type skene_foundation::Platform::Scalar: skene_foundation::Scalar
 pub type skene_foundation::Platform::StyleExt: skene_foundation::StyleExtension
 pub type skene_foundation::Platform::TokenValue: core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug + core::convert::From<skene_foundation::Definition<skene_foundation::Color, Self::Scalar>> + core::convert::From<skene_foundation::Definition<f32, Self::Scalar>> + core::convert::From<skene_foundation::Definition<skene_foundation::Length, Self::Scalar>> + core::convert::From<skene_foundation::Definition<skene_foundation::Dimension<Self::Scalar>, Self::Scalar>> + 'static
-pub const skene_foundation::Platform::EM: f32
+pub const skene_foundation::Platform::FONT_SIZE: f32
 pub fn skene_foundation::Platform::apply_layout(skene_foundation::NodeId, &skene_foundation::StaticBoxStyle<Self>)
 pub fn skene_foundation::Platform::attach(skene_foundation::NodeId, skene_foundation::NodeId, core::option::Option<skene_foundation::NodeId>)
 pub fn skene_foundation::Platform::blur(skene_foundation::NodeId)

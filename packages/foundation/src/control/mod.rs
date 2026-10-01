@@ -487,7 +487,7 @@ impl<P: Platform, B: Behavior<P>> Control<P, B> {
     });
 
     inner.style_mut().item_alignment = Some(ItemAlignment::Center.into());
-    inner.style_mut().spacing = Some(Expr::em(0.5).into());
+    inner.style_mut().spacing = Some(Expr::font_size(0.5).into());
 
     Self {
       behavior,

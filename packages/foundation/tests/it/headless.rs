@@ -532,7 +532,7 @@ fn expressions_resolve_over_tokens_and_the_environment() {
       .set_child_builder(|| {
         Container::new()
           .set_color(Expr::from(TestPalette::CARD).with_alpha(0.5))
-          .set_width(Expr::<Length>::vw(50.))
+          .set_width(Expr::<Length>::viewport_width(0.5))
           .set_padding(Inset::all(4.))
       })
       .build()

@@ -177,6 +177,14 @@ impl<P: Platform> Scene<P> {
   /// no segment after. A node detached earlier takes back the focus it held when it
   /// left, where focus has gone nowhere since.
   pub fn attach(&mut self, parent: NodeId, child: NodeId, before: Option<NodeId>) {
+    if self.record(parent).is_none() {
+      return;
+    }
+
+    if self.parent(child).is_none() {
+      self.unlink(child, Departure::Hide);
+    }
+
     if let Some(record) = self.record_mut(child) {
       record.enclosing = None;
     }
@@ -303,12 +311,20 @@ impl<P: Platform> Scene<P> {
   }
 
   /// Hides `node`, mounted in the segment `start` begins or built for it, leaving it
-  /// detached but live.
+  /// detached but live; nothing for a node mounted in another segment.
   pub fn remove_from_segment(&mut self, start: NodeId, node: NodeId) {
     let Some((parent, _)) = self.segment_place(start)
     else {
       return;
     };
+
+    if self
+      .record(node)
+      .and_then(|record| record.enclosing)
+      .is_some_and(|enclosing| enclosing != start)
+    {
+      return;
+    }
 
     if let Some(parent) = parent
       && self.parent(node) == Some(parent)
@@ -749,6 +765,10 @@ impl<P: Platform> Scene<P> {
 
     for node in &content {
       self.unlink(*node, departure);
+
+      if let Some(record) = self.record_mut(*node) {
+        record.enclosing = Some(start);
+      }
     }
 
     if let Some(end) = end {
@@ -773,6 +793,76 @@ mod tests {
     Scene,
     testing::{Call, TestBox, TestPlatform, TestScene, children},
   };
+
+  /// A node waiting in a detached segment and attached elsewhere leaves the segment: the
+  /// segment's destruction takes it no more.
+  #[test]
+  fn attaching_a_waiting_node_takes_it_from_its_segment() {
+    TestPlatform::reset();
+
+    let parent = TestBox::node();
+    let node = TestBox::node();
+    let (start, _) = Scene::<TestPlatform>::create_segment();
+
+    TestScene::with(|scene| {
+      scene.insert_in_segment(start, node, None);
+      scene.attach(parent, node, None);
+      scene.destroy(start);
+    });
+
+    assert!(TestScene::with(|scene| scene.record(node).is_some()));
+    assert_eq!(children(parent), [node]);
+  }
+
+  /// Removing a node from a segment that does not hold it leaves it to the one that
+  /// does, which gives it up once it is attached elsewhere.
+  #[test]
+  fn removing_from_another_segment_changes_nothing() {
+    TestPlatform::reset();
+
+    let elsewhere = TestBox::node();
+    let node = TestBox::node();
+    let (holding, _) = Scene::<TestPlatform>::create_segment();
+    let (other, _) = Scene::<TestPlatform>::create_segment();
+
+    TestScene::with(|scene| {
+      scene.insert_in_segment(holding, node, None);
+      scene.remove_from_segment(other, node);
+      scene.attach(elsewhere, node, None);
+      scene.destroy(holding);
+    });
+
+    assert!(TestScene::with(|scene| scene.record(node).is_some()));
+    assert_eq!(children(elsewhere), [node]);
+  }
+
+  /// A node standing between a segment's anchors is its content: hidden with it, and
+  /// taken from it when attached elsewhere.
+  #[test]
+  fn what_stands_between_the_anchors_is_the_segments() {
+    TestPlatform::reset();
+
+    let parent = TestBox::node();
+    let elsewhere = TestBox::node();
+    let node = TestBox::node();
+    let (start, end) = Scene::<TestPlatform>::create_segment();
+
+    TestScene::with(|scene| {
+      scene.attach(parent, start, None);
+      scene.attach(parent, node, Some(end));
+      scene.detach(parent, start);
+    });
+
+    assert_eq!(TestScene::with(|scene| scene.segment_nodes(start)), [node]);
+
+    TestScene::with(|scene| {
+      scene.attach(elsewhere, node, None);
+      scene.destroy(start);
+    });
+
+    assert!(TestScene::with(|scene| scene.record(node).is_some()));
+    assert_eq!(children(elsewhere), [node]);
+  }
 
   /// Attaching to a destroyed parent, or attaching a destroyed child, changes nothing:
   /// the child stays where it stood.
@@ -1201,5 +1291,252 @@ mod tests {
       children(parent),
       [outer, before, inner, inner_content, inner_end, outer_end]
     );
+  }
+
+  /// One structural change a platform's views make to the scene, over indices into a
+  /// pool of boxes and segments.
+  #[cfg(not(target_arch = "wasm32"))]
+  #[derive(Debug, Clone)]
+  enum Change {
+    Attach(usize, usize, Option<usize>),
+    Detach(usize, usize),
+    Insert(usize, usize, Option<usize>),
+    Remove(usize, usize),
+    Destroy(usize),
+  }
+
+  /// The most links a walk of the pool follows before it is taken for a cycle.
+  #[cfg(not(target_arch = "wasm32"))]
+  const WALK: usize = 64;
+
+  /// The children of `node`, at most [`WALK`] of them.
+  #[cfg(not(target_arch = "wasm32"))]
+  fn bounded_children(scene: &Scene<TestPlatform>, node: NodeId) -> Vec<NodeId> {
+    scene.children(node).take(WALK).collect()
+  }
+
+  /// Whether `ancestor` is `node` or stands above it, at most [`WALK`] links up.
+  #[cfg(not(target_arch = "wasm32"))]
+  fn stands_above(scene: &Scene<TestPlatform>, ancestor: NodeId, node: NodeId) -> bool {
+    let mut current = Some(node);
+
+    for _ in 0..WALK {
+      let Some(visited) = current
+      else {
+        return false;
+      };
+
+      if visited == ancestor {
+        return true;
+      }
+
+      current = scene.parent(visited);
+    }
+
+    true
+  }
+
+  /// The nodes that move with `node`: a segment start's content and end anchor with it,
+  /// and a pending content's nested ones.
+  #[cfg(not(target_arch = "wasm32"))]
+  fn moving(scene: &Scene<TestPlatform>, node: NodeId) -> Vec<NodeId> {
+    moving_within(scene, node, WALK)
+  }
+
+  /// [`moving`], following at most `depth` pending segments down.
+  #[cfg(not(target_arch = "wasm32"))]
+  fn moving_within(scene: &Scene<TestPlatform>, node: NodeId, depth: usize) -> Vec<NodeId> {
+    let Some(end) = scene.segment_end(node).filter(|_| depth > 0)
+    else {
+      return vec![node];
+    };
+
+    if let Some(parent) = scene.parent(node) {
+      return bounded_children(scene, parent)
+        .into_iter()
+        .skip_while(|child| *child != node)
+        .take_while(|child| *child != end)
+        .chain([end])
+        .collect();
+    }
+
+    let pending = scene
+      .record(node)
+      .and_then(|record| record.segment.as_ref())
+      .map(|segment| segment.pending.clone())
+      .unwrap_or_default();
+
+    [node]
+      .into_iter()
+      .chain(
+        pending
+          .into_iter()
+          .flat_map(|pending| moving_within(scene, pending, depth - 1)),
+      )
+      .chain([end])
+      .collect()
+  }
+
+  /// Every link the scene keeps agreeing with every other: each live node stands once
+  /// among its parent's children, the sibling links run both ways to the ends the
+  /// parent names, no node stands under itself, an attached segment's end stands after
+  /// its start under the same parent, and a destroyed node is named by nothing.
+  #[cfg(not(target_arch = "wasm32"))]
+  fn assert_whole(scene: &Scene<TestPlatform>, nodes: &[NodeId]) {
+    for &node in nodes {
+      let Some(record) = scene.record(node)
+      else {
+        continue;
+      };
+      let mut previous = None;
+      let mut next = record.first_child;
+      let mut count = 0;
+
+      while let Some(child) = next {
+        let child_record = scene.record(child).expect("a child is live");
+
+        assert_eq!(child_record.parent, Some(node), "a child names its parent");
+        assert_eq!(
+          child_record.previous_sibling, previous,
+          "siblings link both ways"
+        );
+        previous = Some(child);
+        next = child_record.next_sibling;
+        count += 1;
+
+        assert!(count <= nodes.len(), "the children end");
+      }
+
+      assert_eq!(
+        record.last_child, previous,
+        "the last child is the parent's last"
+      );
+
+      if let Some(parent) = record.parent {
+        assert_eq!(
+          bounded_children(scene, parent)
+            .into_iter()
+            .filter(|child| *child == node)
+            .count(),
+          1,
+          "a node stands once among its parent's children"
+        );
+      }
+
+      let mut ancestor = record.parent;
+      let mut depth = 0;
+
+      while let Some(visited) = ancestor {
+        assert_ne!(visited, node, "no node stands under itself");
+        depth += 1;
+
+        assert!(depth <= nodes.len(), "the ancestry ends");
+
+        ancestor = scene.parent(visited);
+      }
+
+      if let Some(segment) = &record.segment {
+        let end = segment.end;
+
+        assert!(scene.record(end).is_some(), "a live start has a live end");
+        assert_eq!(
+          scene.parent(end),
+          record.parent,
+          "an end stands with its start"
+        );
+
+        if let Some(parent) = record.parent {
+          let order = bounded_children(scene, parent);
+          let start = order.iter().position(|child| *child == node);
+          let end = order.iter().position(|child| *child == end);
+
+          assert!(start < end, "an end stands after its start");
+        }
+      }
+    }
+  }
+
+  #[cfg(not(target_arch = "wasm32"))]
+  use proptest::prelude::*;
+
+  #[cfg(not(target_arch = "wasm32"))]
+  proptest! {
+    /// Any run of attaching, detaching, mounting in and out of segments and destroying
+    /// keeps the scene's links whole.
+    #[test]
+    fn any_run_of_changes_keeps_the_scene_whole(
+      changes in proptest::collection::vec(
+        prop_oneof![
+          4 => (0..9_usize, 0..9_usize, proptest::option::of(0..9_usize))
+            .prop_map(|(parent, child, before)| Change::Attach(parent, child, before)),
+          2 => (0..9_usize, 0..9_usize).prop_map(|(parent, child)| Change::Detach(parent, child)),
+          3 => (0..2_usize, 0..9_usize, proptest::option::of(0..9_usize))
+            .prop_map(|(segment, node, before)| Change::Insert(segment, node, before)),
+          2 => (0..2_usize, 0..9_usize).prop_map(|(segment, node)| Change::Remove(segment, node)),
+          1 => (0..9_usize).prop_map(Change::Destroy),
+        ],
+        0..30,
+      ),
+    ) {
+      TestPlatform::reset();
+
+      let boxes: Vec<NodeId> = (0..5).map(|_| TestBox::node()).collect();
+      let segments = [
+        Scene::<TestPlatform>::create_segment(),
+        Scene::<TestPlatform>::create_segment(),
+      ];
+      let pool: Vec<NodeId> = boxes
+        .iter()
+        .copied()
+        .chain(segments.iter().map(|(start, _)| *start))
+        .chain(segments.iter().map(|(_, end)| *end))
+        .collect();
+
+      for change in changes {
+        TestScene::with(|scene| {
+          let holds = |moved: NodeId, node: NodeId| {
+            moving(scene, moved)
+              .into_iter()
+              .any(|ancestor| stands_above(scene, ancestor, node))
+          };
+
+          match change {
+            Change::Attach(parent, child, before) => {
+              let (parent, child) = (boxes[parent % boxes.len()], pool[child % 7]);
+              let before = before.map(|before| pool[before]);
+
+              if !holds(child, parent)
+                && before.is_none_or(|before| !moving(scene, child).contains(&before))
+              {
+                scene.attach(parent, child, before);
+              }
+            }
+            Change::Detach(parent, child) => {
+              scene.detach(boxes[parent % boxes.len()], pool[child % 7]);
+            }
+            Change::Insert(segment, node, before) => {
+              let start = segments[segment].0;
+              let node = pool[node % 7];
+              let parent = scene.parent(start);
+
+              let before = before.map(|before| pool[before]);
+
+              if !moving(scene, node).contains(&start)
+                && parent.is_none_or(|parent| !holds(node, parent))
+                && before.is_none_or(|before| !moving(scene, node).contains(&before))
+              {
+                scene.insert_in_segment(start, node, before);
+              }
+            }
+            Change::Remove(segment, node) => {
+              scene.remove_from_segment(segments[segment].0, pool[node % 7]);
+            }
+            Change::Destroy(node) => scene.destroy(pool[node % 7]),
+          }
+
+          assert_whole(scene, &pool);
+        });
+      }
+    }
   }
 }

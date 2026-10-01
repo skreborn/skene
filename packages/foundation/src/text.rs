@@ -7,7 +7,7 @@ use crate::{
   NodeId,
   Platform,
   RunBase,
-  RunDisplay,
+  RunPlacement,
   View,
   Wraps,
   realize::Source,
@@ -52,7 +52,7 @@ impl<P: Platform> AnyKind for Text<P> {}
 
 impl<P: Platform> View<P> for Text<P> {
   fn build(self) -> NodeId {
-    let node = self.run.build(RunDisplay::Block);
+    let node = self.run.build(RunPlacement::Line);
 
     self
       .content

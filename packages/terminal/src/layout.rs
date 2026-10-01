@@ -8,7 +8,7 @@
 use std::cell::OnceCell;
 
 use rustc_hash::FxHashSet;
-use skene_foundation::{Inset, Layout, Overflow, RunDisplay, Scene};
+use skene_foundation::{Inset, Layout, Overflow, RunPlacement, Scene};
 use taffy::{
   prelude::{
     AvailableSpace,
@@ -130,7 +130,7 @@ struct Extents {
 /// Whether `handle` lays its inline runs out as one paragraph: a flow box whose every
 /// laid-out child is an inline text run or an inline box.
 pub(crate) fn is_paragraph(records: &Records, handle: Handle) -> bool {
-  if records.record(handle).and_then(Record::layout) != Some(Layout::Flow) {
+  if records.record(handle).and_then(Record::layout) != Some(Layout::Document) {
     return false;
   }
 
@@ -140,7 +140,7 @@ pub(crate) fn is_paragraph(records: &Records, handle: Handle) -> bool {
     && children.iter().all(|child| {
       matches!(
         records.record(*child).map(|record| &record.kind),
-        Some(Kind::Run { props, .. }) if props.display != RunDisplay::Block
+        Some(Kind::Run { props, .. }) if props.placement != RunPlacement::Line
       )
     })
 }
@@ -150,7 +150,7 @@ pub(crate) fn is_paragraph(records: &Records, handle: Handle) -> bool {
 pub(crate) fn is_inline_box(records: &Records, handle: Handle) -> bool {
   matches!(
     records.record(handle).map(|record| &record.kind),
-    Some(Kind::Run { props, .. }) if props.display == RunDisplay::InlineBox
+    Some(Kind::Run { props, .. }) if props.placement == RunPlacement::Embedded
   )
 }
 
@@ -159,7 +159,7 @@ pub(crate) fn is_inline_box(records: &Records, handle: Handle) -> bool {
 pub(crate) fn is_inline_run(records: &Records, handle: Handle) -> bool {
   matches!(
     records.record(handle).map(|record| &record.kind),
-    Some(Kind::Run { props, .. }) if props.display != RunDisplay::Block
+    Some(Kind::Run { props, .. }) if props.placement != RunPlacement::Line
   )
 }
 
@@ -763,7 +763,7 @@ fn taffy_style_of(records: &Records, handle: Handle) -> Restyled {
   match &record.kind {
     Kind::Run { props, cache, .. } => {
       let mut style = Style::default();
-      let inline = props.display != RunDisplay::Block;
+      let inline = props.placement != RunPlacement::Line;
       let has_children = !records.layout_children(handle).is_empty();
 
       // A wrapper's properties on a bare run: its flexibility, alignment, pinning and
@@ -772,7 +772,7 @@ fn taffy_style_of(records: &Records, handle: Handle) -> Restyled {
         apply_box_sizing(&mut style, &cache.layout, in_stack);
       }
 
-      let text = if props.display == RunDisplay::InlineBox {
+      let text = if props.placement == RunPlacement::Embedded {
         // An inline box lays out on its own, at its content's size.
         style.display = Display::Flex;
 
@@ -1025,7 +1025,7 @@ fn measure_run(
 pub(crate) fn box_taffy_style(layout: Layout, style: &PlainBox, in_stack: bool) -> Style {
   let mut out = Style {
     display: match layout {
-      Layout::Flow => Display::Block,
+      Layout::Document => Display::Block,
       Layout::Flex { .. } => Display::Flex,
       Layout::Grid | Layout::Stack | Layout::Single => Display::Grid,
     },
@@ -1119,7 +1119,7 @@ fn track(value: skene_foundation::GridTrack<u32>) -> Option<taffy::style::TrackS
     skene_foundation::GridTrack::MinContent => taffy::prelude::min_content(),
     skene_foundation::GridTrack::MaxContent => taffy::prelude::max_content(),
     skene_foundation::GridTrack::FitContent(cells) => fit_content(length(cell(cells))),
-    skene_foundation::GridTrack::Minmax(min, max) => minmax(min_track(min), max_track(max)),
+    skene_foundation::GridTrack::Between(min, max) => minmax(min_track(min), max_track(max)),
     skene_foundation::GridTrack::Adaptive(..) => return None,
   })
 }

@@ -207,7 +207,7 @@ impl Platform for Terminal {
   }
 
   fn create_run(node: NodeId, props: &RunProps<Self>) {
-    let inline_box = props.display == skene_foundation::RunDisplay::InlineBox;
+    let inline_box = props.placement == skene_foundation::RunPlacement::Embedded;
 
     with_records(|records| {
       records.insert_laid_out(

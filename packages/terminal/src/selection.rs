@@ -15,7 +15,7 @@
 
 use std::time::Duration;
 
-use skene_foundation::{ClipboardAction, RunDisplay, Scene};
+use skene_foundation::{ClipboardAction, RunPlacement, Scene};
 
 use crate::{
   Terminal,
@@ -123,7 +123,7 @@ impl Records {
       is_paragraph(self, *handle)
         || matches!(
           self.record(*handle).map(|record| &record.kind),
-          Some(Kind::Run { props, .. }) if props.display == RunDisplay::Block
+          Some(Kind::Run { props, .. }) if props.placement == RunPlacement::Line
         )
     })
   }
@@ -402,7 +402,7 @@ impl Records {
       };
 
       if current != handle
-        && matches!(&record.kind, Kind::Run { props, .. } if props.display != RunDisplay::InlineBox)
+        && matches!(&record.kind, Kind::Run { props, .. } if props.placement != RunPlacement::Embedded)
       {
         text.push_str(&record.text);
       }

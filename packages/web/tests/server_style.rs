@@ -419,7 +419,7 @@ fn grid_tracks_and_placements_render() {
       .set_columns(vec![
         GridTrack::Length(100.),
         GridTrack::Flex(1.),
-        GridTrack::Minmax(TrackLimit::Length(50.), TrackLimit::Flex(2.)),
+        GridTrack::Between(TrackLimit::Length(50.), TrackLimit::Flex(2.)),
         GridTrack::FitContent(200.),
       ])
       .set_rows(GridTrack::Auto.repeated(2).collect::<Vec<_>>())
@@ -444,7 +444,7 @@ fn grid_tracks_and_placements_render() {
 #[test]
 fn adaptive_tracks_and_flexible_minimums_render() {
   let rendered = render_to_string(|| {
-    Grid::adaptive(120.).set_rows(vec![GridTrack::Minmax(
+    Grid::adaptive(120.).set_rows(vec![GridTrack::Between(
       TrackLimit::Flex(1.),
       TrackLimit::Length(40.),
     )])

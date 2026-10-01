@@ -2342,13 +2342,13 @@ pub fn skene_foundation::GridPlacement::fingerprint<H: core::hash::Hasher>(&self
 pub enum skene_foundation::GridTrack<T>
 pub skene_foundation::GridTrack::Adaptive(skene_foundation::TrackLimit<T>, skene_foundation::TrackLimit<T>)
 pub skene_foundation::GridTrack::Auto
+pub skene_foundation::GridTrack::Between(skene_foundation::TrackLimit<T>, skene_foundation::TrackLimit<T>)
 pub skene_foundation::GridTrack::FitContent(T)
 pub skene_foundation::GridTrack::Flex(f32)
 pub skene_foundation::GridTrack::Fraction(f32)
 pub skene_foundation::GridTrack::Length(T)
 pub skene_foundation::GridTrack::MaxContent
 pub skene_foundation::GridTrack::MinContent
-pub skene_foundation::GridTrack::Minmax(skene_foundation::TrackLimit<T>, skene_foundation::TrackLimit<T>)
 impl<T: core::marker::Copy> skene_foundation::GridTrack<T>
 pub fn skene_foundation::GridTrack<T>::repeated(self, u16) -> impl core::iter::traits::iterator::Iterator<Item = Self>
 impl<N: skene_foundation::Scalar> skene_foundation::Fingerprint for skene_foundation::GridTrack<N>
@@ -2460,9 +2460,9 @@ pub fn skene_foundation::LabelPlacement::hash<__H: core::hash::Hasher>(&self, &m
 impl core::marker::Copy for skene_foundation::LabelPlacement
 impl core::marker::StructuralPartialEq for skene_foundation::LabelPlacement
 pub enum skene_foundation::Layout
+pub skene_foundation::Layout::Document
 pub skene_foundation::Layout::Flex
 pub skene_foundation::Layout::Flex::direction: skene_foundation::FlexDirection
-pub skene_foundation::Layout::Flow
 pub skene_foundation::Layout::Grid
 pub skene_foundation::Layout::Single
 pub skene_foundation::Layout::Stack
@@ -2930,19 +2930,19 @@ impl<N: skene_foundation::Scalar> core::convert::From<skene_foundation::ExprValu
 pub fn skene_foundation::Resolved<N>::from(skene_foundation::ExprValue) -> Self
 impl<N: skene_foundation::Scalar> core::convert::From<skene_foundation::Length> for skene_foundation::Resolved<N>
 pub fn skene_foundation::Resolved<N>::from(skene_foundation::Length) -> Self
-pub enum skene_foundation::RunDisplay
-pub skene_foundation::RunDisplay::Block
-pub skene_foundation::RunDisplay::Inline
-pub skene_foundation::RunDisplay::InlineBox
-impl core::clone::Clone for skene_foundation::RunDisplay
-pub fn skene_foundation::RunDisplay::clone(&self) -> skene_foundation::RunDisplay
-impl core::cmp::Eq for skene_foundation::RunDisplay
-impl core::cmp::PartialEq for skene_foundation::RunDisplay
-pub fn skene_foundation::RunDisplay::eq(&self, &skene_foundation::RunDisplay) -> bool
-impl core::fmt::Debug for skene_foundation::RunDisplay
-pub fn skene_foundation::RunDisplay::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::marker::Copy for skene_foundation::RunDisplay
-impl core::marker::StructuralPartialEq for skene_foundation::RunDisplay
+pub enum skene_foundation::RunPlacement
+pub skene_foundation::RunPlacement::Embedded
+pub skene_foundation::RunPlacement::Inline
+pub skene_foundation::RunPlacement::Line
+impl core::clone::Clone for skene_foundation::RunPlacement
+pub fn skene_foundation::RunPlacement::clone(&self) -> skene_foundation::RunPlacement
+impl core::cmp::Eq for skene_foundation::RunPlacement
+impl core::cmp::PartialEq for skene_foundation::RunPlacement
+pub fn skene_foundation::RunPlacement::eq(&self, &skene_foundation::RunPlacement) -> bool
+impl core::fmt::Debug for skene_foundation::RunPlacement
+pub fn skene_foundation::RunPlacement::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for skene_foundation::RunPlacement
+impl core::marker::StructuralPartialEq for skene_foundation::RunPlacement
 pub enum skene_foundation::RunValue<X: skene_foundation::StyleExtension>
 pub skene_foundation::RunValue::Color(skene_foundation::Color)
 pub skene_foundation::RunValue::Decoration(skene_foundation::TextDecoration)
@@ -5843,8 +5843,8 @@ pub fn skene_foundation::Row<P>::into_any(self) -> skene_foundation::AnyView<P> 
 pub fn skene_foundation::Row<P>::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
 pub struct skene_foundation::Run<P: skene_foundation::Platform>
 impl<P: skene_foundation::Platform> skene_foundation::Run<P>
-pub fn skene_foundation::Run<P>::build(self, skene_foundation::RunDisplay) -> skene_foundation::NodeId
-pub fn skene_foundation::Run<P>::build_group(self, skene_foundation::RunDisplay) -> skene_foundation::NodeId where <P as skene_foundation::Platform>::StyleExt: skene_foundation::TypeMetrics
+pub fn skene_foundation::Run<P>::build(self, skene_foundation::RunPlacement) -> skene_foundation::NodeId
+pub fn skene_foundation::Run<P>::build_group(self, skene_foundation::RunPlacement) -> skene_foundation::NodeId where <P as skene_foundation::Platform>::StyleExt: skene_foundation::TypeMetrics
 pub fn skene_foundation::Run<P>::new() -> Self
 pub fn skene_foundation::Run<P>::set_animation(self, skene_foundation::Animation<skene_foundation::RunKeyframe<P>>) -> Self
 pub fn skene_foundation::Run<P>::set_link(self, impl core::convert::Into<alloc::string::String>) -> Self
@@ -5871,11 +5871,11 @@ pub fn skene_foundation::RunDynamics<X>::default() -> Self
 impl<X: skene_foundation::StyleExtension> skene_foundation::Fingerprint for skene_foundation::RunDynamics<X>
 pub fn skene_foundation::RunDynamics<X>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 pub struct skene_foundation::RunProps<P: skene_foundation::Platform>
-pub skene_foundation::RunProps::display: skene_foundation::RunDisplay
 pub skene_foundation::RunProps::dynamics: skene_foundation::RunDynamics<<P as skene_foundation::Platform>::StyleExt>
 pub skene_foundation::RunProps::layout: core::option::Option<alloc::boxed::Box<skene_foundation::StaticBoxStyle<P>>>
 pub skene_foundation::RunProps::link: core::option::Option<alloc::string::String>
 pub skene_foundation::RunProps::link_policy: skene_foundation::LinkPolicy
+pub skene_foundation::RunProps::placement: skene_foundation::RunPlacement
 pub skene_foundation::RunProps::selectable: bool
 pub skene_foundation::RunProps::style: skene_foundation::StaticRunStyle<P>
 impl<P: core::clone::Clone + skene_foundation::Platform> core::clone::Clone for skene_foundation::RunProps<P> where <P as skene_foundation::Platform>::StyleExt: core::clone::Clone

@@ -17,7 +17,7 @@ use super::{
   Platform,
   PopupKind,
   Role,
-  RunDisplay,
+  RunPlacement,
   RunProps,
   Scene,
 };
@@ -57,7 +57,7 @@ impl NameFacts {
       role: link.then_some(Role::Link),
       text: Some(text),
       link,
-      block: props.display == RunDisplay::Block,
+      block: props.placement == RunPlacement::Line,
       ..Self::default()
     }
   }

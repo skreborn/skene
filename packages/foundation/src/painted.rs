@@ -52,7 +52,7 @@ impl<P: Painting> Painted<P> {
   /// A box painted by `painter`.
   pub fn new(painter: impl Fn(&mut Canvas, Size<f32>) + 'static) -> Self {
     Self {
-      inner: LayoutBox::new(Layout::Flow),
+      inner: LayoutBox::new(Layout::Document),
       painter: Rc::new(painter),
       fallback: None,
     }

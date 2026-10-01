@@ -19,7 +19,7 @@ pub enum GridTrack<T> {
   /// The content's maximum size, clamped to the given length.
   FitContent(T),
   /// Sized between the two limits.
-  Minmax(TrackLimit<T>, TrackLimit<T>),
+  Between(TrackLimit<T>, TrackLimit<T>),
   /// As many tracks as fit, each sized between the two limits, at least one of which is
   /// a length or a fraction so the count follows from the container's size.
   ///
@@ -162,7 +162,7 @@ impl<T, C> From<Vec<GridTrack<T>>> for Value<GridTemplate<T>, C> {
   }
 }
 
-/// One limit of a [`GridTrack::Minmax`] track.
+/// One limit of a [`GridTrack::Between`] track.
 ///
 /// A flexible share is meaningful only as the maximum; as a minimum it behaves as
 /// `Auto`.

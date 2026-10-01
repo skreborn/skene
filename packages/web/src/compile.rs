@@ -41,7 +41,7 @@ use skene_foundation::{
   PlatformLeaf,
   Property,
   PropertyKey,
-  RunDisplay,
+  RunPlacement,
   RunProps,
   RunStyle,
   RunValue,
@@ -630,7 +630,7 @@ fn motion<S>(
 /// The static display declarations for a [`Layout`].
 fn layout_declarations(layout: Layout) -> Declarations {
   match layout {
-    Layout::Flow => Declarations::new().set("display", "flow-root"),
+    Layout::Document => Declarations::new().set("display", "flow-root"),
     Layout::Flex { direction } => Declarations::new().set("display", "flex").set(
       "flex-direction",
       match direction {
@@ -809,10 +809,10 @@ pub(crate) fn compile_overlay<P: PixelPlatform>(props: &OverlayProps<P>) -> Comp
 
 /// The rule template of a text run.
 pub(crate) fn compile_run<P: PixelPlatform>(props: &RunProps<P>) -> Compiled {
-  let mut base = match props.display {
-    RunDisplay::Block => Declarations::new().set("display", "block"),
-    RunDisplay::Inline => Declarations::new(),
-    RunDisplay::InlineBox => Declarations::new().set("display", "inline-block"),
+  let mut base = match props.placement {
+    RunPlacement::Line => Declarations::new().set("display", "block"),
+    RunPlacement::Inline => Declarations::new(),
+    RunPlacement::Embedded => Declarations::new().set("display", "inline-block"),
   };
 
   if props.selectable {
@@ -1083,7 +1083,7 @@ pub(crate) fn layout_fingerprint<P: PixelPlatform>(layout: &StaticBoxStyle<P>) -
 pub(crate) fn run_fingerprint<P: PixelPlatform>(props: &RunProps<P>) -> u64 {
   let mut hasher = FxHasher::default();
 
-  (props.display as u8).hash(&mut hasher);
+  (props.placement as u8).hash(&mut hasher);
   props.selectable.hash(&mut hasher);
   props.style.fingerprint(&mut hasher);
   props.layout.is_some().hash(&mut hasher);

@@ -4,7 +4,7 @@
 use skene_foundation::{
   HasChild,
   RunBase,
-  RunDisplay,
+  RunPlacement,
   StaticLeaf,
   StaticValue,
   ThemedIn,
@@ -114,8 +114,8 @@ fn rich_text_group_redefines_ink_for_nested_spans_only() {
   let nested = inner[1];
 
   assert!(matches!(
-    run_props(spans[0]).unwrap().display,
-    RunDisplay::Inline
+    run_props(spans[0]).unwrap().placement,
+    RunPlacement::Inline
   ));
   assert_eq!(resolve_color(spans[0], TEXT_COLOR), Some(black()));
   assert_eq!(resolve_color(group, TEXT_COLOR), Some(red()));
@@ -216,8 +216,8 @@ fn span_embeds_a_view_inline_and_derives_its_text() {
     "Box\n  Run \"one\"\n  Run \"\"\n    Box\n      Run \"boxed\"\n"
   );
   assert!(matches!(
-    run_props(spans[1]).unwrap().display,
-    RunDisplay::InlineBox
+    run_props(spans[1]).unwrap().placement,
+    RunPlacement::Embedded
   ));
 
   label.set("two".to_owned());

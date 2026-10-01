@@ -45,7 +45,7 @@ impl<P: Platform, R: Route> Link<P, R> {
   /// A link to `route`.
   #[inline(always)]
   pub fn new(route: R) -> Self {
-    let inner = LayoutBox::new(Layout::Flow).set_destination(route.to_path());
+    let inner = LayoutBox::new(Layout::Document).set_destination(route.to_path());
 
     Self { route, inner }
   }

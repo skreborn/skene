@@ -31,7 +31,7 @@ use crate::spine::{
   LinkPolicy,
   Placement,
   Role,
-  RunDisplay,
+  RunPlacement,
   Size,
 };
 
@@ -95,8 +95,8 @@ pub struct BoxProps<P: Platform> {
 #[derive(Clone, Debug)]
 #[must_use]
 pub struct RunProps<P: Platform> {
-  /// How the run participates in the surrounding layout.
-  pub display: RunDisplay,
+  /// Where the run sits in the surrounding layout.
+  pub placement: RunPlacement,
   /// Whether the user can select and copy the run's text.
   pub selectable: bool,
   /// The link destination, when the run is a link.

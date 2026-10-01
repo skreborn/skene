@@ -16,9 +16,9 @@ use crate::{
   NodeId,
   NodeKind,
   Platform,
-  RunDisplay,
   RunDynamics,
   RunKeyframe,
+  RunPlacement,
   RunProps,
   Scalar,
   Scene,
@@ -125,15 +125,15 @@ impl<P: Platform> Run<P> {
 
   /// Realizes the run as a detached node with `display`, each property it leaves unset
   /// referencing its typography token.
-  pub fn build(self, display: RunDisplay) -> NodeId {
-    self.realize(display, Vec::new())
+  pub fn build(self, placement: RunPlacement) -> NodeId {
+    self.realize(placement, Vec::new())
   }
 
   /// Realizes the run as a detached group with `display`: as [`build`](Self::build)
   /// does, redefining for the runs beneath it the typography tokens of the text
   /// properties it sets, its type metrics among them, and a link group setting no color
   /// the ink as the link ink.
-  pub fn build_group(self, display: RunDisplay) -> NodeId
+  pub fn build_group(self, placement: RunPlacement) -> NodeId
   where
     P::StyleExt: TypeMetrics,
   {
@@ -164,11 +164,15 @@ impl<P: Platform> Run<P> {
     .flatten()
     .collect();
 
-    self.realize(display, redefinitions)
+    self.realize(placement, redefinitions)
   }
 
   /// Realizes the run with `display`, defining `redefinitions` on it.
-  fn realize(self, display: RunDisplay, redefinitions: Vec<Redefinition<P::TokenValue>>) -> NodeId {
+  fn realize(
+    self,
+    placement: RunPlacement,
+    redefinitions: Vec<Redefinition<P::TokenValue>>,
+  ) -> NodeId {
     let mut style = self.style;
     let ink = if self.link.is_some() {
       typography::LINK_INK
@@ -197,7 +201,7 @@ impl<P: Platform> Run<P> {
     );
     let links = self.link.is_some();
     let props = RunProps {
-      display,
+      placement,
       selectable: self.selectable,
       link: self.link,
       link_policy: self.link_policy,

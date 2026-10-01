@@ -240,7 +240,7 @@ pub use values::{
   PopupKind,
   Rect,
   Role,
-  RunDisplay,
+  RunPlacement,
   Size,
   Spacing,
   TemplateEntry,

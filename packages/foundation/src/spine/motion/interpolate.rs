@@ -224,7 +224,7 @@ impl<T: Interpolate + PartialEq> Interpolate for GridTrack<T> {
       (Self::FitContent(from), Self::FitContent(to)) => {
         Some(Self::FitContent(from.interpolate(to, amount)?))
       }
-      (Self::Minmax(from_min, from_max), Self::Minmax(to_min, to_max)) => Some(Self::Minmax(
+      (Self::Between(from_min, from_max), Self::Between(to_min, to_max)) => Some(Self::Between(
         from_min.interpolate(to_min, amount)?,
         from_max.interpolate(to_max, amount)?,
       )),
@@ -947,7 +947,7 @@ mod tests {
         GridTrack::Length(length),
         GridTrack::Flex(flex),
         GridTrack::Auto,
-        GridTrack::Minmax(TrackLimit::Length(minimum), TrackLimit::Flex(1.)),
+        GridTrack::Between(TrackLimit::Length(minimum), TrackLimit::Flex(1.)),
       ])
     };
 

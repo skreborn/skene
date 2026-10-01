@@ -211,7 +211,7 @@ impl<N: Scalar> Fingerprint for GridTrack<N> {
       Self::Length(length) | Self::FitContent(length) => state.write_u64(length.hash_bits()),
       Self::Fraction(value) | Self::Flex(value) => value.fingerprint(state),
       Self::Auto | Self::MinContent | Self::MaxContent => {}
-      Self::Minmax(min, max) | Self::Adaptive(min, max) => {
+      Self::Between(min, max) | Self::Adaptive(min, max) => {
         min.fingerprint(state);
         max.fingerprint(state);
       }

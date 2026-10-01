@@ -188,7 +188,7 @@ impl Declarations {
       GridTrack::MinContent => "min-content".to_owned(),
       GridTrack::MaxContent => "max-content".to_owned(),
       GridTrack::FitContent(value) => format!("fit-content({value}px)"),
-      GridTrack::Minmax(min, max) => format!(
+      GridTrack::Between(min, max) => format!(
         "minmax({}, {})",
         Self::render_track_minimum(min),
         Self::render_track_limit(max),

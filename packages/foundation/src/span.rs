@@ -17,7 +17,7 @@ use crate::{
   PlainChild,
   Platform,
   RunBase,
-  RunDisplay,
+  RunPlacement,
   Scene,
   TypeMetrics,
   View,
@@ -106,9 +106,9 @@ where
 {
   fn build(self) -> NodeId {
     let node = match self.content {
-      Content::View(_) => self.run.build(RunDisplay::InlineBox),
-      Content::Text(_) => self.run.build(RunDisplay::Inline),
-      Content::Group(_) => self.run.build_group(RunDisplay::Inline),
+      Content::View(_) => self.run.build(RunPlacement::Embedded),
+      Content::Text(_) => self.run.build(RunPlacement::Inline),
+      Content::Group(_) => self.run.build_group(RunPlacement::Inline),
     };
 
     Scene::<P>::with(|scene| {
@@ -178,7 +178,7 @@ where
   P::StyleExt: TypeMetrics,
 {
   fn build(self) -> NodeId {
-    let node = LayoutBox::<P, PlainChild>::new(Layout::Flow).build();
+    let node = LayoutBox::<P, PlainChild>::new(Layout::Document).build();
 
     for span in self.spans {
       let child = span.build();

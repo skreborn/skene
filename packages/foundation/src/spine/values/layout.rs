@@ -7,8 +7,8 @@ use super::FlexDirection;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[must_use]
 pub enum Layout {
-  /// Normal flow: children stack in document order, contained within the box.
-  Flow,
+  /// Children in document order, one after another, contained within the box.
+  Document,
   /// Flex: children laid out along `direction`.
   Flex {
     /// The main axis, and whether it runs reversed.

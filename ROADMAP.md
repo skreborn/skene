@@ -183,8 +183,6 @@ left half-done in a code comment.
     - A shell per platform: the facades' views and Simple's, newtypes implementing the
     traits of the core beneath them, stay on probation against writing each platform's
     views by hand.
-    - Vocabulary: `display` joins the lint's banned words, which then read the names
-    the `api/` snapshots list, re-exports included, rather than the sources' own items.
     - Shapes: one setter per property for `Flexible` (`set_flexibility(impl
     Into<Value<Flexibility>>)`), the slider (`set_range`, `derive_range`) and
     `Animation` (iterations, alternation, reduced motion); appending setters named

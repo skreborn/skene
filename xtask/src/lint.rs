@@ -5,7 +5,7 @@
 
 use std::{
   fs,
-  path::{Component, Path, PathBuf},
+  path::{Path, PathBuf},
 };
 
 use proc_macro2::Span;
@@ -14,15 +14,10 @@ use syn::{
   Expr,
   ExprCall,
   ExprMethodCall,
-  Fields,
   Ident,
-  ImplItemFn,
   ItemEnum,
   ItemFn,
-  ItemMod,
   ItemStruct,
-  ItemTrait,
-  ItemType,
   Path as SynPath,
   UsePath,
   UseTree,
@@ -45,7 +40,13 @@ const CHILD_SETTERS: &[&str] = &[
 const PROPERTY_PREFIXES: &[&str] = &["derive_", "handle_", "set_"];
 
 /// Words the public surface never uses, the framework's own vocabulary standing in.
-const BANNED_WORDS: &[&str] = &["backend", "gap", "justify", "widget"];
+const BANNED_WORDS: &[&str] = &["backend", "display", "gap", "justify", "widget"];
+
+/// The keywords a snapshot line names before the path of the item it lists.
+const ITEM_KEYWORDS: &[&str] = &[
+  "async", "const", "enum", "extern", "fn", "macro", "mod", "static", "struct", "trait", "type",
+  "union", "unsafe", "use",
+];
 
 /// The public functions that run a test double's `trigger` helper to turn its own loop
 /// rather than to simulate an event, exempt from `trigger_` naming.
@@ -67,7 +68,8 @@ const SKIPPED: &[&str] = &[
   "vendor",
 ];
 
-/// Checks every Rust source and Markdown document in the workspace against the house rules.
+/// Checks every Rust source and Markdown document in the workspace, and every public name
+/// the API snapshots list, against the house rules.
 pub(crate) fn check(root: &Path) -> Result<(), String> {
   let mut findings = Vec::new();
   let mut files = Vec::new();
@@ -87,7 +89,6 @@ pub(crate) fn check(root: &Path) -> Result<(), String> {
         let file =
           syn::parse_file(&text).map_err(|error| format!("{}: {error}", relative.display()))?;
         let mut rules = Rules {
-          public_surface: is_framework_source(&relative),
           spine: is_spine_source(&relative),
           path: &relative,
           findings: &mut findings,
@@ -98,6 +99,8 @@ pub(crate) fn check(root: &Path) -> Result<(), String> {
       _ => {}
     }
   }
+
+  findings.extend(banned_names(root)?);
 
   if findings.is_empty() {
     Ok(())
@@ -159,9 +162,6 @@ fn spaced_em_dashes(path: &Path, text: &str, comments_only: bool) -> Vec<String>
 
 /// The syntactic house rules, checked over one file.
 struct Rules<'a> {
-  /// Whether the file is a framework crate's source, whose public names the vocabulary
-  /// binds.
-  public_surface: bool,
   /// Whether the file is the foundation's spine, which names nothing of its crate
   /// outside itself.
   spine: bool,
@@ -248,22 +248,6 @@ impl Rules<'_> {
       ),
     );
   }
-
-  /// Reports a public name made of a banned word.
-  fn check_name(&mut self, visibility: &Visibility, ident: &Ident) {
-    if !self.public_surface || !matches!(visibility, Visibility::Public(_)) {
-      return;
-    }
-
-    let name = ident.to_string();
-
-    if let Some(word) = words(&name).find(|word| BANNED_WORDS.contains(&word.as_str())) {
-      self.report(
-        ident.span(),
-        &format!("`{name}` uses `{word}`, which the framework's vocabulary replaces"),
-      );
-    }
-  }
 }
 
 impl<'ast> Visit<'ast> for Rules<'_> {
@@ -291,29 +275,7 @@ impl<'ast> Visit<'ast> for Rules<'_> {
     visit::visit_use_path(self, item);
   }
 
-  fn visit_item_mod(&mut self, item: &'ast ItemMod) {
-    let public_surface = self.public_surface;
-
-    if item.attrs.iter().any(is_test_configuration) {
-      self.public_surface = false;
-    }
-
-    self.check_name(&item.vis, &item.ident);
-    visit::visit_item_mod(self, item);
-    self.public_surface = public_surface;
-  }
-
   fn visit_item_struct(&mut self, item: &'ast ItemStruct) {
-    self.check_name(&item.vis, &item.ident);
-
-    if let Fields::Named(fields) = &item.fields {
-      for field in &fields.named {
-        if let Some(ident) = &field.ident {
-          self.check_name(&field.vis, ident);
-        }
-      }
-    }
-
     let members: Vec<(bool, bool)> = item
       .fields
       .iter()
@@ -330,12 +292,6 @@ impl<'ast> Visit<'ast> for Rules<'_> {
   }
 
   fn visit_item_enum(&mut self, item: &'ast ItemEnum) {
-    self.check_name(&item.vis, &item.ident);
-
-    for variant in &item.variants {
-      self.check_name(&item.vis, &variant.ident);
-    }
-
     let members: Vec<(bool, bool)> = item
       .variants
       .iter()
@@ -347,24 +303,8 @@ impl<'ast> Visit<'ast> for Rules<'_> {
   }
 
   fn visit_item_fn(&mut self, item: &'ast ItemFn) {
-    self.check_name(&item.vis, &item.sig.ident);
     self.check_trigger_name(item);
     visit::visit_item_fn(self, item);
-  }
-
-  fn visit_impl_item_fn(&mut self, item: &'ast ImplItemFn) {
-    self.check_name(&item.vis, &item.sig.ident);
-    visit::visit_impl_item_fn(self, item);
-  }
-
-  fn visit_item_trait(&mut self, item: &'ast ItemTrait) {
-    self.check_name(&item.vis, &item.ident);
-    visit::visit_item_trait(self, item);
-  }
-
-  fn visit_item_type(&mut self, item: &'ast ItemType) {
-    self.check_name(&item.vis, &item.ident);
-    visit::visit_item_type(self, item);
   }
 
   fn visit_expr_method_call(&mut self, call: &'ast ExprMethodCall) {
@@ -405,15 +345,6 @@ impl<'ast> Visit<'ast> for TriggerCalls {
   }
 }
 
-/// Whether `path`, relative to the workspace, is a framework crate's source.
-fn is_framework_source(path: &Path) -> bool {
-  let mut components = path.components().map(Component::as_os_str);
-
-  components.next() == Some("packages".as_ref())
-    && components.next().is_some()
-    && components.next() == Some("src".as_ref())
-}
-
 /// Whether `path`, relative to the workspace, is the foundation's spine.
 fn is_spine_source(path: &Path) -> bool {
   path == Path::new(SPINE[0]) || path.starts_with(SPINE[1])
@@ -435,11 +366,89 @@ fn is_doc(attribute: &Attribute) -> bool {
   attribute.path().is_ident("doc")
 }
 
-fn is_test_configuration(attribute: &Attribute) -> bool {
-  attribute.path().is_ident("cfg")
-    && attribute
-      .parse_args::<Ident>()
-      .is_ok_and(|argument| argument == "test")
+/// Reports every public name the API snapshots list made of a banned word: the
+/// framework's whole public surface, re-exports included.
+fn banned_names(root: &Path) -> Result<Vec<String>, String> {
+  let directory = root.join("api");
+  let mut snapshots: Vec<PathBuf> = fs::read_dir(&directory)
+    .map_err(|error| format!("{}: {error}", directory.display()))?
+    .flatten()
+    .map(|entry| entry.path())
+    .filter(|path| path.extension().is_some_and(|extension| extension == "txt"))
+    .collect();
+  let mut findings = Vec::new();
+
+  snapshots.sort();
+
+  for path in snapshots {
+    let text = fs::read_to_string(&path).map_err(|error| format!("{}: {error}", path.display()))?;
+
+    findings.extend(banned_in_snapshot(
+      path.strip_prefix(root).unwrap_or(&path),
+      &text,
+    ));
+  }
+
+  Ok(findings)
+}
+
+/// Reports each name made of a banned word among those the snapshot `text` lists, at
+/// its line.
+fn banned_in_snapshot(path: &Path, text: &str) -> Vec<String> {
+  text
+    .lines()
+    .enumerate()
+    .filter_map(|(index, line)| {
+      let name = listed_name(line)?;
+      let word = words(name).find(|word| BANNED_WORDS.contains(&word.as_str()))?;
+
+      Some(format!(
+        "{}:{}: `{name}` uses `{word}`, which the framework's vocabulary replaces",
+        path.display(),
+        index + 1
+      ))
+    })
+    .collect()
+}
+
+/// The name of the item a snapshot line lists, the last segment of its path; `None` for
+/// a line listing no item of its own, as an `impl` does.
+fn listed_name(line: &str) -> Option<&str> {
+  let mut rest = line.strip_prefix("pub ")?;
+
+  while let Some((keyword, after)) = rest.split_once(' ')
+    && ITEM_KEYWORDS.contains(&keyword)
+  {
+    rest = after;
+  }
+
+  let mut depth = 0usize;
+  let mut start = 0;
+  let mut end = rest.len();
+
+  for (index, character) in rest.char_indices() {
+    match character {
+      '<' => depth += 1,
+      '>' => depth = depth.saturating_sub(1),
+      '(' | ' ' if depth == 0 => {
+        end = index;
+
+        break;
+      }
+      ':' if depth == 0 && rest[index + 1..].starts_with(' ') => {
+        end = index;
+
+        break;
+      }
+      ':' if depth == 0 && rest[index + 1..].starts_with(':') => start = index + 2,
+      _ => {}
+    }
+  }
+
+  let name = &rest[start..end];
+  let name = name.find('<').map_or(name, |generics| &name[..generics]);
+
+  (!name.is_empty()).then_some(name)
 }
 
 /// The lowercase words of a snake-case or camel-case name.
@@ -470,14 +479,13 @@ mod tests {
 
   use syn::visit::Visit as _;
 
-  use super::{Rules, spaced_em_dashes};
+  use super::{Rules, banned_in_snapshot, listed_name, spaced_em_dashes};
 
-  fn findings(source: &str, public_surface: bool) -> Vec<String> {
+  fn findings(source: &str) -> Vec<String> {
     let file = syn::parse_file(source).expect("the source parses");
     let mut findings = Vec::new();
 
     Rules {
-      public_surface,
       spine: false,
       path: Path::new("test.rs"),
       findings: &mut findings,
@@ -490,67 +498,83 @@ mod tests {
   #[test]
   fn a_property_after_the_children_is_reported() {
     assert_eq!(
-      findings(
-        "fn app() { Row::new().set_children(()).set_spacing(8.); }",
-        false
-      ),
+      findings("fn app() { Row::new().set_children(()).set_spacing(8.); }"),
       ["test.rs:1: `set_spacing` follows `set_children`: a chain ends with the children"]
     );
   }
 
   #[test]
   fn a_chain_ending_with_its_children_passes() {
-    assert!(
-      findings(
-        "fn app() { Row::new().set_spacing(8.).set_children(()); }",
-        false
-      )
-      .is_empty()
-    );
+    assert!(findings("fn app() { Row::new().set_spacing(8.).set_children(()); }").is_empty());
   }
 
   #[test]
-  fn a_public_name_made_of_a_banned_word_is_reported() {
+  fn a_listed_name_made_of_a_banned_word_is_reported() {
     assert_eq!(
-      findings("pub struct Shape { pub row_gap: f32 }", true),
-      ["test.rs:1: `row_gap` uses `gap`, which the framework's vocabulary replaces"]
+      banned_in_snapshot(
+        Path::new("api/test.txt"),
+        "pub skene_foundation::Spacing::row_gap: f32\n\
+         impl core::fmt::Display for skene_foundation::Color\n\
+         pub fn skene_foundation::Run<P: skene_foundation::Platform>::set_display(self) -> Self\n\
+         pub use skene_web::Widget\n"
+      ),
+      [
+        "api/test.txt:1: `row_gap` uses `gap`, which the framework's vocabulary replaces",
+        "api/test.txt:3: `set_display` uses `display`, which the framework's vocabulary replaces",
+        "api/test.txt:4: `Widget` uses `widget`, which the framework's vocabulary replaces",
+      ]
     );
   }
 
   #[test]
-  fn a_private_or_test_name_may_use_any_word() {
-    assert!(
-      findings(
-        "struct Widget; #[cfg(test)] mod tests { pub fn widget() {} }",
-        true
-      )
-      .is_empty()
-    );
+  fn a_listed_name_is_its_items_own() {
+    for (line, name) in [
+      (
+        "pub const fn skene_foundation::Expr<skene_foundation::Length>::font_size(f32) -> Self",
+        Some("font_size"),
+      ),
+      (
+        "pub skene_foundation::RunProps::placement: skene_foundation::RunPlacement",
+        Some("placement"),
+      ),
+      (
+        "pub struct skene_foundation::Run<P: skene_foundation::Platform>",
+        Some("Run"),
+      ),
+      (
+        "pub type skene_web::Resource<T> = skene_foundation::web::Resource<skene_web::Web, T>",
+        Some("Resource"),
+      ),
+      (
+        "pub skene_foundation::GridTrack::Between(T, T)",
+        Some("Between"),
+      ),
+      ("impl core::fmt::Display for skene_foundation::Color", None),
+    ] {
+      assert_eq!(listed_name(line), name, "{line}");
+    }
   }
 
   #[test]
   fn a_type_documenting_some_members_is_reported() {
     assert_eq!(
-      findings("struct Half { /// Documented.\n a: u8, b: u8 }", false).len(),
+      findings("struct Half { /// Documented.\n a: u8, b: u8 }").len(),
       1
     );
-    assert_eq!(
-      findings("enum Half { /// Documented.\n A, B }", false).len(),
-      1
-    );
+    assert_eq!(findings("enum Half { /// Documented.\n A, B }").len(), 1);
   }
 
   #[test]
   fn a_type_documenting_all_none_or_its_public_members_passes() {
-    assert!(findings("struct All { /// A.\n a: u8, /// B.\n b: u8 }", false).is_empty());
-    assert!(findings("struct None { a: u8, b: u8 }", false).is_empty());
-    assert!(findings("pub struct Public { /// A.\n pub a: u8, b: u8 }", false).is_empty());
+    assert!(findings("struct All { /// A.\n a: u8, /// B.\n b: u8 }").is_empty());
+    assert!(findings("struct None { a: u8, b: u8 }").is_empty());
+    assert!(findings("pub struct Public { /// A.\n pub a: u8, b: u8 }").is_empty());
   }
 
   #[test]
   fn a_public_function_triggering_an_event_under_another_name_is_reported() {
     assert_eq!(
-      findings("pub fn set_viewport() { trigger(|| ()); }", false),
+      findings("pub fn set_viewport() { trigger(|| ()); }"),
       [
         "test.rs:1: `set_viewport` simulates an event through `trigger`: name it \
          `trigger_<event>`"
@@ -563,8 +587,7 @@ mod tests {
     assert!(
       findings(
         "pub fn trigger_resize() { trigger(|| ()); } pub fn pump_tasks() -> bool { \
-         trigger(pump) } fn resize() { trigger(|| ()); }",
-        false
+         trigger(pump) } fn resize() { trigger(|| ()); }"
       )
       .is_empty()
     );
@@ -576,7 +599,6 @@ mod tests {
     let mut findings = Vec::new();
 
     Rules {
-      public_surface: true,
       spine: true,
       path: Path::new("test.rs"),
       findings: &mut findings,

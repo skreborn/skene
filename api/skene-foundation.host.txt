@@ -792,6 +792,8 @@ pub fn skene_foundation::routing::Route::parse(&str) -> core::option::Option<Sel
 pub fn skene_foundation::routing::Route::to_path(&self) -> alloc::string::String
 pub trait skene_foundation::routing::StaticRoutes: skene_foundation::routing::Route
 pub fn skene_foundation::routing::StaticRoutes::all() -> alloc::vec::Vec<Self>
+pub fn skene_foundation::routing::install_router<P: skene_foundation::Platform, R: skene_foundation::routing::Route>(R) -> skene_foundation::routing::Router<R>
+pub fn skene_foundation::routing::install_static_router<P: skene_foundation::Platform, R: skene_foundation::routing::StaticRoutes>(R) -> skene_foundation::routing::Router<R>
 pub mod skene_foundation::run_fields
 pub struct skene_foundation::run_fields::Decoration
 impl core::clone::Clone for skene_foundation::run_fields::Decoration
@@ -4934,6 +4936,24 @@ pub fn skene_foundation::Line<T>::hash<__H: core::hash::Hasher>(&self, &mut __H)
 impl<T: core::marker::Copy> core::marker::Copy for skene_foundation::Line<T>
 impl<T: skene_foundation::Fingerprint> skene_foundation::Fingerprint for skene_foundation::Line<T>
 pub fn skene_foundation::Line<T>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
+pub struct skene_foundation::Link<P: skene_foundation::Platform, R: skene_foundation::routing::Route>
+impl<P: skene_foundation::Platform, R: skene_foundation::routing::Route> skene_foundation::Link<P, R>
+pub fn skene_foundation::Link<P, R>::new(R) -> Self
+impl<P: core::fmt::Debug + skene_foundation::Platform, R: core::fmt::Debug + skene_foundation::routing::Route> core::fmt::Debug for skene_foundation::Link<P, R>
+pub fn skene_foundation::Link<P, R>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<P: skene_foundation::Platform, R: skene_foundation::routing::Route> skene_foundation::AnyKind for skene_foundation::Link<P, R>
+impl<P: skene_foundation::Platform, R: skene_foundation::routing::Route> skene_foundation::HasChildren<P> for skene_foundation::Link<P, R>
+pub type skene_foundation::Link<P, R>::Kind = skene_foundation::PlainChild
+pub fn skene_foundation::Link<P, R>::add_child(self, impl skene_foundation::IntoChildOf<P, Self::Kind>) -> Self
+pub fn skene_foundation::Link<P, R>::children_mut(&mut self, skene_foundation::Seal) -> &mut skene_foundation::Children<P, skene_foundation::PlainChild>
+pub fn skene_foundation::Link<P, R>::derive_child<V: skene_foundation::IntoChildOf<P, Self::Kind>>(self, impl core::ops::function::Fn() -> V + 'static) -> Self
+pub fn skene_foundation::Link<P, R>::derive_children<T, I, K, V>(self, impl core::ops::function::Fn() -> I + 'static, impl core::ops::function::Fn(&T) -> K + 'static, impl core::ops::function::Fn(T) -> V + 'static) -> Self where I: core::iter::traits::collect::IntoIterator<Item = T>, K: core::cmp::Eq + core::hash::Hash + 'static, V: skene_foundation::IntoChildOf<P, Self::Kind>
+pub fn skene_foundation::Link<P, R>::derive_entries<F, V>(self, F, impl core::ops::function::Fn(skene_reactive::store::AtKey<F>) -> V + 'static) -> Self where F: skene_reactive::store::KeyedField, V: skene_foundation::IntoChildOf<P, Self::Kind>
+pub fn skene_foundation::Link<P, R>::set_children(self, impl skene_foundation::IntoChildren<P, Self::Kind>) -> Self
+impl<P: skene_foundation::Platform, R: skene_foundation::routing::Route> skene_foundation::View<P> for skene_foundation::Link<P, R>
+pub fn skene_foundation::Link<P, R>::build(self) -> skene_foundation::NodeId
+pub fn skene_foundation::Link<P, R>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
+pub fn skene_foundation::Link<P, R>::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
 pub struct skene_foundation::LinkPolicy
 pub skene_foundation::LinkPolicy::annotation: core::option::Option<skene_foundation::LinkAnnotation>
 pub skene_foundation::LinkPolicy::expose_opener: bool
@@ -6712,6 +6732,7 @@ impl<P: skene_foundation::Platform, C> skene_foundation::AnyKind for skene_found
 impl<P: skene_foundation::Platform, F> skene_foundation::AnyKind for skene_foundation::BasicPicker<P, F>
 impl<P: skene_foundation::Platform, K> skene_foundation::AnyKind for skene_foundation::Switch<P, K>
 impl<P: skene_foundation::Platform, Kind: 'static> skene_foundation::AnyKind for skene_foundation::LayoutBox<P, Kind>
+impl<P: skene_foundation::Platform, R: skene_foundation::routing::Route> skene_foundation::AnyKind for skene_foundation::Link<P, R>
 impl<P: skene_foundation::Platform, S: skene_foundation::TokenSet<<P as skene_foundation::Platform>::TokenValue>, C> skene_foundation::AnyKind for skene_foundation::Theme<P, S, C>
 impl<P: skene_foundation::Platform, V> skene_foundation::AnyKind for skene_foundation::Keyed<P, V>
 impl<P: skene_foundation::Platform> skene_foundation::AnyKind for skene_foundation::AnyView<P>
@@ -7889,6 +7910,14 @@ pub fn skene_foundation::LayoutBox<P, Kind>::derive_child<V: skene_foundation::I
 pub fn skene_foundation::LayoutBox<P, Kind>::derive_children<T, I, K, V>(self, impl core::ops::function::Fn() -> I + 'static, impl core::ops::function::Fn(&T) -> K + 'static, impl core::ops::function::Fn(T) -> V + 'static) -> Self where I: core::iter::traits::collect::IntoIterator<Item = T>, K: core::cmp::Eq + core::hash::Hash + 'static, V: skene_foundation::IntoChildOf<P, Self::Kind>
 pub fn skene_foundation::LayoutBox<P, Kind>::derive_entries<F, V>(self, F, impl core::ops::function::Fn(skene_reactive::store::AtKey<F>) -> V + 'static) -> Self where F: skene_reactive::store::KeyedField, V: skene_foundation::IntoChildOf<P, Self::Kind>
 pub fn skene_foundation::LayoutBox<P, Kind>::set_children(self, impl skene_foundation::IntoChildren<P, Self::Kind>) -> Self
+impl<P: skene_foundation::Platform, R: skene_foundation::routing::Route> skene_foundation::HasChildren<P> for skene_foundation::Link<P, R>
+pub type skene_foundation::Link<P, R>::Kind = skene_foundation::PlainChild
+pub fn skene_foundation::Link<P, R>::add_child(self, impl skene_foundation::IntoChildOf<P, Self::Kind>) -> Self
+pub fn skene_foundation::Link<P, R>::children_mut(&mut self, skene_foundation::Seal) -> &mut skene_foundation::Children<P, skene_foundation::PlainChild>
+pub fn skene_foundation::Link<P, R>::derive_child<V: skene_foundation::IntoChildOf<P, Self::Kind>>(self, impl core::ops::function::Fn() -> V + 'static) -> Self
+pub fn skene_foundation::Link<P, R>::derive_children<T, I, K, V>(self, impl core::ops::function::Fn() -> I + 'static, impl core::ops::function::Fn(&T) -> K + 'static, impl core::ops::function::Fn(T) -> V + 'static) -> Self where I: core::iter::traits::collect::IntoIterator<Item = T>, K: core::cmp::Eq + core::hash::Hash + 'static, V: skene_foundation::IntoChildOf<P, Self::Kind>
+pub fn skene_foundation::Link<P, R>::derive_entries<F, V>(self, F, impl core::ops::function::Fn(skene_reactive::store::AtKey<F>) -> V + 'static) -> Self where F: skene_reactive::store::KeyedField, V: skene_foundation::IntoChildOf<P, Self::Kind>
+pub fn skene_foundation::Link<P, R>::set_children(self, impl skene_foundation::IntoChildren<P, Self::Kind>) -> Self
 impl<P: skene_foundation::Platform, T: skene_foundation::Wraps<Innerskene_foundation::HasChildren<P>>> skene_foundation::HasChildren<P> for T
 pub type T::Kind = <<T as skene_foundation::Wraps>::Inner as skene_foundation::HasChildren<P>>::Kind
 pub fn T::add_child(self, impl skene_foundation::IntoChildOf<P, Self::Kind>) -> Self
@@ -8131,6 +8160,8 @@ pub fn skene_foundation::LazyRowBase::derive_items<T, I, K, V>(self, impl core::
 pub fn skene_foundation::LazyRowBase::new() -> Self
 pub fn skene_foundation::LazyRowBase::set_item_width(self, impl core::convert::Into<skene_foundation::ItemExtent>) -> Self
 pub fn skene_foundation::LazyRowBase::set_overscan(self, usize) -> Self
+pub trait skene_foundation::LinkBase<P: skene_foundation::Platform, R: skene_foundation::routing::Route>: skene_foundation::Wraps<Inner = skene_foundation::Link<P, R>>
+pub fn skene_foundation::LinkBase::new(R) -> Self
 pub trait skene_foundation::MotionBase<P: skene_foundation::Platform>: skene_foundation::HasLayoutBox<P>
 pub fn skene_foundation::MotionBase::set_animation(self, skene_foundation::Animation<skene_foundation::BoxKeyframe<P>>) -> Self
 pub fn skene_foundation::MotionBase::set_transition(self, skene_foundation::Transition<<<P as skene_foundation::Platform>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
@@ -8221,12 +8252,14 @@ pub fn skene_foundation::Platform::cancel(skene_foundation::Timer)
 pub fn skene_foundation::Platform::chosen_scheme() -> core::option::Option<skene_foundation::ColorScheme>
 pub fn skene_foundation::Platform::clipboard(skene_foundation::ClipboardAction)
 pub fn skene_foundation::Platform::clipboard_availability(skene_foundation::ClipboardAction) -> skene_foundation::Availability
+pub fn skene_foundation::Platform::commit_navigation(alloc::boxed::Box<dyn core::ops::function::FnOnce()>)
 pub fn skene_foundation::Platform::create_anchor(skene_foundation::NodeId)
 pub fn skene_foundation::Platform::create_box(skene_foundation::NodeId, &skene_foundation::BoxProps<Self>)
 pub fn skene_foundation::Platform::create_control(skene_foundation::NodeId, &skene_foundation::ControlProps<Self>)
 pub fn skene_foundation::Platform::create_overlay(skene_foundation::NodeId, &skene_foundation::OverlayProps<Self>)
 pub fn skene_foundation::Platform::create_run(skene_foundation::NodeId, &skene_foundation::RunProps<Self>)
 pub fn skene_foundation::Platform::create_scope(skene_foundation::NodeId)
+pub fn skene_foundation::Platform::current_path() -> core::option::Option<alloc::string::String>
 pub fn skene_foundation::Platform::define_root_tokens(&skene_foundation::Definitions<Self::TokenValue>)
 pub fn skene_foundation::Platform::define_tokens(skene_foundation::NodeId, &skene_foundation::Definitions<Self::TokenValue>)
 pub fn skene_foundation::Platform::destroy(skene_foundation::NodeId)
@@ -8238,6 +8271,9 @@ pub fn skene_foundation::Platform::listen(skene_foundation::NodeId, skene_founda
 pub fn skene_foundation::Platform::localize_pointer(skene_foundation::NodeId, &skene_foundation::PointerEvent) -> skene_foundation::PointerEvent
 pub fn skene_foundation::Platform::media() -> skene_foundation::MediaSignals<Self::Scalar>
 pub fn skene_foundation::Platform::observe_size(skene_foundation::NodeId, alloc::rc::Rc<dyn core::ops::function::Fn(skene_foundation::Size<Self::Scalar>)>) -> skene_foundation::Observation
+pub fn skene_foundation::Platform::on_pop(impl core::ops::function::Fn(alloc::string::String) + 'static)
+pub fn skene_foundation::Platform::push_path(&str)
+pub fn skene_foundation::Platform::record_static_routes(alloc::vec::Vec<alloc::string::String>)
 pub fn skene_foundation::Platform::relocate(skene_foundation::NodeId, skene_foundation::NodeId, core::option::Option<skene_foundation::NodeId>)
 pub fn skene_foundation::Platform::remove(skene_foundation::NodeId, skene_foundation::NodeId)
 pub fn skene_foundation::Platform::scene() -> &'static std::thread::local::LocalKey<core::cell::RefCell<skene_foundation::Scene<Self>>>
@@ -8625,6 +8661,10 @@ impl<P: skene_foundation::Platform, Kind: 'static> skene_foundation::View<P> for
 pub fn skene_foundation::LayoutBox<P, Kind>::build(self) -> skene_foundation::NodeId
 pub fn skene_foundation::LayoutBox<P, Kind>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
 pub fn skene_foundation::LayoutBox<P, Kind>::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
+impl<P: skene_foundation::Platform, R: skene_foundation::routing::Route> skene_foundation::View<P> for skene_foundation::Link<P, R>
+pub fn skene_foundation::Link<P, R>::build(self) -> skene_foundation::NodeId
+pub fn skene_foundation::Link<P, R>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
+pub fn skene_foundation::Link<P, R>::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
 impl<P: skene_foundation::Platform, S: skene_foundation::TokenSet<<P as skene_foundation::Platform>::TokenValue>> skene_foundation::View<P> for skene_foundation::Theme<P, S, skene_foundation::realize::ChildBuilder<P>>
 pub fn skene_foundation::Theme<P, S, skene_foundation::realize::ChildBuilder<P>>::build(self) -> skene_foundation::NodeId
 pub fn skene_foundation::Theme<P, S, skene_foundation::realize::ChildBuilder<P>>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized

@@ -445,13 +445,17 @@ impl skene_web::router::Route for Page {
   }
 }
 
-/// A link is a box carrying its route's path as destination; a plain click navigates
-/// the router and suppresses the platform's own navigation, a modified click, from a
-/// pointer or a key, leaves both to the platform.
+/// A link is a tab stop carrying its route's path as destination; a plain click or
+/// `Enter` navigates the router and suppresses the platform's own navigation, a
+/// modified click, from a pointer or a key, leaves both to the platform.
 #[test]
 fn a_link_carries_its_destination_and_navigates_the_router() {
-  use skene_foundation::{ClickEvent, Modifiers};
-  use skene_web::{Link, headless::trigger_click_event};
+  use skene_foundation::{ClickEvent, KeyEvent, Modifiers};
+  use skene_web::{
+    Link,
+    LinkBase,
+    headless::{is_tab_stop, trigger_click_event, trigger_key_down},
+  };
 
   reset();
 
@@ -488,6 +492,13 @@ fn a_link_carries_its_destination_and_navigates_the_router() {
     assert!(!verdict.platform, "a modified click is the platform's");
     assert_eq!(router.route(), Page::Home);
   }
+
+  assert!(is_tab_stop(link));
+
+  let verdict = trigger_key_down(link, &KeyEvent::new("Enter"));
+
+  assert!(verdict.platform, "Enter on a link is the router's");
+  assert_eq!(router.route(), Page::About);
 
   owner.dispose();
 }

@@ -64,6 +64,7 @@ mod grid_cell;
 mod keymap;
 mod layout_box;
 mod lazy_list;
+mod link;
 mod macros;
 pub mod media;
 mod node_handle;
@@ -172,6 +173,7 @@ pub use crate::{
     item_window,
     item_window_over,
   },
+  link::{Link, LinkBase},
   node_handle::NodeHandle,
   overlay::{Overlay, OverlayBase},
   painted::{Painted, PaintedBase},

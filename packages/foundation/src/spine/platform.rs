@@ -404,6 +404,31 @@ pub trait Platform: Copy + Default + 'static {
   /// once no live owner sets one; a platform with no window title shows nothing.
   fn set_window_title(_title: Option<&str>) {}
 
+  /// The path the platform is at, where it has one: the location an app opened at, or
+  /// the path a render was asked for.
+  #[must_use]
+  fn current_path() -> Option<String> {
+    None
+  }
+
+  /// Records a navigation to `path` the platform's history can return from; a platform
+  /// without one records nothing.
+  fn push_path(_path: &str) {}
+
+  /// Runs `on_pop` with the path the platform's history moves to whenever it moves; a
+  /// platform without one never moves.
+  fn on_pop(_on_pop: impl Fn(String) + 'static) {}
+
+  /// Runs `update`, a navigation's change of state, under a view transition where the
+  /// platform has one, and at once where it has none.
+  fn commit_navigation(update: Box<dyn FnOnce()>) {
+    update();
+  }
+
+  /// Records `routes`, the paths a static build renders; a platform that builds
+  /// nothing statically ignores them.
+  fn record_static_routes(_routes: Vec<String>) {}
+
   /// Runs `action` once `delay` has passed on the platform's clock, unless cancelled
   /// first; a platform without a clock never runs it.
   fn schedule(delay: Duration, action: Box<dyn FnOnce()>) -> Timer;

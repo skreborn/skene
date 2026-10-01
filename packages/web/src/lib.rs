@@ -43,7 +43,6 @@ mod hints;
   expect(dead_code, reason = "the interner serves the leaves alone")
 )]
 mod interner;
-mod link;
 #[cfg(not(skene_web_platform = "headless"))]
 mod logging;
 mod low_level;
@@ -129,6 +128,7 @@ pub use skene_foundation::{
   LazyRowBase,
   Leaf,
   Length,
+  LinkBase,
   Listbox,
   ListboxContext,
   ListboxOption,
@@ -216,7 +216,6 @@ pub use self::platform::Rendered;
 pub use crate::{
   async_view::AsyncView,
   deferred::Deferred,
-  link::Link,
   media::{chosen_scheme, derive_scheme, set_scheme},
   resource::{LoadState, Resource},
   routing::{install_router, install_static_router},
@@ -246,6 +245,7 @@ pub use crate::{
     Keymap,
     LazyColumn,
     LazyRow,
+    Link,
     Overlay,
     Painted,
     Pinned,

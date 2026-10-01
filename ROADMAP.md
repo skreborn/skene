@@ -183,9 +183,8 @@ left half-done in a code comment.
     - A shell per platform: the facades' views and Simple's, newtypes implementing the
     traits of the core beneath them, stay on probation against writing each platform's
     views by hand.
-    - Moves: `AsyncView`, `Deferred`, the hydrating `Resource`, `Link` and the router
-    binding into the foundation over platform seams, so a generic library can use them
-    and the terminal gains `Link`.
+    - Moves: `AsyncView`, `Deferred` and the hydrating `Resource` into the foundation
+    over platform seams, so a generic library can use them.
     - Edges: painting's GPU stack stops weighing on the build of an app that paints
     nothing, `vello_hybrid` being over half of a clean gallery wasm build.
     - `#[main]` is the only entry point, emitting `fn main` per target with its native

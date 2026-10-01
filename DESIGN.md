@@ -51,7 +51,7 @@ skene-foundation the spine: Scene<P> (parents, children, annotations, token defi
 skene-web        the web facade: f32, ActivePlatform (the web in the browser and on a
                  server render, the headless platform elsewhere), its own type per view,
                  Typography, media::*, Resource across the server boundary, Deferred,
-                 AsyncView, Link, head, view_transitions, launch and the server entries,
+                 AsyncView, head, view_transitions, launch and the server entries,
                  #[main], and the platform itself under platform
 skene-terminal   the terminal facade, EQUAL in standing: u32 cells, Terminal, the
                  same views, Typography, BorderGlyphs, media::*, launch, testing

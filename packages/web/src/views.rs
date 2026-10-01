@@ -11,6 +11,7 @@ mod grid;
 mod grid_cell;
 mod keymap;
 mod lazy_list;
+mod link;
 mod overlay;
 mod painted;
 mod picker;
@@ -49,6 +50,7 @@ pub use self::{
   grid_cell::GridCell,
   keymap::Keymap,
   lazy_list::{LazyColumn, LazyRow},
+  link::Link,
   overlay::Overlay,
   painted::Painted,
   picker::BasicPicker,

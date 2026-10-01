@@ -49,6 +49,7 @@ pub use skene_web::LazyColumnBase
 pub use skene_web::LazyRowBase
 pub use skene_web::Leaf
 pub use skene_web::Length
+pub use skene_web::LinkBase
 pub use skene_web::Listbox
 pub use skene_web::ListboxContext
 pub use skene_web::ListboxOption
@@ -326,6 +327,7 @@ pub use skene_web::prelude::LazyRowBase
 pub use skene_web::prelude::Leaf
 pub use skene_web::prelude::Line
 pub use skene_web::prelude::LinkAnnotation
+pub use skene_web::prelude::LinkBase
 pub use skene_web::prelude::LinkPolicy
 pub use skene_web::prelude::Memo
 pub use skene_web::prelude::MenuEntry
@@ -618,6 +620,19 @@ pub fn skene_web::LazyRow::into_inner(self) -> Self::Inner
 pub fn skene_web::LazyRow::wrap(Self::Inner) -> Self
 impl<__P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::View<__P> for skene_web::LazyRow where skene_foundation::lazy_list::LazyRow<skene_web::ActivePlatform>: skene_foundation::spine::view::View<__P>, Self: 'static
 pub fn skene_web::LazyRow::build(self) -> skene_foundation::spine::node::NodeId
+pub struct skene_web::prelude::Link<R: skene_foundation::routing::Route>(_)
+impl<R: core::fmt::Debug + skene_foundation::routing::Route> core::fmt::Debug for skene_web::Link<R>
+pub fn skene_web::Link<R>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<R: skene_foundation::routing::Route, __P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::View<__P> for skene_web::Link<R> where skene_foundation::link::Link<skene_web::ActivePlatform, R>: skene_foundation::spine::view::View<__P>, Self: 'static
+pub fn skene_web::Link<R>::build(self) -> skene_foundation::spine::node::NodeId
+impl<R: skene_foundation::routing::Route> skene_foundation::link::LinkBase<skene_headless::Headless, R> for skene_web::Link<R>
+impl<R: skene_foundation::routing::Route> skene_foundation::spine::view::AnyKind for skene_web::Link<R>
+impl<R: skene_foundation::routing::Route> skene_foundation::spine::wraps::Wraps for skene_web::Link<R>
+pub type skene_web::Link<R>::Inner = skene_foundation::link::Link<skene_headless::Headless, R>
+pub fn skene_web::Link<R>::inner(&self) -> &Self::Inner
+pub fn skene_web::Link<R>::inner_mut(&mut self) -> &mut Self::Inner
+pub fn skene_web::Link<R>::into_inner(self) -> Self::Inner
+pub fn skene_web::Link<R>::wrap(Self::Inner) -> Self
 pub struct skene_web::prelude::Overlay<C>(_)
 impl skene_web::Overlay
 pub fn skene_web::Overlay::set_child(self, impl skene_foundation::spine::view::View<skene_web::ActivePlatform>) -> skene_web::Overlay<skene_foundation::spine::view::AnyView<skene_web::ActivePlatform>>
@@ -1096,17 +1111,19 @@ pub fn skene_web::LazyRow::into_inner(self) -> Self::Inner
 pub fn skene_web::LazyRow::wrap(Self::Inner) -> Self
 impl<__P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::View<__P> for skene_web::LazyRow where skene_foundation::lazy_list::LazyRow<skene_web::ActivePlatform>: skene_foundation::spine::view::View<__P>, Self: 'static
 pub fn skene_web::LazyRow::build(self) -> skene_foundation::spine::node::NodeId
-pub struct skene_web::Link<R: skene_foundation::routing::Route>
-impl<R: skene_foundation::routing::Route> skene_web::Link<R>
-pub fn skene_web::Link<R>::new(R) -> Self
+pub struct skene_web::Link<R: skene_foundation::routing::Route>(_)
 impl<R: core::fmt::Debug + skene_foundation::routing::Route> core::fmt::Debug for skene_web::Link<R>
 pub fn skene_web::Link<R>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl<R: skene_foundation::routing::Route> skene_foundation::spine::children::HasChildren<skene_headless::Headless> for skene_web::Link<R>
-pub type skene_web::Link<R>::Kind = skene_foundation::spine::view::PlainChild
-pub fn skene_web::Link<R>::children_mut(&mut self, skene_foundation::spine::children::Seal) -> &mut skene_foundation::spine::children::Children<skene_web::ActivePlatform, skene_foundation::spine::view::PlainChild>
-impl<R: skene_foundation::routing::Route> skene_foundation::spine::view::AnyKind for skene_web::Link<R>
-impl<R: skene_foundation::routing::Route> skene_foundation::spine::view::View<skene_headless::Headless> for skene_web::Link<R>
+impl<R: skene_foundation::routing::Route, __P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::View<__P> for skene_web::Link<R> where skene_foundation::link::Link<skene_web::ActivePlatform, R>: skene_foundation::spine::view::View<__P>, Self: 'static
 pub fn skene_web::Link<R>::build(self) -> skene_foundation::spine::node::NodeId
+impl<R: skene_foundation::routing::Route> skene_foundation::link::LinkBase<skene_headless::Headless, R> for skene_web::Link<R>
+impl<R: skene_foundation::routing::Route> skene_foundation::spine::view::AnyKind for skene_web::Link<R>
+impl<R: skene_foundation::routing::Route> skene_foundation::spine::wraps::Wraps for skene_web::Link<R>
+pub type skene_web::Link<R>::Inner = skene_foundation::link::Link<skene_headless::Headless, R>
+pub fn skene_web::Link<R>::inner(&self) -> &Self::Inner
+pub fn skene_web::Link<R>::inner_mut(&mut self) -> &mut Self::Inner
+pub fn skene_web::Link<R>::into_inner(self) -> Self::Inner
+pub fn skene_web::Link<R>::wrap(Self::Inner) -> Self
 pub struct skene_web::Overlay<C>(_)
 impl skene_web::Overlay
 pub fn skene_web::Overlay::set_child(self, impl skene_foundation::spine::view::View<skene_web::ActivePlatform>) -> skene_web::Overlay<skene_foundation::spine::view::AnyView<skene_web::ActivePlatform>>

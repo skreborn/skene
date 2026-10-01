@@ -269,9 +269,10 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
     self
   }
 
-  /// Sets the path the box navigates to when activated; the medium realizes it as a
-  /// real link where it has one. A destination that would run script when followed, a
-  /// `javascript:` URL, is never followed.
+  /// Sets the path the box navigates to when activated, making it a link: a tab stop
+  /// unless its focus order says otherwise, realized as a real link where the medium
+  /// has one. A destination that would run script when followed, a `javascript:` URL,
+  /// is never followed.
   pub fn set_destination(mut self, path: impl Into<String>) -> Self {
     self.destination = Some(path.into());
 
@@ -539,6 +540,7 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
       Some(Source::Derived(_)) | None => None,
     };
     let access = noted.clone().unwrap_or_default();
+    let links = self.destination.is_some();
     let props = BoxProps {
       layout: self.layout,
       role: self.role,
@@ -556,7 +558,10 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
 
     create(node, props);
     Scene::<P>::with(|scene| {
-      scene.note_focus_order(node, focus_order);
+      scene.note_focus_order(
+        node,
+        focus_order.or_else(|| links.then_some(FocusOrder::Auto)),
+      );
 
       if let Some(name) = container {
         scene.set_container(node, name);

@@ -2,12 +2,15 @@
 //!
 //! An app defines its route type and implements [`Route`]; the [`Router`] holds the
 //! current route in a signal, so any view that reads it re-renders on navigation. The
-//! router knows nothing of URLs' owners: a platform binds it thinly—the browser to the
-//! History API, a server render to the requested path, a native shell to nothing at all.
+//! router knows nothing of URLs' owners: [`install_router`] binds it to the platform's
+//! history through its seams—the browser's History API, a server render's requested
+//! path, nothing at all where the platform keeps none.
 
 use std::rc::Rc;
 
 use skene_reactive::{Get, Set, Signal, provide_context, use_context};
+
+use crate::Platform;
 
 /// A type that names every place in the app, convertible to and from a URL path.
 pub trait Route: Clone + PartialEq + 'static {
@@ -31,6 +34,37 @@ type Sink = Option<Rc<dyn Fn(&str)>>;
 /// The commit a platform installs: runs a navigation's state change, wrapping it in a
 /// view transition where the platform has one.
 type Commit = Option<Rc<dyn Fn(Box<dyn FnOnce()>)>>;
+
+/// Creates the app's router and provides it to the current scope.
+///
+/// The router starts at the platform's current path, or at `fallback` where the platform
+/// has none or the path matches no route, and navigation runs both ways through the
+/// platform's history where it keeps one.
+pub fn install_router<P: Platform, R: Route>(fallback: R) -> Router<R> {
+  let router = Router::new(fallback);
+
+  if let Some(path) = P::current_path() {
+    let _ = router.apply_path(&path);
+  }
+
+  router.set_sink(P::push_path);
+  router.set_commit(P::commit_navigation);
+  P::on_pop(move |path| {
+    let _ = router.apply_path(&path);
+  });
+  router.provide();
+
+  router
+}
+
+/// [`install_router`], for a route type whose statically renderable routes are
+/// enumerable: the platform records them, so a static build renders every route
+/// without being told them.
+pub fn install_static_router<P: Platform, R: StaticRoutes>(fallback: R) -> Router<R> {
+  P::record_static_routes(R::all().iter().map(Route::to_path).collect());
+
+  install_router::<P, R>(fallback)
+}
 
 /// The current route as reactive state.
 ///

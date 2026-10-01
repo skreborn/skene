@@ -871,6 +871,22 @@ impl Platform for Web {
     head::set_window_title(title);
   }
 
+  fn current_path() -> Option<String> {
+    Some(super::current_path())
+  }
+
+  fn push_path(path: &str) {
+    super::push_path(path);
+  }
+
+  fn on_pop(on_pop: impl Fn(String) + 'static) {
+    super::on_pop(on_pop);
+  }
+
+  fn commit_navigation(update: Box<dyn FnOnce()>) {
+    super::commit_navigation(update);
+  }
+
   fn watch_media(media: &Media<f32>) -> Memo<bool> {
     media::watch_media(media)
   }

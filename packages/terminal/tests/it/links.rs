@@ -1,5 +1,6 @@
 //! Links in cells: a link run is a tab stop, `Enter` clicks and opens it, `Space` does
-//! not, a click on its cell focuses it, and focus scrolls a link's paragraph into view.
+//! not, a click on its cell focuses it, and focus scrolls a link's paragraph into view;
+//! a route link navigates the router as `Enter` or a click follows it.
 
 use std::{cell::Cell, rc::Rc};
 
@@ -217,5 +218,71 @@ fn focus_reveals_a_linked_paragraph() {
 
     assert!(testing::render_to_text(10, 2).contains("docs"));
     assert!(reversed(10, 2, "docs"));
+  });
+}
+
+/// A page's routes, for the route link.
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum Page {
+  Home,
+  About,
+}
+
+impl terminal::router::Route for Page {
+  fn parse(path: &str) -> Option<Self> {
+    match path {
+      "/" => Some(Self::Home),
+      "/about" => Some(Self::About),
+      _ => None,
+    }
+  }
+
+  fn to_path(&self) -> String {
+    match self {
+      Self::Home => "/".to_owned(),
+      Self::About => "/about".to_owned(),
+    }
+  }
+}
+
+/// A route link is a tab stop that `Enter` and a click follow, navigating the router
+/// and opening nothing, while `Space` does not.
+#[test]
+fn a_route_link_follows_on_enter_and_a_click() {
+  with_platform(|| {
+    let router = Rc::new(Cell::new(None));
+    let installed = Rc::clone(&router);
+
+    let _ = terminal::mount(move || {
+      installed.set(Some(install_router(Page::Home)));
+
+      Column::new()
+        .add_child(Link::new(Page::About).add_child(Text::new("about")))
+        .build()
+    });
+    let router = router.get().expect("the mount installed the router");
+    let frame = testing::render_to_text(20, 2);
+
+    testing::trigger_key("Tab");
+    testing::trigger_key(" ");
+
+    assert_eq!(router.route(), Page::Home, "Space does not follow a link");
+
+    testing::trigger_key("Enter");
+
+    assert_eq!(router.route(), Page::About);
+    assert_eq!(
+      testing::take_opened(),
+      None,
+      "the router follows it, not the terminal"
+    );
+
+    router.navigate(Page::Home);
+
+    let (x, y) = locate(&frame, "about");
+
+    testing::trigger_mouse_click(x, y);
+
+    assert_eq!(router.route(), Page::About);
   });
 }

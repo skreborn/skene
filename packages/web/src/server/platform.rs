@@ -211,6 +211,14 @@ impl Platform for Web {
   fn set_window_title(title: Option<&str>) {
     set_window_title(title);
   }
+
+  fn current_path() -> Option<String> {
+    Some(super::current_path())
+  }
+
+  fn record_static_routes(routes: Vec<String>) {
+    super::record_static_routes(routes);
+  }
 }
 
 impl WebMarkup for Web {

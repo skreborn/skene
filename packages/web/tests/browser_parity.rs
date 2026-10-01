@@ -492,7 +492,7 @@ impl Case {
         })
         .set_border_color(ParityPalette::SURFACE),
       Self::FixedInk => container.set_child(Text::new("ink").set_color(orange())),
-      Self::AxisOverflow => container.set_overflow(Axes::new(Overflow::Hidden, Overflow::Scroll)),
+      Self::AxisOverflow => container.set_overflow(Axes::new(Overflow::Clip, Overflow::Scroll)),
       Self::VisibleBesideScroll => {
         container.set_overflow(Axes::new(Overflow::Visible, Overflow::Scroll))
       }
@@ -706,9 +706,9 @@ fn ratio(value: &str) -> Reading {
 fn overflow_keyword(value: &str) -> Option<Overflow> {
   match value {
     "visible" => Some(Overflow::Visible),
-    "hidden" => Some(Overflow::Hidden),
+    "hidden" => Some(Overflow::Clip),
     "scroll" => Some(Overflow::Scroll),
-    "auto" => Some(Overflow::Auto),
+    "auto" => Some(Overflow::ScrollIfNeeded),
     _ => None,
   }
 }

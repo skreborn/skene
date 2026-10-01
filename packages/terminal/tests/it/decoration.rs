@@ -74,7 +74,7 @@ fn a_boxs_scrollbars_draw_with_its_glyphs_and_colors() {
     let _ = terminal::mount(|| {
       Container::new()
         .set_height(4)
-        .set_overflow(Overflow::Auto)
+        .set_overflow(Overflow::ScrollIfNeeded)
         .set_scrollbar_glyphs(ScrollbarGlyphs::LINE)
         .set_scrollbar_thumb(red())
         .set_scrollbar_track(blue())

@@ -23,7 +23,7 @@ mod frame {
     let _ = terminal::mount(|| {
       Container::new()
         .set_height(24)
-        .set_overflow(Overflow::Auto)
+        .set_overflow(Overflow::ScrollIfNeeded)
         .set_child(
           Column::new().set_children(
             (0..ROWS)
@@ -40,7 +40,7 @@ mod frame {
     let _ = terminal::mount(move || {
       Container::new()
         .set_height(24)
-        .set_overflow(Overflow::Auto)
+        .set_overflow(Overflow::ScrollIfNeeded)
         .set_child(Column::new().derive_children(
           move || rows.get(),
           |row| *row,

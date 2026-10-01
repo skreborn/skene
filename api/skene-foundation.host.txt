@@ -2661,9 +2661,9 @@ pub fn skene_foundation::NodeKind::hash<__H: core::hash::Hasher>(&self, &mut __H
 impl core::marker::Copy for skene_foundation::NodeKind
 impl core::marker::StructuralPartialEq for skene_foundation::NodeKind
 pub enum skene_foundation::Overflow
-pub skene_foundation::Overflow::Auto
-pub skene_foundation::Overflow::Hidden
+pub skene_foundation::Overflow::Clip
 pub skene_foundation::Overflow::Scroll
+pub skene_foundation::Overflow::ScrollIfNeeded
 pub skene_foundation::Overflow::Visible
 impl skene_foundation::Overflow
 pub const fn skene_foundation::Overflow::scrolls(self) -> bool

@@ -181,7 +181,7 @@ fn names_and_roles_reach_the_markup() {
         .set_child(Text::new("saved")),
       Painted::new(|_, _| {}).set_description("Eight blue stripes"),
       Container::new()
-        .set_overflow(Overflow::Auto)
+        .set_overflow(Overflow::ScrollIfNeeded)
         .set_height(Dimension::Length(40.))
         .set_child(Text::new("long")),
       Tooltip::new("Saves your work").set_child(Text::new("hover me")),

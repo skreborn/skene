@@ -115,7 +115,7 @@ proptest! {
             ),
             Container::new()
               .set_height(3)
-              .set_overflow(Overflow::Auto)
+              .set_overflow(Overflow::ScrollIfNeeded)
               .set_child(
                 Column::new().set_children(
                   (0..12)

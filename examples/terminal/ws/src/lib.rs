@@ -53,7 +53,7 @@ pub fn app(url: Option<String>) -> impl View {
 
   Theme::new(SimplePalette::default()).set_child_builder(move || {
     Container::new()
-      .set_overflow(Overflow::Auto)
+      .set_overflow(Overflow::ScrollIfNeeded)
       .set_color(SimplePalette::BACKGROUND)
       .set_child(
         Container::new().set_max_width(72).set_child(

@@ -461,7 +461,7 @@ impl<T, N> From<Definition<T, N>> for Value<T, Condition<N>> {
 
 /// The conversions letting a plain value stand for a uniform value of a type built from
 /// one, at every leaf: `set_spacing(8.)`, `set_width(10.)`, `when(.., 16.)`,
-/// `set_overflow(Overflow::Auto)`.
+/// `set_overflow(Overflow::ScrollIfNeeded)`.
 macro_rules! uniform_leaves {
   ($($wrapper:ident),+ $(,)?) => {$(
     impl<T: Copy> From<T> for StaticLeaf<$wrapper<T>> {

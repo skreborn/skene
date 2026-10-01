@@ -58,7 +58,7 @@ fn named_palette(name: Option<&str>) -> SimplePalette {
 
 fn gallery(palette: Signal<Option<String>>) -> impl View {
   Container::new()
-    .set_overflow(Overflow::Auto)
+    .set_overflow(Overflow::ScrollIfNeeded)
     .set_color(SimplePalette::BACKGROUND)
     .set_child(
       Column::new()

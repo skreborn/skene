@@ -9,19 +9,19 @@ pub enum Overflow {
   /// Content spills out visibly.
   Visible,
   /// Content is clipped.
-  Hidden,
+  Clip,
   /// Content is clipped and the box scrolls, with scrollbars always shown.
   Scroll,
-  /// Content is clipped and the box scrolls when needed.
-  Auto,
+  /// Content is clipped and the box scrolls when it overflows.
+  ScrollIfNeeded,
 }
 
 impl Overflow {
-  /// Whether the axis scrolls: `Scroll` or `Auto`.
+  /// Whether the axis scrolls: `Scroll` or `ScrollIfNeeded`.
   #[inline(always)]
   #[must_use]
   pub const fn scrolls(self) -> bool {
-    matches!(self, Self::Scroll | Self::Auto)
+    matches!(self, Self::Scroll | Self::ScrollIfNeeded)
   }
 }
 
@@ -32,8 +32,8 @@ impl Axes<Overflow> {
   pub const fn computed(self) -> Self {
     match (self.horizontal, self.vertical) {
       (Overflow::Visible, Overflow::Visible) => self,
-      (Overflow::Visible, vertical) => Self::new(Overflow::Auto, vertical),
-      (horizontal, Overflow::Visible) => Self::new(horizontal, Overflow::Auto),
+      (Overflow::Visible, vertical) => Self::new(Overflow::ScrollIfNeeded, vertical),
+      (horizontal, Overflow::Visible) => Self::new(horizontal, Overflow::ScrollIfNeeded),
       _ => self,
     }
   }
@@ -55,20 +55,20 @@ mod tests {
   /// An axis left visible beside one that is not scrolls where needed, as in CSS, and two
   /// visible axes stay visible.
   #[test]
-  fn a_visible_axis_beside_a_clipping_one_computes_to_auto() {
+  fn a_visible_axis_beside_a_clipping_one_scrolls_if_needed() {
     assert_eq!(
-      Axes::new(Overflow::Visible, Overflow::Hidden).computed(),
-      Axes::new(Overflow::Auto, Overflow::Hidden)
+      Axes::new(Overflow::Visible, Overflow::Clip).computed(),
+      Axes::new(Overflow::ScrollIfNeeded, Overflow::Clip)
     );
     assert_eq!(
       Axes::new(Overflow::Scroll, Overflow::Visible).computed(),
-      Axes::new(Overflow::Scroll, Overflow::Auto)
+      Axes::new(Overflow::Scroll, Overflow::ScrollIfNeeded)
     );
     assert_eq!(
       Axes::all(Overflow::Visible).computed(),
       Axes::all(Overflow::Visible)
     );
-    assert!(Axes::new(Overflow::Visible, Overflow::Hidden).scrolls());
-    assert!(!Axes::all(Overflow::Hidden).scrolls());
+    assert!(Axes::new(Overflow::Visible, Overflow::Clip).scrolls());
+    assert!(!Axes::all(Overflow::Clip).scrolls());
   }
 }

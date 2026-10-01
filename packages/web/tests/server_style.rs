@@ -224,9 +224,8 @@ fn overflow_renders() {
 /// An overflow per axis renders as the two-value shorthand, horizontal first.
 #[test]
 fn overflow_renders_per_axis() {
-  let rendered = render_to_string(|| {
-    Container::new().set_overflow(Axes::new(Overflow::Hidden, Overflow::Scroll))
-  });
+  let rendered =
+    render_to_string(|| Container::new().set_overflow(Axes::new(Overflow::Clip, Overflow::Scroll)));
 
   let class = root_class(rendered.body());
 

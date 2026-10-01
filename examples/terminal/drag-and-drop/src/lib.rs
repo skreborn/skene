@@ -35,7 +35,7 @@ pub fn app() -> impl View {
 
   Theme::new(SimplePalette::default()).set_child_builder(move || {
     Container::new()
-      .set_overflow(Overflow::Auto)
+      .set_overflow(Overflow::ScrollIfNeeded)
       .set_color(SimplePalette::BACKGROUND)
       .set_child(
         Column::new()

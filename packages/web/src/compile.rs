@@ -249,9 +249,9 @@ pub(crate) fn render_box_value(value: &BoxValue<f32, WebStyle>) -> String {
     BoxValue::Overflow(overflow) => {
       let keyword = |overflow| match overflow {
         Overflow::Visible => "visible",
-        Overflow::Hidden => "hidden",
+        Overflow::Clip => "hidden",
         Overflow::Scroll => "scroll",
-        Overflow::Auto => "auto",
+        Overflow::ScrollIfNeeded => "auto",
       };
 
       if overflow.horizontal == overflow.vertical {

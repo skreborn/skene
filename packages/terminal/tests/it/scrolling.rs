@@ -20,7 +20,7 @@ fn scroll_box_clips_wheels_and_hit_tests() {
         .set_child(
           Container::new()
             .set_height(3)
-            .set_overflow(Overflow::Auto)
+            .set_overflow(Overflow::ScrollIfNeeded)
             .set_child(Column::new().derive_children(
               || 0..6,
               |index| *index,
@@ -93,7 +93,7 @@ fn a_wheel_reaches_the_node_under_it_before_it_scrolls() {
     let _ = terminal::mount(move || {
       Container::new()
         .set_height(3)
-        .set_overflow(Overflow::Auto)
+        .set_overflow(Overflow::ScrollIfNeeded)
         .set_child(
           Column::new().set_children((
             terminal::Control::new(Dial).set_height(1).set_label("dial"),
@@ -146,7 +146,7 @@ fn overflow_scrolls_on_its_own_axis_alone() {
           Container::new()
             .set_width(8)
             .set_height(3)
-            .set_overflow(Axes::new(Overflow::Hidden, Overflow::Auto))
+            .set_overflow(Axes::new(Overflow::Clip, Overflow::ScrollIfNeeded))
             .set_child(
               Container::new().set_width(20).set_child(
                 Column::new().set_children(
@@ -283,7 +283,7 @@ fn scrollbar_jumps_and_drags() {
       Container::new()
         .set_width(6)
         .set_height(4)
-        .set_overflow(Overflow::Auto)
+        .set_overflow(Overflow::ScrollIfNeeded)
         .set_child(
           Column::new().set_children(
             (0..12)
@@ -347,7 +347,7 @@ fn a_scrollbar_drag_reads_the_pointer_within_its_cell() {
       Container::new()
         .set_width(6)
         .set_height(4)
-        .set_overflow(Overflow::Auto)
+        .set_overflow(Overflow::ScrollIfNeeded)
         .set_child(
           Column::new().set_children(
             (0..44)
@@ -401,7 +401,7 @@ fn wheel_target_latches_until_the_pointer_moves() {
         .set_child(
           Container::new()
             .set_height(4)
-            .set_overflow(Overflow::Auto)
+            .set_overflow(Overflow::ScrollIfNeeded)
             .set_child(
               Column::new().set_children((
                 Text::new("top0"),
@@ -412,7 +412,7 @@ fn wheel_target_latches_until_the_pointer_moves() {
                   .set_height(4)
                   .set_min_height(4)
                   .set_width(10)
-                  .set_overflow(Overflow::Auto)
+                  .set_overflow(Overflow::ScrollIfNeeded)
                   .set_child(
                     Column::new().set_children(
                       (0..8)
@@ -466,14 +466,14 @@ fn wheel_gesture_holds_at_the_target_limit_then_chains() {
         .set_child(
           Container::new()
             .set_height(4)
-            .set_overflow(Overflow::Auto)
+            .set_overflow(Overflow::ScrollIfNeeded)
             .set_child(
               Column::new().set_children((
                 Container::new()
                   .set_height(2)
                   .set_min_height(2)
                   .set_width(10)
-                  .set_overflow(Overflow::Auto)
+                  .set_overflow(Overflow::ScrollIfNeeded)
                   .set_child(
                     Column::new().set_children(
                       (0..4)
@@ -525,7 +525,7 @@ fn page_keys_scroll_by_a_viewport_less_a_row() {
     let _ = terminal::mount(|| {
       Container::new()
         .set_height(4)
-        .set_overflow(Overflow::Auto)
+        .set_overflow(Overflow::ScrollIfNeeded)
         .set_child(
           Column::new().set_children(
             (0..9)

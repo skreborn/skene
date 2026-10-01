@@ -95,7 +95,7 @@ pub fn app() -> impl View {
     derive_scheme(move || scheme.get());
 
     Container::new()
-      .set_overflow(Overflow::Auto)
+      .set_overflow(Overflow::ScrollIfNeeded)
       .set_color(SimplePalette::BACKGROUND)
       .set_child(
         Column::new()

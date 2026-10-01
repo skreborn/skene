@@ -421,7 +421,7 @@ impl<P: Platform> LazyList<P> {
         axis.derive_sized(Container::<P>::new(), move || slice.get().leading),
       ));
 
-    list.style_mut().overflow = Some(Overflow::Auto.into());
+    list.style_mut().overflow = Some(Overflow::ScrollIfNeeded.into());
 
     if let Some(install) = install {
       list = install(slice, Rc::clone(&measures), list);

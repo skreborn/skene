@@ -1870,7 +1870,7 @@ fn derived_view_swaps_between_trees_on_state_change() {
 fn scroller() -> Container {
   Container::new()
     .set_height(40.)
-    .set_overflow(skene_foundation::Overflow::Auto)
+    .set_overflow(skene_foundation::Overflow::ScrollIfNeeded)
     .set_child(
       Column::new().set_children((
         Container::new()

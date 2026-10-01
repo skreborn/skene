@@ -129,7 +129,7 @@ pub trait DecorationBase<P: Platform>: HasBoxStyle<P> + Sized {
       "the mouse cursor shown over the box";
     set_overflow / derive_overflow (overflow) => overflow: Axes<Overflow>,
       "how content exceeding the box's bounds is treated on each axis",
-      "`Scroll` and `Auto` make an axis scrollable, and one overflow sets both.";
+      "`Scroll` and `ScrollIfNeeded` make an axis scrollable, and one overflow sets both.";
     set_hidden / derive_hidden (hidden) => hidden: bool,
       "whether the box and its content go undrawn",
       "A hidden box keeps its place in the layout.";

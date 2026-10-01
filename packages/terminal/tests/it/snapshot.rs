@@ -15,7 +15,7 @@ fn scroll_offsets_survive_a_snapshot_roundtrip() {
       Container::new()
         .set_width(6)
         .set_height(4)
-        .set_overflow(Overflow::Auto)
+        .set_overflow(Overflow::ScrollIfNeeded)
         .set_child(
           Column::new().set_children(
             (0..12)

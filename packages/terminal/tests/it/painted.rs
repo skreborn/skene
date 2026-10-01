@@ -77,7 +77,7 @@ fn a_picture_is_cropped_to_the_cells_in_view_and_hidden_under_an_overlay() {
         .set_children((
           Container::new()
             .set_height(2)
-            .set_overflow(Overflow::Auto)
+            .set_overflow(Overflow::ScrollIfNeeded)
             .set_child(Column::new().set_children((Text::new("top"), red_box(4, 3)))),
           BasicButton::new(Activate::new())
             .set_label("open")

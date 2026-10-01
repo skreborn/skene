@@ -10,10 +10,10 @@ repository.workspace = true
 [dependencies]
 
 [target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
-js-sys = "0.3"
+js-sys.workspace = true
 wasm-bindgen.workspace = true
-wasm-bindgen-futures = "0.4"
-web-sys = { version = "0.3", features = [
+wasm-bindgen-futures.workspace = true
+web-sys = { workspace = true, features = [
   "BinaryType",
   "CloseEvent",
   "Event",
@@ -33,7 +33,7 @@ tungstenite = { features = ["rustls-tls-native-roots"], version = "0.30" }
 ureq = { default-features = false, features = ["gzip", "platform-verifier", "rustls-no-provider"], version = "3" }
 
 [target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dev-dependencies]
-wasm-bindgen-test = "0.3"
+wasm-bindgen-test.workspace = true
 
 [lints]
 workspace = true

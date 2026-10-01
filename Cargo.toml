@@ -13,12 +13,14 @@ repository = "https://github.com/skreborn/skene"
 accesskit = { default-features = false, version = "0.25" }
 color = "0.3"
 insta = { default-features = false, version = "1" }
+js-sys = "0.3"
 keyboard-types = { default-features = false, features = ["std", "webdriver"], version = "0.8" }
 proc-macro-crate = "3"
 proc-macro2 = "1"
 proptest = { default-features = false, features = ["std"], version = "1" }
 quote = "1"
 rustc-hash = "2.1"
+serde_json = "1"
 skene-build = { path = "packages/build", version = "0.1.0" }
 skene-conformance = { path = "packages/conformance", version = "0.1.0" }
 skene-dev = { path = "packages/dev", version = "0.1.0" }
@@ -38,6 +40,9 @@ tracing = "0.1"
 trybuild = "1"
 ui-events = { default-features = false, features = ["std"], version = "0.3" }
 wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+wasm-bindgen-test = "0.3"
+web-sys = "0.3"
 
 [profile.dev]
 debug = "line-tables-only"

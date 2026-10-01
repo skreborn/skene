@@ -185,8 +185,7 @@ left half-done in a code comment.
     - A shell per platform: the facades' views and Simple's, newtypes implementing the
     traits of the core beneath them, stay on probation against writing each platform's
     views by hand.
-    - Manifests: web-sys, js-sys, wasm-bindgen-test and serde_json inherited from the
-    workspace; docs.rs building wasm32 and the server cfg; taffy 0.14 (with
+    - Manifests: docs.rs building wasm32 and the server cfg; taffy 0.14 (with
     right-to-left), wgpu 30, base64 0.23, toml 1.x, criterion 0.8 and wasm-bindgen
     0.2.129, the duplicate syn and hashbrown versions gone.
     - The documents: `AGENTS.md` at 150 lines or fewer of numbered

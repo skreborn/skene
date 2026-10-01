@@ -16,7 +16,7 @@ skene-headless.workspace = true
 
 [target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
 wasm-bindgen.workspace = true
-web-sys = { version = "0.3", features = [
+web-sys = { workspace = true, features = [
   "CanvasRenderingContext2d",
   "Document",
   "Element",
@@ -24,8 +24,8 @@ web-sys = { version = "0.3", features = [
 ] }
 
 [target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dev-dependencies]
-wasm-bindgen-test = "0.3"
-web-sys = { version = "0.3", features = [
+wasm-bindgen-test.workspace = true
+web-sys = { workspace = true, features = [
   "Document",
   "Element",
   "HtmlElement",

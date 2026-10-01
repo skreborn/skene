@@ -5,6 +5,23 @@
 - Skene is a **client-side** framework. No server-side features, ever: no server
   functions, no backend framework integrations. SSR/SSG are rendering capabilities; the
   app's server binary is a plain command a user's server runs or embeds, not a server.
+- **One foundation, a native shell per platform.** Each platform is its own crate and
+  its own facade—`skene-web` and `skene-terminal`, later `skene-ios`, `skene-android`,
+  `skene-windows`, `skene-macos` and `skene-linux`—with a vocabulary typed to exactly
+  that platform, so what it cannot or should not do is unrepresentable in its code:
+  types decide what a platform can do, and signals what an install of it can, which
+  stays progressive enhancement within the platform's own vocabulary. Everything two or
+  more platforms share with identical semantics lives in the foundation: mechanisms
+  (the scene, dispatch, behaviors and their key tables, accessibility reporting, the
+  style model, tokens and resolution, motion, layout), never vocabulary or
+  presentation, and code that merely looks alike across platforms stays in each. The
+  foundation may implement a view once where platforms share its semantics, each
+  facade exposing it as a type of its own, and a platform realizes its own the moment
+  they diverge. There is no cross-platform vocabulary: an app is a shared crate of
+  logic and state with a shell per platform, and a component library a core of colors,
+  named sizes and logic with a presentation crate per platform. Until the rename wave
+  in `ROADMAP.md` lands, the web's facade is `skene-gui` and the terminal's
+  `skene-tui`, and the paragraphs below still describe that layout.
 - The spine (`skene-reactive` + `skene-core` + `skene-common`) stays platform-agnostic: no
   platform assumptions or nomenclature. Core hosts the retained **scene** (`Scene<P>`:
   parents, children, per-child annotations, token definitions, generational node ids), the

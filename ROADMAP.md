@@ -51,26 +51,13 @@ left half-done in a code comment.
     rebuilds and nested lazy content keep their markers and their server markup; where
     `appearance: base-select` is supported, the picker is a styled native `<select>` and
     the hydration swap goes, the drawn face remaining elsewhere.
-3. **Tests that exercise what users see.** Headless becomes the GUI's real stand-in,
+3. **Tests that exercise what users see.** Headless becomes the web's real stand-in,
     and every tier asserts through roles, text and pixels.
-    - Undecided, before the kit below: the terminal measures lengths in logical pixels,
-    a cell standing for a fixed 8×16 of them, rather than in whole cells. Every
-    platform's scalar is then `f32` and the `Scalar` parameter leaves the spine (the
-    styles, the geometry, tokens, conditions and the environment), a library's literal
-    lengths and font sizes mean the same visual size on both facades (a 16 px font one
-    cell tall, `em` one text row), and corner radii, shadows and the pointer share the
-    GUI's measure. Layout snaps to whole cells per axis (taffy rounding in cell units),
-    text and scroll offsets stay on the grid, and only the graphics layer draws between
-    cells; the cell size the terminal reports scales graphics alone, so a font change
-    keeps an app's cell counts. `Length::characters` and `Length::lines` (the web's
-    `ch` and `lh`) spell cell-exact lengths on every medium. The cost: a bare `1.`
-    rounds to no cell in the terminal, so its builders need a guard or a lint, and every
-    terminal example and snapshot moves to the new unit.
     - The terminal's retained runtime (the taffy store, the incremental restyle, the
     damage and the measured rectangles, hit testing, focus, capture, wheel latching,
-    field editing, selection, motion) is extracted into a medium-generic kit; headless
-    lays out through it and renders pixel snapshots, and it is the native family's
-    first prerequisite.
+    field editing, selection, motion) is extracted into a kit generic over the
+    platform's scalar; headless lays out through it and renders pixel snapshots, and its
+    layout store becomes the shared layout crate the native shells call into.
     - A host-side WebDriver harness in the browser tier, over the WebDriver session,
     runs the conformance suite (`skene-conformance`) in Firefox and Chromium through
     trusted input from WebDriver's actions and takes the screenshot goldens: an event a page
@@ -83,6 +70,11 @@ left half-done in a code comment.
     and not after a press, a press held along its path, focus entering and leaving a
     subtree, focus following a keyed item across a reorder) move into the conformance
     suite once a `Driver` observes what they read.
+    - Conformance by intent: once the shells stop sharing views, a scenario states what
+    it builds (a button labelled Save that counts its clicks) and each platform's
+    driver builds it in its own vocabulary, so one suite keeps holding every shell to
+    the foundation's behaviors; headless tests the foundation and an app's shared
+    logic, and a shell is tested end to end on its own platform.
 4. **The quadratic hot paths.**
     - The terminal: a structure change, a token's redefinition and a container's resize
     still restyle every node, and a structure change hands every node its layout
@@ -188,6 +180,15 @@ left half-done in a code comment.
 7. **Names and structure while the API is unstable.** One rename wave brings the names
     in line with the vocabulary rule, the structure loses its bad edges and copies, and
     the documents shrink to what tooling cannot enforce.
+    - A shell per platform: `skene-gui` folds into `skene-web`, the one crate a web
+    developer imports, re-exporting the foundation; `skene-tui` becomes
+    `skene-terminal`; `examples/gui` and `examples/tui` become `examples/web` and
+    `examples/terminal`; each facade exposes its views as types of its own, the
+    foundation's generic implementations behind them where the platforms share their
+    semantics; Simple splits into a core of colors, named sizes and behavior defaults
+    and a crate per platform (`skene-simple-web`, `skene-simple-terminal`), and
+    `examples/third-party` splits the same way; `AGENTS.md`'s facade, selection,
+    third-party and examples rules follow.
     - `skene-core` and `skene-common` merge into `skene-foundation`, since every
     consumer depends on both: scene internals stay behind module visibility
     (`pub(in crate::spine)`), so built-in views still use only the public API, and a
@@ -197,7 +198,7 @@ left half-done in a code comment.
     `ThemedIn::define_root` stop being crate-private. The resolution then names the
     typography size token itself, so `ResolutionSource::size_token` goes, the terminal
     keeping only whether it proved text sizing, and the `em` fallback becomes the
-    medium's, unless the terminal's logical pixels make it one value.
+    platform's.
     - Moves: `AsyncView`, `Deferred`, the hydrating `Resource`, `Link` and the router
     binding into the foundation over platform seams, so a generic library can use them
     and the terminal gains `Link`; the title into a shared `window` module, which grows
@@ -205,10 +206,8 @@ left half-done in a code comment.
     `Show` beside `Switch`; the lazy list's `ItemWindow` math and the slider math out
     of the spine; `root_owner` as the reactive crate's `Owner::root()`; `task`,
     `executor` and `boundary` as one module.
-    - Edges: `skene-simple` stops depending on both facades, as two tiny alias crates
-    or an alias macro the app invokes; painting's GPU stack stops weighing
-    on the build of an app that paints nothing, `vello_hybrid` being over half of a
-    clean gallery wasm build.
+    - Edges: painting's GPU stack stops weighing on the build of an app that paints
+    nothing, `vello_hybrid` being over half of a clean gallery wasm build.
     - `#[main]` is the only entry point, emitting `fn main` per target with its native
     arms reserved, and the CLI picks the crate type per target through
     `cargo rustc --crate-type`, so apps stop declaring crate types and the `cdylib`
@@ -235,8 +234,8 @@ left half-done in a code comment.
     `add_*` (`set_transition`, `set_animation`, `set_case`, `RichText::set_spans`);
     children last in `Deferred`, `AsyncView` and `Link`; fallbacks spelled one way across
     `Enhance`, `Painted`, `Suspense` and `ErrorBoundary`; one alignment name across
-    `Stack`, `Grid`, `GridCell` and `Flexible`; the same prelude on both facades and
-    every leaf.
+    `Stack`, `Grid`, `GridCell` and `Flexible`; the foundation's items under one name in
+    every platform's prelude.
     - Manifests: every crate publishable, with a description and a repository, the
     versioned dev-dependency cycles broken, and the CLI publishable, as the README's
     `cargo install` assumes; web-sys, js-sys, wasm-bindgen-test and serde_json
@@ -255,7 +254,8 @@ left half-done in a code comment.
     floor, fallback and baseline against upgrade, enhancement and child); dated
     decision records with a revisit trigger; an architecture page on state (a `Store`,
     a local `Signal` or context, and no view models in context); a guide in an mdbook
-    that compiles its snippets, and a `skene new` scaffold.
+    that compiles its snippets, and a `skene new` scaffold generating an app's shared
+    crate and a shell per platform it names, as `flutter create` does.
     - Wrong claims corrected: the native contradictions in `DESIGN.md` (painted-native
     desktop and mobile, a Linux leaf on winit, selection by triple), settled by the
     native family's decisions; "a palette change costs the number of tokens", until the
@@ -325,9 +325,15 @@ left half-done in a code comment.
     sets, so a production build carries none of it. Open: the key (`F12`, as browsers
     use), whether `attach` stays as the two-terminal form, and whether the first cut is
     the logs, the build and the last crash alone.
-13. **Design tokens in the DTCG format.** `TokenSet` definitions import from and export
-    to the W3C Design Tokens Community Group format, stable since October 2025, so a
-    palette travels to and from design tools.
+13. **Themes split by platform, and design tokens in the DTCG format.** A theme's
+    core is plain constants shared by every shell (its colors, and its sizes named
+    rather than measured, since cells, points, dp and pixels share no unit), and each
+    platform's theme crate gives the named sizes their values and builds its own
+    themes from the core. Open, and revisited once the shells are split: whether the
+    shells other than the web keep token sets or theme through reactive values
+    throughout their trees, the web keeping them so a scriptless page themes through
+    CSS. A core imports from and exports to the W3C Design Tokens Community Group
+    format, stable since October 2025, so a palette travels to and from design tools.
 14. **Notifications and progress from the terminal**: OSC 99 (kitty, with ids and
     closing) or OSC 9 for a desktop notification, OSC 9;4 for the taskbar's progress
     (Windows Terminal, ConEmu, Ghostty); a facade seam beside the title, ignored where
@@ -347,14 +353,18 @@ left half-done in a code comment.
     queued between reads of 10 ms; a wake pipe polled beside the socket would send at
     once and let an idle socket sleep.
 18. **The native platform family.** The largest phase, roughly 21–30 person-months
-    across five OSes, and deliberately late: it realizes a complete vocabulary once,
-    instead of chasing additions, so its gaps (images, font families, text-entry
-    purposes, opacity, transforms, insets, windows, drag and drop) close first, in the
-    items above and the prerequisites below.
-    - Premise: **native views, native compositing, native text.** Every platform
+    across five OSes, and deliberately late: each shell is designed once against a
+    complete foundation, instead of chasing additions, so the gaps (images, font
+    families, text-entry purposes, opacity, transforms, insets, windows, drag and drop)
+    close first, in the items above and the prerequisites below.
+    - Premise: **native views, native compositing, native text.** Each OS is a shell of
+    its own (`skene-ios`, `skene-android`, `skene-windows`, `skene-macos`,
+    `skene-linux`), its crate its facade, with a vocabulary for that OS's controls,
+    structure and navigation. Every platform
     realizes the tree into its own view hierarchy and composites it: a box is a view
     with its layers, a text entry is the platform's (`UITextField`, `EditText`,
-    `GtkText`, a XAML `TextBox`) styled to Simple's look as an `<input>` is on the web,
+    `GtkText`, a XAML `TextBox`) styled by the platform's Simple crate as an `<input>`
+    is on the web,
     since selection, IME, autofill and the edit menu are the platform's and mobile
     users notice a replica, a `Native*` control is the platform's own where it has one
     beside the composed `Basic*` and `Simple*` forms, and only `Painted` draws, in a
@@ -410,11 +420,13 @@ left half-done in a code comment.
     `LayoutManager`, `gtk::Text` and `TextView`, Pango-attributed labels, popovers,
     gesture controllers and AT-SPI; developable on the machine at hand. The drawn Linux
     leaf leaves the documents.
-    - Layout: taffy behind a small FFI library the platform's own layout primitives
-    call (a `SkeneLayout` view on Android and iOS, a `LayoutManager` on GTK, a panel on
-    XAML), one tree per root rather than per container, leaves measured by the
-    platform's own text and controls through a call on the UI thread, frames set in one
-    batch; the vocabulary's semantics stay taffy's on every platform. Layout-only nodes
+    - Layout: the platform's own layout containers for its native look, and beside them
+    taffy behind a small FFI library the platform's own layout primitives call (a
+    `SkeneLayout` view on Android and iOS, a `LayoutManager` on GTK, a panel on XAML),
+    one tree per root rather than per container, crossed once per layout pass, leaves
+    measured by the platform's own text and controls through a call on the UI thread,
+    frames set in one batch; taffy's containers keep taffy's semantics on every
+    platform, for an app that looks its own everywhere. Layout-only nodes
     flatten by type, since only `Container` is decorated; layout settles before a frame
     commits, the terminal's settle loop becoming the frame contract; text measurement
     is memoized in Rust by text, style and constraint, since each question would cross
@@ -426,11 +438,9 @@ left half-done in a code comment.
     resolution against window and pointer signals through the one resolution point.
     Opacity, transform and color transitions run on the compositor, the frame clock
     their floor.
-    - Selection: iOS and Android select their leaf by `target_os`, their triples
-    hosting no other platform; on a desktop triple `skene-gui` names a native platform
-    through the build-set cfg the server leaf already uses (`skene_platform`), since
-    every desktop triple is a host triple too, and the headless platform stays the
-    default so `cargo test` keeps meaning what it means.
+    - Selection: an app's shell depends on its OS's crate, which builds for that OS's
+    triples alone, so no cfg names the platform; a shell is tested end to end on its
+    own OS, and what the shells share is tested headless.
     - The `PlatformView` escape trait and per-leaf embed constructors
     (`ios::native_view`, …): real text fields, maps, web views.
     - Libraries: a low-level view library implements its host trait for each native
@@ -447,10 +457,10 @@ left half-done in a code comment.
     defaults; secrets are placeholders validated before any native build; every build
     writes a provenance report; build scripts never run Gradle, Xcode or SwiftPM, so
     `cargo check --target aarch64-apple-ios` works on Linux CI.
-    - `skene-gui` resolving native triples to it; `skene build`/`run` for `ios`,
-    `android` and the desktop leaves, landing under `dist/<target>`.
+    - `skene build`/`run` for `ios`, `android` and the desktop shells, landing under
+    `dist/<target>`.
     - Build and run beside it: `skene test`, `skene devices`, `skene doctor` and
-    `skene eject`, for every target from `web` and `tui` to `macos`, `windows` and
+    `skene eject`, for every target from `web` and `terminal` to `macos`, `windows` and
     `linux`; native projects generated and disposable in `target/skene/<target>`, so
     each year's platform requirements land once in Skene's templates, and ejected when
     a team must own one; signing and packaging (Play App Signing and app bundles,
@@ -560,10 +570,16 @@ every item is proven through tmux and ssh as well as bare.
   a handle stays on its thread, and another thread's work reaches it through a task
   that thread's executor wakes.
 - Hot-patching: state-preserving reloads come from the snapshot instead.
-- Per-platform view vocabularies (`skene_ios::View`, a Simple per platform): the
-  generic `View<P>` is that with the platform as a parameter, coherence forbids two
-  impls of one shared view distinguished by a platform's kind, and the `Native*`
-  family beside `Basic*` is the split that was wanted.
+- One vocabulary across every platform, the terminal measuring in logical pixels:
+  pixels unify the numbers but not the medium, since a border still costs a whole
+  cell, small spacings round to nothing or to a whole row and a type hierarchy
+  collapses into one row outside kitty, so writing once yields a correct structure and
+  a poor look while every property owes a floor on every platform. Each platform keeps
+  its own unit and its own vocabulary: types decide what a platform can do, and
+  signals what an install of it can.
+- A shell per platform family (one for the web and the desktops, one for both mobile
+  OSes): iOS and Android differ in representation, app structure and navigation, and
+  each desktop OS in its layout and control conventions.
 - A capabilities model of typed slots on `Platform` in place of progressive
   enhancement: shelved, since it puts bounds on every shared signature; only a
   low-level view names what a platform can do.

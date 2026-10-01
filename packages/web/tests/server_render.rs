@@ -114,7 +114,7 @@ fn an_enhancement_renders_its_fallback() {
 /// reports.
 #[test]
 fn any_role_reaches_the_markup() {
-  use skene_web::core::{AccessProp, Role};
+  use skene_core::{AccessProp, Role};
 
   let page = render_to_string(|| {
     Column::new().set_children((
@@ -143,7 +143,7 @@ fn any_role_reaches_the_markup() {
 /// takes a place in the focus order.
 #[test]
 fn names_and_roles_reach_the_markup() {
-  use skene_web::core::{Dimension, Overflow, Role};
+  use skene_core::{Dimension, Overflow, Role};
 
   let page = render_to_string(|| {
     Column::new().set_children((
@@ -228,7 +228,7 @@ fn an_icon_button_carries_its_accessible_name() {
 /// A pointer's precision and hover compile to the media features that test them.
 #[test]
 fn pointer_conditions_compile_to_their_media_features() {
-  use skene_web::core::{Media, PointerPrecision, Value};
+  use skene_core::{Media, PointerPrecision, Value};
 
   let page = render_to_string(|| {
     Container::new()
@@ -252,7 +252,7 @@ fn pointer_conditions_compile_to_their_media_features() {
 /// shows only where its ancestors do.
 #[test]
 fn visibility_compiles_to_hidden_or_inherited() {
-  use skene_web::core::{State, Visibility, When};
+  use skene_core::{State, Visibility, When};
 
   let page = render_to_string(|| {
     Container::new()
@@ -1192,7 +1192,7 @@ fn typography_selection_colors_inherit() {
 /// control.
 #[test]
 fn a_widget_role_and_state_serialize_as_aria() {
-  use skene_web::core::{AccessProp, Role};
+  use skene_core::{AccessProp, Role};
 
   let rendered = render_to_string(|| {
     Container::new()
@@ -1226,7 +1226,8 @@ fn a_widget_role_and_state_serialize_as_aria() {
 /// A render given a dark scheme hint answers a derived leaf with its dark value.
 #[test]
 fn a_dark_scheme_hint_serializes_the_dark_value_of_a_derived_leaf() {
-  use skene_web::{core::ColorScheme, reactive::Get};
+  use skene_core::ColorScheme;
+  use skene_web::reactive::Get;
 
   let black = Color::srgb(0., 0., 0.);
   let white = Color::srgb(1., 1., 1.);
@@ -1263,7 +1264,7 @@ fn a_dark_scheme_hint_serializes_the_dark_value_of_a_derived_leaf() {
 /// would run after the page had already been painted in the platform's scheme.
 #[test]
 fn a_chooseable_scheme_preempts_its_own_flash() {
-  use skene_web::core::ColorScheme;
+  use skene_core::ColorScheme;
 
   let rendered = render_to_string(|| {
     Theme::new(SimplePalette::default()).set_child_builder(|| {
@@ -1311,9 +1312,9 @@ fn a_disabled_checkbox_keeps_its_input_out_of_the_tab_order() {
 /// holds them.
 #[test]
 fn a_markup_style_and_its_declarations_serialize_as_one_attribute() {
+  use skene_core::{AnyView, NodeKind};
   use skene_web::{
     ActivePlatform,
-    core::{AnyView, NodeKind},
     platform::{Declarations, WebMarkup},
   };
 
@@ -1344,7 +1345,7 @@ fn control_flags_serialize_natively_and_references_carry_ids() {
     let hint = Text::new("Required").build();
 
     Column::new().set_children((
-      skene_web::core::AnyView::node(hint),
+      skene_core::AnyView::node(hint),
       BasicTextField::new(TextEntry::new())
         .set_required(true)
         .set_read_only(true)
@@ -1381,7 +1382,7 @@ fn descriptions_fold_into_one_reference_list() {
     let hint = Text::new("Required").build();
 
     Column::new().set_children((
-      skene_web::core::AnyView::node(hint),
+      skene_core::AnyView::node(hint),
       Tooltip::new("Your full name")
         .set_child(BasicTextField::new(TextEntry::new()).set_described_by(hint)),
     ))

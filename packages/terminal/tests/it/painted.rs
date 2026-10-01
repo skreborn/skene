@@ -83,7 +83,7 @@ fn a_picture_is_cropped_to_the_cells_in_view_and_hidden_under_an_overlay() {
             .set_label("open")
             .handle_click(move || open.set(true)),
           Overlay::popup()
-            .set_position(skene_terminal::core::Point::new(0., 0.))
+            .set_position(skene_core::Point::new(0., 0.))
             .derive_open(move || open.get())
             .set_child(Text::new("popup")),
         ))

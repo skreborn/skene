@@ -4,12 +4,12 @@ error[E0277]: cannot add `skene_web::Expr<skene_web::Number>` to `skene_web::Exp
 6 |   let _ = Expr::<Length>::from(8.) + Expr::<Number>::from(2.);
   |                                    ^ no implementation for `skene_web::Expr<skene_web::Length> + skene_web::Expr<skene_web::Number>`
   |
-  = help: the trait `std::ops::Add<skene_web::Expr<skene_web::Number>>` is not implemented for `skene_web::Expr<skene_web::Length>`
-help: the following other types implement trait `std::ops::Add<Rhs>`
+  = help: the trait `Add<skene_web::Expr<skene_web::Number>>` is not implemented for `skene_web::Expr<skene_web::Length>`
+help: the following other types implement trait `Add<Rhs>`
  --> $WORKSPACE/packages/core/src/expr.rs
   |
   | impl<Q: Quantity> Add for Expr<Q> {
-  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `skene_web::Expr<Q>` implements `std::ops::Add`
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `skene_web::Expr<Q>` implements `Add`
 ...
   | impl<Q: Quantity> Add<f32> for Expr<Q> {
-  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `skene_web::Expr<Q>` implements `std::ops::Add<f32>`
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `skene_web::Expr<Q>` implements `Add<f32>`

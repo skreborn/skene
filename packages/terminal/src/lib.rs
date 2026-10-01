@@ -97,7 +97,6 @@ pub use skene_common::{
   routing as router,
   typography,
 };
-pub use skene_core as core;
 pub use skene_core::{
   AnyKind,
   Bubbling,
@@ -129,6 +128,7 @@ pub use skene_core::{
   NodeId,
   Number,
   Part,
+  Platform,
   PointerButton,
   PointerButtons,
   PointerEvent,

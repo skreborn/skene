@@ -192,9 +192,8 @@ left half-done in a code comment.
     consumer depends on both: scene internals stay behind module visibility
     (`pub(in crate::spine)`), so built-in views still use only the public API, and a
     check keeps the spine modules from importing the medium modules; `skene-reactive`
-    stays separate, knowing nothing of UI. The facades stop re-exporting the spine as
-    `core`; `AGENTS.md` and `DESIGN.md` follow; `split_alignment` and
-    `ThemedIn::define_root` stop being crate-private. The resolution then names the
+    stays separate, knowing nothing of UI; `AGENTS.md` and `DESIGN.md` follow;
+    `split_alignment` and `ThemedIn::define_root` stop being crate-private. The resolution then names the
     typography size token itself, so `ResolutionSource::size_token` goes, the terminal
     keeping only whether it proved text sizing, and the `em` fallback becomes the
     platform's.

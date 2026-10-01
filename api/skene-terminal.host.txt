@@ -49,6 +49,7 @@ pub use skene_terminal::Number
 pub use skene_terminal::Painter
 pub use skene_terminal::Painting
 pub use skene_terminal::Part
+pub use skene_terminal::Platform
 pub use skene_terminal::PointerButton
 pub use skene_terminal::PointerButtons
 pub use skene_terminal::PointerEvent
@@ -92,7 +93,6 @@ pub use skene_terminal::Typography
 pub use skene_terminal::WheelEvent
 pub use skene_terminal::WheelUnit
 pub use skene_terminal::When
-pub use skene_terminal::core
 pub use skene_terminal::kurbo
 pub use skene_terminal::peniko
 pub use skene_terminal::reactive

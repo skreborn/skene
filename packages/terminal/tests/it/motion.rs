@@ -3,15 +3,9 @@
 
 use std::time::Duration;
 
+use skene_core::{BoxKeyframe, Property};
 use skene_simple::terminal::prelude::*;
-use skene_terminal::{
-  self as terminal,
-  Color,
-  State,
-  core::{BoxKeyframe, Property},
-  prelude::*,
-  testing,
-};
+use skene_terminal::{self as terminal, Color, State, prelude::*, testing};
 
 use crate::common::{blue, colors_at, red, rgb, with_platform};
 

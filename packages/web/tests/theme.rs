@@ -4,6 +4,7 @@
 
 #![cfg(skene_web_platform = "headless")]
 
+use skene_core::{Color, ColorScheme, Media, Property, PropertyKey, StaticLeaf};
 use skene_simple::web::prelude::*;
 use skene_web::{
   Activate,
@@ -18,7 +19,6 @@ use skene_web::{
   Typography,
   View,
   WebProperty,
-  core::{Color, ColorScheme, Media, Property, PropertyKey, StaticLeaf},
   headless::{children, end_turn, reset, resolve_color, text, trigger_click},
   media,
   prelude::{Get, Owner, Set, Signal, Update},

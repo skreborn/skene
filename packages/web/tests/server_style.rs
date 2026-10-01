@@ -3,6 +3,28 @@
 
 #![cfg(skene_web_platform = "server")]
 
+use skene_core::{
+  Animation,
+  Axes,
+  BoxStyle,
+  Color,
+  Dimension,
+  Easing,
+  GridAreas,
+  GridName,
+  GridPlacement,
+  GridTemplate,
+  GridTrack,
+  ItemAlignment,
+  Keyframe,
+  Line,
+  Overflow,
+  Property,
+  StaticLeaf,
+  TrackLimit,
+  Transition,
+  Wrap,
+};
 use skene_simple::web::prelude::*;
 use skene_web::{
   Column,
@@ -23,28 +45,6 @@ use skene_web::{
   ThemedIn,
   WebStyle,
   When,
-  core::{
-    Animation,
-    Axes,
-    BoxStyle,
-    Color,
-    Dimension,
-    Easing,
-    GridAreas,
-    GridName,
-    GridPlacement,
-    GridTemplate,
-    GridTrack,
-    ItemAlignment,
-    Keyframe,
-    Line,
-    Overflow,
-    Property,
-    StaticLeaf,
-    TrackLimit,
-    Transition,
-    Wrap,
-  },
   reactive::Signal,
   render_to_string,
 };
@@ -909,7 +909,7 @@ fn every_rule_has_a_class_specificity() {
       State::Invalid,
       State::Open,
     ];
-    let mut width = skene_web::core::Value::from(Dimension::Length(10.));
+    let mut width = skene_core::Value::from(Dimension::Length(10.));
 
     for (index, state) in (0u8..).zip(states) {
       width = width.when(
@@ -974,7 +974,7 @@ fn every_rule_has_a_class_specificity() {
 fn a_derived_variants_slot_is_registered() {
   let rendered = render_to_string(|| {
     Container::new().set_color(
-      skene_web::core::Value::from(Color::srgb(1., 0., 0.))
+      skene_core::Value::from(Color::srgb(1., 0., 0.))
         .derive_when(Condition::from(State::Hovered), || Color::srgb(0., 0., 1.)),
     )
   });

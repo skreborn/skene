@@ -10,7 +10,7 @@
 use std::time::Duration;
 
 use skene_simple::web::prelude::*;
-use skene_web::{ActivePlatform, HasChild, core::Platform, kurbo::Rect, prelude::*};
+use skene_web::{ActivePlatform, HasChild, Platform, kurbo::Rect, prelude::*};
 
 #[main]
 fn app() -> impl View {

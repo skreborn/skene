@@ -2,16 +2,8 @@
 
 #![cfg(skene_web_platform = "server")]
 
-use skene_web::{
-  Container,
-  HasChild,
-  Inset,
-  Overlay,
-  Text,
-  Tooltip,
-  core::{Color, Placement},
-  render_to_string,
-};
+use skene_core::{Color, Placement};
+use skene_web::{Container, HasChild, Inset, Overlay, Text, Tooltip, render_to_string};
 
 /// The class of the first classed element in `body`.
 fn first_class(body: &str) -> &str {

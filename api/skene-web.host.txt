@@ -47,6 +47,7 @@ pub use skene_web::Number
 pub use skene_web::Painter
 pub use skene_web::Painting
 pub use skene_web::Part
+pub use skene_web::Platform
 pub use skene_web::PointerButton
 pub use skene_web::PointerButtons
 pub use skene_web::PointerEvent
@@ -85,7 +86,6 @@ pub use skene_web::WebStyle
 pub use skene_web::WheelEvent
 pub use skene_web::WheelUnit
 pub use skene_web::When
-pub use skene_web::core
 pub use skene_web::headless
 pub use skene_web::kurbo
 pub use skene_web::lazy

@@ -4,6 +4,18 @@
 
 #![cfg(skene_web_platform = "server")]
 
+use skene_core::{
+  Animation,
+  Arrangement,
+  BoxStyle,
+  Color,
+  Dimension,
+  ItemAlignment,
+  Keyframe,
+  MouseCursor,
+  Property,
+  Transition,
+};
 use skene_web::{
   Column,
   Condition,
@@ -25,18 +37,6 @@ use skene_web::{
   View,
   WebStyle,
   When,
-  core::{
-    Animation,
-    Arrangement,
-    BoxStyle,
-    Color,
-    Dimension,
-    ItemAlignment,
-    Keyframe,
-    MouseCursor,
-    Property,
-    Transition,
-  },
   empty,
   render_to_string,
 };

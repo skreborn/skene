@@ -12,7 +12,7 @@ at all.
 
 ## Reactivity
 
-```rust
+```rust,ignore
 let count = Signal::new(0);
 count.update(|n| *n += 1);   // re-runs only the effects that read `count`
 ```
@@ -106,7 +106,7 @@ with the mouse off a plain drag is the terminal's.
 
 ## Crates
 
-```
+```text
 skene-reactive        the engine
       │
 skene-foundation      the spine (the scene, the Platform trait, dispatch, the property
@@ -156,7 +156,7 @@ exactly one child. A control is `Control<B: Behavior>`; `BasicButton`, `BasicChe
 `BasicSlider`, `BasicRadioGroup`, `BasicPicker`, `BasicTextField` and `BasicTextEditor` are
 aliases over the shipped behaviors, and the `Simple*` components dress them:
 
-```rust
+```rust,ignore
 SimpleButton::new("Save").handle_activate(save),
 SimpleButton::new("Delete").set_variant(SimpleVariant::Destructive).handle_activate(delete),
 ```
@@ -241,4 +241,4 @@ on its platform.
 
 ## License
 
-MIT; see [`LICENSE`](LICENSE).
+MIT; see the `LICENSE` file.

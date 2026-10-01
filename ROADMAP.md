@@ -207,7 +207,6 @@ left half-done in a code comment.
     more can join: `app` first, an app's shared crate and a shell per platform it
     names, as `flutter create` does, then `lib` and a component library's core and
     per-platform crates.
-    - Wrong claims corrected: the README's uncompiled counter snippets.
     - Doc comments: contracts alone, without rationale or narrated implementation;
     stale references to vanished parameters and false contracts (`Flexible`, the
     tooltip, `split.rs`, the setter macro's `derive_` boilerplate) fixed; short first

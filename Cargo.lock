@@ -2020,6 +2020,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "readme"
+version = "0.1.0"
+dependencies = [
+ "skene-simple-terminal",
+ "skene-simple-web",
+ "skene-terminal",
+ "skene-web",
+]
+
+[[package]]
 name = "redox_syscall"
 version = "0.5.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"

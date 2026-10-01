@@ -15,6 +15,7 @@ use std::{
 
 use skene_web::{
   AsyncView,
+  AsyncViewBase,
   BasicListboxOption,
   BasicPicker,
   BasicPickerBase,

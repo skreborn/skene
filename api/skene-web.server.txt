@@ -1,6 +1,7 @@
 pub mod skene_web
 pub use skene_web::Activate
 pub use skene_web::AnyKind
+pub use skene_web::AsyncViewBase
 pub use skene_web::BasicPickerBase
 pub use skene_web::Behavior
 pub use skene_web::Bubbling
@@ -22,6 +23,7 @@ pub use skene_web::CornerRadius
 pub use skene_web::DEV_VARIABLE
 pub use skene_web::DecorationBase
 pub use skene_web::DecorationWithCornerRadius
+pub use skene_web::DeferredBase
 pub use skene_web::Definitions
 pub use skene_web::DragData
 pub use skene_web::EnhanceBase
@@ -235,15 +237,6 @@ pub fn skene_web::platform::Document::default() -> skene_web::platform::Document
 impl core::fmt::Debug for skene_web::platform::Document
 pub fn skene_web::platform::Document::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::StructuralPartialEq for skene_web::platform::Document
-pub struct skene_web::platform::LazyRegion(_)
-impl core::clone::Clone for skene_web::platform::LazyRegion
-pub fn skene_web::platform::LazyRegion::clone(&self) -> skene_web::platform::LazyRegion
-impl core::cmp::Eq for skene_web::platform::LazyRegion
-impl core::cmp::PartialEq for skene_web::platform::LazyRegion
-pub fn skene_web::platform::LazyRegion::eq(&self, &skene_web::platform::LazyRegion) -> bool
-impl core::fmt::Debug for skene_web::platform::LazyRegion
-pub fn skene_web::platform::LazyRegion::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::marker::StructuralPartialEq for skene_web::platform::LazyRegion
 pub struct skene_web::platform::RenderHints
 pub skene_web::platform::RenderHints::device_pixel_ratio: f32
 pub skene_web::platform::RenderHints::hover: bool
@@ -365,10 +358,6 @@ impl skene_foundation::spine::view::IntoChildOf<skene_web::platform::Web, skene_
 pub fn skene_web::GridCell<skene_foundation::spine::view::AnyView<skene_web::ActivePlatform>>::into_child(self) -> skene_foundation::spine::view::AnyView<skene_web::ActivePlatform>
 impl skene_foundation::spine::view::IntoChildOf<skene_web::platform::Web, skene_foundation::spine::view::StackChild> for skene_web::Pinned<skene_foundation::spine::view::AnyView<skene_web::ActivePlatform>>
 pub fn skene_web::Pinned<skene_foundation::spine::view::AnyView<skene_web::ActivePlatform>>::into_child(self) -> skene_foundation::spine::view::AnyView<skene_web::ActivePlatform>
-impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::AsyncView
-pub fn skene_web::AsyncView::build(self) -> skene_foundation::spine::node::NodeId
-impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Deferred
-pub fn skene_web::Deferred::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_foundation::stack::StackBase<skene_web::platform::Web> for skene_web::Stack
 impl skene_foundation::surface::DecorationBase<skene_web::platform::Web> for skene_web::Container
 impl skene_foundation::surface::DecorationBase<skene_web::platform::Web> for skene_web::ContextMenu
@@ -381,6 +370,21 @@ impl skene_foundation::surface::RunBase<skene_web::platform::Web> for skene_web:
 impl skene_foundation::suspense::SuspenseBase<skene_web::platform::Web> for skene_web::Suspense
 impl skene_foundation::text::TextBase<skene_web::platform::Web> for skene_web::Text
 impl skene_foundation::tooltip::TooltipBase<skene_web::platform::Web> for skene_web::Tooltip
+impl skene_foundation::web::async_view::AsyncViewBase<skene_web::platform::Web> for skene_web::AsyncView
+impl skene_foundation::web::deferred::DeferredBase<skene_web::platform::Web> for skene_web::Deferred
+impl skene_foundation::web::hydration::WebHydration for skene_web::platform::Web
+pub type skene_web::platform::Web::LazyRegion = skene_web::resource_state::LazyRegion
+pub fn skene_web::platform::Web::adopt_next() -> core::option::Option<alloc::string::String>
+pub fn skene_web::platform::Web::adopt_tagged(&str) -> core::option::Option<alloc::string::String>
+pub fn skene_web::platform::Web::claim_lazy(skene_foundation::spine::node::NodeId) -> bool
+pub fn skene_web::platform::Web::discard_lazy(skene_foundation::spine::node::NodeId)
+pub fn skene_web::platform::Web::enter_lazy() -> Self::LazyRegion
+pub fn skene_web::platform::Web::install_executor()
+pub fn skene_web::platform::Web::is_server() -> bool
+pub fn skene_web::platform::Web::register_boundary(skene_foundation::spine::node::NodeId, alloc::boxed::Box<dyn core::ops::function::Fn() -> bool>)
+pub fn skene_web::platform::Web::register_source(skene_foundation::web::hydration::HydrationSource)
+pub fn skene_web::platform::Web::register_tagged_source(&str, skene_foundation::web::hydration::HydrationSource)
+pub fn skene_web::platform::Web::within_lazy<R>(&Self::LazyRegion, impl core::ops::function::FnOnce() -> R) -> R
 impl skene_web::platform::WebMarkup for skene_web::platform::Web
 pub fn skene_web::platform::Web::create_element(skene_foundation::spine::node::NodeId, &'static str)
 pub fn skene_web::platform::Web::set_attribute(skene_foundation::spine::node::NodeId, &str, &str)
@@ -408,23 +412,16 @@ pub fn skene_web::platform::Web::set_attribute(skene_foundation::spine::node::No
 pub fn skene_web::platform::Web::set_declarations(skene_foundation::spine::node::NodeId, &skene_web::platform::Declarations)
 pub fn skene_web::platform::Web::set_text(skene_foundation::spine::node::NodeId, &str)
 pub fn skene_web::platform::add_head_element(&str, &[(&str, &str)]) -> skene_foundation::web::head::HeadId
-pub fn skene_web::platform::adopt_next() -> core::option::Option<alloc::string::String>
-pub fn skene_web::platform::adopt_tagged(&str) -> core::option::Option<alloc::string::String>
 pub fn skene_web::platform::current_path() -> alloc::string::String
 pub fn skene_web::platform::document_closing(&str) -> alloc::string::String
 pub fn skene_web::platform::document_opening(core::option::Option<&str>, &str, &str) -> alloc::string::String
 pub fn skene_web::platform::drive(impl core::future::future::Future<Output = ()> + 'static)
 pub fn skene_web::platform::enable_view_transitions()
-pub fn skene_web::platform::enter_lazy() -> skene_web::platform::LazyRegion
 pub fn skene_web::platform::install_executor()
 pub fn skene_web::platform::install_logging()
-pub const fn skene_web::platform::is_server() -> bool
 pub const fn skene_web::platform::persisted_scheme() -> core::option::Option<skene_foundation::spine::values::color::ColorScheme>
 pub fn skene_web::platform::record_static_routes(alloc::vec::Vec<alloc::string::String>)
 pub fn skene_web::platform::recorded_static_routes() -> core::option::Option<alloc::vec::Vec<alloc::string::String>>
-pub fn skene_web::platform::register_boundary(skene_foundation::spine::node::NodeId, alloc::boxed::Box<dyn core::ops::function::Fn() -> bool>)
-pub fn skene_web::platform::register_source(skene_web::platform::HydrationSource)
-pub fn skene_web::platform::register_tagged_source(&str, skene_web::platform::HydrationSource)
 pub fn skene_web::platform::remove_head_entry(skene_foundation::web::head::HeadId)
 pub fn skene_web::platform::render_to_stream_with<V, F>(F, impl core::ops::function::FnMut(skene_web::platform::StreamPiece<'_>)) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_foundation::spine::view::View<skene_web::platform::Web>
 pub fn skene_web::platform::render_to_string<V, F>(F) -> skene_web::Rendered where F: core::ops::function::FnOnce() -> V + 'static, V: skene_foundation::spine::view::View<skene_web::platform::Web>
@@ -437,14 +434,13 @@ pub fn skene_web::platform::set_request_path(&str)
 pub fn skene_web::platform::set_scheme(core::option::Option<skene_foundation::spine::values::color::ColorScheme>)
 pub fn skene_web::platform::set_script_nonce(core::option::Option<&str>)
 pub fn skene_web::platform::sleep(core::time::Duration) -> impl core::future::future::Future<Output = ()>
-pub fn skene_web::platform::within_lazy<R>(&skene_web::platform::LazyRegion, impl core::ops::function::FnOnce() -> R) -> R
-pub type skene_web::platform::HydrationSource = alloc::boxed::Box<dyn core::ops::function::Fn() -> core::option::Option<alloc::string::String>>
 pub mod skene_web::prelude
 pub use skene_web::prelude::AccessProp
 pub use skene_web::prelude::Alignment
 pub use skene_web::prelude::Animation
 pub use skene_web::prelude::Arrangement
 pub use skene_web::prelude::AspectRatio
+pub use skene_web::prelude::AsyncViewBase
 pub use skene_web::prelude::Axes
 pub use skene_web::prelude::Axis
 pub use skene_web::prelude::BasicPickerBase
@@ -458,6 +454,7 @@ pub use skene_web::prelude::ContextMenuWithCornerRadius
 pub use skene_web::prelude::ControlBase
 pub use skene_web::prelude::DecorationBase
 pub use skene_web::prelude::DecorationWithCornerRadius
+pub use skene_web::prelude::DeferredBase
 pub use skene_web::prelude::DragAxes
 pub use skene_web::prelude::DragData
 pub use skene_web::prelude::Easing
@@ -1050,13 +1047,18 @@ pub fn skene_web::view_transitions::enable()
 pub mod skene_web::window
 pub fn skene_web::window::derive_title(impl core::ops::function::Fn() -> alloc::string::String + 'static)
 pub fn skene_web::window::set_title(impl core::convert::Into<alloc::string::String>)
-pub struct skene_web::AsyncView
-impl skene_web::AsyncView
-pub fn skene_web::AsyncView::new<V, F>(impl core::ops::function::FnOnce() -> F + 'static) -> Self where V: skene_foundation::spine::view::View<skene_web::ActivePlatform>, F: core::future::future::Future<Output = V> + 'static
+pub struct skene_web::AsyncView(_)
 impl core::fmt::Debug for skene_web::AsyncView
 pub fn skene_web::AsyncView::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::spine::view::AnyKind for skene_web::AsyncView
-impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::AsyncView
+impl skene_foundation::spine::wraps::Wraps for skene_web::AsyncView
+pub type skene_web::AsyncView::Inner = skene_foundation::web::async_view::AsyncView<skene_web::platform::Web>
+pub fn skene_web::AsyncView::inner(&self) -> &Self::Inner
+pub fn skene_web::AsyncView::inner_mut(&mut self) -> &mut Self::Inner
+pub fn skene_web::AsyncView::into_inner(self) -> Self::Inner
+pub fn skene_web::AsyncView::wrap(Self::Inner) -> Self
+impl skene_foundation::web::async_view::AsyncViewBase<skene_web::platform::Web> for skene_web::AsyncView
+impl<__P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::View<__P> for skene_web::AsyncView where skene_foundation::web::async_view::AsyncView<skene_web::ActivePlatform>: skene_foundation::spine::view::View<__P>, Self: 'static
 pub fn skene_web::AsyncView::build(self) -> skene_foundation::spine::node::NodeId
 pub struct skene_web::BasicPicker<F>(_)
 impl skene_web::BasicPicker
@@ -1148,13 +1150,18 @@ pub fn skene_web::Control<B, C>::wrap(Self::Inner) -> Self
 impl<B: skene_foundation::control::Behavior<skene_web::ActivePlatform>> skene_foundation::control::ControlBase<skene_web::platform::Web, B> for skene_web::Control<B>
 impl<B: skene_foundation::control::Behavior<skene_web::ActivePlatform>> skene_foundation::surface::DecorationBase<skene_web::platform::Web> for skene_web::Control<B>
 impl<B: skene_foundation::control::Behavior<skene_web::ActivePlatform>> skene_foundation::surface::MotionBase<skene_web::platform::Web> for skene_web::Control<B>
-pub struct skene_web::Deferred
-impl skene_web::Deferred
-pub fn skene_web::Deferred::new<V: skene_foundation::spine::view::View<skene_web::ActivePlatform>>(impl core::ops::function::FnOnce() -> V + 'static) -> Self
+pub struct skene_web::Deferred(_)
 impl core::fmt::Debug for skene_web::Deferred
 pub fn skene_web::Deferred::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::spine::view::AnyKind for skene_web::Deferred
-impl skene_foundation::spine::view::View<skene_web::platform::Web> for skene_web::Deferred
+impl skene_foundation::spine::wraps::Wraps for skene_web::Deferred
+pub type skene_web::Deferred::Inner = skene_foundation::web::deferred::Deferred<skene_web::platform::Web>
+pub fn skene_web::Deferred::inner(&self) -> &Self::Inner
+pub fn skene_web::Deferred::inner_mut(&mut self) -> &mut Self::Inner
+pub fn skene_web::Deferred::into_inner(self) -> Self::Inner
+pub fn skene_web::Deferred::wrap(Self::Inner) -> Self
+impl skene_foundation::web::deferred::DeferredBase<skene_web::platform::Web> for skene_web::Deferred
+impl<__P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::View<__P> for skene_web::Deferred where skene_foundation::web::deferred::Deferred<skene_web::ActivePlatform>: skene_foundation::spine::view::View<__P>, Self: 'static
 pub fn skene_web::Deferred::build(self) -> skene_foundation::spine::node::NodeId
 pub struct skene_web::Enhance<C>(_)
 impl skene_web::Enhance
@@ -1351,19 +1358,6 @@ pub fn skene_web::Rendered::state_script(&self) -> alloc::string::String
 pub fn skene_web::Rendered::styles(&self) -> &str
 impl core::fmt::Debug for skene_web::Rendered
 pub fn skene_web::Rendered::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub struct skene_web::Resource<T: 'static>(_)
-impl<T: 'static> skene_web::Resource<T>
-pub fn skene_web::Resource<T>::client<F>(impl core::ops::function::Fn() -> F + 'static) -> Self where F: core::future::future::Future<Output = T> + 'static
-pub fn skene_web::Resource<T>::new<F>(impl core::ops::function::Fn() -> F + 'static) -> Self where F: core::future::future::Future<Output = T> + 'static, T: serde_core::ser::Serialize + serde_core::de::DeserializeOwned
-pub fn skene_web::Resource<T>::tagged<F>(&'static str, impl core::ops::function::Fn() -> F + 'static) -> Self where F: core::future::future::Future<Output = T> + 'static, T: serde_core::ser::Serialize + serde_core::de::DeserializeOwned
-impl<T: 'static> core::clone::Clone for skene_web::Resource<T>
-pub fn skene_web::Resource<T>::clone(&self) -> Self
-impl<T: 'static> core::marker::Copy for skene_web::Resource<T>
-impl<T: 'static> core::ops::deref::Deref for skene_web::Resource<T>
-pub type skene_web::Resource<T>::Target = skene_reactive::resource::Resource<T>
-pub fn skene_web::Resource<T>::deref(&self) -> &Self::Target
-impl<T: core::fmt::Debug + 'static> core::fmt::Debug for skene_web::Resource<T>
-pub fn skene_web::Resource<T>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_web::RichText(_)
 impl core::default::Default for skene_web::RichText
 pub fn skene_web::RichText::default() -> skene_web::RichText
@@ -1581,6 +1575,7 @@ pub type skene_web::Media = skene_foundation::spine::condition::Media<f32>
 pub type skene_web::NodeHandle = skene_foundation::node_handle::NodeHandle<skene_web::ActivePlatform>
 pub type skene_web::Point = skene_foundation::spine::values::point::Point<f32>
 pub type skene_web::Rect = skene_foundation::spine::values::rect::Rect<f32>
+pub type skene_web::Resource<T> = skene_foundation::web::resource::Resource<skene_web::ActivePlatform, T>
 pub type skene_web::Size = skene_foundation::spine::values::size::Size<f32>
 pub type skene_web::Spacing = skene_foundation::spine::values::flex::Spacing<f32>
 pub type skene_web::Token<T> = skene_foundation::spine::token::Token<T, f32>

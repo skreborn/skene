@@ -4,6 +4,7 @@
 #![cfg(skene_web_platform = "server")]
 
 use skene_web::{
+  DeferredBase,
   ErrorBoundary,
   ErrorBoundaryBase,
   Errors,

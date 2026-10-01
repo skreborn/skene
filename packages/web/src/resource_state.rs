@@ -13,9 +13,8 @@ use std::cell::RefCell;
 #[cfg(skene_web_platform = "browser")]
 use std::collections::VecDeque;
 
-/// A critical resource's serializer, registered with the platform so a server render can
-/// drain it into the hydration state once it settles.
-pub type HydrationSource = Box<dyn Fn() -> Option<String>>;
+#[cfg(not(skene_web_platform = "headless"))]
+use skene_foundation::web::HydrationSource;
 
 /// The id of the `<script>` element carrying the hydration state, shared by the server's
 /// page assembly and the client's `launch`.
@@ -98,7 +97,7 @@ thread_local! {
 /// Called once per lazy segment, when it is built, on both leaves; the content applies
 /// the result through [`within_lazy`].
 #[cfg(not(skene_web_platform = "headless"))]
-pub fn enter_lazy() -> LazyRegion {
+pub(crate) fn enter_lazy() -> LazyRegion {
   let index = LAZY_COUNTS.with(|counts| {
     let mut counts = counts.borrow_mut();
 
@@ -127,7 +126,7 @@ pub fn enter_lazy() -> LazyRegion {
 /// content's future is run this way, so a resource created while it loads belongs to
 /// the segment too.
 #[cfg(not(skene_web_platform = "headless"))]
-pub fn within_lazy<R>(region: &LazyRegion, work: impl FnOnce() -> R) -> R {
+pub(crate) fn within_lazy<R>(region: &LazyRegion, work: impl FnOnce() -> R) -> R {
   let previous = REGION.with(|current| current.replace(region.0.clone()));
 
   LAZY_COUNTS.with(|counts| counts.borrow_mut().push(0));
@@ -152,7 +151,7 @@ fn reset_regions() {
 /// hydrating left one.
 #[cfg(skene_web_platform = "browser")]
 #[must_use]
-pub fn adopt_next() -> Option<String> {
+pub(crate) fn adopt_next() -> Option<String> {
   REGION.with(|region| {
     let region = region.borrow();
 
@@ -177,14 +176,14 @@ pub fn adopt_next() -> Option<String> {
   clippy::missing_const_for_fn,
   reason = "the browser's twin is not const, and one function has one constness"
 )]
-pub fn adopt_next() -> Option<String> {
+pub(crate) fn adopt_next() -> Option<String> {
   None
 }
 
 /// Takes the adopted server value registered under `tag`, if hydrating left one.
 #[cfg(skene_web_platform = "browser")]
 #[must_use]
-pub fn adopt_tagged(tag: &str) -> Option<String> {
+pub(crate) fn adopt_tagged(tag: &str) -> Option<String> {
   TAGGED.with(|tagged| {
     let mut tagged = tagged.borrow_mut();
     let index = tagged.iter().position(|(existing, _)| existing == tag)?;
@@ -201,19 +200,19 @@ pub fn adopt_tagged(tag: &str) -> Option<String> {
   clippy::missing_const_for_fn,
   reason = "the browser's twin is not const, and one function has one constness"
 )]
-pub fn adopt_tagged(_tag: &str) -> Option<String> {
+pub(crate) fn adopt_tagged(_tag: &str) -> Option<String> {
   None
 }
 
 /// A no-op on the client: it adopts server state rather than producing it.
 #[cfg(skene_web_platform = "browser")]
 #[inline(always)]
-pub fn register_source(_source: HydrationSource) {}
+pub(crate) fn register_source(_source: HydrationSource) {}
 
 /// Registers a critical resource's serializer under the segment being built, to be
 /// drained once the render settles.
 #[cfg(skene_web_platform = "server")]
-pub fn register_source(source: HydrationSource) {
+pub(crate) fn register_source(source: HydrationSource) {
   let region = REGION.with(|region| region.borrow().clone());
 
   SOURCES.with(|sources| sources.borrow_mut().push((region, source)));
@@ -222,7 +221,7 @@ pub fn register_source(source: HydrationSource) {
 /// A no-op on the client: it adopts server state rather than producing it.
 #[cfg(skene_web_platform = "browser")]
 #[inline(always)]
-pub fn register_tagged_source(_tag: &str, _source: HydrationSource) {}
+pub(crate) fn register_tagged_source(_tag: &str, _source: HydrationSource) {}
 
 /// Registers a tag-keyed resource's serializer, to be drained once the render settles.
 ///
@@ -231,7 +230,7 @@ pub fn register_tagged_source(_tag: &str, _source: HydrationSource) {}
 /// Panics when `tag` is already registered in this render: tags pair one server value
 /// with one client resource, so a duplicate has no well-defined owner.
 #[cfg(skene_web_platform = "server")]
-pub fn register_tagged_source(tag: &str, source: HydrationSource) {
+pub(crate) fn register_tagged_source(tag: &str, source: HydrationSource) {
   TAGGED_SOURCES.with(|sources| {
     let mut sources = sources.borrow_mut();
 
@@ -242,22 +241,6 @@ pub fn register_tagged_source(tag: &str, source: HydrationSource) {
 
     sources.push((tag.to_owned(), source));
   });
-}
-
-/// The browser is a client, not the server.
-#[cfg(skene_web_platform = "browser")]
-#[inline(always)]
-#[must_use]
-pub const fn is_server() -> bool {
-  false
-}
-
-/// This leaf renders on the server, so a client-only load skips its round here.
-#[cfg(skene_web_platform = "server")]
-#[inline(always)]
-#[must_use]
-pub const fn is_server() -> bool {
-  true
 }
 
 /// Stages the server's serialized resource `state` for the resources built next to

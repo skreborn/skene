@@ -70,6 +70,19 @@ pub fn skene_headless::Headless::set_window_title(core::option::Option<&str>)
 pub fn skene_headless::Headless::update_box(skene_foundation::spine::node::NodeId, skene_foundation::spine::leaf::Slot, &skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::box_style::BoxValue<f32, skene_foundation::web::ext::WebStyle>>)
 pub fn skene_headless::Headless::update_run(skene_foundation::spine::node::NodeId, skene_foundation::spine::leaf::Slot, &skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::run_style::RunValue<skene_foundation::web::ext::WebStyle>>)
 pub fn skene_headless::Headless::watch_media(&skene_foundation::spine::condition::Media<f32>) -> skene_reactive::memo::Memo<bool>
+impl skene_foundation::web::hydration::WebHydration for skene_headless::Headless
+pub type skene_headless::Headless::LazyRegion = ()
+pub fn skene_headless::Headless::adopt_next() -> core::option::Option<alloc::string::String>
+pub fn skene_headless::Headless::adopt_tagged(&str) -> core::option::Option<alloc::string::String>
+pub fn skene_headless::Headless::claim_lazy(skene_foundation::spine::node::NodeId) -> bool
+pub fn skene_headless::Headless::discard_lazy(skene_foundation::spine::node::NodeId)
+pub fn skene_headless::Headless::enter_lazy() -> Self::LazyRegion
+pub fn skene_headless::Headless::install_executor()
+pub fn skene_headless::Headless::is_server() -> bool
+pub fn skene_headless::Headless::register_boundary(skene_foundation::spine::node::NodeId, alloc::boxed::Box<dyn core::ops::function::Fn() -> bool>)
+pub fn skene_headless::Headless::register_source(skene_foundation::web::hydration::HydrationSource)
+pub fn skene_headless::Headless::register_tagged_source(&str, skene_foundation::web::hydration::HydrationSource)
+pub fn skene_headless::Headless::within_lazy<R>(&Self::LazyRegion, impl core::ops::function::FnOnce() -> R) -> R
 pub fn skene_headless::access_outline() -> alloc::string::String
 pub fn skene_headless::access_tree() -> accesskit::TreeUpdate
 pub fn skene_headless::accessible_name(skene_foundation::spine::node::NodeId) -> core::option::Option<alloc::string::String>

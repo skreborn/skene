@@ -21,7 +21,6 @@ pub mod testing;
 pub mod view_transitions;
 pub mod window;
 
-mod async_view;
 #[cfg(skene_web_platform = "browser")]
 mod browser;
 #[cfg_attr(
@@ -31,7 +30,6 @@ mod browser;
 mod compile;
 mod condition;
 mod declarations;
-mod deferred;
 #[cfg(not(skene_web_platform = "browser"))]
 mod document;
 mod expr;
@@ -199,6 +197,7 @@ pub use skene_foundation::{
   Wraps,
   routing as router,
   typography,
+  web::{AsyncViewBase, DeferredBase},
 };
 /// The host platform's test seams (`trigger_` events, tree inspection), for headless
 /// view tests on the host.
@@ -214,13 +213,12 @@ pub use wasm_bindgen;
 #[cfg(skene_web_platform = "server")]
 pub use self::platform::Rendered;
 pub use crate::{
-  async_view::AsyncView,
-  deferred::Deferred,
   media::{chosen_scheme, derive_scheme, set_scheme},
   resource::{LoadState, Resource},
   routing::{install_router, install_static_router},
   task::spawn,
   views::{
+    AsyncView,
     BasicButton,
     BasicCheckbox,
     BasicListbox,
@@ -237,6 +235,7 @@ pub use crate::{
     Container,
     ContextMenu,
     Control,
+    Deferred,
     Enhance,
     ErrorBoundary,
     Flexible,

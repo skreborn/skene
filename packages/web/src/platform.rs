@@ -7,12 +7,10 @@
 //! both emitting the same web semantics, so a node styled the same way gets the same
 //! content-addressed class on either leaf and a served page hydrates in place. The
 //! compiler and the element choices are shared; each leaf implements
-//! [`Platform`](skene_foundation::Platform) for [`Web`] and exposes its own entry points
-//! beside the seams a satellite such as [`Link`](crate::Link) needs beyond the
-//! platform: the executor (`drive`), the hydration state channel (`adopt_next`,
-//! `register_source` and their tagged twins, `is_server`), the document head, the path
-//! (the browser's history, the server's request) and, in the browser, `claim_lazy` and
-//! `discard_lazy`.
+//! [`Platform`](skene_foundation::Platform) and
+//! [`WebHydration`](skene_foundation::web::WebHydration) for [`Web`] and exposes its own
+//! entry points beside them: the executor (`drive`), the document head and the path
+//! (the browser's history, the server's request).
 //!
 //! A low-level view states an escape trait as its bound: [`WebMarkup`] (an element,
 //! its attributes, raw [`Declarations`] and text) is implemented on both leaves, and
@@ -28,10 +26,8 @@ pub use crate::browser::uninstall;
 pub use crate::browser::{
   add_head_element,
   adopt_restoration,
-  claim_lazy,
   commit_navigation,
   current_path,
-  discard_lazy,
   document,
   drive,
   element,
@@ -57,17 +53,6 @@ pub use crate::browser::{
 pub use crate::document::Document;
 #[cfg(skene_web_platform = "browser")]
 pub use crate::low_level::WebDom;
-#[cfg(not(skene_web_platform = "headless"))]
-pub use crate::resource_state::{
-  LazyRegion,
-  adopt_next,
-  adopt_tagged,
-  enter_lazy,
-  is_server,
-  register_source,
-  register_tagged_source,
-  within_lazy,
-};
 #[cfg(skene_web_platform = "server")]
 pub use crate::server::{
   Rendered,
@@ -83,7 +68,6 @@ pub use crate::server::{
   persisted_scheme,
   record_static_routes,
   recorded_static_routes,
-  register_boundary,
   remove_head_entry,
   render_to_stream_with,
   render_to_string,
@@ -102,7 +86,7 @@ pub use crate::{
   declarations::Declarations,
   hints::RenderHints,
   low_level::WebMarkup,
-  resource_state::{HydrationSource, STATE_SCRIPT_ID},
+  resource_state::STATE_SCRIPT_ID,
   token::WebTokenValue,
 };
 

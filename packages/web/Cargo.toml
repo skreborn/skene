@@ -6,7 +6,6 @@ rust-version.workspace = true
 
 [dependencies]
 rustc-hash.workspace = true
-serde = "1"
 serde_json = "1"
 sfv = "0.15"
 skene-dev.workspace = true

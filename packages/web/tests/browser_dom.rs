@@ -71,6 +71,7 @@ use skene_web::{
   Container,
   ContextMenu,
   Deferred,
+  DeferredBase,
   Definition,
   Flexible,
   Grid,

@@ -222,7 +222,7 @@ impl Rendered {
 ///
 /// A streaming render flushes what precedes it, waits until `settled` reports true,
 /// then emits its content in place. A whole render never consults it.
-pub fn register_boundary(start: NodeId, settled: BoundarySettled) {
+pub(crate) fn register_boundary(start: NodeId, settled: BoundarySettled) {
   if with_realizer(|realizer| realizer.records.contains(start)) {
     BOUNDARIES.with(|boundaries| boundaries.borrow_mut().insert(start, settled));
   }

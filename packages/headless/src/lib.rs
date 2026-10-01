@@ -115,7 +115,7 @@ use skene_foundation::{
   notify_selection_change,
   notify_toggle,
   start_drag,
-  web::{Canvas, Painter, Painting, WebProperty, WebStyle},
+  web::{Canvas, HydrationSource, Painter, Painting, WebHydration, WebProperty, WebStyle},
 };
 use skene_reactive::{Memo, ReadSignal, Set};
 use unicode_segmentation::UnicodeSegmentation;
@@ -401,6 +401,46 @@ impl Platform for Headless {
   fn set_window_title(title: Option<&str>) {
     with_records(|records| records.head.set_title(title.map(str::to_owned)));
   }
+}
+
+/// The host carries no render across a boundary: nothing it renders is a server's,
+/// nothing it builds adopts one.
+impl WebHydration for Headless {
+  type LazyRegion = ();
+
+  fn install_executor() {
+    install_executor();
+  }
+
+  fn is_server() -> bool {
+    false
+  }
+
+  fn adopt_next() -> Option<String> {
+    None
+  }
+
+  fn adopt_tagged(_tag: &str) -> Option<String> {
+    None
+  }
+
+  fn register_source(_source: HydrationSource) {}
+
+  fn register_tagged_source(_tag: &str, _source: HydrationSource) {}
+
+  fn enter_lazy() -> Self::LazyRegion {}
+
+  fn within_lazy<R>((): &Self::LazyRegion, work: impl FnOnce() -> R) -> R {
+    work()
+  }
+
+  fn claim_lazy(_start: NodeId) -> bool {
+    false
+  }
+
+  fn discard_lazy(_start: NodeId) {}
+
+  fn register_boundary(_start: NodeId, _settled: Box<dyn Fn() -> bool>) {}
 }
 
 impl Painting for Headless {

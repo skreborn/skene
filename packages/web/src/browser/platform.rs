@@ -41,7 +41,7 @@ use skene_foundation::{
   TextSelection,
   Timer,
   notify_dismiss,
-  web::WebStyle,
+  web::{HydrationSource, WebHydration, WebStyle},
 };
 use skene_reactive::{Memo, ReadSignal};
 use wasm_bindgen::{JsCast, JsValue, closure::Closure};
@@ -890,6 +890,54 @@ impl Platform for Web {
   fn watch_media(media: &Media<f32>) -> Memo<bool> {
     media::watch_media(media)
   }
+}
+
+/// The browser hydrates: it adopts the state and claims the markup a server render
+/// carried, and streams nothing.
+impl WebHydration for Web {
+  type LazyRegion = crate::resource_state::LazyRegion;
+
+  fn install_executor() {
+    super::install_executor();
+  }
+
+  fn is_server() -> bool {
+    false
+  }
+
+  fn adopt_next() -> Option<String> {
+    crate::resource_state::adopt_next()
+  }
+
+  fn adopt_tagged(tag: &str) -> Option<String> {
+    crate::resource_state::adopt_tagged(tag)
+  }
+
+  fn register_source(source: HydrationSource) {
+    crate::resource_state::register_source(source);
+  }
+
+  fn register_tagged_source(tag: &str, source: HydrationSource) {
+    crate::resource_state::register_tagged_source(tag, source);
+  }
+
+  fn enter_lazy() -> Self::LazyRegion {
+    crate::resource_state::enter_lazy()
+  }
+
+  fn within_lazy<R>(region: &Self::LazyRegion, work: impl FnOnce() -> R) -> R {
+    crate::resource_state::within_lazy(region, work)
+  }
+
+  fn claim_lazy(start: NodeId) -> bool {
+    super::claim_lazy(start)
+  }
+
+  fn discard_lazy(start: NodeId) {
+    super::discard_lazy(start);
+  }
+
+  fn register_boundary(_start: NodeId, _settled: Box<dyn Fn() -> bool>) {}
 }
 
 impl WebMarkup for Web {

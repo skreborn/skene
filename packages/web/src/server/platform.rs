@@ -29,7 +29,7 @@ use skene_foundation::{
   StaticLeaf,
   TextSelection,
   Timer,
-  web::{Painter, Painting, WebStyle},
+  web::{HydrationSource, Painter, Painting, WebHydration, WebStyle},
 };
 use skene_reactive::{Memo, ReadSignal};
 
@@ -218,6 +218,54 @@ impl Platform for Web {
 
   fn record_static_routes(routes: Vec<String>) {
     super::record_static_routes(routes);
+  }
+}
+
+/// A server render carries the state and markup a client adopts, streaming around each
+/// boundary, and adopts nothing itself.
+impl WebHydration for Web {
+  type LazyRegion = crate::resource_state::LazyRegion;
+
+  fn install_executor() {
+    super::install_executor();
+  }
+
+  fn is_server() -> bool {
+    true
+  }
+
+  fn adopt_next() -> Option<String> {
+    crate::resource_state::adopt_next()
+  }
+
+  fn adopt_tagged(tag: &str) -> Option<String> {
+    crate::resource_state::adopt_tagged(tag)
+  }
+
+  fn register_source(source: HydrationSource) {
+    crate::resource_state::register_source(source);
+  }
+
+  fn register_tagged_source(tag: &str, source: HydrationSource) {
+    crate::resource_state::register_tagged_source(tag, source);
+  }
+
+  fn enter_lazy() -> Self::LazyRegion {
+    crate::resource_state::enter_lazy()
+  }
+
+  fn within_lazy<R>(region: &Self::LazyRegion, work: impl FnOnce() -> R) -> R {
+    crate::resource_state::within_lazy(region, work)
+  }
+
+  fn claim_lazy(_start: NodeId) -> bool {
+    false
+  }
+
+  fn discard_lazy(_start: NodeId) {}
+
+  fn register_boundary(start: NodeId, settled: Box<dyn Fn() -> bool>) {
+    super::register_boundary(start, settled);
   }
 }
 

@@ -1,8 +1,10 @@
 //! The views of the web's own, each forwarding to the foundation's implementation.
 
+mod async_view;
 mod container;
 mod context_menu;
 mod control;
+mod deferred;
 mod enhance;
 mod error_boundary;
 mod flex;
@@ -26,6 +28,7 @@ mod theme;
 mod tooltip;
 
 pub use self::{
+  async_view::AsyncView,
   container::Container,
   context_menu::ContextMenu,
   control::{
@@ -42,6 +45,7 @@ pub use self::{
     BasicTextField,
     Control,
   },
+  deferred::Deferred,
   enhance::Enhance,
   error_boundary::ErrorBoundary,
   flex::{Column, Row},

@@ -33,7 +33,8 @@ skene-foundation the spine: Scene<P> (parents, children, annotations, token defi
       │          LazyRow, Show/Switch/Suspense/ErrorBoundary, Theme, typography,
       │          LowLevel; terminal (TerminalStyle, BorderGlyphs, the terminal
       │          Typography set), web (WebStyle, the web's Typography set, the document
-      │          Head, Painting/Canvas/Painted through vello), routing (a typed route
+      │          Head, Painting/Canvas/Painted through vello, WebHydration with the
+      │          hydrating Resource, Deferred and AsyncView), routing (a typed route
       │          in a signal)
       │
       ├── skene-web       the web facade AND its platform: DOM sink (browser) + HTML/CSS

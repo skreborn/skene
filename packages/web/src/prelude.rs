@@ -92,6 +92,7 @@ pub use skene_foundation::{
   Visibility,
   When,
   Wrap,
+  web::{AsyncViewBase, DeferredBase},
 };
 pub use skene_reactive::{
   Effect,

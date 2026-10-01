@@ -1552,6 +1552,16 @@ impl core::marker::Copy for skene_foundation::web::WebProperty
 impl core::marker::StructuralPartialEq for skene_foundation::web::WebProperty
 impl skene_foundation::PropertyName for skene_foundation::web::WebProperty
 pub fn skene_foundation::web::WebProperty::name(&self) -> &'static str
+pub struct skene_foundation::web::AsyncView<P: skene_foundation::web::WebHydration>
+impl<P: skene_foundation::web::WebHydration> skene_foundation::web::AsyncView<P>
+pub fn skene_foundation::web::AsyncView<P>::new<V, F>(impl core::ops::function::FnOnce() -> F + 'static) -> Self where V: skene_foundation::View<P>, F: core::future::future::Future<Output = V> + 'static
+impl<P: skene_foundation::web::WebHydration> core::fmt::Debug for skene_foundation::web::AsyncView<P>
+pub fn skene_foundation::web::AsyncView<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<P: skene_foundation::web::WebHydration> skene_foundation::AnyKind for skene_foundation::web::AsyncView<P>
+impl<P: skene_foundation::web::WebHydration> skene_foundation::View<P> for skene_foundation::web::AsyncView<P>
+pub fn skene_foundation::web::AsyncView<P>::build(self) -> skene_foundation::NodeId
+pub fn skene_foundation::web::AsyncView<P>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
+pub fn skene_foundation::web::AsyncView<P>::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
 pub struct skene_foundation::web::Canvas
 impl skene_foundation::Canvas
 pub fn skene_foundation::Canvas::fill(&mut self, &impl kurbo::shape::Shape, impl skene_foundation::IntoBrush)
@@ -1565,6 +1575,16 @@ pub const fn skene_foundation::Canvas::size(&self) -> (u16, u16)
 pub fn skene_foundation::Canvas::stroke(&mut self, &impl kurbo::shape::Shape, &kurbo::stroke::Stroke, impl skene_foundation::IntoBrush)
 impl core::fmt::Debug for skene_foundation::Canvas
 pub fn skene_foundation::Canvas::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_foundation::web::Deferred<P: skene_foundation::web::WebHydration>
+impl<P: skene_foundation::web::WebHydration> skene_foundation::web::Deferred<P>
+pub fn skene_foundation::web::Deferred<P>::new<V: skene_foundation::View<P>>(impl core::ops::function::FnOnce() -> V + 'static) -> Self
+impl<P: skene_foundation::web::WebHydration> core::fmt::Debug for skene_foundation::web::Deferred<P>
+pub fn skene_foundation::web::Deferred<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<P: skene_foundation::web::WebHydration> skene_foundation::AnyKind for skene_foundation::web::Deferred<P>
+impl<P: skene_foundation::web::WebHydration> skene_foundation::View<P> for skene_foundation::web::Deferred<P>
+pub fn skene_foundation::web::Deferred<P>::build(self) -> skene_foundation::NodeId
+pub fn skene_foundation::web::Deferred<P>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
+pub fn skene_foundation::web::Deferred<P>::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
 pub struct skene_foundation::web::Head
 impl skene_foundation::web::Head
 pub fn skene_foundation::web::Head::add_element(&mut self, skene_foundation::web::HeadElement) -> skene_foundation::web::HeadId
@@ -1636,6 +1656,19 @@ impl<P: skene_foundation::Painting> skene_foundation::View<P> for skene_foundati
 pub fn skene_foundation::Painted<P>::build(self) -> skene_foundation::NodeId
 pub fn skene_foundation::Painted<P>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
 pub fn skene_foundation::Painted<P>::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
+pub struct skene_foundation::web::Resource<P: skene_foundation::web::WebHydration, T: 'static>
+impl<P: skene_foundation::web::WebHydration, T: 'static> skene_foundation::web::Resource<P, T>
+pub fn skene_foundation::web::Resource<P, T>::client<F>(impl core::ops::function::Fn() -> F + 'static) -> Self where F: core::future::future::Future<Output = T> + 'static
+pub fn skene_foundation::web::Resource<P, T>::new<F>(impl core::ops::function::Fn() -> F + 'static) -> Self where F: core::future::future::Future<Output = T> + 'static, T: serde_core::ser::Serialize + serde_core::de::DeserializeOwned
+pub fn skene_foundation::web::Resource<P, T>::tagged<F>(&'static str, impl core::ops::function::Fn() -> F + 'static) -> Self where F: core::future::future::Future<Output = T> + 'static, T: serde_core::ser::Serialize + serde_core::de::DeserializeOwned
+impl<P: skene_foundation::web::WebHydration, T: 'static> core::clone::Clone for skene_foundation::web::Resource<P, T>
+pub fn skene_foundation::web::Resource<P, T>::clone(&self) -> Self
+impl<P: skene_foundation::web::WebHydration, T: 'static> core::fmt::Debug for skene_foundation::web::Resource<P, T>
+pub fn skene_foundation::web::Resource<P, T>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<P: skene_foundation::web::WebHydration, T: 'static> core::marker::Copy for skene_foundation::web::Resource<P, T>
+impl<P: skene_foundation::web::WebHydration, T: 'static> core::ops::deref::Deref for skene_foundation::web::Resource<P, T>
+pub type skene_foundation::web::Resource<P, T>::Target = skene_reactive::resource::Resource<T>
+pub fn skene_foundation::web::Resource<P, T>::deref(&self) -> &Self::Target
 pub struct skene_foundation::web::Typography
 pub skene_foundation::web::Typography::ink: skene_foundation::Token<skene_foundation::Color, f32>
 pub skene_foundation::web::Typography::letter_spacing: skene_foundation::Token<skene_foundation::Length, f32>
@@ -1752,6 +1785,10 @@ pub type skene_foundation::web::web_fields::CornerRadius::Value = skene_foundati
 pub const skene_foundation::web::web_fields::CornerRadius::KEY: skene_foundation::PropertyKey<skene_foundation::web::WebProperty>
 pub fn skene_foundation::web::web_fields::CornerRadius::get<S: skene_foundation::Shape>(&skene_foundation::BoxStyle<N, S, skene_foundation::web::WebStyle>) -> &<S as skene_foundation::Shape>::Of
 pub fn skene_foundation::web::web_fields::CornerRadius::get_mut<S: skene_foundation::Shape>(&mut skene_foundation::BoxStyle<N, S, skene_foundation::web::WebStyle>) -> &mut <S as skene_foundation::Shape>::Of
+pub trait skene_foundation::web::AsyncViewBase<P: skene_foundation::web::WebHydration>: skene_foundation::Wraps<Inner = skene_foundation::web::AsyncView<P>>
+pub fn skene_foundation::web::AsyncViewBase::new<V, F>(impl core::ops::function::FnOnce() -> F + 'static) -> Self where V: skene_foundation::View<P>, F: core::future::future::Future<Output = V> + 'static
+pub trait skene_foundation::web::DeferredBase<P: skene_foundation::web::WebHydration>: skene_foundation::Wraps<Inner = skene_foundation::web::Deferred<P>>
+pub fn skene_foundation::web::DeferredBase::new<V: skene_foundation::View<P>>(impl core::ops::function::FnOnce() -> V + 'static) -> Self
 pub trait skene_foundation::web::IntoBrush
 pub fn skene_foundation::web::IntoBrush::into_brush(self) -> peniko::brush::Brush
 impl skene_foundation::IntoBrush for peniko::Color
@@ -1777,7 +1814,21 @@ pub fn vello_cpu::render::RenderContext::pop(&mut self)
 pub fn vello_cpu::render::RenderContext::push_clip(&mut self, &kurbo::bezpath::BezPath)
 pub fn vello_cpu::render::RenderContext::set_transform(&mut self, kurbo::affine::Affine)
 pub fn vello_cpu::render::RenderContext::stroke(&mut self, &kurbo::bezpath::BezPath, &kurbo::stroke::Stroke, &peniko::brush::Brush)
+pub trait skene_foundation::web::WebHydration: skene_foundation::Platform
+pub type skene_foundation::web::WebHydration::LazyRegion: core::marker::Unpin + 'static
+pub fn skene_foundation::web::WebHydration::adopt_next() -> core::option::Option<alloc::string::String>
+pub fn skene_foundation::web::WebHydration::adopt_tagged(&str) -> core::option::Option<alloc::string::String>
+pub fn skene_foundation::web::WebHydration::claim_lazy(skene_foundation::NodeId) -> bool
+pub fn skene_foundation::web::WebHydration::discard_lazy(skene_foundation::NodeId)
+pub fn skene_foundation::web::WebHydration::enter_lazy() -> Self::LazyRegion
+pub fn skene_foundation::web::WebHydration::install_executor()
+pub fn skene_foundation::web::WebHydration::is_server() -> bool
+pub fn skene_foundation::web::WebHydration::register_boundary(skene_foundation::NodeId, alloc::boxed::Box<dyn core::ops::function::Fn() -> bool>)
+pub fn skene_foundation::web::WebHydration::register_source(skene_foundation::web::HydrationSource)
+pub fn skene_foundation::web::WebHydration::register_tagged_source(&str, skene_foundation::web::HydrationSource)
+pub fn skene_foundation::web::WebHydration::within_lazy<R>(&Self::LazyRegion, impl core::ops::function::FnOnce() -> R) -> R
 pub fn skene_foundation::web::paint(&peniko::brush::Brush) -> vello_common::paint::PaintType
+pub type skene_foundation::web::HydrationSource = alloc::boxed::Box<dyn core::ops::function::Fn() -> core::option::Option<alloc::string::String>>
 pub type skene_foundation::web::Painter = dyn core::ops::function::Fn(&mut skene_foundation::Canvas, skene_foundation::Size<f32>)
 pub mod skene_foundation::window
 pub fn skene_foundation::window::derive_title<P: skene_foundation::Platform>(impl core::ops::function::Fn() -> alloc::string::String + 'static)
@@ -6746,6 +6797,8 @@ impl<P: skene_foundation::Platform> skene_foundation::AnyKind for skene_foundati
 impl<P: skene_foundation::Platform> skene_foundation::AnyKind for skene_foundation::Span<P>
 impl<P: skene_foundation::Platform> skene_foundation::AnyKind for skene_foundation::Stack<P>
 impl<P: skene_foundation::Platform> skene_foundation::AnyKind for skene_foundation::Text<P>
+impl<P: skene_foundation::web::WebHydration> skene_foundation::AnyKind for skene_foundation::web::AsyncView<P>
+impl<P: skene_foundation::web::WebHydration> skene_foundation::AnyKind for skene_foundation::web::Deferred<P>
 pub trait skene_foundation::BasicPickerBase<P: skene_foundation::Platform, F>: skene_foundation::Wraps<Inner = skene_foundation::BasicPicker<P, F>>
 pub fn skene_foundation::BasicPickerBase::bind_value(self, skene_reactive::signal::Signal<alloc::string::String>) -> Self
 pub fn skene_foundation::BasicPickerBase::derive_disabled(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
@@ -8757,6 +8810,14 @@ impl<P: skene_foundation::Platform> skene_foundation::View<P> for skene_foundati
 pub fn skene_foundation::Tooltip<P, skene_foundation::AnyView<P>>::build(self) -> skene_foundation::NodeId
 pub fn skene_foundation::Tooltip<P, skene_foundation::AnyView<P>>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
 pub fn skene_foundation::Tooltip<P, skene_foundation::AnyView<P>>::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
+impl<P: skene_foundation::web::WebHydration> skene_foundation::View<P> for skene_foundation::web::AsyncView<P>
+pub fn skene_foundation::web::AsyncView<P>::build(self) -> skene_foundation::NodeId
+pub fn skene_foundation::web::AsyncView<P>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
+pub fn skene_foundation::web::AsyncView<P>::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
+impl<P: skene_foundation::web::WebHydration> skene_foundation::View<P> for skene_foundation::web::Deferred<P>
+pub fn skene_foundation::web::Deferred<P>::build(self) -> skene_foundation::NodeId
+pub fn skene_foundation::web::Deferred<P>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
+pub fn skene_foundation::web::Deferred<P>::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
 pub trait skene_foundation::When<T>: core::convert::Into<skene_foundation::Leaf<T>>
 pub fn skene_foundation::When::derive_when<C, R: core::convert::Into<skene_foundation::StaticLeaf<T>>>(self, C, impl core::ops::function::Fn() -> R + 'static) -> skene_foundation::Value<T, C>
 pub fn skene_foundation::When::when<C>(self, C, impl core::convert::Into<skene_foundation::Leaf<T>>) -> skene_foundation::Value<T, C>

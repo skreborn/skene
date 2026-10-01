@@ -30,6 +30,7 @@ use skene_simple_web::prelude::*;
 use skene_web::{
   Activate,
   AsyncView,
+  AsyncViewBase,
   BasicButton,
   BasicListbox,
   BasicListboxOption,
@@ -38,6 +39,7 @@ use skene_web::{
   Column,
   Container,
   Deferred,
+  DeferredBase,
   Enhance,
   Flexible,
   HasChild,

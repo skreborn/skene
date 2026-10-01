@@ -673,7 +673,7 @@ fn segment_dom(start: NodeId) -> Vec<web_sys::Node> {
 /// The markup stays in place and counts as adopted while the segment's real content is
 /// on its way; `false` when not hydrating or when the server rendered nothing there.
 #[must_use]
-pub fn claim_lazy(start: NodeId) -> bool {
+pub(crate) fn claim_lazy(start: NodeId) -> bool {
   let between = segment_dom(start);
 
   if between.is_empty() {
@@ -728,7 +728,7 @@ pub fn claim_lazy(start: NodeId) -> bool {
 ///
 /// The segment's real content arrives to take its place, and a scroll offset or the
 /// focus inside the markup passes to that content when it has the same shape.
-pub fn discard_lazy(start: NodeId) {
+pub(crate) fn discard_lazy(start: NodeId) {
   let between = segment_dom(start);
   let following = between.last().and_then(web_sys::Node::next_sibling);
 

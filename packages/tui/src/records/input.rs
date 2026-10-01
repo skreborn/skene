@@ -1,8 +1,6 @@
 //! The input state: focus as the scene holds it, the press awaiting its release, the
 //! drag in progress, the wheel's latched target and the hover path.
 
-use std::time::Instant;
-
 use skene_core::{FocusOrder, Interaction, NodeId, Scene};
 
 use super::{
@@ -49,11 +47,11 @@ pub(crate) const SCROLL_GESTURE: std::time::Duration = std::time::Duration::from
 pub(crate) const AUTOSCROLL_INTERVAL: std::time::Duration = std::time::Duration::from_millis(50);
 
 /// One wheel gesture's scroll target: the cell it hit, the box it scrolls, and the
-/// last wheel event's time.
+/// clock reading of the last wheel event.
 pub(crate) struct ScrollLatch {
   pub(crate) cell: (u16, u16),
   pub(crate) target: Handle,
-  pub(crate) last: Instant,
+  pub(crate) last: f64,
 }
 
 /// The delivered left press awaiting its release: the node it landed on with its

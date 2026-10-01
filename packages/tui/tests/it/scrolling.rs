@@ -501,7 +501,7 @@ fn wheel_gesture_holds_at_the_target_limit_then_chains() {
       "the at-limit inner box consumed the wheel: {held}"
     );
 
-    std::thread::sleep(std::time::Duration::from_millis(510));
+    testing::trigger_frame(std::time::Duration::from_millis(510));
     testing::trigger_mouse_scroll(1, 0, 0, 1);
 
     let chained = testing::render_to_text(14, 5);

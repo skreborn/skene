@@ -13,7 +13,7 @@
 //! offered on every terminal, since OSC 52 has no capability query, and a terminal
 //! lacking it ignores the write and answers no read.
 
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use skene_core::{ClipboardAction, RunDisplay, Scene};
 
@@ -48,10 +48,10 @@ impl Records {
   /// Counts a press at (`x`, `y`) into its multi-click sequence: 1 for a fresh press,
   /// 2 for a double click, 3 for a triple; a fourth begins a new sequence.
   pub(crate) fn register_press(&mut self, x: u16, y: u16) -> u8 {
-    let now = Instant::now();
+    let now = self.now();
     let count = match self.last_press {
       Some((at, press_x, press_y, count))
-        if press_x == x && press_y == y && now.duration_since(at) <= MULTI_CLICK && count < 3 =>
+        if press_x == x && press_y == y && now - at <= MULTI_CLICK.as_secs_f64() && count < 3 =>
       {
         count + 1
       }

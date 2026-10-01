@@ -9,8 +9,6 @@ mod input;
 mod record;
 mod structure;
 
-use std::time::Instant;
-
 use rustc_hash::FxHashSet;
 pub(crate) use skene_core::Interaction;
 use skene_core::{
@@ -96,8 +94,9 @@ pub(crate) struct Records {
   pub(crate) buttons: PointerButtons,
   /// The selection over the document's runs; a text entry's lives in its [`Field`].
   pub(crate) selection: Option<Selection>,
-  /// The last press, for counting multi-click sequences: its time, cell, and count.
-  pub(crate) last_press: Option<(Instant, u16, u16, u8)>,
+  /// The last press, for counting multi-click sequences: its clock reading, cell, and
+  /// count.
+  pub(crate) last_press: Option<(f64, u16, u16, u8)>,
   /// The pointer's last known cell.
   pub(crate) last_pointer: (u16, u16),
   /// Where the pointer sits within its cell, `0..1` along each axis: the center unless

@@ -4,6 +4,7 @@
 use std::{
   cell::{Cell, RefCell},
   rc::Rc,
+  time::Duration,
 };
 
 use skene_simple::tui::prelude::*;
@@ -197,7 +198,8 @@ fn only_a_dragging_box_keeps_a_press() {
 }
 
 /// Two quick clicks at one cell are a double click: the second click reaches the
-/// double-click handler after its own, and a click at another cell starts afresh.
+/// double-click handler after its own, and a click at another cell, or after the
+/// multi-click window has passed on the platform's clock, starts afresh.
 #[test]
 fn two_quick_clicks_at_one_cell_are_a_double_click() {
   with_platform(|| {
@@ -220,6 +222,16 @@ fn two_quick_clicks_at_one_cell_are_a_double_click() {
     testing::trigger_mouse_click(2, 1);
 
     assert_eq!(*log.borrow(), ["click", "click", "double click", "click"]);
+
+    log.borrow_mut().clear();
+    testing::trigger_frame(Duration::from_millis(600));
+    testing::trigger_mouse_click(2, 1);
+
+    assert_eq!(
+      *log.borrow(),
+      ["click"],
+      "a click past the multi-click window starts afresh"
+    );
   });
 }
 

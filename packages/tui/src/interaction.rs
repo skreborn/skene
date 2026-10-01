@@ -1459,12 +1459,12 @@ pub(crate) fn wheel(x: u16, y: u16, delta_x: i64, delta_y: i64, modifiers: Modif
     }
   }
 
-  let now = std::time::Instant::now();
+  let now = records(|records| records.now());
   let (latched, candidates) = records(|records| {
     let latched = match records.scroll_latch.as_mut() {
       Some(entry)
         if entry.cell == (x, y)
-          && now.duration_since(entry.last) <= crate::records::SCROLL_GESTURE =>
+          && now - entry.last <= crate::records::SCROLL_GESTURE.as_secs_f64() =>
       {
         entry.last = now;
 

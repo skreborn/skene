@@ -685,6 +685,33 @@ leaf's `StyleSink` what to add and remove (the browser: one `<style>` element pe
 class; the server: each rule collected as it is interned and emitted with the next
 flush, the document's `<style>` or a streamed chunk's delta).
 
+## State
+
+An app's state lives in one of three places, chosen by who reads it and how long it
+lives.
+
+- **A `Store` for the app's data.** State that several views read and write and that
+  outlives any one of them is a plain struct under `#[derive(Store)]`, made once near the
+  root (`Store::tagged("todos", Todos::default())`) and handed down as the `Copy` handle
+  it is. A view reads the field it shows through the accessor the derive generates
+  (`todos.items()`, `todo.done().get()`), so a write re-runs exactly the reads of the
+  location it touched, and a list built from a store's `Vec` follows its shape by key
+  (`derive_entries(todos.items().keyed_by(|todo| todo.id), ..)`), building, moving or
+  destroying one row per change. The value stays plain data, so it snapshots as a unit
+  across a dev reload.
+- **A local `Signal` for one view's state.** What one view owns and nothing else
+  reads—a draft, a disclosure's openness—is a `Signal` the view makes as it builds,
+  under its owner, so it lives exactly as long as the view and goes with it.
+- **Context for what a subtree sits inside.** Values a whole subtree reads without
+  being handed them—a theme's palette (`ThemedIn::current`), the router, an async
+  boundary—are provided once and read by any descendant built under that owner.
+
+There are no view models in context. A screen's data is a `Store`, or a lens onto one,
+passed to the function that builds the screen, not an object a parent provides and a
+descendant looks up: an argument states what a view needs where it is called, costs a
+copy, and keeps the view testable headless with a store the test builds. Context stays
+for the genuinely ambient, which every layer between would otherwise have to thread.
+
 ## Reactive engine
 
 The public API speaks the ecosystem's standard reactive vocabulary:
@@ -1250,6 +1277,39 @@ Framework and app code log through `tracing`. The web leaves install a subscribe
 launch unless one is set, the browser's writing to the console and the server's to
 standard error; the terminal installs none, its screen being the app's, and headless
 leaves the choice to the test. The spine carries no subscriber.
+
+## Glossary
+
+The words this codebase uses in more than one sense, with the phrase that keeps each
+sense apart where context does not.
+
+- **Leaf.** A property's leaf (`Leaf`, `StaticLeaf`, `PlatformLeaf`): the fixed value,
+  token, expression or derived closure at the bottom of a `Value`, conditions choosing
+  among leaves. A web leaf: one of the platforms the web facade compiles to, the browser
+  leaf and the server leaf, the headless platform standing in off their targets.
+- **Anchor.** A segment's anchors: the start and end markers a reactive subtree
+  (`derived`, `Suspense`, `ErrorBoundary`, `Deferred`, `AsyncView`, `empty`) mounts
+  between, a comment pair on the web. An overlay's anchor: the node a popup is placed
+  against and toggled from, placed by CSS anchor positioning where the engine has it.
+- **Store.** A `Store`: the reactive state a `#[derive(Store)]` struct lives in, read and
+  written through its fields' accessors. A snapshot's store and restore: what a dev
+  reload records and reads back. A platform's record store (see record).
+- **Record.** A platform's record of a node: what it keeps per `NodeId` beside its
+  realization, the terminal's and headless's. A snapshot record: what a run writes for
+  its successor at a dev reload.
+- **Realize.** A platform turning a scene node into its own representation: an element
+  in the browser, an entry in the server's string tree, a record and a taffy node in the
+  terminal. `LowLevel::realize` mints a node a view realizes itself.
+- **Build.** `View::build`: a view creating its scene nodes and returning its root's
+  id. Compiling is never building, and `skene build` is named in full.
+- **Floor and upgrade.** What a platform always has and what a signal proves it can
+  add, the platform choosing: the terminal's backdrop in cells is the floor and in
+  pixels the upgrade, sixteen colors the floor and truecolor the upgrade.
+- **Fallback, baseline, enhancement and child.** Where a view has two forms the view
+  chooses: its fallback (`set_fallback_builder`) is the baseline that works before the
+  environment is ready, and its child (`set_child_builder`) the enhancement the proven
+  environment gets. `Suspense` and `ErrorBoundary` call what they show in place of their
+  content a fallback too.
 
 ## Superseded decisions
 

@@ -191,22 +191,17 @@ left half-done in a code comment.
     converge. Criterion stays at 0.5 while 0.8 builds alloca's C on every unix target,
     which the Apple clippy check cannot cross-compile on Linux; base64 stays doubled
     while sfv 0.15 holds 0.22.
-    - The documents: `AGENTS.md` at 150 lines or fewer of numbered
-    one-to-three-sentence invariants, each linking its `DESIGN.md` section; `DESIGN.md`
-    one chapter per mechanism, each with its contract, mechanism and decisions, the
-    terminal's split by concern; fine facts (DECRQM modes, OSC numbers, keyboard
-    tables, hydration markers) in the owning module's rustdoc; `README.md` for users,
-    its quickstart compiled headless through `include_str!` and the crate table drawn
-    once; this file for open items alone, its benchmark baseline moved beside the
-    benchmark and re-measured with the WebGPU split's sizes, since neither reproduces;
-    a glossary for the overloaded words (leaf, anchor, store, record, realize, build;
-    floor, fallback and baseline against upgrade, enhancement and child); dated
-    decision records with a revisit trigger; an architecture page on state (a `Store`,
-    a local `Signal` or context, and no view models in context); a guide in an mdbook
-    that compiles its snippets, and a `skene new <kind>` scaffold, the kind mandatory so
-    more can join: `app` first, an app's shared crate and a shell per platform it
-    names, as `flutter create` does, then `lib` and a component library's core and
-    per-platform crates.
+    - The documents: `AGENTS.md` at 150 lines or fewer of numbered one-to-three-sentence
+    invariants, each linking its `DESIGN.md` section; `DESIGN.md` one chapter per
+    mechanism, each with its contract, mechanism and decisions, the terminal's split by
+    concern; fine facts (DECRQM modes, OSC numbers, keyboard tables, hydration markers)
+    in the owning module's rustdoc; `README.md` for users, the crate table drawn once;
+    this file for open items alone, its benchmark baseline moved beside the benchmark
+    and re-measured with the WebGPU split's sizes, since neither reproduces; dated
+    decision records with a revisit trigger; a guide in an mdbook that compiles its
+    snippets, and a `skene new <kind>` scaffold, the kind mandatory so more can join:
+    `app` first, an app's shared crate and a shell per platform it names, as `flutter
+    create` does, then `lib` and a component library's core and per-platform crates.
     - Doc comments: contracts alone, without rationale or narrated implementation.
 8. **Pictures beyond direct kitty transmission.** Shared memory or a file where the
     protocol's query over that medium shows the terminal shares the host, sparing the

@@ -112,3 +112,68 @@ impl<P: Platform> View<P> for Keymap<P, AnyView<P>> {
     .serve(node)
   }
 }
+
+/// Implements a facade's newtype `$name<C>` over the foundation's [`Keymap`].
+///
+/// The newtype holds the keymap on the platform `$platform` in its field; the macro
+/// implements the constructor, the view served, the shortcuts and the traits a keymap
+/// meets.
+#[macro_export]
+macro_rules! impl_keymap {
+  ($name:ident, $platform:ty) => {
+    impl<C> ::core::fmt::Debug for $name<C> {
+      fn fmt(&self, formatter: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+        ::core::fmt::Debug::fmt(&self.0, formatter)
+      }
+    }
+
+    impl ::core::default::Default for $name {
+      #[inline(always)]
+      fn default() -> Self {
+        Self::new()
+      }
+    }
+
+    impl $name {
+      /// A keymap binding no shortcut yet.
+      #[inline(always)]
+      pub const fn new() -> Self {
+        Self($crate::Keymap::new())
+      }
+
+      /// Sets the view the keymap serves.
+      #[inline(always)]
+      pub fn set_child(
+        self,
+        child: impl $crate::View<$platform>,
+      ) -> $name<$crate::AnyView<$platform>> {
+        $name(self.0.set_child(child))
+      }
+
+      /// Binds the shortcuts on `node`, a view that already exists; returns `node`.
+      #[inline(always)]
+      pub fn serve(self, node: $crate::NodeId) -> $crate::NodeId {
+        self.0.serve(node)
+      }
+
+      /// Runs `action` when `shortcut` is pressed while focus is inside the view served.
+      #[inline(always)]
+      pub fn handle_shortcut(
+        self,
+        shortcut: $crate::Shortcut,
+        action: impl Fn() + 'static,
+      ) -> Self {
+        Self(self.0.handle_shortcut(shortcut, action))
+      }
+    }
+
+    impl<C> $crate::AnyKind for $name<C> {}
+
+    impl $crate::View<$platform> for $name<$crate::AnyView<$platform>> {
+      #[inline(always)]
+      fn build(self) -> $crate::NodeId {
+        $crate::View::build(self.0)
+      }
+    }
+  };
+}

@@ -4,8 +4,8 @@
 //! standing to `skene-web`. It fixes the scalar (cells, `u32`), names the platform
 //! ([`ActivePlatform`]: [`Terminal`]) and aliases every built-in view to it, so app code names
 //! no platform. The medium's own contribution is
-//! [`Typography`], the [`media`] module, the terminal's decoration on the views without
-//! it of their own ([`TerminalDecoration`]), the escape trait a low-level view is
+//! [`Typography`], the [`media`] module, the terminal's decoration on its decorated
+//! views (the border's glyphs, a shadow, scrollbars), the escape trait a low-level view is
 //! written against ([`CellPainter`], painting through [`Cells`]) and the entry points:
 //! [`launch`] in a terminal—[`Launch`] configuring what the app takes from it, the
 //! clipboard operations and the mouse—and [`testing`] for a headless test.
@@ -30,7 +30,6 @@ mod dev;
 mod device;
 mod escape;
 mod event_loop;
-mod ext;
 mod field;
 mod frame;
 mod interaction;
@@ -159,7 +158,6 @@ pub use crate::{
   cells::{CellPainter, Cells},
   dev::{adopt_restoration, notice_view as dev_notice_view},
   device::{Device, Note, WindowSize},
-  ext::TerminalDecoration,
   launch::{Clipboard, Launch, MOUSE_KEY, install, launch},
   media::{chosen_scheme, derive_scheme, set_scheme},
   paint::{CellDecoration, Picture},
@@ -181,12 +179,18 @@ pub use crate::{
     BasicTextField,
     Column,
     Container,
+    ContextMenu,
     Control,
     Enhance,
     ErrorBoundary,
     Flexible,
     Grid,
     GridCell,
+    Keymap,
+    LazyColumn,
+    LazyRow,
+    Overlay,
+    Painted,
     Pinned,
     RichText,
     Row,
@@ -197,6 +201,7 @@ pub use crate::{
     Switch,
     Text,
     Theme,
+    Tooltip,
   },
 };
 

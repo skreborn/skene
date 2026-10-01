@@ -5,12 +5,9 @@ use std::rc::Rc;
 use skene_reactive::{Effect, Get, Set, Signal, untrack};
 
 use crate::{
-  Animation,
   AnyKind,
   AnyView,
-  BoxKeyframe,
   Color,
-  DeclaredBoxStyle,
   Handler,
   HasChildren,
   Layout,
@@ -25,12 +22,8 @@ use crate::{
   PlainHandler,
   Platform,
   Point,
-  Role,
   Scene,
-  StyleExtension,
-  Transition,
   View,
-  decoration,
   realize::Source,
 };
 
@@ -38,6 +31,43 @@ use crate::{
 #[inline(always)]
 fn modal_backdrop() -> Color {
   Color::srgb(0., 0., 0.).with_alpha(0.5)
+}
+
+/// Generates an [`Overlay`]'s style surface on a type holding a box in `$field`.
+///
+/// The surface is the content box's declared style, its decoration and sizing, its motion
+/// and what names it, on the platform `$platform`. The foundation's overlay expands it
+/// over its box, and a facade's newtype over the overlay it wraps.
+#[macro_export]
+macro_rules! overlay_surface {
+  ($field:tt, $platform:ty) => {
+    /// The declared style of the content box, for a facade's medium-specific setters to
+    /// write into.
+    #[inline(always)]
+    pub const fn style_mut(&mut self) -> &mut $crate::DeclaredBoxStyle<$platform> {
+      self.$field.style_mut()
+    }
+
+    $crate::decoration! { style_mut, $platform }
+
+    $crate::forward! { $field;
+      /// Adds a property transition, interpolating that property whenever its value
+      /// changes.
+      fn set_transition(transition: $crate::Transition<<<$platform as $crate::Platform>::StyleExt as $crate::StyleExtension>::Property>);
+      /// Adds a keyframe animation.
+      fn set_animation(animation: $crate::Animation<$crate::BoxKeyframe<$platform>>);
+      /// Names the box for view transitions: it is paired with the box of the same name
+      /// across a navigation, where the platform animates between them.
+      fn set_transition_name(name: impl Into<String>);
+      /// Sets the overlay's accessible name, where no heading inside names it.
+      fn set_label(label: impl Into<String>);
+      /// Sets the node whose text names the overlay: its heading.
+      fn set_labelled_by(node: $crate::NodeId);
+      /// Sets the semantic role a popup takes: [`$crate::Role::Dialog`] for one holding a form; a
+      /// modal is a dialog already.
+      fn set_role(role: $crate::Role);
+    }
+  };
 }
 
 /// Content above the app, opened and closed by the app.
@@ -125,32 +155,7 @@ impl<P: Platform> Overlay<P> {
 }
 
 impl<P: Platform> Overlay<P> {
-  /// The declared style of the content box, for a facade's medium-specific setters to
-  /// write into.
-  #[inline(always)]
-  pub const fn style_mut(&mut self) -> &mut DeclaredBoxStyle<P> {
-    self.inner.style_mut()
-  }
-
-  decoration! { style_mut, P }
-
-  crate::forward! { inner;
-    /// Adds a property transition, interpolating that property whenever its value
-    /// changes.
-    fn set_transition(transition: Transition<<P::StyleExt as StyleExtension>::Property>);
-    /// Adds a keyframe animation.
-    fn set_animation(animation: Animation<BoxKeyframe<P>>);
-    /// Names the box for view transitions: it is paired with the box of the same name
-    /// across a navigation, where the platform animates between them.
-    fn set_transition_name(name: impl Into<String>);
-    /// Sets the overlay's accessible name, where no heading inside names it.
-    fn set_label(label: impl Into<String>);
-    /// Sets the node whose text names the overlay: its heading.
-    fn set_labelled_by(node: NodeId);
-    /// Sets the semantic role a popup takes: [`Role::Dialog`] for one holding a form; a
-    /// modal is a dialog already.
-    fn set_role(role: Role);
-  }
+  crate::overlay_surface! { inner, P }
 
   /// Sets where the overlay sits; anchored, `Bottom` and `Top` open below and above
   /// the anchor.
@@ -305,4 +310,90 @@ impl<P: Platform> View<P> for Overlay<P, AnyView<P>> {
 
     node
   }
+}
+
+/// Implements a facade's newtype `$name<C>` over the foundation's [`Overlay`].
+///
+/// The newtype holds the overlay on the platform `$platform` in its field; the macro
+/// implements the constructors, the content, the style surface, the placement, the open
+/// state and the traits an overlay meets.
+#[macro_export]
+macro_rules! impl_overlay {
+  ($name:ident, $platform:ty) => {
+    impl<C> ::core::fmt::Debug for $name<C> {
+      fn fmt(&self, formatter: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+        ::core::fmt::Debug::fmt(&self.0, formatter)
+      }
+    }
+
+    impl $name {
+      /// A modal: focus trapped, interaction beneath blocked, a backdrop painted.
+      #[inline(always)]
+      pub fn modal() -> Self {
+        Self($crate::Overlay::modal())
+      }
+
+      /// A popup: floating, blocking nothing beneath it, without a backdrop.
+      #[inline(always)]
+      pub fn popup() -> Self {
+        Self($crate::Overlay::popup())
+      }
+
+      /// A hint: a popup describing its anchor, which never takes focus and sits beneath
+      /// every other popup.
+      #[inline(always)]
+      pub fn hint() -> Self {
+        Self($crate::Overlay::hint())
+      }
+
+      /// Sets the content.
+      #[inline(always)]
+      pub fn set_child(
+        self,
+        child: impl $crate::View<$platform>,
+      ) -> $name<$crate::AnyView<$platform>> {
+        $name(self.0.set_child(child))
+      }
+
+      $crate::overlay_surface! { 0, $platform }
+
+      $crate::forward! { 0;
+        /// Sets where the overlay sits; anchored, `Bottom` and `Top` open below and
+        /// above the anchor.
+        fn set_placement(placement: $crate::Placement);
+        /// Derives where the overlay sits from the signals `placement` reads.
+        fn derive_placement(placement: impl Fn() -> $crate::Placement + 'static);
+        /// Sets the backdrop painted over the app while open; `None` paints nothing.
+        fn set_backdrop(backdrop: Option<$crate::Color>);
+        /// Places the open overlay against the view `anchor` is bound to.
+        fn set_anchor(anchor: $crate::NodeHandle<$platform>);
+        /// Pins the open overlay's top-start corner to `position`, in the units a
+        /// pointer event reports, shifted to stay within the viewport; pinned, the
+        /// overlay ignores its placement and anchor.
+        fn set_position(position: $crate::Point<f32>);
+        /// Derives where the open overlay is pinned from the signals `position` reads;
+        /// `None` leaves it to its placement and anchor.
+        fn derive_position(position: impl Fn() -> Option<$crate::Point<f32>> + 'static);
+        /// Sets whether the overlay is open.
+        fn set_open(open: bool);
+        /// Derives whether the overlay is open from the signals `open` reads.
+        fn derive_open(open: impl Fn() -> bool + 'static);
+        /// Runs `action` when the user asks the overlay to close: `Escape`, a backdrop
+        /// click, or a press outside a popup.
+        fn handle_dismiss(action: impl Fn() + 'static);
+        /// Binds the open state to `signal` in both directions: the overlay follows it,
+        /// and a dismiss request writes `false` into it.
+        fn bind_open(signal: $crate::reactive::Signal<bool>);
+      }
+    }
+
+    impl<C> $crate::AnyKind for $name<C> {}
+
+    impl $crate::View<$platform> for $name<$crate::AnyView<$platform>> {
+      #[inline(always)]
+      fn build(self) -> $crate::NodeId {
+        $crate::View::build(self.0)
+      }
+    }
+  };
 }

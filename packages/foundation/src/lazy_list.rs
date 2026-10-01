@@ -508,3 +508,137 @@ impl<P: Platform> View<P> for LazyRow<P> {
     self.0.build()
   }
 }
+
+/// Implements a facade's newtype `$name` over the foundation's [`LazyColumn`].
+///
+/// The newtype holds the list on the platform `$platform` in its field; the macro
+/// implements the constructor, the item height, the overscan, the items and the traits
+/// a lazy list meets.
+#[macro_export]
+macro_rules! impl_lazy_column {
+  ($name:ident, $platform:ty) => {
+    impl ::core::fmt::Debug for $name {
+      fn fmt(&self, formatter: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+        ::core::fmt::Debug::fmt(&self.0, formatter)
+      }
+    }
+
+    impl ::core::default::Default for $name {
+      #[inline(always)]
+      fn default() -> Self {
+        Self::new()
+      }
+    }
+
+    impl $name {
+      /// An empty column with an overscan of three items.
+      #[inline(always)]
+      pub const fn new() -> Self {
+        Self($crate::LazyColumn::new())
+      }
+
+      $crate::forward! { 0;
+        /// Sets the height of every item, fixed or estimated, in the medium's unit.
+        fn set_item_height(item_height: impl Into<$crate::ItemExtent>);
+        /// Sets how many items build beyond each edge of the slice in view.
+        fn set_overscan(overscan: usize);
+      }
+
+      /// Derives the items from a keyed collection: `items` yields them all, `key`
+      /// gives each a stable identity, and `view` draws one; only those in the window
+      /// build.
+      #[inline(always)]
+      pub fn derive_items<T, I, K, V>(
+        self,
+        items: impl Fn() -> I + 'static,
+        key: impl Fn(&T) -> K + 'static,
+        view: impl Fn(T) -> V + 'static,
+      ) -> Self
+      where
+        T: 'static,
+        I: IntoIterator<Item = T>,
+        I::IntoIter: ExactSizeIterator,
+        K: Eq + ::core::hash::Hash + Clone + 'static,
+        V: $crate::View<$platform>,
+      {
+        Self(self.0.derive_items(items, key, view))
+      }
+    }
+
+    impl $crate::AnyKind for $name {}
+
+    impl $crate::View<$platform> for $name {
+      #[inline(always)]
+      fn build(self) -> $crate::NodeId {
+        $crate::View::build(self.0)
+      }
+    }
+  };
+}
+
+/// Implements a facade's newtype `$name` over the foundation's [`LazyRow`].
+///
+/// The newtype holds the list on the platform `$platform` in its field; the macro
+/// implements the constructor, the item width, the overscan, the items and the traits
+/// a lazy list meets.
+#[macro_export]
+macro_rules! impl_lazy_row {
+  ($name:ident, $platform:ty) => {
+    impl ::core::fmt::Debug for $name {
+      fn fmt(&self, formatter: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+        ::core::fmt::Debug::fmt(&self.0, formatter)
+      }
+    }
+
+    impl ::core::default::Default for $name {
+      #[inline(always)]
+      fn default() -> Self {
+        Self::new()
+      }
+    }
+
+    impl $name {
+      /// An empty row with an overscan of three items.
+      #[inline(always)]
+      pub const fn new() -> Self {
+        Self($crate::LazyRow::new())
+      }
+
+      $crate::forward! { 0;
+        /// Sets the width of every item, fixed or estimated, in the medium's unit.
+        fn set_item_width(item_width: impl Into<$crate::ItemExtent>);
+        /// Sets how many items build beyond each edge of the slice in view.
+        fn set_overscan(overscan: usize);
+      }
+
+      /// Derives the items from a keyed collection: `items` yields them all, `key`
+      /// gives each a stable identity, and `view` draws one; only those in the window
+      /// build.
+      #[inline(always)]
+      pub fn derive_items<T, I, K, V>(
+        self,
+        items: impl Fn() -> I + 'static,
+        key: impl Fn(&T) -> K + 'static,
+        view: impl Fn(T) -> V + 'static,
+      ) -> Self
+      where
+        T: 'static,
+        I: IntoIterator<Item = T>,
+        I::IntoIter: ExactSizeIterator,
+        K: Eq + ::core::hash::Hash + Clone + 'static,
+        V: $crate::View<$platform>,
+      {
+        Self(self.0.derive_items(items, key, view))
+      }
+    }
+
+    impl $crate::AnyKind for $name {}
+
+    impl $crate::View<$platform> for $name {
+      #[inline(always)]
+      fn build(self) -> $crate::NodeId {
+        $crate::View::build(self.0)
+      }
+    }
+  };
+}

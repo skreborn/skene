@@ -1,6 +1,7 @@
 //! The views of the terminal's own, each forwarding to the foundation's implementation.
 
 mod container;
+mod context_menu;
 mod control;
 mod enhance;
 mod error_boundary;
@@ -8,6 +9,10 @@ mod flex;
 mod flexible;
 mod grid;
 mod grid_cell;
+mod keymap;
+mod lazy_list;
+mod overlay;
+mod painted;
 mod picker;
 mod pinned;
 mod show;
@@ -17,9 +22,11 @@ mod suspense;
 mod switch;
 mod text;
 mod theme;
+mod tooltip;
 
 pub use self::{
   container::Container,
+  context_menu::ContextMenu,
   control::{
     BasicButton,
     BasicCheckbox,
@@ -40,6 +47,10 @@ pub use self::{
   flexible::Flexible,
   grid::Grid,
   grid_cell::GridCell,
+  keymap::Keymap,
+  lazy_list::{LazyColumn, LazyRow},
+  overlay::Overlay,
+  painted::Painted,
   picker::BasicPicker,
   pinned::Pinned,
   show::Show,
@@ -49,6 +60,7 @@ pub use self::{
   switch::Switch,
   text::Text,
   theme::Theme,
+  tooltip::Tooltip,
 };
 
 /// Generates the terminal's own decoration on a view with a declared box style: the

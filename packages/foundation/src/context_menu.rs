@@ -816,3 +816,132 @@ impl<P: Platform> View<P> for ContextMenu<P, AnyView<P>> {
     start
   }
 }
+
+/// Implements a facade's newtype `$name<C>` over the foundation's [`ContextMenu`].
+///
+/// The newtype holds the menu on the platform `$platform` in its field; the macro
+/// implements the constructor, the items, the view served, the list's decoration, every
+/// item's and separator's styling, the item view, the placement and the traits a menu
+/// meets.
+#[macro_export]
+macro_rules! impl_context_menu {
+  ($name:ident, $platform:ty) => {
+    impl<C> ::core::fmt::Debug for $name<C> {
+      fn fmt(&self, formatter: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+        ::core::fmt::Debug::fmt(&self.0, formatter)
+      }
+    }
+
+    impl ::core::default::Default for $name {
+      #[inline(always)]
+      fn default() -> Self {
+        Self::new()
+      }
+    }
+
+    impl $name {
+      /// A menu with no items yet.
+      #[inline(always)]
+      pub fn new() -> Self {
+        Self($crate::ContextMenu::new())
+      }
+
+      /// Sets the items, in order.
+      #[inline(always)]
+      pub fn set_items(self, items: impl IntoIterator<Item = $crate::MenuEntry>) -> Self {
+        Self(self.0.set_items(items))
+      }
+
+      /// Sets the view the menu serves.
+      #[inline(always)]
+      pub fn set_child(self, child: impl $crate::View<$platform>) -> $name<$crate::AnyView<$platform>> {
+        $name(self.0.set_child(child))
+      }
+
+      /// Attaches the menu to `node`, a view that already exists, mounting the list
+      /// under it; returns the list's node.
+      #[inline(always)]
+      pub fn serve(self, node: $crate::NodeId) -> $crate::NodeId {
+        self.0.serve(node)
+      }
+
+      /// The declared style of the list, for a facade's medium-specific setters to write
+      /// into.
+      #[inline(always)]
+      pub const fn list_style_mut(&mut self) -> &mut $crate::DeclaredBoxStyle<$platform> {
+        self.0.list_style_mut()
+      }
+
+      $crate::decoration! { list_style_mut, $platform }
+
+      /// The declared style of every item, for a facade's medium-specific setters to
+      /// write into.
+      #[inline(always)]
+      pub const fn item_style_mut(&mut self) -> &mut $crate::DeclaredBoxStyle<$platform> {
+        self.0.item_style_mut()
+      }
+
+      $crate::properties! { item_style_mut, $platform;
+        set_item_padding / derive_item_padding (padding) => padding: $crate::Inset<<$platform as $crate::Platform>::Scalar>,
+          "the padding on each edge of every item";
+        set_item_color / derive_item_color (color) => color: $crate::Color,
+          "the background color of every item";
+        set_item_cursor / derive_item_cursor (cursor) => cursor: $crate::MouseCursor,
+          "the mouse cursor shown over every item";
+      }
+
+      /// Sets every item's corner radius, a length in the medium's unit, where the
+      /// medium rounds corners; a medium without radii accepts and ignores it.
+      #[inline(always)]
+      pub fn set_item_corner_radius(
+        self,
+        radius: impl Into<$crate::Value<$crate::Length, $crate::Condition<<$platform as $crate::Platform>::Scalar>>>,
+      ) -> Self
+      where
+        <$platform as $crate::Platform>::StyleExt: $crate::CornerRadius,
+      {
+        Self(self.0.set_item_corner_radius(radius))
+      }
+
+      $crate::forward! { 0;
+        /// Sets the color of every item's label.
+        fn set_item_text_color(color: impl Into<$crate::Value<$crate::Color, $crate::Condition<<$platform as $crate::Platform>::Scalar>>>);
+        /// Sets the color of every item's shortcut hint; the label's color unless set.
+        fn set_shortcut_color(color: impl Into<$crate::Value<$crate::Color, $crate::Condition<<$platform as $crate::Platform>::Scalar>>>);
+        /// Sets the color of every separator.
+        fn set_separator_color(color: impl Into<$crate::Value<$crate::Color, $crate::Condition<<$platform as $crate::Platform>::Scalar>>>);
+        /// Sets the thickness of every separator; one unit of the medium unless told
+        /// otherwise.
+        fn set_separator_thickness(
+          thickness: impl Into<$crate::Value<$crate::Dimension<<$platform as $crate::Platform>::Scalar>, $crate::Condition<<$platform as $crate::Platform>::Scalar>>>,
+        );
+        /// Sets where the list opens against the pointer; its top-start corner at the
+        /// pointer unless told otherwise.
+        fn set_placement(placement: $crate::Placement);
+        /// Sets the view drawing each item from its content; the menu keeps the item's
+        /// behavior, its accessible name and when it is listed and enabled. Without
+        /// one, an item's label and shortcut sit at its two ends, dressed by the
+        /// `set_item_*` and `set_shortcut_*` setters.
+        fn set_item_view[V: $crate::View<$platform>](
+          view: impl Fn($crate::MenuItemContent) -> V + 'static,
+        );
+        /// Sets the spacing between an item's caption and its shortcut hint.
+        fn set_shortcut_spacing(
+          spacing: impl Into<$crate::Value<$crate::Spacing<<$platform as $crate::Platform>::Scalar>, $crate::Condition<<$platform as $crate::Platform>::Scalar>>>,
+        );
+        /// Adds a property transition on the list, interpolating that property whenever
+        /// its value changes.
+        fn set_transition(transition: $crate::Transition<<<$platform as $crate::Platform>::StyleExt as $crate::StyleExtension>::Property>);
+      }
+    }
+
+    impl<C> $crate::AnyKind for $name<C> {}
+
+    impl $crate::View<$platform> for $name<$crate::AnyView<$platform>> {
+      #[inline(always)]
+      fn build(self) -> $crate::NodeId {
+        $crate::View::build(self.0)
+      }
+    }
+  };
+}

@@ -20,8 +20,8 @@
   they diverge. There is no cross-platform vocabulary: an app is a shared crate of
   logic and state with a shell per platform, and a component library a core of colors,
   named sizes and logic with a presentation crate per platform. Until the rest of the
-  rename wave in `ROADMAP.md` lands, the paragraphs below still describe the facades
-  aliasing one vocabulary from `skene-foundation`.
+  rename wave in `ROADMAP.md` lands, the paragraphs below on component libraries still
+  describe one generic crate serving every facade.
 - The foundation (`skene-foundation`, over `skene-reactive`, which knows nothing of UI)
   stays platform-agnostic: no platform assumptions or nomenclature. Its **spine** (the
   `spine` module, naming nothing of the crate outside itself and keeping its internals
@@ -35,8 +35,9 @@
   **`Resolver`** every non-CSS platform resolves its styles through (with the erased
   `TokenValue` and `SlotValue` it reads), the host **executor** a platform installs, generic
   geometry over the platform's scalar, and universal values. Beside the spine the
-  foundation hosts every built-in view once, generic over `P: Platform`; a facade
-  aliases them.
+  foundation hosts every built-in view once, generic over `P: Platform`; each facade
+  exposes them as views of its own, newtypes the foundation's `impl_<view>!` macros
+  implement.
 - The canonical building block is a **view** (the `View` trait); never "widget". Two
   equal facades exist—`skene-web` (the web) and `skene-terminal` (the terminal)—each
   owning its builder vocabulary, typed to exactly its medium; neither is the blessed
@@ -560,9 +561,11 @@
 ## Naming & API conventions
 
 - The spine stays minimal and structural. The built-in views live in `skene-foundation`,
-  written once against `Platform`; a facade aliases them
-  (`type Container = skene_foundation::Container<ActivePlatform>`), every alias a facade
-  shares declared by one `skene_foundation::facade!`. Users extend by composing
+  written once against `Platform`; each facade declares a newtype of its own per view
+  (`pub struct Container(skene_foundation::Container<ActivePlatform>);`) with its own
+  documentation, the view's `skene_foundation::impl_<view>!` implementing every member
+  it shares and the facade's own members beside them, and the rest of the surface every
+  facade shares declared by one `skene_foundation::facade!`. Users extend by composing
   built-ins, painting a `Painted` node, or authoring a view against a platform's escape
   trait.
 - Builder methods: `set_<prop>` for a fixed value, `derive_<prop>` for a reactive one,

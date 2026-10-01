@@ -49,12 +49,12 @@ skene-foundation the spine: Scene<P> (parents, children, annotations, token defi
                           CellPainter
 
 skene-web        the web facade: f32, ActivePlatform (the web in the browser and on a
-                 server render, the headless platform elsewhere), aliases for every view,
+                 server render, the headless platform elsewhere), its own type per view,
                  Typography, media::*, Resource across the server boundary, Deferred,
                  AsyncView, Link, head, view_transitions, launch and the server entries,
                  #[main], and the platform itself under platform
 skene-terminal   the terminal facade, EQUAL in standing: u32 cells, Terminal, the
-                 same aliases, Typography, BorderGlyphs, media::*, launch, testing
+                 same views, Typography, BorderGlyphs, media::*, launch, testing
 skene-simple     the Simple design language over skene-foundation, generic over P: the
                  palette (a TokenSet), the looks, the shape per unit, the terminal marks
                  (SimpleGlyphs) and the Simple* views; an app's explicit dependency;
@@ -72,8 +72,8 @@ one medium with fallbacks: an app is written for each on purpose, and neither
 cross-compiles into the other. Each facade therefore owns its builder vocabulary outright, typed to
 exactly its capabilities—and everything beneath it is written once in the spine. The
 facade's own contribution is small by design: a scalar, the medium's condition leaves,
-the properties only that medium has, the platform it selects, and the aliases that give
-app code a flat, medium-typed surface. What a medium lacks is absent at compile time
+the properties only that medium has, the platform it selects, and a type of its own per
+view, a newtype over the foundation's, that gives app code a flat, medium-typed surface. What a medium lacks is absent at compile time
 because the platform's associated types say so.
 
 Dependency arrows only point down; a platform depends on the foundation, never on another
@@ -135,7 +135,7 @@ whether an entry takes edits (`Scene::is_editable`: neither disabled nor read-on
 the control state and reports it holds, which the platforms read rather than copy.
 
 **`Platform` is a zero-sized trait with associated types**, monomorphized, hidden behind
-each facade's aliases: `Scalar` (`f32` or `u32`), `StyleExt` (the medium's own
+each facade's views: `Scalar` (`f32` or `u32`), `StyleExt` (the medium's own
 properties), `TokenValue` (the erased definition the medium accepts). Its methods are the
 portable vocabulary over node ids: realize and update boxes, controls, overlays and
 runs, realize anchors and scopes, mirror tree mutations, define tokens on a scope and at
@@ -1100,7 +1100,7 @@ Two guarantees, both properties of what is public rather than of any one API.
 - **A component library, for every platform, from one crate.** It depends on
   `skene-foundation`, writes generic over `P: Platform` exactly as the built-ins are written, and
   states what it needs from a medium as a bound on the platform's associated types
-  (`P::StyleExt: CornerRadius`). Each facade's aliases make it concrete for the app
+  (`P::StyleExt: CornerRadius`). Each facade's views make it concrete for the app
   that uses it. Nothing on the path a built-in takes is crate-private: the setter
   macros the built-ins generate their `set_`/`derive_` pairs with (`properties!`,
   `decoration!`, `type_metrics!`) are exported, so a third-party layout view built on
@@ -1120,7 +1120,7 @@ Two guarantees, both properties of what is public rather than of any one API.
   proofs. The portable low-level path for pixel media is `Painted`.
 
 A platform need not be first-party: a crate that implements `Platform`, provides its scalar,
-leaves, extension, a `launch` and aliases over `skene-foundation` is a facade. `Platform` is not
+leaves, extension, a `launch` and views over `skene-foundation` is a facade. `Platform` is not
 sealed, and the shared machinery bounds only on it and the public extension traits; the
 headless platform is exactly such a crate in all but ownership.
 

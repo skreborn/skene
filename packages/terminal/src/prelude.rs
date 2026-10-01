@@ -130,7 +130,6 @@ pub use crate::{
   Stack,
   Suspense,
   Switch,
-  TerminalDecoration,
   Text,
   Theme,
   ThemedIn,

@@ -1603,6 +1603,7 @@ pub fn skene_foundation::Painted<P>::set_max_width(self, impl core::convert::Int
 pub fn skene_foundation::Painted<P>::set_min_height(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Painted<P>::set_min_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Painted<P>::set_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub const fn skene_foundation::Painted<P>::style_mut(&mut self) -> &mut skene_foundation::DeclaredBoxStyle<P>
 impl<P: skene_foundation::Painting> core::fmt::Debug for skene_foundation::Painted<P>
 pub fn skene_foundation::Painted<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<P: skene_foundation::Painting> skene_foundation::AnyKind for skene_foundation::Painted<P>
@@ -1768,12 +1769,18 @@ pub macro skene_foundation::grid_surface!
 pub macro skene_foundation::impl_basic_picker!
 pub macro skene_foundation::impl_column!
 pub macro skene_foundation::impl_container!
+pub macro skene_foundation::impl_context_menu!
 pub macro skene_foundation::impl_control!
 pub macro skene_foundation::impl_enhance!
 pub macro skene_foundation::impl_error_boundary!
 pub macro skene_foundation::impl_flexible!
 pub macro skene_foundation::impl_grid!
 pub macro skene_foundation::impl_grid_cell!
+pub macro skene_foundation::impl_keymap!
+pub macro skene_foundation::impl_lazy_column!
+pub macro skene_foundation::impl_lazy_row!
+pub macro skene_foundation::impl_overlay!
+pub macro skene_foundation::impl_painted!
 pub macro skene_foundation::impl_pinned!
 pub macro skene_foundation::impl_rich_text!
 pub macro skene_foundation::impl_row!
@@ -1784,6 +1791,9 @@ pub macro skene_foundation::impl_suspense!
 pub macro skene_foundation::impl_switch!
 pub macro skene_foundation::impl_text!
 pub macro skene_foundation::impl_theme!
+pub macro skene_foundation::impl_tooltip!
+pub macro skene_foundation::overlay_surface!
+pub macro skene_foundation::painted_surface!
 pub macro skene_foundation::pinned_surface!
 pub macro skene_foundation::properties!
 pub macro skene_foundation::run_surface!
@@ -5377,6 +5387,7 @@ pub fn skene_foundation::Painted<P>::set_max_width(self, impl core::convert::Int
 pub fn skene_foundation::Painted<P>::set_min_height(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Painted<P>::set_min_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Painted<P>::set_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub const fn skene_foundation::Painted<P>::style_mut(&mut self) -> &mut skene_foundation::DeclaredBoxStyle<P>
 impl<P: skene_foundation::Painting> core::fmt::Debug for skene_foundation::Painted<P>
 pub fn skene_foundation::Painted<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<P: skene_foundation::Painting> skene_foundation::AnyKind for skene_foundation::Painted<P>

@@ -3,10 +3,13 @@
 /// Declares a facade's shared surface over the platform `$platform`, measuring lengths
 /// in `$scalar`, which `$unit` names in the documentation.
 ///
-/// The traits a view and a token set of the platform meet, an alias per built-in view,
-/// the value vocabulary in the unit, and `derived`, `reconcile` and `empty`. A facade
-/// adds its platform selection, its medium and its entry points around it, and names
-/// `skene-foundation` and `skene-reactive` among its dependencies.
+/// The traits a view and a token set of the platform meet, an alias for each building
+/// block that is no view of its own (the erased view, the layout box, a keyed view, a
+/// control's handle and label, a picker's face, a node handle and a child builder), the
+/// value vocabulary in the unit, and `derived`, `reconcile` and `empty`. A facade
+/// declares its views around it as newtypes the `impl_*!` macros implement, adds its
+/// platform selection, its medium and its entry points, and names `skene-foundation`
+/// and `skene-reactive` among its dependencies.
 #[macro_export]
 macro_rules! facade {
   ($platform:ty, $scalar:ty, $unit:literal) => {
@@ -74,25 +77,8 @@ macro_rules! facade {
     pub type Label = $crate::Label<$platform>;
     /// A picker's face; see [`skene_foundation::Face`].
     pub type Face = $crate::Face<$platform>;
-    /// Content above the app; see [`skene_foundation::Overlay`].
-    pub type Overlay<C = $crate::NoChild> = $crate::Overlay<$platform, C>;
-    /// Content shown beside the view it describes; see [`skene_foundation::Tooltip`].
-    pub type Tooltip<C = $crate::NoChild> = $crate::Tooltip<$platform, C>;
-    /// Commands shown beside the pointer on a secondary press over the view it serves;
-    /// see [`skene_foundation::ContextMenu`].
-    pub type ContextMenu<C = $crate::NoChild> = $crate::ContextMenu<$platform, C>;
-    /// Keyboard shortcuts over the view it serves; see [`skene_foundation::Keymap`].
-    pub type Keymap<C = $crate::NoChild> = $crate::Keymap<$platform, C>;
     /// A handle naming the node a view built; see [`skene_foundation::NodeHandle`].
     pub type NodeHandle = $crate::NodeHandle<$platform>;
-    /// A box drawn by a paint callback; see [`skene_foundation::Painted`].
-    pub type Painted = $crate::Painted<$platform>;
-    /// A scrolling keyed list building only the slice in view; see
-    /// [`skene_foundation::LazyColumn`].
-    pub type LazyColumn = $crate::LazyColumn<$platform>;
-    /// A scrolling keyed row building only the slice in view; see
-    /// [`skene_foundation::LazyRow`].
-    pub type LazyRow = $crate::LazyRow<$platform>;
     /// The closure building a view's child under the context the view provides; see
     /// [`skene_foundation::ChildBuilder`].
     pub type ChildBuilder = $crate::ChildBuilder<$platform>;

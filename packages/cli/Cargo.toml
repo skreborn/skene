@@ -26,7 +26,7 @@ skene-dev.workspace = true
 skene-web.workspace = true
 url = "2"
 walkdir = "2"
-wasm-bindgen-cli-support = "=0.2.126"
+wasm-bindgen-cli-support = "=0.2.129"
 wasm-split-cli = "=0.8.0-alpha.1"
 
 [target.'cfg(unix)'.dependencies]

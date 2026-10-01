@@ -47,7 +47,7 @@ pub(super) fn with_media<R>(operation: impl FnOnce(&MediaState) -> R) -> R {
     let media = media.get_or_insert_with(|| {
       let hints = HINTS.with(Cell::get);
 
-      skene_foundation::root_owner().enter(|| {
+      skene_reactive::Owner::root().enter(|| {
         let (signals, writers) = MediaSignals::new(Environment {
           viewport: hints.viewport,
           scheme: hints.scheme,

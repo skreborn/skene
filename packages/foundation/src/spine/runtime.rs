@@ -1,38 +1,12 @@
-use std::cell::{Cell, RefCell};
+use std::cell::RefCell;
 
-use skene_reactive::{Owner, Runtime};
+use skene_reactive::Runtime;
 
 use crate::spine::{Platform, Scene, task};
 
 thread_local! {
-  static ROOT_OWNER: Cell<Option<Owner>> = const { Cell::new(None) };
   /// The flush the turn's writes scheduled, run when the turn ends.
   static TURN: RefCell<Option<Box<dyn FnOnce()>>> = const { RefCell::new(None) };
-}
-
-/// Returns the root scope for the current thread.
-///
-/// If there is no scope yet, a new one is created.
-pub fn root_owner() -> Owner {
-  ROOT_OWNER.with(|current| {
-    if let Some(scope) = current.get() {
-      scope
-    }
-    else {
-      let scope = Owner::new();
-
-      current.set(Some(scope));
-
-      scope
-    }
-  })
-}
-
-/// Drops the current thread's root scope, so the next [`root_owner`] call makes a fresh one.
-///
-/// A platform calls this when it uninstalls.
-pub fn reset_root_owner() {
-  ROOT_OWNER.with(|current| current.set(None));
 }
 
 /// Holds every flush on this thread until its turn ends.
@@ -64,6 +38,5 @@ pub fn reset_thread<P: Platform>() {
   TURN.with(|turn| *turn.borrow_mut() = None);
   Scene::<P>::with(|scene| *scene = Scene::new());
   Runtime::reset();
-  reset_root_owner();
   task::clear();
 }

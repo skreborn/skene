@@ -256,7 +256,7 @@ fn begin_render() -> (NodeId, Owner) {
 
   with_realizer(|realizer| realizer.insert(root, ROOT, "", Realized::Box, false));
 
-  (root, skene_foundation::root_owner().child())
+  (root, skene_reactive::Owner::root().child())
 }
 
 /// Builds `app` under `scope` as the child of `root`, as one turn, with `boundary` in

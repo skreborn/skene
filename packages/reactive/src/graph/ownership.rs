@@ -17,8 +17,9 @@ use crate::{
 };
 
 impl Graph {
-  /// Allocates the runtime's root owner, whose path is empty.
-  pub(crate) fn allocate_root_owner(&mut self) -> Id {
+  /// Allocates the runtime's ambient owner: the one current outside every other, its path
+  /// empty.
+  pub(crate) fn allocate_ambient_owner(&mut self) -> Id {
     let id = self.allocate_owner();
 
     if let Some(data) = self.owner_data_mut(id) {

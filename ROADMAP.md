@@ -188,7 +188,7 @@ left half-done in a code comment.
     and the terminal gains `Link`; the title into a shared `window` module, which grows
     into the `Window` handle, while web-only page metadata stays in a web-only module;
     `Show` beside `Switch`; the lazy list's `ItemWindow` math and the slider math out
-    of the spine; `root_owner` as the reactive crate's `Owner::root()`.
+    of the spine.
     - Edges: painting's GPU stack stops weighing on the build of an app that paints
     nothing, `vello_hybrid` being over half of a clean gallery wasm build.
     - `#[main]` is the only entry point, emitting `fn main` per target with its native

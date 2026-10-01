@@ -67,6 +67,7 @@ pub struct Runtime {
   graph_holder: Cell<Option<&'static Location<'static>>>,
   pub(crate) tracking: Cell<Option<Id>>,
   pub(crate) current_owner: Cell<Id>,
+  pub(crate) root: Cell<Option<Id>>,
   batch_depth: Cell<u32>,
   flushing: Cell<bool>,
   scheduler: RefCell<Option<Rc<Scheduler>>>,
@@ -82,7 +83,7 @@ impl std::fmt::Debug for Runtime {
 impl Runtime {
   fn new() -> Self {
     let mut graph = Graph::new();
-    let root = graph.allocate_root_owner();
+    let root = graph.allocate_ambient_owner();
 
     Self {
       graph: RefCell::new(graph),
@@ -90,6 +91,7 @@ impl Runtime {
       graph_holder: Cell::new(None),
       tracking: Cell::new(None),
       current_owner: Cell::new(root),
+      root: Cell::new(None),
       batch_depth: Cell::new(0),
       flushing: Cell::new(false),
       scheduler: RefCell::new(None),
@@ -137,9 +139,9 @@ impl Runtime {
 
   /// Resets the calling thread's reactive runtime to a fresh, empty state.
   ///
-  /// Clears all signals, effects, owners, pending work, snapshot registrations and the
-  /// scheduler. Cleanups are discarded, not run. Inside a batch, the batch still ends
-  /// where it would have, and flushes then.
+  /// Clears all signals, effects, owners, the root owner among them, pending work,
+  /// snapshot registrations and the scheduler. Cleanups are discarded, not run. Inside a batch, the
+  /// batch still ends where it would have, and flushes then.
   pub fn reset() {
     let (graph, scheduler) = RUNTIME.with(|runtime| {
       runtime.tracking.set(None);
@@ -149,7 +151,8 @@ impl Runtime {
       let scheduler = runtime.scheduler.borrow_mut().take();
       let mut fresh = Graph::new();
 
-      runtime.current_owner.set(fresh.allocate_root_owner());
+      runtime.current_owner.set(fresh.allocate_ambient_owner());
+      runtime.root.set(None);
 
       (std::mem::replace(&mut *runtime.graph(), fresh), scheduler)
     });

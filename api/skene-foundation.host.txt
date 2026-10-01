@@ -8756,9 +8756,7 @@ pub fn skene_foundation::notify_selection_change<P: skene_foundation::Platform>(
 pub fn skene_foundation::notify_toggle<P: skene_foundation::Platform>(skene_foundation::NodeId, bool)
 pub fn skene_foundation::paint(&peniko::brush::Brush) -> vello_common::paint::PaintType
 pub fn skene_foundation::reconcile<P: skene_foundation::Platform, T, I, K>(skene_foundation::NodeId, impl core::ops::function::Fn() -> I + 'static, impl core::ops::function::Fn(&T) -> K + 'static, impl core::ops::function::Fn(T) -> skene_foundation::NodeId + 'static) where I: core::iter::traits::collect::IntoIterator<Item = T>, K: core::cmp::Eq + core::hash::Hash + 'static
-pub fn skene_foundation::reset_root_owner()
 pub fn skene_foundation::reset_thread<P: skene_foundation::Platform>()
-pub fn skene_foundation::root_owner() -> skene_reactive::owner::Owner
 pub fn skene_foundation::start_drag<P: skene_foundation::Platform>(skene_foundation::NodeId) -> core::option::Option<(skene_foundation::NodeId, skene_foundation::DragData)>
 pub type skene_foundation::Annotated<P, T> = skene_foundation::Value<T, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>
 pub type skene_foundation::BasicButton<P, C> = skene_foundation::Control<P, skene_foundation::Activate, C>

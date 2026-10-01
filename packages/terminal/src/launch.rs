@@ -186,7 +186,7 @@ fn serve_standard_menu() {
   };
   let gray = Color::srgb(0.5, 0.5, 0.5);
 
-  skene_foundation::root_owner().enter(|| {
+  skene_reactive::Owner::root().enter(|| {
     let _ = ContextMenu::<Terminal>::new()
       .set_items([MenuEntry::cut(), MenuEntry::copy(), MenuEntry::paste()])
       .set_color(Color::srgb(1., 1., 1.).when(Media::Dark, Color::srgb(0., 0., 0.)))

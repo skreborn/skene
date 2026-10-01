@@ -314,7 +314,7 @@ where
 {
   skene_headless::install_executor();
 
-  skene_foundation::root_owner().enter(|| {
+  skene_reactive::Owner::root().enter(|| {
     let _ = skene_foundation::View::into_any(app()).build();
   });
 

@@ -574,7 +574,7 @@ pub fn uninstall() {
 pub fn mount(view: impl FnOnce() -> NodeId) -> NodeId {
   end_turn();
 
-  let node = skene_foundation::root_owner().enter(|| {
+  let node = skene_reactive::Owner::root().enter(|| {
     let node = view();
     let root = root_node().expect("the root node exists once installed");
 

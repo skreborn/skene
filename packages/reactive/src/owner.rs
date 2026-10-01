@@ -56,6 +56,20 @@ impl Owner {
     self.0
   }
 
+  /// The thread's root owner: a detached owner a platform builds its views under, made on
+  /// the first call and again once the runtime [resets](Runtime::reset).
+  pub fn root() -> Self {
+    if let Some(root) = RUNTIME.with(|runtime| runtime.root.get()) {
+      return Self::from_id(root);
+    }
+
+    let root = Self::new();
+
+    RUNTIME.with(|runtime| runtime.root.set(Some(root.0)));
+
+    root
+  }
+
   /// The current owner: the one anything reactive created right now would belong to.
   #[inline(always)]
   pub fn current() -> Self {

@@ -516,7 +516,7 @@ pub fn install(root: Element) {
 pub fn mount(view: impl FnOnce() -> NodeId) -> NodeId {
   end_turn();
 
-  let node = skene_foundation::root_owner().enter(|| {
+  let node = skene_reactive::Owner::root().enter(|| {
     let node = view();
     let root = with_dom(|dom| dom.root_node);
 

@@ -196,7 +196,7 @@ pub use run_style::{
   RunVisitor,
   run_fields,
 };
-pub use runtime::{end_turn, hold_flushes, reset_root_owner, reset_thread, root_owner};
+pub use runtime::{end_turn, hold_flushes, reset_thread};
 pub use scalar::Scalar;
 pub use scene::{Annotated, Annotation, NodeKind, NodeRecord, Scene};
 pub use segment::{Piece, Segment};

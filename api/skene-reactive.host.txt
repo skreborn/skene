@@ -206,6 +206,7 @@ pub fn skene_reactive::Owner::parent(&self) -> core::option::Option<Self>
 pub fn skene_reactive::Owner::pause(&self)
 pub fn skene_reactive::Owner::replacement(&self) -> Self
 pub fn skene_reactive::Owner::resume(&self)
+pub fn skene_reactive::Owner::root() -> Self
 pub fn skene_reactive::Owner::set_parent(&self, Self)
 impl core::clone::Clone for skene_reactive::Owner
 pub fn skene_reactive::Owner::clone(&self) -> skene_reactive::Owner

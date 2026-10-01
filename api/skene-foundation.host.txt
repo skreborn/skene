@@ -4419,13 +4419,11 @@ impl<T> core::default::Default for skene_foundation::Flexibility<T>
 pub fn skene_foundation::Flexibility<T>::default() -> Self
 pub struct skene_foundation::Flexible<P: skene_foundation::Platform, C>
 impl<P: skene_foundation::Platform> skene_foundation::Flexible<P>
-pub fn skene_foundation::Flexible<P>::derive_grow_factor(self, impl core::ops::function::Fn() -> f32 + 'static) -> Self
+pub fn skene_foundation::Flexible<P>::derive_flexibility<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Flexibility<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Flexible<P>::derive_item_alignment<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::ItemAlignment>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Flexible<P>::set_child(self, impl skene_foundation::View<P>) -> skene_foundation::Flexible<P, skene_foundation::AnyView<P>>
-pub fn skene_foundation::Flexible<P>::set_grow_factor(self, f32) -> Self
-pub fn skene_foundation::Flexible<P>::set_initial(self, impl core::convert::Into<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>) -> Self
+pub fn skene_foundation::Flexible<P>::set_flexibility(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Flexibility<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Flexible<P>::set_item_alignment(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::ItemAlignment, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
-pub const fn skene_foundation::Flexible<P>::set_shrink_factor(self, f32) -> Self
 impl<P: skene_foundation::Platform> skene_foundation::Flexible<P>
 pub fn skene_foundation::Flexible<P>::new() -> Self
 impl<P: skene_foundation::Platform, C> core::fmt::Debug for skene_foundation::Flexible<P, C>
@@ -7755,13 +7753,11 @@ pub fn skene_foundation::Row<P>::set_padding(self, impl core::convert::Into<sken
 pub fn skene_foundation::Row<P>::set_spacing(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Spacing<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::Row<P>::set_wrap(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Wrap, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub trait skene_foundation::FlexibleBase<P: skene_foundation::Platform>: skene_foundation::Wraps<Inner = skene_foundation::Flexible<P>>
-pub fn skene_foundation::FlexibleBase::derive_grow_factor(self, impl core::ops::function::Fn() -> f32 + 'static) -> Self
+pub fn skene_foundation::FlexibleBase::derive_flexibility<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Flexibility<<P as skene_foundation::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::FlexibleBase::derive_item_alignment<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::ItemAlignment>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::FlexibleBase::new() -> Self
-pub fn skene_foundation::FlexibleBase::set_grow_factor(self, f32) -> Self
-pub fn skene_foundation::FlexibleBase::set_initial(self, impl core::convert::Into<skene_foundation::Dimension<<P as skene_foundation::Platform>::Scalar>>) -> Self
+pub fn skene_foundation::FlexibleBase::set_flexibility(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Flexibility<<P as skene_foundation::Platform>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
 pub fn skene_foundation::FlexibleBase::set_item_alignment(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::ItemAlignment, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
-pub fn skene_foundation::FlexibleBase::set_shrink_factor(self, f32) -> Self
 pub trait skene_foundation::GridBase<P: skene_foundation::Platform>: skene_foundation::HasBoxStyle<P> + core::marker::Sized
 pub fn skene_foundation::GridBase::adaptive(<P as skene_foundation::Platform>::Scalar) -> Self where Self: skene_foundation::Wraps<Inner = skene_foundation::Grid<P>>
 pub fn skene_foundation::GridBase::derive_areas<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::GridAreas>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self

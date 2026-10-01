@@ -13,6 +13,7 @@ use skene_foundation::{
   ControlBase,
   DecorationBase,
   EnhanceBase,
+  Flexibility,
   FlexibleBase,
   MotionBase,
   OverlayBase,
@@ -455,7 +456,7 @@ fn a_wrapper_lays_out_the_text_it_wraps() {
   let page = render_to_string(|| {
     Row::new().set_children((
       Flexible::new()
-        .set_grow_factor(1.)
+        .set_flexibility(Flexibility::grow(1.))
         .set_child(Text::new("title")),
       Text::new("x"),
     ))

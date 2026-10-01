@@ -3,5 +3,5 @@
 use skene_web::prelude::*;
 
 fn main() {
-  let _ = Row::new().set_children((Flexible::new().set_grow_factor(1.),));
+  let _ = Row::new().set_children((Flexible::new().set_flexibility(Flexibility::grow(1.)),));
 }

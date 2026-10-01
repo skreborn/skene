@@ -72,11 +72,13 @@ fn card(todos: Store<Todos>) -> impl View {
       .set_spacing(8.)
       .set_item_alignment(ItemAlignment::Center)
       .set_children((
-        Flexible::new().set_grow_factor(1.).set_child(
-          SimpleTextField::new()
-            .set_placeholder("What needs doing?")
-            .bind_value(draft),
-        ),
+        Flexible::new()
+          .set_flexibility(Flexibility::grow(1.))
+          .set_child(
+            SimpleTextField::new()
+              .set_placeholder("What needs doing?")
+              .bind_value(draft),
+          ),
         SimpleButton::new("Add").handle_activate(add),
       )),
     Column::new()
@@ -99,16 +101,18 @@ fn row(todos: Store<Todos>, todo: impl StoreField<Value = Todo> + Copy) -> impl 
       SimpleCheckbox::new()
         .derive_checked(move || todo.done().get())
         .handle_toggle(move |done| todo.done().set(done)),
-      Flexible::new().set_grow_factor(1.).set_child(
-        Text::derive(move || todo.title().get()).derive_color(move || {
-          if todo.done().get() {
-            SimplePalette::MUTED_FOREGROUND
-          }
-          else {
-            SimplePalette::FOREGROUND
-          }
-        }),
-      ),
+      Flexible::new()
+        .set_flexibility(Flexibility::grow(1.))
+        .set_child(
+          Text::derive(move || todo.title().get()).derive_color(move || {
+            if todo.done().get() {
+              SimplePalette::MUTED_FOREGROUND
+            }
+            else {
+              SimplePalette::FOREGROUND
+            }
+          }),
+        ),
       SimpleButton::new("×")
         .set_variant(SimpleVariant::Outline)
         .handle_activate(move || {

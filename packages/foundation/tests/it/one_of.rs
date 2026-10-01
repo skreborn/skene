@@ -127,12 +127,14 @@ fn switch_forwards_the_pending_annotation_to_every_branch() {
   let root = owner.enter(|| {
     Column::new()
       .add_child(
-        Flexible::new().set_grow_factor(3.).set_child(
-          OneOf::new()
-            .derive_key(move || key.get())
-            .set_case(1, Container::new)
-            .set_case(2, Container::new),
-        ),
+        Flexible::new()
+          .set_flexibility(Flexibility::grow(3.))
+          .set_child(
+            OneOf::new()
+              .derive_key(move || key.get())
+              .set_case(1, Container::new)
+              .set_case(2, Container::new),
+          ),
       )
       .build()
   });

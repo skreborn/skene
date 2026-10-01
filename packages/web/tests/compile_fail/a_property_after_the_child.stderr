@@ -1,5 +1,5 @@
-error[E0599]: no method named `set_grow_factor` found for struct `skene_web::Flexible<C>` in the current scope
+error[E0599]: no method named `set_flexibility` found for struct `skene_web::Flexible<C>` in the current scope
  --> tests/compile_fail/a_property_after_the_child.rs:6:53
   |
-6 |   let _ = Flexible::new().set_child(Text::new("a")).set_grow_factor(1.);
+6 |   let _ = Flexible::new().set_child(Text::new("a")).set_flexibility(Flexibility::grow(1.));
   |                                                     ^^^^^^^^^^^^^^^ method not found in `skene_web::Flexible<skene_foundation::spine::view::AnyView<Headless>>`

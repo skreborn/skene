@@ -23,6 +23,7 @@ use skene_foundation::{
   Dimension,
   EventKind,
   Expr,
+  Flexibility,
   Flexible,
   HasChild,
   HasChildren,
@@ -409,7 +410,11 @@ impl skene_foundation::View<Web> for Raw {
 #[test]
 fn a_low_level_node_takes_its_wrappers_layout() {
   let rendered = render_to_string(|| {
-    Row::<Web>::new().add_child(Flexible::<Web>::new().set_grow_factor(3.).set_child(Raw))
+    Row::<Web>::new().add_child(
+      Flexible::<Web>::new()
+        .set_flexibility(Flexibility::grow(3.))
+        .set_child(Raw),
+    )
   });
   let body = rendered.body();
   let raw = body.rfind("<div").expect("the low-level element");

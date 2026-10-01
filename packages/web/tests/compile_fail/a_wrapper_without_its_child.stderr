@@ -1,8 +1,8 @@
 error[E0277]: `skene_web::Flexible` is not a compatible and complete view
  --> tests/compile_fail/a_wrapper_without_its_child.rs:6:36
   |
-6 |   let _ = Row::new().set_children((Flexible::new().set_grow_factor(1.),));
-  |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a compatible and complete view
+6 |   let _ = Row::new().set_children((Flexible::new().set_flexibility(Flexibility::grow(1.)),));
+  |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a compatible and complete view
   |
   = note: check that it is indeed a compatible view type
   = note: a wrapper (`Flexible`, `Pinned`, `GridCell`) is accepted only by the container that understands it

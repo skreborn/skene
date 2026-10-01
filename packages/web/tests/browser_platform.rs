@@ -18,6 +18,7 @@ use skene_foundation::{
   Container,
   ContainerBase,
   DecorationBase,
+  Flexibility,
   Flexible,
   HasChild,
   HasChildren,
@@ -651,9 +652,11 @@ fn a_low_level_node_takes_its_wrappers_layout() {
   let _ = platform::mount(move || {
     Row::<Web>::new()
       .set_children((
-        Flexible::<Web>::new().set_grow_factor(3.).set_child(Raw),
         Flexible::<Web>::new()
-          .derive_grow_factor(move || grow.get())
+          .set_flexibility(Flexibility::grow(3.))
+          .set_child(Raw),
+        Flexible::<Web>::new()
+          .derive_flexibility(move || Flexibility::grow(grow.get()))
           .set_child(Raw),
       ))
       .build()

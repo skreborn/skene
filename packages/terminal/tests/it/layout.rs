@@ -90,7 +90,7 @@ fn flexible_text_takes_free_space() {
         .set_children((
           Text::new("a"),
           Flexible::new()
-            .set_grow_factor(1.)
+            .set_flexibility(Flexibility::grow(1.))
             .set_child(Text::new("b")),
           Text::new("c"),
         ))
@@ -355,11 +355,13 @@ fn flex_grow_distributes_space() {
     let _ = terminal::mount(|| {
       Row::new()
         .set_children((
-          Flexible::new().set_grow_factor(1.).set_child(
-            Container::new()
-              .set_background(Color::srgb(0.2, 0.2, 0.8))
-              .set_child(Text::new("a")),
-          ),
+          Flexible::new()
+            .set_flexibility(Flexibility::grow(1.))
+            .set_child(
+              Container::new()
+                .set_background(Color::srgb(0.2, 0.2, 0.8))
+                .set_child(Text::new("a")),
+            ),
           Container::new().set_width(3).set_child(Text::new("b")),
         ))
         .into_any()
@@ -521,7 +523,7 @@ fn a_third_party_layout_view_matches_the_built_in() {
         .set_children((
           Text::new("ab"),
           Flexible::new()
-            .set_grow_factor(1.)
+            .set_flexibility(Flexibility::grow(1.))
             .set_child(Text::new("cd")),
           Text::new("ef"),
         ))
@@ -538,7 +540,7 @@ fn a_third_party_layout_view_matches_the_built_in() {
         .set_children((
           Text::new("ab"),
           Flexible::new()
-            .set_grow_factor(1.)
+            .set_flexibility(Flexibility::grow(1.))
             .set_child(Text::new("cd")),
           Text::new("ef"),
         ))

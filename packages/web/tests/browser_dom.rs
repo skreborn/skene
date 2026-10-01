@@ -26,6 +26,7 @@ use skene_foundation::{
   Dimension,
   DragAxes,
   DragData,
+  Flexibility,
   FlexibleBase,
   GridAreas,
   GridBase,
@@ -663,7 +664,7 @@ fn a_derived_wrapper_property_reaches_a_run() {
     Row::new()
       .add_child(
         Flexible::new()
-          .derive_grow_factor(move || grow.get())
+          .derive_flexibility(move || Flexibility::grow(grow.get()))
           .set_child(Text::new("grows")),
       )
       .build()

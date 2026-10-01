@@ -257,7 +257,7 @@ fn flexible_annotates_the_content_of_a_derived_subtree() {
         version.track();
 
         Flexible::new()
-          .set_grow_factor(2.)
+          .set_flexibility(Flexibility::grow(2.))
           .set_child(Container::new().set_child(Text::new("x")))
       })
       .build()

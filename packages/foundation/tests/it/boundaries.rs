@@ -39,24 +39,28 @@ fn a_wrapper_annotates_a_boundarys_content_and_fallback() {
 
     Column::new()
       .set_children((
-        Flexible::new().set_grow_factor(2.).set_child(
-          Suspense::new()
-            .set_fallback(Container::new())
-            .set_child_builder(move || {
-              boundary.set(Boundary::current());
+        Flexible::new()
+          .set_flexibility(Flexibility::grow(2.))
+          .set_child(
+            Suspense::new()
+              .set_fallback(Container::new())
+              .set_child_builder(move || {
+                boundary.set(Boundary::current());
 
-              Container::new()
-            }),
-        ),
-        Flexible::new().set_grow_factor(3.).set_child(
-          ErrorBoundary::new()
-            .set_fallback_builder(|_: Errors| Container::new())
-            .set_child_builder(move || {
-              errors.set(Errors::current());
+                Container::new()
+              }),
+          ),
+        Flexible::new()
+          .set_flexibility(Flexibility::grow(3.))
+          .set_child(
+            ErrorBoundary::new()
+              .set_fallback_builder(|_: Errors| Container::new())
+              .set_child_builder(move || {
+                errors.set(Errors::current());
 
-              Container::new()
-            }),
-        ),
+                Container::new()
+              }),
+          ),
       ))
       .build()
   });

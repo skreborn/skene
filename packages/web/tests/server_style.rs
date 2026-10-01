@@ -15,6 +15,7 @@ use skene_foundation::{
   Dimension,
   Easing,
   FlexBase,
+  Flexibility,
   FlexibleBase,
   GridAreas,
   GridBase,
@@ -342,9 +343,7 @@ fn flex_properties_render() {
     Row::new()
       .set_wrap(Wrap::Forward)
       .set_children((Flexible::new()
-        .set_grow_factor(2.)
-        .set_shrink_factor(0.)
-        .set_initial(120.)
+        .set_flexibility(Flexibility::new(Dimension::Length(120.), 2., 0.))
         .set_item_alignment(ItemAlignment::Center)
         .set_child(
           Container::new()

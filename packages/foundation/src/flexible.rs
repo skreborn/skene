@@ -6,7 +6,6 @@ use crate::{
   Annotation,
   AnyView,
   Condition,
-  Dimension,
   FlexChild,
   Flexibility,
   IntoChildOf,
@@ -19,7 +18,6 @@ use crate::{
   Value,
   View,
   Wraps,
-  realize::Source,
 };
 
 /// Gives the child it wraps its flexibility in a [`Row`](crate::Row) or a
@@ -31,9 +29,7 @@ use crate::{
 /// holds [`NoChild`] until `set_child` supplies the child.
 #[must_use]
 pub struct Flexible<P: Platform, C = NoChild> {
-  initial: Dimension<P::Scalar>,
-  grow: Source<f32>,
-  shrink: f32,
+  flexibility: Value<Flexibility<P::Scalar>, Condition<P::Scalar>>,
   alignment: Option<Value<ItemAlignment, Condition<P::Scalar>>>,
   child: C,
   platform: PhantomData<fn() -> P>,
@@ -56,16 +52,8 @@ impl<P: Platform> Flexible<P> {
   /// A wrapper with the default flexibility and no child yet.
   #[inline(always)]
   pub fn new() -> Self {
-    let Flexibility {
-      initial,
-      grow_factor,
-      shrink_factor,
-    } = Flexibility::default();
-
     Self {
-      initial,
-      grow: Source::Fixed(grow_factor),
-      shrink: shrink_factor,
+      flexibility: Value::from(Flexibility::default()),
       alignment: None,
       child: NoChild,
       platform: PhantomData,
@@ -74,32 +62,23 @@ impl<P: Platform> Flexible<P> {
 }
 
 impl<P: Platform> Flexible<P> {
-  /// Sets the weight the child grows by when the container has room to spare.
-  #[inline(always)]
-  pub fn set_grow_factor(mut self, factor: f32) -> Self {
-    self.grow = Source::Fixed(factor);
+  /// Sets the child's flexibility: the size it starts from and its weights for taking
+  /// free space and giving up overflow.
+  pub fn set_flexibility(
+    mut self,
+    flexibility: impl Into<Value<Flexibility<P::Scalar>, Condition<P::Scalar>>>,
+  ) -> Self {
+    self.flexibility = flexibility.into();
 
     self
   }
 
-  /// Derives the grow weight from the signals `factor` reads.
-  pub fn derive_grow_factor(mut self, factor: impl Fn() -> f32 + 'static) -> Self {
-    self.grow = Source::derive(factor);
-
-    self
-  }
-
-  /// Sets the weight the child shrinks by when the container runs short.
-  #[inline(always)]
-  pub const fn set_shrink_factor(mut self, factor: f32) -> Self {
-    self.shrink = factor;
-
-    self
-  }
-
-  /// Sets the child's size before growing and shrinking.
-  pub fn set_initial(mut self, initial: impl Into<Dimension<P::Scalar>>) -> Self {
-    self.initial = initial.into();
+  /// Derives the child's flexibility from the signals `flexibility` reads.
+  pub fn derive_flexibility<R: Into<StaticLeaf<Flexibility<P::Scalar>>>>(
+    mut self,
+    flexibility: impl Fn() -> R + 'static,
+  ) -> Self {
+    self.flexibility = Value::new(Leaf::derive(flexibility));
 
     self
   }
@@ -128,9 +107,7 @@ impl<P: Platform> Flexible<P> {
   /// Sets the child.
   pub fn set_child(self, child: impl View<P>) -> Flexible<P, AnyView<P>> {
     Flexible {
-      initial: self.initial,
-      grow: self.grow,
-      shrink: self.shrink,
+      flexibility: self.flexibility,
       alignment: self.alignment,
       child: child.into_any(),
       platform: PhantomData,
@@ -141,17 +118,8 @@ impl<P: Platform> Flexible<P> {
 impl<P: Platform> IntoChildOf<P, FlexChild> for Flexible<P, AnyView<P>> {
   fn into_child(self) -> AnyView<P> {
     AnyView::new(move || {
-      let initial = self.initial;
-      let shrink = self.shrink;
-      let flex = match self.grow {
-        Source::Fixed(grow) => Value::from(Flexibility::new(initial, grow, shrink)),
-        Source::Derived(grow) => Value::new(Leaf::derive(move || {
-          Flexibility::new(initial, grow(), shrink)
-        })),
-      };
-
       let annotation = Annotation {
-        flex: Some(flex),
+        flex: Some(self.flexibility),
         self_alignment: self.alignment,
         ..Annotation::default()
       };
@@ -169,28 +137,23 @@ pub trait FlexibleBase<P: Platform>: Wraps<Inner = Flexible<P>> {
     Self::wrap(Flexible::new())
   }
 
-  /// Sets the weight the child grows by when the container has room to spare.
+  /// Sets the child's flexibility: the size it starts from and its weights for taking
+  /// free space and giving up overflow.
   #[must_use]
-  fn set_grow_factor(self, factor: f32) -> Self {
-    Self::wrap(self.into_inner().set_grow_factor(factor))
+  fn set_flexibility(
+    self,
+    flexibility: impl Into<Value<Flexibility<P::Scalar>, Condition<P::Scalar>>>,
+  ) -> Self {
+    Self::wrap(self.into_inner().set_flexibility(flexibility))
   }
 
-  /// Derives the grow weight from the signals `factor` reads.
+  /// Derives the child's flexibility from the signals `flexibility` reads.
   #[must_use]
-  fn derive_grow_factor(self, factor: impl Fn() -> f32 + 'static) -> Self {
-    Self::wrap(self.into_inner().derive_grow_factor(factor))
-  }
-
-  /// Sets the weight the child shrinks by when the container runs short.
-  #[must_use]
-  fn set_shrink_factor(self, factor: f32) -> Self {
-    Self::wrap(self.into_inner().set_shrink_factor(factor))
-  }
-
-  /// Sets the child's size before growing and shrinking.
-  #[must_use]
-  fn set_initial(self, initial: impl Into<Dimension<P::Scalar>>) -> Self {
-    Self::wrap(self.into_inner().set_initial(initial))
+  fn derive_flexibility<R: Into<StaticLeaf<Flexibility<P::Scalar>>>>(
+    self,
+    flexibility: impl Fn() -> R + 'static,
+  ) -> Self {
+    Self::wrap(self.into_inner().derive_flexibility(flexibility))
   }
 
   /// Sets the child's own cross-axis alignment, overriding the container's.

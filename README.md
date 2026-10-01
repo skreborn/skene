@@ -59,18 +59,20 @@ fn app() -> impl View {
 
 `#[main]` expands to whichever entry the target has: in the browser it launches the
 app, hydrating a server-rendered page in place; on the server leaf it renders the
-requested path to stdout (`counter-server /` prints the page); on the
+requested path to stdout (the server build's `counter /` prints the page); on the
 host it builds the tree against the headless platform, which is what view tests run on.
+The app is its library alone, which `skene` builds as each target's crate type.
 
 ## A terminal app
 
 A terminal app depends on `skene-terminal` (and `skene-simple-terminal` for the components) and
-calls `launch` (`examples/terminal/counter`):
+marks its entry with `#[main]` (`examples/terminal/counter`):
 
 ```rust
 use skene_simple_terminal::prelude::*;
 use skene_terminal::prelude::*;
 
+#[main]
 fn app() -> impl View {
   let count = Signal::tagged("count", 0u64);
 
@@ -84,10 +86,6 @@ fn app() -> impl View {
     ))
   })
 }
-
-fn main() {
-  skene_terminal::launch(app);
-}
 ```
 
 Lengths are cells (`u32`), text is a color, a bold flag and a size in cells (a scale
@@ -97,8 +95,9 @@ glyphs, or a thin line in pixels beneath the text where the terminal shows graph
 what the terminal cannot draw does not exist to call. `Tab` moves
 focus, the controls own their keys, the mouse clicks, drags, scrolls and selects—inside
 a text entry too, where `Ctrl-C`, `Ctrl-X` and `Ctrl-V` copy, cut and paste—and
-`Ctrl-Q` quits. `Launch::new().set_clipboard(Clipboard::COPY).set_mouse(false).run(app)`
-chooses which clipboard operations the app offers (OSC 52 has no capability query;
+`Ctrl-Q` quits. `Launch::new().set_clipboard(Clipboard::COPY).set_mouse(false).run(app)`,
+in a library's own `pub fn main` in place of `#[main]`, chooses which clipboard
+operations the app offers (OSC 52 has no capability query;
 where the terminal's clipboard answers, kitty's OSC 5522, every operation is offered
 from its reply) and
 whether it takes the mouse; the terminal's own selection—a drag with `Shift` held—stays
@@ -195,10 +194,11 @@ framework. Every output lands under `<app>/dist/<target>`; `cargo skene` runs th
 workspace-local CLI (`cargo install --path packages/cli` makes it `skene`).
 
 The server build of a web app is a plain, native command, with no integration at all:
+its library built as a binary with the server platform named.
 
 ```sh
-RUSTFLAGS='--cfg skene_platform="server"' cargo build -p counter --bin counter-server
-target/debug/counter-server /   # prints the page
+RUSTFLAGS='--cfg skene_platform="server"' cargo rustc -p counter --lib --crate-type bin
+target/debug/counter /   # prints the page
 ```
 
 ## Testing

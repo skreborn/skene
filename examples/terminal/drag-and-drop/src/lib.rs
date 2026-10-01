@@ -5,6 +5,9 @@
 //! drags carrying a value of its type (`handle_drop`). A drag starts once a press's
 //! pointer leaves its cell; the card being dragged holds `Dragged` and the list under
 //! the pointer that would take it `Targeted`, so both are styled as any state is.
+//!
+//! Press a card and move off its cell to drag it, release over the other list to drop it,
+//! `Escape` to abandon the drag, `Ctrl-Q` to quit.
 
 #![cfg(not(target_arch = "wasm32"))]
 
@@ -19,6 +22,7 @@ struct Moving {
 }
 
 /// The app: two lists of cards, each card draggable to the other list.
+#[main]
 #[must_use]
 pub fn app() -> impl View {
   let todo = Signal::tagged(

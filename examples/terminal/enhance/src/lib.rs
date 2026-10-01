@@ -4,6 +4,8 @@
 //! the first tick, then the clock counts. A painted box waits on the terminal: where
 //! the kitty graphics protocol is proven the stripes are painted over the box's cells,
 //! and elsewhere its fallback stands, so the picture is its description.
+//!
+//! `Ctrl-Q` quits.
 
 #![cfg(not(target_arch = "wasm32"))]
 
@@ -13,6 +15,7 @@ use skene_simple_terminal::prelude::*;
 use skene_terminal::{ActivePlatform, HasChild, Platform, kurbo::Rect, prelude::*};
 
 /// The page: a clock over its caption, and a picture over its description.
+#[main]
 #[must_use]
 pub fn app() -> impl View {
   Theme::new(SimplePalette::default()).set_child_builder(|| {

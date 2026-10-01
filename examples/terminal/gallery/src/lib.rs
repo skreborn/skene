@@ -1,4 +1,6 @@
 //! The gallery's views, in cells: every built-in view and Simple component, live.
+//!
+//! `Tab` moves focus, arrows adjust, `Enter` clicks, `Ctrl-Q` quits.
 
 #![cfg(not(target_arch = "wasm32"))]
 
@@ -10,6 +12,7 @@ use skene_terminal::{ActivePlatform, HasChild, Resource, prelude::*};
 /// The whole gallery: a scrollable column of titled sections, dressed by one theme
 /// whose palette the gallery switches from inside itself and whose tokens follow the
 /// terminal's own background.
+#[main]
 #[must_use]
 pub fn app() -> impl View {
   // The theme redefines its tokens in place and rebuilds nothing, so every counter

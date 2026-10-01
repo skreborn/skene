@@ -183,10 +183,6 @@ left half-done in a code comment.
     - A shell per platform: the facades' views and Simple's, newtypes implementing the
     traits of the core beneath them, stay on probation against writing each platform's
     views by hand.
-    - `#[main]` is the only entry point, emitting `fn main` per target with its native
-    arms reserved, and the CLI picks the crate type per target through
-    `cargo rustc --crate-type`, so apps stop declaring crate types and the `cdylib`
-    plus `rlib` pair, `__skene_main` and app-level cfgs go.
     - Renames: `Show` and `Switch` to `Visibility` and `OneOf`, where `Visibility`
     already names the style value that hides a box; the choice and activation handlers
     and binders to `choose`/`chosen` for value groups and `activate` for commands, with

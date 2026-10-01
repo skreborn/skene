@@ -1,7 +1,4 @@
 # The skene framework manifest; every setting is optional.
 
-[app]
-server-bin = "enhance-server"
-
 [assets]
 paths = ["assets"]

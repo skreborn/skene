@@ -1,5 +1,8 @@
 //! A WebSocket from a terminal view: a task opens the socket through `skene_transport::ws` on a
 //! thread of its own, sends a greeting, and lists each message as it lands.
+//!
+//! `terminal-ws [url]` opens the URL (a public echo service without one), sends a greeting
+//! and lists what comes back. `Ctrl-Q` quits.
 
 #![cfg(not(target_arch = "wasm32"))]
 
@@ -78,4 +81,10 @@ pub fn app(url: Option<String>) -> impl View {
         ),
       )
   })
+}
+
+/// The page over the URL the first argument names.
+#[main]
+fn from_arguments() -> impl View {
+  app(std::env::args().nth(1))
 }

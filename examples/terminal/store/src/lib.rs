@@ -1,9 +1,13 @@
-//! The todo list's views, in cells.
+//! A todo list for the terminal: `skene-terminal` is its single framework dependency, and
+//! its vocabulary is the terminal's own—cells, colors, bold. `Tab` moves focus,
+//! `Enter` clicks, `Space` checks, `Ctrl-Q` quits.
 //!
 //! The list is one `Store` holding a plain struct that snapshots as a unit. Each row is
 //! built once from a lens onto its own entry, so checking a todo re-inks that row and
 //! the count beneath the list, and nothing else runs. The list follows the shape of
 //! the `Vec` alone, keyed by the id each todo carries.
+
+#![cfg(not(target_arch = "wasm32"))]
 
 use skene_simple_terminal::prelude::*;
 use skene_terminal::prelude::*;
@@ -21,7 +25,8 @@ struct Todo {
   done: bool,
 }
 
-pub(crate) fn app() -> impl View {
+#[main]
+fn app() -> impl View {
   let todos = Store::tagged("todos", Todos::default());
 
   Theme::new(SimplePalette::default()).set_child_builder(move || {

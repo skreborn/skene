@@ -7,6 +7,8 @@
 //! standard menu the terminal serves from the root. The standard items follow the
 //! clipboard: `Copy` is listed only where something is selected, and `Cut` and `Paste`
 //! only inside a text entry.
+//!
+//! `Tab` moves focus, a right click or `Shift-F10` opens a menu, `Ctrl-Q` quits.
 
 #![cfg(not(target_arch = "wasm32"))]
 
@@ -15,6 +17,7 @@ use skene_terminal::prelude::*;
 
 /// The app: the notes with their menus, the draft with the clipboard's, and the rest
 /// under the standard menu.
+#[main]
 #[must_use]
 pub fn app() -> impl View {
   let notes = Signal::tagged(

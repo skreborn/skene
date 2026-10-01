@@ -6,6 +6,8 @@
 //! why the frame below is already right for the background the terminal reported, and
 //! why the toggle re-inks it without rebuilding anything. A palette change is the same:
 //! the theme redefines its tokens in place, and the tree beneath it stands.
+//!
+//! `Tab` moves focus, arrows adjust, `Enter` clicks, `Ctrl-Q` quits.
 
 #![cfg(not(target_arch = "wasm32"))]
 
@@ -79,6 +81,7 @@ fn warm(accent_name: Option<&str>) -> SimplePalette {
 
 /// The whole page: the palette the accent selects, the scheme the reader chooses, and
 /// a nested theme beneath.
+#[main]
 #[must_use]
 pub fn app() -> impl View {
   // The reader's choice, or `None`—which leaves the background the terminal reported in

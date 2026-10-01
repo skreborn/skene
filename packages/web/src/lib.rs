@@ -203,7 +203,7 @@ pub use skene_foundation::{
 /// view tests on the host.
 #[cfg(skene_web_platform = "headless")]
 pub use skene_headless as headless;
-pub use skene_macros::{lazy, main};
+pub use skene_macros::{lazy, web_main as main};
 pub use skene_reactive as reactive;
 pub use tracing;
 #[cfg(target_arch = "wasm32")]

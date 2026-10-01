@@ -190,6 +190,7 @@ pub use skene_foundation::{
   routing as router,
   typography,
 };
+pub use skene_macros::terminal_main as main;
 pub use skene_reactive::{self as reactive, LoadState, Resource};
 
 pub(crate) use crate::platform::{try_with_records, with_records};

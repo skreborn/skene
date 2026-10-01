@@ -122,29 +122,44 @@ fn cargo_artifacts(command: &mut Command, quiet: bool) -> Result<Vec<Artifact>, 
   }
 }
 
-/// The executable the target `name` built among `artifacts`.
-fn executable(artifacts: &[Artifact], name: &str) -> Result<PathBuf, String> {
+/// The binary the app's library built as among `artifacts`.
+fn binary(app: &App, artifacts: &[Artifact]) -> Result<PathBuf, String> {
   artifacts
     .iter()
-    .filter(|artifact| artifact.target.name == name)
-    .find_map(|artifact| artifact.executable.clone())
+    .filter(|artifact| artifact.target.name == app.stem)
+    .find_map(|artifact| {
+      artifact
+        .executable
+        .clone()
+        .or_else(|| artifact.filenames.first().cloned())
+    })
     .map(cargo_metadata::camino::Utf8PathBuf::into_std_path_buf)
-    .ok_or_else(|| format!("cargo built no executable named {name}"))
+    .ok_or_else(|| format!("cargo built no binary for {}", app.package))
+}
+
+/// A command building the app's library as the crate type `crate_type` for `target`.
+fn build_library(app: &App, crate_type: &str, target: &str) -> Command {
+  let mut command = Command::new("cargo");
+
+  command.current_dir(&app.workspace_root).args([
+    "rustc",
+    "--lib",
+    "--crate-type",
+    crate_type,
+    "--target",
+    target,
+    "-p",
+    &app.package,
+    MESSAGE_FORMAT,
+  ]);
+
+  command
 }
 
 /// Builds the app's terminal binary for the host, quietly, and returns its path; on
 /// failure returns cargo's diagnostics.
 pub(crate) fn build_terminal_binary(app: &App, release: bool) -> Result<PathBuf, String> {
-  let mut command = Command::new("cargo");
-
-  command.current_dir(&app.workspace_root).args([
-    "build",
-    "-p",
-    &app.package,
-    "--target",
-    host_triple()?,
-    MESSAGE_FORMAT,
-  ]);
+  let mut command = build_library(app, "bin", host_triple()?);
 
   if release {
     command.arg("--release");
@@ -152,17 +167,20 @@ pub(crate) fn build_terminal_binary(app: &App, release: bool) -> Result<PathBuf,
 
   let artifacts = cargo_artifacts(&mut command, true)?;
 
-  executable(&artifacts, &app.package)
+  binary(app, &artifacts)
 }
 
-/// Builds the app's terminal binary and places it in `<app>/dist/terminal`.
+/// Builds the app's terminal binary and places it in `<app>/dist/terminal`, named after
+/// the package.
 pub(crate) fn build_terminal(app: &App, release: bool) -> Result<(), String> {
   let binary = build_terminal_binary(app, release)?;
   let out_dir = app.dir.join("dist/terminal");
 
   fs::create_dir_all(&out_dir).map_err(|error| error.to_string())?;
 
-  let out = out_dir.join(binary.file_name().ok_or("the binary has no name")?);
+  let out = out_dir
+    .join(&app.package)
+    .with_extension(std::env::consts::EXE_EXTENSION);
 
   fs::copy(&binary, &out).map_err(|error| format!("{}: {error}", binary.display()))?;
   println!("built {}", out.display());
@@ -172,50 +190,27 @@ pub(crate) fn build_terminal(app: &App, release: bool) -> Result<(), String> {
 
 /// Builds the app's browser wasm and returns its path.
 fn build_wasm(app: &App, release: bool) -> Result<PathBuf, String> {
-  let mut command = Command::new("cargo");
-
-  command.current_dir(&app.workspace_root);
+  let mut command = build_library(app, "cdylib", "wasm32-unknown-unknown");
 
   // A split build keeps what the split tool reads—relocations, symbol names, unfused
   // functions—with the extra flags scoped to the app's own compile.
-  if app.split {
+  if app.split && release {
     command.args([
-      "rustc",
-      "--lib",
-      "--target",
-      "wasm32-unknown-unknown",
-      "-p",
-      &app.package,
-      MESSAGE_FORMAT,
+      "--config",
+      "profile.release.lto=false",
+      "--config",
+      "profile.release.strip=false",
+      "--config",
+      "profile.release.debug=1",
     ]);
-
-    if release {
-      command.args([
-        "--config",
-        "profile.release.lto=false",
-        "--config",
-        "profile.release.strip=false",
-        "--config",
-        "profile.release.debug=1",
-        "--release",
-      ]);
-    }
-
-    command.args(["--", "-Clink-arg=--emit-relocs"]);
   }
-  else {
-    command.args([
-      "build",
-      "--target",
-      "wasm32-unknown-unknown",
-      "-p",
-      &app.package,
-      MESSAGE_FORMAT,
-    ]);
 
-    if release {
-      command.arg("--release");
-    }
+  if release {
+    command.arg("--release");
+  }
+
+  if app.split {
+    command.args(["--", "-Clink-arg=--emit-relocs"]);
   }
 
   let artifacts = cargo_artifacts(&mut command, false)?;
@@ -280,23 +275,9 @@ fn name_server_platform(command: &mut Command, host: &str) {
 /// Builds the app's server binary for the host, with the server platform named, and
 /// returns its path.
 pub(crate) fn build_server(app: &App, release: bool) -> Result<PathBuf, String> {
-  let server_bin = app.server_bin.as_deref().ok_or(
-    "skene.toml declares no [app] server-bin; a server render runs through the server \
-     binary",
-  )?;
   let host = host_triple()?;
-  let mut command = Command::new("cargo");
+  let mut command = build_library(app, "bin", host);
 
-  command.current_dir(&app.workspace_root).args([
-    "build",
-    "-p",
-    &app.package,
-    "--bin",
-    server_bin,
-    "--target",
-    host,
-    MESSAGE_FORMAT,
-  ]);
   name_server_platform(&mut command, host);
 
   if release {
@@ -305,7 +286,7 @@ pub(crate) fn build_server(app: &App, release: bool) -> Result<PathBuf, String> 
 
   let artifacts = cargo_artifacts(&mut command, false)?;
 
-  executable(&artifacts, server_bin)
+  binary(app, &artifacts)
 }
 
 /// Statically generates through the app's server binary into `<app>/dist/web`,

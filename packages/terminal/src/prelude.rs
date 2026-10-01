@@ -179,6 +179,7 @@ pub use crate::{
   empty,
   install_router,
   launch,
+  main,
   media,
   set_scheme,
   spawn,

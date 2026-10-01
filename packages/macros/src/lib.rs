@@ -8,11 +8,13 @@ use proc_macro::TokenStream;
 use quote::{format_ident, quote};
 use syn::{DeriveInput, FnArg, ItemFn, Pat, ReturnType, parse_macro_input};
 
-/// Marks the application entry point.
+/// Marks a web app's entry point: a function returning the app's view.
 ///
-/// Apply to a function returning a view. Expands to the selected platform's entry glue,
-/// which calls `skene_web::launch` with the function, so the app runs on whichever leaf
-/// the build targets.
+/// Expands to the app crate's `main` for whichever leaf the build targets: in the
+/// browser it launches the app, hydrating a server-rendered page in place; on the
+/// server leaf it renders the requested path to stdout; on every other host it builds
+/// the app against the headless platform. The crate is the app's library alone: the
+/// `skene` command builds it as each target's crate type.
 ///
 /// ```ignore
 /// #[skene_web::main]
@@ -21,35 +23,62 @@ use syn::{DeriveInput, FnArg, ItemFn, Pat, ReturnType, parse_macro_input};
 /// }
 /// ```
 #[proc_macro_attribute]
-pub fn main(_attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn web_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
   let function = parse_macro_input!(item as ItemFn);
   let name = &function.sig.ident;
 
   quote! {
     #function
 
-    // The split tool roots its call graph at a function named `main`; a wasm library
-    // has none, so the entry exports an empty one, except to its own tests, whose
-    // harness brings the entry.
+    #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+    #[doc(hidden)]
+    #[::skene_web::wasm_bindgen::prelude::wasm_bindgen(start, wasm_bindgen = ::skene_web::wasm_bindgen)]
+    pub fn __skene_start() {
+      ::skene_web::launch(#name);
+    }
+
+    // The split tool roots its call graph at a function named `main`; the entry
+    // exports an empty one, except to its own tests, whose harness brings the entry.
     #[cfg(all(target_arch = "wasm32", target_os = "unknown", not(test)))]
     #[unsafe(no_mangle)]
     extern "C" fn main() {}
 
+    #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
     #[doc(hidden)]
     #[allow(unexpected_cfgs)]
-    #[cfg_attr(
-      all(target_arch = "wasm32", target_os = "unknown"),
-      ::skene_web::wasm_bindgen::prelude::wasm_bindgen(start, wasm_bindgen = ::skene_web::wasm_bindgen)
-    )]
-    pub fn __skene_main() {
-      #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
-      ::skene_web::launch(#name);
-
+    pub fn main() {
       #[cfg(skene_platform = "server")]
       ::skene_web::render_main(env!("CARGO_CRATE_NAME"), #name);
-
-      #[cfg(not(any(all(target_arch = "wasm32", target_os = "unknown"), skene_platform = "server")))]
+      #[cfg(not(skene_platform = "server"))]
       ::skene_web::launch(#name);
+    }
+  }
+  .into()
+}
+
+/// Marks a terminal app's entry point: a function returning the app's view.
+///
+/// Expands to the app crate's `main`, launching the app in the terminal. The crate is
+/// the app's library alone: the `skene` command builds it as a binary.
+///
+/// ```ignore
+/// #[skene_terminal::main]
+/// fn app() -> impl View {
+///   Text::new("hello")
+/// }
+/// ```
+#[proc_macro_attribute]
+pub fn terminal_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
+  let function = parse_macro_input!(item as ItemFn);
+  let name = &function.sig.ident;
+
+  quote! {
+    #function
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[doc(hidden)]
+    pub fn main() {
+      ::skene_terminal::launch(#name);
     }
   }
   .into()

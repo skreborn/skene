@@ -1,9 +1,14 @@
-//! The counter's views, in cells.
+//! A counter for the terminal: `skene-terminal` is its single dependency, and its vocabulary
+//! is the terminal's own—cells, colors, bold. `Tab` moves focus, `Enter` clicks,
+//! `Ctrl-Q` quits.
+
+#![cfg(not(target_arch = "wasm32"))]
 
 use skene_simple_terminal::prelude::*;
 use skene_terminal::prelude::*;
 
-pub(crate) fn app() -> impl View {
+#[main]
+fn app() -> impl View {
   let count = Signal::tagged("count", 0u64);
 
   Theme::new(SimplePalette::default()).set_child_builder(move || {

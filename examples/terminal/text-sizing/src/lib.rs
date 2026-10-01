@@ -8,6 +8,8 @@
 //! beneath its theme. Layout counts the scaled cells, a paragraph sets its smaller
 //! spans on the baseline of its tallest, and a terminal without the protocol lays
 //! the same tree out at one cell, so nothing here costs anything there.
+//!
+//! `Ctrl-Q` quits.
 
 #![cfg(not(target_arch = "wasm32"))]
 
@@ -16,6 +18,7 @@ use skene_terminal::prelude::*;
 
 /// The page: a title at three cells, sections at two, body text at one, and a
 /// themed footer.
+#[main]
 #[must_use]
 pub fn app() -> impl View {
   Theme::new(SimplePalette::default()).set_child_builder(|| {

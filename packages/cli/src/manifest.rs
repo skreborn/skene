@@ -48,8 +48,6 @@ pub(crate) struct WebSection {
 pub(crate) struct AppSection {
   /// The cargo package to build; the directory's own package when absent.
   pub package: Option<String>,
-  /// The server binary the pages render through, for `--ssr` and `--static`.
-  pub server_bin: Option<String>,
 }
 
 /// The `[assets]` section.
@@ -70,10 +68,9 @@ pub(crate) struct App {
   pub workspace_root: PathBuf,
   /// The cargo package name.
   pub package: String,
-  /// The wasm artifact stem (the package name with `-` as `_`).
+  /// The library's crate name (the package name with `-` as `_`), naming its wasm and
+  /// its binaries.
   pub stem: String,
-  /// The server binary for ssg, when declared.
-  pub server_bin: Option<String>,
   /// Whether web builds split `#[lazy]` functions into lazily-fetched wasm modules.
   pub split: bool,
   /// Every asset root contributing to this app, the app's own first.
@@ -182,7 +179,6 @@ impl App {
       dir,
       workspace_root,
       package,
-      server_bin: manifest.app.server_bin,
       split: manifest.web.split,
       assets,
     })

@@ -4,6 +4,9 @@
 //! `spawn` runs the request as a task bound to the view's scope; the signal it writes
 //! drives the text below. The status, the content type and the body's first lines
 //! are shown; a failure is shown in its place.
+//!
+//! `terminal-http [url]` fetches the URL (`https://example.com/` without one) and shows
+//! what came back. `Ctrl-Q` quits.
 
 #![cfg(not(target_arch = "wasm32"))]
 
@@ -100,4 +103,10 @@ pub fn app(url: Option<String>) -> impl View {
         ),
       )
   })
+}
+
+/// The page over the URL the first argument names.
+#[main]
+fn from_arguments() -> impl View {
+  app(std::env::args().nth(1))
 }

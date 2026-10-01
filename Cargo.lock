@@ -2562,6 +2562,7 @@ dependencies = [
  "skene-conformance",
  "skene-dev",
  "skene-foundation",
+ "skene-macros",
  "skene-reactive",
  "skene-simple-terminal",
  "smallvec",

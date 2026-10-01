@@ -16,13 +16,13 @@ use crate::{
   NodeId,
   PlainChild,
   Platform,
+  Prevent,
   RunBase,
   RunPlacement,
   Scene,
   TypeMetrics,
   View,
   Wraps,
-  layout_box::verdict,
   realize::Source,
   run::Run,
 };
@@ -90,9 +90,11 @@ impl<P: Platform> Span<P> {
   /// Runs `action` on a click on the span; its verdict says whether the click carries
   /// on to the ancestors.
   pub fn handle_click<R: Into<Bubbling>>(mut self, action: impl Fn() -> R + 'static) -> Self {
-    self
-      .click
-      .push(Rc::new(move |_: &ClickEvent| verdict(action())));
+    self.click.push(Rc::new(move |_: &ClickEvent| {
+      let bubbling: Bubbling = action().into();
+
+      Prevent::from(bubbling)
+    }));
 
     self
   }

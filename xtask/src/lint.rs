@@ -1,7 +1,7 @@
 //! The house rules no compiler checks: unspaced em-dashes, children last, the
 //! framework's own vocabulary, fields and variants documented all or none, a test
-//! double's simulated events named `trigger_`, and the spine naming nothing of the
-//! foundation outside itself.
+//! double's simulated events named `trigger_`, the spine naming nothing of the
+//! foundation outside itself, and nothing in the foundation crate-private.
 
 use std::{
   fs,
@@ -54,6 +54,9 @@ const ITEM_KEYWORDS: &[&str] = &[
 /// rather than to simulate an event, exempt from `trigger_` naming.
 const LOOP_TURNS: &[&str] = &["pump_tasks"];
 
+/// The foundation's sources.
+const FOUNDATION: &str = "packages/foundation/src";
+
 /// The foundation's spine: its module file and the directory of its modules.
 const SPINE: [&str; 2] = [
   "packages/foundation/src/spine.rs",
@@ -91,6 +94,7 @@ pub(crate) fn check(root: &Path) -> Result<(), String> {
         let file =
           syn::parse_file(&text).map_err(|error| format!("{}: {error}", relative.display()))?;
         let mut rules = Rules {
+          foundation: relative.starts_with(FOUNDATION),
           spine: is_spine_source(&relative),
           path: &relative,
           findings: &mut findings,
@@ -164,6 +168,8 @@ fn spaced_em_dashes(path: &Path, text: &str, comments_only: bool) -> Vec<String>
 
 /// The syntactic house rules, checked over one file.
 struct Rules<'a> {
+  /// Whether the file is the foundation's, which keeps nothing crate-private.
+  foundation: bool,
   /// Whether the file is the foundation's spine, which names nothing of its crate
   /// outside itself.
   spine: bool,
@@ -253,6 +259,23 @@ impl Rules<'_> {
 }
 
 impl<'ast> Visit<'ast> for Rules<'_> {
+  fn visit_visibility(&mut self, visibility: &'ast Visibility) {
+    if self.foundation
+      && !self.spine
+      && let Visibility::Restricted(restricted) = visibility
+      && restricted.path.is_ident("crate")
+    {
+      self.report(
+        restricted
+          .in_token
+          .map_or_else(|| restricted.pub_token.span, |token| token.span),
+        "`pub(crate)` in the foundation: nothing on the path a built-in takes is crate-private",
+      );
+    }
+
+    visit::visit_visibility(self, visibility);
+  }
+
   fn visit_path(&mut self, path: &'ast SynPath) {
     let segments: Vec<String> = path
       .segments
@@ -488,6 +511,7 @@ mod tests {
     let mut findings = Vec::new();
 
     Rules {
+      foundation: false,
       spine: false,
       path: Path::new("test.rs"),
       findings: &mut findings,
@@ -601,6 +625,7 @@ mod tests {
     let mut findings = Vec::new();
 
     Rules {
+      foundation: true,
       spine: true,
       path: Path::new("test.rs"),
       findings: &mut findings,
@@ -608,6 +633,28 @@ mod tests {
     .visit_file(&file);
 
     findings
+  }
+
+  /// What the rules find in `source` read as the foundation's outside the spine.
+  fn foundation_findings(source: &str) -> Vec<String> {
+    let file = syn::parse_file(source).expect("the source parses");
+    let mut findings = Vec::new();
+
+    Rules {
+      foundation: true,
+      spine: false,
+      path: Path::new("test.rs"),
+      findings: &mut findings,
+    }
+    .visit_file(&file);
+
+    findings
+  }
+
+  #[test]
+  fn a_crate_private_item_in_the_foundation_is_reported() {
+    assert_eq!(foundation_findings("pub(crate) fn helper() {}").len(), 1);
+    assert!(foundation_findings("fn helper() {} pub fn api() {}").is_empty());
   }
 
   #[test]

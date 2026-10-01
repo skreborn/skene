@@ -492,8 +492,8 @@
   platform's escape trait and selected through the facade's `ActivePlatform`, and a view
   library covers every platform of its medium, headless included, through a trait of its
   own each platform implements (`acme-map`'s `MapHost`), so an app writes no `cfg` for
-  it. Nothing on the path a built-in takes is crate-private; making something
-  `pub(crate)` on that path is a regression. Simple is held to the rule from the other
+  it. Nothing on the path a built-in takes is crate-private: the lint rejects a
+  `pub(crate)` anywhere in the foundation. Simple is held to the rule from the other
   side: a facade never re-exports it, an app depends on its platform's crate explicitly
   (`skene-simple-web`, `skene-simple-terminal`), and its core hides its generic views
   behind the `Simple*Base` traits, so it is the standing proof of a component library,
@@ -653,7 +653,8 @@
   its features enabling optional dependencies alone and a published crate's
   description, license and repository, the house rules no compiler checks (em-dashes
   unspaced, children last, no public name in another framework's vocabulary, fields and
-  variants documented all or none, a test double's simulated events named `trigger_`),
+  variants documented all or none, a test double's simulated events named `trigger_`,
+  nothing in the foundation crate-private),
   the dependencies' licenses against the workspace's MIT, unused dependencies,
   clippy and rustdoc with warnings denied on all three leaves, clippy on the host in
   release as well, where code built for debug assertions alone drops out, each library

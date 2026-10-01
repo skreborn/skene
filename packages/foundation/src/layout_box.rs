@@ -471,7 +471,7 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
 }
 
 /// A handler's verdict as dispatch stores it.
-pub(crate) fn verdict<R: Into<Bubbling>>(result: R) -> Prevent {
+fn verdict<R: Into<Bubbling>>(result: R) -> Prevent {
   let bubbling: Bubbling = result.into();
 
   Prevent::from(bubbling)

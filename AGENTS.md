@@ -739,11 +739,14 @@
   third party's is. `examples/docs` holds the crates compiling the documents' examples
   as doctests (`readme`).
 - **What comes next lives in `ROADMAP.md`**, under `Open`: one ordered list of every
-  open item, big and small, top first, then the decisions against. Nothing shipped is
-  listed there. When asked what's next, answer from the top of it. A follow-up a change
-  leaves behind is inserted there at its priority in the same change, never in a code
-  comment, a commit message or an agent's memory; an item a change resolves is removed
-  in the same change.
+  open item, big and small, top first. Nothing shipped is listed there. When asked
+  what's next, answer from the top of it. A follow-up a change leaves behind is inserted
+  there at its priority in the same change, never in a code comment, a commit message
+  or an agent's memory; an item a change resolves is removed in the same change.
+- **What was decided against lives in `DECISIONS.md`**, each alternative and each
+  replaced design dated with the condition that reopens it. A decision reopens only
+  when its condition holds, as an item in `ROADMAP.md`; a change that settles against
+  an alternative records it there in the same change.
 - Retrofit as you raise the bar: when a change establishes a better pattern (a helper, a naming
   convention, a clearer structure), bring existing code up to it rather than leaving two standards.
 - Keep parallel code visually parallel: when two files do essentially the same thing in different

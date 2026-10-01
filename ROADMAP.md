@@ -1,9 +1,9 @@
 # Roadmap
 
 What remains, in the order to take it. The architecture is in `DESIGN.md`, the doctrine
-in `AGENTS.md`; this file records neither, only the work that is open and the shape it
-lands in. What has shipped is not listed: the code, `DESIGN.md` and the tests describe
-it.
+in `AGENTS.md`, the decisions against in `DECISIONS.md`; this file records none of them,
+only the work that is open and the shape it lands in. What has shipped is not listed:
+the code, `DESIGN.md` and the tests describe it.
 
 The reactive engine's baseline, `cargo bench -p skene-reactive --bench engine` on the
 development machine at rest (2026-10-01), against which a change to the engine is
@@ -22,8 +22,8 @@ misses aside: `valgrind --tool=callgrind <binary>`, built with
 ## Open
 
 One list, every item big and small, top first. An item is resolved by landing it, by
-proving it unnecessary, or by recording it under the decisions at the end; it is never
-left half-done in a code comment.
+proving it unnecessary, or by recording it in `DECISIONS.md`; it is never left half-done
+in a code comment.
 
 1. **The first CI runs.** Neither CI workflow, the gate on every pull request nor the
     weekly RustSec advisories, has run yet.
@@ -197,9 +197,9 @@ left half-done in a code comment.
     concern; fine facts (DECRQM modes, OSC numbers, keyboard tables, hydration markers)
     in the owning module's rustdoc; `README.md` for users; this file for open items
     alone, its benchmark baseline moved beside the benchmark and re-measured with the
-    WebGPU split's sizes, since neither reproduces; dated decision records with a
-    revisit trigger; a guide in an mdbook that compiles its snippets, and `skene new
-    lib` beside `skene new app`: a component library's core and its per-platform crates.
+    WebGPU split's sizes, since neither reproduces; a guide in an mdbook that compiles
+    its snippets, and `skene new lib` beside `skene new app`: a component library's core
+    and its per-platform crates.
     - Doc comments: contracts alone, without rationale or narrated implementation.
 8. **Pictures beyond direct kitty transmission.** Shared memory or a file where the
     protocol's query over that medium shows the terminal shares the host, sparing the
@@ -496,87 +496,3 @@ terminal must meet, and none is inferred from a name (XTVERSION, `TERM`), since 
 is not a capability. Multiplexers are part of the floor: tmux answers most queries
 itself, passes graphics only as unicode placeholders and passes no pixel mouse, so
 every item is proven through tmux and ssh as well as bare.
-
-## Decided against, for the record
-
-- Signals shared across threads, as a registry each runtime drains through an inbox:
-  a handle stays on its thread, and another thread's work reaches it through a task
-  that thread's executor wakes.
-- Hot-patching: state-preserving reloads come from the snapshot instead.
-- One vocabulary across every platform, the terminal measuring in logical pixels:
-  pixels unify the numbers but not the medium, since a border still costs a whole
-  cell, small spacings round to nothing or to a whole row and a type hierarchy
-  collapses into one row outside kitty, so writing once yields a correct structure and
-  a poor look while every property owes a floor on every platform. Each platform keeps
-  its own unit and its own vocabulary: types decide what a platform can do, and
-  signals what an install of it can.
-- A shell per platform family (one for the web and the desktops, one for both mobile
-  OSes): iOS and Android differ in representation, app structure and navigation, and
-  each desktop OS in its layout and control conventions.
-- A capabilities model of typed slots on `Platform` in place of progressive
-  enhancement: shelved, since it puts bounds on every shared signature; only a
-  low-level view names what a platform can do.
-- Draw-everything as the native family's default: mobile text selection, IME and edit
-  menus are years of platform work no framework should redo.
-- A hybrid native realization, painted content with native controls embedded in it:
-  every embedded view is paid for, as Flutter's platform views show.
-- A painted native platform, on the desktop or on Android through Linebender's
-  android-view: it meets the native family's non-negotiables only as that hybrid, and
-  like Compose it owns text editing, the part left to the platform.
-- A WASI server leaf, under a wasmtime runner or as a `wasi:http` handler: it needs a
-  second transport for every client, and the demand for wasm rendering is on JavaScript
-  isolates. The server leaf compiles natively, selected by
-  `--cfg skene_platform="server"`, so every crate on the host reaches a render; a wasm
-  host is a runner someone may write, for pages that await nothing until the settle
-  loop is async.
-- Islands architecture: compiled no-JS styling already removes most reasons a static
-  page ships wasm.
-- LiveView-style server rendering: adjacent to the server-side non-goal.
-- A webview desktop shell.
-- A lazy split of the WebGPU renderer, measured 2026-09-15 on release builds after
-  `wasm-bindgen`: an app that paints nothing (`counter`) ships 911 KB carrying 10.6 KB
-  of wgpu code and no shader text, since the linker drops what no box reaches; an app
-  that paints (`gallery`) ships 1.9 MB carrying 135 KB for the GPU path beside the
-  271 KB CPU renderer it needs either way. Nothing worth a split.
-- Rendering the whole terminal frame as one image: the text would then be ours to
-  rasterize, and the terminal's font, selection, copy and accessibility would go with
-  it, a poor GUI in place of a good terminal.
-- Any terminal enhancement gated by a terminal's name.
-- Inferring a terminal's depth: a terminal answering no DECRQSS paints at 16 colors,
-  Terminal.app among them; the cost of inferring nothing, taken knowingly. Client hints
-  are likewise Chromium-only (`Accept-CH`/`Critical-CH`), and other engines get the
-  documented defaults.
-- A vertical fractional edge in the terminal: only the lower block glyphs exist, so a
-  top-anchored fill would need upper ones; a vertical fill ends on a whole cell.
-- Moving an editor's caret off the cell past a full row, where a wrapping space was
-  consumed: a browser's caret hangs past such a row into the textarea's padding, and
-  the terminal's bar cursor in the cell past it, the padding or the border, shows the
-  same position.
-- Replacing `IntoChildren` and `IntoChildOf` with std traits, checked against the
-  compiler: a blanket `impl<I: IntoIterator<Item = V>> IntoChildren for I` conflicts
-  with the tuple impls, and the same conflict appears with `From`; tuples are not
-  optional because children are heterogeneous.
-- A collision check on snapshot keys at every build (see the watched item above).
-- A `&'static str` signal restoring: it is `transient`, since it cannot be deserialized
-  owned.
-- A `HashMap` store field iterating in a stable order: its entries come in its
-  iteration order; an ordered list wants a `BTreeMap` or a keyed `Vec`.
-- Another reactive engine: Leptos's `reactive_graph` schedules effects asynchronously
-  behind `Arc` and `RwLock`, breaking the synchronous render-first flush the terminal's
-  key defaults rely on; `sycamore-reactive` has eager memos and no render flavor; the
-  Rust alien-signals port has no owners, contexts or cleanups. Its techniques are
-  ported instead.
-- Another terminal parser, or one beneath it: crossterm parses no replies, termina
-  lacks APC and re-parses byte by byte, vte has no APC dispatch, and termwiz is heavy.
-- The `color` crate for `Color`: byte-identical class names across the server and the
-  browser need `libm` math, which its `libm` feature cannot promise once peniko and
-  vello unify it with `std`; its CSS semantics are taken instead.
-- A view macro beside the builders (`rsx!`): a macro costs rustfmt and rust-analyzer,
-  and Freya left rsx for builders in 2026; the effort goes into diagnostics.
-- Collapsing the crates beyond `skene-foundation`: separate crates compile in parallel.
-- One app serving both media: the two galleries still differ on 431 of 893 lines once
-  numbers are stripped.
-- A stable plugin ABI: nobody asks for one.
-- A property table giving each property an interpolation class and a unit class: a
-  value's `Interpolate` answers per pair, as CSS computes it per pair (a length and
-  `Auto` are discrete, two lengths are not), and the value's variant is its unit.

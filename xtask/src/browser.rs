@@ -56,6 +56,10 @@ const RUNS: &[Run] = &[
   },
 ];
 
+/// How long, in seconds, the runner gives one binary in one browser: longer than any
+/// test's own wait, the painted canvas's minute for its first GPU paint among them.
+const BINARY_TIMEOUT: &str = "180";
+
 /// The geckodriver bundled in Firefox's snap, which runs outside the snap's confinement.
 const SNAP_GECKODRIVER: &str = "/snap/firefox/current/usr/lib/firefox/geckodriver";
 
@@ -324,7 +328,8 @@ fn run_jobs(jobs: &mut [Job<'_>], scratch: &Path) {
             .arg(&job.binary.path)
             .current_dir(&job.binary.directory)
             .env("CARGO_MANIFEST_DIR", &job.binary.directory)
-            .env("TMPDIR", scratch);
+            .env("TMPDIR", scratch)
+            .env("WASM_BINDGEN_TEST_TIMEOUT", BINARY_TIMEOUT);
 
           for engine in ENGINES {
             command.env_remove(engine.variable);

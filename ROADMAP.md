@@ -254,8 +254,10 @@ left half-done in a code comment.
     floor, fallback and baseline against upgrade, enhancement and child); dated
     decision records with a revisit trigger; an architecture page on state (a `Store`,
     a local `Signal` or context, and no view models in context); a guide in an mdbook
-    that compiles its snippets, and a `skene new` scaffold generating an app's shared
-    crate and a shell per platform it names, as `flutter create` does.
+    that compiles its snippets, and a `skene new <kind>` scaffold, the kind mandatory so
+    more can join: `app` first, an app's shared crate and a shell per platform it
+    names, as `flutter create` does, then `lib` and a component library's core and
+    per-platform crates.
     - Wrong claims corrected: the native contradictions in `DESIGN.md` (painted-native
     desktop and mobile, a Linux leaf on winit, selection by triple), settled by the
     native family's decisions; "a palette change costs the number of tokens", until the

@@ -155,7 +155,6 @@ const SERVER_PACKAGES: &[&str] = &["skene-web"];
 /// third-party proofs written for it.
 const WASM_DOCS: &[&str] = &[
   "acme-map",
-  "acme-ui",
   "skene-foundation",
   "skene-reactive",
   "skene-simple",

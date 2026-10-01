@@ -10,7 +10,6 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 acme-map = { path = "../../third-party/acme-map" }
-acme-ui = { path = "../../third-party/acme-ui" }
 skene-simple-web.workspace = true
 skene-web.workspace = true
 

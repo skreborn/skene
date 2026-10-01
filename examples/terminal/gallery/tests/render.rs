@@ -75,12 +75,6 @@ fn the_gallery_renders_and_responds() {
   assert!(frame.contains('║'), "double borders did not paint");
   assert!(frame.contains('+'), "ascii borders did not paint");
   assert!(frame.contains("Row 0"), "the lazy column did not paint");
-  assert!(
-    frame
-      .lines()
-      .any(|line| line.contains("acme-ui") && line.contains("a badge")),
-    "the badge did not paint one row tall beside its caption:\n{frame}"
-  );
   assert!(frame.contains('█'), "the sparkline did not paint");
   assert!(
     !frame.contains("Row 999"),

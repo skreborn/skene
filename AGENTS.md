@@ -19,9 +19,7 @@
   facade exposing it as a type of its own, and a platform realizes its own the moment
   they diverge. There is no cross-platform vocabulary: an app is a shared crate of
   logic and state with a shell per platform, and a component library a core of colors,
-  named sizes and logic with a presentation crate per platform. Until the rest of the
-  rename wave in `ROADMAP.md` lands, the paragraphs below on component libraries still
-  describe one generic crate serving every facade.
+  named sizes and logic with a presentation crate per platform.
 - The foundation (`skene-foundation`, over `skene-reactive`, which knows nothing of UI)
   stays platform-agnostic: no platform assumptions or nomenclature. Its **spine** (the
   `spine` module, naming nothing of the crate outside itself and keeping its internals
@@ -67,8 +65,9 @@
   scene into a canvas, the headless platform renders it to pixels a test reads, the
   terminal shows it through its graphics protocol where one is proven, the server leaf
   renders it empty; the native realization comes with the native platform.
-- Selection: by **facade dependency** (web apps depend on `skene-web`, terminal apps on
-  `skene-terminal`), then by target within a facade (`wasm32-unknown-unknown` → the web's
+- Selection: by **facade dependency** (web apps depend on `skene-web` and a library's web
+  crate, `skene-simple-web`; terminal apps on `skene-terminal` and its terminal one), then
+  by target within a facade (`wasm32-unknown-unknown` → the web's
   browser leaf; every other host → the headless platform), and where one triple hosts several platforms the build names the
   platform by a cfg: `--cfg skene_platform="server"` selects the web's server leaf
   natively, set by the CLI for a server build through the host target's rustflags, so
@@ -154,7 +153,7 @@
   conditions included, as CSS computes a registered custom property where it is
   declared. Nothing below a component library knows what a palette is: `skene-simple`
   owns `SimplePalette` as a struct of `Token`s implementing `TokenSet`, and a third
-  party's `AcmePalette` is on identical footing.
+  party's palette is on identical footing.
   - **`Theme<P, S: TokenSet>` is the one theme view**, in `skene-foundation`:
     `Theme::new(palette)` or `Theme::derive(|| palette.get())`, then
     `set_child_builder(|| child)`. It realizes one layout-invisible scope node, provides
@@ -478,23 +477,25 @@
   behavior makes is a `Behavior` method with a default (`label_placement`); one a view
   makes is a setter; and where a built-in composes presentation of its own, the pieces
   it composes are public, so a library can compose them differently.
-- **Third parties are first-class by construction.** A component library depends on
-  `skene-foundation`, writes generic over `P: Platform` exactly as the built-ins do
-  (`Container<P>`, `Control<P, Toggle>`, `Theme<P, AcmePalette>`), states what it needs
-  from a medium as a bound on the platform's associated types (`P::StyleExt: CornerRadius`
-  rounds where the medium can and writes nothing where it cannot; a capability a library
-  *requires* is a hard bound, so the library does not exist on a medium lacking it), and
-  works on every facade from one crate. A low-level view is written against a platform's
-  escape trait and selected through the facade's `ActivePlatform`, and a view library
-  covers every platform of its medium, headless included, through a trait of its own each
-  platform implements (`acme-map`'s `MapHost`), so an app writes no `cfg` for it. Nothing on the path a
-  built-in takes is crate-private; making something `pub(crate)` on that path is a
-  regression. `skene-simple` is held to the same rule from the other side: a facade never
-  re-exports it, an app depends on its platform's crate explicitly (`skene-simple-web`,
-  `skene-simple-terminal`), and each is only a newtype per view over the core's hidden
-  generic one, its members from the core's `Simple*Base` traits, and a `prelude`, which is
-  exactly what a third-party library may ship beside its core. `examples/third-party` is
-  the standing proof and part of the gate.
+- **Third parties are first-class by construction.** A component library is a core and a
+  crate per platform. Its core depends on `skene-foundation`, writes its views generic
+  over `P: Platform` exactly as the built-ins do (`Container<P>`, `Control<P, Toggle>`,
+  `Theme<P, SimplePalette>`), states what it needs from a medium as a bound on the
+  platform's associated types (`P::StyleExt: CornerRadius` rounds where the medium can and
+  writes nothing where it cannot; a capability a library *requires* is a hard bound, so
+  the library does not exist on a medium lacking it), and keeps each view's members in a
+  `<View>Base` trait; each platform's crate declares a newtype of its own per view over
+  the core's, a line per trait, with a `prelude`. A low-level view is written against a
+  platform's escape trait and selected through the facade's `ActivePlatform`, and a view
+  library covers every platform of its medium, headless included, through a trait of its
+  own each platform implements (`acme-map`'s `MapHost`), so an app writes no `cfg` for
+  it. Nothing on the path a built-in takes is crate-private; making something
+  `pub(crate)` on that path is a regression. Simple is held to the rule from the other
+  side: a facade never re-exports it, an app depends on its platform's crate explicitly
+  (`skene-simple-web`, `skene-simple-terminal`), and its core hides its generic views
+  behind the `Simple*Base` traits, so it is the standing proof of a component library,
+  and `examples/third-party` (`acme-map`, `acme-sparkline`) of a low-level view; both
+  are part of the gate.
 - **Motion is declared once and runs everywhere.** `Transition` and keyframe `Animation`
   are data. The web compiles them to CSS; native and the terminal run them on the
   platform's frame clock from the resolution point that reports a changed value, never
@@ -713,8 +714,9 @@
   facades where the feature exists), never crammed into an existing example. Every common
   user-facing capability gets one; the `gallery` example shows off every built-in view and
   control with minimal but pretty styling, and `theme` shows the token model.
-  `examples/third-party` holds the crates written from outside the framework, one per
-  extension path.
+  `examples/third-party` holds the low-level views written from outside the framework,
+  one per platform's escape traits; Simple is the component library written the way a
+  third party's is.
 - **What comes next lives in `ROADMAP.md`**, under `Open`: one ordered list of every
   open item, big and small, top first, then the decisions against. Nothing shipped is
   listed there. When asked what's next, answer from the top of it. A follow-up a change

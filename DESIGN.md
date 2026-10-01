@@ -643,8 +643,8 @@ the Simple library's `SimpleGlyphs` (its terminal marks, a set only a platform w
 tokens over cells can theme) are token sets, so the framework has one inheritance
 mechanism.
 Nothing below a component library knows what a palette is: `skene-simple` owns
-`SimplePalette`, and a third party's `AcmePalette` gets `Theme<P, AcmePalette>`,
-`current()` and `watch()` from the same blanket.
+`SimplePalette`, and a third party's palette gets its `Theme`, `current()` and
+`watch()` from the same blanket.
 
 The color scheme is one `Media` leaf, answered per property in a definition or a value.
 The scheme *in force* is the document's: `media::set_scheme` writes `data-skene-scheme`
@@ -1100,16 +1100,17 @@ apps never cross-compile into the web.
 
 Two guarantees, both properties of what is public rather than of any one API.
 
-- **A component library, for every platform, from one crate.** It depends on
-  `skene-foundation`, writes generic over `P: Platform` exactly as the built-ins are written, and
-  states what it needs from a medium as a bound on the platform's associated types
-  (`P::StyleExt: CornerRadius`). Each facade's views make it concrete for the app
-  that uses it. Nothing on the path a built-in takes is crate-private: the setter
-  macros the built-ins generate their `set_`/`derive_` pairs with (`properties!`,
-  `decoration!`, `type_metrics!`) are exported, so a third-party layout view built on
-  `LayoutBox` spells its surface the way `Row` does.
-  `examples/third-party/acme-ui` is the standing proof: a palette and a badge, used by
-  both galleries.
+- **A component library: one core, a crate per platform.** Its core depends on
+  `skene-foundation`, writes its views generic over `P: Platform` exactly as the built-ins
+  are written, states what it needs from a medium as a bound on the platform's associated
+  types (`P::StyleExt: CornerRadius`), and keeps each view's members in a trait; each
+  platform's crate makes them concrete as views of its own, as each facade does the
+  built-ins. Nothing on the path a built-in takes is crate-private: the setter macros the
+  built-ins generate their `set_`/`derive_` pairs with (`properties!`,
+  `trait_properties!`) and the surfaces they share (`DecorationBase`, `RunBase`) are
+  public, so a third-party layout view built on `LayoutBox` spells its surface the way
+  `Row` does. Simple is the standing proof, `skene-simple` its core and
+  `skene-simple-web` and `skene-simple-terminal` its platforms' crates.
 - **A low-level view, against the platform, like a built-in.** It is written against a
   platform's escape trait and realized through the same scene and node ids as a
   `Container`, so it composes with wrappers, themes, conditions and events. A view

@@ -380,8 +380,6 @@ fn lazy_row() -> impl View {
   )
 }
 
-/// A component library and a low-level view from outside the framework: the badge is
-/// written once over any platform, the sparkline against the terminal's cells alone.
 fn context_menu() -> impl View {
   let last = Signal::tagged("last command", String::from("nothing yet"));
   let ran = move |verb: &'static str| move || last.set(verb.to_owned());
@@ -500,24 +498,17 @@ fn boundaries() -> impl View {
   )
 }
 
+/// A low-level view from outside the framework: a sparkline painted into the terminal's
+/// cells, and as pixels over them where the terminal proves its graphics.
 fn third_party() -> impl View {
   section(
     "Third party",
-    Column::new().set_spacing(1).set_children((
-      Row::new().set_spacing(2).set_children((
-        Flexible::new()
-          .set_shrink_factor(0.)
-          .set_child(acme_ui::AcmeBadge::<ActivePlatform>::new("acme-ui")),
-        Text::new("a badge from a library that names no platform")
-          .set_color(SimplePalette::MUTED_FOREGROUND),
-      )),
-      Row::new().set_spacing(2).set_children((
-        acme_sparkline::Sparkline::<ActivePlatform>::new([
-          3., 5., 4., 8., 6., 9., 7., 10., 6., 4., 5., 3.,
-        ])
-        .set_color(Color::srgb(1., 0.62, 0.25)),
-        Text::new("a sparkline painted cell by cell").set_color(SimplePalette::MUTED_FOREGROUND),
-      )),
+    Row::new().set_spacing(2).set_children((
+      acme_sparkline::Sparkline::<ActivePlatform>::new([
+        3., 5., 4., 8., 6., 9., 7., 10., 6., 4., 5., 3.,
+      ])
+      .set_color(Color::srgb(1., 0.62, 0.25)),
+      Text::new("a sparkline painted cell by cell").set_color(SimplePalette::MUTED_FOREGROUND),
     )),
   )
 }

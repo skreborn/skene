@@ -182,9 +182,7 @@ left half-done in a code comment.
     the documents shrink to what tooling cannot enforce.
     - A shell per platform: the facades' views and Simple's, newtypes implementing the
     traits of the core beneath them, stay on probation against writing each platform's
-    views by hand. `examples/third-party` splits as Simple did, a core of colors, named
-    sizes and logic with its views hidden and a crate per platform of newtypes over
-    them; `AGENTS.md`'s facade, selection, third-party and examples rules follow.
+    views by hand.
     - Moves: `AsyncView`, `Deferred`, the hydrating `Resource`, `Link` and the router
     binding into the foundation over platform seams, so a generic library can use them
     and the terminal gains `Link`; the title into a shared `window` module, which grows

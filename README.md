@@ -225,14 +225,15 @@ naming it.
 
 ## Extending
 
-A component library depends on `skene-foundation`, writes generic over `P: Platform` exactly as
-the built-ins do, states what it needs from a medium as a bound on the platform's
-associated types, and works on every facade from one crate. A low-level view is written
+A component library is a core and a crate per platform, as Simple is: the core depends on
+`skene-foundation`, writes its views generic over `P: Platform` exactly as the built-ins do
+and states what it needs from a medium as a bound on the platform's associated types, and
+each platform's crate declares a newtype per view over the core's. A low-level view is written
 against a platform's escape trait (`WebDom`, `WebMarkup`, `CellPainter`) and realized
 through the same scene as a built-in; `Painted` is the portable one for pixels, a
 vello scene the platform renders, the terminal through the kitty graphics protocol
-where it proves one. `examples/third-party` shows all three: `acme-ui`
-(a palette and a badge over any platform), `acme-map` (a canvas on the browser leaf, a
-placeholder before it and on the server, an image box on headless) and `acme-sparkline` (bars painted into the terminal's cells, and as pixels over them
-where the terminal proves its graphics), each used by a gallery and tested on its
-platform.
+where it proves one. `examples/third-party` shows both escape paths: `acme-map` (a canvas
+on the browser leaf, a placeholder before it and on the server, an image box on headless)
+and `acme-sparkline` (bars painted into the terminal's cells, and as pixels over them
+where the terminal proves its graphics), each used by its platform's gallery and tested
+on its platform.

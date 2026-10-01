@@ -182,12 +182,12 @@ expression: styled
     │                                                   │
     │  Third party                                      │
     │                                                   │
-    │   acme-ui   a badge from a library that names no  │
-    │             platform                              │
-    │                                                   │
     │  ▁▃▂▆▄▇▅█▄▂▃▁  a sparkline painted cell by cell   │
     │                                                   │
     ╰───────────────────────────────────────────────────╯
+
+
+
 
 
 
@@ -403,12 +403,12 @@ aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
 aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
 aaaacddeeeeeeeeeeeddddddddddddddddddddddddddddddddddddddcaaa
 aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
-aaaacddABBBBBBBAddggggggggggggggggggggggggggggggggggggddcaaa
-aaaacddAAAAAAAAAddggggggggddddddddddddddddddddddddddddddcaaa
-aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
 aaaacddiiiiiiiiiiiiddggggggggggggggggggggggggggggggggdddcaaa
 aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
 aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
@@ -470,5 +470,3 @@ w surface #336638
 x surface #408046
 y surface #4d9954
 z ink #ffffff, surface #525254
-A surface #1f1705
-B ink #fabf2e, surface #1f1705

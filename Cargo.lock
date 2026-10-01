@@ -33,15 +33,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "acme-ui"
-version = "0.1.0"
-dependencies = [
- "skene-foundation",
- "skene-headless",
- "skene-reactive",
-]
-
-[[package]]
 name = "adler2"
 version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -879,7 +870,6 @@ name = "gallery"
 version = "0.1.0"
 dependencies = [
  "acme-map",
- "acme-ui",
  "js-sys",
  "skene-simple-web",
  "skene-web",
@@ -2821,7 +2811,6 @@ name = "terminal-gallery"
 version = "0.1.0"
 dependencies = [
  "acme-sparkline",
- "acme-ui",
  "insta",
  "skene-simple-terminal",
  "skene-terminal",

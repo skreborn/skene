@@ -377,8 +377,6 @@ fn lazy_row() -> impl View {
   )
 }
 
-/// A box painted through vello: the portable low-level path for pixel media, drawn on
-/// the CPU into a canvas in the browser and left empty by a server render.
 fn context_menu() -> impl View {
   let last = Signal::tagged("last command", String::from("nothing yet"));
   let ran = move |verb: &'static str| move || last.set(verb.to_owned());
@@ -529,6 +527,8 @@ fn boundaries() -> impl View {
   )
 }
 
+/// A box painted through vello: the portable low-level path for pixel media, drawn on
+/// the CPU into a canvas in the browser and left empty by a server render.
 fn painted() -> impl View {
   use skene_web::kurbo::{Circle, Rect};
 
@@ -559,31 +559,10 @@ fn painted() -> impl View {
   )
 }
 
-/// A component library and a low-level view from outside the framework: the badge is
-/// written once over any platform, the map against the browser's DOM alone.
+/// A low-level view from outside the framework: a map covering every platform of the web
+/// medium through a trait of its own.
 fn third_party() -> impl View {
-  section(
-    "Third party",
-    Column::new().set_spacing(12.).set_children((
-      Row::new()
-        .set_spacing(8.)
-        .set_item_alignment(ItemAlignment::Center)
-        .set_children((
-          Flexible::new()
-            .set_shrink_factor(0.)
-            .set_child(acme_ui::AcmeBadge::<ActivePlatform>::new("acme-ui")),
-          Text::new("a badge from a library that names no platform")
-            .set_font_size(13.)
-            .set_color(SimplePalette::MUTED_FOREGROUND),
-        )),
-      map(),
-    )),
-  )
-}
-
-/// The map, which covers every platform of the web medium.
-fn map() -> impl View {
-  acme_map::Map::<ActivePlatform>::new()
+  section("Third party", acme_map::Map::<ActivePlatform>::new())
 }
 
 /// A titled card around one section's content.

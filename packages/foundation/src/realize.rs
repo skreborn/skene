@@ -95,7 +95,6 @@ impl<T: 'static> Source<T> {
   }
 
   /// The source as a read: the fixed value, cloned, or the derived closure.
-  #[inline(always)]
   pub fn into_read(self) -> Rc<dyn Fn() -> T>
   where
     T: Clone,

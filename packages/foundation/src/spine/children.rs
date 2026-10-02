@@ -35,7 +35,6 @@ impl<P: Platform, Kind, V: IntoChildOf<P, Kind>, const N: usize> IntoChildren<P,
 macro_rules! impl_tuple {
   ($($T:ident),+) => {
     impl<P: Platform, Kind, $($T: IntoChildOf<P, Kind>),+> IntoChildren<P, Kind> for ($($T,)+) {
-      #[inline(always)]
       fn into_children(self) -> Vec<AnyView<P>> {
         #[expect(non_snake_case, clippy::min_ident_chars, reason = "each binding takes its element's type parameter name")]
         let ($($T,)+) = self;

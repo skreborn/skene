@@ -101,7 +101,6 @@ impl<P: Platform> SimpleSlider<P> {
   }
 
   /// Sets the value.
-  #[inline(always)]
   pub fn set_value(mut self, value: f32) -> Self {
     self.value = Some(Rc::new(move || value));
 

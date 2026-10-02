@@ -59,7 +59,6 @@ impl std::fmt::Debug for Slider {
 
 impl Slider {
   /// A slider over `0..=100` stepping by `1`, holding its minimum.
-  #[inline(always)]
   pub fn new() -> Self {
     Self {
       range: Source::Fixed(SliderRange::new(0., 100., 1.)),

@@ -46,7 +46,6 @@ impl Toggle {
   }
 
   /// The closure the checked state is read through; `false` with none set.
-  #[inline(always)]
   #[must_use]
   pub fn reads_checked(&self) -> Rc<dyn Fn() -> bool> {
     self.checked.reader().unwrap_or_else(|| Rc::new(|| false))

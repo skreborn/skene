@@ -170,7 +170,6 @@ impl<P: Platform> Overlay<P> {
   /// Pins the open overlay's top-start corner to `position`, in the units a pointer
   /// event reports, shifted to stay within the viewport; pinned, the overlay ignores
   /// its placement and anchor.
-  #[inline(always)]
   pub fn set_position(mut self, position: Point<f32>) -> Self {
     self.position = Some(Rc::new(move || Some(position)));
 

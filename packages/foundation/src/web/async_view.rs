@@ -123,7 +123,6 @@ struct InRegion<P: WebHydration, F> {
 }
 
 impl<P: WebHydration, F: Future> InRegion<P, F> {
-  #[inline(always)]
   fn new(region: P::LazyRegion, work: F) -> Self {
     Self {
       region,

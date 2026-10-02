@@ -53,7 +53,6 @@ impl<P: Platform, K: PartialEq + 'static> OneOf<P, K> {
   }
 
   /// Sets the key of the branch shown.
-  #[inline(always)]
   pub fn set_key(mut self, key: K) -> Self
   where
     K: Clone,

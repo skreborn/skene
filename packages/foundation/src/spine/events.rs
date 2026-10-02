@@ -306,7 +306,6 @@ impl KeyEvent {
   /// A press of the key its W3C key value `key` names (`"a"`, `" "`, `"Enter"`), with no
   /// modifier held, not repeating and outside a composition, at the position the key has
   /// on the standard US layout; a value naming no key is the text it types.
-  #[inline(always)]
   pub fn new(key: &str) -> Self {
     let key = Key::from_str(key).unwrap_or_else(|_| Key::Character(key.to_owned()));
     let code = Self::code_of(&key);

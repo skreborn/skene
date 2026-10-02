@@ -56,7 +56,6 @@ impl Member {
 
 impl Roster {
   /// A roster with no members and no root, its trigger owned by the current owner.
-  #[inline(always)]
   pub fn new() -> Self {
     Self {
       members: Rc::new(RefCell::new(FxHashMap::default())),

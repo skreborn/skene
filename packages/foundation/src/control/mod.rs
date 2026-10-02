@@ -410,7 +410,6 @@ impl<P: Platform> From<String> for Label<P> {
 }
 
 impl<P: Platform> From<&str> for Label<P> {
-  #[inline(always)]
   fn from(text: &str) -> Self {
     Self::from(text.to_owned())
   }

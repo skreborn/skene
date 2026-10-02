@@ -42,7 +42,6 @@ pub enum Message {
 }
 
 impl From<&str> for Message {
-  #[inline(always)]
   fn from(text: &str) -> Self {
     Self::Text(text.to_owned())
   }

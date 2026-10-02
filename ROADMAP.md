@@ -79,15 +79,14 @@ in a code comment.
     too, in the spine's `ResolutionContext`, which headless and the terminal share; a
     resolution reports the environment it read as it reports the interaction, so a
     resize restyles only what reads the viewport.
-    - Constant factors: forced inlining off allocating functions; the lazy list reading
-    a data source (a count and the item at an index) through a Fenwick tree, and
-    evicting measured extents;
-    one constructable stylesheet with deferred collection and a set of adopted names;
-    release web output through wasm-opt, without `.d.ts` files or name sections,
-    precompressed, fingerprinted and preloaded, with one cached stylesheet shared by
-    static pages instead of inlined into each; a bundle budget the gate holds, a
-    release `counter` after `wasm-bindgen` having grown from 911 KB to 1.27 MB between
-    2026-09-15 and 2026-10-02, `skene-web` and `skene-foundation` most of it.
+    - Constant factors: the lazy list reading a data source (a count and the item at an
+    index) through a Fenwick tree, and evicting measured extents; one constructable
+    stylesheet with deferred collection and a set of adopted names; release web output
+    through wasm-opt, without `.d.ts` files or name sections, precompressed,
+    fingerprinted and preloaded, with one cached stylesheet shared by static pages
+    instead of inlined into each; a bundle budget the gate holds, a release `counter`
+    after `wasm-bindgen` having grown from 911 KB to 1.27 MB between 2026-09-15 and
+    2026-10-02, `skene-web` and `skene-foundation` most of it.
 5. **The dev reload costs production nothing.** The saved tier is no second API: the
     Android leaf records and writes this snapshot (the native family), and the web and
     the desktop keep none beyond the dev reload.

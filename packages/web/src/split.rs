@@ -65,7 +65,6 @@ impl SplitLoader {
   /// `load` must be the module's `__wasm_split_load_*` import, as a `#[lazy]`
   /// expansion binds it, whose every call runs its callback exactly once with the
   /// payload it was given.
-  #[inline(always)]
   pub unsafe fn new(load: LoadSplit) -> Self {
     Self {
       inner: Rc::new(Inner {

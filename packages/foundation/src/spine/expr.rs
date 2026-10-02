@@ -476,7 +476,6 @@ impl<N: Scalar> ExprOutput for Inset<Dimension<N>> {
 impl<Q: Quantity> Add for Expr<Q> {
   type Output = Self;
 
-  #[inline(always)]
   fn add(self, rhs: Self) -> Self {
     Self::from_node(ExprNode::Add(Box::new(self.node), Box::new(rhs.node)))
   }
@@ -494,7 +493,6 @@ impl<Q: Quantity> Add<f32> for Expr<Q> {
 impl<Q: Quantity> Sub for Expr<Q> {
   type Output = Self;
 
-  #[inline(always)]
   fn sub(self, rhs: Self) -> Self {
     Self::from_node(ExprNode::Sub(Box::new(self.node), Box::new(rhs.node)))
   }
@@ -512,7 +510,6 @@ impl<Q: Quantity> Sub<f32> for Expr<Q> {
 impl<Q: Quantity> Mul<Expr<Number>> for Expr<Q> {
   type Output = Self;
 
-  #[inline(always)]
   fn mul(self, rhs: Expr<Number>) -> Self {
     Self::from_node(ExprNode::Mul(Box::new(self.node), Box::new(rhs.node)))
   }
@@ -530,7 +527,6 @@ impl<Q: Quantity> Mul<f32> for Expr<Q> {
 impl<Q: Quantity> Div<Expr<Number>> for Expr<Q> {
   type Output = Self;
 
-  #[inline(always)]
   fn div(self, rhs: Expr<Number>) -> Self {
     Self::from_node(ExprNode::Div(Box::new(self.node), Box::new(rhs.node)))
   }
@@ -646,31 +642,26 @@ impl Expr<Color> {
   }
 
   /// This color with its alpha replaced, `0.` to `1.`.
-  #[inline(always)]
   pub fn with_alpha(self, alpha: f32) -> Self {
     Self::from_node(ExprNode::WithAlpha(Box::new(self.node), alpha))
   }
 
   /// This color with its Oklch lightness raised by `amount`, held at `1.`.
-  #[inline(always)]
   pub fn lighter(self, amount: f32) -> Self {
     Self::from_node(ExprNode::Lighter(Box::new(self.node), amount))
   }
 
   /// This color with its Oklch lightness lowered by `amount`, held at `0.`.
-  #[inline(always)]
   pub fn darker(self, amount: f32) -> Self {
     Self::from_node(ExprNode::Darker(Box::new(self.node), amount))
   }
 
   /// This color with its Oklch chroma replaced.
-  #[inline(always)]
   pub fn with_chroma(self, chroma: f32) -> Self {
     Self::from_node(ExprNode::WithChroma(Box::new(self.node), chroma))
   }
 
   /// This color with its Oklch hue replaced, in degrees.
-  #[inline(always)]
   pub fn with_hue(self, hue: f32) -> Self {
     Self::from_node(ExprNode::WithHue(Box::new(self.node), hue))
   }

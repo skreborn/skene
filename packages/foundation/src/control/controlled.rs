@@ -51,7 +51,6 @@ impl<T: 'static> Controlled<T> {
   }
 
   /// Fixes the value at `value`.
-  #[inline(always)]
   pub fn set(&mut self, value: T)
   where
     T: Clone,

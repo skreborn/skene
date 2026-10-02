@@ -28,7 +28,6 @@ impl<P: Platform, C> std::fmt::Debug for Visibility<P, C> {
 
 impl<P: Platform> Visibility<P> {
   /// A `Visibility` with no child yet, shown until told otherwise.
-  #[inline(always)]
   pub fn new() -> Self {
     Self {
       shown: Box::new(|| true),
@@ -47,7 +46,6 @@ impl<P: Platform> Default for Visibility<P> {
 
 impl<P: Platform> Visibility<P> {
   /// Sets whether the child is shown.
-  #[inline(always)]
   pub fn set_shown(mut self, shown: bool) -> Self {
     self.shown = Box::new(move || shown);
 

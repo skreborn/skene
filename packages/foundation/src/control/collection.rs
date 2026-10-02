@@ -67,7 +67,6 @@ impl CollectionPolicy for RadioPolicy {
   const ROLE: Role = Role::RadioGroup;
   const WRAPS: bool = true;
 
-  #[inline(always)]
   fn member_access(chosen: bool) -> Vec<AccessProp> {
     vec![AccessProp::Checked(chosen.into())]
   }
@@ -90,7 +89,6 @@ impl CollectionPolicy for ListboxPolicy {
   const ROLE: Role = Role::ListBox;
   const WRAPS: bool = false;
 
-  #[inline(always)]
   fn member_access(chosen: bool) -> Vec<AccessProp> {
     vec![AccessProp::Selected(chosen)]
   }

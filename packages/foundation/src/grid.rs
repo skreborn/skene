@@ -64,7 +64,6 @@ impl<P: Platform> Grid<P> {
 
   /// A grid with as many columns as fit, each at least `minimum` wide, sharing what
   /// width remains equally.
-  #[inline(always)]
   pub fn adaptive(minimum: P::Scalar) -> Self {
     Self::new().set_columns(vec![GridTrack::Adaptive(
       TrackLimit::Length(minimum),

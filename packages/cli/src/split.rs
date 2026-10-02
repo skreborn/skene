@@ -23,17 +23,17 @@ const MARKER: &[u8] = b"__wasm_split_00";
 const LOADER_GLUE: &str = include_str!("split.js");
 
 /// Splits the bindgened wasm in `out` when the app opts in, `original` the wasm cargo
-/// built it from.
+/// built it from, and returns whether it split.
 ///
 /// Without `#[lazy]` markers in the build this is a no-op; with markers but no
 /// `[web] split = true` it fails, naming the missing setting.
-pub(crate) fn split_web(app: &App, original: &Path, out: &Path) -> Result<(), String> {
+pub(crate) fn split_web(app: &App, original: &Path, out: &Path) -> Result<bool, String> {
   let main_path = out.join(format!("{}_bg.wasm", app.stem));
   let bindgened =
     fs::read(&main_path).map_err(|error| format!("{}: {error}", main_path.display()))?;
 
   if !contains(&bindgened, MARKER) {
-    return Ok(());
+    return Ok(false);
   }
 
   if !app.split {
@@ -73,7 +73,7 @@ pub(crate) fn split_web(app: &App, original: &Path, out: &Path) -> Result<(), St
     app.stem,
   );
 
-  Ok(())
+  Ok(true)
 }
 
 /// A shared chunk's file name in `dist/web`.

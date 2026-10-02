@@ -178,7 +178,8 @@ through `skene_transport::ws`), the web-only `router` (typed routes behind real 
 out with `#[lazy]`), and the terminal-only `text-sizing` (font sizes as scales of the
 cell, drawn where the terminal proves the text sizing protocol). `examples/third-party` holds the crates written from outside the
 framework. Every output lands under `<app>/dist/<target>`; `cargo skene` runs the
-workspace-local CLI (`cargo install --path packages/cli` makes it `skene`).
+workspace-local CLI (`cargo install --path packages/cli` makes it `skene`). A release
+web build runs its bundle through binaryen's `wasm-opt` where it is installed.
 
 The server build of a web app is a plain, native command, with no integration at all:
 its library built as a binary with the server platform named.

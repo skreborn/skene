@@ -23,7 +23,7 @@ const MESSAGE_FORMAT: &str = "--message-format=json-render-diagnostics";
 pub(crate) fn build_web(app: &App, release: bool, dev: bool) -> Result<(), String> {
   let wasm = build_wasm(app, release)?;
 
-  publish_web(app, &wasm.path, dev)
+  publish_web(app, &wasm.path, release, dev)
 }
 
 /// Rebuilds the dev loop's web output: wholesale where cargo rebuilt the wasm or `stale`
@@ -38,19 +38,23 @@ pub(crate) fn rebuild_web(app: &App, release: bool, stale: bool) -> Result<bool,
     return Ok(false);
   }
 
-  publish_web(app, &wasm.path, true)?;
+  publish_web(app, &wasm.path, release, true)?;
 
   Ok(true)
 }
 
-/// Generates the bindings of `wasm`, splits it, writes the boot page and copies the
-/// assets into a staged output, published as `<app>/dist/web` once every step has
-/// succeeded.
-fn publish_web(app: &App, wasm: &Path, dev: bool) -> Result<(), String> {
+/// Generates the bindings of `wasm`, splits or, in `release`, optimizes it, writes the
+/// boot page and copies the assets into a staged output, published as `<app>/dist/web`
+/// once every step has succeeded.
+fn publish_web(app: &App, wasm: &Path, release: bool, dev: bool) -> Result<(), String> {
   let out = WebOut::stage(&app.dir.join("dist"))?;
 
   generate_bindings(wasm, out.path())?;
-  crate::split::split_web(app, wasm, out.path())?;
+
+  if !crate::split::split_web(app, wasm, out.path())? && release {
+    optimize(app, out.path())?;
+  }
+
   write_page(app, dev, out.path())?;
   app.copy_assets(out.path())?;
   out.publish()
@@ -331,6 +335,41 @@ fn generate_bindings(wasm: &Path, out: &Path) -> Result<(), String> {
     .map_err(|error| format!("wasm-bindgen: {error:#}"))
 }
 
+/// The wasm features the optimizer may keep using: those rustc emits for
+/// `wasm32-unknown-unknown`.
+const WASM_FEATURES: [&str; 6] = [
+  "--enable-bulk-memory",
+  "--enable-multivalue",
+  "--enable-mutable-globals",
+  "--enable-nontrapping-float-to-int",
+  "--enable-reference-types",
+  "--enable-sign-ext",
+];
+
+/// Optimizes the bindgened wasm in `out` for size through binaryen's `wasm-opt`, where it
+/// is installed, and leaves it as it is where it is not.
+fn optimize(app: &App, out: &Path) -> Result<(), String> {
+  let wasm = out.join(format!("{}_bg.wasm", app.stem));
+  let status = Command::new("wasm-opt")
+    .arg("-Oz")
+    .args(WASM_FEATURES)
+    .arg(&wasm)
+    .arg("-o")
+    .arg(&wasm)
+    .status();
+
+  match status {
+    Ok(status) if status.success() => Ok(()),
+    Ok(status) => Err(format!("wasm-opt exited with {status}")),
+    Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+      println!("wasm-opt is not installed; the bundle is not optimized");
+
+      Ok(())
+    }
+    Err(error) => Err(format!("wasm-opt: {error}")),
+  }
+}
+
 /// The flag naming the server platform.
 const SERVER_CFG: &str = "--cfg skene_platform=\"server\"";
 
@@ -400,7 +439,10 @@ pub(crate) fn build_static(app: &App, routes: &[String], release: bool) -> Resul
   let out = staged.path();
 
   generate_bindings(&wasm, out)?;
-  crate::split::split_web(app, &wasm, out)?;
+
+  if !crate::split::split_web(app, &wasm, out)? && release {
+    optimize(app, out)?;
+  }
 
   let mut renderer = crate::render::Renderer::load(artifact, app.dir.clone(), false)?;
   // No explicit routes: render every route the app enumerates (see

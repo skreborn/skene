@@ -113,11 +113,11 @@ in a code comment.
     - The web: `skene run web --ssr` pages get the dev script, and a staged snapshot
     boots a client render instead of a hydration; storage is keyed per app and tab; the
     `pagehide` session-storage copy restores on reloads alone and is cleared at boot.
-    - The dev loop: `skene.toml` reloads per rebuild; the watch follows the app's path
-    packages or its dep-info file, not this repository's `packages/`; cargo's `fresh`
-    flag gates wasm-bindgen, the splitter and the reload, instead of the whole debug
-    binary being hashed after every build; `cargo skene` builds with a thin-LTO profile;
-    `notify-debouncer-full` catches saves that rename into place.
+    - The dev loop: the watch follows the app's path packages or its dep-info file, not
+    this repository's `packages/`; cargo's `fresh` flag gates wasm-bindgen, the splitter
+    and the reload, instead of the whole debug binary being hashed after every build;
+    `cargo skene` builds with a thin-LTO profile; `notify-debouncer-full` catches saves
+    that rename into place.
 6. **The app layer before 1.0.** Every surveyed framework treats these as table
     stakes, and each is cheaper to design before the native family than after it.
     - Forms: text-entry purposes (password, email, number, search, tel, url) and

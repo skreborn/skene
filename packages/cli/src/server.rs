@@ -18,7 +18,7 @@ use percent_encoding::percent_decode_str;
 use url::Url;
 
 use crate::{
-  manifest::App,
+  manifest::{App, LiveApp},
   render::{Renderer, hint_response_headers},
 };
 
@@ -370,16 +370,19 @@ const RELOAD_PATH: &str = "/skene:reload";
 /// the app's `dist/web`, at its own path and as the site root, declared assets at
 /// their URIs, and—with `dev`—the reload SSE endpoint and the reload script injected
 /// into HTML.
-pub(crate) fn serve(app: &Arc<App>, port: u16, dev: Option<&Dev>) -> Result<(), String> {
+pub(crate) fn serve(app: &LiveApp, port: u16, dev: Option<&Dev>) -> Result<(), String> {
   let listener = TcpListener::bind(("127.0.0.1", port))
     .map_err(|error| format!("failed to bind 127.0.0.1:{port}: {error}"))?;
 
-  println!("serving {} at http://localhost:{port}", app.dir.display());
+  println!(
+    "serving {} at http://localhost:{port}",
+    app.current().dir.display()
+  );
 
   for stream in listener.incoming() {
     match stream {
       Ok(stream) => {
-        let app = Arc::clone(app);
+        let app = app.current();
         let dev = dev.cloned();
 
         thread::spawn(move || handle_request(stream, &app, dev.as_ref()));

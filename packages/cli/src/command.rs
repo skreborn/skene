@@ -174,7 +174,7 @@ impl Cli {
 
       Command::Run(RunTarget::Web { port, release, ssr }) => dev(app, port, release, ssr),
 
-      Command::Run(RunTarget::Terminal { release }) => run_terminal(&app, release),
+      Command::Run(RunTarget::Terminal { release }) => run_terminal(app, release),
 
       Command::Attach { .. } | Command::New(_) => Ok(()),
     }

@@ -1,52 +1,49 @@
 //! The dev loops: the web's, serving the page and reloading it on each rebuild, and the
 //! terminal's, rebuilding the binary an attached terminal swaps in.
 
-use std::{
-  sync::{Arc, mpsc},
-  thread,
-  time::Duration,
-};
+use std::{path::PathBuf, sync::mpsc, thread, time::Duration};
 
 use crate::{
-  manifest::App,
+  manifest::{App, LiveApp},
   pipeline,
   server::{Dev, serve, spawn_state_server},
 };
 
-/// The web dev loop: build once, then serve while watching for changes; each
-/// successful rebuild tells every open page to reload. With `ssr` the server binary
-/// is built too and every route is rendered per request through it.
+/// The web dev loop: build once, then serve while watching for changes; each change
+/// reads the app's `skene.toml` again, and each successful rebuild tells every open
+/// page to reload. With `ssr` the server binary is built too and every route is
+/// rendered per request through it.
 pub(crate) fn dev(app: App, port: u16, release: bool, ssr: bool) -> Result<(), String> {
   pipeline::build_web(&app, release, true)?;
 
-  let app = Arc::new(app);
+  let app = LiveApp::new(app);
   let dev = Dev::default();
 
   if ssr {
-    dev.set_renderer(Some(load_renderer(&app, release)?));
+    dev.set_renderer(Some(load_renderer(&app.current(), release)?));
   }
 
-  let (changes, watcher) = watch_sources(&app)?;
+  let mut sources = Sources::watch(&app.current())?;
 
   {
-    let app = Arc::clone(&app);
+    let app = app.clone();
     let dev = dev.clone();
 
     thread::spawn(move || {
-      // Keep the watcher alive for the whole loop.
-      let _watcher = watcher;
-
-      while changes.recv().is_ok() {
-        drain_burst(&changes);
+      while sources.next() {
         println!("change detected; rebuilding…");
 
-        let rebuilt = pipeline::build_web(&app, release, true).and_then(|()| {
+        let rebuilt = app.reload().and_then(|current| {
+          pipeline::build_web(&current, release, true)?;
+
           if ssr {
-            dev.set_renderer(Some(load_renderer(&app, release)?));
+            dev.set_renderer(Some(load_renderer(&current, release)?));
           }
 
           Ok(())
         });
+
+        sources.follow(&app.current());
 
         match rebuilt {
           Ok(()) => {
@@ -71,14 +68,14 @@ fn load_renderer(app: &App, release: bool) -> Result<crate::render::Renderer, St
 }
 
 /// The terminal build loop: build, publish the binary for an attached terminal, and
-/// on each change rebuild and publish the next—the CLI-held state carries across
-/// the swap. Runs until interrupted.
-pub(crate) fn run_terminal(app: &App, release: bool) -> Result<(), String> {
-  let binary = pipeline::build_terminal_binary(app, release)
+/// on each change read the app's `skene.toml` again, rebuild and publish the next—the
+/// CLI-held state carries across the swap. Runs until interrupted.
+pub(crate) fn run_terminal(mut app: App, release: bool) -> Result<(), String> {
+  let binary = pipeline::build_terminal_binary(&app, release)
     .map_err(|error| format!("build failed:\n{error}"))?;
   let dev = Dev::default();
   let id = spawn_state_server(dev.clone())?;
-  let (changes, _watcher) = watch_sources(app)?;
+  let mut sources = Sources::watch(&app)?;
   let mut running = binary_digest(&binary);
 
   dev.set_binary(binary.clone(), app.dir.clone());
@@ -87,14 +84,20 @@ pub(crate) fn run_terminal(app: &App, release: bool) -> Result<(), String> {
     cli_command()
   );
 
-  while changes.recv().is_ok() {
-    drain_burst(&changes);
+  while sources.next() {
     println!("change detected; rebuilding…");
+
+    let rebuilt = App::load(&app.dir).and_then(|current| {
+      app = current;
+      sources.follow(&app);
+
+      pipeline::build_terminal_binary(&app, release)
+    });
 
     // A rebuild the change did not reach—an unrelated file, a comment elsewhere—
     // leaves the binary identical, and the attached app (and its state) stays up
     // instead of restarting for nothing.
-    match pipeline::build_terminal_binary(app, release) {
+    match rebuilt {
       Ok(binary) => {
         dev.clear_notice();
 
@@ -146,44 +149,82 @@ fn binary_digest(path: &std::path::Path) -> Option<u64> {
   Some(hasher.finish())
 }
 
-/// Watches the workspace's packages, the app, and the asset roots; sends one unit
-/// per change. The returned watcher must stay alive as long as the receiver.
-fn watch_sources(app: &App) -> Result<(mpsc::Receiver<()>, notify::RecommendedWatcher), String> {
-  use notify::{RecursiveMode, Watcher};
-
-  let (sender, receiver) = mpsc::channel();
-  let mut watcher = notify::recommended_watcher(move |event: Result<notify::Event, _>| {
-    if let Ok(event) = event
-      && matches!(
-        event.kind,
-        notify::EventKind::Create(_) | notify::EventKind::Modify(_) | notify::EventKind::Remove(_)
-      )
-    {
-      let _ = sender.send(());
-    }
-  })
-  .map_err(|error| error.to_string())?;
-
-  let mut roots = vec![
-    app.workspace_root.join("packages"),
-    app.dir.join("src"),
-    app.dir.join("skene.toml"),
-  ];
-
-  roots.extend(app.asset_dirs());
-
-  for root in roots {
-    if root.exists() {
-      watcher
-        .watch(&root, RecursiveMode::Recursive)
-        .map_err(|error| format!("watch {}: {error}", root.display()))?;
-    }
-  }
-
-  Ok((receiver, watcher))
+/// The sources a dev loop watches: the workspace's packages, the app, and its asset
+/// roots, watched again when the roots change.
+struct Sources {
+  changes: mpsc::Receiver<()>,
+  _watcher: notify::RecommendedWatcher,
+  assets: Vec<PathBuf>,
 }
 
-/// Drains the burst of filesystem events one save produces.
-fn drain_burst(changes: &mpsc::Receiver<()>) {
-  while changes.recv_timeout(Duration::from_millis(200)).is_ok() {}
+impl Sources {
+  /// Watches `app`'s sources.
+  fn watch(app: &App) -> Result<Self, String> {
+    use notify::{RecursiveMode, Watcher};
+
+    let (sender, changes) = mpsc::channel();
+    let mut watcher = notify::recommended_watcher(move |event: Result<notify::Event, _>| {
+      if let Ok(event) = event
+        && matches!(
+          event.kind,
+          notify::EventKind::Create(_)
+            | notify::EventKind::Modify(_)
+            | notify::EventKind::Remove(_)
+        )
+      {
+        let _ = sender.send(());
+      }
+    })
+    .map_err(|error| error.to_string())?;
+    let assets = app.asset_dirs();
+    let mut roots = vec![
+      app.workspace_root.join("packages"),
+      app.dir.join("src"),
+      app.dir.join("skene.toml"),
+    ];
+
+    roots.extend(assets.iter().cloned());
+
+    for root in roots {
+      if root.exists() {
+        watcher
+          .watch(&root, RecursiveMode::Recursive)
+          .map_err(|error| format!("watch {}: {error}", root.display()))?;
+      }
+    }
+
+    Ok(Self {
+      changes,
+      _watcher: watcher,
+      assets,
+    })
+  }
+
+  /// Waits for a change and the rest of the burst one save produces; `false` once the
+  /// watch has ended.
+  fn next(&self) -> bool {
+    if self.changes.recv().is_err() {
+      return false;
+    }
+
+    while self
+      .changes
+      .recv_timeout(Duration::from_millis(200))
+      .is_ok()
+    {}
+
+    true
+  }
+
+  /// Watches `app`'s sources afresh where its asset roots differ from those watched.
+  fn follow(&mut self, app: &App) {
+    if app.asset_dirs() == self.assets {
+      return;
+    }
+
+    match Self::watch(app) {
+      Ok(sources) => *self = sources,
+      Err(error) => eprintln!("{error}"),
+    }
+  }
 }

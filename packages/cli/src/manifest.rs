@@ -13,6 +13,7 @@ use std::{
   collections::{HashMap, HashSet, VecDeque},
   fs,
   path::{Path, PathBuf},
+  sync::{Arc, PoisonError, RwLock},
 };
 
 use cargo_metadata::{DependencyKind, MetadataCommand, PackageId};
@@ -75,6 +76,32 @@ pub(crate) struct App {
   pub split: bool,
   /// Every asset root contributing to this app, the app's own first.
   pub assets: Vec<AssetRoot>,
+}
+
+/// The app a dev loop builds and serves, replaced whole each time it is loaded again.
+#[derive(Clone)]
+pub(crate) struct LiveApp(Arc<RwLock<Arc<App>>>);
+
+impl LiveApp {
+  /// Shares `app`.
+  pub(crate) fn new(app: App) -> Self {
+    Self(Arc::new(RwLock::new(Arc::new(app))))
+  }
+
+  /// The app as last loaded.
+  pub(crate) fn current(&self) -> Arc<App> {
+    Arc::clone(&self.0.read().unwrap_or_else(PoisonError::into_inner))
+  }
+
+  /// Loads the app again from its directory, its `skene.toml` included, and returns it;
+  /// on an error the app stands as it was.
+  pub(crate) fn reload(&self) -> Result<Arc<App>, String> {
+    let app = Arc::new(App::load(&self.current().dir)?);
+
+    *self.0.write().unwrap_or_else(PoisonError::into_inner) = Arc::clone(&app);
+
+    Ok(app)
+  }
 }
 
 /// One package's declared assets: its name (the URI scope), its directory, and its

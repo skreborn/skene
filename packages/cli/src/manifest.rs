@@ -16,7 +16,7 @@ use std::{
   sync::{Arc, PoisonError, RwLock},
 };
 
-use cargo_metadata::{DependencyKind, MetadataCommand, PackageId};
+use cargo_metadata::{DependencyKind, Metadata, MetadataCommand, Node, PackageId};
 use serde::Deserialize;
 
 /// The parsed `skene.toml` of one package.
@@ -76,6 +76,9 @@ pub(crate) struct App {
   pub split: bool,
   /// Every asset root contributing to this app, the app's own first.
   pub assets: Vec<AssetRoot>,
+  /// The directories of the local packages the app is built from, its own first: every
+  /// path dependency over normal and build dependencies.
+  pub package_dirs: Vec<PathBuf>,
 }
 
 /// The app a dev loop builds and serves, replaced whole each time it is loaded again.
@@ -104,6 +107,45 @@ impl LiveApp {
   }
 }
 
+/// The directories of the local packages `app` is built from, its own first: every
+/// path package it reaches over normal and build dependencies.
+fn local_package_dirs(
+  metadata: &Metadata,
+  app: &PackageId,
+  nodes: &HashMap<&PackageId, &Node>,
+) -> Vec<PathBuf> {
+  let mut seen: HashSet<&PackageId> = HashSet::from([app]);
+  let mut pending: VecDeque<&PackageId> = VecDeque::from([app]);
+  let mut dirs = Vec::new();
+
+  while let Some(id) = pending.pop_front() {
+    if let Some(package) = metadata.packages.iter().find(|package| &package.id == id)
+      && package.source.is_none()
+      && let Some(dir) = package.manifest_path.parent()
+    {
+      dirs.push(dir.to_path_buf().into_std_path_buf());
+    }
+
+    let Some(node) = nodes.get(id)
+    else {
+      continue;
+    };
+
+    for dependency in &node.deps {
+      let built = dependency
+        .dep_kinds
+        .iter()
+        .any(|kind| matches!(kind.kind, DependencyKind::Normal | DependencyKind::Build));
+
+      if built && seen.insert(&dependency.pkg) {
+        pending.push_back(&dependency.pkg);
+      }
+    }
+  }
+
+  dirs
+}
+
 /// One package's declared assets: its name (the URI scope), its directory, and its
 /// manifest-relative paths.
 pub(crate) struct AssetRoot {
@@ -116,8 +158,9 @@ pub(crate) struct AssetRoot {
 }
 
 impl App {
-  /// Resolves the app at `dir`: its `skene.toml` (optional), its package name, and the
-  /// asset roots of the packages it depends on, over normal dependencies.
+  /// Resolves the app at `dir`: its `skene.toml` (optional), its package name, the
+  /// asset roots of the packages it depends on over normal dependencies, and its local
+  /// packages.
   pub(crate) fn load(dir: &Path) -> Result<Self, String> {
     let dir = dir
       .canonicalize()
@@ -201,6 +244,8 @@ impl App {
       }
     }
 
+    let package_dirs = local_package_dirs(&metadata, &app.id, &nodes);
+
     Ok(Self {
       stem: package.replace('-', "_"),
       dir,
@@ -208,6 +253,7 @@ impl App {
       package,
       split: manifest.web.split,
       assets,
+      package_dirs,
     })
   }
 
@@ -373,9 +419,9 @@ fn package_name(dir: &Path) -> Result<String, String> {
 
 #[cfg(all(test, unix))]
 mod tests {
-  use std::{fs, os::unix::fs::symlink};
+  use std::{fs, os::unix::fs::symlink, path::Path};
 
-  use super::copy_tree;
+  use super::{App, copy_tree};
 
   /// A symbolic link that loops back is skipped, and every file beneath is copied once.
   #[test]
@@ -396,5 +442,26 @@ mod tests {
     assert_eq!(copied, [out.join("app/assets/deep/file.txt")]);
 
     let _ = fs::remove_dir_all(&root);
+  }
+
+  /// An app's local packages are those it builds from, its own first: its path
+  /// dependencies over normal and build dependencies, and nothing else in the workspace.
+  #[test]
+  fn an_app_builds_from_its_local_packages() {
+    let counter = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/web/counter");
+    let app = App::load(&counter).unwrap();
+    let builds_from = |package: &str| {
+      app
+        .package_dirs
+        .iter()
+        .any(|dir| dir.ends_with(Path::new("packages").join(package)))
+    };
+
+    assert_eq!(app.package_dirs.first(), Some(&app.dir));
+    assert!(builds_from("web"));
+    assert!(builds_from("foundation"));
+    assert!(builds_from("build"));
+    assert!(!builds_from("cli"));
+    assert!(!builds_from("terminal"));
   }
 }

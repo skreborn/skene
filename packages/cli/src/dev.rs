@@ -1,7 +1,12 @@
 //! The dev loops: the web's, serving the page and reloading it on each rebuild, and the
 //! terminal's, rebuilding the binary an attached terminal swaps in.
 
-use std::{path::PathBuf, sync::mpsc, thread, time::Duration};
+use std::{
+  path::{Path, PathBuf},
+  sync::mpsc,
+  thread,
+  time::Duration,
+};
 
 use crate::{
   manifest::{App, LiveApp},
@@ -149,8 +154,8 @@ fn binary_digest(path: &std::path::Path) -> Option<u64> {
   Some(hasher.finish())
 }
 
-/// The sources a dev loop watches: the workspace's packages, the app's sources and
-/// manifests, and its asset roots, watched again when the roots change.
+/// The sources a dev loop watches: the sources and manifests of the app's local
+/// packages, and its asset roots, watched again when the roots change.
 struct Sources {
   changes: mpsc::Receiver<()>,
   _watcher: notify::RecommendedWatcher,
@@ -163,8 +168,7 @@ impl Sources {
     use notify::{RecursiveMode, Watcher};
 
     let (sender, changes) = mpsc::channel();
-    let dir = app.dir.clone();
-    let manifests = [dir.join("Cargo.toml"), dir.join("skene.toml")];
+    let packages = app.package_dirs.clone();
     let mut watcher = notify::recommended_watcher(move |event: Result<notify::Event, _>| {
       if let Ok(event) = event
         && matches!(
@@ -176,21 +180,23 @@ impl Sources {
         && event
           .paths
           .iter()
-          .any(|path| path.parent() != Some(dir.as_path()) || manifests.contains(path))
+          .any(|path| Self::reaches_build(path, &packages))
       {
         let _ = sender.send(());
       }
     })
     .map_err(|error| error.to_string())?;
     let assets = app.asset_dirs();
-    let mut roots = vec![
-      (
-        app.workspace_root.join("packages"),
-        RecursiveMode::Recursive,
-      ),
-      (app.dir.join("src"), RecursiveMode::Recursive),
-      (app.dir.clone(), RecursiveMode::NonRecursive),
-    ];
+    let mut roots: Vec<_> = app
+      .package_dirs
+      .iter()
+      .flat_map(|dir| {
+        [
+          (dir.join("src"), RecursiveMode::Recursive),
+          (dir.clone(), RecursiveMode::NonRecursive),
+        ]
+      })
+      .collect();
 
     roots.extend(
       assets
@@ -211,6 +217,19 @@ impl Sources {
       _watcher: watcher,
       assets,
     })
+  }
+
+  /// Whether a change at `path` reaches the build: anything beneath a watched root, and
+  /// of a package directory's own files its manifests and build script alone.
+  fn reaches_build(path: &Path, packages: &[PathBuf]) -> bool {
+    let in_package = path
+      .parent()
+      .is_some_and(|parent| packages.iter().any(|dir| dir == parent));
+
+    !in_package
+      || path
+        .file_name()
+        .is_some_and(|name| name == "Cargo.toml" || name == "skene.toml" || name == "build.rs")
   }
 
   /// Waits for a change and the rest of the burst one save produces; `false` once the

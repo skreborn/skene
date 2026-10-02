@@ -1,5 +1,5 @@
 [alias]
-skene = "run --package skene-cli --release --"
+skene = "run --package skene-cli --profile cli --"
 xtask = "run --package xtask --"
 
 [target.wasm32-unknown-unknown]

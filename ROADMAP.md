@@ -115,8 +115,7 @@ in a code comment.
     `pagehide` session-storage copy restores on reloads alone and is cleared at boot.
     - The dev loop: the watch follows the app's path packages or its dep-info file, not
     this repository's `packages/`; cargo's `fresh` flag gates wasm-bindgen, the splitter
-    and the reload, instead of the whole debug binary being hashed after every build;
-    `cargo skene` builds with a thin-LTO profile.
+    and the reload, instead of the whole debug binary being hashed after every build.
 6. **The app layer before 1.0.** Every surveyed framework treats these as table
     stakes, and each is cheaper to design before the native family than after it.
     - Forms: text-entry purposes (password, email, number, search, tel, url) and

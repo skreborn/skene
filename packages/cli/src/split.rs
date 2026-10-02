@@ -22,13 +22,12 @@ const MARKER: &[u8] = b"__wasm_split_00";
 /// callback, as a dependency is, it returns the load.
 const LOADER_GLUE: &str = include_str!("split.js");
 
-/// Splits the bindgened wasm in `dist/web` when the app opts in, `original` the wasm
-/// cargo built it from.
+/// Splits the bindgened wasm in `out` when the app opts in, `original` the wasm cargo
+/// built it from.
 ///
 /// Without `#[lazy]` markers in the build this is a no-op; with markers but no
 /// `[web] split = true` it fails, naming the missing setting.
-pub(crate) fn split_web(app: &App, original: &Path) -> Result<(), String> {
-  let out = app.dir.join("dist/web");
+pub(crate) fn split_web(app: &App, original: &Path, out: &Path) -> Result<(), String> {
   let main_path = out.join(format!("{}_bg.wasm", app.stem));
   let bindgened =
     fs::read(&main_path).map_err(|error| format!("{}: {error}", main_path.display()))?;
@@ -68,10 +67,10 @@ pub(crate) fn split_web(app: &App, original: &Path) -> Result<(), String> {
 
   fs::write(&manifest, loader_manifest(app, &output)?).map_err(|error| error.to_string())?;
   println!(
-    "split {} lazy module(s) and {} shared chunk(s) out of {}",
+    "split {} lazy module(s) and {} shared chunk(s) out of {}_bg.wasm",
     output.modules.len(),
     output.chunks.len(),
-    main_path.display(),
+    app.stem,
   );
 
   Ok(())

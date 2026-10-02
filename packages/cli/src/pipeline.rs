@@ -17,29 +17,80 @@ use crate::manifest::App;
 const MESSAGE_FORMAT: &str = "--message-format=json-render-diagnostics";
 
 /// Builds the app's browser wasm, generates its bindings, writes the boot page and
-/// copies the assets—all into `<app>/dist/web`, replacing the folder wholesale, which
-/// deploys as a site's root. A dev build's page joins the dev loop.
+/// copies the assets—all into `<app>/dist/web`, replacing the folder wholesale once
+/// every step has succeeded, which deploys as a site's root. A dev build's page joins
+/// the dev loop.
 pub(crate) fn build_web(app: &App, release: bool, dev: bool) -> Result<(), String> {
   let wasm = build_wasm(app, release)?;
+  let out = WebOut::stage(&app.dir.join("dist"))?;
 
-  clear_web_out(app);
-  generate_bindings(app, &wasm)?;
-  crate::split::split_web(app, &wasm)?;
-  write_page(app, dev)?;
-  app.copy_assets(&app.dir.join("dist/web"))
+  generate_bindings(&wasm, out.path())?;
+  crate::split::split_web(app, &wasm, out.path())?;
+  write_page(app, dev, out.path())?;
+  app.copy_assets(out.path())?;
+  out.publish()
 }
 
-/// Deletes `<app>/dist/web`. Every web build—CSR or static—replaces the folder
-/// wholesale, after its compile succeeds, so stale artifacts never linger and a
-/// failed rebuild leaves the served output standing.
-fn clear_web_out(app: &App) {
-  let _ = fs::remove_dir_all(app.dir.join("dist/web"));
+/// A web build's output, written beside `dist/web` and moved into its place once
+/// published, so a failed build leaves the served output standing; dropped unpublished,
+/// it is removed.
+struct WebOut {
+  dist: PathBuf,
+  staging: PathBuf,
+  published: bool,
 }
 
-/// Writes the generated CSR boot page: the web platform's document around an empty
-/// body, titled after the package, booting the bundle and, in `dev`, joining the dev
-/// loop.
-fn write_page(app: &App, dev: bool) -> Result<(), String> {
+impl WebOut {
+  /// An empty staging directory for the next output under `dist`.
+  fn stage(dist: &Path) -> Result<Self, String> {
+    let staging = dist.join("web.staging");
+    let _ = fs::remove_dir_all(&staging);
+
+    fs::create_dir_all(&staging).map_err(|error| format!("{}: {error}", staging.display()))?;
+
+    Ok(Self {
+      dist: dist.to_owned(),
+      staging,
+      published: false,
+    })
+  }
+
+  /// Where the build writes.
+  fn path(&self) -> &Path {
+    &self.staging
+  }
+
+  /// Replaces `dist/web` with the staged output.
+  fn publish(mut self) -> Result<(), String> {
+    let web = self.dist.join("web");
+    let replaced = self.dist.join("web.replaced");
+    let _ = fs::remove_dir_all(&replaced);
+
+    if web.exists() {
+      fs::rename(&web, &replaced).map_err(|error| format!("{}: {error}", web.display()))?;
+    }
+
+    fs::rename(&self.staging, &web).map_err(|error| format!("{}: {error}", web.display()))?;
+    self.published = true;
+
+    let _ = fs::remove_dir_all(&replaced);
+
+    Ok(())
+  }
+}
+
+impl Drop for WebOut {
+  fn drop(&mut self) {
+    if !self.published {
+      let _ = fs::remove_dir_all(&self.staging);
+    }
+  }
+}
+
+/// Writes the generated CSR boot page into `out`: the web platform's document around an
+/// empty body, titled after the package, booting the bundle and, in `dev`, joining the
+/// dev loop.
+fn write_page(app: &App, dev: bool, out: &Path) -> Result<(), String> {
   let document = skene_web::platform::Document {
     bundle: Some(app.stem.clone()),
     dev,
@@ -52,7 +103,7 @@ fn write_page(app: &App, dev: bool) -> Result<(), String> {
 
   let page = document.opening(&title, "") + &document.closing(None);
 
-  fs::write(app.dir.join("dist/web/index.html"), page).map_err(|error| error.to_string())
+  fs::write(out.join("index.html"), page).map_err(|error| error.to_string())
 }
 
 /// The host's target triple, as rustc reports it.
@@ -224,14 +275,14 @@ fn build_wasm(app: &App, release: bool) -> Result<PathBuf, String> {
     .ok_or_else(|| format!("cargo built no wasm for {}", app.package))
 }
 
-/// Generates the bindings of the built `wasm` into `<app>/dist/web`.
-fn generate_bindings(app: &App, wasm: &Path) -> Result<(), String> {
+/// Generates the bindings of the built `wasm` into `out`.
+fn generate_bindings(wasm: &Path, out: &Path) -> Result<(), String> {
   wasm_bindgen_cli_support::Bindgen::new()
     .input_path(wasm)
     .omit_default_module_path(false)
     .web(true)
     .map_err(|error| format!("wasm-bindgen: {error:#}"))?
-    .generate(app.dir.join("dist/web"))
+    .generate(out)
     .map_err(|error| format!("wasm-bindgen: {error:#}"))
 }
 
@@ -298,13 +349,13 @@ pub(crate) fn build_server(app: &App, release: bool) -> Result<PathBuf, String> 
 /// hydrates the markup into the running app. Paths are root-absolute: the output
 /// expects `dist/web` served as the site root.
 pub(crate) fn build_static(app: &App, routes: &[String], release: bool) -> Result<(), String> {
-  let out = &app.dir.join("dist/web");
   let artifact = build_server(app, release)?;
   let wasm = build_wasm(app, release)?;
+  let staged = WebOut::stage(&app.dir.join("dist"))?;
+  let out = staged.path();
 
-  clear_web_out(app);
-  generate_bindings(app, &wasm)?;
-  crate::split::split_web(app, &wasm)?;
+  generate_bindings(&wasm, out)?;
+  crate::split::split_web(app, &wasm, out)?;
 
   let mut renderer = crate::render::Renderer::load(artifact, app.dir.clone(), false)?;
   // No explicit routes: render every route the app enumerates (see
@@ -334,8 +385,56 @@ pub(crate) fn build_static(app: &App, routes: &[String], release: bool) -> Resul
     let file = directory.join("index.html");
 
     fs::write(&file, page).map_err(|error| error.to_string())?;
-    println!("rendered {route} -> {}", file.display());
+    println!(
+      "rendered {route} -> {}",
+      app.dir.join(route_file(route)).display()
+    );
   }
 
-  app.copy_assets(out)
+  app.copy_assets(out)?;
+  staged.publish()
+}
+
+/// The file a route's page is published at, under `dist/web`.
+fn route_file(route: &str) -> PathBuf {
+  Path::new("dist/web")
+    .join(route.trim_start_matches('/'))
+    .join("index.html")
+}
+
+#[cfg(test)]
+mod tests {
+  use std::fs;
+
+  use super::WebOut;
+
+  /// A build dropped unpublished leaves the output standing and its staging gone, and a
+  /// published one replaces the output whole.
+  #[test]
+  fn a_build_replaces_the_output_once_published() {
+    let dist = std::env::temp_dir().join(format!("skene-web-out-{}", std::process::id()));
+    let web = dist.join("web");
+    let _ = fs::remove_dir_all(&dist);
+
+    fs::create_dir_all(&web).unwrap();
+    fs::write(web.join("stale.js"), "old").unwrap();
+
+    let failed = WebOut::stage(&dist).unwrap();
+
+    fs::write(failed.path().join("index.html"), "new").unwrap();
+    drop(failed);
+
+    assert!(web.join("stale.js").is_file());
+    assert!(!dist.join("web.staging").exists());
+
+    let built = WebOut::stage(&dist).unwrap();
+
+    fs::write(built.path().join("index.html"), "new").unwrap();
+    built.publish().unwrap();
+
+    assert!(!web.join("stale.js").exists());
+    assert_eq!(fs::read_to_string(web.join("index.html")).unwrap(), "new");
+
+    fs::remove_dir_all(&dist).unwrap();
+  }
 }

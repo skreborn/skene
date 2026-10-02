@@ -149,8 +149,8 @@ fn binary_digest(path: &std::path::Path) -> Option<u64> {
   Some(hasher.finish())
 }
 
-/// The sources a dev loop watches: the workspace's packages, the app, and its asset
-/// roots, watched again when the roots change.
+/// The sources a dev loop watches: the workspace's packages, the app's sources and
+/// manifests, and its asset roots, watched again when the roots change.
 struct Sources {
   changes: mpsc::Receiver<()>,
   _watcher: notify::RecommendedWatcher,
@@ -163,6 +163,8 @@ impl Sources {
     use notify::{RecursiveMode, Watcher};
 
     let (sender, changes) = mpsc::channel();
+    let dir = app.dir.clone();
+    let manifests = [dir.join("Cargo.toml"), dir.join("skene.toml")];
     let mut watcher = notify::recommended_watcher(move |event: Result<notify::Event, _>| {
       if let Ok(event) = event
         && matches!(
@@ -171,6 +173,10 @@ impl Sources {
             | notify::EventKind::Modify(_)
             | notify::EventKind::Remove(_)
         )
+        && event
+          .paths
+          .iter()
+          .any(|path| path.parent() != Some(dir.as_path()) || manifests.contains(path))
       {
         let _ = sender.send(());
       }
@@ -178,17 +184,24 @@ impl Sources {
     .map_err(|error| error.to_string())?;
     let assets = app.asset_dirs();
     let mut roots = vec![
-      app.workspace_root.join("packages"),
-      app.dir.join("src"),
-      app.dir.join("skene.toml"),
+      (
+        app.workspace_root.join("packages"),
+        RecursiveMode::Recursive,
+      ),
+      (app.dir.join("src"), RecursiveMode::Recursive),
+      (app.dir.clone(), RecursiveMode::NonRecursive),
     ];
 
-    roots.extend(assets.iter().cloned());
+    roots.extend(
+      assets
+        .iter()
+        .map(|root| (root.clone(), RecursiveMode::Recursive)),
+    );
 
-    for root in roots {
+    for (root, mode) in roots {
       if root.exists() {
         watcher
-          .watch(&root, RecursiveMode::Recursive)
+          .watch(&root, mode)
           .map_err(|error| format!("watch {}: {error}", root.display()))?;
       }
     }

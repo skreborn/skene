@@ -22,13 +22,46 @@ const MESSAGE_FORMAT: &str = "--message-format=json-render-diagnostics";
 /// the dev loop.
 pub(crate) fn build_web(app: &App, release: bool, dev: bool) -> Result<(), String> {
   let wasm = build_wasm(app, release)?;
+
+  publish_web(app, &wasm.path, dev)
+}
+
+/// Rebuilds the dev loop's web output: wholesale where cargo rebuilt the wasm or `stale`
+/// says the output missed the last build, and otherwise the assets alone, copied over
+/// the output in place. Returns whether the bundle was rebuilt.
+pub(crate) fn rebuild_web(app: &App, release: bool, stale: bool) -> Result<bool, String> {
+  let wasm = build_wasm(app, release)?;
+
+  if wasm.fresh && !stale {
+    app.copy_assets(&app.dir.join("dist/web"))?;
+
+    return Ok(false);
+  }
+
+  publish_web(app, &wasm.path, true)?;
+
+  Ok(true)
+}
+
+/// Generates the bindings of `wasm`, splits it, writes the boot page and copies the
+/// assets into a staged output, published as `<app>/dist/web` once every step has
+/// succeeded.
+fn publish_web(app: &App, wasm: &Path, dev: bool) -> Result<(), String> {
   let out = WebOut::stage(&app.dir.join("dist"))?;
 
-  generate_bindings(&wasm, out.path())?;
-  crate::split::split_web(app, &wasm, out.path())?;
+  generate_bindings(wasm, out.path())?;
+  crate::split::split_web(app, wasm, out.path())?;
   write_page(app, dev, out.path())?;
   app.copy_assets(out.path())?;
   out.publish()
+}
+
+/// A crate cargo built: its file, and whether cargo found it up to date.
+pub(crate) struct Built {
+  /// The built file.
+  pub path: PathBuf,
+  /// Whether cargo reused the file unchanged.
+  pub fresh: bool,
 }
 
 /// A web build's output, written beside `dist/web` and moved into its place once
@@ -174,17 +207,21 @@ fn cargo_artifacts(command: &mut Command, quiet: bool) -> Result<Vec<Artifact>, 
 }
 
 /// The binary the app's library built as among `artifacts`.
-fn binary(app: &App, artifacts: &[Artifact]) -> Result<PathBuf, String> {
+fn binary(app: &App, artifacts: &[Artifact]) -> Result<Built, String> {
   artifacts
     .iter()
     .filter(|artifact| artifact.target.name == app.stem)
     .find_map(|artifact| {
-      artifact
+      let path = artifact
         .executable
         .clone()
-        .or_else(|| artifact.filenames.first().cloned())
+        .or_else(|| artifact.filenames.first().cloned())?;
+
+      Some(Built {
+        path: path.into_std_path_buf(),
+        fresh: artifact.fresh,
+      })
     })
-    .map(cargo_metadata::camino::Utf8PathBuf::into_std_path_buf)
     .ok_or_else(|| format!("cargo built no binary for {}", app.package))
 }
 
@@ -209,7 +246,7 @@ fn build_library(app: &App, crate_type: &str, target: &str) -> Command {
 
 /// Builds the app's terminal binary for the host, quietly, and returns its path; on
 /// failure returns cargo's diagnostics.
-pub(crate) fn build_terminal_binary(app: &App, release: bool) -> Result<PathBuf, String> {
+pub(crate) fn build_terminal_binary(app: &App, release: bool) -> Result<Built, String> {
   let mut command = build_library(app, "bin", host_triple()?);
 
   if release {
@@ -224,7 +261,7 @@ pub(crate) fn build_terminal_binary(app: &App, release: bool) -> Result<PathBuf,
 /// Builds the app's terminal binary and places it in `<app>/dist/terminal`, named after
 /// the package.
 pub(crate) fn build_terminal(app: &App, release: bool) -> Result<(), String> {
-  let binary = build_terminal_binary(app, release)?;
+  let binary = build_terminal_binary(app, release)?.path;
   let out_dir = app.dir.join("dist/terminal");
 
   fs::create_dir_all(&out_dir).map_err(|error| error.to_string())?;
@@ -239,8 +276,8 @@ pub(crate) fn build_terminal(app: &App, release: bool) -> Result<(), String> {
   Ok(())
 }
 
-/// Builds the app's browser wasm and returns its path.
-fn build_wasm(app: &App, release: bool) -> Result<PathBuf, String> {
+/// Builds the app's browser wasm.
+fn build_wasm(app: &App, release: bool) -> Result<Built, String> {
   let mut command = build_library(app, "cdylib", "wasm32-unknown-unknown");
 
   // A split build keeps what the split tool reads—relocations, symbol names, unfused
@@ -269,9 +306,17 @@ fn build_wasm(app: &App, release: bool) -> Result<PathBuf, String> {
   artifacts
     .iter()
     .filter(|artifact| artifact.target.name == app.stem)
-    .flat_map(|artifact| &artifact.filenames)
-    .find(|file| file.extension() == Some("wasm"))
-    .map(|file| file.clone().into_std_path_buf())
+    .find_map(|artifact| {
+      let file = artifact
+        .filenames
+        .iter()
+        .find(|file| file.extension() == Some("wasm"))?;
+
+      Some(Built {
+        path: file.clone().into_std_path_buf(),
+        fresh: artifact.fresh,
+      })
+    })
     .ok_or_else(|| format!("cargo built no wasm for {}", app.package))
 }
 
@@ -325,7 +370,7 @@ fn name_server_platform(command: &mut Command, host: &str) {
 
 /// Builds the app's server binary for the host, with the server platform named, and
 /// returns its path.
-pub(crate) fn build_server(app: &App, release: bool) -> Result<PathBuf, String> {
+pub(crate) fn build_server(app: &App, release: bool) -> Result<Built, String> {
   let host = host_triple()?;
   let mut command = build_library(app, "bin", host);
 
@@ -349,8 +394,8 @@ pub(crate) fn build_server(app: &App, release: bool) -> Result<PathBuf, String> 
 /// hydrates the markup into the running app. Paths are root-absolute: the output
 /// expects `dist/web` served as the site root.
 pub(crate) fn build_static(app: &App, routes: &[String], release: bool) -> Result<(), String> {
-  let artifact = build_server(app, release)?;
-  let wasm = build_wasm(app, release)?;
+  let artifact = build_server(app, release)?.path;
+  let wasm = build_wasm(app, release)?.path;
   let staged = WebOut::stage(&app.dir.join("dist"))?;
   let out = staged.path();
 

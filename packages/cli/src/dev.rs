@@ -15,9 +15,9 @@ use crate::{
 };
 
 /// The web dev loop: build once, then serve while watching for changes; each change
-/// reads the app's `skene.toml` again, and each successful rebuild tells every open
-/// page to reload. With `ssr` the server binary is built too and every route is
-/// rendered per request through it.
+/// reads the app's `skene.toml` again, and each rebuild that changed the bundle, the
+/// server binary or an asset tells every open page to reload. With `ssr` the server
+/// binary is built too and every route is rendered per request through it.
 pub(crate) fn dev(app: App, port: u16, release: bool, ssr: bool) -> Result<(), String> {
   pipeline::build_web(&app, release, true)?;
 
@@ -29,6 +29,8 @@ pub(crate) fn dev(app: App, port: u16, release: bool, ssr: bool) -> Result<(), S
   }
 
   let mut sources = Sources::watch(&app.current())?;
+  let mut assets = app.current().asset_stamp();
+  let mut stale = false;
 
   {
     let app = app.clone();
@@ -39,23 +41,45 @@ pub(crate) fn dev(app: App, port: u16, release: bool, ssr: bool) -> Result<(), S
         println!("change detected; rebuilding…");
 
         let rebuilt = app.reload().and_then(|current| {
-          pipeline::build_web(&current, release, true)?;
+          let mut changed = pipeline::rebuild_web(&current, release, stale)?;
 
           if ssr {
-            dev.set_renderer(Some(load_renderer(&current, release)?));
+            let server = pipeline::build_server(&current, release)?;
+
+            if !server.fresh || stale {
+              dev.set_renderer(Some(crate::render::Renderer::load(
+                server.path,
+                current.dir.clone(),
+                true,
+              )?));
+              changed = true;
+            }
           }
 
-          Ok(())
+          Ok(changed)
         });
 
         sources.follow(&app.current());
 
         match rebuilt {
-          Ok(()) => {
-            dev.trigger();
-            println!("rebuilt; reloading");
+          Ok(changed) => {
+            let stamp = app.current().asset_stamp();
+
+            stale = false;
+
+            if changed || stamp != assets {
+              assets = stamp;
+              dev.trigger();
+              println!("rebuilt; reloading");
+            }
+            else {
+              println!("rebuilt; nothing changed");
+            }
           }
-          Err(error) => eprintln!("rebuild failed: {error}"),
+          Err(error) => {
+            stale = true;
+            eprintln!("rebuild failed: {error}");
+          }
         }
       }
     });
@@ -67,9 +91,9 @@ pub(crate) fn dev(app: App, port: u16, release: bool, ssr: bool) -> Result<(), S
 /// Builds the app's server binary and starts it as a render worker whose pages join
 /// the dev loop.
 fn load_renderer(app: &App, release: bool) -> Result<crate::render::Renderer, String> {
-  let artifact = pipeline::build_server(app, release)?;
+  let server = pipeline::build_server(app, release)?;
 
-  crate::render::Renderer::load(artifact, app.dir.clone(), true)
+  crate::render::Renderer::load(server.path, app.dir.clone(), true)
 }
 
 /// The terminal build loop: build, publish the binary for an attached terminal, and
@@ -81,9 +105,8 @@ pub(crate) fn run_terminal(mut app: App, release: bool) -> Result<(), String> {
   let dev = Dev::default();
   let id = spawn_state_server(dev.clone())?;
   let mut sources = Sources::watch(&app)?;
-  let mut running = binary_digest(&binary);
 
-  dev.set_binary(binary.clone(), app.dir.clone());
+  dev.set_binary(binary.path, app.dir.clone());
   println!(
     "built; attach the app in another terminal:\n  {} attach {id}",
     cli_command()
@@ -99,23 +122,19 @@ pub(crate) fn run_terminal(mut app: App, release: bool) -> Result<(), String> {
       pipeline::build_terminal_binary(&app, release)
     });
 
-    // A rebuild the change did not reach—an unrelated file, a comment elsewhere—
-    // leaves the binary identical, and the attached app (and its state) stays up
-    // instead of restarting for nothing.
+    // A rebuild the change did not reach leaves the binary as cargo found it, and the
+    // attached app (and its state) stays up instead of restarting for nothing.
     match rebuilt {
       Ok(binary) => {
         dev.clear_notice();
 
-        let rebuilt = binary_digest(&binary);
-
-        if rebuilt.is_some() && rebuilt == running {
+        if binary.fresh {
           println!("rebuilt; nothing changed");
 
           continue;
         }
 
-        running = rebuilt;
-        dev.set_binary(binary.clone(), app.dir.clone());
+        dev.set_binary(binary.path, app.dir.clone());
         println!("rebuilt; swapping");
       }
       Err(error) => {
@@ -139,19 +158,6 @@ fn cli_command() -> &'static str {
   });
 
   if under_target { "cargo skene" } else { "skene" }
-}
-
-/// The binary's content digest, to tell a rebuild that changed nothing from one
-/// that needs a swap.
-fn binary_digest(path: &std::path::Path) -> Option<u64> {
-  use std::hash::{DefaultHasher, Hash, Hasher};
-
-  let bytes = std::fs::read(path).ok()?;
-  let mut hasher = DefaultHasher::new();
-
-  bytes.hash(&mut hasher);
-
-  Some(hasher.finish())
 }
 
 /// The sources a dev loop watches: the sources and manifests of the app's local

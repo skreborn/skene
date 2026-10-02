@@ -12,6 +12,7 @@
 use std::{
   collections::{HashMap, HashSet, VecDeque},
   fs,
+  hash::{DefaultHasher, Hash, Hasher},
   path::{Path, PathBuf},
   sync::{Arc, PoisonError, RwLock},
 };
@@ -319,6 +320,33 @@ impl App {
       })
       .filter(|path| path.is_dir())
       .collect()
+  }
+
+  /// A digest of every declared asset file's path, length and modification time, which
+  /// moves when an asset is added, removed or changed.
+  pub(crate) fn asset_stamp(&self) -> u64 {
+    let mut hasher = DefaultHasher::new();
+
+    for root in &self.assets {
+      for declared in &root.paths {
+        let entries = walkdir::WalkDir::new(root.dir.join(declared.trim_end_matches('/')))
+          .sort_by_file_name()
+          .into_iter()
+          .filter_map(Result::ok);
+
+        for entry in entries {
+          if let Ok(metadata) = entry.metadata()
+            && metadata.is_file()
+          {
+            entry.path().hash(&mut hasher);
+            metadata.len().hash(&mut hasher);
+            metadata.modified().ok().hash(&mut hasher);
+          }
+        }
+      }
+    }
+
+    hasher.finish()
   }
 }
 

@@ -8,6 +8,10 @@
 //! never statically checked. A library the app depends on, directly or through
 //! another, over normal dependencies, contributes the assets its own `skene.toml`
 //! declares the same way.
+//!
+//! An app's `public` directory holds the files served at the site's root as they are,
+//! unscoped: `public/favicon.ico` at `/favicon.ico`, `public/.well-known/` at
+//! `/.well-known/`.
 
 use std::{
   collections::{HashMap, HashSet, VecDeque},
@@ -307,7 +311,31 @@ impl App {
     Ok(())
   }
 
-  /// Every directory to watch for asset changes.
+  /// Copies the app's `public` directory, where it has one, to the root of `out`.
+  pub(crate) fn copy_public(&self, out: &Path) -> Result<(), String> {
+    let public = self.public_dir();
+
+    if !public.is_dir() {
+      return Ok(());
+    }
+
+    copy_tree(&public, "", out, &mut Vec::new())
+  }
+
+  /// The app's `public` directory: the files served at the site's root as they are.
+  pub(crate) fn public_dir(&self) -> PathBuf {
+    self.dir.join("public")
+  }
+
+  /// The file of the app's `public` directory a path from the site's root names, if
+  /// there is one.
+  pub(crate) fn public_file(&self, relative: &str) -> Option<PathBuf> {
+    let path = self.public_dir().join(relative);
+
+    path.is_file().then_some(path)
+  }
+
+  /// Every directory to watch for asset changes, the `public` one among them.
   pub(crate) fn asset_dirs(&self) -> Vec<PathBuf> {
     self
       .assets
@@ -318,30 +346,35 @@ impl App {
           .iter()
           .map(|declared| root.dir.join(declared.trim_end_matches('/')))
       })
+      .chain([self.public_dir()])
       .filter(|path| path.is_dir())
       .collect()
   }
 
-  /// A digest of every declared asset file's path, length and modification time, which
-  /// moves when an asset is added, removed or changed.
+  /// A digest of every declared asset file's and public file's path, length and
+  /// modification time, which moves when one is added, removed or changed.
   pub(crate) fn asset_stamp(&self) -> u64 {
     let mut hasher = DefaultHasher::new();
+    let declared = self.assets.iter().flat_map(|root| {
+      root
+        .paths
+        .iter()
+        .map(|declared| root.dir.join(declared.trim_end_matches('/')))
+    });
 
-    for root in &self.assets {
-      for declared in &root.paths {
-        let entries = walkdir::WalkDir::new(root.dir.join(declared.trim_end_matches('/')))
-          .sort_by_file_name()
-          .into_iter()
-          .filter_map(Result::ok);
+    for path in declared.chain([self.public_dir()]) {
+      let entries = walkdir::WalkDir::new(path)
+        .sort_by_file_name()
+        .into_iter()
+        .filter_map(Result::ok);
 
-        for entry in entries {
-          if let Ok(metadata) = entry.metadata()
-            && metadata.is_file()
-          {
-            entry.path().hash(&mut hasher);
-            metadata.len().hash(&mut hasher);
-            metadata.modified().ok().hash(&mut hasher);
-          }
+      for entry in entries {
+        if let Ok(metadata) = entry.metadata()
+          && metadata.is_file()
+        {
+          entry.path().hash(&mut hasher);
+          metadata.len().hash(&mut hasher);
+          metadata.modified().ok().hash(&mut hasher);
         }
       }
     }
@@ -491,5 +524,41 @@ mod tests {
     assert!(builds_from("build"));
     assert!(!builds_from("cli"));
     assert!(!builds_from("terminal"));
+  }
+
+  /// The public directory's files land at the output's root, and a path from the site's
+  /// root names the one it holds.
+  #[test]
+  fn public_files_land_at_the_site_root() {
+    let dir = std::env::temp_dir().join(format!("skene-public-{}", std::process::id()));
+    let public = dir.join("public");
+    let out = dir.join("out");
+    let _ = fs::remove_dir_all(&dir);
+
+    fs::create_dir_all(public.join(".well-known")).unwrap();
+    fs::write(public.join("robots.txt"), "User-agent: *").unwrap();
+    fs::write(public.join(".well-known/security.txt"), "Contact: x").unwrap();
+
+    let app = App {
+      dir: dir.clone(),
+      workspace_root: dir.clone(),
+      package: "app".to_owned(),
+      stem: "app".to_owned(),
+      split: false,
+      assets: Vec::new(),
+      package_dirs: vec![dir.clone()],
+    };
+
+    app.copy_public(&out).unwrap();
+
+    assert!(out.join("robots.txt").is_file());
+    assert!(out.join(".well-known/security.txt").is_file());
+    assert_eq!(
+      app.public_file(".well-known/security.txt"),
+      Some(public.join(".well-known/security.txt"))
+    );
+    assert_eq!(app.public_file("missing.txt"), None);
+
+    fs::remove_dir_all(&dir).unwrap();
   }
 }

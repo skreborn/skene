@@ -443,7 +443,7 @@ fn handle_request(mut stream: TcpStream, app: &App, dev: Option<&Dev>) {
   };
 
   match (method, relative.as_str(), dev) {
-    ("GET", relative, Some(dev)) if is_route(relative) => {
+    ("GET", relative, Some(dev)) if is_route(relative) && app.public_file(relative).is_none() => {
       let path = encoded_path(target).unwrap_or_else(|| format!("/{relative}"));
 
       match dev.render(&path, &headers) {
@@ -586,6 +586,7 @@ fn serve_file(stream: &mut TcpStream, app: &App, relative: &str) {
   );
   let path = Some(built)
     .filter(|path| path.is_file())
+    .or_else(|| app.public_file(relative))
     .or_else(|| app.resolve_asset(relative))
     .or_else(|| {
       Some(app.dir.join("dist/web/index.html")).filter(|page| is_route(relative) && page.is_file())

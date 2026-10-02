@@ -33,7 +33,10 @@ pub(crate) fn rebuild_web(app: &App, release: bool, stale: bool) -> Result<bool,
   let wasm = build_wasm(app, release)?;
 
   if wasm.fresh && !stale {
-    app.copy_assets(&app.dir.join("dist/web"))?;
+    let out = app.dir.join("dist/web");
+
+    app.copy_public(&out)?;
+    app.copy_assets(&out)?;
 
     return Ok(false);
   }
@@ -43,12 +46,13 @@ pub(crate) fn rebuild_web(app: &App, release: bool, stale: bool) -> Result<bool,
   Ok(true)
 }
 
-/// Generates the bindings of `wasm`, splits or, in `release`, optimizes it, writes the
-/// boot page and copies the assets into a staged output, published as `<app>/dist/web`
-/// once every step has succeeded.
+/// Copies the public files, generates the bindings of `wasm`, splits or, in `release`,
+/// optimizes it, writes the boot page and copies the assets into a staged output,
+/// published as `<app>/dist/web` once every step has succeeded.
 fn publish_web(app: &App, wasm: &Path, release: bool, dev: bool) -> Result<(), String> {
   let out = WebOut::stage(&app.dir.join("dist"))?;
 
+  app.copy_public(out.path())?;
   generate_bindings(wasm, out.path())?;
 
   if !crate::split::split_web(app, wasm, out.path())? && release {
@@ -438,6 +442,7 @@ pub(crate) fn build_static(app: &App, routes: &[String], release: bool) -> Resul
   let staged = WebOut::stage(&app.dir.join("dist"))?;
   let out = staged.path();
 
+  app.copy_public(out)?;
   generate_bindings(&wasm, out)?;
 
   if !crate::split::split_web(app, &wasm, out)? && release {

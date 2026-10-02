@@ -124,7 +124,7 @@ with the mouse off a plain drag is the terminal's.
 | `skene-transport` | `packages/transport` | The clients on the public seams alone: `http` (`Request`, `Response`, `send`; `fetch` on the web, a thread around `ureq` on every other host) and `ws` (`connect`, `send`, `receive`; the browser's `WebSocket` on the web, a thread around `tungstenite` elsewhere). |
 | `skene-build` | `packages/build` | The build script naming the web leaf a build compiles for, a build-dependency of every crate with code per leaf. |
 | `skene-dev` | `packages/dev` | The dev loop's protocol between the `skene` command and the app it runs. |
-| `skene-cli` | `packages/cli` | `skene new app <name> <platform>...`, `skene new lib <name> <platform>...`, `skene build web [--static]`, `skene build terminal`, `skene run web [--ssr]`, `skene run terminal` and `skene attach <id>`: bundling, the dev server with live reload and state kept across it in the page's own storage, the terminal build loop and the launcher that swaps each binary in place with the state carried across, static generation, `skene.toml` assets. |
+| `skene-cli` | `packages/cli` | `skene new app <name> <platform>...`, `skene new lib <name> <platform>...`, `skene build web [--static]`, `skene build terminal`, `skene run web [--ssr]`, `skene run terminal` and `skene attach <id>`: bundling, the dev server with live reload and state kept across it in the page's own storage, the terminal build loop and the launcher that swaps each binary in place with the state carried across, static generation, `skene.toml` assets, and the `public` directory served at the site's root. |
 
 ## Views, controls, themes
 

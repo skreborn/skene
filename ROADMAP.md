@@ -136,10 +136,9 @@ in a code comment.
     - Manifests: a `schema` key and forward-compatible parsing, strict for the app and
     lenient for dependencies, so a library published against a newer skene no longer
     breaks an older CLI; `[app] id, name, icon, links, locales` and the per-OS tables
-    reserved and validated now, so libraries can start declaring; a root `public`
-    directory for `/favicon.ico`, `/robots.txt` and `/.well-known/`, and files tried
-    before routes under `--ssr`. Whether `[package.metadata.skene]` replaces
-    `skene.toml` is settled before libraries declare.
+    reserved and validated now, so libraries can start declaring. Whether
+    `[package.metadata.skene]` replaces `skene.toml` is settled before libraries
+    declare.
     - Routing: `#[derive(Route)]` with params and a query, guaranteeing
     `parse(to_path(r)) == r`; paths decoded alike on every leaf; a stack with push, pop
     and `replace`, and a `Back` event dispatched like `ContextMenu`; an unparseable

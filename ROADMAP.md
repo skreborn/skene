@@ -110,9 +110,9 @@ in a code comment.
     are unset for children; the app snapshots before restoring the terminal and stages
     before install; a second `swap` in one read coalesces; each generation's binary is
     kept for a rollback with its state.
-    - The web: `skene run web --ssr` pages get the dev script, and a staged snapshot
-    boots a client render instead of a hydration; storage is keyed per app and tab; the
-    `pagehide` session-storage copy restores on reloads alone and is cleared at boot.
+    - The web: a staged snapshot boots a client render instead of a hydration; storage
+    is keyed per app and tab; the `pagehide` session-storage copy restores on reloads
+    alone and is cleared at boot.
 6. **The app layer before 1.0.** Every surveyed framework treats these as table
     stakes, and each is cheaper to design before the native family than after it.
     - Forms: text-entry purposes (password, email, number, search, tel, url) and

@@ -696,8 +696,10 @@
   (chromedriver, from `CHROMEDRIVER`, `PATH` or `~/.local/share/chrome-for-testing`),
   each with WebGPU switched on by `packages/web/webdriver.json`, so a painted box
   renders on the GPU there, where headless Chromium's software adapter keeps its
-  device; `browser_painted` hides `navigator.gpu` before its first box paints, so the CPU
-  blit is proven in the same run. The gate holds each browser binary to the least
+  device; without a GPU, Firefox finds an adapter only through Mesa's software Vulkan
+  driver (`mesa-vulkan-drivers`, which CI installs); `browser_painted` hides
+  `navigator.gpu` before its first box paints, so the CPU blit is proven in the same
+  run. The gate holds each browser binary to the least
   number of tests it lists for it in each engine, so a shrinking suite fails rather
   than passing quietly, and a new browser test raises its binary's number there. By
   hand, read each binary's `test result:` line

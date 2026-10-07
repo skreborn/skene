@@ -11,8 +11,11 @@ One list, every item big and small, top first. An item is resolved by landing it
 proving it unnecessary, or by recording it in `DECISIONS.md`; it is never left half-done
 in a code comment.
 
-1. **The first CI runs.** Neither CI workflow, the gate on every pull request nor the
-    weekly RustSec advisories, has run yet.
+1. **The gate on one stable toolchain.** CI installs the newest stable, so a Rust release
+    can fail the gate on an unchanged `main`, as 1.99's new lints and reworded diagnostics
+    failed its first run; a `rust-toolchain.toml` pins the stable that clippy and the
+    compile-fail expectations are held to, as `xtask/src/api.rs` pins the API snapshots'
+    nightly, and moving it is a change of its own.
 2. **One owner for style and interaction semantics.** The web compiler and the spine's
     `Resolver` implement one meaning twice, and the terminal, headless and the web each
     implement focus, press, hover and overlays; each mechanism gets one owner, and the
@@ -40,7 +43,9 @@ in a code comment.
     - The browser tier's painted-canvas test (`a_painted_box_draws_into_its_canvas`)
     now and then reads a transparent center pixel in Chromium after its minute's wait,
     and its panic fails the twenty tests after it in that binary; its first GPU paint
-    gets a wait the test drives rather than a deadline.
+    gets a wait the test drives rather than a deadline. Without a GPU it fails four runs
+    in five (Chrome for Testing 155, with or without a system Vulkan driver), the pixel
+    transparent for the whole minute.
     - The terminal's retained runtime (the taffy store, the incremental restyle, the
     damage and the measured rectangles, hit testing, focus, capture, wheel latching,
     field editing, selection, motion) is extracted into a kit generic over the

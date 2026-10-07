@@ -40,6 +40,11 @@ jobs:
           rustup toolchain install "${{ steps.versions.outputs.msrv }}" --profile minimal
           rustup toolchain install "${{ steps.versions.outputs.api_toolchain }}" --profile minimal --target wasm32-unknown-unknown
 
+      - name: Install a software Vulkan driver, Firefox's WebGPU adapter without a GPU
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends mesa-vulkan-drivers
+
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-deny,cargo-nextest,cargo-public-api@${{ steps.versions.outputs.public_api }},cargo-shear,wasm-bindgen@${{ steps.versions.outputs.wasm_bindgen }}

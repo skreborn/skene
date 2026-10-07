@@ -177,8 +177,7 @@ in a code comment.
     (wasm-split-cli's walrus 0.23 beside wasm-bindgen's 0.26) gone as their dependents
     converge. Criterion stays at 0.5 while 0.8 builds alloca's C on every unix target,
     which the Apple clippy check cannot cross-compile on Linux; base64 stays doubled
-    while sfv 0.15 holds 0.22. The transport's worker pool calls `try_update` in place of
-    the deprecated `fetch_update` once `rust-version` reaches 1.99, where it is stable.
+    while sfv 0.15 holds 0.22.
     - The documents: `AGENTS.md` at 150 lines or fewer of numbered one-to-three-sentence
     invariants, each linking its `DESIGN.md` section; `DESIGN.md` one chapter per
     mechanism, each with its contract, mechanism and decisions, the terminal's split by

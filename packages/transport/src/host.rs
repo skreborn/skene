@@ -53,14 +53,10 @@ pub(crate) fn run(job: impl FnOnce() + Send + 'static) {
 
   let _ = pool.sender.send(Box::new(job));
 
-  #[expect(
-    deprecated,
-    reason = "`try_update`, the name `fetch_update` is deprecated for, is unstable at the workspace's `rust-version`"
-  )]
   if pool.idle.load(Ordering::Acquire) == 0
     && pool
       .workers
-      .fetch_update(Ordering::AcqRel, Ordering::Acquire, |workers| {
+      .try_update(Ordering::AcqRel, Ordering::Acquire, |workers| {
         (workers < WORKERS).then_some(workers + 1)
       })
       .is_ok()

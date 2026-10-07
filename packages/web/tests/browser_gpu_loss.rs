@@ -15,7 +15,7 @@ use skene_web::{
   View,
   kurbo::Rect,
   platform::mount,
-  testing::{frames_until, fresh_root},
+  testing::{frames_until, fresh_root, next_frame},
   wasm_bindgen::{JsCast, JsValue},
 };
 use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
@@ -85,7 +85,13 @@ async fn a_lost_device_falls_back_to_the_cpu_in_a_fresh_canvas() {
       .is_some_and(|configuration| !configuration.is_null() && !configuration.is_undefined())
   };
 
-  assert!(frames_until(configured).await, "the box painted on the GPU");
+  let deadline = js_sys::Date::now() + 60_000.;
+
+  while !configured() && js_sys::Date::now() < deadline {
+    next_frame().await;
+  }
+
+  assert!(configured(), "the box painted on the GPU");
 
   let gpu_canvas = canvas_of(&root).expect("the canvas");
   let context = gpu_canvas

@@ -2,7 +2,23 @@
 //! style and a run measured by the platform's approximate metrics, laid out through the
 //! shared layout at the viewport.
 
-use skene_foundation::{Layout, NodeId, Platform, Scene, Size, StaticBoxStyle, StaticRunStyle};
+use skene_foundation::{
+  BoxField,
+  BoxFieldVisitor,
+  BoxStyle,
+  IntoBoxValue,
+  Layout,
+  NodeId,
+  Plain,
+  Platform,
+  Scene,
+  Size,
+  StaticBoxStyle,
+  StaticLeaf,
+  StaticRunStyle,
+  typography,
+  web::WebStyle,
+};
 use skene_layout::{
   Borders,
   BoxLayout,
@@ -16,13 +32,14 @@ use unicode_segmentation::UnicodeSegmentation;
 
 use crate::{
   Headless,
+  SlotValue,
   records::{DEFAULT_VIEWPORT, Kind},
-  resolve::{Env, Records},
+  resolve::{self, Env, Records},
   with_records,
 };
 
-/// The line height a run takes where its style sets none, as a multiple of its font
-/// size.
+/// The line height a run takes where neither its style nor the typography in force
+/// sets one, as a multiple of its font size.
 const LINE_HEIGHT: f32 = 1.5;
 
 /// A run's text as the layout measures it: each grapheme cluster half the font size
@@ -147,7 +164,14 @@ fn part(node: NodeId) -> Part<Measured> {
     None | Some(Shape::Absent) => Part::Absent,
     Some(Shape::Transparent) => Part::Transparent,
     Some(Shape::Box(layout, style, overlay)) => {
-      let resolved = env.with_resolver(|resolver| resolver.box_style(&style));
+      let mut resolved = env.with_resolver(|resolver| resolver.box_style(&style));
+
+      if moves(node) {
+        BoxStyle::<f32, Plain, WebStyle>::for_each_field(&mut Presented {
+          node,
+          style: &mut resolved,
+        });
+      }
 
       if resolved.hidden == Some(true) {
         return Part::Absent;
@@ -165,11 +189,19 @@ fn part(node: NodeId) -> Part<Measured> {
       }
     }
     Some(Shape::Run(style, text)) => {
-      let (resolved, layout) = env.with_resolver(|resolver| {
+      let (size, line_height, layout) = env.with_resolver(|resolver| {
         let annotation = Scene::<Headless>::read(|scene| scene.record(node)?.annotation().cloned());
+        let resolved = resolver.run_style(&style);
 
         (
-          resolver.run_style(&style),
+          resolved
+            .ext
+            .font_size
+            .or_else(|| resolver.keyframe_run_value(&StaticLeaf::from(typography::SIZE))),
+          resolved
+            .ext
+            .line_height
+            .or_else(|| resolver.keyframe_run_value(&StaticLeaf::from(typography::LINE_HEIGHT))),
           annotation.map(|annotation| annotation.resolve(resolver)),
         )
       });
@@ -184,14 +216,39 @@ fn part(node: NodeId) -> Part<Measured> {
         taffy,
         Measured {
           text,
-          size: resolved
-            .ext
-            .font_size
-            .map_or(Headless::FONT_SIZE, |size| size.0),
-          line_height: resolved.ext.line_height.unwrap_or(LINE_HEIGHT),
+          size: size.map_or(Headless::FONT_SIZE, |size| size.0),
+          line_height: line_height.unwrap_or(LINE_HEIGHT),
         },
       )
     }
+  }
+}
+
+/// Whether `node` declares a transition or an animation of its box.
+fn moves(node: NodeId) -> bool {
+  with_records(|records| {
+    records
+      .record(node)
+      .and_then(|record| record.kind.box_props())
+      .is_some_and(|props| {
+        !props.dynamics.transitions.is_empty() || !props.dynamics.animations.is_empty()
+      })
+  })
+}
+
+/// Writes the value each property of `node` presents, its motion laid over what it
+/// resolved to, into `style`.
+struct Presented<'a> {
+  node: NodeId,
+  style: &'a mut BoxStyle<f32, Plain, WebStyle>,
+}
+
+impl BoxFieldVisitor<f32, WebStyle> for Presented<'_> {
+  fn field<F: BoxField<f32, WebStyle>>(&mut self) {
+    *F::get_mut(self.style) = match resolve::resolve(self.node, F::KEY) {
+      Some(SlotValue::Box(value)) => F::Value::from_box_value(value),
+      _ => None,
+    };
   }
 }
 

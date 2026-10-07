@@ -6,21 +6,27 @@ use skene_foundation::{
   ContainerBase,
   DecorationBase,
   Dimension,
+  Easing,
   FlexBase,
   Flexibility,
   HasChild,
   HasChildren,
+  MotionBase,
   NodeHandle,
   NodeId,
   Point,
+  Property,
   Rect,
   Size,
+  Transition,
   View,
+  web::Typography,
 };
 use skene_headless::{
   Headless,
   box_props,
   children,
+  find_by_text,
   layout_rect,
   reset,
   run_props,
@@ -28,7 +34,7 @@ use skene_headless::{
   trigger_resize,
   trigger_size,
 };
-use skene_reactive::Owner;
+use skene_reactive::{Get, Owner, Set, Signal};
 
 type Column = skene_foundation::Column<Headless>;
 type Container = skene_foundation::Container<Headless>;
@@ -36,6 +42,7 @@ type Flexible<C = skene_foundation::NoChild> = skene_foundation::Flexible<Headle
 type Row = skene_foundation::Row<Headless>;
 type Stack = skene_foundation::Stack<Headless>;
 type Text = skene_foundation::Text<Headless>;
+type Theme<S, C = skene_foundation::NoChild> = skene_foundation::Theme<Headless, S, C>;
 
 /// The boxes and runs placed under `node`, its anchors left out.
 fn content(node: NodeId) -> Vec<NodeId> {
@@ -117,6 +124,27 @@ fn a_run_measures_by_the_platforms_metrics_and_wraps() {
     layout_rect(wrapped).map(|rect| rect.size.height),
     Some(48.),
     "two lines: `aa bb` fits 40, `cc` wraps"
+  );
+
+  owner.dispose();
+}
+
+/// A run that sets no size of its own measures by the typography in force where it sits.
+#[test]
+fn a_run_measures_by_the_typography_in_force() {
+  reset();
+
+  let owner = Owner::new();
+  let _theme = owner.enter(|| {
+    Theme::new(Typography::default().set_size(20.).set_line_height(2.))
+      .set_child_builder(|| Row::new().set_children((Text::new("ab"),)))
+      .build()
+  });
+  let run = find_by_text("ab").expect("the run");
+
+  assert_eq!(
+    layout_rect(run).map(|rect| rect.size),
+    Some(Size::new(20., 40.))
   );
 
   owner.dispose();
@@ -218,6 +246,40 @@ fn a_frame_reports_the_laid_out_size() {
     Some(Size::new(5., 5.)),
     "the hand's size holds"
   );
+
+  owner.dispose();
+}
+
+/// A box whose width moves under a transition lays out at the width the transition
+/// presents at the clock's reading.
+#[test]
+fn a_box_lays_out_at_the_width_its_motion_presents() {
+  reset();
+
+  let owner = Owner::new();
+  let width = Signal::new(100f32);
+  let node = owner.enter(|| {
+    Container::new()
+      .derive_width(move || width.get())
+      .set_height(Dimension::Length(10.))
+      .add_transition(Transition::new(Property::Width, 1.).set_easing(Easing::Linear))
+      .build()
+  });
+
+  assert_eq!(layout_rect(node).map(|rect| rect.size.width), Some(100.));
+
+  width.set(200.);
+  trigger_frame(std::time::Duration::from_millis(500));
+
+  assert_eq!(
+    layout_rect(node).map(|rect| rect.size.width),
+    Some(150.),
+    "halfway through the tween"
+  );
+
+  trigger_frame(std::time::Duration::from_millis(500));
+
+  assert_eq!(layout_rect(node).map(|rect| rect.size.width), Some(200.));
 
   owner.dispose();
 }

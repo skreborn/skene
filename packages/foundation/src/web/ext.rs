@@ -141,6 +141,11 @@ impl StyleExtension for WebStyle {
   }
 
   #[inline(always)]
+  fn run_value_from_number(number: f32) -> Option<RunValue<Self>> {
+    Some(RunValue::Extension(number))
+  }
+
+  #[inline(always)]
   fn interpolate_value(from: &f32, to: &f32, amount: f32) -> Option<f32> {
     Some(from + (to - from) * amount)
   }

@@ -8,8 +8,9 @@
 //!
 //! The scene lays out through the shared layout (`skene-layout`) at the viewport on
 //! every frame ([`trigger_frame`], [`trigger_resize`]), each run measured by approximate
-//! metrics: a grapheme cluster half its font size wide, a line one and a half times its
-//! font size tall unless its style sets a line height. A frame reports each box's laid-out
+//! metrics: a grapheme cluster half its font size wide, a line its font size times its
+//! line height tall, each from its style or the typography in force, else 16 pixels and
+//! one and a half. A frame reports each box's laid-out
 //! size to the observers bound to it, and [`layout_rect`] reads a fresh layout.
 //!
 //! The environment starts at a 1024 by 768 viewport, the light scheme and no reduced

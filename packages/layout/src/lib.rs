@@ -2,10 +2,13 @@
 //!
 //! The layout every platform but the web computes, on taffy: the shared style model
 //! mapped onto taffy's styles, generic over the platform's scalar, a unit of which is
-//! one unit of the layout ([`BoxLayout`]), and a tree keyed by the scene's nodes,
-//! retained across layouts or built from the scene for one, each node's part classified
-//! by its platform ([`Tree`]). The web lays out through CSS and needs none of it.
+//! one unit of the layout ([`BoxLayout`]), a tree keyed by the scene's nodes, retained
+//! across layouts or built from the scene for one, each node's part classified by its
+//! platform ([`Tree`]), and a paragraph of inline runs laid out as one text, each
+//! measured by its platform's metrics ([`Paragraph`]). The web lays out through CSS and
+//! needs none of it.
 
+mod paragraph;
 mod tree;
 
 use skene_foundation::{
@@ -33,7 +36,10 @@ use taffy::{
   style::{Display, Style},
 };
 
-pub use self::tree::{Frames, Part, Tree};
+pub use self::{
+  paragraph::{Inline, Metrics, Paragraph},
+  tree::{Frames, Leaf, Part, Tree},
+};
 
 /// How a box's border takes room in its layout.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

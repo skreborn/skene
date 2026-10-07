@@ -1,6 +1,6 @@
 //! The layout of the scene: each record's part in it, a box styled from its resolved
-//! style and a run measured by the platform's approximate metrics, laid out through the
-//! shared layout at the viewport.
+//! style and a paragraph of runs measured by the platform's approximate metrics, laid out
+//! through the shared layout at the viewport.
 
 use skene_foundation::{
   BoxField,
@@ -12,11 +12,10 @@ use skene_foundation::{
   Plain,
   Platform,
   Point,
+  RunPlacement,
   Scene,
-  Size,
   StaticBoxStyle,
   StaticLeaf,
-  StaticRunStyle,
   typography,
   web::WebStyle,
 };
@@ -24,12 +23,14 @@ use skene_layout::{
   Borders,
   BoxLayout,
   Frames,
+  Inline,
+  Metrics,
+  Paragraph,
   Part,
   Place,
   Tree,
-  taffy::{prelude::AvailableSpace, style::Style},
+  taffy::style::Style,
 };
-use unicode_segmentation::UnicodeSegmentation;
 
 use crate::{
   Headless,
@@ -43,71 +44,26 @@ use crate::{
 /// sets one, as a multiple of its font size.
 const LINE_HEIGHT: f32 = 1.5;
 
-/// A run's text as the layout measures it: each grapheme cluster half the font size
-/// wide, each line the font size times the line height tall, wrapped between words.
-pub(crate) struct Measured {
-  text: String,
+/// A run's metrics as the layout measures its text: each grapheme cluster half the font
+/// size wide, each line the font size times the line height tall.
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct Approximate {
   size: f32,
   line_height: f32,
 }
 
-impl Measured {
-  /// The size the text takes within `known` dimensions and the space `available`.
-  fn measure(
-    &self,
-    known: skene_layout::taffy::geometry::Size<Option<f32>>,
-    available: skene_layout::taffy::geometry::Size<AvailableSpace>,
-  ) -> Size<f32> {
-    let advance = self.size / 2.;
-    let width_of = |text: &str| {
-      #[expect(
-        clippy::cast_precision_loss,
-        reason = "a cluster count stays far below the integers f32 holds exactly"
-      )]
-      let clusters = text.graphemes(true).count() as f32;
+impl Metrics for Approximate {
+  fn advance(&self, _cluster: &str) -> f32 {
+    self.size / 2.
+  }
 
-      clusters * advance
-    };
-    let limit = known.width.or(match available.width {
-      AvailableSpace::Definite(width) => Some(width),
-      AvailableSpace::MinContent => Some(0.),
-      AvailableSpace::MaxContent => None,
-    });
-    let mut widest = 0_f32;
-    let mut lines = 0_u32;
-
-    if !self.text.is_empty() {
-      for paragraph in self.text.split('\n') {
-        let mut line = 0_f32;
-
-        lines += 1;
-
-        for word in paragraph.split_inclusive(' ') {
-          let ink = width_of(word.trim_end());
-
-          if line > 0. && limit.is_some_and(|limit| line + ink > limit) {
-            lines += 1;
-            line = 0.;
-          }
-
-          widest = widest.max(line + ink);
-          line += width_of(word);
-        }
-      }
-    }
-
-    #[expect(
-      clippy::cast_precision_loss,
-      reason = "a line count stays far below the integers f32 holds exactly"
-    )]
-    let height = lines as f32 * self.size * self.line_height;
-
-    Size::new(
-      known.width.unwrap_or(widest),
-      known.height.unwrap_or(height),
-    )
+  fn line_height(&self) -> f32 {
+    self.size * self.line_height
   }
 }
+
+/// What the layout measures a leaf by: the runs of its paragraph.
+type Measured = Paragraph<Approximate>;
 
 /// Lays out every tree of the scene at the viewport.
 pub(crate) fn lay_out() -> Frames {
@@ -117,20 +73,17 @@ pub(crate) fn lay_out() -> Frames {
 
   for root in roots {
     frames.extend(Tree::<Measured>::lay_out::<Headless>(
-      root,
-      viewport,
-      false,
-      part,
-      |known, available, text| text.measure(known, available),
+      root, viewport, false, part,
     ));
   }
 
   frames
 }
 
-/// What `node` is to the layout: a box styled from its resolved style, a run measured
-/// from its text, an open overlay out of the flow, an anchor or a scope transparent,
-/// and a hidden box or a closed overlay left out.
+/// What `node` is to the layout: a box styled from its resolved style, a box whose
+/// children are all inline runs a paragraph of them, a run a paragraph of its own text,
+/// an open overlay out of the flow, an anchor or a scope transparent, and a hidden box or
+/// a closed overlay left out.
 fn part(node: NodeId) -> Part<Measured> {
   let Some(env) = Env::of(&Records, node)
   else {
@@ -159,7 +112,7 @@ fn part(node: NodeId) -> Part<Measured> {
         true,
       ),
       Kind::Overlay(_) => Shape::Absent,
-      Kind::Run(props) => Shape::Run(Box::new(props.style.clone()), record.text.clone()),
+      Kind::Run(_) => Shape::Run(record.text.clone()),
       Kind::Anchor | Kind::Scope => Shape::Transparent,
     })
   });
@@ -190,15 +143,124 @@ fn part(node: NodeId) -> Part<Measured> {
 
         style.position = skene_layout::taffy::style::Position::Absolute;
 
-        Part::Overlay(style, scroll)
+        return Part::Overlay(style, scroll);
       }
-      else {
-        Part::Box(resolved.taffy_style(layout, place), scroll)
+
+      let style = resolved.taffy_style(layout, place);
+
+      match (layout == Layout::Document)
+        .then(|| paragraph(node))
+        .flatten()
+      {
+        Some(paragraph) => Part::Leaf(style, paragraph),
+        None => Part::Box(style, scroll),
       }
     }
-    Some(Shape::Run(style, text)) => {
-      let (size, line_height, layout) = env.with_resolver(|resolver| {
-        let annotation = Scene::<Headless>::read(|scene| scene.record(node)?.annotation().cloned());
+    Some(Shape::Run(text)) => {
+      let layout = env.with_resolver(|resolver| {
+        Scene::<Headless>::read(|scene| scene.record(node)?.annotation().cloned())
+          .map(|annotation| annotation.resolve(resolver))
+      });
+      let mut taffy = Style::default();
+
+      match layout {
+        Some(layout) => layout.fold_into(&mut taffy, place),
+        None => place.apply(&mut taffy),
+      }
+
+      let children = placed_children(node);
+      let mut runs = Vec::new();
+
+      if children.is_empty()
+        || !children
+          .into_iter()
+          .all(|child| inlines(child, &[node], &mut runs))
+      {
+        runs = vec![Inline {
+          node,
+          groups: Vec::new(),
+          text,
+          metrics: metrics(node),
+        }];
+      }
+
+      Part::Leaf(taffy, Paragraph::new(runs))
+    }
+  }
+}
+
+/// The paragraph the box `node` lays its children out as, where every child it places
+/// is an inline run, a group of them, or an anchor or a scope holding them.
+fn paragraph(node: NodeId) -> Option<Measured> {
+  let children = placed_children(node);
+  let mut runs = Vec::new();
+  let inline = !children.is_empty()
+    && children
+      .into_iter()
+      .all(|child| inlines(child, &[], &mut runs));
+
+  inline.then(|| Paragraph::new(runs))
+}
+
+/// Adds the runs `node` holds to a paragraph's `runs`, inside `groups`: a text run
+/// itself, a group's runs inside it, and an anchor's or a scope's in its place; `false`
+/// where it holds anything else, an inline box among them.
+fn inlines(node: NodeId, groups: &[NodeId], runs: &mut Vec<Inline<Approximate>>) -> bool {
+  let flow = with_records(|records| {
+    let record = records.record(node)?;
+
+    Some(match &record.kind {
+      Kind::Run(props) if props.placement == RunPlacement::Inline => Flow::Run(record.text.clone()),
+      Kind::Anchor | Kind::Scope => Flow::Transparent,
+      _ => Flow::Other,
+    })
+  });
+  let children = placed_children(node);
+
+  match flow {
+    Some(Flow::Transparent) => children
+      .into_iter()
+      .all(|child| inlines(child, groups, runs)),
+    Some(Flow::Run(text)) if children.is_empty() => {
+      runs.push(Inline {
+        node,
+        groups: groups.to_vec(),
+        text,
+        metrics: metrics(node),
+      });
+
+      true
+    }
+    Some(Flow::Run(_)) => {
+      let mut inside = groups.to_vec();
+
+      inside.push(node);
+      children
+        .into_iter()
+        .all(|child| inlines(child, &inside, runs))
+    }
+    None | Some(Flow::Other) => false,
+  }
+}
+
+/// What a node is to the paragraph it flows in.
+enum Flow {
+  Run(String),
+  Transparent,
+  Other,
+}
+
+/// The metrics the run `node` measures its text by, as its style and the typography in
+/// force set them.
+fn metrics(node: NodeId) -> Approximate {
+  let style = with_records(|records| match &records.record(node)?.kind {
+    Kind::Run(props) => Some(props.style.clone()),
+    _ => None,
+  });
+  let (size, line_height) = Env::of(&Records, node)
+    .zip(style)
+    .map(|(env, style)| {
+      env.with_resolver(|resolver| {
         let resolved = resolver.run_style(&style);
 
         (
@@ -210,26 +272,20 @@ fn part(node: NodeId) -> Part<Measured> {
             .ext
             .line_height
             .or_else(|| resolver.keyframe_run_value(&StaticLeaf::from(typography::LINE_HEIGHT))),
-          annotation.map(|annotation| annotation.resolve(resolver)),
         )
-      });
-      let mut taffy = Style::default();
+      })
+    })
+    .unwrap_or_default();
 
-      match layout {
-        Some(layout) => layout.fold_into(&mut taffy, place),
-        None => place.apply(&mut taffy),
-      }
-
-      Part::Leaf(
-        taffy,
-        Measured {
-          text,
-          size: size.map_or(Headless::FONT_SIZE, |size| size.0),
-          line_height: line_height.unwrap_or(LINE_HEIGHT),
-        },
-      )
-    }
+  Approximate {
+    size: size.map_or(Headless::FONT_SIZE, |size| size.0),
+    line_height: line_height.unwrap_or(LINE_HEIGHT),
   }
+}
+
+/// The children `node` places, in order.
+fn placed_children(node: NodeId) -> Vec<NodeId> {
+  Scene::<Headless>::read(|scene| scene.placed_children(node).collect())
 }
 
 /// Whether `node` declares a transition or an animation of its box.
@@ -263,7 +319,7 @@ impl BoxFieldVisitor<f32, WebStyle> for Presented<'_> {
 /// What a record holds that its part is made from, read out of the records.
 enum Shape {
   Box(Layout, Box<StaticBoxStyle<Headless>>, Point<f32>, bool),
-  Run(Box<StaticRunStyle<Headless>>, String),
+  Run(String),
   Transparent,
   Absent,
 }

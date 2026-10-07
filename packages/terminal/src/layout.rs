@@ -12,6 +12,7 @@ use skene_foundation::{Inset, Layout, RunPlacement, Scene, Size};
 use skene_layout::{
   Borders,
   BoxLayout,
+  Leaf,
   Place,
   taffy::{
     self,
@@ -103,6 +104,16 @@ impl Measured {
   /// The cells and rows the text takes wrapped at `limit` cells.
   fn wrapped(&self, limit: usize) -> (usize, usize) {
     self.shaped().extent(&self.text, limit, &self.scales)
+  }
+}
+
+impl Leaf for Measured {
+  fn measure(
+    &self,
+    known: taffy::geometry::Size<Option<f32>>,
+    available: taffy::geometry::Size<AvailableSpace>,
+  ) -> Size<f32> {
+    measure_run(known, available, self)
   }
 }
 
@@ -293,7 +304,6 @@ pub(crate) fn measure_inline_boxes(records: &mut Records) -> bool {
         width: AvailableSpace::MaxContent,
         height: AvailableSpace::MaxContent,
       },
-      measure_run,
     );
 
     let (width, height) = records.node_size(handle);
@@ -906,7 +916,6 @@ pub(crate) fn compute(records: &mut Records, width: u16, height: u16) {
       width: AvailableSpace::Definite(width),
       height: AvailableSpace::Definite(height),
     },
-    measure_run,
   );
   records.layout_generation += 1;
   records.covers_stale = true;

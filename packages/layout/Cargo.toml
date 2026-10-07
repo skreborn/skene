@@ -11,6 +11,7 @@ repository.workspace = true
 rustc-hash.workspace = true
 skene-foundation.workspace = true
 taffy = "0.14"
+unicode-segmentation = "1"
 
 [lints]
 workspace = true

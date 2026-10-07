@@ -12,6 +12,7 @@ use skene_foundation::{
   HasChild,
   HasChildren,
   Inset,
+  Length,
   MotionBase,
   NodeHandle,
   NodeId,
@@ -19,6 +20,7 @@ use skene_foundation::{
   Point,
   Property,
   Rect,
+  RunWithTypeMetrics,
   ScrollEvent,
   Size,
   Transition,
@@ -45,7 +47,9 @@ use skene_reactive::{Get, Owner, Set, Signal};
 type Column = skene_foundation::Column<Headless>;
 type Container = skene_foundation::Container<Headless>;
 type Flexible<C = skene_foundation::NoChild> = skene_foundation::Flexible<Headless, C>;
+type RichText = skene_foundation::RichText<Headless>;
 type Row = skene_foundation::Row<Headless>;
+type Span = skene_foundation::Span<Headless>;
 type Stack = skene_foundation::Stack<Headless>;
 type Text = skene_foundation::Text<Headless>;
 type Theme<S, C = skene_foundation::NoChild> = skene_foundation::Theme<Headless, S, C>;
@@ -412,6 +416,115 @@ fn a_scrolled_box_shifts_its_content() {
   assert_eq!(layout_rect(second), Some(rect(0., 0., 100., 50.)));
   assert_eq!(visible_rect(first), Some(rect(0., 0., 100., 0.)));
   assert_eq!(node_at(Point::new(10., 25.)), Some(second));
+
+  owner.dispose();
+}
+
+/// A paragraph's spans flow on one line, each where its text is, a group spanning its
+/// own, and a point finds the span drawn there.
+#[test]
+fn a_paragraphs_spans_flow_on_one_line() {
+  reset();
+
+  let owner = Owner::new();
+  let paragraph = owner.enter(|| {
+    RichText::new()
+      .add_spans([
+        Span::new("Hello "),
+        Span::group([Span::new("wor"), Span::new("ld")]),
+      ])
+      .build()
+  });
+  let [hello, group] = content(paragraph)[..]
+  else {
+    panic!("two spans");
+  };
+  let [wor, ld] = content(group)[..]
+  else {
+    panic!("two spans in the group");
+  };
+
+  assert_eq!(layout_rect(paragraph), Some(rect(0., 0., 1024., 24.)));
+  assert_eq!(layout_rect(hello), Some(rect(0., 0., 48., 24.)));
+  assert_eq!(layout_rect(group), Some(rect(48., 0., 40., 24.)));
+  assert_eq!(layout_rect(wor), Some(rect(48., 0., 24., 24.)));
+  assert_eq!(layout_rect(ld), Some(rect(72., 0., 16., 24.)));
+  assert_eq!(node_at(Point::new(50., 10.)), Some(wor));
+  assert_eq!(
+    node_at(Point::new(100., 10.)),
+    Some(paragraph),
+    "beyond the text"
+  );
+
+  owner.dispose();
+}
+
+/// A paragraph wraps across its spans, and a span broken across lines covers each of
+/// its pieces, spanning them, but takes a press only where a piece is.
+#[test]
+fn a_paragraph_wraps_across_its_spans() {
+  reset();
+
+  let owner = Owner::new();
+  let narrow = owner.enter(|| {
+    Container::new()
+      .set_width(Dimension::Length(40.))
+      .set_child(RichText::new().add_spans([Span::new("c "), Span::new("aaa bb")]))
+      .build()
+  });
+  let [paragraph] = content(narrow)[..]
+  else {
+    panic!("one paragraph");
+  };
+  let [before, broken] = content(paragraph)[..]
+  else {
+    panic!("two spans");
+  };
+
+  assert_eq!(layout_rect(paragraph), Some(rect(0., 0., 40., 48.)));
+  assert_eq!(layout_rect(before), Some(rect(0., 0., 16., 24.)));
+  assert_eq!(layout_rect(broken), Some(rect(0., 0., 40., 48.)));
+  assert_eq!(
+    node_at(Point::new(20., 10.)),
+    Some(broken),
+    "its first piece"
+  );
+  assert_eq!(
+    node_at(Point::new(4., 30.)),
+    Some(broken),
+    "its second piece"
+  );
+  assert_eq!(
+    node_at(Point::new(30., 30.)),
+    Some(paragraph),
+    "beside its second piece"
+  );
+
+  owner.dispose();
+}
+
+/// A line is as tall as its tallest span, a smaller span sitting on its bottom.
+#[test]
+fn a_line_is_as_tall_as_its_tallest_span() {
+  reset();
+
+  let owner = Owner::new();
+  let paragraph = owner.enter(|| {
+    RichText::new()
+      .add_spans([
+        Span::new("big ").set_font_size(Length(32.)),
+        Span::new("small"),
+      ])
+      .build()
+  });
+  let [big, small] = content(paragraph)[..]
+  else {
+    panic!("two spans");
+  };
+
+  assert_eq!(layout_rect(paragraph), Some(rect(0., 0., 1024., 48.)));
+  assert_eq!(layout_rect(big), Some(rect(0., 0., 64., 48.)));
+  assert_eq!(layout_rect(small), Some(rect(64., 24., 40., 24.)));
 
   owner.dispose();
 }

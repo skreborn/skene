@@ -3,7 +3,7 @@
 //! one layout, each node's part as its platform classifies it.
 
 use rustc_hash::FxHashMap;
-use skene_foundation::{NodeId, Platform, Point, Rect, Scene, Size};
+use skene_foundation::{NodeId, NodeMap, Platform, Point, Rect, Scene, Size};
 use taffy::{
   TaffyTree,
   prelude::{AvailableSpace, length},
@@ -204,7 +204,7 @@ impl Bounds {
 #[must_use]
 pub struct Tree<C> {
   taffy: TaffyTree<C>,
-  nodes: FxHashMap<NodeId, Slot>,
+  nodes: NodeMap<Slot>,
 }
 
 /// A node's place in the taffy tree: its taffy node, the taffy children last set and
@@ -219,7 +219,7 @@ impl<C> std::fmt::Debug for Tree<C> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter
       .debug_struct("Tree")
-      .field("nodes", &self.nodes.len())
+      .field("nodes", &self.nodes.values().count())
       .finish_non_exhaustive()
   }
 }
@@ -235,7 +235,7 @@ impl<C: Leaf> Tree<C> {
 
     Self {
       taffy,
-      nodes: FxHashMap::default(),
+      nodes: NodeMap::new(),
     }
   }
 
@@ -246,7 +246,7 @@ impl<C: Leaf> Tree<C> {
   ///
   /// Panics where taffy cannot allocate the node.
   pub fn insert(&mut self, node: NodeId) {
-    if self.nodes.contains_key(&node) {
+    if self.nodes.contains(node) {
       return;
     }
 
@@ -267,7 +267,7 @@ impl<C: Leaf> Tree<C> {
 
   /// Takes `node` out of the tree, and out of its parent's children.
   pub fn remove(&mut self, node: NodeId) {
-    if let Some(slot) = self.nodes.remove(&node) {
+    if let Some(slot) = self.nodes.remove(node) {
       let _ = self.taffy.remove(slot.taffy);
     }
   }
@@ -275,13 +275,13 @@ impl<C: Leaf> Tree<C> {
   /// Whether `node` takes part in the layout.
   #[must_use]
   pub fn contains(&self, node: NodeId) -> bool {
-    self.nodes.contains_key(&node)
+    self.nodes.contains(node)
   }
 
   /// Gives `node` the taffy style `style`; `true` where it differs from the one it
   /// held, `false` where it is the same or `node` is outside the tree.
   pub fn set_style(&mut self, node: NodeId, style: Style) -> bool {
-    let Some(slot) = self.nodes.get(&node)
+    let Some(slot) = self.nodes.get(node)
     else {
       return false;
     };
@@ -303,7 +303,7 @@ impl<C: Leaf> Tree<C> {
   where
     C: PartialEq,
   {
-    let Some(slot) = self.nodes.get(&node)
+    let Some(slot) = self.nodes.get(node)
     else {
       return false;
     };
@@ -318,7 +318,7 @@ impl<C: Leaf> Tree<C> {
   /// The context `node`'s measure reads, to change in place; a change to what it
   /// measures to takes [`mark_dirty`](Self::mark_dirty) as well.
   pub fn context_mut(&mut self, node: NodeId) -> Option<&mut C> {
-    let slot = self.nodes.get(&node)?;
+    let slot = self.nodes.get(node)?;
 
     self.taffy.get_node_context_mut(slot.taffy)
   }
@@ -326,7 +326,7 @@ impl<C: Leaf> Tree<C> {
   /// Marks `node` for the next [`compute`](Self::compute) to measure and lay out
   /// again, with every ancestor.
   pub fn mark_dirty(&mut self, node: NodeId) {
-    if let Some(slot) = self.nodes.get(&node) {
+    if let Some(slot) = self.nodes.get(node) {
       let _ = self.taffy.mark_dirty(slot.taffy);
     }
   }
@@ -336,9 +336,9 @@ impl<C: Leaf> Tree<C> {
   pub fn set_children(&mut self, node: NodeId, children: impl IntoIterator<Item = NodeId>) -> bool {
     let children: Vec<taffy::NodeId> = children
       .into_iter()
-      .filter_map(|child| self.nodes.get(&child).map(|slot| slot.taffy))
+      .filter_map(|child| self.nodes.get(child).map(|slot| slot.taffy))
       .collect();
-    let Some(slot) = self.nodes.get_mut(&node)
+    let Some(slot) = self.nodes.get_mut(node)
     else {
       return false;
     };
@@ -359,7 +359,7 @@ impl<C: Leaf> Tree<C> {
   /// Lays out the tree under `root` in the space `available`, each leaf with a context
   /// measured by it and each without one sized to its known dimensions or nothing.
   pub fn compute(&mut self, root: NodeId, available: taffy::geometry::Size<AvailableSpace>) {
-    if let Some(slot) = self.nodes.get(&root) {
+    if let Some(slot) = self.nodes.get(root) {
       let _ = self.compute_at(slot.taffy, available);
     }
   }
@@ -368,14 +368,14 @@ impl<C: Leaf> Tree<C> {
   /// rounded where the tree rounds; `None` for a node outside the tree.
   #[must_use]
   pub fn layout(&self, node: NodeId) -> Option<&Layout> {
-    self.taffy.layout(self.nodes.get(&node)?.taffy).ok()
+    self.taffy.layout(self.nodes.get(node)?.taffy).ok()
   }
 
   /// `node`'s layout in its parent, as the last [`compute`](Self::compute) left it
   /// before any rounding; `None` for a node outside the tree.
   #[must_use]
   pub fn unrounded_layout(&self, node: NodeId) -> Option<&Layout> {
-    Some(self.taffy.unrounded_layout(self.nodes.get(&node)?.taffy))
+    Some(self.taffy.unrounded_layout(self.nodes.get(node)?.taffy))
   }
 
   /// The rectangle of every node laid out at or beneath `root` in the last
@@ -385,7 +385,7 @@ impl<C: Leaf> Tree<C> {
   pub fn frames(&self, root: NodeId) -> Frames {
     let mut frames = Frames::default();
 
-    if let Some(slot) = self.nodes.get(&root) {
+    if let Some(slot) = self.nodes.get(root) {
       self.collect(slot.taffy, &mut frames);
     }
 
@@ -543,7 +543,7 @@ impl<C: Leaf> Tree<C> {
     let by_taffy: FxHashMap<taffy::NodeId, (NodeId, Point<f32>)> = self
       .nodes
       .iter()
-      .map(|(node, slot)| (slot.taffy, (*node, slot.scroll)))
+      .map(|(node, slot)| (slot.taffy, (node, slot.scroll)))
       .collect();
     let mut stack = vec![(top, Point::new(0., 0.), Bounds::UNBOUNDED, true)];
 

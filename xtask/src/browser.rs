@@ -89,6 +89,8 @@ struct Pin {
   url: &'static str,
   /// The SHA-256 digest of its archive, in hex.
   sha256: &'static str,
+  /// The executable its unpacked directory holds once complete, relative to it.
+  executable: &'static str,
 }
 
 /// The version of the Firefox the goldens are taken in.
@@ -99,6 +101,7 @@ const FIREFOX: Pin = Pin {
   name: "firefox-157.0.1",
   url: "https://archive.mozilla.org/pub/firefox/releases/157.0.1/linux-x86_64/en-US/firefox-157.0.1.tar.xz",
   sha256: "0d92bf39cdd174f5f361008509310bdefbce72a57ca10523a43b32d62dc699b6",
+  executable: "firefox/firefox",
 };
 
 /// The geckodriver driving the pinned Firefox.
@@ -106,6 +109,7 @@ const GECKODRIVER: Pin = Pin {
   name: "geckodriver-0.37.1",
   url: "https://github.com/mozilla/geckodriver/releases/download/v0.37.1/geckodriver-v0.37.1-linux64.tar.gz",
   sha256: "e815130ea95983e162ae91843b48d3a3ce991735635fce83a647afde21e09f7e",
+  executable: "geckodriver",
 };
 
 /// The engine the goldens run in, by its name in a report.
@@ -384,7 +388,9 @@ fn goldens(
   };
   let browsers = gate.target.join("browsers");
   let firefox = FIREFOX.fetch(&browsers, log)?.join("firefox");
-  let geckodriver = GECKODRIVER.fetch(&browsers, log)?.join("geckodriver");
+  let geckodriver = GECKODRIVER
+    .fetch(&browsers, log)?
+    .join(GECKODRIVER.executable);
 
   Ok(Some((
     Binary {
@@ -404,13 +410,15 @@ fn goldens(
 
 impl Pin {
   /// The directory under `browsers` the release is unpacked in, fetched, checked
-  /// against its digest and unpacked first where it is not there yet.
+  /// against its digest and unpacked afresh first where it does not hold its executable.
   fn fetch(&self, browsers: &Path, log: &mut Log) -> Result<PathBuf, String> {
     let directory = browsers.join(self.name);
 
-    if directory.is_dir() {
+    if directory.join(self.executable).is_file() {
       return Ok(directory);
     }
+
+    let _ = fs::remove_dir_all(&directory);
 
     let staging = browsers.join(format!("{}.staging", self.name));
     let archive = staging.join("archive");

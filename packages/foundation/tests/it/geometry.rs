@@ -28,6 +28,7 @@ use skene_headless::{
   children,
   find_by_text,
   layout_rect,
+  node_at,
   reset,
   run_props,
   trigger_frame,
@@ -280,6 +281,51 @@ fn a_box_lays_out_at_the_width_its_motion_presents() {
   trigger_frame(std::time::Duration::from_millis(500));
 
   assert_eq!(layout_rect(node).map(|rect| rect.size.width), Some(200.));
+
+  owner.dispose();
+}
+
+/// A point hits the topmost node covering it: a child above its parent, a later layer
+/// of a stack above an earlier one, and nothing beyond what the layout covers.
+#[test]
+fn a_point_hits_the_topmost_node() {
+  reset();
+
+  let owner = Owner::new();
+  let column = owner.enter(|| {
+    Column::new()
+      .set_children((
+        sized(100., 20.),
+        Stack::new().set_children((sized(100., 20.), sized(50., 10.))),
+      ))
+      .build()
+  });
+  let [first, stack] = content(column)[..]
+  else {
+    panic!("two children");
+  };
+  let [under, over] = content(stack)[..]
+  else {
+    panic!("two layers");
+  };
+
+  assert_eq!(node_at(Point::new(10., 5.)), Some(first));
+  assert_eq!(node_at(Point::new(10., 25.)), Some(over), "the later layer");
+  assert_eq!(
+    node_at(Point::new(70., 25.)),
+    Some(under),
+    "beside the later layer"
+  );
+  assert_eq!(
+    node_at(Point::new(500., 5.)),
+    Some(column),
+    "the column itself"
+  );
+  assert_eq!(
+    node_at(Point::new(10., 500.)),
+    None,
+    "below everything laid out"
+  );
 
   owner.dispose();
 }

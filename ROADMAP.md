@@ -46,9 +46,10 @@ in a code comment.
     platform's scalar, which holds the style mapping and a tree headless lays out
     through today: the terminal's records lay out through its `Tree` and keep only
     their cells; paragraphs and inline boxes lay out as the terminal's do, where
-    headless measures each run on its own; headless hit-tests a point to a path and
-    renders pixel snapshots in the pinned font; the layout store becomes the crate the
-    native shells call into.
+    headless measures each run on its own; hit testing clips to a box that clips its
+    overflow and follows its scroll offsets, as the terminal's does, where headless
+    tests rectangles in paint order; headless renders pixel snapshots in the pinned
+    font; the layout store becomes the crate the native shells call into.
     - Conformance by intent: once the shells stop sharing views, a scenario states what
     it builds (a button labelled Save that counts its clicks) and each platform's
     driver builds it in its own vocabulary, so one suite keeps holding every shell to

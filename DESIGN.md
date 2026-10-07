@@ -558,7 +558,7 @@ Condition     = Media | State | And | Or
   run measured by approximate metrics (a cluster half its font size wide, a line its
   font size times its line height tall, both as the typography in force sets them),
   reporting each box's size to the observers bound to it and
-  answering `layout_rect`. `Dimension` is a fixed length,
+  answering `layout_rect` and, through the frames' paint order, `node_at`. `Dimension` is a fixed length,
   a `Fraction` of the parent, or auto. Overflow is per axis (`Axes<Overflow>`, one
   overflow setting both) and computed as CSS computes it, an axis left visible beside
   one that is not scrolling where needed; the terminal scrolls, and draws a scrollbar,

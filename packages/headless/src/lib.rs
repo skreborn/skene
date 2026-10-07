@@ -1119,6 +1119,23 @@ fn report_layout() {
   }
 }
 
+/// The topmost node at `point`, in the viewport's coordinates; `None` where none covers
+/// it.
+///
+/// The scene is laid out afresh, and a child is above its parent, a later sibling above
+/// an earlier one and an open overlay above the flow.
+#[must_use]
+pub fn node_at(point: Point<f32>) -> Option<NodeId> {
+  end_turn();
+
+  let frames = layout::lay_out();
+  let hit = frames.hit(point);
+
+  with_records(|records| records.frames = frames);
+
+  hit
+}
+
 /// The rectangle `node` covers in a layout of the scene at the viewport, laid out
 /// afresh; `None` for a node the layout leaves out: hidden, in a closed overlay, or an
 /// anchor or a scope.

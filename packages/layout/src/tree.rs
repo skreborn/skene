@@ -25,26 +25,49 @@ pub enum Part<C> {
   Absent,
 }
 
-/// Each node's rectangle from one layout, in the viewport's coordinates.
+/// Each node's rectangle from one layout, in the viewport's coordinates, and the order
+/// the nodes paint in.
 #[derive(Debug, Default, Clone)]
-pub struct Frames(FxHashMap<NodeId, Rect<f32>>);
+pub struct Frames {
+  rects: FxHashMap<NodeId, Rect<f32>>,
+  painted: Vec<NodeId>,
+}
 
 impl Frames {
   /// The rectangle `node` covers; `None` for a node the layout left out or never laid
   /// out on its own.
   #[must_use]
   pub fn rect(&self, node: NodeId) -> Option<Rect<f32>> {
-    self.0.get(&node).copied()
+    self.rects.get(&node).copied()
   }
 
-  /// Adds every rectangle of `other`, replacing what this holds for its nodes.
+  /// The topmost node laid out at `point`: the last to paint whose rectangle holds it,
+  /// a child above its parent, a later sibling above an earlier one and an overlay
+  /// above the flow, clipping aside.
+  #[must_use]
+  pub fn hit(&self, point: Point<f32>) -> Option<NodeId> {
+    self.painted.iter().rev().copied().find(|node| {
+      self.rects.get(node).is_some_and(|rect| {
+        point.x >= rect.origin.x
+          && point.y >= rect.origin.y
+          && point.x < rect.origin.x + rect.size.width
+          && point.y < rect.origin.y + rect.size.height
+      })
+    })
+  }
+
+  /// Adds every rectangle of `other`, painting above what this holds.
   pub fn extend(&mut self, other: Self) {
-    self.0.extend(other.0);
+    self.rects.extend(other.rects);
+    self.painted.extend(other.painted);
   }
 
-  /// Every node laid out, with its rectangle, in no order.
+  /// Every node laid out, with its rectangle, in the order they paint.
   pub fn iter(&self) -> impl Iterator<Item = (NodeId, Rect<f32>)> + '_ {
-    self.0.iter().map(|(node, rect)| (*node, *rect))
+    self
+      .painted
+      .iter()
+      .filter_map(|node| Some((*node, *self.rects.get(node)?)))
   }
 }
 
@@ -148,11 +171,11 @@ impl<P: Platform, C> Tree<P, C> {
       return Frames::default();
     }
 
-    let mut frames = FxHashMap::default();
+    let mut frames = Frames::default();
 
-    tree.collect(top, Point::new(0., 0.), &mut frames);
+    tree.collect(top, &mut frames);
 
-    Frames(frames)
+    frames
   }
 
   /// Adds `node` with everything laid out beneath it, returning its taffy node; `None`
@@ -199,20 +222,15 @@ impl<P: Platform, C> Tree<P, C> {
     children
   }
 
-  /// Records the rectangle of every node laid out at or beneath `top`, whose parent's
-  /// origin is at `origin`.
-  fn collect(
-    &self,
-    top: taffy::NodeId,
-    origin: Point<f32>,
-    frames: &mut FxHashMap<NodeId, Rect<f32>>,
-  ) {
+  /// Records the rectangle of every node laid out at or beneath `top`, in the order
+  /// they paint: each before its children, the children in order.
+  fn collect(&self, top: taffy::NodeId, frames: &mut Frames) {
     let by_taffy: FxHashMap<taffy::NodeId, NodeId> = self
       .nodes
       .iter()
       .map(|(node, taffy)| (*taffy, *node))
       .collect();
-    let mut stack = vec![(top, origin)];
+    let mut stack = vec![(top, Point::new(0., 0.))];
 
     while let Some((current, parent)) = stack.pop() {
       let Ok(layout) = self.taffy.layout(current)
@@ -222,16 +240,23 @@ impl<P: Platform, C> Tree<P, C> {
       let origin = Point::new(parent.x + layout.location.x, parent.y + layout.location.y);
 
       if let Some(node) = by_taffy.get(&current) {
-        frames.insert(
+        frames.rects.insert(
           *node,
           Rect {
             origin,
             size: Size::new(layout.size.width, layout.size.height),
           },
         );
+        frames.painted.push(*node);
       }
 
-      for child in self.taffy.children(current).unwrap_or_default() {
+      for child in self
+        .taffy
+        .children(current)
+        .unwrap_or_default()
+        .into_iter()
+        .rev()
+      {
         stack.push((child, origin));
       }
     }

@@ -22,9 +22,10 @@ pub skene_layout::Part::Overlay(taffy::style::Style)
 pub skene_layout::Part::Transparent
 impl<C: core::fmt::Debug> core::fmt::Debug for skene_layout::Part<C>
 pub fn skene_layout::Part<C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub struct skene_layout::Frames(_)
+pub struct skene_layout::Frames
 impl skene_layout::Frames
 pub fn skene_layout::Frames::extend(&mut self, Self)
+pub fn skene_layout::Frames::hit(&self, skene_foundation::spine::values::point::Point<f32>) -> core::option::Option<skene_foundation::spine::node::NodeId>
 pub fn skene_layout::Frames::iter(&self) -> impl core::iter::traits::iterator::Iterator<Item = (skene_foundation::spine::node::NodeId, skene_foundation::spine::values::rect::Rect<f32>)> + '_
 pub fn skene_layout::Frames::rect(&self, skene_foundation::spine::node::NodeId) -> core::option::Option<skene_foundation::spine::values::rect::Rect<f32>>
 impl core::clone::Clone for skene_layout::Frames

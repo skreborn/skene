@@ -51,9 +51,7 @@ in a code comment.
     headless lays a paragraph holding one out a run at a time; the terminal lays its
     paragraphs out through the shared `Paragraph`, its cells as the metrics and its
     breaks where UAX #14 allows them, where headless breaks after blanks alone; the
-    terminal hits through the shared frames, where its own walk confines every child to
-    its parent's rectangle even where the parent's overflow is visible, and clips at
-    the border box rather than the padding box; headless renders pixel snapshots in the
+    terminal hits through the shared frames; headless renders pixel snapshots in the
     pinned font; the layout store becomes the crate the native shells call into.
     - Conformance by intent: once the shells stop sharing views, a scenario states what
     it builds (a button labelled Save that counts its clicks) and each platform's
@@ -65,8 +63,8 @@ in a code comment.
     still restyle every node, and a structure change hands every node its layout
     children afresh, where each should reach only the subtree it touched (per-scope
     token and per-container query invalidation, `em` from the node's own font size);
-    a hit test and a partial repaint still visit every child of a box, 0.3 ms for a
-    pointer move over 16k text rows where an unchanged frame costs 21 µs (`cargo bench
+    a hit test and a partial repaint still visit every child of a box, 1.9 ms for a
+    pointer move over 16k text rows where an unchanged frame costs 28 µs (`cargo bench
     -p skene-terminal --bench frame`); selection spans compute once per frame; paint, hit
     tests and the selection wrap a run's text afresh where the layout's measure keeps
     its shape; clusters re-segment around an edit, and undo stores range diffs.

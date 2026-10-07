@@ -34,6 +34,36 @@ impl Records {
     }
   }
 
+  /// `record`'s frame in its layout parent, as [`frame_of`](Self::frame_of), and the
+  /// cells its laid-out content reaches from the frame's origin, left, top, right and
+  /// bottom: its own box, or farther where its content overflows it.
+  #[expect(
+    clippy::cast_possible_truncation,
+    reason = "taffy rounds a layout to whole cells, far inside i64"
+  )]
+  pub(crate) fn reach_of(&self, record: &Record) -> (CellFrame, [f32; 4]) {
+    let Some(layout) = record.node.and_then(|node| self.tree.layout(node))
+    else {
+      return (CellFrame::default(), [0.; 4]);
+    };
+    let overflow = layout.scrollable_overflow_rect;
+
+    (
+      CellFrame {
+        x: layout.location.x as i64,
+        y: layout.location.y as i64,
+        width: layout.size.width.max(0.) as i64,
+        height: layout.size.height.max(0.) as i64,
+      },
+      [
+        overflow.left.min(0.),
+        overflow.top.min(0.),
+        overflow.right.max(layout.size.width),
+        overflow.bottom.max(layout.size.height),
+      ],
+    )
+  }
+
   /// `handle`'s frame in its layout parent; empty for a stale handle.
   pub(crate) fn frame(&self, handle: Handle) -> CellFrame {
     self

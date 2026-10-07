@@ -548,3 +548,45 @@ fn page_keys_scroll_by_a_viewport_less_a_row() {
     assert!(testing::render_to_text(6, 4).starts_with("r0"));
   });
 }
+
+/// Content overflowing a box takes a click where it is drawn, as in a browser, unless
+/// the box clips its overflow.
+#[test]
+fn overflowing_content_takes_a_click_where_it_is_drawn() {
+  for (overflow, expected) in [(Overflow::Visible, vec![1]), (Overflow::Clip, vec![])] {
+    with_platform(|| {
+      let clicked = Rc::new(RefCell::new(Vec::new()));
+      let log = Rc::clone(&clicked);
+
+      let _ = terminal::mount(move || {
+        Container::new()
+          .set_child(
+            Container::new()
+              .set_height(1)
+              .set_overflow(overflow)
+              .set_child(Column::new().derive_children(
+                || 0..2,
+                |index| *index,
+                move |index| {
+                  let log = Rc::clone(&log);
+
+                  Container::new()
+                    .handle_click(move || log.borrow_mut().push(index))
+                    .set_child(Text::new(format!("item {index}")))
+                },
+              )),
+          )
+          .into_any()
+          .build()
+      });
+
+      let frame = testing::render_to_text(12, 3);
+
+      assert_eq!(frame.contains("item 1"), overflow == Overflow::Visible);
+
+      testing::trigger_mouse_click(2, 1);
+
+      assert_eq!(*clicked.borrow(), expected, "{overflow:?}");
+    });
+  }
+}

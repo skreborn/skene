@@ -903,7 +903,9 @@ The dev launcher's control pipe is the dev module's, read after each wait, never
 device's.
 
 The mouse is in-capability: motion drives `Hovered` variants and pointer handlers, a
-left click hits the topmost node and runs its handlers through the spine's dispatch, a
+left click hits the topmost node drawn at its cell, content overflowing a box taking it
+unless the box clips its overflow, at its padding box, and runs its handlers through
+the spine's dispatch, a
 hovered node's `cursor` sets the pointer shape via OSC 22, with the shapes a browser's
 pointer takes implied where none is set (the I-beam over selectable text and a text
 entry, the hand over a control or a link, the open hand over a slider and the closed

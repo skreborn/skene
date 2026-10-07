@@ -191,8 +191,9 @@ impl Records {
     path
   }
 
-  /// Descends into the deepest child containing the point, preferring later (topmost)
-  /// children, accumulating the path.
+  /// Descends into the deepest node drawn at the point, preferring later (topmost)
+  /// children, accumulating the path; `false` where neither the node nor anything
+  /// beneath it is.
   fn hit_walk(
     &self,
     handle: Handle,
@@ -220,42 +221,74 @@ impl Records {
       return false;
     }
 
-    let frame = self.frame_of(record);
+    let (frame, [reach_left, reach_top, reach_right, reach_bottom]) = self.reach_of(record);
     let (origin_x, origin_y) = (offset_x + frame.x, offset_y + frame.y);
-    let contains =
-      x >= origin_x && x < origin_x + frame.width && y >= origin_y && y < origin_y + frame.height;
+    let within = |left: i64, top: i64, right: i64, bottom: i64| {
+      x >= origin_x + left && x < origin_x + right && y >= origin_y + top && y < origin_y + bottom
+    };
+    let contains = handle == self.root || within(0, 0, frame.width, frame.height);
 
-    if handle != self.root && !contains {
-      return false;
+    // A box clipping its overflow keeps every hit beneath it inside it; any other's
+    // content takes a hit wherever it reaches, as a browser's does.
+    if !contains {
+      #[expect(
+        clippy::cast_precision_loss,
+        reason = "a cell offset stays far below the integers f32 holds exactly"
+      )]
+      let (cell_x, cell_y) = ((x - origin_x) as f32, (y - origin_y) as f32);
+      let reaches = cell_x >= reach_left
+        && cell_x < reach_right
+        && cell_y >= reach_top
+        && cell_y < reach_bottom;
+
+      if !reaches || self.clips(handle) {
+        return false;
+      }
     }
+
+    let clips = self.clips(handle);
 
     path.push((handle, (origin_x, origin_y)));
 
     if is_paragraph(self, handle) {
-      self.hit_paragraph(handle, (origin_x, origin_y), x, y, path);
-
-      return true;
-    }
-
-    // A scrolled box shifts its children by its offsets.
-    let (scroll_x, scroll_y) = self.scroll_offset(handle);
-    let (child_x, child_y) = (
-      origin_x - i64::from(scroll_x),
-      origin_y - i64::from(scroll_y),
-    );
-
-    // Later children paint on top, so they win the hit; overlays hit separately.
-    for child in self.children_reversed(handle) {
-      if self.record(child).is_some_and(Record::is_overlay) {
-        continue;
+      if contains {
+        self.hit_paragraph(handle, (origin_x, origin_y), x, y, path);
+      }
+      else {
+        path.pop();
       }
 
-      if self.hit_walk(child, child_x, child_y, x, y, path) {
-        break;
+      return contains;
+    }
+
+    let (left, top, right, bottom) = self.node_border(handle);
+
+    // A clipping box clips its children to its padding box, as it paints them.
+    if !clips || within(left, top, frame.width - right, frame.height - bottom) {
+      // A scrolled box shifts its children by its offsets.
+      let (scroll_x, scroll_y) = self.scroll_offset(handle);
+      let (child_x, child_y) = (
+        origin_x - i64::from(scroll_x),
+        origin_y - i64::from(scroll_y),
+      );
+
+      // Later children paint on top, so they win the hit; overlays hit separately.
+      for child in self.children_reversed(handle) {
+        if self.record(child).is_some_and(Record::is_overlay) {
+          continue;
+        }
+
+        if self.hit_walk(child, child_x, child_y, x, y, path) {
+          return true;
+        }
       }
     }
 
-    true
+    if !contains {
+      path.pop();
+    }
+
+    contains
   }
 
   /// Hits the runs of the paragraph `handle`, at `origin`, under the point: the runs

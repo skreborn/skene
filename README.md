@@ -204,9 +204,10 @@ headless platform; the server tier builds the server leaf natively, a byte-exact
 snapshot among its tests; the browser tier drives a real Firefox and a real Chromium,
 several sessions at once, the `gallery` example running axe-core over every built-in.
 Each step logs to `target/gate/<step>.log`, and a step whose inputs are unchanged since it
-passed is skipped unless `--force` is given. The gate needs the nightly toolchain for
-`rustfmt`, the toolchain the workspace's `rust-version` names, the
-`wasm32-unknown-unknown` and `aarch64-apple-darwin` targets, `cargo-nextest`,
+passed is skipped unless `--force` is given. The gate needs the stable toolchain
+`rust-toolchain.toml` pins, which rustup installs with clippy and the
+`wasm32-unknown-unknown` and `aarch64-apple-darwin` targets, the nightly toolchain for
+`rustfmt`, the toolchain the workspace's `rust-version` names, `cargo-nextest`,
 `cargo-shear`, Firefox, a chromedriver matching the installed Chrome, and a
 `wasm-bindgen-test-runner` matching the locked `wasm-bindgen`; a step lacking one fails
 naming it.

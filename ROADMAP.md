@@ -11,12 +11,7 @@ One list, every item big and small, top first. An item is resolved by landing it
 proving it unnecessary, or by recording it in `DECISIONS.md`; it is never left half-done
 in a code comment.
 
-1. **The gate on one stable toolchain.** CI installs the newest stable, so a Rust release
-    can fail the gate on an unchanged `main`, as 1.99's new lints and reworded diagnostics
-    failed its first run; a `rust-toolchain.toml` pins the stable that clippy and the
-    compile-fail expectations are held to, as `xtask/src/api.rs` pins the API snapshots'
-    nightly, and moving it is a change of its own.
-2. **One owner for style and interaction semantics.** The web compiler and the spine's
+1. **One owner for style and interaction semantics.** The web compiler and the spine's
     `Resolver` implement one meaning twice, and the terminal, headless and the web each
     implement focus, press, hover and overlays; each mechanism gets one owner, and the
     browser is the oracle.
@@ -38,7 +33,7 @@ in a code comment.
     rebuilds and nested lazy content keep their markers and their server markup; where
     `appearance: base-select` is supported, the picker is a styled native `<select>` and
     the hydration swap goes, the drawn face remaining elsewhere.
-3. **Tests that exercise what users see.** Headless becomes the web's real stand-in,
+2. **Tests that exercise what users see.** Headless becomes the web's real stand-in,
     and every tier asserts through roles, text and pixels.
     - The browser tier's painted-canvas test (`a_painted_box_draws_into_its_canvas`)
     now and then reads a transparent center pixel in Chromium after its minute's wait,
@@ -71,7 +66,7 @@ in a code comment.
     driver builds it in its own vocabulary, so one suite keeps holding every shell to
     the foundation's behaviors; headless tests the foundation and an app's shared
     logic, and a shell is tested end to end on its own platform.
-4. **The quadratic hot paths.**
+3. **The quadratic hot paths.**
     - The terminal: a structure change, a token's redefinition and a container's resize
     still restyle every node, and a structure change hands every node its layout
     children afresh, where each should reach only the subtree it touched (per-scope
@@ -95,7 +90,7 @@ in a code comment.
     of inlined into each; a bundle budget the gate holds, a release `counter` after
     `wasm-bindgen` having grown from 911 KB to 1.27 MB between 2026-09-15 and
     2026-10-02, `skene-web` and `skene-foundation` most of it.
-5. **The dev reload costs production nothing.** The saved tier is no second API: the
+4. **The dev reload costs production nothing.** The saved tier is no second API: the
     Android leaf records and writes this snapshot (the native family), and the web and
     the desktop keep none beyond the dev reload.
     - Identity: typed owner steps aligned per parent, so a `Visibility` inserted before a
@@ -121,7 +116,7 @@ in a code comment.
     - The web: a staged snapshot boots a client render instead of a hydration; storage
     is keyed per app and tab; the `pagehide` session-storage copy restores on reloads
     alone and is cleared at boot.
-6. **The app layer before 1.0.** Every surveyed framework treats these as table
+5. **The app layer before 1.0.** Every surveyed framework treats these as table
     stakes, and each is cheaper to design before the native family than after it.
     - Forms: text-entry purposes (password, email, number, search, tel, url) and
     autocomplete as reported properties on `ControlProps`, mapped on the web to `type`,
@@ -166,7 +161,7 @@ in a code comment.
     `#[derive(Store)]` on defaulted generics; a bounded, keyed state holder that
     records a disposed keyed owner's snapshot entries and stages them when the key
     returns, so scrolled-out items and navigated-away pages keep their state.
-7. **Names and structure while the API is unstable.** One rename wave brings the names
+6. **Names and structure while the API is unstable.** One rename wave brings the names
     in line with the vocabulary rule, the structure loses its bad edges and copies, and
     the documents shrink to what tooling cannot enforce.
     - A shell per platform: the facades' views and Simple's, newtypes implementing the
@@ -185,19 +180,19 @@ in a code comment.
     in the owning module's rustdoc; `README.md` for users; the guide's book built by
     `mdbook` in the gate, so a broken link or chapter fails it.
     - Doc comments: contracts alone, without rationale or narrated implementation.
-8. **Pictures beyond direct kitty transmission.** Shared memory or a file where the
+7. **Pictures beyond direct kitty transmission.** Shared memory or a file where the
     protocol's query over that medium shows the terminal shares the host, sparing the
     base64 for every change; unicode placeholders (`U=1`) through tmux, which passes no
     APC; sixel (DA1 attribute 4: xterm, foot, WezTerm, mlterm, Windows Terminal, VTE;
     not kitty, not Ghostty), palette-bound and without ids or z-order, so a change
     repaints the box whole; iTerm2's OSC 1337 last, for iTerm2, WezTerm and mintty.
-9. **Internationalization**: message catalogs, locale-aware formatting, reactive
+8. **Internationalization**: message catalogs, locale-aware formatting, reactive
     locale switching. Catalogs are provided as a context memo, the `Theme` pattern, so
     switching locale is one write; formatting follows ICU4X and MessageFormat 2; a
     direction signal lays right-to-left out through taffy over the logical edges; rich
     text becomes an annotated string, one run per paragraph with attribute ranges as
     Compose's `AnnotatedString`, fewer nodes and a natural target for translations.
-10. **The rest of the missing vocabulary.** What an ordinary app reaches for after the
+9. **The rest of the missing vocabulary.** What an ordinary app reaches for after the
     table stakes, and what the native family needs before it realizes the vocabulary
     once.
     - Views and controls: switch, progress and tabs first, then a spinner, a combobox,
@@ -212,14 +207,14 @@ in a code comment.
     gradients, box shadows, italic, text alignment, ellipsis and a maximum line count,
     and system colors, shared with stated terminal degradations and the web-only ones
     in `WebStyle`.
-11. **The terminal's app shell.** Inline mode and declarative terminal modes beside the
+10. **The terminal's app shell.** Inline mode and declarative terminal modes beside the
     alternate screen the app always takes today; printing above the app; `exec` and
     `suspend`; log capture, to a file or over the attach pipe, since the terminal
     installs no `tracing` subscriber; a screen-reader launch mode mapping the roles
     controls already report to a linear output, as Ink does; and further `Device`s the
     loop runs on through `Launch::run_on`: an SSH session's channel, and xterm.js in a
     page over a socket.
-12. **Devtools on a tee platform.** A `Tee<P>` platform streams every create, attach,
+11. **Devtools on a tee platform.** A `Tee<P>` platform streams every create, attach,
     update and token definition, with owners, handlers, snapshot positions and the
     cause of each effect re-run, over one protocol from any platform; the inspector is
     written in Skene and runs in a second terminal or a browser tab, since the
@@ -242,7 +237,7 @@ in a code comment.
     cfg the CLI sets, so a production build carries none of it. Open: the key (`F12`, as
     browsers use), whether `attach` stays as the two-terminal form, and whether the
     first cut is the logs, the build and the last crash alone.
-13. **Themes split by platform, and design tokens in the DTCG format.** A theme's
+12. **Themes split by platform, and design tokens in the DTCG format.** A theme's
     core is plain constants shared by every shell (its colors, and its sizes named
     rather than measured, since cells, points, dp and pixels share no unit), and each
     platform's theme crate gives the named sizes their values and builds its own
@@ -251,11 +246,11 @@ in a code comment.
     throughout their trees, the web keeping them so a scriptless page themes through
     CSS. A core imports from and exports to the W3C Design Tokens Community Group
     format, stable since October 2025, so a palette travels to and from design tools.
-14. **Notifications and progress from the terminal**: OSC 99 (kitty, with ids and
+13. **Notifications and progress from the terminal**: OSC 99 (kitty, with ids and
     closing) or OSC 9 for a desktop notification, OSC 9;4 for the taskbar's progress
     (Windows Terminal, ConEmu, Ghostty); a facade seam beside the title, ignored where
     unsupported. Low value until an app asks.
-15. **The terminal runs on Windows.** The `tty` module has a unix layer alone; the
+14. **The terminal runs on Windows.** The `tty` module has a unix layer alone; the
     console layer (ConPTY's virtual terminal input, which helix found buggy with CJK
     and non-ASCII text, or the legacy console input records as the fallback) is
     unwritten, and no Windows machine is at hand; the item waits for one. `skene
@@ -263,13 +258,13 @@ in a code comment.
     Unix alone, and where a process cannot be replaced the app exits with status 75
     for the launcher to spawn it. The console is a `Device` beside the tty, the loop
     unchanged: its input as bytes, its resize and end requests as notes.
-16. **The slider's standard parts on the web.** The web slider is drawn, so nothing
+15. **The slider's standard parts on the web.** The web slider is drawn, so nothing
     waits on them, but when engines ship `::slider-fill-*` (csswg-drafts#12419) the
     native input's track can be restyled through them instead. Blocked on engines.
-17. **A socket's send wakes its thread.** The host WebSocket's thread writes what was
+16. **A socket's send wakes its thread.** The host WebSocket's thread writes what was
     queued between reads of 10 ms; a wake pipe polled beside the socket would send at
     once and let an idle socket sleep.
-18. **The native platform family.** The largest phase, roughly 21–30 person-months
+17. **The native platform family.** The largest phase, roughly 21–30 person-months
     across five OSes, and deliberately late: each shell is designed once against a
     complete foundation, instead of chasing additions, so the gaps (images, font
     families, text-entry purposes, opacity, transforms, insets, windows, drag and drop)
@@ -403,7 +398,7 @@ in a code comment.
     - Off-thread delivery: the engine's scheduler wired to the event-loop proxy.
     - A loop-integrated timer (the one sanctioned exception to timers-are-userland).
     - Per-OS glue in leaves: IME, clipboard, menus, window management.
-19. **Server rendering beyond the native binary.** The native server binary stays the
+18. **Server rendering beyond the native binary.** The native server binary stays the
     deployment, documented in a container (a Dockerfile and docs for Lambda, Cloud Run,
     Fly.io, Cloudflare Containers and Vercel's Rust runtime), and the WASI leaf is not
     restored. Nearly all the demand for wasm rendering is on JavaScript isolates

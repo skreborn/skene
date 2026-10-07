@@ -667,7 +667,9 @@
   crate's public API against its snapshot under `api/`, read by a pinned nightly and
   `cargo public-api`, clippy on the code written for Apple's platforms (the
   terminal's, on `aarch64-apple-darwin`), the three test tiers and the workspace on its
-  declared `rust-version`. `cargo xtask gate test:browser` runs one step and `cargo xtask gate
+  declared `rust-version`. Everything but formatting, the API snapshots and that last
+  check runs on the stable `rust-toolchain.toml` pins, so a Rust release changes nothing
+  until a change of its own moves the pin and answers what the release asks. `cargo xtask gate test:browser` runs one step and `cargo xtask gate
   clippy` a group; each step logs to `target/gate/<step>.log`, and a failed one prints
   why beside the end of its log. A step that builds or runs anything is skipped while
   nothing it reads has changed since it last passed (every file but the documents, the

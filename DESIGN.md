@@ -366,7 +366,9 @@ the terminal focus moves into the open list while the entry beneath keeps its
 selection, so the standard items act on it, and closing returns focus without
 reselecting the value; `Escape` closes an open menu before it clears a selection. The
 web platform listens to `contextmenu` only on a node whose wrapper registered for it,
-positions the popover fixed at the pointer and shifts it back into the viewport, and
+applies the menu key and `Shift-F10` itself as the key's default, preventing the key
+and with it the browser's own menu where a wrapper serves the request, positions the
+popover fixed at the pointer and shifts it back into the viewport, and
 the server leaf renders nothing for the menu: with no script the browser's menu is the
 menu, as progressive enhancement asks.
 The
@@ -393,8 +395,10 @@ re-export.
   control's own state.
 - **The scriptless form is the control.** A text field or editor is its native
   `<input>` or `<textarea>` itself, decorated as the box; a checkbox, radio or slider
-  keeps its native input inside its label, visually hidden but focusable, beside the
-  parts that draw it. So keyboard, form participation and accessibility are the
+  keeps its native input inside its label, covering the label's box unseen and
+  focusable, beside the parts that draw it, which take the press it lets through, as a
+  run inside any control leaves a press to the box it falls in. So keyboard, form
+  participation and accessibility are the
   browser's before and after hydration and nothing is swapped. The picker alone is
   drawn (no engine but Chromium restyles an open `<select>` yet), so it is an
   `Enhance` of its own: its scriptless form is a `NativePicker` control, a `<select>`
@@ -430,11 +434,18 @@ re-export.
   leave the focus order, a deliberate reading of the practices' allowance, recorded
   in `AGENTS.md`.
 - **Parity holds by construction.** `skene-conformance` is one suite of scenarios, each
-  building a view, acting on it as a user does and checking what a reader finds—the
-  signals it is bound to, the node holding focus, what `find_by_role` reaches—through a
-  `Driver` each platform implements over its own seams: mount, find by role and name or
-  by text, hover, click, press, type, focus, resize, advance. A behavior every platform must share is a scenario, and a
-  divergence the suite finds is fixed in the platform, never excused in the suite. The
+  opening a page of the suite, acting on it as a user does and checking what a reader
+  finds—the probes the page publishes of the signals it binds, the node holding focus,
+  what a reader finds by role and name and reads of a node—through a `Driver` each
+  platform implements over its own seams: open, probe, find by role and name or by
+  text, read, hover, click, press, type, focus, resize, advance. A page is a view built
+  on the platform, so a driver builds it in its own process or serves it to another:
+  the web's, `skene-conformance-web`, serves every page from one app and acts each
+  scenario out over a WebDriver session in Firefox and Chromium by trusted input, an
+  event a page dispatches to itself running no browser default, finding what it acts
+  on by the role and the name the browser computes. A behavior every platform must
+  share is a scenario, and a divergence the suite finds is fixed in the platform, never
+  excused in the suite. The
   rules those scenarios exercise that a platform realizing its own overlays would
   otherwise copy live in the spine: an overlay's role
   (`OverlayProps::role`: a hint's tooltip, a modal's dialog) and the focus a closing

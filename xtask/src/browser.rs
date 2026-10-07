@@ -1,5 +1,6 @@
-//! The browser tier: every browser test binary, run in Firefox through geckodriver and
-//! in Chromium through chromedriver, several browser sessions at once.
+//! The browser tier: every browser test binary, and the conformance suite's harness
+//! over the app serving its pages, run in Firefox through geckodriver and in Chromium
+//! through chromedriver, several browser sessions at once.
 
 use std::{
   env,
@@ -55,6 +56,26 @@ const RUNS: &[Run] = &[
     binaries: &[("browser_axe", 1)],
   },
 ];
+
+/// The conformance suite in real browsers: the app serving every page of the suite,
+/// built as an app is built, and the harness acting each scenario out on it over a
+/// WebDriver session.
+struct Suite {
+  /// The package holding the app and the harness.
+  package: &'static str,
+  /// The harness's binary.
+  harness: &'static str,
+  /// The number of scenarios the harness passes at least.
+  scenarios: usize,
+}
+
+/// The conformance suite the tier runs. A harness passing fewer scenarios than listed
+/// fails the gate, so a new scenario raises the count here.
+const SUITE: Suite = Suite {
+  package: "skene-conformance-web",
+  harness: "harness",
+  scenarios: 23,
+};
 
 /// How long, in seconds, the runner gives one binary in one browser: longer than any
 /// test's own wait, the painted canvas's minute for its first GPU paint among them.
@@ -128,10 +149,23 @@ struct Binary {
   package: &'static str,
   /// The binary's name: its source's file stem.
   name: String,
-  /// The compiled module.
+  /// The compiled module, or the harness's executable.
   path: PathBuf,
   /// The package's directory, where the runner finds its `webdriver.json`.
   directory: PathBuf,
+  /// What runs it.
+  runner: Runner,
+}
+
+/// What runs a browser binary in a browser.
+enum Runner {
+  /// `wasm-bindgen-test-runner`, a test module in a page of its own.
+  Tests,
+  /// The binary itself: the conformance harness, serving the app built into `site`.
+  Harness {
+    /// The directory the app was built into.
+    site: PathBuf,
+  },
 }
 
 /// One binary to run in one engine, and what the run printed once it finished.
@@ -260,11 +294,45 @@ fn build(gate: &Gate, log: &mut Log) -> Result<Vec<Binary>, String> {
           name,
           path: gate.root.join(path),
           directory: directory.clone(),
+          runner: Runner::Tests,
         }),
     );
   }
 
+  binaries.push(build_suite(gate, log)?);
+
   Ok(binaries)
+}
+
+/// Builds the conformance suite's app with the skene command, as an app is built, and
+/// its harness.
+fn build_suite(gate: &Gate, log: &mut Log) -> Result<Binary, String> {
+  let directory = manifests::package_directory(&gate.root, SUITE.package)?;
+  let mut app = gate.cargo(["run", "--locked", "-p", "skene-cli", "--", "--dir"]);
+
+  app.arg(&directory).args(["build", "web", "--debug"]);
+  log.check(app)?;
+  log.check(gate.cargo([
+    "build",
+    "--locked",
+    "-p",
+    SUITE.package,
+    "--bin",
+    SUITE.harness,
+  ]))?;
+
+  Ok(Binary {
+    package: SUITE.package,
+    name: SUITE.harness.to_owned(),
+    path: gate
+      .target
+      .join("debug")
+      .join(format!("{}{}", SUITE.harness, env::consts::EXE_SUFFIX)),
+    directory: directory.clone(),
+    runner: Runner::Harness {
+      site: directory.join("dist").join("web"),
+    },
+  })
 }
 
 impl Job<'_> {
@@ -283,12 +351,15 @@ impl Job<'_> {
 
     log.note(output);
 
-    let expected = RUNS
-      .iter()
-      .filter(|run| run.package == binary.package)
-      .flat_map(|run| run.binaries)
-      .find(|(name, _)| *name == binary.name)
-      .map(|(_, count)| *count);
+    let expected = match binary.runner {
+      Runner::Tests => RUNS
+        .iter()
+        .filter(|run| run.package == binary.package)
+        .flat_map(|run| run.binaries)
+        .find(|(name, _)| *name == binary.name)
+        .map(|(_, count)| *count),
+      Runner::Harness { .. } => Some(SUITE.scenarios),
+    };
     let mut problems = Vec::new();
 
     match (results(output), expected) {
@@ -322,14 +393,29 @@ fn run_jobs(jobs: &mut [Job<'_>], scratch: &Path) {
     for _ in 0..sessions() {
       scope.spawn(|| {
         while let Some(job) = queue.lock().ok().and_then(|mut queue| queue.pop()) {
-          let mut command = Command::new("wasm-bindgen-test-runner");
+          let mut command = match &job.binary.runner {
+            Runner::Tests => {
+              let mut command = Command::new("wasm-bindgen-test-runner");
+
+              command
+                .arg(&job.binary.path)
+                .env("CARGO_MANIFEST_DIR", &job.binary.directory)
+                .env("WASM_BINDGEN_TEST_TIMEOUT", BINARY_TIMEOUT);
+
+              command
+            }
+            Runner::Harness { site } => {
+              let mut command = Command::new(&job.binary.path);
+
+              command.arg(site);
+
+              command
+            }
+          };
 
           command
-            .arg(&job.binary.path)
             .current_dir(&job.binary.directory)
-            .env("CARGO_MANIFEST_DIR", &job.binary.directory)
-            .env("TMPDIR", scratch)
-            .env("WASM_BINDGEN_TEST_TIMEOUT", BINARY_TIMEOUT);
+            .env("TMPDIR", scratch);
 
           for engine in ENGINES {
             command.env_remove(engine.variable);

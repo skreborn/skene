@@ -2482,8 +2482,22 @@ dependencies = [
 name = "skene-conformance"
 version = "0.1.0"
 dependencies = [
+ "accesskit",
  "skene-foundation",
  "skene-reactive",
+]
+
+[[package]]
+name = "skene-conformance-web"
+version = "0.1.0"
+dependencies = [
+ "js-sys",
+ "serde_json",
+ "skene-conformance",
+ "skene-foundation",
+ "skene-web",
+ "ureq",
+ "wasm-bindgen",
 ]
 
 [[package]]

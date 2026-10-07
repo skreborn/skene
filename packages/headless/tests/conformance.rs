@@ -2,11 +2,11 @@
 
 use std::time::Duration;
 
-use skene_conformance::Driver;
-use skene_foundation::{AnyView, Container, HasChild, KeyEvent, NodeId, Role, Size, View};
+use skene_conformance::{Driver, Probes, Reading};
+use skene_foundation::{Container, HasChild, KeyEvent, NodeId, Role, Size, View};
 use skene_headless::{
   Headless,
-  access_outline,
+  access_tree,
   find_by_role,
   find_by_text,
   focused_node,
@@ -23,6 +23,8 @@ use skene_reactive::Owner;
 struct HeadlessDriver {
   /// The owner of what is mounted.
   owner: Option<Owner>,
+  /// What the open page publishes.
+  probes: Probes,
 }
 
 impl HeadlessDriver {
@@ -30,7 +32,10 @@ impl HeadlessDriver {
   fn new() -> Self {
     reset();
 
-    Self { owner: None }
+    Self {
+      owner: None,
+      probes: Probes::default(),
+    }
   }
 }
 
@@ -43,17 +48,33 @@ impl Drop for HeadlessDriver {
 }
 
 impl Driver for HeadlessDriver {
-  type Platform = Headless;
+  type Node = NodeId;
+  type Scalar = f32;
 
-  fn mount(&mut self, build: impl FnOnce() -> AnyView<Headless> + 'static) {
+  fn open(&mut self, page: &str) {
     if let Some(owner) = self.owner.take() {
       owner.dispose();
     }
 
+    let page =
+      skene_conformance::page::<Headless>(page).unwrap_or_else(|| panic!("no page named {page:?}"));
     let owner = Owner::new();
-    let _root = owner.enter(|| Container::<Headless>::new().set_child(build()).build());
+    let mut probes = Probes::default();
+    let _root = owner.enter(|| {
+      Container::<Headless>::new()
+        .set_child((page.build)(&mut probes))
+        .build()
+    });
 
     self.owner = Some(owner);
+    self.probes = probes;
+  }
+
+  fn probe(&mut self, name: &str) -> String {
+    self
+      .probes
+      .read(name)
+      .unwrap_or_else(|| panic!("the page publishes no probe {name:?}"))
   }
 
   fn find(&mut self, role: Role, name: &str) -> Option<NodeId> {
@@ -64,24 +85,28 @@ impl Driver for HeadlessDriver {
     find_by_text(text)
   }
 
-  fn hover(&mut self, node: NodeId) {
-    user::hover(node);
+  fn read(&mut self, node: &NodeId) -> Reading {
+    Reading::of_tree(&access_tree(), *node)
   }
 
-  fn click(&mut self, node: NodeId) {
-    user::click(node);
+  fn hover(&mut self, node: &NodeId) {
+    user::hover(*node);
+  }
+
+  fn click(&mut self, node: &NodeId) {
+    user::click(*node);
   }
 
   fn press(&mut self, key: &KeyEvent) {
     user::press_key(key);
   }
 
-  fn type_text(&mut self, node: NodeId, text: &str) {
-    user::type_text(node, text);
+  fn type_text(&mut self, node: &NodeId, text: &str) {
+    user::type_text(*node, text);
   }
 
-  fn focus(&mut self, node: NodeId) {
-    trigger_focus(node);
+  fn focus(&mut self, node: &NodeId) {
+    trigger_focus(*node);
   }
 
   fn resize(&mut self, size: Size<f32>) {
@@ -94,10 +119,6 @@ impl Driver for HeadlessDriver {
 
   fn focused(&mut self) -> Option<NodeId> {
     focused_node()
-  }
-
-  fn access_outline(&mut self) -> String {
-    access_outline()
   }
 }
 

@@ -19,6 +19,11 @@ in a code comment.
     - Interaction: a group run's state variants reach its spans, as a rule on the
     group's class redefining the ink where the state holds; the token definitions it
     redefines condition on media alone, so this waits on the styling direction.
+    - Hit testing: a run is hit-tested by its untrimmed line box, which overhangs the
+    box `text-box-trim` trims its line to, so in both engines a press near the edge of
+    one of a column's text boxes lands on the next box's run, at a row's vertical
+    centre in Chromium; a run inside a control takes no pointer, and every other run
+    still takes the press its overhang covers, its own `Hovered` with it.
     - Typed events: a gesture arena before touch lands, its exception to "a view that
     handles an interaction owns it" written down.
     - Controls: `AccessProp` moves onto AccessKit's schema, beside its open `Role`: its
@@ -40,14 +45,9 @@ in a code comment.
     field editing, selection, motion) is extracted into a kit generic over the
     platform's scalar; headless lays out through it and renders pixel snapshots, and its
     layout store becomes the shared layout crate the native shells call into.
-    - A host-side WebDriver harness in the browser tier, over the WebDriver session,
-    runs the conformance suite (`skene-conformance`) in Firefox and Chromium through
-    trusted input from WebDriver's actions and takes the screenshot goldens: an event a page
-    dispatches to itself runs no browser default—no focus on a press, no button's click
-    on `Enter`, no text in an entry—so neither can run inside the page. The suite's
-    scenarios then name their pages, the harness serving each from one test app and
-    finding what a scenario acts on by WebDriver's computed role and label; the goldens
-    need a pinned font and Firefox before they compare across machines.
+    - The browser tier's WebDriver harness (`skene-conformance-web`) takes screenshot
+    goldens of the suite's pages; the goldens need a pinned font and Firefox before
+    they compare across machines.
     - The behaviors each platform's tests check on their own (focus showing after a key
     and not after a press, a press held along its path, focus entering and leaving a
     subtree, focus following a keyed item across a reorder) move into the conformance

@@ -1,0 +1,27 @@
+[package]
+name = "skene-conformance-web"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "The conformance suite in real browsers: its pages served as one web app, acted on over WebDriver by trusted input"
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+skene-conformance.workspace = true
+skene-web.workspace = true
+
+# Host-only: the harness drives a browser from outside it; on wasm targets its binary
+# compiles to an empty stub.
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+serde_json.workspace = true
+skene-foundation.workspace = true
+ureq = { default-features = false, version = "3" }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+js-sys.workspace = true
+wasm-bindgen.workspace = true
+
+[lints]
+workspace = true

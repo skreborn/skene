@@ -1,22 +1,58 @@
 pub mod skene_conformance
+pub struct skene_conformance::Page<P: skene_foundation::spine::platform::Platform>
+pub skene_conformance::Page::build: fn(&mut skene_conformance::Probes) -> skene_foundation::spine::view::AnyView<P>
+pub skene_conformance::Page::name: &'static str
+impl<P: skene_foundation::spine::platform::Platform> core::fmt::Debug for skene_conformance::Page<P>
+pub fn skene_conformance::Page<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_conformance::Probes(_)
+impl skene_conformance::Probes
+pub fn skene_conformance::Probes::publish(&mut self, &'static str, impl core::ops::function::Fn() -> alloc::string::String + 'static)
+pub fn skene_conformance::Probes::read(&self, &str) -> core::option::Option<alloc::string::String>
+impl core::default::Default for skene_conformance::Probes
+pub fn skene_conformance::Probes::default() -> skene_conformance::Probes
+impl core::fmt::Debug for skene_conformance::Probes
+pub fn skene_conformance::Probes::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_conformance::Reading
+pub skene_conformance::Reading::checked: bool
+pub skene_conformance::Reading::disabled: bool
+pub skene_conformance::Reading::value: core::option::Option<alloc::string::String>
+impl skene_conformance::Reading
+pub fn skene_conformance::Reading::of_tree(&accesskit::TreeUpdate, skene_foundation::spine::node::NodeId) -> Self
+impl core::clone::Clone for skene_conformance::Reading
+pub fn skene_conformance::Reading::clone(&self) -> skene_conformance::Reading
+impl core::cmp::Eq for skene_conformance::Reading
+impl core::cmp::PartialEq for skene_conformance::Reading
+pub fn skene_conformance::Reading::eq(&self, &skene_conformance::Reading) -> bool
+impl core::default::Default for skene_conformance::Reading
+pub fn skene_conformance::Reading::default() -> skene_conformance::Reading
+impl core::fmt::Debug for skene_conformance::Reading
+pub fn skene_conformance::Reading::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for skene_conformance::Reading
 pub struct skene_conformance::Scenario<D>
 pub skene_conformance::Scenario::act: fn(&mut D)
 pub skene_conformance::Scenario::name: &'static str
+pub skene_conformance::Scenario::page: &'static str
+impl<D: skene_conformance::Driver> skene_conformance::Scenario<D>
+pub fn skene_conformance::Scenario<D>::check(&self, &mut D) -> core::result::Result<(), alloc::string::String>
 impl<D> core::fmt::Debug for skene_conformance::Scenario<D>
 pub fn skene_conformance::Scenario<D>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub trait skene_conformance::Driver
-pub type skene_conformance::Driver::Platform: skene_foundation::spine::platform::Platform
-pub fn skene_conformance::Driver::access_outline(&mut self) -> alloc::string::String
+pub type skene_conformance::Driver::Node: core::clone::Clone + core::fmt::Debug + core::cmp::PartialEq
+pub type skene_conformance::Driver::Scalar: skene_foundation::spine::scalar::Scalar
 pub fn skene_conformance::Driver::advance(&mut self, core::time::Duration)
-pub fn skene_conformance::Driver::click(&mut self, skene_foundation::spine::node::NodeId)
-pub fn skene_conformance::Driver::find(&mut self, accesskit::Role, &str) -> core::option::Option<skene_foundation::spine::node::NodeId>
-pub fn skene_conformance::Driver::find_text(&mut self, &str) -> core::option::Option<skene_foundation::spine::node::NodeId>
-pub fn skene_conformance::Driver::focus(&mut self, skene_foundation::spine::node::NodeId)
-pub fn skene_conformance::Driver::focused(&mut self) -> core::option::Option<skene_foundation::spine::node::NodeId>
-pub fn skene_conformance::Driver::hover(&mut self, skene_foundation::spine::node::NodeId)
-pub fn skene_conformance::Driver::mount(&mut self, impl core::ops::function::FnOnce() -> skene_foundation::spine::view::AnyView<Self::Platform> + 'static)
+pub fn skene_conformance::Driver::click(&mut self, &Self::Node)
+pub fn skene_conformance::Driver::find(&mut self, accesskit::Role, &str) -> core::option::Option<Self::Node>
+pub fn skene_conformance::Driver::find_text(&mut self, &str) -> core::option::Option<Self::Node>
+pub fn skene_conformance::Driver::focus(&mut self, &Self::Node)
+pub fn skene_conformance::Driver::focused(&mut self) -> core::option::Option<Self::Node>
+pub fn skene_conformance::Driver::hover(&mut self, &Self::Node)
+pub fn skene_conformance::Driver::open(&mut self, &str)
 pub fn skene_conformance::Driver::press(&mut self, &skene_foundation::spine::events::KeyEvent)
-pub fn skene_conformance::Driver::resize(&mut self, skene_foundation::spine::values::size::Size<<Self::Platform as skene_foundation::spine::platform::Platform>::Scalar>)
-pub fn skene_conformance::Driver::type_text(&mut self, skene_foundation::spine::node::NodeId, &str)
+pub fn skene_conformance::Driver::probe(&mut self, &str) -> alloc::string::String
+pub fn skene_conformance::Driver::read(&mut self, &Self::Node) -> skene_conformance::Reading
+pub fn skene_conformance::Driver::resize(&mut self, skene_foundation::spine::values::size::Size<Self::Scalar>)
+pub fn skene_conformance::Driver::type_text(&mut self, &Self::Node, &str)
+pub fn skene_conformance::page<P: skene_foundation::spine::platform::Platform>(&str) -> core::option::Option<skene_conformance::Page<P>>
+pub fn skene_conformance::pages<P: skene_foundation::spine::platform::Platform>() -> alloc::vec::Vec<skene_conformance::Page<P>>
 pub fn skene_conformance::run<D: skene_conformance::Driver>(impl core::ops::function::FnMut() -> D)
 pub fn skene_conformance::scenarios<D: skene_conformance::Driver>() -> alloc::vec::Vec<skene_conformance::Scenario<D>>

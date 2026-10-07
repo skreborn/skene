@@ -9,7 +9,7 @@
 //! press and the behavior, whose flip the platform performed, is skipped. The only
 //! per-node listener is a `<dialog>`'s `cancel`.
 
-use std::{rc::Rc, str::FromStr};
+use std::{cell::Cell, rc::Rc, str::FromStr};
 
 use rustc_hash::FxHashMap;
 use skene_foundation::{
@@ -78,6 +78,12 @@ use crate::{
 /// and generation.
 const INDEX_PROPERTY: &str = "__skeneIndex";
 const GENERATION_PROPERTY: &str = "__skeneGeneration";
+
+thread_local! {
+  /// The physical key whose press a context menu served, until its release, which
+  /// raises the browser's own menu on some systems.
+  static SERVED_MENU_KEY: Cell<Option<Code>> = const { Cell::new(None) };
+}
 
 /// A live DOM listener, removed from its target when dropped.
 pub(super) struct Listener {
@@ -433,14 +439,54 @@ fn on_key_down(event: &web_sys::Event) {
 
   apply(prevented, event);
 
-  // A modal the scene dismisses on `Escape` is the dialog's own to cancel.
-  if !prevented.platform
-    && let Some(KeyDefault::Dismiss(overlay)) = Scene::<Web>::read(|scene| scene.key_default(&key))
-    && !Scene::<Web>::read(|scene| scene.is_modal(overlay))
-  {
-    event.prevent_default();
-    notify_dismiss::<Web>(overlay);
+  if prevented.platform {
+    return;
   }
+
+  match Scene::<Web>::read(|scene| scene.key_default(&key)) {
+    // A modal the scene dismisses on `Escape` is the dialog's own to cancel.
+    Some(KeyDefault::Dismiss(overlay)) if !Scene::<Web>::read(|scene| scene.is_modal(overlay)) => {
+      event.prevent_default();
+      notify_dismiss::<Web>(overlay);
+    }
+    // A menu the scene serves takes the browser's place; where none does, the browser
+    // raises its own.
+    Some(KeyDefault::ContextMenu) => {
+      let Some((element, node)) = resolve(event.target())
+      else {
+        return;
+      };
+      let served = dispatch_context_menu::<Web>(node, &keyboard_request(&element, key.modifiers));
+
+      if served.platform {
+        event.prevent_default();
+        SERVED_MENU_KEY.set(Some(key.code));
+      }
+    }
+    _ => {}
+  }
+}
+
+/// A request for the context menu from the keyboard where `element` holds focus: no
+/// pointer's, placed at the element's bottom left.
+fn keyboard_request(element: &Element, modifiers: Modifiers) -> PointerEvent {
+  let rect = element.get_bounding_client_rect();
+  #[expect(
+    clippy::cast_possible_truncation,
+    reason = "a position in CSS pixels is precise enough in f32"
+  )]
+  let (x, y) = (rect.left() as f32, rect.bottom() as f32);
+  let event = PointerEvent {
+    modifiers,
+    pointer: PointerInfo {
+      pointer_id: None,
+      persistent_device_id: None,
+      pointer_type: PointerType::Unknown,
+    },
+    ..PointerEvent::mouse(x, y)
+  };
+
+  localized(&event, element)
 }
 
 fn on_key_up(event: &web_sys::Event) {
@@ -448,12 +494,19 @@ fn on_key_up(event: &web_sys::Event) {
   else {
     return;
   };
+  let key = key_event(keyboard);
+
+  if SERVED_MENU_KEY.get() == Some(key.code) {
+    SERVED_MENU_KEY.set(None);
+    event.prevent_default();
+  }
+
   let Some(node) = node_at(event.target())
   else {
     return;
   };
 
-  apply(dispatch_key_up::<Web>(node, &key_event(keyboard)), event);
+  apply(dispatch_key_up::<Web>(node, &key), event);
 }
 
 /// The portable key event of a DOM keyboard event.
@@ -853,6 +906,8 @@ fn toggle_input(event: &web_sys::Event) -> Option<HtmlInputElement> {
     .filter(|input| matches!(input.type_().as_str(), "checkbox" | "radio"))
 }
 
+/// A control's new value reported at its node, then, for a text control, the selection
+/// the edit left.
 fn on_input(event: &web_sys::Event) {
   if toggle_input(event).is_some() {
     return;
@@ -875,8 +930,14 @@ fn on_input(event: &web_sys::Event) {
     return;
   };
 
+  let selection = target.dyn_ref::<Element>().and_then(selection_of);
+
   if let Some(node) = node_at(Some(target)) {
     notify_change::<Web>(node, &value);
+
+    if let Some(selection) = selection {
+      notify_selection_change::<Web>(node, selection);
+    }
   }
 }
 

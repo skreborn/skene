@@ -272,22 +272,28 @@
   }
 
   /* A checkbox, radio or range is drawn by the control's parts, so the native input it
-     keeps first inside its label is visually hidden yet focusable; a text entry is its
-     own element and needs none of this. */
+     keeps first inside its label covers the label's box unseen, focusable and found
+     where the control is drawn, while a pointer reaches the parts beneath it; a text
+     entry is its own element and needs none of this. */
   label[data-skene-control] {
     position: relative;
   }
 
   .skene-native:is([type="checkbox"], [type="radio"], [type="range"]) {
     position: absolute;
-    width: 1px;
-    height: 1px;
-    margin: -1px;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
     padding: 0;
     border: 0;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  /* A run inside a control takes no pointer, so a press lands on the box it falls in
+     rather than on a run whose line box overhangs it. */
+  :where([data-skene-control] span) {
     pointer-events: none;
   }
 

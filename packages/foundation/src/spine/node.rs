@@ -31,4 +31,13 @@ impl NodeId {
   pub const fn generation(self) -> u32 {
     self.generation
   }
+
+  /// The node's id in the accessibility tree the scene reports
+  /// ([`Scene::access_tree`](super::Scene::access_tree)): its generation and index,
+  /// past the window's zero.
+  #[inline(always)]
+  #[must_use]
+  pub const fn access_id(self) -> accesskit::NodeId {
+    accesskit::NodeId((((self.generation as u64) << 32) | self.index as u64) + 1)
+  }
 }

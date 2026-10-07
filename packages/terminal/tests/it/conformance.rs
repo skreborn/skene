@@ -2,8 +2,8 @@
 
 use std::time::Duration;
 
-use skene_conformance::Driver;
-use skene_foundation::{AnyView, KeyEvent, NodeId, Platform, Role, Size, View};
+use skene_conformance::{Driver, Probes, Reading};
+use skene_foundation::{KeyEvent, NodeId, Platform, Role, Size, View};
 use skene_terminal::{self as terminal, Terminal, testing};
 
 /// The terminal driven as a user drives it, a frame painted at its size before every act
@@ -11,6 +11,8 @@ use skene_terminal::{self as terminal, Terminal, testing};
 struct TerminalDriver {
   /// The terminal's size, in cells.
   size: (u16, u16),
+  /// What the open page publishes.
+  probes: Probes,
 }
 
 impl TerminalDriver {
@@ -18,7 +20,10 @@ impl TerminalDriver {
   fn new() -> Self {
     terminal::install();
 
-    Self { size: (80, 24) }
+    Self {
+      size: (80, 24),
+      probes: Probes::default(),
+    }
   }
 
   /// Paints a frame.
@@ -34,12 +39,24 @@ impl Drop for TerminalDriver {
 }
 
 impl Driver for TerminalDriver {
-  type Platform = Terminal;
+  type Node = NodeId;
+  type Scalar = u32;
 
-  fn mount(&mut self, build: impl FnOnce() -> AnyView<Terminal> + 'static) {
-    let _ = terminal::mount(move || build().build());
+  fn open(&mut self, page: &str) {
+    let page =
+      skene_conformance::page::<Terminal>(page).unwrap_or_else(|| panic!("no page named {page:?}"));
+    let mut probes = Probes::default();
+    let _ = terminal::mount(|| (page.build)(&mut probes).build());
 
+    self.probes = probes;
     self.paint();
+  }
+
+  fn probe(&mut self, name: &str) -> String {
+    self
+      .probes
+      .read(name)
+      .unwrap_or_else(|| panic!("the page publishes no probe {name:?}"))
   }
 
   fn find(&mut self, role: Role, name: &str) -> Option<NodeId> {
@@ -54,14 +71,20 @@ impl Driver for TerminalDriver {
     testing::find_by_text(text)
   }
 
-  fn hover(&mut self, node: NodeId) {
+  fn read(&mut self, node: &NodeId) -> Reading {
     self.paint();
-    testing::user::hover(node);
+
+    Reading::of_tree(&testing::access_tree(), *node)
   }
 
-  fn click(&mut self, node: NodeId) {
+  fn hover(&mut self, node: &NodeId) {
     self.paint();
-    testing::user::click(node);
+    testing::user::hover(*node);
+  }
+
+  fn click(&mut self, node: &NodeId) {
+    self.paint();
+    testing::user::click(*node);
     self.paint();
   }
 
@@ -70,14 +93,14 @@ impl Driver for TerminalDriver {
     self.paint();
   }
 
-  fn type_text(&mut self, node: NodeId, text: &str) {
+  fn type_text(&mut self, node: &NodeId, text: &str) {
     self.paint();
-    testing::user::type_text(node, text);
+    testing::user::type_text(*node, text);
     self.paint();
   }
 
-  fn focus(&mut self, node: NodeId) {
-    Terminal::focus(node);
+  fn focus(&mut self, node: &NodeId) {
+    Terminal::focus(*node);
     self.paint();
   }
 
@@ -96,12 +119,6 @@ impl Driver for TerminalDriver {
 
   fn focused(&mut self) -> Option<NodeId> {
     testing::focused_node()
-  }
-
-  fn access_outline(&mut self) -> String {
-    self.paint();
-
-    testing::access_outline()
   }
 }
 

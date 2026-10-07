@@ -384,7 +384,7 @@ impl<P: Platform> Scene<P> {
     nodes.push((window, root));
 
     let focus = Self::with(|scene| scene.focused())
-      .map(access_id)
+      .map(NodeId::access_id)
       .filter(|focused| nodes.iter().any(|(id, _)| id == focused))
       .unwrap_or(window);
 
@@ -464,7 +464,7 @@ impl<P: Platform> Scene<P> {
 
     access.set_children(children);
 
-    let id = access_id(node);
+    let id = node.access_id();
 
     nodes.push((id, access));
 
@@ -499,13 +499,31 @@ impl AccessProp {
         PopupKind::Dialog => HasPopup::Dialog,
       }),
       Self::Controls(nodes) => {
-        node.set_controls(nodes.iter().copied().map(access_id).collect::<Vec<_>>());
+        node.set_controls(
+          nodes
+            .iter()
+            .copied()
+            .map(NodeId::access_id)
+            .collect::<Vec<_>>(),
+        );
       }
       Self::LabelledBy(nodes) => {
-        node.set_labelled_by(nodes.iter().copied().map(access_id).collect::<Vec<_>>());
+        node.set_labelled_by(
+          nodes
+            .iter()
+            .copied()
+            .map(NodeId::access_id)
+            .collect::<Vec<_>>(),
+        );
       }
       Self::DescribedBy(nodes) => {
-        node.set_described_by(nodes.iter().copied().map(access_id).collect::<Vec<_>>());
+        node.set_described_by(
+          nodes
+            .iter()
+            .copied()
+            .map(NodeId::access_id)
+            .collect::<Vec<_>>(),
+        );
       }
       Self::Description(text) => node.set_description(text.clone()),
       Self::Orientation(axis) => node.set_orientation(match axis {
@@ -520,11 +538,6 @@ impl AccessProp {
       | Self::Name(_) => {}
     }
   }
-}
-
-/// The AccessKit id of `node`: its generation and index, past the window's zero.
-fn access_id(node: NodeId) -> accesskit::NodeId {
-  accesskit::NodeId(((u64::from(node.generation()) << 32) | u64::from(node.index())) + 1)
 }
 
 /// Writes the node `id` of `tree` and its descendants into `out` at `depth`.

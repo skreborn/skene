@@ -8,6 +8,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+accesskit.workspace = true
 skene-foundation.workspace = true
 skene-reactive.workspace = true
 

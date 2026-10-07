@@ -448,7 +448,9 @@
   input keeps it as its scriptless form—a text field or editor *is* its `<input>` or
   `<textarea>`, its caption a `<label for>` the platform keeps before it among its
   siblings, a checkbox, radio or slider keeps its input inside its label beside the
-  parts that draw it, and none needs a swap after hydration—and the picker, drawn on
+  parts that draw it, covering the label's box unseen so a reader finds the control
+  where it is drawn while a press reaches the parts beneath, a run inside any control
+  taking no pointer of its own, and none needs a swap after hydration—and the picker, drawn on
   every engine, is an `Enhance` over its `NativePicker` form, a `<select>` the server
   renders and the reader's choice in it carries across the swap. The
   terminal's controls are composed trees painted by the same box and run painters as
@@ -517,11 +519,18 @@
   (`Scene::accessible_name`), `access_tree` and `access_outline` read the whole
   accessibility tree as AccessKit models it, and `user` turns a click, a key or typed
   text into the events a browser dispatches for it, on headless and the terminal alike. Parity is
-  held by construction: `skene-conformance` is one suite of scenarios, each acting as a
-  user and checking what a reader finds, run through a `Driver` every platform
-  implements over its own seams—a behavior every platform must share is a scenario
-  there, and a divergence it finds is a bug in the platform, never a special case in
-  the suite. A third-party platform proves itself the same way. Platforms
+  held by construction: `skene-conformance` is one suite of scenarios, each opening a
+  page of the suite (a view built on the platform, publishing `Probes` of the signals
+  it binds), acting as a user and checking what a reader finds, run through a `Driver`
+  every platform implements over its own seams, in its own process or in another—a
+  behavior every platform must share is a scenario there, and a divergence it finds is
+  a bug in the platform, never a special case in the suite. A third-party platform
+  proves itself the same way. The web runs it in real browsers:
+  `skene-conformance-web` serves every page from one app built as an app is, and its
+  harness acts each scenario out over a WebDriver session, each in a fresh window, by
+  trusted input from WebDriver's actions—an event a page dispatches to itself runs no
+  browser default—finding what it acts on by the role and the name the browser
+  computes. Platforms
   test against their real sinks (web: real DOM via `wasm-bindgen-test`; the server
   leaf natively under a byte-exact snapshot; native: its toolkit). No mock stands in
   for a platform; only the spine's own unit tests run on a double, a `TestPlatform`
@@ -702,9 +711,11 @@
   device after the first frame and the box falls back to the CPU; without a GPU, Firefox finds an adapter only through Mesa's software Vulkan
   driver (`mesa-vulkan-drivers`, which CI installs); `browser_painted` hides
   `navigator.gpu` before its first box paints, so the CPU blit is proven in the same
-  run. The gate holds each browser binary to the least
-  number of tests it lists for it in each engine, so a shrinking suite fails rather
-  than passing quietly, and a new browser test raises its binary's number there. By
+  run. The tier then builds the conformance suite's app with the `skene` command and
+  runs its harness in each engine beside the browser binaries. The gate holds each
+  browser binary to the least number of tests it lists for it in each engine, and the
+  harness to the least number of scenarios, so a shrinking suite fails rather than
+  passing quietly, and a new browser test or scenario raises its number there. By
   hand, read each binary's `test result:` line
   rather than cargo's exit code, and run Firefox's snap-bundled geckodriver
   (`GECKODRIVER=/snap/firefox/current/usr/lib/firefox/geckodriver`) with `TMPDIR` on a

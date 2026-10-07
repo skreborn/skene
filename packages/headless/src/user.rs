@@ -1,9 +1,9 @@
 //! A user's gestures on the headless platform, each the sequence of events a browser
 //! dispatches for it, through the `trigger_` seams.
 //!
-//! A pointer acts at the center of the size last reported for the node
-//! ([`trigger_size`](crate::trigger_size)), or at its corner where none was; a key acts
-//! where focus is.
+//! A pointer acts at the center of the size last reported for the node, by a frame's
+//! layout or by [`trigger_size`](crate::trigger_size), or at its corner where none was;
+//! a key acts where focus is.
 
 use skene_foundation::{
   Key,

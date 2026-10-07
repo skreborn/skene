@@ -2,10 +2,15 @@
 //!
 //! The host platform: realizes the portable vocabulary into inspectable records, so
 //! view logic tests run without a platform. Every mirrored call is bookkeeping, not
-//! emulation: no layout runs, and no platform response fires. Tests build views exactly
-//! as an app does, then inspect the records ([`outline`], [`box_props`], [`slot_leaf`],
-//! [`resolve_color`]) and drive events through the `trigger_` seams, each bubbling as
-//! on every platform.
+//! emulation: no platform response fires. Tests build views exactly as an app does, then
+//! inspect the records ([`outline`], [`box_props`], [`slot_leaf`], [`resolve_color`])
+//! and drive events through the `trigger_` seams, each bubbling as on every platform.
+//!
+//! The scene lays out through the shared layout (`skene-layout`) at the viewport on
+//! every frame ([`trigger_frame`], [`trigger_resize`]), each run measured by approximate
+//! metrics: a grapheme cluster half its font size wide, a line one and a half times its
+//! font size tall unless its style sets a line height. A frame reports each box's laid-out
+//! size to the observers bound to it, and [`layout_rect`] reads a fresh layout.
 //!
 //! The environment starts at a 1024 by 768 viewport, the light scheme and no reduced
 //! motion; [`trigger_resize`], [`trigger_color_scheme`] and [`trigger_reduced_motion`]
@@ -34,6 +39,7 @@
 //! [`install_executor`] makes it the thread's spawner ([`reset`] does too), so a
 //! `Resource` built in a test loads when the test pumps.
 
+mod layout;
 mod records;
 mod resolve;
 pub mod user;
@@ -82,6 +88,7 @@ use skene_foundation::{
   Prevented,
   Property,
   PropertyKey,
+  Rect,
   RunProps,
   RunValue,
   Scene,
@@ -119,7 +126,7 @@ use skene_foundation::{
 use skene_reactive::{Memo, ReadSignal, Set};
 use unicode_segmentation::UnicodeSegmentation;
 
-use crate::records::{Kind, Record, Records};
+use crate::records::{Kind, Record, Records, Report};
 
 /// The host platform: a zero-sized [`Platform`] keeping a record per node in this
 /// crate's records.
@@ -340,7 +347,13 @@ impl Platform for Headless {
   fn observe_size(node: NodeId, report: Rc<dyn Fn(Size<f32>)>) -> Observation {
     let kept = Rc::clone(&report);
 
-    with_record(node, |record| record.size_observers.push(report));
+    with_record(node, |record| {
+      record.size_observers.push(report);
+
+      if record.report == Report::Changed {
+        record.report = Report::Due;
+      }
+    });
 
     Observation::new(move || {
       with_record(node, |record| {
@@ -838,6 +851,9 @@ pub fn set_clipboard_availability(action: ClipboardAction, availability: Availab
 
 /// Reports `size` as the measured size of `node` to every observer bound to it; a box
 /// named for container queries also publishes it as that container's size.
+///
+/// The size holds against the layout from then on: a frame reports the node's laid-out
+/// size no more.
 pub fn trigger_size(node: NodeId, size: Size<f32>) {
   trigger(|| {
     let name = Scene::<Headless>::with(|scene| scene.record(node).and_then(NodeRecord::container));
@@ -848,6 +864,7 @@ pub fn trigger_size(node: NodeId, size: Size<f32>) {
 
     let observers = with_record(node, |record| {
       record.size = Some(size);
+      record.report = Report::ByHand;
       record.size_observers.clone()
     })
     .unwrap_or_default();
@@ -869,6 +886,7 @@ pub fn trigger_resize(size: Size<f32>) {
     });
 
     write.set(size);
+    report_layout();
   });
 }
 
@@ -1053,7 +1071,66 @@ pub fn trigger_frame(elapsed: Duration) {
     while let Some(action) = with_records(|records| records.timers.pop_due(records.clock, batch)) {
       action();
     }
+
+    end_turn();
+    report_layout();
   });
+}
+
+/// Lays the scene out at the viewport and reports each box's laid-out size, where it
+/// changed or an observer was bound since, to the observers bound to it and as the size
+/// of the container it names; a box a test sized by hand keeps that size.
+fn report_layout() {
+  let frames = layout::lay_out();
+  let mut reports = Vec::new();
+
+  with_records(|records| {
+    for (node, rect) in frames.iter() {
+      let Some(record) = records.record_mut(node)
+      else {
+        continue;
+      };
+
+      match record.report {
+        Report::ByHand => continue,
+        Report::Changed if record.size == Some(rect.size) => continue,
+        Report::Changed | Report::Due => {}
+      }
+
+      record.size = Some(rect.size);
+      record.report = Report::Changed;
+      reports.push((node, rect.size, record.size_observers.clone()));
+    }
+
+    records.frames = frames;
+  });
+
+  for (node, size, observers) in reports {
+    let name = Scene::<Headless>::with(|scene| scene.record(node).and_then(NodeRecord::container));
+
+    if let Some(name) = name {
+      record_container_size(name, size);
+    }
+
+    for observer in observers {
+      observer(size);
+    }
+  }
+}
+
+/// The rectangle `node` covers in a layout of the scene at the viewport, laid out
+/// afresh; `None` for a node the layout leaves out: hidden, in a closed overlay, or an
+/// anchor or a scope.
+#[must_use]
+pub fn layout_rect(node: NodeId) -> Option<Rect<f32>> {
+  end_turn();
+
+  let frames = layout::lay_out();
+  let rect = frames.rect(node);
+
+  with_records(|records| records.frames = frames);
+
+  rect
 }
 
 /// Simulates the query container `name` measuring `size`.

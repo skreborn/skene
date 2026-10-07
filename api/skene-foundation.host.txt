@@ -3320,6 +3320,7 @@ pub skene_foundation::Annotation::self_horizontal_alignment: core::option::Optio
 impl<P: skene_foundation::Platform> skene_foundation::Annotation<P>
 pub fn skene_foundation::Annotation<P>::apply_to(self, &mut skene_foundation::DeclaredBoxStyle<P>)
 pub fn skene_foundation::Annotation<P>::into_style(self) -> skene_foundation::DeclaredBoxStyle<P>
+pub fn skene_foundation::Annotation<P>::resolve(&self, &skene_foundation::Resolver<'_, <P as skene_foundation::Platform>::Scalar, <P as skene_foundation::Platform>::StyleExt>) -> skene_foundation::BoxStyle<<P as skene_foundation::Platform>::Scalar, skene_foundation::Plain, <P as skene_foundation::Platform>::StyleExt>
 impl<P: skene_foundation::Platform> core::clone::Clone for skene_foundation::Annotation<P>
 pub fn skene_foundation::Annotation<P>::clone(&self) -> Self
 impl<P: skene_foundation::Platform> core::cmp::PartialEq for skene_foundation::Annotation<P>

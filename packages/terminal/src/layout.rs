@@ -8,19 +8,10 @@
 use std::cell::OnceCell;
 
 use rustc_hash::FxHashSet;
-use skene_foundation::{Axis, Inset, Layout, Overflow, RunPlacement, Scene};
+use skene_foundation::{Inset, Layout, RunPlacement, Scene};
+use skene_layout::{Borders, BoxLayout, Place};
 use taffy::{
-  prelude::{
-    AvailableSpace,
-    TaffyAuto,
-    TaffyGridLine,
-    TaffyGridSpan,
-    fit_content,
-    fr,
-    length,
-    minmax,
-    percent,
-  },
+  prelude::{AvailableSpace, length},
   style::{Display, Style},
   tree::LayoutOutput,
 };
@@ -759,6 +750,10 @@ fn taffy_style_of(records: &Records, handle: Handle) -> Restyled {
     .and_then(|parent| records.record(parent))
     .and_then(Record::layout)
     == Some(Layout::Stack);
+  let place = Place {
+    in_stack,
+    borders: Borders::Unit,
+  };
   // The root's child fills the viewport, unless it sizes its own height.
   let fills_root = layout_parent == Some(records.root)
     && !record.is_overlay()
@@ -776,7 +771,7 @@ fn taffy_style_of(records: &Records, handle: Handle) -> Restyled {
       // A wrapper's properties on a bare run: its flexibility, alignment, pinning and
       // grid placement, folded like a box's.
       if let Some(cache) = cache {
-        apply_box_sizing(&mut style, &cache.layout, in_stack);
+        cache.layout.fold_into(&mut style, place);
       }
 
       let text = if props.placement == RunPlacement::Embedded {
@@ -797,9 +792,7 @@ fn taffy_style_of(records: &Records, handle: Handle) -> Restyled {
         ))
       };
 
-      if in_stack {
-        stack_cell(&mut style);
-      }
+      place.apply(&mut style);
 
       if inline && has_children {
         style.flex_wrap = taffy::style::FlexWrap::Wrap;
@@ -814,7 +807,7 @@ fn taffy_style_of(records: &Records, handle: Handle) -> Restyled {
     Kind::Box(inner) => {
       let resolved = inner.style().cloned().unwrap_or_default();
       let paragraph = is_paragraph(records, handle);
-      let mut style = box_taffy_style(inner.props.layout, &resolved, in_stack);
+      let mut style = resolved.taffy_style(inner.props.layout, place);
 
       if fills_root {
         style.flex_grow = 1.;
@@ -835,7 +828,7 @@ fn taffy_style_of(records: &Records, handle: Handle) -> Restyled {
     }
     Kind::Control { inner, field, .. } => {
       let resolved = inner.style().cloned().unwrap_or_default();
-      let mut style = box_taffy_style(inner.props.layout, &resolved, in_stack);
+      let mut style = resolved.taffy_style(inner.props.layout, place);
 
       if let Some(field) = field {
         let chrome = chrome(&resolved);
@@ -866,7 +859,7 @@ fn taffy_style_of(records: &Records, handle: Handle) -> Restyled {
     }
     Kind::Overlay { inner, open, .. } => {
       let resolved = inner.style().cloned().unwrap_or_default();
-      let mut style = box_taffy_style(inner.props.layout, &resolved, false);
+      let mut style = resolved.taffy_style(inner.props.layout, place.detached());
 
       style.position = taffy::style::Position::Absolute;
 
@@ -877,18 +870,6 @@ fn taffy_style_of(records: &Records, handle: Handle) -> Restyled {
       Restyled { style, text: None }
     }
   }
-}
-
-/// Places a node in a stack's one cell.
-fn stack_cell(style: &mut Style) {
-  style.grid_row = taffy::geometry::Line {
-    start: taffy::style::GridPlacement::from_line_index(1),
-    end: taffy::style::GridPlacement::Auto,
-  };
-  style.grid_column = taffy::geometry::Line {
-    start: taffy::style::GridPlacement::from_line_index(1),
-    end: taffy::style::GridPlacement::Auto,
-  };
 }
 
 /// Hands every laid-out node its flattened children, where the tree changed since the
@@ -1031,395 +1012,6 @@ fn measure_run(
   taffy::geometry::Size {
     width: known.width.unwrap_or(cells as f32),
     height: known.height.unwrap_or(rows as f32),
-  }
-}
-
-/// The taffy style for a box: its layout mode plus the resolved style's sizing.
-pub(crate) fn box_taffy_style(layout: Layout, style: &PlainBox, in_stack: bool) -> Style {
-  let mut out = Style {
-    display: match layout {
-      Layout::Document => Display::Block,
-      Layout::Flex { .. } => Display::Flex,
-      Layout::Grid | Layout::Stack | Layout::Single => Display::Grid,
-    },
-    ..Style::default()
-  };
-
-  if layout == Layout::Single {
-    let single = vec![taffy::style::GridTemplateComponent::Single(fr(1.))];
-
-    out.grid_template_columns = single.clone();
-    out.grid_template_rows = single;
-  }
-
-  if let Layout::Flex { axis, reversed } = layout {
-    out.flex_direction = match (axis, reversed) {
-      (Axis::Horizontal, false) => taffy::style::FlexDirection::Row,
-      (Axis::Vertical, false) => taffy::style::FlexDirection::Column,
-      (Axis::Horizontal, true) => taffy::style::FlexDirection::RowReverse,
-      (Axis::Vertical, true) => taffy::style::FlexDirection::ColumnReverse,
-    };
-  }
-
-  apply_box_sizing(&mut out, style, in_stack);
-
-  out
-}
-
-/// A [`Dimension`](skene_foundation::Dimension) in cells as a taffy dimension.
-fn dimension(value: skene_foundation::Dimension<u32>) -> taffy::style::Dimension {
-  match value {
-    skene_foundation::Dimension::Length(cells) => length(cell(cells)),
-    skene_foundation::Dimension::Fraction(value) => percent(value),
-    skene_foundation::Dimension::Auto => taffy::style::Dimension::AUTO,
-  }
-}
-
-/// A [`Dimension`](skene_foundation::Dimension) in cells as a taffy auto-capable length.
-fn dimension_lpa(value: skene_foundation::Dimension<u32>) -> taffy::style::LengthPercentageAuto {
-  match value {
-    skene_foundation::Dimension::Length(cells) => length(cell(cells)),
-    skene_foundation::Dimension::Fraction(value) => percent(value),
-    skene_foundation::Dimension::Auto => taffy::style::LengthPercentageAuto::AUTO,
-  }
-}
-
-/// A dimension inset as a taffy rect.
-fn dimension_rect(
-  inset: skene_foundation::Inset<skene_foundation::Dimension<u32>>,
-) -> taffy::geometry::Rect<taffy::style::LengthPercentageAuto> {
-  taffy::geometry::Rect {
-    left: dimension_lpa(inset.start),
-    right: dimension_lpa(inset.end),
-    top: dimension_lpa(inset.top),
-    bottom: dimension_lpa(inset.bottom),
-  }
-}
-
-/// One [`TrackLimit`](skene_foundation::TrackLimit) as a taffy min-track sizing function.
-fn min_track(limit: skene_foundation::TrackLimit<u32>) -> taffy::style::MinTrackSizingFunction {
-  match limit {
-    skene_foundation::TrackLimit::Length(cells) => length(cell(cells)),
-    skene_foundation::TrackLimit::Fraction(value) => percent(value),
-    skene_foundation::TrackLimit::Flex(_) | skene_foundation::TrackLimit::Auto => {
-      taffy::style::MinTrackSizingFunction::AUTO
-    }
-    skene_foundation::TrackLimit::MinContent => taffy::prelude::min_content(),
-    skene_foundation::TrackLimit::MaxContent => taffy::prelude::max_content(),
-  }
-}
-
-/// One [`TrackLimit`](skene_foundation::TrackLimit) as a taffy max-track sizing function.
-fn max_track(limit: skene_foundation::TrackLimit<u32>) -> taffy::style::MaxTrackSizingFunction {
-  match limit {
-    skene_foundation::TrackLimit::Length(cells) => length(cell(cells)),
-    skene_foundation::TrackLimit::Fraction(value) => percent(value),
-    skene_foundation::TrackLimit::Flex(value) => fr(value),
-    skene_foundation::TrackLimit::Auto => taffy::style::MaxTrackSizingFunction::AUTO,
-    skene_foundation::TrackLimit::MinContent => taffy::prelude::min_content(),
-    skene_foundation::TrackLimit::MaxContent => taffy::prelude::max_content(),
-  }
-}
-
-/// One [`GridTrack`](skene_foundation::GridTrack) as a taffy track sizing function; `None`
-/// for an adaptive track, which only a template holds.
-fn track(value: skene_foundation::GridTrack<u32>) -> Option<taffy::style::TrackSizingFunction> {
-  Some(match value {
-    skene_foundation::GridTrack::Length(cells) => length(cell(cells)),
-    skene_foundation::GridTrack::Fraction(value) => percent(value),
-    skene_foundation::GridTrack::Flex(value) => fr(value),
-    skene_foundation::GridTrack::Auto => taffy::style::TrackSizingFunction::AUTO,
-    skene_foundation::GridTrack::MinContent => taffy::prelude::min_content(),
-    skene_foundation::GridTrack::MaxContent => taffy::prelude::max_content(),
-    skene_foundation::GridTrack::FitContent(cells) => fit_content(length(cell(cells))),
-    skene_foundation::GridTrack::Between(min, max) => minmax(min_track(min), max_track(max)),
-    skene_foundation::GridTrack::Adaptive(..) => return None,
-  })
-}
-
-/// A template as taffy's tracks and line names, the names empty where no line has one;
-/// both empty where CSS drops the list: more than one adaptive track, or one with
-/// neither limit a length or a fraction.
-fn explicit(
-  template: &skene_foundation::GridTemplate<u32>,
-) -> (
-  Vec<taffy::style::GridTemplateComponent<String>>,
-  Vec<Vec<String>>,
-) {
-  let fixed = |limit| {
-    matches!(
-      limit,
-      skene_foundation::TrackLimit::Length(_) | skene_foundation::TrackLimit::Fraction(_)
-    )
-  };
-  let adaptive = template
-    .tracks()
-    .filter(|entry| matches!(entry, skene_foundation::GridTrack::Adaptive(..)))
-    .count();
-
-  if adaptive > 1 {
-    return (Vec::new(), Vec::new());
-  }
-
-  let tracks: Option<Vec<_>> = template
-    .tracks()
-    .map(|entry| match entry {
-      skene_foundation::GridTrack::Adaptive(min, max) => (fixed(min) || fixed(max)).then(|| {
-        taffy::style::GridTemplateComponent::Repeat(taffy::style::GridTemplateRepetition {
-          count: taffy::style::RepetitionCount::AutoFill,
-          tracks: vec![minmax(min_track(min), max_track(max))],
-          line_names: Vec::new(),
-        })
-      }),
-      entry => track(entry).map(taffy::style::GridTemplateComponent::Single),
-    })
-    .collect();
-  let Some(tracks) = tracks
-  else {
-    return (Vec::new(), Vec::new());
-  };
-  let lines = template.line_names();
-  let names = if lines.iter().any(|names| !names.is_empty()) {
-    lines
-      .into_iter()
-      .map(|names| {
-        names
-          .into_iter()
-          .map(|name| name.as_str().to_owned())
-          .collect()
-      })
-      .collect()
-  }
-  else {
-    Vec::new()
-  };
-
-  (tracks, names)
-}
-
-/// A track list as taffy's implicit tracks; empty where CSS drops the list, an adaptive
-/// track in it.
-fn implicit(tracks: &[skene_foundation::GridTrack<u32>]) -> Vec<taffy::style::TrackSizingFunction> {
-  tracks
-    .iter()
-    .map(|entry| track(*entry))
-    .collect::<Option<_>>()
-    .unwrap_or_default()
-}
-
-/// One [`GridPlacement`](skene_foundation::GridPlacement) as taffy's.
-fn placement(value: skene_foundation::GridPlacement) -> taffy::style::GridPlacement<String> {
-  match value {
-    skene_foundation::GridPlacement::Auto => taffy::style::GridPlacement::Auto,
-    skene_foundation::GridPlacement::Line(index) => {
-      taffy::style::GridPlacement::from_line_index(index)
-    }
-    skene_foundation::GridPlacement::Span(count) => taffy::style::GridPlacement::from_span(count),
-    skene_foundation::GridPlacement::Named(name, index) => {
-      taffy::style::GridPlacement::NamedLine(name.as_str().to_owned(), index)
-    }
-    skene_foundation::GridPlacement::NamedSpan(name, count) => {
-      taffy::style::GridPlacement::NamedSpan(name.as_str().to_owned(), count)
-    }
-  }
-}
-
-/// An [`Arrangement`](skene_foundation::Arrangement) as taffy's content alignment.
-const fn arrangement(value: skene_foundation::Arrangement) -> taffy::style::AlignContent {
-  match value {
-    skene_foundation::Arrangement::Start => taffy::style::AlignContent::START,
-    skene_foundation::Arrangement::End => taffy::style::AlignContent::END,
-    skene_foundation::Arrangement::Center => taffy::style::AlignContent::CENTER,
-    skene_foundation::Arrangement::Stretch => taffy::style::AlignContent::STRETCH,
-    skene_foundation::Arrangement::SpaceBetween => taffy::style::AlignContent::SPACE_BETWEEN,
-    skene_foundation::Arrangement::SpaceAround => taffy::style::AlignContent::SPACE_AROUND,
-    skene_foundation::Arrangement::SpaceEvenly => taffy::style::AlignContent::SPACE_EVENLY,
-  }
-}
-
-/// An [`ItemAlignment`](skene_foundation::ItemAlignment) as taffy's item alignment.
-const fn item(value: skene_foundation::ItemAlignment) -> taffy::style::AlignItems {
-  match value {
-    skene_foundation::ItemAlignment::Start => taffy::style::AlignItems::START,
-    skene_foundation::ItemAlignment::End => taffy::style::AlignItems::END,
-    skene_foundation::ItemAlignment::Center => taffy::style::AlignItems::CENTER,
-    skene_foundation::ItemAlignment::Baseline => taffy::style::AlignItems::BASELINE,
-    skene_foundation::ItemAlignment::Stretch => taffy::style::AlignItems::STRETCH,
-  }
-}
-
-/// Folds the resolved style's layout properties into `out`.
-#[expect(
-  clippy::too_many_lines,
-  reason = "one fold per property; length is the property count, not complexity"
-)]
-fn apply_box_sizing(out: &mut Style, style: &PlainBox, in_stack: bool) {
-  out.size = taffy::geometry::Size {
-    width: style.width.map_or(taffy::style::Dimension::AUTO, dimension),
-    height: style
-      .height
-      .map_or(taffy::style::Dimension::AUTO, dimension),
-  };
-
-  out.min_size = taffy::geometry::Size {
-    width: style
-      .min_width
-      .map_or(taffy::style::LengthPercentageAuto::AUTO, dimension_lpa),
-    height: style
-      .min_height
-      .map_or(taffy::style::LengthPercentageAuto::AUTO, dimension_lpa),
-  };
-
-  out.max_size = taffy::geometry::Size {
-    width: style
-      .max_width
-      .map_or(taffy::style::LengthPercentageAuto::AUTO, dimension_lpa),
-    height: style
-      .max_height
-      .map_or(taffy::style::LengthPercentageAuto::AUTO, dimension_lpa),
-  };
-
-  out.aspect_ratio = style.aspect_ratio.map(|ratio| ratio.0);
-
-  if let Some(margin) = style.margin {
-    out.margin = dimension_rect(margin);
-  }
-
-  if let Some(padding) = style.padding {
-    out.padding = taffy::geometry::Rect {
-      left: length(cell(padding.start)),
-      right: length(cell(padding.end)),
-      top: length(cell(padding.top)),
-      bottom: length(cell(padding.bottom)),
-    };
-  }
-
-  // A pinned box leaves the flow; an offset one shifts within it. Pinned wins when
-  // both are set.
-  if let Some(pinned) = style.pinned {
-    out.position = taffy::style::Position::Absolute;
-    out.inset = dimension_rect(pinned);
-  }
-  else if let Some(offset) = style.offset {
-    out.position = taffy::style::Position::Relative;
-    out.inset = dimension_rect(offset);
-  }
-
-  if has_border(style) {
-    let edges = border_edges(style);
-
-    out.border = taffy::geometry::Rect {
-      left: length(cell(u32::from(edges.start))),
-      right: length(cell(u32::from(edges.end))),
-      top: length(cell(u32::from(edges.top))),
-      bottom: length(cell(u32::from(edges.bottom))),
-    };
-  }
-
-  if let Some(spacing) = style.spacing {
-    out.gap = taffy::geometry::Size {
-      width: length(cell(spacing.horizontal)),
-      height: length(cell(spacing.vertical)),
-    };
-  }
-
-  if let Some(overflow) = style.overflow {
-    let overflow = overflow.computed();
-    let mapped = |overflow| match overflow {
-      Overflow::Visible => taffy::style::Overflow::Visible,
-      Overflow::Clip => taffy::style::Overflow::Clip,
-      Overflow::Scroll | Overflow::ScrollIfNeeded => taffy::style::Overflow::Scroll,
-    };
-
-    out.overflow = taffy::geometry::Point {
-      x: mapped(overflow.horizontal),
-      y: mapped(overflow.vertical),
-    };
-  }
-
-  if let Some(wrap) = style.wrap {
-    out.flex_wrap = match wrap {
-      skene_foundation::Wrap::None => taffy::style::FlexWrap::NoWrap,
-      skene_foundation::Wrap::Forward => taffy::style::FlexWrap::Wrap,
-      skene_foundation::Wrap::Reverse => taffy::style::FlexWrap::WrapReverse,
-    };
-  }
-
-  if let Some(flex) = style.flex {
-    out.flex_basis = dimension(flex.initial);
-    out.flex_grow = flex.grow_factor;
-    out.flex_shrink = flex.shrink_factor;
-  }
-
-  out.justify_content = style.arrangement.map(arrangement);
-  out.align_items = style.item_alignment.map(item);
-  out.align_content = style.line_arrangement.map(arrangement);
-  out.justify_items = style.item_horizontal_alignment.map(item);
-  out.align_self = style.self_alignment.map(item);
-  out.justify_self = style.self_horizontal_alignment.map(item);
-
-  if let Some(template) = &style.grid_columns {
-    (out.grid_template_columns, out.grid_template_column_names) = explicit(template);
-  }
-
-  if let Some(template) = &style.grid_rows {
-    (out.grid_template_rows, out.grid_template_row_names) = explicit(template);
-  }
-
-  if let Some(areas) = &style.grid_areas {
-    let rows = areas.rows();
-
-    out.grid_template_areas = Some(taffy::style::GridTemplateAreas {
-      areas: areas
-        .areas()
-        .unwrap_or_default()
-        .into_iter()
-        .map(|area| taffy::style::GridTemplateArea {
-          name: area.name.as_str().to_owned(),
-          row_start: area.rows.start,
-          row_end: area.rows.end,
-          column_start: area.columns.start,
-          column_end: area.columns.end,
-        })
-        .collect(),
-      row_count: u16::try_from(rows.len()).unwrap_or(u16::MAX),
-      column_count: u16::try_from(rows.first().map_or(0, Vec::len)).unwrap_or(u16::MAX),
-    });
-  }
-
-  if let Some(tracks) = &style.grid_implicit_columns {
-    out.grid_auto_columns = implicit(tracks);
-  }
-
-  if let Some(tracks) = &style.grid_implicit_rows {
-    out.grid_auto_rows = implicit(tracks);
-  }
-
-  if let Some(flow) = style.grid_flow {
-    out.grid_auto_flow = match flow {
-      skene_foundation::GridFlow::Rows => taffy::style::GridAutoFlow::Row,
-      skene_foundation::GridFlow::Columns => taffy::style::GridAutoFlow::Column,
-      skene_foundation::GridFlow::DenseRows => taffy::style::GridAutoFlow::RowDense,
-      skene_foundation::GridFlow::DenseColumns => taffy::style::GridAutoFlow::ColumnDense,
-    };
-  }
-
-  if let Some(row) = style.grid_row_placement {
-    out.grid_row = taffy::geometry::Line {
-      start: placement(row.start),
-      end: placement(row.end),
-    };
-  }
-
-  if let Some(column) = style.grid_column_placement {
-    out.grid_column = taffy::geometry::Line {
-      start: placement(column.start),
-      end: placement(column.end),
-    };
-  }
-
-  if in_stack {
-    stack_cell(out);
   }
 }
 

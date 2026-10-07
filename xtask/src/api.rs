@@ -64,6 +64,7 @@ const SNAPSHOTS: &[Snapshot] = &[
   Snapshot::new("skene-dev", Leaf::Host),
   Snapshot::new("skene-foundation", Leaf::Host),
   Snapshot::new("skene-headless", Leaf::Host),
+  Snapshot::new("skene-layout", Leaf::Host),
   Snapshot::new("skene-macros", Leaf::Host),
   Snapshot::new("skene-reactive", Leaf::Host),
   Snapshot::new("skene-simple", Leaf::Host),

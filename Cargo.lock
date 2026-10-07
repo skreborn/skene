@@ -2567,8 +2567,18 @@ dependencies = [
  "rustc-hash 2.1.3",
  "skene-conformance",
  "skene-foundation",
+ "skene-layout",
  "skene-reactive",
  "unicode-segmentation",
+]
+
+[[package]]
+name = "skene-layout"
+version = "0.1.0"
+dependencies = [
+ "rustc-hash 2.1.3",
+ "skene-foundation",
+ "taffy",
 ]
 
 [[package]]
@@ -2635,6 +2645,7 @@ dependencies = [
  "skene-conformance",
  "skene-dev",
  "skene-foundation",
+ "skene-layout",
  "skene-macros",
  "skene-reactive",
  "skene-simple-terminal",

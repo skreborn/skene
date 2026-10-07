@@ -29,6 +29,7 @@ use skene_foundation::{
   interpolate::Motion,
   web::{Head, Painter, WebProperty},
 };
+use skene_layout::Frames;
 use skene_reactive::{Owner, ReadSignal, Signal, WriteSignal};
 
 use crate::{Headless, SlotLeaf, SlotValue, TokenValue};
@@ -64,6 +65,17 @@ pub(crate) struct NodeMotion {
   pub runner: Motion<WebProperty, SlotValue>,
 }
 
+/// How a frame reports a box's laid-out size.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Report {
+  /// The size, where it changed since the last report.
+  Changed,
+  /// The size, changed or not: an observer was bound since the last report.
+  Due,
+  /// Nothing: a test reported the size by hand, which holds against the layout.
+  ByHand,
+}
+
 /// One realized node.
 pub(crate) struct Record {
   /// What the node is, with the props it was created from.
@@ -92,6 +104,8 @@ pub(crate) struct Record {
   pub size_observers: Vec<Rc<dyn Fn(Size<f32>)>>,
   /// The size last reported for the box.
   pub size: Option<Size<f32>>,
+  /// How a frame reports the box's laid-out size.
+  pub report: Report,
   /// The painter a painted box draws with.
   pub painter: Option<Rc<Painter>>,
   /// The motion the node runs.
@@ -126,6 +140,7 @@ impl Record {
       listened: Vec::new(),
       size_observers: Vec::new(),
       size: None,
+      report: Report::Changed,
       painter: None,
       motion: NodeMotion::default(),
     }
@@ -197,6 +212,8 @@ pub(crate) struct Records {
   pub graphics: Option<bool>,
   /// The environment's signals, once first asked for.
   media: Option<MediaState>,
+  /// The rectangles of the last layout.
+  pub frames: Frames,
 }
 
 impl Default for Records {
@@ -224,6 +241,7 @@ impl Default for Records {
       hydrated: None,
       graphics: None,
       media: None,
+      frames: Frames::default(),
     }
   }
 }

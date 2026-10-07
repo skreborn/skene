@@ -550,7 +550,13 @@ Condition     = Media | State | And | Or
   control's parts pressed with it.
 - **Layout** runs on taffy at full capability, statically constrained per layout: each
   mode is its own container view carrying layout properties alone, `Container` is the one
-  decorated box, and per-child properties ride in wrappers. `Dimension` is a fixed length,
+  decorated box, and per-child properties ride in wrappers. Every platform but the web
+  maps a resolved style onto taffy through `skene-layout` once (`BoxLayout`, generic over
+  the scalar, a border taking a unit per edge drawn in cells and its width in pixels),
+  and the headless platform lays the scene out through its `Tree` on every frame, each
+  run measured by approximate metrics (a cluster half its font size wide, a line one
+  and a half times it tall), reporting each box's size to the observers bound to it and
+  answering `layout_rect`. `Dimension` is a fixed length,
   a `Fraction` of the parent, or auto. Overflow is per axis (`Axes<Overflow>`, one
   overflow setting both) and computed as CSS computes it, an axis left visible beside
   one that is not scrolling where needed; the terminal scrolls, and draws a scrollbar,

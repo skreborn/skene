@@ -10,6 +10,7 @@ repository.workspace = true
 [dependencies]
 rustc-hash.workspace = true
 skene-foundation.workspace = true
+skene-layout.workspace = true
 skene-reactive.workspace = true
 unicode-segmentation = "1"
 

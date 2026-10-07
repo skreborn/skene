@@ -3,7 +3,6 @@
 //! into its own vocabulary.
 
 use skene_foundation::{
-  Annotation,
   BoxStyle,
   Color,
   Condition,
@@ -79,43 +78,9 @@ impl<'a> Env<'a> {
   /// The per-child layout properties a wrapper annotated the node with, resolved into
   /// an otherwise empty box style.
   pub(crate) fn resolve_run_layout(&self) -> PlainBox {
-    let mut layout = PlainBox::default();
-    let Some(annotation) =
-      Scene::<Terminal>::read(|scene| scene.record(self.handle)?.annotation().cloned())
-    else {
-      return layout;
-    };
-    let Annotation {
-      flex,
-      self_alignment,
-      self_horizontal_alignment,
-      pinned,
-      grid_row_placement,
-      grid_column_placement,
-    } = annotation;
-
-    self.with_resolver(|resolver| {
-      layout.flex = flex
-        .as_ref()
-        .and_then(|value| resolver.declared_value(value));
-      layout.self_alignment = self_alignment
-        .as_ref()
-        .and_then(|value| resolver.declared_value(value));
-      layout.self_horizontal_alignment = self_horizontal_alignment
-        .as_ref()
-        .and_then(|value| resolver.declared_value(value));
-      layout.pinned = pinned
-        .as_ref()
-        .and_then(|value| resolver.declared_value(value));
-      layout.grid_row_placement = grid_row_placement
-        .as_ref()
-        .and_then(|value| resolver.declared_value(value));
-      layout.grid_column_placement = grid_column_placement
-        .as_ref()
-        .and_then(|value| resolver.declared_value(value));
-    });
-
-    layout
+    Scene::<Terminal>::read(|scene| scene.record(self.handle)?.annotation().cloned())
+      .map(|annotation| self.with_resolver(|resolver| annotation.resolve(resolver)))
+      .unwrap_or_default()
   }
 
   /// The box style of the record, every property resolved.

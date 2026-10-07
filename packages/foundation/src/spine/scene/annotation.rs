@@ -4,6 +4,7 @@ use std::fmt::Debug;
 
 use super::Scene;
 use crate::spine::{
+  BoxStyle,
   Condition,
   DeclaredBoxStyle,
   Dimension,
@@ -13,7 +14,9 @@ use crate::spine::{
   ItemAlignment,
   Line,
   NodeId,
+  Plain,
   Platform,
+  Resolver,
   Value,
 };
 
@@ -49,6 +52,40 @@ impl<P: Platform> Annotation<P> {
     self.apply_to(&mut style);
 
     style
+  }
+
+  /// The properties set here resolved by `resolver` into an otherwise empty box style.
+  pub fn resolve(
+    &self,
+    resolver: &Resolver<'_, P::Scalar, P::StyleExt>,
+  ) -> BoxStyle<P::Scalar, Plain, P::StyleExt> {
+    BoxStyle {
+      flex: self
+        .flex
+        .as_ref()
+        .and_then(|value| resolver.declared_value(value)),
+      self_alignment: self
+        .self_alignment
+        .as_ref()
+        .and_then(|value| resolver.declared_value(value)),
+      self_horizontal_alignment: self
+        .self_horizontal_alignment
+        .as_ref()
+        .and_then(|value| resolver.declared_value(value)),
+      pinned: self
+        .pinned
+        .as_ref()
+        .and_then(|value| resolver.declared_value(value)),
+      grid_row_placement: self
+        .grid_row_placement
+        .as_ref()
+        .and_then(|value| resolver.declared_value(value)),
+      grid_column_placement: self
+        .grid_column_placement
+        .as_ref()
+        .and_then(|value| resolver.declared_value(value)),
+      ..BoxStyle::default()
+    }
   }
 
   /// Writes every property set here into `style`, replacing what it held.

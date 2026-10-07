@@ -42,9 +42,15 @@ in a code comment.
     and every tier asserts through roles, text and pixels.
     - The terminal's retained runtime (the taffy store, the incremental restyle, the
     damage and the measured rectangles, hit testing, focus, capture, wheel latching,
-    field editing, selection, motion) is extracted into a kit generic over the
-    platform's scalar; headless lays out through it and renders pixel snapshots, and its
-    layout store becomes the shared layout crate the native shells call into.
+    field editing, selection, motion) moves into `skene-layout`, generic over the
+    platform's scalar, which holds the style mapping and a tree headless lays out
+    through today: the terminal's records lay out through its `Tree` and keep only
+    their cells; paragraphs and inline boxes lay out as the terminal's do, where
+    headless measures each run on its own; a run's font size inherits through the
+    typography, where headless reads the run's own or the platform's; headless lays out
+    at the values motion presents, hit-tests a point to a path, and renders pixel
+    snapshots in the pinned font; the layout store becomes the crate the native shells
+    call into.
     - Conformance by intent: once the shells stop sharing views, a scenario states what
     it builds (a button labelled Save that counts its clicks) and each platform's
     driver builds it in its own vocabulary, so one suite keeps holding every shell to

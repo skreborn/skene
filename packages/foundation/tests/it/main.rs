@@ -7,6 +7,7 @@ mod container;
 mod context_menu;
 mod controls;
 mod enhance;
+mod geometry;
 mod headless;
 mod keymap;
 mod keys;

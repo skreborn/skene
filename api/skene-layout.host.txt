@@ -1,0 +1,61 @@
+pub mod skene_layout
+pub use skene_layout::taffy
+pub enum skene_layout::Borders
+pub skene_layout::Borders::Unit
+pub skene_layout::Borders::Width
+impl skene_layout::Borders
+pub fn skene_layout::Borders::room<N: skene_foundation::spine::scalar::Scalar, X: skene_foundation::spine::extension::StyleExtension>(self, &skene_foundation::spine::box_style::BoxStyle<N, skene_foundation::spine::shape::Plain, X>) -> skene_foundation::spine::values::inset::Inset<f32>
+impl core::clone::Clone for skene_layout::Borders
+pub fn skene_layout::Borders::clone(&self) -> skene_layout::Borders
+impl core::cmp::Eq for skene_layout::Borders
+impl core::cmp::PartialEq for skene_layout::Borders
+pub fn skene_layout::Borders::eq(&self, &skene_layout::Borders) -> bool
+impl core::fmt::Debug for skene_layout::Borders
+pub fn skene_layout::Borders::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for skene_layout::Borders
+impl core::marker::StructuralPartialEq for skene_layout::Borders
+pub enum skene_layout::Part<C>
+pub skene_layout::Part::Absent
+pub skene_layout::Part::Box(taffy::style::Style)
+pub skene_layout::Part::Leaf(taffy::style::Style, C)
+pub skene_layout::Part::Overlay(taffy::style::Style)
+pub skene_layout::Part::Transparent
+impl<C: core::fmt::Debug> core::fmt::Debug for skene_layout::Part<C>
+pub fn skene_layout::Part<C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_layout::Frames(_)
+impl skene_layout::Frames
+pub fn skene_layout::Frames::extend(&mut self, Self)
+pub fn skene_layout::Frames::iter(&self) -> impl core::iter::traits::iterator::Iterator<Item = (skene_foundation::spine::node::NodeId, skene_foundation::spine::values::rect::Rect<f32>)> + '_
+pub fn skene_layout::Frames::rect(&self, skene_foundation::spine::node::NodeId) -> core::option::Option<skene_foundation::spine::values::rect::Rect<f32>>
+impl core::clone::Clone for skene_layout::Frames
+pub fn skene_layout::Frames::clone(&self) -> skene_layout::Frames
+impl core::default::Default for skene_layout::Frames
+pub fn skene_layout::Frames::default() -> skene_layout::Frames
+impl core::fmt::Debug for skene_layout::Frames
+pub fn skene_layout::Frames::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_layout::Place
+pub skene_layout::Place::borders: skene_layout::Borders
+pub skene_layout::Place::in_stack: bool
+impl skene_layout::Place
+pub fn skene_layout::Place::apply(self, &mut taffy::style::Style)
+pub const fn skene_layout::Place::detached(self) -> Self
+impl core::clone::Clone for skene_layout::Place
+pub fn skene_layout::Place::clone(&self) -> skene_layout::Place
+impl core::cmp::Eq for skene_layout::Place
+impl core::cmp::PartialEq for skene_layout::Place
+pub fn skene_layout::Place::eq(&self, &skene_layout::Place) -> bool
+impl core::fmt::Debug for skene_layout::Place
+pub fn skene_layout::Place::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for skene_layout::Place
+impl core::marker::StructuralPartialEq for skene_layout::Place
+pub struct skene_layout::Tree<P: skene_foundation::spine::platform::Platform, C>
+impl<P: skene_foundation::spine::platform::Platform, C> skene_layout::Tree<P, C>
+pub fn skene_layout::Tree<P, C>::lay_out(skene_foundation::spine::node::NodeId, skene_foundation::spine::values::size::Size<f32>, bool, impl core::ops::function::FnMut(skene_foundation::spine::node::NodeId) -> skene_layout::Part<C>, impl core::ops::function::FnMut(taffy::geometry::Size<core::option::Option<f32>>, taffy::geometry::Size<taffy::style::available_space::AvailableSpace>, &C) -> skene_foundation::spine::values::size::Size<f32>) -> skene_layout::Frames
+impl<P: skene_foundation::spine::platform::Platform, C> core::fmt::Debug for skene_layout::Tree<P, C>
+pub fn skene_layout::Tree<P, C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub trait skene_layout::BoxLayout
+pub fn skene_layout::BoxLayout::fold_into(&self, &mut taffy::style::Style, skene_layout::Place)
+pub fn skene_layout::BoxLayout::taffy_style(&self, skene_foundation::spine::values::layout::Layout, skene_layout::Place) -> taffy::style::Style
+impl<N: skene_foundation::spine::scalar::Scalar, X: skene_foundation::spine::extension::StyleExtension> skene_layout::BoxLayout for skene_foundation::spine::box_style::BoxStyle<N, skene_foundation::spine::shape::Plain, X>
+pub fn skene_foundation::spine::box_style::BoxStyle<N, skene_foundation::spine::shape::Plain, X>::fold_into(&self, &mut taffy::style::Style, skene_layout::Place)
+pub fn skene_foundation::spine::box_style::BoxStyle<N, skene_foundation::spine::shape::Plain, X>::taffy_style(&self, skene_foundation::spine::values::layout::Layout, skene_layout::Place) -> taffy::style::Style

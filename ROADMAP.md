@@ -44,10 +44,11 @@ in a code comment.
     now and then reads a transparent center pixel in Chromium after its minute's wait,
     and its panic fails the twenty tests after it in that binary; its first GPU paint
     gets a wait the test drives rather than a deadline. In a container without a GPU
-    (Chrome for Testing 155) it fails most runs, though it passed CI's first three:
-    SwiftShader's device is lost twice, the third ask finds none and the CPU blit writes
-    the fill within 300 ms, yet the read stays transparent and the canvas's 2d context
-    reports lost, unrestored for the minute, with `willReadFrequently` or without.
+    (Chrome for Testing 155) it fails most runs, though CI's Chromium passed it in each
+    of its first three: SwiftShader's device is lost twice, the third ask finds none and
+    the CPU blit writes the fill within 300 ms, yet the read stays transparent, the
+    canvas's 2d context reporting itself lost with no restore within the minute; 2d
+    contexts asked for `willReadFrequently` fail as often.
     - The terminal's retained runtime (the taffy store, the incremental restyle, the
     damage and the measured rectangles, hit testing, focus, capture, wheel latching,
     field editing, selection, motion) is extracted into a kit generic over the

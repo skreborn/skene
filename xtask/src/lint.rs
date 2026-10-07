@@ -531,7 +531,10 @@ mod tests {
 
   #[test]
   fn a_chain_ending_with_its_children_passes() {
-    assert!(findings("fn app() { Row::new().set_spacing(8.).set_children(()); }").is_empty());
+    assert_eq!(
+      findings("fn app() { Row::new().set_spacing(8.).set_children(()); }"),
+      Vec::<String>::new()
+    );
   }
 
   #[test]
@@ -592,9 +595,18 @@ mod tests {
 
   #[test]
   fn a_type_documenting_all_none_or_its_public_members_passes() {
-    assert!(findings("struct All { /// A.\n a: u8, /// B.\n b: u8 }").is_empty());
-    assert!(findings("struct None { a: u8, b: u8 }").is_empty());
-    assert!(findings("pub struct Public { /// A.\n pub a: u8, b: u8 }").is_empty());
+    assert_eq!(
+      findings("struct All { /// A.\n a: u8, /// B.\n b: u8 }"),
+      Vec::<String>::new()
+    );
+    assert_eq!(
+      findings("struct None { a: u8, b: u8 }"),
+      Vec::<String>::new()
+    );
+    assert_eq!(
+      findings("pub struct Public { /// A.\n pub a: u8, b: u8 }"),
+      Vec::<String>::new()
+    );
   }
 
   #[test]
@@ -610,12 +622,12 @@ mod tests {
 
   #[test]
   fn a_triggered_event_its_name_a_loop_turn_or_a_private_helper_passes() {
-    assert!(
+    assert_eq!(
       findings(
         "pub fn trigger_resize() { trigger(|| ()); } pub fn pump_tasks() -> bool { \
          trigger(pump) } fn resize() { trigger(|| ()); }"
-      )
-      .is_empty()
+      ),
+      Vec::<String>::new()
     );
   }
 
@@ -654,7 +666,10 @@ mod tests {
   #[test]
   fn a_crate_private_item_in_the_foundation_is_reported() {
     assert_eq!(foundation_findings("pub(crate) fn helper() {}").len(), 1);
-    assert!(foundation_findings("fn helper() {} pub fn api() {}").is_empty());
+    assert_eq!(
+      foundation_findings("fn helper() {} pub fn api() {}"),
+      Vec::<String>::new()
+    );
   }
 
   #[test]
@@ -672,12 +687,12 @@ mod tests {
 
   #[test]
   fn the_spine_naming_itself_passes() {
-    assert!(
+    assert_eq!(
       spine_findings(
         "use crate::spine::{scene::Scene, view::View}; pub(in crate::spine) fn helper() { \
          crate::spine::runtime::end_turn(); }"
-      )
-      .is_empty()
+      ),
+      Vec::<String>::new()
     );
   }
 

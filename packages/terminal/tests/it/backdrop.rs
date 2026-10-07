@@ -42,7 +42,7 @@ fn a_decorated_box_becomes_a_backdrop_where_graphics_show() {
 
     assert!(frame.starts_with("╭──────╮"), "{frame}");
     assert_eq!(colors_at(12, 6, 1, 1).1, Some((255, 0, 0)));
-    assert!(testing::render_to_pictures(12, 6).is_empty());
+    assert_eq!(testing::render_to_pictures(12, 6), []);
 
     testing::trigger_graphics(true);
 

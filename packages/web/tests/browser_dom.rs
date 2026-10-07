@@ -1251,7 +1251,7 @@ fn head_registrations_leave_with_their_owner() {
 
   outer.dispose();
 
-  assert!(scoped().is_empty());
+  assert_eq!(scoped(), Vec::<String>::new());
 }
 
 /// A registration adopts the identical element a server render left in the head, and

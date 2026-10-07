@@ -329,6 +329,7 @@ impl<N: Scalar> SimplePalette<N> {
 
   /// The look of `variant`.
   #[inline(always)]
+  #[must_use]
   pub const fn look(&self, variant: SimpleVariant) -> &SimpleLook<N> {
     match variant {
       SimpleVariant::Primary => &self.primary,

@@ -94,6 +94,7 @@ impl AccessProp {
   }
 
   /// The nodes the property refers to: a relation's, and none for every other.
+  #[must_use]
   pub fn referenced(&self) -> &[NodeId] {
     match self {
       Self::Controls(nodes) | Self::LabelledBy(nodes) | Self::DescribedBy(nodes) => nodes,
@@ -144,6 +145,6 @@ mod tests {
       ]
     );
     assert_eq!(folded[0].referenced(), [a, c]);
-    assert!(folded[1].referenced().is_empty());
+    assert_eq!(folded[1].referenced(), []);
   }
 }

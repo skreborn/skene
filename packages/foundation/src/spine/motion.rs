@@ -371,10 +371,6 @@ mod tests {
   /// An animation's offset runs from its first frame to its last, alternates when
   /// asked, and rests at the end of its final iteration.
   #[test]
-  #[expect(
-    clippy::float_cmp,
-    reason = "a linear animation's offsets at these instants are exact"
-  )]
   fn offsets_follow_iterations_and_alternation() {
     let animation = Animation::new(1., [(0., ()), (100., ())])
       .set_easing(Easing::Linear)

@@ -202,6 +202,7 @@ impl<C: CollectionPolicy> CollectionContext<C> {
 
   /// The members, in tree order.
   #[inline(always)]
+  #[must_use]
   pub const fn roster(&self) -> &Roster {
     &self.roster
   }
@@ -315,6 +316,7 @@ impl<C: CollectionPolicy> Collection<C> {
 
   /// The members the collection tracks, in tree order once the control builds.
   #[inline(always)]
+  #[must_use]
   pub const fn roster(&self) -> &Roster {
     &self.roster
   }

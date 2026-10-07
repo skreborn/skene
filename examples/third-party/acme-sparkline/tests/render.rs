@@ -52,7 +52,7 @@ fn a_sparkline_upgrades_to_pixels_where_graphics_are_proven() {
       .build()
   });
 
-  assert!(testing::render_to_pictures(10, 2).is_empty());
+  assert_eq!(testing::render_to_pictures(10, 2), []);
 
   testing::trigger_graphics(true);
 

@@ -99,6 +99,7 @@ impl<P: Platform> NodeRecord<P> {
   /// platform carries what a node holds outside the reactive graph—focus, a scroll
   /// offset, a caret—by it.
   #[inline(always)]
+  #[must_use]
   pub const fn position(&self) -> &SnapshotPlace {
     &self.position
   }

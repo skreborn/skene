@@ -1,8 +1,10 @@
 error[E0277]: `skene_web::Flexible<skene_foundation::spine::view::AnyView<Headless>>` is not a compatible and complete view
- --> tests/compile_fail/a_wrapper_in_a_container.rs:6:38
+ --> tests/compile_fail/a_wrapper_in_a_container.rs:6:28
   |
 6 |   let _ = Container::new().set_child(Flexible::new().set_child(Text::new("a")));
-  |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a compatible and complete view
+  |                            ^^^^^^^^^ ----------------------------------------- `skene_web::Flexible<skene_foundation::spine::view::AnyView<Headless>>` doesn't satisfy the trait bound
+  |                            |
+  |                            not a compatible and complete view
   |
   = note: check that it is indeed a compatible view type
   = note: a wrapper (`Flexible`, `Pinned`, `GridCell`) is accepted only by the container that understands it

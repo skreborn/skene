@@ -92,6 +92,7 @@ impl<T> Expr<T> {
 
   /// The expression tree, for a platform rendering or evaluating it.
   #[inline(always)]
+  #[must_use]
   pub const fn node(&self) -> &ExprNode {
     &self.node
   }

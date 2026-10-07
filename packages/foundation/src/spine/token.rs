@@ -192,6 +192,7 @@ impl<T: Tokenable, N: Scalar> Token<T, N> {
 
   /// The definition the palette gives the token.
   #[inline(always)]
+  #[must_use]
   pub fn definition(&self) -> &Definition<T, N> {
     &self.definition
   }

@@ -342,7 +342,7 @@ impl Parser {
 
   /// Whether the input ends in an escape a pause resolves: a lone `ESC`, or `ESC` with
   /// only `[` or `O` after it.
-  pub(crate) fn holds_escape(&self) -> bool {
+  pub(crate) const fn holds_escape(&self) -> bool {
     self.discarding.is_none() && matches!(self.buffer.as_slice(), [ESC] | [ESC, b'[' | b'O'])
   }
 

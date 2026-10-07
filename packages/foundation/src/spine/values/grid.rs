@@ -92,6 +92,7 @@ impl<T> GridTemplate<T> {
 
   /// The entries, in order.
   #[inline(always)]
+  #[must_use]
   pub fn entries(&self) -> &[TemplateEntry<T>] {
     &self.entries
   }

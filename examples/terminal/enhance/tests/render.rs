@@ -49,7 +49,7 @@ fn the_picture_paints_where_the_terminal_proves_graphics() {
   with_platform(|| {
     let _ = terminal::mount(|| terminal_enhance::app().build());
 
-    assert!(testing::render_to_pictures(60, 30).is_empty());
+    assert_eq!(testing::render_to_pictures(60, 30), []);
 
     testing::trigger_graphics(true);
 

@@ -144,15 +144,14 @@ fn entry_selection(entry: &Element) -> Option<(u32, u32, String)> {
       input.selection_end().ok()??,
     )
   }
-  else if let Some(editor) = entry.dyn_ref::<HtmlTextAreaElement>() {
+  else {
+    let editor = entry.dyn_ref::<HtmlTextAreaElement>()?;
+
     (
       editor.value(),
       editor.selection_start().ok()??,
       editor.selection_end().ok()??,
     )
-  }
-  else {
-    return None;
   };
   let units: Vec<u16> = value.encode_utf16().collect();
   let length = u32::try_from(units.len()).unwrap_or(u32::MAX);

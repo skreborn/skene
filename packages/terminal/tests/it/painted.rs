@@ -37,7 +37,7 @@ fn a_painted_box_falls_back_until_graphics_are_proven() {
     let frame = testing::render_to_text(20, 6);
 
     assert!(frame.starts_with("a red box\nafter\n"), "{frame}");
-    assert!(testing::render_to_pictures(20, 6).is_empty());
+    assert_eq!(testing::render_to_pictures(20, 6), []);
 
     testing::trigger_graphics(true);
 
@@ -60,7 +60,7 @@ fn a_painted_box_falls_back_until_graphics_are_proven() {
 
     testing::trigger_graphics(false);
 
-    assert!(testing::render_to_pictures(20, 6).is_empty());
+    assert_eq!(testing::render_to_pictures(20, 6), []);
   });
 }
 

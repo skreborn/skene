@@ -712,10 +712,16 @@
   driver (`mesa-vulkan-drivers`, which CI installs); `browser_painted` hides
   `navigator.gpu` before its first box paints, so the CPU blit is proven in the same
   run. The tier then builds the conformance suite's app with the `skene` command and
-  runs its harness in each engine beside the browser binaries. The gate holds each
-  browser binary to the least number of tests it lists for it in each engine, and the
-  harness to the least number of scenarios, so a shrinking suite fails rather than
-  passing quietly, and a new browser test or scenario raises its number there. By
+  runs its harness in each engine beside the browser binaries, and on x86-64 Linux
+  once more in a pinned Firefox it fetches into `target/browsers` and checks against
+  its published digest, comparing every page of the suite, drawn in the pinned font
+  the app serves under a fontconfig that admits no system font, pixel for pixel
+  against its screenshot golden (`packages/conformance-web/goldens`), rewritten by
+  `SKENE_GOLDENS=overwrite` once a change to a page's drawing is meant. The gate holds
+  each browser binary to the least number of tests it lists for it in each engine,
+  and the harness to the least number of scenarios and goldens, so a shrinking suite
+  fails rather than passing quietly, and a new browser test, scenario or page raises
+  its number there. By
   hand, read each binary's `test result:` line
   rather than cargo's exit code, and run Firefox's snap-bundled geckodriver
   (`GECKODRIVER=/snap/firefox/current/usr/lib/firefox/geckodriver`) with `TMPDIR` on a

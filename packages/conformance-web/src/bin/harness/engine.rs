@@ -3,6 +3,7 @@
 
 use std::{
   env,
+  fs,
   net::TcpListener,
   path::PathBuf,
   process::{Child, Command, Stdio},
@@ -18,6 +19,30 @@ const STARTUP: Duration = Duration::from_secs(30);
 
 /// How long a script may run before WebDriver gives up on it.
 const SCRIPT_TIMEOUT: u64 = 60_000;
+
+/// The fontconfig the browser taking goldens reads: no system font at all, and the
+/// font a page draws in rasterized alike on every machine, unhinted and in grayscale.
+const FONTCONFIG: &str = r#"<?xml version="1.0"?>
+<!DOCTYPE fontconfig SYSTEM "urn:fontconfig:fonts.dtd">
+<fontconfig>
+  <match target="pattern">
+    <edit name="antialias" mode="assign"><bool>true</bool></edit>
+    <edit name="hinting" mode="assign"><bool>false</bool></edit>
+    <edit name="hintstyle" mode="assign"><const>hintnone</const></edit>
+    <edit name="rgba" mode="assign"><const>none</const></edit>
+    <edit name="lcdfilter" mode="assign"><const>lcdnone</const></edit>
+  </match>
+</fontconfig>
+"#;
+
+/// What a session is for.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Purpose {
+  /// Acting out the scenarios.
+  Scenarios,
+  /// Taking the screenshot goldens: Firefox alone, drawing alike on every machine.
+  Goldens,
+}
 
 /// A browser engine, by the variable naming its driver.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -66,11 +91,26 @@ impl Engine {
     }
   }
 
-  /// What a session asks of the browser: headless, scripts given a minute.
-  fn capabilities(&self) -> Value {
+  /// What a session for `purpose` asks of the browser: headless, scripts given a minute,
+  /// and for the goldens one pixel to the CSS pixel, drawn in software, light, without
+  /// motion.
+  fn capabilities(&self, purpose: Purpose) -> Value {
     let timeouts = json!({ "script": SCRIPT_TIMEOUT });
 
     match self.kind {
+      Kind::Firefox if purpose == Purpose::Goldens => json!({
+        "browserName": "firefox",
+        "moz:firefoxOptions": {
+          "args": ["-headless"],
+          "prefs": {
+            "gfx.webrender.software": true,
+            "layout.css.devPixelsPerPx": "1.0",
+            "layout.css.prefers-color-scheme.content-override": 1,
+            "ui.prefersReducedMotion": 1,
+          },
+        },
+        "timeouts": timeouts,
+      }),
       Kind::Firefox => json!({
         "browserName": "firefox",
         "moz:firefoxOptions": { "args": ["-headless"] },
@@ -86,13 +126,26 @@ impl Engine {
     }
   }
 
-  /// Starts the driver on a free local port and a session on it.
-  pub(crate) fn start(&self) -> Result<Started, String> {
+  /// Starts the driver on a free local port and a session on it for `purpose`.
+  pub(crate) fn start(&self, purpose: Purpose) -> Result<Started, String> {
+    if purpose == Purpose::Goldens && self.kind != Kind::Firefox {
+      return Err("the goldens are taken in Firefox alone; set GECKODRIVER".to_owned());
+    }
+
     let port = TcpListener::bind("127.0.0.1:0")
       .and_then(|listener| listener.local_addr())
       .map_err(|error| error.to_string())?
       .port();
-    let process = Command::new(&self.driver)
+    let mut command = Command::new(&self.driver);
+
+    if purpose == Purpose::Goldens {
+      let fonts = env::temp_dir().join(format!("skene-goldens-{}.conf", std::process::id()));
+
+      fs::write(&fonts, FONTCONFIG).map_err(|error| format!("{}: {error}", fonts.display()))?;
+      command.env("FONTCONFIG_FILE", fonts);
+    }
+
+    let process = command
       .arg(format!("--port={port}"))
       .stdin(Stdio::null())
       .stdout(Stdio::null())
@@ -106,7 +159,7 @@ impl Engine {
 
     started.session = Some(Session::start(
       &format!("http://127.0.0.1:{port}"),
-      &self.capabilities(),
+      &self.capabilities(purpose),
       STARTUP,
     )?);
 

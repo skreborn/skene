@@ -67,15 +67,49 @@ struct Suite {
   harness: &'static str,
   /// The number of scenarios the harness passes at least.
   scenarios: usize,
+  /// The number of pages whose goldens the harness matches at least.
+  pages: usize,
 }
 
-/// The conformance suite the tier runs. A harness passing fewer scenarios than listed
-/// fails the gate, so a new scenario raises the count here.
+/// The conformance suite the tier runs. A harness passing fewer scenarios or goldens
+/// than listed fails the gate, so a new scenario or page raises the count here.
 const SUITE: Suite = Suite {
   package: "skene-conformance-web",
   harness: "harness",
   scenarios: 23,
+  pages: 15,
 };
+
+/// A browser release the tier fetches once into `target/browsers`, checked against its
+/// published digest.
+struct Pin {
+  /// The name of the directory it unpacks into, its version in it.
+  name: &'static str,
+  /// Where its archive is published.
+  url: &'static str,
+  /// The SHA-256 digest of its archive, in hex.
+  sha256: &'static str,
+}
+
+/// The version of the Firefox the goldens are taken in.
+const FIREFOX_VERSION: &str = "157.0.1";
+
+/// The Firefox the goldens are taken in, the release Mozilla publishes for x86-64 Linux.
+const FIREFOX: Pin = Pin {
+  name: "firefox-157.0.1",
+  url: "https://archive.mozilla.org/pub/firefox/releases/157.0.1/linux-x86_64/en-US/firefox-157.0.1.tar.xz",
+  sha256: "0d92bf39cdd174f5f361008509310bdefbce72a57ca10523a43b32d62dc699b6",
+};
+
+/// The geckodriver driving the pinned Firefox.
+const GECKODRIVER: Pin = Pin {
+  name: "geckodriver-0.37.1",
+  url: "https://github.com/mozilla/geckodriver/releases/download/v0.37.1/geckodriver-v0.37.1-linux64.tar.gz",
+  sha256: "e815130ea95983e162ae91843b48d3a3ce991735635fce83a647afde21e09f7e",
+};
+
+/// The engine the goldens run in, by its name in a report.
+const PINNED_FIREFOX: &str = "pinned Firefox";
 
 /// How long, in seconds, the runner gives one binary in one browser: longer than any
 /// test's own wait, the painted canvas's minute for its first GPU paint among them.
@@ -166,6 +200,16 @@ enum Runner {
     /// The directory the app was built into.
     site: PathBuf,
   },
+  /// The conformance harness taking the goldens kept in `goldens` of the app built into
+  /// `site`, in the pinned Firefox found in `firefox`.
+  Goldens {
+    /// The directory the app was built into.
+    site: PathBuf,
+    /// The directory the goldens are kept in.
+    goldens: PathBuf,
+    /// The directory holding the pinned Firefox.
+    firefox: PathBuf,
+  },
 }
 
 /// One binary to run in one engine, and what the run printed once it finished.
@@ -222,6 +266,21 @@ pub(crate) fn run(gate: &Gate, log: &mut Log) -> Outcome {
       binary,
       outcome: None,
     }));
+  }
+
+  let goldens = goldens(gate, log, &binaries)?;
+
+  if let Some((binary, geckodriver)) = &goldens {
+    jobs.push(Job {
+      engine: PINNED_FIREFOX,
+      variable: "GECKODRIVER",
+      driver: geckodriver.clone(),
+      binary,
+      outcome: None,
+    });
+  }
+  else {
+    log.note("the goldens are skipped: the pinned Firefox is published for x86-64 Linux alone");
   }
 
   run_jobs(&mut jobs, &scratch);
@@ -304,6 +363,103 @@ fn build(gate: &Gate, log: &mut Log) -> Result<Vec<Binary>, String> {
   Ok(binaries)
 }
 
+/// The harness taking the goldens in the pinned Firefox, with the pinned geckodriver,
+/// both fetched the first time; `None` on a host the pinned Firefox is not published
+/// for.
+fn goldens(
+  gate: &Gate,
+  log: &mut Log,
+  binaries: &[Binary],
+) -> Result<Option<(Binary, PathBuf)>, String> {
+  if !cfg!(all(target_os = "linux", target_arch = "x86_64")) {
+    return Ok(None);
+  }
+
+  let Some((harness, site)) = binaries.iter().find_map(|binary| match &binary.runner {
+    Runner::Harness { site } => Some((binary, site)),
+    _ => None,
+  })
+  else {
+    return Ok(None);
+  };
+  let browsers = gate.target.join("browsers");
+  let firefox = FIREFOX.fetch(&browsers, log)?.join("firefox");
+  let geckodriver = GECKODRIVER.fetch(&browsers, log)?.join("geckodriver");
+
+  Ok(Some((
+    Binary {
+      package: SUITE.package,
+      name: "goldens".to_owned(),
+      path: harness.path.clone(),
+      directory: harness.directory.clone(),
+      runner: Runner::Goldens {
+        site: site.clone(),
+        goldens: harness.directory.join("goldens"),
+        firefox,
+      },
+    },
+    geckodriver,
+  )))
+}
+
+impl Pin {
+  /// The directory under `browsers` the release is unpacked in, fetched, checked
+  /// against its digest and unpacked first where it is not there yet.
+  fn fetch(&self, browsers: &Path, log: &mut Log) -> Result<PathBuf, String> {
+    let directory = browsers.join(self.name);
+
+    if directory.is_dir() {
+      return Ok(directory);
+    }
+
+    let staging = browsers.join(format!("{}.staging", self.name));
+    let archive = staging.join("archive");
+    let _ = fs::remove_dir_all(&staging);
+
+    fs::create_dir_all(&staging).map_err(|error| format!("{}: {error}", staging.display()))?;
+
+    let mut download = Command::new("curl");
+
+    download
+      .args([
+        "--fail",
+        "--silent",
+        "--show-error",
+        "--location",
+        "--retry",
+        "3",
+      ])
+      .arg("--output")
+      .arg(&archive)
+      .arg(self.url);
+    log.check(download)?;
+
+    let mut digest = Command::new("sha256sum");
+
+    digest.arg(&archive);
+
+    let digest = log.run(digest)?;
+    let found = digest.output.split_whitespace().next().unwrap_or_default();
+
+    if !digest.success || found != self.sha256 {
+      return Err(format!(
+        "{}: the archive's digest is {found}, not the pinned {}",
+        self.url, self.sha256
+      ));
+    }
+
+    let mut unpack = Command::new("tar");
+
+    unpack.arg("-xf").arg(&archive).arg("-C").arg(&staging);
+    log.check(unpack)?;
+    fs::remove_file(&archive).map_err(|error| format!("{}: {error}", archive.display()))?;
+    fs::rename(&staging, &directory)
+      .map_err(|error| format!("{}: {error}", directory.display()))?;
+
+    Ok(directory)
+  }
+}
+
 /// Builds the conformance suite's app with the skene command, as an app is built, and
 /// its harness.
 fn build_suite(gate: &Gate, log: &mut Log) -> Result<Binary, String> {
@@ -359,6 +515,7 @@ impl Job<'_> {
         .find(|(name, _)| *name == binary.name)
         .map(|(_, count)| *count),
       Runner::Harness { .. } => Some(SUITE.scenarios),
+      Runner::Goldens { .. } => Some(SUITE.pages),
     };
     let mut problems = Vec::new();
 
@@ -408,6 +565,26 @@ fn run_jobs(jobs: &mut [Job<'_>], scratch: &Path) {
               let mut command = Command::new(&job.binary.path);
 
               command.arg(site);
+
+              command
+            }
+            Runner::Goldens {
+              site,
+              goldens,
+              firefox,
+            } => {
+              let mut command = Command::new(&job.binary.path);
+              let path = env::var_os("PATH").unwrap_or_default();
+              let path =
+                env::join_paths(std::iter::once(firefox.clone()).chain(env::split_paths(&path)))
+                  .unwrap_or(path);
+
+              command
+                .arg(site)
+                .arg("--goldens")
+                .arg(goldens)
+                .args(["--firefox", FIREFOX_VERSION])
+                .env("PATH", path);
 
               command
             }

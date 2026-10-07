@@ -2,21 +2,23 @@
 //!
 //! Every page of the suite ([`skene_conformance::pages`]) served from one app: the path
 //! a browser opens names the page, `/button` the page named `button`, and the app builds
-//! it as its whole view. Once built, the page is reachable from the harness
-//! (`src/bin/harness`) as the global `skeneConformance`, whose `probe(name)` reads what
-//! the page publishes as its probe `name` ([`probe`]).
+//! it as its whole view, in the pinned font the app serves (`public/fonts`). Once built,
+//! the page is reachable from the harness (`src/bin/harness`) as the global
+//! `skeneConformance`, whose `probe(name)` reads what the page publishes as its probe
+//! `name` ([`probe`]).
 
 use std::cell::RefCell;
 
 use skene_conformance::Probes;
-use skene_web::{ActivePlatform, AnyView, Platform, main};
+use skene_web::{ActivePlatform, AnyView, Platform, head, main};
 
 thread_local! {
   /// What the page the app built publishes, once it is built.
   static PROBES: RefCell<Option<Probes>> = const { RefCell::new(None) };
 }
 
-/// Builds the page the path names, then publishes the global the harness reads it by.
+/// Builds the page the path names in the pinned font, then publishes the global the
+/// harness reads it by.
 ///
 /// # Panics
 ///
@@ -28,6 +30,9 @@ fn app() -> AnyView {
   let page = skene_conformance::page::<ActivePlatform>(name)
     .unwrap_or_else(|| panic!("no page of the suite is named {name:?}"));
   let mut probes = Probes::default();
+
+  head::add_stylesheet("/fonts/pinned.css");
+
   let view = (page.build)(&mut probes);
 
   PROBES.set(Some(probes));

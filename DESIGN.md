@@ -443,7 +443,8 @@ re-export.
   the web's, `skene-conformance-web`, serves every page from one app and acts each
   scenario out over a WebDriver session in Firefox and Chromium by trusted input, an
   event a page dispatches to itself running no browser default, finding what it acts
-  on by the role and the name the browser computes. A behavior every platform must
+  on by the role and the name the browser computes, and holds every page to a
+  screenshot golden that a pinned Firefox draws in a pinned font. A behavior every platform must
   share is a scenario, and a divergence the suite finds is fixed in the platform, never
   excused in the suite. The
   rules those scenarios exercise that a platform realizing its own overlays would

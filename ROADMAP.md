@@ -45,9 +45,6 @@ in a code comment.
     field editing, selection, motion) is extracted into a kit generic over the
     platform's scalar; headless lays out through it and renders pixel snapshots, and its
     layout store becomes the shared layout crate the native shells call into.
-    - The browser tier's WebDriver harness (`skene-conformance-web`) takes screenshot
-    goldens of the suite's pages; the goldens need a pinned font and Firefox before
-    they compare across machines.
     - The behaviors each platform's tests check on their own (focus showing after a key
     and not after a press, a press held along its path, focus entering and leaving a
     subtree, focus following a keyed item across a reorder) move into the conformance

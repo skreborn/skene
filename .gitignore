@@ -3,3 +3,4 @@ target
 *.wasm
 *.pending-snap
 *.snap.new
+*.new.png

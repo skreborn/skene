@@ -1,0 +1,11 @@
+/* The one font every page of the suite draws in: Inter's regular face (4.0), subset to
+   Latin-1 and the combining acute, under the licence beside it. */
+@font-face {
+  font-family: "Pinned Inter";
+  src: url("/fonts/inter-regular.woff2") format("woff2");
+  font-display: block;
+}
+
+body {
+  font-family: "Pinned Inter";
+}

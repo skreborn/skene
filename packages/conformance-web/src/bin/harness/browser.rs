@@ -42,6 +42,19 @@ poll();";
 /// Returns what the page publishes as the probe `arguments[0]`, or `null`.
 const PROBE: &str = "return window.skeneConformance?.probe(arguments[0]) ?? null;";
 
+/// Resolves with whether the pinned font loaded within `arguments[0]` milliseconds:
+/// its stylesheet applied and its face ready to draw.
+const FONTS: &str = "const [patience, done] = arguments;
+const deadline = Date.now() + patience;
+const applied = () => [...document.styleSheets]
+  .some((sheet) => sheet.href && sheet.href.endsWith('/fonts/pinned.css'));
+const poll = () => applied()
+  ? document.fonts.load('16px \"Pinned Inter\"')
+    .then(() => document.fonts.ready)
+    .then(() => done(document.fonts.check('16px \"Pinned Inter\"')), () => done(false))
+  : Date.now() < deadline ? setTimeout(poll, 20) : done(false);
+poll();";
+
 /// Returns the element holding focus, or `null` where the document's body holds it.
 const FOCUSED: &str = "const focused = document.activeElement;
 return focused && focused !== document.body && focused !== document.documentElement
@@ -65,6 +78,28 @@ impl<'a> Browser<'a> {
   /// Waits until the page has reacted to what was done to it.
   fn settle(&self) {
     self.session.execute_async(SETTLE, &[]);
+  }
+
+  /// Waits until the page draws in the pinned font.
+  ///
+  /// # Panics
+  ///
+  /// Panics where the font never loads.
+  pub(crate) fn await_fonts(&self) {
+    let patience = u64::try_from(LOAD.as_millis()).unwrap_or(u64::MAX);
+
+    assert_eq!(
+      self.session.execute_async(FONTS, &[json!(patience)]),
+      json!(true),
+      "the page draws in the pinned font"
+    );
+
+    self.settle();
+  }
+
+  /// The viewport as the browser draws it, as a PNG.
+  pub(crate) fn screenshot(&self) -> Vec<u8> {
+    self.session.screenshot()
   }
 
   /// The window's size and its viewport's, in CSS pixels.

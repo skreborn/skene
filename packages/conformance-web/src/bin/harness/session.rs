@@ -33,6 +33,8 @@ pub(crate) struct Session {
   agent: Agent,
   /// The session's URL on the driver, which every command's path extends.
   url: String,
+  /// The browser's version, as the session reports it.
+  version: String,
 }
 
 impl Session {
@@ -70,10 +72,21 @@ impl Session {
       .and_then(Value::as_str)
       .ok_or_else(|| format!("the driver created no session: {created}"))?;
 
+    let version = created["capabilities"]["browserVersion"]
+      .as_str()
+      .unwrap_or_default()
+      .to_owned();
+
     Ok(Self {
       agent,
       url: format!("{driver}/session/{id}"),
+      version,
     })
+  }
+
+  /// The browser's version, as the session reports it.
+  pub(crate) fn version(&self) -> &str {
+    &self.version
   }
 
   /// Sends the command `method` `path` with `body`, returning its value.
@@ -210,6 +223,17 @@ impl Session {
   /// The element `script` returns, run as [`execute`](Self::execute) does.
   pub(crate) fn execute_element(&self, script: &str, arguments: &[Value]) -> Option<Element> {
     Element::of(&self.execute(script, arguments))
+  }
+
+  /// The current window's viewport as the browser draws it, as a PNG.
+  pub(crate) fn screenshot(&self) -> Vec<u8> {
+    use base64::Engine as _;
+
+    let encoded = self.command("GET", "/screenshot", None);
+
+    base64::engine::general_purpose::STANDARD
+      .decode(encoded.as_str().unwrap_or_default())
+      .unwrap_or_else(|error| panic!("WebDriver GET /screenshot: {error}"))
   }
 
   /// Performs the input source `sources`' actions, as a user's input.

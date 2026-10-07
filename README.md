@@ -203,15 +203,18 @@ features, the minimum Rust version, and three test tiers, of which the host alon
 nothing about the web: the host tier runs the engine, the spine and every view on the
 headless platform; the server tier builds the server leaf natively, a byte-exact render
 snapshot among its tests; the browser tier drives a real Firefox and a real Chromium,
-several sessions at once, the `gallery` example running axe-core over every built-in.
+several sessions at once, the `gallery` example running axe-core over every built-in,
+acts the conformance suite out in both by trusted input over WebDriver, and on x86-64
+Linux compares every page of the suite against its screenshot golden in a pinned
+Firefox it fetches into `target/browsers` (`SKENE_GOLDENS=overwrite` rewrites them).
 Each step logs to `target/gate/<step>.log`, and a step whose inputs are unchanged since it
 passed is skipped unless `--force` is given. The gate needs the stable toolchain
 `rust-toolchain.toml` pins, which rustup installs with clippy and the
 `wasm32-unknown-unknown` and `aarch64-apple-darwin` targets, the nightly toolchain for
 `rustfmt`, the toolchain the workspace's `rust-version` names, `cargo-nextest`,
-`cargo-shear`, Firefox, a chromedriver matching the installed Chrome, and a
-`wasm-bindgen-test-runner` matching the locked `wasm-bindgen`; a step lacking one fails
-naming it.
+`cargo-shear`, Firefox, a chromedriver matching the installed Chrome, `curl`, `tar` and
+`sha256sum` for the pinned Firefox, and a `wasm-bindgen-test-runner` matching the locked
+`wasm-bindgen`; a step lacking one fails naming it.
 
 ## Extending
 

@@ -7,59 +7,80 @@ use skene_foundation::{NodeId, Platform, Point, Rect, Scene, Size};
 use taffy::{
   TaffyTree,
   prelude::{AvailableSpace, length},
-  style::{Display, FlexDirection, Style},
+  style::{Display, FlexDirection, Overflow, Style},
   tree::{Layout, LayoutOutput},
 };
 
 /// What a node is to the layout, with the platform's leaf context `C` a measure reads.
 #[derive(Debug)]
 pub enum Part<C> {
-  /// A box laid out with its own taffy style, its children laid out inside it.
-  Box(Style),
+  /// A box laid out with its own taffy style, its children laid out inside it and
+  /// shifted back by its scroll offsets.
+  Box(Style, Point<f32>),
   /// A leaf laid out with its own taffy style, measured from its context.
   Leaf(Style, C),
-  /// An overlay: laid out with its own taffy style out of every flow, under the root.
-  Overlay(Style),
+  /// An overlay: laid out with its own taffy style out of every flow, under the root,
+  /// its children shifted back by its scroll offsets.
+  Overlay(Style, Point<f32>),
   /// A node whose children lay out in its place, as an anchor's or a scope's do.
   Transparent,
   /// A node left out of the layout with everything beneath it.
   Absent,
 }
 
-/// Each node's rectangle from one layout, in the viewport's coordinates, and the order
-/// the nodes paint in.
+/// Each node's rectangle from one layout, in the viewport's coordinates, what clips it,
+/// and the order the nodes paint in.
+///
+/// A box clipping its overflow along an axis clips everything beneath it there to its
+/// padding box, and a box's scroll offsets shift everything beneath it back by them.
 #[derive(Debug, Default, Clone)]
 pub struct Frames {
   rects: FxHashMap<NodeId, Rect<f32>>,
+  clips: FxHashMap<NodeId, Bounds>,
   painted: Vec<NodeId>,
 }
 
 impl Frames {
-  /// The rectangle `node` covers; `None` for a node the layout left out or never laid
-  /// out on its own.
+  /// The rectangle `node` covers, its ancestors' scroll offsets applied; `None` for a
+  /// node the layout left out or never laid out on its own.
   #[must_use]
   pub fn rect(&self, node: NodeId) -> Option<Rect<f32>> {
     self.rects.get(&node).copied()
   }
 
-  /// The topmost node laid out at `point`: the last to paint whose rectangle holds it,
-  /// a child above its parent, a later sibling above an earlier one and an overlay
-  /// above the flow, clipping aside.
+  /// The part of `node`'s rectangle the boxes clipping it leave showing, empty where
+  /// they clip it away; `None` for a node the layout left out or never laid out on its
+  /// own.
+  #[must_use]
+  pub fn visible(&self, node: NodeId) -> Option<Rect<f32>> {
+    let rect = self.rect(node)?;
+
+    Some(
+      self
+        .clips
+        .get(&node)
+        .map_or(rect, |clip| clip.intersect(rect)),
+    )
+  }
+
+  /// The topmost node laid out at `point`: the last to paint whose rectangle holds it
+  /// where the boxes clipping it leave it showing, a child above its parent, a later
+  /// sibling above an earlier one and an overlay above the flow.
   #[must_use]
   pub fn hit(&self, point: Point<f32>) -> Option<NodeId> {
     self.painted.iter().rev().copied().find(|node| {
-      self.rects.get(node).is_some_and(|rect| {
-        point.x >= rect.origin.x
-          && point.y >= rect.origin.y
-          && point.x < rect.origin.x + rect.size.width
-          && point.y < rect.origin.y + rect.size.height
-      })
+      self
+        .rects
+        .get(node)
+        .is_some_and(|rect| Bounds::of(*rect).contains(point))
+        && self.clips.get(node).is_none_or(|clip| clip.contains(point))
     })
   }
 
   /// Adds every rectangle of `other`, painting above what this holds.
   pub fn extend(&mut self, other: Self) {
     self.rects.extend(other.rects);
+    self.clips.extend(other.clips);
     self.painted.extend(other.painted);
   }
 
@@ -69,6 +90,49 @@ impl Frames {
       .painted
       .iter()
       .filter_map(|node| Some((*node, *self.rects.get(node)?)))
+  }
+}
+
+/// The region a clip leaves showing, unbounded along an axis nothing clips.
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct Bounds {
+  min: Point<f32>,
+  max: Point<f32>,
+}
+
+impl Bounds {
+  /// The region nothing clips.
+  const UNBOUNDED: Self = Self {
+    min: Point::new(f32::NEG_INFINITY, f32::NEG_INFINITY),
+    max: Point::new(f32::INFINITY, f32::INFINITY),
+  };
+
+  /// The region `rect` covers.
+  const fn of(rect: Rect<f32>) -> Self {
+    Self {
+      min: rect.origin,
+      max: Point::new(
+        rect.origin.x + rect.size.width,
+        rect.origin.y + rect.size.height,
+      ),
+    }
+  }
+
+  /// Whether `point` lies inside, the far edges outside.
+  fn contains(self, point: Point<f32>) -> bool {
+    point.x >= self.min.x && point.y >= self.min.y && point.x < self.max.x && point.y < self.max.y
+  }
+
+  /// The part of `rect` inside, empty where none is.
+  fn intersect(self, rect: Rect<f32>) -> Rect<f32> {
+    let covered = Self::of(rect);
+    let min = Point::new(self.min.x.max(covered.min.x), self.min.y.max(covered.min.y));
+    let max = Point::new(self.max.x.min(covered.max.x), self.max.y.min(covered.max.y));
+
+    Rect {
+      origin: min,
+      size: Size::new((max.x - min.x).max(0.), (max.y - min.y).max(0.)),
+    }
   }
 }
 
@@ -84,10 +148,12 @@ pub struct Tree<C> {
   nodes: FxHashMap<NodeId, Slot>,
 }
 
-/// A node's place in the taffy tree: its taffy node and the taffy children last set.
+/// A node's place in the taffy tree: its taffy node, the taffy children last set and
+/// the offsets it scrolls its children by.
 struct Slot {
   taffy: taffy::NodeId,
   children: Vec<taffy::NodeId>,
+  scroll: Point<f32>,
 }
 
 impl<C> std::fmt::Debug for Tree<C> {
@@ -135,6 +201,7 @@ impl<C> Tree<C> {
       Slot {
         taffy,
         children: Vec::new(),
+        scroll: Point::new(0., 0.),
       },
     );
   }
@@ -324,12 +391,11 @@ impl<C> Tree<C> {
     else {
       return Frames::default();
     };
-    let mut frames = Frames::default();
-
     let available = taffy::geometry::Size {
       width: AvailableSpace::Definite(viewport.width),
       height: AvailableSpace::Definite(viewport.height),
     };
+    let mut frames = Frames::default();
 
     if tree.compute_at(top, available, measure).is_ok() {
       tree.collect(top, &mut frames);
@@ -377,23 +443,32 @@ impl<C> Tree<C> {
     part: &mut impl FnMut(NodeId) -> Part<C>,
     overlays: &mut Vec<NodeId>,
   ) -> Option<taffy::NodeId> {
-    let (taffy, children) = match part(node) {
-      Part::Box(style) | Part::Overlay(style) => {
+    let (taffy, children, scroll) = match part(node) {
+      Part::Box(style, scroll) | Part::Overlay(style, scroll) => {
         let children = self.children_of::<P>(node, part, overlays);
 
         (
           self.taffy.new_with_children(style, &children).ok()?,
           children,
+          scroll,
         )
       }
       Part::Leaf(style, context) => (
         self.taffy.new_leaf_with_context(style, context).ok()?,
         Vec::new(),
+        Point::new(0., 0.),
       ),
       Part::Transparent | Part::Absent => return None,
     };
 
-    self.nodes.insert(node, Slot { taffy, children });
+    self.nodes.insert(
+      node,
+      Slot {
+        taffy,
+        children,
+        scroll,
+      },
+    );
 
     Some(taffy)
   }
@@ -412,27 +487,27 @@ impl<C> Tree<C> {
     for child in placed {
       match part(child) {
         Part::Transparent => children.extend(self.children_of::<P>(child, part, overlays)),
-        Part::Overlay(_) => overlays.push(child),
+        Part::Overlay(..) => overlays.push(child),
         Part::Absent => {}
-        Part::Box(_) | Part::Leaf(..) => children.extend(self.add::<P>(child, part, overlays)),
+        Part::Box(..) | Part::Leaf(..) => children.extend(self.add::<P>(child, part, overlays)),
       }
     }
 
     children
   }
 
-  /// Records the rectangle of every node laid out at or beneath `top`, in the order
-  /// they paint: each before its children, the children in order.
+  /// Records the rectangle and the clip of every node laid out at or beneath `top`, in
+  /// the order they paint: each before its children, the children in order.
   fn collect(&self, top: taffy::NodeId, frames: &mut Frames) {
-    let by_taffy: FxHashMap<taffy::NodeId, NodeId> = self
+    let by_taffy: FxHashMap<taffy::NodeId, (NodeId, Point<f32>)> = self
       .nodes
       .iter()
-      .map(|(node, slot)| (slot.taffy, *node))
+      .map(|(node, slot)| (slot.taffy, (*node, slot.scroll)))
       .collect();
-    let mut stack = vec![(top, Point::new(0., 0.), true)];
+    let mut stack = vec![(top, Point::new(0., 0.), Bounds::UNBOUNDED, true)];
 
-    while let Some((current, parent, top)) = stack.pop() {
-      let Ok(layout) = self.taffy.layout(current)
+    while let Some((current, content, clip, top)) = stack.pop() {
+      let (Ok(layout), Ok(style)) = (self.taffy.layout(current), self.taffy.style(current))
       else {
         continue;
       };
@@ -440,10 +515,11 @@ impl<C> Tree<C> {
         Point::new(0., 0.)
       }
       else {
-        Point::new(parent.x + layout.location.x, parent.y + layout.location.y)
+        Point::new(content.x + layout.location.x, content.y + layout.location.y)
       };
+      let mut scroll = Point::new(0., 0.);
 
-      if let Some(node) = by_taffy.get(&current) {
+      if let Some((node, offsets)) = by_taffy.get(&current) {
         frames.rects.insert(
           *node,
           Rect {
@@ -451,8 +527,34 @@ impl<C> Tree<C> {
             size: Size::new(layout.size.width, layout.size.height),
           },
         );
+
+        if clip != Bounds::UNBOUNDED {
+          frames.clips.insert(*node, clip);
+        }
+
         frames.painted.push(*node);
+        scroll = *offsets;
       }
+
+      let mut inner = clip;
+
+      if style.overflow.x != Overflow::Visible {
+        inner.min.x = inner.min.x.max(origin.x + layout.border.left);
+        inner.max.x = inner
+          .max
+          .x
+          .min(origin.x + layout.size.width - layout.border.right);
+      }
+
+      if style.overflow.y != Overflow::Visible {
+        inner.min.y = inner.min.y.max(origin.y + layout.border.top);
+        inner.max.y = inner
+          .max
+          .y
+          .min(origin.y + layout.size.height - layout.border.bottom);
+      }
+
+      let content = Point::new(origin.x - scroll.x, origin.y - scroll.y);
 
       for child in self
         .taffy
@@ -461,7 +563,7 @@ impl<C> Tree<C> {
         .into_iter()
         .rev()
       {
-        stack.push((child, origin, false));
+        stack.push((child, content, inner, false));
       }
     }
   }

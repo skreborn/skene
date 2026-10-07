@@ -11,12 +11,15 @@ use skene_foundation::{
   Flexibility,
   HasChild,
   HasChildren,
+  Inset,
   MotionBase,
   NodeHandle,
   NodeId,
+  Overflow,
   Point,
   Property,
   Rect,
+  ScrollEvent,
   Size,
   Transition,
   View,
@@ -33,7 +36,9 @@ use skene_headless::{
   run_props,
   trigger_frame,
   trigger_resize,
+  trigger_scroll,
   trigger_size,
+  visible_rect,
 };
 use skene_reactive::{Get, Owner, Set, Signal};
 
@@ -326,6 +331,87 @@ fn a_point_hits_the_topmost_node() {
     None,
     "below everything laid out"
   );
+
+  owner.dispose();
+}
+
+/// A box clipping its overflow hides what lies beneath it beyond its padding box from a
+/// hit, where the box itself still takes it.
+#[test]
+fn a_clipping_box_hides_its_overflow_from_a_hit() {
+  reset();
+
+  let owner = Owner::new();
+  let outer = owner.enter(|| {
+    sized(200., 300.)
+      .set_child(
+        sized(100., 50.)
+          .set_border_width(Inset::all(5.))
+          .set_overflow(Overflow::Clip)
+          .set_child(sized(90., 200.)),
+      )
+      .build()
+  });
+  let [clipping] = content(outer)[..]
+  else {
+    panic!("one child");
+  };
+  let [overflowing] = content(clipping)[..]
+  else {
+    panic!("one child");
+  };
+
+  assert_eq!(layout_rect(overflowing), Some(rect(5., 5., 90., 200.)));
+  assert_eq!(visible_rect(overflowing), Some(rect(5., 5., 90., 40.)));
+  assert_eq!(node_at(Point::new(20., 25.)), Some(overflowing));
+  assert_eq!(
+    node_at(Point::new(20., 47.)),
+    Some(clipping),
+    "the clipping box's border"
+  );
+  assert_eq!(
+    node_at(Point::new(20., 100.)),
+    Some(outer),
+    "beyond the clipping box"
+  );
+
+  owner.dispose();
+}
+
+/// A scrolled box shifts what lies beneath it back by its offsets, and a hit finds what
+/// the scroll brought into view.
+#[test]
+fn a_scrolled_box_shifts_its_content() {
+  reset();
+
+  let owner = Owner::new();
+  let scrolling = owner.enter(|| {
+    sized(100., 50.)
+      .set_overflow(Overflow::ScrollIfNeeded)
+      .set_child(Column::new().set_children((sized(100., 50.), sized(100., 50.))))
+      .build()
+  });
+  let [column] = content(scrolling)[..]
+  else {
+    panic!("one child");
+  };
+  let [first, second] = content(column)[..]
+  else {
+    panic!("two rows");
+  };
+
+  assert_eq!(node_at(Point::new(10., 25.)), Some(first));
+  assert_eq!(
+    node_at(Point::new(10., 75.)),
+    None,
+    "the second row, clipped"
+  );
+
+  trigger_scroll(scrolling, &ScrollEvent { x: 0., y: 50. });
+
+  assert_eq!(layout_rect(second), Some(rect(0., 0., 100., 50.)));
+  assert_eq!(visible_rect(first), Some(rect(0., 0., 100., 0.)));
+  assert_eq!(node_at(Point::new(10., 25.)), Some(second));
 
   owner.dispose();
 }

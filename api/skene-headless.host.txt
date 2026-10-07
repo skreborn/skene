@@ -181,6 +181,7 @@ pub fn skene_headless::trigger_size(skene_foundation::spine::node::NodeId, skene
 pub fn skene_headless::trigger_toggle(skene_foundation::spine::node::NodeId, bool)
 pub fn skene_headless::trigger_wheel(skene_foundation::spine::node::NodeId, &skene_foundation::spine::events::WheelEvent) -> skene_foundation::spine::events::Prevented
 pub fn skene_headless::value(skene_foundation::spine::node::NodeId) -> core::option::Option<alloc::string::String>
+pub fn skene_headless::visible_rect(skene_foundation::spine::node::NodeId) -> core::option::Option<skene_foundation::spine::values::rect::Rect<f32>>
 pub type skene_headless::SlotLeaf = skene_foundation::spine::resolve::SlotLeaf<f32, skene_foundation::web::ext::WebStyle>
 pub type skene_headless::SlotValue = skene_foundation::spine::resolve::SlotValue<f32, skene_foundation::web::ext::WebStyle>
 pub type skene_headless::TokenValue = skene_foundation::spine::resolve::TokenValue<f32>

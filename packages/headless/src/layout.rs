@@ -11,6 +11,7 @@ use skene_foundation::{
   NodeId,
   Plain,
   Platform,
+  Point,
   Scene,
   Size,
   StaticBoxStyle,
@@ -139,15 +140,22 @@ fn part(node: NodeId) -> Part<Measured> {
     let record = records.record(node)?;
 
     Some(match &record.kind {
-      Kind::Box(props) => Shape::Box(props.layout, Box::new(props.style.clone()), false),
+      Kind::Box(props) => Shape::Box(
+        props.layout,
+        Box::new(props.style.clone()),
+        record.scroll,
+        false,
+      ),
       Kind::Control(props) => Shape::Box(
         props.box_props.layout,
         Box::new(props.box_props.style.clone()),
+        record.scroll,
         false,
       ),
       Kind::Overlay(props) if record.open => Shape::Box(
         props.box_props.layout,
         Box::new(props.box_props.style.clone()),
+        record.scroll,
         true,
       ),
       Kind::Overlay(_) => Shape::Absent,
@@ -163,7 +171,7 @@ fn part(node: NodeId) -> Part<Measured> {
   match kind {
     None | Some(Shape::Absent) => Part::Absent,
     Some(Shape::Transparent) => Part::Transparent,
-    Some(Shape::Box(layout, style, overlay)) => {
+    Some(Shape::Box(layout, style, scroll, overlay)) => {
       let mut resolved = env.with_resolver(|resolver| resolver.box_style(&style));
 
       if moves(node) {
@@ -182,10 +190,10 @@ fn part(node: NodeId) -> Part<Measured> {
 
         style.position = skene_layout::taffy::style::Position::Absolute;
 
-        Part::Overlay(style)
+        Part::Overlay(style, scroll)
       }
       else {
-        Part::Box(resolved.taffy_style(layout, place))
+        Part::Box(resolved.taffy_style(layout, place), scroll)
       }
     }
     Some(Shape::Run(style, text)) => {
@@ -254,7 +262,7 @@ impl BoxFieldVisitor<f32, WebStyle> for Presented<'_> {
 
 /// What a record holds that its part is made from, read out of the records.
 enum Shape {
-  Box(Layout, Box<StaticBoxStyle<Headless>>, bool),
+  Box(Layout, Box<StaticBoxStyle<Headless>>, Point<f32>, bool),
   Run(Box<StaticRunStyle<Headless>>, String),
   Transparent,
   Absent,

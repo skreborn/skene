@@ -16,9 +16,9 @@ impl core::marker::Copy for skene_layout::Borders
 impl core::marker::StructuralPartialEq for skene_layout::Borders
 pub enum skene_layout::Part<C>
 pub skene_layout::Part::Absent
-pub skene_layout::Part::Box(taffy::style::Style)
+pub skene_layout::Part::Box(taffy::style::Style, skene_foundation::spine::values::point::Point<f32>)
 pub skene_layout::Part::Leaf(taffy::style::Style, C)
-pub skene_layout::Part::Overlay(taffy::style::Style)
+pub skene_layout::Part::Overlay(taffy::style::Style, skene_foundation::spine::values::point::Point<f32>)
 pub skene_layout::Part::Transparent
 impl<C: core::fmt::Debug> core::fmt::Debug for skene_layout::Part<C>
 pub fn skene_layout::Part<C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
@@ -28,6 +28,7 @@ pub fn skene_layout::Frames::extend(&mut self, Self)
 pub fn skene_layout::Frames::hit(&self, skene_foundation::spine::values::point::Point<f32>) -> core::option::Option<skene_foundation::spine::node::NodeId>
 pub fn skene_layout::Frames::iter(&self) -> impl core::iter::traits::iterator::Iterator<Item = (skene_foundation::spine::node::NodeId, skene_foundation::spine::values::rect::Rect<f32>)> + '_
 pub fn skene_layout::Frames::rect(&self, skene_foundation::spine::node::NodeId) -> core::option::Option<skene_foundation::spine::values::rect::Rect<f32>>
+pub fn skene_layout::Frames::visible(&self, skene_foundation::spine::node::NodeId) -> core::option::Option<skene_foundation::spine::values::rect::Rect<f32>>
 impl core::clone::Clone for skene_layout::Frames
 pub fn skene_layout::Frames::clone(&self) -> skene_layout::Frames
 impl core::default::Default for skene_layout::Frames

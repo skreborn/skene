@@ -817,9 +817,18 @@ pub fn trigger_toggle(node: NodeId, checked: bool) {
   });
 }
 
-/// Notifies `node` of its new scroll offsets.
+/// Scrolls `node` to the offsets `event` carries, as a user's scroll does, and notifies
+/// it of them; what lies beneath it shifts back by them in the layout.
 pub fn trigger_scroll(node: NodeId, event: &ScrollEvent) {
-  trigger(|| notify_scroll::<Headless>(node, event));
+  trigger(|| {
+    with_records(|records| {
+      if let Some(record) = records.record_mut(node) {
+        record.scroll = Point::new(event.x, event.y);
+      }
+    });
+
+    notify_scroll::<Headless>(node, event);
+  });
 }
 
 /// Notifies the overlay `node` that the platform asked it to close; it stays open until
@@ -1123,7 +1132,9 @@ fn report_layout() {
 /// it.
 ///
 /// The scene is laid out afresh, and a child is above its parent, a later sibling above
-/// an earlier one and an open overlay above the flow.
+/// an earlier one and an open overlay above the flow. A box clipping its overflow along
+/// an axis hides what lies beneath it beyond its padding box there, and a scrolled box
+/// shifts what lies beneath it back by its offsets.
 #[must_use]
 pub fn node_at(point: Point<f32>) -> Option<NodeId> {
   end_turn();
@@ -1137,14 +1148,30 @@ pub fn node_at(point: Point<f32>) -> Option<NodeId> {
 }
 
 /// The rectangle `node` covers in a layout of the scene at the viewport, laid out
-/// afresh; `None` for a node the layout leaves out: hidden, in a closed overlay, or an
-/// anchor or a scope.
+/// afresh; `None` for a node the layout leaves out.
+///
+/// The scroll offsets of the boxes around it apply, and the layout leaves out a hidden
+/// node, one in a closed overlay, an anchor and a scope.
 #[must_use]
 pub fn layout_rect(node: NodeId) -> Option<Rect<f32>> {
   end_turn();
 
   let frames = layout::lay_out();
   let rect = frames.rect(node);
+
+  with_records(|records| records.frames = frames);
+
+  rect
+}
+
+/// The part of [`layout_rect`] the boxes clipping `node` leave showing, empty where they
+/// clip it away; `None` for a node the layout leaves out.
+#[must_use]
+pub fn visible_rect(node: NodeId) -> Option<Rect<f32>> {
+  end_turn();
+
+  let frames = layout::lay_out();
+  let rect = frames.visible(node);
 
   with_records(|records| records.frames = frames);
 

@@ -94,6 +94,8 @@ pub(crate) struct Record {
   pub open: bool,
   /// The point an overlay is placed at, where it is pinned to one.
   pub position: Option<Point<f32>>,
+  /// The offsets the box was last scrolled to.
+  pub scroll: Point<f32>,
   /// The node's slot values, as last written.
   pub slots: FxHashMap<Slot, SlotLeaf>,
   /// A scope's token definitions, as last written.
@@ -135,6 +137,7 @@ impl Record {
       checked: false,
       open: false,
       position: None,
+      scroll: Point::new(0., 0.),
       slots: FxHashMap::default(),
       definitions: None,
       listened: Vec::new(),

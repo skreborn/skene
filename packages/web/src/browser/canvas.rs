@@ -42,6 +42,9 @@ pub(super) struct PaintedCanvas {
   /// Its state on the GPU path.
   #[cfg(feature = "gpu")]
   gpu: gpu::CanvasGpu,
+  /// What replaces the element once the browser loses its 2D context; `None` until a
+  /// paint takes one.
+  lost: Option<Listener>,
 }
 
 /// A canvas's size: in CSS pixels, which its painter draws in, and in device pixels.
@@ -282,6 +285,7 @@ impl Dom {
       size: Some(CanvasSize::at_ratio(css)),
       #[cfg(feature = "gpu")]
       gpu: gpu::CanvasGpu::default(),
+      lost: None,
     }));
   }
 
@@ -300,6 +304,8 @@ impl Dom {
       return;
     };
     let old = std::mem::replace(&mut canvas.element, fresh.clone());
+
+    canvas.lost = None;
 
     #[cfg(feature = "gpu")]
     {
@@ -409,7 +415,8 @@ fn paint_on_gpu(sink: NodeId, surface: &Canvas) -> bool {
 }
 
 /// Copies `surface` into the canvas of `sink` through its 2D context, in a fresh canvas
-/// where a context of another kind holds the old one.
+/// where a context of another kind holds the old one; a canvas whose 2D context the
+/// browser loses is replaced by a fresh one and repainted.
 fn blit(sink: NodeId, surface: &Canvas) {
   let (width, height) = surface.size();
 
@@ -434,6 +441,22 @@ fn blit(sink: NodeId, surface: &Canvas) {
       ) {
         let _ = context.put_image_data(&image, 0., 0.);
       }
+
+      with_dom(|dom| {
+        if let Some(painted) = dom.canvas_mut(sink)
+          && painted.lost.is_none()
+        {
+          painted.lost = Some(Listener::new(
+            canvas.into(),
+            "contextlost",
+            false,
+            move |_| {
+              with_dom(|dom| dom.replace_canvas(sink));
+              repaint(sink);
+            },
+          ));
+        }
+      });
 
       return;
     }

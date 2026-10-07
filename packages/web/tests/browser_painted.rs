@@ -170,6 +170,49 @@ async fn a_resized_box_is_blitted_again() {
   );
 }
 
+/// A canvas whose 2d context the browser loses is replaced by a fresh one, which the box
+/// repaints.
+#[wasm_bindgen_test]
+async fn a_lost_2d_context_repaints_in_a_fresh_canvas() {
+  hide_webgpu();
+
+  let (_installed, root) = fresh_root();
+  let _ = mount(|| {
+    Painted::new(|canvas, size| {
+      canvas.fill(
+        &Rect::new(0., 0., f64::from(size.width), f64::from(size.height)),
+        Color::srgb(0., 1., 0.),
+      );
+    })
+    .set_width(Dimension::Length(40.))
+    .set_height(Dimension::Length(20.))
+    .build()
+  });
+
+  assert!(frames_until(|| sized(&root, 40.)).await, "the box painted");
+
+  let lost = canvas_of(&root).expect("the canvas");
+
+  let _ = lost.dispatch_event(&web_sys::Event::new("contextlost").expect("an event"));
+
+  let repainted = || {
+    canvas_of(&root)
+      .filter(|canvas| *canvas != lost)
+      .and_then(|canvas| {
+        let context: CanvasRenderingContext2d = canvas.get_context("2d").ok()??.dyn_into().ok()?;
+
+        Some(center_pixel(&canvas, &context)[0..4] == [0, 255, 0, 255])
+      })
+      .unwrap_or(false)
+  };
+
+  assert!(
+    frames_until(repainted).await,
+    "a fresh canvas took the lost one's place and was repainted"
+  );
+  assert!(!lost.is_connected());
+}
+
 /// A painted box with no height of its own takes none from its canvas, which stands out
 /// of the box's flow.
 #[wasm_bindgen_test]

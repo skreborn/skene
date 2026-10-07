@@ -276,8 +276,9 @@
   every painted box, a surface per canvas—and
   through vello's CPU renderer otherwise. The choice is made once per page when the
   first box paints, and a box paints nothing until it is made; a lost device is asked
-  for afresh, and a canvas whose GPU path fails paints on the CPU in a fresh canvas
-  from then on. Native layers come with the native platform. SSR/SSG render it empty.
+  for afresh, a canvas whose GPU path fails paints on the CPU in a fresh canvas
+  from then on, and one whose 2D context the browser loses is replaced by a fresh one
+  and repainted. Native layers come with the native platform. SSR/SSG render it empty.
   The terminal renders it on the CPU at the box's cells times the cell's pixel size
   and shows it through the kitty graphics protocol where launch's query (`a=q`) was
   answered `OK`: transmitted once per change, compressed, placed over the box's cells cropped to
@@ -697,8 +698,8 @@
   a real Firefox (geckodriver) and a real Chromium
   (chromedriver, from `CHROMEDRIVER`, `PATH` or `~/.local/share/chrome-for-testing`),
   each with WebGPU switched on by `packages/web/webdriver.json`, so a painted box
-  renders on the GPU there, where headless Chromium's software adapter keeps its
-  device; without a GPU, Firefox finds an adapter only through Mesa's software Vulkan
+  renders on the GPU there, until headless Chromium's software adapter loses its
+  device after the first frame and the box falls back to the CPU; without a GPU, Firefox finds an adapter only through Mesa's software Vulkan
   driver (`mesa-vulkan-drivers`, which CI installs); `browser_painted` hides
   `navigator.gpu` before its first box paints, so the CPU blit is proven in the same
   run. The gate holds each browser binary to the least

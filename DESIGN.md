@@ -175,7 +175,8 @@ functions in the platform crate, since it is not a shared contract.
   reports none) and repainted when either changes: through vello's hybrid renderer
   over wgpu where the page has WebGPU, one device shared by every painted box with a
   surface per canvas, asked for afresh when lost, and through vello's CPU renderer
-  otherwise, in a fresh canvas where a canvas's GPU path failed; the headless platform renders it to pixels
+  otherwise, in a fresh canvas where a canvas's GPU path failed or the browser lost
+  its 2D context; the headless platform renders it to pixels
   a test reads (`headless::render_to_pixels`); the server leaf renders it empty; the terminal
   renders it on the CPU and shows it through the kitty graphics protocol where the
   terminal proved one, its fallback standing elsewhere. The native layers sit behind

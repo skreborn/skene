@@ -32,7 +32,7 @@ const RUNS: &[Run] = &[
       ("browser_dom", 77),
       ("browser_gpu_loss", 1),
       ("browser_hydrate", 16),
-      ("browser_painted", 3),
+      ("browser_painted", 4),
       ("browser_parity", 1),
       ("browser_platform", 15),
       ("browser_resource", 5),

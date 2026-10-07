@@ -717,69 +717,6 @@ fn a_parts_focus_and_checked_variants_follow_the_control() {
   owner.dispose();
 }
 
-/// Focus reached after a pointer press does not show, a key makes it show, and the
-/// next press hides it again, as `:focus-visible` does.
-#[test]
-fn focus_shows_after_a_key_and_not_after_a_pointer_press() {
-  reset();
-
-  let owner = Owner::new();
-  let node = owner.enter(|| {
-    BasicButton::new(Activate::new())
-      .set_background(red().when(focus_visible(), blue()))
-      .set_label("go")
-      .build()
-  });
-
-  let _ = trigger_pointer_down(node, &press_at(0.));
-
-  trigger_focus(node);
-
-  assert!(is_focused(node));
-  assert_eq!(
-    resolve_color(node, COLOR),
-    Some(red()),
-    "focused after a press, not shown"
-  );
-
-  let _ = trigger_key_down(node, &key("x"));
-
-  assert_eq!(resolve_color(node, COLOR), Some(blue()), "a key shows it");
-
-  let _ = trigger_pointer_down(node, &press_at(0.));
-
-  assert_eq!(
-    resolve_color(node, COLOR),
-    Some(red()),
-    "a press hides it again"
-  );
-
-  owner.dispose();
-}
-
-/// Focus in a text entry shows even when a pointer press reached it, as
-/// `:focus-visible` does in an `<input>`.
-#[test]
-fn focus_in_a_text_entry_shows_after_a_pointer_press() {
-  reset();
-
-  let owner = Owner::new();
-  let node = owner.enter(|| {
-    BasicTextField::new(TextEntry::new())
-      .set_background(red().when(focus_visible(), blue()))
-      .build()
-  });
-
-  let _ = trigger_pointer_down(node, &press_at(0.));
-
-  trigger_focus(node);
-
-  assert!(is_focused(node));
-  assert_eq!(resolve_color(node, COLOR), Some(blue()));
-
-  owner.dispose();
-}
-
 /// A disabled control reports it, takes no focus and ignores activation, letting keys
 /// by; enabling it again restores all three.
 #[test]

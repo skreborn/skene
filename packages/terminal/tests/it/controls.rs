@@ -47,46 +47,6 @@ fn focus_variant_and_enter_click() {
   });
 }
 
-/// A box hears focus when focus enters its subtree and blur when focus leaves it, not
-/// as focus moves between the controls inside it, as `:focus-within` changes.
-#[test]
-fn a_box_hears_focus_entering_and_leaving_its_subtree() {
-  with_platform(|| {
-    let (focuses, blurs) = (Rc::new(Cell::new(0u32)), Rc::new(Cell::new(0u32)));
-    let (entered, left) = (Rc::clone(&focuses), Rc::clone(&blurs));
-
-    let _ = terminal::mount(move || {
-      Column::new()
-        .set_children((
-          Container::new()
-            .handle_focus(move || entered.set(entered.get() + 1))
-            .handle_blur(move || left.set(left.get() + 1))
-            .set_child(Row::new().set_children((
-              BasicButton::new(Activate::new()).set_label("a"),
-              BasicButton::new(Activate::new()).set_label("b"),
-            ))),
-          BasicButton::new(Activate::new()).set_label("c"),
-        ))
-        .into_any()
-        .build()
-    });
-
-    let _ = testing::render_to_text(10, 3);
-
-    testing::trigger_key("Tab");
-
-    assert_eq!((focuses.get(), blurs.get()), (1, 0));
-
-    testing::trigger_key("Tab");
-
-    assert_eq!((focuses.get(), blurs.get()), (1, 0));
-
-    testing::trigger_key("Tab");
-
-    assert_eq!((focuses.get(), blurs.get()), (1, 1));
-  });
-}
-
 /// A mouse click hits the topmost control at the cell, runs its click handlers, and
 /// focuses it, so `Enter` and `Space` click it again.
 #[test]
@@ -1055,54 +1015,6 @@ fn authored_state_variants_paint_on_a_control() {
     testing::trigger_mouse_move(5, 1);
 
     assert_eq!(colors_at(6, 2, 0, 0).1, Some(rgb(green())));
-  });
-}
-
-/// Focus reached by a pointer press holds without showing, a key makes it show, and
-/// the next press hides it again, as `:focus-visible` does.
-#[test]
-fn focus_shows_after_a_key_and_not_after_a_pointer_press() {
-  with_platform(|| {
-    let _ = terminal::mount(|| {
-      BasicButton::new(Activate::new())
-        .set_width(4)
-        .set_height(1)
-        .set_background(
-          red()
-            .when(State::Focused, blue())
-            .when(State::FocusVisible, green()),
-        )
-        .into_any()
-        .build()
-    });
-
-    assert_eq!(colors_at(6, 2, 0, 0).1, Some(rgb(red())));
-
-    testing::trigger_mouse_press(1, 0);
-    testing::trigger_mouse_release(1, 0);
-
-    assert_eq!(
-      colors_at(6, 2, 0, 0).1,
-      Some(rgb(blue())),
-      "focused by the press, not shown"
-    );
-
-    testing::trigger_key("Right");
-
-    assert_eq!(
-      colors_at(6, 2, 0, 0).1,
-      Some(rgb(green())),
-      "a key shows it"
-    );
-
-    testing::trigger_mouse_press(1, 0);
-    testing::trigger_mouse_release(1, 0);
-
-    assert_eq!(
-      colors_at(6, 2, 0, 0).1,
-      Some(rgb(blue())),
-      "a press hides it again"
-    );
   });
 }
 

@@ -59,29 +59,40 @@ pub fn unhover(node: NodeId) {
   trigger_pointer_leave(node);
 }
 
-/// Clicks `node` with the primary button.
-///
-/// The pointer moves over it and presses, focus moves to the nearest node at or above it
-/// that takes focus, or off the focused node where none does, and the pointer releases
-/// and clicks.
+/// Clicks `node` with the primary button: [`hold`] on it, then [`release`].
 pub fn click(node: NodeId) {
-  hover(node);
-  press_and_release(node);
-
-  let _ = trigger_click(node);
+  hold(node);
+  release(node);
 }
 
 /// Double-clicks `node`: a click, then a second press and release, a click counting
 /// two and a double click.
 pub fn double_click(node: NodeId) {
   click(node);
-  press_and_release(node);
+  press(node);
+  lift(node);
 
   let _ = trigger_double_click(node);
 }
 
-/// Presses and releases the primary button on `node`, the press moving focus.
-fn press_and_release(node: NodeId) {
+/// Presses the primary button on `node` and holds it until [`release`].
+///
+/// The pointer moves over it and presses, and focus moves to the nearest node at or
+/// above it that takes focus, or off the focused node where none does.
+pub fn hold(node: NodeId) {
+  hover(node);
+  press(node);
+}
+
+/// Releases the primary button [`hold`] pressed on `node`, which clicks it.
+pub fn release(node: NodeId) {
+  lift(node);
+
+  let _ = trigger_click(node);
+}
+
+/// Presses the primary button on `node`, the press moving focus.
+fn press(node: NodeId) {
   let press = pointer_at(node).with_press(PointerButton::Primary);
   let _ = trigger_pointer_down(node, &press);
   let target = Scene::<Headless>::with(|scene| scene.ancestry(node))
@@ -96,8 +107,11 @@ fn press_and_release(node: NodeId) {
       }
     }
   }
+}
 
-  let mut release = press;
+/// Lifts the primary button pressed on `node`.
+fn lift(node: NodeId) {
+  let mut release = pointer_at(node).with_press(PointerButton::Primary);
 
   release.buttons.remove(PointerButton::Primary);
 

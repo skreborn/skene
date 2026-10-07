@@ -45,10 +45,6 @@ in a code comment.
     field editing, selection, motion) is extracted into a kit generic over the
     platform's scalar; headless lays out through it and renders pixel snapshots, and its
     layout store becomes the shared layout crate the native shells call into.
-    - The behaviors each platform's tests check on their own (focus showing after a key
-    and not after a press, a press held along its path, focus entering and leaving a
-    subtree, focus following a keyed item across a reorder) move into the conformance
-    suite once a `Driver` observes what they read.
     - Conformance by intent: once the shells stop sharing views, a scenario states what
     it builds (a button labelled Save that counts its clicks) and each platform's
     driver builds it in its own vocabulary, so one suite keeps holding every shell to
@@ -94,7 +90,10 @@ in a code comment.
     data is serde's.
     - Restoration in the spine: focus, selection with its direction, and scroll restore by
     snapshot position through platform methods, testable in headless and shared by the
-    web and the terminal.
+    web and the terminal; focus following a keyed item across a reorder on the next run,
+    which the terminal and the browser tests check on their own today, then becomes a
+    conformance scenario, a `Driver` opening a page on a next run with the snapshot the
+    last one took.
     - The terminal's swap: the launcher owns the state file, keeps it on an abnormal
     exit and respawns on the next build, so a startup panic after an edit keeps the
     state; descriptors are close-on-exec except across the swap, and the dev variables

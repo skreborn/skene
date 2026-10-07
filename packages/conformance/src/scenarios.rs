@@ -19,9 +19,11 @@ use skene_foundation::{
   ContainerBase,
   ContextMenu,
   DecorationBase,
+  Dimension,
   FocusOrder,
   HasChild,
   HasChildren,
+  Inset,
   Key,
   KeyEvent,
   ListboxOption,
@@ -32,6 +34,7 @@ use skene_foundation::{
   Radio,
   RadioGroup,
   Role,
+  Row,
   Scalar,
   Size,
   Slider,
@@ -117,6 +120,14 @@ pub(crate) fn pages<P: Platform>() -> Vec<Page<P>> {
     Page {
       name: "form",
       build: form_page,
+    },
+    Page {
+      name: "nested-boxes",
+      build: nested_boxes_page,
+    },
+    Page {
+      name: "focus-group",
+      build: focus_group_page,
     },
   ]
 }
@@ -239,6 +250,26 @@ pub(crate) fn all<D: Driver>() -> Vec<Scenario<D>> {
       name: "a combining mark typed after its base joins it, the caret after the cluster",
       page: "text-field",
       act: a_combining_mark_joins_its_base,
+    },
+    Scenario {
+      name: "focus shows after a key and not after a press",
+      page: "buttons",
+      act: focus_shows_after_a_key,
+    },
+    Scenario {
+      name: "a text entry shows its focus however it is reached",
+      page: "text-field",
+      act: a_text_entry_shows_its_focus,
+    },
+    Scenario {
+      name: "a press holds pressed along its path until its release",
+      page: "nested-boxes",
+      act: a_press_holds_along_its_path,
+    },
+    Scenario {
+      name: "a box hears focus entering and leaving its subtree, not moving within it",
+      page: "focus-group",
+      act: a_box_hears_focus_entering_and_leaving,
     },
   ]
 }
@@ -464,6 +495,44 @@ fn form_page<P: Platform>(_: &mut Probes) -> AnyView<P> {
       BasicTextField::new(TextEntry::new().set_value("ada")).set_label("Name"),
       BasicCheckbox::new(Toggle::new().set_checked(true)).set_label("Remember me"),
       button::<P>("Continue").set_disabled(true),
+    ))
+    .into_any()
+}
+
+/// A box named Outer around a box named Inner, neither focusable.
+fn nested_boxes_page<P: Platform>(_: &mut Probes) -> AnyView<P> {
+  let length = P::Scalar::from_f32;
+
+  Container::<P>::new()
+    .set_role(Role::Group)
+    .set_label("Outer")
+    .set_padding(Inset::all(length(4.)))
+    .set_child(
+      Container::new()
+        .set_role(Role::Group)
+        .set_label("Inner")
+        .set_width(Dimension::Length(length(40.)))
+        .set_height(Dimension::Length(length(8.))),
+    )
+    .into_any()
+}
+
+/// A box around the buttons a and b, counting focus entering it as `entered` and
+/// leaving it as `left`, above a button named c.
+fn focus_group_page<P: Platform>(probes: &mut Probes) -> AnyView<P> {
+  let entered = Signal::new(0u32);
+  let left = Signal::new(0u32);
+
+  probes.publish("entered", move || entered.get().to_string());
+  probes.publish("left", move || left.get().to_string());
+
+  Column::<P>::new()
+    .set_children((
+      Container::new()
+        .handle_focus(move || entered.update(|count| *count += 1))
+        .handle_blur(move || left.update(|count| *count += 1))
+        .set_child(Row::new().set_children((button::<P>("a"), button::<P>("b")))),
+      button::<P>("c"),
     ))
     .into_any()
 }
@@ -1025,5 +1094,88 @@ fn a_combining_mark_joins_its_base<D: Driver>(driver: &mut D) {
     driver.probe("selection"),
     "1..1",
     "the caret sits after the one cluster they make"
+  );
+}
+
+fn focus_shows_after_a_key<D: Driver>(driver: &mut D) {
+  let [one, two] = ["One", "Two"].map(|name| found(driver, Role::Button, name));
+
+  driver.click(&one);
+
+  assert_eq!(driver.focused().as_ref(), Some(&one), "a click focuses it");
+  assert!(!driver.focus_shows(), "focus a press reached does not show");
+
+  driver.press(&key("Tab"));
+
+  assert_eq!(driver.focused().as_ref(), Some(&two));
+  assert!(driver.focus_shows(), "focus a key moved shows");
+
+  driver.click(&one);
+
+  assert!(!driver.focus_shows(), "the next press hides it again");
+}
+
+fn a_text_entry_shows_its_focus<D: Driver>(driver: &mut D) {
+  let field = found(driver, Role::TextInput, "Name");
+
+  driver.click(&field);
+
+  assert_eq!(
+    driver.focused().as_ref(),
+    Some(&field),
+    "a click focuses it"
+  );
+  assert!(
+    driver.focus_shows(),
+    "a text entry shows focus a press reached"
+  );
+}
+
+fn a_press_holds_along_its_path<D: Driver>(driver: &mut D) {
+  let [outer, inner] = ["Outer", "Inner"].map(|name| found(driver, Role::Group, name));
+
+  assert!(
+    !driver.is_pressed(&outer) && !driver.is_pressed(&inner),
+    "nothing holds a press at first"
+  );
+
+  driver.hold(&inner);
+
+  assert!(driver.is_pressed(&inner), "the node pressed holds it");
+  assert!(driver.is_pressed(&outer), "so does the box around it");
+
+  driver.release(&inner);
+
+  assert!(
+    !driver.is_pressed(&outer) && !driver.is_pressed(&inner),
+    "the release ends it along the path"
+  );
+}
+
+fn a_box_hears_focus_entering_and_leaving<D: Driver>(driver: &mut D) {
+  let probes = |driver: &mut D| (driver.probe("entered"), driver.probe("left"));
+
+  driver.press(&key("Tab"));
+
+  assert_eq!(
+    probes(driver),
+    ("1".to_owned(), "0".to_owned()),
+    "focus entering the box"
+  );
+
+  driver.press(&key("Tab"));
+
+  assert_eq!(
+    probes(driver),
+    ("1".to_owned(), "0".to_owned()),
+    "focus moving within it is nothing to the box"
+  );
+
+  driver.press(&key("Tab"));
+
+  assert_eq!(
+    probes(driver),
+    ("1".to_owned(), "1".to_owned()),
+    "focus leaving the box"
   );
 }

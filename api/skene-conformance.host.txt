@@ -44,12 +44,16 @@ pub fn skene_conformance::Driver::click(&mut self, &Self::Node)
 pub fn skene_conformance::Driver::find(&mut self, accesskit::Role, &str) -> core::option::Option<Self::Node>
 pub fn skene_conformance::Driver::find_text(&mut self, &str) -> core::option::Option<Self::Node>
 pub fn skene_conformance::Driver::focus(&mut self, &Self::Node)
+pub fn skene_conformance::Driver::focus_shows(&mut self) -> bool
 pub fn skene_conformance::Driver::focused(&mut self) -> core::option::Option<Self::Node>
+pub fn skene_conformance::Driver::hold(&mut self, &Self::Node)
 pub fn skene_conformance::Driver::hover(&mut self, &Self::Node)
+pub fn skene_conformance::Driver::is_pressed(&mut self, &Self::Node) -> bool
 pub fn skene_conformance::Driver::open(&mut self, &str)
 pub fn skene_conformance::Driver::press(&mut self, &skene_foundation::spine::events::KeyEvent)
 pub fn skene_conformance::Driver::probe(&mut self, &str) -> alloc::string::String
 pub fn skene_conformance::Driver::read(&mut self, &Self::Node) -> skene_conformance::Reading
+pub fn skene_conformance::Driver::release(&mut self, &Self::Node)
 pub fn skene_conformance::Driver::resize(&mut self, skene_foundation::spine::values::size::Size<Self::Scalar>)
 pub fn skene_conformance::Driver::type_text(&mut self, &Self::Node, &str)
 pub fn skene_conformance::page<P: skene_foundation::spine::platform::Platform>(&str) -> core::option::Option<skene_conformance::Page<P>>

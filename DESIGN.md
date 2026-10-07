@@ -438,7 +438,8 @@ re-export.
   finds—the probes the page publishes of the signals it binds, the node holding focus,
   what a reader finds by role and name and reads of a node—through a `Driver` each
   platform implements over its own seams: open, probe, find by role and name or by
-  text, read, hover, click, press, type, focus, resize, advance. A page is a view built
+  text, read, hover, click, hold and release, press, type, focus, resize, advance, and
+  whether focus shows and a node holds a press. A page is a view built
   on the platform, so a driver builds it in its own process or serves it to another:
   the web's, `skene-conformance-web`, serves every page from one app and acts each
   scenario out over a WebDriver session in Firefox and Chromium by trusted input, an

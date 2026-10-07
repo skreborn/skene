@@ -54,6 +54,12 @@ pub trait Driver {
   /// Clicks `node` with the primary button, as a user does.
   fn click(&mut self, node: &Self::Node);
 
+  /// Presses the primary button on `node` and holds it, as a user does.
+  fn hold(&mut self, node: &Self::Node);
+
+  /// Releases the button [`hold`](Self::hold) pressed, over `node`, as a user does.
+  fn release(&mut self, node: &Self::Node);
+
   /// Presses and releases the key `key` describes where focus is, as a user does.
   fn press(&mut self, key: &KeyEvent);
 
@@ -71,6 +77,12 @@ pub trait Driver {
 
   /// The node holding focus.
   fn focused(&mut self) -> Option<Self::Node>;
+
+  /// Whether the node holding focus shows it, as `:focus-visible` matches.
+  fn focus_shows(&mut self) -> bool;
+
+  /// Whether `node` holds a press, as `:active` matches each node along a press's path.
+  fn is_pressed(&mut self, node: &Self::Node) -> bool;
 }
 
 /// What a reader finds of a node beyond its role and name.

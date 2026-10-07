@@ -323,35 +323,6 @@ fn focus_order_and_accessibility_follow_their_signals() {
   owner.dispose();
 }
 
-/// A primary press holds `Pressed` on the node it lands on and on its ancestors,
-/// focusable or not, until its release.
-#[test]
-fn a_press_holds_pressed_along_its_path() {
-  reset();
-
-  let owner = Owner::new();
-  let outer = owner.enter(|| {
-    Container::new()
-      .set_background(Value::from(red()).when(State::Pressed, blue()))
-      .set_child(Container::new().set_background(Value::from(blue()).when(State::Pressed, red())))
-      .build()
-  });
-  let inner = only_child(outer);
-  let colors = || (resolve_color(outer, COLOR), resolve_color(inner, COLOR));
-
-  assert_eq!(colors(), (Some(red()), Some(blue())));
-
-  let _ = trigger_pointer_down(inner, &press());
-
-  assert_eq!(colors(), (Some(blue()), Some(red())));
-
-  let _ = trigger_pointer_up(inner, &press());
-
-  assert_eq!(colors(), (Some(red()), Some(blue())));
-
-  owner.dispose();
-}
-
 /// The pointer over a node holds `Hovered` on its ancestors too, as `:hover` does, and
 /// leaving the node for the box around it keeps that box hovered.
 #[test]

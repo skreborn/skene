@@ -333,39 +333,6 @@ fn hover_variant_and_pointer_handlers() {
   });
 }
 
-/// A press holds `Pressed` on the box it lands on and on the boxes around it, focusable
-/// or not, until its release, as `:active` does.
-#[test]
-fn a_press_holds_pressed_along_its_path() {
-  with_platform(|| {
-    let _ = terminal::mount(|| {
-      Container::new()
-        .set_padding(Inset::all(1))
-        .set_background(red().when(State::Pressed, blue()))
-        .set_child(
-          Container::new()
-            .set_width(4)
-            .set_height(2)
-            .set_background(blue().when(State::Pressed, red())),
-        )
-        .into_any()
-        .build()
-    });
-
-    let colors = || (colors_at(10, 5, 0, 0).1, colors_at(10, 5, 2, 2).1);
-
-    assert_eq!(colors(), (Some(rgb(red())), Some(rgb(blue()))));
-
-    testing::trigger_mouse_press(2, 2);
-
-    assert_eq!(colors(), (Some(rgb(blue())), Some(rgb(red()))));
-
-    testing::trigger_mouse_release(2, 2);
-
-    assert_eq!(colors(), (Some(rgb(red())), Some(rgb(blue()))));
-  });
-}
-
 /// The pointer over an open overlay holds `Hovered` on the boxes around the overlay in
 /// the tree too, as a browser's `:hover` holds on a popover's ancestors.
 #[test]

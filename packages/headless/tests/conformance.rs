@@ -3,7 +3,7 @@
 use std::time::Duration;
 
 use skene_conformance::{Driver, Probes, Reading};
-use skene_foundation::{Container, HasChild, KeyEvent, NodeId, Role, Size, View};
+use skene_foundation::{Container, HasChild, KeyEvent, NodeId, Role, Scene, Size, View};
 use skene_headless::{
   Headless,
   access_tree,
@@ -97,6 +97,14 @@ impl Driver for HeadlessDriver {
     user::click(*node);
   }
 
+  fn hold(&mut self, node: &NodeId) {
+    user::hold(*node);
+  }
+
+  fn release(&mut self, node: &NodeId) {
+    user::release(*node);
+  }
+
   fn press(&mut self, key: &KeyEvent) {
     user::press_key(key);
   }
@@ -119,6 +127,18 @@ impl Driver for HeadlessDriver {
 
   fn focused(&mut self) -> Option<NodeId> {
     focused_node()
+  }
+
+  fn focus_shows(&mut self) -> bool {
+    Scene::<Headless>::read(|scene| {
+      scene
+        .focused()
+        .is_some_and(|focused| scene.focus_shows(focused))
+    })
+  }
+
+  fn is_pressed(&mut self, node: &NodeId) -> bool {
+    Scene::<Headless>::read(|scene| scene.is_pressed(*node))
   }
 }
 

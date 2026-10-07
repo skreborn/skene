@@ -7,7 +7,13 @@
 use skene_foundation::{Key, KeyEvent, NodeId};
 use unicode_segmentation::UnicodeSegmentation;
 
-use super::{trigger_key_event, trigger_mouse_click, trigger_mouse_move};
+use super::{
+  trigger_key_event,
+  trigger_mouse_click,
+  trigger_mouse_move,
+  trigger_mouse_press,
+  trigger_mouse_release,
+};
 use crate::with_records;
 
 /// The center cell of the rectangle `node` covered at the last paint.
@@ -51,6 +57,31 @@ pub fn click(node: NodeId) {
 
   trigger_mouse_move(x, y);
   trigger_mouse_click(x, y);
+}
+
+/// Presses the primary button on `node` and holds it until [`release`], moving focus as
+/// the press does.
+///
+/// # Panics
+///
+/// Panics where `node` covers no cell on screen.
+pub fn hold(node: NodeId) {
+  let (x, y) = cell_of(node);
+
+  trigger_mouse_move(x, y);
+  trigger_mouse_press(x, y);
+}
+
+/// Releases the primary button [`hold`] pressed, over `node`, which clicks it where
+/// the press landed on it.
+///
+/// # Panics
+///
+/// Panics where `node` covers no cell on screen.
+pub fn release(node: NodeId) {
+  let (x, y) = cell_of(node);
+
+  trigger_mouse_release(x, y);
 }
 
 /// Double-clicks `node`: two clicks on one cell, the second counting two.

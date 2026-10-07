@@ -224,6 +224,20 @@ impl Driver for Browser<'_> {
     ])]);
   }
 
+  fn hold(&mut self, node: &Element) {
+    self.perform(&[pointer(&[
+      json!({ "type": "pointerMove", "origin": node.to_value(), "x": 0, "y": 0 }),
+      json!({ "type": "pointerDown", "button": 0 }),
+    ])]);
+  }
+
+  fn release(&mut self, node: &Element) {
+    self.perform(&[pointer(&[
+      json!({ "type": "pointerMove", "origin": node.to_value(), "x": 0, "y": 0 }),
+      json!({ "type": "pointerUp", "button": 0 }),
+    ])]);
+  }
+
   fn press(&mut self, key: &KeyEvent) {
     let value =
       key_value(&key.key).unwrap_or_else(|| panic!("WebDriver has no key value for {:?}", key.key));
@@ -308,6 +322,20 @@ impl Driver for Browser<'_> {
 
   fn focused(&mut self) -> Option<Element> {
     self.session.execute_element(FOCUSED, &[])
+  }
+
+  fn focus_shows(&mut self) -> bool {
+    self.session.execute(
+      "return document.activeElement?.matches(':focus-visible') ?? false;",
+      &[],
+    ) == json!(true)
+  }
+
+  fn is_pressed(&mut self, node: &Element) -> bool {
+    self.session.execute(
+      "return arguments[0].matches(':active');",
+      &[node.to_value()],
+    ) == json!(true)
   }
 }
 

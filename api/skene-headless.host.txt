@@ -4,8 +4,10 @@ pub use skene_headless::HeadId
 pub mod skene_headless::user
 pub fn skene_headless::user::click(skene_foundation::spine::node::NodeId)
 pub fn skene_headless::user::double_click(skene_foundation::spine::node::NodeId)
+pub fn skene_headless::user::hold(skene_foundation::spine::node::NodeId)
 pub fn skene_headless::user::hover(skene_foundation::spine::node::NodeId)
 pub fn skene_headless::user::press_key(&skene_foundation::spine::events::KeyEvent)
+pub fn skene_headless::user::release(skene_foundation::spine::node::NodeId)
 pub fn skene_headless::user::type_text(skene_foundation::spine::node::NodeId, &str)
 pub fn skene_headless::user::unhover(skene_foundation::spine::node::NodeId)
 pub struct skene_headless::Headless

@@ -3,7 +3,7 @@
 use std::time::Duration;
 
 use skene_conformance::{Driver, Probes, Reading};
-use skene_foundation::{KeyEvent, NodeId, Platform, Role, Size, View};
+use skene_foundation::{KeyEvent, NodeId, Platform, Role, Scene, Size, View};
 use skene_terminal::{self as terminal, Terminal, testing};
 
 /// The terminal driven as a user drives it, a frame painted at its size before every act
@@ -88,6 +88,18 @@ impl Driver for TerminalDriver {
     self.paint();
   }
 
+  fn hold(&mut self, node: &NodeId) {
+    self.paint();
+    testing::user::hold(*node);
+    self.paint();
+  }
+
+  fn release(&mut self, node: &NodeId) {
+    self.paint();
+    testing::user::release(*node);
+    self.paint();
+  }
+
   fn press(&mut self, key: &KeyEvent) {
     testing::user::press_key(key);
     self.paint();
@@ -119,6 +131,18 @@ impl Driver for TerminalDriver {
 
   fn focused(&mut self) -> Option<NodeId> {
     testing::focused_node()
+  }
+
+  fn focus_shows(&mut self) -> bool {
+    Scene::<Terminal>::read(|scene| {
+      scene
+        .focused()
+        .is_some_and(|focused| scene.focus_shows(focused))
+    })
+  }
+
+  fn is_pressed(&mut self, node: &NodeId) -> bool {
+    Scene::<Terminal>::read(|scene| scene.is_pressed(*node))
   }
 }
 

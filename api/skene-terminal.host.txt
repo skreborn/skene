@@ -906,8 +906,10 @@ pub mod skene_terminal::testing
 pub mod skene_terminal::testing::user
 pub fn skene_terminal::testing::user::click(skene_foundation::spine::node::NodeId)
 pub fn skene_terminal::testing::user::double_click(skene_foundation::spine::node::NodeId)
+pub fn skene_terminal::testing::user::hold(skene_foundation::spine::node::NodeId)
 pub fn skene_terminal::testing::user::hover(skene_foundation::spine::node::NodeId)
 pub fn skene_terminal::testing::user::press_key(&skene_foundation::spine::events::KeyEvent)
+pub fn skene_terminal::testing::user::release(skene_foundation::spine::node::NodeId)
 pub fn skene_terminal::testing::user::type_text(skene_foundation::spine::node::NodeId, &str)
 pub struct skene_terminal::testing::Pty
 impl skene_terminal::testing::Pty

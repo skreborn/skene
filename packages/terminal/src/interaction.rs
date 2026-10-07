@@ -581,19 +581,15 @@ impl Records {
       return (0, limit);
     }
 
-    let Some(taffy) = self.record(handle).and_then(|record| record.taffy)
-    else {
-      return (0, 0);
-    };
     let overflow = self.overflow(handle);
 
-    match self.taffy.layout(taffy) {
+    match self.tree.layout(handle) {
       #[expect(
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss,
         reason = "a scroll extent is rounded and clamped non-negative, a cell count within u32"
       )]
-      Ok(layout) => (
+      Some(layout) => (
         if overflow.horizontal.scrolls() {
           layout.scroll_width().round().max(0.) as u32
         }
@@ -607,7 +603,7 @@ impl Records {
           0
         },
       ),
-      Err(_) => (0, 0),
+      None => (0, 0),
     }
   }
 

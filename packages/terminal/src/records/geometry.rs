@@ -21,7 +21,7 @@ impl Records {
     reason = "taffy rounds a layout to whole cells, far inside i64"
   )]
   pub(crate) fn frame_of(&self, record: &Record) -> CellFrame {
-    let Some(layout) = record.taffy.and_then(|taffy| self.taffy.layout(taffy).ok())
+    let Some(layout) = record.node.and_then(|node| self.tree.layout(node))
     else {
       return CellFrame::default();
     };
@@ -64,7 +64,7 @@ impl Records {
       return None;
     }
 
-    let layout = self.taffy.unrounded_layout(record.taffy?);
+    let layout = self.tree.unrounded_layout(record.node?)?;
     #[expect(
       clippy::cast_possible_truncation,
       reason = "a position in eighth cells stays far inside isize"
@@ -92,10 +92,7 @@ impl Records {
     reason = "taffy rounds a layout to whole cells, far inside i64"
   )]
   pub(crate) fn node_border(&self, handle: Handle) -> (i64, i64, i64, i64) {
-    let Some(layout) = self
-      .record(handle)
-      .and_then(|record| record.taffy)
-      .and_then(|taffy| self.taffy.layout(taffy).ok())
+    let Some(layout) = self.tree.layout(handle)
     else {
       return (0, 0, 0, 0);
     };

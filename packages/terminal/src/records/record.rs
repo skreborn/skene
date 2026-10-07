@@ -27,7 +27,6 @@ use super::{CellRect, field::Field};
 use crate::{
   Terminal,
   TerminalStyle,
-  layout::Measured,
   motion::{BoxMotion, RunMotion},
   paint::Image,
 };
@@ -222,16 +221,8 @@ impl Kind {
 pub(crate) struct Record {
   /// What the node is, with its props, its resolution and its motion.
   pub(crate) kind: Kind,
-  /// The node in the layout tree, where it takes part in layout.
-  pub(crate) taffy: Option<taffy::NodeId>,
   /// The scene node the record realizes, once bound.
   pub(crate) node: Option<NodeId>,
-  /// The taffy children last handed to the layout tree.
-  pub(crate) taffy_children: Vec<taffy::NodeId>,
-  /// The text and scales the layout tree carries for a run or a paragraph.
-  pub(crate) measured_text: Option<Measured>,
-  /// The taffy style last handed to the layout tree.
-  pub(crate) applied: Option<taffy::Style>,
   /// A run's text, as last set.
   pub(crate) text: String,
   /// The node's slot values, as last written.
@@ -302,14 +293,10 @@ pub(crate) struct PictureRecord {
 }
 
 impl Record {
-  pub(super) fn new(kind: Kind, taffy: Option<taffy::NodeId>) -> Self {
+  pub(super) fn new(kind: Kind) -> Self {
     Self {
       kind,
-      taffy,
       node: None,
-      taffy_children: Vec::new(),
-      measured_text: None,
-      applied: None,
       text: String::new(),
       slots: FxHashMap::default(),
       observers: Vec::new(),

@@ -552,9 +552,11 @@ Condition     = Media | State | And | Or
   mode is its own container view carrying layout properties alone, `Container` is the one
   decorated box, and per-child properties ride in wrappers. Every platform but the web
   maps a resolved style onto taffy through `skene-layout` once (`BoxLayout`, generic over
-  the scalar, a border taking a unit per edge drawn in cells and its width in pixels),
-  and the headless platform lays the scene out through its `Tree` on every frame, at
-  the values its motion presents, each
+  the scalar, a border taking a unit per edge drawn in cells and its width in pixels)
+  and lays out on its `Tree`, keyed by the scene's nodes: the terminal's records keep
+  one across frames, each node's style, text and children written where they changed,
+  and the headless platform builds one from the scene on every frame, at the values
+  its motion presents, each
   run measured by approximate metrics (a cluster half its font size wide, a line its
   font size times its line height tall, both as the typography in force sets them),
   reporting each box's size to the observers bound to it and

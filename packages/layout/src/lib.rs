@@ -2,9 +2,9 @@
 //!
 //! The layout every platform but the web computes, on taffy: the shared style model
 //! mapped onto taffy's styles, generic over the platform's scalar, a unit of which is
-//! one unit of the layout ([`BoxLayout`]), and a tree laid out from the scene, each
-//! node's part classified by its platform ([`Tree`]). The web lays out through CSS and
-//! needs none of it.
+//! one unit of the layout ([`BoxLayout`]), and a tree keyed by the scene's nodes,
+//! retained across layouts or built from the scene for one, each node's part classified
+//! by its platform ([`Tree`]). The web lays out through CSS and needs none of it.
 
 mod tree;
 

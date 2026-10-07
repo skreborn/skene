@@ -40,13 +40,13 @@ in a code comment.
     the hydration swap goes, the drawn face remaining elsewhere.
 2. **Tests that exercise what users see.** Headless becomes the web's real stand-in,
     and every tier asserts through roles, text and pixels.
-    - The terminal's retained runtime (the taffy store, the incremental restyle, the
-    damage and the measured rectangles, hit testing, focus, capture, wheel latching,
-    field editing, selection, motion) moves into `skene-layout`, generic over the
-    platform's scalar, which holds the style mapping and a tree headless lays out
-    through today: the terminal's records lay out through its `Tree` and keep only
-    their cells; paragraphs and inline boxes lay out as the terminal's do, where
-    headless measures each run on its own; hit testing clips to a box that clips its
+    - The terminal's retained runtime beyond its layout tree (the incremental restyle,
+    the damage and the measured rectangles, hit testing, focus, capture, wheel
+    latching, field editing, selection, motion) moves into `skene-layout`, generic over
+    the platform's scalar, which holds the style mapping and the `Tree` the terminal
+    keeps across frames and headless builds afresh on each: headless keeps its tree
+    across frames as the terminal does; paragraphs and inline boxes lay out as the
+    terminal's do, where headless measures each run on its own; hit testing clips to a box that clips its
     overflow and follows its scroll offsets, as the terminal's does, where headless
     tests rectangles in paint order; headless renders pixel snapshots in the pinned
     font; the layout store becomes the crate the native shells call into.

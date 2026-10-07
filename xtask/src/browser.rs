@@ -238,12 +238,14 @@ fn sessions() -> usize {
 
 /// Links every library's tests for the browser, builds every browser binary, then runs
 /// each in every engine, several sessions at once, and checks each against its
-/// expected count.
+/// expected count; the browsers' temporary files go to a scratch directory emptied
+/// first.
 pub(crate) fn run(gate: &Gate, log: &mut Log) -> Outcome {
   check_runner(gate)?;
 
   let binaries = build(gate, log)?;
   let scratch = gate.target.join("gate").join("tmp");
+  let _ = fs::remove_dir_all(&scratch);
 
   fs::create_dir_all(&scratch).map_err(|error| format!("{}: {error}", scratch.display()))?;
 

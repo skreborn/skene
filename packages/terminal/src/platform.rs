@@ -1,5 +1,5 @@
 //! The terminal's realization of the platform: one record per node beside the scene,
-//! the taffy tree those records lay out in, and the environment as signals.
+//! the layout tree those records lay out in, and the environment as signals.
 
 use std::{cell::RefCell, rc::Rc, thread::LocalKey};
 
@@ -265,11 +265,11 @@ impl Platform for Terminal {
   }
 
   fn create_anchor(node: NodeId) {
-    with_records(|records| records.insert(node, Kind::Anchor, None));
+    with_records(|records| records.insert(node, Kind::Anchor));
   }
 
   fn create_scope(node: NodeId) {
-    with_records(|records| records.insert(node, Kind::Scope, None));
+    with_records(|records| records.insert(node, Kind::Scope));
   }
 
   fn attach(_parent: NodeId, _child: NodeId, _before: Option<NodeId>) {

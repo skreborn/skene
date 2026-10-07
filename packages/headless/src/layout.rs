@@ -115,7 +115,7 @@ pub(crate) fn lay_out() -> Frames {
   let mut frames = Frames::default();
 
   for root in roots {
-    frames.extend(Tree::<Headless, Measured>::lay_out(
+    frames.extend(Tree::<Measured>::lay_out::<Headless>(
       root,
       viewport,
       false,

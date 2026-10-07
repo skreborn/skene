@@ -2650,7 +2650,6 @@ dependencies = [
  "skene-reactive",
  "skene-simple-terminal",
  "smallvec",
- "taffy",
  "tracing",
  "unicode-linebreak",
  "unicode-segmentation",

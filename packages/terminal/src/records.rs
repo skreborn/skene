@@ -1,4 +1,4 @@
-//! The records beside the scene: what the platform keeps per node, the taffy tree,
+//! The records beside the scene: what the platform keeps per node, the layout tree,
 //! the interaction state, and the environment it reports.
 
 mod environment;
@@ -24,6 +24,7 @@ use skene_foundation::{
   Shortcut,
   Timers,
 };
+use skene_layout::Tree;
 
 use self::environment::MediaState;
 pub(crate) use self::{
@@ -69,7 +70,7 @@ pub(crate) struct Records {
   by_node: NodeMap<Record>,
   /// The layout tree; a text run's leaf carries its text and scales as context,
   /// wrapped by the layout's measure function.
-  pub(crate) taffy: taffy::TaffyTree<Measured>,
+  pub(crate) tree: Tree<Measured>,
   /// The root box, filling the screen.
   pub(crate) root: Handle,
   /// Every overlay, in build order; later entries stack on top.
@@ -206,10 +207,6 @@ pub(crate) struct Records {
 impl Records {
   /// Records whose root box, filling the screen, is the scene's node `root`.
   pub(crate) fn new(root: NodeId) -> Self {
-    let mut taffy = taffy::TaffyTree::new();
-    let root_taffy = taffy
-      .new_leaf(taffy::style::Style::default())
-      .expect("create the root taffy node");
     let root_props = BoxProps {
       layout: Layout::Flex {
         axis: Axis::Vertical,
@@ -227,7 +224,7 @@ impl Records {
     };
     let mut records = Self {
       by_node: NodeMap::new(),
-      taffy,
+      tree: Tree::new(true),
       root,
       overlays: Vec::new(),
       entries: Vec::new(),
@@ -287,18 +284,14 @@ impl Records {
       picture_generation: 0,
     };
 
-    records.insert(
-      root,
-      Kind::Box(BoxRecord::new(root_props)),
-      Some(root_taffy),
-    );
+    records.insert_laid_out(root, Kind::Box(BoxRecord::new(root_props)));
 
     records
   }
 
-  /// Stores a record of `kind` over `taffy` as the record of `node`.
-  pub(crate) fn insert(&mut self, node: NodeId, kind: Kind, taffy: Option<taffy::NodeId>) {
-    let mut record = Record::new(kind, taffy);
+  /// Stores a record of `kind` as the record of `node`, outside the layout tree.
+  pub(crate) fn insert(&mut self, node: NodeId, kind: Kind) {
+    let mut record = Record::new(kind);
 
     record.node = Some(node);
     self.structure_dirty = true;
@@ -306,14 +299,11 @@ impl Records {
     let _replaced = self.by_node.insert(node, record);
   }
 
-  /// Stores a record of `kind` over a fresh taffy leaf as the record of `node`.
+  /// Stores a record of `kind` as the record of `node`, a fresh leaf of the layout
+  /// tree.
   pub(crate) fn insert_laid_out(&mut self, node: NodeId, kind: Kind) {
-    let taffy = self
-      .taffy
-      .new_leaf(taffy::style::Style::default())
-      .expect("create a taffy node");
-
-    self.insert(node, kind, Some(taffy));
+    self.tree.insert(node);
+    self.insert(node, kind);
   }
 
   /// The record of `handle`, if it is live.
@@ -345,19 +335,16 @@ impl Records {
       else {
         continue;
       };
-      let taffy = record.taffy;
 
       if let Some(field) = record.kind.field_mut() {
         field.reflow();
       }
 
-      if let Some(taffy) = taffy {
-        if let Some(measured) = self.taffy.get_node_context_mut(taffy) {
-          measured.forget_extents();
-        }
-
-        let _ = self.taffy.mark_dirty(taffy);
+      if let Some(measured) = self.tree.context_mut(handle) {
+        measured.forget_extents();
       }
+
+      self.tree.mark_dirty(handle);
     }
   }
 
@@ -373,9 +360,7 @@ impl Records {
       return;
     };
 
-    if let Some(taffy) = record.taffy {
-      let _ = self.taffy.remove(taffy);
-    }
+    self.tree.remove(handle);
 
     self.overlays.retain(|overlay| *overlay != handle);
     self.entries.retain(|entry| *entry != handle);

@@ -8,12 +8,16 @@
 use std::cell::OnceCell;
 
 use rustc_hash::FxHashSet;
-use skene_foundation::{Inset, Layout, RunPlacement, Scene};
-use skene_layout::{Borders, BoxLayout, Place};
-use taffy::{
-  prelude::{AvailableSpace, length},
-  style::{Display, Style},
-  tree::LayoutOutput,
+use skene_foundation::{Inset, Layout, RunPlacement, Scene, Size};
+use skene_layout::{
+  Borders,
+  BoxLayout,
+  Place,
+  taffy::{
+    self,
+    prelude::{AvailableSpace, length},
+    style::{Display, Style},
+  },
 };
 
 use crate::{
@@ -283,28 +287,14 @@ pub(crate) fn measure_inline_boxes(records: &mut Records) -> bool {
       continue;
     }
 
-    let Some(taffy) = records.record(handle).and_then(|record| record.taffy)
-    else {
-      continue;
-    };
-
-    records
-      .taffy
-      .compute_layout_with_measure(
-        taffy,
-        taffy::geometry::Size {
-          width: AvailableSpace::MaxContent,
-          height: AvailableSpace::MaxContent,
-        },
-        |input, _, measured, _| {
-          LayoutOutput::from_outer_size(measure_run(
-            input.known_dimensions,
-            input.available_space,
-            measured.as_deref(),
-          ))
-        },
-      )
-      .expect("compute an inline box's layout");
+    records.tree.compute(
+      handle,
+      taffy::geometry::Size {
+        width: AvailableSpace::MaxContent,
+        height: AvailableSpace::MaxContent,
+      },
+      measure_run,
+    );
 
     let (width, height) = records.node_size(handle);
     let size = (
@@ -394,32 +384,12 @@ pub(crate) fn restyle(records: &mut Records) -> bool {
     else {
       continue;
     };
-    let Some(record) = records.record_mut(handle)
-    else {
-      continue;
-    };
-    let Some(taffy) = record.taffy
-    else {
-      continue;
-    };
 
-    if record.measured_text != restyled.text {
-      record.measured_text.clone_from(&restyled.text);
-      records
-        .taffy
-        .set_node_context(taffy, restyled.text)
-        .expect("carry a run's text");
+    if records.tree.set_context(handle, restyled.text) {
       changed = true;
     }
 
-    let record = records.record_mut(handle).expect("checked live");
-
-    if record.applied.as_ref() != Some(&restyled.style) {
-      record.applied = Some(restyled.style.clone());
-      records
-        .taffy
-        .set_style(taffy, restyled.style)
-        .expect("style a node");
+    if records.tree.set_style(handle, restyled.style) {
       records.set_style_calls += 1;
       changed = true;
     }
@@ -882,51 +852,32 @@ pub(crate) fn rebuild_children(records: &mut Records) {
   let handles = records.handles();
 
   for handle in handles {
-    let Some(record) = records.record(handle)
-    else {
-      continue;
-    };
-    let Some(taffy) = record.taffy
-    else {
-      continue;
-    };
+    let laid_out = records
+      .record(handle)
+      .is_some_and(|record| record.kind.is_laid_out());
 
-    if !record.kind.is_laid_out() {
+    if !laid_out || !records.tree.contains(handle) {
       continue;
     }
 
-    let mut children: Vec<taffy::NodeId> = if is_paragraph(records, handle) {
+    let mut children = if is_paragraph(records, handle) {
       Vec::new()
     }
     else {
-      records
-        .layout_children(handle)
-        .into_iter()
-        .filter_map(|child| records.record(child).and_then(|record| record.taffy))
-        .collect()
+      records.layout_children(handle)
     };
 
     if handle == records.root {
-      let overlays: Vec<taffy::NodeId> = records
-        .overlays
-        .clone()
-        .into_iter()
-        .filter(|overlay| records.is_reachable(*overlay))
-        .filter_map(|overlay| records.record(overlay).and_then(|record| record.taffy))
-        .collect();
-
-      children.extend(overlays);
+      children.extend(
+        records
+          .overlays
+          .iter()
+          .copied()
+          .filter(|overlay| records.is_reachable(*overlay)),
+      );
     }
 
-    let record = records.record_mut(handle).expect("checked live");
-
-    if record.taffy_children != children {
-      record.taffy_children.clone_from(&children);
-      records
-        .taffy
-        .set_children(taffy, &children)
-        .expect("set a node's children");
-    }
+    records.tree.set_children(handle, children);
   }
 
   records.layout_dirty = true;
@@ -934,64 +885,40 @@ pub(crate) fn rebuild_children(records: &mut Records) {
 
 /// Computes the layout at `width` x `height`, the root sized to the terminal.
 pub(crate) fn compute(records: &mut Records, width: u16, height: u16) {
-  let root_taffy = records
-    .record(records.root)
-    .and_then(|record| record.taffy)
-    .expect("the root");
+  let root = records.root;
+  let (width, height) = (f32::from(width), f32::from(height));
 
-  records
-    .taffy
-    .set_style(
-      root_taffy,
-      Style {
-        display: Display::Flex,
-        flex_direction: taffy::style::FlexDirection::Column,
-        size: taffy::geometry::Size {
-          width: length(f32::from(width)),
-          height: length(f32::from(height)),
-        },
-        ..Style::default()
+  records.tree.set_style(
+    root,
+    Style {
+      display: Display::Flex,
+      flex_direction: taffy::style::FlexDirection::Column,
+      size: taffy::geometry::Size {
+        width: length(width),
+        height: length(height),
       },
-    )
-    .expect("style the root");
-  records
-    .taffy
-    .compute_layout_with_measure(
-      root_taffy,
-      taffy::geometry::Size {
-        width: AvailableSpace::Definite(f32::from(width)),
-        height: AvailableSpace::Definite(f32::from(height)),
-      },
-      |input, _, measured, _| {
-        LayoutOutput::from_outer_size(measure_run(
-          input.known_dimensions,
-          input.available_space,
-          measured.as_deref(),
-        ))
-      },
-    )
-    .expect("compute the layout");
+      ..Style::default()
+    },
+  );
+  records.tree.compute(
+    root,
+    taffy::geometry::Size {
+      width: AvailableSpace::Definite(width),
+      height: AvailableSpace::Definite(height),
+    },
+    measure_run,
+  );
   records.layout_generation += 1;
   records.covers_stale = true;
 }
 
 /// Measures a text leaf: its text wrapped at the width constraint, in cells, each
 /// cluster at its scale and each line as tall as its tallest.
-///
-/// A leaf carrying no text measures to its known dimensions or zero.
 fn measure_run(
   known: taffy::geometry::Size<Option<f32>>,
   available: taffy::geometry::Size<AvailableSpace>,
-  measured: Option<&Measured>,
-) -> taffy::geometry::Size<f32> {
-  let Some(measured) = measured
-  else {
-    return taffy::geometry::Size {
-      width: known.width.unwrap_or(0.),
-      height: known.height.unwrap_or(0.),
-    };
-  };
-
+  measured: &Measured,
+) -> Size<f32> {
   #[expect(
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
@@ -1009,10 +936,10 @@ fn measure_run(
     clippy::cast_precision_loss,
     reason = "a line's length in cells stays far below the integers f32 holds exactly"
   )]
-  taffy::geometry::Size {
-    width: known.width.unwrap_or(cells as f32),
-    height: known.height.unwrap_or(rows as f32),
-  }
+  Size::new(
+    known.width.unwrap_or(cells as f32),
+    known.height.unwrap_or(rows as f32),
+  )
 }
 
 /// The edges the resolved style draws its border on: each of a width above zero, which

@@ -118,6 +118,27 @@ fn text_wraps_at_the_container_width() {
   });
 }
 
+/// A newline ending a run's text opens no line, and an empty text takes no row, as in a
+/// browser.
+#[test]
+fn a_final_newline_and_an_empty_text_open_no_line() {
+  with_platform(|| {
+    let _ = terminal::mount(|| {
+      Column::new()
+        .set_children((
+          Text::new("one\n"),
+          Text::new(""),
+          Text::new("two\n\n"),
+          Text::new("three"),
+        ))
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(testing::render_to_text(8, 5), "one\ntwo\n\nthree\n\n");
+  });
+}
+
 /// A border draws box-drawing characters, and the root child fills the viewport.
 #[test]
 fn border_draws_a_frame_and_the_root_child_fills_the_viewport() {

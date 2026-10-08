@@ -99,7 +99,7 @@ impl Measured {
 
   /// The text split into clusters and the places a line may end.
   fn shaped(&self) -> &Shaped {
-    self.shaped.get_or_init(|| Shaped::of(&self.text))
+    self.shaped.get_or_init(|| Shaped::of_run(&self.text))
   }
 
   /// The cells and rows the text takes wrapped at `limit` cells.
@@ -1028,7 +1028,7 @@ mod properties {
       );
       let measured = Measured::new(text.clone(), scales.clone());
 
-      prop_assert_eq!(Shaped::of(&text).extent(&text, width, &scales), wrapped);
+      prop_assert_eq!(Shaped::of_run(&text).extent(&text, width, &scales), wrapped);
       prop_assert_eq!(measured.size_at(width), wrapped);
     }
   }
@@ -1058,7 +1058,7 @@ mod wrap_properties {
 
     /// Any text wraps at any width into lines that fit, but for a lone cluster too wide
     /// for one, and that leave out nothing but the blanks a line ends in and the
-    /// newlines between paragraphs.
+    /// newlines between paragraphs, an empty text into none.
     #[test]
     fn a_wrap_fits_and_keeps_the_text(text in arbitrary_text(), width in 1..30_usize) {
       text::reset();
@@ -1068,7 +1068,7 @@ mod wrap_properties {
       let clusters: Vec<&str> = text::clusters(&text).map(|(_, cluster)| cluster).collect();
       let mut expected_start = 0;
 
-      prop_assert!(!lines.is_empty());
+      prop_assert_eq!(lines.is_empty(), text.is_empty());
 
       for line in &lines {
         let cells: usize = line.advances(&scales).sum();

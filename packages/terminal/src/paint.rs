@@ -707,7 +707,8 @@ impl Buffer {
 /// and a newline always breaks. Yields at least one line, each paired with its start
 /// offset into the source, in clusters, newlines included.
 pub(crate) fn wrap_spans(text: &str, width: usize) -> Vec<(usize, String)> {
-  wrap_sized(text, width, &Scales::default())
+  Shaped::of(text)
+    .wrap(text, width, &Scales::default())
     .into_iter()
     .map(|line| (line.start, line.text))
     .collect()
@@ -810,10 +811,12 @@ fn is_blank(cluster: &str) -> bool {
   matches!(cluster, " " | "\t")
 }
 
-/// [`wrap_spans`] with each cluster as wide as its scale makes it, a tab reaching its
-/// stop counted from its line's start, and each line as tall as its tallest cluster.
+/// The lines a run's text wraps into: those of [`wrap_spans`], with each cluster as wide
+/// as its scale makes it, a tab reaching its stop counted from its line's start, and
+/// each line as tall as its tallest cluster, though a newline ending the text opens no
+/// line and an empty text has none.
 pub(crate) fn wrap_sized(text: &str, width: usize, scales: &Scales) -> Vec<SizedLine> {
-  Shaped::of(text).wrap(text, width, scales)
+  Shaped::of_run(text).wrap(text, width, scales)
 }
 
 /// Wraps text to `width` columns; the lines of [`wrap_spans`], offsets dropped.
@@ -829,7 +832,7 @@ pub(crate) fn wrap_text(text: &str, width: usize) -> Vec<String> {
 /// cells at its scales: the narrowest a wrap can go.
 #[cfg(test)]
 pub(crate) fn longest_word(text: &str, scales: &Scales) -> usize {
-  Shaped::of(text).longest_word(text, scales)
+  Shaped::of_run(text).longest_word(text, scales)
 }
 
 /// A text split once into paragraphs of clusters, with each cluster's width and where a
@@ -892,6 +895,22 @@ impl Shaped {
     }
 
     Self { paragraphs }
+  }
+
+  /// The shape of a run's `text`: that of [`of`](Self::of) without the empty paragraph a
+  /// newline ending it opens, or an empty text's.
+  pub(crate) fn of_run(text: &str) -> Self {
+    let mut shaped = Self::of(text);
+
+    if shaped
+      .paragraphs
+      .last()
+      .is_some_and(|paragraph| paragraph.count() == 0)
+    {
+      shaped.paragraphs.pop();
+    }
+
+    shaped
   }
 
   /// The lines `text`, whose shape this is, wraps into at `width` cells, as

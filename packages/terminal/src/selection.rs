@@ -111,7 +111,10 @@ impl Records {
     let scales = self.text_scales(handle);
     let lines = wrap_sized(&text, usize::try_from(width).unwrap_or(1), &scales);
     let row = usize::try_from(local_y.max(0)).unwrap_or(0);
-    let line = &lines[line_at_row(&lines, row)];
+    let Some(line) = lines.get(line_at_row(&lines, row))
+    else {
+      return Some(0);
+    };
     let column = usize::try_from(local_x.max(0)).unwrap_or(0);
 
     Some(line.start + line.index_at_column(column, &scales))

@@ -20,6 +20,18 @@ pub trait Metrics {
 
   /// How tall a line holding the run's text is at least.
   fn line_height(&self) -> f32;
+
+  /// How far below the top of a line box of the run's text its baseline lies; at its
+  /// bottom by default.
+  fn baseline(&self) -> f32 {
+    self.line_height()
+  }
+
+  /// How far above its baseline the run's capital letters reach, which a trimmed
+  /// paragraph's first line is trimmed to; to the top of its line box by default.
+  fn cap(&self) -> f32 {
+    self.baseline()
+  }
 }
 
 /// One run of a paragraph: the node it lays out, the groups around it, what it flows and
@@ -51,25 +63,35 @@ pub enum Content {
 ///
 /// The text wraps where the Unicode line breaking algorithm allows, as after the blanks
 /// ending a word or a hyphen, at each newline and around each box; a word runs across
-/// runs where nothing breaks it. A line is as tall as the tallest run or box on it, each
-/// sitting on its bottom, and as wide as its text without the blanks it ends in, which
-/// take no room on it.
+/// runs where nothing breaks it. Each run's line box sits on its line's baseline, a box's
+/// bottom on it, and a line spans the highest of them above the baseline to the deepest
+/// below it; it is as wide as its text without the blanks it ends in, which take no room
+/// on it.
 #[derive(Debug, Clone, PartialEq)]
 #[must_use]
 pub struct Paragraph<M> {
   runs: Vec<Inline<M>>,
+  trimmed: bool,
 }
 
 /// One line of a paragraph: the stretches of each run on it, the clusters it holds, how
-/// wide its text is short of the blanks it ends in, and how tall it is.
+/// wide its text is short of the blanks it ends in, how far it reaches above its
+/// baseline and below it, and how far its highest cap height rises above it.
 struct Line {
   pieces: Vec<Piece>,
   clusters: Range<usize>,
   width: f32,
-  height: f32,
+  above: f32,
+  below: f32,
+  cap: f32,
 }
 
 impl Line {
+  /// How tall the line is.
+  fn height(&self) -> f32 {
+    self.above + self.below
+  }
+
   /// The line ending before the cluster at `end`, the blanks it ends in removed from its
   /// pieces, its text advancing `advance` with them.
   fn ended(mut self, end: usize, advance: f32) -> Self {
@@ -103,17 +125,42 @@ struct Piece {
 impl<M: Metrics> Paragraph<M> {
   /// The paragraph of `runs`, in order.
   pub const fn new(runs: Vec<Inline<M>>) -> Self {
-    Self { runs }
+    Self {
+      runs,
+      trimmed: false,
+    }
   }
 
-  /// How tall a line holding the run at `index` is at least: its text's line height, or
-  /// its box's height.
-  fn height(&self, index: usize) -> f32 {
+  /// The paragraph with its first line trimmed to its cap height and its last line to
+  /// its baseline, as CSS's `text-box-trim: trim-both` with `text-box-edge: cap
+  /// alphabetic` trims a block's text.
+  pub const fn trimmed(mut self) -> Self {
+    self.trimmed = true;
+
+    self
+  }
+
+  /// How tall the line box of the run at `index` is, how far below its top its baseline
+  /// lies, and how far its cap height rises above that baseline: its text's, or for a
+  /// box its own height with its bottom on the baseline.
+  fn extent(&self, index: usize) -> (f32, f32, f32) {
     let run = &self.runs[index];
 
     match run.content {
-      Content::Text(_) => run.metrics.line_height(),
-      Content::Box(size) => size.height,
+      Content::Text(_) => (
+        run.metrics.line_height(),
+        run.metrics.baseline(),
+        run.metrics.cap(),
+      ),
+      Content::Box(size) => (size.height, size.height, size.height),
+    }
+  }
+
+  /// How far the first of `lines` is trimmed at its top and the last at its bottom.
+  fn trims(&self, lines: &[Line]) -> (f32, f32) {
+    match (self.trimmed, lines.first(), lines.last()) {
+      (true, Some(first), Some(last)) => (first.above - first.cap, last.below),
+      _ => (0., 0.),
     }
   }
 
@@ -122,27 +169,28 @@ impl<M: Metrics> Paragraph<M> {
   #[must_use]
   pub fn clusters(&self, content: Rect<f32>) -> Vec<Placed<'_>> {
     let (clusters, breaks) = self.shaped();
+    let lines = self.lines(&clusters, &breaks, Some(content.size.width));
     let mut placed = Vec::new();
-    let mut top = content.origin.y;
+    let mut top = content.origin.y - self.trims(&lines).0;
 
-    for line in self.lines(&clusters, &breaks, Some(content.size.width)) {
+    for line in &lines {
       let mut advance = 0_f32;
 
       for cluster in &clusters[line.clusters.clone()] {
-        let height = self.height(cluster.run);
+        let (height, baseline, _) = self.extent(cluster.run);
 
         placed.push(Placed {
           node: self.runs[cluster.run].node,
           text: cluster.text,
           rect: Rect {
-            origin: Point::new(content.origin.x + advance, top + line.height - height),
+            origin: Point::new(content.origin.x + advance, top + line.above - baseline),
             size: Size::new(cluster.advance, height),
           },
         });
         advance += cluster.advance;
       }
 
-      top += line.height;
+      top += line.height();
     }
 
     placed
@@ -249,14 +297,17 @@ impl<M: Metrics> Paragraph<M> {
         match line.pieces.last_mut() {
           Some(piece) if piece.run == run => piece.width += width,
           _ => {
-            let height = self.height(run);
+            let (height, baseline, cap) = self.extent(run);
 
-            line.height = if line.pieces.is_empty() {
-              height
+            if line.pieces.is_empty() {
+              (line.above, line.below, line.cap) = (baseline, height - baseline, cap);
             }
             else {
-              line.height.max(height)
-            };
+              line.above = line.above.max(baseline);
+              line.below = line.below.max(height - baseline);
+              line.cap = line.cap.max(cap);
+            }
+
             line.pieces.push(Piece {
               run,
               start: advance,
@@ -298,11 +349,15 @@ impl<M: Metrics> Paragraph<M> {
   /// An empty line starting at the cluster at `start`, as tall as a line of the run at
   /// `index` until a run's text is on it.
   fn line(&self, index: usize, start: usize) -> Line {
+    let (height, baseline, cap) = self.extent(index);
+
     Line {
       pieces: Vec::new(),
       clusters: start..start,
       width: 0.,
-      height: self.height(index),
+      above: baseline,
+      below: height - baseline,
+      cap,
     }
   }
 }
@@ -314,7 +369,7 @@ pub struct Placed<'a> {
   pub node: NodeId,
   /// Its text; empty for a box.
   pub text: &'a str,
-  /// The rectangle it advances across, as tall as its run's line, on its line's bottom.
+  /// The rectangle it advances across, its run's line box on its line's baseline.
   pub rect: Rect<f32>,
 }
 
@@ -347,6 +402,7 @@ impl<M: Metrics> Leaf for Paragraph<M> {
     });
     let (clusters, breaks) = self.shaped();
     let lines = self.lines(&clusters, &breaks, limit);
+    let (top, bottom) = self.trims(&lines);
 
     Size::new(
       known
@@ -354,22 +410,22 @@ impl<M: Metrics> Leaf for Paragraph<M> {
         .unwrap_or_else(|| lines.iter().map(|line| line.width).fold(0., f32::max)),
       known
         .height
-        .unwrap_or_else(|| lines.iter().map(|line| line.height).sum()),
+        .unwrap_or_else(|| lines.iter().map(Line::height).sum::<f32>() - top - bottom),
     )
   }
 
   fn place(&self, content: Rect<f32>) -> Vec<(NodeId, Rect<f32>)> {
-    let mut placed = Vec::new();
-    let mut top = content.origin.y;
-
     let (clusters, breaks) = self.shaped();
+    let lines = self.lines(&clusters, &breaks, Some(content.size.width));
+    let mut placed = Vec::new();
+    let mut top = content.origin.y - self.trims(&lines).0;
 
-    for line in self.lines(&clusters, &breaks, Some(content.size.width)) {
+    for line in &lines {
       for piece in &line.pieces {
         let run = &self.runs[piece.run];
-        let height = self.height(piece.run);
+        let (height, baseline, _) = self.extent(piece.run);
         let rect = Rect {
-          origin: Point::new(content.origin.x + piece.start, top + line.height - height),
+          origin: Point::new(content.origin.x + piece.start, top + line.above - baseline),
           size: Size::new(piece.width, height),
         };
 
@@ -377,7 +433,7 @@ impl<M: Metrics> Leaf for Paragraph<M> {
         placed.push((run.node, rect));
       }
 
-      top += line.height;
+      top += line.height();
     }
 
     placed

@@ -61,6 +61,7 @@ pub struct skene_layout::Paragraph<M>
 impl<M: skene_layout::Metrics> skene_layout::Paragraph<M>
 pub fn skene_layout::Paragraph<M>::clusters(&self, skene_foundation::spine::values::rect::Rect<f32>) -> alloc::vec::Vec<skene_layout::Placed<'_>>
 pub const fn skene_layout::Paragraph<M>::new(alloc::vec::Vec<skene_layout::Inline<M>>) -> Self
+pub const fn skene_layout::Paragraph<M>::trimmed(self) -> Self
 impl<M: core::clone::Clone> core::clone::Clone for skene_layout::Paragraph<M>
 pub fn skene_layout::Paragraph<M>::clone(&self) -> skene_layout::Paragraph<M>
 impl<M: core::cmp::PartialEq> core::cmp::PartialEq for skene_layout::Paragraph<M>
@@ -136,4 +137,6 @@ pub fn skene_layout::Paragraph<M>::place(&self, skene_foundation::spine::values:
 pub fn skene_layout::Paragraph<M>::size_box(&mut self, skene_foundation::spine::node::NodeId, skene_foundation::spine::values::size::Size<f32>)
 pub trait skene_layout::Metrics
 pub fn skene_layout::Metrics::advance(&self, &str) -> f32
+pub fn skene_layout::Metrics::baseline(&self) -> f32
+pub fn skene_layout::Metrics::cap(&self) -> f32
 pub fn skene_layout::Metrics::line_height(&self) -> f32

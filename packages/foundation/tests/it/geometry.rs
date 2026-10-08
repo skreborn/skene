@@ -81,6 +81,41 @@ const fn rect(x: f32, y: f32, width: f32, height: f32) -> Rect<f32> {
   }
 }
 
+/// How far above the baseline the pinned face's capital letters reach at `size`.
+fn cap(size: f32) -> f32 {
+  1490. * size / 2048.
+}
+
+/// How far below the top of a line box `height` tall the pinned face's baseline lies at
+/// `size`: the box's room beyond the face's ascent and descent split above and below.
+fn baseline(height: f32, size: f32) -> f32 {
+  let scale = size / 2048.;
+
+  (height - 2478. * scale) / 2. + 1984. * scale
+}
+
+/// Whether `actual` is `expected`, each edge within a ten-thousandth of a pixel.
+fn near(actual: Option<Rect<f32>>, expected: Rect<f32>) -> bool {
+  actual.is_some_and(|actual| {
+    [
+      (actual.origin.x, expected.origin.x),
+      (actual.origin.y, expected.origin.y),
+      (actual.size.width, expected.size.width),
+      (actual.size.height, expected.size.height),
+    ]
+    .iter()
+    .all(|(actual, expected)| (actual - expected).abs() < 1e-4)
+  })
+}
+
+/// Asserts that the rectangle `node` lays out in is near `expected`.
+#[track_caller]
+fn assert_rect(node: NodeId, expected: Rect<f32>) {
+  let actual = layout_rect(node);
+
+  assert!(near(actual, expected), "{actual:?} is not {expected:?}");
+}
+
 /// A column lays its children out down the viewport, the spacing between them.
 #[test]
 fn a_column_lays_its_children_out_in_turn() {
@@ -130,13 +165,9 @@ fn a_run_measures_by_the_platforms_metrics_and_wraps() {
   let line = content(boxes[0])[0];
   let wrapped = content(boxes[1])[0];
 
-  assert_eq!(
-    layout_rect(line).map(|rect| rect.size),
-    Some(Size::new(text_width("abcd", 16.), 24.))
-  );
-  assert_eq!(
-    layout_rect(wrapped).map(|rect| rect.size.height),
-    Some(48.),
+  assert_rect(line, rect(0., 0., text_width("abcd", 16.), cap(16.)));
+  assert!(
+    layout_rect(wrapped).is_some_and(|rect| (rect.size.height - 24. - cap(16.)).abs() < 1e-4),
     "two lines: `aa bb` fits, `cc` wraps"
   );
 
@@ -158,10 +189,7 @@ fn a_run_measures_by_the_typography_in_force() {
   });
   let run = find_by_text("ab").expect("the run");
 
-  assert_eq!(
-    layout_rect(run).map(|rect| rect.size),
-    Some(Size::new(text_width("ab", 20.), 40.))
-  );
+  assert_rect(run, rect(0., 0., text_width("ab", 20.), cap(20.)));
 
   owner.dispose();
 }
@@ -473,20 +501,13 @@ fn a_paragraphs_spans_flow_on_one_line() {
   let start = text_width("Hello ", 16.);
   let middle = start + text_width("wor", 16.);
 
-  assert_eq!(layout_rect(paragraph), Some(rect(0., 0., 1024., 24.)));
-  assert_eq!(layout_rect(hello), Some(rect(0., 0., start, 24.)));
-  assert_eq!(
-    layout_rect(group),
-    Some(rect(start, 0., text_width("world", 16.), 24.))
-  );
-  assert_eq!(
-    layout_rect(wor),
-    Some(rect(start, 0., text_width("wor", 16.), 24.))
-  );
-  assert_eq!(
-    layout_rect(ld),
-    Some(rect(middle, 0., text_width("ld", 16.), 24.))
-  );
+  let top = cap(16.) - baseline(24., 16.);
+
+  assert_rect(paragraph, rect(0., 0., 1024., cap(16.)));
+  assert_rect(hello, rect(0., top, start, 24.));
+  assert_rect(group, rect(start, top, text_width("world", 16.), 24.));
+  assert_rect(wor, rect(start, top, text_width("wor", 16.), 24.));
+  assert_rect(ld, rect(middle, top, text_width("ld", 16.), 24.));
   assert_eq!(node_at(Point::new(start + 2., 10.)), Some(wor));
   assert_eq!(
     node_at(Point::new(200., 10.)),
@@ -526,9 +547,11 @@ fn a_paragraph_wraps_across_its_spans() {
   };
   let start = text_width("c ", 16.);
 
-  assert_eq!(layout_rect(paragraph), Some(rect(0., 0., width, 48.)));
-  assert_eq!(layout_rect(before), Some(rect(0., 0., start, 24.)));
-  assert_eq!(layout_rect(broken), Some(rect(0., 0., width, 48.)));
+  let top = cap(16.) - baseline(24., 16.);
+
+  assert_rect(paragraph, rect(0., 0., width, 24. + cap(16.)));
+  assert_rect(before, rect(0., top, start, 24.));
+  assert_rect(broken, rect(0., top, width, 48.));
   assert_eq!(
     node_at(Point::new(start + 2., 10.)),
     Some(broken),
@@ -572,11 +595,16 @@ fn a_line_is_as_tall_as_its_tallest_span() {
   };
   let start = text_width("big ", 32.);
 
-  assert_eq!(layout_rect(paragraph), Some(rect(0., 0., 1024., 48.)));
-  assert_eq!(layout_rect(big), Some(rect(0., 0., start, 48.)));
-  assert_eq!(
-    layout_rect(small),
-    Some(rect(start, 24., text_width("small", 16.), 24.))
+  assert_rect(paragraph, rect(0., 0., 1024., cap(32.)));
+  assert_rect(big, rect(0., cap(32.) - baseline(48., 32.), start, 48.));
+  assert_rect(
+    small,
+    rect(
+      start,
+      cap(32.) - baseline(24., 16.),
+      text_width("small", 16.),
+      24.,
+    ),
   );
 
   owner.dispose();
@@ -612,14 +640,13 @@ fn an_inline_box_flows_among_its_paragraphs_text() {
   };
   let start = text_width("ab ", 16.);
 
-  assert_eq!(layout_rect(paragraph), Some(rect(0., 0., 1024., 30.)));
-  assert_eq!(layout_rect(before), Some(rect(0., 6., start, 24.)));
-  assert_eq!(layout_rect(inline), Some(rect(start, 0., 20., 30.)));
-  assert_eq!(layout_rect(view), Some(rect(start, 0., 20., 30.)));
-  assert_eq!(
-    layout_rect(after),
-    Some(rect(start + 20., 6., text_width(" cd", 16.), 24.))
-  );
+  let top = 30. - baseline(24., 16.);
+
+  assert_rect(paragraph, rect(0., 0., 1024., 30.));
+  assert_rect(before, rect(0., top, start, 24.));
+  assert_rect(inline, rect(start, 0., 20., 30.));
+  assert_rect(view, rect(start, 0., 20., 30.));
+  assert_rect(after, rect(start + 20., top, text_width(" cd", 16.), 24.));
   assert_eq!(node_at(Point::new(start + 6., 10.)), Some(view));
 
   owner.dispose();
@@ -651,8 +678,10 @@ fn a_line_may_end_before_an_inline_box() {
     panic!("two spans");
   };
 
-  assert_eq!(layout_rect(paragraph), Some(rect(0., 0., 30., 54.)));
-  assert_eq!(layout_rect(inline), Some(rect(0., 24., 20., 30.)));
+  let second = 24. - baseline(24., 16.) + cap(16.);
+
+  assert_rect(paragraph, rect(0., 0., 30., second + 30.));
+  assert_rect(inline, rect(0., second, 20., 30.));
 
   owner.dispose();
 }
@@ -730,10 +759,15 @@ fn a_paragraph_breaks_after_a_hyphen() {
     panic!("one span");
   };
 
-  assert_eq!(layout_rect(paragraph), Some(rect(0., 0., 56., 48.)));
-  assert_eq!(
-    layout_rect(span),
-    Some(rect(0., 0., text_width("known", 16.), 48.))
+  assert_rect(paragraph, rect(0., 0., 56., 24. + cap(16.)));
+  assert_rect(
+    span,
+    rect(
+      0.,
+      cap(16.) - baseline(24., 16.),
+      text_width("known", 16.),
+      48.,
+    ),
   );
 
   owner.dispose();

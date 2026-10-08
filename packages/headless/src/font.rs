@@ -20,6 +20,7 @@ pub(crate) struct Pinned {
   widest: f32,
   ascent: f32,
   descent: f32,
+  cap: f32,
   underline: Line,
   strikeout: Line,
 }
@@ -77,6 +78,7 @@ impl Pinned {
       widest: face.max_width.unwrap_or(units_per_em),
       ascent: face.ascent,
       descent: face.descent,
+      cap: face.cap_height.unwrap_or(face.ascent * 0.7),
       underline: line(face.underline, -0.1),
       strikeout: line(face.strikeout, 0.3),
     }
@@ -131,6 +133,11 @@ impl Pinned {
   /// The face's strikeout at `size`, in pixels.
   pub(crate) fn strikeout(&self, size: f32) -> Line {
     self.scaled(self.strikeout, size)
+  }
+
+  /// How far above the baseline the face's capital letters reach at `size`, in pixels.
+  pub(crate) fn cap_height(&self, size: f32) -> f32 {
+    self.cap * size / self.units_per_em
   }
 
   /// How far above the baseline the face's ascent reaches at `size`, in pixels.

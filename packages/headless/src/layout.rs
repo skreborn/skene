@@ -56,7 +56,8 @@ pub(crate) const LINE_HEIGHT: f32 = 1.5;
 
 /// A run's metrics as the layout measures its text: each grapheme cluster as far as the
 /// pinned face advances it at the font size, and the letter spacing past it, each line
-/// the font size times the line height tall.
+/// the font size times the line height tall, its baseline and cap height where the face
+/// puts them with the line's room beyond its ascent and descent split above and below.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct RunMetrics {
   /// The font size.
@@ -74,6 +75,14 @@ impl Metrics for RunMetrics {
 
   fn line_height(&self) -> f32 {
     self.size * self.line_height
+  }
+
+  fn baseline(&self) -> f32 {
+    Pinned::get().baseline(self.line_height(), self.size)
+  }
+
+  fn cap(&self) -> f32 {
+    Pinned::get().cap_height(self.size)
   }
 }
 
@@ -240,7 +249,7 @@ pub(crate) fn lone(node: NodeId, text: String) -> Measured {
     }];
   }
 
-  Paragraph::new(runs)
+  Paragraph::new(runs).trimmed()
 }
 
 /// The taffy style the run `node` takes from its place and the wrapper's properties it
@@ -271,7 +280,7 @@ pub(crate) fn paragraph(node: NodeId) -> Option<Measured> {
       .into_iter()
       .all(|child| inlines(child, &[], &mut runs));
 
-  inline.then(|| Paragraph::new(runs))
+  inline.then(|| Paragraph::new(runs).trimmed())
 }
 
 /// Adds the runs `node` holds to a paragraph's `runs`, inside `groups`: a text run or

@@ -20,6 +20,7 @@ use skene_foundation::{
   ContextMenu,
   DecorationBase,
   Dimension,
+  FlexBase,
   FocusOrder,
   HasChild,
   HasChildren,
@@ -38,6 +39,7 @@ use skene_foundation::{
   Scalar,
   Size,
   Slider,
+  Spacing,
   TOOLTIP_DELAY,
   Text,
   TextEntry,
@@ -128,6 +130,10 @@ pub(crate) fn pages<P: Platform>() -> Vec<Page<P>> {
     Page {
       name: "focus-group",
       build: focus_group_page,
+    },
+    Page {
+      name: "text",
+      build: text_page,
     },
   ]
 }
@@ -1181,4 +1187,19 @@ fn a_box_hears_focus_entering_and_leaving<D: Driver>(driver: &mut D) {
     ("1".to_owned(), "1".to_owned()),
     "focus leaving the box"
   );
+}
+
+/// Text keeping its blanks and newlines: two spaces between words and a tab, two lines
+/// and a newline ending them, a line starting with blanks, and a word too wide for the
+/// page broken where the page's width ends.
+fn text_page<P: Platform>(_: &mut Probes) -> AnyView<P> {
+  Column::<P>::new()
+    .set_spacing(Spacing::from(P::Scalar::from_f32(16.)))
+    .set_children((
+      Text::new("Two  spaces and a\ttab"),
+      Text::new("One line\nand the next\n"),
+      Text::new("    indented"),
+      Text::new("Unbreakable".repeat(8)),
+    ))
+    .into_any()
 }

@@ -61,12 +61,18 @@ pub enum Content {
 
 /// Inline runs laid out as one text, each run's clusters measured by its metrics `M`.
 ///
-/// The text wraps where the Unicode line breaking algorithm allows, as after the blanks
-/// ending a word or a hyphen, at each newline and around each box; a word runs across
-/// runs where nothing breaks it. Each run's line box sits on its line's baseline, a box's
-/// bottom on it, and a line spans the highest of them above the baseline to the deepest
-/// below it; it is as wide as its text without the blanks it ends in, which take no room
-/// on it.
+/// The text keeps its blanks and newlines and wraps as CSS's `white-space: pre-wrap`
+/// with `overflow-wrap: break-word` wraps it in Chromium: where the Unicode line breaking
+/// algorithm allows, as after the blanks ending a word or a hyphen, at each newline and
+/// around each box, a word too wide for a line of its own broken where the line fills
+/// (never in its min-content width); a word runs across runs where nothing breaks it. A
+/// tab advances to the next stop past half a zero, the stops eight of its run's spaces
+/// apart from the line's start. The blanks a line ends in take no room on it where it
+/// wraps, and room up to the line's limit before a newline or at the text's end; a
+/// newline ending the text opens no line, and an empty text has none.
+///
+/// Each run's line box sits on its line's baseline, a box's bottom on it, and a line
+/// spans the highest of them above the baseline to the deepest below it.
 #[derive(Debug, Clone, PartialEq)]
 #[must_use]
 pub struct Paragraph<M> {
@@ -92,8 +98,8 @@ impl Line {
     self.above + self.below
   }
 
-  /// The line ending before the cluster at `end`, the blanks it ends in removed from its
-  /// pieces, its text advancing `advance` with them.
+  /// The line wrapping before the cluster at `end`, the blanks it ends in removed from
+  /// its pieces, its text advancing `advance` with them.
   fn ended(mut self, end: usize, advance: f32) -> Self {
     let mut blanks = advance - self.width;
 
@@ -109,6 +115,17 @@ impl Line {
         break;
       }
     }
+
+    self
+  }
+
+  /// The line ending before the cluster at `end` at a newline or the text's end, its
+  /// text advancing `advance` with the blanks it ends in, which take room up to `limit`.
+  fn closed(mut self, end: usize, advance: f32, limit: Option<f32>) -> Self {
+    self.clusters.end = end;
+    self.width = self
+      .width
+      .max(limit.map_or(advance, |limit| advance.min(limit)));
 
     self
   }
@@ -169,7 +186,7 @@ impl<M: Metrics> Paragraph<M> {
   #[must_use]
   pub fn clusters(&self, content: Rect<f32>) -> Vec<Placed<'_>> {
     let (clusters, breaks) = self.shaped();
-    let lines = self.lines(&clusters, &breaks, Some(content.size.width));
+    let lines = self.lines(&clusters, &breaks, Some(content.size.width), true);
     let mut placed = Vec::new();
     let mut top = content.origin.y - self.trims(&lines).0;
 
@@ -178,16 +195,17 @@ impl<M: Metrics> Paragraph<M> {
 
       for cluster in &clusters[line.clusters.clone()] {
         let (height, baseline, _) = self.extent(cluster.run);
+        let width = self.advance_at(cluster, advance);
 
         placed.push(Placed {
           node: self.runs[cluster.run].node,
           text: cluster.text,
           rect: Rect {
             origin: Point::new(content.origin.x + advance, top + line.above - baseline),
-            size: Size::new(cluster.advance, height),
+            size: Size::new(width, height),
           },
         });
-        advance += cluster.advance;
+        advance += width;
       }
 
       top += line.height();
@@ -209,7 +227,12 @@ impl<M: Metrics> Paragraph<M> {
             clusters.push(Cluster {
               run: index,
               text: cluster,
-              advance: run.metrics.advance(cluster),
+              advance: if Cluster::is_newline(cluster) {
+                0.
+              }
+              else {
+                run.metrics.advance(cluster)
+              },
               byte: text.len() + byte,
               boxed: false,
             });
@@ -236,8 +259,15 @@ impl<M: Metrics> Paragraph<M> {
   }
 
   /// The lines `clusters` wrap into within `limit`, or unwrapped but at their newlines,
-  /// a line ending only where `breaks` allows it.
-  fn lines(&self, clusters: &[Cluster<'_>], breaks: &[bool], limit: Option<f32>) -> Vec<Line> {
+  /// a line ending only where `breaks` allows it, or within a word too wide for a line of
+  /// its own where `split` allows it.
+  fn lines(
+    &self,
+    clusters: &[Cluster<'_>],
+    breaks: &[bool],
+    limit: Option<f32>,
+    split: bool,
+  ) -> Vec<Line> {
     let mut lines = Vec::new();
     let Some(first) = clusters.first()
     else {
@@ -250,11 +280,16 @@ impl<M: Metrics> Paragraph<M> {
     while index < clusters.len() {
       let Cluster { run, text, .. } = clusters[index];
 
-      if matches!(text, "\n" | "\r\n") {
-        lines
-          .push(std::mem::replace(&mut line, self.line(run, index + 1)).ended(index + 1, advance));
+      if Cluster::is_newline(text) {
+        let next = self.line(run, index + 1);
+
+        lines.push(std::mem::replace(&mut line, next).closed(index + 1, advance, limit));
         advance = 0.;
         index += 1;
+
+        if index == clusters.len() {
+          return lines;
+        }
 
         continue;
       }
@@ -263,41 +298,46 @@ impl<M: Metrics> Paragraph<M> {
 
       index += 1;
 
-      while index < clusters.len()
-        && !breaks[index]
-        && !matches!(clusters[index].text, "\n" | "\r\n")
-      {
+      while index < clusters.len() && !breaks[index] && !Cluster::is_newline(clusters[index].text) {
         index += 1;
       }
 
       let mut end = index;
 
-      while end > start && !clusters[end - 1].boxed && clusters[end - 1].text == " " {
+      while end > start && clusters[end - 1].is_blank() {
         end -= 1;
       }
 
-      let ink: f32 = clusters[start..end]
-        .iter()
-        .map(|cluster| cluster.advance)
-        .sum();
+      let ink = self.span(&clusters[start..end], advance);
 
       if !line.pieces.is_empty() && limit.is_some_and(|limit| advance + ink > limit) {
         lines.push(std::mem::replace(&mut line, self.line(run, start)).ended(start, advance));
         advance = 0.;
       }
 
-      line.width = advance + ink;
+      for (position, cluster) in clusters.iter().enumerate().take(index).skip(start) {
+        let mut width = self.advance_at(cluster, advance);
 
-      for &Cluster {
-        run,
-        advance: width,
-        ..
-      } in &clusters[start..index]
-      {
+        if split
+          && position < end
+          && !line.pieces.is_empty()
+          && limit.is_some_and(|limit| advance + width > limit)
+        {
+          lines.push(
+            std::mem::replace(&mut line, self.line(cluster.run, position)).ended(position, advance),
+          );
+          advance = 0.;
+          width = self.advance_at(cluster, advance);
+        }
+
+        if position < end {
+          line.width = advance + width;
+        }
+
         match line.pieces.last_mut() {
-          Some(piece) if piece.run == run => piece.width += width,
+          Some(piece) if piece.run == cluster.run => piece.width += width,
           _ => {
-            let (height, baseline, cap) = self.extent(run);
+            let (height, baseline, cap) = self.extent(cluster.run);
 
             if line.pieces.is_empty() {
               (line.above, line.below, line.cap) = (baseline, height - baseline, cap);
@@ -309,7 +349,7 @@ impl<M: Metrics> Paragraph<M> {
             }
 
             line.pieces.push(Piece {
-              run,
+              run: cluster.run,
               start: advance,
               width,
             });
@@ -320,9 +360,40 @@ impl<M: Metrics> Paragraph<M> {
       }
     }
 
-    lines.push(line.ended(clusters.len(), advance));
+    lines.push(line.closed(clusters.len(), advance, limit));
 
     lines
+  }
+
+  /// How far `clusters` advance a line from `position`.
+  fn span(&self, clusters: &[Cluster<'_>], position: f32) -> f32 {
+    clusters.iter().fold(position, |advance, cluster| {
+      advance + self.advance_at(cluster, advance)
+    }) - position
+  }
+
+  /// How far `cluster` advances its line from `position`: a tab to the next stop at least
+  /// half its run's zero beyond, the stops eight of its run's spaces apart, as CSS's
+  /// `tab-size: 8` does; anything else as far as its run measures it.
+  fn advance_at(&self, cluster: &Cluster<'_>, position: f32) -> f32 {
+    if cluster.text != "\t" {
+      return cluster.advance;
+    }
+
+    let metrics = &self.runs[cluster.run].metrics;
+    let interval = 8. * metrics.advance(" ");
+
+    if interval <= 0. {
+      return 0.;
+    }
+
+    let mut stop = ((position / interval).floor() + 1.) * interval;
+
+    if stop - position < metrics.advance("0") / 2. {
+      stop += interval;
+    }
+
+    stop - position
   }
 
   /// Whether a line may end before each of `clusters` of `text`: where the Unicode line
@@ -389,6 +460,18 @@ struct Cluster<'a> {
   boxed: bool,
 }
 
+impl Cluster<'_> {
+  /// Whether `text`, one cluster, ends its line.
+  fn is_newline(text: &str) -> bool {
+    matches!(text, "\n" | "\r\n")
+  }
+
+  /// Whether the cluster is a blank, a space or a tab, which hangs at a line's end.
+  fn is_blank(&self) -> bool {
+    !self.boxed && matches!(self.text, " " | "\t")
+  }
+}
+
 impl<M: Metrics> Leaf for Paragraph<M> {
   fn measure(
     &self,
@@ -400,8 +483,9 @@ impl<M: Metrics> Leaf for Paragraph<M> {
       AvailableSpace::MinContent => Some(0.),
       AvailableSpace::MaxContent => None,
     });
+    let split = known.width.is_some() || available.width != AvailableSpace::MinContent;
     let (clusters, breaks) = self.shaped();
-    let lines = self.lines(&clusters, &breaks, limit);
+    let lines = self.lines(&clusters, &breaks, limit, split);
     let (top, bottom) = self.trims(&lines);
 
     Size::new(
@@ -416,7 +500,7 @@ impl<M: Metrics> Leaf for Paragraph<M> {
 
   fn place(&self, content: Rect<f32>) -> Vec<(NodeId, Rect<f32>)> {
     let (clusters, breaks) = self.shaped();
-    let lines = self.lines(&clusters, &breaks, Some(content.size.width));
+    let lines = self.lines(&clusters, &breaks, Some(content.size.width), true);
     let mut placed = Vec::new();
     let mut top = content.origin.y - self.trims(&lines).0;
 

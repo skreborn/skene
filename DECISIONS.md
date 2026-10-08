@@ -5,6 +5,11 @@ and the condition that reopens it. A reopened decision becomes an item in `ROADM
 
 ## Decided against
 
+- **Collapsing a text's blanks and newlines** (2026-10-08), as a browser does by
+  default: text keeps them, as SwiftUI's, Flutter's and Compose's text does, and a word
+  too wide for a line of its own breaks where the line fills, so a newline in a run
+  breaks its line on every platform. Revisit when a platform's own text view collapses
+  them.
 - **Signals shared across threads** (2026-09-29), as a registry each runtime drains
   through an inbox: a handle stays on its thread, and another thread's work reaches it
   through a task that thread's executor wakes. Revisit when the hop through the owning

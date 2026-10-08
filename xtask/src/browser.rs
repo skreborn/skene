@@ -77,7 +77,7 @@ const SUITE: Suite = Suite {
   package: "skene-conformance-web",
   harness: "harness",
   scenarios: 27,
-  pages: 17,
+  pages: 18,
 };
 
 /// A browser release the tier fetches once into `target/browsers`, checked against its

@@ -103,6 +103,11 @@
   `decoration_style` (`TextDecorationStyle`) and `decoration_color`—Flutter's names;
   a link underlines unless its decoration says otherwise, and the terminal keeps the
   styles and color only where a DECRQSS probe proves it, a plain underline elsewhere.
+  **Text keeps its blanks and newlines** as a native text view does, and a word too wide
+  for a line of its own breaks where the line fills: the web's reset sets `white-space:
+  pre-wrap` and `overflow-wrap: break-word` rather than collapsing them as a browser does
+  by default, and the shared `Paragraph` lays text out by the same rules, Chromium's
+  where the engines differ (a tab at a wrap hangs).
 - **Layout is statically constrained.** Each layout is its own container view—`Row`,
   `Column`, `Grid`, `Stack`—exposing only the properties it honors; per-child properties
   travel in wrapper views (`Flexible`, `Pinned`, `GridCell`) accepted only by the

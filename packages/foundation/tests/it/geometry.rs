@@ -960,3 +960,118 @@ fn a_box_sized_by_its_hover_lays_out_as_it_moves() {
 
   owner.dispose();
 }
+
+/// Text keeps its blanks as Chromium's `white-space: pre-wrap` keeps them: a tab advances
+/// to the next stop, the stops eight spaces apart, and the blanks starting or ending the
+/// text take their room.
+#[test]
+fn text_keeps_its_blanks_and_its_tabs() {
+  reset();
+
+  let owner = Owner::new();
+  let column = owner.enter(|| {
+    Column::new()
+      .set_children((
+        Row::new().set_children((Text::new("a\tb"),)),
+        Row::new().set_children((Text::new("ab   "),)),
+        Row::new().set_children((Text::new("   ab"),)),
+      ))
+      .build()
+  });
+  let width =
+    |index: usize| layout_rect(content(content(column)[index])[0]).map(|rect| rect.size.width);
+
+  assert_eq!(
+    width(0),
+    Some(8. * text_width(" ", 16.) + text_width("b", 16.))
+  );
+  assert_eq!(width(1), Some(text_width("ab   ", 16.)));
+  assert_eq!(width(2), Some(text_width("   ab", 16.)));
+
+  owner.dispose();
+}
+
+/// A newline breaks its line, a newline ending the text opens no line, and an empty text
+/// takes no room.
+#[test]
+fn a_newline_breaks_its_line_and_a_final_one_opens_none() {
+  reset();
+
+  let owner = Owner::new();
+  let column = owner.enter(|| {
+    Column::new()
+      .set_children((
+        Row::new().set_children((Text::new("a"),)),
+        Row::new().set_children((Text::new("a\n"),)),
+        Row::new().set_children((Text::new("a\n\n"),)),
+        Row::new().set_children((Text::new(""),)),
+      ))
+      .build()
+  });
+  let height =
+    |index: usize| layout_rect(content(content(column)[index])[0]).map(|rect| rect.size.height);
+
+  assert_eq!(height(0), Some(cap(16.)));
+  assert_eq!(height(1), Some(cap(16.)));
+  assert_eq!(height(2), Some(24. + cap(16.)));
+  assert_eq!(height(3), Some(0.));
+
+  owner.dispose();
+}
+
+/// The blanks ending a line where it wraps take no room on it.
+#[test]
+fn blanks_hang_where_a_line_wraps() {
+  reset();
+
+  let owner = Owner::new();
+  let column = owner.enter(|| {
+    Column::new()
+      .set_children((Container::new()
+        .set_width(Dimension::Length(40.))
+        .set_child(Text::new("aaa     bbb")),))
+      .build()
+  });
+  let hung = content(content(column)[0])[0];
+
+  assert_eq!(
+    layout_rect(hung).map(|rect| rect.size.height),
+    Some(24. + cap(16.))
+  );
+
+  owner.dispose();
+}
+
+/// A word too wide for a line of its own breaks where the line fills, as the page's
+/// column narrows to the viewport, though its min-content width, which a row's item keeps,
+/// is the widest word's.
+#[test]
+fn a_word_too_wide_for_its_line_breaks_where_it_fills() {
+  reset();
+  trigger_resize(Size::new(40., 400.));
+
+  let owner = Owner::new();
+  let column = owner.enter(|| {
+    Column::new()
+      .set_children((
+        Text::new("aaaaaaaaaaaaaaaaaaaa"),
+        Row::new().set_children((Text::new("aa aaaaaaaaaa b"),)),
+      ))
+      .build()
+  });
+  let [broken, row] = content(column)[..]
+  else {
+    panic!("a run and a row");
+  };
+
+  assert!(
+    layout_rect(broken).is_some_and(|rect| (rect.size.height - 4. * 24. - cap(16.)).abs() < 1e-4),
+    "five lines of four letters each"
+  );
+  assert_eq!(
+    layout_rect(content(row)[0]).map(|rect| rect.size.width),
+    Some(text_width("aaaaaaaaaa", 16.))
+  );
+
+  owner.dispose();
+}

@@ -35,6 +35,10 @@
     display: flex;
     overflow: hidden;
     font-family: system-ui, sans-serif;
+    /* Text keeps its blanks and newlines, and a word too wide for a line of its own
+       breaks where the line fills. */
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
     /* Selection is opt-in: a run's set_selectable(true) restores user-select. */
     -webkit-user-select: none;
     user-select: none;

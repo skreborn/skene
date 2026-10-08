@@ -48,7 +48,8 @@ in a code comment.
     their restyle by, the `Paragraph` headless lays its inline runs out as, and the
     frames headless hits through, clipped and scrolled as a browser's are: the terminal
     lays its paragraphs and their inline boxes out through the shared `Paragraph`, its
-    cells, tab stops and text sizes as the metrics, where it keeps a wrap of its own;
+    cells, tab stops and text sizes as the metrics, where it keeps a wrap of its own, in
+    which an empty text and a newline ending a text each open a line;
     the terminal hits through the shared frames; headless keeps its resolved styles
     between layouts as the terminal's caches do, where it resolves each revisited node
     afresh; the layout store becomes the crate the native shells call into.

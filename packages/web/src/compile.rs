@@ -876,6 +876,11 @@ pub(crate) fn compile_overlay<P: PixelPlatform>(props: &OverlayProps<P>) -> Comp
   compiled
 }
 
+/// What a text run ends in: an invisible combining grapheme joiner, kept from the
+/// accessibility tree, so a newline ending the text opens a line and an empty text lays
+/// out one, as Parley lays them out on every other platform.
+const RUN_END: &str = r#""\34f" / """#;
+
 /// The rule template of a text run.
 pub(crate) fn compile_run<P: PixelPlatform>(props: &RunProps<P>) -> Compiled {
   let mut base = match props.placement {
@@ -899,6 +904,10 @@ pub(crate) fn compile_run<P: PixelPlatform>(props: &RunProps<P>) -> Compiled {
     &run_keyframe_declarations,
   );
   let mut rules = Rules::new(base);
+
+  if props.placement != RunPlacement::Embedded {
+    *rules.base_of("::after") = Declarations::new().set("content", RUN_END);
+  }
 
   props.style.visit(&mut RunRules(&mut rules));
 

@@ -867,6 +867,13 @@ adds only what is its own:
   adopt; takes client hints as render input. The raw handles do not exist here, painted
   content renders empty, and handlers are inert.
 
+A text run's class ends it in an invisible combining grapheme joiner (`::after`, its
+alternative text empty, so it reaches no accessible name and no copied text), so a
+browser opens a line after a newline ending a text and lays an empty text out as one, as
+Parley lays them out on every other platform; it adds no place to break a line and
+splits no kerning pair, and the run of an inline box takes none. A tab keeps a browser's
+stops.
+
 The app compiles to wasm for the browser and natively for the server: the server binary
 renders as a plain command and, as a render worker over its stdin, serves the CLI's dev
 server and generator. The two builds must agree on every byte they both produce, since

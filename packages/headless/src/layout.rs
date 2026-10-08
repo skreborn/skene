@@ -32,11 +32,11 @@ use skene_layout::{
   Frames,
   Inline,
   Leaf,
-  Metrics,
   Paragraph,
   Part,
   Place,
   Revisit,
+  TextStyle,
   Tree,
   taffy::{
     self,
@@ -48,7 +48,7 @@ use skene_layout::{
 use crate::{
   Headless,
   SlotValue,
-  font::Pinned,
+  font::{INTER, Pinned},
   records::{DEFAULT_VIEWPORT, Kind},
   resolve::{self, Env, Records},
   with_records,
@@ -58,40 +58,8 @@ use crate::{
 /// sets one, as a multiple of its font size.
 pub(crate) const LINE_HEIGHT: f32 = 1.5;
 
-/// A run's metrics as the layout measures its text: each grapheme cluster as far as the
-/// pinned face advances it at the font size, and the letter spacing past it, each line
-/// the font size times the line height tall, its baseline and cap height where the face
-/// puts them with the line's room beyond its ascent and descent split above and below.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub(crate) struct RunMetrics {
-  /// The font size.
-  pub size: f32,
-  /// The line height, as a multiple of the font size.
-  pub line_height: f32,
-  /// The letter spacing past each cluster.
-  pub spacing: f32,
-}
-
-impl Metrics for RunMetrics {
-  fn advance(&self, cluster: &str) -> f32 {
-    Pinned::get().advance(cluster, self.size) + self.spacing
-  }
-
-  fn line_height(&self) -> f32 {
-    self.size * self.line_height
-  }
-
-  fn baseline(&self) -> f32 {
-    Pinned::get().baseline(self.line_height(), self.size)
-  }
-
-  fn cap(&self) -> f32 {
-    Pinned::get().cap_height(self.size)
-  }
-}
-
-/// A paragraph of runs, measured in the pinned face.
-pub(crate) type Text = Paragraph<RunMetrics>;
+/// A paragraph of runs, shaped in the pinned face.
+pub(crate) type Text = Paragraph;
 
 /// What the layout measures a leaf by.
 #[derive(Debug, PartialEq)]
@@ -366,11 +334,11 @@ pub(crate) fn lone(node: NodeId, text: String) -> Text {
       node,
       groups: Vec::new(),
       content: Content::Text(text),
-      metrics: metrics(node),
+      style: text_style(node),
     }];
   }
 
-  Paragraph::new(runs).trimmed()
+  Paragraph::new(text_style(node), runs).trimmed()
 }
 
 /// The taffy style the run `node` takes from its place and the wrapper's properties it
@@ -401,13 +369,19 @@ pub(crate) fn paragraph(node: NodeId) -> Option<Text> {
       .into_iter()
       .all(|child| inlines(child, &[], &mut runs));
 
-  inline.then(|| Paragraph::new(runs).trimmed())
+  inline.then(|| {
+    let (size, line_height) = Env::of(&Records, node)
+      .as_ref()
+      .map_or((Headless::FONT_SIZE, LINE_HEIGHT), typography);
+
+    Paragraph::new(style_of(size, line_height, 0.), runs).trimmed()
+  })
 }
 
 /// Adds the runs `node` holds to a paragraph's `runs`, inside `groups`: a text run or
 /// an inline box itself, a group's runs inside it, and an anchor's or a scope's in its
 /// place; `false` where it holds anything else.
-fn inlines(node: NodeId, groups: &[NodeId], runs: &mut Vec<Inline<RunMetrics>>) -> bool {
+fn inlines(node: NodeId, groups: &[NodeId], runs: &mut Vec<Inline>) -> bool {
   let flow = with_records(|records| {
     let record = records.record(node)?;
 
@@ -429,7 +403,7 @@ fn inlines(node: NodeId, groups: &[NodeId], runs: &mut Vec<Inline<RunMetrics>>) 
         node,
         groups: groups.to_vec(),
         content: Content::Text(text),
-        metrics: metrics(node),
+        style: text_style(node),
       });
 
       true
@@ -439,7 +413,7 @@ fn inlines(node: NodeId, groups: &[NodeId], runs: &mut Vec<Inline<RunMetrics>>) 
         node,
         groups: groups.to_vec(),
         content: Content::Box(Size::new(0., 0.)),
-        metrics: metrics(node),
+        style: text_style(node),
       });
 
       true
@@ -464,9 +438,9 @@ enum Flow {
   Other,
 }
 
-/// The metrics the run `node` measures its text by, as its style and the typography in
-/// force set them; the restyle notes whether their resolution read its interaction.
-pub(crate) fn metrics(node: NodeId) -> RunMetrics {
+/// The style the run `node` shapes its text in, as its style and the typography in force
+/// set it; the restyle notes whether its resolution read its interaction.
+pub(crate) fn text_style(node: NodeId) -> TextStyle {
   let style = with_records(|records| match &records.record(node)?.kind {
     Kind::Run(props) => Some(props.style.clone()),
     _ => None,
@@ -503,10 +477,21 @@ pub(crate) fn metrics(node: NodeId) -> RunMetrics {
     })
     .unwrap_or_default();
 
-  RunMetrics {
-    size: size.map_or(Headless::FONT_SIZE, |size| size.0),
-    line_height: line_height.unwrap_or(LINE_HEIGHT),
-    spacing: spacing.map_or(0., |spacing| spacing.0),
+  style_of(
+    size.map_or(Headless::FONT_SIZE, |size| size.0),
+    line_height.unwrap_or(LINE_HEIGHT),
+    spacing.map_or(0., |spacing| spacing.0),
+  )
+}
+
+/// The style of text in the pinned face at the font size `size`, its line height
+/// `line_height` times that and `spacing` past each cluster.
+pub(crate) const fn style_of(size: f32, line_height: f32, spacing: f32) -> TextStyle {
+  TextStyle {
+    typeface: &INTER,
+    size,
+    line_height: size * line_height,
+    letter_spacing: spacing,
   }
 }
 

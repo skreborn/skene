@@ -5,3 +5,4 @@
 # It is recommended to check this file in to source control so that
 # everyone who runs the test benefits from these saved cases.
 cc 138735ad308f2cdedc09b04333e4a08e62d7f36825e78322ecea159a92d4ce63 # shrinks to text = "", width = 1
+cc 602464ca39940a3908bcd17f319df97f9659b5fddb6f84f03071553e0f8da582 # shrinks to text = "bc(x)   ", width = 4, scale = 3

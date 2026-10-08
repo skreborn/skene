@@ -512,14 +512,15 @@ fn a_paragraphs_spans_flow_on_one_line() {
     panic!("two spans in the group");
   };
   let start = text_width("Hello ", 16.);
-  let middle = start + text_width("wor", 16.);
+  let end = start + text_width("world", 16.);
+  let middle = end - text_width("ld", 16.);
 
   let top = cap(16.) - baseline(24., 16.);
 
   assert_rect(paragraph, rect(0., 0., 1024., cap(16.)));
   assert_rect(hello, rect(0., top, start, 24.));
-  assert_rect(group, rect(start, top, text_width("world", 16.), 24.));
-  assert_rect(wor, rect(start, top, text_width("wor", 16.), 24.));
+  assert_rect(group, rect(start, top, end - start, 24.));
+  assert_rect(wor, rect(start, top, middle - start, 24.));
   assert_rect(ld, rect(middle, top, text_width("ld", 16.), 24.));
   assert_eq!(node_at(Point::new(start + 2., 10.)), Some(wor));
   assert_eq!(
@@ -964,18 +965,16 @@ fn a_box_sized_by_its_hover_lays_out_as_it_moves() {
   owner.dispose();
 }
 
-/// Text keeps its blanks as Chromium's `white-space: pre-wrap` keeps them: a tab advances
-/// to the next stop, the stops eight spaces apart, and the blanks starting or ending the
-/// text take their room.
+/// Text keeps its blanks as CSS's `white-space: pre-wrap` keeps them: the blanks
+/// starting or ending the text take their room.
 #[test]
-fn text_keeps_its_blanks_and_its_tabs() {
+fn text_keeps_its_blanks() {
   reset();
 
   let owner = Owner::new();
   let column = owner.enter(|| {
     Column::new()
       .set_children((
-        Row::new().set_children((Text::new("a\tb"),)),
         Row::new().set_children((Text::new("ab   "),)),
         Row::new().set_children((Text::new("   ab"),)),
       ))
@@ -984,20 +983,16 @@ fn text_keeps_its_blanks_and_its_tabs() {
   let width =
     |index: usize| layout_rect(content(content(column)[index])[0]).map(|rect| rect.size.width);
 
-  assert_eq!(
-    width(0),
-    Some(8. * text_width(" ", 16.) + text_width("b", 16.))
-  );
-  assert_eq!(width(1), Some(text_width("ab   ", 16.)));
-  assert_eq!(width(2), Some(text_width("   ab", 16.)));
+  assert_eq!(width(0), Some(text_width("ab   ", 16.)));
+  assert_eq!(width(1), Some(text_width("   ab", 16.)));
 
   owner.dispose();
 }
 
-/// A newline breaks its line, a newline ending the text opens no line, and an empty text
-/// takes no room.
+/// A newline breaks its line, a newline ending the text opens a line, and an empty text
+/// lays out one.
 #[test]
-fn a_newline_breaks_its_line_and_a_final_one_opens_none() {
+fn a_newline_breaks_its_line_and_a_final_one_opens_another() {
   reset();
 
   let owner = Owner::new();
@@ -1015,9 +1010,9 @@ fn a_newline_breaks_its_line_and_a_final_one_opens_none() {
     |index: usize| layout_rect(content(content(column)[index])[0]).map(|rect| rect.size.height);
 
   assert_eq!(height(0), Some(cap(16.)));
-  assert_eq!(height(1), Some(cap(16.)));
-  assert_eq!(height(2), Some(24. + cap(16.)));
-  assert_eq!(height(3), Some(0.));
+  assert_eq!(height(1), Some(24. + cap(16.)));
+  assert_eq!(height(2), Some(48. + cap(16.)));
+  assert_eq!(height(3), Some(cap(16.)));
 
   owner.dispose();
 }

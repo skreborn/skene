@@ -758,10 +758,10 @@ fn a_read_only_entry_takes_no_edits() {
   });
 }
 
-/// A tab in an entry's value advances to its stop, in a field and an editor alike, and
-/// the caret after it lands where the value shows.
+/// A tab in an entry's value is one blank cell, in a field and an editor alike, and the
+/// caret after it lands where the value shows.
 #[test]
-fn a_tab_in_an_entry_reaches_its_stop() {
+fn a_tab_in_an_entry_is_one_blank_cell() {
   with_platform(|| {
     let name = Signal::new("a\tb".to_owned());
     let bio = Signal::new("a\tb\nc".to_owned());
@@ -778,11 +778,11 @@ fn a_tab_in_an_entry_reaches_its_stop() {
         .build()
     });
 
-    assert_eq!(testing::render_to_text(20, 3), "a       b\na       b\nc\n");
+    assert_eq!(testing::render_to_text(20, 3), "a b\na b\nc\n");
 
     testing::trigger_key("Tab");
     testing::trigger_key("End");
 
-    assert_eq!(testing::render_to_caret(20, 3), Some((9, 0)));
+    assert_eq!(testing::render_to_caret(20, 3), Some((3, 0)));
   });
 }

@@ -1241,15 +1241,22 @@ pub fn render_to_image() -> Image {
 }
 
 /// How wide `text` lays out on one line at the font size `size`, without letter
-/// spacing, in the pinned face the layout measures text in: Inter's regular face.
+/// spacing, in the pinned face the layout shapes text in: Inter's regular face.
 #[must_use]
 pub fn text_width(text: &str, size: f32) -> f32 {
-  let pinned = font::Pinned::get();
+  let style = layout::style_of(size, layout::LINE_HEIGHT, 0.);
 
-  text
-    .graphemes(true)
-    .map(|cluster| pinned.advance(cluster, size))
-    .sum()
+  skene_layout::Paragraph::new(
+    style,
+    vec![skene_layout::Inline {
+      node: (),
+      groups: Vec::new(),
+      content: skene_layout::Content::Text(text.to_owned()),
+      style,
+    }],
+  )
+  .size_within(None)
+  .width
 }
 
 /// The part of [`layout_rect`] the boxes clipping `node` leave showing, empty where they

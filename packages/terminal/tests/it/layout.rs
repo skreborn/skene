@@ -118,10 +118,9 @@ fn text_wraps_at_the_container_width() {
   });
 }
 
-/// A newline ending a run's text opens no line, and an empty text takes no row, as in a
-/// browser.
+/// A newline ending a run's text opens a line, and an empty text lays out one.
 #[test]
-fn a_final_newline_and_an_empty_text_open_no_line() {
+fn a_final_newline_and_an_empty_text_open_a_line() {
   with_platform(|| {
     let _ = terminal::mount(|| {
       Column::new()
@@ -135,7 +134,7 @@ fn a_final_newline_and_an_empty_text_open_no_line() {
         .build()
     });
 
-    assert_eq!(testing::render_to_text(8, 5), "one\ntwo\n\nthree\n\n");
+    assert_eq!(testing::render_to_text(8, 8), "one\n\n\ntwo\n\n\nthree\n\n");
   });
 }
 

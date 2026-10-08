@@ -106,8 +106,11 @@
   **Text keeps its blanks and newlines** as a native text view does, and a word too wide
   for a line of its own breaks where the line fills: the web's reset sets `white-space:
   pre-wrap` and `overflow-wrap: break-word` rather than collapsing them as a browser does
-  by default, and the shared `Paragraph` lays text out by the same rules, Chromium's
-  where the engines differ (a tab at a wrap hangs).
+  by default, and every other platform shapes and wraps its text through Parley, the
+  shared `Paragraph`, by the same rules, CSS Text's. Where Parley reads text as an editor
+  does, its reading stands: a tab is a blank as wide as its glyph rather than a stop, a
+  newline ending a text opens a line and an empty text lays out one, so an app leaves
+  out what it does not want laid out.
 - **Layout is statically constrained.** Each layout is its own container view—`Row`,
   `Column`, `Grid`, `Stack`—exposing only the properties it honors; per-child properties
   travel in wrapper views (`Flexible`, `Pinned`, `GridCell`) accepted only by the
@@ -339,11 +342,14 @@
   hands it over at run time for one native selection, any key taking it back. Text
   is measured by extended grapheme clusters, each as wide as the terminal draws it: a
   wide cluster takes two cells, the second painting nothing, a combining sequence one,
-  a tab the blanks to its next stop, eight cells apart from its line's start as a
-  browser's `tab-size`, and a field's caret, window and selection index clusters. Grapheme clustering (mode
-  2027) is asked for at launch and confirmed by DECRQM; where the terminal confirms it
-  a cluster's width is the cluster's, and where it does not a cluster is as wide as its
-  code points drawn one by one, so the layout agrees with the terminal either way. A
+  a tab one blank cell, and a field's caret, window and selection index clusters; it is
+  laid out through Parley as on every platform, in a typeface the build generates whose
+  every code point is a glyph as many cells wide as the terminal draws it on its own.
+  Grapheme clustering (mode 2027) is asked for at launch and confirmed by DECRQM; where
+  the terminal confirms it a cluster's width is the cluster's, the layout measuring a
+  cluster whose code points sum to another width by a stand-in of its own, and where it
+  does not a cluster is as wide as its code points drawn one by one, so the layout
+  agrees with the terminal either way. A
   run's font size is a scale of the cell, the shared `set_font_size` and the
   terminal `Typography`'s `size` token: text sizing (kitty's OSC 66) is probed at
   launch by a space at scale two and a cursor position report, a terminal that proves

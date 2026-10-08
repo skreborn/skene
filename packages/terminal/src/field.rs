@@ -252,30 +252,17 @@ impl Field {
   }
 
   /// A single-line entry's value from the cluster `window` as it shows in `inner`
-  /// cells: every cluster that fits, a tab as the blanks it advances to its stop from
-  /// the value's start.
+  /// cells: every cluster that fits.
   fn shown_row(&self, window: usize, inner: usize) -> String {
     let base = self.clusters.column_of(window);
     let mut row = String::new();
 
     for index in window..self.clusters.count() {
-      let (from, to) = (
-        self.clusters.column_of(index) - base,
-        self.clusters.column_of(index + 1) - base,
-      );
-
-      if to > inner {
+      if self.clusters.column_of(index + 1) - base > inner {
         break;
       }
 
-      let cluster = &self.value[self.byte_of(index)..self.byte_of(index + 1)];
-
-      if cluster == "\t" {
-        row.extend(std::iter::repeat_n(' ', to - from));
-      }
-      else {
-        row.push_str(cluster);
-      }
+      row.push_str(&self.value[self.byte_of(index)..self.byte_of(index + 1)]);
     }
 
     row

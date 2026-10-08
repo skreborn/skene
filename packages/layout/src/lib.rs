@@ -6,8 +6,8 @@
 //! across layouts and written node by node or by a walk of the scene, each node's part
 //! classified by its platform ([`Tree`]), what moved since a platform last restyled its
 //! tree and so the nodes it revisits next ([`Restyle`]), and a paragraph of inline runs
-//! laid out as one text, each measured by its platform's metrics ([`Paragraph`]). The
-//! web lays out through CSS and needs none of it.
+//! shaped and laid out as one text through Parley, each in its platform's typeface
+//! ([`Paragraph`]). The web lays out through CSS and needs none of it.
 
 mod paragraph;
 mod restyle;
@@ -39,7 +39,18 @@ use taffy::{
 };
 
 pub use self::{
-  paragraph::{Content, Inline, Metrics, Paragraph, Placed},
+  paragraph::{
+    Content,
+    Glyph,
+    GlyphRun,
+    Inline,
+    Paragraph,
+    Stroke,
+    TextItem,
+    TextStyle,
+    Typeface,
+    WrappedLine,
+  },
   restyle::{Restyle, Revisit},
   tree::{Frames, Leaf, Part, Tree},
 };

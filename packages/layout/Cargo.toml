@@ -8,10 +8,11 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+parley = { default-features = false, features = ["std"], git = "https://github.com/linebender/parley", rev = "62790943af982ad3388a3ff96cef6f90ac80a8bb" }
 rustc-hash.workspace = true
 skene-foundation.workspace = true
+skrifa = { default-features = false, features = ["std"], version = "0.44" }
 taffy = "0.14"
-unicode-linebreak = "0.1"
 unicode-segmentation = "1"
 
 [lints]

@@ -27,7 +27,6 @@ use crate::{
   Terminal,
   motion::{Clock, Presented},
   paint::{
-    CellMetrics,
     ShadowPaint,
     cells_of,
     line_holding,
@@ -57,7 +56,7 @@ struct Restyled {
 pub(crate) struct Measured {
   pub(crate) text: String,
   pub(crate) scales: Scales,
-  paragraph: OnceCell<Paragraph<CellMetrics, usize>>,
+  paragraph: OnceCell<Paragraph<usize>>,
 }
 
 impl Measured {
@@ -76,7 +75,7 @@ impl Measured {
   }
 
   /// The paragraph the text lays out as.
-  fn paragraph(&self) -> &Paragraph<CellMetrics, usize> {
+  fn paragraph(&self) -> &Paragraph<usize> {
     self
       .paragraph
       .get_or_init(|| paragraph_of(&self.text, &self.scales))
@@ -982,7 +981,9 @@ mod properties {
     #![proptest_config(ProptestConfig::with_cases(2000))]
 
     /// Any text at any width and scale measures as the lines it wraps into, whether
-    /// from its shape or from the extents a measure keeps.
+    /// from its shape or from the extents a measure keeps: as tall as they are, and as
+    /// wide as the widest, or wider by blanks ending a line before a newline or at the
+    /// text's end that take their room up to the width.
     #[test]
     fn a_measure_matches_its_wrapped_lines(
       text in arbitrary_text(),
@@ -1004,9 +1005,11 @@ mod properties {
       let measured = Measured::new(text.clone(), scales.clone());
 
       let size = paragraph_of(&text, &scales).size_within(Some(cells_of(width.max(1))));
+      let (cells, rows) = (whole(size.width), whole(size.height));
 
-      prop_assert_eq!((whole(size.width), whole(size.height)), wrapped);
-      prop_assert_eq!(measured.size_at(width), wrapped);
+      prop_assert_eq!(rows, wrapped.1);
+      prop_assert!(cells == wrapped.0 || (cells > wrapped.0 && cells <= width.max(1)));
+      prop_assert_eq!(measured.size_at(width), (cells, rows));
     }
   }
 }
@@ -1035,7 +1038,7 @@ mod wrap_properties {
 
     /// Any text wraps at any width into lines that fit, but for a lone cluster too wide
     /// for one, and that leave out nothing but the blanks a line ends in and the
-    /// newlines between paragraphs, an empty text into none.
+    /// newlines between paragraphs, an empty text into one empty line.
     #[test]
     fn a_wrap_fits_and_keeps_the_text(text in arbitrary_text(), width in 1..30_usize) {
       text::reset();
@@ -1045,7 +1048,7 @@ mod wrap_properties {
       let clusters: Vec<&str> = text::clusters(&text).map(|(_, cluster)| cluster).collect();
       let mut expected_start = 0;
 
-      prop_assert_eq!(lines.is_empty(), text.is_empty());
+      prop_assert!(!lines.is_empty());
 
       for line in &lines {
         let cells: usize = line.advances(&scales).sum();

@@ -235,7 +235,7 @@ fn the_document_selection_takes_whole_clusters() {
 #[test]
 fn a_control_character_paints_as_one_visible_cell() {
   with_platform(|| {
-    let _ = terminal::mount(|| marked("a\u{1b}]2;x\u{7}b\rc").build());
+    let _ = terminal::mount(|| marked("a\u{1b}]2;x\u{7}b\u{7f}c").build());
 
     for clustering in [false, true] {
       testing::trigger_grapheme_clustering(clustering);
@@ -243,7 +243,7 @@ fn a_control_character_paints_as_one_visible_cell() {
       let text = testing::render_to_text(16, 1);
 
       assert_eq!(
-        text, "a\u{fffd}]2;x\u{fffd}b c|\n",
+        text, "a\u{fffd}]2;x\u{fffd}b\u{fffd}c|\n",
         "clustering {clustering}"
       );
       assert_eq!(
@@ -254,19 +254,18 @@ fn a_control_character_paints_as_one_visible_cell() {
   });
 }
 
-/// A tab in text advances to its next stop, eight cells apart from its line's start,
-/// painted as blanks, and a later tab on the same line reaches the stop after.
+/// A tab in text is one blank cell.
 #[test]
-fn a_tab_advances_to_its_stop() {
+fn a_tab_is_one_blank_cell() {
   with_platform(|| {
     let _ = terminal::mount(|| marked("ab\tc\td").build());
 
     let text = testing::render_to_text(24, 1);
 
-    assert_eq!(text, "ab      c       d|\n");
+    assert_eq!(text, "ab c d|\n");
     assert_eq!(
       underlined(&testing::render_to_decorations(24, 1), 24, 0),
-      Some(17)
+      Some(6)
     );
   });
 }

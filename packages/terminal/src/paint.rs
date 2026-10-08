@@ -17,7 +17,7 @@ use skene_foundation::{
   TextDecoration,
   TextDecorationStyle,
 };
-use skene_layout::{Content, Inline, Metrics, Paragraph};
+use skene_layout::{Content, Inline, Paragraph};
 
 use crate::{
   BorderGlyphs,
@@ -541,8 +541,8 @@ impl Buffer {
     self.put_sized(x, y, cluster, width, CellScale::ONE, style);
   }
 
-  /// Paints `cluster` at (`x`, `y`) at `scale` across the `cells` it advances: a tab as
-  /// blanks to its stop, anything else as [`put_sized`](Self::put_sized) does.
+  /// Paints `cluster` at (`x`, `y`) at `scale` across the `cells` it advances, as
+  /// [`put_sized`](Self::put_sized) does.
   pub(crate) fn put_advancing(
     &mut self,
     x: isize,
@@ -552,19 +552,7 @@ impl Buffer {
     scale: CellScale,
     style: impl Fn(&mut TerminalCell),
   ) {
-    let rows = scale.rows();
-
-    if cluster == "\t" {
-      for blank in 0..cells / rows {
-        let at = x + isize::try_from(blank * rows).expect("fits");
-
-        self.put_sized(at, y, " ", 1, scale, &style);
-      }
-
-      return;
-    }
-
-    self.put_sized(x, y, cluster, cells / rows, scale, style);
+    self.put_sized(x, y, cluster, cells / scale.rows(), scale, style);
   }
 
   /// Paints `cluster` at (`x`, `y`) at `scale`: a block of the scale's rows by `width`
@@ -709,16 +697,10 @@ impl Buffer {
 /// and a newline always breaks. Yields at least one line, each paired with its start
 /// offset into the source, in clusters, newlines included.
 pub(crate) fn wrap_spans(text: &str, width: usize) -> Vec<(usize, String)> {
-  let mut lines: Vec<(usize, String)> = wrap_sized(text, width, &Scales::default())
+  wrap_sized(text, width, &Scales::default())
     .into_iter()
     .map(|line| (line.start, line.text))
-    .collect();
-
-  if text.is_empty() || text.ends_with('\n') {
-    lines.push((text::count(text), String::new()));
-  }
-
-  lines
+    .collect()
 }
 
 /// One wrapped line of sized text: where it starts in the source, in clusters, its
@@ -731,17 +713,11 @@ pub(crate) struct SizedLine {
 }
 
 impl SizedLine {
-  /// The cells each cluster of the line advances, at its scale, a tab to its stop.
+  /// The cells each cluster of the line advances, at its scale.
   pub(crate) fn advances<'a>(&'a self, scales: &'a Scales) -> impl Iterator<Item = usize> + 'a {
     text::clusters(&self.text)
       .enumerate()
-      .scan(0, move |column, (index, (_, cluster))| {
-        let advance = scales.advance(self.start + index, cluster, *column);
-
-        *column += advance;
-
-        Some(advance)
-      })
+      .map(move |(index, (_, cluster))| scales.advance(self.start + index, cluster))
   }
 
   /// The cluster a hit at the cell `column` lands on: the one whose block holds it,
@@ -814,16 +790,17 @@ pub(crate) fn line_at_row(lines: &[SizedLine], row: usize) -> usize {
 }
 
 /// The lines a run's text wraps into, as the shared [`Paragraph`] wraps it: those of
-/// [`wrap_spans`], with each cluster as wide as its scale makes it, a tab reaching its
-/// stop counted from its line's start, and each line as tall as its tallest run, though
-/// a newline ending the text opens no line and an empty text has none.
+/// [`wrap_spans`], with each cluster as wide as its scale makes it and each line as tall
+/// as its tallest run.
 pub(crate) fn wrap_sized(text: &str, width: usize, scales: &Scales) -> Vec<SizedLine> {
-  wrap_paragraph(&paragraph_of(text, scales), width)
+  wrap_paragraph(text, &paragraph_of(text, scales), width)
 }
 
-/// The lines `paragraph` wraps into at `width` cells, at least one.
+/// The lines `paragraph`, laid out from `text`, wraps into at `width` cells, at least
+/// one.
 pub(crate) fn wrap_paragraph(
-  paragraph: &Paragraph<CellMetrics, usize>,
+  text: &str,
+  paragraph: &Paragraph<usize>,
   width: usize,
 ) -> Vec<SizedLine> {
   paragraph
@@ -831,68 +808,53 @@ pub(crate) fn wrap_paragraph(
     .into_iter()
     .map(|line| SizedLine {
       start: line.clusters.start,
-      text: paragraph.text(line.shown),
+      text: text::slice(text, line.shown.start, line.shown.end).to_owned(),
       rows: whole(line.height),
     })
     .collect()
 }
 
-/// The paragraph `text` lays out as at `scales`: a run of each stretch of one scale, and
-/// an inline box's placeholder a box as many cells wide and rows tall as the box.
-pub(crate) fn paragraph_of(text: &str, scales: &Scales) -> Paragraph<CellMetrics, usize> {
-  let mut runs: Vec<Inline<CellMetrics, usize>> = Vec::new();
+/// The paragraph `text` lays out as at `scales`: a run of each stretch of one scale, each
+/// cluster measured as [`text::measured`] measures it, and an inline box's placeholder a
+/// box as many cells wide and rows tall as the box.
+pub(crate) fn paragraph_of(text: &str, scales: &Scales) -> Paragraph<usize> {
+  let mut runs: Vec<Inline<usize>> = Vec::new();
+  let mut extents: Vec<Extent> = Vec::new();
 
   for (index, (_, cluster)) in text::clusters(text).enumerate() {
     let extent = scales.extent(index);
     let node = runs.len();
 
     match (extent, runs.last_mut()) {
-      (Extent::Box { cells, rows }, _) => runs.push(Inline {
-        node,
-        groups: Vec::new(),
-        content: Content::Box(Size::new(cells_of(cells), cells_of(rows))),
-        metrics: CellMetrics(extent),
-      }),
+      (Extent::Box { cells, rows }, _) => {
+        runs.push(Inline {
+          node,
+          groups: Vec::new(),
+          content: Content::Box(Size::new(cells_of(cells), cells_of(rows))),
+          style: CellScale::ONE.style(),
+        });
+        extents.push(extent);
+      }
       (
         Extent::Scaled(_),
         Some(Inline {
           content: Content::Text(stretch),
-          metrics,
           ..
         }),
-      ) if metrics.0 == extent => stretch.push_str(cluster),
-      (Extent::Scaled(_), _) => runs.push(Inline {
-        node,
-        groups: Vec::new(),
-        content: Content::Text(cluster.to_owned()),
-        metrics: CellMetrics(extent),
-      }),
+      ) if extents.last() == Some(&extent) => stretch.push_str(text::measured(cluster)),
+      (Extent::Scaled(scale), _) => {
+        runs.push(Inline {
+          node,
+          groups: Vec::new(),
+          content: Content::Text(text::measured(cluster).to_owned()),
+          style: scale.style(),
+        });
+        extents.push(extent);
+      }
     }
   }
 
-  Paragraph::new(runs)
-}
-
-/// What a stretch of a terminal text measures by: each cluster as many cells as it is
-/// wide times its scale's rows, a line as many rows tall, its runs on the line's bottom,
-/// or an inline box's cells.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) struct CellMetrics(pub(crate) Extent);
-
-impl Metrics for CellMetrics {
-  fn advance(&self, cluster: &str) -> f32 {
-    match self.0 {
-      Extent::Scaled(scale) => cells_of(text::width(cluster) * scale.rows()),
-      Extent::Box { cells, .. } => cells_of(cells),
-    }
-  }
-
-  fn line_height(&self) -> f32 {
-    match self.0 {
-      Extent::Scaled(scale) => cells_of(scale.rows()),
-      Extent::Box { rows, .. } => cells_of(rows),
-    }
-  }
+  Paragraph::new(CellScale::ONE.style(), runs)
 }
 
 /// `count` cells or rows as the layout counts them.
@@ -1415,7 +1377,7 @@ fn paint_node(
           for (index, (_, cluster)) in text::clusters(&line.text).enumerate() {
             let cell_x = x + isize::try_from(column).expect("fits");
             let offset = line.start + index;
-            let advance = scales.advance(offset, cluster, column);
+            let advance = scales.advance(offset, cluster);
             let scale = scales.at(offset);
             // A smaller cluster sits on the line's bottom rows, as on a baseline.
             let row_y = y + isize::try_from(row + line.rows - scale.rows()).expect("fits");
@@ -2267,12 +2229,7 @@ fn draw_sized(
   let mut column = 0;
 
   for (_, cluster) in text::clusters(line) {
-    let advance = if cluster == "\t" {
-      text::tab_advance(column, scale)
-    }
-    else {
-      text::width(cluster) * scale.rows()
-    };
+    let advance = text::width(cluster) * scale.rows();
 
     buffer.put_advancing(
       x + isize::try_from(column).expect("fits"),
@@ -2314,7 +2271,7 @@ fn draw_selection(
     for (index, (_, cluster)) in text::clusters(&line.text).enumerate() {
       let offset = line.start + index;
       let scale = scales.at(offset);
-      let width = scales.advance(offset, cluster, column);
+      let width = scales.advance(offset, cluster);
       let top = row + line.rows - scale.rows();
 
       if offset >= from && offset < to {

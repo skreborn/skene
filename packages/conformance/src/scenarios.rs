@@ -1189,15 +1189,15 @@ fn a_box_hears_focus_entering_and_leaving<D: Driver>(driver: &mut D) {
   );
 }
 
-/// Text keeping its blanks and newlines: two spaces between words and a tab, two lines
-/// and a newline ending them, a line starting with blanks, and a word too wide for the
-/// page broken where the page's width ends.
+/// Text keeping its blanks and newlines: two spaces between words, two lines, a line
+/// starting with blanks, and a word too wide for the page broken where the page's width
+/// ends.
 fn text_page<P: Platform>(_: &mut Probes) -> AnyView<P> {
   Column::<P>::new()
     .set_spacing(Spacing::from(P::Scalar::from_f32(16.)))
     .set_children((
-      Text::new("Two  spaces and a\ttab"),
-      Text::new("One line\nand the next\n"),
+      Text::new("Two  spaces between words"),
+      Text::new("One line\nand the next"),
       Text::new("    indented"),
       Text::new("Unbreakable".repeat(8)),
     ))

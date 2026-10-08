@@ -16,6 +16,7 @@ use skene_foundation::{
   NativeElement,
   NodeId,
   Overflow,
+  Point,
   Rect,
   Renderer,
   RunPlacement,
@@ -28,7 +29,7 @@ use skene_foundation::{
   peniko,
   typography,
 };
-use skene_layout::Frames;
+use skene_layout::{Content, Frames, GlyphRun, Inline, Stroke, TextItem};
 use skrifa::{
   GlyphId,
   MetadataProvider,
@@ -288,7 +289,7 @@ impl Drawing<'_> {
     let content = inset(inset(rect, border), padding);
 
     if let Some(entry) = entry {
-      self.entry(&env, content, &entry);
+      self.entry(node, &env, content, &entry);
     }
 
     let clips = style.overflow.is_some_and(|overflow| {
@@ -342,7 +343,7 @@ impl Drawing<'_> {
   /// Draws a text entry's value in its content box at `content`, or its placeholder
   /// where it holds none, a line to each of its lines: from the box's top, or a single
   /// line centered in it as a browser centers an `<input>`'s.
-  fn entry(&mut self, env: &Env, content: Rect<f32>, entry: &Entry) {
+  fn entry(&mut self, node: NodeId, env: &Env, content: Rect<f32>, entry: &Entry) {
     let (size, line_height) = layout::typography(env);
     let ink = env.with_resolver(|resolver| {
       resolver
@@ -357,74 +358,66 @@ impl Drawing<'_> {
       _ => (entry.value.as_str(), ink),
     };
     let height = size * line_height;
-    let pinned = Pinned::get();
     let first = if entry.single_line {
       content.origin.y + (content.size.height - height) / 2.
     }
     else {
       content.origin.y
     };
+    let style = layout::style_of(size, line_height, 0.);
+    let paragraph = Text::new(
+      style,
+      vec![Inline {
+        node,
+        groups: Vec::new(),
+        content: Content::Text(text.to_owned()),
+        style,
+      }],
+    );
+    let area = Rect {
+      origin: Point::new(content.origin.x, first),
+      size: Size::new(f32::MAX, height),
+    };
 
-    for (index, line) in text.split('\n').enumerate() {
-      #[expect(
-        clippy::cast_precision_loss,
-        reason = "an entry's line count stays far below the integers f32 holds exactly"
-      )]
-      let top = first + height * index as f32;
-
-      self.glyphs(
-        line,
-        content.origin.x,
-        top + pinned.baseline(height, size),
-        size,
-        color,
-      );
+    for item in paragraph.items(area) {
+      if let TextItem::Glyphs(run) = item {
+        self.glyphs(&run, color);
+      }
     }
   }
 
-  /// Draws `paragraph` laid out in a content box at `content`: each cluster's glyphs
-  /// in its run's ink and size, each run's decoration, and each inline box.
+  /// Draws `paragraph` laid out in a content box at `content`: each stretch of a run's
+  /// glyphs in its ink, with its decoration, and each inline box.
   fn text(&mut self, paragraph: &Text, content: Rect<f32>) {
     let mut inks: FxHashMap<NodeId, Ink> = FxHashMap::default();
-    let pinned = Pinned::get();
 
-    for placed in paragraph.clusters(content) {
-      if placed.text.is_empty() {
-        self.node(placed.node, false);
+    for item in paragraph.items(content) {
+      let run = match item {
+        TextItem::Box(node) => {
+          self.node(node, false);
 
-        continue;
-      }
+          continue;
+        }
+        TextItem::Glyphs(run) => run,
+      };
+      let ink = *inks.entry(run.node).or_insert_with(|| Ink::of(run.node));
 
-      if matches!(placed.text, "\n" | "\r\n") {
-        continue;
-      }
-
-      let ink = *inks
-        .entry(placed.node)
-        .or_insert_with(|| Ink::of(placed.node));
-      let rect = placed.rect;
-      let baseline = rect.origin.y + pinned.baseline(rect.size.height, ink.size);
-
-      self.glyphs(placed.text, rect.origin.x, baseline, ink.size, ink.color);
+      self.glyphs(&run, ink.color);
 
       let line = match ink.decoration {
         TextDecoration::None => continue,
-        TextDecoration::Underline => pinned.underline(ink.size),
-        TextDecoration::LineThrough => pinned.strikeout(ink.size),
-        TextDecoration::Overline => {
-          let underline = pinned.underline(ink.size);
-
-          crate::font::Line {
-            offset: pinned.ascent(ink.size),
-            thickness: underline.thickness,
-          }
-        }
+        TextDecoration::Underline => run.underline,
+        TextDecoration::LineThrough => run.strikethrough,
+        TextDecoration::Overline => Stroke {
+          offset: run.ascent,
+          thickness: run.underline.thickness,
+        },
       };
-      let top = f64::from(baseline - line.offset);
+      let top = f64::from(run.origin.y - line.offset);
       let stroke = kurbo::Rect::new(
-        f64::from(rect.origin.x),
+        f64::from(run.origin.x),
         top,
-        f64::from(rect.origin.x + rect.size.width),
+        f64::from(run.origin.x + run.width),
         top + f64::from(line.thickness.max(1.)),
       );
 
@@ -432,29 +425,26 @@ impl Drawing<'_> {
     }
   }
 
-  /// Draws `text`'s glyphs from `x` along the baseline `baseline` at `size` in `color`.
-  fn glyphs(&mut self, text: &str, x: f32, baseline: f32, size: f32, color: Color) {
+  /// Draws the glyphs of `run` in `color`.
+  fn glyphs(&mut self, run: &GlyphRun, color: Color) {
     let font = Pinned::font();
-    let charmap = font.charmap();
     let outlines = font.outline_glyphs();
-    let pinned = Pinned::get();
     let mut pen = Pen {
       path: BezPath::new(),
-      x,
-      y: baseline,
+      x: 0.,
+      y: 0.,
     };
 
-    for character in text.chars() {
-      let glyph = charmap.map(character).unwrap_or(GlyphId::NOTDEF);
+    for glyph in &run.glyphs {
+      pen.x = glyph.origin.x;
+      pen.y = glyph.origin.y;
 
-      if let Some(outline) = outlines.get(glyph) {
+      if let Some(outline) = outlines.get(GlyphId::new(glyph.id)) {
         let _ = outline.draw(
-          DrawSettings::unhinted(FontSize::new(size), LocationRef::default()),
+          DrawSettings::unhinted(FontSize::new(run.size), LocationRef::default()),
           &mut pen,
         );
       }
-
-      pen.x += pinned.advance_of(character, size);
     }
 
     if !pen.path.elements().is_empty() {
@@ -469,11 +459,9 @@ impl Drawing<'_> {
   }
 }
 
-/// How a run's text is drawn: its size, its ink, and its decoration with that line's
-/// color.
+/// How a run's text is drawn: its ink, and its decoration with that line's color.
 #[derive(Clone, Copy)]
 struct Ink {
-  size: f32,
   color: Color,
   decoration: TextDecoration,
   decoration_color: Color,
@@ -483,7 +471,6 @@ impl Ink {
   /// How the run `node` draws its text, its ink the typography's where it sets none and
   /// a link's underlined where its decoration says nothing.
   fn of(node: NodeId) -> Self {
-    let size = layout::metrics(node).size;
     let props = with_records(|records| match &records.record(node)?.kind {
       Kind::Run(props) => Some((props.style.clone(), props.link.is_some())),
       _ => None,
@@ -521,7 +508,6 @@ impl Ink {
       resolved.unwrap_or((BLACK, TextDecoration::None, BLACK));
 
     Self {
-      size,
       color,
       decoration,
       decoration_color,

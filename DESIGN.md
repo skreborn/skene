@@ -571,25 +571,26 @@ Condition     = Media | State | And | Or
   their blanks and newlines as the reset's `white-space: pre-wrap` does and wrapping
   where the Unicode line breaking algorithm allows across them and around an inline box,
   laid out at its content's size first, a word too wide for a line of its own broken
-  where the line fills as `overflow-wrap: break-word` breaks it, a tab advancing to the
-  next of stops eight spaces apart, the blanks a line ends in hanging where it wraps and
-  taking room before a newline or at the end, and a newline ending the text opening no
-  line, each run's line box on its line's baseline, a box's bottom on it, a span placed
+  where the line fills as `overflow-wrap: break-word` breaks it, the blanks a line ends
+  in hanging where it wraps and taking room up to its limit before a newline or at the
+  end, each run's line box on its line's baseline, a box's bottom on it, a span placed
   in a rectangle per line it is on, and the paragraph trimmed to its first line's cap
   height and its last line's baseline as the reset's `text-box-trim` trims a text box;
-  every run is measured in the pinned face the conformance suite draws in, Inter's
-  regular (a cluster as far as its glyphs advance at its font size, its letter spacing
-  past it, a line its font size times its line height tall, each as the typography in
-  force sets them). Headless reports each box's size to the observers bound to it and
-  answers `layout_rect`, `visible_rect` and, through the frames' paint order, `node_at`,
+  every run is shaped through Parley in the pinned face the conformance suite draws in,
+  Inter's regular (kerned, its letter spacing past each cluster, a line its font size
+  times its line height tall, each as the typography in force sets them), and where
+  Parley reads text as an editor does its reading stands: a tab is as wide as its glyph,
+  and a newline ending the text opens a line. Headless reports each box's size to the
+  observers bound to it and answers `layout_rect`, `visible_rect` and, through the
+  frames' paint order, `node_at`,
   a hidden box keeping its place but taking no hit as the web's `visibility: hidden`
   does, a box clipping its overflow along an axis clipping what lies beneath it to its
   padding box there and a box's scroll offsets, as `trigger_scroll` reports them,
   shifting it back, as in a browser. It draws the scene as a browser paints the page
   (`render_to_image`): each box's background and border, rounded by its corner radius,
-  what a clipping box holds clipped, each run's glyphs in the pinned face at the places
-  its paragraph gives them with its decoration, a text entry's value (a field's line in
-  its middle, as a browser draws an `<input>`'s), each painted box's picture and the
+  what a clipping box holds clipped, each run's glyphs as Parley shaped them in the
+  pinned face with its decoration, a text entry's value (a field's line in its middle,
+  as a browser draws an `<input>`'s), each painted box's picture and the
   open overlays above the rest, a border solid whatever its style and a decoration one
   solid line; every page of the conformance suite is held to a golden of it, and the
   golden to the browser's. `Dimension` is a fixed length,
@@ -959,10 +960,14 @@ gets plain frames. Grapheme clustering (mode 2027) is set and queried at launch 
 same way: text is measured in extended grapheme clusters (`unicode-segmentation`),
 each as wide as the terminal draws it (`unicode-width`)—the cluster's width where the
 terminal confirmed the mode, the sum of its code points' widths where it did not, so
-the layout's measure agrees with the terminal's either way—and wrapped by the shared
-`Paragraph`, a stretch of one scale a run measured in cells and an inline box a box as
-many cells wide and rows tall as it, so a run wraps, keeps its blanks and stops its
-tabs as headless and a browser do; a cell holds a cluster
+the layout's measure agrees with the terminal's either way—and wrapped through Parley
+by the shared `Paragraph`, in a typeface the build generates whose every code point is
+a glyph as many cells wide as it draws on its own (a cell an em, its ascent the whole
+cell, the dotted circle unmapped so no shaper inserts one), a stretch of one scale a run
+at that many cells and an inline box a box as many cells wide and rows tall as it, and
+under the mode a cluster whose code points sum to another width measured by a stand-in
+of its width, so a run wraps and keeps its blanks as headless does, a tab one blank
+cell; a cell holds a cluster
 (`Glyph`: one code point, an interned cluster, or the continuation of a wide one, which
 paints nothing) while a field's caret, window and selection index clusters, the window
 of a single-line field settling by cells. A confirmation arriving after the first

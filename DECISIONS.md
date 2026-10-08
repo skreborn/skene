@@ -5,6 +5,23 @@ and the condition that reopens it. A reopened decision becomes an item in `ROADM
 
 ## Decided against
 
+- **Laying text out by hand** (2026-10-08) on the platforms but the web, a paragraph
+  of our own measuring each cluster by its platform's metrics: every one of them shapes
+  and wraps text through Parley, the terminal through a typeface the build generates
+  whose glyphs are its cells, so there is one mechanism for text and it follows CSS
+  Text. Revisit when Parley cannot carry a platform's text, a native platform's own
+  engine or a terminal behavior no typeface expresses.
+- **Tab stops** (2026-10-08) outside the browser: a tab is a blank as wide as its
+  glyph, as Parley lays it out, where a browser stops it eight spaces apart. Tabs
+  belong to code editors, where a fixed width serves, and to generic text editors,
+  which most of an interface is not. Revisit when Parley lays out `tab-size` or an
+  app lays columns out with tabs.
+- **A newline ending a text, and an empty text, laid out as a browser's block lays
+  them out** (2026-10-08), with no line: Parley opens a line after a final newline and
+  lays an empty text out as one, as an editor does, and an app leaves out what it does
+  not want laid out. The web keeps the browser's reading. Revisit when a platform's own
+  text view lays them out as a browser does.
+
 - **Collapsing a text's blanks and newlines** (2026-10-08), as a browser does by
   default: text keeps them, as SwiftUI's, Flutter's and Compose's text does, and a word
   too wide for a line of its own breaks where the line fills, so a newline in a run

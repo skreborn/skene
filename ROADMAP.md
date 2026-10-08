@@ -167,7 +167,9 @@ in a code comment.
     (wasm-split-cli's walrus 0.23 beside wasm-bindgen's 0.26) gone as their dependents
     converge. Criterion stays at 0.5 while 0.8 builds alloca's C on every unix target,
     which the Apple clippy check cannot cross-compile on Linux; base64 stays doubled
-    while sfv 0.15 holds 0.22.
+    while sfv 0.15 holds 0.22. Parley from its 0.12 release, where `skene-layout` pins
+    a revision of its main for CSS Text's hanging blanks, since a published crate takes
+    no git dependency.
     - The documents: `AGENTS.md` at 150 lines or fewer of numbered one-to-three-sentence
     invariants, each linking its `DESIGN.md` section; `DESIGN.md` one chapter per
     mechanism, each with its contract, mechanism and decisions, the terminal's split by
@@ -422,6 +424,9 @@ Watched, not scheduled:
 - A scrolling box as a tab stop in the terminal: the web gives one `tabindex="0"` so
     the keyboard reaches its content, as Chromium does; the terminal's scroll boxes
     are reached by the wheel and the page keys from a focused child alone.
+- An empty text: Parley lays it out a space wide, the space it shapes in its place
+    counted as a blank at the text's end, and `Paragraph` measures it as wide as
+    nothing; once Parley does, the special case goes.
 - A reload the reader makes (F5) keeps the page's state through session storage as a
     best effort, under its cap; the origin private file system carries it whole only
     on the dev server's reload message, where the write is awaited.

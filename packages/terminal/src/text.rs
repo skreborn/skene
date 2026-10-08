@@ -8,6 +8,7 @@ use std::{
 
 use rustc_hash::FxHashMap;
 use skene_foundation::Length;
+use skene_layout::{TextStyle, Typeface};
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
@@ -16,6 +17,14 @@ thread_local! {
   static SIZING: Cell<bool> = const { Cell::new(false) };
   static INTERNED: RefCell<Interned> = RefCell::new(Interned::default());
 }
+
+/// The typeface the terminal measures its text in, generated at build time: every code
+/// point as many cells wide as the terminal draws it on its own, zero, one or two, a
+/// cell an em and its ascent the whole cell.
+pub(crate) static CELLS: Typeface = Typeface::new(
+  "Skene Cells",
+  include_bytes!(concat!(env!("OUT_DIR"), "/cells.otf")),
+);
 
 /// The largest whole scale the text sizing protocol draws.
 const MAX_SCALE: u8 = 7;
@@ -86,6 +95,22 @@ impl CellScale {
     match self {
       Self::Whole(scale) => scale as usize,
       Self::Fraction(..) => 1,
+    }
+  }
+
+  /// The style text at the scale is laid out in: the cells' typeface at the scale's
+  /// rows, its line as many rows tall.
+  pub(crate) fn style(self) -> TextStyle {
+    let rows = match self {
+      Self::Whole(scale) => f32::from(scale),
+      Self::Fraction(..) => 1.,
+    };
+
+    TextStyle {
+      typeface: &CELLS,
+      size: rows,
+      line_height: rows,
+      letter_spacing: 0.,
     }
   }
 }
@@ -172,19 +197,11 @@ impl Scales {
     }
   }
 
-  /// The cells the cluster at `index` advances from the cell `column` of its line: a
-  /// tab to its next stop at its scale, an inline box's placeholder the box's cells,
-  /// and anything else its width at its scale.
-  pub(crate) fn advance(&self, index: usize, cluster: &str, column: usize) -> usize {
-    self.advance_by(index, width(cluster), cluster == "\t", column)
-  }
-
-  /// [`advance`](Self::advance) for a cluster at `index` that is a tab where `tab`, and
-  /// `width` cells wide at one cell otherwise.
-  pub(crate) fn advance_by(&self, index: usize, width: usize, tab: bool, column: usize) -> usize {
+  /// The cells the cluster at `index` advances: an inline box's placeholder the box's
+  /// cells, and anything else its width at its scale.
+  pub(crate) fn advance(&self, index: usize, cluster: &str) -> usize {
     match self.extent(index) {
-      Extent::Scaled(scale) if tab => tab_advance(column, scale),
-      Extent::Scaled(scale) => width * scale.rows(),
+      Extent::Scaled(scale) => width(cluster) * scale.rows(),
       Extent::Box { cells, .. } => cells,
     }
   }
@@ -217,25 +234,6 @@ pub(crate) fn reset() {
   INTERNED.with(|interned| *interned.borrow_mut() = Interned::default());
 }
 
-/// How many cells apart a line's tab stops are at one cell, as a browser's `tab-size`.
-pub(crate) const TAB_SIZE: usize = 8;
-
-/// The cells a tab at `scale` advances from the cell `column` of its line: to the next
-/// multiple of [`TAB_SIZE`] of its scaled cells at least half a scaled cell away, as the
-/// shared paragraph's tab stops are.
-pub(crate) const fn tab_advance(column: usize, scale: CellScale) -> usize {
-  let rows = scale.rows();
-  let interval = TAB_SIZE * rows;
-  let distance = interval - column % interval;
-
-  if distance * 2 < rows {
-    distance + interval
-  }
-  else {
-    distance
-  }
-}
-
 /// The character the terminal shows for `character`: a space for a tab or a carriage
 /// return, the replacement character for any other control, else `character` itself.
 pub(crate) const fn shown(character: char) -> char {
@@ -258,21 +256,32 @@ pub(crate) fn width(cluster: &str) -> usize {
     cluster.width()
   }
   else {
-    cluster
-      .chars()
-      .map(|character| character.width().unwrap_or(0))
-      .sum()
+    drawn_alone(cluster)
   }
 }
 
-/// The cells `cluster` advances from the cell `column` of its line at one cell: a tab
-/// to its next stop, anything else its [`width`].
-pub(crate) fn advance(cluster: &str, column: usize) -> usize {
-  if cluster == "\t" {
-    tab_advance(column, CellScale::ONE)
+/// The cells `cluster` spans with each of its code points drawn on its own.
+fn drawn_alone(cluster: &str) -> usize {
+  cluster
+    .chars()
+    .map(|character| character.width().unwrap_or(0))
+    .sum()
+}
+
+/// The text the layout measures `cluster` by in the cells' typeface, which draws each
+/// code point on its own: the cluster itself, or where the terminal clusters and draws
+/// it wider or narrower than its code points sum to, one cluster of its width that a
+/// line breaks around as it does around an ideograph.
+pub(crate) fn measured(cluster: &str) -> &str {
+  if !clustering() || cluster.starts_with(char::is_control) {
+    return cluster;
   }
-  else {
-    width(cluster)
+
+  match cluster.width() {
+    width if width == drawn_alone(cluster) => cluster,
+    0 => "\u{2060}",
+    1 => "\u{ff71}",
+    _ => "\u{4e00}",
   }
 }
 
@@ -281,11 +290,9 @@ pub(crate) fn clusters(text: &str) -> impl Iterator<Item = (usize, &str)> {
   text.grapheme_indices(true)
 }
 
-/// The cells `text` spans on one row, from its line's start.
+/// The cells `text` spans on one row.
 pub(crate) fn cells(text: &str) -> usize {
-  text
-    .graphemes(true)
-    .fold(0, |column, cluster| column + advance(cluster, column))
+  text.graphemes(true).map(width).sum()
 }
 
 /// How many clusters `text` holds.
@@ -306,12 +313,12 @@ pub(crate) fn slice(text: &str, from: usize, to: usize) -> &str {
   &text[byte_of(text, from)..byte_of(text, to.max(from))]
 }
 
-/// The longest prefix of `text` spanning at most `cells` cells, from its line's start.
+/// The longest prefix of `text` spanning at most `cells` cells.
 pub(crate) fn fit(text: &str, cells: usize) -> &str {
   let mut spanned = 0;
 
   for (byte, cluster) in clusters(text) {
-    spanned += advance(cluster, spanned);
+    spanned += width(cluster);
 
     if spanned > cells {
       return &text[..byte];
@@ -321,14 +328,14 @@ pub(crate) fn fit(text: &str, cells: usize) -> &str {
   text
 }
 
-/// The cluster a caret goes to for the cell `column` of `text` on one row, from its
-/// line's start: the one whose first cell it is, the next for a wide cluster's later
-/// cells, and the count past the text.
+/// The cluster a caret goes to for the cell `column` of `text` on one row: the one whose
+/// first cell it is, the next for a wide cluster's later cells, and the count past the
+/// text.
 pub(crate) fn index_at_column(text: &str, column: usize) -> usize {
   let mut cell = 0;
 
   for (index, cluster) in text.graphemes(true).enumerate() {
-    let next = cell + advance(cluster, cell);
+    let next = cell + width(cluster);
 
     if column < next {
       return if column == cell { index } else { index + 1 };
@@ -364,7 +371,7 @@ impl Clusters {
     for (byte, cluster) in clusters(text) {
       bytes.push(byte);
       columns.push(column);
-      column += advance(cluster, column);
+      column += width(cluster);
     }
 
     bytes.push(text.len());
@@ -567,22 +574,20 @@ mod tests {
     reset();
   }
 
-  /// A control shows as one cell whether or not the terminal clusters: a carriage
-  /// return as a space, any other as the replacement character; a tab shows as the
-  /// blanks it advances to its next stop.
+  /// A control shows as one cell whether or not the terminal clusters: a tab or a
+  /// carriage return as a space, any other as the replacement character.
   #[test]
-  fn a_control_shows_as_one_cell_and_a_tab_reaches_its_stop() {
+  fn a_control_shows_as_one_cell() {
     reset();
 
     for clustering in [false, true] {
       set_clustering(clustering);
 
       assert_eq!(cells("a\u{1b}bc\r\u{7f}"), 6);
-      assert_eq!(cells("\t"), TAB_SIZE);
-      assert_eq!(cells("ab\tc"), TAB_SIZE + 1);
-      assert_eq!(cells("abcdefgh\t"), 2 * TAB_SIZE);
-      assert_eq!(index_at_column("ab\tc", 5), 3);
-      assert_eq!(fit("ab\tc", 7), "ab");
+      assert_eq!(cells("\t"), 1);
+      assert_eq!(cells("ab\tc"), 4);
+      assert_eq!(index_at_column("ab\tc", 3), 3);
+      assert_eq!(fit("ab\tc", 2), "ab");
       assert_eq!(Glyph::of("\u{1b}").to_string(), "\u{fffd}");
       assert_eq!(Glyph::of("\t").to_string(), " ");
       assert_eq!(Glyph::of("\r\n").to_string(), " ");
@@ -648,7 +653,7 @@ mod tests {
     assert_eq!(scales.at(1), CellScale::Whole(2));
     assert_eq!(scales.at(2), CellScale::ONE);
     assert_eq!(scales.at(9), CellScale::ONE);
-    assert_eq!(scales.advance(0, "日", 0), 4);
+    assert_eq!(scales.advance(0, "日"), 4);
     assert_eq!(
       Scales::uniform(CellScale::Whole(3)).at(50),
       CellScale::Whole(3)

@@ -44,6 +44,7 @@
 mod font;
 mod layout;
 mod records;
+mod render;
 mod resolve;
 pub mod user;
 
@@ -129,6 +130,7 @@ use skene_foundation::{
 use skene_reactive::{Memo, ReadSignal, Set};
 use unicode_segmentation::UnicodeSegmentation;
 
+pub use self::render::Image;
 use crate::records::{Kind, Record, Records, Report};
 
 /// The host platform: a zero-sized [`Platform`] keeping a record per node in this
@@ -1165,6 +1167,26 @@ pub fn layout_rect(node: NodeId) -> Option<Rect<f32>> {
   with_records(|records| records.frames = frames);
 
   rect
+}
+
+/// Paints the scene as a browser paints the page, laid out afresh at the viewport, one
+/// pixel to a logical pixel.
+///
+/// On white, it draws each box's background and border, rounded by its corner radius,
+/// what a box clipping its overflow holds clipped to its padding box, each run's text in
+/// the pinned face with its decoration, a text entry's value, each painted box's picture
+/// where graphics show, and the open overlays above the rest. A border is drawn solid
+/// whatever its style, and a decoration as one solid line.
+pub fn render_to_image() -> Image {
+  end_turn();
+
+  let frames = layout::lay_out();
+  let viewport = with_records(|records| records.viewport).unwrap_or(records::DEFAULT_VIEWPORT);
+  let image = render::render(&frames, viewport);
+
+  with_records(|records| records.frames = frames);
+
+  image
 }
 
 /// How wide `text` lays out on one line at the font size `size`, without letter

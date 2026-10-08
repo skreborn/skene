@@ -700,7 +700,10 @@
   the snapshot codec and the terminal parser with arbitrary input, and a terminal frame
   compares against its snapshot file through `insta` (`render_to_styled`: the text, each
   cell's style as a character, and what each stands for), rewritten by
-  `INSTA_UPDATE=always` once a change to the frame is meant. The server tier is the server leaf built
+  `INSTA_UPDATE=always` once a change to the frame is meant, and headless draws every
+  page of the conformance suite in the pinned font (`render_to_image`) against its own
+  golden (`packages/headless/tests/goldens`), rewritten by `SKENE_GOLDENS=overwrite`
+  as the browser's are. The server tier is the server leaf built
   natively, the byte-exact render snapshot among it. The browser tier first links every
   library's tests for wasm32, so an app's own tests build there, then drives every
   browser binary, several sessions at once (`SKENE_GATE_BROWSERS` sets how many), through

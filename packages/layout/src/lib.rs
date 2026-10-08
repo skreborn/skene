@@ -37,7 +37,7 @@ use taffy::{
 };
 
 pub use self::{
-  paragraph::{Content, Inline, Metrics, Paragraph},
+  paragraph::{Content, Inline, Metrics, Paragraph, Placed},
   tree::{Frames, Leaf, Part, Tree},
 };
 

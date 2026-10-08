@@ -567,7 +567,13 @@ Condition     = Media | State | And | Or
   bound to it and answers `layout_rect`, `visible_rect` and, through the frames' paint
   order, `node_at`, a box clipping its overflow along an axis clipping what lies beneath
   it to its padding box there and a box's scroll offsets, as `trigger_scroll` reports
-  them, shifting it back, as in a browser. `Dimension` is a fixed length,
+  them, shifting it back, as in a browser. It draws the scene as a browser paints the
+  page (`render_to_image`): each box's background and border, rounded by its corner
+  radius, what a clipping box holds clipped, each run's glyphs in the pinned face at
+  the places its paragraph gives them with its decoration, a text entry's value, each
+  painted box's picture and the open overlays above the rest, a border solid whatever
+  its style and a decoration one solid line; every page of the conformance suite is
+  held to a golden of it. `Dimension` is a fixed length,
   a `Fraction` of the parent, or auto. Overflow is per axis (`Axes<Overflow>`, one
   overflow setting both) and computed as CSS computes it, an axis left visible beside
   one that is not scrolling where needed; the terminal scrolls, and draws a scrollbar,

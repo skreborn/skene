@@ -19,6 +19,7 @@ mod one_of;
 mod overlays;
 mod picker;
 mod reentry;
+mod render;
 mod text;
 mod themes;
 mod tooltips;

@@ -47,16 +47,19 @@ use crate::{
 
 /// The line height a run takes where neither its style nor the typography in force
 /// sets one, as a multiple of its font size.
-const LINE_HEIGHT: f32 = 1.5;
+pub(crate) const LINE_HEIGHT: f32 = 1.5;
 
 /// A run's metrics as the layout measures its text: each grapheme cluster as far as the
 /// pinned face advances it at the font size, and the letter spacing past it, each line
 /// the font size times the line height tall.
 #[derive(Debug, Clone, Copy, PartialEq)]
-struct RunMetrics {
-  size: f32,
-  line_height: f32,
-  spacing: f32,
+pub(crate) struct RunMetrics {
+  /// The font size.
+  pub size: f32,
+  /// The line height, as a multiple of the font size.
+  pub line_height: f32,
+  /// The letter spacing past each cluster.
+  pub spacing: f32,
 }
 
 impl Metrics for RunMetrics {
@@ -70,7 +73,7 @@ impl Metrics for RunMetrics {
 }
 
 /// What the layout measures a leaf by: the runs of its paragraph.
-type Measured = Paragraph<RunMetrics>;
+pub(crate) type Measured = Paragraph<RunMetrics>;
 
 thread_local! {
   /// The tree the scene lays out on, kept across frames.
@@ -136,14 +139,7 @@ fn part(node: NodeId) -> Part<Measured> {
     None | Some(Shape::Absent) => Part::Absent,
     Some(Shape::Transparent) => Part::Transparent,
     Some(Shape::Box(layout, style, scroll, overlay)) => {
-      let mut resolved = env.with_resolver(|resolver| resolver.box_style(&style));
-
-      if moves(node) {
-        BoxStyle::<f32, Plain, WebStyle>::for_each_field(&mut Presented {
-          node,
-          style: &mut resolved,
-        });
-      }
+      let resolved = presented(node, &env, &style);
 
       if resolved.hidden == Some(true) {
         return Part::Absent;
@@ -174,28 +170,49 @@ fn part(node: NodeId) -> Part<Measured> {
 
       Part::Box(taffy, Point::new(0., 0.))
     }
-    Some(Shape::Run(text)) => {
-      let taffy = run_style(&env, node, place);
-
-      let children = placed_children(node);
-      let mut runs = Vec::new();
-
-      if children.is_empty()
-        || !children
-          .into_iter()
-          .all(|child| inlines(child, &[node], &mut runs))
-      {
-        runs = vec![Inline {
-          node,
-          groups: Vec::new(),
-          content: Content::Text(text),
-          metrics: metrics(node),
-        }];
-      }
-
-      Part::Leaf(taffy, Paragraph::new(runs))
-    }
+    Some(Shape::Run(text)) => Part::Leaf(run_style(&env, node, place), lone(node, text)),
   }
+}
+
+/// The box style `node` resolves to under `env` from its static `style`, its motion laid
+/// over it.
+pub(crate) fn presented(
+  node: NodeId,
+  env: &Env,
+  style: &StaticBoxStyle<Headless>,
+) -> BoxStyle<f32, Plain, WebStyle> {
+  let mut resolved = env.with_resolver(|resolver| resolver.box_style(style));
+
+  if moves(node) {
+    BoxStyle::<f32, Plain, WebStyle>::for_each_field(&mut Presented {
+      node,
+      style: &mut resolved,
+    });
+  }
+
+  resolved
+}
+
+/// The paragraph the run `node`, outside any paragraph, lays out as: its text, or a
+/// group's runs.
+pub(crate) fn lone(node: NodeId, text: String) -> Measured {
+  let children = placed_children(node);
+  let mut runs = Vec::new();
+
+  if children.is_empty()
+    || !children
+      .into_iter()
+      .all(|child| inlines(child, &[node], &mut runs))
+  {
+    runs = vec![Inline {
+      node,
+      groups: Vec::new(),
+      content: Content::Text(text),
+      metrics: metrics(node),
+    }];
+  }
+
+  Paragraph::new(runs)
 }
 
 /// The taffy style the run `node` takes from its place and the wrapper's properties it
@@ -218,7 +235,7 @@ fn run_style(env: &Env, node: NodeId, place: Place) -> Style {
 /// The paragraph the box `node` lays its children out as, where every child it places
 /// is an inline run, an inline box, a group of them, or an anchor or a scope holding
 /// them.
-fn paragraph(node: NodeId) -> Option<Measured> {
+pub(crate) fn paragraph(node: NodeId) -> Option<Measured> {
   let children = placed_children(node);
   let mut runs = Vec::new();
   let inline = !children.is_empty()
@@ -291,7 +308,7 @@ enum Flow {
 
 /// The metrics the run `node` measures its text by, as its style and the typography in
 /// force set them.
-fn metrics(node: NodeId) -> RunMetrics {
+pub(crate) fn metrics(node: NodeId) -> RunMetrics {
   let style = with_records(|records| match &records.record(node)?.kind {
     Kind::Run(props) => Some(props.style.clone()),
     _ => None,
@@ -328,7 +345,7 @@ fn metrics(node: NodeId) -> RunMetrics {
 }
 
 /// The children `node` places, in order.
-fn placed_children(node: NodeId) -> Vec<NodeId> {
+pub(crate) fn placed_children(node: NodeId) -> Vec<NodeId> {
   Scene::<Headless>::read(|scene| scene.placed_children(node).collect())
 }
 

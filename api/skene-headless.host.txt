@@ -85,6 +85,20 @@ pub fn skene_headless::Headless::register_boundary(skene_foundation::spine::node
 pub fn skene_headless::Headless::register_source(skene_foundation::web::hydration::HydrationSource)
 pub fn skene_headless::Headless::register_tagged_source(&str, skene_foundation::web::hydration::HydrationSource)
 pub fn skene_headless::Headless::within_lazy<R>(&Self::LazyRegion, impl core::ops::function::FnOnce() -> R) -> R
+pub struct skene_headless::Image
+pub skene_headless::Image::height: u16
+pub skene_headless::Image::pixels: alloc::vec::Vec<u8>
+pub skene_headless::Image::width: u16
+impl skene_headless::Image
+pub fn skene_headless::Image::pixel(&self, u16, u16) -> core::option::Option<[u8; 4]>
+impl core::clone::Clone for skene_headless::Image
+pub fn skene_headless::Image::clone(&self) -> skene_headless::Image
+impl core::cmp::Eq for skene_headless::Image
+impl core::cmp::PartialEq for skene_headless::Image
+pub fn skene_headless::Image::eq(&self, &skene_headless::Image) -> bool
+impl core::fmt::Debug for skene_headless::Image
+pub fn skene_headless::Image::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for skene_headless::Image
 pub fn skene_headless::access_outline() -> alloc::string::String
 pub fn skene_headless::access_tree() -> accesskit::TreeUpdate
 pub fn skene_headless::accessible_name(skene_foundation::spine::node::NodeId) -> core::option::Option<alloc::string::String>
@@ -126,6 +140,7 @@ pub fn skene_headless::part(skene_foundation::spine::node::NodeId) -> core::opti
 pub fn skene_headless::pending_timers() -> usize
 pub fn skene_headless::pump_tasks() -> bool
 pub fn skene_headless::remove_head_entry(skene_foundation::web::head::HeadId)
+pub fn skene_headless::render_to_image() -> skene_headless::Image
 pub fn skene_headless::render_to_pixels(skene_foundation::spine::node::NodeId, skene_foundation::spine::values::size::Size<f32>) -> core::option::Option<alloc::vec::Vec<u8>>
 pub fn skene_headless::reset()
 pub fn skene_headless::resolve_aspect_ratio(skene_foundation::spine::node::NodeId) -> core::option::Option<skene_foundation::spine::values::aspect_ratio::AspectRatio>

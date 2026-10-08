@@ -45,12 +45,16 @@ in a code comment.
     latching, field editing, selection, motion) moves into `skene-layout`, generic over
     the platform's scalar, which holds the style mapping, the `Tree` both keep across
     frames, the `Paragraph` headless lays its inline runs out as, and the frames
-    headless hits through, clipped and scrolled as a browser's are: headless writes its
-    tree through the incremental restyle, where it walks the whole scene every frame;
-    the terminal lays its paragraphs and their inline boxes out through the shared
-    `Paragraph`, its cells, tab stops and text sizes as the metrics, where it keeps a
-    wrap of its own; the terminal hits through the shared frames; headless renders pixel snapshots in the pinned font; the layout
-    store becomes the crate the native shells call into.
+    headless hits through, clipped and scrolled as a browser's are: headless lays the
+    page out as the web's reset does, where its goldens part from the browser's, the
+    app's first box filling the viewport, a text entry at the size its native element
+    takes, and each text box trimmed to its cap height and alphabetic baseline as
+    `text-box-trim` trims it; headless writes its tree through the incremental restyle,
+    where it walks the whole scene every frame; the terminal lays its paragraphs and
+    their inline boxes out through the shared `Paragraph`, its cells, tab stops and
+    text sizes as the metrics, where it keeps a wrap of its own; the terminal hits
+    through the shared frames; the layout store becomes the crate the native shells
+    call into.
     - Conformance by intent: once the shells stop sharing views, a scenario states what
     it builds (a button labelled Save that counts its clicks) and each platform's
     driver builds it in its own vocabulary, so one suite keeps holding every shell to

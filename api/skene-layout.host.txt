@@ -32,6 +32,15 @@ pub skene_layout::Part::Overlay(taffy::style::Style, skene_foundation::spine::va
 pub skene_layout::Part::Transparent
 impl<C: core::fmt::Debug> core::fmt::Debug for skene_layout::Part<C>
 pub fn skene_layout::Part<C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub enum skene_layout::Revisit
+pub skene_layout::Revisit::Every
+pub skene_layout::Revisit::Nodes(alloc::vec::Vec<skene_foundation::spine::node::NodeId>, bool)
+impl core::cmp::Eq for skene_layout::Revisit
+impl core::cmp::PartialEq for skene_layout::Revisit
+pub fn skene_layout::Revisit::eq(&self, &skene_layout::Revisit) -> bool
+impl core::fmt::Debug for skene_layout::Revisit
+pub fn skene_layout::Revisit::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for skene_layout::Revisit
 pub struct skene_layout::Frames
 impl skene_layout::Frames
 pub fn skene_layout::Frames::extend(&mut self, Self)
@@ -101,6 +110,24 @@ impl<'a> core::fmt::Debug for skene_layout::Placed<'a>
 pub fn skene_layout::Placed<'a>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<'a> core::marker::Copy for skene_layout::Placed<'a>
 impl<'a> core::marker::StructuralPartialEq for skene_layout::Placed<'a>
+pub struct skene_layout::Restyle
+impl skene_layout::Restyle
+pub const fn skene_layout::Restyle::generation(&self) -> u64
+pub fn skene_layout::Restyle::interactive(&self) -> impl core::iter::traits::iterator::Iterator<Item = skene_foundation::spine::node::NodeId> + '_
+pub const fn skene_layout::Restyle::invalidate(&mut self)
+pub const fn skene_layout::Restyle::is_pending(&self, u64) -> bool
+pub fn skene_layout::Restyle::keep_moving(&mut self, skene_foundation::spine::node::NodeId)
+pub const fn skene_layout::Restyle::move_structure(&mut self)
+pub fn skene_layout::Restyle::new() -> Self
+pub fn skene_layout::Restyle::queue(&mut self, skene_foundation::spine::node::NodeId)
+pub fn skene_layout::Restyle::read_interaction(&mut self, skene_foundation::spine::node::NodeId, bool)
+pub const fn skene_layout::Restyle::revisit_every(&mut self)
+pub fn skene_layout::Restyle::take(&mut self, u64) -> skene_layout::Revisit
+pub const fn skene_layout::Restyle::take_structure(&mut self) -> bool
+impl core::default::Default for skene_layout::Restyle
+pub fn skene_layout::Restyle::default() -> Self
+impl core::fmt::Debug for skene_layout::Restyle
+pub fn skene_layout::Restyle::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_layout::Tree<C>
 impl<C: skene_layout::Leaf> skene_layout::Tree<C>
 pub fn skene_layout::Tree<C>::compute(&mut self, skene_foundation::spine::node::NodeId, taffy::geometry::Size<taffy::style::available_space::AvailableSpace>)

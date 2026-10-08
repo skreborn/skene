@@ -67,7 +67,7 @@ impl ResolutionSource<Terminal> for Records {
   }
 
   fn generation(&self) -> u64 {
-    self.generation
+    self.restyle.generation()
   }
 }
 
@@ -158,8 +158,7 @@ impl Records {
   /// Marks every resolved style stale and the frame in need of layout.
   #[inline(always)]
   pub(crate) const fn invalidate_styles(&mut self) {
-    self.generation += 1;
-    self.restyle_all = true;
+    self.restyle.invalidate();
     self.layout_dirty = true;
     self.paint_dirty = true;
   }

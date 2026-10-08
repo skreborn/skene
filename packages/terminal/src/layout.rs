@@ -14,6 +14,7 @@ use skene_layout::{
   BoxLayout,
   Leaf,
   Place,
+  Revisit,
   taffy::{
     self,
     prelude::{AvailableSpace, length},
@@ -412,39 +413,30 @@ pub(crate) fn restyle(records: &mut Records) -> bool {
 /// every node.
 fn revisited(records: &mut Records) -> (Vec<Handle>, Option<FxHashSet<Handle>>) {
   let interaction = Scene::<Terminal>::read(Scene::interaction_generation);
-  let moved = std::mem::replace(&mut records.interaction_seen, interaction) != interaction;
-  let queued = std::mem::take(&mut records.restyle_queue);
-  let moving = std::mem::take(&mut records.moving);
-  let every = std::mem::take(&mut records.restyle_all) || records.structure_dirty;
-  let (mut handles, displayed) = if every {
-    (records.handles(), Some(records.displayed()))
-  }
-  else {
-    let mut handles = queued;
+  let (mut handles, displayed) = match records.restyle.take(interaction) {
+    Revisit::Every => (records.handles(), Some(records.displayed())),
+    Revisit::Nodes(mut handles, moved) => {
+      if moved {
+        handles.extend(
+          records
+            .restyle
+            .interactive()
+            .filter(|handle| records.interaction_moved(*handle)),
+        );
+      }
 
-    handles.extend(moving);
+      let paragraphs: Vec<Handle> = handles
+        .iter()
+        .filter(|handle| is_inline_run(records, **handle))
+        .filter_map(|handle| enclosing_paragraph(records, *handle))
+        .collect();
 
-    if moved {
-      handles.extend(
-        records
-          .interactive
-          .iter()
-          .copied()
-          .filter(|handle| records.interaction_moved(*handle)),
-      );
+      handles.extend(paragraphs);
+      handles.sort_unstable();
+      handles.dedup();
+
+      (handles, None)
     }
-
-    let paragraphs: Vec<Handle> = handles
-      .iter()
-      .filter(|handle| is_inline_run(records, **handle))
-      .filter_map(|handle| enclosing_paragraph(records, *handle))
-      .collect();
-
-    handles.extend(paragraphs);
-    handles.sort_unstable();
-    handles.dedup();
-
-    (handles, None)
   };
 
   handles.sort_by_key(|handle| {
@@ -461,7 +453,7 @@ fn revisited(records: &mut Records) -> (Vec<Handle>, Option<FxHashSet<Handle>>) 
 /// to; `None` for a node outside the layout. A node out of the display runs no motion
 /// and forgets its presentation, so it shows afresh once `displayed` again.
 fn restyle_one(records: &mut Records, handle: Handle, displayed: bool) -> Option<Restyled> {
-  let generation = records.generation;
+  let generation = records.restyle.generation();
   let now = records.now();
   let reduced = records.reduced_motion;
   let record = records.record_mut(handle)?;
@@ -475,7 +467,7 @@ fn restyle_one(records: &mut Records, handle: Handle, displayed: bool) -> Option
       record.hidden = true;
       record.in_motion = false;
       record.kind.forget_presentation();
-      records.interactive.remove(&handle);
+      records.restyle.read_interaction(handle, false);
     }
 
     return Some(taffy_style_of(records, handle));
@@ -498,14 +490,8 @@ fn restyle_one(records: &mut Records, handle: Handle, displayed: bool) -> Option
       reads_interaction,
     } = targets(records, handle, fresh)?;
 
-    match reads_interaction {
-      Some(true) => {
-        records.interactive.insert(handle);
-      }
-      Some(false) => {
-        records.interactive.remove(&handle);
-      }
-      None => {}
+    if let Some(read) = reads_interaction {
+      records.restyle.read_interaction(handle, read);
     }
 
     let record = records.record_mut(handle)?;
@@ -538,7 +524,7 @@ fn restyle_one(records: &mut Records, handle: Handle, displayed: bool) -> Option
     records.motion_active |= active;
 
     if active {
-      records.moving.push(handle);
+      records.restyle.keep_moving(handle);
     }
 
     if repaint {
@@ -855,7 +841,7 @@ fn taffy_style_of(records: &Records, handle: Handle) -> Restyled {
 /// Hands every laid-out node its flattened children, where the tree changed since the
 /// last layout.
 pub(crate) fn rebuild_children(records: &mut Records) {
-  if !std::mem::take(&mut records.structure_dirty) {
+  if !records.restyle.take_structure() {
     return;
   }
 

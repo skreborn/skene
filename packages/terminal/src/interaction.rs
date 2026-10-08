@@ -764,7 +764,10 @@ impl Records {
     };
     let was_open = std::mem::replace(held, open);
 
-    self.restyle_all |= was_open != open;
+    if was_open != open {
+      self.restyle.revisit_every();
+    }
+
     self.layout_dirty = true;
     self.paint_dirty = true;
 

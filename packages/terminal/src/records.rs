@@ -9,7 +9,6 @@ mod input;
 mod record;
 mod structure;
 
-use rustc_hash::FxHashSet;
 pub(crate) use skene_foundation::Interaction;
 use skene_foundation::{
   Axis,
@@ -24,7 +23,7 @@ use skene_foundation::{
   Shortcut,
   Timers,
 };
-use skene_layout::Tree;
+use skene_layout::{Restyle, Tree};
 
 use self::environment::MediaState;
 pub(crate) use self::{
@@ -143,17 +142,12 @@ pub(crate) struct Records {
   pub(crate) title: Option<String>,
   /// Whether the title changed since the terminal was last told it.
   pub(crate) title_dirty: bool,
-  /// The resolution generation: moves when definitions, the environment or a control's
-  /// state change, invalidating every resolved style.
-  pub(crate) generation: u64,
   /// How many layouts have been computed.
   pub(crate) layout_generation: u64,
   /// How many taffy styles have been written.
   pub(crate) set_style_calls: u64,
   /// How many node styles have been resolved from their declarations.
   pub(crate) style_resolutions: u64,
-  /// Whether the tree changed since the layout tree's children were last handed over.
-  pub(crate) structure_dirty: bool,
   /// Whether anything the layout reads changed since it was last computed.
   pub(crate) layout_dirty: bool,
   /// Whether the whole frame repaints; a change confined to a node damages it instead.
@@ -161,19 +155,10 @@ pub(crate) struct Records {
   /// Whether a node's screen rectangle may have moved since the last paint measured
   /// them: the layout, a scroll offset or a shadow's reach changed.
   pub(crate) covers_stale: bool,
-  /// Whether the next restyle resolves every node: the definitions, the environment or
-  /// what is displayed moved.
-  pub(crate) restyle_all: bool,
-  /// The nodes the next restyle revisits beside those in motion: each changed a
-  /// declaration, its text, its value or its measure since the last one.
-  pub(crate) restyle_queue: Vec<Handle>,
-  /// The nodes whose last resolution read their interaction, which the next restyle
-  /// revisits where it moved.
-  pub(crate) interactive: FxHashSet<Handle>,
-  /// The nodes whose motion was still running at the last restyle.
-  pub(crate) moving: Vec<Handle>,
-  /// The scene's interaction generation the last restyle resolved against.
-  pub(crate) interaction_seen: u64,
+  /// What moved since the last restyle: the resolution generation, moving when
+  /// definitions, the environment or a control's state change, and the nodes the next
+  /// restyle revisits.
+  pub(crate) restyle: Restyle,
   /// Whether a key asked the app to quit.
   pub(crate) quit: bool,
   /// The clock motion samples against.
@@ -258,19 +243,13 @@ impl Records {
       reveal: None,
       title: None,
       title_dirty: false,
-      generation: 1,
       layout_generation: 0,
       set_style_calls: 0,
       style_resolutions: 0,
-      structure_dirty: true,
       layout_dirty: true,
       paint_dirty: true,
       covers_stale: true,
-      restyle_all: true,
-      restyle_queue: Vec::new(),
-      interactive: FxHashSet::default(),
-      moving: Vec::new(),
-      interaction_seen: 0,
+      restyle: Restyle::new(),
       quit: false,
       clock: Clock::Manual(0.),
       reduced_motion: false,
@@ -294,7 +273,7 @@ impl Records {
     let mut record = Record::new(kind);
 
     record.node = Some(node);
-    self.structure_dirty = true;
+    self.restyle.move_structure();
 
     let _replaced = self.by_node.insert(node, record);
   }
@@ -322,13 +301,13 @@ impl Records {
   /// stale and hands the layout what it measures by.
   #[inline(always)]
   pub(crate) fn queue_restyle(&mut self, handle: Handle) {
-    self.restyle_queue.push(handle);
+    self.restyle.queue(handle);
   }
 
   /// Measures every node's text again, after the terminal's clustering changed: each
   /// entry's clusters, and each laid-out node's measurement.
   pub(crate) fn remeasure(&mut self) {
-    self.restyle_all = true;
+    self.restyle.revisit_every();
 
     for handle in self.handles() {
       let Some(record) = self.record_mut(handle)
@@ -364,7 +343,7 @@ impl Records {
 
     self.overlays.retain(|overlay| *overlay != handle);
     self.entries.retain(|entry| *entry != handle);
-    self.interactive.remove(&handle);
+    self.restyle.read_interaction(handle, false);
 
     if let Some(rect) = record.painted {
       self.damaged_rects.push(rect);
@@ -391,7 +370,7 @@ impl Records {
     }
 
     self.invalidate_selection(handle);
-    self.structure_dirty = true;
+    self.restyle.move_structure();
     self.paint_dirty = true;
   }
 }

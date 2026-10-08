@@ -133,7 +133,7 @@ impl Records {
   /// Notes that the structure the scene places changed: the layout tree follows it
   /// and the frame repaints.
   pub(crate) const fn note_structure(&mut self) {
-    self.structure_dirty = true;
+    self.restyle.move_structure();
     self.paint_dirty = true;
   }
 

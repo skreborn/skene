@@ -4,11 +4,13 @@
 //! mapped onto taffy's styles, generic over the platform's scalar, a unit of which is
 //! one unit of the layout ([`BoxLayout`]), a tree keyed by the scene's nodes, retained
 //! across layouts and written node by node or by a walk of the scene, each node's part
-//! classified by its platform ([`Tree`]), and a paragraph of inline runs laid out as one text, each
-//! measured by its platform's metrics ([`Paragraph`]). The web lays out through CSS and
-//! needs none of it.
+//! classified by its platform ([`Tree`]), what moved since a platform last restyled its
+//! tree and so the nodes it revisits next ([`Restyle`]), and a paragraph of inline runs
+//! laid out as one text, each measured by its platform's metrics ([`Paragraph`]). The
+//! web lays out through CSS and needs none of it.
 
 mod paragraph;
+mod restyle;
 mod tree;
 
 use skene_foundation::{
@@ -38,6 +40,7 @@ use taffy::{
 
 pub use self::{
   paragraph::{Content, Inline, Metrics, Paragraph, Placed},
+  restyle::{Restyle, Revisit},
   tree::{Frames, Leaf, Part, Tree},
 };
 

@@ -59,11 +59,10 @@ impl Records {
   /// moved interaction, a layout or structure change, or a damaged node.
   pub(crate) fn needs_frame(&self) -> bool {
     self.paint_dirty
-      || self.restyle_all
-      || !self.restyle_queue.is_empty()
-      || Scene::<Terminal>::read(Scene::interaction_generation) != self.interaction_seen
+      || self
+        .restyle
+        .is_pending(Scene::<Terminal>::read(Scene::interaction_generation))
       || self.layout_dirty
-      || self.structure_dirty
       || self.frame_clock_running()
       || !self.damaged.is_empty()
       || !self.damaged_rects.is_empty()

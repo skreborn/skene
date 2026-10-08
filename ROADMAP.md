@@ -40,13 +40,15 @@ in a code comment.
     the hydration swap goes, the drawn face remaining elsewhere.
 2. **Tests that exercise what users see.** Headless becomes the web's real stand-in,
     and every tier asserts through roles, text and pixels.
-    - The terminal's retained runtime beyond its layout tree (the incremental restyle,
-    the damage and the measured rectangles, hit testing, focus, capture, wheel
-    latching, field editing, selection, motion) moves into `skene-layout`, generic over
-    the platform's scalar, which holds the style mapping, the `Tree` both keep across
-    frames, the `Paragraph` headless lays its inline runs out as, and the frames
-    headless hits through, clipped and scrolled as a browser's are: headless writes its
-    tree through the incremental restyle, where it walks the whole scene every frame;
+    - The terminal's retained runtime beyond its layout tree and its restyle's schedule
+    (the restyle's resolution caches and presentation, the damage and the measured
+    rectangles, hit testing, focus, capture, wheel latching, field editing, selection,
+    motion) moves into `skene-layout`, generic over the platform's scalar, which holds
+    the style mapping, the `Tree` both keep across frames, the `Restyle` the terminal
+    schedules its restyle by, the `Paragraph` headless lays its inline runs out as, and
+    the frames headless hits through, clipped and scrolled as a browser's are: headless
+    writes its tree through the incremental restyle, where it walks the whole scene
+    every frame;
     the terminal lays its paragraphs and their inline boxes out through the shared
     `Paragraph`, its cells, tab stops and text sizes as the metrics, where it keeps a
     wrap of its own; the terminal hits through the shared frames; the layout store

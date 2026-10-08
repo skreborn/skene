@@ -2657,7 +2657,6 @@ dependencies = [
  "skene-simple-terminal",
  "smallvec",
  "tracing",
- "unicode-linebreak",
  "unicode-segmentation",
  "unicode-width",
  "vt100",

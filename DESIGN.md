@@ -557,8 +557,9 @@ Condition     = Media | State | And | Or
   one across frames, each node's style, text and children written where they changed,
   and the headless platform builds one from the scene on every frame, at the values
   its motion presents. There a box whose children are all inline runs lays them out as
-  one `Paragraph`, wrapping between words across them, a line as tall as its tallest
-  run and a span placed in a rectangle per line it is on, and every run is measured by
+  one `Paragraph`, wrapping between words across them and around an inline box, laid
+  out at its content's size first, a line as tall as its tallest run or box and a span
+  placed in a rectangle per line it is on, and every run is measured by
   approximate metrics (a cluster half its font size wide, a line its font size times
   its line height tall, both as the typography in force sets them). Headless reports
   each box's size to the observers bound to it and answers `layout_rect`,

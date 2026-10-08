@@ -528,3 +528,65 @@ fn a_line_is_as_tall_as_its_tallest_span() {
 
   owner.dispose();
 }
+
+/// An inline box lays out at its content's size among its paragraph's text, its line as
+/// tall as the box, and a point finds the view inside it.
+#[test]
+fn an_inline_box_flows_among_its_paragraphs_text() {
+  reset();
+
+  let owner = Owner::new();
+  let paragraph = owner.enter(|| {
+    RichText::new()
+      .add_spans([
+        Span::new("ab "),
+        Span::view(sized(20., 30.)),
+        Span::new(" cd"),
+      ])
+      .build()
+  });
+  let [before, inline, after] = content(paragraph)[..]
+  else {
+    panic!("three spans");
+  };
+  let [view] = content(inline)[..]
+  else {
+    panic!("one view");
+  };
+
+  assert_eq!(layout_rect(paragraph), Some(rect(0., 0., 1024., 30.)));
+  assert_eq!(layout_rect(before), Some(rect(0., 6., 24., 24.)));
+  assert_eq!(layout_rect(inline), Some(rect(24., 0., 20., 30.)));
+  assert_eq!(layout_rect(view), Some(rect(24., 0., 20., 30.)));
+  assert_eq!(layout_rect(after), Some(rect(44., 6., 24., 24.)));
+  assert_eq!(node_at(Point::new(30., 10.)), Some(view));
+
+  owner.dispose();
+}
+
+/// A line may end before an inline box with no blank between them.
+#[test]
+fn a_line_may_end_before_an_inline_box() {
+  reset();
+
+  let owner = Owner::new();
+  let narrow = owner.enter(|| {
+    Container::new()
+      .set_width(Dimension::Length(30.))
+      .set_child(RichText::new().add_spans([Span::new("abc"), Span::view(sized(20., 30.))]))
+      .build()
+  });
+  let [paragraph] = content(narrow)[..]
+  else {
+    panic!("one paragraph");
+  };
+  let [_, inline] = content(paragraph)[..]
+  else {
+    panic!("two spans");
+  };
+
+  assert_eq!(layout_rect(paragraph), Some(rect(0., 0., 30., 54.)));
+  assert_eq!(layout_rect(inline), Some(rect(0., 24., 20., 30.)));
+
+  owner.dispose();
+}

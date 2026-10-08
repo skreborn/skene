@@ -1,5 +1,5 @@
 //! A paragraph: inline runs laid out as one text, wrapping across them, each measured by
-//! its platform's metrics.
+//! its platform's metrics, and the boxes laid out among them.
 
 use skene_foundation::{NodeId, Point, Rect, Size};
 use taffy::prelude::AvailableSpace;
@@ -20,8 +20,8 @@ pub trait Metrics {
   fn line_height(&self) -> f32;
 }
 
-/// One run of a paragraph: the node it lays out, the groups around it, its text and the
-/// metrics it measures by.
+/// One run of a paragraph: the node it lays out, the groups around it, what it flows and
+/// the metrics it measures its text by.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Inline<M> {
   /// The run's node.
@@ -29,18 +29,28 @@ pub struct Inline<M> {
   /// The groups around the run within the paragraph, outermost first, each laid out
   /// where its runs are.
   pub groups: Vec<NodeId>,
-  /// The run's text.
-  pub text: String,
+  /// What the run flows among the paragraph's text.
+  pub content: Content,
   /// What measures the run's text.
   pub metrics: M,
 }
 
+/// What a run of a paragraph flows among its text.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Content {
+  /// Text, wrapped between its words.
+  Text(String),
+  /// A box laid out on its own at the size it holds, which its tree sets before the
+  /// paragraph measures, flowing as one piece that a line may end before or after.
+  Box(Size<f32>),
+}
+
 /// Inline runs laid out as one text, each run's clusters measured by its metrics `M`.
 ///
-/// The text wraps between words, after the blanks that end them, and at each newline; a
-/// word runs across runs where nothing breaks it. A line is as tall as the tallest run
-/// on it, each run sitting on its bottom, and as wide as its text without the blanks it
-/// ends in, which take no room on it.
+/// The text wraps between words, after the blanks that end them, at each newline and
+/// around each box; a word runs across runs where nothing breaks it. A line is as tall
+/// as the tallest run or box on it, each sitting on its bottom, and as wide as its text
+/// without the blanks it ends in, which take no room on it.
 #[derive(Debug, Clone, PartialEq)]
 #[must_use]
 pub struct Paragraph<M> {
@@ -90,32 +100,53 @@ impl<M: Metrics> Paragraph<M> {
     Self { runs }
   }
 
+  /// How tall a line holding the run at `index` is at least: its text's line height, or
+  /// its box's height.
+  fn height(&self, index: usize) -> f32 {
+    let run = &self.runs[index];
+
+    match run.content {
+      Content::Text(_) => run.metrics.line_height(),
+      Content::Box(size) => size.height,
+    }
+  }
+
   /// The lines the text wraps into within `limit`, or unwrapped but at its newlines.
   fn lines(&self, limit: Option<f32>) -> Vec<Line> {
-    let clusters: Vec<(usize, &str, f32)> = self
-      .runs
-      .iter()
-      .enumerate()
-      .flat_map(|(index, run)| {
-        run
-          .text
-          .graphemes(true)
-          .map(move |cluster| (index, cluster, run.metrics.advance(cluster)))
-      })
-      .collect();
+    let mut clusters = Vec::new();
+
+    for (index, run) in self.runs.iter().enumerate() {
+      match &run.content {
+        Content::Text(text) => clusters.extend(text.graphemes(true).map(|text| Cluster {
+          run: index,
+          text,
+          advance: run.metrics.advance(text),
+          boxed: false,
+        })),
+        Content::Box(size) => clusters.push(Cluster {
+          run: index,
+          text: "",
+          advance: size.width,
+          boxed: true,
+        }),
+      }
+    }
+
     let mut lines = Vec::new();
-    let Some(&(first, ..)) = clusters.first()
+    let Some(first) = clusters.first()
     else {
       return lines;
     };
-    let mut line = self.line(first);
+    let mut line = self.line(first.run);
     let mut advance = 0_f32;
     let mut index = 0;
 
     while index < clusters.len() {
-      let (run, cluster, _) = clusters[index];
+      let Cluster {
+        run, text, boxed, ..
+      } = clusters[index];
 
-      if matches!(cluster, "\n" | "\r\n") {
+      if matches!(text, "\n" | "\r\n") {
         lines.push(std::mem::replace(&mut line, self.line(run)).trimmed(advance));
         advance = 0.;
         index += 1;
@@ -125,13 +156,24 @@ impl<M: Metrics> Paragraph<M> {
 
       let start = index;
 
-      while index < clusters.len() && !matches!(clusters[index].1, " " | "\n" | "\r\n") {
+      if boxed {
         index += 1;
       }
+      else {
+        while index < clusters.len()
+          && !clusters[index].boxed
+          && !matches!(clusters[index].text, " " | "\n" | "\r\n")
+        {
+          index += 1;
+        }
+      }
 
-      let ink: f32 = clusters[start..index].iter().map(|cluster| cluster.2).sum();
+      let ink: f32 = clusters[start..index]
+        .iter()
+        .map(|cluster| cluster.advance)
+        .sum();
 
-      while index < clusters.len() && clusters[index].1 == " " {
+      while index < clusters.len() && !clusters[index].boxed && clusters[index].text == " " {
         index += 1;
       }
 
@@ -142,11 +184,16 @@ impl<M: Metrics> Paragraph<M> {
 
       line.width = advance + ink;
 
-      for &(run, _, width) in &clusters[start..index] {
+      for &Cluster {
+        run,
+        advance: width,
+        ..
+      } in &clusters[start..index]
+      {
         match line.pieces.last_mut() {
           Some(piece) if piece.run == run => piece.width += width,
           _ => {
-            let height = self.runs[run].metrics.line_height();
+            let height = self.height(run);
 
             line.height = if line.pieces.is_empty() {
               height
@@ -176,9 +223,19 @@ impl<M: Metrics> Paragraph<M> {
     Line {
       pieces: Vec::new(),
       width: 0.,
-      height: self.runs[index].metrics.line_height(),
+      height: self.height(index),
     }
   }
+}
+
+/// One cluster of a paragraph's text, or one of its boxes: the run it belongs to, its
+/// text, how far it advances its line, and whether it is a box.
+#[derive(Clone, Copy)]
+struct Cluster<'a> {
+  run: usize,
+  text: &'a str,
+  advance: f32,
+  boxed: bool,
 }
 
 impl<M: Metrics> Leaf for Paragraph<M> {
@@ -211,7 +268,7 @@ impl<M: Metrics> Leaf for Paragraph<M> {
     for line in self.lines(Some(content.size.width)) {
       for piece in &line.pieces {
         let run = &self.runs[piece.run];
-        let height = run.metrics.line_height();
+        let height = self.height(piece.run);
         let rect = Rect {
           origin: Point::new(content.origin.x + piece.start, top + line.height - height),
           size: Size::new(piece.width, height),
@@ -225,5 +282,22 @@ impl<M: Metrics> Leaf for Paragraph<M> {
     }
 
     placed
+  }
+
+  fn boxes(&self) -> Vec<NodeId> {
+    self
+      .runs
+      .iter()
+      .filter(|run| matches!(run.content, Content::Box(_)))
+      .map(|run| run.node)
+      .collect()
+  }
+
+  fn size_box(&mut self, node: NodeId, size: Size<f32>) {
+    for run in &mut self.runs {
+      if run.node == node && matches!(run.content, Content::Box(_)) {
+        run.content = Content::Box(size);
+      }
+    }
   }
 }

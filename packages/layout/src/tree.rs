@@ -32,6 +32,18 @@ pub trait Leaf {
 
     Vec::new()
   }
+
+  /// The nodes flowing inside the leaf as boxes, each laid out on its own at its
+  /// content's size before the leaf measures and placed where the leaf places it; none
+  /// by default.
+  fn boxes(&self) -> Vec<NodeId> {
+    Vec::new()
+  }
+
+  /// Gives the box `node` flowing inside the leaf the size it laid out at.
+  fn size_box(&mut self, node: NodeId, size: Size<f32>) {
+    let _ = (node, size);
+  }
 }
 
 /// What a node is to the layout, with the platform's leaf context `C`.
@@ -493,11 +505,30 @@ impl<C: Leaf> Tree<C> {
           scroll,
         )
       }
-      Part::Leaf(style, context) => (
-        self.taffy.new_leaf_with_context(style, context).ok()?,
-        Vec::new(),
-        Point::new(0., 0.),
-      ),
+      Part::Leaf(style, mut context) => {
+        for inline in context.boxes() {
+          let Some(laid_out) = self.add::<P>(inline, part, overlays)
+          else {
+            continue;
+          };
+          let max_content = taffy::geometry::Size {
+            width: AvailableSpace::MaxContent,
+            height: AvailableSpace::MaxContent,
+          };
+
+          if self.compute_at(laid_out, max_content).is_ok()
+            && let Ok(layout) = self.taffy.layout(laid_out)
+          {
+            context.size_box(inline, Size::new(layout.size.width, layout.size.height));
+          }
+        }
+
+        (
+          self.taffy.new_leaf_with_context(style, context).ok()?,
+          Vec::new(),
+          Point::new(0., 0.),
+        )
+      }
       Part::Transparent | Part::Absent => return None,
     };
 
@@ -538,7 +569,7 @@ impl<C: Leaf> Tree<C> {
 
   /// Records the rectangle and the clip of every node laid out at or beneath `top`, in
   /// the order they paint: each before what it places and its children, the children
-  /// in order.
+  /// in order, and a box a leaf places at the origin it places it at.
   fn collect(&self, top: taffy::NodeId, frames: &mut Frames) {
     let by_taffy: FxHashMap<taffy::NodeId, (NodeId, Point<f32>)> = self
       .nodes
@@ -547,13 +578,13 @@ impl<C: Leaf> Tree<C> {
       .collect();
     let mut stack = vec![(top, Point::new(0., 0.), Bounds::UNBOUNDED, true)];
 
-    while let Some((current, content, clip, top)) = stack.pop() {
+    while let Some((current, content, clip, placed)) = stack.pop() {
       let (Ok(layout), Ok(style)) = (self.taffy.layout(current), self.taffy.style(current))
       else {
         continue;
       };
-      let origin = if top {
-        Point::new(0., 0.)
+      let origin = if placed {
+        content
       }
       else {
         Point::new(content.x + layout.location.x, content.y + layout.location.y)
@@ -599,11 +630,17 @@ impl<C: Leaf> Tree<C> {
           ),
         };
 
+        let mut boxes = Vec::new();
+
         for (node, rect) in context.place(inside) {
-          if Some(node) != own {
-            frames.add(node, rect, inner);
+          match self.nodes.get(node) {
+            _ if Some(node) == own => {}
+            Some(inline) => boxes.push((inline.taffy, rect.origin, inner, true)),
+            None => frames.add(node, rect, inner),
           }
         }
+
+        stack.extend(boxes.into_iter().rev());
       }
 
       for child in self

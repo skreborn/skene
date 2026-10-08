@@ -14,6 +14,16 @@ impl core::fmt::Debug for skene_layout::Borders
 pub fn skene_layout::Borders::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::Copy for skene_layout::Borders
 impl core::marker::StructuralPartialEq for skene_layout::Borders
+pub enum skene_layout::Content
+pub skene_layout::Content::Box(skene_foundation::spine::values::size::Size<f32>)
+pub skene_layout::Content::Text(alloc::string::String)
+impl core::clone::Clone for skene_layout::Content
+pub fn skene_layout::Content::clone(&self) -> skene_layout::Content
+impl core::cmp::PartialEq for skene_layout::Content
+pub fn skene_layout::Content::eq(&self, &skene_layout::Content) -> bool
+impl core::fmt::Debug for skene_layout::Content
+pub fn skene_layout::Content::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for skene_layout::Content
 pub enum skene_layout::Part<C>
 pub skene_layout::Part::Absent
 pub skene_layout::Part::Box(taffy::style::Style, skene_foundation::spine::values::point::Point<f32>)
@@ -36,10 +46,10 @@ pub fn skene_layout::Frames::default() -> skene_layout::Frames
 impl core::fmt::Debug for skene_layout::Frames
 pub fn skene_layout::Frames::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_layout::Inline<M>
+pub skene_layout::Inline::content: skene_layout::Content
 pub skene_layout::Inline::groups: alloc::vec::Vec<skene_foundation::spine::node::NodeId>
 pub skene_layout::Inline::metrics: M
 pub skene_layout::Inline::node: skene_foundation::spine::node::NodeId
-pub skene_layout::Inline::text: alloc::string::String
 impl<M: core::clone::Clone> core::clone::Clone for skene_layout::Inline<M>
 pub fn skene_layout::Inline<M>::clone(&self) -> skene_layout::Inline<M>
 impl<M: core::cmp::PartialEq> core::cmp::PartialEq for skene_layout::Inline<M>
@@ -58,8 +68,10 @@ impl<M: core::cmp::PartialEq> core::marker::StructuralPartialEq for skene_layout
 impl<M: core::fmt::Debug> core::fmt::Debug for skene_layout::Paragraph<M>
 pub fn skene_layout::Paragraph<M>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<M: skene_layout::Metrics> skene_layout::Leaf for skene_layout::Paragraph<M>
+pub fn skene_layout::Paragraph<M>::boxes(&self) -> alloc::vec::Vec<skene_foundation::spine::node::NodeId>
 pub fn skene_layout::Paragraph<M>::measure(&self, taffy::geometry::Size<core::option::Option<f32>>, taffy::geometry::Size<taffy::style::available_space::AvailableSpace>) -> skene_foundation::spine::values::size::Size<f32>
 pub fn skene_layout::Paragraph<M>::place(&self, skene_foundation::spine::values::rect::Rect<f32>) -> alloc::vec::Vec<(skene_foundation::spine::node::NodeId, skene_foundation::spine::values::rect::Rect<f32>)>
+pub fn skene_layout::Paragraph<M>::size_box(&mut self, skene_foundation::spine::node::NodeId, skene_foundation::spine::values::size::Size<f32>)
 pub struct skene_layout::Place
 pub skene_layout::Place::borders: skene_layout::Borders
 pub skene_layout::Place::in_stack: bool
@@ -100,11 +112,15 @@ impl<N: skene_foundation::spine::scalar::Scalar, X: skene_foundation::spine::ext
 pub fn skene_foundation::spine::box_style::BoxStyle<N, skene_foundation::spine::shape::Plain, X>::fold_into(&self, &mut taffy::style::Style, skene_layout::Place)
 pub fn skene_foundation::spine::box_style::BoxStyle<N, skene_foundation::spine::shape::Plain, X>::taffy_style(&self, skene_foundation::spine::values::layout::Layout, skene_layout::Place) -> taffy::style::Style
 pub trait skene_layout::Leaf
+pub fn skene_layout::Leaf::boxes(&self) -> alloc::vec::Vec<skene_foundation::spine::node::NodeId>
 pub fn skene_layout::Leaf::measure(&self, taffy::geometry::Size<core::option::Option<f32>>, taffy::geometry::Size<taffy::style::available_space::AvailableSpace>) -> skene_foundation::spine::values::size::Size<f32>
 pub fn skene_layout::Leaf::place(&self, skene_foundation::spine::values::rect::Rect<f32>) -> alloc::vec::Vec<(skene_foundation::spine::node::NodeId, skene_foundation::spine::values::rect::Rect<f32>)>
+pub fn skene_layout::Leaf::size_box(&mut self, skene_foundation::spine::node::NodeId, skene_foundation::spine::values::size::Size<f32>)
 impl<M: skene_layout::Metrics> skene_layout::Leaf for skene_layout::Paragraph<M>
+pub fn skene_layout::Paragraph<M>::boxes(&self) -> alloc::vec::Vec<skene_foundation::spine::node::NodeId>
 pub fn skene_layout::Paragraph<M>::measure(&self, taffy::geometry::Size<core::option::Option<f32>>, taffy::geometry::Size<taffy::style::available_space::AvailableSpace>) -> skene_foundation::spine::values::size::Size<f32>
 pub fn skene_layout::Paragraph<M>::place(&self, skene_foundation::spine::values::rect::Rect<f32>) -> alloc::vec::Vec<(skene_foundation::spine::node::NodeId, skene_foundation::spine::values::rect::Rect<f32>)>
+pub fn skene_layout::Paragraph<M>::size_box(&mut self, skene_foundation::spine::node::NodeId, skene_foundation::spine::values::size::Size<f32>)
 pub trait skene_layout::Metrics
 pub fn skene_layout::Metrics::advance(&self, &str) -> f32
 pub fn skene_layout::Metrics::line_height(&self) -> f32

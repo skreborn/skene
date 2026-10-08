@@ -14,6 +14,7 @@ use skene_foundation::{
   Point,
   RunPlacement,
   Scene,
+  Size,
   StaticBoxStyle,
   StaticLeaf,
   typography,
@@ -22,6 +23,7 @@ use skene_foundation::{
 use skene_layout::{
   Borders,
   BoxLayout,
+  Content,
   Frames,
   Inline,
   Metrics,
@@ -29,7 +31,7 @@ use skene_layout::{
   Part,
   Place,
   Tree,
-  taffy::style::Style,
+  taffy::style::{Display, Style},
 };
 
 use crate::{
@@ -82,8 +84,8 @@ pub(crate) fn lay_out() -> Frames {
 
 /// What `node` is to the layout: a box styled from its resolved style, a box whose
 /// children are all inline runs a paragraph of them, a run a paragraph of its own text,
-/// an open overlay out of the flow, an anchor or a scope transparent, and a hidden box or
-/// a closed overlay left out.
+/// an inline box a box around its view, an open overlay out of the flow, an anchor or a
+/// scope transparent, and a hidden box or a closed overlay left out.
 fn part(node: NodeId) -> Part<Measured> {
   let Some(env) = Env::of(&Records, node)
   else {
@@ -112,6 +114,7 @@ fn part(node: NodeId) -> Part<Measured> {
         true,
       ),
       Kind::Overlay(_) => Shape::Absent,
+      Kind::Run(props) if props.placement == RunPlacement::Embedded => Shape::Embedded,
       Kind::Run(_) => Shape::Run(record.text.clone()),
       Kind::Anchor | Kind::Scope => Shape::Transparent,
     })
@@ -156,17 +159,15 @@ fn part(node: NodeId) -> Part<Measured> {
         None => Part::Box(style, scroll),
       }
     }
-    Some(Shape::Run(text)) => {
-      let layout = env.with_resolver(|resolver| {
-        Scene::<Headless>::read(|scene| scene.record(node)?.annotation().cloned())
-          .map(|annotation| annotation.resolve(resolver))
-      });
-      let mut taffy = Style::default();
+    Some(Shape::Embedded) => {
+      let mut taffy = run_style(&env, node, place);
 
-      match layout {
-        Some(layout) => layout.fold_into(&mut taffy, place),
-        None => place.apply(&mut taffy),
-      }
+      taffy.display = Display::Flex;
+
+      Part::Box(taffy, Point::new(0., 0.))
+    }
+    Some(Shape::Run(text)) => {
+      let taffy = run_style(&env, node, place);
 
       let children = placed_children(node);
       let mut runs = Vec::new();
@@ -179,7 +180,7 @@ fn part(node: NodeId) -> Part<Measured> {
         runs = vec![Inline {
           node,
           groups: Vec::new(),
-          text,
+          content: Content::Text(text),
           metrics: metrics(node),
         }];
       }
@@ -189,8 +190,26 @@ fn part(node: NodeId) -> Part<Measured> {
   }
 }
 
+/// The taffy style the run `node` takes from its place and the wrapper's properties it
+/// carries.
+fn run_style(env: &Env, node: NodeId, place: Place) -> Style {
+  let layout = env.with_resolver(|resolver| {
+    Scene::<Headless>::read(|scene| scene.record(node)?.annotation().cloned())
+      .map(|annotation| annotation.resolve(resolver))
+  });
+  let mut taffy = Style::default();
+
+  match layout {
+    Some(layout) => layout.fold_into(&mut taffy, place),
+    None => place.apply(&mut taffy),
+  }
+
+  taffy
+}
+
 /// The paragraph the box `node` lays its children out as, where every child it places
-/// is an inline run, a group of them, or an anchor or a scope holding them.
+/// is an inline run, an inline box, a group of them, or an anchor or a scope holding
+/// them.
 fn paragraph(node: NodeId) -> Option<Measured> {
   let children = placed_children(node);
   let mut runs = Vec::new();
@@ -202,15 +221,16 @@ fn paragraph(node: NodeId) -> Option<Measured> {
   inline.then(|| Paragraph::new(runs))
 }
 
-/// Adds the runs `node` holds to a paragraph's `runs`, inside `groups`: a text run
-/// itself, a group's runs inside it, and an anchor's or a scope's in its place; `false`
-/// where it holds anything else, an inline box among them.
+/// Adds the runs `node` holds to a paragraph's `runs`, inside `groups`: a text run or
+/// an inline box itself, a group's runs inside it, and an anchor's or a scope's in its
+/// place; `false` where it holds anything else.
 fn inlines(node: NodeId, groups: &[NodeId], runs: &mut Vec<Inline<Approximate>>) -> bool {
   let flow = with_records(|records| {
     let record = records.record(node)?;
 
     Some(match &record.kind {
       Kind::Run(props) if props.placement == RunPlacement::Inline => Flow::Run(record.text.clone()),
+      Kind::Run(props) if props.placement == RunPlacement::Embedded => Flow::Box,
       Kind::Anchor | Kind::Scope => Flow::Transparent,
       _ => Flow::Other,
     })
@@ -225,7 +245,17 @@ fn inlines(node: NodeId, groups: &[NodeId], runs: &mut Vec<Inline<Approximate>>)
       runs.push(Inline {
         node,
         groups: groups.to_vec(),
-        text,
+        content: Content::Text(text),
+        metrics: metrics(node),
+      });
+
+      true
+    }
+    Some(Flow::Box) => {
+      runs.push(Inline {
+        node,
+        groups: groups.to_vec(),
+        content: Content::Box(Size::new(0., 0.)),
         metrics: metrics(node),
       });
 
@@ -246,6 +276,7 @@ fn inlines(node: NodeId, groups: &[NodeId], runs: &mut Vec<Inline<Approximate>>)
 /// What a node is to the paragraph it flows in.
 enum Flow {
   Run(String),
+  Box,
   Transparent,
   Other,
 }
@@ -319,6 +350,7 @@ impl BoxFieldVisitor<f32, WebStyle> for Presented<'_> {
 /// What a record holds that its part is made from, read out of the records.
 enum Shape {
   Box(Layout, Box<StaticBoxStyle<Headless>>, Point<f32>, bool),
+  Embedded,
   Run(String),
   Transparent,
   Absent,

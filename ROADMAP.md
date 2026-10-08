@@ -46,13 +46,12 @@ in a code comment.
     the platform's scalar, which holds the style mapping, the `Tree` the terminal keeps
     across frames and headless builds afresh on each, the `Paragraph` headless lays its
     inline runs out as, and the frames headless hits through, clipped and scrolled as a
-    browser's are: headless keeps its tree across frames as the terminal does; an
-    inline box lays out among its paragraph's text as the terminal's does, where
-    headless lays a paragraph holding one out a run at a time; the terminal lays its
-    paragraphs out through the shared `Paragraph`, its cells as the metrics and its
-    breaks where UAX #14 allows them, where headless breaks after blanks alone; the
-    terminal hits through the shared frames; headless renders pixel snapshots in the
-    pinned font; the layout store becomes the crate the native shells call into.
+    browser's are: headless keeps its tree across frames as the terminal does; the
+    terminal lays its paragraphs and their inline boxes out through the shared
+    `Paragraph`, its cells as the metrics and its breaks where UAX #14 allows them,
+    where headless breaks after blanks and around boxes alone; the terminal hits through
+    the shared frames; headless renders pixel snapshots in the pinned font; the layout
+    store becomes the crate the native shells call into.
     - Conformance by intent: once the shells stop sharing views, a scenario states what
     it builds (a button labelled Save that counts its clicks) and each platform's
     driver builds it in its own vocabulary, so one suite keeps holding every shell to

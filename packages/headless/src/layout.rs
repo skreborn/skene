@@ -1,6 +1,6 @@
 //! The layout of the scene: each record's part in it, a box styled from its resolved
-//! style and a paragraph of runs measured by the platform's approximate metrics, laid out
-//! through the shared layout at the viewport, on a tree kept across frames.
+//! style and a paragraph of runs measured in the pinned face, laid out through the
+//! shared layout at the viewport, on a tree kept across frames.
 
 use std::cell::RefCell;
 
@@ -39,6 +39,7 @@ use skene_layout::{
 use crate::{
   Headless,
   SlotValue,
+  font::Pinned,
   records::{DEFAULT_VIEWPORT, Kind},
   resolve::{self, Env, Records},
   with_records,
@@ -48,17 +49,19 @@ use crate::{
 /// sets one, as a multiple of its font size.
 const LINE_HEIGHT: f32 = 1.5;
 
-/// A run's metrics as the layout measures its text: each grapheme cluster half the font
-/// size wide, each line the font size times the line height tall.
+/// A run's metrics as the layout measures its text: each grapheme cluster as far as the
+/// pinned face advances it at the font size, and the letter spacing past it, each line
+/// the font size times the line height tall.
 #[derive(Debug, Clone, Copy, PartialEq)]
-struct Approximate {
+struct RunMetrics {
   size: f32,
   line_height: f32,
+  spacing: f32,
 }
 
-impl Metrics for Approximate {
-  fn advance(&self, _cluster: &str) -> f32 {
-    self.size / 2.
+impl Metrics for RunMetrics {
+  fn advance(&self, cluster: &str) -> f32 {
+    Pinned::get().advance(cluster, self.size) + self.spacing
   }
 
   fn line_height(&self) -> f32 {
@@ -67,7 +70,7 @@ impl Metrics for Approximate {
 }
 
 /// What the layout measures a leaf by: the runs of its paragraph.
-type Measured = Paragraph<Approximate>;
+type Measured = Paragraph<RunMetrics>;
 
 thread_local! {
   /// The tree the scene lays out on, kept across frames.
@@ -229,7 +232,7 @@ fn paragraph(node: NodeId) -> Option<Measured> {
 /// Adds the runs `node` holds to a paragraph's `runs`, inside `groups`: a text run or
 /// an inline box itself, a group's runs inside it, and an anchor's or a scope's in its
 /// place; `false` where it holds anything else.
-fn inlines(node: NodeId, groups: &[NodeId], runs: &mut Vec<Inline<Approximate>>) -> bool {
+fn inlines(node: NodeId, groups: &[NodeId], runs: &mut Vec<Inline<RunMetrics>>) -> bool {
   let flow = with_records(|records| {
     let record = records.record(node)?;
 
@@ -288,12 +291,12 @@ enum Flow {
 
 /// The metrics the run `node` measures its text by, as its style and the typography in
 /// force set them.
-fn metrics(node: NodeId) -> Approximate {
+fn metrics(node: NodeId) -> RunMetrics {
   let style = with_records(|records| match &records.record(node)?.kind {
     Kind::Run(props) => Some(props.style.clone()),
     _ => None,
   });
-  let (size, line_height) = Env::of(&Records, node)
+  let (size, line_height, spacing) = Env::of(&Records, node)
     .zip(style)
     .map(|(env, style)| {
       env.with_resolver(|resolver| {
@@ -308,14 +311,19 @@ fn metrics(node: NodeId) -> Approximate {
             .ext
             .line_height
             .or_else(|| resolver.keyframe_run_value(&StaticLeaf::from(typography::LINE_HEIGHT))),
+          resolved
+            .ext
+            .letter_spacing
+            .or_else(|| resolver.keyframe_run_value(&StaticLeaf::from(typography::LETTER_SPACING))),
         )
       })
     })
     .unwrap_or_default();
 
-  Approximate {
+  RunMetrics {
     size: size.map_or(Headless::FONT_SIZE, |size| size.0),
     line_height: line_height.unwrap_or(LINE_HEIGHT),
+    spacing: spacing.map_or(0., |spacing| spacing.0),
   }
 }
 

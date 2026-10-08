@@ -143,6 +143,7 @@ pub fn skene_headless::set_document_language(&str)
 pub fn skene_headless::slot_leaf(skene_foundation::spine::node::NodeId, skene_foundation::spine::leaf::Slot) -> core::option::Option<skene_headless::SlotLeaf>
 pub fn skene_headless::take_clipboard_actions() -> alloc::vec::Vec<skene_foundation::spine::values::clipboard::ClipboardAction>
 pub fn skene_headless::text(skene_foundation::spine::node::NodeId) -> core::option::Option<alloc::string::String>
+pub fn skene_headless::text_width(&str, f32) -> f32
 pub fn skene_headless::trigger_blur(skene_foundation::spine::node::NodeId)
 pub fn skene_headless::trigger_change(skene_foundation::spine::node::NodeId, &str)
 pub fn skene_headless::trigger_click(skene_foundation::spine::node::NodeId) -> skene_foundation::spine::events::Prevented

@@ -36,6 +36,7 @@ use skene_headless::{
   node_at,
   reset,
   run_props,
+  text_width,
   trigger_frame,
   trigger_resize,
   trigger_scroll,
@@ -105,8 +106,8 @@ fn a_column_lays_its_children_out_in_turn() {
   owner.dispose();
 }
 
-/// A run measures each cluster half its font size wide and each line one and a half
-/// times its font size tall, wrapping between words where its box is narrower.
+/// A run measures by the platform's metrics, the pinned face at the font size, and
+/// wraps between words at its box's width.
 #[test]
 fn a_run_measures_by_the_platforms_metrics_and_wraps() {
   reset();
@@ -117,7 +118,7 @@ fn a_run_measures_by_the_platforms_metrics_and_wraps() {
       .set_children((
         Row::new().set_children((Text::new("abcd"),)),
         Container::new()
-          .set_width(Dimension::Length(40.))
+          .set_width(Dimension::Length(text_width("aa bb", 16.)))
           .set_child(Text::new("aa bb cc")),
       ))
       .build()
@@ -128,12 +129,12 @@ fn a_run_measures_by_the_platforms_metrics_and_wraps() {
 
   assert_eq!(
     layout_rect(line).map(|rect| rect.size),
-    Some(Size::new(32., 24.))
+    Some(Size::new(text_width("abcd", 16.), 24.))
   );
   assert_eq!(
     layout_rect(wrapped).map(|rect| rect.size.height),
     Some(48.),
-    "two lines: `aa bb` fits 40, `cc` wraps"
+    "two lines: `aa bb` fits, `cc` wraps"
   );
 
   owner.dispose();
@@ -154,7 +155,7 @@ fn a_run_measures_by_the_typography_in_force() {
 
   assert_eq!(
     layout_rect(run).map(|rect| rect.size),
-    Some(Size::new(20., 40.))
+    Some(Size::new(text_width("ab", 20.), 40.))
   );
 
   owner.dispose();
@@ -443,15 +444,26 @@ fn a_paragraphs_spans_flow_on_one_line() {
   else {
     panic!("two spans in the group");
   };
+  let start = text_width("Hello ", 16.);
+  let middle = start + text_width("wor", 16.);
 
   assert_eq!(layout_rect(paragraph), Some(rect(0., 0., 1024., 24.)));
-  assert_eq!(layout_rect(hello), Some(rect(0., 0., 48., 24.)));
-  assert_eq!(layout_rect(group), Some(rect(48., 0., 40., 24.)));
-  assert_eq!(layout_rect(wor), Some(rect(48., 0., 24., 24.)));
-  assert_eq!(layout_rect(ld), Some(rect(72., 0., 16., 24.)));
-  assert_eq!(node_at(Point::new(50., 10.)), Some(wor));
+  assert_eq!(layout_rect(hello), Some(rect(0., 0., start, 24.)));
   assert_eq!(
-    node_at(Point::new(100., 10.)),
+    layout_rect(group),
+    Some(rect(start, 0., text_width("world", 16.), 24.))
+  );
+  assert_eq!(
+    layout_rect(wor),
+    Some(rect(start, 0., text_width("wor", 16.), 24.))
+  );
+  assert_eq!(
+    layout_rect(ld),
+    Some(rect(middle, 0., text_width("ld", 16.), 24.))
+  );
+  assert_eq!(node_at(Point::new(start + 2., 10.)), Some(wor));
+  assert_eq!(
+    node_at(Point::new(200., 10.)),
     Some(paragraph),
     "beyond the text"
   );
@@ -465,10 +477,11 @@ fn a_paragraphs_spans_flow_on_one_line() {
 fn a_paragraph_wraps_across_its_spans() {
   reset();
 
+  let width = text_width("c aaa", 16.);
   let owner = Owner::new();
   let narrow = owner.enter(|| {
     Container::new()
-      .set_width(Dimension::Length(40.))
+      .set_width(Dimension::Length(width))
       .set_child(RichText::new().add_spans([Span::new("c "), Span::new("aaa bb")]))
       .build()
   });
@@ -480,22 +493,23 @@ fn a_paragraph_wraps_across_its_spans() {
   else {
     panic!("two spans");
   };
+  let start = text_width("c ", 16.);
 
-  assert_eq!(layout_rect(paragraph), Some(rect(0., 0., 40., 48.)));
-  assert_eq!(layout_rect(before), Some(rect(0., 0., 16., 24.)));
-  assert_eq!(layout_rect(broken), Some(rect(0., 0., 40., 48.)));
+  assert_eq!(layout_rect(paragraph), Some(rect(0., 0., width, 48.)));
+  assert_eq!(layout_rect(before), Some(rect(0., 0., start, 24.)));
+  assert_eq!(layout_rect(broken), Some(rect(0., 0., width, 48.)));
   assert_eq!(
-    node_at(Point::new(20., 10.)),
+    node_at(Point::new(start + 2., 10.)),
     Some(broken),
     "its first piece"
   );
   assert_eq!(
-    node_at(Point::new(4., 30.)),
+    node_at(Point::new(2., 30.)),
     Some(broken),
     "its second piece"
   );
   assert_eq!(
-    node_at(Point::new(30., 30.)),
+    node_at(Point::new(text_width("bb", 16.) + 4., 30.)),
     Some(paragraph),
     "beside its second piece"
   );
@@ -521,10 +535,14 @@ fn a_line_is_as_tall_as_its_tallest_span() {
   else {
     panic!("two spans");
   };
+  let start = text_width("big ", 32.);
 
   assert_eq!(layout_rect(paragraph), Some(rect(0., 0., 1024., 48.)));
-  assert_eq!(layout_rect(big), Some(rect(0., 0., 64., 48.)));
-  assert_eq!(layout_rect(small), Some(rect(64., 24., 40., 24.)));
+  assert_eq!(layout_rect(big), Some(rect(0., 0., start, 48.)));
+  assert_eq!(
+    layout_rect(small),
+    Some(rect(start, 24., text_width("small", 16.), 24.))
+  );
 
   owner.dispose();
 }
@@ -553,13 +571,17 @@ fn an_inline_box_flows_among_its_paragraphs_text() {
   else {
     panic!("one view");
   };
+  let start = text_width("ab ", 16.);
 
   assert_eq!(layout_rect(paragraph), Some(rect(0., 0., 1024., 30.)));
-  assert_eq!(layout_rect(before), Some(rect(0., 6., 24., 24.)));
-  assert_eq!(layout_rect(inline), Some(rect(24., 0., 20., 30.)));
-  assert_eq!(layout_rect(view), Some(rect(24., 0., 20., 30.)));
-  assert_eq!(layout_rect(after), Some(rect(44., 6., 24., 24.)));
-  assert_eq!(node_at(Point::new(30., 10.)), Some(view));
+  assert_eq!(layout_rect(before), Some(rect(0., 6., start, 24.)));
+  assert_eq!(layout_rect(inline), Some(rect(start, 0., 20., 30.)));
+  assert_eq!(layout_rect(view), Some(rect(start, 0., 20., 30.)));
+  assert_eq!(
+    layout_rect(after),
+    Some(rect(start + 20., 6., text_width(" cd", 16.), 24.))
+  );
+  assert_eq!(node_at(Point::new(start + 6., 10.)), Some(view));
 
   owner.dispose();
 }
@@ -646,7 +668,7 @@ fn a_paragraph_breaks_after_a_hyphen() {
   let owner = Owner::new();
   let narrow = owner.enter(|| {
     Container::new()
-      .set_width(Dimension::Length(48.))
+      .set_width(Dimension::Length(56.))
       .set_child(RichText::new().add_spans([Span::new("well-known")]))
       .build()
   });
@@ -659,8 +681,35 @@ fn a_paragraph_breaks_after_a_hyphen() {
     panic!("one span");
   };
 
-  assert_eq!(layout_rect(paragraph), Some(rect(0., 0., 48., 48.)));
-  assert_eq!(layout_rect(span), Some(rect(0., 0., 40., 48.)));
+  assert_eq!(layout_rect(paragraph), Some(rect(0., 0., 56., 48.)));
+  assert_eq!(
+    layout_rect(span),
+    Some(rect(0., 0., text_width("known", 16.), 48.))
+  );
+
+  owner.dispose();
+}
+
+/// A run's letter spacing widens each of its clusters by it.
+#[test]
+fn letter_spacing_widens_each_cluster() {
+  reset();
+
+  let owner = Owner::new();
+  let row = owner.enter(|| {
+    Row::new()
+      .set_children((Text::new("abc").set_letter_spacing(Length(2.)),))
+      .build()
+  });
+  let [run] = content(row)[..]
+  else {
+    panic!("one run");
+  };
+
+  assert_eq!(
+    layout_rect(run).map(|rect| rect.size.width),
+    Some(text_width("abc", 16.) + 6.)
+  );
 
   owner.dispose();
 }

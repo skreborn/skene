@@ -560,9 +560,10 @@ Condition     = Media | State | And | Or
   runs lays them out as one `Paragraph`, wrapping where the Unicode line breaking
   algorithm allows across them and around an inline box, laid out at its content's size
   first, a line as tall as its tallest run or box and a span placed in a rectangle per
-  line it is on, and every run is measured by approximate metrics (a cluster half its
-  font size wide, a line its font size times its line height tall, both as the
-  typography in force sets them). Headless reports each box's size to the observers
+  line it is on, and every run is measured in the pinned face the conformance suite
+  draws in, Inter's regular (a cluster as far as its glyphs advance at its font size,
+  its letter spacing past it, a line its font size times its line height tall, each as
+  the typography in force sets them). Headless reports each box's size to the observers
   bound to it and answers `layout_rect`, `visible_rect` and, through the frames' paint
   order, `node_at`, a box clipping its overflow along an axis clipping what lies beneath
   it to its padding box there and a box's scroll offsets, as `trigger_scroll` reports

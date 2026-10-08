@@ -7,10 +7,11 @@
 //! and drive events through the `trigger_` seams, each bubbling as on every platform.
 //!
 //! The scene lays out through the shared layout (`skene-layout`) at the viewport on
-//! every frame ([`trigger_frame`], [`trigger_resize`]), each run measured by approximate
-//! metrics: a grapheme cluster half its font size wide, a line its font size times its
-//! line height tall, each from its style or the typography in force, else 16 pixels and
-//! one and a half. A frame reports each box's laid-out
+//! every frame ([`trigger_frame`], [`trigger_resize`]), each run measured in the pinned
+//! face, Inter's regular: a grapheme cluster as far as its glyphs advance at the font
+//! size, its letter spacing past it, and a line its font size times its line height
+//! tall, each from its style or the typography in force, else 16 pixels and one and a
+//! half ([`text_width`] reads the face's widths). A frame reports each box's laid-out
 //! size to the observers bound to it, and [`layout_rect`] reads a fresh layout.
 //!
 //! The environment starts at a 1024 by 768 viewport, the light scheme and no reduced
@@ -40,6 +41,7 @@
 //! [`install_executor`] makes it the thread's spawner ([`reset`] does too), so a
 //! `Resource` built in a test loads when the test pumps.
 
+mod font;
 mod layout;
 mod records;
 mod resolve;
@@ -1163,6 +1165,18 @@ pub fn layout_rect(node: NodeId) -> Option<Rect<f32>> {
   with_records(|records| records.frames = frames);
 
   rect
+}
+
+/// How wide `text` lays out on one line at the font size `size`, without letter
+/// spacing, in the pinned face the layout measures text in: Inter's regular face.
+#[must_use]
+pub fn text_width(text: &str, size: f32) -> f32 {
+  let pinned = font::Pinned::get();
+
+  text
+    .graphemes(true)
+    .map(|cluster| pinned.advance(cluster, size))
+    .sum()
 }
 
 /// The part of [`layout_rect`] the boxes clipping `node` leave showing, empty where they

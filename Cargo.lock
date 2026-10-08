@@ -2569,6 +2569,7 @@ dependencies = [
  "skene-foundation",
  "skene-layout",
  "skene-reactive",
+ "skrifa",
  "unicode-segmentation",
 ]
 

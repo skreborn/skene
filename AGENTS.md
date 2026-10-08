@@ -703,7 +703,11 @@
   `INSTA_UPDATE=always` once a change to the frame is meant, and headless draws every
   page of the conformance suite in the pinned font (`render_to_image`) against its own
   golden (`packages/headless/tests/goldens`), rewritten by `SKENE_GOLDENS=overwrite`
-  as the browser's are. The server tier is the server leaf built
+  as the browser's are, and holds each golden to the browser's golden of its page, both
+  blurred by three pixels, a pixel straying past what rasterizing glyphs apart accounts
+  for failing it; where the engines size a page apart (an entry's intrinsic width),
+  headless follows Chromium, so a page lays such a box out where its size is the
+  layout's. The server tier is the server leaf built
   natively, the byte-exact render snapshot among it. The browser tier first links every
   library's tests for wasm32, so an app's own tests build there, then drives every
   browser binary, several sessions at once (`SKENE_GATE_BROWSERS` sets how many), through

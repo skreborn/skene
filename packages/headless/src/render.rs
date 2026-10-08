@@ -40,7 +40,7 @@ use vello_cpu::{Pixmap, RenderContext, RenderSettings, Resources};
 use crate::{
   Headless,
   font::Pinned,
-  layout::{self, Measured},
+  layout::{self, Text},
   records::Kind,
   resolve::{Env, Records},
   with_records,
@@ -135,13 +135,20 @@ struct Drawing<'a> {
   overlays: VecDeque<NodeId>,
 }
 
+/// The text a text entry draws, read out of its record.
+struct Entry {
+  value: String,
+  placeholder: Option<String>,
+  single_line: bool,
+}
+
 /// What a record holds that its drawing is made from, read out of the records.
 enum Drawn {
   Box {
     layout: Layout,
     style: Box<skene_foundation::StaticBoxStyle<Headless>>,
     overlay: bool,
-    entry: Option<(String, Option<String>)>,
+    entry: Option<Entry>,
     painted: bool,
   },
   Run(String),
@@ -186,7 +193,11 @@ impl Drawing<'_> {
           props.native,
           Some(NativeElement::TextField | NativeElement::TextEditor)
         )
-        .then(|| (record.value.clone(), props.placeholder.clone()))
+        .then(|| Entry {
+          value: record.value.clone(),
+          placeholder: props.placeholder.clone(),
+          single_line: props.native == Some(NativeElement::TextField),
+        })
       };
 
       match &record.kind {
@@ -233,7 +244,7 @@ impl Drawing<'_> {
     node: NodeId,
     layout: Layout,
     style: &skene_foundation::StaticBoxStyle<Headless>,
-    entry: Option<(String, Option<String>)>,
+    entry: Option<Entry>,
     painted: bool,
   ) {
     let (Some(rect), Some(env)) = (self.frames.rect(node), Env::of(&Records, node))
@@ -276,8 +287,8 @@ impl Drawing<'_> {
 
     let content = inset(inset(rect, border), padding);
 
-    if let Some((value, placeholder)) = entry {
-      self.entry(&env, content, &value, placeholder.as_deref());
+    if let Some(entry) = entry {
+      self.entry(&env, content, &entry);
     }
 
     let clips = style.overflow.is_some_and(|overflow| {
@@ -328,29 +339,38 @@ impl Drawing<'_> {
     self.context.pop_layer();
   }
 
-  /// Draws a text entry's `value` in its content box at `content`, or its `placeholder`
-  /// where it holds none, a line to each of its lines.
-  fn entry(&mut self, env: &Env, content: Rect<f32>, value: &str, placeholder: Option<&str>) {
+  /// Draws a text entry's value in its content box at `content`, or its placeholder
+  /// where it holds none, a line to each of its lines: from the box's top, or a single
+  /// line centered in it as a browser centers an `<input>`'s.
+  fn entry(&mut self, env: &Env, content: Rect<f32>, entry: &Entry) {
     let (size, line_height) = layout::typography(env);
     let ink = env.with_resolver(|resolver| {
       resolver
         .keyframe_run_value(&StaticLeaf::from(typography::INK))
         .unwrap_or(BLACK)
     });
-    let (text, color) = match placeholder {
+    let (text, color) = match &entry.placeholder {
       // Chromium's placeholder gray, #757575.
-      Some(placeholder) if value.is_empty() => (placeholder, Color::srgb(0.459, 0.459, 0.459)),
-      _ => (value, ink),
+      Some(placeholder) if entry.value.is_empty() => {
+        (placeholder.as_str(), Color::srgb(0.459, 0.459, 0.459))
+      }
+      _ => (entry.value.as_str(), ink),
     };
     let height = size * line_height;
     let pinned = Pinned::get();
+    let first = if entry.single_line {
+      content.origin.y + (content.size.height - height) / 2.
+    }
+    else {
+      content.origin.y
+    };
 
     for (index, line) in text.split('\n').enumerate() {
       #[expect(
         clippy::cast_precision_loss,
         reason = "an entry's line count stays far below the integers f32 holds exactly"
       )]
-      let top = content.origin.y + height * index as f32;
+      let top = first + height * index as f32;
 
       self.glyphs(
         line,
@@ -364,7 +384,7 @@ impl Drawing<'_> {
 
   /// Draws `paragraph` laid out in a content box at `content`: each cluster's glyphs
   /// in its run's ink and size, each run's decoration, and each inline box.
-  fn text(&mut self, paragraph: &Measured, content: Rect<f32>) {
+  fn text(&mut self, paragraph: &Text, content: Rect<f32>) {
     let mut inks: FxHashMap<NodeId, Ink> = FxHashMap::default();
     let pinned = Pinned::get();
 

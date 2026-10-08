@@ -1,6 +1,7 @@
 //! The layout of the scene: each record's part in it, a box styled from its resolved
-//! style and a paragraph of runs measured in the pinned face, laid out through the
-//! shared layout at the viewport, on a tree kept across frames.
+//! style, a paragraph of runs measured in the pinned face and a text entry at its native
+//! element's size, laid out through the shared layout at the viewport, on a tree kept
+//! across frames.
 
 use std::cell::RefCell;
 
@@ -30,14 +31,16 @@ use skene_layout::{
   Content,
   Frames,
   Inline,
+  Leaf,
   Metrics,
   Paragraph,
   Part,
   Place,
   Tree,
   taffy::{
-    prelude::length,
-    style::{Dimension, Display, Style},
+    self,
+    prelude::{AvailableSpace, length},
+    style::{Dimension, Display, FlexDirection, Style},
   },
 };
 
@@ -86,20 +89,70 @@ impl Metrics for RunMetrics {
   }
 }
 
-/// What the layout measures a leaf by: the runs of its paragraph.
-pub(crate) type Measured = Paragraph<RunMetrics>;
+/// A paragraph of runs, measured in the pinned face.
+pub(crate) type Text = Paragraph<RunMetrics>;
+
+/// What the layout measures a leaf by.
+#[derive(Debug, PartialEq)]
+pub(crate) enum Measured {
+  /// The runs of a paragraph.
+  Text(Text),
+  /// A text entry's native element, its content box this size along each axis its
+  /// style leaves unsized, as an `<input>`'s or a `<textarea>`'s intrinsic size is.
+  Entry(Size<f32>),
+}
+
+impl Leaf for Measured {
+  fn measure(
+    &self,
+    known: taffy::geometry::Size<Option<f32>>,
+    available: taffy::geometry::Size<AvailableSpace>,
+  ) -> Size<f32> {
+    match self {
+      Self::Text(text) => text.measure(known, available),
+      Self::Entry(size) => Size::new(
+        known.width.unwrap_or(size.width),
+        known.height.unwrap_or(size.height),
+      ),
+    }
+  }
+
+  fn place(
+    &self,
+    content: skene_foundation::Rect<f32>,
+  ) -> Vec<(NodeId, skene_foundation::Rect<f32>)> {
+    match self {
+      Self::Text(text) => text.place(content),
+      Self::Entry(_) => Vec::new(),
+    }
+  }
+
+  fn boxes(&self) -> Vec<NodeId> {
+    match self {
+      Self::Text(text) => text.boxes(),
+      Self::Entry(_) => Vec::new(),
+    }
+  }
+
+  fn size_box(&mut self, node: NodeId, size: Size<f32>) {
+    if let Self::Text(text) = self {
+      text.size_box(node, size);
+    }
+  }
+}
 
 thread_local! {
   /// The tree the scene lays out on, kept across frames.
   static TREE: RefCell<Tree<Measured>> = RefCell::new(Tree::new(false));
 }
 
-/// Lays out every tree of the scene at the viewport.
+/// Lays out every tree of the scene at the viewport, each root along a row as the web's
+/// reset lays out the body's children.
 pub(crate) fn lay_out() -> Frames {
   let viewport = with_records(|records| records.viewport).unwrap_or(DEFAULT_VIEWPORT);
   let roots: Vec<NodeId> = Scene::<Headless>::read(|scene| scene.roots().collect());
 
-  TREE.with_borrow_mut(|tree| tree.lay_out::<Headless>(&roots, viewport, part))
+  TREE.with_borrow_mut(|tree| tree.lay_out::<Headless>(&roots, viewport, FlexDirection::Row, part))
 }
 
 /// Forgets every layout, as a fresh platform holds none.
@@ -181,14 +234,14 @@ fn part(node: NodeId) -> Part<Measured> {
       }
 
       if let Some(lines) = entry {
-        size_entry(&mut style, &resolved, &env, lines);
+        return Part::Leaf(style, Measured::Entry(entry_size(&env, lines)));
       }
 
       match (layout == Layout::Document)
         .then(|| paragraph(node))
         .flatten()
       {
-        Some(paragraph) => Part::Leaf(style, paragraph),
+        Some(paragraph) => Part::Leaf(style, Measured::Text(paragraph)),
         None => Part::Box(style, scroll),
       }
     }
@@ -206,7 +259,7 @@ fn part(node: NodeId) -> Part<Measured> {
         fill_viewport(&mut style, &BoxStyle::default());
       }
 
-      Part::Leaf(style, lone(node, text))
+      Part::Leaf(style, Measured::Text(lone(node, text)))
     }
   }
 }
@@ -232,7 +285,7 @@ pub(crate) fn presented(
 
 /// The paragraph the run `node`, outside any paragraph, lays out as: its text, or a
 /// group's runs.
-pub(crate) fn lone(node: NodeId, text: String) -> Measured {
+pub(crate) fn lone(node: NodeId, text: String) -> Text {
   let children = placed_children(node);
   let mut runs = Vec::new();
 
@@ -272,7 +325,7 @@ fn run_style(env: &Env, node: NodeId, place: Place) -> Style {
 /// The paragraph the box `node` lays its children out as, where every child it places
 /// is an inline run, an inline box, a group of them, or an anchor or a scope holding
 /// them.
-pub(crate) fn paragraph(node: NodeId) -> Option<Measured> {
+pub(crate) fn paragraph(node: NodeId) -> Option<Text> {
   let children = placed_children(node);
   let mut runs = Vec::new();
   let inline = !children.is_empty()
@@ -444,39 +497,22 @@ pub(crate) fn typography(env: &Env) -> (f32, f32) {
   })
 }
 
-/// Sizes `style` as the native element of a text entry `lines` tall lays out, as
-/// Chromium sizes one, in the typography in force under `env`: its content box as wide
-/// as [`Pinned::entry_width`] and as tall as its lines, inside the padding and border
-/// `resolved`, its own style, gives it, wherever that style sets no size of its own.
-fn size_entry(style: &mut Style, resolved: &BoxStyle<f32, Plain, WebStyle>, env: &Env, lines: u16) {
+/// The content box of a text entry's native element `lines` tall, as Chromium sizes
+/// one in the typography in force under `env`: as wide as [`Pinned::entry_width`] and
+/// as tall as its lines.
+fn entry_size(env: &Env, lines: u16) -> Size<f32> {
   let (size, line_height) = typography(env);
-  let padding = resolved.padding.unwrap_or_default();
-  let border = resolved.border_width.unwrap_or_default();
 
-  if resolved.width.is_none() {
-    style.size.width = length(
-      Pinned::get().entry_width(size, lines)
-        + padding.start
-        + padding.end
-        + border.start
-        + border.end,
-    );
-  }
-
-  if resolved.height.is_none() {
-    style.size.height = length(
-      f32::from(lines.max(1)) * size * line_height
-        + padding.top
-        + padding.bottom
-        + border.top
-        + border.bottom,
-    );
-  }
+  Size::new(
+    Pinned::get().entry_width(size, lines),
+    f32::from(lines.max(1)) * size * line_height,
+  )
 }
 
-/// Whether `node` is the app's first box, as the web's reset finds it: no box, control,
-/// overlay or run above it, anchors and scopes aside.
+/// Whether `node` is one of the app's first boxes, as the web's reset finds them: no
+/// box, control, overlay or run above it but the body, anchors and scopes aside.
 fn first(node: NodeId) -> bool {
+  let body = with_records(|records| records.body);
   let mut current = Scene::<Headless>::read(|scene| scene.placed_parent(node));
 
   while let Some(parent) = current {
@@ -485,6 +521,10 @@ fn first(node: NodeId) -> bool {
         .record(parent)
         .is_some_and(|record| matches!(record.kind, Kind::Anchor | Kind::Scope))
     });
+
+    if Some(parent) == body {
+      return true;
+    }
 
     if !transparent {
       return false;

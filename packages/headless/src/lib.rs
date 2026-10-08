@@ -69,6 +69,7 @@ use skene_foundation::{
   Dimension,
   EventKind,
   FocusOrder,
+  HasChildren,
   Inset,
   KeyDefault,
   KeyEvent,
@@ -103,6 +104,7 @@ use skene_foundation::{
   StaticLeaf,
   TextSelection,
   Timer,
+  View,
   WheelEvent,
   dispatch_click,
   dispatch_context_menu,
@@ -1167,6 +1169,20 @@ pub fn layout_rect(node: NodeId) -> Option<Rect<f32>> {
   with_records(|records| records.frames = frames);
 
   rect
+}
+
+/// Mounts the page `page` builds in a body, returning the body.
+///
+/// The body lays the page out as the web's reset lays out the document's: a row filling
+/// the viewport, each box the page holds growing and shrinking along it.
+pub fn mount(page: impl FnOnce() -> skene_foundation::AnyView<Headless>) -> NodeId {
+  let body = skene_foundation::Row::<Headless>::new()
+    .set_children((page(),))
+    .build();
+
+  with_records(|records| records.body = Some(body));
+
+  body
 }
 
 /// Paints the scene as a browser paints the page, laid out afresh at the viewport, one

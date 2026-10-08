@@ -354,9 +354,12 @@ fn read_only_field_page<P: Platform>(probes: &mut Probes) -> AnyView<P> {
 
   probes.publish("value", move || value.get());
 
-  BasicTextField::<P>::new(TextEntry::new().bind_value(value))
-    .set_label("Name")
-    .set_read_only(true)
+  Column::<P>::new()
+    .set_children(
+      (BasicTextField::<P>::new(TextEntry::new().bind_value(value))
+        .set_label("Name")
+        .set_read_only(true),),
+    )
     .into_any()
 }
 

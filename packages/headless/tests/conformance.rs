@@ -1,10 +1,14 @@
-//! The conformance suite on the headless platform, and every page of it drawn against
-//! the golden kept for it.
+//! The conformance suite on the headless platform, every page of it drawn against the
+//! golden kept for it, and each golden held to the browser's.
 
-use std::{fs, path::Path, time::Duration};
+use std::{
+  fs,
+  path::{Path, PathBuf},
+  time::Duration,
+};
 
 use skene_conformance::{Driver, Probes, Reading};
-use skene_foundation::{Container, HasChild, KeyEvent, NodeId, Role, Scene, Size, View};
+use skene_foundation::{KeyEvent, NodeId, Role, Scene, Size};
 use skene_headless::{
   Headless,
   Image,
@@ -12,6 +16,7 @@ use skene_headless::{
   find_by_role,
   find_by_text,
   focused_node,
+  mount,
   render_to_image,
   reset,
   trigger_focus,
@@ -21,8 +26,8 @@ use skene_headless::{
 };
 use skene_reactive::Owner;
 
-/// The headless platform driven as a user drives it, the page mounted under a root box as
-/// every platform mounts it.
+/// The headless platform driven as a user drives it, the page mounted in a body as every
+/// platform mounts it.
 struct HeadlessDriver {
   /// The owner of what is mounted.
   owner: Option<Owner>,
@@ -63,11 +68,7 @@ impl Driver for HeadlessDriver {
       skene_conformance::page::<Headless>(page).unwrap_or_else(|| panic!("no page named {page:?}"));
     let owner = Owner::new();
     let mut probes = Probes::default();
-    let _root = owner.enter(|| {
-      Container::<Headless>::new()
-        .set_child((page.build)(&mut probes))
-        .build()
-    });
+    let _body = owner.enter(|| mount(|| (page.build)(&mut probes)));
 
     self.owner = Some(owner);
     self.probes = probes;
@@ -171,6 +172,100 @@ fn every_page_draws_as_its_golden() {
     .collect();
 
   assert!(failed.is_empty(), "{}", failed.join("\n"));
+}
+
+/// How far a pixel of headless's golden may stray from the browser's, of 255, both
+/// blurred by [`BLUR`] pixels: what rasterizing the same glyphs apart accounts for.
+const STRAY: f32 = 48.;
+
+/// How far around each pixel the goldens are blurred before they are compared, in
+/// pixels.
+const BLUR: isize = 3;
+
+/// Every page draws in headless as it draws in the browser: its golden against the
+/// browser's golden of it, both blurred by [`BLUR`] pixels, no pixel straying past
+/// [`STRAY`].
+#[test]
+fn every_golden_draws_as_the_browsers() {
+  let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+  let read = |path: PathBuf| {
+    fs::read(&path)
+      .map_err(|error| format!("{}: {error}", path.display()))
+      .and_then(|bytes| decode(&bytes))
+  };
+  let failed: Vec<String> = skene_conformance::pages::<Headless>()
+    .iter()
+    .filter_map(|page| {
+      let golden = format!("{}.png", page.name);
+      let headless = read(root.join("tests/goldens").join(&golden));
+      let browser = read(root.join("../conformance-web/goldens").join(&golden));
+      let failure = match (headless, browser) {
+        (Ok(headless), Ok(browser)) => strays(&headless, &browser),
+        (Err(error), _) | (_, Err(error)) => Some(error),
+      };
+
+      failure.map(|failure| format!("{}: {failure}", page.name))
+    })
+    .collect();
+
+  assert!(failed.is_empty(), "{}", failed.join("\n"));
+}
+
+/// How far `headless` strays from `browser`, both blurred by [`BLUR`] pixels; `None`
+/// where no pixel strays past [`STRAY`].
+fn strays(headless: &Image, browser: &Image) -> Option<String> {
+  if (headless.width, headless.height) != (browser.width, browser.height) {
+    return Some(format!(
+      "it is {}×{} where the browser's is {}×{}",
+      headless.width, headless.height, browser.width, browser.height
+    ));
+  }
+
+  let straying = blurred(headless)
+    .iter()
+    .zip(blurred(browser))
+    .filter(|(headless, browser)| (**headless - browser).abs() > STRAY)
+    .count();
+
+  (straying > 0).then(|| format!("{straying} pixels stray from the browser's golden"))
+}
+
+/// The luminance of `image`, its channels weighed as sRGB weighs them, each pixel the
+/// mean of the square [`BLUR`] pixels around it, the edges extended past the image.
+fn blurred(image: &Image) -> Vec<f32> {
+  let (width, height) = (usize::from(image.width), usize::from(image.height));
+  let luminance: Vec<f32> = image
+    .pixels
+    .as_chunks::<4>()
+    .0
+    .iter()
+    .map(|[red, green, blue, _]| {
+      f32::from(*red) * 0.299 + f32::from(*green) * 0.587 + f32::from(*blue) * 0.114
+    })
+    .collect();
+  let span: f32 = (-BLUR..=BLUR).map(|_| 1.).sum();
+  let mean = |source: &[f32], at: &dyn Fn(isize) -> usize| {
+    (-BLUR..=BLUR).map(|offset| source[at(offset)]).sum::<f32>() / span
+  };
+  let across: Vec<f32> = (0..height * width)
+    .map(|index| {
+      let (y, x) = (index / width, index % width);
+
+      mean(&luminance, &|offset| {
+        y * width + x.saturating_add_signed(offset).min(width - 1)
+      })
+    })
+    .collect();
+
+  (0..height * width)
+    .map(|index| {
+      let (y, x) = (index / width, index % width);
+
+      mean(&across, &|offset| {
+        y.saturating_add_signed(offset).min(height - 1) * width + x
+      })
+    })
+    .collect()
 }
 
 /// Draws the page `page` and compares it against `<goldens>/<page>.png`, or writes it

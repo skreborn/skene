@@ -422,12 +422,14 @@ impl<C: Leaf> Tree<C> {
   /// taken out. Each leaf is measured by its context, the nodes it places recorded
   /// beneath it.
   ///
-  /// A root lays out in the viewport as a block's child does, stretched across it, and
-  /// the open overlays beneath it are hoisted beside it, out of every flow.
+  /// A root lays out in the viewport as an item of a flex container laying its items
+  /// out along `direction`, and the open overlays beneath it are hoisted beside it, out
+  /// of every flow.
   pub fn lay_out<P: Platform>(
     &mut self,
     roots: &[NodeId],
     viewport: Size<f32>,
+    direction: FlexDirection,
     part: impl FnMut(NodeId) -> Part<C>,
   ) -> Frames
   where
@@ -440,7 +442,7 @@ impl<C: Leaf> Tree<C> {
     };
     let viewport_style = Style {
       display: Display::Flex,
-      flex_direction: FlexDirection::Column,
+      flex_direction: direction,
       size: taffy::geometry::Size {
         width: length(viewport.width),
         height: length(viewport.height),

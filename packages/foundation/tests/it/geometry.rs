@@ -12,6 +12,7 @@ use skene_foundation::{
   HasChild,
   HasChildren,
   Inset,
+  ItemAlignment,
   Length,
   MotionBase,
   NodeHandle,
@@ -201,24 +202,27 @@ fn a_flexible_child_grows_and_a_stack_overlays() {
   reset();
 
   let owner = Owner::new();
-  let (row, stack) = owner.enter(|| {
-    (
-      Container::new()
-        .set_width(Dimension::Length(300.))
-        .set_child(
-          Row::new().set_children((
-            Flexible::new()
-              .set_flexibility(Flexibility::grow(1.))
-              .set_child(sized(0., 10.)),
-            sized(100., 10.),
-          )),
-        )
-        .build(),
-      Stack::new()
-        .set_children((sized(40., 40.), sized(20., 20.)))
-        .build(),
-    )
+  let page = owner.enter(|| {
+    Column::new()
+      .set_children((
+        Container::new()
+          .set_width(Dimension::Length(300.))
+          .set_child(
+            Row::new().set_children((
+              Flexible::new()
+                .set_flexibility(Flexibility::grow(1.))
+                .set_child(sized(0., 10.)),
+              sized(100., 10.),
+            )),
+          ),
+        Stack::new().set_children((sized(40., 40.), sized(20., 20.))),
+      ))
+      .build()
   });
+  let [row, stack] = content(page)[..]
+  else {
+    panic!("two children");
+  };
   let grown = content(content(row)[0])[0];
   let layers = content(stack);
 
@@ -228,7 +232,7 @@ fn a_flexible_child_grows_and_a_stack_overlays() {
       .iter()
       .map(|layer| layout_rect(*layer).map(|rect| rect.origin))
       .collect::<Vec<_>>(),
-    [Some(Point::new(0., 0.)), Some(Point::new(0., 0.))]
+    [Some(Point::new(0., 10.)), Some(Point::new(0., 10.))]
   );
 
   owner.dispose();
@@ -798,8 +802,8 @@ fn letter_spacing_widens_each_cluster() {
 }
 
 /// A text entry lays out at the size its native element takes in Chromium: a field
-/// twenty average characters wide, past them the face's widest advance less one, and
-/// a line tall, an editor twenty average characters wide and its lines tall.
+/// nineteen average characters and the width of the face's bounds wide and a line
+/// tall, an editor twenty average characters wide and its lines tall.
 #[test]
 fn a_text_entry_lays_out_at_its_native_size() {
   reset();
@@ -807,6 +811,7 @@ fn a_text_entry_lays_out_at_its_native_size() {
   let owner = Owner::new();
   let page = owner.enter(|| {
     Column::new()
+      .set_item_alignment(ItemAlignment::Start)
       .set_children((
         BasicTextField::new(TextEntry::new()),
         BasicTextEditor::new(TextEntry::new().set_lines(3)),
@@ -818,17 +823,48 @@ fn a_text_entry_lays_out_at_its_native_size() {
     panic!("two entries");
   };
   let average = 1313. * 16. / 2048.;
-  let widest = (5492_f32 * 16. / 2048.).round();
-  let characters = (average * 20_f32).ceil();
+  let bounds = ((5290_f32 + 1513.) * 16. / 2048.).round();
 
   assert_eq!(
     layout_rect(field).map(|rect| rect.size),
-    Some(Size::new(characters + widest - average, 24.))
+    Some(Size::new((average * 19. + bounds).ceil(), 24.))
   );
   assert_eq!(
     layout_rect(editor).map(|rect| rect.size),
-    Some(Size::new(characters, 72.))
+    Some(Size::new((average * 20_f32).ceil(), 72.))
   );
+
+  owner.dispose();
+}
+
+/// A text entry stretches across its layout's cross axis as an `<input>` does: across a
+/// column's width, and to a row's height.
+#[test]
+fn a_text_entry_stretches_across_its_layout() {
+  reset();
+
+  let owner = Owner::new();
+  let page = owner.enter(|| {
+    Column::new()
+      .set_children((Container::new()
+        .set_width(Dimension::Length(400.))
+        .set_child(Column::new().set_children((
+          BasicTextField::new(TextEntry::new()),
+          Row::new().set_children((sized(10., 100.), BasicTextField::new(TextEntry::new()))),
+        ))),))
+      .build()
+  });
+  let [across, row] = content(content(content(page)[0])[0])[..]
+  else {
+    panic!("an entry and a row");
+  };
+  let [_, tall] = content(row)[..]
+  else {
+    panic!("a box and an entry");
+  };
+
+  assert_eq!(layout_rect(across).map(|rect| rect.size.width), Some(400.));
+  assert_eq!(layout_rect(tall).map(|rect| rect.size.height), Some(100.));
 
   owner.dispose();
 }

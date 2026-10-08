@@ -1,5 +1,6 @@
 //! The scene drawn as pixels: a box's background, border and corners, what a clipping
-//! box clips, text in its ink and decoration, and a painted box's picture.
+//! box clips, text in its ink and decoration, a text field's value, and a painted box's
+//! picture.
 
 use skene_foundation::{
   Color,
@@ -15,6 +16,7 @@ use skene_foundation::{
   PaintedBase,
   RunBase,
   TextDecoration,
+  TextEntry,
   View,
   kurbo,
 };
@@ -29,6 +31,7 @@ use skene_headless::{
 };
 use skene_reactive::Owner;
 
+type BasicTextField = skene_foundation::BasicTextField<Headless>;
 type Container = skene_foundation::Container<Headless>;
 type RichText = skene_foundation::RichText<Headless>;
 type Row = skene_foundation::Row<Headless>;
@@ -177,6 +180,28 @@ fn an_underline_runs_beneath_the_blanks() {
     !inked(&image, plain..plain + 2, 0..24),
     "under the plain blank"
   );
+
+  owner.dispose();
+}
+
+/// A text field taller than its line draws its value in the middle of its box, as a
+/// browser draws an `<input>`'s.
+#[test]
+fn a_text_field_draws_its_value_in_its_middle() {
+  reset();
+
+  let owner = Owner::new();
+  let _row = owner.enter(|| {
+    Row::new()
+      .set_children((BasicTextField::new(TextEntry::new().set_value("fixed"))
+        .set_height(Dimension::Length(120.)),))
+      .build()
+  });
+  let image = render_to_image();
+
+  assert!(inked(&image, 0..40, 50..70));
+  assert!(!inked(&image, 0..40, 0..40));
+  assert!(!inked(&image, 0..40, 80..120));
 
   owner.dispose();
 }

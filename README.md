@@ -202,7 +202,8 @@ The gate checks formatting, manifest order, the house rules, unused dependencies
 and rustdoc on every leaf, clippy on the terminal's macOS paths, manifests free of cargo
 features, the minimum Rust version, and three test tiers, of which the host alone proves
 nothing about the web: the host tier runs the engine, the spine and every view on the
-headless platform, drawing every page of the conformance suite against its own golden; the server tier builds the server leaf natively, a byte-exact render
+headless platform, drawing every page of the conformance suite against its own golden
+and holding each to the browser's; the server tier builds the server leaf natively, a byte-exact render
 snapshot among its tests; the browser tier drives a real Firefox and a real Chromium,
 several sessions at once, the `gallery` example running axe-core over every built-in,
 acts the conformance suite out in both by trusted input over WebDriver, and on x86-64

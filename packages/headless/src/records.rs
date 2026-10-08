@@ -178,6 +178,8 @@ pub(crate) struct Records {
   pub root_definition_writes: usize,
   /// The viewport, as set; [`DEFAULT_VIEWPORT`] unless set.
   pub viewport: Option<Size<f32>>,
+  /// The body a page is mounted in, once one is.
+  pub body: Option<NodeId>,
   /// The platform's color scheme, as set; light unless set.
   pub scheme: Option<ColorScheme>,
   /// The color scheme the app has chosen, overriding the platform's.
@@ -226,6 +228,7 @@ impl Default for Records {
       root_definitions: Definitions::from(Vec::new()),
       root_definition_writes: 0,
       viewport: None,
+      body: None,
       scheme: None,
       chosen_scheme: None,
       reduced_motion: None,

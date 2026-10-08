@@ -445,9 +445,10 @@ re-export.
   scenario out over a WebDriver session in Firefox and Chromium by trusted input, an
   event a page dispatches to itself running no browser default, finding what it acts
   on by the role and the name the browser computes, and holds every page to a
-  screenshot golden that a pinned Firefox draws in a pinned font. A behavior every platform must
-  share is a scenario, and a divergence the suite finds is fixed in the platform, never
-  excused in the suite. The
+  screenshot golden that a pinned Firefox draws in a pinned font, to which headless's
+  golden of the page is held in turn, both blurred by three pixels. A behavior every
+  platform must share is a scenario, and a divergence the suite finds is fixed in the
+  platform, never excused in the suite. The
   rules those scenarios exercise that a platform realizing its own overlays would
   otherwise copy live in the spine: an overlay's role
   (`OverlayProps::role`: a hint's tooltip, a modal's dialog) and the focus a closing
@@ -556,29 +557,32 @@ Condition     = Media | State | And | Or
   pixels) and lays out on its `Tree`, keyed by the scene's nodes and kept across frames,
   each node's style, text and children written where they changed: by the terminal's
   records as they change, and by a walk of the scene on every frame in the headless
-  platform, at the values its motion presents, its first box filling the viewport as the
-  web's reset makes the app's and a text entry at the size Chromium gives its native
-  element (a field twenty average characters wide, past them the face's widest advance
-  less one, an editor twenty wide, each its lines tall). There a box whose children are
-  all inline runs lays them out as one `Paragraph`, wrapping where the Unicode line
-  breaking algorithm allows across them and around an inline box, laid out at its
-  content's size first, each run's line box on its line's baseline, a box's bottom on
-  it, a span placed in a rectangle per line it is on, and the paragraph trimmed to its
-  first line's cap height and its last line's baseline as the reset's `text-box-trim`
-  trims a text box; every run is measured in the pinned face the conformance suite draws
-  in, Inter's regular (a cluster as far as its glyphs advance at its font size, its
-  letter spacing past it, a line its font size times its line height tall, each as the
-  typography in force sets them). Headless reports each box's size to the observers
-  bound to it and answers `layout_rect`, `visible_rect` and, through the frames' paint
-  order, `node_at`, a box clipping its overflow along an axis clipping what lies beneath
-  it to its padding box there and a box's scroll offsets, as `trigger_scroll` reports
-  them, shifting it back, as in a browser. It draws the scene as a browser paints the
-  page (`render_to_image`): each box's background and border, rounded by its corner
-  radius, what a clipping box holds clipped, each run's glyphs in the pinned face at the
-  places its paragraph gives them with its decoration, a text entry's value, each
+  platform, at the values its motion presents, the page mounted in a body (`mount`)
+  laying its boxes out along a row that fills the viewport, each growing and shrinking
+  along it, as the web's reset lays out the document's, and a text entry measured at the
+  size Chromium gives its native element (a field nineteen average characters and the
+  width of the face's bounds wide, an editor twenty wide, each its lines tall),
+  stretched where its layout stretches its items as an `<input>` is. There a box whose
+  children are all inline runs lays them out as one `Paragraph`, wrapping where the
+  Unicode line breaking algorithm allows across them and around an inline box, laid out
+  at its content's size first, each run's line box on its line's baseline, a box's
+  bottom on it, a span placed in a rectangle per line it is on, and the paragraph
+  trimmed to its first line's cap height and its last line's baseline as the reset's
+  `text-box-trim` trims a text box; every run is measured in the pinned face the
+  conformance suite draws in, Inter's regular (a cluster as far as its glyphs advance at
+  its font size, its letter spacing past it, a line its font size times its line height
+  tall, each as the typography in force sets them). Headless reports each box's size to
+  the observers bound to it and answers `layout_rect`, `visible_rect` and, through the
+  frames' paint order, `node_at`, a box clipping its overflow along an axis clipping
+  what lies beneath it to its padding box there and a box's scroll offsets, as
+  `trigger_scroll` reports them, shifting it back, as in a browser. It draws the scene
+  as a browser paints the page (`render_to_image`): each box's background and border,
+  rounded by its corner radius, what a clipping box holds clipped, each run's glyphs in
+  the pinned face at the places its paragraph gives them with its decoration, a text
+  entry's value (a field's line in its middle, as a browser draws an `<input>`'s), each
   painted box's picture and the open overlays above the rest, a border solid whatever
   its style and a decoration one solid line; every page of the conformance suite is held
-  to a golden of it. `Dimension` is a fixed length,
+  to a golden of it, and the golden to the browser's. `Dimension` is a fixed length,
   a `Fraction` of the parent, or auto. Overflow is per axis (`Axes<Overflow>`, one
   overflow setting both) and computed as CSS computes it, an axis left visible beside
   one that is not scrolling where needed; the terminal scrolls, and draws a scrollbar,

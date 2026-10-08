@@ -424,9 +424,6 @@ Watched, not scheduled:
 - A scrolling box as a tab stop in the terminal: the web gives one `tabindex="0"` so
     the keyboard reaches its content, as Chromium does; the terminal's scroll boxes
     are reached by the wheel and the page keys from a focused child alone.
-- An empty text: Parley lays it out a space wide, the space it shapes in its place
-    counted as a blank at the text's end, and `Paragraph` measures it as wide as
-    nothing; once Parley does, the special case goes.
 - A reload the reader makes (F5) keeps the page's state through session storage as a
     best effort, under its cap; the origin private file system carries it whole only
     on the dev server's reload message, where the write is awaited.

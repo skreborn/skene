@@ -135,7 +135,7 @@ pub enum Content {
 /// broken where the line fills (never in its min-content width). The blanks a line ends
 /// in hang past its end where it wraps, and past the line's limit alone before a newline
 /// or at the text's end. A newline ending the text opens a line, and an empty text lays
-/// out one as wide as nothing.
+/// out one.
 ///
 /// Each run's line box sits on its line's baseline, its glyphs centered in it, a box's
 /// bottom on the baseline, and a line spans the highest of them above the baseline to
@@ -496,14 +496,7 @@ impl<N: Copy> Paragraph<N> {
       _ => 0.,
     };
 
-    let width = if shaped.clusters.is_empty() {
-      0.
-    }
-    else {
-      layout.width()
-    };
-
-    Size::new(width, height - top - bottom)
+    Size::new(layout.width(), height - top - bottom)
   }
 
   /// The lines the paragraph wraps into within `limit`.

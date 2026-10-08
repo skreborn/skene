@@ -47,9 +47,10 @@ in a code comment.
     the style mapping, the `Tree` both keep across frames, the `Restyle` both schedule
     their restyle by, the `Paragraph` headless lays its inline runs out as, and the
     frames headless hits through, clipped and scrolled as a browser's are: the terminal
-    lays its paragraphs and their inline boxes out through the shared `Paragraph`, its
-    cells, tab stops and text sizes as the metrics, where it keeps a wrap of its own;
-    the terminal hits through the shared frames; headless keeps its resolved styles
+    keeps each paragraph as one `Paragraph` of its runs, which places them and their
+    inline boxes for the frames, where it wraps a text of stretches through the
+    `Paragraph` afresh for each paint, hit and selection; the terminal hits through the
+    shared frames; headless keeps its resolved styles
     between layouts as the terminal's caches do, where it resolves each revisited node
     afresh; the layout store becomes the crate the native shells call into.
     - Conformance by intent: once the shells stop sharing views, a scenario states what

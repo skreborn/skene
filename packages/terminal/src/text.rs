@@ -156,7 +156,7 @@ impl Scales {
   }
 
   /// The extent of the cluster at `index`; one cell past every stretch.
-  fn extent(&self, index: usize) -> Extent {
+  pub(crate) fn extent(&self, index: usize) -> Extent {
     self
       .0
       .iter()
@@ -221,11 +221,19 @@ pub(crate) fn reset() {
 pub(crate) const TAB_SIZE: usize = 8;
 
 /// The cells a tab at `scale` advances from the cell `column` of its line: to the next
-/// multiple of [`TAB_SIZE`] of its scaled cells.
+/// multiple of [`TAB_SIZE`] of its scaled cells at least half a scaled cell away, as the
+/// shared paragraph's tab stops are.
 pub(crate) const fn tab_advance(column: usize, scale: CellScale) -> usize {
   let rows = scale.rows();
+  let interval = TAB_SIZE * rows;
+  let distance = interval - column % interval;
 
-  rows * (TAB_SIZE - (column / rows) % TAB_SIZE)
+  if distance * 2 < rows {
+    distance + interval
+  }
+  else {
+    distance
+  }
 }
 
 /// The character the terminal shows for `character`: a space for a tab or a carriage

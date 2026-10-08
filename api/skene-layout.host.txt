@@ -54,30 +54,34 @@ impl core::default::Default for skene_layout::Frames
 pub fn skene_layout::Frames::default() -> skene_layout::Frames
 impl core::fmt::Debug for skene_layout::Frames
 pub fn skene_layout::Frames::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub struct skene_layout::Inline<M>
+pub struct skene_layout::Inline<M, N>
 pub skene_layout::Inline::content: skene_layout::Content
-pub skene_layout::Inline::groups: alloc::vec::Vec<skene_foundation::spine::node::NodeId>
+pub skene_layout::Inline::groups: alloc::vec::Vec<N>
 pub skene_layout::Inline::metrics: M
-pub skene_layout::Inline::node: skene_foundation::spine::node::NodeId
-impl<M: core::clone::Clone> core::clone::Clone for skene_layout::Inline<M>
-pub fn skene_layout::Inline<M>::clone(&self) -> skene_layout::Inline<M>
-impl<M: core::cmp::PartialEq> core::cmp::PartialEq for skene_layout::Inline<M>
-pub fn skene_layout::Inline<M>::eq(&self, &skene_layout::Inline<M>) -> bool
-impl<M: core::cmp::PartialEq> core::marker::StructuralPartialEq for skene_layout::Inline<M>
-impl<M: core::fmt::Debug> core::fmt::Debug for skene_layout::Inline<M>
-pub fn skene_layout::Inline<M>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub struct skene_layout::Paragraph<M>
-impl<M: skene_layout::Metrics> skene_layout::Paragraph<M>
-pub fn skene_layout::Paragraph<M>::clusters(&self, skene_foundation::spine::values::rect::Rect<f32>) -> alloc::vec::Vec<skene_layout::Placed<'_>>
-pub const fn skene_layout::Paragraph<M>::new(alloc::vec::Vec<skene_layout::Inline<M>>) -> Self
-pub const fn skene_layout::Paragraph<M>::trimmed(self) -> Self
-impl<M: core::clone::Clone> core::clone::Clone for skene_layout::Paragraph<M>
-pub fn skene_layout::Paragraph<M>::clone(&self) -> skene_layout::Paragraph<M>
-impl<M: core::cmp::PartialEq> core::cmp::PartialEq for skene_layout::Paragraph<M>
-pub fn skene_layout::Paragraph<M>::eq(&self, &skene_layout::Paragraph<M>) -> bool
-impl<M: core::cmp::PartialEq> core::marker::StructuralPartialEq for skene_layout::Paragraph<M>
-impl<M: core::fmt::Debug> core::fmt::Debug for skene_layout::Paragraph<M>
-pub fn skene_layout::Paragraph<M>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub skene_layout::Inline::node: N
+impl<M: core::clone::Clone, N: core::clone::Clone> core::clone::Clone for skene_layout::Inline<M, N>
+pub fn skene_layout::Inline<M, N>::clone(&self) -> skene_layout::Inline<M, N>
+impl<M: core::cmp::PartialEq, N: core::cmp::PartialEq> core::cmp::PartialEq for skene_layout::Inline<M, N>
+pub fn skene_layout::Inline<M, N>::eq(&self, &skene_layout::Inline<M, N>) -> bool
+impl<M: core::cmp::PartialEq, N: core::cmp::PartialEq> core::marker::StructuralPartialEq for skene_layout::Inline<M, N>
+impl<M: core::fmt::Debug, N: core::fmt::Debug> core::fmt::Debug for skene_layout::Inline<M, N>
+pub fn skene_layout::Inline<M, N>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_layout::Paragraph<M, N>
+impl<M: skene_layout::Metrics, N: core::marker::Copy> skene_layout::Paragraph<M, N>
+pub fn skene_layout::Paragraph<M, N>::clusters(&self, skene_foundation::spine::values::rect::Rect<f32>) -> alloc::vec::Vec<skene_layout::Placed<'_, N>>
+pub fn skene_layout::Paragraph<M, N>::forget(&mut self)
+pub fn skene_layout::Paragraph<M, N>::lines_within(&self, core::option::Option<f32>) -> alloc::vec::Vec<skene_layout::paragraph::WrappedLine>
+pub fn skene_layout::Paragraph<M, N>::narrowest(&self) -> skene_foundation::spine::values::size::Size<f32>
+pub const fn skene_layout::Paragraph<M, N>::new(alloc::vec::Vec<skene_layout::Inline<M, N>>) -> Self
+pub fn skene_layout::Paragraph<M, N>::size_within(&self, core::option::Option<f32>) -> skene_foundation::spine::values::size::Size<f32>
+pub fn skene_layout::Paragraph<M, N>::text(&self, core::ops::range::Range<usize>) -> alloc::string::String
+pub fn skene_layout::Paragraph<M, N>::trimmed(self) -> Self
+impl<M: core::clone::Clone, N: core::clone::Clone> core::clone::Clone for skene_layout::Paragraph<M, N>
+pub fn skene_layout::Paragraph<M, N>::clone(&self) -> skene_layout::Paragraph<M, N>
+impl<M: core::cmp::PartialEq, N: core::cmp::PartialEq> core::cmp::PartialEq for skene_layout::Paragraph<M, N>
+pub fn skene_layout::Paragraph<M, N>::eq(&self, &Self) -> bool
+impl<M: core::fmt::Debug, N: core::fmt::Debug> core::fmt::Debug for skene_layout::Paragraph<M, N>
+pub fn skene_layout::Paragraph<M, N>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<M: skene_layout::Metrics> skene_layout::Leaf for skene_layout::Paragraph<M>
 pub fn skene_layout::Paragraph<M>::boxes(&self) -> alloc::vec::Vec<skene_foundation::spine::node::NodeId>
 pub fn skene_layout::Paragraph<M>::measure(&self, taffy::geometry::Size<core::option::Option<f32>>, taffy::geometry::Size<taffy::style::available_space::AvailableSpace>) -> skene_foundation::spine::values::size::Size<f32>
@@ -98,18 +102,18 @@ impl core::fmt::Debug for skene_layout::Place
 pub fn skene_layout::Place::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::Copy for skene_layout::Place
 impl core::marker::StructuralPartialEq for skene_layout::Place
-pub struct skene_layout::Placed<'a>
-pub skene_layout::Placed::node: skene_foundation::spine::node::NodeId
+pub struct skene_layout::Placed<'a, N>
+pub skene_layout::Placed::node: N
 pub skene_layout::Placed::rect: skene_foundation::spine::values::rect::Rect<f32>
 pub skene_layout::Placed::text: &'a str
-impl<'a> core::clone::Clone for skene_layout::Placed<'a>
-pub fn skene_layout::Placed<'a>::clone(&self) -> skene_layout::Placed<'a>
-impl<'a> core::cmp::PartialEq for skene_layout::Placed<'a>
-pub fn skene_layout::Placed<'a>::eq(&self, &skene_layout::Placed<'a>) -> bool
-impl<'a> core::fmt::Debug for skene_layout::Placed<'a>
-pub fn skene_layout::Placed<'a>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl<'a> core::marker::Copy for skene_layout::Placed<'a>
-impl<'a> core::marker::StructuralPartialEq for skene_layout::Placed<'a>
+impl<'a, N: core::clone::Clone> core::clone::Clone for skene_layout::Placed<'a, N>
+pub fn skene_layout::Placed<'a, N>::clone(&self) -> skene_layout::Placed<'a, N>
+impl<'a, N: core::cmp::PartialEq> core::cmp::PartialEq for skene_layout::Placed<'a, N>
+pub fn skene_layout::Placed<'a, N>::eq(&self, &skene_layout::Placed<'a, N>) -> bool
+impl<'a, N: core::cmp::PartialEq> core::marker::StructuralPartialEq for skene_layout::Placed<'a, N>
+impl<'a, N: core::fmt::Debug> core::fmt::Debug for skene_layout::Placed<'a, N>
+pub fn skene_layout::Placed<'a, N>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<'a, N: core::marker::Copy> core::marker::Copy for skene_layout::Placed<'a, N>
 pub struct skene_layout::Restyle
 impl skene_layout::Restyle
 pub const fn skene_layout::Restyle::generation(&self) -> u64

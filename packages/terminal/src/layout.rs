@@ -13,6 +13,7 @@ use skene_layout::{
   Borders,
   BoxLayout,
   Leaf,
+  Paragraph,
   Place,
   Revisit,
   taffy::{
@@ -25,7 +26,17 @@ use skene_layout::{
 use crate::{
   Terminal,
   motion::{Clock, Presented},
-  paint::{ShadowPaint, Shaped, line_holding, paragraph_scales, run_scale, sized_rows, wrap_sized},
+  paint::{
+    CellMetrics,
+    ShadowPaint,
+    cells_of,
+    line_holding,
+    paragraph_of,
+    paragraph_scales,
+    run_scale,
+    sized_rows,
+    wrap_sized,
+  },
   records::{BoxCache, Handle, Kind, PlainBox, PlainRun, Record, Records, RunCache},
   resolve::Env,
   text::{self, Scales},
@@ -41,13 +52,12 @@ struct Restyled {
 }
 
 /// What the layout measures a text leaf by: its text, the scale of each stretch of it,
-/// and its extents at its narrowest and widest, measured once a layout first asks.
+/// and the paragraph they lay out as, made once a layout first asks.
 #[derive(Debug, Clone)]
 pub(crate) struct Measured {
   pub(crate) text: String,
   pub(crate) scales: Scales,
-  shaped: OnceCell<Shaped>,
-  extents: OnceCell<Extents>,
+  paragraph: OnceCell<Paragraph<CellMetrics, usize>>,
 }
 
 impl Measured {
@@ -56,55 +66,32 @@ impl Measured {
     Self {
       text,
       scales,
-      shaped: OnceCell::new(),
-      extents: OnceCell::new(),
+      paragraph: OnceCell::new(),
     }
   }
 
-  /// Forgets the shape and the extents measured, after the terminal changed how it
-  /// measures text.
+  /// Forgets the paragraph made, after the terminal changed how it measures text.
   pub(crate) fn forget_extents(&mut self) {
-    self.shaped.take();
-    self.extents.take();
+    self.paragraph.take();
+  }
+
+  /// The paragraph the text lays out as.
+  fn paragraph(&self) -> &Paragraph<CellMetrics, usize> {
+    self
+      .paragraph
+      .get_or_init(|| paragraph_of(&self.text, &self.scales))
   }
 
   /// The cells and rows the text takes wrapped at `limit` cells: at its widest where
   /// that fits.
+  #[cfg(test)]
   fn size_at(&self, limit: usize) -> (usize, usize) {
-    let extents = self.extents();
+    let size = self.paragraph().size_within(Some(cells_of(limit.max(1))));
 
-    if limit >= extents.widest.0 {
-      extents.widest
-    }
-    else if limit == extents.longest_word {
-      extents.narrowest
-    }
-    else {
-      self.wrapped(limit)
-    }
-  }
-
-  /// The text's extents at its narrowest and widest.
-  fn extents(&self) -> Extents {
-    *self.extents.get_or_init(|| {
-      let longest_word = self.shaped().longest_word(&self.text, &self.scales);
-
-      Extents {
-        longest_word,
-        narrowest: self.wrapped(longest_word),
-        widest: self.wrapped(usize::MAX),
-      }
-    })
-  }
-
-  /// The text split into clusters and the places a line may end.
-  fn shaped(&self) -> &Shaped {
-    self.shaped.get_or_init(|| Shaped::of_run(&self.text))
-  }
-
-  /// The cells and rows the text takes wrapped at `limit` cells.
-  fn wrapped(&self, limit: usize) -> (usize, usize) {
-    self.shaped().extent(&self.text, limit, &self.scales)
+    (
+      crate::paint::whole(size.width),
+      crate::paint::whole(size.height),
+    )
   }
 }
 
@@ -125,15 +112,6 @@ impl PartialEq for Measured {
 }
 
 impl Eq for Measured {}
-
-/// A text's extents: the widest stretch between two breaks, and its cells and rows
-/// wrapped there and unwrapped.
-#[derive(Debug, Clone, Copy)]
-struct Extents {
-  longest_word: usize,
-  narrowest: (usize, usize),
-  widest: (usize, usize),
-}
 
 /// Whether `handle` lays its inline runs out as one paragraph: a flow box whose every
 /// laid-out child is an inline text run or an inline box.
@@ -914,26 +892,23 @@ fn measure_run(
   available: taffy::geometry::Size<AvailableSpace>,
   measured: &Measured,
 ) -> Size<f32> {
+  let paragraph = measured.paragraph();
   #[expect(
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
     reason = "a width is clamped non-negative and counts cells far below usize::MAX"
   )]
-  let (cells, rows) = match (known.width, available.width) {
+  let size = match (known.width, available.width) {
     (Some(width), _) | (None, AvailableSpace::Definite(width)) => {
-      measured.size_at(width.max(0.) as usize)
+      paragraph.size_within(Some(cells_of((width.max(0.) as usize).max(1))))
     }
-    (None, AvailableSpace::MinContent) => measured.extents().narrowest,
-    (None, AvailableSpace::MaxContent) => measured.extents().widest,
+    (None, AvailableSpace::MinContent) => paragraph.narrowest(),
+    (None, AvailableSpace::MaxContent) => paragraph.size_within(None),
   };
 
-  #[expect(
-    clippy::cast_precision_loss,
-    reason = "a line's length in cells stays far below the integers f32 holds exactly"
-  )]
   Size::new(
-    known.width.unwrap_or(cells as f32),
-    known.height.unwrap_or(rows as f32),
+    known.width.unwrap_or(size.width),
+    known.height.unwrap_or(size.height),
   )
 }
 
@@ -988,7 +963,7 @@ mod properties {
 
   use super::Measured;
   use crate::{
-    paint::{Shaped, wrap_sized},
+    paint::{cells_of, paragraph_of, whole, wrap_sized},
     text::{self, CellScale, Scales},
   };
 
@@ -1028,7 +1003,9 @@ mod properties {
       );
       let measured = Measured::new(text.clone(), scales.clone());
 
-      prop_assert_eq!(Shaped::of_run(&text).extent(&text, width, &scales), wrapped);
+      let size = paragraph_of(&text, &scales).size_within(Some(cells_of(width.max(1))));
+
+      prop_assert_eq!((whole(size.width), whole(size.height)), wrapped);
       prop_assert_eq!(measured.size_at(width), wrapped);
     }
   }

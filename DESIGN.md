@@ -958,7 +958,10 @@ gets plain frames. Grapheme clustering (mode 2027) is set and queried at launch 
 same way: text is measured in extended grapheme clusters (`unicode-segmentation`),
 each as wide as the terminal draws it (`unicode-width`)—the cluster's width where the
 terminal confirmed the mode, the sum of its code points' widths where it did not, so
-the layout's measure agrees with the terminal's either way—and a cell holds a cluster
+the layout's measure agrees with the terminal's either way—and wrapped by the shared
+`Paragraph`, a stretch of one scale a run measured in cells and an inline box a box as
+many cells wide and rows tall as it, so a run wraps, keeps its blanks and stops its
+tabs as headless and a browser do; a cell holds a cluster
 (`Glyph`: one code point, an interned cluster, or the continuation of a wide one, which
 paints nothing) while a field's caret, window and selection index clusters, the window
 of a single-line field settling by cells. A confirmation arriving after the first

@@ -186,7 +186,8 @@ pub(crate) fn reset() {
 /// What `node` is to the layout: a box styled from its resolved style, a box whose
 /// children are all inline runs a paragraph of them, a run a paragraph of its own text,
 /// an inline box a box around its view, an open overlay out of the flow, an anchor or a
-/// scope transparent, and a hidden box or a closed overlay left out.
+/// scope transparent, a hidden box laid out but taking no hit, and a closed overlay left
+/// out.
 ///
 /// The restyle notes whether its resolution read its interaction, and revisits it at the
 /// next layout where it is laid out and declares motion.
@@ -259,35 +260,13 @@ fn part_under(node: NodeId, env: &Env) -> Part<Measured> {
     Some(Shape::Transparent) => Part::Transparent,
     Some(Shape::Box(layout, style, scroll, overlay, entry)) => {
       let resolved = presented(node, env, &style);
+      let its = box_part(node, env, &resolved, layout, scroll, overlay, entry, place);
 
       if resolved.hidden == Some(true) {
-        return Part::Absent;
+        Part::Hidden(Box::new(its))
       }
-
-      if overlay {
-        let mut style = resolved.taffy_style(layout, place.detached());
-
-        style.position = skene_layout::taffy::style::Position::Absolute;
-
-        return Part::Overlay(style, scroll);
-      }
-
-      let mut style = resolved.taffy_style(layout, place);
-
-      if first(node) {
-        fill_viewport(&mut style, &resolved);
-      }
-
-      if let Some(lines) = entry {
-        return Part::Leaf(style, Measured::Entry(entry_size(env, lines)));
-      }
-
-      match (layout == Layout::Document)
-        .then(|| paragraph(node))
-        .flatten()
-      {
-        Some(paragraph) => Part::Leaf(style, Measured::Text(paragraph)),
-        None => Part::Box(style, scroll),
+      else {
+        its
       }
     }
     Some(Shape::Embedded) => {
@@ -306,6 +285,50 @@ fn part_under(node: NodeId, env: &Env) -> Part<Measured> {
 
       Part::Leaf(style, Measured::Text(lone(node, text)))
     }
+  }
+}
+
+/// What the box `node` resolved to `resolved` under `env` is to the layout, `layout` its
+/// layout mode, `scroll` its offsets and `place` its place: an open overlay out of the
+/// flow, a text entry at its native element's size, a paragraph of its runs or a box.
+#[expect(
+  clippy::too_many_arguments,
+  reason = "the facts a box's part is made of, read once by the caller"
+)]
+fn box_part(
+  node: NodeId,
+  env: &Env,
+  resolved: &BoxStyle<f32, Plain, WebStyle>,
+  layout: Layout,
+  scroll: Point<f32>,
+  overlay: bool,
+  entry: Option<u16>,
+  place: Place,
+) -> Part<Measured> {
+  if overlay {
+    let mut style = resolved.taffy_style(layout, place.detached());
+
+    style.position = skene_layout::taffy::style::Position::Absolute;
+
+    return Part::Overlay(style, scroll);
+  }
+
+  let mut style = resolved.taffy_style(layout, place);
+
+  if first(node) {
+    fill_viewport(&mut style, resolved);
+  }
+
+  if let Some(lines) = entry {
+    return Part::Leaf(style, Measured::Entry(entry_size(env, lines)));
+  }
+
+  match (layout == Layout::Document)
+    .then(|| paragraph(node))
+    .flatten()
+  {
+    Some(paragraph) => Part::Leaf(style, Measured::Text(paragraph)),
+    None => Part::Box(style, scroll),
   }
 }
 

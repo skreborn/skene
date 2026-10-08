@@ -63,6 +63,28 @@ pub enum Part<C> {
   Transparent,
   /// A node left out of the layout with everything beneath it.
   Absent,
+  /// A node laid out as the part it holds, keeping its place, though nothing at or
+  /// beneath it takes a hit, as a box its style hides.
+  Hidden(Box<Self>),
+}
+
+impl<C> Part<C> {
+  /// The part a hidden node lays out as, and whether it is hidden.
+  fn shown(self) -> (Self, bool) {
+    match self {
+      Self::Hidden(inner) => (inner.shown().0, true),
+      its => (its, false),
+    }
+  }
+
+  /// Whether the part is an overlay, hidden or not.
+  const fn is_overlay(&self) -> bool {
+    match self {
+      Self::Overlay(..) => true,
+      Self::Hidden(inner) => inner.is_overlay(),
+      _ => false,
+    }
+  }
 }
 
 /// Each node's rectangle from one layout, in the viewport's coordinates, what clips it,
@@ -105,7 +127,8 @@ impl Frames {
 
   /// The topmost node laid out at `point`: the last to paint a rectangle holding it
   /// where the boxes clipping it leave it showing, a child above its parent, a later
-  /// sibling above an earlier one and an overlay above the flow.
+  /// sibling above an earlier one and an overlay above the flow, a hidden one and what
+  /// it holds aside.
   #[must_use]
   pub fn hit(&self, point: Point<f32>) -> Option<NodeId> {
     self
@@ -128,8 +151,8 @@ impl Frames {
   }
 
   /// Records that `node` covers `rect` where `clip` leaves it showing, painting above
-  /// everything recorded before.
-  fn add(&mut self, node: NodeId, rect: Rect<f32>, clip: Bounds) {
+  /// everything recorded before, and taking a hit there unless it is `hidden`.
+  fn add(&mut self, node: NodeId, rect: Rect<f32>, clip: Bounds, hidden: bool) {
     if let Some(spanned) = self.rects.get_mut(&node) {
       *spanned = Bounds::of(*spanned).union(rect);
     }
@@ -142,7 +165,9 @@ impl Frames {
       self.clips.insert(node, clip);
     }
 
-    self.pieces.push((node, rect));
+    if !hidden {
+      self.pieces.push((node, rect));
+    }
   }
 
   /// Every node laid out, with its rectangle, in the order they paint.
@@ -230,12 +255,13 @@ struct Walk<F, C> {
   reached: FxHashSet<NodeId>,
 }
 
-/// A node's place in the taffy tree: its taffy node, the taffy children last set and
-/// the offsets it scrolls its children by.
+/// A node's place in the taffy tree: its taffy node, the taffy children last set, the
+/// offsets it scrolls its children by and whether it is hidden.
 struct Slot {
   taffy: taffy::NodeId,
   children: Vec<taffy::NodeId>,
   scroll: Point<f32>,
+  hidden: bool,
 }
 
 impl<C> std::fmt::Debug for Tree<C> {
@@ -285,6 +311,7 @@ impl<C: Leaf> Tree<C> {
         taffy,
         children: Vec::new(),
         scroll: Point::new(0., 0.),
+        hidden: false,
       },
     );
   }
@@ -643,6 +670,11 @@ impl<C: Leaf> Tree<C> {
     C: PartialEq,
   {
     let leaf = self.is_leaf(node);
+    let (its, hidden) = its.shown();
+
+    if let Some(slot) = self.nodes.get_mut(node) {
+      slot.hidden = hidden;
+    }
 
     match its {
       Part::Box(style, scroll) | Part::Overlay(style, scroll) if !leaf => {
@@ -719,6 +751,7 @@ impl<C: Leaf> Tree<C> {
   where
     C: PartialEq,
   {
+    let (its, hidden) = its.shown();
     let (style, context, children, scroll) = match its {
       Part::Box(style, scroll) | Part::Overlay(style, scroll) => {
         let children = self.sync_children::<P, _>(node, walk);
@@ -746,7 +779,7 @@ impl<C: Leaf> Tree<C> {
 
         (style, Some(context), Vec::new(), Point::new(0., 0.))
       }
-      Part::Transparent | Part::Absent => return None,
+      Part::Transparent | Part::Absent | Part::Hidden(_) => return None,
     };
 
     self.insert(node);
@@ -756,6 +789,7 @@ impl<C: Leaf> Tree<C> {
     let slot = self.nodes.get_mut(node)?;
 
     slot.scroll = scroll;
+    slot.hidden = hidden;
 
     if slot.children != children && self.taffy.set_children(slot.taffy, &children).is_ok() {
       slot.children = children;
@@ -783,7 +817,7 @@ impl<C: Leaf> Tree<C> {
     for child in placed {
       match (walk.part)(child) {
         Part::Transparent => children.extend(self.sync_children::<P, _>(child, walk)),
-        its @ Part::Overlay(..) => walk.overlays.push_back((child, its)),
+        its if its.is_overlay() => walk.overlays.push_back((child, its)),
         Part::Absent => {}
         its => children.extend(self.sync::<P, _>(child, its, walk)),
       }
@@ -796,14 +830,14 @@ impl<C: Leaf> Tree<C> {
   /// the order they paint: each before what it places and its children, the children
   /// in order, and a box a leaf places at the origin it places it at.
   fn collect(&self, top: taffy::NodeId, frames: &mut Frames) {
-    let by_taffy: FxHashMap<taffy::NodeId, (NodeId, Point<f32>)> = self
+    let by_taffy: FxHashMap<taffy::NodeId, (NodeId, Point<f32>, bool)> = self
       .nodes
       .iter()
-      .map(|(node, slot)| (slot.taffy, (node, slot.scroll)))
+      .map(|(node, slot)| (slot.taffy, (node, slot.scroll, slot.hidden)))
       .collect();
-    let mut stack = vec![(top, Point::new(0., 0.), Bounds::UNBOUNDED, true)];
+    let mut stack = vec![(top, Point::new(0., 0.), Bounds::UNBOUNDED, true, false)];
 
-    while let Some((current, content, clip, placed)) = stack.pop() {
+    while let Some((current, content, clip, placed, mut hidden)) = stack.pop() {
       let (Ok(layout), Ok(style)) = (self.taffy.layout(current), self.taffy.style(current))
       else {
         continue;
@@ -818,8 +852,9 @@ impl<C: Leaf> Tree<C> {
       let mut scroll = Point::new(0., 0.);
       let mut own = None;
 
-      if let Some((node, offsets)) = by_taffy.get(&current) {
-        frames.add(*node, Rect { origin, size }, clip);
+      if let Some((node, offsets, hides)) = by_taffy.get(&current) {
+        hidden |= *hides;
+        frames.add(*node, Rect { origin, size }, clip, hidden);
         scroll = *offsets;
         own = Some(*node);
       }
@@ -860,8 +895,8 @@ impl<C: Leaf> Tree<C> {
         for (node, rect) in context.place(inside) {
           match self.nodes.get(node) {
             _ if Some(node) == own => {}
-            Some(inline) => boxes.push((inline.taffy, rect.origin, inner, true)),
-            None => frames.add(node, rect, inner),
+            Some(inline) => boxes.push((inline.taffy, rect.origin, inner, true, hidden)),
+            None => frames.add(node, rect, inner, hidden),
           }
         }
 
@@ -875,7 +910,7 @@ impl<C: Leaf> Tree<C> {
         .into_iter()
         .rev()
       {
-        stack.push((child, content, inner, false));
+        stack.push((child, content, inner, false, hidden));
       }
     }
   }

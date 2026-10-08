@@ -27,6 +27,7 @@ impl core::marker::StructuralPartialEq for skene_layout::Content
 pub enum skene_layout::Part<C>
 pub skene_layout::Part::Absent
 pub skene_layout::Part::Box(taffy::style::Style, skene_foundation::spine::values::point::Point<f32>)
+pub skene_layout::Part::Hidden(alloc::boxed::Box<Self>)
 pub skene_layout::Part::Leaf(taffy::style::Style, C)
 pub skene_layout::Part::Overlay(taffy::style::Style, skene_foundation::spine::values::point::Point<f32>)
 pub skene_layout::Part::Transparent

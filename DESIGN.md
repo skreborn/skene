@@ -582,9 +582,10 @@ Condition     = Media | State | And | Or
   past it, a line its font size times its line height tall, each as the typography in
   force sets them). Headless reports each box's size to the observers bound to it and
   answers `layout_rect`, `visible_rect` and, through the frames' paint order, `node_at`,
-  a box clipping its overflow along an axis clipping what lies beneath it to its padding
-  box there and a box's scroll offsets, as `trigger_scroll` reports them, shifting it
-  back, as in a browser. It draws the scene as a browser paints the page
+  a hidden box keeping its place but taking no hit as the web's `visibility: hidden`
+  does, a box clipping its overflow along an axis clipping what lies beneath it to its
+  padding box there and a box's scroll offsets, as `trigger_scroll` reports them,
+  shifting it back, as in a browser. It draws the scene as a browser paints the page
   (`render_to_image`): each box's background and border, rounded by its corner radius,
   what a clipping box holds clipped, each run's glyphs in the pinned face at the places
   its paragraph gives them with its decoration, a text entry's value (a field's line in

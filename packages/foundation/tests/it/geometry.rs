@@ -244,9 +244,10 @@ fn a_flexible_child_grows_and_a_stack_overlays() {
   owner.dispose();
 }
 
-/// A hidden box takes no room and has no rectangle.
+/// A hidden box keeps its place in the layout, as the web's `visibility: hidden` keeps
+/// it, though nothing at it takes a hit.
 #[test]
-fn a_hidden_box_takes_no_room() {
+fn a_hidden_box_keeps_its_place_but_takes_no_hit() {
   reset();
 
   let owner = Owner::new();
@@ -260,8 +261,10 @@ fn a_hidden_box_takes_no_room() {
     panic!("two children");
   };
 
-  assert_eq!(layout_rect(hidden), None);
-  assert_eq!(layout_rect(shown), Some(rect(0., 0., 10., 10.)));
+  assert_eq!(layout_rect(hidden), Some(rect(0., 0., 10., 10.)));
+  assert_eq!(layout_rect(shown), Some(rect(0., 10., 10., 10.)));
+  assert_ne!(node_at(Point::new(5., 5.)), Some(hidden));
+  assert_eq!(node_at(Point::new(5., 15.)), Some(shown));
 
   owner.dispose();
 }

@@ -1184,8 +1184,8 @@ pub fn node_at(point: Point<f32>) -> Option<NodeId> {
 /// The rectangle `node` covers in a layout of the scene at the viewport, laid out
 /// afresh; `None` for a node the layout leaves out.
 ///
-/// The scroll offsets of the boxes around it apply, and the layout leaves out a hidden
-/// node, one in a closed overlay, an anchor and a scope.
+/// The scroll offsets of the boxes around it apply, a hidden box keeps its rectangle,
+/// and the layout leaves out a node in a closed overlay, an anchor and a scope.
 #[must_use]
 pub fn layout_rect(node: NodeId) -> Option<Rect<f32>> {
   end_turn();

@@ -23,6 +23,7 @@ use skene_foundation::{
   RunWithTypeMetrics,
   ScrollEvent,
   Size,
+  TextEntry,
   Transition,
   View,
   web::Typography,
@@ -45,6 +46,8 @@ use skene_headless::{
 };
 use skene_reactive::{Get, Owner, Set, Signal};
 
+type BasicTextEditor = skene_foundation::BasicTextEditor<Headless>;
+type BasicTextField = skene_foundation::BasicTextField<Headless>;
 type Column = skene_foundation::Column<Headless>;
 type Container = skene_foundation::Container<Headless>;
 type Flexible<C = skene_foundation::NoChild> = skene_foundation::Flexible<Headless, C>;
@@ -755,6 +758,42 @@ fn letter_spacing_widens_each_cluster() {
   assert_eq!(
     layout_rect(run).map(|rect| rect.size.width),
     Some(text_width("abc", 16.) + 6.)
+  );
+
+  owner.dispose();
+}
+
+/// A text entry lays out at the size its native element takes in Chromium: a field
+/// twenty average characters wide, past them the face's widest advance less one, and
+/// a line tall, an editor twenty average characters wide and its lines tall.
+#[test]
+fn a_text_entry_lays_out_at_its_native_size() {
+  reset();
+
+  let owner = Owner::new();
+  let page = owner.enter(|| {
+    Column::new()
+      .set_children((
+        BasicTextField::new(TextEntry::new()),
+        BasicTextEditor::new(TextEntry::new().set_lines(3)),
+      ))
+      .build()
+  });
+  let [field, editor] = content(page)[..]
+  else {
+    panic!("two entries");
+  };
+  let average = 1313. * 16. / 2048.;
+  let widest = (5492_f32 * 16. / 2048.).round();
+  let characters = (average * 20_f32).ceil();
+
+  assert_eq!(
+    layout_rect(field).map(|rect| rect.size),
+    Some(Size::new(characters + widest - average, 24.))
+  );
+  assert_eq!(
+    layout_rect(editor).map(|rect| rect.size),
+    Some(Size::new(characters, 72.))
   );
 
   owner.dispose();

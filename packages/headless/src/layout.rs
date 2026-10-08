@@ -10,6 +10,8 @@ use skene_foundation::{
   BoxStyle,
   IntoBoxValue,
   Layout,
+  Length,
+  NativeElement,
   NodeId,
   Plain,
   Platform,
@@ -114,18 +116,25 @@ fn part(node: NodeId) -> Part<Measured> {
         Box::new(props.style.clone()),
         record.scroll,
         false,
+        None,
       ),
       Kind::Control(props) => Shape::Box(
         props.box_props.layout,
         Box::new(props.box_props.style.clone()),
         record.scroll,
         false,
+        matches!(
+          props.native,
+          Some(NativeElement::TextField | NativeElement::TextEditor)
+        )
+        .then_some(props.lines),
       ),
       Kind::Overlay(props) if record.open => Shape::Box(
         props.box_props.layout,
         Box::new(props.box_props.style.clone()),
         record.scroll,
         true,
+        None,
       ),
       Kind::Overlay(_) => Shape::Absent,
       Kind::Run(props) if props.placement == RunPlacement::Embedded => Shape::Embedded,
@@ -141,7 +150,7 @@ fn part(node: NodeId) -> Part<Measured> {
   match kind {
     None | Some(Shape::Absent) => Part::Absent,
     Some(Shape::Transparent) => Part::Transparent,
-    Some(Shape::Box(layout, style, scroll, overlay)) => {
+    Some(Shape::Box(layout, style, scroll, overlay, entry)) => {
       let resolved = presented(node, &env, &style);
 
       if resolved.hidden == Some(true) {
@@ -160,6 +169,10 @@ fn part(node: NodeId) -> Part<Measured> {
 
       if first(node) {
         fill_viewport(&mut style, &resolved);
+      }
+
+      if let Some(lines) = entry {
+        size_entry(&mut style, &resolved, &env, lines);
       }
 
       match (layout == Layout::Document)
@@ -394,11 +407,62 @@ impl BoxFieldVisitor<f32, WebStyle> for Presented<'_> {
 
 /// What a record holds that its part is made from, read out of the records.
 enum Shape {
-  Box(Layout, Box<StaticBoxStyle<Headless>>, Point<f32>, bool),
+  Box(
+    Layout,
+    Box<StaticBoxStyle<Headless>>,
+    Point<f32>,
+    bool,
+    Option<u16>,
+  ),
   Embedded,
   Run(String),
   Transparent,
   Absent,
+}
+
+/// The font size and the line height, as a multiple of it, of the typography in force
+/// under `env`.
+pub(crate) fn typography(env: &Env) -> (f32, f32) {
+  env.with_resolver(|resolver| {
+    (
+      resolver
+        .keyframe_run_value(&StaticLeaf::from(typography::SIZE))
+        .map_or(Headless::FONT_SIZE, |size: Length| size.0),
+      resolver
+        .keyframe_run_value(&StaticLeaf::from(typography::LINE_HEIGHT))
+        .unwrap_or(LINE_HEIGHT),
+    )
+  })
+}
+
+/// Sizes `style` as the native element of a text entry `lines` tall lays out, as
+/// Chromium sizes one, in the typography in force under `env`: its content box as wide
+/// as [`Pinned::entry_width`] and as tall as its lines, inside the padding and border
+/// `resolved`, its own style, gives it, wherever that style sets no size of its own.
+fn size_entry(style: &mut Style, resolved: &BoxStyle<f32, Plain, WebStyle>, env: &Env, lines: u16) {
+  let (size, line_height) = typography(env);
+  let padding = resolved.padding.unwrap_or_default();
+  let border = resolved.border_width.unwrap_or_default();
+
+  if resolved.width.is_none() {
+    style.size.width = length(
+      Pinned::get().entry_width(size, lines)
+        + padding.start
+        + padding.end
+        + border.start
+        + border.end,
+    );
+  }
+
+  if resolved.height.is_none() {
+    style.size.height = length(
+      f32::from(lines.max(1)) * size * line_height
+        + padding.top
+        + padding.bottom
+        + border.top
+        + border.bottom,
+    );
+  }
 }
 
 /// Whether `node` is the app's first box, as the web's reset finds it: no box, control,

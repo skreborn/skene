@@ -16,7 +16,6 @@ use skene_foundation::{
   NativeElement,
   NodeId,
   Overflow,
-  Platform,
   Rect,
   Renderer,
   RunPlacement,
@@ -332,18 +331,11 @@ impl Drawing<'_> {
   /// Draws a text entry's `value` in its content box at `content`, or its `placeholder`
   /// where it holds none, a line to each of its lines.
   fn entry(&mut self, env: &Env, content: Rect<f32>, value: &str, placeholder: Option<&str>) {
-    let (size, line_height, ink) = env.with_resolver(|resolver| {
-      (
-        resolver
-          .keyframe_run_value(&StaticLeaf::from(typography::SIZE))
-          .map_or(Headless::FONT_SIZE, |size: skene_foundation::Length| size.0),
-        resolver
-          .keyframe_run_value(&StaticLeaf::from(typography::LINE_HEIGHT))
-          .unwrap_or(layout::LINE_HEIGHT),
-        resolver
-          .keyframe_run_value(&StaticLeaf::from(typography::INK))
-          .unwrap_or(BLACK),
-      )
+    let (size, line_height) = layout::typography(env);
+    let ink = env.with_resolver(|resolver| {
+      resolver
+        .keyframe_run_value(&StaticLeaf::from(typography::INK))
+        .unwrap_or(BLACK)
     });
     let (text, color) = match placeholder {
       // Chromium's placeholder gray, #757575.

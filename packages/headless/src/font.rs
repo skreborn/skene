@@ -16,6 +16,8 @@ pub(crate) struct Pinned {
   units_per_em: f32,
   advances: FxHashMap<u32, f32>,
   missing: f32,
+  average: f32,
+  widest: f32,
   ascent: f32,
   descent: f32,
   underline: Line,
@@ -71,6 +73,8 @@ impl Pinned {
       units_per_em,
       advances,
       missing: metrics.advance_width(GlyphId::NOTDEF).unwrap_or(0.),
+      average: face.average_width.unwrap_or(units_per_em / 2.),
+      widest: face.max_width.unwrap_or(units_per_em),
       ascent: face.ascent,
       descent: face.descent,
       underline: line(face.underline, -0.1),
@@ -92,6 +96,22 @@ impl Pinned {
       .unwrap_or(self.missing)
       * size
       / self.units_per_em
+  }
+
+  /// How wide a text entry lays out at `size`, its value `lines` tall, as Chromium sizes
+  /// an empty `<input>` and `<textarea>`: twenty average characters, and a single line
+  /// the face's widest advance past the first of them.
+  pub(crate) fn entry_width(&self, size: f32, lines: u16) -> f32 {
+    let scale = size / self.units_per_em;
+    let average = self.average * scale;
+    let characters = (average * 20.).ceil();
+
+    if lines > 1 {
+      characters
+    }
+    else {
+      characters + (self.widest * scale).round() - average
+    }
   }
 
   /// How far the baseline of a line `height` tall at `size` sits below its top: half

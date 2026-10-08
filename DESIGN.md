@@ -557,7 +557,9 @@ Condition     = Media | State | And | Or
   each node's style, text and children written where they changed: by the terminal's
   records as they change, and by a walk of the scene on every frame in the headless
   platform, at the values its motion presents, its first box filling the viewport as
-  the web's reset makes the app's. There a box whose children are all inline
+  the web's reset makes the app's and a text entry at the size Chromium gives its
+  native element (a field twenty average characters wide, past them the face's widest
+  advance less one, an editor twenty wide, each its lines tall). There a box whose children are all inline
   runs lays them out as one `Paragraph`, wrapping where the Unicode line breaking
   algorithm allows across them and around an inline box, laid out at its content's size
   first, a line as tall as its tallest run or box and a span placed in a rectangle per

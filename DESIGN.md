@@ -556,7 +556,8 @@ Condition     = Media | State | And | Or
   pixels) and lays out on its `Tree`, keyed by the scene's nodes and kept across frames,
   each node's style, text and children written where they changed: by the terminal's
   records as they change, and by a walk of the scene on every frame in the headless
-  platform, at the values its motion presents. There a box whose children are all inline
+  platform, at the values its motion presents, its first box filling the viewport as
+  the web's reset makes the app's. There a box whose children are all inline
   runs lays them out as one `Paragraph`, wrapping where the Unicode line breaking
   algorithm allows across them and around an inline box, laid out at its content's size
   first, a line as tall as its tallest run or box and a span placed in a rectangle per

@@ -33,7 +33,10 @@ use skene_layout::{
   Part,
   Place,
   Tree,
-  taffy::style::{Display, Style},
+  taffy::{
+    prelude::length,
+    style::{Dimension, Display, Style},
+  },
 };
 
 use crate::{
@@ -153,7 +156,11 @@ fn part(node: NodeId) -> Part<Measured> {
         return Part::Overlay(style, scroll);
       }
 
-      let style = resolved.taffy_style(layout, place);
+      let mut style = resolved.taffy_style(layout, place);
+
+      if first(node) {
+        fill_viewport(&mut style, &resolved);
+      }
 
       match (layout == Layout::Document)
         .then(|| paragraph(node))
@@ -170,7 +177,15 @@ fn part(node: NodeId) -> Part<Measured> {
 
       Part::Box(taffy, Point::new(0., 0.))
     }
-    Some(Shape::Run(text)) => Part::Leaf(run_style(&env, node, place), lone(node, text)),
+    Some(Shape::Run(text)) => {
+      let mut style = run_style(&env, node, place);
+
+      if first(node) {
+        fill_viewport(&mut style, &BoxStyle::default());
+      }
+
+      Part::Leaf(style, lone(node, text))
+    }
   }
 }
 
@@ -384,6 +399,54 @@ enum Shape {
   Run(String),
   Transparent,
   Absent,
+}
+
+/// Whether `node` is the app's first box, as the web's reset finds it: no box, control,
+/// overlay or run above it, anchors and scopes aside.
+fn first(node: NodeId) -> bool {
+  let mut current = Scene::<Headless>::read(|scene| scene.placed_parent(node));
+
+  while let Some(parent) = current {
+    let transparent = with_records(|records| {
+      records
+        .record(parent)
+        .is_some_and(|record| matches!(record.kind, Kind::Anchor | Kind::Scope))
+    });
+
+    if !transparent {
+      return false;
+    }
+
+    current = Scene::<Headless>::read(|scene| scene.placed_parent(parent));
+  }
+
+  true
+}
+
+/// Makes `style` fill the viewport as the web's reset makes the app's first box: growing
+/// and shrinking with no floor, and scrolling what overflows it, where `resolved`, its
+/// own style, sets none of these.
+fn fill_viewport(style: &mut Style, resolved: &BoxStyle<f32, Plain, WebStyle>) {
+  if resolved.flex.is_none() {
+    style.flex_grow = 1.;
+    style.flex_shrink = 1.;
+    style.flex_basis = Dimension::auto();
+  }
+
+  if resolved.min_width.is_none() {
+    style.min_size.width = length(0.);
+  }
+
+  if resolved.min_height.is_none() {
+    style.min_size.height = length(0.);
+  }
+
+  if resolved.overflow.is_none() {
+    style.overflow = skene_layout::taffy::geometry::Point {
+      x: skene_layout::taffy::style::Overflow::Scroll,
+      y: skene_layout::taffy::style::Overflow::Scroll,
+    };
+  }
 }
 
 /// Whether `node`'s nearest laid-out ancestor is a stack, which places it in its one

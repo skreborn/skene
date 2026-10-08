@@ -148,7 +148,9 @@ fn a_run_measures_by_the_typography_in_force() {
   let owner = Owner::new();
   let _theme = owner.enter(|| {
     Theme::new(Typography::default().set_size(20.).set_line_height(2.))
-      .set_child_builder(|| Row::new().set_children((Text::new("ab"),)))
+      .set_child_builder(|| {
+        Column::new().set_children((Row::new().set_children((Text::new("ab"),)),))
+      })
       .build()
   });
   let run = find_by_text("ab").expect("the run");
@@ -231,13 +233,18 @@ fn a_frame_reports_the_laid_out_size() {
 
   let owner = Owner::new();
   let handle = NodeHandle::new();
-  let node = owner.enter(move || {
-    Container::new()
-      .set_width(Dimension::Fraction(0.5))
-      .set_height(Dimension::Length(40.))
-      .bind_handle(handle)
+  let page = owner.enter(move || {
+    Column::new()
+      .set_children((Container::new()
+        .set_width(Dimension::Fraction(0.5))
+        .set_height(Dimension::Length(40.))
+        .bind_handle(handle),))
       .build()
   });
+  let [node] = content(page)[..]
+  else {
+    panic!("one child");
+  };
 
   assert_eq!(handle.size(), None, "nothing is measured before a frame");
 
@@ -269,13 +276,18 @@ fn a_box_lays_out_at_the_width_its_motion_presents() {
 
   let owner = Owner::new();
   let width = Signal::new(100f32);
-  let node = owner.enter(|| {
-    Container::new()
-      .derive_width(move || width.get())
-      .set_height(Dimension::Length(10.))
-      .add_transition(Transition::new(Property::Width, 1.).set_easing(Easing::Linear))
+  let page = owner.enter(|| {
+    Column::new()
+      .set_children((Container::new()
+        .derive_width(move || width.get())
+        .set_height(Dimension::Length(10.))
+        .add_transition(Transition::new(Property::Width, 1.).set_easing(Easing::Linear)),))
       .build()
   });
+  let [node] = content(page)[..]
+  else {
+    panic!("one child");
+  };
 
   assert_eq!(layout_rect(node).map(|rect| rect.size.width), Some(100.));
 
@@ -296,7 +308,8 @@ fn a_box_lays_out_at_the_width_its_motion_presents() {
 }
 
 /// A point hits the topmost node covering it: a child above its parent, a later layer
-/// of a stack above an earlier one, and nothing beyond what the layout covers.
+/// of a stack above an earlier one, the first box anywhere in the viewport it fills, and
+/// nothing beyond the viewport.
 #[test]
 fn a_point_hits_the_topmost_node() {
   reset();
@@ -333,9 +346,10 @@ fn a_point_hits_the_topmost_node() {
   );
   assert_eq!(
     node_at(Point::new(10., 500.)),
-    None,
-    "below everything laid out"
+    Some(column),
+    "the column, filling the viewport"
   );
+  assert_eq!(node_at(Point::new(10., 800.)), None, "beyond the viewport");
 
   owner.dispose();
 }
@@ -390,12 +404,17 @@ fn a_scrolled_box_shifts_its_content() {
   reset();
 
   let owner = Owner::new();
-  let scrolling = owner.enter(|| {
-    sized(100., 50.)
-      .set_overflow(Overflow::ScrollIfNeeded)
-      .set_child(Column::new().set_children((sized(100., 50.), sized(100., 50.))))
+  let page = owner.enter(|| {
+    Column::new()
+      .set_children((sized(100., 50.)
+        .set_overflow(Overflow::ScrollIfNeeded)
+        .set_child(Column::new().set_children((sized(100., 50.), sized(100., 50.)))),))
       .build()
   });
+  let [scrolling] = content(page)[..]
+  else {
+    panic!("one child");
+  };
   let [column] = content(scrolling)[..]
   else {
     panic!("one child");
@@ -408,8 +427,8 @@ fn a_scrolled_box_shifts_its_content() {
   assert_eq!(node_at(Point::new(10., 25.)), Some(first));
   assert_eq!(
     node_at(Point::new(10., 75.)),
-    None,
-    "the second row, clipped"
+    Some(page),
+    "the page beneath, the second row clipped"
   );
 
   trigger_scroll(scrolling, &ScrollEvent { x: 0., y: 50. });
@@ -428,14 +447,18 @@ fn a_paragraphs_spans_flow_on_one_line() {
   reset();
 
   let owner = Owner::new();
-  let paragraph = owner.enter(|| {
-    RichText::new()
-      .add_spans([
+  let page = owner.enter(|| {
+    Column::new()
+      .set_children((RichText::new().add_spans([
         Span::new("Hello "),
         Span::group([Span::new("wor"), Span::new("ld")]),
-      ])
+      ]),))
       .build()
   });
+  let [paragraph] = content(page)[..]
+  else {
+    panic!("one child");
+  };
   let [hello, group] = content(paragraph)[..]
   else {
     panic!("two spans");
@@ -479,12 +502,17 @@ fn a_paragraph_wraps_across_its_spans() {
 
   let width = text_width("c aaa", 16.);
   let owner = Owner::new();
-  let narrow = owner.enter(|| {
-    Container::new()
-      .set_width(Dimension::Length(width))
-      .set_child(RichText::new().add_spans([Span::new("c "), Span::new("aaa bb")]))
+  let page = owner.enter(|| {
+    Column::new()
+      .set_children((Container::new()
+        .set_width(Dimension::Length(width))
+        .set_child(RichText::new().add_spans([Span::new("c "), Span::new("aaa bb")])),))
       .build()
   });
+  let [narrow] = content(page)[..]
+  else {
+    panic!("one child");
+  };
   let [paragraph] = content(narrow)[..]
   else {
     panic!("one paragraph");
@@ -523,14 +551,18 @@ fn a_line_is_as_tall_as_its_tallest_span() {
   reset();
 
   let owner = Owner::new();
-  let paragraph = owner.enter(|| {
-    RichText::new()
-      .add_spans([
+  let page = owner.enter(|| {
+    Column::new()
+      .set_children((RichText::new().add_spans([
         Span::new("big ").set_font_size(Length(32.)),
         Span::new("small"),
-      ])
+      ]),))
       .build()
   });
+  let [paragraph] = content(page)[..]
+  else {
+    panic!("one child");
+  };
   let [big, small] = content(paragraph)[..]
   else {
     panic!("two spans");
@@ -554,15 +586,19 @@ fn an_inline_box_flows_among_its_paragraphs_text() {
   reset();
 
   let owner = Owner::new();
-  let paragraph = owner.enter(|| {
-    RichText::new()
-      .add_spans([
+  let page = owner.enter(|| {
+    Column::new()
+      .set_children((RichText::new().add_spans([
         Span::new("ab "),
         Span::view(sized(20., 30.)),
         Span::new(" cd"),
-      ])
+      ]),))
       .build()
   });
+  let [paragraph] = content(page)[..]
+  else {
+    panic!("one child");
+  };
   let [before, inline, after] = content(paragraph)[..]
   else {
     panic!("three spans");
@@ -592,12 +628,17 @@ fn a_line_may_end_before_an_inline_box() {
   reset();
 
   let owner = Owner::new();
-  let narrow = owner.enter(|| {
-    Container::new()
-      .set_width(Dimension::Length(30.))
-      .set_child(RichText::new().add_spans([Span::new("abc"), Span::view(sized(20., 30.))]))
+  let page = owner.enter(|| {
+    Column::new()
+      .set_children((Container::new()
+        .set_width(Dimension::Length(30.))
+        .set_child(RichText::new().add_spans([Span::new("abc"), Span::view(sized(20., 30.))])),))
       .build()
   });
+  let [narrow] = content(page)[..]
+  else {
+    panic!("one child");
+  };
   let [paragraph] = content(narrow)[..]
   else {
     panic!("one paragraph");
@@ -666,12 +707,17 @@ fn a_paragraph_breaks_after_a_hyphen() {
   reset();
 
   let owner = Owner::new();
-  let narrow = owner.enter(|| {
-    Container::new()
-      .set_width(Dimension::Length(56.))
-      .set_child(RichText::new().add_spans([Span::new("well-known")]))
+  let page = owner.enter(|| {
+    Column::new()
+      .set_children((Container::new()
+        .set_width(Dimension::Length(56.))
+        .set_child(RichText::new().add_spans([Span::new("well-known")])),))
       .build()
   });
+  let [narrow] = content(page)[..]
+  else {
+    panic!("one child");
+  };
   let [paragraph] = content(narrow)[..]
   else {
     panic!("one paragraph");

@@ -94,7 +94,7 @@ pub fn skene_layout::Tree<C>::contains(&self, skene_foundation::spine::node::Nod
 pub fn skene_layout::Tree<C>::context_mut(&mut self, skene_foundation::spine::node::NodeId) -> core::option::Option<&mut C>
 pub fn skene_layout::Tree<C>::frames(&self, skene_foundation::spine::node::NodeId) -> skene_layout::Frames
 pub fn skene_layout::Tree<C>::insert(&mut self, skene_foundation::spine::node::NodeId)
-pub fn skene_layout::Tree<C>::lay_out<P: skene_foundation::spine::platform::Platform>(skene_foundation::spine::node::NodeId, skene_foundation::spine::values::size::Size<f32>, bool, impl core::ops::function::FnMut(skene_foundation::spine::node::NodeId) -> skene_layout::Part<C>) -> skene_layout::Frames
+pub fn skene_layout::Tree<C>::lay_out<P: skene_foundation::spine::platform::Platform>(&mut self, &[skene_foundation::spine::node::NodeId], skene_foundation::spine::values::size::Size<f32>, impl core::ops::function::FnMut(skene_foundation::spine::node::NodeId) -> skene_layout::Part<C>) -> skene_layout::Frames where C: core::cmp::PartialEq
 pub fn skene_layout::Tree<C>::layout(&self, skene_foundation::spine::node::NodeId) -> core::option::Option<&taffy::tree::layout::Layout>
 pub fn skene_layout::Tree<C>::mark_dirty(&mut self, skene_foundation::spine::node::NodeId)
 pub fn skene_layout::Tree<C>::new(bool) -> Self

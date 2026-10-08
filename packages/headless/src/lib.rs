@@ -504,6 +504,7 @@ pub fn reset() {
     owner.dispose();
   }
 
+  layout::reset();
   skene_foundation::reset_thread::<Headless>();
   skene_foundation::hold_flushes(|| {});
   install_executor();

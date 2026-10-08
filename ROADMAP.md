@@ -43,11 +43,11 @@ in a code comment.
     - The terminal's retained runtime beyond its layout tree (the incremental restyle,
     the damage and the measured rectangles, hit testing, focus, capture, wheel
     latching, field editing, selection, motion) moves into `skene-layout`, generic over
-    the platform's scalar, which holds the style mapping, the `Tree` the terminal keeps
-    across frames and headless builds afresh on each, the `Paragraph` headless lays its
-    inline runs out as, and the frames headless hits through, clipped and scrolled as a
-    browser's are: headless keeps its tree across frames as the terminal does; the
-    terminal lays its paragraphs and their inline boxes out through the shared
+    the platform's scalar, which holds the style mapping, the `Tree` both keep across
+    frames, the `Paragraph` headless lays its inline runs out as, and the frames
+    headless hits through, clipped and scrolled as a browser's are: headless writes its
+    tree through the incremental restyle, where it walks the whole scene every frame;
+    the terminal lays its paragraphs and their inline boxes out through the shared
     `Paragraph`, its cells as the metrics and its breaks where UAX #14 allows them,
     where headless breaks after blanks and around boxes alone; the terminal hits through
     the shared frames; headless renders pixel snapshots in the pinned font; the layout

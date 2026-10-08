@@ -1,6 +1,8 @@
 //! The layout of the scene: each record's part in it, a box styled from its resolved
 //! style and a paragraph of runs measured by the platform's approximate metrics, laid out
-//! through the shared layout at the viewport.
+//! through the shared layout at the viewport, on a tree kept across frames.
+
+use std::cell::RefCell;
 
 use skene_foundation::{
   BoxField,
@@ -67,19 +69,22 @@ impl Metrics for Approximate {
 /// What the layout measures a leaf by: the runs of its paragraph.
 type Measured = Paragraph<Approximate>;
 
+thread_local! {
+  /// The tree the scene lays out on, kept across frames.
+  static TREE: RefCell<Tree<Measured>> = RefCell::new(Tree::new(false));
+}
+
 /// Lays out every tree of the scene at the viewport.
 pub(crate) fn lay_out() -> Frames {
   let viewport = with_records(|records| records.viewport).unwrap_or(DEFAULT_VIEWPORT);
   let roots: Vec<NodeId> = Scene::<Headless>::read(|scene| scene.roots().collect());
-  let mut frames = Frames::default();
 
-  for root in roots {
-    frames.extend(Tree::<Measured>::lay_out::<Headless>(
-      root, viewport, false, part,
-    ));
-  }
+  TREE.with_borrow_mut(|tree| tree.lay_out::<Headless>(&roots, viewport, part))
+}
 
-  frames
+/// Forgets every layout, as a fresh platform holds none.
+pub(crate) fn reset() {
+  TREE.with_borrow_mut(|tree| *tree = Tree::new(false));
 }
 
 /// What `node` is to the layout: a box styled from its resolved style, a box whose

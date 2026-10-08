@@ -590,3 +590,49 @@ fn a_line_may_end_before_an_inline_box() {
 
   owner.dispose();
 }
+
+/// The layout follows the scene from frame to frame: rows reordered, removed and added,
+/// and a row's width moved by a signal.
+#[test]
+fn the_layout_follows_the_scene_across_frames() {
+  reset();
+
+  let owner = Owner::new();
+  let (rows, width) = owner.enter(|| (Signal::new(vec![1_u8, 2, 3]), Signal::new(40_f32)));
+  let column = owner.enter(|| {
+    Column::new()
+      .derive_children(
+        move || rows.get(),
+        |row| *row,
+        move |row| {
+          Container::new()
+            .derive_width(move || if row == 2 { width.get() } else { 10. })
+            .set_height(Dimension::Length(10. * f32::from(row)))
+        },
+      )
+      .build()
+  });
+  let [one, two, three] = content(column)[..]
+  else {
+    panic!("three rows");
+  };
+
+  assert_eq!(layout_rect(two), Some(rect(0., 10., 40., 20.)));
+  assert_eq!(layout_rect(three), Some(rect(0., 30., 10., 30.)));
+
+  rows.set(vec![3, 2, 4]);
+  width.set(60.);
+
+  let [moved, kept, added] = content(column)[..]
+  else {
+    panic!("three rows");
+  };
+
+  assert_eq!((moved, kept), (three, two));
+  assert_eq!(layout_rect(three), Some(rect(0., 0., 10., 30.)));
+  assert_eq!(layout_rect(two), Some(rect(0., 30., 60., 20.)));
+  assert_eq!(layout_rect(added), Some(rect(0., 50., 10., 40.)));
+  assert_eq!(layout_rect(one), None, "the removed row");
+
+  owner.dispose();
+}

@@ -1,8 +1,10 @@
-//! A layout tree keyed by the scene's nodes: retained across layouts, each node's style,
-//! context and children written where they changed, or built afresh from the scene for
-//! one layout, each node's part as its platform classifies it.
+//! A layout tree keyed by the scene's nodes, retained across layouts: each node's style,
+//! context and children written where they changed, node by node or by a walk of the
+//! scene, each node's part as its platform classifies it.
 
-use rustc_hash::FxHashMap;
+use std::collections::VecDeque;
+
+use rustc_hash::{FxHashMap, FxHashSet};
 use skene_foundation::{NodeId, NodeMap, Platform, Point, Rect, Scene, Size};
 use taffy::{
   TaffyTree,
@@ -210,13 +212,22 @@ impl Bounds {
 /// A layout tree of the scene's nodes, its leaves measured from their contexts `C`.
 ///
 /// A node takes part once inserted, as a leaf of the default style with no context
-/// and no children, until it is removed. Writing a node's style, context or children
-/// marks it for the next [`compute`](Self::compute) only where the value differs from
-/// the one it holds.
+/// and no children, until it is removed, or while a walk of the scene
+/// ([`lay_out`](Self::lay_out)) reaches it. Writing a node's style, context or children
+/// marks it for the next layout only where the value differs from the one it holds.
 #[must_use]
 pub struct Tree<C> {
   taffy: TaffyTree<C>,
   nodes: NodeMap<Slot>,
+  tops: Vec<taffy::NodeId>,
+}
+
+/// What one walk of the scene carries: what answers each node's part, the overlays set
+/// aside for the root with their parts, and every node it reached.
+struct Walk<F, C> {
+  part: F,
+  overlays: VecDeque<(NodeId, Part<C>)>,
+  reached: FxHashSet<NodeId>,
 }
 
 /// A node's place in the taffy tree: its taffy node, the taffy children last set and
@@ -248,6 +259,7 @@ impl<C: Leaf> Tree<C> {
     Self {
       taffy,
       nodes: NodeMap::new(),
+      tops: Vec::new(),
     }
   }
 
@@ -404,37 +416,28 @@ impl<C: Leaf> Tree<C> {
     frames
   }
 
-  /// Lays out the scene of the platform `P` under `root` at `viewport` on a tree built
-  /// for the one layout, each node's part as `part` answers, each leaf measured by its
-  /// context and the nodes it places recorded beneath it; the layout rounded to whole
-  /// units where `rounding` says so.
+  /// Lays out the scene of the platform `P` under each of `roots` at `viewport`, first
+  /// bringing the tree in line with it: each node's part as `part` answers, its style,
+  /// context and children written where they changed, and each node no longer reached
+  /// taken out. Each leaf is measured by its context, the nodes it places recorded
+  /// beneath it.
   ///
-  /// The root lays out in the viewport as a block's child does, stretched across it,
-  /// and the open overlays beneath it are hoisted beside it, out of every flow.
+  /// A root lays out in the viewport as a block's child does, stretched across it, and
+  /// the open overlays beneath it are hoisted beside it, out of every flow.
   pub fn lay_out<P: Platform>(
-    root: NodeId,
+    &mut self,
+    roots: &[NodeId],
     viewport: Size<f32>,
-    rounding: bool,
-    mut part: impl FnMut(NodeId) -> Part<C>,
-  ) -> Frames {
-    let mut tree = Self::new(rounding);
-    let mut overlays = Vec::new();
-    let mut children: Vec<taffy::NodeId> = match part(root) {
-      Part::Transparent => tree.children_of::<P>(root, &mut part, &mut overlays),
-      _ => tree
-        .add::<P>(root, &mut part, &mut overlays)
-        .into_iter()
-        .collect(),
+    part: impl FnMut(NodeId) -> Part<C>,
+  ) -> Frames
+  where
+    C: PartialEq,
+  {
+    let mut walk = Walk {
+      part,
+      overlays: VecDeque::new(),
+      reached: FxHashSet::default(),
     };
-    let mut hoisted = 0;
-
-    while hoisted < overlays.len() {
-      let overlay = overlays[hoisted];
-
-      hoisted += 1;
-      children.extend(tree.add::<P>(overlay, &mut part, &mut overlays));
-    }
-
     let viewport_style = Style {
       display: Display::Flex,
       flex_direction: FlexDirection::Column,
@@ -444,18 +447,66 @@ impl<C: Leaf> Tree<C> {
       },
       ..Style::default()
     };
-    let Ok(top) = tree.taffy.new_with_children(viewport_style, &children)
-    else {
-      return Frames::default();
-    };
     let available = taffy::geometry::Size {
       width: AvailableSpace::Definite(viewport.width),
       height: AvailableSpace::Definite(viewport.height),
     };
     let mut frames = Frames::default();
 
-    if tree.compute_at(top, available).is_ok() {
-      tree.collect(top, &mut frames);
+    for (index, root) in roots.iter().copied().enumerate() {
+      let mut children = match (walk.part)(root) {
+        Part::Transparent => self.sync_children::<P, _>(root, &mut walk),
+        its => self
+          .sync::<P, _>(root, its, &mut walk)
+          .into_iter()
+          .collect(),
+      };
+
+      while let Some((overlay, its)) = walk.overlays.pop_front() {
+        children.extend(self.sync::<P, _>(overlay, its, &mut walk));
+      }
+
+      if index == self.tops.len() {
+        let Ok(top) = self.taffy.new_leaf(viewport_style.clone())
+        else {
+          continue;
+        };
+
+        self.tops.push(top);
+      }
+
+      let top = self.tops[index];
+
+      if self
+        .taffy
+        .style(top)
+        .is_ok_and(|held| *held != viewport_style)
+      {
+        let _ = self.taffy.set_style(top, viewport_style.clone());
+      }
+
+      if self.taffy.children(top).is_ok_and(|held| held != children) {
+        let _ = self.taffy.set_children(top, &children);
+      }
+
+      if self.compute_at(top, available).is_ok() {
+        self.collect(top, &mut frames);
+      }
+    }
+
+    for top in self.tops.drain(roots.len().min(self.tops.len())..) {
+      let _ = self.taffy.remove(top);
+    }
+
+    let stale: Vec<NodeId> = self
+      .nodes
+      .iter()
+      .map(|(node, _)| node)
+      .filter(|node| !walk.reached.contains(node))
+      .collect();
+
+    for node in stale {
+      self.remove(node);
     }
 
     frames
@@ -487,27 +538,27 @@ impl<C: Leaf> Tree<C> {
       })
   }
 
-  /// Adds `node` with everything laid out beneath it, returning its taffy node; `None`
-  /// where it is left out.
-  fn add<P: Platform>(
+  /// Brings `node`, whose part is `its`, in line with the scene with everything laid out
+  /// beneath it, returning its taffy node; `None` where it is left out.
+  fn sync<P: Platform, F: FnMut(NodeId) -> Part<C>>(
     &mut self,
     node: NodeId,
-    part: &mut impl FnMut(NodeId) -> Part<C>,
-    overlays: &mut Vec<NodeId>,
-  ) -> Option<taffy::NodeId> {
-    let (taffy, children, scroll) = match part(node) {
+    its: Part<C>,
+    walk: &mut Walk<F, C>,
+  ) -> Option<taffy::NodeId>
+  where
+    C: PartialEq,
+  {
+    let (style, context, children, scroll) = match its {
       Part::Box(style, scroll) | Part::Overlay(style, scroll) => {
-        let children = self.children_of::<P>(node, part, overlays);
+        let children = self.sync_children::<P, _>(node, walk);
 
-        (
-          self.taffy.new_with_children(style, &children).ok()?,
-          children,
-          scroll,
-        )
+        (style, None, children, scroll)
       }
       Part::Leaf(style, mut context) => {
         for inline in context.boxes() {
-          let Some(laid_out) = self.add::<P>(inline, part, overlays)
+          let its = (walk.part)(inline);
+          let Some(laid_out) = self.sync::<P, _>(inline, its, walk)
           else {
             continue;
           };
@@ -523,44 +574,48 @@ impl<C: Leaf> Tree<C> {
           }
         }
 
-        (
-          self.taffy.new_leaf_with_context(style, context).ok()?,
-          Vec::new(),
-          Point::new(0., 0.),
-        )
+        (style, Some(context), Vec::new(), Point::new(0., 0.))
       }
       Part::Transparent | Part::Absent => return None,
     };
 
-    self.nodes.insert(
-      node,
-      Slot {
-        taffy,
-        children,
-        scroll,
-      },
-    );
+    self.insert(node);
+    self.set_style(node, style);
+    self.set_context(node, context);
 
-    Some(taffy)
+    let slot = self.nodes.get_mut(node)?;
+
+    slot.scroll = scroll;
+
+    if slot.children != children && self.taffy.set_children(slot.taffy, &children).is_ok() {
+      slot.children = children;
+    }
+
+    walk.reached.insert(node);
+
+    Some(slot.taffy)
   }
 
-  /// The taffy nodes laid out as `node`'s children: its placed children, a transparent
-  /// one's own in its place, overlays set aside for the root.
-  fn children_of<P: Platform>(
+  /// Brings the children `node` places in line with the scene, returning their taffy
+  /// nodes in order: a transparent one's own in its place, overlays set aside for the
+  /// root.
+  fn sync_children<P: Platform, F: FnMut(NodeId) -> Part<C>>(
     &mut self,
     node: NodeId,
-    part: &mut impl FnMut(NodeId) -> Part<C>,
-    overlays: &mut Vec<NodeId>,
-  ) -> Vec<taffy::NodeId> {
+    walk: &mut Walk<F, C>,
+  ) -> Vec<taffy::NodeId>
+  where
+    C: PartialEq,
+  {
     let placed: Vec<NodeId> = Scene::<P>::read(|scene| scene.placed_children(node).collect());
     let mut children = Vec::new();
 
     for child in placed {
-      match part(child) {
-        Part::Transparent => children.extend(self.children_of::<P>(child, part, overlays)),
-        Part::Overlay(..) => overlays.push(child),
+      match (walk.part)(child) {
+        Part::Transparent => children.extend(self.sync_children::<P, _>(child, walk)),
+        its @ Part::Overlay(..) => walk.overlays.push_back((child, its)),
         Part::Absent => {}
-        Part::Box(..) | Part::Leaf(..) => children.extend(self.add::<P>(child, part, overlays)),
+        its => children.extend(self.sync::<P, _>(child, its, walk)),
       }
     }
 

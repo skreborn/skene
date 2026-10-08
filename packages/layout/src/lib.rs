@@ -3,8 +3,8 @@
 //! The layout every platform but the web computes, on taffy: the shared style model
 //! mapped onto taffy's styles, generic over the platform's scalar, a unit of which is
 //! one unit of the layout ([`BoxLayout`]), a tree keyed by the scene's nodes, retained
-//! across layouts or built from the scene for one, each node's part classified by its
-//! platform ([`Tree`]), and a paragraph of inline runs laid out as one text, each
+//! across layouts and written node by node or by a walk of the scene, each node's part
+//! classified by its platform ([`Tree`]), and a paragraph of inline runs laid out as one text, each
 //! measured by its platform's metrics ([`Paragraph`]). The web lays out through CSS and
 //! needs none of it.
 

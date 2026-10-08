@@ -110,7 +110,7 @@ use skene_web::{
   head,
   platform::{self, Declarations, mount},
   reactive::{Get, Owner, Set, Signal},
-  testing::{computed, dispatch, document, fresh_root, next_frame, only_child, wait},
+  testing::{computed, dispatch, document, frames_until, fresh_root, next_frame, only_child, wait},
   wasm_bindgen::JsCast,
   window,
 };
@@ -972,7 +972,8 @@ fn a_pointer_cancel_reaches_the_box() {
 
 /// A press on a slider's thumb asks for the value whose thumb centers under the
 /// pointer, measured from the slider's own box rather than the thumb's: 150 pixels into
-/// 200, the thumb's 16-pixel center travelling 184, is 77.
+/// 200, the thumb's 16-pixel center travelling 184, is 77, once the browser has reported
+/// the slider's size.
 #[wasm_bindgen_test]
 async fn a_press_on_the_thumb_slides_by_the_slider_box() {
   use skene_foundation::Dimension;
@@ -1005,8 +1006,14 @@ async fn a_press_on_the_thumb_slides_by_the_slider_box() {
   let event =
     web_sys::PointerEvent::new_with_event_init_dict("pointerdown", &init).expect("a pointer event");
 
-  let _ = thumb.dispatch_event(&event);
+  let slid = frames_until(|| {
+    let _ = thumb.dispatch_event(&event);
 
+    (value.get() - 40.).abs() > f32::EPSILON
+  })
+  .await;
+
+  assert!(slid, "the press moved the slider");
   assert!((value.get() - 77.).abs() < f32::EPSILON, "{}", value.get());
 }
 

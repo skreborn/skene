@@ -551,22 +551,22 @@ Condition     = Media | State | And | Or
 - **Layout** runs on taffy at full capability, statically constrained per layout: each
   mode is its own container view carrying layout properties alone, `Container` is the one
   decorated box, and per-child properties ride in wrappers. Every platform but the web
-  maps a resolved style onto taffy through `skene-layout` once (`BoxLayout`, generic over
-  the scalar, a border taking a unit per edge drawn in cells and its width in pixels)
-  and lays out on its `Tree`, keyed by the scene's nodes and kept across frames, each
-  node's style, text and children written where they changed: by the terminal's
+  maps a resolved style onto taffy through `skene-layout` once (`BoxLayout`, generic
+  over the scalar, a border taking a unit per edge drawn in cells and its width in
+  pixels) and lays out on its `Tree`, keyed by the scene's nodes and kept across frames,
+  each node's style, text and children written where they changed: by the terminal's
   records as they change, and by a walk of the scene on every frame in the headless
-  platform, at the values its motion presents. There a box whose children are all inline runs lays them out as
-  one `Paragraph`, wrapping between words across them and around an inline box, laid
-  out at its content's size first, a line as tall as its tallest run or box and a span
-  placed in a rectangle per line it is on, and every run is measured by
-  approximate metrics (a cluster half its font size wide, a line its font size times
-  its line height tall, both as the typography in force sets them). Headless reports
-  each box's size to the observers bound to it and answers `layout_rect`,
-  `visible_rect` and, through the frames' paint order, `node_at`, a box clipping its
-  overflow along an axis clipping what lies beneath it to its padding box there and a
-  box's scroll offsets, as `trigger_scroll` reports them, shifting it back, as in a
-  browser. `Dimension` is a fixed length,
+  platform, at the values its motion presents. There a box whose children are all inline
+  runs lays them out as one `Paragraph`, wrapping where the Unicode line breaking
+  algorithm allows across them and around an inline box, laid out at its content's size
+  first, a line as tall as its tallest run or box and a span placed in a rectangle per
+  line it is on, and every run is measured by approximate metrics (a cluster half its
+  font size wide, a line its font size times its line height tall, both as the
+  typography in force sets them). Headless reports each box's size to the observers
+  bound to it and answers `layout_rect`, `visible_rect` and, through the frames' paint
+  order, `node_at`, a box clipping its overflow along an axis clipping what lies beneath
+  it to its padding box there and a box's scroll offsets, as `trigger_scroll` reports
+  them, shifting it back, as in a browser. `Dimension` is a fixed length,
   a `Fraction` of the parent, or auto. Overflow is per axis (`Axes<Overflow>`, one
   overflow setting both) and computed as CSS computes it, an axis left visible beside
   one that is not scrolling where needed; the terminal scrolls, and draws a scrollbar,

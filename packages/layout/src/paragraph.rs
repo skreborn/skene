@@ -47,8 +47,9 @@ pub enum Content {
 
 /// Inline runs laid out as one text, each run's clusters measured by its metrics `M`.
 ///
-/// The text wraps between words, after the blanks that end them, at each newline and
-/// around each box; a word runs across runs where nothing breaks it. A line is as tall
+/// The text wraps where the Unicode line breaking algorithm allows, as after the blanks
+/// ending a word or a hyphen, at each newline and around each box; a word runs across
+/// runs where nothing breaks it. A line is as tall
 /// as the tallest run or box on it, each sitting on its bottom, and as wide as its text
 /// without the blanks it ends in, which take no room on it.
 #[derive(Debug, Clone, PartialEq)]
@@ -113,24 +114,38 @@ impl<M: Metrics> Paragraph<M> {
 
   /// The lines the text wraps into within `limit`, or unwrapped but at its newlines.
   fn lines(&self, limit: Option<f32>) -> Vec<Line> {
+    let mut text = String::new();
     let mut clusters = Vec::new();
 
     for (index, run) in self.runs.iter().enumerate() {
       match &run.content {
-        Content::Text(text) => clusters.extend(text.graphemes(true).map(|text| Cluster {
-          run: index,
-          text,
-          advance: run.metrics.advance(text),
-          boxed: false,
-        })),
-        Content::Box(size) => clusters.push(Cluster {
-          run: index,
-          text: "",
-          advance: size.width,
-          boxed: true,
-        }),
+        Content::Text(content) => {
+          for (byte, cluster) in content.grapheme_indices(true) {
+            clusters.push(Cluster {
+              run: index,
+              text: cluster,
+              advance: run.metrics.advance(cluster),
+              byte: text.len() + byte,
+              boxed: false,
+            });
+          }
+
+          text.push_str(content);
+        }
+        Content::Box(size) => {
+          clusters.push(Cluster {
+            run: index,
+            text: "",
+            advance: size.width,
+            byte: text.len(),
+            boxed: true,
+          });
+          text.push(OBJECT);
+        }
       }
     }
+
+    let breaks = Self::breaks(&text, &clusters);
 
     let mut lines = Vec::new();
     let Some(first) = clusters.first()
@@ -142,9 +157,7 @@ impl<M: Metrics> Paragraph<M> {
     let mut index = 0;
 
     while index < clusters.len() {
-      let Cluster {
-        run, text, boxed, ..
-      } = clusters[index];
+      let Cluster { run, text, .. } = clusters[index];
 
       if matches!(text, "\n" | "\r\n") {
         lines.push(std::mem::replace(&mut line, self.line(run)).trimmed(advance));
@@ -156,26 +169,25 @@ impl<M: Metrics> Paragraph<M> {
 
       let start = index;
 
-      if boxed {
+      index += 1;
+
+      while index < clusters.len()
+        && !breaks[index]
+        && !matches!(clusters[index].text, "\n" | "\r\n")
+      {
         index += 1;
       }
-      else {
-        while index < clusters.len()
-          && !clusters[index].boxed
-          && !matches!(clusters[index].text, " " | "\n" | "\r\n")
-        {
-          index += 1;
-        }
+
+      let mut end = index;
+
+      while end > start && !clusters[end - 1].boxed && clusters[end - 1].text == " " {
+        end -= 1;
       }
 
-      let ink: f32 = clusters[start..index]
+      let ink: f32 = clusters[start..end]
         .iter()
         .map(|cluster| cluster.advance)
         .sum();
-
-      while index < clusters.len() && !clusters[index].boxed && clusters[index].text == " " {
-        index += 1;
-      }
 
       if !line.pieces.is_empty() && limit.is_some_and(|limit| advance + ink > limit) {
         lines.push(std::mem::replace(&mut line, self.line(run)).trimmed(advance));
@@ -218,6 +230,27 @@ impl<M: Metrics> Paragraph<M> {
     lines
   }
 
+  /// Whether a line may end before each of `clusters` of `text`: where the Unicode line
+  /// breaking algorithm allows it, and around each box.
+  fn breaks(text: &str, clusters: &[Cluster<'_>]) -> Vec<bool> {
+    let mut breaks = vec![false; clusters.len() + 1];
+
+    for (byte, _) in unicode_linebreak::linebreaks(text) {
+      if let Ok(index) = clusters.binary_search_by_key(&byte, |cluster| cluster.byte) {
+        breaks[index] = true;
+      }
+    }
+
+    for (index, cluster) in clusters.iter().enumerate() {
+      if cluster.boxed {
+        breaks[index] = true;
+        breaks[index + 1] = true;
+      }
+    }
+
+    breaks
+  }
+
   /// An empty line, as tall as a line of the run at `index` until a run's text is on it.
   fn line(&self, index: usize) -> Line {
     Line {
@@ -228,13 +261,19 @@ impl<M: Metrics> Paragraph<M> {
   }
 }
 
+/// The character a box stands for in its paragraph's text, as the line breaking
+/// algorithm reads it.
+const OBJECT: char = '\u{fffc}';
+
 /// One cluster of a paragraph's text, or one of its boxes: the run it belongs to, its
-/// text, how far it advances its line, and whether it is a box.
+/// text, how far it advances its line, the byte it starts at in the paragraph's text,
+/// and whether it is a box.
 #[derive(Clone, Copy)]
 struct Cluster<'a> {
   run: usize,
   text: &'a str,
   advance: f32,
+  byte: usize,
   boxed: bool,
 }
 

@@ -636,3 +636,31 @@ fn the_layout_follows_the_scene_across_frames() {
 
   owner.dispose();
 }
+
+/// A paragraph breaks where the Unicode line breaking algorithm allows, after a hyphen
+/// as after a blank.
+#[test]
+fn a_paragraph_breaks_after_a_hyphen() {
+  reset();
+
+  let owner = Owner::new();
+  let narrow = owner.enter(|| {
+    Container::new()
+      .set_width(Dimension::Length(48.))
+      .set_child(RichText::new().add_spans([Span::new("well-known")]))
+      .build()
+  });
+  let [paragraph] = content(narrow)[..]
+  else {
+    panic!("one paragraph");
+  };
+  let [span] = content(paragraph)[..]
+  else {
+    panic!("one span");
+  };
+
+  assert_eq!(layout_rect(paragraph), Some(rect(0., 0., 48., 48.)));
+  assert_eq!(layout_rect(span), Some(rect(0., 0., 40., 48.)));
+
+  owner.dispose();
+}

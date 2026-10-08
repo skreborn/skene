@@ -48,9 +48,8 @@ in a code comment.
     headless hits through, clipped and scrolled as a browser's are: headless writes its
     tree through the incremental restyle, where it walks the whole scene every frame;
     the terminal lays its paragraphs and their inline boxes out through the shared
-    `Paragraph`, its cells as the metrics and its breaks where UAX #14 allows them,
-    where headless breaks after blanks and around boxes alone; the terminal hits through
-    the shared frames; headless renders pixel snapshots in the pinned font; the layout
+    `Paragraph`, its cells, tab stops and text sizes as the metrics, where it keeps a
+    wrap of its own; the terminal hits through the shared frames; headless renders pixel snapshots in the pinned font; the layout
     store becomes the crate the native shells call into.
     - Conformance by intent: once the shells stop sharing views, a scenario states what
     it builds (a button labelled Save that counts its clicks) and each platform's

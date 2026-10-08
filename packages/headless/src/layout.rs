@@ -36,6 +36,7 @@ use skene_layout::{
   Paragraph,
   Part,
   Place,
+  Revisit,
   Tree,
   taffy::{
     self,
@@ -147,12 +148,34 @@ thread_local! {
 }
 
 /// Lays out every tree of the scene at the viewport, each root along a row as the web's
-/// reset lays out the body's children.
+/// reset lays out the body's children: only the nodes the restyle revisits written
+/// afresh where the structure held, else the whole scene.
 pub(crate) fn lay_out() -> Frames {
   let viewport = with_records(|records| records.viewport).unwrap_or(DEFAULT_VIEWPORT);
   let roots: Vec<NodeId> = Scene::<Headless>::read(|scene| scene.roots().collect());
+  let interaction = Scene::<Headless>::read(Scene::interaction_generation);
+  let revisited = with_records(|records| match records.restyle.take(interaction) {
+    Revisit::Every => None,
+    Revisit::Nodes(mut nodes, moved) => {
+      if moved {
+        nodes.extend(records.restyle.interactive());
+      }
 
-  TREE.with_borrow_mut(|tree| tree.lay_out::<Headless>(&roots, viewport, FlexDirection::Row, part))
+      Some(nodes)
+    }
+  });
+
+  TREE.with_borrow_mut(|tree| {
+    revisited
+      .and_then(|nodes| {
+        tree.lay_out_revisited::<Headless>(&roots, viewport, FlexDirection::Row, &nodes, part)
+      })
+      .unwrap_or_else(|| {
+        with_records(|records| records.restyle.take_structure());
+
+        tree.lay_out::<Headless>(&roots, viewport, FlexDirection::Row, part)
+      })
+  })
 }
 
 /// Forgets every layout, as a fresh platform holds none.
@@ -164,11 +187,33 @@ pub(crate) fn reset() {
 /// children are all inline runs a paragraph of them, a run a paragraph of its own text,
 /// an inline box a box around its view, an open overlay out of the flow, an anchor or a
 /// scope transparent, and a hidden box or a closed overlay left out.
+///
+/// The restyle notes whether its resolution read its interaction, and revisits it at the
+/// next layout where it is laid out and declares motion.
 fn part(node: NodeId) -> Part<Measured> {
   let Some(env) = Env::of(&Records, node)
   else {
     return Part::Absent;
   };
+  let its = part_under(node, &env);
+  let moving = !matches!(its, Part::Transparent | Part::Absent) && moves(node);
+
+  with_records(|records| {
+    records.style_resolutions += 1;
+    records
+      .restyle
+      .read_interaction(node, env.read_interaction());
+
+    if moving {
+      records.restyle.keep_moving(node);
+    }
+  });
+
+  its
+}
+
+/// What `node` is to the layout, its properties resolved under `env`.
+fn part_under(node: NodeId, env: &Env) -> Part<Measured> {
   let kind = with_records(|records| {
     let record = records.record(node)?;
 
@@ -213,7 +258,7 @@ fn part(node: NodeId) -> Part<Measured> {
     None | Some(Shape::Absent) => Part::Absent,
     Some(Shape::Transparent) => Part::Transparent,
     Some(Shape::Box(layout, style, scroll, overlay, entry)) => {
-      let resolved = presented(node, &env, &style);
+      let resolved = presented(node, env, &style);
 
       if resolved.hidden == Some(true) {
         return Part::Absent;
@@ -234,7 +279,7 @@ fn part(node: NodeId) -> Part<Measured> {
       }
 
       if let Some(lines) = entry {
-        return Part::Leaf(style, Measured::Entry(entry_size(&env, lines)));
+        return Part::Leaf(style, Measured::Entry(entry_size(env, lines)));
       }
 
       match (layout == Layout::Document)
@@ -246,14 +291,14 @@ fn part(node: NodeId) -> Part<Measured> {
       }
     }
     Some(Shape::Embedded) => {
-      let mut taffy = run_style(&env, node, place);
+      let mut taffy = run_style(env, node, place);
 
       taffy.display = Display::Flex;
 
       Part::Box(taffy, Point::new(0., 0.))
     }
     Some(Shape::Run(text)) => {
-      let mut style = run_style(&env, node, place);
+      let mut style = run_style(env, node, place);
 
       if first(node) {
         fill_viewport(&mut style, &BoxStyle::default());
@@ -397,7 +442,7 @@ enum Flow {
 }
 
 /// The metrics the run `node` measures its text by, as its style and the typography in
-/// force set them.
+/// force set them; the restyle notes whether their resolution read its interaction.
 pub(crate) fn metrics(node: NodeId) -> RunMetrics {
   let style = with_records(|records| match &records.record(node)?.kind {
     Kind::Run(props) => Some(props.style.clone()),
@@ -406,7 +451,7 @@ pub(crate) fn metrics(node: NodeId) -> RunMetrics {
   let (size, line_height, spacing) = Env::of(&Records, node)
     .zip(style)
     .map(|(env, style)| {
-      env.with_resolver(|resolver| {
+      let resolved = env.with_resolver(|resolver| {
         let resolved = resolver.run_style(&style);
 
         (
@@ -423,7 +468,15 @@ pub(crate) fn metrics(node: NodeId) -> RunMetrics {
             .letter_spacing
             .or_else(|| resolver.keyframe_run_value(&StaticLeaf::from(typography::LETTER_SPACING))),
         )
-      })
+      });
+
+      with_records(|records| {
+        records
+          .restyle
+          .read_interaction(node, env.read_interaction());
+      });
+
+      resolved
     })
     .unwrap_or_default();
 

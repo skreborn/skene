@@ -44,15 +44,14 @@ in a code comment.
     (the restyle's resolution caches and presentation, the damage and the measured
     rectangles, hit testing, focus, capture, wheel latching, field editing, selection,
     motion) moves into `skene-layout`, generic over the platform's scalar, which holds
-    the style mapping, the `Tree` both keep across frames, the `Restyle` the terminal
-    schedules its restyle by, the `Paragraph` headless lays its inline runs out as, and
-    the frames headless hits through, clipped and scrolled as a browser's are: headless
-    writes its tree through the incremental restyle, where it walks the whole scene
-    every frame;
-    the terminal lays its paragraphs and their inline boxes out through the shared
-    `Paragraph`, its cells, tab stops and text sizes as the metrics, where it keeps a
-    wrap of its own; the terminal hits through the shared frames; the layout store
-    becomes the crate the native shells call into.
+    the style mapping, the `Tree` both keep across frames, the `Restyle` both schedule
+    their restyle by, the `Paragraph` headless lays its inline runs out as, and the
+    frames headless hits through, clipped and scrolled as a browser's are: the terminal
+    lays its paragraphs and their inline boxes out through the shared `Paragraph`, its
+    cells, tab stops and text sizes as the metrics, where it keeps a wrap of its own;
+    the terminal hits through the shared frames; headless keeps its resolved styles
+    between layouts as the terminal's caches do, where it resolves each revisited node
+    afresh; the layout store becomes the crate the native shells call into.
     - Conformance by intent: once the shells stop sharing views, a scenario states what
     it builds (a button labelled Save that counts its clicks) and each platform's
     driver builds it in its own vocabulary, so one suite keeps holding every shell to

@@ -42,7 +42,7 @@ impl ResolutionSource<Headless> for Records {
   }
 
   fn generation(&self) -> u64 {
-    with_records(|records| records.environment_generation)
+    with_records(|records| records.restyle.generation())
   }
 }
 

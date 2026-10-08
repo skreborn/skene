@@ -440,19 +440,7 @@ impl<C: Leaf> Tree<C> {
       overlays: VecDeque::new(),
       reached: FxHashSet::default(),
     };
-    let viewport_style = Style {
-      display: Display::Flex,
-      flex_direction: direction,
-      size: taffy::geometry::Size {
-        width: length(viewport.width),
-        height: length(viewport.height),
-      },
-      ..Style::default()
-    };
-    let available = taffy::geometry::Size {
-      width: AvailableSpace::Definite(viewport.width),
-      height: AvailableSpace::Definite(viewport.height),
-    };
+    let (viewport_style, available) = Self::viewport(viewport, direction);
     let mut frames = Frames::default();
 
     for (index, root) in roots.iter().copied().enumerate() {
@@ -512,6 +500,186 @@ impl<C: Leaf> Tree<C> {
     }
 
     frames
+  }
+
+  /// Lays out the scene of the platform `P` under each of `roots` at `viewport` again,
+  /// its structure as the last [`lay_out`](Self::lay_out) left it, first bringing in
+  /// line with it each node `revisited` and the leaf it flows in, a node outside the
+  /// tree standing for the leaf its text flows in: each one's style and context written
+  /// where they changed, as `part` answers, a leaf's boxes measured afresh.
+  ///
+  /// Returns `None` where a node's part no longer fits the place the tree holds for it
+  /// (a box become a leaf or left out, a node left out come back), so the scene is laid
+  /// out afresh through `lay_out`.
+  pub fn lay_out_revisited<P: Platform>(
+    &mut self,
+    roots: &[NodeId],
+    viewport: Size<f32>,
+    direction: FlexDirection,
+    revisited: &[NodeId],
+    mut part: impl FnMut(NodeId) -> Part<C>,
+  ) -> Option<Frames>
+  where
+    C: PartialEq,
+  {
+    if roots.len() != self.tops.len() {
+      return None;
+    }
+
+    let mut rewritten = Vec::new();
+
+    for node in revisited.iter().copied() {
+      let holder = self.holder::<P>(node);
+      let flows = holder.filter(|holder| self.is_leaf(*holder));
+
+      if self.contains(node) {
+        rewritten.push(node);
+      }
+      else if flows.is_none() {
+        return None;
+      }
+
+      rewritten.extend(flows);
+    }
+
+    let mut rewritten: Vec<(usize, NodeId)> = rewritten
+      .into_iter()
+      .map(|node| (Self::depth::<P>(node), node))
+      .collect();
+
+    rewritten.sort_unstable_by(|first, second| second.cmp(first));
+    rewritten.dedup();
+
+    for (_, node) in rewritten {
+      if !self.rewrite(node, part(node)) {
+        return None;
+      }
+    }
+
+    let (viewport_style, available) = Self::viewport(viewport, direction);
+    let mut frames = Frames::default();
+
+    for top in self.tops.clone() {
+      if self
+        .taffy
+        .style(top)
+        .is_ok_and(|held| *held != viewport_style)
+      {
+        let _ = self.taffy.set_style(top, viewport_style.clone());
+      }
+
+      if self.compute_at(top, available).is_ok() {
+        self.collect(top, &mut frames);
+      }
+    }
+
+    Some(frames)
+  }
+
+  /// The style of the flex container a root lays out in at `viewport`, its items along
+  /// `direction`, and the space it lays out in.
+  fn viewport(
+    viewport: Size<f32>,
+    direction: FlexDirection,
+  ) -> (Style, taffy::geometry::Size<AvailableSpace>) {
+    (
+      Style {
+        display: Display::Flex,
+        flex_direction: direction,
+        size: taffy::geometry::Size {
+          width: length(viewport.width),
+          height: length(viewport.height),
+        },
+        ..Style::default()
+      },
+      taffy::geometry::Size {
+        width: AvailableSpace::Definite(viewport.width),
+        height: AvailableSpace::Definite(viewport.height),
+      },
+    )
+  }
+
+  /// The nearest node above `node` in the scene of the platform `P` that takes part in
+  /// the layout.
+  fn holder<P: Platform>(&self, node: NodeId) -> Option<NodeId> {
+    let mut current = Scene::<P>::read(|scene| scene.placed_parent(node));
+
+    while let Some(parent) = current {
+      if self.contains(parent) {
+        return Some(parent);
+      }
+
+      current = Scene::<P>::read(|scene| scene.placed_parent(parent));
+    }
+
+    None
+  }
+
+  /// How many nodes lie above `node` in the scene of the platform `P`.
+  fn depth<P: Platform>(node: NodeId) -> usize {
+    let mut depth = 0;
+    let mut current = Scene::<P>::read(|scene| scene.placed_parent(node));
+
+    while let Some(parent) = current {
+      depth += 1;
+      current = Scene::<P>::read(|scene| scene.placed_parent(parent));
+    }
+
+    depth
+  }
+
+  /// Whether `node` is a leaf of the layout, measured by its context.
+  fn is_leaf(&self, node: NodeId) -> bool {
+    self
+      .nodes
+      .get(node)
+      .is_some_and(|slot| self.taffy.get_node_context(slot.taffy).is_some())
+  }
+
+  /// Writes the part `its` of `node`, held in the tree, where it keeps the shape the
+  /// tree holds for it, each box a leaf holds measured afresh; `false` where it does not.
+  fn rewrite(&mut self, node: NodeId, its: Part<C>) -> bool
+  where
+    C: PartialEq,
+  {
+    let leaf = self.is_leaf(node);
+
+    match its {
+      Part::Box(style, scroll) | Part::Overlay(style, scroll) if !leaf => {
+        self.set_style(node, style);
+
+        if let Some(slot) = self.nodes.get_mut(node) {
+          slot.scroll = scroll;
+        }
+
+        true
+      }
+      Part::Leaf(style, mut context) if leaf => {
+        let max_content = taffy::geometry::Size {
+          width: AvailableSpace::MaxContent,
+          height: AvailableSpace::MaxContent,
+        };
+
+        for inline in context.boxes() {
+          let Some(laid_out) = self.nodes.get(inline).map(|slot| slot.taffy)
+          else {
+            return false;
+          };
+
+          if self.compute_at(laid_out, max_content).is_ok()
+            && let Ok(layout) = self.taffy.layout(laid_out)
+          {
+            context.size_box(inline, Size::new(layout.size.width, layout.size.height));
+          }
+        }
+
+        self.set_style(node, style);
+        self.set_context(node, Some(context));
+
+        true
+      }
+      _ => false,
+    }
   }
 
   /// Lays out the taffy tree under `top` in the space `available`, each leaf with a

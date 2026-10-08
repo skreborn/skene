@@ -29,7 +29,7 @@ use skene_foundation::{
   interpolate::Motion,
   web::{Head, Painter, WebProperty},
 };
-use skene_layout::Frames;
+use skene_layout::{Frames, Restyle};
 use skene_reactive::{Owner, ReadSignal, Signal, WriteSignal};
 
 use crate::{Headless, SlotLeaf, SlotValue, TokenValue};
@@ -197,8 +197,12 @@ pub(crate) struct Records {
   /// The insets the display keeps clear of the viewport's edges, as set; none unless
   /// set.
   pub safe_area: Option<Inset<f32>>,
-  /// A count that moves whenever the environment or a container's size is set.
-  pub environment_generation: u64,
+  /// What moved since the layout last restyled the tree: the resolution generation,
+  /// moving whenever the environment, a container's size or a definition is set, and the
+  /// nodes the next layout revisits.
+  pub restyle: Restyle,
+  /// How many node styles the layout has resolved.
+  pub style_resolutions: u64,
   /// The motion clock, in seconds; stands still until advanced.
   pub clock: f64,
   /// The document's language, as last set.
@@ -237,7 +241,8 @@ impl Default for Records {
       pointer: None,
       hover: None,
       safe_area: None,
-      environment_generation: 0,
+      restyle: Restyle::new(),
+      style_resolutions: 0,
       clock: 0.,
       language: None,
       head: Head::default(),
@@ -256,6 +261,7 @@ impl Records {
   /// Stores `record` as the record of `node`.
   pub(crate) fn insert(&mut self, node: NodeId, mut record: Record) {
     record.motion.runner = Motion::started_at(self.clock);
+    self.restyle.move_structure();
 
     let _replaced = self.by_node.insert(node, record);
   }
@@ -275,6 +281,9 @@ impl Records {
   /// Releases the record of `node`.
   pub(crate) fn destroy(&mut self, node: NodeId) {
     let _released = self.by_node.remove(node);
+
+    self.restyle.move_structure();
+    self.restyle.read_interaction(node, false);
   }
 
   /// The color scheme in force: the app's choice, else the platform's.

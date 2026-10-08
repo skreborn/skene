@@ -188,6 +188,11 @@ fn with_record<R>(node: NodeId, operation: impl FnOnce(&mut Record) -> R) -> Opt
   with_records(|records| records.record_mut(node).map(operation))
 }
 
+/// Queues `node` for the next layout's restyle.
+fn queue_restyle(node: NodeId) {
+  with_records(|records| records.restyle.queue(node));
+}
+
 impl Platform for Headless {
   const FONT_SIZE: f32 = 16.;
 
@@ -207,6 +212,7 @@ impl Platform for Headless {
     with_record(node, |record| {
       record.slots.insert(slot, leaf.clone().into());
     });
+    queue_restyle(node);
   }
 
   fn create_control(node: NodeId, props: &ControlProps<Self>) {
@@ -219,6 +225,7 @@ impl Platform for Headless {
     with_record(node, |record| {
       record.checked = state.checked == CheckState::On;
     });
+    queue_restyle(node);
   }
 
   fn create_overlay(node: NodeId, props: &OverlayProps<Self>) {
@@ -236,6 +243,8 @@ impl Platform for Headless {
       opened
     });
 
+    with_records(|records| records.restyle.move_structure());
+
     if opened == Some(true) && Scene::<Self>::read(|scene| scene.is_modal(node)) {
       let (_, order) = tab_order(node);
       let target = Scene::<Self>::read(|scene| scene.modal_focus(node, &order));
@@ -250,10 +259,12 @@ impl Platform for Headless {
         props.placement = placement;
       }
     });
+    queue_restyle(node);
   }
 
   fn set_overlay_position(node: NodeId, position: Option<Point<f32>>) {
     with_record(node, |record| record.position = position);
+    queue_restyle(node);
   }
 
   fn create_run(node: NodeId, props: &RunProps<Self>) {
@@ -264,10 +275,12 @@ impl Platform for Headless {
     with_record(node, |record| {
       record.slots.insert(slot, leaf.clone().into());
     });
+    queue_restyle(node);
   }
 
   fn set_text(node: NodeId, text: &str) {
     with_record(node, |record| text.clone_into(&mut record.text));
+    queue_restyle(node);
   }
 
   fn create_anchor(node: NodeId) {
@@ -278,13 +291,21 @@ impl Platform for Headless {
     with_records(|records| records.insert(node, Record::new(Kind::Scope)));
   }
 
-  fn attach(_: NodeId, _: NodeId, _: Option<NodeId>) {}
+  fn attach(_: NodeId, _: NodeId, _: Option<NodeId>) {
+    with_records(|records| records.restyle.move_structure());
+  }
 
-  fn relocate(_: NodeId, _: NodeId, _: Option<NodeId>) {}
+  fn relocate(_: NodeId, _: NodeId, _: Option<NodeId>) {
+    with_records(|records| records.restyle.move_structure());
+  }
 
-  fn hide(_: NodeId, _: NodeId) {}
+  fn hide(_: NodeId, _: NodeId) {
+    with_records(|records| records.restyle.move_structure());
+  }
 
-  fn remove(_: NodeId, _: NodeId) {}
+  fn remove(_: NodeId, _: NodeId) {
+    with_records(|records| records.restyle.move_structure());
+  }
 
   fn destroy(node: NodeId) {
     with_records(|records| records.destroy(node));
@@ -294,12 +315,14 @@ impl Platform for Headless {
     with_record(scope, |record| {
       record.definitions = Some(definitions.clone());
     });
+    with_records(|records| records.restyle.invalidate());
   }
 
   fn define_root_tokens(definitions: &Definitions<TokenValue>) {
     with_records(|records| {
       records.root_definitions = definitions.clone();
       records.root_definition_writes += 1;
+      records.restyle.invalidate();
     });
   }
 
@@ -335,6 +358,7 @@ impl Platform for Headless {
 
   fn set_value(node: NodeId, value: &str) {
     with_record(node, |record| value.clone_into(&mut record.value));
+    queue_restyle(node);
   }
 
   fn set_options(node: NodeId, options: &[PickerOption]) {
@@ -349,6 +373,7 @@ impl Platform for Headless {
 
   fn set_checked(node: NodeId, checked: bool) {
     with_record(node, |record| record.checked = checked);
+    queue_restyle(node);
   }
 
   fn observe_size(node: NodeId, report: Rc<dyn Fn(Size<f32>)>) -> Observation {
@@ -832,6 +857,8 @@ pub fn trigger_scroll(node: NodeId, event: &ScrollEvent) {
       if let Some(record) = records.record_mut(node) {
         record.scroll = Point::new(event.x, event.y);
       }
+
+      records.restyle.queue(node);
     });
 
     notify_scroll::<Headless>(node, event);
@@ -897,7 +924,7 @@ pub fn trigger_resize(size: Size<f32>) {
   trigger(|| {
     let write = with_records(|records| {
       records.viewport = Some(size);
-      records.environment_generation += 1;
+      records.restyle.invalidate();
 
       records.media().set_viewport
     });
@@ -913,7 +940,7 @@ pub fn trigger_color_scheme(scheme: ColorScheme) {
   trigger(|| {
     let (write, in_force) = with_records(|records| {
       records.scheme = Some(scheme);
-      records.environment_generation += 1;
+      records.restyle.invalidate();
 
       (records.media().set_scheme, records.scheme_in_force())
     });
@@ -926,7 +953,7 @@ pub fn trigger_color_scheme(scheme: ColorScheme) {
 fn record_chosen_scheme(scheme: Option<ColorScheme>) {
   let (write, in_force) = with_records(|records| {
     records.chosen_scheme = scheme;
-    records.environment_generation += 1;
+    records.restyle.invalidate();
 
     (records.media().set_scheme, records.scheme_in_force())
   });
@@ -975,7 +1002,7 @@ pub fn trigger_reduced_motion(reduced: bool) {
   trigger(|| {
     let write = with_records(|records| {
       records.reduced_motion = Some(reduced);
-      records.environment_generation += 1;
+      records.restyle.invalidate();
 
       records.media().set_reduced_motion
     });
@@ -989,7 +1016,7 @@ pub fn trigger_reduced_transparency(reduced: bool) {
   trigger(|| {
     let write = with_records(|records| {
       records.reduced_transparency = Some(reduced);
-      records.environment_generation += 1;
+      records.restyle.invalidate();
 
       records.media().set_reduced_transparency
     });
@@ -1003,7 +1030,7 @@ pub fn trigger_high_contrast(high: bool) {
   trigger(|| {
     let write = with_records(|records| {
       records.high_contrast = Some(high);
-      records.environment_generation += 1;
+      records.restyle.invalidate();
 
       records.media().set_high_contrast
     });
@@ -1018,7 +1045,7 @@ pub fn trigger_pointer_precision(precision: PointerPrecision) {
   trigger(|| {
     let write = with_records(|records| {
       records.pointer = Some(precision);
-      records.environment_generation += 1;
+      records.restyle.invalidate();
 
       records.media().set_pointer
     });
@@ -1032,7 +1059,7 @@ pub fn trigger_safe_area(insets: Inset<f32>) {
   trigger(|| {
     let write = with_records(|records| {
       records.safe_area = Some(insets);
-      records.environment_generation += 1;
+      records.restyle.invalidate();
 
       records.media().set_safe_area
     });
@@ -1046,7 +1073,7 @@ pub fn trigger_pointer_hovers(hovers: bool) {
   trigger(|| {
     let write = with_records(|records| {
       records.hover = Some(hovers);
-      records.environment_generation += 1;
+      records.restyle.invalidate();
 
       records.media().set_hover
     });
@@ -1171,6 +1198,14 @@ pub fn layout_rect(node: NodeId) -> Option<Rect<f32>> {
   rect
 }
 
+/// How many node styles the layout has resolved since the platform was installed, for a
+/// test counting what a change resolved.
+#[must_use]
+pub fn style_resolutions() -> u64 {
+  end_turn();
+  with_records(|records| records.style_resolutions)
+}
+
 /// Mounts the page `page` builds in a body, returning the body.
 ///
 /// The body lays the page out as the web's reset lays out the document's: a row filling
@@ -1239,7 +1274,7 @@ pub fn trigger_container_size(name: ContainerName, size: Size<f32>) {
 /// Records the measured size of the query container `name`.
 fn record_container_size(name: ContainerName, size: Size<f32>) {
   let sizes = with_records(|records| {
-    records.environment_generation += 1;
+    records.restyle.invalidate();
 
     records.media().signals.container_sizes
   });

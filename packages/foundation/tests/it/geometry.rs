@@ -3,6 +3,7 @@
 //! frame reports.
 
 use skene_foundation::{
+  Condition,
   ContainerBase,
   DecorationBase,
   Dimension,
@@ -24,9 +25,11 @@ use skene_foundation::{
   RunWithTypeMetrics,
   ScrollEvent,
   Size,
+  State,
   TextEntry,
   Transition,
   View,
+  When,
   web::Typography,
 };
 use skene_headless::{
@@ -38,8 +41,11 @@ use skene_headless::{
   node_at,
   reset,
   run_props,
+  style_resolutions,
   text_width,
   trigger_frame,
+  trigger_pointer_enter,
+  trigger_pointer_leave,
   trigger_resize,
   trigger_scroll,
   trigger_size,
@@ -865,6 +871,92 @@ fn a_text_entry_stretches_across_its_layout() {
 
   assert_eq!(layout_rect(across).map(|rect| rect.size.width), Some(400.));
   assert_eq!(layout_rect(tall).map(|rect| rect.size.height), Some(100.));
+
+  owner.dispose();
+}
+
+/// A change to one box's style resolves that box alone at the next layout, which lays it
+/// out afresh beside the boxes it kept; a change to a run's text resolves the paragraph
+/// it flows in alone.
+#[test]
+fn a_change_resolves_only_what_it_touched() {
+  reset();
+
+  let owner = Owner::new();
+  let width = Signal::new(10_f32);
+  let words = Signal::new("one".to_owned());
+  let page = owner.enter(|| {
+    Column::new()
+      .set_children((
+        Container::new()
+          .derive_width(move || width.get())
+          .set_height(Dimension::Length(10.)),
+        sized(10., 10.),
+        RichText::new().add_spans([Span::derive(move || words.get())]),
+        sized(10., 10.),
+      ))
+      .build()
+  });
+  let [changing, kept, paragraph, _] = content(page)[..]
+  else {
+    panic!("four children");
+  };
+
+  assert_eq!(layout_rect(changing).map(|rect| rect.size.width), Some(10.));
+
+  let resolved = style_resolutions();
+
+  width.set(30.);
+
+  assert_eq!(layout_rect(changing).map(|rect| rect.size.width), Some(30.));
+  assert_eq!(layout_rect(kept), Some(rect(0., 10., 10., 10.)));
+  assert_eq!(style_resolutions() - resolved, 1);
+
+  let resolved = style_resolutions();
+
+  words.set("one two".to_owned());
+
+  assert_eq!(
+    layout_rect(content(paragraph)[0]).map(|rect| rect.size.width),
+    Some(text_width("one two", 16.))
+  );
+  assert_eq!(style_resolutions() - resolved, 1);
+
+  owner.dispose();
+}
+
+/// A box sized by its interaction lays out afresh as the interaction moves.
+#[test]
+fn a_box_sized_by_its_hover_lays_out_as_it_moves() {
+  reset();
+
+  let owner = Owner::new();
+  let page = owner.enter(|| {
+    Column::new()
+      .set_children((
+        Container::new()
+          .set_width(
+            Dimension::Length(10.).when(Condition::from(State::Hovered), Dimension::Length(30.)),
+          )
+          .set_height(Dimension::Length(10.)),
+        sized(10., 10.),
+      ))
+      .build()
+  });
+  let [hovered, _] = content(page)[..]
+  else {
+    panic!("two children");
+  };
+
+  assert_eq!(layout_rect(hovered).map(|rect| rect.size.width), Some(10.));
+
+  trigger_pointer_enter(hovered);
+
+  assert_eq!(layout_rect(hovered).map(|rect| rect.size.width), Some(30.));
+
+  trigger_pointer_leave(hovered);
+
+  assert_eq!(layout_rect(hovered).map(|rect| rect.size.width), Some(10.));
 
   owner.dispose();
 }

@@ -108,10 +108,9 @@
   pre-wrap` and `overflow-wrap: break-word` rather than collapsing them as a browser does
   by default, and every other platform shapes and wraps its text through Parley, the
   shared `Paragraph`, by the same rules, CSS Text's. Where Parley reads text as an editor
-  does, its reading stands: a newline ending a text opens a line and an empty text lays
-  out one, so an app leaves out what it does not want laid out, and the web ends each
-  text run in an invisible joiner so a browser lays them out alike; a tab is as wide as
-  its glyph, where the web keeps a browser's tab stops.
+  does, its reading stands: a tab is a blank as wide as its glyph rather than a stop, a
+  newline ending a text opens a line and an empty text lays out one, so an app leaves
+  out what it does not want laid out.
 - **Layout is statically constrained.** Each layout is its own container view—`Row`,
   `Column`, `Grid`, `Stack`—exposing only the properties it honors; per-child properties
   travel in wrapper views (`Flexible`, `Pinned`, `GridCell`) accepted only by the

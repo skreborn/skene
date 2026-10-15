@@ -12,6 +12,9 @@ adb wait-for-device
 echo "run=0 test=device emulator.sdk=$(adb shell getprop ro.build.version.sdk | tr -d '\r')" >> "$out"
 echo "run=0 test=device emulator.model=$(adb shell getprop ro.product.model | tr -d '\r ')" >> "$out"
 echo "run=0 test=device emulator.density=$(adb shell wm density | tr -d '\r ' | tr ':' '_')" >> "$out"
+for prop in ro.build.type ro.debuggable ro.kernel.android.checkjni dalvik.vm.checkjni; do
+  echo "run=0 test=device emulator.$prop=$(adb shell getprop $prop | tr -d '\r ')" >> "$out"
+done
 adb install -r -t "$apks/app-release.apk"
 adb install -r -t "$apks/app-release-androidTest.apk"
 
@@ -52,4 +55,34 @@ done
 
 run offMain 1
 run ink 1
+run jniCost 1
+
+# The emulator runs every app under CheckJNI when its kernel asks for it; repeat the timings with
+# CheckJNI off, as on a production device, where root allows turning it off.
+nocheck="${out%.txt}-nocheckjni.txt"
+: > "$nocheck"
+
+if adb root >/dev/null 2>&1 && sleep 3 && adb wait-for-device \
+  && adb shell setprop dalvik.vm.checkjni false; then
+  adb shell stop
+  adb shell start
+  sleep 10
+  until adb shell service check package 2>/dev/null | grep -q found \
+    && adb shell pm path dev.skene.spike.text >/dev/null 2>&1; do sleep 2; done
+  sleep 30
+  echo "run=0 test=device emulator.sdk=$(adb shell getprop ro.build.version.sdk | tr -d '\r')" >> "$nocheck"
+  echo "run=0 test=device emulator.dalvik.vm.checkjni=$(adb shell getprop dalvik.vm.checkjni | tr -d '\r ')" >> "$nocheck"
+  saved=$out
+  out=$nocheck
+
+  for rep in 1 2 3; do
+    run taffy "$rep"
+    run compose "$rep"
+    run taffyPlain "$rep"
+  done
+
+  run jniCost 1
+  out=$saved
+fi
+
 exit 0

@@ -172,6 +172,25 @@ class SpikeTest {
     scenario.close()
   }
 
+  @Test
+  fun jniCost() {
+    onMain {
+      val engine = TextEngine(Corpus(CARDS))
+      val count = 20000
+      engine.layout(0, 500)
+      NativeTree.upcalls(engine, 0, 1000)
+      NativeTree.upcalls(engine, 1, 1000)
+      report("jni.noopUpcallNs", NativeTree.upcalls(engine, 0, count) / count)
+      report("jni.layoutHitUpcallNs", NativeTree.upcalls(engine, 1, count) / count)
+
+      val begin = System.nanoTime()
+
+      for (i in 0 until count) engine.layout(0, 500)
+
+      report("jni.layoutHitDirectNs", (System.nanoTime() - begin) / count)
+    }
+  }
+
   /** Lays the tree out at W1, then W2, then W1 again, returning both sets of rectangles. */
   private fun measureAll(corpus: Corpus): FloatArray {
     val engine = TextEngine(corpus)

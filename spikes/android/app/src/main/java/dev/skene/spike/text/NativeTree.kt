@@ -43,5 +43,8 @@ class NativeTree(val engine: TextEngine, cards: Int) : AutoCloseable {
     @JvmStatic private external fun rects(handle: Long, out: FloatArray)
 
     @JvmStatic private external fun destroy(handle: Long)
+
+    /** Times [count] JNI upcalls into [engine]: [kind] 0 is `noop()`, 1 is `layout(0, 500)`. */
+    @JvmStatic external fun upcalls(engine: TextEngine, kind: Int, count: Int): Long
   }
 }

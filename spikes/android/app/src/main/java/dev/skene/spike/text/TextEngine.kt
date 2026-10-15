@@ -239,6 +239,9 @@ class TextEngine(
     layoutNanos += System.nanoTime() - begin
   }
 
+  /** JNI: does nothing, to time a bare upcall. */
+  fun noop() {}
+
   /** Drops every cached layout and intrinsic, keeping nothing warm but the platform's caches. */
   fun clear() {
     cache.clear()

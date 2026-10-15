@@ -47,6 +47,8 @@ def show(v):
 
 
 print(f"emulator: sdk={','.join(values.get('emulator.sdk', ['?']))} model={','.join(values.get('emulator.model', ['?']))} density={','.join(values.get('emulator.density', ['?']))}")
+print("checkjni: " + ", ".join(f"{k.split('.', 1)[1]}={','.join(values[k])}" for k in sorted(values) if k.startswith("emulator.") and ("jni" in k or "debuggable" in k or "build.type" in k)))
+print(f"JNI cost per call (ns): bare upcall {spread('jni.noopUpcallNs')}, layout cache-hit upcall {spread('jni.layoutHitUpcallNs')}, the same hit called from Kotlin {spread('jni.layoutHitDirectNs')}")
 print(f"instrument runs ok: {sum(int(v) for v in values.get('instrument.ok', []))} of {len(values.get('instrument.ok', []))}")
 print(f"leaves: {show(num('taffy.leaves'))}; taffy runs: {len(values.get('taffy.cold.ms', []))}; compose runs: {len(values.get('compose.cold.ms', []))}")
 print()

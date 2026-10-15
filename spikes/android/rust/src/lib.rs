@@ -580,3 +580,41 @@ pub extern "system" fn Java_dev_skene_spike_text_NativeTree_destroy<'local>(
   // SAFETY: the handle came from `create` and is not used again.
   drop(unsafe { Box::from_raw(handle as *mut Tree) });
 }
+
+/// Times `count` JNI upcalls into `engine` and returns the nanoseconds they took: `kind` 0 calls
+/// `noop()`, 1 calls `layout(0, 500)`, a cache hit once warm.
+#[no_mangle]
+pub extern "system" fn Java_dev_skene_spike_text_NativeTree_upcalls<'local>(
+  mut env: JNIEnv<'local>,
+  _class: JClass<'local>,
+  engine: JObject<'local>,
+  kind: jint,
+  count: jint,
+) -> jlong {
+  let class = env.get_object_class(&engine).unwrap();
+  let noop = env.get_method_id(&class, "noop", "()V").unwrap();
+  let layout = env.get_method_id(&class, "layout", "(II)V").unwrap();
+  let start = Instant::now();
+
+  for _ in 0..count {
+    // SAFETY: both method ids belong to the engine's class with the signatures named above.
+    unsafe {
+      if kind == 0 {
+        env
+          .call_method_unchecked(&engine, noop, ReturnType::Primitive(Primitive::Void), &[])
+          .unwrap();
+      } else {
+        env
+          .call_method_unchecked(
+            &engine,
+            layout,
+            ReturnType::Primitive(Primitive::Void),
+            &[jvalue { i: 0 }, jvalue { i: 500 }],
+          )
+          .unwrap();
+      }
+    }
+  }
+
+  start.elapsed().as_nanos() as jlong
+}

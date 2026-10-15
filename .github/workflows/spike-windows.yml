@@ -1,0 +1,64 @@
+name: spike-windows
+
+on:
+  push:
+    branches: [claude/platform-architecture-tradeoffs-y9q57l]
+    paths:
+      - spikes/windows/**
+      - .github/workflows/spike-windows.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: spike-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  directwrite:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2025, windows-2022]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: spikes/windows
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: spikes/windows
+
+      - name: Run the spike
+        working-directory: spikes/windows
+        env:
+          SPIKE_OUT: ${{ runner.temp }}/out
+        run: |
+          mkdir -p "$SPIKE_OUT"
+          set +e
+          cargo run --release 2>&1 | tee "$SPIKE_OUT/cargo.log"
+          status=${PIPESTATUS[0]}
+          set -e
+          {
+            echo "=== RESULTS ==="
+            echo "spike windows on ${{ matrix.os }}: $(cmd.exe //c ver | tr -d '\r' | grep -v '^$'), $(rustc --version)"
+            powershell -NoProfile -Command "(Get-CimInstance Win32_OperatingSystem | Select-Object Caption, Version, BuildNumber | Format-List | Out-String).Trim()"
+            powershell -NoProfile -Command "(Get-CimInstance Win32_Processor | Select-Object Name, NumberOfLogicalProcessors | Format-List | Out-String).Trim()"
+            ls -l /c/Windows/Fonts/seguiemj.ttf /c/Windows/Fonts/segoeui.ttf 2>&1
+            cat "$SPIKE_OUT/results.txt" 2>/dev/null || echo "(no result file)"
+            echo "cargo exit status: $status"
+            echo "=== END ==="
+          } | tee "$SPIKE_OUT/results-block.txt"
+          exit $status
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: spike-windows-${{ matrix.os }}
+          path: ${{ runner.temp }}/out

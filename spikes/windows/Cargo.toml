@@ -1,0 +1,29 @@
+[package]
+name = "windows-text-spike"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[dependencies]
+png = "0.18"
+taffy = "0.15"
+vello_cpu = { version = "0.3", features = ["multithreading"] }
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62", features = [
+  "Foundation_Numerics",
+  "Win32_Foundation",
+  "Win32_Graphics_Direct2D",
+  "Win32_Graphics_Direct2D_Common",
+  "Win32_Graphics_DirectWrite",
+  "Win32_Graphics_Dxgi_Common",
+  "Win32_Graphics_Imaging",
+  "Win32_System_Com",
+] }
+windows-core = "0.62"
+windows-numerics = "0.3"
+
+[profile.release]
+debug = "line-tables-only"

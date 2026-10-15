@@ -1,0 +1,122 @@
+name: spike-apple
+
+on:
+  push:
+    branches: [claude/platform-architecture-tradeoffs-y9q57l]
+    paths:
+      - spikes/apple/**
+      - .github/workflows/spike-apple.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: spike-apple-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ios:
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: spikes/apple/ios
+
+      - name: Pick an iOS 17+ simulator
+        id: sim
+        run: |
+          xcodebuild -version
+          xcrun simctl list runtimes
+          python3 - <<'EOF' >> "$GITHUB_OUTPUT"
+          import json, subprocess, sys
+          devices = json.loads(subprocess.check_output(["xcrun", "simctl", "list", "devices", "available", "-j"]))["devices"]
+          best = None
+          for runtime, entries in devices.items():
+              if ".iOS-" not in runtime:
+                  continue
+              version = tuple(int(part) for part in runtime.split(".iOS-")[1].split("-"))
+              if version < (17,):
+                  continue
+              for device in entries:
+                  if device["name"].startswith("iPhone") and device.get("isAvailable", True):
+                      key = (version, device["name"])
+                      if best is None or key > best[0]:
+                          best = (key, device["udid"], runtime, device["name"])
+          print(f"Picked {best[3]} on {best[2]}", file=sys.stderr)
+          print(f"udid={best[1]}")
+          print(f"name={best[3]} ({best[2].split('.')[-1]})")
+          EOF
+
+      - name: Test on the simulator
+        working-directory: spikes/apple/ios
+        env:
+          TEST_RUNNER_SPIKE_OUT: ${{ runner.temp }}/out
+        run: |
+          mkdir -p "$TEST_RUNNER_SPIKE_OUT"
+          xcodebuild -list -json | tee "$RUNNER_TEMP/list.json"
+          SCHEME=$(python3 -c 'import json,sys; s=json.load(open(sys.argv[1]))["workspace"]["schemes"]; print("TextSpike-Package" if "TextSpike-Package" in s else "TextSpike")' "$RUNNER_TEMP/list.json")
+          status=0
+          xcodebuild test -scheme "$SCHEME" -destination "id=${{ steps.sim.outputs.udid }}" \
+            -derivedDataPath "$RUNNER_TEMP/dd" SWIFT_OPTIMIZATION_LEVEL=-O CODE_SIGNING_ALLOWED=NO \
+            > "$RUNNER_TEMP/xcodebuild.log" 2>&1 || status=$?
+          grep -E "error:|Test Case .*(passed|failed)|\*\* TEST|Restarting after|crash" "$RUNNER_TEMP/xcodebuild.log" | head -200 || true
+          {
+            echo "=== RESULTS ==="
+            echo "spike apple / ios on ${{ steps.sim.outputs.name }}, $(xcodebuild -version | head -1)"
+            if ls "$TEST_RUNNER_SPIKE_OUT"/ios-*.txt >/dev/null 2>&1; then
+              for file in "$TEST_RUNNER_SPIKE_OUT"/ios-*.txt; do echo "--- $(basename "$file")"; cat "$file"; done
+            else
+              echo "--- (no result files written; from the log)"
+              grep -E "^SPIKE\| " "$RUNNER_TEMP/xcodebuild.log" | sed 's/^SPIKE| //'
+            fi
+            echo "xcodebuild exit status: $status"
+            echo "=== END ==="
+          } | tee "$TEST_RUNNER_SPIKE_OUT/results.txt"
+          cp "$RUNNER_TEMP/xcodebuild.log" "$TEST_RUNNER_SPIKE_OUT/"
+          exit $status
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: spike-apple-ios
+          path: ${{ runner.temp }}/out
+
+  macos:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: spikes/apple/macos
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: spikes/apple/macos
+
+      - name: Test on macOS
+        working-directory: spikes/apple/macos
+        env:
+          SPIKE_OUT: ${{ runner.temp }}/out/macos.txt
+        run: |
+          mkdir -p "$RUNNER_TEMP/out"
+          sw_vers
+          set +e
+          cargo test --release --test spike 2>&1 | tee "$RUNNER_TEMP/out/cargo.log"
+          status=${PIPESTATUS[0]}
+          set -e
+          {
+            echo "=== RESULTS ==="
+            echo "spike apple / macos on $(sw_vers -productVersion), $(rustc --version)"
+            cat "$SPIKE_OUT" 2>/dev/null || echo "(no result file)"
+            echo "cargo exit status: $status"
+            echo "=== END ==="
+          } | tee "$RUNNER_TEMP/out/results.txt"
+          exit $status
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: spike-apple-macos
+          path: ${{ runner.temp }}/out

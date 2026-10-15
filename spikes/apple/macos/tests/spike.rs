@@ -157,7 +157,15 @@ fn main() {
       }
     }
 
+    view.set_offset(fractional.0, fractional.1);
+    let aligned = render(&view, canvas);
     view.set_offset(0.0, 0.0);
+
+    if let Ok(path) = std::env::var("SPIKE_OUT") {
+      let directory = std::path::Path::new(&path).parent().unwrap().to_owned();
+      let _ = aligned.write_ppm(&directory.join(format!("{name}-node.ppm")));
+      let _ = theirs.write_ppm(&directory.join(format!("{name}-nstextfield.ppm")));
+    }
 
     let laid_min = node.paragraph.layout(min);
     let breaks = node.paragraph.break_opportunities();

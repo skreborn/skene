@@ -245,8 +245,17 @@ public final class Laid {
     return rects
   }
 
+  /// The width a UTF-16 range covers: the union of its rectangles on each line, summed over lines.
   public func rangeWidth(_ from: Int, _ to: Int) -> CGFloat {
-    rangeRects(from, to).reduce(0) { $0 + $1.width }
+    var lines: [CGFloat: (CGFloat, CGFloat)] = [:]
+
+    for rect in rangeRects(from, to) {
+      let key = (rect.minY * 8).rounded() / 8
+      let span = lines[key] ?? (rect.minX, rect.maxX)
+      lines[key] = (min(span.0, rect.minX), max(span.1, rect.maxX))
+    }
+
+    return lines.values.reduce(0) { $0 + ($1.1 - $1.0) }
   }
 
   /// The caret's rectangle before the UTF-16 offset, in container coordinates.

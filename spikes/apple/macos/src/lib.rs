@@ -305,9 +305,24 @@ impl Laid {
     rects.into_inner()
   }
 
-  /// The summed width of a UTF-16 range's rectangles.
+  /// The width a UTF-16 range covers: the union of its rectangles on each line, summed over lines.
   pub fn range_width(&self, from: usize, to: usize) -> f64 {
-    self.range_rects(from, to).iter().map(|rect| rect.size.width).sum()
+    let mut lines: Vec<(f64, f64, f64)> = Vec::new();
+
+    for rect in self.range_rects(from, to) {
+      let key = (rect.origin.y * 8.0).round() / 8.0;
+      let (x0, x1) = (rect.origin.x, rect.origin.x + rect.size.width);
+
+      match lines.iter_mut().find(|line| line.0 == key) {
+        Some(line) => {
+          line.1 = line.1.min(x0);
+          line.2 = line.2.max(x1);
+        }
+        None => lines.push((key, x0, x1)),
+      }
+    }
+
+    lines.iter().map(|line| line.2 - line.1).sum()
   }
 
   /// Draws every fragment into `context`, the used rectangle's origin at `origin`.
@@ -516,6 +531,13 @@ impl std::fmt::Display for Diff {
 }
 
 impl Image {
+  /// Writes a binary PPM.
+  pub fn write_ppm(&self, path: &std::path::Path) -> std::io::Result<()> {
+    let mut bytes = format!("P6\n{} {}\n255\n", self.width, self.height).into_bytes();
+    bytes.extend_from_slice(&self.pixels);
+    std::fs::write(path, bytes)
+  }
+
   fn at(&self, x: i32, y: i32) -> [u8; 3] {
     if x < 0 || y < 0 || x as usize >= self.width || y as usize >= self.height {
       return [255; 3];

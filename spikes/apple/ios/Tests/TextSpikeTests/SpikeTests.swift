@@ -223,12 +223,14 @@ final class SpikeTests: XCTestCase {
         let segment = node.paragraph.widestSegment
         let segmentText = String(decoding: units[segment], as: UTF16.self)
         let alone = Paragraph(text: segmentText, font: font).intrinsic().max
+        let segmentRects = node.paragraph.layout(width: Paragraph.unbounded).rangeRects(segment.lowerBound, segment.upperBound)
+        let rectList = segmentRects.map { "(\(f($0.minX)),\(f($0.minY)),\(f($0.width)),\(f($0.height)))" }.joined(separator: " ")
         let lineTexts = zip(atMin.lineStarts, atMin.lineStarts.dropFirst() + [units.count]).map { start, end in
           "\"" + String(decoding: units[start..<end], as: UTF16.self) + "\""
         }
         let quotedLines = lineTexts.joined(separator: " ")
         Report.add(
-          "  (c) widest segment [\(segment.lowerBound),\(segment.upperBound)) \"\(segmentText)\" = \(f(minimum)) in the line, \(f(alone)) laid alone; \(node.paragraph.breakOpportunities().count) break opportunities; lines at min: \(quotedLines)"
+          "  (c) widest segment [\(segment.lowerBound),\(segment.upperBound)) \"\(segmentText)\" = \(f(minimum)) in the line, \(f(alone)) laid alone, segment rects \(rectList); \(node.paragraph.breakOpportunities().count) break opportunities; lines at min: \(quotedLines)"
         )
 
         if !extentOK { failures.append("\(configName)/\(name) (a)") }
@@ -408,7 +410,10 @@ final class SpikeTests: XCTestCase {
 
     Report.add("1000 mixed labels (8 kinds, a #n suffix each), simulator on the CI runner; ms")
 
-    for round in 1...3 {
+    var coldRatios: [Double] = []
+    var widthRatios: [Double] = []
+
+    for round in 1...5 {
       var nodes: [TextNodeView] = []
       var labels: [UILabel] = []
 
@@ -462,12 +467,14 @@ final class SpikeTests: XCTestCase {
       }
 
       let sameLayouts = nodes.reduce(0) { $0 + $1.layouts }
+      coldRatios.append(nodeCold / labelCold)
+      widthRatios.append(nodeWidth / labelWidth)
 
       Report.add(
         "round \(round): cold node \(String(format: "%.1f", nodeCold)) vs UILabel \(String(format: "%.1f", labelCold)) (node layouts \(coldLayouts)); width 320->300 node \(String(format: "%.1f", nodeWidth)) vs UILabel \(String(format: "%.1f", labelWidth)) (node layouts \(widthLayouts)); same width again node \(String(format: "%.1f", nodeSame)) (layouts \(sameLayouts))"
       )
 
-      if round == 3 {
+      if round == 5 {
         let intrinsic = ms {
           for text in texts {
             _ = Paragraph(text: text, font: font).intrinsic()
@@ -495,6 +502,10 @@ final class SpikeTests: XCTestCase {
         )
       }
     }
+
+    let medianCold = coldRatios.sorted()[coldRatios.count / 2]
+    let medianWidth = widthRatios.sorted()[widthRatios.count / 2]
+    Report.add(String(format: "median over 5 rounds, node/UILabel: cold %.2fx, width change %.2fx", medianCold, medianWidth))
 
     // One label animating its font size, frame by frame.
     let text = strings[0].1

@@ -57,10 +57,16 @@ jobs:
           mkdir -p "$TEST_RUNNER_SPIKE_OUT"
           xcodebuild -list -json | tee "$RUNNER_TEMP/list.json"
           SCHEME=$(python3 -c 'import json,sys; s=json.load(open(sys.argv[1]))["workspace"]["schemes"]; print("TextSpike-Package" if "TextSpike-Package" in s else "TextSpike")' "$RUNNER_TEMP/list.json")
+          xcrun simctl boot "${{ steps.sim.outputs.udid }}" || true
           status=0
-          xcodebuild test -scheme "$SCHEME" -destination "id=${{ steps.sim.outputs.udid }}" \
+          xcodebuild build-for-testing -scheme "$SCHEME" -destination "id=${{ steps.sim.outputs.udid }}" \
             -derivedDataPath "$RUNNER_TEMP/dd" SWIFT_OPTIMIZATION_LEVEL=-O CODE_SIGNING_ALLOWED=NO \
             > "$RUNNER_TEMP/xcodebuild.log" 2>&1 || status=$?
+          xcrun simctl bootstatus "${{ steps.sim.outputs.udid }}" -b || true
+          if [ "$status" = 0 ]; then
+            xcodebuild test-without-building -scheme "$SCHEME" -destination "id=${{ steps.sim.outputs.udid }}" \
+              -derivedDataPath "$RUNNER_TEMP/dd" >> "$RUNNER_TEMP/xcodebuild.log" 2>&1 || status=$?
+          fi
           grep -E "error:|Test Case .*(passed|failed)|\*\* TEST|Restarting after|crash" "$RUNNER_TEMP/xcodebuild.log" | head -200 || true
           {
             echo "=== RESULTS ==="

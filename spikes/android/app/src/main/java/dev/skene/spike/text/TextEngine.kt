@@ -4,6 +4,7 @@ import android.graphics.Paint
 import android.os.Build
 import android.text.BoringLayout
 import android.text.Layout
+import android.text.PrecomputedText
 import android.text.StaticLayout
 import android.text.TextDirectionHeuristics
 import android.text.TextPaint
@@ -20,8 +21,16 @@ import kotlin.math.max
  * The answers go into [buffer], a direct buffer the Rust side reads after each call. Layouts are
  * cached by (text id, width); intrinsics by text id. Pinned parameters match Compose's defaults:
  * no font padding, fallback line spacing, simple breaking, no hyphenation.
+ *
+ * [useBoring] takes BoringLayout for single-line text; below API 33 BoringLayout cannot apply
+ * fallback line spacing, so it is off there by default. [precompute] measures each text once into
+ * a PrecomputedText that intrinsics and every layout reuse.
  */
-class TextEngine(private val corpus: Corpus, val useBoring: Boolean = true) {
+class TextEngine(
+  private val corpus: Corpus,
+  val useBoring: Boolean = Build.VERSION.SDK_INT >= 33,
+  val precompute: Boolean = true,
+) {
   val buffer: ByteBuffer = ByteBuffer.allocateDirect(64).order(ByteOrder.nativeOrder())
   private val paints = Corpus.SIZES.map { size ->
     TextPaint(Paint.ANTI_ALIAS_FLAG).apply { textSize = size }
@@ -29,6 +38,14 @@ class TextEngine(private val corpus: Corpus, val useBoring: Boolean = true) {
   private val boring = arrayOfNulls<BoringLayout.Metrics>(corpus.leaves)
   private val boringKnown = BooleanArray(corpus.leaves)
   private val widths = arrayOfNulls<FloatArray>(corpus.leaves)
+  private val measured = arrayOfNulls<CharSequence>(corpus.leaves)
+  private val params = paints.map { paint ->
+    PrecomputedText.Params.Builder(paint)
+      .setBreakStrategy(Layout.BREAK_STRATEGY_SIMPLE)
+      .setHyphenationFrequency(Layout.HYPHENATION_FREQUENCY_NONE)
+      .setTextDirection(TextDirectionHeuristics.FIRSTSTRONG_LTR)
+      .build()
+  }
   private val cache = HashMap<Long, Laid>()
 
   /** Layout-cache hits and misses since construction. */
@@ -49,11 +66,22 @@ class TextEngine(private val corpus: Corpus, val useBoring: Boolean = true) {
 
   fun paint(id: Int): TextPaint = paints[corpus.style(id)]
 
+  /** The text of [id], precomputed once when [precompute] is on. */
+  fun source(id: Int): CharSequence {
+    if (!precompute) return corpus.text(id)
+
+    measured[id]?.let { return it }
+
+    val text = PrecomputedText.create(corpus.text(id), params[corpus.style(id)])
+    measured[id] = text
+    return text
+  }
+
   private fun boringOf(id: Int): BoringLayout.Metrics? {
     if (!useBoring) return null
 
     if (!boringKnown[id]) {
-      val text = corpus.text(id)
+      val text = source(id)
       boring[id] = if (Build.VERSION.SDK_INT >= 33) {
         BoringLayout.isBoring(text, paint(id), TextDirectionHeuristics.FIRSTSTRONG_LTR, true, null)
       } else {
@@ -67,7 +95,7 @@ class TextEngine(private val corpus: Corpus, val useBoring: Boolean = true) {
 
   /** Builds a fresh layout of text [id] at [width] pixels, bypassing every cache. */
   fun build(id: Int, width: Int): Layout {
-    val text = corpus.text(id)
+    val text = source(id)
     val paint = paint(id)
     val metrics = boringOf(id)
 
@@ -127,12 +155,15 @@ class TextEngine(private val corpus: Corpus, val useBoring: Boolean = true) {
   fun intrinsicWidths(id: Int): FloatArray {
     widths[id]?.let { return it }
 
-    val text = corpus.text(id)
+    val text = source(id)
     val paint = paint(id)
     val metrics = boringOf(id)
-    val max = ceil(metrics?.width?.toFloat() ?: Layout.getDesiredWidth(text, paint))
+    val pre = text as? PrecomputedText
+    val max = ceil(
+      metrics?.width?.toFloat() ?: pre?.getWidth(0, text.length) ?: Layout.getDesiredWidth(text, paint),
+    )
     val breaks = BreakIterator.getLineInstance(Locale.getDefault())
-    breaks.setText(text)
+    breaks.setText(corpus.text(id))
 
     var min = 0f
     var start = breaks.first()
@@ -143,7 +174,9 @@ class TextEngine(private val corpus: Corpus, val useBoring: Boolean = true) {
 
       while (trimmed > start && text[trimmed - 1].isWhitespace()) trimmed--
 
-      if (trimmed > start) min = max(min, Layout.getDesiredWidth(text, start, trimmed, paint))
+      if (trimmed > start) {
+        min = max(min, pre?.getWidth(start, trimmed) ?: Layout.getDesiredWidth(text, start, trimmed, paint))
+      }
 
       start = end
       end = breaks.next()
@@ -154,19 +187,15 @@ class TextEngine(private val corpus: Corpus, val useBoring: Boolean = true) {
     return result
   }
 
-  /** JNI: writes min, max, height at min, height at max and the baselines at each. */
+  /** JNI: writes min, max, then the height and the first and last baselines at max. */
   fun intrinsics(id: Int) {
     val (min, max) = intrinsicWidths(id).let { it[0] to it[1] }
-    val atMin = laid(id, min.toInt())
     val atMax = laid(id, max.toInt())
     buffer.putFloat(0, min)
     buffer.putFloat(4, max)
-    buffer.putFloat(8, atMin.height.toFloat())
-    buffer.putFloat(12, atMax.height.toFloat())
-    buffer.putFloat(16, atMax.first.toFloat())
-    buffer.putFloat(20, atMax.last.toFloat())
-    buffer.putFloat(24, atMin.first.toFloat())
-    buffer.putFloat(28, atMin.last.toFloat())
+    buffer.putFloat(8, atMax.height.toFloat())
+    buffer.putFloat(12, atMax.first.toFloat())
+    buffer.putFloat(16, atMax.last.toFloat())
   }
 
   /** JNI: writes the used width, the height and the first and last baselines at [width]. */
@@ -182,5 +211,6 @@ class TextEngine(private val corpus: Corpus, val useBoring: Boolean = true) {
   fun clear() {
     cache.clear()
     widths.fill(null)
+    measured.fill(null)
   }
 }

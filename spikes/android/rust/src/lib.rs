@@ -46,10 +46,8 @@ pub const FLAG_CLEAR_INTRINSICS: jint = 4;
 struct Intrinsics {
   min: f32,
   max: f32,
-  h_min: f32,
   h_max: f32,
   base_max: (f32, f32),
-  base_min: (f32, f32),
 }
 
 #[derive(Clone, Copy)]
@@ -119,15 +117,13 @@ impl Engine {
         .expect("intrinsics");
     }
 
-    let b = self.read(8);
+    let b = self.read(5);
 
     Intrinsics {
       min: b[0],
       max: b[1],
-      h_min: b[2],
-      h_max: b[3],
-      base_max: (b[4], b[5]),
-      base_min: (b[6], b[7]),
+      h_max: b[2],
+      base_max: (b[3], b[4]),
     }
   }
 
@@ -183,15 +179,7 @@ impl Leaf {
     let (width, fixed) = match (known.width, available.width) {
       (Some(width), _) => (width, true),
       (None, AvailableSpace::Definite(width)) => (width, false),
-      (None, AvailableSpace::MinContent) => {
-        return (
-          Size {
-            width: intrinsics.min,
-            height: intrinsics.h_min,
-          },
-          intrinsics.base_min,
-        );
-      }
+      (None, AvailableSpace::MinContent) => (intrinsics.min, false),
       (None, AvailableSpace::MaxContent) => {
         return (
           Size {
@@ -207,8 +195,6 @@ impl Leaf {
 
     let (used, height, baselines) = if whole as f32 >= intrinsics.max {
       (intrinsics.max, intrinsics.h_max, intrinsics.base_max)
-    } else if whole as f32 == intrinsics.min {
-      (intrinsics.min, intrinsics.h_min, intrinsics.base_min)
     } else {
       let laid = match self.laid.iter().flatten().find(|laid| laid.width == whole) {
         Some(laid) => *laid,

@@ -33,9 +33,10 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class SpikeTest {
   private val instrumentation = InstrumentationRegistry.getInstrumentation()
+  private val runId = InstrumentationRegistry.getArguments().getString("runId") ?: "local"
 
   private fun report(key: String, value: Any) {
-    Log.i(TAG, "$key=$value")
+    Log.i(TAG, "RID:$runId $key=$value")
   }
 
   private fun ms(nanos: Long) = "%.3f".format(nanos / 1e6)
@@ -46,31 +47,40 @@ class SpikeTest {
     return result!!.getOrThrow()
   }
 
-  private fun passes(name: String, runs: List<LongArray>) {
+  private fun passes(prefix: String, name: String, runs: List<LongArray>) {
     val nanos = runs.map { it[0] }.sorted()
-    report("taffy.$name.ms", ms(nanos[nanos.size / 2]))
-    report("taffy.$name.runs", runs.size)
-    report("taffy.$name.crossings", runs.maxOf { it[1] })
-    report("taffy.$name.intrinsicsCalls", runs.maxOf { it[2] })
-    report("taffy.$name.layoutCalls", runs.maxOf { it[3] })
-    report("taffy.$name.maxPerLeaf", runs.maxOf { it[4] })
-    report("taffy.$name.leavesOver1", runs.maxOf { it[5] })
-    report("taffy.$name.measureCallbacks", runs.maxOf { it[6] })
-    report("taffy.$name.leavesCrossing", runs.maxOf { it[7] })
+    report("$prefix.$name.ms", ms(nanos[nanos.size / 2]))
+    report("$prefix.$name.runs", runs.size)
+    report("$prefix.$name.crossings", runs.maxOf { it[1] })
+    report("$prefix.$name.intrinsicsCalls", runs.maxOf { it[2] })
+    report("$prefix.$name.layoutCalls", runs.maxOf { it[3] })
+    report("$prefix.$name.maxPerLeaf", runs.maxOf { it[4] })
+    report("$prefix.$name.leavesOver1", runs.maxOf { it[5] })
+    report("$prefix.$name.measureCallbacks", runs.maxOf { it[6] })
+    report("$prefix.$name.leavesCrossing", runs.maxOf { it[7] })
   }
 
+  /** The engine as designed: PrecomputedText once per text, layouts reusing it. */
   @Test
-  fun taffy() {
+  fun taffy() = taffyPasses("taffy", precompute = true)
+
+  /** The engine without PrecomputedText: every layout measures its text afresh. */
+  @Test
+  fun taffyPlain() = taffyPasses("taffyPlain", precompute = false)
+
+  private fun taffyPasses(prefix: String, precompute: Boolean) {
     report("device.sdk", Build.VERSION.SDK_INT)
     report("device.abi", Build.SUPPORTED_ABIS.joinToString(","))
 
     onMain {
       val corpus = Corpus(CARDS)
       val start = System.nanoTime()
-      val engine = TextEngine(corpus)
+      val engine = TextEngine(corpus, precompute = precompute)
       val tree = NativeTree(engine, CARDS)
-      report("taffy.leaves", tree.leaves)
-      report("taffy.create.ms", ms(System.nanoTime() - start))
+      report("$prefix.leaves", tree.leaves)
+      report("$prefix.useBoring", engine.useBoring)
+      report("$prefix.create.ms", ms(System.nanoTime() - start))
+      fun passes(name: String, runs: List<LongArray>) = passes(prefix, name, runs)
 
       passes("cold", listOf(tree.layout(W1)))
       passes("warmSameWidth", List(5) { tree.layout(W1, NativeTree.DIRTY) })
@@ -87,9 +97,9 @@ class SpikeTest {
       )
 
       val rects = tree.rects()
-      report("taffy.rootHeightAtW1", rects[rects.size - 1])
-      report("taffy.engineHits", engine.hits)
-      report("taffy.engineMisses", engine.misses)
+      report("$prefix.rootHeightAtW1", rects[rects.size - 1])
+      report("$prefix.engineHits", engine.hits)
+      report("$prefix.engineMisses", engine.misses)
       tree.close()
     }
   }
@@ -248,8 +258,13 @@ class SpikeTest {
       }
     }
 
-    for (boring in listOf(true, false)) {
-      val prefix = if (boring) "ink.boringOn" else "ink.boringOff"
+    val variants = listOf(
+      "ink.default" to (Build.VERSION.SDK_INT >= 33),
+      "ink.boringOn" to true,
+      "ink.boringOff" to false,
+    )
+
+    for ((prefix, boring) in variants) {
       val engine = TextEngine(corpus, boring)
       val tree = NativeTree(engine, CARDS)
       tree.layout(W1)

@@ -24,12 +24,14 @@ run() {
   local log="$out.instrument.$test.$rep.txt"
 
   adb logcat -c
-  adb shell am instrument -w -e class "dev.skene.spike.text.SpikeTest#$test" \
+  adb shell am instrument -w -e class "dev.skene.spike.text.SpikeTest#$test" -e runId "$test.$rep" \
     dev.skene.spike.text.test/androidx.test.runner.AndroidJUnitRunner > "$log" 2>&1
   local ok
   ok=$(grep -c "OK (1 test)" "$log")
   echo "run=$rep test=$test instrument.ok=$ok" >> "$out"
-  adb logcat -d -v raw -s SKENE_SPIKE:I | grep '=' | tr -d '\r' | sed "s/^/run=$rep test=$test /" >> "$out"
+  # The emulator's logcat may keep earlier runs' lines after a clear; keep this run's alone.
+  adb logcat -d -v raw -s SKENE_SPIKE:I | tr -d '\r' | grep "^RID:$test.$rep " \
+    | sed "s/^RID:[^ ]* /run=$rep test=$test /" >> "$out"
 
   if [ "$ok" = 0 ]; then
     echo "::group::$test run $rep failed"
@@ -43,6 +45,8 @@ for rep in 1 2 3; do
   run taffy "$rep"
   run compose "$rep"
 done
+
+run taffyPlain 1
 
 run offMain 1
 run ink 1

@@ -1,0 +1,126 @@
+name: spike-android
+
+# Android text-measure spike: taffy in Rust measuring 1000 text leaves through JNI into a Kotlin
+# StaticLayout/BoringLayout engine, against the same tree in Jetpack Compose, on an emulator.
+
+on:
+  push:
+    branches: [claude/platform-architecture-tradeoffs-y9q57l]
+    paths:
+      - spikes/android/**
+      - .github/workflows/spike-android.yml
+  workflow_dispatch:
+
+concurrency:
+  group: spike-android-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: spikes/android
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.14.3"
+
+      - name: Rust toolchain for the emulator's ABI
+        run: |
+          rustup toolchain install stable --profile minimal --target x86_64-linux-android
+          rustup default stable
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-ndk
+
+      - name: Build the Rust library
+        working-directory: spikes/android/rust
+        run: |
+          export ANDROID_NDK_HOME="$ANDROID_NDK_LATEST_HOME"
+          echo "NDK: $ANDROID_NDK_HOME"
+          cargo ndk -t x86_64 --platform 29 -o ../app/src/main/jniLibs build --release
+          ls -la ../app/src/main/jniLibs/x86_64
+
+      - name: Build the app and test APKs
+        run: gradle --no-daemon assembleRelease assembleReleaseAndroidTest
+
+      - name: Collect APKs
+        run: |
+          mkdir -p ../../apks
+          cp app/build/outputs/apk/release/app-release.apk ../../apks/
+          cp app/build/outputs/apk/androidTest/release/app-release-androidTest.apk ../../apks/
+          ls -la ../../apks
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: spike-android-apks
+          path: apks
+          retention-days: 5
+
+  emulator:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - api: 29
+            target: default
+          - api: 34
+            target: google_apis
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: spike-android-apks
+          path: apks
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run on the emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api }}
+          target: ${{ matrix.target }}
+          arch: x86_64
+          ram-size: 4096M
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
+          script: bash spikes/android/run-on-emulator.sh apks results-api${{ matrix.api }}.txt
+
+      - name: Results
+        if: always()
+        run: |
+          python3 spikes/android/summarize.py results-api${{ matrix.api }}.txt > summary-api${{ matrix.api }}.txt || true
+          echo "=== RESULTS === (API ${{ matrix.api }})"
+          cat summary-api${{ matrix.api }}.txt
+          echo "--- raw ---"
+          cat results-api${{ matrix.api }}.txt || true
+          echo "=== END ==="
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: spike-android-results-api${{ matrix.api }}
+          path: |
+            results-api${{ matrix.api }}.txt*
+            summary-api${{ matrix.api }}.txt

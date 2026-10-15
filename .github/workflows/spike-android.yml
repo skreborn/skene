@@ -37,10 +37,12 @@ jobs:
         with:
           gradle-version: "8.14.3"
 
-      - name: Rust toolchain for the emulator's ABI
+      # The repository's rust-toolchain.toml pins the toolchain; add the target to that one.
+      - name: Rust target for the emulator's ABI
+        working-directory: spikes/android/rust
         run: |
-          rustup toolchain install stable --profile minimal --target x86_64-linux-android
-          rustup default stable
+          rustup show active-toolchain || rustup toolchain install
+          rustup target add x86_64-linux-android
 
       - uses: taiki-e/install-action@v2
         with:

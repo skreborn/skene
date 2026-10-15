@@ -2,26 +2,175 @@
 
 The alternatives set aside and the designs replaced, each with the date it was recorded
 and the condition that reopens it. A reopened decision becomes an item in `ROADMAP.md`.
+The redesign recorded on 2026-10-15 is decided but not yet landed: until its
+migration in `ROADMAP.md` lands, the code and `DESIGN.md` still describe the designs it
+supersedes.
 
 ## Decided against
 
-- **Laying text out by hand** (2026-10-08) on the platforms but the web, a paragraph
-  of our own measuring each cluster by its platform's metrics: every one of them shapes
-  and wraps text through Parley, the terminal through a typeface the build generates
-  whose glyphs are its cells, so there is one mechanism for text and it follows CSS
-  Text. Revisit when Parley cannot carry a platform's text, a native platform's own
-  engine or a terminal behavior no typeface expresses.
-- **Tab stops** (2026-10-08) outside the browser: a tab is a blank as wide as its
-  glyph, as Parley lays it out, where a browser stops it eight spaces apart. Tabs
-  belong to code editors, where a fixed width serves, and to generic text editors,
-  which most of an interface is not. Revisit when Parley lays out `tab-size` or an
-  app lays columns out with tabs.
-- **A newline ending a text, and an empty text, laid out as a browser's block lays
-  them out** (2026-10-08), with no line: Parley opens a line after a final newline and
-  lays an empty text out as one, as an editor does, and an app leaves out what it does
-  not want laid out. The web keeps the browser's reading. Revisit when a platform's own
-  text view lays them out as a browser does.
-
+- **A generic medium** (2026-10-15), views generic over the medium they run on (`impl
+  View<P>` with `P: Within<Pixel>`), `Adaptive` value chains and the platform sets
+  (`Pixel`, `Cell`, `Apple`, `Mobile`, `Desktop`): checking a view tree grew
+  superlinearly with its depth, a depth-5 tree in 7.8 s and a depth-6 one in 83 s where
+  the concrete design takes 0.13 s and 0.26 s, and rust-analyzer needed four minutes and
+  9.3 GB to answer a hover at depth 4 and was killed at 13.9 GB at depth 5, against
+  1.8 s and 600 MB. App code is concrete: no type parameters, no generic medium.
+  Revisit when rustc and rust-analyzer check a generic view tree in time and memory
+  linear in its depth.
+- **The `.on::<P>()` chain** (2026-10-15), a view's platform options as arms
+  (`.on::<Ios>(|c| c.set_material(..))`, `.otherwise`) under coverage and ordering
+  rules, a clone per arm's closure: it is the generic medium's road to a platform and
+  pays its cost, and it asks a single-platform app for concepts it never needs. A
+  platform's option is a prefixed setter (`set_ios_*`) and a difference in structure a
+  `match` on `Platform::CURRENT`. Revisit with the generic medium.
+- **Third-party platforms** (2026-10-15): one platform is chosen per build and
+  `Platform::CURRENT` is a const enum, so a platform the framework does not realize has
+  nowhere to stand, and a library reaches what a platform has through its native door
+  instead. Revisit when someone asks to realize a platform outside the framework.
+- **A deprecation warning on another platform's setter** (2026-10-15), `deprecated`
+  raised under a cfg naming the platforms an app declares, so `set_android_ripple` in
+  an app that never builds for Android warns: it borrows a lint for a meaning it does
+  not have, its message still says "deprecated", and the facade needs the app's
+  platform list as a second cfg. Another platform's setter compiles silently and does
+  nothing. Revisit when a library can raise a diagnostic of its own conditionally.
+- **A platform control under its toolkit's names** (2026-10-15): six toolkits'
+  vocabularies came to 24 control types, 140 functions and 14 handler names for 4
+  events. A platform control takes Skene's names where the meaning matches, the
+  toolkit's name in its doc line. Revisit when a toolkit's control means something
+  Skene has no name for in most of its members.
+- **Per-platform presets for a shared option** (2026-10-15): a shared option names its
+  meaning once (`Button::set_prominent`) and each platform realizes it in its own idiom,
+  where a preset per platform asks an app on several platforms to pick the idiom on
+  each. Revisit when a meaning cannot be named once across the platforms that offer it.
+- **Sharing a screen between the two media through `#[path]`** (2026-10-15), a guide
+  paragraph teaching an app to include one source file in both its UIs: an app on both
+  media writes two UIs, name-for-name parallel, and the framework neither ships a
+  sharing feature nor teaches one. Revisit with one app serving both media.
+- **A test double** (2026-10-15), a thin semantic recorder standing in for a platform
+  off its target, as the investigation recommended at about 160 lines beyond the stub
+  every host build needs: green on a
+  double says nothing below the seam, and headless grew from bookkeeping into a browser
+  emulator within five days. Each platform has one realization, the real one: `skene
+  new` sets `[build] target` to the platform's triple beside a runner, so a plain
+  `cargo test` runs on the platform, and CI cross-clippies every pixel target against
+  the real bindings. A stand-in for an OS service (the settings portal) and the layout
+  engine's unit tests over canned measurements double no realization and stay; a test's
+  key press focuses its target by real input (`Tab` until the accessibility tree
+  reports focus), never by a toolkit call. Revisit when a platform's tests cannot run
+  on any machine its developers or CI reach.
+- **Fully native text fields on iOS and macOS** (2026-10-15), `UITextField`,
+  `UITextView`, `NSTextField` and `NSSecureTextField` for every field: Skene can draw
+  the box around one, but the text inside loses word spacing, wavy and offset
+  decorations, the caret's width and shape, per-run styling, Skene's editing behavior
+  and its tests, and agreement with the Skene text beside it. Every field, the password
+  field included, is Skene's own field view on TextKit 2 speaking `UITextInput` or
+  `NSTextInputClient`, as on every other platform, at the possible cost of the
+  credential extras tied to Apple's controls (the strong-password and save offers,
+  macOS's inline AutoFill), with app-initiated saving as the fallback. Revisit when a
+  device test finds those offers lost to Skene's field on iOS and app-initiated saving
+  cannot stand in for them; the alternative is then every iOS field native, never the
+  mix below.
+- **Native password fields beside drawn regular fields** (2026-10-15), on iOS and
+  macOS, where capture blanking, strong passwords and the save prompt are tied to the
+  platform's control: two fields that differ in style and behavior on one form is the
+  worst outcome of all. A password field is Skene's field, masked, under the platform's
+  secure-entry flag. Not revisited: a platform whose password field goes native takes
+  every field native with it.
+- **A hidden native field as the input proxy** (2026-10-15), as Flutter and Compose
+  Multiplatform feed their drawn fields: the view a reader focuses and the view the
+  input method writes into would be two, held together by an identity trick
+  (`isKindOfClass:`) no signal can prove. Skene's own field view speaks the platform's
+  text-input protocol (`UITextInput` with `UITextInteraction`, `InputConnection`,
+  `NSTextInputClient` with `NSTextCheckingClient`) and takes the system's selection
+  chrome where the platform offers it. Revisit when a platform's protocol cannot be
+  spoken by a view of Skene's own.
+- **Replacing the web's form elements with drawn text input** (2026-10-15), through
+  `EditContext` or rendering of Skene's own: `<input>`, `<textarea>` and the other form
+  elements styled by CSS are Skene's drawn controls on the web, nearly unlimited in
+  style and the only text input that works without script. Anything more elaborate is
+  progressive enhancement over them, never a replacement. Not revisited while
+  progressive enhancement is doctrine.
+- **Landing AccessKit's missing text support upstream first** (2026-10-15): a drawn
+  field regressed against `GtkEntry` for want of `EditableText` and several `Text`
+  methods, its writes reading back stale for about 300 ms. AccessKit serves every
+  platform but the web, and Skene carries its changes itself, as a fork or patches,
+  contributing them upstream once they are proven in practice. Revisit when upstream
+  AccessKit carries them.
+- **Pango on Linux** (2026-10-15): Pango is GNOME's text engine, pixel-identical to
+  `GtkLabel`, not the operating system's; Linux's own layers are fontconfig, FreeType
+  and HarfBuzz under the desktop's settings. Parley lays Linux's text out over
+  fontconfig's per-character fallback (color emoji included), FreeType rasterization
+  under the user's antialias and hinting settings, and complex-script line breaking.
+  Revisit when matching GNOME's applications glyph for glyph becomes a goal.
+- **ClearType text on Windows** (2026-10-15): DirectWrite lays Windows's text out and
+  its glyphs enter Skene's renderer in grayscale, vello outlines the floor and a
+  DirectWrite-rasterized atlas the upgrade; subpixel coverage holds only over a
+  background opaque when the glyph is drawn, and its gain is unmeasured. Revisit when
+  opaque text measured on Windows shows a gain worth a second glyph path.
+- **Drawing Linux inside a GTK window** (2026-10-15), Skene's drawn controls in a GTK
+  shell that supplies IME, the AT-SPI relations and fractional scale: Linux only
+  composites windows, as Windows does, so Skene owns the whole window there and speaks
+  the protocols itself (Wayland, X11, IBus and Fcitx, AT-SPI, the portals), one family
+  with Windows. GTK's third-party widgets are not needed, and on Ubuntu 24.04's GTK 4.14
+  a custom widget gets no `EditableText`, no text extents and no assistive caret or
+  selection writes. Revisit when an app needs to host GTK's own or third-party widgets.
+- **A realization crate on its bindings' default features** (2026-10-15):
+  `objc2-ui-kit` checks clean in 2.93 s with the features a realization uses and in
+  41 s with its defaults. A realization crate enables only the binding features it uses
+  and keeps target-side C build scripts out of its graph. Revisit when a binding's
+  defaults cost nothing beside its minimal features.
+- **Theming the drawing platforms through reactive values** (2026-10-15), every platform
+  but the web reading a palette as signals throughout its tree in place of token sets:
+  tokens stay as they are on every platform, a named inherited slot a theme defines and
+  the foundation resolves where a realization keeps less than everything, the web
+  keeping its custom properties so a scriptless page themes through CSS. Revisit when
+  tokens are revisited, with whether a token must define a variant for each scheme.
+- **A toolkit's own containers laying a platform out** (2026-10-14), GTK's boxes and
+  grids for Skene's layout views: they express no grow weights, shrink, flex basis,
+  fractions, maximum or exact sizes, wrap lines or grid tracks, and matched the
+  reference in 26 of 45 scenarios where taffy matched 43. Taffy owns layout on every
+  toolkit but the web's, one small tree per container, the toolkit measuring its
+  leaves, its minimum a floor and the rectangles fractional. Revisit when a toolkit's
+  containers express Skene's layout vocabulary.
+- **A clickable `Container` as a button** (2026-10-14), a toolkit button that may hold
+  no control: the rule was a runtime assert, so an app whose derived child later became
+  a control would panic, and the pointer-only box offered instead took no focus and no
+  key. A clickable `Container` is an activatable row, focusable, activated by `Enter`
+  and `Space`, holding controls that own their presses; focus follows the scene's child
+  order, never geometry, which had put a switch before the command to its left. Revisit
+  when a platform cannot make a box holding controls focusable and activatable.
+- **Content-addressed token tags on display-wide colors** (2026-10-14), a toolkit's
+  named colors tagged by their definition's content: a palette switch changed every tag
+  and so restyled every node naming one. A palette switch touches no node: named
+  colors are keyed by the theme's scope, and the web keeps class names of content
+  alone, since `var()` scopes its tokens. Revisit when a platform's named colors are
+  scoped as custom properties are.
+- **Reading a settings portal's "no preference" as light** (2026-10-14): it overwrote
+  a reader's own dark preference wherever the portal's backend always answers so. No
+  preference falls back to the desktop's toolkit settings (`GtkSettings`). Revisit when
+  every desktop's portal answers the scheme it shows.
+- **A `skene` command passing over what it cannot do** (2026-10-14): `skene check`
+  skipped a declared platform nothing realized and exited 0 having checked nothing, and
+  `skene new` named a runner it had not found, so the first plain `cargo test` failed.
+  A check fails on a declared platform it cannot realize, and `skene new` refuses to
+  name a runner that does not exist. Not revisited.
+- **Laying text out by hand** (2026-10-08), a paragraph of our own measuring each
+  cluster by its platform's metrics: each platform's own engine lays its text out, and
+  Parley lays it out on Linux and in the terminal, the terminal through a typeface the
+  build generates whose glyphs are its cells. Revisit when neither a platform's engine
+  nor Parley can carry its text, or the terminal needs a behavior no typeface expresses.
+- **Tab stops where Parley lays text out** (2026-10-08), on Linux and in the terminal:
+  a tab is a blank as wide as its glyph, where a browser stops it eight spaces apart,
+  and tabs are outside the core every platform guarantees, so every other engine sets
+  them its own way. Tabs belong to code editors, where a fixed width serves, and to
+  generic text editors, which most of an interface is not. Revisit when Parley lays out
+  `tab-size` or an app lays columns out with tabs.
+- **A newline ending a text laid out as a browser's block lays it out** (2026-10-08),
+  with no line, where Parley lays text out: Parley opens a line after a final newline,
+  as an editor does, and an app leaves out what it does not want laid out; an empty
+  text is one line in the core every platform guarantees. The web keeps the browser's
+  reading of a final newline, and every other engine its own. Revisit when the
+  platforms Parley serves expect a browser's reading.
 - **Collapsing a text's blanks and newlines** (2026-10-08), as a browser does by
   default: text keeps them, as SwiftUI's, Flutter's and Compose's text does, and a word
   too wide for a line of its own breaks where the line fills, so a newline in a run
@@ -39,31 +188,35 @@ and the condition that reopens it. A reopened decision becomes an item in `ROADM
   costs a whole cell, small spacings round to nothing or to a whole row and a type
   hierarchy collapses into one row outside kitty, so writing once yields a correct
   structure and a poor look while every property owes a floor on every platform. Each
-  platform keeps its own unit and its own vocabulary: types decide what a platform can
-  do, and signals what an install of it can. Revisit when the terminals worth targeting
-  draw borders, spacings and sizes below the cell as a matter of course.
-- **A shell per platform family** (2026-10-01), one for the web and the desktops and one
-  for both mobile OSes: iOS and Android differ in representation, app structure and
-  navigation, and each desktop OS in its layout and control conventions. Revisit when
-  two platforms of one family converge on their representation, structure and
-  conventions.
+  medium keeps its own unit and its own vocabulary, `skene-gui`'s pixels and
+  `skene-tui`'s cells, the two name-for-name parallel. Revisit when the terminals worth
+  targeting draw borders, spacings and sizes below the cell as a matter of course.
+- **Grouping platforms by family** (2026-10-01; the prefixes 2026-10-15), a shell for
+  the web and the desktops and one for both mobile OSes, or `mobile_` and `desktop_`
+  setter prefixes beside `apple_`: iOS and Android differ in representation, app
+  structure and navigation, and each desktop OS in its layout and control conventions,
+  so a family's option means something different on each member, and an iOS-only app
+  would write `set_mobile_haptic`. `platform::apple` (`Platform::IS_APPLE`,
+  `set_apple_*`) is the only grouping. Revisit when two platforms of one family
+  converge on their representation, structure and conventions.
 - **A capabilities model of typed slots on `Platform`** (2026-09-17) in place of
   progressive enhancement: shelved, since it puts bounds on every shared signature; only
   a low-level view names what a platform can do. Revisit when an ordinary view, not a
   low-level one, needs to name what a platform can do.
-- **Draw-everything as the native family's default** (2026-09-17): mobile text
-  selection, IME and edit menus are years of platform work no framework should redo.
-  Revisit when a drawn framework ships platform-grade text selection, IME and edit menus
-  on both mobile OSes.
 - **A hybrid native realization** (2026-09-28), painted content with native controls
   embedded in it: every embedded view is paid for, as Flutter's platform views show.
-  Revisit when an embedded native view costs a frame no more than one in the platform's
-  own hierarchy.
-- **A painted native platform** (2026-09-28), on the desktop or on Android through
-  Linebender's android-view: it meets the native family's non-negotiables only as that
-  hybrid, and like Compose it owns text editing, the part left to the platform. Revisit
-  when a painted platform can leave text editing to the platform without embedding its
-  controls.
+  It is also what the native door would be on a window platform, a toolkit's control
+  inside the window Skene draws: Linux's door adopts no toolkit's view, having no
+  toolkit, and whether Windows's hosts a Win32 control is open in `ROADMAP.md`. Revisit
+  when an embedded native view costs a frame no more than one in the platform's own
+  hierarchy.
+- **A painted compositor platform** (2026-09-28; narrowed to these 2026-10-15),
+  Android through Linebender's android-view, or iOS or macOS painted into one surface:
+  their views carry real functionality (text selection and input, their own widgets,
+  third-party native views), so Skene draws its views as the platform's views and
+  interleaves them with native ones, where one surface meets those platforms only as
+  the hybrid above. Revisit when a painted surface interleaves with the platform's own
+  views at no cost in function or frame time.
 - **A WASI server leaf** (2026-09-17), under a wasmtime runner or as a `wasi:http`
   handler: it needs a second transport for every client, and the demand for wasm
   rendering is on JavaScript isolates. The server leaf compiles natively, selected by
@@ -116,7 +269,7 @@ and the condition that reopens it. A reopened decision becomes an item in `ROADM
   keys are seen to collide; the route is then a keyed step carrying the value's postcard
   bytes and a type hash, at a `Serialize + DeserializeOwned` bound on every key and a
   heap step per keyed scope.
-- **A `&'static str` signal restoring** (2026-09-16): it is `transient`, since it cannot
+- **A `&'static str` signal restoring** (2026-09-16): it never restores, since it cannot
   be deserialized owned. Revisit when apps keep state a reload should carry in `&'static
   str` signals.
 - **A `HashMap` store field iterating in a stable order** (2026-09-16): its entries come
@@ -167,12 +320,14 @@ and the condition that reopens it. A reopened decision becomes an item in `ROADM
   terminal on one triple. Target-gating is demoted from selector to enforcement. Revisit
   when every platform has a target triple of its own.
 - **A `Backend` trait object** (2026-07-31) cost `unsafe`, `Box::leak`, and a fallible
-  downcast. Still rejected: platforms are statically selected and the platform parameter
-  monomorphizes. Revisit when a platform must be chosen at run time.
+  downcast. Still rejected: platforms are statically selected, one per build. Revisit
+  when a platform must be chosen at run time.
 - **"The built-in views live in the umbrella"** (2026-09-03). True with one facade; with
   two it produced two umbrellas and two copies, sixty-five percent of them
   character-identical. The generic parameter already used for `Children` is applied to
-  every view in `skene-foundation`. Revisit when a single facade remains.
+  every view in `skene-foundation` (that generic parameter is itself superseded,
+  2026-10-15: the views are written once over the seam). Revisit when a single facade
+  remains.
 - **"No persistent scene tree in core"** (2026-09-03). The objection stood for a tree
   that calls platforms. The scene calls none; every platform kept the structure anyway,
   four ways. Revisit when a platform keeps no structure of its own.
@@ -182,8 +337,8 @@ and the condition that reopens it. A reopened decision becomes an item in `ROADM
 - **A recording platform (`skene-record`) beside the real ones** (2026-09-17). It ran
   only the target's handlers, did not unlink on reparent, and could not be complete
   because nothing forced it to be. The headless platform implements the whole trait and
-  is selected by the web facade on the host, so it cannot drift. Revisit when the
-  headless platform cannot implement the whole trait.
+  is selected by the web facade on the host, so it cannot drift; headless is itself
+  superseded (2026-10-15). Revisit with the test double.
 - **Group nodes for reactive subtrees** (2026-09-05). A real `<div>` and a real taffy
   node made every derived subtree one flex item. Subtrees mount between anchors. Revisit
   when a platform needs a node per reactive subtree.
@@ -233,9 +388,126 @@ and the condition that reopens it. A reopened decision becomes an item in `ROADM
   every platform.
 - **The `snapshot`, `test` and `simple-views` cargo features** (2026-08-12). Each gated
   a trait bound, a type or a platform, which an additive feature cannot do soundly.
-  Snapshot is on by default and opt-out, the test seams always compile, and the Simple
-  views are a crate. Revisit when a cargo feature can gate a bound soundly.
+  Restoring state is a bound a signal opts into, testing is a module of each facade,
+  and the Simple views are a crate. Revisit when a cargo feature can gate a bound
+  soundly.
 - **Transitional `next` namespaces** (2026-09-05): `skene_core::next`, `skene_web::next`
   and `skene_simple::next` carried the new model beside the old during the redesign and
   are flattened into their crate roots. Not revisited: they were scaffolding for one
   redesign.
+- **A facade per platform** (2026-10-15), `skene-web` and `skene-terminal`, later
+  `skene-ios`, `skene-android`, `skene-windows`, `skene-macos` and `skene-linux`, each
+  with a vocabulary typed to exactly its platform: an app on several pixel platforms
+  would write a UI per platform where, measured, 65 of its 227 lines differ by
+  platform. Two facades sit over the foundation, one per medium: `skene-gui` for every
+  pixel platform and `skene-tui` for the terminal, name-for-name parallel, a
+  platform's options its prefixed setters (`set_linux_*`, `set_ios_*`, `set_apple_*`,
+  each with its `derive_` twin) and its own controls in its `platform::<p>` module,
+  whose data types exist in every build; the bare name `skene` is the command. Revisit
+  when a platform's vocabulary diverges from its medium's further than its prefixed
+  setters and its own module carry.
+- **The `Platform` trait open to third parties** (2026-10-15), zero-sized and unsealed,
+  views and libraries generic over it, the web's escape traits for a low-level view
+  (`WebMarkup`, `WebDom`), the planned `PlatformView` with an embed constructor per
+  leaf, and a host trait per view library (`acme-map`'s `MapHost`): one platform is
+  chosen per build, `Platform::CURRENT` is a const enum and app code names no type
+  parameter, and third-party platforms are dropped. A library reaches a platform
+  through its native door (`platform::<p>::NativeView` with a `ControlSink`),
+  configured declaratively in its manifest with native code in conventional `native/`
+  folders where it is unavoidable, and a library's drawn control is built from the
+  behaviors and a painted canvas. The terminal's `CellPainter` stays its escape trait.
+  Revisit with third-party platforms.
+- **Selection by facade, then by target** (2026-10-15), the host target selecting the
+  headless platform and `skene-build` deriving the `skene_web_platform` axis: a plain
+  `cargo test` on the host was green for a platform nothing ran. One platform per build
+  is named by `--cfg skene_platform="<p>"`; `skene new` writes the platform's triple to
+  `[build] target`, the cfg to `[target.'cfg(all())'] rustflags` and
+  `build.rustdocflags`, and a runner into `.cargo/config.toml`; a build naming no
+  platform fails with a `compile_error!`; and the CLI substitutes the cfg by reading
+  cargo's rustflags sources in cargo's order, refusing when it cannot tell. Revisit
+  with the test double.
+- **The headless platform** (2026-10-15), `skene-headless`, the host realization the
+  web compiled against off its target, with a layout, a pinned font, a renderer and
+  goldens held to the browser's: it grew from bookkeeping into a browser emulator
+  without precedent, 4,273 lines whose browser emulator absorbed nearly all of its
+  recent effort, and a green run
+  proved nothing below the seam. Tests run on the real platforms (Option B): on
+  Linux, accessibility reads over AT-SPI and real input, `settle()`,
+  `#[skene_gui::test]` and a display runner giving each test process a private display
+  and buses. Revisit with the test double.
+- **Taffy behind a small FFI library, one tree per root** (2026-10-15), called by each
+  platform's own layout primitive and crossed once per layout pass beside the
+  platform's own containers: one tree per window was as exact as one per container but
+  recomputed the whole window on any change, 200,000 toolkit measures for one label's
+  change at 1,000 rows where one tree per container issued 32,120 and left the
+  toolkit's measure cache to decide what recomputes. Taffy owns layout on every toolkit
+  but the web's, one small tree per container. Revisit when a whole-window tree
+  recomputes only what a change touches.
+- **AccessKit only where a painted layer needs it** (2026-10-15), native views carrying
+  their own accessibility everywhere else: Skene's views are drawn on every platform
+  but the web, so AccessKit reports for every one of them, Skene carrying its changes
+  to it. Revisit with the platform's own controls as the built-ins.
+- **Text through Parley on every platform but the web** (2026-10-15), the shared
+  `Paragraph` following CSS Text everywhere: text and text input are the hardest parts
+  of a platform to get right, and its engine carries its fallback, emoji, hyphenation
+  and line-breaking rules, where on Linux Parley's fallback drew color emoji as
+  monochrome boxes and read none of fontconfig's antialias and hinting settings. Each
+  platform's own engine lays out and draws Skene's text inside Skene's views under
+  taffy, behind a `TextEngine` trait per realization: TextKit 2 on iOS and macOS,
+  `android.text` over Minikin on Android, DirectWrite on Windows, the DOM on the web,
+  and Parley over Linux's own layers on Linux and in the terminal. The guarantee
+  shrinks to a core (blanks and newlines kept, a word too wide for its line broken,
+  an empty text one line), and one app may wrap differently per platform. Revisit when
+  Parley matches a platform's engine in that platform's fallback, emoji and line
+  breaking.
+- **The platform's own controls as the built-ins** (2026-10-15), `Toggle` wrapping the
+  platform's switch and every native platform's built-in a control of its toolkit: the
+  governing rule is self-drawn everything without losing native functionality. Skene's
+  built-in controls are drawn everywhere, compositor platforms included, a compositor
+  platform's own reachable through `platform::<p>` and the native door; on the web the
+  drawn controls are the form elements styled by CSS. Revisit when a drawn control
+  cannot keep what the platform's own control has on that platform.
+- **Leaving text editing to the platform's own fields** (2026-10-15), recorded on
+  2026-09-17 as draw-everything rejected for the native family, since mobile text
+  selection, IME and edit menus are years of platform work: a field of Skene's own
+  keeps them by speaking the platform's text-input protocol and taking its selection
+  chrome, the system's caret, highlight and handles tinted by Skene's style on iOS. Text
+  fields and editors are Skene-drawn everywhere and the default, the platform's own
+  text views low-level platform controls, and the web keeps its form elements. Revisit
+  when a platform's protocol cannot feed Skene's field what the platform's own field
+  gets: input methods, selection UI, autofill, dictation, handwriting.
+- **A window platform realized through its toolkit's widgets** (2026-10-15), recorded
+  on 2026-09-28 as a painted desktop rejected for owning text editing: where a platform
+  only composites windows (Linux, Windows), Skene owns the whole window, draws
+  everything and implements the platform's text and accessibility protocols itself,
+  while a platform with a view compositor (iOS, Android, macOS, the web) takes Skene's
+  views as its own. Revisit when a window platform's toolkit carries views an app must
+  interleave with.
+- **GTK as Linux's realization** (2026-10-15), GTK 4 widgets under taffy, styled by
+  content-addressed classes and named colors, read through `GtkAccessible`: Linux joins
+  Windows in the family Skene draws whole, on Wayland, X11, IBus and Fcitx, AT-SPI and
+  the portals. The drawn spike passed IME on both display servers, Orca on a drawn
+  field, client-side decorations and the Wayland test driver, at an estimated 16,000
+  to 22,000 lines against GTK's 4,550 production lines (7,300 with its harness), a
+  cost taken knowingly; the GTK prototype stays
+  a reference. Revisit when an app needs to host GTK's own or third-party widgets.
+- **Children last in the type system** (2026-10-15), the `NoChild` and `Children<V>`
+  typestates: a property after the child failed as `no method named set_background
+  found for struct Children<V>`, a type a third party's view could not construct. A
+  wrapper holds its child boxed, a missing child renders nothing, and children last is
+  a convention; typed children stay, a `Flexible` accepted by a `Row` or a `Column`
+  alone, a `GridCell` by a `Grid` and a `Pinned` by a `Stack`. Revisit when a
+  typestate's error can state the rule and its type is open to third parties.
+- **Every signal restoring unless it opts out** (2026-10-15), `Signal::new` carrying the
+  `Snapshot` bound and `Signal::transient` the way out: reload state is opt-in, so
+  only the state an app means to carry across a reload asks its type for `Snapshot`,
+  and a plain signal asks nothing. Revisit when the state apps opt in is most of the
+  state they keep.
+- **Lengths in `f32` alone** (2026-10-15): an app wrote `16.` where it meant 16, and an
+  unsigned integer type, tried beside it, made `-4` a `-4.`. Integer lengths are `i32`
+  beside `f32` wherever a length is taken, value constructors included. Revisit when
+  the integer type measurably slows checking real view trees.
+- **`#[inline(always)]` wherever appropriate** (2026-10-15): the attribute goes on tiny
+  functions alone (a field read, a constructor, a forwarding call), and every other
+  inlining decision is the compiler's. Revisit when a measurement shows a function that
+  is not tiny gaining from a forced inline across crates.

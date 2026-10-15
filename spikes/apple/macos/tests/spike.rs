@@ -121,6 +121,44 @@ fn main() {
 
     let (raw, best) = ours.diff(&theirs, 4);
 
+    let surface = laid.surface;
+    let surface_text = match ink {
+      Some((x0, y0, x1, y1)) => {
+        let slack = 1.0 / SCALE + 0.001;
+        let px = |v: usize| v as f64 / SCALE;
+        let left = surface.origin.x - laid.min_x;
+        let inside = px(x0) >= left - slack
+          && px(y0) >= surface.origin.y - slack
+          && px(x1) <= left + surface.size.width + slack
+          && px(y1) <= surface.origin.y + surface.size.height + slack;
+        format!(
+          "renderingSurfaceBounds=({:.2},{:.2})-({:.2},{:.2}) {}",
+          left,
+          surface.origin.y,
+          left + surface.size.width,
+          surface.origin.y + surface.size.height,
+          if inside { "contains the ink" } else { "MISSES ink" }
+        )
+      }
+      None => "no ink".to_owned(),
+    };
+
+    let mut fractional = (0.0, 0.0, raw);
+
+    for j in -4..=4 {
+      for i in -4..=4 {
+        let (x, y) = (2.0 + i as f64 * 0.25, j as f64 * 0.25);
+        view.set_offset(x, y);
+        let diff = render(&view, canvas).diff_shifted(&theirs, 0, 0);
+
+        if diff.mean < fractional.2.mean {
+          fractional = (x, y, diff);
+        }
+      }
+    }
+
+    view.set_offset(0.0, 0.0);
+
     let laid_min = node.paragraph.layout(min);
     let breaks = node.paragraph.break_opportunities();
     let mid_word = laid_min.line_starts.iter().filter(|start| !breaks.contains(start)).count();
@@ -130,7 +168,9 @@ fn main() {
     writeln!(out, "{name}: measured={:.2}x{:.2} baseline={:.2}/{:.2} lines={} NSTextField.fittingSize={:.2}x{:.2}", measured.width, measured.height, measured.first_baseline, measured.last_baseline, laid.line_count, fitting.width, fitting.height).unwrap();
     writeln!(out, "  (a) {extent}").unwrap();
     writeln!(out, "  (b) raw {raw}").unwrap();
+    writeln!(out, "  (a) {surface_text}").unwrap();
     writeln!(out, "  (b) best {best}").unwrap();
+    writeln!(out, "  (b) node drawn at the best quarter-point offset ({:.2},{:.2})pt: {}", fractional.0, fractional.1, fractional.2).unwrap();
     writeln!(out, "  (c) min={min:.2} max={max:.2} at-min: lines={} used={:.2} widest-line={widest:.2} mid-segment-breaks={mid_word} {}", laid_min.line_count, laid_min.size.0, if min_ok { "PASS" } else { "FAIL" }).unwrap();
   }
 

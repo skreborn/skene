@@ -74,6 +74,8 @@ pub struct Laid {
   pub line_starts: Vec<usize>,
   /// Each line's typographic width.
   pub line_widths: Vec<f64>,
+  /// The union of the fragments' rendering surfaces, in container coordinates.
+  pub surface: CGRect,
   storage: Retained<NSTextContentStorage>,
   manager: Retained<NSTextLayoutManager>,
 }
@@ -136,10 +138,26 @@ impl Paragraph {
     let usage = oc!(manager.usageBoundsForTextContainer());
     let start = oc!(document.location());
     let lines = RefCell::new(Vec::<(f64, usize, f64)>::new());
+    let surface = Cell::new(None::<CGRect>);
 
     let block = RcBlock::new(|fragment: NonNull<NSTextLayoutFragment>| -> Bool {
       let fragment = unsafe { fragment.as_ref() };
       let frame = oc!(fragment.layoutFragmentFrame());
+      let bounds = oc!(fragment.renderingSurfaceBounds());
+      let bounds = CGRect::new(
+        CGPoint::new(bounds.origin.x + frame.origin.x, bounds.origin.y + frame.origin.y),
+        bounds.size,
+      );
+      surface.set(Some(match surface.get() {
+        None => bounds,
+        Some(rect) => {
+          let x0 = rect.origin.x.min(bounds.origin.x);
+          let y0 = rect.origin.y.min(bounds.origin.y);
+          let x1 = (rect.origin.x + rect.size.width).max(bounds.origin.x + bounds.size.width);
+          let y1 = (rect.origin.y + rect.size.height).max(bounds.origin.y + bounds.size.height);
+          CGRect::new(CGPoint::new(x0, y0), CGSize::new(x1 - x0, y1 - y0))
+        }
+      }));
       let element = oc!(fragment.rangeInElement());
       let element_start = oc!(element.location());
       let offset = oc!(self.storage.offsetFromLocation_toLocation(&start, &element_start)) as usize;
@@ -183,6 +201,7 @@ impl Paragraph {
       truncated,
       line_starts: lines.iter().map(|line| line.1).collect(),
       line_widths: lines.iter().map(|line| line.2).collect(),
+      surface: surface.get().unwrap_or(CGRect::new(CGPoint::new(0.0, 0.0), CGSize::new(0.0, 0.0))),
       storage: self.storage.clone(),
       manager,
     }
@@ -406,6 +425,7 @@ impl TextNode {
 /// The ivars of a node's view.
 pub struct NodeViewIvars {
   laid: RefCell<Option<std::rc::Rc<Laid>>>,
+  offset: Cell<(f64, f64)>,
 }
 
 define_class!(
@@ -433,7 +453,8 @@ define_class!(
       };
 
       let cg = oc!(context.CGContext());
-      laid.draw(&cg, CGPoint::new(0.0, 0.0));
+      let (x, y) = self.ivars().offset.get();
+      laid.draw(&cg, CGPoint::new(x, y));
     }
   }
 );
@@ -441,8 +462,13 @@ define_class!(
 impl NodeView {
   /// A view of `frame` drawing `laid`.
   pub fn new(mtm: MainThreadMarker, frame: NSRect, laid: std::rc::Rc<Laid>) -> Retained<Self> {
-    let this = Self::alloc(mtm).set_ivars(NodeViewIvars { laid: RefCell::new(Some(laid)) });
+    let this = Self::alloc(mtm).set_ivars(NodeViewIvars { laid: RefCell::new(Some(laid)), offset: Cell::new((0.0, 0.0)) });
     unsafe { msg_send![super(this), initWithFrame: frame] }
+  }
+
+  /// Moves the drawing by `(x, y)` points.
+  pub fn set_offset(&self, x: f64, y: f64) {
+    self.ivars().offset.set((x, y));
   }
 }
 

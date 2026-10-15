@@ -25,6 +25,8 @@ public final class Paragraph {
   public let maxLines: Int
   let storage: NSTextContentStorage
   private var cachedIntrinsic: (min: CGFloat, max: CGFloat)?
+  /// The UTF-16 range of the widest unbreakable run, once `intrinsic` has run.
+  public private(set) var widestSegment = 0..<0
 
   public init(text: String, font: UIFont, color: UIColor = .black, maxLines: Int = 0) {
     let style = NSMutableParagraphStyle()
@@ -63,12 +65,14 @@ public final class Paragraph {
     manager.ensureLayout(for: document)
     let usage = manager.usageBoundsForTextContainer
     var lines: [(baseline: CGFloat, start: Int, width: CGFloat, bottom: CGFloat)] = []
+    var surface = CGRect.null
     let start = document.location
     let storage = self.storage
 
     manager.enumerateTextLayoutFragments(from: start, options: [.ensuresLayout]) { fragment in
       let frame = fragment.layoutFragmentFrame
       let offset = storage.offset(from: start, to: fragment.rangeInElement.location)
+      surface = surface.union(fragment.renderingSurfaceBounds.offsetBy(dx: frame.minX, dy: frame.minY))
 
       for line in fragment.textLineFragments {
         let bounds = line.typographicBounds
@@ -99,6 +103,7 @@ public final class Paragraph {
       lineStarts: lines.map { $0.start },
       lineWidths: lines.map { $0.width },
       linesBottom: lines.last?.bottom ?? 0,
+      surface: surface,
       truncated: truncated
     )
   }
@@ -149,7 +154,12 @@ public final class Paragraph {
       }
 
       if to > from {
-        minimum = max(minimum, laid.rangeWidth(from, to))
+        let width = laid.rangeWidth(from, to)
+
+        if width > minimum {
+          minimum = width
+          widestSegment = from..<to
+        }
       }
     }
 
@@ -172,11 +182,13 @@ public final class Laid {
   public let lineStarts: [Int]
   public let lineWidths: [CGFloat]
   public let linesBottom: CGFloat
+  /// The union of the fragments' rendering surfaces, in container coordinates.
+  public let surface: CGRect
   public let truncated: Bool
 
   init(
     paragraph: Paragraph, manager: NSTextLayoutManager, width: CGFloat, usage: CGRect, firstBaseline: CGFloat,
-    lastBaseline: CGFloat, lineStarts: [Int], lineWidths: [CGFloat], linesBottom: CGFloat, truncated: Bool
+    lastBaseline: CGFloat, lineStarts: [Int], lineWidths: [CGFloat], linesBottom: CGFloat, surface: CGRect, truncated: Bool
   ) {
     self.paragraph = paragraph
     self.manager = manager
@@ -187,6 +199,7 @@ public final class Laid {
     self.lineStarts = lineStarts
     self.lineWidths = lineWidths
     self.linesBottom = linesBottom
+    self.surface = surface
     self.truncated = truncated
   }
 

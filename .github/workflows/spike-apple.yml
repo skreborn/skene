@@ -40,7 +40,7 @@ jobs:
               if version < (17,):
                   continue
               for device in entries:
-                  if device["name"].startswith("iPhone") and device.get("isAvailable", True):
+                  if device["name"].startswith("iPhone") and "SE" not in device["name"] and device.get("isAvailable", True):
                       key = (version, device["name"])
                       if best is None or key > best[0]:
                           best = (key, device["udid"], runtime, device["name"])

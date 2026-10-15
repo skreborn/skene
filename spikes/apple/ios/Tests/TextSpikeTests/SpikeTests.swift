@@ -65,6 +65,31 @@ func graphemeOffsets(_ text: String) -> [Int] {
   return offsets
 }
 
+/// The offset, in sixths of a point, at which drawing `laid` comes closest to `target`.
+func fractionalBest(_ laid: Laid, boxWidth: CGFloat, canvas: CGSize, against target: Bitmap) -> (CGPoint, Diff) {
+  var best: (CGPoint, Diff)?
+
+  for j in -6...6 {
+    for i in -3...3 {
+      let offset = CGPoint(x: CGFloat(i) / 6, y: CGFloat(j) / 6)
+      let image = Bitmap.draw(size: canvas, scale: scale) { context in
+        laid.draw(in: context, at: CGPoint(x: laid.shift(boxWidth: boxWidth) + offset.x, y: offset.y))
+      }
+      let diff = image.diff(target)
+
+      if best == nil || diff.mean < best!.1.mean {
+        best = (offset, diff)
+      }
+    }
+  }
+
+  return best!
+}
+
+func point(_ offset: CGPoint) -> String {
+  "(\(f(offset.x)),\(f(offset.y)))pt"
+}
+
 final class SpikeTests: XCTestCase {
   /// Criteria (a), (b) and (c) at three Dynamic Type sizes and with Bold Text.
   @MainActor
@@ -77,9 +102,14 @@ final class SpikeTests: XCTestCase {
     ]
 
     var failures: [String] = []
+    let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 1000, height: 1000))
+    let controller = UIViewController()
+    window.rootViewController = controller
+    window.makeKeyAndVisible()
 
     for (configName, category, weight) in configurations {
       let host = UIView(frame: CGRect(x: 0, y: 0, width: 1000, height: 1000))
+      controller.view.addSubview(host)
       host.traitOverrides.preferredContentSizeCategory = category
       host.traitOverrides.legibilityWeight = weight
       host.updateTraitsIfNeeded()
@@ -94,7 +124,7 @@ final class SpikeTests: XCTestCase {
 
       Report.add("")
       Report.add(
-        "[\(configName)] traits: category=\(host.traitCollection.preferredContentSizeCategory.rawValue) legibility=\(host.traitCollection.legibilityWeight.rawValue); node font=\(font.fontName) \(f(font.pointSize))pt; UILabel by traits=\(probe.font.fontName) \(f(probe.font.pointSize))pt \(probe.font == font ? "same" : "DIFFERENT")"
+        "[\(configName)] traits: category=\(host.traitCollection.preferredContentSizeCategory.rawValue) legibility=\(host.traitCollection.legibilityWeight.rawValue); node font=\(font.fontName) \(f(font.pointSize))pt; UILabel by traits=\(probe.font.fontName) \(f(probe.font.pointSize))pt \(probe.font == font ? "same" : "DIFFERENT"); font.lineHeight=\(f(font.lineHeight)) ascender=\(f(font.ascender)) descender=\(f(font.descender)) leading=\(f(font.leading)); host in a key window"
       )
 
       for (name, text) in strings {
@@ -156,6 +186,15 @@ final class SpikeTests: XCTestCase {
 
         let (extent, extentOK) = overflow(free.ink(), CGSize(width: measured.width, height: measured.height))
         let (labelExtent, labelExtentOK) = overflow(labelFree.ink(), labelFit)
+        let surface = laid.surface.offsetBy(dx: laid.shift(boxWidth: measured.width), dy: 0)
+        var surfaceText = "no ink"
+        var surfaceOK = false
+
+        if let ink = free.ink() {
+          let inked = ink.offsetBy(dx: -pad, dy: -pad)
+          surfaceOK = surface.insetBy(dx: -1 / scale - 0.001, dy: -1 / scale - 0.001).contains(inked)
+          surfaceText = "renderingSurfaceBounds=(\(f(surface.minX)),\(f(surface.minY)))-(\(f(surface.maxX)),\(f(surface.maxY))) \(surfaceOK ? "contains the ink" : "MISSES ink")"
+        }
 
         // (b) pixel differences.
         let (labelRaw, labelBest) = ours.diff(theirs, reach: reach)
@@ -172,13 +211,28 @@ final class SpikeTests: XCTestCase {
           "\(name): node \(f(measured.width))x\(f(measured.height)) baselines \(f(measured.firstBaseline))/\(f(measured.lastBaseline)) (font ascender \(f(font.ascender))) lines=\(laid.lineCount); UILabel.sizeThatFits \(f(labelFit.width))x\(f(labelFit.height)); UITextField.intrinsic \(f(fieldFit.width))x\(f(fieldFit.height))"
         )
         Report.add("  (a) \(extent) \(extentOK ? "PASS" : "FAIL") | UILabel's own: \(labelExtent) \(labelExtentOK ? "inside" : "OVERFLOWS")")
+        Report.add("  (a) \(surfaceText)")
+        let (offset, fractional) = fractionalBest(laid, boxWidth: measured.width, canvas: canvas, against: theirs)
+        Report.add("  (b) vs UILabel, node drawn at the best sub-pixel offset \(point(offset)): \(fractional)")
         Report.add("  (b) vs UILabel raw \(labelRaw) | best \(labelBest)")
         Report.add("  (b) vs UITextField raw \(fieldRaw) | best \(fieldBest)")
         Report.add(
           "  (c) min=\(f(minimum)) max=\(f(maximum)) at-min: lines=\(atMin.lineCount) used=\(f(atMin.size.width)) widest-line=\(f(widest)) mid-segment-breaks=\(midSegment) \(minOK ? "PASS" : "FAIL")"
         )
+        let units = Array(text.utf16)
+        let segment = node.paragraph.widestSegment
+        let segmentText = String(decoding: units[segment], as: UTF16.self)
+        let alone = Paragraph(text: segmentText, font: font).intrinsic().max
+        let lineTexts = zip(atMin.lineStarts, atMin.lineStarts.dropFirst() + [units.count]).map { start, end in
+          "\"" + String(decoding: units[start..<end], as: UTF16.self) + "\""
+        }
+        let quotedLines = lineTexts.joined(separator: " ")
+        Report.add(
+          "  (c) widest segment [\(segment.lowerBound),\(segment.upperBound)) \"\(segmentText)\" = \(f(minimum)) in the line, \(f(alone)) laid alone; \(node.paragraph.breakOpportunities().count) break opportunities; lines at min: \(quotedLines)"
+        )
 
         if !extentOK { failures.append("\(configName)/\(name) (a)") }
+        if !surfaceOK { failures.append("\(configName)/\(name) (a surface)") }
         if !minOK { failures.append("\(configName)/\(name) (c)") }
 
         if configName == "large" {
@@ -201,6 +255,14 @@ final class SpikeTests: XCTestCase {
 
         if configName == "large" {
           Report.save(Bitmap.strip([oursWrapped, theirsWrapped]), "large-\(name)-wrap160-node-label.png")
+        }
+
+        if name == "rtl-mixed" {
+          label.textAlignment = .right
+          let rightAligned = Bitmap.render(label.layer, size: wrapCanvas, scale: scale)
+          let (rightRaw, rightBest) = oursWrapped.diff(rightAligned, reach: reach)
+          Report.add("  wrap@160 against UILabel.textAlignment=.right: raw \(rightRaw) | best \(rightBest)")
+          label.textAlignment = .natural
         }
 
         node.removeFromSuperview()
@@ -234,6 +296,21 @@ final class SpikeTests: XCTestCase {
         Report.save(Bitmap.strip([ours, theirs]), "large-truncation-node-label.png")
       }
 
+      // The same Latin text in a font without a text style.
+      if configName == "large" {
+        let plain = UIFont.systemFont(ofSize: font.pointSize)
+        let plainNode = TextNodeView(paragraph: Paragraph(text: strings[0].1, font: plain))
+        let plainMeasured = plainNode.measure(.maxContent)
+        let plainLabel = UILabel()
+        plainLabel.font = plain
+        plainLabel.text = strings[0].1
+        let plainFit = plainLabel.sizeThatFits(CGSize(width: CGFloat.greatestFiniteMagnitude, height: .greatestFiniteMagnitude))
+        let preferredFit = plainNode.paragraph.layout(width: 160).size
+        Report.add(
+          "line height, systemFont(ofSize: \(f(font.pointSize))) (no text style): node \(f(plainMeasured.width))x\(f(plainMeasured.height)) vs UILabel \(f(plainFit.width))x\(f(plainFit.height)); lineHeight=\(f(plain.lineHeight)); wrapped@160 node height \(f(preferredFit.height))"
+        )
+      }
+
       // An empty text lays out one line.
       let empty = TextNodeView(paragraph: Paragraph(text: "", font: font))
       let emptyMax = empty.measure(.maxContent)
@@ -245,6 +322,7 @@ final class SpikeTests: XCTestCase {
       )
     }
 
+    window.isHidden = true
     Report.add("")
     Report.add("(a)/(c) failures: \(failures.isEmpty ? "none" : failures.joined(separator: ", "))")
     Report.flush("1-rendering")
@@ -407,14 +485,13 @@ final class SpikeTests: XCTestCase {
         let labelDraw = ms {
           _ = Bitmap.draw(size: CGSize(width: 320, height: 200), scale: scale) { context in
             for label in labels {
-              label.frame = CGRect(x: 0, y: 0, width: 300, height: 200)
-              label.layer.render(in: context)
+              label.drawText(in: CGRect(x: 0, y: 0, width: 300, height: 200))
             }
           }
         }
 
         Report.add(
-          "intrinsic min/max for 1000 fresh paragraphs (incl. build): \(String(format: "%.1f", intrinsic)); draw 1000 at 300pt @\(Int(scale))x: node \(String(format: "%.1f", nodeDraw)) vs UILabel layer.render \(String(format: "%.1f", labelDraw))"
+          "intrinsic min/max for 1000 fresh paragraphs (incl. build): \(String(format: "%.1f", intrinsic)); draw 1000 at 300pt @\(Int(scale))x into one bitmap: node \(String(format: "%.1f", nodeDraw)) vs UILabel.drawText(in:) \(String(format: "%.1f", labelDraw))"
         )
       }
     }

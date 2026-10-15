@@ -166,28 +166,31 @@ in a code comment.
     engine's unit tests over canned measurements stay, being no platform. Open: a
     Wayland leg (headless mutter, PipeWire and EIS through `reis`), which the drawn
     spike's driver passed.
-6. **The spikes on hardware.** Each platform below opens with a spike whose result
-    decides its shape, and each needs hardware this host lacks (an iOS device and
-    simulator, a Mac, an Android emulator or device, a Windows runner); nothing native
-    beyond Linux has run.
-    - iOS: standalone TextKit 2 under taffy, its measured size equal to its drawn
-    extent, its pixels within antialiasing noise of `UILabel`'s and `UITextField`'s, its
-    minimum agreeing with its own wrap, the system's selection beside a link's tap, and
-    1000 labels laid out, resized and animated against a `UILabel` baseline; the drawn
-    field on a device (CJK input, AutoFill, VoiceOver editing, gesture arbitration); and
-    whether a plain `UITextInput` view with secure entry and a new-password content type
-    gets the strong-password offer and the save prompt, and whether a capture blanks it.
-    - macOS: the same TextKit 2 checks; whether `NSTextContent` brings AutoFill to a
-    drawn field; and how a secure field's marked text and press-and-hold accents behave
-    under its input context.
-    - Android: taffy measuring 1000 leaves through JNI into a Kotlin cache of laid-out
-    paragraphs that returns numbers alone, at one crossing per leaf per pass once warm,
-    within twice Compose's time, off the main thread.
-    - Windows: DirectWrite's glyph runs drawn by vello as outlines and from a grayscale
-    atlas, z-order holding under a translucent overlay, a clip and an opacity animation,
-    1000 labels under 4 ms of GPU time through the atlas, and a height-capped ellipsis
-    landing on the last visible line; one selection test driven through Parley and
-    DirectWrite alike, so the engine trait is proven engine-agnostic.
+6. **The spikes on hardware.** The text-engine spikes ran on GitHub's runners
+    (`spikes/`, the `spike-apple`, `spike-android` and `spike-windows` workflows) and
+    passed: TextKit 2 under taffy draws what `UILabel` and `NSTextField` draw, taffy
+    measures through JNI at one crossing per leaf per pass once warm and within
+    Compose's time, and DirectWrite's glyph runs keep z-order, clips and group opacity
+    in vello by both paths. What they found lands in the platform items below; what only
+    a device or a GPU answers remains:
+    - iOS: the system's selection beside a link's tap, the loupe and handles,
+    `UITextSelectionDisplayInteraction` drawing `selection_background`, frame times on a
+    mid-range iPhone, the iOS 17 floor (the runner offered iOS 26 alone), Dynamic Type
+    and Bold Text changed in Settings while running, and Genmoji; the drawn field (CJK
+    input, AutoFill, VoiceOver editing, gesture arbitration); and whether a plain
+    `UITextInput` view with secure entry and a new-password content type gets the
+    strong-password offer and the save prompt, and whether a capture blanks it.
+    - macOS: whether `NSTextContent` brings AutoFill to a drawn field, and how a secure
+    field's marked text and press-and-hold accents behave under its input context.
+    - Android: absolute timings against Compose on a mid-range device at API 29 and 34,
+    ink bounds under hardware rendering with OEM and updatable fonts, and high-contrast
+    text, font scale and bold text through the engine's paint.
+    - Windows: GPU frame time for 1000 labels through the atlas (under 4 ms), ClearType
+    and per-monitor rendering parameters above 96 DPI, presentation through a swap chain
+    or DirectComposition with opacity animated over frames, and COLR v1 emoji on a
+    consumer Windows 11 build.
+    - Every engine: one selection test driven through Parley and DirectWrite alike, so
+    the engine trait is proven engine-agnostic once the core lands.
 7. **Android.** A compositor platform: Skene's views are Android `View`s interleaved
     with native ones, written through a Kotlin shim in batches, one JNI call per frame
     carrying a byte buffer of operations and frames applied in `onLayout`, snapped to
@@ -197,6 +200,13 @@ in a code comment.
     - Text: android.text over Minikin through JNI (`BoringLayout`, `StaticLayout`,
     `DynamicLayout`), each text node drawing its layout in `onDraw`, the shared painter
     drawing the decorations `Paint` lacks.
+    - Text, from the spike: `StaticLayout` for every text below API 33, since
+    `BoringLayout`'s older path drops fallback line spacing and clips CJK and Thai ink
+    by 3 to 5 px; intrinsics fetched only for a min-content or max-content query and
+    computed once per text, `PrecomputedText` reused across them, three laid results per
+    leaf keyed by width on the Rust side, and only the axis taffy asks for answered;
+    min-content from line-break segments, an approximation of Minikin's own breaks (no
+    hyphenation or phrase breaking) that a `LineBreaker` pass would make exact.
     - Fields: one Skene view per field, its `InputConnection` written over the editing
     core with no mirror `Editable`, a full `CursorAnchorInfo`, its glyphs from the same
     engine as every label; handles, the magnifier and the floating action mode assembled
@@ -217,6 +227,14 @@ in a code comment.
     - Text: TextKit 2, one stack per text node drawing its layout fragments into its own
     layer, with no Core Text path beside it; the shared painter draws the decorations it
     lacks.
+    - Text, from the spike: a node measures without the extra spacing TextKit adds after
+    the last line of a text-style font, as `UILabel` does; `natural` alignment follows
+    the paragraph's content direction, as TextKit and CSS's `dir=auto` do, where
+    `UILabel` follows the interface's; an empty text synthesizes its one line;
+    `truncated` is read from the last line's range rather than from a second layout; a
+    line's selection rectangle is the union of its segments, since TextKit 2 repeats
+    segments on iOS 26; and a node never clips to its box, drawing within its fragments'
+    rendering surfaces, which Thai marks, emoji and Arabic descenders leave.
     - Fields: Skene's own field view on TextKit 2 for every field, a password field
     included. On iOS it speaks `UITextInput` with `UITextInteraction`, the system's
     caret, highlight and handles tinted by Skene's style and Skene-drawn ones a setter
@@ -238,6 +256,12 @@ in a code comment.
     - Text: DirectWrite's layout, its glyph runs collected by a custom text renderer
     into Skene's renderer, vello's outlines the floor and a grayscale atlas DirectWrite
     rasterizes the upgrade.
+    - Text, from the spike: a paragraph's line count is read from its line heights,
+    since a height-capped layout still lists the trimmed lines; colour glyphs go into a
+    colour atlas drawn by `DrawGlyphRunWithColorSupport` where Direct2D has COLR v1, its
+    COLR v0 layers being the older designs, and a layer's format read as a set of flags;
+    and the grayscale atlas still darkens against Direct2D under enhanced contrast, its
+    gamma by text colour unreplicated.
     - The native door, open: whether it hosts a Win32 control inside the window Skene
     draws, the hybrid `DECISIONS.md` sets aside, or adopts no toolkit's view, as on
     Linux.

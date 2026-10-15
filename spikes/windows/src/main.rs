@@ -53,7 +53,7 @@ mod spike {
   use crate::{
     engine::{EllipsisStrategy, Engine, Laid, Paragraph, ParagraphStyle, line_metrics},
     image::{Img, Region},
-    paint::{AtlasPainter, Floor, Item, Reference, face_path, new_context, to_img},
+    paint::{AtlasPainter, ColourPath, Floor, Item, Reference, face_path, new_context, to_img},
   };
 
   #[derive(Default)]
@@ -448,6 +448,9 @@ mod spike {
     let mut raw = AtlasPainter::new(&engine.factory)?;
     raw.contrast = 0.0;
     let raw_img = to_img(&raw.render(&mut ctx, &s.items)?);
+    let mut layered = AtlasPainter::new(&engine.factory)?;
+    layered.colour_path = ColourPath::Layers;
+    let layers_img = to_img(&layered.render(&mut ctx, &s.items)?);
     let ref_img = reference.render(&s.items, s.w, s.h)?;
     let bare: Vec<Item> = s
       .items
@@ -468,6 +471,14 @@ mod spike {
       .save(&out.join("scene-diff-atlas-vs-reference.png"));
     Img::hstack(&[&floor_img, &atlas_img, &ref_img]).save(&out.join("scene-side-by-side.png"));
     atlas.save_atlas(&out.join("atlas.png"));
+    layers_img.save(&out.join("scene-atlas-colr-layers.png"));
+    say!(
+      r,
+      "atlas.colour_path: {:?} (Direct2D unavailable because: {:?}); colour cells drawn by Direct2D={}",
+      atlas.colour_path,
+      atlas.colour_unavailable,
+      atlas.colour_cells
+    );
 
     say!(
       r,
@@ -496,6 +507,7 @@ mod spike {
     for (name, img) in [
       ("floor", &floor_img),
       ("atlas", &atlas_img),
+      ("atlas_colr_layers", &layers_img),
       ("reference", &ref_img),
     ] {
       // Z-order: under the overlay nothing is darker in red than the overlay over black.
@@ -549,7 +561,7 @@ mod spike {
         if group_ok { "PASS" } else { "FAIL" },
       );
 
-      if name != "reference" {
+      if name != "reference" && name != "atlas_colr_layers" {
         za.push(z_ok && clip_ok && group_ok);
       }
 
@@ -565,6 +577,7 @@ mod spike {
       ("floor", &floor_img),
       ("atlas", &atlas_img),
       ("atlas_without_contrast", &raw_img),
+      ("atlas_colr_layers", &layers_img),
     ] {
       for (panel, b) in &s.panels {
         let reg = region(*b).inflate(4, w, h);
@@ -673,11 +686,11 @@ mod spike {
 
     say!(
       r,
-      "d.atlas.colour_layers: {} unsupported_layers={} unsupported_formats={:?} seen_formats={:?}",
-      atlas.color_layers,
-      atlas.unsupported_layers,
-      atlas.layer_formats,
-      atlas.seen_formats
+      "d.atlas_colr_layers: layers drawn={} unsupported_layers={} unsupported_formats={:?} seen_formats={:?}",
+      layered.color_layers,
+      layered.unsupported_layers,
+      layered.layer_formats,
+      layered.seen_formats
     );
     Ok(())
   }

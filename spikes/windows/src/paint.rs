@@ -291,6 +291,8 @@ struct GlyphKey {
   glyph: u16,
   em: u32,
   sub: u8,
+  /// The text colour a Direct2D colour cell was drawn with; 0 for a coverage cell.
+  colour: u32,
 }
 
 #[derive(Clone, Copy)]
@@ -301,6 +303,8 @@ struct Cell {
   h: u16,
   left: i32,
   top: i32,
+  /// In the colour atlas (premultiplied colour), not the coverage atlas.
+  colour: bool,
 }
 
 struct Draw {
@@ -310,10 +314,114 @@ struct Draw {
   color: [f32; 4],
 }
 
+/// How the atlas path draws a colour font's glyphs.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum ColourPath {
+  /// `TranslateColorGlyphRun` into COLR v0 layers, each a tinted coverage cell.
+  Layers,
+  /// Direct2D's `DrawGlyphRunWithColorSupport` (Windows 11) into a colour cell.
+  Direct2D,
+}
+
+const COLOUR_CANVAS: u32 = 256;
+
+/// A small Direct2D target that draws one colour glyph at a time.
+struct ColourRaster {
+  bitmap: IWICBitmap,
+  rt: ID2D1RenderTarget,
+  dc7: ID2D1DeviceContext7,
+  brush: ID2D1SolidColorBrush,
+}
+
+impl ColourRaster {
+  fn new() -> Result<Self> {
+    let d2d: ID2D1Factory = unsafe { D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, None)? };
+    let wic: IWICImagingFactory =
+      unsafe { CoCreateInstance(&CLSID_WICImagingFactory, None, CLSCTX_INPROC_SERVER)? };
+    let bitmap = unsafe {
+      wic.CreateBitmap(
+        COLOUR_CANVAS,
+        COLOUR_CANVAS,
+        &GUID_WICPixelFormat32bppPBGRA,
+        WICBitmapCacheOnLoad,
+      )?
+    };
+    let rt = unsafe { d2d.CreateWicBitmapRenderTarget(&bitmap, &target_properties())? };
+    let dc7: ID2D1DeviceContext7 = rt.cast()?;
+    let brush = unsafe {
+      rt.CreateSolidColorBrush(
+        &D2D1_COLOR_F {
+          r: 0.0,
+          g: 0.0,
+          b: 0.0,
+          a: 1.0,
+        },
+        None,
+      )?
+    };
+    Ok(Self {
+      bitmap,
+      rt,
+      dc7,
+      brush,
+    })
+  }
+
+  /// Draws one glyph with its baseline origin at a fixed point of the canvas and returns the
+  /// premultiplied RGBA pixels with the origin's position in them.
+  fn draw(&self, run: &DWRITE_GLYPH_RUN, sub: f32, color: [f32; 4]) -> Result<(Vec<u8>, i32, i32)> {
+    let ox = (COLOUR_CANVAS / 4) as i32;
+    let oy = (COLOUR_CANVAS * 5 / 8) as i32;
+
+    unsafe {
+      self.brush.SetColor(&d2d_color(color));
+      self.rt.BeginDraw();
+      self
+        .rt
+        .SetTextAntialiasMode(D2D1_TEXT_ANTIALIAS_MODE_GRAYSCALE);
+      self.rt.Clear(Some(&D2D1_COLOR_F {
+        r: 0.0,
+        g: 0.0,
+        b: 0.0,
+        a: 0.0,
+      }));
+      self.dc7.DrawGlyphRunWithColorSupport(
+        Vector2 {
+          X: ox as f32 + sub,
+          Y: oy as f32,
+        },
+        run,
+        None,
+        &self.brush,
+        None,
+        0,
+        DWRITE_MEASURING_MODE_NATURAL,
+        D2D1_COLOR_BITMAP_GLYPH_SNAP_OPTION_DEFAULT,
+      );
+      self.rt.EndDraw(None, None)?;
+    }
+
+    let mut bgra = vec![0u8; (COLOUR_CANVAS * COLOUR_CANVAS * 4) as usize];
+    unsafe {
+      self
+        .bitmap
+        .CopyPixels(std::ptr::null(), COLOUR_CANVAS * 4, &mut bgra)?
+    };
+    Ok((bgra, ox, oy))
+  }
+}
+
 pub struct AtlasPainter {
   factory: IDWriteFactory4,
   atlas: Arc<Pixmap>,
   cursor: (u16, u16, u16),
+  colour_atlas: Arc<Pixmap>,
+  colour_cursor: (u16, u16, u16),
+  raster: Option<ColourRaster>,
+  pub colour_path: ColourPath,
+  /// Why the Direct2D colour path is unavailable, where it is.
+  pub colour_unavailable: Option<String>,
+  pub colour_cells: u64,
   cells: HashMap<GlyphKey, Cell>,
   keep: Vec<IDWriteFontFace>,
   color_faces: HashMap<usize, bool>,
@@ -333,10 +441,25 @@ pub struct AtlasPainter {
 impl AtlasPainter {
   pub fn new(factory: &IDWriteFactory4) -> Result<Self> {
     let params: IDWriteRenderingParams1 = unsafe { factory.CreateRenderingParams()? }.cast()?;
+    let (raster, colour_unavailable) = match ColourRaster::new() {
+      Ok(raster) => (Some(raster), None),
+      Err(e) => (None, Some(format!("{e}"))),
+    };
     Ok(Self {
       factory: factory.clone(),
       atlas: Arc::new(Pixmap::new(ATLAS, ATLAS)),
       cursor: (0, 0, 0),
+      colour_atlas: Arc::new(Pixmap::new(ATLAS, ATLAS)),
+      colour_cursor: (0, 0, 0),
+      colour_path: if raster.is_some() {
+        ColourPath::Direct2D
+      }
+      else {
+        ColourPath::Layers
+      },
+      raster,
+      colour_unavailable,
+      colour_cells: 0,
       cells: HashMap::new(),
       keep: Vec::new(),
       color_faces: HashMap::new(),
@@ -362,6 +485,7 @@ impl AtlasPainter {
       glyph,
       em: em.to_bits(),
       sub,
+      colour: 0,
     };
 
     if let Some(cell) = self.cells.get(&key) {
@@ -419,6 +543,7 @@ impl AtlasPainter {
       h,
       left: bounds.left,
       top: bounds.top,
+      colour: false,
     };
 
     if w == 0 || h == 0 {
@@ -428,19 +553,9 @@ impl AtlasPainter {
     let mut alpha = vec![0u8; w as usize * h as usize];
     unsafe { analysis.CreateAlphaTexture(DWRITE_TEXTURE_ALIASED_1x1, &bounds, &mut alpha)? };
 
-    // Shelf packing with one pixel of padding.
-    let (mut x, mut y, mut row) = self.cursor;
-
-    if x + w + 1 > ATLAS {
-      x = 0;
-      y += row + 1;
-      row = 0;
-    }
-
-    assert!(y + h < ATLAS, "the spike's atlas is full");
+    let (x, y) = shelf(&mut self.cursor, w, h);
     cell.ax = x;
     cell.ay = y;
-    self.cursor = (x + w + 1, y, row.max(h));
 
     let k = self.contrast;
     let atlas = Arc::make_mut(&mut self.atlas);
@@ -466,6 +581,104 @@ impl AtlasPainter {
     Ok(cell)
   }
 
+  fn colour_cell(
+    &mut self,
+    face: &IDWriteFontFace,
+    em: f32,
+    glyph: u16,
+    sub: u8,
+    color: [f32; 4],
+  ) -> Option<Cell> {
+    let packed = u32::from_le_bytes(color.map(|c| (c.clamp(0.0, 1.0) * 255.0).round() as u8)) | 1;
+    let key = GlyphKey {
+      face: face.as_raw() as usize,
+      glyph,
+      em: em.to_bits(),
+      sub,
+      colour: packed,
+    };
+
+    if let Some(cell) = self.cells.get(&key) {
+      return Some(*cell);
+    }
+
+    let advance = 0.0f32;
+    let offset = DWRITE_GLYPH_OFFSET::default();
+    let run = ManuallyDrop::new(DWRITE_GLYPH_RUN {
+      fontFace: ManuallyDrop::new(Some(unsafe { std::mem::transmute_copy(face) })),
+      fontEmSize: em,
+      glyphCount: 1,
+      glyphIndices: &glyph,
+      glyphAdvances: &advance,
+      glyphOffsets: &offset,
+      isSideways: false.into(),
+      bidiLevel: 0,
+    });
+    let drawn = self
+      .raster
+      .as_ref()?
+      .draw(&run, sub as f32 / SUBPIXEL, color);
+    let (bgra, ox, oy) = match drawn {
+      Ok(drawn) => drawn,
+      Err(e) => {
+        self.raster_errors += 1;
+        self.first_error.get_or_insert_with(|| format!("{e}"));
+        return None;
+      }
+    };
+    self.colour_cells += 1;
+    let size = COLOUR_CANVAS as usize;
+    let (mut x0, mut y0, mut x1, mut y1) = (size, size, 0, 0);
+
+    for y in 0..size {
+      for x in 0..size {
+        if bgra[(y * size + x) * 4 + 3] != 0 {
+          x0 = x0.min(x);
+          y0 = y0.min(y);
+          x1 = x1.max(x + 1);
+          y1 = y1.max(y + 1);
+        }
+      }
+    }
+
+    let mut cell = Cell {
+      ax: 0,
+      ay: 0,
+      w: x1.saturating_sub(x0) as u16,
+      h: y1.saturating_sub(y0) as u16,
+      left: x0 as i32 - ox,
+      top: y0 as i32 - oy,
+      colour: true,
+    };
+
+    if cell.w > 0 && cell.h > 0 {
+      let (ax, ay) = shelf(&mut self.colour_cursor, cell.w, cell.h);
+      cell.ax = ax;
+      cell.ay = ay;
+      let atlas = Arc::make_mut(&mut self.colour_atlas);
+
+      for y in y0..y1 {
+        for x in x0..x1 {
+          let p = &bgra[(y * size + x) * 4..][..4];
+          atlas.set_pixel(
+            ax + (x - x0) as u16,
+            ay + (y - y0) as u16,
+            vello_cpu::color::PremulRgba8 {
+              r: p[2],
+              g: p[1],
+              b: p[0],
+              a: p[3],
+            },
+          );
+        }
+      }
+    }
+
+    self.keep.push(face.clone());
+    self.cells.insert(key, cell);
+    Some(cell)
+  }
+
   fn is_color(&mut self, face: &IDWriteFontFace) -> bool {
     let key = face.as_raw() as usize;
     *self.color_faces.entry(key).or_insert_with(|| {
@@ -476,6 +689,7 @@ impl AtlasPainter {
     })
   }
 
+  #[expect(clippy::too_many_arguments)]
   fn glyphs(
     &mut self,
     out: &mut Vec<Draw>,
@@ -484,6 +698,7 @@ impl AtlasPainter {
     glyphs: &[u16],
     positions: &[(f32, f32)],
     color: [f32; 4],
+    colour: bool,
   ) {
     for (&glyph, &(x, y)) in glyphs.iter().zip(positions) {
       let mut ox = x.floor();
@@ -494,7 +709,14 @@ impl AtlasPainter {
         sub = 0.0;
       }
 
-      if let Some(cell) = self.cell(face, em, glyph, sub as u8)
+      let cell = if colour {
+        self.colour_cell(face, em, glyph, sub as u8, color)
+      }
+      else {
+        self.cell(face, em, glyph, sub as u8)
+      };
+
+      if let Some(cell) = cell
         && cell.w > 0
       {
         out.push(Draw {
@@ -517,9 +739,24 @@ impl AtlasPainter {
   ) -> Result<()> {
     let origin = (run.origin.0 + dx, run.origin.1 + dy);
 
+    if self.is_color(&run.face) && self.colour_path == ColourPath::Direct2D && self.raster.is_some()
+    {
+      let positions = glyph_positions(origin, run.bidi, &run.advances, &run.offsets);
+      self.glyphs(out, &run.face, run.em, &run.glyphs, &positions, color, true);
+      return Ok(());
+    }
+
     if !self.is_color(&run.face) {
       let positions = glyph_positions(origin, run.bidi, &run.advances, &run.offsets);
-      self.glyphs(out, &run.face, run.em, &run.glyphs, &positions, color);
+      self.glyphs(
+        out,
+        &run.face,
+        run.em,
+        &run.glyphs,
+        &positions,
+        color,
+        false,
+      );
       return Ok(());
     }
 
@@ -544,7 +781,15 @@ impl AtlasPainter {
       Ok(layers) => layers,
       Err(e) if e.code() == DWRITE_E_NOCOLOR => {
         let positions = glyph_positions(origin, run.bidi, &run.advances, &run.offsets);
-        self.glyphs(out, &run.face, run.em, &run.glyphs, &positions, color);
+        self.glyphs(
+          out,
+          &run.face,
+          run.em,
+          &run.glyphs,
+          &positions,
+          color,
+          false,
+        );
         return Ok(());
       }
       Err(e) => return Err(e),
@@ -608,7 +853,15 @@ impl AtlasPainter {
         &offsets,
       );
       let face = g.fontFace.as_ref().unwrap_or(&run.face).clone();
-      self.glyphs(out, &face, g.fontEmSize, &glyphs, &positions, layer_color);
+      self.glyphs(
+        out,
+        &face,
+        g.fontEmSize,
+        &glyphs,
+        &positions,
+        layer_color,
+        false,
+      );
     }
 
     Ok(())
@@ -640,6 +893,7 @@ impl AtlasPainter {
     }
 
     let atlas = self.atlas.clone();
+    let colour_atlas = self.colour_atlas.clone();
     let image = |atlas: &Arc<Pixmap>| Image {
       image: ImageSource::Pixmap(atlas.clone()),
       sampler: ImageSampler {
@@ -662,15 +916,22 @@ impl AtlasPainter {
       index = at + 1;
 
       for d in &draws[at] {
-        ctx.set_paint(image(&atlas));
+        if d.cell.colour {
+          ctx.set_paint(image(&colour_atlas));
+          ctx.reset_tint();
+        }
+        else {
+          ctx.set_paint(image(&atlas));
+          ctx.set_tint(Some(Tint {
+            color: rgba(d.color),
+            mode: TintMode::AlphaMask,
+          }));
+        }
+
         ctx.set_paint_transform(Affine::translate((
           d.x as f64 - d.cell.ax as f64,
           d.y as f64 - d.cell.ay as f64,
         )));
-        ctx.set_tint(Some(Tint {
-          color: rgba(d.color),
-          mode: TintMode::AlphaMask,
-        }));
         ctx.fill_rect(&Rect::new(
           d.x as f64,
           d.y as f64,
@@ -688,6 +949,7 @@ impl AtlasPainter {
     });
 
     drop(atlas);
+    drop(colour_atlas);
     Ok(rasterize(ctx, &mut self.res))
   }
 
@@ -848,4 +1110,33 @@ fn d2d_rect(r: [f32; 4]) -> D2D_RECT_F {
     right: r[0] + r[2],
     bottom: r[1] + r[3],
   }
+}
+
+fn target_properties() -> D2D1_RENDER_TARGET_PROPERTIES {
+  D2D1_RENDER_TARGET_PROPERTIES {
+    r#type: D2D1_RENDER_TARGET_TYPE_SOFTWARE,
+    pixelFormat: D2D1_PIXEL_FORMAT {
+      format: DXGI_FORMAT_B8G8R8A8_UNORM,
+      alphaMode: D2D1_ALPHA_MODE_PREMULTIPLIED,
+    },
+    dpiX: 96.0,
+    dpiY: 96.0,
+    usage: D2D1_RENDER_TARGET_USAGE_NONE,
+    minLevel: D2D1_FEATURE_LEVEL_DEFAULT,
+  }
+}
+
+/// Shelf packing with one pixel of padding: the cell's position in its atlas.
+fn shelf(cursor: &mut (u16, u16, u16), w: u16, h: u16) -> (u16, u16) {
+  let (mut x, mut y, mut row) = *cursor;
+
+  if x + w + 1 > ATLAS {
+    x = 0;
+    y += row + 1;
+    row = 0;
+  }
+
+  assert!(y + h < ATLAS, "the spike's atlas is full");
+  *cursor = (x + w + 1, y, row.max(h));
+  (x, y)
 }

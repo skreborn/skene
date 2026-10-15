@@ -324,6 +324,10 @@ pub struct AtlasPainter {
   pub unsupported_layers: u64,
   pub raster_errors: u64,
   pub first_error: Option<String>,
+  /// The image formats of the layers this painter could not draw.
+  pub layer_formats: Vec<i32>,
+  /// The image formats of every layer seen.
+  pub seen_formats: Vec<i32>,
 }
 
 impl AtlasPainter {
@@ -343,6 +347,8 @@ impl AtlasPainter {
       unsupported_layers: 0,
       raster_errors: 0,
       first_error: None,
+      layer_formats: Vec::new(),
+      seen_formats: Vec::new(),
     })
   }
 
@@ -550,11 +556,23 @@ impl AtlasPainter {
       let g = &base.glyphRun;
       let n = g.glyphCount as usize;
 
-      if layer.glyphImageFormat != DWRITE_GLYPH_IMAGE_FORMATS_TRUETYPE
-        && layer.glyphImageFormat != DWRITE_GLYPH_IMAGE_FORMATS_CFF
-        && layer.glyphImageFormat != DWRITE_GLYPH_IMAGE_FORMATS_COLR
-      {
+      let outline = (DWRITE_GLYPH_IMAGE_FORMATS_TRUETYPE
+        | DWRITE_GLYPH_IMAGE_FORMATS_CFF
+        | DWRITE_GLYPH_IMAGE_FORMATS_COLR)
+        .0;
+      let format = layer.glyphImageFormat.0;
+
+      if !self.seen_formats.contains(&format) {
+        self.seen_formats.push(format);
+      }
+
+      if format == 0 || format & !outline != 0 {
         self.unsupported_layers += 1;
+        let format = layer.glyphImageFormat.0;
+
+        if !self.layer_formats.contains(&format) {
+          self.layer_formats.push(format);
+        }
         continue;
       }
 

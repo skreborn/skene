@@ -402,7 +402,9 @@ impl Laid {
     };
 
     for line in &lines {
-      if y + line.height > max_height + 0.01 {
+      // Under a height cap DirectWrite reports the lines it trims away as empty lines at
+      // the cap, so a line counts only while it starts above the cap and fits under it.
+      if y + line.height > max_height + 0.01 || (capped && y >= max_height - 0.01) {
         break;
       }
 
@@ -514,12 +516,7 @@ impl Laid {
     }
 
     drop(renderer);
-    Ok(
-      Rc::try_unwrap(out)
-        .map_err(|_| ())
-        .expect("the renderer is released")
-        .into_inner(),
-    )
+    Ok(std::mem::take(&mut *out.borrow_mut()))
   }
 }
 

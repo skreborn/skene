@@ -445,6 +445,9 @@ mod spike {
 
     let floor_img = to_img(&floor.render(&mut ctx, &s.items)?);
     let atlas_img = to_img(&atlas.render(&mut ctx, &s.items)?);
+    let mut raw = AtlasPainter::new(&engine.factory)?;
+    raw.contrast = 0.0;
+    let raw_img = to_img(&raw.render(&mut ctx, &s.items)?);
     let ref_img = reference.render(&s.items, s.w, s.h)?;
     let bare: Vec<Item> = s
       .items
@@ -558,7 +561,11 @@ mod spike {
       );
     }
 
-    for (name, img) in [("floor", &floor_img), ("atlas", &atlas_img)] {
+    for (name, img) in [
+      ("floor", &floor_img),
+      ("atlas", &atlas_img),
+      ("atlas_without_contrast", &raw_img),
+    ] {
       for (panel, b) in &s.panels {
         let reg = region(*b).inflate(4, w, h);
         let ink_ref = ref_img.darkness(&bg, reg);
@@ -603,7 +610,7 @@ mod spike {
       let sign_right = signs.iter().map(|r| r.right()).fold(0.0f32, f32::max);
       let on_last = sign_y.is_some_and(|y| (y - last).abs() <= 1.0);
       let reg = Region::from_f32(
-        [b[0] - 2.0, b[1] + laid.height + 1.0, b[2] + 4.0, 40.0],
+        [b[0] - 2.0, b[1] + laid.height + 1.0, b[2] + 4.0, 24.0],
         w,
         h,
       );
@@ -666,9 +673,11 @@ mod spike {
 
     say!(
       r,
-      "d.atlas.colour_layers: {} unsupported_layers={}",
+      "d.atlas.colour_layers: {} unsupported_layers={} unsupported_formats={:?} seen_formats={:?}",
       atlas.color_layers,
-      atlas.unsupported_layers
+      atlas.unsupported_layers,
+      atlas.layer_formats,
+      atlas.seen_formats
     );
     Ok(())
   }
@@ -723,20 +732,24 @@ mod spike {
       })
       .collect();
 
-    let t = Instant::now();
-    let paragraphs: Vec<Paragraph> = texts
-      .iter()
-      .map(|t| {
-        engine.paragraph(
-          t,
-          ParagraphStyle {
-            size: 13.0,
-            ..Default::default()
-          },
-        )
-      })
-      .collect::<Result<_>>()?;
-    let t_para = ms(t.elapsed());
+    let label = ParagraphStyle {
+      size: 13.0,
+      ..Default::default()
+    };
+    let make = |texts: &[String]| -> Result<(Vec<Paragraph>, f64, f64)> {
+      let t = Instant::now();
+      let first = engine.paragraph(&texts[0], label.clone())?;
+      let t_first = ms(t.elapsed());
+      let mut out = vec![first];
+
+      for text in &texts[1..] {
+        out.push(engine.paragraph(text, label.clone())?);
+      }
+
+      Ok((out, t_first, ms(t.elapsed())))
+    };
+    let (paragraphs, t_first, t_para) = make(&texts)?;
+    let (_, t_first_again, t_para_again) = make(&texts)?;
 
     let mut tree: TaffyTree<usize> = TaffyTree::new();
     tree.disable_rounding();
@@ -812,7 +825,7 @@ mod spike {
 
     say!(
       r,
-      "b.paragraphs: 1000 created (format cached per style, one probe layout each for the intrinsic widths) in {t_para:.2} ms"
+      "b.paragraphs: 1000 created (format cached per style, one probe layout each for the intrinsic widths) in {t_para:.2} ms, the first alone {t_first:.2} ms; the same 1000 again {t_para_again:.2} ms (first {t_first_again:.2} ms)"
     );
     say!(
       r,

@@ -80,29 +80,44 @@ class SpikeTest {
       report("$prefix.leaves", tree.leaves)
       report("$prefix.useBoring", engine.useBoring)
       report("$prefix.create.ms", ms(System.nanoTime() - start))
-      fun passes(name: String, runs: List<LongArray>) = passes(prefix, name, runs)
+      // Each pass reports the time spent inside the Kotlin engine's entry points and the layouts
+      // its cache had to build, as medians over the pass's runs.
+      fun passes(name: String, count: Int, width: (Int) -> Float, flags: Int = 0) {
+        val engineNanos = ArrayList<Long>()
+        val misses = ArrayList<Int>()
+        val runs = List(count) {
+          val before = engine.intrinsicsNanos + engine.layoutNanos
+          val missed = engine.misses
+          val stats = tree.layout(width(it), flags)
+          engineNanos.add(engine.intrinsicsNanos + engine.layoutNanos - before)
+          misses.add(engine.misses - missed)
+          stats
+        }
+        passes(prefix, name, runs)
+        report("$prefix.$name.engineMs", ms(engineNanos.sorted()[count / 2]))
+        report("$prefix.$name.engineBuilt", misses.sorted()[count / 2])
+      }
 
-      // A single pass, with the time spent inside the Kotlin engine's entry points beside it.
       fun timed(name: String, width: Float) {
         val intrinsics = engine.intrinsicsNanos
         val layouts = engine.layoutNanos
-        passes(name, listOf(tree.layout(width)))
+        passes(name, 1, { width })
         report("$prefix.$name.engineIntrinsicsMs", ms(engine.intrinsicsNanos - intrinsics))
         report("$prefix.$name.engineLayoutMs", ms(engine.layoutNanos - layouts))
       }
 
       timed("cold", W1)
-      passes("warmSameWidth", List(5) { tree.layout(W1, NativeTree.DIRTY) })
+      passes("warmSameWidth", 5, { W1 }, NativeTree.DIRTY)
       timed("widthChange", W2)
-      passes("backToFirstWidth", listOf(tree.layout(W1)))
-      passes("alternate", List(10) { tree.layout(if (it % 2 == 0) W2 else W1) })
+      passes("backToFirstWidth", 1, { W1 })
+      passes("alternate", 10, { if (it % 2 == 0) W2 else W1 })
       timed("newWidth", W3)
-      passes("javaCacheOnly", List(5) { tree.layout(W1, NativeTree.DIRTY or NativeTree.CLEAR_LAID) })
+      passes("javaCacheOnly", 5, { W1 }, NativeTree.DIRTY or NativeTree.CLEAR_LAID)
       passes(
         "javaCacheOnlyWithIntrinsics",
-        List(5) {
-          tree.layout(W1, NativeTree.DIRTY or NativeTree.CLEAR_LAID or NativeTree.CLEAR_INTRINSICS)
-        },
+        5,
+        { W1 },
+        NativeTree.DIRTY or NativeTree.CLEAR_LAID or NativeTree.CLEAR_INTRINSICS,
       )
 
       val rects = tree.rects()

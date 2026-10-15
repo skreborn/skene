@@ -228,6 +228,13 @@ impl Leaf {
 
     let whole = (width + 0.001).floor() as i32;
 
+    // A width at or past max-content lays out as max-content does: fetch its height there once.
+    if let Some(intrinsics) = self.intrinsics {
+      if height && whole as f32 >= intrinsics.max && intrinsics.h_max.is_nan() {
+        self.intrinsics(env, engine, stats, false, true);
+      }
+    }
+
     let (used, height, baselines) = match self.intrinsics {
       Some(intrinsics) if whole as f32 >= intrinsics.max && (!height || !intrinsics.h_max.is_nan()) => {
         let h_max = if intrinsics.h_max.is_nan() { 0.0 } else { intrinsics.h_max };

@@ -78,6 +78,13 @@ for name in ["warmSameWidth", "javaCacheOnly", "javaCacheOnlyWithIntrinsics"]:
 
 print("* plain: the engine without PrecomputedText (each layout measures its text afresh)")
 print(f"useBoring={','.join(values.get('taffy.useBoring', ['?']))}")
+print()
+print("INSIDE THE KOTLIN ENGINE PER PASS (median ms, layouts built)")
+
+for name in ["cold", "warmSameWidth", "widthChange", "backToFirstWidth", "alternate", "newWidth", "javaCacheOnly", "javaCacheOnlyWithIntrinsics"]:
+    print(f"  {name:<28} engine {spread(f'taffy.{name}.engineMs')} built {spread(f'taffy.{name}.engineBuilt')}; total {spread(f'taffy.{name}.ms')}")
+
+print()
 print(f"{'compose sameWidthNoop':<28}{'-':>12}{show(num('compose.sameWidthNoop.ms')):>12}")
 print(f"taffy tree creation: {show(num('taffy.create.ms'))} ms; compose composition: {show(num('compose.composition.ms'))} ms")
 print(f"root height at W1: taffy {show(num('taffy.rootHeightAtW1'))}, compose {show(num('compose.rootHeightAtW1'))}")

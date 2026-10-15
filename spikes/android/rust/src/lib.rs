@@ -104,15 +104,15 @@ impl Engine {
     out
   }
 
-  fn intrinsics(&self, env: &mut JNIEnv, text: i32) -> Intrinsics {
-    // SAFETY: the method id belongs to the engine's class with signature (I)V.
+  fn intrinsics(&self, env: &mut JNIEnv, text: i32, with_min: bool) -> Intrinsics {
+    // SAFETY: the method id belongs to the engine's class with signature (IZ)V.
     unsafe {
       env
         .call_method_unchecked(
           &self.object,
           self.intrinsics,
           ReturnType::Primitive(Primitive::Void),
-          &[jvalue { i: text }],
+          &[jvalue { i: text }, jvalue { z: with_min as u8 }],
         )
         .expect("intrinsics");
     }
@@ -152,7 +152,34 @@ impl Engine {
 }
 
 impl Leaf {
+  /// The leaf's intrinsics, crossing JNI when they are missing or lack a min-content width that
+  /// is wanted.
+  fn intrinsics(
+    &mut self,
+    env: &mut JNIEnv,
+    engine: &Engine,
+    stats: &mut PassStats,
+    with_min: bool,
+  ) -> Intrinsics {
+    if let Some(intrinsics) = self.intrinsics {
+      if !with_min || !intrinsics.min.is_nan() {
+        return intrinsics;
+      }
+    }
+
+    stats.crossings += 1;
+    stats.intrinsics_calls += 1;
+    self.crossings += 1;
+
+    let intrinsics = engine.intrinsics(env, self.text, with_min);
+    self.intrinsics = Some(intrinsics);
+    intrinsics
+  }
+
   /// Measures the leaf under taffy's query, crossing JNI only on a cache miss.
+  ///
+  /// Intrinsics are fetched only for a min-content or max-content query, and the min-content
+  /// width only for a min-content one; a definite or known width lays out directly.
   fn measure(
     &mut self,
     env: &mut JNIEnv,
@@ -163,24 +190,13 @@ impl Leaf {
   ) -> (Size<f32>, (f32, f32)) {
     stats.measure_calls += 1;
 
-    let intrinsics = match self.intrinsics {
-      Some(intrinsics) => intrinsics,
-      None => {
-        stats.crossings += 1;
-        stats.intrinsics_calls += 1;
-        self.crossings += 1;
-
-        let intrinsics = engine.intrinsics(env, self.text);
-        self.intrinsics = Some(intrinsics);
-        intrinsics
-      }
-    };
-
     let (width, fixed) = match (known.width, available.width) {
       (Some(width), _) => (width, true),
       (None, AvailableSpace::Definite(width)) => (width, false),
-      (None, AvailableSpace::MinContent) => (intrinsics.min, false),
+      (None, AvailableSpace::MinContent) => (self.intrinsics(env, engine, stats, true).min, false),
       (None, AvailableSpace::MaxContent) => {
+        let intrinsics = self.intrinsics(env, engine, stats, false);
+
         return (
           Size {
             width: intrinsics.max,
@@ -193,24 +209,27 @@ impl Leaf {
 
     let whole = (width + 0.001).floor() as i32;
 
-    let (used, height, baselines) = if whole as f32 >= intrinsics.max {
-      (intrinsics.max, intrinsics.h_max, intrinsics.base_max)
-    } else {
-      let laid = match self.laid.iter().flatten().find(|laid| laid.width == whole) {
-        Some(laid) => *laid,
-        None => {
-          stats.crossings += 1;
-          stats.layout_calls += 1;
-          self.crossings += 1;
+    let (used, height, baselines) = match self.intrinsics {
+      Some(intrinsics) if whole as f32 >= intrinsics.max => {
+        (intrinsics.max, intrinsics.h_max, intrinsics.base_max)
+      }
+      _ => {
+        let laid = match self.laid.iter().flatten().find(|laid| laid.width == whole) {
+          Some(laid) => *laid,
+          None => {
+            stats.crossings += 1;
+            stats.layout_calls += 1;
+            self.crossings += 1;
 
-          let laid = engine.layout(env, self.text, whole);
-          self.laid[self.next] = Some(laid);
-          self.next = (self.next + 1) % self.laid.len();
-          laid
-        }
-      };
+            let laid = engine.layout(env, self.text, whole);
+            self.laid[self.next] = Some(laid);
+            self.next = (self.next + 1) % self.laid.len();
+            laid
+          }
+        };
 
-      (laid.used, laid.height, laid.baselines)
+        (laid.used, laid.height, laid.baselines)
+      }
     };
 
     let width = if fixed { width } else { used };
@@ -477,7 +496,7 @@ pub extern "system" fn Java_dev_skene_spike_text_NativeTree_create<'local>(
   cards: jint,
 ) -> jlong {
   let class = env.get_object_class(&engine).unwrap();
-  let intrinsics = env.get_method_id(&class, "intrinsics", "(I)V").unwrap();
+  let intrinsics = env.get_method_id(&class, "intrinsics", "(IZ)V").unwrap();
   let layout = env.get_method_id(&class, "layout", "(II)V").unwrap();
   let address = env.get_direct_buffer_address(&buffer).unwrap();
   let object = env.new_global_ref(&engine).unwrap();

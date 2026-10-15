@@ -22,6 +22,18 @@ def num(key):
     return statistics.median(found) if found else None
 
 
+def spread(key):
+    found = sorted(float(v) for v in values.get(key, []))
+
+    if not found:
+        return "n/a"
+
+    if len(found) == 1:
+        return show(found[0])
+
+    return f"{show(statistics.median(found))} [{show(found[0])}..{show(found[-1])}]"
+
+
 def most(key):
     found = [float(v) for v in values.get(key, [])]
     return max(found) if found else None
@@ -49,6 +61,17 @@ for name in ["cold", "widthChange", "backToFirstWidth", "alternate", "newWidth"]
     r = t / c if t is not None and c else None
     ratios[name] = r
     print(f"{name:<28}{show(t):>12}{show(c):>12}{show(r):>9}{show(num(f'taffyPlain.{name}.ms')):>10}")
+
+print()
+print("PER-PROCESS SPREAD (median [min..max] ms)")
+
+for name in ["cold", "widthChange", "newWidth", "alternate"]:
+    print(f"  {name:<20} taffy {spread(f'taffy.{name}.ms')}; compose {spread(f'compose.{name}.ms')}")
+
+for name in ["cold", "widthChange", "newWidth"]:
+    print(f"  {name:<20} inside the Kotlin engine: intrinsics {spread(f'taffy.{name}.engineIntrinsicsMs')}, layouts {spread(f'taffy.{name}.engineLayoutMs')}")
+
+print()
 
 for name in ["warmSameWidth", "javaCacheOnly", "javaCacheOnlyWithIntrinsics"]:
     print(f"{name:<28}{show(num(f'taffy.{name}.ms')):>12}{'-':>12}{'-':>9}")

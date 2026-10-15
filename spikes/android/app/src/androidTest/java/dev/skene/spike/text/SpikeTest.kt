@@ -82,12 +82,21 @@ class SpikeTest {
       report("$prefix.create.ms", ms(System.nanoTime() - start))
       fun passes(name: String, runs: List<LongArray>) = passes(prefix, name, runs)
 
-      passes("cold", listOf(tree.layout(W1)))
+      // A single pass, with the time spent inside the Kotlin engine's entry points beside it.
+      fun timed(name: String, width: Float) {
+        val intrinsics = engine.intrinsicsNanos
+        val layouts = engine.layoutNanos
+        passes(name, listOf(tree.layout(width)))
+        report("$prefix.$name.engineIntrinsicsMs", ms(engine.intrinsicsNanos - intrinsics))
+        report("$prefix.$name.engineLayoutMs", ms(engine.layoutNanos - layouts))
+      }
+
+      timed("cold", W1)
       passes("warmSameWidth", List(5) { tree.layout(W1, NativeTree.DIRTY) })
-      passes("widthChange", listOf(tree.layout(W2)))
+      timed("widthChange", W2)
       passes("backToFirstWidth", listOf(tree.layout(W1)))
       passes("alternate", List(10) { tree.layout(if (it % 2 == 0) W2 else W1) })
-      passes("newWidth", listOf(tree.layout(W3)))
+      timed("newWidth", W3)
       passes("javaCacheOnly", List(5) { tree.layout(W1, NativeTree.DIRTY or NativeTree.CLEAR_LAID) })
       passes(
         "javaCacheOnlyWithIntrinsics",

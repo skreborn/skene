@@ -37,7 +37,9 @@ class TextEngine(
   }
   private val boring = arrayOfNulls<BoringLayout.Metrics>(corpus.leaves)
   private val boringKnown = BooleanArray(corpus.leaves)
-  private val widths = arrayOfNulls<FloatArray>(corpus.leaves)
+  private val minWidths = FloatArray(corpus.leaves) { Float.NaN }
+  private val maxWidths = FloatArray(corpus.leaves) { Float.NaN }
+  private val breaks = BreakIterator.getLineInstance(Locale.getDefault())
   private val measured = arrayOfNulls<CharSequence>(corpus.leaves)
   private val params = paints.map { paint ->
     PrecomputedText.Params.Builder(paint)
@@ -51,6 +53,10 @@ class TextEngine(
   /** Layout-cache hits and misses since construction. */
   var hits = 0
   var misses = 0
+
+  /** Time spent inside the JNI entry points since construction, in nanoseconds. */
+  var intrinsicsNanos = 0L
+  var layoutNanos = 0L
 
   /** One layout of one text at one width, and the numbers the Rust side reads from it. */
   class Laid(
@@ -151,18 +157,28 @@ class TextEngine(
     return laid
   }
 
-  /** Min-content and max-content widths of text [id], ceiled to whole pixels. */
-  fun intrinsicWidths(id: Int): FloatArray {
-    widths[id]?.let { return it }
+  /** The max-content width of text [id], ceiled to whole pixels. */
+  fun maxWidth(id: Int): Float {
+    if (!maxWidths[id].isNaN()) return maxWidths[id]
 
     val text = source(id)
-    val paint = paint(id)
     val metrics = boringOf(id)
     val pre = text as? PrecomputedText
     val max = ceil(
-      metrics?.width?.toFloat() ?: pre?.getWidth(0, text.length) ?: Layout.getDesiredWidth(text, paint),
+      metrics?.width?.toFloat() ?: pre?.getWidth(0, text.length)
+        ?: Layout.getDesiredWidth(text, paint(id)),
     )
-    val breaks = BreakIterator.getLineInstance(Locale.getDefault())
+    maxWidths[id] = max
+    return max
+  }
+
+  /** The min-content width of text [id]: its widest line-break segment, ceiled to whole pixels. */
+  fun minWidth(id: Int): Float {
+    if (!minWidths[id].isNaN()) return minWidths[id]
+
+    val text = source(id)
+    val paint = paint(id)
+    val pre = text as? PrecomputedText
     breaks.setText(corpus.text(id))
 
     var min = 0f
@@ -182,35 +198,44 @@ class TextEngine(
       end = breaks.next()
     }
 
-    val result = floatArrayOf(minOf(ceil(min), max), max)
-    widths[id] = result
+    val result = minOf(ceil(min), maxWidth(id))
+    minWidths[id] = result
     return result
   }
 
-  /** JNI: writes min, max, then the height and the first and last baselines at max. */
-  fun intrinsics(id: Int) {
-    val (min, max) = intrinsicWidths(id).let { it[0] to it[1] }
+  /**
+   * JNI: writes the min-content width (NaN unless [withMin] or already known), the max-content
+   * width, then the height and the first and last baselines at max.
+   */
+  fun intrinsics(id: Int, withMin: Boolean) {
+    val begin = System.nanoTime()
+    val min = if (withMin) minWidth(id) else minWidths[id]
+    val max = maxWidth(id)
     val atMax = laid(id, max.toInt())
     buffer.putFloat(0, min)
     buffer.putFloat(4, max)
     buffer.putFloat(8, atMax.height.toFloat())
     buffer.putFloat(12, atMax.first.toFloat())
     buffer.putFloat(16, atMax.last.toFloat())
+    intrinsicsNanos += System.nanoTime() - begin
   }
 
   /** JNI: writes the used width, the height and the first and last baselines at [width]. */
   fun layout(id: Int, width: Int) {
+    val begin = System.nanoTime()
     val laid = laid(id, width)
     buffer.putFloat(0, laid.used)
     buffer.putFloat(4, laid.height.toFloat())
     buffer.putFloat(8, laid.first.toFloat())
     buffer.putFloat(12, laid.last.toFloat())
+    layoutNanos += System.nanoTime() - begin
   }
 
   /** Drops every cached layout and intrinsic, keeping nothing warm but the platform's caches. */
   fun clear() {
     cache.clear()
-    widths.fill(null)
+    minWidths.fill(Float.NaN)
+    maxWidths.fill(Float.NaN)
     measured.fill(null)
   }
 }

@@ -41,7 +41,10 @@ run() {
   fi
 }
 
-for rep in 1 2 3; do
+# Let the freshly booted emulator's background work settle before timing anything.
+sleep 45
+
+for rep in 1 2 3 4 5; do
   run taffy "$rep"
   run compose "$rep"
 done

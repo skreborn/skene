@@ -47,9 +47,8 @@ sleep 45
 for rep in 1 2 3 4 5; do
   run taffy "$rep"
   run compose "$rep"
+  run taffyPlain "$rep"
 done
-
-run taffyPlain 1
 
 run offMain 1
 run ink 1

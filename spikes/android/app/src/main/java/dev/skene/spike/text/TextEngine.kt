@@ -205,18 +205,26 @@ class TextEngine(
 
   /**
    * JNI: writes the min-content width (NaN unless [withMin] or already known), the max-content
-   * width, then the height and the first and last baselines at max.
+   * width, then the height and the first and last baselines at max (NaN unless [withHeight]).
    */
-  fun intrinsics(id: Int, withMin: Boolean) {
+  fun intrinsics(id: Int, withMin: Boolean, withHeight: Boolean) {
     val begin = System.nanoTime()
     val min = if (withMin) minWidth(id) else minWidths[id]
     val max = maxWidth(id)
-    val atMax = laid(id, max.toInt())
     buffer.putFloat(0, min)
     buffer.putFloat(4, max)
-    buffer.putFloat(8, atMax.height.toFloat())
-    buffer.putFloat(12, atMax.first.toFloat())
-    buffer.putFloat(16, atMax.last.toFloat())
+
+    if (withHeight) {
+      val atMax = laid(id, max.toInt())
+      buffer.putFloat(8, atMax.height.toFloat())
+      buffer.putFloat(12, atMax.first.toFloat())
+      buffer.putFloat(16, atMax.last.toFloat())
+    } else {
+      buffer.putFloat(8, Float.NaN)
+      buffer.putFloat(12, Float.NaN)
+      buffer.putFloat(16, Float.NaN)
+    }
+
     intrinsicsNanos += System.nanoTime() - begin
   }
 

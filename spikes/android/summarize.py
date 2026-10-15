@@ -66,7 +66,7 @@ print()
 print("PER-PROCESS SPREAD (median [min..max] ms)")
 
 for name in ["cold", "widthChange", "newWidth", "alternate"]:
-    print(f"  {name:<20} taffy {spread(f'taffy.{name}.ms')}; compose {spread(f'compose.{name}.ms')}")
+    print(f"  {name:<20} taffy {spread(f'taffy.{name}.ms')}; plain {spread(f'taffyPlain.{name}.ms')}; compose {spread(f'compose.{name}.ms')}")
 
 for name in ["cold", "widthChange", "newWidth"]:
     print(f"  {name:<20} inside the Kotlin engine: intrinsics {spread(f'taffy.{name}.engineIntrinsicsMs')}, layouts {spread(f'taffy.{name}.engineLayoutMs')}")
@@ -76,7 +76,7 @@ print()
 for name in ["warmSameWidth", "javaCacheOnly", "javaCacheOnlyWithIntrinsics"]:
     print(f"{name:<28}{show(num(f'taffy.{name}.ms')):>12}{'-':>12}{'-':>9}")
 
-print("* plain: the engine without PrecomputedText, one process")
+print("* plain: the engine without PrecomputedText (each layout measures its text afresh)")
 print(f"useBoring={','.join(values.get('taffy.useBoring', ['?']))}")
 print(f"{'compose sameWidthNoop':<28}{'-':>12}{show(num('compose.sameWidthNoop.ms')):>12}")
 print(f"taffy tree creation: {show(num('taffy.create.ms'))} ms; compose composition: {show(num('compose.composition.ms'))} ms")
@@ -117,6 +117,11 @@ b_keys = ["cold", "widthChange", "alternate"]
 b_ok = all(ratios[k] is not None and ratios[k] <= 2 for k in b_keys)
 print(f"(b) within 2x of Compose (cold, width change, warm alternate): {'PASS' if b_ok else 'FAIL'} "
       f"(ratios {', '.join(f'{k}={show(ratios[k])}' for k in b_keys)})")
+
+plain = {k: (num(f"taffyPlain.{k}.ms") / num(f"compose.{k}.ms") if num(f"taffyPlain.{k}.ms") is not None and num(f"compose.{k}.ms") else None) for k in b_keys}
+plain_ok = all(plain[k] is not None and plain[k] <= 2 for k in b_keys)
+print(f"(b') the same, engine without PrecomputedText: {'PASS' if plain_ok else 'FAIL'} "
+      f"(ratios {', '.join(f'{k}={show(plain[k])}' for k in b_keys)})")
 
 c_keys = [k for k in values if k.startswith("offMain.") and k.endswith(("mismatched", "Mismatched"))]
 c_ok = bool(c_keys) and all(int(v) == 0 for k in c_keys for v in values[k])

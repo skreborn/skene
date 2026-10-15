@@ -48,7 +48,7 @@ def show(v):
 
 print(f"emulator: sdk={','.join(values.get('emulator.sdk', ['?']))} model={','.join(values.get('emulator.model', ['?']))} density={','.join(values.get('emulator.density', ['?']))}")
 print("checkjni: " + ", ".join(f"{k.split('.', 1)[1]}={','.join(values[k])}" for k in sorted(values) if k.startswith("emulator.") and ("jni" in k or "debuggable" in k or "build.type" in k)))
-print(f"JNI cost per call (ns): bare upcall {spread('jni.noopUpcallNs')}, layout cache-hit upcall {spread('jni.layoutHitUpcallNs')}, the same hit called from Kotlin {spread('jni.layoutHitDirectNs')}")
+print(f"cost per call (ns): bare JNI upcall {spread('jni.noopUpcallNs')}, layout cache hit through JNI {spread('jni.layoutHitUpcallNs')}, the same hit from Kotlin {spread('jni.layoutHitDirectNs')}, System.nanoTime() {spread('jni.clockReadNs')}")
 print(f"instrument runs ok: {sum(int(v) for v in values.get('instrument.ok', []))} of {len(values.get('instrument.ok', []))}")
 print(f"leaves: {show(num('taffy.leaves'))}; taffy runs: {len(values.get('taffy.cold.ms', []))}; compose runs: {len(values.get('compose.cold.ms', []))}")
 print()
@@ -70,8 +70,6 @@ print("PER-PROCESS SPREAD (median [min..max] ms)")
 for name in ["cold", "widthChange", "newWidth", "alternate"]:
     print(f"  {name:<20} taffy {spread(f'taffy.{name}.ms')}; plain {spread(f'taffyPlain.{name}.ms')}; compose {spread(f'compose.{name}.ms')}")
 
-for name in ["cold", "widthChange", "newWidth"]:
-    print(f"  {name:<20} inside the Kotlin engine: intrinsics {spread(f'taffy.{name}.engineIntrinsicsMs')}, layouts {spread(f'taffy.{name}.engineLayoutMs')}")
 
 print()
 
@@ -81,10 +79,10 @@ for name in ["warmSameWidth", "javaCacheOnly", "javaCacheOnlyWithIntrinsics"]:
 print("* plain: the engine without PrecomputedText (each layout measures its text afresh)")
 print(f"useBoring={','.join(values.get('taffy.useBoring', ['?']))}")
 print()
-print("INSIDE THE KOTLIN ENGINE PER PASS (median ms, layouts built)")
+print("LAYOUTS THE KOTLIN ENGINE BUILT PER PASS (median)")
 
 for name in ["cold", "warmSameWidth", "widthChange", "backToFirstWidth", "alternate", "newWidth", "javaCacheOnly", "javaCacheOnlyWithIntrinsics"]:
-    print(f"  {name:<28} engine {spread(f'taffy.{name}.engineMs')} built {spread(f'taffy.{name}.engineBuilt')}; total {spread(f'taffy.{name}.ms')}")
+    print(f"  {name:<28} built {spread(f'taffy.{name}.engineBuilt')}; total {spread(f'taffy.{name}.ms')} ms")
 
 print()
 print(f"{'compose sameWidthNoop':<28}{'-':>12}{show(num('compose.sameWidthNoop.ms')):>12}")

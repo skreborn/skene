@@ -113,13 +113,8 @@ jobs:
         if: always()
         run: |
           python3 spikes/android/summarize.py results-api${{ matrix.api }}.txt > summary-api${{ matrix.api }}.txt || true
-          if [ -s results-api${{ matrix.api }}-nocheckjni.txt ]; then
-            python3 spikes/android/summarize.py results-api${{ matrix.api }}-nocheckjni.txt > summary-api${{ matrix.api }}-nocheckjni.txt || true
-          fi
           echo "=== RESULTS === (API ${{ matrix.api }})"
           cat summary-api${{ matrix.api }}.txt
-          echo "--- with CheckJNI off (timings only; offMain and ink ran above) ---"
-          cat summary-api${{ matrix.api }}-nocheckjni.txt 2>/dev/null || echo "not run"
           echo "--- raw ---"
           cat results-api${{ matrix.api }}.txt || true
           echo "=== END ==="

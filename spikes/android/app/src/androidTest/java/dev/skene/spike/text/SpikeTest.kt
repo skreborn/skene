@@ -80,31 +80,21 @@ class SpikeTest {
       report("$prefix.leaves", tree.leaves)
       report("$prefix.useBoring", engine.useBoring)
       report("$prefix.create.ms", ms(System.nanoTime() - start))
-      // Each pass reports the time spent inside the Kotlin engine's entry points and the layouts
-      // its cache had to build, as medians over the pass's runs.
+      // Each pass also reports the layouts the Kotlin engine's cache had to build. The engine is
+      // not timed per call: a clock read costs microseconds on the API 29 emulator.
       fun passes(name: String, count: Int, width: (Int) -> Float, flags: Int = 0) {
-        val engineNanos = ArrayList<Long>()
-        val misses = ArrayList<Int>()
+        val built = ArrayList<Int>()
         val runs = List(count) {
-          val before = engine.intrinsicsNanos + engine.layoutNanos
           val missed = engine.misses
           val stats = tree.layout(width(it), flags)
-          engineNanos.add(engine.intrinsicsNanos + engine.layoutNanos - before)
-          misses.add(engine.misses - missed)
+          built.add(engine.misses - missed)
           stats
         }
         passes(prefix, name, runs)
-        report("$prefix.$name.engineMs", ms(engineNanos.sorted()[count / 2]))
-        report("$prefix.$name.engineBuilt", misses.sorted()[count / 2])
+        report("$prefix.$name.engineBuilt", built.sorted()[count / 2])
       }
 
-      fun timed(name: String, width: Float) {
-        val intrinsics = engine.intrinsicsNanos
-        val layouts = engine.layoutNanos
-        passes(name, 1, { width })
-        report("$prefix.$name.engineIntrinsicsMs", ms(engine.intrinsicsNanos - intrinsics))
-        report("$prefix.$name.engineLayoutMs", ms(engine.layoutNanos - layouts))
-      }
+      fun timed(name: String, width: Float) = passes(name, 1, { width })
 
       timed("cold", W1)
       passes("warmSameWidth", 5, { W1 }, NativeTree.DIRTY)
@@ -188,6 +178,14 @@ class SpikeTest {
       for (i in 0 until count) engine.layout(0, 500)
 
       report("jni.layoutHitDirectNs", (System.nanoTime() - begin) / count)
+
+      val clock = System.nanoTime()
+      var sink = 0L
+
+      for (i in 0 until count) sink += System.nanoTime()
+
+      report("jni.clockReadNs", (System.nanoTime() - clock) / count)
+      report("jni.sink", sink and 1)
     }
   }
 

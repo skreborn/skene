@@ -54,10 +54,6 @@ class TextEngine(
   var hits = 0
   var misses = 0
 
-  /** Time spent inside the JNI entry points since construction, in nanoseconds. */
-  var intrinsicsNanos = 0L
-  var layoutNanos = 0L
-
   /** One layout of one text at one width, and the numbers the Rust side reads from it. */
   class Laid(
     val layout: Layout,
@@ -208,7 +204,6 @@ class TextEngine(
    * width, then the height and the first and last baselines at max (NaN unless [withHeight]).
    */
   fun intrinsics(id: Int, withMin: Boolean, withHeight: Boolean) {
-    val begin = System.nanoTime()
     val min = if (withMin) minWidth(id) else minWidths[id]
     val max = maxWidth(id)
     buffer.putFloat(0, min)
@@ -224,19 +219,15 @@ class TextEngine(
       buffer.putFloat(12, Float.NaN)
       buffer.putFloat(16, Float.NaN)
     }
-
-    intrinsicsNanos += System.nanoTime() - begin
   }
 
   /** JNI: writes the used width, the height and the first and last baselines at [width]. */
   fun layout(id: Int, width: Int) {
-    val begin = System.nanoTime()
     val laid = laid(id, width)
     buffer.putFloat(0, laid.used)
     buffer.putFloat(4, laid.height.toFloat())
     buffer.putFloat(8, laid.first.toFloat())
     buffer.putFloat(12, laid.last.toFloat())
-    layoutNanos += System.nanoTime() - begin
   }
 
   /** JNI: does nothing, to time a bare upcall. */

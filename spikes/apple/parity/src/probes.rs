@@ -1168,14 +1168,16 @@ pub fn timings(report: &mut Report, tuned: &mut TunedEngine) {
 
 /// A tuned engine with everything on.
 #[must_use]
-pub fn tuned_engine(hvgl: crate::tuned::Hvgl) -> TunedEngine {
+pub fn tuned_engine() -> TunedEngine {
   TunedEngine::new(Tuning {
     instance: true,
     hyphenate: true,
     quantize: cfg!(target_os = "macos"),
     korean_keep_all: true,
-    hvgl,
     line_height: None,
+    primary_metrics: true,
+    whole_clusters: true,
+    features: &[],
   })
 }
 

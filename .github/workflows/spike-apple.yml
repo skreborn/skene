@@ -183,16 +183,36 @@ jobs:
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0"><dict><key>com.apple.security.app-sandbox</key><true/></dict></plist>
           EOF
-          cp target/release/sandbox-probe "$RUNNER_TEMP/sandboxed-probe"
-          codesign --force --sign - --identifier com.skene.parity.sandbox --entitlements "$RUNNER_TEMP/sandbox.entitlements" "$RUNNER_TEMP/sandboxed-probe"
-          codesign -d --entitlements - "$RUNNER_TEMP/sandboxed-probe" 2>&1 | tail -5
+          # A sandboxed executable needs a bundle identifier from an Info.plist, so the probe
+          # runs from inside an app bundle, as an app's own binary does.
+          APP="$RUNNER_TEMP/SandboxProbe.app"
+          mkdir -p "$APP/Contents/MacOS"
+          cp target/release/sandbox-probe "$APP/Contents/MacOS/sandbox-probe"
+          cat > "$APP/Contents/Info.plist" <<'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+          <key>CFBundleIdentifier</key><string>com.skene.parity.sandbox</string>
+          <key>CFBundleExecutable</key><string>sandbox-probe</string>
+          <key>CFBundleName</key><string>SandboxProbe</string>
+          <key>CFBundlePackageType</key><string>APPL</string>
+          <key>CFBundleVersion</key><string>1</string>
+          <key>LSMinimumSystemVersion</key><string>14.0</string>
+          </dict></plist>
+          EOF
+          codesign --force --sign - --entitlements "$RUNNER_TEMP/sandbox.entitlements" "$APP"
+          codesign -d --entitlements - "$APP" 2>&1 | tail -5
           {
             echo "=== unsandboxed ==="
             ./target/release/sandbox-probe check "$POSTSCRIPT" "$FONT"
             echo "exit $?"
             echo "=== sandboxed (com.apple.security.app-sandbox) ==="
-            "$RUNNER_TEMP/sandboxed-probe" check "$POSTSCRIPT" "$FONT"
+            "$APP/Contents/MacOS/sandbox-probe" check "$POSTSCRIPT" "$FONT"
             echo "exit $?"
+            ls "$HOME/Library/Containers" 2>/dev/null | grep -i skene
+            for report in "$HOME"/Library/Logs/DiagnosticReports/sandbox-probe*; do
+              [ -f "$report" ] && head -c 4000 "$report"
+            done
           } 2>&1 | tee "$RUNNER_TEMP/out/sandbox.txt"
 
       - name: Results

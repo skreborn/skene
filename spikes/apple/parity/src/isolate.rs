@@ -164,8 +164,21 @@ pub fn draw_vello(
   scale: f32,
 ) -> Rgba {
   let mut glyph_runs = Vec::new();
+  let mut outlined = Vec::new();
+  let mut hvgl = crate::outline::HvglFonts::default();
 
   for run in runs {
+    if hvgl.has(&run.font) {
+      outlined.extend(run.glyphs.iter().map(|glyph| crate::outline::Outlined {
+        font: run.font.clone(),
+        id: glyph.0,
+        x: glyph.1,
+        y: glyph.2,
+      }));
+
+      continue;
+    }
+
     let Some(data) = bytes.of(&run.font)
     else {
       continue;
@@ -210,7 +223,10 @@ pub fn draw_vello(
     });
   }
 
-  let pixmap = render::render_runs(&glyph_runs, width, height, scale, RenderOptions::default());
+  let mut pixmap = render::render_runs(&glyph_runs, width, height, scale, RenderOptions::default());
+
+  crate::outline::fill(&mut pixmap, &outlined, width, height, scale);
+
   let (wide, high) = (u32::from(pixmap.width()), u32::from(pixmap.height()));
   let data = pixmap.data_as_u8_slice().to_vec();
   let mut out = Rgba {

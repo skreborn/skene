@@ -28,6 +28,7 @@ dependencies = [
  "skrifa",
  "text-parity",
  "unicode-segmentation",
+ "vello_cpu",
 ]
 
 [[package]]

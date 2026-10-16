@@ -163,8 +163,8 @@ pub fn run(config: &Config) -> Result<String, String> {
   let corpus = Corpus::builtin();
   let mut raster = Raster::default();
   let mut files = Files::default();
-  let mut tuned = probes::tuned_engine(crate::tuned::Hvgl::Substitute);
-  let mut tuned_c = probes::tuned_engine(crate::tuned::Hvgl::Strip);
+  let mut tuned = probes::tuned_engine();
+  let mut tuned_c = probes::tuned_engine();
   let mut summary = serde_json::Map::new();
   let mut b_set = None;
 
@@ -421,6 +421,8 @@ pub fn run(config: &Config) -> Result<String, String> {
     guard(&mut report, "timings", |report| {
       probes::timings(report, &mut tuned)
     });
+    guard(&mut report, "cjk spacing", crate::cjk::spacing);
+    guard(&mut report, "run instances", crate::cjk::instances);
   }
 
   if config.wants("genmoji") {

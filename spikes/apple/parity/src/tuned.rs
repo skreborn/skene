@@ -10,6 +10,11 @@
 //! - **Hyphenation from Core Foundation**: where a case asks for automatic hyphenation,
 //!   `CFStringGetHyphenationLocationBeforeIndex` gives the points, inserted as soft hyphens and
 //!   mapped back to the text's offsets in the record.
+//! - **Line metrics from the paragraph's font**: a fallback font is registered with the system
+//!   font's ascent, descent and leading per em, since TextKit sizes a line by the fonts its
+//!   attributes name and never by a substituted one.
+//! - **Hangul keeps its words whole** in every language, TextKit's `standard` strategy.
+//! - **No break inside a grapheme cluster**, through Parley's line-break override.
 //!
 //! The breaking, the soft hyphen's hyphen and the ellipsis are the harness's
 //! (`text_parity::layout`), copied here because its shaping step has no hook for variations or
@@ -28,6 +33,8 @@ use parley::{
   FontData,
   FontFamily,
   FontFamilyName,
+  FontFeature,
+  FontFeatures,
   FontStyle,
   FontVariation,
   FontVariations,
@@ -36,6 +43,7 @@ use parley::{
   Layout,
   LayoutContext,
   LineBreak as ParleyLineBreak,
+  LineBreakContext,
   LineHeight,
   OverflowWrap,
   PositionedLayoutItem,
@@ -62,17 +70,6 @@ use unicode_segmentation::UnicodeSegmentation;
 
 use crate::{coretext, platform};
 
-/// What a font with Apple's `hvgl` outlines (PingFang UI on iOS 18 and macOS 15) becomes.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum Hvgl {
-  /// The font is registered without its `hvgl` and `hvpm` tables: Parley shapes it from its
-  /// other tables and only Core Text can draw it (C).
-  Strip,
-  /// The font's public sibling is registered in its place (`PingFangSC-Regular` for
-  /// `.PingFangUITextSC-Regular`), whose outlines vello draws (B).
-  Substitute,
-}
-
 /// What the tuning turns on.
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Tuning {
@@ -83,13 +80,17 @@ pub struct Tuning {
   pub hyphenate: bool,
   /// Line metrics rounded to whole points (Parley's `quantize`), as TextKit 2 does on macOS.
   pub quantize: bool,
-  /// Korean keeps its words whole under the normal word break, as TextKit's `standard`
-  /// strategy does.
+  /// Hangul keeps its words whole under the normal word break, in every language, as
+  /// TextKit's `standard` strategy does.
   pub korean_keep_all: bool,
-  /// What an `hvgl` font becomes.
-  pub hvgl: Hvgl,
   /// A line height in points for every line (a text style's line height and leading).
   pub line_height: Option<f32>,
+  /// A fallback font takes the system font's line metrics per em.
+  pub primary_metrics: bool,
+  /// No break inside an extended grapheme cluster (regional indicator pairs aside).
+  pub whole_clusters: bool,
+  /// OpenType features on for the whole text (`chws`, `halt`), by tag.
+  pub features: &'static [&'static str],
 }
 
 /// A registered Core Text font.
@@ -126,9 +127,6 @@ pub struct TunedEngine {
 /// The family name the system UI font is registered under.
 pub const SYSTEM: &str = "ct system";
 
-/// The family name the emoji font is registered under.
-pub const EMOJI: &str = "ct emoji";
-
 fn retain(font: &CTFont) -> CFRetained<CTFont> {
   unsafe { CFRetained::retain(std::ptr::NonNull::from(font)) }
 }
@@ -148,7 +146,7 @@ impl TunedEngine {
       fallbacks: Vec::new(),
     })
     .expect("an empty collection");
-    let mut engine = Self {
+    let engine = Self {
       fonts,
       layouts: LayoutContext::new(),
       tuning,
@@ -163,34 +161,18 @@ impl TunedEngine {
       log: Vec::new(),
       notes: Vec::new(),
     };
-    let emoji = unsafe {
-      CTFont::with_name(
-        &CFString::from_str("AppleColorEmoji"),
-        17.,
-        std::ptr::null(),
-      )
-    };
-
-    if engine.register(&emoji, Some(EMOJI), None).is_some()
-      && let Some(id) = engine.fonts.context.collection.family_id(EMOJI)
-    {
-      engine
-        .fonts
-        .context
-        .collection
-        .set_generic_families(GenericFamily::Emoji, [id].into_iter());
-    }
-
     engine
   }
 
-  /// Registers `font` (once per file and face) under `family` (its own PostScript name where
-  /// `None`): the family name Parley asks for.
+  /// Registers `font` (once per file, face and metrics) under `family` (its own PostScript
+  /// name where `None`): the family name Parley asks for. With `metrics` (ascent, descent and
+  /// leading per em), the font's line metrics are replaced by them.
   pub fn register(
     &mut self,
     font: &CTFont,
     family: Option<&str>,
     italic: Option<bool>,
+    metrics: Option<[f64; 3]>,
   ) -> Option<String> {
     let info = coretext::info(font);
     let key = format!(
@@ -208,6 +190,12 @@ impl TunedEngine {
     else {
       key
     };
+    let tag =
+      metrics.map(|metrics| format!("{:.4}/{:.4}/{:.4}", metrics[0], metrics[1], metrics[2]));
+    let key = match &tag {
+      Some(tag) => format!("{key}@{tag}"),
+      None => key,
+    };
 
     if let Some(found) = self.registered.get(&key) {
       return Some(found.family.clone());
@@ -218,52 +206,35 @@ impl TunedEngine {
     }
 
     let started = Instant::now();
-    let family = family.map_or_else(|| format!("ct {}", info.postscript), str::to_owned);
+    let family = family.map_or_else(
+      || match &tag {
+        Some(tag) => format!("ct {} {tag}", info.postscript),
+        None => format!("ct {}", info.postscript),
+      },
+      str::to_owned,
+    );
     let has_hvgl = coretext::tables(font).contains(&coretext::tag_of("hvgl"));
+    let mut skip = Vec::new();
 
-    if has_hvgl && self.tuning.hvgl == Hvgl::Substitute {
-      let public = info
-        .postscript
-        .trim_start_matches('.')
-        .replace("UIText", "")
-        .replace("UIDisplay", "")
-        .replace("UI", "");
-      let candidate =
-        unsafe { CTFont::with_name(&CFString::from_str(&public), info.size, std::ptr::null()) };
-      let found = coretext::info(&candidate);
-      let usable = found.postscript == public
-        && !coretext::tables(&candidate).contains(&coretext::tag_of("hvgl"));
-
-      self.refused.insert(key.clone());
-
-      if !usable {
-        self.notes.push(format!(
-          "{}: hvgl, and no public sibling {public} (Core Text gave {})",
-          info.postscript, found.postscript
-        ));
-
-        return None;
-      }
-
+    if has_hvgl {
       self.notes.push(format!(
-        "{}: hvgl, substituted by {} at {:?}",
-        info.postscript, found.postscript, found.path
-      ));
-
-      return self.register(&candidate, Some(&family), italic);
-    }
-
-    let bytes = if has_hvgl {
-      self.notes.push(format!(
-        "{}: hvgl and hvpm stripped; shaped from its other tables, drawn only by Core Text",
+        "{}: hvgl and hvpm stripped; shaped from its other tables, drawn from Core Text's outlines",
         info.postscript
       ));
-
-      coretext::sfnt_except(font, &["hvgl", "hvpm"])
+      skip.extend(["hvgl", "hvpm"]);
     }
-    else {
-      coretext::sfnt(font)
-    };
+
+    if metrics.is_some() {
+      skip.push("MVAR");
+    }
+
+    let bytes = coretext::sfnt_except(font, &skip).map(|mut bytes| {
+      if let Some(metrics) = metrics {
+        coretext::with_line_metrics(&mut bytes, metrics);
+      }
+
+      bytes
+    });
     let Some(bytes) = bytes
     else {
       self.refused.insert(key.clone());
@@ -332,9 +303,21 @@ impl TunedEngine {
     let base = platform::as_ct(&base);
     let mut families = Vec::new();
 
-    if let Some(system) = self.register(base, Some(SYSTEM), Some(case.italic)) {
+    if let Some(system) = self.register(base, Some(SYSTEM), Some(case.italic), None) {
       families.push(system);
     }
+
+    let metrics = self.tuning.primary_metrics.then(|| {
+      let size = unsafe { base.size() };
+
+      unsafe {
+        [
+          base.ascent() / size,
+          base.descent() / size,
+          base.leading() / size,
+        ]
+      }
+    });
 
     let language = CFString::from_str(&case.locale);
     let base_name = unsafe { base.post_script_name() }.to_string();
@@ -371,7 +354,18 @@ impl TunedEngine {
         };
         let font =
           unsafe { CTFont::for_string_with_language(base, &string, range, Some(&language)) };
-        let found = self.register(&font, None, None);
+        let found = self.register(&font, None, None, metrics);
+
+        if let Some(family) = &found
+          && coretext::info(&font).postscript.contains("AppleColorEmoji")
+          && let Some(id) = self.fonts.context.collection.family_id(family)
+        {
+          self
+            .fonts
+            .context
+            .collection
+            .set_generic_families(GenericFamily::Emoji, [id].into_iter());
+        }
 
         self.fallback_cache.insert(key, found.clone());
 
@@ -393,6 +387,56 @@ impl TunedEngine {
 #[must_use]
 pub fn not_emoji(cluster: &str) -> bool {
   !text_parity::emoji::is_emoji_presentation(cluster)
+}
+
+/// Whether `character` is Hangul: jamo, compatibility jamo or a syllable.
+const fn is_hangul(character: char) -> bool {
+  matches!(
+    character,
+    '\u{1100}'..='\u{11FF}'
+      | '\u{3130}'..='\u{318F}'
+      | '\u{A960}'..='\u{A97F}'
+      | '\u{AC00}'..='\u{D7AF}'
+      | '\u{D7B0}'..='\u{D7FF}'
+  )
+}
+
+/// The byte ranges of `text`'s Hangul runs.
+#[must_use]
+pub fn hangul_ranges(text: &str) -> Vec<std::ops::Range<usize>> {
+  let mut out: Vec<std::ops::Range<usize>> = Vec::new();
+
+  for (at, character) in text.char_indices() {
+    if !is_hangul(character) {
+      continue;
+    }
+
+    let end = at + character.len_utf8();
+
+    match out.last_mut() {
+      Some(last) if last.end == at => last.end = end,
+      _ => out.push(at..end),
+    }
+  }
+
+  out
+}
+
+/// Suppresses a break between two code points of one extended grapheme cluster, as Core Text
+/// never breaks inside one; a pair of regional indicators is left to the default.
+fn whole_clusters(context: LineBreakContext) -> Option<bool> {
+  let regional = |character: char| ('\u{1F1E6}'..='\u{1F1FF}').contains(&character);
+
+  if regional(context.before) && regional(context.after) {
+    return None;
+  }
+
+  let mut buffer = [0u8; 8];
+  let first = context.before.encode_utf8(&mut buffer).len();
+  let second = context.after.encode_utf8(&mut buffer[first..]).len();
+  let pair = std::str::from_utf8(&buffer[..first + second]).ok()?;
+
+  (pair.graphemes(true).count() == 1).then_some(false)
 }
 
 /// The UTF-16 hyphenation points of `text` in `locale`, from Core Foundation.
@@ -677,6 +721,34 @@ impl TunedEngine {
       }
     }));
 
+    if self.tuning.korean_keep_all && case.word_break == WordBreak::Normal {
+      for range in hangul_ranges(&case.text) {
+        builder.push(StyleProperty::WordBreak(ParleyWordBreak::KeepAll), range);
+      }
+    }
+
+    if !self.tuning.features.is_empty() {
+      let features: Vec<FontFeature> = self
+        .tuning
+        .features
+        .iter()
+        .filter_map(|tag| {
+          Some(FontFeature {
+            tag: Tag::new(tag.as_bytes().try_into().ok()?),
+            value: 1,
+          })
+        })
+        .collect();
+
+      builder.push_default(StyleProperty::FontFeatures(FontFeatures::List(Cow::Owned(
+        features,
+      ))));
+    }
+
+    if self.tuning.whole_clusters {
+      builder.set_line_break_override(Some(&whole_clusters));
+    }
+
     for range in text_parity::emoji::emoji_ranges(&case.text) {
       let mut emoji_first = vec![FontFamilyName::Generic(GenericFamily::Emoji)];
 
@@ -714,18 +786,6 @@ impl TunedEngine {
   #[must_use]
   pub fn tuned_case(&self, case: &Case) -> (Case, Option<Vec<usize>>, Vec<String>) {
     let mut notes = Vec::new();
-
-    if self.tuning.korean_keep_all
-      && case.locale.starts_with("ko")
-      && case.word_break == WordBreak::Normal
-    {
-      let mut korean = case.clone();
-
-      korean.word_break = WordBreak::KeepAll;
-      notes.push("Korean keeps its words whole, as TextKit's standard strategy does".to_owned());
-
-      return (korean, None, notes);
-    }
 
     if case.hyphenation != Hyphenation::Auto {
       return (case.clone(), None, notes);

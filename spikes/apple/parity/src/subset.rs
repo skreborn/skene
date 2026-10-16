@@ -89,6 +89,8 @@ pub fn run(
     ct: context.set("parley-tuned", "0.12.0", "coretext CTFontDrawGlyphs", &[]),
   };
 
+  let mut hvgl = crate::outline::HvglFonts::default();
+
   for variant in corpus.variants() {
     let tk = textkit::variant(&variant, &setup(&variant), 0);
     let mut a = tk.record;
@@ -137,6 +139,7 @@ pub fn run(
       size: variant.size,
       width: variant.width,
     };
+
     for (engine, vello) in [(&mut *tuned_b, true), (&mut *tuned_c, false)] {
       let laid = engine.lay_out(&tuned_variant);
       let mut record = engine.record(&tuned_variant, &laid, None);
@@ -151,15 +154,23 @@ pub fn run(
         tuned_runs(&laid.laid, engine)
       };
       let name = if vello { "bt" } else { "ct" };
+      let outlined = if vello {
+        crate::sets::hvgl_glyphs(&laid.laid, engine, raster, &mut hvgl)
+      }
+      else {
+        Vec::new()
+      };
 
       for scale in &context.scales {
         let file = image_path(&variant, *scale);
 
         if vello {
-          let _ = render::write_png(
-            render::render(&laid.laid, width, height, *scale, RenderOptions::default()),
-            &dir.join(name).join(&file),
-          );
+          let mut pixmap =
+            render::render(&laid.laid, width, height, *scale, RenderOptions::default());
+
+          crate::outline::fill(&mut pixmap, &outlined, width, height, *scale);
+
+          let _ = render::write_png(pixmap, &dir.join(name).join(&file));
         }
         else {
           let canvas = Canvas::for_box(width, height, *scale, Ground::White, Smoothing(true));

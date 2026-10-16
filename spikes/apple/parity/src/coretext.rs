@@ -312,6 +312,66 @@ pub fn sfnt_except(font: &CTFont, skip: &[&str]) -> Option<Vec<u8>> {
   Some(out)
 }
 
+/// The byte range of the table `tag` in the single-face sfnt `bytes`.
+fn table_range(bytes: &[u8], tag: &str) -> Option<std::ops::Range<usize>> {
+  let count = usize::from(u16::from_be_bytes(bytes.get(4..6)?.try_into().ok()?));
+  let wanted = tag_of(tag).to_be_bytes();
+
+  (0..count).find_map(|at| {
+    let record = bytes.get(12 + at * 16..12 + at * 16 + 16)?;
+
+    if record[..4] != wanted {
+      return None;
+    }
+
+    let offset = u32::from_be_bytes(record[8..12].try_into().ok()?) as usize;
+    let length = u32::from_be_bytes(record[12..16].try_into().ok()?) as usize;
+
+    (offset + length <= bytes.len()).then_some(offset..offset + length)
+  })
+}
+
+/// Rewrites the line metrics of the single-face sfnt `bytes` to `metrics` (ascent, descent
+/// and leading per em): `hhea`'s, and `OS/2`'s typographic and Windows ones, with
+/// `USE_TYPO_METRICS` set, so every reader of either table finds the same.
+pub fn with_line_metrics(bytes: &mut [u8], metrics: [f64; 3]) {
+  let Some(head) = table_range(bytes, "head")
+  else {
+    return;
+  };
+  let units = f64::from(u16::from_be_bytes([
+    bytes[head.start + 18],
+    bytes[head.start + 19],
+  ]));
+  let ascent = (metrics[0] * units).round() as i16;
+  let descent = (metrics[1] * units).round() as i16;
+  let gap = (metrics[2] * units).round() as i16;
+  let hhea = table_range(bytes, "hhea");
+  let os2 = table_range(bytes, "OS/2").filter(|range| range.len() >= 78);
+  let put = |bytes: &mut [u8], at: usize, value: [u8; 2]| {
+    if let Some(slot) = bytes.get_mut(at..at + 2) {
+      slot.copy_from_slice(&value);
+    }
+  };
+
+  if let Some(hhea) = hhea {
+    put(bytes, hhea.start + 4, ascent.to_be_bytes());
+    put(bytes, hhea.start + 6, (-descent).to_be_bytes());
+    put(bytes, hhea.start + 8, gap.to_be_bytes());
+  }
+
+  if let Some(os2) = os2 {
+    let selection = u16::from_be_bytes([bytes[os2.start + 62], bytes[os2.start + 63]]) | 0x80;
+
+    put(bytes, os2.start + 62, selection.to_be_bytes());
+    put(bytes, os2.start + 68, ascent.to_be_bytes());
+    put(bytes, os2.start + 70, (-descent).to_be_bytes());
+    put(bytes, os2.start + 72, gap.to_be_bytes());
+    put(bytes, os2.start + 74, (ascent.max(0) as u16).to_be_bytes());
+    put(bytes, os2.start + 76, (descent.max(0) as u16).to_be_bytes());
+  }
+}
+
 /// One glyph of a Core Text run.
 #[derive(Clone, Copy, PartialEq, Debug, Default, Serialize)]
 pub struct CtGlyph {

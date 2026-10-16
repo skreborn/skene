@@ -7,12 +7,14 @@
 //!   Foundation's hyphenation points as soft hyphens;
 //! - **C**, B's glyph runs drawn by Core Text's `CTFontDrawGlyphs` ([`raster`]).
 //!
-//! [`isolate`] draws TextKit's own glyphs by both rasterizers (layout held equal); [`suite`]
-//! runs all of it with the probes ([`probes`], [`genmoji`], [`smoothing`], [`subset`], and on
-//! iOS `ios`) and writes records, images, comparisons and a results summary to one directory;
-//! [`ffi`] is the C entry the iOS test links.
+//! B draws an `hvgl` font's glyphs (PingFang UI) by vello from Core Text's outlines
+//! ([`outline`]). [`isolate`] draws TextKit's own glyphs by both rasterizers (layout held
+//! equal); [`suite`] runs all of it with the probes ([`probes`], [`cjk`], [`genmoji`],
+//! [`smoothing`], [`subset`], and on iOS `ios`) and writes records, images, comparisons and a
+//! results summary to one directory; [`ffi`] is the C entry the iOS test links.
 
 pub mod cg;
+pub mod cjk;
 pub mod coretext;
 pub mod ffi;
 pub mod genmoji;
@@ -20,6 +22,7 @@ pub mod genmoji;
 pub mod ios;
 pub mod isolate;
 pub mod label;
+pub mod outline;
 pub mod platform;
 pub mod probes;
 pub mod raster;

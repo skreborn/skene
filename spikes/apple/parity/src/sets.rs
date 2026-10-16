@@ -634,8 +634,44 @@ pub fn tuned_runs<'a>(laid: &'a Laid, engine: &TunedEngine) -> Vec<DrawRun<'a>> 
     .collect()
 }
 
-/// B and C tuned: every variant through [`TunedEngine`], drawn by vello (B) and by Core Text
-/// (C).
+/// The glyphs of `laid` in an `hvgl` font, at their instance: what vello fills from Core Text's
+/// outlines in B.
+pub fn hvgl_glyphs(
+  laid: &Laid,
+  engine: &TunedEngine,
+  raster: &mut Raster,
+  fonts: &mut crate::outline::HvglFonts,
+) -> Vec<crate::outline::Outlined> {
+  let mut out = Vec::new();
+
+  for run in tuned_runs(laid, engine) {
+    let Source::Font(source) = &run.source
+    else {
+      continue;
+    };
+
+    if !fonts.has(source) {
+      continue;
+    }
+
+    let Some(font) = raster.font(&run)
+    else {
+      continue;
+    };
+
+    out.extend(run.glyphs.iter().map(|glyph| crate::outline::Outlined {
+      font: font.clone(),
+      id: glyph.0 as u16,
+      x: f64::from(glyph.1),
+      y: f64::from(glyph.2),
+    }));
+  }
+
+  out
+}
+
+/// B and C tuned: every variant through [`TunedEngine`], drawn by vello (B, an `hvgl` font's
+/// glyphs from Core Text's outlines) and by Core Text (C).
 pub fn tuned(
   context: &Context,
   corpus: &Corpus,
@@ -666,6 +702,8 @@ pub fn tuned(
       ("tuning", &tuning_c),
     ],
   );
+
+  let mut hvgl = crate::outline::HvglFonts::default();
 
   for variant in corpus.variants().filter(|variant| context.wants(variant)) {
     for (engine, set, dir, vello) in [
@@ -703,15 +741,30 @@ pub fn tuned(
       else {
         tuned_runs(&laid.laid, engine)
       };
+      let outlined = if vello {
+        hvgl_glyphs(&laid.laid, engine, raster, &mut hvgl)
+      }
+      else {
+        Vec::new()
+      };
+
+      if !outlined.is_empty() {
+        record.notes.push(format!(
+          "{} glyphs of an hvgl font filled by vello from CTFontCreatePathForGlyph",
+          outlined.len()
+        ));
+      }
 
       for scale in &context.scales {
         let file = image_path(&variant, *scale);
 
         if vello {
-          let _ = render::write_png(
-            render::render(&laid.laid, width, height, *scale, RenderOptions::default()),
-            &dir.join(&file),
-          );
+          let mut pixmap =
+            render::render(&laid.laid, width, height, *scale, RenderOptions::default());
+
+          crate::outline::fill(&mut pixmap, &outlined, width, height, *scale);
+
+          let _ = render::write_png(pixmap, &dir.join(&file));
         }
         else {
           let canvas = Canvas::for_box(width, height, *scale, Ground::White, Smoothing(true));

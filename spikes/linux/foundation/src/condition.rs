@@ -18,12 +18,13 @@ pub enum Media {
   ReducedMotion,
 }
 
-/// A state a node's style varies under: its own (hovered, pressed, focus), or its enclosing
-/// control's (disabled, checked).
+/// A state a node's style varies under: its own (hovered), or, inside a control, the
+/// control's (checked, disabled, focus and press).
 ///
 /// A realization keeping states ([`crate::seam::style::Keep::states`]) maps each to its
 /// toolkit's own (CSS's pseudo-classes); one that does not reports them where a record
-/// varies under them.
+/// varies under them, at the node itself or, for a node built inside a control, at the
+/// control ([`State::follows_control`]).
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 #[repr(u8)]
 pub enum State {
@@ -31,13 +32,15 @@ pub enum State {
   Hovered,
   /// The node is being pressed.
   Pressed,
+  /// Focus is on the node.
+  Focused,
   /// Focus is on the node and shows.
   FocusVisible,
   /// Focus is on the node or inside it.
   FocusWithin,
   /// The enclosing control is disabled.
   Disabled,
-  /// The enclosing control is on or checked.
+  /// The enclosing control is on or checked (a chosen item is checked).
   Checked,
   /// The enclosing control is mixed.
   Indeterminate,
@@ -45,8 +48,6 @@ pub enum State {
   Invalid,
   /// The enclosing popup or disclosure is open.
   Open,
-  /// The node is the chosen item of its collection.
-  Selected,
 }
 
 impl State {
@@ -54,6 +55,7 @@ impl State {
   pub const ALL: [Self; 10] = [
     Self::Hovered,
     Self::Pressed,
+    Self::Focused,
     Self::FocusVisible,
     Self::FocusWithin,
     Self::Disabled,
@@ -61,8 +63,24 @@ impl State {
     Self::Indeterminate,
     Self::Invalid,
     Self::Open,
-    Self::Selected,
   ];
+
+  /// Whether the state is always the enclosing control's: checked, mixed, disabled, invalid,
+  /// open. A node outside every control is never in one.
+  #[must_use]
+  pub const fn is_control_state(self) -> bool {
+    matches!(
+      self,
+      Self::Disabled | Self::Checked | Self::Indeterminate | Self::Invalid | Self::Open
+    )
+  }
+
+  /// Whether a node built inside a control takes the state from the control: the control's
+  /// own states, and its focus and press. Hovered stays the node's own.
+  #[must_use]
+  pub const fn follows_control(self) -> bool {
+    self.is_control_state() || matches!(self, Self::Focused | Self::FocusVisible | Self::Pressed)
+  }
 }
 
 /// A set of [`State`]s.

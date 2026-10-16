@@ -13,7 +13,7 @@
 
 use std::{fmt, rc::Rc};
 
-use crate::{Color, Condition, Environment, State, TokenRef, TokenValue, Tokens};
+use crate::{Color, Condition, Environment, State, StateSet, TokenRef, TokenValue, Tokens};
 
 /// A type a property holds as a fixed value.
 pub trait Property: Clone + 'static {
@@ -205,6 +205,39 @@ impl<T> Value<T> {
 }
 
 impl<T: 'static> Value<T> {
+  /// The states this value's conditions name, a derived base's own as it reads now (without
+  /// subscribing): what a realization that does not keep states reports where the value is
+  /// used.
+  #[must_use]
+  pub fn states(&self) -> StateSet {
+    self.states_at(0)
+  }
+
+  /// Whether it changes with a node's state or a signal: a leaf derived, or a condition on a
+  /// state.
+  #[must_use]
+  pub fn is_dynamic(&self) -> bool {
+    matches!(self.base, Leaf::Derived(_))
+      || self.variants.iter().any(|(condition, leaf)| {
+        matches!(condition, Condition::State(_)) || matches!(leaf, Leaf::Derived(_))
+      })
+  }
+
+  fn states_at(&self, depth: u8) -> StateSet {
+    let mut states = match &self.base {
+      Leaf::Derived(derive) if depth < 8 => crate::untrack(|| derive()).states_at(depth + 1),
+      _ => StateSet::EMPTY,
+    };
+
+    for (condition, _) in &self.variants {
+      if let Condition::State(state) = condition {
+        states = states.with(*state);
+      }
+    }
+
+    states
+  }
+
   /// This value with each of its leaves' values `map` turns into another type's, the
   /// conditions kept: what a view does to hand a property of its own type to another.
   pub fn map<U: 'static>(self, map: impl Fn(T) -> U + Clone + 'static) -> Value<U> {

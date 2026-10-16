@@ -8,12 +8,13 @@
 //! reader's font settings) into shared memory.
 //!
 //! - [`node`]: the realized tree, what the realization keeps per node.
-//! - [`look`], [`palette`]: a node's resolved look and run properties, and the defaults
-//!   drawn where a view sets none.
+//! - [`look`], [`palette`]: a node's resolved look and run properties, the platform's colors
+//!   the built-in controls are drawn in, and the defaults drawn where a view sets none.
 //! - [`text`], [`layout`]: paragraphs through the foundation's engine contract, and the layout
 //!   engine's host over the realized tree.
-//! - [`controls`], [`paint`], [`chrome`]: the drawn controls, the painter, the client-side
-//!   decorations where the compositor draws none.
+//! - [`entry`], [`overlay`]: the realization's own text view, and an overlay's surface.
+//! - [`paint`], [`chrome`]: the painter, the client-side decorations where the compositor
+//!   draws none.
 //! - [`shell`]: the window both backends share: frames, hit testing, hover, press and focus,
 //!   Tab order, keys and wheels dispatched through the foundation.
 //! - [`keys`], [`runtime`], [`environment`], [`clipboard`]: the keyboard through xkbcommon,
@@ -28,7 +29,6 @@
 pub mod access;
 pub mod chrome;
 pub mod clipboard;
-pub mod controls;
 pub mod entry;
 pub mod environment;
 pub mod ime;
@@ -36,9 +36,9 @@ pub mod keys;
 pub mod layout;
 pub mod look;
 pub mod node;
+pub mod overlay;
 pub mod paint;
 pub mod palette;
-pub mod popup;
 pub mod runtime;
 pub mod shell;
 pub mod testing;
@@ -51,8 +51,8 @@ pub mod x11;
 use std::{process::ExitCode, rc::Rc, time::Duration};
 
 use skene_foundation::{
-  NodeId, Owner, Scheme, State,
-  layout::ResolvedLayout,
+  NodeId, Owner, Scheme, State, SystemColors,
+  layout::{Rect, ResolvedLayout},
   seam::{
     LayoutOwner, Realization,
     access::AccessFacts,
@@ -80,7 +80,14 @@ impl Realization for Linux {
   const SCOPE_NODES: bool = false;
 
   fn create(id: NodeId, spec: &NodeSpec) -> Node {
-    Drawn::new(id, *spec)
+    let node = Drawn::new(id, *spec);
+
+    if node.is_overlay() {
+      node.set_hidden(true);
+      overlay::register(&node);
+    }
+
+    node
   }
 
   fn adopt(id: NodeId, widget: Node, _: &NodeSpec) -> Node {
@@ -107,7 +114,12 @@ impl Realization for Linux {
   fn set_hidden(node: &Node, hidden: bool) {
     if node.is_hidden() != hidden {
       node.set_hidden(hidden);
-      shell::invalidate_layout();
+
+      if node.is_overlay() {
+        shell::invalidate_overlays();
+      } else {
+        shell::invalidate_layout();
+      }
     }
   }
 
@@ -204,6 +216,14 @@ impl Realization for Linux {
   fn focus(node: &Node) {
     shell::request_focus(Some(Rc::clone(node)));
     runtime::inbox().send(runtime::Message::Wake);
+  }
+
+  fn frame(node: &Node) -> Option<Rect> {
+    (node.is_alive() && node.is_shown()).then(|| node.window_rect())
+  }
+
+  fn system_colors() -> SystemColors {
+    palette::system_colors()
   }
 
   fn set_scheme(choice: Option<Scheme>) {
@@ -342,6 +362,7 @@ pub fn turn(shell: &mut shell::Shell) -> Vec<runtime::Message> {
 
   runtime::run_due();
   shell.settle_focus();
+  shell.sync_overlays();
   access::sync(shell);
 
   rest

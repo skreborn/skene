@@ -8,6 +8,7 @@ rust-version.workspace = true
 version.workspace = true
 
 [dependencies]
+acme-rating.workspace = true
 skene-gui.workspace = true
 skene-simple-gui.workspace = true
 

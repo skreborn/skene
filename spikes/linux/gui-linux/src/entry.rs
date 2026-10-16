@@ -17,7 +17,7 @@ use std::{
 
 use skene_foundation::{
   Color, Corners,
-  layout::Rect,
+  layout::{Axis, Measurement, Rect},
   seam::{
     content::{Content, Edit, PropValue, Unit, Verdict},
     report::{Answer, Report},
@@ -45,8 +45,9 @@ use crate::{
 /// The engine every entry lays its text out with: Parley's, masked where the entry is secure.
 pub type Engine = Masked<ParleyEngine>;
 
-/// The space between an entry's edges and its text, across and along.
-pub const INSET: (f32, f32) = (10., 7.);
+/// The width an entry's text takes where its layout gives it none: its natural width, and
+/// its least, inside its padding and border.
+const TEXT_WIDTH: (f32, f32) = (180., 40.);
 
 /// What a secure entry shows for each cluster of its text.
 const MARK: char = '•';
@@ -105,6 +106,10 @@ pub struct Entry {
   notices: Rc<RefCell<Vec<Notice>>>,
   /// How far a field's text is scrolled left, in pixels.
   pub scroll: f32,
+  /// How far an editor's text is scrolled up, in pixels.
+  pub vscroll: f32,
+  /// The caret's color, the selection's and the placeholder's, as the entry inherits them.
+  pub colors: EntryColors,
   /// Whether it holds several lines.
   pub multiline: bool,
   /// Whether the caret shows now (it blinks).
@@ -121,7 +126,7 @@ pub struct Entry {
 
 impl Entry {
   /// The entry of `node`, empty.
-  fn new(node: &Node, multiline: bool) -> Self {
+  fn new(node: &Node, multiline: bool) -> Box<Self> {
     let mask = Rc::new(MaskState::new(MARK));
     let engine = Masked::new(text::engine(), Rc::clone(&mask));
     let mut editor = Editor::new(
@@ -137,67 +142,93 @@ impl Entry {
     editor.set_arbiter(SeamArbiter(id));
     editor.set_notifier(move |notice| sink.borrow_mut().push(notice));
 
-    Self {
+    Box::new(Self {
       editor,
       mask,
       notices,
       scroll: 0.,
+      vscroll: 0.,
+      colors: EntryColors::default(),
       multiline,
       caret_on: true,
       blink: None,
       blink_started: std::time::Instant::now(),
       reveal: None,
       offered: None,
-    }
+    })
   }
 
-  /// Where the text's top left sits for an entry at `rect` (window pixels).
-  pub fn origin(&self, rect: Rect) -> (f32, f32) {
+  /// Where the text's top left sits for an entry whose content box is `content` (window
+  /// pixels): a field's centered across it and scrolled along it, an editor's scrolled down
+  /// it.
+  pub fn origin(&self, content: Rect) -> (f32, f32) {
     if self.multiline {
-      (rect.x + INSET.0, rect.y + INSET.1)
+      (content.x, content.y - self.vscroll)
     } else {
       let height = self.editor.laid().size().height;
 
       (
-        rect.x + INSET.0 - self.scroll,
-        rect.y + (rect.height - height) / 2.,
+        content.x - self.scroll,
+        content.y + (content.height - height) / 2.,
       )
     }
   }
 
-  /// Scrolls a field so its caret shows within `width` (the room inside its insets).
-  fn reveal_caret(&mut self, width: f32) {
+  /// How far an editor's text can scroll in a content box `height` tall.
+  fn vscroll_limit(&self, height: f32) -> f32 {
+    (self.editor.laid().size().height - height).max(0.)
+  }
+
+  /// Scrolls the text so its caret shows within a content box `width` by `height`.
+  fn reveal_caret(&mut self, width: f32, height: f32) {
+    let caret = self.editor.caret_rect();
+
     if self.multiline {
+      let mut scroll = self.vscroll;
+
+      if caret.y - scroll < 0. {
+        scroll = caret.y;
+      } else if caret.y + caret.height - scroll > height {
+        scroll = caret.y + caret.height - height;
+      }
+
       self.scroll = 0.;
+      self.vscroll = scroll.clamp(0., self.vscroll_limit(height));
 
       return;
     }
 
-    let caret = self.editor.caret_rect().x;
     let extent = self.editor.laid().size().width;
     let mut scroll = self.scroll;
 
-    if caret - scroll < 0. {
-      scroll = caret;
-    } else if caret - scroll > width - 1. {
-      scroll = caret - width + 1.;
+    if caret.x - scroll < 0. {
+      scroll = caret.x;
+    } else if caret.x - scroll > width - 1. {
+      scroll = caret.x - width + 1.;
     }
 
     self.scroll = scroll.clamp(0., (extent - width + 1.).max(0.));
   }
 }
 
+/// The colors an entry draws its caret, its selection and its placeholder in, as it inherits
+/// them; the platform's where unset.
+#[derive(Clone, Copy, PartialEq, Debug, Default)]
+pub struct EntryColors {
+  /// The caret's, the text's where unset.
+  pub caret: Option<Color>,
+  /// The selection's fill.
+  pub selection: Option<Color>,
+  /// The text's.
+  pub ink: Option<Color>,
+}
+
 impl Drawn {
   /// Runs `op` on its entry, made where it has none yet, then answers what changed;
   /// `None` where it is no entry.
   pub fn with_entry<T>(self: &Rc<Self>, op: impl FnOnce(&mut Entry) -> T) -> Option<T> {
-    let multiline = match self.spec.kind {
-      skene_foundation::seam::node::NodeKind::Control(kind) => match kind {
-        skene_foundation::seam::node::ControlKind::TextField => false,
-        skene_foundation::seam::node::ControlKind::TextEditor => true,
-        _ => return None,
-      },
-      _ => return None,
+    let skene_foundation::seam::node::NodeKind::Editable { multiline } = self.spec.kind else {
+      return None;
     };
     let result = {
       let mut entry = self.entry.try_borrow_mut().ok()?;
@@ -262,9 +293,14 @@ impl Drawn {
       entry.offered = Some(text.clone());
     }
 
-    let width = (self.frame.get().width - INSET.0 * 2.).max(1.);
+    let frame = self.frame.get();
+    let content = self.entry_content(Rect {
+      x: 0.,
+      y: 0.,
+      ..frame
+    });
 
-    entry.reveal_caret(width);
+    entry.reveal_caret(content.width.max(1.), content.height.max(1.));
     entry.caret_on = true;
     entry.blink_started = std::time::Instant::now();
     drop(borrowed);
@@ -275,10 +311,7 @@ impl Drawn {
     ACCESS.with(|access| access.set(true));
 
     if text_changed
-      && self.spec.kind
-        == skene_foundation::seam::node::NodeKind::Control(
-          skene_foundation::seam::node::ControlKind::TextEditor,
-        )
+      && self.spec.kind == (skene_foundation::seam::node::NodeKind::Editable { multiline: true })
     {
       shell::invalidate_layout();
     }
@@ -327,9 +360,12 @@ impl Drawn {
   /// Gives its entry the run properties it inherits and its paragraph style; whether a
   /// metric changed.
   pub fn prepare_entry(self: &Rc<Self>, props: &RunProps, palette: &Palette) -> bool {
-    let disabled = self.contents.borrow().disabled;
-    let ink = if disabled { palette.dim } else { palette.ink };
-    let style = props.run_style(ink, DEFAULT_SIZE);
+    let style = props.run_style(palette.ink, DEFAULT_SIZE);
+    let colors = EntryColors {
+      caret: props.caret_color,
+      selection: props.selection_color,
+      ink: props.color,
+    };
     let (read_only, secure) = {
       let contents = self.contents.borrow();
 
@@ -344,6 +380,11 @@ impl Drawn {
           Wrap::None
         });
         let before = entry.editor.laid().size();
+
+        if entry.colors != colors {
+          entry.colors = colors;
+          shell::invalidate_paint(self);
+        }
 
         entry.editor.set_read_only(read_only);
 
@@ -373,35 +414,151 @@ impl Drawn {
       .unwrap_or((17., 13.))
   }
 
-  /// The height its editor takes at `width` (its box's), insets included.
+  /// The space between its box's edges and its text: its padding and its border, leading,
+  /// top, trailing and bottom.
+  pub fn entry_insets(&self) -> (f32, f32, f32, f32) {
+    let padding = self.layout.borrow().padding;
+    let border = self.look.borrow().border_width();
+
+    padding.map_or((border, border, border, border), |padding| {
+      (
+        padding.leading + border,
+        padding.top + border,
+        padding.trailing + border,
+        padding.bottom + border,
+      )
+    })
+  }
+
+  /// Its content box for its box at `rect`: inside its padding and border.
+  pub fn entry_content(&self, rect: Rect) -> Rect {
+    let (leading, top, trailing, bottom) = self.entry_insets();
+
+    Rect {
+      x: rect.x + leading,
+      y: rect.y + top,
+      width: (rect.width - leading - trailing).max(0.),
+      height: (rect.height - top - bottom).max(0.),
+    }
+  }
+
+  /// The height its editor's text takes within `width` (its content box's).
   pub fn entry_height_at(self: &Rc<Self>, width: Option<f32>) -> f32 {
     self
       .with_entry(|entry| {
-        entry
-          .editor
-          .set_width(width.map(|width| (width - INSET.0 * 2.).max(1.)));
+        entry.editor.set_width(width.map(|width| width.max(1.)));
 
-        entry.editor.laid().size().height + INSET.1 * 2.
+        entry.editor.laid().size().height
       })
-      .unwrap_or(34.)
+      .unwrap_or(17.)
+  }
+
+  /// Its box's size along `axis`, given the other axis's size where known: its text's, its
+  /// padding and border around it.
+  pub fn measure_entry(
+    self: &Rc<Self>,
+    multiline: bool,
+    axis: Axis,
+    for_size: Option<f32>,
+  ) -> Measurement {
+    let (leading, top, trailing, bottom) = self.entry_insets();
+
+    match axis {
+      Axis::Horizontal => Measurement {
+        minimum: TEXT_WIDTH.1 + leading + trailing,
+        natural: TEXT_WIDTH.0 + leading + trailing,
+        baseline: None,
+      },
+      Axis::Vertical => {
+        let (line, baseline) = self.entry_line_metrics();
+        let text = if multiline {
+          self.entry_height_at(for_size.map(|width| width - leading - trailing))
+        } else {
+          line
+        };
+        let height = text + top + bottom;
+
+        Measurement {
+          minimum: height,
+          natural: height,
+          baseline: Some(top + baseline),
+        }
+      }
+    }
   }
 
   /// Lays its editor out at the width its box was given.
   pub fn fit_entry(self: &Rc<Self>) {
-    let width = self.laid_width.get();
+    let content = self.entry_content(Rect {
+      x: 0.,
+      y: 0.,
+      width: self.laid_width.get(),
+      height: self.frame.get().height,
+    });
 
     self.with_entry(|entry| {
       if entry.multiline {
-        entry.editor.set_width(Some((width - INSET.0 * 2.).max(1.)));
+        entry.editor.set_width(Some(content.width.max(1.)));
+        entry.vscroll = entry.vscroll.clamp(0., entry.vscroll_limit(content.height));
       }
     });
   }
 
-  /// Draws its entry text in the box at `rect`: the selection, the text (or the
-  /// placeholder while it is empty), the caret where it has focus.
+  /// Scrolls its editor by `dy` pixels within its text: whether it moved.
+  pub fn scroll_entry(self: &Rc<Self>, dy: f32) -> bool {
+    let height = self
+      .entry_content(Rect {
+        x: 0.,
+        y: 0.,
+        ..self.frame.get()
+      })
+      .height;
+    let moved = self
+      .with_entry(|entry| {
+        if !entry.multiline {
+          return false;
+        }
+
+        let next = (entry.vscroll + dy).clamp(0., entry.vscroll_limit(height));
+        let moved = (next - entry.vscroll).abs() > f32::EPSILON;
+
+        entry.vscroll = next;
+
+        moved
+      })
+      .unwrap_or(false);
+
+    if moved {
+      shell::invalidate_paint(self);
+    }
+
+    moved
+  }
+
+  /// How many lines a page of its editor holds: what the page keys move its caret by.
+  pub fn entry_page(self: &Rc<Self>) -> isize {
+    let height = self
+      .entry_content(Rect {
+        x: 0.,
+        y: 0.,
+        ..self.frame.get()
+      })
+      .height;
+    let (line, _) = self.entry_line_metrics();
+
+    #[expect(clippy::cast_possible_truncation, reason = "a count of lines")]
+    let lines = (height / line.max(1.)).floor() as isize;
+
+    lines.max(1)
+  }
+
+  /// Draws its entry's text in its box at `rect`, inside its padding and border: the
+  /// selection, the text (or the placeholder while it is empty), the caret where it has focus,
+  /// and an editor's scroll bar where its text overflows it.
   pub fn paint_entry(self: &Rc<Self>, canvas: &mut Canvas<'_>, rect: Rect, focused: bool) {
     let palette = canvas.palette;
     let placeholder = self.text.borrow().clone();
+    let read_only = self.contents.borrow().read_only;
     let Ok(borrowed) = self.entry.try_borrow() else {
       return;
     };
@@ -409,26 +566,42 @@ impl Drawn {
       return;
     };
     let laid = entry.editor.laid();
-    let origin = entry.origin(rect);
-    let inner = Rect {
-      x: rect.x + INSET.0 / 2.,
-      y: rect.y + 2.,
-      width: (rect.width - INSET.0).max(0.),
-      height: (rect.height - 4.).max(0.),
+    let content = self.entry_content(rect);
+    let border = self.look.borrow().border_width();
+    let padding_box = Rect {
+      x: rect.x + border,
+      y: rect.y + border,
+      width: (rect.width - border * 2.).max(0.),
+      height: (rect.height - border * 2.).max(0.),
     };
-    let selection = if focused {
+    let origin = entry.origin(content);
+    let selection = entry.colors.selection.unwrap_or(if focused {
       palette.accent.with_alpha(0x55)
     } else {
       palette.dim.with_alpha(0x40)
-    };
+    });
+    let caret_ink = entry
+      .colors
+      .caret
+      .or(entry.colors.ink)
+      .unwrap_or(palette.ink);
     let empty = entry.editor.text().is_empty();
     let caret = entry.editor.caret_rect();
     let show_caret = focused
       && entry.caret_on
       && (entry.editor.selected().is_empty() || entry.editor.is_composing())
-      && !self.contents.borrow().read_only;
+      && !read_only;
+    let clip = if entry.multiline {
+      Rect {
+        y: content.y,
+        height: content.height,
+        ..padding_box
+      }
+    } else {
+      padding_box
+    };
 
-    canvas.clipped(inner, |canvas| {
+    canvas.clipped(clip, |canvas| {
       for range in entry.editor.selection_rects() {
         canvas.fill(
           Rect {
@@ -459,14 +632,29 @@ impl Drawn {
             height: caret.height,
           },
           Corners::all(0.),
-          self.caret_ink(&palette),
+          caret_ink,
         );
       }
     });
-  }
 
-  fn caret_ink(self: &Rc<Self>, palette: &Palette) -> Color {
-    self.run.borrow().color.unwrap_or(palette.ink)
+    let extent = laid.size().height;
+
+    if entry.multiline && extent > content.height + 0.5 {
+      let length = (content.height * content.height / extent).max(24.);
+      let travel = content.height - length;
+      let at = travel * (entry.vscroll / (extent - content.height)).clamp(0., 1.);
+
+      canvas.fill(
+        Rect {
+          x: padding_box.x + padding_box.width - 6.,
+          y: content.y + at,
+          width: 4.,
+          height: length,
+        },
+        Corners::all(2.),
+        caret_ink.with_alpha(70),
+      );
+    }
   }
 
   /// Starts or restarts the focused entry's caret blinking, where the reader's caret blinks.
@@ -603,8 +791,10 @@ impl Drawn {
   /// A press of the pointer at `x`, `y` (window pixels) in its entry at `rect`, the
   /// `clicks`th in a row.
   pub fn press_entry(self: &Rc<Self>, rect: Rect, at: (f32, f32), clicks: u8, extend: bool) {
+    let content = self.entry_content(rect);
+
     self.with_entry(|entry| {
-      let origin = entry.origin(rect);
+      let origin = entry.origin(content);
 
       entry
         .editor
@@ -614,8 +804,10 @@ impl Drawn {
 
   /// A drag of the pointer to `x`, `y` (window pixels) after a press in its entry.
   pub fn drag_entry(self: &Rc<Self>, rect: Rect, at: (f32, f32)) {
+    let content = self.entry_content(rect);
+
     self.with_entry(|entry| {
-      let origin = entry.origin(rect);
+      let origin = entry.origin(content);
 
       entry.editor.drag(at.0 - origin.0, at.1 - origin.1);
     });
@@ -630,11 +822,12 @@ impl Drawn {
 
   /// What the input method is told of its entry at `rect`.
   pub fn ime_state(self: &Rc<Self>, rect: Rect) -> Option<ImeState> {
-    if self.contents.borrow().read_only || self.contents.borrow().disabled {
+    if self.contents.borrow().read_only || self.access.borrow().disabled {
       return None;
     }
 
     let purpose = crate::ime::Purpose::of(self.contents.borrow().keyboard.as_deref());
+    let content = self.entry_content(rect);
 
     self.with_entry(|entry| {
       let editor = &entry.editor;
@@ -673,7 +866,7 @@ impl Drawn {
 
       let range = marked.unwrap_or(focus..focus);
       let local = editor.rect_for(range, Unit::Utf8);
-      let origin = entry.origin(rect);
+      let origin = entry.origin(content);
       let secure = entry.mask.is_masked();
 
       if secure {

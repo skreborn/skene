@@ -7,13 +7,13 @@ use std::{hash::Hash, rc::Rc};
 
 use skene_foundation::{
   Alignment, Arrangement, AxisAlignment, Border, Color, Corners, Definitions, Dimension, Effect,
-  Flow, FontFamily, FontStyle, FontWeight, Inset, Offset, Ring, Shadows, Signal, Spacing,
-  TextAlignment, TextDecoration, TextDecorationStyle, TokenSet, Tracks,
+  Flow, FontFamily, FontStyle, FontWeight, Inset, Offset, Ring, Shadows, Signal, Spacing, State,
+  SystemColors, TextAlignment, TextDecoration, TextDecorationStyle, TokenSet, Tracks, When as _,
   seam::{
     access::{AccessFacts, Role, Shortcut},
     content::contents,
     node::{LayoutKind, NodeKind, NodeSpec},
-    record::{Record, Transition},
+    record::{Prop, Record, Transition, keys},
     report::{KeyEvent, PointerEvent},
     tree::{self, Bubbling},
   },
@@ -185,6 +185,12 @@ impl Container {
 
   handle!();
 
+  /// The properties its setters gave it.
+  #[cfg(test)]
+  pub(crate) const fn record(&self) -> &Record {
+    &self.record
+  }
+
   /// The box's child, last.
   pub fn set_child(mut self, child: impl View) -> Self {
     self.child = Some(child_of::<Self>(child));
@@ -205,9 +211,22 @@ impl View for Container {
       spec = spec.acting();
     }
 
-    let id = tree::create::<Active>(spec, &cx.scope);
+    let id = cx.create(spec);
+    let mut record = self.record;
 
-    finish(id, self.record, cx, self.handle.as_ref());
+    if self.click.is_some() && !record.has(Prop::Ring) {
+      // A box that acts shows where focus is, as a control does, unless it says otherwise.
+      record.set(
+        keys::RING,
+        Ring::NONE.when(State::FocusVisible, Ring::new(2)),
+      );
+
+      if !record.has(Prop::RingColor) {
+        record.set(keys::RING_COLOR, SystemColors::ACCENT);
+      }
+    }
+
+    finish(id, record, cx, self.handle.as_ref());
 
     if let Some(click) = self.click {
       tree::handle_activate::<Active>(id, move || click());
@@ -303,7 +322,7 @@ macro_rules! layout {
 
     impl View for $name {
       fn build(self, cx: &mut Cx) -> Node {
-        let id = tree::create::<Active>(NodeSpec::new(NodeKind::Layout($kind)), &cx.scope);
+        let id = cx.create(NodeSpec::new(NodeKind::Layout($kind)));
 
         finish(id, self.record, cx, self.handle.as_ref());
         attach_children(id, self.children, cx);
@@ -454,13 +473,10 @@ impl View for Scroll {
       ScrollAxes::Horizontal => (true, false),
       ScrollAxes::Both => (true, true),
     };
-    let id = tree::create::<Active>(
-      NodeSpec::new(NodeKind::Layout(LayoutKind::Scroll {
-        horizontal,
-        vertical,
-      })),
-      &cx.scope,
-    );
+    let id = cx.create(NodeSpec::new(NodeKind::Layout(LayoutKind::Scroll {
+      horizontal,
+      vertical,
+    })));
 
     finish(id, self.record, cx, self.handle.as_ref());
     attach_children(id, self.child.into_iter().collect(), cx);
@@ -469,10 +485,14 @@ impl View for Scroll {
   }
 }
 
+/// What returns the texts a text lays out as wide as.
+type Reserved = Rc<dyn Fn() -> Rc<[Rc<str>]>>;
+
 /// A paragraph of text. Its blanks and newlines are kept, and it wraps to its width.
 #[must_use]
 pub struct Text {
   content: Box<dyn Fn() -> String>,
+  reserved: Option<Reserved>,
   record: Record,
   handle: Option<NodeHandle>,
 }
@@ -489,9 +509,30 @@ impl Text {
   pub fn derive<S: Into<String>>(text: impl Fn() -> S + 'static) -> Self {
     Self {
       content: Box::new(move || text().into()),
+      reserved: None,
       record: Record::new(),
       handle: None,
     }
+  }
+
+  /// Lays the text out as wide as the widest of `texts` and itself, in its own style: a face
+  /// showing one of several values keeps one width whichever it shows.
+  pub fn set_reserved_texts<S: Into<Rc<str>>>(self, texts: impl IntoIterator<Item = S>) -> Self {
+    let texts: Rc<[Rc<str>]> = texts.into_iter().map(Into::into).collect();
+
+    self.derive_reserved_texts(move || texts.to_vec())
+  }
+
+  /// Lays the text out as wide as the widest of what `texts` returns and itself, kept current.
+  pub fn derive_reserved_texts<S: Into<Rc<str>>, I: IntoIterator<Item = S>>(
+    mut self,
+    texts: impl Fn() -> I + 'static,
+  ) -> Self {
+    self.reserved = Some(Rc::new(move || {
+      texts().into_iter().map(Into::into).collect()
+    }));
+
+    self
   }
 
   properties! {
@@ -534,11 +575,15 @@ impl Text {
 
 impl View for Text {
   fn build(self, cx: &mut Cx) -> Node {
-    let id = tree::create::<Active>(NodeSpec::new(NodeKind::Text), &cx.scope);
+    let id = cx.create(NodeSpec::new(NodeKind::Text));
     let content = self.content;
 
     finish(id, self.record, cx, self.handle.as_ref());
     tree::bind::<Active, _>(id, contents::TEXT, move || content().into());
+
+    if let Some(reserved) = self.reserved {
+      tree::bind::<Active, _>(id, contents::RESERVE, move || reserved());
+    }
 
     Node(id)
   }
@@ -599,7 +644,7 @@ impl View for Image {
       Some(_) => NodeSpec::new(NodeKind::Image),
       None => NodeSpec::new(NodeKind::Image).with_role(Role::Presentation),
     };
-    let id = tree::create::<Active>(spec, &cx.scope);
+    let id = cx.create(spec);
 
     finish(id, self.record, cx, self.handle.as_ref());
     tree::bind::<Active, _>(id, contents::SOURCE, move || Rc::clone(&source));
@@ -660,14 +705,15 @@ impl View for Theme {
 
     Effect::new(move || definitions.set(Rc::new(compute())));
 
-    let node = tree::create::<Active>(NodeSpec::new(NodeKind::Scope), &cx.scope);
+    let node = cx.create(NodeSpec::new(NodeKind::Scope));
     let scope = tree::scope::<Active>(&cx.scope, definitions, Some(node));
 
     if let Some(child) = self.child {
-      let child = child(&mut Cx {
-        scope,
-        placement: cx.placement.clone(),
-      });
+      let mut inner = cx.inherit();
+
+      inner.scope = scope;
+
+      let child = child(&mut inner);
 
       tree::attach::<Active>(node, child.0, 0);
     }

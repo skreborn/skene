@@ -14,7 +14,7 @@
 //!   are Skene's);
 //! - the clipboard (`wl_data_device`) and the primary selection.
 //!
-//! - a picker's open list on an `xdg_popup`, placed by the compositor below the face it hangs
+//! - an open overlay on an `xdg_popup`, placed by the compositor beside the anchor it hangs
 //!   from and grabbing the pointer and the keyboard while it is open;
 //! - text-input-v3, through [`crate::ime::wayland`].
 
@@ -113,7 +113,7 @@ const TEXT_TYPES: [&str; 4] = [
 /// User data of the realization's own objects.
 struct Raw;
 
-/// A picker's open list on its own surface.
+/// The open overlay on its own surface.
 struct OpenPopup {
   popup: Popup,
   viewport: Option<WpViewport>,
@@ -598,8 +598,8 @@ impl State {
     self.text_input.sync(&self.shell, origin);
   }
 
-  /// Opens the open list's surface at `placement`, or closes it.
-  fn place_popup(&mut self, placement: Option<crate::popup::Placement>) {
+  /// Opens the open overlay's surface at `placement`, or closes it.
+  fn place_popup(&mut self, placement: Option<crate::overlay::Placement>) {
     self.popup = None;
 
     let Some(placement) = placement else {
@@ -660,7 +660,7 @@ impl State {
     });
   }
 
-  /// Paints the open list where it changed and attaches it.
+  /// Paints the open overlay where it changed and attaches it.
   fn draw_popup(&mut self, _: &QueueHandle<Self>) {
     let Some(open) = &mut self.popup else {
       return;
@@ -1545,10 +1545,9 @@ impl PopupHandler for State {
         )
       });
       open.configured = true;
-
-      if let Some(list) = self.shell.popup_mut() {
-        list.invalidate();
-      }
+      self
+        .shell
+        .popup_placed(config.position.0 as f32, config.position.1 as f32);
     }
   }
 
@@ -1560,8 +1559,7 @@ impl PopupHandler for State {
     {
       trace::log(|| "[wayland] popup dismissed".to_owned());
       self.popup = None;
-      self.shell.close_popup();
-      self.shell.take_requests();
+      self.shell.dismiss_popup();
     }
   }
 }

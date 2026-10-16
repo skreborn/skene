@@ -369,9 +369,21 @@ impl Found<'_> {
     self
   }
 
+  /// Asks for `request` as a reader does, through the platform's accessibility layer (AT-SPI's
+  /// actions, its value interface and its focus), and settles.
+  pub fn trigger_access(&self, request: skene_foundation::seam::control::AccessRequest) -> &Self {
+    self.act(&Action::Access(request))
+  }
+
   /// Clicks its center with the primary button, and settles.
   pub fn click(&self) -> &Self {
     self.act(&Action::Click)
+  }
+
+  /// Clicks the point of its bounds `x` and `y` of their width and height from their top
+  /// leading corner (`0.9, 0.5`: near its trailing edge) with the primary button, and settles.
+  pub fn click_at(&self, x: f32, y: f32) -> &Self {
+    self.act(&Action::ClickAt(x, y))
   }
 
   /// Clicks its center with the secondary button, and settles.

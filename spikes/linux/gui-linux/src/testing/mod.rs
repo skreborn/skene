@@ -1073,10 +1073,12 @@ impl Drawn {
       Action::Compose(character) => Self::compose(*character),
       Action::Commit => Self::commit(),
       Action::Click
+      | Action::ClickAt(..)
       | Action::ContextClick
       | Action::Hover
       | Action::Drag(..)
-      | Action::Scroll(..) => {
+      | Action::Scroll(..)
+      | Action::Access(_) => {
         panic!("{action:?} acts on an element, not at the focus")
       }
     }
@@ -1326,6 +1328,13 @@ impl Driver for Drawn {
   fn act(&mut self, found: &Element, action: &Action) {
     match action {
       Action::Click => Self::click(found, input::PRIMARY),
+      Action::ClickAt(x, y) => {
+        let point = Self::point(found, f64::from(*x), f64::from(*y));
+
+        if !Self::click_at(point, input::PRIMARY) {
+          eprintln!("skene testing: the click at {point:?} reached no window");
+        }
+      }
       Action::ContextClick => Self::click(found, input::SECONDARY),
       Action::Hover => {
         let point = Self::point(found, 0.5, 0.5);
@@ -1376,6 +1385,16 @@ impl Driver for Drawn {
           input.sync()?;
           input.wheel(*right, *down)
         });
+      }
+      Action::Access(request) => {
+        let asked = with_atspi(|atspi| atspi.request(&found.object, *request));
+
+        pump_until(Duration::from_secs(5), || asked.is_finished());
+        asked
+          .join()
+          .unwrap_or_else(|_| Err("the reader's call panicked".to_owned()))
+          .unwrap_or_else(|error| panic!("access: {error}"));
+        settle();
       }
       Action::Press(..) | Action::Type(_) | Action::Compose(_) | Action::Commit => {
         self.act_at_focus(action);

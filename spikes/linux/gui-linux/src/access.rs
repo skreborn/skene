@@ -2,11 +2,16 @@
 //! (Skene's own copy of `accesskit_unix` and `accesskit_atspi_common`, carrying EditableText,
 //! the missing Text methods, the relations, the expansion states and synchronous writes).
 //!
-//! Each node's role comes from its spec, its name, description and relations from the facts
-//! the views stated ([`skene_foundation::seam::access::AccessFacts`]), a drawn control's
-//! check, value and expansion from its behavior ([`Drawn::control_facts`]), and a text
-//! entry's text from its editor, one text run per laid line with each cluster's extent; a
-//! text's link runs are links beneath it, which a reader focuses and follows.
+//! Each node's role comes from its spec, its name, description, relations and a control's
+//! check, value and expansion from the facts its views and its behavior stated
+//! ([`skene_foundation::seam::access::AccessFacts`]), and a text entry's text from its editor,
+//! one text run per laid line with each cluster's extent; a text's link runs are links
+//! beneath it, which a reader focuses and follows. Inside a control, a part that is decoration
+//! is skipped and an unnamed box stands for its children, so a reader meets a control and its
+//! caption, not its boxes.
+//!
+//! A reader's request is reported to the control it is made of
+//! ([`skene_foundation::seam::report::Report::Access`]); its behavior answers it.
 //!
 //! A reader's action is carried to the main loop and applied there; the thread that asked
 //! waits until the tree's update with its effect is pushed, so a write reads back at once.
@@ -26,11 +31,12 @@ use accesskit::{
   TreeInfo, TreeUpdate,
 };
 use skene_foundation::{
-  layout::Rect,
+  layout::{Axis, Rect},
   seam::{
-    access::{Action, Checked, Role},
+    access::{Checked, Role},
     content::Unit,
-    node::{ControlKind, NodeKind},
+    control::AccessRequest,
+    node::{Interaction, NodeKind},
   },
   text::{Laid as _, editing::Command},
 };
@@ -54,10 +60,6 @@ const PASTE: i32 = -0x5c03;
 const WINDOW: u64 = 1 << 63;
 /// The tag of a text run's id.
 const RUN: u64 = 1 << 62;
-/// The tag of an open list's id.
-const LIST: u64 = 1 << 61;
-/// The tag of an open list's option's id.
-const OPTION: u64 = 1 << 60;
 /// The tag of a text's link run's id.
 const LINK: u64 = 1 << 59;
 
@@ -237,12 +239,6 @@ fn owner_of(id: AkId) -> Option<Node> {
 
 fn apply(shell: &mut Shell, request: &ActionRequest) {
   let Some(node) = owner_of(request.target_node) else {
-    if request.target_node.0 & OPTION != 0 && request.action == AkAction::Click {
-      let index = (request.target_node.0 & 0xfffff) as usize;
-
-      shell.access_choose(index);
-    }
-
     return;
   };
 
@@ -260,13 +256,13 @@ fn apply(shell: &mut Shell, request: &ActionRequest) {
 
   match (request.action, &request.data) {
     (AkAction::Focus, _) => shell.access_focus(&node),
-    (AkAction::Click, _) => shell.access_action(&node, Action::Activate),
-    (AkAction::Increment, _) => shell.access_action(&node, Action::Increment),
-    (AkAction::Decrement, _) => shell.access_action(&node, Action::Decrement),
-    (AkAction::Expand, _) => shell.access_action(&node, Action::Expand),
-    (AkAction::Collapse, _) => shell.access_action(&node, Action::Collapse),
+    (AkAction::Click, _) => shell.access_request(&node, AccessRequest::Activate),
+    (AkAction::Increment, _) => shell.access_request(&node, AccessRequest::Increment),
+    (AkAction::Decrement, _) => shell.access_request(&node, AccessRequest::Decrement),
+    (AkAction::Expand, _) => shell.access_request(&node, AccessRequest::Expand),
+    (AkAction::Collapse, _) => shell.access_request(&node, AccessRequest::Collapse),
     (AkAction::SetValue, Some(ActionData::NumericValue(value))) => {
-      shell.access_set_number(&node, *value);
+      shell.access_request(&node, AccessRequest::SetValue(*value));
     }
     (AkAction::SetValue, Some(ActionData::Value(value))) => {
       node.with_entry(|entry| {
@@ -361,8 +357,7 @@ fn clamp(text: &str, range: std::ops::Range<usize>) -> std::ops::Range<usize> {
 fn id_of(node: &Drawn) -> u64 {
   let id = node.id.get();
 
-  (u64::from(id.generation()) << 24 | u64::from(id.index()))
-    & !(WINDOW | RUN | LIST | OPTION | LINK)
+  (u64::from(id.generation()) << 24 | u64::from(id.index())) & !(WINDOW | RUN | LINK)
 }
 
 fn bounds(rect: Rect, scale: f64) -> AkRect {
@@ -409,13 +404,15 @@ const fn role(role: Role, secure: bool) -> AkRole {
   }
 }
 
-const fn ak_action(action: Action) -> AkAction {
-  match action {
-    Action::Activate | Action::Toggle => AkAction::Click,
-    Action::Increment => AkAction::Increment,
-    Action::Decrement => AkAction::Decrement,
-    Action::Expand => AkAction::Expand,
-    Action::Collapse => AkAction::Collapse,
+const fn ak_action(request: AccessRequest) -> AkAction {
+  match request {
+    AccessRequest::Activate | AccessRequest::Toggle => AkAction::Click,
+    AccessRequest::Increment => AkAction::Increment,
+    AccessRequest::Decrement => AkAction::Decrement,
+    AccessRequest::Expand => AkAction::Expand,
+    AccessRequest::Collapse => AkAction::Collapse,
+    AccessRequest::Focus => AkAction::Focus,
+    AccessRequest::SetValue(_) => AkAction::SetValue,
   }
 }
 
@@ -446,7 +443,7 @@ fn build(shell: &Shell) -> TreeUpdate {
   let mut focus = AkId(WINDOW);
 
   if let Some(root) = shell.root() {
-    let children = add(shell, root, &mut nodes, &mut map, scale);
+    let children = add(root, false, &mut nodes, &mut map, scale);
 
     window.set_children(children);
 
@@ -455,12 +452,6 @@ fn build(shell: &Shell) -> TreeUpdate {
         Some(link) => AkId(LINK | (id_of(node) << 16) | link as u64),
         None => AkId(id_of(node)),
       };
-    }
-
-    if let Some(list) = shell.popup()
-      && let Some(highlighted) = list.highlighted
-    {
-      focus = AkId(OPTION | (u64::from(list.owner.id.get().index()) << 20) | highlighted as u64);
     }
   }
 
@@ -480,11 +471,11 @@ fn build(shell: &Shell) -> TreeUpdate {
   }
 }
 
-/// Adds `node`'s accessible (or its children's, where it has none) and returns the ids its
-/// parent lists.
+/// Adds `node`'s accessible (or its children's, where it stands for them) and returns the
+/// ids its parent lists; `in_control` where it is built inside a control.
 fn add(
-  shell: &Shell,
   node: &Node,
+  in_control: bool,
   nodes: &mut Vec<(AkId, AkNode)>,
   map: &mut HashMap<u64, Weak<Drawn>>,
   scale: f64,
@@ -499,11 +490,22 @@ fn add(
     return Vec::new();
   }
 
-  if matches!(node.spec.kind, NodeKind::Scope | NodeKind::Segment) {
+  let is_control = node.spec.is_control();
+  let inner = in_control || is_control;
+  let stands_for_children = matches!(node.spec.kind, NodeKind::Scope | NodeKind::Segment)
+    || (in_control
+      && !is_control
+      && node.spec.role == Role::Generic
+      && node.spec.interaction == Interaction::None
+      && matches!(node.spec.kind, NodeKind::Layout(_) | NodeKind::Overlay)
+      && facts.name.is_none()
+      && facts.labelled_by.is_empty());
+
+  if stands_for_children {
     return node
       .children()
       .iter()
-      .flat_map(|child| add(shell, child, nodes, map, scale))
+      .flat_map(|child| add(child, inner, nodes, map, scale))
       .collect();
   }
 
@@ -566,9 +568,72 @@ fn add(
     ak.set_invalid(Invalid::True);
   }
 
-  if node.spec.acts {
+  if node.spec.interaction == Interaction::Acting {
     ak.add_action(AkAction::Focus);
     ak.add_action(AkAction::Click);
+  }
+
+  if is_control {
+    if facts.disabled {
+      ak.set_disabled();
+    } else if facts.focusable {
+      ak.add_action(AkAction::Focus);
+    }
+  }
+
+  if facts.read_only {
+    ak.set_read_only();
+  }
+
+  if let Some(checked) = facts.checked {
+    ak.set_toggled(match checked {
+      Checked::Off => Toggled::False,
+      Checked::On => Toggled::True,
+      Checked::Mixed => Toggled::Mixed,
+    });
+  }
+
+  if let Some(selected) = facts.selected {
+    ak.set_selected(selected);
+  }
+
+  if let Some(expanded) = facts.expanded {
+    ak.set_expanded(expanded);
+  }
+
+  if facts.has_popup {
+    ak.set_has_popup(HasPopup::Listbox);
+  }
+
+  if let Some(value) = &facts.value {
+    ak.set_numeric_value(value.now);
+    ak.set_min_numeric_value(value.minimum);
+    ak.set_max_numeric_value(value.maximum);
+
+    if let Some(step) = value.step {
+      ak.set_numeric_value_step(step);
+    }
+
+    if let Some(text) = &value.text {
+      ak.set_value(text.to_string());
+    }
+  }
+
+  if let Some(text) = &facts.value_text {
+    ak.set_value(text.to_string());
+  }
+
+  if let Some(axis) = facts.orientation {
+    ak.set_orientation(match axis {
+      Axis::Horizontal => Orientation::Horizontal,
+      Axis::Vertical => Orientation::Vertical,
+    });
+  }
+
+  if !facts.disabled {
+    for request in &facts.actions {
+      ak.add_action(ak_action(*request));
+    }
   }
 
   let mut children = Vec::new();
@@ -585,87 +650,13 @@ fn add(
       ak.set_value(text.to_string());
       add_links(node, &text, &mut children, nodes, map, rect, scale);
     }
-    NodeKind::Control(kind) => {
-      let open = shell
-        .popup()
-        .filter(|list| Rc::ptr_eq(&list.owner, node))
-        .map(|list| list.highlighted);
-      let behaved = node.control_facts(kind, open);
-
-      if contents.disabled {
-        ak.set_disabled();
-      } else if behaved.focusable {
-        ak.add_action(AkAction::Focus);
-      }
-
-      if behaved.read_only || facts.read_only {
-        ak.set_read_only();
-      }
-
-      if let Some(checked) = behaved.checked {
-        ak.set_toggled(match checked {
-          Checked::Off => Toggled::False,
-          Checked::On => Toggled::True,
-          Checked::Mixed => Toggled::Mixed,
-        });
-      }
-
-      if let Some(expanded) = behaved.expanded {
-        ak.set_expanded(expanded);
-      }
-
-      if behaved.has_popup {
-        ak.set_has_popup(HasPopup::Listbox);
-      }
-
-      if let Some(value) = &behaved.value {
-        ak.set_numeric_value(value.now);
-        ak.set_min_numeric_value(value.minimum);
-        ak.set_max_numeric_value(value.maximum);
-        ak.set_orientation(Orientation::Horizontal);
-
-        if let Some(range) = contents.range {
-          ak.set_numeric_value_step(range.step);
-        }
-      }
-
-      for action in &behaved.actions {
-        ak.add_action(ak_action(*action));
-      }
-
-      match kind {
-        ControlKind::Button => {
-          if facts.name.is_none() && facts.labelled_by.is_empty() {
-            ak.set_label(contents.caption.as_deref().unwrap_or_default().to_owned());
-          }
-        }
-        ControlKind::Picker => {
-          let chosen = contents.choice.as_ref().and_then(|choice| {
-            choice
-              .chosen
-              .and_then(|index| choice.options.get(index as usize).cloned())
-          });
-
-          ak.set_value(chosen.as_deref().unwrap_or_default().to_owned());
-
-          if let Some(list) = shell.popup().filter(|list| Rc::ptr_eq(&list.owner, node)) {
-            children.push(add_list(list, node, nodes, scale));
-          }
-        }
-        ControlKind::TextField | ControlKind::TextEditor => {
-          add_entry(node, &mut ak, &mut children, nodes, map, rect, scale);
-        }
-        _ => {}
-      }
+    NodeKind::Editable { .. } => {
+      add_entry(node, &mut ak, &mut children, nodes, map, rect, scale);
     }
-    _ => {}
-  }
-
-  if node.spec.kind != NodeKind::Control(ControlKind::TextField)
-    && node.spec.kind != NodeKind::Control(ControlKind::TextEditor)
-  {
-    for child in node.children() {
-      children.extend(add(shell, &child, nodes, map, scale));
+    _ => {
+      for child in node.children() {
+        children.extend(add(&child, inner, nodes, map, scale));
+      }
     }
   }
 
@@ -726,58 +717,6 @@ fn add_links(
   }
 }
 
-/// Adds the open list of `owner` beside it: a list box of options, the highlighted one
-/// focused.
-fn add_list(
-  list: &crate::popup::OpenList,
-  owner: &Node,
-  nodes: &mut Vec<(AkId, AkNode)>,
-  scale: f64,
-) -> AkId {
-  let index = u64::from(owner.id.get().index());
-  let id = AkId(LIST | index);
-  let anchor = list.placement.anchor;
-  let origin = (anchor.x, anchor.y + anchor.height + 2.);
-  let mut ak = AkNode::new(AkRole::ListBox);
-  let mut options = Vec::new();
-
-  ak.set_bounds(bounds(
-    Rect {
-      x: origin.0,
-      y: origin.1,
-      width: list.placement.size.0 as f32,
-      height: list.placement.size.1 as f32,
-    },
-    scale,
-  ));
-
-  for (position, option) in list.options.iter().enumerate() {
-    let option_id = AkId(OPTION | (index << 20) | position as u64);
-    let row = list.row_rect(position);
-    let mut item = AkNode::new(AkRole::ListBoxOption);
-
-    item.set_label(option.to_string());
-    item.set_selected(list.chosen == Some(position));
-    item.add_action(AkAction::Click);
-    item.add_action(AkAction::Focus);
-    item.set_bounds(bounds(
-      Rect {
-        x: origin.0 + row.x,
-        y: origin.1 + row.y,
-        ..row
-      },
-      scale,
-    ));
-    nodes.push((option_id, item));
-    options.push(option_id);
-  }
-
-  ak.set_children(options);
-  nodes.push((id, ak));
-
-  id
-}
-
 /// Gives a text entry its value, its text runs (one a laid line), its selection and its text
 /// actions.
 fn add_entry(
@@ -807,7 +746,7 @@ fn add_entry(
     let secure = entry.mask.is_masked();
     let text = entry.editor.text().to_owned();
     let laid = entry.editor.laid();
-    let origin = entry.origin(rect);
+    let origin = entry.origin(node.entry_content(rect));
     let lines = laid.lines();
     let shown = |slice: &str| -> String {
       if secure {

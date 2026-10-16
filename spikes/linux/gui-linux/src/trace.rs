@@ -6,7 +6,7 @@
 //!   and per window event the backends log;
 //! - `SKENE_SHOT=<path>`: every presented frame written there as a PNG (through a temporary
 //!   file and a rename, so a reader never sees half a file), and `SKENE_SHOT_POPUP=<path>`
-//!   every frame of a picker's open list;
+//!   every frame of an open overlay (a picker's list);
 //! - `SKENE_PROBE=<path>`: the pointer's last position in the window's geometry, as `x y`,
 //!   which an out-of-process driver reads to find the window on a compositor that does not
 //!   say where it put it.
@@ -193,7 +193,7 @@ pub fn shot(pixmap: &vello_cpu::Pixmap) {
   write_png(&path, pixmap);
 }
 
-/// Writes a presented frame of a picker's open list where `SKENE_SHOT_POPUP` asks.
+/// Writes a presented frame of the open overlay where `SKENE_SHOT_POPUP` asks.
 pub fn shot_popup(pixmap: &vello_cpu::Pixmap) {
   if let Some(path) = std::env::var_os("SKENE_SHOT_POPUP").filter(|path| !path.is_empty()) {
     write_png(std::path::Path::new(&path), pixmap);

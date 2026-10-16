@@ -1,8 +1,9 @@
 //! Layout: the foundation's engine over the realized tree. [`Host`] answers the engine's host
 //! protocol for every realized node (a container through its own engine, a text through its
-//! paragraph, a control through its metrics), a scroller lays its one child out at the height
-//! it asks for, and [`prepare`] gives every paragraph the run properties it inherits before a
-//! layout reads it.
+//! paragraph, a text entry through its editor), a scroller lays its one child out at the
+//! height it asks for, an overlay is out of its parent's flow and laid out apart
+//! ([`layout_overlay`]), and [`prepare`] gives every paragraph the run properties it inherits
+//! before a layout reads it.
 
 use std::{cell::Cell, rc::Rc};
 
@@ -14,7 +15,6 @@ use skene_foundation::{
 };
 
 use crate::{
-  controls,
   look::RunProps,
   node::{Drawn, Node},
   palette::{DEFAULT_SIZE, Palette},
@@ -125,8 +125,10 @@ fn measure_uncached(node: &Node, axis: Axis, for_size: Option<f32>) -> Measureme
         measured
       }
     }
-    NodeKind::Layout(_) => with_engine(node, |engine| engine.measure(axis, for_size)),
-    NodeKind::Control(kind) => node.measure_control(kind, axis, for_size),
+    NodeKind::Layout(_) | NodeKind::Overlay => {
+      with_engine(node, |engine| engine.measure(axis, for_size))
+    }
+    NodeKind::Editable { multiline } => node.measure_entry(multiline, axis, for_size),
     NodeKind::Text => {
       let Some(cell) = node.text.borrow().clone() else {
         return Measurement::default();
@@ -137,7 +139,7 @@ fn measure_uncached(node: &Node, axis: Axis, for_size: Option<f32>) -> Measureme
 
           return Measurement {
             minimum: intrinsic.min,
-            natural: intrinsic.max,
+            natural: intrinsic.max.max(cell.reserved_width()),
             baseline: None,
           };
         }
@@ -197,11 +199,11 @@ impl LayoutHost for Host {
   }
 
   fn constant_height(child: &Node) -> bool {
-    matches!(child.spec.kind, NodeKind::Control(kind) if kind != skene_foundation::seam::node::ControlKind::TextEditor)
+    child.spec.kind == NodeKind::Editable { multiline: false }
   }
 
   fn is_visible(child: &Node) -> bool {
-    !child.is_hidden()
+    !child.is_hidden() && !child.is_overlay()
   }
 
   fn is_container(child: &Node) -> bool {
@@ -277,13 +279,20 @@ fn lay_children(node: &Node, window: Rect) {
         },
       );
     }
-    NodeKind::Layout(_) => {
+    NodeKind::Layout(_) | NodeKind::Overlay => {
       with_engine(node, |engine| {
         engine.allocate((window.width, window.height), Some(window));
       });
     }
     _ => {}
   }
+}
+
+/// Lays the overlay `node`'s content out at `window`, its rectangle in the window.
+pub fn layout_overlay(node: &Node, window: Rect) {
+  node.frame.set(window);
+  node.laid_width.set(window.width);
+  lay_children(node, window);
 }
 
 /// Lays the tree under `root` out in a window `width` by `height`, the root at `origin`.
@@ -322,7 +331,7 @@ pub fn reach(root: &Node) {
     let mut reach = own;
 
     for child in node.children() {
-      if child.is_hidden() {
+      if child.is_hidden() || child.is_overlay() {
         continue;
       }
 
@@ -351,9 +360,16 @@ pub fn reach(root: &Node) {
 }
 
 /// Gives every paragraph under `root` its text in the run properties it inherits, rebuilding
-/// only those whose content or metrics changed: the strongest change made.
-pub fn prepare(root: &Node, palette: &Palette) -> Change {
-  fn go(node: &Node, inherited: &RunProps, palette: &Palette, change: &mut Change) {
+/// only those whose content or metrics changed: the strongest change made, the nodes whose
+/// paint alone changed pushed to `repainted`.
+pub fn prepare(root: &Node, palette: &Palette, repainted: &mut Vec<Node>) -> Change {
+  fn go(
+    node: &Node,
+    inherited: &RunProps,
+    palette: &Palette,
+    change: &mut Change,
+    repainted: &mut Vec<Node>,
+  ) {
     if !node.is_alive() {
       return;
     }
@@ -382,14 +398,27 @@ pub fn prepare(root: &Node, palette: &Palette) -> Change {
           (None, None) => Some((AttributedText::plain("", base), paragraph, Vec::new())),
         }
       }
-      NodeKind::Control(kind) => {
-        if controls::is_entry(kind) && node.prepare_entry(&props, palette) {
+      NodeKind::Editable { .. } => {
+        if node.prepare_entry(&props, palette) {
           *change = Change::Layout;
         }
 
-        node
-          .control_label(kind, &props, palette)
-          .map(|(text, paragraph)| (text, paragraph, Vec::new()))
+        let placeholder = node.contents.borrow().placeholder.clone();
+
+        placeholder.map(|placeholder| {
+          let ink = props.placeholder_color.unwrap_or(palette.dim);
+          let mut style = props.run_style(ink, DEFAULT_SIZE);
+
+          style.paint.color = ink;
+
+          (
+            AttributedText::plain(placeholder, style),
+            props
+              .paragraph_style()
+              .with_wrap(skene_foundation::text::Wrap::None),
+            Vec::new(),
+          )
+        })
       }
       _ => None,
     };
@@ -401,32 +430,42 @@ pub fn prepare(root: &Node, palette: &Palette) -> Change {
           .borrow_mut()
           .get_or_insert_with(TextCell::new)
           .clone();
-        let made = cell.set(text, paragraph);
+        let mut made = cell.set(text, paragraph);
+        let reserve = node.contents.borrow().reserve.clone();
+        let reserve_moved = cell.set_reserve(reserve, made == Change::Layout);
 
         cell.set_links(links);
 
-        *change = match (*change, made) {
-          (Change::Layout, _) | (_, Change::Layout) => Change::Layout,
-          (Change::Paint, _) | (_, Change::Paint) => Change::Paint,
-          _ => Change::None,
-        };
+        if made == Change::Layout && !reserve_moved && cell.keeps_its_size() {
+          // One line as wide as the widest text it reserves: its size does not move.
+          made = Change::Paint;
+        }
+
+        if reserve_moved {
+          made = Change::Layout;
+        }
+
+        match made {
+          Change::Layout => *change = Change::Layout,
+          Change::Paint => repainted.push(Rc::clone(node)),
+          Change::None => {}
+        }
       }
       None => {
-        if matches!(node.spec.kind, NodeKind::Control(_)) && node.text.borrow_mut().take().is_some()
-        {
-          *change = Change::Layout;
+        if node.is_entry() && node.text.borrow_mut().take().is_some() {
+          repainted.push(Rc::clone(node));
         }
       }
     }
 
     for child in node.children() {
-      go(&child, &props, palette, change);
+      go(&child, &props, palette, change, repainted);
     }
   }
 
   let mut change = Change::None;
 
-  go(root, &RunProps::default(), palette, &mut change);
+  go(root, &RunProps::default(), palette, &mut change, repainted);
 
   change
 }

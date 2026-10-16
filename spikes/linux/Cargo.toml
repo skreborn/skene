@@ -15,6 +15,7 @@ members = [
   "simple/core",
   "simple/gui",
   "terminal",
+  "third-party/acme-rating",
   "tools/shell",
 ]
 # gui-linux-gtk is the GTK realization and probes its probes, kept for reference.
@@ -38,6 +39,7 @@ unexpected_cfgs = { level = "warn", check-cfg = [
 ] }
 
 [workspace.dependencies]
+acme-rating = { path = "third-party/acme-rating" }
 kurbo = { default-features = false, features = ["std"], version = "=0.13.1" }
 parley = { default-features = false, features = ["complex-scripts", "std", "system"], version = "=0.12.0" }
 parley_emoji = "=0.12.0"

@@ -4,10 +4,12 @@
 //! alone, as a third party's library is.
 //!
 //! - [`SimplePalette`]: Simple's colors (from `skene-simple-core`) and its lengths in pixels.
-//! - [`SimpleCard`], [`SimpleToggle`] and [`SimpleButton`] are presets: each returns the
-//!   built-in view styled by the palette, so every member of the built-in applies and the
-//!   library forwards no setter. [`SimpleButton`] is the screen's primary action through the
-//!   semantic `Button::set_prominent`, which each platform draws its own way.
+//!   Beneath its theme the platform's accent ([`SystemColors`]) is Simple's, so a plain
+//!   built-in control takes Simple's accent too.
+//! - [`SimpleCard`], [`SimpleToggle`], [`SimpleCheckbox`] and [`SimpleButton`] are presets:
+//!   each returns the built-in view styled by the palette (a part restyled from the
+//!   built-in's own default, `Checkbox::default_face()`), so every member of the built-in
+//!   applies and the library forwards no setter.
 //! - [`SimpleDatePicker`] is a view of the library's own, a month's calendar composed of the
 //!   shared views (Skene draws every control on Linux, so there is no toolkit calendar to
 //!   adopt), controlled as the built-in controls are.
@@ -35,9 +37,9 @@
 use std::rc::Rc;
 
 use skene_gui::{
-  AxisAlignment, Border, Button, Color, Column, Container, Cx, Definitions, Derived, Flexible,
-  FontWeight, Grid, GridTrack, Node, Row, Signal, Text, Toggle, Token, TokenRef, TokenSet, View,
-  untrack,
+  AxisAlignment, Border, Button, Checkbox, Color, Column, Container, Cx, Definitions, Derived,
+  Flexible, FontWeight, Grid, GridTrack, Node, Row, Signal, State, SystemColors, Text, Toggle,
+  Token, TokenRef, TokenSet, Value, View, untrack,
 };
 pub use skene_simple_core::{SimpleColors, SimpleDate};
 
@@ -55,6 +57,10 @@ pub struct SimplePalette {
 impl SimplePalette {
   /// The accent: a control's on state, a primary button's fill.
   pub const ACCENT: TokenRef<Color> = skene_simple_core::ACCENT;
+  /// The accent under the pointer.
+  pub const ACCENT_HOVER: TokenRef<Color> = skene_simple_core::ACCENT_HOVER;
+  /// The accent while pressed.
+  pub const ACCENT_PRESSED: TokenRef<Color> = skene_simple_core::ACCENT_PRESSED;
   /// What sits on the accent.
   pub const ON_ACCENT: TokenRef<Color> = skene_simple_core::ON_ACCENT;
   /// A card's fill.
@@ -85,6 +91,16 @@ impl TokenSet for SimplePalette {
   fn define(&self, definitions: &mut Definitions) {
     self.colors.define(definitions);
     definitions.add(&self.radius).add(&self.gap);
+
+    // The platform's accent beneath a Simple theme is Simple's.
+    for (system, simple) in [
+      (SystemColors::ACCENT, Self::ACCENT),
+      (SystemColors::ACCENT_HOVER, Self::ACCENT_HOVER),
+      (SystemColors::ACCENT_PRESSED, Self::ACCENT_PRESSED),
+      (SystemColors::ON_ACCENT, Self::ON_ACCENT),
+    ] {
+      definitions.add(&Token::new(system, simple));
+    }
   }
 }
 
@@ -108,7 +124,8 @@ impl SimpleCard {
   }
 }
 
-/// Simple's toggle: the platform's own switch, its caption a gap from it.
+/// Simple's toggle: the built-in switch, its track in Simple's colors, its caption a gap from
+/// it.
 pub struct SimpleToggle;
 
 impl SimpleToggle {
@@ -118,12 +135,46 @@ impl SimpleToggle {
     reason = "a preset of a built-in view, so every member of the built-in applies"
   )]
   pub fn new(label: impl Into<String>) -> Toggle {
-    Toggle::new(label).set_spacing(SimplePalette::GAP)
+    Toggle::new(label)
+      .set_spacing(SimplePalette::GAP)
+      .set_track(
+        Toggle::default_track()
+          .set_background(
+            Value::from(SimplePalette::LINE).when(State::Checked, SimplePalette::ACCENT),
+          )
+          .set_ring_color(SimplePalette::ACCENT),
+      )
   }
 }
 
-/// Simple's primary button: the screen's primary action, each platform's own prominent button
-/// (`Button::set_prominent`; on Linux, drawn in the reader's accent).
+/// Simple's checkbox: the built-in checkbox, its face in Simple's colors.
+pub struct SimpleCheckbox;
+
+impl SimpleCheckbox {
+  /// A checkbox labelled `label`. It is a [`Checkbox`], so every member of one applies.
+  #[expect(
+    clippy::new_ret_no_self,
+    reason = "a preset of a built-in view, so every member of the built-in applies"
+  )]
+  pub fn new(label: impl Into<String>) -> Checkbox {
+    Checkbox::new(label).set_face(
+      Checkbox::default_face()
+        .set_background(
+          Value::from(SimplePalette::CARD)
+            .when(State::Checked, SimplePalette::ACCENT)
+            .when(State::Indeterminate, SimplePalette::ACCENT),
+        )
+        .set_border_color(
+          Value::from(SimplePalette::LINE).when(State::Checked, SimplePalette::ACCENT),
+        )
+        .set_color(SimplePalette::ON_ACCENT)
+        .set_ring_color(SimplePalette::ACCENT),
+    )
+  }
+}
+
+/// Simple's primary button: the screen's primary action, filled with Simple's accent and
+/// rounded by its radius.
 pub struct SimpleButton;
 
 impl SimpleButton {
@@ -133,12 +184,29 @@ impl SimpleButton {
     reason = "a preset of a built-in view, so every member of the built-in applies"
   )]
   pub fn new(label: impl Into<String>) -> Button {
-    Button::new(label).set_prominent(true)
+    Self::style(Button::new(label))
   }
 
   /// A button labelled what `label` returns, kept current. It is a [`Button`].
   pub fn derive<S: Into<String>>(label: impl Fn() -> S + 'static) -> Button {
-    Button::derive(label).set_prominent(true)
+    Self::style(Button::derive(label))
+  }
+
+  /// Simple's fill for a button: its accent and the accent's hover and pressed variants.
+  pub fn fill() -> Value<Color> {
+    Value::from(SimplePalette::ACCENT)
+      .when(State::Hovered, SimplePalette::ACCENT_HOVER)
+      .when(State::Pressed, SimplePalette::ACCENT_PRESSED)
+  }
+
+  /// `button` in Simple's style.
+  fn style(button: Button) -> Button {
+    button
+      .set_prominent(true)
+      .set_background(Self::fill())
+      .set_color(SimplePalette::ON_ACCENT)
+      .set_corner_radius(SimplePalette::RADIUS)
+      .set_ring_color(SimplePalette::ACCENT)
   }
 }
 
@@ -245,13 +313,35 @@ impl SimpleDatePicker {
 
     for day in 1..=SimpleDate::days_in(year, month) {
       let this = SimpleDate { year, month, day }.to_string();
-      let date = Rc::clone(date);
-      let change = change.cloned();
-      let picked = this.clone();
+      let chosen = {
+        let date = Rc::clone(date);
 
+        Rc::new(move || date() == this)
+      };
+      let change = change.cloned();
+      let picked = SimpleDate { year, month, day }.to_string();
+      let (prominent, filled, inked) = (Rc::clone(&chosen), Rc::clone(&chosen), chosen);
+
+      // The day shown is Simple's primary button; the others are plain ones.
       grid = grid.add_child(
-        Button::new(day.to_string())
-          .derive_prominent(move || date() == this)
+        SimpleButton::new(day.to_string())
+          .derive_prominent(move || prominent())
+          .derive_background(move || {
+            if filled() {
+              SimpleButton::fill()
+            } else {
+              Value::from(SystemColors::CONTROL)
+                .when(State::Hovered, SystemColors::CONTROL_HOVER)
+                .when(State::Pressed, SystemColors::CONTROL_PRESSED)
+            }
+          })
+          .derive_color(move || {
+            if inked() {
+              SimplePalette::ON_ACCENT
+            } else {
+              SystemColors::INK
+            }
+          })
           .handle_activate(move || {
             if let Some(change) = &change {
               change(picked.clone());
@@ -310,6 +400,7 @@ impl View for SimpleDatePicker {
 /// What a Simple app imports.
 pub mod prelude {
   pub use crate::{
-    SimpleButton, SimpleCard, SimpleDate, SimpleDatePicker, SimplePalette, SimpleToggle,
+    SimpleButton, SimpleCard, SimpleCheckbox, SimpleDate, SimpleDatePicker, SimplePalette,
+    SimpleToggle,
   };
 }

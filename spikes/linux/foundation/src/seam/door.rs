@@ -11,6 +11,13 @@
 //! The other way round needs nothing of its own: a realized Skene subtree is
 //! [`crate::seam::Realization::widget`] of its root, and a native container lays it out as any
 //! widget.
+//!
+//! The door is a compositor platform's (iOS, Android, macOS, the web), whose toolkit has views
+//! worth adopting. A window platform (Linux, Windows) composites only windows, and Skene owns
+//! the whole window: there is no toolkit's view inside it to adopt, so its door takes in only
+//! what Skene drew itself (on Linux, [`crate::seam::Realization::Widget`] is its own realized
+//! node). A library's control there is drawn as a built-in's is: a control over a behavior of
+//! its own ([`crate::behavior::Behavior`]), its parts Skene's views and a painted canvas.
 
 use crate::seam::content::{Content, PropValue};
 

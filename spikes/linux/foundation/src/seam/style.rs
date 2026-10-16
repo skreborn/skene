@@ -519,33 +519,12 @@ impl Record {
   /// realization reports for a node where it does not keep them.
   #[must_use]
   pub fn states(&self, include: impl Fn(Group) -> bool) -> StateSet {
-    let states = Cell::new(StateSet::EMPTY);
-
-    for (prop, declared) in self.entries() {
-      if !include(prop.group()) {
-        continue;
-      }
-
-      let scope = ScopeChain::root();
-      let mut cx = CompileCx {
-        keep: Keep::Everything,
-        scope: &scope,
-        state: &|_| false,
-        slots: Vec::new(),
-      };
-
-      crate::untrack(|| {
-        if let Some(kept) = declared.compile(&mut cx) {
-          for (condition, _) in &kept.variants {
-            if let KeptCondition::State(state) = condition {
-              states.set(states.get().with(*state));
-            }
-          }
-        }
-      });
-    }
-
-    states.get()
+    self
+      .entries()
+      .filter(|(prop, _)| include(prop.group()))
+      .fold(StateSet::EMPTY, |states, (_, declared)| {
+        states.union(declared.states())
+      })
   }
 }
 

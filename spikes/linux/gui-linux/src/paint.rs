@@ -1,6 +1,7 @@
-//! Painting the realized tree into a frame: each box's shadows, fill, border, its content (a
-//! text, a control), its children clipped where it clips, through vello_cpu's paths, and every
-//! text's glyphs composited afterwards as FreeType masks under the reader's font settings.
+//! Painting the realized tree into a frame: each box's shadows, fill, border and ring, its
+//! content (a text, a text entry, a recorded picture), its children clipped where it clips,
+//! through vello_cpu's paths, and every text's glyphs composited afterwards as FreeType masks
+//! under the reader's font settings. An overlay's subtree is painted on its own surface.
 
 use std::rc::Rc;
 
@@ -401,12 +402,14 @@ pub fn painted_bounds(node: &Node, rect: Rect) -> Rect {
   }
 }
 
-/// The node with focus that shows a ring, and the node the pointer presses: what the painter
-/// draws differently from the node's own states.
+/// What the painter draws differently from the nodes' own styles: where focus is, and the
+/// focused link run.
 #[derive(Clone, Default)]
 pub struct Marks {
   /// The focused node, where focus shows.
   pub focus: Option<Node>,
+  /// The focused node, whether focus shows or not: a text entry draws its caret.
+  pub focused: Option<Node>,
   /// The focused link run of the focused text, by its bytes.
   pub link: Option<std::ops::Range<usize>>,
 }
@@ -529,7 +532,14 @@ fn paint_node(
         }
       }
     }
-    NodeKind::Control(kind) => node.paint_control(kind, canvas, rect, marks),
+    NodeKind::Editable { .. } => {
+      let focused = marks
+        .focused
+        .as_ref()
+        .is_some_and(|focused| Rc::ptr_eq(focused, node));
+
+      node.paint_entry(canvas, rect, focused);
+    }
     NodeKind::Painted => {
       if let Some(picture) = node.contents.borrow().picture.clone() {
         canvas.picture(&picture, rect, node.ink.get());
@@ -545,7 +555,7 @@ fn paint_node(
   paint_children(node, canvas, (rect.x - sx, rect.y - sy), region, marks);
 
   if scrolls {
-    node.paint_scroll_bar(canvas, rect);
+    paint_scroll_bar(node, canvas, rect);
   }
 
   if let Some(previous) = previous_clip {
@@ -566,27 +576,43 @@ fn paint_node(
     look.ring_color.unwrap_or_else(|| node.ink.get()),
   );
 
-  if marks
-    .focus
-    .as_ref()
-    .is_some_and(|focused| Rc::ptr_eq(focused, node))
-    && !matches!(node.spec.kind, NodeKind::Control(_) | NodeKind::Text)
-    && !node
-      .interest
-      .get()
-      .states
-      .contains(skene_foundation::State::FocusVisible)
-  {
-    focus_ring(canvas, rect, look.corners);
-  }
-
   if opacity_layer {
     canvas.ctx.pop_layer();
     canvas.opacity = previous_opacity;
   }
 }
 
-/// The ring a focused node shows where focus shows and its style does not answer it.
+/// Draws the bar a scrolled box shows where its content overflows it.
+fn paint_scroll_bar(node: &Node, canvas: &mut Canvas<'_>, rect: Rect) {
+  let (_, extent) = node.extent.get();
+  let (_, offset) = node.scroll.get();
+
+  if extent <= rect.height + 0.5 {
+    return;
+  }
+
+  let length = (rect.height * rect.height / extent).max(24.);
+  let travel = rect.height - length;
+  let at = travel * (offset / (extent - rect.height)).clamp(0., 1.);
+  let hovered = node.states.get().contains(skene_foundation::State::Hovered);
+  let ink = canvas
+    .palette
+    .ink
+    .with_alpha(if hovered { 110 } else { 70 });
+
+  canvas.fill(
+    Rect {
+      x: rect.x + rect.width - 7.,
+      y: rect.y + at + 2.,
+      width: 4.,
+      height: length - 4.,
+    },
+    Corners::all(2.),
+    ink,
+  );
+}
+
+/// The ring a focused link run shows where focus shows.
 pub fn focus_ring(canvas: &mut Canvas<'_>, rect: Rect, corners: Corners) {
   let grown = Rect {
     x: rect.x - 2.,
@@ -613,7 +639,9 @@ fn paint_children(
   marks: &Marks,
 ) {
   for child in node.children() {
-    paint_node(&child, canvas, origin, region, marks);
+    if !child.is_overlay() {
+      paint_node(&child, canvas, origin, region, marks);
+    }
   }
 }
 

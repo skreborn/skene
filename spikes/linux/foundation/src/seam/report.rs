@@ -4,7 +4,10 @@ use std::rc::Rc;
 
 use crate::{
   State,
-  seam::content::{Content, PropValue, Verdict},
+  seam::{
+    content::{Content, PropValue, Verdict},
+    control::{AccessRequest, Prevent},
+  },
 };
 
 /// A pointer's phase.
@@ -22,15 +25,19 @@ pub enum PointerPhase {
   Cancel,
 }
 
-/// A pointer event at a node, in the node's coordinates.
+/// A pointer event at a node, in the node's coordinates and the window's.
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct PointerEvent {
   /// The phase.
   pub phase: PointerPhase,
-  /// The horizontal position.
+  /// The horizontal position, from the node's leading edge.
   pub x: f32,
-  /// The vertical position.
+  /// The vertical position, from the node's top.
   pub y: f32,
+  /// The horizontal position in the window: what a part's frame is measured against.
+  pub window_x: f32,
+  /// The vertical position in the window.
+  pub window_y: f32,
   /// The button, 0 the primary.
   pub button: u8,
 }
@@ -99,11 +106,15 @@ pub enum Report {
     /// Where the caret is.
     caret: usize,
   },
-  /// The reader activated the node (a button's click, `Enter` in a field, a box that acts).
+  /// A click: a primary press and its release over one owner (a control, a box that acts).
   /// It does not climb.
-  Activate,
-  /// A reader's action on a drawn control.
-  Action(crate::seam::access::Action),
+  Click,
+  /// What a reader asked of the node through its accessibility layer: answered by the
+  /// control's behavior, an unanswered `Activate` being a click.
+  Access(AccessRequest),
+  /// A press outside an open overlay and its anchor, or the platform's own dismissal of it:
+  /// heard by the overlay's dismiss handler.
+  Dismiss,
   /// The reader followed a link to this destination: an acting box with one, or a link run
   /// of rich text. It climbs to the nearest follow handler; where none takes it, the
   /// realization opens it with the platform.
@@ -121,14 +132,15 @@ pub enum Report {
     holds: bool,
   },
   /// A pointer event at the deepest node under the pointer, where asked
-  /// ([`Interest::pointer`]). It climbs the scene and stops at the first control or acting
-  /// box: a view that handles an interaction owns it.
+  /// ([`Interest::pointer`]), or at the control a drag captured it for. It climbs the scene
+  /// and stops at the first control or acting box: a view that handles an interaction owns
+  /// it; a disabled control swallows it.
   Pointer(PointerEvent),
   /// The node's size changed, where asked ([`Interest::size`]): what it was laid out at.
   Size(Size),
-  /// A key event at the focused node, where asked ([`Interest::keys`]), reported once and
-  /// only when the toolkit's own control did not consume it. It climbs every ancestor,
-  /// controls included, until a handler stops it.
+  /// A key event at the focused node, before the platform's default (moving focus,
+  /// scrolling, a text entry's editing). It climbs every ancestor, each control's behavior
+  /// answering first, until a verdict stops it.
   Key(KeyEvent),
 }
 
@@ -148,12 +160,11 @@ pub struct Size {
 pub enum Answer {
   /// A change's verdict.
   Verdict(Verdict),
-  /// An event's fate: whether a handler consumed it, so the realization stops the
-  /// toolkit's own handling and propagation (a toolkit claims the gesture or stops the key,
-  /// the web prevents the default and stops propagation).
+  /// An event's fate: what the handlers it met keep from happening, folded, so the
+  /// realization runs the platform's default unless one prevented it.
   Event {
-    /// Whether a handler handled it.
-    handled: bool,
+    /// What was prevented.
+    prevented: Prevent,
   },
   /// Nothing to answer.
   None,

@@ -6,8 +6,8 @@ use std::{cell::Cell, rc::Rc};
 use skene_foundation::{
   Color, State,
   seam::{
-    content::contents,
-    node::{ControlKind, LayoutKind, NodeKind, NodeSpec},
+    control::{ControlDispatch, Prevent},
+    node::{Interaction, LayoutKind, NodeKind, NodeSpec},
     record::{Record, keys},
     tree,
   },
@@ -70,10 +70,15 @@ fn a_row_restyles_under_hover_and_press_and_activates_on_click_outside_its_switc
     );
     let mut centered = Record::new();
 
-    centered.set(keys::SELF_ALIGNMENT, skene_foundation::Alignment::CENTER);
+    centered
+      .set(keys::SELF_ALIGNMENT, skene_foundation::Alignment::CENTER)
+      .set(keys::WIDTH, skene_foundation::Dimension::Length(44.))
+      .set(keys::HEIGHT, skene_foundation::Dimension::Length(24.));
 
     let (switch, _) = node(
-      NodeSpec::new(NodeKind::Control(ControlKind::Switch)),
+      NodeSpec::new(NodeKind::Layout(LayoutKind::Row))
+        .with_role(skene_foundation::seam::access::Role::Switch)
+        .with_interaction(Interaction::Control { drag: None }),
       centered,
     );
     let activations = Rc::new(Cell::new(0));
@@ -85,11 +90,20 @@ fn a_row_restyles_under_hover_and_press_and_activates_on_click_outside_its_switc
       tree::handle_activate::<Linux>(row, move || activations.set(activations.get() + 1));
     }
 
-    tree::control::<Linux, _>(
+    tree::handle_control::<Linux>(
       switch,
-      contents::ON,
-      move || on.get(),
-      Some(Box::new(move |value| on.set(value))),
+      ControlDispatch {
+        key: Rc::new(|_| Prevent::None),
+        pointer: Rc::new(|_| Prevent::None),
+        click: Rc::new(move || {
+          on.set(!on.get_untracked());
+
+          Prevent::All
+        }),
+        access: Rc::new(|_| false),
+        blur: Rc::new(|| {}),
+        disabled: Rc::new(|| false),
+      },
     );
     tree::attach::<Linux>(root, row, 0);
     tree::attach::<Linux>(row, switch, 0);

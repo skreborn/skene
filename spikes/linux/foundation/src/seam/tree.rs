@@ -9,12 +9,13 @@ use std::{
 
 use crate::{
   Definitions, Effect, NodeId, Owner, Scene, Signal, State, StateSet,
-  layout::ResolvedLayout,
+  layout::{Rect, ResolvedLayout},
   seam::{
     LayoutOwner, Realization,
     access::AccessFacts,
     activity,
     content::{Content, ContentKey, ContentType, Controller, PropValue, Verdict, writing},
+    control::{AccessRequest, ControlDispatch, ControlState, Part, Prevent},
     door::ControlSink,
     node::{NodeKind, NodeSpec},
     record::{Group, Record},
@@ -43,6 +44,17 @@ impl From<()> for Bubbling {
 
 type Handler<E> = Rc<dyn Fn(&E) -> Bubbling>;
 
+impl Bubbling {
+  /// The verdict a box's answer gives: it keeps no platform default from running.
+  #[must_use]
+  pub const fn verdict(self) -> Prevent {
+    match self {
+      Self::Continue => Prevent::None,
+      Self::Stop => Prevent::Bubbling,
+    }
+  }
+}
+
 #[derive(Default)]
 struct Handlers {
   activate: Option<Rc<dyn Fn()>>,
@@ -51,6 +63,7 @@ struct Handlers {
   follow: Option<Handler<str>>,
   focus: Option<Rc<dyn Fn(bool)>>,
   size: Option<Rc<dyn Fn(Size)>>,
+  dismiss: Option<Rc<dyn Fn()>>,
 }
 
 struct Entry<R: Realization> {
@@ -58,6 +71,10 @@ struct Entry<R: Realization> {
   native: Option<R::Node>,
   scope: ScopeChain,
   states: Signal<StateSet>,
+  control: Option<NodeId>,
+  control_state: Option<Signal<ControlState>>,
+  part: Option<Part>,
+  dispatch: Option<Rc<ControlDispatch>>,
   record: Option<Rc<Record>>,
   controls: HashMap<Content, Rc<Controller<R>>>,
   sink: Option<Rc<dyn ControlSink>>,
@@ -122,13 +139,25 @@ pub fn children<R: Realization>(id: NodeId) -> Vec<NodeId> {
   with::<R, _>(|tree| tree.scene.children(id).to_vec())
 }
 
-fn insert_entry<R: Realization>(spec: NodeSpec, scope: &ScopeChain) -> NodeId {
+fn insert_entry<R: Realization>(
+  spec: NodeSpec,
+  scope: &ScopeChain,
+  control: Option<NodeId>,
+) -> NodeId {
+  let control_state = spec
+    .is_control()
+    .then(|| Signal::new(ControlState::DEFAULT));
+
   with::<R, _>(|tree| {
-    tree.scene.insert(Entry {
+    let id = tree.scene.insert(Entry {
       spec,
       native: None,
       scope: scope.clone(),
       states: Signal::new(StateSet::EMPTY),
+      control,
+      control_state,
+      part: None,
+      dispatch: None,
       record: None,
       controls: HashMap::new(),
       sink: None,
@@ -136,7 +165,15 @@ fn insert_entry<R: Realization>(spec: NodeSpec, scope: &ScopeChain) -> NodeId {
       interest: Interest::default(),
       access: Vec::new(),
       access_version: None,
-    })
+    });
+
+    if spec.is_control()
+      && let Some(entry) = tree.scene.get_mut(id)
+    {
+      entry.control = Some(id);
+    }
+
+    id
   })
 }
 
@@ -159,10 +196,16 @@ pub const fn realizes<R: Realization>(kind: NodeKind) -> bool {
   }
 }
 
-/// Creates a node of `spec` in `scope`, realized at once where its kind is ([`realizes`]),
-/// forgotten when the current owner is disposed.
-pub fn create<R: Realization>(spec: NodeSpec, scope: &ScopeChain) -> NodeId {
-  let id = insert_entry::<R>(spec, scope);
+/// Creates a node of `spec` in `scope`, built inside `control` (the nearest enclosing control,
+/// whose states its control-scoped conditions resolve against; a control is its own),
+/// realized at once where its kind is ([`realizes`]), forgotten when the current owner is
+/// disposed.
+pub fn create<R: Realization>(
+  spec: NodeSpec,
+  scope: &ScopeChain,
+  control: Option<NodeId>,
+) -> NodeId {
+  let id = insert_entry::<R>(spec, scope, control);
 
   if realizes::<R>(spec.kind) {
     set_native::<R>(id, R::create(id, &spec));
@@ -181,7 +224,7 @@ pub fn adopt<R: Realization>(
   scope: &ScopeChain,
   sink: Option<Rc<dyn ControlSink>>,
 ) -> NodeId {
-  let id = insert_entry::<R>(spec, scope);
+  let id = insert_entry::<R>(spec, scope, None);
   let native = R::adopt(id, widget, &spec);
 
   with::<R, _>(|tree| {
@@ -207,6 +250,7 @@ fn forget_on_cleanup<R: Realization>(id: NodeId) {
 
         entry.controls.clear();
         entry.handlers = Handlers::default();
+        entry.dispatch = None;
         entry.access.clear();
         entry.native.take()
       });
@@ -324,17 +368,94 @@ pub fn remove<R: Realization>(id: NodeId) {
   with::<R, _>(|tree| tree.scene.remove(id));
 }
 
+/// What a node's state conditions resolve against: its own reported states, and, for a node
+/// built inside a control, the control's reported states and its [`ControlState`].
+#[derive(Clone, Copy)]
+struct Resolution {
+  own: Signal<StateSet>,
+  control: Option<(Signal<StateSet>, Option<Signal<ControlState>>)>,
+}
+
+impl Resolution {
+  /// Whether `state` holds now, subscribing the running effect.
+  fn holds(&self, state: State) -> bool {
+    match &self.control {
+      Some((reported, control)) if state.follows_control() => {
+        reported.get().contains(state) || control.is_some_and(|control| control.get().holds(state))
+      }
+      _ if state.is_control_state() => false,
+      _ => self.own.get().contains(state),
+    }
+  }
+
+  /// Every state that holds now, subscribing the running effect.
+  fn holding(&self) -> StateSet {
+    State::ALL
+      .into_iter()
+      .filter(|state| self.holds(*state))
+      .collect()
+  }
+}
+
+fn resolution<R: Realization>(id: NodeId) -> Option<Resolution> {
+  with::<R, _>(|tree| {
+    let entry = tree.scene.get(id)?;
+    let control = entry.control.and_then(|control| {
+      let control = tree.scene.get(control)?;
+
+      Some((control.states, control.control_state))
+    });
+
+    Some(Resolution {
+      own: entry.states,
+      control,
+    })
+  })
+}
+
+/// Asks the realization for `states` at `id`, beside what it reports there already.
+fn watch_states<R: Realization>(id: NodeId, states: StateSet) {
+  if states.is_empty() {
+    return;
+  }
+
+  let watched = with::<R, _>(|tree| {
+    let entry = tree.scene.get_mut(id)?;
+    let grown = entry.interest.states.union(states);
+
+    if grown == entry.interest.states {
+      return None;
+    }
+
+    entry.interest.states = grown;
+
+    Some((entry.native.clone()?, entry.interest))
+  });
+
+  if let Some((native, interest)) = watched {
+    R::watch(&native, interest);
+  }
+}
+
 /// Gives a node its record: one effect keeps its compiled style on the realization and, on
 /// [`LayoutOwner::Engine`] platforms, one keeps its resolved layout on its host container.
+///
+/// Its state conditions resolve against its own states, and, where it is built inside a
+/// control, its focus and press and the control's own states against the control's
+/// ([`State::follows_control`]): the realization is asked for each where it is reported, at
+/// the node or at its control, and the control-scoped states never.
 pub fn set_record<R: Realization>(id: NodeId, record: Record) {
   let record = Rc::new(record);
-  let Some((native, scope, states)) = with::<R, _>(|tree| {
+  let Some((native, scope, control)) = with::<R, _>(|tree| {
     let entry = tree.scene.get_mut(id)?;
 
     entry.record = Some(Rc::clone(&record));
 
-    Some((entry.native.clone()?, entry.scope.clone(), entry.states))
+    Some((entry.native.clone()?, entry.scope.clone(), entry.control))
   }) else {
+    return;
+  };
+  let Some(resolution) = resolution::<R>(id) else {
     return;
   };
   let engine = R::LAYOUT == LayoutOwner::Engine;
@@ -346,18 +467,20 @@ pub fn set_record<R: Realization>(id: NodeId, record: Record) {
     watched = watched.union(record.states(styled));
   }
 
-  if !watched.is_empty() {
-    let interest = with::<R, _>(|tree| {
-      let entry = tree.scene.get_mut(id)?;
+  let (mut own, mut at_control) = (StateSet::EMPTY, StateSet::EMPTY);
 
-      entry.interest.states = entry.interest.states.union(watched);
-
-      Some(entry.interest)
-    });
-
-    if let Some(interest) = interest {
-      R::watch(&native, interest);
+  for state in watched.iter() {
+    match control {
+      Some(_) if state.is_control_state() => {}
+      Some(_) if state.follows_control() => at_control = at_control.with(state),
+      _ => own = own.with(state),
     }
+  }
+
+  watch_states::<R>(id, own);
+
+  if let Some(control) = control {
+    watch_states::<R>(control, at_control);
   }
 
   {
@@ -365,8 +488,7 @@ pub fn set_record<R: Realization>(id: NodeId, record: Record) {
     let last = RefCell::new(None::<CompiledStyle>);
 
     Effect::new(move || {
-      let holding = states.get();
-      let compiled = record.compile(R::KEEP, styled, &scope, &|state| holding.contains(state));
+      let compiled = record.compile(R::KEEP, styled, &scope, &|state| resolution.holds(state));
       let mut last = last.borrow_mut();
 
       match last.as_ref() {
@@ -387,9 +509,8 @@ pub fn set_record<R: Realization>(id: NodeId, record: Record) {
     let last = RefCell::new(None::<ResolvedLayout>);
 
     Effect::new(move || {
-      let holding = states.get();
       let compiled = record.compile(Keep::Nothing, laid_out, &scope, &|state| {
-        holding.contains(state)
+        resolution.holds(state)
       });
       let layout = ResolvedLayout::from_compiled(&compiled);
       let mut last = last.borrow_mut();
@@ -536,6 +657,61 @@ pub fn control<R: Realization, T: ContentType>(
   controller
 }
 
+/// Keeps `content` at what `derive` returns, erased: [`bind`] for a caller holding the
+/// content's name rather than its typed key (a behavior through its handle).
+///
+/// # Panics
+///
+/// Where the node's kind does not take `content`, or `derive` returns another type.
+pub fn bind_value<R: Realization>(id: NodeId, content: Content, derive: Rc<dyn Fn() -> PropValue>) {
+  let last = RefCell::new(None::<PropValue>);
+
+  check_takes::<R>(id, content);
+  Effect::new(move || {
+    let value = derive();
+    let mut last = last.borrow_mut();
+
+    if last.as_ref() != Some(&value) {
+      untrack(|| writing(|| write_content::<R>(id, content, &value)));
+      *last = Some(value);
+    }
+  });
+}
+
+/// Makes `content` controlled, erased: [`control`] for a caller holding the content's name
+/// rather than its typed key (a behavior through its handle).
+///
+/// # Panics
+///
+/// Where the node's kind does not take `content`.
+pub fn control_value<R: Realization>(
+  id: NodeId,
+  content: Content,
+  derive: Rc<dyn Fn() -> PropValue>,
+  handler: Rc<dyn Fn(PropValue)>,
+) {
+  check_takes::<R>(id, content);
+
+  let controller = Controller::<R>::new(
+    id,
+    content,
+    Box::new(move || derive()),
+    Some(Box::new(move |value| handler(value))),
+  );
+
+  with::<R, _>(|tree| {
+    if let Some(entry) = tree.scene.get_mut(id) {
+      entry.controls.insert(content, Rc::clone(&controller));
+    }
+  });
+
+  Effect::new(move || {
+    let truth = controller.tracked_truth();
+
+    untrack(|| controller.show(&truth));
+  });
+}
+
 /// The controller of `content` on `id`.
 #[must_use]
 pub fn controller<R: Realization>(id: NodeId, content: Content) -> Option<Rc<Controller<R>>> {
@@ -556,7 +732,7 @@ fn watch_now<R: Realization>(id: NodeId, change: impl FnOnce(&mut Entry<R>)) {
   }
 }
 
-/// Runs `activate` when the node is activated.
+/// Runs `activate` when the box is clicked, or activated from the keyboard or by a reader.
 pub fn handle_activate<R: Realization>(id: NodeId, activate: impl Fn() + 'static) {
   with::<R, _>(|tree| {
     if let Some(entry) = tree.scene.get_mut(id) {
@@ -588,8 +764,8 @@ pub fn handle_pointer<R: Realization, B: Into<Bubbling>>(
   });
 }
 
-/// Runs `key` with the key events while focus is on the node or beneath it, those the
-/// toolkit's controls did not consume.
+/// Runs `key` with the key events while focus is on the node or beneath it, after the
+/// behaviors of the controls between, unless one stopped it.
 pub fn handle_key<R: Realization, B: Into<Bubbling>>(
   id: NodeId,
   key: impl Fn(&KeyEvent) -> B + 'static,
@@ -614,6 +790,100 @@ pub fn handle_size<R: Realization>(id: NodeId, size: impl Fn(Size) + 'static) {
     entry.handlers.size = Some(Rc::new(size));
     entry.interest.size = true;
   });
+}
+
+/// Runs `dismiss` when the overlay `id` is dismissed: a press outside it and its anchor, or
+/// the platform's own dismissal.
+pub fn handle_dismiss<R: Realization>(id: NodeId, dismiss: impl Fn() + 'static) {
+  with::<R, _>(|tree| {
+    if let Some(entry) = tree.scene.get_mut(id) {
+      entry.handlers.dismiss = Some(Rc::new(dismiss));
+    }
+  });
+}
+
+/// Registers what the control `id` answers: its behavior's handlers. The realization is asked
+/// for its keys, its pointer events and its focus.
+pub fn handle_control<R: Realization>(id: NodeId, dispatch: ControlDispatch) {
+  watch_now::<R>(id, |entry| {
+    entry.dispatch = Some(Rc::new(dispatch));
+    entry.interest.pointer = true;
+    entry.interest.keys = true;
+    entry.interest.focus = true;
+  });
+}
+
+/// Keeps the control `id`'s own state at what `derive` returns: what the control-scoped
+/// conditions of every node built inside it resolve against.
+pub fn set_control_state<R: Realization>(id: NodeId, derive: impl Fn() -> ControlState + 'static) {
+  let Some(state) = with::<R, _>(|tree| tree.scene.get(id)?.control_state) else {
+    return;
+  };
+
+  Effect::new(move || {
+    let next = derive();
+
+    if state.get_untracked() != next {
+      state.set(next);
+    }
+  });
+}
+
+/// Records `id` as `part` of the control it is built inside.
+pub fn set_part<R: Realization>(id: NodeId, part: Part) {
+  with::<R, _>(|tree| {
+    if let Some(entry) = tree.scene.get_mut(id) {
+      entry.part = Some(part);
+    }
+  });
+}
+
+/// The part `id` was recorded as.
+#[must_use]
+pub fn part_of<R: Realization>(id: NodeId) -> Option<Part> {
+  with::<R, _>(|tree| tree.scene.get(id)?.part)
+}
+
+/// The control `id` is built inside (a control is its own), where it is built inside one.
+#[must_use]
+pub fn control_of<R: Realization>(id: NodeId) -> Option<NodeId> {
+  with::<R, _>(|tree| tree.scene.get(id)?.control)
+}
+
+/// The control's first node recorded as `part`, in the scene's order; `Part::Root` the
+/// control's own node.
+#[must_use]
+pub fn find_part<R: Realization>(control: NodeId, part: Part) -> Option<NodeId> {
+  if part == Part::Root {
+    return Some(control);
+  }
+
+  with::<R, _>(|tree| {
+    tree
+      .scene
+      .descendants(control)
+      .into_iter()
+      .map(|(id, _)| id)
+      .find(|id| {
+        tree
+          .scene
+          .get(*id)
+          .is_some_and(|entry| entry.part == Some(part) && entry.control == Some(control))
+      })
+  })
+}
+
+/// `id`'s rectangle in window pixels, as last laid out.
+#[must_use]
+pub fn frame<R: Realization>(id: NodeId) -> Option<Rect> {
+  native::<R>(id).and_then(|native| R::frame(&native))
+}
+
+/// Moves focus to `id`, where it is realized.
+pub fn focus<R: Realization>(id: NodeId) {
+  if let Some(native) = native::<R>(id) {
+    R::focus(&native);
+  }
 }
 
 /// Adds a view's contribution to the node's accessibility facts, kept current: one effect
@@ -702,10 +972,12 @@ pub fn scope<R: Realization>(
 /// What a realization calls when the reader acted at `id`: runs the handlers and answers.
 ///
 /// A change or an edit is answered with its verdict at once, so a toolkit that asks before
-/// applying is told what to apply instead and one that applied first what to repair to. A
-/// pointer event climbs the scene from `id`, deepest first, and stops at a control or an
-/// acting box (a view that handles an interaction owns it) or at a handler that stops it; a
-/// key event or a followed destination climbs until a handler stops it.
+/// applying is told what to apply instead and one that applied first what to repair to. A key
+/// climbs from the focused node, each control's behavior answering before the box's handler,
+/// until a verdict stops it; a pointer event climbs from the deepest node and stops at a
+/// control or an acting box (a view that handles an interaction owns it), a disabled control
+/// swallowing it; a click and a reader's request are the owner's alone. The answer folds every
+/// verdict met, and the realization runs its default unless it prevents it.
 pub fn report<R: Realization>(id: NodeId, report: Report) -> Answer {
   activity::report();
 
@@ -734,9 +1006,35 @@ pub fn report<R: Realization>(id: NodeId, report: Report) -> Answer {
         controller.report_selection(anchor, caret)
       }),
     ),
-    Report::Activate | Report::Action(_) => activate::<R>(id),
+    Report::Click => click::<R>(id),
+    Report::Access(request) => access::<R>(id, request),
+    Report::Dismiss => {
+      let dismiss = with::<R, _>(|tree| tree.scene.get(id)?.handlers.dismiss.clone());
+
+      if let Some(dismiss) = dismiss {
+        untrack(|| dismiss());
+      }
+
+      Answer::None
+    }
     Report::Follow(destination) => {
-      bubble::<R, str>(id, &destination, |handlers| handlers.follow.clone(), false)
+      let path = with::<R, _>(|tree| {
+        std::iter::once(id)
+          .chain(tree.scene.ancestors(id))
+          .filter_map(|node| tree.scene.get(node)?.handlers.follow.clone())
+          .collect::<Vec<_>>()
+      });
+      let mut prevented = Prevent::None;
+
+      for follow in path {
+        prevented = prevented.and(Prevent::Platform);
+
+        if untrack(|| follow(&destination)) == Bubbling::Stop {
+          break;
+        }
+      }
+
+      Answer::Event { prevented }
     }
     Report::Composition(composing) => {
       if !composing {
@@ -758,10 +1056,19 @@ pub fn report<R: Realization>(id: NodeId, report: Report) -> Answer {
       Answer::None
     }
     Report::Focus(focused) => {
-      let focus = with::<R, _>(|tree| tree.scene.get(id)?.handlers.focus.clone());
+      let (focus, dispatch) = with::<R, _>(|tree| {
+        let entry = tree.scene.get(id)?;
+
+        Some((entry.handlers.focus.clone(), entry.dispatch.clone()))
+      })
+      .unwrap_or_default();
 
       if let Some(focus) = focus {
         untrack(|| focus(focused));
+      }
+
+      if let (false, Some(dispatch)) = (focused, dispatch) {
+        untrack(|| (dispatch.blur)());
       }
 
       Answer::None
@@ -784,9 +1091,7 @@ pub fn report<R: Realization>(id: NodeId, report: Report) -> Answer {
 
       Answer::None
     }
-    Report::Pointer(event) => {
-      bubble::<R, PointerEvent>(id, &event, |handlers| handlers.pointer.clone(), true)
-    }
+    Report::Pointer(event) => pointer::<R>(id, &event),
     Report::Size(size) => {
       let handler = with::<R, _>(|tree| tree.scene.get(id)?.handlers.size.clone());
 
@@ -796,65 +1101,146 @@ pub fn report<R: Realization>(id: NodeId, report: Report) -> Answer {
 
       Answer::None
     }
-    Report::Key(event) => bubble::<R, KeyEvent>(id, &event, |handlers| handlers.key.clone(), false),
+    Report::Key(event) => key::<R>(id, &event),
   }
 }
 
-fn activate<R: Realization>(id: NodeId) -> Answer {
-  let activate = with::<R, _>(|tree| tree.scene.get(id)?.handlers.activate.clone());
+/// The dispatch of `id`'s control and its box's activation, where it has them.
+type ClickHandlers = (Option<Rc<ControlDispatch>>, Option<Rc<dyn Fn()>>);
 
-  if let Some(activate) = &activate {
-    untrack(|| activate());
-  }
+fn owner_of<R: Realization>(id: NodeId) -> ClickHandlers {
+  with::<R, _>(|tree| {
+    let entry = tree.scene.get(id)?;
+
+    Some((entry.dispatch.clone(), entry.handlers.activate.clone()))
+  })
+  .unwrap_or_default()
+}
+
+fn click<R: Realization>(id: NodeId) -> Answer {
+  let prevented = match owner_of::<R>(id) {
+    (Some(dispatch), _) if untrack(|| (dispatch.disabled)()) => Prevent::All,
+    (Some(dispatch), _) => untrack(|| (dispatch.click)()),
+    (None, Some(activate)) => {
+      untrack(|| activate());
+
+      Prevent::All
+    }
+    (None, None) => Prevent::None,
+  };
+
+  Answer::Event { prevented }
+}
+
+fn access<R: Realization>(id: NodeId, request: AccessRequest) -> Answer {
+  let took = match owner_of::<R>(id) {
+    (Some(dispatch), _) if untrack(|| (dispatch.disabled)()) => false,
+    (Some(dispatch), _) => {
+      untrack(|| (dispatch.access)(request))
+        || (request == AccessRequest::Activate && {
+          untrack(|| (dispatch.click)());
+
+          true
+        })
+    }
+    (None, Some(activate)) if request == AccessRequest::Activate => {
+      untrack(|| activate());
+
+      true
+    }
+    (None, _) => false,
+  };
 
   Answer::Event {
-    handled: activate.is_some(),
+    prevented: if took { Prevent::All } else { Prevent::None },
   }
 }
 
-fn bubble<R: Realization, E: ?Sized>(
-  id: NodeId,
-  event: &E,
-  pick: impl Fn(&Handlers) -> Option<Handler<E>>,
-  stops_at_interactive: bool,
-) -> Answer {
+fn key<R: Realization>(id: NodeId, event: &KeyEvent) -> Answer {
   let path = with::<R, _>(|tree| {
     std::iter::once(id)
       .chain(tree.scene.ancestors(id))
-      .map(|node| {
-        let entry = tree.scene.get(node);
+      .filter_map(|node| {
+        let entry = tree.scene.get(node)?;
 
-        (
-          entry.is_some_and(|entry| entry.spec.is_interactive()),
-          entry.and_then(|entry| pick(&entry.handlers)),
-        )
+        Some((entry.dispatch.clone(), entry.handlers.key.clone()))
       })
       .collect::<Vec<_>>()
   });
-  let mut handled = false;
+  let mut prevented = Prevent::None;
 
-  for (interactive, handler) in path {
-    if let Some(handler) = handler {
-      handled = true;
+  for (dispatch, handler) in path {
+    let mut verdict = Prevent::None;
 
-      if untrack(|| handler(event)) == Bubbling::Stop {
-        break;
-      }
+    if let Some(dispatch) = dispatch
+      && !untrack(|| (dispatch.disabled)())
+    {
+      verdict = untrack(|| (dispatch.key)(event));
     }
 
-    if stops_at_interactive && interactive {
+    if let Some(handler) = handler {
+      verdict = verdict.and(untrack(|| handler(event)).verdict());
+    }
+
+    prevented = prevented.and(verdict);
+
+    if verdict.stops() {
       break;
     }
   }
 
-  Answer::Event { handled }
+  Answer::Event { prevented }
 }
 
-/// The states `id`'s style resolves against now, subscribing the running effect to them.
+fn pointer<R: Realization>(id: NodeId, event: &PointerEvent) -> Answer {
+  let path = with::<R, _>(|tree| {
+    std::iter::once(id)
+      .chain(tree.scene.ancestors(id))
+      .filter_map(|node| {
+        let entry = tree.scene.get(node)?;
+
+        Some((
+          entry.spec.is_interactive(),
+          entry.dispatch.clone(),
+          entry.handlers.pointer.clone(),
+        ))
+      })
+      .collect::<Vec<_>>()
+  });
+  let mut prevented = Prevent::None;
+
+  for (interactive, dispatch, handler) in path {
+    let mut verdict = Prevent::None;
+
+    if let Some(dispatch) = dispatch {
+      if untrack(|| (dispatch.disabled)()) {
+        prevented = Prevent::All;
+
+        break;
+      }
+
+      verdict = untrack(|| (dispatch.pointer)(event));
+    }
+
+    if let Some(handler) = handler {
+      verdict = verdict.and(untrack(|| handler(event)).verdict());
+    }
+
+    prevented = prevented.and(verdict);
+
+    if verdict.stops() || interactive {
+      break;
+    }
+  }
+
+  Answer::Event { prevented }
+}
+
+/// The states `id`'s style resolves against now, its enclosing control's included,
+/// subscribing the running effect to them.
 #[must_use]
 pub fn resolved_states<R: Realization>(id: NodeId) -> StateSet {
-  with::<R, _>(|tree| tree.scene.get(id).map(|entry| entry.states))
-    .map_or(StateSet::EMPTY, |states| states.get())
+  resolution::<R>(id).map_or(StateSet::EMPTY, |resolution| resolution.holding())
 }
 
 /// The states a node is in, as reported.
@@ -872,4 +1258,60 @@ pub fn states<R: Realization>(id: NodeId) -> StateSet {
 #[must_use]
 pub fn holds<R: Realization>(id: NodeId, state: State) -> bool {
   states::<R>(id).contains(state)
+}
+
+#[cfg(test)]
+mod tests {
+  use super::Resolution;
+  use crate::{
+    Owner, Signal, State, StateSet,
+    seam::{access::Checked, control::ControlState},
+  };
+
+  /// A box outside every control answers its own states and no control's; a part answers
+  /// its own hover and its control's focus, press and states; a control answers its own.
+  #[test]
+  fn a_part_resolves_focus_press_and_control_states_against_its_control() {
+    Owner::root().run(|| {
+      let control_reported = Signal::new(StateSet::EMPTY.with(State::FocusVisible));
+      let control_state = Signal::new(ControlState {
+        checked: Checked::On,
+        pressed: true,
+        ..ControlState::DEFAULT
+      });
+      let part_reported = Signal::new(StateSet::EMPTY.with(State::Hovered));
+      let part = Resolution {
+        own: part_reported,
+        control: Some((control_reported, Some(control_state))),
+      };
+      let control = Resolution {
+        own: control_reported,
+        control: Some((control_reported, Some(control_state))),
+      };
+      let outside = Resolution {
+        own: Signal::new(
+          StateSet::EMPTY
+            .with(State::FocusVisible)
+            .with(State::Hovered),
+        ),
+        control: None,
+      };
+
+      assert!(part.holds(State::Hovered));
+      assert!(part.holds(State::FocusVisible));
+      assert!(part.holds(State::Pressed));
+      assert!(part.holds(State::Checked));
+      assert!(!part.holds(State::Disabled));
+      assert!(!control.holds(State::Hovered));
+      assert!(control.holds(State::Checked));
+      assert!(outside.holds(State::FocusVisible));
+      assert!(outside.holds(State::Hovered));
+      assert!(!outside.holds(State::Checked));
+
+      control_state.set(ControlState::DEFAULT);
+
+      assert!(!part.holds(State::Checked));
+      assert!(!part.holds(State::Pressed));
+    });
+  }
 }

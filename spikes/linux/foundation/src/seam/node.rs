@@ -1,6 +1,6 @@
 //! What a node is, and the facts a toolkit fixes when it creates one.
 
-use crate::seam::{access::Role, content::Content};
+use crate::seam::{access::Role, content::Content, control::DragAxes};
 
 /// A Skene layout container: a host whose children the foundation's engine lays out where the
 /// realization's [`crate::seam::LayoutOwner`] is the engine.
@@ -26,34 +26,6 @@ pub enum LayoutKind {
   },
 }
 
-/// A control every pixel platform has with the same meaning, realized as the toolkit's own.
-///
-/// A control one platform alone has is that platform's, built through the native door
-/// ([`crate::seam::door`]) by the facade's `platform::<p>` module.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub enum ControlKind {
-  /// An on/off switch.
-  Switch,
-  /// A checkbox, which may also be mixed.
-  Checkbox,
-  /// One choice of a group.
-  Radio,
-  /// A value on a range, dragged.
-  Slider,
-  /// A one-line text entry.
-  TextField,
-  /// A multi-line text entry.
-  TextEditor,
-  /// A command.
-  Button,
-  /// One choice of a list, shown closed.
-  Picker,
-  /// How far along a task is.
-  Progress,
-  /// A number stepped up and down, or typed.
-  Stepper,
-}
-
 /// What a node is.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum NodeKind {
@@ -63,8 +35,15 @@ pub enum NodeKind {
   Text,
   /// A picture.
   Image,
-  /// A toolkit control.
-  Control(ControlKind),
+  /// The realization's own editable text view: a text entry's whole box, decorated by its
+  /// record, its text inside its padding.
+  Editable {
+    /// Whether it holds several lines (an editor) or one (a field).
+    multiline: bool,
+  },
+  /// Content above the app, out of its parent's flow, placed against an anchor and shown as
+  /// a surface of its own while it is shown: a popup. It lays its one child out as a box does.
+  Overlay,
   /// A theme's token scope: realized as a node only where the realization says so
   /// ([`crate::seam::Realization::SCOPE_NODES`]); elsewhere its children join its parent.
   Scope,
@@ -80,7 +59,7 @@ pub enum NodeKind {
 impl NodeKind {
   /// Every kind with one representative of each layout kind: what
   /// [`crate::seam::testing::contents_gate`] walks.
-  pub const ALL: [Self; 19] = [
+  pub const ALL: [Self; 12] = [
     Self::Layout(LayoutKind::Box),
     Self::Layout(LayoutKind::Row),
     Self::Layout(LayoutKind::Column),
@@ -92,16 +71,9 @@ impl NodeKind {
     }),
     Self::Text,
     Self::Image,
-    Self::Control(ControlKind::Switch),
-    Self::Control(ControlKind::Checkbox),
-    Self::Control(ControlKind::Radio),
-    Self::Control(ControlKind::Slider),
-    Self::Control(ControlKind::TextField),
-    Self::Control(ControlKind::TextEditor),
-    Self::Control(ControlKind::Button),
-    Self::Control(ControlKind::Picker),
-    Self::Control(ControlKind::Progress),
-    Self::Control(ControlKind::Stepper),
+    Self::Editable { multiline: false },
+    Self::Editable { multiline: true },
+    Self::Overlay,
     Self::Painted,
   ];
 
@@ -115,27 +87,14 @@ impl NodeKind {
     match self {
       Self::Layout(LayoutKind::Box) => &[C::Destination],
       Self::Layout(_) | Self::Scope | Self::Segment | Self::Native => &[],
-      Self::Text => &[C::Text, C::Runs],
+      Self::Text => &[C::Text, C::Runs, C::Reserve],
       Self::Image => &[C::Source],
       Self::Painted => &[C::Picture],
-      Self::Control(control) => match control {
-        ControlKind::Switch => &[C::On, C::Enabled],
-        ControlKind::Checkbox => &[C::On, C::Mixed, C::Caption, C::Enabled],
-        ControlKind::Radio => &[C::On, C::Caption, C::Enabled],
-        ControlKind::Slider | ControlKind::Stepper => &[C::Range, C::Enabled],
-        ControlKind::Progress => &[C::Range],
-        ControlKind::TextField => &[
-          C::Edit,
-          C::Placeholder,
-          C::Enabled,
-          C::ReadOnly,
-          C::Secure,
-          C::Keyboard,
-        ],
-        ControlKind::TextEditor => &[C::Edit, C::Enabled, C::ReadOnly],
-        ControlKind::Button => &[C::Caption, C::Prominent, C::Enabled],
-        ControlKind::Picker => &[C::Choice, C::Enabled],
-      },
+      Self::Overlay => &[C::Placement],
+      Self::Editable { multiline: false } => {
+        &[C::Edit, C::Placeholder, C::ReadOnly, C::Secure, C::Keyboard]
+      }
+      Self::Editable { multiline: true } => &[C::Edit, C::Placeholder, C::ReadOnly],
     }
   }
 
@@ -149,6 +108,26 @@ impl NodeKind {
   }
 }
 
+/// How a node takes events.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
+pub enum Interaction {
+  /// Layout and decoration: an event at it climbs to the nearest node that takes it.
+  #[default]
+  None,
+  /// A box that acts on activation: an activatable row or a link. It takes focus in the
+  /// scene's child order, `Enter` and `Space` activate it, and a click on it outside the
+  /// controls it holds activates it; it may hold controls, which own their own presses.
+  Acting,
+  /// A control: the owner of every press inside it, focused in the scene's order where its
+  /// facts say it takes focus, the pointer kept with it from a press where it drags.
+  Control {
+    /// The axes a press drags it along.
+    drag: Option<DragAxes>,
+  },
+  /// A control's caption placed beside it: a press on it focuses that control.
+  Answering,
+}
+
 /// What a realization is told when it creates a node: what it is, and the facts a toolkit
 /// fixes at construction. Changing one means building another node.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -157,22 +136,18 @@ pub struct NodeSpec {
   pub kind: NodeKind,
   /// What a reader takes it for, fixed at construction as a toolkit fixes a view's role.
   pub role: Role,
-  /// Whether the node is a box that acts on activation (an activatable row, a link): it takes
-  /// focus in the scene's child order, `Enter` and `Space` activate it, and a click on it
-  /// outside the controls it holds activates it.
-  ///
-  /// Such a box may hold controls, which own their own presses.
-  pub acts: bool,
+  /// How it takes events.
+  pub interaction: Interaction,
 }
 
 impl NodeSpec {
-  /// A node of `kind`, its role the kind's default.
+  /// A node of `kind`, its role the kind's default, taking no event of its own.
   #[must_use]
   pub const fn new(kind: NodeKind) -> Self {
     Self {
       kind,
       role: Role::of(kind),
-      acts: false,
+      interaction: Interaction::None,
     }
   }
 
@@ -184,11 +159,19 @@ impl NodeSpec {
     self
   }
 
+  /// This node, taking events as `interaction` says.
+  #[must_use]
+  pub const fn with_interaction(mut self, interaction: Interaction) -> Self {
+    self.interaction = interaction;
+
+    self
+  }
+
   /// This node, acting on activation, its role an activatable row unless it was given a
   /// link's.
   #[must_use]
   pub const fn acting(mut self) -> Self {
-    self.acts = true;
+    self.interaction = Interaction::Acting;
 
     if !matches!(self.role, Role::Link) {
       self.role = Role::Row;
@@ -197,12 +180,19 @@ impl NodeSpec {
     self
   }
 
-  /// Whether the node is interactive: a control, an acting box, or a toolkit widget adopted
-  /// through the door whose role a reader operates.
+  /// Whether the node is a control.
+  #[must_use]
+  pub const fn is_control(&self) -> bool {
+    matches!(self.interaction, Interaction::Control { .. })
+  }
+
+  /// Whether a press on the node is the node's own: a control, an acting box, or a toolkit
+  /// widget adopted through the door whose role a reader operates.
   #[must_use]
   pub const fn is_interactive(&self) -> bool {
-    self.acts
-      || matches!(self.kind, NodeKind::Control(_))
-      || (matches!(self.kind, NodeKind::Native) && self.role.is_interactive())
+    matches!(
+      self.interaction,
+      Interaction::Acting | Interaction::Control { .. }
+    ) || (matches!(self.kind, NodeKind::Native) && self.role.is_interactive())
   }
 }

@@ -87,6 +87,22 @@ macro_rules! kinds {
         }
       }
 
+      /// The states its conditions name ([`Value::states`]).
+      #[must_use]
+      pub fn states(&self) -> crate::StateSet {
+        match self {
+          $(Self::$kind(value) => value.states(),)*
+        }
+      }
+
+      /// Whether it changes with a node's state or a signal ([`Value::is_dynamic`]).
+      #[must_use]
+      pub fn is_dynamic(&self) -> bool {
+        match self {
+          $(Self::$kind(value) => value.is_dynamic(),)*
+        }
+      }
+
       /// Compiled to the level `cx` keeps, subscribing the running effect to what it read.
       pub(crate) fn compile(&self, cx: &mut CompileCx<'_>) -> Option<KeptValue> {
         match self {
@@ -480,6 +496,12 @@ impl Record {
   #[must_use]
   pub fn transitions(&self) -> &[Transition] {
     &self.transitions
+  }
+
+  /// Whether the record sets `prop`.
+  #[must_use]
+  pub fn has(&self, prop: Prop) -> bool {
+    self.entries.iter().any(|(name, _)| *name == prop)
   }
 
   /// Whether the record holds a property of `group`.

@@ -39,12 +39,16 @@ pub enum Change {
   Layout,
 }
 
+/// The texts a paragraph reserves its width for, and the widest one's width.
+type Reserve = (Rc<[Rc<str>]>, f32);
+
 /// A paragraph, as the layout engine measures it and the painter draws it.
 #[derive(Default)]
 pub struct TextCell {
   leaf: RefCell<Option<TextLeaf<ParleyParagraph>>>,
   source: RefCell<Option<(AttributedText, ParagraphStyle)>>,
   links: RefCell<Links>,
+  reserve: RefCell<Option<Reserve>>,
 }
 
 impl TextCell {
@@ -136,6 +140,48 @@ impl TextCell {
       .unwrap_or_default()
   }
 
+  /// Lays the paragraph out as wide as the widest of `texts` (in its own style) and itself,
+  /// measured again where `restyled` or the texts changed: whether the width it reserves
+  /// changed.
+  pub fn set_reserve(&self, texts: Option<Rc<[Rc<str>]>>, restyled: bool) -> bool {
+    let previous = self.reserved_width();
+    let current = self.reserve.borrow().clone();
+    let width = match (&texts, current) {
+      (None, _) => None,
+      (Some(texts), Some((held, width))) if !restyled && Rc::ptr_eq(texts, &held) => Some(width),
+      (Some(texts), _) => Some(
+        texts
+          .iter()
+          .map(|text| self.intrinsic_of(text).max)
+          .fold(0., f32::max),
+      ),
+    };
+
+    *self.reserve.borrow_mut() = texts.zip(width);
+
+    (self.reserved_width() - previous).abs() > f32::EPSILON
+  }
+
+  /// The width the paragraph reserves: its widest reserved text's, 0 where it reserves none.
+  pub fn reserved_width(&self) -> f32 {
+    self
+      .reserve
+      .borrow()
+      .as_ref()
+      .map_or(0., |(_, width)| *width)
+  }
+
+  /// Whether its size stays whatever it shows: one line within the width it reserves.
+  pub fn keeps_its_size(&self) -> bool {
+    let one_line = self
+      .source
+      .borrow()
+      .as_ref()
+      .is_some_and(|(_, style)| style.max_lines == Some(1));
+
+    one_line && self.reserved_width() > 0. && self.intrinsic().max <= self.reserved_width() + 0.5
+  }
+
   /// The paragraph's intrinsic widths.
   pub fn intrinsic(&self) -> Intrinsic {
     self
@@ -159,12 +205,23 @@ impl TextCell {
 
 impl MeasureText for TextCell {
   fn measure(&self, known: (Option<f32>, Option<f32>), available: (Space, Space)) -> LeafMeasure {
-    self
+    let mut measured = self
       .leaf
       .borrow()
       .as_ref()
       .map(|leaf| leaf.measure(known, available))
-      .unwrap_or_default()
+      .unwrap_or_default();
+    let reserved = self.reserved_width();
+
+    if reserved > 0. && known.0.is_none() {
+      measured.width = match available.0 {
+        Space::MaxContent => measured.width.max(reserved),
+        Space::Definite(width) => measured.width.max(reserved.min(width)),
+        Space::MinContent => measured.width,
+      };
+    }
+
+    measured
   }
 }
 

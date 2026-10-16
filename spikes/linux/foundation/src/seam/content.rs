@@ -20,7 +20,7 @@ use crate::{
   untrack,
 };
 
-/// A node's content or a control's value, by uniform name: what [`ContentKey`]s name and
+/// A node's content or a text entry's value, by uniform name: what [`ContentKey`]s name and
 /// what a realization dispatches on.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
 pub enum Content {
@@ -28,27 +28,13 @@ pub enum Content {
   Text,
   /// A text's rich text: runs of styled text, some of them links ([`PropValue::Runs`]).
   Runs,
-  /// What a control draws as its own caption, a button's title ([`PropValue::Text`]).
-  Caption,
-  /// Whether a switch, a checkbox or a radio is on ([`PropValue::Bool`]).
-  On,
-  /// Whether a checkbox is mixed ([`PropValue::Bool`]).
-  Mixed,
-  /// A slider's, a stepper's or a progress's value with its bounds and step, written as one
-  /// ([`PropValue::Range`]).
-  Range,
-  /// A picker's options with the chosen one, written as one ([`PropValue::Choice`]).
-  Choice,
+  /// The texts a text lays out as wide as the widest of, beside its own: a picker's face
+  /// showing its chosen option as wide as its widest ([`PropValue::Texts`]).
+  Reserve,
   /// A text entry's text with its selection, written as one ([`PropValue::Edit`]).
   Edit,
   /// The text a text entry shows while empty ([`PropValue::Text`]).
   Placeholder,
-  /// Whether a button is the prominent one of its group, drawn in the accent
-  /// ([`PropValue::Bool`]).
-  Prominent,
-  /// Whether a control takes input ([`PropValue::Bool`]); a disabled control takes no
-  /// focus.
-  Enabled,
   /// Whether a text entry's text can be selected but not changed ([`PropValue::Bool`]).
   ReadOnly,
   /// Whether a text entry hides what is typed ([`PropValue::Bool`]).
@@ -63,6 +49,8 @@ pub enum Content {
   /// What a painted node shows: its picture, replayed in the scene's order
   /// ([`PropValue::Picture`]).
   Picture,
+  /// Where an overlay is placed against its anchor ([`PropValue::Placement`]).
+  Placement,
   /// A value of a library's widget adopted through the native door, by the library's own
   /// name: only the door's [`crate::seam::door::ControlSink`] knows it.
   Door(&'static str),
@@ -88,8 +76,7 @@ pub struct TextSelection {
   pub end: usize,
 }
 
-/// A value on a range, with the range: one value, so the toolkit is never handed a value
-/// outside the bounds it has yet to be given.
+/// A value on a range, with the range: what a slider's key table reads.
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Range {
   /// The value.
@@ -102,14 +89,30 @@ pub struct Range {
   pub step: f64,
 }
 
-/// Options with the chosen one: one value, so a toolkit that resets its choice when its
-/// options change is handed both at once.
-#[derive(Clone, PartialEq, Debug)]
-pub struct Choice {
-  /// The options' texts.
-  pub options: Rc<[Rc<str>]>,
-  /// The chosen option's index, or none.
-  pub chosen: Option<u32>,
+/// The side of its anchor an overlay opens on.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
+pub enum Side {
+  /// Above it.
+  Top,
+  /// Below it.
+  #[default]
+  Bottom,
+  /// Before it in the reading direction.
+  Leading,
+  /// After it in the reading direction.
+  Trailing,
+}
+
+/// Where an overlay is placed: against which node, on which side, and whether it is at least
+/// as wide as that node.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub struct OverlayPlacement {
+  /// The node it is placed against, once built.
+  pub anchor: Option<NodeId>,
+  /// The side of the anchor it opens on.
+  pub side: Side,
+  /// Whether it is at least as wide as the anchor.
+  pub widen: bool,
 }
 
 /// A text entry's text with its selection: one value, so a selection is never applied to a
@@ -157,22 +160,22 @@ pub enum PropValue {
   Number(f64),
   /// A text.
   Text(Rc<str>),
-  /// A value on a range.
-  Range(Range),
-  /// Options with a choice.
-  Choice(Choice),
+  /// Texts.
+  Texts(Rc<[Rc<str>]>),
   /// A text with its selection.
   Edit(Edit),
   /// Rich text.
   Runs(Rc<[Run]>),
   /// A painted node's picture.
   Picture(Rc<Picture>),
+  /// An overlay's placement.
+  Placement(OverlayPlacement),
 }
 
 /// A type a content value holds.
 #[diagnostic::on_unimplemented(
   message = "`{Self}` is not a content value",
-  note = "a content name holds a flag, a number, a text, a range, a choice, an edit, runs or a picture"
+  note = "a content name holds a flag, a number, a text, texts, an edit, runs, a picture or a placement"
 )]
 pub trait ContentType: Clone + PartialEq + 'static {
   /// This value, erased.
@@ -205,11 +208,11 @@ content_types! {
   bool => Bool,
   f64 => Number,
   Rc<str> => Text,
-  Range => Range,
-  Choice => Choice,
+  Rc<[Rc<str>]> => Texts,
   Edit => Edit,
   Rc<[Run]> => Runs,
   Rc<Picture> => Picture,
+  OverlayPlacement => Placement,
 }
 
 /// A typed content name: what a view binds or controls, so a value of the wrong type does
@@ -219,7 +222,7 @@ content_types! {
 /// use skene_foundation::{NodeId, seam::{Realization, content::contents, tree}};
 ///
 /// fn wire<R: Realization>(id: NodeId) {
-///   tree::bind::<R, _>(id, contents::ON, || true);
+///   tree::bind::<R, _>(id, contents::SECURE, || true);
 /// }
 /// ```
 ///
@@ -227,8 +230,8 @@ content_types! {
 /// use skene_foundation::{NodeId, seam::{Realization, content::contents, tree}};
 ///
 /// fn wire<R: Realization>(id: NodeId) {
-///   // `ON` holds a flag: a number does not compile.
-///   tree::bind::<R, _>(id, contents::ON, || 1.0_f64);
+///   // `SECURE` holds a flag: a number does not compile.
+///   tree::bind::<R, _>(id, contents::SECURE, || 1.0_f64);
 /// }
 /// ```
 pub struct ContentKey<T> {
@@ -271,31 +274,19 @@ impl<T: ContentType> ContentKey<T> {
 pub mod contents {
   use std::rc::Rc;
 
-  use super::{Choice, Content, ContentKey, Edit, Range, Run};
+  use super::{Content, ContentKey, Edit, OverlayPlacement, Run};
   use crate::seam::picture::Picture;
 
   /// A text's plain text.
   pub const TEXT: ContentKey<Rc<str>> = ContentKey::new(Content::Text);
   /// A text's rich text.
   pub const RUNS: ContentKey<Rc<[Run]>> = ContentKey::new(Content::Runs);
-  /// A control's own caption.
-  pub const CAPTION: ContentKey<Rc<str>> = ContentKey::new(Content::Caption);
-  /// Whether it is on.
-  pub const ON: ContentKey<bool> = ContentKey::new(Content::On);
-  /// Whether it is mixed.
-  pub const MIXED: ContentKey<bool> = ContentKey::new(Content::Mixed);
-  /// A value with its bounds.
-  pub const RANGE: ContentKey<Range> = ContentKey::new(Content::Range);
-  /// Options with the chosen one.
-  pub const CHOICE: ContentKey<Choice> = ContentKey::new(Content::Choice);
+  /// The texts a text is as wide as the widest of.
+  pub const RESERVE: ContentKey<Rc<[Rc<str>]>> = ContentKey::new(Content::Reserve);
   /// A text with its selection.
   pub const EDIT: ContentKey<Edit> = ContentKey::new(Content::Edit);
   /// The text shown while empty.
   pub const PLACEHOLDER: ContentKey<Rc<str>> = ContentKey::new(Content::Placeholder);
-  /// Whether it is the prominent one of its group.
-  pub const PROMINENT: ContentKey<bool> = ContentKey::new(Content::Prominent);
-  /// Whether it takes input.
-  pub const ENABLED: ContentKey<bool> = ContentKey::new(Content::Enabled);
   /// Whether its text is read only.
   pub const READ_ONLY: ContentKey<bool> = ContentKey::new(Content::ReadOnly);
   /// Whether it hides what is typed.
@@ -308,6 +299,8 @@ pub mod contents {
   pub const DESTINATION: ContentKey<Rc<str>> = ContentKey::new(Content::Destination);
   /// What it shows, recorded.
   pub const PICTURE: ContentKey<Rc<Picture>> = ContentKey::new(Content::Picture);
+  /// Where an overlay is placed.
+  pub const PLACEMENT: ContentKey<OverlayPlacement> = ContentKey::new(Content::Placement);
 }
 
 /// The answer to a reported change.

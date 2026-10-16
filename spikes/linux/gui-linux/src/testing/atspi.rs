@@ -411,6 +411,65 @@ impl Atspi {
     self.call(object, "org.a11y.atspi.Component", "GetExtents", &(kind,))
   }
 
+  /// Asks for `request` of `object` as a reader does, from a thread of its own, so the
+  /// application's loop on this thread turns while the reader's call waits on it: a click as
+  /// AT-SPI's first action (`Action.DoAction`), a value through `Value.CurrentValue`, focus
+  /// through `Component.GrabFocus`.
+  pub fn request(
+    &self,
+    object: &Object,
+    request: skene_foundation::seam::control::AccessRequest,
+  ) -> std::thread::JoinHandle<Result<()>> {
+    use skene_foundation::seam::control::AccessRequest;
+
+    let reader = Self {
+      connection: self.connection.clone(),
+      application: self.application.clone(),
+    };
+    let object = object.clone();
+
+    std::thread::spawn(move || {
+      let set = |value: f64| -> Result<()> {
+        reader.call::<_, ()>(
+          &object,
+          "org.freedesktop.DBus.Properties",
+          "Set",
+          &(
+            "org.a11y.atspi.Value",
+            "CurrentValue",
+            zbus::zvariant::Value::from(value),
+          ),
+        )
+      };
+
+      match request {
+        AccessRequest::Activate
+        | AccessRequest::Toggle
+        | AccessRequest::Expand
+        | AccessRequest::Collapse => reader
+          .call::<_, bool>(&object, "org.a11y.atspi.Action", "DoAction", &(0i32,))
+          .map(drop),
+        AccessRequest::Focus => reader
+          .call::<_, bool>(&object, "org.a11y.atspi.Component", "GrabFocus", &())
+          .map(drop),
+        AccessRequest::SetValue(value) => set(value),
+        AccessRequest::Increment | AccessRequest::Decrement => {
+          let now = reader.value(&object)?;
+          let step =
+            f64::try_from(reader.property(&object, "org.a11y.atspi.Value", "MinimumIncrement")?)
+              .map_err(|error| error.to_string())?;
+          let step = if step > 0. { step } else { 1. };
+
+          set(if request == AccessRequest::Increment {
+            now + step
+          } else {
+            now - step
+          })
+        }
+      }
+    })
+  }
+
   /// The key binding of `object`'s first action (its keyboard shortcut), empty where it has
   /// none.
   ///

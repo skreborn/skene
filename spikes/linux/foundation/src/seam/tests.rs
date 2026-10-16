@@ -8,7 +8,7 @@ use crate::{
   TokenRef, Value, When,
   seam::{
     content::{Content, Graphemes, Unit, map_through, splice},
-    node::{ControlKind, LayoutKind, NodeKind},
+    node::{LayoutKind, NodeKind},
     record::{Prop, Record, Resolved, keys},
     style::{CompiledStyle, Keep, KeptCondition, KeptLeaf, KeptValue, ScopeChain},
   },
@@ -260,8 +260,10 @@ fn text_arithmetic_in_either_unit() {
 
 #[test]
 fn every_kind_takes_what_its_contents_say() {
-  assert!(NodeKind::Control(ControlKind::Slider).takes(Content::Range));
-  assert!(!NodeKind::Control(ControlKind::Switch).takes(Content::Range));
+  assert!(NodeKind::Editable { multiline: false }.takes(Content::Secure));
+  assert!(!NodeKind::Editable { multiline: true }.takes(Content::Secure));
+  assert!(NodeKind::Text.takes(Content::Reserve));
+  assert!(!NodeKind::Painted.takes(Content::Text));
   assert!(NodeKind::Native.takes(Content::Door("date")));
   assert!(!NodeKind::Layout(LayoutKind::Row).takes(Content::Door("date")));
 }

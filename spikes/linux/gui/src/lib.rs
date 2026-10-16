@@ -66,13 +66,13 @@ compile_error!("windows is not realized in this prototype");
 #[cfg(skene_platform = "linux")]
 mod access;
 #[cfg(skene_platform = "linux")]
-mod controls;
+mod control;
 #[cfg(skene_platform = "linux")]
-mod editing;
+mod controls;
 #[cfg(skene_platform = "linux")]
 pub mod media;
 #[cfg(skene_platform = "linux")]
-mod nodes;
+mod overlay;
 #[cfg(skene_platform = "linux")]
 pub mod painted;
 #[cfg(skene_platform = "linux")]
@@ -94,15 +94,20 @@ mod wrappers;
 #[cfg(skene_platform = "linux")]
 pub mod __private;
 
+/// What a control's interaction is: the shipped behaviors, the trait a library's own
+/// implements, the handle a behavior acts through and the key tables every platform shares.
+pub use skene_foundation::behavior;
 pub use skene_foundation::{
   Alignment, Arrangement, AxisAlignment, Border, BorderStyle, Color, Condition, Corners, Curve,
   Definitions, Dimension, Edges, Effect, Environment, Flexibility, Flow, FontFamily, FontStyle,
   FontWeight, GridPlacement, GridTrack, Inset, IntoUnit, Media, Memo, Offset, Owner, Ring, Scheme,
-  Shadow, Shadows, Signal, Spacing, State, StateSet, TextAlignment, TextDecoration,
+  Shadow, Shadows, Signal, Spacing, State, StateSet, SystemColors, TextAlignment, TextDecoration,
   TextDecorationStyle, Token, TokenRef, TokenSet, Tracks, Value, When, batch,
+  layout::{Axis, Rect},
   seam::{
-    access::Shortcut,
-    content::TextSelection,
+    access::{AccessFacts, Checked, RangeValue, Role, Shortcut},
+    content::{Range, Side, TextSelection},
+    control::{AccessRequest, ControlState, DragAxes, Element, LabelPlacement, Part, Prevent},
     record::{Key, Transition, keys},
     report::{KeyEvent, Modifiers, PointerEvent, PointerPhase},
     tree::Bubbling,
@@ -117,10 +122,15 @@ pub use skene_gui_macros::test;
 
 #[cfg(skene_platform = "linux")]
 pub use crate::{
-  controls::{
-    Button, CaptionPlacement, Checkbox, Keyboard, Picker, RadioGroup, Slider, TextEditor,
-    TextField, Toggle,
+  control::{
+    AsPart, BasicButton, BasicCheckbox, BasicListbox, BasicListboxOption, BasicRadio,
+    BasicRadioGroup, BasicSlider, BasicTextEditor, BasicTextField, Control, Label,
   },
+  controls::{
+    BasicPicker, Button, Checkbox, Keyboard, Picker, PickerItem, Radio, RadioGroup, Slider,
+    TextEditor, TextField, Toggle, marks,
+  },
+  overlay::Overlay,
   painted::{Canvas, Paint, Painted},
   runtime::{Resource, Sleep, schedule, sleep, spawn},
   view::{AnyView, Apply, ChildOf, Cx, Derived, Node, NodeHandle, View},

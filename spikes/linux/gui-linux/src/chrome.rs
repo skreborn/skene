@@ -13,10 +13,9 @@ use skene_foundation::{Corners, layout::Rect, text::AttributedText};
 use vello_cpu::kurbo::BezPath;
 
 use crate::{
-  controls::mix,
   look::RunProps,
   paint::Canvas,
-  palette::Palette,
+  palette::{Palette, mix},
   text::{Change, TextCell},
 };
 

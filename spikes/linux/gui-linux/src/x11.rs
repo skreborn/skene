@@ -14,8 +14,8 @@
 //!   settings portal answers;
 //! - the `CLIPBOARD` and `PRIMARY` selections, owned and converted to UTF-8;
 //! - the cursor from the reader's cursor theme;
-//! - a picker's open list in an override-redirect window holding the pointer grab, a press
-//!   outside it closing it;
+//! - the open overlay (a picker's list) in an override-redirect window holding the pointer
+//!   grab, a press outside it and its anchor dismissing it;
 //! - the input method ([`crate::ime`]): IBus or Fcitx5 over D-Bus, or XIM, each key sent to it
 //!   while a text entry has focus and handled here only where it gives the key back.
 
@@ -60,7 +60,7 @@ use crate::{
 /// How long a key waits for the input method's answer before the window handles it.
 const IME_PATIENCE: Duration = Duration::from_millis(800);
 
-/// A picker's open list on its own window.
+/// The open overlay on its own window.
 struct PopupWindow {
   window: Window,
   size: (u32, u32),
@@ -1706,11 +1706,11 @@ impl X11 {
     crate::access::set_window_bounds(rect, rect);
   }
 
-  /// Opens the open list's window at `placement` (window pixels), or closes it.
+  /// Opens the open overlay's window at `placement` (window pixels), or closes it.
   fn place_popup(
     &mut self,
     shell: &mut Shell,
-    placement: Option<crate::popup::Placement>,
+    placement: Option<crate::overlay::Placement>,
   ) -> Result<(), Box<dyn Error>> {
     if let Some(popup) = self.popup.take() {
       self.conn.ungrab_pointer(x11rb::CURRENT_TIME)?;
@@ -1787,15 +1787,15 @@ impl X11 {
       window,
       size: (width, height),
     });
-
-    if let Some(list) = shell.popup_mut() {
-      list.invalidate();
-    }
+    shell.popup_placed(
+      (f64::from(x - self.window_origin.0) / scale) as f32 - ox,
+      (f64::from(y - self.window_origin.1) / scale) as f32 - oy,
+    );
 
     Ok(())
   }
 
-  /// Paints the open list where it changed.
+  /// Paints the open overlay where it changed.
   fn present_popup(&mut self, shell: &mut Shell) -> Result<(), Box<dyn Error>> {
     let Some(popup) = &self.popup else {
       return Ok(());

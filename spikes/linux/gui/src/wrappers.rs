@@ -5,25 +5,21 @@
 
 use skene_foundation::{
   Alignment, AxisAlignment, Edges, Flexibility, GridPlacement, Value,
+  behavior::Behavior,
   seam::record::{Record, keys},
 };
 
 use crate::{
-  Column, Grid, Row, Stack,
+  Column, Control, Grid, Row, Stack,
   view::{Child, ChildOf, Cx, Node, View, child_of, properties},
 };
 
 /// Builds `child` with `record` folded into the placement it is built under, or nothing where
 /// there is none.
 fn build_wrapped(record: &Record, child: Option<Child>, cx: &mut Cx) -> Node {
-  let mut placement = cx.placement.clone();
+  let mut inner = cx.inherit();
 
-  placement.fold(record);
-
-  let mut inner = Cx {
-    scope: cx.scope.clone(),
-    placement,
-  };
+  inner.placement.fold(record);
 
   match child {
     Some(child) => child(&mut inner),
@@ -95,6 +91,13 @@ impl ChildOf<Row> for Flexible {
 }
 
 impl ChildOf<Column> for Flexible {
+  fn build_child(self, cx: &mut Cx) -> Node {
+    build_wrapped(&self.record, self.child, cx)
+  }
+}
+
+/// A control lays its label, its parts and its body out along a row or a column.
+impl<B: Behavior> ChildOf<Control<B>> for Flexible {
   fn build_child(self, cx: &mut Cx) -> Node {
     build_wrapped(&self.record, self.child, cx)
   }

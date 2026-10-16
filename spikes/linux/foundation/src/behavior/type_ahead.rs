@@ -1,9 +1,10 @@
 //! Finding an option by typing the start of its name.
 
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
-/// What a list's typed letters have spelled: a buffer of the characters typed within a second
-/// of one another, matched against the options' names as Chromium's lists match them.
+/// What a list's typed letters have spelled: a buffer of the characters typed within a pause
+/// of one another ([`TypeAhead::PAUSE`], its owner resetting it on the platform's clock),
+/// matched against the options' names as Chromium's lists match them.
 ///
 /// The same character typed again moves on to the next name starting with it; a longer
 /// buffer finds the first name, from the current one on, that starts with it (ignoring case).
@@ -11,18 +12,17 @@ use std::time::{Duration, Instant};
 #[must_use]
 pub struct TypeAhead {
   buffer: String,
-  last: Option<Instant>,
 }
 
 impl TypeAhead {
-  /// How long after a character the next one continues the same search.
+  /// How long after a character the next one continues the same search: its owner resets
+  /// the buffer once this passes with nothing typed.
   pub const PAUSE: Duration = Duration::from_secs(1);
 
   /// An empty buffer.
   pub const fn new() -> Self {
     Self {
       buffer: String::new(),
-      last: None,
     }
   }
 
@@ -32,29 +32,15 @@ impl TypeAhead {
     &self.buffer
   }
 
-  /// Whether a search is under way at `now`: a `Space` continues it rather than choosing.
+  /// Whether a search is under way: a `Space` continues it rather than choosing.
   #[must_use]
-  pub fn is_active(&self, now: Instant) -> bool {
-    self
-      .last
-      .is_some_and(|last| now.duration_since(last) < Self::PAUSE)
-      && !self.buffer.is_empty()
+  pub const fn is_active(&self) -> bool {
+    !self.buffer.is_empty()
   }
 
-  /// Types `text` at `now` into a list of `names` whose current option is `current`: the
-  /// option it finds, where one matches.
-  pub fn type_text(
-    &mut self,
-    text: &str,
-    now: Instant,
-    names: &[&str],
-    current: Option<usize>,
-  ) -> Option<usize> {
-    if !self.is_active(now) {
-      self.buffer.clear();
-    }
-
-    self.last = Some(now);
+  /// Types `text` into a list of `names` whose current option is `current`: the option it
+  /// finds, where one matches.
+  pub fn type_text(&mut self, text: &str, names: &[&str], current: Option<usize>) -> Option<usize> {
     self.buffer.push_str(&text.to_lowercase());
 
     if names.is_empty() {
@@ -78,6 +64,5 @@ impl TypeAhead {
   /// Forgets what was typed.
   pub fn reset(&mut self) {
     self.buffer.clear();
-    self.last = None;
   }
 }

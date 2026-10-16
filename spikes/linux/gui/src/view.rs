@@ -8,7 +8,9 @@ use std::{
 use skene_foundation::{
   Effect, Keyed, NodeId, Signal,
   seam::{
-    node::{NodeKind, NodeSpec},
+    access::Role,
+    control::Part,
+    node::{Interaction, NodeKind, NodeSpec},
     record::Record,
     style::ScopeChain,
     tree,
@@ -91,30 +93,86 @@ impl Node {
   }
 }
 
-/// Where a view is built: the theme scopes it sits in, and the placement the wrappers above it
-/// fold into its properties. Passed along, never made by a view.
+/// Where a view is built: the theme scopes it sits in, the placement the wrappers above it
+/// fold into its properties, the control it is built inside, and what the part wrapping it
+/// makes of it. Passed along, never made by a view.
 pub struct Cx {
   /// The theme scopes the view sits in, innermost first.
   pub(crate) scope: ScopeChain,
   /// What the wrappers above the view fold into its own properties.
   pub(crate) placement: Record,
+  /// The control the view is built inside, whose states its parts resolve against.
+  pub(crate) control: Option<NodeId>,
+  /// The part of that control the view's node is, where a part wraps it.
+  pub(crate) part: Option<Part>,
+  /// Whether a reader skips the view's node and everything inside it.
+  pub(crate) presentational: bool,
+  /// Whether the view's node is a caption a press on which focuses its control.
+  pub(crate) answering: bool,
 }
 
 impl Cx {
-  /// The context an app's root is built in: no theme, no placement.
+  /// The context an app's root is built in: no theme, no placement, no control.
   pub(crate) const fn root() -> Self {
     Self {
       scope: ScopeChain::root(),
       placement: Record::new(),
+      control: None,
+      part: None,
+      presentational: false,
+      answering: false,
     }
   }
 
-  /// The context a view's children are built in: the same scopes, no placement.
+  /// The context a view's children are built in: the same scopes and control, no placement
+  /// and no part.
   pub(crate) fn child(&self) -> Self {
     Self {
       scope: self.scope.clone(),
       placement: Record::new(),
+      control: self.control,
+      part: None,
+      presentational: false,
+      answering: false,
     }
+  }
+
+  /// A context like this one: what a view that builds another in its place (a derived view)
+  /// hands it.
+  pub(crate) fn inherit(&self) -> Self {
+    Self {
+      scope: self.scope.clone(),
+      placement: self.placement.clone(),
+      control: self.control,
+      part: self.part,
+      presentational: self.presentational,
+      answering: self.answering,
+    }
+  }
+
+  /// Creates the view's node of `spec` in this context: in its scopes, inside its control,
+  /// as its part, skipped by a reader or answering a press where the context says. A segment
+  /// passes the part on to the node built beneath it.
+  pub(crate) fn create(&mut self, mut spec: NodeSpec) -> NodeId {
+    if spec.kind == NodeKind::Segment {
+      return tree::create::<Active>(spec, &self.scope, self.control);
+    }
+
+    if std::mem::take(&mut self.presentational) {
+      spec = spec.with_role(Role::Presentation);
+    }
+
+    if std::mem::take(&mut self.answering) {
+      spec = spec.with_interaction(Interaction::Answering);
+    }
+
+    let id = tree::create::<Active>(spec, &self.scope, self.control);
+
+    if let Some(part) = self.part.take() {
+      tree::set_part::<Active>(id, part);
+    }
+
+    id
   }
 }
 
@@ -185,10 +243,7 @@ impl<V: View> View for Option<V> {
   fn build(self, cx: &mut Cx) -> Node {
     match self {
       Some(view) => view.build(cx),
-      None => Node(tree::create::<Active>(
-        NodeSpec::new(NodeKind::Segment),
-        &cx.scope,
-      )),
+      None => Node(cx.create(NodeSpec::new(NodeKind::Segment))),
     }
   }
 }
@@ -229,8 +284,8 @@ pub(crate) fn keyed<T: 'static, K: Eq + Hash + Clone + 'static, C: ChildOf<L>, L
   view: impl Fn(T) -> C + 'static,
 ) -> Child {
   Box::new(move |cx| {
-    let segment = tree::create::<Active>(NodeSpec::new(NodeKind::Segment), &cx.scope);
-    let scope = cx.scope.clone();
+    let segment = cx.create(NodeSpec::new(NodeKind::Segment));
+    let inner = cx.child();
     let list = RefCell::new(Keyed::<K, NodeId>::new());
 
     Effect::new(move || {
@@ -239,14 +294,7 @@ pub(crate) fn keyed<T: 'static, K: Eq + Hash + Clone + 'static, C: ChildOf<L>, L
         list.borrow_mut().update(
           items,
           &key,
-          |item| {
-            view(item)
-              .build_child(&mut Cx {
-                scope: scope.clone(),
-                placement: Record::new(),
-              })
-              .0
-          },
+          |item| view(item).build_child(&mut inner.child()).0,
           tree::remove::<Active>,
         )
       });
@@ -293,8 +341,8 @@ impl Derived {
 
 impl View for Derived {
   fn build(self, cx: &mut Cx) -> Node {
-    let segment = tree::create::<Active>(NodeSpec::new(NodeKind::Segment), &cx.scope);
-    let (scope, placement) = (cx.scope.clone(), cx.placement.clone());
+    let segment = cx.create(NodeSpec::new(NodeKind::Segment));
+    let inner = cx.inherit();
     let shown = Cell::new(None::<NodeId>);
     let build = self.build;
 
@@ -302,10 +350,7 @@ impl View for Derived {
       let view = build();
 
       untrack(|| {
-        let node = view.build(&mut Cx {
-          scope: scope.clone(),
-          placement: placement.clone(),
-        });
+        let node = view.build(&mut inner.inherit());
 
         tree::attach::<Active>(segment, node.0, 0);
 

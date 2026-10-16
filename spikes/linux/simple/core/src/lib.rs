@@ -12,6 +12,10 @@ use skene_foundation::{Color, Definitions, Media, Token, TokenRef, TokenSet};
 
 /// The accent: a control's on state, a primary button's fill.
 pub const ACCENT: TokenRef<Color> = TokenRef::new("simple-accent");
+/// The accent under the pointer.
+pub const ACCENT_HOVER: TokenRef<Color> = TokenRef::new("simple-accent-hover");
+/// The accent while pressed.
+pub const ACCENT_PRESSED: TokenRef<Color> = TokenRef::new("simple-accent-pressed");
 /// What sits on the accent: a primary button's label.
 pub const ON_ACCENT: TokenRef<Color> = TokenRef::new("simple-on-accent");
 /// A card's fill.
@@ -28,6 +32,10 @@ pub const LINE: TokenRef<Color> = TokenRef::new("simple-line");
 pub struct SimpleColors {
   /// [`ACCENT`].
   pub accent: Token<Color>,
+  /// [`ACCENT_HOVER`].
+  pub accent_hover: Token<Color>,
+  /// [`ACCENT_PRESSED`].
+  pub accent_pressed: Token<Color>,
   /// [`ON_ACCENT`].
   pub on_accent: Token<Color>,
   /// [`CARD`].
@@ -44,6 +52,10 @@ impl Default for SimpleColors {
   fn default() -> Self {
     Self {
       accent: Token::new(ACCENT, Color::rgb(0x0a84ff)).when(Media::Dark, Color::rgb(0x409cff)),
+      accent_hover: Token::new(ACCENT_HOVER, Color::rgb(0x0977e6))
+        .when(Media::Dark, Color::rgb(0x3a8ce6)),
+      accent_pressed: Token::new(ACCENT_PRESSED, Color::rgb(0x086acc))
+        .when(Media::Dark, Color::rgb(0x337dcc)),
       on_accent: Token::new(ON_ACCENT, Color::WHITE),
       card: Token::new(CARD, Color::WHITE).when(Media::Dark, Color::rgb(0x1c1c1e)),
       ink: Token::new(INK, Color::rgb(0x1d1d1f)).when(Media::Dark, Color::rgb(0xf5f5f7)),
@@ -57,6 +69,8 @@ impl TokenSet for SimpleColors {
   fn define(&self, definitions: &mut Definitions) {
     definitions
       .add(&self.accent)
+      .add(&self.accent_hover)
+      .add(&self.accent_pressed)
       .add(&self.on_accent)
       .add(&self.card)
       .add(&self.ink)

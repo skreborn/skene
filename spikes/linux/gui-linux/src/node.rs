@@ -1,6 +1,6 @@
 //! The realized tree: one [`Drawn`] per realized node, its children in the scene's order, and
 //! what the realization keeps of it (its resolved look and run properties, its layout, its
-//! text, its control's values, where it was laid out).
+//! text, its content values, where it was laid out).
 
 use std::{
   cell::{Cell, RefCell},
@@ -12,17 +12,94 @@ use skene_foundation::{
   layout::{Axis, ContainerLayout, Measurement, Rect, ResolvedLayout},
   seam::{
     access::AccessFacts,
+    content::{Content, Edit, OverlayPlacement, PropValue, Run},
     node::{LayoutKind, NodeKind, NodeSpec},
+    picture::Picture,
     report::Interest,
   },
 };
 
 use crate::{
-  controls::Contents,
   layout::Host,
   look::{Look, RunProps},
   text::TextCell,
 };
+
+/// A node's content values, as Skene last wrote them or the reader last changed them.
+#[derive(Clone, Default, Debug)]
+pub struct Contents {
+  /// A text's plain text.
+  pub text: Option<Rc<str>>,
+  /// A text's rich text.
+  pub runs: Option<Rc<[Run]>>,
+  /// The texts a text lays out as wide as.
+  pub reserve: Option<Rc<[Rc<str>]>>,
+  /// A text entry's text and selection.
+  pub edit: Option<Edit>,
+  /// What an empty entry shows.
+  pub placeholder: Option<Rc<str>>,
+  /// Whether its text is read only.
+  pub read_only: bool,
+  /// Whether it hides what is typed.
+  pub secure: bool,
+  /// The keyboard it asks the input method for, by name.
+  pub keyboard: Option<Rc<str>>,
+  /// The picture an image shows.
+  pub source: Option<Rc<str>>,
+  /// Where an acting box leads.
+  pub destination: Option<Rc<str>>,
+  /// What a painted node shows.
+  pub picture: Option<Rc<Picture>>,
+  /// Where an overlay is placed.
+  pub placement: Option<OverlayPlacement>,
+}
+
+impl Contents {
+  /// Shows `value` as `content`.
+  pub fn write(&mut self, content: Content, value: &PropValue) {
+    match (content, value) {
+      (Content::Text, PropValue::Text(text)) => self.text = Some(Rc::clone(text)),
+      (Content::Runs, PropValue::Runs(runs)) => self.runs = Some(Rc::clone(runs)),
+      (Content::Reserve, PropValue::Texts(texts)) => self.reserve = Some(Rc::clone(texts)),
+      (Content::Edit, PropValue::Edit(edit)) => self.edit = Some(edit.clone()),
+      (Content::Placeholder, PropValue::Text(text)) => self.placeholder = Some(Rc::clone(text)),
+      (Content::ReadOnly, PropValue::Bool(read_only)) => self.read_only = *read_only,
+      (Content::Secure, PropValue::Bool(secure)) => self.secure = *secure,
+      (Content::Keyboard, PropValue::Text(keyboard)) => self.keyboard = Some(Rc::clone(keyboard)),
+      (Content::Source, PropValue::Text(text)) => self.source = Some(Rc::clone(text)),
+      (Content::Destination, PropValue::Text(text)) => self.destination = Some(Rc::clone(text)),
+      (Content::Picture, PropValue::Picture(picture)) => self.picture = Some(Rc::clone(picture)),
+      (Content::Placement, PropValue::Placement(placement)) => self.placement = Some(*placement),
+      _ => {}
+    }
+  }
+
+  /// The value shown as `content`.
+  pub fn read(&self, content: Content) -> Option<PropValue> {
+    let text = |text: &Option<Rc<str>>| text.clone().map(PropValue::Text);
+
+    match content {
+      Content::Text => text(&self.text),
+      Content::Runs => self.runs.clone().map(PropValue::Runs),
+      Content::Reserve => self.reserve.clone().map(PropValue::Texts),
+      Content::Edit => Some(PropValue::Edit(
+        self
+          .edit
+          .clone()
+          .unwrap_or_else(|| Edit::text(Rc::<str>::from(""))),
+      )),
+      Content::Placeholder => text(&self.placeholder),
+      Content::ReadOnly => Some(PropValue::Bool(self.read_only)),
+      Content::Secure => Some(PropValue::Bool(self.secure)),
+      Content::Keyboard => text(&self.keyboard),
+      Content::Source => text(&self.source),
+      Content::Destination => text(&self.destination),
+      Content::Picture => self.picture.clone().map(PropValue::Picture),
+      Content::Placement => self.placement.map(PropValue::Placement),
+      Content::Door(_) => None,
+    }
+  }
+}
 
 /// A realized node, shared.
 pub type Node = Rc<Drawn>;
@@ -49,7 +126,7 @@ pub struct Drawn {
   pub layout: RefCell<ResolvedLayout>,
   /// The engine laying its children out, where it is a container.
   pub engine: RefCell<Option<ContainerLayout<Host>>>,
-  /// Its paragraph: a text's, or a control's caption.
+  /// Its paragraph: a text's, or a text entry's placeholder.
   pub text: RefCell<Option<Rc<TextCell>>>,
   /// Its content values.
   pub contents: RefCell<Contents>,
@@ -77,10 +154,8 @@ pub struct Drawn {
   pub engine_epoch: Cell<u64>,
   /// What it and its subtree paint, relative to its frame's origin.
   pub reach: Cell<Rect>,
-  /// Whether `Space` holds it pressed from the keyboard.
-  pub key_pressed: Cell<bool>,
   /// Its editing state, where it is a text entry.
-  pub entry: RefCell<Option<crate::entry::Entry>>,
+  pub entry: RefCell<Option<Box<crate::entry::Entry>>>,
   /// Whether an input method composes in it, as of its entry's last change.
   pub composing: Cell<bool>,
   /// Whether a write of its text waits for an operation on its entry to end.
@@ -117,7 +192,6 @@ impl Drawn {
       reported: Cell::new(None),
       engine_epoch: Cell::new(0),
       reach: Cell::new(Rect::default()),
-      key_pressed: Cell::new(false),
       entry: RefCell::new(None),
       composing: Cell::new(false),
       edit_pending: Cell::new(false),
@@ -133,9 +207,27 @@ impl Drawn {
     }
   }
 
-  /// Whether it is a Skene container the engine lays out.
+  /// Whether it is a Skene container the engine lays out: a layout, or an overlay, which lays
+  /// its content out as a box does.
   pub const fn is_container(&self) -> bool {
-    matches!(self.spec.kind, NodeKind::Layout(_))
+    matches!(self.spec.kind, NodeKind::Layout(_) | NodeKind::Overlay)
+  }
+
+  /// Whether it is an overlay: out of its parent's flow, drawn on a surface of its own.
+  pub fn is_overlay(&self) -> bool {
+    self.spec.kind == NodeKind::Overlay
+  }
+
+  /// Whether it is the realization's own text view (a text entry).
+  pub const fn is_entry(&self) -> bool {
+    matches!(self.spec.kind, NodeKind::Editable { .. })
+  }
+
+  /// The overlay it is inside, where it is inside one (an overlay is inside itself).
+  pub fn overlay(self: &Rc<Self>) -> Option<Node> {
+    std::iter::once(Rc::clone(self))
+      .chain(self.ancestors())
+      .find(|node| node.is_overlay())
   }
 
   /// Its parent, where it is attached.
@@ -255,9 +347,15 @@ impl Drawn {
   }
 
   /// Its frame in window coordinates, where it is drawn: the frames and offsets of its
-  /// ancestors and its own added, their scroll offsets taken off.
+  /// ancestors and its own added, their scroll offsets taken off, up to the overlay it is in,
+  /// whose frame is in window coordinates already.
   pub fn window_rect(self: &Rc<Self>) -> Rect {
     let mut rect = self.frame.get();
+
+    if self.is_overlay() {
+      return rect;
+    }
+
     let (dx, dy) = self.offset();
 
     rect.x += dx;
@@ -265,6 +363,14 @@ impl Drawn {
 
     for ancestor in self.ancestors() {
       let frame = ancestor.frame.get();
+
+      if ancestor.is_overlay() {
+        rect.x += frame.x;
+        rect.y += frame.y;
+
+        break;
+      }
+
       let (sx, sy) = ancestor.scroll.get();
       let (dx, dy) = ancestor.offset();
 

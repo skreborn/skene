@@ -204,7 +204,7 @@ impl View for Painted {
       spec = spec.with_role(Role::Presentation);
     }
 
-    let id = tree::create::<Active>(spec, &cx.scope);
+    let id = cx.create(spec);
     let size = Signal::new(None::<Size>);
     let laid = Memo::new(move || {
       size

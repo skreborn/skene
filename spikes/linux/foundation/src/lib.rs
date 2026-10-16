@@ -16,8 +16,12 @@
 //!   realization reports ([`environment::report`]).
 //! - [`layout`]: the layout engine (taffy), one small tree per container over a toolkit's own
 //!   measuring ([`layout::ContainerLayout`] over [`layout::LayoutHost`]).
-//! - [`behavior`]: what each kind of drawn control does with a key, a press, a click and a
-//!   reader's action, and what it reports to a reader ([`behavior::Behavior`]).
+//! - [`behavior`]: what a control's interaction is ([`behavior::Behavior`]): the events it acts
+//!   on and the verdict it gives each, what it tells a reader, and the state its parts are
+//!   styled under; the key tables every platform that draws its controls shares; and the
+//!   handle a behavior acts through ([`behavior::ControlHandle`]).
+//! - [`system_colors`]: the platform's colors the built-in controls' defaults name
+//!   ([`SystemColors`]), defined by the realization at the root.
 //! - [`seam`]: what crosses between the facade's shared views and a platform's realization:
 //!   the contract every realization implements ([`seam::Realization`]) and the shared half
 //!   that calls it (the tree, the record and its resolver, the controlled contract, the
@@ -34,6 +38,7 @@ pub mod layout;
 pub mod reactive;
 pub mod scene;
 pub mod seam;
+pub mod system_colors;
 pub mod text;
 pub mod token;
 pub mod value;
@@ -45,6 +50,7 @@ pub use crate::{
   keyed::Keyed,
   reactive::{Effect, Memo, Owner, Signal, batch, untrack},
   scene::{NodeId, Scene},
+  system_colors::SystemColors,
   token::{
     Definition, DefinitionLeaf, Definitions, IntoDefinition, Token, TokenRef, TokenSet, TokenValue,
     Tokenable, Tokens,

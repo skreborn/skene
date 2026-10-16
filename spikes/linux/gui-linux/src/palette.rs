@@ -1,8 +1,9 @@
-//! The colors and sizes the realization draws with where a view sets none: the ink of a text
-//! no ancestor colors, and the default look of the controls it draws, each answering the
-//! scheme, the contrast and the reader's accent in force.
+//! The colors and sizes the realization draws with where a view sets none, each answering the
+//! scheme, the contrast and the reader's accent in force: the platform's colors the built-in
+//! controls are drawn in ([`system_colors`]), and what the realization draws itself (the title
+//! bar, the window behind every view, the ink of a text no ancestor colors).
 
-use skene_foundation::{Color, Environment};
+use skene_foundation::{Color, Environment, SystemColors, Token};
 
 /// The realization's defaults for the environment in force.
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -131,5 +132,56 @@ impl Palette {
         header: Color::rgb(0x1c1c1e),
       },
     }
+  }
+}
+
+/// The platform's colors for the environment in force, subscribing the running effect to the
+/// scheme, the contrast and the accent: what the facade defines at the root.
+#[must_use]
+pub fn system_colors() -> SystemColors {
+  let palette = Palette::current();
+
+  SystemColors {
+    ink: Token::new(SystemColors::INK, palette.ink),
+    muted_ink: Token::new(SystemColors::MUTED_INK, palette.dim),
+    window: Token::new(SystemColors::WINDOW, palette.window),
+    control: Token::new(SystemColors::CONTROL, palette.control),
+    control_hover: Token::new(SystemColors::CONTROL_HOVER, palette.control_hover),
+    control_pressed: Token::new(SystemColors::CONTROL_PRESSED, palette.control_pressed),
+    border: Token::new(SystemColors::BORDER, palette.outline),
+    accent: Token::new(SystemColors::ACCENT, palette.accent),
+    accent_hover: Token::new(
+      SystemColors::ACCENT_HOVER,
+      mix(palette.accent, Color::BLACK, 0.1),
+    ),
+    accent_pressed: Token::new(
+      SystemColors::ACCENT_PRESSED,
+      mix(palette.accent, Color::BLACK, 0.2),
+    ),
+    on_accent: Token::new(SystemColors::ON_ACCENT, palette.on_accent),
+    track: Token::new(SystemColors::TRACK, palette.track),
+    knob: Token::new(SystemColors::KNOB, palette.knob),
+    field: Token::new(SystemColors::FIELD, palette.field),
+    selection: Token::new(SystemColors::SELECTION, palette.accent.with_alpha(0x55)),
+    selection_inactive: Token::new(
+      SystemColors::SELECTION_INACTIVE,
+      palette.dim.with_alpha(0x40),
+    ),
+  }
+}
+
+/// `a` moved toward `b` by `amount`.
+pub fn mix(a: Color, b: Color, amount: f32) -> Color {
+  let channel = |a: u8, b: u8| -> u8 {
+    let value = f32::from(a) + (f32::from(b) - f32::from(a)) * amount;
+
+    value.round().clamp(0., 255.) as u8
+  };
+
+  Color {
+    red: channel(a.red, b.red),
+    green: channel(a.green, b.green),
+    blue: channel(a.blue, b.blue),
+    alpha: channel(a.alpha, b.alpha),
   }
 }

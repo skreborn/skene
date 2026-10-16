@@ -2,7 +2,7 @@
 //! following the caret, its keys and pointer, and its cells.
 
 use skene_foundation::{
-  behavior::{Behavior as _, EntryAct, TextEntry},
+  behavior::{EntryAct, EntryKeys},
   seam::report::{KeyEvent, Modifiers},
   text::{
     Laid as _, ParagraphStyle, RunStyle, Wrap,
@@ -65,7 +65,7 @@ fn cluster_cells(cluster: &str) -> usize {
 /// several rows wrapping its lines and scrolling down. Its editing is the shared core's; its
 /// cells are the cell engine's layout of the text.
 pub struct TextField {
-  behavior: TextEntry,
+  behavior: EntryKeys,
   editor: Editor<Cells>,
   columns: u16,
   rows: u16,
@@ -88,7 +88,7 @@ impl TextField {
     editor.set_width(None);
 
     Self {
-      behavior: TextEntry::new(false),
+      behavior: EntryKeys::new(false),
       editor,
       columns: columns.max(1),
       rows: 1,
@@ -108,7 +108,7 @@ impl TextField {
     editor.set_width(Some(f32::from(columns.max(1))));
 
     Self {
-      behavior: TextEntry::new(true),
+      behavior: EntryKeys::new(true),
       editor,
       columns: columns.max(1),
       rows: rows.max(1),
@@ -171,7 +171,7 @@ impl TextField {
     self.copied.take()
   }
 
-  /// A key press, answered by the text entry's behavior ([`TextEntry`]). The terminal's legacy
+  /// A key press, answered by the text entry's key table ([`EntryKeys`]). The terminal's legacy
   /// encodings stand for the keys they encode: `Ctrl+W` for `Ctrl+Backspace`, which some
   /// keyboard encodings cannot tell, and `Ctrl+H` (`0x08`) for `Backspace`.
   pub fn key(&mut self, event: &KeyEvent) -> KeyOutcome {

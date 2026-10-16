@@ -17,7 +17,7 @@ use crate::{
   seam::{
     Realization,
     access::{Checked, Role},
-    content::{Choice, Content, Edit, PropValue, Range, Run, TextSelection, writing},
+    content::{Content, Edit, OverlayPlacement, PropValue, Run, Side, TextSelection, writing},
     node::{NodeKind, NodeSpec},
     picture::{
       Paint, PaintOp, Picture,
@@ -132,20 +132,12 @@ pub fn sample(content: Content) -> Option<PropValue> {
         destination: Some("https://example.org/guide".into()),
       },
     ])),
-    Content::Caption => text("Caption"),
-    Content::On | Content::Mixed | Content::ReadOnly | Content::Secure | Content::Prominent => {
-      PropValue::Bool(true)
-    }
-    Content::Enabled => PropValue::Bool(false),
-    Content::Range => PropValue::Range(Range {
-      value: 150.,
-      minimum: 0.,
-      maximum: 200.,
-      step: 1.,
-    }),
-    Content::Choice => PropValue::Choice(Choice {
-      options: Rc::from(vec![Rc::from("a"), Rc::from("b"), Rc::from("c")]),
-      chosen: Some(2),
+    Content::Reserve => PropValue::Texts(Rc::from(vec![Rc::from("Small"), Rc::from("Large")])),
+    Content::ReadOnly | Content::Secure => PropValue::Bool(true),
+    Content::Placement => PropValue::Placement(OverlayPlacement {
+      anchor: None,
+      side: Side::Bottom,
+      widen: true,
     }),
     Content::Edit => PropValue::Edit(Edit {
       text: "he\u{301}llo".into(),
@@ -182,7 +174,7 @@ pub fn contents_gate<R: Realization>() -> Vec<GateRow> {
       let Some(value) = sample(*content) else {
         continue;
       };
-      let id = tree::create::<R>(NodeSpec::new(kind), &ScopeChain::root());
+      let id = tree::create::<R>(NodeSpec::new(kind), &ScopeChain::root(), None);
       let Some(native) = tree::native::<R>(id) else {
         continue;
       };
@@ -253,6 +245,9 @@ pub struct AccessSnapshot {
 pub enum Action {
   /// A primary click at the center.
   Click,
+  /// A primary click at a point of the bounds, as fractions of their width and height from
+  /// their top leading corner.
+  ClickAt(f32, f32),
   /// A secondary click at the center.
   ContextClick,
   /// A primary press at the center, dragged by this offset in pixels (right and down
@@ -272,6 +267,8 @@ pub enum Action {
   Commit,
   /// Wheel steps at the center: right and down positive.
   Scroll(i32, i32),
+  /// A reader's request, made through the platform's accessibility layer.
+  Access(crate::seam::control::AccessRequest),
 }
 
 /// The environment a test asks the platform for, through its real path.

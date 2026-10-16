@@ -1,7 +1,9 @@
 //! The window both backends share: its size, scale and chrome, the realized tree it shows,
 //! what is dirty since the last frame, and the reader's input dispatched through the
 //! foundation: hit testing, hover, press and focus states, Tab order in the scene's child
-//! order, clicks and keys to the controls and the boxes that act, wheel scrolling.
+//! order, pointer events, clicks, keys and a reader's requests reported to the controls and
+//! the boxes that act, each default run unless a verdict prevents it, wheel scrolling, and
+//! the open overlay's surface.
 //!
 //! A backend turns its protocol's events into calls here and carries out the
 //! [`Request`]s returned (moving or resizing the window, the cursor), and asks for a frame
@@ -15,34 +17,32 @@ use std::{
 
 use skene_foundation::{
   State, StateSet,
-  behavior::{Activate, Behavior as _, Collection, EntryAct, Orientation, PopupAct, TextEntry},
+  behavior::{ActivateKeys, EntryAct, EntryKeys},
   environment::{self, Fact},
   layout::Rect,
   seam::{
-    access::{Action, Role},
-    content::{Content, PropValue, Verdict},
-    node::{ControlKind, NodeKind},
+    content::{Content, PropValue},
+    control::{AccessRequest, Prevent},
+    node::{Interaction, NodeKind},
     report::{Answer, KeyEvent, PointerEvent, PointerPhase, Report, Size},
     tree,
   },
   text::{
     Laid as _,
-    editing::{Binding, Command},
+    editing::{Binding, Command, Movement},
   },
 };
 
 use crate::{
   Linux,
   chrome::{Button, Chrome, Edge, Hit},
-  controls::{self, Act, KeyResult},
   entry,
   keys::KeyInput,
   layout,
-  look::RunProps,
   node::{Node, walk},
+  overlay::{self, Open},
   paint::{Marks, Renderer, painted_bounds, union},
   palette::Palette,
-  popup::OpenList,
   text::Change,
   trace,
 };
@@ -66,7 +66,7 @@ pub enum Request {
   Cursor(Cursor),
   /// Open a popup surface at this placement, or move the open one there; close it where
   /// `None`.
-  Popup(Option<crate::popup::Placement>),
+  Popup(Option<overlay::Placement>),
 }
 
 /// A pointer cursor, named as CSS names it.
@@ -118,6 +118,7 @@ struct Dirty {
   prepare: bool,
   layout: bool,
   all: bool,
+  overlays: bool,
   nodes: Vec<Node>,
   rects: Vec<Rect>,
   focus: Option<Option<Node>>,
@@ -125,8 +126,6 @@ struct Dirty {
 
 thread_local! {
   static INPUTS: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
-  static TYPE_AHEAD: RefCell<skene_foundation::behavior::TypeAhead> =
-    const { RefCell::new(skene_foundation::behavior::TypeAhead::new()) };
   static FOCUSED: RefCell<Option<std::rc::Weak<crate::node::Drawn>>> = const { RefCell::new(None) };
   static DIRTY: RefCell<Dirty> = RefCell::new(Dirty {
     prepare: true,
@@ -158,14 +157,6 @@ pub fn reset() {
       ..Dirty::default()
     };
   });
-}
-
-/// The control kind of `node`, where it is a control.
-pub fn controls_kind(node: &Node) -> Option<ControlKind> {
-  match node.spec.kind {
-    NodeKind::Control(kind) => Some(kind),
-    _ => None,
-  }
 }
 
 /// Whether `node` holds focus now.
@@ -217,6 +208,11 @@ pub fn invalidate_all() {
   DIRTY.with(|dirty| dirty.borrow_mut().all = true);
 }
 
+/// An overlay was shown, hidden or placed again: the open one is synced at the next turn.
+pub fn invalidate_overlays() {
+  DIRTY.with(|dirty| dirty.borrow_mut().overlays = true);
+}
+
 /// Moves focus to `node` at the next opportunity, or takes it away.
 pub fn request_focus(node: Option<Node>) {
   DIRTY.with(|dirty| dirty.borrow_mut().focus = Some(node));
@@ -240,6 +236,15 @@ fn wants_frame() -> bool {
   })
 }
 
+/// Whether `node` is `ancestor` or beneath it.
+fn is_within(node: &Node, ancestor: &Node) -> bool {
+  Rc::ptr_eq(node, ancestor)
+    || node
+      .ancestors()
+      .iter()
+      .any(|candidate| Rc::ptr_eq(candidate, ancestor))
+}
+
 /// A press in progress: where it started, on what.
 struct Press {
   /// The deepest node under the press.
@@ -252,6 +257,8 @@ struct Press {
   button: Option<Button>,
   /// The pointer button that pressed (0 primary, 1 middle, 2 secondary).
   button_pressed: u8,
+  /// Whether the owner keeps the pointer until the release (a control that drags).
+  captured: bool,
 }
 
 /// One painted frame: its pixels are the renderer's, `damage` the part that changed (device
@@ -283,7 +290,10 @@ pub struct Shell {
   reveal: bool,
   title_click: Option<(Instant, (f32, f32))>,
   cursor: Cursor,
-  popup: Option<OpenList>,
+  overlay: Option<Open>,
+  pointer_in_overlay: bool,
+  keyboard_modality: bool,
+  key_pressed: Option<Node>,
   pending: Vec<Request>,
   modifiers: skene_foundation::seam::report::Modifiers,
   window_focused: bool,
@@ -320,7 +330,10 @@ impl Shell {
       reveal: false,
       title_click: None,
       cursor: Cursor::Default,
-      popup: None,
+      overlay: None,
+      pointer_in_overlay: false,
+      keyboard_modality: false,
+      key_pressed: None,
       pending: Vec::new(),
       modifiers: skene_foundation::seam::report::Modifiers::default(),
       window_focused: false,
@@ -403,12 +416,15 @@ impl Shell {
     wants_frame() || self.owed.is_some()
   }
 
-  /// Applies a focus move the app asked for.
+  /// Applies a focus move the app or a behavior asked for, focus shown as the last input
+  /// shows it: after a key, not after a press.
   pub fn settle_focus(&mut self) {
     let request = DIRTY.with(|dirty| dirty.borrow_mut().focus.take());
 
     if let Some(node) = request {
-      self.set_focus(node, true);
+      let visible = self.keyboard_modality;
+
+      self.set_focus(node, visible);
     }
   }
 
@@ -456,16 +472,23 @@ impl Shell {
     let palette = Palette::now();
     let mut dirty = DIRTY.with(|dirty| std::mem::take(&mut *dirty.borrow_mut()));
 
+    if dirty.overlays {
+      // An overlay's change waits for the turn that syncs it.
+      invalidate_overlays();
+    }
+
     if dirty.prepare {
       if self.chrome.set_title(&self.title, &palette) != Change::None {
         dirty.all = true;
       }
 
-      match layout::prepare(&root, &palette) {
-        Change::Layout => dirty.layout = true,
-        Change::Paint => dirty.all = true,
-        Change::None => {}
+      let mut repainted = Vec::new();
+
+      if layout::prepare(&root, &palette, &mut repainted) == Change::Layout {
+        dirty.layout = true;
       }
+
+      dirty.nodes.extend(repainted);
     }
 
     let prepared = started.elapsed();
@@ -476,12 +499,14 @@ impl Shell {
       layout::layout(&root, (0., self.chrome.header()), width, height);
       crate::access::invalidate();
       walk(&root, |node| {
-        if controls_kind(node).is_some_and(controls::is_entry) {
+        if node.is_entry() {
           node.fit_entry();
         }
       });
       dirty.all = true;
     }
+
+    self.mark_overlay(&dirty);
 
     if std::mem::take(&mut self.reveal) && self.reveal_focus() {
       dirty.all = true;
@@ -522,6 +547,7 @@ impl Shell {
     let device = self.device_size();
     let marks = Marks {
       focus: self.focus.clone().filter(|_| self.focus_visible),
+      focused: self.focus.clone(),
       link: self
         .focus
         .as_ref()
@@ -613,8 +639,22 @@ impl Shell {
     }
   }
 
-  /// The deepest shown node at `x`, `y` (window pixels), with its ancestors, deepest first.
+  /// The deepest shown node at `x`, `y` (window pixels), with its ancestors, deepest first:
+  /// in the open overlay where the pointer is over it, in the window's tree otherwise.
   fn hit(&self, x: f32, y: f32) -> Vec<Node> {
+    match &self.overlay {
+      Some(open) if self.pointer_in_overlay => Self::hit_in(&open.node, x, y),
+      _ => self
+        .root
+        .as_ref()
+        .map(|root| Self::hit_in(root, x, y))
+        .unwrap_or_default(),
+    }
+  }
+
+  /// The deepest shown node under `root` at `x`, `y` (window pixels), with its ancestors up
+  /// to `root`, deepest first; an overlay beneath `root` is not in its flow.
+  fn hit_in(root: &Node, x: f32, y: f32) -> Vec<Node> {
     fn go(node: &Node, origin: (f32, f32), x: f32, y: f32, out: &mut Vec<Node>) -> bool {
       if node.is_hidden() {
         return false;
@@ -642,6 +682,10 @@ impl Shell {
       let (sx, sy) = node.scroll.get();
 
       for child in node.children().iter().rev() {
+        if child.is_overlay() {
+          continue;
+        }
+
         if go(child, (rect.x - sx, rect.y - sy), x, y, out) {
           out.push(Rc::clone(node));
 
@@ -657,10 +701,16 @@ impl Shell {
     }
 
     let mut out = Vec::new();
+    let origin = if root.is_overlay() {
+      (0., 0.)
+    } else {
+      let at = root.window_rect();
+      let frame = root.frame.get();
 
-    if let Some(root) = &self.root {
-      go(root, (0., 0.), x, y, &mut out);
-    }
+      (at.x - frame.x, at.y - frame.y)
+    };
+
+    go(root, origin, x, y, &mut out);
 
     out
   }
@@ -678,10 +728,6 @@ impl Shell {
     }
 
     node.states.set(next);
-
-    if matches!(node.spec.kind, NodeKind::Control(_)) {
-      invalidate_paint(node);
-    }
 
     if node.interest.get().states.contains(state) {
       tree::report::<Linux>(node.id.get(), Report::State { state, holds });
@@ -729,48 +775,15 @@ impl Shell {
       .cloned()
   }
 
-  /// The radio group `node` (a radio) belongs to, and its radios in the scene's order.
-  fn radio_group(node: &Node) -> Option<(Node, Vec<Node>)> {
-    let group = node
-      .ancestors()
-      .into_iter()
-      .find(|ancestor| ancestor.spec.role == Role::RadioGroup)?;
-    let mut radios = Vec::new();
-
-    walk(&group, |member| {
-      if member.spec.kind == NodeKind::Control(ControlKind::Radio) && member.is_shown() {
-        radios.push(Rc::clone(member));
-      }
-    });
-
-    Some((group, radios))
-  }
-
+  /// Whether `node` takes focus now: a shown control whose facts say it does (a radio while
+  /// it is its group's stop), or a shown box that acts.
   fn focusable(node: &Node) -> bool {
-    let enabled = node.is_shown()
-      && match node.spec.kind {
-        NodeKind::Control(kind) => controls::focusable(kind) && !node.contents.borrow().disabled,
-        _ => node.spec.acts,
-      };
-
-    if !enabled || node.spec.kind != NodeKind::Control(ControlKind::Radio) {
-      return enabled;
-    }
-
-    // A radio group is one tab stop: its chosen radio, else its first enabled one.
-    let Some((_, radios)) = Self::radio_group(node) else {
-      return true;
-    };
-    let stop = radios
-      .iter()
-      .find(|radio| radio.contents.borrow().on && !radio.contents.borrow().disabled)
-      .or_else(|| {
-        radios
-          .iter()
-          .find(|radio| !radio.contents.borrow().disabled)
-      });
-
-    stop.is_some_and(|stop| Rc::ptr_eq(stop, node))
+    node.is_shown()
+      && match node.spec.interaction {
+        Interaction::Control { .. } => node.access.borrow().focusable,
+        Interaction::Acting => true,
+        Interaction::None | Interaction::Answering => false,
+      }
   }
 
   fn set_focus(&mut self, node: Option<Node>, visible: bool) {
@@ -778,19 +791,13 @@ impl Shell {
   }
 
   /// Moves focus to `node` (taking it away where `None`), focus shown where `visible`; a
-  /// node that takes no focus by Tab is focused anyway where `forced` (a radio the arrows
-  /// move to).
+  /// node that takes no focus by Tab is focused anyway where `forced` (a text whose link run
+  /// takes it).
   fn set_focus_to(&mut self, node: Option<Node>, visible: bool, forced: bool) {
     let node = node.filter(|node| {
-      forced && node.is_shown() && !node.contents.borrow().disabled || Self::focusable(node)
+      forced && node.is_shown() && !node.access.borrow().disabled || Self::focusable(node)
     });
-    let visible = visible
-      || node.as_ref().is_some_and(|node| {
-        matches!(
-          node.spec.kind,
-          NodeKind::Control(ControlKind::TextField | ControlKind::TextEditor)
-        )
-      });
+    let visible = visible || node.as_ref().is_some_and(|node| node.is_entry());
 
     if match (&node, &self.focus) {
       (Some(a), Some(b)) => Rc::ptr_eq(a, b),
@@ -821,7 +828,8 @@ impl Shell {
 
     if let Some(previous) = &previous {
       Self::set_state(previous, State::FocusVisible, false);
-      Self::release_key(previous);
+      Self::set_state(previous, State::Focused, false);
+      self.release_key(previous);
       invalidate_paint(previous);
       previous.blur_entry();
 
@@ -830,12 +838,12 @@ impl Shell {
       }
     }
 
-    if self.popup.as_ref().is_some_and(|popup| {
-      node
-        .as_ref()
-        .is_none_or(|node| !Rc::ptr_eq(&popup.owner, node))
-    }) {
-      self.close_popup();
+    // Focus moving out of the open overlay, to anything but what holds it, dismisses it.
+    if let (Some(open), Some(next)) = (&self.overlay, &node)
+      && !is_within(next, &open.node)
+      && !is_within(&open.node, next)
+    {
+      tree::report::<Linux>(open.node.id.get(), Report::Dismiss);
     }
 
     Self::set_chain(&previous_chain, &next_chain, State::FocusWithin);
@@ -848,10 +856,11 @@ impl Shell {
     crate::access::invalidate();
 
     if let Some(node) = &node {
+      Self::set_state(node, State::Focused, true);
       Self::set_state(node, State::FocusVisible, visible);
       invalidate_paint(node);
 
-      if node.has_entry() && controls_kind(node).is_some_and(controls::is_entry) {
+      if node.is_entry() && node.has_entry() {
         node.blink_caret();
       }
 
@@ -926,22 +935,27 @@ impl Shell {
     }
 
     // Tab into a one-line field selects what it holds, as GtkEntry and a browser's input do.
-    if matches!(next.spec.kind, NodeKind::Control(ControlKind::TextField)) && next.has_entry() {
+    if next.spec.kind == (NodeKind::Editable { multiline: false }) && next.has_entry() {
       let _ = next.perform(Command::SelectAll);
     }
   }
 
-  /// Shows `node` pressed from the keyboard, or not.
-  fn press_key(node: &Node, pressed: bool) {
-    if node.key_pressed.replace(pressed) != pressed {
+  /// Shows the box that acts `node` pressed from the keyboard (`Space` held), or not.
+  fn press_key(&mut self, node: &Node, pressed: bool) {
+    let held = self
+      .key_pressed
+      .as_ref()
+      .is_some_and(|held| Rc::ptr_eq(held, node));
+
+    if held != pressed {
+      self.key_pressed = pressed.then(|| Rc::clone(node));
       Self::set_state(node, State::Pressed, pressed);
-      invalidate_paint(node);
     }
   }
 
   /// `node` no longer shows pressed from the keyboard.
-  fn release_key(node: &Node) {
-    Self::press_key(node, false);
+  fn release_key(&mut self, node: &Node) {
+    self.press_key(node, false);
   }
 
   /// Scrolls the scroll box `node` by `dx`, `dy` within its extent, on the axes it scrolls;
@@ -1087,178 +1101,241 @@ impl Shell {
     false
   }
 
-  /// Reports what the reader did to a control and applies the verdict.
-  fn act(&mut self, node: &Node, act: Act) {
-    let id = node.id.get();
-
-    match act {
-      Act::Activate => {
-        trace::activate(node);
-        tree::report::<Linux>(id, Report::Activate);
-      }
-      Act::Change(content, proposed) => {
-        let answer = tree::report::<Linux>(
-          id,
-          Report::Change {
-            content,
-            proposed: proposed.clone(),
-            applied: false,
-          },
-        );
-
-        trace::change(node, content, &proposed, &answer);
-
-        let shown = match answer {
-          Answer::Verdict(Verdict::Accept) => Some(proposed),
-          Answer::Verdict(Verdict::Replace(truth)) => Some(truth),
-          _ => None,
-        };
-
-        if let Some(value) = shown {
-          write(node, content, &value);
-        }
-
-        crate::access::invalidate();
-      }
-      Act::Popup(popup) => match popup {
-        PopupAct::Open => self.open_popup(node),
-        PopupAct::Close => self.close_popup(),
-        PopupAct::Highlight(index) => {
-          if let Some(list) = &mut self.popup {
-            list.highlight(Some(index));
-            crate::access::invalidate();
-          }
-        }
-        PopupAct::Choose(index) => {
-          if let Some(act) = node.choice_change(index) {
-            self.act(node, act);
-          }
-        }
-        PopupAct::ChooseAndClose(index) => {
-          self.close_popup();
-
-          if let Some(act) = node.choice_change(index) {
-            self.act(node, act);
-          }
-        }
-      },
-    }
+  /// Reports a click (a primary press and its release over one owner) at `node`, a control or
+  /// a box that acts.
+  fn click(&mut self, node: &Node) {
+    trace::activate(node);
+    tree::report::<Linux>(node.id.get(), Report::Click);
+    self.settle_focus();
+    crate::access::invalidate();
   }
 
-  /// Opens `node`'s list below it.
-  fn open_popup(&mut self, node: &Node) {
-    if self.popup.is_some() {
-      self.close_popup();
+  /// Opens the overlay shown now, closes the open one where it was hidden, and lays the open
+  /// one out again where its content changed: the backend is asked to place its surface.
+  pub fn sync_overlays(&mut self) {
+    let changed = DIRTY.with(|dirty| std::mem::take(&mut dirty.borrow_mut().overlays));
+    let closing = self
+      .overlay
+      .as_ref()
+      .is_some_and(|open| !open.node.is_alive() || !open.node.is_shown());
+
+    if closing {
+      self.close_overlay();
     }
 
-    let mut inherited = RunProps::default();
-
-    for ancestor in node.ancestors().iter().rev() {
-      inherited = ancestor.run.borrow().over(&inherited);
+    if !changed && !closing {
+      return;
     }
 
-    let list = OpenList::new(
-      Rc::clone(node),
-      node.window_rect(),
-      &node.run.borrow().over(&inherited),
-      &Palette::now(),
-    );
+    let Some(node) = overlay::shown() else {
+      return;
+    };
+
+    if self
+      .overlay
+      .as_ref()
+      .is_some_and(|open| Rc::ptr_eq(&open.node, &node))
+    {
+      self.relayout_overlay();
+
+      return;
+    }
+
+    if self.overlay.is_some() {
+      self.close_overlay();
+    }
+
+    // The window is laid out first: the overlay is placed against its anchor's rectangle.
+    self.lay_out();
+
+    let open = Open::new(Rc::clone(&node));
 
     trace::log(|| {
       format!(
         "[popup] open {:?} {}x{}",
-        list.placement.anchor, list.placement.size.0, list.placement.size.1
+        open.placement.anchor, open.placement.size.0, open.placement.size.1
       )
     });
-    self.pending.push(Request::Popup(Some(list.placement)));
-    self.popup = Some(list);
-    invalidate_paint(node);
+    self.pending.push(Request::Popup(Some(open.placement)));
+    self.overlay = Some(open);
+    self.report_sizes(&node);
     crate::access::invalidate();
   }
 
-  /// Closes the open list, choosing nothing.
-  pub fn close_popup(&mut self) {
-    if let Some(list) = self.popup.take() {
-      trace::log(|| "[popup] close".to_owned());
-      self.pending.push(Request::Popup(None));
-      invalidate_paint(&list.owner);
-      crate::access::invalidate();
+  /// Lays the open overlay out again: its surface is placed again where its size changed.
+  fn relayout_overlay(&mut self) {
+    let Some(open) = &mut self.overlay else {
+      return;
+    };
+
+    if open.relayout() {
+      self.pending.push(Request::Popup(Some(open.placement)));
+    }
+
+    let node = Rc::clone(&open.node);
+
+    self.report_sizes(&node);
+    crate::access::invalidate();
+  }
+
+  /// Closes the open overlay's surface; focus inside it returns to the nearest node before it
+  /// that takes focus (its anchor).
+  fn close_overlay(&mut self) {
+    let Some(open) = self.overlay.take() else {
+      return;
+    };
+
+    trace::log(|| "[popup] close".to_owned());
+    self.pending.push(Request::Popup(None));
+    self.pointer_in_overlay = false;
+
+    if let Some(focus) = self.focus.clone()
+      && is_within(&focus, &open.node)
+    {
+      let anchor = open.node.ancestors().into_iter().find(Self::focusable);
+      let visible = self.keyboard_modality;
+
+      self.set_focus(anchor, visible);
+    }
+
+    if self
+      .hovered
+      .first()
+      .is_some_and(|hovered| is_within(hovered, &open.node))
+    {
+      let previous = std::mem::take(&mut self.hovered);
+
+      Self::set_chain(&previous, &[], State::Hovered);
+    }
+
+    crate::access::invalidate();
+  }
+
+  /// Marks the open overlay to be painted (and laid out) again where what changed reaches it.
+  fn mark_overlay(&mut self, dirty: &Dirty) {
+    let Some(open) = &self.overlay else {
+      return;
+    };
+
+    if dirty.prepare || dirty.layout {
+      self.relayout_overlay();
+    } else if (dirty.all || dirty.nodes.iter().any(|node| is_within(node, &open.node)))
+      && let Some(open) = &mut self.overlay
+    {
+      open.invalidate();
     }
   }
 
-  /// The open list, where one is open.
-  pub const fn popup(&self) -> Option<&OpenList> {
-    self.popup.as_ref()
+  /// The reader dismissed the open overlay (a press outside it, the compositor's own
+  /// dismissal): its app is told, and closes it.
+  pub fn dismiss_popup(&mut self) {
+    if let Some(open) = &self.overlay {
+      trace::log(|| "[popup] dismiss".to_owned());
+      tree::report::<Linux>(open.node.id.get(), Report::Dismiss);
+      self.settle_focus();
+    }
   }
 
-  /// The open list, where one is open, to change.
-  pub const fn popup_mut(&mut self) -> Option<&mut OpenList> {
-    self.popup.as_mut()
+  /// The backend placed the open overlay's surface with its top left at `x`, `y` (window
+  /// pixels).
+  pub fn popup_placed(&mut self, x: f32, y: f32) {
+    if let Some(open) = &mut self.overlay {
+      open.placed(x, y);
+    }
   }
 
-  /// The open list's state for `node`: its highlight where `node` owns the open list.
-  fn open_state(&self, node: &Node) -> Option<Option<usize>> {
-    self
-      .popup
-      .as_ref()
-      .filter(|list| Rc::ptr_eq(&list.owner, node))
-      .map(|list| list.highlighted)
+  /// The open overlay, where one is open.
+  pub const fn popup(&self) -> Option<&Open> {
+    self.overlay.as_ref()
   }
 
-  /// The open list's frame, where it changed.
+  /// The open overlay, where one is open, to change.
+  pub const fn popup_mut(&mut self) -> Option<&mut Open> {
+    self.overlay.as_mut()
+  }
+
+  /// The open overlay's frame, where it changed.
   pub fn popup_frame(&mut self) -> Option<Frame<'_>> {
     let scale = self.scale;
+    let marks = Marks {
+      focus: self.focus.clone().filter(|_| self.focus_visible),
+      focused: self.focus.clone(),
+      link: None,
+    };
 
-    self.popup.as_mut()?.frame(scale)
+    self.overlay.as_mut()?.frame(scale, &marks)
   }
 
-  /// Whether the open list wants a frame.
+  /// Whether the open overlay wants a frame.
   pub fn popup_wants_frame(&self) -> bool {
-    self.popup.as_ref().is_some_and(OpenList::wants_frame)
+    self.overlay.as_ref().is_some_and(Open::wants_frame)
   }
 
-  /// The pointer moved to `x`, `y` over the open list (its own coordinates).
+  /// The pointer moved to `x`, `y` over the open overlay (its surface's coordinates).
   pub fn popup_motion(&mut self, x: f32, y: f32) {
-    if let Some(list) = &mut self.popup
-      && let Some(row) = list.row_at(x, y)
+    let Some(open) = &self.overlay else {
+      return;
+    };
+    let frame = open.node.frame.get();
+    let at = (x + frame.x, y + frame.y);
+
+    self.pointer = Some(at);
+    self.pointer_in_overlay = open.contains(at.0, at.1);
+    self.refresh_hover();
+
+    if let Some(press) = &self.press
+      && press.captured
+      && let Some(owner) = press.owner.clone()
     {
-      list.highlight(Some(row));
+      self.report_pointer_at(&owner, PointerPhase::Move, 0);
+
+      return;
     }
+
+    self.report_pointer(PointerPhase::Move, 0);
   }
 
-  /// A button was pressed or released at `x`, `y` in the open list's coordinates: a release
-  /// over a row chooses it, a press outside the list closes it.
+  /// A button was pressed or released at `x`, `y` in the open overlay's coordinates: on it,
+  /// it acts there; a press on its anchor is the anchor's; a press anywhere else dismisses it.
   pub fn popup_button(&mut self, down: bool, x: f32, y: f32) {
     count_input();
 
-    let Some(list) = &self.popup else {
+    let Some(open) = &self.overlay else {
       return;
     };
-    let row = list.row_at(x, y);
+    let frame = open.node.frame.get();
+    let at = (x + frame.x, y + frame.y);
+    let on_overlay = open.contains(at.0, at.1);
+    let anchor = open.placement.anchor;
+    let on_anchor = at.0 >= anchor.x
+      && at.1 >= anchor.y
+      && at.0 < anchor.x + anchor.width
+      && at.1 < anchor.y + anchor.height;
 
-    match (down, row) {
-      (true, None) => self.close_popup(),
-      (false, Some(row)) => {
-        let owner = Rc::clone(&list.owner);
+    self.pointer = Some(at);
+    self.pointer_in_overlay = on_overlay;
+    self.refresh_hover();
 
-        self.act(&owner, Act::Popup(PopupAct::ChooseAndClose(row)));
+    if on_overlay || (!down && self.press.is_some()) {
+      if down {
+        let chain = self.hovered.clone();
+
+        self.content_press(0, chain);
+      } else {
+        self.content_release(0);
       }
-      _ => {}
+    } else if down && on_anchor {
+      let chain = self.hovered.clone();
+
+      self.content_press(0, chain);
+    } else if down {
+      self.dismiss_popup();
     }
   }
 
-  /// The wheel turned over the open list.
+  /// The wheel turned over the open overlay.
   pub fn popup_wheel(&mut self, wheel: Wheel) {
-    count_input();
-
-    if let Some(list) = &mut self.popup {
-      let dy = match wheel {
-        Wheel::Pixels(_, dy) => dy,
-        Wheel::Lines(_, dy) => dy * 48.,
-      };
-
-      list.scroll_by(dy);
-    }
+    self.wheel(wheel);
   }
 
   /// The pointer moved to `x`, `y` (surface pixels); returns what the backend should do.
@@ -1288,6 +1365,7 @@ impl Shell {
     let geometry = (x - ox, y - oy);
 
     self.pointer = matches!(hit, Hit::Content(..)).then_some(geometry);
+    self.pointer_in_overlay = false;
     self.refresh_hover();
 
     let cursor = match hit {
@@ -1302,19 +1380,17 @@ impl Shell {
     }
 
     if let Some(press) = &self.press
-      && let Some(owner) = &press.owner
-      && let NodeKind::Control(kind) = owner.spec.kind
+      && let Some(owner) = press.owner.clone()
     {
-      if controls::is_entry(kind) {
-        if press.button_pressed == 0 {
-          owner.drag_entry(owner.window_rect(), geometry);
-        }
-      } else if let Some(act) =
-        owner.drag_control(kind, owner.window_rect(), geometry.0, geometry.1)
-      {
-        let owner = Rc::clone(owner);
+      if owner.is_entry() && press.button_pressed == 0 {
+        owner.drag_entry(owner.window_rect(), geometry);
+      }
 
-        self.act(&owner, act);
+      if press.captured {
+        self.pointer = Some(geometry);
+        self.report_pointer_at(&owner, PointerPhase::Move, 0);
+
+        return requests;
       }
     }
 
@@ -1326,7 +1402,7 @@ impl Shell {
   fn content_cursor(&self) -> Cursor {
     for node in &self.hovered {
       match node.spec.kind {
-        NodeKind::Control(kind) if controls::is_entry(kind) => return Cursor::Text,
+        NodeKind::Editable { .. } => return Cursor::Text,
         NodeKind::Text => {
           if let Some((x, y)) = self.pointer
             && Self::link_index_at(node, x, y).is_some()
@@ -1341,27 +1417,43 @@ impl Shell {
     Cursor::Default
   }
 
-  fn report_pointer(&self, phase: PointerPhase, button: u8) {
-    let Some(target) = self.hovered.first() else {
-      return;
+  /// Reports a pointer event at the deepest node under the pointer, where a node it climbs
+  /// through hears pointer events: the verdict the handlers gave.
+  fn report_pointer(&mut self, phase: PointerPhase, button: u8) -> Prevent {
+    let Some(target) = self.hovered.first().cloned() else {
+      return Prevent::None;
     };
 
     if !self.hovered.iter().any(|node| node.interest.get().pointer) {
-      return;
+      return Prevent::None;
     }
 
+    self.report_pointer_at(&target, phase, button)
+  }
+
+  /// Reports a pointer event at `target`, the pointer where it is: the verdict the handlers
+  /// gave.
+  fn report_pointer_at(&mut self, target: &Node, phase: PointerPhase, button: u8) -> Prevent {
     let (x, y) = self.pointer.unwrap_or_default();
     let rect = target.window_rect();
-
-    tree::report::<Linux>(
+    let answer = tree::report::<Linux>(
       target.id.get(),
       Report::Pointer(PointerEvent {
         phase,
         x: x - rect.x,
         y: y - rect.y,
+        window_x: x,
+        window_y: y,
         button,
       }),
     );
+
+    self.settle_focus();
+
+    match answer {
+      Answer::Event { prevented } => prevented,
+      _ => Prevent::None,
+    }
   }
 
   /// The pointer left the window.
@@ -1412,9 +1504,9 @@ impl Shell {
       )
     });
 
-    if down && self.popup.is_some() {
-      // A press anywhere but on the open list closes it, and goes no further.
-      self.close_popup();
+    if down && self.overlay.is_some() && !matches!(hit, Hit::Content(..)) {
+      // A press on the window's frame dismisses the open overlay, and goes no further.
+      self.dismiss_popup();
       requests.extend(self.take_requests());
 
       return requests;
@@ -1442,6 +1534,7 @@ impl Shell {
               title: Some(at),
               button: None,
               button_pressed: 0,
+              captured: false,
             });
           }
         }
@@ -1456,79 +1549,14 @@ impl Shell {
             title: None,
             button: Some(pressed),
             button_pressed: 0,
+            captured: false,
           });
           invalidate_all();
         }
         (_, Hit::Content(..)) => {
           let chain = self.hovered.clone();
-          // A press on a caption or a link run is the text's, inside an acting box too.
-          let link = chain
-            .first()
-            .zip(self.pointer)
-            .and_then(|(target, (x, y))| Self::link_index_at(target, x, y));
-          let claimed = link.is_some()
-            || chain
-              .first()
-              .is_some_and(|target| self.captioned_control(target).is_some());
-          let owner = if claimed { None } else { Self::owner(&chain) };
-          let entry_kind = owner
-            .as_ref()
-            .and_then(controls_kind)
-            .filter(|kind| controls::is_entry(*kind));
 
-          if button == 0 {
-            for node in &chain {
-              Self::set_state(node, State::Pressed, true);
-            }
-
-            // A press focuses the control it lands on, a radio the arrows would not reach by
-            // Tab included, as a browser focuses a clicked radio.
-            let forced = owner
-              .as_ref()
-              .and_then(controls_kind)
-              .is_some_and(controls::focusable);
-
-            match (&link, chain.first()) {
-              // A press on a link run focuses it, as a press on an anchor does.
-              (Some(link), Some(target)) => self.focus_link(target, *link, false),
-              _ => self.set_focus_to(owner.clone(), false, forced),
-            }
-
-            if let Some(owner) = &owner
-              && let Some((x, y)) = self.pointer
-            {
-              if entry_kind.is_some() {
-                let clicks = self.count_click(owner, (x, y));
-                let extend = self.modifiers.shift;
-
-                owner.press_entry(owner.window_rect(), (x, y), clicks, extend);
-              } else if let NodeKind::Control(kind) = owner.spec.kind
-                && let Some(act) = owner.press_control(kind, owner.window_rect(), x, y)
-              {
-                let owner = Rc::clone(owner);
-
-                self.act(&owner, act);
-              }
-            }
-          } else if button == 1
-            && entry_kind.is_some()
-            && let Some(owner) = &owner
-            && let Some((x, y)) = self.pointer
-          {
-            // A middle press pastes the primary selection where it lands.
-            self.set_focus(Some(Rc::clone(owner)), false);
-            owner.press_entry(owner.window_rect(), (x, y), 1, false);
-            owner.paste(crate::clipboard::Selection::Primary);
-          }
-
-          self.press = Some(Press {
-            target: chain.first().cloned(),
-            owner,
-            title: None,
-            button: None,
-            button_pressed: button,
-          });
-          self.report_pointer(PointerPhase::Down, button);
+          self.content_press(button, chain);
         }
         _ => {}
       }
@@ -1565,35 +1593,138 @@ impl Shell {
       return requests;
     }
 
+    self.press = Some(press);
+    self.content_release(button);
+    requests.extend(self.take_requests());
+
+    requests
+  }
+
+  /// A press of `button` on `chain` (the deepest node under the pointer first): the pressed
+  /// states, focus moved to what the press lands on (a caption beside a control focusing the
+  /// control), a text entry's caret placed, and the press reported; a control that drags
+  /// keeps the pointer where its handler answered it.
+  fn content_press(&mut self, button: u8, chain: Vec<Node>) {
+    self.keyboard_modality = false;
+
+    // A press on a link run is the text's, inside an acting box too.
+    let link = chain
+      .first()
+      .zip(self.pointer)
+      .and_then(|(target, (x, y))| Self::link_index_at(target, x, y));
+    let caption = if link.is_some() {
+      None
+    } else {
+      chain
+        .iter()
+        .take_while(|node| !node.spec.is_interactive())
+        .find(|node| node.spec.interaction == Interaction::Answering)
+        .cloned()
+    };
+    let owner = if link.is_some() || caption.is_some() {
+      None
+    } else {
+      Self::owner(&chain)
+    };
+
+    if button == 0 {
+      for node in &chain {
+        Self::set_state(node, State::Pressed, true);
+      }
+
+      match (&link, chain.first(), &caption) {
+        // A press on a link run focuses it, as a press on an anchor does.
+        (Some(link), Some(target), _) => self.focus_link(target, *link, false),
+        (_, _, Some(caption)) => {
+          let control = tree::control_of::<Linux>(caption.id.get()).and_then(crate::node_of);
+
+          self.set_focus(control, false);
+        }
+        _ => self.set_focus_to(owner.clone(), false, false),
+      }
+
+      if let Some(owner) = &owner
+        && owner.is_entry()
+        && let Some((x, y)) = self.pointer
+      {
+        let clicks = self.count_click(owner, (x, y));
+        let extend = self.modifiers.shift;
+
+        owner.press_entry(owner.window_rect(), (x, y), clicks, extend);
+      }
+    } else if button == 1
+      && let Some(owner) = owner.as_ref().filter(|owner| owner.is_entry())
+      && let Some((x, y)) = self.pointer
+    {
+      // A middle press pastes the primary selection where it lands.
+      self.set_focus(Some(Rc::clone(owner)), false);
+      owner.press_entry(owner.window_rect(), (x, y), 1, false);
+      owner.paste(crate::clipboard::Selection::Primary);
+    }
+
+    self.press = Some(Press {
+      target: chain.first().cloned(),
+      owner: owner.clone(),
+      title: None,
+      button: None,
+      button_pressed: button,
+      captured: false,
+    });
+
+    let prevented = self.report_pointer(PointerPhase::Down, button);
+    let drags = owner.as_ref().is_some_and(|owner| {
+      matches!(
+        owner.spec.interaction,
+        Interaction::Control { drag: Some(_) }
+      )
+    });
+
+    if button == 0
+      && drags
+      && prevented != Prevent::None
+      && let Some(press) = &mut self.press
+    {
+      press.captured = true;
+    }
+  }
+
+  /// The release of `button` ending the press in progress: the pressed states cleared, the
+  /// release reported, and a click where it lands on the owner the press landed on (or a link
+  /// run followed).
+  fn content_release(&mut self, button: u8) {
+    let Some(press) = self.press.take() else {
+      self.report_pointer(PointerPhase::Up, button);
+
+      return;
+    };
+
     if let Some(target) = &press.target {
       for node in std::iter::once(Rc::clone(target)).chain(target.ancestors()) {
         Self::set_state(&node, State::Pressed, false);
       }
     }
 
-    self.report_pointer(PointerPhase::Up, button);
+    match (&press.owner, press.captured) {
+      (Some(owner), true) => {
+        let owner = Rc::clone(owner);
+
+        self.report_pointer_at(&owner, PointerPhase::Up, button);
+      }
+      _ => {
+        self.report_pointer(PointerPhase::Up, button);
+      }
+    }
 
     let over = Self::owner(&self.hovered);
 
     if press.button_pressed == 0
       && let (Some(owner), Some(over)) = (&press.owner, &over)
       && Rc::ptr_eq(owner, over)
-      && let Some((x, y)) = self.pointer
+      && !owner.is_entry()
     {
       let owner = Rc::clone(owner);
 
-      match owner.spec.kind {
-        NodeKind::Control(kind) if controls::is_entry(kind) => {}
-        NodeKind::Control(kind) => {
-          let open = self.open_state(&owner);
-
-          if let Some(act) = owner.click_control(kind, owner.window_rect(), x, y, open) {
-            self.act(&owner, act);
-          }
-        }
-        _ if owner.spec.acts => self.act(&owner, Act::Activate),
-        _ => {}
-      }
+      self.click(&owner);
     }
 
     if press.button_pressed == 0
@@ -1605,45 +1736,10 @@ impl Shell {
         .hovered
         .first()
         .is_some_and(|hovered| Rc::ptr_eq(hovered, target))
+      && let Some(link) = Self::link_index_at(target, x, y)
     {
-      if let Some(control) = self.captioned_control(target) {
-        // A click on a caption that names an on/off control acts as one on the control.
-        self.set_focus(Some(Rc::clone(&control)), false);
-
-        let open = self.open_state(&control);
-
-        if let NodeKind::Control(kind) = control.spec.kind
-          && let Some(act) = control.click_control(kind, control.window_rect(), x, y, open)
-        {
-          self.act(&control, act);
-        }
-      } else if let Some(link) = Self::link_index_at(target, x, y) {
-        Self::follow(target, link);
-      }
+      Self::follow(target, link);
     }
-
-    requests.extend(self.take_requests());
-
-    requests
-  }
-
-  /// The on/off control `caption` names, where it names one.
-  fn captioned_control(&self, caption: &Node) -> Option<Node> {
-    let id = caption.id.get();
-    let mut found = None;
-
-    if let Some(root) = &self.root {
-      walk(root, |node| {
-        if found.is_none()
-          && controls_kind(node).is_some_and(|kind| controls::toggle_kind(kind).is_some())
-          && node.access.borrow().labelled_by.contains(&id)
-        {
-          found = Some(Rc::clone(node));
-        }
-      });
-    }
-
-    found
   }
 
   /// The link run of the text `node` at `x`, `y` (window pixels), by its place among the
@@ -1684,13 +1780,16 @@ impl Shell {
     };
 
     for node in self.hovered.clone() {
-      if self.scroll_by(&node, dx, dy) {
+      if (node.is_entry() && node.scroll_entry(dy)) || self.scroll_by(&node, dx, dy) {
         return;
       }
     }
   }
 
-  /// A key was pressed or released.
+  /// A key was pressed or released: reported at the focus, where it climbs through the
+  /// controls' behaviors and the boxes' handlers; its default (a text entry's editing, Tab, a
+  /// box that acts answering as a command, a link followed, scrolling, `Escape`) runs unless a
+  /// verdict prevents it.
   pub fn key(&mut self, input: &KeyInput) {
     count_input();
 
@@ -1704,6 +1803,10 @@ impl Shell {
 
     self.modifiers = event.modifiers;
 
+    if event.down {
+      self.keyboard_modality = true;
+    }
+
     if event.down && event.key != "Tab" {
       self.focus_visible_on_key();
     }
@@ -1715,39 +1818,31 @@ impl Shell {
 
     trace::key(event, &target);
 
-    if let NodeKind::Control(kind) = target.spec.kind {
-      let consumed = if controls::is_entry(kind) {
-        self.entry_key(&target, kind, input)
-      } else {
-        self.control_key(&target, kind, input)
-      };
+    if target.is_entry() && self.compose(&target, input) {
+      self.after_key();
 
-      if consumed {
-        self.after_key();
-
-        return;
-      }
+      return;
     }
 
     let answer = tree::report::<Linux>(target.id.get(), Report::Key(event.clone()));
+    let prevented = match answer {
+      Answer::Event { prevented } => prevented,
+      _ => Prevent::None,
+    };
 
-    if answer == (Answer::Event { handled: true }) {
+    self.settle_focus();
+
+    if prevented.prevents_platform() || self.shortcut(event) {
       self.after_key();
 
       return;
     }
 
-    if self.shortcut(event) {
-      self.after_key();
-
-      return;
-    }
-
-    self.default_action(&target, event);
+    self.default_action(&target, input);
     self.after_key();
   }
 
-  /// Activates the shown, enabled node whose shortcut `event` presses (Control and the key,
+  /// Clicks the shown, enabled node whose shortcut `event` presses (Control and the key,
   /// Shift where the shortcut says), where one has it; whether one did.
   fn shortcut(&mut self, event: &KeyEvent) -> bool {
     let modifiers = event.modifiers;
@@ -1767,11 +1862,12 @@ impl Shell {
     let mut found = None;
 
     walk(&root, |node| {
-      let wanted = node.access.borrow().shortcut;
+      let facts = node.access.borrow();
+      let wanted = facts.shortcut;
 
       if found.is_none()
         && node.is_shown()
-        && !node.contents.borrow().disabled
+        && !facts.disabled
         && wanted.is_some_and(|wanted| wanted.key == key && wanted.shift == modifiers.shift)
       {
         found = Some(Rc::clone(node));
@@ -1782,151 +1878,37 @@ impl Shell {
       return false;
     };
 
-    self.act(&node, Act::Activate);
+    self.click(&node);
 
     true
   }
 
   fn after_key(&mut self) {
     if let Some(focus) = &self.focus
-      && controls_kind(focus).is_some_and(controls::is_entry)
+      && focus.is_entry()
     {
       focus.blink_caret();
     }
   }
 
-  /// A key at a control drawn here (not an entry): whether it consumed it.
-  fn control_key(&mut self, target: &Node, kind: ControlKind, input: &KeyInput) -> bool {
-    let event = &input.event;
-    let open = self.open_state(target);
+  /// A compose sequence or an input method's composition at the text entry `target`: whether
+  /// it took the key.
+  fn compose(&mut self, target: &Node, input: &KeyInput) -> bool {
+    let read_only = target.contents.borrow().read_only;
 
-    if kind == ControlKind::Picker
-      && event.down
-      && !event.modifiers.control
-      && !event.modifiers.alt
-      && !event.modifiers.meta
-      && let Some(text) = input.text.as_deref()
-      && (text != " "
-        || self
-          .popup
-          .as_ref()
-          .is_some_and(|list| list.type_ahead.is_active(Instant::now())))
-    {
-      self.type_ahead(target, text);
-
-      return true;
-    }
-
-    let KeyResult {
-      consumed,
-      pressed,
-      act,
-    } = target.key_control(kind, event, open);
-
-    if let Some(pressed) = pressed {
-      Self::press_key(target, pressed);
-    }
-
-    if let Some(act) = act {
-      self.act(target, act);
-    }
-
-    if consumed {
-      return true;
-    }
-
-    if kind == ControlKind::Radio
-      && let Some((_, radios)) = Self::radio_group(target)
-      && let Some(current) = radios.iter().position(|radio| Rc::ptr_eq(radio, target))
-    {
-      let enabled = |index: usize| !radios[index].contents.borrow().disabled;
-      let group = Collection::new(radios.len(), Some(current), Orientation::Both)
-        .with_wrap(true)
-        .with_enabled(&enabled);
-      let response = group.key(event);
-
-      if let Some(next) = response.act {
-        let next = Rc::clone(&radios[next]);
-
-        self.set_focus_to(Some(Rc::clone(&next)), true, true);
-
-        if let Some(act) = next.click_control(ControlKind::Radio, next.window_rect(), 0., 0., None)
-        {
-          self.act(&next, act);
-        }
-      }
-
-      return response.consumed;
-    }
-
-    false
-  }
-
-  /// Finds the picker's option starting with what the reader typed.
-  fn type_ahead(&mut self, target: &Node, text: &str) {
-    let now = Instant::now();
-    let options = target
-      .contents
-      .borrow()
-      .choice
-      .as_ref()
-      .map(|choice| Rc::clone(&choice.options));
-    let Some(options) = options else {
-      return;
-    };
-    let names: Vec<&str> = options.iter().map(|option| &**option).collect();
-
-    match &mut self.popup {
-      Some(list) if Rc::ptr_eq(&list.owner, target) => {
-        let current = list.highlighted;
-
-        if let Some(found) = list.type_ahead.type_text(text, now, &names, current) {
-          list.highlight(Some(found));
-          crate::access::invalidate();
-        }
-      }
-      _ => {
-        let current = target
-          .contents
-          .borrow()
-          .choice
-          .as_ref()
-          .and_then(|choice| choice.chosen)
-          .map(|index| index as usize);
-        let found =
-          TYPE_AHEAD.with(|search| search.borrow_mut().type_text(text, now, &names, current));
-
-        if let Some(found) = found
-          && let Some(act) = target.choice_change(found)
-        {
-          self.act(target, act);
-        }
-      }
-    }
-  }
-
-  /// A key at a text entry: whether it consumed it.
-  fn entry_key(&mut self, target: &Node, kind: ControlKind, input: &KeyInput) -> bool {
-    let event = &input.event;
-    let (read_only, secure, disabled) = {
-      let contents = target.contents.borrow();
-
-      (contents.read_only, contents.secure, contents.disabled)
-    };
-
-    if disabled {
+    if read_only || target.access.borrow().disabled {
       return false;
     }
 
     // A compose sequence shows as the entry's composition while it is typed, and its
     // character replaces it, as an input method's would.
-    if !read_only && let Some(sequence) = &input.composing {
+    if let Some(sequence) = &input.composing {
       target.ime_preedit(sequence, None, Vec::new());
 
       return true;
     }
 
-    if !read_only && input.composed {
+    if input.composed {
       match &input.text {
         Some(text) => {
           target.ime_commit(text);
@@ -1938,15 +1920,31 @@ impl Shell {
       return true;
     }
 
-    let behavior = TextEntry::new(kind == ControlKind::TextEditor)
+    false
+  }
+
+  /// A text entry's default for a key no handler prevented: its editing ([`EntryKeys`]);
+  /// whether it took the key.
+  fn entry_default(target: &Node, input: &KeyInput) -> bool {
+    let event = &input.event;
+    let multiline = target.spec.kind == (NodeKind::Editable { multiline: true });
+    let (read_only, secure) = {
+      let contents = target.contents.borrow();
+
+      (contents.read_only, contents.secure)
+    };
+
+    if target.access.borrow().disabled {
+      return false;
+    }
+
+    let keys = EntryKeys::new(multiline)
       .with_read_only(read_only)
       .with_secure(secure);
-    let response = skene_foundation::behavior::Behavior::key(&behavior, event);
+    let response = keys.key(event);
 
     match response.act {
-      Some(EntryAct::Activate) => {
-        tree::report::<Linux>(target.id.get(), Report::Activate);
-      }
+      Some(EntryAct::Activate) | None => {}
       Some(EntryAct::Edit(Binding::Paste)) => {
         target.paste(crate::clipboard::Selection::Clipboard);
       }
@@ -1963,16 +1961,29 @@ impl Shell {
       Some(EntryAct::Edit(Binding::Command(command))) => {
         let _ = target.perform(command);
       }
-      None => {}
     }
+
+    let modifiers = event.modifiers;
+    let plain = !modifiers.control && !modifiers.alt && !modifiers.meta;
 
     if !response.consumed
       && event.down
-      && input.text.is_some()
-      && !event.modifiers.control
-      && !event.modifiers.alt
-      && !event.modifiers.meta
+      && multiline
+      && plain
+      && matches!(event.key.as_str(), "PageUp" | "PageDown")
     {
+      // The page keys move an editor's caret by the lines it shows, as a `<textarea>`'s do.
+      let page = target.entry_page();
+      let lines = if event.key == "PageUp" { -page } else { page };
+      let _ = target.perform(Command::Move {
+        movement: Movement::Lines(lines),
+        extend: modifiers.shift,
+      });
+
+      return true;
+    }
+
+    if !response.consumed && event.down && input.text.is_some() && plain {
       // A composed character whose key is named otherwise (a keypad digit) still types.
       if let Some(text) = input.text.clone() {
         let _ = target.perform(Command::Insert(text));
@@ -1992,11 +2003,20 @@ impl Shell {
     }
   }
 
-  /// What a key no handler consumed does: Tab moves focus, a focused acting box answers as a
-  /// command does ([`Activate`]), `Enter` follows a focused link, a scroll box scrolls, and
-  /// `Escape` takes focus away.
-  fn default_action(&mut self, target: &Node, event: &KeyEvent) {
+  /// What a key no verdict prevented does: a focused text entry edits, Tab moves focus, a
+  /// focused box that acts answers as a command does ([`ActivateKeys`]), `Enter` follows a
+  /// focused link, a scroll box scrolls, and `Escape` takes focus away.
+  fn default_action(&mut self, target: &Node, input: &KeyInput) {
+    let event = &input.event;
     let modifiers = event.modifiers;
+    let focused = self
+      .focus
+      .as_ref()
+      .is_some_and(|focus| Rc::ptr_eq(focus, target));
+
+    if focused && target.is_entry() && Self::entry_default(target, input) {
+      return;
+    }
 
     if event.down && event.key == "Tab" && !modifiers.control && !modifiers.alt {
       self.move_focus(modifiers.shift);
@@ -2004,15 +2024,19 @@ impl Shell {
       return;
     }
 
-    if target.spec.acts && self.focus.is_some() {
-      let response = Activate::new(target.key_pressed.get()).key(event);
+    if focused && target.spec.interaction == Interaction::Acting {
+      let held = self
+        .key_pressed
+        .as_ref()
+        .is_some_and(|held| Rc::ptr_eq(held, target));
+      let response = ActivateKeys::new(held).key(event);
 
       if let Some(pressed) = response.pressed {
-        Self::press_key(target, pressed);
+        self.press_key(target, pressed);
       }
 
       if response.act.is_some() {
-        self.act(target, Act::Activate);
+        self.click(target);
       }
 
       if response.consumed {
@@ -2021,7 +2045,7 @@ impl Shell {
     }
 
     if let Some(link) = self.link
-      && self.focus.is_some()
+      && focused
       && event.down
       && event.key == "Enter"
       && !modifiers.control
@@ -2053,63 +2077,22 @@ impl Shell {
     }
 
     if !focused {
-      self.close_popup();
+      self.dismiss_popup();
 
       if let Some(focus) = self.focus.clone() {
-        Self::release_key(&focus);
+        self.release_key(&focus);
       }
     }
 
     invalidate_all();
   }
 
-  /// Carries out a reader's action at `node` (from the accessibility layer).
-  pub fn access_action(&mut self, node: &Node, action: Action) {
-    match node.spec.kind {
-      NodeKind::Control(kind) if controls::is_entry(kind) => {
-        self.set_focus(Some(Rc::clone(node)), false);
-      }
-      NodeKind::Control(kind) => {
-        let open = self.open_state(node);
-
-        if let Some(act) = node.control_action(kind, action, open) {
-          self.act(node, act);
-        }
-      }
-      _ if node.spec.acts && action == Action::Activate => self.act(node, Act::Activate),
-      _ => {}
-    }
-  }
-
-  /// Chooses option `index` of the open list from the accessibility layer.
-  pub fn access_choose(&mut self, index: usize) {
-    if let Some(list) = &self.popup {
-      let owner = Rc::clone(&list.owner);
-
-      self.act(&owner, Act::Popup(PopupAct::ChooseAndClose(index)));
-    }
-  }
-
-  /// Sets a slider's value from the accessibility layer.
-  pub fn access_set_number(&mut self, node: &Node, value: f64) {
-    if matches!(
-      controls_kind(node),
-      Some(ControlKind::Slider | ControlKind::Stepper)
-    ) && !node.contents.borrow().disabled
-    {
-      let range = node.range();
-      let slider = skene_foundation::behavior::Slider::new(range);
-
-      if let Some(value) = slider.moved(value) {
-        self.act(
-          node,
-          Act::Change(
-            Content::Range,
-            PropValue::Range(skene_foundation::seam::content::Range { value, ..range }),
-          ),
-        );
-      }
-    }
+  /// Reports a reader's request at `node` (from the accessibility layer) to the control or
+  /// the box that acts it is.
+  pub fn access_request(&mut self, node: &Node, request: AccessRequest) {
+    tree::report::<Linux>(node.id.get(), Report::Access(request));
+    self.settle_focus();
+    crate::access::invalidate();
   }
 
   /// Moves focus to `node` from the accessibility layer.
@@ -2137,7 +2120,7 @@ impl Shell {
     self
       .focus
       .clone()
-      .filter(|focus| controls_kind(focus).is_some_and(controls::is_entry) && focus.has_entry())
+      .filter(|focus| focus.is_entry() && focus.has_entry())
   }
 
   /// What the input method is told of the focused entry, where an entry has focus.
@@ -2213,7 +2196,7 @@ impl Shell {
 pub fn write(node: &Node, content: Content, value: &PropValue) {
   node.contents.borrow_mut().write(content, value);
 
-  let entry = controls_kind(node).is_some_and(controls::is_entry);
+  let entry = node.is_entry();
 
   match content {
     Content::Edit if entry => {
@@ -2225,15 +2208,14 @@ pub fn write(node: &Node, content: Content, value: &PropValue) {
         }
       }
     }
-    Content::Text | Content::Runs | Content::Caption | Content::Choice | Content::Placeholder => {
+    Content::Text | Content::Runs | Content::Reserve | Content::Placeholder => {
       invalidate_prepare();
     }
     Content::Secure | Content::ReadOnly if entry => {
       invalidate_prepare();
       entry::ime_dirty(false);
     }
-    Content::Range if controls_kind(node) == Some(ControlKind::Stepper) => invalidate_prepare(),
-    Content::Prominent | Content::Enabled => invalidate_prepare(),
+    Content::Placement if node.is_overlay() => invalidate_overlays(),
     _ => {}
   }
 

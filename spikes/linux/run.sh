@@ -43,8 +43,8 @@
 # Wayland; the display runner gives each test process a private session per leg):
 #   - hello's build times, binary size and startup to first frame on Xvfb and headless mutter
 #     (tools/testing/measure.sh, in a target directory of its own, removed after);
-#   - every test of the workspace (the conformance suite, hello, notes, Simple, the facade's
-#     own) by plain `cargo test` on the X11 leg (the default), the Wayland leg
+#   - every test of the workspace (the conformance suite, hello, notes, Simple, acme-rating,
+#     the facade's own) by plain `cargo test` on the X11 leg (the default), the Wayland leg
 #     (SKENE_TEST_SESSION=wayland: headless mutter, PipeWire) and the GUI crates on sway; and
 #     by cargo-nextest (a process and a session per test) on X11 and Wayland;
 #   - the GUI crates' tests five more times on each leg, failures counted;
@@ -154,7 +154,7 @@ done
 cp "$results/test-x11.log" "$results/test.log"
 started=$(date +%s%N)
 if SKENE_TEST_SESSION=sway cargo test --no-fail-fast -p skene-conformance -p hello -p notes-gui \
-  -p skene-simple-gui -p skene-gui > "$results/test-sway.log" 2>&1; then
+  -p skene-simple-gui -p skene-gui -p acme-rating > "$results/test-sway.log" 2>&1; then
   outcome=passed
 else
   outcome=FAILED
@@ -176,7 +176,7 @@ for leg in x11 wayland; do
   rounds=""
   for round in 1 2 3 4 5; do
     SKENE_TEST_SESSION=$leg cargo test --no-fail-fast -p skene-conformance -p hello -p notes-gui \
-      -p skene-simple-gui -p skene-gui --tests > "$results/repeat-$leg-$round.log" 2>&1 || true
+      -p skene-simple-gui -p skene-gui -p acme-rating --tests > "$results/repeat-$leg-$round.log" 2>&1 || true
     rounds="$rounds $(grep -oE '[0-9]+ passed' "$results/repeat-$leg-$round.log" | awk '{s+=$1} END {print s}')/$(grep -oE '[0-9]+ failed' "$results/repeat-$leg-$round.log" | awk '{s+=$1} END {print s}')"
   done
   say "$leg: passed/failed per round:$rounds"

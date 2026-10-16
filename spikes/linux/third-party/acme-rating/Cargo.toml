@@ -1,0 +1,14 @@
+[package]
+name = "acme-rating"
+description = "A star rating written against skene-gui's public API alone, as a third party writes a drawn control."
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+skene-gui.workspace = true
+
+[lints]
+workspace = true

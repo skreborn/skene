@@ -1,10 +1,12 @@
 //! Each platform's own vocabulary, as std's `os` holds each operating system's.
 //!
-//! A platform's own controls (`linux::Switch`) exist in that platform's build alone, so
-//! naming one outside it fails to compile; each exposes its toolkit's options through
-//! setters, under Skene's names where the meaning matches (`derive_on`, `handle_change`,
-//! `set_placeholder`) and the toolkit's own in its documentation. A library wraps a toolkit
-//! widget of its own through the platform's native door (`linux::NativeView`).
+//! What one platform alone has exists in that platform's build alone, so naming it outside
+//! fails to compile. On a compositor platform that is its toolkit's own controls, under
+//! Skene's names where the meaning matches (`derive_on`, `handle_change`, `set_placeholder`)
+//! and the toolkit's own in their documentation, and the native door through which a library
+//! adopts a toolkit view of its own. Linux is a window platform: Skene draws the whole window,
+//! there is no toolkit view to adopt, and a library's control is drawn as a built-in's is
+//! (`Control` over a behavior of its own), so what remains here is the display server's.
 
 #[cfg(skene_platform = "linux")]
 pub mod linux;

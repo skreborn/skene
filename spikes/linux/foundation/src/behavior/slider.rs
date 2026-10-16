@@ -1,28 +1,33 @@
 //! A value on a range.
 
+use std::rc::Rc;
+
 use crate::{
-  behavior::{Behavior, Response},
+  Signal,
+  behavior::{Behavior, ControlHandle, Controlled, Response},
+  layout::Axis,
   seam::{
-    access::{AccessFacts, Action, RangeValue, Role},
+    access::{AccessFacts, RangeValue, Role},
     content::Range,
-    report::KeyEvent,
+    control::{AccessRequest, DragAxes, LabelPlacement, Part, Prevent},
+    report::{KeyEvent, PointerEvent, PointerPhase},
   },
 };
 
-/// A slider's behavior over its range: the arrows step the value (right and up increase it),
-/// `PageUp` and `PageDown` move it by a tenth of the range (at least a step), `Home` and `End`
-/// to its ends; a press at a point of the track jumps there and a drag follows the pointer.
+/// A slider's key table over its range: the arrows step the value (right and up increase
+/// it), `PageUp` and `PageDown` move it by a tenth of the range (at least a step), `Home` and
+/// `End` to its ends.
 ///
-/// It proposes the value moved to, snapped to the step and clamped to the bounds, and only
+/// Its act is the value moved to, snapped to the step and clamped to the bounds, and only
 /// where it differs from the value shown.
 #[derive(Clone, Copy, PartialEq, Debug)]
 #[must_use]
-pub struct Slider {
+pub struct SliderKeys {
   /// The value with its bounds and step.
   pub range: Range,
 }
 
-impl Slider {
+impl SliderKeys {
   /// A slider over `range`.
   #[inline(always)]
   pub const fn new(range: Range) -> Self {
@@ -71,16 +76,17 @@ impl Slider {
 
     ((self.range.value - self.range.minimum) / span).clamp(0., 1.)
   }
-}
 
-impl Behavior for Slider {
-  type Act = f64;
+  /// The value one step up (`up`) or down, proposed.
+  #[must_use]
+  pub fn stepped(&self, up: bool) -> Option<f64> {
+    let step = self.range.step.max(f64::EPSILON);
 
-  fn role(&self) -> Role {
-    Role::Slider
+    self.moved(self.range.value + if up { step } else { -step })
   }
 
-  fn key(&self, event: &KeyEvent) -> Response<f64> {
+  /// A key pressed while the slider holds focus.
+  pub fn key(&self, event: &KeyEvent) -> Response<f64> {
     let modifiers = event.modifiers;
 
     if !event.down || modifiers.control || modifiers.alt || modifiers.meta {
@@ -105,29 +111,159 @@ impl Behavior for Slider {
 
     Response::maybe(self.moved(value))
   }
+}
 
-  fn action(&self, action: Action) -> Option<f64> {
-    let step = self.range.step.max(f64::EPSILON);
+/// A slider's behavior: [`SliderKeys`]; a press on its track ([`Part::Track`]) jumps to where
+/// it lands and a drag follows the pointer; a reader steps it or sets its value. Its label
+/// sits beside it.
+#[must_use]
+pub struct Slider {
+  value: Controlled<f64>,
+  range: Rc<dyn Fn() -> (f64, f64, f64)>,
+  dragging: Signal<bool>,
+}
 
-    match action {
-      Action::Increment => self.moved(self.range.value + step),
-      Action::Decrement => self.moved(self.range.value - step),
-      _ => None,
+impl Default for Slider {
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
+impl Slider {
+  /// A slider at 0 of 0 to 1, stepping by a hundredth.
+  pub fn new() -> Self {
+    Self {
+      value: Controlled::new(),
+      range: Rc::new(|| (0., 1., 0.01)),
+      dragging: Signal::new(false),
     }
   }
 
-  fn actions(&self) -> Vec<Action> {
-    vec![Action::Increment, Action::Decrement]
+  /// This slider, showing what `value` returns, kept current.
+  pub fn derive_value(mut self, value: impl Fn() -> f64 + 'static) -> Self {
+    self.value.derive(value);
+
+    self
   }
 
-  fn facts(&self) -> AccessFacts {
+  /// This slider, asking `change` for each value the reader moves it to.
+  pub fn handle_change(mut self, change: impl Fn(f64) + 'static) -> Self {
+    self.value.handle(change);
+
+    self
+  }
+
+  /// This slider, its least value, its greatest and its step what `range` returns, kept
+  /// current.
+  pub fn derive_range(mut self, range: impl Fn() -> (f64, f64, f64) + 'static) -> Self {
+    self.range = Rc::new(range);
+
+    self
+  }
+
+  /// The value with its bounds and step, as they read now.
+  #[must_use]
+  pub fn range(&self) -> Range {
+    let (minimum, maximum, step) = (self.range)();
+
+    Range {
+      value: self.value.read().unwrap_or(minimum),
+      minimum,
+      maximum,
+      step,
+    }
+  }
+
+  fn keys(&self) -> SliderKeys {
+    SliderKeys::new(crate::untrack(|| self.range()))
+  }
+
+  fn jump(&self, event: &PointerEvent, control: &ControlHandle) {
+    let Some(track) = control.frame(Part::Track) else {
+      return;
+    };
+    let fraction = f64::from((event.window_x - track.x) / track.width.max(1.));
+
+    if let Some(value) = self.keys().at(fraction) {
+      self.value.ask(value);
+    }
+  }
+}
+
+impl Behavior for Slider {
+  fn role(&self) -> Role {
+    Role::Slider
+  }
+
+  fn drag_axes(&self) -> Option<DragAxes> {
+    Some(DragAxes::Horizontal)
+  }
+
+  fn label_placement(&self) -> LabelPlacement {
+    LabelPlacement::Beside
+  }
+
+  fn on_key(&self, event: &KeyEvent, _: &ControlHandle) -> Prevent {
+    let response = self.keys().key(event);
+
+    if let Some(value) = response.act {
+      self.value.ask(value);
+    }
+
+    response.verdict()
+  }
+
+  fn on_pointer(&self, event: &PointerEvent, control: &ControlHandle) -> Prevent {
+    match event.phase {
+      PointerPhase::Down if event.button == 0 => {
+        self.dragging.set(true);
+        self.jump(event, control);
+
+        Prevent::All
+      }
+      PointerPhase::Move if self.dragging.get_untracked() => {
+        self.jump(event, control);
+
+        Prevent::All
+      }
+      PointerPhase::Up | PointerPhase::Cancel if self.dragging.get_untracked() => {
+        self.dragging.set(false);
+
+        Prevent::All
+      }
+      _ => Prevent::None,
+    }
+  }
+
+  fn on_access(&self, request: AccessRequest, _: &ControlHandle) -> bool {
+    let keys = self.keys();
+    let value = match request {
+      AccessRequest::Increment => keys.stepped(true),
+      AccessRequest::Decrement => keys.stepped(false),
+      AccessRequest::SetValue(value) => keys.moved(value),
+      _ => return false,
+    };
+
+    if let Some(value) = value {
+      self.value.ask(value);
+    }
+
+    true
+  }
+
+  fn access(&self) -> AccessFacts {
+    let range = self.range();
+
     AccessFacts {
       value: Some(RangeValue {
-        now: self.range.value,
-        minimum: self.range.minimum,
-        maximum: self.range.maximum,
+        now: range.value,
+        minimum: range.minimum,
+        maximum: range.maximum,
+        step: Some(range.step),
         text: None,
       }),
+      orientation: Some(Axis::Horizontal),
+      actions: vec![AccessRequest::Increment, AccessRequest::Decrement],
       ..AccessFacts::default()
     }
   }

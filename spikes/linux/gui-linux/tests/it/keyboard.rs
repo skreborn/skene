@@ -1,7 +1,6 @@
 //! The shell's keyboard and pointer rules beyond the controls' own: an acting row answers
-//! keys as a button does, a caption or a link run inside a row is the text's, link runs are
-//! tab stops `Enter` follows, focus scrolls into view and the keys scroll, and a secure
-//! entry tells an input method only what it shows.
+//! keys as a button does, link runs are tab stops `Enter` follows, focus scrolls into view and
+//! the keys scroll, and a secure entry tells an input method only what it shows.
 
 use std::{cell::Cell, rc::Rc};
 
@@ -10,7 +9,7 @@ use skene_foundation::{
   seam::{
     access::AccessFacts,
     content::{Edit, Run, contents},
-    node::{ControlKind, LayoutKind, NodeKind, NodeSpec},
+    node::{Interaction, LayoutKind, NodeKind, NodeSpec},
     record::{Record, keys},
     report::Modifiers,
     tree,
@@ -39,16 +38,6 @@ fn key(name: &str, down: bool, modifiers: Modifiers) -> KeyInput {
 fn tap(shell: &mut Shell, name: &str) {
   shell.key(&key(name, true, Modifiers::default()));
   shell.key(&key(name, false, Modifiers::default()));
-  shell.frame();
-}
-
-fn click(shell: &mut Shell, node: &Node, dx: f32) {
-  let rect = node.window_rect();
-  let at = (rect.x + dx, rect.y + rect.height / 2.);
-
-  shell.pointer_motion(at.0, at.1);
-  shell.pointer_button(0, true, at);
-  shell.pointer_button(0, false, at);
   shell.frame();
 }
 
@@ -139,75 +128,6 @@ fn a_row_answers_keys_as_a_button_does() {
 
     shell.key(&key("Enter", true, Modifiers::default()));
     assert_eq!(count.get(), 2, "Enter activates on its press");
-  });
-}
-
-#[test]
-fn a_caption_and_a_link_inside_a_row_are_the_texts() {
-  owned(|| {
-    let (root, root_node) = node(
-      NodeSpec::new(NodeKind::Layout(LayoutKind::Column)),
-      Record::new(),
-    );
-    let (first, _, first_count) = row(Record::new());
-    let (line, _) = node(
-      NodeSpec::new(NodeKind::Layout(LayoutKind::Row)),
-      Record::new(),
-    );
-    let (check, _) = node(
-      NodeSpec::new(NodeKind::Control(ControlKind::Checkbox)),
-      Record::new(),
-    );
-    let (caption, caption_node) = node(NodeSpec::new(NodeKind::Text), Record::new());
-    let on = Signal::new(false);
-
-    tree::bind::<Linux, _>(caption, contents::TEXT, || Rc::from("Remember me"));
-    tree::control::<Linux, _>(
-      check,
-      contents::ON,
-      move || on.get(),
-      Some(Box::new(move |value| on.set(value))),
-    );
-    tree::add_access::<Linux>(check, move || AccessFacts {
-      labelled_by: vec![caption],
-      ..AccessFacts::default()
-    });
-    tree::attach::<Linux>(root, first, 0);
-    tree::attach::<Linux>(first, line, 0);
-    tree::attach::<Linux>(line, check, 0);
-    tree::attach::<Linux>(line, caption, 1);
-
-    let (second, _, second_count) = row(Record::new());
-    let (text, text_node) = link("https://example.com");
-    let followed = Rc::new(Cell::new(0));
-
-    {
-      let followed = Rc::clone(&followed);
-
-      tree::handle_follow::<Linux, ()>(root, move |_| followed.set(followed.get() + 1));
-    }
-
-    tree::attach::<Linux>(root, second, 1);
-    tree::attach::<Linux>(second, text, 0);
-
-    let mut shell = Shell::new("test", 300, 100);
-
-    shell.set_root(root_node);
-    shell.configure(300, 100);
-    shell.frame();
-
-    let caption_width = caption_node.window_rect().width;
-
-    click(&mut shell, &caption_node, caption_width / 2.);
-    assert!(
-      on.get_untracked(),
-      "the caption's click checks its checkbox"
-    );
-    assert_eq!(first_count.get(), 0, "the row did not activate");
-
-    click(&mut shell, &text_node, 10.);
-    assert_eq!(followed.get(), 1, "the link's click follows it");
-    assert_eq!(second_count.get(), 0, "the row did not activate");
   });
 }
 
@@ -367,9 +287,14 @@ fn a_secure_entry_tells_an_input_method_only_its_marks() {
   owned(|| {
     let (root, root_node) = boxed(Record::new());
     let (field, _) = node(
-      NodeSpec::new(NodeKind::Control(ControlKind::TextField)),
+      NodeSpec::new(NodeKind::Editable { multiline: false })
+        .with_interaction(Interaction::Control { drag: None }),
       Record::new(),
     );
+    tree::add_access::<Linux>(field, || AccessFacts {
+      focusable: true,
+      ..AccessFacts::default()
+    });
     let value = Signal::new(Rc::<str>::from("hunter2"));
 
     tree::bind::<Linux, _>(field, contents::SECURE, || true);

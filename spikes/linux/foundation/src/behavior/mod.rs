@@ -1,30 +1,37 @@
-//! What a control does, written once for every platform that draws its controls: the keys each
-//! kind of control answers (its keyboard table), what a press, a drag, a click and a reader's
-//! action do to it, and what it reports to a reader.
+//! What a control's interaction is, written once for every platform that draws its controls.
 //!
-//! A behavior is a value built from the control's state as it is shown now ([`Toggle`] from
-//! whether it is on, [`Slider`] from its range), asked about one event, and answered with a
-//! [`Response`]: whether the control consumes the event, whether it shows pressed from the
-//! keyboard, and the act it reports (a proposed value, an activation, opening its list). It
-//! never changes the control itself: the realization reports the act and shows the truth the
-//! app answers with, as every controlled value is shown.
+//! A control is a node Skene's views compose (`Control<B>` in each facade), and its behavior
+//! ([`Behavior`]) says what the interaction is: its role, the events it acts on and the verdict
+//! it gives each ([`Prevent`]), what it tells a reader, whether it takes focus, and the state
+//! its parts are styled under ([`ControlState`]). A behavior acts through the
+//! [`ControlHandle`] its control hands it, and it never changes a value itself: a controlled
+//! value ([`Controlled`]) is read through what its user derives and changed only by asking
+//! its user's handler, so a change the handler refuses never shows.
+//!
+//! The key tables every platform shares are pure values, public so a third party's control
+//! answers the same keys as a built-in's ([`ActivateKeys`], [`ToggleKeys`], [`SliderKeys`],
+//! [`CollectionKeys`], [`PopupKeys`], [`EntryKeys`]). A table is built from the control's
+//! state as it shows now, asked about one event, and answers with a [`Response`].
+//!
+//! The shipped behaviors:
 //!
 //! - [`Activate`]: a command (a button): `Enter` on every press, `Space` on its release.
-//! - [`Toggle`]: a switch, a checkbox or a radio: `Space` on its release, a click flips it.
+//! - [`Toggle`]: a switch or a checkbox: `Space` on its release, a click flips it.
 //! - [`Slider`]: a value on a range: the arrows step it, the page keys by a tenth, `Home` and
 //!   `End` to its ends, a press jumps to where it lands and a drag follows the pointer.
-//! - [`Collection`]: members of a group, one chosen (a radio group, a list): the arrows move
-//!   to the next enabled member, wrapping where the collection wraps.
-//! - [`Popup`]: a closed face that opens a list of options (a picker): the face's keys and the
-//!   open list's, the list a [`Collection`], with [`TypeAhead`].
-//! - [`TextEntry`]: a text entry: the editing core's key table
-//!   ([`crate::text::editing::Binding`]), `Enter` activating an entry of one line.
+//! - [`Collection`] and its [`Member`]s: one chosen of a group (a radio group, a list box):
+//!   the arrows move to the next enabled member, wrapping where the policy wraps.
+//! - [`Popup`]: a closed face that opens a list of options (a picker), with [`TypeAhead`].
+//! - [`TextEntry`]: a text entry: the realization's own text view, `Enter` submitting an
+//!   entry of one line.
 //!
 //! The keys follow Chromium's form controls where a platform has no native behavior of its
 //! own (Linux and Windows draw every control).
 
 mod activate;
 mod collection;
+mod controlled;
+mod handle;
 mod popup;
 mod slider;
 mod text_entry;
@@ -35,20 +42,26 @@ mod type_ahead;
 mod tests;
 
 pub use self::{
-  activate::Activate,
-  collection::{Collection, Orientation},
-  popup::{Popup, PopupAct},
-  slider::Slider,
-  text_entry::{EntryAct, TextEntry},
-  toggle::{Toggle, ToggleKind},
+  activate::{Activate, ActivateKeys},
+  collection::{
+    Collection, CollectionKeys, CollectionPolicy, Listbox, ListboxOption, ListboxPolicy, Member,
+    Orientation, Radio, RadioGroup, RadioPolicy, Roster,
+  },
+  controlled::Controlled,
+  handle::{ContentHandler, ContentReader, ControlHandle, ControlOps},
+  popup::{Popup, PopupAct, PopupKeys},
+  slider::{Slider, SliderKeys},
+  text_entry::{EntryAct, EntryKeys, TextEntry},
+  toggle::{Toggle, ToggleKeys, ToggleKind},
   type_ahead::TypeAhead,
 };
 use crate::seam::{
-  access::{AccessFacts, Action, Role},
-  report::KeyEvent,
+  access::{AccessFacts, Role},
+  control::{AccessRequest, ControlState, DragAxes, Element, LabelPlacement, Prevent},
+  report::{KeyEvent, PointerEvent},
 };
 
-/// What a behavior answers an event with.
+/// What a key table answers an event with.
 #[derive(Clone, PartialEq, Debug)]
 #[must_use]
 pub struct Response<A> {
@@ -58,7 +71,7 @@ pub struct Response<A> {
   /// Whether the control now shows pressed from the keyboard (`Space` held), where that
   /// changed.
   pub pressed: Option<bool>,
-  /// What the control reports.
+  /// What the control does.
   pub act: Option<A>,
 }
 
@@ -77,7 +90,7 @@ impl<A> Response<A> {
     act: None,
   };
 
-  /// The control consumes the event and reports `act`.
+  /// The control consumes the event and does `act`.
   #[inline(always)]
   pub const fn act(act: A) -> Self {
     Self {
@@ -87,7 +100,7 @@ impl<A> Response<A> {
     }
   }
 
-  /// The control consumes the event and reports `act` where there is one.
+  /// The control consumes the event and does `act` where there is one.
   #[inline(always)]
   pub const fn maybe(act: Option<A>) -> Self {
     Self {
@@ -113,42 +126,94 @@ impl<A> Response<A> {
       act: self.act.map(map),
     }
   }
+
+  /// The verdict a behavior gives for this response: everything prevented where the control
+  /// consumes the event, nothing otherwise.
+  #[must_use]
+  pub const fn verdict(&self) -> Prevent {
+    if self.consumed {
+      Prevent::All
+    } else {
+      Prevent::None
+    }
+  }
 }
 
-/// A control's behavior: its keyboard table, what a click and a reader's action do to it, and
-/// what it reports to a reader.
+/// What a control's interaction is: its role, the events it acts on and the verdict it gives
+/// each, what it tells a reader, whether it takes focus, and the state its parts are styled
+/// under.
+///
+/// Every method has a default but the role, so a behavior answers only what it acts on. The
+/// handlers run untracked; [`Behavior::access`], [`Behavior::focusable`] and
+/// [`Behavior::state`] run under an effect, kept current by the signals they read.
 #[diagnostic::on_unimplemented(
   message = "`{Self}` is not a control's behavior",
-  note = "a behavior answers a control's keys, clicks and a reader's actions with the act the control reports"
+  note = "a behavior answers a control's keys, pointer, clicks and a reader's requests, and reports its role, its facts and its state"
 )]
-pub trait Behavior {
-  /// What the control reports.
-  type Act;
-
+pub trait Behavior: 'static {
   /// What a reader takes the control for.
   fn role(&self) -> Role;
 
-  /// A key pressed (or released) while the control holds focus.
-  fn key(&self, event: &KeyEvent) -> Response<Self::Act>;
+  /// What the control's node is: a box, or the realization's text view.
+  fn element(&self) -> Element {
+    Element::Box
+  }
+
+  /// The axes a press drags it along; the platform keeps the pointer with it until the
+  /// release.
+  fn drag_axes(&self) -> Option<DragAxes> {
+    None
+  }
+
+  /// Where its label sits unless its user says otherwise.
+  fn label_placement(&self) -> LabelPlacement {
+    LabelPlacement::Trailing
+  }
+
+  /// Runs once its node exists, before its parts build: binds the contents it keeps.
+  fn attach(&self, _control: &ControlHandle) {}
+
+  /// Runs once its parts and body are in place: finds what it measures against.
+  fn mounted(&self, _control: &ControlHandle) {}
 
   /// A click: a primary press and its release over the control.
-  fn click(&self) -> Option<Self::Act> {
-    None
+  fn on_click(&self, _control: &ControlHandle) -> Prevent {
+    Prevent::None
   }
 
-  /// A reader's action on the control.
-  fn action(&self, _action: Action) -> Option<Self::Act> {
-    None
+  /// A key pressed or released while focus is on the control or inside it (it climbed from a
+  /// member).
+  fn on_key(&self, _event: &KeyEvent, _control: &ControlHandle) -> Prevent {
+    Prevent::None
   }
 
-  /// The actions the control offers a reader.
-  fn actions(&self) -> Vec<Action> {
-    Vec::new()
+  /// A pointer event inside the control, or captured by it during a drag.
+  fn on_pointer(&self, _event: &PointerEvent, _control: &ControlHandle) -> Prevent {
+    Prevent::None
   }
 
-  /// What the control tells a reader of its state: its check, its value, its expansion.
-  fn facts(&self) -> AccessFacts {
+  /// Focus left the control.
+  fn on_blur(&self, _control: &ControlHandle) {}
+
+  /// A reader's request; whether the behavior took it. An `Activate` it does not take is a
+  /// click.
+  fn on_access(&self, _request: AccessRequest, _control: &ControlHandle) -> bool {
+    false
+  }
+
+  /// What it tells a reader beside its role.
+  fn access(&self) -> AccessFacts {
     AccessFacts::default()
+  }
+
+  /// Whether it takes focus while enabled (a radio only while it is its group's stop).
+  fn focusable(&self) -> bool {
+    true
+  }
+
+  /// The state its parts' control-scoped conditions resolve against.
+  fn state(&self) -> ControlState {
+    ControlState::DEFAULT
   }
 }
 

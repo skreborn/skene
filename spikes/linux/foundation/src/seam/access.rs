@@ -4,7 +4,11 @@ use std::rc::Rc;
 
 use crate::{
   NodeId,
-  seam::node::{ControlKind, LayoutKind, NodeKind},
+  layout::Axis,
+  seam::{
+    control::AccessRequest,
+    node::{LayoutKind, NodeKind},
+  },
 };
 
 /// What a reader takes a node for.
@@ -101,22 +105,27 @@ impl Role {
   pub const fn of(kind: NodeKind) -> Self {
     match kind {
       NodeKind::Layout(LayoutKind::Scroll { .. }) => Self::ScrollArea,
-      NodeKind::Layout(_) | NodeKind::Scope | NodeKind::Segment | NodeKind::Native => Self::Generic,
+      NodeKind::Layout(_)
+      | NodeKind::Overlay
+      | NodeKind::Scope
+      | NodeKind::Segment
+      | NodeKind::Native => Self::Generic,
       NodeKind::Text => Self::Text,
       NodeKind::Image | NodeKind::Painted => Self::Image,
-      NodeKind::Control(control) => match control {
-        ControlKind::Switch => Self::Switch,
-        ControlKind::Checkbox => Self::Checkbox,
-        ControlKind::Radio => Self::Radio,
-        ControlKind::Slider => Self::Slider,
-        ControlKind::TextField => Self::TextField,
-        ControlKind::TextEditor => Self::TextEditor,
-        ControlKind::Button => Self::Button,
-        ControlKind::Picker => Self::ComboBox,
-        ControlKind::Progress => Self::ProgressBar,
-        ControlKind::Stepper => Self::SpinButton,
-      },
+      NodeKind::Editable { multiline: false } => Self::TextField,
+      NodeKind::Editable { multiline: true } => Self::TextEditor,
     }
+  }
+
+  /// Whether the role takes its name from its content (a button's, an option's, a menu
+  /// item's, a link's label): such a control's label is a presentational part whose text is
+  /// its name, where every other control's caption names it by reference.
+  #[must_use]
+  pub const fn is_named_by_content(self) -> bool {
+    matches!(
+      self,
+      Self::Button | Self::Option | Self::MenuItem | Self::Link
+    )
   }
 }
 
@@ -140,26 +149,10 @@ pub struct RangeValue {
   pub minimum: f64,
   /// The greatest value.
   pub maximum: f64,
+  /// The step the value moves by, where it moves by one.
+  pub step: Option<f64>,
   /// The value as read aloud, where it is not the number.
   pub text: Option<Rc<str>>,
-}
-
-/// An action a reader can take on a node that draws its control itself: the realization
-/// exposes it and reports it ([`crate::seam::report::Report::Action`]).
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub enum Action {
-  /// Activate (press, click).
-  Activate,
-  /// Flip.
-  Toggle,
-  /// Step up.
-  Increment,
-  /// Step down.
-  Decrement,
-  /// Open.
-  Expand,
-  /// Close.
-  Collapse,
 }
 
 /// What a node tells a reader beyond what its toolkit control reports itself: a native
@@ -190,6 +183,8 @@ pub struct AccessFacts {
   pub invalid: bool,
   /// Whether the value can be read but not changed.
   pub read_only: bool,
+  /// Whether the node is present but not operable.
+  pub disabled: bool,
   /// A drawn control's check.
   pub checked: Option<Checked>,
   /// A drawn control's expansion.
@@ -200,10 +195,14 @@ pub struct AccessFacts {
   pub selected: Option<bool>,
   /// A drawn control's range value.
   pub value: Option<RangeValue>,
+  /// The value a drawn control shows as text: a picker face's chosen option.
+  pub value_text: Option<Rc<str>>,
+  /// The axis a drawn control's value moves along.
+  pub orientation: Option<Axis>,
   /// Whether a drawn node takes focus.
   pub focusable: bool,
-  /// The actions a drawn control offers.
-  pub actions: Vec<Action>,
+  /// The requests a drawn control answers, as a reader finds them offered.
+  pub actions: Vec<AccessRequest>,
   /// What a painted node draws, as a reader finds it: the parts of a chart, the markers of a
   /// map, each with its own role, facts and bounds in the node.
   pub parts: Vec<AccessPart>,
@@ -221,11 +220,14 @@ impl AccessFacts {
     self.required |= other.required;
     self.invalid |= other.invalid;
     self.read_only |= other.read_only;
+    self.disabled |= other.disabled;
     self.checked = other.checked.or(self.checked);
     self.expanded = other.expanded.or(self.expanded);
     self.has_popup |= other.has_popup;
     self.selected = other.selected.or(self.selected);
     self.value = other.value.or(self.value.take());
+    self.value_text = other.value_text.or(self.value_text.take());
+    self.orientation = other.orientation.or(self.orientation);
     self.focusable |= other.focusable;
     self.actions.extend(other.actions);
     self.parts.extend(other.parts);

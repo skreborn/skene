@@ -3,8 +3,8 @@
 use std::{process::ExitCode, time::Duration};
 
 use crate::{
-  NodeId, Scheme,
-  layout::ResolvedLayout,
+  NodeId, Scheme, SystemColors,
+  layout::{Rect, ResolvedLayout},
   seam::{
     access::AccessFacts,
     content::{Content, PropValue, Unit},
@@ -137,6 +137,14 @@ pub trait Realization: Sized + 'static {
 
   /// Moves focus to `node`.
   fn focus(node: &Self::Node);
+
+  /// `node`'s rectangle in window pixels (where it is drawn: an overlay's nodes where the
+  /// overlay sits over the window), as last laid out; `None` for a node never laid out.
+  fn frame(node: &Self::Node) -> Option<Rect>;
+
+  /// The platform's colors for the environment in force, read under an effect: what the
+  /// built-in controls' defaults are drawn in, installed by the facade as the root theme.
+  fn system_colors() -> SystemColors;
 
   /// Chooses the scheme for the whole app, or follows the reader's again (`None`); the
   /// realization reports the scheme in force ([`crate::environment::report`]).

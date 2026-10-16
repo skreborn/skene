@@ -26,12 +26,17 @@
 //! a [`style::CompiledStyle`] only when it changed, its address a function of the style's
 //! content alone.
 //!
-//! **Controls are controlled.** A report of a user change is synchronous and answered with a
-//! [`content::Verdict`]. A value constrained by another travels with it as one value
-//! ([`content::Range`], [`content::Choice`], [`content::Edit`]). The echo rule, the
-//! equal-skip, the hold during composition, the repair of a change the toolkit applied before
-//! asking, and the text arithmetic in the realization's unit live here, once
-//! ([`content::Controller`]).
+//! **Controls are composed and controlled.** A control is a node Skene's views compose
+//! (boxes, texts, painted marks), its interaction its behavior's
+//! ([`crate::behavior::Behavior`]): the realization reports keys, presses, clicks and a
+//! reader's requests at it ([`report::Report`]), the shared half runs the behavior's answers
+//! ([`control::ControlDispatch`]) and folds their verdicts ([`control::Prevent`]), and the
+//! parts built inside it resolve the control's states ([`control::ControlState`]). A text
+//! entry is the realization's own text view ([`node::NodeKind::Editable`]): a report of a
+//! user's edit is synchronous and answered with a [`content::Verdict`], its text and selection
+//! one value ([`content::Edit`]). The echo rule, the equal-skip, the hold during composition,
+//! the repair of a change the toolkit applied before asking, and the text arithmetic in the
+//! realization's unit live here, once ([`content::Controller`]).
 //!
 //! **No double.** Every platform has one realization, the real one. Tests drive it through
 //! [`testing::Driver`], which each realization implements over its own accessibility layer and
@@ -40,6 +45,7 @@
 pub mod access;
 pub mod activity;
 pub mod content;
+pub mod control;
 pub mod door;
 pub mod node;
 pub mod picture;

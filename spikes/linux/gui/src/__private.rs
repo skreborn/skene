@@ -10,20 +10,24 @@ use skene_foundation::seam::{
 };
 
 use crate::{
-  Active,
+  Active, Theme,
   view::{Cx, View},
 };
 
 /// Checks, at compile time, that the app's root returns a view.
 pub const fn assert_app<V: View>(_: fn() -> V) {}
 
-/// Builds `app` under a root box, the node a window shows.
+/// Builds `app` under a root box, the node a window shows, beneath the platform's colors
+/// ([`skene_foundation::SystemColors`]) as the root theme.
 pub(crate) fn root<V: View>(app: impl FnOnce() -> V) -> skene_foundation::NodeId {
   let root = tree::create::<Active>(
     NodeSpec::new(NodeKind::Layout(LayoutKind::Box)),
     &ScopeChain::root(),
+    None,
   );
-  let node = app().build(&mut Cx::root());
+  let node = Theme::derive(Active::system_colors)
+    .set_child(app())
+    .build(&mut Cx::root());
 
   tree::attach::<Active>(root, node.0, 0);
 

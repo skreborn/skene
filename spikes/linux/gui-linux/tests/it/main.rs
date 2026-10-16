@@ -22,7 +22,7 @@ use skene_gui_linux::{Linux, node::Node};
 
 /// A node of `spec` with `record`, its realized node.
 fn node(spec: NodeSpec, record: Record) -> (NodeId, Node) {
-  let id = tree::create::<Linux>(spec, &ScopeChain::root());
+  let id = tree::create::<Linux>(spec, &ScopeChain::root(), None);
 
   tree::set_record::<Linux>(id, record);
 

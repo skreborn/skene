@@ -51,6 +51,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "acme-rating"
+version = "0.0.0"
+dependencies = [
+ "skene-gui",
+]
+
+[[package]]
 name = "adler2"
 version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1474,6 +1481,7 @@ dependencies = [
 name = "skene-conformance"
 version = "0.0.0"
 dependencies = [
+ "acme-rating",
  "skene-gui",
  "skene-simple-gui",
 ]

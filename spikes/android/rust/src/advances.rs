@@ -56,6 +56,13 @@ pub enum Rule {
   FloorPpem,
   /// FreeType's 26.6 arithmetic (`FT_MulFix` by the size's scale), rounded as `FT_PIX_ROUND`.
   FtRound,
+  /// FreeType's 26.6 arithmetic at the pixel size rounded down to a whole ppem, rounded as
+  /// `FT_PIX_ROUND`: what Minikin's layout measured.
+  FreeTypeFloor,
+  /// FreeType's size request and grid-fitted advance: a TrueType font whose `head` forces an
+  /// integer ppem (bit 3) is scaled at the rounded ppem (`tt_size_reset`), any other at the pixel
+  /// size itself, and the advance is `FT_PIX_ROUND` of `FT_MulFix` by that scale.
+  FreeType,
   /// The hinted advance, as FreeType's default load (`FT_LOAD_TARGET_NORMAL`) reports it:
   /// the font's own hinting where it has instructions, the automatic hinter where not.
   Hinted,
@@ -67,7 +74,8 @@ pub enum Rule {
 
 impl Rule {
   /// Every rule, in the order reports list them.
-  pub const ALL: [Self; 10] = [
+  pub const ALL: [Self; 12] = [
+    Self::FreeTypeFloor,
     Self::Linear,
     Self::Round,
     Self::Floor,
@@ -75,6 +83,7 @@ impl Rule {
     Self::RoundPpem,
     Self::FloorPpem,
     Self::FtRound,
+    Self::FreeType,
     Self::Hinted,
     Self::HintedAuto,
     Self::HintedLight,
@@ -91,6 +100,8 @@ impl Rule {
       Self::RoundPpem => "round_ppem",
       Self::FloorPpem => "floor_ppem",
       Self::FtRound => "ft_round",
+      Self::FreeType => "freetype",
+      Self::FreeTypeFloor => "freetype_floor",
       Self::Hinted => "hinted",
       Self::HintedAuto => "hinted_auto",
       Self::HintedLight => "hinted_light",
@@ -154,6 +165,8 @@ pub struct Sizing {
   pub px: f32,
   /// The font's units per em.
   pub upem: f32,
+  /// Whether FreeType scales the font at a whole ppem: TrueType outlines and `head` bit 3.
+  pub integer_ppem: bool,
   rule: Rule,
   hinting: Option<HintingInstance>,
   cache: Mutex<HashMap<u32, (f32, f32)>>,
@@ -171,7 +184,12 @@ impl Sizing {
     styles: Option<GlyphStyles>,
   ) -> Option<Self> {
     let font = FontRef::from_index((*data).as_ref(), index).ok()?;
-    let upem = f32::from(font.head().ok()?.units_per_em());
+    let head = font.head().ok()?;
+    let upem = f32::from(head.units_per_em());
+    let integer_ppem = head
+      .flags()
+      .contains(skrifa::raw::tables::head::Flags::FORCE_INTEGER_PPEM)
+      && font.table_data(skrifa::Tag::new(b"glyf")).is_some();
     let hinting = match rule.hinting() {
       Some((auto, mode)) => {
         let outlines = font.outline_glyphs();
@@ -204,6 +222,7 @@ impl Sizing {
       coords,
       px,
       upem,
+      integer_ppem,
       rule,
       hinting,
       cache: Mutex::new(HashMap::new()),
@@ -239,11 +258,21 @@ impl Sizing {
       Rule::Ceil => linear.ceil(),
       Rule::RoundPpem => ppem(self.px.round()),
       Rule::FloorPpem => ppem(self.px.floor()),
-      Rule::FtRound => {
-        let scale = div_fix((f64::from(self.px) * 64.).round() as i64, self.upem as i64);
-        let scaled = mul_fix(units.round() as i64, scale);
+      Rule::FtRound | Rule::FreeType | Rule::FreeTypeFloor => {
+        let requested = (f64::from(self.px) * 64.).round() as i64;
+        let scaled = if self.rule == Rule::FreeTypeFloor {
+          (requested >> 6) << 6
+        }
+        else if self.rule == Rule::FreeType && self.integer_ppem {
+          ((requested + 32) >> 6) << 6
+        }
+        else {
+          requested
+        };
+        let scale = div_fix(scaled, self.upem as i64);
+        let advance = mul_fix(units.round() as i64, scale);
 
-        ((scaled + 32) & !63) as f32 / 64.
+        ((advance + 32) & !63) as f32 / 64.
       }
       Rule::Hinted | Rule::HintedAuto | Rule::HintedLight => {
         let hinted = self.hinting.as_ref().and_then(|instance| {
@@ -492,6 +521,96 @@ fn coords_of(font: &FontRef<'_>, axes: &str) -> Vec<F2Dot14> {
     .to_vec()
 }
 
+/// The advance in dp of `text` laid out by Parley in face `index` of `data` at `size` dp and
+/// `axes`, under the process's advance rule.
+fn parley_advance(data: &Arc<dyn AsRef<[u8]> + Send + Sync>, index: u32, axes: &str, text: &str, size: f32) -> Option<f32> {
+  use std::borrow::Cow;
+
+  use parley::{
+    fontique::Blob,
+    FontContext,
+    FontFamily,
+    FontVariation,
+    FontVariations,
+    LayoutContext,
+    StyleProperty,
+  };
+
+  let mut fonts = FontContext::default();
+  let added = fonts.collection.register_fonts(Blob::new(data.clone()), None);
+  let family = added
+    .iter()
+    .find(|(_, infos)| infos.iter().any(|info| info.index() == index))
+    .map(|(family, _)| *family)?;
+  let name = fonts.collection.family_name(family)?.to_owned();
+  let variations: Vec<FontVariation> = axes
+    .split(',')
+    .filter_map(|setting| {
+      let setting = setting.trim();
+      let tag = setting.get(1..5)?;
+      let value: f32 = setting.get(6..)?.trim().parse().ok()?;
+
+      Some(FontVariation::new(parley::setting::Tag::new(tag.as_bytes().try_into().ok()?), value))
+    })
+    .collect();
+  let mut layouts: LayoutContext<()> = LayoutContext::new();
+  let mut builder = layouts.ranged_builder(&mut fonts, text, 1., false);
+
+  builder.push_default(StyleProperty::FontFamily(FontFamily::named(&name)));
+  builder.push_default(StyleProperty::FontSize(size));
+  builder.push_default(StyleProperty::FontVariations(FontVariations::List(Cow::Owned(variations))));
+
+  let mut layout = builder.build(text);
+
+  layout.break_all_lines(None);
+
+  let advance = layout.lines().next().map(|line| line.metrics().advance);
+
+  advance
+}
+
+/// Each kerning pair laid out by Parley under `rule` at every size against the platform's
+/// measurement of the pair: how many agree within 0.02 px, and the largest difference.
+fn pairs_under(rule: Rule, density: f32, sizes: &[f32], font: &Value, data: &Arc<dyn AsRef<[u8]> + Send + Sync>, index: u32) -> Value {
+  parley_engine::set_advance_rule(match rule {
+    Rule::Linear => None,
+    rule => Some(Arc::new(HintedAdvances::new(rule, density))),
+  });
+
+  let axes = font["axes"].as_str().unwrap_or_default();
+  let mut agree = 0usize;
+  let mut count = 0usize;
+  let mut worst = 0f64;
+  let mut misses = Vec::new();
+
+  for pair in font["pairs"].as_array().cloned().unwrap_or_default() {
+    let text = pair["text"].as_str().unwrap_or_default();
+    let measured = numbers(&pair["pair_hinted"]);
+
+    for (at, size) in sizes.iter().enumerate() {
+      let (Some(Some(measured)), Some(ours)) = (measured.get(at), parley_advance(data, index, axes, text, *size))
+      else {
+        continue;
+      };
+      let delta = (f64::from(ours * density) - measured).abs();
+
+      count += 1;
+      worst = worst.max(delta);
+
+      if delta < 0.02 {
+        agree += 1;
+      }
+      else if misses.len() < 8 {
+        misses.push(json!({"text": text, "px": size * density, "measured": measured, "parley": ours * density}));
+      }
+    }
+  }
+
+  parley_engine::set_advance_rule(None);
+
+  json!({"matched": agree, "of": count, "max_delta_px": worst, "misses": misses})
+}
+
 /// Which rules predict the measured advances: per font and rule, how many (glyph, size) the
 /// rule matches within 0.01 px, with the misses of the best; kerning and `chws` against the
 /// linear scale; and the rule that matches most overall.
@@ -519,6 +638,7 @@ fn analyze(measured: &Value) -> Value {
     let coords = coords_of(&face, font["axes"].as_str().unwrap_or_default());
     let styles = GlyphStyles::new(&face.outline_glyphs());
     let mut per_rule: BTreeMap<&str, (usize, usize, Vec<Value>)> = BTreeMap::new();
+    let mut per_rule_bounds: BTreeMap<&str, (usize, usize)> = BTreeMap::new();
     let mut linear_agree = (0usize, 0usize, 0f64);
 
     for (at, size) in sizes.iter().enumerate() {
@@ -533,23 +653,31 @@ fn analyze(measured: &Value) -> Value {
 
       for glyph in font["glyphs"].as_array().cloned().unwrap_or_default() {
         let id = glyph["glyph"].as_u64().unwrap_or(0) as u32;
-        let measured_hinted = numbers(&glyph["bounds"])
-          .get(at)
-          .copied()
-          .flatten()
-          .or_else(|| numbers(&glyph["hinted"]).get(at).copied().flatten());
+        let measured_hinted = numbers(&glyph["hinted"]).get(at).copied().flatten();
+        let measured_bounds = numbers(&glyph["bounds"]).get(at).copied().flatten();
         let measured_linear = numbers(&glyph["linear"])
           .get(at)
           .copied()
           .flatten()
           .or_else(|| numbers(&glyph["bounds_linear"]).get(at).copied().flatten());
-        let Some(hinted) = measured_hinted
-        else {
-          continue;
-        };
 
         for (rule, sizing) in &sizings {
           let (_, predicted) = sizing.advance(id);
+
+          if let Some(bounds) = measured_bounds {
+            let entry = per_rule_bounds.entry(rule.name()).or_default();
+
+            entry.1 += 1;
+
+            if (f64::from(predicted) - bounds).abs() < 0.01 {
+              entry.0 += 1;
+            }
+          }
+
+          let Some(hinted) = measured_hinted
+          else {
+            continue;
+          };
           let entry = per_rule.entry(rule.name()).or_default();
           let hit = (f64::from(predicted) - hinted).abs() < 0.01;
 
@@ -594,10 +722,16 @@ fn analyze(measured: &Value) -> Value {
       );
     }
 
-    let best = per_rule
+    let best = Rule::ALL
       .iter()
-      .max_by_key(|(_, (hits, _, _))| *hits)
-      .map(|(rule, _)| *rule);
+      .rev()
+      .filter_map(|rule| per_rule.get(rule.name()).map(|(hits, _, _)| (*hits, rule.name())))
+      .max_by_key(|(hits, _)| *hits)
+      .map(|(_, rule)| rule);
+    let bounds: BTreeMap<&str, Value> = per_rule_bounds
+      .iter()
+      .map(|(rule, (hits, count))| (*rule, json!({"matched": hits, "of": count})))
+      .collect();
     let mut pairs = Vec::new();
     let mut kerning_linear = (0usize, 0usize, 0f64);
 
@@ -623,21 +757,32 @@ fn analyze(measured: &Value) -> Value {
       }
     }
 
+    let pairs_parley = json!({
+      "freetype_floor": pairs_under(Rule::FreeTypeFloor, density, &sizes, &font, &data, index),
+      "linear": pairs_under(Rule::Linear, density, &sizes, &font, &data, index),
+    });
+
     fonts_out.push(json!({
       "name": font["name"], "path": path, "index": index, "axes": font["axes"],
+      "pairs_parley": pairs_parley,
       "upem": face.head().map(|head| head.units_per_em()).unwrap_or(0),
+      "head_flags": face.head().map(|head| head.flags().bits()).unwrap_or(0),
+      "glyf": face.table_data(skrifa::Tag::new(b"glyf")).is_some(),
       "has_instructions": face.outline_glyphs().prefer_interpreter(),
       "linear_agrees": {"matched": linear_agree.0, "of": linear_agree.1, "max_delta": linear_agree.2},
-      "rules": rules, "best": best,
+      "rules": rules, "best": best, "rules_against_glyph_bounds": bounds,
       "kerning_linear": {"matched": kerning_linear.0, "of": kerning_linear.1, "max_delta": kerning_linear.2},
       "pairs_at_17dp": pairs, "chws": font["chws"],
     }));
   }
 
-  let best = totals
+  // Ties go to the earliest rule of `Rule::ALL`.
+  let best = Rule::ALL
     .iter()
-    .max_by_key(|(_, (hits, _))| *hits)
-    .map(|(rule, _)| *rule);
+    .rev()
+    .filter_map(|rule| totals.get(rule.name()).map(|(hits, _)| (*hits, rule.name())))
+    .max_by_key(|(hits, _)| *hits)
+    .map(|(_, rule)| rule);
   let totals: BTreeMap<&str, Value> = totals
     .iter()
     .map(|(rule, (hits, count))| (*rule, json!({"matched": hits, "of": count})))

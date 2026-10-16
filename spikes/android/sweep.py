@@ -139,7 +139,11 @@ def main():
 
                 if data:
                     worst_line = max((variant.get("max_line_end_drift", 0) for variant in data.get("variants", [])), default=None)
+                    drifts = [variant.get("max_line_end_drift", 0) for variant in data.get("variants", [])]
                     shaping[name] = {
+                        "variants": len(drifts),
+                        "line_drift_within_half_dp": sum(1 for drift in drifts if drift <= 0.5),
+                        "line_drift_within_one_dp": sum(1 for drift in drifts if drift <= 1.0),
                         "runs": data.get("runs"), "runs_same_glyphs": data.get("runs_same_glyphs"),
                         "runs_compared": data.get("runs_compared"),
                         "max_glyph_drift": data.get("max_glyph_drift"),
@@ -155,7 +159,10 @@ def main():
             hinted = shaping.get("hinted", {})
             floors.append(
                 f"| {api} | {dpi} | {show(linear.get('max_run_advance_delta'), 2)} | {show(linear.get('max_line_end_drift'), 2)} | "
+                f"{linear.get('line_drift_within_half_dp', '-')}/{linear.get('variants', '-')} | "
                 f"{show(hinted.get('max_run_advance_delta'), 2)} | {show(hinted.get('max_line_end_drift'), 2)} | "
+                f"{hinted.get('line_drift_within_half_dp', '-')}/{hinted.get('variants', '-')} | "
+                f"{', '.join(f'{name} {drift:.2f}' for drift, name in hinted.get('worst_variants', [])[:3])} | "
                 f"{show(hinted.get('max_glyph_drift'), 2)} | "
                 f"{show(t('b-linear', 'cfloor-linear').get('mean_ssim'))} / {show(t('b-linear', 'cfloor-linear').get('mean_ink_iou'))} | "
                 f"{show(t('b-hinted', 'cfloor-hinted').get('mean_ssim'))} / {show(t('b-hinted', 'cfloor-hinted').get('mean_ink_iou'))} | "
@@ -189,8 +196,8 @@ def main():
         "Run advance drift is Minikin's advance of a run against Parley's (dp); line-end drift sums a",
         "line's runs.",
         "",
-        "| API | dpi | linear run drift | linear line drift | hinted run drift | hinted line drift | hinted glyph drift | B-Cfloor linear SSIM / IoU | B-Cfloor hinted SSIM / IoU | A-Cfloor hinted SSIM | A-Cfloor hinted breaks |",
-        "|---|---|---|---|---|---|---|---|---|---|---|",
+        "| API | dpi | linear run drift | linear line drift | linear lines within 0.5 dp | hinted run drift | hinted line drift | hinted lines within 0.5 dp | worst hinted | hinted glyph drift | B-Cfloor linear SSIM / IoU | B-Cfloor hinted SSIM / IoU | A-Cfloor hinted SSIM | A-Cfloor hinted breaks |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
         *floors,
         "",
         "## Variants whose breaks still differ (A against B-hinted)",

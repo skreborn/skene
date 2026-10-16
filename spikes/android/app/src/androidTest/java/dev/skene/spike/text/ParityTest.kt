@@ -276,10 +276,11 @@ class ParityTest {
   /**
    * Per-glyph advances as Minikin takes them, for [Parity.advanceAnalysis] to find the rule
    * they follow: each probe font (the matcher's pick, as a one-font typeface) at every size of
-   * the probe, a lone character measured whole (a script whose lone character is its cmap
-   * glyph) and each glyph by `Font.getGlyphBounds` (API 31), both with and without
-   * `LINEAR_TEXT_FLAG`; kerning pairs against their parts; and the CJK font's punctuation pairs
-   * with `chws` on and off. Writes `advances.json`: the measurements and the analysis.
+   * the probe, a lone character's run advance (`getRunAdvance`, which `measureText` rounds up;
+   * a script whose lone character is its cmap glyph) and each glyph by `Font.getGlyphBounds`
+   * (API 31), both with and without `LINEAR_TEXT_FLAG`; kerning pairs against their parts; and
+   * the CJK font's punctuation pairs with `chws` on and off. Writes `advances.json`: the
+   * measurements and the analysis.
    */
   @Test
   fun advances() {
@@ -307,6 +308,9 @@ class ParityTest {
         if (features != null) fontFeatureSettings = features
       }
 
+      fun advance(paint: TextPaint, text: String) =
+        paint.getRunAdvance(text, 0, text.length, 0, text.length, false, text.length).toDouble()
+
       fun perSize(measure: (Float) -> Double?) =
         JSONArray(List(sizes.length()) { measure(sizes.getDouble(it).toFloat() * density) ?: JSONObject.NULL })
 
@@ -318,11 +322,16 @@ class ParityTest {
         val glyph = glyphs.getJSONObject(g)
         val text = glyph.getString("char")
         val id = glyph.getInt("glyph")
+        // A lone character's run is its cmap glyph alone where the font says so, or where Minikin
+        // shapes it to that glyph (API 31).
+        val alone = simple || (sdk >= 31 && TextRunShaper.shapeTextRun(text, 0, text.length, 0, text.length, 0f, 0f, false, paint(17f * density, false))
+          .let { shaped -> shaped.glyphCount() == 1 && shaped.getGlyphId(0) == id })
         glyphsOut.put(JSONObject().apply {
           put("char", text)
           put("glyph", id)
-          put("hinted", perSize { px -> if (simple) paint(px, false).measureText(text).toDouble() else null })
-          put("linear", perSize { px -> if (simple) paint(px, true).measureText(text).toDouble() else null })
+          put("alone", alone)
+          put("hinted", perSize { px -> if (alone) advance(paint(px, false), text) else null })
+          put("linear", perSize { px -> if (alone) advance(paint(px, true), text) else null })
 
           if (sdk >= 31) {
             put("bounds", perSize { px -> font.getGlyphBounds(id, paint(px, false), bounds).toDouble() })
@@ -333,7 +342,7 @@ class ParityTest {
 
       fun kern(text: String, linear: Boolean, px: Float): Double {
         val paint = paint(px, linear)
-        return (paint.measureText(text) - paint.measureText(text.substring(0, 1)) - paint.measureText(text.substring(1))).toDouble()
+        return advance(paint, text) - advance(paint, text.substring(0, 1)) - advance(paint, text.substring(1))
       }
 
       val pairs = spec.getJSONArray("pairs")
@@ -343,6 +352,7 @@ class ParityTest {
         val text = pairs.getString(p)
         pairsOut.put(JSONObject().apply {
           put("text", text)
+          put("pair_hinted", perSize { px -> advance(paint(px, false), text) })
           put("kern_hinted", perSize { px -> kern(text, false, px) })
           put("kern_linear", perSize { px -> kern(text, true, px) })
         })
@@ -354,7 +364,7 @@ class ParityTest {
       for (p in 0 until chws.length()) {
         val text = chws.getString(p)
 
-        fun width(px: Float, linear: Boolean, features: String?) = paint(px, linear, features).measureText(text).toDouble()
+        fun width(px: Float, linear: Boolean, features: String?) = advance(paint(px, linear, features), text)
 
         chwsOut.put(JSONObject().apply {
           put("text", text)

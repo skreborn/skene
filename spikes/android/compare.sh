@@ -8,7 +8,7 @@ tp=$(realpath "$1")
 dir=$2
 cd "$dir" || exit 1
 
-for set in a-simple a-quality b-fed b-stock; do
+for set in a-simple a-quality a-subpixel b-fed b-stock; do
   [ -f "$set/records.json" ] && "$tp" validate "$set/records.json" > "validate-$set.txt" 2>&1
   echo "validate $set: $(tail -1 "validate-$set.txt" 2>/dev/null)"
 done
@@ -35,6 +35,8 @@ compare a-simple b-stock
 compare b-stock b-fed
 compare a-quality b-fed
 compare a-simple a-quality
+compare a-subpixel b-fed
+compare a-simple a-subpixel
 compare a-simple c diff
 compare b-fed c
 compare a-simple cfloor

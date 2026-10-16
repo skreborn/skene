@@ -167,11 +167,11 @@ class ParityTest {
     write("han-locale-lists.json", lists)
   }
 
-  private fun nativeSet(quality: Boolean, name: String) {
+  private fun nativeSet(quality: Boolean, name: String, subpixel: Boolean = false) {
     header()
     val root = File(out, name).apply { mkdirs() }
     val started = System.nanoTime()
-    val set = NativeRecords(quality, density).run(root, device)
+    val set = NativeRecords(quality, density, subpixel).run(root, device)
     report("$name.ms", msOf(System.nanoTime() - started))
     report("$name.records", set.getJSONArray("records").length())
     report("$name.firstLayoutMs", set.getJSONObject("timings").getDouble("first_layout_ms"))
@@ -185,6 +185,10 @@ class ParityTest {
   /** Option A, `BREAK_STRATEGY_HIGH_QUALITY` with `HYPHENATION_FREQUENCY_NORMAL`. */
   @Test
   fun nativeQuality() = nativeSet(true, "a-quality")
+
+  /** Option A simple with `SUBPIXEL_TEXT_FLAG`: Minikin's layout with fractional advances. */
+  @Test
+  fun nativeSubpixel() = nativeSet(false, "a-subpixel", subpixel = true)
 
   private fun parleyRun(name: String, fonts: JSONObject, glyphs: Boolean) {
     val config = JSONObject().apply {
@@ -366,6 +370,31 @@ class ParityTest {
     }
 
     probes.put("breaks", breaks)
+
+    // One line's advance as TextView measures it (whole-pixel advances), with SUBPIXEL_TEXT_FLAG,
+    // and with the contextual half-width spacing feature turned off.
+    val advances = JSONObject()
+
+    for (id in listOf(
+      "latin-kerning/17/max", "latin-paragraph/17/max", "sizes-latin/11/max", "sizes-latin/17/max",
+      "sizes-latin/64/max", "han-zh-hans/17/max", "han-ja/17/max", "sizes-cjk/17/max", "thai/17/160", "arabic/17/max",
+    )) {
+      val variant = corpus.first { it.id == id }
+      val text = variant.text
+      fun measure(configure: TextPaint.() -> Unit) =
+        records.paint(variant, variant.size * density).apply(configure).measureText(text) / density
+      val entry = JSONObject().apply {
+        put("default", measure {}.toDouble())
+        put("subpixel", measure { isSubpixelText = true }.toDouble())
+        put("chws_off", measure { fontFeatureSettings = "'chws' 0" }.toDouble())
+        put("subpixel_chws_off", measure { isSubpixelText = true; fontFeatureSettings = "'chws' 0" }.toDouble())
+        put("linear", measure { isLinearText = true }.toDouble())
+      }
+      advances.put(id, entry)
+      report("probes.advances.$id", entry.toString())
+    }
+
+    probes.put("advances", advances)
     write("probes.json", probes)
   }
 

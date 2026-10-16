@@ -23,6 +23,8 @@ PAIRS = [
     ("a-simple", "b-stock", "A vs B (fontique's own fonts)"),
     ("a-quality", "b-fed", "A (high quality, hyphenation) vs B"),
     ("a-simple", "a-quality", "A simple vs A high quality"),
+    ("a-subpixel", "b-fed", "A with subpixel text vs B"),
+    ("a-simple", "a-subpixel", "A vs A with subpixel text"),
     ("a-simple", "cfloor", "A vs C floor (drawTextRun)"),
     ("b-fed", "cfloor", "B vs C floor"),
     ("c", "cfloor", "C vs C floor"),
@@ -160,8 +162,17 @@ def utf16_len(text):
     return len(text.encode("utf-16-le")) // 2
 
 
+def font_key(path, index, postscript, family):
+    """A font as the comparison names it: its PostScript name, which a symlinked file (Android's
+    DroidSans.ttf is Roboto) and a collection's faces both resolve, else its file and face."""
+    if postscript:
+        return postscript
+
+    return f"{os.path.basename(path)}#{index or 0}" if path else (family or "?")
+
+
 def per_unit_fonts(record, text):
-    """The font of each UTF-16 unit of `text`: (file name, face) where a path is known, else the family."""
+    """The font of each UTF-16 unit of `text`, by `font_key`."""
     fonts = [None] * utf16_len(text)
 
     for run in record.get("runs", []):
@@ -170,8 +181,7 @@ def per_unit_fonts(record, text):
         if not span:
             continue
 
-        path = run.get("path")
-        key = f"{os.path.basename(path)}#{run.get('index', 0)}" if path else (run.get("family") or "?")
+        key = font_key(run.get("path"), run.get("index"), run.get("postscript"), run.get("family"))
 
         for unit in range(span[0], min(span[1], len(fonts))):
             fonts[unit] = key
@@ -307,6 +317,12 @@ def main():
         matcher = load(os.path.join(base, "matcher-runs.json")) or {}
         fallback = {}
 
+        postscripts = {
+            (run.get("path"), run.get("index", 0)): run.get("postscript")
+            for record in list(a_records.values()) + list(fed.values())
+            for run in record.get("runs", [])
+            if run.get("path") and run.get("postscript")
+        }
         corpus = load(os.path.join(base, "corpus.json")) or {"variants": []}
         texts = {v["id"]: v["text"] for v in corpus["variants"]}
         chosen = {}
@@ -331,8 +347,11 @@ def main():
             matched = [None] * utf16_len(text)
 
             for run in matcher.get(case, []):
+                font = run["font"]
+                key = postscripts.get((font["path"], font["index"])) or font_key(font["path"], font["index"], None, None)
+
                 for unit in range(run["start"], min(run["end"], len(matched))):
-                    matched[unit] = f"{os.path.basename(run['font']['path'])}#{run['font']['index']}"
+                    matched[unit] = key
 
             def agree(x, y):
                 both = [(p, q) for p, q, v in zip(x, y, visible) if v and p and q]
@@ -374,6 +393,46 @@ def main():
             lines += ["", f"Totals: {dict(totals)}", ""]
             entry["fallback"] = fallback
             entry["fallback_totals"] = dict(totals)
+
+        # Breaking in complex scripts and CJK: each engine's line starts against ICU's boundaries.
+        probes = load(os.path.join(base, "probes.json")) or {}
+        quality = records(api, "a-quality")
+        breaks = {}
+
+        for case, probe in sorted(probes.get("breaks", {}).items()):
+            icu = set(probe.get("icu", []))
+            entry_case = {"icu_boundaries": len(icu)}
+
+            for variant_id in sorted(k for k in a_records if k.startswith(case + "/")) or sorted(k for k in fed if k.startswith(case + "/")):
+                width = variant_id.split("/")[-1]
+                starts = lambda record: [line["utf16"][0] for line in record.get("lines", [])] if record else None
+                row = {
+                    "A simple": starts(a_records.get(variant_id)),
+                    "A quality": starts(quality.get(variant_id)),
+                    "B (dictionaries)": starts(fed.get(variant_id)),
+                    "Parley without dictionaries": probe.get("plain_parley", {}).get(width),
+                }
+
+                for name, found in list(row.items()):
+                    if found:
+                        row[name + " off ICU"] = [start for start in found[1:] if start not in icu]
+
+                if "icu_phrase" in probe:
+                    phrase = set(probe["icu_phrase"])
+                    row["StaticLayout PHRASE"] = probe.get("staticlayout_word_style", {}).get(f"{width}_phrase")
+                    row["StaticLayout NONE"] = probe.get("staticlayout_word_style", {}).get(f"{width}_none")
+
+                    for name in ("A simple", "B (dictionaries)", "StaticLayout PHRASE"):
+                        if row.get(name):
+                            row[name + " off ICU phrase"] = [start for start in row[name][1:] if start not in phrase]
+
+                entry_case[width] = row
+
+            breaks[case] = entry_case
+
+        if breaks:
+            entry["breaks"] = breaks
+            lines += ["### Line starts (UTF-16) in complex scripts and CJK", "", "```", json.dumps(breaks, indent=1), "```", ""]
 
         # Emoji: colour pixels in each option's image.
         emoji = {}

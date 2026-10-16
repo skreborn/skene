@@ -74,6 +74,7 @@ adb shell rm -rf "$files"
 run fonts 1 ParityTest
 run nativeSimple 1 ParityTest
 run nativeQuality 1 ParityTest
+run nativeSubpixel 1 ParityTest
 run parleyFed 1 ParityTest
 run parleyStock 1 ParityTest
 run raster 1 ParityTest

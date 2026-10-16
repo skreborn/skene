@@ -115,9 +115,15 @@ fun fontKey(font: Font): String {
  * `BREAK_STRATEGY_SIMPLE` without hyphenation (EditText's and Compose's defaults, and Parley's
  * greedy breaking), `true` is `BREAK_STRATEGY_HIGH_QUALITY` with `HYPHENATION_FREQUENCY_NORMAL`.
  * Below API 33 `StaticLayout` is used for every text (the spike's BoringLayout lesson). Fonts per
- * run come from `TextRunShaper` (API 31) or, below it, from `AFontMatcher`.
+ * run come from `TextRunShaper` (API 31) or, below it, from `AFontMatcher`. [subpixel] sets
+ * `SUBPIXEL_TEXT_FLAG`, which neither `TextView` nor Compose sets, so that glyph advances stay
+ * fractional rather than whole device pixels.
  */
-class NativeRecords(private val quality: Boolean, private val density: Float) {
+class NativeRecords(
+  private val quality: Boolean,
+  private val density: Float,
+  private val subpixel: Boolean = false,
+) {
   private val sdk = Build.VERSION.SDK_INT
 
   /** The typeface a case's family, weight and slant ask for. */
@@ -133,6 +139,7 @@ class NativeRecords(private val quality: Boolean, private val density: Float) {
 
   /** The paint of [variant] at [pixels] per em. */
   fun paint(variant: Variant, pixels: Float): TextPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+    isSubpixelText = subpixel
     textSize = pixels
     typeface = typeface(variant)
     textLocales = LocaleList.forLanguageTags(variant.locale)
@@ -593,6 +600,7 @@ class NativeRecords(private val quality: Boolean, private val density: Float) {
         put("rasterizer", "skia (software Canvas)")
         put("settings", JSONObject().apply {
           put("break_strategy", if (quality) "high_quality" else "simple")
+          put("subpixel_text", subpixel.toString())
           put("hyphenation", if (quality) "normal" else "none")
           put("include_pad", "false")
           put("fallback_line_spacing", "true")

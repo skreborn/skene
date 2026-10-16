@@ -16,6 +16,7 @@ use parley::{
   FontData,
   FontFamily,
   FontFamilyName,
+  FontFeatures,
   FontStyle,
   FontWeight,
   GenericFamily,
@@ -45,13 +46,16 @@ use crate::{
 };
 
 /// How Parley is asked to lay out, beyond what a case says.
-#[derive(Clone, Copy, PartialEq, Debug, Default)]
+#[derive(Clone, PartialEq, Debug, Default)]
 pub struct Options {
   /// Round line metrics to whole logical pixels (Parley's `quantize`).
   pub quantize: bool,
   /// Leave emoji-presentation clusters to Parley's own fallback, the emoji family after the
   /// run's families, rather than asking the emoji family first ([`crate::emoji`]).
   pub plain_emoji: bool,
+  /// OpenType features set on the whole text, in CSS's `font-feature-settings` form
+  /// (`"chws" 1`); none where empty.
+  pub features: String,
 }
 
 /// Parley with its contexts, over a font collection.
@@ -246,6 +250,13 @@ impl ParleyEngine {
       FontStyle::Normal
     }));
     builder.push_default(StyleProperty::LineHeight(LineHeight::MetricsRelative(1.)));
+
+    if !self.options.features.is_empty() {
+      builder.push_default(StyleProperty::FontFeatures(FontFeatures::Source(Cow::Owned(
+        self.options.features.clone(),
+      ))));
+    }
+
     builder.push_default(StyleProperty::OverflowWrap(OverflowWrap::BreakWord));
     builder.push_default(StyleProperty::TextWrapMode(TextWrapMode::Wrap));
 

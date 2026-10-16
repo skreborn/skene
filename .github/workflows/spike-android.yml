@@ -1,9 +1,11 @@
 name: spike-android
 
 # Android text spike: taffy in Rust measuring 1000 text leaves through JNI into a Kotlin
-# StaticLayout engine, against the same tree in Jetpack Compose and in Parley; and the
-# text-parity run (spikes/text-parity) of option A (StaticLayout), B (Parley drawn by vello) and C
-# (Parley's glyph runs drawn by Canvas), compared on the host.
+# StaticLayout engine, against the same tree in Jetpack Compose and in Parley; the text-parity run
+# (spikes/text-parity) of option A (StaticLayout), B (Parley drawn by vello) and C (Parley's glyph
+# runs drawn by Canvas), compared on the host; and the advance-rule sweep: which rule Minikin's
+# hinted advances follow, and A against B and C with Parley's advances set by it, at four
+# densities.
 
 on:
   push:
@@ -13,6 +15,11 @@ on:
       - spikes/text-parity/**
       - .github/workflows/spike-android.yml
   workflow_dispatch:
+    inputs:
+      suite:
+        description: "full (everything) or sweep (the advance-rule sweep alone)"
+        required: false
+        default: full
 
 concurrency:
   group: spike-android-${{ github.ref }}
@@ -120,6 +127,8 @@ jobs:
             target: default
           - api: 34
             target: default
+          - api: 35
+            target: google_apis
     steps:
       - uses: actions/checkout@v4
 
@@ -144,7 +153,7 @@ jobs:
           ram-size: 4096M
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
-          script: bash spikes/android/run-on-emulator.sh apks results-api${{ matrix.api }}.txt parity-api${{ matrix.api }}
+          script: bash spikes/android/run-on-emulator.sh apks results-api${{ matrix.api }}.txt parity-api${{ matrix.api }} ${{ github.event.inputs.suite || 'full' }}
 
       - name: Results
         if: always()
@@ -199,7 +208,7 @@ jobs:
       - name: Compare
         run: |
           mkdir -p parity
-          for api in 29 34; do
+          for api in 29 34 35; do
             src=results/spike-android-results-api$api
             mkdir -p parity/api$api
             cp "$src"/results-api$api.txt parity/api$api/ || true
@@ -209,9 +218,12 @@ jobs:
               bash spikes/android/compare.sh spikes/text-parity/target/release/text-parity parity/api$api/parity
             fi
           done
-          python3 spikes/android/parity.py parity sizes/sizes.txt > /dev/null
+          python3 spikes/android/parity.py parity sizes/sizes.txt > /dev/null || echo "parity.py failed"
+          python3 spikes/android/sweep.py parity
           echo "=== SUMMARY ==="
           cat parity/summary.md
+          echo "=== SWEEP ==="
+          cat parity/sweep.md
           echo "=== END ==="
 
       - uses: actions/upload-artifact@v4

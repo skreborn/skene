@@ -47,7 +47,8 @@ cargo run --release -- compare out/native/records.json out/c/records.json --out 
 
 `parley` takes `--scales 1,2,3`, `--fonts FONTS.json` (an [explicit source](#explicit-fonts)),
 `--glyphs` (glyph runs in the records), `--only TEXT` (variants whose id contains it), `--hint`
-(vello's vertical hinting), `--quantize` (Parley's pixel-rounded line metrics), `--plain-emoji`
+(vello's vertical hinting), `--quantize` (Parley's pixel-rounded line metrics), `--features`
+(OpenType features on the whole text in `font-feature-settings` form, `'"chws" 1'`), `--plain-emoji`
 (Parley's own emoji fallback, see below), `--repeats 5`, `--labels 1000`, `--no-images`,
 `--os-version`, `--device`. `compare` takes `--threshold 64` (a pixel differs where a channel
 differs by more), `--tolerance 0.5` (a width or height agrees within it, in logical pixels) and

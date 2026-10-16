@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Summarizes the Android text-parity run of both API levels into summary.md and summary.json.
+"""Summarizes the Android text-parity run of every API level into summary.md and summary.json.
 
 Reads, under ROOT/api<N>/: the emulator's `key=value` results (results-api<N>.txt) and the pulled
 parity directory (record sets, the host's cmp-*.json comparisons, the probes' JSON). Usage:
@@ -203,7 +203,7 @@ def main():
     summary = {"apis": {}}
     lines = ["# Android text parity: options A, B and C", ""]
 
-    for api in (29, 34):
+    for api in (29, 34, 35):
         base = os.path.join(ROOT, f"api{api}", "parity")
 
         if not os.path.isdir(base):

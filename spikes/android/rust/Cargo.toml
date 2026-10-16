@@ -10,6 +10,7 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 jni = { version = "=0.21.1", default-features = false }
 parley = { default-features = false, features = ["std", "system"], version = "=0.12.0" }
+parley_engine = { default-features = false, features = ["std"], version = "=0.12.0" }
 serde = { features = ["derive"], version = "1" }
 serde_json = "1"
 skrifa = { default-features = false, features = ["std"], version = "=0.44.0" }
@@ -23,3 +24,8 @@ opt-level = 3
 
 # A spike of its own, outside the repository's workspace.
 [workspace]
+
+# Parley's shaping with a process-wide advance rule (`vendor/parley_engine/src/shape/advance.rs`),
+# so the hinted advances Minikin lays out with can be matched before line breaking.
+[patch.crates-io]
+parley_engine = { path = "vendor/parley_engine" }

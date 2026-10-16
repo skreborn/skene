@@ -20,8 +20,8 @@ usage:
   text-parity corpus [--expanded]
       print the corpus (--expanded: every variant spelled out)
   text-parity parley --out DIR [--scales 1,2,3] [--fonts FONTS.json] [--glyphs] [--only TEXT]
-                     [--hint] [--quantize] [--plain-emoji] [--repeats 5] [--labels 1000]
-                     [--no-images] [--os-version TEXT] [--device TEXT]
+                     [--hint] [--quantize] [--features SETTINGS] [--plain-emoji] [--repeats 5]
+                     [--labels 1000] [--no-images] [--os-version TEXT] [--device TEXT]
       lay out and draw every variant with Parley and vello_cpu: DIR/records.json, DIR/png/
   text-parity restamp PARLEY.json --images DIR --rasterizer TEXT
       option C: Parley's records over the images a platform rasterizer drew of their glyph
@@ -131,6 +131,7 @@ fn parley_command(arguments: &Arguments) -> Result<(), String> {
     },
     hint: arguments.switch("hint"),
     quantize: arguments.switch("quantize"),
+    features: arguments.value("features").unwrap_or_default().to_owned(),
     plain_emoji: arguments.switch("plain-emoji"),
     repeats: arguments.number("repeats", defaults.repeats)?,
     labels: arguments.number("labels", defaults.labels)?,

@@ -33,6 +33,18 @@ object Parity {
   /** Writes the option C plan (glyph runs, fonts' axes in user space) from Parley's records. */
   @JvmStatic external fun plan(records: String, out: String): String
 
+  /**
+   * Sets Parley's glyph advances to the advance rule named [rule] at [density] device pixels per
+   * dp (`linear` restores Parley's own): the rule's name, or `error: ` and why.
+   */
+  @JvmStatic external fun setAdvanceRule(rule: String, density: Float): String
+
+  /** The fonts, glyphs and pairs the advance probe measures, as JSON. */
+  @JvmStatic external fun advanceProbe(): String
+
+  /** Which advance rule [measured] (the probe's fonts measured at each size) follows, as JSON. */
+  @JvmStatic external fun advanceAnalysis(measured: String): String
+
   /** Skene's port of the platform's font scale: dp for [sp] at [scale] on API level [sdk]. */
   @JvmStatic external fun spToDp(sp: Float, scale: Float, sdk: Int): Float
 

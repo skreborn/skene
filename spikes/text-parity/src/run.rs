@@ -30,6 +30,8 @@ pub struct ParleyRun {
   pub hint: bool,
   /// Line metrics rounded to whole logical pixels.
   pub quantize: bool,
+  /// OpenType features on the whole text, as CSS's `font-feature-settings` (`"chws" 1`).
+  pub features: String,
   /// Parley's own emoji fallback, without Skene's emoji-first rule.
   pub plain_emoji: bool,
   /// Warm layouts timed per variant.
@@ -56,6 +58,7 @@ impl Default for ParleyRun {
       fonts: FontSource::system(),
       hint: false,
       quantize: false,
+      features: String::new(),
       plain_emoji: false,
       repeats: 5,
       labels: 1000,
@@ -88,6 +91,7 @@ pub fn parley(run: &ParleyRun) -> Result<RecordSet, String> {
   let layout_options = LayoutOptions {
     quantize: run.quantize,
     plain_emoji: run.plain_emoji,
+    features: run.features.clone(),
   };
   let mut engine = ParleyEngine::new(fonts, layout_options);
   let first = bench::first_layout(&mut engine);
@@ -156,6 +160,7 @@ pub fn parley(run: &ParleyRun) -> Result<RecordSet, String> {
         ),
         ("hint".to_owned(), run.hint.to_string()),
         ("quantize".to_owned(), run.quantize.to_string()),
+        ("features".to_owned(), run.features.clone()),
         ("emoji_first".to_owned(), (!run.plain_emoji).to_string()),
         (
           "build".to_owned(),

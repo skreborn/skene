@@ -2,12 +2,14 @@
 # Installs the spike's APKs on the running emulator, runs each test in a process of its own (one
 # `am instrument` each, so every cold pass starts with Minikin's process caches empty), appends
 # the `key=value` lines the tests log to the results file, and pulls the text-parity run's files
-# (records, images, probes) into the parity directory.
+# (records, images, probes) into the parity directory. The suite is `full` (everything, the
+# advance-rule sweep last) or `sweep` (the sweep alone).
 set -uo pipefail
 
 apks=$1
 out=$2
 parity=${3:-parity}
+suite=${4:-full}
 package=dev.skene.spike.text
 files=/sdcard/Android/data/$package/files/parity
 : > "$out"
@@ -50,12 +52,46 @@ run() {
   fi
 }
 
+# The advance-rule sweep, at each density (dpi): the probe of Minikin's per-glyph advances
+# (which rule they follow), A, B with Parley's own advances (`linear`), with the probe's rule and
+# `chws` as Minikin sets it (`hinted`) and with the rule alone (`rule`, records only), and C drawn
+# from the linear and the hinted sets, each in `d<dpi>/`.
+sweep() {
+  for dpi in 320 420 480 560; do
+    adb shell wm density "$dpi"
+    sleep 3
+    local dir=d$dpi
+    run advances "$dpi" ParityTest -e dir "$dir"
+    run nativeSimple "$dpi" ParityTest -e dir "$dir"
+
+    for set in linear hinted rule; do
+      run parleyRule "$set$dpi" ParityTest -e dir "$dir" -e set "$set"
+    done
+
+    for set in linear hinted; do
+      run raster "$set$dpi" ParityTest -e dir "$dir" -e set "$set"
+    done
+  done
+
+  adb shell wm density reset
+}
+
 # Let the freshly booted emulator's background work settle before timing anything.
 sleep 45
 adb shell svc power stayon true
 adb shell settings put system screen_off_timeout 1800000
 adb shell input keyevent KEYCODE_WAKEUP
 adb shell wm dismiss-keyguard
+
+if [ "$suite" = sweep ]; then
+  adb shell rm -rf "$files"
+  run fonts 1 ParityTest
+  sweep
+  mkdir -p "$parity"
+  adb pull "$files/." "$parity" > /dev/null
+  echo "pulled $(find "$parity" -type f | wc -l) files into $parity"
+  exit 0
+fi
 
 for rep in 1 2 3 4 5; do
   run taffy "$rep"
@@ -102,6 +138,8 @@ adb shell settings put secure high_text_contrast_enabled 1
 sleep 3
 run contrast on ParityTest -e state on
 adb shell settings put secure high_text_contrast_enabled 0
+
+sweep
 
 mkdir -p "$parity"
 adb pull "$files/." "$parity" > /dev/null

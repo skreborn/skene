@@ -11,6 +11,17 @@
 //!   - `wayland` or `mutter`: headless mutter (a virtual monitor, its RemoteDesktop service
 //!     over a private PipeWire, which the test's input goes through);
 //!   - `sway`: headless sway (pixman), its virtual pointer and keyboard;
+//!   - `weston`: weston on its X11 backend (pixman), its output a window of a private Xvfb
+//!     whose XTest the test's input goes through;
+//!   - `kwin`: KWin's virtual backend, its fake input (KWin started with its permission
+//!     checks off, which that restricted interface needs); `kwin-x11`: the same, the test's
+//!     windows on KWin's Xwayland. `SKENE_KWIN` names the `kwin_wayland` to run, where the
+//!     one on `PATH` cannot be (its file capability beyond the process's bounding set);
+//!
+//!   `SKENE_TEST_SCALE` (1 where unset) scales the leg's screen fractionally: sway's output
+//!   scale and KWin's `--scale` reach the app through fractional-scale-v1, and on `x11` it is
+//!   the realization's `SKENE_SCALE` (a bare Xvfb has no desktop to publish `Xft/DPI`); the
+//!   `wayland`, `weston` and `kwin-x11` legs take 1 alone;
 //!
 //!   each with a private D-Bus session (which starts the accessibility bus on demand), a
 //!   private runtime directory and configuration home, and none of the user's display,
@@ -106,8 +117,41 @@ const USER_ONLY: [&str; 13] = [
   "SKENE_BACKEND",
 ];
 
-/// The virtual screen a test's session shows.
+/// The virtual screen a test's session shows, at scale 1.
 const SCREEN: (u32, u32) = (1280, 1024);
+
+/// The virtual screen a test's session shows at `scale`: [`SCREEN`], or just under it where
+/// its logical size (its device size over the scale) would not be whole pixels, so the
+/// compositor's logical space maps onto the device pixels exactly.
+fn screen_at(scale: f64) -> (u32, u32) {
+  let whole = |device: u32| {
+    let mut logical = (f64::from(device) / scale).floor();
+
+    while logical > 1. && ((logical * scale) - (logical * scale).round()).abs() > 1e-9 {
+      logical -= 1.;
+    }
+
+    (logical * scale).round() as u32
+  };
+
+  (whole(SCREEN.0), whole(SCREEN.1))
+}
+
+/// The scale `SKENE_TEST_SCALE` asks a test's session for: 1 where unset.
+///
+/// # Errors
+///
+/// Where it is not a number from 1 to 4.
+fn test_scale() -> Result<f64, String> {
+  match env::var("SKENE_TEST_SCALE") {
+    Err(_) => Ok(1.),
+    Ok(text) => text
+      .parse::<f64>()
+      .ok()
+      .filter(|scale| (1. ..=4.).contains(scale))
+      .ok_or_else(|| format!("SKENE_TEST_SCALE={text}: a scale is a number from 1 to 4")),
+  }
+}
 
 /// Which private session a test gets.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -118,6 +162,12 @@ enum Leg {
   Mutter,
   /// Headless sway.
   Sway,
+  /// Weston on its X11 backend in a private Xvfb.
+  Weston,
+  /// KWin's virtual backend.
+  Kwin,
+  /// KWin's virtual backend, the test's windows on its Xwayland.
+  KwinX11,
 }
 
 impl Leg {
@@ -127,8 +177,11 @@ impl Leg {
       Err(_) | Ok("" | "x11") => Ok(Self::X11),
       Ok("wayland" | "mutter") => Ok(Self::Mutter),
       Ok("sway") => Ok(Self::Sway),
+      Ok("weston") => Ok(Self::Weston),
+      Ok("kwin") => Ok(Self::Kwin),
+      Ok("kwin-x11") => Ok(Self::KwinX11),
       Ok(other) => Err(format!(
-        "SKENE_TEST_SESSION={other}: the legs are x11 (the default), wayland (headless mutter) and sway"
+        "SKENE_TEST_SESSION={other}: the legs are x11 (the default), wayland (headless mutter), sway, weston, kwin and kwin-x11"
       )),
     }
   }
@@ -139,7 +192,15 @@ impl Leg {
       Self::X11 => "x11",
       Self::Mutter => "mutter",
       Self::Sway => "sway",
+      Self::Weston => "weston",
+      Self::Kwin => "kwin",
+      Self::KwinX11 => "kwin-x11",
     }
+  }
+
+  /// Whether the test's windows go to X11.
+  const fn is_x11(self) -> bool {
+    matches!(self, Self::X11 | Self::KwinX11)
   }
 }
 
@@ -290,6 +351,9 @@ struct Session {
   test: Option<Leg>,
   /// `SWAYSOCK` of a sway leg.
   sway_socket: Option<PathBuf>,
+  /// More variables the test is given: the X display a nested compositor shows in, the
+  /// Wayland display beside an Xwayland one, the realization's scale on a scaled X11 leg.
+  extra: Vec<(&'static str, String)>,
 }
 
 impl Session {
@@ -316,6 +380,7 @@ impl Session {
       scratch,
       test: None,
       sway_socket: None,
+      extra: Vec::new(),
     };
     let started = if test {
       Leg::chosen().and_then(|leg| {
@@ -356,6 +421,19 @@ impl Session {
 
   /// A test's session on `leg`.
   fn start_test(&mut self, leg: Leg) -> Result<(), String> {
+    let scale = test_scale()?;
+
+    if scale != 1. && matches!(leg, Leg::Mutter | Leg::Weston | Leg::KwinX11) {
+      return Err(format!(
+        "SKENE_TEST_SCALE={scale}: the {} leg takes scale 1 alone",
+        leg.name()
+      ));
+    }
+
+    if scale != 1. && leg == Leg::X11 {
+      self.extra.push(("SKENE_SCALE", scale.to_string()));
+    }
+
     match leg {
       Leg::X11 => {
         self.start_xvfb()?;
@@ -370,17 +448,32 @@ impl Session {
         self.start_bus()?;
         self.start_sway()
       }
+      Leg::Weston => {
+        self.start_xvfb()?;
+        self.start_bus()?;
+        self.start_weston()
+      }
+      Leg::Kwin | Leg::KwinX11 => {
+        self.start_bus()?;
+        self.start_kwin(leg == Leg::KwinX11)
+      }
     }
   }
 
   /// Xvfb on the first free display number it finds itself.
   fn start_xvfb(&mut self) -> Result<(), String> {
+    let screen = screen_at(if self.test.is_some() {
+      test_scale()?
+    } else {
+      1.
+    });
+
     let mut display = spawn(Command::new("Xvfb").args([
       "-displayfd",
       "1",
       "-screen",
       "0",
-      &format!("{}x{}x24", SCREEN.0, SCREEN.1),
+      &format!("{}x{}x24", screen.0, screen.1),
       "-nolisten",
       "tcp",
       "-noreset",
@@ -462,6 +555,8 @@ impl Session {
 
   /// Headless mutter on a virtual monitor, its Wayland socket named for the session.
   fn start_mutter(&mut self) -> Result<(), String> {
+    let screen = screen_at(test_scale()?);
+
     let socket = format!("skene-{}", std::process::id());
     let mut command = self.helper("mutter");
 
@@ -472,7 +567,7 @@ impl Session {
       "--wayland-display",
       &socket,
       "--virtual-monitor",
-      &format!("{}x{}", SCREEN.0, SCREEN.1),
+      &format!("{}x{}", screen.0, screen.1),
     ]);
 
     let mutter = spawn(&mut command)
@@ -507,13 +602,17 @@ impl Session {
   /// Headless sway on one output, drawn with pixman, every window floating (sized by its
   /// app, as on a stacking desktop).
   fn start_sway(&mut self) -> Result<(), String> {
+    let scale = test_scale()?;
+    let screen = screen_at(scale);
     let config = self.scratch.join("sway.conf");
 
     fs::write(
       &config,
       format!(
-        "output HEADLESS-1 resolution {}x{} position 0 0 scale 1\ndefault_border none\nfor_window [app_id=\".*\"] floating enable\n",
-        SCREEN.0, SCREEN.1
+        "output HEADLESS-1 resolution {}x{} position 0 0 scale {}\ndefault_border none\nfor_window [app_id=\".*\"] floating enable\n",
+        screen.0,
+        screen.1,
+        scale
       ),
     )
     .map_err(|error| format!("{}: {error}", config.display()))?;
@@ -551,6 +650,131 @@ impl Session {
     Ok(())
   }
 
+  /// Weston on its X11 backend, drawn with pixman, its output a window of the session's
+  /// Xvfb as large as the screen; weston decorates nothing (no xdg-decoration), so a window
+  /// draws its own.
+  fn start_weston(&mut self) -> Result<(), String> {
+    let screen = screen_at(test_scale()?);
+
+    let socket = format!("skene-{}", std::process::id());
+    let Some(("DISPLAY", x_display)) = self.display.clone() else {
+      return Err("weston's leg starts Xvfb first".to_owned());
+    };
+    // Weston takes the X server's keymap when it starts: Compose on the right Control key, as
+    // the other legs' keymaps have it.
+    let _ = Command::new("setxkbmap")
+      .args([
+        "-display",
+        &x_display,
+        "-layout",
+        "us",
+        "-option",
+        "compose:rctrl",
+      ])
+      .stdout(Stdio::null())
+      .stderr(Stdio::null())
+      .status();
+
+    let mut command = self.helper("weston");
+
+    command
+      .args([
+        "--backend=x11",
+        "--renderer=pixman",
+        "--idle-time=0",
+        &format!("--socket={socket}"),
+        &format!("--width={}", screen.0),
+        &format!("--height={}", screen.1),
+      ])
+      .env("DISPLAY", &x_display);
+
+    let weston = spawn(&mut command)
+      .map_err(|error| format!("could not start weston (install weston): {error}"))?;
+
+    self.helpers.push(weston);
+    wait_for("weston's Wayland socket", || {
+      self.runtime().join(&socket).exists()
+    })?;
+    self.display = Some(("WAYLAND_DISPLAY", socket));
+    self.extra.push(("SKENE_INPUT_DISPLAY", x_display));
+
+    Ok(())
+  }
+
+  /// KWin's virtual backend on one output, its fake input allowed (a restricted interface:
+  /// the permission checks go), with Xwayland where `xwayland`: the test's windows go there.
+  fn start_kwin(&mut self, xwayland: bool) -> Result<(), String> {
+    let scale = test_scale()?;
+    let screen = screen_at(scale);
+    let socket = format!("skene-{}", std::process::id());
+    let program = env::var("SKENE_KWIN").unwrap_or_else(|_| "kwin_wayland".to_owned());
+    let config = self.scratch.join("config");
+
+    // KWin places a window where it overlaps the fewest (its Smart policy): a test's second
+    // application opens beside its window, not centered over it.
+    fs::create_dir_all(&config)
+      .and_then(|()| fs::write(config.join("kwinrc"), "[Windows]\nPlacement=Smart\n"))
+      .map_err(|error| format!("could not write KWin's configuration: {error}"))?;
+
+    let mut command = self.helper(&program);
+
+    command
+      .args([
+        "--virtual",
+        "--socket",
+        &socket,
+        "--width",
+        &screen.0.to_string(),
+        "--height",
+        &screen.1.to_string(),
+        "--scale",
+        &scale.to_string(),
+      ])
+      .env("KWIN_WAYLAND_NO_PERMISSION_CHECKS", "1")
+      .env("KWIN_COMPOSE", "Q")
+      .env("QT_QPA_PLATFORM", "offscreen");
+
+    if xwayland {
+      command.arg("--xwayland");
+    }
+
+    let kwin = spawn(&mut command).map_err(|error| {
+      format!("could not start {program} (install kwin-wayland; SKENE_KWIN names another): {error}")
+    })?;
+
+    self.helpers.push(kwin);
+    wait_for("KWin's Wayland socket", || {
+      self.runtime().join(&socket).exists()
+    })?;
+
+    if xwayland {
+      let mut display = None;
+
+      // KWin takes a free display number for its Xwayland, its lock file naming a process of
+      // this session's.
+      wait_for("KWin's Xwayland", || {
+        display = (0..1000).find(|number| {
+          Path::new(&format!("/tmp/.X11-unix/X{number}")).exists()
+            && fs::read_to_string(format!("/tmp/.X{number}-lock"))
+              .ok()
+              .and_then(|pid| pid.trim().parse::<u32>().ok())
+              .is_some_and(|pid| is_descendant(pid, std::process::id()))
+        });
+
+        display.is_some()
+      })?;
+
+      let number = display.unwrap_or_default();
+
+      self.extra.push(("WAYLAND_DISPLAY", socket));
+      self.display = Some(("DISPLAY", format!(":{number}")));
+    } else {
+      self.display = Some(("WAYLAND_DISPLAY", socket));
+    }
+
+    Ok(())
+  }
+
   /// Runs `command` in the session and waits for it, forwarding an ending signal to it; its
   /// exit code, or 128 plus the signal that ended it.
   fn run(&self, command: &mut Command) -> Result<ExitCode, String> {
@@ -563,9 +787,13 @@ impl Session {
         .env("SKENE_TEST_SESSION", leg.name())
         .env(
           "SKENE_BACKEND",
-          if leg == Leg::X11 { "x11" } else { "wayland" },
+          if leg.is_x11() { "x11" } else { "wayland" },
         )
-        .env("SKENE_SCREEN", format!("{}x{}", SCREEN.0, SCREEN.1))
+        .env("SKENE_SCREEN", {
+          let screen = screen_at(test_scale().unwrap_or(1.));
+
+          format!("{}x{}", screen.0, screen.1)
+        })
         .env("XDG_RUNTIME_DIR", self.runtime())
         .env("XDG_CONFIG_HOME", self.scratch.join("config"))
         .env("GSETTINGS_BACKEND", "memory")
@@ -586,6 +814,10 @@ impl Session {
         .env_remove("WAYLAND_DISPLAY")
         .env(name, value)
         .env("SKENE_DISPLAY", value);
+    }
+
+    for (name, value) in &self.extra {
+      command.env(name, value);
     }
 
     if let Some(address) = &self.bus {
@@ -752,4 +984,34 @@ fn first_line(stdout: Option<std::process::ChildStdout>, what: &str) -> Result<S
     Ok(Err(error)) => Err(format!("{what}: {error}")),
     Err(_) => Err(format!("{what} did not start within {START_TIMEOUT:?}")),
   }
+}
+
+/// Whether process `pid` descends from process `ancestor`, by `/proc`'s parents.
+fn is_descendant(pid: u32, ancestor: u32) -> bool {
+  let mut current = pid;
+
+  for _ in 0..64 {
+    if current == ancestor {
+      return true;
+    }
+
+    let Some(parent) = fs::read_to_string(format!("/proc/{current}/stat"))
+      .ok()
+      .and_then(|stat| {
+        let after = &stat[stat.rfind(')')? + 2..];
+
+        after.split(' ').nth(1)?.parse::<u32>().ok()
+      })
+    else {
+      return false;
+    };
+
+    if parent <= 1 {
+      return false;
+    }
+
+    current = parent;
+  }
+
+  false
 }

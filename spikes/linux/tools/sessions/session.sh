@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # One private session per call, run inside dbus-run-session (its own session bus): a display
 # (x11: Xvfb; x11-wm: Xvfb + mutter --x11 as the window manager; sway: headless sway with
-# pixman; mutter: headless mutter with PipeWire for its RemoteDesktop streams; weston: headless
-# weston), optionally the settings-portal stand-in (PORTAL="<scheme> <contrast> [changes]"),
+# pixman; mutter: headless mutter with PipeWire for its RemoteDesktop streams; weston: weston on
+# its X11 backend in a private Xvfb, which XTest drives (DISPLAY names that Xvfb); kwin: KWin's
+# virtual backend, its fake input open, $KWIN naming the kwin_wayland to run), optionally the
+# settings-portal stand-in (PORTAL="<scheme> <contrast> [changes]"),
 # BEFORE (a helper started in the background first, an XSETTINGS manager), the app ($APP with
 # $APP_ARGS, SKENE_TRACE on, SKENE_SHOT and SKENE_PROBE in $OUT), then
 # "$@" with the session's environment, then teardown.
@@ -24,6 +26,7 @@ chmod 700 "$XDG_RUNTIME_DIR"
 # The private-session marker the input tools require before they inject anything.
 export SKENE_PRIVATE_SESSION=$XDG_RUNTIME_DIR
 export SKENE_PROBE=$OUT/probe SKENE_SHOT=$OUT/frame.png SKENE_TRACE=1 LANG=C.UTF-8
+MONITOR=${MONITOR:-1280x1024}
 unset DISPLAY WAYLAND_DISPLAY SKENE_BACKEND
 PIDS=()
 cleanup() {
@@ -82,8 +85,24 @@ CONF
     export SKENE_BACKEND=wayland
     ;;
   weston)
-    weston --backend=headless --socket=skene-shell-$$ --width=1280 --height=1024 \
-      >"$OUT/weston.log" 2>&1 &
+    for _ in $(seq 40); do
+      N=$((400 + RANDOM % 300)); [ -e /tmp/.X$N-lock ] || break
+    done
+    Xvfb ":$N" -screen 0 ${MONITOR:-1280x1024}x24 -nolisten tcp >"$OUT/xvfb.log" 2>&1 &
+    PIDS+=($!)
+    export DISPLAY=:$N
+    for _ in $(seq 100); do xdpyinfo >/dev/null 2>&1 && break; sleep 0.02; done
+    weston --backend=x11 --renderer=pixman --idle-time=0 --socket=skene-shell-$$ \
+      --width="${MONITOR%x*}" --height="${MONITOR#*x}" >"$OUT/weston.log" 2>&1 &
+    PIDS+=($!)
+    for _ in $(seq 200); do [ -S "$XDG_RUNTIME_DIR/skene-shell-$$" ] && break; sleep 0.02; done
+    export WAYLAND_DISPLAY=skene-shell-$$
+    export SKENE_BACKEND=wayland
+    ;;
+  kwin)
+    KWIN_WAYLAND_NO_PERMISSION_CHECKS=1 KWIN_COMPOSE=Q QT_QPA_PLATFORM=offscreen \
+      "${KWIN:-kwin_wayland}" --virtual --socket skene-shell-$$ --width "${MONITOR%x*}" \
+      --height "${MONITOR#*x}" >"$OUT/kwin.log" 2>&1 &
     PIDS+=($!)
     for _ in $(seq 200); do [ -S "$XDG_RUNTIME_DIR/skene-shell-$$" ] && break; sleep 0.02; done
     export WAYLAND_DISPLAY=skene-shell-$$

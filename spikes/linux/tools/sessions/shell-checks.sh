@@ -28,6 +28,8 @@ run() { # run <name> <kind> <app> <scenario> [VAR=value ...]
 run hello-x11 x11 "$release/hello" hello-x11.sh
 run hello-sway sway "$release/hello" hello-sway.sh
 run hello-mutter mutter "$release/hello" hello-mutter.sh
+run hello-weston weston "$release/hello" hello-weston.sh
+run hello-kwin kwin "$release/hello" hello-kwin.sh
 # States feeding the resolver, activation, focus order.
 run states-x11 x11 "$debug/states" states-x11.sh
 run states-sway sway "$debug/states" states-wayland.sh DRIVER=sway SWAY_FLOAT=1 SWAY_BORDER=none

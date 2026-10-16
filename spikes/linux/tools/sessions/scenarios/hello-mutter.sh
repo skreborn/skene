@@ -11,7 +11,7 @@ first=$($DRIVE calibrate 2>/dev/null | grep -o "measured origin Some((.*))")
 $DRIVE calibrate drag 150 18 250 98 sleep 400 >/dev/null 2>&1
 moved=$($DRIVE calibrate 2>/dev/null | grep -o "measured origin Some((.*))")
 echo "INFO $KIND: window origin $first then $moved"
-if [ -n "$first" ] && [ "$first" != "$moved" ]; then pass "$KIND: a drag on the title bar moves the window"; else fail "$KIND: a drag on the title bar moves the window"; fi
+if [ -n "$first" ] && [ -n "$moved" ] && [ "$first" != "$moved" ]; then pass "$KIND: a drag on the title bar moves the window"; else fail "$KIND: a drag on the title bar moves the window"; fi
 expect "request Move" "the title-bar drag asks for xdg_toplevel.move"
 $DRIVE calibrate drag 486 646 606 706 sleep 600 >/dev/null 2>&1
 shot hello-mutter-resized 0.4

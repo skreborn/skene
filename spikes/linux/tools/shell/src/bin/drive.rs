@@ -14,6 +14,8 @@
 //!   ScreenCast stream (`STREAM=window|monitor`, PipeWire running).
 //! - `mutter-ei`: the same session's ConnectToEIS, through reis (libei's protocol in Rust).
 //! - `sway`: zwlr_virtual_pointer_v1 and zwp_virtual_keyboard_v1 on `$WAYLAND_DISPLAY`.
+//! - `kwin`: KWin's org_kde_kwin_fake_input on `$WAYLAND_DISPLAY` (KWin started with its
+//!   permission checks off), its keymap the US layout.
 //!
 //! The window's position in the compositor's pointer space is unknown to a Wayland client;
 //! `calibrate` moves the pointer to a point, reads where the app saw it (`$SKENE_PROBE`, in the
@@ -96,6 +98,7 @@ struct X11 {
   conn: x11rb::rust_connection::RustConnection,
   root: u32,
   keys: HashMap<u32, (u32, bool)>,
+  extent: (f64, f64),
 }
 
 impl X11 {
@@ -105,6 +108,10 @@ impl X11 {
     let (conn, screen) = x11rb::connect(None)?;
     let setup = conn.setup();
     let root = setup.roots[screen].root;
+    let extent = (
+      f64::from(setup.roots[screen].width_in_pixels),
+      f64::from(setup.roots[screen].height_in_pixels),
+    );
     let (min, max) = (setup.min_keycode, setup.max_keycode);
     let map = conn.get_keyboard_mapping(min, max - min + 1)?.reply()?;
     let per = usize::from(map.keysyms_per_keycode);
@@ -120,7 +127,12 @@ impl X11 {
       }
     }
 
-    Ok(Self { conn, root, keys })
+    Ok(Self {
+      conn,
+      root,
+      keys,
+      extent,
+    })
   }
 
   fn fake(&self, kind: u8, detail: u8, x: i16, y: i16) -> Result<()> {
@@ -285,7 +297,7 @@ impl Input for X11 {
   }
 
   fn center(&self) -> (f64, f64) {
-    (512.0, 384.0)
+    (self.extent.0 / 2.0, self.extent.1 / 2.0)
   }
 }
 
@@ -1118,6 +1130,116 @@ impl Input for Sway {
   }
 }
 
+/// KWin's fake input.
+struct Kwin {
+  #[expect(dead_code, reason = "the connection the fake input lives on")]
+  conn: wayland_client::Connection,
+  queue: wayland_client::EventQueue<WlState>,
+  fake: wayland_protocols_plasma::fake_input::client::org_kde_kwin_fake_input::OrgKdeKwinFakeInput,
+  keys: HashMap<u32, (u32, bool)>,
+  extent: (u32, u32),
+}
+
+wayland_client::delegate_noop!(WlState: ignore wayland_protocols_plasma::fake_input::client::org_kde_kwin_fake_input::OrgKdeKwinFakeInput);
+
+impl Kwin {
+  fn new() -> Result<Self> {
+    use wayland_protocols_plasma::fake_input::client::org_kde_kwin_fake_input::OrgKdeKwinFakeInput;
+
+    let conn = wayland_client::Connection::connect_to_env()?;
+    let (globals, mut queue) = wayland_client::globals::registry_queue_init::<WlState>(&conn)?;
+    let qh = queue.handle();
+    let fake: OrgKdeKwinFakeInput = globals.bind(&qh, 4..=4, ())?;
+    let context = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);
+    let keymap =
+      xkb::Keymap::new_from_names(&context, "", "", "us", "", None, 0).ok_or("keymap")?;
+    let extent = std::env::var("EXTENT")
+      .ok()
+      .and_then(|value| {
+        let (w, h) = value.split_once('x')?;
+
+        Some((w.parse().ok()?, h.parse().ok()?))
+      })
+      .unwrap_or((1280, 1024));
+
+    fake.authenticate("drive".to_owned(), "a check's real input".to_owned());
+    queue.roundtrip(&mut WlState)?;
+
+    Ok(Self {
+      conn,
+      queue,
+      fake,
+      keys: key_lookup(&keymap),
+      extent,
+    })
+  }
+
+  fn sync(&mut self) -> Result<()> {
+    self.queue.roundtrip(&mut WlState)?;
+
+    Ok(())
+  }
+}
+
+impl Input for Kwin {
+  fn keycode(&mut self, code: u32) -> Result<()> {
+    self.fake.keyboard_key(code, 1);
+    self.fake.keyboard_key(code, 0);
+    self.sync()
+  }
+
+  fn wheel(&mut self, dx: i32, dy: i32) -> Result<()> {
+    for (axis, count) in [(0, dy), (1, dx)] {
+      if count != 0 {
+        self.fake.axis(axis, f64::from(count) * 15.0);
+      }
+    }
+
+    self.sync()
+  }
+
+  fn move_to(&mut self, x: f64, y: f64) -> Result<()> {
+    self.fake.pointer_motion_absolute(x, y);
+    self.sync()
+  }
+
+  fn button(&mut self, button: u32, down: bool) -> Result<()> {
+    self.fake.button(button, u32::from(down));
+    self.sync()
+  }
+
+  fn keysym(&mut self, keysym: u32) -> Result<()> {
+    let (code, shift) = *self.keys.get(&keysym).ok_or("keysym not in the keymap")?;
+
+    if shift {
+      self.fake.keyboard_key(SHIFT, 1);
+    }
+
+    self.fake.keyboard_key(code, 1);
+    self.fake.keyboard_key(code, 0);
+
+    if shift {
+      self.fake.keyboard_key(SHIFT, 0);
+    }
+
+    self.sync()
+  }
+
+  fn key_state(&mut self, keysym: u32, down: bool) -> Result<()> {
+    let (code, _) = *self.keys.get(&keysym).ok_or("keysym not in the keymap")?;
+
+    self.fake.keyboard_key(code, u32::from(down));
+    self.sync()
+  }
+
+  fn center(&self) -> (f64, f64) {
+    (
+      f64::from(self.extent.0) / 2.0,
+      f64::from(self.extent.1) / 2.0,
+    )
+  }
+}
+
 // --- the driver ---
 
 struct Driver {
@@ -1446,6 +1568,7 @@ fn main() {
     "mutter-dbus" => Mutter::new(&stream).map(|input| Box::new(input) as Box<dyn Input>),
     "mutter-ei" => Ei::new(&stream).map(|input| Box::new(input) as Box<dyn Input>),
     "sway" => Sway::new().map(|input| Box::new(input) as Box<dyn Input>),
+    "kwin" => Kwin::new().map(|input| Box::new(input) as Box<dyn Input>),
     other => Err(format!("unknown backend {other}").into()),
   };
   let input = input.unwrap_or_else(|error| {

@@ -6,6 +6,7 @@
 //! them. An overlay's subtree is painted on its own surface.
 
 use std::{
+  cell::Cell,
   collections::HashMap,
   rc::Rc,
   sync::Arc,
@@ -431,11 +432,13 @@ impl Canvas<'_> {
       }
       Fill::Sweep(sweep) => {
         let (cx, cy) = at(sweep.center);
-        let start = (sweep.start.in_degrees() - 90.).to_radians();
+        // The turn starts up, at its start angle, and runs clockwise: the gradient's own turn
+        // (from the x axis, a whole turn) rotated there about the center.
+        let start = f64::from(sweep.start.in_degrees() - 90.).to_radians();
 
         (
-          Gradient::new_sweep((x + cx, y + cy), start, start + std::f32::consts::TAU),
-          Affine::IDENTITY,
+          Gradient::new_sweep((0., 0.), 0., std::f32::consts::TAU),
+          Affine::translate((x + cx, y + cy)) * Affine::rotate(start),
         )
       }
     };
@@ -1061,14 +1064,64 @@ fn paint_children(
   }
 }
 
+/// Which path a window asks for when it opens: what `SKENE_RENDERER` names (`cpu` the CPU path,
+/// `gpu` any adapter, a software one included; unset a hardware adapter where one presents,
+/// the CPU otherwise), unless this thread chose ([`PathChoice::set_current`]).
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum PathChoice {
+  /// The CPU path.
+  Cpu,
+  /// A hardware adapter where one presents to the window.
+  Hardware,
+  /// Any adapter that presents to the window, a software one included.
+  Any,
+}
+
+thread_local! {
+  static CHOSEN: Cell<Option<PathChoice>> = const { Cell::new(None) };
+}
+
+impl PathChoice {
+  /// The choice a window opened on this thread now makes.
+  #[must_use]
+  pub fn current() -> Self {
+    CHOSEN
+      .get()
+      .unwrap_or_else(|| match std::env::var("SKENE_RENDERER").as_deref() {
+        Ok("cpu") => Self::Cpu,
+        Ok("gpu") => Self::Any,
+        _ => Self::Hardware,
+      })
+  }
+
+  /// Makes `choice` the one windows opened on this thread from now on make, in place of
+  /// `SKENE_RENDERER`'s; `None` returns to it.
+  pub fn set_current(choice: Option<Self>) {
+    CHOSEN.set(choice);
+  }
+}
+
+/// The path a window paints with.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum PaintPath {
+  /// vello_cpu, into shared memory.
+  Cpu,
+  /// vello's hybrid renderer over wgpu, presented through the platform's swapchain.
+  Gpu,
+}
+
 /// The frame's renderer: its vello context and resources, the glyph painter and its images,
-/// the frame's pixels.
+/// the frame's pixels, and the GPU path where the window paints on the GPU.
 pub struct Renderer {
   ctx: Option<RenderContext>,
   resources: Resources,
   masks: Option<MaskPainter>,
   glyphs: GlyphImages,
-  /// The frame: premultiplied RGBA, in device pixels.
+  #[cfg(feature = "gpu")]
+  gpu: Option<crate::gpu::Gpu>,
+  stale: bool,
+  /// The frame: premultiplied RGBA, in device pixels. On the GPU path, the last frame read
+  /// back when asked for ([`Renderer::last_frame`]).
   pub pixmap: Pixmap,
 }
 
@@ -1085,6 +1138,8 @@ pub struct Cost {
   pub masks: (u64, u64),
   /// The glyph images found cached, and those made, so far.
   pub images: (u64, u64),
+  /// Whether the frame went to the screen through the GPU's swapchain, the whole of it.
+  pub presented: bool,
 }
 
 impl Default for Renderer {
@@ -1101,7 +1156,125 @@ impl Renderer {
       resources: Resources::new(),
       masks: MaskPainter::new(),
       glyphs: GlyphImages::default(),
+      #[cfg(feature = "gpu")]
+      gpu: None,
+      stale: false,
       pixmap: Pixmap::new(1, 1),
+    }
+  }
+
+  /// Paints on the GPU from now on, through `gpu`.
+  #[cfg(feature = "gpu")]
+  pub fn use_gpu(&mut self, gpu: crate::gpu::Gpu) {
+    self.gpu = Some(gpu);
+  }
+
+  /// The path frames are painted with now.
+  #[must_use]
+  pub const fn path(&self) -> PaintPath {
+    #[cfg(feature = "gpu")]
+    if self.gpu.is_some() {
+      return PaintPath::Gpu;
+    }
+
+    PaintPath::Cpu
+  }
+
+  /// Loses the GPU's device, as a driver reset or a removed GPU would; whether the window
+  /// painted on the GPU. The next frame paints on the CPU.
+  pub fn lose_device(&mut self) -> bool {
+    #[cfg(feature = "gpu")]
+    if let Some(gpu) = &self.gpu {
+      gpu.lose();
+
+      return true;
+    }
+
+    false
+  }
+
+  /// The last frame painted: on the GPU path, read back from the GPU first.
+  pub fn last_frame(&mut self) -> &Pixmap {
+    #[cfg(feature = "gpu")]
+    if self.stale
+      && let Some((width, height, pixels)) = self.gpu.as_ref().and_then(crate::gpu::Gpu::read_back)
+    {
+      let data = pixels.into_iter().flatten().collect();
+
+      self.pixmap = Pixmap::from_parts(
+        data,
+        u16::try_from(width).unwrap_or(1),
+        u16::try_from(height).unwrap_or(1),
+        PixelMetadata::new(ImageAlphaType::AlphaPremultiplied, true),
+      );
+    }
+
+    self.stale = false;
+
+    &self.pixmap
+  }
+
+  /// Paints the whole frame of `size` device pixels on the GPU and presents it, as
+  /// [`Renderer::paint`] paints on the CPU; `None` where the device is lost, which hands the
+  /// window to the CPU path.
+  #[cfg(feature = "gpu")]
+  #[expect(clippy::too_many_arguments, reason = "one frame's every input")]
+  fn paint_gpu(
+    &mut self,
+    root: Option<&Node>,
+    size: (u16, u16),
+    scale: f64,
+    region: Rect,
+    origin: (f32, f32),
+    marks: &Marks,
+    chrome: &mut dyn FnMut(&mut Canvas<'_>),
+  ) -> Option<Cost> {
+    let gpu = self.gpu.as_mut()?;
+    let masks = &mut self.masks;
+    let mut glyph_time = Duration::ZERO;
+    let result = gpu.paint((u32::from(size.0), u32::from(size.1)), &mut |sink| {
+      let mut canvas = Canvas {
+        sink,
+        masks: masks.as_mut(),
+        scale,
+        offset: (-f64::from(origin.0) * scale, -f64::from(origin.1) * scale),
+        clip: region,
+        glyph_time: Duration::ZERO,
+        palette: Palette::now(),
+      };
+
+      chrome(&mut canvas);
+
+      if let Some(root) = root {
+        paint_node(root, &mut canvas, (0., 0.), region, marks);
+      }
+
+      glyph_time = canvas.glyph_time;
+    });
+
+    match result {
+      Ok(cost) => {
+        self.stale = true;
+
+        #[expect(clippy::cast_possible_truncation, reason = "microseconds")]
+        Some(Cost {
+          record: cost.record,
+          raster: cost.render,
+          glyphs: glyph_time.as_micros() as u64,
+          masks: self
+            .masks
+            .as_ref()
+            .map_or((0, 0), |masks| masks.rasterizer().lookups()),
+          images: self.glyphs.lookups(),
+          presented: true,
+        })
+      }
+      Err(crate::gpu::Lost) => {
+        crate::trace::log(|| "[gpu] lost: the window paints on the CPU from now on".to_owned());
+        self.gpu = None;
+
+        None
+      }
     }
   }
 
@@ -1122,6 +1295,27 @@ impl Renderer {
     chrome: &mut dyn FnMut(&mut Canvas<'_>),
   ) -> Cost {
     let started = Instant::now();
+    #[cfg(feature = "gpu")]
+    let mut region = region;
+
+    #[cfg(feature = "gpu")]
+    if self.gpu.is_some() {
+      #[expect(clippy::cast_possible_truncation, reason = "window pixels")]
+      let whole = Rect {
+        x: -origin.0,
+        y: -origin.1,
+        width: (f64::from(size.0) / scale) as f32,
+        height: (f64::from(size.1) / scale) as f32,
+      };
+
+      if let Some(cost) = self.paint_gpu(root, size, scale, whole, origin, marks, chrome) {
+        return cost;
+      }
+
+      // The device was lost: this frame and every one after paint on the CPU, this one whole.
+      region = whole;
+      self.pixmap = Pixmap::new(1, 1);
+    }
 
     if self.pixmap.width() != size.0 || self.pixmap.height() != size.1 {
       self.pixmap = Pixmap::new(size.0, size.1);
@@ -1225,6 +1419,7 @@ impl Renderer {
         .as_ref()
         .map_or((0, 0), |masks| masks.rasterizer().lookups()),
       images: self.glyphs.lookups(),
+      presented: false,
     }
   }
 }

@@ -1181,6 +1181,12 @@ fn gradients<D: Driver>(driver: &mut D) {
     0xff0000,
     "the turn's start",
   );
+  // Fifty pixels right of and above the center of a box 200 by 120: an eighth of a turn.
+  check(
+    at(driver, "Sweep", 0.75, 0.5 - 50. / 120.),
+    0xbf0040,
+    "an eighth of a turn",
+  );
   check(at(driver, "Sweep", 0.98, 0.5), 0x800080, "a quarter turn");
   check(at(driver, "Sweep", 0.5, 0.98), 0x0000ff, "half a turn");
   check(

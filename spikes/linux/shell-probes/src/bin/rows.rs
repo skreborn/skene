@@ -7,6 +7,8 @@
 //!   check, a flip, a step, a choice, a character typed.
 //! - `MODE=layout` changes row 0's padding (a layout change), `MODE=paint` its background (a
 //!   paint change), on the same clock.
+//! - `MODE=full` changes the background behind the scroll on the same clock: a repaint of the
+//!   whole window.
 //! - `MODE=painted` shows one 200 by 100 painted box, red, and nothing else.
 
 use std::time::Duration;
@@ -153,7 +155,20 @@ fn app() -> AnyView {
     );
   }
 
-  Scroll::new(ScrollAxes::Vertical)
-    .set_child(column)
-    .into_any()
+  let scroll = Scroll::new(ScrollAxes::Vertical).set_child(column);
+
+  if mode == "full" {
+    return Container::new()
+      .derive_background(move || {
+        if flip.get() {
+          Color::rgb(0xe5e7eb)
+        } else {
+          Color::rgb(0xf3f4f6)
+        }
+      })
+      .set_child(scroll)
+      .into_any();
+  }
+
+  scroll.into_any()
 }

@@ -250,6 +250,7 @@ impl Open {
     Some(Frame {
       pixmap: &self.renderer.pixmap,
       damage: (0, 0, u32::from(device.0), u32::from(device.1)),
+      presented: false,
     })
   }
 }

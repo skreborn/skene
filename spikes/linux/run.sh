@@ -60,6 +60,18 @@
 #     skene run on the runner's private Xvfb);
 #   - the GTK prototype's numbers beside these ($GTK_PROTO/results/summary.txt).
 #
+# Stage PAINT (glyphs in the scene's order, gradients, motion on the frame clock, the GPU
+# path): the scenarios and the facade's test run in every leg above; here, the GPU path
+# (skene-gui-linux's `gpu` feature: vello_hybrid over wgpu's Vulkan, on Mesa's lavapipe here):
+#   - clippy with warnings denied and rustdoc with the feature on;
+#   - the realization's GPU tests (every conformance page painted on the GPU and then, the
+#     device lost, on the CPU, compared; motion going on after the loss) on X11, mutter and
+#     sway;
+#   - the conformance suite and the facade's tests on the GPU path (SKENE_RENDERER=gpu) on X11
+#     and mutter;
+#   - full and partial repaints at 1920x1080 and 3840x2160 on both paths, on Xvfb and headless
+#     mutter (tools/paint/repaint.sh).
+#
 # The GTK realization (gui-linux-gtk) and its probes (probes/) are kept, outside the
 # workspace, for reference.
 #
@@ -69,7 +81,8 @@
 # GTK_PROTO names the GTK prototype's directory (../gtk/proto unless set), whose cargo-nextest
 # is borrowed where tools/bin has none and whose numbers are shown beside these.
 # SKIP_CORE=1 skips the platform-text section, SKIP_SHELL=1 the shell's sessions,
-# SKIP_CONTROLS=1 the controls' sessions, SKIP_MEASURE=1 the measurements.
+# SKIP_CONTROLS=1 the controls' sessions, SKIP_PAINT=1 the GPU path's section, SKIP_MEASURE=1
+# the measurements.
 set -euo pipefail
 
 cd "$(dirname "$0")"
@@ -323,6 +336,39 @@ rm -rf "$results/controls"
 tools/controls/checks.sh "$CARGO_TARGET_DIR/$triple/debug/controls" "$results/controls" \
   | tee "$results/controls-checks.txt" | grep -E 'FAIL|DONE|detect|textprobe|\[orca\]' | tee -a "$summary"
 say "controls checks: $(grep -c '\] PASS' "$results/controls-checks.txt" || true) passed, $(grep -c '\] FAIL' "$results/controls-checks.txt" || true) failed"
+measure_target
+fi
+
+if [ "${SKIP_PAINT:-0}" != 1 ]; then
+say "== the GPU path (skene-gui-linux's gpu feature)"
+mkdir -p "$results/paint/cpu" "$results/paint/gpu"
+cp "$CARGO_TARGET_DIR/$triple/release/rows" "$results/paint/cpu/"
+if cargo clippy -p skene-gui-linux -p skene-gui -p skene-conformance --features skene-gui-linux/gpu \
+  --all-targets -- -D warnings > "$results/clippy-gpu.log" 2>&1; then
+  say "cargo clippy with the gpu feature, -D warnings: passed"
+else
+  say "cargo clippy with the gpu feature: FAILED (results/clippy-gpu.log)"
+fi
+cargo doc -p skene-gui-linux --features gpu --no-deps > "$results/doc-gpu.log" 2>&1
+say "cargo doc -p skene-gui-linux --features gpu: $(grep -cE '^(warning|error)' "$results/doc-gpu.log" || true) warnings or errors"
+for leg in x11 wayland sway; do
+  SKENE_TEST_SESSION=$leg SKENE_TRACE=1 cargo test -p skene-gui-linux --features gpu --test it gpu:: -- --nocapture \
+    > "$results/test-gpu-$leg.log" 2>&1 || true
+  say "the GPU tests on the $leg leg: $(grep -E '^test result' "$results/test-gpu-$leg.log" | tail -1); $(grep -E '^\[gpu\] .*, Vulkan\)' "$results/test-gpu-$leg.log" | sort -u | head -1)"
+  grep -E '^[a-z]+: most [0-9]+ apart' "$results/test-gpu-$leg.log" | awk '{ if ($3 > most) most = $3; apart += $5 } END { printf "  every page: a channel at most %d apart, %d pixels beyond 2 in all\n", most, apart }' | tee -a "$summary"
+done
+for leg in x11 wayland; do
+  SKENE_TEST_SESSION=$leg SKENE_RENDERER=gpu cargo test --no-fail-fast -p skene-conformance -p skene-gui \
+    -p skene-gui-linux --features skene-gui-linux/gpu --test linux --test paint > "$results/test-on-gpu-$leg.log" 2>&1 || true
+  say "the conformance suite and the facade's test on the GPU path, $leg leg: $(grep -oE '[0-9]+ passed' "$results/test-on-gpu-$leg.log" | awk '{s+=$1} END {print s}') passed, $(grep -oE '[0-9]+ failed' "$results/test-on-gpu-$leg.log" | awk '{s+=$1} END {print s}') failed"
+done
+cargo build --release -p skene-shell-probes -p skene-gui-linux --features skene-gui-linux/gpu --bin rows \
+  > "$results/paint/build.log" 2>&1
+cp "$CARGO_TARGET_DIR/$triple/release/rows" "$results/paint/gpu/"
+say "rows, release: $(du -k "$results/paint/cpu/rows" | cut -f1) KB without the GPU path, $(du -k "$results/paint/gpu/rows" | cut -f1) KB with it"
+tools/paint/repaint.sh "$results/paint/cpu/rows" "$results/paint/gpu/rows" "$results/paint/repaint" 3 \
+  | tee "$results/paint/repaint.txt" | tee -a "$summary"
+rm -rf "$results/paint/cpu" "$results/paint/gpu"
 measure_target
 fi
 

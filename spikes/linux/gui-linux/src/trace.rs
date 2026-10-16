@@ -184,9 +184,9 @@ pub fn scroll(node: &Node, offset: (f32, f32)) {
   });
 }
 
-/// Writes a presented frame where `SKENE_SHOT` asks.
-pub fn shot(pixmap: &vello_cpu::Pixmap) {
-  let Some(path) = SHOT.with(|shot| {
+/// Where `SKENE_SHOT` asks for presented frames to be written.
+fn shot_path() -> Option<PathBuf> {
+  SHOT.with(|shot| {
     shot
       .get_or_init(|| {
         std::env::var_os("SKENE_SHOT")
@@ -194,7 +194,17 @@ pub fn shot(pixmap: &vello_cpu::Pixmap) {
           .map(PathBuf::from)
       })
       .clone()
-  }) else {
+  })
+}
+
+/// Whether `SKENE_SHOT` asks for presented frames: what a GPU frame is read back for.
+pub fn shots_on() -> bool {
+  shot_path().is_some()
+}
+
+/// Writes a presented frame where `SKENE_SHOT` asks.
+pub fn shot(pixmap: &vello_cpu::Pixmap) {
+  let Some(path) = shot_path() else {
     return;
   };
 

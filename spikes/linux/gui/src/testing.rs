@@ -65,7 +65,10 @@ pub use skene_foundation::seam::{
 };
 use skene_foundation::{Owner, seam::report::Modifiers, value::IntoUnit};
 /// The driver on Linux: AT-SPI reads, real input, settling on the window's own loop.
-pub use skene_gui_linux::testing::{Drawn, Element, Session};
+pub use skene_gui_linux::{
+  paint::{PaintPath, PathChoice},
+  testing::{Drawn, Element, Session},
+};
 
 use crate::{__private, Color, Scheme, View};
 

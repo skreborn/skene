@@ -5,6 +5,8 @@
 mod chrome;
 mod contents;
 mod environment;
+#[cfg(feature = "gpu")]
+mod gpu;
 mod keyboard;
 mod reader;
 mod shell;

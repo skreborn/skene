@@ -243,13 +243,16 @@ impl Open {
   }
 
   /// Turns the loop once: handles what arrived, paints what changed, then waits for more,
-  /// `wait` at most where given.
+  /// `wait` at most where given. A turn that paints a frame ends with it: what arrived
+  /// meanwhile (read by the GPU's swapchain, which reads the connection too) is the next
+  /// turn's.
   pub fn step(&mut self, wait: Option<Duration>) -> Result<(), Box<dyn Error>> {
     let deadline = wait.map(|wait| Instant::now() + wait);
     let state = &mut self.state;
     let queue = &mut self.queue;
     let qh = state.qh.clone();
     let inbox = crate::runtime::inbox();
+    let frames = state.shell.frames;
 
     loop {
       queue.dispatch_pending(state)?;
@@ -274,6 +277,10 @@ impl Open {
       queue.flush()?;
 
       let Some(guard) = queue.prepare_read() else {
+        if state.shell.frames > frames {
+          return Ok(());
+        }
+
         continue;
       };
       let mut fds = [
@@ -407,6 +414,23 @@ pub fn open(shell: Shell, app_id: &str) -> Result<Open, Box<dyn Error>> {
     state.new_seat(&conn, &qh, seat);
   }
 
+  #[cfg(feature = "gpu")]
+  {
+    use wayland_client::Proxy as _;
+
+    let display = std::ptr::NonNull::new(conn.backend().display_ptr().cast());
+    let surface = std::ptr::NonNull::new(state.window.wl_surface().id().as_ptr().cast());
+
+    if let (Some(display), Some(surface)) = (display, surface) {
+      // SAFETY: the connection and the window's surface live as long as the window.
+      unsafe {
+        state
+          .shell
+          .choose_path(crate::gpu::Target::Wayland { display, surface });
+      }
+    }
+  }
+
   Ok(Open { state, queue })
 }
 
@@ -425,9 +449,39 @@ impl State {
       .shell
       .chrome
       .input_rect(geometry_width, geometry_height);
+    let gpu = self.shell.presents();
+
+    if gpu {
+      // The swapchain commits the frame: the surface's state and the frame callback go first.
+      self.prepare_surface((ox, oy), input, (surface_width, surface_height));
+      self
+        .window
+        .wl_surface()
+        .frame(qh, FrameCallbackData(self.window.wl_surface().clone()));
+    }
+
     let Some(frame) = self.shell.frame() else {
       return;
     };
+
+    if frame.presented {
+      self.frame_pending = true;
+      trace::log(|| {
+        format!(
+          "[wayland] present gpu in {:.2} ms",
+          started.elapsed().as_secs_f64() * 1000.
+        )
+      });
+
+      if trace::shots_on()
+        && let Some(frame) = self.shell.last_frame()
+      {
+        trace::shot(frame);
+      }
+
+      return;
+    }
+
     let pixmap = frame.pixmap;
     let (dx, dy, dw, dh) = frame.damage;
     let (width, height) = (i32::from(pixmap.width()), i32::from(pixmap.height()));
@@ -490,9 +544,60 @@ impl State {
       }
     };
 
-    self
-      .window
-      .set_window_geometry(ox as u32, oy as u32, geometry_width, geometry_height);
+    if !gpu {
+      self.prepare_surface((ox, oy), input, (surface_width, surface_height));
+    }
+
+    let surface = self.window.wl_surface();
+
+    surface.damage_buffer(dx as i32, dy as i32, dw as i32, dh as i32);
+
+    if !gpu {
+      surface.frame(qh, FrameCallbackData(surface.clone()));
+    }
+
+    if let Some((buffer, _)) = self.buffers.get(current)
+      && buffer.attach_to(surface).is_ok()
+    {
+      self.window.commit();
+      self.frame_pending = true;
+    }
+
+    trace::log(|| {
+      format!(
+        "[wayland] present {dw}x{dh}+{dx}+{dy} of {width}x{height} at {scale} {} in {:.2} ms",
+        if reused.is_some() {
+          "into a released buffer"
+        } else {
+          "into a new buffer"
+        },
+        started.elapsed().as_secs_f64() * 1000.
+      )
+    });
+
+    if trace::shots_on()
+      && let Some(frame) = self.shell.last_frame()
+    {
+      trace::shot(frame);
+    }
+  }
+
+  /// Gives the surface the window's geometry within it (`origin`, past the shadow's margin),
+  /// the input region and its scale for `size` surface pixels: state the next commit applies.
+  fn prepare_surface(
+    &mut self,
+    origin: (f32, f32),
+    input: skene_foundation::layout::Rect,
+    size: (u32, u32),
+  ) {
+    let (geometry_width, geometry_height) = self.shell.size;
+
+    self.window.set_window_geometry(
+      origin.0 as u32,
+      origin.1 as u32,
+      geometry_width,
+      geometry_height,
+    );
 
     let input = (
       input.x as i32,
@@ -517,35 +622,9 @@ impl State {
     match &self.viewport {
       Some(viewport) => {
         surface.set_buffer_scale(1);
-        viewport.set_destination(surface_width as i32, surface_height as i32);
+        viewport.set_destination(size.0 as i32, size.1 as i32);
       }
-      None => surface.set_buffer_scale(scale.round() as i32),
-    }
-
-    surface.damage_buffer(dx as i32, dy as i32, dw as i32, dh as i32);
-    surface.frame(qh, FrameCallbackData(surface.clone()));
-
-    if let Some((buffer, _)) = self.buffers.get(current)
-      && buffer.attach_to(surface).is_ok()
-    {
-      self.window.commit();
-      self.frame_pending = true;
-    }
-
-    trace::log(|| {
-      format!(
-        "[wayland] present {dw}x{dh}+{dx}+{dy} of {width}x{height} at {scale} {} in {:.2} ms",
-        if reused.is_some() {
-          "into a released buffer"
-        } else {
-          "into a new buffer"
-        },
-        started.elapsed().as_secs_f64() * 1000.
-      )
-    });
-
-    if let Some(frame) = self.shell.last_frame() {
-      trace::shot(frame);
+      None => surface.set_buffer_scale(self.shell.scale.round() as i32),
     }
   }
 
@@ -948,12 +1027,9 @@ impl CompositorHandler for State {
   ) {
   }
 
-  fn frame(&mut self, _: &Connection, qh: &QueueHandle<Self>, _: &wl_surface::WlSurface, _: u32) {
+  fn frame(&mut self, _: &Connection, _: &QueueHandle<Self>, _: &wl_surface::WlSurface, _: u32) {
+    // The turn that dispatched it paints the next frame.
     self.frame_pending = false;
-
-    if self.shell.wants_frame() {
-      self.draw(qh);
-    }
   }
 
   fn surface_enter(

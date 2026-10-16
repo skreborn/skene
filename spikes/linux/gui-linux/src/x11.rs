@@ -380,6 +380,22 @@ impl X11 {
       };
     }
 
+    #[cfg(feature = "gpu")]
+    if let (Some(connection), Some(window), Ok(screen)) = (
+      std::ptr::NonNull::new(x11.conn.get_raw_xcb_connection()),
+      std::num::NonZeroU32::new(x11.window),
+      i32::try_from(x11.screen),
+    ) {
+      // SAFETY: the connection and the window live as long as the window does.
+      unsafe {
+        shell.choose_path(crate::gpu::Target::X11 {
+          connection,
+          screen,
+          window,
+        });
+      }
+    }
+
     // On a bare X server (no window manager) the keyboard follows the pointer root: the window
     // has it from the start.
     if let Ok(focus) = x11.conn.get_input_focus()?.reply()
@@ -1940,6 +1956,24 @@ impl X11 {
     let Some(frame) = shell.frame() else {
       return Ok(());
     };
+
+    if frame.presented {
+      trace::log(|| {
+        format!(
+          "[x11] present gpu in {:.2} ms",
+          started.elapsed().as_secs_f64() * 1000.
+        )
+      });
+
+      if trace::shots_on()
+        && let Some(frame) = shell.last_frame()
+      {
+        trace::shot(frame);
+      }
+
+      return Ok(());
+    }
+
     let pixmap = frame.pixmap;
     let (width, height) = (u32::from(pixmap.width()), u32::from(pixmap.height()));
     let (dx, dy, dw, dh) = frame.damage;

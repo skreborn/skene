@@ -53,7 +53,12 @@ use self::{
   input::Input,
   portal::{Portal, Setting},
 };
-use crate::{Backend, Linux, environment, shell, trace, window::Window};
+use crate::{
+  Backend, Linux, environment,
+  paint::{PaintPath, PathChoice},
+  shell, trace,
+  window::Window,
+};
 
 /// How long `settle` must see no frame, no report and no input: above two 60 Hz frames.
 const QUIET: Duration = Duration::from_millis(40);
@@ -296,6 +301,7 @@ pub fn run_test(name: &'static str, body: fn()) {
 /// Puts what a previous test may have changed back where the session started it: the
 /// environment, the app's scheme, the reader's settings.
 fn reset() {
+  PathChoice::set_current(None);
   skene_foundation::Environment::current().reset();
   environment::set_scheme(None);
   with_portal(|portal| {
@@ -1188,12 +1194,12 @@ impl Drawn {
   /// `window`'s content as drawn last, alone (below a title bar Skene draws), as RGBA.
   fn shot(window: &mut Window) -> Screenshot {
     {
-      let shell = window.shell();
-      let pixmap = shell.last_frame().expect("the window has drawn");
+      let shell = window.shell_mut();
       let scale = shell.scale;
       let (ox, oy) = shell.chrome.origin();
       let header = shell.chrome.header();
       let (width, height) = shell.content_size();
+      let pixmap = shell.last_frame().expect("the window has drawn");
       let left = (f64::from(ox) * scale).round() as usize;
       let top = (f64::from(oy + header) * scale).round() as usize;
       let width = (f64::from(width) * scale).round() as usize;
@@ -1279,6 +1285,29 @@ impl Drawn {
   /// The app's scheme choice, through the platform's own path.
   pub fn set_scheme(&mut self, scheme: Option<Scheme>) {
     self.set_environment(EnvironmentRequest::Scheme(scheme));
+  }
+
+  /// Makes `choice` the path the windows this thread opens from now on ask for, in place of
+  /// `SKENE_RENDERER`'s, until the test ends; `None` returns to it.
+  pub fn set_path_choice(choice: Option<PathChoice>) {
+    PathChoice::set_current(choice);
+  }
+
+  /// The path the open window paints with.
+  #[must_use]
+  pub fn paint_path(&self) -> PaintPath {
+    Self::with_window(|window| window.shell().paint_path())
+  }
+
+  /// The GPU's device is lost under the open window, as a driver reset or a removed GPU loses
+  /// it, and the window settles: it paints on the CPU from then on. Whether it painted on the
+  /// GPU.
+  pub fn trigger_device_loss(&mut self) -> bool {
+    let lost = Self::with_window(|window| window.shell_mut().lose_device());
+
+    settle();
+
+    lost
   }
 }
 

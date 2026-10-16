@@ -21,7 +21,7 @@ const REST: Color = Color::rgb(0xffffff);
 const HOVER: Color = Color::rgb(0xdbeafe);
 const PRESSED: Color = Color::rgb(0x93c5fd);
 
-fn pixel(shell: &Shell, x: u32, y: u32) -> Color {
+fn pixel(shell: &mut Shell, x: u32, y: u32) -> Color {
   let frame = shell.last_frame().expect("a frame was painted");
   let pixel = frame.data()[(y * u32::from(frame.width()) + x) as usize];
 
@@ -113,21 +113,21 @@ fn a_row_restyles_under_hover_and_press_and_activates_on_click_outside_its_switc
     shell.set_root(root_node);
     shell.configure(200, 100);
     assert!(shell.frame().is_some(), "the first frame paints");
-    assert_eq!(pixel(&shell, 10, 30), REST);
+    assert_eq!(pixel(&mut shell, 10, 30), REST);
 
     shell.pointer_motion(10., 30.);
     shell.frame();
     assert!(tree::holds::<Linux>(row, State::Hovered));
-    assert_eq!(pixel(&shell, 10, 30), HOVER);
+    assert_eq!(pixel(&mut shell, 10, 30), HOVER);
 
     shell.pointer_button(0, true, (10., 30.));
     shell.frame();
-    assert_eq!(pixel(&shell, 10, 30), PRESSED);
+    assert_eq!(pixel(&mut shell, 10, 30), PRESSED);
 
     shell.pointer_button(0, false, (10., 30.));
     shell.frame();
     assert_eq!(activations.get(), 1, "a click on the row activates it");
-    assert_eq!(pixel(&shell, 10, 30), HOVER);
+    assert_eq!(pixel(&mut shell, 10, 30), HOVER);
 
     // The switch is centered in the row: a click on it flips it alone.
     shell.pointer_motion(100., 30.);
@@ -139,7 +139,7 @@ fn a_row_restyles_under_hover_and_press_and_activates_on_click_outside_its_switc
     shell.pointer_leave();
     shell.frame();
     assert!(!tree::holds::<Linux>(row, State::Hovered));
-    assert_eq!(pixel(&shell, 10, 30), REST);
+    assert_eq!(pixel(&mut shell, 10, 30), REST);
   });
 }
 

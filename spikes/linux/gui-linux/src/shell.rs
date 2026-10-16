@@ -274,12 +274,15 @@ struct Press {
 }
 
 /// One painted frame: its pixels are the renderer's, `damage` the part that changed (device
-/// pixels: x, y, width, height).
+/// pixels: x, y, width, height), unless the GPU presented it already.
 pub struct Frame<'a> {
-  /// The frame's pixels.
+  /// The frame's pixels, on the CPU path.
   pub pixmap: &'a vello_cpu::Pixmap,
   /// The rectangle that changed.
   pub damage: (u32, u32, u32, u32),
+  /// Whether the GPU presented the frame through the surface's swapchain: nothing is left to
+  /// copy or attach.
+  pub presented: bool,
 }
 
 /// The window.
@@ -315,6 +318,7 @@ pub struct Shell {
   pub frames: u64,
   /// When the last frame was painted.
   pub painted_at: Option<Instant>,
+  presented: bool,
   /// How many times the window was given a size.
   pub configures: u64,
   /// Whether the app asked to quit.
@@ -355,6 +359,7 @@ impl Shell {
       owed: None,
       frames: 0,
       painted_at: None,
+      presented: false,
       configures: 0,
       quit: false,
     }
@@ -453,6 +458,17 @@ impl Shell {
   /// last frame presented, `None` where nothing did.
   pub fn frame(&mut self) -> Option<Frame<'_>> {
     let drawn = self.draw();
+
+    if let Some(damage) = drawn
+      && self.presented
+    {
+      return Some(Frame {
+        pixmap: &self.renderer.pixmap,
+        damage,
+        presented: true,
+      });
+    }
+
     let damage = match (drawn, self.owed.take()) {
       (Some(drawn), Some(owed)) => union_damage(drawn, owed),
       (Some(damage), None) | (None, Some(damage)) => damage,
@@ -467,6 +483,7 @@ impl Shell {
 
     Some(Frame {
       pixmap: &self.renderer.pixmap,
+      presented: false,
       damage: (
         left,
         top,
@@ -479,9 +496,54 @@ impl Shell {
   /// Lays out and paints what changed without presenting it, so geometry reads current: the
   /// next [`frame`](Self::frame) presents it.
   pub fn lay_out(&mut self) {
-    if let Some(drawn) = self.draw() {
+    if let Some(drawn) = self.draw()
+      && !self.presented
+    {
       self.owed = Some(self.owed.map_or(drawn, |owed| union_damage(owed, drawn)));
     }
+  }
+
+  /// The path the window paints with now.
+  pub const fn paint_path(&self) -> crate::paint::PaintPath {
+    self.renderer.path()
+  }
+
+  /// Whether the window paints on the GPU, which presents each frame itself.
+  pub const fn presents(&self) -> bool {
+    matches!(self.renderer.path(), crate::paint::PaintPath::Gpu)
+  }
+
+  /// Chooses the window's path once, as [`crate::paint::PathChoice::current`] asks: the GPU
+  /// where an adapter it admits presents to the surface at `target`, the CPU otherwise.
+  ///
+  /// # Safety
+  ///
+  /// The handles in `target` stay valid while the window lives.
+  #[cfg(feature = "gpu")]
+  pub unsafe fn choose_path(&mut self, target: crate::gpu::Target) {
+    let (width, height) = self.device_size();
+
+    let choice = crate::paint::PathChoice::current();
+
+    // SAFETY: the caller keeps the handles valid while the window lives.
+    match unsafe { crate::gpu::Gpu::new(target, (width, height), choice) } {
+      Ok(gpu) => {
+        self.renderer.use_gpu(gpu);
+        invalidate_all();
+      }
+      Err(why) => trace::log(|| format!("[gpu] the CPU path: {why}")),
+    }
+  }
+
+  /// Loses the GPU's device, as a driver reset would; whether the window painted on the GPU.
+  pub fn lose_device(&mut self) -> bool {
+    let lost = self.renderer.lose_device();
+
+    if lost {
+      invalidate_all();
+    }
+
+    lost
   }
 
   /// Lays out and paints what changed; the device rectangle painted.
@@ -592,6 +654,7 @@ impl Shell {
     };
     let chrome = self.chrome.clone();
     let (width, height) = self.size;
+    let gpu = self.presents();
     let cost = self.renderer.paint(
       Some(&root),
       (device.0 as u16, device.1 as u16),
@@ -601,6 +664,15 @@ impl Shell {
       &marks,
       &mut |canvas| chrome.paint(canvas, width, height),
     );
+
+    self.presented = cost.presented;
+
+    // A frame that fell back to the CPU as the device was lost painted the whole surface.
+    let region = if gpu && !cost.presented {
+      surface
+    } else {
+      region
+    };
 
     self.frames += 1;
     self.painted_at = Some(started);
@@ -2215,9 +2287,9 @@ impl Shell {
     node.states.get()
   }
 
-  /// The last frame painted.
-  pub fn last_frame(&self) -> Option<&vello_cpu::Pixmap> {
-    (self.frames > 0).then_some(&self.renderer.pixmap)
+  /// The last frame painted (on the GPU path, read back from the GPU).
+  pub fn last_frame(&mut self) -> Option<&vello_cpu::Pixmap> {
+    (self.frames > 0).then(|| self.renderer.last_frame())
   }
 
   /// Whether the window has the keyboard.

@@ -1,0 +1,30 @@
+[package]
+name = "skene-plain-parley"
+description = "Parley as an app would ship it on Android: built with and without its complex-script dictionaries to weigh them, and asked for line breaks without them."
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[features]
+default = []
+# Parley's layout, without the dictionaries for Thai, Lao, Khmer and Burmese.
+parley = ["dep:parley"]
+# Parley with its complex-script segmentation compiled in.
+complex = ["parley", "parley/complex-scripts"]
+
+[dependencies]
+jni = { version = "=0.21.1", default-features = false }
+parley = { default-features = false, features = ["std", "system"], optional = true, version = "=0.12.0" }
+
+# As an app ships: one codegen unit, whole-program LTO, symbols stripped.
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 3
+strip = true
+
+# A spike of its own, outside the repository's workspace.
+[workspace]

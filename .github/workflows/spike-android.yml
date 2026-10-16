@@ -1,13 +1,16 @@
 name: spike-android
 
-# Android text-measure spike: taffy in Rust measuring 1000 text leaves through JNI into a Kotlin
-# StaticLayout/BoringLayout engine, against the same tree in Jetpack Compose, on an emulator.
+# Android text spike: taffy in Rust measuring 1000 text leaves through JNI into a Kotlin
+# StaticLayout engine, against the same tree in Jetpack Compose and in Parley; and the
+# text-parity run (spikes/text-parity) of option A (StaticLayout), B (Parley drawn by vello) and C
+# (Parley's glyph runs drawn by Canvas), compared on the host.
 
 on:
   push:
     branches: [claude/platform-architecture-tradeoffs-y9q57l]
     paths:
       - spikes/android/**
+      - spikes/text-parity/**
       - .github/workflows/spike-android.yml
   workflow_dispatch:
 
@@ -21,7 +24,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     defaults:
       run:
         working-directory: spikes/android
@@ -37,16 +40,22 @@ jobs:
         with:
           gradle-version: "8.14.3"
 
-      # The repository's rust-toolchain.toml pins the toolchain; add the target to that one.
-      - name: Rust target for the emulator's ABI
+      # The repository's rust-toolchain.toml pins the toolchain; add the targets to that one.
+      - name: Rust targets for the emulator's ABI and for phones
         working-directory: spikes/android/rust
         run: |
           rustup show active-toolchain || rustup toolchain install
-          rustup target add x86_64-linux-android
+          rustup target add x86_64-linux-android aarch64-linux-android
 
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-ndk
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            spikes/android/rust
+            spikes/android/plain
 
       - name: Build the Rust library
         working-directory: spikes/android/rust
@@ -55,6 +64,27 @@ jobs:
           echo "NDK: $ANDROID_NDK_HOME"
           cargo ndk -t x86_64 --platform 29 -o ../app/src/main/jniLibs build --release
           ls -la ../app/src/main/jniLibs/x86_64
+
+      # Parley as an app ships it, weighed with and without its complex-script dictionaries; the
+      # build without them goes into the APK for the line-break probe.
+      - name: Weigh Parley and build the plain library
+        working-directory: spikes/android/plain
+        run: |
+          export ANDROID_NDK_HOME="$ANDROID_NDK_LATEST_HOME"
+          mkdir -p ../../../sizes
+          for target in x86_64 arm64-v8a; do
+            triple=$([ "$target" = x86_64 ] && echo x86_64-linux-android || echo aarch64-linux-android)
+            for features in none parley complex; do
+              flag=$([ "$features" = none ] && echo "" || echo "--features $features")
+              cargo ndk -t "$target" --platform 29 build --release $flag
+              size=$(stat -c %s "target/$triple/release/libskene_plain_parley.so")
+              echo "plain.$target.$features.bytes=$size" | tee -a ../../../sizes/sizes.txt
+              if [ "$target" = x86_64 ] && [ "$features" = parley ]; then
+                cp "target/$triple/release/libskene_plain_parley.so" ../app/src/main/jniLibs/x86_64/
+              fi
+            done
+          done
+          echo "spike.x86_64.bytes=$(stat -c %s ../app/src/main/jniLibs/x86_64/libskene_text_spike.so)" | tee -a ../../../sizes/sizes.txt
 
       - name: Build the app and test APKs
         run: gradle --no-daemon assembleRelease assembleReleaseAndroidTest
@@ -72,10 +102,16 @@ jobs:
           path: apks
           retention-days: 5
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: spike-android-sizes
+          path: sizes
+          retention-days: 5
+
   emulator:
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -104,10 +140,11 @@ jobs:
           api-level: ${{ matrix.api }}
           target: ${{ matrix.target }}
           arch: x86_64
+          profile: pixel_6
           ram-size: 4096M
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
-          script: bash spikes/android/run-on-emulator.sh apks results-api${{ matrix.api }}.txt
+          script: bash spikes/android/run-on-emulator.sh apks results-api${{ matrix.api }}.txt parity-api${{ matrix.api }}
 
       - name: Results
         if: always()
@@ -126,3 +163,60 @@ jobs:
           path: |
             results-api${{ matrix.api }}*
             summary-api${{ matrix.api }}*
+            parity-api${{ matrix.api }}
+
+  compare:
+    needs: emulator
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: spike-android-results-api*
+          path: results
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: spike-android-sizes
+          path: sizes
+
+      - name: fontconfig for the harness's Linux build
+        run: sudo apt-get update && sudo apt-get install -y libfontconfig1-dev
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: spikes/text-parity
+
+      - name: Build the text-parity harness
+        working-directory: spikes/text-parity
+        run: |
+          rustup show active-toolchain || rustup toolchain install
+          cargo build --release
+
+      - name: Compare
+        run: |
+          mkdir -p parity
+          for api in 29 34; do
+            src=results/spike-android-results-api$api
+            mkdir -p parity/api$api
+            cp "$src"/results-api$api.txt parity/api$api/ || true
+            if [ -d "$src/parity-api$api" ]; then
+              cp -r "$src/parity-api$api" parity/api$api/parity
+              echo "=== COMPARE API $api ==="
+              bash spikes/android/compare.sh spikes/text-parity/target/release/text-parity parity/api$api/parity
+            fi
+          done
+          python3 spikes/android/parity.py parity sizes/sizes.txt > /dev/null
+          echo "=== SUMMARY ==="
+          cat parity/summary.md
+          echo "=== END ==="
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: spike-android-parity
+          path: parity
+          retention-days: 7

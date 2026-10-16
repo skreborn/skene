@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
 # Installs the spike's APKs on the running emulator, runs each test in a process of its own (one
-# `am instrument` each, so every cold pass starts with Minikin's process caches empty) and
-# appends the `key=value` lines the tests log to the results file.
+# `am instrument` each, so every cold pass starts with Minikin's process caches empty), appends
+# the `key=value` lines the tests log to the results file, and pulls the text-parity run's files
+# (records, images, probes) into the parity directory.
 set -uo pipefail
 
 apks=$1
 out=$2
+parity=${3:-parity}
+package=dev.skene.spike.text
+files=/sdcard/Android/data/$package/files/parity
 : > "$out"
 
 adb wait-for-device
@@ -19,16 +23,18 @@ adb install -r -t "$apks/app-release.apk"
 adb install -r -t "$apks/app-release-androidTest.apk"
 
 # Compile both ahead of time, as a benchmark run does, so neither side is timed interpreted.
-adb shell cmd package compile -m speed -f dev.skene.spike.text
-adb shell cmd package compile -m speed -f dev.skene.spike.text.test
+adb shell cmd package compile -m speed -f $package
+adb shell cmd package compile -m speed -f $package.test
 
+# run TEST REP [CLASS] [instrument arguments...]
 run() {
-  local test=$1 rep=$2
+  local test=$1 rep=$2 class=${3:-SpikeTest}
+  shift 3 2>/dev/null || shift $#
   local log="$out.instrument.$test.$rep.txt"
 
   adb logcat -c
-  adb shell am instrument -w -e class "dev.skene.spike.text.SpikeTest#$test" -e runId "$test.$rep" \
-    dev.skene.spike.text.test/androidx.test.runner.AndroidJUnitRunner > "$log" 2>&1
+  adb shell am instrument -w -e class "$package.$class#$test" -e runId "$test.$rep" "$@" \
+    $package.test/androidx.test.runner.AndroidJUnitRunner > "$log" 2>&1
   local ok
   ok=$(grep -c "OK (1 test)" "$log")
   echo "run=$rep test=$test instrument.ok=$ok" >> "$out"
@@ -46,15 +52,56 @@ run() {
 
 # Let the freshly booted emulator's background work settle before timing anything.
 sleep 45
+adb shell input keyevent KEYCODE_WAKEUP
+adb shell wm dismiss-keyguard
 
 for rep in 1 2 3 4 5; do
   run taffy "$rep"
   run compose "$rep"
   run taffyPlain "$rep"
+  run taffyParley "$rep" ParityTest
 done
 
 run offMain 1
 run ink 1
 run jniCost 1
+
+# The text-parity run: A (StaticLayout), B (Parley through the harness), C (Parley's glyphs drawn
+# by Canvas), then the probes.
+adb shell rm -rf "$files"
+run fonts 1 ParityTest
+run nativeSimple 1 ParityTest
+run nativeQuality 1 ParityTest
+run parleyFed 1 ParityTest
+run parleyStock 1 ParityTest
+run raster 1 ParityTest
+run probes 1 ParityTest
+
+# The platform's accessibility text settings, each set from the shell and read in a fresh process.
+run fontScale 100 ParityTest
+for scale in 1.3 2.0; do
+  adb shell settings put system font_scale "$scale"
+  sleep 3
+  run fontScale "${scale/./}" ParityTest
+done
+adb shell settings put system font_scale 1.0
+
+run fontWeight 0 ParityTest
+adb shell settings put secure font_weight_adjustment 300
+sleep 3
+run fontWeight 300 ParityTest
+adb shell settings put secure font_weight_adjustment 0
+
+adb shell input keyevent KEYCODE_WAKEUP
+adb shell wm dismiss-keyguard
+run contrast off ParityTest -e state off
+adb shell settings put secure high_text_contrast_enabled 1
+sleep 3
+run contrast on ParityTest -e state on
+adb shell settings put secure high_text_contrast_enabled 0
+
+mkdir -p "$parity"
+adb pull "$files/." "$parity" > /dev/null
+echo "pulled $(find "$parity" -type f | wc -l) files into $parity"
 
 exit 0

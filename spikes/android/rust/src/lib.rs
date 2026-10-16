@@ -11,12 +11,17 @@
 
 use std::time::Instant;
 
-use jni::objects::{GlobalRef, JByteBuffer, JClass, JFloatArray, JLongArray, JMethodID, JObject};
-use jni::signature::{Primitive, ReturnType};
-use jni::sys::{jfloat, jint, jlong, jvalue};
-use jni::JNIEnv;
-use taffy::prelude::*;
-use taffy::{compute_leaf_layout, Baselines, LayoutInput, LayoutOutput, RequestedAxis};
+use jni::{
+  objects::{GlobalRef, JByteBuffer, JClass, JFloatArray, JLongArray, JMethodID, JObject},
+  signature::{Primitive, ReturnType},
+  sys::{jfloat, jint, jlong, jvalue},
+  JNIEnv,
+};
+use taffy::{compute_leaf_layout, prelude::*, Baselines, LayoutInput, LayoutOutput, RequestedAxis};
+
+mod ndk;
+pub mod parity;
+pub mod parley_tree;
 
 /// Leaves per card; the Kotlin corpus and the Compose tree use the same shape.
 pub const LEAVES_PER_CARD: usize = 10;
@@ -43,21 +48,37 @@ pub const FLAG_CLEAR_LAID: jint = 2;
 pub const FLAG_CLEAR_INTRINSICS: jint = 4;
 
 #[derive(Clone, Copy)]
-struct Intrinsics {
+pub struct Intrinsics {
   // The min-content width, NaN until a min-content query asks for it.
-  min: f32,
-  max: f32,
+  pub min: f32,
+  pub max: f32,
   // The height and baselines at the max-content width, NaN until a query needs a height there.
-  h_max: f32,
-  base_max: (f32, f32),
+  pub h_max: f32,
+  pub base_max: (f32, f32),
 }
 
 #[derive(Clone, Copy)]
-struct Laid {
-  width: i32,
-  used: f32,
-  height: f32,
-  baselines: (f32, f32),
+pub struct Laid {
+  pub width: i32,
+  pub used: f32,
+  pub height: f32,
+  pub baselines: (f32, f32),
+}
+
+/// What measures a leaf's text: the Kotlin engine through JNI, or Parley in process.
+pub trait Backend {
+  /// The intrinsics of text `text`: the min-content width where `with_min`, the height and
+  /// baselines at max-content where `with_height` (NaN otherwise).
+  fn intrinsics(
+    &mut self,
+    env: &mut JNIEnv,
+    text: i32,
+    with_min: bool,
+    with_height: bool,
+  ) -> Intrinsics;
+
+  /// Text `text` laid out at `width` whole pixels.
+  fn layout(&mut self, env: &mut JNIEnv, text: i32, width: i32) -> Laid;
 }
 
 struct Leaf {
@@ -84,12 +105,12 @@ struct PassStats {
   measure_calls: u64,
 }
 
-struct Tree {
+pub struct Tree<B> {
   taffy: TaffyTree<usize>,
   root: NodeId,
   leaves: Vec<Leaf>,
   leaf_nodes: Vec<NodeId>,
-  engine: Engine,
+  engine: B,
   width: f32,
 }
 
@@ -105,8 +126,16 @@ impl Engine {
 
     out
   }
+}
 
-  fn intrinsics(&self, env: &mut JNIEnv, text: i32, with_min: bool, with_height: bool) -> Intrinsics {
+impl Backend for Engine {
+  fn intrinsics(
+    &mut self,
+    env: &mut JNIEnv,
+    text: i32,
+    with_min: bool,
+    with_height: bool,
+  ) -> Intrinsics {
     // SAFETY: the method id belongs to the engine's class with signature (IZZ)V.
     unsafe {
       env
@@ -117,7 +146,9 @@ impl Engine {
           &[
             jvalue { i: text },
             jvalue { z: with_min as u8 },
-            jvalue { z: with_height as u8 },
+            jvalue {
+              z: with_height as u8,
+            },
           ],
         )
         .expect("intrinsics");
@@ -133,7 +164,7 @@ impl Engine {
     }
   }
 
-  fn layout(&self, env: &mut JNIEnv, text: i32, width: i32) -> Laid {
+  fn layout(&mut self, env: &mut JNIEnv, text: i32, width: i32) -> Laid {
     // SAFETY: the method id belongs to the engine's class with signature (II)V.
     unsafe {
       env
@@ -160,10 +191,10 @@ impl Engine {
 impl Leaf {
   /// The leaf's intrinsics, crossing JNI when they are missing or lack a min-content width or a
   /// max-content height that is wanted.
-  fn intrinsics(
+  fn intrinsics<B: Backend>(
     &mut self,
     env: &mut JNIEnv,
-    engine: &Engine,
+    engine: &mut B,
     stats: &mut PassStats,
     with_min: bool,
     with_height: bool,
@@ -188,10 +219,10 @@ impl Leaf {
   /// Intrinsics are fetched only for a min-content or max-content query, the min-content width
   /// only for a min-content one, and a height only when the query asks for one; a definite or
   /// known width lays out directly.
-  fn measure(
+  fn measure<B: Backend>(
     &mut self,
     env: &mut JNIEnv,
-    engine: &Engine,
+    engine: &mut B,
     stats: &mut PassStats,
     axis: RequestedAxis,
     known: Size<Option<f32>>,
@@ -208,7 +239,13 @@ impl Leaf {
         let min = self.intrinsics(env, engine, stats, true, false).min;
 
         if !height {
-          return (Size { width: min, height: 0.0 }, (0.0, 0.0));
+          return (
+            Size {
+              width: min,
+              height: 0.0,
+            },
+            (0.0, 0.0),
+          );
         }
 
         (min, false)
@@ -236,8 +273,15 @@ impl Leaf {
     }
 
     let (used, height, baselines) = match self.intrinsics {
-      Some(intrinsics) if whole as f32 >= intrinsics.max && (!height || !intrinsics.h_max.is_nan()) => {
-        let h_max = if intrinsics.h_max.is_nan() { 0.0 } else { intrinsics.h_max };
+      Some(intrinsics)
+        if whole as f32 >= intrinsics.max && (!height || !intrinsics.h_max.is_nan()) =>
+      {
+        let h_max = if intrinsics.h_max.is_nan() {
+          0.0
+        }
+        else {
+          intrinsics.h_max
+        };
         (intrinsics.max, h_max, intrinsics.base_max)
       }
       _ => {
@@ -265,8 +309,9 @@ impl Leaf {
   }
 }
 
-impl Tree {
-  fn new(engine: Engine, cards: usize) -> Self {
+impl<B: Backend> Tree<B> {
+  /// A tree of `cards` cards whose leaves measure through `engine`.
+  pub fn new(engine: B, cards: usize) -> Self {
     let mut taffy: TaffyTree<usize> = TaffyTree::new();
     taffy.disable_rounding();
     let mut leaves = Vec::with_capacity(cards * LEAVES_PER_CARD);
@@ -331,7 +376,9 @@ impl Tree {
       );
 
       let rest = leaf(&mut taffy, weighted.clone());
-      let pair = taffy.new_with_children(row.clone(), &[fixed, rest]).unwrap();
+      let pair = taffy
+        .new_with_children(row.clone(), &[fixed, rest])
+        .unwrap();
 
       let tags: Vec<NodeId> = (0..4).map(|_| leaf(&mut taffy, Style::default())).collect();
 
@@ -374,7 +421,9 @@ impl Tree {
       cards_nodes.push(card);
     }
 
-    let root = taffy.new_with_children(Self::root_style(0.0), &cards_nodes).unwrap();
+    let root = taffy
+      .new_with_children(Self::root_style(0.0), &cards_nodes)
+      .unwrap();
 
     Self {
       taffy,
@@ -404,11 +453,14 @@ impl Tree {
   /// Runs one layout pass and returns `[nanos, crossings, intrinsics calls, layout calls, the
   /// most crossings of any leaf, leaves crossing more than once, measure callbacks, leaves
   /// crossing at all]`.
-  fn layout(&mut self, env: &mut JNIEnv, width: f32, flags: jint) -> [i64; 8] {
+  pub fn layout(&mut self, env: &mut JNIEnv, width: f32, flags: jint) -> [i64; 8] {
     let start = Instant::now();
 
     if width != self.width {
-      self.taffy.set_style(self.root, Self::root_style(width)).unwrap();
+      self
+        .taffy
+        .set_style(self.root, Self::root_style(width))
+        .unwrap();
       self.width = width;
     }
 
@@ -445,7 +497,8 @@ impl Tree {
           height: AvailableSpace::MaxContent,
         },
         |inputs: LayoutInput, _node, context: Option<&mut usize>, style: &Style| {
-          let Some(&mut index) = context else {
+          let Some(&mut index) = context
+          else {
             return LayoutOutput::HIDDEN;
           };
 
@@ -453,11 +506,16 @@ impl Tree {
           let axis = inputs.axis;
           let mut baselines = (0.0, 0.0);
 
-          let mut out = compute_leaf_layout(inputs, style, |_, _| 0.0, |known, available| {
-            let (size, b) = leaf.measure(env, engine, &mut stats, axis, known, available);
-            baselines = b;
-            size
-          });
+          let mut out = compute_leaf_layout(
+            inputs,
+            style,
+            |_, _| 0.0,
+            |known, available| {
+              let (size, b) = leaf.measure(env, &mut *engine, &mut stats, axis, known, available);
+              baselines = b;
+              size
+            },
+          );
 
           out.baselines = Baselines {
             first: Some(baselines.0),
@@ -470,7 +528,12 @@ impl Tree {
       .unwrap();
 
     let nanos = start.elapsed().as_nanos() as i64;
-    let most = self.leaves.iter().map(|leaf| leaf.crossings).max().unwrap_or(0);
+    let most = self
+      .leaves
+      .iter()
+      .map(|leaf| leaf.crossings)
+      .max()
+      .unwrap_or(0);
     let over = self.leaves.iter().filter(|leaf| leaf.crossings > 1).count();
     let crossed = self.leaves.iter().filter(|leaf| leaf.crossings > 0).count();
 
@@ -486,8 +549,18 @@ impl Tree {
     ]
   }
 
+  /// The number of leaves.
+  pub fn leaf_count(&self) -> usize {
+    self.leaf_nodes.len()
+  }
+
+  /// The backend.
+  pub fn engine_mut(&mut self) -> &mut B {
+    &mut self.engine
+  }
+
   /// Writes each leaf's absolute `x, y, width, height`, then the root's width and height.
-  fn rects(&self, out: &mut [f32]) {
+  pub fn rects(&self, out: &mut [f32]) {
     for (index, node) in self.leaf_nodes.iter().enumerate() {
       let mut x = 0.0;
       let mut y = 0.0;
@@ -550,7 +623,7 @@ pub extern "system" fn Java_dev_skene_spike_text_NativeTree_layout<'local>(
   stats: JLongArray<'local>,
 ) {
   // SAFETY: the handle came from `create` and is used by one thread at a time.
-  let tree = unsafe { &mut *(handle as *mut Tree) };
+  let tree = unsafe { &mut *(handle as *mut Tree<Engine>) };
   let numbers = tree.layout(&mut env, width, flags);
   env.set_long_array_region(&stats, 0, &numbers).unwrap();
 }
@@ -564,7 +637,7 @@ pub extern "system" fn Java_dev_skene_spike_text_NativeTree_rects<'local>(
   out: JFloatArray<'local>,
 ) {
   // SAFETY: as in `layout`.
-  let tree = unsafe { &*(handle as *const Tree) };
+  let tree = unsafe { &*(handle as *const Tree<Engine>) };
   let mut numbers = vec![0.0f32; tree.leaf_nodes.len() * 4 + 2];
   tree.rects(&mut numbers);
   env.set_float_array_region(&out, 0, &numbers).unwrap();
@@ -578,7 +651,7 @@ pub extern "system" fn Java_dev_skene_spike_text_NativeTree_destroy<'local>(
   handle: jlong,
 ) {
   // SAFETY: the handle came from `create` and is not used again.
-  drop(unsafe { Box::from_raw(handle as *mut Tree) });
+  drop(unsafe { Box::from_raw(handle as *mut Tree<Engine>) });
 }
 
 /// Times `count` JNI upcalls into `engine` and returns the nanoseconds they took: `kind` 0 calls
@@ -603,7 +676,8 @@ pub extern "system" fn Java_dev_skene_spike_text_NativeTree_upcalls<'local>(
         env
           .call_method_unchecked(&engine, noop, ReturnType::Primitive(Primitive::Void), &[])
           .unwrap();
-      } else {
+      }
+      else {
         env
           .call_method_unchecked(
             &engine,

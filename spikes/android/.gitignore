@@ -4,3 +4,4 @@ app/build/
 app/src/main/jniLibs/
 rust/target/
 local.properties
+plain/target/

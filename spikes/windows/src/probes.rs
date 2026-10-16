@@ -227,27 +227,26 @@ impl Direct {
   /// `text` in `system-ui` with a zero line height on the root style and the font metrics' on a
   /// span over the whole text.
   pub fn strutless(&mut self, text: &str, size: f32, locale: &str) -> Layout<()> {
-    let mut builder = self
-      .layouts
-      .ranged_builder(&mut self.fonts.context, text, 1.0, false);
-    builder.push_default(StyleProperty::FontFamily(FontFamily::List(Cow::Owned(
-      vec![
+    // The tree builder nests the span inside the root, so the root's zero line height is the
+    // strut's alone; a ranged builder's whole-text range would restyle the root itself.
+    let root = parley::TextStyle {
+      font_family: FontFamily::List(Cow::Owned(vec![
         FontFamilyName::Generic(parley::GenericFamily::SystemUi),
         FontFamilyName::Generic(parley::GenericFamily::SansSerif),
-      ],
-    ))));
-    builder.push_default(StyleProperty::FontSize(size));
-    builder.push_default(StyleProperty::LineHeight(LineHeight::FontSizeRelative(0.0)));
-    builder.push(
-      StyleProperty::LineHeight(LineHeight::MetricsRelative(1.0)),
-      0..text.len(),
-    );
-
-    if let Ok(language) = Language::parse(locale) {
-      builder.push_default(StyleProperty::Locale(Some(language)));
-    }
-
-    let mut layout = builder.build(text);
+      ])),
+      font_size: size,
+      line_height: LineHeight::FontSizeRelative(0.0),
+      locale: Language::parse(locale).ok(),
+      ..parley::TextStyle::default()
+    };
+    let mut builder = self
+      .layouts
+      .tree_builder(&mut self.fonts.context, 1.0, false, &root);
+    builder
+      .push_style_modification_span(&[StyleProperty::LineHeight(LineHeight::MetricsRelative(1.0))]);
+    builder.push_text(text);
+    builder.pop_style_span();
+    let (mut layout, _) = builder.build();
     layout.break_all_lines(None);
     layout
   }

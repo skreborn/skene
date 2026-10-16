@@ -1180,9 +1180,10 @@ impl Reference {
 
             for run in &runs.runs {
               let glyph_run = run.as_run();
+              // The baseline on the device's pixel grid, as a text layout's own drawing snaps it.
               let origin = Vector2 {
                 X: run.origin.0 + *x,
-                Y: run.origin.1 + *y,
+                Y: ((run.origin.1 + *y) * scale).round() / scale,
               };
 
               match &dc7 {

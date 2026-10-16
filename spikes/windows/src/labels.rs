@@ -390,5 +390,24 @@ pub fn run(out: &Path, factory: &IDWriteFactory4, r: &mut Report) -> Res<()> {
     faces.failures.iter().take(3).collect::<Vec<_>>()
   ));
 
+  // B with warm caches: vello's outlines through the first round's floor painter, which keeps its
+  // fonts and glyph caches across frames, over the same runs.
+  let started = Instant::now();
+  let _ = painters.floor.render(&mut ctx, &items).msg("floor")?;
+  let t_f_cold = ms(started);
+  let mut warm = Vec::new();
+
+  for _ in 0..5 {
+    let started = Instant::now();
+    let _ = painters.floor.render(&mut ctx, &items).msg("floor")?;
+    warm.push(ms(started));
+  }
+
+  warm.sort_by(f64::total_cmp);
+  r.line(format!(
+    "labels.parley.draw.b_floor (vello_cpu outlines over Parley's runs, caches kept): cold {t_f_cold:.2} ms, warm median {:.2} ms",
+    warm[2]
+  ));
+
   Ok(())
 }

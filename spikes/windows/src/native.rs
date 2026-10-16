@@ -202,6 +202,8 @@ impl Native {
         let format = self.format(case, variant.size, false)?;
         let probe = self.text_layout(&utf16, &format, UNBOUNDED)?;
         let mut m = DWRITE_TEXT_METRICS::default();
+        // A justified or centred probe would report the unbounded box.
+        unsafe { probe.SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING)? };
         unsafe { probe.GetMetrics(&mut m)? };
         (format, m.widthIncludingTrailingWhitespace)
       }
@@ -287,6 +289,7 @@ impl Native {
       UNBOUNDED,
     )?;
     let mut m = DWRITE_TEXT_METRICS::default();
+    unsafe { nowrap.SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING)? };
     unsafe { nowrap.GetMetrics(&mut m)? };
 
     Ok(Intrinsic { min, max: m.width })

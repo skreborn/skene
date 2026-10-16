@@ -179,7 +179,15 @@ impl Direct {
       .layouts
       .ranged_builder(&mut self.fonts.context, text, 1.0, false);
     builder.push_default(StyleProperty::FontFamily(FontFamily::List(Cow::Owned(
-      vec![FontFamilyName::Named(Cow::Owned(family.to_owned()))],
+      if family == "system-ui" {
+        vec![
+          FontFamilyName::Generic(parley::GenericFamily::SystemUi),
+          FontFamilyName::Generic(parley::GenericFamily::SansSerif),
+        ]
+      }
+      else {
+        vec![FontFamilyName::Named(Cow::Owned(family.to_owned()))]
+      },
     ))));
     builder.push_default(StyleProperty::FontSize(size));
     builder.push_default(StyleProperty::FontWeight(FontWeight::new(weight)));
@@ -213,6 +221,34 @@ impl Direct {
 
     let mut layout = builder.build(text);
     layout.break_all_lines(width);
+    layout
+  }
+
+  /// `text` in `system-ui` with a zero line height on the root style and the font metrics' on a
+  /// span over the whole text.
+  pub fn strutless(&mut self, text: &str, size: f32, locale: &str) -> Layout<()> {
+    let mut builder = self
+      .layouts
+      .ranged_builder(&mut self.fonts.context, text, 1.0, false);
+    builder.push_default(StyleProperty::FontFamily(FontFamily::List(Cow::Owned(
+      vec![
+        FontFamilyName::Generic(parley::GenericFamily::SystemUi),
+        FontFamilyName::Generic(parley::GenericFamily::SansSerif),
+      ],
+    ))));
+    builder.push_default(StyleProperty::FontSize(size));
+    builder.push_default(StyleProperty::LineHeight(LineHeight::FontSizeRelative(0.0)));
+    builder.push(
+      StyleProperty::LineHeight(LineHeight::MetricsRelative(1.0)),
+      0..text.len(),
+    );
+
+    if let Ok(language) = Language::parse(locale) {
+      builder.push_default(StyleProperty::Locale(Some(language)));
+    }
+
+    let mut layout = builder.build(text);
+    layout.break_all_lines(None);
     layout
   }
 
@@ -781,7 +817,8 @@ pub fn breaks(factory: &IDWriteFactory4, direct: &mut Direct, r: &mut Report) ->
       17.0,
       400,
       &case.locale,
-      DWRITE_WORD_WRAPPING_WRAP,
+      // Whole words only: a line per break opportunity, no emergency break inside a word.
+      DWRITE_WORD_WRAPPING_WHOLE_WORD,
       0.5,
     )?;
     let mut dw = Vec::new();
@@ -1031,6 +1068,18 @@ pub fn user_font(factory: &IDWriteFactory4, r: &mut Report) -> Res<()> {
     id.is_some()
   ));
 
+  // The shared factory's collection refreshed once, then fontique made again over it.
+  let shared: IDWriteFactory =
+    unsafe { DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED) }.msg("factory")?;
+  let mut refreshed = None;
+  unsafe { shared.GetSystemFontCollection(&mut refreshed, true) }.msg("collection")?;
+  let mut again = Fonts::system();
+  r.line(format!(
+    "userfont.fontique after a shared GetSystemFontCollection(checkForUpdates): {family} found={}",
+    again.context.collection.family_id(&family).is_some()
+  ));
+  drop(again);
+
   let layout = dwrite_layout(
     factory,
     "Hamburgefonstiv",
@@ -1064,6 +1113,308 @@ pub fn user_font(factory: &IDWriteFactory4, r: &mut Report) -> Res<()> {
   Ok(())
 }
 
+/// Recent emoji: whether Segoe UI Emoji maps each to a glyph, and the glyph DirectWrite's layout
+/// draws for it.
+pub fn emoji(factory: &IDWriteFactory4, r: &mut Report) -> Res<()> {
+  let mut collection = None;
+  unsafe { IDWriteFactory::GetSystemFontCollection(factory, &mut collection, false) }
+    .msg("collection")?;
+  let collection = collection.ok_or("no collection")?;
+  let name = wide("Segoe UI Emoji");
+  let (mut index, mut exists) = (0u32, windows_core::BOOL(0));
+  unsafe { collection.FindFamilyName(PCWSTR(name.as_ptr()), &mut index, &mut exists) }
+    .msg("find")?;
+  let font = unsafe {
+    collection.GetFontFamily(index).and_then(|f| {
+      f.GetFirstMatchingFont(
+        DWRITE_FONT_WEIGHT_NORMAL,
+        DWRITE_FONT_STRETCH_NORMAL,
+        DWRITE_FONT_STYLE_NORMAL,
+      )
+    })
+  }
+  .msg("font")?;
+  let face = unsafe { font.CreateFontFace() }.msg("face")?;
+  let mut strings = None;
+  let mut has = windows_core::BOOL(0);
+  let _ = unsafe {
+    font.GetInformationalStrings(
+      DWRITE_INFORMATIONAL_STRING_VERSION_STRINGS,
+      &mut strings,
+      &mut has,
+    )
+  };
+  let version = strings.and_then(|s| localized(&s).ok()).unwrap_or_default();
+  r.line(format!(
+    "emoji.font: Segoe UI Emoji {version:?} {}",
+    face_label(&face)
+  ));
+
+  for (label, text) in [
+    ("u14 melting face", "\u{1FAE0}"),
+    ("u15 shaking face", "\u{1FAE8}"),
+    ("u15 light blue heart", "\u{1FA75}"),
+    ("u15 black bird", "\u{1F426}\u{200D}\u{2B1B}"),
+    ("u15.1 head shaking", "\u{1F642}\u{200D}\u{2194}\u{FE0F}"),
+    ("u15.1 phoenix", "\u{1F426}\u{200D}\u{1F525}"),
+    ("u16 face with bags", "\u{1FAE9}"),
+    ("u16 fingerprint", "\u{1FAC6}"),
+    ("u16 harp", "\u{1FA89}"),
+    ("u16 splatter", "\u{1FADF}"),
+    ("u16 flag sark", "\u{1F1E8}\u{1F1F6}"),
+  ] {
+    let cps: Vec<u32> = text.chars().map(u32::from).collect();
+    let mut cmap = vec![0u16; cps.len()];
+    let _ = unsafe { face.GetGlyphIndices(cps.as_ptr(), cps.len() as u32, cmap.as_mut_ptr()) };
+    let has_char: Vec<bool> = cps
+      .iter()
+      .map(|cp| {
+        unsafe { font.HasCharacter(*cp) }
+          .map(|b| b.as_bool())
+          .unwrap_or(false)
+      })
+      .collect();
+    let layout = dwrite_layout(
+      factory,
+      text,
+      SYSTEM_FAMILY,
+      17.0,
+      400,
+      "en-US",
+      DWRITE_WORD_WRAPPING_NO_WRAP,
+      1.0e6,
+    )?;
+    let runs = collect(&layout, 0.0, 0.0, 1.0, false).msg("collect")?;
+    let drawn: Vec<String> = runs
+      .runs
+      .iter()
+      .map(|run| format!("{}:{:?}", face_label(&run.face), run.glyphs))
+      .collect();
+    r.line(format!(
+      "emoji.{label}: cmap {cmap:?} HasCharacter {has_char:?} | layout {drawn:?}"
+    ));
+  }
+
+  Ok(())
+}
+
+/// Parley's strut (the paragraph font's line box, CSS 2 section 10.8) against DirectWrite, which
+/// sizes a line by the fonts its runs use: one text laid out by DirectWrite, by Parley as the
+/// harness does, and by Parley with a zero line height on the root and the metrics' on a span
+/// over the whole text.
+pub fn strut(factory: &IDWriteFactory4, direct: &mut Direct, r: &mut Report) -> Res<()> {
+  for (label, text, locale) in [
+    ("han-zh-hant", "直骨角海写次化刃誤曜述返令", "zh-Hant-TW"),
+    ("han-zh-hans", "直骨角海写次化刃誤曜述返令", "zh-Hans-CN"),
+    ("han-ja", "直骨角海写次化刃誤曜述返令", "ja-JP"),
+    ("latin", "Hamburgefonstiv", "en-US"),
+    ("thai", "ภาษาไทยเป็นภาษาที่ไม่มี", "th-TH"),
+    ("emoji", "Party 😀🎉", "en-US"),
+    (
+      "mixed",
+      "English, 日本語, 한국어, العربية, ไทย, हिन्दी",
+      "en-US",
+    ),
+  ] {
+    let layout = dwrite_layout(
+      factory,
+      text,
+      SYSTEM_FAMILY,
+      17.0,
+      400,
+      locale,
+      DWRITE_WORD_WRAPPING_NO_WRAP,
+      1.0e6,
+    )?;
+    let lines = line_metrics(&layout).msg("lines")?;
+    let with = direct.lay_out(text, "system-ui", 17.0, 400.0, locale, &[], false, None);
+    let without = direct.strutless(text, 17.0, locale);
+    let box_of = |l: &Layout<()>| {
+      l.lines().next().map_or((0.0, 0.0), |line| {
+        let m = line.metrics();
+        (
+          m.block_max_coord - m.block_min_coord,
+          m.baseline - m.block_min_coord,
+        )
+      })
+    };
+    let (wh, wb) = box_of(&with);
+    let (nh, nb) = box_of(&without);
+    r.line(format!(
+      "strut.{label}: dwrite height={:.3} baseline={:.3} | parley (strut) height={wh:.3} baseline={wb:.3} | parley (no strut) height={nh:.3} baseline={nb:.3}",
+      lines.first().map_or(0.0, |l| l.height),
+      lines.first().map_or(0.0, |l| l.baseline),
+    ));
+  }
+
+  Ok(())
+}
+
+/// Segoe UI Variable at DirectWrite's automatic optical size and at Parley's given the same axis
+/// values, both drawn by Direct2D: whether the outlines are the same instance.
+pub fn opsz_pixels(factory: &IDWriteFactory4, direct: &mut Direct, r: &mut Report) -> Res<()> {
+  let file = r"C:\Windows\Fonts\SegUIVar.ttf";
+
+  if std::fs::metadata(file).is_err() {
+    r.line("opszpx: Segoe UI Variable absent".to_owned());
+    return Ok(());
+  }
+
+  let Some(name) = ["Segoe UI Variable Text", "Segoe UI Variable"]
+    .into_iter()
+    .find(|n| direct.fonts.context.collection.family_id(n).is_some())
+  else {
+    r.line("opszpx: fontique has no Segoe UI Variable".to_owned());
+    return Ok(());
+  };
+  let f6: IDWriteFactory6 = factory.cast().msg("factory6")?;
+  let typographic =
+    unsafe { f6.GetSystemFontCollection(false, DWRITE_FONT_FAMILY_MODEL_TYPOGRAPHIC) }
+      .msg("typographic")?;
+  let family = wide("Segoe UI Variable");
+  let locale = wide("en-us");
+  let text = "Hamburgefonstiv 0123";
+  let utf16: Vec<u16> = text.encode_utf16().collect();
+  let reference = crate::paint::Reference::new().msg("reference")?;
+  let mut faces = crate::faces::Faces::new(factory).msg("faces")?;
+
+  for size in [8.0f32, 12.0, 20.0, 40.0] {
+    let opsz = size * 0.75;
+    let format = unsafe {
+      f6.CreateTextFormat(
+        PCWSTR(family.as_ptr()),
+        &typographic,
+        &[DWRITE_FONT_AXIS_VALUE {
+          axisTag: axis_tag("wght"),
+          value: 400.0,
+        }],
+        size,
+        PCWSTR(locale.as_ptr()),
+      )
+    }
+    .msg("format")?;
+    unsafe { format.SetAutomaticFontAxes(DWRITE_AUTOMATIC_FONT_AXES_OPTICAL_SIZE) }
+      .msg("automatic")?;
+    let layout =
+      unsafe { IDWriteFactory::CreateTextLayout(factory, &utf16, &format, 1.0e6, 1.0e6) }
+        .msg("layout")?;
+    let mut m = DWRITE_TEXT_METRICS::default();
+    unsafe { layout.GetMetrics(&mut m) }.msg("metrics")?;
+    let b = direct.lay_out(
+      text,
+      name,
+      size,
+      400.0,
+      "en-US",
+      &[("wght", 400.0), ("opsz", opsz)],
+      false,
+      None,
+    );
+    let Some(face) = faces.face(
+      file,
+      0,
+      DWRITE_FONT_SIMULATIONS_NONE,
+      &[("wght".to_owned(), 400.0), ("opsz".to_owned(), opsz)],
+    )
+    else {
+      r.line(format!("opszpx@{size}: no face"));
+      continue;
+    };
+    let mut glyphs = Vec::new();
+    let mut offsets = Vec::new();
+    let mut baseline = 0.0;
+
+    for line in b.lines() {
+      for item in line.items() {
+        if let PositionedLayoutItem::GlyphRun(g) = item {
+          baseline = g.baseline();
+          let mut x = g.offset();
+
+          for cluster in g.run().visual_clusters() {
+            for glyph in cluster.glyphs() {
+              glyphs.push(glyph.id as u16);
+              offsets.push(DWRITE_GLYPH_OFFSET {
+                advanceOffset: x + glyph.x,
+                ascenderOffset: glyph.y,
+              });
+              x += glyph.advance;
+            }
+          }
+        }
+      }
+    }
+
+    let runs = crate::engine::Collected {
+      runs: vec![crate::engine::GlyphRunRec {
+        face,
+        em: size,
+        advances: vec![0.0; glyphs.len()],
+        glyphs,
+        offsets,
+        origin: (0.0, baseline),
+        bidi: 0,
+        sideways: false,
+        inline: false,
+        text_position: 0,
+        cluster_map: Vec::new(),
+      }],
+      lines: Vec::new(),
+    };
+    let width = m.width.max(b.width()).ceil() + 16.0;
+    let height = m.height.ceil() + 16.0;
+    let to_rgba = |img: &crate::image::Img| text_parity::image::Rgba {
+      width: img.w as u32,
+      height: img.h as u32,
+      data: img.px.iter().flatten().copied().collect(),
+    };
+
+    for scale in [1.0f32, 2.0] {
+      let (w, h) = (
+        (width * scale).round() as u32,
+        (height * scale).round() as u32,
+      );
+      let a = reference
+        .render_at(
+          &[crate::paint::Item::Layout {
+            layout: layout.clone(),
+            x: 8.0,
+            y: 8.0,
+            color: [0.0, 0.0, 0.0, 1.0],
+          }],
+          w,
+          h,
+          scale,
+        )
+        .msg("a")?;
+      let c = reference
+        .render_at(
+          &[crate::paint::Item::Glyphs {
+            runs: std::rc::Rc::new(runs.scaled(1.0)),
+            x: 8.0,
+            y: 8.0,
+            color: [0.0, 0.0, 0.0, 1.0],
+          }],
+          w,
+          h,
+          scale,
+        )
+        .msg("c")?;
+      let metrics = text_parity::image::compare(&to_rgba(&a), &to_rgba(&c), 64);
+      r.line(format!(
+        "opszpx@{size} x{scale}: dwrite auto opsz vs parley opsz={opsz} drawn by Direct2D: width {:.3} vs {:.3}; mad={:.3} max={} ssim={:.4} iou={:.4}",
+        m.width,
+        b.width(),
+        metrics.mean_abs_diff,
+        metrics.max_diff,
+        metrics.ssim,
+        metrics.ink_iou
+      ));
+    }
+  }
+
+  Ok(())
+}
+
 fn noted(r: &mut Report, name: &str, result: Res<()>) {
   if let Err(e) = result {
     r.line(format!("error: probe {name}: {e}"));
@@ -1086,5 +1437,11 @@ pub fn run(_out: &Path, factory: &IDWriteFactory4, r: &mut Report) -> Res<()> {
   noted(r, "breaks", result);
   let result = text_scale(factory, r);
   noted(r, "textscale", result);
+  let result = emoji(factory, r);
+  noted(r, "emoji", result);
+  let result = strut(factory, &mut direct, r);
+  noted(r, "strut", result);
+  let result = opsz_pixels(factory, &mut direct, r);
+  noted(r, "opszpx", result);
   Ok(())
 }

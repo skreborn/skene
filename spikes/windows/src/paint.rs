@@ -1022,6 +1022,7 @@ impl AtlasPainter {
 pub struct Reference {
   d2d: ID2D1Factory,
   wic: IWICImagingFactory,
+  dwrite: IDWriteFactory4,
 }
 
 impl Reference {
@@ -1029,7 +1030,67 @@ impl Reference {
     let d2d: ID2D1Factory = unsafe { D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, None)? };
     let wic: IWICImagingFactory =
       unsafe { CoCreateInstance(&CLSID_WICImagingFactory, None, CLSCTX_INPROC_SERVER)? };
-    Ok(Self { d2d, wic })
+    let dwrite: IDWriteFactory4 = unsafe { DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED)? };
+    Ok(Self { d2d, wic, dwrite })
+  }
+
+  /// A colour font's run drawn layer by layer (`TranslateColorGlyphRun`, COLR v0), where Direct2D
+  /// has no `DrawGlyphRunWithColorSupport`; `false` where the run has no colour layers.
+  unsafe fn draw_layers(
+    &self,
+    rt: &ID2D1RenderTarget,
+    origin: Vector2,
+    run: &DWRITE_GLYPH_RUN,
+    color: [f32; 4],
+  ) -> Result<bool> {
+    let formats = DWRITE_GLYPH_IMAGE_FORMATS_TRUETYPE
+      | DWRITE_GLYPH_IMAGE_FORMATS_CFF
+      | DWRITE_GLYPH_IMAGE_FORMATS_COLR;
+    let layers = match unsafe {
+      self.dwrite.TranslateColorGlyphRun(
+        origin,
+        run,
+        None,
+        formats,
+        DWRITE_MEASURING_MODE_NATURAL,
+        None,
+        0,
+      )
+    } {
+      Ok(layers) => layers,
+      Err(e) if e.code() == DWRITE_E_NOCOLOR => return Ok(false),
+      Err(e) => return Err(e),
+    };
+
+    while unsafe { layers.MoveNext()? }.as_bool() {
+      let layer = unsafe { &*layers.GetCurrentRun()? };
+      let base = &layer.Base;
+      let c = if base.paletteIndex == 0xFFFF {
+        color
+      }
+      else {
+        [
+          base.runColor.r,
+          base.runColor.g,
+          base.runColor.b,
+          base.runColor.a * color[3],
+        ]
+      };
+      let brush = unsafe { rt.CreateSolidColorBrush(&d2d_color(c), None)? };
+      unsafe {
+        rt.DrawGlyphRun(
+          Vector2 {
+            X: base.baselineOriginX,
+            Y: base.baselineOriginY,
+          },
+          &base.glyphRun,
+          &brush,
+          DWRITE_MEASURING_MODE_NATURAL,
+        )
+      };
+    }
+
+    Ok(true)
   }
 
   pub fn render(&self, items: &[Item], w: u32, h: u32) -> Result<Img> {
@@ -1135,7 +1196,11 @@ impl Reference {
                   DWRITE_MEASURING_MODE_NATURAL,
                   D2D1_COLOR_BITMAP_GLYPH_SNAP_OPTION_DEFAULT,
                 ),
-                None => rt.DrawGlyphRun(origin, &*glyph_run, &brush, DWRITE_MEASURING_MODE_NATURAL),
+                None => {
+                  if !self.draw_layers(&rt, origin, &glyph_run, *color)? {
+                    rt.DrawGlyphRun(origin, &*glyph_run, &brush, DWRITE_MEASURING_MODE_NATURAL);
+                  }
+                }
               }
             }
           }

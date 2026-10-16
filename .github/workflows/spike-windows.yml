@@ -78,16 +78,17 @@ jobs:
             https://github.com/google/fonts/raw/main/ofl/atkinsonhyperlegible/AtkinsonHyperlegible-Regular.ttf \
             && reg add 'HKCU\Software\Microsoft\Windows NT\CurrentVersion\Fonts' //v 'Atkinson Hyperlegible Regular (TrueType)' //t REG_SZ //d "$(cygpath -w "$FONTS/AtkinsonHyperlegible-Regular.ttf")" //f \
             || echo "user font download failed"
-          sleep 5
           SPIKE_PARTS=userfont SPIKE_RESULTS=results-userfont.txt "$BIN" || status=$?
+          sleep 30
+          SPIKE_PARTS=userfont SPIKE_RESULTS=results-userfont-30s.txt "$BIN" || status=$?
           {
             echo "=== RESULTS ==="
             echo "spike windows on ${{ matrix.os }}: $SPIKE_OS_VERSION, $(rustc --version)"
             powershell -NoProfile -Command "(Get-CimInstance Win32_OperatingSystem | Select-Object Caption, Version, BuildNumber | Format-List | Out-String).Trim()"
             powershell -NoProfile -Command "(Get-CimInstance Win32_Processor | Select-Object Name, NumberOfLogicalProcessors | Format-List | Out-String).Trim()"
-            ls -l /c/Windows/Fonts/seguiemj.ttf /c/Windows/Fonts/segoeui.ttf /c/Windows/Fonts/SegUIVar.ttf /c/Windows/Fonts/YuGothR.ttc /c/Windows/Fonts/msyh.ttc /c/Windows/Fonts/malgun.ttf 2>&1
-            ls /c/Windows/System32/icu*.dll 2>&1
-            for f in results-fontique results-dwritestart results results-textscale-default results-textscale-150 results-userfont; do
+            ls -l /c/Windows/Fonts/seguiemj.ttf /c/Windows/Fonts/segoeui.ttf /c/Windows/Fonts/SegUIVar.ttf /c/Windows/Fonts/YuGothR.ttc /c/Windows/Fonts/msyh.ttc /c/Windows/Fonts/malgun.ttf 2>&1 || true
+            ls /c/Windows/System32/icu*.dll 2>&1 || true
+            for f in results-fontique results-dwritestart results results-textscale-default results-textscale-150 results-userfont results-userfont-30s; do
               echo "--- $f"
               grep -v -E '^cmp\.[^ ]*\.(v|breaks|fonts) ' "$SPIKE_OUT/$f.txt" 2>/dev/null || echo "(no $f.txt)"
             done

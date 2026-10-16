@@ -792,7 +792,7 @@ impl Shell {
 
       let (sx, sy) = node.scroll.get();
 
-      for child in node.children().iter().rev() {
+      for child in node.children_ref().iter().rev() {
         if child.is_overlay() {
           continue;
         }

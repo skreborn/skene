@@ -3,14 +3,14 @@
 
 use taffy::{
   AvailableSpace, Cache, CacheTree, Layout, LayoutInput, LayoutOutput, LayoutPartialTree,
-  NodeId as TaffyId, RoundTree, RunMode, Size, SizingMode, Style,
+  NodeId as TaffyId, RunMode, Size, SizingMode, Style,
   geometry::{Line, Rect as TaffyRect},
   prelude::{TaffyAuto, TaffyGridLine, TaffyGridSpan, fr, length, percent},
   style::{self as ts, Display},
   tree::RequestedAxis,
 };
 
-use std::rc::Rc;
+use std::{cell::RefCell, rc::Rc};
 
 use crate::{
   seam::{
@@ -140,7 +140,45 @@ pub enum Axis {
   Vertical,
 }
 
-/// What a toolkit says of a widget along one axis.
+/// Which of a child's sizes along an axis a measure needs: a host computes those alone.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Needed {
+  /// Its minimum alone.
+  Minimum,
+  /// Its natural size alone, with its baseline where it is measured vertically.
+  Natural,
+  /// Both.
+  Both,
+}
+
+impl Needed {
+  /// Whether the minimum is needed.
+  #[inline(always)]
+  #[must_use]
+  pub const fn minimum(self) -> bool {
+    matches!(self, Self::Minimum | Self::Both)
+  }
+
+  /// Whether the natural size is needed.
+  #[inline(always)]
+  #[must_use]
+  pub const fn natural(self) -> bool {
+    matches!(self, Self::Natural | Self::Both)
+  }
+
+  /// What taffy's available space along the axis measured needs: a content size its own
+  /// size, a definite space both (the natural size clamped to it, never below the minimum).
+  const fn of(space: AvailableSpace) -> Self {
+    match space {
+      AvailableSpace::MinContent => Self::Minimum,
+      AvailableSpace::MaxContent => Self::Natural,
+      AvailableSpace::Definite(_) => Self::Both,
+    }
+  }
+}
+
+/// What a toolkit says of a widget along one axis: the sizes a measure needed, the others
+/// left at zero.
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
 pub struct Measurement {
   /// The least it can be drawn at.
@@ -179,8 +217,9 @@ pub trait LayoutHost: 'static {
   type Child: Clone;
 
   /// Measures `child` along `axis`, given the other axis's size where known (a height for
-  /// a width).
-  fn measure(child: &Self::Child, axis: Axis, for_size: Option<f32>) -> Measurement;
+  /// a width): the sizes `needed` names.
+  fn measure(child: &Self::Child, axis: Axis, for_size: Option<f32>, needed: Needed)
+  -> Measurement;
 
   /// Whether `child`'s height does not depend on its width.
   fn constant_height(child: &Self::Child) -> bool;
@@ -208,38 +247,59 @@ pub trait LayoutHost: 'static {
 }
 
 struct TreeNode<C> {
-  style: Style,
-  base: Style,
+  style: Rc<Style>,
+  base_display: Display,
+  base_min_size: Size<ts::LengthPercentageAuto>,
   children: Vec<usize>,
   child: Option<C>,
   cache: Cache,
   unrounded: Layout,
-  layout: Layout,
 }
 
 /// One container's layout: a small taffy tree of the container and one leaf per child,
 /// each child measured through the host protocol (engine variant T4).
+///
+/// What it measures of its children is kept, as taffy's caches keep it, until its children or
+/// its own layout are set again or [`ContainerLayout::invalidate`] says a child's measurement
+/// may have changed.
 pub struct ContainerLayout<H: LayoutHost> {
   kind: LayoutKind,
   own: ResolvedLayout,
   rtl: bool,
   nodes: Vec<TreeNode<H::Child>>,
   placements: Vec<ResolvedLayout>,
+  stale: bool,
+  laid: Option<(f32, f32)>,
+  height_free: bool,
 }
 
 impl<H: LayoutHost> ContainerLayout<H> {
   /// An empty container of `kind` with its own layout `own`.
   #[must_use]
   pub fn new(kind: LayoutKind, own: ResolvedLayout) -> Self {
+    Self::with_children(kind, own, Vec::new())
+  }
+
+  /// A container of `kind` with its own layout `own` and its children, each with its
+  /// placement and outer sizing.
+  #[must_use]
+  pub fn with_children(
+    kind: LayoutKind,
+    own: ResolvedLayout,
+    children: Vec<(H::Child, ResolvedLayout)>,
+  ) -> Self {
     let mut this = Self {
       kind,
       own,
       rtl: false,
       nodes: Vec::new(),
       placements: Vec::new(),
+      stale: true,
+      laid: None,
+      height_free: true,
     };
 
-    this.rebuild(Vec::new());
+    this.rebuild(children);
 
     this
   }
@@ -265,6 +325,17 @@ impl<H: LayoutHost> ContainerLayout<H> {
     self.rebuild(children);
   }
 
+  /// Sets the container's own layout and its children at once.
+  pub fn set(&mut self, own: ResolvedLayout, children: Vec<(H::Child, ResolvedLayout)>) {
+    self.own = own;
+    self.rebuild(children);
+  }
+
+  /// Forgets what was measured: a child's measurement may have changed.
+  pub const fn invalidate(&mut self) {
+    self.stale = true;
+  }
+
   fn children(&self) -> Vec<(H::Child, ResolvedLayout)> {
     self.nodes[1..]
       .iter()
@@ -274,13 +345,37 @@ impl<H: LayoutHost> ContainerLayout<H> {
   }
 
   fn rebuild(&mut self, children: Vec<(H::Child, ResolvedLayout)>) {
-    let root = taffy_style(self.kind, &self.own, None, Part::Inner, self.rtl);
+    let root = shared_style(self.kind, &self.own, None, Part::Inner, self.rtl);
 
-    self.nodes = vec![TreeNode::new(root, None)];
-    self.placements = Vec::new();
+    self.nodes = Vec::with_capacity(children.len() + 1);
+    self.nodes.push(TreeNode::new(root, None));
+    self.nodes[0].children.reserve(children.len());
+    self.placements = Vec::with_capacity(children.len());
+    self.stale = true;
+    self.laid = None;
+
+    let column = self.kind == LayoutKind::Column;
+    let fraction = |value: Option<Dimension>| matches!(value, Some(Dimension::Fraction(_)));
+    let fraction_tracks = |tracks: &Option<Tracks>| {
+      tracks.as_ref().is_some_and(|tracks| {
+        tracks
+          .0
+          .iter()
+          .any(|track| matches!(track, GridTrack::Fraction(_)))
+      })
+    };
+
+    self.height_free = !fraction_tracks(&self.own.rows)
+      && !fraction_tracks(&self.own.implicit_rows)
+      && children.iter().all(|(_, placement)| {
+        !fraction(placement.height)
+          && !fraction(placement.min_height)
+          && !fraction(placement.max_height)
+          && !(column && fraction(placement.flexibility.map(|flexibility| flexibility.initial)))
+      });
 
     for (child, placement) in children {
-      let style = taffy_style(
+      let style = shared_style(
         self.kind,
         &placement,
         Some(self.kind),
@@ -295,44 +390,56 @@ impl<H: LayoutHost> ContainerLayout<H> {
     }
   }
 
-  /// Writes each toolkit child's minimum into its style where its layout sets none, and
-  /// takes a hidden child out: a widget cannot be drawn below its toolkit minimum, where
-  /// CSS would let a stretch go below.
+  /// Where what was measured is stale: forgets it, writes each toolkit child's minimum into
+  /// its style where its layout sets none, and takes a hidden child out (a widget cannot be
+  /// drawn below its toolkit minimum, where CSS would let a stretch go below).
   fn refresh(&mut self) {
+    if !std::mem::replace(&mut self.stale, false) {
+      return;
+    }
+
+    self.laid = None;
+
     for node in &mut self.nodes {
       node.cache.clear();
 
       let Some(child) = &node.child else {
         continue;
       };
-
-      node.style = node.base.clone();
+      // Only what is written below departs from the base.
+      let mut display = node.base_display;
+      let mut min_size = node.base_min_size;
 
       if !H::is_visible(child) {
-        node.style.display = Display::None;
+        display = Display::None;
+      } else if !H::is_container(child) && H::text(child).is_none() {
+        let auto = ts::LengthPercentageAuto::AUTO;
 
-        continue;
+        if min_size.width == auto {
+          min_size.width =
+            length(H::measure(child, Axis::Horizontal, None, Needed::Minimum).minimum);
+        }
+
+        if min_size.height == auto && H::constant_height(child) {
+          min_size.height =
+            length(H::measure(child, Axis::Vertical, None, Needed::Minimum).minimum);
+        }
       }
 
-      if H::is_container(child) || H::text(child).is_some() {
-        continue;
-      }
+      if node.style.display != display || node.style.min_size != min_size {
+        let style = Rc::make_mut(&mut node.style);
 
-      let auto = ts::LengthPercentageAuto::AUTO;
-
-      if node.base.min_size.width == auto {
-        node.style.min_size.width = length(H::measure(child, Axis::Horizontal, None).minimum);
-      }
-
-      if node.base.min_size.height == auto && H::constant_height(child) {
-        node.style.min_size.height = length(H::measure(child, Axis::Vertical, None).minimum);
+        style.display = display;
+        style.min_size = min_size;
       }
     }
   }
 
   /// The container's measurement along `axis`, given the other axis's size where known: a
-  /// toolkit's measure hook calls it.
-  pub fn measure(&mut self, axis: Axis, for_size: Option<f32>) -> Measurement {
+  /// toolkit's measure hook calls it, for the sizes `needed` names. Measured together, the
+  /// natural width is never below the minimum and the minimum height never above the
+  /// natural.
+  pub fn measure(&mut self, axis: Axis, for_size: Option<f32>, needed: Needed) -> Measurement {
     self.refresh();
 
     let space =
@@ -344,18 +451,29 @@ impl<H: LayoutHost> ContainerLayout<H> {
           width: None,
           height: for_size,
         };
-        let minimum = self
-          .size(known, AvailableSpace::MinContent, space(for_size), false)
-          .size
-          .width;
-        let natural = self
-          .size(known, AvailableSpace::MaxContent, space(for_size), false)
-          .size
-          .width;
+        let mut measure = |width| {
+          self
+            .size(
+              known,
+              width,
+              space(for_size),
+              false,
+              RequestedAxis::Horizontal,
+            )
+            .size
+            .width
+            .ceil()
+        };
+        let minimum = needed
+          .minimum()
+          .then(|| measure(AvailableSpace::MinContent));
+        let natural = needed
+          .natural()
+          .then(|| measure(AvailableSpace::MaxContent));
 
         Measurement {
-          minimum: minimum.ceil(),
-          natural: natural.ceil().max(minimum.ceil()),
+          minimum: minimum.unwrap_or_default(),
+          natural: natural.map_or(0., |natural| natural.max(minimum.unwrap_or(natural))),
           baseline: None,
         }
       }
@@ -364,18 +482,40 @@ impl<H: LayoutHost> ContainerLayout<H> {
           width: for_size,
           height: None,
         };
-        let minimum = self
-          .size(known, space(for_size), AvailableSpace::MinContent, false)
-          .size
-          .height
-          .ceil();
-        let output = self.size(known, space(for_size), AvailableSpace::MaxContent, true);
-        let natural = output.size.height.ceil();
+        let minimum = needed.minimum().then(|| {
+          self
+            .size(
+              known,
+              space(for_size),
+              AvailableSpace::MinContent,
+              false,
+              RequestedAxis::Vertical,
+            )
+            .size
+            .height
+            .ceil()
+        });
+        let natural = needed.natural().then(|| {
+          let output = self.size(
+            known,
+            space(for_size),
+            AvailableSpace::MaxContent,
+            true,
+            RequestedAxis::Both,
+          );
+
+          // The children stay laid out as at this width and this height until the next layout.
+          self.laid = for_size.map(|width| (width, output.size.height));
+
+          output
+        });
 
         Measurement {
-          minimum: minimum.min(natural),
-          natural,
-          baseline: output.baselines.first,
+          minimum: minimum.map_or(0., |minimum| {
+            natural.map_or(minimum, |natural| minimum.min(natural.size.height.ceil()))
+          }),
+          natural: natural.map_or(0., |natural| natural.size.height.ceil()),
+          baseline: natural.and_then(|natural| natural.baselines.first),
         }
       }
     }
@@ -387,6 +527,7 @@ impl<H: LayoutHost> ContainerLayout<H> {
     width: AvailableSpace,
     height: AvailableSpace,
     perform: bool,
+    axis: RequestedAxis,
   ) -> LayoutOutput {
     self.compute_child_layout(
       TaffyId::from(0usize),
@@ -397,7 +538,7 @@ impl<H: LayoutHost> ContainerLayout<H> {
           RunMode::ComputeSize
         },
         sizing_mode: SizingMode::InherentSize,
-        axis: RequestedAxis::Both,
+        axis: if perform { RequestedAxis::Both } else { axis },
         known_dimensions: known,
         known_dimensions_are_definite: Size {
           width: true,
@@ -427,32 +568,64 @@ impl<H: LayoutHost> ContainerLayout<H> {
       width: origin.width,
       height: origin.height,
     };
-    let output = self.compute_child_layout(
-      TaffyId::from(0usize),
-      LayoutInput {
-        run_mode: RunMode::PerformLayout,
-        sizing_mode: SizingMode::InherentSize,
-        axis: RequestedAxis::Both,
-        known_dimensions: size.map(Some),
-        known_dimensions_are_definite: Size {
-          width: true,
-          height: true,
+    // A natural height measured at this width laid the children out as this size lays them
+    // out, where none of them depends on the height being definite.
+    let laid_out = self.height_free && self.laid == Some((size.width, size.height));
+
+    #[cfg(debug_assertions)]
+    let kept: Vec<Layout> = self.nodes[1..].iter().map(|node| node.unrounded).collect();
+
+    if !laid_out || cfg!(debug_assertions) {
+      let output = self.compute_child_layout(
+        TaffyId::from(0usize),
+        LayoutInput {
+          run_mode: RunMode::PerformLayout,
+          sizing_mode: SizingMode::InherentSize,
+          axis: RequestedAxis::Both,
+          known_dimensions: size.map(Some),
+          known_dimensions_are_definite: Size {
+            width: true,
+            height: true,
+          },
+          parent_size: size.map(Some),
+          available_space: size.map(AvailableSpace::Definite),
+          vertical_margins_are_collapsible: Line::FALSE,
         },
-        parent_size: size.map(Some),
-        available_space: size.map(AvailableSpace::Definite),
-        vertical_margins_are_collapsible: Line::FALSE,
-      },
-    );
+      );
+
+      debug_assert!(
+        !laid_out || output.size == size,
+        "a container laid out at its natural height keeps it"
+      );
+    }
+
+    #[cfg(debug_assertions)]
+    if laid_out {
+      for (node, kept) in self.nodes[1..].iter().zip(kept) {
+        debug_assert!(
+          node.style.display == Display::None
+            || (node.unrounded.location == kept.location && node.unrounded.size == kept.size),
+          "a child laid out at its container's natural height stays where it was: {:?} against {:?}",
+          node.unrounded,
+          kept
+        );
+      }
+    }
+
+    self.laid = Some((size.width, size.height));
+
     let mut root = Layout::with_order(0);
 
-    root.size = output.size;
+    root.size = size;
     root.location = taffy::Point {
       x: origin.x,
       y: origin.y,
     };
-
     self.nodes[0].unrounded = root;
-    taffy::round_layout(self, TaffyId::from(0usize));
+
+    // Rounded as taffy's `round_layout` rounds: a location where it is, a size as the distance
+    // between its edges rounded in the window.
+    let round = |value: f32| (value + 0.5).floor();
 
     for node in &self.nodes[1..] {
       let Some(child) = &node.child else {
@@ -463,15 +636,19 @@ impl<H: LayoutHost> ContainerLayout<H> {
         continue;
       }
 
-      let (rounded, unrounded) = (node.layout, node.unrounded);
+      let unrounded = node.unrounded;
+      let (left, top) = (
+        origin.x + unrounded.location.x,
+        origin.y + unrounded.location.y,
+      );
 
       H::allocate(
         child,
         Rect {
-          x: rounded.location.x,
-          y: rounded.location.y,
-          width: rounded.size.width,
-          height: rounded.size.height,
+          x: round(unrounded.location.x),
+          y: round(unrounded.location.y),
+          width: round(left + unrounded.size.width) - round(left),
+          height: round(top + unrounded.size.height) - round(top),
         },
         Rect {
           x: origin.x + unrounded.location.x,
@@ -519,6 +696,7 @@ impl<H: LayoutHost> ContainerLayout<H> {
           child,
           Axis::Vertical,
           Some(first.unrounded.size.width.round()),
+          Needed::Natural,
         )
         .baseline
       }
@@ -529,17 +707,65 @@ impl<H: LayoutHost> ContainerLayout<H> {
 }
 
 impl<C> TreeNode<C> {
-  fn new(style: Style, child: Option<C>) -> Self {
+  fn new(style: Rc<Style>, child: Option<C>) -> Self {
     Self {
-      base: style.clone(),
+      base_display: style.display,
+      base_min_size: style.min_size,
       style,
       children: Vec::new(),
       child,
       cache: Cache::new(),
       unrounded: Layout::with_order(0),
-      layout: Layout::with_order(0),
     }
   }
+}
+
+/// What a style is made of: a node's kind, its layout, its parent's kind where it is a child,
+/// which part of it a tree holds, and the direction.
+type StyleKey = (LayoutKind, ResolvedLayout, Option<LayoutKind>, Part, bool);
+
+thread_local! {
+  /// The styles made last, the most recent first: a list's rows share theirs.
+  static STYLES: RefCell<Vec<(StyleKey, Rc<Style>)>> = const { RefCell::new(Vec::new()) };
+}
+
+/// How many styles [`shared_style`] keeps.
+const STYLES_KEPT: usize = 16;
+
+/// [`taffy_style`], shared with every node whose style is made of the same: one kept among
+/// the [`STYLES_KEPT`] made last.
+fn shared_style(
+  kind: LayoutKind,
+  layout: &ResolvedLayout,
+  parent: Option<LayoutKind>,
+  part: Part,
+  rtl: bool,
+) -> Rc<Style> {
+  STYLES.with(|styles| {
+    let mut styles = styles.borrow_mut();
+    let found = styles.iter().position(|((k, l, p, t, r), _)| {
+      *k == kind && *p == parent && *t == part && *r == rtl && l == layout
+    });
+
+    if let Some(at) = found {
+      let entry = styles.remove(at);
+      let style = Rc::clone(&entry.1);
+
+      styles.insert(0, entry);
+
+      return style;
+    }
+
+    let style = Rc::new(taffy_style(kind, layout, parent, part, rtl));
+
+    styles.truncate(STYLES_KEPT - 1);
+    styles.insert(
+      0,
+      ((kind, layout.clone(), parent, part, rtl), Rc::clone(&style)),
+    );
+
+    style
+  })
 }
 
 /// Which part of a node's layout a tree holds.
@@ -837,13 +1063,27 @@ impl<H: LayoutHost> LayoutPartialTree for ContainerLayout<H> {
       }
 
       if let Some(child) = tree.nodes[index].child.clone() {
+        let width_alone =
+          inputs.run_mode == RunMode::ComputeSize && inputs.axis == RequestedAxis::Horizontal;
+
         if let Some(text) = H::text(&child) {
           let mut baseline = None;
           let mut output = taffy::compute_leaf_layout(
             inputs,
-            &tree.nodes[index].style,
+            &*tree.nodes[index].style,
             |_, _| 0.,
             |known, available| {
+              if width_alone {
+                let width = known
+                  .width
+                  .unwrap_or_else(|| text.measure_width(space(available.width)));
+
+                return Size {
+                  width,
+                  height: known.height.unwrap_or_default(),
+                };
+              }
+
               let measured = text.measure(
                 (known.width, known.height),
                 (space(available.width), space(available.height)),
@@ -866,10 +1106,15 @@ impl<H: LayoutHost> LayoutPartialTree for ContainerLayout<H> {
         let mut baseline = None;
         let mut output = taffy::compute_leaf_layout(
           inputs,
-          &tree.nodes[index].style,
+          &*tree.nodes[index].style,
           |_, _| 0.,
           |known, available| {
-            let (size, first) = measure_leaf::<H>(&child, known, available);
+            // A layout pass hands the sizes it knows as definite space alone.
+            let known = match inputs.run_mode {
+              RunMode::PerformLayout => inputs.known_dimensions,
+              _ => known,
+            };
+            let (size, first) = measure_leaf::<H>(&child, known, available, inputs);
 
             baseline = first;
             size
@@ -911,15 +1156,25 @@ const fn space(available: AvailableSpace) -> Space {
 /// A leaf measured as taffy asks, mapped onto the toolkit's protocol: min-content is the
 /// minimum, max-content the natural size, fit-content the natural size clamped to the space
 /// but never below the minimum, a height for a width the vertical measure for that width.
+///
+/// Only what `inputs` asks for is measured: a width alone where taffy asks for the width
+/// alone, and a baseline in a layout pass alone.
 fn measure_leaf<H: LayoutHost>(
   child: &H::Child,
   known: Size<Option<f32>>,
   available: Size<AvailableSpace>,
+  inputs: LayoutInput,
 ) -> (Size<f32>, Option<f32>) {
+  let perform = inputs.run_mode == RunMode::PerformLayout;
   let width = match known.width {
     Some(width) => width,
     None => {
-      let measured = H::measure(child, Axis::Horizontal, known.height.map(f32::round));
+      let measured = H::measure(
+        child,
+        Axis::Horizontal,
+        known.height.map(f32::round),
+        Needed::of(available.width),
+      );
 
       match available.width {
         AvailableSpace::MinContent => measured.minimum,
@@ -928,14 +1183,56 @@ fn measure_leaf<H: LayoutHost>(
       }
     }
   };
-  let vertical = H::measure(child, Axis::Vertical, Some(width.round()));
-  let height = match (known.height, available.height) {
-    (Some(height), _) => height,
-    (None, AvailableSpace::MinContent) => vertical.minimum,
-    (None, _) => vertical.natural,
-  };
 
-  (Size { width, height }, vertical.baseline)
+  if !perform && inputs.axis == RequestedAxis::Horizontal {
+    return (
+      Size {
+        width,
+        height: known.height.unwrap_or_default(),
+      },
+      None,
+    );
+  }
+
+  let vertical = |needed| H::measure(child, Axis::Vertical, Some(width.round()), needed);
+
+  match (known.height, available.height) {
+    (Some(height), _) => {
+      let baseline = if perform {
+        vertical(Needed::Natural).baseline
+      } else {
+        None
+      };
+
+      (Size { width, height }, baseline)
+    }
+    (None, AvailableSpace::MinContent) => {
+      let measured = vertical(if perform {
+        Needed::Both
+      } else {
+        Needed::Minimum
+      });
+
+      (
+        Size {
+          width,
+          height: measured.minimum,
+        },
+        measured.baseline,
+      )
+    }
+    (None, _) => {
+      let measured = vertical(Needed::Natural);
+
+      (
+        Size {
+          width,
+          height: measured.natural,
+        },
+        measured.baseline,
+      )
+    }
+  }
 }
 
 impl<H: LayoutHost> CacheTree for ContainerLayout<H> {
@@ -978,19 +1275,12 @@ impl<H: LayoutHost> taffy::LayoutGridContainer for ContainerLayout<H> {
   }
 }
 
-impl<H: LayoutHost> RoundTree for ContainerLayout<H> {
-  fn get_unrounded_layout(&self, node: TaffyId) -> Layout {
-    self.nodes[usize::from(node)].unrounded
-  }
-
-  fn set_final_layout(&mut self, node: TaffyId, layout: &Layout) {
-    self.nodes[usize::from(node)].layout = *layout;
-  }
-}
-
 #[cfg(test)]
 mod tests {
-  use std::{cell::Cell, rc::Rc};
+  use std::{
+    cell::{Cell, RefCell},
+    rc::Rc,
+  };
 
   use super::*;
   use crate::value::Flexibility;
@@ -1003,6 +1293,7 @@ mod tests {
     height: f32,
     baseline: Option<f32>,
     placed: Rc<Cell<Option<Rect>>>,
+    asked: Rc<RefCell<Vec<(Axis, Needed)>>>,
   }
 
   impl Leaf {
@@ -1013,6 +1304,7 @@ mod tests {
         height,
         baseline: None,
         placed: Rc::new(Cell::new(None)),
+        asked: Rc::new(RefCell::new(Vec::new())),
       }
     }
 
@@ -1020,6 +1312,11 @@ mod tests {
       self.baseline = Some(baseline);
 
       self
+    }
+
+    /// What it was asked since the last call, forgetting it.
+    fn asked(&self) -> Vec<(Axis, Needed)> {
+      std::mem::take(&mut self.asked.borrow_mut())
     }
 
     fn at(&self) -> (f32, f32, f32, f32) {
@@ -1035,7 +1332,9 @@ mod tests {
   impl LayoutHost for Fixed {
     type Child = Leaf;
 
-    fn measure(child: &Leaf, axis: Axis, _: Option<f32>) -> Measurement {
+    fn measure(child: &Leaf, axis: Axis, _: Option<f32>, needed: Needed) -> Measurement {
+      child.asked.borrow_mut().push((axis, needed));
+
       match axis {
         Axis::Horizontal => Measurement {
           minimum: child.minimum,
@@ -1094,11 +1393,109 @@ mod tests {
       ],
     );
 
-    assert_eq!(layout.measure(Axis::Horizontal, None).natural, 106.);
-    assert_eq!(layout.measure(Axis::Vertical, Some(106.)).natural, 56.);
+    assert_eq!(
+      layout
+        .measure(Axis::Horizontal, None, Needed::Natural)
+        .natural,
+      106.
+    );
+    assert_eq!(
+      layout
+        .measure(Axis::Vertical, Some(106.), Needed::Natural)
+        .natural,
+      56.
+    );
     layout.allocate((200., 100.), None);
     assert_eq!(a.at(), (8., 8., 50., 20.));
     assert_eq!(b.at(), (68., 8., 30., 40.));
+  }
+
+  #[test]
+  fn a_measure_asks_each_child_for_what_it_needs_alone() {
+    let (a, b) = (Leaf::new(30., 50., 20.), Leaf::new(10., 40., 20.));
+    let mut layout = ContainerLayout::<Shrinking>::new(LayoutKind::Row, padded(10.));
+
+    layout.set_children(vec![
+      (a.clone(), ResolvedLayout::default()),
+      (b.clone(), ResolvedLayout::default()),
+    ]);
+
+    let minimum = layout.measure(Axis::Horizontal, None, Needed::Minimum);
+
+    assert_eq!(minimum.minimum, 8. + 30. + 10. + 10. + 8.);
+    // The toolkit's floor, then the minimum the row's own minimum takes: no natural size and
+    // no height.
+    assert!(
+      a.asked()
+        .iter()
+        .all(|asked| *asked == (Axis::Horizontal, Needed::Minimum))
+    );
+
+    let natural = layout.measure(Axis::Horizontal, None, Needed::Natural);
+
+    assert_eq!(natural.natural, 8. + 50. + 10. + 40. + 8.);
+    // A row's width is its main size: the children's heights are never laid out for it.
+    assert!(b.asked().iter().all(|(axis, _)| *axis == Axis::Horizontal));
+  }
+
+  #[test]
+  fn what_a_container_measured_is_kept_until_it_is_invalidated() {
+    let leaf = Leaf::new(30., 50., 20.);
+    let mut layout = row(padded(10.), &[(leaf.clone(), ResolvedLayout::default())]);
+
+    let first = layout.measure(Axis::Vertical, Some(66.), Needed::Natural);
+
+    assert!(!leaf.asked().is_empty());
+    assert_eq!(
+      layout.measure(Axis::Vertical, Some(66.), Needed::Natural),
+      first
+    );
+    assert!(leaf.asked().is_empty());
+    layout.invalidate();
+    assert_eq!(
+      layout.measure(Axis::Vertical, Some(66.), Needed::Natural),
+      first
+    );
+    assert!(!leaf.asked().is_empty());
+  }
+
+  #[test]
+  fn a_natural_height_lays_the_children_out_as_allocating_it_does() {
+    // Debug builds lay the children out again on allocate and compare: the reuse is checked.
+    let (a, b) = (Leaf::new(50., 50., 20.), Leaf::new(30., 30., 40.));
+    let mut layout = row(
+      padded(10.),
+      &[
+        (a.clone(), ResolvedLayout::default()),
+        (b.clone(), ResolvedLayout::default()),
+      ],
+    );
+    let height = layout
+      .measure(Axis::Vertical, Some(200.), Needed::Natural)
+      .natural;
+
+    layout.allocate((200., height), None);
+    assert_eq!(a.at(), (8., 8., 50., 20.));
+    assert_eq!(b.at(), (68., 8., 30., 40.));
+
+    // A child sized by a fraction of the height is laid out again at the height allocated.
+    let half = Leaf::new(10., 10., 10.);
+    let mut row = ContainerLayout::<Shrinking>::new(LayoutKind::Row, ResolvedLayout::default());
+
+    row.set_children(vec![(
+      half.clone(),
+      ResolvedLayout {
+        height: Some(Dimension::Fraction(0.5)),
+        ..ResolvedLayout::default()
+      },
+    )]);
+
+    let height = row
+      .measure(Axis::Vertical, Some(100.), Needed::Natural)
+      .natural;
+
+    row.allocate((100., height), None);
+    assert_eq!((height, half.at().3), (10., 5.));
   }
 
   #[test]
@@ -1113,7 +1510,12 @@ mod tests {
     );
 
     boxed.set_children(vec![(text.clone(), ResolvedLayout::default())]);
-    assert_eq!(boxed.measure(Axis::Vertical, Some(40.)).baseline, Some(41.));
+    assert_eq!(
+      boxed
+        .measure(Axis::Vertical, Some(40.), Needed::Natural)
+        .baseline,
+      Some(41.)
+    );
 
     let mut grid = ContainerLayout::<Fixed>::new(LayoutKind::Grid, ResolvedLayout::default());
 
@@ -1121,7 +1523,12 @@ mod tests {
       (text, ResolvedLayout::default()),
       (Leaf::new(20., 20., 50.), ResolvedLayout::default()),
     ]);
-    assert_eq!(grid.measure(Axis::Vertical, Some(60.)).baseline, Some(31.));
+    assert_eq!(
+      grid
+        .measure(Axis::Vertical, Some(60.), Needed::Natural)
+        .baseline,
+      Some(31.)
+    );
   }
 
   #[test]
@@ -1240,7 +1647,7 @@ mod tests {
       ),
     ]);
 
-    let measured = column.measure(Axis::Vertical, Some(100.));
+    let measured = column.measure(Axis::Vertical, Some(100.), Needed::Both);
 
     assert_eq!((measured.minimum, measured.natural), (40. + 46., 640.));
     column.allocate((100., 300.), None);
@@ -1253,14 +1660,18 @@ mod tests {
   impl LayoutHost for Shrinking {
     type Child = Leaf;
 
-    fn measure(child: &Leaf, axis: Axis, for_size: Option<f32>) -> Measurement {
+    fn measure(child: &Leaf, axis: Axis, for_size: Option<f32>, needed: Needed) -> Measurement {
       match axis {
-        Axis::Horizontal => Fixed::measure(child, axis, for_size),
-        Axis::Vertical => Measurement {
-          minimum: child.height.min(46.),
-          natural: child.height,
-          baseline: None,
-        },
+        Axis::Horizontal => Fixed::measure(child, axis, for_size, needed),
+        Axis::Vertical => {
+          child.asked.borrow_mut().push((axis, needed));
+
+          Measurement {
+            minimum: child.height.min(46.),
+            natural: child.height,
+            baseline: None,
+          }
+        }
       }
     }
 

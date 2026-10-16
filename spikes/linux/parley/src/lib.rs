@@ -16,6 +16,9 @@
 //!   renderer composites ([`render::MaskPainter`]); vello's outlines are the floor
 //!   ([`render::paint_outlines`]).
 //!
+//! A batch of paragraphs shapes on threads beside the engine's own, each over contexts of its
+//! own on the engine's fonts ([`shaping::Shapers`]).
+//!
 //! The terminal's engine is the same over a typeface of cells and no system font
 //! ([`ParleyEngine::with_typefaces`]).
 
@@ -23,6 +26,7 @@ mod engine;
 #[cfg(target_os = "linux")]
 pub mod linux;
 pub mod render;
+pub mod shaping;
 
 pub use self::engine::{
   GlyphRun, Mark, PaintRuns, ParleyEngine, ParleyLaid, ParleyParagraph, PositionedGlyph, Typeface,

@@ -300,6 +300,8 @@ pub fn start(app_id: &str, root: Box<dyn FnOnce() -> NodeId>) -> ExitCode {
   }
 
   environment::apply();
+  // The threads that shape text beside this one ready their fonts while the app is built.
+  text::engine().start_shapers();
 
   let mut shell = shell::Shell::new(&title, size.0, size.1);
   let owner = Owner::root();

@@ -60,11 +60,31 @@ impl TextCell {
   /// Shows `text` in `style`: the paragraph rebuilt where its content or a metric changed,
   /// repainted where only its paint changed.
   pub fn set(&self, text: AttributedText, style: ParagraphStyle) -> Change {
+    match self.update(text, style) {
+      Ok(change) => change,
+      Err((text, style)) => {
+        let paragraph = engine().paragraph(&text, &style);
+
+        self.install(text, style, paragraph);
+
+        Change::Layout
+      }
+    }
+  }
+
+  /// Shows `text` in `style` where no paragraph needs making for it (the same, or repainted):
+  /// what changed; else `text` and `style` back, to be shown through
+  /// [`TextCell::install`] once a paragraph is made of them.
+  pub fn update(
+    &self,
+    text: AttributedText,
+    style: ParagraphStyle,
+  ) -> Result<Change, (AttributedText, ParagraphStyle)> {
     let mut source = self.source.borrow_mut();
 
     if let Some((old, old_style)) = source.as_ref() {
       if *old == text && *old_style == style {
-        return Change::None;
+        return Ok(Change::None);
       }
 
       let reshapes = old.value() != text.value()
@@ -88,12 +108,16 @@ impl TextCell {
         if repainted {
           *source = Some((text, style));
 
-          return Change::Paint;
+          return Ok(Change::Paint);
         }
       }
     }
 
-    let paragraph = engine().paragraph(&text, &style);
+    Err((text, style))
+  }
+
+  /// Shows `text` in `style` as `paragraph`, made of them: a change of its layout.
+  pub fn install(&self, text: AttributedText, style: ParagraphStyle, paragraph: ParleyParagraph) {
     let mut leaf = self.leaf.borrow_mut();
 
     match leaf.as_mut() {
@@ -101,9 +125,7 @@ impl TextCell {
       None => *leaf = Some(TextLeaf::new(paragraph)),
     }
 
-    *source = Some((text, style));
-
-    Change::Layout
+    *self.source.borrow_mut() = Some((text, style));
   }
 
   /// Sets the destinations of the link runs, by byte range.
@@ -203,6 +225,23 @@ impl TextCell {
   }
 }
 
+impl TextCell {
+  /// `width`, the leaf's width in `available`, widened to the width it reserves.
+  fn reserving(&self, width: f32, available: Space) -> f32 {
+    let reserved = self.reserved_width();
+
+    if reserved <= 0. {
+      return width;
+    }
+
+    match available {
+      Space::MaxContent => width.max(reserved),
+      Space::Definite(space) => width.max(reserved.min(space)),
+      Space::MinContent => width,
+    }
+  }
+}
+
 impl MeasureText for TextCell {
   fn measure(&self, known: (Option<f32>, Option<f32>), available: (Space, Space)) -> LeafMeasure {
     let mut measured = self
@@ -211,17 +250,22 @@ impl MeasureText for TextCell {
       .as_ref()
       .map(|leaf| leaf.measure(known, available))
       .unwrap_or_default();
-    let reserved = self.reserved_width();
 
-    if reserved > 0. && known.0.is_none() {
-      measured.width = match available.0 {
-        Space::MaxContent => measured.width.max(reserved),
-        Space::Definite(width) => measured.width.max(reserved.min(width)),
-        Space::MinContent => measured.width,
-      };
+    if known.0.is_none() {
+      measured.width = self.reserving(measured.width, available.0);
     }
 
     measured
+  }
+
+  fn measure_width(&self, available: Space) -> f32 {
+    let width = self
+      .leaf
+      .borrow()
+      .as_ref()
+      .map_or(0., |leaf| leaf.measure_width(available));
+
+    self.reserving(width, available)
   }
 }
 

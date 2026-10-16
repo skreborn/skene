@@ -37,6 +37,14 @@ pub struct LeafMeasure {
 pub trait MeasureText {
   /// The leaf's size given what is known of it and the space it has.
   fn measure(&self, known: (Option<f32>, Option<f32>), available: (Space, Space)) -> LeafMeasure;
+
+  /// The leaf's width alone in the space `available` along its width: the width
+  /// [`MeasureText::measure`] gives there, its height not asked for.
+  fn measure_width(&self, available: Space) -> f32 {
+    self
+      .measure((None, None), (available, Space::MaxContent))
+      .width
+  }
 }
 
 /// The most layouts a leaf keeps, by width.
@@ -135,7 +143,6 @@ impl<P: Paragraph> TextLeaf<P> {
     }
 
     let laid = self.paragraph.layout(key.map(f32::from_bits));
-
     self.layouts.set(self.layouts.get() + 1);
     kept.truncate(KEPT - 1);
     kept.insert(0, (key, laid.clone()));
@@ -145,6 +152,14 @@ impl<P: Paragraph> TextLeaf<P> {
 }
 
 impl<P: Paragraph> MeasureText for TextLeaf<P> {
+  fn measure_width(&self, available: Space) -> f32 {
+    match available {
+      Space::MinContent => self.intrinsic().min,
+      Space::MaxContent => self.intrinsic().max,
+      Space::Definite(width) => self.laid(Some(width)).size().width,
+    }
+  }
+
   fn measure(&self, known: (Option<f32>, Option<f32>), available: (Space, Space)) -> LeafMeasure {
     let intrinsic = self.intrinsic();
     let within = match (known.0, available.0) {
@@ -177,7 +192,7 @@ mod tests {
 
   use super::{LeafMeasure, MeasureText, Space, TextLeaf};
   use crate::{
-    layout::{Axis, ContainerLayout, LayoutHost, Measurement, Rect, ResolvedLayout},
+    layout::{Axis, ContainerLayout, LayoutHost, Measurement, Needed, Rect, ResolvedLayout},
     seam::node::LayoutKind,
     text::{
       AttributedText, ParagraphStyle, RunStyle, TextEngine,
@@ -291,7 +306,7 @@ mod tests {
   impl LayoutHost for Texts {
     type Child = Child;
 
-    fn measure(_: &Child, _: Axis, _: Option<f32>) -> Measurement {
+    fn measure(_: &Child, _: Axis, _: Option<f32>, _: Needed) -> Measurement {
       unreachable!("a text leaf is measured through its engine")
     }
 
@@ -332,7 +347,7 @@ mod tests {
       (b.clone(), ResolvedLayout::default()),
     ]);
 
-    let natural = row.measure(Axis::Horizontal, None);
+    let natural = row.measure(Axis::Horizontal, None, Needed::Both);
 
     assert_eq!((natural.minimum, natural.natural), (100., 210.));
 
@@ -358,7 +373,7 @@ mod tests {
 
     boxed.set_children(vec![(text, ResolvedLayout::default())]);
 
-    let measured = boxed.measure(Axis::Vertical, Some(100.));
+    let measured = boxed.measure(Axis::Vertical, Some(100.), Needed::Natural);
 
     assert_eq!((measured.natural, measured.baseline), (50., Some(25.)));
   }

@@ -3,12 +3,51 @@
 use skene_foundation::{
   Color,
   text::{
-    Intrinsic, Laid as _, LeafMeasure, MeasureText as _, PaintStyle, Paragraph as _,
-    ParagraphStyle, Space, TextLeaf,
+    AttributedText, Intrinsic, Laid as _, LeafMeasure, MeasureText as _, PaintStyle,
+    Paragraph as _, ParagraphStyle, RunStyle, Space, TextEngine as _, TextLeaf,
   },
 };
+use skene_parley::{ParleyEngine, shaping::PARALLEL};
 
-use crate::{laid, paragraph};
+use crate::{SIZE, laid, paragraph};
+
+#[test]
+fn a_batch_shapes_as_its_paragraphs_shape_one_at_a_time() {
+  let engine = ParleyEngine::system();
+  let texts: Vec<(AttributedText, ParagraphStyle)> = (0..PARALLEL * 2)
+    .map(|index| {
+      (
+        AttributedText::plain(
+          format!("Item number {index}, a row of the list"),
+          RunStyle::new(SIZE),
+        ),
+        ParagraphStyle::default(),
+      )
+    })
+    .collect();
+  let batch = engine.paragraphs(&texts);
+
+  assert_eq!(batch.len(), texts.len());
+
+  for ((text, style), shaped) in texts.iter().zip(&batch) {
+    let alone = engine.paragraph(text, style);
+
+    assert_eq!(shaped.text(), text.value());
+    assert_eq!(shaped.intrinsic(), alone.intrinsic());
+
+    for width in [None, Some(60.)] {
+      let (together, apart) = (shaped.layout(width), alone.layout(width));
+
+      assert_eq!(
+        together.size(),
+        apart.size(),
+        "{} at {width:?}",
+        text.value()
+      );
+      assert_eq!(together.line_count(), apart.line_count());
+    }
+  }
+}
 
 #[test]
 fn a_layout_is_immutable_and_independent_of_later_ones() {

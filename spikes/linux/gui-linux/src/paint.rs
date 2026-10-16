@@ -1057,9 +1057,9 @@ fn paint_children(
   region: Rect,
   marks: &Marks,
 ) {
-  for child in node.children() {
+  for child in node.children_ref().iter() {
     if !child.is_overlay() {
-      paint_node(&child, canvas, origin, region, marks);
+      paint_node(child, canvas, origin, region, marks);
     }
   }
 }

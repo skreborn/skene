@@ -3,13 +3,13 @@
 //! text, its content values, where it was laid out).
 
 use std::{
-  cell::{Cell, RefCell},
+  cell::{Cell, Ref, RefCell},
   rc::{Rc, Weak},
 };
 
 use skene_foundation::{
   Color, NodeId, StateSet,
-  layout::{Axis, ContainerLayout, Measurement, Rect, ResolvedLayout},
+  layout::{Axis, ContainerLayout, Measurement, Needed, Rect, ResolvedLayout},
   seam::{
     access::AccessFacts,
     content::{Content, Edit, OverlayPlacement, PropValue, Run},
@@ -104,9 +104,27 @@ impl Contents {
 /// A realized node, shared.
 pub type Node = Rc<Drawn>;
 
-/// A node's measurements and the layout epoch they were made in: each along an axis, given
-/// the other axis's size (its bits) where known.
-pub type Measures = (u64, Vec<(Axis, Option<u32>, Measurement)>);
+/// A node's measurements in one layout epoch.
+#[derive(Default)]
+pub struct Measures {
+  /// The epoch they were made in.
+  pub epoch: u64,
+  /// Each along an axis, given the other axis's size (its bits) where known, with which of
+  /// its sizes it holds.
+  pub kept: Vec<(Axis, Option<u32>, Measurement, Needed)>,
+  /// Which of its sizes do not depend on the other axis, where found.
+  pub rigid: Option<Rigid>,
+}
+
+/// Which of a node's sizes do not depend on the other axis's: what a measure need not ask
+/// again.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct Rigid {
+  /// Its least height at a width is its natural height at that width.
+  pub height: bool,
+  /// Its widths do not depend on a height it is given.
+  pub width: bool,
+}
 
 /// What the realization keeps per node.
 pub struct Drawn {
@@ -190,7 +208,7 @@ impl Drawn {
       scroll: Cell::new((0., 0.)),
       extent: Cell::new((0., 0.)),
       access: RefCell::new(AccessFacts::default()),
-      measures: RefCell::new((0, Vec::new())),
+      measures: RefCell::new(Measures::default()),
       reported: Cell::new(None),
       engine_epoch: Cell::new(0),
       reach: Cell::new(Rect::default()),
@@ -241,6 +259,12 @@ impl Drawn {
   /// Its children, in order.
   pub fn children(&self) -> Vec<Node> {
     self.children.borrow().clone()
+  }
+
+  /// Its children, in order, borrowed: a walk that changes no node's children reads them
+  /// without copying the list.
+  pub fn children_ref(&self) -> Ref<'_, [Node]> {
+    Ref::map(self.children.borrow(), Vec::as_slice)
   }
 
   /// How many children it has.

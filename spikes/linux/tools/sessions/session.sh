@@ -9,7 +9,8 @@
 #
 #   dbus-run-session -- tools/sessions/session.sh <kind> <command...>
 #
-# OUT names the log directory. APP=none starts no app. MONITOR sets the virtual monitor's size
+# OUT names the log directory. APP=none starts no app; APP_DELAY waits that many seconds before
+# starting it, the session settled. MONITOR sets the virtual monitor's size
 # (mutter), SCALE the output's scale (sway), SWAY_FLOAT=1 floats the app's window (sway). Display numbers are 400-699, sockets unique.
 set -u
 here=$(cd "$(dirname "$0")" && pwd)
@@ -108,13 +109,16 @@ if [ -n "${BEFORE:-}" ]; then
   sleep 0.3
 fi
 if [ "${APP:-none}" != none ]; then
+  sleep "${APP_DELAY:-0}"
   # shellcheck disable=SC2086
+  A0=$(date +%s%N)
   "$APP" ${APP_ARGS:-} >"$OUT/app.log" 2>&1 &
   APP_PID=$!
   PIDS+=($APP_PID)
   export APP_PID
   for _ in $(seq 500); do grep -q "^\[frame\]" "$OUT/app.log" 2>/dev/null && break; sleep 0.01; done
   echo "TIMING $KIND first frame $(ms) ms"
+  echo "TIMING $KIND app start to first frame $(( ($(date +%s%N) - A0) / 1000000 )) ms"
   if [ "$KIND" = sway ]; then
     # sway places the window after its first frame: the driver aims once it is there.
     for _ in $(seq 300); do grep -q "^\[wayland\] configure .*ACTIVATED" "$OUT/app.log" 2>/dev/null && break; sleep 0.01; done

@@ -22,6 +22,15 @@ pub trait TextEngine {
 
   /// `text` as a paragraph styled by `style`: shaped once, laid out at any width after.
   fn paragraph(&self, text: &AttributedText, style: &ParagraphStyle) -> Self::Paragraph;
+
+  /// Each of `texts` as a paragraph styled by its style, in order: what
+  /// [`TextEngine::paragraph`] makes of each, an engine free to make them together.
+  fn paragraphs(&self, texts: &[(AttributedText, ParagraphStyle)]) -> Vec<Self::Paragraph> {
+    texts
+      .iter()
+      .map(|(text, style)| self.paragraph(text, style))
+      .collect()
+  }
 }
 
 /// A paragraph: text shaped once, measured and laid out at widths.

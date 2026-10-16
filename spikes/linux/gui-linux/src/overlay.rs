@@ -14,7 +14,7 @@ use std::{
 
 use skene_foundation::{
   Color,
-  layout::{Axis, LayoutHost as _, Rect},
+  layout::{Axis, LayoutHost as _, Needed, Rect},
   seam::content::Side,
 };
 
@@ -109,7 +109,7 @@ impl Open {
 
     layout::next_epoch();
 
-    let natural = Host::measure(node, Axis::Horizontal, None).natural;
+    let natural = Host::measure(node, Axis::Horizontal, None, Needed::Natural).natural;
     let width = if widen {
       natural.max(anchor.width)
     } else {
@@ -117,7 +117,7 @@ impl Open {
     }
     .ceil()
     .max(1.);
-    let height = Host::measure(node, Axis::Vertical, Some(width))
+    let height = Host::measure(node, Axis::Vertical, Some(width), Needed::Natural)
       .natural
       .ceil()
       .max(1.);

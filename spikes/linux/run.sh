@@ -23,7 +23,11 @@
 #   - every scenario of tools/sessions/shell-checks.sh, each in a private session: Xvfb (with
 #     and without a window manager), headless sway, headless mutter, each under its own
 #     dbus-run-session, with a settings-portal stand-in where a scenario asks for one. Nothing
-#     reaches the user's display: DISPLAY and WAYLAND_DISPLAY are unset here.
+#     reaches the user's display: DISPLAY and WAYLAND_DISPLAY are unset here;
+#   - the frame costs, five runs on each of Xvfb, headless sway and headless mutter
+#     (tools/bench/frames.sh): the 1000-row probe's first frame and its parts, start to first
+#     frame, hover, scroll and relayout frames, and hello's first frame, with the rows' first
+#     frame held against its targets (under 50 ms, its layout under 16 ms).
 #
 # Stage CONTROLS (the built-in controls, each a foundation behavior over a composed tree of
 # Skene's views styled by the style model, the picker's list an overlay on a popup surface of
@@ -81,8 +85,8 @@
 # GTK_PROTO names the GTK prototype's directory (../gtk/proto unless set), whose cargo-nextest
 # is borrowed where tools/bin has none and whose numbers are shown beside these.
 # SKIP_CORE=1 skips the platform-text section, SKIP_SHELL=1 the shell's sessions,
-# SKIP_CONTROLS=1 the controls' sessions, SKIP_PAINT=1 the GPU path's section, SKIP_MEASURE=1
-# the measurements.
+# SKIP_FRAMES=1 the frame costs, SKIP_CONTROLS=1 the controls' sessions, SKIP_PAINT=1 the GPU
+# path's section, SKIP_MEASURE=1 the measurements.
 set -euo pipefail
 
 cd "$(dirname "$0")"
@@ -328,6 +332,13 @@ tools/sessions/shell-checks.sh "$CARGO_TARGET_DIR/$triple/debug" "$CARGO_TARGET_
   "$results/shell" | tee "$results/shell-checks.txt" | tee -a "$summary"
 say "shell checks: $(grep -c '\] PASS' "$results/shell-checks.txt" || true) passed, $(grep -c '\] FAIL' "$results/shell-checks.txt" || true) failed"
 measure_target
+fi
+
+if [ "${SKIP_FRAMES:-0}" != 1 ]; then
+say "== the frame costs (tools/bench/frames.sh: five runs a leg)"
+rm -rf "$results/frames"
+tools/bench/frames.sh "$CARGO_TARGET_DIR/$triple/release" "$results/frames" 5 \
+  | tee "$results/frames.txt" | tee -a "$summary"
 fi
 
 if [ "${SKIP_CONTROLS:-0}" != 1 ]; then

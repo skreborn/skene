@@ -30,6 +30,17 @@ pub struct TextIndex {
 impl TextIndex {
   /// The index of `text`.
   pub fn new(text: &str) -> Self {
+    // ASCII's one cluster of two characters is a carriage return and a line feed.
+    if text.is_ascii() && !text.contains("\r\n") {
+      return Self {
+        len: text.len(),
+        ascii: true,
+        chars: Vec::new(),
+        utf16: Vec::new(),
+        graphemes: Vec::new(),
+      };
+    }
+
     let graphemes = text
       .grapheme_indices(true)
       .map(|(start, _)| Self::narrow(start))

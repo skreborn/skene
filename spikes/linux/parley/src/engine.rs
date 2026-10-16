@@ -9,6 +9,7 @@ use std::{
   sync::Arc,
 };
 
+use crate::shaping::{Job, PARALLEL, Shaped, Shapers};
 use parley::{
   Affinity as ParleyAffinity, Alignment, AlignmentOptions, BreakReason, Cursor, FontContext,
   FontData, FontFamily as ParleyFamily, FontFamilyName, FontStyle as ParleySlant, FontWeight,
@@ -40,12 +41,21 @@ pub struct Typeface {
   pub data: &'static [u8],
 }
 
+/// What resolves a run's family per character, where a platform has one.
+#[cfg(target_os = "linux")]
+type Fallback = Option<crate::linux::Fallback>;
+/// What resolves a run's family per character, where a platform has one.
+#[cfg(not(target_os = "linux"))]
+type Fallback = ();
+
 /// The shaping and layout contexts an engine's paragraphs share.
 struct Contexts {
   fonts: FontContext,
   layouts: LayoutContext<()>,
-  #[cfg(target_os = "linux")]
-  fallback: Option<crate::linux::Fallback>,
+  fallback: Fallback,
+  /// The threads shaping a batch beside this one: `None` until a batch asks for them, then
+  /// what started.
+  shapers: Option<Option<Shapers>>,
 }
 
 /// Parley as a [`TextEngine`]: over the system's fonts (and on Linux, Skene's fontconfig
@@ -64,10 +74,17 @@ impl ParleyEngine {
   pub fn system() -> Self {
     Self {
       contexts: Rc::new(RefCell::new(Contexts {
-        fonts: FontContext::new(),
+        // The loaded fonts are shared with the threads that shape beside this one.
+        fonts: FontContext {
+          collection: Collection::new(CollectionOptions::default()),
+          source_cache: SourceCache::new_shared(),
+        },
         layouts: LayoutContext::new(),
         #[cfg(target_os = "linux")]
         fallback: crate::linux::Fallback::load(),
+        #[cfg(not(target_os = "linux"))]
+        fallback: (),
+        shapers: None,
       })),
     }
   }
@@ -95,11 +112,14 @@ impl ParleyEngine {
       contexts: Rc::new(RefCell::new(Contexts {
         fonts: FontContext {
           collection,
-          source_cache: SourceCache::default(),
+          source_cache: SourceCache::new_shared(),
         },
         layouts: LayoutContext::new(),
         #[cfg(target_os = "linux")]
         fallback: None,
+        #[cfg(not(target_os = "linux"))]
+        fallback: (),
+        shapers: None,
       })),
     }
   }
@@ -153,48 +173,65 @@ fn properties(style: &RunStyle, resolved: Option<&str>) -> Vec<StyleProperty<'st
   ]
 }
 
-impl TextEngine for ParleyEngine {
-  type Paragraph = ParleyParagraph;
-
-  fn paragraph(&self, text: &AttributedText, style: &ParagraphStyle) -> ParleyParagraph {
-    let value = text.shared_value();
+impl ParleyEngine {
+  /// Starts the threads that shape a batch of paragraphs beside this one, where none run yet:
+  /// one fewer than the cores the system offers, each shaping a sample of the system's font
+  /// as it starts, so its fonts are ready when a batch comes.
+  pub fn start_shapers(&self) {
     let mut contexts = self.contexts.borrow_mut();
-    let contexts = &mut *contexts;
+    let Contexts {
+      fonts,
+      fallback,
+      shapers,
+      ..
+    } = &mut *contexts;
+
+    if shapers.is_none() {
+      *shapers = Some(Self::start(fonts, fallback));
+    }
+  }
+
+  /// The threads shaping beside this one, over `fonts`, warmed by a sample `fallback`
+  /// resolves.
+  fn start(fonts: &FontContext, fallback: &mut Fallback) -> Option<Shapers> {
+    let cores = std::thread::available_parallelism().map_or(1, usize::from);
+    let sample = AttributedText::plain("Ag", RunStyle::new(13.));
+    let warm = Self::job(fallback, &sample, &ParagraphStyle::default());
+
+    Shapers::start(fonts, cores.saturating_sub(1).min(7), &warm)
+  }
+
+  /// What shaping `text` in `style` takes, its families resolved by `fallback` first.
+  fn job(fallback: &mut Fallback, text: &AttributedText, style: &ParagraphStyle) -> Job {
     #[cfg(target_os = "linux")]
-    let resolved = contexts
-      .fallback
+    let resolved = fallback
       .as_mut()
       .map(|fallback| fallback.resolve(text))
       .unwrap_or_default();
     #[cfg(not(target_os = "linux"))]
-    let resolved: Vec<(Range<usize>, Rc<str>)> = Vec::new();
-    let mut builder = contexts
-      .layouts
-      .ranged_builder(&mut contexts.fonts, &value, 1., true);
+    let resolved: Vec<(Range<usize>, Rc<str>)> = {
+      let () = fallback;
 
-    for property in properties(text.base(), None) {
-      builder.push_default(property);
-    }
+      Vec::new()
+    };
+    let mut defaults = properties(text.base(), None);
 
-    builder.push_default(StyleProperty::LineHeight(match style.line_height {
+    defaults.push(StyleProperty::LineHeight(match style.line_height {
       LineHeight::Normal => ParleyLineHeight::MetricsRelative(1.),
       LineHeight::Factor(factor) => ParleyLineHeight::FontSizeRelative(factor),
       LineHeight::Absolute(height) => ParleyLineHeight::Absolute(height),
     }));
-    builder.push_default(StyleProperty::OverflowWrap(OverflowWrap::BreakWord));
-    builder.push_default(StyleProperty::TextWrapMode(match style.wrap {
+    defaults.push(StyleProperty::OverflowWrap(OverflowWrap::BreakWord));
+    defaults.push(StyleProperty::TextWrapMode(match style.wrap {
       Wrap::Words => TextWrapMode::Wrap,
       Wrap::None => TextWrapMode::NoWrap,
     }));
-    builder.set_base_direction(match style.direction {
-      BaseDirection::Auto => parley::BaseDirection::Auto,
-      BaseDirection::LeftToRight => parley::BaseDirection::Ltr,
-      BaseDirection::RightToLeft => parley::BaseDirection::Rtl,
-    });
+
+    let mut ranged = Vec::new();
 
     for run in text.runs() {
       for property in properties(&run.style, None) {
-        builder.push(property, run.range.clone());
+        ranged.push((property, run.range.clone()));
       }
     }
 
@@ -205,21 +242,94 @@ impl TextEngine for ParleyEngine {
         .find(|run| run.range.start <= range.start && range.end <= run.range.end)
         .map_or(text.base(), |run| &run.style);
 
-      builder.push(
+      ranged.push((
         properties(style, Some(family)).swap_remove(0),
         range.clone(),
-      );
+      ));
     }
 
-    let shaped = builder.build(&value);
+    Job {
+      text: text.value().to_owned(),
+      defaults,
+      ranged,
+      direction: match style.direction {
+        BaseDirection::Auto => parley::BaseDirection::Auto,
+        BaseDirection::LeftToRight => parley::BaseDirection::Ltr,
+        BaseDirection::RightToLeft => parley::BaseDirection::Rtl,
+      },
+      // Lines no width cuts break where the text breaks them and nowhere else: the layout
+      // every paragraph wider than its text keeps.
+      unbounded: style
+        .max_lines
+        .is_none()
+        .then(|| ParleyParagraph::alignment(style)),
+    }
+  }
+
+  /// The paragraph of `text` in `style`, shaped as `shaped`.
+  fn wrap(text: &AttributedText, style: &ParagraphStyle, shaped: Shaped) -> ParleyParagraph {
+    let value = text.shared_value();
 
     ParleyParagraph {
       index: Rc::new(TextIndex::new(&value)),
       text: value,
       style: *style,
-      shaped,
+      widths: shaped.widths,
+      shaped: RefCell::new(Shape::Fresh(shaped.layout, shaped.unbounded)),
       paints: Rc::new(RefCell::new(PaintRuns::of(text))),
     }
+  }
+}
+
+impl TextEngine for ParleyEngine {
+  type Paragraph = ParleyParagraph;
+
+  fn paragraph(&self, text: &AttributedText, style: &ParagraphStyle) -> ParleyParagraph {
+    let mut contexts = self.contexts.borrow_mut();
+    let contexts = &mut *contexts;
+    let job = Self::job(&mut contexts.fallback, text, style);
+    let shaped = job.shape(&mut contexts.fonts, &mut contexts.layouts);
+
+    Self::wrap(text, style, shaped)
+  }
+
+  /// Shapes a batch of [`PARALLEL`] paragraphs or more on threads beside this one as well,
+  /// one fewer than the cores the system offers, each a share.
+  fn paragraphs(&self, texts: &[(AttributedText, ParagraphStyle)]) -> Vec<ParleyParagraph> {
+    if texts.len() < PARALLEL {
+      return texts
+        .iter()
+        .map(|(text, style)| self.paragraph(text, style))
+        .collect();
+    }
+
+    let mut contexts = self.contexts.borrow_mut();
+    let Contexts {
+      fonts,
+      layouts,
+      fallback,
+      shapers,
+    } = &mut *contexts;
+    let shapers = shapers.get_or_insert_with(|| Self::start(fonts, fallback));
+    let jobs = texts
+      .iter()
+      .map(|(text, style)| Self::job(fallback, text, style));
+    let shaped: Vec<Shaped> = match shapers {
+      // Shares small enough that the threads finish close together, each queued as its jobs
+      // are built, so they shape while the next are.
+      Some(shapers) => shapers.shape(
+        jobs,
+        texts.len().div_ceil(4 * (shapers.count() + 1)).max(16),
+        |job| job.shape(fonts, layouts),
+      ),
+      None => jobs.map(|job| job.shape(fonts, layouts)).collect(),
+    };
+
+    texts
+      .iter()
+      .zip(shaped)
+      .map(|((text, style), shaped)| Self::wrap(text, style, shaped))
+      .collect()
   }
 }
 
@@ -278,8 +388,44 @@ pub struct ParleyParagraph {
   text: Rc<str>,
   index: Rc<TextIndex>,
   style: ParagraphStyle,
-  shaped: Layout<()>,
+  widths: Intrinsic,
+  shaped: RefCell<Shape>,
   paints: Rc<RefCell<PaintRuns>>,
+}
+
+/// A paragraph's shaped text: as shaped, until the first layout breaks its lines in place,
+/// and then that layout's, which every later layout copies and breaks again.
+#[expect(
+  clippy::large_enum_variant,
+  reason = "one per paragraph, the shaped layout moved in and out of it whole"
+)]
+enum Shape {
+  /// As shaped, its lines broken and aligned unbounded where it says so, else none broken.
+  Fresh(Layout<()>, bool),
+  /// The first layout's.
+  Laid(Rc<LaidInner>),
+  /// Being broken into the first layout.
+  Taken,
+}
+
+impl Shape {
+  /// The shaped layout to break lines in: the fresh one itself, taken, or a copy of the
+  /// first layout's.
+  ///
+  /// Where it is broken and aligned unbounded already, the layout comes with `true`.
+  fn take_layout(&mut self) -> (Layout<()>, bool) {
+    match std::mem::replace(self, Self::Taken) {
+      Self::Fresh(layout, unbounded) => (layout, unbounded),
+      Self::Laid(inner) => {
+        let layout = inner.layout.clone();
+
+        *self = Self::Laid(inner);
+
+        (layout, false)
+      }
+      Self::Taken => unreachable!("a layout is never made while another is"),
+    }
+  }
 }
 
 /// A glyph drawn beyond the text: the hyphen at a soft hyphen's break, or an ellipsis.
@@ -348,10 +494,14 @@ impl ParleyParagraph {
   /// its advance.
   fn hyphen(&self, layout: &Layout<()>, line: usize) -> Option<(Mark, f32)> {
     let info = layout.get(line)?;
+
+    if info.break_reason() != BreakReason::Regular {
+      return None;
+    }
+
     let range = info.text_range();
 
-    if info.break_reason() != BreakReason::Regular || !self.text[range.clone()].ends_with('\u{AD}')
-    {
+    if !self.text[range.clone()].ends_with('\u{AD}') {
       return None;
     }
 
@@ -414,9 +564,19 @@ impl ParleyParagraph {
     ))
   }
 
+  /// How `style` aligns lines, as Parley names it.
+  pub(crate) const fn alignment(style: &ParagraphStyle) -> Alignment {
+    match style.alignment {
+      TextAlignment::Leading => Alignment::Start,
+      TextAlignment::Center => Alignment::Center,
+      TextAlignment::Trailing => Alignment::End,
+      TextAlignment::Justify => Alignment::Justify,
+    }
+  }
+
   /// Breaks `layout` within `limit`, each line in `reserve` given that much less room, the
   /// lines cut after `max`: whether text was left over.
-  fn break_into(
+  pub(crate) fn break_into(
     layout: &mut Layout<()>,
     limit: f32,
     reserve: &[(usize, f32)],
@@ -462,12 +622,7 @@ impl Paragraph for ParleyParagraph {
   }
 
   fn intrinsic(&self) -> Intrinsic {
-    let widths = self.shaped.calculate_content_widths();
-
-    Intrinsic {
-      min: widths.min,
-      max: widths.max,
-    }
+    self.widths
   }
 
   fn layout(&self, width: Option<f32>) -> ParleyLaid {
@@ -476,13 +631,15 @@ impl Paragraph for ParleyParagraph {
       Wrap::None => f32::MAX,
     };
     let max = self.style.max_lines.map(|lines| lines.max(1) as usize);
-    let mut layout = self.shaped.clone();
+    let (mut layout, unbounded) = self.shaped.borrow_mut().take_layout();
     let mut reserve: Vec<(usize, f32)> = Vec::new();
     let mut truncated;
+    // Laid out unbounded already: no line breaks at a soft hyphen, and none is cut.
+    let laid = unbounded && limit == f32::MAX && max.is_none();
 
     // A line ending in a soft hyphen makes room for the hyphen it draws, and a cut text's
     // last line for the ellipsis: break again with that room taken, until no line asks.
-    for _ in 0..4 {
+    for _ in 0..if laid { 0 } else { 4 } {
       truncated = Self::break_into(&mut layout, limit, &reserve, max);
 
       let mut asked = false;
@@ -524,19 +681,14 @@ impl Paragraph for ParleyParagraph {
       shown < self.text.len()
     };
 
-    layout.align(
-      match self.style.alignment {
-        TextAlignment::Leading => Alignment::Start,
-        TextAlignment::Center => Alignment::Center,
-        TextAlignment::Trailing => Alignment::End,
-        TextAlignment::Justify => Alignment::Justify,
-      },
-      AlignmentOptions::default(),
-    );
+    if !laid {
+      layout.align(Self::alignment(&self.style), AlignmentOptions::default());
+    }
 
     let mut marks = Vec::new();
 
-    for line in 0..layout.len() {
+    // Laid out unbounded, no line breaks at a soft hyphen nor is cut: none draws a mark.
+    for line in 0..if laid { 0 } else { layout.len() } {
       let mark = if truncated && self.style.ellipsis && line + 1 == layout.len() {
         self.ellipsis(&layout, line)
       } else {
@@ -575,7 +727,7 @@ impl Paragraph for ParleyParagraph {
       .map(|line| line.width)
       .fold(layout.width(), f32::max);
 
-    ParleyLaid {
+    let laid = ParleyLaid {
       inner: Rc::new(LaidInner {
         width,
         height: layout.height(),
@@ -587,7 +739,14 @@ impl Paragraph for ParleyParagraph {
         marks: marks.into_iter().map(|(mark, _)| mark).collect(),
         paints: Rc::clone(&self.paints),
       }),
+    };
+    let mut shaped = self.shaped.borrow_mut();
+
+    if matches!(*shaped, Shape::Taken) {
+      *shaped = Shape::Laid(Rc::clone(&laid.inner));
     }
+
+    laid
   }
 
   fn repaint(&mut self, range: Range<usize>, paint: &PaintStyle) -> bool {

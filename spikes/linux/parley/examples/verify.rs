@@ -15,7 +15,7 @@ use std::{fmt::Write as _, rc::Rc, time::Instant};
 
 use skene_foundation::{
   Color,
-  layout::{Axis, ContainerLayout, LayoutHost, Measurement, Rect, ResolvedLayout},
+  layout::{Axis, ContainerLayout, LayoutHost, Measurement, Needed, Rect, ResolvedLayout},
   seam::node::LayoutKind,
   text::{
     AttributedText, Laid as _, MeasureText, Paragraph as _, ParagraphStyle, RunStyle,
@@ -532,7 +532,7 @@ struct Host;
 impl LayoutHost for Host {
   type Child = Leaf;
 
-  fn measure(_: &Leaf, _: Axis, _: Option<f32>) -> Measurement {
+  fn measure(_: &Leaf, _: Axis, _: Option<f32>, _: Needed) -> Measurement {
     unreachable!("text leaves measure through the engine")
   }
 
@@ -605,7 +605,7 @@ fn bench(engine: &ParleyEngine) {
         .collect(),
     );
 
-    let measured = grid.measure(Axis::Vertical, Some(700.));
+    let measured = grid.measure(Axis::Vertical, Some(700.), Needed::Natural);
 
     grid.allocate((700., measured.natural), None);
 

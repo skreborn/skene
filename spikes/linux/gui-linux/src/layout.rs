@@ -8,17 +8,17 @@
 use std::{cell::Cell, rc::Rc};
 
 use skene_foundation::{
-  layout::{Axis, ContainerLayout, LayoutHost, Measurement, Rect, ResolvedLayout},
+  layout::{Axis, ContainerLayout, LayoutHost, Measurement, Needed, Rect, ResolvedLayout},
   seam::node::{LayoutKind, NodeKind},
-  text::{AttributedText, MeasureText, Space},
-  value::Inset,
+  text::{AttributedText, MeasureText, ParagraphStyle, Space, TextEngine as _},
+  value::{Dimension, GridTrack, Inset, Tracks},
 };
 
 use crate::{
   look::RunProps,
-  node::{Drawn, Node},
+  node::{Drawn, Measures, Node, Rigid},
   palette::{DEFAULT_SIZE, Palette},
-  text::{Change, TextCell, attributed_runs},
+  text::{Change, Links, TextCell, attributed_runs},
 };
 
 thread_local! {
@@ -72,35 +72,53 @@ fn own_layout(node: &Drawn) -> ResolvedLayout {
 /// The children and their placements are given once a layout epoch: nothing changes them
 /// while a layout runs.
 fn with_engine<T>(node: &Node, body: impl FnOnce(&mut ContainerLayout<Host>) -> T) -> T {
-  let kind = node.layout_kind().unwrap_or(LayoutKind::Box);
   let epoch = EPOCH.with(Cell::get);
-  let mut engine = node.engine.borrow_mut();
-  let engine = engine.get_or_insert_with(|| ContainerLayout::new(kind, ResolvedLayout::default()));
+  let mut slot = node.engine.borrow_mut();
 
-  if node.engine_epoch.replace(epoch) != epoch {
+  if node.engine_epoch.replace(epoch) != epoch || slot.is_none() {
     let children: Vec<(Node, ResolvedLayout)> = node
-      .children()
-      .into_iter()
-      .map(|child| {
-        let placement = child.layout.borrow().clone();
-
-        (child, placement)
-      })
+      .children_ref()
+      .iter()
+      .map(|child| (Rc::clone(child), child.layout.borrow().clone()))
       .collect();
+    let mut own = own_layout(node);
 
-    engine.set_own(own_layout(node));
-    engine.set_children(children);
+    if node.parent().is_none() && !node.is_overlay() {
+      // The window's root holds the app's view in the window's own cell, as a page's first
+      // box fills the viewport: never widened or lengthened to its content, so nothing is
+      // measured to place it.
+      let whole = Some(Tracks::from([GridTrack::Fraction(1.)]));
+
+      own.columns.clone_from(&whole);
+      own.rows = whole;
+    }
+
+    match &mut *slot {
+      Some(engine) => engine.set(own, children),
+      None => {
+        let kind = node.layout_kind().unwrap_or(LayoutKind::Box);
+
+        *slot = Some(ContainerLayout::with_children(kind, own, children));
+      }
+    }
   }
 
-  body(engine)
+  match &mut *slot {
+    Some(engine) => body(engine),
+    None => unreachable!("the engine is made above"),
+  }
 }
 
 /// The one child a scroller scrolls.
 fn scrolled(node: &Node) -> Option<Node> {
-  node.children().into_iter().find(|child| !child.is_hidden())
+  node
+    .children_ref()
+    .iter()
+    .find(|child| !child.is_hidden())
+    .cloned()
 }
 
-fn measure_uncached(node: &Node, axis: Axis, for_size: Option<f32>) -> Measurement {
+fn measure_uncached(node: &Node, axis: Axis, for_size: Option<f32>, needed: Needed) -> Measurement {
   match node.spec.kind {
     NodeKind::Layout(LayoutKind::Scroll {
       horizontal,
@@ -109,24 +127,27 @@ fn measure_uncached(node: &Node, axis: Axis, for_size: Option<f32>) -> Measureme
       let Some(child) = scrolled(node) else {
         return Measurement::default();
       };
-      let measured = Host::measure(&child, axis, for_size);
       let scrolls = match axis {
         Axis::Horizontal => horizontal,
         Axis::Vertical => vertical,
       };
 
-      if scrolls {
-        Measurement {
-          minimum: 0.,
-          natural: measured.natural,
-          baseline: None,
-        }
-      } else {
-        measured
+      if !scrolls {
+        return Host::measure(&child, axis, for_size, needed);
+      }
+
+      Measurement {
+        minimum: 0.,
+        natural: if needed.natural() {
+          Host::measure(&child, axis, for_size, Needed::Natural).natural
+        } else {
+          0.
+        },
+        baseline: None,
       }
     }
     NodeKind::Layout(_) | NodeKind::Overlay => {
-      with_engine(node, |engine| engine.measure(axis, for_size))
+      with_engine(node, |engine| engine.measure(axis, for_size, needed))
     }
     NodeKind::Editable { multiline } => node.measure_entry(multiline, axis, for_size),
     NodeKind::Text => {
@@ -166,34 +187,218 @@ fn measure_uncached(node: &Node, axis: Axis, for_size: Option<f32>) -> Measureme
   }
 }
 
+/// Which of `node`'s sizes do not depend on the other axis's, found once a layout epoch: a
+/// text's, an entry's and a leaf's never do; a vertical scroller's least height is none; a
+/// container's are rigid where its shown children's are, a column's height where none of
+/// them takes a basis of its own, and a wrapping column's width never.
+fn rigid(node: &Node) -> Rigid {
+  let epoch = EPOCH.with(Cell::get);
+
+  {
+    let cache = node.measures.borrow();
+
+    if cache.epoch == epoch
+      && let Some(rigid) = cache.rigid
+    {
+      return rigid;
+    }
+  }
+
+  let all = Rigid {
+    height: true,
+    width: true,
+  };
+  let found = match node.spec.kind {
+    NodeKind::Layout(LayoutKind::Scroll { vertical, .. }) => scrolled(node).map_or(all, |child| {
+      let inner = rigid(&child);
+
+      Rigid {
+        height: !vertical && inner.height,
+        width: inner.width,
+      }
+    }),
+    NodeKind::Layout(_) | NodeKind::Overlay => {
+      let column = node.layout_kind() == Some(LayoutKind::Column);
+      let wraps = node.layout.borrow().wrap;
+
+      node
+        .children_ref()
+        .iter()
+        .filter(|child| Host::is_visible(child))
+        .fold(
+          Rigid {
+            height: true,
+            width: !(column && wraps),
+          },
+          |found, child| {
+            let inner = rigid(child);
+            let basis = column
+              && child
+                .layout
+                .borrow()
+                .flexibility
+                .is_some_and(|flexibility| flexibility.initial != Dimension::Auto);
+
+            Rigid {
+              height: found.height && inner.height && !basis,
+              width: found.width && inner.width,
+            }
+          },
+        )
+    }
+    _ => all,
+  };
+  let mut cache = node.measures.borrow_mut();
+
+  if cache.epoch != epoch {
+    *cache = Measures {
+      epoch,
+      ..Measures::default()
+    };
+  }
+
+  cache.rigid = Some(found);
+
+  found
+}
+
+/// A node's measurement along `axis` with what it holds: `kept`, holding what `had` names,
+/// joined with `fresh`, holding what `got` names, measured together.
+fn joined(
+  axis: Axis,
+  kept: Measurement,
+  had: Needed,
+  fresh: Measurement,
+  got: Needed,
+) -> Measurement {
+  let minimum = if had.minimum() {
+    kept.minimum
+  } else {
+    fresh.minimum
+  };
+  let (natural, baseline) = if had.natural() {
+    (kept.natural, kept.baseline)
+  } else {
+    (fresh.natural, fresh.baseline)
+  };
+
+  if !(had.minimum() || got.minimum()) || !(had.natural() || got.natural()) {
+    return Measurement {
+      minimum,
+      natural,
+      baseline,
+    };
+  }
+
+  match axis {
+    Axis::Horizontal => Measurement {
+      minimum,
+      natural: natural.max(minimum),
+      baseline,
+    },
+    Axis::Vertical => Measurement {
+      minimum: minimum.min(natural),
+      natural,
+      baseline,
+    },
+  }
+}
+
+/// What `a` and `b` name together.
+const fn both(a: Needed, b: Needed) -> Needed {
+  match (a.minimum() || b.minimum(), a.natural() || b.natural()) {
+    (true, true) => Needed::Both,
+    (true, false) => Needed::Minimum,
+    _ => Needed::Natural,
+  }
+}
+
+/// What `needed` names that `had` does not, where anything.
+const fn missing(needed: Needed, had: Needed) -> Option<Needed> {
+  match (
+    needed.minimum() && !had.minimum(),
+    needed.natural() && !had.natural(),
+  ) {
+    (true, true) => Some(Needed::Both),
+    (true, false) => Some(Needed::Minimum),
+    (false, true) => Some(Needed::Natural),
+    (false, false) => None,
+  }
+}
+
 impl LayoutHost for Host {
   type Child = Node;
 
-  fn measure(child: &Node, axis: Axis, for_size: Option<f32>) -> Measurement {
+  fn measure(child: &Node, axis: Axis, for_size: Option<f32>, needed: Needed) -> Measurement {
+    let rigid = rigid(child);
+    // A width that does not depend on the height is measured once, whatever height is given;
+    // a height whose least is its natural one is measured once for both.
+    let (for_size, needed) = match axis {
+      Axis::Horizontal if rigid.width => (None, needed),
+      Axis::Vertical if rigid.height => (for_size, Needed::Both),
+      _ => (for_size, needed),
+    };
     let epoch = EPOCH.with(Cell::get);
     let key = for_size.map(f32::to_bits);
-
-    {
+    let kept = {
       let mut cache = child.measures.borrow_mut();
 
-      if cache.0 != epoch {
-        *cache = (epoch, Vec::new());
+      if cache.epoch != epoch {
+        *cache = Measures {
+          epoch,
+          ..Measures::default()
+        };
       }
 
-      if let Some((_, _, measured)) = cache
-        .1
+      cache
+        .kept
         .iter()
-        .find(|(cached, size, _)| *cached == axis && *size == key)
-      {
-        return *measured;
-      }
-    }
+        .find(|(cached, size, _, _)| *cached == axis && *size == key)
+        .map(|(_, _, measured, had)| (*measured, *had))
+    };
+    let (wanted, kept) = match kept {
+      Some((measured, had)) => match missing(needed, had) {
+        None => return measured,
+        Some(wanted) => (wanted, Some((measured, had))),
+      },
+      None => (needed, None),
+    };
 
     MEASURED.with(|count| count.set(count.get() + 1));
 
-    let measured = measure_uncached(child, axis, for_size);
+    let fresh = if axis == Axis::Vertical && rigid.height {
+      let natural = measure_uncached(child, axis, for_size, Needed::Natural);
 
-    child.measures.borrow_mut().1.push((axis, key, measured));
+      debug_assert_eq!(
+        measure_uncached(child, axis, for_size, Needed::Minimum).minimum,
+        natural.natural,
+        "a rigid node's least height is its natural height"
+      );
+
+      Measurement {
+        minimum: natural.natural,
+        ..natural
+      }
+    } else {
+      measure_uncached(child, axis, for_size, wanted)
+    };
+    let (measured, holds) = match kept {
+      Some((kept, had)) => (joined(axis, kept, had, fresh, wanted), both(had, wanted)),
+      None => (fresh, wanted),
+    };
+    let mut cache = child.measures.borrow_mut();
+
+    match cache
+      .kept
+      .iter_mut()
+      .find(|(cached, size, _, _)| *cached == axis && *size == key)
+    {
+      Some(entry) => {
+        entry.2 = measured;
+        entry.3 = holds;
+      }
+      None => cache.kept.push((axis, key, measured, holds)),
+    }
 
     measured
   }
@@ -241,14 +446,14 @@ fn lay_children(node: &Node, window: Rect) {
         return;
       };
       let width = if horizontal {
-        Host::measure(&child, Axis::Horizontal, None)
+        Host::measure(&child, Axis::Horizontal, None, Needed::Natural)
           .natural
           .max(window.width)
       } else {
         window.width
       };
       let height = if vertical {
-        Host::measure(&child, Axis::Vertical, Some(width.round()))
+        Host::measure(&child, Axis::Vertical, Some(width.round()), Needed::Natural)
           .natural
           .max(window.height)
       } else {
@@ -330,14 +535,14 @@ pub fn reach(root: &Node) {
     let (sx, sy) = node.scroll.get();
     let mut reach = own;
 
-    for child in node.children() {
+    for child in node.children_ref().iter() {
       if child.is_hidden() || child.is_overlay() {
         continue;
       }
 
       let child_frame = child.frame.get();
       let (dx, dy) = child.offset();
-      let child_reach = go(&child);
+      let child_reach = go(child);
 
       if !clips {
         reach = crate::paint::union(
@@ -388,12 +593,51 @@ fn prepare_from(
   palette: &Palette,
   repainted: &mut Vec<Node>,
 ) -> Change {
+  /// Paragraphs to make: each node, its cell and its link runs, and beside them the texts
+  /// and styles to make them of.
+  type Pending = (
+    Vec<(Node, Rc<TextCell>, Links)>,
+    Vec<(AttributedText, ParagraphStyle)>,
+  );
+
+  /// What `made` changed in `node`'s cell, once it shows its text: its reserve and links
+  /// set, the change it makes recorded.
+  fn settle(
+    node: &Node,
+    cell: &TextCell,
+    mut made: Change,
+    links: Links,
+    change: &mut Change,
+    repainted: &mut Vec<Node>,
+  ) {
+    let reserve = node.contents.borrow().reserve.clone();
+    let reserve_moved = cell.set_reserve(reserve, made == Change::Layout);
+
+    cell.set_links(links);
+
+    if made == Change::Layout && !reserve_moved && cell.keeps_its_size() {
+      // One line as wide as the widest text it reserves: its size does not move.
+      made = Change::Paint;
+    }
+
+    if reserve_moved {
+      made = Change::Layout;
+    }
+
+    match made {
+      Change::Layout => *change = Change::Layout,
+      Change::Paint => repainted.push(Rc::clone(node)),
+      Change::None => {}
+    }
+  }
+
   fn go(
     node: &Node,
     inherited: &RunProps,
     palette: &Palette,
     change: &mut Change,
     repainted: &mut Vec<Node>,
+    pending: &mut Pending,
   ) {
     if !node.is_alive() {
       return;
@@ -455,25 +699,13 @@ fn prepare_from(
           .borrow_mut()
           .get_or_insert_with(TextCell::new)
           .clone();
-        let mut made = cell.set(text, paragraph);
-        let reserve = node.contents.borrow().reserve.clone();
-        let reserve_moved = cell.set_reserve(reserve, made == Change::Layout);
 
-        cell.set_links(links);
-
-        if made == Change::Layout && !reserve_moved && cell.keeps_its_size() {
-          // One line as wide as the widest text it reserves: its size does not move.
-          made = Change::Paint;
-        }
-
-        if reserve_moved {
-          made = Change::Layout;
-        }
-
-        match made {
-          Change::Layout => *change = Change::Layout,
-          Change::Paint => repainted.push(Rc::clone(node)),
-          Change::None => {}
+        match cell.update(text, paragraph) {
+          Ok(made) => settle(node, &cell, made, links, change, repainted),
+          Err(made) => {
+            pending.0.push((Rc::clone(node), cell, links));
+            pending.1.push(made);
+          }
         }
       }
       None => {
@@ -483,14 +715,33 @@ fn prepare_from(
       }
     }
 
-    for child in node.children() {
-      go(&child, &props, palette, change, repainted);
+    for child in node.children_ref().iter() {
+      go(child, &props, palette, change, repainted, pending);
     }
   }
 
   let mut change = Change::None;
+  let mut pending = (Vec::new(), Vec::new());
 
-  go(root, inherited, palette, &mut change, repainted);
+  go(
+    root,
+    inherited,
+    palette,
+    &mut change,
+    repainted,
+    &mut pending,
+  );
+
+  // Every paragraph to make is made at once, so an engine may make them side by side.
+  let (cells, texts) = pending;
+  let paragraphs = crate::text::engine().paragraphs(&texts);
+
+  for ((node, cell, links), ((text, style), paragraph)) in
+    cells.into_iter().zip(texts.into_iter().zip(paragraphs))
+  {
+    cell.install(text, style, paragraph);
+    settle(&node, &cell, Change::Layout, links, &mut change, repainted);
+  }
 
   change
 }

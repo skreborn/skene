@@ -63,6 +63,7 @@ vello_cpu = { default-features = false, features = ["png", "std", "text", "u8_pi
 # Skene carries these changes itself until they are proven, then offers them upstream.
 accesskit_atspi_common = { path = "vendor/accesskit_atspi_common" }
 accesskit_unix = { path = "vendor/accesskit_unix" }
+taffy = { path = "vendor/taffy" }
 xim = { path = "vendor/xim" }
 
 [profile.dev]

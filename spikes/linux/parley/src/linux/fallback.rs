@@ -120,11 +120,27 @@ impl Fallback {
     for (span, style) in text.spans() {
       let request = Self::request(style);
       let sorted = self.fontconfig.sort(&request);
+      let first = sorted.first();
+      let value = &text.value()[span.clone()];
+
+      // ASCII the best font covers whole resolves to it whole: every cluster is one
+      // character it covers, presented as text.
+      if let Some(family) = first.as_ref().filter(|_| sorted.first_covers_ascii(value)) {
+        match resolved.last_mut() {
+          Some((last, known)) if known == family && last.end == span.start => {
+            last.end = span.end;
+          }
+          _ if span.is_empty() => {}
+          _ => resolved.push((span, Rc::clone(family))),
+        }
+
+        continue;
+      }
+
       let emoji = self.fontconfig.sort(&Request {
         family: "emoji".to_owned(),
         ..request.clone()
       });
-      let first = sorted.first();
 
       for (start, cluster) in text.value()[span.clone()].grapheme_indices(true) {
         let range = span.start + start..span.start + start + cluster.len();

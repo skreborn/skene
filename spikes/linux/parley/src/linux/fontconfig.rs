@@ -162,9 +162,19 @@ struct Candidate {
 pub struct Sorted {
   set: *mut FcFontSet,
   candidates: Vec<Candidate>,
+  ascii: u128,
 }
 
 impl Sorted {
+  /// Whether the best font covers every character of `text`, which is ASCII: answered from
+  /// what it was found to cover when sorted, `false` where `text` is not ASCII.
+  #[must_use]
+  pub fn first_covers_ascii(&self, text: &str) -> bool {
+    text
+      .bytes()
+      .all(|byte| byte < 128 && self.ascii & (1 << byte) != 0)
+  }
+
   /// The first font covering every one of `characters`, its family.
   #[must_use]
   pub fn covering(&self, characters: &[char]) -> Option<Rc<str>> {
@@ -361,7 +371,19 @@ impl Fontconfig {
 
     unsafe { FcPatternDestroy(pattern) };
 
-    let sorted = Rc::new(Sorted { set, candidates });
+    let ascii = candidates
+      .first()
+      .filter(|candidate| !candidate.charset.is_null())
+      .map_or(0, |candidate| {
+        (0..128_u32)
+          .filter(|character| unsafe { FcCharSetHasChar(candidate.charset, *character) } != 0)
+          .fold(0_u128, |mask, character| mask | 1 << character)
+      });
+    let sorted = Rc::new(Sorted {
+      set,
+      candidates,
+      ascii,
+    });
 
     self.sorted.insert(request.clone(), Rc::clone(&sorted));
 

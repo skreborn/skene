@@ -1,0 +1,41 @@
+[package]
+name = "text-parity"
+description = "The text-parity harness: one corpus, Parley's layout and vello's drawing of it, and a comparison against each platform's own engine."
+version = "0.0.0"
+edition = "2024"
+license = "MIT"
+publish = false
+
+[workspace]
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "text-parity"
+path = "src/main.rs"
+
+[[test]]
+name = "it"
+path = "tests/it/main.rs"
+
+[dependencies]
+glifo = { default-features = false, features = ["std"], version = "=0.4.0" }
+icu_properties = { default-features = false, features = ["compiled_data"], version = "=2.3.0" }
+parley = { default-features = false, features = ["complex-scripts", "std", "system"], version = "=0.12.0" }
+parley_emoji = "=0.12.0"
+png = "0.18"
+serde = { features = ["derive"], version = "1" }
+serde_json = "1"
+skrifa = { default-features = false, features = ["std"], version = "=0.44.0" }
+unicode-segmentation = "=1.13.3"
+vello_cpu = { default-features = false, features = ["png", "std", "text", "u8_pipeline"], version = "=0.3.0" }
+
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 2
+
+[profile.release]
+debug = "line-tables-only"

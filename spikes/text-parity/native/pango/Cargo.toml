@@ -1,0 +1,16 @@
+[package]
+name = "text-parity-pango"
+description = "A stand-in native engine for text-parity: Pango fills the record schema on a Linux host, to exercise the harness end to end."
+version = "0.0.0"
+edition = "2024"
+license = "MIT"
+publish = false
+
+[workspace]
+
+[dependencies]
+cairo-rs = { features = ["png"], version = "0.22" }
+pango = { features = ["v1_50"], version = "0.22" }
+pangocairo = "0.22"
+text-parity = { path = "../.." }
+unicode-segmentation = "=1.13.3"

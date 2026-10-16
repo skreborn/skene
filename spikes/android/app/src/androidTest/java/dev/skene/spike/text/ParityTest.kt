@@ -6,6 +6,10 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.RectF
+import android.graphics.Typeface
+import android.graphics.fonts.Font
+import android.graphics.fonts.FontFamily
 import android.graphics.fonts.SystemFonts
 import android.graphics.text.LineBreakConfig
 import android.graphics.text.TextRunShaper
@@ -50,7 +54,9 @@ class ParityTest {
   private val runId = arguments.getString("runId") ?: "local"
   private val density = context.resources.displayMetrics.density
   private val sdk = Build.VERSION.SDK_INT
-  private val out = File(context.getExternalFilesDir(null), "parity").apply { mkdirs() }
+  // The `dir` argument puts a run's files in a directory of their own (a density's sweep).
+  private val out = File(File(context.getExternalFilesDir(null), "parity"), arguments.getString("dir") ?: "")
+    .apply { mkdirs() }
   private val device = "${Build.MODEL} (${Build.PRODUCT}), density ${density}"
 
   private fun report(key: String, value: Any?) {
@@ -190,12 +196,14 @@ class ParityTest {
   @Test
   fun nativeSubpixel() = nativeSet(false, "a-subpixel", subpixel = true)
 
-  private fun parleyRun(name: String, fonts: JSONObject, glyphs: Boolean) {
+  private fun parleyRun(name: String, fonts: JSONObject, glyphs: Boolean, features: String = "", images: Boolean = true) {
     val config = JSONObject().apply {
       put("out", File(out, name).absolutePath)
       put("scales", JSONArray(listOf(density.toDouble())))
       put("fonts", fonts)
       put("glyphs", glyphs)
+      put("features", features)
+      put("images", images)
       put("labels", 1000)
       put("repeats", 5)
       put("os_version", "${Build.VERSION.RELEASE} (API $sdk)")
@@ -235,28 +243,182 @@ class ParityTest {
     parleyRun("b-stock", JSONObject().put("system", true), false)
   }
 
-  /** Option C: Parley's glyph runs drawn by `drawGlyphs` (API 31) and the `drawTextRun` floor. */
+  /**
+   * Option C: Parley's glyph runs drawn by `drawGlyphs` (API 31) and the `drawTextRun` floor,
+   * from `plan.json`, or with the `set` argument from `plan-<set>.json` into `c-<set>` and
+   * `cfloor-<set>`.
+   */
   @Test
   fun raster() {
     header()
-    val raster = Raster(File(out, "plan.json"))
+    val set = arguments.getString("set")
+    val suffix = set?.let { "-$it" } ?: ""
+    val raster = Raster(File(out, if (set == null) "plan.json" else "plan-$set.json"))
 
     if (sdk >= 31) {
-      val (images, ms) = raster.drawGlyphs(File(out, "c"))
-      report("c.images", images)
-      report("c.drawMs", "%.3f".format(ms))
+      val (images, ms) = raster.drawGlyphs(File(out, "c$suffix"))
+      report("c$suffix.images", images)
+      report("c$suffix.drawMs", "%.3f".format(ms))
     }
 
-    val (images, ms) = raster.drawTextRun(File(out, "cfloor"))
-    report("cfloor.images", images)
-    report("cfloor.drawMs", "%.3f".format(ms))
+    val (images, ms) = raster.drawTextRun(File(out, "cfloor$suffix"))
+    report("cfloor$suffix.images", images)
+    report("cfloor$suffix.drawMs", "%.3f".format(ms))
 
     val shaping = raster.shaping(density)
-    write("shaping.json", shaping)
+    write("shaping$suffix.json", shaping)
 
     for (key in listOf("runs", "runs_compared", "runs_same_glyphs", "max_glyph_drift", "max_run_advance_delta")) {
-      report("shaping.$key", shaping.get(key))
+      report("shaping$suffix.$key", shaping.get(key))
     }
+  }
+
+  /**
+   * Per-glyph advances as Minikin takes them, for [Parity.advanceAnalysis] to find the rule
+   * they follow: each probe font (the matcher's pick, as a one-font typeface) at every size of
+   * the probe, a lone character measured whole (a script whose lone character is its cmap
+   * glyph) and each glyph by `Font.getGlyphBounds` (API 31), both with and without
+   * `LINEAR_TEXT_FLAG`; kerning pairs against their parts; and the CJK font's punctuation pairs
+   * with `chws` on and off. Writes `advances.json`: the measurements and the analysis.
+   */
+  @Test
+  fun advances() {
+    header()
+    val probe = JSONObject(Parity.advanceProbe())
+    val sizes = probe.getJSONArray("sizes_dp")
+    val fonts = probe.getJSONArray("fonts")
+    val measuredFonts = JSONArray()
+    val bounds = RectF()
+
+    for (f in 0 until fonts.length()) {
+      val spec = fonts.getJSONObject(f)
+      val font = Font.Builder(File(spec.getString("path"))).setTtcIndex(spec.getInt("index")).apply {
+        val axes = spec.getString("axes")
+        if (axes.isNotEmpty()) setFontVariationSettings(axes)
+      }.build()
+      val typeface = Typeface.CustomFallbackBuilder(FontFamily.Builder(font).build()).build()
+      val locale = spec.getString("locale").split(',')[0]
+
+      fun paint(px: Float, linear: Boolean, features: String? = null) = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+        this.typeface = typeface
+        textSize = px
+        isLinearText = linear
+        textLocales = LocaleList.forLanguageTags(locale)
+        if (features != null) fontFeatureSettings = features
+      }
+
+      fun perSize(measure: (Float) -> Double?) =
+        JSONArray(List(sizes.length()) { measure(sizes.getDouble(it).toFloat() * density) ?: JSONObject.NULL })
+
+      val simple = spec.getBoolean("simple")
+      val glyphs = spec.getJSONArray("glyphs")
+      val glyphsOut = JSONArray()
+
+      for (g in 0 until glyphs.length()) {
+        val glyph = glyphs.getJSONObject(g)
+        val text = glyph.getString("char")
+        val id = glyph.getInt("glyph")
+        glyphsOut.put(JSONObject().apply {
+          put("char", text)
+          put("glyph", id)
+          put("hinted", perSize { px -> if (simple) paint(px, false).measureText(text).toDouble() else null })
+          put("linear", perSize { px -> if (simple) paint(px, true).measureText(text).toDouble() else null })
+
+          if (sdk >= 31) {
+            put("bounds", perSize { px -> font.getGlyphBounds(id, paint(px, false), bounds).toDouble() })
+            put("bounds_linear", perSize { px -> font.getGlyphBounds(id, paint(px, true), bounds).toDouble() })
+          }
+        })
+      }
+
+      fun kern(text: String, linear: Boolean, px: Float): Double {
+        val paint = paint(px, linear)
+        return (paint.measureText(text) - paint.measureText(text.substring(0, 1)) - paint.measureText(text.substring(1))).toDouble()
+      }
+
+      val pairs = spec.getJSONArray("pairs")
+      val pairsOut = JSONArray()
+
+      for (p in 0 until pairs.length()) {
+        val text = pairs.getString(p)
+        pairsOut.put(JSONObject().apply {
+          put("text", text)
+          put("kern_hinted", perSize { px -> kern(text, false, px) })
+          put("kern_linear", perSize { px -> kern(text, true, px) })
+        })
+      }
+
+      val chws = spec.optJSONArray("chws") ?: JSONArray()
+      val chwsOut = JSONArray()
+
+      for (p in 0 until chws.length()) {
+        val text = chws.getString(p)
+
+        fun width(px: Float, linear: Boolean, features: String?) = paint(px, linear, features).measureText(text).toDouble()
+
+        chwsOut.put(JSONObject().apply {
+          put("text", text)
+          put("hinted_default", perSize { px -> width(px, false, null) })
+          put("hinted_off", perSize { px -> width(px, false, "'chws' 0") })
+          put("hinted_on", perSize { px -> width(px, false, "'chws' 1") })
+          put("linear_default", perSize { px -> width(px, true, null) })
+          put("linear_off", perSize { px -> width(px, true, "'chws' 0") })
+          put("linear_on", perSize { px -> width(px, true, "'chws' 1") })
+        })
+      }
+
+      measuredFonts.put(JSONObject(spec.toString()).put("glyphs", glyphsOut).put("pairs", pairsOut).put("chws", chwsOut))
+    }
+
+    val measured = JSONObject().put("density", density.toDouble()).put("sdk", sdk).put("sizes_dp", sizes).put("fonts", measuredFonts)
+    val analysis = JSONObject(Parity.advanceAnalysis(measured.toString()))
+    write("advances.json", JSONObject().put("measured", measured).put("analysis", analysis))
+    report("advances.best", analysis.optString("best"))
+    report("advances.totals", analysis.optJSONObject("totals")?.toString())
+    val analysed = analysis.optJSONArray("fonts") ?: JSONArray()
+
+    for (f in 0 until analysed.length()) {
+      val font = analysed.getJSONObject(f)
+      val name = font.getString("name")
+      val rules = font.getJSONObject("rules")
+      report("advances.$name.font", "${File(font.getString("path")).name}#${font.getInt("index")} ${font.optString("axes")} instructions=${font.optBoolean("has_instructions")}")
+      report("advances.$name.best", font.optString("best"))
+      report("advances.$name.linearAgrees", font.optJSONObject("linear_agrees")?.toString())
+      report("advances.$name.kerningLinear", font.optJSONObject("kerning_linear")?.toString())
+      report("advances.$name.rules", rules.keys().asSequence().joinToString(",") {
+        "$it=${rules.getJSONObject(it).getInt("matched")}/${rules.getJSONObject(it).getInt("of")}"
+      })
+    }
+  }
+
+  /** The rule the density's advance probe found best, `hinted` where it has not run. */
+  private fun bestRule(): String = try {
+    JSONObject(File(out, "advances.json").readText()).getJSONObject("analysis").optString("best").ifEmpty { "hinted" }
+  } catch (error: Exception) {
+    "hinted"
+  }
+
+  /**
+   * Option B under an advance rule, fed from `AFontMatcher`: the `set` argument names it
+   * (`linear`: Parley's own advances, as `parleyFed`; `hinted`: the `rule` argument, or the
+   * density's probe's best, with `chws` on from API 34 as Minikin sets it; `rule`: the same rule
+   * without `chws`, records only), written to `b-<set>` with `plan-<set>.json` for [raster].
+   */
+  @Test
+  fun parleyRule() {
+    header()
+    val set = arguments.getString("set") ?: "hinted"
+    val rule = arguments.getString("rule") ?: if (set == "linear") "linear" else bestRule()
+    val installed = Parity.setAdvanceRule(rule, density)
+    report("b-$set.rule", installed)
+    check(!installed.startsWith("error")) { installed }
+    val chws = set == "hinted" && sdk >= 34
+    report("b-$set.chws", chws)
+    val fed = JSONObject(Parity.fedSource())
+    parleyRun("b-$set", fed.getJSONObject("source"), true, if (chws) "\"chws\" 1" else "", images = set != "rule")
+    val plan = Parity.plan(File(out, "b-$set/records.json").absolutePath, File(out, "plan-$set.json").absolutePath)
+    report("b-$set.plan", plan)
+    check(plan.startsWith("ok")) { plan }
   }
 
   private fun lineStarts(layout: Layout) = JSONArray((0 until layout.lineCount).map { layout.getLineStart(it) })

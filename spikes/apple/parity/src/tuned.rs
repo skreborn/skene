@@ -17,12 +17,12 @@
 //! - **No break inside a grapheme cluster**, through Parley's line-break override.
 //! - **Tracking** of a fallback font with a `trak` table and no optical size axis (Apple Color
 //!   Emoji), as letter spacing on its clusters, the glyph drawn centred in the extra advance as
-//!   Core Text does. The amount is Core Text's own, read once per font and size from a line of one
-//!   of its clusters against the font's advance.
+//!   Core Text does. The amount is TextKit's own, read once per font and size from TextKit's line
+//!   of one of its clusters against the font's advance.
 //! - **A fallback font at its own instance**: its clusters take the variation Core Text gave the
 //!   fallback font (PingFang UI at `wght` 400), every other axis at its default, rather than the
-//!   system font's; where Core Text reports no optical size, the one whose advances match its line
-//!   of a sample cluster.
+//!   system font's; where Core Text reports no optical size, the one whose advances match TextKit's
+//!   line of a sample cluster.
 //! - **Natural alignment is the app's**: `start` on a right-to-left paragraph is the left edge in a
 //!   left-to-right app, as `NSTextAlignment.natural` is.
 //!
@@ -1096,27 +1096,33 @@ impl TunedEngine {
           (axis.tag.clone(), value)
         })
         .collect();
-      // Core Text's line of the cluster in the system font, its runs in the fallback font as
-      // TextKit reaches it.
-      let line = crate::probes::ct_line(&cluster, platform::as_ct(&base), Some(&locale));
+
+      // TextKit's own line of the cluster in the system font: its width, and the glyphs it
+      // drew in the fallback font.
+      let mut sample = case.clone();
+
+      sample.text.clone_from(&cluster);
+      sample.locale.clone_from(&locale);
+      sample.max_lines = None;
+      sample.ellipsis = false;
+
+      let variant = Variant {
+        case: &sample,
+        size,
+        width: None,
+      };
+      let laid = crate::textkit::variant(&variant, &crate::textkit::Setup::default(), 0);
       let name = coretext::info(&font).postscript;
-      let all = coretext::runs(&line);
-      let mut runs: Vec<_> = all
+      let ids: Vec<u16> = crate::isolate::placed(&laid.laid, &sample, false)
         .iter()
         .filter(|run| coretext::info(&run.font).postscript == name)
+        .flat_map(|run| run.glyphs.iter().map(|glyph| glyph.0))
         .collect();
-
-      if runs.is_empty() {
-        runs = all.iter().collect();
-      }
-
-      let ids: Vec<u16> = runs
+      let theirs: f64 = laid
+        .record
+        .clusters
         .iter()
-        .flat_map(|run| run.glyphs.iter().map(|glyph| glyph.id))
-        .collect();
-      let theirs: f64 = runs
-        .iter()
-        .flat_map(|run| run.glyphs.iter().map(|glyph| glyph.advance))
+        .map(|cluster| f64::from(cluster.advance))
         .sum();
       let ours = |settings: &[(String, f64)]| advances(&bytes, &ids, size, settings);
 

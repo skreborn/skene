@@ -154,12 +154,7 @@ fn a_window_whose_device_is_lost_paints_on_the_cpu_motion_included() {
   let between = frames
     .iter()
     .filter(|frame| {
-      let at = (y as usize * frame.shot.width as usize + x as usize) * 4;
-      let [red, green, blue] = [
-        frame.shot.rgba[at],
-        frame.shot.rgba[at + 1],
-        frame.shot.rgba[at + 2],
-      ];
+      let [red, green, blue, _] = frame.shot.rgba_at(x.trunc(), y.trunc());
 
       // Neither white nor red, but on the way: red stays high as green and blue fall.
       red > 0xe0 && (0x10..0xf0).contains(&green) && (0x10..0xf0).contains(&blue)

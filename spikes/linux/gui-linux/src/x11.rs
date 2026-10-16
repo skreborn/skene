@@ -9,12 +9,15 @@
 //!   the Present extension's notice of each vertical blank (a 60 Hz timer where the server has
 //!   no Present), and no frame at all while nothing is;
 //! - the pointer through XInput 2 where the server has it (smooth scrolling from the scroll
-//!   valuators, emulated wheel buttons ignored), core events otherwise; the keyboard through
-//!   XKB, with detectable auto-repeat;
+//!   valuators, emulated wheel buttons ignored; no fling, XInput 2 marking no end of a
+//!   touchpad's motion), core events otherwise; a touchscreen's touches through XInput 2.2;
+//!   the keyboard through XKB, with detectable auto-repeat;
 //! - XSETTINGS: `Xft/DPI` and `Gdk/WindowScalingFactor` for the scale, the `Xft/*` rendering
 //!   settings beneath fontconfig, `Net/ThemeName` and `Gtk/EnableAnimations` where no
 //!   settings portal answers;
 //! - the `CLIPBOARD` and `PRIMARY` selections, owned and converted to UTF-8;
+//! - drag and drop through XDND ([`crate::xdnd`]): the window a drop target for text and URI
+//!   lists, and the source of a text entry's selection dragged out;
 //! - the cursor from the reader's cursor theme;
 //! - the open overlay (a picker's list) in an override-redirect window holding the pointer
 //!   grab, a press outside it and its anchor dismissing it;
@@ -41,8 +44,8 @@ use x11rb::{
     xkb::{self as xkbproto, ConnectionExt as _},
     xproto::{
       AtomEnum, ChangeWindowAttributesAux, ClientMessageEvent, ConnectionExt as _, CreateGCAux,
-      CreateWindowAux, EventMask, GrabMode, ImageFormat, KeyPressEvent, PropMode,
-      SelectionNotifyEvent, Window, WindowClass,
+      CreateWindowAux, EventMask, GrabMode, ImageFormat, KeyButMask, KeyPressEvent, ModMask,
+      PropMode, SelectionNotifyEvent, Window, WindowClass,
     },
   },
   wrapper::ConnectionExt as _,
@@ -214,6 +217,7 @@ struct X11 {
   ime_sent: Option<ImeSent>,
   ime_purpose: Option<ime::Purpose>,
   clock: Clock,
+  xdnd: Option<crate::xdnd::Xdnd>,
 }
 
 fn fixed(value: xinput::Fp1616) -> f32 {
@@ -350,6 +354,7 @@ impl X11 {
       ime_sent: None,
       ime_purpose: None,
       clock: Clock::Timer(None),
+      xdnd: None,
     };
 
     x11.read_xsettings(shell);
@@ -528,6 +533,10 @@ impl X11 {
 
     conn.map_window(window)?;
 
+    self.xdnd = crate::xdnd::Xdnd::new(conn, window)
+      .map_err(|error| trace::log(|| format!("[dnd] XDND: {error}")))
+      .ok();
+
     let gc = conn.generate_id()?;
 
     conn.create_gc(gc, window, &CreateGCAux::new().graphics_exposures(0))?;
@@ -559,17 +568,29 @@ impl X11 {
       return Ok(());
     }
 
+    // A master pointer takes the classes of the device last used through it (Xwayland's has
+    // its scroll valuators only then): a change of them is learnt.
+    let mut mask = xinput::XIEventMask::BUTTON_PRESS
+      | xinput::XIEventMask::BUTTON_RELEASE
+      | xinput::XIEventMask::MOTION
+      | xinput::XIEventMask::ENTER
+      | xinput::XIEventMask::LEAVE
+      | xinput::XIEventMask::DEVICE_CHANGED;
+
+    // A touchscreen's touches, where the server has XInput 2.2: a window that selects them gets
+    // them rather than the pointer the server emulates from them.
+    if (version.major_version, version.minor_version) >= (2, 2) {
+      mask = mask
+        | xinput::XIEventMask::TOUCH_BEGIN
+        | xinput::XIEventMask::TOUCH_UPDATE
+        | xinput::XIEventMask::TOUCH_END;
+    }
+
     self.conn.xinput_xi_select_events(
       self.window,
       &[xinput::EventMask {
         deviceid: xinput::Device::ALL_MASTER.into(),
-        mask: vec![
-          xinput::XIEventMask::BUTTON_PRESS
-            | xinput::XIEventMask::BUTTON_RELEASE
-            | xinput::XIEventMask::MOTION
-            | xinput::XIEventMask::ENTER
-            | xinput::XIEventMask::LEAVE,
-        ],
+        mask: vec![mask],
       }],
     )?;
     self.xi = true;
@@ -587,24 +608,43 @@ impl X11 {
       .reply()?;
 
     for info in devices.infos {
-      for class in info.classes {
-        if let xinput::DeviceClassData::Scroll(scroll) = class.data {
-          self.scroll.insert(
-            (info.deviceid, scroll.number),
-            ScrollAxis {
-              vertical: scroll.scroll_type == xinput::ScrollType::VERTICAL,
-              increment: fixed64(scroll.increment).abs().max(f64::EPSILON)
-                * fixed64(scroll.increment).signum(),
-              last: None,
-            },
-          );
+      self.learn_classes(info.deviceid, &info.classes);
+    }
+
+    Ok(())
+  }
+
+  /// Learns the scroll valuators of `device` from its `classes`, each valuator's value then
+  /// where its next motion starts from (a master pointer takes the classes of the device last
+  /// used through it, the change announcing them).
+  fn learn_classes(&mut self, device: u16, classes: &[xinput::DeviceClass]) {
+    let values: HashMap<u16, f64> = classes
+      .iter()
+      .filter_map(|class| match &class.data {
+        xinput::DeviceClassData::Valuator(valuator) => {
+          Some((valuator.number, fixed64(valuator.value)))
         }
+        _ => None,
+      })
+      .collect();
+
+    self.scroll.retain(|(id, _), _| *id != device);
+
+    for class in classes {
+      if let xinput::DeviceClassData::Scroll(scroll) = &class.data {
+        self.scroll.insert(
+          (device, scroll.number),
+          ScrollAxis {
+            vertical: scroll.scroll_type == xinput::ScrollType::VERTICAL,
+            increment: fixed64(scroll.increment).abs().max(f64::EPSILON)
+              * fixed64(scroll.increment).signum(),
+            last: values.get(&scroll.number).copied(),
+          },
+        );
       }
     }
 
-    trace::log(|| format!("[x11] scroll valuators {}", self.scroll.len()));
-
-    Ok(())
+    trace::log(|| format!("[x11] scroll valuators of {device}: {}", self.scroll.len()));
   }
 
   /// Reads the XSETTINGS manager's settings and follows its changes.
@@ -737,6 +777,10 @@ impl X11 {
       self.ime_timeout(shell);
       self.clipboard()?;
 
+      if let Some(xdnd) = &mut self.xdnd {
+        xdnd.check_timeout(shell);
+      }
+
       let asked = shell.take_requests();
 
       self.requests(shell, asked)?;
@@ -858,6 +902,23 @@ impl X11 {
         Request::ShowMenu(..) => {}
         Request::Cursor(cursor) => self.set_cursor(cursor)?,
         Request::Popup(placement) => self.place_popup(shell, placement)?,
+        Request::StartDrag => {
+          let cursor = self.cursor_id("grabbing").unwrap_or(x11rb::NONE);
+
+          match (&mut self.xdnd, shell.dragged()) {
+            (Some(xdnd), Some((text, moves))) => {
+              xdnd.start(
+                &self.conn,
+                self.window,
+                text.to_owned(),
+                moves,
+                self.time,
+                cursor,
+              )?;
+            }
+            _ => shell.drag_ended(None),
+          }
+        }
       }
     }
 
@@ -909,25 +970,82 @@ impl X11 {
     Ok(())
   }
 
+  /// The cursor named `name` in the reader's cursor theme, loaded once.
+  fn cursor_id(&mut self, name: &'static str) -> Option<u32> {
+    if let Some(id) = self.cursor_ids.get(name) {
+      return Some(*id);
+    }
+
+    let id = self.cursors.as_ref()?.load_cursor(&self.conn, name).ok()?;
+
+    self.cursor_ids.insert(name, id);
+
+    Some(id)
+  }
+
   fn set_cursor(&mut self, cursor: Cursor) -> Result<(), Box<dyn Error>> {
-    let Some(handle) = &self.cursors else {
+    let Some(id) = self.cursor_id(cursor.name()) else {
       return Ok(());
-    };
-    let name = cursor.name();
-    let id = match self.cursor_ids.get(name) {
-      Some(id) => *id,
-      None => {
-        let id = handle.load_cursor(&self.conn, name)?;
-
-        self.cursor_ids.insert(name, id);
-
-        id
-      }
     };
 
     self
       .conn
       .change_window_attributes(self.window, &ChangeWindowAttributesAux::new().cursor(id))?;
+
+    Ok(())
+  }
+
+  /// Shows `cursor` for the drag in progress, as its target answered.
+  fn set_drag_cursor(&mut self, cursor: crate::xdnd::DragCursor) -> Result<(), Box<dyn Error>> {
+    trace::log(|| format!("[dnd] cursor {}", cursor.name()));
+
+    let id = self.cursor_id(cursor.name()).unwrap_or(x11rb::NONE);
+
+    self.conn.change_active_pointer_grab(
+      id,
+      x11rb::CURRENT_TIME,
+      EventMask::BUTTON_RELEASE | EventMask::POINTER_MOTION,
+    )?;
+
+    Ok(())
+  }
+
+  /// Whether the window is dragging something out.
+  fn dragging(&self) -> bool {
+    self
+      .xdnd
+      .as_ref()
+      .is_some_and(crate::xdnd::Xdnd::is_dragging)
+  }
+
+  /// The pointer moved to `root` (screen pixels) at `time` while dragging.
+  fn drag_moved(
+    &mut self,
+    root: (i16, i16),
+    time: u32,
+    held: (bool, bool),
+  ) -> Result<(), Box<dyn Error>> {
+    self.time = time;
+
+    let cursor = match &mut self.xdnd {
+      Some(xdnd) => xdnd.pointer_moved(&self.conn, self.window, self.root, root, time, held)?,
+      None => None,
+    };
+
+    if let Some(cursor) = cursor {
+      self.set_drag_cursor(cursor)?;
+    }
+
+    Ok(())
+  }
+
+  /// The button was released at `time` while dragging.
+  fn drag_released(&mut self, shell: &mut Shell, time: u32) -> Result<(), Box<dyn Error>> {
+    self.time = time;
+
+    if let Some(xdnd) = &mut self.xdnd {
+      xdnd.released(&self.conn, shell, self.window, time)?;
+    }
 
     Ok(())
   }
@@ -994,7 +1112,54 @@ impl X11 {
       return Ok(());
     }
 
+    if self.dragging() {
+      match &event {
+        Event::MotionNotify(motion) => {
+          let state = u16::from(motion.state);
+
+          return self.drag_moved(
+            (motion.root_x, motion.root_y),
+            motion.time,
+            (
+              state & u16::from(KeyButMask::SHIFT) != 0,
+              state & u16::from(KeyButMask::CONTROL) != 0,
+            ),
+          );
+        }
+        Event::XinputMotion(motion) => {
+          let state = motion.mods.effective;
+
+          return self.drag_moved(
+            (fixed(motion.root_x) as i16, fixed(motion.root_y) as i16),
+            motion.time,
+            (
+              state & u32::from(ModMask::SHIFT) != 0,
+              state & u32::from(ModMask::CONTROL) != 0,
+            ),
+          );
+        }
+        Event::ButtonRelease(release) => return self.drag_released(shell, release.time),
+        Event::XinputButtonRelease(release) => return self.drag_released(shell, release.time),
+        _ => {}
+      }
+    }
+
     match event {
+      Event::ClientMessage(event)
+        if event.format == 32 && event.type_ != self.atoms.WM_PROTOCOLS && self.xdnd.is_some() =>
+      {
+        let origin = self.window_origin;
+        let handled = match &mut self.xdnd {
+          Some(xdnd) => xdnd.client_message(&self.conn, shell, self.window, &event, origin)?,
+          None => (false, None),
+        };
+
+        if let (true, Some(cursor)) = handled
+          && self.dragging()
+        {
+          self.set_drag_cursor(cursor)?;
+        }
+      }
       Event::PresentCompleteNotify(event) if event.window == self.window => {
         trace::log(|| format!("[x11] vblank {} at {} us", event.msc, event.ust));
 
@@ -1175,13 +1340,29 @@ impl X11 {
         self.motion(shell, (fixed(event.event_x), fixed(event.event_y)))?;
       }
       Event::XinputEnter(event) => {
-        for axis in self.scroll.values_mut() {
-          axis.last = None;
-        }
-
+        self.reset_scroll(event.deviceid);
         self.motion(shell, (fixed(event.event_x), fixed(event.event_y)))?;
       }
       Event::XinputLeave(_) | Event::LeaveNotify(_) => shell.pointer_leave(),
+      Event::XinputTouchBegin(event)
+      | Event::XinputTouchUpdate(event)
+      | Event::XinputTouchEnd(event) => {
+        self.time = event.time;
+
+        let scale = shell.scale as f32;
+        let (x, y) = (fixed(event.event_x) / scale, fixed(event.event_y) / scale);
+        let id = event.detail as i32;
+        let requests = match event.event_type {
+          xinput::TOUCH_BEGIN_EVENT => {
+            self.last_press = ((fixed(event.root_x)) as i16, (fixed(event.root_y)) as i16);
+            shell.touch_down(id, x, y, event.time)
+          }
+          xinput::TOUCH_UPDATE_EVENT => shell.touch_motion(id, x, y, event.time),
+          _ => shell.touch_up(id, event.time),
+        };
+
+        self.requests(shell, requests)?;
+      }
       Event::ButtonPress(event) | Event::ButtonRelease(event) if !self.xi => {
         self.time = event.time;
 
@@ -1239,18 +1420,64 @@ impl X11 {
           shell.quit = true;
         }
       }
-      Event::SelectionRequest(request) => self.answer_selection(&request)?,
+      Event::SelectionRequest(request) => {
+        let dnd = match &self.xdnd {
+          Some(xdnd) => xdnd.selection_request(&self.conn, &request)?,
+          None => false,
+        };
+
+        if !dnd {
+          self.answer_selection(&request)?;
+        }
+      }
       Event::SelectionClear(event) => {
         if let Some(selection) = self.selection_of(event.selection) {
           self.owned.remove(&selection);
         }
       }
-      Event::SelectionNotify(event) => self.selection_arrived(&event)?,
-      Event::XinputDeviceChanged(_) | Event::XinputHierarchy(_) => self.learn_devices()?,
+      Event::SelectionNotify(event) => {
+        let dnd = match &mut self.xdnd {
+          Some(xdnd) => xdnd.selection_notify(&self.conn, shell, self.window, &event)?,
+          None => false,
+        };
+
+        if !dnd {
+          self.selection_arrived(&event)?;
+        }
+      }
+      Event::XinputDeviceChanged(event) => self.learn_classes(event.deviceid, &event.classes),
+      Event::XinputHierarchy(_) => self.learn_devices()?,
       _ => {}
     }
 
     Ok(())
+  }
+
+  /// Takes the scroll valuators' values now as where their next motion starts from: the
+  /// first scroll after the pointer enters moves by what it adds to them.
+  fn reset_scroll(&mut self, device: u16) {
+    for axis in self.scroll.values_mut() {
+      axis.last = None;
+    }
+
+    let Ok(reply) = self
+      .conn
+      .xinput_xi_query_device(device)
+      .map_err(|_| ())
+      .and_then(|cookie| cookie.reply().map_err(|_| ()))
+    else {
+      return;
+    };
+
+    for info in reply.infos {
+      for class in info.classes {
+        if let xinput::DeviceClassData::Valuator(valuator) = class.data
+          && let Some(axis) = self.scroll.get_mut(&(info.deviceid, valuator.number))
+        {
+          axis.last = Some(fixed64(valuator.value));
+        }
+      }
+    }
   }
 
   /// Turns the scroll valuators that moved into wheel motion.

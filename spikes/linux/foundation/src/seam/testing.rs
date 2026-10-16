@@ -65,9 +65,14 @@ pub fn build(name: &str) -> Option<NodeId> {
       .map(|(_, build)| Rc::clone(build))
   })?;
 
-  PROBES.with(|probes| probes.borrow_mut().clear());
+  clear_probes();
 
   Some(build())
+}
+
+/// Forgets the probes published so far: a view about to be built publishes its own.
+pub fn clear_probes() {
+  PROBES.with(|probes| probes.borrow_mut().clear());
 }
 
 /// Publishes a probe of the page being built: a value a test reads by name (what a signal
@@ -267,6 +272,19 @@ pub enum Action {
   Commit,
   /// Wheel steps at the center: right and down positive.
   Scroll(i32, i32),
+  /// Two fingers on a touchpad at the center, moved this far in pixels of scrolling (right and
+  /// down positive) over a tenth of a second and lifted: a fling.
+  Fling(f32, f32),
+  /// A finger tapping a touchscreen at the center.
+  Tap,
+  /// A finger tapping a touchscreen at a point of the bounds, as fractions of their width and
+  /// height from their top leading corner.
+  TapAt(f32, f32),
+  /// A finger held on a touchscreen at the center until the press is a long one, then lifted.
+  LongPress,
+  /// A finger put on a touchscreen at the center, moved by this offset in pixels (right and
+  /// down positive) and lifted.
+  Swipe(f32, f32),
   /// A reader's request, made through the platform's accessibility layer.
   Access(crate::seam::control::AccessRequest),
 }
@@ -293,8 +311,44 @@ pub struct Screenshot {
   pub width: u32,
   /// The height in device pixels.
   pub height: u32,
+  /// Device pixels per pixel.
+  pub scale: f64,
   /// The pixels, RGBA, row by row.
   pub rgba: Vec<u8>,
+}
+
+impl Screenshot {
+  /// The RGBA of the device pixel under the point `x`, `y` (in pixels from the top left, as
+  /// bounds are); transparent black outside the image.
+  #[must_use]
+  pub fn rgba_at(&self, x: f32, y: f32) -> [u8; 4] {
+    let (column, row) = (
+      (f64::from(x) * self.scale).floor(),
+      (f64::from(y) * self.scale).floor(),
+    );
+
+    if column < 0. || row < 0. || column >= f64::from(self.width) || row >= f64::from(self.height) {
+      return [0; 4];
+    }
+
+    let at = (row as usize * self.width as usize + column as usize) * 4;
+
+    [
+      self.rgba[at],
+      self.rgba[at + 1],
+      self.rgba[at + 2],
+      self.rgba[at + 3],
+    ]
+  }
+
+  /// The color of the device pixel under the point `x`, `y`, as [`rgba_at`](Self::rgba_at)
+  /// reads it, as `0xRRGGBB`.
+  #[must_use]
+  pub fn color_at(&self, x: f32, y: f32) -> u32 {
+    let [red, green, blue, _] = self.rgba_at(x, y);
+
+    u32::from_be_bytes([0, red, green, blue])
+  }
 }
 
 /// A frame the platform painted while recording ([`Driver::set_recording`]).

@@ -79,6 +79,7 @@ use crate::{__private, Color, Scheme, View};
 /// Outside a `#[skene_gui::test]`, or where the window never shows.
 pub fn render<V: View>(app: impl FnOnce() -> V) -> Screen {
   window_thread();
+  skene_foundation::seam::testing::clear_probes();
 
   let owner = Owner::new();
   let root = owner.run(|| __private::root(app));
@@ -317,14 +318,9 @@ impl Screen {
   /// integer or a float each).
   pub fn pixel(&self, x: impl IntoUnit<f32>, y: impl IntoUnit<f32>) -> Color {
     let shot = self.render_to_image();
-    let (x, y) = (
-      x.into_unit().max(0.) as usize,
-      y.into_unit().max(0.) as usize,
-    );
-    let at = (y * shot.width as usize + x) * 4;
-    let rgba = shot.rgba.get(at..at + 4).unwrap_or(&[0, 0, 0, 0]);
+    let rgba = shot.rgba_at(x.into_unit().max(0.).trunc(), y.into_unit().max(0.).trunc());
 
-    Color::rgba(u32::from_be_bytes([rgba[0], rgba[1], rgba[2], rgba[3]]))
+    Color::rgba(u32::from_be_bytes(rgba))
   }
 
   /// What a reader finds in the window, one object a line, indented by depth.
@@ -410,6 +406,36 @@ impl Found<'_> {
   /// Turns the wheel over it: `right` and `down` steps (negative the other way), and settles.
   pub fn scroll(&self, right: i32, down: i32) -> &Self {
     self.act(&Action::Scroll(right, down))
+  }
+
+  /// Flings it on a touchpad: two fingers at its center moved `right` and `down` pixels of
+  /// scrolling (negative the other way) over a tenth of a second and lifted; settles once what
+  /// the fling moved is at rest.
+  pub fn fling(&self, right: impl IntoUnit<f32>, down: impl IntoUnit<f32>) -> &Self {
+    self.act(&Action::Fling(right.into_unit(), down.into_unit()))
+  }
+
+  /// Taps its center on a touchscreen, and settles.
+  pub fn tap(&self) -> &Self {
+    self.act(&Action::Tap)
+  }
+
+  /// Taps the point of its bounds `x` and `y` of their width and height from their top leading
+  /// corner on a touchscreen, and settles.
+  pub fn tap_at(&self, x: f32, y: f32) -> &Self {
+    self.act(&Action::TapAt(x, y))
+  }
+
+  /// Holds a finger on its center on a touchscreen until the press is a long one, lifts it,
+  /// and settles.
+  pub fn long_press(&self) -> &Self {
+    self.act(&Action::LongPress)
+  }
+
+  /// Puts a finger on its center on a touchscreen, moves it `right` and `down` pixels
+  /// (negative the other way), lifts it, and settles.
+  pub fn swipe_by(&self, right: impl IntoUnit<f32>, down: impl IntoUnit<f32>) -> &Self {
+    self.act(&Action::Swipe(right.into_unit(), down.into_unit()))
   }
 
   /// Moves focus to it as a user does from the keyboard (`Tab` until a reader reads it

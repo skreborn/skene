@@ -409,14 +409,11 @@ fn focus_order<D: Driver>(driver: &mut D) {
 /// The color at the center of `found`'s bounds, as `0xrrggbb`.
 fn color_at<D: Driver>(driver: &mut D, found: &D::Found) -> u32 {
   let bounds = driver.read(found).bounds;
-  let shot = driver.screenshot();
-  let (x, y) = (
-    (bounds.x + bounds.width / 2.) as usize,
-    (bounds.y + bounds.height / 2.) as usize,
-  );
-  let at = (y * shot.width as usize + x) * 4;
 
-  u32::from_be_bytes([0, shot.rgba[at], shot.rgba[at + 1], shot.rgba[at + 2]])
+  driver.screenshot().color_at(
+    (bounds.x + bounds.width / 2.).trunc(),
+    (bounds.y + bounds.height / 2.).trunc(),
+  )
 }
 
 fn dark_reinks<D: Driver>(driver: &mut D) {
@@ -580,10 +577,7 @@ fn painted_description<D: Driver>(driver: &mut D) {
 
 /// The color at `x`, `y` of the window drawn, as `0xrrggbb`.
 fn pixel<D: Driver>(driver: &mut D, x: f32, y: f32) -> u32 {
-  let shot = driver.screenshot();
-  let at = (y as usize * shot.width as usize + x as usize) * 4;
-
-  u32::from_be_bytes([0, shot.rgba[at], shot.rgba[at + 1], shot.rgba[at + 2]])
+  driver.screenshot().color_at(x.trunc(), y.trunc())
 }
 
 fn painted_draws<D: Driver>(driver: &mut D) {
@@ -993,9 +987,9 @@ fn editor_scrolls<D: Driver>(driver: &mut D) {
     let mut rows = Vec::new();
 
     for y in (snapshot.bounds.y as usize + 10)..(snapshot.bounds.y as usize + 100) {
-      let start = (y * shot.width as usize + snapshot.bounds.x as usize + 10) * 4;
-
-      rows.extend_from_slice(&shot.rgba[start..start + 4 * 60]);
+      for x in (snapshot.bounds.x as usize + 10)..(snapshot.bounds.x as usize + 70) {
+        rows.extend_from_slice(&shot.rgba_at(x as f32, y as f32));
+      }
     }
 
     rows
@@ -1058,15 +1052,18 @@ fn audit<D: Driver>(driver: &mut D) {
   }
 }
 
-/// The colors of the screenshot's pixels inside `bounds`, inset by `inset` on every side, as
-/// `0xRRGGBB`.
+/// The colors of the screenshot's device pixels inside `bounds`, inset by `inset` on every
+/// side, as `0xRRGGBB`.
 fn colors_in(shot: &Screenshot, bounds: Rect, inset: f32) -> Vec<u32> {
+  let scale = shot.scale as f32;
   let (left, top) = (
-    (bounds.x + inset).ceil() as usize,
-    (bounds.y + inset).ceil() as usize,
+    ((bounds.x + inset) * scale).ceil() as usize,
+    ((bounds.y + inset) * scale).ceil() as usize,
   );
-  let right = ((bounds.x + bounds.width - inset).floor() as usize).min(shot.width as usize);
-  let bottom = ((bounds.y + bounds.height - inset).floor() as usize).min(shot.height as usize);
+  let right =
+    (((bounds.x + bounds.width - inset) * scale).floor() as usize).min(shot.width as usize);
+  let bottom =
+    (((bounds.y + bounds.height - inset) * scale).floor() as usize).min(shot.height as usize);
   let mut colors = Vec::new();
 
   for y in top..bottom {
@@ -1229,13 +1226,11 @@ fn colors_over(frames: &[Frame], bounds: Rect) -> Vec<(Duration, u32)> {
     .iter()
     .map(|frame| {
       let (x, y) = (
-        (bounds.x + bounds.width / 2.) as usize,
-        (bounds.y + bounds.height / 2.) as usize,
+        (bounds.x + bounds.width / 2.).trunc(),
+        (bounds.y + bounds.height / 2.).trunc(),
       );
-      let at = (y * frame.shot.width as usize + x) * 4;
-      let rgba = &frame.shot.rgba[at..at + 4];
 
-      (frame.at, u32::from_be_bytes([0, rgba[0], rgba[1], rgba[2]]))
+      (frame.at, frame.shot.color_at(x, y))
     })
     .collect()
 }

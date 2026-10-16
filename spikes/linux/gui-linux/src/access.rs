@@ -792,8 +792,9 @@ fn add_entry(
 
         previous_blank = blank;
         lengths.push(u8::try_from(shown(cluster).len()).unwrap_or(u8::MAX));
-        xs.push(x0 - line.left);
-        widths.push((x1 - x0).max(0.));
+        // In the run's coordinates, which are its bounds' device pixels.
+        xs.push((x0 - line.left) * scale as f32);
+        widths.push((x1 - x0).max(0.) * scale as f32);
       }
 
       let run_id = AkId(base | index as u64);
@@ -801,7 +802,7 @@ fn add_entry(
       let advance = xs
         .last()
         .zip(widths.last())
-        .map_or(0., |(x, width)| x + width);
+        .map_or(0., |(x, width)| (x + width) / scale as f32);
 
       run.set_value(shown(slice));
       run.set_character_lengths(lengths);

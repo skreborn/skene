@@ -26,6 +26,7 @@ vello_hybrid = { default-features = false, features = ["std", "wgpu"], optional 
 wayland-backend = { features = ["client_system", "dlopen"], optional = true, version = "=0.3.17" }
 wayland-client = "=0.31.15"
 wayland-protocols-misc = { features = ["client"], version = "=0.3.12" }
+wayland-protocols-plasma = { features = ["client"], version = "=0.3.12" }
 wayland-protocols-wlr = { features = ["client"], version = "=0.3.12" }
 wgpu = { default-features = false, features = ["std", "vulkan", "wgsl"], optional = true, version = "=29.0.4" }
 x11rb = { default-features = false, features = ["allow-unsafe-code", "cursor", "dri3", "present", "shm", "xinput", "xkb", "xtest"], version = "=0.14.0" }

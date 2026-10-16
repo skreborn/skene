@@ -2,8 +2,12 @@
 //!
 //! - X11: XTest, from a connection of the test's own;
 //! - mutter (headless, Wayland): a RemoteDesktop session's EIS socket, spoken through reis
-//!   (libei's protocol), its absolute pointer aimed in the session's ScreenCast stream;
-//! - sway (headless, Wayland): `zwlr_virtual_pointer_v1` and `zwp_virtual_keyboard_v1`.
+//!   (libei's protocol), its absolute pointer aimed in the session's ScreenCast stream; touch
+//!   through the session's own D-Bus requests, mutter's EIS offering no touchscreen;
+//! - sway (headless, Wayland): `zwlr_virtual_pointer_v1` and `zwp_virtual_keyboard_v1`;
+//! - KWin (virtual, Wayland): `org_kde_kwin_fake_input`, its pointer, keyboard and touchscreen;
+//! - weston (Wayland, its X11 backend): XTest into the X window weston shows its output in, which
+//!   weston takes its pointer and keyboard from.
 //!
 //! Every backend presses keys by keysym: the keymap the display server gives the device is
 //! read, and a key whose keysym sits on a level of its own is pressed with that level's
@@ -100,6 +104,73 @@ pub trait Input {
   /// Turns the wheel by detents, right and down positive.
   fn wheel(&mut self, right: i32, down: i32) -> Result<()>;
 
+  /// Moves two fingers on a touchpad by `right` and `down` pixels of scrolling, as one frame
+  /// of a touchpad's continuous scroll.
+  ///
+  /// # Errors
+  ///
+  /// Where the backend has no touchpad to send it from.
+  fn finger_scroll(&mut self, right: f64, down: f64) -> Result<()> {
+    let _ = (right, down);
+
+    Err(format!("{} sends no touchpad scrolling", self.name()).into())
+  }
+
+  /// Lifts the fingers off the touchpad: the end of a continuous scroll.
+  ///
+  /// # Errors
+  ///
+  /// Where the backend has no touchpad to send it from.
+  fn finger_scroll_stop(&mut self) -> Result<()> {
+    Err(format!("{} sends no touchpad scrolling", self.name()).into())
+  }
+
+  /// Puts touch point `id` down on the touchscreen at `(x, y)` in the pointer space.
+  ///
+  /// # Errors
+  ///
+  /// Where the backend has no touchscreen to send it from.
+  fn touch_down(&mut self, id: u32, x: f64, y: f64) -> Result<()> {
+    let _ = (id, x, y);
+
+    Err(format!("{} sends no touch", self.name()).into())
+  }
+
+  /// Moves touch point `id` to `(x, y)` in the pointer space.
+  ///
+  /// # Errors
+  ///
+  /// Where the backend has no touchscreen to send it from.
+  fn touch_motion(&mut self, id: u32, x: f64, y: f64) -> Result<()> {
+    let _ = (id, x, y);
+
+    Err(format!("{} sends no touch", self.name()).into())
+  }
+
+  /// Lifts touch point `id`.
+  ///
+  /// # Errors
+  ///
+  /// Where the backend has no touchscreen to send it from.
+  fn touch_up(&mut self, id: u32) -> Result<()> {
+    let _ = id;
+
+    Err(format!("{} sends no touch", self.name()).into())
+  }
+
+  /// Whether the backend sends touch.
+  fn has_touch(&self) -> bool {
+    false
+  }
+
+  /// Whether the backend sends a touchpad's continuous scrolling and its end.
+  fn has_finger_scroll(&self) -> bool {
+    false
+  }
+
+  /// The backend's name, as a failure names it.
+  fn name(&self) -> &'static str;
+
   /// Waits until what was sent has reached the display server.
   fn sync(&mut self) -> Result<()>;
 
@@ -109,6 +180,12 @@ pub trait Input {
 
   /// The pointer space's size.
   fn extent(&self) -> (f64, f64);
+
+  /// Where a move to `x`, `y` puts the pointer: there, or the nearest point the device can
+  /// name.
+  fn landing(&self, x: f64, y: f64) -> (f64, f64) {
+    (x, y)
+  }
 
   /// Presses and releases the key typing `keysym`, with the level's modifier held.
   ///
@@ -163,24 +240,42 @@ pub trait Input {
   }
 }
 
-/// XTest on the test's own connection to `DISPLAY`.
+/// XTest on the test's own connection to an X display: the app's own (`DISPLAY`), or the one a
+/// nested compositor shows its output in (`SKENE_INPUT_DISPLAY`), whose window the compositor
+/// takes its pointer and keyboard from.
 pub struct X11 {
   conn: x11rb::rust_connection::RustConnection,
   root: u32,
   places: HashMap<u32, Place>,
   extent: (f64, f64),
+  nested: bool,
 }
 
 impl X11 {
-  /// Connects to `DISPLAY`.
+  /// Connects to `DISPLAY`, the display the app's window is on.
   ///
   /// # Errors
   ///
   /// Where there is no display or it has no XTest.
   pub fn new() -> Result<Self> {
+    Self::connect(None, false)
+  }
+
+  /// Connects to `display`, where a nested compositor (weston's X11 backend) shows its output
+  /// as a window: the pointer space is the X screen's, where the app's window is found as a
+  /// Wayland window is, by moving the pointer onto it.
+  ///
+  /// # Errors
+  ///
+  /// Where there is no such display or it has no XTest.
+  pub fn nested(display: &str) -> Result<Self> {
+    Self::connect(Some(display), true)
+  }
+
+  fn connect(display: Option<&str>, nested: bool) -> Result<Self> {
     use x11rb::connection::Connection as _;
 
-    let (conn, screen) = x11rb::connect(None)?;
+    let (conn, screen) = x11rb::connect(display)?;
     let setup = conn.setup();
     let root = setup.roots[screen].root;
     let extent = (
@@ -192,6 +287,7 @@ impl X11 {
       root,
       places: HashMap::new(),
       extent,
+      nested,
     };
 
     x11.read_keymap()?;
@@ -334,11 +430,19 @@ impl Input for X11 {
   }
 
   fn window_origin(&mut self) -> Option<(f64, f64)> {
-    Some((0., 0.))
+    (!self.nested).then_some((0., 0.))
   }
 
   fn extent(&self) -> (f64, f64) {
     self.extent
+  }
+
+  fn name(&self) -> &'static str {
+    if self.nested {
+      "XTest into a nested compositor's X11 window"
+    } else {
+      "XTest"
+    }
   }
 }
 
@@ -349,6 +453,7 @@ const SCREEN_CAST: &str = "org.gnome.Mutter.ScreenCast";
 struct Mutter {
   conn: Connection,
   session: OwnedObjectPath,
+  stream: OwnedObjectPath,
   mapping: Option<String>,
 }
 
@@ -449,8 +554,26 @@ impl Mutter {
     Ok(Self {
       conn,
       session,
+      stream,
       mapping,
     })
+  }
+
+  /// Calls the RemoteDesktop session's `method` with `arguments`.
+  fn notify<B: serde::Serialize + zbus::zvariant::DynamicType>(
+    &self,
+    method: &str,
+    arguments: &B,
+  ) -> Result<()> {
+    self.conn.call_method(
+      Some(REMOTE_DESKTOP),
+      self.session.as_str(),
+      Some(&*format!("{REMOTE_DESKTOP}.Session")),
+      method,
+      arguments,
+    )?;
+
+    Ok(())
   }
 
   /// The session's EIS socket.
@@ -481,6 +604,8 @@ pub struct Ei {
   absolute: Option<reis::event::Device>,
   /// The keyboard device.
   keyboard: Option<reis::event::Device>,
+  /// The touchscreen device, where the compositor offers one.
+  touch: Option<reis::event::Device>,
   /// The devices resumed.
   resumed: Vec<reis::event::Device>,
   /// Where each keysym is on the keymap.
@@ -516,6 +641,7 @@ impl Ei {
       converter,
       absolute: None,
       keyboard: None,
+      touch: None,
       resumed: Vec::new(),
       places: HashMap::new(),
       region: (0., 0., 0., 0.),
@@ -533,7 +659,10 @@ impl Ei {
           .is_some_and(|device| ei.resumed.contains(device))
       };
 
-      if ready(&ei.absolute) && ready(&ei.keyboard) {
+      if ready(&ei.absolute)
+        && ready(&ei.keyboard)
+        && (ready(&ei.touch) || started.elapsed() > Duration::from_millis(500))
+      {
         break;
       }
 
@@ -605,7 +734,8 @@ impl Ei {
               | reis::event::DeviceCapability::Keyboard
               | reis::event::DeviceCapability::Button
               | reis::event::DeviceCapability::Scroll
-              | reis::event::DeviceCapability::Pointer,
+              | reis::event::DeviceCapability::Pointer
+              | reis::event::DeviceCapability::Touch,
           );
         }
         reis::event::EiEvent::DeviceAdded(added) => {
@@ -617,6 +747,10 @@ impl Ei {
 
           if device.has_capability(reis::event::DeviceCapability::Keyboard) {
             self.keyboard = Some(device.clone());
+          }
+
+          if device.has_capability(reis::event::DeviceCapability::Touch) {
+            self.touch = Some(device.clone());
           }
         }
         reis::event::EiEvent::DeviceResumed(resumed) => {
@@ -636,6 +770,10 @@ impl Ei {
 
           if self.keyboard.as_ref() == Some(&removed.device) {
             self.keyboard = None;
+          }
+
+          if self.touch.as_ref() == Some(&removed.device) {
+            self.touch = None;
           }
         }
         _ => {}
@@ -727,6 +865,74 @@ impl Input for Ei {
     self.frame(&device)
   }
 
+  fn finger_scroll(&mut self, right: f64, down: f64) -> Result<()> {
+    let device = self.device(true)?;
+    let scroll = device.interface::<reis::ei::Scroll>().ok_or("no scroll")?;
+
+    scroll.scroll(right as f32, down as f32);
+    self.frame(&device)
+  }
+
+  fn finger_scroll_stop(&mut self) -> Result<()> {
+    let device = self.device(true)?;
+    let scroll = device.interface::<reis::ei::Scroll>().ok_or("no scroll")?;
+
+    scroll.scroll_stop(1, 1, 0);
+    self.frame(&device)
+  }
+
+  // mutter 46's EIS offers no touchscreen; its RemoteDesktop session's own touch requests,
+  // aimed in the monitor's stream, stand in where it offers none.
+  fn touch_down(&mut self, id: u32, x: f64, y: f64) -> Result<()> {
+    self.pump(0)?;
+
+    let Some(device) = self.touch.clone() else {
+      let stream = self.mutter.stream.to_string();
+
+      return self.mutter.notify("NotifyTouchDown", &(stream, id, x, y));
+    };
+    let touch = device
+      .interface::<reis::ei::Touchscreen>()
+      .ok_or("no touchscreen")?;
+
+    touch.down(id, (self.region.0 + x) as f32, (self.region.1 + y) as f32);
+    self.frame(&device)
+  }
+
+  fn touch_motion(&mut self, id: u32, x: f64, y: f64) -> Result<()> {
+    let Some(device) = self.touch.clone() else {
+      let stream = self.mutter.stream.to_string();
+
+      return self.mutter.notify("NotifyTouchMotion", &(stream, id, x, y));
+    };
+    let touch = device
+      .interface::<reis::ei::Touchscreen>()
+      .ok_or("no touchscreen")?;
+
+    touch.motion(id, (self.region.0 + x) as f32, (self.region.1 + y) as f32);
+    self.frame(&device)
+  }
+
+  fn touch_up(&mut self, id: u32) -> Result<()> {
+    let Some(device) = self.touch.clone() else {
+      return self.mutter.notify("NotifyTouchUp", &(id,));
+    };
+    let touch = device
+      .interface::<reis::ei::Touchscreen>()
+      .ok_or("no touchscreen")?;
+
+    touch.up(id);
+    self.frame(&device)
+  }
+
+  fn has_touch(&self) -> bool {
+    true
+  }
+
+  fn has_finger_scroll(&self) -> bool {
+    true
+  }
+
   fn sync(&mut self) -> Result<()> {
     self.pump(0)
   }
@@ -738,6 +944,10 @@ impl Input for Ei {
   fn extent(&self) -> (f64, f64) {
     (self.region.2, self.region.3)
   }
+
+  fn name(&self) -> &'static str {
+    "mutter's EIS (touch through its RemoteDesktop session)"
+  }
 }
 
 /// sway's virtual pointer and keyboard on a connection of the test's own.
@@ -748,6 +958,7 @@ pub struct Sway {
   keyboard: wayland_protocols_misc::zwp_virtual_keyboard_v1::client::zwp_virtual_keyboard_v1::ZwpVirtualKeyboardV1,
   places: HashMap<u32, Place>,
   extent: (u32, u32),
+  scale: f64,
   started: Instant,
   modifiers: u32,
   _keymap: std::fs::File,
@@ -781,13 +992,14 @@ wayland_client::delegate_noop!(Devices: ignore wayland_protocols_misc::zwp_virtu
 
 impl Sway {
   /// Creates a virtual pointer and a virtual keyboard (a US layout, Compose on the right
-  /// Control key) on `WAYLAND_DISPLAY`'s seat; `extent` is the output's size, which absolute
-  /// motion spans.
+  /// Control key) on `WAYLAND_DISPLAY`'s seat; `extent` is the output's size in device pixels,
+  /// which absolute motion spans, and `scale` its scale: the pointer moves in its logical
+  /// pixels, sent in device pixels so a fractional logical position stays exact.
   ///
   /// # Errors
   ///
   /// Where the compositor offers no virtual pointer or keyboard.
-  pub fn new(extent: (u32, u32)) -> Result<Self> {
+  pub fn new(extent: (u32, u32), scale: f64) -> Result<Self> {
     use wayland_protocols_misc::zwp_virtual_keyboard_v1::client::zwp_virtual_keyboard_manager_v1::ZwpVirtualKeyboardManagerV1;
     use wayland_protocols_wlr::virtual_pointer::v1::client::zwlr_virtual_pointer_manager_v1::ZwlrVirtualPointerManagerV1;
 
@@ -828,6 +1040,7 @@ impl Sway {
       keyboard,
       places: places(&keymap),
       extent,
+      scale,
       started: Instant::now(),
       modifiers: 0,
       _keymap: file,
@@ -845,8 +1058,8 @@ impl Input for Sway {
 
     self.pointer.motion_absolute(
       time,
-      x.max(0.).round() as u32,
-      y.max(0.).round() as u32,
+      (x * self.scale).max(0.).round() as u32,
+      (y * self.scale).max(0.).round() as u32,
       self.extent.0,
       self.extent.1,
     );
@@ -930,6 +1143,43 @@ impl Input for Sway {
     Ok(())
   }
 
+  fn finger_scroll(&mut self, right: f64, down: f64) -> Result<()> {
+    use wayland_client::protocol::wl_pointer::{Axis, AxisSource};
+
+    let time = self.time();
+
+    self.pointer.axis_source(AxisSource::Finger);
+
+    for (axis, value) in [
+      (Axis::VerticalScroll, down),
+      (Axis::HorizontalScroll, right),
+    ] {
+      if value != 0. {
+        self.pointer.axis(time, axis, value);
+      }
+    }
+
+    self.pointer.frame();
+
+    Ok(())
+  }
+
+  fn finger_scroll_stop(&mut self) -> Result<()> {
+    use wayland_client::protocol::wl_pointer::{Axis, AxisSource};
+
+    let time = self.time();
+
+    self.pointer.axis_source(AxisSource::Finger);
+    self.pointer.axis_stop(time, Axis::VerticalScroll);
+    self.pointer.frame();
+
+    Ok(())
+  }
+
+  fn has_finger_scroll(&self) -> bool {
+    true
+  }
+
   fn sync(&mut self) -> Result<()> {
     self.queue.roundtrip(&mut Devices)?;
 
@@ -941,6 +1191,154 @@ impl Input for Sway {
   }
 
   fn extent(&self) -> (f64, f64) {
-    (f64::from(self.extent.0), f64::from(self.extent.1))
+    (
+      f64::from(self.extent.0) / self.scale,
+      f64::from(self.extent.1) / self.scale,
+    )
+  }
+
+  fn landing(&self, x: f64, y: f64) -> (f64, f64) {
+    (
+      (x * self.scale).max(0.).round() / self.scale,
+      (y * self.scale).max(0.).round() / self.scale,
+    )
+  }
+
+  fn name(&self) -> &'static str {
+    "sway's virtual pointer and keyboard"
+  }
+}
+
+/// KWin's fake input on a connection of the test's own: a pointer, a keyboard and a
+/// touchscreen, aimed in KWin's logical coordinates.
+pub struct Kwin {
+  _conn: wayland_client::Connection,
+  queue: wayland_client::EventQueue<Devices>,
+  fake: wayland_protocols_plasma::fake_input::client::org_kde_kwin_fake_input::OrgKdeKwinFakeInput,
+  places: HashMap<u32, Place>,
+  extent: (f64, f64),
+  pointer: (f64, f64),
+}
+
+wayland_client::delegate_noop!(Devices: ignore wayland_protocols_plasma::fake_input::client::org_kde_kwin_fake_input::OrgKdeKwinFakeInput);
+
+impl Kwin {
+  /// Binds KWin's fake input on `WAYLAND_DISPLAY` and authenticates; `extent` is the output's
+  /// size in its logical pixels, which the pointer moves in. The keymap is KWin's: the US
+  /// layout, Compose on the right Control key (the runner's configuration home).
+  ///
+  /// # Errors
+  ///
+  /// Where KWin offers no fake input (it is a restricted interface: the runner starts KWin with
+  /// its permission checks off).
+  pub fn new(extent: (f64, f64)) -> Result<Self> {
+    use wayland_protocols_plasma::fake_input::client::org_kde_kwin_fake_input::OrgKdeKwinFakeInput;
+
+    let conn = wayland_client::Connection::connect_to_env()?;
+    let (globals, mut queue) = wayland_client::globals::registry_queue_init::<Devices>(&conn)?;
+    let qh = queue.handle();
+    let fake: OrgKdeKwinFakeInput = globals.bind(&qh, 4..=4, ())?;
+    let context = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);
+    let keymap = xkb::Keymap::new_from_names(
+      &context,
+      "",
+      "",
+      "us",
+      "",
+      Some("compose:rctrl".to_owned()),
+      xkb::KEYMAP_COMPILE_NO_FLAGS,
+    )
+    .ok_or("xkbcommon has no US keymap")?;
+
+    fake.authenticate("skene-testing".to_owned(), "a test's real input".to_owned());
+    queue.roundtrip(&mut Devices)?;
+
+    Ok(Self {
+      _conn: conn,
+      queue,
+      fake,
+      places: places(&keymap),
+      extent,
+      pointer: (0., 0.),
+    })
+  }
+}
+
+impl Input for Kwin {
+  fn move_to(&mut self, x: f64, y: f64) -> Result<()> {
+    self.pointer = (x, y);
+    self.fake.pointer_motion_absolute(x, y);
+
+    Ok(())
+  }
+
+  fn button(&mut self, button: u32, down: bool) -> Result<()> {
+    self.fake.button(button, u32::from(down));
+
+    Ok(())
+  }
+
+  fn key(&mut self, code: u32, down: bool) -> Result<()> {
+    self.fake.keyboard_key(code, u32::from(down));
+
+    Ok(())
+  }
+
+  fn place(&mut self, keysym: u32) -> Option<Place> {
+    self.places.get(&keysym).copied()
+  }
+
+  fn wheel(&mut self, right: i32, down: i32) -> Result<()> {
+    // KWin passes a fake axis on as a wheel's: 15 pixels a detent, as libinput reports one.
+    for (axis, count) in [(0, down), (1, right)] {
+      if count != 0 {
+        self.fake.axis(axis, f64::from(count) * 15.);
+      }
+    }
+
+    Ok(())
+  }
+
+  fn touch_down(&mut self, id: u32, x: f64, y: f64) -> Result<()> {
+    self.fake.touch_down(id, x, y);
+    self.fake.touch_frame();
+
+    Ok(())
+  }
+
+  fn touch_motion(&mut self, id: u32, x: f64, y: f64) -> Result<()> {
+    self.fake.touch_motion(id, x, y);
+    self.fake.touch_frame();
+
+    Ok(())
+  }
+
+  fn touch_up(&mut self, id: u32) -> Result<()> {
+    self.fake.touch_up(id);
+    self.fake.touch_frame();
+
+    Ok(())
+  }
+
+  fn has_touch(&self) -> bool {
+    true
+  }
+
+  fn sync(&mut self) -> Result<()> {
+    self.queue.roundtrip(&mut Devices)?;
+
+    Ok(())
+  }
+
+  fn window_origin(&mut self) -> Option<(f64, f64)> {
+    None
+  }
+
+  fn extent(&self) -> (f64, f64) {
+    self.extent
+  }
+
+  fn name(&self) -> &'static str {
+    "KWin's fake input"
   }
 }

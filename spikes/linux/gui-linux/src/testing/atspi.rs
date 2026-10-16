@@ -401,6 +401,21 @@ impl Atspi {
     Ok((caret, start, end))
   }
 
+  /// The extents of `object`'s character at `offset` (in characters) in coordinates of `kind`
+  /// ([`SCREEN`] or [`WINDOW`]): `(x, y, width, height)`.
+  ///
+  /// # Errors
+  ///
+  /// Where it has no text.
+  pub fn character_extents(
+    &self,
+    object: &Object,
+    offset: i32,
+    kind: u32,
+  ) -> Result<(i32, i32, i32, i32)> {
+    self.call(object, TEXT, "GetCharacterExtents", &(offset, kind))
+  }
+
   /// `object`'s extents in coordinates of `kind` ([`SCREEN`] or [`WINDOW`]):
   /// `(x, y, width, height)`.
   ///

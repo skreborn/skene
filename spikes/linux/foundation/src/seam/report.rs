@@ -42,6 +42,56 @@ pub struct PointerEvent {
   pub button: u8,
 }
 
+/// What asked for a context menu.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum MenuSource {
+  /// A secondary press.
+  Pointer,
+  /// `Shift-F10` or the menu key, at the focus.
+  Keyboard,
+  /// A long press on a touchscreen.
+  Touch,
+}
+
+/// A context menu asked for at a node, in the node's coordinates and the window's.
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub struct ContextMenuEvent {
+  /// The horizontal position, from the node's leading edge.
+  pub x: f32,
+  /// The vertical position, from the node's top.
+  pub y: f32,
+  /// The horizontal position in the window: where a menu opened at the pointer hangs from.
+  pub window_x: f32,
+  /// The vertical position in the window.
+  pub window_y: f32,
+  /// What asked for it.
+  pub source: MenuSource,
+}
+
+/// What was dropped on a node: text, and the URIs of what a file manager or a browser drags.
+#[derive(Clone, PartialEq, Eq, Debug, Default)]
+pub struct Dropped {
+  /// The text, where the drag offered text.
+  pub text: Option<Rc<str>>,
+  /// The URIs, where the drag offered a URI list (`text/uri-list`), in its order.
+  pub uris: Vec<Rc<str>>,
+}
+
+/// A drop on a node, in the node's coordinates and the window's.
+#[derive(Clone, PartialEq, Debug)]
+pub struct DropEvent {
+  /// The horizontal position, from the node's leading edge.
+  pub x: f32,
+  /// The vertical position, from the node's top.
+  pub y: f32,
+  /// The horizontal position in the window.
+  pub window_x: f32,
+  /// The vertical position in the window.
+  pub window_y: f32,
+  /// What was dropped.
+  pub dropped: Dropped,
+}
+
 /// A key event, named as a browser names it (`key` and `code`).
 #[derive(Clone, PartialEq, Debug)]
 pub struct KeyEvent {
@@ -142,6 +192,14 @@ pub enum Report {
   /// scrolling, a text entry's editing). It climbs every ancestor, each control's behavior
   /// answering first, until a verdict stops it.
   Key(KeyEvent),
+  /// A context menu asked for at the deepest node under the pointer or the finger, or at the
+  /// focus: it climbs the scene, each context-menu handler running until one stops it. Where
+  /// one ran, the platform's own menu is kept away.
+  ContextMenu(ContextMenuEvent),
+  /// Something dropped on the deepest node under the pointer, where it or a node it climbs
+  /// through takes drops ([`Interest::drop`]): it climbs to the nearest drop handler and each
+  /// above it until one takes it. Answered `prevented` where one took it.
+  Drop(DropEvent),
 }
 
 /// A node's size as laid out.
@@ -187,4 +245,6 @@ pub struct Interest {
   pub focus: bool,
   /// Whether to report the node's size as laid out.
   pub size: bool,
+  /// Whether the node takes drops (text, URIs): what is dragged over it is accepted.
+  pub drop: bool,
 }

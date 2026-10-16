@@ -9,11 +9,13 @@
 //!   surface at the logical one), the integer buffer scale otherwise;
 //! - the cursor through cursor-shape-v1 where offered and the reader's xcursor theme
 //!   otherwise;
-//! - the pointer through sctk (high-resolution `value120` wheels, pixel-precise touchpads),
+//! - the pointer through sctk (high-resolution `value120` wheels, pixel-precise touchpads whose
+//!   scroll flings on once the compositor marks the fingers lifted, `axis_stop`),
 //!   the keyboard raw (the compositor's keymap into xkbcommon, so compose, layouts and repeat
 //!   are Skene's);
-//! - the clipboard (`wl_data_device`) and the primary selection.
-//!
+//! - the touchscreen (`wl_touch`), the first finger down acting: a tap clicks, a drag scrolls or
+//!   selects, a long press asks for a context menu;
+//! - the clipboard (`wl_data_device`) and the primary selection;
 //! - an open overlay on an `xdg_popup`, placed by the compositor beside the anchor it hangs
 //!   from and grabbing the pointer and the keyboard while it is open;
 //! - text-input-v3, through [`crate::ime::wayland`].
@@ -32,7 +34,7 @@ use sctk::{
     DataDeviceManagerState, WritePipe,
     data_device::{DataDevice, DataDeviceHandler},
     data_offer::{DataOfferHandler, DragOffer},
-    data_source::{CopyPasteSource, DataSourceHandler},
+    data_source::{CopyPasteSource, DataSourceHandler, DragSource},
   },
   delegate_registry,
   dispatch2::Dispatch2,
@@ -69,6 +71,7 @@ use sctk::{
     pointer::{
       CursorIcon, PointerEvent, PointerEventKind, PointerHandler, ThemeSpec, ThemedPointer,
     },
+    touch::TouchHandler,
   },
   shell::{
     WaylandSurface,
@@ -88,7 +91,7 @@ use wayland_client::{
   globals::registry_queue_init,
   protocol::{
     wl_data_device::WlDataDevice, wl_data_device_manager::DndAction, wl_data_source::WlDataSource,
-    wl_keyboard, wl_output, wl_pointer, wl_seat, wl_shm, wl_surface,
+    wl_keyboard, wl_output, wl_pointer, wl_seat, wl_shm, wl_surface, wl_touch,
   },
 };
 use xkbcommon::xkb;
@@ -98,7 +101,7 @@ use crate::{
   clipboard::{self, Op, Selection, Then},
   keys::Keyboard,
   runtime::Message,
-  shell::{Cursor, Request, Shell, Wheel},
+  shell::{Cursor, DropAction, Offered, Request, Shell, Wanted, Wheel},
   trace,
 };
 
@@ -158,6 +161,10 @@ struct State {
   keyboard: Keyboard,
   /// The seat's pointer, with its cursor theme.
   pointer: Option<ThemedPointer>,
+  /// The seat's touchscreen.
+  touch: Option<wl_touch::WlTouch>,
+  /// The touch points down on the open popup, and where each is in its coordinates.
+  popup_touches: HashMap<i32, (f32, f32)>,
   /// The cursor shown.
   cursor: Cursor,
   /// The serial of the last input event.
@@ -191,6 +198,10 @@ struct State {
   primary_source: Option<PrimarySelectionSource>,
   /// The text of each selection this window offers.
   owned: HashMap<Selection, String>,
+  /// The drag of text out of the window, its text and the action the compositor chose.
+  dragging: Option<(DragSource, String, Option<DndAction>)>,
+  /// The drops whose data is being read, by read id: where each landed.
+  drops: HashMap<u64, (DragOffer, (f32, f32), Wanted)>,
   /// The selection reads in flight, by id: what to do with the text.
   reads: HashMap<u64, Then>,
   /// The next read's id.
@@ -382,6 +393,8 @@ pub fn open(shell: Shell, app_id: &str) -> Result<Open, Box<dyn Error>> {
     keyboard_object: None,
     keyboard: Keyboard::new(),
     pointer: None,
+    touch: None,
+    popup_touches: HashMap::new(),
     cursor: Cursor::Default,
     last_serial: 0,
     last_press_serial: 0,
@@ -398,6 +411,8 @@ pub fn open(shell: Shell, app_id: &str) -> Result<Open, Box<dyn Error>> {
     primary_device: None,
     primary_source: None,
     owned: HashMap::new(),
+    dragging: None,
+    drops: HashMap::new(),
     reads: HashMap::new(),
     next_read: 0,
     conn: conn.clone(),
@@ -666,6 +681,77 @@ impl State {
           self.cursor = cursor;
           self.set_cursor();
         }
+        Request::StartDrag => self.start_drag(),
+      }
+    }
+  }
+
+  /// Starts the drag the shell asked for, from the last press: the compositor carries it,
+  /// showing what a target under it answers.
+  fn start_drag(&mut self) {
+    let (Some(devices), Some(device)) = (&self.devices, &self.device) else {
+      self.shell.drag_ended(None);
+
+      return;
+    };
+    let Some((text, moves)) = self
+      .shell
+      .dragged()
+      .map(|(text, moves)| (text.to_owned(), moves))
+    else {
+      return;
+    };
+    let actions = if moves {
+      DndAction::Copy | DndAction::Move
+    } else {
+      DndAction::Copy
+    };
+    let source = devices.create_drag_and_drop_source(&self.qh, TEXT_TYPES, actions);
+
+    source.start_drag(
+      device,
+      self.window.wl_surface(),
+      None,
+      self.last_press_serial,
+    );
+    trace::log(|| format!("[dnd] start a drag, serial {}", self.last_press_serial));
+    self.dragging = Some((source, text, None));
+  }
+
+  /// What `offer` offers.
+  fn offered(offer: &DragOffer) -> Offered {
+    offer.with_mime_types(|types| Offered {
+      text: TEXT_TYPES
+        .iter()
+        .any(|wanted| types.iter().any(|offered| offered == *wanted)),
+      uris: types.iter().any(|offered| offered == "text/uri-list"),
+    })
+  }
+
+  /// Answers `offer` at `x`, `y` (surface pixels) as the shell answers a drag there: the type
+  /// it would take and the action, or a refusal.
+  fn answer_offer(&mut self, offer: &DragOffer, x: f64, y: f64) {
+    let offered = Self::offered(offer);
+    let action = self.shell.drag_over(x as f32, y as f32, offered);
+    let mime = match self.shell.drop_wants(x as f32, y as f32, offered) {
+      Some(Wanted::Uris) => Some("text/uri-list".to_owned()),
+      Some(Wanted::Text) => offer.with_mime_types(pick_mime),
+      None => None,
+    };
+
+    match action.zip(mime) {
+      Some((action, mime)) => {
+        let action = match action {
+          DropAction::Copy => DndAction::Copy,
+          DropAction::Move => DndAction::Move,
+        };
+
+        offer.accept_mime_type(offer.serial, Some(mime));
+        offer.set_actions(action, action);
+      }
+      None => {
+        offer.accept_mime_type(offer.serial, None);
+        offer.set_actions(DndAction::empty(), DndAction::empty());
       }
     }
   }
@@ -921,6 +1007,32 @@ impl State {
     for (id, text) in arrived {
       if let Some(then) = self.reads.remove(&id) {
         then(text);
+      } else if let Some((offer, at, wanted)) = self.drops.remove(&id) {
+        let text = text.unwrap_or_default();
+        let dropped = match wanted {
+          Wanted::Uris => skene_foundation::seam::report::Dropped {
+            text: None,
+            uris: text
+              .lines()
+              .map(str::trim)
+              .filter(|line| !line.is_empty() && !line.starts_with('#'))
+              .map(std::rc::Rc::from)
+              .collect(),
+          },
+          Wanted::Text => skene_foundation::seam::report::Dropped {
+            text: Some(std::rc::Rc::from(text.as_str())),
+            uris: Vec::new(),
+          },
+        };
+        let action = self.shell.drop_data(at.0, at.1, dropped);
+
+        trace::log(|| format!("[dnd] the drop did {action:?}"));
+
+        if action.is_some() {
+          offer.finish();
+        }
+
+        offer.destroy();
       }
     }
   }
@@ -1164,6 +1276,11 @@ impl SeatHandler for State {
       self.keyboard_object = Some(seat.get_keyboard(qh, Raw));
     }
 
+    if capability == Capability::Touch && self.touch.is_none() {
+      self.touch = self.seats.get_touch(qh, &seat).ok();
+      trace::log(|| format!("[wayland] touch {}", self.touch.is_some()));
+    }
+
     if capability == Capability::Pointer && self.pointer.is_none() {
       let surface = self.compositor.create_surface(qh);
 
@@ -1195,6 +1312,13 @@ impl SeatHandler for State {
 
     if capability == Capability::Pointer {
       self.pointer = None;
+    }
+
+    if capability == Capability::Touch
+      && let Some(touch) = self.touch.take()
+    {
+      touch.release();
+      self.shell.touch_cancel();
     }
   }
 
@@ -1289,36 +1413,160 @@ impl PointerHandler for State {
           self.requests(requests);
         }
         PointerEventKind::Axis {
+          time,
           horizontal,
           vertical,
-          ..
+          source,
         } => {
           let lines = horizontal.value120 != 0
             || vertical.value120 != 0
             || horizontal.discrete != 0
-            || vertical.discrete != 0;
+            || vertical.discrete != 0
+            || matches!(
+              source,
+              Some(wl_pointer::AxisSource::Wheel | wl_pointer::AxisSource::WheelTilt)
+            );
 
           if lines {
+            // A wheel that reports no detents moves 15 pixels a detent, as libinput's do.
             let steps = |axis: sctk::seat::pointer::AxisScroll| {
               if axis.value120 != 0 {
                 axis.value120 as f32 / 120.
-              } else {
+              } else if axis.discrete != 0 {
                 axis.discrete as f32
+              } else {
+                axis.absolute as f32 / 15.
               }
             };
 
             self
               .shell
               .wheel(Wheel::Lines(steps(horizontal), steps(vertical)));
-          } else if horizontal.absolute != 0. || vertical.absolute != 0. {
-            self.shell.wheel(Wheel::Pixels(
-              horizontal.absolute as f32,
-              vertical.absolute as f32,
-            ));
+          } else {
+            // A touchpad's (or another continuous source's) scrolling, which flings once the
+            // compositor says the fingers lifted.
+            if horizontal.absolute != 0. || vertical.absolute != 0. {
+              self
+                .shell
+                .finger_scroll(horizontal.absolute as f32, vertical.absolute as f32, time);
+            }
+
+            if horizontal.stop || vertical.stop {
+              self.shell.finger_scroll_stop(time);
+            }
           }
         }
       }
     }
+  }
+}
+
+impl TouchHandler for State {
+  fn down(
+    &mut self,
+    _: &Connection,
+    _: &QueueHandle<Self>,
+    _: &wl_touch::WlTouch,
+    serial: u32,
+    time: u32,
+    surface: wl_surface::WlSurface,
+    id: i32,
+    position: (f64, f64),
+  ) {
+    let (x, y) = (position.0 as f32, position.1 as f32);
+
+    self.last_serial = serial;
+    self.last_press_serial = serial;
+    self.grab_serial = serial;
+
+    if self
+      .popup
+      .as_ref()
+      .is_some_and(|open| open.popup.wl_surface() == &surface)
+    {
+      self.popup_touches.insert(id, (x, y));
+      self.shell.popup_touch_down(x, y);
+
+      return;
+    }
+
+    if &surface != self.window.wl_surface() {
+      return;
+    }
+
+    let requests = self.shell.touch_down(id, x, y, time);
+
+    self.requests(requests);
+  }
+
+  fn up(
+    &mut self,
+    _: &Connection,
+    _: &QueueHandle<Self>,
+    _: &wl_touch::WlTouch,
+    serial: u32,
+    time: u32,
+    id: i32,
+  ) {
+    self.last_serial = serial;
+
+    if let Some((x, y)) = self.popup_touches.remove(&id) {
+      self.shell.popup_touch_up(x, y);
+
+      return;
+    }
+
+    let requests = self.shell.touch_up(id, time);
+
+    self.requests(requests);
+  }
+
+  fn motion(
+    &mut self,
+    _: &Connection,
+    _: &QueueHandle<Self>,
+    _: &wl_touch::WlTouch,
+    time: u32,
+    id: i32,
+    position: (f64, f64),
+  ) {
+    let (x, y) = (position.0 as f32, position.1 as f32);
+
+    if let Some(at) = self.popup_touches.get_mut(&id) {
+      *at = (x, y);
+
+      return;
+    }
+
+    let requests = self.shell.touch_motion(id, x, y, time);
+
+    self.requests(requests);
+  }
+
+  fn shape(
+    &mut self,
+    _: &Connection,
+    _: &QueueHandle<Self>,
+    _: &wl_touch::WlTouch,
+    _: i32,
+    _: f64,
+    _: f64,
+  ) {
+  }
+
+  fn orientation(
+    &mut self,
+    _: &Connection,
+    _: &QueueHandle<Self>,
+    _: &wl_touch::WlTouch,
+    _: i32,
+    _: f64,
+  ) {
+  }
+
+  fn cancel(&mut self, _: &Connection, _: &QueueHandle<Self>, _: &wl_touch::WlTouch) {
+    self.popup_touches.clear();
+    self.shell.touch_cancel();
   }
 }
 
@@ -1333,22 +1581,108 @@ impl DataDeviceHandler for State {
     &mut self,
     _: &Connection,
     _: &QueueHandle<Self>,
-    _: &WlDataDevice,
-    _: f64,
-    _: f64,
-    _: &wl_surface::WlSurface,
+    device: &WlDataDevice,
+    x: f64,
+    y: f64,
+    surface: &wl_surface::WlSurface,
   ) {
+    if surface != self.window.wl_surface() {
+      return;
+    }
+
+    let offer = self
+      .device
+      .as_ref()
+      .filter(|ours| ours.inner() == device)
+      .and_then(|ours| ours.data().drag_offer());
+
+    trace::log(|| format!("[dnd] enter at ({x}, {y}): {}", offer.is_some()));
+
+    if let Some(offer) = offer {
+      self.answer_offer(&offer, x, y);
+    }
   }
 
-  fn leave(&mut self, _: &Connection, _: &QueueHandle<Self>, _: &WlDataDevice) {}
+  fn leave(&mut self, _: &Connection, _: &QueueHandle<Self>, _: &WlDataDevice) {
+    trace::log(|| "[dnd] leave".to_owned());
+    self.shell.drag_left();
+  }
 
-  fn motion(&mut self, _: &Connection, _: &QueueHandle<Self>, _: &WlDataDevice, _: f64, _: f64) {}
+  fn motion(
+    &mut self,
+    _: &Connection,
+    _: &QueueHandle<Self>,
+    device: &WlDataDevice,
+    x: f64,
+    y: f64,
+  ) {
+    let offer = self
+      .device
+      .as_ref()
+      .filter(|ours| ours.inner() == device)
+      .and_then(|ours| ours.data().drag_offer());
+
+    if let Some(offer) = offer {
+      self.answer_offer(&offer, x, y);
+    }
+  }
 
   fn selection(&mut self, _: &Connection, _: &QueueHandle<Self>, _: &WlDataDevice) {
     trace::log(|| "[clipboard] the clipboard has a new offer".to_owned());
   }
 
-  fn drop_performed(&mut self, _: &Connection, _: &QueueHandle<Self>, _: &WlDataDevice) {}
+  fn drop_performed(&mut self, _: &Connection, _: &QueueHandle<Self>, device: &WlDataDevice) {
+    let Some(offer) = self
+      .device
+      .as_ref()
+      .filter(|ours| ours.inner() == device)
+      .and_then(|ours| ours.data().drag_offer())
+    else {
+      return;
+    };
+    let at = (offer.x as f32, offer.y as f32);
+    let offered = Self::offered(&offer);
+    let wanted = self.shell.drop_wants(at.0, at.1, offered);
+    let mime = match wanted {
+      Some(Wanted::Uris) => Some("text/uri-list".to_owned()),
+      Some(Wanted::Text) => offer.with_mime_types(pick_mime),
+      None => None,
+    };
+
+    trace::log(|| format!("[dnd] drop at {at:?}: {wanted:?} as {mime:?}"));
+
+    let (Some(wanted), Some(mime)) = (wanted, mime) else {
+      self.shell.drag_left();
+      offer.destroy();
+
+      return;
+    };
+    let Ok(mut pipe) = offer.receive(mime) else {
+      self.shell.drag_left();
+      offer.destroy();
+
+      return;
+    };
+    let id = self.next_read;
+    let inbox = crate::runtime::inbox();
+
+    self.next_read += 1;
+    self.drops.insert(id, (offer, at, wanted));
+
+    std::thread::spawn(move || {
+      let mut bytes = Vec::new();
+      let text = pipe
+        .read_to_end(&mut bytes)
+        .ok()
+        .map(|_| String::from_utf8_lossy(&bytes).into_owned());
+
+      PIPE_RESULTS
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .push((id, text));
+      inbox.send(Message::Wake);
+    });
+  }
 }
 
 impl DataOfferHandler for State {
@@ -1385,15 +1719,41 @@ impl DataSourceHandler for State {
     &mut self,
     _: &Connection,
     _: &QueueHandle<Self>,
-    _: &WlDataSource,
+    source: &WlDataSource,
     mime: String,
-    pipe: WritePipe,
+    mut pipe: WritePipe,
   ) {
+    if let Some((ours, text, _)) = &self.dragging
+      && ours.inner() == source
+    {
+      trace::log(|| format!("[dnd] send the dragged text as {mime}"));
+
+      let text = text.clone();
+
+      std::thread::spawn(move || {
+        let _ = pipe.write_all(text.as_bytes());
+      });
+
+      return;
+    }
+
     trace::log(|| format!("[clipboard] send the clipboard as {mime}"));
     self.answer(Selection::Clipboard, pipe);
   }
 
   fn cancelled(&mut self, _: &Connection, _: &QueueHandle<Self>, source: &WlDataSource) {
+    if self
+      .dragging
+      .as_ref()
+      .is_some_and(|(ours, ..)| ours.inner() == source)
+    {
+      trace::log(|| "[dnd] the drag was cancelled".to_owned());
+      self.dragging = None;
+      self.shell.drag_ended(None);
+
+      return;
+    }
+
     if self
       .source
       .as_ref()
@@ -1405,11 +1765,49 @@ impl DataSourceHandler for State {
     }
   }
 
-  fn dnd_dropped(&mut self, _: &Connection, _: &QueueHandle<Self>, _: &WlDataSource) {}
+  fn dnd_dropped(&mut self, _: &Connection, _: &QueueHandle<Self>, _: &WlDataSource) {
+    trace::log(|| "[dnd] dropped".to_owned());
+  }
 
-  fn dnd_finished(&mut self, _: &Connection, _: &QueueHandle<Self>, _: &WlDataSource) {}
+  fn dnd_finished(&mut self, _: &Connection, _: &QueueHandle<Self>, source: &WlDataSource) {
+    let Some((ours, _, action)) = self.dragging.take() else {
+      return;
+    };
 
-  fn action(&mut self, _: &Connection, _: &QueueHandle<Self>, _: &WlDataSource, _: DndAction) {}
+    if ours.inner() != source {
+      self.dragging = Some((ours, String::new(), action));
+
+      return;
+    }
+
+    let action = action.and_then(|action| {
+      if action.contains(DndAction::Move) {
+        Some(DropAction::Move)
+      } else if action.contains(DndAction::Copy) {
+        Some(DropAction::Copy)
+      } else {
+        None
+      }
+    });
+
+    trace::log(|| format!("[dnd] finished: {action:?}"));
+    self.shell.drag_ended(action);
+  }
+
+  fn action(
+    &mut self,
+    _: &Connection,
+    _: &QueueHandle<Self>,
+    source: &WlDataSource,
+    action: DndAction,
+  ) {
+    if let Some((ours, _, chosen)) = &mut self.dragging
+      && ours.inner() == source
+    {
+      trace::log(|| format!("[dnd] the compositor chose {action:?}"));
+      *chosen = Some(action);
+    }
+  }
 }
 
 impl PrimarySelectionDeviceHandler for State {
@@ -1485,11 +1883,13 @@ impl Dispatch2<wl_keyboard::WlKeyboard, State> for Raw {
         state.last_serial = serial;
         state.shell.keyboard_focus(true);
       }
-      wl_keyboard::Event::Leave { .. } => {
+      wl_keyboard::Event::Leave { surface, .. } => {
         state.repeat = None;
 
-        // A popup's grab takes the keyboard from the window to the popup.
-        if state.popup.is_none() {
+        // A popup's grab takes the keyboard from the window to the popup, and the popup's
+        // surface gives it back as it closes (KWin says so after the window has it again): the
+        // window loses it only when it leaves the window's own surface with no popup open.
+        if state.popup.is_none() && &surface == state.window.wl_surface() {
           state.shell.keyboard_focus(false);
         }
       }

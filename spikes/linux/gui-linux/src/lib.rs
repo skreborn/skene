@@ -39,6 +39,7 @@ pub mod environment;
 pub mod gpu;
 pub mod ime;
 pub mod keys;
+pub mod kinetic;
 pub mod layout;
 pub mod look;
 pub mod motion;
@@ -54,6 +55,7 @@ pub mod trace;
 pub mod wayland;
 pub mod window;
 pub mod x11;
+pub mod xdnd;
 
 use std::{process::ExitCode, rc::Rc, time::Duration};
 
@@ -351,6 +353,7 @@ pub fn turn(shell: &mut shell::Shell) -> Vec<runtime::Message> {
   }
 
   runtime::run_due();
+  shell.touch_timers();
   shell.settle_focus();
   shell.sync_overlays();
   access::sync(shell);

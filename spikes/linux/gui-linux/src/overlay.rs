@@ -183,6 +183,11 @@ impl Open {
     self.dirty = true;
   }
 
+  /// Where it is: its top left as the backend placed it and its size (window pixels).
+  pub fn rect(&self) -> Rect {
+    self.node.frame.get()
+  }
+
   /// Whether `x`, `y` (window pixels) is on it.
   pub fn contains(&self, x: f32, y: f32) -> bool {
     let frame = self.node.frame.get();

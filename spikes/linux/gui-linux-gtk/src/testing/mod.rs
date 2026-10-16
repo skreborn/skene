@@ -807,6 +807,7 @@ impl Driver for Gtk {
     Screenshot {
       width: width as u32,
       height: height as u32,
+      scale: width as f64 / f64::from(window.width().max(1)),
       rgba,
     }
   }

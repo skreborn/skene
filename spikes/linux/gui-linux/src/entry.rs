@@ -122,6 +122,8 @@ pub struct Entry {
   reveal: Option<Cancel>,
   /// The selection last offered as the primary selection.
   offered: Option<String>,
+  /// Where a drag over the entry would drop its text (a byte of the text), shown as a caret.
+  pub drop_caret: Option<usize>,
 }
 
 impl Entry {
@@ -155,6 +157,7 @@ impl Entry {
       blink_started: std::time::Instant::now(),
       reveal: None,
       offered: None,
+      drop_caret: None,
     })
   }
 
@@ -635,6 +638,22 @@ impl Drawn {
           caret_ink,
         );
       }
+
+      // Where a drag over the entry would drop, as GTK draws it: a caret of its own.
+      if let Some(drop) = entry.drop_caret {
+        let at = entry.editor.rect_for(drop..drop, Unit::Utf8);
+
+        canvas.fill(
+          Rect {
+            x: (origin.0 + at.x).round() - 0.5,
+            y: origin.1 + at.y,
+            width: 1.5,
+            height: at.height,
+          },
+          Corners::all(0.),
+          caret_ink,
+        );
+      }
     });
 
     let extent = laid.size().height;
@@ -800,6 +819,82 @@ impl Drawn {
         .editor
         .press(at.0 - origin.0, at.1 - origin.1, clicks, extend);
     });
+  }
+
+  /// Whether `at` (window pixels) is on its entry's selection, where it has one, in its box at
+  /// `rect`.
+  pub fn entry_selection_contains(self: &Rc<Self>, rect: Rect, at: (f32, f32)) -> bool {
+    let content = self.entry_content(rect);
+
+    self
+      .with_entry(|entry| {
+        let origin = entry.origin(content);
+
+        !entry.editor.selected().is_empty()
+          && entry.editor.selection_rects().iter().any(|range| {
+            let (x, y) = (at.0 - origin.0, at.1 - origin.1);
+
+            x >= range.x && y >= range.y && x < range.x + range.width && y < range.y + range.height
+          })
+      })
+      .unwrap_or(false)
+  }
+
+  /// The byte of its entry's text nearest `at` (window pixels), in its box at `rect`, and
+  /// whether it lies inside its selection.
+  fn entry_index_at(self: &Rc<Self>, rect: Rect, at: (f32, f32)) -> Option<(usize, bool)> {
+    let content = self.entry_content(rect);
+
+    self.with_entry(|entry| {
+      let origin = entry.origin(content);
+      let index = entry
+        .editor
+        .index_at(at.0 - origin.0, at.1 - origin.1, Unit::Utf8);
+      let selected = entry.editor.selected();
+      let inside = !selected.is_empty() && index >= selected.start && index <= selected.end;
+
+      (index, inside)
+    })
+  }
+
+  /// Shows where a drag over its entry at `at` (window pixels) would drop its text, or nothing
+  /// (`None`, or a point on its selection).
+  pub fn set_drop_caret(self: &Rc<Self>, at: Option<(f32, f32)>) {
+    let rect = self.window_rect();
+    let caret = at
+      .and_then(|at| self.entry_index_at(rect, at))
+      .and_then(|(index, inside)| (!inside).then_some(index));
+    let changed = self
+      .with_entry(|entry| std::mem::replace(&mut entry.drop_caret, caret) != caret)
+      .unwrap_or(false);
+
+    if changed {
+      shell::invalidate_paint(self);
+    }
+  }
+
+  /// Drops `text` into its entry at `at` (window pixels) in its box at `rect`: inserted where
+  /// it lands, or in place of the selection where it lands on it, as GTK's entry takes a drop.
+  /// The byte it went in at, where it went in.
+  pub fn drop_text(self: &Rc<Self>, rect: Rect, at: (f32, f32), text: &str) -> Option<usize> {
+    let (index, inside) = self.entry_index_at(rect, at)?;
+
+    self
+      .with_entry(|entry| {
+        let range = if inside {
+          entry.editor.selected()
+        } else {
+          index..index
+        };
+        let start = range.start;
+
+        entry.drop_caret = None;
+        entry
+          .editor
+          .replace(Some(range), text, Unit::Utf8)
+          .then_some(start)
+      })
+      .flatten()
   }
 
   /// A drag of the pointer to `x`, `y` (window pixels) after a press in its entry.

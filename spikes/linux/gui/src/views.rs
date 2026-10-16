@@ -15,7 +15,7 @@ use skene_foundation::{
     content::contents,
     node::{LayoutKind, NodeKind, NodeSpec},
     record::{Animation, Prop, Record, Transition, keys},
-    report::{KeyEvent, PointerEvent},
+    report::{ContextMenuEvent, Dropped, KeyEvent, PointerEvent},
     tree::{self, Bubbling},
   },
 };
@@ -31,6 +31,9 @@ use crate::{
 /// A box's handler of an event: whether the event goes on to the boxes around it.
 type Handler<E> = Rc<dyn Fn(&E) -> Bubbling>;
 
+/// A box's handler of a drop: whether it took what was dropped.
+type DropHandler = Rc<dyn Fn(&Dropped) -> bool>;
+
 /// The decorated box around at most one child: the one view that takes decoration, sizing
 /// and a click.
 ///
@@ -44,6 +47,8 @@ pub struct Container {
   shortcut: Option<Shortcut>,
   key: Option<Handler<KeyEvent>>,
   pointer: Option<Handler<PointerEvent>>,
+  context_menu: Option<Handler<ContextMenuEvent>>,
+  drop: Option<DropHandler>,
   focus: Option<Rc<dyn Fn(bool)>>,
   handle: Option<NodeHandle>,
   child: Option<Child>,
@@ -187,6 +192,28 @@ impl Container {
     self
   }
 
+  /// Runs `menu` when a context menu is asked for in the box: a secondary press, `Shift-F10`
+  /// or the menu key while focus is inside, or a long press on a touchscreen;
+  /// `Bubbling::Stop` keeps it from the boxes around it. The platform's own menu is kept away
+  /// wherever a box heard it.
+  pub fn handle_context_menu<B: Into<Bubbling>>(
+    mut self,
+    menu: impl Fn(&ContextMenuEvent) -> B + 'static,
+  ) -> Self {
+    self.context_menu = Some(Rc::new(move |event| menu(event).into()));
+
+    self
+  }
+
+  /// Takes what is dropped in the box, from this app or another: `drop` answers whether it
+  /// took it (else the box around it is offered it). Text and URIs dragged over the box are
+  /// accepted, the platform showing that they would drop.
+  pub fn handle_drop(mut self, drop: impl Fn(&Dropped) -> bool + 'static) -> Self {
+    self.drop = Some(Rc::new(drop));
+
+    self
+  }
+
   /// Runs `focus` when focus enters the box (`true`) or leaves it (`false`).
   pub fn handle_focus(mut self, focus: impl Fn(bool) + 'static) -> Self {
     self.focus = Some(Rc::new(focus));
@@ -249,6 +276,14 @@ impl View for Container {
 
     if let Some(pointer) = self.pointer {
       tree::handle_pointer::<Active, _>(id, move |event| pointer(event));
+    }
+
+    if let Some(menu) = self.context_menu {
+      tree::handle_context_menu::<Active, _>(id, move |event| menu(event));
+    }
+
+    if let Some(drop) = self.drop {
+      tree::handle_drop::<Active>(id, move |dropped| drop(dropped));
     }
 
     if let Some(focus) = self.focus {

@@ -4,11 +4,14 @@
 
 mod chrome;
 mod contents;
+mod dnd;
 mod environment;
+mod gestures;
 #[cfg(feature = "gpu")]
 mod gpu;
 mod keyboard;
 mod reader;
+mod scale;
 mod shell;
 
 use skene_foundation::{

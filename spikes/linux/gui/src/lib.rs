@@ -110,7 +110,9 @@ pub use skene_foundation::{
     content::{Range, Side, TextSelection},
     control::{AccessRequest, ControlState, DragAxes, Element, LabelPlacement, Part, Prevent},
     record::{Animation, Iterations, Key, Keyframe, Transition, keys},
-    report::{KeyEvent, Modifiers, PointerEvent, PointerPhase},
+    report::{
+      ContextMenuEvent, Dropped, KeyEvent, MenuSource, Modifiers, PointerEvent, PointerPhase,
+    },
     tree::Bubbling,
   },
   untrack,

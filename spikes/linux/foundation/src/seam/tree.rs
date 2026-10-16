@@ -19,7 +19,9 @@ use crate::{
     door::ControlSink,
     node::{NodeKind, NodeSpec},
     record::{Group, Record},
-    report::{Answer, Interest, KeyEvent, PointerEvent, Report, Size},
+    report::{
+      Answer, ContextMenuEvent, DropEvent, Dropped, Interest, KeyEvent, PointerEvent, Report, Size,
+    },
     style::{CompiledStyle, Keep, ScopeChain, compile_definitions},
   },
   untrack,
@@ -44,6 +46,9 @@ impl From<()> for Bubbling {
 
 type Handler<E> = Rc<dyn Fn(&E) -> Bubbling>;
 
+/// A drop handler: whether it took what was dropped.
+type DropHandler = Rc<dyn Fn(&Dropped) -> bool>;
+
 impl Bubbling {
   /// The verdict a box's answer gives: it keeps no platform default from running.
   #[must_use]
@@ -64,6 +69,8 @@ struct Handlers {
   focus: Option<Rc<dyn Fn(bool)>>,
   size: Option<Rc<dyn Fn(Size)>>,
   dismiss: Option<Rc<dyn Fn()>>,
+  context_menu: Option<Handler<ContextMenuEvent>>,
+  drop: Option<DropHandler>,
 }
 
 struct Entry<R: Realization> {
@@ -764,6 +771,27 @@ pub fn handle_pointer<R: Realization, B: Into<Bubbling>>(
   });
 }
 
+/// Runs `menu` when a context menu is asked for at the node or beneath it.
+pub fn handle_context_menu<R: Realization, B: Into<Bubbling>>(
+  id: NodeId,
+  menu: impl Fn(&ContextMenuEvent) -> B + 'static,
+) {
+  with::<R, _>(|tree| {
+    if let Some(entry) = tree.scene.get_mut(id) {
+      entry.handlers.context_menu = Some(Rc::new(move |event| menu(event).into()));
+    }
+  });
+}
+
+/// Runs `drop` with what is dropped on the node or beneath it, text or URIs: it answers
+/// whether it took it. The realization accepts what is dragged over the node.
+pub fn handle_drop<R: Realization>(id: NodeId, drop: impl Fn(&Dropped) -> bool + 'static) {
+  watch_now::<R>(id, |entry| {
+    entry.handlers.drop = Some(Rc::new(drop));
+    entry.interest.drop = true;
+  });
+}
+
 /// Runs `key` with the key events while focus is on the node or beneath it, after the
 /// behaviors of the controls between, unless one stopped it.
 pub fn handle_key<R: Realization, B: Into<Bubbling>>(
@@ -1102,6 +1130,53 @@ pub fn report<R: Realization>(id: NodeId, report: Report) -> Answer {
       Answer::None
     }
     Report::Key(event) => key::<R>(id, &event),
+    Report::ContextMenu(event) => context_menu::<R>(id, &event),
+    Report::Drop(event) => drop::<R>(id, &event),
+  }
+}
+
+/// A context menu asked for at `id`: each handler from it up runs until one stops it; where
+/// one ran, the platform's own menu is prevented.
+fn context_menu<R: Realization>(id: NodeId, event: &ContextMenuEvent) -> Answer {
+  let path = with::<R, _>(|tree| {
+    std::iter::once(id)
+      .chain(tree.scene.ancestors(id))
+      .filter_map(|node| tree.scene.get(node)?.handlers.context_menu.clone())
+      .collect::<Vec<_>>()
+  });
+  let mut prevented = Prevent::None;
+
+  for menu in path {
+    prevented = prevented.and(Prevent::Platform);
+
+    if untrack(|| menu(event)) == Bubbling::Stop {
+      break;
+    }
+  }
+
+  Answer::Event { prevented }
+}
+
+/// A drop at `id`: each drop handler from it up is offered it until one takes it, which the
+/// answer's `prevented` says.
+fn drop<R: Realization>(id: NodeId, event: &DropEvent) -> Answer {
+  let path = with::<R, _>(|tree| {
+    std::iter::once(id)
+      .chain(tree.scene.ancestors(id))
+      .filter_map(|node| tree.scene.get(node)?.handlers.drop.clone())
+      .collect::<Vec<_>>()
+  });
+
+  for drop in path {
+    if untrack(|| drop(&event.dropped)) {
+      return Answer::Event {
+        prevented: Prevent::Platform,
+      };
+    }
+  }
+
+  Answer::Event {
+    prevented: Prevent::None,
   }
 }
 

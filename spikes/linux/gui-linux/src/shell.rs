@@ -2,8 +2,9 @@
 //! what is dirty since the last frame, and the reader's input dispatched through the
 //! foundation: hit testing, hover, press and focus states, Tab order in the scene's child
 //! order, pointer events, clicks, keys and a reader's requests reported to the controls and
-//! the boxes that act, each default run unless a verdict prevents it, wheel scrolling, and
-//! the open overlay's surface.
+//! the boxes that act, each default run unless a verdict prevents it, wheel scrolling, a
+//! touchpad's scrolling going on once its fingers lift ([`crate::kinetic`]), and the open
+//! overlay's surface.
 //!
 //! A backend turns its protocol's events into calls here and carries out the
 //! [`Request`]s returned (moving or resizing the window, the cursor), and asks for a frame
@@ -24,7 +25,9 @@ use skene_foundation::{
     content::{Content, PropValue},
     control::{AccessRequest, Prevent},
     node::{Interaction, NodeKind},
-    report::{Answer, KeyEvent, PointerEvent, PointerPhase, Report, Size},
+    report::{
+      Answer, ContextMenuEvent, KeyEvent, MenuSource, PointerEvent, PointerPhase, Report, Size,
+    },
     tree,
   },
   text::{
@@ -67,7 +70,52 @@ pub enum Request {
   /// Open a popup surface at this placement, or move the open one there; close it where
   /// `None`.
   Popup(Option<overlay::Placement>),
+  /// Start a drag of what [`Shell::dragged`] says from the last press.
+  StartDrag,
 }
+
+/// What a drag offers, by kind.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub struct Offered {
+  /// Text.
+  pub text: bool,
+  /// A list of URIs (`text/uri-list`).
+  pub uris: bool,
+}
+
+/// What a drop does with what it takes.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum DropAction {
+  /// It copies it: the source keeps it.
+  Copy,
+  /// It moves it: the source gives it up.
+  Move,
+}
+
+/// What a drop target takes of what a drag offers.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Wanted {
+  /// Its text.
+  Text,
+  /// Its URIs.
+  Uris,
+}
+
+/// A drag of a text entry's selection, out of the window or within it.
+struct DragOut {
+  /// The entry.
+  entry: Node,
+  /// The selection dragged, bytes of the entry's text.
+  range: std::ops::Range<usize>,
+  /// Its text.
+  text: String,
+  /// Whether the entry gives it up where a drop moves it (it is editable).
+  moves: bool,
+}
+
+/// How far a press on a selection moves, in pixels, before it drags the selection: GTK's drag
+/// threshold.
+const DRAG_THRESHOLD: f32 = 8.;
 
 /// A pointer cursor, named as CSS names it.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -125,8 +173,17 @@ struct Dirty {
   focus: Option<Option<Node>>,
 }
 
+/// How long a touch is held, unmoved, before it is a long press: GTK's `gtk-long-press-time`.
+const LONG_PRESS: Duration = Duration::from_millis(500);
+
+/// How far a touch moves, in pixels, before it is a drag rather than a tap: GTK's drag
+/// threshold.
+const TOUCH_SLOP: f32 = 8.;
+
 thread_local! {
   static INPUTS: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+  /// The touch whose long press is due, by its id.
+  static LONG_PRESSED: std::cell::Cell<Option<i32>> = const { std::cell::Cell::new(None) };
   static FOCUSED: RefCell<Option<std::rc::Weak<crate::node::Drawn>>> = const { RefCell::new(None) };
   static DIRTY: RefCell<Dirty> = RefCell::new(Dirty {
     prepare: true,
@@ -271,6 +328,66 @@ struct Press {
   button_pressed: u8,
   /// Whether the owner keeps the pointer until the release (a control that drags).
   captured: bool,
+  /// Where a press on a text entry's selection went down: it drags the selection once it moves
+  /// past the threshold, and places the caret where it is released before that.
+  on_selection: Option<(f32, f32)>,
+}
+
+/// What a touch became.
+enum TouchRole {
+  /// Down on the content, not yet a tap, a scroll or a long press.
+  Pending,
+  /// Placing the caret and selecting in the text entry it went down in, as GTK's entry does
+  /// for a touchscreen: a tap places the caret (two select a word), a drag selects from where
+  /// it went down, and a tap on the selection opens the context menu (GTK's selection
+  /// popover).
+  Selecting {
+    /// The entry.
+    entry: Node,
+    /// Whether it went down on the entry's selection.
+    on_selection: bool,
+  },
+  /// Driving the control that drags it went down on, as a pointer's press does.
+  Dragging(Node),
+  /// Scrolling this scroll box with the finger.
+  Scrolling(Node),
+  /// On the title bar: moving the window once it moves.
+  Title,
+  /// On a title-bar button: acting where it lifts on it.
+  Button(Button),
+  /// Nothing more: a long press happened, or it moved where nothing scrolls.
+  Spent,
+}
+
+/// A finger on the window: the first one down, which alone acts.
+struct Touch {
+  /// The compositor's id of the touch point.
+  id: i32,
+  /// Where it went down (window pixels).
+  start: (f32, f32),
+  /// The compositor's time of its last event, in milliseconds.
+  time: u32,
+  /// Where it is now.
+  at: (f32, f32),
+  /// Whether it moved past the slop.
+  moved: bool,
+  /// The deepest node it went down on, with its ancestors.
+  chain: Vec<Node>,
+  /// What it became.
+  role: TouchRole,
+  /// Its long press, while one is pending.
+  long_press: Option<skene_foundation::seam::runtime::Cancel>,
+  /// Its recent motion, for a scroll's fling.
+  tracker: crate::kinetic::Tracker,
+}
+
+impl Touch {
+  /// Stops its pending long press.
+  fn cancel_long_press(&mut self) {
+    if let Some(cancel) = self.long_press.take() {
+      cancel.cancel();
+    }
+  }
 }
 
 /// One painted frame: its pixels are the renderer's, `damage` the part that changed (device
@@ -314,13 +431,25 @@ pub struct Shell {
   window_focused: bool,
   last_click: Option<(Instant, (f32, f32), u8, Node)>,
   owed: Option<(u32, u32, u32, u32)>,
+  /// The touchpad's recent motion.
+  fingers: crate::kinetic::Tracker,
+  /// The scroll box a touchpad's scroll moves, while its fingers are down.
+  latched: Option<Node>,
+  /// The scroll box going on by itself, and how.
+  fling: Option<(Node, crate::kinetic::Fling)>,
+  /// The fling the fingers caught again, which a fling the same way adds to.
+  caught: Option<crate::kinetic::Fling>,
+  /// The finger acting on the window, while one is down.
+  touch: Option<Touch>,
+  /// The drag of a text entry's selection in progress.
+  drag_out: Option<DragOut>,
+  /// What a drag over the window would drop on: the node, and whether it is a text entry.
+  drop_over: Option<(Node, bool)>,
   /// Frames painted.
   pub frames: u64,
   /// When the last frame was painted.
   pub painted_at: Option<Instant>,
   presented: bool,
-  /// How many times the window was given a size.
-  pub configures: u64,
   /// Whether the app asked to quit.
   pub quit: bool,
 }
@@ -357,10 +486,16 @@ impl Shell {
       window_focused: false,
       last_click: None,
       owed: None,
+      fingers: crate::kinetic::Tracker::default(),
+      latched: None,
+      fling: None,
+      caught: None,
+      touch: None,
+      drag_out: None,
+      drop_over: None,
       frames: 0,
       painted_at: None,
       presented: false,
-      configures: 0,
       quit: false,
     }
   }
@@ -408,8 +543,6 @@ impl Shell {
   /// The window was given a size, its chrome's mode and states: the content is laid out
   /// again and the environment hears the content's size.
   pub fn configure(&mut self, width: u32, height: u32) {
-    self.configures += 1;
-
     if (width, height) != self.size {
       self.size = (width.max(1), height.max(1));
     }
@@ -428,18 +561,21 @@ impl Shell {
       self.scale = scale;
       environment::report(Fact::Scale(scale));
       invalidate_all();
+      // The reader's extents are device pixels.
+      crate::access::invalidate();
     }
   }
 
   /// Whether a frame is due: something changed since the last one, or something is in
   /// motion.
   pub fn wants_frame(&self) -> bool {
-    wants_frame() || self.owed.is_some() || crate::motion::running()
+    wants_frame() || self.owed.is_some() || self.in_motion()
   }
 
-  /// Whether a frame is due for motion alone: what the frame clock paces.
+  /// Whether a frame is due for motion alone (a transition, a fling): what the frame clock
+  /// paces.
   pub fn in_motion(&self) -> bool {
-    crate::motion::running()
+    crate::motion::running() || self.fling.is_some()
   }
 
   /// Applies a focus move the app or a behavior asked for, focus shown as the last input
@@ -555,6 +691,7 @@ impl Shell {
     let palette = Palette::now();
 
     crate::motion::advance(crate::motion::now());
+    self.advance_fling(Instant::now());
 
     let mut dirty = DIRTY.with(|dirty| std::mem::take(&mut *dirty.borrow_mut()));
 
@@ -1390,6 +1527,8 @@ impl Shell {
     let frame = open.node.frame.get();
     let at = (x + frame.x, y + frame.y);
 
+    // Seen over the popup, the pointer is where it is in the window's geometry too.
+    trace::pointer(at.0, at.1);
     self.pointer = Some(at);
     self.pointer_in_overlay = open.contains(at.0, at.1);
     self.refresh_hover();
@@ -1484,6 +1623,21 @@ impl Shell {
     if cursor != self.cursor {
       self.cursor = cursor;
       requests.push(Request::Cursor(cursor));
+    }
+
+    let on_selection = self
+      .press
+      .as_ref()
+      .and_then(|press| press.owner.clone().zip(press.on_selection));
+
+    if let Some((owner, start)) = on_selection {
+      if (geometry.0 - start.0).abs() > DRAG_THRESHOLD
+        || (geometry.1 - start.1).abs() > DRAG_THRESHOLD
+      {
+        requests.extend(self.start_text_drag(&owner));
+      }
+
+      return requests;
     }
 
     if let Some(press) = &self.press
@@ -1596,6 +1750,10 @@ impl Shell {
   pub fn pointer_button(&mut self, button: u8, down: bool, at: (f32, f32)) -> Vec<Request> {
     count_input();
 
+    if down {
+      self.stop_fling();
+    }
+
     let mut requests = Vec::new();
     let hit = self.chrome.hit(at.0, at.1, self.size.0, self.size.1);
 
@@ -1646,6 +1804,7 @@ impl Shell {
               button: None,
               button_pressed: 0,
               captured: false,
+              on_selection: None,
             });
           }
         }
@@ -1661,6 +1820,7 @@ impl Shell {
             button: Some(pressed),
             button_pressed: 0,
             captured: false,
+            on_selection: None,
           });
           invalidate_all();
         }
@@ -1718,6 +1878,8 @@ impl Shell {
   fn content_press(&mut self, button: u8, chain: Vec<Node>) {
     self.keyboard_modality = false;
 
+    let mut on_selection = None;
+
     // A press on a link run is the text's, inside an acting box too.
     let link = chain
       .first()
@@ -1760,8 +1922,19 @@ impl Shell {
       {
         let clicks = self.count_click(owner, (x, y));
         let extend = self.modifiers.shift;
+        let rect = owner.window_rect();
 
-        owner.press_entry(owner.window_rect(), (x, y), clicks, extend);
+        // A press on the selection may drag it (GTK's entry, a browser's field); it places
+        // the caret only where it is released unmoved.
+        if clicks == 1
+          && !extend
+          && !owner.contents.borrow().secure
+          && owner.entry_selection_contains(rect, (x, y))
+        {
+          on_selection = Some((x, y));
+        } else {
+          owner.press_entry(rect, (x, y), clicks, extend);
+        }
       }
     } else if button == 1
       && let Some(owner) = owner.as_ref().filter(|owner| owner.is_entry())
@@ -1780,9 +1953,19 @@ impl Shell {
       button: None,
       button_pressed: button,
       captured: false,
+      on_selection,
     });
 
     let prevented = self.report_pointer(PointerPhase::Down, button);
+
+    // A secondary press asks for a context menu where it lands, as on a press in GTK and
+    // Chromium on Linux.
+    if button == 2
+      && let (Some(target), Some(at)) = (chain.first(), self.pointer)
+    {
+      self.context_menu_at(&Rc::clone(target), at, MenuSource::Pointer);
+    }
+
     let drags = owner.as_ref().is_some_and(|owner| {
       matches!(
         owner.spec.interaction,
@@ -1824,6 +2007,11 @@ impl Shell {
       _ => {
         self.report_pointer(PointerPhase::Up, button);
       }
+    }
+
+    if let (Some(owner), Some(start)) = (&press.owner, press.on_selection) {
+      // Released on the selection without dragging it: the caret goes where it was pressed.
+      owner.press_entry(owner.window_rect(), start, 1, false);
     }
 
     let over = Self::owner(&self.hovered);
@@ -1881,19 +2069,750 @@ impl Shell {
     }
   }
 
-  /// The wheel turned over the window.
+  /// Starts dragging the selection of the text entry `entry`: the press ends without a click,
+  /// and the backend is asked to start the drag.
+  fn start_text_drag(&mut self, entry: &Node) -> Option<Request> {
+    let read_only = entry.contents.borrow().read_only || entry.access.borrow().disabled;
+    let (range, text) = entry.with_entry(|state| {
+      let range = state.editor.selected();
+      let text = state.editor.text()[range.clone()].to_owned();
+
+      (range, text)
+    })?;
+
+    if let Some(press) = self.press.take()
+      && let Some(target) = &press.target
+    {
+      for node in std::iter::once(Rc::clone(target)).chain(target.ancestors()) {
+        Self::set_state(&node, State::Pressed, false);
+      }
+    }
+
+    trace::log(|| format!("[dnd] drag {text:?} from an entry"));
+    self.drag_out = Some(DragOut {
+      entry: Rc::clone(entry),
+      range,
+      text,
+      moves: !read_only,
+    });
+
+    Some(Request::StartDrag)
+  }
+
+  /// The text a drag from the window carries, and whether a drop may move it.
+  pub fn dragged(&self) -> Option<(&str, bool)> {
+    self
+      .drag_out
+      .as_ref()
+      .map(|drag| (drag.text.as_str(), drag.moves))
+  }
+
+  /// The drag from the window ended, with what the drop did (`None` where nothing took it):
+  /// a move takes the text out of the entry it came from, as GTK's entry does.
+  pub fn drag_ended(&mut self, action: Option<DropAction>) {
+    let Some(drag) = self.drag_out.take() else {
+      return;
+    };
+
+    trace::log(|| format!("[dnd] the drag ended: {action:?}"));
+
+    if action == Some(DropAction::Move) && drag.moves && drag.entry.is_alive() {
+      drag.entry.with_entry(|entry| {
+        entry.editor.replace(
+          Some(drag.range.clone()),
+          "",
+          skene_foundation::seam::content::Unit::Utf8,
+        )
+      });
+    }
+
+    crate::access::invalidate();
+  }
+
+  /// The node a drop at `at` (window pixels) offering `offered` lands on: the deepest editable
+  /// text entry where text is offered, else the deepest node that takes drops; and whether it
+  /// is a text entry.
+  fn drop_target(&self, at: (f32, f32), offered: Offered) -> Option<(Node, bool)> {
+    let chain = self
+      .root
+      .as_ref()
+      .map(|root| Self::hit_in(root, at.0, at.1))
+      .unwrap_or_default();
+
+    for node in chain {
+      if node.is_entry()
+        && offered.text
+        && !node.contents.borrow().read_only
+        && !node.access.borrow().disabled
+      {
+        return Some((node, true));
+      }
+
+      if node.interest.get().drop && (offered.text || offered.uris) {
+        return Some((node, false));
+      }
+    }
+
+    None
+  }
+
+  /// A drag offering `offered` is over the window at `x`, `y` (surface pixels): what a drop
+  /// there would do, `None` where nothing takes it. A text entry shows where the text would go
+  /// (no caret over its own selection), as GTK's does; a drag from the same entry moves its
+  /// text, any other copies.
+  pub fn drag_over(&mut self, x: f32, y: f32, offered: Offered) -> Option<DropAction> {
+    let (ox, oy) = self.chrome.origin();
+    let at = (x - ox, y - oy);
+    let target = self.drop_target(at, offered);
+
+    if let Some((previous, true)) = &self.drop_over
+      && target
+        .as_ref()
+        .is_none_or(|(node, _)| !Rc::ptr_eq(node, previous))
+    {
+      previous.set_drop_caret(None);
+    }
+
+    let action = target.as_ref().map(|(node, entry)| {
+      if *entry {
+        node.set_drop_caret(Some(at));
+      }
+
+      match &self.drag_out {
+        Some(drag) if *entry && drag.moves && Rc::ptr_eq(&drag.entry, node) => DropAction::Move,
+        _ => DropAction::Copy,
+      }
+    });
+
+    self.drop_over = target;
+
+    action
+  }
+
+  /// The drag left the window: no entry shows where it would drop.
+  pub fn drag_left(&mut self) {
+    if let Some((node, true)) = self.drop_over.take() {
+      node.set_drop_caret(None);
+    }
+  }
+
+  /// What a drop at `x`, `y` (surface pixels) offering `offered` takes: a text entry its text,
+  /// a node that takes drops its URIs where it offers them, else its text.
+  pub fn drop_wants(&mut self, x: f32, y: f32, offered: Offered) -> Option<Wanted> {
+    let (ox, oy) = self.chrome.origin();
+    let (_, entry) = self.drop_target((x - ox, y - oy), offered)?;
+
+    Some(if !entry && offered.uris {
+      Wanted::Uris
+    } else {
+      Wanted::Text
+    })
+  }
+
+  /// What was dropped at `x`, `y` (surface pixels) arrived: a text entry inserts the text
+  /// there (in place of its selection where it lands on it), a node that takes drops is
+  /// offered it; what the drop did, `None` where nothing took it.
+  pub fn drop_data(
+    &mut self,
+    x: f32,
+    y: f32,
+    dropped: skene_foundation::seam::report::Dropped,
+  ) -> Option<DropAction> {
+    count_input();
+
+    let (ox, oy) = self.chrome.origin();
+    let at = (x - ox, y - oy);
+    let offered = Offered {
+      text: dropped.text.is_some(),
+      uris: !dropped.uris.is_empty(),
+    };
+    let action = self.drag_over(x, y, offered);
+
+    self.drag_left();
+
+    let (node, entry) = self.drop_target(at, offered)?;
+
+    trace::log(|| format!("[dnd] dropped at {at:?}: {dropped:?}"));
+
+    if entry {
+      let text = dropped.text?;
+      let inserted = node.drop_text(node.window_rect(), at, &text)?;
+
+      // A move within one entry takes the text out of where it was, after the drop shifted it.
+      if let Some(drag) = &mut self.drag_out
+        && Rc::ptr_eq(&drag.entry, &node)
+        && inserted <= drag.range.start
+      {
+        drag.range = drag.range.start + text.len()..drag.range.end + text.len();
+      }
+
+      crate::access::invalidate();
+
+      return action;
+    }
+
+    let deepest = self
+      .root
+      .as_ref()
+      .map(|root| Self::hit_in(root, at.0, at.1))
+      .unwrap_or_default()
+      .first()
+      .cloned()
+      .unwrap_or(node);
+    let rect = deepest.window_rect();
+    let answer = tree::report::<Linux>(
+      deepest.id.get(),
+      Report::Drop(skene_foundation::seam::report::DropEvent {
+        x: at.0 - rect.x,
+        y: at.1 - rect.y,
+        window_x: at.0,
+        window_y: at.1,
+        dropped,
+      }),
+    );
+
+    self.settle_focus();
+    crate::access::invalidate();
+
+    match answer {
+      Answer::Event { prevented } if prevented != Prevent::None => Some(DropAction::Copy),
+      _ => None,
+    }
+  }
+
+  /// Asks for a context menu at `target`, at `at` (window pixels): it climbs to the handlers;
+  /// the verdict they gave.
+  fn context_menu_at(&mut self, target: &Node, at: (f32, f32), source: MenuSource) -> Prevent {
+    let rect = target.window_rect();
+
+    trace::log(|| format!("[menu] {source:?} at {at:?}"));
+
+    let answer = tree::report::<Linux>(
+      target.id.get(),
+      Report::ContextMenu(ContextMenuEvent {
+        x: at.0 - rect.x,
+        y: at.1 - rect.y,
+        window_x: at.0,
+        window_y: at.1,
+        source,
+      }),
+    );
+
+    self.settle_focus();
+    crate::access::invalidate();
+
+    match answer {
+      Answer::Event { prevented } => prevented,
+      _ => Prevent::None,
+    }
+  }
+
+  /// A finger went down at `x`, `y` (surface pixels) as touch point `id` at `time` (the
+  /// compositor's milliseconds): the first finger down acts, the others wait. What it does is decided as it moves and lifts, as GTK
+  /// decides: a tap clicks, a drag scrolls the scroll box under it (flinging on as it lifts) or
+  /// selects in a text entry or drives a control that drags, a long press asks for a context
+  /// menu; on the title bar it moves the window, on its buttons it acts, on an edge it resizes.
+  pub fn touch_down(&mut self, id: i32, x: f32, y: f32, time: u32) -> Vec<Request> {
+    count_input();
+
+    let mut requests = Vec::new();
+
+    if self.touch.is_some() {
+      return requests;
+    }
+
+    self.stop_fling();
+    self.keyboard_modality = false;
+
+    let hit = self.chrome.hit(x, y, self.size.0, self.size.1);
+
+    trace::log(|| format!("[touch] {id} down at ({x}, {y}): {hit:?}"));
+
+    if let Some(open) = &self.overlay
+      && !matches!(hit, Hit::Content(x, y) if open.on_anchor(x, y))
+    {
+      self.dismiss_popup();
+      requests.extend(self.take_requests());
+
+      return requests;
+    }
+
+    let (ox, oy) = self.chrome.origin();
+    let at = (x - ox, y - oy);
+    let mut touch = Touch {
+      id,
+      start: at,
+      time,
+      at,
+      moved: false,
+      chain: Vec::new(),
+      role: TouchRole::Spent,
+      long_press: None,
+      tracker: crate::kinetic::Tracker::default(),
+    };
+
+    match hit {
+      Hit::Title => touch.role = TouchRole::Title,
+      Hit::Button(button) => {
+        self.chrome.pressed = Some(button);
+        touch.role = TouchRole::Button(button);
+        invalidate_all();
+      }
+      Hit::Edge(edge) => requests.push(Request::Resize(edge)),
+      Hit::Content(..) => {
+        let chain = self.hit(at.0, at.1);
+
+        for node in &chain {
+          Self::set_state(node, State::Pressed, true);
+        }
+
+        touch.role = self.touch_role(&chain, at);
+        touch.chain = chain;
+
+        let due = id;
+
+        touch.long_press = Some(crate::runtime::schedule(
+          LONG_PRESS,
+          Box::new(move || LONG_PRESSED.with(|pressed| pressed.set(Some(due)))),
+        ));
+      }
+      Hit::Outside => {}
+    }
+
+    self.touch = Some(touch);
+    requests.extend(self.take_requests());
+
+    requests
+  }
+
+  /// What a finger down at `at` (window pixels) on `chain` starts as: in a text entry it places
+  /// the caret (or keeps a selection it went down on), on a control that drags it presses as
+  /// the primary button does.
+  fn touch_role(&mut self, chain: &[Node], at: (f32, f32)) -> TouchRole {
+    let Some(owner) = Self::owner(chain) else {
+      return TouchRole::Pending;
+    };
+
+    if owner.is_entry() && !owner.access.borrow().disabled {
+      let rect = owner.window_rect();
+      let on_selection = is_focused(&owner) && owner.entry_selection_contains(rect, at);
+
+      self.set_focus_to(Some(Rc::clone(&owner)), false, false);
+
+      if !on_selection {
+        let clicks = self.count_click(&owner, at);
+
+        owner.press_entry(rect, at, clicks, false);
+      }
+
+      return TouchRole::Selecting {
+        entry: owner,
+        on_selection,
+      };
+    }
+
+    let drags = matches!(
+      owner.spec.interaction,
+      Interaction::Control { drag: Some(_) }
+    );
+
+    if drags {
+      let hovered = std::mem::replace(&mut self.hovered, chain.to_vec());
+
+      self.pointer = Some(at);
+      self.content_press(0, chain.to_vec());
+      self.hovered = hovered;
+
+      if let Some(press) = &mut self.press {
+        press.captured = true;
+      }
+
+      return TouchRole::Dragging(owner);
+    }
+
+    TouchRole::Pending
+  }
+
+  /// Touch point `id` moved to `x`, `y` (surface pixels) at `time`.
+  pub fn touch_motion(&mut self, id: i32, x: f32, y: f32, time: u32) -> Vec<Request> {
+    let mut requests = Vec::new();
+    let (ox, oy) = self.chrome.origin();
+    let at = (x - ox, y - oy);
+    let Some(mut touch) = self.touch.take() else {
+      return requests;
+    };
+
+    if touch.id != id {
+      self.touch = Some(touch);
+
+      return requests;
+    }
+
+    let previous = touch.at;
+
+    touch.at = at;
+    touch.time = time;
+
+    if !touch.moved
+      && ((at.0 - touch.start.0).abs() > TOUCH_SLOP || (at.1 - touch.start.1).abs() > TOUCH_SLOP)
+    {
+      touch.moved = true;
+      touch.cancel_long_press();
+      self.touch_starts_moving(&mut touch, &mut requests);
+    }
+
+    if touch.moved {
+      match &touch.role {
+        TouchRole::Selecting { entry, .. } => {
+          entry.drag_entry(entry.window_rect(), at);
+        }
+        TouchRole::Dragging(owner) => {
+          let owner = Rc::clone(owner);
+
+          self.pointer = Some(at);
+          self.report_pointer_at(&owner, PointerPhase::Move, 0);
+        }
+        TouchRole::Scrolling(node) => {
+          let (dx, dy) = (previous.0 - at.0, previous.1 - at.1);
+          let node = Rc::clone(node);
+
+          touch.tracker.push(time, dx, dy);
+
+          if node.is_entry() {
+            node.scroll_entry(dy);
+          } else {
+            self.scroll_by(&node, dx, dy);
+          }
+        }
+        _ => {}
+      }
+    }
+
+    self.touch = Some(touch);
+
+    requests
+  }
+
+  /// A touch moved past the slop: a pending one becomes a scroll of the nearest scroll box
+  /// under it that moves that way (or nothing), a press on the title bar a move of the window.
+  fn touch_starts_moving(&mut self, touch: &mut Touch, requests: &mut Vec<Request>) {
+    match &touch.role {
+      TouchRole::Title => {
+        requests.push(Request::Move);
+        touch.role = TouchRole::Spent;
+      }
+      TouchRole::Pending => {
+        Self::release_chain(&touch.chain);
+
+        let (dx, dy) = (touch.start.0 - touch.at.0, touch.start.1 - touch.at.1);
+        let scrolls = touch
+          .chain
+          .iter()
+          .find(|node| Self::can_scroll(node, dx, dy))
+          .cloned();
+
+        touch.role = match scrolls {
+          Some(node) => {
+            trace::log(|| "[touch] scrolls".to_owned());
+            TouchRole::Scrolling(node)
+          }
+          None => TouchRole::Spent,
+        };
+      }
+      TouchRole::Selecting {
+        entry,
+        on_selection: true,
+      } => {
+        // Dragged from a selection, a finger selects afresh from where it went down.
+        let entry = Rc::clone(entry);
+        let rect = entry.window_rect();
+
+        entry.press_entry(rect, touch.start, 1, false);
+        touch.role = TouchRole::Selecting {
+          entry,
+          on_selection: false,
+        };
+      }
+      _ => {}
+    }
+  }
+
+  /// Whether `node` is a scroll box that can move by `dx`, `dy`, or a text editor that
+  /// scrolls itself vertically.
+  fn can_scroll(node: &Node, dx: f32, dy: f32) -> bool {
+    if node.spec.kind == (NodeKind::Editable { multiline: true }) {
+      return dy != 0.;
+    }
+
+    let Some(skene_foundation::seam::node::LayoutKind::Scroll {
+      horizontal,
+      vertical,
+    }) = node.layout_kind()
+    else {
+      return false;
+    };
+    let frame = node.frame.get();
+    let (width, height) = node.extent.get();
+    let (sx, sy) = node.scroll.get();
+    let room = |scroll: f32, delta: f32, extent: f32, size: f32| {
+      (delta > 0. && scroll < extent - size) || (delta < 0. && scroll > 0.)
+    };
+
+    (horizontal && room(sx, dx, width, frame.width))
+      || (vertical && room(sy, dy, height, frame.height))
+  }
+
+  /// Clears the pressed state a touch set on `chain`.
+  fn release_chain(chain: &[Node]) {
+    for node in chain {
+      Self::set_state(node, State::Pressed, false);
+    }
+  }
+
+  /// Touch point `id` lifted at `time`.
+  pub fn touch_up(&mut self, id: i32, time: u32) -> Vec<Request> {
+    count_input();
+
+    let mut requests = Vec::new();
+    let Some(mut touch) = self.touch.take() else {
+      return requests;
+    };
+
+    if touch.id != id {
+      self.touch = Some(touch);
+
+      return requests;
+    }
+
+    touch.cancel_long_press();
+    trace::log(|| format!("[touch] {id} up, moved {}", touch.moved));
+
+    match touch.role {
+      TouchRole::Pending if !touch.moved => {
+        Self::release_chain(&touch.chain);
+        self.tap(&touch.chain, touch.start);
+      }
+      TouchRole::Selecting {
+        entry,
+        on_selection,
+      } => {
+        Self::release_chain(&touch.chain);
+
+        if on_selection && !touch.moved {
+          self.context_menu_at(&entry, touch.start, MenuSource::Touch);
+        }
+      }
+      TouchRole::Dragging(_) => {
+        Self::release_chain(&touch.chain);
+
+        let hovered = std::mem::replace(&mut self.hovered, touch.chain.clone());
+
+        self.pointer = Some(touch.at);
+        self.content_release(0);
+        self.hovered = hovered;
+      }
+      TouchRole::Scrolling(node) => {
+        let velocity = touch.tracker.finish(time);
+        let fling = crate::kinetic::Fling::new(velocity, Instant::now(), None);
+
+        trace::log(|| format!("[fling] touch at {velocity:?} px/s"));
+
+        if fling.moves() && !node.is_entry() {
+          self.fling = Some((node, fling));
+        }
+      }
+      TouchRole::Button(button) => {
+        self.chrome.pressed = None;
+        invalidate_all();
+
+        let (ox, oy) = self.chrome.origin();
+        let hit = self
+          .chrome
+          .hit(touch.at.0 + ox, touch.at.1 + oy, self.size.0, self.size.1);
+
+        if hit == Hit::Button(button) {
+          requests.push(match button {
+            Button::Close => Request::Close,
+            Button::Maximize => Request::ToggleMaximize,
+            Button::Minimize => Request::Minimize,
+          });
+        }
+      }
+      _ => Self::release_chain(&touch.chain),
+    }
+
+    requests.extend(self.take_requests());
+
+    requests
+  }
+
+  /// The compositor took the touches back (a gesture of its own): what they did is undone
+  /// where it can be, and nothing more happens.
+  pub fn touch_cancel(&mut self) {
+    if let Some(mut touch) = self.touch.take() {
+      touch.cancel_long_press();
+      Self::release_chain(&touch.chain);
+      trace::log(|| "[touch] cancelled".to_owned());
+    }
+  }
+
+  /// A tap at `at` (window pixels) on `chain`: a primary press and release there, as a click.
+  fn tap(&mut self, chain: &[Node], at: (f32, f32)) {
+    let hovered = std::mem::replace(&mut self.hovered, chain.to_vec());
+    let pointer = self.pointer.replace(at);
+
+    trace::log(|| format!("[touch] tap at {at:?}"));
+    self.content_press(0, chain.to_vec());
+    self.content_release(0);
+    self.hovered = hovered;
+    self.pointer = pointer;
+  }
+
+  /// Runs a long press whose time came: a touch still down and unmoved asks for a context
+  /// menu where it is.
+  pub fn touch_timers(&mut self) {
+    let Some(due) = LONG_PRESSED.with(std::cell::Cell::take) else {
+      return;
+    };
+    let Some(touch) = self.touch.as_mut() else {
+      return;
+    };
+
+    if touch.id != due || touch.moved {
+      return;
+    }
+
+    touch.long_press = None;
+
+    let pending = matches!(touch.role, TouchRole::Pending | TouchRole::Selecting { .. });
+
+    if !pending {
+      return;
+    }
+
+    let chain = std::mem::take(&mut touch.chain);
+    let at = touch.at;
+
+    touch.role = TouchRole::Spent;
+    Self::release_chain(&chain);
+    trace::log(|| format!("[touch] long press at {at:?}"));
+
+    if let Some(target) = chain.first() {
+      self.context_menu_at(target, at, MenuSource::Touch);
+    }
+  }
+
+  /// A finger went down on the open overlay at `x`, `y` (its surface's coordinates): a press
+  /// there, as the primary button's.
+  pub fn popup_touch_down(&mut self, x: f32, y: f32) {
+    self.popup_button(true, x, y);
+  }
+
+  /// A finger lifted from the open overlay at `x`, `y`: a release there.
+  pub fn popup_touch_up(&mut self, x: f32, y: f32) {
+    self.popup_button(false, x, y);
+  }
+
+  /// The wheel turned over the window: what is flinging stops, and the nearest box under the
+  /// pointer that can scroll that way scrolls.
   pub fn wheel(&mut self, wheel: Wheel) {
     count_input();
+    self.stop_fling();
 
     let (dx, dy) = match wheel {
       Wheel::Pixels(dx, dy) => (dx, dy),
       Wheel::Lines(dx, dy) => (dx * 48., dy * 48.),
     };
 
-    for node in self.hovered.clone() {
-      if (node.is_entry() && node.scroll_entry(dy)) || self.scroll_by(&node, dx, dy) {
-        return;
+    self.scroll_hovered(dx, dy);
+  }
+
+  /// Scrolls the nearest box under the pointer that moves by `dx`, `dy`: which one moved.
+  fn scroll_hovered(&mut self, dx: f32, dy: f32) -> Option<Node> {
+    self
+      .hovered
+      .clone()
+      .into_iter()
+      .find(|node| (node.is_entry() && node.scroll_entry(dy)) || self.scroll_by(node, dx, dy))
+  }
+
+  /// Two fingers moved on a touchpad by `dx`, `dy` pixels at `time` (the compositor's
+  /// milliseconds): what is flinging stops, the box the gesture moves (the first that moved
+  /// under the pointer, kept while the fingers are down) scrolls, and the motion is kept for a
+  /// fling once they lift.
+  pub fn finger_scroll(&mut self, dx: f32, dy: f32, time: u32) {
+    count_input();
+
+    if let Some((node, fling)) = self.fling.take() {
+      trace::log(|| "[fling] caught".to_owned());
+      self.caught = Some(fling);
+      self.latched = Some(node);
+    }
+
+    self.fingers.push(time, dx, dy);
+
+    let latched = self.latched.clone().filter(|node| node.is_alive());
+    let moved = match latched {
+      Some(node) => {
+        let moved = (node.is_entry() && node.scroll_entry(dy)) || self.scroll_by(&node, dx, dy);
+
+        moved.then_some(node)
       }
+      None => self.scroll_hovered(dx, dy),
+    };
+
+    if let Some(node) = moved {
+      self.latched = Some(node);
+    }
+  }
+
+  /// The fingers lifted off the touchpad at `time`: the box they moved goes on at their
+  /// velocity, slowing down, unless it scrolls itself (a text entry) or they had stopped.
+  pub fn finger_scroll_stop(&mut self, time: u32) {
+    count_input();
+
+    let velocity = self.fingers.finish(time);
+    let Some(node) = self.latched.take() else {
+      return;
+    };
+
+    if node.is_entry() || !node.is_alive() {
+      return;
+    }
+
+    let now = Instant::now();
+    let fling = crate::kinetic::Fling::new(velocity, now, self.caught.take().as_ref());
+
+    trace::log(|| format!("[fling] start at {velocity:?} px/s"));
+
+    if fling.moves() {
+      self.fling = Some((node, fling));
+    }
+  }
+
+  /// Stops what is flinging, where something is.
+  pub fn stop_fling(&mut self) {
+    self.caught = None;
+    self.fingers.reset();
+    self.latched = None;
+
+    if self.fling.take().is_some() {
+      trace::log(|| "[fling] stopped".to_owned());
+    }
+  }
+
+  /// Moves what is flinging to where it is at `now`; it stops at the end of its scroll box.
+  fn advance_fling(&mut self, now: Instant) {
+    let Some((node, mut fling)) = self.fling.take() else {
+      return;
+    };
+    let ((dx, dy), going) = fling.step(now);
+    let moved = self.scroll_by(&node, dx, dy) || dx.abs() < 1. && dy.abs() < 1.;
+
+    if going && moved && node.is_alive() {
+      self.fling = Some((node, fling));
+    } else {
+      trace::log(|| "[fling] at rest".to_owned());
     }
   }
 
@@ -2164,6 +3083,20 @@ impl Shell {
       && !modifiers.meta
     {
       Self::follow(target, link);
+
+      return;
+    }
+
+    if event.down
+      && !event.repeat
+      && (event.key == "ContextMenu"
+        || event.key == "F10" && modifiers.shift && !modifiers.control && !modifiers.alt)
+    {
+      // `Shift-F10` and the menu key ask for a context menu at the focus.
+      let rect = target.window_rect();
+      let at = (rect.x + rect.width / 2., rect.y + rect.height / 2.);
+
+      self.context_menu_at(target, at, MenuSource::Keyboard);
 
       return;
     }

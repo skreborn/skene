@@ -76,6 +76,15 @@
 #   - full and partial repaints at 1920x1080 and 3840x2160 on both paths, on Xvfb and headless
 #     mutter (tools/paint/repaint.sh).
 #
+# Stage SHELL GAPS (drag and drop, touch, kinetic scrolling, fractional scale, more
+# compositors): the realization's driver tests (gestures::, dnd::, scale::) run in every leg
+# above; here, the GUI crates and the realization's tests on the legs this stage adds:
+#   - weston (its X11 backend inside a private Xvfb, XTest into it), KWin's virtual backend
+#     (its fake input) and a window on KWin's Xwayland, where the compositor starts (KWin from
+#     SKENE_KWIN, or kwin_wayland on PATH);
+#   - the scaled legs at 1.5 (SKENE_TEST_SCALE): sway's output scale and KWin's, and the
+#     realization's own on Xvfb.
+#
 # The GTK realization (gui-linux-gtk) and its probes (probes/) are kept, outside the
 # workspace, for reference.
 #
@@ -178,6 +187,31 @@ else
   outcome=FAILED
 fi
 say "cargo test of the GUI crates on the sway leg: $outcome, $(grep -oE '[0-9]+ passed' "$results/test-sway.log" | awk '{s+=$1} END {print s}') passed, $(grep -oE '[0-9]+ failed' "$results/test-sway.log" | awk '{s+=$1} END {print s}') failed, $(( ($(date +%s%N) - started) / 1000000 )) ms wall"
+measure_target
+
+say "== more legs: weston, KWin, KWin's Xwayland; the scaled legs (1.5)"
+gui_crates="-p skene-conformance -p hello -p notes-gui -p skene-simple-gui -p skene-gui -p acme-rating -p skene-gui-linux"
+legs_run() { # <log name> <leg> [scale]
+  local log="$results/test-$1.log" outcome
+  started=$(date +%s%N)
+  # shellcheck disable=SC2086
+  if SKENE_TEST_SESSION=$2 SKENE_TEST_SCALE=${3:-1} cargo test --no-fail-fast $gui_crates > "$log" 2>&1; then
+    outcome=passed
+  elif grep -q "could not start" "$log"; then
+    say "the $1 leg: not run: $(grep -m1 -o 'could not start[^)]*)' "$log")"
+    return
+  else
+    outcome=FAILED
+  fi
+  say "cargo test of the GUI crates and the realization on the $1 leg: $outcome, $(grep -oE '[0-9]+ passed' "$log" | awk '{s+=$1} END {print s}') passed, $(grep -oE '[0-9]+ failed' "$log" | awk '{s+=$1} END {print s}') failed, $(( ($(date +%s%N) - started) / 1000000 )) ms wall"
+  grep -hE "not tested here" "$log" | sed -E 's/^.*not tested here: /  not tested here: /' | sort | uniq -c | tee -a "$summary"
+}
+for leg in weston kwin kwin-x11; do
+  legs_run "$leg" "$leg"
+done
+for leg in sway kwin x11; do
+  legs_run "$leg-1.5" "$leg" 1.5
+done
 measure_target
 
 say "== cargo nextest run --workspace: a process and a session per test"

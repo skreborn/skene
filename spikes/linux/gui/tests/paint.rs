@@ -38,13 +38,13 @@ fn the_scroll_bar_draws_over_the_text_it_scrolls() {
   let bounds = screen.find_by_role(Role::Region, "Scroller").read().bounds;
   let shot = screen.render_to_image();
   // The bar runs down the scroll's trailing edge, inset from it, at least 24 pixels long.
-  let column = (bounds.x + bounds.width - 5.) as usize;
+  let column = (bounds.x + bounds.width - 5.).trunc();
   let (top, bottom) = ((bounds.y + 4.) as usize, (bounds.y + 22.) as usize);
   let bar: Vec<[u8; 3]> = (top..bottom)
     .map(|row| {
-      let at = (row * shot.width as usize + column) * 4;
+      let [red, green, blue, _] = shot.rgba_at(column, row as f32);
 
-      [shot.rgba[at], shot.rgba[at + 1], shot.rgba[at + 2]]
+      [red, green, blue]
     })
     .collect();
   let pure_red = bar

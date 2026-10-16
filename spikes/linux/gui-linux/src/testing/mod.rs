@@ -12,16 +12,21 @@
 //!   quiet window passes in which no frame is painted, nothing is reported and no input
 //!   arrives; a find looks again for up to a second.
 //! - **The reader's settings** come from a stand-in of the settings portal ([`portal`]) on the
-//!   test's private bus, which the app follows through its real path.
+//!   test's private bus, which the app follows through its real path; a test that needs an
+//!   input method serves a stand-in of Fcitx5 there ([`input_method`]), which a window on
+//!   X11 talks to as to Fcitx5.
 //!
 //! What the window holds is used only to aim input (where its content starts, where the
 //! pointer was seen) and to wait for it (whether input arrived, whether a frame is due),
 //! never to assert what a reader finds. Tests run in the private session the display runner
 //! (`skene-runner`) gives each test process, named by `SKENE_TEST_SESSION`: `x11` (Xvfb),
-//! `mutter` (headless mutter with PipeWire) or `sway` (headless sway).
+//! `mutter` (headless mutter with PipeWire), `sway` (headless sway), `weston` (weston on its
+//! X11 backend inside a private Xvfb), `kwin` (KWin's virtual backend) or `kwin-x11` (the
+//! window on KWin's Xwayland).
 
 pub mod atspi;
 pub mod input;
+pub mod input_method;
 pub mod portal;
 
 use std::{
@@ -84,6 +89,12 @@ pub enum Session {
   Mutter,
   /// Headless sway.
   Sway,
+  /// Weston on its X11 backend, its output a window of a private Xvfb.
+  Weston,
+  /// KWin's virtual backend.
+  Kwin,
+  /// The window on KWin's Xwayland, KWin's fake input acting.
+  KwinX11,
 }
 
 impl Session {
@@ -94,6 +105,9 @@ impl Session {
       "x11" => Some(Self::X11),
       "mutter" => Some(Self::Mutter),
       "sway" => Some(Self::Sway),
+      "weston" => Some(Self::Weston),
+      "kwin" => Some(Self::Kwin),
+      "kwin-x11" => Some(Self::KwinX11),
       _ => None,
     }
   }
@@ -102,26 +116,53 @@ impl Session {
   #[must_use]
   pub const fn backend(self) -> Backend {
     match self {
-      Self::X11 => Backend::X11,
-      Self::Mutter | Self::Sway => Backend::Wayland,
+      Self::X11 | Self::KwinX11 => Backend::X11,
+      Self::Mutter | Self::Sway | Self::Weston | Self::Kwin => Backend::Wayland,
     }
+  }
+
+  /// The screen's size, as the runner gave it.
+  fn screen() -> (u32, u32) {
+    std::env::var("SKENE_SCREEN")
+      .ok()
+      .and_then(|screen| {
+        let (width, height) = screen.split_once('x')?;
+
+        Some((width.parse().ok()?, height.parse().ok()?))
+      })
+      .unwrap_or((1280, 1024))
+  }
+
+  /// The leg's scale, as the runner gave it (`SKENE_TEST_SCALE`): a Wayland leg's pointer
+  /// moves in the compositor's logical pixels, the screen's device pixels over it.
+  fn scale() -> f64 {
+    std::env::var("SKENE_TEST_SCALE")
+      .ok()
+      .and_then(|scale| scale.parse::<f64>().ok())
+      .filter(|scale| *scale >= 1.)
+      .unwrap_or(1.)
   }
 
   fn input(self) -> input::Result<Box<dyn Input>> {
     Ok(match self {
       Self::X11 => Box::new(input::X11::new()?),
       Self::Mutter => Box::new(input::Ei::new()?),
-      Self::Sway => {
-        let screen = std::env::var("SKENE_SCREEN")
-          .ok()
-          .and_then(|screen| {
-            let (width, height) = screen.split_once('x')?;
+      Self::Sway => Box::new(input::Sway::new(Self::screen(), Self::scale())?),
+      Self::Weston => {
+        let display = std::env::var("SKENE_INPUT_DISPLAY").map_err(
+          |_| "the weston leg names the X display weston shows in (SKENE_INPUT_DISPLAY)",
+        )?;
 
-            Some((width.parse().ok()?, height.parse().ok()?))
-          })
-          .unwrap_or((1280, 1024));
+        Box::new(input::X11::nested(&display)?)
+      }
+      Self::Kwin | Self::KwinX11 => {
+        let (width, height) = Self::screen();
+        let scale = Self::scale();
 
-        Box::new(input::Sway::new(screen)?)
+        Box::new(input::Kwin::new((
+          f64::from(width) / scale,
+          f64::from(height) / scale,
+        ))?)
       }
     })
   }
@@ -135,8 +176,8 @@ struct Shown {
   owner: Option<Owner>,
   /// The window's object on the accessibility bus.
   frame: Option<Object>,
-  /// The geometry's origin in the pointer space, and the configure count it was found at.
-  origin: Option<((f64, f64), u64)>,
+  /// The geometry's origin in the pointer space, and the window's size it was found at.
+  origin: Option<((f64, f64), (u32, u32))>,
 }
 
 thread_local! {
@@ -258,9 +299,9 @@ fn ui_thread() -> &'static mpsc::SyncSender<Job> {
 /// test never runs on the user's display.
 pub fn run_test(name: &'static str, body: fn()) {
   let session = Session::current();
-  let display = match session {
-    Some(Session::X11) => std::env::var_os("DISPLAY"),
-    Some(_) => std::env::var_os("WAYLAND_DISPLAY"),
+  let display = match session.map(Session::backend) {
+    Some(Backend::X11) => std::env::var_os("DISPLAY"),
+    Some(Backend::Wayland) => std::env::var_os("WAYLAND_DISPLAY"),
     None => None,
   };
 
@@ -459,6 +500,17 @@ pub fn close() {
   }
 
   COMPOSING.with(|composing| composing.set(None));
+
+  // The pointer goes to the screen's far corner, off where the next window opens, so it
+  // opens with nothing over it.
+  if INPUT.with(|input| input.borrow().is_some()) {
+    let _ = with_input(|input| {
+      let (width, height) = input.extent();
+
+      input.move_to(width - 2., height - 2.)?;
+      input.sync()
+    });
+  }
 }
 
 /// A node a reader found: its object on the accessibility bus, and what was read of it then.
@@ -806,13 +858,13 @@ impl Drawn {
   /// moving the pointer onto the window and reading where the window saw it, once per size
   /// the window was given; the pointer is moved off the window after.
   fn origin() -> (f64, f64) {
-    let configures = Self::with_window(|window| window.shell().configures);
+    let size = Self::with_window(|window| window.shell().size);
     let known = SHOWN.with(|shown| {
       shown
         .borrow()
         .as_ref()
         .and_then(|shown| shown.origin)
-        .filter(|(_, at)| *at == configures)
+        .filter(|(_, at)| *at == size)
         .map(|(origin, _)| origin)
     });
 
@@ -824,7 +876,7 @@ impl Drawn {
 
     SHOWN.with(|shown| {
       if let Some(shown) = shown.borrow_mut().as_mut() {
-        shown.origin = Some((origin, configures));
+        shown.origin = Some((origin, size));
       }
     });
 
@@ -846,6 +898,7 @@ impl Drawn {
     }
 
     for point in points {
+      let point = with_input(|input| input.landing(point.0, point.1));
       let before = trace::last_pointer();
 
       with_input(|input| {
@@ -1063,6 +1116,298 @@ impl Drawn {
     }
   }
 
+  /// Panics, saying so, where the session's input sends no touch.
+  fn need_touch() {
+    if !with_input(|input| input.has_touch()) {
+      let name = with_input(|input| input.name());
+
+      panic!(
+        "{name} sends no touch: a touch test runs where the session can inject it (Drawn::sends_touch)"
+      );
+    }
+  }
+
+  /// Flings `found` on a touchpad: the pointer over its center, two fingers moved `right` and
+  /// `down` pixels of scrolling in ten frames a hundredth of a second apart, then lifted; settles
+  /// once the fling is at rest.
+  fn fling(found: &Element, right: f64, down: f64) {
+    if !with_input(|input| input.has_finger_scroll()) {
+      let name = with_input(|input| input.name());
+
+      panic!(
+        "{name} sends no touchpad scrolling: a fling test runs where the session can inject it (Drawn::sends_touchpad_scrolling)"
+      );
+    }
+
+    let point = Self::aim(found, (0.5, 0.5));
+    let unit = Self::pointer_unit();
+
+    Self::send(11, |input| {
+      input.move_to(point.0, point.1)?;
+      input.sync()?;
+
+      for _ in 0..10 {
+        input.finger_scroll(right * unit / 10., down * unit / 10.)?;
+        input.sync()?;
+        std::thread::sleep(Duration::from_millis(10));
+      }
+
+      input.finger_scroll_stop()
+    });
+  }
+
+  /// Taps `found` at `at` (fractions of its width and height) on a touchscreen.
+  fn tap(found: &Element, at: (f64, f64)) {
+    Self::need_touch();
+
+    let point = Self::aim(found, at);
+
+    Self::send_touch(2, |input| {
+      input.touch_down(0, point.0, point.1)?;
+      input.sync()?;
+      std::thread::sleep(Duration::from_millis(40));
+      input.touch_up(0)
+    });
+  }
+
+  /// Sends `count` touch events as [`send`](Self::send) does; where none of them reached the
+  /// window (a compositor that makes its virtual touchscreen on the first touch, mutter),
+  /// says so and sends them once more.
+  fn send_touch(count: u64, send: impl Fn(&mut dyn Input) -> input::Result<()>) {
+    let before = shell::inputs();
+
+    if Self::send(count, &send) || shell::inputs() != before {
+      return;
+    }
+
+    eprintln!("skene testing: {count} touch events reached no window; sending them again");
+
+    if !Self::send(count, &send) {
+      eprintln!("skene testing: the touch events sent again reached no window either");
+    }
+  }
+
+  /// Holds a finger on `found`'s center for 800 ms, longer than a long press, then lifts it.
+  fn long_press(found: &Element) {
+    Self::need_touch();
+
+    let point = Self::aim(found, (0.5, 0.5));
+
+    Self::send_touch(1, |input| input.touch_down(0, point.0, point.1));
+    pump(Duration::from_millis(800));
+    Self::send(1, |input| input.touch_up(0));
+  }
+
+  /// Puts a finger on `found`'s center, moves it `right` and `down` pixels in ten steps and lifts
+  /// it.
+  fn swipe(found: &Element, right: f64, down: f64) {
+    Self::need_touch();
+
+    let from = Self::aim(found, (0.5, 0.5));
+    let unit = Self::pointer_unit();
+    let to = (from.0 + right * unit, from.1 + down * unit);
+
+    Self::send_touch(2, |input| {
+      input.touch_down(0, from.0, from.1)?;
+      input.sync()?;
+      std::thread::sleep(Duration::from_millis(20));
+
+      for step in 1..=10 {
+        let t = f64::from(step) / 10.;
+
+        input.touch_motion(
+          0,
+          from.0 + (to.0 - from.0) * t,
+          from.1 + (to.1 - from.1) * t,
+        )?;
+        input.sync()?;
+        std::thread::sleep(Duration::from_millis(15));
+      }
+
+      input.touch_up(0)
+    });
+  }
+
+  /// Whether the session's input sends touch (a touchscreen): mutter's EIS and KWin's fake
+  /// input do; X11's XTest, sway's virtual devices and XTest into weston do not.
+  #[must_use]
+  pub fn sends_touch(&self) -> bool {
+    with_input(|input| input.has_touch())
+  }
+
+  /// Whether the session's input sends a touchpad's scrolling with the end of its motion:
+  /// mutter's EIS and sway's virtual pointer do; X11's XTest (a wheel's buttons alone), XTest
+  /// into weston and KWin's fake input (an axis with no end) do not.
+  #[must_use]
+  pub fn sends_touchpad_scrolling(&self) -> bool {
+    with_input(|input| input.has_finger_scroll())
+  }
+
+  /// The session's input, by name.
+  #[must_use]
+  pub fn input_name(&self) -> &'static str {
+    with_input(|input| input.name())
+  }
+
+  /// The point at fractions `(x, y)` of `found`'s bounds in the pointer's space, the space
+  /// [`drag`](Self::drag) and [`move_pointer`](Self::move_pointer) take: the screen's device
+  /// pixels on X11, the compositor's global pixels on Wayland.
+  #[must_use]
+  pub fn point_in(&self, found: &Element, x: f64, y: f64) -> (f64, f64) {
+    Self::point(found, x, y)
+  }
+
+  /// The point at fraction `across` of the width of `found`'s character at `offset` (in
+  /// characters), halfway down its line, in the pointer's space: `0.` its leading edge, where
+  /// a drop goes before it; `1.` its trailing edge, where a drop goes after it.
+  ///
+  /// # Panics
+  ///
+  /// Where `found` has no text, or no character at `offset`.
+  #[must_use]
+  pub fn character_point(&self, found: &Element, offset: usize, across: f64) -> (f64, f64) {
+    let (x, y, width, height) = self.character_rect(found, offset);
+
+    (x + width * across, y + height / 2.)
+  }
+
+  /// The rectangle of `found`'s character at `offset` (in characters) in the pointer's space,
+  /// as a reader reads it: `x, y, width, height`.
+  ///
+  /// # Panics
+  ///
+  /// Where `found` has no text, or no character at `offset`.
+  #[must_use]
+  pub fn character_rect(&self, found: &Element, offset: usize) -> (f64, f64, f64, f64) {
+    let screen = with_input(|input| input.window_origin()).is_some();
+    let kind = if screen { atspi::SCREEN } else { atspi::WINDOW };
+    let offset = i32::try_from(offset).unwrap_or(i32::MAX);
+    let (left, top, width, height) =
+      with_atspi(|atspi| atspi.character_extents(&found.object, offset, kind))
+        .unwrap_or_else(|error| panic!("AT-SPI character {offset} of {:?}: {error}", found.name));
+
+    assert!(
+      width > 0 && height > 0,
+      "{:?} has no character at {offset}",
+      found.name
+    );
+
+    let (origin, unit) = if screen {
+      ((0., 0.), 1.)
+    } else {
+      (
+        Self::origin(),
+        Self::with_window(|window| window.shell().scale),
+      )
+    };
+
+    (
+      origin.0 + f64::from(left) / unit,
+      origin.1 + f64::from(top) / unit,
+      f64::from(width) / unit,
+      f64::from(height) / unit,
+    )
+  }
+
+  /// The window's rectangle in the pointer's space: `(x, y, width, height)`.
+  #[must_use]
+  pub fn window_rect(&self) -> (f64, f64, f64, f64) {
+    if with_input(|input| input.window_origin()).is_some() {
+      let frame = self.frame().expect("a window is open");
+      let (x, y, width, height) = with_atspi(|atspi| atspi.extents(&frame, atspi::SCREEN))
+        .unwrap_or_else(|error| panic!("AT-SPI extents of the window: {error}"));
+
+      return (
+        f64::from(x),
+        f64::from(y),
+        f64::from(width),
+        f64::from(height),
+      );
+    }
+
+    let origin = Self::origin();
+    let (width, height) = Self::with_window(|window| {
+      let (width, height) = window.shell().size;
+
+      (f64::from(width), f64::from(height))
+    });
+
+    (origin.0, origin.1, width, height)
+  }
+
+  /// The window was moved by something other than the driver (a compositor's command): where
+  /// it is is found again before the pointer next aims at it.
+  pub fn window_moved(&mut self) {
+    SHOWN.with(|shown| {
+      if let Some(shown) = shown.borrow_mut().as_mut() {
+        shown.origin = None;
+      }
+    });
+    settle();
+  }
+
+  /// The pointer space's size: the screen's.
+  #[must_use]
+  pub fn screen_extent(&self) -> (f64, f64) {
+    with_input(|input| input.extent())
+  }
+
+  /// The scale the platform gave the window: device pixels per pixel.
+  #[must_use]
+  pub fn scale(&self) -> f64 {
+    Self::with_window(|window| window.shell().scale)
+  }
+
+  /// Clicks the primary button at `at` in the pointer's space, then settles.
+  pub fn click_point(&mut self, at: (f64, f64)) {
+    Self::click_at(at, input::PRIMARY);
+  }
+
+  /// Moves the pointer to `to` in the pointer's space, then turns the window's loop for a
+  /// moment and settles.
+  pub fn move_pointer(&mut self, to: (f64, f64)) {
+    with_input(|input| {
+      input.move_to(to.0, to.1)?;
+      input.sync()
+    })
+    .unwrap_or_else(|error| panic!("pointer: {error}"));
+    pump(Duration::from_millis(50));
+    settle();
+  }
+
+  /// Drags with the primary button from `from` to `to` (points in the pointer's space) as a
+  /// hand does: a press, the pointer moved there in twelve steps with the window's loop
+  /// turning between them (so a drag the press starts begins while the button is held, as a
+  /// compositor needs), a rest over `to`, the release; then settles. A drag that leaves the
+  /// window goes on to whatever is under the pointer, another application's window included.
+  pub fn drag(&mut self, from: (f64, f64), to: (f64, f64)) {
+    Self::send(1, |input| {
+      input.move_to(from.0, from.1)?;
+      input.sync()?;
+      input.button(input::PRIMARY, true)
+    });
+
+    for step in 1..=12 {
+      let t = f64::from(step) / 12.;
+
+      with_input(|input| {
+        input.move_to(from.0 + (to.0 - from.0) * t, from.1 + (to.1 - from.1) * t)?;
+        input.sync()
+      })
+      .unwrap_or_else(|error| panic!("pointer: {error}"));
+      pump(Duration::from_millis(25));
+    }
+
+    pump(Duration::from_millis(150));
+    with_input(|input| {
+      input.button(input::PRIMARY, false)?;
+      input.sync()
+    })
+    .unwrap_or_else(|error| panic!("pointer: {error}"));
+    pump(Duration::from_millis(300));
+    settle();
+  }
+
   /// Presses the key `name` with `modifiers` held, focus where it is.
   fn press(name: &str, modifiers: Modifiers) {
     Self::reach_keyboard();
@@ -1134,6 +1479,11 @@ impl Drawn {
       | Action::Hover
       | Action::Drag(..)
       | Action::Scroll(..)
+      | Action::Fling(..)
+      | Action::Tap
+      | Action::TapAt(..)
+      | Action::LongPress
+      | Action::Swipe(..)
       | Action::Access(_) => {
         panic!("{action:?} acts on an element, not at the focus")
       }
@@ -1193,49 +1543,94 @@ impl Drawn {
 
   /// `window`'s content as drawn last, alone (below a title bar Skene draws), as RGBA.
   fn shot(window: &mut Window) -> Screenshot {
-    {
-      let shell = window.shell_mut();
-      let scale = shell.scale;
-      let (ox, oy) = shell.chrome.origin();
-      let header = shell.chrome.header();
-      let (width, height) = shell.content_size();
-      let pixmap = shell.last_frame().expect("the window has drawn");
-      let left = (f64::from(ox) * scale).round() as usize;
-      let top = (f64::from(oy + header) * scale).round() as usize;
-      let width = (f64::from(width) * scale).round() as usize;
-      let height = (f64::from(height) * scale).round() as usize;
-      let stride = usize::from(pixmap.width());
-      let data = pixmap.data();
-      let mut rgba = Vec::with_capacity(width * height * 4);
+    let shell = window.shell_mut();
+    let scale = shell.scale;
+    let (ox, oy) = shell.chrome.origin();
+    let header = shell.chrome.header();
+    let (width, height) = shell.content_size();
+    let pixmap = shell.last_frame().expect("the window has drawn");
 
-      for row in top..top + height {
-        for column in left..left + width {
-          let [red, green, blue, alpha] = data
-            .get(row * stride + column)
-            .map_or([0; 4], |pixel| [pixel.r, pixel.g, pixel.b, pixel.a]);
-          let unpremultiply = |channel: u8| {
-            if alpha == 0 {
-              0
-            } else {
-              ((u32::from(channel) * 255 + u32::from(alpha) / 2) / u32::from(alpha)).min(255) as u8
-            }
-          };
+    Self::crop(
+      pixmap,
+      scale,
+      (
+        (f64::from(ox) * scale).round() as usize,
+        (f64::from(oy + header) * scale).round() as usize,
+      ),
+      (
+        (f64::from(width) * scale).round() as usize,
+        (f64::from(height) * scale).round() as usize,
+      ),
+    )
+  }
 
-          rgba.extend_from_slice(&[
-            unpremultiply(red),
-            unpremultiply(green),
-            unpremultiply(blue),
-            alpha,
-          ]);
-        }
-      }
+  /// `size` device pixels of `pixmap` (drawn at `scale`) from `top_left`, as straight RGBA.
+  fn crop(
+    pixmap: &vello_cpu::Pixmap,
+    scale: f64,
+    (left, top): (usize, usize),
+    (width, height): (usize, usize),
+  ) -> Screenshot {
+    let stride = usize::from(pixmap.width());
+    let data = pixmap.data();
+    let mut rgba = Vec::with_capacity(width * height * 4);
 
-      Screenshot {
-        width: width as u32,
-        height: height as u32,
-        rgba,
+    for row in top..top + height {
+      for column in left..left + width {
+        let [red, green, blue, alpha] = data
+          .get(row * stride + column)
+          .map_or([0; 4], |pixel| [pixel.r, pixel.g, pixel.b, pixel.a]);
+        let unpremultiply = |channel: u8| {
+          if alpha == 0 {
+            0
+          } else {
+            ((u32::from(channel) * 255 + u32::from(alpha) / 2) / u32::from(alpha)).min(255) as u8
+          }
+        };
+
+        rgba.extend_from_slice(&[
+          unpremultiply(red),
+          unpremultiply(green),
+          unpremultiply(blue),
+          alpha,
+        ]);
       }
     }
+
+    Screenshot {
+      width: width as u32,
+      height: height as u32,
+      scale,
+      rgba,
+    }
+  }
+
+  /// The open popup's surface as it drew it last, whole, as RGBA in device pixels, and its top
+  /// left in the pointer's space; `None` while no popup is open.
+  #[must_use]
+  pub fn popup_content(&self) -> Option<(Screenshot, (f64, f64))> {
+    settle();
+
+    let unit = Self::pointer_unit();
+    let (x, y, ..) = self.window_rect();
+
+    Self::with_window(|window| {
+      let shell = window.shell();
+      let open = shell.popup()?;
+      let rect = open.rect();
+      let pixmap = open.pixmap();
+      let shot = Self::crop(
+        pixmap,
+        shell.scale,
+        (0, 0),
+        (usize::from(pixmap.width()), usize::from(pixmap.height())),
+      );
+
+      Some((
+        shot,
+        (x + f64::from(rect.x) * unit, y + f64::from(rect.y) * unit),
+      ))
+    })
   }
 
   /// Writes the window's content as a PNG at `path`.
@@ -1466,6 +1861,11 @@ impl Driver for Drawn {
           input.wheel(*right, *down)
         });
       }
+      Action::Fling(right, down) => Self::fling(found, f64::from(*right), f64::from(*down)),
+      Action::Tap => Self::tap(found, (0.5, 0.5)),
+      Action::TapAt(x, y) => Self::tap(found, (f64::from(*x), f64::from(*y))),
+      Action::LongPress => Self::long_press(found),
+      Action::Swipe(right, down) => Self::swipe(found, f64::from(*right), f64::from(*down)),
       Action::Access(request) => {
         let asked = with_atspi(|atspi| atspi.request(&found.object, *request));
 

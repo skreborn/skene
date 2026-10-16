@@ -190,6 +190,13 @@ impl Open {
     x >= frame.x && y >= frame.y && x < frame.x + frame.width && y < frame.y + frame.height
   }
 
+  /// Whether `x`, `y` (window pixels) is on its anchor.
+  pub fn on_anchor(&self, x: f32, y: f32) -> bool {
+    let anchor = self.placement.anchor;
+
+    x >= anchor.x && y >= anchor.y && x < anchor.x + anchor.width && y < anchor.y + anchor.height
+  }
+
   /// It is to be painted again.
   pub const fn invalidate(&mut self) {
     self.dirty = true;

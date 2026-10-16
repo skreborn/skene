@@ -25,9 +25,10 @@
 #     dbus-run-session, with a settings-portal stand-in where a scenario asks for one. Nothing
 #     reaches the user's display: DISPLAY and WAYLAND_DISPLAY are unset here.
 #
-# Stage CONTROLS (the built-in controls drawn by Skene, on the foundation's behaviors; the
-# text field and editor over the shared editing core; input methods; AccessKit carried by
-# Skene, vendor/accesskit_unix and vendor/accesskit_atspi_common):
+# Stage CONTROLS (the built-in controls, each a foundation behavior over a composed tree of
+# Skene's views styled by the style model, the picker's list an overlay on a popup surface of
+# its own; the text field and editor over the shared editing core; input methods; AccessKit
+# carried by Skene, vendor/accesskit_unix and vendor/accesskit_atspi_common):
 #   - the controls probe (shell-probes/src/bin/controls.rs) driven by tools/controls/harness.py
 #     with real input (tools/bin/drive) and read over AT-SPI, each in a private session
 #     (tools/controls/session.sh: Xvfb, headless sway, headless mutter, headless gnome-shell):

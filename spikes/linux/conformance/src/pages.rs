@@ -499,13 +499,17 @@ fn fruit() -> impl View {
 
   publish("fruit", move || format!("{:?}", fruit.get_untracked()));
 
-  Column::new().set_padding(16).add_child(
-    Row::new().add_child(
-      Picker::new("Fruit")
-        .set_options(["Apple", "Banana", "Cherry", "Date", "Elderberry"])
-        .bind_chosen(fruit),
-    ),
-  )
+  Column::new()
+    .set_padding(16)
+    .set_spacing(12)
+    .add_child(Text::new("Pick one"))
+    .add_child(
+      Row::new().add_child(
+        Picker::new("Fruit")
+          .set_options(["Apple", "Banana", "Cherry", "Date", "Elderberry"])
+          .bind_chosen(fruit),
+      ),
+    )
 }
 
 /// A field whose caption sits beside it.

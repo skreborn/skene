@@ -1306,11 +1306,7 @@ impl Shell {
     let frame = open.node.frame.get();
     let at = (x + frame.x, y + frame.y);
     let on_overlay = open.contains(at.0, at.1);
-    let anchor = open.placement.anchor;
-    let on_anchor = at.0 >= anchor.x
-      && at.1 >= anchor.y
-      && at.0 < anchor.x + anchor.width
-      && at.1 < anchor.y + anchor.height;
+    let on_anchor = open.on_anchor(at.0, at.1);
 
     self.pointer = Some(at);
     self.pointer_in_overlay = on_overlay;
@@ -1504,8 +1500,12 @@ impl Shell {
       )
     });
 
-    if down && self.overlay.is_some() && !matches!(hit, Hit::Content(..)) {
-      // A press on the window's frame dismisses the open overlay, and goes no further.
+    // A press anywhere on the window but the open overlay's anchor dismisses the overlay, and
+    // goes no further; a press on the overlay reaches its own surface.
+    if down
+      && let Some(open) = &self.overlay
+      && !matches!(hit, Hit::Content(x, y) if open.on_anchor(x, y))
+    {
       self.dismiss_popup();
       requests.extend(self.take_requests());
 

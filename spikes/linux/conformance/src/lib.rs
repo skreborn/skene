@@ -861,6 +861,19 @@ fn picker_opens<D: Driver>(driver: &mut D) {
     "Some(4)",
     "typing on the closed face chooses by name"
   );
+
+  driver.act(&face, &Action::Click);
+  assert_eq!(driver.read(&face).expanded, Some(true));
+
+  let outside = text(driver, "Pick one");
+
+  driver.act(&outside, &Action::Click);
+  assert_eq!(
+    driver.read(&face).expanded,
+    Some(false),
+    "a press outside closes the list"
+  );
+  assert_eq!(probe(driver, "fruit"), "Some(4)", "and chooses nothing");
 }
 
 fn picker_width<D: Driver>(driver: &mut D) {

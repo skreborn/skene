@@ -251,6 +251,52 @@ impl Direct {
     layout
   }
 
+  /// `text` with a zero line height on the root and, over each range the fallback mapped, a span
+  /// naming the mapped family first at the font metrics' line height: a line sized by the fonts
+  /// its runs use, as DirectWrite sizes it.
+  pub fn per_run_spans(
+    &mut self,
+    text: &str,
+    size: f32,
+    locale: &str,
+    ranges: &[(std::ops::Range<usize>, Option<String>)],
+  ) -> Layout<()> {
+    let root = parley::TextStyle {
+      font_family: FontFamily::List(Cow::Owned(vec![
+        FontFamilyName::Generic(parley::GenericFamily::SystemUi),
+        FontFamilyName::Generic(parley::GenericFamily::SansSerif),
+      ])),
+      font_size: size,
+      line_height: LineHeight::FontSizeRelative(0.0),
+      locale: Language::parse(locale).ok(),
+      ..parley::TextStyle::default()
+    };
+    let mut builder = self
+      .layouts
+      .tree_builder(&mut self.fonts.context, 1.0, false, &root);
+
+    for (range, family) in ranges {
+      let mut families = Vec::new();
+
+      if let Some(family) = family {
+        families.push(FontFamilyName::Named(Cow::Owned(family.clone())));
+      }
+
+      families.push(FontFamilyName::Generic(parley::GenericFamily::SystemUi));
+      families.push(FontFamilyName::Generic(parley::GenericFamily::SansSerif));
+      builder.push_style_modification_span(&[
+        StyleProperty::FontFamily(FontFamily::List(Cow::Owned(families))),
+        StyleProperty::LineHeight(LineHeight::MetricsRelative(1.0)),
+      ]);
+      builder.push_text(&text[range.clone()]);
+      builder.pop_style_span();
+    }
+
+    let (mut layout, _) = builder.build();
+    layout.break_all_lines(None);
+    layout
+  }
+
   /// Parley's run fonts over `text`: the run's text and its font's family and file.
   pub fn fonts_of(&mut self, layout: &Layout<()>, text: &str) -> Vec<String> {
     let mut out = Vec::new();
@@ -1202,6 +1248,8 @@ pub fn emoji(factory: &IDWriteFactory4, r: &mut Report) -> Res<()> {
 /// harness does, and by Parley with a zero line height on the root and the metrics' on a span
 /// over the whole text.
 pub fn strut(factory: &IDWriteFactory4, direct: &mut Direct, r: &mut Report) -> Res<()> {
+  let resolver = Resolver::new(factory).msg("resolver")?;
+
   for (label, text, locale) in [
     ("han-zh-hant", "直骨角海写次化刃誤曜述返令", "zh-Hant-TW"),
     ("han-zh-hans", "直骨角海写次化刃誤曜述返令", "zh-Hans-CN"),
@@ -1239,8 +1287,20 @@ pub fn strut(factory: &IDWriteFactory4, direct: &mut Direct, r: &mut Report) -> 
     };
     let (wh, wb) = box_of(&with);
     let (nh, nb) = box_of(&without);
+    let offsets = Offsets::new(text);
+    let ranges: Vec<(std::ops::Range<usize>, Option<String>)> = resolver
+      .map(text, locale, Some(SYSTEM_FAMILY), 400, false)
+      .msg("map")?
+      .into_iter()
+      .map(|m| {
+        let [start, end] = offsets.range_utf8([m.start as usize, (m.start + m.len) as usize]);
+        (start..end, m.family)
+      })
+      .collect();
+    let spans = direct.per_run_spans(text, 17.0, locale, &ranges);
+    let (sh, sb) = box_of(&spans);
     r.line(format!(
-      "strut.{label}: dwrite height={:.3} baseline={:.3} | parley (strut) height={wh:.3} baseline={wb:.3} | parley (no strut) height={nh:.3} baseline={nb:.3}",
+      "strut.{label}: dwrite height={:.3} baseline={:.3} | parley (strut) height={wh:.3} baseline={wb:.3} | parley (root line height 0) height={nh:.3} baseline={nb:.3} | parley (root line height 0, a span per fallback run naming its font) height={sh:.3} baseline={sb:.3}",
       lines.first().map_or(0.0, |l| l.height),
       lines.first().map_or(0.0, |l| l.baseline),
     ));

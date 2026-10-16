@@ -52,6 +52,14 @@ in a code comment.
     - The text doctrine's guaranteed core (blanks and newlines kept, a word too wide for
     a line breaking where the line fills, an empty text laid out as one line) held by a
     test on every engine; everything beyond it is the engine's.
+    - The prototype (`spikes/linux`, its own workspace) carries all of it: the trait, the
+    Parley engine, the editing core with the terminal's field and the drawn Linux field
+    as its clients, the patched AccessKit, which reports no AT-SPI error where
+    `GtkEntry` reports five, and the guaranteed core under test. It lands through the
+    gate rather than being copied whole, and lands two corrections with it: a layout's
+    geometry never changes while its paint is the paragraph's, so a repaint shows in
+    every layout already handed out, as the trait's documentation must say in one voice;
+    and the terminal's secure field draws its text masked.
 2. **One platform per build, and app code concrete.** `skene-gui` is born over the
     reshaped foundation with Linux as its first platform (item 5), and the web and the
     terminal follow it there (item 10); no app or library signature carries a type
@@ -128,19 +136,33 @@ in a code comment.
 5. **Linux, drawn on its own protocols.** A window platform: Skene owns the whole
     window, draws everything and speaks Linux's text, input and accessibility protocols
     itself, the GTK prototype remaining a reference whose transcripts are the bar. The
-    drawn spike proved each protocol and puts the whole at an estimated 16–22k lines,
-    against GTK's 4,550 production lines (7,300 with its harness).
+    drawn prototype (`spikes/linux`) realizes the whole on X11, mutter and sway in about
+    14,700 lines and 4,000 more for Parley's Linux layers, against GTK's 4,550
+    production lines (7,300 with its harness): it starts in 40–60 ms where GTK takes
+    297–370, Orca speaks GTK's words on every checked line, and its stripped release
+    binary is 15.3 MB with no GTK in it. What it leaves open is in the bullets below.
+    - Paint: glyphs are composited after the scene, so a box drawn over a text lets the
+    glyphs through; the glyph masks paint in the scene's order. The first frame of 1000
+    rows takes 218–243 ms, 157–181 of them in layout; transitions do not yet run on the
+    frame clock, and gradients are missing.
+    - Controls: the prototype paints them inside the realization, at fixed geometry and
+    in a palette of its own, so a library cannot restyle them and `SimpleButton` cannot
+    reach `SimplePalette`. They become composed trees of Skene's views (item 2), and a
+    third party's drawn control a `Control<B>` with a `Painted` part.
     - The shell: Wayland through smithay-client-toolkit and X11 through x11rb, with
-    xkbcommon, rather than winit, which never sends surrounding text. Beyond what the
-    spike proved (typing, layouts, compose, focus and a pointer drag on X11, sway and
-    mutter) lie the paths toolkits spend years on: wheel, high-resolution and kinetic
-    scrolling, the clipboard and the primary selection, drag and drop, popups
-    (`xdg_popup`, accessibility extents relative to a popup's surface, an input method
-    inside a popup), touch, XInput2 and every button on X11, and fractional scale.
+    xkbcommon, rather than winit, which never sends surrounding text. The prototype has
+    high-resolution wheels and XInput 2's smooth scrolling, the clipboard and the
+    primary selection, popups (`xdg_popup`, override-redirect windows on X11) and the
+    window's fractional scale; drag and drop, touch, kinetic scrolling and fractional
+    scale in popups and fields remain, and KWin and weston are untried.
     - Input methods: text-input-v3 on Wayland, IBus and Fcitx5 over D-Bus and XIM on
-    X11, feeding the editing core, their transcripts held to `GtkEntry`'s.
+    X11, feeding the editing core, their transcripts held to `GtkEntry`'s. A secure
+    entry gives Wayland's input method a mark per cluster and X11's nothing; both get
+    the marks.
     - Accessibility: AT-SPI through AccessKit with item 1's changes, Orca's words for
-    typing, caret moves, selection and focus held to `GtkEntry`'s.
+    typing, caret moves, selection and focus held to `GtkEntry`'s. Seven differences
+    remain (the frame and the entry announced at startup, where-am-i's wording, flat
+    review's words and characters), and Orca on Wayland is untried.
     - Window chrome: client-side decorations where the compositor asks for them (mutter)
     that move, resize, maximize, tile and open the window menu, their buttons reachable
     through AT-SPI; server-side ones where they are offered; X11 under its window
@@ -163,9 +185,11 @@ in a code comment.
     removing them on any end of the process, an interrupt included, an app run on the
     user's display taking a bus of its own only where the user has none, and probe
     binaries running through it. A stand-in for the OS settings portal and the layout
-    engine's unit tests over canned measurements stay, being no platform. Open: a
-    Wayland leg (headless mutter, PipeWire and EIS through `reis`), which the drawn
-    spike's driver passed.
+    engine's unit tests over canned measurements stay, being no platform. The
+    prototype's driver runs every test on X11, headless mutter (EIS through `reis`) and
+    headless sway. Open: a screenshot reads the presented surface rather than the app's
+    last frame, a frame lost on mutter gets a test of its own, and a role matches
+    exactly, so a switch never stands in for a checkbox nor a row for an option.
 6. **The spikes on hardware.** The text-engine spikes ran on GitHub's runners
     (`spikes/`, the `spike-apple`, `spike-android` and `spike-windows` workflows) and
     passed: TextKit 2 under taffy draws what `UILabel` and `NSTextField` draw, taffy

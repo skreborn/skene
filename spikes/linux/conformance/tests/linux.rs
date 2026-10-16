@@ -1,0 +1,49 @@
+//! The conformance suite on Linux: each scenario a `#[skene_gui::test]` of its own, run through
+//! the Linux driver (AT-SPI reads, real input) in the session the display runner gives the test
+//! (`SKENE_TEST_SESSION`: X11 by default, headless mutter, headless sway).
+
+use skene_gui::testing::Drawn;
+
+/// A test per scenario, and a check that every scenario has one.
+macro_rules! scenarios {
+  ($($name:ident),* $(,)?) => {
+    $(
+      #[skene_gui::test]
+      fn $name() {
+        skene_conformance::run(&mut Drawn::new(), stringify!($name));
+      }
+    )*
+
+    #[test]
+    fn every_scenario_has_a_test() {
+      let tested = [$(stringify!($name)),*];
+      let scenarios: Vec<&str> = skene_conformance::scenarios::<Drawn>()
+        .into_iter()
+        .map(|(name, _)| name)
+        .collect();
+
+      assert_eq!(scenarios, tested);
+    }
+  };
+}
+
+scenarios!(
+  a_toggle_takes_a_flip_its_handler_accepts,
+  a_toggle_refuses_a_flip_its_handler_ignores,
+  a_text_field_takes_what_is_typed,
+  a_text_field_shows_what_its_handler_makes_of_an_edit,
+  a_text_field_refuses_a_character_its_handler_refuses,
+  a_composition_commits_into_the_truth,
+  a_slider_steps_and_its_handler_clamps,
+  a_picker_chooses_from_its_list,
+  a_control_owns_its_press_inside_a_box_that_hears_presses,
+  tab_moves_focus_in_reading_order,
+  tab_follows_the_scene_not_the_geometry,
+  an_activatable_row_holds_controls_that_own_their_presses,
+  a_shortcut_activates_its_button,
+  the_dark_scheme_reinks_without_rebuilding,
+  a_width_condition_follows_the_window,
+  a_library_view_is_controlled,
+  a_painted_view_is_its_description,
+  every_page_passes_the_audit,
+);

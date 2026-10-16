@@ -1,0 +1,69 @@
+[workspace]
+resolver = "3"
+members = [
+  "cli",
+  "conformance",
+  "foundation",
+  "gui",
+  "gui-linux",
+  "gui-macros",
+  "hello",
+  "notes/core",
+  "notes/gui",
+  "parley",
+  "shell-probes",
+  "simple/core",
+  "simple/gui",
+  "terminal",
+  "tools/shell",
+]
+# gui-linux-gtk is the GTK realization and probes its probes, kept for reference.
+exclude = [
+  "gui-linux-gtk",
+  "probes",
+  "vendor",
+]
+
+[workspace.package]
+edition = "2024"
+license = "MIT"
+publish = false
+rust-version = "1.99"
+version = "0.0.0"
+
+[workspace.lints.rust]
+missing_docs = "warn"
+unexpected_cfgs = { level = "warn", check-cfg = [
+  'cfg(skene_platform, values("web", "server", "ios", "android", "macos", "windows", "linux"))',
+] }
+
+[workspace.dependencies]
+parley = { default-features = false, features = ["complex-scripts", "std", "system"], version = "=0.12.0" }
+parley_emoji = "=0.12.0"
+skene-foundation = { path = "foundation" }
+skene-gui = { path = "gui" }
+skene-gui-linux = { path = "gui-linux" }
+skene-gui-macros = { path = "gui-macros" }
+skene-parley = { path = "parley" }
+skene-simple-core = { path = "simple/core" }
+skene-simple-gui = { path = "simple/gui" }
+skene-terminal = { path = "terminal" }
+skrifa = { default-features = false, features = ["std"], version = "=0.44.0" }
+taffy = "=0.14.0"
+unicode-segmentation = "=1.13.3"
+unicode-width = "=0.2.2"
+vello_cpu = { default-features = false, features = ["png", "std", "text", "u8_pipeline"], version = "=0.3.0" }
+
+[patch.crates-io]
+# Skene carries these changes itself until they are proven, then offers them upstream.
+accesskit_atspi_common = { path = "vendor/accesskit_atspi_common" }
+accesskit_unix = { path = "vendor/accesskit_unix" }
+xim = { path = "vendor/xim" }
+
+[profile.dev]
+debug = "line-tables-only"
+opt-level = 1
+
+[profile.dev.package."*"]
+debug = false
+opt-level = 2

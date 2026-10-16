@@ -1,0 +1,15 @@
+[package]
+name = "skene-simple-gui"
+description = "The Simple component library on the pixel platforms: a palette, a card, a primary button and a date picker composed of the shared views."
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+skene-gui.workspace = true
+skene-simple-core.workspace = true
+
+[lints]
+workspace = true

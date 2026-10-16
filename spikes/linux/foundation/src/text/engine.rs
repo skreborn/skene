@@ -1,0 +1,288 @@
+//! The contract every realization's text engine implements: a paragraph of attributed text,
+//! its intrinsic widths, an immutable layout at a width with the geometry everything acting on
+//! text needs, paint-only restyling, and the boundaries movement follows.
+
+use std::ops::Range;
+
+use crate::{
+  layout::Rect,
+  text::{AttributedText, PaintStyle, ParagraphStyle},
+};
+
+/// A realization's text engine: Parley on Linux and in the terminal (over a cell typeface),
+/// the platform's own elsewhere.
+#[diagnostic::on_unimplemented(
+  message = "`{Self}` is not a text engine",
+  label = "text is laid out through an engine here",
+  note = "a realization implements `TextEngine` once: a paragraph of attributed text, laid out at a width"
+)]
+pub trait TextEngine {
+  /// The engine's paragraph.
+  type Paragraph: Paragraph;
+
+  /// `text` as a paragraph styled by `style`: shaped once, laid out at any width after.
+  fn paragraph(&self, text: &AttributedText, style: &ParagraphStyle) -> Self::Paragraph;
+}
+
+/// A paragraph: text shaped once, measured and laid out at widths.
+pub trait Paragraph {
+  /// The paragraph laid out at one width.
+  type Laid: Laid;
+
+  /// The text the paragraph lays out.
+  fn text(&self) -> &str;
+
+  /// The paragraph's narrowest width (its widest unbreakable piece) and its widest (each
+  /// line unwrapped).
+  fn intrinsic(&self) -> Intrinsic;
+
+  /// The paragraph laid out within `width`, unbounded where `None`: an immutable value no
+  /// later query changes.
+  fn layout(&self, width: Option<f32>) -> Self::Laid;
+
+  /// Repaints `range` (bytes of the text) with `paint`, every layout of the paragraph
+  /// included: `false` where the engine needs the paragraph rebuilt instead. It never
+  /// changes a size or a position.
+  fn repaint(&mut self, range: Range<usize>, paint: &PaintStyle) -> bool;
+
+  /// The boundary of `unit` next to byte `index` in `direction`, as the engine reads the
+  /// text: where a caret lands moving logically, and the reach of a deletion.
+  ///
+  /// A word boundary skips blanks first, then one segment: a word or a punctuation mark.
+  fn boundary(&self, index: usize, unit: TextBoundary, direction: Direction) -> usize;
+}
+
+/// A paragraph laid out at one width: immutable, and cheap to clone.
+pub trait Laid: Clone {
+  /// The size the lines take: the widest line's advance (no more than the width laid out
+  /// within, but for one cluster wider than it) and the lines' total height.
+  fn size(&self) -> TextSize;
+
+  /// The first line's baseline, from the top.
+  fn first_baseline(&self) -> f32;
+
+  /// The last line's baseline, from the top.
+  fn last_baseline(&self) -> f32;
+
+  /// The lines laid out.
+  fn line_count(&self) -> usize;
+
+  /// Whether the text was cut at the paragraph's most lines.
+  fn truncated(&self) -> bool;
+
+  /// The lines, in order.
+  fn lines(&self) -> Vec<LineInfo>;
+
+  /// The caret position nearest `x`, `y` (relative to the layout's top left).
+  fn hit_test(&self, x: f32, y: f32) -> Hit;
+
+  /// The caret at `position`, and the second one where the position is a direction boundary
+  /// of bidirectional text.
+  fn caret(&self, position: Position) -> Carets;
+
+  /// The rectangles `range` (bytes) covers, one or more a line, in visual order.
+  fn range_rects(&self, range: Range<usize>) -> Vec<Rect>;
+
+  /// Each stretch of a line painted alike, with what the shared painter needs to draw its
+  /// decorations.
+  fn run_extents(&self) -> Vec<RunExtent>;
+
+  /// The position a visual move from `position` lands on.
+  fn move_visual(&self, position: Position, movement: VisualMove) -> Position;
+
+  /// The position `lines` lines below `position` (above where negative), nearest the
+  /// horizontal `goal` where given, else the position's own; with the goal the move
+  /// keeps for the next.
+  fn move_vertical(&self, position: Position, lines: isize, goal: Option<f32>) -> (Position, f32);
+}
+
+/// A width in an engine's units.
+#[derive(Clone, Copy, PartialEq, Debug, Default)]
+pub struct Intrinsic {
+  /// The narrowest the paragraph lays out at without overflowing a piece it cannot break.
+  pub min: f32,
+  /// The widest the paragraph is, each line unwrapped.
+  pub max: f32,
+}
+
+/// A size in an engine's units.
+#[derive(Clone, Copy, PartialEq, Debug, Default)]
+pub struct TextSize {
+  /// The width.
+  pub width: f32,
+  /// The height.
+  pub height: f32,
+}
+
+/// Which side of a position a caret belongs to where both sides are not adjacent on screen
+/// (a line's end, a direction change).
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
+pub enum Affinity {
+  /// With the character after the position.
+  #[default]
+  Downstream,
+  /// With the character before the position.
+  Upstream,
+}
+
+/// A caret position: a byte index of the text and the side it belongs to.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
+pub struct Position {
+  /// The byte index, on a character boundary.
+  pub index: usize,
+  /// The side.
+  pub affinity: Affinity,
+}
+
+impl Position {
+  /// The position at `index`, with the character after it.
+  #[inline(always)]
+  #[must_use]
+  pub const fn new(index: usize) -> Self {
+    Self {
+      index,
+      affinity: Affinity::Downstream,
+    }
+  }
+
+  /// The position at `index`, on `affinity`'s side.
+  #[inline(always)]
+  #[must_use]
+  pub const fn with(index: usize, affinity: Affinity) -> Self {
+    Self { index, affinity }
+  }
+}
+
+/// What a point hits.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub struct Hit {
+  /// The caret position nearest the point.
+  pub position: Position,
+  /// Whether the point lies on the text rather than beside it.
+  pub inside: bool,
+}
+
+/// A caret: a vertical bar.
+#[derive(Clone, Copy, PartialEq, Debug, Default)]
+pub struct Caret {
+  /// Its horizontal position.
+  pub x: f32,
+  /// Its top.
+  pub y: f32,
+  /// Its height.
+  pub height: f32,
+  /// Whether the text it stands in runs right to left.
+  pub right_to_left: bool,
+}
+
+impl Caret {
+  /// The caret as a rectangle of no width.
+  #[inline(always)]
+  #[must_use]
+  pub const fn rect(&self) -> Rect {
+    Rect {
+      x: self.x,
+      y: self.y,
+      width: 0.,
+      height: self.height,
+    }
+  }
+}
+
+/// A position's carets: where typing goes, and where text of the other direction would go
+/// at a direction boundary.
+#[derive(Clone, Copy, PartialEq, Debug, Default)]
+pub struct Carets {
+  /// The caret of the position's own side.
+  pub primary: Caret,
+  /// The caret of the other side, where it stands elsewhere.
+  pub secondary: Option<Caret>,
+}
+
+/// One line laid out.
+#[derive(Clone, PartialEq, Debug, Default)]
+pub struct LineInfo {
+  /// The bytes of the text on the line, the newline ending it included.
+  pub range: Range<usize>,
+  /// Its top.
+  pub top: f32,
+  /// Its height.
+  pub height: f32,
+  /// Its baseline, from the layout's top.
+  pub baseline: f32,
+  /// Where its content starts horizontally, after alignment.
+  pub left: f32,
+  /// The advance of its content, short of the blanks hanging past its end.
+  pub width: f32,
+  /// Whether a newline ends it.
+  pub hard_break: bool,
+}
+
+/// One stretch of a line painted alike: where it sits, and the typeface's decoration
+/// metrics there.
+#[derive(Clone, PartialEq, Debug)]
+pub struct RunExtent {
+  /// The bytes it covers.
+  pub range: Range<usize>,
+  /// The line it is on.
+  pub line: usize,
+  /// Its left edge.
+  pub x: f32,
+  /// Its advance.
+  pub width: f32,
+  /// Its baseline, from the layout's top.
+  pub baseline: f32,
+  /// The typeface's ascent above the baseline.
+  pub ascent: f32,
+  /// The typeface's descent below the baseline.
+  pub descent: f32,
+  /// The underline's top, above the baseline (below where negative).
+  pub underline_offset: f32,
+  /// The underline's thickness.
+  pub underline_thickness: f32,
+  /// The strikethrough's top, above the baseline.
+  pub strikethrough_offset: f32,
+  /// The strikethrough's thickness.
+  pub strikethrough_thickness: f32,
+  /// What it is painted with.
+  pub paint: PaintStyle,
+}
+
+/// A unit of logical movement.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub enum TextBoundary {
+  /// An extended grapheme cluster.
+  Grapheme,
+  /// A word: blanks skipped, then a word or a punctuation mark.
+  Word,
+  /// A hard line: up to the newline before, or the next one.
+  Paragraph,
+  /// The whole text.
+  Text,
+}
+
+/// A logical direction.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub enum Direction {
+  /// Toward the text's end.
+  Forward,
+  /// Toward the text's start.
+  Backward,
+}
+
+/// A move on screen.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub enum VisualMove {
+  /// One cluster to the left.
+  Left,
+  /// One cluster to the right.
+  Right,
+  /// One word to the left.
+  WordLeft,
+  /// One word to the right.
+  WordRight,
+  /// To the start of the visual line (its left edge in left-to-right text).
+  LineStart,
+  /// To the end of the visual line.
+  LineEnd,
+}

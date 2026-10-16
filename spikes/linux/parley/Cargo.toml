@@ -1,0 +1,20 @@
+[package]
+name = "skene-parley"
+description = "Parley as Skene's text engine: shaping once, breaking per width, the geometry the editing core moves over; on Linux over fontconfig's per-character fallback and FreeType's rasterization under the user's settings."
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+icu_properties = { default-features = false, features = ["compiled_data"], version = "=2.3.0" }
+parley.workspace = true
+parley_emoji.workspace = true
+skene-foundation.workspace = true
+skrifa.workspace = true
+unicode-segmentation.workspace = true
+vello_cpu.workspace = true
+
+[lints]
+workspace = true

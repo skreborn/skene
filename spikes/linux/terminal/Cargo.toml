@@ -1,0 +1,20 @@
+[package]
+name = "skene-terminal"
+description = "The terminal realization's text: Parley over a typeface of cells as its text engine, and the text field the shared editing core drives, rendered to cells."
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+skene-foundation.workspace = true
+skene-parley.workspace = true
+unicode-segmentation.workspace = true
+unicode-width.workspace = true
+
+[build-dependencies]
+unicode-width.workspace = true
+
+[lints]
+workspace = true

@@ -46,7 +46,7 @@ pub enum Item {
     rect: [f32; 4],
     color: [f32; 4],
   },
-  /// A paragraph with its origin snapped to whole pixels.
+  // A paragraph with its origin snapped to whole pixels.
   Text {
     laid: Rc<Laid>,
     x: f32,
@@ -163,7 +163,7 @@ pub fn face_path(face: &IDWriteFontFace) -> Result<String> {
 pub struct Fonts {
   by_face: HashMap<usize, Option<FontData>>,
   by_path: HashMap<String, Blob<u8>>,
-  /// Faces kept alive so a face's address never names another face.
+  // Faces kept alive so a face's address never names another face.
   keep: Vec<IDWriteFontFace>,
   pub simulated_runs: u64,
   pub unresolved: u64,
@@ -291,7 +291,7 @@ struct GlyphKey {
   glyph: u16,
   em: u32,
   sub: u8,
-  /// The text colour a Direct2D colour cell was drawn with; 0 for a coverage cell.
+  // The text colour a Direct2D colour cell was drawn with; 0 for a coverage cell.
   colour: u32,
 }
 
@@ -303,7 +303,7 @@ struct Cell {
   h: u16,
   left: i32,
   top: i32,
-  /// In the colour atlas (premultiplied colour), not the coverage atlas.
+  // In the colour atlas (premultiplied colour), not the coverage atlas.
   colour: bool,
 }
 
@@ -419,7 +419,7 @@ pub struct AtlasPainter {
   colour_cursor: (u16, u16, u16),
   raster: Option<ColourRaster>,
   pub colour_path: ColourPath,
-  /// Why the Direct2D colour path is unavailable, where it is.
+  // Why the Direct2D colour path is unavailable, where it is.
   pub colour_unavailable: Option<String>,
   pub colour_cells: u64,
   cells: HashMap<GlyphKey, Cell>,
@@ -432,9 +432,9 @@ pub struct AtlasPainter {
   pub unsupported_layers: u64,
   pub raster_errors: u64,
   pub first_error: Option<String>,
-  /// The image formats of the layers this painter could not draw.
+  // The image formats of the layers this painter could not draw.
   pub layer_formats: Vec<i32>,
-  /// The image formats of every layer seen.
+  // The image formats of every layer seen.
   pub seen_formats: Vec<i32>,
 }
 

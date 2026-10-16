@@ -44,10 +44,10 @@ pub const FLAG_CLEAR_INTRINSICS: jint = 4;
 
 #[derive(Clone, Copy)]
 struct Intrinsics {
-  /// The min-content width, NaN until a min-content query asks for it.
+  // The min-content width, NaN until a min-content query asks for it.
   min: f32,
   max: f32,
-  /// The height and baselines at the max-content width, NaN until a query needs a height there.
+  // The height and baselines at the max-content width, NaN until a query needs a height there.
   h_max: f32,
   base_max: (f32, f32),
 }

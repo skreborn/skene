@@ -1,0 +1,415 @@
+//! The shell's keyboard and pointer rules beyond the controls' own: an acting row answers
+//! keys as a button does, a caption or a link run inside a row is the text's, link runs are
+//! tab stops `Enter` follows, focus scrolls into view and the keys scroll, and a secure
+//! entry tells an input method only what it shows.
+
+use std::{cell::Cell, rc::Rc};
+
+use skene_foundation::{
+  Dimension, Signal, State,
+  seam::{
+    access::AccessFacts,
+    content::{Edit, Run, contents},
+    node::{ControlKind, LayoutKind, NodeKind, NodeSpec},
+    record::{Record, keys},
+    report::Modifiers,
+    tree,
+  },
+};
+use skene_gui_linux::{Linux, keys::KeyInput, node::Node, shell::Shell};
+
+use super::{boxed, node, owned};
+
+fn key(name: &str, down: bool, modifiers: Modifiers) -> KeyInput {
+  KeyInput {
+    event: skene_foundation::seam::report::KeyEvent {
+      key: name.to_owned(),
+      code: String::new(),
+      down,
+      repeat: false,
+      modifiers,
+    },
+    text: None,
+    keycode: 0,
+    composing: None,
+    composed: false,
+  }
+}
+
+fn tap(shell: &mut Shell, name: &str) {
+  shell.key(&key(name, true, Modifiers::default()));
+  shell.key(&key(name, false, Modifiers::default()));
+  shell.frame();
+}
+
+fn click(shell: &mut Shell, node: &Node, dx: f32) {
+  let rect = node.window_rect();
+  let at = (rect.x + dx, rect.y + rect.height / 2.);
+
+  shell.pointer_motion(at.0, at.1);
+  shell.pointer_button(0, true, at);
+  shell.pointer_button(0, false, at);
+  shell.frame();
+}
+
+/// An acting row of height 40 whose activations count into the cell returned.
+fn row(record: Record) -> (skene_foundation::NodeId, Node, Rc<Cell<u32>>) {
+  let (row, row_node) = node(
+    NodeSpec::new(NodeKind::Layout(LayoutKind::Box)).acting(),
+    record,
+  );
+  let count = Rc::new(Cell::new(0));
+
+  {
+    let count = Rc::clone(&count);
+
+    tree::handle_activate::<Linux>(row, move || count.set(count.get() + 1));
+  }
+
+  (row, row_node, count)
+}
+
+/// A text of one link run, `Open the docs`, leading to `destination`.
+fn link(destination: &'static str) -> (skene_foundation::NodeId, Node) {
+  let (text, text_node) = node(NodeSpec::new(NodeKind::Text), Record::new());
+
+  tree::bind::<Linux, _>(text, contents::RUNS, move || {
+    Rc::from(vec![Run {
+      text: Rc::from("Open the docs"),
+      props: Rc::from(vec![]),
+      destination: Some(Rc::from(destination)),
+    }])
+  });
+
+  (text, text_node)
+}
+
+#[test]
+fn a_row_answers_keys_as_a_button_does() {
+  owned(|| {
+    let (root, root_node) = boxed(Record::new());
+    let mut record = Record::new();
+
+    record.set(keys::HEIGHT, Dimension::Length(40.));
+
+    let (row, _, count) = row(record);
+
+    tree::attach::<Linux>(root, row, 0);
+
+    let mut shell = Shell::new("test", 200, 100);
+
+    shell.set_root(root_node);
+    shell.frame();
+    shell.key(&key("Tab", true, Modifiers::default()));
+    assert_eq!(shell.focus().map(|focus| focus.id.get()), Some(row));
+
+    let control = Modifiers {
+      control: true,
+      ..Modifiers::default()
+    };
+
+    shell.key(&key("Enter", true, control));
+    assert_eq!(count.get(), 0, "Control-Enter is not the row's");
+
+    shell.key(&key(" ", false, Modifiers::default()));
+    assert_eq!(
+      count.get(),
+      0,
+      "a Space release with no press activates nothing"
+    );
+
+    shell.key(&key(" ", true, Modifiers::default()));
+    shell.frame();
+    assert!(
+      Shell::holds(shell.focus().expect("focused"), State::Pressed),
+      "Space shows the row pressed"
+    );
+
+    shell.key(&key("Escape", true, Modifiers::default()));
+    shell.key(&key(" ", false, Modifiers::default()));
+    assert_eq!(count.get(), 0, "Escape cancels a held Space");
+    assert_eq!(
+      shell.focus().map(|focus| focus.id.get()),
+      Some(row),
+      "the Escape that cancels keeps focus"
+    );
+
+    tap(&mut shell, " ");
+    assert_eq!(count.get(), 1, "Space activates on its release");
+
+    shell.key(&key("Enter", true, Modifiers::default()));
+    assert_eq!(count.get(), 2, "Enter activates on its press");
+  });
+}
+
+#[test]
+fn a_caption_and_a_link_inside_a_row_are_the_texts() {
+  owned(|| {
+    let (root, root_node) = node(
+      NodeSpec::new(NodeKind::Layout(LayoutKind::Column)),
+      Record::new(),
+    );
+    let (first, _, first_count) = row(Record::new());
+    let (line, _) = node(
+      NodeSpec::new(NodeKind::Layout(LayoutKind::Row)),
+      Record::new(),
+    );
+    let (check, _) = node(
+      NodeSpec::new(NodeKind::Control(ControlKind::Checkbox)),
+      Record::new(),
+    );
+    let (caption, caption_node) = node(NodeSpec::new(NodeKind::Text), Record::new());
+    let on = Signal::new(false);
+
+    tree::bind::<Linux, _>(caption, contents::TEXT, || Rc::from("Remember me"));
+    tree::control::<Linux, _>(
+      check,
+      contents::ON,
+      move || on.get(),
+      Some(Box::new(move |value| on.set(value))),
+    );
+    tree::add_access::<Linux>(check, move || AccessFacts {
+      labelled_by: vec![caption],
+      ..AccessFacts::default()
+    });
+    tree::attach::<Linux>(root, first, 0);
+    tree::attach::<Linux>(first, line, 0);
+    tree::attach::<Linux>(line, check, 0);
+    tree::attach::<Linux>(line, caption, 1);
+
+    let (second, _, second_count) = row(Record::new());
+    let (text, text_node) = link("https://example.com");
+    let followed = Rc::new(Cell::new(0));
+
+    {
+      let followed = Rc::clone(&followed);
+
+      tree::handle_follow::<Linux, ()>(root, move |_| followed.set(followed.get() + 1));
+    }
+
+    tree::attach::<Linux>(root, second, 1);
+    tree::attach::<Linux>(second, text, 0);
+
+    let mut shell = Shell::new("test", 300, 100);
+
+    shell.set_root(root_node);
+    shell.configure(300, 100);
+    shell.frame();
+
+    let caption_width = caption_node.window_rect().width;
+
+    click(&mut shell, &caption_node, caption_width / 2.);
+    assert!(
+      on.get_untracked(),
+      "the caption's click checks its checkbox"
+    );
+    assert_eq!(first_count.get(), 0, "the row did not activate");
+
+    click(&mut shell, &text_node, 10.);
+    assert_eq!(followed.get(), 1, "the link's click follows it");
+    assert_eq!(second_count.get(), 0, "the row did not activate");
+  });
+}
+
+#[test]
+fn tab_reaches_link_runs_and_enter_follows_them() {
+  owned(|| {
+    let (root, root_node) = node(
+      NodeSpec::new(NodeKind::Layout(LayoutKind::Column)),
+      Record::new(),
+    );
+    let mut record = Record::new();
+
+    record.set(keys::HEIGHT, Dimension::Length(30.));
+
+    let (first, ..) = row(record);
+    let (text, _) = link("https://example.com/a");
+    let followed = Rc::new(std::cell::RefCell::new(Vec::new()));
+
+    {
+      let followed = Rc::clone(&followed);
+
+      tree::handle_follow::<Linux, ()>(root, move |destination| {
+        followed.borrow_mut().push(destination.to_string());
+      });
+    }
+
+    tree::attach::<Linux>(root, first, 0);
+    tree::attach::<Linux>(root, text, 1);
+
+    let mut shell = Shell::new("test", 300, 100);
+
+    shell.set_root(root_node);
+    shell.configure(300, 100);
+    shell.frame();
+
+    let mut stops = Vec::new();
+
+    for _ in 0..3 {
+      shell.key(&key("Tab", true, Modifiers::default()));
+      stops.push((
+        shell.focus().map(|focus| focus.id.get()),
+        shell.focused_link(),
+      ));
+    }
+
+    assert_eq!(
+      stops,
+      [
+        (Some(first), None),
+        (Some(text), Some(0)),
+        (Some(first), None)
+      ],
+      "the link run is a tab stop in the scene's order"
+    );
+
+    shell.key(&key("Tab", true, Modifiers::default()));
+    tap(&mut shell, " ");
+    assert!(followed.borrow().is_empty(), "Space does not follow a link");
+
+    shell.key(&key("Enter", true, Modifiers::default()));
+    assert_eq!(*followed.borrow(), ["https://example.com/a"]);
+  });
+}
+
+#[test]
+fn focus_scrolls_into_view_and_the_keys_scroll() {
+  owned(|| {
+    let mut scroll_record = Record::new();
+
+    scroll_record.set(keys::HEIGHT, Dimension::Length(100.));
+
+    let (scroll, scroll_node) = node(
+      NodeSpec::new(NodeKind::Layout(LayoutKind::Scroll {
+        horizontal: false,
+        vertical: true,
+      })),
+      scroll_record,
+    );
+    let (list, _) = node(
+      NodeSpec::new(NodeKind::Layout(LayoutKind::Column)),
+      Record::new(),
+    );
+
+    for index in 0..10 {
+      let mut record = Record::new();
+
+      record.set(keys::HEIGHT, Dimension::Length(40.));
+
+      let (row, ..) = row(record);
+
+      tree::attach::<Linux>(list, row, index);
+    }
+
+    tree::attach::<Linux>(scroll, list, 0);
+
+    let mut shell = Shell::new("test", 200, 100);
+
+    shell.set_root(Rc::clone(&scroll_node));
+    shell.configure(200, 100);
+    shell.frame();
+
+    for _ in 0..6 {
+      shell.key(&key("Tab", true, Modifiers::default()));
+      shell.frame();
+    }
+
+    let view = scroll_node.window_rect();
+    let focused = shell.focus().expect("focused").window_rect();
+
+    assert!(
+      focused.y >= view.y && focused.y + focused.height <= view.y + view.height,
+      "the sixth row {focused:?} shows within {view:?}"
+    );
+    assert_eq!(
+      scroll_node.scroll.get(),
+      (0., 140.),
+      "scrolled as little as shows it"
+    );
+
+    shell.key(&key("Escape", true, Modifiers::default()));
+    shell.key(&key("Home", true, Modifiers::default()));
+    shell.frame();
+    assert_eq!(
+      scroll_node.scroll.get(),
+      (0., 0.),
+      "Home scrolls to the start"
+    );
+
+    shell.key(&key("PageDown", true, Modifiers::default()));
+    shell.frame();
+    assert_eq!(
+      scroll_node.scroll.get(),
+      (0., 87.5),
+      "PageDown scrolls most of the box"
+    );
+
+    shell.key(&key("ArrowDown", true, Modifiers::default()));
+    shell.frame();
+    assert_eq!(
+      scroll_node.scroll.get(),
+      (0., 127.5),
+      "an arrow scrolls a line"
+    );
+
+    shell.key(&key("End", true, Modifiers::default()));
+    shell.frame();
+    assert_eq!(
+      scroll_node.scroll.get(),
+      (0., 300.),
+      "End scrolls to the end"
+    );
+  });
+}
+
+#[test]
+fn a_secure_entry_tells_an_input_method_only_its_marks() {
+  owned(|| {
+    let (root, root_node) = boxed(Record::new());
+    let (field, _) = node(
+      NodeSpec::new(NodeKind::Control(ControlKind::TextField)),
+      Record::new(),
+    );
+    let value = Signal::new(Rc::<str>::from("hunter2"));
+
+    tree::bind::<Linux, _>(field, contents::SECURE, || true);
+    tree::control::<Linux, _>(
+      field,
+      contents::EDIT,
+      move || Edit::text(value.get()),
+      Some(Box::new(move |edit: Edit| value.set(edit.text))),
+    );
+    tree::attach::<Linux>(root, field, 0);
+
+    let mut shell = Shell::new("test", 300, 100);
+
+    shell.set_root(root_node);
+    shell.configure(300, 100);
+    shell.frame();
+    shell.key(&key("Tab", true, Modifiers::default()));
+    shell.frame();
+
+    let state = shell.ime_state().expect("the field has focus");
+
+    assert!(state.secure);
+    assert_eq!(
+      state.surrounding,
+      "•".repeat(7),
+      "the marks, never the text"
+    );
+    assert_eq!(
+      (state.anchor, state.cursor),
+      (0, "•".len() * 7),
+      "Tab selected it all, in the marks' bytes"
+    );
+
+    tap(&mut shell, "End");
+    shell.ime_delete_surrounding("•".len() * 2, 0);
+    shell.frame();
+    assert_eq!(
+      &*value.get_untracked(),
+      "hunte",
+      "an input method deletes by the marks it was told"
+    );
+  });
+}

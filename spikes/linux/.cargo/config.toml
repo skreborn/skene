@@ -1,0 +1,21 @@
+# What `skene new` writes for a Linux app (decision 2, option B): the platform's real triple,
+# the platform's cfg with its check-cfg for builds, tests, trybuild and doctests, and the
+# display runner every test and run goes through (`skene new` names the absolute path of the
+# one beside the `skene` that made the app; run.sh installs this workspace's into tools/bin).
+[build]
+target = "x86_64-unknown-linux-gnu"
+rustdocflags = [
+  "--cfg", 'skene_platform="linux"',
+  "--check-cfg", 'cfg(skene_platform, values("web", "server", "ios", "android", "macos", "windows", "linux"))',
+]
+
+[target.'cfg(all())']
+rustflags = [
+  "--cfg", 'skene_platform="linux"',
+  "--check-cfg", 'cfg(skene_platform, values("web", "server", "ios", "android", "macos", "windows", "linux"))',
+]
+
+# Each test process gets a private Xvfb, session bus and accessibility bus; an app run uses the
+# user's display where there is one.
+[target.x86_64-unknown-linux-gnu]
+runner = "tools/bin/skene-runner"

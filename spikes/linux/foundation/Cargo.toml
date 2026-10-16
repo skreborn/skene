@@ -1,0 +1,15 @@
+[package]
+name = "skene-foundation"
+description = "Skene's platform-agnostic mechanisms: reactivity, the scene, values, tokens, the environment, the layout engine and the realization seam."
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+taffy.workspace = true
+unicode-segmentation.workspace = true
+
+[lints]
+workspace = true

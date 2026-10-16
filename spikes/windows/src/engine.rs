@@ -165,9 +165,9 @@ pub struct Paragraph {
   pub style: ParagraphStyle,
   pub min: f32,
   pub max: f32,
-  /// A small per-node cache of laid values by width (`None` is unbounded).
+  // A small per-node cache of laid values by width (`None` is unbounded).
   cache: RefCell<Vec<(Option<u32>, Rc<Laid>)>>,
-  /// Only for the comparison with the old design: one layout re-wrapped by `SetMaxWidth`.
+  // Only for the comparison with the old design: one layout re-wrapped by `SetMaxWidth`.
   probe: IDWriteTextLayout,
 }
 
@@ -370,7 +370,7 @@ pub struct Laid {
   pub height: f32,
   pub first_baseline: f32,
   pub last_baseline: f32,
-  /// Lines drawn: what fits under a cap, every line otherwise.
+  // Lines drawn: what fits under a cap, every line otherwise.
   pub line_count: usize,
   pub truncated: bool,
   pub line_baselines: Vec<f32>,
@@ -532,7 +532,7 @@ pub struct GlyphRunRec {
   pub origin: (f32, f32),
   pub bidi: u32,
   pub sideways: bool,
-  /// Drawn by an inline object (the ellipsis trimming sign).
+  // Drawn by an inline object (the ellipsis trimming sign).
   pub inline: bool,
 }
 
@@ -593,7 +593,7 @@ pub fn glyph_positions(
 #[derive(Default)]
 pub struct Collected {
   pub runs: Vec<GlyphRunRec>,
-  /// Underlines and strikethroughs as (x, y, width, thickness).
+  // Underlines and strikethroughs as (x, y, width, thickness).
   pub lines: Vec<[f32; 4]>,
 }
 

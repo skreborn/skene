@@ -1,0 +1,22 @@
+[package]
+name = "skene"
+description = "The skene CLI (`skene new`, `run`, `test`, `check`, `build`) and the display runner (`skene-runner`) every Linux test and run goes through."
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[[bin]]
+name = "skene"
+path = "src/main.rs"
+
+[[bin]]
+name = "skene-runner"
+path = "src/bin/skene-runner.rs"
+
+[dependencies]
+toml = "1"
+
+[lints]
+workspace = true

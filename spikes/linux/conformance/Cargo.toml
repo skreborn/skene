@@ -1,0 +1,15 @@
+[package]
+name = "skene-conformance"
+description = "One suite of scenarios every realization passes: build a page, act as a user, check what a reader finds; run here through the drawn Linux driver."
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+skene-gui.workspace = true
+skene-simple-gui.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,6 @@
+# The stable subset of /home/user/skene/rustfmt.toml: rustfmt is only installed on the
+# stable toolchain here, and the nightly-only options are left out.
+edition = "2024"
+tab_spaces = 2
+use_field_init_shorthand = true
+use_try_shorthand = true

@@ -1,0 +1,15 @@
+[package]
+name = "notes-gui"
+description = "The notes app on the pixel platforms: notes-core's state in skene-gui's views, tested on the real platform."
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+notes-core = { path = "../core" }
+skene-gui.workspace = true
+
+[lints]
+workspace = true

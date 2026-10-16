@@ -1,0 +1,19 @@
+[package]
+name = "skene-gui"
+description = "Skene for the pixel platforms: one facade, one realization per platform, selected by the build's `skene_platform` cfg (Linux, drawn by Skene, in this prototype)."
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+skene-foundation.workspace = true
+skene-gui-macros.workspace = true
+vello_cpu.workspace = true
+
+[target.'cfg(skene_platform = "linux")'.dependencies]
+skene-gui-linux.workspace = true
+
+[lints]
+workspace = true

@@ -401,9 +401,13 @@ class ParityTest {
     }
   }
 
-  /** The rule the density's advance probe found best, `hinted` where it has not run. */
+  /**
+   * The rule the density's advance probe found best for glyphs and kerning pairs, `hinted` where
+   * it has not run.
+   */
   private fun bestRule(): String = try {
-    JSONObject(File(out, "advances.json").readText()).getJSONObject("analysis").optString("best").ifEmpty { "hinted" }
+    val analysis = JSONObject(File(out, "advances.json").readText()).getJSONObject("analysis")
+    analysis.optString("best_with_kerning").ifEmpty { analysis.optString("best") }.ifEmpty { "hinted" }
   } catch (error: Exception) {
     "hinted"
   }

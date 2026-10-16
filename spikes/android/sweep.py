@@ -43,6 +43,7 @@ def main():
     summary = {}
     lines = ["# Android advance-rule sweep", ""]
     rules = []
+    kerning = []
     layout = []
     floors = []
     remaining = []
@@ -57,7 +58,8 @@ def main():
             entry = {}
             advances = load(os.path.join(base, "advances.json"))
             analysis = (advances or {}).get("analysis") or {}
-            entry["rule"] = analysis.get("best")
+            entry["rule"] = analysis.get("best_with_kerning") or analysis.get("best")
+            entry["pairs_parley"] = analysis.get("pairs_parley")
             entry["rule_totals"] = analysis.get("totals")
             entry["rule_fonts"] = [{
                 key: font.get(key) for key in (
@@ -90,6 +92,17 @@ def main():
                     })
 
             entry["chws_at_17dp_px"] = chws
+            pairs = entry.get("pairs_parley") or {}
+
+            def pair(rule):
+                found = pairs.get(rule) or {}
+                return f"{found.get('matched', '-')}/{found.get('of', '-')}"
+
+            first = chws[0] if chws else None
+            chws_text = f"{first['text']} {first['hinted_default']} (off {first['hinted_off']})" if first else "-"
+            kerning.append(
+                f"| {api} | {dpi} | {pair('freetype_floor')} | {pair('freetype_floor_whole')} | {pair('linear')} | "
+                f"{entry['rule']} | {chws_text} |")
 
             for font in entry["rule_fonts"]:
                 best = font.get("best")
@@ -180,6 +193,16 @@ def main():
         "| API | dpi | font | file | instructions | best | hinted | linear agrees | kerning linear |",
         "|---|---|---|---|---|---|---|---|---|",
         *rules,
+        "",
+        "## Kerning pairs laid out by Parley against the platform's run advance (within 0.02 px)",
+        "",
+        "Parley under the glyph rule with positioning at the floored ppem, the same rounded to whole",
+        "pixels, and Parley's own advances; the rule the sweep's B-hinted set used; and the first",
+        "CJK punctuation pair's run advance at 17 dp in px, with `chws` as Minikin sets it and off.",
+        "",
+        "| API | dpi | freetype_floor | freetype_floor_whole | linear | rule used | chws pair |",
+        "|---|---|---|---|---|---|---|",
+        *kerning,
         "",
         "## A against B and C (breaks identical, widths and heights within 0.5 dp, pixels)",
         "",

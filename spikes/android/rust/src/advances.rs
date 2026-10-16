@@ -57,8 +57,12 @@ pub enum Rule {
   /// FreeType's 26.6 arithmetic (`FT_MulFix` by the size's scale), rounded as `FT_PIX_ROUND`.
   FtRound,
   /// FreeType's 26.6 arithmetic at the pixel size rounded down to a whole ppem, rounded as
-  /// `FT_PIX_ROUND`: what Minikin's layout measured.
+  /// `FT_PIX_ROUND`, with positioning (kerning, `chws`) scaled at that ppem: what Minikin's layout
+  /// measured from API 31.
   FreeTypeFloor,
+  /// [`Rule::FreeTypeFloor`] with positioning rounded to whole pixels: what Minikin's layout
+  /// measured on API 29.
+  FreeTypeFloorWhole,
   /// FreeType's size request and grid-fitted advance: a TrueType font whose `head` forces an
   /// integer ppem (bit 3) is scaled at the rounded ppem (`tt_size_reset`), any other at the pixel
   /// size itself, and the advance is `FT_PIX_ROUND` of `FT_MulFix` by that scale.
@@ -74,8 +78,9 @@ pub enum Rule {
 
 impl Rule {
   /// Every rule, in the order reports list them.
-  pub const ALL: [Self; 12] = [
+  pub const ALL: [Self; 13] = [
     Self::FreeTypeFloor,
+    Self::FreeTypeFloorWhole,
     Self::Linear,
     Self::Round,
     Self::Floor,
@@ -102,6 +107,7 @@ impl Rule {
       Self::FtRound => "ft_round",
       Self::FreeType => "freetype",
       Self::FreeTypeFloor => "freetype_floor",
+      Self::FreeTypeFloorWhole => "freetype_floor_whole",
       Self::Hinted => "hinted",
       Self::HintedAuto => "hinted_auto",
       Self::HintedLight => "hinted_light",
@@ -229,6 +235,16 @@ impl Sizing {
     })
   }
 
+  /// The pixels per em positioning (kerning, `chws`) is scaled at under the rule: the floored
+  /// ppem where the rule floors it, else the pixel size.
+  #[must_use]
+  pub fn positioning_px(&self) -> f32 {
+    match self.rule {
+      Rule::FreeTypeFloor | Rule::FreeTypeFloorWhole => self.px.floor(),
+      _ => self.px,
+    }
+  }
+
   /// The glyph's linear base advance in font units and its advance under the rule in pixels.
   pub fn advance(&self, glyph: u32) -> (f32, f32) {
     if let Some(found) = self.cache.lock().ok().and_then(|cache| cache.get(&glyph).copied()) {
@@ -258,9 +274,9 @@ impl Sizing {
       Rule::Ceil => linear.ceil(),
       Rule::RoundPpem => ppem(self.px.round()),
       Rule::FloorPpem => ppem(self.px.floor()),
-      Rule::FtRound | Rule::FreeType | Rule::FreeTypeFloor => {
+      Rule::FtRound | Rule::FreeType | Rule::FreeTypeFloor | Rule::FreeTypeFloorWhole => {
         let requested = (f64::from(self.px) * 64.).round() as i64;
-        let scaled = if self.rule == Rule::FreeTypeFloor {
+        let scaled = if matches!(self.rule, Rule::FreeTypeFloor | Rule::FreeTypeFloorWhole) {
           (requested >> 6) << 6
         }
         else if self.rule == Rule::FreeType && self.integer_ppem {
@@ -367,7 +383,13 @@ impl AdvanceRule for HintedAdvances {
       }
 
       let (units, rule) = sizing.advance(glyph);
-      let positioning = (shaped as f32 - units.round()) * sizing.px / sizing.upem;
+      let positioning = (shaped as f32 - units.round()) * sizing.positioning_px() / sizing.upem;
+      let positioning = if sizing.rule == Rule::FreeTypeFloorWhole {
+        positioning.round()
+      }
+      else {
+        positioning
+      };
 
       Some((rule + positioning) / density)
     }))
@@ -621,6 +643,7 @@ fn analyze(measured: &Value) -> Value {
     .map(|size| size.unwrap_or(0.) as f32)
     .collect();
   let mut totals: BTreeMap<&str, (usize, usize)> = BTreeMap::new();
+  let mut pair_totals: BTreeMap<String, (u64, u64)> = BTreeMap::new();
   let mut fonts_out = Vec::new();
 
   for font in measured["fonts"].as_array().cloned().unwrap_or_default() {
@@ -759,8 +782,16 @@ fn analyze(measured: &Value) -> Value {
 
     let pairs_parley = json!({
       "freetype_floor": pairs_under(Rule::FreeTypeFloor, density, &sizes, &font, &data, index),
+      "freetype_floor_whole": pairs_under(Rule::FreeTypeFloorWhole, density, &sizes, &font, &data, index),
       "linear": pairs_under(Rule::Linear, density, &sizes, &font, &data, index),
     });
+
+    for (rule, value) in pairs_parley.as_object().into_iter().flatten() {
+      let entry = pair_totals.entry(rule.clone()).or_insert((0, 0));
+
+      entry.0 += value["matched"].as_u64().unwrap_or(0);
+      entry.1 += value["of"].as_u64().unwrap_or(0);
+    }
 
     fonts_out.push(json!({
       "name": font["name"], "path": path, "index": index, "axes": font["axes"],
@@ -788,7 +819,21 @@ fn analyze(measured: &Value) -> Value {
     .map(|(rule, (hits, count))| (*rule, json!({"matched": hits, "of": count})))
     .collect();
 
-  json!({"density": density, "best": best, "totals": totals, "fonts": fonts_out})
+  // The glyph rule's positioning: whole pixels where Parley's pairs match the platform's better so.
+  let positioning = match (pair_totals.get("freetype_floor"), pair_totals.get("freetype_floor_whole")) {
+    (Some(fractional), Some(whole)) if whole.1 > 0 && whole.0 > fractional.0 => "freetype_floor_whole",
+    _ => "freetype_floor",
+  };
+  let best_with_kerning = (best == Some("freetype_floor")).then_some(positioning).or(best);
+  let pair_totals: BTreeMap<String, Value> = pair_totals
+    .into_iter()
+    .map(|(rule, (hits, count))| (rule, json!({"matched": hits, "of": count})))
+    .collect();
+
+  json!({
+    "density": density, "best": best, "best_with_kerning": best_with_kerning, "totals": totals,
+    "pairs_parley": pair_totals, "fonts": fonts_out,
+  })
 }
 
 /// Which advance rule the measurements (`advanceProbe`'s fonts, measured by the platform at

@@ -1,0 +1,52 @@
+[package]
+name = "apple-parity"
+description = "The Apple half of the text-parity revisit: TextKit 2 (A), Parley and vello (B), Parley laid out and Core Text drawn (C), on macOS and the iOS simulator."
+version = "0.0.0"
+edition = "2024"
+license = "MIT"
+publish = false
+
+[workspace]
+
+[lib]
+crate-type = ["rlib", "staticlib"]
+path = "src/lib.rs"
+
+[[bin]]
+name = "parity-probe"
+path = "src/bin/parity-probe.rs"
+
+[[bin]]
+name = "sandbox-probe"
+path = "src/bin/sandbox-probe.rs"
+
+[dependencies]
+block2 = "0.6"
+libc = "0.2"
+objc2 = "0.6"
+objc2-core-foundation = "0.3"
+objc2-core-graphics = "0.3"
+objc2-core-text = "0.3"
+objc2-foundation = "0.3"
+parley = { default-features = false, features = ["complex-scripts", "std", "system"], version = "=0.12.0" }
+serde = { features = ["derive"], version = "1" }
+serde_json = "1"
+skrifa = { default-features = false, features = ["std"], version = "=0.44.0" }
+text-parity = { path = "../../text-parity" }
+unicode-segmentation = "=1.13.3"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2-app-kit = "0.3"
+
+[target.'cfg(target_os = "ios")'.dependencies]
+objc2-quartz-core = "0.3"
+objc2-ui-kit = "0.3"
+
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 2
+
+[profile.release]
+debug = "line-tables-only"

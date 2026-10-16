@@ -5,8 +5,14 @@ on:
     branches: [claude/platform-architecture-tradeoffs-y9q57l]
     paths:
       - spikes/apple/**
+      - spikes/text-parity/**
       - .github/workflows/spike-apple.yml
   workflow_dispatch:
+    inputs:
+      parts:
+        description: "Suite parts (corpus,probes,subsets,smoothing,genmoji); empty runs all"
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -18,11 +24,32 @@ concurrency:
 jobs:
   ios:
     runs-on: macos-15
-    timeout-minutes: 40
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v5
         with:
-          sparse-checkout: spikes/apple/ios
+          sparse-checkout: |
+            spikes/apple
+            spikes/text-parity
+
+      - name: Install the pinned Rust toolchain
+        working-directory: spikes/apple/parity
+        run: |
+          rustup show
+          rustc --version
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: spikes/apple/parity
+          key: ios-sim
+
+      - name: Build the Rust half for the simulator
+        working-directory: spikes/apple/parity
+        env:
+          IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+        run: |
+          cargo build --release --lib --bin parity-probe --target aarch64-apple-ios-sim
+          ls -la target/aarch64-apple-ios-sim/release/ | grep -E "libapple_parity|parity-probe"
 
       - name: Pick an iOS 17+ simulator
         id: sim
@@ -53,34 +80,46 @@ jobs:
         working-directory: spikes/apple/ios
         env:
           TEST_RUNNER_SPIKE_OUT: ${{ runner.temp }}/out
+          TEST_RUNNER_PARITY_PARTS: ${{ github.event.inputs.parts }}
         run: |
           mkdir -p "$TEST_RUNNER_SPIKE_OUT"
+          UDID="${{ steps.sim.outputs.udid }}"
           xcodebuild -list -json | tee "$RUNNER_TEMP/list.json"
           SCHEME=$(python3 -c 'import json,sys; s=json.load(open(sys.argv[1]))["workspace"]["schemes"]; print("TextSpike-Package" if "TextSpike-Package" in s else "TextSpike")' "$RUNNER_TEMP/list.json")
-          xcrun simctl boot "${{ steps.sim.outputs.udid }}" || true
+          xcrun simctl boot "$UDID" || true
           status=0
-          xcodebuild build-for-testing -scheme "$SCHEME" -destination "id=${{ steps.sim.outputs.udid }}" \
+          xcodebuild build-for-testing -scheme "$SCHEME" -destination "id=$UDID" \
             -derivedDataPath "$RUNNER_TEMP/dd" SWIFT_OPTIMIZATION_LEVEL=-O CODE_SIGNING_ALLOWED=NO \
             > "$RUNNER_TEMP/xcodebuild.log" 2>&1 || status=$?
-          xcrun simctl bootstatus "${{ steps.sim.outputs.udid }}" -b || true
+          xcrun simctl bootstatus "$UDID" -b || true
           if [ "$status" = 0 ]; then
-            xcodebuild test-without-building -scheme "$SCHEME" -destination "id=${{ steps.sim.outputs.udid }}" \
-              -derivedDataPath "$RUNNER_TEMP/dd" >> "$RUNNER_TEMP/xcodebuild.log" 2>&1 || status=$?
+            xcodebuild test-without-building -scheme "$SCHEME" -destination "id=$UDID" \
+              -derivedDataPath "$RUNNER_TEMP/dd" -only-testing:TextSpikeTests/ParityTests/testParitySuite \
+              >> "$RUNNER_TEMP/xcodebuild.log" 2>&1 || status=$?
+            for language in en th ar hi; do
+              xcodebuild test-without-building -scheme "$SCHEME" -destination "id=$UDID" \
+                -derivedDataPath "$RUNNER_TEMP/dd" -only-testing:TextSpikeTests/ParityTests/testLanguageLineHeight \
+                -testLanguage "$language" >> "$RUNNER_TEMP/xcodebuild-language.log" 2>&1 || echo "language $language: exit $?"
+            done
           fi
-          grep -E "error:|Test Case .*(passed|failed)|\*\* TEST|Restarting after|crash" "$RUNNER_TEMP/xcodebuild.log" | head -200 || true
+          {
+            echo "=== spawned parity-probe (simctl spawn, -AppleLanguages) ==="
+            PROBE="$GITHUB_WORKSPACE/spikes/apple/parity/target/aarch64-apple-ios-sim/release/parity-probe"
+            for language in en th ar hi; do
+              xcrun simctl spawn "$UDID" "$PROBE" language -AppleLanguages "($language)" 2>&1 | tail -3 || echo "spawn $language failed"
+            done
+          } | tee "$TEST_RUNNER_SPIKE_OUT/ios-spawn-language.txt"
+          grep -E "error:|Undefined symbols|ld:|Test Case .*(passed|failed)|\*\* TEST|Restarting after|crash|PANICKED" "$RUNNER_TEMP/xcodebuild.log" | head -200 || true
           {
             echo "=== RESULTS ==="
             echo "spike apple / ios on ${{ steps.sim.outputs.name }}, $(xcodebuild -version | head -1)"
-            if ls "$TEST_RUNNER_SPIKE_OUT"/ios-*.txt >/dev/null 2>&1; then
-              for file in "$TEST_RUNNER_SPIKE_OUT"/ios-*.txt; do echo "--- $(basename "$file")"; cat "$file"; done
-            else
-              echo "--- (no result files written; from the log)"
-              grep -E "^SPIKE\| " "$RUNNER_TEMP/xcodebuild.log" | sed 's/^SPIKE| //'
-            fi
+            cat "$TEST_RUNNER_SPIKE_OUT/ios-parity.txt" 2>/dev/null || grep -E "^SPIKE\| " "$RUNNER_TEMP/xcodebuild.log" | sed 's/^SPIKE| //'
+            for file in "$TEST_RUNNER_SPIKE_OUT"/ios-language-*.json; do [ -f "$file" ] && { echo "--- $(basename "$file")"; cat "$file"; }; done
+            cat "$TEST_RUNNER_SPIKE_OUT/ios-spawn-language.txt"
             echo "xcodebuild exit status: $status"
             echo "=== END ==="
           } | tee "$TEST_RUNNER_SPIKE_OUT/results.txt"
-          cp "$RUNNER_TEMP/xcodebuild.log" "$TEST_RUNNER_SPIKE_OUT/"
+          cp "$RUNNER_TEMP"/xcodebuild*.log "$TEST_RUNNER_SPIKE_OUT/"
           exit $status
 
       - uses: actions/upload-artifact@v4
@@ -91,35 +130,85 @@ jobs:
 
   macos:
     runs-on: macos-15
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v5
         with:
-          sparse-checkout: spikes/apple/macos
+          sparse-checkout: |
+            spikes/apple
+            spikes/text-parity
+
+      - name: Install the pinned Rust toolchain
+        working-directory: spikes/apple/parity
+        run: |
+          rustup show
+          rustc --version
 
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: spikes/apple/macos
+          workspaces: |
+            spikes/apple/macos
+            spikes/apple/parity
 
-      - name: Test on macOS
+      - name: TextKit 2 node spike (the first round)
         working-directory: spikes/apple/macos
         env:
           SPIKE_OUT: ${{ runner.temp }}/out/macos.txt
         run: |
           mkdir -p "$RUNNER_TEMP/out"
           sw_vers
+          cargo test --release --test spike 2>&1 | tail -60 | tee "$RUNNER_TEMP/out/cargo-node.log" || echo "node spike failed"
+
+      - name: Parity suite
+        working-directory: spikes/apple/parity
+        run: |
+          cargo build --release --bins
           set +e
-          cargo test --release --test spike 2>&1 | tee "$RUNNER_TEMP/out/cargo.log"
-          status=${PIPESTATUS[0]}
-          set -e
+          ./target/release/parity-probe suite "{\"out\": \"$RUNNER_TEMP/out/parity\", \"scales\": [1, 2], \"parts\": [$(echo '${{ github.event.inputs.parts }}' | sed 's/[^,][^,]*/"&"/g')]}" 2>&1 | tee "$RUNNER_TEMP/out/parity.log"
+          echo "suite exit status: ${PIPESTATUS[0]}" | tee -a "$RUNNER_TEMP/out/parity.log"
+
+      - name: Sandbox probe
+        working-directory: spikes/apple/parity
+        run: |
+          set +e
+          mkdir -p "$HOME/Library/Fonts"
+          FONT="$HOME/Library/Fonts/SkeneProbe-AtkinsonHyperlegible.ttf"
+          curl -fsSL -o "$FONT" https://github.com/google/fonts/raw/main/ofl/atkinsonhyperlegible/AtkinsonHyperlegible-Regular.ttf \
+            || cp /System/Library/Fonts/Supplemental/Arial.ttf "$FONT"
+          sleep 3
+          POSTSCRIPT=$(./target/release/sandbox-probe names "$FONT")
+          echo "user font $FONT postscript $POSTSCRIPT"
+          cat > "$RUNNER_TEMP/sandbox.entitlements" <<'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict><key>com.apple.security.app-sandbox</key><true/></dict></plist>
+          EOF
+          cp target/release/sandbox-probe "$RUNNER_TEMP/sandboxed-probe"
+          codesign --force --sign - --identifier com.skene.parity.sandbox --entitlements "$RUNNER_TEMP/sandbox.entitlements" "$RUNNER_TEMP/sandboxed-probe"
+          codesign -d --entitlements - "$RUNNER_TEMP/sandboxed-probe" 2>&1 | tail -5
+          {
+            echo "=== unsandboxed ==="
+            ./target/release/sandbox-probe check "$POSTSCRIPT" "$FONT"
+            echo "exit $?"
+            echo "=== sandboxed (com.apple.security.app-sandbox) ==="
+            "$RUNNER_TEMP/sandboxed-probe" check "$POSTSCRIPT" "$FONT"
+            echo "exit $?"
+          } 2>&1 | tee "$RUNNER_TEMP/out/sandbox.txt"
+
+      - name: Results
+        if: always()
+        run: |
           {
             echo "=== RESULTS ==="
-            echo "spike apple / macos on $(sw_vers -productVersion), $(rustc --version)"
-            cat "$SPIKE_OUT" 2>/dev/null || echo "(no result file)"
-            echo "cargo exit status: $status"
+            echo "spike apple / macos on $(sw_vers -productVersion), $(cd spikes/apple/parity && rustc --version)"
+            cat "$RUNNER_TEMP/out/parity/results.txt" 2>/dev/null || tail -100 "$RUNNER_TEMP/out/parity.log"
+            echo "--- sandbox"
+            cat "$RUNNER_TEMP/out/sandbox.txt" 2>/dev/null
+            echo "--- node spike"
+            cat "$RUNNER_TEMP/out/macos.txt" 2>/dev/null | head -40
             echo "=== END ==="
           } | tee "$RUNNER_TEMP/out/results.txt"
-          exit $status
+          test -f "$RUNNER_TEMP/out/parity/results.txt"
 
       - uses: actions/upload-artifact@v4
         if: always()

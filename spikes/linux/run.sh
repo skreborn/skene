@@ -57,7 +57,7 @@
 #   - an app made by `skene new` (its refusal without a runner beside it, plain cargo test,
 #     skene check with an unrealized platform declared, skene test on both legs, skene build,
 #     skene run on the runner's private Xvfb);
-#   - the GTK prototype's numbers beside these (scratchpad/gtk/proto/results/summary.txt).
+#   - the GTK prototype's numbers beside these ($GTK_PROTO/results/summary.txt).
 #
 # The GTK realization (gui-linux-gtk) and its probes (probes/) are kept, outside the
 # workspace, for reference.
@@ -65,6 +65,8 @@
 # Results go to results/ (summary.txt, logs, PNGs, JSON; results/shell/<scenario>/ for the
 # shell, results/controls/<session>/ for the controls). The target directory is
 # $CARGO_TARGET_DIR (target-controls by default), deleted at the end unless KEEP_TARGET=1.
+# GTK_PROTO names the GTK prototype's directory (../gtk/proto unless set), whose cargo-nextest
+# is borrowed where tools/bin has none and whose numbers are shown beside these.
 # SKIP_CORE=1 skips the platform-text section, SKIP_SHELL=1 the shell's sessions,
 # SKIP_CONTROLS=1 the controls' sessions, SKIP_MEASURE=1 the measurements.
 set -euo pipefail
@@ -77,6 +79,7 @@ unset DISPLAY WAYLAND_DISPLAY RUSTFLAGS CARGO_ENCODED_RUSTFLAGS RUSTDOCFLAGS FON
 export XDG_CACHE_HOME="$here/results/cache"
 triple=x86_64-unknown-linux-gnu
 results="$here/results"
+gtk_proto="${GTK_PROTO:-../gtk/proto}"
 summary="$results/summary.txt"
 mkdir -p "$results" "$here/tools/bin" "$XDG_CACHE_HOME"
 : > "$summary"
@@ -100,8 +103,8 @@ say "== the CLI and the runner"
 cargo build -p skene --bins > "$results/cli-build.log" 2>&1
 cp "$CARGO_TARGET_DIR/$triple/debug/skene" "$CARGO_TARGET_DIR/$triple/debug/skene-runner" tools/bin/
 say "installed tools/bin/skene and tools/bin/skene-runner"
-if [ ! -x tools/bin/cargo-nextest ] && [ -x ../gtk/proto/tools/bin/cargo-nextest ]; then
-  cp ../gtk/proto/tools/bin/cargo-nextest tools/bin/
+if [ ! -x tools/bin/cargo-nextest ] && [ -x "$gtk_proto/tools/bin/cargo-nextest" ]; then
+  cp "$gtk_proto/tools/bin/cargo-nextest" tools/bin/
 fi
 export PATH="$here/tools/bin:$PATH"
 
@@ -235,8 +238,8 @@ cp tools/bin/skene "$apps/lonely/"
 rm -rf "$apps"
 measure_target
 
-say "== beside the GTK prototype (gtk/proto/results/summary.txt)"
-gtk=../gtk/proto/results/summary.txt
+say "== beside the GTK prototype ($gtk_proto/results/summary.txt)"
+gtk=$gtk_proto/results/summary.txt
 if [ -f "$gtk" ]; then
   grep -E '^test totals|^nextest: Summary|^  GTK tests|^clean cargo|^the first cargo check|^a one-line change|^release hello|^startup, round' "$gtk" | sed 's/^/  GTK: /' | tee -a "$summary"
 fi

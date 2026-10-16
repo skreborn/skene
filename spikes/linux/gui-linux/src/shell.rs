@@ -523,6 +523,13 @@ impl Shell {
       self.refresh_hover();
     }
 
+    if dirty.layout && trace::nodes_on() {
+      let mut scene = 0;
+
+      walk(&root, |_| scene += 1);
+      trace::nodes(scene, crate::access::count(self));
+    }
+
     trace::frame(trace::FrameCost {
       prepare: prepared,
       layout: laid_out - prepared,

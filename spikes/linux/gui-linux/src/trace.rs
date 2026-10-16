@@ -34,6 +34,7 @@ thread_local! {
   static PROBE: OnceCell<Option<PathBuf>> = const { OnceCell::new() };
   static LAST_POINTER: Cell<(u64, Option<(f32, f32)>)> = const { Cell::new((0, None)) };
   static FRAMES: Cell<u64> = const { Cell::new(0) };
+  static NODES: OnceCell<bool> = const { OnceCell::new() };
 }
 
 /// Whether tracing is on.
@@ -41,6 +42,20 @@ pub fn on() -> bool {
   ON.with(|on| {
     *on.get_or_init(|| std::env::var_os("SKENE_TRACE").is_some_and(|value| value != "0"))
   })
+}
+
+/// Whether the frames that lay out count the nodes (`SKENE_TRACE_NODES=1`, with tracing on).
+pub fn nodes_on() -> bool {
+  on()
+    && NODES.with(|nodes| {
+      *nodes.get_or_init(|| std::env::var_os("SKENE_TRACE_NODES").is_some_and(|value| value != "0"))
+    })
+}
+
+/// Logs how many nodes the scene realizes and shows (`scene`) and how many a reader finds
+/// (`reader`, the window aside).
+pub fn nodes(scene: usize, reader: usize) {
+  log(|| format!("[nodes] scene {scene} reader {reader}"));
 }
 
 /// Logs `line` where tracing is on.

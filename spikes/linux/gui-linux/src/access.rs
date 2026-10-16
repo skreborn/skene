@@ -419,6 +419,11 @@ const fn ak_action(action: Action) -> AkAction {
   }
 }
 
+/// How many nodes a reader finds in the window now, the window's own aside.
+pub fn count(shell: &Shell) -> usize {
+  build(shell).nodes.len() - 1
+}
+
 /// The whole tree, as AccessKit takes it.
 fn build(shell: &Shell) -> TreeUpdate {
   let scale = shell.scale;

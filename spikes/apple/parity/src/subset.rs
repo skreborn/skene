@@ -61,10 +61,16 @@ pub fn run(
   dir: &Path,
   setup: &dyn Fn(&Variant<'_>) -> Setup,
   weight: &dyn Fn(&Case) -> u16,
-  tuned: &mut TunedEngine,
+  line_height: Option<f32>,
+  (tuned_b, tuned_c): (&mut TunedEngine, &mut TunedEngine),
   raster: &mut Raster,
   stock: &mut ParleyEngine,
 ) -> Sets {
+  let saved = (tuned_b.tuning.line_height, tuned_c.tuning.line_height);
+
+  tuned_b.tuning.line_height = line_height;
+  tuned_c.tuning.line_height = line_height;
+
   let names = ["a", "b", "bt", "ct"];
 
   for name in names {
@@ -131,36 +137,54 @@ pub fn run(
       size: variant.size,
       width: variant.width,
     };
-    let laid = tuned.lay_out(&tuned_variant);
-    let mut bt = tuned.record(&tuned_variant, &laid, None);
+    for (engine, vello) in [(&mut *tuned_b, true), (&mut *tuned_c, false)] {
+      let laid = engine.lay_out(&tuned_variant);
+      let mut record = engine.record(&tuned_variant, &laid, None);
 
-    bt.timings = Some(VariantTimings::default());
+      record.timings = Some(VariantTimings::default());
 
-    let mut ct = bt.clone();
-    let (width, height) = bt.image_box(variant.width);
-    let runs = tuned_runs(&laid.laid, tuned);
+      let (width, height) = record.image_box(variant.width);
+      let runs = if vello {
+        Vec::new()
+      }
+      else {
+        tuned_runs(&laid.laid, engine)
+      };
+      let name = if vello { "bt" } else { "ct" };
 
-    for scale in &context.scales {
-      let file = image_path(&variant, *scale);
-      let _ = render::write_png(
-        render::render(&laid.laid, width, height, *scale, RenderOptions::default()),
-        &dir.join("bt").join(&file),
-      );
-      let canvas = Canvas::for_box(width, height, *scale, Ground::White, Smoothing(true));
+      for scale in &context.scales {
+        let file = image_path(&variant, *scale);
 
-      raster.draw(&canvas, &runs);
+        if vello {
+          let _ = render::write_png(
+            render::render(&laid.laid, width, height, *scale, RenderOptions::default()),
+            &dir.join(name).join(&file),
+          );
+        }
+        else {
+          let canvas = Canvas::for_box(width, height, *scale, Ground::White, Smoothing(true));
 
-      let _ = canvas.to_rgba().write(&dir.join("ct").join(&file));
+          raster.draw(&canvas, &runs);
 
-      bt.images.insert(scale_key(*scale), file.clone());
-      ct.images.insert(scale_key(*scale), file);
+          let _ = canvas.to_rgba().write(&dir.join(name).join(&file));
+        }
+
+        record.images.insert(scale_key(*scale), file);
+      }
+
+      record.glyph_runs.clear();
+
+      if vello {
+        sets.bt.records.push(record);
+      }
+      else {
+        sets.ct.records.push(record);
+      }
     }
-
-    bt.glyph_runs.clear();
-    ct.glyph_runs.clear();
-    sets.bt.records.push(bt);
-    sets.ct.records.push(ct);
   }
+
+  tuned_b.tuning.line_height = saved.0;
+  tuned_c.tuning.line_height = saved.1;
 
   for (name, set) in names.iter().zip([&sets.a, &sets.b, &sets.bt, &sets.ct]) {
     let _ = set.write(&dir.join(name).join("records.json"));

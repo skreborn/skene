@@ -62,13 +62,34 @@ use unicode_segmentation::UnicodeSegmentation;
 
 use crate::{coretext, platform};
 
-/// What the tuning turns on.
+/// What a font with Apple's `hvgl` outlines (PingFang UI on iOS 18 and macOS 15) becomes.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Hvgl {
+  /// The font is registered without its `hvgl` and `hvpm` tables: Parley shapes it from its
+  /// other tables and only Core Text can draw it (C).
+  Strip,
+  /// The font's public sibling is registered in its place (`PingFangSC-Regular` for
+  /// `.PingFangUITextSC-Regular`), whose outlines vello draws (B).
+  Substitute,
+}
+
+/// What the tuning turns on.
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Tuning {
-  /// `opsz` at the point size.
-  pub opsz: bool,
+  /// Every axis of the system font at Core Text's instance for the size and weight
+  /// (`CTFontCopyVariation`: `opsz` at the size, Apple's `wght` for each weight).
+  pub instance: bool,
   /// Core Foundation's hyphenation points as soft hyphens where a case asks for `auto`.
   pub hyphenate: bool,
+  /// Line metrics rounded to whole points (Parley's `quantize`), as TextKit 2 does on macOS.
+  pub quantize: bool,
+  /// Korean keeps its words whole under the normal word break, as TextKit's `standard`
+  /// strategy does.
+  pub korean_keep_all: bool,
+  /// What an `hvgl` font becomes.
+  pub hvgl: Hvgl,
+  /// A line height in points for every line (a text style's line height and leading).
+  pub line_height: Option<f32>,
 }
 
 /// A registered Core Text font.
@@ -85,6 +106,8 @@ pub struct TunedEngine {
   /// What is on.
   pub tuning: Tuning,
   registered: HashMap<String, Registered>,
+  refused: std::collections::HashSet<String>,
+  instances: HashMap<(u32, u16, bool), Vec<(String, f64)>>,
   fallback_cache: HashMap<(String, String, String), Option<String>>,
   /// The Core Text font each registered blob came from, by blob id.
   pub sources: HashMap<u64, CFRetained<CTFont>>,
@@ -96,6 +119,8 @@ pub struct TunedEngine {
   pub rejected: Vec<String>,
   /// The families registered, in order: family, PostScript name, file.
   pub log: Vec<(String, String, Option<String>)>,
+  /// What registration changed: `hvgl` stripped or substituted.
+  pub notes: Vec<String>,
 }
 
 /// The family name the system UI font is registered under.
@@ -128,12 +153,15 @@ impl TunedEngine {
       layouts: LayoutContext::new(),
       tuning,
       registered: HashMap::new(),
+      refused: std::collections::HashSet::new(),
+      instances: HashMap::new(),
       fallback_cache: HashMap::new(),
       sources: HashMap::new(),
       register_ms: 0.,
       registered_bytes: 0,
       rejected: Vec::new(),
       log: Vec::new(),
+      notes: Vec::new(),
     };
     let emoji = unsafe {
       CTFont::with_name(
@@ -185,10 +213,60 @@ impl TunedEngine {
       return Some(found.family.clone());
     }
 
+    if self.refused.contains(&key) {
+      return None;
+    }
+
     let started = Instant::now();
     let family = family.map_or_else(|| format!("ct {}", info.postscript), str::to_owned);
-    let Some(bytes) = coretext::sfnt(font)
+    let has_hvgl = coretext::tables(font).contains(&coretext::tag_of("hvgl"));
+
+    if has_hvgl && self.tuning.hvgl == Hvgl::Substitute {
+      let public = info
+        .postscript
+        .trim_start_matches('.')
+        .replace("UIText", "")
+        .replace("UIDisplay", "")
+        .replace("UI", "");
+      let candidate =
+        unsafe { CTFont::with_name(&CFString::from_str(&public), info.size, std::ptr::null()) };
+      let found = coretext::info(&candidate);
+      let usable = found.postscript == public
+        && !coretext::tables(&candidate).contains(&coretext::tag_of("hvgl"));
+
+      self.refused.insert(key.clone());
+
+      if !usable {
+        self.notes.push(format!(
+          "{}: hvgl, and no public sibling {public} (Core Text gave {})",
+          info.postscript, found.postscript
+        ));
+
+        return None;
+      }
+
+      self.notes.push(format!(
+        "{}: hvgl, substituted by {} at {:?}",
+        info.postscript, found.postscript, found.path
+      ));
+
+      return self.register(&candidate, Some(&family), italic);
+    }
+
+    let bytes = if has_hvgl {
+      self.notes.push(format!(
+        "{}: hvgl and hvpm stripped; shaped from its other tables, drawn only by Core Text",
+        info.postscript
+      ));
+
+      coretext::sfnt_except(font, &["hvgl", "hvpm"])
+    }
     else {
+      coretext::sfnt(font)
+    };
+    let Some(bytes) = bytes
+    else {
+      self.refused.insert(key.clone());
       self
         .rejected
         .push(format!("{}: no tables", info.postscript));
@@ -230,6 +308,7 @@ impl TunedEngine {
         info.family,
         tables.join(" ")
       ));
+      self.refused.insert(key);
 
       return None;
     }
@@ -527,9 +606,18 @@ impl TunedEngine {
       .map(|family| FontFamilyName::Named(Cow::Owned(family.clone())))
       .chain([FontFamilyName::Generic(GenericFamily::SystemUi)])
       .collect();
-    let mut builder = self
-      .layouts
-      .ranged_builder(&mut self.fonts.context, &case.text, 1., false);
+    let instance = if self.tuning.instance {
+      self.instance(case, size)
+    }
+    else {
+      Vec::new()
+    };
+    let mut builder = self.layouts.ranged_builder(
+      &mut self.fonts.context,
+      &case.text,
+      1.,
+      self.tuning.quantize,
+    );
 
     builder.push_default(StyleProperty::FontFamily(FontFamily::List(Cow::Owned(
       names.clone(),
@@ -544,13 +632,26 @@ impl TunedEngine {
     else {
       FontStyle::Normal
     }));
-    builder.push_default(StyleProperty::LineHeight(LineHeight::MetricsRelative(1.)));
+    builder.push_default(StyleProperty::LineHeight(match self.tuning.line_height {
+      Some(height) => LineHeight::Absolute(height),
+      None => LineHeight::MetricsRelative(1.),
+    }));
     builder.push_default(StyleProperty::OverflowWrap(OverflowWrap::BreakWord));
     builder.push_default(StyleProperty::TextWrapMode(TextWrapMode::Wrap));
 
-    if self.tuning.opsz {
+    if !instance.is_empty() {
+      let list: Vec<FontVariation> = instance
+        .iter()
+        .filter_map(|(tag, value)| {
+          Some(FontVariation::new(
+            Tag::new(tag.as_bytes().try_into().ok()?),
+            *value as f32,
+          ))
+        })
+        .collect();
+
       builder.push_default(StyleProperty::FontVariations(FontVariations::List(
-        Cow::Owned(vec![FontVariation::new(Tag::new(b"opsz"), size)]),
+        Cow::Owned(list),
       )));
     }
 
@@ -614,6 +715,18 @@ impl TunedEngine {
   pub fn tuned_case(&self, case: &Case) -> (Case, Option<Vec<usize>>, Vec<String>) {
     let mut notes = Vec::new();
 
+    if self.tuning.korean_keep_all
+      && case.locale.starts_with("ko")
+      && case.word_break == WordBreak::Normal
+    {
+      let mut korean = case.clone();
+
+      korean.word_break = WordBreak::KeepAll;
+      notes.push("Korean keeps its words whole, as TextKit's standard strategy does".to_owned());
+
+      return (korean, None, notes);
+    }
+
     if case.hyphenation != Hyphenation::Auto {
       return (case.clone(), None, notes);
     }
@@ -633,6 +746,20 @@ impl TunedEngine {
     tuned.hyphenation = Hyphenation::Manual;
 
     (tuned, Some(back), notes)
+  }
+
+  /// Core Text's instance of the system font at `size` for `case`'s weight and slant: each
+  /// axis's tag and value.
+  pub fn instance(&mut self, case: &Case, size: f32) -> Vec<(String, f64)> {
+    self
+      .instances
+      .entry((size.to_bits(), case.weight, case.italic))
+      .or_insert_with(|| {
+        let font = platform::system_font(f64::from(size), case.weight, case.italic);
+
+        coretext::variation(platform::as_ct(&font))
+      })
+      .clone()
   }
 
   /// Shapes the tuned case at `size` with its families.

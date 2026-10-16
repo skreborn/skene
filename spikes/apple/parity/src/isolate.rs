@@ -6,7 +6,7 @@
 
 use std::{collections::HashMap, ptr::NonNull, sync::Arc};
 
-use objc2_core_foundation::{CFAttributedString, CFRetained, CGPoint};
+use objc2_core_foundation::{CFRetained, CGPoint};
 use objc2_core_graphics::{CGContext, CGGlyph};
 use objc2_core_text::CTFont;
 use parley::{
@@ -19,13 +19,12 @@ use text_parity::{
   layout::{GlyphRun, PositionedGlyph},
   record::MARGIN,
   render::{self, RenderOptions},
-  text::is_invisible,
 };
 
 use crate::{
   cg::{Canvas, Ground, Smoothing},
   coretext,
-  textkit::{TkLaid, is_rtl},
+  textkit::TkLaid,
 };
 
 /// One run of TextKit's layout: its Core Text font and its glyphs at layout positions.
@@ -38,39 +37,12 @@ pub struct PlacedRun {
 
 /// TextKit's glyphs, line by line, at the positions its lines give them.
 #[must_use]
-pub fn placed(
-  laid: &TkLaid,
-  text: &str,
-  direction: text_parity::corpus::Direction,
-) -> Vec<PlacedRun> {
-  let rtl = is_rtl(text, direction);
-  let units: Vec<u16> = text.encode_utf16().collect();
+pub fn placed(laid: &TkLaid, case: &text_parity::corpus::Case, truncated: bool) -> Vec<PlacedRun> {
   let mut out = Vec::new();
 
-  for line in &laid.lines {
-    let sub = unsafe { line.attributed.attributedSubstringFromRange(line.local) };
-    let cf: &CFAttributedString = unsafe { &*std::ptr::from_ref(&*sub).cast() };
-    let ct = coretext::line_of(cf);
-    let trailing = unsafe { ct.trailing_whitespace_width() };
-    let end = (line.start + line.length).min(units.len());
-    let mut trimmed = end;
-
-    while trimmed > line.start
-      && char::decode_utf16([units[trimmed - 1]])
-        .next()
-        .and_then(Result::ok)
-        .is_some_and(is_invisible)
-    {
-      trimmed -= 1;
-    }
-
-    let width = (line.bounds.size.width - trailing).max(0.);
-    let x = match (laid.extent(line.start, trimmed), rtl) {
-      (Some((_, right)), true) => right - width - trailing,
-      (Some((left, _)), false) => left,
-      (None, true) => laid.width - width - trailing,
-      (None, false) => 0.,
-    };
+  for (index, line) in laid.lines.iter().enumerate() {
+    let ct = crate::textkit::drawn_line(laid, index, case, truncated);
+    let x = crate::textkit::origin_x(line);
     let baseline = line.frame.y + line.bounds.origin.y + line.glyph_origin.y;
 
     for run in coretext::runs(&ct) {

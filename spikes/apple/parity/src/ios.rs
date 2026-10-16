@@ -107,7 +107,7 @@ const SUBSET: [(&str, Option<f32>); 7] = [
 pub fn dynamic_type(
   report: &mut Report,
   context: &Context,
-  tuned: &mut TunedEngine,
+  tuned: (&mut TunedEngine, &mut TunedEngine),
   raster: &mut Raster,
 ) {
   report.line("\n[Dynamic Type: preferredFont against UIFontMetrics scaling the Large size]");
@@ -169,13 +169,15 @@ pub fn dynamic_type(
       font: Some(font.clone()),
       ..Setup::default()
     };
+    let line_height = unsafe { font.lineHeight() + font.leading() } as f32;
     let sets = subset::run(
       context,
       &corpus,
       &dir,
       &setup,
       &|case| case.weight,
-      tuned,
+      Some(line_height),
+      (&mut *tuned.0, &mut *tuned.1),
       raster,
       &mut stock,
     );
@@ -201,7 +203,7 @@ pub fn dynamic_type(
 pub fn bold_text(
   report: &mut Report,
   context: &Context,
-  tuned: &mut TunedEngine,
+  tuned: (&mut TunedEngine, &mut TunedEngine),
   raster: &mut Raster,
 ) {
   report.line("\n[Bold Text: legibilityWeight bold]");
@@ -266,13 +268,15 @@ pub fn bold_text(
     font: Some(bold_body.clone()),
     ..Setup::default()
   };
+  let line_height = unsafe { bold_body.lineHeight() + bold_body.leading() } as f32;
   let sets = subset::run(
     context,
     &corpus,
     &dir,
     &setup,
     &|_| bold_weight,
-    tuned,
+    Some(line_height),
+    (&mut *tuned.0, &mut *tuned.1),
     raster,
     &mut stock,
   );

@@ -676,6 +676,71 @@ pub fn intrinsic(variant: &Variant<'_>, setup: &Setup) -> Intrinsic {
 /// The record of `laid`.
 #[must_use]
 pub fn read_record(variant: &Variant<'_>, setup: &Setup, laid: &TkLaid, truncated: bool) -> Record {
+  read_record_with(variant, setup, laid, truncated)
+}
+
+/// The x where TextKit draws line `line`'s glyphs from: its fragment's frame, its typographic
+/// bounds and its glyph origin.
+#[must_use]
+pub fn origin_x(line: &TkLine) -> f64 {
+  line.frame.x + line.bounds.origin.x + line.glyph_origin.x
+}
+
+/// A Core Text line of what line `index` of `laid` draws: its text, justified to the container
+/// where TextKit justifies it, and cut with an ellipsis where it is the truncated last line.
+#[must_use]
+pub fn drawn_line(
+  laid: &TkLaid,
+  index: usize,
+  case: &text_parity::corpus::Case,
+  truncated: bool,
+) -> CFRetained<objc2_core_text::CTLine> {
+  let line = &laid.lines[index];
+  let sub = unsafe { line.attributed.attributedSubstringFromRange(line.local) };
+  let cf: &CFAttributedString = unsafe { &*std::ptr::from_ref::<NSAttributedString>(&sub).cast() };
+  let plain = coretext::line_of(cf);
+  let last = index + 1 == laid.lines.len();
+  let ends_paragraph = sub.string().to_string().ends_with('\n');
+
+  if truncated && case.ellipsis && last && sub.length() > 0 {
+    let attributes = unsafe { sub.attributesAtIndex_effectiveRange(0, std::ptr::null_mut()) };
+    let token = unsafe {
+      NSAttributedString::initWithString_attributes(
+        NSAttributedString::alloc(),
+        &NSString::from_str("\u{2026}"),
+        Some(&attributes),
+      )
+    };
+    let token_cf: &CFAttributedString =
+      unsafe { &*std::ptr::from_ref::<NSAttributedString>(&token).cast() };
+    let token_line = coretext::line_of(token_cf);
+
+    if let Some(cut) = unsafe {
+      plain.truncated_line(
+        laid.width,
+        objc2_core_text::CTLineTruncationType::End,
+        Some(&token_line),
+      )
+    } {
+      return cut;
+    }
+  }
+
+  if case.alignment == Alignment::Justify && !last && !ends_paragraph {
+    if let Some(justified) = unsafe { plain.justified_line(1., laid.width) } {
+      return justified;
+    }
+  }
+
+  plain
+}
+
+fn read_record_with(
+  variant: &Variant<'_>,
+  setup: &Setup,
+  laid: &TkLaid,
+  truncated: bool,
+) -> Record {
   let case = variant.case;
   let text = &case.text;
   let offsets = Offsets::new(text);
@@ -755,8 +820,8 @@ pub fn read_record(variant: &Variant<'_>, setup: &Setup, laid: &TkLaid, truncate
       ellipsis,
     });
 
-    let parts = coretext::runs(&ct);
-    let x0 = if rtl { x - trailing } else { x };
+    let parts = coretext::runs(&drawn_line(laid, index, case, truncated));
+    let x0 = origin_x(line);
     let (line_runs, line_clusters) =
       coretext::record_parts(&parts, line.start, index, x0, &offsets);
 

@@ -206,6 +206,11 @@ fn ids(glyphs: &[Shaped]) -> Vec<u32> {
 
 /// A fresh collection holding only `font` (as an sfnt from its tables) under `family`.
 fn single(font: &CTFont, family: &str) -> (Fonts, Result<usize, String>) {
+  single_except(font, family, &[])
+}
+
+/// [`single`] without the tables named in `skip`.
+fn single_except(font: &CTFont, family: &str, skip: &[&str]) -> (Fonts, Result<usize, String>) {
   let mut fonts = Fonts::new(&FontSource {
     system: false,
     files: Vec::new(),
@@ -213,7 +218,7 @@ fn single(font: &CTFont, family: &str) -> (Fonts, Result<usize, String>) {
     fallbacks: Vec::new(),
   })
   .expect("empty");
-  let Some(bytes) = coretext::sfnt(font)
+  let Some(bytes) = coretext::sfnt_except(font, skip)
   else {
     return (fonts, Err("no tables".to_owned()));
   };
@@ -510,6 +515,44 @@ pub fn pingfang(report: &mut Report, b: Option<&RecordSet>) {
       Vec::new()
     };
     let same_ids = !parley.is_empty() && ids(&parley) == ids(&ct);
+    let (stripped_ids, stripped_total) = if hvgl {
+      let (mut fonts, registered) = single_except(&font, "probe", &["hvgl", "hvpm"]);
+      let glyphs = if registered.is_ok() {
+        parley_glyphs(
+          &mut fonts,
+          &mut layouts,
+          &[FontFamilyName::Named(Cow::Borrowed("probe"))],
+          text,
+          17.,
+          400.,
+          language,
+          &[],
+        )
+      }
+      else {
+        Vec::new()
+      };
+
+      (
+        Some(!glyphs.is_empty() && ids(&glyphs) == ids(&ct)),
+        Some(total(&glyphs)),
+      )
+    }
+    else {
+      (None, None)
+    };
+    let public = info
+      .postscript
+      .trim_start_matches('.')
+      .replace("UIText", "")
+      .replace("UIDisplay", "")
+      .replace("UI", "");
+    let sibling = unsafe { CTFont::with_name(&CFString::from_str(&public), 17., std::ptr::null()) };
+    let sibling_info = coretext::info(&sibling);
+    let sibling_tables: Vec<String> = coretext::tables(&sibling)
+      .into_iter()
+      .map(tag_name)
+      .collect();
 
     report.line(format!(
       "  {language}: {} / {} hvgl={hvgl} file {} outline-from-CTFontCreatePathForGlyph={outline} fontique={} parley-ids-equal-ct={same_ids} advances ct {:.2} parley {:.2}",
@@ -523,6 +566,27 @@ pub fn pingfang(report: &mut Report, b: Option<&RecordSet>) {
       total(&ct),
       total(&parley)
     ));
+
+    if let Some(equal) = stripped_ids {
+      report.line(format!(
+        "    hvgl and hvpm stripped: fontique registers it, Parley's glyph ids equal Core Text's: {equal}, advances {:.2}",
+        stripped_total.unwrap_or_default()
+      ));
+    }
+
+    report.line(format!(
+      "    public sibling {public}: Core Text gives {} at {:?} hvgl={} outlines={}",
+      sibling_info.postscript,
+      sibling_info.path,
+      sibling_tables.iter().any(|tag| tag == "hvgl"),
+      sibling_tables
+        .iter()
+        .filter(|tag| ["glyf", "CFF ", "CFF2"].contains(&tag.as_str()))
+        .cloned()
+        .collect::<Vec<_>>()
+        .join(",")
+    ));
+    rows.push(json!({"stripped_ids_equal": stripped_ids, "stripped_total": stripped_total, "sibling": sibling_info, "sibling_tables": sibling_tables}));
     rows.push(json!({"language": language, "font": info, "tables": tables, "hvgl": hvgl, "outline": outline, "bounds": bounds.map(|b| [b.origin.x, b.origin.y, b.size.width, b.size.height]), "fontique": registered.map_err(|e| e), "ct": ct, "parley": parley}));
   }
 
@@ -1104,10 +1168,14 @@ pub fn timings(report: &mut Report, tuned: &mut TunedEngine) {
 
 /// A tuned engine with everything on.
 #[must_use]
-pub fn tuned_engine() -> TunedEngine {
+pub fn tuned_engine(hvgl: crate::tuned::Hvgl) -> TunedEngine {
   TunedEngine::new(Tuning {
-    opsz: true,
+    instance: true,
     hyphenate: true,
+    quantize: cfg!(target_os = "macos"),
+    korean_keep_all: true,
+    hvgl,
+    line_height: None,
   })
 }
 

@@ -233,7 +233,22 @@ pub fn probe(report: &mut Report, tuned: &mut TunedEngine, raster: &mut Raster) 
     .iter()
     .map(|family| FontFamilyName::Named(Cow::Owned(family.clone())))
     .collect();
-  let mut builder = layouts.ranged_builder(&mut tuned.fonts.context, "AB", 1., false);
+  let instance: Vec<parley::FontVariation> = tuned
+    .instance(&case, size as f32)
+    .iter()
+    .filter_map(|(tag, value)| {
+      Some(parley::FontVariation::new(
+        parley::setting::Tag::new(tag.as_bytes().try_into().ok()?),
+        *value as f32,
+      ))
+    })
+    .collect();
+  let quantize = tuned.tuning.quantize;
+  let mut builder = layouts.ranged_builder(&mut tuned.fonts.context, "AB", 1., quantize);
+
+  builder.push_default(StyleProperty::FontVariations(parley::FontVariations::List(
+    Cow::Owned(instance),
+  )));
 
   builder.push_default(StyleProperty::FontFamily(FontFamily::List(Cow::Owned(
     names,
@@ -315,9 +330,17 @@ pub fn probe(report: &mut Report, tuned: &mut TunedEngine, raster: &mut Raster) 
     let mut b = vello(&laid_parley, width, height, scale);
 
     if let Some(inline_x) = placed {
+      let side = provider
+        .ivars()
+        .asked
+        .borrow()
+        .first()
+        .map_or(bounds.size.height, |asked| asked.0);
+
       composite(
         &mut b,
         bounds,
+        side,
         (MARGIN + inline_x) * scale,
         (MARGIN + baseline) * scale,
         scale,
@@ -374,8 +397,8 @@ fn vello(laid: &Laid, width: f32, height: f32, scale: f32) -> Rgba {
 
 /// Blends the provider's image for `bounds` into `image`, its origin on the baseline at
 /// `(x, baseline)` device pixels.
-fn composite(image: &mut Rgba, bounds: CGRect, x: f32, baseline: f32, scale: f32) {
-  let side = bounds.size.width.max(bounds.size.height).max(1.);
+fn composite(image: &mut Rgba, bounds: CGRect, side: f64, x: f32, baseline: f32, scale: f32) {
+  let side = side.max(1.);
   let size = CGSize::new(side, side);
   let Some(source) = disc((side * f64::from(scale)).round().max(1.) as usize)
   else {
@@ -393,8 +416,11 @@ fn composite(image: &mut Rgba, bounds: CGRect, x: f32, baseline: f32, scale: f32
 
   let data = objc2_core_graphics::CGBitmapContextGetData(Some(&canvas.context)).cast::<u8>();
   let pixels = unsafe { std::slice::from_raw_parts(data, wide * high * 4) };
-  let left = x.round() as i64;
-  let top = (baseline - ((bounds.size.height + bounds.origin.y) as f32 * scale)).round() as i64;
+  // Centred in the typographic bounds, as Core Text places the image it asked for.
+  let left = (x + ((bounds.size.width - side) as f32 / 2.) * scale).round() as i64;
+  let top = (baseline - ((bounds.size.height + bounds.origin.y) as f32 * scale)
+    + ((bounds.size.height - side) as f32 / 2.) * scale)
+    .round() as i64;
 
   for y in 0..high {
     for x in 0..wide {

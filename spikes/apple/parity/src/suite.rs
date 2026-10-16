@@ -163,7 +163,8 @@ pub fn run(config: &Config) -> Result<String, String> {
   let corpus = Corpus::builtin();
   let mut raster = Raster::default();
   let mut files = Files::default();
-  let mut tuned = probes::tuned_engine();
+  let mut tuned = probes::tuned_engine(crate::tuned::Hvgl::Substitute);
+  let mut tuned_c = probes::tuned_engine(crate::tuned::Hvgl::Strip);
   let mut summary = serde_json::Map::new();
   let mut b_set = None;
 
@@ -217,6 +218,7 @@ pub fn run(config: &Config) -> Result<String, String> {
       &context,
       &corpus,
       &mut tuned,
+      &mut tuned_c,
       &mut raster,
       &out.join("bt"),
       &out.join("ct"),
@@ -378,16 +380,19 @@ pub fn run(config: &Config) -> Result<String, String> {
       report.line(format!("  C draw of the 1000 Parley labels by CTFontDrawGlyphs at {scale}x: {ms:.1} ms ({glyphs} glyphs)"));
     }
 
-    report.line(format!(
-      "  tuned engine: {} fonts registered from CTFontCopyTable, {:.1} MB, {:.1} ms; refused: {:?}",
-      tuned.log.len(),
-      tuned.registered_bytes as f64 / 1e6,
-      tuned.register_ms,
-      tuned.rejected
-    ));
+    for (name, engine) in [("B tuned", &tuned), ("C tuned", &tuned_c)] {
+      report.line(format!(
+        "  {name} engine: {} fonts registered from CTFontCopyTable, {:.1} MB, {:.1} ms; refused: {:?}; notes: {:?}",
+        engine.log.len(),
+        engine.registered_bytes as f64 / 1e6,
+        engine.register_ms,
+        engine.rejected,
+        engine.notes
+      ));
 
-    for (family, postscript, path) in &tuned.log {
-      let _ = writeln!(report.text, "    {family}: {postscript} {path:?}");
+      for (family, postscript, path) in &engine.log {
+        let _ = writeln!(report.text, "    {family}: {postscript} {path:?}");
+      }
     }
 
     if !raster.instance_mismatches.is_empty() || !raster.problems.is_empty() {
@@ -420,13 +425,13 @@ pub fn run(config: &Config) -> Result<String, String> {
 
   if config.wants("genmoji") {
     guard(&mut report, "genmoji", |report| {
-      crate::genmoji::probe(report, &mut tuned, &mut raster)
+      crate::genmoji::probe(report, &mut tuned_c, &mut raster)
     });
   }
 
   if config.wants("smoothing") {
     guard(&mut report, "smoothing", |report| {
-      crate::smoothing::study(report, &mut tuned, &mut raster, &config.scales)
+      crate::smoothing::study(report, &config.scales)
     });
   }
 
@@ -454,7 +459,8 @@ pub fn run(config: &Config) -> Result<String, String> {
         &dir,
         &|_| crate::textkit::Setup::default(),
         &|case| case.weight,
-        &mut tuned,
+        None,
+        (&mut tuned, &mut tuned_c),
         &mut raster,
         &mut stock,
       );
@@ -466,10 +472,10 @@ pub fn run(config: &Config) -> Result<String, String> {
     #[cfg(target_os = "ios")]
     {
       guard(&mut report, "dynamic type", |report| {
-        crate::ios::dynamic_type(report, &context, &mut tuned, &mut raster)
+        crate::ios::dynamic_type(report, &context, (&mut tuned, &mut tuned_c), &mut raster)
       });
       guard(&mut report, "bold text", |report| {
-        crate::ios::bold_text(report, &context, &mut tuned, &mut raster)
+        crate::ios::bold_text(report, &context, (&mut tuned, &mut tuned_c), &mut raster)
       });
     }
   }

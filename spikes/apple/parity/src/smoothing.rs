@@ -1,52 +1,35 @@
-//! Rasterization under each drawing condition: font smoothing on and off, opaque and
-//! transparent backgrounds, black on white and white on black, at two scales. TextKit (A),
-//! tuned Parley drawn by Core Text (C) and by vello (B, inverted for white text, since vello's
-//! coverage has no colour dependence).
+//! Rasterization alone, under each drawing condition: font smoothing on and off, opaque and
+//! transparent backgrounds, black on white and white on black, at two scales. TextKit's own
+//! glyphs at its own positions (see [`crate::isolate`]) drawn by TextKit (A), by
+//! `CTFontDrawGlyphs` (C's rasterizer) and by vello (B's; inverted for white text, since
+//! vello's coverage has no colour dependence), so layout cannot account for a difference.
 
 use serde_json::json;
-use text_parity::{
-  corpus::Corpus,
-  image::Rgba,
-  render::{self, RenderOptions},
-};
+use text_parity::corpus::Corpus;
 
 use crate::{
-  cg::{Canvas, Ground, InkDiff, Smoothing, ink_weight, inverted},
+  cg::{Ground, InkDiff, Smoothing, ink_weight, inverted},
+  isolate::{self, Bytes},
   probes::Report,
-  raster::Raster,
-  sets::tuned_runs,
   textkit::{self, Setup},
-  tuned::TunedEngine,
 };
 
-fn vello(laid: &text_parity::layout::Laid, width: f32, height: f32, scale: f32) -> Rgba {
-  let pixmap = render::render(laid, width, height, scale, RenderOptions::default());
-  let mut out = Rgba {
-    width: u32::from(pixmap.width()),
-    height: u32::from(pixmap.height()),
-    data: pixmap.data_as_u8_slice().to_vec(),
-  };
-
-  for pixel in out.data.chunks_exact_mut(4) {
-    pixel[3] = 255;
-  }
-
-  out
-}
-
 /// The study, at `scales`.
-pub fn study(report: &mut Report, tuned: &mut TunedEngine, raster: &mut Raster, scales: &[f32]) {
-  report.line("\n[rasterization by condition: smoothing, background, colour]");
-  report.line("  scale ground: A weight on/off | A on vs off | A vs C (on) | A vs C (off) | A vs B (on) | A vs B (off)   [means over cases]");
+pub fn study(report: &mut Report, scales: &[f32]) {
+  report.line("\n[rasterization alone, TextKit's glyphs at TextKit's positions, by condition]");
+  report.line(
+    "  scale ground: A ink on/off | A on vs off | A vs CG on | A vs CG off | A vs vello (A on) | A vs vello (A off) | vello ink / A ink   [means over cases]",
+  );
 
   let corpus = Corpus::builtin();
   let ids = [
     "latin-paragraph/13/320",
     "latin-paragraph/17/200",
-    "han-zh-hans/17/120",
+    "sizes-latin/34/max",
+    "han-ja/17/max",
     "thai/17/160",
     "arabic/17/120",
-    "emoji-zwj/17/120",
+    "emoji-zwj/17/max",
   ];
   let grounds = [
     Ground::White,
@@ -54,12 +37,14 @@ pub fn study(report: &mut Report, tuned: &mut TunedEngine, raster: &mut Raster, 
     Ground::ClearOverWhite,
     Ground::ClearOverBlack,
   ];
+  let mut bytes = Bytes::default();
   let mut rows = Vec::new();
 
   for scale in scales {
     for ground in grounds {
       let white_ground = matches!(ground, Ground::White | Ground::ClearOverWhite);
       let mut ratio = 0.;
+      let mut vello_ratio = 0.;
       let mut sums = [(0f64, 0u8); 5];
       let mut count = 0usize;
 
@@ -74,32 +59,37 @@ pub fn study(report: &mut Report, tuned: &mut TunedEngine, raster: &mut Raster, 
         };
         let tk = textkit::variant(&variant, &setup, 0);
         let (width, height) = tk.record.image_box(variant.width);
-        let laid = tuned.lay_out(&variant);
-        let runs = tuned_runs(&laid.laid, tuned);
+        let placed = isolate::placed(&tk.laid, variant.case, tk.record.truncated);
         let a_on = textkit::image(&tk.laid, width, height, *scale, ground, Smoothing(true));
         let a_off = textkit::image(&tk.laid, width, height, *scale, ground, Smoothing(false));
-        let c = |smooth: bool, raster: &mut Raster| {
-          let canvas = Canvas::for_box(width, height, *scale, ground, Smoothing(smooth));
-
-          raster.draw(&canvas, &runs);
-          canvas.to_rgba()
+        let cg_on = isolate::draw_cg(&placed, width, height, *scale, ground, Smoothing(true));
+        let cg_off = isolate::draw_cg(&placed, width, height, *scale, ground, Smoothing(false));
+        let vello = isolate::draw_vello(&placed, &mut bytes, width, height, *scale);
+        let vello = if ground.white_text() {
+          inverted(&vello)
+        }
+        else {
+          vello
         };
-        let c_on = c(true, raster);
-        let c_off = c(false, raster);
-        let b = vello(&laid.laid, width, height, *scale);
-        let b = if ground.white_text() { inverted(&b) } else { b };
         let weight_on = ink_weight(&a_on, white_ground);
         let weight_off = ink_weight(&a_off, white_ground);
+        let weight_vello = ink_weight(&vello, white_ground);
         let diffs = [
           InkDiff::of(&a_on, &a_off, white_ground),
-          InkDiff::of(&a_on, &c_on, white_ground),
-          InkDiff::of(&a_off, &c_off, white_ground),
-          InkDiff::of(&a_on, &b, white_ground),
-          InkDiff::of(&a_off, &b, white_ground),
+          InkDiff::of(&a_on, &cg_on, white_ground),
+          InkDiff::of(&a_off, &cg_off, white_ground),
+          InkDiff::of(&a_on, &vello, white_ground),
+          InkDiff::of(&a_off, &vello, white_ground),
         ];
 
         ratio += if weight_off > 0. {
           weight_on / weight_off
+        }
+        else {
+          1.
+        };
+        vello_ratio += if weight_on > 0. {
+          weight_vello / weight_on
         }
         else {
           1.
@@ -112,9 +102,9 @@ pub fn study(report: &mut Report, tuned: &mut TunedEngine, raster: &mut Raster, 
 
         count += 1;
         rows.push(json!({
-          "variant": id, "scale": scale, "ground": ground.name(), "weight_on": weight_on, "weight_off": weight_off,
-          "a_on_off": diffs[0], "a_c_on": diffs[1], "a_c_off": diffs[2], "a_b_on": diffs[3], "a_b_off": diffs[4],
-          "b_weight": ink_weight(&b, white_ground), "c_weight_on": ink_weight(&c_on, white_ground),
+          "variant": id, "scale": scale, "ground": ground.name(), "weight_on": weight_on,
+          "weight_off": weight_off, "weight_vello": weight_vello, "a_on_off": diffs[0],
+          "a_cg_on": diffs[1], "a_cg_off": diffs[2], "a_vello_on": diffs[3], "a_vello_off": diffs[4],
         }));
 
         if let Ok(dir) = std::env::var("PARITY_OUT") {
@@ -127,8 +117,8 @@ pub fn study(report: &mut Report, tuned: &mut TunedEngine, raster: &mut Raster, 
           let _ = std::fs::create_dir_all(&dir);
           let _ = a_on.write(&dir.join(format!("{stem}_a-on.png")));
           let _ = a_off.write(&dir.join(format!("{stem}_a-off.png")));
-          let _ = c_on.write(&dir.join(format!("{stem}_c-on.png")));
-          let _ = b.write(&dir.join(format!("{stem}_b.png")));
+          let _ = cg_on.write(&dir.join(format!("{stem}_cg-on.png")));
+          let _ = vello.write(&dir.join(format!("{stem}_vello.png")));
         }
       }
 
@@ -136,14 +126,15 @@ pub fn study(report: &mut Report, tuned: &mut TunedEngine, raster: &mut Raster, 
       let cell = |at: usize| format!("mean {:.2} max {}", sums[at].0 / n, sums[at].1);
 
       report.line(format!(
-        "  {scale}x {}: {:.3} | {} | {} | {} | {} | {}",
+        "  {scale}x {}: {:.3} | {} | {} | {} | {} | {} | {:.3}",
         ground.name(),
         ratio / n,
         cell(0),
         cell(1),
         cell(2),
         cell(3),
-        cell(4)
+        cell(4),
+        vello_ratio / n
       ));
     }
   }

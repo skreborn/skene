@@ -159,7 +159,7 @@ pub fn textkit(
     let laid = textkit::variant(&variant, &Setup::default(), context.repeats);
     let mut record = laid.record;
     let (width, height) = record.image_box(variant.width);
-    let placed = crate::isolate::placed(&laid.laid, &variant.case.text, variant.case.direction);
+    let placed = crate::isolate::placed(&laid.laid, variant.case, record.truncated);
     let mut record_cg = record.clone();
     let mut record_vello = record.clone();
 
@@ -207,6 +207,9 @@ pub fn textkit(
 /// The platform label's images (`NSTextField`, `UILabel`) over A's records.
 pub fn labels(context: &Context, corpus: &Corpus, a: &RecordSet, dir: &Path) -> Option<RecordSet> {
   let mtm = objc2::MainThreadMarker::new()?;
+
+  #[cfg(target_os = "macos")]
+  let _ = objc2_app_kit::NSApplication::sharedApplication(mtm);
   let _ = std::fs::create_dir_all(dir.join("png"));
   let mut set = a.clone();
 
@@ -636,7 +639,8 @@ pub fn tuned_runs<'a>(laid: &'a Laid, engine: &TunedEngine) -> Vec<DrawRun<'a>> 
 pub fn tuned(
   context: &Context,
   corpus: &Corpus,
-  engine: &mut TunedEngine,
+  engine_b: &mut TunedEngine,
+  engine_c: &mut TunedEngine,
   raster: &mut Raster,
   dir_b: &Path,
   dir_c: &Path,
@@ -644,70 +648,87 @@ pub fn tuned(
   let _ = std::fs::create_dir_all(dir_b.join("png"));
   let _ = std::fs::create_dir_all(dir_c.join("png"));
 
-  let tuning = format!("{:?}", engine.tuning);
+  let tuning_b = format!("{:?}", engine_b.tuning);
+  let tuning_c = format!("{:?}", engine_c.tuning);
   let mut b = context.set("parley-tuned", "0.12.0", "vello_cpu 0.3.0", &[
     ("fonts", "Core Text: NSFont/UIFont system font, CTFontCreateForStringWithLanguage fallback, sfnt from CTFontCopyTable"),
-    ("tuning", &tuning),
+    ("tuning", &tuning_b),
   ]);
   let mut c = context.set(
     "parley-tuned",
     "0.12.0",
     "coretext CTFontDrawGlyphs",
-    &[("fonts", "as B tuned"), ("tuning", &tuning)],
+    &[
+      (
+        "fonts",
+        "as B tuned, hvgl fonts shaped from their other tables",
+      ),
+      ("tuning", &tuning_c),
+    ],
   );
 
   for variant in corpus.variants().filter(|variant| context.wants(variant)) {
-    let started = Instant::now();
-    let laid = engine.lay_out(&variant);
-    let cold_ms = started.elapsed().as_secs_f64() * 1e3;
-    let warm: Vec<f64> = (0..context.repeats)
-      .map(|_| {
-        let started = Instant::now();
-        let again = engine.lay_out(&variant);
+    for (engine, set, dir, vello) in [
+      (&mut *engine_b, &mut b, dir_b, true),
+      (&mut *engine_c, &mut c, dir_c, false),
+    ] {
+      let started = Instant::now();
+      let laid = engine.lay_out(&variant);
+      let cold_ms = started.elapsed().as_secs_f64() * 1e3;
+      let warm: Vec<f64> = (0..context.repeats)
+        .map(|_| {
+          let started = Instant::now();
+          let again = engine.lay_out(&variant);
 
-        std::hint::black_box(again.laid.layout.len());
+          std::hint::black_box(again.laid.layout.len());
 
-        started.elapsed().as_secs_f64() * 1e3
-      })
-      .collect();
-    let intrinsic = engine.intrinsic(&variant);
-    let mut record = engine.record(&variant, &laid, Some(intrinsic));
+          started.elapsed().as_secs_f64() * 1e3
+        })
+        .collect();
+      let intrinsic = engine.intrinsic(&variant);
+      let mut record = engine.record(&variant, &laid, Some(intrinsic));
 
-    record.timings = Some(VariantTimings {
-      cold_ms,
-      warm_ms: median(warm),
-    });
-    record
-      .notes
-      .push(format!("families: {}", laid.families.join(", ")));
+      record.timings = Some(VariantTimings {
+        cold_ms,
+        warm_ms: median(warm),
+      });
+      record
+        .notes
+        .push(format!("families: {}", laid.families.join(", ")));
 
-    let mut record_c = record.clone();
-    let (width, height) = record.image_box(variant.width);
-    let runs = tuned_runs(&laid.laid, engine);
+      let (width, height) = record.image_box(variant.width);
+      let runs = if vello {
+        Vec::new()
+      }
+      else {
+        tuned_runs(&laid.laid, engine)
+      };
 
-    for scale in &context.scales {
-      let file = image_path(&variant, *scale);
-      let _ = render::write_png(
-        render::render(&laid.laid, width, height, *scale, RenderOptions::default()),
-        &dir_b.join(&file),
-      );
+      for scale in &context.scales {
+        let file = image_path(&variant, *scale);
 
-      record.images.insert(scale_key(*scale), file.clone());
+        if vello {
+          let _ = render::write_png(
+            render::render(&laid.laid, width, height, *scale, RenderOptions::default()),
+            &dir.join(&file),
+          );
+        }
+        else {
+          let canvas = Canvas::for_box(width, height, *scale, Ground::White, Smoothing(true));
 
-      let canvas = Canvas::for_box(width, height, *scale, Ground::White, Smoothing(true));
+          raster.draw(&canvas, &runs);
+          write(&canvas.to_rgba(), &dir.join(&file));
+        }
 
-      raster.draw(&canvas, &runs);
-      write(&canvas.to_rgba(), &dir_c.join(&file));
-      record_c.images.insert(scale_key(*scale), file);
+        record.images.insert(scale_key(*scale), file);
+      }
+
+      record.glyph_runs.clear();
+      set.records.push(record);
     }
-
-    record.glyph_runs.clear();
-    record_c.glyph_runs.clear();
-    b.records.push(record);
-    c.records.push(record_c);
   }
 
-  b.timings.labels = Some(tuned_labels(corpus, engine, context.labels, 13., 150.));
+  b.timings.labels = Some(tuned_labels(corpus, engine_b, context.labels, 13., 150.));
   (b, c)
 }
 

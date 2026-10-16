@@ -174,6 +174,19 @@ impl Raster {
     let mut descriptor = self.descriptor(run)?;
     let values = user_values(run.data, run.index, &run.coords);
 
+    // Core Text sets `opsz` to the point size by itself unless the optical size is named.
+    if let Some((_, opsz)) = values.iter().find(|(tag, _)| *tag == Tag::new(b"opsz")) {
+      let size = CFNumber::new_f64(f64::from(*opsz));
+      let key: &objc2_core_foundation::CFString =
+        unsafe { objc2_core_text::kCTFontOpticalSizeAttribute };
+      let attributes = objc2_core_foundation::CFDictionary::<
+        objc2_core_foundation::CFString,
+        CFNumber,
+      >::from_slices(&[key], &[&*size]);
+
+      descriptor = unsafe { descriptor.copy_with_attributes(attributes.as_opaque()) };
+    }
+
     for (tag, value) in &values {
       let identifier = CFNumber::new_i64(i64::from(u32::from_be_bytes(tag.to_be_bytes())));
 

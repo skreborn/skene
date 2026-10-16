@@ -226,8 +226,16 @@ pub fn css_weight(info: &FontInfo) -> f32 {
 /// does: what fontique can register when the file cannot be read, or holds many faces.
 #[must_use]
 pub fn sfnt(font: &CTFont) -> Option<Vec<u8>> {
+  sfnt_except(font, &[])
+}
+
+/// [`sfnt`] without the tables named in `skip` (`hvgl` and `hvpm`, which fontique refuses).
+#[must_use]
+pub fn sfnt_except(font: &CTFont, skip: &[&str]) -> Option<Vec<u8>> {
+  let skip: Vec<u32> = skip.iter().map(|tag| tag_of(tag)).collect();
   let mut tags = tables(font);
 
+  tags.retain(|tag| !skip.contains(tag));
   tags.sort_unstable();
   tags.dedup();
 
@@ -397,6 +405,47 @@ pub fn line_of(string: &CFAttributedString) -> CFRetained<CTLine> {
   unsafe { CTLine::with_attributed_string(string) }
 }
 
+/// The family and PostScript names in the font file's own name table, and the face's index:
+/// the names Parley's records carry (Core Text names the system font `.AppleSystemUIFont`, its
+/// file `System Font`). The face is found by PostScript name, or is the file's only one.
+#[must_use]
+pub fn file_names(info: &FontInfo) -> Option<(String, String, u32)> {
+  type Cache = std::sync::Mutex<std::collections::HashMap<String, Option<(String, String, u32)>>>;
+
+  static CACHE: std::sync::OnceLock<Cache> = std::sync::OnceLock::new();
+
+  let path = info.path.as_ref()?;
+  let key = format!("{path}#{}", info.postscript);
+  let cache = CACHE.get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()));
+
+  if let Some(found) = cache.lock().ok()?.get(&key) {
+    return found.clone();
+  }
+
+  let found = crate::sets::read_file(path).and_then(|data| {
+    let count = match skrifa::raw::FileRef::new(&data) {
+      Ok(skrifa::raw::FileRef::Collection(collection)) => collection.len(),
+      _ => 1,
+    };
+    let faces: Vec<(u32, String, String)> = (0..count)
+      .filter_map(|index| {
+        text_parity::fonts::names_of(&data, index)
+          .map(|(family, postscript)| (index, family, postscript))
+      })
+      .collect();
+
+    faces
+      .iter()
+      .find(|face| face.2 == info.postscript)
+      .or_else(|| (faces.len() == 1).then(|| &faces[0]))
+      .map(|face| (face.1.clone(), face.2.clone(), face.0))
+  });
+
+  cache.lock().ok()?.insert(key, found.clone());
+
+  found
+}
+
 /// The record's runs and clusters of one line: `runs` from a `CTLine` of the line's text, whose
 /// UTF-16 indices start at `base` in the whole text and whose x starts at `x0`.
 #[must_use]
@@ -413,6 +462,7 @@ pub fn record_parts(
   for run in runs {
     let info = info(&run.font);
     let range = [base + run.range[0], base + run.range[1]];
+    let file = file_names(&info);
 
     out_runs.push(Run {
       range: Range {
@@ -420,10 +470,18 @@ pub fn record_parts(
         utf16: Some(range),
       },
       line,
-      family: Some(info.family.clone()),
-      postscript: Some(info.postscript.clone()),
+      family: Some(
+        file
+          .as_ref()
+          .map_or_else(|| info.family.clone(), |file| file.0.clone()),
+      ),
+      postscript: Some(
+        file
+          .as_ref()
+          .map_or_else(|| info.postscript.clone(), |file| file.1.clone()),
+      ),
       path: info.path.clone(),
-      index: None,
+      index: file.as_ref().map(|file| file.2),
       size: info.size as f32,
       weight: Some(css_weight(&info)),
       italic: Some(info.italic),

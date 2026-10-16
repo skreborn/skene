@@ -626,7 +626,8 @@ migration is at the top of `ROADMAP.md`, and `DESIGN.md` describes the code as i
   a test never touches the user's display. The rule is about realizations: a stand-in
   for an operating-system service a test controls (the desktop settings portal) and the
   foundation's unit tests of its own algorithms over canned input (the layout engine
-  over canned measurements) stay. The terminal, which has no accessibility layer of its
+  over canned measurements) stay, while a realization has no windowless mode, so every
+  test of it runs through the driver on the platform's display. The terminal, which has no accessibility layer of its
   own, reads the tree as AccessKit models it (`access_tree`, `access_outline`), and its
   tests act through its `user` module, which turns a click, a key or typed text into the
   events a browser dispatches for it. Parity is held by construction:

@@ -426,6 +426,15 @@ supersedes.
   platform fails with a `compile_error!`; and the CLI substitutes the cfg by reading
   cargo's rustflags sources in cargo's order, refusing when it cannot tell. Revisit
   with the test double.
+- **A realization's unit tests over a windowless instance of itself** (2026-10-16), the
+  drawn Linux prototype's tests that built its shell with no backend, fed it synthetic
+  pointer and key events and read its pixmap and its own tree: they read what no reader
+  reads, kept a mode of the realization alive for tests alone and let a damage bug past
+  the screenshots, while the driver runs the same prototype's 174 tests in 10 to 20
+  seconds. Every test of a realization goes through the driver, on the platform's
+  display, reading the accessibility layer and sending real input. Revisit when a
+  behavior the driver cannot reach needs a test, or the driver's tests grow too slow
+  to run on every change.
 - **The headless platform** (2026-10-15), `skene-headless`, the host realization the
   web compiled against off its target, with a layout, a pinned font, a renderer and
   goldens held to the browser's: it grew from bookkeeping into a browser emulator

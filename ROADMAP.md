@@ -187,8 +187,9 @@ in a code comment.
     binaries running through it. A stand-in for the OS settings portal and the layout
     engine's unit tests over canned measurements stay, being no platform. The
     prototype's driver runs every test on X11, headless mutter (EIS through `reis`) and
-    headless sway. Open: a screenshot reads the presented surface rather than the app's
-    last frame, a frame lost on mutter gets a test of its own, and a role matches
+    headless sway. Open: its tests that drive a shell with no window move to the driver
+    and the windowless mode goes, a screenshot reads the presented surface rather than
+    the app's last frame, a frame lost on mutter gets a test of its own, and a role matches
     exactly, so a switch never stands in for a checkbox nor a row for an option.
 6. **The spikes on hardware.** The text-engine spikes ran on GitHub's runners
     (`spikes/`, the `spike-apple`, `spike-android` and `spike-windows` workflows) and

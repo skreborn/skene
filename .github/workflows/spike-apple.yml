@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       parts:
-        description: "Suite parts (corpus,probes,subsets,smoothing,genmoji); empty runs all"
+        description: "Suite parts (corpus,probes,subsets,smoothing,genmoji; none for the font memory probe alone); empty runs all"
         required: false
         default: ""
 
@@ -122,6 +122,38 @@ jobs:
           cp "$RUNNER_TEMP"/xcodebuild*.log "$TEST_RUNNER_SPIKE_OUT/"
           exit $status
 
+      # The tuned engine's start-up and memory per way of storing its fonts, one fresh process
+      # each (simctl spawn), and the XCTest a phone runs (font files opened and mapped, the probe
+      # in the test process).
+      - name: Font start-up and memory on the simulator
+        if: always()
+        working-directory: spikes/apple/ios
+        env:
+          TEST_RUNNER_SPIKE_OUT: ${{ runner.temp }}/out
+        run: |
+          OUT="$RUNNER_TEMP/out"
+          mkdir -p "$OUT"
+          UDID="${{ steps.sim.outputs.udid }}"
+          PROBE="$GITHUB_WORKSPACE/spikes/apple/parity/target/aarch64-apple-ios-sim/release/parity-probe"
+          for storage in copy layout map map-all; do
+            started=$(python3 -c 'import time; print(time.time())')
+            xcrun simctl spawn "$UDID" "$PROBE" fontmem "$storage" > "$OUT/fontmem-ios-$storage.json" 2> "$OUT/fontmem-ios-$storage.log" || echo "fontmem $storage: exit $?"
+            python3 -c 'import sys, time; print("spawn wall ms %.1f" % ((time.time() - float(sys.argv[1])) * 1e3))' "$started" >> "$OUT/fontmem-ios-$storage.log"
+            tail -3 "$OUT/fontmem-ios-$storage.log"
+          done
+          xcrun simctl spawn "$UDID" "$PROBE" fonttables > "$OUT/fonttables-ios.json" || echo "fonttables: exit $?"
+          xcodebuild -list -json > "$RUNNER_TEMP/list-fonts.json"
+          SCHEME=$(python3 -c 'import json,sys; s=json.load(open(sys.argv[1]))["workspace"]["schemes"]; print("TextSpike-Package" if "TextSpike-Package" in s else "TextSpike")' "$RUNNER_TEMP/list-fonts.json")
+          for test in testFontFiles testFontMemoryMapped testFontMemoryCopied; do
+            xcodebuild test-without-building -scheme "$SCHEME" -destination "id=$UDID" \
+              -derivedDataPath "$RUNNER_TEMP/dd" -only-testing:TextSpikeTests/FontAccessTests/$test \
+              >> "$OUT/xcodebuild-fonts.log" 2>&1 || echo "$test: exit $?"
+          done
+          grep -E "SPIKE\| (FONTFILE|FONTMEM)" "$OUT/xcodebuild-fonts.log" | cut -c1-700 || true
+          echo "=== FONTMEM ==="
+          python3 ../fontmem.py "$OUT" ios | tee "$OUT/fontmem-ios.md"
+          echo "=== END ==="
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -214,6 +246,45 @@ jobs:
               [ -f "$report" ] && head -c 4000 "$report"
             done
           } 2>&1 | tee "$RUNNER_TEMP/out/sandbox.txt"
+
+      - name: Font start-up and memory
+        if: always()
+        working-directory: spikes/apple/parity
+        run: |
+          OUT="$RUNNER_TEMP/out"
+          mkdir -p "$OUT"
+          for storage in copy layout map map-all; do
+            ./target/release/parity-probe fontmem "$storage" "$OUT/fontmem-macos-$storage.json" 2>&1 | tail -3 || echo "fontmem $storage failed"
+          done
+          ./target/release/parity-probe fonttables > "$OUT/fonttables-macos.json" || echo "fonttables failed"
+          # Mapped under the App Sandbox, from an app bundle as a sandboxed app runs.
+          APP="$RUNNER_TEMP/FontmemProbe.app"
+          mkdir -p "$APP/Contents/MacOS"
+          cp target/release/parity-probe "$APP/Contents/MacOS/parity-probe"
+          cat > "$APP/Contents/Info.plist" <<'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+          <key>CFBundleIdentifier</key><string>com.skene.parity.fontmem</string>
+          <key>CFBundleExecutable</key><string>parity-probe</string>
+          <key>CFBundleName</key><string>FontmemProbe</string>
+          <key>CFBundlePackageType</key><string>APPL</string>
+          <key>CFBundleVersion</key><string>1</string>
+          <key>LSMinimumSystemVersion</key><string>14.0</string>
+          </dict></plist>
+          EOF
+          cat > "$RUNNER_TEMP/fontmem.entitlements" <<'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict><key>com.apple.security.app-sandbox</key><true/></dict></plist>
+          EOF
+          codesign --force --sign - --entitlements "$RUNNER_TEMP/fontmem.entitlements" "$APP"
+          "$APP/Contents/MacOS/parity-probe" fontmem map-all > "$OUT/fontmem-macos-sandboxed.json" 2> "$OUT/fontmem-macos-sandboxed.log" || echo "sandboxed fontmem: exit $?"
+          tail -2 "$OUT/fontmem-macos-sandboxed.log"
+          python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print("sandboxed map-all fonts:", [(f["postscript"], f["how"], (f.get("access") or {}).get("open_errno"), (f.get("access") or {}).get("map_errno")) for f in d["fonts"]])' "$OUT/fontmem-macos-sandboxed.json" || true
+          echo "=== FONTMEM ==="
+          python3 ../fontmem.py "$OUT" macos | tee "$OUT/fontmem-macos.md"
+          echo "=== END ==="
 
       - name: Results
         if: always()

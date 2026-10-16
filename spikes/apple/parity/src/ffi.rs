@@ -48,6 +48,33 @@ pub extern "C" fn apple_parity_language() -> *mut c_char {
   CString::new(json).unwrap_or_default().into_raw()
 }
 
+/// Runs the font start-up and memory probe ([`crate::fontmem`]) with fonts stored as `storage`
+/// (`copy`, `layout`, `map`, `map-all`), answering its JSON, or `error: ...`.
+///
+/// # Safety
+///
+/// `storage` must be a valid NUL-terminated string.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn apple_parity_fontmem(storage: *const c_char) -> *mut c_char {
+  let started = std::time::Instant::now();
+  let name = unsafe { CStr::from_ptr(storage) }
+    .to_string_lossy()
+    .into_owned();
+  let text = match crate::tuned::Storage::parse(&name) {
+    Some(storage) => {
+      std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        crate::fontmem::run(storage, started).to_string()
+      }))
+      .unwrap_or_else(|_| "error: panicked".to_owned())
+    }
+    None => format!("error: no storage {name:?}"),
+  };
+
+  CString::new(text.replace('\0', " "))
+    .unwrap_or_default()
+    .into_raw()
+}
+
 /// Frees a string [`apple_parity_run`] answered.
 ///
 /// # Safety

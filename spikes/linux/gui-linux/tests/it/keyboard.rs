@@ -1,15 +1,14 @@
 //! The shell's keyboard and pointer rules beyond the controls' own: an acting row answers
 //! keys as a button does, link runs are tab stops `Enter` follows, focus scrolls into view and
-//! the keys scroll, and a secure entry tells an input method only what it shows.
+//! the keys scroll.
 
 use std::{cell::Cell, rc::Rc};
 
 use skene_foundation::{
-  Dimension, Signal, State,
+  Dimension, State,
   seam::{
-    access::AccessFacts,
-    content::{Edit, Run, contents},
-    node::{Interaction, LayoutKind, NodeKind, NodeSpec},
+    content::{Run, contents},
+    node::{LayoutKind, NodeKind, NodeSpec},
     record::{Record, keys},
     report::Modifiers,
     tree,
@@ -278,63 +277,6 @@ fn focus_scrolls_into_view_and_the_keys_scroll() {
       scroll_node.scroll.get(),
       (0., 300.),
       "End scrolls to the end"
-    );
-  });
-}
-
-#[test]
-fn a_secure_entry_tells_an_input_method_only_its_marks() {
-  owned(|| {
-    let (root, root_node) = boxed(Record::new());
-    let (field, _) = node(
-      NodeSpec::new(NodeKind::Editable { multiline: false })
-        .with_interaction(Interaction::Control { drag: None }),
-      Record::new(),
-    );
-    tree::add_access::<Linux>(field, || AccessFacts {
-      focusable: true,
-      ..AccessFacts::default()
-    });
-    let value = Signal::new(Rc::<str>::from("hunter2"));
-
-    tree::bind::<Linux, _>(field, contents::SECURE, || true);
-    tree::control::<Linux, _>(
-      field,
-      contents::EDIT,
-      move || Edit::text(value.get()),
-      Some(Box::new(move |edit: Edit| value.set(edit.text))),
-    );
-    tree::attach::<Linux>(root, field, 0);
-
-    let mut shell = Shell::new("test", 300, 100);
-
-    shell.set_root(root_node);
-    shell.configure(300, 100);
-    shell.frame();
-    shell.key(&key("Tab", true, Modifiers::default()));
-    shell.frame();
-
-    let state = shell.ime_state().expect("the field has focus");
-
-    assert!(state.secure);
-    assert_eq!(
-      state.surrounding,
-      "•".repeat(7),
-      "the marks, never the text"
-    );
-    assert_eq!(
-      (state.anchor, state.cursor),
-      (0, "•".len() * 7),
-      "Tab selected it all, in the marks' bytes"
-    );
-
-    tap(&mut shell, "End");
-    shell.ime_delete_surrounding("•".len() * 2, 0);
-    shell.frame();
-    assert_eq!(
-      &*value.get_untracked(),
-      "hunte",
-      "an input method deletes by the marks it was told"
     );
   });
 }

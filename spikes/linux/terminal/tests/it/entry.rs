@@ -1,6 +1,6 @@
 //! Typing, word and line movement, undo and redo, windows and rows.
 
-use skene_foundation::seam::content::Edit;
+use skene_foundation::seam::content::{Edit, TextSelection};
 
 use skene_terminal::field::KeyOutcome;
 
@@ -266,4 +266,69 @@ fn the_entry_behavior_decides_enter_read_only_and_secure() {
   assert_eq!(field.take_copied(), None, "a secure field offers no copy");
   assert_eq!(key(&mut field, "Ctrl+x"), KeyOutcome::Handled);
   assert_eq!(value(&field), "ab", "nor cut");
+}
+
+#[test]
+fn a_secure_field_draws_one_mark_per_cluster_its_caret_and_selection_among_them() {
+  let secret = "pa\u{301}ss 日本";
+  let mut field = field(secret, 12);
+
+  field.set_secure(true);
+  key(&mut field, "End");
+
+  let frame = field.render();
+
+  assert_eq!(
+    frame.text(),
+    "•••••••\n",
+    "seven clusters, seven marks, a wide one and a combining sequence one cell each"
+  );
+  assert!(
+    !secret
+      .chars()
+      .any(|character| character != ' ' && frame.text().contains(character)),
+    "no character of the text is drawn"
+  );
+  assert_eq!(
+    field.caret_cell(),
+    Some((7, 0)),
+    "the caret after the seventh mark"
+  );
+
+  keys(&mut field, &["Shift+ArrowLeft", "Shift+ArrowLeft"]);
+  assert_eq!(
+    field.render().to_styled(),
+    "|•••••••     |\n|.....ss.....|\ncursor 5,0\n",
+    "two clusters selected are two marks"
+  );
+
+  key(&mut field, "Ctrl+ArrowLeft");
+  assert_eq!(
+    field.caret_cell(),
+    Some((0, 0)),
+    "a word of a secure field is its whole text"
+  );
+
+  field.press(4, 0, 2, false);
+  assert_eq!(
+    field.editor().selection(),
+    TextSelection { start: 0, end: 7 },
+    "a double press selects it all"
+  );
+
+  field.set_secure(false);
+  assert_eq!(
+    field.render().text(),
+    format!("{secret}\n"),
+    "unmasked, the text again"
+  );
+}
+
+#[test]
+fn a_secure_field_draws_the_mark_its_owner_sets() {
+  let mut field = field("abc", 6);
+
+  field.set_secure(true);
+  field.set_mark('*');
+  assert_eq!(field.render().text(), "***\n");
 }

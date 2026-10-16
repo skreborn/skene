@@ -19,7 +19,7 @@ use super::ImeEvent;
 /// Posts an event to the event loop (wakes it).
 pub type Post = Arc<dyn Fn(ImeEvent) + Send + Sync>;
 
-/// A D-Bus connection to an input method.
+/// A D-Bus connection to an input method, closed when it drops: its reader then ends.
 pub struct Bus {
   /// The connection.
   pub conn: Connection,
@@ -115,6 +115,12 @@ pub fn session_has_name(name: &str) -> bool {
     )
     .and_then(|reply| reply.body().deserialize::<bool>())
     .unwrap_or(false)
+}
+
+impl Drop for Bus {
+  fn drop(&mut self) {
+    let _ = self.conn.clone().close();
+  }
 }
 
 impl Bus {

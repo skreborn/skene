@@ -205,9 +205,15 @@ fn push(shell: &Shell) {
 pub fn handle(shell: &mut Shell, request: Request) {
   if let Some(action) = &request.action {
     trace::log(|| {
+      let secure = owner_of(action.target_node).is_some_and(|node| node.contents.borrow().secure);
+      let data = match &action.data {
+        Some(ActionData::Value(_)) if secure => "Some(Value(..))".to_owned(),
+        data => format!("{data:?}"),
+      };
+
       format!(
-        "[access] {:?} at {:?} {:?}",
-        action.action, action.target_node, action.data
+        "[access] {:?} at {:?} {data}",
+        action.action, action.target_node
       )
     });
     apply(shell, action);

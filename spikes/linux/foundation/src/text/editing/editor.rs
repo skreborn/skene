@@ -107,6 +107,7 @@ pub struct Editor<E: TextEngine> {
   width: Option<f32>,
   multiline: bool,
   read_only: bool,
+  secure: bool,
   text: String,
   index: TextIndex,
   anchor: Position,
@@ -131,6 +132,7 @@ impl<E: TextEngine> Editor<E> {
       width: None,
       multiline: false,
       read_only: false,
+      secure: false,
       text: String::new(),
       index: TextIndex::new(""),
       anchor: Position::default(),
@@ -150,6 +152,12 @@ impl<E: TextEngine> Editor<E> {
   /// lines, and pasted line breaks stay.
   pub fn set_multiline(&mut self, multiline: bool) {
     self.multiline = multiline;
+  }
+
+  /// Makes the text secure where `secure`: it offers neither copy nor cut, and a word is the
+  /// whole text, so a double press selects it all and a drag after one extends to it all.
+  pub const fn set_secure(&mut self, secure: bool) {
+    self.secure = secure;
   }
 
   /// Makes the text read only where `read_only`: the selection still moves and copies.
@@ -645,7 +653,7 @@ impl<E: TextEngine> Editor<E> {
         origin,
       )),
       Command::Copy => {
-        if selected.is_empty() {
+        if selected.is_empty() || self.secure {
           return Outcome::IGNORED;
         }
 
@@ -655,7 +663,7 @@ impl<E: TextEngine> Editor<E> {
         }
       }
       Command::Cut => {
-        if selected.is_empty() {
+        if selected.is_empty() || self.secure {
           return Outcome::IGNORED;
         }
 
@@ -857,7 +865,7 @@ impl<E: TextEngine> Editor<E> {
         self.select_positions(anchor, hit, Origin::Reader)
       }
       2 => {
-        let word = segments.word_around(hit.index);
+        let word = self.word_around(&segments, hit.index);
 
         self.granularity = Granularity::Word(word.clone());
         self.select_positions(
@@ -883,6 +891,15 @@ impl<E: TextEngine> Editor<E> {
     }
   }
 
+  /// The word around byte `index`: the whole text where it is secure.
+  fn word_around(&self, segments: &Segments<'_>, index: usize) -> Range<usize> {
+    if self.secure {
+      0..self.text.len()
+    } else {
+      segments.word_around(index)
+    }
+  }
+
   /// A drag of the pointer to `x`, `y` after a press: extends the selection by the press's
   /// unit.
   pub fn drag(&mut self, x: f32, y: f32) -> bool {
@@ -890,7 +907,7 @@ impl<E: TextEngine> Editor<E> {
     let segments = Segments::new(&self.text);
     let (pivot, reached) = match &self.granularity {
       Granularity::Cluster => return self.select_positions(self.anchor, hit, Origin::Reader),
-      Granularity::Word(pivot) => (pivot.clone(), segments.word_around(hit.index)),
+      Granularity::Word(pivot) => (pivot.clone(), self.word_around(&segments, hit.index)),
       Granularity::Line(pivot) => (pivot.clone(), segments.paragraph_around(hit.index)),
     };
     let (anchor, focus) = if reached.start < pivot.start {

@@ -1,6 +1,9 @@
 //! The contract every realization's text engine implements: a paragraph of attributed text,
-//! its intrinsic widths, an immutable layout at a width with the geometry everything acting on
-//! text needs, paint-only restyling, and the boundaries movement follows.
+//! its intrinsic widths, a layout at a width with the geometry everything acting on text
+//! needs, paint-only restyling, and the boundaries movement follows.
+//!
+//! A layout's geometry never changes, and its paint is its paragraph's: a repaint shows in
+//! every layout of the paragraph, those already handed out included, and moves nothing.
 
 use std::ops::Range;
 
@@ -45,13 +48,13 @@ pub trait Paragraph {
   /// line unwrapped).
   fn intrinsic(&self) -> Intrinsic;
 
-  /// The paragraph laid out within `width`, unbounded where `None`: an immutable value no
-  /// later query changes.
+  /// The paragraph laid out within `width`, unbounded where `None`: geometry no later
+  /// layout or repaint changes, painted as the paragraph is ([`Paragraph::repaint`]).
   fn layout(&self, width: Option<f32>) -> Self::Laid;
 
-  /// Repaints `range` (bytes of the text) with `paint`, every layout of the paragraph
-  /// included: `false` where the engine needs the paragraph rebuilt instead. It never
-  /// changes a size or a position.
+  /// Repaints `range` (bytes of the text) with `paint`: the paint is the paragraph's, so it
+  /// shows in every layout of the paragraph, those already handed out included, and changes
+  /// no size or position. `false` where the engine needs the paragraph rebuilt instead.
   fn repaint(&mut self, range: Range<usize>, paint: &PaintStyle) -> bool;
 
   /// The boundary of `unit` next to byte `index` in `direction`, as the engine reads the
@@ -61,7 +64,8 @@ pub trait Paragraph {
   fn boundary(&self, index: usize, unit: TextBoundary, direction: Direction) -> usize;
 }
 
-/// A paragraph laid out at one width: immutable, and cheap to clone.
+/// A paragraph laid out at one width, cheap to clone: its geometry never changes, and it
+/// paints as its paragraph paints now ([`Paragraph::repaint`]).
 pub trait Laid: Clone {
   /// The size the lines take: the widest line's advance (no more than the width laid out
   /// within, but for one cluster wider than it) and the lines' total height.
@@ -92,8 +96,8 @@ pub trait Laid: Clone {
   /// The rectangles `range` (bytes) covers, one or more a line, in visual order.
   fn range_rects(&self, range: Range<usize>) -> Vec<Rect>;
 
-  /// Each stretch of a line painted alike, with what the shared painter needs to draw its
-  /// decorations.
+  /// Each stretch of a line painted alike as the paragraph paints it now, with what the
+  /// shared painter needs to draw its decorations.
   fn run_extents(&self) -> Vec<RunExtent>;
 
   /// The position a visual move from `position` lands on.
@@ -253,7 +257,7 @@ pub struct RunExtent {
   pub strikethrough_offset: f32,
   /// The strikethrough's thickness.
   pub strikethrough_thickness: f32,
-  /// What it is painted with.
+  /// What it is painted with, as its paragraph paints it now.
   pub paint: PaintStyle,
 }
 

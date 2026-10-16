@@ -52,7 +52,8 @@ pub fn address() -> Option<String> {
 }
 
 /// The text inside a serialized `IBusText` (`(sa{sv}sv)`).
-fn ibus_text(value: &Value<'_>) -> Option<String> {
+#[must_use]
+pub fn ibus_text(value: &Value<'_>) -> Option<String> {
   let value = match value {
     Value::Value(inner) => inner,
     other => other,
@@ -68,7 +69,8 @@ fn ibus_text(value: &Value<'_>) -> Option<String> {
 }
 
 /// An `IBusText` holding `text` with no attributes.
-fn to_ibus_text(text: &str) -> Value<'static> {
+#[must_use]
+pub fn to_ibus_text(text: &str) -> Value<'static> {
   let attributes = StructureBuilder::new()
     .add_field("IBusAttrList")
     .add_field(std::collections::HashMap::<String, Value<'static>>::new())
@@ -245,7 +247,10 @@ impl Ime for IBus {
       &(
         CONTEXT,
         "ContentType",
-        Value::Structure(zbus::zvariant::Structure::from((purpose.ibus(), 0u32))),
+        Value::Structure(zbus::zvariant::Structure::from((
+          purpose.ibus(),
+          purpose.ibus_hints(),
+        ))),
       ),
     );
   }

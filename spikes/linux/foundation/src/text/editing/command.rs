@@ -50,6 +50,27 @@ pub enum Command {
   Redo,
 }
 
+impl Command {
+  /// The command as `Debug` writes it, the text it carries shown as `mark` per grapheme
+  /// cluster: what a log of a secure entry shows.
+  #[must_use]
+  pub fn masked(&self, mark: char) -> String {
+    let marks = |text: &str| -> String {
+      std::iter::repeat_n(
+        mark,
+        unicode_segmentation::UnicodeSegmentation::graphemes(text, true).count(),
+      )
+      .collect()
+    };
+
+    match self {
+      Self::Insert(text) => format!("{:?}", Self::Insert(marks(text))),
+      Self::Paste(text) => format!("{:?}", Self::Paste(marks(text))),
+      other => format!("{other:?}"),
+    }
+  }
+}
+
 /// What a command did.
 #[derive(Clone, PartialEq, Eq, Hash, Debug, Default)]
 #[must_use]

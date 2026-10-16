@@ -1,9 +1,9 @@
 //! # skene-parley
 //!
 //! Parley as Skene's [`TextEngine`](skene_foundation::text::TextEngine): a paragraph is
-//! shaped once, broken per width into an immutable layout, and measured, hit-tested and
-//! moved through with Parley's own editing primitives (bidirectional carets and visual
-//! movement included). Complex-script line breaking (Thai, Khmer, Lao, Burmese) runs on ICU4X's
+//! shaped once, broken per width into a layout whose geometry never changes and whose paint
+//! is the paragraph's, and measured, hit-tested and moved through with Parley's own editing
+//! primitives (bidirectional carets and visual movement included). Complex-script line breaking (Thai, Khmer, Lao, Burmese) runs on ICU4X's
 //! dictionaries, and a line breaking at a soft hyphen draws a hyphen.
 //!
 //! On Linux the engine stands on the system's layers rather than its own:

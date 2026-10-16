@@ -10,9 +10,13 @@
 //! - `SKENE_PROBE=<path>`: the pointer's last position in the window's geometry, as `x y`,
 //!   which an out-of-process driver reads to find the window on a compositor that does not
 //!   say where it put it.
+//!
+//! A test records the lines in process instead ([`set_recording`], [`take_recorded`]). No line shows
+//! a secure entry's text: a value, a change, a typed key, a command or an input method's
+//! text bound for one is shown as a mark per cluster, or left out.
 
 use std::{
-  cell::{Cell, OnceCell},
+  cell::{Cell, OnceCell, RefCell},
   path::PathBuf,
   time::Duration,
 };
@@ -21,7 +25,7 @@ use skene_foundation::{
   State,
   layout::Rect,
   seam::{
-    content::{Content, PropValue},
+    content::{Content, PropValue, Verdict},
     report::{Answer, KeyEvent},
   },
 };
@@ -35,13 +39,45 @@ thread_local! {
   static LAST_POINTER: Cell<(u64, Option<(f32, f32)>)> = const { Cell::new((0, None)) };
   static FRAMES: Cell<u64> = const { Cell::new(0) };
   static NODES: OnceCell<bool> = const { OnceCell::new() };
+  static RECORDED: RefCell<Option<Vec<String>>> = const { RefCell::new(None) };
 }
 
-/// Whether tracing is on.
+/// Whether tracing is on: `SKENE_TRACE` asks for it, or a test records.
 pub fn on() -> bool {
+  RECORDED.with(|recorded| recorded.borrow().is_some()) || asked()
+}
+
+/// Whether `SKENE_TRACE` asks for the lines on standard error.
+fn asked() -> bool {
   ON.with(|on| {
     *on.get_or_init(|| std::env::var_os("SKENE_TRACE").is_some_and(|value| value != "0"))
   })
+}
+
+/// Keeps every line logged on this thread from now on where `record`, for
+/// [`take_recorded`]; stops and drops what was kept otherwise.
+pub fn set_recording(record: bool) {
+  RECORDED.with(|recorded| *recorded.borrow_mut() = record.then(Vec::new));
+}
+
+/// The lines kept since the last take, while recording.
+pub fn take_recorded() -> Vec<String> {
+  RECORDED.with(|recorded| {
+    recorded
+      .borrow_mut()
+      .as_mut()
+      .map(std::mem::take)
+      .unwrap_or_default()
+  })
+}
+
+/// `answer` as a trace line shows it: a replacement's value left out where it is bound for a
+/// secure entry.
+pub fn answer(answer: &Answer, secure: bool) -> String {
+  match answer {
+    Answer::Verdict(Verdict::Replace(_)) if secure => "Verdict(Replace(..))".to_owned(),
+    other => format!("{other:?}"),
+  }
 }
 
 /// Whether the frames that lay out count the nodes (`SKENE_TRACE_NODES=1`, with tracing on).
@@ -60,8 +96,20 @@ pub fn nodes(scene: usize, reader: usize) {
 
 /// Logs `line` where tracing is on.
 pub fn log(line: impl FnOnce() -> String) {
-  if on() {
-    eprintln!("{}", line());
+  if !on() {
+    return;
+  }
+
+  let line = line();
+
+  RECORDED.with(|recorded| {
+    if let Some(lines) = recorded.borrow_mut().as_mut() {
+      lines.push(line.clone());
+    }
+  });
+
+  if asked() {
+    eprintln!("{line}");
   }
 }
 
@@ -148,23 +196,38 @@ pub fn activate(node: &Node) {
   log(|| format!("[activate] {}", describe(node)));
 }
 
-/// Logs a change reported and its answer.
+/// Logs a change reported and its answer, a secure entry's value left out.
 pub fn change(node: &Node, content: Content, proposed: &PropValue, answer: &Answer) {
   log(|| {
+    let secure = node.contents.borrow().secure;
+    let proposed = if secure {
+      "(secure)".to_owned()
+    } else {
+      format!("{proposed:?}")
+    };
+
     format!(
-      "[change] {} {content:?} {proposed:?} -> {answer:?}",
-      describe(node)
+      "[change] {} {content:?} {proposed} -> {}",
+      describe(node),
+      self::answer(answer, secure)
     )
   });
 }
 
-/// Logs a key dispatched.
+/// Logs a key dispatched: one that types a character into a secure entry as a mark, its
+/// physical key left out.
 pub fn key(event: &KeyEvent, target: &Node) {
   log(|| {
+    let typed =
+      unicode_segmentation::UnicodeSegmentation::graphemes(event.key.as_str(), true).count() == 1;
+    let (key, code) = if typed && target.contents.borrow().secure {
+      ("•", "")
+    } else {
+      (event.key.as_str(), event.code.as_str())
+    };
+
     format!(
-      "[key] {:?} {:?} {}{} to {}",
-      event.key,
-      event.code,
+      "[key] {key:?} {code:?} {}{} to {}",
       if event.down { "down" } else { "up" },
       if event.repeat { " repeat" } else { "" },
       describe(target)

@@ -1363,6 +1363,22 @@ impl Drawn {
     Self::click_at(at, input::PRIMARY);
   }
 
+  /// Clicks the primary button twice at `at` in the pointer's space, as fast as a hand
+  /// double-clicks, then settles.
+  pub fn double_click_point(&mut self, at: (f64, f64)) {
+    Self::send(4, |input| {
+      input.move_to(at.0, at.1)?;
+      input.sync()?;
+
+      for _ in 0..2 {
+        input.button(input::PRIMARY, true)?;
+        input.button(input::PRIMARY, false)?;
+      }
+
+      Ok(())
+    });
+  }
+
   /// Moves the pointer to `to` in the pointer's space, then turns the window's loop for a
   /// moment and settles.
   pub fn move_pointer(&mut self, to: (f64, f64)) {

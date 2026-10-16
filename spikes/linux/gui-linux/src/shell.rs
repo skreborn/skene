@@ -3202,12 +3202,20 @@ impl Shell {
     }
   }
 
-  /// An input method deletes `range` (bytes of the focused entry's text without its
-  /// composition).
-  pub fn ime_delete(&mut self, range: std::ops::Range<usize>) {
+  /// An input method deletes `length` characters starting `offset` characters from the
+  /// focused entry's caret, in the text it was told ([`entry::ImeState`]).
+  pub fn ime_delete_chars(&mut self, offset: i64, length: usize) {
     if let Some(node) = self.focused_entry() {
-      node.ime_delete(range);
+      node.ime_delete_chars(offset, length);
     }
+  }
+
+  /// Whether the focused entry is secure: what its trace lines show as marks.
+  #[must_use]
+  pub fn focused_entry_is_secure(&self) -> bool {
+    self
+      .focused_entry()
+      .is_some_and(|node| node.contents.borrow().secure)
   }
 
   /// Whether `state` holds at `node`, as the realization tracks it.

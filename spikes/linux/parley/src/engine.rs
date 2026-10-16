@@ -1,5 +1,6 @@
-//! Parley as a text engine: shaping once per paragraph, breaking per width into an immutable
-//! layout, and the geometry and movement Parley's editing primitives give.
+//! Parley as a text engine: shaping once per paragraph, breaking per width into a layout whose
+//! geometry never changes and whose paint is the paragraph's, and the geometry and movement
+//! Parley's editing primitives give.
 
 use std::{
   borrow::Cow,
@@ -333,8 +334,8 @@ impl TextEngine for ParleyEngine {
   }
 }
 
-/// What paints each stretch of a paragraph's text: kept beside its layouts, so a repaint
-/// reaches every layout made and none is made again.
+/// What paints each stretch of a paragraph's text: the paragraph's, shared with its layouts,
+/// so a repaint shows in every layout already handed out and none is made again.
 #[derive(Clone, PartialEq, Debug, Default)]
 pub struct PaintRuns {
   runs: Vec<(Range<usize>, PaintStyle)>,
@@ -772,7 +773,8 @@ struct LaidInner {
   paints: Rc<RefCell<PaintRuns>>,
 }
 
-/// A paragraph Parley laid out at one width: immutable, shared by its clones.
+/// A paragraph Parley laid out at one width, shared by its clones: its geometry never changes,
+/// and it paints as its paragraph paints now.
 #[derive(Clone)]
 pub struct ParleyLaid {
   inner: Rc<LaidInner>,

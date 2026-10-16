@@ -755,6 +755,57 @@ def scenario_hangul():
       check("keyboard: the email field's purpose told to IBus (purpose 6, email)", told)
 
 
+def scenario_secure():
+  # A secure field through a real input method: the input method is told the field holds a
+  # password and its text as one mark per cluster, the field takes what is typed, and neither
+  # the app's trace nor what crossed the input method's bus shows it.
+  secret = "qz7jvw"
+  password = field("Password")
+  bus_since = 0
+  im_log = os.path.join(OUT, "im-bus.log")
+  if os.path.exists(im_log):
+    bus_since = os.path.getsize(im_log)
+  click(password)
+  settle(0.5)
+  since = mark()
+  keys(*secret)
+  settle(0.6)
+  length = last_app("password-length", since)
+  check("secure: the field took what was typed", length not in (None, "0"), repr(length))
+  traced = log_text()[since:]
+  trigrams = [secret[index:index + 3] for index in range(len(secret) - 2)]
+  quoted = [f'"{character}"' for character in secret] + [f"'{character}'" for character in secret]
+  shown = [line for line in traced.splitlines() if not line.startswith("[app] ")
+           and (any(run in line for run in trigrams) or any(quote in line for quote in quoted)
+                or re.search("[\uac00-\ud7a3\u3131-\u318e]", line))]
+  check("secure: no trace line shows what was typed (nor a syllable composed of it)",
+        not shown, shown[:3])
+  xim = LABEL.endswith("xim")
+  if WAYLAND:
+    told = re.findall(r'^\[ime\] commit #\d+.*surrounding "([^"]*)".*purpose (\w+)', traced, re.M)
+    check("secure: text-input-v3 was told marks and the password purpose",
+          bool(told) and all(set(text) <= {"•"} and purpose == "Password" for text, purpose in told),
+          told[-2:])
+  elif os.path.exists(im_log):
+    with open(im_log, encoding="utf-8", errors="replace") as file:
+      bus = file.read()[bus_since:]
+    leaked = [run for run in trigrams if run in bus]
+    check("secure: nothing that crossed the input method's bus shows the text", not leaked,
+          leaked)
+    if not xim:
+      check("secure: the input method was told marks around the caret",
+            re.search(r'member=SetSurroundingText.*\n(?:.*\n){0,12}?\s+string "•+"', bus) is not None)
+      if LABEL.endswith("fcitx"):
+        told = any(int(value) & (1 << 3)
+                   for value in re.findall(r"member=SetCapability[^\n]*\n\s+uint64 (\d+)", bus))
+        check("secure: Fcitx5 was told the field holds a password (capability bit 3)", told)
+      else:
+        told = re.search(r'string "ContentType"\s+variant\s+struct \{\s+uint32 8', bus) is not None
+        check("secure: IBus was told the field holds a password (purpose 8)", told)
+    else:
+      note("XIM carries no text of the field, and no purpose: it is handed the keys alone")
+
+
 def scenario_reader():
   # What a reader can ask of the field (textprobe.py report) and every EditableText method
   # (textprobe.py edit), after typing "Hello brave world" for real; the same against GtkEntry
@@ -804,6 +855,38 @@ def scenario_dump():
     print(line)
 
 
+def scenario_inspect():
+  # Everything a reader is told of each object: its role, name, description, every state, its
+  # interfaces, attributes, relations, actions and, for a text, its default attributes, so the
+  # drawn window and the GTK reference compare line by line.
+  every = [name for name in dir(Atspi.StateType) if name.isupper() and name != "LAST_DEFINED"]
+  for depth, node in walk(app()):
+    pad = "  " * depth
+    try:
+      role, name = node.get_role_name(), node.get_name()
+      state_set = node.get_state_set()
+      held = sorted(name.lower() for name in every if state_set.contains(getattr(Atspi.StateType, name)))
+      print(f"{pad}{role} {name!r} description={node.get_description()!r}")
+      print(f"{pad}  states {held}")
+      print(f"{pad}  interfaces {sorted(node.get_interfaces())}")
+      print(f"{pad}  attributes {dict(sorted((node.get_attributes() or {}).items()))}")
+      for relation in node.get_relation_set() or []:
+        targets = [relation.get_target(index) for index in range(relation.get_n_targets())]
+        print(f"{pad}  relation {relation.get_relation_type().value_nick} "
+              f"{[(target.get_role_name(), target.get_name()) for target in targets]}")
+      if "Action" in node.get_interfaces():
+        actions = [(Atspi.Action.get_action_name(node, index), Atspi.Action.get_key_binding(node, index))
+                   for index in range(Atspi.Action.get_n_actions(node))]
+        print(f"{pad}  actions {actions}")
+      if "Text" in node.get_interfaces():
+        count = Atspi.Text.get_character_count(node)
+        print(f"{pad}  text {Atspi.Text.get_text(node, 0, -1)!r} count {count} "
+              f"caret {Atspi.Text.get_caret_offset(node)}")
+        print(f"{pad}  default attributes {dict(sorted(Atspi.Text.get_default_attributes(node).items()))}")
+    except GLib.Error as error:
+      print(f"{pad}? {error}")
+
+
 def warm_up():
   # gnome-shell starts in its overview with the search entry focused: Escape leaves it and the
   # window takes focus. The first key is lost as the seat gains its keyboard.
@@ -812,17 +895,20 @@ def warm_up():
 
 
 def main(argv):
-  scenario = argv[1] if len(argv) > 1 else "dump"
+  scenarios = argv[1:] or ["dump"]
   warm_up()
-  {
-    "controls": scenario_controls,
-    "fields": scenario_fields,
-    "hangul": scenario_hangul,
-    "dump": scenario_dump,
-    "reader": scenario_reader,
-    "focus": scenario_focus,
-  }[scenario]()
-  print(f"[{LABEL}] DONE {scenario}: {len(FAILED)} failed", flush=True)
+  for scenario in scenarios:
+    {
+      "controls": scenario_controls,
+      "fields": scenario_fields,
+      "hangul": scenario_hangul,
+      "secure": scenario_secure,
+      "dump": scenario_dump,
+      "reader": scenario_reader,
+      "focus": scenario_focus,
+      "inspect": scenario_inspect,
+    }[scenario]()
+  print(f"[{LABEL}] DONE {' '.join(scenarios)}: {len(FAILED)} failed", flush=True)
   return 1 if FAILED else 0
 
 

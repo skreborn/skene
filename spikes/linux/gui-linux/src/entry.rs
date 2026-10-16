@@ -65,7 +65,9 @@ const BLINK_FOR: Duration = Duration::from_secs(10);
 ///
 /// A composition's end is settled by the seam ([`Report::Composition`]) once the editor has
 /// ended it, so the editor is asked nothing then.
-pub struct SeamArbiter(Rc<Cell<skene_foundation::NodeId>>);
+///
+/// Its trace line shows a secure entry's text as a mark per cluster.
+pub struct SeamArbiter(Rc<Cell<skene_foundation::NodeId>>, Rc<MaskState>);
 
 impl Arbiter for SeamArbiter {
   fn propose(&mut self, proposed: &Edit, applied: bool, _: bool) -> Verdict {
@@ -80,8 +82,9 @@ impl Arbiter for SeamArbiter {
 
     crate::trace::log(|| {
       format!(
-        "[entry] propose {:?} applied {applied} -> {answer:?}",
-        proposed.text
+        "[entry] propose {:?} applied {applied} -> {}",
+        self.1.shown(&proposed.text),
+        crate::trace::answer(&answer, self.1.is_masked())
       )
     });
 
@@ -141,7 +144,7 @@ impl Entry {
     let id = Rc::new(Cell::new(node.id.get()));
 
     editor.set_multiline(multiline);
-    editor.set_arbiter(SeamArbiter(id));
+    editor.set_arbiter(SeamArbiter(id, Rc::clone(&mask)));
     editor.set_notifier(move |notice| sink.borrow_mut().push(notice));
 
     Box::new(Self {
@@ -390,6 +393,7 @@ impl Drawn {
         }
 
         entry.editor.set_read_only(read_only);
+        entry.editor.set_secure(secure);
 
         if entry.mask.is_masked() != secure {
           entry.mask.set_masked(secure);
@@ -734,7 +738,11 @@ impl Drawn {
   /// entry would copy goes nowhere.
   pub fn perform(self: &Rc<Self>, command: Command) -> Outcome {
     let typed = matches!(&command, Command::Insert(text) if text.graphemes(true).count() == 1);
-    let described = format!("{command:?}");
+    let described = if self.contents.borrow().secure {
+      command.masked(MARK)
+    } else {
+      format!("{command:?}")
+    };
     let outcome = self
       .with_entry(|entry| entry.editor.perform(command))
       .unwrap_or(Outcome::IGNORED);
@@ -921,7 +929,11 @@ impl Drawn {
       return None;
     }
 
-    let purpose = crate::ime::Purpose::of(self.contents.borrow().keyboard.as_deref());
+    let purpose = if self.contents.borrow().secure {
+      crate::ime::Purpose::Password
+    } else {
+      crate::ime::Purpose::of(self.contents.borrow().keyboard.as_deref())
+    };
     let content = self.entry_content(rect);
 
     self.with_entry(|entry| {
@@ -1028,8 +1040,45 @@ impl Drawn {
     }
   }
 
+  /// An input method deletes `length` characters starting `offset` characters from the
+  /// caret (before it where negative), in the text it was told: the composition left out, and
+  /// a secure entry's characters its marks, one per cluster of the text.
+  pub fn ime_delete_chars(self: &Rc<Self>, offset: i64, length: usize) {
+    let Some(range) = self.with_entry(|entry| {
+      let text = entry.editor.text();
+      let marked = entry.editor.marked_range_in(Unit::Utf8);
+      let (_, focus) = entry.editor.selection_in(Unit::Utf8);
+      let (without, caret) = match &marked {
+        Some(marked) => (
+          [&text[..marked.start], &text[marked.end..]].concat(),
+          marked.start,
+        ),
+        None => (text.to_owned(), focus),
+      };
+      let starts: Vec<usize> = if entry.mask.is_masked() {
+        without
+          .grapheme_indices(true)
+          .map(|(index, _)| index)
+          .collect()
+      } else {
+        without.char_indices().map(|(index, _)| index).collect()
+      };
+      let at = i64::try_from(starts.partition_point(|start| *start < caret)).unwrap_or(0);
+      let count = i64::try_from(starts.len()).unwrap_or(0);
+      let start = usize::try_from((at + offset).clamp(0, count)).unwrap_or(0);
+      let end = (start + length).min(starts.len());
+      let byte = |unit: usize| starts.get(unit).copied().unwrap_or(without.len());
+
+      byte(start)..byte(end)
+    }) else {
+      return;
+    };
+
+    self.ime_delete(range);
+  }
+
   /// An input method deletes `range` (bytes of the text without the composition).
-  pub fn ime_delete(self: &Rc<Self>, range: Range<usize>) {
+  fn ime_delete(self: &Rc<Self>, range: Range<usize>) {
     self.with_entry(|entry| {
       let marked = entry.editor.marked_range_in(Unit::Utf8);
       let shift = |at: usize| match &marked {

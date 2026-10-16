@@ -147,26 +147,18 @@ impl TextInput {
       ChangeCause::Other
     });
 
-    let (hint, purpose) = if state.secure {
-      (
-        ContentHint::SensitiveData | ContentHint::HiddenText,
-        ContentPurpose::Password,
-      )
-    } else {
-      let hint = if state.multiline {
-        ContentHint::Multiline
-      } else {
-        ContentHint::None
-      };
-      let purpose = match state.purpose {
-        crate::ime::Purpose::Normal => ContentPurpose::Normal,
-        crate::ime::Purpose::Email => ContentPurpose::Email,
-        crate::ime::Purpose::Number => ContentPurpose::Number,
-        crate::ime::Purpose::Phone => ContentPurpose::Phone,
-        crate::ime::Purpose::Url => ContentPurpose::Url,
-      };
-
-      (hint, purpose)
+    let hint = match state.purpose {
+      crate::ime::Purpose::Password => ContentHint::SensitiveData | ContentHint::HiddenText,
+      _ if state.multiline => ContentHint::Multiline,
+      _ => ContentHint::None,
+    };
+    let purpose = match state.purpose {
+      crate::ime::Purpose::Normal => ContentPurpose::Normal,
+      crate::ime::Purpose::Email => ContentPurpose::Email,
+      crate::ime::Purpose::Number => ContentPurpose::Number,
+      crate::ime::Purpose::Phone => ContentPurpose::Phone,
+      crate::ime::Purpose::Url => ContentPurpose::Url,
+      crate::ime::Purpose::Password => ContentPurpose::Password,
     };
 
     object.set_content_type(hint, purpose);
@@ -241,9 +233,24 @@ impl TextInput {
         let pending = std::mem::take(&mut self.pending);
 
         trace::log(|| {
+          let secure = shell.focused_entry_is_secure();
+          let shown = |text: &str| {
+            if secure {
+              crate::ime::marks(text)
+            } else {
+              text.to_owned()
+            }
+          };
+
           format!(
             "[ime] done serial {serial} (commits {}): preedit {:?} commit {:?} delete {:?}",
-            self.commits, pending.preedit, pending.commit, pending.delete
+            self.commits,
+            pending
+              .preedit
+              .as_ref()
+              .map(|(text, begin, end)| (shown(text), begin, end)),
+            pending.commit.as_deref().map(shown),
+            pending.delete
           )
         });
         self.done_serial = serial;

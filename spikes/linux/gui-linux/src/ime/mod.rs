@@ -70,6 +70,19 @@ pub enum ImeEvent {
   Note(String),
 }
 
+impl ImeEvent {
+  /// The event with every text it carries shown as [`marks`]: what a trace line shows of an
+  /// event bound for a secure entry.
+  #[must_use]
+  pub fn masked(&self) -> Self {
+    match self {
+      Self::Commit(text) => Self::Commit(marks(text)),
+      Self::Preedit(text, cursor) => Self::Preedit(marks(text), *cursor),
+      other => other.clone(),
+    }
+  }
+}
+
 /// An input method connection on X11.
 pub trait Ime {
   /// Its name in logs.
@@ -112,7 +125,7 @@ pub trait Ime {
 }
 
 /// What an entry's text is for, as an input method is told it: the keyboard the app asked for
-/// (`TextField::set_keyboard`).
+/// (`TextField::set_keyboard`), or a secret where the entry is secure.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
 pub enum Purpose {
   /// Any text.
@@ -126,6 +139,8 @@ pub enum Purpose {
   Phone,
   /// A URL.
   Url,
+  /// A secret: a secure entry's, of which the input method is told only marks.
+  Password,
 }
 
 impl Purpose {
@@ -141,7 +156,7 @@ impl Purpose {
     }
   }
 
-  /// IBus's input purpose: free form 0, number 3, phone 4, URL 5, email 6.
+  /// IBus's input purpose: free form 0, number 3, phone 4, URL 5, email 6, password 8.
   #[must_use]
   pub const fn ibus(self) -> u32 {
     match self {
@@ -150,15 +165,27 @@ impl Purpose {
       Self::Phone => 4,
       Self::Url => 5,
       Self::Email => 6,
+      Self::Password => 8,
     }
   }
 
-  /// Fcitx5's capability bits for it: email 1 << 7, URL 1 << 12, dialable 1 << 13, number
-  /// 1 << 14.
+  /// IBus's input hints for it: private (1 << 11, nothing learned from the text) for a
+  /// password, none otherwise.
+  #[must_use]
+  pub const fn ibus_hints(self) -> u32 {
+    match self {
+      Self::Password => 1 << 11,
+      _ => 0,
+    }
+  }
+
+  /// Fcitx5's capability bits for it: password 1 << 3, email 1 << 7, URL 1 << 12, dialable
+  /// 1 << 13, number 1 << 14.
   #[must_use]
   pub const fn fcitx(self) -> u64 {
     match self {
       Self::Normal => 0,
+      Self::Password => 1 << 3,
       Self::Email => 1 << 7,
       Self::Url => 1 << 12,
       Self::Phone => 1 << 13,
@@ -212,6 +239,16 @@ pub fn choose() -> &'static str {
 /// Logs how long an input method took to answer, where tracing is on.
 pub fn log_latency(name: &str, what: &str, since: Instant) {
   crate::trace::log(|| format!("[latency] {name} {what} {}us", since.elapsed().as_micros()));
+}
+
+/// One mark per grapheme cluster of `text`: what a trace line shows of a secure entry's text.
+#[must_use]
+pub fn marks(text: &str) -> String {
+  std::iter::repeat_n(
+    '•',
+    unicode_segmentation::UnicodeSegmentation::graphemes(text, true).count(),
+  )
+  .collect()
 }
 
 /// The byte offset of char `chars` in `text` (clamped to its end).

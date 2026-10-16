@@ -12,6 +12,7 @@ mod gpu;
 mod keyboard;
 mod reader;
 mod scale;
+mod secure;
 mod shell;
 
 use skene_foundation::{

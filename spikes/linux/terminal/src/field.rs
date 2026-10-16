@@ -1,15 +1,19 @@
 //! The terminal's text field: the shared editing core over the cell engine, its window
-//! following the caret, its keys and pointer, and its cells.
+//! following the caret, its keys and pointer, and its cells; a secure field's text laid out
+//! and drawn as one mark per cluster.
+
+use std::rc::Rc;
 
 use skene_foundation::{
   behavior::{EntryAct, EntryKeys},
   seam::report::{KeyEvent, Modifiers},
   text::{
-    Laid as _, ParagraphStyle, RunStyle, Wrap,
+    Laid as _, MaskState, Masked, MaskedLaid, ParagraphStyle, RunStyle, Wrap,
     editing::{Binding, ClauseStyle, Command, Editor},
   },
   value::TextDecorationStyle,
 };
+use skene_parley::ParleyLaid;
 use unicode_segmentation::UnicodeSegmentation as _;
 use unicode_width::UnicodeWidthChar as _;
 
@@ -17,6 +21,14 @@ use crate::{
   cells::Cells,
   frame::{Cell, Frame},
 };
+
+/// The engine a field lays its text out with: the cell engine, masked where the field is
+/// secure.
+pub type Engine = Masked<Cells>;
+
+/// What a secure field draws for each cluster of its text, unless [`TextField::set_mark`]
+/// says otherwise.
+pub const MARK: char = '•';
 
 /// What a key did to a field.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -63,10 +75,12 @@ fn cluster_cells(cluster: &str) -> usize {
 
 /// A text entry in the terminal: a field of one row scrolling sideways, or an editor of
 /// several rows wrapping its lines and scrolling down. Its editing is the shared core's; its
-/// cells are the cell engine's layout of the text.
+/// cells are the cell engine's layout of the text, or of one mark per cluster where it is
+/// secure, the caret and the selection standing among the marks.
 pub struct TextField {
   behavior: EntryKeys,
-  editor: Editor<Cells>,
+  editor: Editor<Engine>,
+  mask: Rc<MaskState>,
   columns: u16,
   rows: u16,
   window: usize,
@@ -79,8 +93,9 @@ impl TextField {
   /// A field of one row, `columns` wide.
   #[must_use]
   pub fn new(columns: u16) -> Self {
+    let mask = Rc::new(MaskState::new(MARK));
     let mut editor = Editor::new(
-      Cells::new(),
+      Masked::new(Cells::new(), Rc::clone(&mask)),
       RunStyle::new(1.),
       ParagraphStyle::default().with_wrap(Wrap::None),
     );
@@ -90,6 +105,7 @@ impl TextField {
     Self {
       behavior: EntryKeys::new(false),
       editor,
+      mask,
       columns: columns.max(1),
       rows: 1,
       window: 0,
@@ -102,7 +118,12 @@ impl TextField {
   /// An editor of `rows` rows, `columns` wide, its lines wrapped at its width.
   #[must_use]
   pub fn multiline(columns: u16, rows: u16) -> Self {
-    let mut editor = Editor::new(Cells::new(), RunStyle::new(1.), ParagraphStyle::default());
+    let mask = Rc::new(MaskState::new(MARK));
+    let mut editor = Editor::new(
+      Masked::new(Cells::new(), Rc::clone(&mask)),
+      RunStyle::new(1.),
+      ParagraphStyle::default(),
+    );
 
     editor.set_multiline(true);
     editor.set_width(Some(f32::from(columns.max(1))));
@@ -110,6 +131,7 @@ impl TextField {
     Self {
       behavior: EntryKeys::new(true),
       editor,
+      mask,
       columns: columns.max(1),
       rows: rows.max(1),
       window: 0,
@@ -121,12 +143,12 @@ impl TextField {
 
   /// The editing core.
   #[must_use]
-  pub const fn editor(&self) -> &Editor<Cells> {
+  pub const fn editor(&self) -> &Editor<Engine> {
     &self.editor
   }
 
   /// The editing core, to write the app's truth into it or adapt an input method to it.
-  pub const fn editor_mut(&mut self) -> &mut Editor<Cells> {
+  pub const fn editor_mut(&mut self) -> &mut Editor<Engine> {
     &mut self.editor
   }
 
@@ -136,9 +158,27 @@ impl TextField {
     self.editor.set_read_only(read_only);
   }
 
-  /// Makes the field secure where `secure`: it offers neither copy nor cut.
-  pub const fn set_secure(&mut self, secure: bool) {
+  /// Makes the field secure where `secure`: it draws one mark per cluster of its text, offers
+  /// neither copy nor cut, and takes a word to be the whole text.
+  pub fn set_secure(&mut self, secure: bool) {
     self.behavior = self.behavior.with_secure(secure);
+    self.editor.set_secure(secure);
+
+    if self.mask.is_masked() != secure {
+      self.mask.set_masked(secure);
+      self.editor.relayout();
+    }
+  }
+
+  /// Draws each cluster of a secure field's text as `mark` ([`MARK`] unless set).
+  pub fn set_mark(&mut self, mark: char) {
+    if self.mask.mark() != mark {
+      self.mask.set_mark(mark);
+
+      if self.mask.is_masked() {
+        self.editor.relayout();
+      }
+    }
   }
 
   /// Sets the text shown while the value is empty.
@@ -289,16 +329,15 @@ impl TextField {
       self.window = settled_window(self.window, caret_column, extent, usize::from(self.columns));
 
       // A window starting inside a wide cluster starts after it.
-      for run in laid.glyph_runs() {
+      for run in laid.inner().glyph_runs() {
         for glyph in &run.glyphs {
-          let end = self.editor.index().next_grapheme(glyph.at);
           #[expect(
             clippy::cast_possible_truncation,
             clippy::cast_sign_loss,
             reason = "cells"
           )]
           let start = glyph.x.round().max(0.) as usize;
-          let cells = cluster_cells(&self.editor.text()[glyph.at..end]);
+          let cells = cluster_cells(&self.shown(&laid, glyph.at));
 
           if start < self.window && self.window < start + cells {
             self.window = start + cells;
@@ -340,20 +379,23 @@ impl TextField {
 
     let mut drawn = Vec::new();
 
-    for run in laid.glyph_runs() {
+    for run in laid.inner().glyph_runs() {
       for glyph in &run.glyphs {
-        if drawn.contains(&glyph.at) {
+        let at = laid.real_index(glyph.at);
+
+        if drawn.contains(&at) {
           continue;
         }
 
-        drawn.push(glyph.at);
+        drawn.push(at);
 
-        let end = self.editor.index().next_grapheme(glyph.at);
-        let cluster = &text[glyph.at..end];
+        let real = &text[at..self.editor.index().next_grapheme(at)];
 
-        if cluster == "\n" || cluster == "\r\n" {
+        if real == "\n" || real == "\r\n" {
           continue;
         }
+
+        let cluster = self.shown(&laid, glyph.at);
 
         #[expect(
           clippy::cast_possible_truncation,
@@ -364,16 +406,16 @@ impl TextField {
           glyph.x.round().max(0.) as usize,
           (glyph.y - 1.).round().max(0.) as usize,
         );
-        let cells = cluster_cells(cluster);
+        let cells = cluster_cells(&cluster);
         let underline = composition.and_then(|marked| {
-          if !marked.range.contains(&glyph.at) {
+          if !marked.range.contains(&at) {
             return None;
           }
 
           let style = marked
             .clauses
             .iter()
-            .find(|clause| clause.range.contains(&glyph.at))
+            .find(|clause| clause.range.contains(&at))
             .map_or(ClauseStyle::Raw, |clause| clause.style);
 
           Some(match style {
@@ -397,10 +439,10 @@ impl TextField {
             } else if cluster.chars().any(char::is_control) {
               " ".to_owned()
             } else {
-              cluster.to_owned()
+              cluster.clone()
             },
             style: crate::frame::CellStyle {
-              selected: selected.contains(&glyph.at),
+              selected: selected.contains(&at),
               underline,
               placeholder: false,
             },
@@ -414,6 +456,18 @@ impl TextField {
     }
 
     frame
+  }
+
+  /// What the cluster drawn at byte `shown` of `laid`'s inner layout shows: the field's own
+  /// cluster, or the mark standing for it where the field is secure.
+  fn shown(&self, laid: &MaskedLaid<ParleyLaid>, shown: usize) -> String {
+    if laid.is_masked() {
+      return self.mask.mark().to_string();
+    }
+
+    let at = laid.real_index(shown);
+
+    self.editor.text()[at..self.editor.index().next_grapheme(at)].to_owned()
   }
 
   /// The cell the caret stands in, where it shows.

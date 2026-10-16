@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Every controls check, each in a private session (tools/controls/session.sh under its own
 # dbus-run-session): the controls and fields scenarios on Xvfb, headless sway and headless
-# mutter; Hangul through IBus, Fcitx5 and XIM on X11, gnome-shell's IBus over text-input-v3 and
-# Fcitx5 behind sway; the input method choice; the reader probes against GtkEntry.
+# mutter; Hangul and a secure field through IBus, Fcitx5 and XIM on X11, gnome-shell's IBus over
+# text-input-v3 and Fcitx5 behind sway; the input method choice; the reader probes against
+# GtkEntry.
 #
 #   checks.sh <controls probe binary> <results dir>
 set -u
@@ -28,12 +29,12 @@ for kind in x11 sway mutter; do
   session "$kind-controls" "$kind" none SKENE_SIZE=520x900 python3.12 -I tools/controls/harness.py controls
   session "$kind-fields" "$kind" none SKENE_SIZE=520x900 python3.12 -I tools/controls/harness.py fields
 done
-session x11-ibus x11 ibus PROBE_FIELDS_ONLY=1 python3.12 -I tools/controls/harness.py hangul
-session x11-fcitx x11 fcitx PROBE_FIELDS_ONLY=1 python3.12 -I tools/controls/harness.py hangul
+session x11-ibus x11 ibus PROBE_FIELDS_ONLY=1 python3.12 -I tools/controls/harness.py hangul secure
+session x11-fcitx x11 fcitx PROBE_FIELDS_ONLY=1 python3.12 -I tools/controls/harness.py hangul secure
 session x11-xim x11 ibus "PROBE_FIELDS_ONLY=1 SKENE_IME=xim" \
-  python3.12 -I tools/controls/harness.py hangul
-session gnome-ibus gnome ibus PROBE_FIELDS_ONLY=1 python3.12 -I tools/controls/harness.py hangul
-session sway-fcitx sway fcitx PROBE_FIELDS_ONLY=1 python3.12 -I tools/controls/harness.py hangul
+  python3.12 -I tools/controls/harness.py hangul secure
+session gnome-ibus gnome ibus PROBE_FIELDS_ONLY=1 python3.12 -I tools/controls/harness.py hangul secure
+session sway-fcitx sway fcitx PROBE_FIELDS_ONLY=1 python3.12 -I tools/controls/harness.py hangul secure
 
 export PROBE=$probe
 APP=none session detect-ibus x11 ibus "" tools/controls/detect.sh ibus \

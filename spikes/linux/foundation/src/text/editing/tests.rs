@@ -510,3 +510,50 @@ fn an_input_methods_deletion_and_its_commit_undo_as_one_step() {
   key(&mut editor, "Ctrl+z");
   assert_eq!(editor.text(), "한글");
 }
+
+#[test]
+fn a_secure_text_offers_no_copy_nor_cut_and_its_word_is_the_whole_text() {
+  let mut editor = editor("pass word");
+
+  editor.set_secure(true);
+
+  let _ = editor.perform(Command::SelectAll);
+
+  assert_eq!(
+    editor.perform(Command::Copy),
+    crate::text::editing::Outcome::IGNORED
+  );
+  assert_eq!(
+    editor.perform(Command::Cut),
+    crate::text::editing::Outcome::IGNORED
+  );
+  assert_eq!(editor.text(), "pass word", "a refused cut removes nothing");
+
+  // Each cluster of the canned engine is ten wide: a press at 25 is in `pass`.
+  let _ = editor.press(25., 10., 2, false);
+  assert_eq!(
+    editor.selection(),
+    selection(0, 9),
+    "a double press selects it all"
+  );
+
+  editor.set_secure(false);
+
+  let _ = editor.press(25., 10., 2, false);
+  assert_eq!(
+    editor.selection(),
+    selection(0, 4),
+    "and a plain text's word alone"
+  );
+  assert!(editor.perform(Command::Copy).clipboard.is_some());
+}
+
+#[test]
+fn a_command_logged_masked_shows_its_text_as_marks() {
+  assert_eq!(
+    Command::Insert("e\u{301}x".into()).masked('•'),
+    "Insert(\"••\")"
+  );
+  assert_eq!(Command::Paste("ab".into()).masked('*'), "Paste(\"**\")");
+  assert_eq!(Command::SelectAll.masked('•'), "SelectAll");
+}

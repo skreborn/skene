@@ -19,7 +19,7 @@ use crate::{
 pub struct MaskState {
   masked: Cell<bool>,
   revealed: Cell<Option<usize>>,
-  mark: char,
+  mark: Cell<char>,
 }
 
 impl MaskState {
@@ -29,7 +29,30 @@ impl MaskState {
     Self {
       masked: Cell::new(false),
       revealed: Cell::new(None),
-      mark,
+      mark: Cell::new(mark),
+    }
+  }
+
+  /// What each masked cluster is drawn as.
+  #[inline(always)]
+  #[must_use]
+  pub fn mark(&self) -> char {
+    self.mark.get()
+  }
+
+  /// Draws each masked cluster as `mark` from the next layout on.
+  pub fn set_mark(&self, mark: char) {
+    self.mark.set(mark);
+  }
+
+  /// What `text` shows as under the state: a mark per grapheme cluster where it masks, the
+  /// text itself otherwise.
+  #[must_use]
+  pub fn shown(&self, text: &str) -> String {
+    if self.is_masked() {
+      std::iter::repeat_n(self.mark(), text.graphemes(true).count()).collect()
+    } else {
+      text.to_owned()
     }
   }
 
@@ -133,6 +156,19 @@ impl<L> MaskedLaid<L> {
   pub const fn inner(&self) -> &L {
     &self.inner
   }
+
+  /// Whether the text was masked when it was laid out.
+  #[must_use]
+  pub const fn is_masked(&self) -> bool {
+    self.map.is_some()
+  }
+
+  /// The byte of the real text where the cluster shown at byte `shown` of the inner layout's
+  /// text starts: `shown` itself where the text is not masked.
+  #[must_use]
+  pub fn real_index(&self, shown: usize) -> usize {
+    self.map.as_ref().map_or(shown, |map| map.to_real(shown))
+  }
 }
 
 impl<E: TextEngine> TextEngine for Masked<E> {
@@ -163,7 +199,7 @@ impl<E: TextEngine> TextEngine for Masked<E> {
       if revealed == Some(start) {
         shown.push_str(cluster);
       } else {
-        shown.push(self.state.mark);
+        shown.push(self.state.mark());
       }
     }
 

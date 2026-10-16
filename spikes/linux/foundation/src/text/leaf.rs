@@ -92,8 +92,8 @@ impl<P: Paragraph> TextLeaf<P> {
     self.laid.borrow_mut().clear();
   }
 
-  /// Repaints `range` with `paint`, keeping every measurement: `false` where the engine
-  /// needs the paragraph rebuilt ([`TextLeaf::replace`]).
+  /// Repaints `range` with `paint`, keeping every measurement and every layout, which show
+  /// it: `false` where the engine needs the paragraph rebuilt ([`TextLeaf::replace`]).
   pub fn repaint(&mut self, range: Range<usize>, paint: &PaintStyle) -> bool {
     self.paragraph.repaint(range, paint)
   }

@@ -1878,7 +1878,13 @@ impl X11 {
 
   /// Applies what the input method said.
   fn ime_event(&mut self, shell: &mut Shell, event: ImeEvent) {
-    trace::log(|| format!("[ime] {event:?}"));
+    trace::log(|| {
+      if shell.focused_entry_is_secure() {
+        format!("[ime] {:?}", event.masked())
+      } else {
+        format!("[ime] {event:?}")
+      }
+    });
 
     match event {
       ImeEvent::Commit(text) => shell.ime_commit(&text),
@@ -1896,17 +1902,7 @@ impl X11 {
         }
       }
       ImeEvent::DeleteSurrounding(offset, length) => {
-        if let Some(state) = shell.ime_state() {
-          let cursor = ime::byte_to_char(&state.surrounding, state.cursor) as i64;
-          let start = (cursor + i64::from(offset)).max(0) as usize;
-          let end = start + length as usize;
-          let (start, end) = (
-            ime::char_to_byte(&state.surrounding, start),
-            ime::char_to_byte(&state.surrounding, end),
-          );
-
-          shell.ime_delete(start..end);
-        }
+        shell.ime_delete_chars(i64::from(offset), length as usize);
       }
       ImeEvent::Forward {
         keysym,
@@ -1944,8 +1940,8 @@ impl X11 {
     }
   }
 
-  /// Tells the input method about the focused entry: focus, its surrounding text and where
-  /// its caret is.
+  /// Tells the input method about the focused entry: focus, its purpose, its surrounding text
+  /// and where its caret is; a secure entry's text as the marks it shows, one per cluster.
   fn sync_ime(&mut self, shell: &Shell) {
     if crate::entry::take_ime_dirty().is_some() {
       self.ime_stale = true;
@@ -1957,7 +1953,7 @@ impl X11 {
 
     self.ime_stale = false;
 
-    let state = shell.ime_state().filter(|state| !state.secure);
+    let state = shell.ime_state();
     let scale = shell.scale;
     let (ox, oy) = shell.chrome.origin();
     let origin = self.window_origin;

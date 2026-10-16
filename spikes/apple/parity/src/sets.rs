@@ -615,6 +615,11 @@ pub fn tuned_runs<'a>(laid: &'a Laid, engine: &TunedEngine) -> Vec<DrawRun<'a>> 
         std::slice::from_raw_parts(run.font.data.data().as_ptr(), run.font.data.data().len())
       };
 
+      let shift = engine
+        .trak_blobs
+        .get(&id)
+        .map_or(0., |trak| trak.at(run.size) / 2.);
+
       Some(DrawRun {
         source: Source::Font(source),
         key: format!("blob{id}#{}", run.font.index),
@@ -627,11 +632,39 @@ pub fn tuned_runs<'a>(laid: &'a Laid, engine: &TunedEngine) -> Vec<DrawRun<'a>> 
         glyphs: run
           .glyphs
           .iter()
-          .map(|glyph| (glyph.id, glyph.x, glyph.y))
+          .map(|glyph| (glyph.id, glyph.x + shift, glyph.y))
           .collect(),
       })
     })
     .collect()
+}
+
+/// B's image of a tuned layout: vello's drawing, a tracked font's glyphs centred in their
+/// tracking as Core Text centres them, and an `hvgl` font's glyphs from Core Text's outlines.
+pub fn tuned_vello(
+  laid: &Laid,
+  engine: &TunedEngine,
+  outlined: &[crate::outline::Outlined],
+  (width, height): (f32, f32),
+  scale: f32,
+) -> vello_cpu::Pixmap {
+  let mut runs = laid.glyph_runs();
+
+  for run in &mut runs {
+    if let Some(trak) = engine.trak_blobs.get(&run.font.data.id()) {
+      let shift = trak.at(run.size) / 2.;
+
+      for glyph in &mut run.glyphs {
+        glyph.x += shift;
+      }
+    }
+  }
+
+  let mut pixmap = render::render_runs(&runs, width, height, scale, RenderOptions::default());
+
+  crate::outline::fill(&mut pixmap, outlined, width, height, scale);
+
+  pixmap
 }
 
 /// The glyphs of `laid` in an `hvgl` font, at their instance: what vello fills from Core Text's
@@ -759,10 +792,7 @@ pub fn tuned(
         let file = image_path(&variant, *scale);
 
         if vello {
-          let mut pixmap =
-            render::render(&laid.laid, width, height, *scale, RenderOptions::default());
-
-          crate::outline::fill(&mut pixmap, &outlined, width, height, *scale);
+          let pixmap = tuned_vello(&laid.laid, engine, &outlined, (width, height), *scale);
 
           let _ = render::write_png(pixmap, &dir.join(&file));
         }

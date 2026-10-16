@@ -423,6 +423,7 @@ pub fn run(config: &Config) -> Result<String, String> {
     });
     guard(&mut report, "cjk spacing", crate::cjk::spacing);
     guard(&mut report, "run instances", crate::cjk::instances);
+    guard(&mut report, "script shaping", crate::cjk::scripts);
   }
 
   if config.wants("genmoji") {

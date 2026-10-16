@@ -15,6 +15,13 @@
 //!   attributes name and never by a substituted one.
 //! - **Hangul keeps its words whole** in every language, TextKit's `standard` strategy.
 //! - **No break inside a grapheme cluster**, through Parley's line-break override.
+//! - **`trak` tracking** of a font without an optical size axis (Apple Color Emoji), as letter
+//!   spacing on its clusters, the glyph drawn centred in the extra advance as Core Text does.
+//! - **A fallback font at its own instance**: its clusters take the variation Core Text gave the
+//!   fallback font (PingFang UI at `wght` 400, SF Devanagari at its default `opsz`), every other
+//!   axis at its default, rather than the system font's.
+//! - **Natural alignment is the app's**: `start` on a right-to-left paragraph is the left edge in a
+//!   left-to-right app, as `NSTextAlignment.natural` is.
 //!
 //! The breaking, the soft hyphen's hyphen and the ellipsis are the harness's
 //! (`text_parity::layout`), copied here because its shaping step has no hook for variations or
@@ -24,7 +31,7 @@
 use std::{borrow::Cow, collections::HashMap, sync::Arc, time::Instant};
 
 use objc2_core_foundation::{CFIndex, CFLocale, CFRange, CFRetained, CFString};
-use objc2_core_text::CTFont;
+use objc2_core_text::{CTFont, CTFontTableOptions};
 use parley::{
   Alignment as ParleyAlignment,
   AlignmentOptions,
@@ -91,6 +98,106 @@ pub struct Tuning {
   pub whole_clusters: bool,
   /// OpenType features on for the whole text (`chws`, `halt`), by tag.
   pub features: &'static [&'static str],
+  /// A fallback font's `trak` table applies, as letter spacing on its clusters.
+  pub trak: bool,
+  /// `start` is the app's left edge (a left-to-right app) on every paragraph.
+  pub natural_from_app: bool,
+  /// A fallback font's clusters take the fallback font's own instance.
+  pub fallback_instance: bool,
+}
+
+/// A font's normal track from its `trak` table: the tracking per size, in font units.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Trak {
+  sizes: Vec<f32>,
+  values: Vec<f32>,
+  units: f32,
+}
+
+impl Trak {
+  /// The normal track of `font`, where it has one and no `opsz` axis (an optical size axis
+  /// carries its tracking in its outlines).
+  #[must_use]
+  pub fn of(font: &CTFont) -> Option<Self> {
+    if coretext::axes(font).iter().any(|axis| axis.tag == "opsz") {
+      return None;
+    }
+
+    let data =
+      unsafe { font.table(coretext::tag_of("trak"), CTFontTableOptions::NoOptions) }?.to_vec();
+    let head =
+      unsafe { font.table(coretext::tag_of("head"), CTFontTableOptions::NoOptions) }?.to_vec();
+    let units = f32::from(u16::from_be_bytes(head.get(18..20)?.try_into().ok()?));
+    let u16_at = |at: usize| Some(u16::from_be_bytes(data.get(at..at + 2)?.try_into().ok()?));
+    let i16_at = |at: usize| Some(i16::from_be_bytes(data.get(at..at + 2)?.try_into().ok()?));
+    let u32_at = |at: usize| Some(u32::from_be_bytes(data.get(at..at + 4)?.try_into().ok()?));
+    let fixed_at =
+      |at: usize| Some(i32::from_be_bytes(data.get(at..at + 4)?.try_into().ok()?) as f32 / 65536.);
+    let horizontal = usize::from(u16_at(6)?);
+
+    if horizontal == 0 {
+      return None;
+    }
+
+    let tracks = usize::from(u16_at(horizontal)?);
+    let count = usize::from(u16_at(horizontal + 2)?);
+    let size_table = u32_at(horizontal + 4)? as usize;
+    let sizes: Vec<f32> = (0..count)
+      .map(|at| fixed_at(size_table + 4 * at))
+      .collect::<Option<_>>()?;
+
+    for track in 0..tracks {
+      let entry = horizontal + 8 + 8 * track;
+
+      if fixed_at(entry)? != 0. {
+        continue;
+      }
+
+      let offset = usize::from(u16_at(entry + 6)?);
+      let values: Vec<f32> = (0..count)
+        .map(|at| i16_at(offset + 2 * at).map(f32::from))
+        .collect::<Option<_>>()?;
+
+      return Some(Self {
+        sizes,
+        values,
+        units,
+      });
+    }
+
+    None
+  }
+
+  /// The tracking at `size` points, in points: interpolated, and extrapolated, between the
+  /// two nearest sizes in the table, as HarfBuzz does.
+  #[must_use]
+  pub fn at(&self, size: f32) -> f32 {
+    let count = self.sizes.len();
+    let value = match count {
+      0 => 0.,
+      1 => self.values[0],
+      _ => {
+        let mut index = 0;
+
+        while index < count - 1 && self.sizes[index] < size {
+          index += 1;
+        }
+
+        let low = index.saturating_sub(1);
+        let (from, to) = (self.sizes[low], self.sizes[low + 1]);
+        let t = if (to - from).abs() < f32::EPSILON {
+          0.
+        }
+        else {
+          (size - from) / (to - from)
+        };
+
+        (t * self.values[low + 1] + (1. - t) * self.values[low]).round()
+      }
+    };
+
+    value * size / self.units
+  }
 }
 
 /// A registered Core Text font.
@@ -112,6 +219,16 @@ pub struct TunedEngine {
   fallback_cache: HashMap<(String, String, String), Option<String>>,
   /// The Core Text font each registered blob came from, by blob id.
   pub sources: HashMap<u64, CFRetained<CTFont>>,
+  /// The `trak` of each registered family that has one in force.
+  pub traks: HashMap<String, Trak>,
+  /// The `trak` of each registered blob that has one in force, by blob id.
+  pub trak_blobs: HashMap<u64, Trak>,
+  /// A cluster and language each fallback family was found for, to ask Core Text again at
+  /// another size.
+  samples: HashMap<String, (String, String)>,
+  /// Each fallback family's instance by size, weight and slant: every axis at Core Text's
+  /// value or its default.
+  fallback_instances: HashMap<(String, u32, u16, bool), Option<Vec<(String, f64)>>>,
   /// Time spent building sfnts from tables and registering them.
   pub register_ms: f64,
   /// Bytes of sfnt registered.
@@ -155,6 +272,10 @@ impl TunedEngine {
       instances: HashMap::new(),
       fallback_cache: HashMap::new(),
       sources: HashMap::new(),
+      traks: HashMap::new(),
+      trak_blobs: HashMap::new(),
+      samples: HashMap::new(),
+      fallback_instances: HashMap::new(),
       register_ms: 0.,
       registered_bytes: 0,
       rejected: Vec::new(),
@@ -285,6 +406,14 @@ impl TunedEngine {
     }
 
     self.sources.insert(id, retain(font));
+
+    if self.tuning.trak
+      && let Some(trak) = Trak::of(font)
+    {
+      self.traks.insert(family.clone(), trak.clone());
+      self.trak_blobs.insert(id, trak);
+    }
+
     self.log.push((family.clone(), info.postscript, info.path));
     self.registered.insert(
       key,
@@ -355,6 +484,13 @@ impl TunedEngine {
         let font =
           unsafe { CTFont::for_string_with_language(base, &string, range, Some(&language)) };
         let found = self.register(&font, None, None, metrics);
+
+        if let Some(family) = &found {
+          self
+            .samples
+            .entry(family.clone())
+            .or_insert_with(|| (cluster.to_owned(), case.locale.clone()));
+        }
 
         if let Some(family) = &found
           && coretext::info(&font).postscript.contains("AppleColorEmoji")
@@ -656,6 +792,7 @@ impl TunedEngine {
     else {
       Vec::new()
     };
+    let fallback = self.fallback_styles(case, size);
     let mut builder = self.layouts.ranged_builder(
       &mut self.fonts.context,
       &case.text,
@@ -749,6 +886,19 @@ impl TunedEngine {
       builder.set_line_break_override(Some(&whole_clusters));
     }
 
+    for (range, spacing, variations) in fallback {
+      if let Some(spacing) = spacing {
+        builder.push(StyleProperty::LetterSpacing(spacing), range.clone());
+      }
+
+      if let Some(variations) = variations {
+        builder.push(
+          StyleProperty::FontVariations(FontVariations::List(Cow::Owned(variations))),
+          range,
+        );
+      }
+    }
+
     for range in text_parity::emoji::emoji_ranges(&case.text) {
       let mut emoji_first = vec![FontFamilyName::Generic(GenericFamily::Emoji)];
 
@@ -786,26 +936,154 @@ impl TunedEngine {
   #[must_use]
   pub fn tuned_case(&self, case: &Case) -> (Case, Option<Vec<usize>>, Vec<String>) {
     let mut notes = Vec::new();
+    let mut tuned = case.clone();
+
+    if self.tuning.natural_from_app
+      && case.alignment == Alignment::Start
+      && crate::textkit::is_rtl(&case.text, case.direction)
+    {
+      tuned.alignment = Alignment::End;
+      notes.push("start is the app's left edge, as NSTextAlignment.natural is".to_owned());
+    }
 
     if case.hyphenation != Hyphenation::Auto {
-      return (case.clone(), None, notes);
+      return (tuned, None, notes);
     }
 
     if !self.tuning.hyphenate {
       notes.push("automatic hyphenation unsupported: soft hyphens only".to_owned());
 
-      return (case.clone(), None, notes);
+      return (tuned, None, notes);
     }
 
     let points = hyphenation_points(&case.text, &case.locale);
     let (text, back) = with_soft_hyphens(&case.text, &points);
-    let mut tuned = case.clone();
 
     notes.push(format!("{} hyphenation points from CFStringGetHyphenationLocationBeforeIndex, inserted as soft hyphens", points.len()));
     tuned.text = text;
     tuned.hyphenation = Hyphenation::Manual;
 
     (tuned, Some(back), notes)
+  }
+
+  /// The clusters of `case` that fall back to another font, with that font's tracking at
+  /// `size` where it has a `trak` in force and its own instance where it varies.
+  #[expect(clippy::type_complexity, reason = "a spike's private triple")]
+  fn fallback_styles(
+    &mut self,
+    case: &Case,
+    size: f32,
+  ) -> Vec<(
+    std::ops::Range<usize>,
+    Option<f32>,
+    Option<Vec<FontVariation>>,
+  )> {
+    if !self.tuning.trak && !self.tuning.fallback_instance {
+      return Vec::new();
+    }
+
+    let base = platform::system_font(f64::from(size), case.weight, case.italic);
+    let base_name = unsafe { platform::as_ct(&base).post_script_name() }.to_string();
+    let mut out = Vec::new();
+
+    for (at, cluster) in case.text.grapheme_indices(true) {
+      let key = (base_name.clone(), case.locale.clone(), cluster.to_owned());
+      let Some(Some(family)) = self.fallback_cache.get(&key).cloned()
+      else {
+        continue;
+      };
+      let family = &family;
+      let spacing = self
+        .traks
+        .get(family)
+        .filter(|_| self.tuning.trak)
+        .map(|trak| trak.at(size))
+        .filter(|spacing| spacing.abs() > 0.001);
+      let instance = if self.tuning.fallback_instance {
+        self.fallback_instance(family, case, size)
+      }
+      else {
+        None
+      };
+      let variations = instance.map(|instance| {
+        instance
+          .iter()
+          .filter_map(|(tag, value)| {
+            Some(FontVariation::new(
+              Tag::new(tag.as_bytes().try_into().ok()?),
+              *value as f32,
+            ))
+          })
+          .collect()
+      });
+
+      if spacing.is_some() || variations.is_some() {
+        out.push((at..at + cluster.len(), spacing, variations));
+      }
+    }
+
+    out
+  }
+
+  /// The instance Core Text gives `family`'s font when it falls back to it from the system
+  /// font at `size` in `case`'s weight and slant: every axis at Core Text's value or its
+  /// default; `None` where the font does not vary.
+  fn fallback_instance(
+    &mut self,
+    family: &str,
+    case: &Case,
+    size: f32,
+  ) -> Option<Vec<(String, f64)>> {
+    let key = (family.to_owned(), size.to_bits(), case.weight, case.italic);
+
+    if let Some(found) = self.fallback_instances.get(&key) {
+      return found.clone();
+    }
+
+    let found = self
+      .samples
+      .get(family)
+      .cloned()
+      .and_then(|(cluster, locale)| {
+        let base = platform::system_font(f64::from(size), case.weight, case.italic);
+        let string = CFString::from_str(&cluster);
+        let font = unsafe {
+          CTFont::for_string_with_language(
+            platform::as_ct(&base),
+            &string,
+            CFRange {
+              location: 0,
+              length: string.length(),
+            },
+            Some(&CFString::from_str(&locale)),
+          )
+        };
+        let axes = coretext::axes(&font);
+
+        if axes.is_empty() {
+          return None;
+        }
+
+        let variation = coretext::variation(&font);
+
+        Some(
+          axes
+            .iter()
+            .map(|axis| {
+              let value = variation
+                .iter()
+                .find(|(tag, _)| *tag == axis.tag)
+                .map_or(axis.default, |(_, value)| *value);
+
+              (axis.tag.clone(), value)
+            })
+            .collect(),
+        )
+      });
+
+    self.fallback_instances.insert(key, found.clone());
+
+    found
   }
 
   /// Core Text's instance of the system font at `size` for `case`'s weight and slant: each

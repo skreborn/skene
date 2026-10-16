@@ -165,10 +165,8 @@ pub fn run(
         let file = image_path(&variant, *scale);
 
         if vello {
-          let mut pixmap =
-            render::render(&laid.laid, width, height, *scale, RenderOptions::default());
-
-          crate::outline::fill(&mut pixmap, &outlined, width, height, *scale);
+          let pixmap =
+            crate::sets::tuned_vello(&laid.laid, engine, &outlined, (width, height), *scale);
 
           let _ = render::write_png(pixmap, &dir.join(name).join(&file));
         }

@@ -1,11 +1,13 @@
 //! What tuned Parley still lays out differently from TextKit, one cause at a time: CJK
-//! punctuation spacing against OpenType's spacing features, and each run's font instance in
-//! TextKit's lines against the instance Parley is given.
+//! punctuation spacing against OpenType's spacing features, each run's font instance in
+//! TextKit's lines against the instance Parley is given, and each fallback script shaped by
+//! Core Text and by Parley in the same font.
 
 use std::collections::{BTreeMap, BTreeSet};
 
 use objc2_core_foundation::{CFRange, CFString};
 use objc2_core_text::{CTFont, CTFontTableOptions};
+use parley::PositionedLayoutItem;
 use serde_json::json;
 use skrifa::raw::{
   FontData,
@@ -18,9 +20,9 @@ use crate::{
   coretext,
   isolate,
   platform::{as_ct, system_font},
-  probes::{Report, tuned_engine},
+  probes::{Report, ct_line, tuned_engine},
   textkit::{self, Setup},
-  tuned::TunedEngine,
+  tuned::{Trak, TunedEngine},
 };
 
 /// The GPOS and GSUB feature tags of `font`.
@@ -223,4 +225,117 @@ pub fn instances(report: &mut Report) {
   }
 
   report.put("run_instances", json!(rows));
+}
+
+/// Each fallback script in one line, shaped by Core Text (`CTLine` in the system font, the
+/// fallback its own) and by tuned Parley: glyph ids as a multiset and in visual order, advance
+/// totals, and the shaping tables of each font Core Text used.
+pub fn scripts(report: &mut Report) {
+  report
+    .line("\n[shaping in the fallback fonts: Core Text's line against tuned Parley's, same fonts]");
+  report.line("  variant: glyphs ct/parley | ids as multiset | ids in order | advance ct/parley | fonts: tables, trak at 17");
+
+  let corpus = Corpus::builtin();
+  let mut engine = tuned_engine();
+  let base = system_font(17., 400, false);
+  let base = as_ct(&base);
+  let mut rows = Vec::new();
+
+  for id in [
+    "arabic/17/max",
+    "arabic-diacritics/17/max",
+    "bidi-numbers/17/max",
+    "devanagari/17/max",
+    "bengali/17/max",
+    "tamil/17/max",
+    "thai/17/max",
+    "khmer/17/max",
+    "lao/17/max",
+    "burmese/17/max",
+    "emoji-zwj/17/max",
+    "emoji-flags/17/max",
+    "emoji-keycaps/17/max",
+    "emoji-skin-tones/17/max",
+  ] {
+    let Some(variant) = corpus.variant(id)
+    else {
+      continue;
+    };
+    let line = ct_line(&variant.case.text, base, Some(&variant.case.locale));
+    let runs = coretext::runs(&line);
+    let ct: Vec<(u32, f64)> = runs
+      .iter()
+      .flat_map(|run| {
+        run
+          .glyphs
+          .iter()
+          .map(|glyph| (u32::from(glyph.id), glyph.advance))
+      })
+      .collect();
+    let laid = engine.lay_out(&variant);
+    let mut ours: Vec<(u32, f32)> = Vec::new();
+
+    for line in laid.laid.layout.lines() {
+      for item in line.items() {
+        let PositionedLayoutItem::GlyphRun(run) = item
+        else {
+          continue;
+        };
+
+        ours.extend(run.glyphs().map(|glyph| (glyph.id, glyph.advance)));
+      }
+    }
+
+    let mut ct_ids: Vec<u32> = ct.iter().map(|glyph| glyph.0).collect();
+    let mut our_ids: Vec<u32> = ours.iter().map(|glyph| glyph.0).collect();
+    let in_order = ct_ids == our_ids;
+
+    ct_ids.sort_unstable();
+    our_ids.sort_unstable();
+
+    let mut fonts = Vec::new();
+    let mut seen = BTreeSet::new();
+
+    for run in &runs {
+      let info = coretext::info(&run.font);
+
+      if !seen.insert(info.postscript.clone()) {
+        continue;
+      }
+
+      let tables: Vec<String> = coretext::tables(&run.font)
+        .into_iter()
+        .map(coretext::tag_name)
+        .filter(|tag| {
+          ["morx", "GSUB", "GPOS", "kerx", "kern", "trak", "ankr"].contains(&tag.as_str())
+        })
+        .collect();
+      let trak = Trak::of(&run.font).map(|trak| trak.at(17.));
+
+      fonts.push(format!(
+        "{} [{}] trak {}",
+        info.postscript,
+        tables.join(" "),
+        trak.map_or_else(|| "-".to_owned(), |value| format!("{value:.2}"))
+      ));
+    }
+
+    let ct_total: f64 = ct.iter().map(|glyph| glyph.1).sum();
+    let our_total: f32 = ours.iter().map(|glyph| glyph.1).sum();
+
+    report.line(format!(
+      "  {id}: {}/{} | {} | {} | {ct_total:.2}/{our_total:.2} | {}",
+      ct.len(),
+      ours.len(),
+      ct_ids == our_ids,
+      in_order,
+      fonts.join("; ")
+    ));
+    rows.push(json!({
+      "variant": id, "ct_glyphs": ct.len(), "parley_glyphs": ours.len(), "ids_multiset": ct_ids == our_ids,
+      "ids_in_order": in_order, "ct_advance": ct_total, "parley_advance": our_total, "fonts": fonts,
+    }));
+  }
+
+  report.put("script_shaping", json!(rows));
 }

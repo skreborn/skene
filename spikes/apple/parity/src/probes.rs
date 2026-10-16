@@ -1178,6 +1178,9 @@ pub fn tuned_engine() -> TunedEngine {
     primary_metrics: true,
     whole_clusters: true,
     features: &[],
+    trak: true,
+    natural_from_app: cfg!(target_os = "macos"),
+    fallback_instance: true,
   })
 }
 

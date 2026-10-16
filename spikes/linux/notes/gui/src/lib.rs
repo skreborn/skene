@@ -56,11 +56,15 @@ fn composer(notes: Notes) -> impl View {
     .set_spacing(8)
     .set_item_alignment(AxisAlignment::End)
     .add_child(
+      // A field's caption sits before it among its siblings: a column of its own stacks the
+      // caption above the field.
       Flexible::new().set_flexibility(1).set_child(
-        TextField::new("New note")
-          .set_placeholder("Title")
-          .handle_activate(move || notes.add())
-          .bind_text(notes.draft),
+        Column::new().set_spacing(4).add_child(
+          TextField::new("New note")
+            .set_placeholder("Title")
+            .handle_activate(move || notes.add())
+            .bind_text(notes.draft),
+        ),
       ),
     )
     .add_child(Button::new("Add").handle_activate(move || notes.add()))

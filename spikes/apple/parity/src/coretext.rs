@@ -512,14 +512,16 @@ pub fn file_names(info: &FontInfo) -> Option<(String, String, u32)> {
     return found.clone();
   }
 
-  let found = crate::sets::read_file(path).and_then(|data| {
-    let count = match skrifa::raw::FileRef::new(&data) {
+  // The file is mapped, not read: an emoji font is hundreds of megabytes.
+  let found = crate::mapped::Mapped::open(path, None).ok().and_then(|(mapped, _)| {
+    let data = mapped.as_ref();
+    let count = match skrifa::raw::FileRef::new(data) {
       Ok(skrifa::raw::FileRef::Collection(collection)) => collection.len(),
       _ => 1,
     };
     let faces: Vec<(u32, String, String)> = (0..count)
       .filter_map(|index| {
-        text_parity::fonts::names_of(&data, index)
+        text_parity::fonts::names_of(data, index)
           .map(|(family, postscript)| (index, family, postscript))
       })
       .collect();

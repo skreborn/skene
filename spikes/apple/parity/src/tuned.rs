@@ -1096,8 +1096,20 @@ impl TunedEngine {
           (axis.tag.clone(), value)
         })
         .collect();
-      let line = crate::probes::ct_line(&cluster, &font, Some(&locale));
-      let runs = coretext::runs(&line);
+      // Core Text's line of the cluster in the system font, its runs in the fallback font as
+      // TextKit reaches it.
+      let line = crate::probes::ct_line(&cluster, platform::as_ct(&base), Some(&locale));
+      let name = coretext::info(&font).postscript;
+      let all = coretext::runs(&line);
+      let mut runs: Vec<_> = all
+        .iter()
+        .filter(|run| coretext::info(&run.font).postscript == name)
+        .collect();
+
+      if runs.is_empty() {
+        runs = all.iter().collect();
+      }
+
       let ids: Vec<u16> = runs
         .iter()
         .flat_map(|run| run.glyphs.iter().map(|glyph| glyph.id))

@@ -52,7 +52,7 @@ pub use crate::{
   value::{
     Alignment, Arrangement, AxisAlignment, Border, BorderStyle, Corners, Curve, Dimension, Edges,
     Flexibility, Flow, FontFamily, FontStyle, FontWeight, GridLine, GridPlacement, GridTrack,
-    Inset, IntoUnit, Leaf, Property, Shadow, Shadows, Spacing, TextAlignment, TextDecoration,
-    TextDecorationStyle, Tracks, Value, When,
+    Inset, IntoUnit, Leaf, Offset, Property, Ring, Shadow, Shadows, Spacing, TextAlignment,
+    TextDecoration, TextDecorationStyle, Tracks, Value, When,
   },
 };

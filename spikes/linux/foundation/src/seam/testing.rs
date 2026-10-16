@@ -17,8 +17,12 @@ use crate::{
   seam::{
     Realization,
     access::{Checked, Role},
-    content::{Choice, Content, Edit, Pixels, PropValue, Range, Run, TextSelection, writing},
+    content::{Choice, Content, Edit, PropValue, Range, Run, TextSelection, writing},
     node::{NodeKind, NodeSpec},
+    picture::{
+      Paint, PaintOp, Picture,
+      kurbo::{self, Shape as _},
+    },
     report::Modifiers,
     style::ScopeChain,
     tree,
@@ -151,12 +155,16 @@ pub fn sample(content: Content) -> Option<PropValue> {
     Content::Keyboard => text("email"),
     Content::Source => text("/skene/sample.png"),
     Content::Destination => text("https://example.org/"),
-    Content::Pixels => PropValue::Pixels(Pixels {
-      width: 2,
-      height: 1,
-      scale: 1.,
-      data: Rc::from([255, 0, 0, 255, 0, 0, 128, 128].as_slice()),
-    }),
+    Content::Picture => {
+      let mut picture = Picture::new();
+
+      picture.push(PaintOp::Fill {
+        path: kurbo::Rect::new(0., 0., 2., 1.).into_path(0.1),
+        paint: Paint::Color(crate::Color::rgb(0xff0000)),
+      });
+
+      PropValue::Picture(Rc::new(picture))
+    }
     Content::Door(_) => return None,
   })
 }

@@ -850,6 +850,13 @@ fn bubble<R: Realization, E: ?Sized>(
   Answer::Event { handled }
 }
 
+/// The states `id`'s style resolves against now, subscribing the running effect to them.
+#[must_use]
+pub fn resolved_states<R: Realization>(id: NodeId) -> StateSet {
+  with::<R, _>(|tree| tree.scene.get(id).map(|entry| entry.states))
+    .map_or(StateSet::EMPTY, |states| states.get())
+}
+
 /// The states a node is in, as reported.
 #[must_use]
 pub fn states<R: Realization>(id: NodeId) -> StateSet {

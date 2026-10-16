@@ -119,6 +119,7 @@ struct Dirty {
   layout: bool,
   all: bool,
   nodes: Vec<Node>,
+  rects: Vec<Rect>,
   focus: Option<Option<Node>>,
 }
 
@@ -193,6 +194,24 @@ pub fn invalidate_paint(node: &Node) {
   DIRTY.with(|dirty| dirty.borrow_mut().nodes.push(Rc::clone(node)));
 }
 
+/// `rect` (window pixels) needs painting again: where a node painted before it moved or its
+/// look changed.
+pub fn invalidate_rect(rect: Rect) {
+  DIRTY.with(|dirty| dirty.borrow_mut().rects.push(rect));
+}
+
+/// What `node` and its subtree paint now, in window pixels.
+pub fn reach_rect(node: &Node) -> Rect {
+  let at = node.window_rect();
+  let reach = node.reach.get();
+
+  Rect {
+    x: at.x + reach.x,
+    y: at.y + reach.y,
+    ..reach
+  }
+}
+
 /// The whole window needs painting again.
 pub fn invalidate_all() {
   DIRTY.with(|dirty| dirty.borrow_mut().all = true);
@@ -217,7 +236,7 @@ fn wants_frame() -> bool {
   DIRTY.with(|dirty| {
     let dirty = dirty.borrow();
 
-    dirty.prepare || dirty.layout || dirty.all || !dirty.nodes.is_empty()
+    dirty.prepare || dirty.layout || dirty.all || !dirty.nodes.is_empty() || !dirty.rects.is_empty()
   })
 }
 
@@ -470,6 +489,11 @@ impl Shell {
 
     layout::reach(&root);
 
+    if dirty.layout {
+      // Before the paint, so a box that draws at its size draws in the frame that sized it.
+      self.report_sizes(&root);
+    }
+
     let laid_out = started.elapsed();
     let (ox, oy) = self.chrome.origin();
     let (surface_width, surface_height) = self.chrome.surface_size(self.size.0, self.size.1);
@@ -486,7 +510,8 @@ impl Shell {
         .nodes
         .iter()
         .filter(|node| node.is_shown())
-        .map(|node| painted_bounds(node, node.window_rect()))
+        .map(|node| union(painted_bounds(node, node.window_rect()), reach_rect(node)))
+        .chain(dirty.rects.iter().copied())
         .fold(Rect::default(), union)
     };
 
@@ -519,7 +544,6 @@ impl Shell {
     skene_foundation::seam::activity::frame();
 
     if dirty.layout {
-      self.report_sizes(&root);
       self.refresh_hover();
     }
 
@@ -597,9 +621,10 @@ impl Shell {
       }
 
       let frame = node.frame.get();
+      let (dx, dy) = node.offset();
       let rect = Rect {
-        x: origin.0 + frame.x,
-        y: origin.1 + frame.y,
+        x: origin.0 + frame.x + dx,
+        y: origin.1 + frame.y + dy,
         ..frame
       };
       let inside =

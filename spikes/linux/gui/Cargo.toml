@@ -10,7 +10,6 @@ version.workspace = true
 [dependencies]
 skene-foundation.workspace = true
 skene-gui-macros.workspace = true
-vello_cpu.workspace = true
 
 [target.'cfg(skene_platform = "linux")'.dependencies]
 skene-gui-linux.workspace = true

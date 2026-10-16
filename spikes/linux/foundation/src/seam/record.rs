@@ -7,8 +7,8 @@ use crate::{
   seam::style::{CompileCx, KeptValue},
   value::{
     Alignment, Arrangement, AxisAlignment, Border, Corners, Curve, Dimension, Edges, Flexibility,
-    Flow, FontFamily, FontStyle, GridPlacement, Shadows, Spacing, TextAlignment, TextDecoration,
-    TextDecorationStyle, Tracks,
+    Flow, FontFamily, FontStyle, GridPlacement, Offset, Ring, Shadows, Spacing, TextAlignment,
+    TextDecoration, TextDecorationStyle, Tracks,
   },
 };
 
@@ -132,6 +132,10 @@ kinds! {
   Corners(Corners),
   /// A border.
   Border(Border),
+  /// A ring around a box.
+  Ring(Ring),
+  /// A box moved from where it was laid out.
+  Offset(Offset),
   /// Shadows.
   Shadows(Shadows),
   /// A font weight.
@@ -217,6 +221,12 @@ props! {
     Opacity, OPACITY: f32;
     /// Whether content outside the box's edges is cut off.
     Clip, CLIP: bool;
+    /// A line around the box that takes no room (a focus ring).
+    Ring, RING: Ring;
+    /// The ring's color, the box's text color where unset.
+    RingColor, RING_COLOR: Color;
+    /// How far the box and everything inside it are drawn from where they were laid out.
+    Offset, OFFSET: Offset;
   }
   Run {
     /// The text's color.
@@ -243,6 +253,12 @@ props! {
     TextAlignment, TEXT_ALIGNMENT: TextAlignment;
     /// The most lines a paragraph shows, the rest elided.
     MaxLines, MAX_LINES: u32;
+    /// A text entry's caret, the text's color where unset.
+    CaretColor, CARET_COLOR: Color;
+    /// The fill behind a text entry's selection, the platform's where unset.
+    SelectionColor, SELECTION_COLOR: Color;
+    /// An empty text entry's placeholder, the platform's muted ink where unset.
+    PlaceholderColor, PLACEHOLDER_COLOR: Color;
   }
   Layout {
     /// The width.

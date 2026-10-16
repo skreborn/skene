@@ -10,7 +10,7 @@ use skene_foundation::{
     style::{CompiledStyle, KeptLeaf},
   },
   text::{LineHeight, PaintStyle, ParagraphStyle, RunStyle},
-  value::{Border, Shadows},
+  value::{Border, Offset, Ring, Shadows},
 };
 
 /// A box's look, resolved.
@@ -30,6 +30,12 @@ pub struct Look {
   pub opacity: f32,
   /// Whether its content is cut off at its edges.
   pub clip: bool,
+  /// The line around it that takes no room.
+  pub ring: Ring,
+  /// The ring's color, the text color where unset.
+  pub ring_color: Option<Color>,
+  /// How far it and its subtree are drawn from where they were laid out.
+  pub offset: Offset,
   /// The transitions its look animates through.
   pub transitions: Vec<Transition>,
 }
@@ -44,6 +50,9 @@ impl Default for Look {
       shadows: None,
       opacity: 1.,
       clip: false,
+      ring: Ring::NONE,
+      ring_color: None,
+      offset: Offset::ZERO,
       transitions: Vec::new(),
     }
   }
@@ -53,6 +62,11 @@ impl Look {
   /// The width of its border line.
   pub fn border_width(&self) -> f32 {
     self.border.map_or(0., |border| border.width)
+  }
+
+  /// How far it is drawn from where it was laid out at `width` by `height`, in pixels.
+  pub const fn offset_at(&self, width: f32, height: f32) -> (f32, f32) {
+    self.offset.in_pixels(width, height)
   }
 
   /// Whether it draws nothing of its own.
@@ -93,6 +107,12 @@ pub struct RunProps {
   pub alignment: Option<TextAlignment>,
   /// The most lines a paragraph shows.
   pub max_lines: Option<u32>,
+  /// A text entry's caret.
+  pub caret_color: Option<Color>,
+  /// The fill behind a text entry's selection.
+  pub selection_color: Option<Color>,
+  /// An empty text entry's placeholder.
+  pub placeholder_color: Option<Color>,
 }
 
 impl RunProps {
@@ -112,6 +132,9 @@ impl RunProps {
       decoration_color: self.decoration_color.or(inherited.decoration_color),
       alignment: self.alignment.or(inherited.alignment),
       max_lines: self.max_lines.or(inherited.max_lines),
+      caret_color: self.caret_color.or(inherited.caret_color),
+      selection_color: self.selection_color.or(inherited.selection_color),
+      placeholder_color: self.placeholder_color.or(inherited.placeholder_color),
     }
   }
 
@@ -132,6 +155,9 @@ impl RunProps {
       (Prop::DecorationColor, R::Color(v)) => self.decoration_color = Some(*v),
       (Prop::TextAlignment, R::TextAlignment(v)) => self.alignment = Some(*v),
       (Prop::MaxLines, R::Count(v)) => self.max_lines = Some(*v),
+      (Prop::CaretColor, R::Color(v)) => self.caret_color = Some(*v),
+      (Prop::SelectionColor, R::Color(v)) => self.selection_color = Some(*v),
+      (Prop::PlaceholderColor, R::Color(v)) => self.placeholder_color = Some(*v),
       _ => {}
     }
   }
@@ -194,6 +220,9 @@ pub fn resolve(style: &CompiledStyle) -> (Look, RunProps) {
       (Prop::Shadow, R::Shadows(v)) => look.shadows = Some(v.clone()),
       (Prop::Opacity, R::Number(v)) => look.opacity = v.clamp(0., 1.),
       (Prop::Clip, R::Flag(v)) => look.clip = *v,
+      (Prop::Ring, R::Ring(v)) => look.ring = *v,
+      (Prop::RingColor, R::Color(v)) => look.ring_color = Some(*v),
+      (Prop::Offset, R::Offset(v)) => look.offset = *v,
       _ => run.put(*prop, resolved),
     }
   }

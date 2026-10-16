@@ -811,6 +811,117 @@ impl Border {
 
 impl Property for Border {}
 
+/// A line drawn around a box, outside its edges by its offset (inside where the offset is
+/// negative), its corners grown by the offset: it takes no room and is never hit, as a CSS
+/// outline. A focus ring is one.
+#[derive(Clone, Copy, PartialEq, Debug, Default)]
+pub struct Ring {
+  /// The line's width, in pixels.
+  pub width: f32,
+  /// How far beyond the box's edges the line starts, in pixels; inward where negative.
+  pub offset: f32,
+}
+
+impl Ring {
+  /// No ring.
+  pub const NONE: Self = Self {
+    width: 0.,
+    offset: 0.,
+  };
+
+  /// A ring `width` pixels wide, against the box's edges.
+  #[inline(always)]
+  pub fn new(width: impl IntoUnit<f32>) -> Self {
+    Self {
+      width: width.into_unit(),
+      offset: 0.,
+    }
+  }
+
+  /// This ring, `offset` pixels beyond the box's edges (inward where negative).
+  #[inline(always)]
+  pub fn set_offset(mut self, offset: impl IntoUnit<f32>) -> Self {
+    self.offset = offset.into_unit();
+
+    self
+  }
+
+  /// Whether it draws anything.
+  #[inline(always)]
+  #[must_use]
+  pub const fn is_visible(self) -> bool {
+    self.width > 0.
+  }
+
+  /// How far beyond the box's edges the ring reaches, in pixels.
+  #[inline(always)]
+  #[must_use]
+  pub const fn reach(self) -> f32 {
+    if self.is_visible() {
+      (self.offset + self.width).max(0.)
+    } else {
+      0.
+    }
+  }
+}
+
+impl Property for Ring {}
+
+/// A box drawn moved from where it was laid out, with everything inside it: it takes no room,
+/// and where it is hit and found moves with it, as a CSS translation.
+#[derive(Clone, Copy, PartialEq, Debug, Default)]
+pub struct Offset {
+  /// How far right it moves: pixels, or a fraction of its own width where `of_size`.
+  pub x: f32,
+  /// How far down it moves: pixels, or a fraction of its own height where `of_size`.
+  pub y: f32,
+  /// Whether `x` and `y` are fractions of the box's own size.
+  pub of_size: bool,
+}
+
+impl Offset {
+  /// Not moved.
+  pub const ZERO: Self = Self {
+    x: 0.,
+    y: 0.,
+    of_size: false,
+  };
+
+  /// Moved `x` pixels right and `y` pixels down.
+  #[inline(always)]
+  pub fn new(x: impl IntoUnit<f32>, y: impl IntoUnit<f32>) -> Self {
+    Self {
+      x: x.into_unit(),
+      y: y.into_unit(),
+      of_size: false,
+    }
+  }
+
+  /// Moved by `x` of its own width right and `y` of its own height down (`1.` its whole
+  /// width).
+  #[inline(always)]
+  pub const fn of_size(x: f32, y: f32) -> Self {
+    Self {
+      x,
+      y,
+      of_size: true,
+    }
+  }
+
+  /// How far a box `width` by `height` pixels moves, in pixels.
+  #[inline(always)]
+  #[must_use]
+  pub const fn in_pixels(self, width: f32, height: f32) -> (f32, f32) {
+    if self.of_size {
+      (self.x * width, self.y * height)
+    } else {
+      (self.x, self.y)
+    }
+  }
+}
+
+impl Property for Offset {}
+
 /// One shadow a box casts, or casts inside itself.
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Shadow {

@@ -73,7 +73,7 @@ pub enum NodeKind {
   Segment,
   /// A toolkit widget a library handed in through the native door.
   Native,
-  /// A box drawn by the app: its canvas rendered to pixels ([`Content::Pixels`]).
+  /// A box drawn by the app: its picture replayed in the scene's order ([`Content::Picture`]).
   Painted,
 }
 
@@ -117,7 +117,7 @@ impl NodeKind {
       Self::Layout(_) | Self::Scope | Self::Segment | Self::Native => &[],
       Self::Text => &[C::Text, C::Runs],
       Self::Image => &[C::Source],
-      Self::Painted => &[C::Pixels],
+      Self::Painted => &[C::Picture],
       Self::Control(control) => match control {
         ControlKind::Switch => &[C::On, C::Enabled],
         ControlKind::Checkbox => &[C::On, C::Mixed, C::Caption, C::Enabled],

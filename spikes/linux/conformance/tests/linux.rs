@@ -45,5 +45,6 @@ scenarios!(
   a_width_condition_follows_the_window,
   a_library_view_is_controlled,
   a_painted_view_is_its_description,
+  a_painted_view_draws_in_its_first_frame,
   every_page_passes_the_audit,
 );

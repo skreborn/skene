@@ -73,6 +73,10 @@ pub fn scenarios<D: Driver>() -> Vec<Scenario<D>> {
       "a_painted_view_is_its_description",
       painted_description::<D>,
     ),
+    (
+      "a_painted_view_draws_in_its_first_frame",
+      painted_draws::<D>,
+    ),
     ("every_page_passes_the_audit", audit::<D>),
   ]
 }
@@ -510,6 +514,33 @@ fn painted_description<D: Driver>(driver: &mut D) {
   assert_eq!(
     images, 1,
     "an undescribed picture is decoration a reader skips"
+  );
+}
+
+/// The color at `x`, `y` of the window drawn, as `0xrrggbb`.
+fn pixel<D: Driver>(driver: &mut D, x: f32, y: f32) -> u32 {
+  let shot = driver.screenshot();
+  let at = (y as usize * shot.width as usize + x as usize) * 4;
+
+  u32::from_be_bytes([0, shot.rgba[at], shot.rgba[at + 1], shot.rgba[at + 2]])
+}
+
+fn painted_draws<D: Driver>(driver: &mut D) {
+  driver.open("painted");
+
+  let chart = role(driver, Role::Image, "Sales by half");
+  let bounds = driver.read(&chart).bounds;
+  let middle = bounds.y + bounds.height / 2.;
+
+  assert_eq!(
+    pixel(driver, bounds.x + bounds.width / 4., middle),
+    0xff0000,
+    "the left half is red"
+  );
+  assert_eq!(
+    pixel(driver, bounds.x + bounds.width * 3. / 4., middle),
+    0x0000ff,
+    "the right half is blue"
   );
 }
 

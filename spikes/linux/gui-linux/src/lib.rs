@@ -118,6 +118,12 @@ impl Realization for Linux {
 
   fn apply_style(node: &Node, style: &CompiledStyle) {
     let (look, run) = look::resolve(style);
+
+    if node.is_shown() {
+      // What it painted before, which its new look may no longer cover.
+      shell::invalidate_rect(shell::reach_rect(node));
+    }
+
     let relayout = node.look.borrow().border_width() != look.border_width();
     let restyled = *node.run.borrow() != run;
 

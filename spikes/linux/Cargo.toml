@@ -38,8 +38,10 @@ unexpected_cfgs = { level = "warn", check-cfg = [
 ] }
 
 [workspace.dependencies]
+kurbo = { default-features = false, features = ["std"], version = "=0.13.1" }
 parley = { default-features = false, features = ["complex-scripts", "std", "system"], version = "=0.12.0" }
 parley_emoji = "=0.12.0"
+peniko = { default-features = false, features = ["std"], version = "=0.6.1" }
 skene-foundation = { path = "foundation" }
 skene-gui = { path = "gui" }
 skene-gui-linux = { path = "gui-linux" }

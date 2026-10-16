@@ -7,8 +7,8 @@ use std::{hash::Hash, rc::Rc};
 
 use skene_foundation::{
   Alignment, Arrangement, AxisAlignment, Border, Color, Corners, Definitions, Dimension, Effect,
-  Flow, FontFamily, FontStyle, FontWeight, Inset, Shadows, Signal, Spacing, TextAlignment,
-  TextDecoration, TextDecorationStyle, TokenSet, Tracks,
+  Flow, FontFamily, FontStyle, FontWeight, Inset, Offset, Ring, Shadows, Signal, Spacing,
+  TextAlignment, TextDecoration, TextDecorationStyle, TokenSet, Tracks,
   seam::{
     access::{AccessFacts, Role, Shortcut},
     content::contents,
@@ -69,6 +69,14 @@ impl Container {
     set_shadow, derive_shadow: SHADOW, Shadows;
     /// The box's opacity, 0 to 1.
     set_opacity, derive_opacity: OPACITY, f32;
+    /// A line around the box that takes no room and is never hit, as a focus ring:
+    /// `Ring::NONE.when(State::FocusVisible, Ring::new(2))`.
+    set_ring, derive_ring: RING, Ring;
+    /// The ring's color, the box's text color where unset.
+    set_ring_color, derive_ring_color: RING_COLOR, Color;
+    /// How far the box and its child are drawn from where they were laid out, taking no room:
+    /// in pixels, or in fractions of the box's own size (`Offset::of_size(1., 0.)`).
+    set_offset, derive_offset: OFFSET, Offset;
     /// The width.
     set_width, derive_width: WIDTH, Dimension;
     /// The height.
@@ -100,6 +108,13 @@ impl Container {
     set_line_height, derive_line_height: LINE_HEIGHT, f32;
     /// Extra space between letters inside, in pixels, which every text beneath inherits.
     set_letter_spacing, derive_letter_spacing: LETTER_SPACING, f32;
+    /// The caret of the text entries inside, which every entry beneath inherits.
+    set_caret_color, derive_caret_color: CARET_COLOR, Color;
+    /// The fill behind the selection of the text entries inside, which every entry beneath
+    /// inherits.
+    set_selection_color, derive_selection_color: SELECTION_COLOR, Color;
+    /// The placeholder of the empty text entries inside, which every entry beneath inherits.
+    set_placeholder_color, derive_placeholder_color: PLACEHOLDER_COLOR, Color;
   }
 
   /// Animates changes of a property of the box's own look as `transition` says

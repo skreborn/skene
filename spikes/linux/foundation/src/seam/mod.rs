@@ -42,6 +42,7 @@ pub mod activity;
 pub mod content;
 pub mod door;
 pub mod node;
+pub mod picture;
 pub mod realization;
 pub mod record;
 pub mod report;

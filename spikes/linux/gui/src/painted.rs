@@ -1,24 +1,29 @@
-//! A box the app draws: a vello scene on the CPU, in device pixels, redrawn whenever what its
-//! closure read changes or the box is laid out at another size.
+//! A box the app draws: a recording of kurbo's shapes and peniko's brushes the platform replays
+//! in the scene's order, recorded again whenever what its closure read changes or the box is
+//! laid out at another size.
 
 use std::rc::Rc;
 
+pub use skene_foundation::seam::picture::Paint;
+/// The geometry a [`Canvas`] draws with (kurbo).
+pub use skene_foundation::seam::picture::kurbo as shapes;
+/// The paints a [`Canvas`] draws with (peniko), beside the node's own ink ([`Paint::Ink`]).
+pub use skene_foundation::seam::picture::peniko as paints;
 use skene_foundation::{
-  Color, Dimension, Signal,
+  Color, Dimension, Memo, Signal, StateSet,
   seam::{
     access::Role,
-    content::{Pixels, contents},
+    content::contents,
     node::{NodeKind, NodeSpec},
+    picture::{
+      PaintOp, Picture,
+      kurbo::{Affine, Shape, Stroke},
+    },
     record::Record,
     report::Size,
     tree,
   },
 };
-/// The geometry a [`Canvas`] draws with (vello's `kurbo`).
-pub use vello_cpu::kurbo as shapes;
-/// The paints a [`Canvas`] draws with (vello's `peniko`).
-pub use vello_cpu::peniko as paints;
-use vello_cpu::{Pixmap, RenderContext, Resources, kurbo};
 
 use crate::{
   Active,
@@ -26,13 +31,18 @@ use crate::{
   view::{Cx, Node, NodeHandle, View, finish, handle, properties},
 };
 
-/// What a [`Painted`] box's closure draws on: a vello scene the size of the box, in pixels
-/// (scaled to the device's pixels), its origin the box's top leading corner.
+/// How finely a curved shape is flattened into the path recorded, in pixels.
+const TOLERANCE: f64 = 0.1;
+
+/// What a [`Painted`] box's closure draws on: its size and its states, and a recording of
+/// kurbo's shapes and peniko's brushes in pixels, its origin the box's top leading corner,
+/// which the platform replays in the scene's order at the device's scale.
 pub struct Canvas<'a> {
-  context: &'a mut RenderContext,
+  picture: &'a mut Picture,
   width: f32,
   height: f32,
   scale: f64,
+  states: &'a dyn Fn() -> StateSet,
 }
 
 impl Canvas<'_> {
@@ -54,78 +64,62 @@ impl Canvas<'_> {
     self.scale
   }
 
-  /// Fills `shape` with `color`.
-  pub fn fill(&mut self, shape: &impl kurbo::Shape, color: Color) {
-    self.context.set_paint(paint(color));
-    self.context.fill_path(&shape.to_path(0.1));
+  /// The box's states, its enclosing control's included (a checkbox's mark reads `Checked`):
+  /// reading them records the picture again when they change.
+  #[must_use]
+  pub fn states(&self) -> StateSet {
+    (self.states)()
   }
 
-  /// Strokes `shape`'s outline `width` pixels wide with `color`.
-  pub fn stroke(&mut self, shape: &impl kurbo::Shape, width: f64, color: Color) {
-    self.context.set_paint(paint(color));
-    self.context.set_stroke(kurbo::Stroke::new(width));
-    self.context.stroke_path(&shape.to_path(0.1));
+  /// Fills `shape` with `paint`: a color, a brush, or the box's ink ([`Paint::Ink`]).
+  pub fn fill(&mut self, shape: &impl Shape, paint: impl Into<Paint>) {
+    self.picture.push(PaintOp::Fill {
+      path: shape.to_path(TOLERANCE),
+      paint: paint.into(),
+    });
   }
 
-  /// The whole of vello's CPU renderer, drawing in pixels: layers, gradients, images.
-  pub const fn context(&mut self) -> &mut RenderContext {
-    self.context
-  }
-}
-
-const fn paint(color: Color) -> vello_cpu::color::AlphaColor<vello_cpu::color::Srgb> {
-  vello_cpu::color::AlphaColor::from_rgba8(color.red, color.green, color.blue, color.alpha)
-}
-
-/// Renders `paint` at `size` into device pixels.
-fn render(size: Size, paint: &dyn Fn(&mut Canvas<'_>)) -> Pixels {
-  let device = |length: f32| {
-    (f64::from(length) * size.scale)
-      .ceil()
-      .clamp(0., f64::from(u16::MAX)) as u16
-  };
-  let (width, height) = (device(size.width), device(size.height));
-
-  if width == 0 || height == 0 {
-    return Pixels {
-      width: 0,
-      height: 0,
-      scale: size.scale,
-      data: Rc::from([].as_slice()),
-    };
+  /// Strokes `shape`'s outline `width` pixels wide with `paint`.
+  pub fn stroke(&mut self, shape: &impl Shape, width: f64, paint: impl Into<Paint>) {
+    self.picture.push(PaintOp::Stroke {
+      path: shape.to_path(TOLERANCE),
+      stroke: Stroke::new(width),
+      paint: paint.into(),
+    });
   }
 
-  let mut context = RenderContext::new(width, height);
+  /// Cuts what is drawn next to `shape`, until the matching [`Canvas::pop`].
+  pub fn push_clip(&mut self, shape: &impl Shape) {
+    self
+      .picture
+      .push(PaintOp::PushClip(shape.to_path(TOLERANCE)));
+  }
 
-  context.set_transform(kurbo::Affine::scale(size.scale));
+  /// Draws what is drawn next at `opacity` (0 to 1), until the matching [`Canvas::pop`].
+  pub fn push_opacity(&mut self, opacity: f32) {
+    self
+      .picture
+      .push(PaintOp::PushOpacity(opacity.clamp(0., 1.)));
+  }
 
-  paint(&mut Canvas {
-    context: &mut context,
-    width: size.width,
-    height: size.height,
-    scale: size.scale,
-  });
+  /// Ends the innermost [`Canvas::push_clip`] or [`Canvas::push_opacity`].
+  pub fn pop(&mut self) {
+    self.picture.push(PaintOp::Pop);
+  }
 
-  context.flush();
-
-  let mut pixmap = Pixmap::new(width, height);
-
-  context.render(&mut pixmap, &mut Resources::new());
-
-  Pixels {
-    width: u32::from(width),
-    height: u32::from(height),
-    scale: size.scale,
-    data: Rc::from(pixmap.data_as_u8_slice()),
+  /// Draws what is drawn next under `transform`, from the box's own pixels.
+  pub fn set_transform(&mut self, transform: Affine) {
+    self.picture.push(PaintOp::Transform(transform));
   }
 }
 
-/// A box the app draws on a [`Canvas`]: vello's CPU renderer, in device pixels, composited by
-/// the platform into the window's frame.
+/// A box the app draws on a [`Canvas`]: kurbo's shapes and peniko's brushes, recorded and
+/// replayed by the platform in the scene's order, beneath what is drawn after it.
 ///
-/// The closure runs again whenever a signal it reads changes and whenever the box is laid out
-/// at another size or scale. The box is as large as its sizing makes it: give it a width and a
-/// height, or a weight in its layout. Without a description it is decoration a reader skips.
+/// The closure runs again whenever a signal it reads changes, whenever the states it read
+/// change, and whenever the box is laid out at another size. The box is as large as its
+/// sizing makes it: give it a width and a height, or a weight in its layout. Without a
+/// description it is decoration a reader skips.
 ///
 /// ```
 /// use skene_gui::{painted::shapes::Circle, prelude::*};
@@ -138,7 +132,7 @@ fn render(size: Size, paint: &dyn Fn(&mut Canvas<'_>)) -> Pixels {
 ///   canvas.fill(&Circle::new((radius, radius), radius), Color::rgb(0x34c759));
 ///   canvas.fill(
 ///     &Circle::new((radius, radius), radius * f64::from(level.get())),
-///     Color::WHITE,
+///     Paint::Ink,
 ///   );
 /// })
 /// .set_width(48)
@@ -177,6 +171,8 @@ impl Painted {
     set_max_width, derive_max_width: MAX_WIDTH, Dimension;
     /// The greatest height.
     set_max_height, derive_max_height: MAX_HEIGHT, Dimension;
+    /// The ink [`Paint::Ink`] draws in, inherited where unset.
+    set_color, derive_color: COLOR, Color;
   }
 
   handle!();
@@ -210,12 +206,31 @@ impl View for Painted {
 
     let id = tree::create::<Active>(spec, &cx.scope);
     let size = Signal::new(None::<Size>);
+    let laid = Memo::new(move || {
+      size
+        .get()
+        .map(|size| (size.width.to_bits(), size.height.to_bits()))
+    });
     let paint = self.paint;
 
     finish(id, self.record, cx, self.handle.as_ref());
     tree::handle_size::<Active>(id, move |laid_out| size.set(Some(laid_out)));
-    tree::bind::<Active, _>(id, contents::PIXELS, move || {
-      render(size.get().unwrap_or_default(), &*paint)
+    tree::bind::<Active, _>(id, contents::PICTURE, move || {
+      let mut picture = Picture::new();
+
+      if let Some((width, height)) = laid.get() {
+        let scale = skene_foundation::untrack(|| size.get().map_or(1., |size| size.scale));
+
+        paint(&mut Canvas {
+          picture: &mut picture,
+          width: f32::from_bits(width),
+          height: f32::from_bits(height),
+          scale,
+          states: &|| tree::resolved_states::<Active>(id),
+        });
+      }
+
+      Rc::new(picture)
     });
 
     self.access.apply(id);

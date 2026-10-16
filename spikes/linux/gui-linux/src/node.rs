@@ -8,7 +8,7 @@ use std::{
 };
 
 use skene_foundation::{
-  NodeId, StateSet,
+  Color, NodeId, StateSet,
   layout::{Axis, ContainerLayout, Measurement, Rect, ResolvedLayout},
   seam::{
     access::AccessFacts,
@@ -85,6 +85,9 @@ pub struct Drawn {
   pub composing: Cell<bool>,
   /// Whether a write of its text waits for an operation on its entry to end.
   pub edit_pending: Cell<bool>,
+  /// The text color it inherits, as last prepared: what its border, its ring and a painted
+  /// node's ink default to.
+  pub ink: Cell<Color>,
 }
 
 impl Drawn {
@@ -118,6 +121,7 @@ impl Drawn {
       entry: RefCell::new(None),
       composing: Cell::new(false),
       edit_pending: Cell::new(false),
+      ink: Cell::new(Color::BLACK),
     })
   }
 
@@ -243,17 +247,29 @@ impl Drawn {
       .unwrap_or_default()
   }
 
-  /// Its frame in window coordinates: the frames of its ancestors added, their scroll
-  /// offsets taken off.
+  /// How far it is drawn from where it was laid out, in pixels (its style's offset).
+  pub fn offset(&self) -> (f32, f32) {
+    let frame = self.frame.get();
+
+    self.look.borrow().offset_at(frame.width, frame.height)
+  }
+
+  /// Its frame in window coordinates, where it is drawn: the frames and offsets of its
+  /// ancestors and its own added, their scroll offsets taken off.
   pub fn window_rect(self: &Rc<Self>) -> Rect {
     let mut rect = self.frame.get();
+    let (dx, dy) = self.offset();
+
+    rect.x += dx;
+    rect.y += dy;
 
     for ancestor in self.ancestors() {
       let frame = ancestor.frame.get();
       let (sx, sy) = ancestor.scroll.get();
+      let (dx, dy) = ancestor.offset();
 
-      rect.x += frame.x - sx;
-      rect.y += frame.y - sy;
+      rect.x += frame.x + dx - sx;
+      rect.y += frame.y + dy - sy;
     }
 
     rect

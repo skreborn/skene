@@ -301,8 +301,9 @@ pub fn layout(root: &Node, origin: (f32, f32), width: f32, height: f32) {
   lay_children(root, frame);
 }
 
-/// Computes what each node under `root` and its subtree paint, relative to its frame: its own
-/// box and overhang, and its children's where it does not clip them.
+/// Computes what each node under `root` and its subtree paint, relative to where it is drawn
+/// (its frame moved by its offset): its own box and overhang, and its children's where it does
+/// not clip them.
 pub fn reach(root: &Node) {
   fn go(node: &Node) -> Rect {
     let frame = node.frame.get();
@@ -326,14 +327,15 @@ pub fn reach(root: &Node) {
       }
 
       let child_frame = child.frame.get();
+      let (dx, dy) = child.offset();
       let child_reach = go(&child);
 
       if !clips {
         reach = crate::paint::union(
           reach,
           Rect {
-            x: child_reach.x + child_frame.x - sx,
-            y: child_reach.y + child_frame.y - sy,
+            x: child_reach.x + child_frame.x + dx - sx,
+            y: child_reach.y + child_frame.y + dy - sy,
             ..child_reach
           },
         );
@@ -357,6 +359,9 @@ pub fn prepare(root: &Node, palette: &Palette) -> Change {
     }
 
     let props = node.run.borrow().over(inherited);
+
+    node.ink.set(props.color.unwrap_or(palette.ink));
+
     let built: Option<(AttributedText, _, Vec<_>)> = match node.spec.kind {
       NodeKind::Text => {
         let contents = node.contents.borrow();

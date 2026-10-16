@@ -7,9 +7,12 @@ use std::rc::Rc;
 use skene_foundation::{
   Color, Corners,
   layout::Rect,
-  seam::node::{LayoutKind, NodeKind},
+  seam::{
+    node::{LayoutKind, NodeKind},
+    picture::{Paint, PaintOp, Picture, peniko},
+  },
   text::Laid as _,
-  value::BorderStyle,
+  value::{BorderStyle, Ring},
 };
 use skene_parley::{ParleyLaid, render::MaskPainter};
 use vello_cpu::{
@@ -243,6 +246,106 @@ impl Canvas<'_> {
     });
   }
 
+  /// Replays `picture` with its origin at `rect`'s top left (window pixels), cut to `rect`,
+  /// [`Paint::Ink`] drawing in `ink`.
+  pub fn picture(&mut self, picture: &Picture, rect: Rect, ink: Color) {
+    if picture.is_empty() || rect.width <= 0. || rect.height <= 0. {
+      return;
+    }
+
+    let previous = self.push_clip(rect, Corners::all(0.));
+    let base = self.to_device() * Affine::translate((f64::from(rect.x), f64::from(rect.y)));
+    let mut transform = base;
+    let mut depth = 0_u32;
+    let brush = |paint: &Paint| -> Option<vello_cpu::PaintType> {
+      Some(match paint {
+        Paint::Ink => vello_cpu::PaintType::Solid(color(ink)),
+        Paint::Color(fill) => vello_cpu::PaintType::Solid(color(*fill)),
+        Paint::Brush(peniko::Brush::Solid(fill)) => vello_cpu::PaintType::Solid(*fill),
+        Paint::Brush(peniko::Brush::Gradient(gradient)) => {
+          vello_cpu::PaintType::Gradient(gradient.clone())
+        }
+        Paint::Brush(peniko::Brush::Image(_)) => return None,
+      })
+    };
+
+    for op in picture.ops() {
+      match op {
+        PaintOp::Transform(op) => transform = base * *op,
+        PaintOp::Fill { path, paint } => {
+          if let Some(paint) = brush(paint) {
+            self.ctx.set_transform(transform);
+            self.ctx.set_paint(paint);
+            self.ctx.fill_path(path);
+          }
+        }
+        PaintOp::Stroke {
+          path,
+          stroke,
+          paint,
+        } => {
+          if let Some(paint) = brush(paint) {
+            self.ctx.set_transform(transform);
+            self.ctx.set_paint(paint);
+            self.ctx.set_stroke(stroke.clone());
+            self.ctx.stroke_path(path);
+          }
+        }
+        PaintOp::PushClip(path) => {
+          self.ctx.set_transform(transform);
+          self.ctx.push_clip_layer(path);
+          depth += 1;
+        }
+        PaintOp::PushOpacity(opacity) => {
+          self.ctx.push_opacity_layer(*opacity);
+          depth += 1;
+        }
+        PaintOp::Pop if depth > 0 => {
+          self.ctx.pop_layer();
+          depth -= 1;
+        }
+        PaintOp::Pop => {}
+      }
+    }
+
+    for _ in 0..depth {
+      self.ctx.pop_layer();
+    }
+
+    self.ctx.pop_layer();
+    self.clip = previous;
+  }
+
+  /// Draws `ring` around the box at `rect` with `corners`, in `ink`.
+  pub fn ring(&mut self, rect: Rect, corners: Corners, ring: Ring, ink: Color) {
+    if !ring.is_visible() {
+      return;
+    }
+
+    let grow = ring.offset + ring.width;
+    let grown = Rect {
+      x: rect.x - grow,
+      y: rect.y - grow,
+      width: rect.width + grow * 2.,
+      height: rect.height + grow * 2.,
+    };
+    let round = |radius: f32| {
+      if radius > 0. {
+        (radius + grow).max(0.)
+      } else {
+        0.
+      }
+    };
+    let corners = Corners {
+      top_leading: round(corners.top_leading),
+      top_trailing: round(corners.top_trailing),
+      bottom_trailing: round(corners.bottom_trailing),
+      bottom_leading: round(corners.bottom_leading),
+    };
+
+    self.border(grown, corners, ring.width, BorderStyle::Solid, ink);
+  }
+
   /// Runs `body` with what it draws cut to `rect` (window pixels).
   pub fn clipped(&mut self, rect: Rect, body: impl FnOnce(&mut Self)) {
     let previous = self.push_clip(rect, Corners::all(0.));
@@ -270,7 +373,8 @@ impl Canvas<'_> {
   }
 }
 
-/// How much farther than its box a node may paint: its outer shadows and its focus ring.
+/// How much farther than its box a node may paint: its outer shadows, its ring, and the ring
+/// the realization draws around a focused link run or control.
 fn overhang(node: &Node) -> f32 {
   let look = node.look.borrow();
   let shadows = look.shadows.as_ref().map_or(0., |shadows| {
@@ -282,7 +386,7 @@ fn overhang(node: &Node) -> f32 {
       .fold(0., f32::max)
   });
 
-  shadows.max(4.)
+  shadows.max(look.ring.reach()).max(4.)
 }
 
 /// What a node paints beyond its box, at its window rectangle `rect`.
@@ -319,9 +423,10 @@ fn paint_node(
   }
 
   let frame = node.frame.get();
+  let (dx, dy) = node.offset();
   let rect = Rect {
-    x: origin.0 + frame.x,
-    y: origin.1 + frame.y,
+    x: origin.0 + frame.x + dx,
+    y: origin.1 + frame.y + dy,
     width: frame.width,
     height: frame.height,
   };
@@ -425,6 +530,11 @@ fn paint_node(
       }
     }
     NodeKind::Control(kind) => node.paint_control(kind, canvas, rect, marks),
+    NodeKind::Painted => {
+      if let Some(picture) = node.contents.borrow().picture.clone() {
+        canvas.picture(&picture, rect, node.ink.get());
+      }
+    }
     _ => {}
   }
 
@@ -444,13 +554,17 @@ fn paint_node(
   }
 
   if let Some(border) = look.border {
-    let ink = look
-      .border_color
-      .or_else(|| node.run.borrow().color)
-      .unwrap_or(canvas.palette.ink);
+    let ink = look.border_color.unwrap_or_else(|| node.ink.get());
 
     canvas.border(rect, look.corners, border.width, border.style, ink);
   }
+
+  canvas.ring(
+    rect,
+    look.corners,
+    look.ring,
+    look.ring_color.unwrap_or_else(|| node.ink.get()),
+  );
 
   if marks
     .focus

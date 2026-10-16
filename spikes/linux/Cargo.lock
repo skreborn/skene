@@ -1482,6 +1482,8 @@ dependencies = [
 name = "skene-foundation"
 version = "0.0.0"
 dependencies = [
+ "kurbo",
+ "peniko",
  "taffy",
  "unicode-segmentation",
 ]
@@ -1493,7 +1495,6 @@ dependencies = [
  "skene-foundation",
  "skene-gui-linux",
  "skene-gui-macros",
- "vello_cpu",
 ]
 
 [[package]]

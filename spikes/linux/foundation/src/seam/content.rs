@@ -13,6 +13,7 @@ use crate::{
   NodeId,
   seam::{
     Realization,
+    picture::Picture,
     record::{Prop, Resolved},
     tree,
   },
@@ -59,8 +60,9 @@ pub enum Content {
   Source,
   /// Where an acting box leads, a link's destination ([`PropValue::Text`]).
   Destination,
-  /// What a painted node shows: its canvas rendered to pixels ([`PropValue::Pixels`]).
-  Pixels,
+  /// What a painted node shows: its picture, replayed in the scene's order
+  /// ([`PropValue::Picture`]).
+  Picture,
   /// A value of a library's widget adopted through the native door, by the library's own
   /// name: only the door's [`crate::seam::door::ControlSink`] knows it.
   Door(&'static str),
@@ -146,20 +148,6 @@ pub struct Run {
   pub destination: Option<Rc<str>>,
 }
 
-/// An image in device pixels: premultiplied RGBA, eight bits a channel, row by row with no
-/// padding, and the scale it was drawn at (device pixels per pixel).
-#[derive(Clone, PartialEq, Debug)]
-pub struct Pixels {
-  /// The width, in device pixels.
-  pub width: u32,
-  /// The height, in device pixels.
-  pub height: u32,
-  /// Device pixels per pixel.
-  pub scale: f64,
-  /// The pixels: `width * height * 4` bytes.
-  pub data: Rc<[u8]>,
-}
-
 /// A content value as it crosses the seam, erased.
 #[derive(Clone, PartialEq, Debug)]
 pub enum PropValue {
@@ -177,14 +165,14 @@ pub enum PropValue {
   Edit(Edit),
   /// Rich text.
   Runs(Rc<[Run]>),
-  /// An image.
-  Pixels(Pixels),
+  /// A painted node's picture.
+  Picture(Rc<Picture>),
 }
 
 /// A type a content value holds.
 #[diagnostic::on_unimplemented(
   message = "`{Self}` is not a content value",
-  note = "a content name holds a flag, a number, a text, a range, a choice, an edit, runs or pixels"
+  note = "a content name holds a flag, a number, a text, a range, a choice, an edit, runs or a picture"
 )]
 pub trait ContentType: Clone + PartialEq + 'static {
   /// This value, erased.
@@ -221,7 +209,7 @@ content_types! {
   Choice => Choice,
   Edit => Edit,
   Rc<[Run]> => Runs,
-  Pixels => Pixels,
+  Rc<Picture> => Picture,
 }
 
 /// A typed content name: what a view binds or controls, so a value of the wrong type does
@@ -283,7 +271,8 @@ impl<T: ContentType> ContentKey<T> {
 pub mod contents {
   use std::rc::Rc;
 
-  use super::{Choice, Content, ContentKey, Edit, Pixels, Range, Run};
+  use super::{Choice, Content, ContentKey, Edit, Range, Run};
+  use crate::seam::picture::Picture;
 
   /// A text's plain text.
   pub const TEXT: ContentKey<Rc<str>> = ContentKey::new(Content::Text);
@@ -317,8 +306,8 @@ pub mod contents {
   pub const SOURCE: ContentKey<Rc<str>> = ContentKey::new(Content::Source);
   /// Where it leads.
   pub const DESTINATION: ContentKey<Rc<str>> = ContentKey::new(Content::Destination);
-  /// What it shows, rendered.
-  pub const PIXELS: ContentKey<Pixels> = ContentKey::new(Content::Pixels);
+  /// What it shows, recorded.
+  pub const PICTURE: ContentKey<Rc<Picture>> = ContentKey::new(Content::Picture);
 }
 
 /// The answer to a reported change.

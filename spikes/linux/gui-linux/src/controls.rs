@@ -15,8 +15,9 @@ use skene_foundation::{
   layout::{Axis, Measurement, Rect},
   seam::{
     access::{AccessFacts, Action},
-    content::{Choice, Content, Edit, Pixels, PropValue, Range, Run},
+    content::{Choice, Content, Edit, PropValue, Range, Run},
     node::ControlKind,
+    picture::Picture,
     report::KeyEvent,
   },
   text::{AttributedText, Laid as _},
@@ -68,7 +69,7 @@ pub struct Contents {
   /// Where an acting box leads.
   pub destination: Option<Rc<str>>,
   /// What a painted node shows.
-  pub pixels: Option<Pixels>,
+  pub picture: Option<Rc<Picture>>,
 }
 
 impl Contents {
@@ -91,7 +92,7 @@ impl Contents {
       (Content::Keyboard, PropValue::Text(keyboard)) => self.keyboard = Some(Rc::clone(keyboard)),
       (Content::Source, PropValue::Text(text)) => self.source = Some(Rc::clone(text)),
       (Content::Destination, PropValue::Text(text)) => self.destination = Some(Rc::clone(text)),
-      (Content::Pixels, PropValue::Pixels(pixels)) => self.pixels = Some(pixels.clone()),
+      (Content::Picture, PropValue::Picture(picture)) => self.picture = Some(Rc::clone(picture)),
       _ => {}
     }
   }
@@ -122,7 +123,7 @@ impl Contents {
       Content::Keyboard => text(&self.keyboard),
       Content::Source => text(&self.source),
       Content::Destination => text(&self.destination),
-      Content::Pixels => self.pixels.clone().map(PropValue::Pixels),
+      Content::Picture => self.picture.clone().map(PropValue::Picture),
       Content::Door(_) => None,
     }
   }

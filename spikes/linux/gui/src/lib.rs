@@ -97,9 +97,9 @@ pub mod __private;
 pub use skene_foundation::{
   Alignment, Arrangement, AxisAlignment, Border, BorderStyle, Color, Condition, Corners, Curve,
   Definitions, Dimension, Edges, Effect, Environment, Flexibility, Flow, FontFamily, FontStyle,
-  FontWeight, GridPlacement, GridTrack, Inset, IntoUnit, Media, Memo, Owner, Scheme, Shadow,
-  Shadows, Signal, Spacing, State, TextAlignment, TextDecoration, TextDecorationStyle, Token,
-  TokenRef, TokenSet, Tracks, Value, When, batch,
+  FontWeight, GridPlacement, GridTrack, Inset, IntoUnit, Media, Memo, Offset, Owner, Ring, Scheme,
+  Shadow, Shadows, Signal, Spacing, State, StateSet, TextAlignment, TextDecoration,
+  TextDecorationStyle, Token, TokenRef, TokenSet, Tracks, Value, When, batch,
   seam::{
     access::Shortcut,
     content::TextSelection,
@@ -121,7 +121,7 @@ pub use crate::{
     Button, CaptionPlacement, Checkbox, Keyboard, Picker, RadioGroup, Slider, TextEditor,
     TextField, Toggle,
   },
-  painted::{Canvas, Painted},
+  painted::{Canvas, Paint, Painted},
   runtime::{Resource, Sleep, schedule, sleep, spawn},
   view::{AnyView, Apply, ChildOf, Cx, Derived, Node, NodeHandle, View},
   views::{Column, Container, Grid, Image, Row, Scroll, ScrollAxes, Stack, Text, Theme},

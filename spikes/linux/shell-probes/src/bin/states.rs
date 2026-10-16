@@ -1,12 +1,19 @@
 //! Three activatable rows, each holding a switch: hovering, pressing and focusing a row
 //! restyles it through the states the realization reports; a click or Enter on a row counts,
-//! a click on its switch flips the switch alone.
+//! a click on its switch flips the switch alone. Each switch's state is printed on standard
+//! error as `[app] switch <row> <on>` for a scenario to read.
 
 use skene_gui::prelude::*;
 use skene_shell_probes::stateful;
 
 fn row(index: usize, clicks: Signal<u32>, last: Signal<String>) -> impl View {
   let on = Signal::new(false);
+
+  Effect::new(move || {
+    let on = on.get();
+
+    eprintln!("[app] switch {index} {on}");
+  });
 
   Container::new()
     .set_padding(12)

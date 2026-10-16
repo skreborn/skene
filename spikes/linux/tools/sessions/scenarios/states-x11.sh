@@ -14,7 +14,7 @@ sleep 0.2
 count "[activate] Layout(Box)" 1 "a click on a row activates it"
 xdotool mousemove --window "$W" 430 65 click 1
 sleep 0.3
-expect "[change] Control(Switch)" "a click on the row's switch flips the switch"
+expect "[app] switch 1 true" "a click on the row's switch flips the switch"
 count "[activate] Layout(Box)" 1 "the switch owns its press: the row does not activate"
 xdotool mousemove --window "$W" 150 400 key Tab
 shot states-x11-focus 0.3

@@ -929,12 +929,12 @@ impl Drawn {
     })
   }
 
-  /// Moves the pointer to the center of `found` and returns the point. On Wayland, where the
-  /// window sees the pointer elsewhere than aimed (the compositor moved the window since the
-  /// driver found it, and says nothing of it), the driver finds the window again, says so,
-  /// and aims once more.
-  fn aim(found: &Element) -> (f64, f64) {
-    let point = Self::point(found, 0.5, 0.5);
+  /// Moves the pointer to `at` (fractions of `found`'s width and height) and returns the
+  /// point. On Wayland, where the window sees the pointer elsewhere than aimed (the compositor
+  /// moved the window since the driver found it, and says nothing of it), the driver finds the
+  /// window again, says so, and aims once more.
+  fn aim(found: &Element, at: (f64, f64)) -> (f64, f64) {
+    let point = Self::point(found, at.0, at.1);
 
     if with_input(|input| input.window_origin()).is_some() {
       return point;
@@ -973,14 +973,15 @@ impl Drawn {
       found.role, found.name
     );
 
-    Self::point(found, 0.5, 0.5)
+    Self::point(found, at.0, at.1)
   }
 
-  /// Clicks `button` at the center of `found`. Where the window hears no click there, the
-  /// window was not where the driver aimed (a Wayland compositor says nothing of where it
-  /// puts a window): the driver finds the window again, says so, and clicks once more.
-  fn click(found: &Element, button: u32) {
-    let point = Self::aim(found);
+  /// Clicks `button` at `at` (fractions of `found`'s width and height). Where the window hears
+  /// no click there, the window was not where the driver aimed (a Wayland compositor says
+  /// nothing of where it puts a window): the driver finds the window again, says so, and
+  /// clicks once more.
+  fn click(found: &Element, at: (f64, f64), button: u32) {
+    let point = Self::aim(found, at);
 
     if Self::click_at(point, button) {
       return;
@@ -1000,7 +1001,7 @@ impl Drawn {
       trace::last_pointer().1
     );
 
-    let point = Self::point(found, 0.5, 0.5);
+    let point = Self::point(found, at.0, at.1);
 
     if !Self::click_at(point, button) {
       eprintln!("skene testing: the click at {point:?} reached no window either");
@@ -1327,15 +1328,11 @@ impl Driver for Drawn {
 
   fn act(&mut self, found: &Element, action: &Action) {
     match action {
-      Action::Click => Self::click(found, input::PRIMARY),
+      Action::Click => Self::click(found, (0.5, 0.5), input::PRIMARY),
       Action::ClickAt(x, y) => {
-        let point = Self::point(found, f64::from(*x), f64::from(*y));
-
-        if !Self::click_at(point, input::PRIMARY) {
-          eprintln!("skene testing: the click at {point:?} reached no window");
-        }
+        Self::click(found, (f64::from(*x), f64::from(*y)), input::PRIMARY);
       }
-      Action::ContextClick => Self::click(found, input::SECONDARY),
+      Action::ContextClick => Self::click(found, (0.5, 0.5), input::SECONDARY),
       Action::Hover => {
         let point = Self::point(found, 0.5, 0.5);
         let before = trace::last_pointer();

@@ -17,7 +17,7 @@ copy() { echo "cp $OUT/frame.png $OUT/states-$KIND-$1.png"; }
 grep -E "^(FAIL|calibrate)" "$OUT/drive.log" | sed "s/^/INFO $KIND: driver: /"
 pixel states-$KIND-hover $((150 + dx)) $((70 + dy)) dbeafe
 pixel states-$KIND-pressed $((150 + dx)) $((70 + dy)) 93c5fd
-expect "[change] Control(Switch)" "a click on the row's switch flips the switch"
+expect "[app] switch 1 true" "a click on the row's switch flips the switch"
 count "[activate] Layout(Box)" 3 "a click on a row, Enter and Space activate it; a click on its switch does not"
 pixel states-$KIND-focus $((150 + dx)) $((126 + dy)) fde68a
 pixel states-$KIND-focus3 $((150 + dx)) $((182 + dy)) fde68a

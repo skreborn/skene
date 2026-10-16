@@ -15,11 +15,14 @@
 //!   attributes name and never by a substituted one.
 //! - **Hangul keeps its words whole** in every language, TextKit's `standard` strategy.
 //! - **No break inside a grapheme cluster**, through Parley's line-break override.
-//! - **`trak` tracking** of a font without an optical size axis (Apple Color Emoji), as letter
-//!   spacing on its clusters, the glyph drawn centred in the extra advance as Core Text does.
+//! - **Tracking** of a fallback font with a `trak` table and no optical size axis (Apple Color
+//!   Emoji), as letter spacing on its clusters, the glyph drawn centred in the extra advance as
+//!   Core Text does. The amount is Core Text's own, read once per font and size from a line of one
+//!   of its clusters against the font's advance.
 //! - **A fallback font at its own instance**: its clusters take the variation Core Text gave the
-//!   fallback font (PingFang UI at `wght` 400, SF Devanagari at its default `opsz`), every other
-//!   axis at its default, rather than the system font's.
+//!   fallback font (PingFang UI at `wght` 400), every other axis at its default, rather than the
+//!   system font's; where Core Text reports no optical size, the one whose advances match its line
+//!   of a sample cluster.
 //! - **Natural alignment is the app's**: `start` on a right-to-left paragraph is the left edge in a
 //!   left-to-right app, as `NSTextAlignment.natural` is.
 //!
@@ -104,6 +107,44 @@ pub struct Tuning {
   pub natural_from_app: bool,
   /// A fallback font's clusters take the fallback font's own instance.
   pub fallback_instance: bool,
+}
+
+/// What a fallback font's clusters take: its instance and its tracking, as Core Text lays the
+/// font out.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct FallbackStyle {
+  /// Every axis's value, where the font varies.
+  pub instance: Option<Vec<(String, f64)>>,
+  /// The tracking per cluster in points, where the font has a `trak` in force.
+  pub tracking: Option<f32>,
+}
+
+/// The advances of `ids` in the single-face sfnt `bytes` at `size`, at the axis values
+/// `settings`, summed.
+fn advances(bytes: &[u8], ids: &[u16], size: f32, settings: &[(String, f64)]) -> Option<f64> {
+  let font = FontRef::new(bytes).ok()?;
+  let location = font
+    .axes()
+    .location(settings.iter().filter_map(|(tag, value)| {
+      Some((
+        skrifa::Tag::new(tag.as_bytes().try_into().ok()?),
+        *value as f32,
+      ))
+    }));
+  let metrics = font.glyph_metrics(Size::new(size), &location);
+
+  Some(
+    ids
+      .iter()
+      .map(|id| {
+        f64::from(
+          metrics
+            .advance_width(skrifa::GlyphId::new(u32::from(*id)))
+            .unwrap_or(0.),
+        )
+      })
+      .sum(),
+  )
 }
 
 /// A font's normal track from its `trak` table: the tracking per size, in font units.
@@ -219,16 +260,19 @@ pub struct TunedEngine {
   fallback_cache: HashMap<(String, String, String), Option<String>>,
   /// The Core Text font each registered blob came from, by blob id.
   pub sources: HashMap<u64, CFRetained<CTFont>>,
-  /// The `trak` of each registered family that has one in force.
-  pub traks: HashMap<String, Trak>,
-  /// The `trak` of each registered blob that has one in force, by blob id.
-  pub trak_blobs: HashMap<u64, Trak>,
   /// A cluster and language each fallback family was found for, to ask Core Text again at
   /// another size.
   samples: HashMap<String, (String, String)>,
-  /// Each fallback family's instance by size, weight and slant: every axis at Core Text's
-  /// value or its default.
-  fallback_instances: HashMap<(String, u32, u16, bool), Option<Vec<(String, f64)>>>,
+  /// Each fallback family's registered sfnt, for its advances.
+  bytes_of: HashMap<String, Arc<Vec<u8>>>,
+  /// Each fallback family's blob id.
+  blob_of: HashMap<String, u64>,
+  /// Each fallback family's style by size, weight and slant.
+  fallback_styles_cache: HashMap<(String, u32, u16, bool), FallbackStyle>,
+  /// The tracking in points of each tracked blob at each size (`f32` bits).
+  tracking_by_blob: HashMap<(u64, u32), f32>,
+  /// How each fallback family's optical size was settled.
+  pub optical_notes: Vec<String>,
   /// Time spent building sfnts from tables and registering them.
   pub register_ms: f64,
   /// Bytes of sfnt registered.
@@ -272,10 +316,12 @@ impl TunedEngine {
       instances: HashMap::new(),
       fallback_cache: HashMap::new(),
       sources: HashMap::new(),
-      traks: HashMap::new(),
-      trak_blobs: HashMap::new(),
       samples: HashMap::new(),
-      fallback_instances: HashMap::new(),
+      bytes_of: HashMap::new(),
+      blob_of: HashMap::new(),
+      fallback_styles_cache: HashMap::new(),
+      tracking_by_blob: HashMap::new(),
+      optical_notes: Vec::new(),
       register_ms: 0.,
       registered_bytes: 0,
       rejected: Vec::new(),
@@ -368,7 +414,8 @@ impl TunedEngine {
 
     self.registered_bytes += bytes.len();
 
-    let blob = Blob::new(Arc::new(bytes));
+    let bytes = Arc::new(bytes);
+    let blob = Blob::new(bytes.clone());
     let id = blob.id();
     let added = self.fonts.context.collection.register_fonts(
       blob,
@@ -406,13 +453,8 @@ impl TunedEngine {
     }
 
     self.sources.insert(id, retain(font));
-
-    if self.tuning.trak
-      && let Some(trak) = Trak::of(font)
-    {
-      self.traks.insert(family.clone(), trak.clone());
-      self.trak_blobs.insert(id, trak);
-    }
+    self.bytes_of.insert(family.clone(), bytes);
+    self.blob_of.insert(family.clone(), id);
 
     self.log.push((family.clone(), info.postscript, info.path));
     self.registered.insert(
@@ -992,20 +1034,9 @@ impl TunedEngine {
       else {
         continue;
       };
-      let family = &family;
-      let spacing = self
-        .traks
-        .get(family)
-        .filter(|_| self.tuning.trak)
-        .map(|trak| trak.at(size))
-        .filter(|spacing| spacing.abs() > 0.001);
-      let instance = if self.tuning.fallback_instance {
-        self.fallback_instance(family, case, size)
-      }
-      else {
-        None
-      };
-      let variations = instance.map(|instance| {
+      let style = self.fallback_style(&family, case, size);
+      let spacing = style.tracking;
+      let variations = style.instance.map(|instance| {
         instance
           .iter()
           .filter_map(|(tag, value)| {
@@ -1025,65 +1056,116 @@ impl TunedEngine {
     out
   }
 
-  /// The instance Core Text gives `family`'s font when it falls back to it from the system
-  /// font at `size` in `case`'s weight and slant: every axis at Core Text's value or its
-  /// default; `None` where the font does not vary.
-  fn fallback_instance(
-    &mut self,
-    family: &str,
-    case: &Case,
-    size: f32,
-  ) -> Option<Vec<(String, f64)>> {
+  /// The style `family`'s clusters take when Core Text falls back to its font from the system
+  /// font at `size` in `case`'s weight and slant.
+  fn fallback_style(&mut self, family: &str, case: &Case, size: f32) -> FallbackStyle {
     let key = (family.to_owned(), size.to_bits(), case.weight, case.italic);
 
-    if let Some(found) = self.fallback_instances.get(&key) {
+    if let Some(found) = self.fallback_styles_cache.get(&key) {
       return found.clone();
     }
 
-    let found = self
-      .samples
-      .get(family)
-      .cloned()
-      .and_then(|(cluster, locale)| {
-        let base = platform::system_font(f64::from(size), case.weight, case.italic);
-        let string = CFString::from_str(&cluster);
-        let font = unsafe {
-          CTFont::for_string_with_language(
-            platform::as_ct(&base),
-            &string,
-            CFRange {
-              location: 0,
-              length: string.length(),
-            },
-            Some(&CFString::from_str(&locale)),
-          )
-        };
-        let axes = coretext::axes(&font);
+    let mut style = FallbackStyle::default();
 
-        if axes.is_empty() {
-          return None;
+    if let Some((cluster, locale)) = self.samples.get(family).cloned()
+      && let Some(bytes) = self.bytes_of.get(family).cloned()
+    {
+      let base = platform::system_font(f64::from(size), case.weight, case.italic);
+      let string = CFString::from_str(&cluster);
+      let font = unsafe {
+        CTFont::for_string_with_language(
+          platform::as_ct(&base),
+          &string,
+          CFRange {
+            location: 0,
+            length: string.length(),
+          },
+          Some(&CFString::from_str(&locale)),
+        )
+      };
+      let axes = coretext::axes(&font);
+      let variation = coretext::variation(&font);
+      let mut instance: Vec<(String, f64)> = axes
+        .iter()
+        .map(|axis| {
+          let value = variation
+            .iter()
+            .find(|(tag, _)| *tag == axis.tag)
+            .map_or(axis.default, |(_, value)| *value);
+
+          (axis.tag.clone(), value)
+        })
+        .collect();
+      let line = crate::probes::ct_line(&cluster, &font, Some(&locale));
+      let runs = coretext::runs(&line);
+      let ids: Vec<u16> = runs
+        .iter()
+        .flat_map(|run| run.glyphs.iter().map(|glyph| glyph.id))
+        .collect();
+      let theirs: f64 = runs
+        .iter()
+        .flat_map(|run| run.glyphs.iter().map(|glyph| glyph.advance))
+        .sum();
+      let ours = |settings: &[(String, f64)]| advances(&bytes, &ids, size, settings);
+
+      if self.tuning.fallback_instance
+        && let Some(opsz) = axes.iter().find(|axis| axis.tag == "opsz")
+        && !variation.iter().any(|(tag, _)| tag == "opsz")
+      {
+        let sized = f64::from(size).clamp(opsz.min, opsz.max);
+        let mut at_size = instance.clone();
+
+        for (tag, value) in &mut at_size {
+          if tag == "opsz" {
+            *value = sized;
+          }
         }
 
-        let variation = coretext::variation(&font);
+        if let (Some(default), Some(optical)) = (ours(&instance), ours(&at_size)) {
+          let chosen = (optical - theirs).abs() < (default - theirs).abs();
 
-        Some(
-          axes
-            .iter()
-            .map(|axis| {
-              let value = variation
-                .iter()
-                .find(|(tag, _)| *tag == axis.tag)
-                .map_or(axis.default, |(_, value)| *value);
+          self.optical_notes.push(format!(
+            "{family} at {size}: Core Text {theirs:.2}, opsz {sized} {optical:.2}, default {default:.2}: {}",
+            if chosen { "sized" } else { "default" }
+          ));
 
-              (axis.tag.clone(), value)
-            })
-            .collect(),
-        )
-      });
+          if chosen {
+            instance = at_size;
+          }
+        }
+      }
 
-    self.fallback_instances.insert(key, found.clone());
+      if self.tuning.trak
+        && Trak::of(&font).is_some()
+        && let Some(our) = ours(&instance)
+      {
+        let tracking = (theirs - our) as f32;
 
-    found
+        if tracking.abs() > 0.001 {
+          style.tracking = Some(tracking);
+
+          if let Some(blob) = self.blob_of.get(family) {
+            self
+              .tracking_by_blob
+              .insert((*blob, size.to_bits()), tracking);
+          }
+        }
+      }
+
+      if self.tuning.fallback_instance && !instance.is_empty() {
+        style.instance = Some(instance);
+      }
+    }
+
+    self.fallback_styles_cache.insert(key, style.clone());
+
+    style
+  }
+
+  /// The tracking in points of the glyphs of blob `blob` at `size`, where its font is tracked.
+  #[must_use]
+  pub fn tracking(&self, blob: u64, size: f32) -> Option<f32> {
+    self.tracking_by_blob.get(&(blob, size.to_bits())).copied()
   }
 
   /// Core Text's instance of the system font at `size` for `case`'s weight and slant: each

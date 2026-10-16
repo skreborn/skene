@@ -616,9 +616,8 @@ pub fn tuned_runs<'a>(laid: &'a Laid, engine: &TunedEngine) -> Vec<DrawRun<'a>> 
       };
 
       let shift = engine
-        .trak_blobs
-        .get(&id)
-        .map_or(0., |trak| trak.at(run.size) / 2.);
+        .tracking(id, run.size)
+        .map_or(0., |tracking| tracking / 2.);
 
       Some(DrawRun {
         source: Source::Font(source),
@@ -651,8 +650,8 @@ pub fn tuned_vello(
   let mut runs = laid.glyph_runs();
 
   for run in &mut runs {
-    if let Some(trak) = engine.trak_blobs.get(&run.font.data.id()) {
-      let shift = trak.at(run.size) / 2.;
+    if let Some(tracking) = engine.tracking(run.font.data.id(), run.size) {
+      let shift = tracking / 2.;
 
       for glyph in &mut run.glyphs {
         glyph.x += shift;

@@ -286,6 +286,13 @@ pub fn scripts(report: &mut Report) {
       }
     }
 
+    let differing: Vec<String> = ct
+      .iter()
+      .zip(&ours)
+      .filter(|(theirs, ours)| theirs.0 == ours.0 && (theirs.1 - f64::from(ours.1)).abs() > 0.05)
+      .take(4)
+      .map(|(theirs, ours)| format!("#{} {:.2}/{:.2}", theirs.0, theirs.1, ours.1))
+      .collect();
     let mut ct_ids: Vec<u32> = ct.iter().map(|glyph| glyph.0).collect();
     let mut our_ids: Vec<u32> = ours.iter().map(|glyph| glyph.0).collect();
     let in_order = ct_ids == our_ids;
@@ -331,6 +338,13 @@ pub fn scripts(report: &mut Report) {
       in_order,
       fonts.join("; ")
     ));
+
+    if !differing.is_empty() {
+      report.line(format!(
+        "    advances differing (glyph ct/parley): {}",
+        differing.join(", ")
+      ));
+    }
     rows.push(json!({
       "variant": id, "ct_glyphs": ct.len(), "parley_glyphs": ours.len(), "ids_multiset": ct_ids == our_ids,
       "ids_in_order": in_order, "ct_advance": ct_total, "parley_advance": our_total, "fonts": fonts,

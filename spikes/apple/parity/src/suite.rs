@@ -390,6 +390,10 @@ pub fn run(config: &Config) -> Result<String, String> {
         engine.notes
       ));
 
+      for note in &engine.optical_notes {
+        let _ = writeln!(report.text, "    optical size: {note}");
+      }
+
       for (family, postscript, path) in &engine.log {
         let _ = writeln!(report.text, "    {family}: {postscript} {path:?}");
       }

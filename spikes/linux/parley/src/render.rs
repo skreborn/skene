@@ -9,7 +9,7 @@ use skene_foundation::{
 };
 use vello_cpu::{
   Glyph, RenderContext, Resources,
-  kurbo::{Affine, BezPath, Rect, Stroke},
+  kurbo::{Affine, BezPath, Rect, Shape as _, Stroke},
   peniko::Color as PenikoColor,
 };
 
@@ -65,71 +65,96 @@ pub fn paint_decorations(context: &mut RenderContext, laid: &ParleyLaid) {
   for extent in laid.run_extents() {
     for line in extent.decoration_lines() {
       context.set_paint(color(line.color));
-      paint_line(context, &line);
+
+      match DecorationShape::of(&line) {
+        DecorationShape::Fill(path) => context.fill_path(&path),
+        DecorationShape::Stroke(path, stroke) => {
+          context.set_stroke(stroke);
+          context.stroke_path(&path);
+        }
+      }
     }
   }
 }
 
-fn paint_line(context: &mut RenderContext, line: &DecorationLine) {
-  let (x, y, width, thickness) = (
-    f64::from(line.x),
-    f64::from(line.y),
-    f64::from(line.width),
-    f64::from(line.thickness),
-  );
+/// What a decoration line draws, in the layout's pixels: a filled path (solid, double,
+/// dotted, dashed), or a stroked one (wavy).
+#[derive(Clone, Debug)]
+pub enum DecorationShape {
+  /// The path filled.
+  Fill(BezPath),
+  /// The path stroked.
+  Stroke(BezPath, Stroke),
+}
 
-  match line.style {
-    TextDecorationStyle::Solid | TextDecorationStyle::Double => {
-      context.fill_rect(&Rect::new(x, y, x + width, y + thickness));
-    }
-    TextDecorationStyle::Dotted | TextDecorationStyle::Dashed => {
-      let (on, off) = if line.style == TextDecorationStyle::Dotted {
-        (thickness, thickness)
-      } else {
-        (thickness * 3., thickness * 2.)
-      };
-      let mut at = x;
+impl DecorationShape {
+  /// The shape `line` draws in its style.
+  #[must_use]
+  pub fn of(line: &DecorationLine) -> Self {
+    let (x, y, width, thickness) = (
+      f64::from(line.x),
+      f64::from(line.y),
+      f64::from(line.width),
+      f64::from(line.thickness),
+    );
+    let mut path = BezPath::new();
 
-      while at < x + width {
-        context.fill_rect(&Rect::new(at, y, (at + on).min(x + width), y + thickness));
-        at += on + off;
+    match line.style {
+      TextDecorationStyle::Solid | TextDecorationStyle::Double => {
+        path.extend(Rect::new(x, y, x + width, y + thickness).path_elements(0.1));
+
+        Self::Fill(path)
       }
-    }
-    TextDecorationStyle::Wavy => {
-      let mut path = BezPath::new();
-      let step = thickness * 2.;
-      let mut at = x;
-      let mut up = true;
+      TextDecorationStyle::Dotted | TextDecorationStyle::Dashed => {
+        let (on, off) = if line.style == TextDecorationStyle::Dotted {
+          (thickness, thickness)
+        } else {
+          (thickness * 3., thickness * 2.)
+        };
+        let mut at = x;
 
-      path.move_to((at, y + thickness));
+        while at < x + width {
+          path.extend(Rect::new(at, y, (at + on).min(x + width), y + thickness).path_elements(0.1));
+          at += on + off;
+        }
 
-      while at < x + width {
-        let next = (at + step).min(x + width);
-
-        path.line_to((next, if up { y } else { y + thickness * 2. }));
-        at = next;
-        up = !up;
+        Self::Fill(path)
       }
+      TextDecorationStyle::Wavy => {
+        let step = thickness * 2.;
+        let mut at = x;
+        let mut up = true;
 
-      context.set_stroke(Stroke::new(thickness));
-      context.stroke_path(&path);
+        path.move_to((at, y + thickness));
+
+        while at < x + width {
+          let next = (at + step).min(x + width);
+
+          path.line_to((next, if up { y } else { y + thickness * 2. }));
+          at = next;
+          up = !up;
+        }
+
+        Self::Stroke(path, Stroke::new(thickness))
+      }
     }
   }
 }
 
 #[cfg(target_os = "linux")]
-pub use self::masks::{MaskOptions, MaskPainter};
+pub use self::masks::{MaskOptions, MaskPainter, PlacedGlyph};
 
 #[cfg(target_os = "linux")]
 mod masks {
-  use std::collections::HashMap;
+  use std::{collections::HashMap, rc::Rc};
 
+  use skene_foundation::Color;
   use skrifa::{FontRef, MetadataProvider};
   use vello_cpu::Pixmap;
 
   use crate::{
     ParleyLaid,
-    linux::{Fallback, MaskPixels, Rasterizer, RenderSettings, Request},
+    linux::{Fallback, GlyphMask, MaskPixels, Rasterizer, RenderSettings, Request},
   };
 
   /// How [`MaskPainter::paint_with`] composites: at a scale, cut to a clip, faded.
@@ -154,8 +179,24 @@ mod masks {
     }
   }
 
-  /// FreeType's masks composited into a pixmap: every glyph rasterized under the rendering
-  /// settings fontconfig gives its font, colored by its paint, a color glyph in its own.
+  /// A glyph placed for drawing ([`MaskPainter::place`]): its mask, the device pixel its
+  /// mask's top left lands on, and the color an alpha mask is drawn in (a color glyph keeps
+  /// its own).
+  #[derive(Clone, Debug)]
+  pub struct PlacedGlyph {
+    /// The mask, as the rasterizer caches it.
+    pub mask: Rc<GlyphMask>,
+    /// The column of its left edge.
+    pub left: i64,
+    /// The row of its top edge.
+    pub top: i64,
+    /// The color its coverage is drawn in.
+    pub color: Color,
+  }
+
+  /// FreeType's masks placed for Skene's renderer, or composited into a pixmap: every glyph
+  /// rasterized under the rendering settings fontconfig gives its font, colored by its paint,
+  /// a color glyph in its own.
   pub struct MaskPainter {
     rasterizer: Rasterizer,
     settings: HashMap<(u64, u32, u32), RenderSettings>,
@@ -263,6 +304,51 @@ mod masks {
       self.paint_with(pixmap, laid, origin, MaskOptions::default(), fallback);
     }
 
+    /// Each glyph of `laid` placed for drawing, its top left at `origin` in device pixels at
+    /// `scale` (the layout's pixels to the device's): rasterized under each font's settings
+    /// from `fallback`'s fontconfig, its mask's top left on a whole pixel, the subpixel phase
+    /// taken from where it falls. A glyph with no pixels is left out.
+    pub fn place(
+      &mut self,
+      laid: &ParleyLaid,
+      origin: (f32, f32),
+      scale: f32,
+      mut fallback: Option<&mut Fallback>,
+      mut each: impl FnMut(PlacedGlyph),
+    ) {
+      for run in laid.glyph_runs() {
+        let settings = self.settings_for(&run.font, run.size * scale, fallback.as_deref_mut());
+
+        for glyph in &run.glyphs {
+          let x = origin.0 + glyph.x * scale;
+          let y = origin.1 + glyph.y * scale;
+          let phase = Rasterizer::phase(x, &settings);
+          let Some(mask) = self.rasterizer.mask(
+            &run.font,
+            &run.coords,
+            glyph.id,
+            run.size * scale,
+            phase,
+            &settings,
+          ) else {
+            continue;
+          };
+          #[expect(clippy::cast_possible_truncation, reason = "pixel positions")]
+          let (left, top) = (
+            x.floor() as i64 + i64::from(mask.left),
+            y.round() as i64 - i64::from(mask.top),
+          );
+
+          each(PlacedGlyph {
+            color: laid.paint_at(glyph.at).color,
+            mask,
+            left,
+            top,
+          });
+        }
+      }
+    }
+
     /// Composites `laid`'s glyphs into `pixmap` (premultiplied RGBA) as
     /// [`MaskPainter::paint`] does, its top left at `origin` in device pixels, at the
     /// options' scale (the layout's pixels to the pixmap's), cut to their clip and faded by
@@ -273,7 +359,7 @@ mod masks {
       laid: &ParleyLaid,
       origin: (f32, f32),
       options: MaskOptions,
-      mut fallback: Option<&mut Fallback>,
+      fallback: Option<&mut Fallback>,
     ) {
       let (width, height) = (i64::from(pixmap.width()), i64::from(pixmap.height()));
       let (left_edge, top_edge, right_edge, bottom_edge) =
@@ -283,93 +369,75 @@ mod masks {
       let fade = options.opacity.clamp(0., 1.);
       let data = pixmap.data_as_u8_slice_mut();
 
-      for run in laid.glyph_runs() {
-        let settings =
-          self.settings_for(&run.font, run.size * options.scale, fallback.as_deref_mut());
+      self.place(laid, origin, options.scale, fallback, |placed| {
+        let PlacedGlyph {
+          mask,
+          left,
+          top,
+          color: paint,
+        } = placed;
 
-        for glyph in &run.glyphs {
-          let x = origin.0 + glyph.x * options.scale;
-          let y = origin.1 + glyph.y * options.scale;
-          let phase = Rasterizer::phase(x, &settings);
-          let Some(mask) = self.rasterizer.mask(
-            &run.font,
-            &run.coords,
-            glyph.id,
-            run.size * options.scale,
-            phase,
-            &settings,
-          ) else {
+        for row in 0..i64::from(mask.height) {
+          let py = top + row;
+
+          if py < top_edge || py >= bottom_edge {
             continue;
-          };
-          let paint = laid.paint_at(glyph.at).color;
-          #[expect(clippy::cast_possible_truncation, reason = "pixel positions")]
-          let (left, top) = (
-            x.floor() as i64 + i64::from(mask.left),
-            y.round() as i64 - i64::from(mask.top),
-          );
+          }
 
-          for row in 0..i64::from(mask.height) {
-            let py = top + row;
+          for column in 0..i64::from(mask.width) {
+            let px = left + column;
 
-            if py < top_edge || py >= bottom_edge {
+            if px < left_edge || px >= right_edge {
               continue;
             }
 
-            for column in 0..i64::from(mask.width) {
-              let px = left + column;
+            let source = (row * i64::from(mask.width) + column) as usize;
+            let target = ((py * width + px) * 4) as usize;
+            #[expect(
+              clippy::cast_possible_truncation,
+              clippy::cast_sign_loss,
+              reason = "0 to 255"
+            )]
+            let faded = (f32::from(paint.alpha) * fade).round() as u32;
+            let pixel = match &mask.pixels {
+              MaskPixels::Alpha(alpha) => {
+                let coverage = u32::from(alpha[source]) * faded / 255;
 
-              if px < left_edge || px >= right_edge {
-                continue;
+                [
+                  u32::from(paint.red) * coverage / 255,
+                  u32::from(paint.green) * coverage / 255,
+                  u32::from(paint.blue) * coverage / 255,
+                  coverage,
+                ]
               }
+              MaskPixels::Color(rgba) => {
+                let at = source * 4;
+                #[expect(
+                  clippy::cast_possible_truncation,
+                  clippy::cast_sign_loss,
+                  reason = "0 to 255"
+                )]
+                let fade = |value: u8| (f32::from(value) * fade).round() as u32;
 
-              let source = (row * i64::from(mask.width) + column) as usize;
-              let target = ((py * width + px) * 4) as usize;
-              #[expect(
-                clippy::cast_possible_truncation,
-                clippy::cast_sign_loss,
-                reason = "0 to 255"
-              )]
-              let faded = (f32::from(paint.alpha) * fade).round() as u32;
-              let pixel = match &mask.pixels {
-                MaskPixels::Alpha(alpha) => {
-                  let coverage = u32::from(alpha[source]) * faded / 255;
-
-                  [
-                    u32::from(paint.red) * coverage / 255,
-                    u32::from(paint.green) * coverage / 255,
-                    u32::from(paint.blue) * coverage / 255,
-                    coverage,
-                  ]
-                }
-                MaskPixels::Color(rgba) => {
-                  let at = source * 4;
-                  #[expect(
-                    clippy::cast_possible_truncation,
-                    clippy::cast_sign_loss,
-                    reason = "0 to 255"
-                  )]
-                  let fade = |value: u8| (f32::from(value) * fade).round() as u32;
-
-                  [
-                    fade(rgba[at]),
-                    fade(rgba[at + 1]),
-                    fade(rgba[at + 2]),
-                    fade(rgba[at + 3]),
-                  ]
-                }
-              };
-              let inverse = 255 - pixel[3];
-
-              for channel in 0..4 {
-                let under = u32::from(data[target + channel]);
-
-                data[target + channel] =
-                  u8::try_from((pixel[channel] + under * inverse / 255).min(255)).unwrap_or(255);
+                [
+                  fade(rgba[at]),
+                  fade(rgba[at + 1]),
+                  fade(rgba[at + 2]),
+                  fade(rgba[at + 3]),
+                ]
               }
+            };
+            let inverse = 255 - pixel[3];
+
+            for channel in 0..4 {
+              let under = u32::from(data[target + channel]);
+
+              data[target + channel] =
+                u8::try_from((pixel[channel] + under * inverse / 255).min(255)).unwrap_or(255);
             }
           }
         }
-      }
+      });
     }
   }
 }

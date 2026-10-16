@@ -1,9 +1,10 @@
 //! The record: properties under Skene's uniform names, unresolved.
 
-use std::{fmt, marker::PhantomData};
+use std::{fmt, marker::PhantomData, rc::Rc};
 
 use crate::{
   Color, FontWeight, Inset, Property, Value,
+  fill::Fill,
   seam::style::{CompileCx, KeptValue},
   value::{
     Alignment, Arrangement, AxisAlignment, Border, Corners, Curve, Dimension, Edges, Flexibility,
@@ -116,6 +117,8 @@ macro_rules! kinds {
 kinds! {
   /// A color.
   Color(Color),
+  /// A color or a gradient.
+  Fill(Fill),
   /// A length in pixels, or a plain number.
   Number(f32),
   /// A count.
@@ -223,12 +226,13 @@ macro_rules! props {
 
 props! {
   Box {
-    /// The fill behind a box's content.
-    Background, BACKGROUND: Color;
+    /// The fill behind a box's content: a color or a gradient.
+    Background, BACKGROUND: Fill;
     /// A line around the box.
     Border, BORDER: Border;
-    /// The color of the line around the box, the box's text color where unset.
-    BorderColor, BORDER_COLOR: Color;
+    /// The fill of the line around the box (a color or a gradient), the box's text color where
+    /// unset.
+    BorderColor, BORDER_COLOR: Fill;
     /// The corners' radii.
     CornerRadius, CORNER_RADIUS: Corners;
     /// The shadows the box casts.
@@ -360,11 +364,11 @@ impl<T> Key<T> {
   }
 }
 
-/// A transition: a property's change animated over a duration.
+/// A transition: a property's change animated over a duration, on the platform's frame clock.
 ///
-/// A box's or a text's own look animates (its colors, lines, corners, shadows, opacity and
-/// font metrics); a layout property, and one the platform cannot interpolate (a typeface, a
-/// slant, which lines decorate a text), changes at once.
+/// A box's or a text's own look animates (its fills, lines, corners, shadows, opacity, offset
+/// and font metrics); a layout property, and one the platform cannot interpolate (a typeface,
+/// a slant, which lines decorate a text), changes at once.
 #[derive(Clone, Copy, PartialEq, Debug)]
 #[must_use]
 pub struct Transition {
@@ -376,11 +380,13 @@ pub struct Transition {
   pub delay: u32,
   /// The easing curve.
   pub curve: Curve,
+  /// Whether a reader preferring reduced motion sees the change as a cut.
+  pub respects_reduced_motion: bool,
 }
 
 impl Transition {
   /// Changes of the property `key` names, animated over `duration` milliseconds: at once,
-  /// slow at both ends, unless told otherwise.
+  /// slow at both ends, cut where the reader prefers reduced motion, unless told otherwise.
   #[inline(always)]
   pub const fn new<T>(key: Key<T>, duration: u32) -> Self {
     Self {
@@ -388,6 +394,7 @@ impl Transition {
       duration,
       delay: 0,
       curve: Curve::EaseInOut,
+      respects_reduced_motion: true,
     }
   }
 
@@ -406,10 +413,276 @@ impl Transition {
 
     self
   }
+
+  /// Whether a reader preferring reduced motion sees the change as a cut; on where unset.
+  #[inline(always)]
+  pub const fn set_respects_reduced_motion(mut self, respects: bool) -> Self {
+    self.respects_reduced_motion = respects;
+
+    self
+  }
 }
 
-/// A node's properties under their uniform names, unresolved, and its transitions: what
-/// crosses the seam for box, run and layout properties.
+/// A keyframe of an [`Animation`]: the properties it sets, each a fixed value or a token.
+#[derive(Clone, Default)]
+#[must_use]
+pub struct Keyframe(Record);
+
+impl Keyframe {
+  /// A keyframe setting nothing.
+  #[inline(always)]
+  pub const fn new() -> Self {
+    Self(Record::new())
+  }
+
+  /// This keyframe with the property `key` names set to `value`.
+  pub fn set<T: Kinded>(mut self, key: Key<T>, value: impl Into<Value<T>>) -> Self {
+    self.0.set(key, value);
+
+    self
+  }
+
+  /// The properties it sets.
+  #[inline(always)]
+  #[must_use]
+  pub const fn record(&self) -> &Record {
+    &self.0
+  }
+}
+
+impl fmt::Debug for Keyframe {
+  fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+    self.0.fmt(formatter)
+  }
+}
+
+/// A keyframe animation with each keyframe's properties resolved: what a realization that
+/// resolves every style plays ([`crate::seam::style::CompiledStyle::animations`]).
+pub type CompiledAnimation = Animation<Rc<[(Prop, Resolved)]>>;
+
+/// How many times an animation plays.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[must_use]
+pub enum Iterations {
+  /// This many times.
+  Count(u32),
+  /// Forever.
+  Infinite,
+}
+
+impl Iterations {
+  /// The number of plays; `None` for an animation playing forever.
+  #[inline(always)]
+  #[must_use]
+  pub const fn count(self) -> Option<u32> {
+    match self {
+      Self::Count(count) => Some(count),
+      Self::Infinite => None,
+    }
+  }
+}
+
+impl From<u32> for Iterations {
+  #[inline(always)]
+  fn from(count: u32) -> Self {
+    Self::Count(count)
+  }
+}
+
+/// A keyframe animation, on the platform's frame clock: each keyframe a fraction of the way
+/// through a cycle (`0` to `1`) and the style there, played from the first frame that paints
+/// the node with it. A property no keyframe at `0` or `1` sets moves from or to the node's own value there,
+/// as CSS's neutral keyframes do.
+#[derive(Clone, PartialEq, Debug)]
+#[must_use]
+pub struct Animation<S = Keyframe> {
+  /// The keyframes, each a fraction of the way through a cycle and the style there.
+  pub keyframes: Vec<(f32, S)>,
+  /// One cycle's length, in milliseconds.
+  pub duration: u32,
+  /// How long it waits to start, in milliseconds.
+  pub delay: u32,
+  /// The easing curve, applied between each two keyframes.
+  pub curve: Curve,
+  /// How many times it plays.
+  pub iterations: Iterations,
+  /// Whether every other cycle plays backward.
+  pub alternate: bool,
+  /// Whether a reader preferring reduced motion sees its last frame alone.
+  pub respects_reduced_motion: bool,
+}
+
+impl Animation {
+  /// An animation lasting `duration` milliseconds a cycle, with no keyframes: playing once,
+  /// slow at both ends, with no delay, its last frame alone where the reader prefers reduced
+  /// motion.
+  #[inline(always)]
+  pub const fn new(duration: u32) -> Self {
+    Self {
+      keyframes: Vec::new(),
+      duration,
+      delay: 0,
+      curve: Curve::EaseInOut,
+      iterations: Iterations::Count(1),
+      alternate: false,
+      respects_reduced_motion: true,
+    }
+  }
+
+  /// Adds `keyframe` `at` a fraction of the way through a cycle, `0` to `1`.
+  pub fn add_keyframe(mut self, at: f32, keyframe: Keyframe) -> Self {
+    self.keyframes.push((at, keyframe));
+
+    self
+  }
+}
+
+impl<S> Animation<S> {
+  /// How long it waits to start, in milliseconds; none where unset.
+  #[inline(always)]
+  pub fn set_delay(mut self, delay: u32) -> Self {
+    self.delay = delay;
+
+    self
+  }
+
+  /// The easing curve between each two keyframes; slow at both ends where unset.
+  #[inline(always)]
+  pub fn set_curve(mut self, curve: Curve) -> Self {
+    self.curve = curve;
+
+    self
+  }
+
+  /// How many times it plays: a count, or [`Iterations::Infinite`]; once where unset.
+  #[inline(always)]
+  pub fn set_iterations(mut self, iterations: impl Into<Iterations>) -> Self {
+    self.iterations = iterations.into();
+
+    self
+  }
+
+  /// Whether every other cycle plays backward; off where unset.
+  #[inline(always)]
+  pub fn set_alternate(mut self, alternate: bool) -> Self {
+    self.alternate = alternate;
+
+    self
+  }
+
+  /// Whether a reader preferring reduced motion sees its last frame alone; on where unset.
+  #[inline(always)]
+  pub fn set_respects_reduced_motion(mut self, respects: bool) -> Self {
+    self.respects_reduced_motion = respects;
+
+    self
+  }
+
+  /// The animation with each keyframe's style mapped through `map`, its timing kept.
+  pub fn map_keyframes<T>(&self, mut map: impl FnMut(&S) -> T) -> Animation<T> {
+    Animation {
+      keyframes: self
+        .keyframes
+        .iter()
+        .map(|(at, style)| (*at, map(style)))
+        .collect(),
+      duration: self.duration,
+      delay: self.delay,
+      curve: self.curve,
+      iterations: self.iterations,
+      alternate: self.alternate,
+      respects_reduced_motion: self.respects_reduced_motion,
+    }
+  }
+
+  /// Where it stands `elapsed` seconds after it began, as a fraction of the way through its
+  /// keyframes, linear in time: the first frame before the delay, the
+  /// [rest](Self::rest_offset) once it has played out.
+  #[must_use]
+  pub fn offset(&self, elapsed: f64) -> f32 {
+    let played = elapsed - f64::from(self.delay) / 1000.;
+
+    if played <= 0. {
+      return 0.;
+    }
+
+    if self.duration == 0 {
+      return self.rest_offset();
+    }
+
+    let cycles = played * 1000. / f64::from(self.duration);
+
+    if self
+      .iterations
+      .count()
+      .is_some_and(|iterations| cycles >= f64::from(iterations))
+    {
+      return self.rest_offset();
+    }
+
+    #[expect(
+      clippy::cast_possible_truncation,
+      clippy::cast_sign_loss,
+      reason = "the cycles played are non-negative here and count far below u64::MAX"
+    )]
+    let iteration = cycles.floor() as u64;
+    #[expect(
+      clippy::cast_possible_truncation,
+      reason = "a cycle's fraction lies in 0..1, which f32 holds closely enough"
+    )]
+    let local = cycles.fract() as f32;
+
+    if self.alternate && iteration % 2 == 1 {
+      1. - local
+    } else {
+      local
+    }
+  }
+
+  /// Whether it has played out `elapsed` seconds after it began.
+  #[must_use]
+  pub fn is_done(&self, elapsed: f64) -> bool {
+    match self.iterations {
+      Iterations::Count(iterations) => {
+        elapsed * 1000. >= f64::from(self.delay) + f64::from(self.duration) * f64::from(iterations)
+      }
+      Iterations::Infinite => false,
+    }
+  }
+
+  /// Where it rests: its last cycle's end once played out, and the end of its first for one
+  /// that never does. A reader preferring reduced motion sees this frame alone.
+  #[must_use]
+  pub fn rest_offset(&self) -> f32 {
+    let last = self.iterations.count().unwrap_or(1).saturating_sub(1);
+
+    if self.alternate && last % 2 == 1 {
+      0.
+    } else {
+      1.
+    }
+  }
+
+  /// Where it stands `elapsed` seconds in: its offset, or its rest where `reduced` motion
+  /// skips it.
+  #[must_use]
+  pub fn offset_under(&self, elapsed: f64, reduced: bool) -> f32 {
+    if reduced && self.respects_reduced_motion {
+      self.rest_offset()
+    } else {
+      self.offset(elapsed)
+    }
+  }
+
+  /// Whether it still plays `elapsed` seconds in, never where `reduced` motion skips it.
+  #[must_use]
+  pub fn plays(&self, elapsed: f64, reduced: bool) -> bool {
+    !(self.is_done(elapsed) || reduced && self.respects_reduced_motion)
+  }
+}
+
+/// A node's properties under their uniform names, unresolved, its transitions and its
+/// keyframe animations: what crosses the seam for box, run and layout properties.
 ///
 /// A wrapper's properties are folded into its child's record before the child is created
 /// ([`Record::fold`]), so a wrapper realizes nothing.
@@ -417,6 +690,7 @@ impl Transition {
 pub struct Record {
   entries: Vec<(Prop, Declared)>,
   transitions: Vec<Transition>,
+  animations: Vec<Animation>,
 }
 
 impl fmt::Debug for Record {
@@ -435,6 +709,7 @@ impl Record {
     Self {
       entries: Vec::new(),
       transitions: Vec::new(),
+      animations: Vec::new(),
     }
   }
 
@@ -474,7 +749,15 @@ impl Record {
     self
   }
 
-  /// Folds a wrapper's record in: its properties and transitions join this one's.
+  /// Adds a keyframe animation, after those added before.
+  pub fn add_animation(&mut self, animation: Animation) -> &mut Self {
+    self.animations.push(animation);
+
+    self
+  }
+
+  /// Folds a wrapper's record in: its properties, transitions and animations join this
+  /// one's.
   pub fn fold(&mut self, wrapper: &Self) -> &mut Self {
     for (prop, value) in &wrapper.entries {
       self.put(*prop, value.clone());
@@ -483,6 +766,8 @@ impl Record {
     for transition in &wrapper.transitions {
       self.add_transition(*transition);
     }
+
+    self.animations.extend(wrapper.animations.iter().cloned());
 
     self
   }
@@ -496,6 +781,12 @@ impl Record {
   #[must_use]
   pub fn transitions(&self) -> &[Transition] {
     &self.transitions
+  }
+
+  /// The keyframe animations, in the order added.
+  #[must_use]
+  pub fn animations(&self) -> &[Animation] {
+    &self.animations
   }
 
   /// Whether the record sets `prop`.

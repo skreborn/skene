@@ -3,10 +3,10 @@
 //! split into the box's look and the run properties the texts beneath inherit.
 
 use skene_foundation::{
-  Color, Corners, FontFamily, FontStyle, FontWeight, TextAlignment, TextDecoration,
+  Color, Corners, Fill, FontFamily, FontStyle, FontWeight, TextAlignment, TextDecoration,
   TextDecorationStyle,
   seam::{
-    record::{Prop, Resolved, Transition},
+    record::{Prop, Resolved},
     style::{CompiledStyle, KeptLeaf},
   },
   text::{LineHeight, PaintStyle, ParagraphStyle, RunStyle},
@@ -17,11 +17,11 @@ use skene_foundation::{
 #[derive(Clone, PartialEq, Debug)]
 pub struct Look {
   /// The fill behind its content.
-  pub background: Option<Color>,
+  pub background: Option<Fill>,
   /// The line around it.
   pub border: Option<Border>,
-  /// The line's color, the text color where unset.
-  pub border_color: Option<Color>,
+  /// The line's fill, the text color where unset.
+  pub border_color: Option<Fill>,
   /// The corners' radii.
   pub corners: Corners,
   /// The shadows it casts.
@@ -36,8 +36,6 @@ pub struct Look {
   pub ring_color: Option<Color>,
   /// How far it and its subtree are drawn from where they were laid out.
   pub offset: Offset,
-  /// The transitions its look animates through.
-  pub transitions: Vec<Transition>,
 }
 
 impl Default for Look {
@@ -53,7 +51,6 @@ impl Default for Look {
       ring: Ring::NONE,
       ring_color: None,
       offset: Offset::ZERO,
-      transitions: Vec::new(),
     }
   }
 }
@@ -200,22 +197,31 @@ impl RunProps {
   }
 }
 
-/// A compiled style's resolved values, split into a look and run properties.
-pub fn resolve(style: &CompiledStyle) -> (Look, RunProps) {
+/// A compiled style's resolved values, each property with the value in force: what motion
+/// moves between.
+pub fn targets(style: &CompiledStyle) -> Vec<(Prop, Resolved)> {
+  style
+    .props
+    .iter()
+    .filter_map(|(prop, value)| match &value.base {
+      KeptLeaf::Value(resolved) => Some((*prop, resolved.clone())),
+      _ => None,
+    })
+    .collect()
+}
+
+/// Resolved values split into a look and run properties.
+pub fn split(props: &[(Prop, Resolved)]) -> (Look, RunProps) {
   use Resolved as R;
 
   let mut look = Look::default();
   let mut run = RunProps::default();
 
-  for (prop, value) in &style.props {
-    let KeptLeaf::Value(resolved) = &value.base else {
-      continue;
-    };
-
+  for (prop, resolved) in props {
     match (prop, resolved) {
-      (Prop::Background, R::Color(v)) => look.background = Some(*v),
+      (Prop::Background, R::Fill(v)) => look.background = Some(v.clone()),
       (Prop::Border, R::Border(v)) => look.border = Some(*v),
-      (Prop::BorderColor, R::Color(v)) => look.border_color = Some(*v),
+      (Prop::BorderColor, R::Fill(v)) => look.border_color = Some(v.clone()),
       (Prop::CornerRadius, R::Corners(v)) => look.corners = *v,
       (Prop::Shadow, R::Shadows(v)) => look.shadows = Some(v.clone()),
       (Prop::Opacity, R::Number(v)) => look.opacity = v.clamp(0., 1.),
@@ -226,8 +232,6 @@ pub fn resolve(style: &CompiledStyle) -> (Look, RunProps) {
       _ => run.put(*prop, resolved),
     }
   }
-
-  look.transitions.clone_from(&style.transitions);
 
   (look, run)
 }

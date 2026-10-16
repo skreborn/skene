@@ -10,6 +10,7 @@
 //! - [`node`]: the realized tree, what the realization keeps per node.
 //! - [`look`], [`palette`]: a node's resolved look and run properties, the platform's colors
 //!   the built-in controls are drawn in, and the defaults drawn where a view sets none.
+//! - [`motion`]: transitions and keyframe animations on the window's frame clock.
 //! - [`text`], [`layout`]: paragraphs through the foundation's engine contract, and the layout
 //!   engine's host over the realized tree.
 //! - [`entry`], [`overlay`]: the realization's own text view, and an overlay's surface.
@@ -35,6 +36,7 @@ pub mod ime;
 pub mod keys;
 pub mod layout;
 pub mod look;
+pub mod motion;
 pub mod node;
 pub mod overlay;
 pub mod paint;
@@ -129,28 +131,9 @@ impl Realization for Linux {
   }
 
   fn apply_style(node: &Node, style: &CompiledStyle) {
-    let (look, run) = look::resolve(style);
+    let (look, run) = node.style_now(style);
 
-    if node.is_shown() {
-      // What it painted before, which its new look may no longer cover.
-      shell::invalidate_rect(shell::reach_rect(node));
-    }
-
-    let relayout = node.look.borrow().border_width() != look.border_width();
-    let restyled = *node.run.borrow() != run;
-
-    *node.look.borrow_mut() = look;
-
-    if restyled {
-      *node.run.borrow_mut() = run;
-      shell::invalidate_prepare();
-    }
-
-    if relayout {
-      shell::invalidate_layout();
-    }
-
-    shell::invalidate_paint(node);
+    node.show_style(look, run);
   }
 
   fn apply_slots(_: &Node, _: &[KeptLeaf]) {}

@@ -116,6 +116,7 @@ pub enum Wheel {
 #[derive(Default)]
 struct Dirty {
   prepare: bool,
+  prepare_nodes: Vec<Node>,
   layout: bool,
   all: bool,
   overlays: bool,
@@ -175,6 +176,12 @@ pub fn invalidate_prepare() {
   DIRTY.with(|dirty| dirty.borrow_mut().prepare = true);
 }
 
+/// The paragraphs in `node`'s subtree need their inherited styles again: its own run
+/// properties changed and nothing else did.
+pub fn invalidate_prepare_of(node: &Node) {
+  DIRTY.with(|dirty| dirty.borrow_mut().prepare_nodes.push(Rc::clone(node)));
+}
+
 /// The tree needs laying out again.
 pub fn invalidate_layout() {
   DIRTY.with(|dirty| dirty.borrow_mut().layout = true);
@@ -232,7 +239,12 @@ fn wants_frame() -> bool {
   DIRTY.with(|dirty| {
     let dirty = dirty.borrow();
 
-    dirty.prepare || dirty.layout || dirty.all || !dirty.nodes.is_empty() || !dirty.rects.is_empty()
+    dirty.prepare
+      || !dirty.prepare_nodes.is_empty()
+      || dirty.layout
+      || dirty.all
+      || !dirty.nodes.is_empty()
+      || !dirty.rects.is_empty()
   })
 }
 
@@ -301,6 +313,8 @@ pub struct Shell {
   owed: Option<(u32, u32, u32, u32)>,
   /// Frames painted.
   pub frames: u64,
+  /// When the last frame was painted.
+  pub painted_at: Option<Instant>,
   /// How many times the window was given a size.
   pub configures: u64,
   /// Whether the app asked to quit.
@@ -340,6 +354,7 @@ impl Shell {
       last_click: None,
       owed: None,
       frames: 0,
+      painted_at: None,
       configures: 0,
       quit: false,
     }
@@ -411,9 +426,15 @@ impl Shell {
     }
   }
 
-  /// Whether a frame is due: something changed since the last one.
+  /// Whether a frame is due: something changed since the last one, or something is in
+  /// motion.
   pub fn wants_frame(&self) -> bool {
-    wants_frame() || self.owed.is_some()
+    wants_frame() || self.owed.is_some() || crate::motion::running()
+  }
+
+  /// Whether a frame is due for motion alone: what the frame clock paces.
+  pub fn in_motion(&self) -> bool {
+    crate::motion::running()
   }
 
   /// Applies a focus move the app or a behavior asked for, focus shown as the last input
@@ -470,6 +491,9 @@ impl Shell {
     let root = self.root.clone()?;
     let started = Instant::now();
     let palette = Palette::now();
+
+    crate::motion::advance(crate::motion::now());
+
     let mut dirty = DIRTY.with(|dirty| std::mem::take(&mut *dirty.borrow_mut()));
 
     if dirty.overlays {
@@ -486,6 +510,18 @@ impl Shell {
 
       if layout::prepare(&root, &palette, &mut repainted) == Change::Layout {
         dirty.layout = true;
+      }
+
+      dirty.nodes.extend(repainted);
+    } else if !dirty.prepare_nodes.is_empty() {
+      let mut repainted = Vec::new();
+
+      for node in std::mem::take(&mut dirty.prepare_nodes) {
+        if node.is_alive()
+          && layout::prepare_subtree(&node, &palette, &mut repainted) == Change::Layout
+        {
+          dirty.layout = true;
+        }
       }
 
       dirty.nodes.extend(repainted);
@@ -567,6 +603,7 @@ impl Shell {
     );
 
     self.frames += 1;
+    self.painted_at = Some(started);
     skene_foundation::seam::activity::frame();
 
     if dirty.layout {
@@ -586,6 +623,8 @@ impl Shell {
       record: Duration::from_micros(cost.record),
       raster: Duration::from_micros(cost.raster),
       glyphs: Duration::from_micros(cost.glyphs),
+      masks: cost.masks,
+      images: cost.images,
       total: started.elapsed(),
       full: dirty.all,
       region,

@@ -83,12 +83,16 @@ pub struct FrameCost {
   pub prepare: Duration,
   /// Laying the tree out.
   pub layout: Duration,
-  /// Recording the paths.
+  /// Recording the scene, the glyphs placed included.
   pub record: Duration,
-  /// Rasterizing them.
+  /// Rasterizing it.
   pub raster: Duration,
-  /// Compositing the glyphs.
+  /// Placing the glyphs (finding or drawing their masks), within the recording.
   pub glyphs: Duration,
+  /// The glyph masks the rasterizer's cache answered and those FreeType drew, so far.
+  pub masks: (u64, u64),
+  /// The glyph images found cached and those made, so far.
+  pub images: (u64, u64),
   /// All of it.
   pub total: Duration,
   /// Whether the whole window was painted.
@@ -108,7 +112,7 @@ pub fn frame(cost: FrameCost) {
     let ms = |duration: Duration| duration.as_secs_f64() * 1000.;
 
     format!(
-      "[frame] {count} total {:.2} ms prepare {:.2} layout {:.2} record {:.2} raster {:.2} glyphs {:.2} {} region {:.0}x{:.0}+{:.0}+{:.0} measured {}",
+      "[frame] {count} total {:.2} ms prepare {:.2} layout {:.2} record {:.2} raster {:.2} glyphs {:.2} {} region {:.0}x{:.0}+{:.0}+{:.0} measured {} masks {}/{} images {}/{}",
       ms(cost.total),
       ms(cost.prepare),
       ms(cost.layout),
@@ -121,6 +125,10 @@ pub fn frame(cost: FrameCost) {
       cost.region.x,
       cost.region.y,
       crate::layout::measured(),
+      cost.masks.0,
+      cost.masks.1,
+      cost.images.0,
+      cost.images.1,
     )
   });
 }

@@ -12,7 +12,7 @@ pub const PRESSED: Color = Color::rgb(0x93c5fd);
 pub const FOCUS: Color = Color::rgb(0xfde68a);
 
 /// The fill of a row that answers hover, press and keyboard focus.
-pub fn stateful() -> Value<Color> {
+pub fn stateful() -> Value<Fill> {
   REST
     .when(State::FocusVisible, FOCUS)
     .when(State::Hovered, HOVER)

@@ -98,17 +98,18 @@ pub mod __private;
 /// implements, the handle a behavior acts through and the key tables every platform shares.
 pub use skene_foundation::behavior;
 pub use skene_foundation::{
-  Alignment, Arrangement, AxisAlignment, Border, BorderStyle, Color, Condition, Corners, Curve,
-  Definitions, Dimension, Edges, Effect, Environment, Flexibility, Flow, FontFamily, FontStyle,
-  FontWeight, GridPlacement, GridTrack, Inset, IntoUnit, Media, Memo, Offset, Owner, Ring, Scheme,
-  Shadow, Shadows, Signal, Spacing, State, StateSet, SystemColors, TextAlignment, TextDecoration,
-  TextDecorationStyle, Token, TokenRef, TokenSet, Tracks, Value, When, batch,
+  Alignment, Angle, Arrangement, AxisAlignment, Border, BorderStyle, Color, Condition, Corners,
+  Curve, Definitions, Dimension, Edges, Effect, Environment, Fill, Flexibility, Flow, FontFamily,
+  FontStyle, FontWeight, GridPlacement, GridTrack, Inset, IntoUnit, LinearGradient, Media, Memo,
+  Offset, Owner, RadialGradient, Ring, Scheme, Shadow, Shadows, Signal, Spacing, State, StateSet,
+  StopColor, SweepGradient, SystemColors, TextAlignment, TextDecoration, TextDecorationStyle,
+  Token, TokenRef, TokenSet, Tracks, UnitPoint, Value, When, batch,
   layout::{Axis, Rect},
   seam::{
     access::{AccessFacts, Checked, RangeValue, Role, Shortcut},
     content::{Range, Side, TextSelection},
     control::{AccessRequest, ControlState, DragAxes, Element, LabelPlacement, Part, Prevent},
-    record::{Key, Transition, keys},
+    record::{Animation, Iterations, Key, Keyframe, Transition, keys},
     report::{KeyEvent, Modifiers, PointerEvent, PointerPhase},
     tree::Bubbling,
   },

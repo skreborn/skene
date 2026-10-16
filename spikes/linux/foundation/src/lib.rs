@@ -9,6 +9,8 @@
 //! - [`value`]: a property's value ([`Value`]): fixed, a token, or derived from signals, and
 //!   replaced under conditions (`16.when(Media::MinWidth(900), 24)`); and the types the
 //!   properties hold.
+//! - [`fill`]: what fills a box or its border ([`Fill`]): a color, or a linear, radial or
+//!   sweep gradient whose stops may name color tokens.
 //! - [`condition`]: what a value varies under ([`Media`], [`State`]).
 //! - [`token`]: design tokens, named inherited slots whose definitions carry their own
 //!   variants (dark mode among them), and the scope chain they resolve through ([`Tokens`]).
@@ -16,6 +18,9 @@
 //!   realization reports ([`environment::report`]).
 //! - [`layout`]: the layout engine (taffy), one small tree per container over a toolkit's own
 //!   measuring ([`layout::ContainerLayout`] over [`layout::LayoutHost`]).
+//! - [`motion`]: transitions and keyframe animations run on a platform's own frame clock, for
+//!   a realization that resolves every style: the in-between of each value and the runner a
+//!   node keeps ([`motion::Motion`]).
 //! - [`behavior`]: what a control's interaction is ([`behavior::Behavior`]): the events it acts
 //!   on and the verdict it gives each, what it tells a reader, and the state its parts are
 //!   styled under; the key tables every platform that draws its controls shares; and the
@@ -33,8 +38,10 @@ pub mod behavior;
 pub mod color;
 pub mod condition;
 pub mod environment;
+pub mod fill;
 pub mod keyed;
 pub mod layout;
+pub mod motion;
 pub mod reactive;
 pub mod scene;
 pub mod seam;
@@ -47,6 +54,10 @@ pub use crate::{
   color::Color,
   condition::{Condition, Media, State, StateSet},
   environment::{Environment, Scheme},
+  fill::{
+    Angle, Fill, GradientStop, LinearGradient, RadialGradient, StopColor, Stops, SweepGradient,
+    UnitPoint,
+  },
   keyed::Keyed,
   reactive::{Effect, Memo, Owner, Signal, batch, untrack},
   scene::{NodeId, Scene},

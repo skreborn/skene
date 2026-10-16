@@ -187,14 +187,15 @@ macro_rules! control_members {
     $crate::control::member_properties! {
       /// Space between the control's edges and what it holds, in pixels.
       set_padding, derive_padding: PADDING, ::skene_foundation::Inset;
-      /// The fill behind the control.
-      set_background, derive_background: BACKGROUND, ::skene_foundation::Color;
+      /// The fill behind the control: a color or a gradient.
+      set_background, derive_background: BACKGROUND, ::skene_foundation::Fill;
       /// The corners' radii, in pixels.
       set_corner_radius, derive_corner_radius: CORNER_RADIUS, ::skene_foundation::Corners;
       /// A line around the control, inside its edges.
       set_border, derive_border: BORDER, ::skene_foundation::Border;
-      /// The color of the line around the control, its text color where unset.
-      set_border_color, derive_border_color: BORDER_COLOR, ::skene_foundation::Color;
+      /// The fill of the line around the control (a color or a gradient), its text color
+      /// where unset.
+      set_border_color, derive_border_color: BORDER_COLOR, ::skene_foundation::Fill;
       /// The shadows the control casts.
       set_shadow, derive_shadow: SHADOW, ::skene_foundation::Shadows;
       /// The control's opacity, 0 to 1; half where disabled unless set.
@@ -249,6 +250,14 @@ macro_rules! control_members {
     /// the same property is replaced.
     pub fn add_transition(mut self, transition: ::skene_foundation::seam::record::Transition) -> Self {
       self.members_mut().record.add_transition(transition);
+
+      self
+    }
+
+    /// Plays `animation`'s keyframes over the control's own look from when the control first
+    /// takes it, after the animations added before.
+    pub fn add_animation(mut self, animation: ::skene_foundation::seam::record::Animation) -> Self {
+      self.members_mut().record.add_animation(animation);
 
       self
     }

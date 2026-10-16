@@ -163,6 +163,8 @@ pub struct Drawn {
   /// The text color it inherits, as last prepared: what its border, its ring and a painted
   /// node's ink default to.
   pub ink: Cell<Color>,
+  /// Its motion, where its style names transitions or animations.
+  pub motion: RefCell<Option<Box<crate::motion::Moving>>>,
 }
 
 impl Drawn {
@@ -196,6 +198,7 @@ impl Drawn {
       composing: Cell::new(false),
       edit_pending: Cell::new(false),
       ink: Cell::new(Color::BLACK),
+      motion: RefCell::new(None),
     })
   }
 

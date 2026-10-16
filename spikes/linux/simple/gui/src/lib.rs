@@ -38,8 +38,8 @@ use std::rc::Rc;
 
 use skene_gui::{
   AxisAlignment, Border, Button, Checkbox, Color, Column, Container, Cx, Definitions, Derived,
-  Flexible, FontWeight, Grid, GridTrack, Node, Row, Signal, State, SystemColors, Text, Toggle,
-  Token, TokenRef, TokenSet, Value, View, untrack,
+  Fill, Flexible, FontWeight, Grid, GridTrack, Node, Row, Signal, State, SystemColors, Text,
+  Toggle, Token, TokenRef, TokenSet, Value, View, untrack,
 };
 pub use skene_simple_core::{SimpleColors, SimpleDate};
 
@@ -193,7 +193,7 @@ impl SimpleButton {
   }
 
   /// Simple's fill for a button: its accent and the accent's hover and pressed variants.
-  pub fn fill() -> Value<Color> {
+  pub fn fill() -> Value<Fill> {
     Value::from(SimplePalette::ACCENT)
       .when(State::Hovered, SimplePalette::ACCENT_HOVER)
       .when(State::Pressed, SimplePalette::ACCENT_PRESSED)
@@ -330,7 +330,7 @@ impl SimpleDatePicker {
             if filled() {
               SimpleButton::fill()
             } else {
-              Value::from(SystemColors::CONTROL)
+              Value::<Fill>::from(SystemColors::CONTROL)
                 .when(State::Hovered, SystemColors::CONTROL_HOVER)
                 .when(State::Pressed, SystemColors::CONTROL_PRESSED)
             }

@@ -227,6 +227,8 @@ pub struct Rasterizer {
   library: FtLibrary,
   faces: HashMap<(u64, u32), Face>,
   masks: HashMap<Key, Option<Rc<GlyphMask>>>,
+  hits: u64,
+  misses: u64,
 }
 
 impl Rasterizer {
@@ -239,6 +241,8 @@ impl Rasterizer {
       library,
       faces: HashMap::new(),
       masks: HashMap::new(),
+      hits: 0,
+      misses: 0,
     })
   }
 
@@ -246,6 +250,13 @@ impl Rasterizer {
   #[must_use]
   pub fn cached(&self) -> usize {
     self.masks.len()
+  }
+
+  /// How many asks for a mask the cache answered, and how many FreeType drew: the cache's
+  /// hit rate.
+  #[must_use]
+  pub const fn lookups(&self) -> (u64, u64) {
+    (self.hits, self.misses)
   }
 
   /// The subpixel phase a glyph at `x` is drawn in under `settings`: none where hinting
@@ -322,8 +333,12 @@ impl Rasterizer {
     };
 
     if let Some(mask) = self.masks.get(&key) {
+      self.hits += 1;
+
       return mask.clone();
     }
+
+    self.misses += 1;
 
     let mask = self
       .face(font)

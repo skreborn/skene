@@ -22,7 +22,7 @@ vello_cpu.workspace = true
 wayland-client = "=0.31.15"
 wayland-protocols-misc = { features = ["client"], version = "=0.3.12" }
 wayland-protocols-wlr = { features = ["client"], version = "=0.3.12" }
-x11rb = { default-features = false, features = ["allow-unsafe-code", "cursor", "shm", "xinput", "xkb", "xtest"], version = "=0.14.0" }
+x11rb = { default-features = false, features = ["allow-unsafe-code", "cursor", "dri3", "present", "shm", "xinput", "xkb", "xtest"], version = "=0.14.0" }
 xim = { default-features = false, features = ["x11rb-client", "x11rb-xcb"], version = "=0.5.0" }
 xkbcommon = { default-features = false, features = ["wayland", "x11"], version = "=0.9.0" }
 zbus = { default-features = false, features = ["async-io", "blocking-api"], version = "=5.19.0" }

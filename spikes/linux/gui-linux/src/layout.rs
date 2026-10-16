@@ -363,6 +363,31 @@ pub fn reach(root: &Node) {
 /// only those whose content or metrics changed: the strongest change made, the nodes whose
 /// paint alone changed pushed to `repainted`.
 pub fn prepare(root: &Node, palette: &Palette, repainted: &mut Vec<Node>) -> Change {
+  prepare_from(root, &RunProps::default(), palette, repainted)
+}
+
+/// [`prepare`] for `node`'s subtree alone, the run properties its ancestors set inherited:
+/// what a node whose own run properties changed, and nothing else, needs.
+pub fn prepare_subtree(node: &Node, palette: &Palette, repainted: &mut Vec<Node>) -> Change {
+  let mut ancestors = node.ancestors();
+
+  ancestors.reverse();
+
+  let inherited = ancestors
+    .iter()
+    .fold(RunProps::default(), |inherited, ancestor| {
+      ancestor.run.borrow().over(&inherited)
+    });
+
+  prepare_from(node, &inherited, palette, repainted)
+}
+
+fn prepare_from(
+  root: &Node,
+  inherited: &RunProps,
+  palette: &Palette,
+  repainted: &mut Vec<Node>,
+) -> Change {
   fn go(
     node: &Node,
     inherited: &RunProps,
@@ -465,7 +490,7 @@ pub fn prepare(root: &Node, palette: &Palette, repainted: &mut Vec<Node>) -> Cha
 
   let mut change = Change::None;
 
-  go(root, &RunProps::default(), palette, &mut change, repainted);
+  go(root, inherited, palette, &mut change, repainted);
 
   change
 }

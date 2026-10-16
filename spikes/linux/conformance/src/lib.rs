@@ -15,9 +15,9 @@ pub mod pages;
 use std::time::Duration;
 
 use skene_gui::testing::{
-  AccessSnapshot, Action, Checked, Driver, EnvironmentRequest, Query, Role,
+  AccessSnapshot, Action, Checked, Driver, EnvironmentRequest, Frame, Query, Role, Screenshot,
 };
-use skene_gui::{AccessRequest, Modifiers, Scheme};
+use skene_gui::{AccessRequest, Modifiers, Rect, Scheme};
 
 /// A scenario: its name and what it does through a driver.
 pub type Scenario<D> = (&'static str, fn(&mut D));
@@ -108,6 +108,36 @@ pub fn scenarios<D: Driver>() -> Vec<Scenario<D>> {
     ("a_slider_drag_moves_its_fill_and_thumb", slider_drag::<D>),
     ("an_editor_scrolls_itself", editor_scrolls::<D>),
     ("a_third_party_control_is_first_class", third_party::<D>),
+    (
+      "what_is_drawn_later_covers_a_text_drawn_before",
+      stacking::<D>,
+    ),
+    (
+      "a_gradient_lies_over_its_box_and_follows_its_tokens",
+      gradients::<D>,
+    ),
+    (
+      "a_condition_flipping_runs_its_transition_on_the_frame_clock",
+      transition_on_condition::<D>,
+    ),
+    (
+      "a_redefined_token_runs_its_transition",
+      transition_on_token::<D>,
+    ),
+    (
+      "a_derived_write_runs_its_transition_outside_the_graph",
+      transition_on_derived::<D>,
+    ),
+    (
+      "a_text_color_transition_repaints_its_text",
+      transition_on_text::<D>,
+    ),
+    ("reduced_motion_cuts_a_transition", reduced_motion::<D>),
+    (
+      "a_keyframe_animation_plays_once_from_when_its_box_shows",
+      keyframe_animation::<D>,
+    ),
+    ("nothing_in_motion_paints_no_frame", idle::<D>),
     ("every_page_passes_the_audit", audit::<D>),
   ]
 }
@@ -1026,4 +1056,422 @@ fn audit<D: Driver>(driver: &mut D) {
 
     assert!(issues.is_empty(), "{page}: {issues:#?}");
   }
+}
+
+/// The colors of the screenshot's pixels inside `bounds`, inset by `inset` on every side, as
+/// `0xRRGGBB`.
+fn colors_in(shot: &Screenshot, bounds: Rect, inset: f32) -> Vec<u32> {
+  let (left, top) = (
+    (bounds.x + inset).ceil() as usize,
+    (bounds.y + inset).ceil() as usize,
+  );
+  let right = ((bounds.x + bounds.width - inset).floor() as usize).min(shot.width as usize);
+  let bottom = ((bounds.y + bounds.height - inset).floor() as usize).min(shot.height as usize);
+  let mut colors = Vec::new();
+
+  for y in top..bottom {
+    for x in left..right {
+      let at = (y * shot.width as usize + x) * 4;
+
+      colors.push(u32::from_be_bytes([
+        0,
+        shot.rgba[at],
+        shot.rgba[at + 1],
+        shot.rgba[at + 2],
+      ]));
+    }
+  }
+
+  colors
+}
+
+fn stacking<D: Driver>(driver: &mut D) {
+  driver.open("stacking");
+
+  let covered = read(driver, Role::Region, "Covered").bounds;
+  let cover = read(driver, Role::Region, "Cover").bounds;
+  let shot = driver.screenshot();
+  let under = colors_in(&shot, cover, 1.);
+  let beside = colors_in(
+    &shot,
+    Rect {
+      x: cover.x + cover.width + 1.,
+      width: covered.width - cover.width - 1.,
+      ..covered
+    },
+    0.,
+  );
+
+  assert!(!under.is_empty() && !beside.is_empty());
+  assert!(
+    under.iter().all(|&color| color == 0x0000ff),
+    "the opaque box hides the glyphs beneath it: {} of {} pixels are not its blue",
+    under.iter().filter(|&&color| color != 0x0000ff).count(),
+    under.len()
+  );
+  assert!(
+    beside.contains(&0xff0000),
+    "the text shows where the box does not cover it"
+  );
+
+  let scrim = read(driver, Role::Region, "Scrim").bounds;
+  let dimmed = colors_in(&shot, scrim, 1.);
+  let red = |color: u32| color >> 16;
+
+  assert!(
+    dimmed.iter().all(|&color| red(color) <= 0x81),
+    "the scrim dims the glyphs beneath it: the brightest red is {:#x}",
+    dimmed.iter().map(|&color| red(color)).max().unwrap_or(0)
+  );
+  assert!(
+    dimmed
+      .iter()
+      .any(|&color| color == 0x7f0000 || color == 0x800000),
+    "the dimmed text shows through the scrim"
+  );
+}
+
+/// Whether `color` is within `tolerance` of `wanted` in every channel.
+fn near(color: u32, wanted: u32, tolerance: u32) -> bool {
+  (0..3).all(|channel| {
+    let (a, b) = (
+      (color >> (channel * 8)) & 0xff,
+      (wanted >> (channel * 8)) & 0xff,
+    );
+
+    a.abs_diff(b) <= tolerance
+  })
+}
+
+fn gradients<D: Driver>(driver: &mut D) {
+  driver.open("gradients");
+
+  let at = |driver: &mut D, name: &str, x: f32, y: f32| {
+    let bounds = read(driver, Role::Region, name).bounds;
+
+    pixel(
+      driver,
+      bounds.x + bounds.width * x,
+      bounds.y + bounds.height * y,
+    )
+  };
+  let check = |color: u32, wanted: u32, what: &str| {
+    assert!(
+      near(color, wanted, 10),
+      "{what}: {color:06x}, not {wanted:06x}"
+    );
+  };
+
+  check(at(driver, "Linear", 0.005, 0.5), 0xff0000, "a line's start");
+  check(at(driver, "Linear", 0.5, 0.5), 0x800080, "a line's middle");
+  check(at(driver, "Linear", 0.995, 0.5), 0x0000ff, "a line's end");
+  check(at(driver, "Radial", 0.5, 0.5), 0xffffff, "the center");
+  check(
+    at(driver, "Radial", 0.5, 0.005),
+    0x4b4b4b,
+    "the middle of the edge",
+  );
+  check(
+    at(driver, "Radial", 0.002, 0.002),
+    0x000000,
+    "the farthest corner",
+  );
+  check(
+    at(driver, "Sweep", 0.52, 0.02),
+    0xff0000,
+    "the turn's start",
+  );
+  check(at(driver, "Sweep", 0.98, 0.5), 0x800080, "a quarter turn");
+  check(at(driver, "Sweep", 0.5, 0.98), 0x0000ff, "half a turn");
+  check(
+    at(driver, "Bordered", 0.01, 0.5),
+    0xfa0005,
+    "a border's leading edge",
+  );
+  check(
+    at(driver, "Bordered", 0.99, 0.5),
+    0x0500fa,
+    "a border's trailing edge",
+  );
+  check(
+    at(driver, "Bordered", 0.5, 0.5),
+    0xffffff,
+    "inside the border",
+  );
+  check(
+    at(driver, "Themed", 0.005, 0.5),
+    0xffffff,
+    "a token stop, light",
+  );
+
+  driver.set_environment(EnvironmentRequest::Scheme(Some(Scheme::Dark)));
+  check(
+    at(driver, "Themed", 0.005, 0.5),
+    0x000000,
+    "a token stop, dark",
+  );
+  check(
+    at(driver, "Themed", 0.995, 0.5),
+    0xff0000,
+    "a fixed stop, dark",
+  );
+}
+
+/// The color at the middle of `bounds` in each frame, with when the frame was painted.
+fn colors_over(frames: &[Frame], bounds: Rect) -> Vec<(Duration, u32)> {
+  frames
+    .iter()
+    .map(|frame| {
+      let (x, y) = (
+        (bounds.x + bounds.width / 2.) as usize,
+        (bounds.y + bounds.height / 2.) as usize,
+      );
+      let at = (y * frame.shot.width as usize + x) * 4;
+      let rgba = &frame.shot.rgba[at..at + 4];
+
+      (frame.at, u32::from_be_bytes([0, rgba[0], rgba[1], rgba[2]]))
+    })
+    .collect()
+}
+
+/// How far `color` is from `other`: the largest difference of a channel.
+fn distance(color: u32, other: u32) -> u32 {
+  (0..3)
+    .map(|channel| ((color >> (channel * 8)) & 0xff).abs_diff((other >> (channel * 8)) & 0xff))
+    .max()
+    .unwrap_or(0)
+}
+
+/// The frames painted while `act` runs (it settles, so a transition runs out), as the colors
+/// at the middle of the box named `name`.
+fn recorded<D: Driver>(
+  driver: &mut D,
+  name: &str,
+  act: impl FnOnce(&mut D),
+) -> Vec<(Duration, u32)> {
+  let bounds = read(driver, Role::Region, name).bounds;
+
+  driver.set_recording(true);
+  act(driver);
+
+  let frames = driver.take_frames();
+
+  driver.set_recording(false);
+
+  colors_over(&frames, bounds)
+}
+
+/// Checks that `colors` moved from `from` to `to` through in-betweens, each nearer `to` than
+/// the one before, on the platform's frame clock: the frames between the first in-between and
+/// the end come at least 8 and at most 500 a second, half of them at least 2 ms apart, where a
+/// loop painting back to back paints a frame in a fraction of a millisecond.
+fn moved(colors: &[(Duration, u32)], from: u32, to: u32, what: &str) {
+  let summary = || {
+    colors
+      .iter()
+      .map(|(at, color)| format!("{:.0}ms {color:06x}", at.as_secs_f64() * 1000.))
+      .collect::<Vec<_>>()
+      .join(", ")
+  };
+  let between: Vec<&(Duration, u32)> = colors
+    .iter()
+    .filter(|(_, color)| distance(*color, from) > 8 && distance(*color, to) > 8)
+    .collect();
+
+  eprintln!("{what}: {}", summary());
+
+  assert_eq!(
+    colors.last().map(|(_, color)| *color),
+    Some(to),
+    "{what}: it ends at {to:06x}: {}",
+    summary()
+  );
+  assert!(
+    between.len() >= 3,
+    "{what}: it moves through in-betweens: {}",
+    summary()
+  );
+  assert!(
+    between
+      .windows(2)
+      .all(|pair| distance(pair[1].1, to) <= distance(pair[0].1, to) + 2),
+    "{what}: each frame nearer its end: {}",
+    summary()
+  );
+
+  let first = between[0].0;
+  let end = colors
+    .iter()
+    .find(|(at, color)| *at > first && *color == to)
+    .map_or(first, |(at, _)| *at);
+  let span = end.saturating_sub(first).as_secs_f64();
+  let painted = colors
+    .iter()
+    .filter(|(at, _)| *at >= first && *at <= end)
+    .count();
+  let rate = painted as f64 / span.max(0.001);
+
+  assert!(
+    span >= f64::from(pages::MOTION) / 1000. * 0.5,
+    "{what}: it takes its duration, not a cut: {span:.3}s: {}",
+    summary()
+  );
+  assert!(
+    (8. ..=500.).contains(&rate),
+    "{what}: {painted} frames in {span:.3}s, {rate:.0} a second: {}",
+    summary()
+  );
+
+  let mut gaps: Vec<Duration> = colors
+    .windows(2)
+    .filter(|pair| pair[0].0 >= first && pair[1].0 <= end)
+    .map(|pair| pair[1].0.saturating_sub(pair[0].0))
+    .collect();
+
+  gaps.sort();
+
+  assert!(
+    gaps
+      .get(gaps.len() / 2)
+      .is_some_and(|gap| *gap >= Duration::from_millis(2)),
+    "{what}: frames paced by the clock, not painted back to back: {gaps:?}"
+  );
+}
+
+fn transition_on_condition<D: Driver>(driver: &mut D) {
+  driver.open("motion");
+
+  let hovered = role(driver, Role::Region, "Hovered");
+  let colors = recorded(driver, "Hovered", |driver| {
+    driver.act(&hovered, &Action::Hover);
+  });
+
+  moved(&colors, 0xffffff, 0x000000, "the pointer over the box");
+}
+
+fn transition_on_token<D: Driver>(driver: &mut D) {
+  driver.open("motion");
+
+  let retheme = role(driver, Role::Button, "Retheme");
+  let before = driver.probe("themed");
+  let colors = recorded(driver, "Themed", |driver| {
+    driver.act(&retheme, &Action::Click);
+  });
+
+  moved(&colors, 0xffffff, 0x000000, "the swatch token redefined");
+  assert_eq!(
+    driver
+      .probe("themed")
+      .and_then(|count| count.parse::<u32>().ok()),
+    before
+      .and_then(|count| count.parse::<u32>().ok())
+      .map(|count| count + 1),
+    "the theme derived its palette once, not once a frame"
+  );
+}
+
+fn transition_on_derived<D: Driver>(driver: &mut D) {
+  driver.open("motion");
+
+  let warm = role(driver, Role::Button, "Warm");
+  let before = driver.probe("derived");
+  let colors = recorded(driver, "Derived", |driver| {
+    driver.act(&warm, &Action::Click);
+  });
+
+  moved(&colors, 0xffffff, 0xff0000, "a derived fill written");
+  assert_eq!(
+    driver
+      .probe("derived")
+      .and_then(|count| count.parse::<u32>().ok()),
+    before
+      .and_then(|count| count.parse::<u32>().ok())
+      .map(|count| count + 1),
+    "the fill was derived once, not once a frame"
+  );
+}
+
+fn reduced_motion<D: Driver>(driver: &mut D) {
+  driver.open("motion");
+  driver.set_environment(EnvironmentRequest::ReducedMotion(true));
+
+  let warm = role(driver, Role::Button, "Warm");
+  let colors = recorded(driver, "Derived", |driver| {
+    driver.act(&warm, &Action::Click);
+  });
+
+  driver.set_environment(EnvironmentRequest::ReducedMotion(false));
+  assert_eq!(
+    colors.last().map(|(_, color)| *color),
+    Some(0xff0000),
+    "{colors:?}"
+  );
+  assert!(
+    colors
+      .iter()
+      .all(|(_, color)| *color == 0xffffff || *color == 0xff0000),
+    "a reader preferring reduced motion sees the change as a cut: {colors:?}"
+  );
+}
+
+fn keyframe_animation<D: Driver>(driver: &mut D) {
+  driver.set_recording(true);
+  driver.open("keyframes");
+
+  let frames = driver.take_frames();
+
+  driver.set_recording(false);
+
+  let bounds = read(driver, Role::Region, "Fading").bounds;
+  let colors = colors_over(&frames, bounds);
+
+  moved(&colors, 0x000000, 0xffffff, "a keyframe animation");
+}
+
+fn idle<D: Driver>(driver: &mut D) {
+  driver.open("motion");
+
+  let hovered = role(driver, Role::Region, "Hovered");
+
+  driver.act(&hovered, &Action::Hover);
+  driver.set_recording(true);
+  driver.wait(Duration::from_millis(600));
+
+  let frames = driver.take_frames();
+
+  driver.set_recording(false);
+  assert!(
+    frames.is_empty(),
+    "a window with nothing in motion paints nothing: {} frames in 600 ms",
+    frames.len()
+  );
+}
+
+fn transition_on_text<D: Driver>(driver: &mut D) {
+  driver.open("motion");
+
+  let bounds = read(driver, Role::Region, "Inked").bounds;
+  let warm = role(driver, Role::Button, "Warm");
+
+  driver.set_recording(true);
+  driver.act(&warm, &Action::Click);
+
+  let frames = driver.take_frames();
+
+  driver.set_recording(false);
+
+  // The most inked pixel of the text: green stays nothing where black and red cover it all.
+  let colors: Vec<(Duration, u32)> = frames
+    .iter()
+    .map(|frame| {
+      let inked = colors_in(&frame.shot, bounds, 0.)
+        .into_iter()
+        .min_by_key(|color| ((color >> 8) & 0xff, color & 0xff))
+        .unwrap_or(0xffffff);
+
+      (frame.at, inked)
+    })
+    .collect();
+
+  moved(&colors, 0x000000, 0xff0000, "a text's inherited color");
 }

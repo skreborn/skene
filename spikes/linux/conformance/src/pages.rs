@@ -3,7 +3,7 @@
 
 use acme_rating::star_rating;
 use skene_gui::{
-  PointerEvent, PointerPhase,
+  Animation, Curve, Keyframe, PointerEvent, PointerPhase, Transition, keys,
   painted::shapes::Rect,
   prelude::*,
   testing::{publish, register as register_page},
@@ -14,9 +14,33 @@ use skene_simple_gui::{
 
 /// Every page's name.
 pub const NAMES: &[&str] = &[
-  "toggles", "text", "sliders", "picker", "box", "focus", "order", "rows", "shortcut", "scheme",
-  "width", "library", "painted", "buttons", "checkbox", "rings", "disabled", "simple", "accent",
-  "fruit", "caption", "editor", "rating",
+  "toggles",
+  "text",
+  "sliders",
+  "picker",
+  "box",
+  "focus",
+  "order",
+  "rows",
+  "shortcut",
+  "scheme",
+  "width",
+  "library",
+  "painted",
+  "buttons",
+  "checkbox",
+  "rings",
+  "disabled",
+  "simple",
+  "accent",
+  "fruit",
+  "caption",
+  "editor",
+  "rating",
+  "stacking",
+  "gradients",
+  "motion",
+  "keyframes",
 ];
 
 /// Registers every page under its name.
@@ -44,6 +68,10 @@ pub fn register() {
   register_page("caption", caption);
   register_page("editor", editor);
   register_page("rating", rating);
+  register_page("stacking", stacking);
+  register_page("gradients", gradients);
+  register_page("motion", motion);
+  register_page("keyframes", keyframes);
 }
 
 /// Publishes `signal`'s value as the probe `name`, as `Display` writes it.
@@ -549,4 +577,195 @@ fn rating() -> impl View {
     .add_child(Row::new().add_child(star_rating("Rating", stars)))
     .add_child(Row::new().add_child(star_rating("Locked", locked).set_disabled(true)))
     .add_child(Button::new("After"))
+}
+
+/// A text in red under an opaque blue box covering its start, and the same text under a
+/// black scrim at half opacity covering all of it: what a stack draws later covers what it
+/// draws before.
+fn stacking() -> impl View {
+  let words = || {
+    Text::new("MMMMMMMM")
+      .set_font_size(30)
+      .set_color(Color::rgb(0xff0000))
+  };
+
+  Column::new()
+    .set_padding(16)
+    .set_spacing(12)
+    .set_item_alignment(AxisAlignment::Start)
+    .add_child(
+      Container::new().set_label("Covered").set_child(
+        Stack::new().add_child(words()).add_child(
+          Container::new()
+            .set_label("Cover")
+            .set_width(100)
+            .set_height(40)
+            .set_background(Color::rgb(0x0000ff)),
+        ),
+      ),
+    )
+    .add_child(
+      Container::new().set_label("Dimmed").set_child(
+        Stack::new().add_child(words()).add_child(
+          Pinned::new().set_edges(Edges::all(0)).set_child(
+            Container::new()
+              .set_label("Scrim")
+              .set_background(Color::rgba(0x0000_0080)),
+          ),
+        ),
+      ),
+    )
+}
+
+/// A box filled along a line, one filled out from its center, one filled around it, one
+/// whose border runs along a line, and one whose gradient starts at a token's color.
+fn gradients() -> impl View {
+  let red = Color::rgb(0xff0000);
+  let blue = Color::rgb(0x0000ff);
+  let swatch = |name: &str| {
+    Container::new()
+      .set_label(name)
+      .set_width(200)
+      .set_height(60)
+  };
+
+  Theme::new(Swatches(
+    Token::new(SWATCH, Color::WHITE).when(Media::Dark, Color::BLACK),
+  ))
+  .set_child(
+    Column::new()
+      .set_padding(16)
+      .set_spacing(12)
+      .set_item_alignment(AxisAlignment::Start)
+      .add_child(
+        swatch("Linear").set_background(
+          LinearGradient::new(Angle::degrees(90.))
+            .add_stop(0., red)
+            .add_stop(1., blue),
+        ),
+      )
+      .add_child(
+        swatch("Radial").set_height(120).set_background(
+          RadialGradient::new()
+            .add_stop(0., Color::WHITE)
+            .add_stop(1., Color::BLACK),
+        ),
+      )
+      .add_child(
+        swatch("Sweep").set_height(120).set_background(
+          SweepGradient::new()
+            .add_stop(0., red)
+            .add_stop(0.5, blue)
+            .add_stop(1., red),
+        ),
+      )
+      .add_child(
+        swatch("Bordered")
+          .set_background(Color::WHITE)
+          .set_border(Border::new(8))
+          .set_border_color(
+            LinearGradient::new(Angle::degrees(90.))
+              .add_stop(0., red)
+              .add_stop(1., blue),
+          ),
+      )
+      .add_child(
+        swatch("Themed").set_background(
+          LinearGradient::new(Angle::degrees(90.))
+            .add_stop(0., SWATCH)
+            .add_stop(1., red),
+        ),
+      ),
+  )
+}
+
+/// How long the motion pages' transitions and animations take, in milliseconds.
+pub const MOTION: u32 = 400;
+
+/// A fill moving linearly over [`MOTION`] milliseconds.
+fn moving() -> Transition {
+  Transition::new(keys::BACKGROUND, MOTION).set_curve(Curve::Linear)
+}
+
+/// Three boxes whose fills move from white under a transition, each from a change of its own
+/// source: a condition flipping (the pointer over the first turns it black), a token
+/// redefined (a button switches the theme's swatch to black) and a derived value written (a
+/// button turns the third red, and the text of a fourth box from black to red). Probes count
+/// the third's derivations and the theme's.
+fn motion() -> impl View {
+  let dark = Signal::new(false);
+  let warm = Signal::new(false);
+  let derived = Signal::new(0_u32);
+  let themed = Signal::new(0_u32);
+  let swatch = |name: &str| {
+    Container::new()
+      .set_label(name)
+      .set_width(120)
+      .set_height(40)
+      .add_transition(moving())
+  };
+
+  probe("derived", derived);
+  probe("themed", themed);
+
+  Theme::derive(move || {
+    themed.update(|count| *count += 1);
+    Swatches(Token::new(
+      SWATCH,
+      if dark.get() {
+        Color::BLACK
+      } else {
+        Color::WHITE
+      },
+    ))
+  })
+  .set_child(
+    Column::new()
+      .set_padding(16)
+      .set_spacing(12)
+      .set_item_alignment(AxisAlignment::Start)
+      .add_child(swatch("Hovered").set_background(Color::WHITE.when(State::Hovered, Color::BLACK)))
+      .add_child(swatch("Themed").set_background(SWATCH))
+      .add_child(swatch("Derived").derive_background(move || {
+        derived.update(|count| *count += 1);
+
+        if warm.get() {
+          Color::rgb(0xff0000)
+        } else {
+          Color::WHITE
+        }
+      }))
+      .add_child(
+        Container::new()
+          .set_label("Inked")
+          .derive_color(move || {
+            if warm.get() {
+              Color::rgb(0xff0000)
+            } else {
+              Color::BLACK
+            }
+          })
+          .add_transition(Transition::new(keys::COLOR, MOTION).set_curve(Curve::Linear))
+          .set_child(Text::new("MMM").set_font_size(32)),
+      )
+      .add_child(Button::new("Retheme").handle_activate(move || dark.update(|dark| *dark = !*dark)))
+      .add_child(Button::new("Warm").handle_activate(move || warm.update(|warm| *warm = !*warm))),
+  )
+}
+
+/// A box that, from when it is first shown, fades its fill from black to its own white over
+/// [`MOTION`] milliseconds, once, as a keyframe animation.
+fn keyframes() -> impl View {
+  Column::new().set_padding(16).add_child(
+    Container::new()
+      .set_label("Fading")
+      .set_width(120)
+      .set_height(40)
+      .set_background(Color::WHITE)
+      .add_animation(
+        Animation::new(MOTION)
+          .set_curve(Curve::Linear)
+          .add_keyframe(0., Keyframe::new().set(keys::BACKGROUND, Color::BLACK)),
+      ),
+  )
 }

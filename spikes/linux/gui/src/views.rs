@@ -7,13 +7,14 @@ use std::{hash::Hash, rc::Rc};
 
 use skene_foundation::{
   Alignment, Arrangement, AxisAlignment, Border, Color, Corners, Definitions, Dimension, Effect,
-  Flow, FontFamily, FontStyle, FontWeight, Inset, Offset, Ring, Shadows, Signal, Spacing, State,
-  SystemColors, TextAlignment, TextDecoration, TextDecorationStyle, TokenSet, Tracks, When as _,
+  Fill, Flow, FontFamily, FontStyle, FontWeight, Inset, Offset, Ring, Shadows, Signal, Spacing,
+  State, SystemColors, TextAlignment, TextDecoration, TextDecorationStyle, TokenSet, Tracks,
+  When as _,
   seam::{
     access::{AccessFacts, Role, Shortcut},
     content::contents,
     node::{LayoutKind, NodeKind, NodeSpec},
-    record::{Prop, Record, Transition, keys},
+    record::{Animation, Prop, Record, Transition, keys},
     report::{KeyEvent, PointerEvent},
     tree::{self, Bubbling},
   },
@@ -57,14 +58,15 @@ impl Container {
   properties! {
     /// Space between the box's edges and its child, in pixels.
     set_padding, derive_padding: PADDING, Inset;
-    /// The fill behind the child.
-    set_background, derive_background: BACKGROUND, Color;
+    /// The fill behind the child: a color or a gradient.
+    set_background, derive_background: BACKGROUND, Fill;
     /// The corners' radii, in pixels.
     set_corner_radius, derive_corner_radius: CORNER_RADIUS, Corners;
     /// A line around the box, inside its edges.
     set_border, derive_border: BORDER, Border;
-    /// The color of the line around the box, its text color where unset.
-    set_border_color, derive_border_color: BORDER_COLOR, Color;
+    /// The fill of the line around the box (a color or a gradient), its text color where
+    /// unset.
+    set_border_color, derive_border_color: BORDER_COLOR, Fill;
     /// The shadows the box casts.
     set_shadow, derive_shadow: SHADOW, Shadows;
     /// The box's opacity, 0 to 1.
@@ -121,6 +123,15 @@ impl Container {
   /// (`Transition::new(keys::BACKGROUND, 200)`); one of the same property is replaced.
   pub fn add_transition(mut self, transition: Transition) -> Self {
     self.record.add_transition(transition);
+
+    self
+  }
+
+  /// Plays `animation`'s keyframes over the box's own look from when the box first takes it,
+  /// after the animations added before:
+  /// `Animation::new(400).add_keyframe(0., Keyframe::new().set(keys::OPACITY, 0))`.
+  pub fn add_animation(mut self, animation: Animation) -> Self {
+    self.record.add_animation(animation);
 
     self
   }
@@ -566,6 +577,14 @@ impl Text {
   /// (`Transition::new(keys::COLOR, 200)`); one of the same property is replaced.
   pub fn add_transition(mut self, transition: Transition) -> Self {
     self.record.add_transition(transition);
+
+    self
+  }
+
+  /// Plays `animation`'s keyframes over the text's look from when the text first takes it,
+  /// after the animations added before.
+  pub fn add_animation(mut self, animation: Animation) -> Self {
+    self.record.add_animation(animation);
 
     self
   }

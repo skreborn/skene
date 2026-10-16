@@ -40,7 +40,9 @@ use skene_foundation::{
     activity,
     content::{Graphemes, TextSelection, Unit},
     report::Modifiers,
-    testing::{AccessSnapshot, Action, Driver, EnvironmentRequest, Issue, Query, Screenshot},
+    testing::{
+      AccessSnapshot, Action, Driver, EnvironmentRequest, Frame, Issue, Query, Screenshot,
+    },
     tree,
   },
 };
@@ -307,6 +309,45 @@ fn reset() {
   });
 }
 
+/// The frames being recorded: when recording began, the frames so far, and how many frames the
+/// window had painted at the last look.
+struct Recording {
+  started: Instant,
+  frames: Vec<Frame>,
+  painted: u64,
+}
+
+thread_local! {
+  static RECORDING: RefCell<Option<Recording>> = const { RefCell::new(None) };
+}
+
+/// Records the frame the open window painted since the last look, where recording, stamped
+/// with when it was painted.
+fn record() {
+  let painted = SHOWN.with(|shown| {
+    shown.borrow().as_ref().map(|shown| {
+      let shell = shown.window.shell();
+
+      (shell.frames, shell.painted_at)
+    })
+  });
+
+  RECORDING.with(|recording| {
+    if let (Some(recording), Some((painted, at))) = (recording.borrow_mut().as_mut(), painted)
+      && painted > recording.painted
+    {
+      recording.painted = painted;
+      recording.frames.push(Frame {
+        at: at.map_or_else(
+          || recording.started.elapsed(),
+          |at| at.saturating_duration_since(recording.started),
+        ),
+        shot: Drawn::with_window(Drawn::shot),
+      });
+    }
+  });
+}
+
 /// Turns the open window's loop for `duration`, or sleeps where none is open.
 fn pump(duration: Duration) {
   let until = Instant::now() + duration;
@@ -325,6 +366,8 @@ fn pump(duration: Duration) {
     if stepped.is_none() {
       std::thread::sleep(left);
     }
+
+    record();
 
     if Instant::now() >= until {
       return;
@@ -640,6 +683,12 @@ impl Drawn {
         frame: None,
         origin: None,
       });
+    });
+    // A recording goes on into the new window from its first frame.
+    RECORDING.with(|recording| {
+      if let Some(recording) = recording.borrow_mut().as_mut() {
+        recording.painted = 0;
+      }
     });
 
     let drawn = pump_until(Duration::from_secs(10), || {
@@ -1133,7 +1182,12 @@ impl Drawn {
   pub fn content(&self) -> Screenshot {
     settle();
 
-    Self::with_window(|window| {
+    Self::with_window(Self::shot)
+  }
+
+  /// `window`'s content as drawn last, alone (below a title bar Skene draws), as RGBA.
+  fn shot(window: &mut Window) -> Screenshot {
+    {
       let shell = window.shell();
       let pixmap = shell.last_frame().expect("the window has drawn");
       let scale = shell.scale;
@@ -1175,7 +1229,7 @@ impl Drawn {
         height: height as u32,
         rgba,
       }
-    })
+    }
   }
 
   /// Writes the window's content as a PNG at `path`.
@@ -1441,6 +1495,37 @@ impl Driver for Drawn {
 
   fn screenshot(&mut self) -> Screenshot {
     self.content()
+  }
+
+  fn set_recording(&mut self, recording: bool) {
+    let painted = SHOWN.with(|shown| {
+      shown
+        .borrow()
+        .as_ref()
+        .map_or(0, |shown| shown.window.shell().frames)
+    });
+
+    RECORDING.with(|current| {
+      *current.borrow_mut() = recording.then(|| Recording {
+        started: Instant::now(),
+        frames: Vec::new(),
+        painted,
+      });
+    });
+  }
+
+  fn take_frames(&mut self) -> Vec<Frame> {
+    RECORDING.with(|recording| {
+      recording
+        .borrow_mut()
+        .as_mut()
+        .map(|recording| std::mem::take(&mut recording.frames))
+        .unwrap_or_default()
+    })
+  }
+
+  fn wait(&mut self, duration: Duration) {
+    pump(duration);
   }
 
   fn outline(&mut self) -> String {

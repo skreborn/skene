@@ -1,12 +1,19 @@
 //! Painting the realized tree into a frame: each box's shadows, fill, border and ring, its
 //! content (a text, a text entry, a recorded picture), its children clipped where it clips,
-//! through vello_cpu's paths, and every text's glyphs composited afterwards as FreeType masks
-//! under the reader's font settings. An overlay's subtree is painted on its own surface.
+//! everything in the scene's order through a [`Sink`] (vello_cpu's context on the CPU path). A
+//! text's glyphs are FreeType's masks under the reader's font settings, each drawn where its
+//! text stands in that order, as an image tinted in its color, so a box painted later covers
+//! them. An overlay's subtree is painted on its own surface.
 
-use std::rc::Rc;
+use std::{
+  collections::HashMap,
+  rc::Rc,
+  sync::Arc,
+  time::{Duration, Instant},
+};
 
 use skene_foundation::{
-  Color, Corners,
+  Color, Corners, Fill, UnitPoint,
   layout::Rect,
   seam::{
     node::{LayoutKind, NodeKind},
@@ -15,13 +22,18 @@ use skene_foundation::{
   text::Laid as _,
   value::{BorderStyle, Ring},
 };
-use skene_parley::{ParleyLaid, render::MaskPainter};
+use skene_parley::{
+  ParleyLaid,
+  linux::{GlyphMask, MaskPixels},
+  render::{DecorationShape, MaskPainter, PlacedGlyph},
+};
 use vello_cpu::{
-  Pixmap, RenderContext, Resources,
+  Image, ImageSource, PixelMetadata, Pixmap, RenderContext, Resources, Tint, TintMode,
   kurbo::{
-    Affine, BezPath, Circle, Rect as KRect, RoundedRect, RoundedRectRadii, Shape as _, Stroke,
+    Affine, BezPath, Circle, Point, Rect as KRect, RoundedRect, RoundedRectRadii, Shape as _,
+    Stroke,
   },
-  peniko::Color as PColor,
+  peniko::{Color as PColor, Gradient, ImageAlphaType, ImageQuality, ImageSampler},
 };
 
 use crate::{node::Node, palette::Palette, text};
@@ -95,25 +107,226 @@ pub fn radii(corners: Corners, rect: Rect) -> RoundedRectRadii {
   )
 }
 
-/// A text queued for the mask pass: its layout, where its top left is (window pixels), the
-/// rectangle it is cut to, and the opacity it is drawn at.
-struct TextDraw {
-  laid: ParleyLaid,
-  origin: (f32, f32),
-  clip: Rect,
-  opacity: f32,
+/// What a shape is filled or stroked with.
+#[derive(Clone, Debug)]
+pub enum Brush {
+  /// One color.
+  Solid(PColor),
+  /// A gradient, laid over the shape by the transform from its own space to the device's.
+  Gradient(Gradient, Affine),
 }
 
-/// What one frame paints with: the vello context, the scale and the offset from window
-/// pixels to the frame's device pixels, the clip and opacity in force, the texts queued.
-pub struct Canvas<'a> {
-  /// The vello context, in device pixels.
+/// What the painter draws through, in device pixels: a renderer's scene, the shapes kept in
+/// the order drawn. Every call names the transform it draws under, so none depends on what
+/// an earlier one left.
+pub trait Sink {
+  /// Fills `path`, placed by `transform`, with `brush`.
+  fn fill(&mut self, path: &BezPath, transform: Affine, brush: &Brush);
+
+  /// Fills `rect`, placed by `transform`, with `brush`.
+  fn fill_rect(&mut self, rect: KRect, transform: Affine, brush: &Brush);
+
+  /// Strokes `path`, placed by `transform`, with `brush`.
+  fn stroke(&mut self, path: &BezPath, stroke: &Stroke, transform: Affine, brush: &Brush);
+
+  /// Fills `rect` with corners `radius` round, blurred by a deviation of `deviation` (its
+  /// inverse where `invert`: clear inside, `color` outside), placed by `transform`.
+  fn blurred_rect(
+    &mut self,
+    rect: KRect,
+    radius: f32,
+    deviation: f32,
+    invert: bool,
+    transform: Affine,
+    color: PColor,
+  );
+
+  /// Cuts what is drawn until the matching [`Sink::pop`] to `path`, placed by `transform`.
+  fn push_clip(&mut self, path: &BezPath, transform: Affine);
+
+  /// Fades what is drawn until the matching [`Sink::pop`] to `opacity`, as one layer.
+  fn push_opacity(&mut self, opacity: f32);
+
+  /// Ends the last clip or opacity layer pushed.
+  fn pop(&mut self);
+
+  /// Draws `glyph`'s mask at its device pixel: a coverage mask in its color, a color glyph
+  /// in its own.
+  fn glyph(&mut self, glyph: &PlacedGlyph);
+}
+
+/// The CPU path's glyph images: each mask the rasterizer cached, as an image vello_cpu
+/// draws, kept while the mask is.
+#[derive(Default)]
+pub struct GlyphImages {
+  images: HashMap<usize, (Rc<GlyphMask>, Image)>,
+  hits: u64,
+  misses: u64,
+}
+
+impl GlyphImages {
+  /// How many images the cache keeps before it starts over.
+  const MOST: usize = 16_384;
+
+  /// The image of `mask`: its coverage as alpha (black beneath, the tint giving the color),
+  /// or a color glyph's premultiplied pixels.
+  fn image(&mut self, mask: &Rc<GlyphMask>) -> Image {
+    let key = Rc::as_ptr(mask) as usize;
+
+    if let Some((_, image)) = self.images.get(&key) {
+      self.hits += 1;
+
+      return image.clone();
+    }
+
+    self.misses += 1;
+
+    if self.images.len() >= Self::MOST {
+      self.images.clear();
+    }
+
+    let image = Image {
+      image: ImageSource::Pixmap(Arc::new(mask_pixmap(mask))),
+      sampler: ImageSampler {
+        quality: ImageQuality::Low,
+        ..ImageSampler::default()
+      },
+    };
+
+    self.images.insert(key, (Rc::clone(mask), image.clone()));
+
+    image
+  }
+
+  /// How many glyph draws found their image cached, and how many made it.
+  #[must_use]
+  pub const fn lookups(&self) -> (u64, u64) {
+    (self.hits, self.misses)
+  }
+}
+
+/// A mask's pixels as a premultiplied pixmap: coverage as alpha over black, or a color
+/// glyph's own.
+fn mask_pixmap(mask: &GlyphMask) -> Pixmap {
+  let (Ok(width), Ok(height)) = (u16::try_from(mask.width), u16::try_from(mask.height)) else {
+    return Pixmap::new(1, 1);
+  };
+  let data = match &mask.pixels {
+    MaskPixels::Alpha(alpha) => alpha.iter().flat_map(|&a| [0, 0, 0, a]).collect(),
+    MaskPixels::Color(rgba) => rgba.clone(),
+  };
+
+  Pixmap::from_parts(
+    data,
+    width,
+    height,
+    PixelMetadata::new(ImageAlphaType::AlphaPremultiplied, true),
+  )
+}
+
+/// vello_cpu's context as a [`Sink`], with the glyph images it draws from.
+pub struct CpuSink<'a> {
+  /// The context, in device pixels.
   pub ctx: &'a mut RenderContext,
+  /// The glyph images.
+  pub glyphs: &'a mut GlyphImages,
+}
+
+impl CpuSink<'_> {
+  fn brush(&mut self, transform: Affine, brush: &Brush) {
+    self.ctx.set_transform(transform);
+
+    match brush {
+      Brush::Solid(color) => {
+        self.ctx.set_paint(*color);
+        self.ctx.reset_paint_transform();
+      }
+      Brush::Gradient(gradient, placed) => {
+        self.ctx.set_paint(gradient.clone());
+        self.ctx.set_paint_transform(transform.inverse() * *placed);
+      }
+    }
+  }
+}
+
+impl Sink for CpuSink<'_> {
+  fn fill(&mut self, path: &BezPath, transform: Affine, brush: &Brush) {
+    self.brush(transform, brush);
+    self.ctx.fill_path(path);
+  }
+
+  fn fill_rect(&mut self, rect: KRect, transform: Affine, brush: &Brush) {
+    self.brush(transform, brush);
+    self.ctx.fill_rect(&rect);
+  }
+
+  fn stroke(&mut self, path: &BezPath, stroke: &Stroke, transform: Affine, brush: &Brush) {
+    self.brush(transform, brush);
+    self.ctx.set_stroke(stroke.clone());
+    self.ctx.stroke_path(path);
+  }
+
+  fn blurred_rect(
+    &mut self,
+    rect: KRect,
+    radius: f32,
+    deviation: f32,
+    invert: bool,
+    transform: Affine,
+    color: PColor,
+  ) {
+    self.brush(transform, &Brush::Solid(color));
+    self
+      .ctx
+      .fill_blurred_rounded_rect(&rect, radius, deviation, invert);
+  }
+
+  fn push_clip(&mut self, path: &BezPath, transform: Affine) {
+    self.ctx.set_transform(transform);
+    self.ctx.push_clip_layer(path);
+  }
+
+  fn push_opacity(&mut self, opacity: f32) {
+    self.ctx.push_opacity_layer(opacity);
+  }
+
+  fn pop(&mut self) {
+    self.ctx.pop_layer();
+  }
+
+  fn glyph(&mut self, glyph: &PlacedGlyph) {
+    let image = self.glyphs.image(&glyph.mask);
+    let tint = matches!(glyph.mask.pixels, MaskPixels::Alpha(_)).then(|| Tint {
+      color: color(glyph.color),
+      mode: TintMode::AlphaMask,
+    });
+
+    self
+      .ctx
+      .set_transform(Affine::translate((glyph.left as f64, glyph.top as f64)));
+    self.ctx.reset_paint_transform();
+    self.ctx.set_paint(image);
+    self.ctx.set_tint(tint);
+    self.ctx.fill_rect(&KRect::new(
+      0.,
+      0.,
+      f64::from(glyph.mask.width),
+      f64::from(glyph.mask.height),
+    ));
+    self.ctx.reset_tint();
+  }
+}
+
+/// What one frame paints with: the sink, the glyph painter, the scale and the offset from
+/// window pixels to the frame's device pixels, the clip in force.
+pub struct Canvas<'a> {
+  /// What the frame draws through, in device pixels.
+  pub sink: &'a mut dyn Sink,
+  masks: Option<&'a mut MaskPainter>,
   scale: f64,
   offset: (f64, f64),
   clip: Rect,
-  opacity: f32,
-  texts: Vec<TextDraw>,
+  glyph_time: Duration,
   /// The defaults the frame draws with.
   pub palette: Palette,
 }
@@ -129,16 +342,146 @@ impl Canvas<'_> {
       return;
     }
 
-    self.ctx.set_transform(self.to_device());
-    self.ctx.set_paint(color(fill));
+    let transform = self.to_device();
+    let brush = Brush::Solid(color(fill));
 
     if corners == Corners::all(0.) {
-      self.ctx.fill_rect(&krect(rect));
+      self.sink.fill_rect(krect(rect), transform, &brush);
     } else {
-      self
-        .ctx
-        .fill_path(&RoundedRect::from_rect(krect(rect), radii(corners, rect)).to_path(0.1));
+      self.sink.fill(
+        &RoundedRect::from_rect(krect(rect), radii(corners, rect)).to_path(0.1),
+        transform,
+        &brush,
+      );
     }
+  }
+
+  /// Fills `rect` (window pixels) with `fill`, a color or a gradient laid over it, its
+  /// corners rounded by `corners`.
+  pub fn fill_with(&mut self, rect: Rect, corners: Corners, fill: &Fill) {
+    if fill.is_clear() || rect.width <= 0. || rect.height <= 0. {
+      return;
+    }
+
+    let transform = self.to_device();
+    let brush = self.brush(fill, rect);
+
+    if corners == Corners::all(0.) {
+      self.sink.fill_rect(krect(rect), transform, &brush);
+    } else {
+      self.sink.fill(
+        &RoundedRect::from_rect(krect(rect), radii(corners, rect)).to_path(0.1),
+        transform,
+        &brush,
+      );
+    }
+  }
+
+  /// The brush `fill` paints the box at `rect` (window pixels) with: one color, or a
+  /// gradient laid over the box as CSS lays it over the border box.
+  fn brush(&self, fill: &Fill, rect: Rect) -> Brush {
+    let (x, y, width, height) = (
+      f64::from(rect.x),
+      f64::from(rect.y),
+      f64::from(rect.width),
+      f64::from(rect.height),
+    );
+    let at = |point: UnitPoint| (f64::from(point.x) * width, f64::from(point.y) * height);
+    let (gradient, placed) = match fill {
+      Fill::Color(fill) => return Brush::Solid(color(*fill)),
+      Fill::Linear(linear) => {
+        let (sin, cos) = f64::from(linear.angle.in_radians()).sin_cos();
+        let length = (width * sin).abs() + (height * cos).abs();
+        let (dx, dy) = (sin * length / 2., -cos * length / 2.);
+        let (cx, cy) = (x + width / 2., y + height / 2.);
+
+        (
+          Gradient::new_linear((cx - dx, cy - dy), (cx + dx, cy + dy)),
+          Affine::IDENTITY,
+        )
+      }
+      Fill::Radial(radial) => {
+        let (cx, cy) = at(radial.center);
+
+        match radial.radius {
+          Some(radius) => (
+            Gradient::new_radial((x + cx, y + cy), radius),
+            Affine::IDENTITY,
+          ),
+          None => {
+            // The ellipse through the farthest corner, shaped as the closest sides shape it.
+            let (side_x, side_y) = (cx.min(width - cx), cy.min(height - cy));
+            let (far_x, far_y) = (cx.max(width - cx), cy.max(height - cy));
+            let (radius_x, radius_y) = if side_x > 0. && side_y > 0. {
+              let grow = ((far_x / side_x).powi(2) + (far_y / side_y).powi(2)).sqrt();
+
+              (side_x * grow, side_y * grow)
+            } else {
+              let reach = far_x.hypot(far_y);
+
+              (reach, reach)
+            };
+
+            (
+              Gradient::new_radial((0., 0.), 1.),
+              Affine::translate((x + cx, y + cy)) * Affine::scale_non_uniform(radius_x, radius_y),
+            )
+          }
+        }
+      }
+      Fill::Sweep(sweep) => {
+        let (cx, cy) = at(sweep.center);
+        let start = (sweep.start.in_degrees() - 90.).to_radians();
+
+        (
+          Gradient::new_sweep((x + cx, y + cy), start, start + std::f32::consts::TAU),
+          Affine::IDENTITY,
+        )
+      }
+    };
+    let mut reached = 0_f32;
+    let stops: Vec<(f32, PColor)> = fill
+      .stops()
+      .map(|stops| {
+        stops
+          .0
+          .iter()
+          .map(|stop| {
+            // A stop before the one ahead of it stands where that one does.
+            reached = reached.max(stop.at.clamp(0., 1.));
+
+            (
+              reached,
+              color(stop.color.fixed().unwrap_or(Color::TRANSPARENT)),
+            )
+          })
+          .collect()
+      })
+      .unwrap_or_default();
+
+    Brush::Gradient(
+      gradient.with_stops(stops.as_slice()),
+      self.to_device() * placed,
+    )
+  }
+
+  /// Draws a line `width` wide just inside `rect`'s edges, in `style`, in `fill`: a color, or
+  /// a gradient laid over the box.
+  pub fn border_with(
+    &mut self,
+    rect: Rect,
+    corners: Corners,
+    width: f32,
+    style: BorderStyle,
+    fill: &Fill,
+  ) {
+    if width <= 0. || fill.is_clear() {
+      return;
+    }
+
+    let brush = self.brush(fill, rect);
+
+    self.stroke_border(rect, corners, width, style, &brush);
   }
 
   /// Draws a line `width` wide just inside `rect`'s edges, in `style`.
@@ -154,6 +497,17 @@ impl Canvas<'_> {
       return;
     }
 
+    self.stroke_border(rect, corners, width, style, &Brush::Solid(color(ink)));
+  }
+
+  fn stroke_border(
+    &mut self,
+    rect: Rect,
+    corners: Corners,
+    width: f32,
+    style: BorderStyle,
+    brush: &Brush,
+  ) {
     let half = width / 2.;
     let inner = Rect {
       x: rect.x + half,
@@ -176,31 +530,36 @@ impl Canvas<'_> {
       BorderStyle::Dotted => stroke = stroke.with_dashes(0., [f64::from(width)]),
     }
 
-    self.ctx.set_transform(self.to_device());
-    self.ctx.set_paint(color(ink));
-    self.ctx.set_stroke(stroke);
-    self.ctx.stroke_path(&path);
+    let transform = self.to_device();
+
+    self.sink.stroke(&path, &stroke, transform, brush);
   }
 
   /// Fills a circle centered at `center`.
   pub fn circle(&mut self, center: (f32, f32), radius: f32, fill: Color) {
-    self.ctx.set_transform(self.to_device());
-    self.ctx.set_paint(color(fill));
-    self.ctx.fill_path(
+    let transform = self.to_device();
+
+    self.sink.fill(
       &Circle::new(
         (f64::from(center.0), f64::from(center.1)),
         f64::from(radius),
       )
       .to_path(0.1),
+      transform,
+      &Brush::Solid(color(fill)),
     );
   }
 
   /// Strokes `path` (window pixels) `width` wide.
   pub fn stroke_path(&mut self, path: &BezPath, width: f32, ink: Color) {
-    self.ctx.set_transform(self.to_device());
-    self.ctx.set_paint(color(ink));
-    self.ctx.set_stroke(Stroke::new(f64::from(width)));
-    self.ctx.stroke_path(path);
+    let transform = self.to_device();
+
+    self.sink.stroke(
+      path,
+      &Stroke::new(f64::from(width)),
+      transform,
+      &Brush::Solid(color(ink)),
+    );
   }
 
   /// A shadow of the box `rect` with `corners`, blurred by `blur`, grown by `spread`, offset
@@ -223,28 +582,86 @@ impl Canvas<'_> {
       height: rect.height + spread * 2.,
     };
     let radius = corners.top_leading.max(corners.top_trailing) + spread.max(0.);
+    let transform = self.to_device();
 
-    self.ctx.set_transform(self.to_device());
-    self.ctx.set_paint(color(ink));
-    self
-      .ctx
-      .fill_blurred_rounded_rect(&krect(rect), radius.max(0.), (blur / 2.).max(0.01), false);
+    self.sink.blurred_rect(
+      krect(rect),
+      radius.max(0.),
+      (blur / 2.).max(0.01),
+      false,
+      transform,
+      color(ink),
+    );
   }
 
-  /// Draws `laid` with its top left at `origin` (window pixels): its decorations now, its
-  /// glyphs in the mask pass, both cut to the clip in force.
-  pub fn text(&mut self, laid: &ParleyLaid, origin: (f32, f32)) {
-    let mut transform = self.to_device();
+  /// A shadow cast inside the box `rect` with `corners`, blurred by `blur`, shrunk by
+  /// `spread`, offset by `x`, `y`; cut to the box by the caller.
+  #[expect(clippy::too_many_arguments, reason = "a shadow's every parameter")]
+  pub fn inner_shadow(
+    &mut self,
+    rect: Rect,
+    corners: Corners,
+    x: f32,
+    y: f32,
+    blur: f32,
+    spread: f32,
+    ink: Color,
+  ) {
+    let transform = self.to_device();
 
-    transform *= Affine::translate((f64::from(origin.0), f64::from(origin.1)));
-    self.ctx.set_transform(transform);
-    skene_parley::render::paint_decorations(self.ctx, laid);
-    self.texts.push(TextDraw {
-      laid: laid.clone(),
-      origin,
-      clip: self.clip,
-      opacity: self.opacity,
-    });
+    self.sink.blurred_rect(
+      krect(Rect {
+        x: rect.x + x + spread,
+        y: rect.y + y + spread,
+        width: rect.width - spread * 2.,
+        height: rect.height - spread * 2.,
+      }),
+      corners.top_leading,
+      (blur / 2.).max(0.01),
+      true,
+      transform,
+      color(ink),
+    );
+  }
+
+  /// Draws `laid` with its top left at `origin` (window pixels): its decorations, then its
+  /// glyphs, each where the text stands in the scene's order, cut to the clip in force.
+  pub fn text(&mut self, laid: &ParleyLaid, origin: (f32, f32)) {
+    let transform =
+      self.to_device() * Affine::translate((f64::from(origin.0), f64::from(origin.1)));
+
+    for extent in laid.run_extents() {
+      for line in extent.decoration_lines() {
+        let brush = Brush::Solid(color(line.color));
+
+        match DecorationShape::of(&line) {
+          DecorationShape::Fill(path) => self.sink.fill(&path, transform, &brush),
+          DecorationShape::Stroke(path, stroke) => {
+            self.sink.stroke(&path, &stroke, transform, &brush);
+          }
+        }
+      }
+    }
+
+    let device = self.to_device() * Point::new(f64::from(origin.0), f64::from(origin.1));
+    let scale = self.scale;
+    let Some(masks) = self.masks.as_deref_mut() else {
+      return;
+    };
+    let started = Instant::now();
+    let engine = text::engine();
+    let mut fallback = engine.fallback();
+    let sink = &mut *self.sink;
+
+    #[expect(clippy::cast_possible_truncation, reason = "device pixels")]
+    masks.place(
+      laid,
+      (device.x as f32, device.y as f32),
+      scale as f32,
+      fallback.as_deref_mut(),
+      |glyph| sink.glyph(&glyph),
+    );
+    self.glyph_time += started.elapsed();
   }
 
   /// Replays `picture` with its origin at `rect`'s top left (window pixels), cut to `rect`,
@@ -258,13 +675,13 @@ impl Canvas<'_> {
     let base = self.to_device() * Affine::translate((f64::from(rect.x), f64::from(rect.y)));
     let mut transform = base;
     let mut depth = 0_u32;
-    let brush = |paint: &Paint| -> Option<vello_cpu::PaintType> {
+    let brush = |paint: &Paint, transform: Affine| -> Option<Brush> {
       Some(match paint {
-        Paint::Ink => vello_cpu::PaintType::Solid(color(ink)),
-        Paint::Color(fill) => vello_cpu::PaintType::Solid(color(*fill)),
-        Paint::Brush(peniko::Brush::Solid(fill)) => vello_cpu::PaintType::Solid(*fill),
+        Paint::Ink => Brush::Solid(color(ink)),
+        Paint::Color(fill) => Brush::Solid(color(*fill)),
+        Paint::Brush(peniko::Brush::Solid(fill)) => Brush::Solid(*fill),
         Paint::Brush(peniko::Brush::Gradient(gradient)) => {
-          vello_cpu::PaintType::Gradient(gradient.clone())
+          Brush::Gradient(gradient.clone(), transform)
         }
         Paint::Brush(peniko::Brush::Image(_)) => return None,
       })
@@ -274,10 +691,8 @@ impl Canvas<'_> {
       match op {
         PaintOp::Transform(op) => transform = base * *op,
         PaintOp::Fill { path, paint } => {
-          if let Some(paint) = brush(paint) {
-            self.ctx.set_transform(transform);
-            self.ctx.set_paint(paint);
-            self.ctx.fill_path(path);
+          if let Some(brush) = brush(paint, transform) {
+            self.sink.fill(path, transform, &brush);
           }
         }
         PaintOp::Stroke {
@@ -285,24 +700,20 @@ impl Canvas<'_> {
           stroke,
           paint,
         } => {
-          if let Some(paint) = brush(paint) {
-            self.ctx.set_transform(transform);
-            self.ctx.set_paint(paint);
-            self.ctx.set_stroke(stroke.clone());
-            self.ctx.stroke_path(path);
+          if let Some(brush) = brush(paint, transform) {
+            self.sink.stroke(path, stroke, transform, &brush);
           }
         }
         PaintOp::PushClip(path) => {
-          self.ctx.set_transform(transform);
-          self.ctx.push_clip_layer(path);
+          self.sink.push_clip(path, transform);
           depth += 1;
         }
         PaintOp::PushOpacity(opacity) => {
-          self.ctx.push_opacity_layer(*opacity);
+          self.sink.push_opacity(*opacity);
           depth += 1;
         }
         PaintOp::Pop if depth > 0 => {
-          self.ctx.pop_layer();
+          self.sink.pop();
           depth -= 1;
         }
         PaintOp::Pop => {}
@@ -310,11 +721,10 @@ impl Canvas<'_> {
     }
 
     for _ in 0..depth {
-      self.ctx.pop_layer();
+      self.sink.pop();
     }
 
-    self.ctx.pop_layer();
-    self.clip = previous;
+    self.pop_clip(previous);
   }
 
   /// Draws `ring` around the box at `rect` with `corners`, in `ink`.
@@ -352,25 +762,37 @@ impl Canvas<'_> {
     let previous = self.push_clip(rect, Corners::all(0.));
 
     body(self);
-    self.ctx.pop_layer();
-    self.clip = previous;
+    self.pop_clip(previous);
+  }
+
+  /// Runs `body` with what it draws faded to `opacity`, as one layer.
+  pub fn faded(&mut self, opacity: f32, body: impl FnOnce(&mut Self)) {
+    self.sink.push_opacity(opacity);
+    body(self);
+    self.sink.pop();
   }
 
   fn push_clip(&mut self, rect: Rect, corners: Corners) -> Rect {
     let previous = self.clip;
+    let transform = self.to_device();
 
     self.clip = intersect(self.clip, rect);
-    self.ctx.set_transform(self.to_device());
 
     if corners == Corners::all(0.) {
-      self.ctx.push_clip_layer(&krect(rect).to_path(0.1));
+      self.sink.push_clip(&krect(rect).to_path(0.1), transform);
     } else {
-      self
-        .ctx
-        .push_clip_layer(&RoundedRect::from_rect(krect(rect), radii(corners, rect)).to_path(0.1));
+      self.sink.push_clip(
+        &RoundedRect::from_rect(krect(rect), radii(corners, rect)).to_path(0.1),
+        transform,
+      );
     }
 
     previous
+  }
+
+  fn pop_clip(&mut self, previous: Rect) {
+    self.sink.pop();
+    self.clip = previous;
   }
 }
 
@@ -460,11 +882,9 @@ fn paint_node(
   let look = node.look.borrow().clone();
 
   let opacity_layer = look.opacity < 1.;
-  let previous_opacity = canvas.opacity;
 
   if opacity_layer {
-    canvas.ctx.push_opacity_layer(look.opacity);
-    canvas.opacity *= look.opacity;
+    canvas.sink.push_opacity(look.opacity);
   }
 
   if let Some(shadows) = &look.shadows {
@@ -481,8 +901,8 @@ fn paint_node(
     }
   }
 
-  if let Some(background) = look.background {
-    canvas.fill(rect, look.corners, background);
+  if let Some(background) = &look.background {
+    canvas.fill_with(rect, look.corners, background);
   }
 
   if let Some(shadows) = &look.shadows
@@ -491,23 +911,18 @@ fn paint_node(
     let previous = canvas.push_clip(rect, look.corners);
 
     for shadow in shadows.0.iter().filter(|shadow| shadow.inset) {
-      canvas.ctx.set_transform(canvas.to_device());
-      canvas.ctx.set_paint(color(shadow.color));
-      canvas.ctx.fill_blurred_rounded_rect(
-        &krect(Rect {
-          x: rect.x + shadow.x + shadow.spread,
-          y: rect.y + shadow.y + shadow.spread,
-          width: rect.width - shadow.spread * 2.,
-          height: rect.height - shadow.spread * 2.,
-        }),
-        look.corners.top_leading,
-        (shadow.blur / 2.).max(0.01),
-        true,
+      canvas.inner_shadow(
+        rect,
+        look.corners,
+        shadow.x,
+        shadow.y,
+        shadow.blur,
+        shadow.spread,
+        shadow.color,
       );
     }
 
-    canvas.ctx.pop_layer();
-    canvas.clip = previous;
+    canvas.pop_clip(previous);
   }
 
   match node.spec.kind {
@@ -559,14 +974,16 @@ fn paint_node(
   }
 
   if let Some(previous) = previous_clip {
-    canvas.ctx.pop_layer();
-    canvas.clip = previous;
+    canvas.pop_clip(previous);
   }
 
   if let Some(border) = look.border {
-    let ink = look.border_color.unwrap_or_else(|| node.ink.get());
+    let fill = look
+      .border_color
+      .clone()
+      .unwrap_or_else(|| Fill::Color(node.ink.get()));
 
-    canvas.border(rect, look.corners, border.width, border.style, ink);
+    canvas.border_with(rect, look.corners, border.width, border.style, &fill);
   }
 
   canvas.ring(
@@ -577,8 +994,7 @@ fn paint_node(
   );
 
   if opacity_layer {
-    canvas.ctx.pop_layer();
-    canvas.opacity = previous_opacity;
+    canvas.sink.pop();
   }
 }
 
@@ -645,25 +1061,30 @@ fn paint_children(
   }
 }
 
-/// The frame's renderer: its vello context and resources, the mask painter, the frame's
-/// pixels.
+/// The frame's renderer: its vello context and resources, the glyph painter and its images,
+/// the frame's pixels.
 pub struct Renderer {
   ctx: Option<RenderContext>,
   resources: Resources,
   masks: Option<MaskPainter>,
+  glyphs: GlyphImages,
   /// The frame: premultiplied RGBA, in device pixels.
   pub pixmap: Pixmap,
 }
 
-/// What one frame cost, in microseconds.
+/// What one frame cost, in microseconds, and how its glyphs were found.
 #[derive(Clone, Copy, Default, Debug)]
 pub struct Cost {
-  /// Recording the paths.
+  /// Recording the scene, the glyphs placed included.
   pub record: u64,
-  /// Rasterizing them.
+  /// Rasterizing it.
   pub raster: u64,
-  /// Compositing the glyph masks.
+  /// Placing the glyphs (their masks found or drawn), within the recording.
   pub glyphs: u64,
+  /// The glyph masks the rasterizer's cache answered, and those FreeType drew, so far.
+  pub masks: (u64, u64),
+  /// The glyph images found cached, and those made, so far.
+  pub images: (u64, u64),
 }
 
 impl Default for Renderer {
@@ -679,6 +1100,7 @@ impl Renderer {
       ctx: None,
       resources: Resources::new(),
       masks: MaskPainter::new(),
+      glyphs: GlyphImages::default(),
       pixmap: Pixmap::new(1, 1),
     }
   }
@@ -699,7 +1121,7 @@ impl Renderer {
     marks: &Marks,
     chrome: &mut dyn FnMut(&mut Canvas<'_>),
   ) -> Cost {
-    let started = std::time::Instant::now();
+    let started = Instant::now();
 
     if self.pixmap.width() != size.0 || self.pixmap.height() != size.1 {
       self.pixmap = Pixmap::new(size.0, size.1);
@@ -745,13 +1167,17 @@ impl Renderer {
       width: ((right - left) / scale) as f32,
       height: ((bottom - top) / scale) as f32,
     };
-    let mut canvas = Canvas {
+    let mut sink = CpuSink {
       ctx,
+      glyphs: &mut self.glyphs,
+    };
+    let mut canvas = Canvas {
+      sink: &mut sink,
+      masks: self.masks.as_mut(),
       scale,
       offset: (left - device(origin.0), top - device(origin.1)),
       clip: window_region,
-      opacity: 1.,
-      texts: Vec::new(),
+      glyph_time: Duration::ZERO,
       palette: Palette::now(),
     };
 
@@ -761,10 +1187,11 @@ impl Renderer {
       paint_node(root, &mut canvas, (0., 0.), window_region, marks);
     }
 
-    let texts = std::mem::take(&mut canvas.texts);
+    let glyph_time = canvas.glyph_time;
     let recorded = started.elapsed();
+    let ctx = self.ctx.as_mut().expect("made above");
 
-    canvas.ctx.flush();
+    ctx.flush();
 
     // Clear the region, then composite the scene over it.
     {
@@ -784,67 +1211,20 @@ impl Renderer {
       ..vello_cpu::RasterizerSettings::default()
     };
 
-    ctx_render(
-      self.ctx.as_ref().expect("made above"),
-      &mut self.pixmap,
-      &mut self.resources,
-      settings,
-    );
+    ctx.render_with(&mut self.pixmap, &mut self.resources, settings);
 
     let rastered = started.elapsed();
-
-    if let Some(masks) = &mut self.masks {
-      let engine = text::engine();
-      let mut fallback = engine.fallback();
-
-      for draw in texts {
-        let clip = intersect(draw.clip, window_region);
-
-        if clip.width <= 0. || clip.height <= 0. {
-          continue;
-        }
-
-        #[expect(clippy::cast_possible_truncation, reason = "pixels")]
-        let device_clip = (
-          (f64::from(clip.x + origin.0) * scale).floor() as i64,
-          (f64::from(clip.y + origin.1) * scale).floor() as i64,
-          (f64::from(clip.x + origin.0 + clip.width) * scale).ceil() as i64,
-          (f64::from(clip.y + origin.1 + clip.height) * scale).ceil() as i64,
-        );
-
-        masks.paint_with(
-          &mut self.pixmap,
-          &draw.laid,
-          (
-            ((f64::from(draw.origin.0 + origin.0)) * scale) as f32,
-            ((f64::from(draw.origin.1 + origin.1)) * scale) as f32,
-          ),
-          skene_parley::render::MaskOptions {
-            scale: scale as f32,
-            clip: Some(device_clip),
-            opacity: draw.opacity,
-          },
-          fallback.as_deref_mut(),
-        );
-      }
-    }
-
-    let done = started.elapsed();
 
     #[expect(clippy::cast_possible_truncation, reason = "microseconds")]
     Cost {
       record: recorded.as_micros() as u64,
       raster: (rastered - recorded).as_micros() as u64,
-      glyphs: (done - rastered).as_micros() as u64,
+      glyphs: glyph_time.as_micros() as u64,
+      masks: self
+        .masks
+        .as_ref()
+        .map_or((0, 0), |masks| masks.rasterizer().lookups()),
+      images: self.glyphs.lookups(),
     }
   }
-}
-
-fn ctx_render(
-  ctx: &RenderContext,
-  pixmap: &mut Pixmap,
-  resources: &mut Resources,
-  settings: vello_cpu::RasterizerSettings,
-) {
-  ctx.render_with(pixmap, resources, settings);
 }

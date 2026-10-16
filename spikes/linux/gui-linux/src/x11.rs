@@ -5,7 +5,9 @@
 //!   no decorations through `_MOTIF_WM_HINTS`, its title bar drawn by Skene and moved and
 //!   resized through `_NET_WM_MOVERESIZE`);
 //! - frames through MIT-SHM where the server offers it (a memfd segment, `ShmPutImage` of the
-//!   damaged rectangle), `PutImage` in bands otherwise;
+//!   damaged rectangle), `PutImage` in bands otherwise; while something is in motion, paced by
+//!   the Present extension's notice of each vertical blank (a 60 Hz timer where the server has
+//!   no Present), and no frame at all while nothing is;
 //! - the pointer through XInput 2 where the server has it (smooth scrolling from the scroll
 //!   valuators, emulated wheel buttons ignored), core events otherwise; the keyboard through
 //!   XKB, with detectable auto-repeat;
@@ -33,6 +35,7 @@ use x11rb::{
   connection::{Connection as _, RequestConnection as _},
   protocol::{
     Event,
+    present::{self, ConnectionExt as _},
     shm::{self, ConnectionExt as _},
     xinput::{self, ConnectionExt as _},
     xkb::{self as xkbproto, ConnectionExt as _},
@@ -140,6 +143,41 @@ struct ScrollAxis {
   last: Option<f64>,
 }
 
+/// What paces the frames a window in motion paints.
+enum Clock {
+  /// The Present extension's notice of the next vertical blank: whether one is awaited, and
+  /// the count of the last.
+  Present {
+    /// Whether a notice is awaited.
+    waiting: bool,
+    /// The last vertical blank's count.
+    msc: u64,
+  },
+  /// A timer at 60 Hz: when the next frame is due, where one is awaited.
+  Timer(Option<Instant>),
+}
+
+impl Clock {
+  /// The interval the timer paces at.
+  const INTERVAL: Duration = Duration::from_micros(16_667);
+
+  /// Whether a frame may be painted now.
+  fn is_due(&self) -> bool {
+    match self {
+      Self::Present { waiting, .. } => !waiting,
+      Self::Timer(due) => due.is_none_or(|due| Instant::now() >= due),
+    }
+  }
+
+  /// How long until a frame may be painted, where the timer paces and one is awaited.
+  fn wait(&self) -> Option<Duration> {
+    match self {
+      Self::Timer(Some(due)) => Some(due.saturating_duration_since(Instant::now())),
+      _ => None,
+    }
+  }
+}
+
 struct X11 {
   conn: Rc<XCBConnection>,
   screen: usize,
@@ -175,6 +213,7 @@ struct X11 {
   ime_stale: bool,
   ime_sent: Option<ImeSent>,
   ime_purpose: Option<ime::Purpose>,
+  clock: Clock,
 }
 
 fn fixed(value: xinput::Fp1616) -> f32 {
@@ -310,6 +349,7 @@ impl X11 {
       ime_stale: true,
       ime_sent: None,
       ime_purpose: None,
+      clock: Clock::Timer(None),
     };
 
     x11.read_xsettings(shell);
@@ -321,6 +361,24 @@ impl X11 {
     x11.create_window(shell, app_id)?;
     x11.select_input()?;
     x11.start_ime();
+
+    if x11
+      .conn
+      .extension_information(present::X11_EXTENSION_NAME)?
+      .is_some()
+      && std::env::var_os("SKENE_X11_NO_PRESENT").is_none()
+    {
+      let id = x11.conn.generate_id()?;
+
+      x11.conn.present_query_version(1, 2)?.reply()?;
+      x11
+        .conn
+        .present_select_input(id, x11.window, present::EventMask::COMPLETE_NOTIFY)?;
+      x11.clock = Clock::Present {
+        waiting: false,
+        msc: 0,
+      };
+    }
 
     // On a bare X server (no window manager) the keyboard follows the pointer root: the window
     // has it from the start.
@@ -343,11 +401,15 @@ impl X11 {
 
     trace::log(|| {
       format!(
-        "[x11] window 0x{:x} depth {} xi2 {} shm {} scale {} layouts {:?}",
+        "[x11] window 0x{:x} depth {} xi2 {} shm {} clock {} scale {} layouts {:?}",
         x11.window,
         x11.depth,
         x11.xi,
         x11.shm,
+        match x11.clock {
+          Clock::Present { .. } => "present",
+          Clock::Timer(_) => "timer",
+        },
         shell.scale,
         x11.keyboard.layouts()
       )
@@ -668,8 +730,12 @@ impl X11 {
         return Ok(());
       }
 
-      if shell.wants_frame() {
+      if shell.wants_frame() && self.clock.is_due() {
         self.present(shell)?;
+
+        if shell.in_motion() {
+          self.tick()?;
+        }
       }
 
       self.present_popup(shell)?;
@@ -684,7 +750,7 @@ impl X11 {
         continue;
       }
 
-      if shell.wants_frame() || shell.popup_wants_frame() {
+      if (shell.wants_frame() && self.clock.is_due()) || shell.popup_wants_frame() {
         continue;
       }
 
@@ -705,7 +771,8 @@ impl X11 {
         .as_ref()
         .map(|waiting| (waiting.sent + IME_PATIENCE).saturating_duration_since(Instant::now()));
       let left = deadline.map(|deadline| deadline.saturating_duration_since(Instant::now()));
-      let timeout = [crate::runtime::timeout(), ime_deadline]
+      let clock = shell.wants_frame().then(|| self.clock.wait()).flatten();
+      let timeout = [crate::runtime::timeout(), ime_deadline, clock]
         .into_iter()
         .flatten()
         .min()
@@ -724,6 +791,22 @@ impl X11 {
 
       return Ok(());
     }
+  }
+
+  /// Asks the frame clock for the next frame: the Present extension's notice of the next
+  /// vertical blank, or the timer's next tick.
+  fn tick(&mut self) -> Result<(), Box<dyn Error>> {
+    match &mut self.clock {
+      Clock::Present { waiting, msc } => {
+        self
+          .conn
+          .present_notify_msc(self.window, 0, *msc + 1, 0, 0)?;
+        *waiting = true;
+      }
+      Clock::Timer(due) => *due = Some(Instant::now() + Clock::INTERVAL),
+    }
+
+    Ok(())
   }
 
   fn requests(&mut self, shell: &mut Shell, requests: Vec<Request>) -> Result<(), Box<dyn Error>> {
@@ -896,6 +979,14 @@ impl X11 {
     }
 
     match event {
+      Event::PresentCompleteNotify(event) if event.window == self.window => {
+        trace::log(|| format!("[x11] vblank {} at {} us", event.msc, event.ust));
+
+        if let Clock::Present { waiting, msc } = &mut self.clock {
+          *waiting = false;
+          *msc = event.msc;
+        }
+      }
       Event::Expose(event)
         if self
           .popup

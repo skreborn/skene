@@ -4,8 +4,8 @@
 use std::rc::Rc;
 
 use crate::{
-  Color, Corners, Definitions, Environment, Inset, Media, Owner, Signal, Spacing, State, Token,
-  TokenRef, Value, When,
+  Color, Corners, Definitions, Environment, Fill, Inset, Media, Owner, Signal, Spacing, State,
+  Token, TokenRef, Value, When,
   seam::{
     content::{Content, Graphemes, Unit, map_through, splice},
     node::{LayoutKind, NodeKind},
@@ -91,7 +91,7 @@ fn nothing_kept_answers_states_and_media_in_order() {
 
     assert_eq!(
       hovered.resolved(Prop::Background),
-      Some(&Resolved::Color(Color::rgb(0xeef3ff)))
+      Some(&Resolved::Fill(Fill::Color(Color::rgb(0xeef3ff))))
     );
 
     Environment::current().dark.set(true);
@@ -100,7 +100,7 @@ fn nothing_kept_answers_states_and_media_in_order() {
 
     assert_eq!(
       dark.resolved(Prop::Background),
-      Some(&Resolved::Color(Color::rgb(0x1c1c1e)))
+      Some(&Resolved::Fill(Fill::Color(Color::rgb(0x1c1c1e))))
     );
   });
 }
@@ -190,6 +190,7 @@ fn state_rules_are_pruned_and_exact() {
       (Prop::CornerRadius, varying(State::Checked, 5.)),
     ],
     transitions: Vec::new(),
+    animations: Vec::new(),
     slots: Vec::new(),
     address: 0,
   };

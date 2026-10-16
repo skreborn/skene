@@ -24,6 +24,15 @@ pub trait Property: Clone + 'static {
 
     None
   }
+
+  /// This value with the tokens inside it (a gradient's stops) resolved through `tokens`;
+  /// `None` where one is defined nowhere above. A value holding none is itself.
+  #[must_use]
+  fn resolve_tokens(&self, tokens: &Tokens) -> Option<Self> {
+    let _ = tokens;
+
+    Some(self.clone())
+  }
 }
 
 impl Property for Color {
@@ -132,7 +141,7 @@ impl<T: Property> Leaf<T> {
   #[must_use]
   pub fn resolve(&self, tokens: &Tokens) -> Option<T> {
     match self {
-      Self::Fixed(value) => Some(value.clone()),
+      Self::Fixed(value) => value.resolve_tokens(tokens),
       Self::Token(name) => tokens.resolve(name).and_then(|value| T::from_token(&value)),
       Self::Derived(derive) => derive().base.resolve(tokens),
     }

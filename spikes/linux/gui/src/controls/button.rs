@@ -3,7 +3,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use skene_foundation::{
-  Arrangement, AxisAlignment, Color, Inset, State, SystemColors, Value, behavior::Activate,
+  Arrangement, AxisAlignment, Fill, Inset, State, SystemColors, Value, behavior::Activate,
 };
 
 use crate::{
@@ -87,7 +87,7 @@ impl Button {
   }
 
   /// A button's fill: the control's colors, or the accent's where it is prominent.
-  fn fill(prominent: bool) -> Value<Color> {
+  fn fill(prominent: bool) -> Value<Fill> {
     let (rest, hover, pressed) = if prominent {
       (
         SystemColors::ACCENT,

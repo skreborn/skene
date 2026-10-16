@@ -59,7 +59,9 @@ use std::{
 
 pub use skene_foundation::seam::{
   access::{Checked, Role},
-  testing::{AccessSnapshot, Action, Driver, EnvironmentRequest, Issue, Query, Screenshot, pages},
+  testing::{
+    AccessSnapshot, Action, Driver, EnvironmentRequest, Frame, Issue, Query, Screenshot, pages,
+  },
 };
 use skene_foundation::{Owner, seam::report::Modifiers, value::IntoUnit};
 /// The driver on Linux: AT-SPI reads, real input, settling on the window's own loop.

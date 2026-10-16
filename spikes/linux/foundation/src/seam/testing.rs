@@ -297,6 +297,15 @@ pub struct Screenshot {
   pub rgba: Vec<u8>,
 }
 
+/// A frame the platform painted while recording ([`Driver::set_recording`]).
+#[derive(Clone, PartialEq, Debug)]
+pub struct Frame {
+  /// When it was painted, since recording began.
+  pub at: Duration,
+  /// The window as it was drawn.
+  pub shot: Screenshot,
+}
+
 /// A problem a reader would meet, found by an audit of the accessibility layer.
 #[derive(Clone, PartialEq, Debug)]
 pub struct Issue {
@@ -338,6 +347,16 @@ pub trait Driver {
 
   /// The window drawn.
   fn screenshot(&mut self) -> Screenshot;
+
+  /// Records every frame the platform paints from now on, with when it painted it, until
+  /// told to stop: what a test samples motion through.
+  fn set_recording(&mut self, recording: bool);
+
+  /// The frames recorded since recording began or the last take, oldest first.
+  fn take_frames(&mut self) -> Vec<Frame>;
+
+  /// Runs the platform for `duration` without waiting for it to settle.
+  fn wait(&mut self, duration: Duration);
 
   /// What a reader finds in the window now, one node a line, indented by depth: what a
   /// failure shows instead of what it looked for.

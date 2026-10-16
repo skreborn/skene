@@ -5,7 +5,7 @@ use std::{cell::Cell, fmt::Write as _, rc::Rc};
 use crate::{
   Condition, Definition, DefinitionLeaf, Definitions, Environment, Leaf, Media, Signal, State,
   StateSet, TokenValue, Tokens, Value,
-  seam::record::{Group, Kind, Kinded, Prop, Record, Resolved, Transition},
+  seam::record::{CompiledAnimation, Group, Kind, Kinded, Prop, Record, Resolved, Transition},
 };
 
 /// What of a record a realization keeps unresolved, because its toolkit resolves it: one of
@@ -27,12 +27,13 @@ pub enum Keep {
 }
 
 impl Keep {
-  /// Whether a token reference of `kind` stays a name.
+  /// Whether a token reference of `kind` stays a name (a color token, where a fill holds
+  /// one, among the colors).
   #[must_use]
   pub const fn keeps_token(self, kind: Kind) -> bool {
     match self {
       Self::Nothing => false,
-      Self::ColorsAndStates => matches!(kind, Kind::Color),
+      Self::ColorsAndStates => matches!(kind, Kind::Color | Kind::Fill),
       Self::Everything => true,
     }
   }
@@ -253,11 +254,13 @@ pub struct CompiledStyle {
   pub props: Vec<(Prop, KeptValue)>,
   /// The transitions.
   pub transitions: Vec<Transition>,
+  /// The keyframe animations, each keyframe's properties resolved.
+  pub animations: Vec<CompiledAnimation>,
   /// The node's slots, each a derived leaf's value now, where [`Keep::slots`] is.
   pub slots: Vec<KeptLeaf>,
-  /// The content address of `props` and `transitions` (not the slots): a function of the
-  /// style's content alone, so equal styles share one on every side of the web and in every
-  /// render, and a realization keeps one rule per address.
+  /// The content address of `props`, `transitions` and `animations` (not the slots): a
+  /// function of the style's content alone, so equal styles share one on every side of the
+  /// web and in every render, and a realization keeps one rule per address.
   pub address: u64,
 }
 
@@ -269,7 +272,7 @@ impl CompiledStyle {
   /// Whether the style declares nothing.
   #[must_use]
   pub const fn is_empty(&self) -> bool {
-    self.props.is_empty() && self.transitions.is_empty()
+    self.props.is_empty() && self.transitions.is_empty() && self.animations.is_empty()
   }
 
   /// The states some kept value varies under.
@@ -370,10 +373,18 @@ pub(crate) struct CompileCx<'a> {
 impl CompileCx<'_> {
   fn leaf<T: Kinded>(&mut self, leaf: &Leaf<T>, depth: u8) -> Option<KeptValue> {
     match leaf {
-      Leaf::Fixed(value) => Some(KeptValue {
-        base: KeptLeaf::Value(value.clone().erase()),
-        variants: Vec::new(),
-      }),
+      Leaf::Fixed(value) => {
+        let value = if self.keep.keeps_token(Kind::Color) {
+          value.clone()
+        } else {
+          value.resolve_tokens(&self.scope.tokens())?
+        };
+
+        Some(KeptValue {
+          base: KeptLeaf::Value(value.erase()),
+          variants: Vec::new(),
+        })
+      }
       Leaf::Token(name) => {
         let base = if !self.keep.keeps_token(T::KIND) {
           let value = self.scope.tokens().resolve(name)?;
@@ -456,6 +467,14 @@ impl CompileCx<'_> {
   pub(crate) fn value<T: Kinded>(&mut self, value: &Value<T>) -> Option<KeptValue> {
     self.value_at(value, 0)
   }
+
+  /// `declared` compiled to the one value in force, resolved: a keyframe's.
+  fn compiled(&mut self, declared: &crate::seam::record::Declared) -> Option<Resolved> {
+    match declared.compile(self)?.base {
+      KeptLeaf::Value(resolved) => Some(resolved),
+      _ => None,
+    }
+  }
 }
 
 impl Record {
@@ -486,14 +505,45 @@ impl Record {
       .filter(|transition| include(transition.prop.group()))
       .copied()
       .collect();
+    let animations: Vec<CompiledAnimation> = self
+      .animations()
+      .iter()
+      .map(|animation| {
+        animation.map_keyframes(|keyframe| {
+          keyframe
+            .record()
+            .entries()
+            .filter(|(prop, _)| include(prop.group()))
+            .filter_map(|(prop, declared)| {
+              let resolved = CompileCx {
+                keep: Keep::Nothing,
+                scope,
+                state,
+                slots: Vec::new(),
+              }
+              .compiled(declared)?;
+
+              Some((*prop, resolved))
+            })
+            .collect()
+        })
+      })
+      .filter(|animation: &CompiledAnimation| {
+        animation
+          .keyframes
+          .iter()
+          .any(|(_, props)| !props.is_empty())
+      })
+      .collect();
     let mut text = String::new();
 
-    let _ = write!(text, "{props:?}{transitions:?}");
+    let _ = write!(text, "{props:?}{transitions:?}{animations:?}");
 
     CompiledStyle {
       address: fnv1a(&text),
       props,
       transitions,
+      animations,
       slots: cx.slots,
     }
   }

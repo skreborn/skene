@@ -53,6 +53,20 @@ pub enum Item {
     y: f32,
     color: [f32; 4],
   },
+  // Glyph runs already collected (from any engine), drawn at an offset.
+  Glyphs {
+    runs: Rc<Collected>,
+    x: f32,
+    y: f32,
+    color: [f32; 4],
+  },
+  // A DirectWrite layout, drawn by the reference alone.
+  Layout {
+    layout: IDWriteTextLayout,
+    x: f32,
+    y: f32,
+    color: [f32; 4],
+  },
   PushClip([f32; 4]),
   PushOpacity(f32),
   Pop,
@@ -105,19 +119,33 @@ pub fn to_img(pixmap: &Pixmap) -> Img {
   )
 }
 
-/// Replays the structure of a display list into vello, handing each text item to `text`.
+/// The glyph runs of a text item (a paragraph's, collected once, or given), with its offset and
+/// colour; `None` for every other item.
+type TextRuns = Option<(Rc<Collected>, f32, f32, [f32; 4])>;
+
+fn text_runs(item: &Item) -> Result<TextRuns> {
+  match item {
+    Item::Text { laid, x, y, color } => Ok(Some((laid.runs()?, *x, *y, *color))),
+    Item::Glyphs { runs, x, y, color } => Ok(Some((runs.clone(), *x, *y, *color))),
+    _ => Ok(None),
+  }
+}
+
+/// Replays the structure of a display list into vello, handing the index of each text item to
+/// `text`.
 fn replay(
   ctx: &mut RenderContext,
   items: &[Item],
-  mut text: impl FnMut(&mut RenderContext, &Laid, f32, f32, [f32; 4]),
+  mut text: impl FnMut(&mut RenderContext, usize),
 ) {
-  for item in items {
+  for (at, item) in items.iter().enumerate() {
     match item {
       Item::Fill { rect: r, color } => {
         ctx.set_paint(rgba(*color));
         ctx.fill_rect(&rect(*r));
       }
-      Item::Text { laid, x, y, color } => text(ctx, laid, *x, *y, *color),
+      Item::Text { .. } | Item::Glyphs { .. } => text(ctx, at),
+      Item::Layout { .. } => {}
       Item::PushClip(r) => ctx.push_clip_layer(&rect(*r).to_path(0.1)),
       Item::PushOpacity(o) => ctx.push_opacity_layer(*o),
       Item::Pop => ctx.pop_layer(),
@@ -222,22 +250,17 @@ impl Floor {
 
   pub fn render(&mut self, ctx: &mut RenderContext, items: &[Item]) -> Result<Pixmap> {
     ctx.reset();
-    let mut failure = None;
+    let texts: Vec<TextRuns> = items.iter().map(text_runs).collect::<Result<_>>()?;
 
-    replay(ctx, items, |ctx, laid, dx, dy, color| match laid.runs() {
-      Ok(runs) => {
+    replay(ctx, items, |ctx, at| {
+      if let Some((runs, dx, dy, color)) = &texts[at] {
         for run in &runs.runs {
-          self.run(ctx, run, dx, dy, color);
+          self.run(ctx, run, *dx, *dy, *color);
         }
 
-        draw_lines(ctx, &runs, dx, dy, color);
+        draw_lines(ctx, runs, *dx, *dy, *color);
       }
-      Err(e) => failure = Some(e),
     });
-
-    if let Some(e) = failure {
-      return Err(e);
-    }
 
     Ok(rasterize(ctx, &mut self.res))
   }
@@ -247,8 +270,9 @@ impl Floor {
     else {
       return;
     };
+    let simulations = unsafe { run.face.GetSimulations() };
 
-    if unsafe { run.face.GetSimulations() } != DWRITE_FONT_SIMULATIONS_NONE {
+    if simulations != DWRITE_FONT_SIMULATIONS_NONE {
       self.fonts.simulated_runs += 1;
     }
 
@@ -266,14 +290,40 @@ impl Floor {
 
     ctx.set_paint(rgba(color));
 
-    if ctx
+    // A simulated face drawn as Skene's renderer draws Parley's synthesis: Skia's emboldening,
+    // and a 14-degree slant about the run's baseline.
+    let oblique = simulations.0 & DWRITE_FONT_SIMULATIONS_OBLIQUE.0 != 0;
+    let bold = simulations.0 & DWRITE_FONT_SIMULATIONS_BOLD.0 != 0;
+
+    if oblique {
+      let baseline = f64::from(run.origin.1 + dy);
+      ctx.set_transform(
+        Affine::translate((0., baseline))
+          * Affine::new([1., 0., -(14f64.to_radians().tan()), 1., 0., 0.])
+          * Affine::translate((0., -baseline)),
+      );
+    }
+
+    let mut builder = ctx
       .glyph_run(&mut self.res, &font)
       .font_size(run.em)
-      .hint(self.hint)
-      .fill_glyphs(glyphs.into_iter())
-      .is_err()
-    {
+      .hint(self.hint);
+
+    if bold {
+      let per_side = text_parity::render::embolden_per_side(run.em);
+      let upem = units_per_em(&font);
+      let amount = f64::from(per_side * upem / run.em);
+      builder = builder.font_embolden(glifo::FontEmbolden::new(vello_cpu::kurbo::Diagonal2::new(
+        amount, amount,
+      )));
+    }
+
+    if builder.fill_glyphs(glyphs.into_iter()).is_err() {
       self.glyph_errors += 1;
+    }
+
+    if oblique {
+      ctx.reset_transform();
     }
   }
 }
@@ -477,6 +527,14 @@ impl AtlasPainter {
 
   pub fn used_rows(&self) -> u16 {
     self.cursor.1 + self.cursor.2
+  }
+
+  /// Forgets every cell, so the atlases fill again from the top: one image at a time.
+  pub fn reset(&mut self) {
+    self.cells.clear();
+    self.keep.clear();
+    self.cursor = (0, 0, 0);
+    self.colour_cursor = (0, 0, 0);
   }
 
   fn cell(&mut self, face: &IDWriteFontFace, em: f32, glyph: u16, sub: u8) -> Option<Cell> {
@@ -872,24 +930,20 @@ impl AtlasPainter {
     // reset first and rasterize every missing glyph before drawing anything.
     ctx.reset();
     let mut draws: Vec<Vec<Draw>> = Vec::with_capacity(items.len());
-    let mut lines: Vec<Option<Rc<Collected>>> = Vec::with_capacity(items.len());
+    let mut lines: Vec<TextRuns> = Vec::with_capacity(items.len());
 
     for item in items {
       let mut out = Vec::new();
-      let mut item_lines = None;
+      let text = text_runs(item)?;
 
-      if let Item::Text { laid, x, y, color } = item {
-        let runs = laid.runs()?;
-
+      if let Some((runs, x, y, color)) = &text {
         for run in &runs.runs {
           self.run(&mut out, run, *x, *y, *color)?;
         }
-
-        item_lines = Some(runs);
       }
 
       draws.push(out);
-      lines.push(item_lines);
+      lines.push(text);
     }
 
     let atlas = self.atlas.clone();
@@ -903,18 +957,7 @@ impl AtlasPainter {
         alpha: 1.0,
       },
     };
-    let mut index = 0;
-
-    replay(ctx, items, |ctx, _laid, dx, dy, color| {
-      let at = items
-        .iter()
-        .enumerate()
-        .skip(index)
-        .find(|(_, i)| matches!(i, Item::Text { .. }))
-        .map(|(i, _)| i)
-        .unwrap();
-      index = at + 1;
-
+    replay(ctx, items, |ctx, at| {
       for d in &draws[at] {
         if d.cell.colour {
           ctx.set_paint(image(&colour_atlas));
@@ -943,8 +986,8 @@ impl AtlasPainter {
       ctx.reset_tint();
       ctx.reset_paint_transform();
 
-      if let Some(runs) = &lines[at] {
-        draw_lines(ctx, runs, dx, dy, color);
+      if let Some((runs, dx, dy, color)) = &lines[at] {
+        draw_lines(ctx, runs, *dx, *dy, *color);
       }
     });
 
@@ -990,6 +1033,11 @@ impl Reference {
   }
 
   pub fn render(&self, items: &[Item], w: u32, h: u32) -> Result<Img> {
+    self.render_at(items, w, h, 1.0)
+  }
+
+  /// `items`, in DIPs, drawn into `w` by `h` pixels at `scale` pixels per DIP.
+  pub fn render_at(&self, items: &[Item], w: u32, h: u32, scale: f32) -> Result<Img> {
     let bitmap = unsafe {
       self
         .wic
@@ -1001,12 +1049,13 @@ impl Reference {
         format: DXGI_FORMAT_B8G8R8A8_UNORM,
         alphaMode: D2D1_ALPHA_MODE_PREMULTIPLIED,
       },
-      dpiX: 96.0,
-      dpiY: 96.0,
+      dpiX: 96.0 * scale,
+      dpiY: 96.0 * scale,
       usage: D2D1_RENDER_TARGET_USAGE_NONE,
       minLevel: D2D1_FEATURE_LEVEL_DEFAULT,
     };
     let rt = unsafe { self.d2d.CreateWicBitmapRenderTarget(&bitmap, &props)? };
+    let dc7 = rt.cast::<ID2D1DeviceContext7>().ok();
     let brush = unsafe {
       rt.CreateSolidColorBrush(
         &D2D1_COLOR_F {
@@ -1051,6 +1100,45 @@ impl Reference {
               );
             }
           }
+          Item::Layout {
+            layout,
+            x,
+            y,
+            color,
+          } => {
+            brush.SetColor(&d2d_color(*color));
+            rt.DrawTextLayout(
+              Vector2 { X: *x, Y: *y },
+              layout,
+              &brush,
+              D2D1_DRAW_TEXT_OPTIONS_ENABLE_COLOR_FONT,
+            );
+          }
+          Item::Glyphs { runs, x, y, color } => {
+            brush.SetColor(&d2d_color(*color));
+
+            for run in &runs.runs {
+              let glyph_run = run.as_run();
+              let origin = Vector2 {
+                X: run.origin.0 + *x,
+                Y: run.origin.1 + *y,
+              };
+
+              match &dc7 {
+                Some(dc7) => dc7.DrawGlyphRunWithColorSupport(
+                  origin,
+                  &*glyph_run,
+                  None,
+                  &brush,
+                  None,
+                  0,
+                  DWRITE_MEASURING_MODE_NATURAL,
+                  D2D1_COLOR_BITMAP_GLYPH_SNAP_OPTION_DEFAULT,
+                ),
+                None => rt.DrawGlyphRun(origin, &*glyph_run, &brush, DWRITE_MEASURING_MODE_NATURAL),
+              }
+            }
+          }
           Item::PushClip(r) => {
             rt.PushAxisAlignedClip(&d2d_rect(*r), D2D1_ANTIALIAS_MODE_ALIASED);
             stack.push(false);
@@ -1092,6 +1180,23 @@ impl Reference {
     unsafe { bitmap.CopyPixels(std::ptr::null(), w * 4, &mut bytes)? };
     Ok(Img::from_bgra(w as usize, h as usize, &bytes))
   }
+}
+
+/// The units per em of `font`.
+pub fn units_per_em(font: &FontData) -> f32 {
+  use skrifa::MetadataProvider as _;
+
+  skrifa::FontRef::from_index(font.data.data(), font.index)
+    .map(|f| {
+      f32::from(
+        f.metrics(
+          skrifa::instance::Size::unscaled(),
+          skrifa::instance::LocationRef::default(),
+        )
+        .units_per_em,
+      )
+    })
+    .unwrap_or(2048.0)
 }
 
 const fn d2d_color(c: [f32; 4]) -> D2D1_COLOR_F {

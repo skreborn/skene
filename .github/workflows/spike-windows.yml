@@ -5,8 +5,14 @@ on:
     branches: [claude/platform-architecture-tradeoffs-y9q57l]
     paths:
       - spikes/windows/**
+      - spikes/text-parity/**
       - .github/workflows/spike-windows.yml
   workflow_dispatch:
+    inputs:
+      parts:
+        description: "Parts of the main run (spike,labels,parity,probes); empty runs all"
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -22,37 +28,70 @@ jobs:
       matrix:
         os: [windows-2025, windows-2022]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 25
+    timeout-minutes: 60
     defaults:
       run:
         shell: bash
     steps:
       - uses: actions/checkout@v5
         with:
-          sparse-checkout: spikes/windows
+          sparse-checkout: |
+            spikes/windows
+            spikes/text-parity
 
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: spikes/windows
 
+      - name: Build
+        working-directory: spikes/windows
+        run: |
+          rustc --version
+          cargo build --release 2>&1 | tail -20
+          ls -l target/release/windows-text-spike.exe
+
       - name: Run the spike
         working-directory: spikes/windows
         env:
           SPIKE_OUT: ${{ runner.temp }}/out
+          SPIKE_DEVICE: ${{ matrix.os }}
         run: |
           mkdir -p "$SPIKE_OUT"
-          set +e
-          cargo run --release 2>&1 | tee "$SPIKE_OUT/cargo.log"
-          status=${PIPESTATUS[0]}
-          set -e
+          export SPIKE_OS_VERSION="$(cmd.exe //c ver | tr -d '\r' | grep -v '^$')"
+          BIN=./target/release/windows-text-spike.exe
+          status=0
+          # Start-up probes, each in a fresh process.
+          SPIKE_PARTS=fontique SPIKE_RESULTS=results-fontique.txt "$BIN" || status=$?
+          SPIKE_PARTS=dwritestart SPIKE_RESULTS=results-dwritestart.txt "$BIN" || status=$?
+          # The main run.
+          PARTS="${{ github.event.inputs.parts }}"
+          SPIKE_PARTS="${PARTS:-spike,labels,parity,probes}" "$BIN" 2>&1 | tee "$SPIKE_OUT/run.log" || status=$?
+          # Text scaling: the setting written as Settings > Accessibility > Text size writes it.
+          SPIKE_PARTS=textscale SPIKE_RESULTS=results-textscale-default.txt "$BIN" || status=$?
+          reg add 'HKCU\Software\Microsoft\Accessibility' //v TextScaleFactor //t REG_DWORD //d 150 //f
+          SPIKE_PARTS=textscale SPIKE_RESULTS=results-textscale-150.txt "$BIN" || status=$?
+          reg delete 'HKCU\Software\Microsoft\Accessibility' //v TextScaleFactor //f || true
+          # A font installed for the current user alone.
+          FONTS="$LOCALAPPDATA/Microsoft/Windows/Fonts"
+          mkdir -p "$FONTS"
+          curl -fsSL -o "$FONTS/AtkinsonHyperlegible-Regular.ttf" \
+            https://github.com/google/fonts/raw/main/ofl/atkinsonhyperlegible/AtkinsonHyperlegible-Regular.ttf \
+            && reg add 'HKCU\Software\Microsoft\Windows NT\CurrentVersion\Fonts' //v 'Atkinson Hyperlegible Regular (TrueType)' //t REG_SZ //d "$(cygpath -w "$FONTS/AtkinsonHyperlegible-Regular.ttf")" //f \
+            || echo "user font download failed"
+          sleep 5
+          SPIKE_PARTS=userfont SPIKE_RESULTS=results-userfont.txt "$BIN" || status=$?
           {
             echo "=== RESULTS ==="
-            echo "spike windows on ${{ matrix.os }}: $(cmd.exe //c ver | tr -d '\r' | grep -v '^$'), $(rustc --version)"
+            echo "spike windows on ${{ matrix.os }}: $SPIKE_OS_VERSION, $(rustc --version)"
             powershell -NoProfile -Command "(Get-CimInstance Win32_OperatingSystem | Select-Object Caption, Version, BuildNumber | Format-List | Out-String).Trim()"
             powershell -NoProfile -Command "(Get-CimInstance Win32_Processor | Select-Object Name, NumberOfLogicalProcessors | Format-List | Out-String).Trim()"
-            ls -l /c/Windows/Fonts/seguiemj.ttf /c/Windows/Fonts/segoeui.ttf 2>&1
-            cat "$SPIKE_OUT/results.txt" 2>/dev/null || echo "(no result file)"
-            echo "cargo exit status: $status"
+            ls -l /c/Windows/Fonts/seguiemj.ttf /c/Windows/Fonts/segoeui.ttf /c/Windows/Fonts/SegUIVar.ttf /c/Windows/Fonts/YuGothR.ttc /c/Windows/Fonts/msyh.ttc /c/Windows/Fonts/malgun.ttf 2>&1
+            ls /c/Windows/System32/icu*.dll 2>&1
+            for f in results-fontique results-dwritestart results results-textscale-default results-textscale-150 results-userfont; do
+              echo "--- $f"
+              grep -v -E '^cmp\.[^ ]*\.(v|breaks|fonts) ' "$SPIKE_OUT/$f.txt" 2>/dev/null || echo "(no $f.txt)"
+            done
+            echo "exit status: $status"
             echo "=== END ==="
           } | tee "$SPIKE_OUT/results-block.txt"
           exit $status

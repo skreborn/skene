@@ -1,13 +1,43 @@
-//! Spike: DirectWrite lays text out under taffy, and its glyph runs enter vello two ways.
+//! Spike: DirectWrite lays text out under taffy, and its glyph runs enter vello two ways; then
+//! the text-parity corpus three ways (A DirectWrite, B Parley and vello, C Parley drawn by
+//! DirectWrite) and the probes the text-engine revisit asks for.
 //!
-//! Each criterion prints `key: value` lines into `results.txt` in the output directory
-//! (`SPIKE_OUT`, `out` by default), beside the rendered PNGs.
+//! Each part prints `key: value` lines into `results.txt` in the output directory (`SPIKE_OUT`,
+//! `out` by default), beside the rendered PNGs. `SPIKE_PARTS` names the parts, comma-separated
+//! (`spike`, `parity`, `probes`, `labels`, `textscale`, `userfont`, `fontique`,
+//! `dwritestart`); the first four by default.
 
 #[cfg(windows)]
 mod engine;
+#[cfg(windows)]
+mod faces;
 mod image;
 #[cfg(windows)]
+mod labels;
+#[cfg(windows)]
+mod native;
+#[cfg(windows)]
 mod paint;
+#[cfg(windows)]
+mod parity;
+#[cfg(windows)]
+mod probes;
+#[cfg(windows)]
+mod resolver;
+
+/// The lines a run prints and keeps.
+#[derive(Default)]
+pub struct Report {
+  pub lines: Vec<String>,
+}
+
+impl Report {
+  pub fn line(&mut self, s: impl Into<String>) {
+    let s = s.into();
+    println!("{s}");
+    self.lines.push(s);
+  }
+}
 
 #[cfg(not(windows))]
 fn main() {
@@ -18,25 +48,47 @@ fn main() {
 fn main() {
   let out = std::path::PathBuf::from(std::env::var("SPIKE_OUT").unwrap_or_else(|_| "out".into()));
   std::fs::create_dir_all(&out).expect("output directory");
-  let mut report = spike::Report::default();
-  let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-    spike::run(&out, &mut report)
-  }));
+  let parts = std::env::var("SPIKE_PARTS").unwrap_or_else(|_| "spike,parity,probes,labels".into());
+  let file = std::env::var("SPIKE_RESULTS").unwrap_or_else(|_| "results.txt".into());
+  let mut report = Report::default();
 
-  match result {
-    Ok(Ok(())) => {}
-    Ok(Err(e)) => report.line(format!("error: {e}")),
-    Err(panic) => report.line(format!(
-      "panic: {}",
-      panic
-        .downcast_ref::<String>()
-        .cloned()
-        .or_else(|| panic.downcast_ref::<&str>().map(|s| s.to_string()))
-        .unwrap_or_default()
-    )),
+  for part in parts.split(',').map(str::trim).filter(|p| !p.is_empty()) {
+    report.line(format!("=== part {part}"));
+    let started = std::time::Instant::now();
+    let result =
+      std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| -> Result<(), String> {
+        match part {
+          "spike" => spike::run(&out, &mut report).map_err(|e| e.to_string()),
+          "parity" => parity::run(&out, &spike::factory()?, &mut report),
+          "probes" => probes::run(&out, &spike::factory()?, &mut report),
+          "labels" => labels::run(&out, &spike::factory()?, &mut report),
+          "textscale" => probes::text_scale(&spike::factory()?, &mut report),
+          "userfont" => probes::user_font(&spike::factory()?, &mut report),
+          "fontique" => probes::fontique(&mut report),
+          "dwritestart" => probes::dwrite_startup(&mut report),
+          other => Err(format!("unknown part {other}")),
+        }
+      }));
+
+    match result {
+      Ok(Ok(())) => {}
+      Ok(Err(e)) => report.line(format!("error: {part}: {e}")),
+      Err(panic) => report.line(format!(
+        "panic: {part}: {}",
+        panic
+          .downcast_ref::<String>()
+          .cloned()
+          .or_else(|| panic.downcast_ref::<&str>().map(|s| s.to_string()))
+          .unwrap_or_default()
+      )),
+    }
+
+    report.line(format!(
+      "=== part {part} took {:.0} ms",
+      started.elapsed().as_secs_f64() * 1e3
+    ));
+    std::fs::write(out.join(&file), report.lines.join("\n") + "\n").expect("results");
   }
-
-  std::fs::write(out.join("results.txt"), report.lines.join("\n") + "\n").expect("results");
 }
 
 #[cfg(windows)]
@@ -51,22 +103,16 @@ mod spike {
   use windows_core::{Interface, Result};
 
   use crate::{
+    Report,
     engine::{EllipsisStrategy, Engine, Laid, Paragraph, ParagraphStyle, line_metrics},
     image::{Img, Region},
     paint::{AtlasPainter, ColourPath, Floor, Item, Reference, face_path, new_context, to_img},
   };
 
-  #[derive(Default)]
-  pub struct Report {
-    pub lines: Vec<String>,
-  }
-
-  impl Report {
-    pub fn line(&mut self, s: impl Into<String>) {
-      let s = s.into();
-      println!("{s}");
-      self.lines.push(s);
-    }
+  /// The shared DirectWrite factory, COM initialized on this thread.
+  pub fn factory() -> std::result::Result<IDWriteFactory4, String> {
+    let _ = unsafe { CoInitializeEx(None, COINIT_MULTITHREADED) };
+    unsafe { DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED) }.map_err(|e| e.to_string())
   }
 
   macro_rules! say {

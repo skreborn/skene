@@ -7,23 +7,41 @@ publish = false
 [workspace]
 
 [dependencies]
+glifo = { default-features = false, features = ["std"], version = "=0.4.0" }
+icu_properties = { default-features = false, features = ["compiled_data"], version = "=2.3.0" }
+parley = { default-features = false, features = ["complex-scripts", "std", "system"], version = "=0.12.0" }
 png = "0.18"
+serde = { features = ["derive"], version = "1" }
+serde_json = "1"
+skrifa = { default-features = false, features = ["std"], version = "=0.44.0" }
 taffy = "0.15"
-vello_cpu = { version = "0.3", features = ["multithreading"] }
+text-parity = { path = "../text-parity" }
+vello_cpu = { features = ["multithreading"], version = "=0.3.0" }
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.62", features = [
   "Foundation_Numerics",
+  "Globalization_Fonts",
+  "UI_ViewManagement",
   "Win32_Foundation",
+  "Win32_Globalization",
   "Win32_Graphics_Direct2D",
   "Win32_Graphics_Direct2D_Common",
   "Win32_Graphics_DirectWrite",
   "Win32_Graphics_Dxgi_Common",
   "Win32_Graphics_Imaging",
   "Win32_System_Com",
+  "Win32_System_ProcessStatus",
+  "Win32_System_Threading",
 ] }
 windows-core = "0.62"
 windows-numerics = "0.3"
+
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 2
 
 [profile.release]
 debug = "line-tables-only"

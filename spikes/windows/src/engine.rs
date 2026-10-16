@@ -504,20 +504,39 @@ impl Laid {
 
   /// The glyph runs DirectWrite draws for this paragraph with its origin at (x, y).
   pub fn glyph_runs(&self, x: f32, y: f32) -> Result<Collected> {
-    let out = Rc::new(RefCell::new(Collected::default()));
-    let renderer: IDWriteTextRenderer = Collector {
-      out: out.clone(),
-      inline: Cell::new(false),
-    }
-    .into();
+    let mut all = Collected::default();
 
     for piece in &self.pieces {
-      unsafe { piece.layout.Draw(None, &renderer, x, y + piece.y)? };
+      let c = collect(&piece.layout, x, y + piece.y, 1.0, true)?;
+      all.runs.extend(c.runs);
+      all.lines.extend(c.lines);
     }
 
-    drop(renderer);
-    Ok(std::mem::take(&mut *out.borrow_mut()))
+    Ok(all)
   }
+}
+
+/// The glyph runs `layout` draws with its origin at (x, y), on a grid of `ppd` pixels per DIP
+/// where `snap` (DirectWrite snaps each baseline origin to it), unsnapped otherwise.
+pub fn collect(
+  layout: &IDWriteTextLayout,
+  x: f32,
+  y: f32,
+  ppd: f32,
+  snap: bool,
+) -> Result<Collected> {
+  let out = Rc::new(RefCell::new(Collected::default()));
+  let renderer: IDWriteTextRenderer = Collector {
+    out: out.clone(),
+    inline: Cell::new(false),
+    ppd,
+    snap,
+  }
+  .into();
+
+  unsafe { layout.Draw(None, &renderer, x, y)? };
+  drop(renderer);
+  Ok(std::mem::take(&mut *out.borrow_mut()))
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -534,6 +553,9 @@ pub struct GlyphRunRec {
   pub sideways: bool,
   // Drawn by an inline object (the ellipsis trimming sign).
   pub inline: bool,
+  // The run's text: its first UTF-16 position, and each code unit's first glyph.
+  pub text_position: u32,
+  pub cluster_map: Vec<u16>,
 }
 
 impl GlyphRunRec {
@@ -597,15 +619,50 @@ pub struct Collected {
   pub lines: Vec<[f32; 4]>,
 }
 
+impl Collected {
+  /// Every run and decoration scaled by `s`: the same drawing in device pixels.
+  pub fn scaled(&self, s: f32) -> Self {
+    Self {
+      runs: self
+        .runs
+        .iter()
+        .map(|r| GlyphRunRec {
+          face: r.face.clone(),
+          em: r.em * s,
+          glyphs: r.glyphs.clone(),
+          advances: r.advances.iter().map(|a| a * s).collect(),
+          offsets: r
+            .offsets
+            .iter()
+            .map(|o| DWRITE_GLYPH_OFFSET {
+              advanceOffset: o.advanceOffset * s,
+              ascenderOffset: o.ascenderOffset * s,
+            })
+            .collect(),
+          origin: (r.origin.0 * s, r.origin.1 * s),
+          bidi: r.bidi,
+          sideways: r.sideways,
+          inline: r.inline,
+          text_position: r.text_position,
+          cluster_map: r.cluster_map.clone(),
+        })
+        .collect(),
+      lines: self.lines.iter().map(|l| l.map(|v| v * s)).collect(),
+    }
+  }
+}
+
 #[implement(IDWriteTextRenderer)]
 struct Collector {
   out: Rc<RefCell<Collected>>,
   inline: Cell<bool>,
+  ppd: f32,
+  snap: bool,
 }
 
 impl IDWritePixelSnapping_Impl for Collector_Impl {
   fn IsPixelSnappingDisabled(&self, _ctx: *const core::ffi::c_void) -> Result<BOOL> {
-    Ok(false.into())
+    Ok((!self.snap).into())
   }
 
   fn GetCurrentTransform(
@@ -628,7 +685,7 @@ impl IDWritePixelSnapping_Impl for Collector_Impl {
   }
 
   fn GetPixelsPerDip(&self, _ctx: *const core::ffi::c_void) -> Result<f32> {
-    Ok(1.0)
+    Ok(self.ppd)
   }
 }
 
@@ -640,10 +697,18 @@ impl IDWriteTextRenderer_Impl for Collector_Impl {
     y: f32,
     _mode: DWRITE_MEASURING_MODE,
     run: *const DWRITE_GLYPH_RUN,
-    _desc: *const DWRITE_GLYPH_RUN_DESCRIPTION,
+    desc: *const DWRITE_GLYPH_RUN_DESCRIPTION,
     _effect: Ref<IUnknown>,
   ) -> Result<()> {
     let run = unsafe { &*run };
+    let (text_position, cluster_map) = match unsafe { desc.as_ref() } {
+      Some(d) if !d.clusterMap.is_null() => (
+        d.textPosition,
+        unsafe { std::slice::from_raw_parts(d.clusterMap, d.stringLength as usize) }.to_vec(),
+      ),
+      Some(d) => (d.textPosition, Vec::new()),
+      None => (0, Vec::new()),
+    };
     let n = run.glyphCount as usize;
     let Some(face) = run.fontFace.as_ref()
     else {
@@ -673,6 +738,8 @@ impl IDWriteTextRenderer_Impl for Collector_Impl {
       bidi: run.bidiLevel,
       sideways: run.isSideways.as_bool(),
       inline: self.inline.get(),
+      text_position,
+      cluster_map,
     });
     Ok(())
   }

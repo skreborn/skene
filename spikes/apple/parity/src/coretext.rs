@@ -229,13 +229,43 @@ pub fn sfnt(font: &CTFont) -> Option<Vec<u8>> {
   sfnt_except(font, &[])
 }
 
+/// The tables layout reads: shaping (OpenType and AAT), metrics, variations and names. A font
+/// built from these alone shapes and measures as the whole font does, and draws nothing.
+pub const LAYOUT_TABLES: [&str; 22] = [
+  "cmap", "head", "hhea", "hmtx", "maxp", "name", "OS/2", "post", "fvar", "avar", "STAT", "HVAR",
+  "MVAR", "GDEF", "GSUB", "GPOS", "morx", "kerx", "ankr", "kern", "trak", "feat",
+];
+
 /// [`sfnt`] without the tables named in `skip` (`hvgl` and `hvpm`, which fontique refuses).
 #[must_use]
 pub fn sfnt_except(font: &CTFont, skip: &[&str]) -> Option<Vec<u8>> {
-  let skip: Vec<u32> = skip.iter().map(|tag| tag_of(tag)).collect();
+  sfnt_where(font, |tag| !skip.iter().any(|name| tag_of(name) == tag))
+}
+
+/// [`sfnt`] of the tables named in `only` alone.
+#[must_use]
+pub fn sfnt_only(font: &CTFont, only: &[&str]) -> Option<Vec<u8>> {
+  sfnt_where(font, |tag| only.iter().any(|name| tag_of(name) == tag))
+}
+
+/// The size in bytes of each of `font`'s tables, by name.
+#[must_use]
+pub fn table_sizes(font: &CTFont) -> Vec<(String, usize)> {
+  tables(font)
+    .into_iter()
+    .map(|tag| {
+      let length = unsafe { font.table(tag, CTFontTableOptions::NoOptions) }
+        .map_or(0, |data| data.len());
+
+      (tag_name(tag), length)
+    })
+    .collect()
+}
+
+fn sfnt_where(font: &CTFont, keep: impl Fn(u32) -> bool) -> Option<Vec<u8>> {
   let mut tags = tables(font);
 
-  tags.retain(|tag| !skip.contains(tag));
+  tags.retain(|tag| keep(*tag));
   tags.sort_unstable();
   tags.dedup();
 

@@ -11,17 +11,21 @@
 //! ([`outline`]). [`isolate`] draws TextKit's own glyphs by both rasterizers (layout held
 //! equal); [`suite`] runs all of it with the probes ([`probes`], [`cjk`], [`genmoji`],
 //! [`smoothing`], [`subset`], and on iOS `ios`) and writes records, images, comparisons and a
-//! results summary to one directory; [`ffi`] is the C entry the iOS test links.
+//! results summary to one directory; [`ffi`] is the C entry the iOS test links. [`fontmem`]
+//! measures the tuned engine's start-up and memory under each way of storing its fonts
+//! ([`mapped`] maps a file), one fresh process per storage.
 
 pub mod cg;
 pub mod cjk;
 pub mod coretext;
 pub mod ffi;
+pub mod fontmem;
 pub mod genmoji;
 #[cfg(target_os = "ios")]
 pub mod ios;
 pub mod isolate;
 pub mod label;
+pub mod mapped;
 pub mod outline;
 pub mod platform;
 pub mod probes;

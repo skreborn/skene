@@ -122,7 +122,7 @@ pub struct FallbackStyle {
 /// The advances of `ids` in the single-face sfnt `bytes` at `size`, at the axis values
 /// `settings`, summed.
 fn advances(bytes: &[u8], ids: &[u16], size: f32, settings: &[(String, f64)]) -> Option<f64> {
-  let font = FontRef::new(bytes).ok()?;
+  let font = FontRef::from_index(bytes, 0).ok()?;
   let location = font
     .axes()
     .location(settings.iter().filter_map(|(tag, value)| {
@@ -247,6 +247,76 @@ struct Registered {
   family: String,
 }
 
+/// How a font's bytes reach fontique.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub enum Storage {
+  /// Every table but `hvgl` and `hvpm` copied from `CTFontCopyTable` into one sfnt.
+  #[default]
+  Copy,
+  /// Only the tables layout reads ([`coretext::LAYOUT_TABLES`]) copied: enough to shape and
+  /// measure, nothing to draw (C draws through Core Text).
+  Layout,
+  /// The system font mapped from its file; a fallback (its line metrics rewritten, `hvgl`
+  /// stripped) as [`Storage::Layout`].
+  Map,
+  /// Every font with a file mapped from it as it is (a collection's face selected in a private
+  /// copy of its header), its line metrics its own; a font fontique refuses (`hvgl`) or without
+  /// a file as [`Storage::Layout`].
+  MapAll,
+}
+
+impl Storage {
+  /// The storage named `name` (`copy`, `layout`, `map`, `map-all`).
+  #[must_use]
+  pub fn parse(name: &str) -> Option<Self> {
+    match name {
+      "copy" => Some(Self::Copy),
+      "layout" => Some(Self::Layout),
+      "map" => Some(Self::Map),
+      "map-all" => Some(Self::MapAll),
+      _ => None,
+    }
+  }
+
+  /// The storage's name.
+  #[must_use]
+  pub const fn name(self) -> &'static str {
+    match self {
+      Self::Copy => "copy",
+      Self::Layout => "layout",
+      Self::Map => "map",
+      Self::MapAll => "map-all",
+    }
+  }
+}
+
+/// How one font was registered.
+#[derive(Clone, Debug, serde::Serialize)]
+pub struct Stored {
+  /// The family it is registered under.
+  pub family: String,
+  /// Its PostScript name.
+  pub postscript: String,
+  /// Its file, where Core Text reports one.
+  pub path: Option<String>,
+  /// `mapped` or `copied`.
+  pub how: &'static str,
+  /// Bytes copied into memory.
+  pub copied: usize,
+  /// Bytes mapped from the file.
+  pub mapped: usize,
+  /// The face of a collection selected, and how many faces the file holds.
+  pub face: Option<(u32, u32)>,
+  /// What opening and mapping the file answered, where it was tried.
+  pub access: Option<crate::mapped::Access>,
+  /// Whether its line metrics were rewritten to the paragraph font's.
+  pub metrics_rewritten: bool,
+  /// Whether it carries `hvgl` outlines.
+  pub hvgl: bool,
+  /// Milliseconds its registration took.
+  pub ms: f64,
+}
+
 /// Parley over Core Text's fonts.
 pub struct TunedEngine {
   /// The collection, holding only what Core Text resolved.
@@ -263,8 +333,8 @@ pub struct TunedEngine {
   /// A cluster and language each fallback family was found for, to ask Core Text again at
   /// another size.
   samples: HashMap<String, (String, String)>,
-  /// Each fallback family's registered sfnt, for its advances.
-  bytes_of: HashMap<String, Arc<Vec<u8>>>,
+  /// Each fallback family's registered font data (face 0), for its advances.
+  bytes_of: HashMap<String, Arc<dyn AsRef<[u8]> + Send + Sync>>,
   /// Each fallback family's blob id.
   blob_of: HashMap<String, u64>,
   /// Each fallback family's style by size, weight and slant.
@@ -275,8 +345,14 @@ pub struct TunedEngine {
   pub optical_notes: Vec<String>,
   /// Time spent building sfnts from tables and registering them.
   pub register_ms: f64,
-  /// Bytes of sfnt registered.
+  /// Bytes of sfnt registered (copied).
   pub registered_bytes: usize,
+  /// Bytes of font files registered by mapping them.
+  pub mapped_bytes: usize,
+  /// How fonts reach fontique.
+  pub storage: Storage,
+  /// Each font registered, as it was stored.
+  pub stored: Vec<Stored>,
   /// Fonts fontique refused (an `hvgl` font, say).
   pub rejected: Vec<String>,
   /// The families registered, in order: family, PostScript name, file.
@@ -324,6 +400,9 @@ impl TunedEngine {
       optical_notes: Vec::new(),
       register_ms: 0.,
       registered_bytes: 0,
+      mapped_bytes: 0,
+      storage: Storage::Copy,
+      stored: Vec::new(),
       rejected: Vec::new(),
       log: Vec::new(),
       notes: Vec::new(),
@@ -391,30 +470,80 @@ impl TunedEngine {
       skip.extend(["hvgl", "hvpm"]);
     }
 
-    if metrics.is_some() {
-      skip.push("MVAR");
+    let mappable = match self.storage {
+      Storage::Copy | Storage::Layout => false,
+      Storage::Map => metrics.is_none() && !has_hvgl,
+      Storage::MapAll => !has_hvgl,
+    };
+    let mut access = None;
+    let mut face = None;
+    let mut mapped: Option<crate::mapped::Mapped> = None;
+
+    if mappable && let Some(path) = &info.path {
+      match crate::mapped::Mapped::open(path, None) {
+        Ok((whole, opened)) => {
+          access = Some(opened);
+          face = crate::mapped::face_of(whole.as_ref(), &info.postscript);
+          mapped = match face {
+            Some((index, count)) if count > 1 => {
+              drop(whole);
+
+              crate::mapped::Mapped::open(path, Some(index))
+                .ok()
+                .map(|(selected, _)| selected)
+            }
+            Some(_) => Some(whole),
+            None => None,
+          };
+        }
+        Err(failed) => access = Some(failed),
+      }
     }
 
-    let bytes = coretext::sfnt_except(font, &skip).map(|mut bytes| {
-      if let Some(metrics) = metrics {
-        coretext::with_line_metrics(&mut bytes, metrics);
+    let (bytes, copied, metrics_rewritten): (Arc<dyn AsRef<[u8]> + Send + Sync>, bool, bool) =
+      if let Some(mapped) = mapped {
+        self.mapped_bytes += mapped.len();
+
+        (Arc::new(mapped), false, false)
       }
+      else {
+        if metrics.is_some() {
+          skip.push("MVAR");
+        }
 
-      bytes
-    });
-    let Some(bytes) = bytes
-    else {
-      self.refused.insert(key.clone());
-      self
-        .rejected
-        .push(format!("{}: no tables", info.postscript));
+        let layout: Vec<&str> = coretext::LAYOUT_TABLES
+          .iter()
+          .copied()
+          .filter(|tag| !skip.contains(tag))
+          .collect();
+        let bytes = if self.storage == Storage::Copy {
+          coretext::sfnt_except(font, &skip)
+        }
+        else {
+          coretext::sfnt_only(font, &layout)
+        };
+        let bytes = bytes.map(|mut bytes| {
+          if let Some(metrics) = metrics {
+            coretext::with_line_metrics(&mut bytes, metrics);
+          }
 
-      return None;
-    };
+          bytes
+        });
+        let Some(bytes) = bytes
+        else {
+          self.refused.insert(key.clone());
+          self
+            .rejected
+            .push(format!("{}: no tables", info.postscript));
 
-    self.registered_bytes += bytes.len();
+          return None;
+        };
 
-    let bytes = Arc::new(bytes);
+        self.registered_bytes += bytes.len();
+
+        (Arc::new(bytes), true, metrics.is_some())
+      };
+    let size = (*bytes).as_ref().len();
     let blob = Blob::new(bytes.clone());
     let id = blob.id();
     let added = self.fonts.context.collection.register_fonts(
@@ -455,6 +584,19 @@ impl TunedEngine {
     self.sources.insert(id, retain(font));
     self.bytes_of.insert(family.clone(), bytes);
     self.blob_of.insert(family.clone(), id);
+    self.stored.push(Stored {
+      family: family.clone(),
+      postscript: info.postscript.clone(),
+      path: info.path.clone(),
+      how: if copied { "copied" } else { "mapped" },
+      copied: if copied { size } else { 0 },
+      mapped: if copied { 0 } else { size },
+      face,
+      access,
+      metrics_rewritten,
+      hvgl: has_hvgl,
+      ms: started.elapsed().as_secs_f64() * 1e3,
+    });
 
     self.log.push((family.clone(), info.postscript, info.path));
     self.registered.insert(
@@ -1124,7 +1266,7 @@ impl TunedEngine {
         .iter()
         .map(|cluster| f64::from(cluster.advance))
         .sum();
-      let ours = |settings: &[(String, f64)]| advances(&bytes, &ids, size, settings);
+      let ours = |settings: &[(String, f64)]| advances((*bytes).as_ref(), &ids, size, settings);
 
       if self.tuning.fallback_instance
         && let Some(opsz) = axes.iter().find(|axis| axis.tag == "opsz")

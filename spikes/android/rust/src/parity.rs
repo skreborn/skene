@@ -767,10 +767,11 @@ fn key(scale: f32) -> i32 {
   (scale * 100.) as i32
 }
 
-/// The dp a size of `sp` takes at `scale`, as Skene's resolver computes it: Android 14's curve
-/// (`FontScaleConverterFactory.forScale` and `FontScaleConverter.convertSpToDp`) ported.
-pub fn sp_to_dp(sp: f32, scale: f32) -> f32 {
-  if scale < TABLES[0].0 - 0.02 {
+/// The dp a size of `sp` takes at `scale` on API level `sdk`, as Skene's resolver computes it:
+/// linear before Android 14, and from it Android 14's curve (`FontScaleConverterFactory.forScale`
+/// and `FontScaleConverter.convertSpToDp`) ported.
+pub fn sp_to_dp(sp: f32, scale: f32, sdk: i32) -> f32 {
+  if sdk < 34 || scale < TABLES[0].0 - 0.02 {
     return sp * scale;
   }
 
@@ -799,15 +800,16 @@ pub fn sp_to_dp(sp: f32, scale: f32) -> f32 {
   }
 }
 
-/// Skene's port of the platform's nonlinear font scale: dp for `sp` at `scale`.
+/// Skene's port of the platform's font scale: dp for `sp` at `scale` on API level `sdk`.
 #[no_mangle]
 pub extern "system" fn Java_dev_skene_spike_text_Parity_spToDp<'local>(
   _env: JNIEnv<'local>,
   _class: JClass<'local>,
   sp: jfloat,
   scale: jfloat,
+  sdk: jint,
 ) -> jfloat {
-  sp_to_dp(sp, scale)
+  sp_to_dp(sp, scale, sdk)
 }
 
 #[cfg(test)]
@@ -874,12 +876,16 @@ mod tests {
 
   #[test]
   fn curve() {
-    assert_eq!(sp_to_dp(14., 1.), 14.);
-    assert_eq!(sp_to_dp(14., 2.), 26.);
-    assert_eq!(sp_to_dp(16., 2.), 28.);
-    assert_eq!(sp_to_dp(200., 2.), 200.);
-    assert!((sp_to_dp(4., 2.) - 8.).abs() < 1e-5);
-    assert!((sp_to_dp(17., 1.3) - 20.9).abs() < 1e-4);
-    assert!((sp_to_dp(17., 1.4) - lerp(20.9, 23.5, (1.4 - 1.3) / (1.5 - 1.3))).abs() < 1e-3);
+    assert_eq!(sp_to_dp(14., 1., 34), 14.);
+    assert!(
+      (sp_to_dp(17., 1.3, 29) - 22.1).abs() < 1e-4,
+      "linear before Android 14"
+    );
+    assert_eq!(sp_to_dp(14., 2., 34), 26.);
+    assert_eq!(sp_to_dp(16., 2., 34), 28.);
+    assert_eq!(sp_to_dp(200., 2., 34), 200.);
+    assert!((sp_to_dp(4., 2., 34) - 8.).abs() < 1e-5);
+    assert!((sp_to_dp(17., 1.3, 34) - 20.9).abs() < 1e-4);
+    assert!((sp_to_dp(17., 1.4, 34) - lerp(20.9, 23.5, (1.4 - 1.3) / (1.5 - 1.3))).abs() < 1e-3);
   }
 }

@@ -52,6 +52,8 @@ run() {
 
 # Let the freshly booted emulator's background work settle before timing anything.
 sleep 45
+adb shell svc power stayon true
+adb shell settings put system screen_off_timeout 1800000
 adb shell input keyevent KEYCODE_WAKEUP
 adb shell wm dismiss-keyguard
 

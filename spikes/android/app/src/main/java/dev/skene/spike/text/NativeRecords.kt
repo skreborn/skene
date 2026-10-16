@@ -311,8 +311,8 @@ class NativeRecords(private val quality: Boolean, private val density: Float) {
         val keys = (0 until glyphs.glyphCount()).map { fontKey(glyphs.getFont(it)) }.distinct()
 
         if (keys.size <= 1 && glyphs.glyphCount() > 0) {
-          val fake = if (sdk >= 34) glyphs.getFakeBold(0) else null
-          val fakeItalic = if (sdk >= 34) glyphs.getFakeItalic(0) else null
+          val fake = if (sdk >= 35) glyphs.getFakeBold(0) else null
+          val fakeItalic = if (sdk >= 35) glyphs.getFakeItalic(0) else null
           runs.put(font(glyphs.getFont(0), variant.size, variant, fake, fakeItalic).apply {
             put("utf16", JSONArray(listOf(runStart, runEnd)))
             put("line", line)
@@ -335,8 +335,8 @@ class NativeRecords(private val quality: Boolean, private val density: Float) {
                 current.put("utf16", JSONArray(listOf(current.getJSONArray("utf16").getInt(0), runStart + to)))
               } else {
                 current?.let { runs.put(it) }
-                val fake = if (sdk >= 34) single.getFakeBold(0) else null
-                val fakeItalic = if (sdk >= 34) single.getFakeItalic(0) else null
+                val fake = if (sdk >= 35) single.getFakeBold(0) else null
+                val fakeItalic = if (sdk >= 35) single.getFakeItalic(0) else null
                 current = font(single.getFont(0), variant.size, variant, fake, fakeItalic).apply {
                   put("utf16", JSONArray(listOf(runStart + from, runStart + to)))
                   put("line", line)
@@ -399,8 +399,8 @@ class NativeRecords(private val quality: Boolean, private val density: Float) {
         put("variations", JSONArray().apply {
           font.axes?.forEach { put(JSONObject().put("tag", it.tag).put("value", it.styleValue.toDouble())) }
         })
-        put("embolden", Build.VERSION.SDK_INT >= 34 && glyphs.getFakeBold(at))
-        put("skew", if (Build.VERSION.SDK_INT >= 34 && glyphs.getFakeItalic(at)) 14.04 else JSONObject.NULL)
+        put("embolden", Build.VERSION.SDK_INT >= 35 && glyphs.getFakeBold(at))
+        put("skew", if (Build.VERSION.SDK_INT >= 35 && glyphs.getFakeItalic(at)) 14.04 else JSONObject.NULL)
         put("glyphs", list)
       })
       at = end

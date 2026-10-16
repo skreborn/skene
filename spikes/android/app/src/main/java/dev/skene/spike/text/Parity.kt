@@ -33,8 +33,8 @@ object Parity {
   /** Writes the option C plan (glyph runs, fonts' axes in user space) from Parley's records. */
   @JvmStatic external fun plan(records: String, out: String): String
 
-  /** Skene's port of the platform's nonlinear font scale: dp for [sp] at [scale]. */
-  @JvmStatic external fun spToDp(sp: Float, scale: Float): Float
+  /** Skene's port of the platform's font scale: dp for [sp] at [scale] on API level [sdk]. */
+  @JvmStatic external fun spToDp(sp: Float, scale: Float, sdk: Int): Float
 
   private val names = HashMap<String, Pair<String, String>>()
 

@@ -266,15 +266,22 @@ def main():
                     "family": f"{sum(v['fonts']['same_family'] for v in variants)}/{sum(v['fonts']['characters'] for v in variants)}",
                     "max_width_delta": max(abs(v["max_width_delta"]) for v in variants),
                     "max_height_delta": max(abs(v["height_delta"]) for v in variants),
+                    "max_line_height_delta": max(abs(v["max_line_height_delta"]) for v in variants),
+                    "max_baseline_delta": max(abs(v["max_baseline_delta"]) for v in variants),
+                    "intrinsic_delta": [v.get("intrinsic_delta") for v in variants],
                     "ssim": statistics.mean(p["ssim"] for p in pixels) if pixels else None,
                     "iou": statistics.mean(p["ink_iou"] for p in pixels) if pixels else None,
+                    "mean_abs_diff": statistics.mean(p["mean_abs_diff"] for p in pixels) if pixels else None,
+                    "share_over": statistics.mean(p["share_over"] for p in pixels) if pixels else None,
+                    "max_diff": max(p["max_diff"] for p in pixels) if pixels else None,
+                    "break_texts": [v.get("break_texts") for v in variants if not v["breaks_identical"]][:2],
                     "differing_fonts": sorted({tuple(d) for v in variants for d in v["fonts"].get("differing", [])})[:4],
                 }
 
         if per_case:
             lines += ["### Per case", "",
-                      "| case | A vs B breaks | A vs B family | A vs B Δw / Δh | A vs B SSIM | A vs C breaks | A vs C SSIM | A vs C IoU | B vs C SSIM | B vs C IoU |",
-                      "|---|---|---|---|---|---|---|---|---|---|"]
+                      "| case | A vs B breaks | A vs B family | A vs B Δw / Δh / Δline / Δbaseline | A vs B SSIM | A vs C SSIM / IoU / MAD / >64 | B vs C SSIM / IoU / MAD / >64 / max |",
+                      "|---|---|---|---|---|---|---|"]
 
             def show(value, digits=3):
                 return "-" if value is None else f"{value:.{digits}f}"
@@ -285,9 +292,10 @@ def main():
                 bc = per_case[case].get("B vs C", {})
                 lines.append(
                     f"| {case} | {ab.get('breaks', '-')}/{ab.get('variants', '-')} | {ab.get('family', '-')} | "
-                    f"{show(ab.get('max_width_delta'), 2)} / {show(ab.get('max_height_delta'), 2)} | {show(ab.get('ssim'))} | "
-                    f"{ac.get('breaks', '-')}/{ac.get('variants', '-')} | {show(ac.get('ssim'))} | {show(ac.get('iou'))} | "
-                    f"{show(bc.get('ssim'))} | {show(bc.get('iou'))} |")
+                    f"{show(ab.get('max_width_delta'), 2)} / {show(ab.get('max_height_delta'), 2)} / "
+                    f"{show(ab.get('max_line_height_delta'), 2)} / {show(ab.get('max_baseline_delta'), 2)} | {show(ab.get('ssim'))} | "
+                    f"{show(ac.get('ssim'))} / {show(ac.get('iou'))} / {show(ac.get('mean_abs_diff'), 2)} / {show(ac.get('share_over'), 4)} | "
+                    f"{show(bc.get('ssim'))} / {show(bc.get('iou'))} / {show(bc.get('mean_abs_diff'), 2)} / {show(bc.get('share_over'), 4)} / {bc.get('max_diff', '-')} |")
 
             lines.append("")
             entry["per_case"] = per_case

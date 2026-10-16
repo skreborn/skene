@@ -383,7 +383,7 @@ class ParityTest {
 
     for (sp in sizes) {
       val platform = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, sp, metrics) / metrics.density
-      val skene = Parity.spToDp(sp, scale)
+      val skene = Parity.spToDp(sp, scale, sdk)
       val linear = sp * scale
       worstSkene = max(worstSkene, abs(platform - skene))
       worstLinear = max(worstLinear, abs(platform - linear))
@@ -413,28 +413,36 @@ class ParityTest {
     }
   }
 
+  /**
+   * The band's pixels against its own ground (the commonest colour): `dark` below half the
+   * ground's luminance (text forced to black), `light` brighter than the ground (an outline),
+   * `ink` any pixel off the ground. A dimmed screen scales every pixel alike, so the classes hold.
+   */
   private fun counts(bitmap: Bitmap, left: Int, top: Int, width: Int, height: Int): JSONObject {
-    var black = 0
-    var white = 0
-    var grey = 0
-    var other = 0
+    val pixels = ArrayList<Int>()
 
     for (y in top until minOf(top + height, bitmap.height)) {
       for (x in left until minOf(left + width, bitmap.width)) {
         val pixel = bitmap.getPixel(x, y)
-        val r = Color.red(pixel)
-        val g = Color.green(pixel)
-        val b = Color.blue(pixel)
-        when {
-          maxOf(r, g, b) < 0x30 -> black++
-          minOf(r, g, b) > 0xE0 -> white++
-          abs(r - 0x77) < 0x18 && abs(g - 0x77) < 0x18 && abs(b - 0x77) < 0x18 -> grey++
-          else -> other++
-        }
+        pixels.add((Color.red(pixel) * 299 + Color.green(pixel) * 587 + Color.blue(pixel) * 114) / 1000)
       }
     }
 
-    return JSONObject().put("black", black).put("white", white).put("text_grey", grey).put("other", other)
+    val ground = pixels.groupingBy { it }.eachCount().maxByOrNull { it.value }?.key ?: 0
+    var dark = 0
+    var light = 0
+    var ink = 0
+    var darkest = 255
+
+    for (luma in pixels) {
+      if (abs(luma - ground) > 8) ink++
+      if (luma * 2 < ground) dark++
+      if (luma > ground + 12) light++
+      darkest = minOf(darkest, luma)
+    }
+
+    return JSONObject().put("ground", ground).put("ink", ink).put("dark", dark).put("light", light)
+      .put("darkest", darkest).put("pixels", pixels.size)
   }
 
   /** High-contrast text: whether the setting reads, and which drawing path the renderer alters. */

@@ -166,7 +166,9 @@ class Raster(planFile: File) {
 
   /**
    * For every text run, Minikin's shaping of the run's text in Parley's font at the device's
-   * [scale] against Parley's: glyph ids (API 31) and advances (every level), per variant.
+   * [scale] against Parley's: glyph ids (API 31) and advances (every level), per variant. Runs of
+   * blanks and line breaks alone, and justified variants (whose spaces Parley stretches), are
+   * reported apart from the totals; [DETAILED] variants keep every glyph's position from both.
    */
   fun shaping(scale: Float): JSONObject {
     val list = plan.getJSONArray("variants")
@@ -176,18 +178,30 @@ class Raster(planFile: File) {
     var idsEqual = 0
     var worstDrift = 0f
     var worstAdvance = 0f
+    val excluded = JSONArray()
 
     for (at in 0 until list.length()) {
       val variant = list.getJSONObject(at)
-      val case = variants.getValue(variant.getString("variant"))
+      val id = variant.getString("variant")
+      val case = variants.getValue(id)
       val perLine = HashMap<Int, Float>()
       val worstLine = HashMap<Int, Float>()
       var variantDrift = 0f
       var variantIds = 0
       var variantEqual = 0
+      val detail = JSONArray()
+      val different = JSONArray()
 
       for (run in runs(variant)) {
         val range = run.text ?: continue
+        val runText = case.text.substring(range[0], range[1])
+        val blank = runText.all { it.isWhitespace() || it == '\u00AD' }
+
+        if (blank || case.alignment == "justify") {
+          excluded.put("$id ${if (blank) "blank run" else "justified"} ${range.toList()}")
+          continue
+        }
+
         val paint = paint(run, scale).apply {
           typeface = typeface(run) ?: return@apply
           textLocales = LocaleList.forLanguageTags(case.locale)
@@ -202,6 +216,7 @@ class Raster(planFile: File) {
         if (Build.VERSION.SDK_INT >= 31) {
           val shaped = TextRunShaper.shapeTextRun(case.text, range[0], range[1] - range[0], range[0], range[1] - range[0], 0f, 0f, run.rtl, paint)
           val ids = IntArray(shaped.glyphCount()) { shaped.getGlyphId(it) }
+          val minikin = FloatArray(ids.size) { shaped.getGlyphX(it) / scale }
           idsCompared++
           variantIds++
 
@@ -209,21 +224,32 @@ class Raster(planFile: File) {
             idsEqual++
             variantEqual++
 
-            for (i in ids.indices) {
-              val drift = abs(shaped.getGlyphX(i) / scale - (run.xs[i] - run.left))
-              variantDrift = max(variantDrift, drift)
-            }
+            for (i in ids.indices) variantDrift = max(variantDrift, abs(minikin[i] - (run.xs[i] - run.left)))
+          } else {
+            different.put(JSONObject().put("text", runText).put("parley", JSONArray(run.glyphs.toList())).put("minikin", JSONArray(ids.toList())))
+          }
+
+          if (DETAILED.any { id.startsWith(it) }) {
+            detail.put(JSONObject().apply {
+              put("text", runText)
+              put("parley_x", JSONArray(run.xs.take(64).map { ((it - run.left) * 1000).toInt() / 1000.0 }))
+              put("minikin_x", JSONArray(minikin.take(64).map { (it * 1000).toInt() / 1000.0 }))
+              put("parley_advance", run.advance.toDouble())
+              put("minikin_advance", advance.toDouble())
+            })
           }
         }
       }
 
       worstDrift = max(worstDrift, variantDrift)
       out.put(JSONObject().apply {
-        put("variant", variant.getString("variant"))
+        put("variant", id)
         put("runs_compared", variantIds)
         put("runs_same_glyphs", variantEqual)
         put("max_glyph_drift", variantDrift.toDouble())
         put("max_line_end_drift", (worstLine.values.maxOrNull() ?: 0f).toDouble())
+        if (different.length() > 0) put("different_glyphs", different)
+        if (detail.length() > 0) put("detail", detail)
       })
     }
 
@@ -234,7 +260,16 @@ class Raster(planFile: File) {
       put("runs_same_glyphs", idsEqual)
       put("max_glyph_drift", worstDrift.toDouble())
       put("max_run_advance_delta", worstAdvance.toDouble())
+      put("excluded", excluded)
       put("variants", out)
     }
+  }
+
+  companion object {
+    /** The variants whose every glyph position the shaping report keeps. */
+    val DETAILED = listOf(
+      "latin-kerning/17/max", "latin-ligatures/17/max", "arabic/17/max", "devanagari/17/max", "thai/17/160",
+      "han-zh-hans/17/max", "latin-paragraph/17/max", "sizes-latin/", "burmese/17/90", "emoji-keycaps/17/max",
+    )
   }
 }

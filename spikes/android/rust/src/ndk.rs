@@ -42,6 +42,7 @@ extern "C" {
   fn AFontMatcher_setStyle(matcher: *mut AFontMatcher, weight: u16, italic: bool);
   fn AFontMatcher_setLocales(matcher: *mut AFontMatcher, tags: *const c_char);
   fn AFontMatcher_setFamilyVariant(matcher: *mut AFontMatcher, variant: u32);
+  fn android_get_device_api_level() -> i32;
   fn AFontMatcher_match(
     matcher: *const AFontMatcher,
     family: *const c_char,
@@ -106,7 +107,14 @@ impl FontInfo {
         index: AFont_getCollectionIndex(font) as u32,
         weight: AFont_getWeight(font),
         italic: AFont_isItalic(font),
-        locale: text_of(AFont_getLocale(font)).filter(|locale| !locale.is_empty()),
+        // Android 10's AFont_getLocale inverts its null check: it dereferences the missing
+        // locale and answers null for a present one, so it is asked from Android 11 on.
+        locale: if android_get_device_api_level() >= 30 {
+          text_of(AFont_getLocale(font)).filter(|locale| !locale.is_empty())
+        }
+        else {
+          None
+        },
         axes,
       };
 

@@ -472,7 +472,8 @@ class ParityTest {
       view!!.width to view!!.height
     }
     report("contrast.hardwareAccelerated", onMain { view!!.isHardwareAccelerated })
-    val shot = instrumentation.uiAutomation.takeScreenshot()
+    // The screenshot may be a hardware bitmap, whose pixels cannot be read until copied.
+    val shot = instrumentation.uiAutomation.takeScreenshot()?.copy(Bitmap.Config.ARGB_8888, false)
     val result = JSONObject().put("state", state).put("sdk", sdk)
 
     if (shot != null) {

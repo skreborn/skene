@@ -85,7 +85,6 @@ pub struct Gpu {
   frame: wgpu::Texture,
   glyphs: HashMap<usize, (Rc<GlyphMask>, ImageId)>,
   lost: Arc<AtomicBool>,
-  info: wgpu::AdapterInfo,
   _instance: wgpu::Instance,
 }
 
@@ -246,7 +245,6 @@ impl Gpu {
       frame,
       glyphs: HashMap::new(),
       lost,
-      info,
       _instance: instance,
     })
   }
@@ -266,12 +264,6 @@ impl Gpu {
       usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
       view_formats: &[],
     })
-  }
-
-  /// The adapter the window paints with.
-  #[must_use]
-  pub const fn adapter(&self) -> &wgpu::AdapterInfo {
-    &self.info
   }
 
   /// Whether the device was lost.

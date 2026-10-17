@@ -402,7 +402,8 @@ pub trait Driver {
   /// Asks the platform for an environment, then settles.
   fn set_environment(&mut self, request: EnvironmentRequest);
 
-  /// The window drawn.
+  /// The window's content as the screen shows it: read back from what the platform
+  /// presented, never from the frame the app painted.
   fn screenshot(&mut self) -> Screenshot;
 
   /// Records every frame the platform paints from now on, with when it painted it, until

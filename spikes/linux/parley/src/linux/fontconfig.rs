@@ -7,6 +7,8 @@
 use std::{
   collections::HashMap,
   ffi::{CStr, CString, c_char, c_int},
+  os::unix::ffi::OsStrExt as _,
+  path::Path,
   ptr,
   rc::Rc,
 };
@@ -48,6 +50,9 @@ const SLANT_ITALIC: c_int = 100;
 #[link(name = "fontconfig")]
 unsafe extern "C" {
   fn FcInitLoadConfigAndFonts() -> *mut FcConfig;
+  fn FcConfigCreate() -> *mut FcConfig;
+  fn FcConfigParseAndLoad(config: *mut FcConfig, file: *const u8, complain: c_int) -> c_int;
+  fn FcConfigBuildFonts(config: *mut FcConfig) -> c_int;
   fn FcConfigDestroy(config: *mut FcConfig);
   fn FcPatternCreate() -> *mut FcPattern;
   fn FcPatternDestroy(pattern: *mut FcPattern);
@@ -253,6 +258,46 @@ impl Fontconfig {
     })
   }
 
+  /// Loads the configuration `file` states in place of this one, or the process's again where
+  /// `file` is `None`, the desktop's settings kept beneath it; whether it loaded. Rendering
+  /// settings read before are stale.
+  pub fn reload(&mut self, file: Option<&Path>) -> bool {
+    let config = match file {
+      None => unsafe { FcInitLoadConfigAndFonts() },
+      Some(file) => {
+        let Ok(path) = CString::new(file.as_os_str().as_bytes()) else {
+          return false;
+        };
+
+        unsafe {
+          let config = FcConfigCreate();
+
+          if !config.is_null()
+            && (FcConfigParseAndLoad(config, path.as_ptr().cast(), 1) == 0
+              || FcConfigBuildFonts(config) == 0)
+          {
+            FcConfigDestroy(config);
+
+            return false;
+          }
+
+          config
+        }
+      }
+    };
+
+    if config.is_null() {
+      return false;
+    }
+
+    self.sorted.clear();
+    unsafe { FcConfigDestroy(self.config) };
+    self.config = config;
+    self.generation += 1;
+
+    true
+  }
+
   /// Sets the desktop's settings beneath the configuration; whether they changed.
   pub fn set_desktop(&mut self, desktop: DesktopSettings) -> bool {
     if self.desktop == desktop {
@@ -271,8 +316,8 @@ impl Fontconfig {
     self.desktop
   }
 
-  /// How many times the desktop's settings changed: rendering settings read at another
-  /// generation are stale.
+  /// How many times the desktop's settings or the configuration changed: rendering settings
+  /// read at another generation are stale.
   #[must_use]
   pub const fn generation(&self) -> u64 {
     self.generation

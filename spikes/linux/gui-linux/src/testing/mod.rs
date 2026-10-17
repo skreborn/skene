@@ -11,26 +11,33 @@
 //! - **Settling** waits for the input sent to arrive, then turns the window's loop until a
 //!   quiet window passes in which no frame is painted, nothing is reported and no input
 //!   arrives; a find looks again for up to a second.
+//! - **Pixels** are what the screen shows ([`capture`]): read back from the X server, mutter's
+//!   screen cast, wlroots' screencopy, or the X screen a nested compositor (weston, KWin)
+//!   shows its output in, never from the frame the app painted.
 //! - **The reader's settings** come from a stand-in of the settings portal ([`portal`]) on the
 //!   test's private bus, which the app follows through its real path; a test that needs an
 //!   input method serves a stand-in of Fcitx5 there ([`input_method`]), which a window on
 //!   X11 talks to as to Fcitx5.
 //!
 //! What the window holds is used only to aim input (where its content starts, where the
-//! pointer was seen) and to wait for it (whether input arrived, whether a frame is due),
-//! never to assert what a reader finds. Tests run in the private session the display runner
+//! pointer was seen), to wait for it (whether input arrived, whether a frame is due) and to
+//! record the frames it paints (what motion is sampled through), never to assert what a reader
+//! finds or what the screen shows. Tests run in the private session the display runner
 //! (`skene-runner`) gives each test process, named by `SKENE_TEST_SESSION`: `x11` (Xvfb),
 //! `mutter` (headless mutter with PipeWire), `sway` (headless sway), `weston` (weston on its
-//! X11 backend inside a private Xvfb), `kwin` (KWin's virtual backend) or `kwin-x11` (the
-//! window on KWin's Xwayland).
+//! X11 backend inside a private Xvfb), `kwin` (KWin on its X11 backend inside a private Xvfb)
+//! or `kwin-x11` (the window on that KWin's Xwayland).
 
 pub mod atspi;
+pub mod capture;
 pub mod input;
 pub mod input_method;
 pub mod portal;
+pub mod xsettings;
 
 use std::{
   cell::{Cell, OnceCell, RefCell},
+  collections::HashMap,
   path::Path,
   rc::Rc,
   sync::{OnceLock, mpsc},
@@ -55,14 +62,14 @@ use xkbcommon::xkb;
 
 use self::{
   atspi::{Atspi, Item, Object, state},
+  capture::Screen,
   input::Input,
   portal::{Portal, Setting},
 };
-use crate::{
-  Backend, Linux, environment,
+use crate::{Backend, Linux, environment, shell, trace, window::Window};
+pub use crate::{
+  chrome::Button as TitleButton,
   paint::{PaintPath, PathChoice},
-  shell, trace,
-  window::Window,
 };
 
 /// How long `settle` must see no frame, no report and no input: above two 60 Hz frames.
@@ -182,12 +189,15 @@ struct Shown {
 
 thread_local! {
   static SHOWN: RefCell<Option<Shown>> = const { RefCell::new(None) };
-  static INPUT: RefCell<Option<Box<dyn Input>>> = const { RefCell::new(None) };
+  static INPUT: RefCell<Option<input::Tracked>> = const { RefCell::new(None) };
+  static SCREEN: RefCell<Option<Screen>> = const { RefCell::new(None) };
   static ATSPI: OnceCell<Atspi> = const { OnceCell::new() };
   static PORTAL: OnceCell<Option<Portal>> = const { OnceCell::new() };
   static WINDOWS: Cell<u32> = const { Cell::new(0) };
   /// A composition the driver started, waiting for its last key.
   static COMPOSING: Cell<Option<char>> = const { Cell::new(None) };
+  /// Whether a test loaded a fontconfig configuration of its own.
+  static FONTCONFIG: Cell<bool> = const { Cell::new(false) };
 }
 
 /// Runs `then` with the process's input devices, opened on first use.
@@ -201,12 +211,38 @@ fn with_input<T>(then: impl FnOnce(&mut dyn Input) -> T) -> T {
     let input = slot.get_or_insert_with(|| {
       let session = Session::current().unwrap_or(Session::X11);
 
-      session
-        .input()
-        .unwrap_or_else(|error| panic!("input injection on {session:?}: {error}"))
+      input::Tracked::new(
+        session
+          .input()
+          .unwrap_or_else(|error| panic!("input injection on {session:?}: {error}")),
+      )
     });
 
-    then(input.as_mut())
+    then(input)
+  })
+}
+
+/// Where the driver last moved the pointer, in the pointer's space; `None` before it has.
+fn pointer_now() -> Option<(f64, f64)> {
+  INPUT.with(|slot| slot.borrow().as_ref().and_then(input::Tracked::pointer))
+}
+
+/// Runs `then` with the session's screen, connected to its capture on first use.
+///
+/// # Panics
+///
+/// Where the session's capture cannot be reached.
+fn with_screen<T>(then: impl FnOnce(&mut Screen) -> T) -> T {
+  SCREEN.with(|slot| {
+    let mut slot = slot.borrow_mut();
+    let screen = slot.get_or_insert_with(|| {
+      let session = Session::current().unwrap_or(Session::X11);
+
+      Screen::open(session)
+        .unwrap_or_else(|error| panic!("reading the screen on {session:?}: {error}"))
+    });
+
+    then(screen)
   })
 }
 
@@ -342,6 +378,10 @@ pub fn run_test(name: &'static str, body: fn()) {
 /// Puts what a previous test may have changed back where the session started it: the
 /// environment, the app's scheme, the reader's settings.
 fn reset() {
+  if FONTCONFIG.with(|changed| changed.replace(false)) {
+    load_fontconfig(None);
+  }
+
   PathChoice::set_current(None);
   skene_foundation::Environment::current().reset();
   environment::set_scheme(None);
@@ -354,6 +394,22 @@ fn reset() {
       environment::setting_changed(namespace, key, &value);
     }
   });
+}
+
+/// Loads fontconfig's configuration from `file`, or the process's where `file` is `None`, in
+/// place of the one the app's text is drawn under, and tells the app as a change of the
+/// desktop's settings does.
+///
+/// # Panics
+///
+/// Where fontconfig cannot load it.
+fn load_fontconfig(file: Option<&Path>) {
+  let loaded = crate::text::engine()
+    .fallback()
+    .is_some_and(|mut fallback| fallback.fontconfig().reload(file));
+
+  assert!(loaded, "fontconfig loads {file:?}");
+  environment::apply();
 }
 
 /// The frames being recorded: when recording began, the frames so far, and how many frames the
@@ -389,7 +445,7 @@ fn record() {
           || recording.started.elapsed(),
           |at| at.saturating_duration_since(recording.started),
         ),
-        shot: Drawn::with_window(Drawn::shot),
+        shot: Drawn::with_window(Drawn::painted),
       });
     }
   });
@@ -439,13 +495,14 @@ fn pump_until(timeout: Duration, mut done: impl FnMut() -> bool) -> bool {
   }
 }
 
-/// Whether the open window has a frame to paint.
+/// Whether the open window has a frame to paint: one asked to close paints none.
 fn wants_frame() -> bool {
   SHOWN.with(|shown| {
-    shown
-      .borrow()
-      .as_ref()
-      .is_some_and(|shown| shown.window.shell().wants_frame())
+    shown.borrow().as_ref().is_some_and(|shown| {
+      let shell = shown.window.shell();
+
+      shell.wants_frame() && !shell.quit
+    })
   })
 }
 
@@ -526,16 +583,20 @@ pub struct Element {
   pub name: String,
 }
 
-/// Skene's role for AT-SPI's role name, as the drawn realization's accessibility layer
-/// (AccessKit's AT-SPI mapping) names them.
+/// Skene's role for an object a reader finds: AT-SPI's role name, its states and, where
+/// AT-SPI's role is one several of Skene's share, the attributes that name the exact one
+/// (`xml-roles`, as browsers report an ARIA role; a heading's `level`), as the drawn
+/// realization's accessibility layer reports them. A switch is a check box to AT-SPI 2.52 (as
+/// GTK 4 reports `GtkSwitch`), and a row and an option are list items; a single-line text and
+/// a multi-line one are text, told apart by their states.
 #[must_use]
-pub fn role_of(platform_role: &str, states: u64) -> Role {
-  /// `ATSPI_STATE_SELECTABLE`.
-  const SELECTABLE: u32 = 21;
+pub fn role_of(platform_role: &str, states: u64, attributes: &HashMap<String, String>) -> Role {
+  let exact = attributes.get("xml-roles").map(String::as_str);
 
   match platform_role {
     "push button" | "button" | "toggle button" => Role::Button,
     "switch" => Role::Switch,
+    "check box" | "checkbox" if exact == Some("switch") => Role::Switch,
     "check box" | "checkbox" => Role::Checkbox,
     "radio button" => Role::Radio,
     "slider" => Role::Slider,
@@ -549,11 +610,20 @@ pub fn role_of(platform_role: &str, states: u64) -> Role {
     }
     "combo box" => Role::ComboBox,
     "list box" => Role::ListBox,
-    "list item" if states & (1 << SELECTABLE) != 0 => Role::Option,
-    "list item" => Role::Row,
+    "list item" => match exact {
+      Some("option") => Role::Option,
+      Some(_) => Role::Row,
+      None if states & (1 << state::SELECTABLE) != 0 => Role::Option,
+      None => Role::Row,
+    },
     "option" => Role::Option,
     "label" | "static" => Role::Text,
-    "heading" => Role::Heading(0),
+    "heading" => Role::Heading(
+      attributes
+        .get("level")
+        .and_then(|level| level.parse().ok())
+        .unwrap_or(0),
+    ),
     "image" => Role::Image,
     "link" => Role::Link,
     "progress bar" => Role::ProgressBar,
@@ -570,33 +640,12 @@ pub fn role_of(platform_role: &str, states: u64) -> Role {
   }
 }
 
-/// Whether two roles are one to a reader on Linux: a text box is one role there, a switch is
-/// a check box (as GTK reports `GtkSwitch`), a row and an option are list items, and a
-/// heading's level is not part of the role.
-#[must_use]
-pub fn same_role(found: Role, wanted: Role) -> bool {
-  match (found, wanted) {
-    (Role::TextField | Role::TextEditor, Role::TextField | Role::TextEditor)
-    | (Role::Switch | Role::Checkbox, Role::Switch | Role::Checkbox)
-    | (Role::Row | Role::Option, Role::Row | Role::Option)
-    | (Role::Heading(_), Role::Heading(_)) => true,
-    (found, wanted) => found == wanted,
-  }
-}
-
-/// Whether `query` finds `item`.
+/// Whether `query` finds `item`: its role exactly, and its name.
 fn matches(query: &Query, item: &Item) -> bool {
-  let role = role_of(&item.role, item.states);
+  let role = role_of(&item.role, item.states, &item.attributes);
 
   match query {
-    Query::Role(wanted, name) => {
-      let role_matches = match wanted {
-        Role::TextEditor => role == Role::TextEditor,
-        wanted => same_role(role, *wanted),
-      };
-
-      role_matches && item.name == **name
-    }
+    Query::Role(wanted, name) => role == *wanted && item.name == **name,
     Query::Text(text) => role == Role::Text && item.name == **text,
     Query::Focused => item.states & (1 << state::FOCUSED) != 0,
   }
@@ -859,20 +908,16 @@ impl Drawn {
   /// the window was given; the pointer is moved off the window after.
   fn origin() -> (f64, f64) {
     let size = Self::with_window(|window| window.shell().size);
-    let known = SHOWN.with(|shown| {
-      shown
-        .borrow()
-        .as_ref()
-        .and_then(|shown| shown.origin)
-        .filter(|(_, at)| *at == size)
-        .map(|(origin, _)| origin)
-    });
+    let last = SHOWN.with(|shown| shown.borrow().as_ref().and_then(|shown| shown.origin));
 
-    if let Some(origin) = known {
+    if let Some((origin, at)) = last
+      && at == size
+    {
       return origin;
     }
 
-    let origin = with_input(|input| input.window_origin()).unwrap_or_else(Self::calibrate);
+    let origin =
+      with_input(|input| input.window_origin()).unwrap_or_else(|| Self::calibrate(last, size));
 
     SHOWN.with(|shown| {
       if let Some(shown) = shown.borrow_mut().as_mut() {
@@ -884,17 +929,47 @@ impl Drawn {
   }
 
   /// Finds the window's origin by moving the pointer over points of the screen until the
-  /// window sees it.
+  /// window sees it, then puts the pointer back where it was (off the window where the driver
+  /// has not moved it yet), so what is under it is as before.
+  ///
+  /// The window, now `size`, is looked for first where it would be had it kept its top left
+  /// or its center since it was last found (`last`, its origin and its size then), or had it
+  /// kept the top left a compositor centers a new window at, then over the screen.
   ///
   /// # Panics
   ///
   /// Where the window sees the pointer at none of them.
-  fn calibrate() -> (f64, f64) {
+  fn calibrate(last: Option<((f64, f64), (u32, u32))>, size: (u32, u32)) -> (f64, f64) {
+    let restore = pointer_now();
     let (width, height) = with_input(|input| input.extent());
-    let mut points = vec![(width / 2., height / 2.)];
+    let unit = Self::pointer_unit();
+    let half = |length: u32| f64::from(length) * unit / 2.;
+    let mut points = Vec::new();
+
+    if let Some(((x, y), (was_width, was_height))) = last {
+      points.push((x + half(size.0), y + half(size.1)));
+      points.push((x + half(was_width), y + half(was_height)));
+    }
+
+    let opened = (
+      width / 2. - half(crate::DEFAULT_SIZE.0),
+      height / 2. - half(crate::DEFAULT_SIZE.1),
+    );
+
+    points.push((opened.0 + half(size.0), opened.1 + half(size.1)));
+    points.push((width / 2., height / 2.));
 
     for (fx, fy) in [(0.3, 0.3), (0.7, 0.3), (0.3, 0.7), (0.7, 0.7), (0.1, 0.1)] {
       points.push((width * fx, height * fy));
+    }
+
+    for row in 0..5 {
+      for column in 0..5 {
+        points.push((
+          width * (0.1 + 0.2 * f64::from(column)),
+          height * (0.1 + 0.2 * f64::from(row)),
+        ));
+      }
     }
 
     for point in points {
@@ -914,7 +989,18 @@ impl Drawn {
       if seen && let (_, Some((x, y))) = trace::last_pointer() {
         let origin = (point.0 - f64::from(x), point.1 - f64::from(y));
 
-        Self::park(origin, (width, height));
+        match restore {
+          Some(restore) => {
+            with_input(|input| {
+              input.move_to(restore.0, restore.1)?;
+              input.sync()
+            })
+            .unwrap_or_else(|error| panic!("pointer: {error}"));
+            pump(Duration::from_millis(30));
+            settle();
+          }
+          None => Self::park(origin, (width, height)),
+        }
 
         return origin;
       }
@@ -1172,7 +1258,8 @@ impl Drawn {
 
   /// Sends `count` touch events as [`send`](Self::send) does; where none of them reached the
   /// window (a compositor that makes its virtual touchscreen on the first touch, mutter),
-  /// says so and sends them once more.
+  /// says so, lifts what the first try left down (the compositor holds its point) and sends
+  /// them once more.
   fn send_touch(count: u64, send: impl Fn(&mut dyn Input) -> input::Result<()>) {
     let before = shell::inputs();
 
@@ -1181,6 +1268,11 @@ impl Drawn {
     }
 
     eprintln!("skene testing: {count} touch events reached no window; sending them again");
+    INPUT
+      .with(|slot| slot.borrow_mut().as_mut().map(input::Tracked::lift_touches))
+      .transpose()
+      .unwrap_or_else(|error| panic!("touch: {error}"));
+    settle();
 
     if !Self::send(count, &send) {
       eprintln!("skene testing: the touch events sent again reached no window either");
@@ -1247,6 +1339,34 @@ impl Drawn {
   #[must_use]
   pub fn input_name(&self) -> &'static str {
     with_input(|input| input.name())
+  }
+
+  /// The states a reader reads at `found`, by AT-SPI's names for them (`editable`,
+  /// `read-only`, `required`; `disabled` where it is not sensitive).
+  ///
+  /// # Panics
+  ///
+  /// Where the reader cannot read it.
+  #[must_use]
+  pub fn platform_states(&self, found: &Element) -> Vec<&'static str> {
+    settle();
+
+    with_atspi(|atspi| atspi.states(&found.object))
+      .map(state::names)
+      .unwrap_or_else(|error| panic!("AT-SPI: {error}"))
+  }
+
+  /// The object attributes a reader reads at `found` (`placeholder-text`, `xml-roles`).
+  ///
+  /// # Panics
+  ///
+  /// Where the reader cannot read them.
+  #[must_use]
+  pub fn platform_attributes(&self, found: &Element) -> HashMap<String, String> {
+    settle();
+
+    with_atspi(|atspi| atspi.attributes(&found.object))
+      .unwrap_or_else(|error| panic!("AT-SPI: {error}"))
   }
 
   /// The point at fractions `(x, y)` of `found`'s bounds in the pointer's space, the space
@@ -1346,6 +1466,63 @@ impl Drawn {
     settle();
   }
 
+  /// Moves the window where the screen shows it whole, as a user moves a window that grew
+  /// past the screen's edge, where the compositor leaves it hanging over: through sway's IPC,
+  /// or by dragging the title bar Skene draws (weston, mutter). A window larger than the
+  /// screen is put at its top left.
+  fn keep_on_screen(&mut self) {
+    let session = Session::current().unwrap_or(Session::X11);
+
+    if session.backend() == Backend::X11 {
+      return;
+    }
+
+    let (x, y, width, height) = self.window_rect();
+    let (screen_width, screen_height) = self.screen_extent();
+    let to = (
+      x.min(screen_width - width).max(0.),
+      y.min(screen_height - height).max(0.),
+    );
+
+    if (to.0 - x).abs() < 0.5 && (to.1 - y).abs() < 0.5 {
+      return;
+    }
+
+    let header = Self::with_window(|window| f64::from(window.shell().chrome.header()));
+    let title = Self::with_window(|window| window.shell().title().to_owned());
+
+    match session {
+      Session::Sway => {
+        let moved = std::process::Command::new("swaymsg")
+          .arg(format!(
+            "[title=\"{title}\"] move absolute position {} {}",
+            to.0.round(),
+            to.1.round()
+          ))
+          .stdout(std::process::Stdio::null())
+          .status()
+          .is_ok_and(|status| status.success());
+
+        assert!(moved, "swaymsg moves the window onto the screen");
+      }
+      _ if header > 0. => {
+        let from = (x + 40., y + header / 2.);
+
+        self.drag(from, (from.0 + to.0 - x, from.1 + to.1 - y));
+      }
+      _ => {
+        eprintln!(
+          "skene testing: the window at {:?} hangs over the screen's edge, and {session:?} gives the driver no way to move it",
+          (x, y, width, height)
+        );
+
+        return;
+      }
+    }
+
+    self.window_moved();
+  }
+
   /// The pointer space's size: the screen's.
   #[must_use]
   pub fn screen_extent(&self) -> (f64, f64) {
@@ -1361,6 +1538,101 @@ impl Drawn {
   /// Clicks the primary button at `at` in the pointer's space, then settles.
   pub fn click_point(&mut self, at: (f64, f64)) {
     Self::click_at(at, input::PRIMARY);
+  }
+
+  /// Moves the pointer to `at` in the pointer's space and presses the primary button there,
+  /// holding it down, then settles: a press a test releases later
+  /// ([`release_button`](Self::release_button)).
+  pub fn hold_button(&mut self, at: (f64, f64)) {
+    Self::send(1, |input| {
+      input.move_to(at.0, at.1)?;
+      input.sync()?;
+      input.button(input::PRIMARY, true)
+    });
+  }
+
+  /// Releases the primary button where the pointer is, then settles.
+  pub fn release_button(&mut self) {
+    Self::send(1, |input| input.button(input::PRIMARY, false));
+  }
+
+  /// Presses the key `name` down and holds it, focus where it is, then settles: a key held
+  /// while others are pressed ([`release_key`](Self::release_key) lets it go).
+  ///
+  /// # Panics
+  ///
+  /// Where no key of the session's keyboard types `name` on its first level.
+  pub fn hold_key(&mut self, name: &str) {
+    let code = Self::code_of(name);
+
+    Self::reach_keyboard();
+    Self::send_keys(1, |input| input.key(code, true));
+  }
+
+  /// Releases the key `name`, focus where it is, then settles.
+  ///
+  /// # Panics
+  ///
+  /// Where no key of the session's keyboard types `name` on its first level.
+  pub fn release_key(&mut self, name: &str) {
+    let code = Self::code_of(name);
+
+    Self::send_keys(1, |input| input.key(code, false));
+  }
+
+  /// The evdev code of the key typing `name` (as [`Action::Press`] names keys) with no
+  /// modifier held.
+  ///
+  /// # Panics
+  ///
+  /// Where no key of the session's keyboard types it on its first level.
+  fn code_of(name: &str) -> u32 {
+    let sym = keysym_of(name);
+
+    with_input(|input| input.place(sym))
+      .filter(|place| place.level == 0)
+      .map(|place| place.code)
+      .unwrap_or_else(|| panic!("no key of the test keyboard types {name:?} unshifted"))
+  }
+
+  /// Where the title bar Skene draws shows `button`, its center in the pointer's space;
+  /// `None` where the window is decorated by the compositor, or the title bar has no such
+  /// button.
+  #[must_use]
+  pub fn title_button_point(&self, button: TitleButton) -> Option<(f64, f64)> {
+    let (x, y, ..) = self.window_rect();
+    let unit = Self::pointer_unit();
+    let rect = Self::with_window(|window| {
+      let shell = window.shell();
+
+      shell.chrome.csd.then(|| {
+        shell
+          .chrome
+          .buttons(shell.size.0)
+          .into_iter()
+          .find(|(shown, _)| *shown == button)
+          .map(|(_, rect)| rect)
+      })
+    })
+    .flatten()?;
+
+    Some((
+      x + f64::from(rect.x + rect.width / 2.) * unit,
+      y + f64::from(rect.y + rect.height / 2.) * unit,
+    ))
+  }
+
+  /// Whether the window draws its own decorations (a title bar and a shadow), as the
+  /// compositor asked it to.
+  #[must_use]
+  pub fn is_decorated(&self) -> bool {
+    Self::with_window(|window| window.shell().chrome.csd)
+  }
+
+  /// Whether the app was asked to close its window, as its title bar's close button asks.
+  #[must_use]
+  pub fn is_closing(&self) -> bool {
+    Self::with_window(|window| window.shell().quit)
   }
 
   /// Clicks the primary button at `at` in the pointer's space with the left Shift held down
@@ -1558,20 +1830,72 @@ impl Drawn {
     self.find(query, FIND_TIMEOUT)
   }
 
-  /// The window drawn now, its content alone (below a title bar Skene draws), as RGBA.
+  /// What the screen shows of the window's content (below a title bar Skene draws), once
+  /// settled: the presented surface, read back from the display server or the compositor.
   ///
   /// # Panics
   ///
-  /// Where no window is open or it has not drawn.
+  /// Where no window is open, or the screen cannot be read.
   #[must_use]
   pub fn content(&self) -> Screenshot {
     settle();
 
-    Self::with_window(Self::shot)
+    let unit = Self::pointer_unit();
+    let (x, y, ..) = self.window_rect();
+    let (header, (width, height), scale) = Self::with_window(|window| {
+      let shell = window.shell();
+
+      (shell.chrome.header(), shell.content_size(), shell.scale)
+    });
+
+    Self::screen(
+      (
+        x,
+        y + f64::from(header) * unit,
+        f64::from(width) * unit,
+        f64::from(height) * unit,
+      ),
+      scale,
+    )
   }
 
-  /// `window`'s content as drawn last, alone (below a title bar Skene draws), as RGBA.
-  fn shot(window: &mut Window) -> Screenshot {
+  /// What the screen shows in `rect` (`x, y, width, height` in the pointer's space), the window
+  /// and what lies around it alike, once settled, at the window's scale.
+  ///
+  /// # Panics
+  ///
+  /// Where no window is open, or the screen cannot be read.
+  #[must_use]
+  pub fn screen_area(&self, rect: (f64, f64, f64, f64)) -> Screenshot {
+    settle();
+
+    let scale = Self::with_window(|window| window.shell().scale);
+
+    Self::screen(rect, scale)
+  }
+
+  /// What the screen shows in `rect` (the pointer's space), as a screenshot at `scale`, once
+  /// it shows what the window painted last.
+  ///
+  /// # Panics
+  ///
+  /// Where the screen cannot be read.
+  fn screen(rect: (f64, f64, f64, f64), scale: f64) -> Screenshot {
+    let painted = Self::with_window(|window| window.shell().painted_at);
+    let pixels = with_screen(|screen| screen.read(rect, painted))
+      .unwrap_or_else(|error| panic!("reading the screen at {rect:?}: {error}"));
+
+    Screenshot {
+      width: pixels.width,
+      height: pixels.height,
+      scale,
+      rgba: pixels.rgba,
+    }
+  }
+
+  /// `window`'s content as it painted it last, alone (below a title bar Skene draws), as RGBA:
+  /// what a recording keeps of each frame.
+  fn painted(window: &mut Window) -> Screenshot {
     let shell = window.shell_mut();
     let scale = shell.scale;
     let (ox, oy) = shell.chrome.origin();
@@ -1634,32 +1958,35 @@ impl Drawn {
     }
   }
 
-  /// The open popup's surface as it drew it last, whole, as RGBA in device pixels, and its top
-  /// left in the pointer's space; `None` while no popup is open.
+  /// What the screen shows of the open popup's surface, whole, as RGBA in device pixels, and its
+  /// top left in the pointer's space; `None` while no popup is open.
+  ///
+  /// # Panics
+  ///
+  /// Where the screen cannot be read.
   #[must_use]
   pub fn popup_content(&self) -> Option<(Screenshot, (f64, f64))> {
     settle();
 
     let unit = Self::pointer_unit();
     let (x, y, ..) = self.window_rect();
-
-    Self::with_window(|window| {
+    let (rect, scale) = Self::with_window(|window| {
       let shell = window.shell();
-      let open = shell.popup()?;
-      let rect = open.rect();
-      let pixmap = open.pixmap();
-      let shot = Self::crop(
-        pixmap,
-        shell.scale,
-        (0, 0),
-        (usize::from(pixmap.width()), usize::from(pixmap.height())),
-      );
 
-      Some((
-        shot,
-        (x + f64::from(rect.x) * unit, y + f64::from(rect.y) * unit),
-      ))
-    })
+      Some((shell.popup()?.rect(), shell.scale))
+    })?;
+    let at = (x + f64::from(rect.x) * unit, y + f64::from(rect.y) * unit);
+    let shot = Self::screen(
+      (
+        at.0,
+        at.1,
+        f64::from(rect.width) * unit,
+        f64::from(rect.height) * unit,
+      ),
+      scale,
+    );
+
+    Some((shot, at))
   }
 
   /// Writes the window's content as a PNG at `path`.
@@ -1703,6 +2030,15 @@ impl Drawn {
   /// real path, and settles.
   pub fn set_portal(&mut self, setting: Setting) {
     Self::change(setting);
+    settle();
+  }
+
+  /// Loads fontconfig's configuration from `file` in place of the process's, as a desktop's
+  /// own configuration changes beneath an app running, and settles; `None` returns to the
+  /// process's. The test's own holds until the test ends.
+  pub fn set_fontconfig(&mut self, file: Option<&Path>) {
+    load_fontconfig(file);
+    FONTCONFIG.with(|changed| changed.set(file.is_some()));
     settle();
   }
 
@@ -1762,7 +2098,7 @@ impl Driver for Drawn {
       .into_iter()
       .filter(|item| matches(query, item))
       .map(|item| Element {
-        role: role_of(&item.role, item.states),
+        role: role_of(&item.role, item.states, &item.attributes),
         platform_role: item.role,
         name: item.name,
         object: item.object,
@@ -1782,7 +2118,12 @@ impl Driver for Drawn {
         atspi.name(object).unwrap_or_else(|error| fail(error)),
       )
     });
-    let role = role_of(&role_name, states);
+    let attributes = if Item::names_exactly(&role_name) {
+      with_atspi(|atspi| atspi.attributes(object)).unwrap_or_else(|error| fail(error))
+    } else {
+      HashMap::new()
+    };
+    let role = role_of(&role_name, states, &attributes);
     let has = |interface: &str| interfaces.iter().any(|name| name == interface);
     let bit = |bit: u32| states & (1 << bit) != 0;
     let text = (has("org.a11y.atspi.Text") && role != Role::Text)
@@ -1934,6 +2275,9 @@ impl Driver for Drawn {
 
           (width.round(), height.round()) == wanted
         });
+
+        settle();
+        self.keep_on_screen();
       }
       EnvironmentRequest::ReducedMotion(reduced) => {
         Self::change(Setting::ReducedMotion(u32::from(reduced)));
@@ -2015,7 +2359,7 @@ impl Driver for Drawn {
     let mut issues = Vec::new();
 
     for item in items {
-      let role = role_of(&item.role, item.states);
+      let role = role_of(&item.role, item.states, &item.attributes);
       let control = matches!(
         role,
         Role::Button

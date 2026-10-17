@@ -18,10 +18,10 @@ pub enum Selection {
 }
 
 /// What a read hands its text to: `None` where the selection is empty or holds no text.
-pub type Then = Box<dyn FnOnce(Option<String>)>;
+pub(crate) type Then = Box<dyn FnOnce(Option<String>)>;
 
 /// A queued operation.
-pub enum Op {
+pub(crate) enum Op {
   /// Offer the text.
   Write(Selection, String),
   /// Read the text.
@@ -45,6 +45,6 @@ pub fn read(selection: Selection, then: impl FnOnce(Option<String>) + 'static) {
 }
 
 /// The operations queued since the last call: what the backend carries out.
-pub fn take() -> Vec<Op> {
+pub(crate) fn take() -> Vec<Op> {
   OPS.with(|ops| std::mem::take(&mut *ops.borrow_mut()))
 }

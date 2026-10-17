@@ -1336,23 +1336,6 @@ pub fn resolved_states<R: Realization>(id: NodeId) -> StateSet {
   resolution::<R>(id).map_or(StateSet::EMPTY, |resolution| resolution.holding())
 }
 
-/// The states a node is in, as reported.
-#[must_use]
-pub fn states<R: Realization>(id: NodeId) -> StateSet {
-  with::<R, _>(|tree| {
-    tree
-      .scene
-      .get(id)
-      .map_or(StateSet::EMPTY, |entry| entry.states.get_untracked())
-  })
-}
-
-/// Whether `state` holds at the node, as reported.
-#[must_use]
-pub fn holds<R: Realization>(id: NodeId, state: State) -> bool {
-  states::<R>(id).contains(state)
-}
-
 #[cfg(test)]
 mod tests {
   use super::Resolution;

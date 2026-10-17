@@ -5,7 +5,8 @@
 //!   (libei's protocol), its absolute pointer aimed in the session's ScreenCast stream; touch
 //!   through the session's own D-Bus requests, mutter's EIS offering no touchscreen;
 //! - sway (headless, Wayland): `zwlr_virtual_pointer_v1` and `zwp_virtual_keyboard_v1`;
-//! - KWin (virtual, Wayland): `org_kde_kwin_fake_input`, its pointer, keyboard and touchscreen;
+//! - KWin (windowed, Wayland): `org_kde_kwin_fake_input`, its pointer, keyboard and
+//!   touchscreen;
 //! - weston (Wayland, its X11 backend): XTest into the X window weston shows its output in, which
 //!   weston takes its pointer and keyboard from.
 //!
@@ -379,6 +380,127 @@ impl X11 {
     self.places.insert(keysym, place);
 
     Ok(place)
+  }
+}
+
+/// A backend whose pointer and touches are followed: where the last move sent the pointer,
+/// and which touch points are down.
+pub struct Tracked {
+  /// The backend.
+  input: Box<dyn Input>,
+  /// Where the last move sent the pointer, in the pointer's space.
+  pointer: Option<(f64, f64)>,
+  /// The touch points put down and not yet lifted.
+  touches: Vec<u32>,
+}
+
+impl Tracked {
+  /// `input`, its pointer not yet moved and no touch down.
+  #[must_use]
+  pub const fn new(input: Box<dyn Input>) -> Self {
+    Self {
+      input,
+      pointer: None,
+      touches: Vec::new(),
+    }
+  }
+
+  /// Where the last move sent the pointer, in the pointer's space; `None` before the first.
+  #[must_use]
+  pub const fn pointer(&self) -> Option<(f64, f64)> {
+    self.pointer
+  }
+
+  /// Lifts every touch point put down and not yet lifted, so the compositor holds none.
+  ///
+  /// # Errors
+  ///
+  /// Where the backend cannot send it.
+  pub fn lift_touches(&mut self) -> Result<()> {
+    for id in std::mem::take(&mut self.touches) {
+      self.input.touch_up(id)?;
+    }
+
+    self.input.sync()
+  }
+}
+
+impl Input for Tracked {
+  fn move_to(&mut self, x: f64, y: f64) -> Result<()> {
+    self.input.move_to(x, y)?;
+    self.pointer = Some((x, y));
+
+    Ok(())
+  }
+
+  fn button(&mut self, button: u32, down: bool) -> Result<()> {
+    self.input.button(button, down)
+  }
+
+  fn key(&mut self, code: u32, down: bool) -> Result<()> {
+    self.input.key(code, down)
+  }
+
+  fn place(&mut self, keysym: u32) -> Option<Place> {
+    self.input.place(keysym)
+  }
+
+  fn wheel(&mut self, right: i32, down: i32) -> Result<()> {
+    self.input.wheel(right, down)
+  }
+
+  fn finger_scroll(&mut self, right: f64, down: f64) -> Result<()> {
+    self.input.finger_scroll(right, down)
+  }
+
+  fn finger_scroll_stop(&mut self) -> Result<()> {
+    self.input.finger_scroll_stop()
+  }
+
+  fn touch_down(&mut self, id: u32, x: f64, y: f64) -> Result<()> {
+    self.input.touch_down(id, x, y)?;
+    self.touches.push(id);
+
+    Ok(())
+  }
+
+  fn touch_motion(&mut self, id: u32, x: f64, y: f64) -> Result<()> {
+    self.input.touch_motion(id, x, y)
+  }
+
+  fn touch_up(&mut self, id: u32) -> Result<()> {
+    self.input.touch_up(id)?;
+    self.touches.retain(|down| *down != id);
+
+    Ok(())
+  }
+
+  fn has_touch(&self) -> bool {
+    self.input.has_touch()
+  }
+
+  fn has_finger_scroll(&self) -> bool {
+    self.input.has_finger_scroll()
+  }
+
+  fn name(&self) -> &'static str {
+    self.input.name()
+  }
+
+  fn sync(&mut self) -> Result<()> {
+    self.input.sync()
+  }
+
+  fn window_origin(&mut self) -> Option<(f64, f64)> {
+    self.input.window_origin()
+  }
+
+  fn extent(&self) -> (f64, f64) {
+    self.input.extent()
+  }
+
+  fn landing(&self, x: f64, y: f64) -> (f64, f64) {
+    self.input.landing(x, y)
   }
 }
 

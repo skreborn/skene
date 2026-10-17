@@ -6,7 +6,7 @@
 //! It serves `org.freedesktop.appearance`'s `color-scheme` (0 no preference, 1 dark),
 //! `contrast` (0 none, 1 more) and `reduced-motion` (0 none, 1 reduce), and
 //! `org.gnome.desktop.interface`'s `cursor-blink` (off: a test reads a caret that stays),
-//! `text-scaling-factor` and `font-name`.
+//! `font-antialiasing`, `font-hinting`, `text-scaling-factor` and `font-name`.
 
 use std::{
   collections::HashMap,
@@ -39,6 +39,10 @@ pub enum Setting {
   TextScalingFactor(u32),
   /// `font-name`: a Pango font description, empty for none stated.
   FontName(&'static str),
+  /// `font-antialiasing`: `none`, `grayscale` or `rgba`, empty for none stated.
+  FontAntialiasing(&'static str),
+  /// `font-hinting`: `none`, `slight`, `medium` or `full`, empty for none stated.
+  FontHinting(&'static str),
 }
 
 impl Setting {
@@ -50,6 +54,8 @@ impl Setting {
       Self::CursorBlink(_) => (INTERFACE, "cursor-blink"),
       Self::TextScalingFactor(_) => (INTERFACE, "text-scaling-factor"),
       Self::FontName(_) => (INTERFACE, "font-name"),
+      Self::FontAntialiasing(_) => (INTERFACE, "font-antialiasing"),
+      Self::FontHinting(_) => (INTERFACE, "font-hinting"),
     }
   }
 
@@ -60,9 +66,11 @@ impl Setting {
       }
       Self::CursorBlink(blinks) => OwnedValue::from(blinks),
       Self::TextScalingFactor(thousandths) => OwnedValue::from(f64::from(thousandths) / 1000.),
-      Self::FontName(name) => Value::from(name)
-        .try_into()
-        .unwrap_or_else(|_| OwnedValue::from(0_u32)),
+      Self::FontName(text) | Self::FontAntialiasing(text) | Self::FontHinting(text) => {
+        Value::from(text)
+          .try_into()
+          .unwrap_or_else(|_| OwnedValue::from(0_u32))
+      }
     }
   }
 
@@ -78,21 +86,25 @@ impl Setting {
       }
       Self::CursorBlink(blinks) => SettingValue::Bool(blinks),
       Self::TextScalingFactor(thousandths) => SettingValue::F64(f64::from(thousandths) / 1000.),
-      Self::FontName(name) => SettingValue::Text(name.to_owned()),
+      Self::FontName(text) | Self::FontAntialiasing(text) | Self::FontHinting(text) => {
+        SettingValue::Text(text.to_owned())
+      }
     };
 
     (namespace, key, value)
   }
 
   /// What a test starts from: no preference, no more contrast, motion, a caret that stays,
-  /// text unscaled in Skene's own family.
-  pub const DEFAULTS: [Self; 6] = [
+  /// text unscaled in Skene's own family, rendered as fontconfig's own rules say.
+  pub const DEFAULTS: [Self; 8] = [
     Self::ColorScheme(0),
     Self::Contrast(0),
     Self::ReducedMotion(0),
     Self::CursorBlink(false),
     Self::TextScalingFactor(1000),
     Self::FontName(""),
+    Self::FontAntialiasing(""),
+    Self::FontHinting(""),
   ];
 }
 

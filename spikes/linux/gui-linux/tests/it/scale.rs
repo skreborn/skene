@@ -2,11 +2,12 @@
 //! scale (`SKENE_TEST_SCALE`), a field places its caret and its selection where the pointer
 //! is and tells an input method where its caret is on the screen, and a picker's list opens
 //! on its own surface under its face, a reader finding its options where they show and a
-//! click there choosing, the compositor showing both surfaces' pixels one to one. Each holds
-//! at any scale; the legs that scale fractionally run them at 1.5.
+//! click there choosing, the screen showing both surfaces' device pixels one to one. Each
+//! holds at any scale; the legs that scale fractionally run them at 1.5.
 
 use skene_gui::{
-  Signal,
+  Color, Inset, LabelPlacement, Signal,
+  painted::shapes::Rect,
   prelude::*,
   testing::{self, Driver as _, Role, publish},
 };
@@ -140,177 +141,120 @@ fn a_pickers_list_opens_under_its_face_where_a_reader_finds_and_clicks_its_optio
   assert_eq!(face.read().expanded, Some(false));
 }
 
-/// The screen as the compositor shows it, through `grim` (wlroots' screencopy): its device
-/// pixels as RGBA, its width and height; `None` where `grim` is missing or fails.
-///
-/// `grim` draws the outputs onto a canvas of their layout's logical size times the scale, so
-/// the runner gives a scaled leg a screen whose logical size is whole pixels.
-fn screen_capture() -> Option<(Vec<u8>, u32, u32)> {
-  let path = std::env::temp_dir().join(format!("skene-scale-{}.png", std::process::id()));
-  let captured = std::process::Command::new("grim")
-    .args(["-t", "png"])
-    .arg(&path)
-    .status()
-    .is_ok_and(|status| status.success());
+/// Columns a device pixel wide, black and white in turn from the box's leading edge, over
+/// white.
+fn stripes(canvas: &mut Canvas<'_>) {
+  let scale = canvas.scale();
+  let (width, height) = (f64::from(canvas.width()), f64::from(canvas.height()));
 
-  if !captured {
-    return None;
+  canvas.fill(&Rect::new(0., 0., width, height), Color::WHITE);
+
+  for column in (0..(width * scale).floor() as u32).step_by(2) {
+    let left = f64::from(column) / scale;
+
+    canvas.fill(
+      &Rect::new(left, 0., left + 1. / scale, height),
+      Color::BLACK,
+    );
   }
-
-  let file = std::fs::File::open(&path).ok()?;
-  let mut reader = png::Decoder::new(std::io::BufReader::new(file))
-    .read_info()
-    .ok()?;
-  let mut bytes = vec![0; reader.output_buffer_size()?];
-  let info = reader.next_frame(&mut bytes).ok()?;
-  let channels = match info.color_type {
-    png::ColorType::Rgb => 3,
-    png::ColorType::Rgba => 4,
-    _ => return None,
-  };
-  let rgba = bytes[..info.buffer_size()]
-    .chunks_exact(channels)
-    .flat_map(|pixel| [pixel[0], pixel[1], pixel[2], 255])
-    .collect();
-
-  let _ = std::fs::remove_file(&path);
-
-  Some((rgba, info.width, info.height))
 }
 
-/// The share of `shot`'s opaque pixels outside `covered` (a rectangle of `shot`'s device
-/// pixels, `x, y, width, height`) that `screen` shows unchanged (each channel within 2) with
-/// `shot`'s top left at `at` (device pixels), at the best of the offsets one pixel around it,
-/// which rounding a fractional position may take.
-fn shown_unchanged(
-  screen: &(Vec<u8>, u32, u32),
-  shot: &testing::Screenshot,
-  at: (f64, f64),
-  covered: (i64, i64, i64, i64),
-) -> f64 {
-  let (pixels, width, height) = screen;
-  let mut best = 0.;
+/// A box of [`stripes`] at the content's top left, and a picker whose options each lead with
+/// one.
+fn striped() -> impl View {
+  Column::new()
+    .set_spacing(12)
+    .add_child(Painted::new(stripes).set_width(48).set_height(16))
+    .add_child(
+      Picker::new("Size")
+        .set_options(["Small", "Medium", "Large"])
+        // A list with no border, so its options sit at whole device pixels.
+        .set_list(Container::new().set_background(Color::WHITE).set_padding(4))
+        .set_item_builder(|_, label| {
+          PickerItem::new(label)
+            .set_padding(Inset::new(0, 6, 0, 0))
+            .set_label_placement(LabelPlacement::Trailing)
+            .set_mark(Painted::new(stripes).set_width(24).set_height(12))
+        }),
+    )
+}
 
-  for dy in -1..=1 {
-    for dx in -1..=1 {
-      let (left, top) = (at.0.round() as i64 + dx, at.1.round() as i64 + dy);
-      let (mut same, mut opaque) = (0_u64, 0_u64);
+/// The longest run, in any row of `shot`, of device pixels black and white in turn (each
+/// channel within 2 of 0 or 255): as long as a box of [`stripes`] where the screen shows its
+/// surface's pixels one to one, and none where it resamples them.
+fn longest_stripes(shot: &testing::Screenshot) -> u32 {
+  let shade = |x: u32, y: u32| {
+    let at = ((y * shot.width + x) * 4) as usize;
+    let pixel = &shot.rgba[at..at + 3];
 
-      for row in 0..i64::from(shot.height) {
-        for column in 0..i64::from(shot.width) {
-          let index = ((row * i64::from(shot.width) + column) * 4) as usize;
-          let ours = &shot.rgba[index..index + 4];
+    if pixel.iter().all(|channel| *channel <= 2) {
+      Some(false)
+    } else if pixel.iter().all(|channel| *channel >= 253) {
+      Some(true)
+    } else {
+      None
+    }
+  };
+  let mut longest = 0;
 
-          let under = column >= covered.0
-            && row >= covered.1
-            && column < covered.0 + covered.2
-            && row < covered.1 + covered.3;
+  for y in 0..shot.height {
+    let (mut run, mut last) = (0, None);
 
-          if ours[3] != 255 || under {
-            continue;
-          }
+    for x in 0..shot.width {
+      let now = shade(x, y);
 
-          opaque += 1;
-
-          let (x, y) = (left + column, top + row);
-
-          if x < 0 || y < 0 || x >= i64::from(*width) || y >= i64::from(*height) {
-            continue;
-          }
-
-          let at = ((y * i64::from(*width) + x) * 4) as usize;
-          let theirs = &pixels[at..at + 4];
-
-          if ours[..3]
-            .iter()
-            .zip(&theirs[..3])
-            .all(|(a, b)| a.abs_diff(*b) <= 2)
-          {
-            same += 1;
-          }
-        }
-      }
-
-      if opaque > 0 {
-        best = f64::max(best, same as f64 / opaque as f64);
-      }
+      run = match (last, now) {
+        (Some(before), Some(now)) if before != now => run + 1,
+        (_, Some(_)) => 1,
+        (_, None) => 0,
+      };
+      last = now;
+      longest = longest.max(run);
     }
   }
 
-  best
+  longest
 }
 
 #[skene_gui::test]
-fn the_window_and_its_pickers_list_show_their_pixels_one_to_one() {
-  let screen = testing::render(page);
+fn the_window_and_its_pickers_list_show_their_device_pixels_one_to_one() {
+  let screen = testing::render(striped);
 
-  if std::env::var("SKENE_TEST_SESSION").as_deref() != Ok("sway") {
-    eprintln!("not tested here: the screen is read through wlroots' screencopy, on sway");
+  if std::env::var("SKENE_TEST_SESSION").as_deref() == Ok("sway") {
+    // Sway puts a window at whole logical pixels, which at a fractional scale may fall
+    // between device pixels, where it filters what it shows; at an even position (a whole
+    // device pixel at 1.5) it shows the buffers as they are.
+    let moved = std::process::Command::new("swaymsg")
+      .arg("[app_id=dev.skene.test] move absolute position 200 20")
+      .stdout(std::process::Stdio::null())
+      .status()
+      .is_ok_and(|status| status.success());
 
-    return;
+    assert!(moved, "swaymsg moves the window");
+    screen.driver().window_moved();
   }
 
-  // Sway puts a window at whole logical pixels, which at a fractional scale may fall between
-  // device pixels, where it filters what it shows; at an even position (a whole device pixel
-  // at 1.5) it shows the buffers as they are.
-  let moved = std::process::Command::new("swaymsg")
-    .arg("[app_id=dev.skene.test] move absolute position 200 20")
-    .stdout(std::process::Stdio::null())
-    .status()
-    .is_ok_and(|status| status.success());
-
-  assert!(moved, "swaymsg moves the window");
-  screen.settle();
-
-  let face = screen.find_by_role(Role::ComboBox, "Size");
-
-  face.click();
-
   let scale = screen.driver().scale();
-  let window = screen.driver().window_rect();
-  let content = screen.driver().content();
+  let window = longest_stripes(&screen.driver().content());
+
+  screen.find_by_role(Role::ComboBox, "Size").click();
+
   let (list, at) = screen
     .driver()
     .popup_content()
     .expect("the list is open on its own surface");
-  let Some(captured) = screen_capture() else {
-    eprintln!("not tested here: grim cannot read the screen");
-
-    return;
-  };
-  let window_at = (window.0 * scale, window.1 * scale);
-  let list_at = (at.0 * scale, at.1 * scale);
-  // The list covers the window where it is open.
-  let under = (
-    (list_at.0 - window_at.0).round() as i64 - 1,
-    (list_at.1 - window_at.1).round() as i64 - 1,
-    i64::from(list.width) + 2,
-    i64::from(list.height) + 2,
-  );
-  let window_shown = shown_unchanged(&captured, &content, window_at, under);
-  let list_shown = shown_unchanged(&captured, &list, list_at, (0, 0, 0, 0));
-
-  eprintln!("the window at {window_at:?}, the list at {list_at:?} (device pixels)");
+  let list = longest_stripes(&list);
 
   eprintln!(
-    "at scale {scale}: the window's {}x{} pixels shown {:.4} unchanged, the list's {}x{} {:.4}",
-    content.width, content.height, window_shown, list.width, list.height, list_shown
-  );
-  assert_eq!(
-    (list.width, list.height),
-    (
-      (f64::from(face.read().bounds.width) * scale).round() as u32,
-      list.height
-    ),
-    "the list's surface is drawn in device pixels, as wide as its face"
+    "at scale {scale}: the window shows {window} device pixels of stripes in a row, the list at {at:?} {list}"
   );
   assert!(
-    window_shown > 0.99,
-    "the compositor shows the window's buffer one to one ({window_shown})"
+    f64::from(window) >= (48. * scale).floor() - 1.,
+    "the screen shows the window's device pixels one to one ({window} in a row)"
   );
   assert!(
-    list_shown > 0.99,
-    "the compositor shows the list's buffer one to one ({list_shown})"
+    f64::from(list) >= (24. * scale).floor() - 1.,
+    "and the list's ({list} in a row)"
   );
 }
 

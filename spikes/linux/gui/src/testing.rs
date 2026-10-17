@@ -65,10 +65,7 @@ pub use skene_foundation::seam::{
 };
 use skene_foundation::{Owner, seam::report::Modifiers, value::IntoUnit};
 /// The driver on Linux: AT-SPI reads, real input, settling on the window's own loop.
-pub use skene_gui_linux::{
-  paint::{PaintPath, PathChoice},
-  testing::{Drawn, Element, Session},
-};
+pub use skene_gui_linux::testing::{Drawn, Element, PaintPath, PathChoice, Session};
 
 use crate::{__private, Color, Scheme, View};
 
@@ -297,12 +294,12 @@ impl Screen {
       .set_environment(EnvironmentRequest::Size(width as f32, height as f32));
   }
 
-  /// The window's content drawn now, as its pixels.
+  /// The window's content as the screen shows it now, as its pixels.
   pub fn render_to_image(&self) -> Screenshot {
     self.driver().screenshot()
   }
 
-  /// Writes the window's content, as drawn now, into a PNG at `path`.
+  /// Writes the window's content, as the screen shows it now, into a PNG at `path`.
   ///
   /// # Panics
   ///
@@ -314,8 +311,8 @@ impl Screen {
       .unwrap_or_else(|error| panic!("{}: {error}", path.as_ref().display()));
   }
 
-  /// The color of the content's pixel at `(x, y)`, in pixels from its top left corner (an
-  /// integer or a float each).
+  /// The color the screen shows at the content's pixel `(x, y)`, in pixels from its top left
+  /// corner (an integer or a float each).
   pub fn pixel(&self, x: impl IntoUnit<f32>, y: impl IntoUnit<f32>) -> Color {
     let shot = self.render_to_image();
     let rgba = shot.rgba_at(x.into_unit().max(0.).trunc(), y.into_unit().max(0.).trunc());

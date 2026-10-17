@@ -240,21 +240,6 @@ impl Keyboard {
     (keymap.min_keycode().raw()..=keymap.max_keycode().raw())
       .find(|code| state.key_get_one_sym(xkb::Keycode::new(*code)).raw() == keysym)
   }
-
-  /// Updates the state for a key pressed or released (X11, where the server sends no
-  /// modifier events of its own beside XKB's).
-  pub fn update_key(&mut self, keycode: u32, down: bool) {
-    if let Some(state) = &mut self.state {
-      state.update_key(
-        xkb::Keycode::new(keycode),
-        if down {
-          xkb::KeyDirection::Down
-        } else {
-          xkb::KeyDirection::Up
-        },
-      );
-    }
-  }
 }
 
 /// A non-printing keysym's name as a browser's `key` names it.

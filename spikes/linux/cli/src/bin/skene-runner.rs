@@ -9,14 +9,16 @@
 //!   doctest) always gets a session of its own, the leg `SKENE_TEST_SESSION` names:
 //!   - `x11` (the default): a private Xvfb;
 //!   - `wayland` or `mutter`: headless mutter (a virtual monitor, its RemoteDesktop service
-//!     over a private PipeWire, which the test's input goes through);
+//!     over a private PipeWire, which the test's input goes through, and its ScreenCast
+//!     service, which the test reads the screen through, WirePlumber linking the streams);
 //!   - `sway`: headless sway (pixman), its virtual pointer and keyboard;
 //!   - `weston`: weston on its X11 backend (pixman), its output a window of a private Xvfb
 //!     whose XTest the test's input goes through;
-//!   - `kwin`: KWin's virtual backend, its fake input (KWin started with its permission
-//!     checks off, which that restricted interface needs); `kwin-x11`: the same, the test's
-//!     windows on KWin's Xwayland. `SKENE_KWIN` names the `kwin_wayland` to run, where the
-//!     one on `PATH` cannot be (its file capability beyond the process's bounding set);
+//!   - `kwin`: KWin's windowed backend (QPainter), its output a window of a private Xvfb, its
+//!     fake input (KWin started with its permission checks off, which that restricted
+//!     interface needs); `kwin-x11`: the same, the test's windows on KWin's Xwayland.
+//!     `SKENE_KWIN` names the `kwin_wayland` to run, where the one on `PATH` cannot be (its
+//!     file capability beyond the process's bounding set);
 //!
 //!   `SKENE_TEST_SCALE` (1 where unset) scales the leg's screen fractionally: sway's output
 //!   scale and KWin's `--scale` reach the app through fractional-scale-v1, and on `x11` it is
@@ -26,7 +28,12 @@
 //!   each with a private D-Bus session (which starts the accessibility bus on demand), a
 //!   private runtime directory and configuration home, and none of the user's display,
 //!   accessibility bus, input method or scale settings. The test is told its leg
-//!   (`SKENE_TEST_SESSION`) and its display (`SKENE_DISPLAY`). It never touches the user's
+//!   (`SKENE_TEST_SESSION`) and its display (`SKENE_DISPLAY`); where a nested compositor
+//!   shows its output in a window of the private Xvfb (weston, KWin), that X display
+//!   (`SKENE_OUTPUT_DISPLAY`), which the test reads the screen through; and where the
+//!   compositor draws the pointer into its output (weston, KWin, sway's pixman renderer), a
+//!   cursor theme whose every cursor is transparent (`XCURSOR_THEME`, `XCURSOR_PATH`), so
+//!   what the test reads of the screen is the windows alone. It never touches the user's
 //!   display, so parallel test processes (cargo-nextest's) share no pointer, keyboard focus or
 //!   window stack, and a test reads what a screen reader reads of its own app alone. Listing
 //!   the tests (`--list`) needs none of it and runs with no display at all.
@@ -164,9 +171,9 @@ enum Leg {
   Sway,
   /// Weston on its X11 backend in a private Xvfb.
   Weston,
-  /// KWin's virtual backend.
+  /// KWin's windowed backend in a private Xvfb.
   Kwin,
-  /// KWin's virtual backend, the test's windows on its Xwayland.
+  /// KWin's windowed backend in a private Xvfb, the test's windows on its Xwayland.
   KwinX11,
 }
 
@@ -201,6 +208,11 @@ impl Leg {
   /// Whether the test's windows go to X11.
   const fn is_x11(self) -> bool {
     matches!(self, Self::X11 | Self::KwinX11)
+  }
+
+  /// Whether the leg's compositor draws the pointer into the output a test reads.
+  const fn draws_pointer(self) -> bool {
+    matches!(self, Self::Sway | Self::Weston | Self::Kwin | Self::KwinX11)
   }
 }
 
@@ -354,6 +366,9 @@ struct Session {
   /// More variables the test is given: the X display a nested compositor shows in, the
   /// Wayland display beside an Xwayland one, the realization's scale on a scaled X11 leg.
   extra: Vec<(&'static str, String)>,
+  /// The directory of the transparent cursor theme, where the leg's compositor draws the
+  /// pointer into its output: the compositor and the test both take it.
+  cursors: Option<PathBuf>,
 }
 
 impl Session {
@@ -381,6 +396,7 @@ impl Session {
       test: None,
       sway_socket: None,
       extra: Vec::new(),
+      cursors: None,
     };
     let started = if test {
       Leg::chosen().and_then(|leg| {
@@ -434,6 +450,17 @@ impl Session {
       self.extra.push(("SKENE_SCALE", scale.to_string()));
     }
 
+    if leg.draws_pointer() {
+      let icons = self.scratch.join("icons");
+
+      blank_cursors(&icons).map_err(|error| format!("{}: {error}", icons.display()))?;
+      self.extra.push(("XCURSOR_THEME", BLANK_THEME.to_owned()));
+      self
+        .extra
+        .push(("XCURSOR_PATH", icons.to_string_lossy().into_owned()));
+      self.cursors = Some(icons);
+    }
+
     match leg {
       Leg::X11 => {
         self.start_xvfb()?;
@@ -442,6 +469,7 @@ impl Session {
       Leg::Mutter => {
         self.start_bus()?;
         self.start_pipewire()?;
+        self.start_wireplumber()?;
         self.start_mutter()
       }
       Leg::Sway => {
@@ -454,6 +482,7 @@ impl Session {
         self.start_weston()
       }
       Leg::Kwin | Leg::KwinX11 => {
+        self.start_xvfb()?;
         self.start_bus()?;
         self.start_kwin(leg == Leg::KwinX11)
       }
@@ -539,10 +568,16 @@ impl Session {
       command.env("DBUS_SESSION_BUS_ADDRESS", address);
     }
 
+    if let Some(cursors) = &self.cursors {
+      command
+        .env("XCURSOR_THEME", BLANK_THEME)
+        .env("XCURSOR_PATH", cursors);
+    }
+
     command
   }
 
-  /// PipeWire, which mutter's RemoteDesktop session streams through.
+  /// PipeWire, which mutter's RemoteDesktop session and its screen casts stream through.
   fn start_pipewire(&mut self) -> Result<(), String> {
     let pipewire = spawn(&mut self.helper("pipewire"))
       .map_err(|error| format!("could not start pipewire (install pipewire): {error}"))?;
@@ -553,14 +588,27 @@ impl Session {
     })
   }
 
-  /// Headless mutter on a virtual monitor, its Wayland socket named for the session.
+  /// WirePlumber, PipeWire's session manager, which links a screen cast's stream to the test
+  /// that reads it.
+  fn start_wireplumber(&mut self) -> Result<(), String> {
+    let wireplumber = spawn(&mut self.helper("wireplumber"))
+      .map_err(|error| format!("could not start wireplumber (install wireplumber): {error}"))?;
+
+    self.helpers.push(wireplumber);
+
+    Ok(())
+  }
+
+  /// Headless mutter on a virtual monitor, its Wayland socket named for the session, its
+  /// windows mapped and moved without animation (so a window is where it stays from its first
+  /// frame, however the screen is watched).
   fn start_mutter(&mut self) -> Result<(), String> {
     let screen = screen_at(test_scale()?);
 
     let socket = format!("skene-{}", std::process::id());
     let mut command = self.helper("mutter");
 
-    command.args([
+    command.env("MUTTER_DEBUG_DISABLE_ANIMATIONS", "1").args([
       "--headless",
       "--wayland",
       "--no-x11",
@@ -600,7 +648,8 @@ impl Session {
   }
 
   /// Headless sway on one output, drawn with pixman, every window floating (sized by its
-  /// app, as on a stacking desktop).
+  /// app, as on a stacking desktop), its seat's cursors the transparent theme (which sway
+  /// draws for a window that names a cursor by its shape).
   fn start_sway(&mut self) -> Result<(), String> {
     let scale = test_scale()?;
     let screen = screen_at(scale);
@@ -609,7 +658,7 @@ impl Session {
     fs::write(
       &config,
       format!(
-        "output HEADLESS-1 resolution {}x{} position 0 0 scale {}\ndefault_border none\nfor_window [app_id=\".*\"] floating enable\n",
+        "output HEADLESS-1 resolution {}x{} position 0 0 scale {}\ndefault_border none\nfor_window [app_id=\".*\"] floating enable\nseat * xcursor_theme {BLANK_THEME} 24\n",
         screen.0,
         screen.1,
         scale
@@ -696,17 +745,22 @@ impl Session {
       self.runtime().join(&socket).exists()
     })?;
     self.display = Some(("WAYLAND_DISPLAY", socket));
-    self.extra.push(("SKENE_INPUT_DISPLAY", x_display));
+    self.extra.push(("SKENE_INPUT_DISPLAY", x_display.clone()));
+    self.extra.push(("SKENE_OUTPUT_DISPLAY", x_display));
 
     Ok(())
   }
 
-  /// KWin's virtual backend on one output, its fake input allowed (a restricted interface:
-  /// the permission checks go), with Xwayland where `xwayland`: the test's windows go there.
+  /// KWin's windowed backend on one output, a window of the session's Xvfb as large as the
+  /// screen, composited with QPainter; its fake input allowed (a restricted interface: the
+  /// permission checks go), with Xwayland where `xwayland`: the test's windows go there.
   fn start_kwin(&mut self, xwayland: bool) -> Result<(), String> {
     let scale = test_scale()?;
     let screen = screen_at(scale);
     let socket = format!("skene-{}", std::process::id());
+    let Some(("DISPLAY", x_display)) = self.display.clone() else {
+      return Err("KWin's leg starts Xvfb first".to_owned());
+    };
     let program = env::var("SKENE_KWIN").unwrap_or_else(|_| "kwin_wayland".to_owned());
     let config = self.scratch.join("config");
 
@@ -718,18 +772,21 @@ impl Session {
 
     let mut command = self.helper(&program);
 
+    // In windowed mode the output's size is logical: its window is that times the scale.
     command
       .args([
-        "--virtual",
+        "--x11-display",
+        &x_display,
         "--socket",
         &socket,
         "--width",
-        &screen.0.to_string(),
+        &(f64::from(screen.0) / scale).round().to_string(),
         "--height",
-        &screen.1.to_string(),
+        &(f64::from(screen.1) / scale).round().to_string(),
         "--scale",
         &scale.to_string(),
       ])
+      .env("DISPLAY", &x_display)
       .env("KWIN_WAYLAND_NO_PERMISSION_CHECKS", "1")
       .env("KWIN_COMPOSE", "Q")
       .env("QT_QPA_PLATFORM", "offscreen");
@@ -750,11 +807,14 @@ impl Session {
     if xwayland {
       let mut display = None;
 
+      let output = x_display.trim_start_matches(':').parse::<u32>().ok();
+
       // KWin takes a free display number for its Xwayland, its lock file naming a process of
-      // this session's.
+      // this session's (other than the Xvfb its output shows in).
       wait_for("KWin's Xwayland", || {
         display = (0..1000).find(|number| {
-          Path::new(&format!("/tmp/.X11-unix/X{number}")).exists()
+          Some(*number) != output
+            && Path::new(&format!("/tmp/.X11-unix/X{number}")).exists()
             && fs::read_to_string(format!("/tmp/.X{number}-lock"))
               .ok()
               .and_then(|pid| pid.trim().parse::<u32>().ok())
@@ -771,6 +831,8 @@ impl Session {
     } else {
       self.display = Some(("WAYLAND_DISPLAY", socket));
     }
+
+    self.extra.push(("SKENE_OUTPUT_DISPLAY", x_display));
 
     Ok(())
   }
@@ -884,6 +946,112 @@ fn compose_key(config: &Path) -> std::io::Result<()> {
 
   fs::create_dir_all(config.join("xkb/symbols"))?;
   fs::write(config.join("xkb/symbols/us"), patched)
+}
+
+/// The cursor theme of a leg whose compositor draws the pointer into its output.
+const BLANK_THEME: &str = "skene-blank";
+
+/// The cursor names a theme answers to: CSS's, and the X11 core and legacy names toolkits ask
+/// for.
+const CURSOR_NAMES: [&str; 62] = [
+  "default",
+  "context-menu",
+  "help",
+  "pointer",
+  "progress",
+  "wait",
+  "cell",
+  "crosshair",
+  "text",
+  "vertical-text",
+  "alias",
+  "copy",
+  "move",
+  "no-drop",
+  "not-allowed",
+  "grab",
+  "grabbing",
+  "all-scroll",
+  "col-resize",
+  "row-resize",
+  "n-resize",
+  "e-resize",
+  "s-resize",
+  "w-resize",
+  "ne-resize",
+  "nw-resize",
+  "se-resize",
+  "sw-resize",
+  "ew-resize",
+  "ns-resize",
+  "nesw-resize",
+  "nwse-resize",
+  "zoom-in",
+  "zoom-out",
+  "left_ptr",
+  "arrow",
+  "top_left_arrow",
+  "hand1",
+  "hand2",
+  "pointing_hand",
+  "xterm",
+  "ibeam",
+  "watch",
+  "left_ptr_watch",
+  "fleur",
+  "dnd-copy",
+  "dnd-move",
+  "dnd-link",
+  "dnd-none",
+  "dnd-ask",
+  "top_side",
+  "bottom_side",
+  "left_side",
+  "right_side",
+  "top_left_corner",
+  "top_right_corner",
+  "bottom_left_corner",
+  "bottom_right_corner",
+  "sb_h_double_arrow",
+  "sb_v_double_arrow",
+  "question_arrow",
+  "X_cursor",
+];
+
+/// Writes [`BLANK_THEME`] under `icons`: an Xcursor file per name of [`CURSOR_NAMES`], each
+/// one transparent image 8 pixels square.
+fn blank_cursors(icons: &Path) -> std::io::Result<()> {
+  /// An Xcursor file's image chunk type.
+  const IMAGE: u32 = 0xfffd_0002;
+  /// The image's nominal size, and its width and height.
+  const SIZE: u32 = 8;
+
+  let theme = icons.join(BLANK_THEME);
+  let cursors = theme.join("cursors");
+  let mut file = Vec::new();
+
+  // The header (its magic, its size, the version, one table entry), the entry, then the
+  // image's header (its size, type, nominal size, version, width, height, hot spot, delay).
+  for value in [0x7275_6358, 16, 0x1_0000, 1, IMAGE, SIZE, 28] {
+    file.extend_from_slice(&u32::to_le_bytes(value));
+  }
+
+  for value in [36, IMAGE, SIZE, 1, SIZE, SIZE, 0, 0, 0] {
+    file.extend_from_slice(&u32::to_le_bytes(value));
+  }
+
+  file.resize(file.len() + (SIZE * SIZE * 4) as usize, 0);
+  fs::create_dir_all(&cursors)?;
+  fs::write(
+    theme.join("index.theme"),
+    format!("[Icon Theme]\nName={BLANK_THEME}\n"),
+  )?;
+
+  for name in CURSOR_NAMES {
+    fs::write(cursors.join(name), &file)?;
+  }
+
+  Ok(())
 }
 
 /// Whether the locale in force reads UTF-8.

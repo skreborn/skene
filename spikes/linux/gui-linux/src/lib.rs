@@ -7,55 +7,64 @@
 //! ([`Keep::Nothing`]), and paints with vello_cpu and Parley (FreeType's glyph masks under the
 //! reader's font settings) into shared memory. With the `gpu` feature, a window an adapter
 //! presents to paints the same scene with vello's hybrid renderer over wgpu's Vulkan and
-//! presents through the swapchain instead, the CPU path its floor ([`paint::PathChoice`]).
+//! presents through the swapchain instead, the CPU path its floor ([`testing::PathChoice`]).
 //!
-//! - [`node`]: the realized tree, what the realization keeps per node.
-//! - [`look`], [`palette`]: a node's resolved look and run properties, the platform's colors
-//!   the built-in controls are drawn in, and the defaults drawn where a view sets none.
-//! - [`motion`]: transitions and keyframe animations on the window's frame clock.
-//! - [`text`], [`layout`]: paragraphs through the foundation's engine contract, and the layout
+//! Its modules are private: the window it draws is reached through the display server and a
+//! reader alone, never by a caller.
+//!
+//! - `node`: the realized tree, what the realization keeps per node.
+//! - `look`, `palette`: a node's resolved look and run properties, the platform's colors the
+//!   built-in controls are drawn in, and the defaults drawn where a view sets none.
+//! - `motion`: transitions and keyframe animations on the window's frame clock.
+//! - `text`, `layout`: paragraphs through the foundation's engine contract, and the layout
 //!   engine's host over the realized tree.
-//! - [`entry`], [`overlay`]: the realization's own text view, and an overlay's surface.
-//! - [`paint`], [`chrome`]: the painter, the client-side decorations where the compositor
-//!   draws none; with the `gpu` feature, `gpu`: the GPU path, vello's hybrid renderer over
-//!   wgpu, chosen once per window where an adapter presents to it.
-//! - [`shell`]: the window both backends share: frames, hit testing, hover, press and focus,
+//! - `entry`, `overlay`: the realization's own text view, and an overlay's surface.
+//! - `paint`, `chrome`: the painter, the client-side decorations where the compositor draws
+//!   none; with the `gpu` feature, `gpu`: the GPU path, vello's hybrid renderer over wgpu,
+//!   chosen once per window where an adapter presents to it.
+//! - `access`: the reader's tree through AccessKit.
+//! - `shell`: the window both backends share: frames, hit testing, hover, press and focus,
 //!   Tab order, keys and wheels dispatched through the foundation.
-//! - [`keys`], [`runtime`], [`environment`], [`clipboard`]: the keyboard through xkbcommon,
-//!   the loop's timers and tasks, the reader's preferences from the settings portal, the
-//!   clipboard and the primary selection.
-//! - [`wayland`], [`x11`]: the backends; [`window`]: a window on either, its loop turned a
-//!   step at a time.
+//! - `keys`, `ime`, `kinetic`, `runtime`, `environment`: the keyboard through xkbcommon, the
+//!   input methods, a fling's motion, the loop's timers and tasks, the reader's preferences
+//!   from the settings portal.
+//! - `wayland`, `x11`, `xdnd`: the backends and X11's drag and drop; `window`: a window on
+//!   either, its loop turned a step at a time.
+//!
+//! What it offers beside the [`Linux`] realization:
+//!
+//! - [`clipboard`]: the clipboard and the primary selection, which `skene_gui`'s Linux
+//!   platform module carries.
 //! - [`trace`]: what a harness reads (frame costs, states, screenshots, the pointer).
 //! - [`testing`]: `skene_gui::testing` on Linux: the driver reading through AT-SPI and acting
 //!   through real input, and the test entry.
 
-pub mod access;
-pub mod chrome;
+mod access;
+mod chrome;
 pub mod clipboard;
-pub mod entry;
-pub mod environment;
+mod entry;
+mod environment;
 #[cfg(feature = "gpu")]
-pub mod gpu;
-pub mod ime;
-pub mod keys;
-pub mod kinetic;
-pub mod layout;
-pub mod look;
-pub mod motion;
-pub mod node;
-pub mod overlay;
-pub mod paint;
-pub mod palette;
-pub mod runtime;
-pub mod shell;
+mod gpu;
+mod ime;
+mod keys;
+mod kinetic;
+mod layout;
+mod look;
+mod motion;
+mod node;
+mod overlay;
+mod paint;
+mod palette;
+mod runtime;
+mod shell;
 pub mod testing;
-pub mod text;
+mod text;
 pub mod trace;
-pub mod wayland;
-pub mod window;
-pub mod x11;
-pub mod xdnd;
+mod wayland;
+mod window;
+mod x11;
+mod xdnd;
 
 use std::{process::ExitCode, rc::Rc, time::Duration};
 
@@ -243,7 +252,7 @@ impl Realization for Linux {
 }
 
 /// The realized node of scene node `id`, where it is realized.
-pub fn node_of(id: NodeId) -> Option<Node> {
+pub(crate) fn node_of(id: NodeId) -> Option<Node> {
   tree::native::<Linux>(id)
 }
 
@@ -277,7 +286,7 @@ impl Backend {
 }
 
 /// The window's size before the window manager says otherwise.
-pub const DEFAULT_SIZE: (u32, u32) = (480, 640);
+pub(crate) const DEFAULT_SIZE: (u32, u32) = (480, 640);
 
 /// The window's title and size an app opens with: `SKENE_TITLE` and `SKENE_SIZE` (`WxH`)
 /// where set, else the app id's last part and [`DEFAULT_SIZE`].
@@ -298,7 +307,7 @@ fn window_settings(app_id: &str) -> (String, (u32, u32)) {
 
 /// Opens the app's window on the display server in use, builds `root` inside it under an
 /// owner that lives as long as the window, and runs the loop until the app quits.
-pub fn start(app_id: &str, root: Box<dyn FnOnce() -> NodeId>) -> ExitCode {
+pub(crate) fn start(app_id: &str, root: Box<dyn FnOnce() -> NodeId>) -> ExitCode {
   let Some(backend) = Backend::choose() else {
     eprintln!("skene: no display: neither WAYLAND_DISPLAY nor DISPLAY is set");
 
@@ -347,7 +356,7 @@ pub fn start(app_id: &str, root: Box<dyn FnOnce() -> NodeId>) -> ExitCode {
 /// What the loop does between waits, whichever backend runs it: fires timers and tasks,
 /// applies what other threads posted, settles focus. Returns what was posted for the backend
 /// (its input method's events), the accessibility layer's requests carried out here.
-pub fn turn(shell: &mut shell::Shell) -> Vec<runtime::Message> {
+pub(crate) fn turn(shell: &mut shell::Shell) -> Vec<runtime::Message> {
   let mut rest = Vec::new();
 
   for message in runtime::inbox().drain() {

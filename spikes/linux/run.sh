@@ -81,11 +81,21 @@
 # Stage SHELL GAPS (drag and drop, touch, kinetic scrolling, fractional scale, more
 # compositors): the realization's driver tests (gestures::, dnd::, scale::) run in every leg
 # above; here, the GUI crates and the realization's tests on the legs this stage adds:
-#   - weston (its X11 backend inside a private Xvfb, XTest into it), KWin's virtual backend
-#     (its fake input) and a window on KWin's Xwayland, where the compositor starts (KWin from
+#   - weston and KWin, each on its X11 backend inside a private Xvfb (XTest into weston, KWin's
+#     fake input), and a window on that KWin's Xwayland, where the compositor starts (KWin from
 #     SKENE_KWIN, or kwin_wayland on PATH);
 #   - the scaled legs at 1.5 (SKENE_TEST_SCALE): sway's output scale and KWin's, and the
 #     realization's own on Xvfb.
+#
+# Stage TESTING GAPS (every test through the driver, pixels as the screen shows them):
+#   - the realization's tests are driver tests alone, run with the GUI crates on every leg
+#     above, sway's included: nothing drives the window shell without its window;
+#   - a screenshot and a pixel are read back from what the platform presented: the X server's
+#     screen on X11, mutter's screen cast through PipeWire (WirePlumber beside it), wlroots'
+#     screencopy on sway, the X screen weston and KWin show their output in;
+#   - presented:: holds that a frame painted for a reader alone (a switch flipped through
+#     AT-SPI) reaches the screen, and roles:: that each role a reader finds is exactly Skene's
+#     (a switch, a row and an option told from a check box and a list item by `xml-roles`).
 #
 # The GTK realization (gui-linux-gtk) and its probes (probes/) are kept, outside the
 # workspace, for reference.
@@ -183,12 +193,12 @@ done
 cp "$results/test-x11.log" "$results/test.log"
 started=$(date +%s%N)
 if SKENE_TEST_SESSION=sway cargo test --no-fail-fast -p skene-conformance -p hello -p notes-gui \
-  -p skene-simple-gui -p skene-gui -p acme-rating > "$results/test-sway.log" 2>&1; then
+  -p skene-simple-gui -p skene-gui -p acme-rating -p skene-gui-linux > "$results/test-sway.log" 2>&1; then
   outcome=passed
 else
   outcome=FAILED
 fi
-say "cargo test of the GUI crates on the sway leg: $outcome, $(grep -oE '[0-9]+ passed' "$results/test-sway.log" | awk '{s+=$1} END {print s}') passed, $(grep -oE '[0-9]+ failed' "$results/test-sway.log" | awk '{s+=$1} END {print s}') failed, $(( ($(date +%s%N) - started) / 1000000 )) ms wall"
+say "cargo test of the GUI crates and the realization on the sway leg: $outcome, $(grep -oE '[0-9]+ passed' "$results/test-sway.log" | awk '{s+=$1} END {print s}') passed, $(grep -oE '[0-9]+ failed' "$results/test-sway.log" | awk '{s+=$1} END {print s}') failed, $(( ($(date +%s%N) - started) / 1000000 )) ms wall"
 measure_target
 
 say "== more legs: weston, KWin, KWin's Xwayland; the scaled legs (1.5)"

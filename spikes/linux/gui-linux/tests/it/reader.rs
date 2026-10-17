@@ -1,16 +1,16 @@
 //! What a reader finds, over AT-SPI in the display runner's private session: a text's link
-//! run named by its text, which focus reaches by `Tab` and `Return` follows, and text sized
-//! and set in the family the desktop's settings portal states.
+//! run named by its text, a tab stop in the scene's order which `Return` follows and `Space`
+//! does not, and text sized and set in the family the desktop's settings portal states.
 
 use std::{cell::Cell, rc::Rc, time::Duration};
 
 use skene_foundation::{
-  Owner,
+  Dimension, Owner,
   seam::{
     access::Role,
     content::{Run, contents},
     node::{LayoutKind, NodeKind, NodeSpec},
-    record::Record,
+    record::{Record, keys},
     report::Modifiers,
     testing::{Action, Driver as _, Query},
     tree,
@@ -27,16 +27,33 @@ thread_local! {
   static FOLLOWED: Cell<u32> = const { Cell::new(0) };
 }
 
+/// The role of what a reader reads focused now.
+fn focused_role(driver: &mut Drawn) -> Role {
+  let focused = driver.find(&Query::Focused, Duration::from_secs(1));
+
+  focused
+    .first()
+    .map_or(Role::Generic, |found| driver.read(found).role)
+}
+
 #[test]
-fn a_reader_finds_a_link_run_and_tab_and_return_follow_it() {
+fn a_reader_finds_a_link_run_a_tab_stop_that_return_follows() {
   run_test("a_reader_finds_a_link_run", || {
     let owner = Owner::new();
     let root = owner.run(|| {
-      let (root, _) = node(
+      let root = node(
         NodeSpec::new(NodeKind::Layout(LayoutKind::Column)),
         Record::new(),
       );
-      let (text, _) = node(NodeSpec::new(NodeKind::Text), Record::new());
+      let mut height = Record::new();
+
+      height.set(keys::HEIGHT, Dimension::Length(30.));
+
+      let row = node(
+        NodeSpec::new(NodeKind::Layout(LayoutKind::Box)).acting(),
+        height,
+      );
+      let text = node(NodeSpec::new(NodeKind::Text), Record::new());
 
       tree::bind::<Linux, _>(text, contents::RUNS, || {
         Rc::from(vec![
@@ -53,7 +70,9 @@ fn a_reader_finds_a_link_run_and_tab_and_return_follow_it() {
         ])
       });
       tree::handle_follow::<Linux, ()>(root, |_| FOLLOWED.with(|count| count.set(count.get() + 1)));
-      tree::attach::<Linux>(root, text, 0);
+      tree::handle_activate::<Linux>(row, || {});
+      tree::attach::<Linux>(root, row, 0);
+      tree::attach::<Linux>(root, text, 1);
 
       root
     });
@@ -72,11 +91,28 @@ fn a_reader_finds_a_link_run_and_tab_and_return_follow_it() {
     );
 
     let link = &links[0];
+    let tab = Action::Press("Tab".into(), Modifiers::default());
 
     assert!(!driver.read(link).focused);
 
-    driver.act(link, &Action::Press("Tab".into(), Modifiers::default()));
+    let mut stops = Vec::new();
+
+    for _ in 0..3 {
+      driver.act_at_focus(&tab);
+      stops.push(focused_role(&mut driver));
+    }
+
+    assert_eq!(
+      stops,
+      [Role::Row, Role::Link, Role::Row],
+      "the link run is a tab stop in the scene's order, and Tab goes around"
+    );
+
+    driver.act_at_focus(&tab);
     assert!(driver.read(link).focused, "Tab reaches the link run");
+
+    driver.act(link, &Action::Press("space".into(), Modifiers::default()));
+    assert_eq!(FOLLOWED.with(Cell::get), 0, "Space does not follow it");
 
     driver.act(link, &Action::Press("Return".into(), Modifiers::default()));
     assert_eq!(FOLLOWED.with(Cell::get), 1, "Return follows it");
@@ -95,11 +131,11 @@ fn the_desktops_text_scale_and_interface_font_come_through_the_portal() {
   run_test("the_desktops_text_scale_and_interface_font", || {
     let owner = Owner::new();
     let root = owner.run(|| {
-      let (root, _) = node(
+      let root = node(
         NodeSpec::new(NodeKind::Layout(LayoutKind::Row)),
         Record::new(),
       );
-      let (text, _) = node(NodeSpec::new(NodeKind::Text), Record::new());
+      let text = node(NodeSpec::new(NodeKind::Text), Record::new());
 
       tree::bind::<Linux, _>(text, contents::TEXT, || Rc::from("Scaled iiii"));
       tree::attach::<Linux>(root, text, 0);

@@ -25,6 +25,7 @@ use std::{
   thread::JoinHandle,
 };
 
+use sctk::reexports::protocols::wp::text_input::zv3::client::zwp_text_input_v3::ContentPurpose;
 use wayland_protocols_misc::zwp_input_method_v2::client::{
   zwp_input_method_manager_v2::ZwpInputMethodManagerV2,
   zwp_input_method_v2::{self, ZwpInputMethodV2},
@@ -39,11 +40,70 @@ const CONTEXTS: &str = "/org/freedesktop/portal/inputcontext";
 /// The IBus context the stand-in hands out.
 const IBUS_CONTEXT: &str = "/org/freedesktop/IBus/InputContext_1";
 
-/// Fcitx5's password capability.
-const FCITX_PASSWORD: u64 = 1 << 3;
+/// What a field is for, as a window told an input method: the purpose its protocol carries.
+#[derive(Clone, Copy, Default, PartialEq, Eq, Debug)]
+pub enum Purpose {
+  /// Any text, or nothing told.
+  #[default]
+  Normal,
+  /// An email address.
+  Email,
+  /// A number.
+  Number,
+  /// A phone number.
+  Phone,
+  /// A URL.
+  Url,
+  /// A secret.
+  Password,
+}
 
-/// IBus's password purpose.
-const IBUS_PASSWORD: u32 = 8;
+impl Purpose {
+  /// The purpose Fcitx5's capability bits state: password 1 << 3, email 1 << 7, URL 1 << 12,
+  /// dialable 1 << 13, number 1 << 14.
+  #[must_use]
+  pub const fn of_fcitx(capability: u64) -> Self {
+    if capability & 1 << 3 != 0 {
+      Self::Password
+    } else if capability & 1 << 7 != 0 {
+      Self::Email
+    } else if capability & 1 << 12 != 0 {
+      Self::Url
+    } else if capability & 1 << 13 != 0 {
+      Self::Phone
+    } else if capability & 1 << 14 != 0 {
+      Self::Number
+    } else {
+      Self::Normal
+    }
+  }
+
+  /// The purpose IBus's input purpose states: number 3, phone 4, URL 5, email 6, password 8.
+  #[must_use]
+  pub const fn of_ibus(purpose: u32) -> Self {
+    match purpose {
+      3 => Self::Number,
+      4 => Self::Phone,
+      5 => Self::Url,
+      6 => Self::Email,
+      8 => Self::Password,
+      _ => Self::Normal,
+    }
+  }
+
+  /// The purpose text-input-v3's content purpose states.
+  #[must_use]
+  pub const fn of_wayland(purpose: ContentPurpose) -> Self {
+    match purpose {
+      ContentPurpose::Number | ContentPurpose::Digits => Self::Number,
+      ContentPurpose::Phone => Self::Phone,
+      ContentPurpose::Url => Self::Url,
+      ContentPurpose::Email => Self::Email,
+      ContentPurpose::Password | ContentPurpose::Pin => Self::Password,
+      _ => Self::Normal,
+    }
+  }
+}
 
 /// What a window told the input method.
 #[derive(Clone, Default, PartialEq, Eq, Debug)]
@@ -58,9 +118,9 @@ pub struct Told {
   pub surrounding: Option<(String, u32, u32)>,
   /// Every text around the caret told, in order.
   pub surroundings: Vec<String>,
-  /// Whether the focused field was last told to hold a password: Fcitx5's password
-  /// capability, IBus's password purpose, text-input-v3's password purpose.
-  pub password: bool,
+  /// What the focused field was last told to be for: Fcitx5's capability, IBus's input
+  /// purpose, text-input-v3's content purpose.
+  pub purpose: Purpose,
   /// How many key events the window handed the input method.
   pub keys: u32,
   /// How many contexts were asked for.
@@ -91,7 +151,7 @@ mod served {
 
   use std::sync::{Arc, Mutex, PoisonError};
 
-  use super::{CONTEXTS, FCITX_PASSWORD, IBUS_CONTEXT, IBUS_PASSWORD, Shared, tell};
+  use super::{CONTEXTS, IBUS_CONTEXT, Purpose, Shared, tell};
 
   pub(super) struct Method {
     pub(super) told: Shared,
@@ -143,7 +203,7 @@ mod served {
     /// What the client can show, and what the focused field is for.
     fn set_capability(&self, capability: u64) {
       tell(&self.told, |told| {
-        told.password = capability & FCITX_PASSWORD != 0;
+        told.purpose = Purpose::of_fcitx(capability)
       });
     }
 
@@ -261,7 +321,7 @@ mod served {
     fn set_content_type(&mut self, content_type: (u32, u32)) {
       self.content_type = content_type;
       tell(&self.told, |told| {
-        told.password = content_type.0 == IBUS_PASSWORD
+        told.purpose = Purpose::of_ibus(content_type.0);
       });
     }
   }
@@ -345,11 +405,12 @@ impl wayland_client::Dispatch<ZwpInputMethodV2, ()> for Seat {
             told.surround(text, cursor, anchor);
           }
 
-          if let Some(zwp_input_method_v2::Event::ContentType { purpose, .. }) = pending.purpose {
-            told.password = purpose
-              == wayland_client::WEnum::Value(
-                sctk::reexports::protocols::wp::text_input::zv3::client::zwp_text_input_v3::ContentPurpose::Password,
-              );
+          if let Some(zwp_input_method_v2::Event::ContentType {
+            purpose: wayland_client::WEnum::Value(purpose),
+            ..
+          }) = pending.purpose
+          {
+            told.purpose = Purpose::of_wayland(purpose);
           }
         });
       }

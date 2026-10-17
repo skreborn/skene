@@ -15,7 +15,7 @@ use skene_gui_linux::{
   Backend,
   testing::{
     Session,
-    input_method::{InputMethod, Told},
+    input_method::{InputMethod, Purpose, Told},
   },
   trace,
 };
@@ -116,7 +116,11 @@ fn tells_only_marks(input_method: &InputMethod) {
   eprintln!("told for the plain field: {told:?}");
   assert!(told.focused, "the field took the input method's focus");
   assert_eq!(told.surrounding, Some(("abc".to_owned(), 3, 3)));
-  assert!(!told.password, "a plain field is no password");
+  assert_eq!(
+    told.purpose,
+    Purpose::Normal,
+    "a plain field is no password"
+  );
 
   let plain = trace::take_recorded();
 
@@ -134,7 +138,7 @@ fn tells_only_marks(input_method: &InputMethod) {
   assert_eq!(probe_once(&screen, "secret", SECRET), SECRET);
 
   let told = told_once(&screen, input_method, |told| {
-    told.password
+    told.purpose == Purpose::Password
       && told
         .surrounding
         .as_ref()
@@ -143,8 +147,9 @@ fn tells_only_marks(input_method: &InputMethod) {
 
   eprintln!("told for the secure field: {told:?}");
   assert!(told.focused);
-  assert!(
-    told.password,
+  assert_eq!(
+    told.purpose,
+    Purpose::Password,
     "the input method was told the field holds a password"
   );
   assert_eq!(

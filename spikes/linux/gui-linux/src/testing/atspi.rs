@@ -5,7 +5,10 @@
 //! the window's thread is answered while that thread waits; a reader in another process sends
 //! the same messages over the same bus.
 
-use std::time::{Duration, Instant};
+use std::{
+  collections::HashMap,
+  time::{Duration, Instant},
+};
 
 use zbus::{
   blocking::Connection,
@@ -39,6 +42,8 @@ pub mod state {
   pub const MULTI_LINE: u32 = 17;
   /// `ATSPI_STATE_PRESSED`.
   pub const PRESSED: u32 = 20;
+  /// `ATSPI_STATE_SELECTABLE`.
+  pub const SELECTABLE: u32 = 22;
   /// `ATSPI_STATE_SELECTED`.
   pub const SELECTED: u32 = 23;
   /// `ATSPI_STATE_SENSITIVE`.
@@ -95,6 +100,18 @@ pub struct Item {
   pub name: String,
   /// Its states, as AT-SPI's bit set.
   pub states: u64,
+  /// Its object attributes where its role is one AT-SPI shares between several of Skene's
+  /// (a check box, a list item, a heading), which name the exact one (`xml-roles`, `level`);
+  /// empty otherwise.
+  pub attributes: HashMap<String, String>,
+}
+
+impl Item {
+  /// Whether an object of AT-SPI's role `role` names its exact role in its attributes.
+  #[must_use]
+  pub fn names_exactly(role: &str) -> bool {
+    matches!(role, "check box" | "list item" | "heading")
+  }
 }
 
 const ACCESSIBLE: &str = "org.a11y.atspi.Accessible";
@@ -294,10 +311,18 @@ impl Atspi {
     while let Some((object, depth)) = stack.pop() {
       let children = self.children(&object)?;
 
+      let role = self.role(&object)?;
+      let attributes = if Item::names_exactly(&role) {
+        self.attributes(&object)?
+      } else {
+        HashMap::new()
+      };
+
       items.push(Item {
-        role: self.role(&object)?,
+        role,
         name: self.name(&object)?,
         states: self.states(&object)?,
+        attributes,
         depth,
         object,
       });
@@ -353,6 +378,15 @@ impl Atspi {
           bits | (u64::from(word) << (32 * index))
         }),
     )
+  }
+
+  /// `object`'s object attributes (`GetAttributes`).
+  ///
+  /// # Errors
+  ///
+  /// Where the call fails.
+  pub fn attributes(&self, object: &Object) -> Result<HashMap<String, String>> {
+    self.call(object, ACCESSIBLE, "GetAttributes", &())
   }
 
   /// The interfaces `object` implements.

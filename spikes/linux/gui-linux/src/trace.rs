@@ -25,7 +25,7 @@ use skene_foundation::{
   State,
   layout::Rect,
   seam::{
-    content::{Content, PropValue, Verdict},
+    content::Verdict,
     report::{Answer, KeyEvent},
   },
 };
@@ -73,7 +73,7 @@ pub fn take_recorded() -> Vec<String> {
 
 /// `answer` as a trace line shows it: a replacement's value left out where it is bound for a
 /// secure entry.
-pub fn answer(answer: &Answer, secure: bool) -> String {
+pub(crate) fn answer(answer: &Answer, secure: bool) -> String {
   match answer {
     Answer::Verdict(Verdict::Replace(_)) if secure => "Verdict(Replace(..))".to_owned(),
     other => format!("{other:?}"),
@@ -81,7 +81,7 @@ pub fn answer(answer: &Answer, secure: bool) -> String {
 }
 
 /// Whether the frames that lay out count the nodes (`SKENE_TRACE_NODES=1`, with tracing on).
-pub fn nodes_on() -> bool {
+pub(crate) fn nodes_on() -> bool {
   on()
     && NODES.with(|nodes| {
       *nodes.get_or_init(|| std::env::var_os("SKENE_TRACE_NODES").is_some_and(|value| value != "0"))
@@ -90,7 +90,7 @@ pub fn nodes_on() -> bool {
 
 /// Logs how many nodes the scene realizes and shows (`scene`) and how many a reader finds
 /// (`reader`, the window aside).
-pub fn nodes(scene: usize, reader: usize) {
+pub(crate) fn nodes(scene: usize, reader: usize) {
   log(|| format!("[nodes] scene {scene} reader {reader}"));
 }
 
@@ -126,7 +126,7 @@ fn describe(node: &Node) -> String {
 }
 
 /// What one frame cost.
-pub struct FrameCost {
+pub(crate) struct FrameCost {
   /// Giving paragraphs their texts and styles.
   pub prepare: Duration,
   /// Laying the tree out.
@@ -150,7 +150,7 @@ pub struct FrameCost {
 }
 
 /// Logs a frame's costs.
-pub fn frame(cost: FrameCost) {
+pub(crate) fn frame(cost: FrameCost) {
   let count = FRAMES.with(|frames| {
     frames.set(frames.get() + 1);
     frames.get()
@@ -182,41 +182,23 @@ pub fn frame(cost: FrameCost) {
 }
 
 /// Logs a state reported to the shared half.
-pub fn state(node: &Node, state: State, holds: bool) {
+pub(crate) fn state(node: &Node, state: State, holds: bool) {
   log(|| format!("[state] {} {state:?} {holds}", describe(node)));
 }
 
 /// Logs a focus move.
-pub fn focus(node: &Node) {
+pub(crate) fn focus(node: &Node) {
   log(|| format!("[focus] {}", describe(node)));
 }
 
 /// Logs an activation.
-pub fn activate(node: &Node) {
+pub(crate) fn activate(node: &Node) {
   log(|| format!("[activate] {}", describe(node)));
-}
-
-/// Logs a change reported and its answer, a secure entry's value left out.
-pub fn change(node: &Node, content: Content, proposed: &PropValue, answer: &Answer) {
-  log(|| {
-    let secure = node.contents.borrow().secure;
-    let proposed = if secure {
-      "(secure)".to_owned()
-    } else {
-      format!("{proposed:?}")
-    };
-
-    format!(
-      "[change] {} {content:?} {proposed} -> {}",
-      describe(node),
-      self::answer(answer, secure)
-    )
-  });
 }
 
 /// Logs a key dispatched: one that types a character into a secure entry as a mark, its
 /// physical key left out.
-pub fn key(event: &KeyEvent, target: &Node) {
+pub(crate) fn key(event: &KeyEvent, target: &Node) {
   log(|| {
     let typed =
       unicode_segmentation::UnicodeSegmentation::graphemes(event.key.as_str(), true).count() == 1;
@@ -236,7 +218,7 @@ pub fn key(event: &KeyEvent, target: &Node) {
 }
 
 /// Logs a scroll.
-pub fn scroll(node: &Node, offset: (f32, f32)) {
+pub(crate) fn scroll(node: &Node, offset: (f32, f32)) {
   log(|| {
     format!(
       "[scroll] {} to {:.1},{:.1}",
@@ -261,12 +243,12 @@ fn shot_path() -> Option<PathBuf> {
 }
 
 /// Whether `SKENE_SHOT` asks for presented frames: what a GPU frame is read back for.
-pub fn shots_on() -> bool {
+pub(crate) fn shots_on() -> bool {
   shot_path().is_some()
 }
 
 /// Writes a presented frame where `SKENE_SHOT` asks.
-pub fn shot(pixmap: &vello_cpu::Pixmap) {
+pub(crate) fn shot(pixmap: &vello_cpu::Pixmap) {
   let Some(path) = shot_path() else {
     return;
   };
@@ -275,7 +257,7 @@ pub fn shot(pixmap: &vello_cpu::Pixmap) {
 }
 
 /// Writes a presented frame of the open overlay where `SKENE_SHOT_POPUP` asks.
-pub fn shot_popup(pixmap: &vello_cpu::Pixmap) {
+pub(crate) fn shot_popup(pixmap: &vello_cpu::Pixmap) {
   if let Some(path) = std::env::var_os("SKENE_SHOT_POPUP").filter(|path| !path.is_empty()) {
     write_png(std::path::Path::new(&path), pixmap);
   }
@@ -283,7 +265,7 @@ pub fn shot_popup(pixmap: &vello_cpu::Pixmap) {
 
 /// Writes `pixmap` as an RGBA PNG at `path` (unpremultiplied), through a temporary file and a
 /// rename.
-pub fn write_png(path: &std::path::Path, pixmap: &vello_cpu::Pixmap) {
+pub(crate) fn write_png(path: &std::path::Path, pixmap: &vello_cpu::Pixmap) {
   let temporary = path.with_extension("png.tmp");
   let Ok(file) = std::fs::File::create(&temporary) else {
     return;
@@ -330,7 +312,7 @@ pub fn write_png(path: &std::path::Path, pixmap: &vello_cpu::Pixmap) {
 
 /// Records the pointer's position in the window's geometry, and writes it where
 /// `SKENE_PROBE` asks.
-pub fn pointer(x: f32, y: f32) {
+pub(crate) fn pointer(x: f32, y: f32) {
   LAST_POINTER.with(|last| last.set((last.get().0 + 1, Some((x, y)))));
 
   let Some(path) = PROBE.with(|probe| {
@@ -353,6 +335,6 @@ pub fn pointer(x: f32, y: f32) {
 
 /// How many times the pointer was seen over a window of this thread, and where it was seen
 /// last, in the window's geometry.
-pub fn last_pointer() -> (u64, Option<(f32, f32)>) {
+pub(crate) fn last_pointer() -> (u64, Option<(f32, f32)>) {
   LAST_POINTER.with(Cell::get)
 }

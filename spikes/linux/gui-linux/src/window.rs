@@ -41,15 +41,6 @@ impl Window {
     Ok(Self { inner })
   }
 
-  /// The display server the window is on.
-  #[must_use]
-  pub const fn backend(&self) -> Backend {
-    match self.inner {
-      Inner::X11 { .. } => Backend::X11,
-      Inner::Wayland(_) => Backend::Wayland,
-    }
-  }
-
   /// The window's shell.
   #[must_use]
   pub fn shell(&self) -> &Shell {

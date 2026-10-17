@@ -17,7 +17,7 @@ use std::{
 };
 
 use skene_foundation::{
-  State, StateSet,
+  State,
   behavior::{ActivateKeys, EntryAct, EntryKeys},
   environment::{self, Fact},
   layout::Rect,
@@ -447,7 +447,7 @@ pub struct Shell {
   drop_over: Option<(Node, bool)>,
   /// Frames painted.
   pub frames: u64,
-  /// When the last frame was painted.
+  /// When the last frame was painted, the window's or its open overlay's.
   pub painted_at: Option<Instant>,
   presented: bool,
   /// Whether the app asked to quit.
@@ -1513,8 +1513,14 @@ impl Shell {
       focused: self.focus.clone(),
       link: None,
     };
+    let started = Instant::now();
+    let frame = self.overlay.as_mut()?.frame(scale, &marks);
 
-    self.overlay.as_mut()?.frame(scale, &marks)
+    if frame.is_some() {
+      self.painted_at = Some(started);
+    }
+
+    frame
   }
 
   /// Whether the open overlay wants a frame.
@@ -3225,24 +3231,9 @@ impl Shell {
       .is_some_and(|node| node.contents.borrow().secure)
   }
 
-  /// Whether `state` holds at `node`, as the realization tracks it.
-  pub fn holds(node: &Node, state: State) -> bool {
-    node.states.get().contains(state)
-  }
-
-  /// The states the realization tracks at every node: what a newly watched node is told.
-  pub fn states_of(node: &Node) -> StateSet {
-    node.states.get()
-  }
-
   /// The last frame painted (on the GPU path, read back from the GPU).
   pub fn last_frame(&mut self) -> Option<&vello_cpu::Pixmap> {
     (self.frames > 0).then(|| self.renderer.last_frame())
-  }
-
-  /// Whether the window has the keyboard.
-  pub const fn is_window_focused(&self) -> bool {
-    self.window_focused
   }
 
   /// The node with focus.

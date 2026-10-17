@@ -1195,6 +1195,12 @@ impl Default for Renderer {
 }
 
 impl Renderer {
+  /// The side, in device pixels, of the tiles vello_cpu computes coverage on, counted from
+  /// the top left of what it draws into: a band of a frame from its left edge, its top and
+  /// bottom on multiples of it, comes out pixel for pixel as the whole frame drawn at once
+  /// does.
+  const TILE: f64 = 4.;
+
   /// A renderer with no frame yet.
   pub fn new() -> Self {
     Self {
@@ -1377,16 +1383,15 @@ impl Renderer {
       self.pixmap = Pixmap::new(size.0, size.1);
     }
 
-    // The damage in device pixels, whole pixels around it.
+    // The band of the frame the damage lies in, in device pixels: from the frame's left edge,
+    // its other edges on whole tiles around the damage.
     let device = |value: f32| f64::from(value) * scale;
-    let left = device(region.x + origin.0).floor().max(0.);
-    let top = device(region.y + origin.1).floor().max(0.);
-    let right = device(region.x + origin.0 + region.width)
-      .ceil()
-      .min(f64::from(size.0));
-    let bottom = device(region.y + origin.1 + region.height)
-      .ceil()
-      .min(f64::from(size.1));
+    let before = |value: f64| (value / Self::TILE).floor() * Self::TILE;
+    let after = |value: f64| (value / Self::TILE).ceil() * Self::TILE;
+    let left = 0.;
+    let top = before(device(region.y + origin.1)).max(0.);
+    let right = after(device(region.x + origin.0 + region.width)).min(f64::from(size.0));
+    let bottom = after(device(region.y + origin.1 + region.height)).min(f64::from(size.1));
 
     if right <= left || bottom <= top {
       return Cost::default();

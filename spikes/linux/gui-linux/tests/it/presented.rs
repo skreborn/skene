@@ -1,10 +1,11 @@
 //! What reaches the screen, read back from the display server or the compositor: a change the
 //! window draws while it answers a reader (which lays the window out at once, so the reader
 //! reads current geometry) is presented as one a click makes is, rather than drawn into the
-//! window's frame and never shown.
+//! window's frame and never shown; and a part of the window drawn again alone shows, pixel for
+//! pixel, what the whole window drawn at once shows there.
 
 use skene_gui::{
-  AccessRequest, Color, Media, Scheme, Signal, When as _, media,
+  AccessRequest, Color, Inset, Media, Scheme, Signal, When as _, media,
   prelude::*,
   testing::{self, Role, Screen},
 };
@@ -74,4 +75,95 @@ fn a_switch_clicked_recolors_the_screen() {
   switch.click();
   assert!(!switch.is_on());
   assert_eq!(background(&screen), LIGHT);
+}
+
+/// The page beneath everything: a mid gray, which a translucent paint over it shows the
+/// rounding of.
+const PAGE: Color = Color::rgb(0x808080);
+
+/// A translucent white veil over the page, along the plate's row.
+const VEIL: Color = Color::rgba(0xffff_ff80);
+
+/// The plate unlit.
+const PLATE: Color = Color::rgb(0x2f6fdf);
+
+/// The plate lit.
+const PLATE_LIT: Color = Color::rgb(0x1f57b8);
+
+/// What the plate says.
+const WORDS: &str = "Grumpy wizards make toxic brew";
+
+/// The plate's padding: top, trailing, bottom, leading.
+const PLATE_PADDING: (f32, f32, f32, f32) = (7., 11., 9., 5.);
+
+/// A mid-gray page holding, 13 pixels in, a translucent veil along a row: a 31-pixel gap, a
+/// blue plate holding white text, its left edge 53 pixels in (off any grid of 2 or 4 pixels),
+/// and a switch that lights the plate.
+fn plate() -> impl View {
+  let lit = Signal::new(false);
+  let (top, trailing, bottom, leading) = PLATE_PADDING;
+
+  Container::new().set_background(PAGE).set_child(
+    Column::new().set_padding(13).add_child(
+      Container::new().set_background(VEIL).set_child(
+        Row::new()
+          .set_spacing(9)
+          .set_item_alignment(AxisAlignment::Center)
+          .add_child(Container::new().set_width(31).set_height(8))
+          .add_child(
+            Container::new()
+              .set_padding(Inset::new(top, trailing, bottom, leading))
+              .derive_background(move || if lit.get() { PLATE_LIT } else { PLATE })
+              .set_child(Text::new(WORDS).set_color(Color::WHITE).set_font_size(15)),
+          )
+          .add_child(Toggle::new("Lit").bind_on(lit)),
+      ),
+    ),
+  )
+}
+
+#[skene_gui::test]
+fn a_box_drawn_again_alone_shows_what_the_whole_window_drew() {
+  let screen = testing::render(plate);
+  let text = screen.find_by_text(WORDS).read().bounds;
+  let switch = screen.find_by_role(Role::Switch, "Lit");
+  let (top, _, _, leading) = PLATE_PADDING;
+  let corner = (text.x - leading + 2., text.y - top + 2.);
+
+  // The window's first frame, drawn whole.
+  let whole = screen.render_to_image();
+
+  assert_eq!(screen.pixel(corner.0, corner.1), PLATE, "the plate unlit");
+
+  // A reader's flips, which move no pointer: each draws the plate and the switch again, alone,
+  // over the page and the veil beside them.
+  switch.trigger_access(AccessRequest::Toggle);
+  assert_eq!(screen.pixel(corner.0, corner.1), PLATE_LIT, "the plate lit");
+  switch.trigger_access(AccessRequest::Toggle);
+  assert_eq!(
+    screen.pixel(corner.0, corner.1),
+    PLATE,
+    "the plate unlit again"
+  );
+
+  let again = screen.render_to_image();
+  let (before, _) = whole.rgba.as_chunks::<4>();
+  let (after, _) = again.rgba.as_chunks::<4>();
+  let mut differing = 0;
+  let mut most = 0;
+
+  for (was, is) in before.iter().zip(after) {
+    for (was, is) in was.iter().zip(is) {
+      most = most.max(was.abs_diff(*is));
+    }
+
+    differing += usize::from(was != is);
+  }
+
+  assert_eq!(
+    (whole.width, whole.height, differing, most),
+    (again.width, again.height, 0, 0),
+    "the window drawn again in part shows {differing} pixels unlike the window drawn whole, a \
+     channel at most {most} apart"
+  );
 }

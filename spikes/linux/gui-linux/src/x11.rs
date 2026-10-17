@@ -668,6 +668,9 @@ impl X11 {
 
     if owner.owner == x11rb::NONE {
       trace::log(|| "[xsettings] no manager".to_owned());
+      // What a manager stated before is no longer stated.
+      environment::xft(skene_parley::linux::DesktopSettings::default());
+      environment::xsettings(None, None, None);
 
       return;
     }

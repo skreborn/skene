@@ -151,6 +151,9 @@ struct State {
   window: Window,
   /// Whether the toplevel was configured once.
   configured: bool,
+  /// The size the toplevel had when it last floated, which it returns to where the
+  /// compositor leaves the size to it as it floats again.
+  floating_size: (u32, u32),
   /// Whether a frame callback is awaited.
   frame_pending: bool,
   /// The seat in use.
@@ -388,6 +391,7 @@ pub fn open(shell: Shell, app_id: &str) -> Result<Open, Box<dyn Error>> {
     buffers: Vec::new(),
     window,
     configured: false,
+    floating_size: (0, 0),
     frame_pending: false,
     seat: None,
     keyboard_object: None,
@@ -1191,6 +1195,7 @@ impl WindowHandler for State {
     let state = configure.state;
     let capabilities = configure.capabilities;
     let chrome = &mut self.shell.chrome;
+    let floated = chrome.floating();
 
     chrome.csd = configure.decoration_mode == DecorationMode::Client;
     chrome.states = crate::chrome::States {
@@ -1213,7 +1218,19 @@ impl WindowHandler for State {
       fullscreen: capabilities.contains(WindowManagerCapabilities::FULLSCREEN),
     };
 
-    let (width, height) = self.shell.size;
+    let floats = self.shell.chrome.floating();
+
+    if floated && !floats {
+      self.floating_size = self.shell.size;
+    }
+
+    // A dimension the compositor leaves to the window: the size it floated at, as it floats
+    // again, else the size it has.
+    let (width, height) = if floats && !floated && self.floating_size.0 > 0 {
+      self.floating_size
+    } else {
+      self.shell.size
+    };
     let width = configure.new_size.0.map_or(width, |width| width.get());
     let height = configure.new_size.1.map_or(height, |height| height.get());
 

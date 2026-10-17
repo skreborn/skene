@@ -555,11 +555,13 @@ impl Shell {
     invalidate_all();
   }
 
-  /// The window's scale changed.
+  /// The window's scale changed: the window is laid out again, so a box that draws at its
+  /// size and scale (a `Painted` one) hears the new scale before the frame that draws it.
   pub fn set_scale(&mut self, scale: f64) {
     if (scale - self.scale).abs() > f64::EPSILON {
       self.scale = scale;
       environment::report(Fact::Scale(scale));
+      invalidate_layout();
       invalidate_all();
       // The reader's extents are device pixels.
       crate::access::invalidate();
@@ -1313,28 +1315,29 @@ impl Shell {
         _ => return None,
       })
     };
-    let chain = match &self.focus {
+    let chain: Vec<Node> = match &self.focus {
       Some(focus) => std::iter::once(Rc::clone(focus))
         .chain(focus.ancestors())
         .collect(),
-      None if !self.hovered.is_empty() => self.hovered.clone(),
       None => {
-        let mut first = Vec::new();
+        let mut chain = self.hovered.clone();
+        let mut first = None;
 
         if let Some(root) = &self.root {
           walk(root, |node| {
-            if first.is_empty()
+            if first.is_none()
               && matches!(
                 node.layout_kind(),
                 Some(skene_foundation::seam::node::LayoutKind::Scroll { .. })
               )
             {
-              first.push(Rc::clone(node));
+              first = Some(Rc::clone(node));
             }
           });
         }
 
-        first
+        chain.extend(first);
+        chain
       }
     };
 

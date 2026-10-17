@@ -1,6 +1,6 @@
 //! A box the app draws: a recording of kurbo's shapes and peniko's brushes the platform replays
 //! in the scene's order, recorded again whenever what its closure read changes or the box is
-//! laid out at another size.
+//! laid out at another size or drawn at another scale.
 
 use std::rc::Rc;
 
@@ -207,9 +207,13 @@ impl View for Painted {
     let id = cx.create(spec);
     let size = Signal::new(None::<Size>);
     let laid = Memo::new(move || {
-      size
-        .get()
-        .map(|size| (size.width.to_bits(), size.height.to_bits()))
+      size.get().map(|size| {
+        (
+          size.width.to_bits(),
+          size.height.to_bits(),
+          size.scale.to_bits(),
+        )
+      })
     });
     let paint = self.paint;
 
@@ -218,14 +222,12 @@ impl View for Painted {
     tree::bind::<Active, _>(id, contents::PICTURE, move || {
       let mut picture = Picture::new();
 
-      if let Some((width, height)) = laid.get() {
-        let scale = skene_foundation::untrack(|| size.get().map_or(1., |size| size.scale));
-
+      if let Some((width, height, scale)) = laid.get() {
         paint(&mut Canvas {
           picture: &mut picture,
           width: f32::from_bits(width),
           height: f32::from_bits(height),
-          scale,
+          scale: f64::from_bits(scale),
           states: &|| tree::resolved_states::<Active>(id),
         });
       }

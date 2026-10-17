@@ -94,7 +94,10 @@ in a code comment.
     per-platform preset; `TextField::set_keyboard` and a shared `set_shortcut` join them
     and `Apply` returns to the prelude. A clickable `Container` is an activatable row
     (focusable, `Enter` and `Space` activating it, holding controls that own their
-    presses), and focus order follows the scene's child order.
+    presses), focus order follows the scene's child order, and a window opens with
+    nothing focused but a control set to `set_autofocus`. A choice's value is the app's
+    own type, each option carrying one (`Picker<T>`), where today's collections hold
+    strings, and the web's scriptless form names each option by a key of its own.
     - Libraries: a core with a crate per facade (`skene-simple-gui`,
     `skene-simple-tui`), and the native door, `platform::<p>::NativeView` with its
     `ControlSink`, for a native view no built-in covers.
@@ -221,16 +224,22 @@ in a code comment.
     presented ones; touch, a touchpad and the text-input-v3 cursor rectangle cannot be
     checked from outside the app on X11, sway or weston; and a full `run.sh` takes
     105–107 minutes, its frame benchmark varying about 10% between sessions.
-    - The author's questions from the controls and their fixes: hover, focus and press on
-    a part (and the doctrine's sentence on a node's own `Hovered` and `Focused`),
-    `offset` as a paint-only translation, the switch thumb's travel, the `ring` name,
-    `SystemColors` as the platform's colors, how buttons, options and captions are
-    named, a choice's value as an index or a string, a press on a caption beside its
-    control, the disabled look, the open picker's tick, a public `Overlay` before item
-    4, `set_label_placement` and its `derive_` twin, a caption above its control, the
-    slider's natural width and node count, the scroll bar's geometry, `Painted` and
-    `ContextMenu` in the foundation, layout transitions relaying out every frame, and
-    whether a window focuses its first control when it opens.
+    - The author's answers (2026-10-17) to land in the prototype: a part takes every
+    state from its control; a choice's value is the app's own type; a window opens with
+    nothing focused, `set_autofocus` asking for focus; a press on content visibly
+    overflowing its control reaches the control, as in Chromium; a scroll box's bar is
+    its parts (`Track`, `Thumb`), today's look the default; `Painted` and `ContextMenu`
+    move into the foundation, `Painted` recording a vello scene in device pixels and
+    repainting when the scale changes; `SystemColors` stays the platform's colors; and
+    layout transitions keep relaying out per frame, as a browser's do, until relayout
+    starts from the changed node. The controls stage's other defaults stand: a disabled
+    control at half opacity, a tick on the open picker's chosen option, a slider 200
+    pixels wide at its least 80, the focus outline named `ring`, `offset` as a
+    paint-only translation, a caption beside its control focusing it without a click,
+    `set_label_placement` with its `derive_` twin, buttons, options and menu items named
+    by their content and captions by reference as GTK 4 names them, a public `Overlay`
+    of the popup subset before item 4, and `Part::Value`, `map_behavior` and
+    `ContextMenu::set_target` in the public surface.
 6. **The spikes on hardware.** The text-engine spikes ran on GitHub's runners
     (`spikes/`, the `spike-apple`, `spike-android` and `spike-windows` workflows) and
     passed: TextKit 2 under taffy draws what `UILabel` and `NSTextField` draw, taffy

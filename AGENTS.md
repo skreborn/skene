@@ -13,8 +13,9 @@ migration is at the top of `ROADMAP.md`, and `DESIGN.md` describes the code as i
   and Linux—and `skene-tui` the terminal's; the bare name `skene` is the CLI. Each
   facade owns its builder vocabulary, typed to exactly its medium; neither is the
   blessed one, and the two stay name-for-name parallel wherever a concept exists in
-  both. **App code is concrete**: a view is `impl View`, with no type parameter, no
-  generic medium and no platform bound anywhere an app writes. An app on both media
+  both. **App code is concrete**: a view is `impl View`, with no generic medium and no
+  platform bound anywhere an app writes, a view's one type parameter being the type of
+  a value it holds (a picker's `Picker<T>`). An app on both media
   writes two UIs over a shared crate of logic and state; the framework has no feature
   for sharing a UI between the media, and its guide teaches none. Everything two or
   more platforms share with identical semantics lives in the foundation: mechanisms
@@ -265,7 +266,10 @@ migration is at the top of `ROADMAP.md`, and `DESIGN.md` describes the code as i
     facades) and the terminal's `SimpleGlyphs` (the Simple library's terminal marks) are
     token sets on the same mechanism; there is no text theme, control theme or Simple
     theme, and `SimplePalette::default()` is built from public constructors, so what the
-    library does is exactly what a third party can do.
+    library does is exactly what a third party can do. `SystemColors` is the platform's
+    colors, as CSS's system colors are: a token set the realization defines and installs
+    at the root, which a theme redefines and the built-ins' defaults read, naming the
+    platform's colors rather than a look, so it is no control theme.
   - **Light and dark are one condition**, `Media::Dark`, answered per property in a
     definition or a value like a viewport or a pointer. There is no light/dark pair and
     no palette-level conditional—the whole-palette overlay was considered and rejected,
@@ -476,7 +480,8 @@ migration is at the top of `ROADMAP.md`, and `DESIGN.md` describes the code as i
   which is a box rather than a control and keeps the choice. A `Container` that handles
   a click is an **activatable row**, not a button: it takes focus, `Enter` and `Space`
   activate it, and it may hold controls, which own their presses. Focus order follows
-  the scene's child order, never geometry.
+  the scene's child order, never geometry, and a window opens with nothing focused, as
+  a Chromium page does, a control asking for focus on open through `set_autofocus`.
 - **A verdict is the view's, never its user's.** `handle_<event>` takes a plain callback
   on every control, `Basic*` and `Simple*` alike. A control decides what the platform
   and the ancestors are told, once, where its behavior lives, so no app or library
@@ -521,11 +526,13 @@ migration is at the top of `ROADMAP.md`, and `DESIGN.md` describes the code as i
   clusters of the value, the end where the caret is and before the start when made
   backward, `derive_selection` places it, `handle_selection_change` hears every move of
   the caret, and `bind_selection` wires both to one signal; a platform clamps each index
-  into the value, so nothing can name the inside of a cluster. A `State` a box cannot
-  have on its own (`Checked`, `Indeterminate`, `Disabled`, `Invalid`, `Open`) resolves
-  against the enclosing control; a node's own `Hovered`/`Focused` stay its own. Parts
-  (`Track`, `Fill`, `Thumb`, `Mark`, `Face`, `List`, `Item`, `Label`, and a tooltip's
-  `Bubble`) are the styling targets a control exposes; in the terminal the checkbox and
+  into the value, so nothing can name the inside of a cluster. Inside a control a part
+  takes every state from it: `Checked`, `Indeterminate`, `Disabled`, `Invalid`, `Open`,
+  `Hovered`, `Focused`, `FocusVisible` and `Pressed` resolve against the enclosing
+  control, so hovering a caption highlights the face it names, and a box no control
+  encloses keeps its own. Parts (`Track`, `Fill`, `Thumb`, `Mark`, `Face`, `List`,
+  `Item`, `Label`, a tooltip's `Bubble`, and a scroll box's bar as its `Track` and
+  `Thumb`) are the styling targets a control exposes; in the terminal the checkbox and
   radio `Mark` and the picker's indicator are glyphs from the Simple library's
   `SimpleGlyphs` token set, and the slider's track, fill and thumb are boxes there as
   everywhere. **Accessibility is reported, never spelled**: a behavior reports what it
@@ -709,7 +716,8 @@ migration is at the top of `ROADMAP.md`, and `DESIGN.md` describes the code as i
   `bind_<prop>` for a signal both at once, the value derived from it and each change
   written into it (`bind_checked`). A choice group's value is what it has `chosen`
   (`set_chosen`, `handle_choose`, `bind_chosen` on a picker, a listbox and a radio
-  group) and a command's event its activation (`handle_activate` on a button, any
+  group), each option carrying a value of the app's own type as SwiftUI's tag does,
+  and a command's event its activation (`handle_activate` on a button, any
   control and a menu entry), where a box keeps its click. A platform function that
   realizes the handler is named the same. The prelude carries `Apply`, so
   `.apply(option, Type::set_<prop>)` sets a property only where a value is given. A

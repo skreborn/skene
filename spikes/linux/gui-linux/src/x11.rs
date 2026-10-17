@@ -1239,18 +1239,22 @@ impl X11 {
           }
         }
       }
-      Event::XkbStateNotify(event) => self.keyboard.update_mask(
-        [
-          u32::from(event.base_mods),
-          u32::from(event.latched_mods),
-          u32::from(event.locked_mods),
-        ],
-        [
-          event.base_group as u32,
-          event.latched_group as u32,
-          u32::from(event.locked_group),
-        ],
-      ),
+      Event::XkbStateNotify(event) => {
+        self.keyboard.update_mask(
+          [
+            u32::from(event.base_mods),
+            u32::from(event.latched_mods),
+            u32::from(event.locked_mods),
+          ],
+          [
+            event.base_group as u32,
+            event.latched_group as u32,
+            u32::from(event.locked_group),
+          ],
+        );
+
+        shell.set_modifiers(self.keyboard.modifiers());
+      }
       Event::XkbNewKeyboardNotify(_) | Event::XkbMapNotify(_) | Event::MappingNotify(_) => {
         load_keymap(&mut self.keyboard, &self.conn, self.device);
       }

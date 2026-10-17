@@ -514,6 +514,9 @@ def scenario_fields():
   drive("sleep", "500", "triple-click-at", brave.x + brave.width // 2, mid_y)
   settle()
   check("field: a triple click selects the line", selection(name) == (0, 17), selection(name))
+  # A press inside the selection drags its text, as a browser's does: the drag that selects
+  # starts from a collapsed one.
+  keys("End")
   drive("sleep", "500", "drag", hello.x + 1, mid_y, brave.x + brave.width - 1, mid_y)
   settle()
   check("field: a drag selects what it covers", selection(name) == (0, 11), selection(name))

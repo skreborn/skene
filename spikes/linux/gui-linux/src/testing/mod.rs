@@ -1363,6 +1363,19 @@ impl Drawn {
     Self::click_at(at, input::PRIMARY);
   }
 
+  /// Clicks the primary button at `at` in the pointer's space with the left Shift held down
+  /// around the click, then settles.
+  pub fn shift_click_point(&mut self, at: (f64, f64)) {
+    Self::send(4, |input| {
+      input.move_to(at.0, at.1)?;
+      input.sync()?;
+      input.key(input::SHIFT, true)?;
+      input.button(input::PRIMARY, true)?;
+      input.button(input::PRIMARY, false)?;
+      input.key(input::SHIFT, false)
+    });
+  }
+
   /// Clicks the primary button twice at `at` in the pointer's space, as fast as a hand
   /// double-clicks, then settles.
   pub fn double_click_point(&mut self, at: (f64, f64)) {

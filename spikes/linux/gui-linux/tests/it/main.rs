@@ -14,6 +14,7 @@ mod menu;
 mod reader;
 mod scale;
 mod secure;
+mod selection;
 mod shell;
 
 use skene_foundation::{

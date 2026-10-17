@@ -38,7 +38,7 @@ pub const SECONDARY: u32 = 0x111;
 pub const MIDDLE: u32 = 0x112;
 
 /// The evdev code of the left Shift key.
-const SHIFT: u32 = 42;
+pub const SHIFT: u32 = 42;
 /// The evdev code of the right Alt key: level 3 on layouts that have one.
 const LEVEL3: u32 = 100;
 

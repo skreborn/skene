@@ -1899,9 +1899,13 @@ impl Dispatch2<wl_keyboard::WlKeyboard, State> for Raw {
         mods_locked,
         group,
         ..
-      } => state
-        .keyboard
-        .update_mask([mods_depressed, mods_latched, mods_locked], [0, 0, group]),
+      } => {
+        state
+          .keyboard
+          .update_mask([mods_depressed, mods_latched, mods_locked], [0, 0, group]);
+
+        state.shell.set_modifiers(state.keyboard.modifiers());
+      }
       wl_keyboard::Event::RepeatInfo { rate, delay } => {
         state.keyboard.repeat = (
           u32::try_from(rate).unwrap_or(0),

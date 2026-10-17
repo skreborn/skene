@@ -2831,8 +2831,6 @@ impl Shell {
       self.keyboard_focus(true);
     }
 
-    self.modifiers = event.modifiers;
-
     if event.down {
       self.keyboard_modality = true;
     }
@@ -3108,6 +3106,12 @@ impl Shell {
     if event.down && event.key == "Escape" {
       self.set_focus(None, false);
     }
+  }
+
+  /// The modifiers held now, as the platform reports them changing (Wayland's `modifiers`,
+  /// X11's `XkbStateNotify`): what a pointer press reads, a modifier released alone included.
+  pub const fn set_modifiers(&mut self, modifiers: skene_foundation::seam::report::Modifiers) {
+    self.modifiers = modifiers;
   }
 
   /// The window gained or lost the keyboard.

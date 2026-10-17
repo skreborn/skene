@@ -14,6 +14,10 @@ Skene's changes, each marked `Skene:` in the source:
   description from the described-by nodes' text where a node has none of its own.
 - node.rs: the expandable, expanded, has-popup and invalid-entry states.
 - node.rs: a switch is a check box (checkable, checked while on), as GTK 4 reports GtkSwitch.
+- node.rs: the exact role where AT-SPI's is shared (`switch`, `checkbox`, `option`,
+  `listitem`) in the `xml-roles` attribute, as Chromium and Firefox report an ARIA role, and a
+  heading's `level`: AT-SPI 2.52 has no switch role, and GTK 4 reports a row and an option
+  alike as selectable list items.
 - node.rs: a text entry and a text view (`TextInput`, `MultilineTextInput`) are text, as GTK 4
   reports GtkEntry and GtkTextView.
 - node.rs: the first action's key binding is the node's keyboard shortcut (`key_binding`, and in

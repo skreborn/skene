@@ -513,6 +513,24 @@ impl NodeWrapper<'_> {
         if let Some(role_description) = self.braille_role_description() {
             attributes.insert("brailleroledescription", role_description.to_string());
         }
+        // Skene: the exact role where AT-SPI's is shared (a switch is a check box, an option
+        // and a list item are list items), named as ARIA names it in `xml-roles`, as Chromium
+        // and Firefox report it; and a heading's level.
+        let exact = match self.0.role() {
+            Role::Switch => Some("switch"),
+            Role::CheckBox => Some("checkbox"),
+            Role::ListBoxOption => Some("option"),
+            Role::ListItem => Some("listitem"),
+            _ => None,
+        };
+        if let Some(exact) = exact {
+            attributes.insert("xml-roles", exact.to_string());
+        }
+        if self.0.role() == Role::Heading {
+            if let Some(level) = self.0.level() {
+                attributes.insert("level", level.to_string());
+            }
+        }
 
         attributes
     }

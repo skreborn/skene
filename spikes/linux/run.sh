@@ -94,15 +94,17 @@
 #     screen on X11, mutter's screen cast through PipeWire (WirePlumber beside it), wlroots'
 #     screencopy on sway, the X screen weston and KWin show their output in;
 #   - presented:: holds that a frame painted for a reader alone (a switch flipped through
-#     AT-SPI) reaches the screen, and roles:: that each role a reader finds is exactly Skene's
-#     (a switch, a row and an option told from a check box and a list item by `xml-roles`).
+#     AT-SPI) reaches the screen, and that a part of the window drawn again alone shows, pixel
+#     for pixel, what the whole window drawn at once shows there; roles:: that each role a
+#     reader finds is exactly Skene's (a switch, a row and an option told from a check box and
+#     a list item by `xml-roles`).
 #
 # The GTK realization (gui-linux-gtk) and its probes (probes/) are kept, outside the
 # workspace, for reference.
 #
 # Results go to results/ (summary.txt, logs, PNGs, JSON; results/shell/<scenario>/ for the
 # shell, results/controls/<session>/ for the controls). The target directory is
-# $CARGO_TARGET_DIR (target-controls by default), deleted at the end unless KEEP_TARGET=1.
+# $CARGO_TARGET_DIR (target-testing by default), deleted at the end unless KEEP_TARGET=1.
 # GTK_PROTO names the GTK prototype's directory (../gtk/proto unless set), whose cargo-nextest
 # is borrowed where tools/bin has none and whose numbers are shown beside these.
 # SKIP_CORE=1 skips the platform-text section, SKIP_SHELL=1 the shell's sessions,

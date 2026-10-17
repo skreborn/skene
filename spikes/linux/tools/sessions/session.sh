@@ -3,7 +3,8 @@
 # (x11: Xvfb; x11-wm: Xvfb + mutter --x11 as the window manager; sway: headless sway with
 # pixman; mutter: headless mutter with PipeWire for its RemoteDesktop streams; weston: weston on
 # its X11 backend in a private Xvfb, which XTest drives (DISPLAY names that Xvfb); kwin: KWin's
-# virtual backend, its fake input open, $KWIN naming the kwin_wayland to run), optionally the
+# virtual backend, its fake input open, $SKENE_KWIN naming the kwin_wayland to run, as it does
+# for skene-runner), optionally the
 # settings-portal stand-in (PORTAL="<scheme> <contrast> [changes]"),
 # BEFORE (a helper started in the background first, an XSETTINGS manager), the app ($APP with
 # $APP_ARGS, SKENE_TRACE on, SKENE_SHOT and SKENE_PROBE in $OUT), then
@@ -101,7 +102,7 @@ CONF
     ;;
   kwin)
     KWIN_WAYLAND_NO_PERMISSION_CHECKS=1 KWIN_COMPOSE=Q QT_QPA_PLATFORM=offscreen \
-      "${KWIN:-kwin_wayland}" --virtual --socket skene-shell-$$ --width "${MONITOR%x*}" \
+      "${SKENE_KWIN:-kwin_wayland}" --virtual --socket skene-shell-$$ --width "${MONITOR%x*}" \
       --height "${MONITOR#*x}" >"$OUT/kwin.log" 2>&1 &
     PIDS+=($!)
     for _ in $(seq 200); do [ -S "$XDG_RUNTIME_DIR/skene-shell-$$" ] && break; sleep 0.02; done

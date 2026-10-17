@@ -8,7 +8,8 @@
                                                 scroll), and the whole of it (a relayout)
   check.py grep LOG PATTERN WHAT                PASS where a line of LOG holds PATTERN
 
-Every check prints one line starting PASS or FAIL and the thing checked.
+Every check prints one line starting PASS or FAIL and the thing checked, FAIL where the file it
+reads is missing.
 """
 
 import re
@@ -19,18 +20,32 @@ from PIL import Image
 
 
 def pixel(path, x, y, hex_color, tolerance="2"):
-  image = Image.open(path).convert("RGBA")
+  name = path.rsplit("/", 1)[-1]
+
+  try:
+    image = Image.open(path).convert("RGBA")
+  except OSError as error:
+    print(f"FAIL pixel {name} ({x},{y}) is #{hex_color} (no image: {error.strerror or error})")
+
+    return
+
   got = image.getpixel((int(x), int(y)))[:3]
   want = tuple(int(hex_color[i:i + 2], 16) for i in (0, 2, 4))
   ok = all(abs(a - b) <= int(tolerance) for a, b in zip(got, want))
-  name = path.rsplit("/", 1)[-1]
   print(f"{'PASS' if ok else 'FAIL'} pixel {name} ({x},{y}) is #{hex_color} (got #{''.join(f'{c:02x}' for c in got)})")
 
 
 def size(path, width, height):
-  image = Image.open(path)
-  ok = image.size == (int(width), int(height))
   name = path.rsplit("/", 1)[-1]
+
+  try:
+    image = Image.open(path)
+  except OSError as error:
+    print(f"FAIL size {name} is {width}x{height} (no image: {error.strerror or error})")
+
+    return
+
+  ok = image.size == (int(width), int(height))
   print(f"{'PASS' if ok else 'FAIL'} size {name} is {width}x{height} (got {image.size[0]}x{image.size[1]})")
 
 
@@ -43,7 +58,12 @@ FRAME = re.compile(
 def frames(path, name):
   rows = []
 
-  for line in open(path, errors="replace"):
+  try:
+    lines = open(path, errors="replace").readlines()
+  except OSError:
+    lines = []
+
+  for line in lines:
     match = FRAME.search(line)
 
     if match:
@@ -75,7 +95,13 @@ def frames(path, name):
 
 
 def grep(path, pattern, what):
-  ok = any(pattern in line for line in open(path, errors="replace"))
+  try:
+    ok = any(pattern in line for line in open(path, errors="replace"))
+  except OSError as error:
+    print(f"FAIL {what} (no log: {error.strerror or error})")
+
+    return
+
   print(f"{'PASS' if ok else 'FAIL'} {what}")
 
 

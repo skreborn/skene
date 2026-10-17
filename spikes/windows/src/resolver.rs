@@ -15,10 +15,10 @@ use crate::{
 /// One range the fallback mapped to a font.
 #[derive(Clone, Debug)]
 pub struct Mapped {
-  /// UTF-16 start and length.
+  // UTF-16 start and length.
   pub start: u32,
   pub len: u32,
-  /// The font's family (WWS, as the system collection names it), `None` where nothing maps.
+  // The font's family (WWS, as the system collection names it), `None` where nothing maps.
   pub family: Option<String>,
   pub path: Option<String>,
   pub index: u32,

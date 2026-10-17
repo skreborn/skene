@@ -23,3 +23,5 @@ Skene's changes, each marked `Skene:` in the source:
 - node.rs: the first action's key binding is the node's keyboard shortcut (`key_binding`, and in
   `actions`).
 - Cargo.toml: unicode-segmentation for words and sentences.
+
+The licence files (LICENSE-MIT, LICENSE-APACHE, and LICENSE.chromium for the parts derived from Chromium) are copied from the AccessKit repository, since the published crate ships none.

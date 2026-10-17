@@ -77,7 +77,7 @@ pub fn face_metrics(face: &IDWriteFontFace, em: f32) -> (f32, f32, f32) {
 pub struct NativeLaid {
   pub layout: IDWriteTextLayout,
   pub format: IDWriteTextFormat,
-  /// The lines shown.
+  // The lines shown.
   pub lines: Vec<DWRITE_LINE_METRICS>,
   pub truncated: bool,
 }

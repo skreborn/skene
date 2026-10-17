@@ -159,12 +159,6 @@ supersedes.
   Parley lays it out on Linux and in the terminal, the terminal through a typeface the
   build generates whose glyphs are its cells. Revisit when neither a platform's engine
   nor Parley can carry its text, or the terminal needs a behavior no typeface expresses.
-- **Tab stops where Parley lays text out** (2026-10-08), on Linux and in the terminal:
-  a tab is a blank as wide as its glyph, where a browser stops it eight spaces apart,
-  and tabs are outside the core every platform guarantees, so every other engine sets
-  them its own way. Tabs belong to code editors, where a fixed width serves, and to
-  generic text editors, which most of an interface is not. Revisit when Parley lays out
-  `tab-size` or an app lays columns out with tabs.
 - **A newline ending a text laid out as a browser's block lays it out** (2026-10-08),
   with no line, where Parley lays text out: Parley opens a line after a final newline,
   as an editor does, and an app leaves out what it does not want laid out; an empty
@@ -466,9 +460,46 @@ supersedes.
   `android.text` over Minikin on Android, DirectWrite on Windows, the DOM on the web,
   and Parley over Linux's own layers on Linux and in the terminal. The guarantee
   shrinks to a core (blanks and newlines kept, a word too wide for its line broken,
-  an empty text one line), and one app may wrap differently per platform. Revisit when
-  Parley matches a platform's engine in that platform's fallback, emoji and line
-  breaking.
+  an empty text one line), and one app may wrap differently per platform. Measured
+  against Parley on 2026-10-17 in both of Parley's forms (the next two entries) and
+  kept; revisit with them.
+- **Parley and vello drawing every glyph** (2026-10-17), one layout engine and one
+  painter on every platform but the web, the platform supplying its fonts and fallback
+  alone: measured over `spikes/text-parity`'s corpus on macOS, the iOS simulator,
+  Android 10 to 15 and Windows, vello's glyphs at the platform's own positions are
+  lighter and softer than the platform's rasterizer everywhere (ink 0.83 of TextKit's on
+  macOS and 0.90 on iOS, SSIM 0.944 against Direct2D and 0.971 against Skia), having
+  vertical hinting alone and no gamma, stem darkening or LCD; they draw no Chinese on
+  macOS 15 and iOS 26 without Core Text's outlines, PingFang's being in Apple's `hvgl`
+  table; and they lose OpenType-SVG colour glyphs and Android's high-contrast text,
+  beside every residue of Parley's layout (the next entry). Selection, editing and the
+  input and accessibility protocols are Skene's own under every engine and were never
+  at stake. Revisit when vello's text at a platform's own glyph positions matches the
+  platform's rasterizer within the spread of the platform's own two paths (Direct2D
+  against the DirectWrite atlas, SSIM 0.991), or when a platform's engine costs a
+  function Skene needs.
+- **Parley's layout over the platform's fonts and rasterizer** (2026-10-17), Chromium's
+  model on every platform but the web: Parley breaks lines as the platform's engine
+  does in 125 of the corpus's 131 variants on macOS, 124 on iOS, 123 on Windows and 116
+  to 122 on Android once Minikin's whole-pixel advances are applied, but each platform
+  keeps a residue its users see and a dependency its engine does not have. On Apple
+  CJK punctuation compression is lost (a 27-character Chinese line 7.7% wider), Core
+  Text's rule being unpublished, the Indic fallback instances stay a few percent off
+  after seven rounds of calibration that consults TextKit at run time, and at the
+  largest Dynamic Type size no line height lands within half a point. On Android the
+  break rules at URLs, hyphens and no-break spaces, phrase breaking and Lao and Khmer on
+  Android 15 differ, high-contrast text is Skene's to draw, OEM font styles are
+  unmeasured, and an app grows 1.1 MB per ABI. On Windows, where breaks agree in 123 of
+  131 and fallback in every character, Parley misplaces trailing spaces on wrapped
+  bidi lines and stacks marks badly. Each platform's own engine stays. Revisit, per
+  platform, when Parley's residue against its engine in `spikes/text-parity` falls
+  within the spread of the engine's own two paths, or when a platform's engine costs a
+  function Skene needs.
+- **vello's outlines in place of FreeType on Linux** (2026-10-17), one glyph path on
+  every platform Parley lays text out on: it would drop the glyph mask cache and the
+  desktop's font-rendering settings, and with them the antialiasing and hinting the
+  user chose, which FreeType honours. Linux keeps FreeType's rasterization. Revisit
+  with Parley and vello drawing every glyph.
 - **The platform's own controls as the built-ins** (2026-10-15), `Toggle` wrapping the
   platform's switch and every native platform's built-in a control of its toolkit: the
   governing rule is self-drawn everything without losing native functionality. Skene's

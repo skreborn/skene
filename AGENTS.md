@@ -166,7 +166,9 @@ migration is at the top of `ROADMAP.md`, and `DESIGN.md` describes the code as i
   glyphs drawn through Skene's renderer, grayscale), the DOM on the web, and on Linux,
   which has none, Parley over Linux's own layers—fontconfig's per-character fallback,
   colour emoji included, FreeType's rasterization under the user's antialiasing and
-  hinting settings, and complex scripts' line breaking—never Pango. Each realization's
+  hinting settings, and complex scripts' line breaking—never Pango. Where Parley lays
+  text out, Skene carries the changes it needs in Parley itself, as patches offered
+  upstream once they are proven in practice, as it does AccessKit's. Each realization's
   engine implements the foundation's `TextEngine`: a paragraph from styled text, its
   intrinsic minimum and maximum, an immutable layout at a width that hit-tests and
   reports its caret and range rectangles, its boundaries, and a paint-only repaint that

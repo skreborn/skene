@@ -52,14 +52,21 @@ in a code comment.
     - The text doctrine's guaranteed core (blanks and newlines kept, a word too wide for
     a line breaking where the line fills, an empty text laid out as one line) held by a
     test on every engine; everything beyond it is the engine's.
+    - Parley, where it lays text out (Linux and the terminal): Skene carries a patched
+    Parley, as it does AccessKit, each change marked and offered upstream once proven.
+    A break never falls inside a grapheme cluster, a wrapped bidi line places its
+    trailing blanks by UAX #9's rule L1, a soft hyphen's break draws its hyphen at its
+    width, a tab advances to the next stop eight blanks apart as a browser's `tab-size`
+    sets them, and stacked marks clear one another; ICU4X's dictionaries for Thai, Lao,
+    Khmer and Burmese are compiled in (about 3.8 MB). The revisit's harness,
+    `spikes/text-parity`, holds each change against the cases that found it.
     - The prototype (`spikes/linux`, its own workspace) carries all of it: the trait, the
     Parley engine, the editing core with the terminal's field and the drawn Linux field
     as its clients, the patched AccessKit, which reports no AT-SPI error where
-    `GtkEntry` reports five, and the guaranteed core under test. It lands through the
-    gate rather than being copied whole, and lands two corrections with it: a layout's
-    geometry never changes while its paint is the paragraph's, so a repaint shows in
-    every layout already handed out, as the trait's documentation must say in one voice;
-    and the terminal's secure field draws its text masked.
+    `GtkEntry` reports five, the guaranteed core under test, the trait's contract (a
+    layout's geometry never changes, and its paint is the paragraph's, so a repaint
+    shows in every layout already handed out) under a test, and the terminal's secure
+    field drawn masked. It lands through the gate rather than being copied whole.
 2. **One platform per build, and app code concrete.** `skene-gui` is born over the
     reshaped foundation with Linux as its first platform (item 5), and the web and the
     terminal follow it there (item 10); no app or library signature carries a type
@@ -136,68 +143,104 @@ in a code comment.
 5. **Linux, drawn on its own protocols.** A window platform: Skene owns the whole
     window, draws everything and speaks Linux's text, input and accessibility protocols
     itself, the GTK prototype remaining a reference whose transcripts are the bar. The
-    drawn prototype (`spikes/linux`) realizes the whole on X11, mutter and sway in about
-    14,700 lines and 4,000 more for Parley's Linux layers, against GTK's 4,550
-    production lines (7,300 with its harness): it starts in 40–60 ms where GTK takes
-    297–370, Orca speaks GTK's words on every checked line, and its stripped release
-    binary is 15.3 MB with no GTK in it. What it leaves open is in the bullets below.
-    - Paint: glyphs are composited after the scene, so a box drawn over a text lets the
-    glyphs through; the glyph masks paint in the scene's order. The first frame of 1000
-    rows takes 218–243 ms, 157–181 of them in layout; transitions do not yet run on the
-    frame clock, and gradients are missing.
-    - Controls: the prototype paints them inside the realization, at fixed geometry and
-    in a palette of its own, so a library cannot restyle them and `SimpleButton` cannot
-    reach `SimplePalette`. They become composed trees of Skene's views (item 2), and a
-    third party's drawn control a `Control<B>` with a `Painted` part.
+    drawn prototype (`spikes/linux`) realizes the whole on X11, mutter, sway, weston and
+    KWin in about 19,700 lines and 3,400 more for Parley's Linux layers, against GTK's
+    4,550 production lines (7,300 with its harness): it starts in 45–58 ms where GTK
+    takes 297–371, a screen reader's text queries meet no error where `GtkEntry`'s meet
+    five, and its stripped release binary is 16.5 MB with no GTK in it. What it leaves
+    open is in the bullets below.
+    - Paint: glyph masks paint in the scene's order, gradients (linear, radial, conic)
+    and motion run on the frame clock, and the first frame of 1000 rows fell from
+    218–243 ms to 61–69 ms (layout 18–20 ms) against a target of 50 (16). Shaping 3,000
+    paragraphs is 33–36 ms of it, so the rest takes a per-word shape cache in Parley
+    (Minikin's `LayoutCache`), shaping during the prepare walk through a batch engine
+    call, smaller layout nodes or an arena, `LazyColumn` for off-screen rows, and
+    relayout from the changed node (a relayout still costs 20–27 ms at 1000 rows).
+    Mutter's raster costs about three times X11's and sway's, untraced (the CSD shadow's
+    blur, the surface format and buffer age are the candidates). A partial repaint with
+    vello_cpu matches a whole frame only on its four-pixel tile grid from the frame's
+    left edge, which Skene's painter keeps and vello could fix upstream.
+    - The GPU path (vello_hybrid over wgpu, the CPU its floor): it paints whole frames,
+    so a one-row change costs 38–40 ms at 1080p on lavapipe against half a millisecond on
+    the CPU. Damage-limited frames, a GPU sink for popups (CPU only today), a wakeup on
+    device loss, scale above 1 and a hardware adapter remain, with one X11 abort
+    unexplained and vello_hybrid's upload-ordering bug, worked around, to report
+    upstream. The CPU renderer misses 60 Hz at 4K (23.5 ms for vello_cpu's repaint at
+    3840×2160, 9.3 ms more to shared memory), so the GPU path is measured on hardware
+    before the CPU floor is called sufficient.
+    - Controls: composed trees of Skene's views over `Control<B>`, their parts styled by
+    the style model with defaults a library overrides, `SimpleButton` over
+    `SimplePalette`, and `acme-rating` a third party's drawn control; item 2 ports them,
+    and their open design questions are the last bullet's.
     - The shell: Wayland through smithay-client-toolkit and X11 through x11rb, with
-    xkbcommon, rather than winit, which never sends surrounding text. The prototype has
-    high-resolution wheels and XInput 2's smooth scrolling, the clipboard and the
-    primary selection, popups (`xdg_popup`, override-redirect windows on X11) and the
-    window's fractional scale; drag and drop, touch, kinetic scrolling and fractional
-    scale in popups and fields remain, and KWin and weston are untried.
+    xkbcommon, rather than winit, which never sends surrounding text: high-resolution
+    wheels, XInput 2's smooth scrolling and a touchpad's kinetic fling where the
+    compositor ends the motion (X11 never does, as with GTK), touch, drag and drop of
+    text and URIs, the clipboard and the primary selection, popups (`xdg_popup`,
+    override-redirect windows on X11) and fractional scale in windows, popups and
+    fields. Open: a drag icon, touch selection handles, a magnifier and a selection
+    dragged by touch, a preferred scale per popup, a popup kept on screen at its edge on
+    weston, and fractional scale tried on mutter, weston and KWin's X11 backend.
     - Input methods: text-input-v3 on Wayland, IBus and Fcitx5 over D-Bus and XIM on
     X11, feeding the editing core, their transcripts held to `GtkEntry`'s. A secure
-    entry gives Wayland's input method a mark per cluster and X11's nothing; both get
-    the marks.
-    - Accessibility: AT-SPI through AccessKit with item 1's changes, Orca's words for
-    typing, caret moves, selection and focus held to `GtkEntry`'s. Seven differences
-    remain (the frame and the entry announced at startup, where-am-i's wording, flat
-    review's words and characters), and Orca on Wayland is untried.
+    entry gives every input method a mark per cluster and no plaintext reaches one or a
+    trace; its keystrokes still arrive as key events (`GtkEntry`'s unchecked), and XIM
+    carries no password purpose.
+    - Accessibility: AT-SPI through AccessKit with item 1's changes, Orca's words held to
+    `GtkEntry`'s. Six differences remain on X11, all on GTK's side, and one on GNOME
+    Wayland, which follows from whether a window focuses its first control when it opens
+    (the last bullet's); Orca 46's own commands hear no keys on Wayland, for GTK 4 as
+    well, until GNOME 48's keyboard monitor; there is no emoji chooser, so no Insert
+    Emoji; and a switch's role travels in `xml-roles`, AT-SPI 2.52 having none.
     - Window chrome: client-side decorations where the compositor asks for them (mutter)
     that move, resize, maximize, tile and open the window menu, their buttons reachable
-    through AT-SPI; server-side ones where they are offered; X11 under its window
-    manager.
-    - Text: Parley with Linux's layers beneath it: fontconfig's per-character fallback
-    with emoji presentation resolved first, so color emoji render where Parley 0.12
-    renders five of seven emoji test sequences wrong, color emoji as monochrome boxes;
-    FreeType's grayscale rasterization under fontconfig's and XSETTINGS' antialiasing
-    and hinting, composited by Skene's renderer through a glyph atlas shared with
-    Windows, vello's outlines its floor; complex-script line breaking (Khmer, Lao,
-    Burmese); and Parley's soft-hyphen fix upstream.
-    - The environment: scheme and contrast from the settings portal, a portal answering
-    no preference falling back to the desktop's GTK settings.
-    - Rendering, open: the CPU renderer misses 60 Hz at 4K (23.5 ms for vello_cpu's
-    repaint at 3840×2160, 9.3 ms more to shared memory), so whether the GPU path is the
-    expected one there is measured before the CPU floor is called sufficient.
-    - Testing: AT-SPI reads, real XTest input, `settle()` and `#[skene_gui::test]`,
-    `press()` focusing by real input (Tab until AT-SPI reports the focus); a display
-    runner giving each test process a private display, session bus and AT-SPI bus and
-    removing them on any end of the process, an interrupt included, an app run on the
-    user's display taking a bus of its own only where the user has none, and probe
-    binaries running through it. A stand-in for the OS settings portal and the layout
-    engine's unit tests over canned measurements stay, being no platform. The
-    prototype's driver runs every test on X11, headless mutter (EIS through `reis`) and
-    headless sway. Open: its tests that drive a shell with no window move to the driver
-    and the windowless mode goes, a screenshot reads the presented surface rather than
-    the app's last frame, a frame lost on mutter gets a test of its own, and a role matches
-    exactly, so a switch never stands in for a checkbox nor a row for an option.
+    through AT-SPI; server-side ones where they are offered (KWin, sway); X11 under its
+    window manager.
+    - Text: Parley with Linux's layers beneath it (item 1): fontconfig's per-character
+    fallback with emoji presentation resolved first, so colour emoji render where Parley
+    0.12 renders five of seven emoji test sequences wrong; FreeType's grayscale
+    rasterization under the antialiasing, hinting and text scale the settings portal
+    and XSETTINGS give, composited in the scene's order through a glyph atlas shared
+    with Windows, vello's outlines its floor; and complex-script line breaking through
+    ICU4X's dictionaries.
+    - The environment: scheme, contrast and the font settings from the settings portal,
+    a portal answering no preference falling back to the desktop's GTK settings.
+    - Testing: driver only (`DECISIONS.md`, 2026-10-16), reading AT-SPI and sending real
+    input (XTest on X11, EIS through `reis` on mutter, virtual input on sway), with
+    `settle()`, `#[skene_gui::test]`, `press()` focusing by real input, screenshots read
+    from the presented surface and roles matched exactly, through a display runner
+    giving each test process a private display, session bus and AT-SPI bus, its legs
+    X11, mutter, sway, weston, KWin and KWin's Xwayland, and sway, KWin and X11 at scale
+    1.5. A stand-in for the OS settings portal and the layout engine's unit tests over
+    canned measurements stay, being no platform. Open: `skene-gui-linux`'s
+    dev-dependencies on `skene-gui` and `skene-conformance` form a cycle the gate's
+    dependency order may reject, so the GPU tests move to a conformance-side target; the
+    KWin scenario passes when KWin never started and must fail when no app frame
+    arrives; KWin's legs take twice sway's time, KWin starting per test process, and use
+    its X11 backend for screenshots; motion recordings read painted frames rather than
+    presented ones; touch, a touchpad and the text-input-v3 cursor rectangle cannot be
+    checked from outside the app on X11, sway or weston; and a full `run.sh` takes
+    105–107 minutes, its frame benchmark varying about 10% between sessions.
+    - The author's questions from the controls and their fixes: hover, focus and press on
+    a part (and the doctrine's sentence on a node's own `Hovered` and `Focused`),
+    `offset` as a paint-only translation, the switch thumb's travel, the `ring` name,
+    `SystemColors` as the platform's colors, how buttons, options and captions are
+    named, a choice's value as an index or a string, a press on a caption beside its
+    control, the disabled look, the open picker's tick, a public `Overlay` before item
+    4, `set_label_placement` and its `derive_` twin, a caption above its control, the
+    slider's natural width and node count, the scroll bar's geometry, `Painted` and
+    `ContextMenu` in the foundation, layout transitions relaying out every frame, and
+    whether a window focuses its first control when it opens.
 6. **The spikes on hardware.** The text-engine spikes ran on GitHub's runners
     (`spikes/`, the `spike-apple`, `spike-android` and `spike-windows` workflows) and
     passed: TextKit 2 under taffy draws what `UILabel` and `NSTextField` draw, taffy
     measures through JNI at one crossing per leaf per pass once warm and within
     Compose's time, and DirectWrite's glyph runs keep z-order, clips and group opacity
-    in vello by both paths. What they found lands in the platform items below; what only
-    a device or a GPU answers remains:
+    in vello by both paths. The text revisit (2026-10-17) added `spikes/text-parity`,
+    one corpus of 131 variants and a comparison of breaks, metrics, fonts and pixels,
+    run through TextKit 2, `android.text` and DirectWrite against Parley in both forms
+    (`DECISIONS.md` records the outcome). What they found lands in the platform items
+    below; what only a device or a GPU answers remains:
     - iOS: the system's selection beside a link's tap, the loupe and handles,
     `UITextSelectionDisplayInteraction` drawing `selection_background`, frame times on a
     mid-range iPhone, the iOS 17 floor (the runner offered iOS 26 alone), Dynamic Type

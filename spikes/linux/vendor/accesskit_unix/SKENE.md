@@ -7,3 +7,5 @@ Skene's changes, each marked `Skene:` in the source:
 - atspi/interfaces/text.rs: GetTextAtOffset, GetTextBeforeOffset, GetTextAfterOffset and
   GetCharacterAtOffset.
 - atspi/interfaces/action.rs: GetKeyBinding answers the node's keyboard shortcut.
+
+The licence files (LICENSE-MIT, LICENSE-APACHE) are copied from the AccessKit repository, since the published crate ships none.

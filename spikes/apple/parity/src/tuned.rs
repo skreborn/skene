@@ -319,45 +319,45 @@ pub struct Stored {
 
 /// Parley over Core Text's fonts.
 pub struct TunedEngine {
-  /// The collection, holding only what Core Text resolved.
+  // The collection, holding only what Core Text resolved.
   pub fonts: Fonts,
   layouts: LayoutContext<()>,
-  /// What is on.
+  // What is on.
   pub tuning: Tuning,
   registered: HashMap<String, Registered>,
   refused: std::collections::HashSet<String>,
   instances: HashMap<(u32, u16, bool), Vec<(String, f64)>>,
   fallback_cache: HashMap<(String, String, String), Option<String>>,
-  /// The Core Text font each registered blob came from, by blob id.
+  // The Core Text font each registered blob came from, by blob id.
   pub sources: HashMap<u64, CFRetained<CTFont>>,
-  /// A cluster and language each fallback family was found for, to ask Core Text again at
-  /// another size.
+  // A cluster and language each fallback family was found for, to ask Core Text again at
+  // another size.
   samples: HashMap<String, (String, String)>,
-  /// Each fallback family's registered font data (face 0), for its advances.
+  // Each fallback family's registered font data (face 0), for its advances.
   bytes_of: HashMap<String, Arc<dyn AsRef<[u8]> + Send + Sync>>,
-  /// Each fallback family's blob id.
+  // Each fallback family's blob id.
   blob_of: HashMap<String, u64>,
-  /// Each fallback family's style by size, weight and slant.
+  // Each fallback family's style by size, weight and slant.
   fallback_styles_cache: HashMap<(String, u32, u16, bool), FallbackStyle>,
-  /// The tracking in points of each tracked blob at each size (`f32` bits).
+  // The tracking in points of each tracked blob at each size (`f32` bits).
   tracking_by_blob: HashMap<(u64, u32), f32>,
-  /// How each fallback family's optical size was settled.
+  // How each fallback family's optical size was settled.
   pub optical_notes: Vec<String>,
-  /// Time spent building sfnts from tables and registering them.
+  // Time spent building sfnts from tables and registering them.
   pub register_ms: f64,
-  /// Bytes of sfnt registered (copied).
+  // Bytes of sfnt registered (copied).
   pub registered_bytes: usize,
-  /// Bytes of font files registered by mapping them.
+  // Bytes of font files registered by mapping them.
   pub mapped_bytes: usize,
-  /// How fonts reach fontique.
+  // How fonts reach fontique.
   pub storage: Storage,
-  /// Each font registered, as it was stored.
+  // Each font registered, as it was stored.
   pub stored: Vec<Stored>,
-  /// Fonts fontique refused (an `hvgl` font, say).
+  // Fonts fontique refused (an `hvgl` font, say).
   pub rejected: Vec<String>,
-  /// The families registered, in order: family, PostScript name, file.
+  // The families registered, in order: family, PostScript name, file.
   pub log: Vec<(String, String, Option<String>)>,
-  /// What registration changed: `hvgl` stripped or substituted.
+  // What registration changed: `hvgl` stripped or substituted.
   pub notes: Vec<String>,
 }
 

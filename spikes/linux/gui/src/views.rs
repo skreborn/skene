@@ -31,9 +31,6 @@ use crate::{
 /// A box's handler of an event: whether the event goes on to the boxes around it.
 type Handler<E> = Rc<dyn Fn(&E) -> Bubbling>;
 
-/// A box's handler of a drop: whether it took what was dropped.
-type DropHandler = Rc<dyn Fn(&Dropped) -> bool>;
-
 /// The decorated box around at most one child: the one view that takes decoration, sizing
 /// and a click.
 ///
@@ -48,7 +45,7 @@ pub struct Container {
   key: Option<Handler<KeyEvent>>,
   pointer: Option<Handler<PointerEvent>>,
   context_menu: Option<Handler<ContextMenuEvent>>,
-  drop: Option<DropHandler>,
+  drop: Option<Handler<Dropped>>,
   focus: Option<Rc<dyn Fn(bool)>>,
   handle: Option<NodeHandle>,
   child: Option<Child>,
@@ -205,11 +202,11 @@ impl Container {
     self
   }
 
-  /// Takes what is dropped in the box, from this app or another: `drop` answers whether it
-  /// took it (else the box around it is offered it). Text and URIs dragged over the box are
-  /// accepted, the platform showing that they would drop.
-  pub fn handle_drop(mut self, drop: impl Fn(&Dropped) -> bool + 'static) -> Self {
-    self.drop = Some(Rc::new(drop));
+  /// Takes what is dropped in the box, from this app or another; `Bubbling::Stop` keeps it
+  /// from the boxes around it. Text and URIs dragged over the box are accepted, the platform
+  /// showing that they would drop.
+  pub fn handle_drop<B: Into<Bubbling>>(mut self, drop: impl Fn(&Dropped) -> B + 'static) -> Self {
+    self.drop = Some(Rc::new(move |dropped| drop(dropped).into()));
 
     self
   }
@@ -283,7 +280,7 @@ impl View for Container {
     }
 
     if let Some(drop) = self.drop {
-      tree::handle_drop::<Active>(id, move |dropped| drop(dropped));
+      tree::handle_drop::<Active, _>(id, move |dropped| drop(dropped));
     }
 
     if let Some(focus) = self.focus {

@@ -19,7 +19,7 @@ use crate::{
       AccessRequest, Availability, ClipboardOp, ControlDispatch, ControlState, Part, Prevent,
     },
     door::ControlSink,
-    node::{NodeKind, NodeSpec},
+    node::{Interaction, NodeKind, NodeSpec},
     record::{Group, Record},
     report::{
       Answer, ContextMenuEvent, DropEvent, Dropped, Interest, KeyEvent, PointerEvent, Report, Size,
@@ -49,7 +49,7 @@ impl From<()> for Bubbling {
 type Handler<E> = Rc<dyn Fn(&E) -> Bubbling>;
 
 /// A drop handler: whether it took what was dropped.
-type DropHandler = Rc<dyn Fn(&Dropped) -> bool>;
+type DropHandler = Rc<dyn Fn(&Dropped) -> Bubbling>;
 
 impl Bubbling {
   /// The verdict a box's answer gives: it keeps no platform default from running.
@@ -378,17 +378,20 @@ pub fn remove<R: Realization>(id: NodeId) {
 }
 
 /// What a node's state conditions resolve against: its own reported states, and, for a node
-/// built inside a control, the control's reported states and its [`ControlState`].
+/// built inside a control, the control's reported states and its [`ControlState`]; focus and
+/// press stay a node's own where it takes them itself.
 #[derive(Clone, Copy)]
 struct Resolution {
   own: Signal<StateSet>,
   control: Option<(Signal<StateSet>, Option<Signal<ControlState>>)>,
+  interactive: bool,
 }
 
 impl Resolution {
   /// Whether `state` holds now, subscribing the running effect.
   fn holds(&self, state: State) -> bool {
     match &self.control {
+      Some(_) if self.interactive && state.is_interaction() => self.own.get().contains(state),
       Some((reported, control)) if state.follows_control() => {
         reported.get().contains(state) || control.is_some_and(|control| control.get().holds(state))
       }
@@ -418,6 +421,10 @@ fn resolution<R: Realization>(id: NodeId) -> Option<Resolution> {
     Some(Resolution {
       own: entry.states,
       control,
+      interactive: matches!(
+        entry.spec.interaction,
+        Interaction::Acting | Interaction::Control { .. }
+      ),
     })
   })
 }
@@ -545,7 +552,10 @@ fn check_takes<R: Realization>(id: NodeId, content: Content) {
 
 /// What the platform shows of `content` at `id`: through the door's sink where a library's
 /// widget holds it, through the realization elsewhere.
-pub(crate) fn read_content<R: Realization>(id: NodeId, content: Content) -> Option<PropValue> {
+pub(in crate::seam) fn read_content<R: Realization>(
+  id: NodeId,
+  content: Content,
+) -> Option<PropValue> {
   let (native, sink) = with::<R, _>(|tree| {
     let entry = tree.scene.get(id)?;
 
@@ -559,7 +569,11 @@ pub(crate) fn read_content<R: Realization>(id: NodeId, content: Content) -> Opti
 }
 
 /// Shows `value` as `content` at `id`, through the door's sink or the realization.
-pub(crate) fn write_content<R: Realization>(id: NodeId, content: Content, value: &PropValue) {
+pub(in crate::seam) fn write_content<R: Realization>(
+  id: NodeId,
+  content: Content,
+  value: &PropValue,
+) {
   let Some((native, sink)) = with::<R, _>(|tree| {
     let entry = tree.scene.get(id)?;
 
@@ -576,7 +590,7 @@ pub(crate) fn write_content<R: Realization>(id: NodeId, content: Content, value:
 }
 
 /// Whether an input method composes at `id`.
-pub(crate) fn composing<R: Realization>(id: NodeId) -> bool {
+pub(in crate::seam) fn composing<R: Realization>(id: NodeId) -> bool {
   let Some((native, sink)) = with::<R, _>(|tree| {
     let entry = tree.scene.get(id)?;
 
@@ -785,11 +799,15 @@ pub fn handle_context_menu<R: Realization, B: Into<Bubbling>>(
   });
 }
 
-/// Runs `drop` with what is dropped on the node or beneath it, text or URIs: it answers
-/// whether it took it. The realization accepts what is dragged over the node.
-pub fn handle_drop<R: Realization>(id: NodeId, drop: impl Fn(&Dropped) -> bool + 'static) {
+/// Runs `drop` with what is dropped on the node or beneath it, text or URIs, then offers it to
+/// the nodes around unless `drop` stops it. The realization accepts what is dragged over the
+/// node.
+pub fn handle_drop<R: Realization, B: Into<Bubbling>>(
+  id: NodeId,
+  drop: impl Fn(&Dropped) -> B + 'static,
+) {
   watch_now::<R>(id, |entry| {
-    entry.handlers.drop = Some(Rc::new(drop));
+    entry.handlers.drop = Some(Rc::new(move |dropped| drop(dropped).into()));
     entry.interest.drop = true;
   });
 }
@@ -1175,8 +1193,8 @@ fn context_menu<R: Realization>(id: NodeId, event: &ContextMenuEvent) -> Answer 
   Answer::Event { prevented }
 }
 
-/// A drop at `id`: each drop handler from it up is offered it until one takes it, which the
-/// answer's `prevented` says.
+/// A drop at `id`: each drop handler from it up hears it, deepest first, until one stops it;
+/// the drop is taken (the answer's `prevented`) where one heard it.
 fn drop<R: Realization>(id: NodeId, event: &DropEvent) -> Answer {
   let path = with::<R, _>(|tree| {
     std::iter::once(id)
@@ -1184,18 +1202,19 @@ fn drop<R: Realization>(id: NodeId, event: &DropEvent) -> Answer {
       .filter_map(|node| tree.scene.get(node)?.handlers.drop.clone())
       .collect::<Vec<_>>()
   });
+  let prevented = if path.is_empty() {
+    Prevent::None
+  } else {
+    Prevent::Platform
+  };
 
   for drop in path {
-    if untrack(|| drop(&event.dropped)) {
-      return Answer::Event {
-        prevented: Prevent::Platform,
-      };
+    if untrack(|| drop(&event.dropped)) == Bubbling::Stop {
+      break;
     }
   }
 
-  Answer::Event {
-    prevented: Prevent::None,
-  }
+  Answer::Event { prevented }
 }
 
 /// The dispatch of `id`'s control and its box's activation, where it has them.
@@ -1345,7 +1364,8 @@ mod tests {
   };
 
   /// A box outside every control answers its own states and no control's; a part answers
-  /// its own hover and its control's focus, press and states; a control answers its own.
+  /// its own hover and its control's focus, press and states; a control answers its own; a
+  /// control within one answers its own focus and press and its control's states.
   #[test]
   fn a_part_resolves_focus_press_and_control_states_against_its_control() {
     Owner::root().run(|| {
@@ -1359,10 +1379,12 @@ mod tests {
       let part = Resolution {
         own: part_reported,
         control: Some((control_reported, Some(control_state))),
+        interactive: false,
       };
       let control = Resolution {
         own: control_reported,
         control: Some((control_reported, Some(control_state))),
+        interactive: false,
       };
       let outside = Resolution {
         own: Signal::new(
@@ -1371,6 +1393,13 @@ mod tests {
             .with(State::Hovered),
         ),
         control: None,
+        interactive: false,
+      };
+      // An option of a list: a control within a control, its focus and press its own.
+      let option = Resolution {
+        own: Signal::new(StateSet::EMPTY),
+        control: Some((control_reported, Some(control_state))),
+        interactive: true,
       };
 
       assert!(part.holds(State::Hovered));
@@ -1383,6 +1412,9 @@ mod tests {
       assert!(outside.holds(State::FocusVisible));
       assert!(outside.holds(State::Hovered));
       assert!(!outside.holds(State::Checked));
+      assert!(!option.holds(State::FocusVisible));
+      assert!(!option.holds(State::Pressed));
+      assert!(option.holds(State::Checked));
 
       control_state.set(ControlState::DEFAULT);
 

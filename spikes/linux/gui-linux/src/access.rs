@@ -18,7 +18,7 @@
 
 use std::{
   cell::{Cell, RefCell},
-  collections::HashMap,
+  collections::{HashMap, HashSet},
   rc::{Rc, Weak},
   sync::mpsc::{SyncSender, sync_channel},
   time::Duration,
@@ -448,8 +448,10 @@ fn build(shell: &Shell) -> TreeUpdate {
 
   let mut focus = AkId(WINDOW);
 
+  let mut relations = Vec::new();
+
   if let Some(root) = shell.root() {
-    let children = add(root, false, &mut nodes, &mut map, scale);
+    let children = add(root, false, &mut nodes, &mut map, &mut relations, scale);
 
     window.set_children(children);
 
@@ -461,6 +463,7 @@ fn build(shell: &Shell) -> TreeUpdate {
     }
   }
 
+  Relation::resolve(relations, &mut nodes);
   nodes.insert(0, (AkId(WINDOW), window));
   NODES.with(|slot| *slot.borrow_mut() = map);
 
@@ -477,13 +480,145 @@ fn build(shell: &Shell) -> TreeUpdate {
   }
 }
 
+/// A node's relations to the nodes that label and describe it, resolved once the whole tree
+/// is built: a relation names only a node the tree holds.
+struct Relation {
+  /// The node they are of.
+  id: AkId,
+  /// The scene nodes that label it.
+  labelled_by: Vec<skene_foundation::NodeId>,
+  /// The scene nodes that describe it.
+  described_by: Vec<skene_foundation::NodeId>,
+}
+
+impl Relation {
+  /// Gives each node in `nodes` its relations to the nodes among them; where one names a node
+  /// the tree leaves out (hidden, decoration, inside a text entry), the node is labelled or
+  /// described by the text of every node named instead, as a browser names by a hidden
+  /// label.
+  fn resolve(relations: Vec<Self>, nodes: &mut [(AkId, AkNode)]) {
+    if relations.is_empty() {
+      return;
+    }
+
+    let exported: HashSet<u64> = nodes.iter().map(|(id, _)| id.0).collect();
+    let index: HashMap<u64, usize> = nodes
+      .iter()
+      .enumerate()
+      .map(|(index, (id, _))| (id.0, index))
+      .collect();
+
+    for relation in relations {
+      let Some(&at) = index.get(&relation.id.0) else {
+        continue;
+      };
+      let node = &mut nodes[at].1;
+      let (labelled_by, label) = Self::split(&relation.labelled_by, &exported);
+      let (described_by, description) = Self::split(&relation.described_by, &exported);
+
+      if !labelled_by.is_empty() {
+        node.set_labelled_by(labelled_by);
+      }
+
+      if let Some(label) = label
+        && node.label().is_none()
+      {
+        node.set_label(label);
+      }
+
+      if !described_by.is_empty() {
+        node.set_described_by(described_by);
+      }
+
+      if let Some(description) = description
+        && node.description().is_none()
+      {
+        node.set_description(description);
+      }
+    }
+  }
+
+  /// The ids of `targets` the tree holds, and, where it leaves one out, the text of them all.
+  fn split(
+    targets: &[skene_foundation::NodeId],
+    exported: &HashSet<u64>,
+  ) -> (Vec<AkId>, Option<String>) {
+    let found: Vec<Node> = targets
+      .iter()
+      .filter_map(|id| crate::node_of(*id))
+      .collect();
+    let held: Vec<AkId> = found
+      .iter()
+      .map(|node| AkId(id_of(node)))
+      .filter(|id| exported.contains(&id.0))
+      .collect();
+
+    if held.len() == found.len() {
+      return (held, None);
+    }
+
+    let text = found
+      .iter()
+      .map(|node| node.text_alternative())
+      .filter(|text| !text.is_empty())
+      .collect::<Vec<_>>()
+      .join(" ");
+
+    (held, (!text.is_empty()).then_some(text))
+  }
+}
+
+impl Drawn {
+  /// The text a relation naming this node reads: its name, else its text (a secure entry's
+  /// marks), else its children's joined by a space.
+  fn text_alternative(&self) -> String {
+    if let Some(name) = &self.access.borrow().name {
+      return name.to_string();
+    }
+
+    match self.spec.kind {
+      NodeKind::Text => self
+        .text
+        .borrow()
+        .as_ref()
+        .and_then(|cell| cell.value())
+        .map(|text| text.to_string())
+        .unwrap_or_default(),
+      NodeKind::Editable { .. } => {
+        let contents = self.contents.borrow();
+        let text = contents
+          .edit
+          .as_ref()
+          .map(|edit| edit.text.to_string())
+          .unwrap_or_default();
+
+        if contents.secure {
+          "•".repeat(text.graphemes(true).count())
+        } else {
+          text
+        }
+      }
+      _ => self
+        .children_ref()
+        .iter()
+        .filter(|child| !child.is_hidden() && child.is_alive())
+        .map(|child| child.text_alternative())
+        .filter(|text| !text.is_empty())
+        .collect::<Vec<_>>()
+        .join(" "),
+    }
+  }
+}
+
 /// Adds `node`'s accessible (or its children's, where it stands for them) and returns the
-/// ids its parent lists; `in_control` where it is built inside a control.
+/// ids its parent lists; `in_control` where it is built inside a control. Its relations are
+/// left in `relations`, for [`Relation::resolve`].
 fn add(
   node: &Node,
   in_control: bool,
   nodes: &mut Vec<(AkId, AkNode)>,
   map: &mut HashMap<u64, Weak<Drawn>>,
+  relations: &mut Vec<Relation>,
   scale: f64,
 ) -> Vec<AkId> {
   if node.is_hidden() || !node.is_alive() {
@@ -511,7 +646,7 @@ fn add(
     return node
       .children()
       .iter()
-      .flat_map(|child| add(child, inner, nodes, map, scale))
+      .flat_map(|child| add(child, inner, nodes, map, relations, scale))
       .collect();
   }
 
@@ -546,24 +681,16 @@ fn add(
     ));
   }
 
-  let local = |ids: &[skene_foundation::NodeId]| -> Vec<AkId> {
-    ids
-      .iter()
-      .filter_map(|id| crate::node_of(*id))
-      .map(|node| AkId(id_of(&node)))
-      .collect()
-  };
-
-  if !facts.labelled_by.is_empty() {
-    ak.set_labelled_by(local(&facts.labelled_by));
-  }
-
   if let Some(description) = &facts.description {
     ak.set_description(description.to_string());
   }
 
-  if !facts.described_by.is_empty() {
-    ak.set_described_by(local(&facts.described_by));
+  if !facts.labelled_by.is_empty() || !facts.described_by.is_empty() {
+    relations.push(Relation {
+      id: AkId(id),
+      labelled_by: facts.labelled_by.clone(),
+      described_by: facts.described_by.clone(),
+    });
   }
 
   if facts.required {
@@ -663,7 +790,7 @@ fn add(
     }
     _ => {
       for child in node.children() {
-        children.extend(add(&child, inner, nodes, map, scale));
+        children.extend(add(&child, inner, nodes, map, relations, scale));
       }
     }
   }

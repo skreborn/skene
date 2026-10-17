@@ -351,6 +351,7 @@ pub fn run_test(name: &'static str, body: fn()) {
   ui_thread()
     .send(Box::new(move || {
       reset();
+      TEST.with(|test| test.set(name));
 
       let owner = Owner::root();
       let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| owner.run(body)));
@@ -372,6 +373,32 @@ pub fn run_test(name: &'static str, body: fn()) {
 
   if let Err(message) = receiver.recv().expect("the window thread answers") {
     panic!("{name}: {message}");
+  }
+}
+
+thread_local! {
+  /// The test running on the window thread.
+  static TEST: std::cell::Cell<&'static str> = const { std::cell::Cell::new("") };
+}
+
+/// Ends nothing, but says the running test had nothing to test on this leg, for `reason`
+/// (its input sends no touch, its input method is the compositor's): the test then returns,
+/// passing, and the display runner lists it after the binary's results as one that tested
+/// nothing here (`SKENE_NOT_TESTED` names where it is told).
+pub fn not_tested_here(reason: impl std::fmt::Display) {
+  let test = TEST.with(std::cell::Cell::get);
+  let line = format!("{test}: not tested here: {reason}");
+
+  eprintln!("{line}");
+
+  if let Some(path) = std::env::var_os("SKENE_NOT_TESTED") {
+    use std::io::Write as _;
+
+    let _ = std::fs::OpenOptions::new()
+      .create(true)
+      .append(true)
+      .open(path)
+      .and_then(|mut file| writeln!(file, "{line}"));
   }
 }
 

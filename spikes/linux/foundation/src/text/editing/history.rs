@@ -44,12 +44,29 @@ pub struct History {
   undo: Vec<Snapshot>,
   redo: Vec<Snapshot>,
   run: Option<EditKind>,
+  off: bool,
 }
 
 impl History {
+  /// Keeps steps where `enabled`; otherwise drops every step it kept and records none.
+  pub fn set_enabled(&mut self, enabled: bool) {
+    if !enabled {
+      self.undo.clear();
+      self.redo.clear();
+      self.run = None;
+    }
+
+    self.off = !enabled;
+  }
+
   /// Records `before`, the state before an edit of `kind`, as the next undo step unless the
-  /// edit joins the run of the last one; either way the redo steps are dropped.
+  /// edit joins the run of the last one; either way the redo steps are dropped. Nothing is
+  /// recorded while it is not enabled.
   pub fn record(&mut self, before: Snapshot, kind: EditKind) {
+    if self.off {
+      return;
+    }
+
     self.redo.clear();
 
     let joins = match self.run {
@@ -80,7 +97,7 @@ impl History {
 
   /// Whether nothing was recorded.
   #[must_use]
-  pub fn is_empty(&self) -> bool {
+  pub const fn is_empty(&self) -> bool {
     self.undo.is_empty() && self.redo.is_empty()
   }
 

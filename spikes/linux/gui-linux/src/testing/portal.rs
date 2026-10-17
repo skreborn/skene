@@ -122,7 +122,9 @@ mod served {
 
   use super::Values;
 
+  /// The settings portal's interface, answering from the stand-in's values.
   pub(super) struct Settings {
+    /// What each setting holds now.
     pub(super) values: Values,
   }
 

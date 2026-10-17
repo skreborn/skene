@@ -79,6 +79,8 @@ pub enum Part {
   Mark,
   /// The box a mark sits in: a checkbox's or a radio's face.
   Face,
+  /// What a control shows of the value it reports: a picker's chosen option on its face.
+  Value,
   /// A popup's list.
   List,
   /// An item of a list.
@@ -100,9 +102,10 @@ impl Part {
 /// Where a control's label sits.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum LabelPlacement {
-  /// First in the control's row or column.
+  /// First in the control's row or column; beside it, before it, where the control is a text
+  /// view, which holds no caption.
   Leading,
-  /// Last in it.
+  /// Last in it; after it among its siblings where the control is a text view.
   Trailing,
   /// Before the control's box among its siblings, outside its decoration, a press on it
   /// focusing the control.

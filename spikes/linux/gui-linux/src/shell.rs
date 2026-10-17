@@ -42,13 +42,17 @@ use crate::{
   entry,
   keys::KeyInput,
   layout,
-  node::{Node, walk},
+  node::{Drawn, Node, walk},
   overlay::{self, Open},
   paint::{Marks, Renderer, painted_bounds, union},
   palette::Palette,
   text::Change,
   trace,
 };
+
+/// The most nodes whose looks changed for which a frame measures their reach alone, theirs
+/// and their ancestors'; past them it measures every node's.
+const REACH_ALONE: usize = 32;
 
 /// What a backend is asked to do for the window.
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -255,15 +259,17 @@ pub fn invalidate_rect(rect: Rect) {
   DIRTY.with(|dirty| dirty.borrow_mut().rects.push(rect));
 }
 
-/// What `node` and its subtree paint now, in window pixels.
-pub fn reach_rect(node: &Node) -> Rect {
-  let at = node.window_rect();
-  let reach = node.reach.get();
+impl Drawn {
+  /// What it and its subtree paint now, in window pixels.
+  pub fn reach_rect(self: &Rc<Self>) -> Rect {
+    let at = self.window_rect();
+    let reach = self.reach.get();
 
-  Rect {
-    x: at.x + reach.x,
-    y: at.y + reach.y,
-    ..reach
+    Rect {
+      x: at.x + reach.x,
+      y: at.y + reach.y,
+      ..reach
+    }
   }
 }
 
@@ -305,13 +311,15 @@ fn wants_frame() -> bool {
   })
 }
 
-/// Whether `node` is `ancestor` or beneath it.
-fn is_within(node: &Node, ancestor: &Node) -> bool {
-  Rc::ptr_eq(node, ancestor)
-    || node
-      .ancestors()
-      .iter()
-      .any(|candidate| Rc::ptr_eq(candidate, ancestor))
+impl Drawn {
+  /// Whether it is `ancestor` or beneath it.
+  fn is_within(self: &Rc<Self>, ancestor: &Node) -> bool {
+    Rc::ptr_eq(self, ancestor)
+      || self
+        .ancestors()
+        .iter()
+        .any(|candidate| Rc::ptr_eq(candidate, ancestor))
+  }
 }
 
 /// A press in progress: where it started, on what.
@@ -404,6 +412,7 @@ pub struct Frame<'a> {
 
 /// The window.
 pub struct Shell {
+  /// The root of the window's tree, once mounted.
   root: Option<Node>,
   /// The geometry's width and height, in pixels (the title bar included).
   pub size: (u32, u32),
@@ -411,25 +420,45 @@ pub struct Shell {
   pub scale: f64,
   /// The chrome.
   pub chrome: Chrome,
+  /// The window's title.
   title: String,
+  /// What paints the window's frames.
   renderer: Renderer,
+  /// Where the pointer is over the window's content, while it is.
   pointer: Option<(f32, f32)>,
+  /// The nodes under the pointer, deepest first.
   hovered: Vec<Node>,
+  /// The press in progress.
   press: Option<Press>,
+  /// The node with focus.
   focus: Option<Node>,
+  /// The focused text's link run with focus, by its index.
   link: Option<usize>,
+  /// Whether focus shows.
   focus_visible: bool,
+  /// Whether the next frame scrolls the focused node into view.
   reveal: bool,
+  /// When and where the title bar was last clicked, for a double click.
   title_click: Option<(Instant, (f32, f32))>,
+  /// The pointer's shape.
   cursor: Cursor,
+  /// The open overlay.
   overlay: Option<Open>,
+  /// Whether the pointer is over the open overlay rather than the window.
   pointer_in_overlay: bool,
+  /// Whether the last input was a key, so focus moved now shows.
   keyboard_modality: bool,
+  /// The acting box shown pressed from the keyboard (`Space` held).
   key_pressed: Option<Node>,
+  /// What the shell asks of its platform, until it takes them.
   pending: Vec<Request>,
+  /// The modifiers held now, as the platform reports them.
   modifiers: skene_foundation::seam::report::Modifiers,
+  /// Whether the window has the keyboard.
   window_focused: bool,
+  /// When, where and on what the last click was, and how many it was of a run.
   last_click: Option<(Instant, (f32, f32), u8, Node)>,
+  /// The damage painted for a reader without presenting it, which the next frame presents.
   owed: Option<(u32, u32, u32, u32)>,
   /// The touchpad's recent motion.
   fingers: crate::kinetic::Tracker,
@@ -449,6 +478,7 @@ pub struct Shell {
   pub frames: u64,
   /// When the last frame was painted, the window's or its open overlay's.
   pub painted_at: Option<Instant>,
+  /// Whether the last frame went to the screen through the GPU's swapchain.
   presented: bool,
   /// Whether the app asked to quit.
   pub quit: bool,
@@ -514,7 +544,7 @@ impl Shell {
   }
 
   /// The root, where one is shown.
-  pub fn root(&self) -> Option<&Node> {
+  pub const fn root(&self) -> Option<&Node> {
     self.root.as_ref()
   }
 
@@ -718,9 +748,7 @@ impl Shell {
       let mut repainted = Vec::new();
 
       for node in std::mem::take(&mut dirty.prepare_nodes) {
-        if node.is_alive()
-          && layout::prepare_subtree(&node, &palette, &mut repainted) == Change::Layout
-        {
+        if node.is_alive() && node.prepare_subtree(&palette, &mut repainted) == Change::Layout {
           dirty.layout = true;
         }
       }
@@ -749,7 +777,15 @@ impl Shell {
       dirty.all = true;
     }
 
-    layout::reach(&root);
+    // A frame that laid out, or that changed much, measures every node's reach again; one
+    // that changed a few looks, those nodes' and their ancestors'.
+    if dirty.layout || dirty.all || dirty.nodes.len() > REACH_ALONE {
+      layout::reach(&root);
+    } else {
+      for node in dirty.nodes.iter().filter(|node| node.is_alive()) {
+        node.refresh_reach();
+      }
+    }
 
     if dirty.layout {
       // Before the paint, so a box that draws at its size draws in the frame that sized it.
@@ -772,7 +808,7 @@ impl Shell {
         .nodes
         .iter()
         .filter(|node| node.is_shown())
-        .map(|node| union(painted_bounds(node, node.window_rect()), reach_rect(node)))
+        .map(|node| union(painted_bounds(node, node.window_rect()), node.reach_rect()))
         .chain(dirty.rects.iter().copied())
         .fold(Rect::default(), union)
     };
@@ -903,7 +939,9 @@ impl Shell {
   }
 
   /// The deepest shown node under `root` at `x`, `y` (window pixels), with its ancestors up
-  /// to `root`, deepest first; an overlay beneath `root` is not in its flow.
+  /// to `root`, deepest first; an overlay beneath `root` is not in its flow. A control takes
+  /// a point inside its own box alone, whatever its parts reach beyond it, as a box that
+  /// clips does.
   fn hit_in(root: &Node, x: f32, y: f32) -> Vec<Node> {
     fn go(node: &Node, origin: (f32, f32), x: f32, y: f32, out: &mut Vec<Node>) -> bool {
       if node.is_hidden() {
@@ -920,6 +958,7 @@ impl Shell {
       let inside =
         x >= rect.x && y >= rect.y && x < rect.x + rect.width && y < rect.y + rect.height;
       let clips = node.look.borrow().clip
+        || node.spec.is_control()
         || matches!(
           node.layout_kind(),
           Some(skene_foundation::seam::node::LayoutKind::Scroll { .. })
@@ -1090,8 +1129,8 @@ impl Shell {
 
     // Focus moving out of the open overlay, to anything but what holds it, dismisses it.
     if let (Some(open), Some(next)) = (&self.overlay, &node)
-      && !is_within(next, &open.node)
-      && !is_within(&open.node, next)
+      && !next.is_within(&open.node)
+      && !open.node.is_within(next)
     {
       tree::report::<Linux>(open.node.id.get(), Report::Dismiss);
     }
@@ -1441,7 +1480,7 @@ impl Shell {
     self.pointer_in_overlay = false;
 
     if let Some(focus) = self.focus.clone()
-      && is_within(&focus, &open.node)
+      && focus.is_within(&open.node)
     {
       let anchor = open.node.ancestors().into_iter().find(Self::focusable);
       let visible = self.keyboard_modality;
@@ -1452,7 +1491,7 @@ impl Shell {
     if self
       .hovered
       .first()
-      .is_some_and(|hovered| is_within(hovered, &open.node))
+      .is_some_and(|hovered| hovered.is_within(&open.node))
     {
       let previous = std::mem::take(&mut self.hovered);
 
@@ -1470,7 +1509,7 @@ impl Shell {
 
     if dirty.prepare || dirty.layout {
       self.relayout_overlay();
-    } else if (dirty.all || dirty.nodes.iter().any(|node| is_within(node, &open.node)))
+    } else if (dirty.all || dirty.nodes.iter().any(|node| node.is_within(&open.node)))
       && let Some(open) = &mut self.overlay
     {
       open.invalidate();
@@ -2241,7 +2280,14 @@ impl Shell {
 
     let (node, entry) = self.drop_target(at, offered)?;
 
-    trace::log(|| format!("[dnd] dropped at {at:?}: {dropped:?}"));
+    trace::log(|| match &dropped.text {
+      Some(text) if entry && node.contents.borrow().secure => {
+        let marks = unicode_segmentation::UnicodeSegmentation::graphemes(&**text, true).count();
+
+        format!("[dnd] dropped at {at:?} into a secure entry: {marks} marks")
+      }
+      _ => format!("[dnd] dropped at {at:?}: {dropped:?}"),
+    });
 
     if entry {
       let text = dropped.text?;
@@ -3237,7 +3283,7 @@ impl Shell {
   }
 
   /// The node with focus.
-  pub fn focus(&self) -> Option<&Node> {
+  pub const fn focus(&self) -> Option<&Node> {
     self.focus.as_ref()
   }
 }
@@ -3262,6 +3308,7 @@ pub fn write(node: &Node, content: Content, value: &PropValue) {
       invalidate_prepare();
     }
     Content::Secure | Content::ReadOnly if entry => {
+      node.follow_secure();
       invalidate_prepare();
       entry::ime_dirty(false);
     }

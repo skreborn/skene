@@ -11,6 +11,7 @@ use skene_foundation::{
     tree,
   },
   untrack,
+  value::IntoUnit,
 };
 
 use crate::{
@@ -46,10 +47,11 @@ use crate::{
 /// ```
 #[must_use]
 pub struct Overlay {
-  anchor: Option<NodeHandle>,
-  side: Side,
-  widen: bool,
+  anchor: Rc<dyn Fn() -> Option<NodeHandle>>,
+  side: Rc<dyn Fn() -> Side>,
+  widen: Rc<dyn Fn() -> bool>,
   point: Rc<dyn Fn() -> Option<(i32, i32)>>,
+  gap: Rc<dyn Fn() -> f32>,
   open: Rc<dyn Fn() -> bool>,
   dismiss: Option<Rc<dyn Fn()>>,
   child: Option<Child>,
@@ -60,10 +62,11 @@ impl Overlay {
   /// no anchor is set.
   pub fn popup() -> Self {
     Self {
-      anchor: None,
-      side: Side::Bottom,
-      widen: true,
+      anchor: Rc::new(|| None),
+      side: Rc::new(|| Side::Bottom),
+      widen: Rc::new(|| true),
       point: Rc::new(|| None),
+      gap: Rc::new(|| 2.),
       open: Rc::new(|| false),
       dismiss: None,
       child: None,
@@ -71,31 +74,66 @@ impl Overlay {
   }
 
   /// The node it is placed against.
-  pub const fn set_anchor(mut self, anchor: &NodeHandle) -> Self {
-    self.anchor = Some(*anchor);
+  pub fn set_anchor(self, anchor: &NodeHandle) -> Self {
+    let anchor = *anchor;
+
+    self.derive_anchor(move || Some(anchor))
+  }
+
+  /// The node it is placed against, kept current: against the node it stands in where `None`.
+  pub fn derive_anchor(mut self, anchor: impl Fn() -> Option<NodeHandle> + 'static) -> Self {
+    self.anchor = Rc::new(anchor);
 
     self
   }
 
   /// The side of its anchor it opens on; below where unset.
-  pub const fn set_placement(mut self, side: Side) -> Self {
-    self.side = side;
+  pub fn set_placement(self, side: Side) -> Self {
+    self.derive_placement(move || side)
+  }
+
+  /// The side of its anchor it opens on, kept current.
+  pub fn derive_placement(mut self, side: impl Fn() -> Side + 'static) -> Self {
+    self.side = Rc::new(side);
 
     self
   }
 
   /// Whether the open overlay is at least as wide as its anchor; true where unset.
-  pub const fn set_widen_to_anchor(mut self, widen: bool) -> Self {
-    self.widen = widen;
+  pub fn set_widen_to_anchor(self, widen: bool) -> Self {
+    self.derive_widen_to_anchor(move || widen)
+  }
+
+  /// Whether the open overlay is at least as wide as its anchor, kept current.
+  pub fn derive_widen_to_anchor(mut self, widen: impl Fn() -> bool + 'static) -> Self {
+    self.widen = Rc::new(widen);
 
     self
   }
 
   /// The point of the window it hangs from, its top leading corner there, in place of its
-  /// anchor (a context menu at the pointer), kept current: window pixels, against its anchor
-  /// where `None`.
+  /// anchor (a context menu at the pointer): window pixels, against its anchor where `None`.
+  pub fn set_point(self, point: Option<(i32, i32)>) -> Self {
+    self.derive_point(move || point)
+  }
+
+  /// The point of the window it hangs from, kept current.
   pub fn derive_point(mut self, point: impl Fn() -> Option<(i32, i32)> + 'static) -> Self {
     self.point = Rc::new(point);
+
+    self
+  }
+
+  /// The space between it and its anchor, in pixels; 2 where unset.
+  pub fn set_gap(self, gap: impl IntoUnit<f32>) -> Self {
+    let gap = gap.into_unit();
+
+    self.derive_gap(move || gap)
+  }
+
+  /// The space between it and its anchor, in pixels, kept current.
+  pub fn derive_gap(mut self, gap: impl Fn() -> f32 + 'static) -> Self {
+    self.gap = Rc::new(gap);
 
     self
   }
@@ -142,6 +180,7 @@ impl View for Overlay {
       side,
       widen,
       point,
+      gap,
       open,
       dismiss,
       child,
@@ -151,10 +190,12 @@ impl View for Overlay {
     finish(id, Record::new(), cx, None);
     tree::set_hidden::<Active>(id, true);
     tree::bind::<Active, _>(id, contents::PLACEMENT, move || OverlayPlacement {
-      anchor: anchor.and_then(|anchor| anchor.node()),
-      side,
-      widen,
+      anchor: anchor().and_then(|anchor| anchor.node()),
+      side: side(),
+      widen: widen(),
       at: point(),
+      #[expect(clippy::cast_possible_truncation, reason = "whole pixels")]
+      gap: gap().round() as i32,
     });
 
     if let Some(dismiss) = dismiss {

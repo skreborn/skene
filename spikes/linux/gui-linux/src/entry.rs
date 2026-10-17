@@ -26,8 +26,7 @@ use skene_foundation::{
     tree,
   },
   text::{
-    Direction, Laid as _, MaskState, Masked, ParagraphStyle, RunStyle, TextBoundary, TextIndex,
-    Wrap,
+    Direction, Laid as _, MaskState, Masked, ParagraphStyle, RunStyle, TextBoundary, Wrap,
     editing::{Arbiter, Clause, ClauseStyle, Command, Editor, Notice, Origin, Outcome},
   },
 };
@@ -53,9 +52,6 @@ const TEXT_WIDTH: (f32, f32) = (180., 40.);
 
 /// What a secure entry shows for each cluster of its text.
 const MARK: char = '•';
-
-/// How long a secure entry shows the cluster just typed.
-const REVEAL: Duration = Duration::from_millis(900);
 
 /// How long the caret stays on and off while it blinks.
 const BLINK: Duration = Duration::from_millis(530);
@@ -123,8 +119,6 @@ pub struct Entry {
   blink: Option<Cancel>,
   /// When the caret last started blinking.
   blink_started: std::time::Instant,
-  /// Ends the moment a secure entry shows the cluster just typed.
-  reveal: Option<Cancel>,
   /// The selection last offered as the primary selection.
   offered: Option<String>,
   /// Where a drag over the entry would drop its text (a byte of the text), shown as a caret.
@@ -132,6 +126,17 @@ pub struct Entry {
 }
 
 impl Entry {
+  /// Hides its text where `secure`, shows it otherwise, laid out again where that changed;
+  /// a secure entry keeps no undo history, as GTK's invisible entry keeps none.
+  fn follow_secure(&mut self, secure: bool) {
+    self.editor.set_secure(secure);
+
+    if self.mask.is_masked() != secure {
+      self.mask.set_masked(secure);
+      self.editor.relayout();
+    }
+  }
+
   /// The entry of `node`, empty.
   fn new(node: &Node, multiline: bool) -> Box<Self> {
     let mask = Rc::new(MaskState::new(MARK));
@@ -160,7 +165,6 @@ impl Entry {
       caret_on: true,
       blink: None,
       blink_started: std::time::Instant::now(),
-      reveal: None,
       offered: None,
       drop_caret: None,
     })
@@ -365,6 +369,14 @@ impl Drawn {
     self.with_entry(|entry| entry.editor.write(edit));
   }
 
+  /// Makes its entry hide or show its text as its contents say, at once: what it draws and
+  /// what a reader, an input method and the trace are told follow from the change on.
+  pub fn follow_secure(self: &Rc<Self>) {
+    let secure = self.contents.borrow().secure;
+
+    self.with_entry(|entry| entry.follow_secure(secure));
+  }
+
   /// Gives its entry the run properties it inherits and its paragraph style; whether a
   /// metric changed.
   pub fn prepare_entry(self: &Rc<Self>, props: &RunProps, palette: &Palette) -> bool {
@@ -395,13 +407,7 @@ impl Drawn {
         }
 
         entry.editor.set_read_only(read_only);
-        entry.editor.set_secure(secure);
-
-        if entry.mask.is_masked() != secure {
-          entry.mask.set_masked(secure);
-          entry.editor.relayout();
-        }
-
+        entry.follow_secure(secure);
         entry.editor.set_style(style);
         entry.editor.set_paragraph_style(paragraph);
 
@@ -513,7 +519,8 @@ impl Drawn {
     });
   }
 
-  /// Scrolls its editor by `dy` pixels within its text: whether it moved.
+  /// Scrolls its editor by `dy` pixels within its text, telling a reader and the input method
+  /// where its characters went: whether it moved.
   pub fn scroll_entry(self: &Rc<Self>, dy: f32) -> bool {
     let height = self
       .entry_content(Rect {
@@ -539,6 +546,8 @@ impl Drawn {
 
     if moved {
       shell::invalidate_paint(self);
+      ime_dirty(false);
+      ACCESS.with(|access| access.set(true));
     }
 
     moved
@@ -739,7 +748,6 @@ impl Drawn {
   /// Applies `command` from the reader, putting what it copies on the clipboard; what a secure
   /// entry would copy goes nowhere.
   pub fn perform(self: &Rc<Self>, command: Command) -> Outcome {
-    let typed = matches!(&command, Command::Insert(text) if text.graphemes(true).count() == 1);
     let described = if self.contents.borrow().secure {
       command.masked(MARK)
     } else {
@@ -755,55 +763,7 @@ impl Drawn {
       clipboard::write(Selection::Clipboard, text.clone());
     }
 
-    if typed && outcome.handled {
-      self.reveal_typed();
-    }
-
     outcome
-  }
-
-  /// Shows the cluster before the caret of a secure entry as typed, for a moment.
-  fn reveal_typed(self: &Rc<Self>) {
-    let shown = self
-      .with_entry(|entry| {
-        if !entry.mask.is_masked() {
-          return false;
-        }
-
-        let caret = entry.editor.focus().index;
-        let text = entry.editor.text();
-        let start = TextIndex::new(text)
-          .snap_to_grapheme(caret.saturating_sub(1), skene_foundation::text::Round::Down);
-
-        entry.mask.reveal(Some(start));
-        entry.editor.relayout();
-
-        true
-      })
-      .unwrap_or(false);
-
-    if !shown {
-      return;
-    }
-
-    let target = Rc::clone(self);
-    let cancel = crate::runtime::schedule(
-      REVEAL,
-      Box::new(move || {
-        target.with_entry(|entry| {
-          entry.reveal = None;
-          entry.mask.reveal(None);
-          entry.editor.relayout();
-        });
-        shell::invalidate_paint(&target);
-      }),
-    );
-
-    self.with_entry(|entry| {
-      if let Some(previous) = entry.reveal.replace(cancel) {
-        previous.cancel();
-      }
-    });
   }
 
   /// Whether `op` is offered on its entry now, as GTK's entry offers it in its menu: cut and
@@ -987,7 +947,8 @@ impl Drawn {
       return None;
     }
 
-    let purpose = if self.contents.borrow().secure {
+    let secure = self.contents.borrow().secure;
+    let purpose = if secure {
       crate::ime::Purpose::Password
     } else {
       crate::ime::Purpose::of(self.contents.borrow().keyboard.as_deref())
@@ -995,6 +956,8 @@ impl Drawn {
     let content = self.entry_content(rect);
 
     self.with_entry(|entry| {
+      entry.follow_secure(secure);
+
       let editor = &entry.editor;
       let text = editor.text();
       let marked = editor.marked_range_in(Unit::Utf8);
@@ -1032,7 +995,6 @@ impl Drawn {
       let range = marked.unwrap_or(focus..focus);
       let local = editor.rect_for(range, Unit::Utf8);
       let origin = entry.origin(content);
-      let secure = entry.mask.is_masked();
 
       if secure {
         // A secure entry's input method is told what it shows: a mark per cluster.
@@ -1092,10 +1054,6 @@ impl Drawn {
   /// An input method commits `text` in place of its composition (or the selection).
   pub fn ime_commit(self: &Rc<Self>, text: &str) {
     self.with_entry(|entry| entry.editor.replace(None, text, Unit::Utf8));
-
-    if text.graphemes(true).count() == 1 {
-      self.reveal_typed();
-    }
   }
 
   /// An input method deletes `length` characters starting `offset` characters from the

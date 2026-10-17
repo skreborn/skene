@@ -219,6 +219,6 @@ pub trait Behavior: 'static {
 
 /// Whether `event` has no modifier but `Shift`.
 #[inline(always)]
-fn plain(event: &KeyEvent) -> bool {
+const fn plain(event: &KeyEvent) -> bool {
   !event.modifiers.control && !event.modifiers.alt && !event.modifiers.meta
 }

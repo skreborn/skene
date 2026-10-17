@@ -164,7 +164,7 @@ impl Chrome {
 
   /// The title bar's height: none where the compositor decorates or the window is
   /// fullscreen.
-  pub fn header(&self) -> f32 {
+  pub const fn header(&self) -> f32 {
     if self.csd && !self.states.fullscreen {
       HEADER
     } else {
@@ -216,7 +216,7 @@ impl Chrome {
     }
   }
 
-  fn resizable(&self) -> bool {
+  const fn resizable(&self) -> bool {
     self.csd && !self.states.maximized && !self.states.fullscreen
   }
 

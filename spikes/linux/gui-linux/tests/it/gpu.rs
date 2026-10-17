@@ -1,8 +1,12 @@
 //! The GPU path on the real platform: every page of the conformance suite painted on the GPU
-//! and then, the device lost, on the CPU, alike within a stated tolerance; and a window whose
-//! device is lost painting on, its motion included, on the CPU.
+//! and then, the device lost, on the CPU, alike within a stated tolerance; a window whose
+//! device is lost painting on, its motion included, on the CPU; and glyphs that outgrow the
+//! atlas, together or alone, or are drawn as it starts over, painting on as on the CPU.
 
-use skene_gui::testing::{self, Drawn, Driver as _, PaintPath, PathChoice, Role, Screenshot};
+use skene_gui::{
+  prelude::*,
+  testing::{self, Drawn, Driver as _, PaintPath, PathChoice, Role, Screenshot},
+};
 
 /// The most a channel of a pixel may differ between the paths.
 const MOST: u8 = 4;
@@ -165,6 +169,140 @@ fn a_window_whose_device_is_lost_paints_on_the_cpu_motion_included() {
     between >= 3,
     "the transition ran on the CPU, frame by frame: {between} of {} frames between white and red",
     frames.len()
+  );
+}
+
+/// A button that flips a long text's size between 200 and 400 pixels under a linear transition
+/// of a second and a half: glyph images enough to fill the atlas many times over.
+fn growing() -> impl skene_gui::View {
+  use skene_gui::{Curve, Transition, keys};
+
+  let big = Signal::new(false);
+
+  Column::new()
+    .set_padding(16)
+    .set_spacing(12)
+    .add_child(Button::new("Grow").handle_activate(move || big.update(|big| *big = !*big)))
+    .add_child(
+      Container::new()
+        .derive_font_size(move || if big.get() { 400. } else { 200. })
+        .add_transition(Transition::new(keys::FONT_SIZE, 1500).set_curve(Curve::Linear))
+        .set_child(Text::new(
+          "The quick brown fox jumps over the lazy dog 0123456789 QWERTYUIOPASDFGHJKLZXCVBNM",
+        )),
+    )
+}
+
+#[skene_gui::test]
+fn glyphs_that_outgrow_the_atlas_keep_painting_on_the_gpu() {
+  Drawn::set_path_choice(Some(PathChoice::Any));
+
+  let screen = testing::render(growing);
+
+  assert_eq!(screen.driver().paint_path(), PaintPath::Gpu);
+
+  let grow = screen.find_by_role(Role::Button, "Grow");
+
+  for _ in 0..4 {
+    grow.click();
+    screen.driver().wait(std::time::Duration::from_millis(1600));
+  }
+
+  assert_eq!(
+    screen.driver().paint_path(),
+    PaintPath::Gpu,
+    "the atlas starts over rather than running out, and the device was not lost"
+  );
+}
+
+/// Whether `shot`'s pixel at `x`, `y` is dark ink.
+fn is_dark(shot: &Screenshot, x: u32, y: u32) -> bool {
+  #[expect(clippy::cast_precision_loss, reason = "window pixels")]
+  let [red, green, blue, _] = shot.rgba_at(x as f32, y as f32);
+
+  red < 0x40 && green < 0x40 && blue < 0x40
+}
+
+/// The dark pixels of `shot`, and how many of its pixels are dark where `other`'s are not or
+/// the other way round.
+fn dark(shot: &Screenshot, other: &Screenshot) -> (usize, usize) {
+  let (mut counted, mut differing) = (0, 0);
+
+  for y in 0..shot.height {
+    for x in 0..shot.width {
+      let dark = is_dark(shot, x, y);
+
+      counted += usize::from(dark);
+      differing += usize::from(dark != is_dark(other, x, y));
+    }
+  }
+
+  (counted, differing)
+}
+
+/// A caption, then `letter` at 5000 pixels, a mask some 4700 by 3600 pixels for a W, wider
+/// than an atlas: the window shows where a W's tiles meet, and the caption's glyphs, in the
+/// atlas first, leave the W's parts to grow it while the frame draws.
+fn huge(letter: Signal<&'static str>) -> impl View {
+  Stack::new().add_child(Text::new("Wa")).add_child(
+    Pinned::new()
+      .set_edges(Edges {
+        top: Some(-2728.),
+        trailing: None,
+        bottom: None,
+        leading: Some(-1858.),
+      })
+      .set_child(Text::derive(move || letter.get()).set_font_size(5000)),
+  )
+}
+
+/// Asserts that `screen` paints on the GPU as it does on the CPU once its device is lost, the
+/// letter it shows in ink.
+fn paints_alike(screen: &testing::Screen, what: &str) {
+  assert_eq!(screen.driver().paint_path(), PaintPath::Gpu);
+
+  let gpu = screen.render_to_image();
+
+  assert!(screen.driver().trigger_device_loss());
+
+  let (cpu, differing) = dark(&screen.render_to_image(), &gpu);
+
+  assert!(
+    cpu > 1000 && differing * 1000 <= cpu,
+    "{what} is drawn on the GPU as on the CPU: {cpu} dark pixels on the CPU, {differing} of them differing on the GPU"
+  );
+}
+
+#[skene_gui::test]
+fn a_glyph_larger_than_an_atlas_paints_on_the_gpu_as_on_the_cpu() {
+  Drawn::set_path_choice(Some(PathChoice::Any));
+
+  let letter = Signal::new("W");
+  let screen = testing::render(move || huge(letter));
+
+  paints_alike(
+    &screen,
+    "the glyph wider than an atlas, drawn in parts as they grow it",
+  );
+}
+
+#[skene_gui::test]
+fn a_glyph_drawn_as_the_atlas_starts_over_paints_on_the_gpu_as_on_the_cpu() {
+  Drawn::set_path_choice(Some(PathChoice::Any));
+
+  let letter = Signal::new("W");
+  let screen = testing::render(move || huge(letter));
+
+  // Each letter takes a quarter of the atlas or more: the W again, after the third, finds the
+  // atlas past what it keeps and starts it over.
+  for next in ["M", "X", "W"] {
+    letter.set(next);
+    screen.settle();
+  }
+
+  paints_alike(
+    &screen,
+    "the glyph drawn in the frame that starts the atlas over",
   );
 }
 

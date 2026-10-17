@@ -119,7 +119,7 @@ fn tells_each_purpose(input_method: &InputMethod) {
 #[skene_gui::test]
 fn a_fields_keyboard_reaches_fcitx_as_its_purpose() {
   if Session::current().map(Session::backend) != Some(Backend::X11) {
-    eprintln!("not tested here: on Wayland the input method is the compositor's");
+    skene_gui_linux::testing::not_tested_here("on Wayland the input method is the compositor's");
 
     return;
   }
@@ -130,7 +130,7 @@ fn a_fields_keyboard_reaches_fcitx_as_its_purpose() {
 #[skene_gui::test]
 fn a_fields_keyboard_reaches_ibus_as_its_purpose() {
   if Session::current().map(Session::backend) != Some(Backend::X11) {
-    eprintln!("not tested here: on Wayland the input method is the compositor's");
+    skene_gui_linux::testing::not_tested_here("on Wayland the input method is the compositor's");
 
     return;
   }
@@ -141,8 +141,8 @@ fn a_fields_keyboard_reaches_ibus_as_its_purpose() {
 #[skene_gui::test]
 fn a_fields_keyboard_reaches_the_compositors_input_method_as_its_purpose() {
   if Session::current() != Some(Session::Sway) {
-    eprintln!(
-      "not tested here: of the legs, only sway lets a client be the seat's input method (zwp_input_method_v2)"
+    skene_gui_linux::testing::not_tested_here(
+      "of the legs, only sway lets a client be the seat's input method (zwp_input_method_v2)",
     );
 
     return;

@@ -34,28 +34,28 @@ fn scrolled(row: &Found<'_>, before: f32) -> f32 {
 }
 
 /// Whether the leg's input sends a touchpad's scrolling, saying so where it does not.
-fn sends_touchpad(screen: &testing::Screen, test: &str) -> bool {
+fn sends_touchpad(screen: &testing::Screen) -> bool {
   let sends = screen.driver().sends_touchpad_scrolling();
 
   if !sends {
-    eprintln!(
-      "{test}: not tested here: {} sends no touchpad scrolling",
+    skene_gui_linux::testing::not_tested_here(format_args!(
+      "{} sends no touchpad scrolling",
       screen.driver().input_name()
-    );
+    ));
   }
 
   sends
 }
 
 /// Whether the leg's input sends touch, saying so where it does not.
-fn sends_touch(screen: &testing::Screen, test: &str) -> bool {
+fn sends_touch(screen: &testing::Screen) -> bool {
   let sends = screen.driver().sends_touch();
 
   if !sends {
-    eprintln!(
-      "{test}: not tested here: {} sends no touch",
+    skene_gui_linux::testing::not_tested_here(format_args!(
+      "{} sends no touch",
       screen.driver().input_name()
-    );
+    ));
   }
 
   sends
@@ -65,7 +65,7 @@ fn sends_touch(screen: &testing::Screen, test: &str) -> bool {
 fn a_touchpad_fling_scrolls_on_once_the_fingers_lift() {
   let screen = testing::render(rows);
 
-  if !sends_touchpad(&screen, "a_touchpad_fling_scrolls_on_once_the_fingers_lift") {
+  if !sends_touchpad(&screen) {
     return;
   }
 
@@ -163,7 +163,7 @@ fn touch() -> impl View {
 fn a_tap_clicks() {
   let screen = testing::render(touch);
 
-  if !sends_touch(&screen, "a_tap_clicks") {
+  if !sends_touch(&screen) {
     return;
   }
 
@@ -182,10 +182,7 @@ fn a_tap_clicks() {
 fn a_long_press_asks_for_a_context_menu_and_clicks_nothing() {
   let screen = testing::render(touch);
 
-  if !sends_touch(
-    &screen,
-    "a_long_press_asks_for_a_context_menu_and_clicks_nothing",
-  ) {
+  if !sends_touch(&screen) {
     return;
   }
 
@@ -219,10 +216,7 @@ fn a_secondary_press_and_shift_f10_ask_for_a_context_menu() {
 fn a_swipe_scrolls_the_box_under_the_finger_and_flings_on() {
   let screen = testing::render(touch);
 
-  if !sends_touch(
-    &screen,
-    "a_swipe_scrolls_the_box_under_the_finger_and_flings_on",
-  ) {
+  if !sends_touch(&screen) {
     return;
   }
 
@@ -247,10 +241,7 @@ fn a_swipe_scrolls_the_box_under_the_finger_and_flings_on() {
 fn a_finger_in_a_field_places_the_caret_selects_and_asks_for_the_menu_on_a_selection() {
   let screen = testing::render(touch);
 
-  if !sends_touch(
-    &screen,
-    "a_finger_in_a_field_places_the_caret_selects_and_asks_for_the_menu_on_a_selection",
-  ) {
+  if !sends_touch(&screen) {
     return;
   }
 

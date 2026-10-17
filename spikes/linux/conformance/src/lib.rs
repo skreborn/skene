@@ -1342,6 +1342,12 @@ fn moved(colors: &[(Duration, u32)], from: u32, to: u32, what: &str) {
 fn transition_on_condition<D: Driver>(driver: &mut D) {
   driver.open("motion");
 
+  // The pointer starts off the box, wherever the window opened under it, and the box at rest.
+  let warm = role(driver, Role::Button, "Warm");
+
+  driver.act(&warm, &Action::Hover);
+  driver.wait(Duration::from_millis(u64::from(pages::MOTION) + 200));
+
   let hovered = role(driver, Role::Region, "Hovered");
   let colors = recorded(driver, "Hovered", |driver| {
     driver.act(&hovered, &Action::Hover);

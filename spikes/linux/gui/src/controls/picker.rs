@@ -6,18 +6,15 @@ use skene_foundation::{
   AxisAlignment, Border, Color, Dimension, Flexibility, Inset, State, SystemColors, Value,
   behavior::{self, Listbox, Popup},
   layout::Axis,
-  seam::{
-    control::{LabelPlacement, Part},
-    node::{NodeKind, NodeSpec},
-  },
+  seam::control::{LabelPlacement, Part},
 };
 
 use crate::{
-  AsPart, Column, Container, Control, Flexible, Label, Overlay, Painted, Row, Scroll, ScrollAxes,
+  AsPart, Column, Container, Control, Flexible, Label, Overlay, Painted, Scroll, ScrollAxes,
   Signal, Text,
-  control::{Members, control_members},
+  control::control_members,
   controls::{focus_ring, marks},
-  view::{AnyView, Child, ChildOf, Cx, Node, View, attach_children, keyed},
+  view::{AnyView, Cx, Node, View},
 };
 
 /// One option of a [`Picker`]'s list, as its item builder makes it: its text, taking the room
@@ -30,7 +27,9 @@ use crate::{
 /// it).
 #[must_use]
 pub struct PickerItem {
-  pub(super) members: Members,
+  /// The control it composes, its defaults set, over a behavior its list replaces.
+  pub(super) control: Control<behavior::ListboxOption>,
+  /// The mark shown while it is chosen.
   mark: AnyView,
 }
 
@@ -47,7 +46,7 @@ impl PickerItem {
       .set_child(Text::new(label.clone()).set_max_lines(1));
 
     Self {
-      members: Members::default(),
+      control: Control::new(Listbox::new().member(0)),
       mark: Self::default_mark().into_any(),
     }
     .set_min_height(30)
@@ -79,11 +78,14 @@ impl PickerItem {
     self
   }
 
-  control_members!(members);
+  control_members!(control.members);
 
   /// The control this option is, over `behavior`.
   fn into_control(self, behavior: behavior::ListboxOption) -> Control<behavior::ListboxOption> {
-    Control::with_members(behavior, self.members).add_part(Part::Mark, self.mark)
+    self
+      .control
+      .map_behavior(|_| behavior)
+      .add_part(Part::Mark, self.mark)
   }
 }
 
@@ -116,11 +118,17 @@ type ItemBuilder = Rc<dyn Fn(usize, &str) -> PickerItem>;
 /// accent while focus shows. Its list: [`Picker::default_list`].
 #[must_use]
 pub struct Picker {
-  pub(super) members: Members,
+  /// The face it composes, its defaults set, over a behavior replaced as it is built.
+  pub(super) control: Control<Popup>,
+  /// The list's behavior, which holds the choice.
   list: Listbox,
+  /// The options' texts.
   options: Rc<dyn Fn() -> Vec<String>>,
+  /// The face's mark.
   mark: AnyView,
+  /// The box around the open list.
   pub(super) list_box: Container,
+  /// What makes each option.
   builder: ItemBuilder,
 }
 
@@ -128,10 +136,11 @@ impl Picker {
   /// A picker labelled `label`, with no options.
   pub fn new(label: impl Into<String>) -> Self {
     let label: String = label.into();
+    let list = Listbox::new();
 
     Self {
-      members: Members::default(),
-      list: Listbox::new(),
+      control: Control::new(Popup::new(list.roster(), Vec::new)),
+      list,
       options: Rc::new(Vec::new),
       mark: Self::default_mark().into_any(),
       list_box: Self::default_list(),
@@ -240,35 +249,13 @@ impl Picker {
     self
   }
 
-  control_members!(members);
-}
-
-/// Views standing in the place of one: a segment of `children`, each built in order.
-struct Fragment(Vec<Child>);
-
-impl View for Fragment {
-  fn build(self, cx: &mut Cx) -> Node {
-    let segment = cx.create(NodeSpec::new(NodeKind::Segment));
-
-    attach_children(segment, self.0, cx);
-
-    Node(segment)
-  }
-}
-
-/// A child already held: a keyed list, as a view.
-struct Held(Child);
-
-impl View for Held {
-  fn build(self, cx: &mut Cx) -> Node {
-    (self.0)(cx)
-  }
+  control_members!(control.members);
 }
 
 impl View for Picker {
   fn build(self, cx: &mut Cx) -> Node {
     let Self {
-      members,
+      control,
       list,
       options,
       mark,
@@ -298,46 +285,31 @@ impl View for Picker {
           .unwrap_or_default()
       }
     };
-    let text: Child = Box::new(move |cx: &mut Cx| {
-      cx.presentational = true;
-
-      ChildOf::<Row>::build_child(
-        Flexible::new()
-          .set_flexibility(Flexibility {
-            grow: 1.,
-            shrink: 1.,
-            initial: Dimension::Auto,
-          })
-          .set_child(
-            Text::derive(shown)
-              .set_max_lines(1)
-              .derive_reserved_texts(names),
-          ),
-        cx,
-      )
-    });
-    let chevron: Child = Box::new(move |cx: &mut Cx| {
-      cx.part = Some(Part::Mark);
-      cx.presentational = true;
-
-      mark.build(cx)
-    });
+    let text = Flexible::new()
+      .set_flexibility(Flexibility {
+        grow: 1.,
+        shrink: 1.,
+        initial: Dimension::Auto,
+      })
+      .set_child(
+        Text::derive(shown)
+          .set_max_lines(1)
+          .derive_reserved_texts(names),
+      );
     let items = {
       let options = Rc::clone(&options);
 
-      keyed::<(usize, String), (usize, String), _, Column>(
+      Column::new().derive_children(
         move || options().into_iter().enumerate().collect(),
         Clone::clone,
-        move |(index, name)| {
+        move |(index, name): (usize, String)| {
           let member = Listbox::with_roster(Rc::clone(&roster)).member(index);
 
           builder(index, &name).into_control(member)
         },
       )
     };
-    let listbox = Control::new(list)
-      .set_axis(Axis::Vertical)
-      .set_child(Held(items));
+    let listbox = Control::new(list).set_axis(Axis::Vertical).set_child(items);
     let overlay = Overlay::popup().bind_open(open).set_child(
       AsPart::new(Part::List).set_child(
         list_box.set_child(
@@ -347,10 +319,12 @@ impl View for Picker {
         ),
       ),
     );
-    let overlay: Child = Box::new(move |cx: &mut Cx| overlay.build(cx));
 
-    Control::with_members(popup, members)
-      .set_child(Fragment(vec![text, chevron, overlay]))
+    control
+      .map_behavior(|_| popup)
+      .add_part(Part::Value, text)
+      .add_part(Part::Mark, mark)
+      .set_child(overlay)
       .build(cx)
   }
 }

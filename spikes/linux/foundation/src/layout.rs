@@ -15,7 +15,7 @@ use std::{cell::RefCell, rc::Rc};
 use crate::{
   seam::{
     node::LayoutKind,
-    record::{Prop, Resolved},
+    record::{Group, Prop, Resolved, Transition},
     style::{CompiledStyle, KeptLeaf},
   },
   text::{MeasureText, Space},
@@ -73,6 +73,8 @@ pub struct ResolvedLayout {
   pub pin: Option<Edges>,
   /// A cell in a grid.
   pub cell: Option<GridPlacement>,
+  /// The transitions of its layout properties, which a realization runs on its frame clock.
+  pub transitions: Vec<Transition>,
 }
 
 impl ResolvedLayout {
@@ -94,13 +96,50 @@ impl ResolvedLayout {
         continue;
       };
 
-      layout.put(*prop, resolved);
+      layout.set(*prop, resolved);
     }
+
+    layout.transitions = style
+      .transitions
+      .iter()
+      .filter(|transition| transition.prop.group() == Group::Layout)
+      .copied()
+      .collect();
 
     layout
   }
 
-  fn put(&mut self, prop: Prop, value: &Resolved) {
+  /// Its properties a transition moves between two values, where set: the sizes, the
+  /// padding and the spacing.
+  #[must_use]
+  pub fn animatable(&self) -> Vec<(Prop, Resolved)> {
+    let sizes = [
+      (Prop::Width, self.width),
+      (Prop::Height, self.height),
+      (Prop::MinWidth, self.min_width),
+      (Prop::MinHeight, self.min_height),
+      (Prop::MaxWidth, self.max_width),
+      (Prop::MaxHeight, self.max_height),
+    ];
+
+    sizes
+      .into_iter()
+      .filter_map(|(prop, size)| Some((prop, Resolved::Dimension(size?))))
+      .chain(
+        self
+          .padding
+          .map(|padding| (Prop::Padding, Resolved::Inset(padding))),
+      )
+      .chain(
+        self
+          .spacing
+          .map(|spacing| (Prop::Spacing, Resolved::Spacing(spacing))),
+      )
+      .collect()
+  }
+
+  /// Sets `prop` to `value`, where it is a layout property of that value's kind.
+  pub fn set(&mut self, prop: Prop, value: &Resolved) {
     use Resolved as R;
 
     match (prop, value) {

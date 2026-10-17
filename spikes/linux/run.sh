@@ -175,6 +175,10 @@ summarize() {
     /^test result:/ { if (name != "") printf "  %s: %s %s passed, %s failed in %s\n", name, $3, $4, $6, $NF; name = "" }
   ' "$1"
 }
+# How many of a log's passing tests had nothing to test on their leg, as skene-runner lists them.
+untested() {
+  grep -oE 'skene-runner: tested nothing on the [^ ]+ leg, though counted as passed: [0-9]+' "$1" | awk '{s+=$NF} END {print s+0}'
+}
 started=$(date +%s%N)
 cargo test --workspace --no-run > "$results/test-build.log" 2>&1
 say "cargo test --workspace --no-run (building every test): $(( ($(date +%s%N) - started) / 1000000 )) ms"
@@ -187,7 +191,7 @@ for leg in x11 wayland; do
     outcome=FAILED
   fi
   took=$(( ($(date +%s%N) - started) / 1000000 ))
-  say "cargo test --workspace on the $leg leg: $outcome, $(grep -oE '[0-9]+ passed' "$results/test-$leg.log" | awk '{s+=$1} END {print s}') passed, $(grep -oE '[0-9]+ failed' "$results/test-$leg.log" | awk '{s+=$1} END {print s}') failed, ${took} ms wall (built before)"
+  say "cargo test --workspace on the $leg leg: $outcome, $(grep -oE '[0-9]+ passed' "$results/test-$leg.log" | awk '{s+=$1} END {print s}') passed ($(untested "$results/test-$leg.log") of them testing nothing on the leg), $(grep -oE '[0-9]+ failed' "$results/test-$leg.log" | awk '{s+=$1} END {print s}') failed, ${took} ms wall (built before)"
   summarize "$results/test-$leg.log" | grep -vE ": ok\. 0 passed" | tee -a "$summary"
 done
 cp "$results/test-x11.log" "$results/test.log"
@@ -198,7 +202,7 @@ if SKENE_TEST_SESSION=sway cargo test --no-fail-fast -p skene-conformance -p hel
 else
   outcome=FAILED
 fi
-say "cargo test of the GUI crates and the realization on the sway leg: $outcome, $(grep -oE '[0-9]+ passed' "$results/test-sway.log" | awk '{s+=$1} END {print s}') passed, $(grep -oE '[0-9]+ failed' "$results/test-sway.log" | awk '{s+=$1} END {print s}') failed, $(( ($(date +%s%N) - started) / 1000000 )) ms wall"
+say "cargo test of the GUI crates and the realization on the sway leg: $outcome, $(grep -oE '[0-9]+ passed' "$results/test-sway.log" | awk '{s+=$1} END {print s}') passed ($(untested "$results/test-sway.log") of them testing nothing on the leg), $(grep -oE '[0-9]+ failed' "$results/test-sway.log" | awk '{s+=$1} END {print s}') failed, $(( ($(date +%s%N) - started) / 1000000 )) ms wall"
 measure_target
 
 say "== more legs: weston, KWin, KWin's Xwayland; the scaled legs (1.5)"
@@ -215,8 +219,8 @@ legs_run() { # <log name> <leg> [scale]
   else
     outcome=FAILED
   fi
-  say "cargo test of the GUI crates and the realization on the $1 leg: $outcome, $(grep -oE '[0-9]+ passed' "$log" | awk '{s+=$1} END {print s}') passed, $(grep -oE '[0-9]+ failed' "$log" | awk '{s+=$1} END {print s}') failed, $(( ($(date +%s%N) - started) / 1000000 )) ms wall"
-  grep -hE "not tested here" "$log" | sed -E 's/^.*not tested here: /  not tested here: /' | sort | uniq -c | tee -a "$summary"
+  say "cargo test of the GUI crates and the realization on the $1 leg: $outcome, $(grep -oE '[0-9]+ passed' "$log" | awk '{s+=$1} END {print s}') passed ($(untested "$log") of them testing nothing on the leg), $(grep -oE '[0-9]+ failed' "$log" | awk '{s+=$1} END {print s}') failed, $(( ($(date +%s%N) - started) / 1000000 )) ms wall"
+  grep -hE "^  .*: not tested here" "$log" | sed -E 's/^.*not tested here: /  not tested here: /' | sort | uniq -c | tee -a "$summary"
 }
 for leg in weston kwin kwin-x11; do
   legs_run "$leg" "$leg"
@@ -249,8 +253,8 @@ say "input the driver sent again, over every run above: clicks aimed again (a wi
 
 say "== the runner never touches the user's session: a stand-in user X display, Wayland compositor and session bus set, every leg"
 tools/testing/isolation.sh "$results/isolation" hello notes-gui 2>&1 | tee "$results/isolation.txt" | tee -a "$summary"
-direct=$(ls -t "$CARGO_TARGET_DIR/$triple/debug/deps/" | grep -E '^facade-[0-9a-f]{16}$' | head -1)
-say "a test run outside the runner: $("$CARGO_TARGET_DIR/$triple/debug/deps/$direct" 2>&1 | grep -oE 'a test runs in the display runner.s private session[^;]*' | head -1)"
+direct=$(cargo test -p skene-gui --test it --no-run 2>&1 | sed -nE 's/^ *Executable tests\/it\/main.rs \((.*)\)$/\1/p' | head -1)
+say "a test run outside the runner: $("$direct" 2>&1 | grep -oE 'a test runs in the display runner.s private session[^;]*' | head -1)"
 
 say "== the screenshots (screenshots/)"
 rm -rf screenshots
@@ -415,9 +419,11 @@ for leg in x11 wayland sway; do
   grep -E '^[a-z]+: most [0-9]+ apart' "$results/test-gpu-$leg.log" | awk '{ if ($3 > most) most = $3; apart += $5 } END { printf "  every page: a channel at most %d apart, %d pixels beyond 2 in all\n", most, apart }' | tee -a "$summary"
 done
 for leg in x11 wayland; do
-  SKENE_TEST_SESSION=$leg SKENE_RENDERER=gpu cargo test --no-fail-fast -p skene-conformance -p skene-gui \
-    -p skene-gui-linux --features skene-gui-linux/gpu --test linux --test paint > "$results/test-on-gpu-$leg.log" 2>&1 || true
-  say "the conformance suite and the facade's test on the GPU path, $leg leg: $(grep -oE '[0-9]+ passed' "$results/test-on-gpu-$leg.log" | awk '{s+=$1} END {print s}') passed, $(grep -oE '[0-9]+ failed' "$results/test-on-gpu-$leg.log" | awk '{s+=$1} END {print s}') failed"
+  SKENE_TEST_SESSION=$leg SKENE_RENDERER=gpu cargo test --no-fail-fast -p skene-conformance \
+    -p skene-gui-linux --features skene-gui-linux/gpu --test linux > "$results/test-on-gpu-$leg.log" 2>&1 || true
+  SKENE_TEST_SESSION=$leg SKENE_RENDERER=gpu cargo test --no-fail-fast -p skene-gui \
+    --features skene-gui-linux/gpu --test it >> "$results/test-on-gpu-$leg.log" 2>&1 || true
+  say "the conformance suite and the facade's tests on the GPU path, $leg leg: $(grep -oE '[0-9]+ passed' "$results/test-on-gpu-$leg.log" | awk '{s+=$1} END {print s}') passed, $(grep -oE '[0-9]+ failed' "$results/test-on-gpu-$leg.log" | awk '{s+=$1} END {print s}') failed"
 done
 cargo build --release -p skene-shell-probes -p skene-gui-linux --features skene-gui-linux/gpu --bin rows \
   > "$results/paint/build.log" 2>&1

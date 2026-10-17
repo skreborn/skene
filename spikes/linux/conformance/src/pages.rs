@@ -683,7 +683,7 @@ fn gradients() -> impl View {
 pub const MOTION: u32 = 400;
 
 /// A fill moving linearly over [`MOTION`] milliseconds.
-fn moving() -> Transition {
+const fn moving() -> Transition {
   Transition::new(keys::BACKGROUND, MOTION).set_curve(Curve::Linear)
 }
 

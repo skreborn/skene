@@ -36,7 +36,9 @@
 //!   what the test reads of the screen is the windows alone. It never touches the user's
 //!   display, so parallel test processes (cargo-nextest's) share no pointer, keyboard focus or
 //!   window stack, and a test reads what a screen reader reads of its own app alone. Listing
-//!   the tests (`--list`) needs none of it and runs with no display at all.
+//!   the tests (`--list`) needs none of it and runs with no display at all. A test that had
+//!   nothing to test on its leg says so in the file `SKENE_NOT_TESTED` names, and the runner
+//!   lists those after the binary's own results: each passed without testing anything there.
 //! - **An app** runs on the user's display where there is one (`DISPLAY` or
 //!   `WAYLAND_DISPLAY`), and on a private Xvfb otherwise; it gets a private session bus where
 //!   the user has none.
@@ -837,6 +839,30 @@ impl Session {
     Ok(())
   }
 
+  /// Where a test of the session says it had nothing to test on its leg.
+  fn not_tested(&self) -> PathBuf {
+    self.scratch.join("not-tested")
+  }
+
+  /// Lists the tests that said they had nothing to test on `leg`, after the program's own
+  /// results: each passed without testing anything here.
+  fn report_not_tested(&self, leg: Leg) {
+    let Ok(said) = fs::read_to_string(self.not_tested()) else {
+      return;
+    };
+    let lines: Vec<&str> = said.lines().filter(|line| !line.is_empty()).collect();
+
+    eprintln!(
+      "skene-runner: tested nothing on the {1} leg, though counted as passed: {0}",
+      lines.len(),
+      leg.name()
+    );
+
+    for line in lines {
+      eprintln!("  {line}");
+    }
+  }
+
   /// Runs `command` in the session and waits for it, forwarding an ending signal to it; its
   /// exit code, or 128 plus the signal that ended it.
   fn run(&self, command: &mut Command) -> Result<ExitCode, String> {
@@ -859,7 +885,8 @@ impl Session {
         .env("XDG_RUNTIME_DIR", self.runtime())
         .env("XDG_CONFIG_HOME", self.scratch.join("config"))
         .env("GSETTINGS_BACKEND", "memory")
-        .env("EGL_LOG_LEVEL", "fatal");
+        .env("EGL_LOG_LEVEL", "fatal")
+        .env("SKENE_NOT_TESTED", self.not_tested());
 
       if !utf8_locale() {
         command.env("LC_CTYPE", "C.UTF-8");
@@ -904,6 +931,10 @@ impl Session {
     let status = child.wait();
 
     PROGRAM.store(0, Ordering::SeqCst);
+
+    if let Some(leg) = self.test {
+      self.report_not_tested(leg);
+    }
 
     let status = status.map_err(|error| format!("could not wait for the program: {error}"))?;
 

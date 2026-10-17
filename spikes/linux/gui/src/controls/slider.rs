@@ -27,16 +27,24 @@ use crate::{
 /// parts: a track ([`Slider::default_track`]) clipping its fill ([`Slider::default_fill`]),
 /// and a thumb ([`Slider::default_thumb`]) centered on the value. The fill and the thumb move
 /// by paint alone. It is 200 pixels wide unless its layout stretches or shrinks it, 80 at
-/// least, and 24 tall, padded 9 at the sides.
+/// least, and 24 tall, padded 9 at the sides; it takes a press inside its box alone.
 #[must_use]
 pub struct Slider {
+  /// The control it composes, its defaults set, over a behavior replaced as it is built.
   pub(super) control: Control<Behavior>,
+  /// The value.
   value: Rc<dyn Fn() -> f32>,
+  /// The least and greatest values.
   range: Rc<dyn Fn() -> (f32, f32)>,
+  /// The step the value moves by.
   step: Rc<dyn Fn() -> f32>,
+  /// What hears each move.
   change: Option<Rc<dyn Fn(f32)>>,
+  /// The track.
   pub(super) track: Container,
+  /// The fill.
   pub(super) fill: Container,
+  /// The thumb.
   pub(super) thumb: Container,
 }
 
@@ -209,8 +217,12 @@ impl View for Slider {
     };
     let fill_fraction = fraction.clone();
     let fill = fill.derive_offset(move || Offset::of_size(fill_fraction() - 1., 0.));
+    // As wide as the track where the track's width is known, 182 where its layout asks how
+    // wide it likes to be.
     let carrier = Container::new()
-      .set_width(Dimension::Fraction(1.))
+      .set_width(182)
+      .set_min_width(Dimension::Fraction(1.))
+      .set_max_width(Dimension::Fraction(1.))
       .set_height(18)
       .set_alignment(Alignment::new(AxisAlignment::Start, AxisAlignment::Center))
       .derive_offset(move || Offset::of_size(fraction(), 0.))

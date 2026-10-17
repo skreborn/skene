@@ -150,13 +150,18 @@ impl<E: TextEngine> Editor<E> {
 
   /// Makes the entry one of several lines (an editor) where `multiline`: `Enter` breaks
   /// lines, and pasted line breaks stay.
-  pub fn set_multiline(&mut self, multiline: bool) {
+  pub const fn set_multiline(&mut self, multiline: bool) {
     self.multiline = multiline;
   }
 
-  /// Makes the text secure where `secure`: it offers neither copy nor cut, and a word is the
-  /// whole text, so a double press selects it all and a drag after one extends to it all.
-  pub const fn set_secure(&mut self, secure: bool) {
+  /// Makes the text secure where `secure`: it offers neither copy nor cut, it keeps no undo
+  /// history (what it kept is dropped), and a word is the whole text, so a double press
+  /// selects it all and a drag after one extends to it all.
+  pub fn set_secure(&mut self, secure: bool) {
+    if secure != self.secure {
+      self.history.set_enabled(!secure);
+    }
+
     self.secure = secure;
   }
 

@@ -330,16 +330,14 @@ impl SimpleDatePicker {
             if filled() {
               SimpleButton::fill()
             } else {
-              Value::<Fill>::from(SystemColors::CONTROL)
-                .when(State::Hovered, SystemColors::CONTROL_HOVER)
-                .when(State::Pressed, SystemColors::CONTROL_PRESSED)
+              Button::default_background(false)
             }
           })
           .derive_color(move || {
             if inked() {
-              SimplePalette::ON_ACCENT
+              Value::from(SimplePalette::ON_ACCENT)
             } else {
-              SystemColors::INK
+              Button::default_color(false)
             }
           })
           .handle_activate(move || {

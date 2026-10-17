@@ -1053,7 +1053,7 @@ impl X11 {
     Ok(())
   }
 
-  fn pointer_at(&self, x: f32, y: f32) -> (f32, f32) {
+  const fn pointer_at(&self, x: f32, y: f32) -> (f32, f32) {
     (x, y)
   }
 
@@ -1531,14 +1531,14 @@ impl X11 {
     }
   }
 
-  fn selection_atom(&self, selection: Selection) -> u32 {
+  const fn selection_atom(&self, selection: Selection) -> u32 {
     match selection {
       Selection::Clipboard => self.atoms.CLIPBOARD,
       Selection::Primary => self.atoms.PRIMARY,
     }
   }
 
-  fn selection_of(&self, atom: u32) -> Option<Selection> {
+  const fn selection_of(&self, atom: u32) -> Option<Selection> {
     if atom == self.atoms.CLIPBOARD {
       Some(Selection::Clipboard)
     } else if atom == self.atoms.PRIMARY {
@@ -2072,9 +2072,9 @@ impl X11 {
     let screen = &self.conn.setup().roots[self.screen];
     let x = (self.window_origin.0 + device(anchor.x + ox))
       .clamp(0, (i32::from(screen.width_in_pixels) - width as i32).max(0));
-    let below = self.window_origin.1 + device(anchor.y + anchor.height + 2. + oy);
+    let below = self.window_origin.1 + device(anchor.y + anchor.height + placement.gap + oy);
     let y = if below + height as i32 > i32::from(screen.height_in_pixels) {
-      (self.window_origin.1 + device(anchor.y + oy) - height as i32 - 2).max(0)
+      (self.window_origin.1 + device(anchor.y - placement.gap + oy) - height as i32).max(0)
     } else {
       below
     };
@@ -2128,6 +2128,11 @@ impl X11 {
       (f64::from(x - self.window_origin.0) / scale) as f32 - ox,
       (f64::from(y - self.window_origin.1) / scale) as f32 - oy,
     );
+
+    // The window is of the screen's own depth: nothing shows through its corners.
+    if let Some(open) = shell.popup_mut() {
+      open.set_opaque_surface(true);
+    }
 
     Ok(())
   }

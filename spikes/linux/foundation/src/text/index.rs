@@ -101,7 +101,7 @@ impl TextIndex {
 
   /// The number of grapheme clusters.
   #[must_use]
-  pub fn grapheme_count(&self) -> usize {
+  pub const fn grapheme_count(&self) -> usize {
     if self.ascii {
       self.len
     } else {

@@ -11,7 +11,7 @@ use skene_foundation::{
 
 use crate::{editor, laid};
 
-fn moving(movement: Movement) -> Command {
+const fn moving(movement: Movement) -> Command {
   Command::Move {
     movement,
     extend: false,

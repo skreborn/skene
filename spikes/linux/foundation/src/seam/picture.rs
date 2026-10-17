@@ -93,7 +93,7 @@ impl Picture {
   /// Whether it draws nothing.
   #[inline(always)]
   #[must_use]
-  pub fn is_empty(&self) -> bool {
+  pub const fn is_empty(&self) -> bool {
     self.ops.is_empty()
   }
 }

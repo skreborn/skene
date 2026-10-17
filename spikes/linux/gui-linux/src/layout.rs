@@ -2,7 +2,7 @@
 //! protocol for every realized node (a container through its own engine, a text through its
 //! paragraph, a text entry through its editor), a scroller lays its one child out at the
 //! height it asks for, an overlay is out of its parent's flow and laid out apart
-//! ([`layout_overlay`]), and [`prepare`] gives every paragraph the run properties it inherits
+//! ([`Drawn::layout_overlay`]), and [`prepare`] gives every paragraph the run properties it inherits
 //! before a layout reads it.
 
 use std::{cell::Cell, rc::Rc};
@@ -118,153 +118,166 @@ fn scrolled(node: &Node) -> Option<Node> {
     .cloned()
 }
 
-fn measure_uncached(node: &Node, axis: Axis, for_size: Option<f32>, needed: Needed) -> Measurement {
-  match node.spec.kind {
-    NodeKind::Layout(LayoutKind::Scroll {
-      horizontal,
-      vertical,
-    }) => {
-      let Some(child) = scrolled(node) else {
-        return Measurement::default();
-      };
-      let scrolls = match axis {
-        Axis::Horizontal => horizontal,
-        Axis::Vertical => vertical,
-      };
+impl Drawn {
+  /// Its measurement along `axis`, the other axis `for_size` where known, of what `needed`
+  /// names, its cache left aside.
+  fn measure_uncached(
+    self: &Rc<Self>,
+    axis: Axis,
+    for_size: Option<f32>,
+    needed: Needed,
+  ) -> Measurement {
+    match self.spec.kind {
+      NodeKind::Layout(LayoutKind::Scroll {
+        horizontal,
+        vertical,
+      }) => {
+        let Some(child) = scrolled(self) else {
+          return Measurement::default();
+        };
+        let scrolls = match axis {
+          Axis::Horizontal => horizontal,
+          Axis::Vertical => vertical,
+        };
 
-      if !scrolls {
-        return Host::measure(&child, axis, for_size, needed);
-      }
-
-      Measurement {
-        minimum: 0.,
-        natural: if needed.natural() {
-          Host::measure(&child, axis, for_size, Needed::Natural).natural
-        } else {
-          0.
-        },
-        baseline: None,
-      }
-    }
-    NodeKind::Layout(_) | NodeKind::Overlay => {
-      with_engine(node, |engine| engine.measure(axis, for_size, needed))
-    }
-    NodeKind::Editable { multiline } => node.measure_entry(multiline, axis, for_size),
-    NodeKind::Text => {
-      let Some(cell) = node.text.borrow().clone() else {
-        return Measurement::default();
-      };
-      let measured = match axis {
-        Axis::Horizontal => {
-          let intrinsic = cell.intrinsic();
-
-          return Measurement {
-            minimum: intrinsic.min,
-            natural: intrinsic.max.max(cell.reserved_width()),
-            baseline: None,
-          };
+        if !scrolls {
+          return Host::measure(&child, axis, for_size, needed);
         }
-        Axis::Vertical => cell.measure(
-          (for_size, None),
-          (
-            for_size.map_or(Space::MaxContent, Space::Definite),
-            Space::MaxContent,
-          ),
-        ),
-      };
 
-      Measurement {
-        minimum: measured.height,
-        natural: measured.height,
-        baseline: measured.first_baseline,
+        Measurement {
+          minimum: 0.,
+          natural: if needed.natural() {
+            Host::measure(&child, axis, for_size, Needed::Natural).natural
+          } else {
+            0.
+          },
+          baseline: None,
+        }
       }
+      NodeKind::Layout(_) | NodeKind::Overlay => {
+        with_engine(self, |engine| engine.measure(axis, for_size, needed))
+      }
+      NodeKind::Editable { multiline } => self.measure_entry(multiline, axis, for_size),
+      NodeKind::Text => {
+        let Some(cell) = self.text.borrow().clone() else {
+          return Measurement::default();
+        };
+        let measured = match axis {
+          Axis::Horizontal => {
+            let intrinsic = cell.intrinsic();
+
+            return Measurement {
+              minimum: intrinsic.min,
+              natural: intrinsic.max.max(cell.reserved_width()),
+              baseline: None,
+            };
+          }
+          Axis::Vertical => cell.measure(
+            (for_size, None),
+            (
+              for_size.map_or(Space::MaxContent, Space::Definite),
+              Space::MaxContent,
+            ),
+          ),
+        };
+
+        Measurement {
+          minimum: measured.height,
+          natural: measured.height,
+          baseline: measured.first_baseline,
+        }
+      }
+      NodeKind::Painted
+      | NodeKind::Image
+      | NodeKind::Native
+      | NodeKind::Scope
+      | NodeKind::Segment => Measurement::default(),
     }
-    NodeKind::Painted
-    | NodeKind::Image
-    | NodeKind::Native
-    | NodeKind::Scope
-    | NodeKind::Segment => Measurement::default(),
   }
 }
 
-/// Which of `node`'s sizes do not depend on the other axis's, found once a layout epoch: a
-/// text's, an entry's and a leaf's never do; a vertical scroller's least height is none; a
-/// container's are rigid where its shown children's are, a column's height where none of
-/// them takes a basis of its own, and a wrapping column's width never.
-fn rigid(node: &Node) -> Rigid {
-  let epoch = EPOCH.with(Cell::get);
+impl Drawn {
+  /// Which of its sizes do not depend on the other axis's, found once a layout epoch: a
+  /// text's, an entry's and a leaf's never do; a vertical scroller's least height is none; a
+  /// container's are rigid where its shown children's are, a column's height where none of
+  /// them takes a basis of its own, and a wrapping column's width never.
+  fn rigid(self: &Rc<Self>) -> Rigid {
+    let epoch = EPOCH.with(Cell::get);
 
-  {
-    let cache = node.measures.borrow();
-
-    if cache.epoch == epoch
-      && let Some(rigid) = cache.rigid
     {
-      return rigid;
-    }
-  }
+      let cache = self.measures.borrow();
 
-  let all = Rigid {
-    height: true,
-    width: true,
-  };
-  let found = match node.spec.kind {
-    NodeKind::Layout(LayoutKind::Scroll { vertical, .. }) => scrolled(node).map_or(all, |child| {
-      let inner = rigid(&child);
-
-      Rigid {
-        height: !vertical && inner.height,
-        width: inner.width,
+      if cache.epoch == epoch
+        && let Some(rigid) = cache.rigid
+      {
+        return rigid;
       }
-    }),
-    NodeKind::Layout(_) | NodeKind::Overlay => {
-      let column = node.layout_kind() == Some(LayoutKind::Column);
-      let wraps = node.layout.borrow().wrap;
-
-      node
-        .children_ref()
-        .iter()
-        .filter(|child| Host::is_visible(child))
-        .fold(
-          Rigid {
-            height: true,
-            width: !(column && wraps),
-          },
-          |found, child| {
-            let inner = rigid(child);
-            let basis = column
-              && child
-                .layout
-                .borrow()
-                .flexibility
-                .is_some_and(|flexibility| flexibility.initial != Dimension::Auto);
-
-            Rigid {
-              height: found.height && inner.height && !basis,
-              width: found.width && inner.width,
-            }
-          },
-        )
     }
-    _ => all,
-  };
-  let mut cache = node.measures.borrow_mut();
 
-  if cache.epoch != epoch {
-    *cache = Measures {
-      epoch,
-      ..Measures::default()
+    let all = Rigid {
+      height: true,
+      width: true,
     };
+    let found = match self.spec.kind {
+      NodeKind::Layout(LayoutKind::Scroll { vertical, .. }) => {
+        scrolled(self).map_or(all, |child| {
+          let inner = child.rigid();
+
+          Rigid {
+            height: !vertical && inner.height,
+            width: inner.width,
+          }
+        })
+      }
+      NodeKind::Layout(_) | NodeKind::Overlay => {
+        let column = self.layout_kind() == Some(LayoutKind::Column);
+        let wraps = self.layout.borrow().wrap;
+
+        self
+          .children_ref()
+          .iter()
+          .filter(|child| Host::is_visible(child))
+          .fold(
+            Rigid {
+              height: true,
+              width: !(column && wraps),
+            },
+            |found, child| {
+              let inner = child.rigid();
+              let basis = column
+                && child
+                  .layout
+                  .borrow()
+                  .flexibility
+                  .is_some_and(|flexibility| flexibility.initial != Dimension::Auto);
+
+              Rigid {
+                height: found.height && inner.height && !basis,
+                width: found.width && inner.width,
+              }
+            },
+          )
+      }
+      _ => all,
+    };
+    let mut cache = self.measures.borrow_mut();
+
+    if cache.epoch != epoch {
+      *cache = Measures {
+        epoch,
+        ..Measures::default()
+      };
+    }
+
+    cache.rigid = Some(found);
+
+    found
   }
-
-  cache.rigid = Some(found);
-
-  found
 }
 
 /// A node's measurement along `axis` with what it holds: `kept`, holding what `had` names,
 /// joined with `fresh`, holding what `got` names, measured together.
-fn joined(
+const fn joined(
   axis: Axis,
   kept: Measurement,
   had: Needed,
@@ -330,7 +343,7 @@ impl LayoutHost for Host {
   type Child = Node;
 
   fn measure(child: &Node, axis: Axis, for_size: Option<f32>, needed: Needed) -> Measurement {
-    let rigid = rigid(child);
+    let rigid = child.rigid();
     // A width that does not depend on the height is measured once, whatever height is given;
     // a height whose least is its natural one is measured once for both.
     let (for_size, needed) = match axis {
@@ -367,10 +380,12 @@ impl LayoutHost for Host {
     MEASURED.with(|count| count.set(count.get() + 1));
 
     let fresh = if axis == Axis::Vertical && rigid.height {
-      let natural = measure_uncached(child, axis, for_size, Needed::Natural);
+      let natural = child.measure_uncached(axis, for_size, Needed::Natural);
 
       debug_assert_eq!(
-        measure_uncached(child, axis, for_size, Needed::Minimum).minimum,
+        child
+          .measure_uncached(axis, for_size, Needed::Minimum)
+          .minimum,
         natural.natural,
         "a rigid node's least height is its natural height"
       );
@@ -380,7 +395,7 @@ impl LayoutHost for Host {
         ..natural
       }
     } else {
-      measure_uncached(child, axis, for_size, wanted)
+      child.measure_uncached(axis, for_size, wanted)
     };
     let (measured, holds) = match kept {
       Some((kept, had)) => (joined(axis, kept, had, fresh, wanted), both(had, wanted)),
@@ -493,11 +508,13 @@ fn lay_children(node: &Node, window: Rect) {
   }
 }
 
-/// Lays the overlay `node`'s content out at `window`, its rectangle in the window.
-pub fn layout_overlay(node: &Node, window: Rect) {
-  node.frame.set(window);
-  node.laid_width.set(window.width);
-  lay_children(node, window);
+impl Drawn {
+  /// Lays its content out at `window`, its rectangle in the window, where it is an overlay.
+  pub fn layout_overlay(self: &Rc<Self>, window: Rect) {
+    self.frame.set(window);
+    self.laid_width.set(window.width);
+    lay_children(self, window);
+  }
 }
 
 /// Lays the tree under `root` out in a window `width` by `height`, the root at `origin`.
@@ -519,10 +536,26 @@ pub fn layout(root: &Node, origin: (f32, f32), width: f32, height: f32) {
 /// (its frame moved by its offset): its own box and overhang, and its children's where it does
 /// not clip them.
 pub fn reach(root: &Node) {
-  fn go(node: &Node) -> Rect {
-    let frame = node.frame.get();
+  fn go(node: &Node) {
+    for child in node.children_ref().iter() {
+      if !child.is_hidden() && !child.is_overlay() {
+        go(child);
+      }
+    }
+
+    node.gather_reach();
+  }
+
+  go(root);
+}
+
+impl Drawn {
+  /// Computes what it and its subtree paint ([`reach`]) from its own box and its children's
+  /// reach as last computed.
+  fn gather_reach(self: &Rc<Self>) {
+    let frame = self.frame.get();
     let own = crate::paint::painted_bounds(
-      node,
+      self,
       Rect {
         x: 0.,
         y: 0.,
@@ -531,20 +564,20 @@ pub fn reach(root: &Node) {
       },
     );
     let clips =
-      node.look.borrow().clip || matches!(node.layout_kind(), Some(LayoutKind::Scroll { .. }));
-    let (sx, sy) = node.scroll.get();
+      self.look.borrow().clip || matches!(self.layout_kind(), Some(LayoutKind::Scroll { .. }));
+    let (sx, sy) = self.scroll.get();
     let mut reach = own;
 
-    for child in node.children_ref().iter() {
-      if child.is_hidden() || child.is_overlay() {
-        continue;
-      }
+    if !clips {
+      for child in self.children_ref().iter() {
+        if child.is_hidden() || child.is_overlay() {
+          continue;
+        }
 
-      let child_frame = child.frame.get();
-      let (dx, dy) = child.offset();
-      let child_reach = go(child);
+        let child_frame = child.frame.get();
+        let (dx, dy) = child.offset();
+        let child_reach = child.reach.get();
 
-      if !clips {
         reach = crate::paint::union(
           reach,
           Rect {
@@ -556,12 +589,18 @@ pub fn reach(root: &Node) {
       }
     }
 
-    node.reach.set(reach);
-
-    reach
+    self.reach.set(reach);
   }
 
-  go(root);
+  /// Computes again what it and each of its ancestors paint, its children's reach kept: what a
+  /// change of its look alone (its fill, its shadow, its ring, its offset) needs.
+  pub fn refresh_reach(self: &Rc<Self>) {
+    self.gather_reach();
+
+    for ancestor in self.ancestors() {
+      ancestor.gather_reach();
+    }
+  }
 }
 
 /// Gives every paragraph under `root` its text in the run properties it inherits, rebuilding
@@ -571,20 +610,22 @@ pub fn prepare(root: &Node, palette: &Palette, repainted: &mut Vec<Node>) -> Cha
   prepare_from(root, &RunProps::default(), palette, repainted)
 }
 
-/// [`prepare`] for `node`'s subtree alone, the run properties its ancestors set inherited:
-/// what a node whose own run properties changed, and nothing else, needs.
-pub fn prepare_subtree(node: &Node, palette: &Palette, repainted: &mut Vec<Node>) -> Change {
-  let mut ancestors = node.ancestors();
+impl Drawn {
+  /// [`prepare`] for its subtree alone, the run properties its ancestors set inherited:
+  /// what a node whose own run properties changed, and nothing else, needs.
+  pub fn prepare_subtree(self: &Rc<Self>, palette: &Palette, repainted: &mut Vec<Node>) -> Change {
+    let mut ancestors = self.ancestors();
 
-  ancestors.reverse();
+    ancestors.reverse();
 
-  let inherited = ancestors
-    .iter()
-    .fold(RunProps::default(), |inherited, ancestor| {
-      ancestor.run.borrow().over(&inherited)
-    });
+    let inherited = ancestors
+      .iter()
+      .fold(RunProps::default(), |inherited, ancestor| {
+        ancestor.run.borrow().over(&inherited)
+      });
 
-  prepare_from(node, &inherited, palette, repainted)
+    prepare_from(self, &inherited, palette, repainted)
+  }
 }
 
 fn prepare_from(

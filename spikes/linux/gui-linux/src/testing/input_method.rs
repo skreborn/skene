@@ -153,8 +153,11 @@ mod served {
 
   use super::{CONTEXTS, IBUS_CONTEXT, Purpose, Shared, tell};
 
+  /// Fcitx5's input method object: it hands out input contexts.
   pub(super) struct Method {
+    /// What the stand-in was told.
     pub(super) told: Shared,
+    /// The path of the context handed out last, which its signals go to.
     pub(super) latest: Arc<Mutex<String>>,
   }
 
@@ -194,7 +197,9 @@ mod served {
     }
   }
 
+  /// A Fcitx5 input context: what a window tells of its focused field.
   pub(super) struct Context {
+    /// What the stand-in was told.
     pub(super) told: Shared,
   }
 
@@ -245,8 +250,11 @@ mod served {
     }
   }
 
+  /// IBus's bus object: it hands out the one input context.
   pub(super) struct IBusMethod {
+    /// What the stand-in was told.
     pub(super) told: Shared,
+    /// The unique bus name of the client that asked for the context, which its signals go to.
     pub(super) client: Arc<Mutex<Option<String>>>,
   }
 
@@ -268,8 +276,11 @@ mod served {
     }
   }
 
+  /// The IBus input context: what a window tells of its focused field.
   pub(super) struct IBusContext {
+    /// What the stand-in was told.
     pub(super) told: Shared,
+    /// The content type last told: IBus's purpose and hints.
     pub(super) content_type: (u32, u32),
   }
 

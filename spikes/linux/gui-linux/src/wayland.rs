@@ -789,7 +789,8 @@ impl State {
     );
     positioner.set_anchor(Anchor::BottomLeft);
     positioner.set_gravity(Gravity::BottomRight);
-    positioner.set_offset(0, 2);
+    #[expect(clippy::cast_possible_truncation, reason = "whole pixels")]
+    positioner.set_offset(0, placement.gap.round() as i32);
     positioner.set_constraint_adjustment(
       ConstraintAdjustment::FlipY | ConstraintAdjustment::SlideX | ConstraintAdjustment::SlideY,
     );

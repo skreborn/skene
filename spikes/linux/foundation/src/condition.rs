@@ -76,10 +76,19 @@ impl State {
   }
 
   /// Whether a node built inside a control takes the state from the control: the control's
-  /// own states, and its focus and press. Hovered stays the node's own.
+  /// own states, and its focus and press, which a part that takes neither cannot have on its
+  /// own. Hovered stays the node's own, as focus and press stay a node's that takes them
+  /// itself (an acting box, a control within a control) ([`State::is_interaction`]).
   #[must_use]
   pub const fn follows_control(self) -> bool {
-    self.is_control_state() || matches!(self, Self::Focused | Self::FocusVisible | Self::Pressed)
+    self.is_control_state() || self.is_interaction()
+  }
+
+  /// Whether the state is a focus or a press: a node that takes focus and presses itself has
+  /// it on its own, inside a control or not.
+  #[must_use]
+  pub const fn is_interaction(self) -> bool {
+    matches!(self, Self::Focused | Self::FocusVisible | Self::Pressed)
   }
 }
 

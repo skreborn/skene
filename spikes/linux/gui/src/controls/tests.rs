@@ -23,10 +23,13 @@ fn the_built_ins_defaults_vary_paint_alone() {
       "a radio group",
       RadioGroup::new("Size").control.members.record,
     ),
-    ("a radio", Radio::new("Small").members.record),
+    ("a radio", Radio::new("Small").control.members.record),
     ("a slider", Slider::new("Volume").control.members.record),
-    ("a picker", Picker::new("Fruit").members.record),
-    ("a picker's option", PickerItem::new("Apple").members.record),
+    ("a picker", Picker::new("Fruit").control.members.record),
+    (
+      "a picker's option",
+      PickerItem::new("Apple").control.members.record,
+    ),
     (
       "a text field",
       TextField::new("Name").control.members.record,

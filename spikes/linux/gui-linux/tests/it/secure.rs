@@ -243,8 +243,8 @@ fn tells_only_marks(input_method: &InputMethod) {
 #[skene_gui::test]
 fn a_secure_field_tells_fcitx_only_its_marks() {
   if Session::current().map(Session::backend) != Some(Backend::X11) {
-    eprintln!(
-      "not tested here: on Wayland the input method is the compositor's, over text-input-v3"
+    skene_gui_linux::testing::not_tested_here(
+      "on Wayland the input method is the compositor's, over text-input-v3",
     );
 
     return;
@@ -262,8 +262,8 @@ fn a_secure_field_tells_fcitx_only_its_marks() {
 #[skene_gui::test]
 fn a_secure_field_tells_ibus_only_its_marks() {
   if Session::current().map(Session::backend) != Some(Backend::X11) {
-    eprintln!(
-      "not tested here: on Wayland the input method is the compositor's, over text-input-v3"
+    skene_gui_linux::testing::not_tested_here(
+      "on Wayland the input method is the compositor's, over text-input-v3",
     );
 
     return;
@@ -278,8 +278,8 @@ fn a_secure_field_tells_ibus_only_its_marks() {
 #[skene_gui::test]
 fn a_secure_field_tells_the_compositors_input_method_only_its_marks() {
   if Session::current() != Some(Session::Sway) {
-    eprintln!(
-      "not tested here: of the legs, only sway lets a client be the seat's input method (zwp_input_method_v2)"
+    skene_gui_linux::testing::not_tested_here(
+      "of the legs, only sway lets a client be the seat's input method (zwp_input_method_v2)",
     );
 
     return;
@@ -358,4 +358,249 @@ fn a_double_press_in_a_secure_field_selects_it_all() {
     (0, 9),
     "a word of a secure field is its whole text"
   );
+}
+
+/// A field holding "hunter2 x" to drag from, and an empty secure field.
+fn drops() -> impl View {
+  let source = Signal::new(String::from("hunter2 x"));
+  let secret = Signal::new(String::new());
+
+  probe("source", source);
+  probe("secret", secret);
+
+  Column::new()
+    .set_padding(16)
+    .set_spacing(12)
+    .add_child(TextField::new("Source").bind_text(source))
+    .add_child(
+      TextField::new("Password")
+        .set_secure(true)
+        .bind_text(secret),
+    )
+}
+
+#[skene_gui::test]
+fn text_dropped_into_a_secure_field_stays_off_the_trace() {
+  let screen = testing::render(drops);
+  let source = screen.find_by_role(Role::TextField, "Source");
+  let password = screen.find_by_role(Role::TextField, "Password");
+
+  source.press("Home").press("shift+ctrl+Right");
+
+  let (from, to) = {
+    let driver = screen.driver();
+
+    (
+      driver.character_point(source.element(), 2, 0.5),
+      driver.point_in(password.element(), 0.5, 0.5),
+    )
+  };
+
+  trace::set_recording(true);
+  screen.driver().drag(from, to);
+
+  let lines = trace::take_recorded();
+
+  trace::set_recording(false);
+  assert_eq!(
+    probe_once(&screen, "secret", "hunter2"),
+    "hunter2",
+    "the secure field takes the drop, as GtkText does"
+  );
+  assert!(!password.text().contains("hunter2"), "a reader reads marks");
+  assert!(
+    lines.iter().any(|line| line.starts_with("[dnd] dropped")),
+    "the drop was traced: {lines:#?}"
+  );
+
+  // The plain source field's own text may be traced (the drag out of it, its input method's
+  // surrounding "hunter2 x"); what the secure field holds, never.
+  let showing: Vec<&String> = lines
+    .iter()
+    .filter(|line| {
+      !line.starts_with("[dnd] drag ") && line.replace("hunter2 x", "").contains("hunter2")
+    })
+    .collect();
+
+  assert!(
+    showing.is_empty(),
+    "no trace line of the drop shows the secure field's text: {showing:#?}"
+  );
+}
+
+#[skene_gui::test]
+fn a_secure_field_keeps_no_undo_history() {
+  let screen = testing::render(page);
+  let password = screen.find_by_role(Role::TextField, "Password");
+
+  password.type_text("abc");
+  password.press("ctrl+a").press("z");
+  assert_eq!(
+    probe_once(&screen, "secret", "z"),
+    "z",
+    "the new password replaced the old"
+  );
+  password.press("ctrl+z");
+  assert_eq!(
+    probe_once(&screen, "secret", "z"),
+    "z",
+    "undo brings no earlier password back, as GtkText keeps no history while invisible"
+  );
+}
+
+/// The pixels darker than mid gray of `shot` inside `bounds`, inset by 4.
+fn ink(shot: &skene_gui::testing::Screenshot, bounds: skene_gui::Rect) -> usize {
+  let mut counted = 0;
+  let mut y = bounds.y + 4.;
+
+  while y < bounds.y + bounds.height - 4. {
+    let mut x = bounds.x + 4.;
+
+    while x < bounds.x + bounds.width - 4. {
+      let [red, green, blue, _] = shot.rgba_at(x, y);
+
+      if u32::from(red) + u32::from(green) + u32::from(blue) < 3 * 0x80 {
+        counted += 1;
+      }
+
+      x += 1.;
+    }
+
+    y += 1.;
+  }
+
+  counted
+}
+
+#[skene_gui::test]
+fn a_secure_field_never_shows_what_was_typed() {
+  let screen = testing::render(page);
+  let password = screen.find_by_role(Role::TextField, "Password");
+
+  for typed in ["W", "i"] {
+    password.type_text(typed);
+
+    let at = password.read().bounds;
+    let just_after = ink(&screen.render_to_image(), at);
+
+    screen.driver().wait(Duration::from_millis(1300));
+
+    let later = ink(&screen.render_to_image(), at);
+
+    assert!(
+      just_after.abs_diff(later) < 25,
+      "{typed:?} shows as a mark from the first frame, as GTK's entry does on the desktop: {just_after} dark pixels just after, {later} later"
+    );
+  }
+}
+
+/// A field secure until `Ctrl+R` reveals it, and the button that does.
+fn revealing() -> impl View {
+  let shown = Signal::new(false);
+  let secret = Signal::new(String::new());
+
+  probe("secret", secret);
+
+  Column::new()
+    .set_padding(16)
+    .set_spacing(12)
+    .add_child(
+      TextField::new("Password")
+        .derive_secure(move || !shown.get())
+        .bind_text(secret),
+    )
+    .add_child(
+      Button::new("Reveal")
+        .set_shortcut(Shortcut::primary('r'))
+        .handle_activate(move || shown.update(|shown| *shown = !*shown)),
+    )
+}
+
+/// Reveals and hides a focused secure field, `input_method` serving: each time, it is told the
+/// purpose and the text the field shows now.
+fn revealed_and_hidden(input_method: &InputMethod) {
+  let screen = testing::render(revealing);
+  let password = screen.find_by_role(Role::TextField, "Password");
+
+  password.type_text(SECRET);
+  assert_eq!(probe_once(&screen, "secret", SECRET), SECRET);
+  password.press("ctrl+r");
+
+  let shown = told_once(&screen, input_method, |told| {
+    told.purpose == Purpose::Normal
+  });
+
+  assert_eq!(shown.purpose, Purpose::Normal, "revealed, it is plain text");
+  assert!(
+    shown
+      .surrounding
+      .as_ref()
+      .is_some_and(|(text, ..)| text == SECRET),
+    "revealed, the input method is told the text with its purpose: {:?}",
+    shown.surrounding
+  );
+  password.press("ctrl+r");
+
+  let hidden = told_once(&screen, input_method, |told| {
+    told.purpose == Purpose::Password
+  });
+
+  assert_eq!(
+    hidden.purpose,
+    Purpose::Password,
+    "hidden, it is a password"
+  );
+  assert!(
+    hidden
+      .surroundings
+      .last()
+      .is_some_and(|text| !text.contains('q')),
+    "hidden again, the input method is told marks at once, with its purpose: {:?}",
+    hidden.surroundings
+  );
+}
+
+#[skene_gui::test]
+fn a_secure_field_revealed_and_hidden_tells_fcitx_at_once() {
+  if Session::current().map(Session::backend) != Some(Backend::X11) {
+    skene_gui_linux::testing::not_tested_here(
+      "on Wayland the input method is the compositor's, over text-input-v3",
+    );
+
+    return;
+  }
+
+  let input_method = InputMethod::serve().expect("the Fcitx5 stand-in takes its name");
+
+  revealed_and_hidden(&input_method);
+}
+
+#[skene_gui::test]
+fn a_secure_field_revealed_and_hidden_tells_ibus_at_once() {
+  if Session::current().map(Session::backend) != Some(Backend::X11) {
+    skene_gui_linux::testing::not_tested_here(
+      "on Wayland the input method is the compositor's, over text-input-v3",
+    );
+
+    return;
+  }
+
+  let input_method = InputMethod::serve_ibus().expect("the IBus stand-in takes its name");
+
+  revealed_and_hidden(&input_method);
+}
+
+#[skene_gui::test]
+fn a_secure_field_revealed_and_hidden_tells_the_compositors_input_method_at_once() {
+  if Session::current() != Some(Session::Sway) {
+    skene_gui_linux::testing::not_tested_here(
+      "of the legs, only sway lets a client be the seat's input method (zwp_input_method_v2)",
+    );
+
+    return;
+  }
+
+  let input_method = InputMethod::serve_wayland().expect("sway takes an input method");
+
+  revealed_and_hidden(&input_method);
 }

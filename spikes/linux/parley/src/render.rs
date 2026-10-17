@@ -16,7 +16,7 @@ use vello_cpu::{
 use crate::ParleyLaid;
 
 /// A Skene color as vello's.
-fn color(color: Color) -> PenikoColor {
+const fn color(color: Color) -> PenikoColor {
   PenikoColor::from_rgba8(color.red, color.green, color.blue, color.alpha)
 }
 

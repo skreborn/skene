@@ -11,7 +11,7 @@ use skene_foundation::{
   seam::{
     control::{ControlDispatch, Element, LabelPlacement, Part},
     node::{Interaction, LayoutKind, NodeKind, NodeSpec},
-    record::{Record, keys},
+    record::{Declared, Record, keys},
     report::KeyEvent,
     tree::{self, Bubbling},
   },
@@ -32,6 +32,7 @@ const OPS: ControlOps = ControlOps::of::<Active>();
 pub struct Label {
   view: Child,
   name: Option<Rc<dyn Fn() -> Rc<str>>>,
+  empty: bool,
 }
 
 impl Label {
@@ -41,7 +42,14 @@ impl Label {
     Self {
       view: child_of::<Row>(view),
       name: None,
+      empty: false,
     }
+  }
+
+  /// Whether it is an empty text, which shows nothing: a control given one has no caption.
+  #[must_use]
+  pub const fn is_empty(&self) -> bool {
+    self.empty
   }
 
   /// This caption, naming its control `name` where its control is named by its content (a
@@ -68,15 +76,18 @@ impl From<&str> for Label {
 
 impl From<String> for Label {
   fn from(text: String) -> Self {
-    let name: Rc<str> = Rc::from(text.as_str());
-
-    Self::new(Text::new(text)).set_name(name)
+    Self::from(Rc::<str>::from(text))
   }
 }
 
 impl From<Rc<str>> for Label {
   fn from(text: Rc<str>) -> Self {
-    Self::new(Text::new(text.to_string())).set_name(text)
+    let empty = text.is_empty();
+
+    Self {
+      empty,
+      ..Self::new(Text::new(text.to_string())).set_name(text)
+    }
   }
 }
 
@@ -180,7 +191,7 @@ pub(crate) use member_properties;
 macro_rules! control_members {
   ($($path:ident).+) => {
     /// Its members, where its setters write.
-    fn members_mut(&mut self) -> &mut $crate::control::Members {
+    const fn members_mut(&mut self) -> &mut $crate::control::Members {
       &mut self.$($path).+
     }
 
@@ -262,9 +273,13 @@ macro_rules! control_members {
       self
     }
 
-    /// The caption: a text (named by its text) or any view ([`crate::Label`]).
+    /// The caption: a text (named by its text) or any view ([`crate::Label`]); an empty text
+    /// leaves the control without one, named by [`Self::set_accessible_name`] or a caption
+    /// placed anywhere.
     pub fn set_label(mut self, label: impl Into<$crate::Label>) -> Self {
-      self.$($path).+.label = Some(label.into());
+      let label = label.into();
+
+      self.$($path).+.label = (!label.is_empty()).then_some(label);
 
       self
     }
@@ -423,10 +438,15 @@ pub(crate) use control_members;
 /// ```
 #[must_use]
 pub struct Control<B: Behavior> {
+  /// What its interaction is.
   behavior: B,
+  /// The axis its label, parts and body lie along.
   axis: Axis,
+  /// Everything it carries beside its behavior, its parts and its body.
   pub(crate) members: Members,
+  /// Its parts, in order.
   parts: Vec<Child>,
+  /// Its body.
   child: Option<Child>,
 }
 
@@ -439,15 +459,6 @@ impl<B: Behavior> Control<B> {
       members: Members::default(),
       parts: Vec::new(),
       child: None,
-    }
-  }
-
-  /// A control over `behavior` carrying `members`: what a built-in that learns its behavior
-  /// only as it is built (a radio, from its group) composes.
-  pub(crate) fn with_members(behavior: B, members: Members) -> Self {
-    Self {
-      members,
-      ..Self::new(behavior)
     }
   }
 
@@ -507,7 +518,8 @@ impl<B: Behavior> View for Control<B> {
     let placement = members
       .placement
       .unwrap_or_else(|| behavior.label_placement());
-    let kind = match behavior.element() {
+    let element = behavior.element();
+    let kind = match element {
       Element::Box => NodeKind::Layout(match axis {
         Axis::Horizontal => LayoutKind::Row,
         Axis::Vertical => LayoutKind::Column,
@@ -516,12 +528,20 @@ impl<B: Behavior> View for Control<B> {
         multiline: lines > 1,
       },
     };
+    // A text view holds no caption, so one placed leading or trailing sits beside it, before
+    // or after it among its siblings.
+    let placement = match (element, placement) {
+      (Element::Editable { .. }, LabelPlacement::Leading) => LabelPlacement::Beside,
+      _ => placement,
+    };
+    let after =
+      matches!(element, Element::Editable { .. }) && placement == LabelPlacement::Trailing;
     let spec = NodeSpec::new(kind)
       .with_role(role)
       .with_interaction(Interaction::Control {
         drag: behavior.drag_axes(),
       });
-    let beside = placement == LabelPlacement::Beside && members.label.is_some();
+    let beside = (placement == LabelPlacement::Beside || after) && members.label.is_some();
     let segment = beside.then(|| cx.create(NodeSpec::new(NodeKind::Segment)));
     let id = cx.create(spec);
     let mut record = Record::new();
@@ -531,6 +551,12 @@ impl<B: Behavior> View for Control<B> {
       Value::from(1.).when(State::Disabled, Value::from(0.5)),
     );
     record.fold(&members.record);
+
+    let opacity = record
+      .entries()
+      .find(|(prop, _)| *prop == keys::OPACITY.prop())
+      .map(|(_, opacity)| opacity.clone());
+
     finish(id, record, cx, members.handle.as_ref());
 
     let disabled = members.disabled.clone();
@@ -663,9 +689,9 @@ impl<B: Behavior> View for Control<B> {
     let (mut leading, mut trailing, mut besides) = (None, None, None);
 
     match placement {
-      LabelPlacement::Leading => leading = label,
+      _ if beside => besides = label,
+      LabelPlacement::Leading | LabelPlacement::Beside => leading = label,
       LabelPlacement::Trailing => trailing = label,
-      LabelPlacement::Beside => besides = label,
     }
 
     let children: Vec<Child> = leading
@@ -682,13 +708,36 @@ impl<B: Behavior> View for Control<B> {
       (Some(segment), Some(label)) => {
         let label = label(&mut inner.child());
 
-        tree::attach::<Active>(segment, label.id(), 0);
-        tree::attach::<Active>(segment, id, 1);
+        if let Some(opacity) = opacity {
+          share_opacity(label.id(), opacity);
+        }
+
+        let (first, second) = if after {
+          (id, label.id())
+        } else {
+          (label.id(), id)
+        };
+
+        tree::attach::<Active>(segment, first, 0);
+        tree::attach::<Active>(segment, second, 1);
 
         Node(segment)
       }
       _ => Node(id),
     }
+  }
+}
+
+/// Draws a caption beside its control at the control's opacity, so it dims with a disabled
+/// control, unless its own style sets one.
+fn share_opacity(caption: skene_foundation::NodeId, opacity: Declared) {
+  if let Some(record) = tree::record::<Active>(caption)
+    && !record.has(keys::OPACITY.prop())
+  {
+    let mut record = (*record).clone();
+
+    record.put(keys::OPACITY.prop(), opacity);
+    tree::set_record::<Active>(caption, record);
   }
 }
 

@@ -156,7 +156,7 @@ impl Realization for Linux {
   fn apply_slots(_: &Node, _: &[KeptLeaf]) {}
 
   fn apply_layout(node: &Node, layout: &ResolvedLayout) {
-    *node.layout.borrow_mut() = layout.clone();
+    *node.layout.borrow_mut() = node.layout_now(layout);
     shell::invalidate_layout();
   }
 

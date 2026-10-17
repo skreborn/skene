@@ -17,7 +17,7 @@ use skene_foundation::{
 
 use crate::{
   Active, AsPart, Column, Container, Control, Label, NodeHandle, Overlay, Signal, Text,
-  control::{Members, control_members},
+  control::control_members,
   view::{Child, Cx, Node, View, child_of},
 };
 
@@ -101,7 +101,8 @@ impl MenuEntry {
 /// focus is on it (where the keys and the pointer move it); a disabled item at half opacity.
 #[must_use]
 pub struct MenuItem {
-  pub(super) members: Members,
+  /// The control it composes, its defaults set, over a behavior its menu replaces.
+  pub(super) control: Control<MenuOption>,
 }
 
 impl MenuItem {
@@ -110,7 +111,7 @@ impl MenuItem {
     let label: String = label.into();
 
     Self {
-      members: Members::default(),
+      control: Control::new(Menu::new().member(0)),
     }
     .set_min_height(30)
     .set_padding(Inset::new(0, 12, 0, 12))
@@ -124,11 +125,11 @@ impl MenuItem {
     .set_label(Label::new(Text::new(label.clone()).set_max_lines(1)).set_name(label))
   }
 
-  control_members!(members);
+  control_members!(control.members);
 
   /// The control this item is, over `behavior`.
   fn into_control(self, behavior: MenuOption) -> Control<MenuOption> {
-    Control::with_members(behavior, self.members)
+    self.control.map_behavior(|_| behavior)
   }
 }
 
@@ -225,7 +226,7 @@ impl ContextMenu {
 
   /// Whether it has no entry, and so opens nothing.
   #[must_use]
-  pub fn is_empty(&self) -> bool {
+  pub const fn is_empty(&self) -> bool {
     self.entries.is_empty()
   }
 
@@ -245,12 +246,40 @@ impl ContextMenu {
     self
   }
 
-  /// The view whose node the entries act on and that reports the menu, in place of the
-  /// node the child builds: a control's own node, where its child builds a segment around it.
-  pub(crate) const fn set_target(mut self, target: NodeHandle) -> Self {
-    self.target = Some(target);
+  /// The node the entries act on and that reports the menu, in place of the one its child
+  /// builds: the child's own node, or the control it builds a segment around (a control with
+  /// a caption beside it).
+  pub const fn set_target(mut self, target: &NodeHandle) -> Self {
+    self.target = Some(*target);
 
     self
+  }
+
+  /// The node a menu around `built` acts on where no target is set: `built`, or the first
+  /// control in the segment it is.
+  fn target_in(built: NodeId) -> NodeId {
+    let is_segment =
+      |id: NodeId| tree::spec::<Active>(id).is_some_and(|spec| spec.kind == NodeKind::Segment);
+
+    if !is_segment(built) {
+      return built;
+    }
+
+    let mut pending = tree::children::<Active>(built);
+
+    pending.reverse();
+
+    while let Some(id) = pending.pop() {
+      if tree::spec::<Active>(id).is_some_and(|spec| spec.is_control()) {
+        return id;
+      }
+
+      if is_segment(id) {
+        pending.extend(tree::children::<Active>(id).into_iter().rev());
+      }
+    }
+
+    built
   }
 
   /// The view it is the context menu of, last.
@@ -282,7 +311,8 @@ impl View for ContextMenu {
       return Node(segment);
     }
 
-    let target = move || target.and_then(|target| target.node()).unwrap_or(inner.0);
+    let built = Self::target_in(inner.0);
+    let target = move || target.and_then(|target| target.node()).unwrap_or(built);
     let entries = Rc::new(entries);
     let open = Signal::new(false);
     let point = Signal::new(None::<(i32, i32)>);

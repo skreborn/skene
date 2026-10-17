@@ -28,7 +28,7 @@ use skene_foundation::{
 use crate::{
   Active,
   access::Access,
-  view::{Cx, Node, NodeHandle, View, finish, handle, properties},
+  view::{Child, Cx, Node, NodeHandle, View, finish, handle, properties},
 };
 
 /// How finely a curved shape is flattened into the path recorded, in pixels.
@@ -145,6 +145,20 @@ pub struct Painted {
   record: Record,
   handle: Option<NodeHandle>,
   access: Access,
+  fallback: Option<Child>,
+}
+
+/// Whether the platform paints a [`Painted`] box: the pixels' own fact, which a box's
+/// fallback ([`Painted::set_fallback_builder`]) stands in for until it holds.
+pub struct Painting;
+
+impl Painting {
+  /// Whether painting is available now: from the start, and for good, on every platform Skene
+  /// draws (Linux's windows among them).
+  #[must_use]
+  pub const fn available() -> bool {
+    true
+  }
 }
 
 impl Painted {
@@ -155,7 +169,17 @@ impl Painted {
       record: Record::new(),
       handle: None,
       access: Access::default(),
+      fallback: None,
     }
+  }
+
+  /// What shows in the box's place while painting is not available ([`Painting::available`]):
+  /// the view `fallback` builds, built at most once; on a platform that paints from the start
+  /// it is never built.
+  pub fn set_fallback_builder<V: View>(mut self, fallback: impl FnOnce() -> V + 'static) -> Self {
+    self.fallback = Some(Box::new(move |cx: &mut Cx| fallback().build(cx)));
+
+    self
   }
 
   properties! {
@@ -197,6 +221,12 @@ impl Painted {
 
 impl View for Painted {
   fn build(self, cx: &mut Cx) -> Node {
+    if !Painting::available()
+      && let Some(fallback) = self.fallback
+    {
+      return fallback(cx);
+    }
+
     let described = self.access.name.is_some();
     let mut spec = NodeSpec::new(NodeKind::Painted);
 

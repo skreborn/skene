@@ -159,7 +159,7 @@ impl Xdnd {
   }
 
   /// The action an XDND action atom names, in `atoms`' names.
-  fn action_of(atoms: &Atoms, atom: u32) -> Option<DropAction> {
+  const fn action_of(atoms: &Atoms, atom: u32) -> Option<DropAction> {
     if atom == atoms.XdndActionMove {
       Some(DropAction::Move)
     } else if atom == atoms.XdndActionCopy {

@@ -7,6 +7,7 @@ mod contents;
 mod desktop;
 mod dnd;
 mod gestures;
+mod glyphs;
 #[cfg(feature = "gpu")]
 mod gpu;
 mod menu;

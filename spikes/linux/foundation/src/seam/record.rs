@@ -105,7 +105,7 @@ macro_rules! kinds {
       }
 
       /// Compiled to the level `cx` keeps, subscribing the running effect to what it read.
-      pub(crate) fn compile(&self, cx: &mut CompileCx<'_>) -> Option<KeptValue> {
+      pub(in crate::seam) fn compile(&self, cx: &mut CompileCx<'_>) -> Option<KeptValue> {
         match self {
           $(Self::$kind(value) => cx.value(value),)*
         }
@@ -367,8 +367,9 @@ impl<T> Key<T> {
 /// A transition: a property's change animated over a duration, on the platform's frame clock.
 ///
 /// A box's or a text's own look animates (its fills, lines, corners, shadows, opacity, offset
-/// and font metrics); a layout property, and one the platform cannot interpolate (a typeface,
-/// a slant, which lines decorate a text), changes at once.
+/// and font metrics), and so do its sizes, padding and spacing, each frame laid out again; a
+/// property the platform cannot interpolate (a typeface, a slant, which lines decorate a text)
+/// changes at once.
 #[derive(Clone, Copy, PartialEq, Debug)]
 #[must_use]
 pub struct Transition {
@@ -540,7 +541,7 @@ impl Animation {
 impl<S> Animation<S> {
   /// How long it waits to start, in milliseconds; none where unset.
   #[inline(always)]
-  pub fn set_delay(mut self, delay: u32) -> Self {
+  pub const fn set_delay(mut self, delay: u32) -> Self {
     self.delay = delay;
 
     self
@@ -548,7 +549,7 @@ impl<S> Animation<S> {
 
   /// The easing curve between each two keyframes; slow at both ends where unset.
   #[inline(always)]
-  pub fn set_curve(mut self, curve: Curve) -> Self {
+  pub const fn set_curve(mut self, curve: Curve) -> Self {
     self.curve = curve;
 
     self
@@ -564,7 +565,7 @@ impl<S> Animation<S> {
 
   /// Whether every other cycle plays backward; off where unset.
   #[inline(always)]
-  pub fn set_alternate(mut self, alternate: bool) -> Self {
+  pub const fn set_alternate(mut self, alternate: bool) -> Self {
     self.alternate = alternate;
 
     self
@@ -572,7 +573,7 @@ impl<S> Animation<S> {
 
   /// Whether a reader preferring reduced motion sees its last frame alone; on where unset.
   #[inline(always)]
-  pub fn set_respects_reduced_motion(mut self, respects: bool) -> Self {
+  pub const fn set_respects_reduced_motion(mut self, respects: bool) -> Self {
     self.respects_reduced_motion = respects;
 
     self

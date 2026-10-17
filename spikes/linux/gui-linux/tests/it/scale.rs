@@ -261,8 +261,8 @@ fn the_window_and_its_pickers_list_show_their_device_pixels_one_to_one() {
 #[skene_gui::test]
 fn a_field_tells_an_input_method_where_its_caret_is_on_the_screen() {
   if std::env::var("SKENE_BACKEND").as_deref() != Ok("x11") {
-    eprintln!(
-      "not tested here: on Wayland the input method is the compositor's, over text-input-v3, and none here hands the caret's rectangle on to a client (sway 1.9 has no input method popups)"
+    skene_gui_linux::testing::not_tested_here(
+      "on Wayland the input method is the compositor's, over text-input-v3, and none here hands the caret's rectangle on to a client (sway 1.9 has no input method popups)",
     );
 
     return;

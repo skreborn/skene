@@ -137,7 +137,7 @@ pub use crate::{
     Radio, RadioGroup, Slider, TextEditor, TextField, Toggle, marks,
   },
   overlay::Overlay,
-  painted::{Canvas, Paint, Painted},
+  painted::{Canvas, Paint, Painted, Painting},
   runtime::{Resource, Sleep, schedule, sleep, spawn},
   view::{AnyView, Apply, ChildOf, Cx, Derived, Node, NodeHandle, View},
   views::{Column, Container, Grid, Image, Row, Scroll, ScrollAxes, Stack, Text, Theme},

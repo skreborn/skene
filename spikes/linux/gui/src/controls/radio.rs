@@ -11,7 +11,7 @@ use skene_foundation::{
 
 use crate::{
   AsPart, Column, Container, Control, Painted, Signal,
-  control::{Members, control_members},
+  control::control_members,
   controls::{focus_ring, marks},
   view::{AnyView, Cx, Node, View},
 };
@@ -24,8 +24,11 @@ use crate::{
 /// can be disabled.
 #[must_use]
 pub struct Radio {
-  pub(super) members: Members,
+  /// The control it composes, its defaults set, over a behavior its group replaces.
+  pub(super) control: Control<behavior::Radio>,
+  /// The face the mark sits in.
   pub(super) face: Container,
+  /// The mark.
   mark: AnyView,
 }
 
@@ -35,7 +38,7 @@ impl Radio {
     let label: String = label.into();
 
     Self {
-      members: Members::default(),
+      control: Control::new(Group::new().member(0)),
       face: Self::default_face(),
       mark: Self::default_mark().into_any(),
     }
@@ -93,7 +96,7 @@ impl Radio {
     self
   }
 
-  control_members!(members);
+  control_members!(control.members);
 
   /// The control this radio is, over `behavior`.
   fn into_control(self, behavior: behavior::Radio) -> Control<behavior::Radio> {
@@ -101,7 +104,10 @@ impl Radio {
       .face
       .set_child(AsPart::new(Part::Mark).set_child(self.mark));
 
-    Control::with_members(behavior, self.members).add_part(Part::Face, face)
+    self
+      .control
+      .map_behavior(|_| behavior)
+      .add_part(Part::Face, face)
   }
 }
 
@@ -121,9 +127,13 @@ type OptionBuilder = Rc<dyn Fn(usize, &str) -> Radio>;
 /// [`RadioGroup::handle_choose`] for each choice, and shows the truth.
 #[must_use]
 pub struct RadioGroup {
+  /// The control it composes, its defaults set.
   pub(super) control: Control<Group>,
+  /// The options' texts.
   options: Rc<dyn Fn() -> Vec<String>>,
+  /// The space between the options.
   option_spacing: Value<Spacing>,
+  /// What makes each option's radio.
   builder: OptionBuilder,
 }
 

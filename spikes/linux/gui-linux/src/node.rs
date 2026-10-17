@@ -273,7 +273,7 @@ impl Drawn {
   }
 
   /// Whether it is hidden to be shown again.
-  pub fn is_hidden(&self) -> bool {
+  pub const fn is_hidden(&self) -> bool {
     self.hidden.get()
   }
 
@@ -283,7 +283,7 @@ impl Drawn {
   }
 
   /// Whether it is still part of the tree (not removed for good).
-  pub fn is_alive(&self) -> bool {
+  pub const fn is_alive(&self) -> bool {
     self.alive.get()
   }
 

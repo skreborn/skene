@@ -24,8 +24,11 @@ use crate::{
 /// thumb moves by its own width while on, by paint alone.
 #[must_use]
 pub struct Toggle {
+  /// The control it composes, its defaults set.
   pub(super) control: Control<Behavior>,
+  /// The track.
   pub(super) track: Container,
+  /// The thumb.
   pub(super) thumb: Container,
 }
 

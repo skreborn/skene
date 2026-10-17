@@ -37,10 +37,14 @@ use vello_cpu::{
   peniko::{Color as PColor, Gradient, ImageAlphaType, ImageQuality, ImageSampler},
 };
 
-use crate::{node::Node, palette::Palette, text};
+use crate::{
+  node::{Drawn, Node},
+  palette::Palette,
+  text,
+};
 
 /// A Skene color as vello's.
-pub fn color(color: Color) -> PColor {
+pub const fn color(color: Color) -> PColor {
   PColor::from_rgba8(color.red, color.green, color.blue, color.alpha)
 }
 
@@ -157,33 +161,52 @@ pub trait Sink {
 }
 
 /// The CPU path's glyph images: each mask the rasterizer cached, as an image vello_cpu
-/// draws, kept while the mask is.
+/// draws, with the frame that last drew it.
 #[derive(Default)]
 pub struct GlyphImages {
-  images: HashMap<usize, (Rc<GlyphMask>, Image)>,
+  images: HashMap<usize, (Rc<GlyphMask>, Image, u64)>,
+  bytes: usize,
+  frame: u64,
   hits: u64,
   misses: u64,
 }
 
 impl GlyphImages {
-  /// How many images the cache keeps before it starts over.
-  const MOST: usize = 16_384;
+  /// The bytes of images the cache keeps; past them it keeps the current frame's alone.
+  const BUDGET: usize = 64 << 20;
+
+  /// Starts a frame: the images it draws are the ones the cache keeps once it is past its
+  /// budget.
+  pub const fn next_frame(&mut self) {
+    self.frame += 1;
+  }
 
   /// The image of `mask`: its coverage as alpha (black beneath, the tint giving the color),
   /// or a color glyph's premultiplied pixels.
   fn image(&mut self, mask: &Rc<GlyphMask>) -> Image {
     let key = Rc::as_ptr(mask) as usize;
 
-    if let Some((_, image)) = self.images.get(&key) {
+    if let Some((_, image, used)) = self.images.get_mut(&key) {
       self.hits += 1;
+      *used = self.frame;
 
       return image.clone();
     }
 
     self.misses += 1;
 
-    if self.images.len() >= Self::MOST {
-      self.images.clear();
+    // Its premultiplied pixels, four bytes each.
+    let bytes = mask.width as usize * mask.height as usize * 4;
+
+    if self.bytes + bytes > Self::BUDGET {
+      let frame = self.frame;
+
+      self.images.retain(|_, (_, _, used)| *used == frame);
+      self.bytes = self
+        .images
+        .values()
+        .map(|(mask, ..)| mask.width as usize * mask.height as usize * 4)
+        .sum();
     }
 
     let image = Image {
@@ -194,7 +217,10 @@ impl GlyphImages {
       },
     };
 
-    self.images.insert(key, (Rc::clone(mask), image.clone()));
+    self.bytes += bytes;
+    self
+      .images
+      .insert(key, (Rc::clone(mask), image.clone(), self.frame));
 
     image
   }
@@ -928,6 +954,15 @@ fn paint_node(
     canvas.pop_clip(previous);
   }
 
+  if let Some(border) = look.border {
+    let fill = look
+      .border_color
+      .clone()
+      .unwrap_or_else(|| Fill::Color(node.ink.get()));
+
+    canvas.border_with(rect, look.corners, border.width, border.style, &fill);
+  }
+
   match node.spec.kind {
     NodeKind::Text => {
       if let Some(cell) = node.text.borrow().as_ref()
@@ -938,6 +973,15 @@ fn paint_node(
         if let (Some(focused), Some(link)) = (&marks.focus, &marks.link)
           && Rc::ptr_eq(focused, node)
         {
+          // A text's ring is its focused link run's: 2 pixels wide in the accent unless its
+          // style says otherwise.
+          let ring = if look.ring.width > 0. {
+            look.ring
+          } else {
+            Ring::new(2)
+          };
+          let color = look.ring_color.unwrap_or(canvas.palette.accent);
+
           for run in laid.range_rects(link.clone()) {
             let run = Rect {
               x: rect.x + run.x,
@@ -945,7 +989,7 @@ fn paint_node(
               ..run
             };
 
-            focus_ring(canvas, run, Corners::all(2.));
+            canvas.ring(run, Corners::all(2.), ring, color);
           }
         }
       }
@@ -967,87 +1011,89 @@ fn paint_node(
   }
 
   let clips = look.clip || scrolls;
-  let previous_clip = clips.then(|| canvas.push_clip(rect, look.corners));
+  let previous_clip = clips.then(|| {
+    let (inside, corners) = padding_box(rect, look.corners, look.border.map(|border| border.width));
+
+    canvas.push_clip(inside, corners)
+  });
   let (sx, sy) = node.scroll.get();
 
   paint_children(node, canvas, (rect.x - sx, rect.y - sy), region, marks);
 
   if scrolls {
-    paint_scroll_bar(node, canvas, rect);
+    node.paint_scroll_bar(canvas, rect);
   }
 
   if let Some(previous) = previous_clip {
     canvas.pop_clip(previous);
   }
 
-  if let Some(border) = look.border {
-    let fill = look
-      .border_color
-      .clone()
-      .unwrap_or_else(|| Fill::Color(node.ink.get()));
-
-    canvas.border_with(rect, look.corners, border.width, border.style, &fill);
+  if node.spec.kind != NodeKind::Text {
+    canvas.ring(
+      rect,
+      look.corners,
+      look.ring,
+      look.ring_color.unwrap_or_else(|| node.ink.get()),
+    );
   }
-
-  canvas.ring(
-    rect,
-    look.corners,
-    look.ring,
-    look.ring_color.unwrap_or_else(|| node.ink.get()),
-  );
 
   if opacity_layer {
     canvas.sink.pop();
   }
 }
 
-/// Draws the bar a scrolled box shows where its content overflows it.
-fn paint_scroll_bar(node: &Node, canvas: &mut Canvas<'_>, rect: Rect) {
-  let (_, extent) = node.extent.get();
-  let (_, offset) = node.scroll.get();
+/// The box inside a border `width` wide (none where `None`) around `rect` with `corners`, and
+/// its corners: where a box that clips cuts what it holds, as CSS clips overflow.
+fn padding_box(rect: Rect, corners: Corners, width: Option<f32>) -> (Rect, Corners) {
+  let Some(width) = width.filter(|width| *width > 0.) else {
+    return (rect, corners);
+  };
+  let inside = Rect {
+    x: rect.x + width,
+    y: rect.y + width,
+    width: (rect.width - 2. * width).max(0.),
+    height: (rect.height - 2. * width).max(0.),
+  };
+  let inner = |radius: f32| (radius - width).max(0.);
 
-  if extent <= rect.height + 0.5 {
-    return;
-  }
-
-  let length = (rect.height * rect.height / extent).max(24.);
-  let travel = rect.height - length;
-  let at = travel * (offset / (extent - rect.height)).clamp(0., 1.);
-  let hovered = node.states.get().contains(skene_foundation::State::Hovered);
-  let ink = canvas
-    .palette
-    .ink
-    .with_alpha(if hovered { 110 } else { 70 });
-
-  canvas.fill(
-    Rect {
-      x: rect.x + rect.width - 7.,
-      y: rect.y + at + 2.,
-      width: 4.,
-      height: length - 4.,
+  (
+    inside,
+    Corners {
+      top_leading: inner(corners.top_leading),
+      top_trailing: inner(corners.top_trailing),
+      bottom_trailing: inner(corners.bottom_trailing),
+      bottom_leading: inner(corners.bottom_leading),
     },
-    Corners::all(2.),
-    ink,
-  );
+  )
 }
 
-/// The ring a focused link run shows where focus shows.
-pub fn focus_ring(canvas: &mut Canvas<'_>, rect: Rect, corners: Corners) {
-  let grown = Rect {
-    x: rect.x - 2.,
-    y: rect.y - 2.,
-    width: rect.width + 4.,
-    height: rect.height + 4.,
-  };
-  let corners = Corners {
-    top_leading: corners.top_leading + 2.,
-    top_trailing: corners.top_trailing + 2.,
-    bottom_trailing: corners.bottom_trailing + 2.,
-    bottom_leading: corners.bottom_leading + 2.,
-  };
-  let accent = canvas.palette.accent;
+impl Drawn {
+  /// Draws the bar a scrolled box shows where its content overflows it.
+  fn paint_scroll_bar(self: &Rc<Self>, canvas: &mut Canvas<'_>, rect: Rect) {
+    let (_, extent) = self.extent.get();
+    let (_, offset) = self.scroll.get();
 
-  canvas.border(grown, corners, 2., BorderStyle::Solid, accent);
+    if extent <= rect.height + 0.5 {
+      return;
+    }
+
+    let length = (rect.height * rect.height / extent).max(24.);
+    let travel = rect.height - length;
+    let at = travel * (offset / (extent - rect.height)).clamp(0., 1.);
+    let hovered = self.states.get().contains(skene_foundation::State::Hovered);
+    let ink = self.ink.get().with_alpha(if hovered { 110 } else { 70 });
+
+    canvas.fill(
+      Rect {
+        x: rect.x + rect.width - 7.,
+        y: rect.y + at + 2.,
+        width: 4.,
+        height: length - 4.,
+      },
+      Corners::all(2.),
+      ink,
+    );
+  }
 }
 
 fn paint_children(
@@ -1256,6 +1302,10 @@ impl Renderer {
       Ok(cost) => {
         self.stale = true;
 
+        if cost.short {
+          crate::shell::invalidate_all();
+        }
+
         #[expect(clippy::cast_possible_truncation, reason = "microseconds")]
         Some(Cost {
           record: cost.record,
@@ -1297,6 +1347,12 @@ impl Renderer {
     let started = Instant::now();
     #[cfg(feature = "gpu")]
     let mut region = region;
+
+    self.glyphs.next_frame();
+
+    if let Some(masks) = self.masks.as_mut() {
+      masks.rasterizer_mut().next_frame();
+    }
 
     #[cfg(feature = "gpu")]
     if self.gpu.is_some() {

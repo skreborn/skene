@@ -84,7 +84,7 @@ struct FtGlyphMetrics {
 struct FtGlyphSlotRec {
   library: FtLibrary,
   face: *mut FtFaceRec,
-  next: *mut FtGlyphSlotRec,
+  next: *mut Self,
   glyph_index: c_uint,
   generic: FtGeneric,
   metrics: FtGlyphMetrics,
@@ -222,16 +222,21 @@ struct Key {
 /// place where hinting leaves the horizontal axis alone.
 pub const PHASES: u8 = 4;
 
-/// FreeType and the masks it drew.
+/// FreeType and the masks it drew, each with the frame that last asked for it.
 pub struct Rasterizer {
   library: FtLibrary,
   faces: HashMap<(u64, u32), Face>,
-  masks: HashMap<Key, Option<Rc<GlyphMask>>>,
+  masks: HashMap<Key, (Option<Rc<GlyphMask>>, u64)>,
+  bytes: usize,
+  frame: u64,
   hits: u64,
   misses: u64,
 }
 
 impl Rasterizer {
+  /// The bytes of masks the cache keeps; past them it keeps the current frame's alone.
+  pub const BUDGET: usize = 32 << 20;
+
   /// FreeType, initialized; `None` where it fails to.
   #[must_use]
   pub fn new() -> Option<Self> {
@@ -241,9 +246,23 @@ impl Rasterizer {
       library,
       faces: HashMap::new(),
       masks: HashMap::new(),
+      bytes: 0,
+      frame: 0,
       hits: 0,
       misses: 0,
     })
+  }
+
+  /// Starts a frame: the masks it asks for are the ones the cache keeps once it is past its
+  /// [`Rasterizer::BUDGET`].
+  pub const fn next_frame(&mut self) {
+    self.frame += 1;
+  }
+
+  /// The bytes of the masks cached.
+  #[must_use]
+  pub const fn cached_bytes(&self) -> usize {
+    self.bytes
   }
 
   /// How many masks are cached.
@@ -332,8 +351,9 @@ impl Rasterizer {
       settings: *settings,
     };
 
-    if let Some(mask) = self.masks.get(&key) {
+    if let Some((mask, used)) = self.masks.get_mut(&key) {
       self.hits += 1;
+      *used = self.frame;
 
       return mask.clone();
     }
@@ -344,8 +364,22 @@ impl Rasterizer {
       .face(font)
       .and_then(|face| unsafe { Self::draw(face, coords, glyph, size, phase, settings) });
     let mask = mask.map(Rc::new);
+    let bytes = mask.as_ref().map_or(0, |mask| mask.bytes());
 
-    self.masks.insert(key, mask.clone());
+    if self.bytes + bytes > Self::BUDGET {
+      let frame = self.frame;
+
+      self.masks.retain(|_, (_, used)| *used == frame);
+      self.bytes = self
+        .masks
+        .values()
+        .filter_map(|(mask, _)| mask.as_ref())
+        .map(|mask| mask.bytes())
+        .sum();
+    }
+
+    self.bytes += bytes;
+    self.masks.insert(key, (mask.clone(), self.frame));
 
     mask
   }
@@ -542,6 +576,15 @@ impl Drop for Rasterizer {
 }
 
 impl GlyphMask {
+  /// The bytes its pixels take.
+  #[must_use]
+  pub const fn bytes(&self) -> usize {
+    match &self.pixels {
+      MaskPixels::Alpha(alpha) => alpha.len(),
+      MaskPixels::Color(rgba) => rgba.len(),
+    }
+  }
+
   /// The mask scaled by `scale` (a bitmap strike drawn at another size), each pixel the
   /// average of the source pixels it covers.
   #[must_use]

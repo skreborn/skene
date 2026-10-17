@@ -51,8 +51,11 @@ type Fallback = ();
 
 /// The shaping and layout contexts an engine's paragraphs share.
 struct Contexts {
+  /// The fonts and their shaping caches.
   fonts: FontContext,
+  /// Where paragraphs are built and laid out.
   layouts: LayoutContext<()>,
+  /// What resolves a run's family per character.
   fallback: Fallback,
   /// The threads shaping a batch beside this one: `None` until a batch asks for them, then
   /// what started.

@@ -172,7 +172,9 @@ fn entry(lines: u16) -> Control<TextEntry> {
 /// GTK's entry's editing entries, unless set otherwise ([`TextField::set_context_menu`]).
 #[must_use]
 pub struct TextField {
+  /// The control it composes, its defaults set.
   pub(super) control: Control<TextEntry>,
+  /// Its context menu.
   menu: ContextMenu,
 }
 
@@ -254,19 +256,13 @@ impl View for TextField {
   }
 }
 
-/// Builds `control` in `cx` inside `menu`, the menu acting on and reported by the control's
-/// own node; alone where the menu has no entry.
+/// Builds `control` in `cx` inside `menu`; alone where the menu has no entry.
 fn with_menu(control: Control<TextEntry>, menu: ContextMenu, cx: &mut Cx) -> Node {
   if menu.is_empty() {
     return control.build(cx);
   }
 
-  let handle = control.members.handle.unwrap_or_default();
-
-  menu
-    .set_target(handle)
-    .set_child(control.set_handle(&handle))
-    .build(cx)
+  menu.set_child(control).build(cx)
 }
 
 /// A text entry of several lines: Skene's text editor, drawn on every platform. It is a
@@ -277,7 +273,9 @@ fn with_menu(control: Control<TextEntry>, menu: ContextMenu, cx: &mut Cx) -> Nod
 /// It is controlled as a [`TextField`] is, and offers the same context menu.
 #[must_use]
 pub struct TextEditor {
+  /// The control it composes, its defaults set.
   pub(super) control: Control<TextEntry>,
+  /// Its context menu.
   menu: ContextMenu,
 }
 

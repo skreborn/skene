@@ -91,3 +91,35 @@ fn focus_scrolls_into_view_and_the_keys_scroll() {
     first_top(&screen)
   );
 }
+
+/// A text editor of a hundred lines, 150 pixels tall.
+fn editing() -> impl View {
+  let notes = Signal::new(
+    (1..=100)
+      .map(|line| format!("Line {line}"))
+      .collect::<Vec<_>>()
+      .join("\n"),
+  );
+
+  Column::new().set_padding(16).add_child(
+    TextEditor::new("Notes")
+      .set_max_height(150)
+      .bind_text(notes),
+  )
+}
+
+#[skene_gui::test]
+fn an_editor_the_wheel_scrolls_tells_a_reader_where_its_characters_went() {
+  let screen = testing::render(editing);
+  let editor = screen.find_by_role(Role::TextEditor, "Notes");
+  let before = screen.driver().character_rect(editor.element(), 0).1;
+
+  editor.scroll(0, 3);
+
+  let after = screen.driver().character_rect(editor.element(), 0).1;
+
+  assert!(
+    before - after > 10.,
+    "a reader finds the first line where the wheel scrolled it: from {before} to {after}"
+  );
+}

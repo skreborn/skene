@@ -116,6 +116,8 @@ pub struct OverlayPlacement {
   /// The point of the window it hangs from, its top leading corner there, in place of its
   /// anchor: window pixels.
   pub at: Option<(i32, i32)>,
+  /// The space between it and its anchor, in whole pixels.
+  pub gap: i32,
 }
 
 /// A text entry's text with its selection: one value, so a selection is never applied to a
@@ -502,7 +504,7 @@ pub struct Controller<R: Realization> {
 
 impl<R: Realization> Controller<R> {
   /// The controller of `content` on `node`.
-  pub(crate) fn new(
+  pub(in crate::seam) fn new(
     node: NodeId,
     content: Content,
     derive: Box<dyn Fn() -> PropValue>,
@@ -528,7 +530,7 @@ impl<R: Realization> Controller<R> {
   }
 
   /// The truth now, subscribing the running effect.
-  pub(crate) fn tracked_truth(&self) -> PropValue {
+  pub(in crate::seam) fn tracked_truth(&self) -> PropValue {
     (self.derive)()
   }
 
@@ -557,7 +559,7 @@ impl<R: Realization> Controller<R> {
 
   /// Shows `truth` on the platform unless it shows it already, holding it while a report
   /// runs or an input method composes.
-  pub(crate) fn show(&self, truth: &PropValue) {
+  pub(in crate::seam) fn show(&self, truth: &PropValue) {
     if self.reporting.get() || tree::composing::<R>(self.node) {
       self.pending.set(true);
 

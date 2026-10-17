@@ -74,7 +74,7 @@ fn places(keymap: &xkb::Keymap) -> HashMap<u32, Place> {
 }
 
 /// The modifier keysyms a chord names, by their evdev codes.
-fn modifier_code(keysym: u32) -> Option<u32> {
+const fn modifier_code(keysym: u32) -> Option<u32> {
   match keysym {
     0xffe1 => Some(42),
     0xffe2 => Some(54),

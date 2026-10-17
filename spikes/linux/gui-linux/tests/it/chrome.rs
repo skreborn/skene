@@ -32,7 +32,7 @@ fn decorated() -> Option<Screen> {
   if screen.driver().is_decorated() {
     Some(screen)
   } else {
-    eprintln!("not tested here: the compositor decorates the window itself");
+    skene_gui_linux::testing::not_tested_here("the compositor decorates the window itself");
 
     None
   }
@@ -163,7 +163,7 @@ fn a_tiled_edge_casts_no_shadow_and_a_press_at_it_reaches_the_content() {
   };
 
   if std::env::var("SKENE_TEST_SESSION").as_deref() != Ok("mutter") {
-    eprintln!("not tested here: tiling is mutter's (Super with an arrow)");
+    skene_gui_linux::testing::not_tested_here("tiling is mutter's (Super with an arrow)");
 
     return;
   }

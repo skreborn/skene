@@ -24,8 +24,11 @@ use crate::{
 /// ([`Checkbox::default_mark`]), then its caption, 8 pixels after.
 #[must_use]
 pub struct Checkbox {
+  /// The control it composes, its defaults set.
   pub(super) control: Control<Behavior>,
+  /// The face the mark sits in.
   pub(super) face: Container,
+  /// The mark.
   mark: AnyView,
 }
 

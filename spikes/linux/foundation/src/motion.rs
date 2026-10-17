@@ -12,8 +12,8 @@
 use crate::{
   Color, Corners, FontWeight, Offset, Ring, Shadows,
   fill::{Fill, GradientStop, LinearGradient, RadialGradient, StopColor, Stops, SweepGradient},
-  seam::record::{CompiledAnimation, Group, Prop, Resolved, Transition},
-  value::{Border, Curve, Shadow},
+  seam::record::{CompiledAnimation, Prop, Resolved, Transition},
+  value::{Border, Curve, Dimension, Inset, Shadow, Spacing},
 };
 
 /// How many halvings the bezier solve refines the parameter through.
@@ -117,6 +117,36 @@ impl Interpolate for Corners {
       top_trailing: lerp(self.top_trailing, to.top_trailing, amount),
       bottom_trailing: lerp(self.bottom_trailing, to.bottom_trailing, amount),
       bottom_leading: lerp(self.bottom_leading, to.bottom_leading, amount),
+    })
+  }
+}
+
+impl Interpolate for Dimension {
+  fn interpolate(&self, to: &Self, amount: f32) -> Option<Self> {
+    match (self, to) {
+      (Self::Length(from), Self::Length(to)) => Some(Self::Length(lerp(*from, *to, amount))),
+      (Self::Fraction(from), Self::Fraction(to)) => Some(Self::Fraction(lerp(*from, *to, amount))),
+      _ => None,
+    }
+  }
+}
+
+impl Interpolate for Inset {
+  fn interpolate(&self, to: &Self, amount: f32) -> Option<Self> {
+    Some(Self {
+      top: lerp(self.top, to.top, amount),
+      trailing: lerp(self.trailing, to.trailing, amount),
+      bottom: lerp(self.bottom, to.bottom, amount),
+      leading: lerp(self.leading, to.leading, amount),
+    })
+  }
+}
+
+impl Interpolate for Spacing {
+  fn interpolate(&self, to: &Self, amount: f32) -> Option<Self> {
+    Some(Self {
+      horizontal: lerp(self.horizontal, to.horizontal, amount),
+      vertical: lerp(self.vertical, to.vertical, amount),
     })
   }
 }
@@ -314,6 +344,13 @@ impl Interpolate for Resolved {
       (Self::FontWeight(from), Self::FontWeight(to)) => {
         Some(Self::FontWeight(from.interpolate(to, amount)?))
       }
+      (Self::Dimension(from), Self::Dimension(to)) => {
+        Some(Self::Dimension(from.interpolate(to, amount)?))
+      }
+      (Self::Inset(from), Self::Inset(to)) => Some(Self::Inset(from.interpolate(to, amount)?)),
+      (Self::Spacing(from), Self::Spacing(to)) => {
+        Some(Self::Spacing(from.interpolate(to, amount)?))
+      }
       _ => None,
     }
   }
@@ -418,8 +455,9 @@ impl Motion {
   /// `now`, as CSS starts a transition.
   ///
   /// Under the transition naming the property, a tween starts from the value showing toward
-  /// `target`, unless `reduced` motion cuts that transition, the property lays out (a layout
-  /// or a placement property), the pair is discrete, or the property shows `target` already.
+  /// `target`, unless `reduced` motion cuts that transition, the pair is discrete, or the
+  /// property shows `target` already. A property that lays out tweens as any does; the
+  /// realization lays out again each frame it moves.
   /// A change back to where a running tween began reverses it over the share of its duration
   /// it had played. Otherwise the property's tween stops, and `target` shows at once.
   pub fn retarget(
@@ -459,11 +497,7 @@ impl Motion {
       return;
     };
 
-    if matches!(prop.group(), Group::Layout | Group::Placement)
-      || transition.duration + transition.delay == 0
-      || from == *to
-      || !from.interpolates_with(to)
-    {
+    if transition.duration + transition.delay == 0 || from == *to || !from.interpolates_with(to) {
       return;
     }
 

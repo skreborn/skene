@@ -465,7 +465,7 @@ impl<P: CollectionPolicy> Collection<P> {
   }
 
   /// A collection over `roster`, shared with what else reads its choice (a popup's face).
-  pub fn with_roster(roster: Rc<Roster>) -> Self {
+  pub const fn with_roster(roster: Rc<Roster>) -> Self {
     Self {
       roster,
       policy: PhantomData,

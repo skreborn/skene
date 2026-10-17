@@ -59,6 +59,22 @@ pub enum Target {
   },
 }
 
+/// A part of a glyph's mask uploaded to the atlas: its image, and its place and size in the
+/// mask, in device pixels. A mask larger than [`Gpu::TILE`] either way is uploaded in parts.
+#[derive(Clone, Copy, Debug)]
+struct Tile {
+  /// The atlas image.
+  id: ImageId,
+  /// Its leading edge in the mask.
+  x: u32,
+  /// Its top in the mask.
+  y: u32,
+  /// Its width.
+  width: u32,
+  /// Its height.
+  height: u32,
+}
+
 /// What a GPU frame cost, in microseconds.
 #[derive(Clone, Copy, Default, Debug)]
 pub struct GpuCost {
@@ -66,6 +82,9 @@ pub struct GpuCost {
   pub record: u64,
   /// Rendering it, presenting it and waiting for the GPU to finish.
   pub render: u64,
+  /// Whether a glyph found no room in the atlas this frame and went undrawn: the next frame,
+  /// which starts the atlas over, draws it.
+  pub short: bool,
 }
 
 /// The device was lost: the window paints on the CPU from now on.
@@ -83,7 +102,8 @@ pub struct Gpu {
   resources: Resources,
   scene: Scene,
   frame: wgpu::Texture,
-  glyphs: HashMap<usize, (Rc<GlyphMask>, ImageId)>,
+  glyphs: HashMap<usize, (Rc<GlyphMask>, Vec<Tile>)>,
+  area: u64,
   lost: Arc<AtomicBool>,
   _instance: wgpu::Instance,
 }
@@ -91,6 +111,18 @@ pub struct Gpu {
 impl Gpu {
   /// The most glyph images the atlas keeps before it starts over.
   const MOST_GLYPHS: usize = 16_384;
+  /// The side of vello_hybrid's atlas textures, in device pixels.
+  const ATLAS: u64 = 4096;
+  /// How many atlas textures vello_hybrid makes at most.
+  const ATLASES: u64 = 8;
+  /// The atlas pixels glyph images may hold when a frame starts; past them the atlas starts
+  /// over.
+  const KEEP: u64 = Self::ATLAS * Self::ATLAS * Self::ATLASES / 4;
+  /// The atlas pixels glyph images may hold within a frame; a glyph past them is drawn by the
+  /// next frame, which starts the atlas over.
+  const MOST_AREA: u64 = Self::ATLAS * Self::ATLAS * Self::ATLASES / 2;
+  /// The side of the largest part of a mask uploaded as one image, in device pixels.
+  const TILE: u32 = 2048;
 
   /// The GPU path for the surface at `target`, `size` device pixels, where `choice` admits an
   /// adapter that presents to it; why not otherwise.
@@ -244,9 +276,23 @@ impl Gpu {
       scene,
       frame,
       glyphs: HashMap::new(),
+      area: 0,
       lost,
       _instance: instance,
     })
+  }
+
+  /// Submits what `encoder` holds and starts it afresh: an atlas write queued after this runs
+  /// after the clears and copies recorded before it, where one queued before it runs first.
+  fn submit_so_far(device: &wgpu::Device, queue: &wgpu::Queue, encoder: &mut wgpu::CommandEncoder) {
+    let recorded = std::mem::replace(
+      encoder,
+      device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+        label: Some("skene frame"),
+      }),
+    );
+
+    queue.submit([recorded.finish()]);
   }
 
   fn frame_texture(device: &wgpu::Device, config: &wgpu::SurfaceConfiguration) -> wgpu::Texture {
@@ -342,13 +388,20 @@ impl Gpu {
       multiview_mask: None,
     }));
 
-    if self.glyphs.len() >= Self::MOST_GLYPHS {
-      for (_, (_, id)) in self.glyphs.drain() {
-        self
-          .renderer
-          .destroy_image(&mut self.resources, &mut encoder, id);
+    if self.glyphs.len() >= Self::MOST_GLYPHS || self.area > Self::KEEP {
+      for (_, (_, tiles)) in self.glyphs.drain() {
+        for tile in tiles {
+          self
+            .renderer
+            .destroy_image(&mut self.resources, &mut encoder, tile.id);
+        }
       }
+
+      self.area = 0;
+      Self::submit_so_far(&self.device, &self.queue, &mut encoder);
     }
+
+    let mut short = false;
 
     {
       let mut sink = HybridSink {
@@ -359,6 +412,8 @@ impl Gpu {
         queue: &self.queue,
         encoder: &mut encoder,
         glyphs: &mut self.glyphs,
+        area: &mut self.area,
+        short: &mut short,
       };
 
       record(&mut sink);
@@ -424,6 +479,7 @@ impl Gpu {
     Ok(GpuCost {
       record: recorded.as_micros() as u64,
       render: (started.elapsed() - recorded).as_micros() as u64,
+      short,
     })
   }
 
@@ -498,7 +554,9 @@ struct HybridSink<'a> {
   device: &'a wgpu::Device,
   queue: &'a wgpu::Queue,
   encoder: &'a mut wgpu::CommandEncoder,
-  glyphs: &'a mut HashMap<usize, (Rc<GlyphMask>, ImageId)>,
+  glyphs: &'a mut HashMap<usize, (Rc<GlyphMask>, Vec<Tile>)>,
+  area: &'a mut u64,
+  short: &'a mut bool,
 }
 
 impl HybridSink<'_> {
@@ -519,47 +577,90 @@ impl HybridSink<'_> {
     }
   }
 
-  /// The atlas image of `mask`, uploaded where it is new.
-  fn image(&mut self, mask: &Rc<GlyphMask>) -> ImageId {
+  /// The atlas images of `mask`, uploaded where it is new, in parts no larger than
+  /// [`Gpu::TILE`] either way; `None`, and the frame short, where they would take the atlas past
+  /// [`Gpu::MOST_AREA`]. A part that grows the atlas submits what the frame recorded so far
+  /// ([`Gpu::submit_so_far`]).
+  fn image(&mut self, mask: &Rc<GlyphMask>) -> Option<Vec<Tile>> {
     let key = Rc::as_ptr(mask) as usize;
 
-    if let Some((_, id)) = self.glyphs.get(&key) {
-      return *id;
+    if let Some((_, tiles)) = self.glyphs.get(&key) {
+      return Some(tiles.clone());
     }
 
-    let pixels: Vec<PremulRgba8> = match &mask.pixels {
-      MaskPixels::Alpha(alpha) => alpha
-        .iter()
-        .map(|&a| PremulRgba8 {
-          r: 0,
-          g: 0,
-          b: 0,
-          a,
-        })
-        .collect(),
-      MaskPixels::Color(rgba) => rgba
-        .as_chunks::<4>()
-        .0
-        .iter()
-        .map(|&[r, g, b, a]| PremulRgba8 { r, g, b, a })
-        .collect(),
-    };
-    let pixmap = Pixmap::from_parts(
-      pixels,
-      u16::try_from(mask.width).unwrap_or(1),
-      u16::try_from(mask.height).unwrap_or(1),
-    );
-    let id = self.renderer.upload_image(
-      self.resources,
-      self.device,
-      self.queue,
-      self.encoder,
-      &pixmap,
-    );
+    let area = u64::from(mask.width) * u64::from(mask.height);
 
-    self.glyphs.insert(key, (Rc::clone(mask), id));
+    if *self.area + area > Gpu::MOST_AREA {
+      *self.short = true;
 
-    id
+      return None;
+    }
+
+    let mut tiles = Vec::new();
+
+    for y in (0..mask.height).step_by(Gpu::TILE as usize) {
+      for x in (0..mask.width).step_by(Gpu::TILE as usize) {
+        let (width, height) = (
+          Gpu::TILE.min(mask.width - x),
+          Gpu::TILE.min(mask.height - y),
+        );
+        let mut pixels = Vec::with_capacity(width as usize * height as usize);
+
+        for row in y..y + height {
+          let start = (row * mask.width + x) as usize;
+          let end = start + width as usize;
+
+          match &mask.pixels {
+            MaskPixels::Alpha(alpha) => {
+              pixels.extend(alpha[start..end].iter().map(|&a| PremulRgba8 {
+                r: 0,
+                g: 0,
+                b: 0,
+                a,
+              }));
+            }
+            MaskPixels::Color(rgba) => pixels.extend(
+              rgba[start * 4..end * 4]
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .map(|&[r, g, b, a]| PremulRgba8 { r, g, b, a }),
+            ),
+          }
+        }
+
+        let pixmap = Pixmap::from_parts(
+          pixels,
+          u16::try_from(width).unwrap_or(1),
+          u16::try_from(height).unwrap_or(1),
+        );
+        let layers = self.renderer.atlas_texture().size().depth_or_array_layers;
+        let id = self.renderer.upload_image(
+          self.resources,
+          self.device,
+          self.queue,
+          self.encoder,
+          &pixmap,
+        );
+
+        if self.renderer.atlas_texture().size().depth_or_array_layers != layers {
+          Gpu::submit_so_far(self.device, self.queue, self.encoder);
+        }
+
+        tiles.push(Tile {
+          id,
+          x,
+          y,
+          width,
+          height,
+        });
+      }
+    }
+
+    *self.area += area;
+    self.glyphs.insert(key, (Rc::clone(mask), tiles.clone()));
+
+    Some(tiles)
   }
 }
 
@@ -613,31 +714,36 @@ impl Sink for HybridSink<'_> {
       return;
     }
 
-    let id = self.image(&glyph.mask);
+    let Some(tiles) = self.image(&glyph.mask) else {
+      return;
+    };
     let tint = matches!(glyph.mask.pixels, MaskPixels::Alpha(_)).then(|| Tint {
       color: color(glyph.color),
       mode: TintMode::AlphaMask,
     });
 
-    #[expect(clippy::cast_precision_loss, reason = "device pixels")]
-    self
-      .scene
-      .set_transform(Affine::translate((glyph.left as f64, glyph.top as f64)));
-    self.scene.reset_paint_transform();
-    self.scene.set_paint(Image {
-      image: ImageSource::opaque_id(id),
-      sampler: ImageSampler {
-        quality: ImageQuality::Low,
-        ..ImageSampler::default()
-      },
-    });
-    self.scene.set_tint(tint);
-    self.scene.fill_rect(&KRect::new(
-      0.,
-      0.,
-      f64::from(glyph.mask.width),
-      f64::from(glyph.mask.height),
-    ));
-    self.scene.reset_tint();
+    for tile in tiles {
+      #[expect(clippy::cast_precision_loss, reason = "device pixels")]
+      self.scene.set_transform(Affine::translate((
+        glyph.left as f64 + f64::from(tile.x),
+        glyph.top as f64 + f64::from(tile.y),
+      )));
+      self.scene.reset_paint_transform();
+      self.scene.set_paint(Image {
+        image: ImageSource::opaque_id(tile.id),
+        sampler: ImageSampler {
+          quality: ImageQuality::Low,
+          ..ImageSampler::default()
+        },
+      });
+      self.scene.set_tint(tint);
+      self.scene.fill_rect(&KRect::new(
+        0.,
+        0.,
+        f64::from(tile.width),
+        f64::from(tile.height),
+      ));
+      self.scene.reset_tint();
+    }
   }
 }

@@ -36,7 +36,7 @@ impl MaskState {
   /// What each masked cluster is drawn as.
   #[inline(always)]
   #[must_use]
-  pub fn mark(&self) -> char {
+  pub const fn mark(&self) -> char {
     self.mark.get()
   }
 
@@ -59,7 +59,7 @@ impl MaskState {
   /// Whether the text is masked.
   #[inline(always)]
   #[must_use]
-  pub fn is_masked(&self) -> bool {
+  pub const fn is_masked(&self) -> bool {
     self.masked.get()
   }
 
@@ -72,7 +72,7 @@ impl MaskState {
   /// The byte index of the cluster shown as typed.
   #[inline(always)]
   #[must_use]
-  pub fn revealed(&self) -> Option<usize> {
+  pub const fn revealed(&self) -> Option<usize> {
     self.revealed.get()
   }
 

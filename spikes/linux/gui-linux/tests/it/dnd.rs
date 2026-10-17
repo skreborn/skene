@@ -49,7 +49,6 @@ fn fields() -> impl View {
           };
 
           dropped.update(|dropped| dropped.push(took));
-          true
         })
         .set_child(Text::new("Drop box")),
     )
@@ -192,7 +191,7 @@ impl Peer {
     clear: impl Fn(&Self) -> bool,
   ) -> Option<Self> {
     let Some(python) = Self::python() else {
-      eprintln!("{test}: not tested here: no Python with PyGObject and GTK 4 for the peer");
+      skene_gui_linux::testing::not_tested_here("no Python with PyGObject and GTK 4 for the peer");
 
       return None;
     };
@@ -211,8 +210,8 @@ impl Peer {
       );
     }
 
-    eprintln!(
-      "{test}: not tested here: the compositor never put the peer clear of the test's window"
+    skene_gui_linux::testing::not_tested_here(
+      "the compositor never put the peer clear of the test's window",
     );
 
     None
@@ -271,7 +270,7 @@ impl Peer {
     let Some(ready) = peer.wait_for(screen, Duration::from_secs(20), |line| {
       line.starts_with("[peer] ready ")
     }) else {
-      eprintln!("{test}: not tested here: the peer never showed its window");
+      skene_gui_linux::testing::not_tested_here("the peer never showed its window");
 
       return None;
     };
@@ -327,7 +326,7 @@ impl Peer {
       }
     }
 
-    eprintln!("{test}: not tested here: the pointer never found the peer's window");
+    skene_gui_linux::testing::not_tested_here("the pointer never found the peer's window");
 
     None
   }

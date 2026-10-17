@@ -3,7 +3,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use skene_foundation::{
-  Arrangement, AxisAlignment, Fill, Inset, State, SystemColors, Value, behavior::Activate,
+  Arrangement, AxisAlignment, Color, Fill, Inset, State, SystemColors, Value, behavior::Activate,
 };
 
 use crate::{
@@ -28,7 +28,9 @@ type Prominent = Rc<RefCell<Rc<dyn Fn() -> bool>>>;
 /// prominent), and a ring of 2 in the accent while focus shows.
 #[must_use]
 pub struct Button {
+  /// The control it composes, its defaults set.
   pub(super) control: Control<Activate>,
+  /// Whether it shows as its screen's primary action.
   prominent: Prominent,
 }
 
@@ -56,15 +58,9 @@ impl Button {
     let background = {
       let is_prominent = is_prominent.clone();
 
-      Value::derived(move || Self::fill(is_prominent()))
+      Value::derived(move || Self::default_background(is_prominent()))
     };
-    let color = Value::derived(move || {
-      if is_prominent() {
-        SystemColors::ON_ACCENT
-      } else {
-        SystemColors::INK
-      }
-    });
+    let color = Value::derived(move || Self::default_color(is_prominent()));
     let text = {
       let label = Rc::clone(&label);
 
@@ -86,8 +82,19 @@ impl Button {
     Self { control, prominent }
   }
 
-  /// A button's fill: the control's colors, or the accent's where it is prominent.
-  fn fill(prominent: bool) -> Value<Fill> {
+  /// The default text color: [`SystemColors::INK`], [`SystemColors::ON_ACCENT`] where
+  /// `prominent`.
+  pub fn default_color(prominent: bool) -> Value<Color> {
+    Value::from(if prominent {
+      SystemColors::ON_ACCENT
+    } else {
+      SystemColors::INK
+    })
+  }
+
+  /// The default fill: [`SystemColors::CONTROL`] and its hover and pressed variants, the
+  /// accent's where `prominent`; the resting one while disabled.
+  pub fn default_background(prominent: bool) -> Value<Fill> {
     let (rest, hover, pressed) = if prominent {
       (
         SystemColors::ACCENT,

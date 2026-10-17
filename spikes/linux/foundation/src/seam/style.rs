@@ -359,15 +359,15 @@ impl CompiledStyle {
 }
 
 /// One compilation's context: what is kept, the scopes, the states.
-pub(crate) struct CompileCx<'a> {
+pub(in crate::seam) struct CompileCx<'a> {
   /// What the realization keeps unresolved.
-  pub(crate) keep: Keep,
+  pub(in crate::seam) keep: Keep,
   /// The theme scopes the node sits in.
-  pub(crate) scope: &'a ScopeChain,
+  pub(in crate::seam) scope: &'a ScopeChain,
   /// Whether a state the realization does not keep holds.
-  pub(crate) state: &'a dyn Fn(State) -> bool,
+  pub(in crate::seam) state: &'a dyn Fn(State) -> bool,
   /// The node's slots so far, each a derived leaf's value now.
-  pub(crate) slots: Vec<KeptLeaf>,
+  pub(in crate::seam) slots: Vec<KeptLeaf>,
 }
 
 impl CompileCx<'_> {
@@ -464,7 +464,7 @@ impl CompileCx<'_> {
   }
 
   /// `value` compiled; `None` where its base names a token defined nowhere above.
-  pub(crate) fn value<T: Kinded>(&mut self, value: &Value<T>) -> Option<KeptValue> {
+  pub(in crate::seam) fn value<T: Kinded>(&mut self, value: &Value<T>) -> Option<KeptValue> {
     self.value_at(value, 0)
   }
 

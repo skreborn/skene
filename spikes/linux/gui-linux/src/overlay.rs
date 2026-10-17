@@ -33,10 +33,9 @@ pub struct Placement {
   pub anchor: Rect,
   /// Its width and height.
   pub size: (u32, u32),
+  /// The space between it and its anchor.
+  pub gap: f32,
 }
-
-/// The gap between an anchor and the popup below or above it.
-const GAP: f32 = 2.;
 
 thread_local! {
   static OVERLAYS: RefCell<Vec<Weak<Drawn>>> = const { RefCell::new(Vec::new()) };
@@ -72,6 +71,7 @@ pub struct Open {
   pub placement: Placement,
   renderer: Renderer,
   dirty: bool,
+  opaque: bool,
 }
 
 impl Open {
@@ -84,7 +84,15 @@ impl Open {
       placement,
       renderer: Renderer::new(),
       dirty: true,
+      opaque: false,
     }
+  }
+
+  /// Says whether its surface shows no transparency (an X11 window of the screen's own
+  /// depth): its rounded corners are then filled with the window's color, what shows behind
+  /// a popup on a desktop drawn in that color, rather than left clear.
+  pub const fn set_opaque_surface(&mut self, opaque: bool) {
+    self.opaque = opaque;
   }
 
   /// The node `node` is placed against: its placement's anchor, else the nearest realized
@@ -106,13 +114,15 @@ impl Open {
     let (side, widen) = placement.map_or((Side::Bottom, true), |placement| {
       (placement.side, placement.widen)
     });
+    #[expect(clippy::cast_precision_loss, reason = "whole pixels")]
+    let gap = placement.map_or(2., |placement| placement.gap as f32);
     let point = placement.and_then(|placement| placement.at);
     let anchor = match point {
       // A pixel just above the point, so what opens below it starts at the point.
       #[expect(clippy::cast_precision_loss, reason = "window pixels")]
       Some((x, y)) => Rect {
         x: x as f32,
-        y: y as f32 - GAP - 1.,
+        y: y as f32 - gap - 1.,
         width: 1.,
         height: 1.,
       },
@@ -139,21 +149,18 @@ impl Open {
       .ceil()
       .max(1.);
     let (x, y) = match side {
-      Side::Bottom => (anchor.x, anchor.y + anchor.height + GAP),
-      Side::Top => (anchor.x, anchor.y - height - GAP),
-      Side::Leading => (anchor.x - width - GAP, anchor.y),
-      Side::Trailing => (anchor.x + anchor.width + GAP, anchor.y),
+      Side::Bottom => (anchor.x, anchor.y + anchor.height + gap),
+      Side::Top => (anchor.x, anchor.y - height - gap),
+      Side::Leading => (anchor.x - width - gap, anchor.y),
+      Side::Trailing => (anchor.x + anchor.width + gap, anchor.y),
     };
 
-    layout::layout_overlay(
-      node,
-      Rect {
-        x,
-        y,
-        width,
-        height,
-      },
-    );
+    node.layout_overlay(Rect {
+      x,
+      y,
+      width,
+      height,
+    });
     layout::reach(node);
 
     #[expect(
@@ -164,6 +171,7 @@ impl Open {
     Placement {
       anchor,
       size: (width as u32, height as u32),
+      gap,
     }
   }
 
@@ -258,6 +266,7 @@ impl Open {
       height: height as f32,
     };
     let window = Palette::now().window;
+    let opaque = self.opaque;
 
     self.renderer.paint(
       Some(&self.node),
@@ -266,7 +275,15 @@ impl Open {
       region,
       (-frame.x, -frame.y),
       marks,
-      &mut |canvas| canvas.fill(region, skene_foundation::Corners::all(0.), opaque(window)),
+      &mut |canvas| {
+        if opaque {
+          canvas.fill(
+            region,
+            skene_foundation::Corners::all(0.),
+            without_alpha(window),
+          );
+        }
+      },
     );
 
     Some(Frame {
@@ -277,8 +294,8 @@ impl Open {
   }
 }
 
-/// `color` with no transparency: what shows behind a popup's rounded corners.
-const fn opaque(color: Color) -> Color {
+/// `color` with no transparency: what shows behind an opaque popup's rounded corners.
+const fn without_alpha(color: Color) -> Color {
   Color {
     alpha: 255,
     ..color

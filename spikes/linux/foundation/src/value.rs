@@ -857,6 +857,7 @@ impl Property for Border {}
 /// negative), its corners grown by the offset: it takes no room and is never hit, as a CSS
 /// outline. A focus ring is one.
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
+#[must_use]
 pub struct Ring {
   /// The line's width, in pixels.
   pub width: f32,
@@ -912,6 +913,7 @@ impl Property for Ring {}
 /// A box drawn moved from where it was laid out, with everything inside it: it takes no room,
 /// and where it is hit and found moves with it, as a CSS translation.
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
+#[must_use]
 pub struct Offset {
   /// How far right it moves: pixels, or a fraction of its own width where `of_size`.
   pub x: f32,

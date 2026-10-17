@@ -549,6 +549,26 @@ fn a_secure_text_offers_no_copy_nor_cut_and_its_word_is_the_whole_text() {
 }
 
 #[test]
+fn a_secure_text_keeps_no_undo_history() {
+  let mut editor = editor("");
+
+  keys(&mut editor, &["o", "l", "d", "Ctrl+a", "x"]);
+  editor.set_secure(true);
+  key(&mut editor, "Ctrl+z");
+  assert_eq!(editor.text(), "x", "what it kept is dropped");
+
+  keys(
+    &mut editor,
+    &["Ctrl+a", "a", "b", "c", "Ctrl+a", "z", "Ctrl+z"],
+  );
+  assert_eq!(editor.text(), "z", "and nothing is recorded");
+
+  editor.set_secure(false);
+  keys(&mut editor, &["y", "Ctrl+z"]);
+  assert_eq!(editor.text(), "z", "a plain text records again");
+}
+
+#[test]
 fn a_command_logged_masked_shows_its_text_as_marks() {
   assert_eq!(
     Command::Insert("e\u{301}x".into()).masked('•'),

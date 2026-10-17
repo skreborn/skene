@@ -99,13 +99,30 @@ impl Open {
   }
 
   /// Lays `node`'s content out at its natural size (as wide as its anchor at least where it
-  /// widens to it) and places it on its anchor's side: where it sits.
+  /// widens to it) and places it on its anchor's side, or below the point it hangs from: where
+  /// it sits.
   fn lay_out(node: &Node) -> Placement {
     let placement = node.contents.borrow().placement;
     let (side, widen) = placement.map_or((Side::Bottom, true), |placement| {
       (placement.side, placement.widen)
     });
-    let anchor = Self::anchor(node).map_or(Rect::default(), |anchor| anchor.window_rect());
+    let point = placement.and_then(|placement| placement.at);
+    let anchor = match point {
+      // A pixel just above the point, so what opens below it starts at the point.
+      #[expect(clippy::cast_precision_loss, reason = "window pixels")]
+      Some((x, y)) => Rect {
+        x: x as f32,
+        y: y as f32 - GAP - 1.,
+        width: 1.,
+        height: 1.,
+      },
+      None => Self::anchor(node).map_or(Rect::default(), |anchor| anchor.window_rect()),
+    };
+    let (side, widen) = if point.is_some() {
+      (Side::Bottom, false)
+    } else {
+      (side, widen)
+    };
 
     layout::next_epoch();
 

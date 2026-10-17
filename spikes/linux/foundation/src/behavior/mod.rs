@@ -45,7 +45,7 @@ pub use self::{
   activate::{Activate, ActivateKeys},
   collection::{
     Collection, CollectionKeys, CollectionPolicy, Listbox, ListboxOption, ListboxPolicy, Member,
-    Orientation, Radio, RadioGroup, RadioPolicy, Roster,
+    Menu, MenuOption, MenuPolicy, Orientation, Radio, RadioGroup, RadioPolicy, Roster,
   },
   controlled::Controlled,
   handle::{ContentHandler, ContentReader, ControlHandle, ControlOps},

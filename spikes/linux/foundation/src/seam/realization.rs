@@ -8,6 +8,7 @@ use crate::{
   seam::{
     access::AccessFacts,
     content::{Content, PropValue, Unit},
+    control::{Availability, ClipboardOp},
     node::NodeSpec,
     report::Interest,
     runtime::{Cancel, Task},
@@ -155,6 +156,16 @@ pub trait Realization: Sized + 'static {
 
   /// Runs `action` once after `delay` on the platform's clock.
   fn schedule(delay: Duration, action: Box<dyn FnOnce()>) -> Cancel;
+
+  /// Whether `op` is offered on `node` now: absent where the node holds no text it acts on
+  /// (the realization offers no clipboard there).
+  fn clipboard_availability(_node: &Self::Node, _op: ClipboardOp) -> Availability {
+    Availability::Absent
+  }
+
+  /// Carries `op` out on `node`, through the platform's clipboard where it cuts, copies or
+  /// pastes; nothing where it is not offered.
+  fn clipboard(_node: &Self::Node, _op: ClipboardOp) {}
 
   /// Runs the app: opens its window, reports the environment, then builds `root` inside it
   /// under an owner that lives as long as the window, and returns when the app quits.

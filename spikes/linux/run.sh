@@ -41,7 +41,9 @@
 #   - Hangul through IBus, Fcitx5 and XIM on X11, gnome-shell's IBus over text-input-v3 and
 #     Fcitx5 behind sway (input-method-v2); the input method choice;
 #   - textprobe.py (report, edit) on the drawn field and on GtkEntry; Orca 46's speech over the
-#     same keys for the field, switch and button against GtkEntry, GtkSwitch and GtkButton.
+#     same keys for the field, switch and button against GtkEntry, GtkSwitch and GtkButton, on
+#     X11 and on headless gnome-shell's Wayland with its Xwayland (which Orca 46 needs to start;
+#     there it hears no key of a client window, so its own commands are left out).
 #
 # Stage TESTING (Option B on the drawn realization: skene_gui::testing reads through AT-SPI
 # and acts through real input, XTest on X11, mutter's EIS and sway's virtual devices on

@@ -4,8 +4,12 @@ what AT-SPI reports and what Orca says.
 
   gtk-ref.py [--announce]    --announce also announces the status through
                              gtk_accessible_announce (4.14), the closest GTK has to a live region
+
+GTK_REF_TITLE names the window ("GTK reference" unless set): the screen reader's comparison
+names it as the drawn window is named, so the two speak the same title.
 """
 
+import os
 import sys
 
 import gi
@@ -20,7 +24,8 @@ ANNOUNCER = [None]
 
 
 def on_activate(app):
-  window = Gtk.ApplicationWindow(application=app, title="GTK reference")
+  title = os.environ.get("GTK_REF_TITLE", "GTK reference")
+  window = Gtk.ApplicationWindow(application=app, title=title)
   window.set_default_size(480, 320)
   box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
   box.set_margin_start(24)

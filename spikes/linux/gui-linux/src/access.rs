@@ -33,7 +33,7 @@ use accesskit::{
 use skene_foundation::{
   layout::{Axis, Rect},
   seam::{
-    access::{Checked, Role},
+    access::{Checked, PopupKind, Role},
     content::Unit,
     control::AccessRequest,
     node::{Interaction, NodeKind},
@@ -607,8 +607,10 @@ fn add(
     ak.set_expanded(expanded);
   }
 
-  if facts.has_popup {
-    ak.set_has_popup(HasPopup::Listbox);
+  match facts.has_popup {
+    Some(PopupKind::Listbox) => ak.set_has_popup(HasPopup::Listbox),
+    Some(PopupKind::Menu) => ak.set_has_popup(HasPopup::Menu),
+    None => {}
   }
 
   if let Some(value) = &facts.value {

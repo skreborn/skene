@@ -108,7 +108,10 @@ pub use skene_foundation::{
   seam::{
     access::{AccessFacts, Checked, RangeValue, Role, Shortcut},
     content::{Range, Side, TextSelection},
-    control::{AccessRequest, ControlState, DragAxes, Element, LabelPlacement, Part, Prevent},
+    control::{
+      AccessRequest, Availability, ClipboardOp, ControlState, DragAxes, Element, LabelPlacement,
+      Part, Prevent,
+    },
     record::{Animation, Iterations, Key, Keyframe, Transition, keys},
     report::{
       ContextMenuEvent, Dropped, KeyEvent, MenuSource, Modifiers, PointerEvent, PointerPhase,
@@ -130,8 +133,8 @@ pub use crate::{
     BasicRadioGroup, BasicSlider, BasicTextEditor, BasicTextField, Control, Label,
   },
   controls::{
-    BasicPicker, Button, Checkbox, Keyboard, Picker, PickerItem, Radio, RadioGroup, Slider,
-    TextEditor, TextField, Toggle, marks,
+    BasicPicker, Button, Checkbox, ContextMenu, Keyboard, MenuEntry, MenuItem, Picker, PickerItem,
+    Radio, RadioGroup, Slider, TextEditor, TextField, Toggle, marks,
   },
   overlay::Overlay,
   painted::{Canvas, Paint, Painted},

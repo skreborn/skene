@@ -53,6 +53,8 @@ pub mod state {
   pub const REQUIRED: u32 = 33;
   /// `ATSPI_STATE_INVALID_ENTRY`.
   pub const INVALID_ENTRY: u32 = 36;
+  /// `ATSPI_STATE_HAS_POPUP`.
+  pub const HAS_POPUP: u32 = 42;
   /// `ATSPI_STATE_READ_ONLY`.
   pub const READ_ONLY: u32 = 43;
 

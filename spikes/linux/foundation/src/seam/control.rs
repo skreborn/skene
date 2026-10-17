@@ -1,6 +1,7 @@
 //! What crosses the seam for a control Skene's views compose: the state its parts are styled
 //! under, the parts a control exposes, where its label sits, how a press drags it, the verdict
-//! a handler gives an event, what a reader asks of it, and what its node is.
+//! a handler gives an event, what a reader asks of it, what its node is, and what a context
+//! menu's standard entries ask of the text they act on.
 
 use std::rc::Rc;
 
@@ -211,4 +212,31 @@ pub struct ControlDispatch {
   /// Whether the control is disabled now: a disabled control swallows presses, clicks, keys
   /// and a reader's requests.
   pub disabled: Rc<dyn Fn() -> bool>,
+}
+
+/// What a context menu's standard entry asks of the text it is opened on: the clipboard's
+/// three, and deleting and selecting all, which stand beside them in every edit menu.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub enum ClipboardOp {
+  /// Puts the selection on the clipboard and removes it.
+  Cut,
+  /// Puts the selection on the clipboard.
+  Copy,
+  /// Replaces the selection with the clipboard's text.
+  Paste,
+  /// Removes the selection.
+  Delete,
+  /// Selects the whole text.
+  SelectAll,
+}
+
+/// Whether a context menu's entry is offered where it is opened.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub enum Availability {
+  /// Not there: the menu leaves the entry out.
+  Absent,
+  /// There, but refused now: shown and not operable.
+  Disabled,
+  /// There and operable.
+  Enabled,
 }

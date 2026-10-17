@@ -24,6 +24,7 @@ fn each_content_reads_back_what_was_written() {
         anchor: None,
         side: Side::Bottom,
         widen: true,
+        at: Some((12, 34)),
       }),
     ),
   ];

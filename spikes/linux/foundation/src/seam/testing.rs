@@ -143,6 +143,7 @@ pub fn sample(content: Content) -> Option<PropValue> {
       anchor: None,
       side: Side::Bottom,
       widen: true,
+      at: Some((12, 34)),
     }),
     Content::Edit => PropValue::Edit(Edit {
       text: "he\u{301}llo".into(),
@@ -235,6 +236,8 @@ pub struct AccessSnapshot {
   pub focused: bool,
   /// Whether it is expanded.
   pub expanded: Option<bool>,
+  /// Whether it opens a popup: a picker's list, a context menu.
+  pub has_popup: bool,
   /// A range value.
   pub value: Option<f64>,
   /// A text entry's text.

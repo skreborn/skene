@@ -104,7 +104,7 @@ pub enum Side {
 }
 
 /// Where an overlay is placed: against which node, on which side, and whether it is at least
-/// as wide as that node.
+/// as wide as that node; or hung from a point of the window (a context menu at the pointer).
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct OverlayPlacement {
   /// The node it is placed against, once built.
@@ -113,6 +113,9 @@ pub struct OverlayPlacement {
   pub side: Side,
   /// Whether it is at least as wide as the anchor.
   pub widen: bool,
+  /// The point of the window it hangs from, its top leading corner there, in place of its
+  /// anchor: window pixels.
+  pub at: Option<(i32, i32)>,
 }
 
 /// A text entry's text with its selection: one value, so a selection is never applied to a

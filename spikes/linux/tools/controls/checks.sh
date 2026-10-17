@@ -3,7 +3,7 @@
 # dbus-run-session): the controls and fields scenarios on Xvfb, headless sway and headless
 # mutter; Hangul and a secure field through IBus, Fcitx5 and XIM on X11, gnome-shell's IBus over
 # text-input-v3 and Fcitx5 behind sway; the input method choice; the reader probes against
-# GtkEntry.
+# GtkEntry; Orca against GTK on X11 and gnome-shell's Wayland.
 #
 #   checks.sh <controls probe binary> <results dir>
 set -u
@@ -52,26 +52,32 @@ ATSPI_WINDOW="GTK reference" APP=$root/tools/controls/gtk-ref.py \
   session reader-gtk x11 none "" python3.12 -I tools/controls/harness.py reader
 
 # Orca 46's speech over the same keys: the drawn field, switch and button against GtkEntry,
-# GtkSwitch and GtkButton.
+# GtkSwitch and GtkButton, on X11 and on gnome-shell's Wayland (with its Xwayland, which Orca
+# needs to start).
 orca() {
-  local label=$1
+  # orca <label> <kind>
+  local label=$1 kind=$2
   rm -rf "${results:?}/${label:?}"
-  APP=none OUT=$results/$label timeout 400 dbus-run-session -- tools/controls/session.sh x11 \
-    tools/controls/orca/orca.sh >"$results/$label.txt" 2>&1
+  XWAYLAND=1 APP=none OUT=$results/$label timeout 400 dbus-run-session -- \
+    tools/controls/session.sh "$kind" tools/controls/orca/orca.sh >"$results/$label.txt" 2>&1
 }
-ORCA_APP=$probe ORCA_APP_ENV="PROBE_READER=1 SKENE_SIZE=480x320" ORCA_WINDOW=controls \
-  orca orca-skene
-ORCA_APP=$root/tools/controls/gtk-ref.py ORCA_WINDOW="GTK reference" orca orca-gtk
-diff "$results/orca-skene/spoken.log" "$results/orca-gtk/spoken.log" >"$results/orca.diff"
-echo "[orca] spoken lines: skene $(grep -vc '^###' "$results/orca-skene/spoken.log"), gtk" \
-  "$(grep -vc '^###' "$results/orca-gtk/spoken.log"); differing hunks:" \
-  "$(grep -c '^[0-9]' "$results/orca.diff") (orca.diff)"
-for step in "Tab to the switch" "Space: switch on" "Tab to the button"; do
-  skene=$(sed -n "/^### $step\$/,/^###/p" "$results/orca-skene/spoken.log" | grep -v '^###' | tr '\n' ' ')
-  gtk=$(sed -n "/^### $step\$/,/^###/p" "$results/orca-gtk/spoken.log" | grep -v '^###' | tr '\n' ' ')
-  if [ "$skene" = "$gtk" ]; then
-    echo "[orca] PASS $step: skene and GTK both say '$skene'"
-  else
-    echo "[orca] FAIL $step: skene '$skene', GTK '$gtk'"
-  fi
+for kind in x11 gnome; do
+  ORCA_APP=$probe ORCA_APP_ENV="PROBE_READER=1 SKENE_SIZE=480x320" ORCA_WINDOW=controls \
+    orca "orca-skene-$kind" "$kind"
+  ORCA_APP=$root/tools/controls/gtk-ref.py ORCA_APP_ENV="GTK_REF_TITLE=controls" \
+    ORCA_WINDOW=controls orca "orca-gtk-$kind" "$kind"
+  skene_log=$results/orca-skene-$kind/spoken.log gtk_log=$results/orca-gtk-$kind/spoken.log
+  diff "$skene_log" "$gtk_log" >"$results/orca-$kind.diff"
+  echo "[orca] $kind: spoken lines: skene $(grep -vc '^###' "$skene_log"), gtk" \
+    "$(grep -vc '^###' "$gtk_log"); differing hunks: $(grep -c '^[0-9]' "$results/orca-$kind.diff")" \
+    "(orca-$kind.diff)"
+  for step in "Tab to the switch" "Space: switch on" "Tab to the button"; do
+    skene=$(sed -n "/^### $step\$/,/^###/p" "$skene_log" | grep -v '^###' | tr '\n' ' ')
+    gtk=$(sed -n "/^### $step\$/,/^###/p" "$gtk_log" | grep -v '^###' | tr '\n' ' ')
+    if [ "$skene" = "$gtk" ]; then
+      echo "[orca] PASS $kind: $step: skene and GTK both say '$skene'"
+    else
+      echo "[orca] FAIL $kind: $step: skene '$skene', GTK '$gtk'"
+    fi
+  done
 done

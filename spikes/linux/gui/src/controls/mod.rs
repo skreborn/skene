@@ -11,6 +11,7 @@
 
 mod button;
 mod checkbox;
+mod context_menu;
 pub mod marks;
 mod picker;
 mod radio;
@@ -26,6 +27,7 @@ use skene_foundation::{Ring, State, Value, When as _};
 pub use self::{
   button::Button,
   checkbox::Checkbox,
+  context_menu::{ContextMenu, MenuEntry, MenuItem},
   picker::{BasicPicker, Picker, PickerItem},
   radio::{Radio, RadioGroup},
   slider::Slider,

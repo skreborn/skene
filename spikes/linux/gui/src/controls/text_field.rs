@@ -7,7 +7,7 @@ use skene_foundation::{
 };
 
 use crate::{
-  Control, Signal, TextSelection,
+  ContextMenu, Control, Signal, TextSelection,
   control::control_members,
   view::{Cx, Node, View},
 };
@@ -45,9 +45,18 @@ impl Keyboard {
 }
 
 /// The controlled text and selection setters of a text entry with a `control:
-/// Control<TextEntry>` field.
+/// Control<TextEntry>` field, and its context menu's, with a `menu: ContextMenu` field.
 macro_rules! editing {
   () => {
+    /// The context menu a secondary press, `Shift-F10` or the menu key opens on it, in place
+    /// of the standard one ([`ContextMenu::standard`]); an empty one ([`ContextMenu::new`])
+    /// opens none. Its child is the entry.
+    pub fn set_context_menu(mut self, menu: ContextMenu) -> Self {
+      self.menu = menu;
+
+      self
+    }
+
     /// The text.
     pub fn set_text(self, text: impl Into<String>) -> Self {
       let text = text.into();
@@ -159,10 +168,12 @@ fn entry(lines: u16) -> Control<TextEntry> {
 /// controlled: it shows what [`TextField::derive_text`] returns, reports each edit to
 /// [`TextField::handle_change`] as the whole text it proposes, and shows the truth; its
 /// selection is controlled the same way where it is derived ([`TextField::bind_selection`]),
-/// in grapheme clusters.
+/// in grapheme clusters. It offers the standard context menu ([`ContextMenu::standard`]),
+/// GTK's entry's editing entries, unless set otherwise ([`TextField::set_context_menu`]).
 #[must_use]
 pub struct TextField {
   pub(super) control: Control<TextEntry>,
+  menu: ContextMenu,
 }
 
 impl TextField {
@@ -172,6 +183,7 @@ impl TextField {
 
     Self {
       control: entry(1).set_label(label),
+      menu: ContextMenu::standard(),
     }
   }
 
@@ -238,8 +250,23 @@ impl TextField {
 
 impl View for TextField {
   fn build(self, cx: &mut Cx) -> Node {
-    self.control.build(cx)
+    with_menu(self.control, self.menu, cx)
   }
+}
+
+/// Builds `control` in `cx` inside `menu`, the menu acting on and reported by the control's
+/// own node; alone where the menu has no entry.
+fn with_menu(control: Control<TextEntry>, menu: ContextMenu, cx: &mut Cx) -> Node {
+  if menu.is_empty() {
+    return control.build(cx);
+  }
+
+  let handle = control.members.handle.unwrap_or_default();
+
+  menu
+    .set_target(handle)
+    .set_child(control.set_handle(&handle))
+    .build(cx)
 }
 
 /// A text entry of several lines: Skene's text editor, drawn on every platform. It is a
@@ -247,10 +274,11 @@ impl View for TextField {
 /// tall at least; past its greatest height (`set_max_height`) it scrolls itself, as a
 /// `<textarea>` does, keeping its caret in view.
 ///
-/// It is controlled as a [`TextField`] is.
+/// It is controlled as a [`TextField`] is, and offers the same context menu.
 #[must_use]
 pub struct TextEditor {
   pub(super) control: Control<TextEntry>,
+  menu: ContextMenu,
 }
 
 impl TextEditor {
@@ -260,6 +288,7 @@ impl TextEditor {
 
     Self {
       control: entry(4).set_label(label),
+      menu: ContextMenu::standard(),
     }
   }
 
@@ -270,6 +299,6 @@ impl TextEditor {
 
 impl View for TextEditor {
   fn build(self, cx: &mut Cx) -> Node {
-    self.control.build(cx)
+    with_menu(self.control, self.menu, cx)
   }
 }

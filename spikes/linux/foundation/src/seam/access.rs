@@ -140,6 +140,15 @@ pub enum Checked {
   Mixed,
 }
 
+/// What kind of popup a node opens, as a reader is told it.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub enum PopupKind {
+  /// A list to choose from: a picker's.
+  Listbox,
+  /// A menu of commands: a context menu.
+  Menu,
+}
+
 /// A value on a range, for a node that draws one itself.
 #[derive(Clone, PartialEq, Debug)]
 pub struct RangeValue {
@@ -189,8 +198,8 @@ pub struct AccessFacts {
   pub checked: Option<Checked>,
   /// A drawn control's expansion.
   pub expanded: Option<bool>,
-  /// Whether the node opens a popup (a picker's list, a menu).
-  pub has_popup: bool,
+  /// The popup the node opens, where it opens one: a picker's list, a context menu.
+  pub has_popup: Option<PopupKind>,
   /// Whether the node is the chosen item of its collection.
   pub selected: Option<bool>,
   /// A drawn control's range value.
@@ -223,7 +232,7 @@ impl AccessFacts {
     self.disabled |= other.disabled;
     self.checked = other.checked.or(self.checked);
     self.expanded = other.expanded.or(self.expanded);
-    self.has_popup |= other.has_popup;
+    self.has_popup = other.has_popup.or(self.has_popup);
     self.selected = other.selected.or(self.selected);
     self.value = other.value.or(self.value.take());
     self.value_text = other.value_text.or(self.value_text.take());

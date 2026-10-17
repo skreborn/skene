@@ -141,9 +141,14 @@ fn touch() -> impl View {
         .set_child(Text::new("Hold me")),
     )
     .add_child(
+      // A field with no menu of its own, so the box around it hears its requests.
       Container::new()
         .handle_context_menu(heard("field"))
-        .set_child(TextField::new("Words").set_text("alpha beta gamma delta")),
+        .set_child(
+          TextField::new("Words")
+            .set_context_menu(ContextMenu::new())
+            .set_text("alpha beta gamma delta"),
+        ),
     )
     .add_child(Scroll::new(ScrollAxes::Vertical).set_height(200).set_child(
       Column::new().add_children((1..=60).map(|row| {

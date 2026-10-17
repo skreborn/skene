@@ -1811,6 +1811,7 @@ impl Driver for Drawn {
       enabled: bit(state::SENSITIVE),
       focused: bit(state::FOCUSED),
       expanded: (role == Role::ComboBox).then(|| bit(state::EXPANDED)),
+      has_popup: bit(state::HAS_POPUP),
       value: has("org.a11y.atspi.Value")
         .then(|| with_atspi(|atspi| atspi.value(object)).ok())
         .flatten(),

@@ -196,6 +196,7 @@ pub struct Roster {
   chosen: RefCell<Controlled<Option<usize>>>,
   members: RefCell<Vec<(usize, ControlHandle)>>,
   commit: RefCell<Option<Commit>>,
+  dismiss: RefCell<Option<Rc<dyn Fn()>>>,
 }
 
 impl std::fmt::Debug for Roster {
@@ -215,6 +216,25 @@ impl Roster {
       chosen: RefCell::new(chosen),
       members: RefCell::new(Vec::new()),
       commit: RefCell::new(None),
+      dismiss: RefCell::new(None),
+    })
+  }
+
+  /// Runs `dismiss` when `Escape` is pressed on a committing member: a menu closing without a
+  /// command.
+  pub fn set_dismiss(&self, dismiss: impl Fn() + 'static) {
+    *self.dismiss.borrow_mut() = Some(Rc::new(dismiss));
+  }
+
+  /// Runs what dismisses the collection, where something does: whether it did.
+  #[must_use]
+  pub fn dismiss(&self) -> bool {
+    let dismiss = self.dismiss.borrow().clone();
+
+    dismiss.is_some_and(|dismiss| {
+      dismiss();
+
+      true
     })
   }
 
@@ -356,6 +376,9 @@ pub trait CollectionPolicy: 'static {
   /// Whether `Enter`, `Space` and a click choose and commit (a popup's list), or `Space`
   /// alone chooses as a radio does.
   const COMMITS: bool;
+  /// Whether a committing member reports itself selected while chosen (a list box's option);
+  /// a menu's item reports neither selection nor check.
+  const SELECTS: bool;
 }
 
 /// A radio group: `Space` and a click choose a radio, the arrows move to the next and choose
@@ -371,6 +394,7 @@ impl CollectionPolicy for RadioPolicy {
   const PAGE: Option<usize> = None;
   const CHOOSE_ON_MOVE: bool = true;
   const COMMITS: bool = false;
+  const SELECTS: bool = false;
 }
 
 /// A list box in a popup: the arrows, the page keys, `Home` and `End` move focus without
@@ -387,6 +411,24 @@ impl CollectionPolicy for ListboxPolicy {
   const PAGE: Option<usize> = Some(10);
   const CHOOSE_ON_MOVE: bool = false;
   const COMMITS: bool = true;
+  const SELECTS: bool = true;
+}
+
+/// A menu of commands: the arrows, `Home` and `End` move focus without choosing, wrapping;
+/// `Enter`, `Space` and a click run the focused item and commit; a pointer moving over an item
+/// focuses it; `Escape` dismisses the menu ([`Roster::set_dismiss`]).
+#[derive(Clone, Copy, Debug)]
+pub struct MenuPolicy;
+
+impl CollectionPolicy for MenuPolicy {
+  const GROUP: Role = Role::Menu;
+  const MEMBER: Role = Role::MenuItem;
+  const ORIENTATION: Orientation = Orientation::Vertical;
+  const WRAPS: bool = true;
+  const PAGE: Option<usize> = None;
+  const CHOOSE_ON_MOVE: bool = false;
+  const COMMITS: bool = true;
+  const SELECTS: bool = false;
 }
 
 /// A collection's behavior: the group around its members, one of them chosen. It takes no
@@ -405,6 +447,10 @@ pub type Listbox = Collection<ListboxPolicy>;
 pub type Radio = Member<RadioPolicy>;
 /// A list box option's behavior.
 pub type ListboxOption = Member<ListboxPolicy>;
+/// A menu's behavior.
+pub type Menu = Collection<MenuPolicy>;
+/// A menu item's behavior.
+pub type MenuOption = Member<MenuPolicy>;
 
 impl<P: CollectionPolicy> Default for Collection<P> {
   fn default() -> Self {
@@ -552,6 +598,7 @@ impl<P: CollectionPolicy> Behavior for Member<P> {
         || event.key == "F4";
 
       match event.key.as_str() {
+        "Escape" if plain(event) && roster.dismiss() => return Prevent::All,
         "Enter" | " " if plain(event) => {
           self.choose();
 
@@ -647,7 +694,7 @@ impl<P: CollectionPolicy> Behavior for Member<P> {
 
     AccessFacts {
       checked: (!P::COMMITS).then_some(if chosen { Checked::On } else { Checked::Off }),
-      selected: P::COMMITS.then_some(chosen),
+      selected: P::SELECTS.then_some(chosen),
       actions: vec![AccessRequest::Activate],
       ..AccessFacts::default()
     }

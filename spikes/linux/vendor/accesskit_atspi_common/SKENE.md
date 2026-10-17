@@ -14,6 +14,8 @@ Skene's changes, each marked `Skene:` in the source:
   description from the described-by nodes' text where a node has none of its own.
 - node.rs: the expandable, expanded, has-popup and invalid-entry states.
 - node.rs: a switch is a check box (checkable, checked while on), as GTK 4 reports GtkSwitch.
+- node.rs: a text entry and a text view (`TextInput`, `MultilineTextInput`) are text, as GTK 4
+  reports GtkEntry and GtkTextView.
 - node.rs: the first action's key binding is the node's keyboard shortcut (`key_binding`, and in
   `actions`).
 - Cargo.toml: unicode-segmentation for words and sentences.

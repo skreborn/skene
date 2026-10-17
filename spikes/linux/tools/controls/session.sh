@@ -7,10 +7,12 @@
 #
 # Kinds: x11 (Xvfb), sway (headless sway, pixman), gnome (headless gnome-shell 46: mutter's
 # compositor with its IBus bridge, which spawns ibus-daemon itself; a private empty system bus),
-# mutter (headless mutter with PipeWire, no input method bridge).
+# mutter (headless mutter with PipeWire, no input method bridge). XWAYLAND=1 (gnome, mutter):
+# the compositor runs Xwayland as a desktop session does, its display exported as DISPLAY.
 # IME=ibus|fcitx|none (x11: ibus-daemon or fcitx5 for the X11 clients; sway: fcitx5 through
-# input-method-v2; gnome: always gnome-shell's IBus). APP is the app (none for none), with
-# APP_ENV extra variables; OUT the log directory. DRIVE is exported: the drive backend.
+# input-method-v2; gnome: gnome-shell's IBus, its source Hangul, the US layout under IME=none).
+# APP is the app (none for none), with APP_ENV extra variables; OUT the log directory. DRIVE is
+# exported: the drive backend.
 set -u
 here=$(cd "$(dirname "$0")" && pwd)
 root=$(cd "$here/../.." && pwd)
@@ -30,7 +32,7 @@ export XDG_CACHE_HOME=$XDG_RUNTIME_DIR/home/.cache XDG_DATA_HOME=$XDG_RUNTIME_DI
 export GSETTINGS_BACKEND=keyfile LANG=C.UTF-8 LC_ALL=C.UTF-8 NO_AT_BRIDGE=0 GTK_A11Y=atspi
 mkdir -p "$XDG_CONFIG_HOME" "$XDG_CACHE_HOME" "$XDG_DATA_HOME"
 export SKENE_PROBE=$OUT/probe SKENE_SHOT=$OUT/frame.png SKENE_SHOT_POPUP=$OUT/popup.png SKENE_TRACE=1
-unset DISPLAY WAYLAND_DISPLAY SKENE_BACKEND GTK_IM_MODULE QT_IM_MODULE XMODIFIERS IBUS_ADDRESS
+unset DISPLAY XAUTHORITY WAYLAND_DISPLAY SKENE_BACKEND GTK_IM_MODULE QT_IM_MODULE XMODIFIERS IBUS_ADDRESS
 PIDS=()
 cleanup() {
   for pid in "${PIDS[@]}"; do kill "$pid" 2>/dev/null; done
@@ -77,6 +79,24 @@ wait_name() {
   return 1
 }
 
+# The compositor's X11 flag: none under XWAYLAND=1, --no-x11 otherwise.
+x11_flag() { [ "${XWAYLAND:-0}" = 1 ] || echo --no-x11; }
+
+# Under XWAYLAND=1, exports as DISPLAY the Xwayland display the compositor logs in $1, and as
+# XAUTHORITY the cookie it writes for it.
+xwayland_display() {
+  [ "${XWAYLAND:-0}" = 1 ] || return 0
+  for _ in $(seq 100); do grep -q "Using public X11 display" "$1" && break; sleep 0.1; done
+  DISPLAY=$(sed -n 's/.*Using public X11 display \(:[0-9]*\).*/\1/p' "$1" | head -1)
+  XAUTHORITY=$(ls "$XDG_RUNTIME_DIR"/.mutter-Xwaylandauth.* 2>/dev/null | head -1)
+  if [ -n "$DISPLAY" ] && [ -n "$XAUTHORITY" ]; then
+    export DISPLAY XAUTHORITY
+  else
+    unset DISPLAY XAUTHORITY
+    echo "NOTE the compositor names no Xwayland display"
+  fi
+}
+
 case $KIND in
   x11)
     for _ in $(seq 40); do
@@ -120,9 +140,10 @@ CONF
     export DBUS_SYSTEM_BUS_ADDRESS=unix:path=$XDG_RUNTIME_DIR/system_bus_socket
     for _ in $(seq 50); do [ -S "$XDG_RUNTIME_DIR/system_bus_socket" ] && break; sleep 0.1; done
     mkdir -p "$XDG_CONFIG_HOME/glib-2.0/settings"
-    cat >"$XDG_CONFIG_HOME/glib-2.0/settings/keyfile" <<'CONF'
+    if [ "$IME" = none ]; then SOURCES="[('xkb', 'us')]"; else SOURCES="[('ibus', 'hangul')]"; fi
+    cat >"$XDG_CONFIG_HOME/glib-2.0/settings/keyfile" <<CONF
 [org/gnome/desktop/input-sources]
-sources=[('ibus', 'hangul')]
+sources=$SOURCES
 
 [org/freedesktop/ibus/engine/hangul]
 initial-input-mode='hangul'
@@ -132,9 +153,12 @@ welcome-dialog-last-shown-version='99.0'
 
 [org/gnome/desktop/interface]
 enable-animations=false
+
+[org/gnome/desktop/notifications]
+show-banners=false
 CONF
     SOCKET=skene-gnome-$$
-    gnome-shell --headless --wayland --no-x11 --wayland-display "$SOCKET" \
+    gnome-shell --headless --wayland $(x11_flag) --wayland-display "$SOCKET" \
       --virtual-monitor ${MONITOR:-1280x1024} >"$OUT/gnome-shell.log" 2>&1 &
     PIDS+=($!)
     for _ in $(seq 300); do [ -S "$XDG_RUNTIME_DIR/$SOCKET" ] && break; sleep 0.1; done
@@ -143,6 +167,7 @@ CONF
     # The shell takes input once its startup is over (its overview animation included).
     for _ in $(seq 300); do grep -q "GNOME Shell started" "$OUT/gnome-shell.log" && break; sleep 0.1; done
     grep -q "GNOME Shell started" "$OUT/gnome-shell.log" || echo "NOTE gnome-shell did not finish starting"
+    xwayland_display "$OUT/gnome-shell.log"
     export SKENE_BACKEND=wayland DRIVE=mutter-dbus
     ;;
   mutter)
@@ -150,12 +175,13 @@ CONF
     PIDS+=($!)
     for _ in $(seq 100); do [ -S "$XDG_RUNTIME_DIR/pipewire-0" ] && break; sleep 0.02; done
     SOCKET=skene-controls-$$
-    mutter --headless --wayland --no-x11 --wayland-display "$SOCKET" \
+    mutter --headless --wayland $(x11_flag) --wayland-display "$SOCKET" \
       --virtual-monitor ${MONITOR:-1280x1024} >"$OUT/mutter.log" 2>&1 &
     PIDS+=($!)
     for _ in $(seq 200); do [ -S "$XDG_RUNTIME_DIR/$SOCKET" ] && break; sleep 0.02; done
     export WAYLAND_DISPLAY=$SOCKET
     wait_name org.gnome.Mutter.RemoteDesktop
+    xwayland_display "$OUT/mutter.log"
     export SKENE_BACKEND=wayland DRIVE=mutter-dbus
     ;;
 esac

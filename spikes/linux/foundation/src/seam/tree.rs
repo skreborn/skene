@@ -15,7 +15,9 @@ use crate::{
     access::AccessFacts,
     activity,
     content::{Content, ContentKey, ContentType, Controller, PropValue, Verdict, writing},
-    control::{AccessRequest, ControlDispatch, ControlState, Part, Prevent},
+    control::{
+      AccessRequest, Availability, ClipboardOp, ControlDispatch, ControlState, Part, Prevent,
+    },
     door::ControlSink,
     node::{NodeKind, NodeSpec},
     record::{Group, Record},
@@ -905,6 +907,22 @@ pub fn find_part<R: Realization>(control: NodeId, part: Part) -> Option<NodeId> 
 #[must_use]
 pub fn frame<R: Realization>(id: NodeId) -> Option<Rect> {
   native::<R>(id).and_then(|native| R::frame(&native))
+}
+
+/// Whether `op` is offered on `id` now ([`Realization::clipboard_availability`]): absent where
+/// it is not realized.
+#[must_use]
+pub fn clipboard_availability<R: Realization>(id: NodeId, op: ClipboardOp) -> Availability {
+  native::<R>(id).map_or(Availability::Absent, |native| {
+    R::clipboard_availability(&native, op)
+  })
+}
+
+/// Carries `op` out on `id` ([`Realization::clipboard`]), where it is realized.
+pub fn clipboard<R: Realization>(id: NodeId, op: ClipboardOp) {
+  if let Some(native) = native::<R>(id) {
+    R::clipboard(&native, op);
+  }
 }
 
 /// Moves focus to `id`, where it is realized.

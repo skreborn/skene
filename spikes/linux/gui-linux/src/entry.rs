@@ -20,12 +20,14 @@ use skene_foundation::{
   layout::{Axis, Measurement, Rect},
   seam::{
     content::{Content, Edit, PropValue, Unit, Verdict},
+    control::{Availability, ClipboardOp},
     report::{Answer, Report},
     runtime::Cancel,
     tree,
   },
   text::{
-    Laid as _, MaskState, Masked, ParagraphStyle, RunStyle, TextIndex, Wrap,
+    Direction, Laid as _, MaskState, Masked, ParagraphStyle, RunStyle, TextBoundary, TextIndex,
+    Wrap,
     editing::{Arbiter, Clause, ClauseStyle, Command, Editor, Notice, Origin, Outcome},
   },
 };
@@ -802,6 +804,62 @@ impl Drawn {
         previous.cancel();
       }
     });
+  }
+
+  /// Whether `op` is offered on its entry now, as GTK's entry offers it in its menu: cut and
+  /// copy with a selection, and never in a secure entry; paste and delete where the text
+  /// changes (delete with a selection); select all with a text. Absent where it holds no
+  /// entry.
+  pub fn clipboard_availability(self: &Rc<Self>, op: ClipboardOp) -> Availability {
+    let Some((selected, empty)) = self.with_entry(|entry| {
+      (
+        !entry.editor.selected().is_empty(),
+        entry.editor.text().is_empty(),
+      )
+    }) else {
+      return Availability::Absent;
+    };
+    let (read_only, secure) = {
+      let contents = self.contents.borrow();
+
+      (contents.read_only, contents.secure)
+    };
+    let enabled = !self.access.borrow().disabled;
+    let editable = enabled && !read_only;
+    let offered = match op {
+      ClipboardOp::Cut => editable && selected && !secure,
+      ClipboardOp::Copy => enabled && selected && !secure,
+      ClipboardOp::Paste => editable,
+      ClipboardOp::Delete => editable && selected,
+      ClipboardOp::SelectAll => enabled && !empty,
+    };
+
+    if offered {
+      Availability::Enabled
+    } else {
+      Availability::Disabled
+    }
+  }
+
+  /// Carries `op` out on its entry where it is offered ([`Drawn::clipboard_availability`]).
+  pub fn clipboard_op(self: &Rc<Self>, op: ClipboardOp) {
+    if self.clipboard_availability(op) != Availability::Enabled {
+      return;
+    }
+
+    let command = match op {
+      ClipboardOp::Cut => Command::Cut,
+      ClipboardOp::Copy => Command::Copy,
+      ClipboardOp::Paste => {
+        self.paste(Selection::Clipboard);
+
+        return;
+      }
+      ClipboardOp::Delete => Command::Delete(TextBoundary::Grapheme, Direction::Forward),
+      ClipboardOp::SelectAll => Command::SelectAll,
+    };
+
+    let _ = self.perform(command);
   }
 
   /// Pastes `selection`'s text into its entry once it arrives.

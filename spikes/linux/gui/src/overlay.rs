@@ -49,6 +49,7 @@ pub struct Overlay {
   anchor: Option<NodeHandle>,
   side: Side,
   widen: bool,
+  point: Rc<dyn Fn() -> Option<(i32, i32)>>,
   open: Rc<dyn Fn() -> bool>,
   dismiss: Option<Rc<dyn Fn()>>,
   child: Option<Child>,
@@ -62,6 +63,7 @@ impl Overlay {
       anchor: None,
       side: Side::Bottom,
       widen: true,
+      point: Rc::new(|| None),
       open: Rc::new(|| false),
       dismiss: None,
       child: None,
@@ -85,6 +87,15 @@ impl Overlay {
   /// Whether the open overlay is at least as wide as its anchor; true where unset.
   pub const fn set_widen_to_anchor(mut self, widen: bool) -> Self {
     self.widen = widen;
+
+    self
+  }
+
+  /// The point of the window it hangs from, its top leading corner there, in place of its
+  /// anchor (a context menu at the pointer), kept current: window pixels, against its anchor
+  /// where `None`.
+  pub fn derive_point(mut self, point: impl Fn() -> Option<(i32, i32)> + 'static) -> Self {
+    self.point = Rc::new(point);
 
     self
   }
@@ -130,6 +141,7 @@ impl View for Overlay {
       anchor,
       side,
       widen,
+      point,
       open,
       dismiss,
       child,
@@ -142,6 +154,7 @@ impl View for Overlay {
       anchor: anchor.and_then(|anchor| anchor.node()),
       side,
       widen,
+      at: point(),
     });
 
     if let Some(dismiss) = dismiss {

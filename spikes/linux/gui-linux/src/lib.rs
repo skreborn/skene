@@ -66,6 +66,7 @@ use skene_foundation::{
     LayoutOwner, Realization,
     access::AccessFacts,
     content::{Content, PropValue, Unit},
+    control::{Availability, ClipboardOp},
     node::NodeSpec,
     report::{Interest, Report},
     runtime::{Cancel, Task},
@@ -226,6 +227,14 @@ impl Realization for Linux {
 
   fn schedule(delay: Duration, action: Box<dyn FnOnce()>) -> Cancel {
     runtime::schedule(delay, action)
+  }
+
+  fn clipboard_availability(node: &Node, op: ClipboardOp) -> Availability {
+    node.clipboard_availability(op)
+  }
+
+  fn clipboard(node: &Node, op: ClipboardOp) {
+    node.clipboard_op(op);
   }
 
   fn start(app_id: &str, root: Box<dyn FnOnce() -> NodeId>) -> ExitCode {

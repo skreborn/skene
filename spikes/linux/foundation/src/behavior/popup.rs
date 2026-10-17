@@ -8,7 +8,7 @@ use crate::{
     Behavior, CollectionKeys, ControlHandle, Orientation, Response, Roster, TypeAhead, plain,
   },
   seam::{
-    access::{AccessFacts, Role},
+    access::{AccessFacts, PopupKind, Role},
     control::{AccessRequest, ControlState, LabelPlacement, Prevent},
     report::KeyEvent,
     runtime::Cancel,
@@ -287,7 +287,7 @@ impl Behavior for Popup {
 
     AccessFacts {
       expanded: Some(self.open.get()),
-      has_popup: true,
+      has_popup: Some(PopupKind::Listbox),
       value_text: Some(
         chosen
           .and_then(|index| names.get(index).cloned())

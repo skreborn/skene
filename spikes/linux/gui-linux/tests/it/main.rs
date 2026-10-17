@@ -10,6 +10,7 @@ mod gestures;
 #[cfg(feature = "gpu")]
 mod gpu;
 mod keyboard;
+mod menu;
 mod reader;
 mod scale;
 mod secure;

@@ -321,9 +321,10 @@ impl NodeWrapper<'_> {
             // element.
             Role::Term => AtspiRole::DescriptionTerm,
             Role::TitleBar => AtspiRole::TitleBar,
-            Role::TextInput
-            | Role::MultilineTextInput
-            | Role::SearchInput
+            // Skene: a text entry and a text view are text, as GTK 4 reports GtkEntry and
+            // GtkTextView.
+            Role::TextInput | Role::MultilineTextInput => AtspiRole::Text,
+            Role::SearchInput
             | Role::EmailInput
             | Role::NumberInput
             | Role::PhoneNumberInput

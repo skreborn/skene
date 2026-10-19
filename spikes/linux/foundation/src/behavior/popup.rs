@@ -99,8 +99,10 @@ pub struct Popup<T: Choice> {
 
 impl<T: Choice> Popup<T> {
   /// A closed popup choosing through `roster`, the list in its popup holding the same one
-  /// value.
+  /// value and following the pointer ([`Roster::set_follows_pointer`]).
   pub fn new(roster: Rc<Roster<One<T>>>) -> Self {
+    roster.set_follows_pointer(true);
+
     Self {
       roster,
       open: Signal::new(false),

@@ -345,6 +345,7 @@ pub struct Roster<H: Held> {
   dismiss: RefCell<Option<Rc<dyn Fn()>>>,
   changed: Signal<u32>,
   active: Signal<Option<H::Option>>,
+  follows_pointer: std::cell::Cell<bool>,
 }
 
 impl<H: Held> std::fmt::Debug for Roster<H> {
@@ -368,7 +369,20 @@ impl<H: Held> Roster<H> {
       dismiss: RefCell::new(None),
       changed: Signal::new(0),
       active: Signal::new(None),
+      follows_pointer: std::cell::Cell::new(false),
     })
+  }
+
+  /// Makes the pointer moving over a member focus it, whatever the collection's policy says:
+  /// what a popup asks of the list it shows.
+  pub fn set_follows_pointer(&self, follows: bool) {
+    self.follows_pointer.set(follows);
+  }
+
+  /// Whether the pointer moving over a member focuses it beside what the policy says.
+  #[must_use]
+  pub fn follows_pointer(&self) -> bool {
+    self.follows_pointer.get()
   }
 
   /// Runs `dismiss` when `Escape` is pressed on a committing member: a menu closing without a
@@ -632,6 +646,9 @@ pub trait CollectionPolicy: 'static {
   /// Whether a committing member reports itself selected while chosen (a list box's option);
   /// a menu's item reports neither selection nor check.
   const SELECTS: bool;
+  /// Whether the pointer moving over a member focuses it (a menu's item), as it does in every
+  /// collection a popup shows ([`Roster::set_follows_pointer`]).
+  const FOLLOWS_POINTER: bool;
 }
 
 /// A radio group: `Space` and a click choose a radio, the arrows move to the next and choose
@@ -648,6 +665,7 @@ impl CollectionPolicy for RadioPolicy {
   const CHOOSE_ON_MOVE: bool = true;
   const COMMITS: bool = false;
   const SELECTS: bool = false;
+  const FOLLOWS_POINTER: bool = false;
 }
 
 /// A list box in a popup: the arrows, the page keys, `Home` and `End` move focus without
@@ -665,6 +683,7 @@ impl CollectionPolicy for ListboxPolicy {
   const CHOOSE_ON_MOVE: bool = false;
   const COMMITS: bool = true;
   const SELECTS: bool = true;
+  const FOLLOWS_POINTER: bool = false;
 }
 
 /// A menu of commands: the arrows, `Home` and `End` move focus without choosing, wrapping;
@@ -682,6 +701,7 @@ impl CollectionPolicy for MenuPolicy {
   const CHOOSE_ON_MOVE: bool = false;
   const COMMITS: bool = true;
   const SELECTS: bool = false;
+  const FOLLOWS_POINTER: bool = true;
 }
 
 /// A collection's behavior: the group around its members, each carrying a value, what it
@@ -923,7 +943,7 @@ impl<P: CollectionPolicy, H: Held> Behavior for Member<P, H> {
   }
 
   fn on_pointer(&self, event: &PointerEvent, _: &ControlHandle) -> Prevent {
-    if P::COMMITS && event.phase == PointerPhase::Move {
+    if (P::FOLLOWS_POINTER || self.roster.follows_pointer()) && event.phase == PointerPhase::Move {
       self.roster.focus(&self.value);
     }
 

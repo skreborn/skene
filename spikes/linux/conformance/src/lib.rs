@@ -1780,14 +1780,22 @@ fn listbox<D: Driver>(driver: &mut D) {
   press(driver, &favorite, " ", Modifiers::default());
   assert_eq!(probe(driver, "favorite"), "Some(Banana)");
 
+  let basket = role(driver, Role::ListBox, "Basket");
+
+  // The pointer over a list box in the page focuses none of its options: only a popup's list
+  // follows the pointer.
+  driver.act(&basket, &Action::Hover);
+  assert_eq!(
+    focused_name(driver),
+    "Banana",
+    "the pointer over a list box moves no focus"
+  );
   press(driver, &favorite, "Tab", Modifiers::default());
   assert_eq!(
     focused_name(driver),
     "Apple",
     "Tab leaves the list box for the next one"
   );
-
-  let basket = role(driver, Role::ListBox, "Basket");
 
   press(driver, &basket, " ", Modifiers::default());
   press(driver, &basket, "Down", Modifiers::default());

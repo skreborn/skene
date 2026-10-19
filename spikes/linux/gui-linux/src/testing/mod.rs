@@ -4,10 +4,10 @@
 //! - **Reads** go through the accessibility layer, as a screen reader's do: AT-SPI over D-Bus
 //!   ([`atspi`]), from the test's own process; the app answers from AccessKit's thread.
 //! - **Actions** are real input ([`input`]): XTest on X11, mutter's EIS (through reis) and
-//!   sway's virtual pointer and keyboard on Wayland, aimed at the bounds a reader reads. A
-//!   Wayland client is not told where its window is, so the driver finds out as a user's
-//!   pointer would: it moves the pointer onto the window and reads where the window saw it,
-//!   again after every time the window was given a size.
+//!   RemoteDesktop session, and sway's virtual pointer and keyboard on Wayland, aimed at the
+//!   bounds a reader reads. A Wayland client is not told where its window is, so the driver
+//!   finds out as a user's pointer would: it moves the pointer onto the window and reads where
+//!   the window saw it, again after every time the window was given a size.
 //! - **Settling** waits for the input sent to arrive, then turns the window's loop until a
 //!   quiet window passes in which no frame is painted, nothing is reported and no input
 //!   arrives; a find looks again for up to a second.

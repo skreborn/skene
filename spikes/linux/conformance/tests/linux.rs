@@ -72,5 +72,8 @@ scenarios!(
   a_window_opens_with_its_autofocus_control_focused_or_none,
   a_popup_focuses_its_autofocus_control_and_closing_returns_focus,
   a_press_on_content_overflowing_its_control_reaches_the_control,
+  a_picker_holding_a_value_no_option_carries_shows_none,
+  a_derived_list_reorders_while_open_focus_staying_on_its_option,
+  a_list_box_is_one_tab_stop_choosing_one_or_several,
   every_page_passes_the_audit,
 );

@@ -57,13 +57,24 @@ pub fn greeting(name: &str) -> String {
   }
 }
 
+/// How large the page's things are: what its picker chooses, each option carrying one.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+enum Size {
+  /// Small.
+  Small,
+  /// Medium.
+  Medium,
+  /// Large.
+  Large,
+}
+
 /// The app.
 pub fn app() -> impl View {
   let name = Signal::new(String::new());
   let greeted = Signal::new(Vec::<String>::new());
   let sync = Signal::new(true);
   let volume = Signal::new(0.5);
-  let size = Signal::new(Some(1));
+  let size = Signal::new(Size::Medium);
   let footer = match Platform::CURRENT {
     Platform::Web => "Served as markup, hydrated in place.",
     _ => "Drawn by Skene.",
@@ -128,8 +139,10 @@ pub fn app() -> impl View {
               .add_child(Slider::new("Volume").set_step(0.1).bind_value(volume))
               .add_child(
                 Picker::new("Size")
-                  .set_options(["Small", "Medium", "Large"])
-                  .bind_chosen(size),
+                  .bind_chosen(size)
+                  .add_option(Size::Small, "Small")
+                  .add_option(Size::Medium, "Medium")
+                  .add_option(Size::Large, "Large"),
               )
               .add_child(
                 Row::new()

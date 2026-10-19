@@ -65,15 +65,16 @@ fn last(index: usize, control: &str, flip: Option<Signal<bool>>) -> AnyView {
         .into_any()
     }
     "picker" => {
-      let chosen = Signal::new(Some(0_usize));
+      let sizes = ["Small", "Medium", "Large"];
+      let chosen = Signal::new(sizes[0]);
 
       if let Some(flip) = flip {
-        Effect::new(move || chosen.set(Some(usize::from(flip.get()))));
+        Effect::new(move || chosen.set(sizes[usize::from(flip.get())]));
       }
 
       Picker::new(label)
-        .set_options(["Small", "Medium", "Large"])
         .bind_chosen(chosen)
+        .set_options(sizes.map(|size| (size, size)))
         .into_any()
     }
     "field" => {

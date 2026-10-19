@@ -362,19 +362,19 @@ def scenario_controls():
   large = find("radio button", "Large")
   since = mark()
   click(small)
-  check("radio: a click chooses Small", wait_app(r"^\[app\] size Some\(0\)", since) is not None)
+  check("radio: a click chooses Small", wait_app(r"^\[app\] size Small", since) is not None)
   since = mark()
   keys("Down")
-  check("radio: Down chooses Medium", wait_app(r"^\[app\] size Some\(1\)", since) is not None)
+  check("radio: Down chooses Medium", wait_app(r"^\[app\] size Medium", since) is not None)
   check("radio: focus moved to Medium", "focused" in states(medium))
   since = mark()
   keys("Down", "Down")
   check("radio: Down past the last wraps to Small",
-        wait_app(r"^\[app\] size Some\(0\)", since) is not None)
+        wait_app(r"^\[app\] size Small", since) is not None)
   since = mark()
   keys("Up")
   check("radio: Up past the first wraps to Large",
-        wait_app(r"^\[app\] size Some\(2\)", since) is not None)
+        wait_app(r"^\[app\] size Large", since) is not None)
   check("radio: the reader reads Large checked", "checked" in states(large))
   keys("Tab")
   slider = find("slider", "Volume")
@@ -383,7 +383,7 @@ def scenario_controls():
   since = mark()
   click(find("label", "Medium"))
   check("radio: a click on a caption chooses its radio",
-        wait_app(r"^\[app\] size Some\(1\)", since) is not None)
+        wait_app(r"^\[app\] size Medium", since) is not None)
 
   # The slider: a press jumps, a drag follows, the keys step; a reader sets its value.
   since = mark()
@@ -435,7 +435,7 @@ def scenario_controls():
   check("picker: Down Down highlights Blueberry, the reader's focus on it",
         focused == ["Blueberry"], focused)
   keys("Return")
-  check("picker: Enter chooses Blueberry", wait_app(r"^\[app\] fruit Some\(2\)", since) is not None)
+  check("picker: Enter chooses Blueberry", wait_app(r"^\[app\] fruit Blueberry", since) is not None)
   settle()
   check("picker: Enter closes the list", "expanded" not in states(picker))
   since = mark()
@@ -449,17 +449,17 @@ def scenario_controls():
   since = mark()
   keys("c")
   check("picker: typing c on the closed face chooses Cherry",
-        wait_app(r"^\[app\] fruit Some\(3\)", since) is not None)
+        wait_app(r"^\[app\] fruit Cherry", since) is not None)
   since = mark()
   keys("Up")
   check("picker: Up on the closed face chooses Blueberry",
-        wait_app(r"^\[app\] fruit Some\(2\)", since) is not None)
+        wait_app(r"^\[app\] fruit Blueberry", since) is not None)
   click(picker)
   settle(0.5)
   grape = find("list item", "Grape")
   since = mark()
   click(grape)
-  check("picker: a click on Grape chooses it", wait_app(r"^\[app\] fruit Some\(4\)", since) is not None)
+  check("picker: a click on Grape chooses it", wait_app(r"^\[app\] fruit Grape", since) is not None)
   settle()
   check("picker: the click closes the list", "expanded" not in states(picker))
   click(picker)

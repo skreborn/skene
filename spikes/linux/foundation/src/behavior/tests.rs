@@ -3,9 +3,9 @@ use std::rc::Rc;
 use crate::{
   NodeId, Owner, Scene, Signal,
   behavior::{
-    ActivateKeys, Behavior, Collection, CollectionKeys, ControlHandle, ControlOps, EntryAct,
-    EntryKeys, ListboxPolicy, Orientation, Popup, PopupAct, PopupKeys, Response, Roster,
-    SliderKeys, Toggle, ToggleKeys, ToggleKind, TypeAhead,
+    ActivateKeys, Behavior, Collection, CollectionKeys, ControlHandle, ControlOps, Controlled,
+    EntryAct, EntryKeys, ListboxPolicy, One, Options, Orientation, Popup, PopupAct, PopupKeys,
+    RadioPolicy, Response, Roster, SliderKeys, Toggle, ToggleKeys, ToggleKind, TypeAhead,
   },
   seam::{
     access::Checked,
@@ -47,20 +47,25 @@ const ALT: Modifiers = Modifiers {
   meta: false,
 };
 
-/// A handle over no realization: its node one of a canned scene's, its operations doing
-/// nothing.
-fn handle() -> ControlHandle {
-  let node: NodeId = Scene::<()>::new().insert(());
-  let ops = ControlOps {
+/// Operations over no realization: each does nothing.
+fn ops() -> ControlOps {
+  ControlOps {
     focus: |_| {},
     find_part: |_, _| None,
     frame: |_| None,
     schedule: |_, _| Cancel(None),
     bind: |_, _, _| {},
     control: |_, _, _, _| {},
-  };
+    order: |_, _| std::cmp::Ordering::Equal,
+  }
+}
 
-  ControlHandle::new(node, ops, || None, || false)
+/// A handle over no realization: its node one of a canned scene's, its operations doing
+/// nothing.
+fn handle() -> ControlHandle {
+  let node: NodeId = Scene::<()>::new().insert(());
+
+  ControlHandle::new(node, ops(), || None, || false)
 }
 
 #[test]
@@ -201,40 +206,6 @@ fn a_closed_popup_opens_or_chooses() {
 }
 
 #[test]
-fn a_popup_closes_on_escape_and_tab_and_its_face_finds_by_typing() {
-  let owner = Owner::new();
-
-  owner.run(|| {
-    let chosen = Signal::new(Some(0_usize));
-    let list = Collection::<ListboxPolicy>::new().bind_chosen(chosen);
-    let names = || -> Vec<Rc<str>> {
-      ["Apple", "Banana", "Cherry"]
-        .into_iter()
-        .map(Rc::from)
-        .collect()
-    };
-    let popup = Popup::new(list.roster(), names);
-    let control = handle();
-
-    assert_eq!(popup.on_click(&control), Prevent::All);
-    assert!(popup.open().get());
-    assert_eq!(popup.on_key(&key("Escape"), &control), Prevent::All);
-    assert!(!popup.open().get());
-    assert_eq!(chosen.get(), Some(0));
-
-    let _ = popup.on_click(&control);
-
-    assert_eq!(popup.on_key(&key("Tab"), &control), Prevent::None);
-    assert!(!popup.open().get());
-    assert_eq!(popup.on_key(&key("c"), &control), Prevent::All);
-    assert_eq!(chosen.get(), Some(2));
-    assert_eq!(popup.access().value_text.as_deref(), Some("Cherry"));
-  });
-
-  owner.dispose();
-}
-
-#[test]
 fn type_ahead_cycles_a_repeated_letter_and_matches_a_prefix() {
   let names = ["Apple", "Banana", "Blueberry", "Cherry"];
   let mut search = TypeAhead::new();
@@ -281,20 +252,167 @@ fn a_text_entry_binds_the_editing_keys_and_submits_on_enter() {
   assert_eq!(field.key(&key("Tab")), Response::IGNORED);
 }
 
+/// Handles over no realization, each a distinct node of one canned scene, their operations
+/// doing nothing.
+fn handles(count: usize) -> Vec<ControlHandle> {
+  let mut scene = Scene::<()>::new();
+
+  (0..count)
+    .map(|_| {
+      let node = scene.insert(());
+
+      ControlHandle::new(node, ops(), || None, || false)
+    })
+    .collect()
+}
+
+/// Options in a fixed order, each a value and its name.
+struct Fixed(Vec<(usize, &'static str)>);
+
+impl Options<usize> for Fixed {
+  fn count(&self) -> usize {
+    self.0.len()
+  }
+
+  fn value(&self, index: usize) -> Option<usize> {
+    self.0.get(index).map(|(value, _)| *value)
+  }
+
+  fn index_of(&self, value: &usize) -> Option<usize> {
+    self.0.iter().position(|(at, _)| at == value)
+  }
+
+  fn name(&self, index: usize) -> Option<Rc<str>> {
+    self.0.get(index).map(|(_, name)| Rc::from(*name))
+  }
+}
+
+#[test]
+fn a_popup_closes_on_escape_and_tab_and_its_face_finds_by_typing() {
+  let owner = Owner::new();
+
+  owner.run(|| {
+    let chosen = Signal::new(0_usize);
+    let list = Collection::<ListboxPolicy, One<usize>>::new().bind_chosen(chosen);
+    let roster = list.roster();
+
+    roster.set_options(Rc::new(Fixed(vec![
+      (0, "Apple"),
+      (1, "Banana"),
+      (2, "Cherry"),
+    ])));
+
+    let popup = Popup::new(roster);
+    let control = handle();
+
+    assert_eq!(popup.on_click(&control), Prevent::All);
+    assert!(popup.open().get());
+    assert_eq!(popup.on_key(&key("Escape"), &control), Prevent::All);
+    assert!(!popup.open().get());
+    assert_eq!(chosen.get(), 0);
+
+    let _ = popup.on_click(&control);
+
+    assert_eq!(popup.on_key(&key("Tab"), &control), Prevent::None);
+    assert!(!popup.open().get());
+    assert_eq!(popup.on_key(&key("c"), &control), Prevent::All);
+    assert_eq!(chosen.get(), 2);
+    assert_eq!(popup.access().value_text.as_deref(), Some("Cherry"));
+  });
+
+  owner.dispose();
+}
+
 #[test]
 fn a_roster_is_one_tab_stop_on_its_chosen_member() {
   let owner = Owner::new();
 
   owner.run(|| {
-    let roster = Roster::new(crate::behavior::Controlled::bind(Signal::new(Some(1))));
+    let roster = Roster::<One<usize>>::new(Controlled::bind(Signal::new(1)));
 
-    for index in 0..3 {
-      roster.register(index, handle());
+    roster.set_options(Rc::new(Fixed(vec![(0, "a"), (1, "b"), (2, "c")])));
+
+    for (value, member) in handles(3).into_iter().enumerate() {
+      roster.register(value, member);
     }
 
-    assert_eq!(roster.count(), 3);
     assert_eq!(roster.stop(), Some(1));
   });
 
   owner.dispose();
+}
+
+#[test]
+fn a_member_is_found_by_its_value_and_moves_in_its_options_order() {
+  let owner = Owner::new();
+
+  owner.run(|| {
+    let chosen = Signal::new(0_usize);
+    let group = Collection::<RadioPolicy, One<usize>>::new().bind_chosen(chosen);
+    let roster = group.roster();
+    let members = handles(3);
+
+    // The options' order is not their values'.
+    roster.set_options(Rc::new(Fixed(vec![(2, "c"), (0, "a"), (1, "b")])));
+
+    for (value, member) in members.iter().enumerate() {
+      roster.register(value, member.clone());
+    }
+
+    assert_eq!(
+      roster.member(&1).map(|member| member.node()),
+      Some(members[1].node())
+    );
+
+    let first = group.member(0);
+
+    assert_eq!(first.on_key(&key("ArrowDown"), &members[0]), Prevent::All);
+    assert_eq!(
+      chosen.get(),
+      1,
+      "the arrow moves to the next option in order"
+    );
+    assert_eq!(
+      group.member(1).on_key(&key("ArrowDown"), &members[1]),
+      Prevent::All
+    );
+    assert_eq!(chosen.get(), 2, "and wraps to the first");
+  });
+
+  owner.dispose();
+}
+
+#[test]
+fn a_set_chooses_by_adding_and_taking_away() {
+  let owner = Owner::new();
+
+  owner.run(|| {
+    let chosen = Signal::new(std::collections::BTreeSet::from([1_usize]));
+    let list =
+      Collection::<ListboxPolicy, std::collections::BTreeSet<usize>>::new().bind_chosen(chosen);
+    let members = handles(2);
+
+    let _ = list.member(0).on_click(&members[0]);
+    assert_eq!(chosen.get(), std::collections::BTreeSet::from([0, 1]));
+
+    let _ = list.member(1).on_click(&members[1]);
+    assert_eq!(chosen.get(), std::collections::BTreeSet::from([0]));
+  });
+
+  owner.dispose();
+}
+
+#[test]
+#[cfg(debug_assertions)]
+#[should_panic(expected = "two options of one choice carry one value")]
+fn a_value_carried_twice_panics() {
+  let owner = Owner::new();
+
+  owner.run(|| {
+    let roster = Roster::<One<usize>>::new(Controlled::new());
+
+    for member in handles(2) {
+      roster.register(7, member);
+    }
+  });
 }

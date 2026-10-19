@@ -2,8 +2,10 @@
 //!
 //! - X11: XTest, from a connection of the test's own;
 //! - mutter (headless, Wayland): a RemoteDesktop session's EIS socket, spoken through reis
-//!   (libei's protocol), its absolute pointer aimed in the session's ScreenCast stream; touch
-//!   through the session's own D-Bus requests, mutter's EIS offering no touchscreen;
+//!   (libei's protocol), its absolute pointer aimed in the session's ScreenCast stream; keys,
+//!   and touch where its EIS offers no touchscreen, through the session's own D-Bus requests,
+//!   since mutter 46 reports a modifier held on an EIS keyboard as released under a popup's
+//!   grab;
 //! - sway (headless, Wayland): `zwlr_virtual_pointer_v1` and `zwp_virtual_keyboard_v1`;
 //! - KWin (windowed, Wayland): `org_kde_kwin_fake_input`, its pointer, keyboard and
 //!   touchscreen;
@@ -724,7 +726,7 @@ pub struct Ei {
   converter: reis::event::EiEventConverter,
   /// The absolute pointer device.
   absolute: Option<reis::event::Device>,
-  /// The keyboard device.
+  /// The keyboard device, whose keymap the keys pressed through the session follow.
   keyboard: Option<reis::event::Device>,
   /// The touchscreen device, where the compositor offers one.
   touch: Option<reis::event::Device>,
@@ -738,6 +740,8 @@ pub struct Ei {
   started: Instant,
   /// The last emulation sequence number.
   sequence: u32,
+  /// Whether events went out on EIS since mutter last said it had taken them.
+  unsynced: bool,
 }
 
 impl Ei {
@@ -769,6 +773,7 @@ impl Ei {
       region: (0., 0., 0., 0.),
       started: Instant::now(),
       sequence: 0,
+      unsynced: false,
     };
     let started = Instant::now();
 
@@ -907,26 +912,68 @@ impl Ei {
     Ok(())
   }
 
-  fn device(&self, absolute: bool) -> Result<reis::event::Device> {
-    let device = if absolute {
-      &self.absolute
-    } else {
-      &self.keyboard
-    };
-
-    device
+  fn pointer(&self) -> Result<reis::event::Device> {
+    self
+      .absolute
       .clone()
-      .ok_or_else(|| "mutter's EIS removed the device".into())
+      .ok_or_else(|| "mutter's EIS removed the pointer".into())
   }
 
-  fn frame(&self, device: &reis::event::Device) -> Result<()> {
+  fn frame(&mut self, device: &reis::event::Device) -> Result<()> {
     device.device().frame(
       self.converter.connection().serial(),
       self.started.elapsed().as_micros() as u64,
     );
     self.context.flush()?;
+    self.unsynced = true;
 
     Ok(())
+  }
+
+  /// Waits until mutter has taken every event sent on EIS, so a request on the session's
+  /// D-Bus after them arrives after them.
+  fn roundtrip(&mut self) -> Result<()> {
+    if !self.unsynced {
+      return Ok(());
+    }
+
+    let done = std::rc::Rc::new(std::cell::Cell::new(false));
+    let callback = self.converter.connection().connection().sync(1);
+
+    {
+      let done = std::rc::Rc::clone(&done);
+
+      self
+        .converter
+        .add_callback_handler(callback, move |_| done.set(true));
+    }
+
+    self.context.flush()?;
+
+    let started = Instant::now();
+
+    while !done.get() {
+      if started.elapsed() > Duration::from_secs(2) {
+        return Err("mutter's EIS never answered a sync".into());
+      }
+
+      self.pump(20)?;
+    }
+
+    self.unsynced = false;
+
+    Ok(())
+  }
+
+  /// Calls the RemoteDesktop session's `method` with `arguments` once mutter has taken every
+  /// event sent on EIS before it.
+  fn notify<B: serde::Serialize + zbus::zvariant::DynamicType>(
+    &mut self,
+    method: &str,
+    arguments: &B,
+  ) -> Result<()> {
+    self.roundtrip()?;
+    self.mutter.notify(method, arguments)
   }
 }
 
@@ -934,7 +981,7 @@ impl Input for Ei {
   fn move_to(&mut self, x: f64, y: f64) -> Result<()> {
     self.pump(0)?;
 
-    let device = self.device(true)?;
+    let device = self.pointer()?;
     let pointer = device
       .interface::<reis::ei::PointerAbsolute>()
       .ok_or("no absolute pointer")?;
@@ -944,7 +991,7 @@ impl Input for Ei {
   }
 
   fn button(&mut self, button: u32, down: bool) -> Result<()> {
-    let device = self.device(true)?;
+    let device = self.pointer()?;
     let buttons = device.interface::<reis::ei::Button>().ok_or("no buttons")?;
 
     buttons.button(
@@ -959,20 +1006,7 @@ impl Input for Ei {
   }
 
   fn key(&mut self, code: u32, down: bool) -> Result<()> {
-    let device = self.device(false)?;
-    let keyboard = device
-      .interface::<reis::ei::Keyboard>()
-      .ok_or("no keyboard")?;
-
-    keyboard.key(
-      code,
-      if down {
-        reis::ei::keyboard::KeyState::Press
-      } else {
-        reis::ei::keyboard::KeyState::Released
-      },
-    );
-    self.frame(&device)
+    self.notify("NotifyKeyboardKeycode", &(code, down))
   }
 
   fn place(&mut self, keysym: u32) -> Option<Place> {
@@ -980,7 +1014,7 @@ impl Input for Ei {
   }
 
   fn wheel(&mut self, right: i32, down: i32) -> Result<()> {
-    let device = self.device(true)?;
+    let device = self.pointer()?;
     let scroll = device.interface::<reis::ei::Scroll>().ok_or("no scroll")?;
 
     scroll.scroll_discrete(right * 120, down * 120);
@@ -988,7 +1022,7 @@ impl Input for Ei {
   }
 
   fn finger_scroll(&mut self, right: f64, down: f64) -> Result<()> {
-    let device = self.device(true)?;
+    let device = self.pointer()?;
     let scroll = device.interface::<reis::ei::Scroll>().ok_or("no scroll")?;
 
     scroll.scroll(right as f32, down as f32);
@@ -996,7 +1030,7 @@ impl Input for Ei {
   }
 
   fn finger_scroll_stop(&mut self) -> Result<()> {
-    let device = self.device(true)?;
+    let device = self.pointer()?;
     let scroll = device.interface::<reis::ei::Scroll>().ok_or("no scroll")?;
 
     scroll.scroll_stop(1, 1, 0);
@@ -1011,7 +1045,7 @@ impl Input for Ei {
     let Some(device) = self.touch.clone() else {
       let stream = self.mutter.stream.to_string();
 
-      return self.mutter.notify("NotifyTouchDown", &(stream, id, x, y));
+      return self.notify("NotifyTouchDown", &(stream, id, x, y));
     };
     let touch = device
       .interface::<reis::ei::Touchscreen>()
@@ -1025,7 +1059,7 @@ impl Input for Ei {
     let Some(device) = self.touch.clone() else {
       let stream = self.mutter.stream.to_string();
 
-      return self.mutter.notify("NotifyTouchMotion", &(stream, id, x, y));
+      return self.notify("NotifyTouchMotion", &(stream, id, x, y));
     };
     let touch = device
       .interface::<reis::ei::Touchscreen>()
@@ -1037,7 +1071,7 @@ impl Input for Ei {
 
   fn touch_up(&mut self, id: u32) -> Result<()> {
     let Some(device) = self.touch.clone() else {
-      return self.mutter.notify("NotifyTouchUp", &(id,));
+      return self.notify("NotifyTouchUp", &(id,));
     };
     let touch = device
       .interface::<reis::ei::Touchscreen>()
@@ -1068,7 +1102,7 @@ impl Input for Ei {
   }
 
   fn name(&self) -> &'static str {
-    "mutter's EIS (touch through its RemoteDesktop session)"
+    "mutter's EIS (keys, and touch where it has none, through its RemoteDesktop session)"
   }
 }
 

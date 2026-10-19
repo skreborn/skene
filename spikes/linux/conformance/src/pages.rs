@@ -47,6 +47,9 @@ pub const NAMES: &[&str] = &[
   "autofocus",
   "popup",
   "overflow",
+  "unchosen",
+  "reorder",
+  "listbox",
 ];
 
 /// Registers every page under its name.
@@ -82,6 +85,64 @@ pub fn register() {
   register_page("autofocus", autofocus);
   register_page("popup", popup);
   register_page("overflow", overflow);
+  register_page("unchosen", unchosen);
+  register_page("reorder", reorder);
+  register_page("listbox", listbox);
+}
+
+/// The sizes a picker and a radio group choose among.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+enum Size {
+  Small,
+  Medium,
+  Large,
+}
+
+impl Size {
+  /// Every size and its name, in order.
+  const OPTIONS: [(Self, &'static str); 3] = [
+    (Self::Small, "Small"),
+    (Self::Medium, "Medium"),
+    (Self::Large, "Large"),
+  ];
+}
+
+/// The tones a radio group chooses between.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+enum Tone {
+  Warm,
+  Cool,
+}
+
+/// The fruit a picker and the list boxes choose among, each named as `Debug` writes it.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+enum Fruit {
+  Apple,
+  Banana,
+  Cherry,
+  Date,
+  Elderberry,
+}
+
+impl Fruit {
+  /// Every fruit, in order.
+  const ALL: [Self; 5] = [
+    Self::Apple,
+    Self::Banana,
+    Self::Cherry,
+    Self::Date,
+    Self::Elderberry,
+  ];
+
+  /// Every fruit and its name, in order.
+  fn options() -> [(Self, String); 5] {
+    Self::ALL.map(|fruit| (fruit, format!("{fruit:?}")))
+  }
+}
+
+/// Publishes `signal`'s value as the probe `name`, as `Debug` writes it.
+fn probe_debug<T: Clone + std::fmt::Debug + 'static>(name: &'static str, signal: Signal<T>) {
+  publish(name, move || format!("{:?}", signal.get_untracked()));
 }
 
 /// Publishes `signal`'s value as the probe `name`, as `Display` writes it.
@@ -177,14 +238,14 @@ fn sliders() -> impl View {
 
 /// A choice of three.
 fn picker() -> impl View {
-  let size = Signal::new(Some(0_usize));
+  let size = Signal::new(Size::Small);
 
-  publish("size", move || format!("{:?}", size.get_untracked()));
+  probe_debug("size", size);
 
   Column::new().set_padding(16).add_child(
     Picker::new("Size")
-      .set_options(["Small", "Medium", "Large"])
-      .bind_chosen(size),
+      .bind_chosen(size)
+      .set_options(Size::OPTIONS),
   )
 }
 
@@ -533,9 +594,9 @@ fn accent() -> impl View {
 
 /// A choice of five fruit, in a row so the picker is as wide as it likes.
 fn fruit() -> impl View {
-  let fruit = Signal::new(Some(1_usize));
+  let fruit = Signal::new(Fruit::Banana);
 
-  publish("fruit", move || format!("{:?}", fruit.get_untracked()));
+  probe_debug("fruit", fruit);
 
   Column::new()
     .set_padding(16)
@@ -544,8 +605,8 @@ fn fruit() -> impl View {
     .add_child(
       Row::new().add_child(
         Picker::new("Fruit")
-          .set_options(["Apple", "Banana", "Cherry", "Date", "Elderberry"])
-          .bind_chosen(fruit),
+          .bind_chosen(fruit)
+          .set_options(Fruit::options()),
       ),
     )
 }
@@ -784,8 +845,8 @@ fn keyframes() -> impl View {
 /// control whose fill changes under the pointer.
 fn hover() -> impl View {
   let remember = Signal::new(false);
-  let size = Signal::new(Some(0_usize));
-  let tone = Signal::new(Some(0_usize));
+  let size = Signal::new(Size::Small);
+  let tone = Signal::new(Tone::Warm);
 
   Column::new()
     .set_padding(16)
@@ -795,13 +856,14 @@ fn hover() -> impl View {
       Row::new().add_child(
         Picker::new("Size")
           .bind_chosen(size)
-          .set_options(["Small", "Medium", "Large"]),
+          .set_options(Size::OPTIONS),
       ),
     )
     .add_child(
       RadioGroup::new("Tone")
         .bind_chosen(tone)
-        .set_options(["Warm", "Cool"]),
+        .add_option(Tone::Warm, "Warm")
+        .add_option(Tone::Cool, "Cool"),
     )
     .add_child(
       Row::new().add_child(
@@ -932,5 +994,72 @@ fn overflow() -> impl View {
               .handle_click(move || round.update(|count| *count += 1)),
           ),
       ),
+    )
+}
+
+/// A picker holding a fruit, or none, its options every fruit and no option for none.
+fn unchosen() -> impl View {
+  let fruit = Signal::new(None::<Fruit>);
+
+  probe_debug("fruit", fruit);
+
+  Column::new()
+    .set_padding(16)
+    .set_spacing(12)
+    .add_child(Text::new("Pick one"))
+    .add_child(
+      Row::new().add_child(Picker::new("Fruit").bind_chosen(fruit).derive_options(
+        || Fruit::ALL.map(Some).to_vec(),
+        |fruit| format!("{:?}", fruit.expect("every option carries a fruit")),
+      )),
+    )
+}
+
+/// A picker whose options are derived from a list that Control+R reverses: "Reverse", a button
+/// the shortcut clicks wherever focus is.
+fn reorder() -> impl View {
+  let order = Signal::new(Fruit::ALL.to_vec());
+  let fruit = Signal::new(Fruit::Banana);
+
+  publish("order", move || format!("{:?}", order.get_untracked()));
+  probe_debug("fruit", fruit);
+
+  Column::new()
+    .set_padding(16)
+    .set_spacing(12)
+    .add_child(
+      Button::new("Reverse")
+        .set_shortcut(Shortcut::primary('r'))
+        .handle_activate(move || order.update(|order| order.reverse())),
+    )
+    .add_child(
+      Row::new().add_child(
+        Picker::new("Fruit")
+          .bind_chosen(fruit)
+          .derive_options(move || order.get(), |fruit| format!("{fruit:?}")),
+      ),
+    )
+}
+
+/// A list box choosing one fruit or none, and one choosing several.
+fn listbox() -> impl View {
+  let favorite = Signal::new(None::<Fruit>);
+  let basket = Signal::new(std::collections::BTreeSet::<Fruit>::new());
+
+  probe_debug("favorite", favorite);
+  probe_debug("basket", basket);
+
+  Column::new()
+    .set_padding(16)
+    .set_spacing(12)
+    .add_child(
+      Listbox::new("Favorite")
+        .bind_chosen(favorite)
+        .set_options(Fruit::options()),
+    )
+    .add_child(
+      Listbox::new("Basket")
+        .bind_chosen(basket)
+        .set_options(Fruit::options()),
     )
 }

@@ -181,7 +181,7 @@ fn a_text_that_reserves_others_is_as_wide_as_the_widest() {
 /// A picker, "Fruit", as wide as the window's content, its options far narrower, and a field,
 /// "Note", holding "some text".
 fn placed() -> impl View {
-  let fruit = Signal::new(Some(0_usize));
+  let fruit = Signal::new("Fig");
   let note = Signal::new(String::from("some text"));
 
   Column::new()
@@ -190,8 +190,8 @@ fn placed() -> impl View {
     .set_item_alignment(AxisAlignment::Stretch)
     .add_child(
       Picker::new("Fruit")
-        .set_options(["Fig", "Kiwi", "Lime"])
-        .bind_chosen(fruit),
+        .bind_chosen(fruit)
+        .set_options(["Fig", "Kiwi", "Lime"].map(|fruit| (fruit, fruit))),
     )
     .add_child(TextField::new("Note").bind_text(note))
 }

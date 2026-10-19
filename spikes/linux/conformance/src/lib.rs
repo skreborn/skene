@@ -154,6 +154,18 @@ pub fn scenarios<D: Driver>() -> Vec<Scenario<D>> {
       "a_press_on_content_overflowing_its_control_reaches_the_control",
       overflow::<D>,
     ),
+    (
+      "a_picker_holding_a_value_no_option_carries_shows_none",
+      unchosen::<D>,
+    ),
+    (
+      "a_derived_list_reorders_while_open_focus_staying_on_its_option",
+      reorder::<D>,
+    ),
+    (
+      "a_list_box_is_one_tab_stop_choosing_one_or_several",
+      listbox::<D>,
+    ),
     ("every_page_passes_the_audit", audit::<D>),
   ]
 }
@@ -361,7 +373,7 @@ fn picker_chooses<D: Driver>(driver: &mut D) {
   assert_eq!(read(driver, Role::ComboBox, "Size").expanded, Some(true));
   click(driver, Role::Option, "Large");
 
-  assert_eq!(probe(driver, "size"), "Some(2)");
+  assert_eq!(probe(driver, "size"), "Large");
   assert!(
     driver
       .find(&Query::Role(Role::Option, "Medium".into()), Duration::ZERO)
@@ -882,9 +894,9 @@ fn picker_opens<D: Driver>(driver: &mut D) {
   );
   press(driver, &face, "Down", Modifiers::default());
   assert_eq!(focused_name(driver), "Cherry");
-  assert_eq!(probe(driver, "fruit"), "Some(1)", "a move chooses nothing");
+  assert_eq!(probe(driver, "fruit"), "Banana", "a move chooses nothing");
   press(driver, &face, "Enter", Modifiers::default());
-  assert_eq!(probe(driver, "fruit"), "Some(2)");
+  assert_eq!(probe(driver, "fruit"), "Cherry");
   assert_eq!(driver.read(&face).expanded, Some(false));
   assert_eq!(focused_name(driver), "Fruit", "focus is back on the face");
 
@@ -892,13 +904,13 @@ fn picker_opens<D: Driver>(driver: &mut D) {
   press(driver, &face, "Down", Modifiers::default());
   press(driver, &face, "Escape", Modifiers::default());
   assert_eq!(driver.read(&face).expanded, Some(false));
-  assert_eq!(probe(driver, "fruit"), "Some(2)", "Escape chooses nothing");
+  assert_eq!(probe(driver, "fruit"), "Cherry", "Escape chooses nothing");
   assert_eq!(focused_name(driver), "Fruit");
 
   press(driver, &face, "e", Modifiers::default());
   assert_eq!(
     probe(driver, "fruit"),
-    "Some(4)",
+    "Elderberry",
     "typing on the closed face chooses by name"
   );
 
@@ -913,7 +925,7 @@ fn picker_opens<D: Driver>(driver: &mut D) {
     Some(false),
     "a press outside closes the list"
   );
-  assert_eq!(probe(driver, "fruit"), "Some(4)", "and chooses nothing");
+  assert_eq!(probe(driver, "fruit"), "Elderberry", "and chooses nothing");
 }
 
 fn picker_width<D: Driver>(driver: &mut D) {
@@ -925,7 +937,7 @@ fn picker_width<D: Driver>(driver: &mut D) {
   driver.act(&face, &Action::Click);
   press(driver, &face, "End", Modifiers::default());
   press(driver, &face, "Enter", Modifiers::default());
-  assert_eq!(probe(driver, "fruit"), "Some(4)");
+  assert_eq!(probe(driver, "fruit"), "Elderberry");
 
   let after = driver.read(&face).bounds.width;
 
@@ -1648,5 +1660,159 @@ fn overflow<D: Driver>(driver: &mut D) {
   assert_eq!(
     (probe(driver, "round"), probe(driver, "beneath")),
     ("1".to_owned(), "1".to_owned())
+  );
+}
+
+/// How many pixels of the face `found` differ from its fill along its middle, from its leading
+/// padding to where its mark starts: the ink of the name it shows.
+fn inked<D: Driver>(driver: &mut D, found: &D::Found) -> usize {
+  let bounds = driver.read(found).bounds;
+  let middle = bounds.y + bounds.height / 2.;
+  let shot = driver.screenshot();
+  let fill = shot.color_at(bounds.x + 4., middle);
+
+  (14..(bounds.width as i32 - 34))
+    .filter(|offset| shot.color_at(bounds.x + *offset as f32, middle) != fill)
+    .count()
+}
+
+fn unchosen<D: Driver>(driver: &mut D) {
+  driver.open("unchosen");
+
+  let face = role(driver, Role::ComboBox, "Fruit");
+
+  assert_eq!(
+    inked(driver, &face),
+    0,
+    "a picker holding a value no option carries shows no name"
+  );
+
+  driver.act(&face, &Action::Click);
+  assert_eq!(driver.read(&face).expanded, Some(true));
+  assert_eq!(
+    focused_name(driver),
+    "Apple",
+    "opened with nothing chosen, focus is on the first option"
+  );
+  click(driver, Role::Option, "Cherry");
+  assert_eq!(probe(driver, "fruit"), "Some(Cherry)");
+  assert_eq!(driver.read(&face).expanded, Some(false));
+
+  let outside = text(driver, "Pick one");
+
+  driver.act(&outside, &Action::Hover);
+  assert!(
+    inked(driver, &face) > 0,
+    "once chosen, the face shows the option's name"
+  );
+}
+
+fn reorder<D: Driver>(driver: &mut D) {
+  driver.open("reorder");
+
+  let face = role(driver, Role::ComboBox, "Fruit");
+
+  driver.act(&face, &Action::Click);
+  assert_eq!(
+    focused_name(driver),
+    "Banana",
+    "focus is on the chosen option"
+  );
+
+  let before = read(driver, Role::Option, "Banana").bounds;
+
+  press(
+    driver,
+    &face,
+    "r",
+    Modifiers {
+      control: true,
+      ..Modifiers::default()
+    },
+  );
+  assert_eq!(
+    probe(driver, "order"),
+    "[Elderberry, Date, Cherry, Banana, Apple]",
+    "the shortcut reversed the list while it was open"
+  );
+  assert_eq!(
+    driver.read(&face).expanded,
+    Some(true),
+    "the list stays open"
+  );
+
+  let after = read(driver, Role::Option, "Banana").bounds;
+
+  assert!(
+    after.y > before.y,
+    "the option moved with its value: from {before:?} to {after:?}"
+  );
+  assert_eq!(
+    focused_name(driver),
+    "Banana",
+    "focus stays on the option, which was kept"
+  );
+
+  press(driver, &face, "Down", Modifiers::default());
+  assert_eq!(
+    focused_name(driver),
+    "Apple",
+    "the arrows move in the new order"
+  );
+  press(driver, &face, "Enter", Modifiers::default());
+  assert_eq!(probe(driver, "fruit"), "Apple");
+}
+
+fn listbox<D: Driver>(driver: &mut D) {
+  driver.open("listbox");
+
+  let favorite = role(driver, Role::ListBox, "Favorite");
+
+  press(driver, &favorite, "Tab", Modifiers::default());
+  assert_eq!(
+    focused_name(driver),
+    "Apple",
+    "a list box with nothing chosen is a tab stop on its first option"
+  );
+  press(driver, &favorite, "Down", Modifiers::default());
+  assert_eq!(focused_name(driver), "Banana");
+  assert_eq!(probe(driver, "favorite"), "None", "a move chooses nothing");
+  press(driver, &favorite, " ", Modifiers::default());
+  assert_eq!(probe(driver, "favorite"), "Some(Banana)");
+
+  press(driver, &favorite, "Tab", Modifiers::default());
+  assert_eq!(
+    focused_name(driver),
+    "Apple",
+    "Tab leaves the list box for the next one"
+  );
+
+  let basket = role(driver, Role::ListBox, "Basket");
+
+  press(driver, &basket, " ", Modifiers::default());
+  press(driver, &basket, "Down", Modifiers::default());
+  press(driver, &basket, "Down", Modifiers::default());
+  press(driver, &basket, " ", Modifiers::default());
+  assert_eq!(probe(driver, "basket"), "{Apple, Cherry}");
+  press(driver, &basket, " ", Modifiers::default());
+  assert_eq!(
+    probe(driver, "basket"),
+    "{Apple}",
+    "choosing a chosen option of several takes it away"
+  );
+
+  press(
+    driver,
+    &basket,
+    "Tab",
+    Modifiers {
+      shift: true,
+      ..Modifiers::default()
+    },
+  );
+  assert_eq!(
+    focused_name(driver),
+    "Banana",
+    "back in a list box, focus returns to the option it was last on"
   );
 }

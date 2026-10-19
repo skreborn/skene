@@ -2,11 +2,12 @@
 //! what it draws, a slider is as wide as it says, a caption is never required, a
 //! library's text entry takes the standard context menu as a built-in's does, a disabled
 //! control's caption dims with it wherever it sits, a press on a caption beside its control
-//! presses the control, and a disabled group disables its members.
+//! presses the control, a disabled group disables its members, and a group whose radios a
+//! third party places by hand moves through them in the scene's order.
 
 use skene_gui::{
   BasicTextField,
-  behavior::TextEntry,
+  behavior::{RadioGroup as Group, TextEntry},
   prelude::*,
   testing::{self, Role, Screenshot},
 };
@@ -222,8 +223,8 @@ const CONTROL_PRESSED: Color = Color::rgb(0xc8c8d0);
 
 /// A picker whose caption sits beside it, and a disabled radio group between two fields.
 fn captions() -> impl View {
-  let size = Signal::new(Some(0_usize));
-  let tone = Signal::new(Some(0_usize));
+  let size = Signal::new("Small");
+  let tone = Signal::new("Warm");
   let before = Signal::new(String::new());
   let after = Signal::new(String::new());
 
@@ -234,7 +235,7 @@ fn captions() -> impl View {
       Row::new().add_child(
         Picker::new("Size")
           .bind_chosen(size)
-          .set_options(["Small", "Medium", "Large"]),
+          .set_options(["Small", "Medium", "Large"].map(|size| (size, size))),
       ),
     )
     .add_child(TextField::new("Before").bind_text(before))
@@ -242,7 +243,7 @@ fn captions() -> impl View {
       RadioGroup::new("Tone")
         .set_disabled(true)
         .bind_chosen(tone)
-        .set_options(["Warm", "Cool"]),
+        .set_options(["Warm", "Cool"].map(|tone| (tone, tone))),
     )
     .add_child(TextField::new("After").bind_text(after))
 }
@@ -303,4 +304,51 @@ fn a_disabled_group_disables_its_members_and_tab_passes_them() {
     screen.find_by_role(Role::Radio, "Warm").read().checked == Some(skene_gui::Checked::On),
     "a press on a disabled radio chooses nothing"
   );
+}
+
+/// A group of three radios placed by hand in a row, Large first, each carrying its size, Small
+/// chosen.
+fn hand_placed() -> impl View {
+  let size = Signal::new(1_u8);
+  let group = Group::new().bind_chosen(size);
+  let radio = |value: u8, name: &str| Control::new(group.member(value)).set_label(name);
+  let (large, small, medium) = (radio(3, "Large"), radio(1, "Small"), radio(2, "Medium"));
+
+  testing::publish("size", move || size.get_untracked().to_string());
+
+  Column::new().set_padding(16).add_child(
+    Control::new(group).set_label("Size").set_child(
+      Row::new()
+        .set_spacing(12)
+        .add_child(large)
+        .add_child(small)
+        .add_child(medium),
+    ),
+  )
+}
+
+#[skene_gui::test]
+fn a_hand_placed_group_moves_through_its_radios_in_the_scenes_order() {
+  let screen = testing::render(hand_placed);
+
+  screen.press("Tab");
+  assert_eq!(
+    screen.focused().name(),
+    "Small",
+    "the group's one tab stop is its chosen radio"
+  );
+  screen.press("Right");
+  assert_eq!(screen.focused().name(), "Medium");
+  assert_eq!(
+    screen.probe("size"),
+    "2",
+    "the arrow chose the next radio in place"
+  );
+  screen.press("Right");
+  assert_eq!(
+    screen.focused().name(),
+    "Large",
+    "and wraps to the first in place, whatever its value"
+  );
+  assert_eq!(screen.probe("size"), "3");
 }

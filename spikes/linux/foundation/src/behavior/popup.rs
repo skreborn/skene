@@ -5,7 +5,8 @@ use std::{cell::RefCell, rc::Rc};
 use crate::{
   Signal,
   behavior::{
-    Behavior, CollectionKeys, ControlHandle, Orientation, Response, Roster, TypeAhead, plain,
+    Behavior, Choice, CollectionKeys, ControlHandle, One, Orientation, Response, Roster, TypeAhead,
+    plain,
   },
   seam::{
     access::{AccessFacts, PopupKind, Role},
@@ -86,22 +87,22 @@ impl PopupKeys {
 /// is on its list's options, and `Escape` and `Tab` climbing from them close it and bring
 /// focus back to the face, `Tab` then moving on.
 ///
-/// Its list is a collection over the same [`Roster`], which commits a choice by closing it.
+/// Its list is a collection over the same [`Roster`], which commits a choice by closing it;
+/// the face's keys and type-ahead move through the roster's options before the list is built.
 #[must_use]
-pub struct Popup {
-  roster: Rc<Roster>,
-  names: Rc<dyn Fn() -> Vec<Rc<str>>>,
+pub struct Popup<T: Choice> {
+  roster: Rc<Roster<One<T>>>,
   open: Signal<bool>,
   type_ahead: Rc<RefCell<TypeAhead>>,
   reset: RefCell<Option<Cancel>>,
 }
 
-impl Popup {
-  /// A closed popup choosing through `roster`, its options' names what `names` returns.
-  pub fn new(roster: Rc<Roster>, names: impl Fn() -> Vec<Rc<str>> + 'static) -> Self {
+impl<T: Choice> Popup<T> {
+  /// A closed popup choosing through `roster`, the list in its popup holding the same one
+  /// value.
+  pub fn new(roster: Rc<Roster<One<T>>>) -> Self {
     Self {
       roster,
-      names: Rc::new(names),
       open: Signal::new(false),
       type_ahead: Rc::new(RefCell::new(TypeAhead::new())),
       reset: RefCell::new(None),
@@ -114,15 +115,34 @@ impl Popup {
     self.open
   }
 
+  /// The place of the chosen option among the roster's options, untracked.
+  fn chosen_place(&self) -> Option<usize> {
+    untrack(|| {
+      let options = self.roster.options();
+
+      self
+        .roster
+        .chosen()
+        .and_then(|chosen| options.index_of(&chosen))
+    })
+  }
+
+  /// The value of the option at `index`, untracked.
+  fn value_at(&self, index: usize) -> Option<T> {
+    untrack(|| self.roster.options().value(index))
+  }
+
   /// Opens the list, focus on its chosen option (its first where none is chosen).
   pub fn show(&self) {
     if !self.open.get_untracked() {
       self.open.set(true);
     }
 
-    let target = untrack(|| self.roster.chosen()).unwrap_or(0);
+    let target = self.chosen_place().unwrap_or(0);
 
-    self.roster.focus(target);
+    if let Some(value) = self.value_at(target) {
+      self.roster.focus(&value);
+    }
   }
 
   /// Closes the list, choosing nothing, and brings focus back to the face.
@@ -134,13 +154,14 @@ impl Popup {
   }
 
   /// The option `text` finds, typed into the face or the open list, from `current`.
-  fn type_ahead(
-    &self,
-    text: &str,
-    current: Option<usize>,
-    control: &ControlHandle,
-  ) -> Option<usize> {
-    let names = untrack(|| (self.names)());
+  fn type_ahead(&self, text: &str, current: Option<usize>, control: &ControlHandle) -> Option<T> {
+    let names: Vec<Rc<str>> = untrack(|| {
+      let options = self.roster.options();
+
+      (0..options.count())
+        .map(|index| options.name(index).unwrap_or_else(|| Rc::from("")))
+        .collect()
+    });
     let names: Vec<&str> = names.iter().map(|name| &**name).collect();
     let found = self
       .type_ahead
@@ -153,7 +174,7 @@ impl Popup {
       previous.cancel();
     }
 
-    found
+    found.and_then(|index| self.value_at(index))
   }
 
   /// The text a key types into a search, where it types one: a printable character with no
@@ -172,7 +193,7 @@ impl Popup {
   }
 }
 
-impl Behavior for Popup {
+impl<T: Choice> Behavior for Popup<T> {
   fn role(&self) -> Role {
     Role::ComboBox
   }
@@ -209,10 +230,8 @@ impl Behavior for Popup {
       }
 
       if let Some(text) = self.typed(event) {
-        let current = untrack(|| self.roster.chosen());
-
-        if let Some(found) = self.type_ahead(text, current, control) {
-          self.roster.focus(found);
+        if let Some(found) = self.type_ahead(text, self.chosen_place(), control) {
+          self.roster.focus(&found);
         }
 
         return Prevent::All;
@@ -238,22 +257,26 @@ impl Behavior for Popup {
       };
     }
 
-    let chosen = untrack(|| self.roster.chosen());
+    let chosen = self.chosen_place();
 
     if let Some(text) = self.typed(event) {
       if let Some(found) = self.type_ahead(text, chosen, control) {
-        self.roster.choose(found);
+        self.roster.choose(&found);
       }
 
       return Prevent::All;
     }
 
-    let count = untrack(|| (self.names)().len());
+    let count = untrack(|| self.roster.options().count());
     let response = PopupKeys::new(count, chosen).key(event);
 
     match response.act {
       Some(PopupAct::Open) => self.show(),
-      Some(PopupAct::Choose(index)) => self.roster.choose(index),
+      Some(PopupAct::Choose(index)) => {
+        if let Some(value) = self.value_at(index) {
+          self.roster.choose(&value);
+        }
+      }
       None => {}
     }
 
@@ -282,17 +305,17 @@ impl Behavior for Popup {
   }
 
   fn access(&self) -> AccessFacts {
-    let names = (self.names)();
-    let chosen = self.roster.chosen();
+    let options = self.roster.options();
+    let shown = self
+      .roster
+      .chosen()
+      .and_then(|chosen| options.index_of(&chosen))
+      .and_then(|index| options.name(index));
 
     AccessFacts {
       expanded: Some(self.open.get()),
       has_popup: Some(PopupKind::Listbox),
-      value_text: Some(
-        chosen
-          .and_then(|index| names.get(index).cloned())
-          .unwrap_or_else(|| Rc::from("")),
-      ),
+      value_text: Some(shown.unwrap_or_else(|| Rc::from(""))),
       actions: vec![AccessRequest::Activate],
       ..AccessFacts::default()
     }

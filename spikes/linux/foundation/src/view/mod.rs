@@ -40,15 +40,16 @@ use std::{
 pub use self::{
   access::Access,
   control::{
-    AsPart, AsPartBase, BasicButton, BasicCheckbox, BasicListbox, BasicListboxOption, BasicRadio,
-    BasicRadioGroup, BasicSlider, BasicTextEditor, BasicTextField, Control, ControlBase,
-    ControlMembersBase, HasMembers, Label, Members,
+    AsPart, AsPartBase, BasicButton, BasicCheckbox, BasicListbox, BasicListboxOption, BasicPicker,
+    BasicRadio, BasicRadioGroup, BasicSlider, BasicTextEditor, BasicTextField, Control,
+    ControlBase, ControlMembersBase, HasMembers, Label, Members,
   },
   controls::{
-    BasicPicker, Button, ButtonBase, Checkbox, CheckboxBase, ContextMenu, ContextMenuBase,
-    EditingBase, HasEntry, Keyboard, MenuEntry, MenuItem, MenuItemBase, Picker, PickerBase,
-    PickerItem, PickerItemBase, Radio, RadioBase, RadioGroup, RadioGroupBase, Slider, SliderBase,
-    TextEditor, TextEditorBase, TextField, TextFieldBase, Toggle, ToggleBase,
+    Button, ButtonBase, Checkbox, CheckboxBase, ChoiceBase, ContextMenu, ContextMenuBase,
+    EditingBase, GroupOptions, HasChoice, HasEntry, HasOptions, Keyboard, Listbox, ListboxBase,
+    ListboxItem, ListboxItemBase, MenuEntry, MenuItem, MenuItemBase, OptionSegment, OptionsBase,
+    Picker, PickerBase, PickerItem, PickerItemBase, Radio, RadioBase, RadioGroup, RadioGroupBase,
+    Slider, SliderBase, TextEditor, TextEditorBase, TextField, TextFieldBase, Toggle, ToggleBase,
   },
   overlay::{Overlay, OverlayBase},
   painted::{Canvas, Paint, Painted, PaintedBase, Painting},

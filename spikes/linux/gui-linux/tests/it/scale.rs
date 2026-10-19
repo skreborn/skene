@@ -30,7 +30,7 @@ fn session_scale() -> f64 {
 /// A field holding "alpha beta gamma" and a picker of three sizes.
 fn page() -> impl View {
   let words = Signal::new(String::from("alpha beta gamma"));
-  let size = Signal::new(Some(0_usize));
+  let size = Signal::new("Small");
 
   probe("words", words);
   probe("size", size);
@@ -41,8 +41,8 @@ fn page() -> impl View {
     .add_child(TextField::new("Words").bind_text(words))
     .add_child(
       Picker::new("Size")
-        .set_options(["Small", "Medium", "Large"])
-        .bind_chosen(size),
+        .bind_chosen(size)
+        .set_options(["Small", "Medium", "Large"].map(|size| (size, size))),
     )
 }
 
@@ -139,7 +139,7 @@ fn a_pickers_list_opens_under_its_face_where_a_reader_finds_and_clicks_its_optio
   );
 
   large.click();
-  assert_eq!(screen.probe("size"), "Some(2)", "the click chose Large");
+  assert_eq!(screen.probe("size"), "\"Large\"", "the click chose Large");
   assert_eq!(face.read().expanded, Some(false));
 }
 
@@ -165,7 +165,6 @@ fn striped() -> impl View {
     .add_child(Painted::new(stripes).set_width(48).set_height(16))
     .add_child(
       Picker::new("Size")
-        .set_options(["Small", "Medium", "Large"])
         // A list with no border, so its options sit at whole device pixels.
         .set_list(Container::new().set_background(Color::WHITE).set_padding(4))
         .set_item_builder(|_, label| {
@@ -173,7 +172,8 @@ fn striped() -> impl View {
             .set_padding(Inset::new(0, 6, 0, 0))
             .set_label_placement(LabelPlacement::Trailing)
             .set_mark(Painted::new(stripes).set_width(24).set_height(12))
-        }),
+        })
+        .set_options(["Small", "Medium", "Large"].map(|size| (size, size))),
     )
 }
 

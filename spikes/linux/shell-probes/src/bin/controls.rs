@@ -11,6 +11,40 @@
 
 use skene_gui::prelude::*;
 
+/// The sizes the radio group chooses among, each named as `Debug` writes it.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+enum Size {
+  Small,
+  Medium,
+  Large,
+}
+
+impl Size {
+  /// Every size, in order.
+  const ALL: [Self; 3] = [Self::Small, Self::Medium, Self::Large];
+}
+
+/// The fruit the picker chooses among, each named as `Debug` writes it.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+enum Fruit {
+  Apple,
+  Banana,
+  Blueberry,
+  Cherry,
+  Grape,
+}
+
+impl Fruit {
+  /// Every fruit, in order.
+  const ALL: [Self; 5] = [
+    Self::Apple,
+    Self::Banana,
+    Self::Blueberry,
+    Self::Cherry,
+    Self::Grape,
+  ];
+}
+
 fn log(what: &str, value: impl std::fmt::Debug) {
   eprintln!("[app] {what} {value:?}");
 }
@@ -73,9 +107,9 @@ fn app() -> impl View {
   let notes = Signal::new(String::new());
   let wifi = Signal::new(false);
   let remember = Signal::new(false);
-  let size = Signal::new(Some(1usize));
+  let size = Signal::new(Size::Medium);
   let volume = Signal::new(0.5f32);
-  let fruit = Signal::new(Some(0usize));
+  let fruit = Signal::new(Fruit::Apple);
   let presses = Signal::new(0u32);
   let fields_only = std::env::var_os("PROBE_FIELDS_ONLY").is_some();
   let status = NodeHandle::new();
@@ -163,12 +197,12 @@ fn app() -> impl View {
       )
       .add_child(
         RadioGroup::new("Size")
-          .set_options(["Small", "Medium", "Large"])
           .derive_chosen(move || size.get())
           .handle_choose(move |chosen| {
             log("size", chosen);
             size.set(chosen);
-          }),
+          })
+          .set_options(Size::ALL.map(|size| (size, format!("{size:?}")))),
       )
       .add_child(
         Slider::new("Volume")
@@ -182,12 +216,12 @@ fn app() -> impl View {
       )
       .add_child(
         Picker::new("Fruit")
-          .set_options(["Apple", "Banana", "Blueberry", "Cherry", "Grape"])
           .derive_chosen(move || fruit.get())
           .handle_choose(move |chosen| {
             log("fruit", chosen);
             fruit.set(chosen);
-          }),
+          })
+          .set_options(Fruit::ALL.map(|fruit| (fruit, format!("{fruit:?}")))),
       )
       .add_child(
         Button::new("Submit")

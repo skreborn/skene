@@ -1,7 +1,10 @@
-//! Members of a group, one chosen: a radio group's radios, a list box's options.
+//! Members of a group, each carrying a value of the app's own type: a radio group's radios, a
+//! list box's options, a menu's items.
 
 use std::{
   cell::RefCell,
+  collections::{BTreeSet, HashMap, HashSet},
+  hash::Hash,
   marker::PhantomData,
   rc::{Rc, Weak},
 };
@@ -16,6 +19,148 @@ use crate::{
   },
   untrack,
 };
+
+/// What a choice group's options carry and what it has chosen: a value of the app's own type,
+/// compared to find the chosen option and hashed to name it.
+///
+/// Its `Hash` agrees with its `Eq` and depends on nothing of the build (no pointer, no
+/// `TypeId`), since a platform may name an option by it across two builds of one app.
+#[diagnostic::on_unimplemented(
+  message = "`{Self}` cannot be a choice's value",
+  note = "a choice's value is `Clone`, `Eq` and `Hash`, as SwiftUI's tag is `Hashable`: derive them, or choose by an id"
+)]
+pub trait Choice: Clone + Eq + Hash + 'static {}
+
+#[diagnostic::do_not_recommend]
+impl<T: Clone + Eq + Hash + 'static> Choice for T {}
+
+/// What a list box has chosen: one value or none (`Option<T>`), or a set of values
+/// (`HashSet<T>`, `BTreeSet<T>`).
+#[diagnostic::on_unimplemented(
+  message = "a list box chooses an `Option` or a set of its options' values, not `{Self}`",
+  note = "bind an `Option<T>` for one choice, a `HashSet<T>` or a `BTreeSet<T>` for several"
+)]
+pub trait Chosen: Clone + PartialEq + 'static {
+  /// What each option carries.
+  type Value: Choice;
+
+  /// Whether `value` is chosen.
+  fn contains(&self, value: &Self::Value) -> bool;
+
+  /// What is chosen once the reader chooses `value` from `chosen` (nothing where none
+  /// reads): `value` alone for one choice, `value` added or taken away for a set.
+  fn choosing(chosen: Option<&Self>, value: &Self::Value) -> Self;
+}
+
+impl<T: Choice> Chosen for Option<T> {
+  type Value = T;
+
+  fn contains(&self, value: &T) -> bool {
+    self.as_ref() == Some(value)
+  }
+
+  fn choosing(_: Option<&Self>, value: &T) -> Self {
+    Some(value.clone())
+  }
+}
+
+impl<T: Choice> Chosen for HashSet<T> {
+  type Value = T;
+
+  fn contains(&self, value: &T) -> bool {
+    Self::contains(self, value)
+  }
+
+  fn choosing(chosen: Option<&Self>, value: &T) -> Self {
+    let mut chosen = chosen.cloned().unwrap_or_default();
+
+    if !chosen.remove(value) {
+      chosen.insert(value.clone());
+    }
+
+    chosen
+  }
+}
+
+impl<T: Choice + Ord> Chosen for BTreeSet<T> {
+  type Value = T;
+
+  fn contains(&self, value: &T) -> bool {
+    Self::contains(self, value)
+  }
+
+  fn choosing(chosen: Option<&Self>, value: &T) -> Self {
+    let mut chosen = chosen.cloned().unwrap_or_default();
+
+    if !chosen.remove(value) {
+      chosen.insert(value.clone());
+    }
+
+    chosen
+  }
+}
+
+/// What a collection holds: a value always chosen ([`One`]: a radio group's, a picker's), or a
+/// list box's choice ([`Chosen`]), or a menu's place.
+pub trait Held: 'static {
+  /// What each member carries.
+  type Option: Choice;
+  /// What its choice is bound as: `T` for `One<T>`, the choice itself for a list box's.
+  type Bound: Clone + PartialEq + 'static;
+
+  /// Whether `bound` chooses `value`.
+  fn holds(bound: &Self::Bound, value: &Self::Option) -> bool;
+
+  /// What is chosen once the reader chooses `value` from `bound` (nothing where none reads).
+  fn choosing(bound: Option<&Self::Bound>, value: &Self::Option) -> Self::Bound;
+}
+
+/// A value always chosen: what a radio group and a picker hold, each option carrying a `T`.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub struct One<T>(pub T);
+
+impl<T: Choice> Held for One<T> {
+  type Option = T;
+  type Bound = T;
+
+  fn holds(bound: &T, value: &T) -> bool {
+    bound == value
+  }
+
+  fn choosing(_: Option<&T>, value: &T) -> T {
+    value.clone()
+  }
+}
+
+impl<C: Chosen> Held for C {
+  type Option = C::Value;
+  type Bound = C;
+
+  fn holds(bound: &C, value: &C::Value) -> bool {
+    bound.contains(value)
+  }
+
+  fn choosing(bound: Option<&C>, value: &C::Value) -> C {
+    C::choosing(bound, value)
+  }
+}
+
+/// The options a collection moves through, built or not, in order: what its keys, its
+/// type-ahead and a closed face read. A styled group's are its segments; a group whose members
+/// a third party places by hand moves through its registered members in the scene's order.
+pub trait Options<T> {
+  /// How many options, tracking what they are read from.
+  fn count(&self) -> usize;
+
+  /// The value of the option at `index`.
+  fn value(&self, index: usize) -> Option<T>;
+
+  /// The place of the option carrying `value`.
+  fn index_of(&self, value: &T) -> Option<usize>;
+
+  /// The option's name where its label states one; none where its content names it.
+  fn name(&self, index: usize) -> Option<Rc<str>>;
+}
 
 /// The axes a collection's arrows move along.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -187,19 +332,22 @@ impl<'a> CollectionKeys<'a> {
   }
 }
 
-/// What a choice commits: run with the member chosen.
-type Commit = Rc<dyn Fn(usize)>;
+/// What a choice commits: run with the value of the member chosen.
+type Commit<T> = Rc<dyn Fn(&T)>;
 
-/// The members of a collection as they register, its controlled choice, and what a choice
-/// commits: what a group and its members share.
-pub struct Roster {
-  chosen: RefCell<Controlled<Option<usize>>>,
-  members: RefCell<Vec<(usize, ControlHandle)>>,
-  commit: RefCell<Option<Commit>>,
+/// The members of a collection as they register, the options it moves through, its controlled
+/// choice, and what a choice commits: what a group and its members share.
+pub struct Roster<H: Held> {
+  chosen: RefCell<Controlled<H::Bound>>,
+  members: RefCell<HashMap<H::Option, ControlHandle>>,
+  options: RefCell<Option<Rc<dyn Options<H::Option>>>>,
+  commit: RefCell<Option<Commit<H::Option>>>,
   dismiss: RefCell<Option<Rc<dyn Fn()>>>,
+  changed: Signal<u32>,
+  active: Signal<Option<H::Option>>,
 }
 
-impl std::fmt::Debug for Roster {
+impl<H: Held> std::fmt::Debug for Roster<H> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter
       .debug_struct("Roster")
@@ -208,15 +356,18 @@ impl std::fmt::Debug for Roster {
   }
 }
 
-impl Roster {
+impl<H: Held> Roster<H> {
   /// A roster with no member, its choice `chosen`.
   #[must_use]
-  pub fn new(chosen: Controlled<Option<usize>>) -> Rc<Self> {
+  pub fn new(chosen: Controlled<H::Bound>) -> Rc<Self> {
     Rc::new(Self {
       chosen: RefCell::new(chosen),
-      members: RefCell::new(Vec::new()),
+      members: RefCell::new(HashMap::new()),
+      options: RefCell::new(None),
       commit: RefCell::new(None),
       dismiss: RefCell::new(None),
+      changed: Signal::new(0),
+      active: Signal::new(None),
     })
   }
 
@@ -239,119 +390,221 @@ impl Roster {
   }
 
   /// Runs `commit` after each choice that commits (an option chosen in a popup's list).
-  pub fn set_commit(&self, commit: impl Fn(usize) + 'static) {
+  pub fn set_commit(&self, commit: impl Fn(&H::Option) + 'static) {
     *self.commit.borrow_mut() = Some(Rc::new(commit));
   }
 
+  /// The options it moves through: a styled group's segments. Without them it moves through
+  /// its registered members in the scene's order.
+  pub fn set_options(&self, options: Rc<dyn Options<H::Option>>) {
+    *self.options.borrow_mut() = Some(options);
+  }
+
+  /// The options it moves through, as [`Roster::set_options`] says.
+  #[must_use]
+  pub fn options(self: &Rc<Self>) -> Rc<dyn Options<H::Option>> {
+    let options = self.options.borrow().clone();
+
+    options.unwrap_or_else(|| Rc::new(Registered(Rc::clone(self))))
+  }
+
   /// Changes the controlled choice before the collection is built.
-  pub fn change_chosen(&self, change: impl FnOnce(&mut Controlled<Option<usize>>)) {
+  pub fn change_chosen(&self, change: impl FnOnce(&mut Controlled<H::Bound>)) {
     change(&mut self.chosen.borrow_mut());
   }
 
-  /// The chosen member as it reads now, tracking it.
+  /// What is chosen as it reads now, tracking it; none where nothing is derived.
   #[must_use]
-  pub fn chosen(&self) -> Option<usize> {
+  pub fn chosen(&self) -> Option<H::Bound> {
     let chosen = self.chosen.borrow().clone();
 
-    chosen.read().flatten()
+    chosen.read()
   }
 
-  /// Asks for member `index` to be chosen, unless it is already.
-  pub fn choose(&self, index: usize) {
-    if untrack(|| self.chosen()) != Some(index) {
+  /// Whether the member carrying `value` is chosen, tracking it.
+  #[must_use]
+  pub fn is_chosen(&self, value: &H::Option) -> bool {
+    self.chosen().is_some_and(|chosen| H::holds(&chosen, value))
+  }
+
+  /// Asks for `value` to be chosen: chosen alone, or, in a set, added or taken away; nothing
+  /// where that changes nothing.
+  pub fn choose(&self, value: &H::Option) {
+    let now = untrack(|| self.chosen());
+    let next = H::choosing(now.as_ref(), value);
+
+    if now.as_ref() != Some(&next) {
       let chosen = self.chosen.borrow().clone();
 
-      chosen.ask(Some(index));
+      chosen.ask(next);
     }
   }
 
-  /// Chooses member `index` and runs what a choice commits.
-  pub fn commit(&self, index: usize) {
-    self.choose(index);
+  /// Chooses `value` and runs what a choice commits.
+  pub fn commit(&self, value: &H::Option) {
+    self.choose(value);
 
     let commit = self.commit.borrow().clone();
 
     if let Some(commit) = commit {
-      commit(index);
+      commit(value);
     }
   }
 
-  /// Registers member `index`'s control until the current owner is disposed.
-  pub fn register(self: &Rc<Self>, index: usize, member: ControlHandle) {
+  /// Registers the control of the member carrying `value` until the current owner is
+  /// disposed.
+  ///
+  /// # Panics
+  ///
+  /// In a debug build, where another live member already carries `value`: two options of one
+  /// choice carry one value.
+  pub fn register(self: &Rc<Self>, value: H::Option, member: ControlHandle) {
     let node = member.node();
+    let previous = self.members.borrow_mut().insert(value.clone(), member);
 
-    self.members.borrow_mut().push((index, member));
+    debug_assert!(
+      previous.is_none_or(|previous| previous.node() == node),
+      "two options of one choice carry one value"
+    );
+    self.changed.update(|count| *count = count.wrapping_add(1));
 
     let roster: Weak<Self> = Rc::downgrade(self);
 
     if Owner::current().is_some() {
       Owner::on_cleanup(move || {
         if let Some(roster) = roster.upgrade() {
+          let mut members = roster.members.borrow_mut();
+
+          if members
+            .get(&value)
+            .is_some_and(|member| member.node() == node)
+          {
+            members.remove(&value);
+          }
+
+          drop(members);
           roster
-            .members
-            .borrow_mut()
-            .retain(|(_, member)| member.node() != node);
+            .changed
+            .update(|count| *count = count.wrapping_add(1));
         }
       });
     }
   }
 
-  /// How many members it has: one past the greatest index registered.
+  /// The control of the member carrying `value`, where it is registered.
   #[must_use]
-  pub fn count(&self) -> usize {
-    self
-      .members
-      .borrow()
-      .iter()
-      .map(|(index, _)| index + 1)
-      .max()
-      .unwrap_or(0)
+  pub fn member(&self, value: &H::Option) -> Option<ControlHandle> {
+    self.members.borrow().get(value).cloned()
   }
 
-  /// Member `index`'s control, where it is registered.
+  /// The value the member `node` carries, where it is registered.
   #[must_use]
-  pub fn member(&self, index: usize) -> Option<ControlHandle> {
-    self
-      .members
-      .borrow()
-      .iter()
-      .find(|(at, _)| *at == index)
-      .map(|(_, member)| member.clone())
-  }
-
-  /// Member `node`'s index, where it is registered.
-  #[must_use]
-  pub fn index_of(&self, node: NodeId) -> Option<usize> {
+  pub fn value_of(&self, node: NodeId) -> Option<H::Option> {
     self
       .members
       .borrow()
       .iter()
       .find(|(_, member)| member.node() == node)
-      .map(|(index, _)| *index)
+      .map(|(value, _)| value.clone())
   }
 
-  /// Whether member `index` is registered and enabled, tracking it.
+  /// Whether the member carrying `value` is registered and enabled, tracking both.
   #[must_use]
-  pub fn is_enabled(&self, index: usize) -> bool {
+  pub fn is_enabled(&self, value: &H::Option) -> bool {
+    let _ = self.changed.get();
+
     self
-      .member(index)
+      .member(value)
       .is_some_and(|member| !member.is_disabled())
   }
 
-  /// Moves focus to member `index`.
-  pub fn focus(&self, index: usize) {
-    if let Some(member) = self.member(index) {
+  /// Moves focus to the member carrying `value`, which becomes the active one.
+  pub fn focus(&self, value: &H::Option) {
+    if self
+      .active
+      .with_untracked(|active| active.as_ref() != Some(value))
+    {
+      self.active.set(Some(value.clone()));
+    }
+
+    if let Some(member) = self.member(value) {
       member.focus();
     }
   }
 
-  /// The member a group's one tab stop is on: the chosen one where it is enabled, else the
+  /// The member focus was last moved to through the roster, where it is registered and
+  /// enabled, tracking it.
+  #[must_use]
+  pub fn active(&self) -> Option<H::Option> {
+    self.active.get().filter(|active| self.is_enabled(active))
+  }
+
+  /// The member a group's one tab stop is on: the first chosen one that is enabled, else the
   /// first enabled; tracking both.
   #[must_use]
-  pub fn stop(&self) -> Option<usize> {
-    let chosen = self.chosen().filter(|chosen| self.is_enabled(*chosen));
+  pub fn stop(self: &Rc<Self>) -> Option<H::Option> {
+    let options = self.options();
+    let values: Vec<H::Option> = (0..options.count())
+      .filter_map(|index| options.value(index))
+      .collect();
+    let chosen = self.chosen();
 
-    chosen.or_else(|| (0..self.count()).find(|index| self.is_enabled(*index)))
+    values
+      .iter()
+      .find(|value| {
+        chosen
+          .as_ref()
+          .is_some_and(|chosen| H::holds(chosen, value))
+          && self.is_enabled(value)
+      })
+      .or_else(|| values.iter().find(|value| self.is_enabled(value)))
+      .cloned()
+  }
+}
+
+/// A roster's registered members in the scene's order: the options of a group whose members a
+/// third party places by hand.
+struct Registered<H: Held>(Rc<Roster<H>>);
+
+impl<H: Held> Registered<H> {
+  /// The registered members' values in the scene's order, tracking registrations.
+  fn values(&self) -> Vec<H::Option> {
+    let _ = self.0.changed.get();
+    let members = self.0.members.borrow();
+    let mut nodes: Vec<(NodeId, H::Option)> = members
+      .iter()
+      .map(|(value, member)| (member.node(), value.clone()))
+      .collect();
+    let order = members.values().next().map(ControlHandle::scene_order);
+
+    drop(members);
+
+    if let Some(order) = order {
+      nodes.sort_by(|a, b| order(a.0, b.0));
+    }
+
+    nodes.into_iter().map(|(_, value)| value).collect()
+  }
+}
+
+impl<H: Held> Options<H::Option> for Registered<H> {
+  fn count(&self) -> usize {
+    self.values().len()
+  }
+
+  fn value(&self, index: usize) -> Option<H::Option> {
+    self.values().into_iter().nth(index)
+  }
+
+  fn index_of(&self, value: &H::Option) -> Option<usize> {
+    self.values().iter().position(|at| at == value)
+  }
+
+  fn name(&self, index: usize) -> Option<Rc<str>> {
+    self
+      .value(index)
+      .and_then(|value| self.0.member(&value))
+      .and_then(|member| member.name())
   }
 }
 
@@ -431,41 +684,41 @@ impl CollectionPolicy for MenuPolicy {
   const SELECTS: bool = false;
 }
 
-/// A collection's behavior: the group around its members, one of them chosen. It takes no
-/// focus of its own: its members do ([`Collection::member`]).
+/// A collection's behavior: the group around its members, each carrying a value, what it
+/// holds chosen. It takes no focus of its own: its members do ([`Collection::member`]).
 #[must_use]
-pub struct Collection<P: CollectionPolicy> {
-  roster: Rc<Roster>,
+pub struct Collection<P: CollectionPolicy, H: Held> {
+  roster: Rc<Roster<H>>,
   policy: PhantomData<P>,
 }
 
-/// A radio group's behavior.
-pub type RadioGroup = Collection<RadioPolicy>;
-/// A list box's behavior.
-pub type Listbox = Collection<ListboxPolicy>;
+/// A radio group's behavior: one `T` always chosen.
+pub type RadioGroup<T> = Collection<RadioPolicy, One<T>>;
 /// A radio's behavior.
-pub type Radio = Member<RadioPolicy>;
+pub type Radio<T> = Member<RadioPolicy, One<T>>;
+/// A list box's behavior, choosing `C`: an `Option` of its options' values, or a set of them.
+pub type Listbox<C> = Collection<ListboxPolicy, C>;
 /// A list box option's behavior.
-pub type ListboxOption = Member<ListboxPolicy>;
-/// A menu's behavior.
-pub type Menu = Collection<MenuPolicy>;
+pub type ListboxOption<C> = Member<ListboxPolicy, C>;
+/// A menu's behavior: its commands, by their place among its entries.
+pub type Menu = Collection<MenuPolicy, Option<usize>>;
 /// A menu item's behavior.
-pub type MenuOption = Member<MenuPolicy>;
+pub type MenuOption = Member<MenuPolicy, Option<usize>>;
 
-impl<P: CollectionPolicy> Default for Collection<P> {
+impl<P: CollectionPolicy, H: Held> Default for Collection<P, H> {
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<P: CollectionPolicy> Collection<P> {
+impl<P: CollectionPolicy, H: Held> Collection<P, H> {
   /// A collection with nothing chosen and no handler.
   pub fn new() -> Self {
     Self::with_roster(Roster::new(Controlled::new()))
   }
 
   /// A collection over `roster`, shared with what else reads its choice (a popup's face).
-  pub const fn with_roster(roster: Rc<Roster>) -> Self {
+  pub const fn with_roster(roster: Rc<Roster<H>>) -> Self {
     Self {
       roster,
       policy: PhantomData,
@@ -474,12 +727,12 @@ impl<P: CollectionPolicy> Collection<P> {
 
   /// Its roster.
   #[must_use]
-  pub fn roster(&self) -> Rc<Roster> {
+  pub fn roster(&self) -> Rc<Roster<H>> {
     Rc::clone(&self.roster)
   }
 
-  /// This collection, member `chosen` chosen.
-  pub fn set_chosen(self, chosen: Option<usize>) -> Self {
+  /// This collection, `chosen` chosen.
+  pub fn set_chosen(self, chosen: H::Bound) -> Self {
     self
       .roster
       .change_chosen(|controlled| controlled.set(chosen));
@@ -487,8 +740,8 @@ impl<P: CollectionPolicy> Collection<P> {
     self
   }
 
-  /// This collection, the member `chosen` returns chosen, kept current.
-  pub fn derive_chosen(self, chosen: impl Fn() -> Option<usize> + 'static) -> Self {
+  /// This collection, what `chosen` returns chosen, kept current.
+  pub fn derive_chosen(self, chosen: impl Fn() -> H::Bound + 'static) -> Self {
     self
       .roster
       .change_chosen(|controlled| controlled.derive(chosen));
@@ -496,8 +749,8 @@ impl<P: CollectionPolicy> Collection<P> {
     self
   }
 
-  /// This collection, asking `choose` for each member the reader chooses.
-  pub fn handle_choose(self, choose: impl Fn(Option<usize>) + 'static) -> Self {
+  /// This collection, asking `choose` for each choice the reader makes.
+  pub fn handle_choose(self, choose: impl Fn(H::Bound) + 'static) -> Self {
     self
       .roster
       .change_chosen(|controlled| controlled.handle(choose));
@@ -506,7 +759,7 @@ impl<P: CollectionPolicy> Collection<P> {
   }
 
   /// This collection, showing `chosen` and writing each choice into it.
-  pub fn bind_chosen(self, chosen: Signal<Option<usize>>) -> Self {
+  pub fn bind_chosen(self, chosen: Signal<H::Bound>) -> Self {
     self
       .roster
       .change_chosen(|controlled| controlled.bind_signal(chosen));
@@ -514,10 +767,10 @@ impl<P: CollectionPolicy> Collection<P> {
     self
   }
 
-  /// The behavior of its member `index`.
-  pub fn member(&self, index: usize) -> Member<P> {
+  /// The behavior of its member carrying `value`.
+  pub fn member(&self, value: H::Option) -> Member<P, H> {
     Member {
-      index,
+      value,
       roster: Rc::clone(&self.roster),
       pressed: Signal::new(false),
       policy: PhantomData,
@@ -525,7 +778,7 @@ impl<P: CollectionPolicy> Collection<P> {
   }
 }
 
-impl<P: CollectionPolicy> Behavior for Collection<P> {
+impl<P: CollectionPolicy, H: Held> Behavior for Collection<P, H> {
   fn role(&self) -> Role {
     P::GROUP
   }
@@ -539,51 +792,47 @@ impl<P: CollectionPolicy> Behavior for Collection<P> {
   }
 }
 
-/// A member's behavior: one of its collection's, by index, chosen through the roster it
-/// shares with the group.
+/// A member's behavior: one of its collection's, carrying a value, chosen through the roster
+/// it shares with the group.
 #[must_use]
-pub struct Member<P: CollectionPolicy> {
-  index: usize,
-  roster: Rc<Roster>,
+pub struct Member<P: CollectionPolicy, H: Held> {
+  value: H::Option,
+  roster: Rc<Roster<H>>,
   pressed: Signal<bool>,
   policy: PhantomData<P>,
 }
 
-impl<P: CollectionPolicy> Member<P> {
-  /// Its index in its collection.
+impl<P: CollectionPolicy, H: Held> Member<P, H> {
+  /// The value it carries.
   #[must_use]
-  pub const fn index(&self) -> usize {
-    self.index
+  pub const fn value(&self) -> &H::Option {
+    &self.value
   }
 
   fn is_chosen(&self) -> bool {
-    self.roster.chosen() == Some(self.index)
+    self.roster.is_chosen(&self.value)
   }
 
   fn choose(&self) {
     if P::COMMITS {
-      self.roster.commit(self.index);
+      self.roster.commit(&self.value);
     } else {
-      self.roster.choose(self.index);
+      self.roster.choose(&self.value);
     }
-  }
-
-  fn keys(&self) -> (usize, Option<usize>) {
-    (self.roster.count(), Some(self.index))
   }
 }
 
-impl<P: CollectionPolicy> Behavior for Member<P> {
+impl<P: CollectionPolicy, H: Held> Behavior for Member<P, H> {
   fn role(&self) -> Role {
     P::MEMBER
   }
 
   fn attach(&self, control: &ControlHandle) {
-    self.roster.register(self.index, control.clone());
+    self.roster.register(self.value.clone(), control.clone());
   }
 
-  fn on_click(&self, control: &ControlHandle) -> Prevent {
-    control.focus();
+  fn on_click(&self, _: &ControlHandle) -> Prevent {
+    self.roster.focus(&self.value);
     self.choose();
 
     Prevent::All
@@ -610,7 +859,7 @@ impl<P: CollectionPolicy> Behavior for Member<P> {
           return Prevent::All;
         }
         "Tab" => {
-          roster.choose(self.index);
+          roster.choose(&self.value);
 
           return Prevent::None;
         }
@@ -640,8 +889,15 @@ impl<P: CollectionPolicy> Behavior for Member<P> {
       }
     }
 
-    let (count, current) = untrack(|| self.keys());
-    let enabled = |index: usize| untrack(|| roster.is_enabled(index));
+    let options = roster.options();
+    let (count, current) = untrack(|| (options.count(), options.index_of(&self.value)));
+    let enabled = |index: usize| {
+      untrack(|| {
+        options
+          .value(index)
+          .is_some_and(|value| roster.is_enabled(&value))
+      })
+    };
     let mut keys = CollectionKeys::new(count, current, P::ORIENTATION)
       .with_wrap(P::WRAPS)
       .with_enabled(&enabled);
@@ -652,20 +908,23 @@ impl<P: CollectionPolicy> Behavior for Member<P> {
 
     let response = keys.key(event);
 
-    if let Some(target) = response.act {
-      roster.focus(target);
+    if let Some(target) = response
+      .act
+      .and_then(|target| untrack(|| options.value(target)))
+    {
+      roster.focus(&target);
 
       if P::CHOOSE_ON_MOVE {
-        roster.choose(target);
+        roster.choose(&target);
       }
     }
 
     response.verdict()
   }
 
-  fn on_pointer(&self, event: &PointerEvent, control: &ControlHandle) -> Prevent {
+  fn on_pointer(&self, event: &PointerEvent, _: &ControlHandle) -> Prevent {
     if P::COMMITS && event.phase == PointerPhase::Move {
-      control.focus();
+      self.roster.focus(&self.value);
     }
 
     Prevent::None
@@ -677,10 +936,10 @@ impl<P: CollectionPolicy> Behavior for Member<P> {
     }
   }
 
-  fn on_access(&self, request: AccessRequest, control: &ControlHandle) -> bool {
+  fn on_access(&self, request: AccessRequest, _: &ControlHandle) -> bool {
     match request {
       AccessRequest::Activate | AccessRequest::Toggle => {
-        control.focus();
+        self.roster.focus(&self.value);
         self.choose();
 
         true
@@ -701,7 +960,13 @@ impl<P: CollectionPolicy> Behavior for Member<P> {
   }
 
   fn focusable(&self) -> bool {
-    P::COMMITS || self.roster.stop() == Some(self.index)
+    let stop = if P::CHOOSE_ON_MOVE {
+      self.roster.stop()
+    } else {
+      self.roster.active().or_else(|| self.roster.stop())
+    };
+
+    stop.as_ref() == Some(&self.value)
   }
 
   fn state(&self) -> ControlState {

@@ -10,10 +10,12 @@
 pub use skene_foundation::view::{Keyboard, MenuEntry, controls::marks};
 use skene_foundation::{
   Color, Fill, Value,
+  behavior::{Choice, Chosen},
   view::{
-    self as base, ButtonBase, CheckboxBase, ContextMenuBase, ControlMembersBase, DecorationBase,
-    EditingBase, MenuItemBase, MotionBase, PickerBase, PickerItemBase, RadioBase, RadioGroupBase,
-    RunBase, RunWithEntries, SliderBase, TextEditorBase, TextFieldBase, ToggleBase, Wraps,
+    self as base, ButtonBase, CheckboxBase, ChoiceBase, ContextMenuBase, ControlMembersBase,
+    DecorationBase, EditingBase, ListboxBase, ListboxItemBase, MenuItemBase, MotionBase,
+    OptionsBase, PickerBase, PickerItemBase, RadioBase, RadioGroupBase, RunBase, RunWithEntries,
+    SliderBase, TextEditorBase, TextFieldBase, ToggleBase, Wraps,
   },
   wraps,
 };
@@ -236,28 +238,51 @@ impl Radio {
 
 /// One choice of a few, all shown, with its caption: Skene's radio group, drawn on every
 /// platform: its caption above a column of radios 6 pixels apart, each from its option
-/// builder.
+/// builder. It holds a `T`, each option carrying one.
 ///
 /// The group is one tab stop, on its chosen radio (its first enabled where none is); the
 /// arrows move to the next or the previous enabled radio, wrapping, and choose it; `Space` and
 /// a click choose. A disabled group disables its radios. It is controlled: it shows what its
-/// `derive_chosen` returns, asks its `handle_choose` for each choice, and shows the truth.
+/// `derive_chosen` returns, asks its `handle_choose` for each choice, and shows the truth; a
+/// group that starts with nothing chosen holds an `Option`, its options tagged `Some(..)`. Its
+/// options end its chain.
+///
+/// ```
+/// use skene_gui::prelude::*;
+///
+/// #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+/// enum Size {
+///   Small,
+///   Large,
+/// }
+///
+/// let size = Signal::new(Size::Small);
+///
+/// RadioGroup::new("Size")
+///   .bind_chosen(size)
+///   .add_option(Size::Small, "Small")
+///   .add_option(Size::Large, "Large");
+/// ```
 #[must_use]
-pub struct RadioGroup(base::RadioGroup<Active>);
+pub struct RadioGroup<T: Choice>(base::RadioGroup<T, Active>);
 
-wraps!([] RadioGroup => base::RadioGroup<Active>, Active);
+wraps!([T: Choice] RadioGroup<T> => base::RadioGroup<T, Active>, Active);
 
-impl RadioGroupBase<Active> for RadioGroup {}
+impl<T: Choice> RadioGroupBase<T, Active> for RadioGroup<T> {}
 
-impl ControlMembersBase<Active> for RadioGroup {}
+impl<T: Choice> ChoiceBase<T> for RadioGroup<T> {}
 
-impl DecorationBase for RadioGroup {}
+impl<T: Choice> OptionsBase<T, Active> for RadioGroup<T> {}
 
-impl RunBase for RadioGroup {}
+impl<T: Choice> ControlMembersBase<Active> for RadioGroup<T> {}
 
-impl RunWithEntries for RadioGroup {}
+impl<T: Choice> DecorationBase for RadioGroup<T> {}
 
-impl MotionBase for RadioGroup {}
+impl<T: Choice> RunBase for RadioGroup<T> {}
+
+impl<T: Choice> RunWithEntries for RadioGroup<T> {}
+
+impl<T: Choice> MotionBase for RadioGroup<T> {}
 
 /// A one-line text entry: Skene's text field, drawn on every platform, the platform's own text
 /// view whose box the style decorates: its input methods, its clipboard and its selection
@@ -350,48 +375,147 @@ impl PickerItem {
 }
 
 /// One choice of a list, shown closed, with its caption: Skene's picker, drawn on every
-/// platform. Its options are real controls in a list box in an `Overlay` below it, each from
-/// its item builder.
+/// platform. It holds a `T`, each option carrying one; its options are real controls in a list
+/// box in an `Overlay` below it, each from its item builder.
 ///
 /// Closed, `Space`, `Alt` with an arrow down and `F4` open it, the arrows choose without
 /// opening, and typing finds an option by its name. Open, focus is on its options: the arrows
 /// move it, `Enter`, `Space` and a click choose and close, `Escape` closes, `Tab` chooses and
 /// moves on. It is controlled: it shows what its `derive_chosen` returns, asks its
-/// `handle_choose` for each choice, and shows the truth.
+/// `handle_choose` for each choice, and shows the truth; a chosen value no option carries
+/// shows nothing, and a picker that starts with nothing chosen holds an `Option`, its options
+/// tagged `Some(..)`. Its options end its chain.
 ///
 /// Its caption sits before it among its siblings, a press on it focusing the picker. Its face:
 /// 34 pixels tall at least, padded 7 above and below and 14 at the sides, its corners rounded
 /// by 8, filled with the control color and its hover and pressed variants (pressed while
-/// open), the chosen option's text taking the room the face leaves, as wide as the widest
+/// open), the chosen option's name taking the room the face leaves, as wide as the widest
 /// option's, then its mark ([`Picker::default_mark`]); a ring of 2 in the accent while focus
 /// shows. Its list: [`Picker::default_list`].
+///
+/// ```
+/// use skene_gui::prelude::*;
+///
+/// #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+/// enum Fruit {
+///   Apple,
+///   Cherry,
+/// }
+///
+/// let fruit = Signal::new(None::<Fruit>);
+///
+/// Picker::new("Fruit")
+///   .bind_chosen(fruit)
+///   .add_option(None, "None")
+///   .derive_options(
+///     || vec![Some(Fruit::Apple), Some(Fruit::Cherry)],
+///     |fruit| format!("{:?}", fruit.unwrap()),
+///   );
+/// ```
 #[must_use]
-pub struct Picker(base::Picker<Active>);
+pub struct Picker<T: Choice>(base::Picker<T, Active>);
 
-wraps!([] Picker => base::Picker<Active>, Active);
+wraps!([T: Choice] Picker<T> => base::Picker<T, Active>, Active);
 
-impl PickerBase<Active> for Picker {}
+impl<T: Choice> PickerBase<T, Active> for Picker<T> {}
 
-impl ControlMembersBase<Active> for Picker {}
+impl<T: Choice> ChoiceBase<T> for Picker<T> {}
 
-impl DecorationBase for Picker {}
+impl<T: Choice> OptionsBase<T, Active> for Picker<T> {}
 
-impl RunBase for Picker {}
+impl<T: Choice> ControlMembersBase<Active> for Picker<T> {}
 
-impl RunWithEntries for Picker {}
+impl<T: Choice> DecorationBase for Picker<T> {}
 
-impl MotionBase for Picker {}
+impl<T: Choice> RunBase for Picker<T> {}
 
-impl Picker {
+impl<T: Choice> RunWithEntries for Picker<T> {}
+
+impl<T: Choice> MotionBase for Picker<T> {}
+
+impl<T: Choice> Picker<T> {
   /// The default mark: [`marks::chevron`], 12 by 8 pixels.
   pub fn default_mark() -> Painted {
-    Painted::wrap(base::Picker::<Active>::default_mark())
+    Painted::wrap(base::Picker::<T, Active>::default_mark())
   }
 
   /// The default list: the field color inside a border of 1, its corners rounded by 8, padded
   /// 4.
   pub fn default_list() -> Container {
-    Container::wrap(base::Picker::<Active>::default_list())
+    Container::wrap(base::Picker::<T, Active>::default_list())
+  }
+}
+
+/// One option of a [`Listbox`], as its item builder makes it from its caption.
+///
+/// Its defaults: a row 30 pixels tall at least, padded 12 at its sides, its corners rounded by
+/// 6, filled with the control's hover color while focus is on it and with the accent while
+/// chosen; a ring of 2 in the accent while focus shows.
+#[must_use]
+pub struct ListboxItem(base::ListboxItem<Active>);
+
+wraps!(wrapper [] ListboxItem => base::ListboxItem<Active>);
+
+impl ListboxItemBase<Active> for ListboxItem {}
+
+impl ControlMembersBase<Active> for ListboxItem {}
+
+impl DecorationBase for ListboxItem {}
+
+impl RunBase for ListboxItem {}
+
+impl RunWithEntries for ListboxItem {}
+
+impl MotionBase for ListboxItem {}
+
+/// Options all shown, with its caption: Skene's list box, drawn on every platform. It holds
+/// `C`, what it has chosen: an `Option` of its options' values for one choice, a `HashSet` or a
+/// `BTreeSet` of them for several.
+///
+/// The list box is one tab stop, on the option focus was last on (its chosen one, else its
+/// first enabled, where focus has not been in it); the arrows, the page keys, `Home` and `End`
+/// move focus without choosing; `Enter`, `Space` and a click choose the focused option: alone
+/// for one choice, added or taken away for several. It is controlled: it shows what its
+/// `derive_chosen` returns, asks its `handle_choose` for each choice, and shows the truth. Its
+/// options end its chain.
+///
+/// ```
+/// use std::collections::BTreeSet;
+///
+/// use skene_gui::prelude::*;
+///
+/// let tags = Signal::new(BTreeSet::from([2_u32]));
+///
+/// Listbox::new("Tags")
+///   .bind_chosen(tags)
+///   .set_options([(1, "Home"), (2, "Work"), (3, "Travel")]);
+/// ```
+#[must_use]
+pub struct Listbox<C: Chosen>(base::Listbox<C, Active>);
+
+wraps!([C: Chosen] Listbox<C> => base::Listbox<C, Active>, Active);
+
+impl<C: Chosen> ListboxBase<C, Active> for Listbox<C> {}
+
+impl<C: Chosen> ChoiceBase<C> for Listbox<C> {}
+
+impl<C: Chosen> OptionsBase<C::Value, Active> for Listbox<C> {}
+
+impl<C: Chosen> ControlMembersBase<Active> for Listbox<C> {}
+
+impl<C: Chosen> DecorationBase for Listbox<C> {}
+
+impl<C: Chosen> RunBase for Listbox<C> {}
+
+impl<C: Chosen> RunWithEntries for Listbox<C> {}
+
+impl<C: Chosen> MotionBase for Listbox<C> {}
+
+impl<C: Chosen> Listbox<C> {
+  /// The default list: the field color inside a border of 1, its corners rounded by 8, padded
+  /// 4.
+  pub fn default_list() -> Container {
+    Container::wrap(base::Listbox::<C, Active>::default_list())
   }
 }
 

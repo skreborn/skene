@@ -11,7 +11,9 @@
 
 mod button;
 mod checkbox;
+mod choice;
 mod context_menu;
+mod listbox;
 pub mod marks;
 mod picker;
 mod radio;
@@ -22,8 +24,10 @@ mod toggle;
 pub use self::{
   button::{Button, ButtonBase},
   checkbox::{Checkbox, CheckboxBase},
+  choice::{ChoiceBase, GroupOptions, HasChoice, HasOptions, OptionSegment, OptionsBase},
   context_menu::{ContextMenu, ContextMenuBase, MenuEntry, MenuItem, MenuItemBase},
-  picker::{BasicPicker, Picker, PickerBase, PickerItem, PickerItemBase},
+  listbox::{Listbox, ListboxBase, ListboxItem, ListboxItemBase},
+  picker::{Picker, PickerBase, PickerItem, PickerItemBase},
   radio::{Radio, RadioBase, RadioGroup, RadioGroupBase},
   slider::{Slider, SliderBase},
   text_field::{
@@ -31,11 +35,20 @@ pub use self::{
   },
   toggle::{Toggle, ToggleBase},
 };
-use crate::{Ring, State, Value, When as _};
+use crate::{Ring, State, Value, When as _, behavior::Behavior, seam::access::Role};
 
 /// The ring a built-in shows while focus shows on it: two pixels wide, at its edge.
 fn focus_ring() -> Value<Ring> {
   Ring::NONE.when(State::FocusVisible, Ring::new(2))
+}
+
+/// A styled member's behavior until its group gives it one as it builds it.
+struct Pending;
+
+impl Behavior for Pending {
+  fn role(&self) -> Role {
+    Role::Generic
+  }
 }
 
 /// Implements the surfaces every control shares for a styled control whose root is the

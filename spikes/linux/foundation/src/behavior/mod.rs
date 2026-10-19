@@ -19,8 +19,10 @@
 //! - [`Toggle`]: a switch or a checkbox: `Space` on its release, a click flips it.
 //! - [`Slider`]: a value on a range: the arrows step it, the page keys by a tenth, `Home` and
 //!   `End` to its ends, a press jumps to where it lands and a drag follows the pointer.
-//! - [`Collection`] and its [`Member`]s: one chosen of a group (a radio group, a list box):
-//!   the arrows move to the next enabled member, wrapping where the policy wraps.
+//! - [`Collection`] and its [`Member`]s: a group whose members each carry a value of the app's
+//!   own type ([`Choice`]), what it holds chosen ([`Held`]: one value, or a list box's
+//!   [`Chosen`]): the arrows move to the next enabled member in its options' order
+//!   ([`Options`]), wrapping where the policy wraps.
 //! - [`Popup`]: a closed face that opens a list of options (a picker), with [`TypeAhead`].
 //! - [`TextEntry`]: a text entry: the realization's own text view, `Enter` submitting an
 //!   entry of one line.
@@ -44,8 +46,9 @@ mod tests;
 pub use self::{
   activate::{Activate, ActivateKeys},
   collection::{
-    Collection, CollectionKeys, CollectionPolicy, Listbox, ListboxOption, ListboxPolicy, Member,
-    Menu, MenuOption, MenuPolicy, Orientation, Radio, RadioGroup, RadioPolicy, Roster,
+    Choice, Chosen, Collection, CollectionKeys, CollectionPolicy, Held, Listbox, ListboxOption,
+    ListboxPolicy, Member, Menu, MenuOption, MenuPolicy, One, Options, Orientation, Radio,
+    RadioGroup, RadioPolicy, Roster,
   },
   controlled::Controlled,
   handle::{ContentHandler, ContentReader, ControlHandle, ControlOps},

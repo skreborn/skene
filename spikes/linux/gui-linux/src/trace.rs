@@ -196,8 +196,8 @@ pub(crate) fn activate(node: &Node) {
   log(|| format!("[activate] {}", describe(node)));
 }
 
-/// Logs a key dispatched: one that types a character into a secure entry as a mark, its
-/// physical key left out.
+/// Logs a key dispatched with the modifiers held: one that types a character into a secure
+/// entry as a mark, its physical key left out.
 pub(crate) fn key(event: &KeyEvent, target: &Node) {
   log(|| {
     let typed =
@@ -208,8 +208,20 @@ pub(crate) fn key(event: &KeyEvent, target: &Node) {
       (event.key.as_str(), event.code.as_str())
     };
 
+    let held = event.modifiers;
+    let held = [
+      (held.control, "Control+"),
+      (held.alt, "Alt+"),
+      (held.shift, "Shift+"),
+      (held.meta, "Meta+"),
+    ]
+    .iter()
+    .filter(|(on, _)| *on)
+    .map(|(_, name)| *name)
+    .collect::<String>();
+
     format!(
-      "[key] {key:?} {code:?} {}{} to {}",
+      "[key] {held}{key:?} {code:?} {}{} to {}",
       if event.down { "down" } else { "up" },
       if event.repeat { " repeat" } else { "" },
       describe(target)

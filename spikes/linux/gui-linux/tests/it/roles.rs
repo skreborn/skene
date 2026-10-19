@@ -13,7 +13,7 @@ use skene_gui::{
 fn page() -> impl View {
   let wifi = Signal::new(false);
   let remember = Signal::new(false);
-  let size = Signal::new(Some(0_usize));
+  let size = Signal::new("Small");
   let name = Signal::new(String::new());
   let notes = Signal::new(String::new());
 
@@ -31,8 +31,8 @@ fn page() -> impl View {
     )
     .add_child(
       Picker::new("Size")
-        .set_options(["Small", "Large"])
-        .bind_chosen(size),
+        .bind_chosen(size)
+        .set_options(["Small", "Large"].map(|size| (size, size))),
     )
     .add_child(TextField::new("Name").bind_text(name))
     .add_child(TextEditor::new("Notes").bind_text(notes))

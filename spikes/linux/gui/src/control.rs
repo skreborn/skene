@@ -69,22 +69,24 @@ pub type BasicButton = Control<behavior::Activate>;
 pub type BasicCheckbox = Control<behavior::Toggle>;
 /// A slider with no style of its own: a [`Control`] over [`behavior::Slider`].
 pub type BasicSlider = Control<behavior::Slider>;
-/// A radio group with no style of its own: a [`Control`] over [`behavior::RadioGroup`].
-pub type BasicRadioGroup = Control<behavior::RadioGroup>;
-/// A radio with no style of its own: a [`Control`] over [`behavior::Radio`].
-pub type BasicRadio = Control<behavior::Radio>;
-/// A list box with no style of its own: a [`Control`] over [`behavior::Listbox`].
-pub type BasicListbox = Control<behavior::Listbox>;
-/// A list box's option with no style of its own: a [`Control`] over
+/// A radio group holding a `T`, with no style of its own: a [`Control`] over
+/// [`behavior::RadioGroup`].
+pub type BasicRadioGroup<T> = Control<behavior::RadioGroup<T>>;
+/// A radio carrying a `T`, with no style of its own: a [`Control`] over [`behavior::Radio`].
+pub type BasicRadio<T> = Control<behavior::Radio<T>>;
+/// A list box choosing `C`, with no style of its own: a [`Control`] over
+/// [`behavior::Listbox`].
+pub type BasicListbox<C> = Control<behavior::Listbox<C>>;
+/// A list box's option, with no style of its own: a [`Control`] over
 /// [`behavior::ListboxOption`].
-pub type BasicListboxOption = Control<behavior::ListboxOption>;
+pub type BasicListboxOption<C> = Control<behavior::ListboxOption<C>>;
 /// A text field with no style of its own: a [`Control`] over a one-line
 /// [`behavior::TextEntry`].
 pub type BasicTextField = Control<behavior::TextEntry>;
 /// A text editor with no style of its own: a [`Control`] over a [`behavior::TextEntry`] of
 /// several lines.
 pub type BasicTextEditor = Control<behavior::TextEntry>;
-/// A picker's face with no style of its own: a [`Control`] over a [`behavior::Popup`],
-/// composed by its user with an `Overlay` holding a [`BasicListbox`] of
+/// A picker's face holding a `T`, with no style of its own: a [`Control`] over a
+/// [`behavior::Popup`], composed by its user with an `Overlay` holding a [`BasicListbox`] of
 /// [`BasicListboxOption`]s over the same roster.
-pub type BasicPicker = Control<behavior::Popup>;
+pub type BasicPicker<T> = Control<behavior::Popup<T>>;

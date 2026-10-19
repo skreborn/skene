@@ -101,6 +101,38 @@ struct Tree<R: Realization> {
   autofocus: Vec<NodeId>,
 }
 
+impl<R: Realization> Tree<R> {
+  /// Where `node` is in the scene beneath `root` (its root where none): its place among its
+  /// siblings at each depth, outermost first; none where it is not beneath `root`.
+  fn place(&self, node: NodeId, root: Option<NodeId>) -> Option<Vec<usize>> {
+    let mut path = Vec::new();
+    let mut at = node;
+
+    while Some(at) != root {
+      let Some(parent) = self.scene.parent(at) else {
+        break;
+      };
+
+      path.push(
+        self
+          .scene
+          .children(parent)
+          .iter()
+          .position(|child| *child == at)?,
+      );
+      at = parent;
+    }
+
+    if root.is_some_and(|root| at != root) {
+      return None;
+    }
+
+    path.reverse();
+
+    Some(path)
+  }
+}
+
 thread_local! {
   static TREES: RefCell<HashMap<TypeId, Box<dyn Any>>> = RefCell::new(HashMap::new());
 }
@@ -988,36 +1020,27 @@ pub fn set_autofocus<R: Realization>(id: NodeId) {
 #[must_use]
 pub fn autofocus_in<R: Realization>(root: NodeId) -> Vec<NodeId> {
   with::<R, _>(|tree| {
-    let place = |node: NodeId| -> Option<Vec<usize>> {
-      let mut path = Vec::new();
-      let mut at = node;
-
-      while at != root {
-        let parent = tree.scene.parent(at)?;
-
-        path.push(
-          tree
-            .scene
-            .children(parent)
-            .iter()
-            .position(|child| *child == at)?,
-        );
-        at = parent;
-      }
-
-      path.reverse();
-
-      Some(path)
-    };
     let mut found: Vec<(Vec<usize>, NodeId)> = tree
       .autofocus
       .iter()
-      .filter_map(|node| Some((place(*node)?, *node)))
+      .filter_map(|node| Some((tree.place(*node, Some(root))?, *node)))
       .collect();
 
     found.sort_by(|a, b| a.0.cmp(&b.0));
 
     found.into_iter().map(|(_, node)| node).collect()
+  })
+}
+
+/// How `a` and `b` are ordered in the scene: where each is met in a walk from the root; a
+/// node outside the scene after every node in it.
+#[must_use]
+pub fn scene_order<R: Realization>(a: NodeId, b: NodeId) -> std::cmp::Ordering {
+  with::<R, _>(|tree| match (tree.place(a, None), tree.place(b, None)) {
+    (Some(a), Some(b)) => a.cmp(&b),
+    (Some(_), None) => std::cmp::Ordering::Less,
+    (None, Some(_)) => std::cmp::Ordering::Greater,
+    (None, None) => std::cmp::Ordering::Equal,
   })
 }
 

@@ -131,8 +131,8 @@ pub use crate::{
     BasicRadioGroup, BasicSlider, BasicTextEditor, BasicTextField, Control,
   },
   controls::{
-    Button, Checkbox, ContextMenu, Keyboard, MenuEntry, MenuItem, Picker, PickerItem, Radio,
-    RadioGroup, Slider, TextEditor, TextField, Toggle, marks,
+    Button, Checkbox, ContextMenu, Keyboard, Listbox, ListboxItem, MenuEntry, MenuItem, Picker,
+    PickerItem, Radio, RadioGroup, Slider, TextEditor, TextField, Toggle, marks,
   },
   overlay::Overlay,
   painted::{Canvas, Paint, Painted},
@@ -141,18 +141,20 @@ pub use crate::{
   views::{Column, Container, Grid, Image, Row, Scroll, ScrollAxes, Stack, Text, Theme},
   wrappers::{Flexible, GridCell, Pinned},
 };
+/// What a choice's options carry and what a list box chooses: a value of the app's own type.
+pub use skene_foundation::behavior::{Choice, Chosen};
 /// The traits the views take their members from, each member written once in the
 /// foundation: a view's own (`ContainerBase`), a surface several views share
 /// (`DecorationBase`, `RunBase`, `MotionBase`, `ControlMembersBase`), and what a capability
 /// adds (`RunWithEntries`). The prelude carries them, so a view's members are in scope where
 /// its type is.
 pub use skene_foundation::view::{
-  AnyKind, AsPartBase, ButtonBase, CheckboxBase, ColumnBase, ContainerBase, ContextMenuBase,
-  ControlBase, ControlMembersBase, DecorationBase, DerivedBase, EditingBase, FlexibleBase,
-  GridBase, GridCellBase, ImageBase, MenuItemBase, MotionBase, OverlayBase, PaintedBase,
-  PickerBase, PickerItemBase, PinnedBase, RadioBase, RadioGroupBase, RowBase, RunBase,
-  RunWithEntries, ScrollBase, SliderBase, StackBase, TextBase, TextEditorBase, TextFieldBase,
-  ThemeBase, ToggleBase,
+  AnyKind, AsPartBase, ButtonBase, CheckboxBase, ChoiceBase, ColumnBase, ContainerBase,
+  ContextMenuBase, ControlBase, ControlMembersBase, DecorationBase, DerivedBase, EditingBase,
+  FlexibleBase, GridBase, GridCellBase, ImageBase, ListboxBase, ListboxItemBase, MenuItemBase,
+  MotionBase, OptionsBase, OverlayBase, PaintedBase, PickerBase, PickerItemBase, PinnedBase,
+  RadioBase, RadioGroupBase, RowBase, RunBase, RunWithEntries, ScrollBase, SliderBase, StackBase,
+  TextBase, TextEditorBase, TextFieldBase, ThemeBase, ToggleBase,
 };
 
 /// The realization this build is for: what a library's own view implements

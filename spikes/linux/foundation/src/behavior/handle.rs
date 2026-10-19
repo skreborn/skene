@@ -1,7 +1,7 @@
 //! The handle a control hands its behavior: its node, and the realization's operations on it
 //! as plain functions.
 
-use std::{rc::Rc, time::Duration};
+use std::{cmp::Ordering, rc::Rc, time::Duration};
 
 use crate::{
   NodeId, Signal,
@@ -38,6 +38,8 @@ pub struct ControlOps {
   pub bind: fn(NodeId, Content, ContentReader),
   /// Makes a content controlled.
   pub control: fn(NodeId, Content, ContentReader, ContentHandler),
+  /// Two nodes' order in the scene: where each is met in a walk from the root.
+  pub order: fn(NodeId, NodeId) -> Ordering,
 }
 
 impl ControlOps {
@@ -51,6 +53,7 @@ impl ControlOps {
       schedule: R::schedule,
       bind: tree::bind_value::<R>,
       control: tree::control_value::<R>,
+      order: tree::scene_order::<R>,
     }
   }
 }
@@ -167,6 +170,12 @@ impl ControlHandle {
         }
       }),
     );
+  }
+
+  /// How two nodes are ordered in the scene: where each is met in a walk from the root.
+  #[must_use]
+  pub const fn scene_order(&self) -> fn(NodeId, NodeId) -> Ordering {
+    self.ops.order
   }
 
   /// Re-reads the control's reports (its state, its facts, its focus) for a change no signal

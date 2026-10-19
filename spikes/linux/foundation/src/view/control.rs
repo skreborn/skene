@@ -18,8 +18,9 @@ use crate::{
     tree::{self, Bubbling},
   },
   view::{
-    Access, AnyKind, Child, ChildOf, Cx, DecorationBase, HasRecord, MotionBase, Node, NodeHandle,
-    Row, RunBase, RunWithEntries, Text, TextBase, View, Wraps, trait_properties, wraps_itself,
+    Access, AnyKind, AnyView, Child, ChildOf, Cx, DecorationBase, HasRecord, MotionBase, Node,
+    NodeHandle, Row, RunBase, RunWithEntries, Text, TextBase, View, Wraps, trait_properties,
+    wraps_itself,
   },
 };
 
@@ -69,6 +70,27 @@ impl<R: Realization> Label<R> {
   #[must_use]
   pub fn name(&self) -> Option<Rc<str>> {
     self.name.as_ref().map(|name| name())
+  }
+
+  /// What supplies its name, to read apart from the caption: a picker's face showing the
+  /// chosen option's name before its option is built.
+  #[must_use]
+  pub fn name_source(&self) -> Option<Rc<dyn Fn() -> Rc<str>>> {
+    self.name.clone()
+  }
+
+  /// This caption with its view placed in what `wrap` makes of it, its name kept: a styled
+  /// control placing a caption it was given (a `Flexible` taking the room its row leaves).
+  pub fn wrap_view<V: ChildOf<Row<R>, R>>(
+    self,
+    wrap: impl FnOnce(AnyView<R>) -> V + 'static,
+  ) -> Self {
+    let view = self.view;
+
+    Self {
+      view: Child::of::<Row<R>>(wrap(AnyView(view))),
+      ..self
+    }
   }
 }
 
@@ -442,6 +464,20 @@ pub trait ControlBase<B: Behavior, R: Realization>: Wraps<Inner = Control<B, R>>
   }
 }
 
+impl<B: Behavior, R: Realization> Control<B, R> {
+  /// This control over `behavior` in place of its own, everything else it carries kept: a
+  /// styled member given its behavior by its group as the group builds it.
+  pub fn with_behavior<C: Behavior>(self, behavior: C) -> Control<C, R> {
+    Control {
+      behavior,
+      axis: self.axis,
+      members: self.members,
+      parts: self.parts,
+      child: self.child,
+    }
+  }
+}
+
 impl<B: Behavior, R: Realization> ControlBase<B, R> for Control<B, R> {}
 
 impl<B: Behavior, R: Realization> ControlMembersBase<R> for Control<B, R> {}
@@ -707,15 +743,21 @@ pub type BasicButton<R> = Control<behavior::Activate, R>;
 pub type BasicCheckbox<R> = Control<behavior::Toggle, R>;
 /// A slider with no style of its own: a [`Control`] over [`behavior::Slider`].
 pub type BasicSlider<R> = Control<behavior::Slider, R>;
-/// A radio group with no style of its own: a [`Control`] over [`behavior::RadioGroup`].
-pub type BasicRadioGroup<R> = Control<behavior::RadioGroup, R>;
-/// A radio with no style of its own: a [`Control`] over [`behavior::Radio`].
-pub type BasicRadio<R> = Control<behavior::Radio, R>;
-/// A list box with no style of its own: a [`Control`] over [`behavior::Listbox`].
-pub type BasicListbox<R> = Control<behavior::Listbox, R>;
-/// A list box's option with no style of its own: a [`Control`] over
+/// A radio group holding a `T`, with no style of its own: a [`Control`] over
+/// [`behavior::RadioGroup`].
+pub type BasicRadioGroup<T, R> = Control<behavior::RadioGroup<T>, R>;
+/// A radio carrying a `T`, with no style of its own: a [`Control`] over [`behavior::Radio`].
+pub type BasicRadio<T, R> = Control<behavior::Radio<T>, R>;
+/// A list box choosing `C`, with no style of its own: a [`Control`] over
+/// [`behavior::Listbox`].
+pub type BasicListbox<C, R> = Control<behavior::Listbox<C>, R>;
+/// A list box's option, with no style of its own: a [`Control`] over
 /// [`behavior::ListboxOption`].
-pub type BasicListboxOption<R> = Control<behavior::ListboxOption, R>;
+pub type BasicListboxOption<C, R> = Control<behavior::ListboxOption<C>, R>;
+/// A picker's face holding a `T`, with no style of its own: a [`Control`] over a
+/// [`behavior::Popup`], composed by its user with an `Overlay` holding a [`BasicListbox`] of
+/// [`BasicListboxOption`]s over the same roster.
+pub type BasicPicker<T, R> = Control<behavior::Popup<T>, R>;
 /// A text field with no style of its own: a [`Control`] over a one-line
 /// [`behavior::TextEntry`].
 pub type BasicTextField<R> = Control<behavior::TextEntry, R>;

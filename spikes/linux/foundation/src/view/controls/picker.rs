@@ -3,8 +3,8 @@
 use std::rc::Rc;
 
 use crate::{
-  AxisAlignment, Border, Color, Dimension, Flexibility, Inset, Signal, State, SystemColors, Value,
-  behavior::{self, Listbox, Popup},
+  AxisAlignment, Border, Color, Dimension, Flexibility, Inset, State, SystemColors, Value,
+  behavior::{Choice, Controlled, Listbox, One, Options as _, Popup},
   layout::Axis,
   seam::{
     Realization,
@@ -15,14 +15,18 @@ use crate::{
     ControlBase, ControlMembersBase, Cx, DecorationBase, Flexible, FlexibleBase, Label, Node,
     Overlay, OverlayBase, Painted, PaintedBase, RunBase, Scroll, ScrollAxes, ScrollBase, Text,
     TextBase, View, Wraps,
-    controls::{control_surfaces, focus_ring, marks},
+    controls::{
+      Pending,
+      choice::{GroupOptions, HasChoice, HasOptions, OptionSegment},
+      control_surfaces, focus_ring, marks,
+    },
     wraps_itself,
   },
 };
 
-/// One option of a [`Picker`]'s list, as its item builder makes it: its text, taking the room
-/// its row leaves, then its mark ([`PickerItem::default_mark`]). Its list gives it its behavior
-/// ([`crate::behavior::ListboxOption`]) as it builds it; its text is its name.
+/// One option of a [`Picker`]'s list, as its item builder makes it: its caption, taking the
+/// room its row leaves, then its mark ([`PickerItem::default_mark`]). Its list gives it its
+/// behavior and its value as it builds it.
 ///
 /// Its defaults: a row 30 pixels tall at least, padded 12 before its text and 6 after its
 /// mark, its corners rounded by 6, its text in [`SystemColors::INK`], filled with
@@ -30,8 +34,8 @@ use crate::{
 /// it).
 #[must_use]
 pub struct PickerItem<R: Realization> {
-  /// The control it composes, its defaults set, over a behavior its list replaces.
-  control: crate::view::Control<behavior::ListboxOption, R>,
+  /// The control it composes, its defaults set, given its behavior by its list.
+  control: crate::view::Control<Pending, R>,
   /// The mark shown while it is chosen.
   mark: AnyView<R>,
 }
@@ -50,30 +54,29 @@ impl<R: Realization> PickerItem<R> {
   }
 
   /// The control this option is, over `behavior`.
-  fn into_control(
-    self,
-    behavior: behavior::ListboxOption,
-  ) -> crate::view::Control<behavior::ListboxOption, R> {
+  fn into_control<B: crate::behavior::Behavior>(self, behavior: B) -> crate::view::Control<B, R> {
     self
       .control
-      .map_behavior(|_| behavior)
+      .with_behavior(behavior)
       .add_part(Part::Mark, self.mark)
   }
 }
 
 /// What a [`PickerItem`] carries beside every control's members: its mark.
 pub trait PickerItemBase<R: Realization>: Wraps<Inner = PickerItem<R>> {
-  /// An option labelled `label`.
-  fn new(label: impl Into<String>) -> Self {
-    let label: String = label.into();
-    let text = Flexible::new()
-      .set_flexibility(Flexibility {
-        grow: 1.,
-        shrink: 1.,
-        initial: Dimension::Auto,
-      })
-      .set_child(Text::<R>::new(label.clone()).set_max_lines(1));
-    let control = crate::view::Control::new(Listbox::new().member(0))
+  /// An option captioned by `label`: a text names it, a view through [`Label::set_name`]. The
+  /// caption takes the room the row leaves.
+  fn new(label: impl Into<Label<R>>) -> Self {
+    let label = label.into().wrap_view(|view| {
+      Flexible::new()
+        .set_flexibility(Flexibility {
+          grow: 1.,
+          shrink: 1.,
+          initial: Dimension::Auto,
+        })
+        .set_child(view)
+    });
+    let control = crate::view::Control::new(Pending)
       .set_min_height(30)
       .set_padding(Inset::new(0, 6, 0, 12))
       .set_corner_radius(6)
@@ -84,7 +87,7 @@ pub trait PickerItemBase<R: Realization>: Wraps<Inner = PickerItem<R>> {
         Value::from(Color::TRANSPARENT).when(State::Focused, SystemColors::CONTROL_HOVER),
       )
       .set_label_placement(LabelPlacement::Leading)
-      .set_label(Label::new(text).set_name(label));
+      .set_label(label);
 
     Self::wrap(PickerItem {
       control,
@@ -103,54 +106,66 @@ pub trait PickerItemBase<R: Realization>: Wraps<Inner = PickerItem<R>> {
 
 impl<R: Realization> PickerItemBase<R> for PickerItem<R> {}
 
-/// A picker's face with no style of its own: a [`crate::view::Control`] over a [`Popup`],
-/// composed by its user with an [`Overlay`] holding a [`crate::view::BasicListbox`] of
-/// [`crate::view::BasicListboxOption`]s over the same roster.
-pub type BasicPicker<R> = crate::view::Control<Popup, R>;
-
-/// What makes a picker's option from its index and its text.
-type ItemBuilder<R> = Rc<dyn Fn(usize, &str) -> PickerItem<R>>;
+/// What makes a picker's option from its value and its caption.
+type ItemBuilder<T, R> = Rc<dyn Fn(&T, Label<R>) -> PickerItem<R>>;
 
 /// One choice of a list, shown closed, with its caption: Skene's picker, drawn on every
-/// platform. Its face is a [`crate::view::Control`] over a [`Popup`]; its options are real
-/// controls in a list box in an [`Overlay`] below it, each from its item builder
-/// ([`PickerBase::set_item_builder`]).
+/// platform. It holds a `T`, each option carrying one; its face is a [`crate::view::Control`]
+/// over a [`Popup`], and its options are real controls in a list box in an [`Overlay`] below
+/// it, each from its item builder ([`PickerBase::set_item_builder`]).
 ///
 /// Closed, `Space`, `Alt` with an arrow down and `F4` open it, the arrows choose without
 /// opening, and typing finds an option by its name. Open, focus is on its options: the arrows
 /// move it, `Enter`, `Space` and a click choose and close, `Escape` closes, `Tab` chooses and
 /// moves on.
 ///
-/// It is controlled: it shows what [`PickerBase::derive_chosen`] returns, asks
-/// [`PickerBase::handle_choose`] for each choice, and shows the truth.
+/// It is controlled: it shows what [`ChoiceBase::derive_chosen`] returns, asks
+/// [`ChoiceBase::handle_choose`] for each choice, and shows the truth. A chosen value no option
+/// carries shows nothing; a picker that starts with nothing chosen holds an `Option`, its
+/// options tagged `Some(..)`.
 ///
 /// Its caption sits before it among its siblings, a press on it focusing the picker. Its
 /// face: 34 pixels tall at least, padded 7 above and below and 14 at the sides, its corners
 /// rounded by 8, filled with [`SystemColors::CONTROL`] and its hover and pressed variants
-/// (pressed while open), the chosen option's text taking the room the face leaves, as wide
+/// (pressed while open), the chosen option's name taking the room the face leaves, as wide
 /// as the widest option's, then its mark ([`Picker::default_mark`]); a ring of 2 in the
 /// accent while focus shows. Its list: [`Picker::default_list`].
+///
+/// [`ChoiceBase::derive_chosen`]: crate::view::ChoiceBase::derive_chosen
+/// [`ChoiceBase::handle_choose`]: crate::view::ChoiceBase::handle_choose
 #[must_use]
-pub struct Picker<R: Realization> {
-  /// The face it composes, its defaults set, over a behavior replaced as it is built.
-  control: crate::view::Control<Popup, R>,
+pub struct Picker<T: Choice, R: Realization> {
+  /// The face it composes, its defaults set.
+  control: crate::view::Control<Popup<T>, R>,
   /// The list's behavior, which holds the choice.
-  list: Listbox,
-  /// The options' texts.
-  options: Rc<dyn Fn() -> Vec<String>>,
+  list: Listbox<One<T>>,
+  /// Its options' runs.
+  segments: Vec<OptionSegment<T, R>>,
   /// The face's mark.
   mark: AnyView<R>,
   /// The box around the open list.
   list_box: Container<R>,
   /// What makes each option.
-  builder: ItemBuilder<R>,
+  builder: ItemBuilder<T, R>,
 }
 
-wraps_itself!(Picker<R> where R: Realization);
+wraps_itself!(Picker<T, R> where T: Choice, R: Realization);
 
-control_surfaces!([R: Realization] Picker<R>, R => control);
+control_surfaces!([T: Choice, R: Realization] Picker<T, R>, R => control);
 
-impl<R: Realization> Picker<R> {
+impl<T: Choice, R: Realization> HasChoice<T> for Picker<T, R> {
+  fn change_chosen(&mut self, change: impl FnOnce(&mut Controlled<T>)) {
+    self.list.roster().change_chosen(change);
+  }
+}
+
+impl<T: Choice, R: Realization> HasOptions<T, R> for Picker<T, R> {
+  fn segments_mut(&mut self) -> &mut Vec<OptionSegment<T, R>> {
+    &mut self.segments
+  }
+}
+
+impl<T: Choice, R: Realization> Picker<T, R> {
   /// The default mark: [`marks::chevron`], 12 by 8 pixels.
   pub fn default_mark() -> Painted<R> {
     Painted::new(marks::chevron).set_width(12).set_height(8)
@@ -168,14 +183,13 @@ impl<R: Realization> Picker<R> {
   }
 }
 
-/// What a [`Picker`] carries beside every control's members: its choice, its options, its
+/// What a [`Picker`] carries beside every control's members, its choice and its options: its
 /// mark, its list and what makes each option.
-pub trait PickerBase<R: Realization>: Wraps<Inner = Picker<R>> {
+pub trait PickerBase<T: Choice, R: Realization>: Wraps<Inner = Picker<T, R>> {
   /// A picker labelled `label`, with no options.
-  fn new(label: impl Into<String>) -> Self {
-    let label: String = label.into();
-    let list = Listbox::new();
-    let control = crate::view::Control::new(Popup::new(list.roster(), Vec::new))
+  fn new(label: impl Into<Label<R>>) -> Self {
+    let list = Listbox::<One<T>>::new();
+    let control = crate::view::Control::new(Popup::new(list.roster()))
       .set_min_height(34)
       .set_padding(Inset::new(7, 14, 7, 14))
       .set_corner_radius(8)
@@ -196,46 +210,10 @@ pub trait PickerBase<R: Realization>: Wraps<Inner = Picker<R>> {
     Self::wrap(Picker {
       control,
       list,
-      options: Rc::new(Vec::new),
-      mark: Picker::<R>::default_mark().into_any(),
-      list_box: Picker::<R>::default_list(),
-      builder: Rc::new(|_, name| PickerItem::new(name)),
-    })
-  }
-
-  /// The chosen option's index, or none.
-  fn set_chosen(self, chosen: Option<usize>) -> Self {
-    self.map_inner(|mut picker| {
-      picker.list = picker.list.set_chosen(chosen);
-
-      picker
-    })
-  }
-
-  /// The chosen option's index, or none, kept current.
-  fn derive_chosen(self, chosen: impl Fn() -> Option<usize> + 'static) -> Self {
-    self.map_inner(|mut picker| {
-      picker.list = picker.list.derive_chosen(chosen);
-
-      picker
-    })
-  }
-
-  /// Runs `choose` with the option the reader chose.
-  fn handle_choose(self, choose: impl Fn(Option<usize>) + 'static) -> Self {
-    self.map_inner(|mut picker| {
-      picker.list = picker.list.handle_choose(choose);
-
-      picker
-    })
-  }
-
-  /// Shows `chosen` and writes each choice into it.
-  fn bind_chosen(self, chosen: Signal<Option<usize>>) -> Self {
-    self.map_inner(|mut picker| {
-      picker.list = picker.list.bind_chosen(chosen);
-
-      picker
+      segments: Vec::new(),
+      mark: Picker::<T, R>::default_mark().into_any(),
+      list_box: Picker::<T, R>::default_list(),
+      builder: Rc::new(|_, label| PickerItem::new(label)),
     })
   }
 
@@ -255,70 +233,56 @@ pub trait PickerBase<R: Realization>: Wraps<Inner = Picker<R>> {
     self
   }
 
-  /// Makes each option with `builder`, from its index and its text: a styled [`PickerItem`];
-  /// `PickerItem::new(text)` where unset.
+  /// Makes each option with `builder`, from its value and its caption: a styled
+  /// [`PickerItem`]; `PickerItem::new(label)` where unset.
   fn set_item_builder<I: Wraps<Inner = PickerItem<R>>>(
     mut self,
-    builder: impl Fn(usize, &str) -> I + 'static,
+    builder: impl Fn(&T, Label<R>) -> I + 'static,
   ) -> Self {
-    self.inner_mut().builder = Rc::new(move |index, name| builder(index, name).into_inner());
-
-    self
-  }
-
-  /// The options' texts.
-  fn set_options<S: Into<String>>(self, options: impl IntoIterator<Item = S>) -> Self {
-    let options: Vec<String> = options.into_iter().map(Into::into).collect();
-
-    self.derive_options(move || options.clone())
-  }
-
-  /// The options' texts, kept current.
-  fn derive_options<S: Into<String>, I: IntoIterator<Item = S>>(
-    mut self,
-    options: impl Fn() -> I + 'static,
-  ) -> Self {
-    self.inner_mut().options = Rc::new(move || options().into_iter().map(Into::into).collect());
+    self.inner_mut().builder = Rc::new(move |value, label| builder(value, label).into_inner());
 
     self
   }
 }
 
-impl<R: Realization> PickerBase<R> for Picker<R> {}
+impl<T: Choice, R: Realization> PickerBase<T, R> for Picker<T, R> {}
 
-impl<R: Realization> AnyKind for Picker<R> {}
+impl<T: Choice, R: Realization> AnyKind for Picker<T, R> {}
 
-impl<R: Realization> View<R> for Picker<R> {
+impl<T: Choice, R: Realization> View<R> for Picker<T, R> {
   fn build(self, cx: &mut Cx<R>) -> Node {
     let Self {
       control,
       list,
-      options,
+      segments,
       mark,
       list_box,
       builder,
     } = self;
     let roster = list.roster();
-    let names = {
-      let options = Rc::clone(&options);
+    let options = GroupOptions::new(segments);
 
-      move || {
-        options()
-          .into_iter()
-          .map(Rc::from)
-          .collect::<Vec<Rc<str>>>()
-      }
-    };
-    let popup = Popup::new(Rc::clone(&roster), names.clone());
-    let open = popup.open();
+    roster.set_options(Rc::new(options.clone()));
+
+    let open = control.behavior().open();
     let shown = {
-      let (options, roster) = (Rc::clone(&options), Rc::clone(&roster));
+      let (options, roster) = (options.clone(), Rc::clone(&roster));
 
       move || {
         roster
           .chosen()
-          .and_then(|index| options().into_iter().nth(index))
+          .and_then(|chosen| options.name_of(&chosen))
+          .map(|name| name.to_string())
           .unwrap_or_default()
+      }
+    };
+    let names = {
+      let options = options.clone();
+
+      move || {
+        (0..options.count())
+          .filter_map(|index| options.name(index))
+          .collect::<Vec<Rc<str>>>()
       }
     };
     let text = Flexible::new()
@@ -333,19 +297,19 @@ impl<R: Realization> View<R> for Picker<R> {
           .derive_reserved_texts(names),
       );
     let items = {
-      let options = Rc::clone(&options);
+      let values = options.clone();
 
       Column::<R>::new().derive_children(
-        move || options().into_iter().enumerate().collect(),
+        move || values.values(),
         Clone::clone,
-        move |(index, name): (usize, String)| {
-          let member = Listbox::with_roster(Rc::clone(&roster)).member(index);
+        move |value: T| {
+          let member = Listbox::with_roster(Rc::clone(&roster)).member(value.clone());
 
-          builder(index, &name).into_control(member)
+          builder(&value, options.caption(&value)).into_control(member)
         },
       )
     };
-    let listbox = crate::view::Control::<Listbox, R>::new(list)
+    let listbox = crate::view::Control::<Listbox<One<T>>, R>::new(list)
       .set_axis(Axis::Vertical)
       .set_child(items);
     let overlay = Overlay::<R>::popup().bind_open(open).set_child(
@@ -359,7 +323,6 @@ impl<R: Realization> View<R> for Picker<R> {
     );
 
     control
-      .map_behavior(|_| popup)
       .add_part(Part::Value, text)
       .add_part(Part::Mark, mark)
       .set_child(overlay)

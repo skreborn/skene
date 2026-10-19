@@ -443,7 +443,7 @@ impl<R: Realization> View<R> for ContextMenu<R> {
 
         close();
 
-        if let Some(entry) = entries.get(index) {
+        if let Some(entry) = entries.get(*index) {
           entry.run::<R>(at);
         }
       });
@@ -521,7 +521,7 @@ impl<R: Realization> View<R> for ContextMenu<R> {
         open.set(true);
 
         if let Some(first) = first {
-          roster.focus(first);
+          roster.focus(&first);
         }
 
         Bubbling::Stop

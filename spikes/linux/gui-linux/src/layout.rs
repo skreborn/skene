@@ -1,7 +1,8 @@
 //! Layout: the foundation's engine over the realized tree. [`Host`] answers the engine's host
 //! protocol for every realized node (a container through its own engine, a text through its
 //! paragraph, a text entry through its editor), a scroller lays its one child out at the
-//! height it asks for, an overlay is out of its parent's flow and laid out apart
+//! height it asks for and its bars along its edges, an overlay is out of its parent's flow and
+//! laid out apart
 //! ([`Drawn::layout_overlay`]), and [`prepare`] gives every paragraph the run properties it inherits
 //! before a layout reads it.
 
@@ -109,13 +110,148 @@ fn with_engine<T>(node: &Node, body: impl FnOnce(&mut ContainerLayout<Host>) -> 
   }
 }
 
-/// The one child a scroller scrolls.
+/// The one child a scroller scrolls: its first shown child that is not a bar.
 fn scrolled(node: &Node) -> Option<Node> {
   node
     .children_ref()
     .iter()
-    .find(|child| !child.is_hidden())
+    .find(|child| !child.is_hidden() && child.bar_axis().is_none())
     .cloned()
+}
+
+/// The length along `axis` a node's own least size along it names inside a length of
+/// `within`: none where it names none.
+fn least(layout: &ResolvedLayout, axis: Axis, within: f32) -> f32 {
+  let minimum = match axis {
+    Axis::Horizontal => layout.min_width,
+    Axis::Vertical => layout.min_height,
+  };
+
+  match minimum {
+    Some(Dimension::Length(length)) => length,
+    Some(Dimension::Fraction(fraction)) => fraction * within,
+    Some(Dimension::Auto) | None => 0.,
+  }
+}
+
+/// Lays the scroll box `node`'s bars out over its viewport `window` (its rectangle in the
+/// window), unscrolled: a bar along each axis its content overflows shown along the trailing or
+/// bottom edge, as thick as its track asks, the vertical one stopping short of the horizontal
+/// one; every other bar hidden. Each thumb is as long as its track's inner length times the
+/// share of the content in view, its least size along the axis a floor.
+fn lay_bars(node: &Node, window: Rect) {
+  let (width, height) = node.extent.get();
+  let bars: Vec<(Node, Axis)> = node
+    .children_ref()
+    .iter()
+    .filter_map(|child| child.bar_axis().map(|axis| (Rc::clone(child), axis)))
+    .collect();
+  let across = |axis: Axis| match axis {
+    Axis::Horizontal => Axis::Vertical,
+    Axis::Vertical => Axis::Horizontal,
+  };
+  let overflows = |axis: Axis| match axis {
+    Axis::Horizontal => width > window.width + 0.5,
+    Axis::Vertical => height > window.height + 0.5,
+  };
+  let thickness = |track: &Node, axis: Axis| {
+    Host::measure(track, across(axis), None, Needed::Natural)
+      .natural
+      .round()
+  };
+  let shown = |wanted: Axis| {
+    bars
+      .iter()
+      .find(|(_, axis)| *axis == wanted && overflows(wanted))
+      .map_or(0., |(track, axis)| thickness(track, *axis))
+  };
+
+  for (track, axis) in &bars {
+    if !overflows(*axis) {
+      track.set_hidden(true);
+
+      continue;
+    }
+
+    track.set_hidden(false);
+
+    let thick = thickness(track, *axis);
+    let rect = match axis {
+      Axis::Vertical => Rect {
+        x: window.width - thick,
+        y: 0.,
+        width: thick,
+        height: (window.height - shown(Axis::Horizontal)).max(0.),
+      },
+      Axis::Horizontal => Rect {
+        x: 0.,
+        y: window.height - thick,
+        width: (window.width - shown(Axis::Vertical)).max(0.),
+        height: thick,
+      },
+    };
+    let placed = Rect {
+      x: window.x + rect.x,
+      y: window.y + rect.y,
+      ..rect
+    };
+
+    track.frame.set(rect);
+    track.laid_width.set(rect.width);
+    lay_children(track, placed);
+
+    let Some(thumb) = track.children_ref().first().cloned() else {
+      continue;
+    };
+    let padding = own_layout(track).padding.unwrap_or(Inset {
+      top: 0.,
+      trailing: 0.,
+      bottom: 0.,
+      leading: 0.,
+    });
+    let (start, inner, share) = match axis {
+      Axis::Vertical => (
+        padding.top,
+        rect.height - padding.top - padding.bottom,
+        window.height / height,
+      ),
+      Axis::Horizontal => (
+        padding.leading,
+        rect.width - padding.leading - padding.trailing,
+        window.width / width,
+      ),
+    };
+    let inner = inner.max(0.);
+    let length = (inner * share)
+      .max(least(&thumb.layout.borrow(), *axis, inner))
+      .min(inner)
+      .round();
+    let laid = thumb.frame.get();
+    let frame = match axis {
+      Axis::Vertical => Rect {
+        y: start,
+        height: length,
+        ..laid
+      },
+      Axis::Horizontal => Rect {
+        x: start,
+        width: length,
+        ..laid
+      },
+    };
+
+    thumb.frame.set(frame);
+    thumb.laid_width.set(frame.width);
+    thumb.thumb.set(Some((*axis, inner - length)));
+    lay_children(
+      &thumb,
+      Rect {
+        x: placed.x + frame.x,
+        y: placed.y + frame.y,
+        ..frame
+      },
+    );
+  }
 }
 
 impl Drawn {
@@ -458,6 +594,9 @@ fn lay_children(node: &Node, window: Rect) {
       vertical,
     }) => {
       let Some(child) = scrolled(node) else {
+        node.extent.set((window.width, window.height));
+        lay_bars(node, window);
+
         return;
       };
       let width = if horizontal {
@@ -498,6 +637,7 @@ fn lay_children(node: &Node, window: Rect) {
           height,
         },
       );
+      lay_bars(node, window);
     }
     NodeKind::Layout(_) | NodeKind::Overlay => {
       with_engine(node, |engine| {
@@ -565,7 +705,6 @@ impl Drawn {
     );
     let clips =
       self.look.borrow().clip || matches!(self.layout_kind(), Some(LayoutKind::Scroll { .. }));
-    let (sx, sy) = self.scroll.get();
     let mut reach = own;
 
     if !clips {
@@ -574,6 +713,7 @@ impl Drawn {
           continue;
         }
 
+        let (sx, sy) = self.scroll_for(child);
         let child_frame = child.frame.get();
         let (dx, dy) = child.offset();
         let child_reach = child.reach.get();

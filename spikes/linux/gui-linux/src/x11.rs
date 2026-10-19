@@ -671,6 +671,7 @@ impl X11 {
       // What a manager stated before is no longer stated.
       environment::xft(skene_parley::linux::DesktopSettings::default());
       environment::xsettings(None, None, None);
+      environment::set_warps_slider(None);
 
       return;
     }
@@ -743,6 +744,7 @@ impl X11 {
       integer("Gtk/EnableAnimations").map(|enabled| enabled != 0),
       integer("Net/CursorBlink").map(|blinks| blinks != 0),
     );
+    environment::set_warps_slider(integer("Gtk/PrimaryButtonWarpsSlider").map(|warps| warps != 0));
   }
 
   fn step(

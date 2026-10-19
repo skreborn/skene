@@ -37,11 +37,7 @@ use vello_cpu::{
   peniko::{Color as PColor, Gradient, ImageAlphaType, ImageQuality, ImageSampler},
 };
 
-use crate::{
-  node::{Drawn, Node},
-  palette::Palette,
-  text,
-};
+use crate::{node::Node, palette::Palette, text};
 
 /// A Skene color as vello's.
 pub const fn color(color: Color) -> PColor {
@@ -416,6 +412,9 @@ impl Canvas<'_> {
     let at = |point: UnitPoint| (f64::from(point.x) * width, f64::from(point.y) * height);
     let (gradient, placed) = match fill {
       Fill::Color(fill) => return Brush::Solid(color(*fill)),
+      // The node's ink is put in before a fill is drawn (`Fill::in_ink`); one left draws
+      // nothing.
+      Fill::Ink(_) => return Brush::Solid(color(skene_foundation::Color::TRANSPARENT)),
       Fill::Linear(linear) => {
         let (sin, cos) = f64::from(linear.angle.in_radians()).sin_cos();
         let length = (width * sin).abs() + (height * cos).abs();
@@ -903,9 +902,7 @@ fn paint_node(
 
   if !overlaps(painted_bounds(node, rect), region) {
     // Only a child overhanging the box reaches the region.
-    let (sx, sy) = node.scroll.get();
-
-    paint_children(node, canvas, (rect.x - sx, rect.y - sy), region, marks);
+    paint_children(node, canvas, (rect.x, rect.y), region, marks);
 
     return;
   }
@@ -933,7 +930,7 @@ fn paint_node(
   }
 
   if let Some(background) = &look.background {
-    canvas.fill_with(rect, look.corners, background);
+    canvas.fill_with(rect, look.corners, &background.in_ink(node.ink.get()));
   }
 
   if let Some(shadows) = &look.shadows
@@ -962,7 +959,13 @@ fn paint_node(
       .clone()
       .unwrap_or_else(|| Fill::Color(node.ink.get()));
 
-    canvas.border_with(rect, look.corners, border.width, border.style, &fill);
+    canvas.border_with(
+      rect,
+      look.corners,
+      border.width,
+      border.style,
+      &fill.in_ink(node.ink.get()),
+    );
   }
 
   match node.spec.kind {
@@ -1018,13 +1021,7 @@ fn paint_node(
 
     canvas.push_clip(inside, corners)
   });
-  let (sx, sy) = node.scroll.get();
-
-  paint_children(node, canvas, (rect.x - sx, rect.y - sy), region, marks);
-
-  if scrolls {
-    node.paint_scroll_bar(canvas, rect);
-  }
+  paint_children(node, canvas, (rect.x, rect.y), region, marks);
 
   if let Some(previous) = previous_clip {
     canvas.pop_clip(previous);
@@ -1069,35 +1066,8 @@ fn padding_box(rect: Rect, corners: Corners, width: Option<f32>) -> (Rect, Corne
   )
 }
 
-impl Drawn {
-  /// Draws the bar a scrolled box shows where its content overflows it.
-  fn paint_scroll_bar(self: &Rc<Self>, canvas: &mut Canvas<'_>, rect: Rect) {
-    let (_, extent) = self.extent.get();
-    let (_, offset) = self.scroll.get();
-
-    if extent <= rect.height + 0.5 {
-      return;
-    }
-
-    let length = (rect.height * rect.height / extent).max(24.);
-    let travel = rect.height - length;
-    let at = travel * (offset / (extent - rect.height)).clamp(0., 1.);
-    let hovered = self.states.get().contains(skene_foundation::State::Hovered);
-    let ink = self.ink.get().with_alpha(if hovered { 110 } else { 70 });
-
-    canvas.fill(
-      Rect {
-        x: rect.x + rect.width - 7.,
-        y: rect.y + at + 2.,
-        width: 4.,
-        height: length - 4.,
-      },
-      Corners::all(2.),
-      ink,
-    );
-  }
-}
-
+/// Paints `node`'s children in the scene's order, `node` drawn at `origin`: its scrolling
+/// content moved by its scroll offset, a scroll bar's track unmoved and over the content.
 fn paint_children(
   node: &Node,
   canvas: &mut Canvas<'_>,
@@ -1107,7 +1077,9 @@ fn paint_children(
 ) {
   for child in node.children_ref().iter() {
     if !child.is_overlay() {
-      paint_node(child, canvas, origin, region, marks);
+      let (sx, sy) = node.scroll_for(child);
+
+      paint_node(child, canvas, (origin.0 - sx, origin.1 - sy), region, marks);
     }
   }
 }

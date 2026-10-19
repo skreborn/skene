@@ -6,21 +6,23 @@
 use std::{hash::Hash, marker::PhantomData, rc::Rc};
 
 use crate::{
-  Alignment, Arrangement, AxisAlignment, Definitions, Dimension, Effect, Flow, Inset, Ring, Signal,
-  Spacing, State, SystemColors, TextAlignment, TextDecoration, TextDecorationStyle, TokenSet,
-  Tracks, When as _,
+  Alignment, Arrangement, AxisAlignment, Color, Definitions, Dimension, Effect, Expr, Flow, Inset,
+  Ring, Signal, Spacing, State, SystemColors, TextAlignment, TextDecoration, TextDecorationStyle,
+  TokenSet, Tracks, Value, When as _,
+  layout::Axis,
   seam::{
     Realization,
     access::{AccessFacts, Role, Shortcut},
     content::contents,
-    node::{LayoutKind, NodeKind, NodeSpec},
+    control::Part,
+    node::{Interaction, LayoutKind, NodeKind, NodeSpec},
     record::{Prop, Record, keys},
     report::{ContextMenuEvent, Dropped, KeyEvent, PointerEvent},
     tree::{self, Bubbling},
   },
   view::{
-    AnyKind, Child, ChildOf, Cx, DecorationBase, HasRecord, MotionBase, Node, NodeHandle, RunBase,
-    RunWithEntries, View, Wraps, trait_properties, wraps_itself,
+    AnyKind, AsPart, AsPartBase as _, Child, ChildOf, Cx, DecorationBase, HasRecord, MotionBase,
+    Node, NodeHandle, RunBase, RunWithEntries, View, Wraps, trait_properties, wraps_itself,
   },
 };
 
@@ -465,17 +467,59 @@ pub enum ScrollAxes {
   Both,
 }
 
+/// What makes a scroll bar's part along an axis.
+type BarBuilder<R> = Rc<dyn Fn(Axis) -> Container<R>>;
+
 /// A box whose one child scrolls, with the platform's scrolling: its wheel and touchpad
-/// motion, its scroll bar.
+/// motion, its scroll bars.
 ///
 /// It would be as large as its child and can shrink to nothing, so a scroll in a column takes
 /// a height, a greatest height or a `Flexible` weight to stay within the window.
+///
+/// Where the platform draws its bars ([`Realization::DRAWS_SCROLL_BARS`]), a bar along each
+/// axis it scrolls shows while the content overflows it, over the content and taking no room:
+/// a track ([`Scroll::default_track`]) along the box's trailing or bottom edge, holding a thumb
+/// ([`Scroll::default_thumb`]) whose length is the track's times the share of the content in
+/// view, its least size along the axis a floor, and whose place along the track is the
+/// scroll's. The scroll box is the bar's control: a part's `Hovered` holds while the pointer is
+/// over the box, its `Pressed` while a press inside it is held.
 #[must_use]
 pub struct Scroll<R: Realization> {
   axes: ScrollAxes,
   record: Record,
   handle: Option<NodeHandle>,
+  track: BarBuilder<R>,
+  thumb: BarBuilder<R>,
   child: Option<Child<R>>,
+}
+
+impl<R: Realization> Scroll<R> {
+  /// The default track along `axis`: 10 pixels thick, padded 3 at its sides and 2 at its
+  /// ends, so its thumb runs 3 pixels in from the box's edge.
+  pub fn default_track(axis: Axis) -> Container<R> {
+    match axis {
+      Axis::Vertical => Container::new()
+        .set_width(10)
+        .set_padding(Inset::new(2, 3, 2, 3)),
+      Axis::Horizontal => Container::new()
+        .set_height(10)
+        .set_padding(Inset::new(3, 2, 3, 2)),
+    }
+  }
+
+  /// The default thumb along `axis`: 4 pixels thick and at least 20 long, its corners rounded
+  /// by 2, in the ink at an alpha of 70 of 255, 110 while the pointer is over the scroll box.
+  pub fn default_thumb(axis: Axis) -> Container<R> {
+    let thumb = Container::new().set_corner_radius(2).set_background(
+      Value::from(Expr::<Color>::ink().with_alpha(70. / 255.))
+        .when(State::Hovered, Expr::<Color>::ink().with_alpha(110. / 255.)),
+    );
+
+    match axis {
+      Axis::Vertical => thumb.set_width(4).set_min_height(20),
+      Axis::Horizontal => thumb.set_height(4).set_min_width(20),
+    }
+  }
 }
 
 wraps_itself!(Scroll<R> where R: Realization);
@@ -487,7 +531,7 @@ impl<R: Realization> HasRecord for Scroll<R> {
   }
 }
 
-/// What a [`Scroll`] carries: its axes, its sizing, its handle and its child.
+/// What a [`Scroll`] carries: its axes, its sizing, its handle, its bars' parts and its child.
 pub trait ScrollBase<R: Realization>: Wraps<Inner = Scroll<R>> {
   /// A scroll along `axes`, empty.
   fn new(axes: ScrollAxes) -> Self {
@@ -495,6 +539,8 @@ pub trait ScrollBase<R: Realization>: Wraps<Inner = Scroll<R>> {
       axes,
       record: Record::new(),
       handle: None,
+      track: Rc::new(Scroll::<R>::default_track),
+      thumb: Rc::new(Scroll::<R>::default_thumb),
       child: None,
     })
   }
@@ -517,6 +563,29 @@ pub trait ScrollBase<R: Realization>: Wraps<Inner = Scroll<R>> {
   /// Writes the scroll's node into `handle` once built.
   fn set_handle(mut self, handle: &NodeHandle) -> Self {
     self.inner_mut().handle = Some(*handle);
+
+    self
+  }
+
+  /// Makes the bar's track along each axis with `builder`; [`Scroll::default_track`] where
+  /// unset. The thumb is placed in it, so a child it holds is replaced.
+  fn set_track_builder<C: Wraps<Inner = Container<R>>>(
+    mut self,
+    builder: impl Fn(Axis) -> C + 'static,
+  ) -> Self {
+    self.inner_mut().track = Rc::new(move |axis| builder(axis).into_inner());
+
+    self
+  }
+
+  /// Makes the bar's thumb along each axis with `builder`; [`Scroll::default_thumb`] where
+  /// unset. Its length and its place along the track are the scroll's, its least size along
+  /// the axis a floor under its length.
+  fn set_thumb_builder<C: Wraps<Inner = Container<R>>>(
+    mut self,
+    builder: impl Fn(Axis) -> C + 'static,
+  ) -> Self {
+    self.inner_mut().thumb = Rc::new(move |axis| builder(axis).into_inner());
 
     self
   }
@@ -544,9 +613,35 @@ impl<R: Realization> View<R> for Scroll<R> {
       horizontal,
       vertical,
     })));
+    let children: Vec<Child<R>> = self.child.into_iter().collect();
+    let content = children.len();
 
     cx.finish(id, self.record, self.handle.as_ref());
-    cx.attach_children(id, self.child.into_iter().collect());
+    cx.attach_children(id, children);
+
+    if !R::DRAWS_SCROLL_BARS {
+      return Node::new(id);
+    }
+
+    let axes = [(vertical, Axis::Vertical), (horizontal, Axis::Horizontal)];
+
+    for (index, axis) in axes
+      .into_iter()
+      .filter_map(|(scrolls, axis)| scrolls.then_some(axis))
+      .enumerate()
+    {
+      let mut bar = cx.child();
+
+      bar.set_control(id);
+      bar.set_part(Part::Track);
+      bar.set_interaction(Interaction::ScrollBar { axis });
+
+      let track = (self.track)(axis)
+        .set_child(AsPart::<R>::new(Part::Thumb).set_child((self.thumb)(axis)))
+        .build(&mut bar);
+
+      tree::attach::<R>(id, track.id(), content + index);
+    }
 
     Node::new(id)
   }

@@ -69,6 +69,12 @@ pub trait Realization: Sized + 'static {
   /// elements); otherwise its children join its parent.
   const SCOPE_NODES: bool;
 
+  /// Whether a scroll box's bars are drawn from its parts ([`Interaction::ScrollBar`]
+  /// nodes); otherwise the toolkit shows its own, and no bar node is built.
+  ///
+  /// [`Interaction::ScrollBar`]: crate::seam::node::Interaction::ScrollBar
+  const DRAWS_SCROLL_BARS: bool;
+
   /// Realizes a detached node of `spec` for `id`, wiring its toolkit signals to reports.
   fn create(id: NodeId, spec: &NodeSpec) -> Self::Node;
 

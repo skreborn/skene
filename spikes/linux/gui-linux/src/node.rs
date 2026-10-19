@@ -13,7 +13,7 @@ use skene_foundation::{
   seam::{
     access::AccessFacts,
     content::{Content, Edit, OverlayPlacement, PropValue, Run},
-    node::{LayoutKind, NodeKind, NodeSpec},
+    node::{Interaction, LayoutKind, NodeKind, NodeSpec},
     picture::Picture,
     report::{Interest, Size},
   },
@@ -162,6 +162,9 @@ pub struct Drawn {
   pub scroll: Cell<(f32, f32)>,
   /// The size of what it scrolls, where it scrolls.
   pub extent: Cell<(f32, f32)>,
+  /// Where it is a scroll bar's thumb: the axis it moves along and how far it can move along
+  /// its track, as last laid out.
+  pub thumb: Cell<Option<(Axis, f32)>>,
   /// Its accessibility facts, as last applied.
   pub access: RefCell<AccessFacts>,
   /// Its measurements in the current layout epoch.
@@ -207,6 +210,7 @@ impl Drawn {
       states: Cell::new(StateSet::EMPTY),
       scroll: Cell::new((0., 0.)),
       extent: Cell::new((0., 0.)),
+      thumb: Cell::new(None),
       access: RefCell::new(AccessFacts::default()),
       measures: RefCell::new(Measures::default()),
       reported: Cell::new(None),
@@ -237,6 +241,43 @@ impl Drawn {
   /// Whether it is an overlay: out of its parent's flow, drawn on a surface of its own.
   pub fn is_overlay(&self) -> bool {
     self.spec.kind == NodeKind::Overlay
+  }
+
+  /// The axis it scrolls its scroll box along, where it is a scroll bar's track: out of the
+  /// box's scrolling content and unscrolled.
+  pub const fn bar_axis(&self) -> Option<Axis> {
+    match self.spec.interaction {
+      Interaction::ScrollBar { axis } => Some(axis),
+      _ => None,
+    }
+  }
+
+  /// How far its content is scrolled under `child`: its scroll offset, and none under a scroll
+  /// bar's track, which stays where it was laid.
+  pub fn scroll_for(&self, child: &Self) -> (f32, f32) {
+    if child.bar_axis().is_some() {
+      (0., 0.)
+    } else {
+      self.scroll.get()
+    }
+  }
+
+  /// Where along its scrollable length a scroll box is, `0` at the start to `1` at the end,
+  /// along `axis`.
+  pub fn scrolled_fraction(&self, axis: Axis) -> f32 {
+    let frame = self.frame.get();
+    let (width, height) = self.extent.get();
+    let (sx, sy) = self.scroll.get();
+    let (scroll, room) = match axis {
+      Axis::Horizontal => (sx, width - frame.width),
+      Axis::Vertical => (sy, height - frame.height),
+    };
+
+    if room <= 0. {
+      0.
+    } else {
+      (scroll / room).clamp(0., 1.)
+    }
   }
 
   /// Whether it is the realization's own text view (a text entry).
@@ -366,11 +407,23 @@ impl Drawn {
       .unwrap_or_default()
   }
 
-  /// How far it is drawn from where it was laid out, in pixels (its style's offset).
+  /// How far it is drawn from where it was laid out, in pixels: its style's offset, and a
+  /// scroll bar's thumb moved along its track to where its scroll box is scrolled.
   pub fn offset(&self) -> (f32, f32) {
     let frame = self.frame.get();
+    let (dx, dy) = self.look.borrow().offset_at(frame.width, frame.height);
+    let Some((axis, travel)) = self.thumb.get() else {
+      return (dx, dy);
+    };
+    let along = self
+      .parent()
+      .and_then(|track| track.parent())
+      .map_or(0., |scroll| travel * scroll.scrolled_fraction(axis));
 
-    self.look.borrow().offset_at(frame.width, frame.height)
+    match axis {
+      Axis::Horizontal => (dx + along, dy),
+      Axis::Vertical => (dx, dy + along),
+    }
   }
 
   /// Its frame in window coordinates, where it is drawn: the frames and offsets of its
@@ -388,6 +441,8 @@ impl Drawn {
     rect.x += dx;
     rect.y += dy;
 
+    let mut child = Rc::clone(self);
+
     for ancestor in self.ancestors() {
       let frame = ancestor.frame.get();
 
@@ -398,8 +453,10 @@ impl Drawn {
         break;
       }
 
-      let (sx, sy) = ancestor.scroll.get();
+      let (sx, sy) = ancestor.scroll_for(&child);
       let (dx, dy) = ancestor.offset();
+
+      child = Rc::clone(&ancestor);
 
       rect.x += frame.x + dx - sx;
       rect.y += frame.y + dy - sy;

@@ -673,7 +673,10 @@ impl<B: Behavior, R: Realization> View<R> for Control<B, R> {
       Child::new(move |cx: &mut Cx<R>| {
         cx.set_part(Part::Label);
         cx.set_presentational(named_by_content);
-        cx.set_answering(beside);
+
+        if beside {
+          cx.set_interaction(Interaction::Answering);
+        }
 
         let node = view.build(cx);
 

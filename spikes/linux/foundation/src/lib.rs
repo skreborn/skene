@@ -41,6 +41,7 @@ pub mod behavior;
 pub mod color;
 pub mod condition;
 pub mod environment;
+pub mod expr;
 pub mod fill;
 pub mod keyed;
 pub mod layout;
@@ -58,6 +59,7 @@ pub use crate::{
   color::Color,
   condition::{Condition, Media, State, StateSet},
   environment::{Environment, Scheme},
+  expr::Expr,
   fill::{
     Angle, Fill, GradientStop, LinearGradient, RadialGradient, StopColor, Stops, SweepGradient,
     UnitPoint,

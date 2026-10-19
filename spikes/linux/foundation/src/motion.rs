@@ -262,7 +262,7 @@ impl Fill {
     };
 
     match shape {
-      Self::Color(_) => Self::Color(color),
+      Self::Color(_) | Self::Ink(_) => Self::Color(color),
       Self::Linear(gradient) => Self::Linear(LinearGradient {
         stops: stops(&gradient.stops),
         ..gradient.clone()
@@ -283,6 +283,12 @@ impl Interpolate for Fill {
   fn interpolate(&self, to: &Self, amount: f32) -> Option<Self> {
     match (self, to) {
       (Self::Color(from), Self::Color(to)) => Some(Self::Color(from.mix(*to, amount))),
+      (Self::Ink(from), Self::Ink(to)) => Some(Self::Ink(Some(lerp(
+        from.unwrap_or(1.),
+        to.unwrap_or(1.),
+        amount,
+      )))),
+      (Self::Ink(_), _) | (_, Self::Ink(_)) => None,
       (Self::Color(from), gradient) => Self::spread(*from, gradient).interpolate(gradient, amount),
       (gradient, Self::Color(to)) => gradient.interpolate(&Self::spread(*to, gradient), amount),
       (Self::Linear(from), Self::Linear(to)) => Some(Self::Linear(LinearGradient {
@@ -728,7 +734,7 @@ mod tests {
 
   use super::{Interpolate, Motion};
   use crate::{
-    Color, Fill, LinearGradient,
+    Color, Expr, Fill, LinearGradient,
     fill::Angle,
     seam::record::{Animation, Prop, Resolved, Transition, keys},
     value::Curve,
@@ -818,6 +824,25 @@ mod tests {
     assert_eq!(half.stops.0.len(), 2);
     assert_eq!(half.stops.0[1].color.fixed(), Some(Color::WHITE));
     assert_ne!(half.stops.0[0].color.fixed(), Some(Color::WHITE));
+  }
+
+  /// The ink moves between its alphas, the ink in force taking none for its own, and cuts to
+  /// or from a fill of another kind; drawn, it is the node's ink at its alpha.
+  #[test]
+  fn the_ink_moves_between_its_alphas() {
+    let faint = Fill::from(Expr::<Color>::ink().with_alpha(0.25));
+    let strong = Fill::from(Expr::<Color>::ink().with_alpha(0.75));
+
+    assert_eq!(faint.interpolate(&strong, 0.5), Some(Fill::Ink(Some(0.5))));
+    assert_eq!(
+      Fill::Ink(None).interpolate(&faint, 0.5),
+      Some(Fill::Ink(Some(0.625)))
+    );
+    assert_eq!(faint.interpolate(&Fill::Color(Color::WHITE), 0.5), None);
+    assert_eq!(
+      faint.in_ink(Color::BLACK).into_owned(),
+      Fill::Color(Color::BLACK.with_alpha(64))
+    );
   }
 
   /// An animation sets its keyframes' values where it stands, neutral at an edge it leaves

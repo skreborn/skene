@@ -323,15 +323,16 @@ impl Node {
 }
 
 /// Where a view is built: the theme scopes it sits in, the placement the wrappers above it
-/// fold into its properties, the control it is built inside, and what the part wrapping it
-/// makes of it. Passed along; a view makes one for its children ([`Cx::child`]).
+/// fold into its properties, the control it is built inside, what the part wrapping it makes
+/// of it, and how its node takes events where the view building it says. Passed along; a view
+/// makes one for its children ([`Cx::child`]).
 pub struct Cx<R: Realization> {
   scope: ScopeChain,
   placement: Record,
   control: Option<NodeId>,
   part: Option<Part>,
   presentational: bool,
-  answering: bool,
+  interaction: Option<Interaction>,
   realization: PhantomData<fn() -> R>,
 }
 
@@ -345,7 +346,7 @@ impl<R: Realization> Cx<R> {
       control: None,
       part: None,
       presentational: false,
-      answering: false,
+      interaction: None,
       realization: PhantomData,
     }
   }
@@ -360,7 +361,7 @@ impl<R: Realization> Cx<R> {
       control: self.control,
       part: None,
       presentational: false,
-      answering: false,
+      interaction: None,
       realization: PhantomData,
     }
   }
@@ -375,7 +376,7 @@ impl<R: Realization> Cx<R> {
       control: self.control,
       part: self.part,
       presentational: self.presentational,
-      answering: self.answering,
+      interaction: self.interaction,
       realization: PhantomData,
     }
   }
@@ -414,10 +415,12 @@ impl<R: Realization> Cx<R> {
     self.presentational = presentational;
   }
 
-  /// Makes the next node created a caption beside its control, a press on which focuses the
-  /// control and whose hover and press the control takes.
-  pub const fn set_answering(&mut self, answering: bool) {
-    self.answering = answering;
+  /// Makes the next node created take events as `interaction` says, in place of its own: a
+  /// caption beside its control ([`Interaction::Answering`]), a press on which focuses the
+  /// control and whose hover and press the control takes, or a scroll bar's track
+  /// ([`Interaction::ScrollBar`]).
+  pub const fn set_interaction(&mut self, interaction: Interaction) {
+    self.interaction = Some(interaction);
   }
 
   /// Folds `record` into the placement the next node created takes: a wrapper's properties.
@@ -437,8 +440,8 @@ impl<R: Realization> Cx<R> {
       spec = spec.with_role(Role::Presentation);
     }
 
-    if std::mem::take(&mut self.answering) {
-      spec = spec.with_interaction(Interaction::Answering);
+    if let Some(interaction) = self.interaction.take() {
+      spec = spec.with_interaction(interaction);
     }
 
     let id = tree::create::<R>(spec, &self.scope, self.control);

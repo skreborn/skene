@@ -97,6 +97,7 @@ impl Realization for Linux {
   const KEEP: Keep = Keep::Nothing;
   const UNIT: Unit = Unit::Utf8;
   const SCOPE_NODES: bool = false;
+  const DRAWS_SCROLL_BARS: bool = true;
 
   fn create(id: NodeId, spec: &NodeSpec) -> Node {
     let node = Drawn::new(id, *spec);

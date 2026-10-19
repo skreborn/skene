@@ -20,7 +20,7 @@ use skene_foundation::{
   NodeId, State,
   behavior::{ActivateKeys, EntryAct, EntryKeys},
   environment::{self, Fact},
-  layout::Rect,
+  layout::{Axis, Rect},
   seam::{
     content::{Content, PropValue},
     control::{AccessRequest, Prevent},
@@ -341,6 +341,23 @@ struct Press {
   on_selection: Option<(f32, f32)>,
 }
 
+/// A press on a scroll bar in progress: it scrolls its box and nothing else hears it.
+struct BarPress {
+  /// The scroll box the bar scrolls.
+  scroll: Node,
+  /// The axis the bar scrolls along.
+  axis: Axis,
+  /// Where the thumb starts along the axis, in window pixels, with the box at its start.
+  base: f32,
+  /// How far the thumb moves along its track.
+  travel: f32,
+  /// How far into the thumb the pointer holds it, while the press drags it; none while it
+  /// paged.
+  grab: Option<f32>,
+  /// The nodes the press set pressed.
+  chain: Vec<Node>,
+}
+
 /// What a touch became.
 enum TouchRole {
   /// Down on the content, not yet a tap, a scroll or a long press.
@@ -452,6 +469,8 @@ pub struct Shell {
   hover_states: Vec<Node>,
   /// The press in progress.
   press: Option<Press>,
+  /// The press on a scroll bar in progress.
+  bar: Option<BarPress>,
   /// The node with focus.
   focus: Option<Node>,
   /// The focused text's link run with focus, by its index.
@@ -529,6 +548,7 @@ impl Shell {
       hovered: Vec::new(),
       hover_states: Vec::new(),
       press: None,
+      bar: None,
       focus: None,
       link: None,
       focus_visible: false,
@@ -1084,12 +1104,12 @@ impl Shell {
         return false;
       }
 
-      let (sx, sy) = node.scroll.get();
-
       for child in node.children_ref().iter().rev() {
         if child.is_overlay() {
           continue;
         }
+
+        let (sx, sy) = node.scroll_for(child);
 
         if go(child, (rect.x - sx, rect.y - sy), x, y, out) {
           out.push(Rc::clone(node));
@@ -1199,7 +1219,7 @@ impl Shell {
       && match node.spec.interaction {
         Interaction::Control { .. } => node.access.borrow().focusable,
         Interaction::Acting => true,
-        Interaction::None | Interaction::Answering => false,
+        Interaction::None | Interaction::Answering | Interaction::ScrollBar { .. } => false,
       }
   }
 
@@ -1820,6 +1840,20 @@ impl Shell {
       requests.push(Request::Cursor(cursor));
     }
 
+    if let Some(bar) = &self.bar {
+      if let Some(grab) = bar.grab {
+        let (scroll, axis, base, travel) = (Rc::clone(&bar.scroll), bar.axis, bar.base, bar.travel);
+        let at = match axis {
+          Axis::Horizontal => geometry.0,
+          Axis::Vertical => geometry.1,
+        };
+
+        self.scroll_thumb_to(&scroll, axis, base, travel, at - grab);
+      }
+
+      return requests;
+    }
+
     let on_selection = self
       .press
       .as_ref()
@@ -2022,12 +2056,22 @@ impl Shell {
         (_, Hit::Content(..)) => {
           let chain = self.hovered.clone();
 
-          self.content_press(button, chain);
+          if !self.bar_press(button, &chain) {
+            self.content_press(button, chain);
+          }
         }
         _ => {}
       }
 
       requests.extend(self.take_requests());
+
+      return requests;
+    }
+
+    if let Some(bar) = self.bar.take() {
+      for node in &bar.chain {
+        Self::set_state(node, State::Pressed, false);
+      }
 
       return requests;
     }
@@ -2064,6 +2108,125 @@ impl Shell {
     requests.extend(self.take_requests());
 
     requests
+  }
+
+  /// A press of `button` on a scroll bar in `chain` (the deepest node under the pointer
+  /// first), where one is under it: a primary press on the thumb drags it; one on the track
+  /// jumps the thumb to the point and drags it from there where the desktop says a primary
+  /// press warps ([`crate::environment::primary_warps_slider`]) and pages toward the point
+  /// otherwise, a middle press or one with `Shift` doing the other. Focus stays, and nothing
+  /// else hears the press. Whether the press was a bar's.
+  fn bar_press(&mut self, button: u8, chain: &[Node]) -> bool {
+    let Some((track, axis)) = chain
+      .iter()
+      .find_map(|node| node.bar_axis().map(|axis| (Rc::clone(node), axis)))
+    else {
+      return false;
+    };
+    let (Some(scroll), Some(thumb), Some((x, y))) = (
+      track.parent(),
+      track.children_ref().first().cloned(),
+      self.pointer,
+    ) else {
+      return true;
+    };
+
+    if button > 1 {
+      return true;
+    }
+
+    self.modality = Modality::Pointer;
+
+    let along = |rect: Rect| match axis {
+      Axis::Horizontal => (rect.x, rect.width),
+      Axis::Vertical => (rect.y, rect.height),
+    };
+    let at = match axis {
+      Axis::Horizontal => x,
+      Axis::Vertical => y,
+    };
+    let (start, length) = along(thumb.window_rect());
+    let travel = thumb.thumb.get().map_or(0., |(_, travel)| travel);
+    let base = start - travel * scroll.scrolled_fraction(axis);
+    let on_thumb = chain.iter().any(|node| Rc::ptr_eq(node, &thumb));
+    let primary = button == 0 && !self.modifiers.shift;
+    let grab = if on_thumb && button == 0 {
+      Some(at - start)
+    } else if primary == crate::environment::primary_warps_slider() {
+      self.scroll_thumb_to(&scroll, axis, base, travel, at - length / 2.);
+
+      Some(length / 2.)
+    } else {
+      let page = match axis {
+        Axis::Horizontal => scroll.frame.get().width,
+        Axis::Vertical => scroll.frame.get().height,
+      } * 0.875;
+      let delta = if at < start {
+        -page
+      } else if at >= start + length {
+        page
+      } else {
+        0.
+      };
+
+      match axis {
+        Axis::Horizontal => self.scroll_by(&scroll, delta, 0.),
+        Axis::Vertical => self.scroll_by(&scroll, 0., delta),
+      };
+
+      None
+    };
+
+    trace::log(|| {
+      format!(
+        "[bar] {axis:?} press {button} at {at:.1}: {}",
+        match grab {
+          Some(grab) => format!("drags the thumb held {grab:.1} in"),
+          None => "pages".to_owned(),
+        }
+      )
+    });
+
+    for node in chain {
+      Self::set_state(node, State::Pressed, true);
+    }
+
+    self.bar = Some(BarPress {
+      scroll,
+      axis,
+      base,
+      travel,
+      grab,
+      chain: chain.to_vec(),
+    });
+
+    true
+  }
+
+  /// Scrolls `scroll` along `axis` so its bar's thumb, which starts at `base` (window pixels)
+  /// with the box at its start and moves `travel` along its track, starts at `start`.
+  fn scroll_thumb_to(&mut self, scroll: &Node, axis: Axis, base: f32, travel: f32, start: f32) {
+    let fraction = if travel > 0. {
+      ((start - base) / travel).clamp(0., 1.)
+    } else {
+      0.
+    };
+    let frame = scroll.frame.get();
+    let (width, height) = scroll.extent.get();
+    let (sx, sy) = scroll.scroll.get();
+
+    match axis {
+      Axis::Horizontal => {
+        let target = fraction * (width - frame.width).max(0.);
+
+        self.scroll_by(scroll, target - sx, 0.);
+      }
+      Axis::Vertical => {
+        let target = fraction * (height - frame.height).max(0.);
+
+        self.scroll_by(scroll, 0., target - sy);
+      }
+    }
   }
 
   /// A press of `button` on `chain` (the deepest node under the pointer first): the pressed

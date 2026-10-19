@@ -1,5 +1,6 @@
-//! What fills a box or its border ([`Fill`]): one color, or a gradient whose stops lie along
-//! a line ([`LinearGradient`]), out from a center ([`RadialGradient`]) or around it
+//! What fills a box or its border ([`Fill`]): one color, the ink in force
+//! ([`Expr::ink`](crate::Expr::ink)), or a gradient whose stops lie along a line
+//! ([`LinearGradient`]), out from a center ([`RadialGradient`]) or around it
 //! ([`SweepGradient`]).
 //!
 //! A gradient lies over the box it fills as CSS lays its gradients over the border box, so a
@@ -8,7 +9,7 @@
 //! color is fixed or a color token, resolved where the fill is drawn, so a theme's
 //! redefinition re-inks a gradient as it re-inks a color.
 
-use std::rc::Rc;
+use std::{borrow::Cow, rc::Rc};
 
 use crate::{Color, Property, TokenRef, TokenValue, Tokens, Value, value::Leaf};
 
@@ -321,12 +322,16 @@ impl Default for SweepGradient {
   }
 }
 
-/// What fills a box or its border: one color, or a gradient. Every color converts into it,
-/// so `set_background(Color::WHITE)` and `set_background(palette.card)` stay one call.
+/// What fills a box or its border: one color, the ink in force, or a gradient. Every color
+/// converts into it, so `set_background(Color::WHITE)` and `set_background(palette.card)` stay
+/// one call.
 #[derive(Clone, PartialEq, Debug)]
 pub enum Fill {
   /// One color.
   Color(Color),
+  /// The ink in force where it is drawn, at its own alpha (`0` to `1`) where one is given:
+  /// what [`Expr::ink`](crate::Expr::ink) makes.
+  Ink(Option<f32>),
   /// A gradient along a line.
   Linear(LinearGradient),
   /// A gradient out from a center.
@@ -340,7 +345,7 @@ impl Fill {
   #[must_use]
   pub const fn stops(&self) -> Option<&Stops> {
     match self {
-      Self::Color(_) => None,
+      Self::Color(_) | Self::Ink(_) => None,
       Self::Linear(gradient) => Some(&gradient.stops),
       Self::Radial(gradient) => Some(&gradient.stops),
       Self::Sweep(gradient) => Some(&gradient.stops),
@@ -356,11 +361,25 @@ impl Fill {
     }
   }
 
-  /// Whether it draws nothing: a transparent color, or a gradient whose every stop is.
+  /// This fill with `ink`, the ink in force where it is drawn, in place of [`Fill::Ink`].
+  #[must_use]
+  pub fn in_ink(&self, ink: Color) -> Cow<'_, Self> {
+    match self {
+      Self::Ink(None) => Cow::Owned(Self::Color(ink)),
+      Self::Ink(Some(alpha)) => Cow::Owned(Self::Color(
+        ink.with_alpha((alpha.clamp(0., 1.) * 255.).round() as u8),
+      )),
+      _ => Cow::Borrowed(self),
+    }
+  }
+
+  /// Whether it draws nothing: a transparent color, the ink at no alpha, or a gradient whose
+  /// every stop is transparent.
   #[must_use]
   pub fn is_clear(&self) -> bool {
     match self {
       Self::Color(color) => color.alpha == 0,
+      Self::Ink(alpha) => alpha.is_some_and(|alpha| alpha <= 0.),
       _ => self.stops().is_some_and(|stops| {
         stops
           .0
@@ -383,6 +402,7 @@ impl Property for Fill {
   fn resolve_tokens(&self, tokens: &Tokens) -> Option<Self> {
     Some(match self {
       Self::Color(color) => Self::Color(*color),
+      Self::Ink(alpha) => Self::Ink(*alpha),
       Self::Linear(gradient) => Self::Linear(LinearGradient {
         stops: gradient.stops.resolved(tokens)?,
         ..gradient.clone()

@@ -2,11 +2,11 @@
 //! members come from, and the values they take.
 
 pub use crate::{
-  Alignment, Angle, Apply, Arrangement, AsPart, AsPartBase, AxisAlignment, Border, Bubbling,
+  Alignment, Angle, Apply, Arrangement, AsPart, AsPartBase, Axis, AxisAlignment, Border, Bubbling,
   Button, ButtonBase, Canvas, Checkbox, CheckboxBase, ChildOf, ChoiceBase, ClipboardOp, Color,
   Column, ColumnBase, Container, ContainerBase, ContextMenu, ContextMenuBase, Control, ControlBase,
   ControlMembersBase, Corners, Cx, DecorationBase, Definitions, Derived, DerivedBase, Dimension,
-  Edges, EditingBase, Effect, Environment, Fill, Flexibility, Flexible, FlexibleBase, Flow,
+  Edges, EditingBase, Effect, Environment, Expr, Fill, Flexibility, Flexible, FlexibleBase, Flow,
   FontWeight, Grid, GridBase, GridCell, GridCellBase, GridPlacement, GridTrack, Image, ImageBase,
   Inset, Keyboard, Label, LabelPlacement, LinearGradient, Listbox, ListboxBase, ListboxItem,
   ListboxItemBase, Media, Memo, MenuEntry, MenuItem, MenuItemBase, MotionBase, Node, NodeHandle,

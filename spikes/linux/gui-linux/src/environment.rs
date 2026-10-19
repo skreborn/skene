@@ -12,7 +12,9 @@
 //!   high-contrast theme, `Gtk/EnableAnimations`, `Net/CursorBlink`), which the X11 backend
 //!   reads; its `Xft/Antialias`, `Xft/Hinting` and `Xft/HintStyle` win over the portal's
 //!   font settings where both state one;
-//! - the app's own choice of scheme ([`set_scheme`]), which wins over the reader's.
+//! - the app's own choice of scheme ([`set_scheme`]), which wins over the reader's;
+//! - what a primary press on a scroll bar's track does ([`primary_warps_slider`]): XSETTINGS'
+//!   `Gtk/PrimaryButtonWarpsSlider`, else the GTK 4 settings files'.
 
 use std::{cell::RefCell, time::Duration};
 
@@ -67,6 +69,82 @@ struct Preferences {
 thread_local! {
   static PREFERENCES: RefCell<Preferences> = RefCell::new(Preferences::default());
   static HEARD: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+  static WARPS: std::cell::Cell<Option<bool>> = const { std::cell::Cell::new(None) };
+}
+
+/// Takes XSETTINGS' `Gtk/PrimaryButtonWarpsSlider`, `None` where the X server's settings state
+/// none.
+pub fn set_warps_slider(warps: Option<bool>) {
+  WARPS.with(|stated| stated.set(warps));
+}
+
+/// Whether a primary press on a scroll bar's track jumps its thumb to the point, as GTK's
+/// `gtk-primary-button-warps-slider` says; a middle press, or one with `Shift`, does the other.
+/// XSETTINGS' `Gtk/PrimaryButtonWarpsSlider` where the X server states it, else what the GTK 4
+/// settings files state (`gtk-4.0/settings.ini` in the user's configuration directory, then in
+/// each of `$XDG_CONFIG_DIRS` and `/etc`), else yes, GTK's default; the files are read at each
+/// call, so a change applies at the next press.
+pub fn primary_warps_slider() -> bool {
+  WARPS
+    .with(std::cell::Cell::get)
+    .or_else(warps_slider_file)
+    .unwrap_or(true)
+}
+
+/// What the first GTK 4 settings file that states `gtk-primary-button-warps-slider` says.
+fn warps_slider_file() -> Option<bool> {
+  let home = std::env::var_os("XDG_CONFIG_HOME")
+    .map(std::path::PathBuf::from)
+    .or_else(|| std::env::var_os("HOME").map(|home| std::path::Path::new(&home).join(".config")));
+  let system = std::env::var("XDG_CONFIG_DIRS").unwrap_or_else(|_| "/etc/xdg".to_owned());
+  let directories = home
+    .into_iter()
+    .chain(
+      system
+        .split(':')
+        .filter(|directory| !directory.is_empty())
+        .map(std::path::PathBuf::from),
+    )
+    .chain(std::iter::once(std::path::PathBuf::from("/etc")));
+
+  for directory in directories {
+    let Ok(text) = std::fs::read_to_string(directory.join("gtk-4.0/settings.ini")) else {
+      continue;
+    };
+
+    if let Some(warps) = settings_flag(&text, "gtk-primary-button-warps-slider") {
+      return Some(warps);
+    }
+  }
+
+  None
+}
+
+/// The flag `key` a GTK settings file states in its `[Settings]` group, where it states one.
+fn settings_flag(text: &str, key: &str) -> Option<bool> {
+  let mut in_settings = false;
+
+  for line in text.lines().map(str::trim) {
+    if line.starts_with('[') {
+      in_settings = line == "[Settings]";
+
+      continue;
+    }
+
+    let Some((name, value)) = line.split_once('=').filter(|_| in_settings) else {
+      continue;
+    };
+
+    if name.trim() == key {
+      return match value.trim().to_ascii_lowercase().as_str() {
+        "true" | "1" | "yes" => Some(true),
+        "false" | "0" | "no" => Some(false),
+        _ => None,
+      };
+    }
+  }
+
+  None
 }
 
 /// How many setting changes the portal's thread has delivered to this thread's loop.

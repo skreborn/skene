@@ -1,6 +1,9 @@
 //! What a node is, and the facts a toolkit fixes when it creates one.
 
-use crate::seam::{access::Role, content::Content, control::DragAxes};
+use crate::{
+  layout::Axis,
+  seam::{access::Role, content::Content, control::DragAxes},
+};
 
 /// A Skene layout container: a host whose children the foundation's engine lays out where the
 /// realization's [`crate::seam::LayoutOwner`] is the engine.
@@ -126,6 +129,13 @@ pub enum Interaction {
   },
   /// A control's caption placed beside it: a press on it focuses that control.
   Answering,
+  /// A scroll bar's track along `axis`, its one child the thumb: laid along the scroll box's
+  /// edge, out of the scrolling content's flow and unscrolled, shown while the content
+  /// overflows along `axis`. A press on it scrolls the box and moves no focus.
+  ScrollBar {
+    /// The axis the bar scrolls along.
+    axis: Axis,
+  },
 }
 
 /// What a realization is told when it creates a node: what it is, and the facts a toolkit

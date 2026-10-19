@@ -6,7 +6,8 @@
 //! `PROBE_FIELDS_ONLY=1` shows the fields alone (for the input method scenarios and the reader
 //! probes, which compare a field against GtkEntry). `PROBE_READER=1` shows what the GTK
 //! reference window (tools/controls/gtk-ref.py) shows, in its order, for the screen reader's
-//! comparison: its title, the Name field, the Wi-Fi switch, the Submit button and its status.
+//! comparison: its title, the Name field, the Wi-Fi switch, the Submit button and its status,
+//! the field asking for focus as the window opens, as `GtkWindow` focuses its first entry.
 
 use skene_gui::prelude::*;
 
@@ -31,6 +32,7 @@ fn reader() -> Column {
     .add_child(Text::new("Skene reference").set_font_size(20))
     .add_child(
       TextField::new("Name")
+        .set_autofocus(true)
         .derive_text(move || name.get())
         .handle_change(move |text| {
           log("name", &text);

@@ -1,7 +1,8 @@
-//! The built-in controls as a reader and the screen find them: a control takes presses inside
-//! its own box alone, a slider is as wide as it says, a caption is never required, a
-//! library's text entry takes the standard context menu as a built-in's does, and a disabled
-//! control's caption dims with it wherever it sits.
+//! The built-in controls as a reader and the screen find them: a slider takes no press past
+//! what it draws, a slider is as wide as it says, a caption is never required, a
+//! library's text entry takes the standard context menu as a built-in's does, a disabled
+//! control's caption dims with it wherever it sits, a press on a caption beside its control
+//! presses the control, and a disabled group disables its members.
 
 use skene_gui::{
   BasicTextField,
@@ -44,7 +45,7 @@ fn sliders() -> impl View {
 }
 
 #[skene_gui::test]
-fn a_slider_takes_a_press_inside_its_own_box_alone() {
+fn a_slider_takes_no_press_past_what_it_draws() {
   let screen = testing::render(sliders);
   let half = screen.find_by_role(Role::Slider, "Half");
   let zero = screen.find_by_role(Role::Slider, "Zero");
@@ -209,5 +210,97 @@ fn a_disabled_controls_caption_dims_with_it_beside_it_or_inside_it() {
   assert!(
     (i64::from(disabled_field) - i64::from(disabled_checkbox)).abs() < 60,
     "both dim alike: {disabled_field} and {disabled_checkbox}"
+  );
+}
+
+/// The platform's control fill, its hover and its press.
+const CONTROL: Color = Color::rgb(0xe8e8ed);
+/// The platform's control fill under the pointer.
+const CONTROL_HOVER: Color = Color::rgb(0xdcdce2);
+/// The platform's control fill pressed.
+const CONTROL_PRESSED: Color = Color::rgb(0xc8c8d0);
+
+/// A picker whose caption sits beside it, and a disabled radio group between two fields.
+fn captions() -> impl View {
+  let size = Signal::new(Some(0_usize));
+  let tone = Signal::new(Some(0_usize));
+  let before = Signal::new(String::new());
+  let after = Signal::new(String::new());
+
+  Column::new()
+    .set_padding(16)
+    .set_spacing(16)
+    .add_child(
+      Row::new().add_child(
+        Picker::new("Size")
+          .bind_chosen(size)
+          .set_options(["Small", "Medium", "Large"]),
+      ),
+    )
+    .add_child(TextField::new("Before").bind_text(before))
+    .add_child(
+      RadioGroup::new("Tone")
+        .set_disabled(true)
+        .bind_chosen(tone)
+        .set_options(["Warm", "Cool"]),
+    )
+    .add_child(TextField::new("After").bind_text(after))
+}
+
+#[skene_gui::test]
+fn a_press_on_a_caption_beside_its_control_presses_and_focuses_the_control() {
+  let screen = testing::render(captions);
+  let picker = screen.find_by_role(Role::ComboBox, "Size");
+  let bounds = picker.read().bounds;
+  let face = (bounds.x + 4., bounds.y + bounds.height / 2.);
+
+  assert_eq!(screen.pixel(face.0, face.1), CONTROL);
+
+  let caption = screen.find_by_text("Size");
+  let at = screen.driver().point_in(caption.element(), 0.5, 0.5);
+
+  screen.driver().hold_button(at);
+  assert_eq!(
+    screen.pixel(face.0, face.1),
+    CONTROL_PRESSED,
+    "the caption held down presses the control"
+  );
+  assert!(picker.is_focused(), "a press on the caption focuses it");
+
+  screen.driver().release_button();
+  assert_eq!(
+    screen.pixel(face.0, face.1),
+    CONTROL_HOVER,
+    "released, the pointer still over the caption hovers it"
+  );
+  assert!(
+    !picker.read().expanded.unwrap_or(false),
+    "a press on the caption does not open it"
+  );
+}
+
+#[skene_gui::test]
+fn a_disabled_group_disables_its_members_and_tab_passes_them() {
+  let screen = testing::render(captions);
+
+  for name in ["Warm", "Cool"] {
+    assert!(
+      !screen.find_by_role(Role::Radio, name).is_enabled(),
+      "{name} reads disabled inside its disabled group"
+    );
+  }
+
+  let before = screen.find_by_role(Role::TextField, "Before");
+
+  before.click().press("Tab");
+  assert!(
+    screen.find_by_role(Role::TextField, "After").is_focused(),
+    "Tab passes the disabled group's radios"
+  );
+
+  screen.find_by_role(Role::Radio, "Cool").click();
+  assert!(
+    screen.find_by_role(Role::Radio, "Warm").read().checked == Some(skene_gui::Checked::On),
+    "a press on a disabled radio chooses nothing"
   );
 }

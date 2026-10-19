@@ -18,23 +18,27 @@ pub enum Media {
   ReducedMotion,
 }
 
-/// A state a node's style varies under: its own (hovered), or, inside a control, the
-/// control's (checked, disabled, focus and press).
+/// A state a node's style varies under: inside a control, the control's (checked, disabled,
+/// open, and its hover, focus and press); outside every control, the node's own.
 ///
-/// A realization keeping states ([`crate::seam::style::Keep::states`]) maps each to its
-/// toolkit's own (CSS's pseudo-classes); one that does not reports them where a record
-/// varies under them, at the node itself or, for a node built inside a control, at the
-/// control ([`State::follows_control`]).
+/// Inside a control every state but [`State::FocusWithin`] is the control's, its own node
+/// included, so hovering a caption highlights the face it names; a box that acts keeps its own
+/// hover, press and focus ([`State::is_interaction`]). A realization keeping states
+/// ([`crate::seam::style::Keep::states`]) maps each to its toolkit's own (CSS's
+/// pseudo-classes); one that does not reports them where a record varies under them, at the
+/// node itself, or at the control and its caption beside it for a node built inside one.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 #[repr(u8)]
 pub enum State {
-  /// The pointer is over the node.
+  /// The pointer is over the node (inside a control: over the control, anything built inside
+  /// it or its caption beside it).
   Hovered,
-  /// The node is being pressed.
+  /// The node is being pressed (inside a control: the control, its caption beside it, or its
+  /// behavior holding it pressed from the keyboard).
   Pressed,
-  /// Focus is on the node.
+  /// Focus is on the node (inside a control: on the control).
   Focused,
-  /// Focus is on the node and shows.
+  /// Focus is on the node and shows (inside a control: on the control).
   FocusVisible,
   /// Focus is on the node or inside it.
   FocusWithin,
@@ -75,20 +79,17 @@ impl State {
     )
   }
 
-  /// Whether a node built inside a control takes the state from the control: the control's
-  /// own states, and its focus and press, which a part that takes neither cannot have on its
-  /// own. Hovered stays the node's own, as focus and press stay a node's that takes them
-  /// itself (an acting box, a control within a control) ([`State::is_interaction`]).
-  #[must_use]
-  pub const fn follows_control(self) -> bool {
-    self.is_control_state() || self.is_interaction()
-  }
-
-  /// Whether the state is a focus or a press: a node that takes focus and presses itself has
-  /// it on its own, inside a control or not.
+  /// Whether the state is an interaction: the pointer over it, a press, or focus. Inside a
+  /// control a node takes it from the control, unless it is a box that acts (an activatable
+  /// row, a link), which has it on its own; outside every control a node has its own.
+  /// [`State::FocusWithin`] is neither an interaction nor a control's state: it says where
+  /// focus is beneath a node, which only the node answers.
   #[must_use]
   pub const fn is_interaction(self) -> bool {
-    matches!(self, Self::Focused | Self::FocusVisible | Self::Pressed)
+    matches!(
+      self,
+      Self::Hovered | Self::Pressed | Self::Focused | Self::FocusVisible
+    )
   }
 }
 

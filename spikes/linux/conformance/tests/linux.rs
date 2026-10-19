@@ -68,5 +68,9 @@ scenarios!(
   reduced_motion_cuts_a_transition,
   a_keyframe_animation_plays_once_from_when_its_box_shows,
   nothing_in_motion_paints_no_frame,
+  a_caption_hovers_its_control_and_a_box_hovers_alone,
+  a_window_opens_with_its_autofocus_control_focused_or_none,
+  a_popup_focuses_its_autofocus_control_and_closing_returns_focus,
+  a_press_on_content_overflowing_its_control_reaches_the_control,
   every_page_passes_the_audit,
 );

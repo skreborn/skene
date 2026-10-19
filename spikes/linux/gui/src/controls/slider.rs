@@ -27,7 +27,8 @@ use crate::{
 /// parts: a track ([`Slider::default_track`]) clipping its fill ([`Slider::default_fill`]),
 /// and a thumb ([`Slider::default_thumb`]) centered on the value. The fill and the thumb move
 /// by paint alone. It is 200 pixels wide unless its layout stretches or shrinks it, 80 at
-/// least, and 24 tall, padded 9 at the sides; it takes a press inside its box alone.
+/// least, and 24 tall, padded 9 at the sides; it takes a press on what it draws: its box, and
+/// its thumb where the thumb overflows it.
 #[must_use]
 pub struct Slider {
   /// The control it composes, its defaults set, over a behavior replaced as it is built.
@@ -218,12 +219,13 @@ impl View for Slider {
     let fill_fraction = fraction.clone();
     let fill = fill.derive_offset(move || Offset::of_size(fill_fraction() - 1., 0.));
     // As wide as the track where the track's width is known, 182 where its layout asks how
-    // wide it likes to be.
+    // wide it likes to be; no height, so it takes no press beyond the slider as it moves,
+    // the thumb it centers overflowing it.
     let carrier = Container::new()
       .set_width(182)
       .set_min_width(Dimension::Fraction(1.))
       .set_max_width(Dimension::Fraction(1.))
-      .set_height(18)
+      .set_height(0)
       .set_alignment(Alignment::new(AxisAlignment::Start, AxisAlignment::Center))
       .derive_offset(move || Offset::of_size(fraction(), 0.))
       .set_child(AsPart::new(Part::Thumb).set_child(thumb));

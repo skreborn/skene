@@ -82,6 +82,9 @@ struct Entry<R: Realization> {
   states: Signal<StateSet>,
   control: Option<NodeId>,
   control_state: Option<Signal<ControlState>>,
+  answered: Option<Signal<StateSet>>,
+  outer: Option<NodeId>,
+  captions: Vec<NodeId>,
   part: Option<Part>,
   dispatch: Option<Rc<ControlDispatch>>,
   record: Option<Rc<Record>>,
@@ -95,6 +98,7 @@ struct Entry<R: Realization> {
 
 struct Tree<R: Realization> {
   scene: Scene<Entry<R>>,
+  autofocus: Vec<NodeId>,
 }
 
 thread_local! {
@@ -109,6 +113,7 @@ fn with<R: Realization, T>(body: impl FnOnce(&mut Tree<R>) -> T) -> T {
       .or_insert_with(|| {
         Box::new(Tree::<R> {
           scene: Scene::new(),
+          autofocus: Vec::new(),
         })
       })
       .downcast_mut::<Tree<R>>()
@@ -156,6 +161,7 @@ fn insert_entry<R: Realization>(
   let control_state = spec
     .is_control()
     .then(|| Signal::new(ControlState::DEFAULT));
+  let answered = spec.is_control().then(|| Signal::new(StateSet::EMPTY));
 
   with::<R, _>(|tree| {
     let id = tree.scene.insert(Entry {
@@ -165,6 +171,9 @@ fn insert_entry<R: Realization>(
       states: Signal::new(StateSet::EMPTY),
       control,
       control_state,
+      answered,
+      outer: None,
+      captions: Vec::new(),
       part: None,
       dispatch: None,
       record: None,
@@ -179,7 +188,14 @@ fn insert_entry<R: Realization>(
     if spec.is_control()
       && let Some(entry) = tree.scene.get_mut(id)
     {
+      entry.outer = control;
       entry.control = Some(id);
+    }
+
+    if spec.interaction == Interaction::Answering
+      && let Some(entry) = control.and_then(|control| tree.scene.get_mut(control))
+    {
+      entry.captions.push(id);
     }
 
     id
@@ -220,9 +236,29 @@ pub fn create<R: Realization>(
     set_native::<R>(id, R::create(id, &spec));
   }
 
+  // A caption beside its control is asked for what the control's parts read of the control
+  // through it: its hover and its press.
+  if spec.interaction == Interaction::Answering
+    && let Some(control) = control
+  {
+    let wanted = with::<R, _>(|tree| {
+      tree
+        .scene
+        .get(control)
+        .map_or(StateSet::EMPTY, |entry| entry.interest.states)
+    });
+
+    watch_states::<R>(id, answered_states(wanted));
+  }
+
   forget_on_cleanup::<R>(id);
 
   id
+}
+
+/// The states a caption beside its control lends the control: its hover and its press.
+const fn answered_states(states: StateSet) -> StateSet {
+  StateSet(states.0 & (StateSet::EMPTY.with(State::Hovered).with(State::Pressed).0))
 }
 
 /// Adopts a toolkit widget through the native door. Where the widget holds values, `sink`
@@ -261,7 +297,12 @@ fn forget_on_cleanup<R: Realization>(id: NodeId) {
         entry.handlers = Handlers::default();
         entry.dispatch = None;
         entry.access.clear();
-        entry.native.take()
+
+        let native = entry.native.take();
+
+        tree.autofocus.retain(|marked| *marked != id);
+
+        native
       });
 
       if let Some(native) = native {
@@ -377,26 +418,53 @@ pub fn remove<R: Realization>(id: NodeId) {
   with::<R, _>(|tree| tree.scene.remove(id));
 }
 
+/// What a node built inside a control resolves the control's states against: the control's
+/// reported states, the hover and press its caption beside it lends it, and its own state.
+#[derive(Clone, Copy)]
+struct Enclosing {
+  reported: Signal<StateSet>,
+  answered: Option<Signal<StateSet>>,
+  state: Option<Signal<ControlState>>,
+}
+
+impl Enclosing {
+  /// Whether the control's own state holds `state` (a control state), subscribing the
+  /// running effect.
+  fn holds(&self, state: State) -> bool {
+    self.state.is_some_and(|control| control.get().holds(state))
+  }
+
+  /// Whether the control holds the interaction `state`: reported at it, lent by its caption
+  /// beside it, or, for a press, held by its behavior; subscribing the running effect.
+  fn interaction(&self, state: State) -> bool {
+    self.reported.get().contains(state)
+      || self
+        .answered
+        .is_some_and(|answered| answered.get().contains(state))
+      || (state == State::Pressed && self.state.is_some_and(|control| control.get().pressed))
+  }
+}
+
 /// What a node's state conditions resolve against: its own reported states, and, for a node
-/// built inside a control, the control's reported states and its [`ControlState`]; focus and
-/// press stay a node's own where it takes them itself.
+/// built inside a control (a control's own node included), the control's: every state but
+/// [`State::FocusWithin`], a box that acts keeping its own interactions.
 #[derive(Clone, Copy)]
 struct Resolution {
   own: Signal<StateSet>,
-  control: Option<(Signal<StateSet>, Option<Signal<ControlState>>)>,
-  interactive: bool,
+  control: Option<Enclosing>,
+  acting: bool,
 }
 
 impl Resolution {
   /// Whether `state` holds now, subscribing the running effect.
   fn holds(&self, state: State) -> bool {
     match &self.control {
-      Some(_) if self.interactive && state.is_interaction() => self.own.get().contains(state),
-      Some((reported, control)) if state.follows_control() => {
-        reported.get().contains(state) || control.is_some_and(|control| control.get().holds(state))
-      }
-      _ if state.is_control_state() => false,
-      _ => self.own.get().contains(state),
+      _ if state == State::FocusWithin => self.own.get().contains(state),
+      None if state.is_control_state() => false,
+      None => self.own.get().contains(state),
+      Some(control) if state.is_control_state() => control.holds(state),
+      Some(_) if self.acting => self.own.get().contains(state),
+      Some(control) => control.interaction(state),
     }
   }
 
@@ -415,27 +483,29 @@ fn resolution<R: Realization>(id: NodeId) -> Option<Resolution> {
     let control = entry.control.and_then(|control| {
       let control = tree.scene.get(control)?;
 
-      Some((control.states, control.control_state))
+      Some(Enclosing {
+        reported: control.states,
+        answered: control.answered,
+        state: control.control_state,
+      })
     });
 
     Some(Resolution {
       own: entry.states,
       control,
-      interactive: matches!(
-        entry.spec.interaction,
-        Interaction::Acting | Interaction::Control { .. }
-      ),
+      acting: entry.spec.interaction == Interaction::Acting,
     })
   })
 }
 
-/// Asks the realization for `states` at `id`, beside what it reports there already.
+/// Asks the realization for `states` at `id`, beside what it reports there already; at a
+/// control, its hover and its press at its caption beside it too.
 fn watch_states<R: Realization>(id: NodeId, states: StateSet) {
   if states.is_empty() {
     return;
   }
 
-  let watched = with::<R, _>(|tree| {
+  let Some((watched, captions)) = with::<R, _>(|tree| {
     let entry = tree.scene.get_mut(id)?;
     let grown = entry.interest.states.union(states);
 
@@ -445,29 +515,44 @@ fn watch_states<R: Realization>(id: NodeId, states: StateSet) {
 
     entry.interest.states = grown;
 
-    Some((entry.native.clone()?, entry.interest))
-  });
+    Some((
+      entry.native.clone().map(|native| (native, entry.interest)),
+      entry.captions.clone(),
+    ))
+  }) else {
+    return;
+  };
 
   if let Some((native, interest)) = watched {
     R::watch(&native, interest);
+  }
+
+  for caption in captions {
+    watch_states::<R>(caption, answered_states(states));
   }
 }
 
 /// Gives a node its record: one effect keeps its compiled style on the realization and, on
 /// [`LayoutOwner::Engine`] platforms, one keeps its resolved layout on its host container.
 ///
-/// Its state conditions resolve against its own states, and, where it is built inside a
-/// control, its focus and press and the control's own states against the control's
-/// ([`State::follows_control`]): the realization is asked for each where it is reported, at
-/// the node or at its control, and the control-scoped states never.
+/// Its state conditions resolve against its own states outside every control, and inside one
+/// against the control's (its hover, focus and press, its caption's beside it, and its own
+/// state), a box that acts keeping its own hover, focus and press and every node its own
+/// [`State::FocusWithin`]: the realization is asked for each where it is reported, at the node
+/// or at its control, and the control's own states never.
 pub fn set_record<R: Realization>(id: NodeId, record: Record) {
   let record = Rc::new(record);
-  let Some((native, scope, control)) = with::<R, _>(|tree| {
+  let Some((native, scope, control, acting)) = with::<R, _>(|tree| {
     let entry = tree.scene.get_mut(id)?;
 
     entry.record = Some(Rc::clone(&record));
 
-    Some((entry.native.clone()?, entry.scope.clone(), entry.control))
+    Some((
+      entry.native.clone()?,
+      entry.scope.clone(),
+      entry.control,
+      entry.spec.interaction == Interaction::Acting,
+    ))
   }) else {
     return;
   };
@@ -487,8 +572,9 @@ pub fn set_record<R: Realization>(id: NodeId, record: Record) {
 
   for state in watched.iter() {
     match control {
-      Some(_) if state.is_control_state() => {}
-      Some(_) if state.follows_control() => at_control = at_control.with(state),
+      _ if state == State::FocusWithin => own = own.with(state),
+      _ if state.is_control_state() => {}
+      Some(_) if !acting => at_control = at_control.with(state),
       _ => own = own.with(state),
     }
   }
@@ -877,6 +963,64 @@ pub fn set_control_state<R: Realization>(id: NodeId, derive: impl Fn() -> Contro
   });
 }
 
+/// Whether a control enclosing the control `id` is disabled now, as a fieldset disables the
+/// controls inside it: what the control's own disabled state composes with, subscribing the
+/// running effect.
+#[must_use]
+pub fn enclosing_disabled<R: Realization>(id: NodeId) -> bool {
+  with::<R, _>(|tree| {
+    let outer = tree.scene.get(id)?.outer?;
+
+    tree.scene.get(outer)?.control_state
+  })
+  .is_some_and(|state| state.get().disabled)
+}
+
+/// Marks the control `id` as asking for focus when what holds it opens: its window, or its
+/// popup ([`autofocus_in`]), until the current owner is disposed.
+pub fn set_autofocus<R: Realization>(id: NodeId) {
+  with::<R, _>(|tree| tree.autofocus.push(id));
+}
+
+/// The nodes beneath `root` (itself included) that asked for focus when it opens
+/// ([`set_autofocus`]), in the scene's order: the realization focuses the first that takes
+/// focus now. It costs the nodes that asked, never a walk of the tree.
+#[must_use]
+pub fn autofocus_in<R: Realization>(root: NodeId) -> Vec<NodeId> {
+  with::<R, _>(|tree| {
+    let place = |node: NodeId| -> Option<Vec<usize>> {
+      let mut path = Vec::new();
+      let mut at = node;
+
+      while at != root {
+        let parent = tree.scene.parent(at)?;
+
+        path.push(
+          tree
+            .scene
+            .children(parent)
+            .iter()
+            .position(|child| *child == at)?,
+        );
+        at = parent;
+      }
+
+      path.reverse();
+
+      Some(path)
+    };
+    let mut found: Vec<(Vec<usize>, NodeId)> = tree
+      .autofocus
+      .iter()
+      .filter_map(|node| Some((place(*node)?, *node)))
+      .collect();
+
+    found.sort_by(|a, b| a.0.cmp(&b.0));
+
+    found.into_iter().map(|(_, node)| node).collect()
+  })
+}
+
 /// Records `id` as `part` of the control it is built inside.
 pub fn set_part<R: Realization>(id: NodeId, part: Part) {
   with::<R, _>(|tree| {
@@ -1138,9 +1282,19 @@ pub fn report<R: Realization>(id: NodeId, report: Report) -> Answer {
       Answer::None
     }
     Report::State { state, holds } => {
-      let states = with::<R, _>(|tree| tree.scene.get(id).map(|entry| entry.states));
+      let (states, answered) = with::<R, _>(|tree| {
+        let entry = tree.scene.get(id)?;
+        // A caption beside its control lends it its hover and its press.
+        let answered = (entry.spec.interaction == Interaction::Answering
+          && !answered_states(StateSet::EMPTY.with(state)).is_empty())
+        .then(|| tree.scene.get(entry.control?)?.answered)
+        .flatten();
 
-      if let Some(states) = states {
+        Some((Some(entry.states), answered))
+      })
+      .unwrap_or_default();
+
+      for states in states.into_iter().chain(answered) {
         let current = states.get_untracked();
         let next = if holds {
           current.with(state)
@@ -1357,69 +1511,89 @@ pub fn resolved_states<R: Realization>(id: NodeId) -> StateSet {
 
 #[cfg(test)]
 mod tests {
-  use super::Resolution;
+  use super::{Enclosing, Resolution};
   use crate::{
     Owner, Signal, State, StateSet,
     seam::{access::Checked, control::ControlState},
   };
 
-  /// A box outside every control answers its own states and no control's; a part answers
-  /// its own hover and its control's focus, press and states; a control answers its own; a
-  /// control within one answers its own focus and press and its control's states.
+  fn set(states: &[State]) -> StateSet {
+    states.iter().copied().collect()
+  }
+
+  /// A node no control encloses answers its own interactions and no control's state; inside
+  /// a control a part and the control's own node answer the control's interactions (its
+  /// caption's beside it, its behavior's press) and states, a box that acts its own
+  /// interactions and the control's states, and every node its own focus within.
   #[test]
-  fn a_part_resolves_focus_press_and_control_states_against_its_control() {
+  fn a_part_resolves_every_state_but_focus_within_against_its_control() {
     Owner::root().run(|| {
-      let control_reported = Signal::new(StateSet::EMPTY.with(State::FocusVisible));
+      let control_reported = Signal::new(set(&[State::FocusVisible, State::Focused]));
+      let answered = Signal::new(StateSet::EMPTY);
       let control_state = Signal::new(ControlState {
         checked: Checked::On,
-        pressed: true,
         ..ControlState::DEFAULT
       });
-      let part_reported = Signal::new(StateSet::EMPTY.with(State::Hovered));
-      let part = Resolution {
-        own: part_reported,
-        control: Some((control_reported, Some(control_state))),
-        interactive: false,
+      let enclosing = Enclosing {
+        reported: control_reported,
+        answered: Some(answered),
+        state: Some(control_state),
       };
-      let control = Resolution {
+      let part = Resolution {
+        own: Signal::new(set(&[State::Hovered, State::FocusWithin])),
+        control: Some(enclosing),
+        acting: false,
+      };
+      let own_node = Resolution {
         own: control_reported,
-        control: Some((control_reported, Some(control_state))),
-        interactive: false,
+        control: Some(enclosing),
+        acting: false,
+      };
+      let acting = Resolution {
+        own: Signal::new(set(&[State::Pressed])),
+        control: Some(enclosing),
+        acting: true,
       };
       let outside = Resolution {
-        own: Signal::new(
-          StateSet::EMPTY
-            .with(State::FocusVisible)
-            .with(State::Hovered),
-        ),
+        own: Signal::new(set(&[State::FocusVisible, State::Hovered])),
         control: None,
-        interactive: false,
-      };
-      // An option of a list: a control within a control, its focus and press its own.
-      let option = Resolution {
-        own: Signal::new(StateSet::EMPTY),
-        control: Some((control_reported, Some(control_state))),
-        interactive: true,
+        acting: false,
       };
 
-      assert!(part.holds(State::Hovered));
+      // The part's own hover is not the control's; its focus within is its own.
+      assert!(!part.holds(State::Hovered));
+      assert!(part.holds(State::FocusWithin));
       assert!(part.holds(State::FocusVisible));
-      assert!(part.holds(State::Pressed));
       assert!(part.holds(State::Checked));
       assert!(!part.holds(State::Disabled));
-      assert!(!control.holds(State::Hovered));
-      assert!(control.holds(State::Checked));
+      assert!(own_node.holds(State::Focused));
+      assert!(own_node.holds(State::Checked));
       assert!(outside.holds(State::FocusVisible));
       assert!(outside.holds(State::Hovered));
       assert!(!outside.holds(State::Checked));
-      assert!(!option.holds(State::FocusVisible));
-      assert!(!option.holds(State::Pressed));
-      assert!(option.holds(State::Checked));
+      assert!(acting.holds(State::Pressed));
+      assert!(!acting.holds(State::FocusVisible));
+      assert!(acting.holds(State::Checked));
 
-      control_state.set(ControlState::DEFAULT);
+      // The caption beside the control is hovered and pressed: the control is, its parts and
+      // its own node with it.
+      answered.set(set(&[State::Hovered, State::Pressed]));
 
+      assert!(part.holds(State::Hovered));
+      assert!(part.holds(State::Pressed));
+      assert!(own_node.holds(State::Hovered));
+      assert!(!acting.holds(State::Hovered));
+
+      // The behavior holds the control pressed from the keyboard.
+      answered.set(StateSet::EMPTY);
+      control_state.set(ControlState {
+        pressed: true,
+        ..ControlState::DEFAULT
+      });
+
+      assert!(part.holds(State::Pressed));
+      assert!(own_node.holds(State::Pressed));
       assert!(!part.holds(State::Checked));
-      assert!(!part.holds(State::Pressed));
     });
   }
 }

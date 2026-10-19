@@ -410,6 +410,25 @@ pub struct Frame<'a> {
   pub presented: bool,
 }
 
+/// What the last input was: whether focus moved now shows.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum Modality {
+  /// No input yet: a focus the window or a popup gives as it opens shows, as Chromium shows a
+  /// focus a page gives before any interaction.
+  Unknown,
+  /// A pointer press or a touch: focus moved shows only in a text entry.
+  Pointer,
+  /// A key: focus moved shows.
+  Keyboard,
+}
+
+impl Modality {
+  /// Whether focus moved under this modality shows.
+  const fn shows_focus(self) -> bool {
+    !matches!(self, Self::Pointer)
+  }
+}
+
 /// The window.
 pub struct Shell {
   /// The root of the window's tree, once mounted.
@@ -428,6 +447,9 @@ pub struct Shell {
   pointer: Option<(f32, f32)>,
   /// The nodes under the pointer, deepest first.
   hovered: Vec<Node>,
+  /// The nodes holding [`State::Hovered`]: the nodes under the pointer and, over the open
+  /// overlay, the overlay's ancestors in the scene too.
+  hover_states: Vec<Node>,
   /// The press in progress.
   press: Option<Press>,
   /// The node with focus.
@@ -446,8 +468,13 @@ pub struct Shell {
   overlay: Option<Open>,
   /// Whether the pointer is over the open overlay rather than the window.
   pointer_in_overlay: bool,
-  /// Whether the last input was a key, so focus moved now shows.
-  keyboard_modality: bool,
+  /// What the last input was, so whether focus moved now shows.
+  modality: Modality,
+  /// The node focus was on outside every overlay, last: what focus returns to when the open
+  /// overlay holding it closes.
+  outside_focus: Option<Node>,
+  /// Whether a control that asked for focus as the window opens took it: one does, once.
+  autofocused: bool,
   /// The acting box shown pressed from the keyboard (`Space` held).
   key_pressed: Option<Node>,
   /// What the shell asks of its platform, until it takes them.
@@ -500,6 +527,7 @@ impl Shell {
       renderer: Renderer::new(),
       pointer: None,
       hovered: Vec::new(),
+      hover_states: Vec::new(),
       press: None,
       focus: None,
       link: None,
@@ -509,7 +537,9 @@ impl Shell {
       cursor: Cursor::Default,
       overlay: None,
       pointer_in_overlay: false,
-      keyboard_modality: false,
+      modality: Modality::Unknown,
+      outside_focus: None,
+      autofocused: false,
       key_pressed: None,
       pending: Vec::new(),
       modifiers: skene_foundation::seam::report::Modifiers::default(),
@@ -616,10 +646,29 @@ impl Shell {
     let request = DIRTY.with(|dirty| dirty.borrow_mut().focus.take());
 
     if let Some(node) = request {
-      let visible = self.keyboard_modality;
+      let visible = self.modality.shows_focus();
 
       self.set_focus(node, visible);
     }
+  }
+
+  /// Focuses the first control beneath `root` that asked for focus as it opens
+  /// ([`tree::autofocus_in`]) and takes focus now, its focus showing as the last input
+  /// shows it; whether one did.
+  fn autofocus(&mut self, root: &Node) -> bool {
+    let Some(node) = tree::autofocus_in::<Linux>(root.id.get())
+      .into_iter()
+      .filter_map(crate::node_of)
+      .find(Self::focusable)
+    else {
+      return false;
+    };
+    let visible = self.modality.shows_focus();
+
+    trace::log(|| format!("[focus] autofocus {:?}", node.id.get()));
+    self.set_focus(Some(node), visible);
+
+    true
   }
 
   /// Lays out and paints what changed: the frame and the part of it that changed since the
@@ -719,6 +768,13 @@ impl Shell {
     self.settle_focus();
 
     let root = self.root.clone()?;
+
+    // As HTML processes autofocus: the first control asking for focus as it shows takes it
+    // while nothing has focus, once in the window's life.
+    if !self.autofocused && self.focus.is_none() && self.autofocus(&root) {
+      self.autofocused = true;
+    }
+
     let started = Instant::now();
     let palette = Palette::now();
 
@@ -939,9 +995,14 @@ impl Shell {
   }
 
   /// The deepest shown node under `root` at `x`, `y` (window pixels), with its ancestors up
-  /// to `root`, deepest first; an overlay beneath `root` is not in its flow. A control takes
-  /// a point inside its own box alone, whatever its parts reach beyond it, as a box that
-  /// clips does.
+  /// to `root`, deepest first; an overlay beneath `root` is not in its flow.
+  ///
+  /// A node takes a point inside its box rounded by its corners, moved by its offset, as CSS
+  /// shapes a hit by `border-radius` and moves it by a transform; its ring and its shadows take
+  /// none. Only a box that clips (`clip`, a scroll box's viewport, an overlay's surface) cuts
+  /// the hits of what it holds, so a part visibly overflowing its control takes a press as the
+  /// control's, as in Chromium. A subtree whose reach (what it paints) misses the point is
+  /// skipped.
   fn hit_in(root: &Node, x: f32, y: f32) -> Vec<Node> {
     fn go(node: &Node, origin: (f32, f32), x: f32, y: f32, out: &mut Vec<Node>) -> bool {
       if node.is_hidden() {
@@ -955,14 +1016,39 @@ impl Shell {
         y: origin.1 + frame.y + dy,
         ..frame
       };
-      let inside =
-        x >= rect.x && y >= rect.y && x < rect.x + rect.width && y < rect.y + rect.height;
-      let clips = node.look.borrow().clip
-        || node.spec.is_control()
-        || matches!(
-          node.layout_kind(),
-          Some(skene_foundation::seam::node::LayoutKind::Scroll { .. })
-        );
+      let reach = node.reach.get();
+
+      if x < rect.x + reach.x
+        || y < rect.y + reach.y
+        || x >= rect.x + reach.x + reach.width
+        || y >= rect.y + reach.y + reach.height
+      {
+        return false;
+      }
+
+      let (inside, clips) = {
+        let look = node.look.borrow();
+        let inside = x >= rect.x
+          && y >= rect.y
+          && x < rect.x + rect.width
+          && y < rect.y + rect.height
+          && (look.corners == skene_foundation::Corners::all(0.)
+            || vello_cpu::kurbo::Shape::contains(
+              &vello_cpu::kurbo::RoundedRect::from_rect(
+                crate::paint::krect(rect),
+                crate::paint::radii(look.corners, rect),
+              ),
+              vello_cpu::kurbo::Point::new(f64::from(x), f64::from(y)),
+            ));
+        let clips = look.clip
+          || node.is_overlay()
+          || matches!(
+            node.layout_kind(),
+            Some(skene_foundation::seam::node::LayoutKind::Scroll { .. })
+          );
+
+        (inside, clips)
+      };
 
       if !inside && clips {
         return false;
@@ -1041,19 +1127,31 @@ impl Shell {
       .pointer
       .map(|(x, y)| self.hit(x, y))
       .unwrap_or_default();
+    let mut held = next.clone();
 
-    if next.len() == self.hovered.len()
-      && next
+    // A popover the web promotes in place stays a descendant of its anchor's element, so
+    // `:hover` holds on the anchor's chain while the pointer is over it: the chain goes on
+    // from the open overlay to its ancestors in the scene.
+    if self.pointer_in_overlay
+      && let Some(open) = &self.overlay
+    {
+      held.extend(open.node.ancestors());
+    }
+
+    self.hovered = next;
+
+    if held.len() == self.hover_states.len()
+      && held
         .iter()
-        .zip(&self.hovered)
+        .zip(&self.hover_states)
         .all(|(a, b)| Rc::ptr_eq(a, b))
     {
       return;
     }
 
-    let previous = std::mem::replace(&mut self.hovered, next.clone());
+    let previous = std::mem::replace(&mut self.hover_states, held.clone());
 
-    Self::set_chain(&previous, &next, State::Hovered);
+    Self::set_chain(&previous, &held, State::Hovered);
   }
 
   /// The control or acting box a press on `chain` belongs to: the deepest.
@@ -1136,6 +1234,11 @@ impl Shell {
     }
 
     Self::set_chain(&previous_chain, &next_chain, State::FocusWithin);
+
+    if node.as_ref().is_none_or(|node| node.overlay().is_none()) {
+      self.outside_focus.clone_from(&node);
+    }
+
     self.focus = node.clone();
     self.link = None;
     self.focus_visible = visible;
@@ -1449,6 +1552,9 @@ impl Shell {
     self.pending.push(Request::Popup(Some(open.placement)));
     self.overlay = Some(open);
     self.report_sizes(&node);
+    // A popup focuses its first control asking for focus as it opens; with none, focus stays
+    // where its behavior put it.
+    self.autofocus(&node);
     crate::access::invalidate();
   }
 
@@ -1468,8 +1574,9 @@ impl Shell {
     crate::access::invalidate();
   }
 
-  /// Closes the open overlay's surface; focus inside it returns to the nearest node before it
-  /// that takes focus (its anchor).
+  /// Closes the open overlay's surface; focus inside it returns to what held focus when it
+  /// opened, where that still takes focus, else to the nearest node before it that does (its
+  /// anchor), as a popover hiding restores focus.
   fn close_overlay(&mut self) {
     let Some(open) = self.overlay.take() else {
       return;
@@ -1482,10 +1589,14 @@ impl Shell {
     if let Some(focus) = self.focus.clone()
       && focus.is_within(&open.node)
     {
-      let anchor = open.node.ancestors().into_iter().find(Self::focusable);
-      let visible = self.keyboard_modality;
+      let back = self
+        .outside_focus
+        .clone()
+        .filter(|node| node.is_alive() && Self::focusable(node))
+        .or_else(|| open.node.ancestors().into_iter().find(Self::focusable));
+      let visible = self.modality.shows_focus();
 
-      self.set_focus(anchor, visible);
+      self.set_focus(back, visible);
     }
 
     if self
@@ -1493,7 +1604,9 @@ impl Shell {
       .first()
       .is_some_and(|hovered| hovered.is_within(&open.node))
     {
-      let previous = std::mem::take(&mut self.hovered);
+      self.hovered.clear();
+
+      let previous = std::mem::take(&mut self.hover_states);
 
       Self::set_chain(&previous, &[], State::Hovered);
     }
@@ -1924,7 +2037,7 @@ impl Shell {
   /// control), a text entry's caret placed, and the press reported; a control that drags
   /// keeps the pointer where its handler answered it.
   fn content_press(&mut self, button: u8, chain: Vec<Node>) {
-    self.keyboard_modality = false;
+    self.modality = Modality::Pointer;
 
     let mut on_selection = None;
 
@@ -2377,7 +2490,7 @@ impl Shell {
     }
 
     self.stop_fling();
-    self.keyboard_modality = false;
+    self.modality = Modality::Pointer;
 
     let hit = self.chrome.hit(x, y, self.size.0, self.size.1);
 
@@ -2887,7 +3000,7 @@ impl Shell {
     }
 
     if event.down {
-      self.keyboard_modality = true;
+      self.modality = Modality::Keyboard;
     }
 
     if event.down && event.key != "Tab" {

@@ -22,6 +22,10 @@ Skene's changes, each marked `Skene:` in the source:
   reports GtkEntry and GtkTextView.
 - node.rs: the first action's key binding is the node's keyboard shortcut (`key_binding`, and in
   `actions`).
+- adapter.rs: a window gaining focus reports its focused object's focus before its own
+  activation (`window:activate`), as GTK 4 reports its focused widget before its window's
+  active state, so Orca presents the object in the window's context (`controls`, then `Name
+  text`) rather than the bare window first (`controls frame`).
 - Cargo.toml: unicode-segmentation for words and sentences.
 
 The licence files (LICENSE-MIT, LICENSE-APACHE, and LICENSE.chromium for the parts derived from Chromium) are copied from the AccessKit repository, since the published crate ships none.

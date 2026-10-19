@@ -322,11 +322,16 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
     }
 
     fn focus_moved(&mut self, old_node: Option<&NodeRef>, new_node: Option<&NodeRef>) {
-        if let (None, Some(new_node)) = (old_node, new_node) {
-            if let Some(root_window) = root_window(new_node.tree_state) {
-                self.adapter.window_activated(&NodeWrapper(&root_window));
-            }
-        } else if let (Some(old_node), None) = (old_node, new_node) {
+        // Skene: a window gaining focus reports its focused object before its activation, as
+        // GTK 4 reports its focused widget before its window's active state, so a screen
+        // reader presents the object in its window's context; Orca 46 speaks a window whose
+        // activation comes first as the bare window, then the object.
+        let activated = if let (None, Some(new_node)) = (old_node, new_node) {
+            root_window(new_node.tree_state)
+        } else {
+            None
+        };
+        if let (Some(old_node), None) = (old_node, new_node) {
             if let Some(root_window) = root_window(old_node.tree_state) {
                 self.adapter.window_deactivated(&NodeWrapper(&root_window));
             }
@@ -339,6 +344,9 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
         if let Some(node) = old_node {
             self.adapter
                 .emit_object_event(node.id(), ObjectEvent::StateChanged(State::Focused, false));
+        }
+        if let Some(root_window) = activated {
+            self.adapter.window_activated(&NodeWrapper(&root_window));
         }
     }
 

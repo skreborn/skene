@@ -3,7 +3,9 @@
 
 use acme_rating::star_rating;
 use skene_gui::{
-  Animation, Curve, Keyframe, PointerEvent, PointerPhase, Transition, keys,
+  Animation, BasicButton, Curve, Keyframe, PointerEvent, PointerPhase, Transition,
+  behavior::Activate,
+  keys,
   painted::shapes::Rect,
   prelude::*,
   testing::{publish, register as register_page},
@@ -41,6 +43,10 @@ pub const NAMES: &[&str] = &[
   "gradients",
   "motion",
   "keyframes",
+  "hover",
+  "autofocus",
+  "popup",
+  "overflow",
 ];
 
 /// Registers every page under its name.
@@ -72,6 +78,10 @@ pub fn register() {
   register_page("gradients", gradients);
   register_page("motion", motion);
   register_page("keyframes", keyframes);
+  register_page("hover", hover);
+  register_page("autofocus", autofocus);
+  register_page("popup", popup);
+  register_page("overflow", overflow);
 }
 
 /// Publishes `signal`'s value as the probe `name`, as `Display` writes it.
@@ -768,4 +778,159 @@ fn keyframes() -> impl View {
           .add_keyframe(0., Keyframe::new().set(keys::BACKGROUND, Color::BLACK)),
       ),
   )
+}
+
+/// A checkbox, a picker whose caption sits beside it, a radio group, and a box outside every
+/// control whose fill changes under the pointer.
+fn hover() -> impl View {
+  let remember = Signal::new(false);
+  let size = Signal::new(Some(0_usize));
+  let tone = Signal::new(Some(0_usize));
+
+  Column::new()
+    .set_padding(16)
+    .set_spacing(16)
+    .add_child(Row::new().add_child(Checkbox::new("Remember me").bind_checked(remember)))
+    .add_child(
+      Row::new().add_child(
+        Picker::new("Size")
+          .bind_chosen(size)
+          .set_options(["Small", "Medium", "Large"]),
+      ),
+    )
+    .add_child(
+      RadioGroup::new("Tone")
+        .bind_chosen(tone)
+        .set_options(["Warm", "Cool"]),
+    )
+    .add_child(
+      Row::new().add_child(
+        Container::new()
+          .set_label("Plain box")
+          .set_width(120)
+          .set_height(32)
+          .set_padding(Inset::new(0, 0, 0, 40))
+          .set_background(Value::from(Color::WHITE).when(State::Hovered, Color::rgb(0x00a0ff)))
+          .set_child(Text::new("Plain")),
+      ),
+    )
+}
+
+/// Two fields, the second asking for focus as the window opens.
+fn autofocus() -> impl View {
+  let first = Signal::new(String::new());
+  let second = Signal::new(String::new());
+
+  probe("second", second);
+
+  Column::new()
+    .set_padding(16)
+    .set_spacing(12)
+    .add_child(TextField::new("First").bind_text(first))
+    .add_child(
+      TextField::new("Second")
+        .set_autofocus(true)
+        .bind_text(second),
+    )
+}
+
+/// A button opening a popup whose field asks for focus as it opens, and whose button closes
+/// it.
+fn popup() -> impl View {
+  let open = Signal::new(false);
+  let note = Signal::new(String::new());
+  let opener = NodeHandle::new();
+
+  probe("note", note);
+  probe("open", open);
+
+  Column::new()
+    .set_padding(16)
+    .set_spacing(12)
+    .add_child(
+      Row::new().add_child(
+        Button::new("Open")
+          .set_handle(&opener)
+          .handle_activate(move || open.set(true)),
+      ),
+    )
+    .add_child(
+      Overlay::popup()
+        .set_anchor(&opener)
+        .bind_open(open)
+        .set_child(
+          Container::new()
+            .set_padding(12)
+            .set_background(SystemColors::FIELD)
+            .set_child(
+              Column::new()
+                .set_spacing(8)
+                .add_child(TextField::new("Note").set_autofocus(true).bind_text(note))
+                .add_child(Button::new("Done").handle_activate(move || open.set(false))),
+            ),
+        ),
+    )
+}
+
+/// A command whose mark is drawn below its box, the same command inside a box that clips,
+/// and a round box over a square one.
+fn overflow() -> impl View {
+  let over = Signal::new(0_u32);
+  let clipped = Signal::new(0_u32);
+  let beneath = Signal::new(0_u32);
+  let round = Signal::new(0_u32);
+
+  probe("overflowing", over);
+  probe("clipped", clipped);
+  probe("beneath", beneath);
+  probe("round", round);
+
+  let command = |name: &str, count: Signal<u32>| {
+    BasicButton::new(Activate::new().handle_activate(move || count.update(|count| *count += 1)))
+      .set_height(20)
+      .set_spacing(8)
+      .add_part(
+        Part::Mark,
+        Container::new()
+          .set_width(40)
+          .set_height(20)
+          .set_background(SystemColors::ACCENT)
+          .set_offset(Offset::new(0, 20)),
+      )
+      .set_label(name)
+  };
+
+  Column::new()
+    .set_padding(16)
+    .set_spacing(48)
+    .add_child(Row::new().add_child(command("Overflowing", over)))
+    .add_child(
+      Row::new().add_child(
+        Container::new()
+          .set_clip(true)
+          .set_child(command("Clipped", clipped)),
+      ),
+    )
+    .add_child(
+      Row::new().add_child(
+        Stack::new()
+          .add_child(
+            Container::new()
+              .set_label("Beneath")
+              .set_width(60)
+              .set_height(60)
+              .set_background(SystemColors::CONTROL)
+              .handle_click(move || beneath.update(|count| *count += 1)),
+          )
+          .add_child(
+            Container::new()
+              .set_label("Round")
+              .set_width(18)
+              .set_height(18)
+              .set_corner_radius(9)
+              .set_background(SystemColors::ACCENT)
+              .handle_click(move || round.update(|count| *count += 1)),
+          ),
+      ),
+    )
 }

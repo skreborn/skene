@@ -138,6 +138,22 @@ pub fn scenarios<D: Driver>() -> Vec<Scenario<D>> {
       keyframe_animation::<D>,
     ),
     ("nothing_in_motion_paints_no_frame", idle::<D>),
+    (
+      "a_caption_hovers_its_control_and_a_box_hovers_alone",
+      caption_hover::<D>,
+    ),
+    (
+      "a_window_opens_with_its_autofocus_control_focused_or_none",
+      autofocus::<D>,
+    ),
+    (
+      "a_popup_focuses_its_autofocus_control_and_closing_returns_focus",
+      popup_focus::<D>,
+    ),
+    (
+      "a_press_on_content_overflowing_its_control_reaches_the_control",
+      overflow::<D>,
+    ),
     ("every_page_passes_the_audit", audit::<D>),
   ]
 }
@@ -1481,4 +1497,156 @@ fn transition_on_text<D: Driver>(driver: &mut D) {
     .collect();
 
   moved(&colors, 0x000000, 0xff0000, "a text's inherited color");
+}
+
+/// The platform's field fill, as `0xrrggbb`.
+const FIELD: u32 = 0xff_ff_ff;
+/// The platform's control fill, as `0xrrggbb`.
+const CONTROL: u32 = 0xe8_e8_ed;
+/// The platform's control fill under the pointer, as `0xrrggbb`.
+const CONTROL_HOVER: u32 = 0xdc_dc_e2;
+
+fn caption_hover<D: Driver>(driver: &mut D) {
+  driver.open("hover");
+
+  let check = role(driver, Role::Checkbox, "Remember me");
+  let bounds = driver.read(&check).bounds;
+  let (face_x, face_y) = (bounds.x + 4., bounds.y + 4.);
+
+  assert_eq!(pixel(driver, face_x, face_y), FIELD);
+
+  let caption = text(driver, "Remember me");
+
+  driver.act(&caption, &Action::Hover);
+  assert_eq!(
+    pixel(driver, face_x, face_y),
+    CONTROL_HOVER,
+    "the face shows the control hovered while the pointer is over its caption"
+  );
+
+  let picker = role(driver, Role::ComboBox, "Size");
+  let bounds = driver.read(&picker).bounds;
+  let (face_x, face_y) = (bounds.x + 4., middle_of(driver, &picker));
+
+  assert_eq!(pixel(driver, face_x, face_y), CONTROL);
+
+  let beside = text(driver, "Size");
+
+  driver.act(&beside, &Action::Hover);
+  assert_eq!(
+    pixel(driver, face_x, face_y),
+    CONTROL_HOVER,
+    "a caption beside its control hovers the control's own node"
+  );
+
+  let cool = role(driver, Role::Radio, "Cool");
+  let bounds = driver.read(&cool).bounds;
+  let (face_x, face_y) = (bounds.x + 9., middle_of(driver, &cool) - 4.);
+  let group = text(driver, "Tone");
+
+  driver.act(&group, &Action::Hover);
+  assert_eq!(
+    pixel(driver, face_x, face_y),
+    FIELD,
+    "a radio's face follows its radio, not the group whose caption is hovered"
+  );
+
+  let plain = role(driver, Role::Region, "Plain box");
+  let bounds = driver.read(&plain).bounds;
+  let (x, y) = (bounds.x + 4., bounds.y + 4.);
+
+  assert_eq!(pixel(driver, x, y), FIELD);
+  driver.act(&plain, &Action::Hover);
+  assert_eq!(
+    pixel(driver, x, y),
+    0x00_a0_ff,
+    "a box outside every control keeps its own hover"
+  );
+}
+
+fn autofocus<D: Driver>(driver: &mut D) {
+  driver.open("focus");
+
+  for (kind, name) in [
+    (Role::TextField, "First"),
+    (Role::Switch, "Second"),
+    (Role::Button, "Third"),
+    (Role::Slider, "Fourth"),
+  ] {
+    assert!(
+      !read(driver, kind, name).focused,
+      "a window none of whose controls asks for focus opens with nothing focused: {name}"
+    );
+  }
+
+  driver.open("autofocus");
+
+  let second = role(driver, Role::TextField, "Second");
+
+  assert!(
+    driver.read(&second).focused,
+    "the control asking for focus has it as the window opens"
+  );
+  assert!(!read(driver, Role::TextField, "First").focused);
+
+  driver.act(&second, &Action::Type("hi".into()));
+  assert_eq!(probe(driver, "second"), "hi", "what is typed arrives there");
+}
+
+fn popup_focus<D: Driver>(driver: &mut D) {
+  driver.open("popup");
+  click(driver, Role::Button, "Open");
+
+  let note = role(driver, Role::TextField, "Note");
+
+  assert!(
+    driver.read(&note).focused,
+    "the popup's control asking for focus has it as the popup opens"
+  );
+
+  driver.act(&note, &Action::Type("x".into()));
+  assert_eq!(probe(driver, "note"), "x");
+
+  click(driver, Role::Button, "Done");
+  assert_eq!(probe(driver, "open"), "false");
+  assert!(
+    read(driver, Role::Button, "Open").focused,
+    "closing the popup returns focus to what held it when it opened"
+  );
+}
+
+fn overflow<D: Driver>(driver: &mut D) {
+  driver.open("overflow");
+
+  for (name, probed) in [("Overflowing", "overflowing"), ("Clipped", "clipped")] {
+    let command = role(driver, Role::Button, name);
+    let bounds = driver.read(&command).bounds;
+    // The mark's middle, drawn below the command's box.
+    let (x, y) = (20. / bounds.width, 1.5);
+
+    driver.act(&command, &Action::ClickAt(x, y));
+
+    let expected = if name == "Overflowing" { "1" } else { "0" };
+
+    assert_eq!(
+      probe(driver, probed),
+      expected,
+      "{name}: a press on its mark below its box reaches it unless a box clips it"
+    );
+  }
+
+  let round = role(driver, Role::Row, "Round");
+
+  driver.act(&round, &Action::ClickAt(0.05, 0.05));
+  assert_eq!(
+    (probe(driver, "round"), probe(driver, "beneath")),
+    ("0".to_owned(), "1".to_owned()),
+    "a press in a round box's corner, outside its circle, reaches what lies beneath"
+  );
+
+  driver.act(&round, &Action::Click);
+  assert_eq!(
+    (probe(driver, "round"), probe(driver, "beneath")),
+    ("1".to_owned(), "1".to_owned())
+  );
 }

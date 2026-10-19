@@ -150,6 +150,8 @@ pub(crate) struct Members {
   pub(crate) key: Option<KeyObserver>,
   /// Where its node is written once built.
   pub(crate) handle: Option<NodeHandle>,
+  /// Whether it asks for focus when its window or popup opens.
+  pub(crate) autofocus: bool,
 }
 
 /// A property's `set_` and `derive_` setters on a control's root record, reached through its
@@ -410,6 +412,16 @@ macro_rules! control_members {
 
       self
     }
+
+    /// Whether the control asks for focus when its window or its popup opens: the first
+    /// control in the scene's order that asks and takes focus then gets it, its focus shown
+    /// until a pointer press. It is read once, as the control is built; a window or a popup
+    /// none of whose controls asks opens with focus where it was (a window with none).
+    pub const fn set_autofocus(mut self, autofocus: bool) -> Self {
+      self.$($path).+.autofocus = autofocus;
+
+      self
+    }
   };
 }
 
@@ -421,10 +433,13 @@ pub(crate) use control_members;
 ///
 /// Its node is a row (or a column, [`Control::set_axis`]) of its label, its parts and its
 /// body, or the realization's own text view where its behavior's element is one. Every node
-/// built inside it resolves the control's focus, press and states ([`State::follows_control`]):
-/// a part styled `when(State::Checked, ..)` follows the control's check. A disabled control is
-/// drawn at half opacity unless its style says otherwise, takes no focus and swallows its
-/// input.
+/// built inside it resolves every state but `FocusWithin` against the control (its hover,
+/// focus and press, its caption's beside it, and its own states): a part styled
+/// `when(State::Checked, ..)` follows the control's check, and one styled
+/// `when(State::Hovered, ..)` highlights while the pointer is over the control or its
+/// caption. A box that acts inside it keeps its own hover, focus and press. A disabled
+/// control, or one inside a disabled control, is drawn at half opacity unless its style says
+/// otherwise, takes no focus and swallows its input.
 ///
 /// ```
 /// use skene_gui::{behavior::Activate, prelude::*};
@@ -560,7 +575,14 @@ impl<B: Behavior> View for Control<B> {
     finish(id, record, cx, members.handle.as_ref());
 
     let disabled = members.disabled.clone();
-    let disabled = Memo::new(move || disabled.as_ref().is_some_and(|disabled| disabled()));
+    let disabled = Memo::new(move || {
+      disabled.as_ref().is_some_and(|disabled| disabled()) || tree::enclosing_disabled::<Active>(id)
+    });
+
+    if members.autofocus {
+      tree::set_autofocus::<Active>(id);
+    }
+
     let invalid = members.access.invalid.clone();
     let label_name = members.label.as_ref().and_then(|label| label.name.clone());
     let named_by_content = role.is_named_by_content();

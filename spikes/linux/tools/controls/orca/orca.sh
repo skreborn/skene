@@ -71,8 +71,9 @@ if [ "${DRIVE:-x11}" = x11 ]; then
   xdotool windowfocus --sync "$WIN"
 fi
 sleep 1
-# A click on the field, as a user would: the drawn app focuses nothing on its own, GtkEntry
-# has focus already.
+# A click on the field, as a user would: the drawn app's field asks for focus as the window
+# opens (set_autofocus) and GtkEntry has it as GtkWindow's first focusable, so for both it is
+# a press on what holds focus already.
 ATSPI_WINDOW=$ORCA_WINDOW python3.12 -I "$root/tools/controls/harness.py" focus >/dev/null 2>&1
 sleep 1
 step "type 'Hi there'"

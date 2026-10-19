@@ -36,7 +36,7 @@ supersedes.
 - **A platform control under its toolkit's names** (2026-10-15): six toolkits'
   vocabularies came to 24 control types, 140 functions and 14 handler names for 4
   events. A platform control takes Skene's names where the meaning matches, the
-  toolkit's name in its doc line. Revisit when a toolkit's control means something
+  toolkit's names in its doc line and as doc aliases. Revisit when a toolkit's control means something
   Skene has no name for in most of its members.
 - **Per-platform presets for a shared option** (2026-10-15): a shared option names its
   meaning once (`Button::set_prominent`) and each platform realizes it in its own idiom,

@@ -98,7 +98,9 @@ migration is at the top of `ROADMAP.md`, and `DESIGN.md` describes the code as i
   `platform::apple` is the only grouping (`Platform::IS_APPLE`, `set_apple_*`), for what
   iOS and macOS share; there is no mobile or desktop grouping. A platform's own control
   takes Skene's names where the meaning matches (`derive_on`, `handle_change`), the
-  toolkit's own name in its doc line, and a shared option is semantic
+  toolkit's own names in its doc line and as `#[doc(alias)]`es of the type and its
+  members (`UITextField`, `setText`), so a search by the native name finds it, and a
+  shared option is semantic
   (`Button::set_prominent`), each platform realizing it in its own idiom, never a
   per-platform preset.
 - **The governing rule: Skene draws everything, without losing the native functionality

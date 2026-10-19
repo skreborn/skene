@@ -57,11 +57,13 @@ fn composer(notes: Notes) -> impl View {
     .set_item_alignment(AxisAlignment::End)
     .add_child(
       // A field's caption sits before it among its siblings: a column of its own stacks the
-      // caption above the field.
+      // caption above the field. The field takes focus as the window opens, so typing writes
+      // a note at once.
       Flexible::new().set_flexibility(1).set_child(
         Column::new().set_spacing(4).add_child(
           TextField::new("New note")
             .set_placeholder("Title")
+            .set_autofocus(true)
             .handle_activate(move || notes.add())
             .bind_text(notes.draft),
         ),

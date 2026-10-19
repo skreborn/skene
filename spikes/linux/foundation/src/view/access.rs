@@ -3,40 +3,41 @@
 
 use std::rc::Rc;
 
-use skene_foundation::{
+use crate::{
   NodeId,
   seam::{
+    Realization,
     access::{AccessFacts, Shortcut},
     tree,
   },
+  view::NodeHandle,
 };
 
-use crate::{Active, view::NodeHandle};
-
+/// A fact read now, tracking what it reads.
 type Derive<T> = Rc<dyn Fn() -> T>;
 
 /// A view's accessibility facts, as its setters gave them.
 #[derive(Clone, Default)]
-pub(crate) struct Access {
+pub struct Access {
   /// The accessible name, where no caption names the node.
-  pub(crate) name: Option<Derive<Rc<str>>>,
+  pub name: Option<Derive<Rc<str>>>,
   /// The captions whose text names the node.
-  pub(crate) labelled_by: Vec<NodeHandle>,
+  pub labelled_by: Vec<NodeHandle>,
   /// A description.
-  pub(crate) description: Option<Derive<Rc<str>>>,
+  pub description: Option<Derive<Rc<str>>>,
   /// The nodes whose text describes the node.
-  pub(crate) described_by: Vec<NodeHandle>,
+  pub described_by: Vec<NodeHandle>,
   /// Whether a value is required.
-  pub(crate) required: Option<Derive<bool>>,
+  pub required: Option<Derive<bool>>,
   /// Whether the value is invalid.
-  pub(crate) invalid: Option<Derive<bool>>,
+  pub invalid: Option<Derive<bool>>,
   /// The keyboard shortcut that activates the node.
-  pub(crate) shortcut: Option<Shortcut>,
+  pub shortcut: Option<Shortcut>,
 }
 
 impl Access {
   /// States the facts on `id`'s accessible, kept current; nothing where none was given.
-  pub(crate) fn apply(self, id: NodeId) {
+  pub fn apply<R: Realization>(self, id: NodeId) {
     let Self {
       name,
       labelled_by,
@@ -60,7 +61,7 @@ impl Access {
 
     let nodes = |handles: &[NodeHandle]| handles.iter().filter_map(NodeHandle::node).collect();
 
-    tree::add_access::<Active>(id, move || AccessFacts {
+    tree::add_access::<R>(id, move || AccessFacts {
       shortcut,
       name: name.as_ref().map(|name| name()),
       labelled_by: nodes(&labelled_by),

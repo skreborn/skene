@@ -202,7 +202,7 @@ pub enum Report {
   Drop(DropEvent),
 }
 
-/// A node's size as laid out.
+/// A node's size as laid out, and as it is drawn on its device.
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
 pub struct Size {
   /// The width, in pixels.
@@ -211,6 +211,9 @@ pub struct Size {
   pub height: f32,
   /// Device pixels per pixel.
   pub scale: f64,
+  /// The width and the height in device pixels, the box's edges snapped to the pixel grid of
+  /// the surface it is drawn in.
+  pub device: (u32, u32),
 }
 
 /// What a report is answered with.

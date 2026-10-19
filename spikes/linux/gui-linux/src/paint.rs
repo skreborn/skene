@@ -693,15 +693,17 @@ impl Canvas<'_> {
     self.glyph_time += started.elapsed();
   }
 
-  /// Replays `picture` with its origin at `rect`'s top left (window pixels), cut to `rect`,
-  /// [`Paint::Ink`] drawing in `ink`.
+  /// Replays `picture`, recorded in device pixels, with its origin at `rect`'s top left
+  /// (window pixels) snapped to the device's pixel grid, cut to `rect`, [`Paint::Ink`]
+  /// drawing in `ink`.
   pub fn picture(&mut self, picture: &Picture, rect: Rect, ink: Color) {
     if picture.is_empty() || rect.width <= 0. || rect.height <= 0. {
       return;
     }
 
     let previous = self.push_clip(rect, Corners::all(0.));
-    let base = self.to_device() * Affine::translate((f64::from(rect.x), f64::from(rect.y)));
+    let origin = self.to_device() * Point::new(f64::from(rect.x), f64::from(rect.y));
+    let base = Affine::translate((origin.x.round(), origin.y.round()));
     let mut transform = base;
     let mut depth = 0_u32;
     let brush = |paint: &Paint, transform: Affine| -> Option<Brush> {

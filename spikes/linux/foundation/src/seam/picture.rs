@@ -1,6 +1,7 @@
-//! A painted node's picture: kurbo's shapes and peniko's brushes recorded once, in the node's
-//! own pixels with its top leading corner at the origin, and replayed by the realization in
-//! the scene's order, under the node's clip and opacity.
+//! A painted node's picture: kurbo's shapes and peniko's brushes recorded once, in the device
+//! pixels the node is drawn in, its top leading corner at the origin on the device's pixel
+//! grid, and replayed by the realization in the scene's order, under the node's clip and
+//! opacity.
 
 /// The geometry a picture is drawn with.
 pub use kurbo;
@@ -40,14 +41,14 @@ impl From<peniko::Brush> for Paint {
 pub enum PaintOp {
   /// Fills a path.
   Fill {
-    /// The path, in the node's pixels under the transform in force.
+    /// The path, in the node's device pixels under the transform in force.
     path: BezPath,
     /// What it is filled with.
     paint: Paint,
   },
   /// Strokes a path.
   Stroke {
-    /// The path, in the node's pixels under the transform in force.
+    /// The path, in the node's device pixels under the transform in force.
     path: BezPath,
     /// How the line is drawn.
     stroke: Stroke,
@@ -60,11 +61,11 @@ pub enum PaintOp {
   PushOpacity(f32),
   /// Ends the innermost clip or opacity.
   Pop,
-  /// The transform the following paths are drawn under, from the node's own pixels.
+  /// The transform the following paths are drawn under, from the node's device pixels.
   Transform(Affine),
 }
 
-/// A recording of paint operations, in the node's own pixels.
+/// A recording of paint operations, in the node's device pixels.
 #[derive(Clone, PartialEq, Debug, Default)]
 pub struct Picture {
   ops: Vec<PaintOp>,

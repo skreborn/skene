@@ -5,6 +5,8 @@
 //! click there choosing, the screen showing both surfaces' device pixels one to one. Each
 //! holds at any scale; the legs that scale fractionally run them at 1.5.
 
+use std::{cell::RefCell, rc::Rc};
+
 use skene_gui::{
   Color, Inset, LabelPlacement, Signal,
   painted::shapes::Rect,
@@ -142,20 +144,16 @@ fn a_pickers_list_opens_under_its_face_where_a_reader_finds_and_clicks_its_optio
 }
 
 /// Columns a device pixel wide, black and white in turn from the box's leading edge, over
-/// white.
+/// white: drawn in the device pixels the canvas records in.
 fn stripes(canvas: &mut Canvas<'_>) {
-  let scale = canvas.scale();
-  let (width, height) = (f64::from(canvas.width()), f64::from(canvas.height()));
+  let size = canvas.size();
 
-  canvas.fill(&Rect::new(0., 0., width, height), Color::WHITE);
+  canvas.fill(&Rect::new(0., 0., size.width, size.height), Color::WHITE);
 
-  for column in (0..(width * scale).floor() as u32).step_by(2) {
-    let left = f64::from(column) / scale;
+  for column in (0..size.width as u32).step_by(2) {
+    let left = f64::from(column);
 
-    canvas.fill(
-      &Rect::new(left, 0., left + 1. / scale, height),
-      Color::BLACK,
-    );
+    canvas.fill(&Rect::new(left, 0., left + 1., size.height), Color::BLACK);
   }
 }
 
@@ -220,19 +218,7 @@ fn longest_stripes(shot: &testing::Screenshot) -> u32 {
 fn the_window_and_its_pickers_list_show_their_device_pixels_one_to_one() {
   let screen = testing::render(striped);
 
-  if std::env::var("SKENE_TEST_SESSION").as_deref() == Ok("sway") {
-    // Sway puts a window at whole logical pixels, which at a fractional scale may fall
-    // between device pixels, where it filters what it shows; at an even position (a whole
-    // device pixel at 1.5) it shows the buffers as they are.
-    let moved = std::process::Command::new("swaymsg")
-      .arg("[app_id=dev.skene.test] move absolute position 200 20")
-      .stdout(std::process::Stdio::null())
-      .status()
-      .is_ok_and(|status| status.success());
-
-    assert!(moved, "swaymsg moves the window");
-    screen.driver().window_moved();
-  }
+  place_on_the_grid(&screen);
 
   let scale = screen.driver().scale();
   let window = longest_stripes(&screen.driver().content());
@@ -301,5 +287,147 @@ fn a_field_tells_an_input_method_where_its_caret_is_on_the_screen() {
     told.surrounding,
     Some(("alpha beta gamma".to_owned(), 6, 6)),
     "with the text around the caret"
+  );
+}
+
+/// A box of [`stripes`] a pixel in from the content's top left: off the device's pixel grid
+/// at a fractional scale.
+fn offset_stripes() -> impl View {
+  Container::new()
+    .set_padding(Inset::new(1, 0, 0, 1))
+    .set_child(Painted::new(stripes).set_width(48).set_height(16))
+}
+
+/// Moves the window to an even position where the session is sway: sway puts a window at
+/// whole logical pixels, which at a fractional scale may fall between device pixels, where it
+/// filters what it shows; at an even position (a whole device pixel at 1.5) it shows the
+/// buffers as they are.
+fn place_on_the_grid(screen: &testing::Screen) {
+  if std::env::var("SKENE_TEST_SESSION").as_deref() == Ok("sway") {
+    let moved = std::process::Command::new("swaymsg")
+      .arg("[app_id=dev.skene.test] move absolute position 200 20")
+      .stdout(std::process::Stdio::null())
+      .status()
+      .is_ok_and(|status| status.success());
+
+    assert!(moved, "swaymsg moves the window");
+    screen.driver().window_moved();
+  }
+}
+
+#[skene_gui::test]
+fn a_painted_box_draws_in_device_pixels_wherever_it_sits() {
+  let screen = testing::render(offset_stripes);
+
+  place_on_the_grid(&screen);
+
+  let scale = screen.driver().scale();
+  let shown = longest_stripes(&screen.driver().content());
+
+  eprintln!("at scale {scale}: {shown} device pixels of stripes in a row");
+  assert!(
+    f64::from(shown) >= (48. * scale).floor() - 1.,
+    "a box off the device's grid draws one device pixel to a column ({shown} in a row)"
+  );
+}
+
+/// A box of [`stripes`] a pixel in from the content's top left, publishing the device size and
+/// the scale it last recorded at as the probe `recorded` (`"96x32 at 2"`).
+fn recorded_stripes() -> impl View {
+  let recorded = Rc::new(RefCell::new(String::new()));
+
+  {
+    let recorded = Rc::clone(&recorded);
+
+    publish("recorded", move || recorded.borrow().clone());
+  }
+
+  Container::new()
+    .set_padding(Inset::new(1, 0, 0, 1))
+    .set_child(
+      Painted::new(move |canvas| {
+        let (size, scale) = (canvas.size(), canvas.scale());
+
+        *recorded.borrow_mut() = format!("{}x{} at {}", size.width, size.height, scale.x);
+        stripes(canvas);
+      })
+      .set_width(48)
+      .set_height(16),
+    )
+}
+
+/// Puts sway's outputs back at `scale` when dropped, so a test that changes it leaves the
+/// session as it found it for the tests after it.
+struct OutputScale(f64);
+
+impl OutputScale {
+  /// Sets sway's outputs to `scale`: whether swaymsg did.
+  fn set(scale: f64) -> bool {
+    std::process::Command::new("swaymsg")
+      .args(["output", "*", "scale", &scale.to_string()])
+      .stdout(std::process::Stdio::null())
+      .status()
+      .is_ok_and(|status| status.success())
+  }
+}
+
+impl Drop for OutputScale {
+  fn drop(&mut self) {
+    Self::set(self.0);
+  }
+}
+
+/// Turns the window's loop until the probe `name` reads `wanted`, for up to five seconds; what
+/// it reads then.
+fn probe_until(screen: &testing::Screen, name: &str, wanted: &str) -> String {
+  let start = std::time::Instant::now();
+
+  loop {
+    let read = screen.probe(name);
+
+    if read == wanted || start.elapsed() > std::time::Duration::from_secs(5) {
+      return read;
+    }
+
+    screen.driver().wait(std::time::Duration::from_millis(20));
+  }
+}
+
+#[skene_gui::test]
+fn a_painted_box_records_again_at_its_windows_new_scale() {
+  let screen = testing::render(recorded_stripes);
+  let before = screen.driver().scale();
+  let device = |scale: f64| {
+    format!(
+      "{}x{} at {scale}",
+      (48. * scale).round(),
+      (16. * scale).round()
+    )
+  };
+
+  assert_eq!(
+    probe_until(&screen, "recorded", &device(before)),
+    device(before),
+    "the box records at its window's scale"
+  );
+
+  if std::env::var("SKENE_TEST_SESSION").as_deref() != Ok("sway") {
+    eprintln!("only the sway leg changes an output's scale while a window shows");
+
+    return;
+  }
+
+  let wanted = if (before - 2.).abs() < 1e-6 { 1. } else { 2. };
+  let _restore = OutputScale(before);
+
+  assert!(
+    OutputScale::set(wanted),
+    "swaymsg changes the output's scale"
+  );
+  assert_eq!(
+    probe_until(&screen, "recorded", &device(wanted)),
+    device(wanted),
+    "the box records again at the window's new scale ({})",
+    screen.driver().scale()
   );
 }

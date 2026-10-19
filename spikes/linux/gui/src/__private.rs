@@ -2,17 +2,17 @@
 
 use std::process::ExitCode;
 
-use skene_foundation::seam::{
-  Realization as _,
-  node::{LayoutKind, NodeKind, NodeSpec},
-  style::ScopeChain,
-  tree,
+use skene_foundation::{
+  seam::{
+    Realization as _,
+    node::{LayoutKind, NodeKind, NodeSpec},
+    style::ScopeChain,
+    tree,
+  },
+  view::View as _,
 };
 
-use crate::{
-  Active, Theme,
-  view::{Cx, View},
-};
+use crate::{Active, Cx, Theme, ThemeBase, View};
 
 /// Checks, at compile time, that the app's root returns a view.
 pub const fn assert_app<V: View>(_: fn() -> V) {}
@@ -29,7 +29,7 @@ pub(crate) fn root<V: View>(app: impl FnOnce() -> V) -> skene_foundation::NodeId
     .set_child(app())
     .build(&mut Cx::root());
 
-  tree::attach::<Active>(root, node.0, 0);
+  tree::attach::<Active>(root, node.id(), 0);
 
   root
 }

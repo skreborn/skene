@@ -18,7 +18,7 @@ use skene_gui::{
   AccessFacts, AccessRequest, Axis, KeyEvent, LabelPlacement, Part, PointerEvent, PointerPhase,
   Prevent, Range, RangeValue, Role,
   behavior::{Behavior, ControlHandle, Controlled, SliderKeys},
-  painted::shapes::BezPath,
+  painted::shapes::{BezPath, Stroke},
   prelude::*,
 };
 
@@ -145,7 +145,10 @@ pub fn star_rating(label: &str, value: Signal<u8>) -> Control<Rating> {
     .add_part(
       Part::Track,
       Painted::new(move |canvas| {
-        let size = f64::from(canvas.height());
+        // Drawn in layout pixels, scaled to the device's.
+        canvas.set_transform(canvas.to_device());
+
+        let size = canvas.layout_size().height;
 
         for star in 0..STARS {
           let path = star_path(size * f64::from(star), size);
@@ -153,7 +156,7 @@ pub fn star_rating(label: &str, value: Signal<u8>) -> Control<Rating> {
           if star < value.get() {
             canvas.fill(&path, Paint::Ink);
           } else {
-            canvas.stroke(&path, 1.5, Paint::Ink);
+            canvas.stroke(&path, &Stroke::new(1.5), Paint::Ink);
           }
         }
       })

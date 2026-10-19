@@ -2,26 +2,25 @@
 
 use std::rc::Rc;
 
-use skene_foundation::{
-  Alignment, AxisAlignment, Dimension, Flexibility, Inset, Offset, Ring, State, SystemColors,
-  Value, When as _,
-  behavior::{Slider as Behavior, SliderKeys},
-  seam::control::Part,
-};
-
 use crate::{
-  AsPart, Container, Control, Flexible, Signal, Stack,
-  control::control_members,
-  view::{Cx, Node, View},
+  Alignment, AxisAlignment, Dimension, Flexibility, Inset, Offset, Ring, Signal, State,
+  SystemColors, Value, When as _,
+  behavior::{Slider as Behavior, SliderKeys},
+  seam::{Realization, control::Part},
+  view::{
+    AnyKind, AsPart, AsPartBase, Container, ContainerBase, ControlBase, ControlMembersBase, Cx,
+    DecorationBase, Flexible, FlexibleBase, Node, Stack, StackBase, View, Wraps,
+    controls::control_surfaces, wraps_itself,
+  },
 };
 
 /// A value along a range, with its caption: Skene's slider, drawn on every platform. It is a
-/// [`Control`] over [`skene_foundation::behavior::Slider`]: the arrows step it, the page keys
+/// [`crate::view::Control`] over [`crate::behavior::Slider`]: the arrows step it, the page keys
 /// move it by a tenth, `Home` and `End` take it to its ends, a press jumps to where it lands
 /// and a drag follows the pointer.
 ///
-/// It is controlled: it shows what [`Slider::derive_value`] returns, asks
-/// [`Slider::handle_change`] for each move, and shows the truth.
+/// It is controlled: it shows what [`SliderBase::derive_value`] returns, asks
+/// [`SliderBase::handle_change`] for each move, and shows the truth.
 ///
 /// Its caption sits before it among its siblings, a press on it focusing the slider. Its
 /// parts: a track ([`Slider::default_track`]) clipping its fill ([`Slider::default_fill`]),
@@ -30,9 +29,9 @@ use crate::{
 /// least, and 24 tall, padded 9 at the sides; it takes a press on what it draws: its box, and
 /// its thumb where the thumb overflows it.
 #[must_use]
-pub struct Slider {
+pub struct Slider<R: Realization> {
   /// The control it composes, its defaults set, over a behavior replaced as it is built.
-  pub(super) control: Control<Behavior>,
+  control: crate::view::Control<Behavior, R>,
   /// The value.
   value: Rc<dyn Fn() -> f32>,
   /// The least and greatest values.
@@ -42,38 +41,21 @@ pub struct Slider {
   /// What hears each move.
   change: Option<Rc<dyn Fn(f32)>>,
   /// The track.
-  pub(super) track: Container,
+  track: Container<R>,
   /// The fill.
-  pub(super) fill: Container,
+  fill: Container<R>,
   /// The thumb.
-  pub(super) thumb: Container,
+  thumb: Container<R>,
 }
 
-impl Slider {
-  /// A slider labelled `label`, at 0 of 0 to 1, stepping by a hundredth.
-  pub fn new(label: impl Into<String>) -> Self {
-    let label: String = label.into();
+wraps_itself!(Slider<R> where R: Realization);
 
-    Self {
-      control: Control::new(Behavior::new())
-        .set_min_width(80)
-        .set_min_height(24)
-        .set_padding(Inset::new(0, 9, 0, 9))
-        .set_item_alignment(AxisAlignment::Center)
-        .set_label(label),
-      value: Rc::new(|| 0.),
-      range: Rc::new(|| (0., 1.)),
-      step: Rc::new(|| 0.01),
-      change: None,
-      track: Self::default_track(),
-      fill: Self::default_fill(),
-      thumb: Self::default_thumb(),
-    }
-  }
+control_surfaces!([R: Realization] Slider<R>, R => control);
 
+impl<R: Realization> Slider<R> {
   /// The default track: the slider's width, 4 pixels tall, its corners rounded by 2, in
   /// [`SystemColors::TRACK`], clipping the fill.
-  pub fn default_track() -> Container {
+  pub fn default_track() -> Container<R> {
     Container::new()
       .set_width(Dimension::Fraction(1.))
       .set_height(4)
@@ -83,7 +65,7 @@ impl Slider {
   }
 
   /// The default fill: as large as the track, its corners rounded by 2, in the accent.
-  pub fn default_fill() -> Container {
+  pub fn default_fill() -> Container<R> {
     Container::new()
       .set_width(Dimension::Fraction(1.))
       .set_height(Dimension::Fraction(1.))
@@ -94,7 +76,7 @@ impl Slider {
   /// The default thumb: a circle 18 pixels across in [`SystemColors::KNOB`], its center on
   /// the value (moved back by half its width), edged by half a pixel of
   /// [`SystemColors::BORDER`], a ring of 2 in the accent while focus shows.
-  pub fn default_thumb() -> Container {
+  pub fn default_thumb() -> Container<R> {
     Container::new()
       .set_width(18)
       .set_height(18)
@@ -106,86 +88,113 @@ impl Slider {
         Value::from(SystemColors::BORDER).when(State::FocusVisible, SystemColors::ACCENT),
       )
   }
+}
+
+/// What a [`Slider`] carries beside every control's members: its value, its range, its step,
+/// its handler, its track, its fill and its thumb.
+pub trait SliderBase<R: Realization>: Wraps<Inner = Slider<R>> {
+  /// A slider labelled `label`, at 0 of 0 to 1, stepping by a hundredth.
+  fn new(label: impl Into<String>) -> Self {
+    let label: String = label.into();
+
+    Self::wrap(Slider {
+      control: crate::view::Control::new(Behavior::new())
+        .set_min_width(80)
+        .set_min_height(24)
+        .set_padding(Inset::new(0, 9, 0, 9))
+        .set_item_alignment(AxisAlignment::Center)
+        .set_label(label),
+      value: Rc::new(|| 0.),
+      range: Rc::new(|| (0., 1.)),
+      step: Rc::new(|| 0.01),
+      change: None,
+      track: Slider::<R>::default_track(),
+      fill: Slider::<R>::default_fill(),
+      thumb: Slider::<R>::default_thumb(),
+    })
+  }
 
   /// The slider's value.
-  pub fn set_value(self, value: f32) -> Self {
+  fn set_value(self, value: f32) -> Self {
     self.derive_value(move || value)
   }
 
   /// The slider's value, kept current.
-  pub fn derive_value(mut self, value: impl Fn() -> f32 + 'static) -> Self {
-    self.value = Rc::new(value);
+  fn derive_value(mut self, value: impl Fn() -> f32 + 'static) -> Self {
+    self.inner_mut().value = Rc::new(value);
 
     self
   }
 
   /// Shows `value` and writes each move into it.
-  pub fn bind_value(self, value: Signal<f32>) -> Self {
+  fn bind_value(self, value: Signal<f32>) -> Self {
     self
       .derive_value(move || value.get())
       .handle_change(move |moved| value.set(moved))
   }
 
   /// The least and greatest values; 0 to 1 where unset.
-  pub fn set_range(self, minimum: f32, maximum: f32) -> Self {
+  fn set_range(self, minimum: f32, maximum: f32) -> Self {
     self.derive_range(move || (minimum, maximum))
   }
 
   /// The least and greatest values, kept current.
-  pub fn derive_range(mut self, range: impl Fn() -> (f32, f32) + 'static) -> Self {
-    self.range = Rc::new(range);
+  fn derive_range(mut self, range: impl Fn() -> (f32, f32) + 'static) -> Self {
+    self.inner_mut().range = Rc::new(range);
 
     self
   }
 
   /// The step the value moves by; a hundredth where unset.
-  pub fn set_step(self, step: f32) -> Self {
+  fn set_step(self, step: f32) -> Self {
     self.derive_step(move || step)
   }
 
   /// The step the value moves by, kept current.
-  pub fn derive_step(mut self, step: impl Fn() -> f32 + 'static) -> Self {
-    self.step = Rc::new(step);
+  fn derive_step(mut self, step: impl Fn() -> f32 + 'static) -> Self {
+    self.inner_mut().step = Rc::new(step);
 
     self
   }
 
   /// Runs `change` with the value the reader moved the slider to.
-  pub fn handle_change(mut self, change: impl Fn(f32) + 'static) -> Self {
-    self.change = Some(Rc::new(change));
+  fn handle_change(mut self, change: impl Fn(f32) + 'static) -> Self {
+    self.inner_mut().change = Some(Rc::new(change));
 
     self
   }
 
   /// The track, in place of [`Slider::default_track`]; the fill is placed in it, so a child it
   /// holds is replaced.
-  pub fn set_track(mut self, track: Container) -> Self {
-    self.track = track;
+  fn set_track(mut self, track: impl Wraps<Inner = Container<R>>) -> Self {
+    self.inner_mut().track = track.into_inner();
 
     self
   }
 
   /// The fill, in place of [`Slider::default_fill`]: as large as the track, it is moved back
   /// by the part of the range above the value, the track clipping it.
-  pub fn set_fill(mut self, fill: Container) -> Self {
-    self.fill = fill;
+  fn set_fill(mut self, fill: impl Wraps<Inner = Container<R>>) -> Self {
+    self.inner_mut().fill = fill.into_inner();
 
     self
   }
 
   /// The thumb, in place of [`Slider::default_thumb`]: its leading edge on the value, unless
   /// its `offset` moves it.
-  pub fn set_thumb(mut self, thumb: Container) -> Self {
-    self.thumb = thumb;
+  fn set_thumb(mut self, thumb: impl Wraps<Inner = Container<R>>) -> Self {
+    self.inner_mut().thumb = thumb.into_inner();
 
     self
   }
-
-  control_members!(control.members);
 }
 
-impl View for Slider {
-  fn build(self, cx: &mut Cx) -> Node {
+impl<R: Realization> SliderBase<R> for Slider<R> {}
+
+impl<R: Realization> AnyKind for Slider<R> {}
+
+impl<R: Realization> View<R> for Slider<R> {
+  fn build(self, cx: &mut Cx<R>) -> Node {
     let Self {
       control,
       value,
@@ -207,7 +216,7 @@ impl View for Slider {
       move || {
         let (minimum, maximum, step) = range();
 
-        SliderKeys::new(skene_foundation::seam::content::Range {
+        SliderKeys::new(crate::seam::content::Range {
           value: f64::from(value()),
           minimum,
           maximum,

@@ -2,7 +2,9 @@
 //! that opens a popup, as GTK reports GtkEntry; a secondary press or `Shift-F10` opens the
 //! editing entries of GTK's entry menu, focus on the first; a chosen entry acts on the field
 //! and focus returns to it, its selection kept; `Escape` and `Tab` close the menu; a secure
-//! field offers neither cut nor copy.
+//! field offers neither cut nor copy. An app's own entries run their commands, report their
+//! shortcuts and follow their labels and states, and a standard entry's handler runs after its
+//! operation.
 
 use std::time::{Duration, Instant};
 
@@ -187,4 +189,113 @@ fn a_secure_fields_menu_offers_neither_cut_nor_copy() {
 
   screen.press("Escape");
   assert_eq!(probe_once(&screen, "secret", "hunter2"), "hunter2");
+}
+
+/// A box whose menu holds the app's own entries, "Refresh" counting its activations under
+/// Control+R, "Rename" labelled by a signal, "Archive" disabled while one holds, beside two
+/// buttons that change them; and a field whose menu's cut records the field's text as its
+/// handler runs.
+fn commands() -> impl View {
+  let refreshed = Signal::new(String::from("0"));
+  let title = Signal::new(String::from("Rename"));
+  let locked = Signal::new(true);
+  let text = Signal::new(String::from("alpha beta"));
+  let seen = Signal::new(String::from("unheard"));
+
+  probe("refreshed", refreshed);
+  probe("text", text);
+  probe("seen", seen);
+
+  Column::new()
+    .set_padding(16)
+    .set_spacing(12)
+    .add_child(Button::new("Unlock").handle_activate(move || locked.set(false)))
+    .add_child(Button::new("Retitle").handle_activate(move || title.set("Rename all".into())))
+    .add_child(
+      ContextMenu::new()
+        .add_entry(
+          MenuEntry::new("Refresh")
+            .set_shortcut(Shortcut::primary('r'))
+            .handle_activate(move || {
+              refreshed
+                .update(|count| *count = (count.parse::<u32>().unwrap_or(0) + 1).to_string());
+            }),
+        )
+        .add_entry(MenuEntry::new("Rename").derive_label(move || title.get()))
+        .add_entry(MenuEntry::new("Archive").derive_disabled(move || locked.get()))
+        .set_child(
+          Container::new()
+            .set_label("Inbox")
+            .set_padding(20)
+            .set_child(Text::new("Inbox")),
+        ),
+    )
+    .add_child(
+      TextField::new("Draft")
+        .set_context_menu(
+          ContextMenu::new()
+            .add_entry(MenuEntry::cut().handle_activate(move || seen.set(text.get_untracked()))),
+        )
+        .bind_text(text),
+    )
+}
+
+#[skene_gui::test]
+fn an_apps_menu_entries_run_their_commands_and_follow_their_state() {
+  let screen = testing::render(commands);
+  let inbox = screen.find_by_role(Role::Region, "Inbox");
+
+  inbox.context_click();
+
+  let refresh = screen.find_by_role(Role::MenuItem, "Refresh");
+
+  assert!(refresh.is_focused(), "focus is on the first entry");
+  assert_eq!(
+    refresh.shortcut(),
+    "<Control>r",
+    "an entry's shortcut is its item's key binding"
+  );
+  assert!(
+    !screen.find_by_role(Role::MenuItem, "Archive").is_enabled(),
+    "an entry disabled by its state shows disabled"
+  );
+
+  refresh.click();
+  assert_eq!(
+    probe_once(&screen, "refreshed", "1"),
+    "1",
+    "choosing an entry runs its command"
+  );
+  assert!(
+    screen.query_by_role(Role::MenuItem, "Refresh").is_none(),
+    "and closes the menu"
+  );
+
+  screen.find_by_role(Role::Button, "Unlock").click();
+  screen.find_by_role(Role::Button, "Retitle").click();
+  inbox.context_click();
+  assert!(
+    screen.find_by_role(Role::MenuItem, "Archive").is_enabled(),
+    "an entry's state is read as it shows"
+  );
+  assert!(
+    screen.query_by_role(Role::MenuItem, "Rename all").is_some(),
+    "and its label"
+  );
+  screen.press("Escape");
+}
+
+#[skene_gui::test]
+fn a_standard_entrys_handler_runs_after_its_operation() {
+  let screen = testing::render(commands);
+  let draft = screen.find_by_role(Role::TextField, "Draft");
+
+  draft.press("ctrl+a").context_click();
+  screen.find_by_role(Role::MenuItem, "Cut").click();
+  assert_eq!(probe_once(&screen, "text", ""), "", "the cut took the text");
+  assert_eq!(
+    screen.probe("seen"),
+    "",
+    "the entry's handler ran after the cut, the field already empty"
+  );
 }

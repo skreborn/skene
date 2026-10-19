@@ -147,6 +147,11 @@ pub trait Realization: Sized + 'static {
   /// built-in controls' defaults are drawn in, installed by the facade as the root theme.
   fn system_colors() -> SystemColors;
 
+  /// Whether the platform paints a `Painted` box now, subscribing the running effect where
+  /// that can change: from the start where the realization draws, once proven where painting
+  /// is an upgrade, never where it renders no pixels.
+  fn painting_available() -> bool;
+
   /// Chooses the scheme for the whole app, or follows the reader's again (`None`); the
   /// realization reports the scheme in force ([`crate::environment::report`]).
   fn set_scheme(choice: Option<Scheme>);

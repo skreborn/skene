@@ -36,10 +36,13 @@
 
 use std::rc::Rc;
 
+use skene_foundation::view::{AnyKind, View};
 use skene_gui::{
-  AxisAlignment, Border, Button, Checkbox, Color, Column, Container, Cx, Definitions, Derived,
-  Fill, Flexible, FontWeight, Grid, GridTrack, Node, Row, Signal, State, SystemColors, Text,
-  Toggle, Token, TokenRef, TokenSet, Value, View, untrack,
+  Active, AxisAlignment, Border, Button, ButtonBase, Checkbox, CheckboxBase, Color, Column,
+  ColumnBase, Container, ContainerBase, ControlMembersBase, Cx, DecorationBase, Definitions,
+  Derived, DerivedBase, Fill, Flexible, FlexibleBase, FontWeight, Grid, GridBase, GridTrack, Node,
+  Row, RowBase, RunBase, Signal, State, SystemColors, Text, TextBase, Toggle, ToggleBase, Token,
+  TokenRef, TokenSet, Value, untrack,
 };
 pub use skene_simple_core::{SimpleColors, SimpleDate};
 
@@ -352,7 +355,9 @@ impl SimpleDatePicker {
   }
 }
 
-impl View for SimpleDatePicker {
+impl AnyKind for SimpleDatePicker {}
+
+impl View<Active> for SimpleDatePicker {
   fn build(self, cx: &mut Cx) -> Node {
     let first = untrack(|| (self.date)());
     let start = SimpleDate::parse(&first).map_or((2026, 1), |date| (date.year, date.month));

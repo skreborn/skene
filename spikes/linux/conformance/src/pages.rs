@@ -397,7 +397,7 @@ fn library() -> impl View {
 /// A described picture, and one with no description.
 fn painted() -> impl View {
   let paint = |canvas: &mut Canvas<'_>| {
-    let (width, height) = (f64::from(canvas.width()), f64::from(canvas.height()));
+    let (width, height) = (canvas.size().width, canvas.size().height);
 
     canvas.fill(&Rect::new(0., 0., width / 2., height), Color::rgb(0xff0000));
     canvas.fill(

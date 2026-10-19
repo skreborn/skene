@@ -1,8 +1,17 @@
-use skene_foundation::seam::record::{Group, Record};
+use skene_foundation::{
+  seam::record::{Group, Record},
+  view::{HasRecord, Wraps},
+};
 
 use crate::{
   Button, Checkbox, Picker, PickerItem, Radio, RadioGroup, Slider, TextEditor, TextField, Toggle,
+  prelude::*,
 };
+
+/// The record `view`'s setters wrote: its control's root's, for a styled control.
+fn record<V: Wraps<Inner: HasRecord>>(view: V) -> Record {
+  view.into_inner().record_mut().clone()
+}
 
 /// Asserts that no layout or placement property of `record` changes with a state or a signal.
 fn holds_layout_still(name: &str, record: &Record) {
@@ -15,46 +24,28 @@ fn holds_layout_still(name: &str, record: &Record) {
 
 #[test]
 fn the_built_ins_defaults_vary_paint_alone() {
-  let roots = [
-    ("a button", Button::new("Save").control.members.record),
-    ("a switch", Toggle::new("Sync").control.members.record),
-    ("a checkbox", Checkbox::new("Wi-Fi").control.members.record),
-    (
-      "a radio group",
-      RadioGroup::new("Size").control.members.record,
-    ),
-    ("a radio", Radio::new("Small").control.members.record),
-    ("a slider", Slider::new("Volume").control.members.record),
-    ("a picker", Picker::new("Fruit").control.members.record),
-    (
-      "a picker's option",
-      PickerItem::new("Apple").control.members.record,
-    ),
-    (
-      "a text field",
-      TextField::new("Name").control.members.record,
-    ),
-    (
-      "a text editor",
-      TextEditor::new("Notes").control.members.record,
-    ),
-  ];
-  let parts = [
-    ("a switch's track", Toggle::default_track()),
-    ("a switch's thumb", Toggle::default_thumb()),
-    ("a checkbox's face", Checkbox::default_face()),
-    ("a radio's face", Radio::default_face()),
-    ("a slider's track", Slider::default_track()),
-    ("a slider's fill", Slider::default_fill()),
-    ("a slider's thumb", Slider::default_thumb()),
-    ("a picker's list", Picker::default_list()),
+  let records = [
+    ("a button", record(Button::new("Save"))),
+    ("a switch", record(Toggle::new("Sync"))),
+    ("a checkbox", record(Checkbox::new("Wi-Fi"))),
+    ("a radio group", record(RadioGroup::new("Size"))),
+    ("a radio", record(Radio::new("Small"))),
+    ("a slider", record(Slider::new("Volume"))),
+    ("a picker", record(Picker::new("Fruit"))),
+    ("a picker's option", record(PickerItem::new("Apple"))),
+    ("a text field", record(TextField::new("Name"))),
+    ("a text editor", record(TextEditor::new("Notes"))),
+    ("a switch's track", record(Toggle::default_track())),
+    ("a switch's thumb", record(Toggle::default_thumb())),
+    ("a checkbox's face", record(Checkbox::default_face())),
+    ("a radio's face", record(Radio::default_face())),
+    ("a slider's track", record(Slider::default_track())),
+    ("a slider's fill", record(Slider::default_fill())),
+    ("a slider's thumb", record(Slider::default_thumb())),
+    ("a picker's list", record(Picker::default_list())),
   ];
 
-  for (name, record) in &roots {
+  for (name, record) in &records {
     holds_layout_still(name, record);
-  }
-
-  for (name, part) in &parts {
-    holds_layout_still(name, part.record());
   }
 }

@@ -226,6 +226,10 @@ impl Realization for Linux {
     palette::system_colors()
   }
 
+  fn painting_available() -> bool {
+    true
+  }
+
   fn set_scheme(choice: Option<Scheme>) {
     environment::set_scheme(choice);
   }

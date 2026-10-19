@@ -64,8 +64,6 @@ compile_error!("macos is not realized in this prototype");
 compile_error!("windows is not realized in this prototype");
 
 #[cfg(skene_platform = "linux")]
-mod access;
-#[cfg(skene_platform = "linux")]
 mod control;
 #[cfg(skene_platform = "linux")]
 mod controls;
@@ -129,24 +127,58 @@ pub use skene_gui_macros::test;
 #[cfg(skene_platform = "linux")]
 pub use crate::{
   control::{
-    AsPart, BasicButton, BasicCheckbox, BasicListbox, BasicListboxOption, BasicRadio,
-    BasicRadioGroup, BasicSlider, BasicTextEditor, BasicTextField, Control, Label,
+    AsPart, BasicButton, BasicCheckbox, BasicListbox, BasicListboxOption, BasicPicker, BasicRadio,
+    BasicRadioGroup, BasicSlider, BasicTextEditor, BasicTextField, Control,
   },
   controls::{
-    BasicPicker, Button, Checkbox, ContextMenu, Keyboard, MenuEntry, MenuItem, Picker, PickerItem,
-    Radio, RadioGroup, Slider, TextEditor, TextField, Toggle, marks,
+    Button, Checkbox, ContextMenu, Keyboard, MenuEntry, MenuItem, Picker, PickerItem, Radio,
+    RadioGroup, Slider, TextEditor, TextField, Toggle, marks,
   },
   overlay::Overlay,
-  painted::{Canvas, Paint, Painted, Painting},
+  painted::{Canvas, Paint, Painted},
   runtime::{Resource, Sleep, schedule, sleep, spawn},
-  view::{AnyView, Apply, ChildOf, Cx, Derived, Node, NodeHandle, View},
+  view::{AnyView, Apply, ChildOf, Cx, Derived, Label, Node, NodeHandle, Painting, View},
   views::{Column, Container, Grid, Image, Row, Scroll, ScrollAxes, Stack, Text, Theme},
   wrappers::{Flexible, GridCell, Pinned},
 };
+/// The traits the views take their members from, each member written once in the
+/// foundation: a view's own (`ContainerBase`), a surface several views share
+/// (`DecorationBase`, `RunBase`, `MotionBase`, `ControlMembersBase`), and what a capability
+/// adds (`RunWithEntries`). The prelude carries them, so a view's members are in scope where
+/// its type is.
+pub use skene_foundation::view::{
+  AnyKind, AsPartBase, ButtonBase, CheckboxBase, ColumnBase, ContainerBase, ContextMenuBase,
+  ControlBase, ControlMembersBase, DecorationBase, DerivedBase, EditingBase, FlexibleBase,
+  GridBase, GridCellBase, ImageBase, MenuItemBase, MotionBase, OverlayBase, PaintedBase,
+  PickerBase, PickerItemBase, PinnedBase, RadioBase, RadioGroupBase, RowBase, RunBase,
+  RunWithEntries, ScrollBase, SliderBase, StackBase, TextBase, TextEditorBase, TextFieldBase,
+  ThemeBase, ToggleBase,
+};
 
-/// The realization this build is for.
+/// The realization this build is for: what a library's own view implements
+/// `skene_foundation::view::View` for, building what it is made of as a built-in does.
+///
+/// ```
+/// use skene_foundation::view::AnyKind;
+/// use skene_gui::{Active, prelude::*};
+///
+/// struct Badge {
+///   label: String,
+/// }
+///
+/// impl AnyKind for Badge {}
+///
+/// impl skene_foundation::view::View<Active> for Badge {
+///   fn build(self, cx: &mut Cx) -> Node {
+///     Container::new()
+///       .set_padding(4)
+///       .set_child(Text::new(self.label))
+///       .build(cx)
+///   }
+/// }
+/// ```
 #[cfg(skene_platform = "linux")]
-pub(crate) type Active = skene_gui_linux::Linux;
+pub type Active = skene_gui_linux::Linux;
 
 /// The platform this build is for.
 ///

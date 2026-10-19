@@ -1,14 +1,23 @@
-//! What an app, or a library writing a view of its own, imports.
+//! What an app, or a library writing a view of its own, imports: the views, the traits their
+//! members come from, and the values they take.
 
 pub use crate::{
-  Alignment, Angle, Apply, Arrangement, AsPart, AxisAlignment, Border, Bubbling, Button, Canvas,
-  Checkbox, ChildOf, ClipboardOp, Color, Column, Container, ContextMenu, Control, Corners, Cx,
-  Definitions, Derived, Dimension, Edges, Effect, Environment, Fill, Flexibility, Flexible, Flow,
-  FontWeight, Grid, GridCell, GridPlacement, GridTrack, Image, Inset, Keyboard, Label,
-  LabelPlacement, LinearGradient, Media, Memo, MenuEntry, MenuItem, Node, NodeHandle, Offset,
-  Overlay, Paint, Painted, Painting, Part, Picker, PickerItem, Pinned, Platform, RadialGradient,
-  Radio, RadioGroup, Resource, Ring, Row, Scheme, Scroll, ScrollAxes, Shadow, Shortcut, Side,
-  Signal, Slider, Spacing, Stack, State, SweepGradient, SystemColors, Text, TextEditor, TextField,
-  TextSelection, Theme, Toggle, Token, TokenRef, TokenSet, Tracks, UnitPoint, Value, View,
-  When as _, media, platform,
+  Alignment, Angle, Apply, Arrangement, AsPart, AsPartBase, AxisAlignment, Border, Bubbling,
+  Button, ButtonBase, Canvas, Checkbox, CheckboxBase, ChildOf, ClipboardOp, Color, Column,
+  ColumnBase, Container, ContainerBase, ContextMenu, ContextMenuBase, Control, ControlBase,
+  ControlMembersBase, Corners, Cx, DecorationBase, Definitions, Derived, DerivedBase, Dimension,
+  Edges, EditingBase, Effect, Environment, Fill, Flexibility, Flexible, FlexibleBase, Flow,
+  FontWeight, Grid, GridBase, GridCell, GridCellBase, GridPlacement, GridTrack, Image, ImageBase,
+  Inset, Keyboard, Label, LabelPlacement, LinearGradient, Media, Memo, MenuEntry, MenuItem,
+  MenuItemBase, MotionBase, Node, NodeHandle, Offset, Overlay, OverlayBase, Paint, Painted,
+  PaintedBase, Painting, Part, Picker, PickerBase, PickerItem, PickerItemBase, Pinned, PinnedBase,
+  Platform, RadialGradient, Radio, RadioBase, RadioGroup, RadioGroupBase, Resource, Ring, Row,
+  RowBase, RunBase, RunWithEntries, Scheme, Scroll, ScrollAxes, ScrollBase, Shadow, Shortcut, Side,
+  Signal, Slider, SliderBase, Spacing, Stack, StackBase, State, SweepGradient, SystemColors, Text,
+  TextBase, TextEditor, TextEditorBase, TextField, TextFieldBase, TextSelection, Theme, ThemeBase,
+  Toggle, ToggleBase, Token, TokenRef, TokenSet, Tracks, UnitPoint, Value, View, When as _, media,
+  platform,
 };
+/// The foundation's view trait, unnamed: what a view's `build` and `into_any` are called
+/// through.
+pub use skene_foundation::view::View as _;

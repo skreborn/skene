@@ -17,7 +17,7 @@ use std::{
 };
 
 use skene_foundation::{
-  State,
+  NodeId, State,
   behavior::{ActivateKeys, EntryAct, EntryKeys},
   environment::{self, Fact},
   layout::Rect,
@@ -845,7 +845,7 @@ impl Shell {
 
     if dirty.layout {
       // Before the paint, so a box that draws at its size draws in the frame that sized it.
-      self.report_sizes(&root);
+      self.report_sizes(&root, self.chrome.origin());
     }
 
     let laid_out = started.elapsed();
@@ -952,32 +952,62 @@ impl Shell {
     ))
   }
 
-  /// Reports each node that asked for its size and was laid out at another.
-  fn report_sizes(&self, root: &Node) {
-    let mut changed = Vec::new();
+  /// Reports each node of `root`'s surface that asked for its size and was laid out at
+  /// another, or at another device size: its window rectangle, the surface's top left at
+  /// `origin` (window pixels), snapped to the surface's device pixels. An overlay beneath
+  /// `root` reports on its own surface.
+  fn report_sizes(&self, root: &Node, origin: (f32, f32)) {
+    fn visit(node: &Node, root: &Node, found: &mut Vec<Node>) {
+      if node.is_hidden() || (node.is_overlay() && !Rc::ptr_eq(node, root)) {
+        return;
+      }
+
+      if node.interest.get().size {
+        found.push(Rc::clone(node));
+      }
+
+      for child in node.children_ref().iter() {
+        visit(child, root, found);
+      }
+    }
+
+    let mut asking = Vec::new();
     let scale = self.scale;
 
-    walk(root, |node| {
-      if node.interest.get().size {
+    visit(root, root, &mut asking);
+
+    let snap = |at: f32, origin: f32| (f64::from(at + origin) * scale).round();
+    let changed: Vec<(NodeId, Size)> = asking
+      .into_iter()
+      .filter_map(|node| {
         let frame = node.frame.get();
-        let size = (frame.width, frame.height, scale);
-
-        if node.reported.get() != Some(size) {
-          node.reported.set(Some(size));
-          changed.push((node.id.get(), size));
-        }
-      }
-    });
-
-    for (id, (width, height, scale)) in changed {
-      tree::report::<Linux>(
-        id,
-        Report::Size(Size {
-          width,
-          height,
+        let rect = node.window_rect();
+        #[expect(
+          clippy::cast_possible_truncation,
+          clippy::cast_sign_loss,
+          reason = "device pixels"
+        )]
+        let device = (
+          (snap(rect.x + rect.width, origin.0) - snap(rect.x, origin.0)).max(0.) as u32,
+          (snap(rect.y + rect.height, origin.1) - snap(rect.y, origin.1)).max(0.) as u32,
+        );
+        let size = Size {
+          width: frame.width,
+          height: frame.height,
           scale,
-        }),
-      );
+          device,
+        };
+
+        (node.reported.get() != Some(size)).then(|| {
+          node.reported.set(Some(size));
+
+          (node.id.get(), size)
+        })
+      })
+      .collect();
+
+    for (id, size) in changed {
+      tree::report::<Linux>(id, Report::Size(size));
     }
   }
 
@@ -1551,7 +1581,10 @@ impl Shell {
     });
     self.pending.push(Request::Popup(Some(open.placement)));
     self.overlay = Some(open);
-    self.report_sizes(&node);
+
+    let frame = node.frame.get();
+
+    self.report_sizes(&node, (-frame.x, -frame.y));
     // A popup focuses its first control asking for focus as it opens; with none, focus stays
     // where its behavior put it.
     self.autofocus(&node);
@@ -1569,8 +1602,9 @@ impl Shell {
     }
 
     let node = Rc::clone(&open.node);
+    let frame = node.frame.get();
 
-    self.report_sizes(&node);
+    self.report_sizes(&node, (-frame.x, -frame.y));
     crate::access::invalidate();
   }
 

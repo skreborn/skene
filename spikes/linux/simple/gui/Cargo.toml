@@ -8,6 +8,7 @@ rust-version.workspace = true
 version.workspace = true
 
 [dependencies]
+skene-foundation.workspace = true
 skene-gui.workspace = true
 skene-simple-core.workspace = true
 

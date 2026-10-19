@@ -106,7 +106,7 @@ fn app() -> AnyView {
     return Column::new()
       .add_child(
         Painted::new(|canvas| {
-          let (width, height) = (f64::from(canvas.width()), f64::from(canvas.height()));
+          let (width, height) = (canvas.size().width, canvas.size().height);
 
           canvas.fill(&Rect::new(0., 0., width, height), Color::rgb(0xff0000));
         })

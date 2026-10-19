@@ -2339,6 +2339,7 @@ dependencies = [
 name = "skene-simple-gui"
 version = "0.0.0"
 dependencies = [
+ "skene-foundation",
  "skene-gui",
  "skene-simple-core",
 ]

@@ -29,6 +29,18 @@ fn adding_selects_the_new_note() {
 }
 
 #[skene_gui::test]
+fn the_field_has_focus_as_the_window_opens() {
+  let screen = testing::render(notes_gui::app);
+
+  assert!(
+    screen
+      .find_by_role(Role::TextField, "New note")
+      .is_focused(),
+    "the field asks for focus and takes it"
+  );
+}
+
+#[skene_gui::test]
 fn enter_in_the_field_adds_the_note() {
   let screen = testing::render(notes_gui::app);
 

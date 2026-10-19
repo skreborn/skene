@@ -15,7 +15,7 @@ use skene_foundation::{
     content::{Content, Edit, OverlayPlacement, PropValue, Run},
     node::{LayoutKind, NodeKind, NodeSpec},
     picture::Picture,
-    report::Interest,
+    report::{Interest, Size},
   },
 };
 
@@ -167,7 +167,7 @@ pub struct Drawn {
   /// Its measurements in the current layout epoch.
   pub measures: RefCell<Measures>,
   /// The size last reported ([`Interest::size`]).
-  pub reported: Cell<Option<(f32, f32, f64)>>,
+  pub reported: Cell<Option<Size>>,
   /// The layout epoch its engine's children were last given in.
   pub engine_epoch: Cell<u64>,
   /// What it and its subtree paint, relative to its frame's origin.

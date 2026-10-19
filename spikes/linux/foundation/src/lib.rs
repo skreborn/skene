@@ -31,6 +31,9 @@
 //!   the contract every realization implements ([`seam::Realization`]) and the shared half
 //!   that calls it (the tree, the record and its resolver, the controlled contract, the
 //!   accessibility merge, the testing driver's contract).
+//! - [`view`]: the view layer every facade shares, written once over the seam: what a view is
+//!   ([`view::View`]), where it is built ([`view::Cx`]) and every built-in view, generic over
+//!   the realization, each facade declaring a type of its own per view.
 //!
 //! Lengths are plain numbers of pixels: `16`, `-4` (`i32`) or `16.5` (`f32`).
 
@@ -49,6 +52,7 @@ pub mod system_colors;
 pub mod text;
 pub mod token;
 pub mod value;
+pub mod view;
 
 pub use crate::{
   color::Color,

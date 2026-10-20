@@ -8,6 +8,8 @@ input through tools/bin/drive ($DRIVE: x11, mutter-dbus or sway).
                           selection, undo, the secure field, the editor
   harness.py hangul       Hangul through the session's input method: composition, commit,
                           candidates, surrounding text, a rejecting field, undo
+  harness.py keys         which keys typed into the plain and the password field reach the
+                          input method as key events
   harness.py reader       textprobe.py report and edit on the first field (X11)
   harness.py focus        a click on the Name field
   harness.py dump         the tree, for a look
@@ -809,6 +811,40 @@ def scenario_secure():
       note("XIM carries no text of the field, and no purpose: it is handed the keys alone")
 
 
+def scenario_keys():
+  # Which keys typed into the plain field and into the password field reach the input method as
+  # key events (ProcessKeyEvent on its bus: from the app's own client on X11, from the
+  # compositor over text-input-v3 under gnome-shell): the same three keys typed into each, in
+  # the drawn app and in GTK 4's GtkEntry and GtkPasswordEntry alike (tools/controls/gtk-password.py).
+  # KEYS_SECRET=forwarded or KEYS_SECRET=kept says which the password field must do.
+  im_log = os.path.join(OUT, "im-bus.log")
+  if not os.path.exists(im_log):
+    note("keys: no input method bus to read")
+    return
+  counts = {}
+  lengths = {}
+  for name in ("Name", "Password"):
+    node = field(name)
+    click(node)
+    settle(0.6)
+    with open(im_log, encoding="utf-8", errors="replace") as file:
+      before = file.read().count("member=ProcessKeyEvent")
+    drive("type", "abc")
+    settle(1.0)
+    with open(im_log, encoding="utf-8", errors="replace") as file:
+      counts[name] = file.read().count("member=ProcessKeyEvent") - before
+    lengths[name] = Atspi.Text.get_character_count(node)
+    note(f"keys: {name}: {counts[name]} key events reached the input method for 3 keys typed")
+  check("keys: the plain field's keys reach the input method", counts["Name"] > 0, counts)
+  forwarded = counts["Password"] > 0
+  note(f"keys: the password field forwards keys: {'yes' if forwarded else 'no'}")
+  expected = os.environ.get("KEYS_SECRET")
+  if expected:
+    check(f"keys: the password field's keys are {expected}", forwarded == (expected == "forwarded"),
+          counts)
+  note(f"keys: the characters each field holds after: {lengths}")
+
+
 def scenario_reader():
   # What a reader can ask of the field (textprobe.py report) and every EditableText method
   # (textprobe.py edit), after typing "Hello brave world" for real; the same against GtkEntry
@@ -906,6 +942,7 @@ def main(argv):
       "fields": scenario_fields,
       "hangul": scenario_hangul,
       "secure": scenario_secure,
+      "keys": scenario_keys,
       "dump": scenario_dump,
       "reader": scenario_reader,
       "focus": scenario_focus,

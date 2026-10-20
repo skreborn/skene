@@ -2,8 +2,9 @@
 # Every controls check, each in a private session (tools/controls/session.sh under its own
 # dbus-run-session): the controls and fields scenarios on Xvfb, headless sway and headless
 # mutter; Hangul and a secure field through IBus, Fcitx5 and XIM on X11, gnome-shell's IBus over
-# text-input-v3 and Fcitx5 behind sway; the input method choice; the reader probes against
-# GtkEntry; Orca against GTK on X11 and gnome-shell's Wayland.
+# text-input-v3 and Fcitx5 behind sway; which keys of a password field reach the input method,
+# against GtkPasswordEntry; the input method choice; the reader probes against GtkEntry; Orca
+# against GTK on X11 and gnome-shell's Wayland.
 #
 #   checks.sh <controls probe binary> <results dir>
 set -u
@@ -35,6 +36,22 @@ session x11-xim x11 ibus "PROBE_FIELDS_ONLY=1 SKENE_IME=xim" \
   python3.12 -I tools/controls/harness.py hangul secure
 session gnome-ibus gnome ibus PROBE_FIELDS_ONLY=1 python3.12 -I tools/controls/harness.py hangul secure
 session sway-fcitx sway fcitx PROBE_FIELDS_ONLY=1 python3.12 -I tools/controls/harness.py hangul secure
+
+# Which keys typed into a password field reach the input method, the drawn field against GTK
+# 4.14's GtkPasswordEntry (tools/controls/gtk-password.py): forwarded by default under IBus,
+# Fcitx5 and gnome-shell's IBus alike, and kept from IBus where IBUS_DISCARD_PASSWORD says so.
+for spec in x11-ibus:x11:ibus x11-fcitx:x11:fcitx gnome-ibus:gnome:ibus; do
+  IFS=: read -r name kind ime <<<"$spec"
+  KEYS_SECRET=forwarded session "keys-skene-$name" "$kind" "$ime" PROBE_FIELDS_ONLY=1 \
+    python3.12 -I tools/controls/harness.py keys
+  KEYS_SECRET=forwarded ATSPI_WINDOW="GTK password" APP=$root/tools/controls/gtk-password.py \
+    session "keys-gtk-$name" "$kind" "$ime" "" python3.12 -I tools/controls/harness.py keys
+done
+KEYS_SECRET=kept session keys-skene-x11-ibus-discard x11 ibus \
+  "PROBE_FIELDS_ONLY=1 IBUS_DISCARD_PASSWORD=1" python3.12 -I tools/controls/harness.py keys
+KEYS_SECRET=kept ATSPI_WINDOW="GTK password" APP=$root/tools/controls/gtk-password.py \
+  session keys-gtk-x11-ibus-discard x11 ibus IBUS_DISCARD_PASSWORD=1 \
+  python3.12 -I tools/controls/harness.py keys
 
 export PROBE=$probe
 APP=none session detect-ibus x11 ibus "" tools/controls/detect.sh ibus \

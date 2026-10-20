@@ -88,10 +88,35 @@ pub fn to_ibus_text(text: &str) -> Value<'static> {
   Value::Structure(text)
 }
 
+/// Whether a secret's keys stay away from IBus, as IBus's GTK module decides it: where
+/// `IBUS_DISCARD_PASSWORD` is set to anything but empty, `0` or `false`, or where a name in
+/// the comma-separated `IBUS_DISCARD_PASSWORD_APPS` occurs in the program's name.
+#[must_use]
+pub fn discards_passwords() -> bool {
+  let set = std::env::var("IBUS_DISCARD_PASSWORD")
+    .is_ok_and(|value| !matches!(value.as_str(), "" | "0" | "false" | "False" | "FALSE"));
+  let program = std::env::args_os()
+    .next()
+    .and_then(|path| {
+      std::path::Path::new(&path)
+        .file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+    })
+    .unwrap_or_default();
+  let listed = std::env::var("IBUS_DISCARD_PASSWORD_APPS").is_ok_and(|apps| {
+    apps
+      .split(',')
+      .any(|app| !app.is_empty() && program.contains(app))
+  });
+
+  set || listed
+}
+
 /// One IBus input context.
 pub struct IBus {
   bus: Bus,
   context: OwnedObjectPath,
+  discards_passwords: bool,
 }
 
 impl IBus {
@@ -148,7 +173,11 @@ impl IBus {
       context.as_str()
     )));
 
-    Ok(Self { bus, context })
+    Ok(Self {
+      bus,
+      context,
+      discards_passwords: discards_passwords(),
+    })
   }
 }
 
@@ -220,6 +249,10 @@ impl Ime for IBus {
 
   fn answers_keys(&self) -> bool {
     true
+  }
+
+  fn takes_secrets(&self) -> bool {
+    !self.discards_passwords
   }
 
   fn process_key(&mut self, id: u64, key: &RawKey) -> bool {

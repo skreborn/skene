@@ -1951,7 +1951,8 @@ impl X11 {
   }
 
   /// Tells the input method about the focused entry: focus, its purpose, its surrounding text
-  /// and where its caret is; a secure entry's text as the marks it shows, one per cluster.
+  /// and where its caret is; a secure entry's text as the marks it shows, one per cluster, or
+  /// nothing of it where the input method takes no secret ([`Ime::takes_secrets`]).
   fn sync_ime(&mut self, shell: &Shell) {
     if crate::entry::take_ime_dirty().is_some() {
       self.ime_stale = true;
@@ -1970,7 +1971,10 @@ impl X11 {
     let Some(ime) = &mut self.ime else {
       return;
     };
-    let Some(state) = state else {
+    let takes_secrets = ime.takes_secrets();
+    let Some(state) =
+      state.filter(|state| takes_secrets || state.purpose != ime::Purpose::Password)
+    else {
       if self.ime_focused {
         ime.reset();
         ime.focus_out();

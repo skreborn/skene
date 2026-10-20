@@ -91,6 +91,13 @@ pub trait Ime {
   /// Whether the input method answers every key ([`ImeEvent::KeyDone`]); XIM does not.
   fn answers_keys(&self) -> bool;
 
+  /// Whether a secure entry's keys go to the input method (as marks); where they do not, the
+  /// entry takes the keyboard's own keys while it has focus, as GTK's module leaves a
+  /// password to its simple context.
+  fn takes_secrets(&self) -> bool {
+    true
+  }
+
   /// Sends a key; returns whether it was sent.
   fn process_key(&mut self, id: u64, key: &RawKey) -> bool;
 

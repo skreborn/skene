@@ -19,18 +19,24 @@
 # LEGS (x11 sway mutter unless set) and CASES (every case above unless set) choose what runs,
 # so two builds can take turns, a round each, through KEEP=1 and FIRST.
 #
+# After the rounds asked for (6 unless given, the fewest a 95% interval of a median takes), each
+# judged case (rows and the three lazy lists) goes on a round at a time on each leg whose
+# verdict is still undecided, until MAX_ROUNDS (15 unless set): a verdict is decided once the
+# 95% interval of the median first frame (between two order statistics, distribution free) lies
+# wholly under or wholly over its target, for the first frame and its layout alike.
+#
 # Each app starts once its session has settled, APP_DELAY seconds (1 unless set) after it is
 # ready, as an app starts on a desktop whose compositor is idle. TOOLS (the drivers) is
 # tools/bin.
 #
 # Appends to <out dir>/frames.txt (every [frame] line and every app-start TIMING line,
 # prefixed by leg, case and round), emptied first unless KEEP=1, and prints, per leg and case,
-# the medians over every run it holds, then BENCH lines for the first frame of the rows
-# against its targets (under 50 ms, its layout under 16 ms) on every leg. Zero rounds prints
-# what <out dir>/frames.txt holds; FIRST numbers the first round (1 unless set), so runs
-# appended by several calls keep apart.
+# the medians over every run it holds, then BENCH lines judging each judged case's first frame
+# against its targets (under 50 ms, its layout under 16 ms) on every leg. Zero rounds prints what
+# <out dir>/frames.txt holds; FIRST numbers the first round (1 unless set), so runs appended by
+# several calls keep apart.
 set -u
-release=$1; out=$2; rounds=${3:-5}
+release=$1; out=$2; rounds=${3:-6}
 here=$(cd "$(dirname "$0")/../.." && pwd)
 sessions=$here/tools/sessions
 export TOOLS=${TOOLS:-$here/tools/bin} CHECK="python3 -I $sessions/check.py" APP_DELAY=${APP_DELAY:-1}
@@ -51,14 +57,15 @@ run() { # run <leg> <name> <round> <kind> <app> <command...> (VAR=value settings
 
 cases=${CASES:-rows relayout hello lazy lazy-10k lazy-100k lazy-relayout}
 
-for round in $(seq "${FIRST:-1}" $(( ${FIRST:-1} + rounds - 1 ))); do
-  for leg in ${LEGS:-x11 sway mutter}; do
+one_round() { # one_round <round> <legs> <cases>
+  local round=$1 leg case base
+  for leg in $2; do
     case $leg in
       x11) base="SKENE_SIZE=800x900" ;;
       sway) base="DRIVER=sway SKENE_SIZE=800x900 SWAY_BORDER=none MONITOR=800x900" ;;
       mutter) base="DRIVER=mutter-dbus SKENE_SIZE=800x900 HEADER=38" ;;
     esac
-    for case in $cases; do
+    for case in $3; do
       case $case in
         rows) SETTINGS="$base" run "$leg" rows "$round" "$leg" "$release/rows" bash "$sessions/scenarios/rows.sh" ;;
         relayout) SETTINGS="$base MODE=layout" run "$leg" relayout "$round" "$leg" "$release/rows" sleep 5.5 ;;
@@ -70,10 +77,64 @@ for round in $(seq "${FIRST:-1}" $(( ${FIRST:-1} + rounds - 1 ))); do
       esac
     done
   done
+}
+
+# The judged cases whose first frame is undecided against a target, as `<leg> <case>` a line,
+# from frames.txt.
+undecided() {
+  python3 -I - "$out/frames.txt" <<'PY'
+import re, sys
+from math import comb
+
+FRAME = re.compile(r"\[frame\] (\d+) total ([\d.]+) ms prepare ([\d.]+) layout ([\d.]+) ")
+JUDGED = ("rows", "lazy", "lazy-10k", "lazy-100k")
+firsts = {}
+
+for line in open(sys.argv[1]):
+  leg, case, round_, rest = line.split(" ", 3)
+  match = FRAME.search(rest)
+
+  if case in JUDGED and match and (leg, case, round_) not in firsts:
+    firsts[(leg, case, round_)] = (float(match.group(2)), float(match.group(4)))
+
+def interval(values):
+  values = sorted(values)
+  n, k = len(values), 0
+  while sum(comb(n, i) for i in range(k + 1)) / 2 ** n <= 0.025:
+    k += 1
+  return (values[k - 1], values[n - k]) if k else None
+
+for leg, case in sorted({(leg, case) for leg, case, _ in firsts}):
+  for index, target in ((0, 50), (1, 16)):
+    values = [value[index] for (one, kind, _), value in firsts.items() if (one, kind) == (leg, case)]
+    bounds = interval(values)
+
+    if bounds is None or bounds[0] < target < bounds[1] or target in bounds:
+      print(leg, case)
+      break
+PY
+}
+
+first=${FIRST:-1}
+for round in $(seq "$first" $(( first + rounds - 1 ))); do
+  one_round "$round" "${LEGS:-x11 sway mutter}" "$cases"
 done
+
+if [ "$rounds" -gt 0 ]; then
+  round=$(( first + rounds ))
+  while [ "$round" -le "${MAX_ROUNDS:-15}" ]; do
+    pending=$(undecided)
+    [ -n "$pending" ] || break
+    while read -r leg case; do
+      one_round "$round" "$leg" "$case"
+    done <<< "$pending"
+    round=$(( round + 1 ))
+  done
+fi
 
 python3 -I - "$out/frames.txt" <<'PY'
 import re, statistics, sys
+from math import comb
 
 FRAME = re.compile(
   r"\[frame\] (\d+) total ([\d.]+) ms prepare ([\d.]+) layout ([\d.]+) record ([\d.]+) "
@@ -97,6 +158,23 @@ for line in open(sys.argv[1]):
 
 def median(values):
   return f"{statistics.median(values):.2f} [{min(values):.2f}-{max(values):.2f}]" if values else "none"
+
+def interval(values):
+  """The 95% interval of the median, between two order statistics; None under six values."""
+  values = sorted(values)
+  n, k = len(values), 0
+  while sum(comb(n, i) for i in range(k + 1)) / 2 ** n <= 0.025:
+    k += 1
+  return (values[k - 1], values[n - k]) if k else None
+
+def verdict(values, target):
+  bounds = interval(values)
+  middle = statistics.median(values)
+  if bounds is None:
+    return f"{middle:.2f} ms (n={len(values)}, too few rounds for an interval: undecided against {target})"
+  low, high = bounds
+  word = "under" if high < target else "NOT under" if low > target else "undecided against"
+  return f"{middle:.2f} ms (95% interval {low:.2f}-{high:.2f}, n={len(values)}: {word} {target})"
 
 verdicts = []
 
@@ -126,10 +204,8 @@ for (leg, case), rounds in sorted(runs.items()):
       if frame[7] == "full" or float(frame[8]) * float(frame[9]) >= area / 4
     ]
     print(f"{leg} {case}: hover {median(small)} ms (n={len(small)}); scroll {median(large)} ms (n={len(large)})")
-    total, layout = statistics.median(parts["total"]), statistics.median(parts["layout"])
     verdicts.append(
-      f"BENCH {leg} {case} first frame {total:.2f} ms ({'under' if total < 50 else 'NOT under'} 50), "
-      f"layout {layout:.2f} ms ({'under' if layout < 16 else 'NOT under'} 16)"
+      f"BENCH {leg} {case} first frame {verdict(parts['total'], 50)}, layout {verdict(parts['layout'], 16)}"
     )
 
   if case.endswith("relayout"):

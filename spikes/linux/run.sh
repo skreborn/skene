@@ -2,19 +2,23 @@
 # Rebuilds the drawn-Linux prototype and re-runs everything its reports call VERIFIED.
 #
 # Stage CORE (the text model and engine trait, taffy text leaves, the shared editing core,
-# skene-parley over fontconfig and FreeType, the terminal's cells engine and field):
+# skene-parley over fontconfig and FreeType and over the Parley Skene carries, vendor/parley
+# and vendor/parley_engine, the terminal's cells engine and field):
 #   - the CLI and the display runner, installed into tools/bin (.cargo/config.toml names
 #     tools/bin/skene-runner as the target runner: every test binary gets a private Xvfb and
 #     private buses);
 #   - formatting (stable rustfmt), clippy with warnings denied, rustdoc, on every member;
 #   - every test of the workspace (foundation, skene-parley, skene-gui-linux, skene-terminal,
 #     cli, the cores);
-#   - the platform-text cases (scratchpad/platform-text/linux) laid out by Skene's engine and
-#     compared with live Pango (pango-view, same fontconfig): lines, family per character,
+#   - the platform-text cases (scratchpad/platform-text/linux) and the cases of spikes/text-parity's
+#     corpus that found Parley's gaps (soft hyphens, bidi, Thai, Khmer, Lao, Burmese, Devanagari,
+#     tabs, stacked marks) laid out by Skene's engine and compared with live Pango (pango-view,
+#     same fontconfig): lines, their widths, the clusters' visual order, family per character,
 #     emoji drawn from a colour glyph, PNGs by FreeType masks and by vello outlines;
 #   - fontconfig rendering settings honoured: the user's own fonts.conf (XDG_CONFIG_HOME, as
 #     ~/.config/fontconfig/fonts.conf) and the desktop's XSETTINGS-style values beneath it;
-#   - measured size against drawn ink; 1000 labels: build, measure, taffy, draw.
+#   - measured size against drawn ink; 1000 labels: build, measure, taffy, draw; the 1000-row
+#     probe's texts shaped one at a time and as a batch, with the shape cache and without.
 #
 # Stage SHELL (skene-gui-linux, the facade drawn by Skene on X11 and Wayland):
 #   - the shell's tools (drive, clip, portal-stub, xsettings-manager) into tools/bin;
@@ -360,6 +364,9 @@ say "== measured size against drawn ink"
 
 say "== 1000 labels"
 "$verify" bench | tee "$results/bench.txt" | tee -a "$summary"
+
+say "== the 1000-row probe's texts shaped"
+"$verify" shaping | tee "$results/shaping.txt" | tee -a "$summary"
 measure_target
 fi
 

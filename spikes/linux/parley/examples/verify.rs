@@ -9,6 +9,9 @@
 //!                       XSETTINGS-style values where given), and a sample's coverage
 //! verify ink            measured size against drawn ink, per case
 //! verify bench          1000 labels: build, measure, lay out under taffy, draw
+//! verify shaping [WORDS]
+//!                       the 1000-row probe's 3000 texts shaped one at a time and as a batch,
+//!                       with a shape cache of WORDS words, or with the engine's and with none
 //! ```
 
 use std::{fmt::Write as _, rc::Rc, time::Instant};
@@ -24,42 +27,121 @@ use skene_foundation::{
   value::{GridTrack, Tracks},
 };
 use skene_parley::{
-  ParleyEngine, ParleyLaid, ParleyParagraph,
+  ParleyEngine, ParleyLaid, ParleyParagraph, SHAPE_CACHE,
   render::{MaskPainter, paint_outlines},
 };
 use vello_cpu::{Pixmap, RenderContext, Resources, kurbo, peniko};
 
-/// The size the cases are set at, in pixels.
+/// The size the platform-text cases are set at, in pixels.
 const SIZE: f32 = 13.;
 
-/// The platform-text cases: a name, the text, and the width it wraps at (none where zero).
-const CASES: &[(&str, &str, f32)] = &[
-  ("latin", "The quick brown fox jumps over the lazy dog", 0.),
-  ("emoji", "Emoji 👍🏽 👨‍👩‍👧 🇰🇷 😀 ❤️ ☺ ☺️", 0.),
-  (
+/// The size the corpus cases (`spikes/text-parity`'s) are set at, in pixels.
+const CORPUS: f32 = 17.;
+
+/// A case: its name, its text, the width it wraps at (none where zero) and its size.
+struct Case {
+  name: &'static str,
+  text: &'static str,
+  width: f32,
+  size: f32,
+}
+
+impl Case {
+  const fn new(name: &'static str, text: &'static str, width: f32, size: f32) -> Self {
+    Self {
+      name,
+      text,
+      width,
+      size,
+    }
+  }
+}
+
+/// The soft-hyphen corpus case.
+const SOFT_HYPHENS: &str = "Incom\u{AD}pre\u{AD}hen\u{AD}si\u{AD}bil\u{AD}i\u{AD}ties every\u{AD}where, extra\u{AD}or\u{AD}di\u{AD}nary";
+/// The Thai corpus case.
+const THAI: &str = "ภาษาไทยเป็นภาษาที่ไม่มีการเว้นวรรคระหว่างคำ การตัดคำจึงต้องใช้พจนานุกรม";
+/// The Khmer corpus case.
+const KHMER: &str = "ភាសាខ្មែរគឺជាភាសាផ្លូវការរបស់ប្រទេសកម្ពុជា ហើយត្រូវបានប្រើប្រាស់ដោយប្រជាជនរាប់លាននាក់";
+/// The Lao corpus case.
+const LAO: &str = "ພາສາລາວເປັນພາສາທາງການຂອງສາທາລະນະລັດປະຊາທິປະໄຕປະຊາຊົນລາວ";
+/// The Burmese corpus case.
+const BURMESE: &str = "မြန်မာဘာသာစကားသည် မြန်မာနိုင်ငံ၏ ရုံးသုံးဘာသာစကား ဖြစ်သည်။";
+
+/// The platform-text cases at 13 pixels, then the corpus cases that found Parley's gaps at
+/// the corpus's 17.
+const CASES: &[Case] = &[
+  Case::new(
+    "latin",
+    "The quick brown fox jumps over the lazy dog",
+    0.,
+    SIZE,
+  ),
+  Case::new("emoji", "Emoji 👍🏽 👨‍👩‍👧 🇰🇷 😀 ❤️ ☺ ☺️", 0., SIZE),
+  Case::new(
     "cjk",
     "日本語の文章を折り返します。中文文本换行。한국어 문장입니다.",
     110.,
+    SIZE,
   ),
-  ("thai", "ภาษาไทยเป็นภาษาที่ไม่มีการเว้นวรรคระหว่างคำ", 90.),
-  ("khmer", "ភាសាខ្មែរគឺជាភាសាផ្លូវការរបស់ប្រទេសកម្ពុជា", 90.),
-  (
+  Case::new("thai", "ภาษาไทยเป็นภาษาที่ไม่มีการเว้นวรรคระหว่างคำ", 90., SIZE),
+  Case::new("khmer", "ភាសាខ្មែរគឺជាភាសាផ្លូវការរបស់ប្រទេសកម្ពុជា", 90., SIZE),
+  Case::new(
     "hyphen",
     "Donaudampfschifffahrtsgesellschaft internationalization",
     110.,
+    SIZE,
   ),
-  (
+  Case::new(
     "softhyphen",
     "Incom\u{AD}pre\u{AD}hen\u{AD}si\u{AD}bil\u{AD}i\u{AD}ties every\u{AD}where",
     90.,
+    SIZE,
   ),
-  ("bidi", "Hello שלום עולם world مرحبا بالعالم 123", 0.),
-  ("arabic", "مرحبا بالعالم هذا نص عربي طويل للالتفاف", 110.),
-  (
+  Case::new("bidi", "Hello שלום עולם world مرحبا بالعالم 123", 0., SIZE),
+  Case::new(
+    "arabic",
+    "مرحبا بالعالم هذا نص عربي طويل للالتفاف",
+    110.,
+    SIZE,
+  ),
+  Case::new(
     "ellipsis",
     "A long label that must fit in two lines and end with an ellipsis when it overflows",
     120.,
+    SIZE,
   ),
+  Case::new("soft-hyphens-90", SOFT_HYPHENS, 90., CORPUS),
+  Case::new("soft-hyphens-140", SOFT_HYPHENS, 140., CORPUS),
+  Case::new(
+    "bidi-numbers",
+    "Order 12345 שולם ב-15/10/2026 בסך ₪1,234.50 (כולל מע״מ) total",
+    150.,
+    CORPUS,
+  ),
+  Case::new(
+    "bidi-ltr-base",
+    "Hello שלום עולם world مرحبا بالعالم 123",
+    120.,
+    CORPUS,
+  ),
+  Case::new("bidi-rtl-base", "مرحبا Hello 123 world عالم!", 100., CORPUS),
+  Case::new("thai-90", THAI, 90., CORPUS),
+  Case::new("thai-160", THAI, 160., CORPUS),
+  Case::new("khmer-90", KHMER, 90., CORPUS),
+  Case::new("khmer-160", KHMER, 160., CORPUS),
+  Case::new("lao-90", LAO, 90., CORPUS),
+  Case::new("lao-160", LAO, 160., CORPUS),
+  Case::new("burmese-90", BURMESE, 90., CORPUS),
+  Case::new("burmese-160", BURMESE, 160., CORPUS),
+  Case::new(
+    "devanagari",
+    "हिन्दी भारत की राजभाषा है। क्षत्रिय, ज्ञान, श्री, द्वार, कृष्ण",
+    120.,
+    CORPUS,
+  ),
+  Case::new("tabs", "col1\tcol2\tcol3\n1\t22\t333", 0., CORPUS),
+  Case::new("combining", "Stacked: á̂̃ ǭ ẋ̣ q̣̇ Z͓͑͒a͔͕l͖g͗o é ñ", 0., CORPUS),
 ];
 
 fn main() {
@@ -73,7 +155,12 @@ fn main() {
     Some("follow") => follow(&engine),
     Some("ink") => ink(&engine),
     Some("bench") => bench(&engine),
-    _ => panic!("verify shots|emoji|settings|follow|ink|bench"),
+    Some("shaping") => shaping(arguments.get(1).map(|words| {
+      words
+        .parse()
+        .expect("a shape cache's capacity is a number of words")
+    })),
+    _ => panic!("verify shots|emoji|settings|follow|ink|bench|shaping"),
   }
 }
 
@@ -85,10 +172,10 @@ fn style_for(name: &str) -> ParagraphStyle {
   }
 }
 
-fn lay_out(engine: &ParleyEngine, name: &str, text: &str, width: f32) -> ParleyLaid {
+fn lay_out(engine: &ParleyEngine, case: &Case, width: f32) -> ParleyLaid {
   let paragraph = engine.paragraph(
-    &AttributedText::plain(text, RunStyle::new(SIZE)),
-    &style_for(name),
+    &AttributedText::plain(case.text, RunStyle::new(case.size)),
+    &style_for(case.name),
   );
 
   paragraph.layout((width > 0.).then_some(width))
@@ -177,17 +264,18 @@ fn shots(engine: &ParleyEngine, out: &str) {
 
   let mut painter = MaskPainter::new().expect("FreeType loads");
 
-  for (name, text, width) in CASES {
-    let measured = lay_out(engine, name, text, *width);
-    let laid = lay_out(engine, name, text, measured.size().width);
+  for case in CASES {
+    let (name, text) = (case.name, case.text);
+    let measured = lay_out(engine, case, case.width);
+    let laid = lay_out(engine, case, measured.size().width);
     let paragraph = engine.paragraph(
-      &AttributedText::plain(*text, RunStyle::new(SIZE)),
+      &AttributedText::plain(text, RunStyle::new(case.size)),
       &style_for(name),
     );
     let intrinsic = paragraph.intrinsic();
     let size = laid.size();
     let mut report = String::new();
-    let _ = writeln!(report, "== {name} width {width}");
+    let _ = writeln!(report, "== {name} width {} size {}", case.width, case.size);
     let _ = writeln!(
       report,
       "  skene size {:.1}x{:.1} baseline {:.2} lines {} truncated {} minmax {:.1}/{:.1}",
@@ -216,8 +304,26 @@ fn shots(engine: &ParleyEngine, out: &str) {
 
     print!("{report}");
 
+    // Each line's clusters in visual order, by the byte each starts at.
+    let visual: Vec<String> = laid
+      .layout()
+      .lines()
+      .map(|line| {
+        let starts: Vec<String> = line
+          .runs()
+          .flat_map(|run| {
+            run
+              .visual_clusters()
+              .map(|cluster| cluster.text_range().start.to_string())
+              .collect::<Vec<_>>()
+          })
+          .collect();
+
+        format!("[{}]", starts.join(", "))
+      })
+      .collect();
     let json = format!(
-      "{{\"width\": {:.2}, \"height\": {:.2}, \"lines\": [{}], \"runs\": [{}]}}\n",
+      "{{\"width\": {:.2}, \"height\": {:.2}, \"lines\": [{}], \"widths\": [{}], \"visual\": [{}], \"runs\": [{}]}}\n",
       size.width,
       size.height,
       laid
@@ -226,6 +332,13 @@ fn shots(engine: &ParleyEngine, out: &str) {
         .map(|line| quoted(&text[line.range.clone()]))
         .collect::<Vec<_>>()
         .join(", "),
+      laid
+        .lines()
+        .iter()
+        .map(|line| format!("{:.2}", line.width))
+        .collect::<Vec<_>>()
+        .join(", "),
+      visual.join(", "),
       laid
         .run_families()
         .iter()
@@ -260,8 +373,9 @@ fn chroma(pixel: [u8; 4]) -> bool {
 }
 
 fn emoji(engine: &ParleyEngine, path: &str) {
-  let (_, text, _) = CASES[1];
-  let laid = lay_out(engine, "emoji", text, 0.);
+  let case = &CASES[1];
+  let text = case.text;
+  let laid = lay_out(engine, case, 0.);
   let (w, h) = size_of(&laid);
   let mut painter = MaskPainter::new().expect("FreeType loads");
   let pixmap = draw_masks(engine, &mut painter, &laid, w, h);
@@ -355,8 +469,7 @@ fn settings(engine: &ParleyEngine, out: &str, desktop: Option<&str>) {
       });
   }
 
-  let (_, text, _) = CASES[0];
-  let laid = lay_out(engine, "latin", text, 0.);
+  let laid = lay_out(engine, &CASES[0], 0.);
   let (w, h) = size_of(&laid);
   let mut painter = MaskPainter::new().expect("FreeType loads");
   let pixmap = draw_masks(engine, &mut painter, &laid, w, h);
@@ -466,11 +579,12 @@ fn ink(engine: &ParleyEngine) {
   let mut painter = MaskPainter::new().expect("FreeType loads");
   let mut worst: f32 = 0.;
 
-  for (name, text, width) in CASES {
+  for case in CASES {
+    let name = case.name;
     // Measured within the case's width, then drawn as a realization draws it: laid out at the
     // width the layout engine gives the box, the width the text used.
-    let measured = lay_out(engine, name, text, *width);
-    let laid = lay_out(engine, name, text, measured.size().width);
+    let measured = lay_out(engine, case, case.width);
+    let laid = lay_out(engine, case, measured.size().width);
     let size = laid.size();
     let (w, h) = size_of(&laid);
     let pixmap = draw_masks(engine, &mut painter, &laid, w, h);
@@ -648,4 +762,94 @@ fn bench(engine: &ParleyEngine) {
     times,
     painter.rasterizer().cached()
   );
+}
+
+/// The texts of the 1000-row probe (`shell-probes/src/bin/rows.rs`): each row's number, its
+/// label and its value.
+fn rows() -> Vec<(AttributedText, ParagraphStyle)> {
+  (0..1000_u32)
+    .flat_map(|index| {
+      [
+        format!("{index:04}"),
+        format!("Item number {index}, a row of the list"),
+        format!("{:.2}", f64::from(index) * 1.37),
+      ]
+    })
+    .map(|text| {
+      (
+        AttributedText::plain(text, RunStyle::new(SIZE)),
+        ParagraphStyle::default(),
+      )
+    })
+    .collect()
+}
+
+/// The median of `times`, in milliseconds.
+fn median(mut times: Vec<f64>) -> f64 {
+  times.sort_by(f64::total_cmp);
+
+  times[times.len() / 2]
+}
+
+/// The 1000-row probe's texts shaped on a fresh engine each round, its fonts loaded by a
+/// sample first, one at a time on this thread and as one batch on the engine's threads, as the
+/// probe's first frame shapes them: with a shape cache of `words` where given, else with the
+/// engine's shape cache and then with none.
+fn shaping(words: Option<usize>) {
+  let texts = rows();
+  let sample = (
+    AttributedText::plain("Ag", RunStyle::new(SIZE)),
+    ParagraphStyle::default(),
+  );
+
+  for words in words.map_or(vec![SHAPE_CACHE, 0], |words| vec![words]) {
+    let mut alone = Vec::new();
+    let mut batch = Vec::new();
+    let mut found = (0, 0);
+
+    for _ in 0..7 {
+      let engine = ParleyEngine::system();
+
+      engine.set_shape_cache(words);
+
+      let _ = engine.paragraph(&sample.0, &sample.1);
+      let before = engine.shape_cache_stats();
+      let start = Instant::now();
+      let widest: f32 = texts
+        .iter()
+        .map(|(text, style)| engine.paragraph(text, style).intrinsic().max)
+        .sum();
+
+      alone.push(start.elapsed().as_secs_f64() * 1e3);
+      assert!(widest > 0., "the rows have widths");
+
+      let after = engine.shape_cache_stats();
+
+      found = (after.0 - before.0, after.1 - before.1);
+
+      let engine = ParleyEngine::system();
+
+      engine.set_shape_cache(words);
+
+      let _ = engine.paragraph(&sample.0, &sample.1);
+
+      engine.start_shapers();
+
+      let start = Instant::now();
+      let shaped = engine.paragraphs(&texts);
+
+      batch.push(start.elapsed().as_secs_f64() * 1e3);
+      assert_eq!(shaped.len(), texts.len(), "every row is shaped");
+    }
+
+    println!(
+      "shaping 3000 row texts, a shape cache of {words} words: one at a time {:.2} ms (median of \
+       {}), as a batch {:.2} ms; one at a time, {} words found in the cache and {} shaped",
+      median(alone.clone()),
+      alone.len(),
+      median(batch),
+      found.0,
+      found.1
+    );
+  }
 }

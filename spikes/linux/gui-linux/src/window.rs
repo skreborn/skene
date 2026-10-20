@@ -91,6 +91,7 @@ impl Window {
 
 impl Drop for Window {
   fn drop(&mut self) {
+    self.shell_mut().release_paths();
     crate::access::stop();
   }
 }

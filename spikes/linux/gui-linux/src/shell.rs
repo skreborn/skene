@@ -803,7 +803,7 @@ impl Shell {
   ///
   /// # Safety
   ///
-  /// The handles in `target` stay valid while the window lives.
+  /// The handles in `target` stay valid until [`Shell::release_paths`].
   #[cfg(feature = "gpu")]
   pub unsafe fn choose_path(&mut self, target: crate::gpu::Target) {
     let (width, height) = self.device_size();
@@ -833,8 +833,8 @@ impl Shell {
   ///
   /// # Safety
   ///
-  /// The handles in `target` stay valid until [`Shell::release_popup_path`] or the overlay's
-  /// close.
+  /// The handles in `target` stay valid until [`Shell::release_popup_path`],
+  /// [`Shell::release_paths`] or the overlay's close.
   #[cfg(feature = "gpu")]
   pub unsafe fn choose_popup_path(&mut self, target: crate::gpu::Target) {
     let scale = self.scale;
@@ -848,6 +848,14 @@ impl Shell {
       Ok(gpu) => open.use_gpu(gpu),
       Err(why) => trace::log(|| format!("[gpu] the popup paints on the CPU: {why}")),
     }
+  }
+
+  /// The window's surfaces are going: the window and its open overlay paint on the CPU from
+  /// now on, the GPU paths that presented to the surfaces gone first.
+  pub fn release_paths(&mut self) {
+    self.release_popup_path();
+    #[cfg(feature = "gpu")]
+    self.renderer.drop_gpu();
   }
 
   /// The open overlay's surface is going: it paints on the CPU until it is given another.

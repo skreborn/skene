@@ -391,7 +391,8 @@ impl X11 {
       std::num::NonZeroU32::new(x11.window),
       i32::try_from(x11.screen),
     ) {
-      // SAFETY: the connection and the window live as long as the window does.
+      // SAFETY: the connection and the window outlive the shell's paths: the window releases
+      // them before its connection goes.
       unsafe {
         shell.choose_path(crate::gpu::Target::X11 {
           connection,

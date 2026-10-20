@@ -457,7 +457,8 @@ pub fn open(shell: Shell, app_id: &str) -> Result<Open, Box<dyn Error>> {
     let surface = std::ptr::NonNull::new(state.window.wl_surface().id().as_ptr().cast());
 
     if let (Some(display), Some(surface)) = (display, surface) {
-      // SAFETY: the connection and the window's surface live as long as the window.
+      // SAFETY: the connection and the window's surface outlive the shell's paths: the window
+      // releases them before its connection goes.
       unsafe {
         state
           .shell

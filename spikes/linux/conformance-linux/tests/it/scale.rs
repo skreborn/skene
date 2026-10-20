@@ -259,7 +259,7 @@ fn a_field_tells_an_input_method_where_its_caret_is_on_the_screen() {
       "weston 13 relays text-input-v1 alone to its input method, and the window speaks text-input-v3",
     ),
     _ => skene_gui_linux::testing::not_tested_here(
-      "mutter relays text-input-v3 to gnome-shell's input method, inside the compositor, where no client reads it",
+      "headless mutter has no input method to relay text-input-v3 to (gnome-shell brings one), so nothing outside the app hears the caret's rectangle",
     ),
   }
 }

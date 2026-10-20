@@ -570,45 +570,22 @@ impl Session {
       })
       .map_err(|error| format!("could not write Xorg's configuration: {error}"))?;
 
-    let mut display = spawn(
-      Command::new("Xorg")
+    let log = self.scratch.join("xorg.log");
+    let number = self.start_x_server("Xorg", |display| {
+      let mut command = Command::new("Xorg");
+
+      command
+        .arg(display)
         .arg("-config")
         .arg(&config)
         .arg("-configdir")
         .arg(&directory)
         .arg("-logfile")
-        .arg(self.scratch.join("xorg.log"))
-        .args([
-          "-displayfd",
-          "1",
-          "-nolisten",
-          "tcp",
-          "-noreset",
-          "-novtswitch",
-          "-sharevts",
-        ]),
-    )
-    .map_err(|error| format!("could not start Xorg: {error}"))?;
-    let number = first_line(display.stdout.take(), "Xorg");
+        .arg(&log)
+        .args(["-nolisten", "tcp", "-noreset", "-novtswitch", "-sharevts"]);
 
-    self.helpers.push(display);
-
-    let number = number.and_then(|line| {
-      line
-        .trim()
-        .parse::<u32>()
-        .map_err(|_| "Xorg did not report its display number".to_owned())
-    });
-    let number = match number {
-      Ok(number) => number,
-      Err(error) => {
-        if let Some(mut xorg) = self.helpers.pop() {
-          end(&mut xorg);
-        }
-
-        return Err(error);
-      }
-    };
+      command
+    })?;
 
     wait_for("the inputtest touchscreen's socket", || touch.exists())?;
     self.display = Some(("DISPLAY", format!(":{number}")));
@@ -619,39 +596,91 @@ impl Session {
     Ok(())
   }
 
-  /// Xvfb on the first free display number it finds itself.
+  /// Xvfb on a free display number ([`Self::start_x_server`]).
   fn start_xvfb(&mut self) -> Result<(), String> {
     let screen = screen_at(if self.test.is_some() {
       test_scale()?
     } else {
       1.
     });
+    let size = format!("{}x{}x24", screen.0, screen.1);
+    let number = self.start_x_server("Xvfb (install xvfb)", |display| {
+      let mut command = Command::new("Xvfb");
 
-    let mut display = spawn(Command::new("Xvfb").args([
-      "-displayfd",
-      "1",
-      "-screen",
-      "0",
-      &format!("{}x{}x24", screen.0, screen.1),
-      "-nolisten",
-      "tcp",
-      "-noreset",
-    ]))
-    .map_err(|error| format!("could not start Xvfb (install xvfb): {error}"))?;
-    let number = first_line(display.stdout.take(), "Xvfb");
+      command.args([
+        display,
+        "-screen",
+        "0",
+        &size,
+        "-nolisten",
+        "tcp",
+        "-noreset",
+      ]);
 
-    self.helpers.push(display);
-
-    let number = number.and_then(|line| {
-      line
-        .trim()
-        .parse::<u32>()
-        .map_err(|_| "Xvfb did not report its display number".to_owned())
+      command
     })?;
 
     self.display = Some(("DISPLAY", format!(":{number}")));
 
     Ok(())
+  }
+
+  /// Starts the X server `command` makes for a display (`:<number>`) on the first number it
+  /// takes, from one the runner's process ID picks among [`X_DISPLAYS`], the server writing the
+  /// display's lock file: its number, once the lock file names it and its socket is there.
+  fn start_x_server(
+    &mut self,
+    what: &str,
+    mut command: impl FnMut(&str) -> Command,
+  ) -> Result<u32, String> {
+    let count = X_DISPLAYS.end - X_DISPLAYS.start;
+    let first = std::process::id() % count;
+
+    for offset in 0..count {
+      let number = X_DISPLAYS.start + (first + offset) % count;
+      let lock = PathBuf::from(format!("/tmp/.X{number}-lock"));
+      let socket = PathBuf::from(format!("/tmp/.X11-unix/X{number}"));
+
+      if lock.exists() || socket.exists() {
+        continue;
+      }
+
+      let mut server = tied(&mut command(&format!(":{number}")))
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .process_group(0)
+        .spawn()
+        .map_err(|error| format!("could not start {what}: {error}"))?;
+      let started = Instant::now();
+
+      loop {
+        if let Ok(Some(_)) = server.try_wait() {
+          break;
+        }
+
+        let locked = fs::read_to_string(&lock)
+          .ok()
+          .and_then(|pid| pid.trim().parse::<u32>().ok())
+          == Some(server.id());
+
+        if locked && socket.exists() {
+          self.helpers.push(server);
+
+          return Ok(number);
+        }
+
+        if started.elapsed() > START_TIMEOUT {
+          end(&mut server);
+
+          return Err(format!("{what} did not start within {START_TIMEOUT:?}"));
+        }
+
+        std::thread::sleep(Duration::from_millis(10));
+      }
+    }
+
+    Err(format!("{what}: no display free among {X_DISPLAYS:?}"))
   }
 
   /// A private session bus.
@@ -1185,6 +1214,10 @@ fn compose_key(config: &Path) -> std::io::Result<()> {
   fs::create_dir_all(config.join("xkb/symbols"))?;
   fs::write(config.join("xkb/symbols/us"), patched)
 }
+
+/// The display numbers the runner's X servers take: below the session scripts' (400 to 699)
+/// and above those KWin's Xwayland takes (from 0).
+const X_DISPLAYS: std::ops::Range<u32> = 100..400;
 
 /// The drivers the X11 leg's Xorg needs: its dummy video driver and its inputtest input driver.
 const XORG_DRIVERS: [&str; 2] = [

@@ -27,7 +27,9 @@ use skene_foundation::{
   },
   text::{
     Direction, Laid as _, MaskState, Masked, ParagraphStyle, RunStyle, TextBoundary, Wrap,
-    editing::{Arbiter, Clause, ClauseStyle, Command, Editor, Notice, Origin, Outcome},
+    editing::{
+      Arbiter, Clause, ClauseStyle, Command, Editor, Notice, Origin, Outcome, SelectionEnd,
+    },
   },
 };
 use skene_parley::ParleyEngine;
@@ -35,6 +37,7 @@ use unicode_segmentation::UnicodeSegmentation as _;
 
 use crate::{
   Linux,
+  adornment::{DragIcon, Handle},
   clipboard::{self, Selection},
   look::RunProps,
   node::{Drawn, Node},
@@ -933,6 +936,125 @@ impl Drawn {
 
       entry.editor.drag(at.0 - origin.0, at.1 - origin.1);
     });
+  }
+
+  /// The icon a drag of its entry's selection pressed at `at` (window pixels) shows, as GTK's
+  /// entry makes it: the pointer as far into it from the selection's start as the press was,
+  /// and as far down from the text's top (a field's) or the selection's first line's (an
+  /// editor's); its fill the entry's, the field's where it has none.
+  pub fn drag_icon(self: &Rc<Self>, at: (f32, f32), palette: &Palette) -> Option<DragIcon> {
+    let rect = self.window_rect();
+    let content = self.entry_content(rect);
+    let look = self.look.borrow().clone();
+    let fill = look
+      .background
+      .unwrap_or_else(|| skene_foundation::Fill::from(palette.field));
+
+    self
+      .with_entry(|entry| {
+        let selected = entry.editor.selected();
+        let first = entry.editor.selection_rects().first().copied()?;
+        let origin = entry.origin(content);
+        let hotspot = (
+          at.0 - (origin.0 + first.x),
+          if entry.multiline {
+            at.1 - (origin.1 + first.y)
+          } else {
+            at.1 - content.y
+          },
+        );
+
+        Some(DragIcon::new(
+          &entry.editor.text()[selected],
+          entry.editor.style(),
+          hotspot,
+          Some((fill, look.corners)),
+        ))
+      })
+      .flatten()
+  }
+
+  /// Where its entry's touch selection handles point (window pixels): each handle with the x
+  /// it points at and the top and height of its line, a field's whole text area as GTK's
+  /// entry points them; the caret's alone where nothing is selected. A handle pointing outside
+  /// the text area is left out, but for the one `dragged`.
+  pub fn handle_points(self: &Rc<Self>, dragged: Option<Handle>) -> Vec<(Handle, f32, f32, f32)> {
+    let rect = self.window_rect();
+    let content = self.entry_content(rect);
+
+    self
+      .with_entry(|entry| {
+        let origin = entry.origin(content);
+        let selected = entry.editor.selected();
+        let point = |index: usize| {
+          let at = entry.editor.rect_for(index..index, Unit::Utf8);
+
+          if entry.multiline {
+            (origin.0 + at.x, origin.1 + at.y, at.height)
+          } else {
+            (origin.0 + at.x, content.y, content.height)
+          }
+        };
+        let points = if selected.is_empty() {
+          vec![(Handle::Caret, point(entry.editor.focus().index))]
+        } else {
+          vec![
+            (Handle::Start, point(selected.start)),
+            (Handle::End, point(selected.end)),
+          ]
+        };
+
+        points
+          .into_iter()
+          .filter(|(handle, (x, top, height))| {
+            let inside = *x >= content.x - 0.5
+              && *x <= content.x + content.width + 0.5
+              && *top + *height > content.y
+              && *top < content.y + content.height;
+
+            inside || dragged == Some(*handle)
+          })
+          .map(|(handle, (x, top, height))| (handle, x, top, height))
+          .collect()
+      })
+      .unwrap_or_default()
+  }
+
+  /// The top and height (window pixels) of the line its entry's caret is on: a field's
+  /// whole text area.
+  pub fn caret_line(self: &Rc<Self>) -> Option<(f32, f32)> {
+    let content = self.entry_content(self.window_rect());
+
+    self.with_entry(|entry| {
+      if entry.multiline {
+        let origin = entry.origin(content);
+        let caret = entry.editor.caret_rect();
+
+        (origin.1 + caret.y, caret.height)
+      } else {
+        (content.y, content.height)
+      }
+    })
+  }
+
+  /// A finger moving the touch selection handle `handle` to `at` (window pixels): the caret
+  /// goes there, or the selection's start or end does, never past the other end; whether
+  /// it moved.
+  pub fn move_handle(self: &Rc<Self>, handle: Handle, at: (f32, f32)) -> bool {
+    let content = self.entry_content(self.window_rect());
+
+    self
+      .with_entry(|entry| {
+        let origin = entry.origin(content);
+        let (x, y) = (at.0 - origin.0, at.1 - origin.1);
+
+        match handle {
+          Handle::Caret => entry.editor.press(x, y, 1, false),
+          Handle::Start => entry.editor.move_selection_end(SelectionEnd::Start, x, y),
+          Handle::End => entry.editor.move_selection_end(SelectionEnd::End, x, y),
+        }
+      })
+      .unwrap_or(false)
   }
 
   /// Focus left its entry: a composition is kept as typed, the selection collapses into

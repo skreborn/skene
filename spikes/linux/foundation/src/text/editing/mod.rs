@@ -20,7 +20,7 @@ mod tests;
 pub use self::{
   command::{Command, Movement, Outcome},
   controlled::{Arbiter, Controlled},
-  editor::{Clause, ClauseStyle, Composition, Editor, Notice, Origin},
+  editor::{Clause, ClauseStyle, Composition, Editor, Notice, Origin, SelectionEnd},
   history::{EditKind, History, Snapshot},
   keys::Binding,
 };

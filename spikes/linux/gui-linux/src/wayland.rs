@@ -87,7 +87,7 @@ use sctk::{
   },
 };
 use wayland_client::{
-  Connection, EventQueue, QueueHandle, WEnum,
+  Connection, EventQueue, Proxy as _, QueueHandle, WEnum,
   globals::registry_queue_init,
   protocol::{
     wl_data_device::WlDataDevice, wl_data_device_manager::DndAction, wl_data_source::WlDataSource,
@@ -97,6 +97,7 @@ use wayland_client::{
 use xkbcommon::xkb;
 
 use crate::{
+  adornment::{Adornment, Placement, Shown},
   chrome::Edge,
   clipboard::{self, Op, Selection, Then},
   keys::Keyboard,
@@ -155,6 +156,97 @@ impl OpenPopup {
       None => surface.set_buffer_scale(scale.round() as i32),
     }
   }
+}
+
+/// A surface of the window's own that shows an adornment, its viewport where it is scaled
+/// fractionally, and the buffers it last showed.
+struct AdornmentSurface {
+  surface: wl_surface::WlSurface,
+  viewport: Option<WpViewport>,
+  buffers: Vec<Buffer>,
+  /// Whether it destroys the surface as it goes (a popup's goes with the popup).
+  owned: bool,
+}
+
+impl Drop for AdornmentSurface {
+  fn drop(&mut self) {
+    if let Some(viewport) = self.viewport.take() {
+      viewport.destroy();
+    }
+
+    if self.owned {
+      self.surface.destroy();
+    }
+  }
+}
+
+impl AdornmentSurface {
+  /// Shows `pixmap` (premultiplied, painted at `scale`) as `size` surface pixels, its top left
+  /// `offset` from where it was: committed.
+  fn show(
+    &mut self,
+    pool: &mut SlotPool,
+    pixmap: &vello_cpu::Pixmap,
+    size: (u32, u32),
+    offset: Option<(i32, i32)>,
+  ) {
+    let (width, height) = (i32::from(pixmap.width()), i32::from(pixmap.height()));
+    let Ok((buffer, canvas)) =
+      pool.create_buffer(width, height, width * 4, wl_shm::Format::Argb8888)
+    else {
+      return;
+    };
+
+    for (pixel, target) in pixmap.data().iter().zip(canvas.as_chunks_mut::<4>().0) {
+      *target = [pixel.b, pixel.g, pixel.r, pixel.a];
+    }
+
+    match &self.viewport {
+      Some(viewport) => {
+        self.surface.set_buffer_scale(1);
+        viewport.set_destination(size.0 as i32, size.1 as i32);
+      }
+      None => self
+        .surface
+        .set_buffer_scale((width as u32 / size.0.max(1)).max(1) as i32),
+    }
+
+    let (dx, dy) = offset.unwrap_or((0, 0));
+
+    if self.surface.version() >= 5 {
+      if offset.is_some() {
+        self.surface.offset(dx, dy);
+      }
+
+      if buffer.attach_to(&self.surface).is_err() {
+        return;
+      }
+    } else {
+      self.surface.attach(Some(buffer.wl_buffer()), dx, dy);
+    }
+
+    self.surface.damage_buffer(0, 0, width, height);
+    self.surface.commit();
+    self.buffers.push(buffer);
+
+    if self.buffers.len() > 2 {
+      self.buffers.remove(0);
+    }
+  }
+}
+
+/// An adornment on a popup of the window's own, which takes no grab and no input.
+struct AdornmentPopup {
+  surface: AdornmentSurface,
+  popup: Popup,
+  /// What it shows, as last placed.
+  shown: Shown,
+  /// Whether the compositor placed it.
+  configured: bool,
+  /// What it was last painted for: the scale and its version.
+  painted: Option<(f64, u64)>,
+  /// Whether the compositor dismissed it: it comes back only once it moves.
+  dismissed: bool,
 }
 
 /// A held key repeating: its code and when it repeats next.
@@ -252,6 +344,10 @@ struct State {
   viewporter: Option<WpViewporter>,
   /// The open popup surface.
   popup: Option<OpenPopup>,
+  /// The drag's icon, while a drag from the window goes on.
+  drag_icon: Option<AdornmentSurface>,
+  /// The adornments on popups of their own: the touch selection handles and the magnifier.
+  adornment_popups: HashMap<Adornment, AdornmentPopup>,
   /// Whether the compositor keeps a popup on its output (xdg_positioner's constraint
   /// adjustment), as a probe popup it placed answered; `None` until it answers.
   constrains: Option<bool>,
@@ -319,6 +415,7 @@ impl Open {
       state.requests(pending);
       state.sync_text_input();
       state.draw_popup(&qh);
+      state.sync_adornments();
 
       if state.shell.quit {
         return Ok(());
@@ -373,8 +470,16 @@ impl Open {
         libc::poll(fds.as_mut_ptr(), 2, timeout);
       }
 
+      // A read finds no whole message where only part of one has arrived: the rest wakes the
+      // next turn.
       if fds[0].revents & libc::POLLIN != 0 {
-        guard.read()?;
+        match guard.read() {
+          Err(wayland_client::backend::WaylandError::Io(error))
+            if error.kind() == std::io::ErrorKind::WouldBlock => {}
+          other => {
+            other?;
+          }
+        }
       }
 
       return Ok(());
@@ -464,6 +569,8 @@ pub fn open(shell: Shell, app_id: &str) -> Result<Open, Box<dyn Error>> {
     xdg,
     viewporter,
     popup: None,
+    drag_icon: None,
+    adornment_popups: HashMap::new(),
     constrains: None,
     probe: None,
     text_input: crate::ime::wayland::TextInput::bind(&globals, &qh),
@@ -756,15 +863,205 @@ impl State {
       DndAction::Copy
     };
     let source = devices.create_drag_and_drop_source(&self.qh, TEXT_TYPES, actions);
+    let icon = self
+      .shell
+      .adornments()
+      .into_iter()
+      .find(|shown| shown.adornment == Adornment::DragIcon)
+      .map(|shown| (shown, self.adornment_surface(None)));
 
     source.start_drag(
       device,
       self.window.wl_surface(),
-      None,
+      icon.as_ref().map(|(_, icon)| &icon.surface),
       self.last_press_serial,
     );
     trace::log(|| format!("[dnd] start a drag, serial {}", self.last_press_serial));
     self.dragging = Some((source, text, None));
+
+    // The icon's role is the drag's now: its pixels, the pointer at its hotspot.
+    if let Some((shown, mut icon)) = icon {
+      let scale = self.icon_scale(icon.viewport.is_some());
+      let hotspot = match shown.placement {
+        Placement::Pointer { hotspot } => (hotspot.0.round() as i32, hotspot.1.round() as i32),
+        _ => (0, 0),
+      };
+
+      if let Some(pixmap) = self
+        .shell
+        .paint_adornment(Adornment::DragIcon, scale, false)
+      {
+        trace::log(|| {
+          format!(
+            "[dnd] the icon, {:?} with the pointer at {hotspot:?}",
+            shown.size
+          )
+        });
+        icon.show(
+          &mut self.pool,
+          pixmap,
+          shown.size,
+          Some((-hotspot.0, -hotspot.1)),
+        );
+      }
+
+      self.drag_icon = Some(icon);
+    }
+  }
+
+  /// The scale an adornment is painted at: the window's, rounded up where no viewport scales
+  /// its buffer down.
+  fn icon_scale(&self, viewport: bool) -> f64 {
+    if viewport {
+      self.shell.scale
+    } else {
+      self.shell.scale.ceil()
+    }
+  }
+
+  /// A surface for an adornment, taking no input, with a viewport where the window is scaled
+  /// fractionally; `surface` where one is given.
+  fn adornment_surface(&self, surface: Option<wl_surface::WlSurface>) -> AdornmentSurface {
+    let owned = surface.is_none();
+    let surface = surface.unwrap_or_else(|| self.compositor.create_surface(&self.qh));
+    let viewport = self
+      .viewporter
+      .as_ref()
+      .filter(|_| self.shell.scale.fract() != 0.)
+      .map(|viewporter| viewporter.get_viewport(&surface, &self.qh, Raw));
+
+    if let Ok(region) = Region::new(&self.compositor) {
+      surface.set_input_region(Some(region.wl_region()));
+    }
+
+    AdornmentSurface {
+      surface,
+      viewport,
+      buffers: Vec::new(),
+      owned,
+    }
+  }
+
+  /// A positioner placing `shown` against the window, as a compositor flips a popup
+  /// vertically and slides it horizontally to keep it on its output.
+  fn adornment_positioner(&self, shown: &Shown) -> Option<XdgPositioner> {
+    let positioner = XdgPositioner::new(&self.xdg).ok()?;
+    let (anchor, edge) = match shown.placement {
+      Placement::Below(anchor) => (anchor, Anchor::Bottom),
+      Placement::Above(anchor) => (anchor, Anchor::Top),
+      Placement::Pointer { .. } => return None,
+    };
+
+    positioner.set_size(shown.size.0 as i32, shown.size.1 as i32);
+    positioner.set_anchor_rect(
+      anchor.x.round() as i32,
+      anchor.y.round() as i32,
+      (anchor.width.round() as i32).max(1),
+      (anchor.height.round() as i32).max(1),
+    );
+    positioner.set_anchor(edge);
+    positioner.set_gravity(if edge == Anchor::Bottom {
+      Gravity::Bottom
+    } else {
+      Gravity::Top
+    });
+    positioner
+      .set_constraint_adjustment(ConstraintAdjustment::FlipY | ConstraintAdjustment::SlideX);
+
+    Some(positioner)
+  }
+
+  /// Shows the handles and the magnifier the shell shows now, each on a popup of its own:
+  /// made where it is new or changed size, moved where it moved, painted again where its scale
+  /// or its version changed once the compositor placed it; those gone destroyed.
+  fn sync_adornments(&mut self) {
+    let shown: Vec<Shown> = self
+      .shell
+      .adornments()
+      .into_iter()
+      .filter(|shown| shown.adornment != Adornment::DragIcon)
+      .collect();
+    let gone: Vec<Adornment> = self
+      .adornment_popups
+      .keys()
+      .filter(|adornment| !shown.iter().any(|shown| shown.adornment == **adornment))
+      .copied()
+      .collect();
+
+    for adornment in gone {
+      self.adornment_popups.remove(&adornment);
+      self.shell.drop_adornment(adornment);
+    }
+
+    for shown in shown {
+      let existing = self.adornment_popups.get(&shown.adornment);
+
+      if existing.is_some_and(|open| open.dismissed && open.shown.placement == shown.placement) {
+        continue;
+      }
+
+      let moved = existing.is_some_and(|open| open.shown.placement != shown.placement);
+      let remade = existing.is_none_or(|open| open.shown.size != shown.size || open.dismissed);
+
+      if moved && !remade && self.xdg.xdg_wm_base().version() >= 3 {
+        if let (Some(positioner), Some(open)) = (
+          self.adornment_positioner(&shown),
+          self.adornment_popups.get_mut(&shown.adornment),
+        ) {
+          open.popup.reposition(&positioner, 0);
+          open.shown = shown;
+        }
+      } else if moved || remade {
+        self.adornment_popups.remove(&shown.adornment);
+
+        let Some(positioner) = self.adornment_positioner(&shown) else {
+          continue;
+        };
+        let surface = self.compositor.create_surface(&self.qh);
+        let Ok(popup) = Popup::from_surface(
+          Some(self.window.xdg_surface()),
+          &positioner,
+          &self.qh,
+          surface,
+          &self.xdg,
+        ) else {
+          continue;
+        };
+        let surface = self.adornment_surface(Some(popup.wl_surface().clone()));
+
+        surface.surface.commit();
+        trace::log(|| format!("[wayland] {:?} on a popup of its own", shown.adornment));
+        self.adornment_popups.insert(
+          shown.adornment,
+          AdornmentPopup {
+            popup,
+            surface,
+            shown,
+            configured: false,
+            painted: None,
+            dismissed: false,
+          },
+        );
+      }
+
+      let Some(open) = self.adornment_popups.get(&shown.adornment) else {
+        continue;
+      };
+      let scale = self.icon_scale(open.surface.viewport.is_some());
+
+      if !open.configured || open.painted == Some((scale, shown.version)) {
+        continue;
+      }
+
+      let Some(pixmap) = self.shell.paint_adornment(shown.adornment, scale, false) else {
+        continue;
+      };
+
+      if let Some(open) = self.adornment_popups.get_mut(&shown.adornment) {
+        open.painted = Some((scale, shown.version));
+        open.surface.show(&mut self.pool, pixmap, shown.size, None);
+      }
+    }
   }
 
   /// What `offer` offers.
@@ -871,6 +1168,13 @@ impl State {
 
   /// Opens the open overlay's surface at `placement`, or closes it.
   fn place_popup(&mut self, placement: Option<crate::overlay::Placement>) {
+    // The overlay's popup grabs: the adornments' go first, and stay hidden while it is open.
+    if placement.is_some() {
+      for (adornment, _) in std::mem::take(&mut self.adornment_popups) {
+        self.shell.drop_adornment(adornment);
+      }
+    }
+
     // The GPU path presenting to the surface goes before the surface does.
     self.shell.release_popup_path();
     self.popup = None;
@@ -1942,6 +2246,7 @@ impl DataSourceHandler for State {
     {
       trace::log(|| "[dnd] the drag was cancelled".to_owned());
       self.dragging = None;
+      self.drag_icon = None;
       self.shell.drag_ended(None);
 
       return;
@@ -1984,6 +2289,7 @@ impl DataSourceHandler for State {
     });
 
     trace::log(|| format!("[dnd] finished: {action:?}"));
+    self.drag_icon = None;
     self.shell.drag_ended(action);
   }
 
@@ -2243,6 +2549,28 @@ impl PopupHandler for State {
       return;
     }
 
+    if let Some(open) = self
+      .adornment_popups
+      .values_mut()
+      .find(|open| open.popup.wl_surface() == popup.wl_surface())
+    {
+      trace::log(|| {
+        format!(
+          "[wayland] {:?} placed at {:?}",
+          open.shown.adornment, config.position
+        )
+      });
+
+      // Placed again (repositioned): the acknowledged placement takes effect with a commit.
+      if open.configured {
+        open.surface.surface.commit();
+      }
+
+      open.configured = true;
+
+      return;
+    }
+
     if let Some(open) = &mut self.popup
       && open.popup.wl_surface() == popup.wl_surface()
     {
@@ -2268,6 +2596,17 @@ impl PopupHandler for State {
       // Dismissed unplaced: nothing learned, the compositor's placement is trusted.
       self.probe = None;
       self.constrains = Some(true);
+
+      return;
+    }
+
+    if let Some(open) = self
+      .adornment_popups
+      .values_mut()
+      .find(|open| open.popup.wl_surface() == popup.wl_surface())
+    {
+      trace::log(|| format!("[wayland] {:?} dismissed", open.shown.adornment));
+      open.dismissed = true;
 
       return;
     }

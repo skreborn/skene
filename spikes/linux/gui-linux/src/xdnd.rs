@@ -103,12 +103,13 @@ pub enum DragCursor {
 }
 
 impl DragCursor {
-  /// The cursor's name in the freedesktop cursor theme.
+  /// The cursor's name in the cursor theme: GDK's for the action (`copy`, `dnd-move`, and
+  /// `default` where nothing takes the drop).
   pub const fn name(self) -> &'static str {
     match self {
       Self::Copy => "copy",
-      Self::Move => "move",
-      Self::None => "no-drop",
+      Self::Move => "dnd-move",
+      Self::None => "default",
     }
   }
 }

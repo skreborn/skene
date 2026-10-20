@@ -48,6 +48,15 @@ pub struct Composition {
   before: Snapshot,
 }
 
+/// An end of the selection, as a touch selection handle moves it.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub enum SelectionEnd {
+  /// Its start, in the text's order.
+  Start,
+  /// Its end, in the text's order.
+  End,
+}
+
 /// Who made a change the notifier hears of.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum Origin {
@@ -198,6 +207,12 @@ impl<E: TextEngine> Editor<E> {
         _ => self.invalidate(),
       }
     }
+  }
+
+  /// The text's style.
+  #[inline(always)]
+  pub const fn style(&self) -> &RunStyle {
+    &self.style
   }
 
   /// Sets the paragraph's style.
@@ -922,6 +937,37 @@ impl<E: TextEngine> Editor<E> {
     };
 
     self.select_positions(Position::new(anchor), Position::new(focus), Origin::Reader)
+  }
+
+  /// The selection's `end` moved to `x`, `y` (relative to the text's layout), as a touch
+  /// selection handle moves it: kept at least a grapheme cluster short of the other end, so
+  /// the two never cross, and becoming the caret, the other end the anchor.
+  pub fn move_selection_end(&mut self, end: SelectionEnd, x: f32, y: f32) -> bool {
+    let hit = self.laid().hit_test(x, y).position.index;
+    let selected = self.selected();
+
+    self.granularity = Granularity::Cluster;
+
+    match end {
+      SelectionEnd::Start => {
+        let limit = self.index.previous_grapheme(selected.end);
+
+        self.select_positions(
+          Position::new(selected.end),
+          Position::new(hit.min(limit)),
+          Origin::Reader,
+        )
+      }
+      SelectionEnd::End => {
+        let limit = self.index.next_grapheme(selected.start);
+
+        self.select_positions(
+          Position::new(selected.start),
+          Position::new(hit.max(limit)),
+          Origin::Reader,
+        )
+      }
+    }
   }
 
   /// The caret's rectangle, relative to the text's layout.

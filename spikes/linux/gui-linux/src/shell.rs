@@ -12,6 +12,7 @@
 
 use std::{
   cell::RefCell,
+  collections::HashMap,
   rc::Rc,
   time::{Duration, Instant},
 };
@@ -38,6 +39,7 @@ use skene_foundation::{
 
 use crate::{
   Linux,
+  adornment::{Adornment, HANDLE_SIZE, Handle, MAGNIFIER_SIZE, Magnifier, Placement, Shown},
   chrome::{Button, Chrome, Edge, Hit},
   entry,
   keys::KeyInput,
@@ -123,6 +125,8 @@ struct DragOut {
   text: String,
   /// Whether the entry gives it up where a drop moves it (it is editable).
   moves: bool,
+  /// What it shows under the pointer.
+  icon: Option<crate::adornment::DragIcon>,
 }
 
 /// How far a press on a selection moves, in pixels, before it drags the selection: GTK's drag
@@ -191,6 +195,10 @@ const LONG_PRESS: Duration = Duration::from_millis(500);
 /// How far a touch moves, in pixels, before it is a drag rather than a tap: GTK's drag
 /// threshold.
 const TOUCH_SLOP: f32 = 8.;
+
+/// How soon a second click follows the first to make a double click: GTK's
+/// `gtk-double-click-time`.
+const DOUBLE_CLICK: Duration = Duration::from_millis(400);
 
 thread_local! {
   static INPUTS: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
@@ -416,6 +424,18 @@ enum TouchRole {
     /// Whether it went down on the entry's selection.
     on_selection: bool,
   },
+  /// Moving a text entry's touch selection handle, as GTK's handle moves: the end it moves
+  /// follows the finger from where the handle pointed as it went down.
+  Handle {
+    /// The handle.
+    handle: Handle,
+    /// The entry.
+    entry: Node,
+    /// Where the handle pointed as the finger went down: its x and its line's middle.
+    from: (f32, f32),
+    /// Whether the finger moved the caret or the selection.
+    shifted: bool,
+  },
   /// Driving the control that drags it went down on, as a pointer's press does.
   Dragging(Node),
   /// Scrolling this scroll box with the finger.
@@ -426,6 +446,19 @@ enum TouchRole {
   Button(Button),
   /// Nothing more: a long press happened, or it moved where nothing scrolls.
   Spent,
+}
+
+/// A text entry's touch selection handles, shown while a touch put them there, as GTK's
+/// entry shows them: from a finger down in the entry until a key, a pointer's press or focus
+/// moving elsewhere; hidden while an overlay is open.
+struct Handles {
+  /// The entry.
+  entry: Node,
+  /// When a tap last placed its caret: a tap on its handle soon after selects the word there,
+  /// as a double tap would.
+  placed: Option<Instant>,
+  /// The handle a finger is moving, shown even where it points outside the text.
+  dragged: Option<Handle>,
 }
 
 /// A finger on the window: the first one down, which alone acts.
@@ -562,6 +595,12 @@ pub struct Shell {
   touch: Option<Touch>,
   /// The drag of a text entry's selection in progress.
   drag_out: Option<DragOut>,
+  /// A text entry's touch selection handles, while a touch shows them.
+  handles: Option<Handles>,
+  /// The magnifier, while a finger moves a text entry's caret or a selection's end.
+  magnifier: Option<Magnifier>,
+  /// What paints each adornment shown, kept while it shows.
+  adornment_renderers: HashMap<Adornment, Renderer>,
   /// What a drag over the window would drop on: the node, and whether it is a text entry.
   drop_over: Option<(Node, bool)>,
   /// Frames painted.
@@ -618,6 +657,9 @@ impl Shell {
       caught: None,
       touch: None,
       drag_out: None,
+      handles: None,
+      magnifier: None,
+      adornment_renderers: HashMap::new(),
       drop_over: None,
       frames: 0,
       painted_at: None,
@@ -1930,6 +1972,150 @@ impl Shell {
     self.overlay.as_ref().is_some_and(Open::wants_frame)
   }
 
+  /// The adornments the window shows now, each on a surface of its own that takes no input:
+  /// a drag's icon, the focused entry's touch selection handles and the magnifier (neither
+  /// while an overlay is open).
+  pub fn adornments(&self) -> Vec<Shown> {
+    let mut shown = Vec::new();
+
+    if let Some(icon) = self.drag_out.as_ref().and_then(|drag| drag.icon.as_ref()) {
+      shown.push(Shown {
+        adornment: Adornment::DragIcon,
+        size: icon.size(),
+        placement: Placement::Pointer {
+          hotspot: icon.hotspot(),
+        },
+        version: 0,
+      });
+    }
+
+    if self.overlay.is_some() {
+      return shown;
+    }
+
+    if let Some(handles) = &self.handles
+      && handles.entry.is_alive()
+      && is_focused(&handles.entry)
+    {
+      for (handle, x, top, height) in handles.entry.handle_points(handles.dragged) {
+        shown.push(Shown {
+          adornment: Adornment::Handle(handle),
+          size: HANDLE_SIZE,
+          placement: Placement::Below(handle.anchor(x, top, height)),
+          version: 0,
+        });
+      }
+    }
+
+    if let Some(magnifier) = &self.magnifier {
+      shown.push(Shown {
+        adornment: Adornment::Magnifier,
+        size: MAGNIFIER_SIZE,
+        placement: magnifier.placement(),
+        version: self.frames,
+      });
+    }
+
+    shown
+  }
+
+  /// Paints `adornment` at `scale`, a drag's icon on its entry's fill where `opaque` (the
+  /// screen composites nothing through it): its pixels, premultiplied, where it shows.
+  pub fn paint_adornment(
+    &mut self,
+    adornment: Adornment,
+    scale: f64,
+    opaque: bool,
+  ) -> Option<&vello_cpu::Pixmap> {
+    let shown = self
+      .adornments()
+      .into_iter()
+      .find(|shown| shown.adornment == adornment)?;
+    let (width, height) = shown.size;
+    #[expect(
+      clippy::cast_possible_truncation,
+      clippy::cast_sign_loss,
+      reason = "pixels"
+    )]
+    let device = (
+      (f64::from(width) * scale).round().max(1.) as u16,
+      (f64::from(height) * scale).round().max(1.) as u16,
+    );
+    let region = Rect {
+      x: 0.,
+      y: 0.,
+      width: width as f32,
+      height: height as f32,
+    };
+    let icon = self.drag_out.as_ref().and_then(|drag| drag.icon.as_ref());
+    let magnifier = self.magnifier.as_ref();
+    let focused = magnifier.is_some_and(|magnifier| is_focused(&magnifier.entry));
+    let renderer = self.adornment_renderers.entry(adornment).or_default();
+
+    renderer.paint(
+      None,
+      device,
+      scale,
+      region,
+      (0., 0.),
+      &Marks::default(),
+      &mut |canvas| match adornment {
+        Adornment::DragIcon => {
+          if let Some(icon) = icon {
+            icon.paint(canvas, opaque);
+          }
+        }
+        Adornment::Handle(handle) => handle.paint(canvas),
+        Adornment::Magnifier => {
+          if let Some(magnifier) = magnifier {
+            magnifier.paint(canvas, focused);
+          }
+        }
+      },
+    );
+
+    Some(&renderer.pixmap)
+  }
+
+  /// The backend took `adornment`'s surface down: what painted it goes.
+  pub fn drop_adornment(&mut self, adornment: Adornment) {
+    self.adornment_renderers.remove(&adornment);
+  }
+
+  /// The touch selection handle a finger down at `at` (window pixels) takes, where one does,
+  /// and where it points: its x and its line's middle.
+  fn handle_at(&self, at: (f32, f32)) -> Option<(Handle, Node, (f32, f32))> {
+    let handles = self.handles.as_ref()?;
+
+    if self.overlay.is_some() || !is_focused(&handles.entry) {
+      return None;
+    }
+
+    handles
+      .entry
+      .handle_points(None)
+      .into_iter()
+      .find(|(handle, x, top, _)| handle.takes(at.0 - x, at.1 - top))
+      .map(|(handle, x, top, height)| (handle, Rc::clone(&handles.entry), (x, top + height / 2.)))
+  }
+
+  /// Shows the magnifier over `entry`'s text about `x` (window pixels) on the line its caret
+  /// is on, as GTK's entry shows it while a finger moves there.
+  fn magnify(&mut self, entry: &Node, x: f32) {
+    if let Some((top, height)) = entry.caret_line() {
+      self.magnifier = Some(Magnifier {
+        entry: Rc::clone(entry),
+        center: (x, top + height / 2.),
+        line: Rect {
+          x,
+          y: top,
+          width: 1.,
+          height,
+        },
+      });
+    }
+  }
+
   /// The pointer moved to `x`, `y` over the open overlay (its surface's coordinates).
   pub fn popup_motion(&mut self, x: f32, y: f32) {
     let Some(open) = &self.overlay else {
@@ -2059,7 +2245,7 @@ impl Shell {
       if (geometry.0 - start.0).abs() > DRAG_THRESHOLD
         || (geometry.1 - start.1).abs() > DRAG_THRESHOLD
       {
-        requests.extend(self.start_text_drag(&owner));
+        requests.extend(self.start_text_drag(&owner, start));
       }
 
       return requests;
@@ -2158,7 +2344,7 @@ impl Shell {
     let count = match &self.last_click {
       Some((then, (x, y), count, last))
         if Rc::ptr_eq(last, node)
-          && now.duration_since(*then) < Duration::from_millis(400)
+          && now.duration_since(*then) < DOUBLE_CLICK
           && (x - at.0).abs() < 5.
           && (y - at.1).abs() < 5. =>
       {
@@ -2178,6 +2364,8 @@ impl Shell {
 
     if down {
       self.stop_fling();
+      // A pointer's press ends a touch's selection handles, as in GTK's entry.
+      self.handles = None;
     }
 
     let mut requests = Vec::new();
@@ -2624,9 +2812,9 @@ impl Shell {
     }
   }
 
-  /// Starts dragging the selection of the text entry `entry`: the press ends without a click,
-  /// and the backend is asked to start the drag.
-  fn start_text_drag(&mut self, entry: &Node) -> Option<Request> {
+  /// Starts dragging the selection of the text entry `entry` pressed at `at` (window pixels):
+  /// the press ends without a click, and the backend is asked to start the drag.
+  fn start_text_drag(&mut self, entry: &Node, at: (f32, f32)) -> Option<Request> {
     let read_only = entry.contents.borrow().read_only || entry.access.borrow().disabled;
     let (range, text) = entry.with_entry(|state| {
       let range = state.editor.selected();
@@ -2643,12 +2831,21 @@ impl Shell {
       }
     }
 
-    trace::log(|| format!("[dnd] drag {text:?} from an entry"));
+    let icon = entry.drag_icon(at, &Palette::now());
+
+    trace::log(|| {
+      format!(
+        "[dnd] drag {text:?} from an entry, its icon {:?} with the pointer at {:?}",
+        icon.as_ref().map(crate::adornment::DragIcon::size),
+        icon.as_ref().map(crate::adornment::DragIcon::hotspot),
+      )
+    });
     self.drag_out = Some(DragOut {
       entry: Rc::clone(entry),
       range,
       text,
       moves: !read_only,
+      icon,
     });
 
     Some(Request::StartDrag)
@@ -2921,6 +3118,20 @@ impl Shell {
         invalidate_all();
       }
       Hit::Edge(edge) => requests.push(Request::Resize(edge)),
+      Hit::Content(..) if let Some((handle, entry, from)) = self.handle_at(at) => {
+        trace::log(|| format!("[touch] takes the {handle:?} handle"));
+
+        if let Some(handles) = &mut self.handles {
+          handles.dragged = Some(handle);
+        }
+
+        touch.role = TouchRole::Handle {
+          handle,
+          entry,
+          from,
+          shifted: false,
+        };
+      }
       Hit::Content(..) => {
         let chain = self.hit(at.0, at.1);
 
@@ -2961,11 +3172,20 @@ impl Shell {
 
       self.set_focus_to(Some(Rc::clone(&owner)), false, false);
 
+      let mut placed = None;
+
       if !on_selection {
         let clicks = self.count_click(&owner, at);
 
         owner.press_entry(rect, at, clicks, false);
+        placed = (clicks == 1).then(Instant::now);
       }
+
+      self.handles = Some(Handles {
+        entry: Rc::clone(&owner),
+        placed,
+        dragged: None,
+      });
 
       return TouchRole::Selecting {
         entry: owner,
@@ -3015,6 +3235,23 @@ impl Shell {
     touch.at = at;
     touch.time = time;
 
+    if let TouchRole::Handle {
+      handle,
+      entry,
+      from,
+      shifted,
+    } = &mut touch.role
+    {
+      let to = (from.0 + at.0 - touch.start.0, from.1 + at.1 - touch.start.1);
+      let entry = Rc::clone(entry);
+
+      *shifted |= entry.move_handle(*handle, to);
+      self.magnify(&entry, to.0);
+      self.touch = Some(touch);
+
+      return requests;
+    }
+
     if !touch.moved
       && ((at.0 - touch.start.0).abs() > TOUCH_SLOP || (at.1 - touch.start.1).abs() > TOUCH_SLOP)
     {
@@ -3026,7 +3263,10 @@ impl Shell {
     if touch.moved {
       match &touch.role {
         TouchRole::Selecting { entry, .. } => {
+          let entry = Rc::clone(entry);
+
           entry.drag_entry(entry.window_rect(), at);
+          self.magnify(&entry, at.0);
         }
         TouchRole::Dragging(owner) => {
           let owner = Rc::clone(owner);
@@ -3148,8 +3388,32 @@ impl Shell {
 
     touch.cancel_long_press();
     trace::log(|| format!("[touch] {id} up, moved {}", touch.moved));
+    self.magnifier = None;
 
     match touch.role {
+      TouchRole::Handle {
+        handle,
+        entry,
+        from,
+        shifted,
+      } => {
+        let placed = self.handles.as_mut().and_then(|handles| {
+          handles.dragged = None;
+          handles.placed.take()
+        });
+
+        // A tap on a handle: soon after a tap placed the caret it selects the word there, as a
+        // double tap; otherwise it asks for the menu, as GTK's handle shows its selection
+        // bubble.
+        if !shifted {
+          if placed.is_some_and(|placed| placed.elapsed() < DOUBLE_CLICK) {
+            entry.press_entry(entry.window_rect(), from, 2, false);
+          } else {
+            trace::log(|| format!("[touch] a tap on the {handle:?} handle"));
+            self.context_menu_at(&entry, from, MenuSource::Touch);
+          }
+        }
+      }
       TouchRole::Pending if !touch.moved => {
         Self::release_chain(&touch.chain);
         self.tap(&touch.chain, touch.start);
@@ -3215,6 +3479,12 @@ impl Shell {
       touch.cancel_long_press();
       Self::release_chain(&touch.chain);
       trace::log(|| "[touch] cancelled".to_owned());
+    }
+
+    self.magnifier = None;
+
+    if let Some(handles) = &mut self.handles {
+      handles.dragged = None;
     }
   }
 
@@ -3395,6 +3665,8 @@ impl Shell {
 
     if event.down {
       self.modality = Modality::Keyboard;
+      // A key ends a touch's selection handles, as in GTK's entry.
+      self.handles = None;
     }
 
     if event.down && event.key != "Tab" {

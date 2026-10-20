@@ -39,13 +39,16 @@ use x11rb::{
   protocol::{
     Event,
     present::{self, ConnectionExt as _},
+    shape::{self, ConnectionExt as _},
     shm::{self, ConnectionExt as _},
+    xfixes::{self, ConnectionExt as _},
     xinput::{self, ConnectionExt as _},
     xkb::{self as xkbproto, ConnectionExt as _},
     xproto::{
-      AtomEnum, ChangeWindowAttributesAux, ClientMessageEvent, ConnectionExt as _, CreateGCAux,
-      CreateWindowAux, EventMask, GrabMode, ImageFormat, KeyButMask, KeyPressEvent, ModMask,
-      PropMode, SelectionNotifyEvent, Window, WindowClass,
+      AtomEnum, ChangeWindowAttributesAux, ClientMessageEvent, ClipOrdering, ColormapAlloc,
+      ConfigureWindowAux, ConnectionExt as _, CreateGCAux, CreateWindowAux, EventMask, GrabMode,
+      ImageFormat, KeyButMask, KeyPressEvent, ModMask, PropMode, Rectangle, SelectionNotifyEvent,
+      StackMode, VisualClass, Window, WindowClass,
     },
   },
   wrapper::ConnectionExt as _,
@@ -54,6 +57,7 @@ use x11rb::{
 use xkbcommon::xkb;
 
 use crate::{
+  adornment::{Adornment, Placement, Shown},
   clipboard::{self, Op, Selection, Then},
   environment,
   ime::{self, Ime, ImeEvent, RawKey},
@@ -70,6 +74,21 @@ const IME_PATIENCE: Duration = Duration::from_millis(800);
 struct PopupWindow {
   window: Window,
   size: (u32, u32),
+}
+
+/// An adornment on a window of its own: override-redirect, every input passing through it
+/// (an empty input shape), as GDK puts a drag's icon and a popup that takes no input.
+struct AdornmentWindow {
+  window: Window,
+  /// Its size, in device pixels.
+  size: (u16, u16),
+  /// Where its top left is on the screen.
+  at: (i32, i32),
+  /// What it was last painted for: the scale and its version.
+  painted: Option<(f64, u64)>,
+  /// Whether it has an alpha channel a compositor blends; otherwise its shape is what it
+  /// paints.
+  argb: bool,
 }
 
 /// A key sent to the input method and not answered yet.
@@ -218,6 +237,16 @@ struct X11 {
   ime_purpose: Option<ime::Purpose>,
   clock: Clock,
   xdnd: Option<crate::xdnd::Xdnd>,
+  /// The adornments' windows.
+  adornments: HashMap<Adornment, AdornmentWindow>,
+  /// Where the pointer is on the screen while a drag from the window goes on.
+  drag_pointer: Option<(i16, i16)>,
+  /// Whether the server has the SHAPE extension.
+  shape: bool,
+  /// Whether the server has XFIXES 2 or later, which names cursors.
+  xfixes: bool,
+  /// The visual and colormap of a window with an alpha channel, once looked for.
+  argb: Option<Option<(u32, u32)>>,
 }
 
 fn fixed(value: xinput::Fp1616) -> f32 {
@@ -355,6 +384,11 @@ impl X11 {
       ime_purpose: None,
       clock: Clock::Timer(None),
       xdnd: None,
+      adornments: HashMap::new(),
+      drag_pointer: None,
+      shape: false,
+      xfixes: false,
+      argb: None,
     };
 
     x11.read_xsettings(shell);
@@ -420,6 +454,20 @@ impl X11 {
     {
       x11.cursors = cookie.reply().ok();
     }
+
+    x11.shape = x11
+      .conn
+      .extension_information(shape::X11_EXTENSION_NAME)?
+      .is_some();
+    x11.xfixes = x11
+      .conn
+      .extension_information(xfixes::X11_EXTENSION_NAME)?
+      .is_some()
+      && x11
+        .conn
+        .xfixes_query_version(5, 0)?
+        .reply()
+        .is_ok_and(|reply| reply.major_version >= 2);
 
     trace::log(|| {
       format!(
@@ -805,6 +853,7 @@ impl X11 {
       }
 
       self.present_popup(shell)?;
+      self.sync_adornments(shell)?;
 
       self.conn.flush()?;
 
@@ -909,7 +958,17 @@ impl X11 {
         Request::Cursor(cursor) => self.set_cursor(cursor)?,
         Request::Popup(placement) => self.place_popup(shell, placement)?,
         Request::StartDrag => {
-          let cursor = self.cursor_id("grabbing").unwrap_or(x11rb::NONE);
+          // GTK's cursor for a drag no target answered yet.
+          let cursor = self
+            .cursor_id(crate::xdnd::DragCursor::None.name())
+            .unwrap_or(x11rb::NONE);
+
+          self.drag_pointer = self
+            .conn
+            .query_pointer(self.root)?
+            .reply()
+            .ok()
+            .map(|reply| (reply.root_x, reply.root_y));
 
           match (&mut self.xdnd, shell.dragged()) {
             (Some(xdnd), Some((text, moves))) => {
@@ -984,6 +1043,12 @@ impl X11 {
 
     let id = self.cursors.as_ref()?.load_cursor(&self.conn, name).ok()?;
 
+    // Named as libXcursor names the cursors it loads, so a reader of the screen (XFixes)
+    // tells them apart as it does GTK's.
+    if id != x11rb::NONE && self.xfixes {
+      self.conn.xfixes_set_cursor_name(id, name.as_bytes()).ok()?;
+    }
+
     self.cursor_ids.insert(name, id);
 
     Some(id)
@@ -1001,11 +1066,16 @@ impl X11 {
     Ok(())
   }
 
-  /// Shows `cursor` for the drag in progress, as its target answered.
+  /// Shows `cursor` for the drag in progress, as its target answered: the default cursor
+  /// where the theme has none of that name, as GTK's drag shows over its own window.
   fn set_drag_cursor(&mut self, cursor: crate::xdnd::DragCursor) -> Result<(), Box<dyn Error>> {
     trace::log(|| format!("[dnd] cursor {}", cursor.name()));
 
-    let id = self.cursor_id(cursor.name()).unwrap_or(x11rb::NONE);
+    let id = self
+      .cursor_id(cursor.name())
+      .filter(|id| *id != x11rb::NONE)
+      .or_else(|| self.cursor_id(crate::xdnd::DragCursor::None.name()))
+      .unwrap_or(x11rb::NONE);
 
     self.conn.change_active_pointer_grab(
       id,
@@ -1032,6 +1102,7 @@ impl X11 {
     held: (bool, bool),
   ) -> Result<(), Box<dyn Error>> {
     self.time = time;
+    self.drag_pointer = Some(root);
 
     let cursor = match &mut self.xdnd {
       Some(xdnd) => xdnd.pointer_moved(&self.conn, self.window, self.root, root, time, held)?,
@@ -2183,35 +2254,7 @@ impl X11 {
       return Ok(());
     }
 
-    let pixmap = frame.pixmap;
-    let (width, height) = (usize::from(pixmap.width()), usize::from(pixmap.height()));
-    let mut bytes = Vec::with_capacity(width * height * 4);
-
-    for pixel in pixmap.data() {
-      bytes.extend_from_slice(&[pixel.b, pixel.g, pixel.r, 255]);
-    }
-
-    let row = width * 4;
-    let rows = ((self.conn.maximum_request_bytes() - 64) / row.max(1)).clamp(1, height.max(1));
-    let mut top = 0;
-
-    while top < height {
-      let count = rows.min(height - top);
-
-      self.conn.put_image(
-        ImageFormat::Z_PIXMAP,
-        window,
-        self.gc,
-        width as u16,
-        count as u16,
-        0,
-        top as i16,
-        0,
-        self.depth,
-        &bytes[top * row..(top + count) * row],
-      )?;
-      top += count;
-    }
+    Self::put_pixels(&self.conn, window, frame.pixmap, self.depth, false)?;
 
     if trace::popup_shots_on()
       && let Some(list) = shell.popup_mut()
@@ -2222,6 +2265,296 @@ impl X11 {
     let _ = popup.size;
 
     Ok(())
+  }
+
+  /// Puts `pixmap` (premultiplied) into `window` of `depth`, its alpha kept where `alpha`,
+  /// opaque otherwise, in as many requests as the server takes.
+  fn put_pixels(
+    conn: &XCBConnection,
+    window: Window,
+    pixmap: &vello_cpu::Pixmap,
+    depth: u8,
+    alpha: bool,
+  ) -> Result<(), Box<dyn Error>> {
+    let (width, height) = (usize::from(pixmap.width()), usize::from(pixmap.height()));
+    let mut bytes = Vec::with_capacity(width * height * 4);
+
+    for pixel in pixmap.data() {
+      bytes.extend_from_slice(&[pixel.b, pixel.g, pixel.r, if alpha { pixel.a } else { 255 }]);
+    }
+
+    let row = width * 4;
+    let rows = ((conn.maximum_request_bytes() - 64) / row.max(1)).clamp(1, height.max(1));
+    let gc = conn.generate_id()?;
+    let mut top = 0;
+
+    conn.create_gc(gc, window, &CreateGCAux::new())?;
+
+    while top < height {
+      let count = rows.min(height - top);
+
+      conn.put_image(
+        ImageFormat::Z_PIXMAP,
+        window,
+        gc,
+        width as u16,
+        count as u16,
+        0,
+        top as i16,
+        0,
+        depth,
+        &bytes[top * row..(top + count) * row],
+      )?;
+      top += count;
+    }
+
+    conn.free_gc(gc)?;
+
+    Ok(())
+  }
+
+  /// The visual and colormap of a window with an alpha channel, where the screen has a
+  /// 32-bit true-color visual and a compositor blends windows (one owns `_NET_WM_CM_S<n>`),
+  /// as GDK uses one for a surface the screen shows through.
+  fn argb(&mut self) -> Result<Option<(u32, u32)>, Box<dyn Error>> {
+    let composited = {
+      let atom = self
+        .conn
+        .intern_atom(false, format!("_NET_WM_CM_S{}", self.screen).as_bytes())?
+        .reply()?
+        .atom;
+
+      self.conn.get_selection_owner(atom)?.reply()?.owner != x11rb::NONE
+    };
+
+    if !composited {
+      return Ok(None);
+    }
+
+    if let Some(argb) = self.argb {
+      return Ok(argb);
+    }
+
+    let screen = &self.conn.setup().roots[self.screen];
+    let visual = screen
+      .allowed_depths
+      .iter()
+      .filter(|depth| depth.depth == 32)
+      .flat_map(|depth| depth.visuals.iter())
+      .find(|visual| visual.class == VisualClass::TRUE_COLOR)
+      .map(|visual| visual.visual_id);
+    let argb = match visual {
+      Some(visual) => {
+        let colormap = self.conn.generate_id()?;
+
+        self
+          .conn
+          .create_colormap(ColormapAlloc::NONE, colormap, self.root, visual)?;
+
+        Some((visual, colormap))
+      }
+      None => None,
+    };
+
+    self.argb = Some(argb);
+
+    Ok(argb)
+  }
+
+  /// Where `shown`'s window, `size` device pixels, goes on the screen: under the pointer for a
+  /// drag's icon, else placed against the window as the compositor would place a popup,
+  /// flipped and slid to stay on the screen.
+  fn adornment_origin(&self, shell: &Shell, shown: &Shown, size: (u16, u16)) -> (i32, i32) {
+    let scale = shell.scale;
+    let (ox, oy) = shell.chrome.origin();
+    let screen = &self.conn.setup().roots[self.screen];
+
+    if let Placement::Pointer { hotspot } = shown.placement {
+      let (x, y) = self.drag_pointer.unwrap_or((0, 0));
+
+      return (
+        i32::from(x) - (f64::from(hotspot.0) * scale).round() as i32,
+        i32::from(y) - (f64::from(hotspot.1) * scale).round() as i32,
+      );
+    }
+
+    let placement = shown.placement.transformed(
+      scale as f32,
+      (
+        self.window_origin.0 as f32 + ox * scale as f32,
+        self.window_origin.1 as f32 + oy * scale as f32,
+      ),
+    );
+    let (x, y) = placement.origin(
+      (f32::from(size.0), f32::from(size.1)),
+      skene_foundation::layout::Rect {
+        x: 0.,
+        y: 0.,
+        width: f32::from(screen.width_in_pixels),
+        height: f32::from(screen.height_in_pixels),
+      },
+    );
+
+    (x.round() as i32, y.round() as i32)
+  }
+
+  /// Shows the adornments the shell shows now, each on its window: made where it is new or
+  /// changed size, moved where it moved, painted again where its scale or its version changed;
+  /// the windows of those gone destroyed.
+  fn sync_adornments(&mut self, shell: &mut Shell) -> Result<(), Box<dyn Error>> {
+    let shown = shell.adornments();
+    let gone: Vec<Adornment> = self
+      .adornments
+      .keys()
+      .filter(|adornment| !shown.iter().any(|shown| shown.adornment == **adornment))
+      .copied()
+      .collect();
+
+    for adornment in gone {
+      if let Some(window) = self.adornments.remove(&adornment) {
+        trace::log(|| format!("[x11] {adornment:?} gone"));
+        self.conn.destroy_window(window.window)?;
+      }
+
+      shell.drop_adornment(adornment);
+    }
+
+    let scale = shell.scale;
+
+    for shown in shown {
+      let size = (
+        ((f64::from(shown.size.0) * scale).round() as u16).max(1),
+        ((f64::from(shown.size.1) * scale).round() as u16).max(1),
+      );
+
+      if self
+        .adornments
+        .get(&shown.adornment)
+        .is_some_and(|window| window.size != size)
+        && let Some(window) = self.adornments.remove(&shown.adornment)
+      {
+        self.conn.destroy_window(window.window)?;
+      }
+
+      if !self.adornments.contains_key(&shown.adornment) {
+        if !matches!(shown.placement, Placement::Pointer { .. }) {
+          self.locate_window(shell);
+        }
+
+        let at = self.adornment_origin(shell, &shown, size);
+        let window = self.adornment_window(at, size)?;
+
+        trace::log(|| {
+          format!(
+            "[x11] {:?} on 0x{:x} at {at:?} {size:?}, alpha {}",
+            shown.adornment, window.window, window.argb
+          )
+        });
+        self.adornments.insert(shown.adornment, window);
+      }
+
+      let at = self.adornment_origin(shell, &shown, size);
+      let Some(window) = self.adornments.get_mut(&shown.adornment) else {
+        continue;
+      };
+
+      if window.at != at {
+        window.at = at;
+        self.conn.configure_window(
+          window.window,
+          &ConfigureWindowAux::new()
+            .x(at.0)
+            .y(at.1)
+            .stack_mode(StackMode::ABOVE),
+        )?;
+      }
+
+      if window.painted == Some((scale, shown.version)) {
+        continue;
+      }
+
+      window.painted = Some((scale, shown.version));
+
+      let (target, argb) = (window.window, window.argb);
+      let Some(pixmap) = shell.paint_adornment(shown.adornment, scale, !argb) else {
+        continue;
+      };
+
+      if !argb && self.shape {
+        let rectangles = opaque_runs(pixmap);
+
+        self.conn.shape_rectangles(
+          shape::SO::SET,
+          shape::SK::BOUNDING,
+          ClipOrdering::UNSORTED,
+          target,
+          0,
+          0,
+          &rectangles,
+        )?;
+      }
+
+      let depth = if argb { 32 } else { self.depth };
+
+      Self::put_pixels(&self.conn, target, pixmap, depth, argb)?;
+    }
+
+    Ok(())
+  }
+
+  /// A mapped adornment window at `at` (screen pixels), `size` big: with an alpha channel
+  /// where a compositor blends one, its input shape empty so every input goes through it.
+  fn adornment_window(
+    &mut self,
+    at: (i32, i32),
+    size: (u16, u16),
+  ) -> Result<AdornmentWindow, Box<dyn Error>> {
+    let argb = self.argb()?;
+    let window = self.conn.generate_id()?;
+    let aux = CreateWindowAux::new()
+      .override_redirect(1)
+      .background_pixel(0)
+      .border_pixel(0);
+    let (depth, visual, aux) = match argb {
+      Some((visual, colormap)) => (32, visual, aux.colormap(colormap)),
+      None => (x11rb::COPY_DEPTH_FROM_PARENT, x11rb::COPY_FROM_PARENT, aux),
+    };
+
+    self.conn.create_window(
+      depth,
+      window,
+      self.root,
+      at.0 as i16,
+      at.1 as i16,
+      size.0,
+      size.1,
+      0,
+      WindowClass::INPUT_OUTPUT,
+      visual,
+      &aux,
+    )?;
+
+    if self.shape {
+      self.conn.shape_rectangles(
+        shape::SO::SET,
+        shape::SK::INPUT,
+        ClipOrdering::UNSORTED,
+        window,
+        0,
+        0,
+        &[],
+      )?;
+    }
+
+    self.conn.map_window(window)?;
+
+    Ok(AdornmentWindow {
+      window,
+      size,
+      at,
+      painted: None,
+      argb: argb.is_some(),
+    })
   }
 
   /// Paints what changed and shows it.
@@ -2363,6 +2696,37 @@ impl X11 {
 
     Ok(())
   }
+}
+
+/// The rectangles of `pixmap` it paints at least half opaque, a run of a row each: the
+/// bounding shape of a window that has no alpha channel.
+fn opaque_runs(pixmap: &vello_cpu::Pixmap) -> Vec<Rectangle> {
+  let width = usize::from(pixmap.width());
+  let mut runs = Vec::new();
+
+  for (row, pixels) in pixmap.data().chunks(width.max(1)).enumerate() {
+    let mut start = None;
+
+    let alphas = pixels.iter().map(|pixel| pixel.a).chain(std::iter::once(0));
+
+    for (column, alpha) in alphas.enumerate() {
+      match (start, alpha >= 128) {
+        (None, true) => start = Some(column),
+        (Some(from), false) => {
+          runs.push(Rectangle {
+            x: from as i16,
+            y: row as i16,
+            width: (column - from) as u16,
+            height: 1,
+          });
+          start = None;
+        }
+        _ => {}
+      }
+    }
+  }
+
+  runs
 }
 
 fn load_keymap(keyboard: &mut Keyboard, conn: &XCBConnection, device: i32) {

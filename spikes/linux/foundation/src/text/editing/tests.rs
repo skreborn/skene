@@ -12,7 +12,9 @@ use crate::{
   },
   text::{
     ParagraphStyle, RunStyle,
-    editing::{Binding, Clause, ClauseStyle, Command, Controlled, Editor, Notice, Origin},
+    editing::{
+      Binding, Clause, ClauseStyle, Command, Controlled, Editor, Notice, Origin, SelectionEnd,
+    },
     grid::Grid,
   },
 };
@@ -230,6 +232,42 @@ fn the_pointer_selects_by_cluster_word_and_line() {
 
   editor.press(72., 5., 3, false);
   assert_eq!(editor.selection(), selection(0, 16));
+}
+
+#[test]
+fn a_touch_handle_moves_its_end_of_the_selection_and_never_past_the_other() {
+  let mut editor = editor("alpha beta gamma");
+
+  editor.press(72., 5., 2, false);
+  assert_eq!(editor.selection(), selection(6, 10));
+
+  assert!(editor.move_selection_end(SelectionEnd::End, 150., 5.));
+  assert_eq!(
+    editor.selection(),
+    selection(6, 15),
+    "the end moves, the start stays the anchor"
+  );
+
+  editor.move_selection_end(SelectionEnd::Start, 34., 5.);
+  assert_eq!(
+    editor.selection(),
+    selection(15, 3),
+    "the start moves and becomes the caret"
+  );
+
+  editor.move_selection_end(SelectionEnd::Start, 155., 5.);
+  assert_eq!(
+    editor.selection(),
+    selection(15, 14),
+    "the start stops a cluster short of the end"
+  );
+
+  editor.move_selection_end(SelectionEnd::End, 5., 5.);
+  assert_eq!(
+    editor.selection(),
+    selection(14, 15),
+    "the end stops a cluster past the start"
+  );
 }
 
 #[test]

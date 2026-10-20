@@ -188,6 +188,8 @@ struct Shown {
 }
 
 thread_local! {
+  /// Where the finger a test holds down is, in the pointer's space.
+  static FINGER: Cell<Option<(f64, f64)>> = const { Cell::new(None) };
   static SHOWN: RefCell<Option<Shown>> = const { RefCell::new(None) };
   static INPUT: RefCell<Option<input::Tracked>> = const { RefCell::new(None) };
   static SCREEN: RefCell<Option<Screen>> = const { RefCell::new(None) };
@@ -1352,6 +1354,55 @@ impl Drawn {
     });
   }
 
+  /// Puts a finger down at `at` (a point in the pointer's space) on a touchscreen and holds
+  /// it, then settles: a touch a test moves ([`move_finger`](Self::move_finger)) and lifts
+  /// ([`lift_finger`](Self::lift_finger)) later.
+  ///
+  /// # Panics
+  ///
+  /// Where the session's input sends no touch.
+  pub fn hold_finger(&mut self, at: (f64, f64)) {
+    Self::need_touch();
+    Self::send_touch(1, |input| input.touch_down(0, at.0, at.1));
+    FINGER.with(|finger| finger.set(Some(at)));
+  }
+
+  /// Moves the finger held down to `to` (in the pointer's space) in ten steps, the window's
+  /// loop turning between them, then settles.
+  ///
+  /// # Panics
+  ///
+  /// Where no finger is held down.
+  pub fn move_finger(&mut self, to: (f64, f64)) {
+    let from = FINGER
+      .with(Cell::get)
+      .expect("a finger held down (hold_finger)");
+
+    for step in 1..=10 {
+      let t = f64::from(step) / 10.;
+
+      with_input(|input| {
+        input.touch_motion(
+          0,
+          from.0 + (to.0 - from.0) * t,
+          from.1 + (to.1 - from.1) * t,
+        )?;
+        input.sync()
+      })
+      .unwrap_or_else(|error| panic!("touch: {error}"));
+      pump(Duration::from_millis(25));
+    }
+
+    FINGER.with(|finger| finger.set(Some(to)));
+    settle();
+  }
+
+  /// Lifts the finger held down, then settles.
+  pub fn lift_finger(&mut self) {
+    FINGER.with(|finger| finger.set(None));
+    Self::send(1, |input| input.touch_up(0));
+  }
+
   /// Whether the session's input sends touch (a touchscreen): mutter's EIS and KWin's fake
   /// input do; X11's XTest, sway's virtual devices and XTest into weston do not.
   #[must_use]
@@ -1730,6 +1781,21 @@ impl Drawn {
   /// compositor needs), a rest over `to`, the release; then settles. A drag that leaves the
   /// window goes on to whatever is under the pointer, another application's window included.
   pub fn drag(&mut self, from: (f64, f64), to: (f64, f64)) {
+    self.hold_drag(from, to);
+    with_input(|input| {
+      input.button(input::PRIMARY, false)?;
+      input.sync()
+    })
+    .unwrap_or_else(|error| panic!("pointer: {error}"));
+    pump(Duration::from_millis(300));
+    settle();
+  }
+
+  /// Drags with the primary button from `from` to `to` as [`drag`](Self::drag) does, the
+  /// button held down over `to`: a drag a test looks at before it drops it
+  /// ([`release_button`](Self::release_button)), the pointer moved on with
+  /// [`move_pointer`](Self::move_pointer) meanwhile.
+  pub fn hold_drag(&mut self, from: (f64, f64), to: (f64, f64)) {
     Self::send(1, |input| {
       input.move_to(from.0, from.1)?;
       input.sync()?;
@@ -1748,13 +1814,30 @@ impl Drawn {
     }
 
     pump(Duration::from_millis(150));
-    with_input(|input| {
-      input.button(input::PRIMARY, false)?;
-      input.sync()
-    })
-    .unwrap_or_else(|error| panic!("pointer: {error}"));
-    pump(Duration::from_millis(300));
-    settle();
+  }
+
+  /// The name of the cursor the X display the window is on shows now, as XFixes reports it:
+  /// the name libXcursor gives a cursor it loads from the theme (GDK's), and Skene gives each
+  /// it loads. `None` where the window is not on X11, or the cursor shown has no name.
+  #[must_use]
+  pub fn cursor_name(&self) -> Option<String> {
+    use x11rb::protocol::xfixes::ConnectionExt as _;
+
+    let session = Session::current().unwrap_or(Session::X11);
+
+    if session.backend() != Backend::X11 {
+      return None;
+    }
+
+    pump(Duration::from_millis(50));
+
+    let (conn, _) = x11rb::connect(None).ok()?;
+
+    conn.xfixes_query_version(5, 0).ok()?.reply().ok()?;
+
+    let reply = conn.xfixes_get_cursor_image_and_name().ok()?.reply().ok()?;
+
+    (!reply.name.is_empty()).then(|| String::from_utf8_lossy(&reply.name).into_owned())
   }
 
   /// Presses the key `name` with `modifiers` held, focus where it is.

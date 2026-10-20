@@ -19,6 +19,8 @@
 //! - `text`, `layout`: paragraphs through the foundation's engine contract, and the layout
 //!   engine's host over the realized tree.
 //! - `entry`, `overlay`: the realization's own text view, and an overlay's surface.
+//! - `adornment`: what the window shows on surfaces of its own that take no input: a drag's
+//!   icon, a touch's selection handles and its magnifier.
 //! - `paint`, `chrome`: the painter, the client-side decorations where the compositor draws
 //!   none; with the `gpu` feature, `gpu`: the GPU path, vello's hybrid renderer over wgpu,
 //!   chosen once per window where an adapter presents to it.
@@ -40,6 +42,7 @@
 //!   through real input, and the test entry.
 
 mod access;
+mod adornment;
 mod chrome;
 pub mod clipboard;
 mod entry;

@@ -1,9 +1,10 @@
 //! Drag and drop on the real platform, through the driver, as GTK's entry does it: a
 //! selection dragged within its field moves, one dragged to another field or to a box that
-//! takes drops copies; and between applications, a GTK 4 peer (`tools/dnd/peer.py`) taking
-//! text dragged out of a field and giving text and files dragged in. A leg where the peer
-//! cannot run, or where the compositor puts it over what the test drags to, says so and tests
-//! nothing of it.
+//! takes drops copies, the dragged text showing under the pointer as it goes (the drag's
+//! icon); and between applications, a GTK 4 peer (`tools/dnd/peer.py`) taking text dragged
+//! out of a field and giving text and files dragged in, and on X11 showing the cursors a drag
+//! from the window shows. A leg where the peer cannot run, or where the compositor puts it over
+//! what the test drags to, says so and tests nothing of it.
 
 use std::{
   io::{BufRead as _, BufReader},
@@ -13,7 +14,7 @@ use std::{
 };
 
 use skene_gui::{
-  Dropped, Signal,
+  Color, Dropped, Signal,
   prelude::*,
   testing::{self, Driver as _, Found, Role, publish},
 };
@@ -67,6 +68,92 @@ fn select_first_word(field: &Found<'_>) {
     (selection.start, selection.end),
     (0, 5),
     "the first word selected"
+  );
+}
+
+/// A field holding a line of words above a pale box nothing drops on.
+fn icon_page() -> impl View {
+  let first = Signal::new(String::from("alpha beta gamma delta"));
+
+  probe("first", first);
+
+  Column::new()
+    .set_padding(16)
+    .set_spacing(12)
+    .add_child(TextField::new("First").bind_text(first))
+    .add_child(
+      Container::new()
+        .set_height(160)
+        .set_background(Color::rgb(0xf6d860))
+        .set_child(Text::new("Pale box")),
+    )
+}
+
+#[skene_gui::test]
+fn a_dragged_selection_shows_its_text_under_the_pointer() {
+  let screen = testing::render(icon_page);
+  let first = screen.find_by_role(Role::TextField, "First");
+
+  first.press("Home").press("shift+End");
+
+  let driver = screen.driver();
+  let unit = if std::env::var("SKENE_BACKEND").as_deref() == Ok("x11") {
+    driver.scale()
+  } else {
+    1.
+  };
+  let start = driver.character_rect(first.element(), 0);
+  let end = driver.character_rect(first.element(), 21);
+  let from = driver.character_point(first.element(), 2, 0.5);
+  let to = (from.0 + 40. * unit, from.1 + 110. * unit);
+  // The icon's text stands where the press was in the selection: from its start as far as the
+  // press was, as far up as the press was from the line's top.
+  let left = to.0 - (from.0 - start.0);
+  let top = to.1 - (from.1 - start.1);
+  let width = end.0 + end.2 - start.0;
+  let rect = (
+    left - 24. * unit,
+    top - 24. * unit,
+    width + 48. * unit,
+    72. * unit,
+  );
+
+  drop(driver);
+
+  let before = screen.driver().screen_area(rect);
+
+  screen.driver().hold_drag(from, to);
+
+  let during = screen.driver().screen_area(rect);
+
+  screen.driver().release_button();
+
+  let after = screen.driver().screen_area(rect);
+  let shown =
+    crate::changed(rect, &before, &during).expect("the drag shows its icon under the pointer");
+
+  eprintln!("the icon shows at {shown:?}; the text stands at {left},{top}, {width} wide");
+  assert!(
+    (shown.0 - left).abs() <= 4. * unit,
+    "the icon's text starts where the press was in it: {shown:?} against {left}"
+  );
+  assert!(
+    (shown.0 + shown.2 - (left + width)).abs() <= 6. * unit,
+    "the icon holds the whole selection: {shown:?} against {width} wide"
+  );
+  assert!(
+    (shown.1 - top).abs() <= 8. * unit && shown.3 <= 32. * unit,
+    "the icon is a line of text under the pointer: {shown:?} against {top}"
+  );
+  assert_eq!(
+    crate::changed(rect, &before, &after),
+    None,
+    "the icon goes as the drag ends"
+  );
+  assert_eq!(
+    screen.probe("first"),
+    "\"alpha beta gamma delta\"",
+    "nothing took the drop"
   );
 }
 
@@ -527,5 +614,108 @@ fn files_dragged_in_from_another_application_reach_a_box_that_takes_drops() {
   assert_eq!(
     screen.probe("dropped"),
     format!("[\"uris file://{PEER_FILE}\"]")
+  );
+}
+
+#[skene_gui::test]
+fn a_drag_shows_the_cursors_gtks_drag_shows_on_x11() {
+  let test = "a_drag_shows_the_cursors_gtks_drag_shows_on_x11";
+  let screen = testing::render(fields);
+
+  if std::env::var("SKENE_BACKEND").as_deref() != Ok("x11") {
+    skene_gui_linux::testing::not_tested_here("a Wayland compositor shows a drag's cursor itself");
+
+    return;
+  }
+
+  Peer::make_room(&screen);
+
+  let first = screen.find_by_role(Role::TextField, "First");
+  let second = screen.find_by_role(Role::TextField, "Second");
+  let caption = screen.find_by_text("Drop box");
+  let (from, own, other, taker, nothing) = {
+    let driver = screen.driver();
+    let taker = driver.point_in(caption.element(), 0.5, 0.5);
+
+    (
+      driver.character_point(first.element(), 2, 0.5),
+      driver.character_point(first.element(), 9, 0.9),
+      driver.character_point(second.element(), 4, 0.9),
+      taker,
+      // The padding left of the fields, which takes no drop.
+      (driver.point_in(first.element(), 0., 0.5).0 - 8., taker.1),
+    )
+  };
+
+  select_first_word(&first);
+  screen.driver().hold_drag(from, taker);
+
+  let mut ours = vec![("a box that takes drops", screen.driver().cursor_name())];
+
+  for (over, at) in [
+    ("another field", other),
+    ("its own field", own),
+    ("nothing that takes drops", nothing),
+  ] {
+    screen.driver().move_pointer(at);
+    ours.push((over, screen.driver().cursor_name()));
+  }
+
+  screen.driver().release_button();
+  eprintln!("Skene's drag shows {ours:?}");
+
+  let Some(peer) = Peer::start(&screen, test, "peer words", |peer| {
+    !peer.covers(taker)
+      && !peer.covers(nothing)
+      && !peer.under_window(peer.point("field", 0.1, 0.5))
+  }) else {
+    return;
+  };
+
+  // GTK's entry holds its text selected; a drag from it goes over the same kinds of place but
+  // its own field, all of it selected. The peer answers its own drag in its own time: each
+  // cursor is read once it had it.
+  screen
+    .driver()
+    .hold_drag(peer.point("field", 0.1, 0.5), peer.point("drop", 0.5, 0.5));
+
+  let settled = || {
+    screen.driver().wait(Duration::from_millis(400));
+    screen.driver().cursor_name()
+  };
+  let mut gtk = vec![("a box that takes drops", settled())];
+
+  for (over, at) in [
+    ("another field", other),
+    ("nothing that takes drops", peer.point("source", 0.5, 0.5)),
+  ] {
+    screen.driver().move_pointer(at);
+    gtk.push((over, settled()));
+  }
+
+  screen.driver().release_button();
+  eprintln!("GTK's drag shows {gtk:?}");
+
+  // A move shows GDK's `dnd-move` where the theme has it; where it has none (Adwaita 46), the
+  // default cursor, as GTK's drag shows none of that name there.
+  let moving = ours[2].1.as_deref().filter(|name| *name == "dnd-move");
+
+  assert_eq!(
+    ours
+      .iter()
+      .map(|(over, name)| (*over, name.as_deref()))
+      .collect::<Vec<_>>(),
+    [
+      ("a box that takes drops", Some("copy")),
+      ("another field", Some("copy")),
+      ("its own field", moving.or(Some("default"))),
+      ("nothing that takes drops", Some("default")),
+    ],
+    "Skene's drag names GDK's cursors"
+  );
+  assert_eq!(
+    [&ours[0], &ours[1], &ours[3]],
+    [&gtk[0], &gtk[1], &gtk[2]],
+    "Skene's drag shows the cursors GTK's shows"
   );
 }

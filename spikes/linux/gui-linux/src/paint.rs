@@ -863,6 +863,17 @@ impl Canvas<'_> {
     );
   }
 
+  /// Fills `path` (window pixels) with `fill`.
+  pub fn fill_path(&mut self, path: &BezPath, fill: Color) {
+    if fill.alpha == 0 {
+      return;
+    }
+
+    let transform = self.to_device();
+
+    self.sink.fill(path, transform, &Brush::Solid(color(fill)));
+  }
+
   /// Strokes `path` (window pixels) `width` wide.
   pub fn stroke_path(&mut self, path: &BezPath, width: f32, ink: Color) {
     let transform = self.to_device();
@@ -1073,6 +1084,36 @@ impl Canvas<'_> {
     };
 
     self.border(grown, corners, ring.width, BorderStyle::Solid, ink);
+  }
+
+  /// Runs `body` with what it draws magnified `factor` times, the point `from` (in the
+  /// coordinates `body` draws in) shown at `to` (in the canvas's own): glyphs are placed again
+  /// at the magnified size, so the text stays sharp.
+  pub fn magnified(
+    &mut self,
+    factor: f32,
+    from: (f32, f32),
+    to: (f32, f32),
+    body: impl FnOnce(&mut Self),
+  ) {
+    let (scale, offset, clip) = (self.scale, self.offset, self.clip);
+    let factor64 = f64::from(factor);
+
+    self.scale = scale * factor64;
+    self.offset = (
+      offset.0 + f64::from(from.0) * self.scale - f64::from(to.0) * scale,
+      offset.1 + f64::from(from.1) * self.scale - f64::from(to.1) * scale,
+    );
+    self.clip = Rect {
+      x: (clip.x - to.0) / factor + from.0,
+      y: (clip.y - to.1) / factor + from.1,
+      width: clip.width / factor,
+      height: clip.height / factor,
+    };
+    body(self);
+    self.scale = scale;
+    self.offset = offset;
+    self.clip = clip;
   }
 
   /// Runs `body` with what it draws cut to `rect` (window pixels).

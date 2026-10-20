@@ -29,4 +29,4 @@ shot hello-mutter-restored 0.3
 size hello-mutter-restored 648 748
 $DRIVE calibrate click-at 573 19 sleep 600 >/dev/null 2>&1
 expect "request Close" "the drawn close button closes"
-if kill -0 "$APP_PID" 2>/dev/null; then fail "$KIND: the app quit"; else pass "$KIND: the app quit"; fi
+quit "the app quit"

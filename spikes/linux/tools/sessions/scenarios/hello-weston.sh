@@ -45,4 +45,4 @@ size hello-weston-restored $(( ${restored%x*} + 48 )) $(( ${restored#*x} + 48 ))
 $DRIVE calibrate double-click-at 200 18 sleep 700 >/dev/null 2>&1
 $DRIVE calibrate click-at $(( ${maximized%x*} - 27 )) 19 sleep 600 >/dev/null 2>&1
 expect "request Close" "the drawn close button closes"
-if kill -0 "$APP_PID" 2>/dev/null; then fail "$KIND: the app quit"; else pass "$KIND: the app quit"; fi
+quit "the app quit"

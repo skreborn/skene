@@ -11,4 +11,4 @@ pixel hello-kwin 30 100 ffffff
 expect "states WindowState(ACTIVATED" "KWin activates the window"
 $DRIVE calibrate click-at 240 120 sleep 400 >/dev/null 2>&1
 if grep -q "^\[button\] 0 down" "$LOG"; then pass "$KIND: a press lands in the content (no title bar above it)"; else fail "$KIND: a press lands in the content (no title bar above it)"; fi
-if grep -q "request Move\|request Resize" "$LOG"; then fail "$KIND: nothing asks the compositor to move or resize"; else pass "$KIND: nothing asks the compositor to move or resize"; fi
+absent "request Move\|request Resize" "nothing asks the compositor to move or resize"

@@ -110,6 +110,9 @@ CONF
     export SKENE_BACKEND=wayland
     ;;
 esac
+if [ -n "${WAYLAND_DISPLAY:-}" ] && [ ! -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" ]; then
+  echo "FAIL $KIND: the compositor started (its socket $WAYLAND_DISPLAY never appeared)"
+fi
 echo "TIMING $KIND display ready $(ms) ms"
 if [ -n "${PORTAL:-}" ]; then
   # shellcheck disable=SC2086
@@ -137,6 +140,9 @@ if [ "${APP:-none}" != none ]; then
   PIDS+=($APP_PID)
   export APP_PID
   for _ in $(seq 500); do grep -q "^\[frame\]" "$OUT/app.log" 2>/dev/null && break; sleep 0.01; done
+  if ! grep -q "^\[frame\]" "$OUT/app.log" 2>/dev/null; then
+    echo "FAIL $KIND: the app drew its first frame"
+  fi
   echo "TIMING $KIND first frame $(ms) ms"
   echo "TIMING $KIND app start to first frame $(( ($(date +%s%N) - A0) / 1000000 )) ms"
   if [ "$KIND" = sway ]; then

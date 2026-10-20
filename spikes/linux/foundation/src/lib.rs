@@ -16,6 +16,8 @@
 //!   variants (dark mode among them), and the scope chain they resolve through ([`Tokens`]).
 //! - [`environment`]: the facts conditions are answered against ([`Environment`]), which a
 //!   realization reports ([`environment::report`]).
+//! - [`lazy`]: lists that realize only the items in view: the windowing engine every platform
+//!   shares and the values a lazy list takes.
 //! - [`layout`]: the layout engine (taffy), one small tree per container over a toolkit's own
 //!   measuring ([`layout::ContainerLayout`] over [`layout::LayoutHost`]).
 //! - [`motion`]: transitions and keyframe animations run on a platform's own frame clock, for
@@ -45,6 +47,7 @@ pub mod expr;
 pub mod fill;
 pub mod keyed;
 pub mod layout;
+pub mod lazy;
 pub mod motion;
 pub mod reactive;
 pub mod scene;

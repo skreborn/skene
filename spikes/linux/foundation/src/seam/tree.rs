@@ -51,6 +51,9 @@ type Handler<E> = Rc<dyn Fn(&E) -> Bubbling>;
 /// A drop handler: whether it took what was dropped.
 type DropHandler = Rc<dyn Fn(&Dropped) -> Bubbling>;
 
+/// What finds the next stop of the sequential focus navigation past a node's realized ones.
+type Sequential = Rc<dyn Fn(NodeId, bool) -> Option<NodeId>>;
+
 impl Bubbling {
   /// The verdict a box's answer gives: it keeps no platform default from running.
   #[must_use]
@@ -73,6 +76,7 @@ struct Handlers {
   dismiss: Option<Rc<dyn Fn()>>,
   context_menu: Option<Handler<ContextMenuEvent>>,
   drop: Option<DropHandler>,
+  sequential: Option<Sequential>,
 }
 
 struct Entry<R: Realization> {
@@ -532,7 +536,7 @@ fn resolution<R: Realization>(id: NodeId) -> Option<Resolution> {
 
 /// Asks the realization for `states` at `id`, beside what it reports there already; at a
 /// control, its hover and its press at its caption beside it too.
-fn watch_states<R: Realization>(id: NodeId, states: StateSet) {
+pub fn watch_states<R: Realization>(id: NodeId, states: StateSet) {
   if states.is_empty() {
     return;
   }
@@ -948,6 +952,103 @@ pub fn handle_focus<R: Realization>(id: NodeId, focus: impl Fn(bool) + 'static) 
     entry.handlers.focus = Some(Rc::new(focus));
     entry.interest.focus = true;
   });
+}
+
+/// Finds the stops of the sequential focus navigation (`Tab`) a node holds beyond those it
+/// has realized: `next` is asked, with the node focus leaves and whether it goes backward, for
+/// the stop to go to where the next realized one is outside the node, and may realize one.
+pub fn handle_sequential<R: Realization>(
+  id: NodeId,
+  next: impl Fn(NodeId, bool) -> Option<NodeId> + 'static,
+) {
+  with::<R, _>(|tree| {
+    if let Some(entry) = tree.scene.get_mut(id) {
+      entry.handlers.sequential = Some(Rc::new(next));
+    }
+  });
+}
+
+/// The stop the sequential focus navigation goes to from `from`, backward where `backward`,
+/// where the next realized stop is `candidate`: `candidate`, unless a node holding `from`
+/// finds a stop of its own before it ([`handle_sequential`]), the nearest asked first.
+#[must_use]
+pub fn next_stop<R: Realization>(
+  from: NodeId,
+  candidate: Option<NodeId>,
+  backward: bool,
+) -> Option<NodeId> {
+  let holders: Vec<(NodeId, Sequential)> = with::<R, _>(|tree| {
+    std::iter::once(from)
+      .chain(tree.scene.ancestors(from))
+      .filter_map(|node| Some((node, tree.scene.get(node)?.handlers.sequential.clone()?)))
+      .collect()
+  });
+
+  for (holder, next) in holders {
+    if candidate.is_some_and(|candidate| is_within::<R>(candidate, holder)) {
+      return candidate;
+    }
+
+    if let Some(found) = untrack(|| next(from, backward)) {
+      return Some(found);
+    }
+  }
+
+  candidate
+}
+
+/// Whether `node` is `ancestor` or beneath it in the scene.
+#[must_use]
+pub fn is_within<R: Realization>(node: NodeId, ancestor: NodeId) -> bool {
+  node == ancestor || with::<R, _>(|tree| tree.scene.ancestors(node).contains(&ancestor))
+}
+
+/// The states the realization last reported at `id` ([`watch_states`] asks for them),
+/// subscribing the running effect.
+#[must_use]
+pub fn reported_states<R: Realization>(id: NodeId) -> StateSet {
+  with::<R, _>(|tree| tree.scene.get(id).map(|entry| entry.states))
+    .map_or(StateSet::EMPTY, |states| states.get())
+}
+
+/// The first node at `id` or beneath it, in the scene's order, that takes focus now as the
+/// scene says: a box that acts, or a control whose facts say it takes focus and that is
+/// neither disabled nor hidden. It needs no layout, so it answers for a subtree built and not
+/// attached.
+#[must_use]
+pub fn first_stop<R: Realization>(id: NodeId) -> Option<NodeId> {
+  /// A node beneath the subtree's root: its id, its spec and what reports its facts.
+  type Beneath = (NodeId, NodeSpec, Vec<Rc<dyn Fn() -> AccessFacts>>);
+
+  let nodes: Vec<Beneath> = with::<R, _>(|tree| {
+    tree
+      .scene
+      .descendants(id)
+      .into_iter()
+      .filter_map(|(node, _)| {
+        let entry = tree.scene.get(node)?;
+
+        Some((node, entry.spec, entry.access.clone()))
+      })
+      .collect()
+  });
+
+  nodes
+    .into_iter()
+    .find(|(_, spec, sources)| match spec.interaction {
+      Interaction::Acting => true,
+      Interaction::Control { .. } => untrack(|| {
+        let mut facts = AccessFacts::default();
+
+        for source in sources {
+          facts.merge(source());
+        }
+
+        facts.focusable && !facts.disabled && !facts.hidden
+      }),
+      _ => false,
+    })
+    .map(|(node, _, _)| node)
 }
 
 /// Runs `size` with the node's size each time it is laid out at another.

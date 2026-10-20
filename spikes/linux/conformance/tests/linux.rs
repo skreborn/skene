@@ -75,5 +75,7 @@ scenarios!(
   a_picker_holding_a_value_no_option_carries_shows_none,
   a_derived_list_reorders_while_open_focus_staying_on_its_option,
   a_list_box_is_one_tab_stop_choosing_one_or_several,
+  a_lazy_list_tells_the_whole_and_tab_walks_past_its_window,
+  a_long_list_box_chooses_options_it_has_not_built,
   every_page_passes_the_audit,
 );

@@ -168,6 +168,14 @@ impl Realization for Linux {
   }
 
   fn read(node: &Node, content: Content) -> Option<PropValue> {
+    if content == Content::ScrollOffset {
+      let (x, y) = node.scroll.get();
+
+      return Some(PropValue::Offset(
+        skene_foundation::seam::content::ScrollOffset::new(x, y),
+      ));
+    }
+
     if content == Content::Edit
       && let Ok(entry) = node.entry.try_borrow()
       && let Some(entry) = entry.as_ref()

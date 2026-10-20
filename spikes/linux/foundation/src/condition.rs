@@ -129,6 +129,13 @@ impl StateSet {
     Self(self.0 | other.0)
   }
 
+  /// The states in both sets.
+  #[inline(always)]
+  #[must_use]
+  pub const fn intersection(self, other: Self) -> Self {
+    Self(self.0 & other.0)
+  }
+
   /// Whether every state of this set is in `other`.
   #[inline(always)]
   #[must_use]

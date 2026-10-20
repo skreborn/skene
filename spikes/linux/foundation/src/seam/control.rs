@@ -184,6 +184,19 @@ pub enum AccessRequest {
   Focus,
   /// Set a range's value.
   SetValue(f64),
+  /// Scroll the boxes holding it as little as shows it whole.
+  ScrollIntoView,
+  /// Scroll it, or the box holding it, by a page along `axis`, toward the end where
+  /// `forward`.
+  ScrollPage {
+    /// The axis.
+    axis: crate::layout::Axis,
+    /// Whether toward the end.
+    forward: bool,
+  },
+  /// Scroll the boxes holding it so its top leading corner shows at this point of the
+  /// window, in pixels, as near as their extents allow.
+  ScrollToPoint(f32, f32),
 }
 
 /// What a control's node is on a platform that draws it: a box Skene's views compose, or the

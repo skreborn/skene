@@ -10,6 +10,7 @@ mod gestures;
 mod glyphs;
 #[cfg(feature = "gpu")]
 mod gpu;
+mod lazy;
 mod menu;
 mod presented;
 mod reader;

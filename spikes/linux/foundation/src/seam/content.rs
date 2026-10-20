@@ -51,6 +51,9 @@ pub enum Content {
   Picture,
   /// Where an overlay is placed against its anchor ([`PropValue::Placement`]).
   Placement,
+  /// How far a scroll box's content is scrolled ([`PropValue::Offset`]): reported as an
+  /// applied change while the reader scrolls, written to scroll it.
+  ScrollOffset,
   /// A value of a library's widget adopted through the native door, by the library's own
   /// name: only the door's [`crate::seam::door::ControlSink`] knows it.
   Door(&'static str),
@@ -120,6 +123,44 @@ pub struct OverlayPlacement {
   pub gap: i32,
 }
 
+/// How far a scroll box's content is scrolled, in pixels from its start along each axis.
+#[derive(Clone, Copy, PartialEq, Debug, Default)]
+pub struct ScrollOffset {
+  /// Along the horizontal axis.
+  pub x: f32,
+  /// Along the vertical axis.
+  pub y: f32,
+}
+
+impl ScrollOffset {
+  /// Scrolled `x` along the horizontal axis and `y` along the vertical.
+  #[inline(always)]
+  #[must_use]
+  pub const fn new(x: f32, y: f32) -> Self {
+    Self { x, y }
+  }
+
+  /// How far along `axis`.
+  #[must_use]
+  pub const fn along(self, axis: crate::layout::Axis) -> f32 {
+    match axis {
+      crate::layout::Axis::Horizontal => self.x,
+      crate::layout::Axis::Vertical => self.y,
+    }
+  }
+
+  /// This offset with `along` along `axis`.
+  #[must_use]
+  pub const fn with(mut self, axis: crate::layout::Axis, along: f32) -> Self {
+    match axis {
+      crate::layout::Axis::Horizontal => self.x = along,
+      crate::layout::Axis::Vertical => self.y = along,
+    }
+
+    self
+  }
+}
+
 /// A text entry's text with its selection: one value, so a selection is never applied to a
 /// text it does not index.
 #[derive(Clone, PartialEq, Debug)]
@@ -175,6 +216,8 @@ pub enum PropValue {
   Picture(Rc<Picture>),
   /// An overlay's placement.
   Placement(OverlayPlacement),
+  /// A scroll box's offset.
+  Offset(ScrollOffset),
 }
 
 /// A type a content value holds.
@@ -218,6 +261,7 @@ content_types! {
   Rc<[Run]> => Runs,
   Rc<Picture> => Picture,
   OverlayPlacement => Placement,
+  ScrollOffset => Offset,
 }
 
 /// A typed content name: what a view binds or controls, so a value of the wrong type does
@@ -279,7 +323,7 @@ impl<T: ContentType> ContentKey<T> {
 pub mod contents {
   use std::rc::Rc;
 
-  use super::{Content, ContentKey, Edit, OverlayPlacement, Run};
+  use super::{Content, ContentKey, Edit, OverlayPlacement, Run, ScrollOffset};
   use crate::seam::picture::Picture;
 
   /// A text's plain text.
@@ -306,6 +350,8 @@ pub mod contents {
   pub const PICTURE: ContentKey<Rc<Picture>> = ContentKey::new(Content::Picture);
   /// Where an overlay is placed.
   pub const PLACEMENT: ContentKey<OverlayPlacement> = ContentKey::new(Content::Placement);
+  /// How far a scroll box's content is scrolled.
+  pub const SCROLL_OFFSET: ContentKey<ScrollOffset> = ContentKey::new(Content::ScrollOffset);
 }
 
 /// The answer to a reported change.

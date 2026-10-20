@@ -25,6 +25,7 @@
 mod access;
 mod control;
 pub mod controls;
+mod lazy;
 mod overlay;
 pub mod painted;
 mod surface;
@@ -51,6 +52,7 @@ pub use self::{
     Picker, PickerBase, PickerItem, PickerItemBase, Radio, RadioBase, RadioGroup, RadioGroupBase,
     Slider, SliderBase, TextEditor, TextEditorBase, TextField, TextFieldBase, Toggle, ToggleBase,
   },
+  lazy::{Lazy, LazyBase, LazyHandle, LazyListBase},
   overlay::{Overlay, OverlayBase},
   painted::{Canvas, Paint, Painted, PaintedBase, Painting},
   surface::{DecorationBase, MotionBase, RunBase, RunWithEntries},
@@ -333,6 +335,7 @@ pub struct Cx<R: Realization> {
   part: Option<Part>,
   presentational: bool,
   interaction: Option<Interaction>,
+  role: Option<Role>,
   realization: PhantomData<fn() -> R>,
 }
 
@@ -347,6 +350,7 @@ impl<R: Realization> Cx<R> {
       part: None,
       presentational: false,
       interaction: None,
+      role: None,
       realization: PhantomData,
     }
   }
@@ -362,6 +366,7 @@ impl<R: Realization> Cx<R> {
       part: None,
       presentational: false,
       interaction: None,
+      role: None,
       realization: PhantomData,
     }
   }
@@ -377,6 +382,7 @@ impl<R: Realization> Cx<R> {
       part: self.part,
       presentational: self.presentational,
       interaction: self.interaction,
+      role: self.role,
       realization: PhantomData,
     }
   }
@@ -423,6 +429,12 @@ impl<R: Realization> Cx<R> {
     self.interaction = Some(interaction);
   }
 
+  /// Makes the next node created take `role` for a reader in place of its own: a lazy list's
+  /// item box, a list item.
+  pub const fn set_role(&mut self, role: Role) {
+    self.role = Some(role);
+  }
+
   /// Folds `record` into the placement the next node created takes: a wrapper's properties.
   pub fn fold_placement(&mut self, record: &Record) {
     self.placement.fold(record);
@@ -442,6 +454,12 @@ impl<R: Realization> Cx<R> {
 
     if let Some(interaction) = self.interaction.take() {
       spec = spec.with_interaction(interaction);
+    }
+
+    if let Some(role) = self.role.take()
+      && spec.role != Role::Presentation
+    {
+      spec = spec.with_role(role);
     }
 
     let id = tree::create::<R>(spec, &self.scope, self.control);

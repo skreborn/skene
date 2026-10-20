@@ -166,6 +166,14 @@ pub fn scenarios<D: Driver>() -> Vec<Scenario<D>> {
       "a_list_box_is_one_tab_stop_choosing_one_or_several",
       listbox::<D>,
     ),
+    (
+      "a_lazy_list_tells_the_whole_and_tab_walks_past_its_window",
+      lazy_list::<D>,
+    ),
+    (
+      "a_long_list_box_chooses_options_it_has_not_built",
+      long_listbox::<D>,
+    ),
     ("every_page_passes_the_audit", audit::<D>),
   ]
 }
@@ -1828,5 +1836,98 @@ fn listbox<D: Driver>(driver: &mut D) {
     focused_name(driver),
     "Banana",
     "back in a list box, focus returns to the option it was last on"
+  );
+}
+
+fn lazy_list<D: Driver>(driver: &mut D) {
+  driver.open("lazy");
+
+  let items: Vec<AccessSnapshot> = driver
+    .find(&Query::Every(Role::ListItem), FIND)
+    .iter()
+    .map(|item| driver.read(item))
+    .collect();
+  let places: Vec<Option<usize>> = items.iter().map(|item| item.position_in_set).collect();
+
+  assert!(
+    (8..=16).contains(&items.len()),
+    "a reader finds about the rows in view, not ten thousand: {places:?}"
+  );
+  assert!(
+    items
+      .iter()
+      .enumerate()
+      .all(|(at, item)| item.position_in_set == Some(at + 1) && item.set_size == Some(10_000)),
+    "each realized row tells its place in the whole list: {places:?}"
+  );
+
+  let before = role(driver, Role::Button, "Before");
+
+  driver.act(&before, &Action::Click);
+
+  // Twenty stops on, past the rows the list has realized.
+  for _ in 0..20 {
+    press(driver, &before, "Tab", Modifiers::default());
+  }
+
+  assert_eq!(focused_name(driver), "Open 19", "Tab walks past the window");
+
+  let focused = one(driver, &Query::Focused);
+  let shown = driver.read(&focused).bounds;
+  let list = read(driver, Role::List, "Actions").bounds;
+
+  assert!(
+    shown.y >= list.y - 1. && shown.y + shown.height <= list.y + list.height + 1.,
+    "the focused row scrolled into view: {shown:?} in {list:?}"
+  );
+
+  press(
+    driver,
+    &focused,
+    "Tab",
+    Modifiers {
+      shift: true,
+      ..Modifiers::default()
+    },
+  );
+  assert_eq!(focused_name(driver), "Open 18");
+}
+
+fn long_listbox<D: Driver>(driver: &mut D) {
+  driver.open("long");
+
+  let built = driver.find(&Query::Every(Role::Option), FIND).len();
+
+  assert!(
+    (8..=20).contains(&built),
+    "about the options in view are built: {built}"
+  );
+  assert_eq!(read(driver, Role::Option, "Number 0").set_size, Some(5000));
+
+  click(driver, Role::Option, "Number 0");
+  assert_eq!(probe(driver, "chosen"), "1");
+
+  let numbers = role(driver, Role::ListBox, "Numbers");
+
+  press(driver, &numbers, "End", Modifiers::default());
+  assert_eq!(focused_name(driver), "Number 4999");
+
+  let focused = one(driver, &Query::Focused);
+
+  assert_eq!(driver.read(&focused).position_in_set, Some(5000));
+
+  press(
+    driver,
+    &numbers,
+    "a",
+    Modifiers {
+      control: true,
+      ..Modifiers::default()
+    },
+  );
+  assert_eq!(
+    probe(driver, "chosen"),
+    "5000",
+    "the primary modifier and A choose every option, built or not"
   );
 }

@@ -36,7 +36,7 @@ use skene_foundation::{
     access::{Checked, PopupKind, Role},
     content::Unit,
     control::AccessRequest,
-    node::{Interaction, NodeKind},
+    node::{Interaction, LayoutKind, NodeKind},
   },
   text::{Laid as _, editing::Command},
 };
@@ -267,6 +267,28 @@ fn apply(shell: &mut Shell, request: &ActionRequest) {
     (AkAction::Decrement, _) => shell.access_request(&node, AccessRequest::Decrement),
     (AkAction::Expand, _) => shell.access_request(&node, AccessRequest::Expand),
     (AkAction::Collapse, _) => shell.access_request(&node, AccessRequest::Collapse),
+    (AkAction::ScrollIntoView, _) => shell.access_scroll(&node, AccessRequest::ScrollIntoView),
+    (AkAction::ScrollToPoint, Some(ActionData::ScrollToPoint(point))) => {
+      let scale = shell.scale;
+
+      shell.access_scroll(
+        &node,
+        AccessRequest::ScrollToPoint((point.x / scale) as f32, (point.y / scale) as f32),
+      );
+    }
+    (
+      AkAction::ScrollDown | AkAction::ScrollUp | AkAction::ScrollLeft | AkAction::ScrollRight,
+      _,
+    ) => {
+      let (axis, forward) = match request.action {
+        AkAction::ScrollDown => (Axis::Vertical, true),
+        AkAction::ScrollUp => (Axis::Vertical, false),
+        AkAction::ScrollRight => (Axis::Horizontal, true),
+        _ => (Axis::Horizontal, false),
+      };
+
+      shell.access_scroll(&node, AccessRequest::ScrollPage { axis, forward });
+    }
     (AkAction::SetValue, Some(ActionData::NumericValue(value))) => {
       shell.access_request(&node, AccessRequest::SetValue(*value));
     }
@@ -407,6 +429,8 @@ const fn role(role: Role, secure: bool) -> AkRole {
     Role::Alert => AkRole::Alert,
     Role::Tooltip => AkRole::Tooltip,
     Role::ScrollArea => AkRole::ScrollView,
+    Role::List => AkRole::List,
+    Role::ListItem => AkRole::ListItem,
   }
 }
 
@@ -419,6 +443,24 @@ const fn ak_action(request: AccessRequest) -> AkAction {
     AccessRequest::Collapse => AkAction::Collapse,
     AccessRequest::Focus => AkAction::Focus,
     AccessRequest::SetValue(_) => AkAction::SetValue,
+    AccessRequest::ScrollIntoView => AkAction::ScrollIntoView,
+    AccessRequest::ScrollPage {
+      axis: Axis::Vertical,
+      forward: true,
+    } => AkAction::ScrollDown,
+    AccessRequest::ScrollPage {
+      axis: Axis::Vertical,
+      forward: false,
+    } => AkAction::ScrollUp,
+    AccessRequest::ScrollPage {
+      axis: Axis::Horizontal,
+      forward: true,
+    } => AkAction::ScrollRight,
+    AccessRequest::ScrollPage {
+      axis: Axis::Horizontal,
+      forward: false,
+    } => AkAction::ScrollLeft,
+    AccessRequest::ScrollToPoint(..) => AkAction::ScrollToPoint,
   }
 }
 
@@ -706,6 +748,10 @@ fn add(
     ak.add_action(AkAction::Click);
   }
 
+  if node.is_scroll_stop() {
+    ak.add_action(AkAction::Focus);
+  }
+
   if is_control {
     if facts.disabled {
       ak.set_disabled();
@@ -756,6 +802,36 @@ fn add(
 
   if let Some(text) = &facts.value_text {
     ak.set_value(text.to_string());
+  }
+
+  if let Some(size) = facts.set_size {
+    ak.set_size_of_set(size);
+  }
+
+  if let Some(position) = facts.position_in_set {
+    ak.set_position_in_set(position);
+  }
+
+  if facts.multiselectable {
+    ak.set_multiselectable();
+  }
+
+  if let NodeKind::Layout(LayoutKind::Scroll {
+    horizontal,
+    vertical,
+  }) = node.spec.kind
+  {
+    ak.add_child_action(AkAction::ScrollIntoView);
+
+    if vertical {
+      ak.add_action(AkAction::ScrollDown);
+      ak.add_action(AkAction::ScrollUp);
+    }
+
+    if horizontal {
+      ak.add_action(AkAction::ScrollRight);
+      ak.add_action(AkAction::ScrollLeft);
+    }
   }
 
   if let Some(axis) = facts.orientation {

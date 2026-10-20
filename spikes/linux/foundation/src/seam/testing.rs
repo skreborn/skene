@@ -164,6 +164,7 @@ pub fn sample(content: Content) -> Option<PropValue> {
 
       PropValue::Picture(Rc::new(picture))
     }
+    Content::ScrollOffset => PropValue::Offset(crate::seam::content::ScrollOffset::new(0., 24.)),
     Content::Door(_) => return None,
   })
 }
@@ -212,6 +213,9 @@ pub fn contents_gate<R: Realization>() -> Vec<GateRow> {
 pub enum Query {
   /// A node of a role whose accessible name is this.
   Role(Role, Rc<str>),
+  /// Every node of a role, whatever its name: a list's items, which take no name of their
+  /// own.
+  Every(Role),
   /// A text node showing this.
   Text(Rc<str>),
   /// The node that has keyboard focus.
@@ -245,6 +249,11 @@ pub struct AccessSnapshot {
   pub text: Option<Rc<str>>,
   /// A text entry's selection, in grapheme clusters.
   pub selection: Option<TextSelection>,
+  /// How many items the set it belongs to counts, realized or not: a lazy list's count, as
+  /// each realized item reports it.
+  pub set_size: Option<usize>,
+  /// Its place in its set, from 1, as a reader says it.
+  pub position_in_set: Option<usize>,
   /// Its bounds in the window, in pixels: the border box the platform laid it out at.
   pub bounds: Rect,
 }

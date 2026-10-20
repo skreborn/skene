@@ -404,8 +404,14 @@ impl<H: LayoutHost> ContainerLayout<H> {
       })
     };
 
+    // A least or greatest height of its own lays the children out at another height than
+    // their natural one (a track or a flexible child grown or shrunk to it).
+    let bounded = |value: Option<Dimension>| value.is_some_and(|value| value != Dimension::Auto);
+
     self.height_free = !fraction_tracks(&self.own.rows)
       && !fraction_tracks(&self.own.implicit_rows)
+      && !bounded(self.own.min_height)
+      && !bounded(self.own.max_height)
       && children.iter().all(|(_, placement)| {
         !fraction(placement.height)
           && !fraction(placement.min_height)

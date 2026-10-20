@@ -504,6 +504,21 @@ impl Atspi {
           .call::<_, bool>(&object, "org.a11y.atspi.Component", "GrabFocus", &())
           .map(drop),
         AccessRequest::SetValue(value) => set(value),
+        // AT-SPI's ScrollTo, anywhere: as little as shows it.
+        AccessRequest::ScrollIntoView => reader
+          .call::<_, bool>(&object, "org.a11y.atspi.Component", "ScrollTo", &(6u32,))
+          .map(drop),
+        AccessRequest::ScrollToPoint(x, y) => reader
+          .call::<_, bool>(
+            &object,
+            "org.a11y.atspi.Component",
+            "ScrollToPoint",
+            &(WINDOW, x.round() as i32, y.round() as i32),
+          )
+          .map(drop),
+        AccessRequest::ScrollPage { .. } => {
+          Err("AT-SPI has no request to scroll by a page".to_owned())
+        }
         AccessRequest::Increment | AccessRequest::Decrement => {
           let now = reader.value(&object)?;
           let step =

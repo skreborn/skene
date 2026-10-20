@@ -40,6 +40,8 @@ pub struct PointerEvent {
   pub window_y: f32,
   /// The button, 0 the primary.
   pub button: u8,
+  /// The modifiers held.
+  pub modifiers: Modifiers,
 }
 
 /// What asked for a context menu.

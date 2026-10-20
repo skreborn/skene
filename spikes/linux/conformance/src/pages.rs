@@ -50,6 +50,8 @@ pub const NAMES: &[&str] = &[
   "unchosen",
   "reorder",
   "listbox",
+  "lazy",
+  "long",
 ];
 
 /// Registers every page under its name.
@@ -88,6 +90,8 @@ pub fn register() {
   register_page("unchosen", unchosen);
   register_page("reorder", reorder);
   register_page("listbox", listbox);
+  register_page("lazy", lazy);
+  register_page("long", long);
 }
 
 /// The sizes a picker and a radio group choose among.
@@ -1062,4 +1066,45 @@ fn listbox() -> impl View {
         .bind_chosen(basket)
         .set_options(Fruit::options()),
     )
+}
+
+/// A lazy list of ten thousand rows 40 pixels tall, 300 pixels of them in view, each holding a
+/// button "Open {n}", between the buttons "Before" and "After".
+fn lazy() -> impl View {
+  Column::new()
+    .set_padding(16)
+    .add_child(Button::new("Before"))
+    .add_child(
+      LazyColumn::new()
+        .set_height(300)
+        .set_label("Actions")
+        .set_item_extent(ItemExtent::Estimated(40.))
+        .derive_items(
+          || (0..10_000).collect::<Vec<usize>>(),
+          |index| *index,
+          |index: usize| {
+            Container::new()
+              .set_height(40)
+              .set_child(Button::new(format!("Open {index}")))
+          },
+        ),
+    )
+    .add_child(Button::new("After"))
+}
+
+/// A list box choosing several of five thousand numbered options, "Number 0" onwards, how
+/// many it has chosen published as "chosen".
+fn long() -> impl View {
+  let chosen = Signal::new(std::collections::HashSet::<u32>::new());
+
+  publish("chosen", move || {
+    chosen.with(|chosen| chosen.len().to_string())
+  });
+
+  Column::new().set_padding(16).add_child(
+    Listbox::new("Numbers").bind_chosen(chosen).derive_options(
+      || (0..5000).collect::<Vec<u32>>(),
+      |value: &u32| format!("Number {value}"),
+    ),
+  )
 }

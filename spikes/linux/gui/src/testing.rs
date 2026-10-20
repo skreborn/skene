@@ -184,6 +184,21 @@ impl Screen {
     self.first(&Query::Role(role, name.into()))
   }
 
+  /// Every object of `role` a reader finds now, whatever its name, in the order it walks
+  /// them: a list's realized items, each telling its place in the whole list
+  /// ([`AccessSnapshot::position_in_set`]); none where none turns up within a second.
+  pub fn find_all_by_role(&self, role: Role) -> Vec<Found<'_>> {
+    self
+      .driver()
+      .find_soon(&Query::Every(role))
+      .into_iter()
+      .map(|element| Found {
+        screen: self,
+        element,
+      })
+      .collect()
+  }
+
   /// The text showing `text`, looking again for up to a second.
   ///
   /// # Panics

@@ -72,6 +72,10 @@ pub enum Role {
   Tooltip,
   /// A scrolling region.
   ScrollArea,
+  /// A list of items, a lazy list's among them: its count is its set's size.
+  List,
+  /// An item of a list.
+  ListItem,
 }
 
 impl Role {
@@ -215,6 +219,12 @@ pub struct AccessFacts {
   /// What a painted node draws, as a reader finds it: the parts of a chart, the markers of a
   /// map, each with its own role, facts and bounds in the node.
   pub parts: Vec<AccessPart>,
+  /// How many items the set the node holds counts, realized or not: a lazy list's count.
+  pub set_size: Option<usize>,
+  /// The node's place in its set, from 0, where it is an item of one.
+  pub position_in_set: Option<usize>,
+  /// Whether several of the node's items can be chosen at once.
+  pub multiselectable: bool,
 }
 
 impl AccessFacts {
@@ -240,6 +250,9 @@ impl AccessFacts {
     self.focusable |= other.focusable;
     self.actions.extend(other.actions);
     self.parts.extend(other.parts);
+    self.set_size = other.set_size.or(self.set_size);
+    self.position_in_set = other.position_in_set.or(self.position_in_set);
+    self.multiselectable |= other.multiselectable;
   }
 }
 

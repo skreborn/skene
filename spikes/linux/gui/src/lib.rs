@@ -68,6 +68,8 @@ mod control;
 #[cfg(skene_platform = "linux")]
 mod controls;
 #[cfg(skene_platform = "linux")]
+mod lazy;
+#[cfg(skene_platform = "linux")]
 pub mod media;
 #[cfg(skene_platform = "linux")]
 mod overlay;
@@ -103,6 +105,7 @@ pub use skene_foundation::{
   State, StateSet, StopColor, SweepGradient, SystemColors, TextAlignment, TextDecoration,
   TextDecorationStyle, Token, TokenRef, TokenSet, Tracks, UnitPoint, Value, When, batch,
   layout::{Axis, Rect},
+  lazy::{GridCells, ItemExtent, ScrollPosition},
   seam::{
     access::{AccessFacts, Checked, RangeValue, Role, Shortcut},
     content::{Range, Side, TextSelection},
@@ -134,6 +137,7 @@ pub use crate::{
     Button, Checkbox, ContextMenu, Keyboard, Listbox, ListboxItem, MenuEntry, MenuItem, Picker,
     PickerItem, Radio, RadioGroup, Slider, TextEditor, TextField, Toggle, marks,
   },
+  lazy::{LazyColumn, LazyHorizontalGrid, LazyRow, LazyVerticalGrid},
   overlay::Overlay,
   painted::{Canvas, Paint, Painted},
   runtime::{Resource, Sleep, schedule, sleep, spawn},
@@ -151,10 +155,11 @@ pub use skene_foundation::behavior::{Choice, Chosen};
 pub use skene_foundation::view::{
   AnyKind, AsPartBase, ButtonBase, CheckboxBase, ChoiceBase, ColumnBase, ContainerBase,
   ContextMenuBase, ControlBase, ControlMembersBase, DecorationBase, DerivedBase, EditingBase,
-  FlexibleBase, GridBase, GridCellBase, ImageBase, ListboxBase, ListboxItemBase, MenuItemBase,
-  MotionBase, OptionsBase, OverlayBase, PaintedBase, PickerBase, PickerItemBase, PinnedBase,
-  RadioBase, RadioGroupBase, RowBase, RunBase, RunWithEntries, ScrollBase, SliderBase, StackBase,
-  TextBase, TextEditorBase, TextFieldBase, ThemeBase, ToggleBase,
+  FlexibleBase, GridBase, GridCellBase, ImageBase, LazyBase, LazyListBase, ListboxBase,
+  ListboxItemBase, MenuItemBase, MotionBase, OptionsBase, OverlayBase, PaintedBase, PickerBase,
+  PickerItemBase, PinnedBase, RadioBase, RadioGroupBase, RowBase, RunBase, RunWithEntries,
+  ScrollBase, SliderBase, StackBase, TextBase, TextEditorBase, TextFieldBase, ThemeBase,
+  ToggleBase,
 };
 
 /// The realization this build is for: what a library's own view implements

@@ -96,7 +96,7 @@ impl Contents {
       Content::Destination => text(&self.destination),
       Content::Picture => self.picture.clone().map(PropValue::Picture),
       Content::Placement => self.placement.map(PropValue::Placement),
-      Content::Door(_) => None,
+      Content::ScrollOffset | Content::Door(_) => None,
     }
   }
 }
@@ -429,6 +429,41 @@ impl Drawn {
   /// Its frame in window coordinates, where it is drawn: the frames and offsets of its
   /// ancestors and its own added, their scroll offsets taken off, up to the overlay it is in,
   /// whose frame is in window coordinates already.
+  /// Whether it is a scroll box that takes focus as a tab stop of its own, as Chromium's
+  /// keyboard-focusable scrollers do: shown, its content overflowing it, and nothing shown
+  /// inside it taking focus, so its keys can scroll it.
+  pub fn is_scroll_stop(self: &Rc<Self>) -> bool {
+    let Some(LayoutKind::Scroll {
+      horizontal,
+      vertical,
+    }) = self.layout_kind()
+    else {
+      return false;
+    };
+    let frame = self.frame.get();
+    let (width, height) = self.extent.get();
+    let overflows =
+      horizontal && width > frame.width + 0.5 || vertical && height > frame.height + 0.5;
+
+    if !overflows || !self.is_shown() {
+      return false;
+    }
+
+    let mut holds_stop = false;
+
+    walk(self, |node| {
+      holds_stop |= !Rc::ptr_eq(node, self)
+        && node.is_shown()
+        && match node.spec.interaction {
+          Interaction::Control { .. } => node.access.borrow().focusable,
+          Interaction::Acting => true,
+          Interaction::None | Interaction::Answering | Interaction::ScrollBar { .. } => false,
+        };
+    });
+
+    !holds_stop
+  }
+
   pub fn window_rect(self: &Rc<Self>) -> Rect {
     let mut rect = self.frame.get();
 

@@ -1,18 +1,21 @@
-//! A list box: options all shown, one or several of them chosen.
+//! A list box: options in a list that builds only those in view, one or several of them
+//! chosen, whether built or not.
 
 use std::rc::Rc;
 
 use crate::{
-  AxisAlignment, Border, Color, Inset, State, SystemColors, Value,
-  behavior::{Behavior, Chosen, Controlled, Listbox as ListboxBehavior},
+  AxisAlignment, Border, Color, Effect, Inset, State, SystemColors, Value,
+  behavior::{Behavior, Chosen, Controlled, Listbox as ListboxBehavior, Options},
   layout::Axis,
+  lazy::ItemExtent,
   seam::{
     Realization,
     control::{LabelPlacement, Part},
   },
+  untrack,
   view::{
-    AnyKind, AsPart, AsPartBase, Column, ColumnBase, Container, ContainerBase, ControlBase,
-    ControlMembersBase, Cx, DecorationBase, Label, Node, RunBase, View, Wraps,
+    AnyKind, AsPart, AsPartBase, Container, ContainerBase, ControlBase, ControlMembersBase, Cx,
+    DecorationBase, Label, Lazy, LazyBase, LazyHandle, LazyListBase, Node, RunBase, View, Wraps,
     controls::{
       Pending,
       choice::{GroupOptions, HasChoice, HasOptions, OptionSegment},
@@ -75,16 +78,22 @@ impl<R: Realization> ListboxItemBase<R> for ListboxItem<R> {}
 /// What makes a list box's option from its value and its caption.
 type ItemBuilder<T, R> = Rc<dyn Fn(&T, Label<R>) -> ListboxItem<R>>;
 
-/// Options all shown, with its caption: Skene's list box, drawn on every platform. It holds
+/// Options in a list, with its caption: Skene's list box, drawn on every platform. It holds
 /// `C`, what it has chosen: an `Option` of its options' values for one choice, a `HashSet` or a
 /// `BTreeSet` of them for several. It is a [`crate::view::Control`] over a
 /// [`crate::behavior::Listbox`], its caption above its list ([`Listbox::default_list`]) of
-/// options, each from its item builder ([`ListboxBase::set_item_builder`]).
+/// options, each from its item builder ([`ListboxBase::set_item_builder`]). The list scrolls
+/// once it is as tall as it may be, and builds only the options in view and a few beyond
+/// ([`crate::view::Lazy`]), so a list of a hundred thousand costs what it shows; a reader
+/// finds the whole count and each built option's place.
 ///
 /// The list box is one tab stop, on the option focus was last on (its chosen one, else its
-/// first enabled, where focus has not been in it); the arrows, the page keys, `Home` and `End`
-/// move focus without choosing, `Enter`, `Space` and a click choose the focused option: alone
-/// for one choice, added or taken away for several.
+/// first enabled, where focus has not been in it), kept built wherever the list scrolls; the
+/// arrows, the page keys, `Home` and `End` move focus without choosing, through every option
+/// whether built or not, as does typing the start of an option's name; `Enter`, `Space` and a
+/// click choose the focused option: alone for one choice, added or taken away for several.
+/// Where several can be chosen, `Shift` and a click choose every option from the one last
+/// chosen alone to the one clicked, and `Ctrl` and `A` choose every option, built or not.
 ///
 /// It is controlled: it shows what [`ChoiceBase::derive_chosen`] returns, asks
 /// [`ChoiceBase::handle_choose`] for each choice, and shows the truth.
@@ -121,7 +130,8 @@ impl<C: Chosen, R: Realization> HasOptions<C::Value, R> for Listbox<C, R> {
 
 impl<C: Chosen, R: Realization> Listbox<C, R> {
   /// The default list: [`SystemColors::FIELD`] inside a border of 1 in
-  /// [`SystemColors::BORDER`], its corners rounded by 8, padded 4.
+  /// [`SystemColors::BORDER`], its corners rounded by 8, padded 4, 320 pixels tall at most
+  /// (about ten options), its options scrolling beyond.
   pub fn default_list() -> Container<R> {
     Container::new()
       .set_background(SystemColors::FIELD)
@@ -129,6 +139,7 @@ impl<C: Chosen, R: Realization> Listbox<C, R> {
       .set_border_color(SystemColors::BORDER)
       .set_corner_radius(8)
       .set_padding(Inset::all(4))
+      .set_max_height(320)
   }
 }
 
@@ -182,22 +193,53 @@ impl<C: Chosen, R: Realization> View<R> for Listbox<C, R> {
     } = self;
     let roster = control.behavior().roster();
     let options = GroupOptions::new(segments);
+    let handle = LazyHandle::new();
 
     roster.set_options(Rc::new(options.clone()));
 
-    let items = Column::new().set_spacing(2).derive_children(
-      {
-        let options = options.clone();
+    // An option focus moves to is built first, wherever the list is scrolled.
+    roster.set_reveal({
+      let (options, handle) = (options.clone(), handle.clone());
 
-        move || options.values()
-      },
-      Clone::clone,
-      move |value: C::Value| {
-        let member = ListboxBehavior::<C>::with_roster(Rc::clone(&roster)).member(value.clone());
+      move |value| {
+        if let Some(index) = untrack(|| options.index_of(value)) {
+          handle.realize(index);
+        }
+      }
+    });
 
-        builder(&value, options.caption(&value)).into_control(member)
-      },
-    );
+    // The option the list box's one tab stop is on stays built.
+    Effect::new({
+      let (options, handle, roster) = (options.clone(), handle.clone(), Rc::clone(&roster));
+
+      move || {
+        let stop = roster
+          .active()
+          .or_else(|| roster.stop())
+          .and_then(|value| options.index_of(&value));
+
+        untrack(|| handle.keep(stop));
+      }
+    });
+
+    let items = Lazy::new(Axis::Vertical, None)
+      .bare()
+      .set_spacing(2)
+      .set_item_extent(ItemExtent::Estimated(30.))
+      .set_lazy_handle(&handle)
+      .derive_items(
+        {
+          let options = options.clone();
+
+          move || options.values()
+        },
+        Clone::clone,
+        move |value: C::Value| {
+          let member = ListboxBehavior::<C>::with_roster(Rc::clone(&roster)).member(value.clone());
+
+          builder(&value, options.caption(&value)).into_control(member)
+        },
+      );
 
     control
       .set_child(AsPart::new(Part::List).set_child(list.set_child(items)))

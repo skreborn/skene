@@ -22,7 +22,7 @@ use skene_foundation::{
   environment::{self, Fact},
   layout::{Axis, Rect},
   seam::{
-    content::{Content, PropValue},
+    content::{Content, PropValue, ScrollOffset, Verdict},
     control::{AccessRequest, Prevent},
     node::{Interaction, NodeKind},
     report::{
@@ -53,6 +53,14 @@ use crate::{
 /// The most nodes whose looks changed for which a frame measures their reach alone, theirs
 /// and their ancestors'; past them it measures every node's.
 const REACH_ALONE: usize = 32;
+
+/// How many times a frame lays out before it paints, at most, where what laying out reports
+/// changes the tree again.
+const SETTLE_PASSES: usize = 4;
+
+/// The share of a scroll box's length a page scrolls (`PageDown`, `Space`, a reader's page),
+/// as Chromium's page does.
+const PAGE: f32 = 0.875;
 
 /// What a backend is asked to do for the window.
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -186,6 +194,8 @@ const TOUCH_SLOP: f32 = 8.;
 
 thread_local! {
   static INPUTS: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+  /// Whether a scroll box was scrolled by a write since the last frame: the hover follows.
+  static SCROLLED: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
   /// The touch whose long press is due, by its id.
   static LONG_PRESSED: std::cell::Cell<Option<i32>> = const { std::cell::Cell::new(None) };
   static FOCUSED: RefCell<Option<std::rc::Weak<crate::node::Drawn>>> = const { RefCell::new(None) };
@@ -281,6 +291,40 @@ pub fn invalidate_all() {
 /// An overlay was shown, hidden or placed again: the open one is synced at the next turn.
 pub fn invalidate_overlays() {
   DIRTY.with(|dirty| dirty.borrow_mut().overlays = true);
+}
+
+/// Reports each scroll box whose offset the last layouts clamped, as the reader's change.
+fn report_clamped() {
+  for node in layout::take_clamped() {
+    if node.is_alive() {
+      report_scroll(&node);
+    }
+  }
+}
+
+/// Reports the scroll box `node`'s offset as a change the platform applied (the reader
+/// scrolled), and shows the truth the answer gives where it differs (a lazy list keeping its
+/// anchor).
+fn report_scroll(node: &Node) {
+  let (x, y) = node.scroll.get();
+  let answer = tree::report::<Linux>(
+    node.id.get(),
+    Report::Change {
+      content: Content::ScrollOffset,
+      proposed: PropValue::Offset(ScrollOffset::new(x, y)),
+      applied: true,
+    },
+  );
+
+  if let Answer::Verdict(Verdict::Replace(PropValue::Offset(offset))) = answer {
+    node.scroll.set((offset.x, offset.y));
+    invalidate_layout();
+  }
+}
+
+/// Whether a layout is pending: what a write of a scroll offset waits on to clamp it.
+fn layout_pending() -> bool {
+  DIRTY.with(|dirty| dirty.borrow().layout)
 }
 
 /// Moves focus to `node` at the next opportunity, or takes it away.
@@ -802,56 +846,112 @@ impl Shell {
     self.advance_fling(Instant::now());
 
     let mut dirty = DIRTY.with(|dirty| std::mem::take(&mut *dirty.borrow_mut()));
+    let mut prepared = Duration::ZERO;
+    let mut laid = false;
 
-    if dirty.overlays {
-      // An overlay's change waits for the turn that syncs it.
-      invalidate_overlays();
-    }
+    // Layout settles before the frame paints: what laying out reports (a box's size, a scroll
+    // box's offset clamped) may change the tree again (a lazy list realizing the rows its
+    // viewport shows, measuring them, keeping its anchor), and that is laid out again, a few
+    // times at most.
+    for _ in 0..SETTLE_PASSES {
+      if dirty.overlays {
+        // An overlay's change waits for the turn that syncs it.
+        invalidate_overlays();
+      }
 
-    if dirty.prepare {
-      if self.chrome.set_title(&self.title, &palette) != Change::None {
+      let pass = Instant::now();
+
+      if dirty.prepare {
+        if self.chrome.set_title(&self.title, &palette) != Change::None {
+          dirty.all = true;
+        }
+
+        let mut repainted = Vec::new();
+
+        if layout::prepare(&root, &palette, &mut repainted) == Change::Layout {
+          dirty.layout = true;
+        }
+
+        dirty.nodes.extend(repainted);
+      } else if !dirty.prepare_nodes.is_empty() {
+        let mut repainted = Vec::new();
+
+        for node in std::mem::take(&mut dirty.prepare_nodes) {
+          if node.is_alive() && node.prepare_subtree(&palette, &mut repainted) == Change::Layout {
+            dirty.layout = true;
+          }
+        }
+
+        dirty.nodes.extend(repainted);
+      }
+
+      prepared += pass.elapsed();
+
+      if dirty.layout {
+        let (width, height) = self.content_size();
+
+        layout::layout(&root, (0., self.chrome.header()), width, height);
+        crate::access::invalidate();
+        walk(&root, |node| {
+          if node.is_entry() {
+            node.fit_entry();
+          }
+        });
+        dirty.all = true;
+        laid = true;
+        // Before the paint, so a box that draws at its size draws in the frame that sized it;
+        // and before anything this pass reports changes the tree, so only what was laid out
+        // reports a size.
+        self.report_sizes(&root, self.chrome.origin());
+        report_clamped();
+      }
+
+      if std::mem::take(&mut self.reveal) && self.reveal_focus() {
         dirty.all = true;
       }
 
-      let mut repainted = Vec::new();
+      let again = DIRTY.with(|dirty| std::mem::take(&mut *dirty.borrow_mut()));
+      let settled = !again.prepare && again.prepare_nodes.is_empty() && !again.layout;
 
-      if layout::prepare(&root, &palette, &mut repainted) == Change::Layout {
-        dirty.layout = true;
+      dirty.prepare = again.prepare;
+      dirty.prepare_nodes = again.prepare_nodes;
+      dirty.layout = again.layout;
+      dirty.all |= again.all;
+      dirty.overlays |= again.overlays;
+      dirty.nodes.extend(again.nodes);
+      dirty.rects.extend(again.rects);
+
+      if again.focus.is_some() {
+        dirty.focus = again.focus;
       }
 
-      dirty.nodes.extend(repainted);
-    } else if !dirty.prepare_nodes.is_empty() {
-      let mut repainted = Vec::new();
-
-      for node in std::mem::take(&mut dirty.prepare_nodes) {
-        if node.is_alive() && node.prepare_subtree(&palette, &mut repainted) == Change::Layout {
-          dirty.layout = true;
-        }
+      if settled {
+        break;
       }
-
-      dirty.nodes.extend(repainted);
     }
 
-    let prepared = started.elapsed();
+    if dirty.prepare || dirty.layout || !dirty.prepare_nodes.is_empty() {
+      // Still unsettled: the next frame takes it up.
+      DIRTY.with(|pending| {
+        let mut pending = pending.borrow_mut();
 
-    if dirty.layout {
-      let (width, height) = self.content_size();
-
-      layout::layout(&root, (0., self.chrome.header()), width, height);
-      crate::access::invalidate();
-      walk(&root, |node| {
-        if node.is_entry() {
-          node.fit_entry();
-        }
+        pending.prepare |= dirty.prepare;
+        pending.layout |= dirty.layout;
+        pending.prepare_nodes.append(&mut dirty.prepare_nodes);
       });
-      dirty.all = true;
+    }
+
+    if let Some(focus) = dirty.focus.take() {
+      DIRTY.with(|pending| pending.borrow_mut().focus = Some(focus));
+    }
+
+    dirty.layout = laid;
+
+    if dirty.overlays {
+      invalidate_overlays();
     }
 
     self.mark_overlay(&dirty);
-
-    if std::mem::take(&mut self.reveal) && self.reveal_focus() {
-      dirty.all = true;
-    }
 
     // A frame that laid out, or that changed much, measures every node's reach again; one
     // that changed a few looks, those nodes' and their ancestors'.
@@ -863,12 +963,7 @@ impl Shell {
       }
     }
 
-    if dirty.layout {
-      // Before the paint, so a box that draws at its size draws in the frame that sized it.
-      self.report_sizes(&root, self.chrome.origin());
-    }
-
-    let laid_out = started.elapsed();
+    let laid_out = started.elapsed() - prepared;
     let (ox, oy) = self.chrome.origin();
     let (surface_width, surface_height) = self.chrome.surface_size(self.size.0, self.size.1);
     let surface = Rect {
@@ -929,7 +1024,7 @@ impl Shell {
     self.painted_at = Some(started);
     skene_foundation::seam::activity::frame();
 
-    if dirty.layout {
+    if dirty.layout || SCROLLED.with(|scrolled| scrolled.replace(false)) {
       self.refresh_hover();
     }
 
@@ -942,7 +1037,7 @@ impl Shell {
 
     trace::frame(trace::FrameCost {
       prepare: prepared,
-      layout: laid_out - prepared,
+      layout: laid_out,
       record: Duration::from_micros(cost.record),
       raster: Duration::from_micros(cost.raster),
       glyphs: Duration::from_micros(cost.glyphs),
@@ -1213,13 +1308,15 @@ impl Shell {
   }
 
   /// Whether `node` takes focus now: a shown control whose facts say it does (a radio while
-  /// it is its group's stop), or a shown box that acts.
+  /// it is its group's stop), a shown box that acts, or a scroll box that scrolls holding
+  /// nothing that takes focus ([`Drawn::is_scroll_stop`]).
   fn focusable(node: &Node) -> bool {
     node.is_shown()
       && match node.spec.interaction {
         Interaction::Control { .. } => node.access.borrow().focusable,
         Interaction::Acting => true,
-        Interaction::None | Interaction::Answering | Interaction::ScrollBar { .. } => false,
+        Interaction::None => node.is_scroll_stop(),
+        Interaction::Answering | Interaction::ScrollBar { .. } => false,
       }
   }
 
@@ -1369,7 +1466,26 @@ impl Shell {
       (Some(at), false) => (at + 1) % order.len(),
       (Some(at), true) => (at + order.len() - 1) % order.len(),
     };
-    let (next, link) = order[next].clone();
+    // Past the last stop (or before the first) the order goes round; a node holding the focus
+    // that realizes more stops than it shows (a lazy list) is asked for its next first.
+    let wrapped = match (at, backward) {
+      (Some(at), false) => at + 1 == order.len(),
+      (Some(at), true) => at == 0,
+      (None, _) => false,
+    };
+    let (mut next, mut link) = order[next].clone();
+
+    if let Some(focus) = &self.focus {
+      let candidate = (!wrapped).then(|| next.id.get());
+
+      if let Some(found) = tree::next_stop::<Linux>(focus.id.get(), candidate, backward)
+        && found != next.id.get()
+        && let Some(found) = crate::node_of(found)
+      {
+        next = found;
+        link = None;
+      }
+    }
 
     match link {
       Some(link) => self.focus_link(&next, link, true),
@@ -1433,6 +1549,7 @@ impl Shell {
     node.scroll.set(next);
     invalidate_paint(node);
     trace::scroll(node, next);
+    report_scroll(node);
     self.refresh_hover();
     crate::access::invalidate();
 
@@ -1445,9 +1562,16 @@ impl Shell {
     let Some(focus) = self.focus.clone() else {
       return false;
     };
+
+    self.reveal(&focus)
+  }
+
+  /// Scrolls the scroll boxes holding `node`, nearest first, as little as shows it whole (its
+  /// start where it is larger than the box); whether one moved.
+  fn reveal(&mut self, node: &Node) -> bool {
     let mut moved = false;
 
-    for ancestor in focus.ancestors() {
+    for ancestor in node.ancestors() {
       if !matches!(
         ancestor.layout_kind(),
         Some(skene_foundation::seam::node::LayoutKind::Scroll { .. })
@@ -1455,7 +1579,7 @@ impl Shell {
         continue;
       }
 
-      let target = focus.window_rect();
+      let target = node.window_rect();
       let view = ancestor.window_rect();
       let delta = |start: f32, length: f32, view_start: f32, view_length: f32| {
         let before = start - view_start;
@@ -1491,7 +1615,7 @@ impl Shell {
       return false;
     }
 
-    let page = |node: &Node| node.frame.get().height * 0.875;
+    let page = |node: &Node| node.frame.get().height * PAGE;
     let step = |node: &Node| -> Option<(f32, f32)> {
       Some(match event.key.as_str() {
         "ArrowUp" => (0., -LINE),
@@ -1935,6 +2059,7 @@ impl Shell {
         window_x: x,
         window_y: y,
         button,
+        modifiers: self.modifiers,
       }),
     );
 
@@ -2160,7 +2285,7 @@ impl Shell {
       let page = match axis {
         Axis::Horizontal => scroll.frame.get().width,
         Axis::Vertical => scroll.frame.get().height,
-      } * 0.875;
+      } * PAGE;
       let delta = if at < start {
         -page
       } else if at >= start + length {
@@ -3500,6 +3625,56 @@ impl Shell {
     invalidate_all();
   }
 
+  /// Answers a reader's request to scroll at `node` (from the accessibility layer): the
+  /// scroll boxes holding it scrolled as little as shows it, or so its top leading corner
+  /// shows at a point of the window, or the scroll box it is (else the nearest holding it)
+  /// scrolled by a page along an axis, as `PageDown` scrolls it.
+  pub fn access_scroll(&mut self, node: &Node, request: AccessRequest) {
+    match request {
+      AccessRequest::ScrollIntoView => {
+        self.reveal(node);
+      }
+      AccessRequest::ScrollToPoint(x, y) => {
+        for ancestor in node.ancestors() {
+          if !matches!(
+            ancestor.layout_kind(),
+            Some(skene_foundation::seam::node::LayoutKind::Scroll { .. })
+          ) {
+            continue;
+          }
+
+          let at = node.window_rect();
+
+          self.scroll_by(&ancestor, at.x - x, at.y - y);
+        }
+      }
+      AccessRequest::ScrollPage { axis, forward } => {
+        let sign = if forward { 1. } else { -1. };
+        let scroller = std::iter::once(Rc::clone(node))
+          .chain(node.ancestors())
+          .find(|candidate| {
+            matches!(
+              candidate.layout_kind(),
+              Some(skene_foundation::seam::node::LayoutKind::Scroll { .. })
+            )
+          });
+
+        if let Some(scroller) = scroller {
+          let frame = scroller.frame.get();
+          let (dx, dy) = match axis {
+            Axis::Horizontal => (sign * frame.width * PAGE, 0.),
+            Axis::Vertical => (0., sign * frame.height * PAGE),
+          };
+
+          self.scroll_by(&scroller, dx, dy);
+        }
+      }
+      _ => self.access_request(node, request),
+    }
+
+    crate::access::invalidate();
+  }
+
   /// Reports a reader's request at `node` (from the accessibility layer) to the control or
   /// the box that acts it is.
   pub fn access_request(&mut self, node: &Node, request: AccessRequest) {
@@ -3623,6 +3798,28 @@ pub fn write(node: &Node, content: Content, value: &PropValue) {
       entry::ime_dirty(false);
     }
     Content::Placement if node.is_overlay() => invalidate_overlays(),
+    Content::ScrollOffset => {
+      if let PropValue::Offset(offset) = value {
+        let wanted = (offset.x.max(0.), offset.y.max(0.));
+        let frame = node.frame.get();
+        let (width, height) = node.extent.get();
+        // Clamped to the extent last laid out, unless a layout pending lays it out again, or
+        // it was never laid out.
+        let shown = if layout_pending() || (width, height) == (0., 0.) {
+          wanted
+        } else {
+          (
+            wanted.0.min((width - frame.width).max(0.)),
+            wanted.1.min((height - frame.height).max(0.)),
+          )
+        };
+
+        if node.scroll.replace(shown) != shown {
+          trace::scroll(node, shown);
+          SCROLLED.with(|scrolled| scrolled.set(true));
+        }
+      }
+    }
     _ => {}
   }
 

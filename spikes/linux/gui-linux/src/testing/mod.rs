@@ -614,7 +614,8 @@ pub struct Element {
 /// AT-SPI's role is one several of Skene's share, the attributes that name the exact one
 /// (`xml-roles`, as browsers report an ARIA role; a heading's `level`), as the drawn
 /// realization's accessibility layer reports them. A switch is a check box to AT-SPI 2.52 (as
-/// GTK 4 reports `GtkSwitch`), and a row and an option are list items; a single-line text and
+/// GTK 4 reports `GtkSwitch`), and a row, an item of a list and an option are list items, the
+/// item of a list told by the place in its set it reports (`posinset`); a single-line text and
 /// a multi-line one are text, told apart by their states.
 #[must_use]
 pub fn role_of(platform_role: &str, states: u64, attributes: &HashMap<String, String>) -> Role {
@@ -637,8 +638,10 @@ pub fn role_of(platform_role: &str, states: u64, attributes: &HashMap<String, St
     }
     "combo box" => Role::ComboBox,
     "list box" => Role::ListBox,
+    "list" => Role::List,
     "list item" => match exact {
       Some("option") => Role::Option,
+      _ if attributes.contains_key("posinset") => Role::ListItem,
       Some(_) => Role::Row,
       None if states & (1 << state::SELECTABLE) != 0 => Role::Option,
       None => Role::Row,
@@ -673,6 +676,7 @@ fn matches(query: &Query, item: &Item) -> bool {
 
   match query {
     Query::Role(wanted, name) => role == *wanted && item.name == **name,
+    Query::Every(wanted) => role == *wanted,
     Query::Text(text) => role == Role::Text && item.name == **text,
     Query::Focused => item.states & (1 << state::FOCUSED) != 0,
   }
@@ -2150,6 +2154,7 @@ impl Driver for Drawn {
     } else {
       HashMap::new()
     };
+    let count = |name: &str| attributes.get(name).and_then(|value| value.parse().ok());
     let role = role_of(&role_name, states, &attributes);
     let has = |interface: &str| interfaces.iter().any(|name| name == interface);
     let bit = |bit: u32| states & (1 << bit) != 0;
@@ -2198,6 +2203,8 @@ impl Driver for Drawn {
         .flatten(),
       text: text.map(Rc::from),
       selection,
+      set_size: count("setsize"),
+      position_in_set: count("posinset"),
       bounds: Self::bounds(found),
     }
   }

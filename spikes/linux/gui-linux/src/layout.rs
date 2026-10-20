@@ -23,6 +23,8 @@ use crate::{
 };
 
 thread_local! {
+  /// The scroll boxes whose offsets a layout clamped to their extents, to report.
+  static CLAMPED: std::cell::RefCell<Vec<Node>> = const { std::cell::RefCell::new(Vec::new()) };
   /// The layout epoch: measurements cached in an earlier one are stale.
   static EPOCH: Cell<u64> = const { Cell::new(1) };
   /// How many measurements were computed rather than read from a cache, since the thread
@@ -38,6 +40,11 @@ pub fn next_epoch() {
 /// How many measurements were computed since the thread started.
 pub fn measured() -> u64 {
   MEASURED.with(Cell::get)
+}
+
+/// The scroll boxes whose offsets the layouts since the last take clamped to their extents.
+pub fn take_clamped() -> Vec<Node> {
+  CLAMPED.with(|clamped| std::mem::take(&mut *clamped.borrow_mut()))
 }
 
 /// The realized tree as the engine's host.
@@ -618,6 +625,10 @@ fn lay_children(node: &Node, window: Rect) {
         sx.clamp(0., (width - window.width).max(0.)),
         sy.clamp(0., (height - window.height).max(0.)),
       );
+
+      if clamped != (sx, sy) {
+        CLAMPED.with(|list| list.borrow_mut().push(Rc::clone(node)));
+      }
 
       node.scroll.set(clamped);
       node.extent.set((width, height));

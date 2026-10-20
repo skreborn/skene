@@ -10,6 +10,9 @@
 //! - `MODE=full` changes the background behind the scroll on the same clock: a repaint of the
 //!   whole window.
 //! - `MODE=painted` shows one 200 by 100 painted box, red, and nothing else.
+//! - `LAZY=1` puts the same rows in a `LazyColumn` in place of a scroll's `Column`: only those
+//!   in view and a few beyond are built, whatever `ROWS` says (ten thousand, a hundred
+//!   thousand).
 
 use std::time::Duration;
 
@@ -121,26 +124,26 @@ fn app() -> AnyView {
     tick(flip, 12);
   }
 
-  let mut column = Column::new().set_padding(8).set_spacing(2);
+  let row = {
+    let (mode, control) = (mode.clone(), control.clone());
 
-  for index in 0..count {
-    let first = index == 0;
-    let row = match mode.as_str() {
-      "layout" if first => Container::new()
-        .derive_padding(move || if flip.get() { 9 } else { 6 })
-        .set_background(stateful()),
-      "paint" if first => Container::new().set_padding(6).derive_background(move || {
-        if flip.get() {
-          Color::rgb(0xfde68a)
-        } else {
-          Color::rgb(0xffffff)
-        }
-      }),
-      _ => Container::new().set_padding(6).set_background(stateful()),
-    };
-    let changes = (first && mode == "value").then_some(flip);
+    move |index: usize| {
+      let first = index == 0;
+      let row = match mode.as_str() {
+        "layout" if first => Container::new()
+          .derive_padding(move || if flip.get() { 9 } else { 6 })
+          .set_background(stateful()),
+        "paint" if first => Container::new().set_padding(6).derive_background(move || {
+          if flip.get() {
+            Color::rgb(0xfde68a)
+          } else {
+            Color::rgb(0xffffff)
+          }
+        }),
+        _ => Container::new().set_padding(6).set_background(stateful()),
+      };
+      let changes = (first && mode == "value").then_some(flip);
 
-    column = column.add_child(
       row.set_corner_radius(4).set_child(
         Row::new()
           .set_spacing(12)
@@ -152,10 +155,23 @@ fn app() -> AnyView {
               .set_child(Text::new(format!("Item number {index}, a row of the list"))),
           )
           .add_child(last(index, &control, changes)),
-      ),
-    );
+      )
+    }
+  };
+
+  if std::env::var("LAZY").is_ok_and(|lazy| lazy == "1") {
+    return LazyColumn::new()
+      .set_padding(8)
+      .set_spacing(2)
+      .set_item_extent(ItemExtent::Estimated(29.))
+      .derive_items(move || (0..count).collect::<Vec<_>>(), |index| *index, row)
+      .into_any();
   }
 
+  let column = (0..count).fold(
+    Column::new().set_padding(8).set_spacing(2),
+    |column, index| column.add_child(row(index)),
+  );
   let scroll = Scroll::new(ScrollAxes::Vertical).set_child(column);
 
   if mode == "full" {

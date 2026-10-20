@@ -11,11 +11,14 @@ use std::{
 
 use crate::{
   NodeId, Owner, Signal,
-  behavior::{Behavior, ControlHandle, Controlled, Response, ToggleKeys, ToggleKind, plain},
+  behavior::{
+    Behavior, ControlHandle, Controlled, Response, ToggleKeys, ToggleKind, TypeAhead, plain,
+  },
   seam::{
     access::{AccessFacts, Checked, Role},
     control::{AccessRequest, ControlState, LabelPlacement, Prevent},
-    report::{KeyEvent, PointerEvent, PointerPhase},
+    report::{KeyEvent, Modifiers, PointerEvent, PointerPhase},
+    runtime::Cancel,
   },
   untrack,
 };
@@ -44,16 +47,25 @@ pub trait Chosen: Clone + PartialEq + 'static {
   /// What each option carries.
   type Value: Choice;
 
+  /// Whether several values can be chosen at once (a set).
+  const SEVERAL: bool;
+
   /// Whether `value` is chosen.
   fn contains(&self, value: &Self::Value) -> bool;
 
   /// What is chosen once the reader chooses `value` from `chosen` (nothing where none
   /// reads): `value` alone for one choice, `value` added or taken away for a set.
   fn choosing(chosen: Option<&Self>, value: &Self::Value) -> Self;
+
+  /// What is chosen once the reader chooses every one of `values` from `chosen` at once (a
+  /// range, or all): the last of them for one choice, all of them added for a set.
+  fn choosing_all(chosen: Option<&Self>, values: Vec<Self::Value>) -> Self;
 }
 
 impl<T: Choice> Chosen for Option<T> {
   type Value = T;
+
+  const SEVERAL: bool = false;
 
   fn contains(&self, value: &T) -> bool {
     self.as_ref() == Some(value)
@@ -62,10 +74,19 @@ impl<T: Choice> Chosen for Option<T> {
   fn choosing(_: Option<&Self>, value: &T) -> Self {
     Some(value.clone())
   }
+
+  fn choosing_all(chosen: Option<&Self>, values: Vec<T>) -> Self {
+    values
+      .into_iter()
+      .last()
+      .or_else(|| chosen.cloned().flatten())
+  }
 }
 
 impl<T: Choice> Chosen for HashSet<T> {
   type Value = T;
+
+  const SEVERAL: bool = true;
 
   fn contains(&self, value: &T) -> bool {
     Self::contains(self, value)
@@ -80,10 +101,20 @@ impl<T: Choice> Chosen for HashSet<T> {
 
     chosen
   }
+
+  fn choosing_all(chosen: Option<&Self>, values: Vec<T>) -> Self {
+    let mut chosen = chosen.cloned().unwrap_or_default();
+
+    chosen.extend(values);
+
+    chosen
+  }
 }
 
 impl<T: Choice + Ord> Chosen for BTreeSet<T> {
   type Value = T;
+
+  const SEVERAL: bool = true;
 
   fn contains(&self, value: &T) -> bool {
     Self::contains(self, value)
@@ -95,6 +126,14 @@ impl<T: Choice + Ord> Chosen for BTreeSet<T> {
     if !chosen.remove(value) {
       chosen.insert(value.clone());
     }
+
+    chosen
+  }
+
+  fn choosing_all(chosen: Option<&Self>, values: Vec<T>) -> Self {
+    let mut chosen = chosen.cloned().unwrap_or_default();
+
+    chosen.extend(values);
 
     chosen
   }
@@ -108,11 +147,18 @@ pub trait Held: 'static {
   /// What its choice is bound as: `T` for `One<T>`, the choice itself for a list box's.
   type Bound: Clone + PartialEq + 'static;
 
+  /// Whether several values can be chosen at once.
+  const SEVERAL: bool;
+
   /// Whether `bound` chooses `value`.
   fn holds(bound: &Self::Bound, value: &Self::Option) -> bool;
 
   /// What is chosen once the reader chooses `value` from `bound` (nothing where none reads).
   fn choosing(bound: Option<&Self::Bound>, value: &Self::Option) -> Self::Bound;
+
+  /// What is chosen once the reader chooses every one of `values` from `bound` at once: the
+  /// last of them where one value is held, all of them added to a set.
+  fn choosing_all(bound: Option<&Self::Bound>, values: Vec<Self::Option>) -> Option<Self::Bound>;
 }
 
 /// A value always chosen: what a radio group and a picker hold, each option carrying a `T`.
@@ -123,6 +169,8 @@ impl<T: Choice> Held for One<T> {
   type Option = T;
   type Bound = T;
 
+  const SEVERAL: bool = false;
+
   fn holds(bound: &T, value: &T) -> bool {
     bound == value
   }
@@ -130,11 +178,17 @@ impl<T: Choice> Held for One<T> {
   fn choosing(_: Option<&T>, value: &T) -> T {
     value.clone()
   }
+
+  fn choosing_all(_: Option<&T>, values: Vec<T>) -> Option<T> {
+    values.into_iter().last()
+  }
 }
 
 impl<C: Chosen> Held for C {
   type Option = C::Value;
   type Bound = C;
+
+  const SEVERAL: bool = C::SEVERAL;
 
   fn holds(bound: &C, value: &C::Value) -> bool {
     bound.contains(value)
@@ -142,6 +196,10 @@ impl<C: Chosen> Held for C {
 
   fn choosing(bound: Option<&C>, value: &C::Value) -> C {
     C::choosing(bound, value)
+  }
+
+  fn choosing_all(bound: Option<&C>, values: Vec<C::Value>) -> Option<C> {
+    Some(C::choosing_all(bound, values))
   }
 }
 
@@ -335,6 +393,10 @@ impl<'a> CollectionKeys<'a> {
 /// What a choice commits: run with the value of the member chosen.
 type Commit<T> = Rc<dyn Fn(&T)>;
 
+/// What builds the member carrying a value where its collection has not built it: a windowed
+/// list's.
+type Reveal<T> = Rc<dyn Fn(&T)>;
+
 /// The members of a collection as they register, the options it moves through, its controlled
 /// choice, and what a choice commits: what a group and its members share.
 pub struct Roster<H: Held> {
@@ -346,6 +408,11 @@ pub struct Roster<H: Held> {
   changed: Signal<u32>,
   active: Signal<Option<H::Option>>,
   follows_pointer: std::cell::Cell<bool>,
+  reveal: RefCell<Option<Reveal<H::Option>>>,
+  anchor: RefCell<Option<H::Option>>,
+  pressed_with: std::cell::Cell<Modifiers>,
+  type_ahead: Rc<RefCell<TypeAhead>>,
+  type_ahead_reset: RefCell<Option<Cancel>>,
 }
 
 impl<H: Held> std::fmt::Debug for Roster<H> {
@@ -370,7 +437,39 @@ impl<H: Held> Roster<H> {
       changed: Signal::new(0),
       active: Signal::new(None),
       follows_pointer: std::cell::Cell::new(false),
+      reveal: RefCell::new(None),
+      anchor: RefCell::new(None),
+      pressed_with: std::cell::Cell::new(Modifiers::default()),
+      type_ahead: Rc::new(RefCell::new(TypeAhead::new())),
+      type_ahead_reset: RefCell::new(None),
     })
+  }
+
+  /// Builds the member carrying a value with `reveal` where it is not built: a collection
+  /// whose list windows its members builds only those in view, every other member counting
+  /// as enabled until it is built and moved to.
+  pub fn set_reveal(&self, reveal: impl Fn(&H::Option) + 'static) {
+    *self.reveal.borrow_mut() = Some(Rc::new(reveal));
+  }
+
+  /// Whether its list builds only the members in view ([`Roster::set_reveal`]).
+  #[must_use]
+  pub fn is_windowed(&self) -> bool {
+    self.reveal.borrow().is_some()
+  }
+
+  /// Chooses each of `values` at once, as a range or select-all does: in a set, all added;
+  /// otherwise the last.
+  pub fn choose_all(&self, values: Vec<H::Option>) {
+    let now = untrack(|| self.chosen());
+
+    if let Some(next) = H::choosing_all(now.as_ref(), values)
+      && now.as_ref() != Some(&next)
+    {
+      let chosen = self.chosen.borrow().clone();
+
+      chosen.ask(next);
+    }
   }
 
   /// Makes the pointer moving over a member focus it, whatever the collection's policy says:
@@ -522,23 +621,34 @@ impl<H: Held> Roster<H> {
       .map(|(value, _)| value.clone())
   }
 
-  /// Whether the member carrying `value` is registered and enabled, tracking both.
+  /// Whether the member carrying `value` is registered and enabled, tracking both: in a
+  /// windowed list, a member not built yet counts as enabled.
   #[must_use]
   pub fn is_enabled(&self, value: &H::Option) -> bool {
     let _ = self.changed.get();
 
-    self
-      .member(value)
-      .is_some_and(|member| !member.is_disabled())
+    match self.member(value) {
+      Some(member) => !member.is_disabled(),
+      None => self.is_windowed(),
+    }
   }
 
-  /// Moves focus to the member carrying `value`, which becomes the active one.
+  /// Moves focus to the member carrying `value`, which becomes the active one: built first
+  /// where its list has not built it.
   pub fn focus(&self, value: &H::Option) {
     if self
       .active
       .with_untracked(|active| active.as_ref() != Some(value))
     {
       self.active.set(Some(value.clone()));
+    }
+
+    if self.member(value).is_none() {
+      let reveal = self.reveal.borrow().clone();
+
+      if let Some(reveal) = reveal {
+        reveal(value);
+      }
     }
 
     if let Some(member) = self.member(value) {
@@ -803,6 +913,16 @@ impl<P: CollectionPolicy, H: Held> Behavior for Collection<P, H> {
     P::GROUP
   }
 
+  fn access(&self) -> AccessFacts {
+    let listbox = P::GROUP == Role::ListBox;
+
+    AccessFacts {
+      set_size: listbox.then(|| self.roster.options().count()),
+      multiselectable: listbox && H::SEVERAL,
+      ..AccessFacts::default()
+    }
+  }
+
   fn label_placement(&self) -> LabelPlacement {
     LabelPlacement::Leading
   }
@@ -834,11 +954,103 @@ impl<P: CollectionPolicy, H: Held> Member<P, H> {
   }
 
   fn choose(&self) {
+    *self.roster.anchor.borrow_mut() = Some(self.value.clone());
+
     if P::COMMITS {
       self.roster.commit(&self.value);
     } else {
       self.roster.choose(&self.value);
     }
+  }
+
+  /// Chooses every option from the one last chosen alone (the anchor) to this one, built or
+  /// not, where several can be chosen and there is an anchor: whether it did.
+  fn choose_range(&self) -> bool {
+    let anchor = self.roster.anchor.borrow().clone();
+    let Some(anchor) = anchor.filter(|_| H::SEVERAL) else {
+      return false;
+    };
+    let options = self.roster.options();
+    let range = untrack(|| {
+      let (from, to) = (options.index_of(&anchor)?, options.index_of(&self.value)?);
+
+      Some(
+        (from.min(to)..=from.max(to))
+          .filter_map(|index| options.value(index))
+          .collect::<Vec<_>>(),
+      )
+    });
+    let Some(range) = range else {
+      return false;
+    };
+
+    self.roster.focus(&self.value);
+    self.roster.choose_all(range);
+
+    true
+  }
+
+  /// Chooses every option, built or not, where several can be chosen: whether it did.
+  fn choose_every(&self) -> bool {
+    if !H::SEVERAL {
+      return false;
+    }
+
+    let options = self.roster.options();
+    let every = untrack(|| {
+      (0..options.count())
+        .filter_map(|index| options.value(index))
+        .collect()
+    });
+
+    self.roster.choose_all(every);
+
+    true
+  }
+
+  /// Moves focus to the option a typed character finds by its name, from the active one, in
+  /// a list box, where the key types one: whether it did.
+  fn type_ahead(&self, event: &KeyEvent, control: &ControlHandle) -> bool {
+    let mut characters = event.key.chars();
+    let (Some(character), None) = (characters.next(), characters.next()) else {
+      return false;
+    };
+    let roster = &self.roster;
+
+    if !P::SELECTS
+      || !event.down
+      || !plain(event)
+      || character.is_control()
+      || character == ' ' && !roster.type_ahead.borrow().is_active()
+    {
+      return false;
+    }
+
+    let options = roster.options();
+    let (names, current) = untrack(|| {
+      let names: Vec<Rc<str>> = (0..options.count())
+        .map(|index| options.name(index).unwrap_or_else(|| Rc::from("")))
+        .collect();
+
+      (names, options.index_of(&self.value))
+    });
+    let names: Vec<&str> = names.iter().map(|name| &**name).collect();
+    let found = roster
+      .type_ahead
+      .borrow_mut()
+      .type_text(&event.key, &names, current);
+    let buffer = Rc::clone(&roster.type_ahead);
+    let reset = control.schedule(TypeAhead::PAUSE, move || buffer.borrow_mut().reset());
+
+    if let Some(previous) = roster.type_ahead_reset.replace(Some(reset)) {
+      previous.cancel();
+    }
+
+    if let Some(target) = found.and_then(|index| untrack(|| options.value(index))) {
+      roster.focus(&target);
+    }
+
+    true
   }
 }
 
@@ -852,15 +1064,30 @@ impl<P: CollectionPolicy, H: Held> Behavior for Member<P, H> {
   }
 
   fn on_click(&self, _: &ControlHandle) -> Prevent {
+    let modifiers = self.roster.pressed_with.replace(Modifiers::default());
+
+    if modifiers.shift && self.choose_range() {
+      return Prevent::All;
+    }
+
     self.roster.focus(&self.value);
     self.choose();
 
     Prevent::All
   }
 
-  fn on_key(&self, event: &KeyEvent, _: &ControlHandle) -> Prevent {
+  fn on_key(&self, event: &KeyEvent, control: &ControlHandle) -> Prevent {
     let roster = &self.roster;
     let modifiers = event.modifiers;
+    let primary = modifiers.control && !modifiers.alt && !modifiers.meta && !modifiers.shift;
+
+    if event.down && primary && event.key.eq_ignore_ascii_case("a") && self.choose_every() {
+      return Prevent::All;
+    }
+
+    if self.type_ahead(event, control) {
+      return Prevent::All;
+    }
 
     if event.down && P::COMMITS {
       let toggles = (modifiers.alt && matches!(event.key.as_str(), "ArrowDown" | "ArrowUp"))
@@ -943,6 +1170,10 @@ impl<P: CollectionPolicy, H: Held> Behavior for Member<P, H> {
   }
 
   fn on_pointer(&self, event: &PointerEvent, _: &ControlHandle) -> Prevent {
+    if event.phase == PointerPhase::Down {
+      self.roster.pressed_with.set(event.modifiers);
+    }
+
     if (P::FOLLOWS_POINTER || self.roster.follows_pointer()) && event.phase == PointerPhase::Move {
       self.roster.focus(&self.value);
     }
@@ -970,11 +1201,15 @@ impl<P: CollectionPolicy, H: Held> Behavior for Member<P, H> {
 
   fn access(&self) -> AccessFacts {
     let chosen = self.is_chosen();
+    let position = (P::MEMBER == Role::Option)
+      .then(|| self.roster.options().index_of(&self.value))
+      .flatten();
 
     AccessFacts {
       checked: (!P::COMMITS).then_some(if chosen { Checked::On } else { Checked::Off }),
       selected: P::SELECTS.then_some(chosen),
       actions: vec![AccessRequest::Activate],
+      position_in_set: position,
       ..AccessFacts::default()
     }
   }

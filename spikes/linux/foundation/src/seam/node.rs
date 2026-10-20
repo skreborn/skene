@@ -89,6 +89,7 @@ impl NodeKind {
 
     match self {
       Self::Layout(LayoutKind::Box) => &[C::Destination],
+      Self::Layout(LayoutKind::Scroll { .. }) => &[C::ScrollOffset],
       Self::Layout(_) | Self::Scope | Self::Segment | Self::Native => &[],
       Self::Text => &[C::Text, C::Runs, C::Reserve],
       Self::Image => &[C::Source],

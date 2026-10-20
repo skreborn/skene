@@ -68,14 +68,9 @@ fn sends_touch(screen: &testing::Screen) -> bool {
   sends
 }
 
-/// How many of the pointer's units a pixel of the window is: the X screen's device pixels on
-/// X11, one elsewhere.
+/// How many of the pointer's units a pixel of the window is.
 fn unit(screen: &testing::Screen) -> f64 {
-  if std::env::var("SKENE_BACKEND").as_deref() == Ok("x11") {
-    screen.driver().scale()
-  } else {
-    1.
-  }
+  screen.driver().units_per_pixel()
 }
 
 /// Where the caret before character `offset` of `field` stands, in the pointer's space: its x,

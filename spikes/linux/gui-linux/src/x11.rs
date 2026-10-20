@@ -212,6 +212,7 @@ struct X11 {
   device: i32,
   xi: bool,
   scroll: HashMap<(u16, u16), ScrollAxis>,
+  emulated_wheel: bool,
   segment: Option<Segment>,
   shm: bool,
   buffer: Vec<u8>,
@@ -357,6 +358,7 @@ impl X11 {
       device,
       xi: false,
       scroll: HashMap::new(),
+      emulated_wheel: false,
       segment: None,
       shm: false,
       buffer: Vec::new(),
@@ -1043,8 +1045,7 @@ impl X11 {
 
     let id = self.cursors.as_ref()?.load_cursor(&self.conn, name).ok()?;
 
-    // Named as libXcursor names the cursors it loads, so a reader of the screen (XFixes)
-    // tells them apart as it does GTK's.
+    // A cursor carries its name, as libXcursor names the cursors it loads.
     if id != x11rb::NONE && self.xfixes {
       self.conn.xfixes_set_cursor_name(id, name.as_bytes()).ok()?;
     }
@@ -1153,7 +1154,7 @@ impl X11 {
 
         self.requests(shell, requests)?;
       }
-      4..=7 if down && !emulated => {
+      4..=7 if down && (!emulated || self.emulated_wheel) => {
         let (dx, dy) = match detail {
           4 => (0., -1.),
           5 => (0., 1.),
@@ -1421,7 +1422,7 @@ impl X11 {
         self.motion(shell, (fixed(event.event_x), fixed(event.event_y)))?;
       }
       Event::XinputEnter(event) => {
-        self.reset_scroll(event.deviceid);
+        self.reset_scroll();
         self.motion(shell, (fixed(event.event_x), fixed(event.event_y)))?;
       }
       Event::XinputLeave(_) | Event::LeaveNotify(_) => shell.pointer_leave(),
@@ -1534,30 +1535,11 @@ impl X11 {
     Ok(())
   }
 
-  /// Takes the scroll valuators' values now as where their next motion starts from: the
-  /// first scroll after the pointer enters moves by what it adds to them.
-  fn reset_scroll(&mut self, device: u16) {
+  /// Forgets the scroll valuators' values: the first scroll after the pointer enters, from a
+  /// value unknown, moves by the wheel buttons the server emulates for it.
+  fn reset_scroll(&mut self) {
     for axis in self.scroll.values_mut() {
       axis.last = None;
-    }
-
-    let Ok(reply) = self
-      .conn
-      .xinput_xi_query_device(device)
-      .map_err(|_| ())
-      .and_then(|cookie| cookie.reply().map_err(|_| ()))
-    else {
-      return;
-    };
-
-    for info in reply.infos {
-      for class in info.classes {
-        if let xinput::DeviceClassData::Valuator(valuator) = class.data
-          && let Some(axis) = self.scroll.get_mut(&(info.deviceid, valuator.number))
-        {
-          axis.last = Some(fixed64(valuator.value));
-        }
-      }
     }
   }
 
@@ -1571,6 +1553,7 @@ impl X11 {
   ) {
     let mut values = values.iter();
     let (mut dx, mut dy) = (0., 0.);
+    let mut unknown = None;
 
     for (word, bits) in mask.iter().enumerate() {
       for bit in 0..32 {
@@ -1585,6 +1568,8 @@ impl X11 {
         let value = fixed64(*value);
 
         if let Some(axis) = self.scroll.get_mut(&(device, number)) {
+          unknown = Some(axis.last.is_none());
+
           if let Some(last) = axis.last {
             let delta = ((value - last) / axis.increment) as f32;
 
@@ -1598,6 +1583,10 @@ impl X11 {
           axis.last = Some(value);
         }
       }
+    }
+
+    if let Some(unknown) = unknown {
+      self.emulated_wheel = unknown;
     }
 
     if dx != 0. || dy != 0. {

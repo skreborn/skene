@@ -43,7 +43,7 @@ const FIRST_FRAME: Duration = Duration::from_secs(3);
 
 /// How long a screen cast must deliver no newer frame before its newest is what the screen
 /// shows.
-const CAST_QUIET: Duration = Duration::from_millis(60);
+const CAST_QUIET: Duration = Duration::from_millis(200);
 
 /// How long a screen cast may take to deliver a frame newer than the window's last paint, and
 /// to stop delivering, before its newest is taken anyway.

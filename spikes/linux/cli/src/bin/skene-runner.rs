@@ -20,14 +20,14 @@
 //!     `SKENE_KWIN` names the `kwin_wayland` to run, where the one on `PATH` cannot be (its
 //!     file capability beyond the process's bounding set);
 //!
-//!   `SKENE_TEST_SCALE` (1 where unset) scales the leg's screen fractionally: sway's output
-//!   scale, KWin's `--scale` and mutter's monitor scale (its `scale-monitor-framebuffer`
-//!   feature on, the scale in its `monitors.xml`) reach the app through fractional-scale-v1;
-//!   on `kwin-x11` Xwayland shows the screen's device pixels (KWin's `[Xwayland] Scale`, as a
-//!   desktop leaving X11 apps to scale themselves sets it) and the test stands in for the
-//!   desktop's XSETTINGS daemon, publishing `Xft/DPI`; on `x11` it is the realization's
-//!   `SKENE_SCALE` (a bare Xvfb has no desktop to publish `Xft/DPI`); the `weston` leg takes 1
-//!   alone (weston 13 offers no fractional-scale-v1);
+//!   `SKENE_TEST_SCALE` (1 where unset) scales the leg's screen fractionally, as large in logical
+//!   pixels at every scale: sway's output scale, KWin's `--scale` and mutter's monitor scale (its
+//!   `scale-monitor-framebuffer` feature on, the scale in its `monitors.xml`) reach the app through
+//!   fractional-scale-v1; on `kwin-x11` Xwayland shows the screen's device pixels (KWin's
+//!   `[Xwayland] Scale`, as a desktop leaving X11 apps to scale themselves sets it) and the test
+//!   stands in for the desktop's XSETTINGS daemon, publishing `Xft/DPI`; on `x11` it is the
+//!   realization's `SKENE_SCALE` (a bare Xvfb has no desktop to publish `Xft/DPI`); the `weston`
+//!   leg takes 1 alone (weston 13 offers no fractional-scale-v1);
 //!
 //!   each with a private D-Bus session (which starts the accessibility bus on demand), a
 //!   private runtime directory and configuration home, and none of the user's display,
@@ -130,15 +130,15 @@ const USER_ONLY: [&str; 13] = [
   "SKENE_BACKEND",
 ];
 
-/// The virtual screen a test's session shows, at scale 1.
+/// The virtual screen a test's session shows, in logical pixels.
 const SCREEN: (u32, u32) = (1280, 1024);
 
-/// The virtual screen a test's session shows at `scale`: [`SCREEN`], or just under it where
-/// its logical size (its device size over the scale) would not be whole pixels, so the
-/// compositor's logical space maps onto the device pixels exactly.
+/// The virtual screen a test's session shows at `scale`, in device pixels: [`SCREEN`] times
+/// the scale, or just under it where that would not be whole pixels, so the compositor's
+/// logical space maps onto the device pixels exactly.
 fn screen_at(scale: f64) -> (u32, u32) {
-  let whole = |device: u32| {
-    let mut logical = (f64::from(device) / scale).floor();
+  let whole = |logical: u32| {
+    let mut logical = f64::from(logical);
 
     while logical > 1. && ((logical * scale) - (logical * scale).round()).abs() > 1e-9 {
       logical -= 1.;

@@ -605,7 +605,7 @@ pub struct Shell {
   drop_over: Option<(Node, bool)>,
   /// Frames painted.
   pub frames: u64,
-  /// When the last frame was painted, the window's or its open overlay's.
+  /// When the last frame was painted, the window's, its open overlay's or an adornment's.
   pub painted_at: Option<Instant>,
   /// Whether the last frame went to the screen through the GPU's swapchain.
   presented: bool,
@@ -2050,6 +2050,7 @@ impl Shell {
     let icon = self.drag_out.as_ref().and_then(|drag| drag.icon.as_ref());
     let magnifier = self.magnifier.as_ref();
     let focused = magnifier.is_some_and(|magnifier| is_focused(&magnifier.entry));
+    let started = Instant::now();
     let renderer = self.adornment_renderers.entry(adornment).or_default();
 
     renderer.paint(
@@ -2074,12 +2075,18 @@ impl Shell {
       },
     );
 
+    self.painted_at = Some(started);
+    skene_foundation::seam::activity::frame();
+
     Some(&renderer.pixmap)
   }
 
-  /// The backend took `adornment`'s surface down: what painted it goes.
+  /// The backend took `adornment`'s surface down: what painted it goes, and the screen changes
+  /// as a frame changes it.
   pub fn drop_adornment(&mut self, adornment: Adornment) {
     self.adornment_renderers.remove(&adornment);
+    self.painted_at = Some(Instant::now());
+    skene_foundation::seam::activity::frame();
   }
 
   /// The touch selection handle a finger down at `at` (window pixels) takes, where one does,

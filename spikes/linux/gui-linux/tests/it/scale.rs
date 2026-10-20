@@ -484,7 +484,8 @@ fn a_popup_on_another_output_than_its_windows_takes_that_outputs_scale() {
 
   let screen = testing::render(striped);
   let first = screen.driver().scale();
-  let second: f64 = if (first - 1.).abs() < 1e-6 { 2. } else { 1. };
+  // Higher than the first's: sway gives a window across outputs the highest of their scales.
+  let second = first.floor() + 1.;
   let (first_width, _) = screen.driver().screen_extent();
   let before = sway_outputs();
 

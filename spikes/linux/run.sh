@@ -44,7 +44,9 @@
 #     every control by pointer, keys and a reader's actions; the fields' typing, handlers,
 #     selection gestures, clipboard, primary selection, undo, secure entry and editor;
 #   - Hangul through IBus, Fcitx5 and XIM on X11, gnome-shell's IBus over text-input-v3 and
-#     Fcitx5 behind sway (input-method-v2); the input method choice;
+#     Fcitx5 behind sway (input-method-v2); the input method choice; which keys of a password
+#     field reach the input method as key events, against GTK 4's GtkPasswordEntry
+#     (tools/controls/gtk-password.py), with and without IBUS_DISCARD_PASSWORD;
 #   - textprobe.py (report, edit) on the drawn field and on GtkEntry; Orca 46's speech over the
 #     same keys for the field, switch and button against GtkEntry, GtkSwitch and GtkButton, on
 #     X11 and on headless gnome-shell's Wayland with its Xwayland (which Orca 46 needs to start;
@@ -87,8 +89,12 @@
 #     mutter (tools/paint/repaint.sh).
 #
 # Stage SHELL GAPS (drag and drop, touch, kinetic scrolling, fractional scale, more
-# compositors): the realization's driver tests (gestures::, dnd::, scale::) run in every leg
-# above; here, the GUI crates and the realization's tests on the legs this stage adds:
+# compositors): the realization's driver tests (gestures::, dnd::, handles::, scale::, menu::)
+# run in every leg above: a drag's icon read from the screen under the pointer, the X11 drag's
+# cursors read through XFixes against GTK 4's drag, the touch selection handles and the
+# magnifier where the leg injects touch (mutter's EIS, KWin's fake input), a popup's own
+# fractional scale on a second sway output, a menu kept on weston's screen; here, the GUI crates
+# and the realization's tests on the legs this stage adds:
 #   - weston and KWin, each on its X11 backend inside a private Xvfb (XTest into weston, KWin's
 #     fake input), and a window on that KWin's Xwayland, where the compositor starts (KWin from
 #     SKENE_KWIN, or kwin_wayland on PATH);

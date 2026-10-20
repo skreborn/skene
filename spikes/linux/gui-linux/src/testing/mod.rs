@@ -1096,6 +1096,14 @@ impl Drawn {
     (origin.0 + at(left, width, x), origin.1 + at(top, height, y))
   }
 
+  /// How many of the pointer space's units a pixel of the window is: the window's scale where
+  /// the pointer moves in the X screen's device pixels (XTest), one where it moves in a
+  /// compositor's logical pixels.
+  #[must_use]
+  pub fn units_per_pixel(&self) -> f64 {
+    Self::pointer_unit()
+  }
+
   /// How many of the pointer space's units a pixel of the window is.
   fn pointer_unit() -> f64 {
     if with_input(|input| input.window_origin()).is_some() {

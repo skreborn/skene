@@ -281,7 +281,6 @@ impl Handle {
       Self::Start => Point::new(f64::from(left + HANDLE_ICON.0), f64::from(top)),
       Self::End => Point::new(f64::from(left), f64::from(top)),
     };
-    // The two points where lines from the tip touch the circle.
     let toward = tip - center;
     let distance = toward.hypot();
     let spread = (radius / distance).acos();

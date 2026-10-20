@@ -97,11 +97,7 @@ fn a_dragged_selection_shows_its_text_under_the_pointer() {
   first.press("Home").press("shift+End");
 
   let driver = screen.driver();
-  let unit = if std::env::var("SKENE_BACKEND").as_deref() == Ok("x11") {
-    driver.scale()
-  } else {
-    1.
-  };
+  let unit = driver.units_per_pixel();
   let start = driver.character_rect(first.element(), 0);
   let end = driver.character_rect(first.element(), 21);
   let from = driver.character_point(first.element(), 2, 0.5);
@@ -238,8 +234,10 @@ struct Peer {
   lines: Arc<Mutex<Vec<String>>>,
   /// Its window's origin in the pointer's space.
   origin: (f64, f64),
-  /// Its window's size.
+  /// Its window's size in the pointer's space.
   size: (f64, f64),
+  /// How many of the pointer space's units a pixel of the peer is.
+  unit: f64,
   /// The test's window's rectangle in the pointer's space.
   window: (f64, f64, f64, f64),
 }
@@ -321,11 +319,20 @@ impl Peer {
     } else {
       "wayland"
     };
+    // An X11 peer's pixel is the X screen's device pixel, a Wayland one's the compositor's
+    // logical pixel.
+    let unit = if backend == "x11" {
+      let driver = screen.driver();
+
+      driver.units_per_pixel() / driver.scale()
+    } else {
+      1.
+    };
     let placed = (window.0 + window.2 + 24., window.1.max(0.));
     let mut child = Command::new(python)
       .args(["-I", script, text, PEER_FILE])
-      .env("SKENE_PEER_X", format!("{}", placed.0.round()))
-      .env("SKENE_PEER_Y", format!("{}", placed.1.round()))
+      .env("SKENE_PEER_X", format!("{}", (placed.0 / unit).round()))
+      .env("SKENE_PEER_Y", format!("{}", (placed.1 / unit).round()))
       .env("GDK_BACKEND", backend)
       .env("GTK_A11Y", "none")
       .env("GSK_RENDERER", "cairo")
@@ -352,6 +359,7 @@ impl Peer {
       lines,
       origin: (0., 0.),
       size: (0., 0.),
+      unit,
       window,
     };
     let Some(ready) = peer.wait_for(screen, Duration::from_secs(20), |line| {
@@ -369,7 +377,7 @@ impl Peer {
     };
     let size = numbers(&ready);
 
-    peer.size = (size[0], size[1]);
+    peer.size = (size[0] * unit, size[1] * unit);
 
     let (width, height) = screen.driver().screen_extent();
     let outside = |(x, y): (f64, f64)| {
@@ -403,7 +411,7 @@ impl Peer {
       if let Some(line) = found {
         let at = numbers(&line);
 
-        peer.origin = (point.0 - at[0], point.1 - at[1]);
+        peer.origin = (point.0 - at[0] * unit, point.1 - at[1] * unit);
         eprintln!(
           "{test}: the peer's window is at {:?}, {:?} large; the test's at {window:?}",
           peer.origin, peer.size
@@ -495,8 +503,8 @@ impl Peer {
       .collect();
 
     (
-      self.origin.0 + numbers[0] + numbers[2] * x,
-      self.origin.1 + numbers[1] + numbers[3] * y,
+      self.origin.0 + (numbers[0] + numbers[2] * x) * self.unit,
+      self.origin.1 + (numbers[1] + numbers[3] * y) * self.unit,
     )
   }
 

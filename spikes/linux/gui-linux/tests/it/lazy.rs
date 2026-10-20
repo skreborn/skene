@@ -282,11 +282,19 @@ fn tab_leaves_a_list_whose_next_stop_is_beyond_a_page() {
 
   list.scroll(0, 100);
 
-  // However far a detent goes (15 pixels where the wheel is KWin's fake one), until the
-  // button shows whole.
+  // However far a detent goes (15 pixels where the wheel is KWin's fake one, a line and a
+  // half where it reaches KWin's Xwayland), learnt from those hundred: as many as bring the
+  // button's row to the middle of the view, then one at a time until it shows whole.
   let bounds = list.read().bounds;
+  let item = screen.find_all_by_role(Role::ListItem)[0].read();
+  let place = item.position_in_set.expect("an item tells its place") - 1;
+  let offset = place as f32 * 40. - (item.bounds.y - bounds.y);
+  let detent = offset / 100.;
+  let middle = 300. * 40. - (bounds.height - 40.) / 2.;
 
-  for _ in 0..200 {
+  list.scroll(0, ((middle - offset) / detent).round() as i32);
+
+  for _ in 0..20 {
     let shown = screen
       .query_by_role(Role::Button, "Open 300")
       .is_some_and(|button| within(button.read().bounds, bounds));
@@ -295,7 +303,7 @@ fn tab_leaves_a_list_whose_next_stop_is_beyond_a_page() {
       break;
     }
 
-    list.scroll(0, 10);
+    list.scroll(0, 1);
   }
 
   screen.find_by_role(Role::Button, "Open 300").click();

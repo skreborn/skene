@@ -321,12 +321,7 @@ fn a_context_menu_at_the_windows_foot_stays_on_the_screen_and_answers_where_it_s
   let spacer = Signal::new(10_i32);
   let screen = testing::render(move || bottom_field(spacer));
   let (_, screen_height) = screen.driver().screen_extent();
-  let unit = screen.driver().scale();
-  let unit = if std::env::var("SKENE_BACKEND").as_deref() == Ok("x11") {
-    unit
-  } else {
-    1.
-  };
+  let unit = screen.driver().units_per_pixel();
   // The window nearly as tall as the screen, its field at its foot.
   let height = ((screen_height / unit) - 80.).max(400.) as i32;
 

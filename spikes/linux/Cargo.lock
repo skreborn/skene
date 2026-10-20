@@ -2232,6 +2232,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "skene-conformance-linux"
+version = "0.0.0"
+dependencies = [
+ "png",
+ "skene-conformance",
+ "skene-foundation",
+ "skene-gui",
+ "skene-gui-linux",
+]
+
+[[package]]
 name = "skene-foundation"
 version = "0.0.0"
 dependencies = [
@@ -2262,9 +2273,7 @@ dependencies = [
  "raw-window-handle",
  "reis",
  "serde",
- "skene-conformance",
  "skene-foundation",
- "skene-gui",
  "skene-parley",
  "smithay-client-toolkit",
  "unicode-segmentation",

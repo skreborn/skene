@@ -1,6 +1,6 @@
 //! The conformance suite on Linux: each scenario a `#[skene_gui::test]` of its own, run through
 //! the Linux driver (AT-SPI reads, real input) in the session the display runner gives the test
-//! (`SKENE_TEST_SESSION`: X11 by default, headless mutter, headless sway).
+//! (`SKENE_TEST_SESSION`: X11 by default, headless mutter, sway, weston, KWin).
 
 use skene_gui::testing::Drawn;
 

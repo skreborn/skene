@@ -3,6 +3,7 @@ resolver = "3"
 members = [
   "cli",
   "conformance",
+  "conformance-linux",
   "foundation",
   "gui",
   "gui-linux",

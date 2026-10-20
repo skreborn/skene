@@ -34,10 +34,6 @@ xim = { default-features = false, features = ["x11rb-client", "x11rb-xcb"], vers
 xkbcommon = { default-features = false, features = ["wayland", "x11"], version = "=0.9.0" }
 zbus = { default-features = false, features = ["async-io", "blocking-api"], version = "=5.19.0" }
 
-[dev-dependencies]
-skene-conformance.workspace = true
-skene-gui.workspace = true
-
 [features]
 # Paints each window on the GPU where an adapter presents to it (vello's hybrid renderer over
 # wgpu's Vulkan, through the platform's swapchain), the CPU path its floor. Off by default.

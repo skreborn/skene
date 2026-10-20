@@ -1,0 +1,25 @@
+[package]
+name = "skene-conformance-linux"
+description = "The conformance suite on Linux and skene-gui-linux's own driver tests: everything that drives the realization through the facade, kept above both so the realization depends on neither."
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+skene-gui.workspace = true
+
+[dev-dependencies]
+png = "=0.18.1"
+skene-conformance.workspace = true
+skene-foundation.workspace = true
+skene-gui-linux.workspace = true
+
+# The GPU path's tests, built where the realization builds its GPU path (its `gpu` feature).
+[[test]]
+name = "gpu"
+required-features = ["skene-gui-linux/gpu"]
+
+[lints]
+workspace = true

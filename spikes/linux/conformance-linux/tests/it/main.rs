@@ -1,6 +1,6 @@
-//! skene-gui-linux's integration tests, every one through the driver on the display runner's
-//! session: a window shown on the leg's display server, read as a reader reads it (AT-SPI)
-//! and as the screen shows it, acted on by real input.
+//! The conformance suite on Linux and skene-gui-linux's own tests, every one through the driver
+//! on the display runner's session: a window shown on the leg's display server, read as a reader
+//! reads it (AT-SPI) and as the screen shows it, acted on by real input.
 
 mod chrome;
 mod contents;
@@ -8,8 +8,6 @@ mod desktop;
 mod dnd;
 mod gestures;
 mod glyphs;
-#[cfg(feature = "gpu")]
-mod gpu;
 mod handles;
 mod lazy;
 mod menu;
@@ -21,6 +19,7 @@ mod scale;
 mod scroll;
 mod secure;
 mod selection;
+mod suite;
 
 use skene_foundation::{
   NodeId,

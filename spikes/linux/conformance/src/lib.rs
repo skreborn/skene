@@ -4,8 +4,9 @@
 //! [`Driver`]: each opens a page of the suite (a view built with skene-gui's shared views,
 //! publishing probes of the signals it binds), acts as a user acts, and checks what a reader
 //! finds. A divergence a scenario finds is a bug in the realization, never a special case in
-//! the suite. Here the suite runs through the Linux driver (`tests/linux.rs`), on the window
-//! Skene draws, in each of the display runner's sessions (X11, headless mutter, headless sway).
+//! the suite. On Linux the suite runs through the Linux driver (skene-conformance-linux), on the
+//! window Skene draws, in each of the display runner's sessions (X11, headless mutter, sway,
+//! weston, KWin).
 //!
 //! The pages ([`pages`]) and the scenarios ([`scenarios`]) are public, so another driver runs
 //! the same suite against the same pages.

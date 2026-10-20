@@ -3,7 +3,8 @@
 //! device is lost painting on, its motion included, on the CPU; glyphs that outgrow the atlas,
 //! together or alone, or are drawn as it starts over, painting on as on the CPU; a change
 //! drawing its part of the window alone, as the whole window drew it; and a popup painting on
-//! the window's device, and on the CPU once the device is lost under it.
+//! the window's device, and on the CPU once the device is lost under it. Built where the
+//! realization builds its GPU path (skene-gui-linux's `gpu` feature).
 
 use skene_gui::{
   AccessRequest,
@@ -313,7 +314,7 @@ fn a_glyph_drawn_as_the_atlas_starts_over_paints_on_the_gpu_as_on_the_cpu() {
 fn a_change_draws_its_part_alone_on_the_gpu_as_the_whole_window_drew_it() {
   Drawn::set_path_choice(Some(PathChoice::Any));
 
-  let screen = testing::render(crate::presented::plate);
+  let screen = testing::render(skene_conformance_linux::plate);
   let switch = screen.find_by_role(Role::Switch, "Lit");
 
   assert_eq!(screen.driver().paint_path(), PaintPath::Gpu);
@@ -334,7 +335,7 @@ fn a_change_draws_its_part_alone_on_the_gpu_as_the_whole_window_drew_it() {
   switch.trigger_access(AccessRequest::Toggle);
   assert!(!switch.is_on());
   assert_eq!(screen.driver().paint_path(), PaintPath::Gpu);
-  crate::presented::assert_drawn_alike(&whole, &screen.render_to_image());
+  skene_conformance_linux::assert_drawn_alike(&whole, &screen.render_to_image());
 }
 
 /// A picker of three sizes in a column.

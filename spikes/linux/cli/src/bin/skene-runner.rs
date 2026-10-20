@@ -7,7 +7,9 @@
 //!
 //! - **A test** (a binary in a `deps` directory, an example cargo built as a test, or a
 //!   doctest) always gets a session of its own, the leg `SKENE_TEST_SESSION` names:
-//!   - `x11` (the default): a private Xvfb;
+//!   - `x11` (the default): a private X server: Xorg on its dummy video driver with an inputtest
+//!     touchscreen where both drivers are installed (the test told the touchscreen's socket,
+//!     `SKENE_TOUCH_SOCKET`), Xvfb otherwise or where `SKENE_X11_SERVER=xvfb`;
 //!   - `wayland` or `mutter`: headless mutter (a virtual monitor, its RemoteDesktop service
 //!     over a private PipeWire, which the test's input goes through, and its ScreenCast
 //!     service, which the test reads the screen through, WirePlumber linking the streams);
@@ -114,7 +116,7 @@ extern "C" fn forward(received: i32) {
 
 /// The variables a test never takes from the user's session: its display, accessibility bus,
 /// input method and scale are the runner's.
-const USER_ONLY: [&str; 13] = [
+const USER_ONLY: [&str; 14] = [
   "DISPLAY",
   "WAYLAND_DISPLAY",
   "SWAYSOCK",
@@ -128,6 +130,7 @@ const USER_ONLY: [&str; 13] = [
   "IBUS_ADDRESS",
   "SKENE_IME",
   "SKENE_BACKEND",
+  "SKENE_TOUCH_SOCKET",
 ];
 
 /// The virtual screen a test's session shows, in logical pixels.
@@ -375,6 +378,9 @@ struct Session {
   /// The directory of the transparent cursor theme, where the leg's compositor draws the
   /// pointer into its output: the compositor and the test both take it.
   cursors: Option<PathBuf>,
+  /// The X11 leg's touchscreen socket where it lies outside the scratch directory, removed
+  /// after.
+  outside: Option<PathBuf>,
 }
 
 impl Session {
@@ -403,6 +409,7 @@ impl Session {
       sway_socket: None,
       extra: Vec::new(),
       cursors: None,
+      outside: None,
     };
     let started = if test {
       Leg::chosen().and_then(|leg| {
@@ -468,7 +475,7 @@ impl Session {
 
     match leg {
       Leg::X11 => {
-        self.start_xvfb()?;
+        self.start_x11()?;
         self.start_bus()
       }
       Leg::Mutter => {
@@ -492,6 +499,116 @@ impl Session {
         self.start_kwin(leg == Leg::KwinX11)
       }
     }
+  }
+
+  /// The X11 leg's X server: Xorg on its dummy video driver with an inputtest touchscreen,
+  /// which takes touch as a real one's, where both drivers are installed and
+  /// `SKENE_X11_SERVER` does not ask for Xvfb; Xvfb otherwise, and where Xorg does not come up.
+  /// The test is told the touchscreen's socket (`SKENE_TOUCH_SOCKET`).
+  fn start_x11(&mut self) -> Result<(), String> {
+    let chosen = env::var("SKENE_X11_SERVER").unwrap_or_default();
+
+    if chosen != "xvfb" && XORG_DRIVERS.iter().all(|driver| Path::new(driver).exists()) {
+      match self.start_xorg() {
+        Ok(()) => return Ok(()),
+        Err(error) if chosen == "xorg" => return Err(error),
+        Err(_) => {}
+      }
+    }
+
+    self.start_xvfb()
+  }
+
+  /// Xorg on its dummy video driver, the screen as large as Xvfb's would be, its one input
+  /// device an inputtest touchscreen (XInput 2.2 touch, the core pointer and keyboard XTest's),
+  /// on the first free display number it finds itself.
+  fn start_xorg(&mut self) -> Result<(), String> {
+    let (width, height) = screen_at(test_scale()?);
+    // A socket's path is at most 107 bytes: the runner's scratch directory where it fits.
+    let touch = if self.scratch.as_os_str().len() < 90 {
+      self.scratch.join("touch")
+    } else {
+      let outside = PathBuf::from(format!("/tmp/skene-touch-{}", std::process::id()));
+
+      self.outside = Some(outside.clone());
+
+      outside
+    };
+    let config = self.scratch.join("xorg.conf");
+    let directory = self.scratch.join("xorg.conf.d");
+
+    fs::create_dir_all(&directory)
+      .and_then(|()| {
+        fs::write(
+          &config,
+          format!(
+            "Section \"ServerFlags\"\n  Option \"AutoAddDevices\" \"false\"\n  Option \"AutoEnableDevices\" \"false\"\n  Option \"AutoAddGPU\" \"false\"\n  Option \"DontVTSwitch\" \"true\"\nEndSection\n\
+             Section \"Device\"\n  Identifier \"dummy\"\n  Driver \"dummy\"\n  VideoRam 256000\nEndSection\n\
+             Section \"Monitor\"\n  Identifier \"monitor\"\n  HorizSync 1.0-2000.0\n  VertRefresh 1.0-200.0\n  Modeline \"screen\" {clock:.2} {width} {} {} {} {height} {} {} {}\nEndSection\n\
+             Section \"Screen\"\n  Identifier \"screen\"\n  Device \"dummy\"\n  Monitor \"monitor\"\n  DefaultDepth 24\n  SubSection \"Display\"\n    Depth 24\n    Virtual {width} {height}\n    Modes \"screen\"\n  EndSubSection\nEndSection\n\
+             Section \"InputDevice\"\n  Identifier \"touchscreen\"\n  Driver \"inputtest\"\n  Option \"SocketPath\" \"{}\"\n  Option \"DeviceType\" \"Touch\"\n  Option \"TouchCount\" \"5\"\nEndSection\n\
+             Section \"ServerLayout\"\n  Identifier \"layout\"\n  Screen \"screen\"\n  InputDevice \"touchscreen\"\nEndSection\n",
+            width + 8,
+            width + 16,
+            width + 24,
+            height + 1,
+            height + 2,
+            height + 3,
+            touch.display(),
+            // 60 Hz over the mode's whole raster, in MHz.
+            clock = f64::from((width + 24) * (height + 3)) * 60. / 1e6,
+          ),
+        )
+      })
+      .map_err(|error| format!("could not write Xorg's configuration: {error}"))?;
+
+    let mut display = spawn(
+      Command::new("Xorg")
+        .arg("-config")
+        .arg(&config)
+        .arg("-configdir")
+        .arg(&directory)
+        .arg("-logfile")
+        .arg(self.scratch.join("xorg.log"))
+        .args([
+          "-displayfd",
+          "1",
+          "-nolisten",
+          "tcp",
+          "-noreset",
+          "-novtswitch",
+          "-sharevts",
+        ]),
+    )
+    .map_err(|error| format!("could not start Xorg: {error}"))?;
+    let number = first_line(display.stdout.take(), "Xorg");
+
+    self.helpers.push(display);
+
+    let number = number.and_then(|line| {
+      line
+        .trim()
+        .parse::<u32>()
+        .map_err(|_| "Xorg did not report its display number".to_owned())
+    });
+    let number = match number {
+      Ok(number) => number,
+      Err(error) => {
+        if let Some(mut xorg) = self.helpers.pop() {
+          end(&mut xorg);
+        }
+
+        return Err(error);
+      }
+    };
+
+    wait_for("the inputtest touchscreen's socket", || touch.exists())?;
+    self.display = Some(("DISPLAY", format!(":{number}")));
+    self
+      .extra
+      .push(("SKENE_TOUCH_SOCKET", touch.to_string_lossy().into_owned()));
+
+    Ok(())
   }
 
   /// Xvfb on the first free display number it finds itself.
@@ -1003,6 +1120,10 @@ impl Session {
     }
 
     let _ = fs::remove_dir_all(&self.scratch);
+
+    if let Some(outside) = &self.outside {
+      let _ = fs::remove_file(outside);
+    }
   }
 }
 
@@ -1025,6 +1146,12 @@ fn compose_key(config: &Path) -> std::io::Result<()> {
   fs::create_dir_all(config.join("xkb/symbols"))?;
   fs::write(config.join("xkb/symbols/us"), patched)
 }
+
+/// The drivers the X11 leg's Xorg needs: its dummy video driver and its inputtest input driver.
+const XORG_DRIVERS: [&str; 2] = [
+  "/usr/lib/xorg/modules/drivers/dummy_drv.so",
+  "/usr/lib/xorg/modules/input/inputtest_drv.so",
+];
 
 /// The cursor theme of a leg whose compositor draws the pointer into its output.
 const BLANK_THEME: &str = "skene-blank";

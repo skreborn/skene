@@ -1,6 +1,8 @@
 //! Real input, as a user's devices send it, injected through each display server's own path:
 //!
-//! - X11: XTest, from a connection of the test's own;
+//! - X11: XTest, from a connection of the test's own; touch through the touchscreen Xorg's
+//!   inputtest driver offers on the X11 leg (`SKENE_TOUCH_SOCKET`), which posts it as a real
+//!   touchscreen's XInput 2.2 touches;
 //! - mutter (headless, Wayland): a RemoteDesktop session's EIS socket, spoken through reis
 //!   (libei's protocol), its absolute pointer aimed in the session's ScreenCast stream; keys,
 //!   and touch where its EIS offers no touchscreen, through the session's own D-Bus requests,
@@ -252,6 +254,7 @@ pub struct X11 {
   places: HashMap<u32, Place>,
   extent: (f64, f64),
   nested: bool,
+  touchscreen: Option<Touchscreen>,
 }
 
 impl X11 {
@@ -285,12 +288,17 @@ impl X11 {
       f64::from(setup.roots[screen].width_in_pixels),
       f64::from(setup.roots[screen].height_in_pixels),
     );
+    let touchscreen = match std::env::var_os("SKENE_TOUCH_SOCKET") {
+      Some(path) if !nested => Some(Touchscreen::connect(path.as_ref(), extent)?),
+      _ => None,
+    };
     let mut x11 = Self {
       conn,
       root,
       places: HashMap::new(),
       extent,
       nested,
+      touchscreen,
     };
 
     x11.read_keymap()?;
@@ -545,8 +553,31 @@ impl Input for X11 {
     Ok(())
   }
 
+  fn touch_down(&mut self, id: u32, x: f64, y: f64) -> Result<()> {
+    self.touchscreen()?.touch(Touchscreen::BEGIN, id, (x, y))
+  }
+
+  fn touch_motion(&mut self, id: u32, x: f64, y: f64) -> Result<()> {
+    self.touchscreen()?.touch(Touchscreen::UPDATE, id, (x, y))
+  }
+
+  fn touch_up(&mut self, id: u32) -> Result<()> {
+    let touchscreen = self.touchscreen()?;
+    let at = touchscreen.points.get(&id).copied().unwrap_or_default();
+
+    touchscreen.touch(Touchscreen::END, id, at)
+  }
+
+  fn has_touch(&self) -> bool {
+    self.touchscreen.is_some()
+  }
+
   fn sync(&mut self) -> Result<()> {
     use x11rb::wrapper::ConnectionExt as _;
+
+    if let Some(touchscreen) = self.touchscreen.as_mut() {
+      touchscreen.sync()?;
+    }
 
     self.conn.sync()?;
 
@@ -564,9 +595,140 @@ impl Input for X11 {
   fn name(&self) -> &'static str {
     if self.nested {
       "XTest into a nested compositor's X11 window"
+    } else if self.touchscreen.is_some() {
+      "XTest with Xorg's inputtest touchscreen"
     } else {
       "XTest"
     }
+  }
+}
+
+impl X11 {
+  /// The X11 leg's touchscreen.
+  fn touchscreen(&mut self) -> Result<&mut Touchscreen> {
+    let name = self.name();
+
+    self
+      .touchscreen
+      .as_mut()
+      .ok_or_else(|| format!("{name} sends no touch").into())
+  }
+}
+
+/// A touchscreen of Xorg's inputtest driver, spoken to over its socket (the protocol of
+/// `xf86-input-inputtest-protocol.h`, version 1.1): a touch posted there reaches clients as a
+/// real touchscreen's XInput 2.2 touch, the first one's pointer emulation included.
+struct Touchscreen {
+  socket: std::os::unix::net::UnixStream,
+  /// The screen's size, which the device's axes span.
+  extent: (f64, f64),
+  /// Where each touch point down is, by its id.
+  points: HashMap<u32, (f64, f64)>,
+  /// Whether an event was sent since the last sync.
+  sent: bool,
+}
+
+impl Touchscreen {
+  /// `XI_TouchBegin`.
+  const BEGIN: u32 = 18;
+  /// `XI_TouchUpdate`.
+  const UPDATE: u32 = 19;
+  /// `XI_TouchEnd`.
+  const END: u32 = 20;
+  /// The largest value of a touch axis, which spans the screen.
+  const AXIS: f64 = 65535.;
+
+  /// Connects to the driver's socket at `path` and agrees on the protocol's version; `extent`
+  /// is the screen's size.
+  fn connect(path: &std::path::Path, extent: (f64, f64)) -> Result<Self> {
+    use std::io::{Read as _, Write as _};
+
+    let mut socket = std::os::unix::net::UnixStream::connect(path)
+      .map_err(|error| format!("the inputtest touchscreen at {}: {error}", path.display()))?;
+
+    socket.set_read_timeout(Some(Duration::from_secs(5)))?;
+    let mut hello = Vec::with_capacity(12);
+
+    // The client's version: the header (length, type 0), major 1, minor 1.
+    hello.extend_from_slice(&12_u32.to_ne_bytes());
+    hello.extend_from_slice(&0_u32.to_ne_bytes());
+    hello.extend_from_slice(&1_u16.to_ne_bytes());
+    hello.extend_from_slice(&1_u16.to_ne_bytes());
+    socket.write_all(&hello)?;
+
+    let mut answer = [0; 12];
+
+    socket.read_exact(&mut answer)?;
+
+    if u32::from_ne_bytes([answer[4], answer[5], answer[6], answer[7]]) != 0 {
+      return Err("the inputtest driver did not answer with its version".into());
+    }
+
+    Ok(Self {
+      socket,
+      extent,
+      points: HashMap::new(),
+      sent: false,
+    })
+  }
+
+  /// Posts a touch event of `kind` for touch point `id` at `at`, in the screen's pixels.
+  fn touch(&mut self, kind: u32, id: u32, at: (f64, f64)) -> Result<()> {
+    use std::io::Write as _;
+
+    // The event: its header (length, type 6), the touch's id and type, then the valuator data
+    // (whether unaccelerated values follow, a mask of 64 bits, four bytes of padding, 64
+    // values, 64 unaccelerated ones): the axes 0 and 1 are the position.
+    let mut event = Vec::with_capacity(1056);
+    let mut values = [0_f64; 64];
+
+    values[0] = at.0 / (self.extent.0 - 1.).max(1.) * Self::AXIS;
+    values[1] = at.1 / (self.extent.1 - 1.).max(1.) * Self::AXIS;
+
+    event.extend_from_slice(&1056_u32.to_ne_bytes());
+    event.extend_from_slice(&6_u32.to_ne_bytes());
+    event.extend_from_slice(&id.to_ne_bytes());
+    event.extend_from_slice(&kind.to_ne_bytes());
+    event.extend_from_slice(&0_u32.to_ne_bytes());
+    event.extend_from_slice(&[0b11, 0, 0, 0, 0, 0, 0, 0]);
+    event.extend_from_slice(&[0; 4]);
+
+    for value in values.into_iter().chain([0.; 64]) {
+      event.extend_from_slice(&value.to_ne_bytes());
+    }
+
+    self.socket.write_all(&event)?;
+    self.sent = true;
+
+    if kind == Self::END {
+      self.points.remove(&id);
+    } else {
+      self.points.insert(id, at);
+    }
+
+    Ok(())
+  }
+
+  /// Waits until the server has posted every event sent (the driver answers a wait only once
+  /// it has events to drain).
+  fn sync(&mut self) -> Result<()> {
+    use std::io::{Read as _, Write as _};
+
+    if !std::mem::take(&mut self.sent) {
+      return Ok(());
+    }
+
+    let mut wait = Vec::with_capacity(8);
+
+    wait.extend_from_slice(&8_u32.to_ne_bytes());
+    wait.extend_from_slice(&1_u32.to_ne_bytes());
+    self.socket.write_all(&wait)?;
+
+    let mut answer = [0; 8];
+
+    self.socket.read_exact(&mut answer)?;
+
+    Ok(())
   }
 }
 

@@ -1470,8 +1470,9 @@ impl Drawn {
     Self::send(1, |input| input.touch_up(0));
   }
 
-  /// Whether the session's input sends touch (a touchscreen): mutter's EIS and KWin's fake
-  /// input do; X11's XTest, sway's virtual devices and XTest into weston do not.
+  /// Whether the session's input sends touch (a touchscreen): mutter's EIS, KWin's fake input
+  /// and the X11 leg's Xorg (its inputtest touchscreen) do; XTest alone (Xvfb), sway's virtual
+  /// devices and XTest into weston do not.
   #[must_use]
   pub fn sends_touch(&self) -> bool {
     with_input(|input| input.has_touch())

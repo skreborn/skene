@@ -76,10 +76,13 @@
 # (skene-gui-linux's `gpu` feature: vello_hybrid over wgpu's Vulkan, on Mesa's lavapipe here):
 #   - clippy with warnings denied and rustdoc with the feature on;
 #   - the realization's GPU tests (every conformance page painted on the GPU and then, the
-#     device lost, on the CPU, compared; motion going on after the loss) on X11, mutter and
-#     sway;
+#     device lost, on the CPU, compared; motion going on after the loss; a change drawing its
+#     band alone, pixel for pixel as the whole frame; a popup on the window's device, and on the
+#     CPU once the device is lost under it) on X11, mutter and sway, and on sway and X11 at
+#     scale 1.5 with the realization's scale:: and presented:: tests on the GPU path there;
 #   - the conformance suite and the facade's tests on the GPU path (SKENE_RENDERER=gpu) on X11
-#     and mutter;
+#     and mutter, and the conformance suite on X11 GPU_SUITE_ROUNDS more times (3 unless set),
+#     its aborts counted (a window's GPU path released before its X11 connection goes);
 #   - full and partial repaints at 1920x1080 and 3840x2160 on both paths, on Xvfb and headless
 #     mutter (tools/paint/repaint.sh).
 #
@@ -422,11 +425,17 @@ else
 fi
 cargo doc -p skene-gui-linux --features gpu --no-deps > "$results/doc-gpu.log" 2>&1
 say "cargo doc -p skene-gui-linux --features gpu: $(grep -cE '^(warning|error)' "$results/doc-gpu.log" || true) warnings or errors"
-for leg in x11 wayland sway; do
-  SKENE_TEST_SESSION=$leg SKENE_TRACE=1 cargo test -p skene-gui-linux --features gpu --test it gpu:: -- --nocapture \
-    > "$results/test-gpu-$leg.log" 2>&1 || true
-  say "the GPU tests on the $leg leg: $(grep -E '^test result' "$results/test-gpu-$leg.log" | tail -1); $(grep -E '^\[gpu\] .*, Vulkan\)' "$results/test-gpu-$leg.log" | sort -u | head -1)"
-  grep -E '^[a-z]+: most [0-9]+ apart' "$results/test-gpu-$leg.log" | awk '{ if ($3 > most) most = $3; apart += $5 } END { printf "  every page: a channel at most %d apart, %d pixels beyond 2 in all\n", most, apart }' | tee -a "$summary"
+for spec in x11:1 wayland:1 sway:1 sway:1.5 x11:1.5; do
+  leg=${spec%:*}; scale=${spec#*:}; name=$leg; [ "$scale" = 1 ] || name=$leg-$scale
+  SKENE_TEST_SESSION=$leg SKENE_TEST_SCALE=$scale SKENE_TRACE=1 cargo test -p skene-gui-linux --features gpu --test it gpu:: -- --nocapture \
+    > "$results/test-gpu-$name.log" 2>&1 || true
+  say "the GPU tests on the $leg leg at scale $scale: $(grep -E '^test result' "$results/test-gpu-$name.log" | tail -1); $(grep -E '^\[gpu\] .*, Vulkan\)' "$results/test-gpu-$name.log" | sort -u | head -1)"
+  grep -E '^[a-z]+: most [0-9]+ apart' "$results/test-gpu-$name.log" | awk '{ if ($3 > most) most = $3; apart += $5 } END { printf "  every page: a channel at most %d apart, %d pixels beyond 2 in all\n", most, apart }' | tee -a "$summary"
+  if [ "$scale" != 1 ]; then
+    SKENE_TEST_SESSION=$leg SKENE_TEST_SCALE=$scale SKENE_RENDERER=gpu cargo test -p skene-gui-linux --features gpu \
+      --test it -- scale:: presented:: > "$results/test-gpu-scale-$name.log" 2>&1 || true
+    say "  scale:: and presented:: on the GPU path there: $(grep -E '^test result' "$results/test-gpu-scale-$name.log" | tail -1)"
+  fi
 done
 for leg in x11 wayland; do
   SKENE_TEST_SESSION=$leg SKENE_RENDERER=gpu cargo test --no-fail-fast -p skene-conformance \
@@ -435,6 +444,13 @@ for leg in x11 wayland; do
     --features skene-gui-linux/gpu --test it >> "$results/test-on-gpu-$leg.log" 2>&1 || true
   say "the conformance suite and the facade's tests on the GPU path, $leg leg: $(grep -oE '[0-9]+ passed' "$results/test-on-gpu-$leg.log" | awk '{s+=$1} END {print s}') passed, $(grep -oE '[0-9]+ failed' "$results/test-on-gpu-$leg.log" | awk '{s+=$1} END {print s}') failed"
 done
+aborts=0
+for round in $(seq "${GPU_SUITE_ROUNDS:-3}"); do
+  SKENE_TEST_SESSION=x11 SKENE_RENDERER=gpu cargo test --no-fail-fast -p skene-conformance \
+    -p skene-gui-linux --features skene-gui-linux/gpu --test linux > "$results/test-on-gpu-x11-$round.log" 2>&1 || true
+  aborts=$((aborts + $(grep -c 'buffer overflow detected' "$results/test-on-gpu-x11-$round.log")))
+done
+say "the conformance suite on the GPU path on X11, ${GPU_SUITE_ROUNDS:-3} more rounds: $(cat "$results"/test-on-gpu-x11-*.log | grep -oE '[0-9]+ passed' | awk '{s+=$1} END {print s}') passed, $(cat "$results"/test-on-gpu-x11-*.log | grep -oE '[0-9]+ failed' | awk '{s+=$1} END {print s+0}') failed, $aborts aborts"
 cargo build --release -p skene-shell-probes -p skene-gui-linux --features skene-gui-linux/gpu --bin rows \
   > "$results/paint/build.log" 2>&1
 cp "$CARGO_TARGET_DIR/$triple/release/rows" "$results/paint/gpu/"

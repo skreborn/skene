@@ -404,6 +404,18 @@ impl Open {
     crate::access::set_window_bounds(rect, rect);
   }
 
+  /// Waits until the compositor has handled every request the window sent, handling what
+  /// arrives meanwhile.
+  ///
+  /// # Errors
+  ///
+  /// Where the connection to the compositor fails.
+  pub fn round_trip(&mut self) -> Result<(), Box<dyn Error>> {
+    self.queue.roundtrip(&mut self.state)?;
+
+    Ok(())
+  }
+
   /// Turns the loop once: handles what arrived, paints what changed, then waits for more,
   /// `wait` at most where given. A turn that paints a frame ends with it: what arrived
   /// meanwhile (read by the GPU's swapchain, which reads the connection too) is the next

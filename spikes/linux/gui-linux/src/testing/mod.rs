@@ -605,6 +605,19 @@ fn pump_until(timeout: Duration, mut done: impl FnMut() -> bool) -> bool {
   }
 }
 
+/// Waits until the display server has handled every request the open window sent, where one
+/// is open.
+fn round_trip() {
+  SHOWN.with(|shown| {
+    if let Some(shown) = shown.borrow_mut().as_mut() {
+      shown
+        .window
+        .round_trip()
+        .unwrap_or_else(|error| panic!("the window's connection failed: {error}"));
+    }
+  });
+}
+
 /// Whether the open window has a frame to paint: one asked to close paints none.
 fn wants_frame() -> bool {
   SHOWN.with(|shown| {
@@ -2002,6 +2015,9 @@ impl Drawn {
   /// Presses `sym` with the modifier keysyms `held`, lets the window act on the keys down
   /// before they come up, as a hand lifts a key only once it is down, and settles; whether the
   /// window heard every key go down and up.
+  ///
+  /// What the window asked of the display server as the keys went down (a popup's grab, which
+  /// names a key's serial) is handled there before they come up.
   fn press_once(held: &[u32], sym: u32) -> bool {
     let before = shell::inputs();
     let codes = with_input(|input| input.chord_down(held, sym))
@@ -2010,6 +2026,7 @@ impl Drawn {
     let down = arrived(before, count);
 
     pump(Duration::ZERO);
+    round_trip();
     with_input(|input| input.release(&codes)).unwrap_or_else(|error| panic!("input: {error}"));
 
     let all = arrived(before, 2 * count) && down;

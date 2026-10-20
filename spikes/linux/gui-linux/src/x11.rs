@@ -298,6 +298,17 @@ impl Open {
 
     Ok(())
   }
+
+  /// Waits until the X server has handled every request the window sent.
+  ///
+  /// # Errors
+  ///
+  /// Where the connection to the X server fails.
+  pub fn round_trip(&mut self) -> Result<(), Box<dyn Error>> {
+    self.x11.conn.sync()?;
+
+    Ok(())
+  }
 }
 
 impl X11 {

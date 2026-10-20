@@ -71,6 +71,19 @@ impl Window {
     }
   }
 
+  /// Waits until the display server has handled every request the window sent: what it asked
+  /// for (a popup's grab, among them) is granted or refused before what follows reaches it.
+  ///
+  /// # Errors
+  ///
+  /// Where the connection to the display server fails.
+  pub fn round_trip(&mut self) -> Result<(), Box<dyn Error>> {
+    match &mut self.inner {
+      Inner::X11 { open, .. } => open.round_trip(),
+      Inner::Wayland(open) => open.round_trip(),
+    }
+  }
+
   /// Asks for the window's geometry to be `width` by `height` pixels: the window manager is
   /// asked on X11, and on Wayland the window takes the size as a floating window may.
   ///

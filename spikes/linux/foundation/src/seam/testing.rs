@@ -364,12 +364,13 @@ impl Screenshot {
   }
 }
 
-/// A frame the platform painted while recording ([`Driver::set_recording`]).
+/// A frame the platform presented while recording ([`Driver::set_recording`]).
 #[derive(Clone, PartialEq, Debug)]
 pub struct Frame {
-  /// When it was painted, since recording began.
+  /// When it reached the screen, as the platform reports its presentation, since recording
+  /// began.
   pub at: Duration,
-  /// The window as it was drawn.
+  /// The window as it was drawn for that frame.
   pub shot: Screenshot,
 }
 
@@ -416,11 +417,13 @@ pub trait Driver {
   /// presented, never from the frame the app painted.
   fn screenshot(&mut self) -> Screenshot;
 
-  /// Records every frame the platform paints from now on, with when it painted it, until
-  /// told to stop: what a test samples motion through.
+  /// Records every frame the platform presents from now on, with when it reached the screen,
+  /// until told to stop: what a test samples motion through. A frame painted and never shown
+  /// (superseded before the screen took it) is left out.
   fn set_recording(&mut self, recording: bool);
 
-  /// The frames recorded since recording began or the last take, oldest first.
+  /// The frames recorded since recording began or the last take, oldest first, once the
+  /// platform has reported each frame painted so far shown or never shown.
   fn take_frames(&mut self) -> Vec<Frame>;
 
   /// Runs the platform for `duration` without waiting for it to settle.

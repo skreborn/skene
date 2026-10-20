@@ -7,7 +7,9 @@
 //! - frames through MIT-SHM where the server offers it (a memfd segment, `ShmPutImage` of the
 //!   damaged rectangle), `PutImage` in bands otherwise; while something is in motion, paced by
 //!   the Present extension's notice of each vertical blank (a 60 Hz timer where the server has
-//!   no Present), and no frame at all while nothing is;
+//!   no Present), and no frame at all while nothing is; while a test records motion, each frame
+//!   reported shown once the server has drawn it into the window (a round trip after it), which
+//!   is the screen where nothing composites;
 //! - the pointer through XInput 2 where the server has it (smooth scrolling from the scroll
 //!   valuators, emulated wheel buttons ignored; no fling, XInput 2 marking no end of a
 //!   touchpad's motion), core events otherwise; a touchscreen's touches through XInput 2.2;
@@ -2546,6 +2548,17 @@ impl X11 {
     })
   }
 
+  /// Reports the window's last frame shown, where it watches presentation, once the server has
+  /// drawn it: a round trip after the requests that drew it.
+  fn watch_presentation(&self, shell: &mut Shell) -> Result<(), Box<dyn Error>> {
+    if shell.watch_presentation {
+      self.conn.sync()?;
+      shell.frame_presented(shell.frames, Some(std::time::Instant::now()));
+    }
+
+    Ok(())
+  }
+
   /// Paints what changed and shows it.
   fn present(&mut self, shell: &mut Shell) -> Result<(), Box<dyn Error>> {
     let started = std::time::Instant::now();
@@ -2554,6 +2567,7 @@ impl X11 {
     };
 
     if frame.presented {
+      self.watch_presentation(shell)?;
       trace::log(|| {
         format!(
           "[x11] present gpu in {:.2} ms",
@@ -2630,6 +2644,10 @@ impl X11 {
         });
         trace::shot(pixmap);
 
+        if shell.watch_presentation {
+          shell.frame_presented(shell.frames, Some(std::time::Instant::now()));
+        }
+
         return Ok(());
       }
 
@@ -2682,6 +2700,7 @@ impl X11 {
       )
     });
     trace::shot(pixmap);
+    self.watch_presentation(shell)?;
 
     Ok(())
   }

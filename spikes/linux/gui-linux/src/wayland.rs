@@ -4,7 +4,8 @@
 //!   title bar, shadow and resize band drawn by Skene where the compositor answers
 //!   client-side or offers no xdg-decoration (mutter, weston);
 //! - frames into `wl_shm` buffers (premultiplied ARGB, the shadow translucent), paced by frame
-//!   callbacks, only the damaged rectangle reported;
+//!   callbacks, only the damaged rectangle reported; while a test records motion, each frame's
+//!   presentation-time feedback, when it reached the screen or that it never did;
 //! - fractional-scale-v1 with viewporter where offered (the buffer at the fractional size, the
 //!   surface at the logical one), the integer buffer scale otherwise;
 //! - the cursor through cursor-shape-v1 where offered and the reader's xcursor theme
@@ -51,6 +52,10 @@ use sctk::{
         fractional_scale::v1::client::{
           wp_fractional_scale_manager_v1::WpFractionalScaleManagerV1,
           wp_fractional_scale_v1::{self, WpFractionalScaleV1},
+        },
+        presentation_time::client::{
+          wp_presentation::{self, WpPresentation},
+          wp_presentation_feedback::{self, WpPresentationFeedback},
         },
         primary_selection::zv1::client::{
           zwp_primary_selection_device_v1::ZwpPrimarySelectionDeviceV1,
@@ -342,6 +347,13 @@ struct State {
   xdg: XdgShell,
   /// The viewporter global.
   viewporter: Option<WpViewporter>,
+  /// The presentation-time global, where the compositor offers one.
+  presentation: Option<WpPresentation>,
+  /// The clock the compositor reports presentation times in.
+  presentation_clock: PresentationClock,
+  /// The window's frame committed last whose presentation the next frame callback stands for,
+  /// where the window watches presentation and the compositor offers no presentation-time.
+  committed: Option<u64>,
   /// The open popup surface.
   popup: Option<OpenPopup>,
   /// The drag's icon, while a drag from the window goes on.
@@ -499,6 +511,7 @@ pub fn open(shell: Shell, app_id: &str) -> Result<Open, Box<dyn Error>> {
     .bind::<WpFractionalScaleManagerV1, _, _>(&qh, 1..=1, Raw)
     .ok();
   let viewporter: Option<WpViewporter> = globals.bind::<WpViewporter, _, _>(&qh, 1..=1, Raw).ok();
+  let presentation = globals.bind::<WpPresentation, _, _>(&qh, 1..=1, Raw).ok();
   let surface = compositor.create_surface(&qh);
   let (fractional, viewport) = match (&fractional_manager, &viewporter) {
     (Some(manager), Some(viewporter)) => (
@@ -568,6 +581,9 @@ pub fn open(shell: Shell, app_id: &str) -> Result<Open, Box<dyn Error>> {
     conn: conn.clone(),
     xdg,
     viewporter,
+    presentation,
+    presentation_clock: PresentationClock(libc::CLOCK_MONOTONIC),
+    committed: None,
     popup: None,
     drag_icon: None,
     adornment_popups: HashMap::new(),
@@ -628,6 +644,7 @@ impl State {
         .window
         .wl_surface()
         .frame(qh, FrameCallbackData(self.window.wl_surface().clone()));
+      self.watch_presentation(qh, self.shell.frames + 1);
     }
 
     let Some(frame) = self.shell.frame() else {
@@ -729,6 +746,7 @@ impl State {
     if let Some((buffer, _)) = self.buffers.get(current)
       && buffer.attach_to(surface).is_ok()
     {
+      self.watch_presentation(qh, self.shell.frames);
       self.window.commit();
       self.frame_pending = true;
       self.probe_constraints();
@@ -750,6 +768,23 @@ impl State {
       && let Some(frame) = self.shell.last_frame()
     {
       trace::shot(frame);
+    }
+  }
+
+  /// Asks the compositor when the window's next commit, its frame `frame`, reaches the screen,
+  /// where the window watches presentation: its presentation-time feedback, or, from a
+  /// compositor that offers no presentation-time (KWin 5), the frame callback that follows the
+  /// commit, which it sends once it has drawn the frame.
+  fn watch_presentation(&mut self, qh: &QueueHandle<Self>, frame: u64) {
+    if !self.shell.watch_presentation {
+      return;
+    }
+
+    match &self.presentation {
+      Some(presentation) => {
+        presentation.feedback(self.window.wl_surface(), qh, Presenting(frame));
+      }
+      None => self.committed = Some(frame),
     }
   }
 
@@ -1623,9 +1658,21 @@ impl CompositorHandler for State {
   ) {
   }
 
-  fn frame(&mut self, _: &Connection, _: &QueueHandle<Self>, _: &wl_surface::WlSurface, _: u32) {
+  fn frame(
+    &mut self,
+    _: &Connection,
+    _: &QueueHandle<Self>,
+    surface: &wl_surface::WlSurface,
+    _: u32,
+  ) {
     // The turn that dispatched it paints the next frame.
     self.frame_pending = false;
+
+    if surface == self.window.wl_surface()
+      && let Some(frame) = self.committed.take()
+    {
+      self.shell.frame_presented(frame, Some(Instant::now()));
+    }
   }
 
   fn surface_enter(
@@ -2487,6 +2534,88 @@ impl Dispatch2<WpFractionalScaleV1, State> for Raw {
       trace::log(|| format!("[wayland] fractional scale {scale}/120"));
       state.shell.set_scale(f64::from(scale) / 120.);
       crate::shell::invalidate_all();
+    }
+  }
+}
+
+/// The clock a compositor reports presentation times in (`wp_presentation.clock_id`).
+#[derive(Clone, Copy)]
+struct PresentationClock(libc::clockid_t);
+
+impl PresentationClock {
+  /// The moment `seconds` and `nanos` of this clock name, as an [`Instant`] (the monotonic
+  /// clock's).
+  fn instant(self, seconds: u64, nanos: u32) -> Instant {
+    let mut now = libc::timespec {
+      tv_sec: 0,
+      tv_nsec: 0,
+    };
+    let taken = Instant::now();
+
+    // SAFETY: writes the clock's time into the one `timespec` given.
+    if unsafe { libc::clock_gettime(self.0, &raw mut now) } != 0 {
+      return taken;
+    }
+
+    let then = Duration::new(seconds, nanos);
+    let now = Duration::new(
+      u64::try_from(now.tv_sec).unwrap_or_default(),
+      u32::try_from(now.tv_nsec).unwrap_or_default(),
+    );
+
+    match now.checked_sub(then) {
+      Some(ago) => taken.checked_sub(ago).unwrap_or(taken),
+      None => taken + (then - now),
+    }
+  }
+}
+
+/// User data of a frame's presentation feedback: the window's frame it asks about.
+struct Presenting(u64);
+
+impl Dispatch2<WpPresentation, State> for Raw {
+  fn event(
+    &self,
+    state: &mut State,
+    _: &WpPresentation,
+    event: wp_presentation::Event,
+    _: &Connection,
+    _: &QueueHandle<State>,
+  ) {
+    if let wp_presentation::Event::ClockId { clk_id } = event {
+      state.presentation_clock = PresentationClock(clk_id as libc::clockid_t);
+    }
+  }
+}
+
+impl Dispatch2<WpPresentationFeedback, State> for Presenting {
+  fn event(
+    &self,
+    state: &mut State,
+    _: &WpPresentationFeedback,
+    event: wp_presentation_feedback::Event,
+    _: &Connection,
+    _: &QueueHandle<State>,
+  ) {
+    match event {
+      wp_presentation_feedback::Event::Presented {
+        tv_sec_hi,
+        tv_sec_lo,
+        tv_nsec,
+        ..
+      } => {
+        let at = state
+          .presentation_clock
+          .instant(u64::from(tv_sec_hi) << 32 | u64::from(tv_sec_lo), tv_nsec);
+
+        trace::log(|| format!("[wayland] frame {} presented", self.0));
+        state.shell.frame_presented(self.0, Some(at));
+      }
+      wp_presentation_feedback::Event::Discarded => {
+        trace::log(|| format!("[wayland] frame {} discarded", self.0));
+        state.shell.frame_presented(self.0, None);
+      }
+      _ => {}
     }
   }
 }

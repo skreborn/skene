@@ -37,7 +37,7 @@ pub mod xsettings;
 
 use std::{
   cell::{Cell, OnceCell, RefCell},
-  collections::HashMap,
+  collections::{HashMap, VecDeque},
   path::Path,
   rc::Rc,
   sync::{OnceLock, mpsc},
@@ -83,6 +83,10 @@ const SETTLE_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// How long input sent may take to arrive.
 const INPUT_TIMEOUT: Duration = Duration::from_secs(2);
+
+/// How long the platform may take to report a frame painted shown, or never shown: a few
+/// refreshes.
+const PRESENTATION_TIMEOUT: Duration = Duration::from_millis(500);
 
 /// The size a test's window opens at.
 const SIZE: (u32, u32) = (480, 640);
@@ -442,41 +446,93 @@ fn load_fontconfig(file: Option<&Path>) {
   environment::apply();
 }
 
-/// The frames being recorded: when recording began, the frames so far, and how many frames the
-/// window had painted at the last look.
+/// The frames being recorded.
 struct Recording {
+  /// When recording began.
   started: Instant,
+  /// The frames the platform presented so far, stamped with when it presented them.
   frames: Vec<Frame>,
+  /// How many frames the window had painted at the last look.
   painted: u64,
+  /// The frames painted that the platform has not yet reported shown or never shown, oldest
+  /// first: each one's number and the window as it was painted.
+  awaiting: VecDeque<(u64, Screenshot)>,
 }
 
 thread_local! {
   static RECORDING: RefCell<Option<Recording>> = const { RefCell::new(None) };
 }
 
-/// Records the frame the open window painted since the last look, where recording, stamped
-/// with when it was painted.
+/// Records, where recording, the frames the platform presented since the last look, each
+/// stamped with when the platform reports it reached the screen and shown as the window painted
+/// it: the frame painted since then is kept until the platform reports it shown or never shown.
 fn record() {
-  let painted = SHOWN.with(|shown| {
-    shown.borrow().as_ref().map(|shown| {
-      let shell = shown.window.shell();
+  if RECORDING.with(|recording| recording.borrow().is_none()) {
+    return;
+  }
 
-      (shell.frames, shell.painted_at)
+  let Some((painted, presentations)) = SHOWN.with(|shown| {
+    shown.borrow_mut().as_mut().map(|shown| {
+      let shell = shown.window.shell_mut();
+
+      (shell.frames, shell.take_presentations())
     })
+  }) else {
+    return;
+  };
+  let fresh = RECORDING.with(|recording| {
+    recording
+      .borrow()
+      .as_ref()
+      .is_some_and(|recording| painted > recording.painted)
   });
+  let shot = fresh.then(|| Drawn::with_window(Drawn::painted));
 
   RECORDING.with(|recording| {
-    if let (Some(recording), Some((painted, at))) = (recording.borrow_mut().as_mut(), painted)
-      && painted > recording.painted
-    {
+    let mut recording = recording.borrow_mut();
+    let Some(recording) = recording.as_mut() else {
+      return;
+    };
+
+    if let Some(shot) = shot {
       recording.painted = painted;
-      recording.frames.push(Frame {
-        at: at.map_or_else(
-          || recording.started.elapsed(),
-          |at| at.saturating_duration_since(recording.started),
-        ),
-        shot: Drawn::with_window(Drawn::painted),
-      });
+      recording.awaiting.push_back((painted, shot));
+    }
+
+    for (frame, at) in presentations {
+      // A frame painted before this one and never reported went unseen.
+      while recording
+        .awaiting
+        .front()
+        .is_some_and(|(painted, _)| *painted < frame)
+      {
+        recording.awaiting.pop_front();
+      }
+
+      if recording
+        .awaiting
+        .front()
+        .is_some_and(|(painted, _)| *painted == frame)
+        && let Some((_, shot)) = recording.awaiting.pop_front()
+        && let Some(at) = at
+      {
+        recording.frames.push(Frame {
+          at: at.saturating_duration_since(recording.started),
+          shot,
+        });
+      }
+    }
+  });
+}
+
+/// Has the open window ask the platform when each of its frames reaches the screen, or stop.
+fn watch_presentation(watch: bool) {
+  SHOWN.with(|shown| {
+    if let Some(shown) = shown.borrow_mut().as_mut() {
+      let shell = shown.window.shell_mut();
+
+      shell.watch_presentation = watch;
+      shell.take_presentations();
     }
   });
 }
@@ -826,11 +882,14 @@ impl Drawn {
       });
     });
     // A recording goes on into the new window from its first frame.
-    RECORDING.with(|recording| {
-      if let Some(recording) = recording.borrow_mut().as_mut() {
+    let recording = RECORDING.with(|recording| {
+      recording.borrow_mut().as_mut().map(|recording| {
         recording.painted = 0;
-      }
+        recording.awaiting.clear();
+      })
     });
+
+    watch_presentation(recording.is_some());
 
     let drawn = pump_until(Duration::from_secs(10), || {
       SHOWN.with(|shown| {
@@ -2493,11 +2552,23 @@ impl Driver for Drawn {
         started: Instant::now(),
         frames: Vec::new(),
         painted,
+        awaiting: VecDeque::new(),
       });
     });
+    watch_presentation(recording);
   }
 
   fn take_frames(&mut self) -> Vec<Frame> {
+    // The frames painted are presented, or reported never shown, a refresh or two later.
+    pump_until(PRESENTATION_TIMEOUT, || {
+      RECORDING.with(|recording| {
+        recording
+          .borrow()
+          .as_ref()
+          .is_none_or(|recording| recording.awaiting.is_empty())
+      })
+    });
+
     RECORDING.with(|recording| {
       recording
         .borrow_mut()

@@ -607,6 +607,13 @@ pub struct Shell {
   pub frames: u64,
   /// When the last frame was painted, the window's, its open overlay's or an adornment's.
   pub painted_at: Option<Instant>,
+  /// Whether the backend asks the platform when each of the window's frames reaches the screen
+  /// ([`Shell::frame_presented`]): while a test records motion.
+  pub watch_presentation: bool,
+  /// What the platform reported of the window's frames since the last take, oldest first: each
+  /// frame's number (what [`frames`](Self::frames) counted once it was painted) and when it
+  /// reached the screen, `None` where it never did.
+  presentations: Vec<(u64, Option<Instant>)>,
   /// Whether the last frame went to the screen through the GPU's swapchain.
   presented: bool,
   /// The part of the frame the last frame drew, in device pixels.
@@ -663,6 +670,8 @@ impl Shell {
       drop_over: None,
       frames: 0,
       painted_at: None,
+      watch_presentation: false,
+      presentations: Vec::new(),
       presented: false,
       drawn: (0, 0, 0, 0),
       quit: false,
@@ -818,6 +827,20 @@ impl Shell {
         damage.3.min(height - top),
       ),
     })
+  }
+
+  /// The platform reports the window's frame `frame` (what [`frames`](Self::frames) counted once
+  /// it was painted) on the screen at `at`, or never shown where `None`; kept while the window
+  /// watches presentation.
+  pub fn frame_presented(&mut self, frame: u64, at: Option<Instant>) {
+    if self.watch_presentation {
+      self.presentations.push((frame, at));
+    }
+  }
+
+  /// What the platform reported of the window's frames since the last take, oldest first.
+  pub fn take_presentations(&mut self) -> Vec<(u64, Option<Instant>)> {
+    std::mem::take(&mut self.presentations)
   }
 
   /// Lays out and paints what changed without presenting it, so geometry reads current: the

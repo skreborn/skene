@@ -1263,7 +1263,7 @@ fn gradients<D: Driver>(driver: &mut D) {
   );
 }
 
-/// The color at the middle of `bounds` in each frame, with when the frame was painted.
+/// The color at the middle of `bounds` in each frame, with when the frame was presented.
 fn colors_over(frames: &[Frame], bounds: Rect) -> Vec<(Duration, u32)> {
   frames
     .iter()
@@ -1286,7 +1286,7 @@ fn distance(color: u32, other: u32) -> u32 {
     .unwrap_or(0)
 }
 
-/// The frames painted while `act` runs (it settles, so a transition runs out), as the colors
+/// The frames presented while `act` runs (it settles, so a transition runs out), as the colors
 /// at the middle of the box named `name`.
 fn recorded<D: Driver>(
   driver: &mut D,

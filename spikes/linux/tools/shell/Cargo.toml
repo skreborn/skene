@@ -1,6 +1,6 @@
 [package]
 name = "skene-shell-tools"
-description = "What the drawn Linux realization's checks act and read with: real input on X11 and Wayland, a settings-portal stand-in, an XSETTINGS manager, a clipboard client, an input method KWin starts."
+description = "What the drawn Linux realization's checks act and read with: real input on X11 and Wayland, a settings-portal stand-in, an XSETTINGS manager, a clipboard client, an input method KWin starts, KWin's fake input in a process of its own."
 edition.workspace = true
 license.workspace = true
 publish.workspace = true

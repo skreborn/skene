@@ -21,10 +21,11 @@
 //!   - `weston`: weston on its X11 backend (pixman), its output a window of a private Xvfb
 //!     whose XTest the test's input goes through;
 //!   - `kwin`: KWin's windowed backend (QPainter), its output a window of a private Xvfb, its
-//!     fake input (KWin started with its permission checks off, which that restricted
-//!     interface needs), and as its input method the stand-in `kwin-input-method` beside the
-//!     runner (or `SKENE_KWIN_INPUT_METHOD`) where it is there; `kwin-x11`: the same, the test's
-//!     windows on KWin's Xwayland.
+//!     fake input, a restricted interface KWin grants by a desktop file of the session's to
+//!     `kwin-fake-input` beside the runner (or `SKENE_KWIN_FAKE_INPUT`) alone, which the test
+//!     acts through (`SKENE_KWIN_FAKE_INPUT`), and as its input method the stand-in
+//!     `kwin-input-method` beside the runner (or `SKENE_KWIN_INPUT_METHOD`) where it is there;
+//!     `kwin-x11`: the same, the test's windows on KWin's Xwayland.
 //!     `SKENE_KWIN` names the `kwin_wayland` to run, where the one on `PATH` cannot be (its
 //!     file capability beyond the process's bounding set);
 //!
@@ -969,9 +970,10 @@ impl Session {
   }
 
   /// KWin's windowed backend on one output, a window of the session's Xvfb as large as the
-  /// screen, composited with QPainter; its fake input allowed (a restricted interface: the
-  /// permission checks go), with Xwayland where `xwayland`: the test's windows go there,
-  /// Xwayland showing the screen's device pixels where the leg is scaled.
+  /// screen, composited with QPainter, its permission checks on; its fake input (a restricted
+  /// interface) granted to the helper the test acts through alone, with Xwayland where
+  /// `xwayland`: the test's windows go there, Xwayland showing the screen's device pixels where
+  /// the leg is scaled.
   fn start_kwin(&mut self, xwayland: bool) -> Result<(), String> {
     let scale = test_scale()?;
     let screen = screen_at(scale);
@@ -1000,6 +1002,25 @@ impl Session {
       })
       .map_err(|error| format!("could not write KWin's configuration: {error}"))?;
 
+    // A desktop file in the session's own data home grants KWin's restricted fake input to the
+    // helper alone.
+    let fake_input = kwin_fake_input().ok_or(
+      "the KWin legs act through kwin-fake-input beside skene-runner (or SKENE_KWIN_FAKE_INPUT): build skene-shell-tools",
+    )?;
+    let data = self.scratch.join("data");
+
+    fs::create_dir_all(data.join("applications"))
+      .and_then(|()| {
+        fs::write(
+          data.join("applications/skene-kwin-fake-input.desktop"),
+          format!(
+            "[Desktop Entry]\nType=Application\nName=Skene's fake input\nNoDisplay=true\nExec={}\nX-KDE-Wayland-Interfaces=org_kde_kwin_fake_input\n",
+            fake_input.display()
+          ),
+        )
+      })
+      .map_err(|error| format!("could not write the fake input's desktop file: {error}"))?;
+
     let mut command = self.helper(&program);
 
     // In windowed mode the output's size is logical: its window is that times the scale.
@@ -1017,7 +1038,8 @@ impl Session {
         &scale.to_string(),
       ])
       .env("DISPLAY", &x_display)
-      .env("KWIN_WAYLAND_NO_PERMISSION_CHECKS", "1")
+      .env("XDG_DATA_HOME", &data)
+      .env("XDG_CACHE_HOME", self.scratch.join("cache"))
       .env("KWIN_COMPOSE", "Q")
       .env("QT_QPA_PLATFORM", "offscreen");
 
@@ -1067,6 +1089,10 @@ impl Session {
     }
 
     self.extra.push(("SKENE_OUTPUT_DISPLAY", x_display));
+    self.extra.push((
+      "SKENE_KWIN_FAKE_INPUT",
+      fake_input.to_string_lossy().into_owned(),
+    ));
 
     Ok(())
   }
@@ -1443,6 +1469,21 @@ fn kwin_input_method() -> Option<PathBuf> {
         .and_then(|runner| Some(runner.parent()?.join("kwin-input-method")))
     })
     .filter(|path| path.is_file())
+}
+
+/// The helper KWin grants its fake input to on the KWin legs, which a test acts through:
+/// `SKENE_KWIN_FAKE_INPUT`, or `kwin-fake-input` beside the runner, its canonical path (KWin
+/// matches a desktop file's program to a client's by it).
+fn kwin_fake_input() -> Option<PathBuf> {
+  env::var_os("SKENE_KWIN_FAKE_INPUT")
+    .map(PathBuf::from)
+    .or_else(|| {
+      env::current_exe()
+        .ok()
+        .and_then(|runner| Some(runner.parent()?.join("kwin-fake-input")))
+    })
+    .filter(|path| path.is_file())
+    .and_then(|path| fs::canonicalize(path).ok())
 }
 
 /// Whether process `pid` descends from process `ancestor`, by `/proc`'s parents.

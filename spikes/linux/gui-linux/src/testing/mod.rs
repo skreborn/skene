@@ -105,7 +105,7 @@ pub enum Session {
   Sway,
   /// Weston on its X11 backend, its output a window of a private Xvfb.
   Weston,
-  /// KWin's virtual backend.
+  /// KWin's windowed backend, its output a window of a private Xvfb.
   Kwin,
   /// The window on KWin's Xwayland, KWin's fake input acting.
   KwinX11,
@@ -133,6 +133,13 @@ impl Session {
       Self::X11 | Self::KwinX11 => Backend::X11,
       Self::Mutter | Self::Sway | Self::Weston | Self::Kwin => Backend::Wayland,
     }
+  }
+
+  /// Whether the session's compositor opens a new window at the top left of a screen that
+  /// holds no other, rather than at its center: KWin, which the runner sets to place a window
+  /// where it overlaps the fewest.
+  const fn opens_at_top_left(self) -> bool {
+    matches!(self, Self::Kwin | Self::KwinX11)
   }
 
   /// The screen's size, as the runner gave it.
@@ -229,6 +236,20 @@ fn with_input<T>(then: impl FnOnce(&mut dyn Input) -> T) -> T {
 
     then(input)
   })
+}
+
+/// Opens the process's input devices where they are not open yet, and quietly where the
+/// session's input injection cannot be reached (the first use that needs them says why).
+fn open_input() {
+  INPUT.with(|slot| {
+    let mut slot = slot.borrow_mut();
+
+    if slot.is_none()
+      && let Ok(input) = Session::current().unwrap_or(Session::X11).input()
+    {
+      *slot = Some(input::Tracked::new(input));
+    }
+  });
 }
 
 /// Where the driver last moved the pointer, in the pointer's space; `None` before it has.
@@ -870,6 +891,9 @@ impl Drawn {
     let title = format!("skene-test-{number}");
     let mut shell = shell::Shell::new(&title, SIZE.0, SIZE.1);
 
+    // The session's input devices exist before the window opens, as a desktop's keyboard does.
+    open_input();
+
     if let Some(node) = tree::native::<Linux>(root) {
       shell.set_root(node);
     }
@@ -905,6 +929,7 @@ impl Drawn {
     });
 
     assert!(drawn, "the window never drew on {session:?}");
+    trace::log(|| "[driver] the window drew".to_owned());
 
     pump_until(ACTIVATION_TIMEOUT, || {
       SHOWN.with(|shown| {
@@ -914,6 +939,7 @@ impl Drawn {
           .is_some_and(|shown| shown.window.shell().has_keyboard())
       })
     });
+    trace::log(|| "[driver] the window has the keyboard, or waited for it".to_owned());
     settle();
 
     let started = Instant::now();
@@ -939,6 +965,7 @@ impl Drawn {
       pump(Duration::from_millis(10));
     }
 
+    trace::log(|| "[driver] a reader sees the window".to_owned());
     settle();
   }
 
@@ -1056,10 +1083,14 @@ impl Drawn {
       points.push((x + half(was_width), y + half(was_height)));
     }
 
-    let opened = (
-      width / 2. - half(crate::DEFAULT_SIZE.0),
-      height / 2. - half(crate::DEFAULT_SIZE.1),
-    );
+    let opened = if Session::current().is_some_and(Session::opens_at_top_left) {
+      (0., 0.)
+    } else {
+      (
+        width / 2. - half(crate::DEFAULT_SIZE.0),
+        height / 2. - half(crate::DEFAULT_SIZE.1),
+      )
+    };
 
     points.push((opened.0 + half(size.0), opened.1 + half(size.1)));
     points.push((width / 2., height / 2.));
@@ -1077,6 +1108,19 @@ impl Drawn {
       }
     }
 
+    // Each point is tried once.
+    let mut tried: Vec<(f64, f64)> = Vec::new();
+
+    points.retain(|point| {
+      let new = tried
+        .iter()
+        .all(|seen| (seen.0 - point.0).abs() > 1. || (seen.1 - point.1).abs() > 1.);
+
+      tried.push(*point);
+
+      new
+    });
+
     for point in points {
       let point = with_input(|input| input.landing(point.0, point.1));
       let before = trace::last_pointer();
@@ -1089,6 +1133,13 @@ impl Drawn {
 
       let seen = pump_until(Duration::from_millis(500), || {
         trace::last_pointer().0 != before.0
+      });
+
+      trace::log(|| {
+        format!(
+          "[driver] looking for the window: the pointer at {point:?} {}",
+          if seen { "seen" } else { "not seen" }
+        )
       });
 
       if seen && let (_, Some((x, y))) = trace::last_pointer() {
@@ -1248,6 +1299,18 @@ impl Drawn {
     }
 
     let origin = Self::origin();
+    let wanted = (point.0 - origin.0, point.1 - origin.1);
+    let near = |seen: Option<(f32, f32)>| {
+      seen.is_some_and(|(x, y)| {
+        (f64::from(x) - wanted.0).abs() <= 1.5 && (f64::from(y) - wanted.1).abs() <= 1.5
+      })
+    };
+
+    // A pointer already resting at the point, where the window saw it last, stays there.
+    if pointer_now() == Some(point) && near(trace::last_pointer().1) {
+      return point;
+    }
+
     let before = trace::last_pointer();
 
     with_input(|input| {
@@ -1260,13 +1323,9 @@ impl Drawn {
       trace::last_pointer().0 != before.0
     });
 
-    let wanted = (point.0 - origin.0, point.1 - origin.1);
     let seen = trace::last_pointer().1;
-    let near = seen.is_some_and(|(x, y)| {
-      (f64::from(x) - wanted.0).abs() <= 1.5 && (f64::from(y) - wanted.1).abs() <= 1.5
-    });
 
-    if near {
+    if near(seen) {
       return point;
     }
 
@@ -1927,9 +1986,37 @@ impl Drawn {
 
     let held = held(modifiers);
     let sym = keysym_of(name);
-    let count = 2 + 2 * held.len() as u64;
+    let before = shell::inputs();
 
-    Self::send_keys(count, |input| input.chord(&held, sym));
+    if Self::press_once(&held, sym) || shell::inputs() != before {
+      return;
+    }
+
+    eprintln!("skene testing: the key presses reached no window; sending them again");
+
+    if !Self::press_once(&held, sym) {
+      eprintln!("skene testing: the keys pressed again reached no window either");
+    }
+  }
+
+  /// Presses `sym` with the modifier keysyms `held`, lets the window act on the keys down
+  /// before they come up, as a hand lifts a key only once it is down, and settles; whether the
+  /// window heard every key go down and up.
+  fn press_once(held: &[u32], sym: u32) -> bool {
+    let before = shell::inputs();
+    let codes = with_input(|input| input.chord_down(held, sym))
+      .unwrap_or_else(|error| panic!("input: {error}"));
+    let count = codes.len() as u64;
+    let down = arrived(before, count);
+
+    pump(Duration::ZERO);
+    with_input(|input| input.release(&codes)).unwrap_or_else(|error| panic!("input: {error}"));
+
+    let all = arrived(before, 2 * count) && down;
+
+    settle();
+
+    all
   }
 
   /// Types `text`, a key per character, focus where it is.

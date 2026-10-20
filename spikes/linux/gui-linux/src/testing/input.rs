@@ -221,27 +221,47 @@ pub trait Input {
     self.sync()
   }
 
-  /// Presses `keysym` with the modifier keysyms `held` held down around it.
+  /// Presses the modifier keysyms `held`, then the key typing `keysym` (with its level's
+  /// modifier), and leaves them all down: the keys pressed, in order, which
+  /// [`Input::release`] lets go of.
   ///
   /// # Errors
   ///
   /// Where no key types it.
-  fn chord(&mut self, held: &[u32], keysym: u32) -> Result<()> {
-    let codes: Vec<u32> = held.iter().filter_map(|sym| modifier_code(*sym)).collect();
+  fn chord_down(&mut self, held: &[u32], keysym: u32) -> Result<Vec<u32>> {
+    let place = self
+      .place(keysym)
+      .ok_or_else(|| format!("no key types keysym {keysym:#x} on the test keyboard"))?;
+    let mut codes: Vec<u32> = held.iter().filter_map(|sym| modifier_code(*sym)).collect();
+
+    match place.level {
+      0 => {}
+      1 => codes.push(SHIFT),
+      _ => codes.push(LEVEL3),
+    }
+
+    codes.push(place.code);
 
     for code in &codes {
       self.key(*code, true)?;
     }
 
-    let tapped = self.tap(keysym);
+    self.sync()?;
 
+    Ok(codes)
+  }
+
+  /// Lets go of the keys `codes`, the last pressed first.
+  ///
+  /// # Errors
+  ///
+  /// Where the backend cannot send it.
+  fn release(&mut self, codes: &[u32]) -> Result<()> {
     for code in codes.iter().rev() {
       self.key(*code, false)?;
     }
 
-    self.sync()?;
-
-    tapped
+    self.sync()
   }
 }
 
@@ -1610,35 +1630,54 @@ impl Input for Sway {
   }
 }
 
-/// KWin's fake input on a connection of the test's own: a pointer, a keyboard and a
-/// touchscreen, aimed in KWin's logical coordinates.
+/// KWin's fake input, through `kwin-fake-input`, a helper the driver starts (the runner names it,
+/// `SKENE_KWIN_FAKE_INPUT`): KWin grants the restricted interface to that executable alone, so
+/// the test's own connections are refused it unhashed. A pointer, a keyboard and a touchscreen,
+/// aimed in KWin's logical coordinates.
 pub struct Kwin {
-  _conn: wayland_client::Connection,
-  queue: wayland_client::EventQueue<Devices>,
-  fake: wayland_protocols_plasma::fake_input::client::org_kde_kwin_fake_input::OrgKdeKwinFakeInput,
+  helper: std::process::Child,
+  commands: std::process::ChildStdin,
+  answers: std::io::BufReader<std::process::ChildStdout>,
   places: HashMap<u32, Place>,
   extent: (f64, f64),
   pointer: (f64, f64),
 }
 
-wayland_client::delegate_noop!(Devices: ignore wayland_protocols_plasma::fake_input::client::org_kde_kwin_fake_input::OrgKdeKwinFakeInput);
-
 impl Kwin {
-  /// Binds KWin's fake input on `WAYLAND_DISPLAY` and authenticates; `extent` is the output's
-  /// size in its logical pixels, which the pointer moves in. The keymap is KWin's: the US
-  /// layout, Compose on the right Control key (the runner's configuration home).
+  /// Starts the helper on `WAYLAND_DISPLAY` and waits until KWin took its authentication;
+  /// `extent` is the output's size in its logical pixels, which the pointer moves in. The
+  /// keymap is KWin's: the US layout, Compose on the right Control key (the runner's
+  /// configuration home).
   ///
   /// # Errors
   ///
-  /// Where KWin offers no fake input (it is a restricted interface: the runner starts KWin with
-  /// its permission checks off).
+  /// Where the runner names no helper, or the helper cannot reach KWin's fake input.
   pub fn new(extent: (f64, f64)) -> Result<Self> {
-    use wayland_protocols_plasma::fake_input::client::org_kde_kwin_fake_input::OrgKdeKwinFakeInput;
+    use std::{
+      io::BufRead as _,
+      process::{Command, Stdio},
+    };
 
-    let conn = wayland_client::Connection::connect_to_env()?;
-    let (globals, mut queue) = wayland_client::globals::registry_queue_init::<Devices>(&conn)?;
-    let qh = queue.handle();
-    let fake: OrgKdeKwinFakeInput = globals.bind(&qh, 4..=4, ())?;
+    let program = std::env::var_os("SKENE_KWIN_FAKE_INPUT").ok_or(
+      "the KWin legs act through kwin-fake-input, which the runner names (SKENE_KWIN_FAKE_INPUT)",
+    )?;
+    let mut helper = Command::new(&program)
+      .stdin(Stdio::piped())
+      .stdout(Stdio::piped())
+      .spawn()
+      .map_err(|error| format!("{}: {error}", program.to_string_lossy()))?;
+    let commands = helper.stdin.take().ok_or("the helper's input")?;
+    let mut answers = std::io::BufReader::new(helper.stdout.take().ok_or("the helper's output")?);
+    let mut ready = String::new();
+
+    answers.read_line(&mut ready)?;
+
+    if ready.trim() != "ready" {
+      let _ = helper.wait();
+
+      return Err(format!("{} did not start", program.to_string_lossy()).into());
+    }
+
     let context = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);
     let keymap = xkb::Keymap::new_from_names(
       &context,
@@ -1651,38 +1690,46 @@ impl Kwin {
     )
     .ok_or("xkbcommon has no US keymap")?;
 
-    fake.authenticate("skene-testing".to_owned(), "a test's real input".to_owned());
-    queue.roundtrip(&mut Devices)?;
-
     Ok(Self {
-      _conn: conn,
-      queue,
-      fake,
+      helper,
+      commands,
+      answers,
       places: places(&keymap),
       extent,
       pointer: (0., 0.),
     })
+  }
+
+  /// Sends the helper `command`.
+  fn send(&mut self, command: std::fmt::Arguments<'_>) -> Result<()> {
+    use std::io::Write as _;
+
+    self.commands.write_fmt(command)?;
+    self.commands.write_all(b"\n")?;
+
+    Ok(())
+  }
+}
+
+impl Drop for Kwin {
+  fn drop(&mut self) {
+    let _ = self.helper.kill();
+    let _ = self.helper.wait();
   }
 }
 
 impl Input for Kwin {
   fn move_to(&mut self, x: f64, y: f64) -> Result<()> {
     self.pointer = (x, y);
-    self.fake.pointer_motion_absolute(x, y);
-
-    Ok(())
+    self.send(format_args!("motion {x} {y}"))
   }
 
   fn button(&mut self, button: u32, down: bool) -> Result<()> {
-    self.fake.button(button, u32::from(down));
-
-    Ok(())
+    self.send(format_args!("button {button} {}", u32::from(down)))
   }
 
   fn key(&mut self, code: u32, down: bool) -> Result<()> {
-    self.fake.keyboard_key(code, u32::from(down));
-
-    Ok(())
+    self.send(format_args!("key {code} {}", u32::from(down)))
   }
 
   fn place(&mut self, keysym: u32) -> Option<Place> {
@@ -1690,10 +1737,14 @@ impl Input for Kwin {
   }
 
   fn wheel(&mut self, right: i32, down: i32) -> Result<()> {
-    // KWin passes a fake axis on as a wheel's: 15 pixels a detent, as libinput reports one.
+    // KWin passes a fake axis on as a wheel's: 15 pixels a detent, as libinput reports one, an
+    // event a detent as a wheel turns.
     for (axis, count) in [(0, down), (1, right)] {
-      if count != 0 {
-        self.fake.axis(axis, f64::from(count) * 15.);
+      for _ in 0..count.unsigned_abs() {
+        self.send(format_args!(
+          "axis {axis} {}",
+          f64::from(count.signum()) * 15.
+        ))?;
       }
     }
 
@@ -1701,24 +1752,15 @@ impl Input for Kwin {
   }
 
   fn touch_down(&mut self, id: u32, x: f64, y: f64) -> Result<()> {
-    self.fake.touch_down(id, x, y);
-    self.fake.touch_frame();
-
-    Ok(())
+    self.send(format_args!("touch-down {id} {x} {y}"))
   }
 
   fn touch_motion(&mut self, id: u32, x: f64, y: f64) -> Result<()> {
-    self.fake.touch_motion(id, x, y);
-    self.fake.touch_frame();
-
-    Ok(())
+    self.send(format_args!("touch-motion {id} {x} {y}"))
   }
 
   fn touch_up(&mut self, id: u32) -> Result<()> {
-    self.fake.touch_up(id);
-    self.fake.touch_frame();
-
-    Ok(())
+    self.send(format_args!("touch-up {id}"))
   }
 
   fn has_touch(&self) -> bool {
@@ -1726,9 +1768,19 @@ impl Input for Kwin {
   }
 
   fn sync(&mut self) -> Result<()> {
-    self.queue.roundtrip(&mut Devices)?;
+    use std::io::BufRead as _;
 
-    Ok(())
+    self.send(format_args!("sync"))?;
+
+    let mut answer = String::new();
+
+    self.answers.read_line(&mut answer)?;
+
+    match answer.trim() {
+      "ok" => Ok(()),
+      "" => Err("kwin-fake-input ended".into()),
+      other => Err(other.to_owned().into()),
+    }
   }
 
   fn window_origin(&mut self) -> Option<(f64, f64)> {

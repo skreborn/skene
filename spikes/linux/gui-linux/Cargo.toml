@@ -1,6 +1,6 @@
 [package]
 name = "skene-gui-linux"
-description = "skene-gui's Linux realization, drawn by Skene: the scene laid out by the foundation's engine and painted with vello_cpu and Parley into a window it owns, on Wayland (smithay-client-toolkit) or X11 (x11rb), with the keyboard through xkbcommon, the reader's settings from the XDG settings portal, and the testing driver reading through AT-SPI and acting through real input (XTest, EIS, virtual devices)."
+description = "skene-gui's Linux realization, drawn by Skene: the scene laid out by the foundation's engine and painted with vello_cpu and Parley into a window it owns, on Wayland (smithay-client-toolkit) or X11 (x11rb), with the keyboard through xkbcommon, the reader's settings from the XDG settings portal, and the testing driver reading through AT-SPI and acting through real input (XTest, EIS, virtual devices, KWin's fake input)."
 edition.workspace = true
 license.workspace = true
 publish.workspace = true
@@ -26,7 +26,6 @@ vello_hybrid = { default-features = false, features = ["std", "wgpu"], optional 
 wayland-backend = { features = ["client_system", "dlopen"], optional = true, version = "=0.3.17" }
 wayland-client = "=0.31.15"
 wayland-protocols-misc = { features = ["client"], version = "=0.3.12" }
-wayland-protocols-plasma = { features = ["client"], version = "=0.3.12" }
 wayland-protocols-wlr = { features = ["client"], version = "=0.3.12" }
 wgpu = { default-features = false, features = ["std", "vulkan", "wgsl"], optional = true, version = "=29.0.4" }
 x11rb = { default-features = false, features = ["allow-unsafe-code", "cursor", "dri3", "present", "shape", "shm", "xfixes", "xinput", "xkb", "xtest"], version = "=0.14.0" }

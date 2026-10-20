@@ -10,6 +10,7 @@
 #
 # Prints one line per leg and one per check; run from the workspace, its CARGO_TARGET_DIR set.
 set -uo pipefail
+. "$(cd "$(dirname "$0")" && pwd)/../children.sh"
 out=$1
 shift
 packages=("$@")
@@ -96,6 +97,6 @@ wayland=$(views)
 wait $app
 echo "positive controls, hello run as an app: windows on :$xnum $x11, sway views $wayland, connections to the user's bus $(( $(connections) - baseline - during ))"
 
-kill $monitor $sway $xvfb $bus 2> /dev/null
+signal_children TERM "$monitor" "$sway" "$xvfb" "$bus"
 wait 2> /dev/null
 rm -rf "$user"

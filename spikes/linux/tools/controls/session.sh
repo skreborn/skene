@@ -15,6 +15,7 @@
 # exported: the drive backend.
 set -u
 here=$(cd "$(dirname "$0")" && pwd)
+. "$here/../children.sh"
 root=$(cd "$here/../.." && pwd)
 KIND=$1; shift
 OUT=${OUT:?OUT names the log directory}
@@ -35,9 +36,9 @@ export SKENE_PROBE=$OUT/probe SKENE_SHOT=$OUT/frame.png SKENE_SHOT_POPUP=$OUT/po
 unset DISPLAY XAUTHORITY WAYLAND_DISPLAY SKENE_BACKEND GTK_IM_MODULE QT_IM_MODULE XMODIFIERS IBUS_ADDRESS
 PIDS=()
 cleanup() {
-  for pid in "${PIDS[@]}"; do kill "$pid" 2>/dev/null; done
+  signal_children TERM "${PIDS[@]}"
   sleep 0.3
-  for pid in "${PIDS[@]}"; do kill -9 "$pid" 2>/dev/null; done
+  signal_children KILL "${PIDS[@]}"
   wait 2>/dev/null
   rm -rf "$XDG_RUNTIME_DIR"
 }

@@ -6,6 +6,7 @@
 #
 #   detect.sh <expected for nothing set> <env=expected>...
 set -u
+. "$(cd "$(dirname "$0")" && pwd)/../children.sh"
 label=${LABEL:-$KIND}
 run() {
   local expected=$1; shift
@@ -14,7 +15,7 @@ run() {
     SKENE_PROBE=$OUT/detect-probe SKENE_SHOT= "$@" "$PROBE" >"$log" 2>&1 &
   local pid=$!
   for _ in $(seq 100); do grep -q -- '-> ' "$log" 2>/dev/null && break; sleep 0.05; done
-  kill "$pid" 2>/dev/null; wait "$pid" 2>/dev/null
+  signal_children TERM "$pid"; wait "$pid" 2>/dev/null
   local chosen
   chosen=$(grep -oE -- '-> [a-z]+' "$log" | head -1 | cut -c4-)
   local what="${*:-nothing set}"

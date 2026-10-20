@@ -2,7 +2,7 @@
 # utterance to $DISPATCHED, and Orca 46 (default settings, its own prefs dir, debug log) on it.
 # $SPOKEN is what Orca said, each utterance as its debug log records it (`SPEECH OUTPUT`),
 # under the step it followed: the dispatcher drops an utterance of blanks alone now and then.
-# Needs B (this directory) and OUT (the run's log dir).
+# Needs B (this directory), OUT (the run's log dir) and tools/children.sh sourced.
 SPOKEN=$OUT/spoken.log
 DISPATCHED=$OUT/dispatched.log
 STEPS=$OUT/steps.log
@@ -58,11 +58,11 @@ events = [(at + 86400 if at < start - 43200 else at, order, text) for at, order,
 for _, _, text in sorted(events, key=lambda event: (event[0], event[1])):
   print(text)
 MERGE
-  kill $ORCA 2>/dev/null
-  for _ in $(seq 30); do kill -0 $ORCA 2>/dev/null || break; sleep 0.1; done
-  kill -9 $ORCA 2>/dev/null
-  wait $ORCA 2>/dev/null
-  kill $SPEECHD 2>/dev/null
+  signal_children TERM "$ORCA"
+  for _ in $(seq 30); do is_child "$ORCA" || break; sleep 0.1; done
+  signal_children KILL "$ORCA"
+  wait "$ORCA" 2>/dev/null
+  signal_children TERM "$SPEECHD"
 }
 step() {
   sleep "${PAUSE:-1.2}"

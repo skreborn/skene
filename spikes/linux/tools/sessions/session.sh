@@ -17,6 +17,7 @@
 # (mutter), SCALE the output's scale (sway), SWAY_FLOAT=1 floats the app's window (sway). Display numbers are 400-699, sockets unique.
 set -u
 here=$(cd "$(dirname "$0")" && pwd)
+. "$here/../children.sh"
 KIND=$1; shift
 OUT=${OUT:?OUT names the log directory}
 mkdir -p "$OUT"
@@ -31,7 +32,7 @@ MONITOR=${MONITOR:-1280x1024}
 unset DISPLAY WAYLAND_DISPLAY SKENE_BACKEND
 PIDS=()
 cleanup() {
-  for pid in "${PIDS[@]}"; do kill "$pid" 2>/dev/null; done
+  signal_children TERM "${PIDS[@]}"
   wait 2>/dev/null
   rm -rf "$XDG_RUNTIME_DIR"
 }

@@ -14,6 +14,7 @@ if [ -z "${SKENE_PRIVATE_SESSION:-}" ] || [ "$SKENE_PRIVATE_SESSION" != "${XDG_R
 fi
 B=$(cd "$(dirname "$0")" && pwd)
 root=$(cd "$B/../../.." && pwd)
+. "$B/../../children.sh"
 . "$B/speech.sh"
 start_speech
 
@@ -112,6 +113,6 @@ step "Shift+Tab Shift+Tab back to the field"; key shift+Tab shift+Tab
 step "end"
 sleep 1
 stop_speech
-kill $APP_PID 2>/dev/null
-wait $APP_PID 2>/dev/null
+signal_children TERM "$APP_PID"
+wait "$APP_PID" 2>/dev/null
 cat "$SPOKEN"

@@ -2090,9 +2090,36 @@ impl Drawn {
     Self::with_window(|window| window.shell().paint_path())
   }
 
+  /// The path the open popup paints with, where one is open.
+  #[must_use]
+  pub fn popup_paint_path(&self) -> Option<PaintPath> {
+    Self::with_window(|window| {
+      let shell = window.shell();
+
+      shell.popup().map(|_| {
+        if shell.popup_presents() {
+          PaintPath::Gpu
+        } else {
+          PaintPath::Cpu
+        }
+      })
+    })
+  }
+
+  /// The part of the open window's frame its last frame drew, in device pixels: its leading
+  /// edge, its top, its width and its height; and the frame's width and height.
+  #[must_use]
+  pub fn last_drawn(&self) -> ((u32, u32, u32, u32), (u32, u32)) {
+    Self::with_window(|window| {
+      let shell = window.shell();
+
+      (shell.last_drawn(), shell.device_size())
+    })
+  }
+
   /// The GPU's device is lost under the open window, as a driver reset or a removed GPU loses
-  /// it, and the window settles: it paints on the CPU from then on. Whether it painted on the
-  /// GPU.
+  /// it, unknown to the window, and the window settles: the loss wakes it, and it and its popup
+  /// paint on the CPU from then on. Whether it painted on the GPU.
   pub fn trigger_device_loss(&mut self) -> bool {
     let lost = Self::with_window(|window| window.shell_mut().lose_device());
 

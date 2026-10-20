@@ -1,14 +1,23 @@
 //! The GPU path: a window's frames drawn by vello's hybrid renderer over wgpu (the sparse-strip
 //! scene vello_cpu draws, its fine rasterization run on the GPU) and presented through the
-//! platform's own swapchain on the window's surface (Vulkan's WSI, on Wayland and on X11).
+//! platform's own swapchain on the window's surface (Vulkan's WSI, on Wayland and on X11), and
+//! its popups' on theirs, one device shared by the window's surfaces.
 //!
 //! The path is chosen once per window ([`PathChoice`]): where an adapter the choice admits
-//! presents to the window's surface, the window paints on the GPU; elsewhere, and from the
-//! moment its device is lost, it paints on the CPU, the floor every window has. A software
+//! presents to the window's surface, the window paints on the GPU, and so does each popup it
+//! opens where the adapter presents to the popup's surface; elsewhere, and from the moment the
+//! device is lost, it paints on the CPU, the floor every window has. A lost device wakes the
+//! window's loop, which paints the window and its popup again on the CPU at once. A software
 //! adapter (Mesa's lavapipe) is admitted only where `SKENE_RENDERER=gpu` asks for it, since it
 //! runs the same fine rasterization on the CPU more slowly than vello_cpu.
+//!
+//! A frame draws the part of the window that changed alone, as the CPU path does: a band from
+//! the frame's leading edge, its top on vello's tile grid, drawn as the whole frame is but cut to
+//! the band, into a texture of the frame's size, and copied into the window's whole frame, which
+//! the surface is given whole.
 
 use std::{
+  cell::RefCell,
   collections::HashMap,
   ffi::c_void,
   num::NonZeroU32,
@@ -29,7 +38,7 @@ use skene_parley::{
   render::PlacedGlyph,
 };
 use vello_common::{
-  kurbo::{Affine, BezPath, Rect as KRect, Stroke},
+  kurbo::{Affine, BezPath, Rect as KRect, Shape as _, Stroke},
   paint::{Image, ImageId, ImageSource, Tint, TintMode},
   peniko::{Color as PColor, ImageQuality, ImageSampler, color::PremulRgba8},
   pixmap::Pixmap,
@@ -91,21 +100,37 @@ pub struct GpuCost {
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct Lost;
 
-/// A window's GPU path: the device, the surface it presents to, vello's hybrid renderer and its
-/// scene, the last frame kept for a screenshot, and the glyph images uploaded to the atlas.
-pub struct Gpu {
-  surface: wgpu::Surface<'static>,
-  device: wgpu::Device,
-  queue: wgpu::Queue,
-  config: wgpu::SurfaceConfiguration,
+/// A part of a frame, in device pixels: its leading edge, its top, its width and its height.
+pub type Band = (u32, u32, u32, u32);
+
+/// What a window's surfaces paint with on the GPU, the window's and its popups' alike: vello's
+/// hybrid renderer, its resources and the glyph images in its atlas, the surfaces' format, the
+/// adapter's device and queue, and whether the device was lost.
+struct Shared {
   renderer: Renderer,
   resources: Resources,
-  scene: Scene,
-  frame: wgpu::Texture,
   glyphs: HashMap<usize, (Rc<GlyphMask>, Vec<Tile>)>,
   area: u64,
+  format: wgpu::TextureFormat,
   lost: Arc<AtomicBool>,
-  _instance: wgpu::Instance,
+  queue: wgpu::Queue,
+  device: wgpu::Device,
+  adapter: wgpu::Adapter,
+  instance: wgpu::Instance,
+}
+
+/// A surface's GPU path: the surface it presents to, its configuration and vello's hybrid scene,
+/// the whole frame kept between frames (what a frame drawing a part of it copies into, and a
+/// screenshot reads), the texture a part is drawn into, and the device it shares with the
+/// window's other surfaces.
+pub struct Gpu {
+  surface: wgpu::Surface<'static>,
+  config: wgpu::SurfaceConfiguration,
+  scene: Scene,
+  frame: wgpu::Texture,
+  part: Option<wgpu::Texture>,
+  whole: bool,
+  shared: Rc<RefCell<Shared>>,
 }
 
 impl Gpu {
@@ -124,8 +149,43 @@ impl Gpu {
   /// The side of the largest part of a mask uploaded as one image, in device pixels.
   const TILE: u32 = 2048;
 
+  /// The surface at `target`, on `instance`.
+  ///
+  /// # Safety
+  ///
+  /// The handles in `target` stay valid while the surface lives.
+  unsafe fn surface(
+    instance: &wgpu::Instance,
+    target: Target,
+  ) -> Result<wgpu::Surface<'static>, String> {
+    let (raw_display_handle, raw_window_handle) = match target {
+      Target::Wayland { display, surface } => (
+        RawDisplayHandle::Wayland(WaylandDisplayHandle::new(display)),
+        RawWindowHandle::Wayland(WaylandWindowHandle::new(surface)),
+      ),
+      Target::X11 {
+        connection,
+        screen,
+        window,
+      } => (
+        RawDisplayHandle::Xcb(XcbDisplayHandle::new(Some(connection), screen)),
+        RawWindowHandle::Xcb(XcbWindowHandle::new(window)),
+      ),
+    };
+
+    // SAFETY: the caller keeps the handles valid while the surface lives.
+    unsafe {
+      instance.create_surface_unsafe(wgpu::SurfaceTargetUnsafe::RawHandle {
+        raw_display_handle: Some(raw_display_handle),
+        raw_window_handle,
+      })
+    }
+    .map_err(|error| format!("no surface: {error}"))
+  }
+
   /// The GPU path for the surface at `target`, `size` device pixels, where `choice` admits an
-  /// adapter that presents to it; why not otherwise.
+  /// adapter that presents to it; why not otherwise. A lost device posts
+  /// [`crate::runtime::Message::DeviceLost`] to this thread's loop.
   ///
   /// # Errors
   ///
@@ -144,28 +204,8 @@ impl Gpu {
       backends: wgpu::Backends::VULKAN,
       ..wgpu::InstanceDescriptor::new_without_display_handle()
     });
-    let (raw_display_handle, raw_window_handle) = match target {
-      Target::Wayland { display, surface } => (
-        RawDisplayHandle::Wayland(WaylandDisplayHandle::new(display)),
-        RawWindowHandle::Wayland(WaylandWindowHandle::new(surface)),
-      ),
-      Target::X11 {
-        connection,
-        screen,
-        window,
-      } => (
-        RawDisplayHandle::Xcb(XcbDisplayHandle::new(Some(connection), screen)),
-        RawWindowHandle::Xcb(XcbWindowHandle::new(window)),
-      ),
-    };
     // SAFETY: the caller keeps the handles valid while the path lives.
-    let surface = unsafe {
-      instance.create_surface_unsafe(wgpu::SurfaceTargetUnsafe::RawHandle {
-        raw_display_handle: Some(raw_display_handle),
-        raw_window_handle,
-      })
-    }
-    .map_err(|error| format!("no surface: {error}"))?;
+    let surface = unsafe { Self::surface(&instance, target) }?;
     let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
       power_preference: wgpu::PowerPreference::HighPerformance,
       force_fallback_adapter: false,
@@ -191,19 +231,23 @@ impl Gpu {
 
     {
       let lost = Arc::clone(&lost);
+      let inbox = crate::runtime::inbox();
 
       device.set_device_lost_callback(move |reason, message| {
         crate::trace::log(|| format!("[gpu] device lost ({reason:?}): {message}"));
         lost.store(true, Ordering::SeqCst);
+        inbox.send(crate::runtime::Message::DeviceLost);
       });
     }
 
     {
       let lost = Arc::clone(&lost);
+      let inbox = crate::runtime::inbox();
 
       device.on_uncaptured_error(Arc::new(move |error| {
         crate::trace::log(|| format!("[gpu] error: {error}"));
         lost.store(true, Ordering::SeqCst);
+        inbox.send(crate::runtime::Message::DeviceLost);
       }));
     }
 
@@ -215,70 +259,136 @@ impl Gpu {
     .into_iter()
     .find(|format| capabilities.formats.contains(format))
     .ok_or_else(|| format!("no plain 8-bit format among {:?}", capabilities.formats))?;
-    let alpha_mode = [
-      wgpu::CompositeAlphaMode::PreMultiplied,
-      wgpu::CompositeAlphaMode::Inherit,
-      wgpu::CompositeAlphaMode::Opaque,
-    ]
-    .into_iter()
-    .find(|mode| capabilities.alpha_modes.contains(mode))
-    .unwrap_or(wgpu::CompositeAlphaMode::Auto);
-    let present_mode = [wgpu::PresentMode::Mailbox, wgpu::PresentMode::Immediate]
-      .into_iter()
-      .find(|mode| capabilities.present_modes.contains(mode))
-      .unwrap_or(wgpu::PresentMode::Fifo);
-
-    if !capabilities.usages.contains(wgpu::TextureUsages::COPY_DST) {
-      return Err("the surface takes no copy".into());
-    }
-
-    let config = wgpu::SurfaceConfiguration {
-      usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_DST,
-      format,
-      width: size.0.max(1),
-      height: size.1.max(1),
-      present_mode,
-      desired_maximum_frame_latency: 2,
-      alpha_mode,
-      view_formats: Vec::new(),
-    };
-
-    surface.configure(&device, &config);
-
     let (renderer, resources) = Renderer::new(
       &device,
       &RenderTargetConfig {
         format,
-        width: config.width,
-        height: config.height,
+        width: size.0.max(1),
+        height: size.1.max(1),
       },
     );
-    let frame = Self::frame_texture(&device, &config);
+
+    crate::trace::log(|| {
+      format!(
+        "[gpu] {} ({:?}, {:?})",
+        info.name, info.device_type, info.backend
+      )
+    });
+
+    let shared = Rc::new(RefCell::new(Shared {
+      renderer,
+      resources,
+      glyphs: HashMap::new(),
+      area: 0,
+      format,
+      lost,
+      queue,
+      device,
+      adapter,
+      instance,
+    }));
+
+    Self::on(shared, surface, size)
+  }
+
+  /// The GPU path for the surface at `target`, `size` device pixels, on this path's device:
+  /// a popup's, the window's device shared; why not where the adapter does not present to it.
+  ///
+  /// # Errors
+  ///
+  /// Where the adapter does not present to the surface, or not in this path's format.
+  ///
+  /// # Safety
+  ///
+  /// The handles in `target` stay valid while the returned path lives.
+  pub unsafe fn share(&self, target: Target, size: (u32, u32)) -> Result<Self, String> {
+    let surface = {
+      let shared = self.shared.borrow();
+      // SAFETY: the caller keeps the handles valid while the path lives.
+      let surface = unsafe { Self::surface(&shared.instance, target) }?;
+
+      if !shared.adapter.is_surface_supported(&surface) {
+        return Err("the window's adapter does not present to the surface".into());
+      }
+
+      surface
+    };
+
+    Self::on(Rc::clone(&self.shared), surface, size)
+  }
+
+  /// The path presenting to `surface`, `size` device pixels, on `shared`.
+  fn on(
+    shared: Rc<RefCell<Shared>>,
+    surface: wgpu::Surface<'static>,
+    size: (u32, u32),
+  ) -> Result<Self, String> {
+    let config = {
+      let device = shared.borrow();
+      let capabilities = surface.get_capabilities(&device.adapter);
+
+      if !capabilities.formats.contains(&device.format) {
+        return Err(format!(
+          "the surface takes no {:?}, only {:?}",
+          device.format, capabilities.formats
+        ));
+      }
+
+      if !capabilities.usages.contains(wgpu::TextureUsages::COPY_DST) {
+        return Err("the surface takes no copy".into());
+      }
+
+      let alpha_mode = [
+        wgpu::CompositeAlphaMode::PreMultiplied,
+        wgpu::CompositeAlphaMode::Inherit,
+        wgpu::CompositeAlphaMode::Opaque,
+      ]
+      .into_iter()
+      .find(|mode| capabilities.alpha_modes.contains(mode))
+      .unwrap_or(wgpu::CompositeAlphaMode::Auto);
+      let present_mode = [wgpu::PresentMode::Mailbox, wgpu::PresentMode::Immediate]
+        .into_iter()
+        .find(|mode| capabilities.present_modes.contains(mode))
+        .unwrap_or(wgpu::PresentMode::Fifo);
+      let config = wgpu::SurfaceConfiguration {
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_DST,
+        format: device.format,
+        width: size.0.max(1),
+        height: size.1.max(1),
+        present_mode,
+        desired_maximum_frame_latency: 2,
+        alpha_mode,
+        view_formats: Vec::new(),
+      };
+
+      surface.configure(&device.device, &config);
+      crate::trace::log(|| {
+        format!(
+          "[gpu] surface {}x{} {:?} {alpha_mode:?} {present_mode:?}",
+          config.width, config.height, config.format
+        )
+      });
+
+      config
+    };
+    let frame = Self::texture(
+      &shared.borrow().device,
+      &config,
+      (config.width, config.height),
+    );
     let scene = Scene::new(
       u16::try_from(config.width).unwrap_or(u16::MAX),
       u16::try_from(config.height).unwrap_or(u16::MAX),
     );
 
-    crate::trace::log(|| {
-      format!(
-        "[gpu] {} ({:?}, {:?}) {format:?} {alpha_mode:?} {present_mode:?}",
-        info.name, info.device_type, info.backend
-      )
-    });
-
     Ok(Self {
       surface,
-      device,
-      queue,
       config,
-      renderer,
-      resources,
       scene,
       frame,
-      glyphs: HashMap::new(),
-      area: 0,
-      lost,
-      _instance: instance,
+      part: None,
+      whole: true,
+      shared,
     })
   }
 
@@ -295,19 +405,27 @@ impl Gpu {
     queue.submit([recorded.finish()]);
   }
 
-  fn frame_texture(device: &wgpu::Device, config: &wgpu::SurfaceConfiguration) -> wgpu::Texture {
+  /// A texture of `size` device pixels in the surface's format that frames and their parts are
+  /// drawn into, copied into and copied from.
+  fn texture(
+    device: &wgpu::Device,
+    config: &wgpu::SurfaceConfiguration,
+    size: (u32, u32),
+  ) -> wgpu::Texture {
     device.create_texture(&wgpu::TextureDescriptor {
       label: Some("skene frame"),
       size: wgpu::Extent3d {
-        width: config.width,
-        height: config.height,
+        width: size.0,
+        height: size.1,
         depth_or_array_layers: 1,
       },
       mip_level_count: 1,
       sample_count: 1,
       dimension: wgpu::TextureDimension::D2,
       format: config.format,
-      usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
+      usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+        | wgpu::TextureUsages::COPY_SRC
+        | wgpu::TextureUsages::COPY_DST,
       view_formats: &[],
     })
   }
@@ -315,18 +433,33 @@ impl Gpu {
   /// Whether the device was lost.
   #[must_use]
   pub fn is_lost(&self) -> bool {
-    self.lost.load(Ordering::SeqCst)
+    self.shared.borrow().lost.load(Ordering::SeqCst)
   }
 
-  /// Loses the device, as a driver reset or a removed GPU would: what a test of the fallback
-  /// does.
+  /// Loses the device, as a driver reset or a removed GPU would, unknown to the window: what a
+  /// test of the fallback does. The device's loss is reported as a real one is, through its
+  /// callback, which wakes the window's loop.
   pub fn lose(&self) {
-    self.device.destroy();
-    self.lost.store(true, Ordering::SeqCst);
+    let shared = self.shared.borrow();
+
+    shared.device.destroy();
+    let _ = shared.device.poll(wgpu::PollType::wait_indefinitely());
   }
 
-  /// Draws a whole frame of `size` device pixels through `record`, which draws into the sink in
-  /// the scene's order, and presents it.
+  /// Whether the next frame of `size` device pixels is to be drawn whole: the surface's first,
+  /// one of another size, or one after the device's atlas started over.
+  #[must_use]
+  pub fn needs_whole(&self, size: (u32, u32)) -> bool {
+    self.whole || (size.0.max(1), size.1.max(1)) != (self.config.width, self.config.height)
+  }
+
+  /// Draws the part `band` (device pixels, [`Gpu::needs_whole`] saying where it is to be the
+  /// whole) of a frame of `size` device pixels through `record`, which draws into the sink in
+  /// the scene's order in the frame's own device pixels, and presents the frame whole.
+  ///
+  /// A part is drawn as the whole frame is, in a scene and a texture of the frame's size, cut to
+  /// the band, and copied into the frame: what the GPU computes of a pixel (an edge's
+  /// coverage, a paint's sample) does not depend on what else is drawn.
   ///
   /// # Errors
   ///
@@ -334,6 +467,7 @@ impl Gpu {
   pub fn paint(
     &mut self,
     size: (u32, u32),
+    band: Band,
     record: &mut dyn FnMut(&mut dyn Sink),
   ) -> Result<GpuCost, Lost> {
     if self.is_lost() {
@@ -342,14 +476,25 @@ impl Gpu {
 
     let started = std::time::Instant::now();
     let (width, height) = (size.0.max(1), size.1.max(1));
+    let shared = Rc::clone(&self.shared);
+    let mut shared = shared.borrow_mut();
+    let shared = &mut *shared;
 
     if (width, height) != (self.config.width, self.config.height) {
       self.config.width = width;
       self.config.height = height;
-      self.surface.configure(&self.device, &self.config);
-      self.frame = Self::frame_texture(&self.device, &self.config);
+      self.surface.configure(&shared.device, &self.config);
+      self.frame = Self::texture(&shared.device, &self.config, (width, height));
+      self.part = None;
     }
 
+    let (left, top, band_width, band_height) = band;
+    let (left, top) = (left.min(width - 1), top.min(height - 1));
+    let (band_width, band_height) = (
+      band_width.clamp(1, width - left),
+      band_height.clamp(1, height - top),
+    );
+    let whole = (left, top, band_width, band_height) == (0, 0, width, height);
     let (scene_width, scene_height) = (
       u16::try_from(width).unwrap_or(u16::MAX),
       u16::try_from(height).unwrap_or(u16::MAX),
@@ -361,73 +506,76 @@ impl Gpu {
       self.scene.reset_and_resize(scene_width, scene_height);
     }
 
-    let mut encoder = self
+    let mut encoder = shared
       .device
       .create_command_encoder(&wgpu::CommandEncoderDescriptor {
         label: Some("skene frame"),
       });
-    let view = self
-      .frame
-      .create_view(&wgpu::TextureViewDescriptor::default());
+    let mut short = false;
 
-    // The frame starts clear: the shadow's margin is translucent.
-    drop(encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-      label: Some("skene clear"),
-      color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-        view: &view,
-        depth_slice: None,
-        resolve_target: None,
-        ops: wgpu::Operations {
-          load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-          store: wgpu::StoreOp::Store,
-        },
-      })],
-      depth_stencil_attachment: None,
-      occlusion_query_set: None,
-      timestamp_writes: None,
-      multiview_mask: None,
-    }));
-
-    if self.glyphs.len() >= Self::MOST_GLYPHS || self.area > Self::KEEP {
-      for (_, (_, tiles)) in self.glyphs.drain() {
+    if shared.glyphs.len() >= Self::MOST_GLYPHS || shared.area > Self::KEEP {
+      for (_, (_, tiles)) in shared.glyphs.drain() {
         for tile in tiles {
-          self
+          shared
             .renderer
-            .destroy_image(&mut self.resources, &mut encoder, tile.id);
+            .destroy_image(&mut shared.resources, &mut encoder, tile.id);
         }
       }
 
-      self.area = 0;
-      Self::submit_so_far(&self.device, &self.queue, &mut encoder);
+      shared.area = 0;
+      Self::submit_so_far(&shared.device, &shared.queue, &mut encoder);
     }
 
-    let mut short = false;
+    // Every frame is cut to its band, the whole frame's too, so a rectangle is drawn alike
+    // either way.
+    self.scene.reset_transform();
+    self.scene.push_clip_path(
+      &KRect::new(
+        f64::from(left),
+        f64::from(top),
+        f64::from(left + band_width),
+        f64::from(top + band_height),
+      )
+      .to_path(0.1),
+    );
 
     {
       let mut sink = HybridSink {
         scene: &mut self.scene,
-        renderer: &mut self.renderer,
-        resources: &mut self.resources,
-        device: &self.device,
-        queue: &self.queue,
+        renderer: &mut shared.renderer,
+        resources: &mut shared.resources,
+        device: &shared.device,
+        queue: &shared.queue,
         encoder: &mut encoder,
-        glyphs: &mut self.glyphs,
-        area: &mut self.area,
+        glyphs: &mut shared.glyphs,
+        area: &mut shared.area,
         short: &mut short,
       };
 
       record(&mut sink);
     }
 
-    let recorded = started.elapsed();
+    self.scene.pop_clip_path();
 
-    self
+    let recorded = started.elapsed();
+    let target = if whole {
+      self.frame.clone()
+    } else {
+      self
+        .part
+        .get_or_insert_with(|| Self::texture(&shared.device, &self.config, (width, height)))
+        .clone()
+    };
+    let view = target.create_view(&wgpu::TextureViewDescriptor::default());
+
+    // Drawn on a clear texture: the shadow's margin is translucent.
+    shared
       .renderer
       .render(
         &self.scene,
-        &mut self.resources,
-        &self.device,
-        &self.queue,
+        &mut shared.resources,
+        &shared.device,
+        &shared.queue,
         &mut encoder,
         &RenderSize { width, height },
         &view,
@@ -435,11 +583,39 @@ impl Gpu {
       )
       .map_err(|_| Lost)?;
 
+    if !whole {
+      let origin = wgpu::Origin3d {
+        x: left,
+        y: top,
+        z: 0,
+      };
+
+      encoder.copy_texture_to_texture(
+        wgpu::TexelCopyTextureInfo {
+          texture: &target,
+          mip_level: 0,
+          origin,
+          aspect: wgpu::TextureAspect::All,
+        },
+        wgpu::TexelCopyTextureInfo {
+          texture: &self.frame,
+          mip_level: 0,
+          origin,
+          aspect: wgpu::TextureAspect::All,
+        },
+        wgpu::Extent3d {
+          width: band_width,
+          height: band_height,
+          depth_or_array_layers: 1,
+        },
+      );
+    }
+
     let texture = match self.surface.get_current_texture() {
       wgpu::CurrentSurfaceTexture::Success(texture)
       | wgpu::CurrentSurfaceTexture::Suboptimal(texture) => texture,
       wgpu::CurrentSurfaceTexture::Outdated | wgpu::CurrentSurfaceTexture::Lost => {
-        self.surface.configure(&self.device, &self.config);
+        self.surface.configure(&shared.device, &self.config);
 
         match self.surface.get_current_texture() {
           wgpu::CurrentSurfaceTexture::Success(texture)
@@ -448,7 +624,7 @@ impl Gpu {
         }
       }
       _ => {
-        self.queue.submit([encoder.finish()]);
+        shared.queue.submit([encoder.finish()]);
 
         return Err(Lost);
       }
@@ -463,17 +639,20 @@ impl Gpu {
         depth_or_array_layers: 1,
       },
     );
-    self.queue.submit([encoder.finish()]);
+    shared.queue.submit([encoder.finish()]);
     texture.present();
 
-    if self
+    if shared
       .device
       .poll(wgpu::PollType::wait_indefinitely())
       .is_err()
-      || self.is_lost()
+      || shared.lost.load(Ordering::SeqCst)
     {
       return Err(Lost);
     }
+
+    // A frame short of a glyph is drawn again whole once the atlas starts over.
+    self.whole = short;
 
     #[expect(clippy::cast_possible_truncation, reason = "microseconds")]
     Ok(GpuCost {
@@ -490,15 +669,16 @@ impl Gpu {
       return None;
     }
 
+    let shared = self.shared.borrow();
     let (width, height) = (self.config.width, self.config.height);
     let row = (width * 4).next_multiple_of(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
-    let buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
+    let buffer = shared.device.create_buffer(&wgpu::BufferDescriptor {
       label: Some("skene read back"),
       size: u64::from(row) * u64::from(height),
       usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
       mapped_at_creation: false,
     });
-    let mut encoder = self
+    let mut encoder = shared
       .device
       .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
 
@@ -518,9 +698,12 @@ impl Gpu {
         depth_or_array_layers: 1,
       },
     );
-    self.queue.submit([encoder.finish()]);
+    shared.queue.submit([encoder.finish()]);
     buffer.slice(..).map_async(wgpu::MapMode::Read, |_| {});
-    self.device.poll(wgpu::PollType::wait_indefinitely()).ok()?;
+    shared
+      .device
+      .poll(wgpu::PollType::wait_indefinitely())
+      .ok()?;
 
     let bgra = self.config.format == wgpu::TextureFormat::Bgra8Unorm;
     let data = buffer.slice(..).get_mapped_range();

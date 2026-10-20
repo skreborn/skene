@@ -1,9 +1,12 @@
 //! The GPU path on the real platform: every page of the conformance suite painted on the GPU
 //! and then, the device lost, on the CPU, alike within a stated tolerance; a window whose
-//! device is lost painting on, its motion included, on the CPU; and glyphs that outgrow the
-//! atlas, together or alone, or are drawn as it starts over, painting on as on the CPU.
+//! device is lost painting on, its motion included, on the CPU; glyphs that outgrow the atlas,
+//! together or alone, or are drawn as it starts over, painting on as on the CPU; a change
+//! drawing its part of the window alone, as the whole window drew it; and a popup painting on
+//! the window's device, and on the CPU once the device is lost under it.
 
 use skene_gui::{
+  AccessRequest,
   prelude::*,
   testing::{self, Drawn, Driver as _, PaintPath, PathChoice, Role, Screenshot},
 };
@@ -303,6 +306,83 @@ fn a_glyph_drawn_as_the_atlas_starts_over_paints_on_the_gpu_as_on_the_cpu() {
   paints_alike(
     &screen,
     "the glyph drawn in the frame that starts the atlas over",
+  );
+}
+
+#[skene_gui::test]
+fn a_change_draws_its_part_alone_on_the_gpu_as_the_whole_window_drew_it() {
+  Drawn::set_path_choice(Some(PathChoice::Any));
+
+  let screen = testing::render(crate::presented::plate);
+  let switch = screen.find_by_role(Role::Switch, "Lit");
+
+  assert_eq!(screen.driver().paint_path(), PaintPath::Gpu);
+
+  // The window's first frame, drawn whole.
+  let whole = screen.render_to_image();
+
+  // A reader's flips, which move no pointer: each draws the plate and the switch again.
+  switch.trigger_access(AccessRequest::Toggle);
+
+  let ((left, top, width, height), (frame_width, frame_height)) = screen.driver().last_drawn();
+
+  assert!(
+    height * 2 <= frame_height,
+    "the flip drew a band of {width}x{height} at {left},{top} of the {frame_width}x{frame_height} frame, not the whole"
+  );
+
+  switch.trigger_access(AccessRequest::Toggle);
+  assert!(!switch.is_on());
+  assert_eq!(screen.driver().paint_path(), PaintPath::Gpu);
+  crate::presented::assert_drawn_alike(&whole, &screen.render_to_image());
+}
+
+/// A picker of three sizes in a column.
+fn sizes() -> impl View {
+  Column::new().set_padding(16).add_child(
+    Picker::new("Size").set_options(["Small", "Medium", "Large"].map(|size| (size, size))),
+  )
+}
+
+#[skene_gui::test]
+fn a_popup_paints_on_the_gpu_and_on_the_cpu_once_the_device_is_lost() {
+  Drawn::set_path_choice(Some(PathChoice::Any));
+
+  let screen = testing::render(sizes);
+
+  assert_eq!(screen.driver().paint_path(), PaintPath::Gpu);
+  screen.find_by_role(Role::ComboBox, "Size").click();
+  screen.find_by_role(Role::Option, "Medium");
+  assert_eq!(
+    screen.driver().popup_paint_path(),
+    Some(PaintPath::Gpu),
+    "the popup paints on the window's device"
+  );
+
+  let (gpu, at) = screen
+    .driver()
+    .popup_content()
+    .expect("the list is open on its own surface");
+
+  // Lost under the open popup, unknown to the window: the loss wakes it, and the window and
+  // the popup paint again on the CPU with nothing else changing.
+  assert!(screen.driver().trigger_device_loss());
+  assert_eq!(screen.driver().paint_path(), PaintPath::Cpu);
+  assert_eq!(screen.driver().popup_paint_path(), Some(PaintPath::Cpu));
+
+  let (cpu, again) = screen
+    .driver()
+    .popup_content()
+    .expect("the list stays open");
+  let difference = Difference::between(&gpu, &cpu);
+
+  assert_eq!(at, again, "the list stays where it was");
+  assert!(
+    difference.is_alike(),
+    "the list paints alike on both paths: a channel {} apart, {} of {} pixels beyond {NEAR}",
+    difference.most,
+    difference.apart,
+    difference.pixels
   );
 }
 

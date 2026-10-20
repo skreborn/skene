@@ -25,6 +25,10 @@ pub enum Message {
   Ime(crate::ime::ImeEvent),
   /// The accessibility layer asked something of the window.
   Access(crate::access::Request),
+  /// The GPU device the window and its popup paint with was lost: they paint again, on the
+  /// CPU.
+  #[cfg(feature = "gpu")]
+  DeviceLost,
 }
 
 /// A queue the loop drains, woken through a pipe.

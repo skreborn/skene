@@ -272,10 +272,23 @@ pub(crate) fn shot(pixmap: &vello_cpu::Pixmap) {
   write_png(&path, pixmap);
 }
 
+/// The file `SKENE_SHOT_POPUP` names for the open overlay's presented frames, where it names
+/// one.
+fn popup_shot_path() -> Option<std::path::PathBuf> {
+  std::env::var_os("SKENE_SHOT_POPUP")
+    .filter(|path| !path.is_empty())
+    .map(std::path::PathBuf::from)
+}
+
+/// Whether the open overlay's presented frames are written ([`shot_popup`]).
+pub(crate) fn popup_shots_on() -> bool {
+  popup_shot_path().is_some()
+}
+
 /// Writes a presented frame of the open overlay where `SKENE_SHOT_POPUP` asks.
 pub(crate) fn shot_popup(pixmap: &vello_cpu::Pixmap) {
-  if let Some(path) = std::env::var_os("SKENE_SHOT_POPUP").filter(|path| !path.is_empty()) {
-    write_png(std::path::Path::new(&path), pixmap);
+  if let Some(path) = popup_shot_path() {
+    write_png(&path, pixmap);
   }
 }
 

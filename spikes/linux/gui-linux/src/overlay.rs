@@ -237,9 +237,44 @@ impl Open {
     self.dirty
   }
 
-  /// Its last frame's pixels.
-  pub const fn pixmap(&self) -> &vello_cpu::Pixmap {
-    &self.renderer.pixmap
+  /// Its last frame's pixels: on the GPU path, read back from the GPU first.
+  pub fn pixmap(&mut self) -> &vello_cpu::Pixmap {
+    self.renderer.last_frame()
+  }
+
+  /// Its size in device pixels at `scale`.
+  #[must_use]
+  pub fn device_size(&self, scale: f64) -> (u16, u16) {
+    let (width, height) = self.placement.size;
+
+    #[expect(
+      clippy::cast_possible_truncation,
+      clippy::cast_sign_loss,
+      reason = "pixels"
+    )]
+    (
+      (f64::from(width) * scale).round() as u16,
+      (f64::from(height) * scale).round() as u16,
+    )
+  }
+
+  /// Paints on the GPU from now on, through `gpu`, presenting to its surface.
+  #[cfg(feature = "gpu")]
+  pub fn use_gpu(&mut self, gpu: crate::gpu::Gpu) {
+    self.renderer.use_gpu(gpu);
+    self.dirty = true;
+  }
+
+  /// Paints on the CPU from now on: the surface the GPU path presented to is going.
+  pub fn drop_gpu(&mut self) {
+    #[cfg(feature = "gpu")]
+    self.renderer.drop_gpu();
+  }
+
+  /// Whether it paints on the GPU, which presents each frame itself.
+  #[must_use]
+  pub const fn presents(&self) -> bool {
+    matches!(self.renderer.path(), crate::paint::PaintPath::Gpu)
   }
 
   /// Paints it whole at `scale`, where it is to be painted.
@@ -250,15 +285,7 @@ impl Open {
 
     let frame = self.node.frame.get();
     let (width, height) = self.placement.size;
-    #[expect(
-      clippy::cast_possible_truncation,
-      clippy::cast_sign_loss,
-      reason = "pixels"
-    )]
-    let device = (
-      (f64::from(width) * scale).round() as u16,
-      (f64::from(height) * scale).round() as u16,
-    );
+    let device = self.device_size(scale);
     let region = Rect {
       x: frame.x,
       y: frame.y,
@@ -268,7 +295,7 @@ impl Open {
     let window = Palette::now().window;
     let opaque = self.opaque;
 
-    self.renderer.paint(
+    let cost = self.renderer.paint(
       Some(&self.node),
       device,
       scale,
@@ -289,7 +316,7 @@ impl Open {
     Some(Frame {
       pixmap: &self.renderer.pixmap,
       damage: (0, 0, u32::from(device.0), u32::from(device.1)),
-      presented: false,
+      presented: cost.presented,
     })
   }
 }

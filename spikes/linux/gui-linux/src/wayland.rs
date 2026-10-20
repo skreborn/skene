@@ -124,6 +124,22 @@ struct OpenPopup {
   buffers: Vec<Buffer>,
 }
 
+impl OpenPopup {
+  /// Gives the popup's surface its scale for a buffer of `size` surface pixels at `scale`:
+  /// state the next commit applies.
+  fn set_scale(&self, scale: f64, size: (u32, u32)) {
+    let surface = self.popup.wl_surface();
+
+    match &self.viewport {
+      Some(viewport) => {
+        surface.set_buffer_scale(1);
+        viewport.set_destination(size.0 as i32, size.1 as i32);
+      }
+      None => surface.set_buffer_scale(scale.round() as i32),
+    }
+  }
+}
+
 /// A held key repeating: its code and when it repeats next.
 struct Repeat {
   keycode: u32,
@@ -769,6 +785,8 @@ impl State {
 
   /// Opens the open overlay's surface at `placement`, or closes it.
   fn place_popup(&mut self, placement: Option<crate::overlay::Placement>) {
+    // The GPU path presenting to the surface goes before the surface does.
+    self.shell.release_popup_path();
     self.popup = None;
 
     let Some(placement) = placement else {
@@ -822,6 +840,25 @@ impl State {
         self.grab_serial
       )
     });
+
+    #[cfg(feature = "gpu")]
+    {
+      use wayland_client::Proxy as _;
+
+      let display = std::ptr::NonNull::new(self.conn.backend().display_ptr().cast());
+      let surface = std::ptr::NonNull::new(popup.wl_surface().id().as_ptr().cast());
+
+      if let (Some(display), Some(surface)) = (display, surface) {
+        // SAFETY: the surface lives until the next placement or the overlay's close, which
+        // release the path first.
+        unsafe {
+          self
+            .shell
+            .choose_popup_path(crate::gpu::Target::Wayland { display, surface });
+        }
+      }
+    }
+
     self.popup = Some(OpenPopup {
       popup,
       viewport,
@@ -844,9 +881,26 @@ impl State {
     let Some((width, height)) = self.shell.popup().map(|list| list.placement.size) else {
       return;
     };
+
+    if self.shell.popup_presents() {
+      // The swapchain commits the frame: the surface's scale goes first.
+      open.set_scale(scale, (width, height));
+    }
+
     let Some(frame) = self.shell.popup_frame() else {
       return;
     };
+
+    if frame.presented {
+      if trace::popup_shots_on()
+        && let Some(list) = self.shell.popup_mut()
+      {
+        trace::shot_popup(list.pixmap());
+      }
+
+      return;
+    }
+
     let pixmap = frame.pixmap;
     let (device_width, device_height) = (i32::from(pixmap.width()), i32::from(pixmap.height()));
     let Ok((buffer, canvas)) = self.pool.create_buffer(
@@ -862,15 +916,13 @@ impl State {
       *target = [pixel.b, pixel.g, pixel.r, pixel.a];
     }
 
-    let surface = open.popup.wl_surface();
+    let Some(open) = &mut self.popup else {
+      return;
+    };
 
-    match &open.viewport {
-      Some(viewport) => {
-        surface.set_buffer_scale(1);
-        viewport.set_destination(width as i32, height as i32);
-      }
-      None => surface.set_buffer_scale(scale.round() as i32),
-    }
+    open.set_scale(scale, (width, height));
+
+    let surface = open.popup.wl_surface();
 
     if buffer.attach_to(surface).is_ok() {
       surface.damage_buffer(0, 0, device_width, device_height);
@@ -883,7 +935,9 @@ impl State {
       open.buffers.remove(0);
     }
 
-    if let Some(list) = self.shell.popup() {
+    if trace::popup_shots_on()
+      && let Some(list) = self.shell.popup_mut()
+    {
       trace::shot_popup(list.pixmap());
     }
   }

@@ -395,6 +395,14 @@ pub(crate) fn turn(shell: &mut shell::Shell) -> Vec<runtime::Message> {
       }
       runtime::Message::Access(request) => access::handle(shell, request),
       runtime::Message::Wake => {}
+      #[cfg(feature = "gpu")]
+      runtime::Message::DeviceLost => {
+        shell::invalidate_all();
+
+        if let Some(open) = shell.popup_mut() {
+          open.invalidate();
+        }
+      }
       message @ runtime::Message::Ime(_) => rest.push(message),
     }
   }

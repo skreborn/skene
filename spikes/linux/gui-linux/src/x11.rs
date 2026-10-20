@@ -2052,6 +2052,8 @@ impl X11 {
     placement: Option<crate::overlay::Placement>,
   ) -> Result<(), Box<dyn Error>> {
     if let Some(popup) = self.popup.take() {
+      // The GPU path presenting to the window goes before the window does.
+      shell.release_popup_path();
       self.conn.ungrab_pointer(x11rb::CURRENT_TIME)?;
       self.conn.destroy_window(popup.window)?;
       self.conn.flush()?;
@@ -2136,6 +2138,23 @@ impl X11 {
       open.set_opaque_surface(true);
     }
 
+    #[cfg(feature = "gpu")]
+    if let (Some(connection), Some(window), Ok(screen)) = (
+      std::ptr::NonNull::new(self.conn.get_raw_xcb_connection()),
+      std::num::NonZeroU32::new(window),
+      i32::try_from(self.screen),
+    ) {
+      // SAFETY: the connection lives as long as the window, and the popup's window until the
+      // next placement or the overlay's close, which release the path first.
+      unsafe {
+        shell.choose_popup_path(crate::gpu::Target::X11 {
+          connection,
+          screen,
+          window,
+        });
+      }
+    }
+
     Ok(())
   }
 
@@ -2148,6 +2167,17 @@ impl X11 {
     let Some(frame) = shell.popup_frame() else {
       return Ok(());
     };
+
+    if frame.presented {
+      if trace::popup_shots_on()
+        && let Some(list) = shell.popup_mut()
+      {
+        trace::shot_popup(list.pixmap());
+      }
+
+      return Ok(());
+    }
+
     let pixmap = frame.pixmap;
     let (width, height) = (usize::from(pixmap.width()), usize::from(pixmap.height()));
     let mut bytes = Vec::with_capacity(width * height * 4);
@@ -2178,7 +2208,9 @@ impl X11 {
       top += count;
     }
 
-    if let Some(list) = shell.popup() {
+    if trace::popup_shots_on()
+      && let Some(list) = shell.popup_mut()
+    {
       trace::shot_popup(list.pixmap());
     }
 

@@ -570,6 +570,8 @@ pub struct Shell {
   pub painted_at: Option<Instant>,
   /// Whether the last frame went to the screen through the GPU's swapchain.
   presented: bool,
+  /// The part of the frame the last frame drew, in device pixels.
+  drawn: (u32, u32, u32, u32),
   /// Whether the app asked to quit.
   pub quit: bool,
 }
@@ -620,6 +622,7 @@ impl Shell {
       frames: 0,
       painted_at: None,
       presented: false,
+      drawn: (0, 0, 0, 0),
       quit: false,
     }
   }
@@ -817,15 +820,46 @@ impl Shell {
     }
   }
 
-  /// Loses the GPU's device, as a driver reset would; whether the window painted on the GPU.
+  /// Loses the GPU's device, as a driver reset would, unknown to the window: whether the window
+  /// painted on the GPU. The loss wakes the loop ([`crate::runtime::Message::DeviceLost`]),
+  /// which paints the window and its popup again on the CPU.
   pub fn lose_device(&mut self) -> bool {
-    let lost = self.renderer.lose_device();
+    self.renderer.lose_device()
+  }
 
-    if lost {
-      invalidate_all();
+  /// Paints the open overlay on the GPU from now on, on the window's device, presenting to the
+  /// surface at `target`, where the window paints on the GPU and its adapter presents to the
+  /// surface; on the CPU otherwise.
+  ///
+  /// # Safety
+  ///
+  /// The handles in `target` stay valid until [`Shell::release_popup_path`] or the overlay's
+  /// close.
+  #[cfg(feature = "gpu")]
+  pub unsafe fn choose_popup_path(&mut self, target: crate::gpu::Target) {
+    let scale = self.scale;
+    let (Some(gpu), Some(open)) = (self.renderer.gpu(), self.overlay.as_mut()) else {
+      return;
+    };
+    let size = open.device_size(scale);
+
+    // SAFETY: the caller keeps the handles valid while the overlay paints through them.
+    match unsafe { gpu.share(target, (u32::from(size.0), u32::from(size.1))) } {
+      Ok(gpu) => open.use_gpu(gpu),
+      Err(why) => trace::log(|| format!("[gpu] the popup paints on the CPU: {why}")),
     }
+  }
 
-    lost
+  /// The open overlay's surface is going: it paints on the CPU until it is given another.
+  pub fn release_popup_path(&mut self) {
+    if let Some(open) = self.overlay.as_mut() {
+      open.drop_gpu();
+    }
+  }
+
+  /// Whether the open overlay paints on the GPU, which presents each of its frames itself.
+  pub fn popup_presents(&self) -> bool {
+    self.overlay.as_ref().is_some_and(Open::presents)
   }
 
   /// Lays out and paints what changed; the device rectangle painted.
@@ -1022,6 +1056,7 @@ impl Shell {
     );
 
     self.presented = cost.presented;
+    self.drawn = cost.drawn;
 
     // A frame that fell back to the CPU as the device was lost painted the whole surface.
     let region = if gpu && !cost.presented {
@@ -3771,6 +3806,13 @@ impl Shell {
     self
       .focused_entry()
       .is_some_and(|node| node.contents.borrow().secure)
+  }
+
+  /// The part of the window's frame its last frame drew, in device pixels: its leading edge,
+  /// its top, its width and its height.
+  #[must_use]
+  pub const fn last_drawn(&self) -> (u32, u32, u32, u32) {
+    self.drawn
   }
 
   /// The last frame painted (on the GPU path, read back from the GPU).

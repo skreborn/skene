@@ -1451,6 +1451,9 @@ pub struct Cost {
   pub shadows: (u64, u64),
   /// Whether the frame went to the screen through the GPU's swapchain, the whole of it.
   pub presented: bool,
+  /// The part of the frame drawn, in device pixels: its leading edge, its top, its width and
+  /// its height.
+  pub drawn: (u32, u32, u32, u32),
 }
 
 impl Default for Renderer {
@@ -1485,6 +1488,20 @@ impl Renderer {
   #[cfg(feature = "gpu")]
   pub fn use_gpu(&mut self, gpu: crate::gpu::Gpu) {
     self.gpu = Some(gpu);
+    self.pixmap = Pixmap::new(1, 1);
+  }
+
+  /// Paints on the CPU from now on: the GPU path's surface is going.
+  #[cfg(feature = "gpu")]
+  pub fn drop_gpu(&mut self) {
+    self.gpu = None;
+  }
+
+  /// The GPU path frames are painted with, where they are.
+  #[cfg(feature = "gpu")]
+  #[must_use]
+  pub const fn gpu(&self) -> Option<&crate::gpu::Gpu> {
+    self.gpu.as_ref()
   }
 
   /// The path frames are painted with now.
@@ -1498,8 +1515,9 @@ impl Renderer {
     PaintPath::Cpu
   }
 
-  /// Loses the GPU's device, as a driver reset or a removed GPU would; whether the window
-  /// painted on the GPU. The next frame paints on the CPU.
+  /// Loses the GPU's device, as a driver reset or a removed GPU would, unknown to the window:
+  /// whether the window painted on the GPU. The loss wakes the window's loop, which paints
+  /// on the CPU.
   pub fn lose_device(&mut self) -> bool {
     #[cfg(feature = "gpu")]
     if let Some(gpu) = &self.gpu {
@@ -1532,9 +1550,31 @@ impl Renderer {
     &self.pixmap
   }
 
-  /// Paints the whole frame of `size` device pixels on the GPU and presents it, as
-  /// [`Renderer::paint`] paints on the CPU; `None` where the device is lost, which hands the
-  /// window to the CPU path.
+  /// The band of a frame of `size` device pixels that `region` (window pixels, the window's
+  /// top left at `origin` surface pixels) lies in, at `scale`: from the frame's leading edge,
+  /// its other edges on vello's tile grid, within the frame; `None` where it is empty. A band
+  /// so placed comes out pixel for pixel as the whole frame drawn at once does.
+  fn band(
+    size: (u16, u16),
+    scale: f64,
+    region: Rect,
+    origin: (f32, f32),
+  ) -> Option<(f64, f64, f64, f64)> {
+    let device = |value: f32| f64::from(value) * scale;
+    let before = |value: f64| (value / Self::TILE).floor() * Self::TILE;
+    let after = |value: f64| (value / Self::TILE).ceil() * Self::TILE;
+    let left = 0.;
+    let top = before(device(region.y + origin.1)).max(0.);
+    let right = after(device(region.x + origin.0 + region.width)).min(f64::from(size.0));
+    let bottom = after(device(region.y + origin.1 + region.height)).min(f64::from(size.1));
+
+    (right > left && bottom > top).then_some((left, top, right, bottom))
+  }
+
+  /// Paints the band `band` (device pixels) of the frame of `size` device pixels on the GPU and
+  /// presents the frame, as [`Renderer::paint`] paints on the CPU, the scene recorded in the
+  /// frame's own device pixels; `None` where the device is lost, which hands the window to the
+  /// CPU path.
   #[cfg(feature = "gpu")]
   #[expect(clippy::too_many_arguments, reason = "one frame's every input")]
   fn paint_gpu(
@@ -1542,7 +1582,7 @@ impl Renderer {
     root: Option<&Node>,
     size: (u16, u16),
     scale: f64,
-    region: Rect,
+    band: (f64, f64, f64, f64),
     origin: (f32, f32),
     marks: &Marks,
     chrome: &mut dyn FnMut(&mut Canvas<'_>),
@@ -1550,25 +1590,48 @@ impl Renderer {
     let gpu = self.gpu.as_mut()?;
     let masks = &mut self.masks;
     let mut glyph_time = Duration::ZERO;
-    let result = gpu.paint((u32::from(size.0), u32::from(size.1)), &mut |sink| {
-      let mut canvas = Canvas {
-        sink,
-        masks: masks.as_mut(),
-        scale,
-        offset: (-f64::from(origin.0) * scale, -f64::from(origin.1) * scale),
-        clip: region,
-        glyph_time: Duration::ZERO,
-        palette: Palette::now(),
-      };
+    let (left, top, right, bottom) = band;
+    #[expect(clippy::cast_possible_truncation, reason = "window pixels")]
+    let region = Rect {
+      x: (left / scale) as f32 - origin.0,
+      y: (top / scale) as f32 - origin.1,
+      width: ((right - left) / scale) as f32,
+      height: ((bottom - top) / scale) as f32,
+    };
+    #[expect(
+      clippy::cast_possible_truncation,
+      clippy::cast_sign_loss,
+      reason = "whole device pixels within the frame"
+    )]
+    let pixels = (
+      left as u32,
+      top as u32,
+      (right - left) as u32,
+      (bottom - top) as u32,
+    );
+    let result = gpu.paint(
+      (u32::from(size.0), u32::from(size.1)),
+      pixels,
+      &mut |sink| {
+        let mut canvas = Canvas {
+          sink,
+          masks: masks.as_mut(),
+          scale,
+          offset: (-f64::from(origin.0) * scale, -f64::from(origin.1) * scale),
+          clip: region,
+          glyph_time: Duration::ZERO,
+          palette: Palette::now(),
+        };
 
-      chrome(&mut canvas);
+        chrome(&mut canvas);
 
-      if let Some(root) = root {
-        paint_node(root, &mut canvas, (0., 0.), region, marks);
-      }
+        if let Some(root) = root {
+          paint_node(root, &mut canvas, (0., 0.), region, marks);
+        }
 
-      glyph_time = canvas.glyph_time;
-    });
+        glyph_time = canvas.glyph_time;
+      },
+    );
 
     match result {
       Ok(cost) => {
@@ -1590,6 +1653,7 @@ impl Renderer {
           images: self.glyphs.lookups(),
           shadows: self.shadows.lookups(),
           presented: true,
+          drawn: pixels,
         })
       }
       Err(crate::gpu::Lost) => {
@@ -1605,7 +1669,9 @@ impl Renderer {
   /// frame of `size` device pixels, the window's top left at `origin` (surface pixels, the
   /// CSD shadow's margin), at `scale`; `chrome` first paints what lies behind and around the
   /// content in the same canvas (the shadow, the window's fill, the title bar), or the whole
-  /// of a surface with no tree (a popup's list).
+  /// of a surface with no tree (a popup's list). The part painted is a band of the frame from
+  /// its leading edge ([`Renderer::band`]); on the GPU path a band most of the frame, or a
+  /// frame [`crate::gpu::Gpu::needs_whole`] asks to be whole, is painted whole.
   #[expect(clippy::too_many_arguments, reason = "one frame's every input")]
   pub fn paint(
     &mut self,
@@ -1629,21 +1695,40 @@ impl Renderer {
     }
 
     #[cfg(feature = "gpu")]
-    if self.gpu.is_some() {
-      #[expect(clippy::cast_possible_truncation, reason = "window pixels")]
-      let whole = Rect {
-        x: -origin.0,
-        y: -origin.1,
-        width: (f64::from(size.0) / scale) as f32,
-        height: (f64::from(size.1) / scale) as f32,
+    if let Some(gpu) = &self.gpu {
+      let whole = (0., 0., f64::from(size.0), f64::from(size.1));
+      let band = if gpu.needs_whole((u32::from(size.0), u32::from(size.1))) {
+        Some(whole)
+      } else {
+        Self::band(size, scale, region, origin).map(|band| {
+          let (left, top, right, bottom) = band;
+
+          // A band most of the frame is drawn as the frame, with no copy.
+          if (right - left) * (bottom - top) * 4. >= whole.2 * whole.3 * 3. {
+            whole
+          } else {
+            band
+          }
+        })
+      };
+      let Some(band) = band else {
+        return Cost::default();
       };
 
-      if let Some(cost) = self.paint_gpu(root, size, scale, whole, origin, marks, chrome) {
+      if let Some(cost) = self.paint_gpu(root, size, scale, band, origin, marks, chrome) {
         return cost;
       }
 
       // The device was lost: this frame and every one after paint on the CPU, this one whole.
-      region = whole;
+      #[expect(clippy::cast_possible_truncation, reason = "window pixels")]
+      {
+        region = Rect {
+          x: -origin.0,
+          y: -origin.1,
+          width: (f64::from(size.0) / scale) as f32,
+          height: (f64::from(size.1) / scale) as f32,
+        };
+      }
       self.pixmap = Pixmap::new(1, 1);
     }
 
@@ -1651,19 +1736,10 @@ impl Renderer {
       self.pixmap = Pixmap::new(size.0, size.1);
     }
 
-    // The band of the frame the damage lies in, in device pixels: from the frame's left edge,
-    // its other edges on whole tiles around the damage.
     let device = |value: f32| f64::from(value) * scale;
-    let before = |value: f64| (value / Self::TILE).floor() * Self::TILE;
-    let after = |value: f64| (value / Self::TILE).ceil() * Self::TILE;
-    let left = 0.;
-    let top = before(device(region.y + origin.1)).max(0.);
-    let right = after(device(region.x + origin.0 + region.width)).min(f64::from(size.0));
-    let bottom = after(device(region.y + origin.1 + region.height)).min(f64::from(size.1));
-
-    if right <= left || bottom <= top {
+    let Some((left, top, right, bottom)) = Self::band(size, scale, region, origin) else {
       return Cost::default();
-    }
+    };
 
     #[expect(
       clippy::cast_possible_truncation,
@@ -1751,6 +1827,7 @@ impl Renderer {
       images: self.glyphs.lookups(),
       shadows: self.shadows.lookups(),
       presented: false,
+      drawn: (u32::from(dx), u32::from(dy), u32::from(dw), u32::from(dh)),
     }
   }
 }

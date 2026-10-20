@@ -100,7 +100,7 @@ const PLATE_PADDING: (f32, f32, f32, f32) = (7., 11., 9., 5.);
 /// A mid-gray page holding, 13 pixels in, a translucent veil along a row: a 31-pixel gap, a
 /// blue plate holding white text, its left edge 53 pixels in (off any grid of 2 or 4 pixels),
 /// and a switch that lights the plate.
-fn plate() -> impl View {
+pub(crate) fn plate() -> impl View {
   let lit = Signal::new(false);
   let (top, trailing, bottom, leading) = PLATE_PADDING;
 
@@ -152,25 +152,32 @@ fn a_box_drawn_again_alone_shows_what_the_whole_window_drew() {
 
 /// Asserts that `again`, the window drawn again in part, shows pixel for pixel what `whole`,
 /// the window drawn whole, showed.
-fn assert_drawn_alike(whole: &Screenshot, again: &Screenshot) {
+pub(crate) fn assert_drawn_alike(whole: &Screenshot, again: &Screenshot) {
   let (before, _) = whole.rgba.as_chunks::<4>();
   let (after, _) = again.rgba.as_chunks::<4>();
   let mut differing = 0;
   let mut most = 0;
+  let mut first = None;
 
-  for (was, is) in before.iter().zip(after) {
+  for (index, (was, is)) in before.iter().zip(after).enumerate() {
     for (was, is) in was.iter().zip(is) {
       most = most.max(was.abs_diff(*is));
     }
 
-    differing += usize::from(was != is);
+    if was != is {
+      differing += 1;
+      first = first.or(Some((
+        index % whole.width as usize,
+        index / whole.width as usize,
+      )));
+    }
   }
 
   assert_eq!(
     (whole.width, whole.height, differing, most),
     (again.width, again.height, 0, 0),
     "the window drawn again in part shows {differing} pixels unlike the window drawn whole, a \
-     channel at most {most} apart"
+     channel at most {most} apart, the first at {first:?} (device pixels)"
   );
 }
 

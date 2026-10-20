@@ -11,7 +11,10 @@
 pub mod engine;
 pub mod extents;
 
-use std::hash::{DefaultHasher, Hash, Hasher};
+use std::{
+  collections::{HashMap, HashSet},
+  hash::{BuildHasherDefault, DefaultHasher, Hash, Hasher},
+};
 
 use crate::{AxisAlignment, IntoUnit};
 
@@ -45,6 +48,38 @@ impl Key {
     Self::of(segment, &"place")
   }
 }
+
+/// Hashes a [`Key`], itself a wide hash, as its low 64 bits; anything else byte by byte.
+#[derive(Clone, Copy, Default, Debug)]
+pub struct KeyHasher(u64);
+
+impl Hasher for KeyHasher {
+  #[inline(always)]
+  fn finish(&self) -> u64 {
+    self.0
+  }
+
+  fn write(&mut self, bytes: &[u8]) {
+    for byte in bytes {
+      self.0 = (self.0 ^ u64::from(*byte)).wrapping_mul(0x0100_0000_01b3);
+    }
+  }
+
+  #[inline(always)]
+  #[expect(
+    clippy::cast_possible_truncation,
+    reason = "the low half of a wide hash"
+  )]
+  fn write_u128(&mut self, value: u128) {
+    self.0 = value as u64;
+  }
+}
+
+/// A map from a list's items' keys, hashed by [`KeyHasher`].
+pub type KeyMap<V> = HashMap<Key, V, BuildHasherDefault<KeyHasher>>;
+
+/// A set of a list's items' keys, hashed by [`KeyHasher`].
+pub type KeySet = HashSet<Key, BuildHasherDefault<KeyHasher>>;
 
 /// How long a list's items are along its axis.
 #[derive(Clone, Copy, PartialEq, Debug)]

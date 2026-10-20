@@ -161,7 +161,7 @@ impl Open {
       width,
       height,
     });
-    layout::reach(node);
+    layout::reach(node, 0);
 
     #[expect(
       clippy::cast_possible_truncation,

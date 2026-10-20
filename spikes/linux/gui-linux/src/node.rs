@@ -104,10 +104,10 @@ impl Contents {
 /// A realized node, shared.
 pub type Node = Rc<Drawn>;
 
-/// A node's measurements in one layout epoch.
+/// A node's measurements since it last changed.
 #[derive(Default)]
 pub struct Measures {
-  /// The epoch they were made in.
+  /// The epoch they were first made in.
   pub epoch: u64,
   /// Each along an axis, given the other axis's size (its bits) where known, with which of
   /// its sizes it holds.
@@ -167,12 +167,25 @@ pub struct Drawn {
   pub thumb: Cell<Option<(Axis, f32)>>,
   /// Its accessibility facts, as last applied.
   pub access: RefCell<AccessFacts>,
-  /// Its measurements in the current layout epoch.
+  /// Its measurements since it or something beneath it last changed.
   pub measures: RefCell<Measures>,
   /// The size last reported ([`Interest::size`]).
   pub reported: Cell<Option<Size>>,
   /// The layout epoch its engine's children were last given in.
   pub engine_epoch: Cell<u64>,
+  /// The layout epoch from which its own layout or its children changed: its engine is made
+  /// again ([`crate::layout::mark`]).
+  pub structure_at: Cell<u64>,
+  /// The layout epoch from which it or something beneath it changed: what was measured of it
+  /// is forgotten ([`crate::layout::mark`]).
+  pub measure_at: Cell<u64>,
+  /// The layout epoch its children were last laid out in, and the rectangle (in the window,
+  /// before rounding) it was laid out at then: laid out again only where it or something
+  /// beneath it changed since, or that rectangle's size or its fractions of a pixel did.
+  pub laid: Cell<(u64, Rect)>,
+  /// The layout epoch its frame's size last changed or its children were last laid out in:
+  /// what its reach is gathered again after.
+  pub placed_at: Cell<u64>,
   /// What it and its subtree paint, relative to its frame's origin.
   pub reach: Cell<Rect>,
   /// Its editing state, where it is a text entry.
@@ -215,6 +228,10 @@ impl Drawn {
       measures: RefCell::new(Measures::default()),
       reported: Cell::new(None),
       engine_epoch: Cell::new(0),
+      structure_at: Cell::new(0),
+      measure_at: Cell::new(0),
+      laid: Cell::new((0, Rect::default())),
+      placed_at: Cell::new(0),
       reach: Cell::new(Rect::default()),
       entry: RefCell::new(None),
       composing: Cell::new(false),

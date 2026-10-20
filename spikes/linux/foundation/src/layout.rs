@@ -228,6 +228,21 @@ pub struct Measurement {
   pub baseline: Option<f32>,
 }
 
+impl Measurement {
+  /// Whether `other` is this measurement, to within a hundredth of a pixel.
+  #[cfg(debug_assertions)]
+  fn agrees(self, other: Self) -> bool {
+    let close = |a: f32, b: f32| (a - b).abs() < 0.01;
+
+    close(self.minimum, other.minimum)
+      && close(self.natural, other.natural)
+      && match (self.baseline, other.baseline) {
+        (Some(a), Some(b)) => close(a, b),
+        (a, b) => a.is_none() && b.is_none(),
+      }
+  }
+}
+
 /// A rectangle in pixels.
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
 pub struct Rect {
@@ -291,16 +306,15 @@ struct TreeNode<C> {
   base_min_size: Size<ts::LengthPercentageAuto>,
   children: Vec<usize>,
   child: Option<C>,
-  cache: Cache,
   unrounded: Layout,
 }
 
 /// One container's layout: a small taffy tree of the container and one leaf per child,
 /// each child measured through the host protocol (engine variant T4).
 ///
-/// What it measures of its children is kept, as taffy's caches keep it, until its children or
-/// its own layout are set again or [`ContainerLayout::invalidate`] says a child's measurement
-/// may have changed.
+/// What it measures of itself is kept, as taffy's cache keeps it, until its children or its own
+/// layout are set again or [`ContainerLayout::invalidate`] says a child's measurement may have
+/// changed; what is measured of a child is the host's to keep, and a text leaf's its own.
 pub struct ContainerLayout<H: LayoutHost> {
   kind: LayoutKind,
   own: ResolvedLayout,
@@ -310,6 +324,57 @@ pub struct ContainerLayout<H: LayoutHost> {
   stale: bool,
   laid: Option<(f32, f32)>,
   height_free: bool,
+  simple: Option<Simple>,
+  cache: Cache,
+}
+
+/// A box holding one shown child that fills it, laid out without taffy's grid, as the grid
+/// would lay it out: the child stretched across the box inside its padding, and no smaller than
+/// its least size; the box as large as the child and its padding, or as its own sizes say.
+#[derive(Clone, Copy, Debug)]
+struct Simple {
+  /// The child's place among the tree's nodes.
+  child: usize,
+  /// The padding (and border) along each edge: left, right, top, bottom.
+  padding: (f32, f32, f32, f32),
+  /// The box's own width and height, where it sets them in pixels.
+  size: (Option<f32>, Option<f32>),
+  /// The box's least width and height, where it sets them.
+  min: (Option<f32>, Option<f32>),
+  /// The box's greatest width and height, where it sets them.
+  max: (Option<f32>, Option<f32>),
+}
+
+impl Simple {
+  /// `value` as a box size along an axis, between `min` and `max` (the least winning) and no
+  /// smaller than the padding along it, `padding`.
+  fn clamp(value: f32, min: Option<f32>, max: Option<f32>, padding: f32) -> f32 {
+    let value = max.map_or(value, |max| value.min(max));
+    let value = min.map_or(value, |min| value.max(min));
+
+    value.max(padding)
+  }
+
+  /// The padding along `axis`, both edges.
+  const fn along(self, axis: Axis) -> f32 {
+    let (left, right, top, bottom) = self.padding;
+
+    match axis {
+      Axis::Horizontal => left + right,
+      Axis::Vertical => top + bottom,
+    }
+  }
+
+  /// The box's size along `axis` around a child `content` long, unrounded.
+  fn outer(self, axis: Axis, content: f32) -> f32 {
+    let along = self.along(axis);
+    let (own, min, max) = match axis {
+      Axis::Horizontal => (self.size.0, self.min.0, self.max.0),
+      Axis::Vertical => (self.size.1, self.min.1, self.max.1),
+    };
+
+    Self::clamp(own.unwrap_or(content + along), min, max, along)
+  }
 }
 
 impl<H: LayoutHost> ContainerLayout<H> {
@@ -336,6 +401,8 @@ impl<H: LayoutHost> ContainerLayout<H> {
       stale: true,
       laid: None,
       height_free: true,
+      simple: None,
+      cache: Cache::new(),
     };
 
     this.rebuild(children);
@@ -373,6 +440,30 @@ impl<H: LayoutHost> ContainerLayout<H> {
   /// Forgets what was measured: a child's measurement may have changed.
   pub const fn invalidate(&mut self) {
     self.stale = true;
+  }
+
+  /// Forgets what the container made of its children, where the children `changed` names
+  /// measure anew: what a change beneath some of its children (a text, a child's own child)
+  /// needs, the rest of its children's measurements kept by the host.
+  pub fn invalidate_children(&mut self, changed: impl Fn(&H::Child) -> bool) {
+    if self.stale {
+      return;
+    }
+
+    self.laid = None;
+    self.cache.clear();
+
+    // A toolkit child's least size is written into its style: that is made again.
+    let toolkit = self.nodes[1..].iter().any(|node| {
+      node
+        .child
+        .as_ref()
+        .is_some_and(|child| changed(child) && !H::is_container(child) && H::text(child).is_none())
+    });
+
+    if toolkit {
+      self.stale = true;
+    }
   }
 
   fn children(&self) -> Vec<(H::Child, ResolvedLayout)> {
@@ -444,10 +535,9 @@ impl<H: LayoutHost> ContainerLayout<H> {
     }
 
     self.laid = None;
+    self.cache.clear();
 
     for node in &mut self.nodes {
-      node.cache.clear();
-
       let Some(child) = &node.child else {
         continue;
       };
@@ -478,6 +568,99 @@ impl<H: LayoutHost> ContainerLayout<H> {
         style.min_size = min_size;
       }
     }
+
+    self.simple = self.simple();
+  }
+
+  /// The box this container is, where it lays out as [`Simple`] does: a box of no tracks of
+  /// its own, its one shown child of no size, placement or alignment of its own stretched
+  /// across it.
+  fn simple(&self) -> Option<Simple> {
+    let own = &self.own;
+    let stretch = |alignment: Option<Alignment>| {
+      alignment.is_none_or(|alignment| {
+        alignment.horizontal == AxisAlignment::Stretch
+          && alignment.vertical == AxisAlignment::Stretch
+      })
+    };
+    let pixels = |value: Option<Dimension>| match value {
+      Some(Dimension::Length(length)) => Some(Some(length)),
+      Some(Dimension::Auto | Dimension::Fraction(_)) | None => Some(None),
+    };
+
+    if self.kind != LayoutKind::Box
+      || own.columns.is_some()
+      || own.rows.is_some()
+      || own.implicit_columns.is_some()
+      || own.implicit_rows.is_some()
+      || !stretch(own.alignment)
+      || own
+        .item_alignment
+        .is_some_and(|alignment| alignment != AxisAlignment::Stretch)
+    {
+      return None;
+    }
+
+    let mut shown = self.nodes[1..]
+      .iter()
+      .enumerate()
+      .filter(|(_, node)| node.style.display != Display::None);
+    let (index, node) = shown.next()?;
+
+    if shown.next().is_some() {
+      return None;
+    }
+
+    if !node.child.as_ref().is_some_and(H::is_container) {
+      return None;
+    }
+
+    let placement = &self.placements[index];
+    let auto = |value: Option<Dimension>| value.is_none_or(|value| value == Dimension::Auto);
+    let style = &node.style;
+    let sizeless = |size: Size<ts::Dimension>| {
+      size.width == ts::Dimension::AUTO && size.height == ts::Dimension::AUTO
+    };
+    let unbounded = |size: Size<ts::LengthPercentageAuto>| {
+      size.width == ts::LengthPercentageAuto::AUTO && size.height == ts::LengthPercentageAuto::AUTO
+    };
+
+    if !(auto(placement.width)
+      && auto(placement.height)
+      && auto(placement.min_width)
+      && auto(placement.min_height)
+      && auto(placement.max_width)
+      && auto(placement.max_height)
+      && placement.cell.is_none()
+      && placement.pin.is_none()
+      && stretch(placement.self_alignment)
+      && sizeless(style.size)
+      && unbounded(style.min_size)
+      && unbounded(style.max_size))
+    {
+      return None;
+    }
+
+    let inset = own.padding.unwrap_or(Inset {
+      top: 0.,
+      trailing: 0.,
+      bottom: 0.,
+      leading: 0.,
+    });
+    let (left, right) = if self.rtl {
+      (inset.trailing, inset.leading)
+    } else {
+      (inset.leading, inset.trailing)
+    };
+    let padding = (left, right, inset.top, inset.bottom);
+
+    Some(Simple {
+      child: index + 1,
+      padding,
+      size: (pixels(own.width)?, pixels(own.height)?),
+      min: (pixels(own.min_width)?, pixels(own.min_height)?),
+      max: (pixels(own.max_width)?, pixels(own.max_height)?),
+    })
   }
 
   /// The container's measurement along `axis`, given the other axis's size where known: a
@@ -487,6 +670,26 @@ impl<H: LayoutHost> ContainerLayout<H> {
   pub fn measure(&mut self, axis: Axis, for_size: Option<f32>, needed: Needed) -> Measurement {
     self.refresh();
 
+    let Some(simple) = self.simple else {
+      return self.measure_grid(axis, for_size, needed);
+    };
+    let measured = self.measure_simple(simple, axis, for_size, needed);
+
+    #[cfg(debug_assertions)]
+    {
+      let grid = self.measure_grid(axis, for_size, needed);
+
+      debug_assert!(
+        measured.agrees(grid),
+        "a simple box measures as the grid does: {measured:?} against {grid:?} along {axis:?} at {for_size:?}"
+      );
+    }
+
+    measured
+  }
+
+  /// [`ContainerLayout::measure`] through taffy's grid.
+  fn measure_grid(&mut self, axis: Axis, for_size: Option<f32>, needed: Needed) -> Measurement {
     let space =
       |value: Option<f32>| value.map_or(AvailableSpace::MaxContent, AvailableSpace::Definite);
 
@@ -596,6 +799,108 @@ impl<H: LayoutHost> ContainerLayout<H> {
     )
   }
 
+  /// [`ContainerLayout::measure`] of a [`Simple`] box: its own size along `axis` where it sets
+  /// one, else its child's and its padding, between its least and greatest.
+  fn measure_simple(
+    &self,
+    simple: Simple,
+    axis: Axis,
+    for_size: Option<f32>,
+    needed: Needed,
+  ) -> Measurement {
+    let Some(child) = &self.nodes[simple.child].child else {
+      return Measurement::default();
+    };
+    let (_, _, top, _) = simple.padding;
+
+    match axis {
+      Axis::Horizontal => {
+        let measured = simple.size.0.is_none().then(|| {
+          let height = for_size.map(|height| (height - simple.along(Axis::Vertical)).max(0.));
+
+          H::measure(child, axis, height.map(f32::round), needed)
+        });
+        let size = |content: f32| simple.outer(axis, content).ceil();
+        let minimum = needed
+          .minimum()
+          .then(|| size(measured.map_or(0., |measured| measured.minimum)));
+        let natural = needed
+          .natural()
+          .then(|| size(measured.map_or(0., |measured| measured.natural)));
+
+        Measurement {
+          minimum: minimum.unwrap_or_default(),
+          natural: natural.map_or(0., |natural| natural.max(minimum.unwrap_or(natural))),
+          baseline: None,
+        }
+      }
+      Axis::Vertical => {
+        let width = self.simple_width(simple, child, for_size).round();
+        let own = simple.size.1;
+        let minimum = needed.minimum().then(|| {
+          let content = match own {
+            Some(_) => 0.,
+            None => H::measure(child, axis, Some(width), Needed::Minimum).minimum,
+          };
+
+          simple.outer(axis, content).ceil()
+        });
+        let natural = needed.natural().then(|| {
+          let measured = H::measure(child, axis, Some(width), Needed::Natural);
+          let outer = simple.outer(axis, measured.natural);
+          // The child as tall as the box's inside, or as its own natural height where the box
+          // is smaller.
+          let height = (outer - simple.along(axis)).max(measured.natural);
+
+          (outer.ceil(), top + measured.baseline.unwrap_or(height))
+        });
+
+        Measurement {
+          minimum: minimum.map_or(0., |minimum| {
+            natural.map_or(minimum, |(natural, _)| minimum.min(natural))
+          }),
+          natural: natural.map_or(0., |(natural, _)| natural),
+          baseline: natural.map(|(_, baseline)| baseline),
+        }
+      }
+    }
+  }
+
+  /// The width a [`Simple`] box lays its child out at, the box `width` wide where that is
+  /// known: the box's inside, and no less than the child's least width.
+  fn simple_width(&self, simple: Simple, child: &H::Child, width: Option<f32>) -> f32 {
+    let least = H::measure(child, Axis::Horizontal, None, Needed::Minimum).minimum;
+    let width = width.unwrap_or_else(|| {
+      let natural = match simple.size.0 {
+        Some(_) => 0.,
+        None => H::measure(child, Axis::Horizontal, None, Needed::Natural).natural,
+      };
+
+      simple.outer(Axis::Horizontal, natural)
+    });
+
+    (width - simple.along(Axis::Horizontal)).max(0.).max(least)
+  }
+
+  /// Lays a [`Simple`] box's child out in `size` (the box's), as the grid lays its one item
+  /// out: stretched across the box inside its padding, and no smaller than its least size.
+  fn lay_out_simple(&mut self, simple: Simple, size: Size<f32>) {
+    let Some(child) = self.nodes[simple.child].child.clone() else {
+      return;
+    };
+    let (left, _, top, _) = simple.padding;
+    let width = self.simple_width(simple, &child, Some(size.width));
+    let least = H::measure(&child, Axis::Vertical, Some(width.round()), Needed::Minimum).minimum;
+    let height = (size.height - simple.along(Axis::Vertical))
+      .max(0.)
+      .max(least);
+    let mut layout = Layout::with_order(0);
+
+    layout.location = taffy::Point { x: left, y: top };
+    layout.size = Size { width, height };
+    self.nodes[simple.child].unrounded = layout;
+  }
+
   /// Lays the children out in `size` and allocates each through the host: a toolkit's
   /// allocate hook calls it, with the fractional rectangle a Skene parent handed this
   /// container where it has one, inset by whatever the toolkit draws inside the container's
@@ -620,7 +925,11 @@ impl<H: LayoutHost> ContainerLayout<H> {
     #[cfg(debug_assertions)]
     let kept: Vec<Layout> = self.nodes[1..].iter().map(|node| node.unrounded).collect();
 
-    if !laid_out || cfg!(debug_assertions) {
+    if let Some(simple) = self.simple
+      && !cfg!(debug_assertions)
+    {
+      self.lay_out_simple(simple, size);
+    } else if !laid_out || cfg!(debug_assertions) {
       let output = self.compute_child_layout(
         TaffyId::from(0usize),
         LayoutInput {
@@ -645,7 +954,25 @@ impl<H: LayoutHost> ContainerLayout<H> {
     }
 
     #[cfg(debug_assertions)]
-    if laid_out {
+    if let Some(simple) = self.simple {
+      let grid = self.nodes[simple.child].unrounded;
+
+      self.lay_out_simple(simple, size);
+
+      let laid = self.nodes[simple.child].unrounded;
+      let close = |a: f32, b: f32| (a - b).abs() < 0.01;
+
+      debug_assert!(
+        close(laid.location.x, grid.location.x)
+          && close(laid.location.y, grid.location.y)
+          && close(laid.size.width, grid.size.width)
+          && close(laid.size.height, grid.size.height),
+        "a simple box lays its child out as the grid does: {laid:?} against {grid:?} in {size:?}"
+      );
+    }
+
+    #[cfg(debug_assertions)]
+    if laid_out && self.simple.is_none() {
       for (node, kept) in self.nodes[1..].iter().zip(kept) {
         debug_assert!(
           node.style.display == Display::None
@@ -759,7 +1086,6 @@ impl<C> TreeNode<C> {
       style,
       children: Vec::new(),
       child,
-      cache: Cache::new(),
       unrounded: Layout::with_order(0),
     }
   }
@@ -1280,17 +1606,24 @@ fn measure_leaf<H: LayoutHost>(
   }
 }
 
+/// Taffy's cache of the container itself: a child's measurements are its host's to keep.
 impl<H: LayoutHost> CacheTree for ContainerLayout<H> {
   fn cache_get(&mut self, node: TaffyId, inputs: &LayoutInput) -> Option<LayoutOutput> {
-    self.nodes[usize::from(node)].cache.get(inputs)
+    (usize::from(node) == 0)
+      .then(|| self.cache.get(inputs))
+      .flatten()
   }
 
   fn cache_store(&mut self, node: TaffyId, inputs: &LayoutInput, output: LayoutOutput) {
-    self.nodes[usize::from(node)].cache.store(inputs, output);
+    if usize::from(node) == 0 {
+      self.cache.store(inputs, output);
+    }
   }
 
   fn cache_clear(&mut self, node: TaffyId) {
-    self.nodes[usize::from(node)].cache.clear();
+    if usize::from(node) == 0 {
+      self.cache.clear();
+    }
   }
 }
 

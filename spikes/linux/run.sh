@@ -31,7 +31,8 @@
 #   - the frame costs, five runs on each of Xvfb, headless sway and headless mutter
 #     (tools/bench/frames.sh): the 1000-row probe's first frame and its parts, start to first
 #     frame, hover, scroll and relayout frames, and hello's first frame, with the rows' first
-#     frame held against its targets (under 50 ms, its layout under 16 ms).
+#     frame held against its targets (under 50 ms, its layout under 16 ms); the same rows in a
+#     LazyColumn, a thousand, ten thousand and a hundred thousand of them, and relaid out.
 #
 # Stage CONTROLS (the built-in controls, each a foundation behavior over a composed tree of
 # Skene's views styled by the style model, the picker's list an overlay on a popup surface of

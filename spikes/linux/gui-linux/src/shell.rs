@@ -685,6 +685,7 @@ impl Shell {
     if (scale - self.scale).abs() > f64::EPSILON {
       self.scale = scale;
       environment::report(Fact::Scale(scale));
+      layout::mark_all();
       invalidate_layout();
       invalidate_all();
       // The reader's extents are device pixels.
@@ -848,6 +849,8 @@ impl Shell {
     let mut dirty = DIRTY.with(|dirty| std::mem::take(&mut *dirty.borrow_mut()));
     let mut prepared = Duration::ZERO;
     let mut laid = false;
+    // The epoch this frame's first layout runs in: what its layouts place gathers its reach.
+    let first_layout = layout::epoch() + 1;
 
     // Layout settles before the frame paints: what laying out reports (a box's size, a scroll
     // box's offset clamped) may change the tree again (a lazy list realizing the rows its
@@ -953,10 +956,17 @@ impl Shell {
 
     self.mark_overlay(&dirty);
 
-    // A frame that laid out, or that changed much, measures every node's reach again; one
-    // that changed a few looks, those nodes' and their ancestors'.
-    if dirty.layout || dirty.all || dirty.nodes.len() > REACH_ALONE {
-      layout::reach(&root);
+    // A frame that changed much measures every node's reach again; one that laid out, what
+    // its layouts placed and the few whose looks changed; one that changed a few looks, those
+    // nodes' and their ancestors'.
+    if dirty.all || dirty.nodes.len() > REACH_ALONE {
+      layout::reach(&root, 0);
+    } else if dirty.layout {
+      layout::reach(&root, first_layout);
+
+      for node in dirty.nodes.iter().filter(|node| node.is_alive()) {
+        node.refresh_reach();
+      }
     } else {
       for node in dirty.nodes.iter().filter(|node| node.is_alive()) {
         node.refresh_reach();

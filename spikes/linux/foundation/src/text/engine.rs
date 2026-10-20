@@ -26,14 +26,38 @@ pub trait TextEngine {
   /// `text` as a paragraph styled by `style`: shaped once, laid out at any width after.
   fn paragraph(&self, text: &AttributedText, style: &ParagraphStyle) -> Self::Paragraph;
 
-  /// Each of `texts` as a paragraph styled by its style, in order: what
-  /// [`TextEngine::paragraph`] makes of each, an engine free to make them together.
-  fn paragraphs(&self, texts: &[(AttributedText, ParagraphStyle)]) -> Vec<Self::Paragraph> {
+  /// Each text `texts` yields as a paragraph styled by its style, in order, beside the text
+  /// and the style it was made of: what [`TextEngine::paragraph`] makes of each, an engine
+  /// free to make them together, and to start on the first while the next are still being
+  /// produced (a walk of the scene yielding them as it goes).
+  fn paragraphs(
+    &self,
+    texts: impl IntoIterator<Item = (AttributedText, ParagraphStyle)>,
+  ) -> Vec<Made<Self::Paragraph>> {
     texts
-      .iter()
-      .map(|(text, style)| self.paragraph(text, style))
+      .into_iter()
+      .map(|(text, style)| {
+        let paragraph = self.paragraph(&text, &style);
+
+        Made {
+          text,
+          style,
+          paragraph,
+        }
+      })
       .collect()
   }
+}
+
+/// A paragraph an engine made of a batch's text ([`TextEngine::paragraphs`]), beside the text
+/// and the style it was made of.
+pub struct Made<P> {
+  /// The text.
+  pub text: AttributedText,
+  /// The paragraph's style.
+  pub style: ParagraphStyle,
+  /// The paragraph.
+  pub paragraph: P,
 }
 
 /// A paragraph: text shaped once, measured and laid out at widths.

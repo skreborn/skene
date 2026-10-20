@@ -28,11 +28,13 @@ fn a_batch_shapes_as_its_paragraphs_shape_one_at_a_time() {
       )
     })
     .collect();
-  let batch = engine.paragraphs(&texts);
+  let batch = engine.paragraphs(texts.iter().cloned());
 
   assert_eq!(batch.len(), texts.len());
 
-  for ((text, style), shaped) in texts.iter().zip(&batch) {
+  for ((text, style), made) in texts.iter().zip(&batch) {
+    let shaped = &made.paragraph;
+
     let alone = engine.paragraph(text, style);
 
     assert_eq!(shaped.text(), text.value());

@@ -8,9 +8,16 @@
 #   damage) and the wheel frames (a scroll);
 # - relayout: the same probe with MODE=layout, row 0's padding changed twelve times, each a
 #   relayout of the list;
-# - hello: hello's first frame (release build).
+# - hello: hello's first frame (release build);
+# - lazy, lazy-10k, lazy-100k: the same probe's rows in a LazyColumn (LAZY=1), a thousand, ten
+#   thousand and a hundred thousand of them, driven as rows is: only the rows in view and a
+#   few beyond are built;
+# - lazy-relayout: the lazy thousand with MODE=layout.
 #
 #   tools/bench/frames.sh <release apps dir> <out dir> [rounds]
+#
+# LEGS (x11 sway mutter unless set) and CASES (every case above unless set) choose what runs,
+# so two builds can take turns, a round each, through KEEP=1 and FIRST.
 #
 # Each app starts once its session has settled, APP_DELAY seconds (1 unless set) after it is
 # ready, as an app starts on a desktop whose compositor is idle. TOOLS (the drivers) is
@@ -42,16 +49,26 @@ run() { # run <leg> <name> <round> <kind> <app> <command...> (VAR=value settings
   grep -E '^TIMING .* app start to first frame' "$dir/session.log" | sed "s/^/$leg $name $round /" >> "$out/frames.txt"
 }
 
+cases=${CASES:-rows relayout hello lazy lazy-10k lazy-100k lazy-relayout}
+
 for round in $(seq "${FIRST:-1}" $(( ${FIRST:-1} + rounds - 1 ))); do
-  for leg in x11 sway mutter; do
+  for leg in ${LEGS:-x11 sway mutter}; do
     case $leg in
       x11) base="SKENE_SIZE=800x900" ;;
       sway) base="DRIVER=sway SKENE_SIZE=800x900 SWAY_BORDER=none MONITOR=800x900" ;;
       mutter) base="DRIVER=mutter-dbus SKENE_SIZE=800x900 HEADER=38" ;;
     esac
-    SETTINGS="$base" run "$leg" rows "$round" "$leg" "$release/rows" bash "$sessions/scenarios/rows.sh"
-    SETTINGS="$base MODE=layout" run "$leg" relayout "$round" "$leg" "$release/rows" sleep 5.5
-    SETTINGS="" run "$leg" hello "$round" "$leg" "$release/hello" sleep 0.3
+    for case in $cases; do
+      case $case in
+        rows) SETTINGS="$base" run "$leg" rows "$round" "$leg" "$release/rows" bash "$sessions/scenarios/rows.sh" ;;
+        relayout) SETTINGS="$base MODE=layout" run "$leg" relayout "$round" "$leg" "$release/rows" sleep 5.5 ;;
+        hello) SETTINGS="" run "$leg" hello "$round" "$leg" "$release/hello" sleep 0.3 ;;
+        lazy) SETTINGS="$base LAZY=1" run "$leg" lazy "$round" "$leg" "$release/rows" bash "$sessions/scenarios/rows.sh" ;;
+        lazy-10k) SETTINGS="$base LAZY=1 ROWS=10000" run "$leg" lazy-10k "$round" "$leg" "$release/rows" bash "$sessions/scenarios/rows.sh" ;;
+        lazy-100k) SETTINGS="$base LAZY=1 ROWS=100000" run "$leg" lazy-100k "$round" "$leg" "$release/rows" bash "$sessions/scenarios/rows.sh" ;;
+        lazy-relayout) SETTINGS="$base LAZY=1 MODE=layout" run "$leg" lazy-relayout "$round" "$leg" "$release/rows" sleep 5.5 ;;
+      esac
+    done
   done
 done
 
@@ -98,17 +115,24 @@ for (leg, case), rounds in sorted(runs.items()):
     f"app start to first frame {median(starts.get((leg, case), []))} ms"
   )
 
-  if case == "rows":
-    small = [float(frame[1]) for frame in later if frame[7] == "damage" and float(frame[8]) * float(frame[9]) < area / 4]
-    large = [float(frame[1]) for frame in later if frame[7] == "damage" and float(frame[8]) * float(frame[9]) >= area / 4]
+  if case == "rows" or case in ("lazy", "lazy-10k", "lazy-100k"):
+    # After the first frame and the second (the window's focus shown), a frame that paints a
+    # small part is a hover; one that paints much of the window, or lays it out again (a lazy
+    # list realizing the rows it scrolls to), is a scroll.
+    driven = [frame for frames in rounds.values() for frame in frames[2:]]
+    small = [float(frame[1]) for frame in driven if frame[7] == "damage" and float(frame[8]) * float(frame[9]) < area / 4]
+    large = [
+      float(frame[1]) for frame in driven
+      if frame[7] == "full" or float(frame[8]) * float(frame[9]) >= area / 4
+    ]
     print(f"{leg} {case}: hover {median(small)} ms (n={len(small)}); scroll {median(large)} ms (n={len(large)})")
     total, layout = statistics.median(parts["total"]), statistics.median(parts["layout"])
     verdicts.append(
-      f"BENCH {leg} rows first frame {total:.2f} ms ({'under' if total < 50 else 'NOT under'} 50), "
+      f"BENCH {leg} {case} first frame {total:.2f} ms ({'under' if total < 50 else 'NOT under'} 50), "
       f"layout {layout:.2f} ms ({'under' if layout < 16 else 'NOT under'} 16)"
     )
 
-  if case == "relayout":
+  if case.endswith("relayout"):
     relayouts = [float(frame[1]) for frame in later if frame[7] == "full"]
     parts = [[float(frame[index]) for frame in later if frame[7] == "full"] for index in (2, 3)]
     print(

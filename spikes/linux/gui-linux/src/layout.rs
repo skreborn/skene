@@ -25,16 +25,69 @@ use crate::{
 thread_local! {
   /// The scroll boxes whose offsets a layout clamped to their extents, to report.
   static CLAMPED: std::cell::RefCell<Vec<Node>> = const { std::cell::RefCell::new(Vec::new()) };
-  /// The layout epoch: measurements cached in an earlier one are stale.
+  /// The layout epoch: what changed is marked with the next one ([`mark`]).
   static EPOCH: Cell<u64> = const { Cell::new(1) };
+  /// The layout epoch from which every node counts as changed ([`mark_all`]).
+  static ALL_AT: Cell<u64> = const { Cell::new(0) };
   /// How many measurements were computed rather than read from a cache, since the thread
   /// started.
   static MEASURED: Cell<u64> = const { Cell::new(0) };
 }
 
-/// Starts a layout epoch: every cached measurement is stale.
+/// Starts a layout epoch: what was marked changed since the last is measured and laid out
+/// again.
 pub fn next_epoch() {
   EPOCH.with(|epoch| epoch.set(epoch.get() + 1));
+}
+
+/// The current layout epoch.
+pub fn epoch() -> u64 {
+  EPOCH.with(Cell::get)
+}
+
+/// Marks `node` changed for the next layout: what was measured of it and of each of its
+/// ancestors is forgotten, and where `structure` (its own layout or its children changed),
+/// its engine and its parent's are made again. A layout then measures and lays out the
+/// changed nodes and their ancestors, and keeps the rest.
+pub fn mark(node: &Node, structure: bool) {
+  let at = epoch() + 1;
+
+  if structure {
+    node.structure_at.set(at);
+
+    if let Some(parent) = node.parent() {
+      parent.structure_at.set(at);
+    }
+  }
+
+  if node.measure_at.replace(at) == at && !structure {
+    return;
+  }
+
+  let mut next = node.parent();
+
+  while let Some(ancestor) = next {
+    if ancestor.measure_at.replace(at) == at {
+      break;
+    }
+
+    next = ancestor.parent();
+  }
+}
+
+/// Marks every node changed for the next layout: a change everything depends on.
+pub fn mark_all() {
+  ALL_AT.with(|all| all.set(epoch() + 1));
+}
+
+/// The layout epoch from which `node` or something beneath it counts as changed.
+fn changed_at(node: &Drawn) -> u64 {
+  node.measure_at.get().max(ALL_AT.with(Cell::get))
+}
+
+/// The layout epoch from which `node`'s own layout or its children count as changed.
+fn restructured_at(node: &Drawn) -> u64 {
+  node.structure_at.get().max(ALL_AT.with(Cell::get))
 }
 
 /// How many measurements were computed since the thread started.
@@ -82,8 +135,18 @@ fn own_layout(node: &Drawn) -> ResolvedLayout {
 fn with_engine<T>(node: &Node, body: impl FnOnce(&mut ContainerLayout<Host>) -> T) -> T {
   let epoch = EPOCH.with(Cell::get);
   let mut slot = node.engine.borrow_mut();
+  let last = node.engine_epoch.replace(epoch);
 
-  if node.engine_epoch.replace(epoch) != epoch || slot.is_none() {
+  if last != epoch
+    && restructured_at(node) <= last
+    && changed_at(node) > last
+    && let Some(engine) = slot.as_mut()
+  {
+    // Only beneath some children did anything change: their measures alone are forgotten.
+    engine.invalidate_children(|child| changed_at(child) > last);
+  }
+
+  if last != epoch && restructured_at(node) > last || slot.is_none() {
     let children: Vec<(Node, ResolvedLayout)> = node
       .children_ref()
       .iter()
@@ -204,6 +267,7 @@ fn lay_bars(node: &Node, window: Rect) {
     };
 
     track.frame.set(rect);
+    track.placed_at.set(epoch());
     track.laid_width.set(rect.width);
     lay_children(track, placed);
 
@@ -248,6 +312,7 @@ fn lay_bars(node: &Node, window: Rect) {
     };
 
     thumb.frame.set(frame);
+    thumb.placed_at.set(epoch());
     thumb.laid_width.set(frame.width);
     thumb.thumb.set(Some((*axis, inner - length)));
     lay_children(
@@ -350,7 +415,7 @@ impl Drawn {
     {
       let cache = self.measures.borrow();
 
-      if cache.epoch == epoch
+      if cache.epoch >= changed_at(self)
         && let Some(rigid) = cache.rigid
       {
         return rigid;
@@ -405,7 +470,7 @@ impl Drawn {
     };
     let mut cache = self.measures.borrow_mut();
 
-    if cache.epoch != epoch {
+    if cache.epoch < changed_at(self) {
       *cache = Measures {
         epoch,
         ..Measures::default()
@@ -499,7 +564,7 @@ impl LayoutHost for Host {
     let kept = {
       let mut cache = child.measures.borrow_mut();
 
-      if cache.epoch != epoch {
+      if cache.epoch < changed_at(child) {
         *cache = Measures {
           epoch,
           ..Measures::default()
@@ -587,9 +652,31 @@ impl LayoutHost for Host {
   fn allocate(child: &Node, rect: Rect, fractional: Rect, _: Option<f32>) {
     // Whole pixels relative to the container, rounded in the window as one tree would be;
     // the fractional rectangle (in the window) lays a nested container's children out.
-    child.frame.set(rect);
+    let epoch = EPOCH.with(Cell::get);
+
+    let was = child.frame.replace(rect);
+
+    if was.width != rect.width || was.height != rect.height {
+      child.placed_at.set(epoch);
+    }
+
     child.laid_width.set(fractional.width);
-    lay_children(child, fractional);
+
+    // A subtree nothing changed in, laid out at the same size and the same fractions of a
+    // pixel, lays out as it did: its frames are its parents', and are kept.
+    let (laid_at, laid) = child.laid.get();
+    let same = laid_at > 0
+      && laid_at >= changed_at(child)
+      && laid.width == fractional.width
+      && laid.height == fractional.height
+      && laid.x.fract() == fractional.x.fract()
+      && laid.y.fract() == fractional.y.fract();
+
+    if !same {
+      lay_children(child, fractional);
+      child.laid.set((epoch, fractional));
+      child.placed_at.set(epoch);
+    }
   }
 }
 
@@ -632,6 +719,7 @@ fn lay_children(node: &Node, window: Rect) {
 
       node.scroll.set(clamped);
       node.extent.set((width, height));
+      child.placed_at.set(epoch());
       child.laid_width.set(width);
       child.frame.set(Rect {
         x: 0.,
@@ -668,7 +756,9 @@ impl Drawn {
   }
 }
 
-/// Lays the tree under `root` out in a window `width` by `height`, the root at `origin`.
+/// Lays the tree under `root` out in a window `width` by `height`, the root at `origin`: what
+/// changed since the last layout ([`mark`]) and its ancestors measured and laid out again,
+/// every subtree nothing changed in kept where it is laid out at the same size.
 pub fn layout(root: &Node, origin: (f32, f32), width: f32, height: f32) {
   next_epoch();
 
@@ -680,24 +770,25 @@ pub fn layout(root: &Node, origin: (f32, f32), width: f32, height: f32) {
   };
 
   root.frame.set(frame);
+  root.placed_at.set(epoch());
   lay_children(root, frame);
 }
 
 /// Computes what each node under `root` and its subtree paint, relative to where it is drawn
 /// (its frame moved by its offset): its own box and overhang, and its children's where it does
-/// not clip them.
-pub fn reach(root: &Node) {
-  fn go(node: &Node) {
+/// not clip them; the reach of a subtree no layout from the epoch `since` on placed is kept.
+pub fn reach(root: &Node, since: u64) {
+  fn go(node: &Node, since: u64) {
     for child in node.children_ref().iter() {
-      if !child.is_hidden() && !child.is_overlay() {
-        go(child);
+      if !child.is_hidden() && !child.is_overlay() && child.placed_at.get() >= since {
+        go(child, since);
       }
     }
 
     node.gather_reach();
   }
 
-  go(root);
+  go(root, since);
 }
 
 impl Drawn {
@@ -785,155 +876,165 @@ fn prepare_from(
   palette: &Palette,
   repainted: &mut Vec<Node>,
 ) -> Change {
-  /// Paragraphs to make: each node, its cell and its link runs, and beside them the texts
-  /// and styles to make them of.
-  type Pending = (
-    Vec<(Node, Rc<TextCell>, Links)>,
-    Vec<(AttributedText, ParagraphStyle)>,
-  );
-
-  /// What `made` changed in `node`'s cell, once it shows its text: its reserve and links
-  /// set, the change it makes recorded.
-  fn settle(
-    node: &Node,
-    cell: &TextCell,
-    mut made: Change,
-    links: Links,
-    change: &mut Change,
-    repainted: &mut Vec<Node>,
-  ) {
-    let reserve = node.contents.borrow().reserve.clone();
-    let reserve_moved = cell.set_reserve(reserve, made == Change::Layout);
-
-    cell.set_links(links);
-
-    if made == Change::Layout && !reserve_moved && cell.keeps_its_size() {
-      // One line as wide as the widest text it reserves: its size does not move.
-      made = Change::Paint;
-    }
-
-    if reserve_moved {
-      made = Change::Layout;
-    }
-
-    match made {
-      Change::Layout => *change = Change::Layout,
-      Change::Paint => repainted.push(Rc::clone(node)),
-      Change::None => {}
-    }
-  }
-
-  fn go(
-    node: &Node,
-    inherited: &RunProps,
-    palette: &Palette,
-    change: &mut Change,
-    repainted: &mut Vec<Node>,
-    pending: &mut Pending,
-  ) {
-    if !node.is_alive() {
-      return;
-    }
-
-    let props = node.run.borrow().over(inherited);
-
-    node.ink.set(props.color.unwrap_or(palette.ink));
-
-    let built: Option<(AttributedText, _, Vec<_>)> = match node.spec.kind {
-      NodeKind::Text => {
-        let contents = node.contents.borrow();
-        let base = props.run_style(palette.ink, DEFAULT_SIZE);
-        let paragraph = props.paragraph_style();
-
-        match (&contents.runs, &contents.text) {
-          (Some(runs), _) => {
-            let (text, links) = attributed_runs(runs, &props, &base, palette.ink, DEFAULT_SIZE);
-
-            Some((text, paragraph, links))
-          }
-          (None, Some(text)) => Some((
-            AttributedText::plain(Rc::clone(text), base),
-            paragraph,
-            Vec::new(),
-          )),
-          (None, None) => Some((AttributedText::plain("", base), paragraph, Vec::new())),
-        }
-      }
-      NodeKind::Editable { .. } => {
-        if node.prepare_entry(&props, palette) {
-          *change = Change::Layout;
-        }
-
-        let placeholder = node.contents.borrow().placeholder.clone();
-
-        placeholder.map(|placeholder| {
-          let ink = props.placeholder_color.unwrap_or(palette.dim);
-          let mut style = props.run_style(ink, DEFAULT_SIZE);
-
-          style.paint.color = ink;
-
-          (
-            AttributedText::plain(placeholder, style),
-            props
-              .paragraph_style()
-              .with_wrap(skene_foundation::text::Wrap::None),
-            Vec::new(),
-          )
-        })
-      }
-      _ => None,
-    };
-
-    match built {
-      Some((text, paragraph, links)) => {
-        let cell = node
-          .text
-          .borrow_mut()
-          .get_or_insert_with(TextCell::new)
-          .clone();
-
-        match cell.update(text, paragraph) {
-          Ok(made) => settle(node, &cell, made, links, change, repainted),
-          Err(made) => {
-            pending.0.push((Rc::clone(node), cell, links));
-            pending.1.push(made);
-          }
-        }
-      }
-      None => {
-        if node.is_entry() && node.text.borrow_mut().take().is_some() {
-          repainted.push(Rc::clone(node));
-        }
-      }
-    }
-
-    for child in node.children_ref().iter() {
-      go(child, &props, palette, change, repainted, pending);
-    }
-  }
-
   let mut change = Change::None;
-  let mut pending = (Vec::new(), Vec::new());
-
-  go(
-    root,
-    inherited,
+  let mut pending = Vec::new();
+  let walk = Walk {
+    stack: vec![(Rc::clone(root), Rc::new(inherited.clone()))],
     palette,
-    &mut change,
+    change: &mut change,
     repainted,
-    &mut pending,
-  );
+    pending: &mut pending,
+  };
+  // Every paragraph to make is made as one batch, taken as the walk finds it, so an engine
+  // shapes the first while the walk goes on.
+  let made = crate::text::engine().paragraphs(walk);
 
-  // Every paragraph to make is made at once, so an engine may make them side by side.
-  let (cells, texts) = pending;
-  let paragraphs = crate::text::engine().paragraphs(&texts);
-
-  for ((node, cell, links), ((text, style), paragraph)) in
-    cells.into_iter().zip(texts.into_iter().zip(paragraphs))
-  {
-    cell.install(text, style, paragraph);
+  for ((node, cell, links), made) in pending.into_iter().zip(made) {
+    cell.install(made.text, made.style, made.paragraph);
     settle(&node, &cell, Change::Layout, links, &mut change, repainted);
   }
 
   change
+}
+
+/// What `made` changed in `node`'s cell, once it shows its text: its reserve and links set,
+/// the change it makes recorded, a node laid out again marked changed.
+fn settle(
+  node: &Node,
+  cell: &TextCell,
+  mut made: Change,
+  links: Links,
+  change: &mut Change,
+  repainted: &mut Vec<Node>,
+) {
+  let reserve = node.contents.borrow().reserve.clone();
+  let reserve_moved = cell.set_reserve(reserve, made == Change::Layout);
+
+  cell.set_links(links);
+
+  if made == Change::Layout && !reserve_moved && cell.keeps_its_size() {
+    // One line as wide as the widest text it reserves: its size does not move.
+    made = Change::Paint;
+  }
+
+  if reserve_moved {
+    made = Change::Layout;
+  }
+
+  match made {
+    Change::Layout => {
+      mark(node, false);
+      *change = Change::Layout;
+    }
+    Change::Paint => repainted.push(Rc::clone(node)),
+    Change::None => {}
+  }
+}
+
+/// A paragraph to make: its node, its cell and its link runs.
+type Pending = (Node, Rc<TextCell>, Links);
+
+/// The walk [`prepare`] makes of a subtree, depth first in the scene's order: each node given
+/// the run properties it inherits, each paragraph whose text and style are those it shows
+/// settled at once, and each one to make yielded (its node, cell and links kept in
+/// `pending`, in the same order).
+struct Walk<'a> {
+  stack: Vec<(Node, Rc<RunProps>)>,
+  palette: &'a Palette,
+  change: &'a mut Change,
+  repainted: &'a mut Vec<Node>,
+  pending: &'a mut Vec<Pending>,
+}
+
+impl Iterator for Walk<'_> {
+  type Item = (AttributedText, ParagraphStyle);
+
+  fn next(&mut self) -> Option<Self::Item> {
+    while let Some((node, inherited)) = self.stack.pop() {
+      if !node.is_alive() {
+        continue;
+      }
+
+      let props = Rc::new(node.run.borrow().over(&inherited));
+      let palette = self.palette;
+
+      node.ink.set(props.color.unwrap_or(palette.ink));
+
+      for child in node.children_ref().iter().rev() {
+        self.stack.push((Rc::clone(child), Rc::clone(&props)));
+      }
+
+      let built: Option<(AttributedText, _, Vec<_>)> = match node.spec.kind {
+        NodeKind::Text => {
+          let contents = node.contents.borrow();
+          let base = props.run_style(palette.ink, DEFAULT_SIZE);
+          let paragraph = props.paragraph_style();
+
+          match (&contents.runs, &contents.text) {
+            (Some(runs), _) => {
+              let (text, links) = attributed_runs(runs, &props, &base, palette.ink, DEFAULT_SIZE);
+
+              Some((text, paragraph, links))
+            }
+            (None, Some(text)) => Some((
+              AttributedText::plain(Rc::clone(text), base),
+              paragraph,
+              Vec::new(),
+            )),
+            (None, None) => Some((AttributedText::plain("", base), paragraph, Vec::new())),
+          }
+        }
+        NodeKind::Editable { .. } => {
+          if node.prepare_entry(&props, palette) {
+            mark(&node, false);
+            *self.change = Change::Layout;
+          }
+
+          let placeholder = node.contents.borrow().placeholder.clone();
+
+          placeholder.map(|placeholder| {
+            let ink = props.placeholder_color.unwrap_or(palette.dim);
+            let mut style = props.run_style(ink, DEFAULT_SIZE);
+
+            style.paint.color = ink;
+
+            (
+              AttributedText::plain(placeholder, style),
+              props
+                .paragraph_style()
+                .with_wrap(skene_foundation::text::Wrap::None),
+              Vec::new(),
+            )
+          })
+        }
+        _ => None,
+      };
+
+      match built {
+        Some((text, paragraph, links)) => {
+          let cell = node
+            .text
+            .borrow_mut()
+            .get_or_insert_with(TextCell::new)
+            .clone();
+
+          match cell.update(text, paragraph) {
+            Ok(made) => settle(&node, &cell, made, links, self.change, self.repainted),
+            Err(made) => {
+              self.pending.push((node, cell, links));
+
+              return Some(made);
+            }
+          }
+        }
+        None => {
+          if node.is_entry() && node.text.borrow_mut().take().is_some() {
+            self.repainted.push(Rc::clone(&node));
+          }
+        }
+      }
+    }
+
+    None
+  }
 }

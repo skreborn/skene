@@ -121,13 +121,23 @@ impl Realization for Linux {
   }
 
   fn insert(parent: &Node, child: &Node, index: usize) {
+    if let Some(old) = child.parent() {
+      crate::layout::mark(&old, true);
+    }
+
     parent.insert(child, index);
+    crate::layout::mark(parent, true);
     shell::invalidate_prepare();
     shell::invalidate_layout();
   }
 
   fn relocate(parent: &Node, child: &Node, index: usize) {
+    if let Some(old) = child.parent() {
+      crate::layout::mark(&old, true);
+    }
+
     parent.insert(child, index);
+    crate::layout::mark(parent, true);
     shell::invalidate_layout();
   }
 
@@ -138,12 +148,17 @@ impl Realization for Linux {
       if node.is_overlay() {
         shell::invalidate_overlays();
       } else {
+        crate::layout::mark(node, true);
         shell::invalidate_layout();
       }
     }
   }
 
   fn remove(node: &Node) {
+    if let Some(parent) = node.parent() {
+      crate::layout::mark(&parent, true);
+    }
+
     node.remove();
     shell::invalidate_layout();
   }
@@ -158,6 +173,7 @@ impl Realization for Linux {
 
   fn apply_layout(node: &Node, layout: &ResolvedLayout) {
     *node.layout.borrow_mut() = node.layout_now(layout);
+    crate::layout::mark(node, true);
     shell::invalidate_layout();
   }
 

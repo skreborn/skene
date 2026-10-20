@@ -19,6 +19,11 @@ use crate::engine::ParleyParagraph;
 /// hand-off costs more than its share saves.
 pub const PARALLEL: usize = 64;
 
+/// How many paragraphs a share of a batch holds: few enough that the threads finish close
+/// together and start soon after the batch does, enough that a hand-off costs little beside
+/// its shaping.
+pub const SHARE: usize = 24;
+
 /// What shaping a paragraph takes: its text and the properties Parley is given, the default
 /// ones and those of each range.
 #[derive(Clone)]

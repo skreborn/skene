@@ -3,9 +3,9 @@
 //! reader as extents and items change. It touches no view and no reactive state: the list
 //! view drives it ([`crate::view::Lazy`]).
 
-use std::{cell::RefCell, collections::HashMap, ops::Range};
+use std::{cell::RefCell, ops::Range};
 
-use crate::lazy::{ItemExtent, Key, extents::Extents};
+use crate::lazy::{ItemExtent, Key, KeyMap, extents::Extents};
 
 /// Where an item sits relative to the viewport: what keeps it still while the extents and the
 /// items around it change.
@@ -31,8 +31,8 @@ pub struct Engine {
   extents: Extents,
   extent: ItemExtent,
   estimate: f64,
-  measured: HashMap<Key, f32>,
-  places: RefCell<Option<HashMap<Key, usize>>>,
+  measured: KeyMap<f32>,
+  places: RefCell<Option<KeyMap<usize>>>,
   padding: (f64, f64),
 }
 
@@ -49,7 +49,7 @@ impl Engine {
       extents: Extents::new(Vec::new(), f64::from(spacing)),
       extent,
       estimate: f64::from(extent.length()),
-      measured: HashMap::new(),
+      measured: KeyMap::default(),
       places: RefCell::new(None),
       padding: (f64::from(padding.0), f64::from(padding.1)),
     }
@@ -64,19 +64,28 @@ impl Engine {
   ///
   /// In a debug build, where two items share a key.
   pub fn set_items(&mut self, keys: Vec<Key>, whole: Vec<usize>, per_line: usize) {
-    let places: HashMap<Key, usize> = keys
-      .iter()
-      .enumerate()
-      .map(|(index, key)| (*key, index))
-      .collect();
+    // The keys' places are found once a key must be: at once where a measure must be kept, or
+    // where a debug build checks the keys apart.
+    let places = (cfg!(debug_assertions) || !self.measured.is_empty()).then(|| {
+      let places: KeyMap<usize> = keys
+        .iter()
+        .enumerate()
+        .map(|(index, key)| (*key, index))
+        .collect();
 
-    debug_assert_eq!(places.len(), keys.len(), "two items of a list share a key");
+      debug_assert_eq!(places.len(), keys.len(), "two items of a list share a key");
 
-    self.measured.retain(|key, _| places.contains_key(key));
+      places
+    });
+
+    if let Some(places) = &places {
+      self.measured.retain(|key, _| places.contains_key(key));
+    }
+
     self.keys = keys;
     self.whole = whole;
     self.per_line = per_line.max(1);
-    *self.places.borrow_mut() = Some(places);
+    *self.places.borrow_mut() = places;
     self.rebuild();
   }
 
@@ -148,6 +157,10 @@ impl Engine {
       return f64::from(length);
     }
 
+    if self.measured.is_empty() {
+      return self.estimate;
+    }
+
     self
       .items_of(line)
       .map(|index| {
@@ -200,7 +213,7 @@ impl Engine {
         .iter()
         .enumerate()
         .map(|(index, key)| (*key, index))
-        .collect()
+        .collect::<KeyMap<usize>>()
     });
 
     places.get(&key).copied()

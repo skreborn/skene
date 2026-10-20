@@ -8,19 +8,14 @@
 //! `Item` part, [`LazyBase::set_item_builder`]), a reader's list item reporting its place in
 //! the whole list, the scroll box the list reporting the whole count.
 
-use std::{
-  cell::RefCell,
-  collections::{HashMap, HashSet},
-  hash::Hash,
-  rc::Rc,
-};
+use std::{cell::RefCell, hash::Hash, rc::Rc};
 
 use crate::{
   Alignment, AxisAlignment, Effect, GridPlacement, GridTrack, Inset, NodeId, Owner, Signal,
   Spacing, State, StateSet, Tracks, Value,
   layout::Axis,
   lazy::{
-    GridCells, ItemExtent, Key, ScrollPosition,
+    GridCells, ItemExtent, Key, KeyMap, KeySet, ScrollPosition,
     engine::{Anchor, Engine},
   },
   seam::{
@@ -531,7 +526,7 @@ struct List<R: Realization> {
   segments: Vec<Rc<dyn Items<R>>>,
   firsts: Vec<usize>,
   counted: Vec<usize>,
-  rows: HashMap<Key, Row>,
+  rows: KeyMap<Row>,
   order: Vec<Key>,
   owner: Owner,
   inner: Cx<R>,
@@ -540,11 +535,11 @@ struct List<R: Realization> {
   shown: f32,
   anchor: Option<Anchor>,
   cross_spacing: f32,
-  pins: HashMap<Key, StateSet>,
-  kept: HashSet<Key>,
+  pins: KeyMap<StateSet>,
+  kept: KeySet,
   transient: Option<Key>,
   stop: Option<Key>,
-  no_stop: HashSet<Key>,
+  no_stop: KeySet,
   items_seen: Option<u64>,
   pending_position: Option<ScrollPosition>,
   reported: Option<ScrollPosition>,
@@ -558,6 +553,7 @@ struct Wires {
   changed: Signal<u64>,
   viewport: Signal<Option<(f32, f32)>>,
   offset: Signal<ScrollOffset>,
+  shown: Signal<f32>,
   main_tracks: Signal<Tracks>,
   cross_tracks: Signal<Tracks>,
   padding: Signal<Inset>,
@@ -755,7 +751,7 @@ impl<R: Realization> View<R> for Content<R> {
       segments: built,
       firsts: Vec::new(),
       counted: Vec::new(),
-      rows: HashMap::new(),
+      rows: KeyMap::default(),
       order: Vec::new(),
       owner,
       inner,
@@ -764,11 +760,11 @@ impl<R: Realization> View<R> for Content<R> {
       shown: 0.,
       anchor: None,
       cross_spacing: 0.,
-      pins: HashMap::new(),
-      kept: HashSet::new(),
+      pins: KeyMap::default(),
+      kept: KeySet::default(),
       transient: None,
       stop: None,
-      no_stop: HashSet::new(),
+      no_stop: KeySet::default(),
       items_seen: None,
       pending_position: None,
       reported: None,
@@ -849,6 +845,7 @@ impl<R: Realization> View<R> for Lazy<R> {
       changed: Signal::new(0),
       viewport: Signal::new(None),
       offset: Signal::new(ScrollOffset::default()),
+      shown: Signal::new(0.),
       main_tracks: Signal::new(Tracks::default()),
       cross_tracks: Signal::new(Tracks::from([GridTrack::Fraction(1.)])),
       padding: Signal::new(Inset::default()),
@@ -940,11 +937,7 @@ impl<R: Realization> View<R> for Lazy<R> {
       let list = Rc::clone(&list);
 
       Effect::new(move || {
-        let _ = (
-          wires.offset.get(),
-          wires.changed.get(),
-          wires.viewport.get(),
-        );
+        let _ = (wires.shown.get(), wires.changed.get(), wires.viewport.get());
 
         untrack(|| {
           let now = list.borrow_mut().as_mut().and_then(|state| {
@@ -1238,7 +1231,7 @@ fn reconcile<R: Realization>(
     needed.sort_unstable();
     needed.dedup();
 
-    let wanted: HashSet<Key> = needed
+    let wanted: KeySet = needed
       .iter()
       .filter_map(|index| state.engine.key(*index))
       .collect();
@@ -1468,6 +1461,14 @@ fn reconcile<R: Realization>(
     && wires.offset.get_untracked() != corrected
   {
     wires.offset.set(corrected);
+  }
+
+  let shown = list.borrow().as_ref().map(|state| state.shown);
+
+  if let Some(shown) = shown
+    && wires.shown.get_untracked() != shown
+  {
+    wires.shown.set(shown);
   }
 }
 

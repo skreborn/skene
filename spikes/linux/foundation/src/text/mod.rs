@@ -22,7 +22,7 @@ mod grid;
 pub use self::{
   decoration::DecorationLine,
   engine::{
-    Affinity, Caret, Carets, Direction, Hit, Intrinsic, Laid, LineInfo, Paragraph, Position,
+    Affinity, Caret, Carets, Direction, Hit, Intrinsic, Laid, LineInfo, Made, Paragraph, Position,
     RunExtent, TextBoundary, TextEngine, TextSize, VisualMove,
   },
   index::{Round, TextIndex},

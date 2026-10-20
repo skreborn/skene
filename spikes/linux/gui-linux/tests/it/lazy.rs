@@ -84,7 +84,9 @@ fn the_wheel_and_the_keys_move_the_window_to_the_end() {
   let list = screen.find_by_role(Role::List, "Items");
   let bounds = list.read().bounds;
 
-  list.scroll(0, 10);
+  // Twenty detents: 300 pixels where a detent is libinput's 15 (KWin's fake wheel), 960 where
+  // it is a line.
+  list.scroll(0, 20);
 
   let moved = realized(&screen);
 
@@ -280,8 +282,16 @@ fn tab_leaves_a_list_whose_next_stop_is_beyond_a_page() {
 
   list.scroll(0, 100);
 
-  for _ in 0..40 {
-    if screen.query_by_role(Role::Button, "Open 300").is_some() {
+  // However far a detent goes (15 pixels where the wheel is KWin's fake one), until the
+  // button shows whole.
+  let bounds = list.read().bounds;
+
+  for _ in 0..200 {
+    let shown = screen
+      .query_by_role(Role::Button, "Open 300")
+      .is_some_and(|button| within(button.read().bounds, bounds));
+
+    if shown {
       break;
     }
 
@@ -447,10 +457,24 @@ fn a_bound_position_scrolls_there_and_follows_the_scroll() {
   );
 
   list.scroll(0, 3);
+
+  let now = position.get_untracked();
+
   assert!(
-    position.get_untracked().index > 5000,
-    "the bound position follows the wheel: {:?}",
-    position.get_untracked()
+    now.index > 5000,
+    "the bound position follows the wheel: {now:?}"
+  );
+
+  // It names the item at the top as the list shows it after the wheel, not before.
+  let shown = screen
+    .find_by_text(&format!("Item {}", now.index))
+    .read()
+    .bounds;
+
+  assert!(
+    (list.read().bounds.y + now.offset - shown.y).abs() <= 1.,
+    "the bound position is the one shown: {now:?}, the item at {shown:?} in {:?}",
+    list.read().bounds
   );
 
   // Written, the position scrolls the list there.
@@ -554,8 +578,17 @@ fn a_grid_lays_its_cells_in_lines_and_keeps_the_first_in_view_through_a_resize()
 
   list.scroll(0, 10);
 
-  let shown = realized(&screen)[0].0;
-  let anchor = format!("Photo {}", shown + per_line * 2);
+  // The first photo wholly in view, however far the wheel went.
+  let bounds = list.read().bounds;
+  let anchor = realized(&screen)
+    .into_iter()
+    .map(|(place, _)| format!("Photo {}", place - 1))
+    .find(|name| {
+      screen
+        .query_by_text(name)
+        .is_some_and(|found| within(found.read().bounds, bounds))
+    })
+    .expect("a photo is in view");
   let at = screen.find_by_text(&anchor).read().bounds.y;
 
   // Narrower, two a line: the first line in view still shows.
@@ -601,9 +634,9 @@ fn a_lazy_row_realizes_what_its_width_shows() {
     "each chip is 80 wide: {first:?} {second:?}"
   );
 
-  screen.find_by_role(Role::List, "Chips").scroll(10, 0);
+  screen.find_by_role(Role::List, "Chips").scroll(20, 0);
   assert!(
-    realized(&screen)[0].0 > 3,
+    realized(&screen)[0].0 > shown[0].0,
     "the horizontal wheel moved the window: {:?}",
     realized(&screen)
   );

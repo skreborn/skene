@@ -325,6 +325,7 @@ impl Drawn {
     if text_changed
       && self.spec.kind == (skene_foundation::seam::node::NodeKind::Editable { multiline: true })
     {
+      crate::layout::mark(self, false);
       shell::invalidate_layout();
     }
 

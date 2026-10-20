@@ -836,7 +836,7 @@ fn shaping(words: Option<usize>) {
       engine.start_shapers();
 
       let start = Instant::now();
-      let shaped = engine.paragraphs(&texts);
+      let shaped = engine.paragraphs(texts.iter().cloned());
 
       batch.push(start.elapsed().as_secs_f64() * 1e3);
       assert_eq!(shaped.len(), texts.len(), "every row is shaped");

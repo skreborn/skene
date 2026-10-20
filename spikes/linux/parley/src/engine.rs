@@ -10,7 +10,7 @@ use std::{
   sync::Arc,
 };
 
-use crate::shaping::{Job, PARALLEL, Shaped, Shapers};
+use crate::shaping::{Job, PARALLEL, SHARE, Shaped, Shapers};
 use parley::{
   Affinity as ParleyAffinity, Alignment, AlignmentOptions, BreakReason, Cursor, FontContext,
   FontData, FontFamily as ParleyFamily, FontFamilyName, FontStyle as ParleySlant, FontWeight,
@@ -22,8 +22,8 @@ use skene_foundation::{
   layout::Rect,
   text::{
     Affinity, AttributedText, BaseDirection, Caret, Carets, Direction, Hit, Intrinsic, Laid,
-    LineHeight, LineInfo, PaintStyle, Paragraph, ParagraphStyle, Position, RunExtent, RunStyle,
-    Segments, TextBoundary, TextEngine, TextIndex, TextSize, VisualMove, Wrap,
+    LineHeight, LineInfo, Made, PaintStyle, Paragraph, ParagraphStyle, Position, RunExtent,
+    RunStyle, Segments, TextBoundary, TextEngine, TextIndex, TextSize, VisualMove, Wrap,
   },
   value::{FontFamily, FontStyle, TextAlignment},
 };
@@ -357,13 +357,27 @@ impl TextEngine for ParleyEngine {
   }
 
   /// Shapes a batch of [`PARALLEL`] paragraphs or more on threads beside this one as well,
-  /// one fewer than the cores the system offers, each a share.
-  fn paragraphs(&self, texts: &[(AttributedText, ParagraphStyle)]) -> Vec<ParleyParagraph> {
-    if texts.len() < PARALLEL {
-      return texts
-        .iter()
-        .map(|(text, style)| self.paragraph(text, style))
-        .collect();
+  /// one fewer than the cores the system offers: the texts are taken as `texts` yields them,
+  /// each share queued for the threads as soon as it is whole, so they shape while the next
+  /// texts are produced, and this thread shapes what is left once the last is taken.
+  fn paragraphs(
+    &self,
+    texts: impl IntoIterator<Item = (AttributedText, ParagraphStyle)>,
+  ) -> Vec<Made<ParleyParagraph>> {
+    let mut texts = texts.into_iter();
+    let first: Vec<(AttributedText, ParagraphStyle)> = texts.by_ref().take(PARALLEL).collect();
+    let alone = |(text, style): (AttributedText, ParagraphStyle)| {
+      let paragraph = self.paragraph(&text, &style);
+
+      Made {
+        text,
+        style,
+        paragraph,
+      }
+    };
+
+    if first.len() < PARALLEL {
+      return first.into_iter().map(alone).collect();
     }
 
     let mut contexts = self.contexts.borrow_mut();
@@ -378,24 +392,33 @@ impl TextEngine for ParleyEngine {
     let (tab_size, shape_cache) = (*tab_size, *shape_cache);
     let shapers =
       shapers.get_or_insert_with(|| Self::start(fonts, fallback, tab_size, shape_cache));
-    let jobs = texts
-      .iter()
-      .map(|(text, style)| Self::job(fallback, text, style, tab_size));
+    let mut kept = Vec::with_capacity(first.len() * 2);
+    let jobs = first.into_iter().chain(texts).map(|(text, style)| {
+      let job = Self::job(fallback, &text, &style, tab_size);
+
+      kept.push((text, style));
+
+      job
+    });
     let shaped: Vec<Shaped> = match shapers {
-      // Shares small enough that the threads finish close together, each queued as its jobs
-      // are built, so they shape while the next are.
-      Some(shapers) => shapers.shape(
-        jobs,
-        texts.len().div_ceil(4 * (shapers.count() + 1)).max(16),
-        |job| job.shape(fonts, layouts),
-      ),
+      // Shares small enough that the threads finish close together, each queued as soon as
+      // its jobs are built, so the threads shape while the next texts are produced.
+      Some(shapers) => shapers.shape(jobs, SHARE, |job| job.shape(fonts, layouts)),
       None => jobs.map(|job| job.shape(fonts, layouts)).collect(),
     };
 
-    texts
-      .iter()
+    kept
+      .into_iter()
       .zip(shaped)
-      .map(|((text, style), shaped)| Self::wrap(text, style, shaped))
+      .map(|((text, style), shaped)| {
+        let paragraph = Self::wrap(&text, &style, shaped);
+
+        Made {
+          text,
+          style,
+          paragraph,
+        }
+      })
       .collect()
   }
 }

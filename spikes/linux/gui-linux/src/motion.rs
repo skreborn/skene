@@ -219,6 +219,7 @@ impl Drawn {
     }
 
     if relayout {
+      crate::layout::mark(self, true);
       shell::invalidate_layout();
     }
 
@@ -268,6 +269,7 @@ pub fn advance(now: f64) {
     if let Some((layout, moving)) = laid {
       if *node.layout.borrow() != layout {
         *node.layout.borrow_mut() = layout;
+        crate::layout::mark(&node, true);
         shell::invalidate_layout();
       }
 

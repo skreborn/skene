@@ -972,8 +972,14 @@ fn slider_drag<D: Driver>(driver: &mut D) {
   let bounds = driver.read(&volume).bounds;
   let middle = middle_of(driver, &volume);
   let past = bounds.x + 9. + (bounds.width - 18.) * 0.42;
+  let thumb = bounds.x + 9. + (bounds.width - 18.) * 0.3;
 
   assert_eq!(pixel(driver, past, middle), TRACK, "the fill ends at 30");
+  assert_eq!(
+    pixel(driver, thumb, middle - 1.),
+    KNOB,
+    "the thumb is centered on the track, covering it at 30"
+  );
   driver.act(&volume, &Action::Drag(60., 0.));
 
   let value = driver.read(&volume).value.unwrap_or_default();

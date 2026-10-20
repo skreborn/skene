@@ -228,16 +228,20 @@ impl<R: Realization> View<R> for Slider<R> {
     let fill_fraction = fraction.clone();
     let fill = fill.derive_offset(move || Offset::of_size(fill_fraction() - 1., 0.));
     // As wide as the track where the track's width is known, 182 where its layout asks how
-    // wide it likes to be; no height, so it takes no press beyond the slider as it moves,
-    // the thumb it centers overflowing it.
+    // wide it likes to be; no height, so it takes no press beyond the slider as it moves, its
+    // top on the track's middle and the thumb centered on that line, overflowing it.
     let carrier = Container::new()
       .set_width(182)
       .set_min_width(Dimension::Fraction(1.))
       .set_max_width(Dimension::Fraction(1.))
       .set_height(0)
-      .set_alignment(Alignment::new(AxisAlignment::Start, AxisAlignment::Center))
+      .set_alignment(Alignment::new(AxisAlignment::Start, AxisAlignment::Start))
       .derive_offset(move || Offset::of_size(fraction(), 0.))
-      .set_child(AsPart::new(Part::Thumb).set_child(thumb));
+      .set_child(
+        Container::new()
+          .set_offset(Offset::of_size(0., -0.5))
+          .set_child(AsPart::new(Part::Thumb).set_child(thumb)),
+      );
     let body = Stack::new()
       .set_item_alignment(Alignment::new(AxisAlignment::Start, AxisAlignment::Center))
       .add_child(

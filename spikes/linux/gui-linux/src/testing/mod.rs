@@ -84,6 +84,9 @@ const SETTLE_TIMEOUT: Duration = Duration::from_secs(5);
 /// How long input sent may take to arrive.
 const INPUT_TIMEOUT: Duration = Duration::from_secs(2);
 
+/// How long a window shown may wait for the keyboard the session gives a new window.
+const ACTIVATION_TIMEOUT: Duration = Duration::from_secs(2);
+
 /// How long the platform may take to report a frame painted shown, or never shown: a few
 /// refreshes.
 const PRESENTATION_TIMEOUT: Duration = Duration::from_millis(500);
@@ -850,7 +853,8 @@ impl Drawn {
   }
 
   /// Shows the node `root` (built under `owner`) in a new window 480 by 640 pixels, the
-  /// previous one closed, and settles once the window is drawn and a reader can see it.
+  /// previous one closed, and settles once the window is drawn, has the keyboard (as a desktop
+  /// opens a window active; two seconds at most) and a reader can see it.
   ///
   /// # Panics
   ///
@@ -902,6 +906,14 @@ impl Drawn {
 
     assert!(drawn, "the window never drew on {session:?}");
 
+    pump_until(ACTIVATION_TIMEOUT, || {
+      SHOWN.with(|shown| {
+        shown
+          .borrow()
+          .as_ref()
+          .is_some_and(|shown| shown.window.shell().has_keyboard())
+      })
+    });
     settle();
 
     let started = Instant::now();

@@ -3978,6 +3978,12 @@ impl Shell {
     self.modifiers = modifiers;
   }
 
+  /// Whether the window has the keyboard.
+  #[must_use]
+  pub const fn has_keyboard(&self) -> bool {
+    self.window_focused
+  }
+
   /// The window gained or lost the keyboard.
   pub fn keyboard_focus(&mut self, focused: bool) {
     trace::log(|| format!("[focus] window {focused}"));

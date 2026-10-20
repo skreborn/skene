@@ -69,9 +69,13 @@ parley_engine = { path = "vendor/parley_engine" }
 taffy = { path = "vendor/taffy" }
 xim = { path = "vendor/xim" }
 
+# A test binary's debug information beside it rather than inside: KWin reads a Wayland client's
+# executable whole (twice) on every connection a window makes, so a smaller executable opens a
+# window sooner there.
 [profile.dev]
 debug = "line-tables-only"
 opt-level = 1
+split-debuginfo = "unpacked"
 
 [profile.dev.package."*"]
 debug = false

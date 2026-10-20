@@ -3,7 +3,14 @@
 //! follows them through its real path, as it reads a desktop's settings daemon's.
 //!
 //! A window opened while it serves reads its settings; a window open when they change follows
-//! them. Dropping it gives the selection up.
+//! them. Dropping it gives the selection up, to the leg's desktop where it has one.
+//!
+//! A leg whose desktop publishes settings of its own ([`desktop`]: `Xft/DPI` where KWin's
+//! Xwayland leaves X11 apps to scale themselves) has them served for the whole test process
+//! ([`serve_desktop`]), as a desktop's settings daemon serves them; a test's own manager
+//! publishes them beneath its own.
+
+use std::cell::RefCell;
 
 use x11rb::{
   connection::Connection as _,
@@ -25,21 +32,89 @@ pub enum Value {
   Text(&'static str),
 }
 
+thread_local! {
+  /// The leg's desktop's manager, serving while no test's own does.
+  static DESKTOP: RefCell<Option<Xsettings>> = const { RefCell::new(None) };
+}
+
+/// The settings the leg's desktop publishes: on KWin's Xwayland scaled, `Xft/DPI` at the
+/// leg's scale (X11 apps scale themselves there, as Plasma's settings daemon tells them);
+/// none elsewhere.
+#[must_use]
+pub fn desktop() -> Vec<(&'static str, Value)> {
+  let scale = super::Session::scale();
+
+  if super::Session::current() == Some(super::Session::KwinX11) && scale != 1. {
+    #[expect(clippy::cast_possible_truncation, reason = "a DPI in 1024ths")]
+    let dpi = (scale * 96. * 1024.).round() as i32;
+
+    vec![("Xft/DPI", Value::Integer(dpi))]
+  } else {
+    Vec::new()
+  }
+}
+
+/// Serves the leg's desktop settings ([`desktop`]) where it has any and no manager of the
+/// process serves them yet: before the test's first window opens, and again once a test's own
+/// manager goes.
+///
+/// # Panics
+///
+/// Where the leg has settings and the X display cannot take them.
+pub fn serve_desktop() {
+  let settings = desktop();
+
+  if settings.is_empty() {
+    return;
+  }
+
+  DESKTOP.with(|desktop| {
+    let mut desktop = desktop.borrow_mut();
+
+    if desktop.is_none() {
+      let mut manager = Xsettings::take(&settings)
+        .unwrap_or_else(|error| panic!("the leg's desktop settings: {error}"));
+
+      manager.desktop = true;
+      *desktop = Some(manager);
+    }
+  });
+}
+
 /// The stand-in, serving while it lives.
 pub struct Xsettings {
   conn: RustConnection,
   window: u32,
   property: u32,
   serial: u32,
+  /// Whether it is the leg's desktop's own manager.
+  desktop: bool,
 }
 
 impl Xsettings {
-  /// Serves `settings` on `DISPLAY` as its XSETTINGS manager.
+  /// Serves `settings` on `DISPLAY` as its XSETTINGS manager, above the leg's desktop's
+  /// ([`desktop`]).
   ///
   /// # Errors
   ///
   /// Where there is no X display, or the selection cannot be taken.
   pub fn serve(settings: &[(&str, Value)]) -> Result<Self> {
+    let mut all: Vec<(&str, Value)> = settings.to_vec();
+
+    for (name, value) in desktop() {
+      if !all.iter().any(|(set, _)| *set == name) {
+        all.push((name, value));
+      }
+    }
+
+    // The desktop's manager gives the selection up to this one.
+    DESKTOP.with(|desktop| desktop.borrow_mut().take());
+
+    Self::take(&all)
+  }
+
+  /// Takes the selection and publishes `settings` as they are.
+  fn take(settings: &[(&str, Value)]) -> Result<Self> {
     let (conn, screen) = x11rb::connect(None)?;
     let root = conn.setup().roots[screen].root;
     let window = conn.generate_id()?;
@@ -72,6 +147,7 @@ impl Xsettings {
       window,
       property,
       serial: 0,
+      desktop: false,
     };
 
     xsettings.set(settings)?;
@@ -152,5 +228,10 @@ impl Drop for Xsettings {
   fn drop(&mut self) {
     let _ = self.conn.destroy_window(self.window);
     let _ = self.conn.sync();
+
+    // A test's own manager hands the selection back to the leg's desktop.
+    if !self.desktop {
+      let _ = DESKTOP.try_with(|_| serve_desktop());
+    }
   }
 }

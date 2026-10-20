@@ -312,6 +312,7 @@ fn ui_thread() -> &'static mpsc::SyncSender<Job> {
         }
 
         environment::follow_portal();
+        xsettings::serve_desktop();
 
         for job in receiver {
           job();
@@ -1460,6 +1461,22 @@ impl Drawn {
     )
   }
 
+  /// The rectangle of `found`'s character at `offset` (in characters) on the X screen, in its
+  /// pixels, as a reader reads it in screen coordinates: where an X11 input method is told the
+  /// caret is, whatever space the session's pointer moves in (KWin's Xwayland, scaled, shows
+  /// its device pixels to a pointer moving in logical ones). `x, y, width, height`.
+  ///
+  /// # Panics
+  ///
+  /// Where `found` has no text, or no character at `offset`.
+  #[must_use]
+  pub fn character_screen_rect(&self, found: &Element, offset: usize) -> (i32, i32, i32, i32) {
+    let offset = i32::try_from(offset).unwrap_or(i32::MAX);
+
+    with_atspi(|atspi| atspi.character_extents(&found.object, offset, atspi::SCREEN))
+      .unwrap_or_else(|error| panic!("AT-SPI character {offset} of {:?}: {error}", found.name))
+  }
+
   /// The window's rectangle in the pointer's space: `(x, y, width, height)`.
   #[must_use]
   pub fn window_rect(&self) -> (f64, f64, f64, f64) {
@@ -1989,6 +2006,17 @@ impl Drawn {
     }
   }
 
+  /// The scale the open popup's surface is painted at, its own where the compositor told it
+  /// one; `None` while no popup is open.
+  #[must_use]
+  pub fn popup_scale(&self) -> Option<f64> {
+    Self::with_window(|window| {
+      let shell = window.shell();
+
+      shell.popup().map(|_| shell.popup_scale())
+    })
+  }
+
   /// What the screen shows of the open popup's surface, whole, as RGBA in device pixels, and its
   /// top left in the pointer's space; `None` while no popup is open.
   ///
@@ -2004,7 +2032,7 @@ impl Drawn {
     let (rect, scale) = Self::with_window(|window| {
       let shell = window.shell();
 
-      Some((shell.popup()?.rect(), shell.scale))
+      Some((shell.popup()?.rect(), shell.popup_scale()))
     })?;
     let at = (x + f64::from(rect.x) * unit, y + f64::from(rect.y) * unit);
     let shot = Self::screen(

@@ -264,7 +264,8 @@ fn a_field_tells_an_input_method_where_its_caret_is_on_the_screen() {
   screen.driver().wait(std::time::Duration::from_millis(200));
 
   let told = input_method.told();
-  let (x, y, width, height) = screen.driver().character_rect(field.element(), 6);
+  let (x, y, width, height) = screen.driver().character_screen_rect(field.element(), 6);
+  let (x, y, height) = (f64::from(x), f64::from(y), f64::from(height));
 
   eprintln!("told {told:?}; the character after the caret at {x}, {y} {width}x{height}");
   assert_eq!(
@@ -429,5 +430,142 @@ fn a_painted_box_records_again_at_its_windows_new_scale() {
     device(wanted),
     "the box records again at the window's new scale ({})",
     screen.driver().scale()
+  );
+}
+
+/// Runs `swaymsg` with `arguments`, panicking where it fails: what it printed.
+fn swaymsg(arguments: &[&str]) -> String {
+  let output = std::process::Command::new("swaymsg")
+    .args(arguments)
+    .output()
+    .expect("swaymsg runs");
+
+  assert!(
+    output.status.success(),
+    "swaymsg {arguments:?}: {}",
+    String::from_utf8_lossy(&output.stdout)
+  );
+
+  String::from_utf8_lossy(&output.stdout).into_owned()
+}
+
+/// The names of sway's outputs, as its IPC lists them.
+fn sway_outputs() -> Vec<String> {
+  swaymsg(&["-t", "get_outputs", "-r"])
+    .split("\"name\": \"")
+    .skip(1)
+    .filter_map(|rest| rest.split('"').next())
+    .map(str::to_owned)
+    .collect()
+}
+
+/// Unplugs a sway output a test added when dropped, so the session's later tests see one
+/// output again.
+struct AddedOutput(String);
+
+impl Drop for AddedOutput {
+  fn drop(&mut self) {
+    let _ = std::process::Command::new("swaymsg")
+      .args(["output", &self.0, "unplug"])
+      .stdout(std::process::Stdio::null())
+      .status();
+  }
+}
+
+#[skene_gui::test]
+fn a_popup_on_another_output_than_its_windows_takes_that_outputs_scale() {
+  if std::env::var("SKENE_TEST_SESSION").as_deref() != Ok("sway") {
+    skene_gui_linux::testing::not_tested_here(
+      "of the legs, only sway adds an output beside the first on demand (create_output), at a scale of its own",
+    );
+
+    return;
+  }
+
+  let screen = testing::render(striped);
+  let first = screen.driver().scale();
+  let second: f64 = if (first - 1.).abs() < 1e-6 { 2. } else { 1. };
+  let (first_width, _) = screen.driver().screen_extent();
+  let before = sway_outputs();
+
+  swaymsg(&["create_output"]);
+
+  let added = sway_outputs()
+    .into_iter()
+    .find(|name| !before.contains(name))
+    .expect("sway adds an output");
+  let _unplug = AddedOutput(added.clone());
+  let second_width = (1280. / second).round();
+
+  swaymsg(&[
+    "output",
+    &added,
+    "resolution",
+    "1280x1024",
+    "position",
+    &first_width.round().to_string(),
+    "0",
+    "scale",
+    &second.to_string(),
+  ]);
+
+  // The window most on the second output while its workspace stays the first's (its center
+  // was there when it moved): its own scale is the second's, and a popup sway keeps on the
+  // first output takes the first's.
+  swaymsg(&[&format!(
+    "[app_id=dev.skene.test] move absolute position {} 40",
+    (first_width - 280.).round()
+  )]);
+  swaymsg(&[&format!(
+    "[app_id=dev.skene.test] resize set width {} px",
+    280. + second_width
+  )]);
+  screen.driver().window_moved();
+
+  let start = std::time::Instant::now();
+
+  while (screen.driver().scale() - second).abs() > 1e-6
+    && start.elapsed() < std::time::Duration::from_secs(5)
+  {
+    screen.driver().wait(std::time::Duration::from_millis(20));
+  }
+
+  assert!(
+    (screen.driver().scale() - second).abs() < 1e-6,
+    "the window, most on the second output, takes its scale ({} for {second})",
+    screen.driver().scale()
+  );
+
+  screen.find_by_role(Role::ComboBox, "Size").click();
+
+  let start = std::time::Instant::now();
+
+  while screen
+    .driver()
+    .popup_scale()
+    .is_none_or(|scale| (scale - first).abs() > 1e-6)
+    && start.elapsed() < std::time::Duration::from_secs(5)
+  {
+    screen.driver().wait(std::time::Duration::from_millis(20));
+  }
+
+  let popup = screen.driver().popup_scale().expect("the list is open");
+  let (list, at) = screen
+    .driver()
+    .popup_content()
+    .expect("the list is open on its own surface");
+  let list = longest_stripes(&list);
+
+  eprintln!(
+    "the window at {}, its list at {popup} at {at:?}: {list} device pixels of stripes in a row",
+    screen.driver().scale()
+  );
+  assert!(
+    (popup - first).abs() < 1e-6,
+    "the list, on the first output, takes the first output's scale ({popup} for {first})"
+  );
+  assert!(
+    f64::from(list) >= (24. * first).floor() - 1.,
+    "and the screen shows its device pixels one to one ({list} in a row)"
   );
 }

@@ -116,12 +116,29 @@ const TEXT_TYPES: [&str; 4] = [
 /// User data of the realization's own objects.
 struct Raw;
 
+/// How far below the window the probe popup asks to hang: below any output.
+const PROBE_OFFSET: i32 = 1 << 16;
+
 /// The open overlay on its own surface.
 struct OpenPopup {
   popup: Popup,
   viewport: Option<WpViewport>,
+  /// Its surface's fractional scale, which the compositor tells it apart from the window's.
+  fractional: Option<WpFractionalScaleV1>,
   configured: bool,
   buffers: Vec<Buffer>,
+}
+
+impl Drop for OpenPopup {
+  fn drop(&mut self) {
+    if let Some(fractional) = self.fractional.take() {
+      fractional.destroy();
+    }
+
+    if let Some(viewport) = self.viewport.take() {
+      viewport.destroy();
+    }
+  }
 }
 
 impl OpenPopup {
@@ -193,6 +210,8 @@ struct State {
   /// The serial of the last button press or key event: what a popup's grab names (a
   /// compositor honours a key's press while it is held and the last release).
   grab_serial: u32,
+  /// The fractional scale manager, where the compositor offers one.
+  fractional_manager: Option<WpFractionalScaleManagerV1>,
   /// The surface's fractional scale.
   fractional: Option<WpFractionalScaleV1>,
   /// The surface's viewport, where it is scaled fractionally.
@@ -233,6 +252,11 @@ struct State {
   viewporter: Option<WpViewporter>,
   /// The open popup surface.
   popup: Option<OpenPopup>,
+  /// Whether the compositor keeps a popup on its output (xdg_positioner's constraint
+  /// adjustment), as a probe popup it placed answered; `None` until it answers.
+  constrains: Option<bool>,
+  /// The probe popup, unmapped, until the compositor places it.
+  probe: Option<Popup>,
   /// The text-input-v3 client.
   text_input: crate::ime::wayland::TextInput,
   /// The queue handle new objects are made on.
@@ -419,6 +443,7 @@ pub fn open(shell: Shell, app_id: &str) -> Result<Open, Box<dyn Error>> {
     last_serial: 0,
     last_press_serial: 0,
     grab_serial: 0,
+    fractional_manager,
     fractional,
     viewport,
     integer_scale: 1,
@@ -439,6 +464,8 @@ pub fn open(shell: Shell, app_id: &str) -> Result<Open, Box<dyn Error>> {
     xdg,
     viewporter,
     popup: None,
+    constrains: None,
+    probe: None,
     text_input: crate::ime::wayland::TextInput::bind(&globals, &qh),
     qh: qh.clone(),
     shell,
@@ -597,6 +624,7 @@ impl State {
     {
       self.window.commit();
       self.frame_pending = true;
+      self.probe_constraints();
     }
 
     trace::log(|| {
@@ -784,6 +812,63 @@ impl State {
     self.text_input.sync(&self.shell, origin);
   }
 
+  /// Asks the compositor, once the window shows, where it puts a popup that hangs from the
+  /// window's top left 65536 pixels down, allowed to slide: one that keeps a popup on its
+  /// output slides it there, one that does not (weston 13) leaves it where it was asked. The
+  /// popup is never mapped.
+  fn probe_constraints(&mut self) {
+    if self.constrains.is_some() || self.probe.is_some() {
+      return;
+    }
+
+    let Ok(positioner) = XdgPositioner::new(&self.xdg) else {
+      return;
+    };
+
+    positioner.set_size(1, 1);
+    positioner.set_anchor_rect(0, 0, 1, 1);
+    positioner.set_anchor(Anchor::TopLeft);
+    positioner.set_gravity(Gravity::BottomRight);
+    positioner.set_offset(0, PROBE_OFFSET);
+    positioner.set_constraint_adjustment(ConstraintAdjustment::SlideY);
+
+    let surface = self.compositor.create_surface(&self.qh);
+
+    if let Ok(probe) = Popup::from_surface(
+      Some(self.window.xdg_surface()),
+      &positioner,
+      &self.qh,
+      surface,
+      &self.xdg,
+    ) {
+      probe.wl_surface().commit();
+      self.probe = Some(probe);
+    }
+  }
+
+  /// Where a popup of `placement` goes, in the window's geometry, kept within the window (the
+  /// one rectangle a client knows the screen shows) as the compositor would keep it on its
+  /// output: below its anchor, flipped above where it does not fit below, slid where it fits
+  /// neither way, and slid along to stay inside.
+  fn place_within_window(&self, placement: &crate::overlay::Placement) -> (i32, i32) {
+    let (width, height) = self.shell.size;
+    let (width, height) = (width as f32, height as f32);
+    let (popup_width, popup_height) = (placement.size.0 as f32, placement.size.1 as f32);
+    let anchor = placement.anchor;
+    let below = anchor.y + anchor.height + placement.gap;
+    let above = anchor.y - placement.gap - popup_height;
+    let y = if below + popup_height <= height {
+      below
+    } else if above >= 0. {
+      above
+    } else {
+      below.min(height - popup_height).max(0.)
+    };
+    let x = anchor.x.min(width - popup_width).max(0.);
+
+    (x.round() as i32, y.round() as i32)
+  }
+
   /// Opens the open overlay's surface at `placement`, or closes it.
   fn place_popup(&mut self, placement: Option<crate::overlay::Placement>) {
     // The GPU path presenting to the surface goes before the surface does.
@@ -800,19 +885,31 @@ impl State {
     let anchor = placement.anchor;
 
     positioner.set_size(placement.size.0 as i32, placement.size.1 as i32);
-    positioner.set_anchor_rect(
-      anchor.x.round() as i32,
-      anchor.y.round() as i32,
-      (anchor.width.round() as i32).max(1),
-      (anchor.height.round() as i32).max(1),
-    );
-    positioner.set_anchor(Anchor::BottomLeft);
-    positioner.set_gravity(Gravity::BottomRight);
-    #[expect(clippy::cast_possible_truncation, reason = "whole pixels")]
-    positioner.set_offset(0, placement.gap.round() as i32);
-    positioner.set_constraint_adjustment(
-      ConstraintAdjustment::FlipY | ConstraintAdjustment::SlideX | ConstraintAdjustment::SlideY,
-    );
+
+    if self.constrains == Some(false) {
+      // The compositor keeps no popup on its output: it is kept within the window.
+      let (x, y) = self.place_within_window(&placement);
+
+      trace::log(|| format!("[wayland] the popup kept within the window at {x},{y}"));
+      positioner.set_anchor_rect(x, y, 1, 1);
+      positioner.set_anchor(Anchor::TopLeft);
+      positioner.set_gravity(Gravity::BottomRight);
+      positioner.set_constraint_adjustment(ConstraintAdjustment::empty());
+    } else {
+      positioner.set_anchor_rect(
+        anchor.x.round() as i32,
+        anchor.y.round() as i32,
+        (anchor.width.round() as i32).max(1),
+        (anchor.height.round() as i32).max(1),
+      );
+      positioner.set_anchor(Anchor::BottomLeft);
+      positioner.set_gravity(Gravity::BottomRight);
+      #[expect(clippy::cast_possible_truncation, reason = "whole pixels")]
+      positioner.set_offset(0, placement.gap.round() as i32);
+      positioner.set_constraint_adjustment(
+        ConstraintAdjustment::FlipY | ConstraintAdjustment::SlideX | ConstraintAdjustment::SlideY,
+      );
+    }
 
     let surface = self.compositor.create_surface(&qh);
     let Ok(popup) = Popup::from_surface(
@@ -833,6 +930,13 @@ impl State {
       .viewporter
       .as_ref()
       .map(|viewporter| viewporter.get_viewport(popup.wl_surface(), &qh, Raw));
+    // Its own fractional scale: a popup on another output than the window's is told that
+    // output's scale.
+    let fractional = self
+      .fractional_manager
+      .as_ref()
+      .filter(|_| viewport.is_some())
+      .map(|manager| manager.get_fractional_scale(popup.wl_surface(), &qh, Raw));
 
     popup.wl_surface().commit();
     trace::log(|| {
@@ -863,6 +967,7 @@ impl State {
     self.popup = Some(OpenPopup {
       popup,
       viewport,
+      fractional,
       configured: false,
       buffers: Vec::new(),
     });
@@ -878,7 +983,7 @@ impl State {
       return;
     }
 
-    let scale = self.shell.scale;
+    let scale = self.shell.popup_scale();
     let Some((width, height)) = self.shell.popup().map(|list| list.placement.size) else {
       return;
     };
@@ -1179,9 +1284,24 @@ impl CompositorHandler for State {
     &mut self,
     _: &Connection,
     _: &QueueHandle<Self>,
-    _: &wl_surface::WlSurface,
+    surface: &wl_surface::WlSurface,
     factor: i32,
   ) {
+    if let Some(open) = &self.popup
+      && open.popup.wl_surface() == surface
+    {
+      if open.fractional.is_none() {
+        trace::log(|| format!("[wayland] the popup's integer scale {factor}"));
+        self.shell.set_popup_scale(f64::from(factor));
+      }
+
+      return;
+    }
+
+    if surface != self.window.wl_surface() {
+      return;
+    }
+
     trace::log(|| format!("[wayland] integer scale {factor}"));
     self.integer_scale = factor;
 
@@ -2037,13 +2157,28 @@ impl Dispatch2<WpFractionalScaleV1, State> for Raw {
   fn event(
     &self,
     state: &mut State,
-    _: &WpFractionalScaleV1,
+    object: &WpFractionalScaleV1,
     event: wp_fractional_scale_v1::Event,
     _: &Connection,
     _: &QueueHandle<State>,
   ) {
-    if let wp_fractional_scale_v1::Event::PreferredScale { scale } = event {
-      trace::log(|| format!("[wayland] fractional scale {}/120", scale));
+    let wp_fractional_scale_v1::Event::PreferredScale { scale } = event else {
+      return;
+    };
+
+    if state
+      .popup
+      .as_ref()
+      .is_some_and(|open| open.fractional.as_ref() == Some(object))
+    {
+      trace::log(|| format!("[wayland] the popup's fractional scale {scale}/120"));
+      state.shell.set_popup_scale(f64::from(scale) / 120.);
+
+      return;
+    }
+
+    if state.fractional.as_ref() == Some(object) {
+      trace::log(|| format!("[wayland] fractional scale {scale}/120"));
       state.shell.set_scale(f64::from(scale) / 120.);
       crate::shell::invalidate_all();
     }
@@ -2088,6 +2223,26 @@ impl PopupHandler for State {
     popup: &Popup,
     config: PopupConfigure,
   ) {
+    if self
+      .probe
+      .as_ref()
+      .is_some_and(|probe| probe.wl_surface() == popup.wl_surface())
+    {
+      let constrains = config.position.1 < PROBE_OFFSET / 2;
+
+      trace::log(|| {
+        format!(
+          "[wayland] the probe popup was placed at {:?}: the compositor {} popups on its output",
+          config.position,
+          if constrains { "keeps" } else { "does not keep" }
+        )
+      });
+      self.constrains = Some(constrains);
+      self.probe = None;
+
+      return;
+    }
+
     if let Some(open) = &mut self.popup
       && open.popup.wl_surface() == popup.wl_surface()
     {
@@ -2105,6 +2260,18 @@ impl PopupHandler for State {
   }
 
   fn done(&mut self, _: &Connection, _: &QueueHandle<Self>, popup: &Popup) {
+    if self
+      .probe
+      .as_ref()
+      .is_some_and(|probe| probe.wl_surface() == popup.wl_surface())
+    {
+      // Dismissed unplaced: nothing learned, the compositor's placement is trusted.
+      self.probe = None;
+      self.constrains = Some(true);
+
+      return;
+    }
+
     if self
       .popup
       .as_ref()

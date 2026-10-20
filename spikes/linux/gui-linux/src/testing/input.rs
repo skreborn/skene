@@ -736,6 +736,8 @@ pub struct Ei {
   places: HashMap<u32, Place>,
   /// The absolute region aimed in, in the compositor's logical coordinates.
   region: (f64, f64, f64, f64),
+  /// The scale of the monitor the region covers.
+  region_scale: f64,
   /// When the client started: the events' timestamps count from it.
   started: Instant,
   /// The last emulation sequence number.
@@ -771,6 +773,7 @@ impl Ei {
       resumed: Vec::new(),
       places: HashMap::new(),
       region: (0., 0., 0., 0.),
+      region_scale: 1.,
       started: Instant::now(),
       sequence: 0,
       unsynced: false,
@@ -827,6 +830,7 @@ impl Ei {
       f64::from(region.width),
       f64::from(region.height),
     );
+    ei.region_scale = f64::from(region.scale);
     ei.context.flush()?;
 
     Ok(ei)
@@ -965,6 +969,13 @@ impl Ei {
     Ok(())
   }
 
+  /// The point `x`, `y` of the pointer's space (the monitor's logical pixels) as a touch
+  /// request on the monitor's stream names it: mutter 46 divides a stream's touch position by
+  /// the monitor's scale, though the stream it reports is the monitor's logical size.
+  fn in_stream(&self, x: f64, y: f64) -> (f64, f64) {
+    (x * self.region_scale, y * self.region_scale)
+  }
+
   /// Calls the RemoteDesktop session's `method` with `arguments` once mutter has taken every
   /// event sent on EIS before it.
   fn notify<B: serde::Serialize + zbus::zvariant::DynamicType>(
@@ -1044,6 +1055,7 @@ impl Input for Ei {
 
     let Some(device) = self.touch.clone() else {
       let stream = self.mutter.stream.to_string();
+      let (x, y) = self.in_stream(x, y);
 
       return self.notify("NotifyTouchDown", &(stream, id, x, y));
     };
@@ -1058,6 +1070,7 @@ impl Input for Ei {
   fn touch_motion(&mut self, id: u32, x: f64, y: f64) -> Result<()> {
     let Some(device) = self.touch.clone() else {
       let stream = self.mutter.stream.to_string();
+      let (x, y) = self.in_stream(x, y);
 
       return self.notify("NotifyTouchMotion", &(stream, id, x, y));
     };
@@ -1141,6 +1154,7 @@ impl
 }
 
 wayland_client::delegate_noop!(Devices: ignore wayland_client::protocol::wl_seat::WlSeat);
+wayland_client::delegate_noop!(Devices: ignore wayland_client::protocol::wl_output::WlOutput);
 wayland_client::delegate_noop!(Devices: ignore wayland_protocols_wlr::virtual_pointer::v1::client::zwlr_virtual_pointer_manager_v1::ZwlrVirtualPointerManagerV1);
 wayland_client::delegate_noop!(Devices: ignore wayland_protocols_wlr::virtual_pointer::v1::client::zwlr_virtual_pointer_v1::ZwlrVirtualPointerV1);
 wayland_client::delegate_noop!(Devices: ignore wayland_protocols_misc::zwp_virtual_keyboard_v1::client::zwp_virtual_keyboard_manager_v1::ZwpVirtualKeyboardManagerV1);
@@ -1150,7 +1164,9 @@ impl Sway {
   /// Creates a virtual pointer and a virtual keyboard (a US layout, Compose on the right
   /// Control key) on `WAYLAND_DISPLAY`'s seat; `extent` is the output's size in device pixels,
   /// which absolute motion spans, and `scale` its scale: the pointer moves in its logical
-  /// pixels, sent in device pixels so a fractional logical position stays exact.
+  /// pixels, sent in device pixels so a fractional logical position stays exact. The pointer is
+  /// the session's first output's alone, so its motion spans that output wherever a test puts
+  /// more beside it.
   ///
   /// # Errors
   ///
@@ -1163,9 +1179,16 @@ impl Sway {
     let (globals, mut queue) = wayland_client::globals::registry_queue_init::<Devices>(&conn)?;
     let qh = queue.handle();
     let seat: wayland_client::protocol::wl_seat::WlSeat = globals.bind(&qh, 1..=1, ())?;
-    let pointers: ZwlrVirtualPointerManagerV1 = globals.bind(&qh, 1..=1, ())?;
+    let pointers: ZwlrVirtualPointerManagerV1 = globals.bind(&qh, 1..=2, ())?;
     let keyboards: ZwpVirtualKeyboardManagerV1 = globals.bind(&qh, 1..=1, ())?;
-    let pointer = pointers.create_virtual_pointer(Some(&seat), &qh, ());
+    let output: Option<wayland_client::protocol::wl_output::WlOutput> =
+      globals.bind(&qh, 1..=1, ()).ok();
+    let pointer = match &output {
+      Some(output) if wayland_client::Proxy::version(&pointers) >= 2 => {
+        pointers.create_virtual_pointer_with_output(Some(&seat), Some(output), &qh, ())
+      }
+      _ => pointers.create_virtual_pointer(Some(&seat), &qh, ()),
+    };
     let keyboard = keyboards.create_virtual_keyboard(&seat, &qh, ());
     let context = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);
     let keymap = xkb::Keymap::new_from_names(

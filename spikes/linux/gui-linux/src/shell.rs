@@ -837,7 +837,7 @@ impl Shell {
   /// [`Shell::release_paths`] or the overlay's close.
   #[cfg(feature = "gpu")]
   pub unsafe fn choose_popup_path(&mut self, target: crate::gpu::Target) {
-    let scale = self.scale;
+    let scale = self.popup_scale();
     let (Some(gpu), Some(open)) = (self.renderer.gpu(), self.overlay.as_mut()) else {
       return;
     };
@@ -1889,9 +1889,27 @@ impl Shell {
     self.overlay.as_mut()
   }
 
-  /// The open overlay's frame, where it changed.
+  /// The scale the open overlay is painted at: its surface's own where the compositor told it
+  /// one, the window's otherwise.
+  pub fn popup_scale(&self) -> f64 {
+    self
+      .overlay
+      .as_ref()
+      .and_then(Open::scale)
+      .unwrap_or(self.scale)
+  }
+
+  /// The open overlay's surface prefers `scale`, the compositor said: it is painted at it.
+  pub fn set_popup_scale(&mut self, scale: f64) {
+    if let Some(open) = &mut self.overlay {
+      trace::log(|| format!("[popup] scale {scale}"));
+      open.set_scale(scale);
+    }
+  }
+
+  /// The open overlay's frame, where it changed, at [`Shell::popup_scale`].
   pub fn popup_frame(&mut self) -> Option<Frame<'_>> {
-    let scale = self.scale;
+    let scale = self.popup_scale();
     let marks = Marks {
       focus: self.focus.clone().filter(|_| self.focus_visible),
       focused: self.focus.clone(),

@@ -299,3 +299,74 @@ fn a_standard_entrys_handler_runs_after_its_operation() {
     "the entry's handler ran after the cut, the field already empty"
   );
 }
+
+/// A spacer `spacer` pixels tall, then a field holding "alpha beta".
+fn bottom_field(spacer: Signal<i32>) -> impl View {
+  let words = Signal::new(String::from("alpha beta"));
+
+  publish("words", move || format!("{:?}", words.get_untracked()));
+
+  Column::new()
+    .set_padding(16)
+    .add_child(
+      Container::new()
+        .set_label("Spacer")
+        .derive_height(move || spacer.get()),
+    )
+    .add_child(TextField::new("Bottom").bind_text(words))
+}
+
+#[skene_gui::test]
+fn a_context_menu_at_the_windows_foot_stays_on_the_screen_and_answers_where_it_shows() {
+  let spacer = Signal::new(10_i32);
+  let screen = testing::render(move || bottom_field(spacer));
+  let (_, screen_height) = screen.driver().screen_extent();
+  let unit = screen.driver().scale();
+  let unit = if std::env::var("SKENE_BACKEND").as_deref() == Ok("x11") {
+    unit
+  } else {
+    1.
+  };
+  // The window nearly as tall as the screen, its field at its foot.
+  let height = ((screen_height / unit) - 80.).max(400.) as i32;
+
+  screen.set_size(480, height);
+  spacer.set(height - 16 - 34 - 24);
+  screen.settle();
+
+  let field = screen.find_by_role(Role::TextField, "Bottom");
+
+  field.context_click();
+
+  let menu = screen.find_by_role(Role::Menu, "").read().bounds;
+  let (_, window_y, _, window_height) = screen.driver().window_rect();
+  // A reader's bounds are the content's: below a title bar Skene draws.
+  let header = window_height - f64::from(screen.driver().size().1) * unit;
+  let select_all = screen.find_by_role(Role::MenuItem, "Select All");
+  let item = select_all.read().bounds;
+  let foot = window_y + header + f64::from(menu.y + menu.height) * unit;
+
+  eprintln!(
+    "the screen {screen_height} tall, the window at {window_y} {window_height} tall, the menu at {menu:?} (its foot at {foot}), Select All at {item:?}"
+  );
+  assert!(
+    foot <= screen_height + 1.,
+    "the menu stays on the screen ({menu:?} in a window at {window_y}, its foot at {foot}, the screen {screen_height} tall)"
+  );
+
+  select_all.click();
+
+  let selection = field
+    .read()
+    .selection
+    .expect("the field reports its selection");
+
+  assert_eq!(
+    (
+      selection.start.min(selection.end),
+      selection.start.max(selection.end)
+    ),
+    (0, 10),
+    "a click where the reader reads Select All selects it all"
+  );
+}

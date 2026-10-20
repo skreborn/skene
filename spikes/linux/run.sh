@@ -92,8 +92,10 @@
 #   - weston and KWin, each on its X11 backend inside a private Xvfb (XTest into weston, KWin's
 #     fake input), and a window on that KWin's Xwayland, where the compositor starts (KWin from
 #     SKENE_KWIN, or kwin_wayland on PATH);
-#   - the scaled legs at 1.5 (SKENE_TEST_SCALE): sway's output scale and KWin's, and the
-#     realization's own on Xvfb.
+#   - the scaled legs at 1.5 (SKENE_TEST_SCALE): sway's output scale, mutter's (its
+#     scale-monitor-framebuffer feature and a monitors.xml for its virtual monitor), KWin's,
+#     KWin's Xwayland's (Xft/DPI from the desktop's XSETTINGS) and the realization's own on Xvfb;
+#     weston 13 offers no fractional-scale-v1, so its leg refuses a fractional scale.
 #
 # Stage TESTING GAPS (every test through the driver, pixels as the screen shows them):
 #   - the realization's tests are driver tests alone, run with the GUI crates on every leg
@@ -235,7 +237,7 @@ legs_run() { # <log name> <leg> [scale]
 for leg in weston kwin kwin-x11; do
   legs_run "$leg" "$leg"
 done
-for leg in sway kwin x11; do
+for leg in sway wayland kwin kwin-x11 x11; do
   legs_run "$leg-1.5" "$leg" 1.5
 done
 measure_target

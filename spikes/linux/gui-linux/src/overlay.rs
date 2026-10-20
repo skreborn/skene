@@ -72,6 +72,9 @@ pub struct Open {
   renderer: Renderer,
   dirty: bool,
   opaque: bool,
+  /// The scale its surface prefers, where the compositor told it one: its own, which differs
+  /// from the window's where it shows on another output.
+  scale: Option<f64>,
 }
 
 impl Open {
@@ -85,6 +88,21 @@ impl Open {
       renderer: Renderer::new(),
       dirty: true,
       opaque: false,
+      scale: None,
+    }
+  }
+
+  /// The scale its surface prefers, where the compositor told it one.
+  #[must_use]
+  pub const fn scale(&self) -> Option<f64> {
+    self.scale
+  }
+
+  /// Its surface prefers `scale`: it is painted again at it.
+  pub fn set_scale(&mut self, scale: f64) {
+    if self.scale != Some(scale) {
+      self.scale = Some(scale);
+      self.dirty = true;
     }
   }
 

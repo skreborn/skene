@@ -21,9 +21,13 @@
 //!     file capability beyond the process's bounding set);
 //!
 //!   `SKENE_TEST_SCALE` (1 where unset) scales the leg's screen fractionally: sway's output
-//!   scale and KWin's `--scale` reach the app through fractional-scale-v1, and on `x11` it is
-//!   the realization's `SKENE_SCALE` (a bare Xvfb has no desktop to publish `Xft/DPI`); the
-//!   `wayland`, `weston` and `kwin-x11` legs take 1 alone;
+//!   scale, KWin's `--scale` and mutter's monitor scale (its `scale-monitor-framebuffer`
+//!   feature on, the scale in its `monitors.xml`) reach the app through fractional-scale-v1;
+//!   on `kwin-x11` Xwayland shows the screen's device pixels (KWin's `[Xwayland] Scale`, as a
+//!   desktop leaving X11 apps to scale themselves sets it) and the test stands in for the
+//!   desktop's XSETTINGS daemon, publishing `Xft/DPI`; on `x11` it is the realization's
+//!   `SKENE_SCALE` (a bare Xvfb has no desktop to publish `Xft/DPI`); the `weston` leg takes 1
+//!   alone (weston 13 offers no fractional-scale-v1);
 //!
 //!   each with a private D-Bus session (which starts the accessibility bus on demand), a
 //!   private runtime directory and configuration home, and none of the user's display,
@@ -441,10 +445,9 @@ impl Session {
   fn start_test(&mut self, leg: Leg) -> Result<(), String> {
     let scale = test_scale()?;
 
-    if scale != 1. && matches!(leg, Leg::Mutter | Leg::Weston | Leg::KwinX11) {
+    if scale != 1. && leg == Leg::Weston {
       return Err(format!(
-        "SKENE_TEST_SCALE={scale}: the {} leg takes scale 1 alone",
-        leg.name()
+        "SKENE_TEST_SCALE={scale}: the weston leg takes scale 1 alone (weston 13 offers no fractional-scale-v1)"
       ));
     }
 
@@ -603,9 +606,18 @@ impl Session {
 
   /// Headless mutter on a virtual monitor, its Wayland socket named for the session, its
   /// windows mapped and moved without animation (so a window is where it stays from its first
-  /// frame, however the screen is watched).
+  /// frame, however the screen is watched); at a scale other than 1, the monitor scaled
+  /// fractionally, as a desktop's display settings scale it (mutter's
+  /// `scale-monitor-framebuffer` feature on, the scale in its `monitors.xml`).
   fn start_mutter(&mut self) -> Result<(), String> {
-    let screen = screen_at(test_scale()?);
+    let scale = test_scale()?;
+    let screen = screen_at(scale);
+
+    if scale != 1. {
+      self
+        .scale_mutter(scale, screen)
+        .map_err(|error| format!("could not write mutter's configuration: {error}"))?;
+    }
 
     let socket = format!("skene-{}", std::process::id());
     let mut command = self.helper("mutter");
@@ -647,6 +659,28 @@ impl Session {
     self.display = Some(("WAYLAND_DISPLAY", socket));
 
     Ok(())
+  }
+
+  /// Writes mutter's settings and monitor configuration for a virtual monitor of `screen`
+  /// device pixels at `scale`: the experimental feature that scales a monitor fractionally,
+  /// in the keyfile its settings are read from (`GSETTINGS_BACKEND=keyfile`), and the
+  /// monitor's scale in `monitors.xml`.
+  fn scale_mutter(&self, scale: f64, screen: (u32, u32)) -> std::io::Result<()> {
+    let config = self.scratch.join("config");
+    let settings = config.join("glib-2.0/settings");
+
+    fs::create_dir_all(&settings)?;
+    fs::write(
+      settings.join("keyfile"),
+      "[org/gnome/mutter]\nexperimental-features=['scale-monitor-framebuffer']\n",
+    )?;
+    fs::write(
+      config.join("monitors.xml"),
+      format!(
+        "<monitors version=\"2\">\n  <configuration>\n    <logicalmonitor>\n      <x>0</x>\n      <y>0</y>\n      <scale>{scale}</scale>\n      <primary>yes</primary>\n      <monitor>\n        <monitorspec>\n          <connector>Meta-0</connector>\n          <vendor>MetaVendor</vendor>\n          <product>MetaVirtualMonitor</product>\n          <serial>0x00</serial>\n        </monitorspec>\n        <mode>\n          <width>{}</width>\n          <height>{}</height>\n          <rate>60.000</rate>\n        </mode>\n      </monitor>\n    </logicalmonitor>\n  </configuration>\n</monitors>\n",
+        screen.0, screen.1
+      ),
+    )
   }
 
   /// Headless sway on one output, drawn with pixman, every window floating (sized by its
@@ -755,7 +789,8 @@ impl Session {
 
   /// KWin's windowed backend on one output, a window of the session's Xvfb as large as the
   /// screen, composited with QPainter; its fake input allowed (a restricted interface: the
-  /// permission checks go), with Xwayland where `xwayland`: the test's windows go there.
+  /// permission checks go), with Xwayland where `xwayland`: the test's windows go there,
+  /// Xwayland showing the screen's device pixels where the leg is scaled.
   fn start_kwin(&mut self, xwayland: bool) -> Result<(), String> {
     let scale = test_scale()?;
     let screen = screen_at(scale);
@@ -767,9 +802,21 @@ impl Session {
     let config = self.scratch.join("config");
 
     // KWin places a window where it overlaps the fewest (its Smart policy): a test's second
-    // application opens beside its window, not centered over it.
+    // application opens beside its window, not centered over it. Scaled, Xwayland shows the
+    // screen's device pixels, X11 apps scaling themselves as a desktop leaves them to.
+    let xwayland_scale = if xwayland && scale != 1. {
+      format!("[Xwayland]\nScale={scale}\n")
+    } else {
+      String::new()
+    };
+
     fs::create_dir_all(&config)
-      .and_then(|()| fs::write(config.join("kwinrc"), "[Windows]\nPlacement=Smart\n"))
+      .and_then(|()| {
+        fs::write(
+          config.join("kwinrc"),
+          format!("[Windows]\nPlacement=Smart\n{xwayland_scale}"),
+        )
+      })
       .map_err(|error| format!("could not write KWin's configuration: {error}"))?;
 
     let mut command = self.helper(&program);

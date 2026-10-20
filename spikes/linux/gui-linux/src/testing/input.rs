@@ -1281,7 +1281,9 @@ impl Input for Ei {
   }
 }
 
-/// sway's virtual pointer and keyboard on a connection of the test's own.
+/// sway's virtual pointer and keyboard on a connection of the test's own, and where sway runs
+/// on its X11 backend inside the runner's Xorg, that server's inputtest touchscreen, whose
+/// touches reach sway as its X11 backend's touch.
 pub struct Sway {
   _conn: wayland_client::Connection,
   queue: wayland_client::EventQueue<Devices>,
@@ -1293,6 +1295,8 @@ pub struct Sway {
   started: Instant,
   modifiers: u32,
   _keymap: std::fs::File,
+  /// The touchscreen of the X server sway's output is a window of, filling its screen.
+  touchscreen: Option<Touchscreen>,
 }
 
 /// The virtual devices' connection state: nothing is read from it.
@@ -1328,11 +1332,13 @@ impl Sway {
   /// which absolute motion spans, and `scale` its scale: the pointer moves in its logical
   /// pixels, sent in device pixels so a fractional logical position stays exact. The pointer is
   /// the session's first output's alone, so its motion spans that output wherever a test puts
-  /// more beside it.
+  /// more beside it. Where the runner names an inputtest touchscreen (`SKENE_TOUCH_SOCKET`),
+  /// sway's output is a window filling that X server's screen, and touches go there.
   ///
   /// # Errors
   ///
-  /// Where the compositor offers no virtual pointer or keyboard.
+  /// Where the compositor offers no virtual pointer or keyboard, or the touchscreen named
+  /// cannot be reached.
   pub fn new(extent: (u32, u32), scale: f64) -> Result<Self> {
     use wayland_protocols_misc::zwp_virtual_keyboard_v1::client::zwp_virtual_keyboard_manager_v1::ZwpVirtualKeyboardManagerV1;
     use wayland_protocols_wlr::virtual_pointer::v1::client::zwlr_virtual_pointer_manager_v1::ZwlrVirtualPointerManagerV1;
@@ -1374,6 +1380,14 @@ impl Sway {
     keyboard.keymap(1, file.as_fd(), bytes.len() as u32);
     queue.roundtrip(&mut Devices)?;
 
+    let touchscreen = match std::env::var_os("SKENE_TOUCH_SOCKET") {
+      Some(path) => Some(Touchscreen::connect(
+        path.as_ref(),
+        (f64::from(extent.0), f64::from(extent.1)),
+      )?),
+      None => None,
+    };
+
     Ok(Self {
       _conn: conn,
       queue,
@@ -1385,7 +1399,18 @@ impl Sway {
       started: Instant::now(),
       modifiers: 0,
       _keymap: file,
+      touchscreen,
     })
+  }
+
+  /// The touchscreen, where sway's output has one.
+  fn touchscreen(&mut self) -> Result<&mut Touchscreen> {
+    let name = self.name();
+
+    self
+      .touchscreen
+      .as_mut()
+      .ok_or_else(|| format!("{name} sends no touch").into())
   }
 
   fn time(&self) -> u32 {
@@ -1521,7 +1546,38 @@ impl Input for Sway {
     true
   }
 
+  fn touch_down(&mut self, id: u32, x: f64, y: f64) -> Result<()> {
+    let scale = self.scale;
+
+    self
+      .touchscreen()?
+      .touch(Touchscreen::BEGIN, id, (x * scale, y * scale))
+  }
+
+  fn touch_motion(&mut self, id: u32, x: f64, y: f64) -> Result<()> {
+    let scale = self.scale;
+
+    self
+      .touchscreen()?
+      .touch(Touchscreen::UPDATE, id, (x * scale, y * scale))
+  }
+
+  fn touch_up(&mut self, id: u32) -> Result<()> {
+    let touchscreen = self.touchscreen()?;
+    let at = touchscreen.points.get(&id).copied().unwrap_or_default();
+
+    touchscreen.touch(Touchscreen::END, id, at)
+  }
+
+  fn has_touch(&self) -> bool {
+    self.touchscreen.is_some()
+  }
+
   fn sync(&mut self) -> Result<()> {
+    if let Some(touchscreen) = self.touchscreen.as_mut() {
+      touchscreen.sync()?;
+    }
+
     self.queue.roundtrip(&mut Devices)?;
 
     Ok(())
@@ -1546,7 +1602,11 @@ impl Input for Sway {
   }
 
   fn name(&self) -> &'static str {
-    "sway's virtual pointer and keyboard"
+    if self.touchscreen.is_some() {
+      "sway's virtual pointer and keyboard, and Xorg's inputtest touchscreen under sway's X11 backend"
+    } else {
+      "sway's virtual pointer and keyboard"
+    }
   }
 }
 

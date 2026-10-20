@@ -13,7 +13,11 @@
 //!   - `wayland` or `mutter`: headless mutter (a virtual monitor, its RemoteDesktop service
 //!     over a private PipeWire, which the test's input goes through, and its ScreenCast
 //!     service, which the test reads the screen through, WirePlumber linking the streams);
-//!   - `sway`: headless sway (pixman), its virtual pointer and keyboard;
+//!   - `sway`: headless sway (pixman), its virtual pointer and keyboard; with
+//!     `SKENE_SWAY_BACKEND=x11`, sway on its X11 backend instead, its output a window filling
+//!     the screen of a private Xorg with an inputtest touchscreen (as the `x11` leg's), which
+//!     takes touch (sway 1.9's X11 backend reports a window's frame presented only once the
+//!     output shows a later one, so a recording there misses the last frame);
 //!   - `weston`: weston on its X11 backend (pixman), its output a window of a private Xvfb
 //!     whose XTest the test's input goes through;
 //!   - `kwin`: KWin's windowed backend (QPainter), its output a window of a private Xvfb, its
@@ -487,8 +491,10 @@ impl Session {
         self.start_mutter()
       }
       Leg::Sway => {
+        let parent = self.start_sway_parent()?;
+
         self.start_bus()?;
-        self.start_sway()
+        self.start_sway(parent.as_deref())
       }
       Leg::Weston => {
         self.start_xvfb()?;
@@ -802,18 +808,41 @@ impl Session {
     )
   }
 
-  /// Headless sway on one output, drawn with pixman, every window floating (sized by its
-  /// app, as on a stacking desktop), its seat's cursors the transparent theme (which sway
-  /// draws for a window that names a cursor by its shape).
-  fn start_sway(&mut self) -> Result<(), String> {
+  /// The X server the sway leg nests sway in where `SKENE_SWAY_BACKEND=x11` asks for it: Xorg
+  /// with an inputtest touchscreen ([`Self::start_xorg`]), whose touches reach sway through
+  /// its X11 backend; `None` (headless sway) otherwise.
+  fn start_sway_parent(&mut self) -> Result<Option<String>, String> {
+    match env::var("SKENE_SWAY_BACKEND").as_deref() {
+      Ok("x11") => {
+        self.start_xorg()?;
+
+        Ok(self.display.as_ref().map(|(_, display)| display.clone()))
+      }
+      Ok("headless") | Err(_) => Ok(None),
+      Ok(other) => Err(format!(
+        "SKENE_SWAY_BACKEND={other}: sway's backends are headless (the default) and x11"
+      )),
+    }
+  }
+
+  /// Sway on one output, drawn with pixman, every window floating (sized by its app, as on a
+  /// stacking desktop), its seat's cursors the transparent theme (which sway draws for a
+  /// window that names a cursor by its shape): on its X11 backend, its output a window
+  /// filling the screen of the X server `parent` names, or headless where none is named.
+  fn start_sway(&mut self, parent: Option<&str>) -> Result<(), String> {
     let scale = test_scale()?;
     let screen = screen_at(scale);
     let config = self.scratch.join("sway.conf");
+    let (backend, output) = if parent.is_some() {
+      ("x11", "X11-1")
+    } else {
+      ("headless", "HEADLESS-1")
+    };
 
     fs::write(
       &config,
       format!(
-        "output HEADLESS-1 resolution {}x{} position 0 0 scale {}\ndefault_border none\nfor_window [app_id=\".*\"] floating enable\nseat * xcursor_theme {BLANK_THEME} 24\n",
+        "output {output} resolution {}x{} position 0 0 scale {}\ndefault_border none\nfor_window [app_id=\".*\"] floating enable\nseat * xcursor_theme {BLANK_THEME} 24\n",
         screen.0,
         screen.1,
         scale
@@ -826,9 +855,13 @@ impl Session {
     command
       .args(["--unsupported-gpu", "-c"])
       .arg(&config)
-      .env("WLR_BACKENDS", "headless")
+      .env("WLR_BACKENDS", backend)
       .env("WLR_LIBINPUT_NO_DEVICES", "1")
       .env("WLR_RENDERER", "pixman");
+
+    if let Some(parent) = parent {
+      command.env("DISPLAY", parent);
+    }
 
     let sway = spawn(&mut command)
       .map_err(|error| format!("could not start sway (install sway): {error}"))?;

@@ -1053,6 +1053,7 @@ impl Shell {
       glyphs: Duration::from_micros(cost.glyphs),
       masks: cost.masks,
       images: cost.images,
+      shadows: cost.shadows,
       total: started.elapsed(),
       full: dirty.all,
       region,

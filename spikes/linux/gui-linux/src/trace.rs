@@ -141,6 +141,8 @@ pub(crate) struct FrameCost {
   pub masks: (u64, u64),
   /// The glyph images found cached and those made, so far.
   pub images: (u64, u64),
+  /// The shadows whose images were found cached and those whose images were made, so far.
+  pub shadows: (u64, u64),
   /// All of it.
   pub total: Duration,
   /// Whether the whole window was painted.
@@ -160,7 +162,7 @@ pub(crate) fn frame(cost: FrameCost) {
     let ms = |duration: Duration| duration.as_secs_f64() * 1000.;
 
     format!(
-      "[frame] {count} total {:.2} ms prepare {:.2} layout {:.2} record {:.2} raster {:.2} glyphs {:.2} {} region {:.0}x{:.0}+{:.0}+{:.0} measured {} masks {}/{} images {}/{}",
+      "[frame] {count} total {:.2} ms prepare {:.2} layout {:.2} record {:.2} raster {:.2} glyphs {:.2} {} region {:.0}x{:.0}+{:.0}+{:.0} measured {} masks {}/{} images {}/{} shadows {}/{}",
       ms(cost.total),
       ms(cost.prepare),
       ms(cost.layout),
@@ -177,6 +179,8 @@ pub(crate) fn frame(cost: FrameCost) {
       cost.masks.1,
       cost.images.0,
       cost.images.1,
+      cost.shadows.0,
+      cost.shadows.1,
     )
   });
 }

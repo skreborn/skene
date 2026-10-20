@@ -145,6 +145,9 @@ pub trait Sink {
   /// Cuts what is drawn until the matching [`Sink::pop`] to `path`, placed by `transform`.
   fn push_clip(&mut self, path: &BezPath, transform: Affine);
 
+  /// Draws `shadow`, placed by `transform`.
+  fn shadow(&mut self, shadow: &CastShadow, transform: Affine);
+
   /// Fades what is drawn until the matching [`Sink::pop`] to `opacity`, as one layer.
   fn push_opacity(&mut self, opacity: f32);
 
@@ -154,6 +157,254 @@ pub trait Sink {
   /// Draws `glyph`'s mask at its device pixel: a coverage mask in its color, a color glyph
   /// in its own.
   fn glyph(&mut self, glyph: &PlacedGlyph);
+}
+
+/// A box's outer shadow: a rectangle blurred, shown outside the box that casts it alone, as a
+/// CSS box shadow is.
+#[derive(Clone, Copy, Debug)]
+pub struct CastShadow {
+  /// The rectangle blurred: the box offset and grown by the shadow's spread.
+  pub cast: KRect,
+  /// The cast rectangle's corner radius.
+  pub radius: f32,
+  /// The blur's standard deviation.
+  pub deviation: f32,
+  /// The shadow's color.
+  pub color: PColor,
+  /// The box casting it, its corners rounded: cut out of the shadow.
+  pub caster: RoundedRect,
+}
+
+impl CastShadow {
+  /// How far past the cast rectangle the blur draws.
+  fn reach(&self) -> f64 {
+    f64::from(self.deviation) * 2.5 + 1.
+  }
+
+  /// What the shadow may draw on: the cast rectangle grown by the blur's reach, and the box.
+  fn bounds(&self) -> KRect {
+    let reach = self.reach();
+
+    self.cast.inflate(reach, reach).union(self.caster.rect())
+  }
+
+  /// What the shadow shows on: its bounds but the box, filled by the even-odd rule.
+  pub fn outside(&self) -> BezPath {
+    let mut outside = self.bounds().to_path(0.1);
+
+    outside.extend(self.caster.path_elements(0.1));
+
+    outside
+  }
+
+  /// The shadow in device pixels, placed by `transform` (a scale and a translation alone),
+  /// relative to the whole device pixel at the top left of its bounds: that pixel, and the
+  /// shadow there. `None` where `transform` rotates, skews or stretches.
+  fn in_device(&self, transform: Affine) -> Option<((f64, f64), Self)> {
+    let [scale, b, c, d, ..] = transform.as_coeffs();
+
+    if b != 0. || c != 0. || scale != d || scale <= 0. {
+      return None;
+    }
+
+    let bounds = transform.transform_rect_bbox(self.bounds());
+    let origin = (bounds.x0.floor(), bounds.y0.floor());
+    let local = Affine::translate((-origin.0, -origin.1)) * transform;
+    let radii = self.caster.radii();
+    let scaled = |radius: f64| radius * scale;
+    #[expect(clippy::cast_possible_truncation, reason = "device pixels")]
+    let shadow = Self {
+      cast: local.transform_rect_bbox(self.cast),
+      radius: (f64::from(self.radius) * scale) as f32,
+      deviation: (f64::from(self.deviation) * scale) as f32,
+      color: self.color,
+      caster: RoundedRect::from_rect(
+        local.transform_rect_bbox(self.caster.rect()),
+        RoundedRectRadii::new(
+          scaled(radii.top_left),
+          scaled(radii.top_right),
+          scaled(radii.bottom_right),
+          scaled(radii.bottom_left),
+        ),
+      ),
+    };
+
+    Some((origin, shadow))
+  }
+}
+
+/// A shadow in device pixels, relative to the whole pixel at its bounds' top left, as the
+/// CPU path's shadow images are found: every coordinate's bits, and the color's.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+struct ShadowKey([u64; 14], u32);
+
+impl ShadowKey {
+  fn of(shadow: &CastShadow) -> Self {
+    let rect = |rect: KRect| [rect.x0, rect.y0, rect.x1, rect.y1].map(f64::to_bits);
+    let [a, b, c, d] = rect(shadow.cast);
+    let [e, f, g, h] = rect(shadow.caster.rect());
+    let radii = shadow.caster.radii();
+
+    Self(
+      [
+        a,
+        b,
+        c,
+        d,
+        e,
+        f,
+        g,
+        h,
+        radii.top_left.to_bits(),
+        radii.top_right.to_bits(),
+        radii.bottom_right.to_bits(),
+        radii.bottom_left.to_bits(),
+        u64::from(shadow.radius.to_bits()),
+        u64::from(shadow.deviation.to_bits()),
+      ],
+      u32::from_ne_bytes(shadow.color.to_rgba8().to_u8_array()),
+    )
+  }
+}
+
+/// A shadow's images, each with the rectangle it covers (device pixels, from the top left of
+/// the shadow's bounds), their bytes, and the frame that last drew them.
+struct ShadowParts {
+  parts: Vec<(KRect, Image)>,
+  bytes: usize,
+  used: u64,
+}
+
+/// The CPU path's shadow images: each shadow drawn once, in device pixels, and drawn again as
+/// its pixels while it stays where it is within the pixel grid, with the frame that last drew
+/// it. A shadow is kept as the parts of its bounds outside the box's inside (the box inset by
+/// its corners' radius), each an image placed at whole pixels.
+#[derive(Default)]
+pub struct ShadowImages {
+  images: HashMap<ShadowKey, ShadowParts>,
+  resources: Resources,
+  bytes: usize,
+  frame: u64,
+  hits: u64,
+  misses: u64,
+}
+
+impl ShadowImages {
+  /// The bytes of images the cache keeps; past them it keeps the current frame's alone.
+  const BUDGET: usize = 32 << 20;
+
+  /// Starts a frame: the images it draws are the ones the cache keeps once it is past its
+  /// budget.
+  pub const fn next_frame(&mut self) {
+    self.frame += 1;
+  }
+
+  /// How many shadows found their images cached, and how many made them.
+  #[must_use]
+  pub const fn lookups(&self) -> (u64, u64) {
+    (self.hits, self.misses)
+  }
+
+  /// The parts of `shadow` (device pixels, from its bounds' top left) as images, each with the
+  /// rectangle it covers there; `None` where its bounds are empty or too large for an image.
+  fn parts(&mut self, shadow: &CastShadow) -> Option<Vec<(KRect, Image)>> {
+    let key = ShadowKey::of(shadow);
+
+    if let Some(found) = self.images.get_mut(&key) {
+      self.hits += 1;
+      found.used = self.frame;
+
+      return Some(found.parts.clone());
+    }
+
+    let bounds = shadow.bounds();
+    let (width, height) = (bounds.x1.ceil(), bounds.y1.ceil());
+
+    if width < 1. || height < 1. || width > f64::from(u16::MAX) || height > f64::from(u16::MAX) {
+      return None;
+    }
+
+    self.misses += 1;
+
+    // The box's inside, which the shadow never shows on, in whole pixels.
+    let caster = shadow.caster.rect();
+    let radii = shadow.caster.radii();
+    let inset = radii
+      .top_left
+      .max(radii.top_right)
+      .max(radii.bottom_right)
+      .max(radii.bottom_left);
+    let inside = KRect::new(
+      (caster.x0 + inset).ceil().clamp(0., width),
+      (caster.y0 + inset).ceil().clamp(0., height),
+      (caster.x1 - inset).floor().clamp(0., width),
+      (caster.y1 - inset).floor().clamp(0., height),
+    );
+    let rects = if inside.width() > 0. && inside.height() > 0. {
+      vec![
+        KRect::new(0., 0., width, inside.y0),
+        KRect::new(0., inside.y1, width, height),
+        KRect::new(0., inside.y0, inside.x0, inside.y1),
+        KRect::new(inside.x1, inside.y0, width, inside.y1),
+      ]
+    } else {
+      vec![KRect::new(0., 0., width, height)]
+    };
+    let outside = shadow.outside();
+    let mut parts = Vec::new();
+    let mut bytes = 0;
+
+    for rect in rects.into_iter().filter(|rect| rect.area() > 0.) {
+      #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "whole pixels within the bounds"
+      )]
+      let (part_width, part_height) = (rect.width() as u16, rect.height() as u16);
+      let mut ctx = RenderContext::new(part_width, part_height);
+      let mut pixmap = Pixmap::new(part_width, part_height);
+
+      ctx.set_transform(Affine::translate((-rect.x0, -rect.y0)));
+      ctx.set_fill_rule(vello_cpu::peniko::Fill::EvenOdd);
+      ctx.push_clip_path(&outside);
+      ctx.set_fill_rule(vello_cpu::peniko::Fill::NonZero);
+      ctx.set_paint(shadow.color);
+      ctx.fill_blurred_rounded_rect(&shadow.cast, shadow.radius, shadow.deviation, false);
+      ctx.pop_clip();
+      ctx.flush();
+      ctx.render(&mut pixmap, &mut self.resources);
+      bytes += usize::from(part_width) * usize::from(part_height) * 4;
+      parts.push((
+        rect,
+        Image {
+          image: ImageSource::Pixmap(Arc::new(pixmap)),
+          sampler: ImageSampler {
+            quality: ImageQuality::Low,
+            ..ImageSampler::default()
+          },
+        },
+      ));
+    }
+
+    if self.bytes + bytes > Self::BUDGET {
+      let frame = self.frame;
+
+      self.images.retain(|_, found| found.used == frame);
+      self.bytes = self.images.values().map(|found| found.bytes).sum();
+    }
+
+    self.bytes += bytes;
+    self.images.insert(
+      key,
+      ShadowParts {
+        parts: parts.clone(),
+        bytes,
+        used: self.frame,
+      },
+    );
+
+    Some(parts)
+  }
 }
 
 /// The CPU path's glyph images: each mask the rasterizer cached, as an image vello_cpu
@@ -247,12 +498,14 @@ fn mask_pixmap(mask: &GlyphMask) -> Pixmap {
   )
 }
 
-/// vello_cpu's context as a [`Sink`], with the glyph images it draws from.
+/// vello_cpu's context as a [`Sink`], with the glyph and shadow images it draws from.
 pub struct CpuSink<'a> {
   /// The context, in device pixels.
   pub ctx: &'a mut RenderContext,
   /// The glyph images.
   pub glyphs: &'a mut GlyphImages,
+  /// The shadow images.
+  pub shadows: &'a mut ShadowImages,
 }
 
 impl CpuSink<'_> {
@@ -307,6 +560,38 @@ impl Sink for CpuSink<'_> {
   fn push_clip(&mut self, path: &BezPath, transform: Affine) {
     self.ctx.set_transform(transform);
     self.ctx.push_clip_layer(path);
+  }
+
+  fn shadow(&mut self, shadow: &CastShadow, transform: Affine) {
+    let Some(((x, y), parts)) = shadow
+      .in_device(transform)
+      .and_then(|(origin, shadow)| Some((origin, self.shadows.parts(&shadow)?)))
+    else {
+      self.ctx.set_transform(transform);
+      self.ctx.set_fill_rule(vello_cpu::peniko::Fill::EvenOdd);
+      self.ctx.push_clip_path(&shadow.outside());
+      self.ctx.set_fill_rule(vello_cpu::peniko::Fill::NonZero);
+      self.ctx.set_paint(shadow.color);
+      self.ctx.reset_paint_transform();
+      self
+        .ctx
+        .fill_blurred_rounded_rect(&shadow.cast, shadow.radius, shadow.deviation, false);
+      self.ctx.pop_clip();
+
+      return;
+    };
+
+    self.ctx.reset_paint_transform();
+
+    for (rect, image) in parts {
+      self
+        .ctx
+        .set_transform(Affine::translate((x + rect.x0, y + rect.y0)));
+      self.ctx.set_paint(image);
+      self
+        .ctx
+        .fill_rect(&KRect::new(0., 0., rect.width(), rect.height()));
+    }
   }
 
   fn push_opacity(&mut self, opacity: f32) {
@@ -591,7 +876,8 @@ impl Canvas<'_> {
   }
 
   /// A shadow of the box `rect` with `corners`, blurred by `blur`, grown by `spread`, offset
-  /// by `x`, `y`.
+  /// by `x`, `y`, shown outside the box alone, as a CSS box shadow is: the box's own area,
+  /// its corners rounded, is cut out of it.
   #[expect(clippy::too_many_arguments, reason = "a shadow's every parameter")]
   pub fn shadow(
     &mut self,
@@ -603,7 +889,7 @@ impl Canvas<'_> {
     spread: f32,
     ink: Color,
   ) {
-    let rect = Rect {
+    let cast = Rect {
       x: rect.x + x - spread,
       y: rect.y + y - spread,
       width: rect.width + spread * 2.,
@@ -612,13 +898,15 @@ impl Canvas<'_> {
     let radius = corners.top_leading.max(corners.top_trailing) + spread.max(0.);
     let transform = self.to_device();
 
-    self.sink.blurred_rect(
-      krect(rect),
-      radius.max(0.),
-      (blur / 2.).max(0.01),
-      false,
+    self.sink.shadow(
+      &CastShadow {
+        cast: krect(cast),
+        radius: radius.max(0.),
+        deviation: (blur / 2.).max(0.01),
+        color: color(ink),
+        caster: RoundedRect::from_rect(krect(rect), radii(corners, rect)),
+      },
       transform,
-      color(ink),
     );
   }
 
@@ -1137,6 +1425,7 @@ pub struct Renderer {
   resources: Resources,
   masks: Option<MaskPainter>,
   glyphs: GlyphImages,
+  shadows: ShadowImages,
   #[cfg(feature = "gpu")]
   gpu: Option<crate::gpu::Gpu>,
   stale: bool,
@@ -1158,6 +1447,8 @@ pub struct Cost {
   pub masks: (u64, u64),
   /// The glyph images found cached, and those made, so far.
   pub images: (u64, u64),
+  /// The shadows whose images were found cached, and those whose images were made, so far.
+  pub shadows: (u64, u64),
   /// Whether the frame went to the screen through the GPU's swapchain, the whole of it.
   pub presented: bool,
 }
@@ -1182,6 +1473,7 @@ impl Renderer {
       resources: Resources::new(),
       masks: MaskPainter::new(),
       glyphs: GlyphImages::default(),
+      shadows: ShadowImages::default(),
       #[cfg(feature = "gpu")]
       gpu: None,
       stale: false,
@@ -1296,6 +1588,7 @@ impl Renderer {
             .as_ref()
             .map_or((0, 0), |masks| masks.rasterizer().lookups()),
           images: self.glyphs.lookups(),
+          shadows: self.shadows.lookups(),
           presented: true,
         })
       }
@@ -1329,6 +1622,7 @@ impl Renderer {
     let mut region = region;
 
     self.glyphs.next_frame();
+    self.shadows.next_frame();
 
     if let Some(masks) = self.masks.as_mut() {
       masks.rasterizer_mut().next_frame();
@@ -1399,6 +1693,7 @@ impl Renderer {
     let mut sink = CpuSink {
       ctx,
       glyphs: &mut self.glyphs,
+      shadows: &mut self.shadows,
     };
     let mut canvas = Canvas {
       sink: &mut sink,
@@ -1454,6 +1749,7 @@ impl Renderer {
         .as_ref()
         .map_or((0, 0), |masks| masks.rasterizer().lookups()),
       images: self.glyphs.lookups(),
+      shadows: self.shadows.lookups(),
       presented: false,
     }
   }

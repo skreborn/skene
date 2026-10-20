@@ -36,7 +36,7 @@ use vello_common::{
 };
 use vello_hybrid::{RenderSize, RenderTargetConfig, Renderer, Resources, Scene, TextureBindings};
 
-use crate::paint::{Brush, PathChoice, Sink, color};
+use crate::paint::{Brush, CastShadow, PathChoice, Sink, color};
 
 /// Where a window's surface is, as the platform's own handles.
 #[derive(Clone, Copy, Debug)]
@@ -699,6 +699,22 @@ impl Sink for HybridSink<'_> {
   fn push_clip(&mut self, path: &BezPath, transform: Affine) {
     self.scene.set_transform(transform);
     self.scene.push_clip_layer(path);
+  }
+
+  fn shadow(&mut self, shadow: &CastShadow, transform: Affine) {
+    self.scene.set_transform(transform);
+    self
+      .scene
+      .set_fill_rule(vello_common::peniko::Fill::EvenOdd);
+    self.scene.push_clip_path(&shadow.outside());
+    self
+      .scene
+      .set_fill_rule(vello_common::peniko::Fill::NonZero);
+    self.brush(transform, &Brush::Solid(shadow.color));
+    self
+      .scene
+      .fill_blurred_rounded_rect(&shadow.cast, shadow.radius, shadow.deviation, false);
+    self.scene.pop_clip_path();
   }
 
   fn push_opacity(&mut self, opacity: f32) {

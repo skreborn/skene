@@ -2327,6 +2327,7 @@ dependencies = [
  "serde",
  "serde_json",
  "wayland-client",
+ "wayland-protocols",
  "wayland-protocols-misc",
  "wayland-protocols-plasma",
  "wayland-protocols-wlr",

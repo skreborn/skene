@@ -246,14 +246,27 @@ fn the_window_and_its_pickers_list_show_their_device_pixels_one_to_one() {
 
 #[skene_gui::test]
 fn a_field_tells_an_input_method_where_its_caret_is_on_the_screen() {
-  if std::env::var("SKENE_BACKEND").as_deref() != Ok("x11") {
-    skene_gui_linux::testing::not_tested_here(
-      "on Wayland the input method is the compositor's, over text-input-v3, and none here hands the caret's rectangle on to a client (sway 1.9 has no input method popups)",
-    );
-
-    return;
+  match (
+    std::env::var("SKENE_BACKEND").as_deref(),
+    std::env::var("SKENE_TEST_SESSION").as_deref(),
+  ) {
+    (Ok("x11"), _) => told_over_the_session_bus(),
+    (_, Ok("kwin")) => told_through_kwin(),
+    (_, Ok("sway")) => skene_gui_linux::testing::not_tested_here(
+      "sway 1.9 relays text-input-v3 to an input-method-v2 client without the caret's rectangle, which only its popup surfaces carry (text_input_rectangle, sway 1.10)",
+    ),
+    (_, Ok("weston")) => skene_gui_linux::testing::not_tested_here(
+      "weston 13 relays text-input-v1 alone to its input method, and the window speaks text-input-v3",
+    ),
+    _ => skene_gui_linux::testing::not_tested_here(
+      "mutter relays text-input-v3 to gnome-shell's input method, inside the compositor, where no client reads it",
+    ),
   }
+}
 
+/// On X11: the window tells the stand-in input method on the session bus (IBus's) where its
+/// caret is on the X screen, in the field's text around it.
+fn told_over_the_session_bus() {
   let input_method = skene_gui_linux::testing::input_method::InputMethod::serve()
     .expect("the stand-in input method takes the session bus's name");
   let screen = testing::render(page);
@@ -288,6 +301,85 @@ fn a_field_tells_an_input_method_where_its_caret_is_on_the_screen() {
     told.surrounding,
     Some(("alpha beta gamma".to_owned(), 6, 6)),
     "with the text around the caret"
+  );
+}
+
+/// The color of the input panel the KWin legs' stand-in input method shows (`kwin-input-method`).
+const PANEL: [u8; 4] = [0xff, 0x00, 0xff, 0xff];
+
+/// On KWin: the window tells the compositor its caret over text-input-v3, and KWin relays the
+/// text around it to the stand-in input method it started and places that input method's panel
+/// at the caret's rectangle, its top left at the rectangle's bottom left, where the screen shows
+/// it.
+fn told_through_kwin() {
+  let log = std::path::PathBuf::from(
+    std::env::var_os("XDG_RUNTIME_DIR").expect("the session has a runtime directory"),
+  )
+  .join("skene-input-method");
+  let screen = testing::render(page);
+  let field = screen.find_by_role(Role::TextField, "Words");
+  let at = screen.driver().character_point(field.element(), 6, 0.15);
+
+  screen.driver().click_point(at);
+
+  let (x, y, width, height) = screen.driver().character_rect(field.element(), 6);
+  let around = (x - 24., y - 24., 72., height + 72.);
+  let mut panel = None;
+
+  for _ in 0..40 {
+    let shot = screen.driver().screen_area(around);
+
+    panel = (0..shot.height)
+      .flat_map(|row| (0..shot.width).map(move |column| (column, row)))
+      .find(|&(column, row)| {
+        let at = ((row * shot.width + column) * 4) as usize;
+
+        shot.rgba[at..at + 4] == PANEL
+      })
+      .map(|(column, row)| {
+        (
+          around.0 + f64::from(column) / shot.scale,
+          around.1 + f64::from(row) / shot.scale,
+        )
+      });
+
+    if panel.is_some() {
+      break;
+    }
+
+    screen.driver().wait(std::time::Duration::from_millis(50));
+  }
+
+  let told = std::fs::read_to_string(&log).unwrap_or_else(|error| {
+    panic!(
+      "KWin started the stand-in input method (kwin-input-method beside skene-runner), which writes {}: {error}",
+      log.display()
+    )
+  });
+
+  eprintln!(
+    "the input method was told {told:?}; its panel at {panel:?}; the character after the caret at {x}, {y} {width}x{height}"
+  );
+  assert!(
+    told.lines().any(|line| line == "activate"),
+    "KWin activated the input method as the field took focus"
+  );
+  assert!(
+    told
+      .lines()
+      .any(|line| line == "surrounding 6 6 alpha beta gamma"),
+    "and relayed the text around the caret"
+  );
+
+  let (px, py) = panel.expect("the screen shows the input method's panel near the caret");
+
+  assert!(
+    (px - x).abs() <= 2.,
+    "the panel starts at the caret's leading edge on the screen ({px} and {x})"
+  );
+  assert!(
+    (py - (y + height)).abs() <= 4.,
+    "below the caret's line ({py} and {y}+{height})"
   );
 }
 

@@ -18,7 +18,9 @@
 //!     whose XTest the test's input goes through;
 //!   - `kwin`: KWin's windowed backend (QPainter), its output a window of a private Xvfb, its
 //!     fake input (KWin started with its permission checks off, which that restricted
-//!     interface needs); `kwin-x11`: the same, the test's windows on KWin's Xwayland.
+//!     interface needs), and as its input method the stand-in `kwin-input-method` beside the
+//!     runner (or `SKENE_KWIN_INPUT_METHOD`) where it is there; `kwin-x11`: the same, the test's
+//!     windows on KWin's Xwayland.
 //!     `SKENE_KWIN` names the `kwin_wayland` to run, where the one on `PATH` cannot be (its
 //!     file capability beyond the process's bounding set);
 //!
@@ -961,6 +963,10 @@ impl Session {
       command.arg("--xwayland");
     }
 
+    if let Some(input_method) = kwin_input_method() {
+      command.arg("--inputmethod").arg(input_method);
+    }
+
     let kwin = spawn(&mut command).map_err(|error| {
       format!("could not start {program} (install kwin-wayland; SKENE_KWIN names another): {error}")
     })?;
@@ -1357,6 +1363,20 @@ fn first_line(stdout: Option<std::process::ChildStdout>, what: &str) -> Result<S
     Ok(Err(error)) => Err(format!("{what}: {error}")),
     Err(_) => Err(format!("{what} did not start within {START_TIMEOUT:?}")),
   }
+}
+
+/// The input method KWin starts on the KWin legs, a stand-in a test reads what KWin relays of a
+/// window's text-input-v3 through: `SKENE_KWIN_INPUT_METHOD`, or `kwin-input-method` beside the
+/// runner where it is there.
+fn kwin_input_method() -> Option<PathBuf> {
+  env::var_os("SKENE_KWIN_INPUT_METHOD")
+    .map(PathBuf::from)
+    .or_else(|| {
+      env::current_exe()
+        .ok()
+        .and_then(|runner| Some(runner.parent()?.join("kwin-input-method")))
+    })
+    .filter(|path| path.is_file())
 }
 
 /// Whether process `pid` descends from process `ancestor`, by `/proc`'s parents.

@@ -1,6 +1,6 @@
 [package]
 name = "skene-shell-tools"
-description = "What the drawn Linux realization's checks act and read with: real input on X11 and Wayland, a settings-portal stand-in, an XSETTINGS manager, a clipboard client."
+description = "What the drawn Linux realization's checks act and read with: real input on X11 and Wayland, a settings-portal stand-in, an XSETTINGS manager, a clipboard client, an input method KWin starts."
 edition.workspace = true
 license.workspace = true
 publish.workspace = true
@@ -13,6 +13,7 @@ reis = "=0.7.1"
 serde = "1"
 serde_json = "1"
 wayland-client = "=0.31.15"
+wayland-protocols = { features = ["client", "unstable"], version = "=0.32.13" }
 wayland-protocols-misc = { features = ["client"], version = "0.3.12" }
 wayland-protocols-plasma = { features = ["client"], version = "0.3.12" }
 wayland-protocols-wlr = { features = ["client"], version = "0.3.12" }

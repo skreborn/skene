@@ -15,7 +15,7 @@ use parley::{
   Affinity as ParleyAffinity, Alignment, AlignmentOptions, BreakReason, Cursor, FontContext,
   FontData, FontFamily as ParleyFamily, FontFamilyName, FontStyle as ParleySlant, FontWeight,
   Layout, LayoutContext, LineHeight as ParleyLineHeight, OverflowWrap, PositionedLayoutItem,
-  Selection, StyleProperty, TextWrapMode,
+  Selection, StyleProperty, TabSize, TextWrapMode,
   fontique::{Blob, Collection, CollectionOptions, FontInfoOverride, SourceCache},
 };
 use skene_foundation::{
@@ -60,7 +60,34 @@ struct Contexts {
   /// The threads shaping a batch beside this one: `None` until a batch asks for them, then
   /// what started.
   shapers: Option<Option<Shapers>>,
+  /// How far apart a tab's stops are.
+  tab_size: TabSize,
+  /// How many shaped words each context keeps for later paragraphs.
+  shape_cache: usize,
 }
+
+impl Contexts {
+  /// Contexts over `fonts`, their families resolved by `fallback`: eight spaces between tab
+  /// stops, [`SHAPE_CACHE`] words cached.
+  fn new(fonts: FontContext, fallback: Fallback) -> Self {
+    let mut layouts = LayoutContext::new();
+
+    layouts.set_shape_cache_capacity(SHAPE_CACHE);
+
+    Self {
+      fonts,
+      layouts,
+      fallback,
+      shapers: None,
+      tab_size: TabSize::default(),
+      shape_cache: SHAPE_CACHE,
+    }
+  }
+}
+
+/// How many shaped words an engine's contexts keep for later paragraphs unless told otherwise,
+/// each of its shaping threads as many: Minikin's `LayoutCache` keeps 5000.
+pub const SHAPE_CACHE: usize = 4096;
 
 /// Parley as a [`TextEngine`]: over the system's fonts (and on Linux, Skene's fontconfig
 /// fallback), or over typefaces of its own.
@@ -77,19 +104,17 @@ impl ParleyEngine {
   #[must_use]
   pub fn system() -> Self {
     Self {
-      contexts: Rc::new(RefCell::new(Contexts {
+      contexts: Rc::new(RefCell::new(Contexts::new(
         // The loaded fonts are shared with the threads that shape beside this one.
-        fonts: FontContext {
+        FontContext {
           collection: Collection::new(CollectionOptions::default()),
           source_cache: SourceCache::new_shared(),
         },
-        layouts: LayoutContext::new(),
         #[cfg(target_os = "linux")]
-        fallback: crate::linux::Fallback::load(),
+        crate::linux::Fallback::load(),
         #[cfg(not(target_os = "linux"))]
-        fallback: (),
-        shapers: None,
-      })),
+        (),
+      ))),
     }
   }
 
@@ -113,19 +138,39 @@ impl ParleyEngine {
     }
 
     Self {
-      contexts: Rc::new(RefCell::new(Contexts {
-        fonts: FontContext {
+      contexts: Rc::new(RefCell::new(Contexts::new(
+        FontContext {
           collection,
           source_cache: SourceCache::new_shared(),
         },
-        layouts: LayoutContext::new(),
         #[cfg(target_os = "linux")]
-        fallback: None,
+        None,
         #[cfg(not(target_os = "linux"))]
-        fallback: (),
-        shapers: None,
-      })),
+        (),
+      ))),
     }
+  }
+
+  /// Sets how far apart a tab's stops are for the paragraphs made from now on (eight spaces
+  /// unless set, a browser's `tab-size`).
+  pub fn set_tab_size(&self, tab_size: TabSize) {
+    self.contexts.borrow_mut().tab_size = tab_size;
+  }
+
+  /// Keeps at most `words` shaped words for later paragraphs to reuse, in this engine's context
+  /// and in each shaping thread it starts from now on ([`SHAPE_CACHE`] unless set): none where it
+  /// is zero, which shapes every run whole.
+  pub fn set_shape_cache(&self, words: usize) {
+    let mut contexts = self.contexts.borrow_mut();
+
+    contexts.shape_cache = words;
+    contexts.layouts.set_shape_cache_capacity(words);
+  }
+
+  /// How many words this engine's own context found in its shape cache and how many it shaped.
+  #[must_use]
+  pub fn shape_cache_stats(&self) -> (u64, u64) {
+    self.contexts.borrow().layouts.shape_cache_stats()
   }
 
   /// The fontconfig fallback, where the engine resolves through it.
@@ -187,26 +232,39 @@ impl ParleyEngine {
       fonts,
       fallback,
       shapers,
+      tab_size,
+      shape_cache,
       ..
     } = &mut *contexts;
 
     if shapers.is_none() {
-      *shapers = Some(Self::start(fonts, fallback));
+      *shapers = Some(Self::start(fonts, fallback, *tab_size, *shape_cache));
     }
   }
 
   /// The threads shaping beside this one, over `fonts`, warmed by a sample `fallback`
-  /// resolves.
-  fn start(fonts: &FontContext, fallback: &mut Fallback) -> Option<Shapers> {
+  /// resolves, each keeping `shape_cache` shaped words.
+  fn start(
+    fonts: &FontContext,
+    fallback: &mut Fallback,
+    tab_size: TabSize,
+    shape_cache: usize,
+  ) -> Option<Shapers> {
     let cores = std::thread::available_parallelism().map_or(1, usize::from);
     let sample = AttributedText::plain("Ag", RunStyle::new(13.));
-    let warm = Self::job(fallback, &sample, &ParagraphStyle::default());
+    let warm = Self::job(fallback, &sample, &ParagraphStyle::default(), tab_size);
 
-    Shapers::start(fonts, cores.saturating_sub(1).min(7), &warm)
+    Shapers::start(fonts, cores.saturating_sub(1).min(7), &warm, shape_cache)
   }
 
-  /// What shaping `text` in `style` takes, its families resolved by `fallback` first.
-  fn job(fallback: &mut Fallback, text: &AttributedText, style: &ParagraphStyle) -> Job {
+  /// What shaping `text` in `style` takes, its families resolved by `fallback` first, its tab
+  /// stops `tab_size` apart.
+  fn job(
+    fallback: &mut Fallback,
+    text: &AttributedText,
+    style: &ParagraphStyle,
+    tab_size: TabSize,
+  ) -> Job {
     #[cfg(target_os = "linux")]
     let resolved = fallback
       .as_mut()
@@ -226,6 +284,7 @@ impl ParleyEngine {
       LineHeight::Absolute(height) => ParleyLineHeight::Absolute(height),
     }));
     defaults.push(StyleProperty::OverflowWrap(OverflowWrap::BreakWord));
+    defaults.push(StyleProperty::TabSize(tab_size));
     defaults.push(StyleProperty::TextWrapMode(match style.wrap {
       Wrap::Words => TextWrapMode::Wrap,
       Wrap::None => TextWrapMode::NoWrap,
@@ -291,7 +350,7 @@ impl TextEngine for ParleyEngine {
   fn paragraph(&self, text: &AttributedText, style: &ParagraphStyle) -> ParleyParagraph {
     let mut contexts = self.contexts.borrow_mut();
     let contexts = &mut *contexts;
-    let job = Self::job(&mut contexts.fallback, text, style);
+    let job = Self::job(&mut contexts.fallback, text, style, contexts.tab_size);
     let shaped = job.shape(&mut contexts.fonts, &mut contexts.layouts);
 
     Self::wrap(text, style, shaped)
@@ -313,11 +372,15 @@ impl TextEngine for ParleyEngine {
       layouts,
       fallback,
       shapers,
+      tab_size,
+      shape_cache,
     } = &mut *contexts;
-    let shapers = shapers.get_or_insert_with(|| Self::start(fonts, fallback));
+    let (tab_size, shape_cache) = (*tab_size, *shape_cache);
+    let shapers =
+      shapers.get_or_insert_with(|| Self::start(fonts, fallback, tab_size, shape_cache));
     let jobs = texts
       .iter()
-      .map(|(text, style)| Self::job(fallback, text, style));
+      .map(|(text, style)| Self::job(fallback, text, style, tab_size));
     let shaped: Vec<Shaped> = match shapers {
       // Shares small enough that the threads finish close together, each queued as its jobs
       // are built, so they shape while the next are.
@@ -432,7 +495,7 @@ impl Shape {
   }
 }
 
-/// A glyph drawn beyond the text: the hyphen at a soft hyphen's break, or an ellipsis.
+/// A glyph drawn beyond the text: an ellipsis (Parley draws a soft hyphen's hyphen itself).
 #[derive(Clone, Debug)]
 pub struct Mark {
   /// The font.
@@ -492,44 +555,6 @@ impl ParleyParagraph {
     }
 
     found
-  }
-
-  /// The hyphen drawn after line `line` of `layout` where it breaks at a soft hyphen, with
-  /// its advance.
-  fn hyphen(&self, layout: &Layout<()>, line: usize) -> Option<(Mark, f32)> {
-    let info = layout.get(line)?;
-
-    if info.break_reason() != BreakReason::Regular {
-      return None;
-    }
-
-    let range = info.text_range();
-
-    if !self.text[range.clone()].ends_with('\u{AD}') {
-      return None;
-    }
-
-    let at = range.end - '\u{AD}'.len_utf8();
-    let (font, size, coords) = Self::run_font(layout, line, at)?;
-    let (glyph, advance) =
-      glyph_of(&font, &coords, size, '\u{2010}').or_else(|| glyph_of(&font, &coords, size, '-'))?;
-    let metrics = info.metrics();
-
-    Some((
-      Mark {
-        font,
-        size,
-        coords,
-        glyphs: vec![(
-          glyph,
-          metrics.offset + metrics.advance - metrics.hanging_advance,
-        )],
-        baseline: metrics.baseline,
-        at,
-        line,
-      },
-      advance,
-    ))
   }
 
   /// The ellipsis ending line `line`, and its advance.
@@ -638,12 +663,11 @@ impl Paragraph for ParleyParagraph {
     let (mut layout, unbounded) = self.shaped.borrow_mut().take_layout();
     let mut reserve: Vec<(usize, f32)> = Vec::new();
     let mut truncated;
-    // Laid out unbounded already: no line breaks at a soft hyphen, and none is cut.
+    // Laid out unbounded already: no line is cut.
     let laid = unbounded && limit == f32::MAX && max.is_none();
 
-    // A line ending in a soft hyphen makes room for the hyphen it draws, and a cut text's
-    // last line for the ellipsis: break again with that room taken, until no line asks.
-    for _ in 0..if laid { 0 } else { 4 } {
+    // A cut text's last line makes room for the ellipsis: break again with that room taken.
+    for _ in 0..if laid { 0 } else { 2 } {
       truncated = Self::break_into(&mut layout, limit, &reserve, max);
 
       let mut asked = false;
@@ -656,7 +680,7 @@ impl Paragraph for ParleyParagraph {
         let need = if truncated && self.style.ellipsis && Some(line + 1) == max {
           self.ellipsis(&layout, line).map(|(_, advance)| advance)
         } else {
-          self.hyphen(&layout, line).map(|(_, advance)| advance)
+          None
         };
         let Some(need) = need else {
           continue;
@@ -691,17 +715,13 @@ impl Paragraph for ParleyParagraph {
 
     let mut marks = Vec::new();
 
-    // Laid out unbounded, no line breaks at a soft hyphen nor is cut: none draws a mark.
-    for line in 0..if laid { 0 } else { layout.len() } {
-      let mark = if truncated && self.style.ellipsis && line + 1 == layout.len() {
-        self.ellipsis(&layout, line)
-      } else {
-        self.hyphen(&layout, line)
-      };
-
-      if let Some((mark, advance)) = mark {
-        marks.push((mark, advance));
-      }
+    // Laid out unbounded, no line is cut: none draws an ellipsis.
+    if !laid
+      && truncated
+      && self.style.ellipsis
+      && let Some((mark, advance)) = self.ellipsis(&layout, layout.len().saturating_sub(1))
+    {
+      marks.push((mark, advance));
     }
 
     let lines = layout
@@ -869,7 +889,7 @@ impl ParleyLaid {
             glyphs.push(PositionedGlyph {
               id: glyph.id,
               x: x + glyph.x,
-              y: baseline - glyph.y,
+              y: baseline + glyph.y,
               at,
             });
             x += glyph.advance;

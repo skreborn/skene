@@ -28,6 +28,11 @@ pub mod linux;
 pub mod render;
 pub mod shaping;
 
+/// How far apart a tab's stops are, which an engine sets for its paragraphs
+/// ([`ParleyEngine::set_tab_size`]).
+pub use parley::TabSize;
+
 pub use self::engine::{
-  GlyphRun, Mark, PaintRuns, ParleyEngine, ParleyLaid, ParleyParagraph, PositionedGlyph, Typeface,
+  GlyphRun, Mark, PaintRuns, ParleyEngine, ParleyLaid, ParleyParagraph, PositionedGlyph,
+  SHAPE_CACHE, Typeface,
 };

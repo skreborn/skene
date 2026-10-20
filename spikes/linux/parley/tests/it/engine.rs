@@ -146,30 +146,6 @@ fn thai_breaks_between_words() {
 }
 
 #[test]
-fn a_break_at_a_soft_hyphen_draws_a_hyphen() {
-  let text = "Incom\u{AD}pre\u{AD}hen\u{AD}si\u{AD}bil\u{AD}i\u{AD}ties every\u{AD}where";
-  let laid = laid(text, Some(110.));
-  let lines = laid.lines();
-  let marks = laid.glyph_runs().len()
-    - laid
-      .layout()
-      .lines()
-      .map(|line| line.runs().count())
-      .sum::<usize>();
-  let soft = lines
-    .iter()
-    .filter(|line| text[line.range.clone()].ends_with('\u{AD}'))
-    .count();
-
-  assert!(soft >= 1);
-  assert_eq!(marks, soft, "one hyphen a soft break");
-  assert!(
-    lines.iter().all(|line| line.width <= 110.),
-    "the hyphen fits its line"
-  );
-}
-
-#[test]
 fn most_lines_cut_the_text_with_an_ellipsis() {
   let text = "A long label that must fit in two lines and end with an ellipsis when it overflows";
   let laid = paragraph(text, ParagraphStyle::default().with_max_lines(2)).layout(Some(120.));

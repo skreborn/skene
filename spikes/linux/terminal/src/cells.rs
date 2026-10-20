@@ -6,7 +6,7 @@ use skene_foundation::{
   text::{AttributedText, ParagraphStyle, RunStyle, TextEngine, TextRun},
   value::FontFamily,
 };
-use skene_parley::{ParleyEngine, ParleyParagraph, Typeface};
+use skene_parley::{ParleyEngine, ParleyParagraph, TabSize, Typeface};
 
 /// The family the cell typeface is known by.
 pub const FAMILY: &str = "Skene Cells";
@@ -29,12 +29,14 @@ pub struct Cells {
 }
 
 impl Cells {
-  /// The engine, over the cell typeface alone.
+  /// The engine, over the cell typeface alone, a tab one blank cell: its stops a cell apart.
   #[must_use]
   pub fn new() -> Self {
-    Self {
-      engine: ParleyEngine::with_typefaces(&[CELLS]),
-    }
+    let engine = ParleyEngine::with_typefaces(&[CELLS]);
+
+    engine.set_tab_size(TabSize::Spaces(1.));
+
+    Self { engine }
   }
 
   /// `style` as the cell typeface sets it: one cell a em, whole cells of spacing.

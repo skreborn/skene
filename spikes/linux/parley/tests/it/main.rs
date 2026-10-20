@@ -6,6 +6,7 @@ mod clusters;
 mod engine;
 #[cfg(target_os = "linux")]
 mod fallback;
+mod patched;
 
 use skene_foundation::text::{
   AttributedText, ParagraphStyle, RunStyle, TextEngine as _, editing::Editor,

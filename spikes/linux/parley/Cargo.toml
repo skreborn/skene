@@ -16,5 +16,9 @@ skrifa.workspace = true
 unicode-segmentation.workspace = true
 vello_cpu.workspace = true
 
+[dev-dependencies]
+harfrust = { default-features = false, features = ["std"], version = "=0.12.0" }
+icu_segmenter = { default-features = false, features = ["compiled_data"], version = "=2.3.0" }
+
 [lints]
 workspace = true

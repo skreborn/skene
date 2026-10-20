@@ -128,10 +128,11 @@ pub struct Shapers {
 }
 
 impl Shapers {
-  /// Up to `count` threads over copies of `fonts`, as many as start, each shaping `warm` first
-  /// so the fonts and the shaping it reaches are ready before a batch: `None` where none does.
+  /// Up to `count` threads over copies of `fonts`, as many as start, each keeping
+  /// `shape_cache` shaped words and shaping `warm` first so the fonts and the shaping it reaches
+  /// are ready before a batch: `None` where none does.
   #[must_use]
-  pub fn start(fonts: &FontContext, count: usize, warm: &Job) -> Option<Self> {
+  pub fn start(fonts: &FontContext, count: usize, warm: &Job, shape_cache: usize) -> Option<Self> {
     let queue = Arc::new(Queue::default());
     let (results, done) = mpsc::channel();
     let count = (0..count)
@@ -145,6 +146,9 @@ impl Shapers {
           .name("skene-shaper".to_owned())
           .spawn(move || {
             let mut layouts = LayoutContext::new();
+
+            layouts.set_shape_cache_capacity(shape_cache);
+
             let _ = warm.shape(&mut fonts, &mut layouts);
 
             while let Some((index, jobs)) = queue.wait() {

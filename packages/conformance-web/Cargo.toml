@@ -15,7 +15,7 @@ skene-web.workspace = true
 # Host-only: the harness drives a browser from outside it; on wasm targets its binary
 # compiles to an empty stub.
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-base64 = "0.22"
+base64 = "0.23"
 png = "0.18"
 serde_json.workspace = true
 skene-foundation.workspace = true

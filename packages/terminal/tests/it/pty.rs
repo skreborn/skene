@@ -4,7 +4,7 @@
 
 #![cfg(unix)]
 
-use std::{thread, time::Duration};
+use std::{num::NonZeroU16, thread, time::Duration};
 
 use skene_terminal::{
   Activate,
@@ -22,9 +22,19 @@ struct Screen {
 impl Screen {
   /// An empty screen of `size`.
   fn new(size: WindowSize) -> Self {
+    let (rows, columns) = Self::extent(size);
+
     Self {
-      parser: vt100::Parser::new(size.rows, size.columns, 0),
+      parser: vt100::Parser::new(rows, columns, 0),
     }
+  }
+
+  /// The rows and the columns of `size`, as the emulator takes them.
+  const fn extent(size: WindowSize) -> (NonZeroU16, NonZeroU16) {
+    (
+      NonZeroU16::new(size.rows).expect("a window has a row"),
+      NonZeroU16::new(size.columns).expect("a window has a column"),
+    )
   }
 
   /// Reads what the app draws until the screen shows `text`, or panics after `patience`.
@@ -84,11 +94,10 @@ fn the_loop_draws_takes_keys_reflows_and_quits_in_a_terminal() {
 
   let narrow = WindowSize::cells(12, 8);
 
+  let (rows, columns) = Screen::extent(narrow);
+
   host.resize(narrow).expect("resize the terminal");
-  screen
-    .parser
-    .screen_mut()
-    .set_size(narrow.rows, narrow.columns);
+  screen.parser.screen_mut().set_size(rows, columns);
 
   let reflowed = screen.wait_for(&mut host, "time(s)", Duration::from_secs(10));
 

@@ -2,14 +2,6 @@
 //! with nothing changed, after a pointer move, resized, which restyles and lays out
 //! every row, with a keyed row added or removed, and mounted afresh.
 
-#![cfg_attr(
-  not(target_arch = "wasm32"),
-  expect(
-    missing_docs,
-    reason = "criterion's macros generate the harness's functions"
-  )
-)]
-
 #[cfg(not(target_arch = "wasm32"))]
 mod frame {
   use criterion::Criterion;

@@ -142,3 +142,13 @@ Every choice the drawn Linux prototype took that neither `AGENTS.md` nor the aut
 - Stand-ins are paced by a SIGUSR1 per step, with the process ids exported by session.sh. Default taken: signals. The alternative is a D-Bus method on the portal stand-in and an X property on the XSETTINGS manager.
 - Should the realization guard against the X11 keymap race, for example by reloading only when a notify's serial is newer than the key's? Default taken: no, as GTK does not; the scenario waits instead.
 - The shell sessions stay alone in run.sh's phase 4 (77 s), because their start-up TIMING and FRAMES lines are measurements. Default taken: keep them alone.
+
+## Rebuild and start-up
+
+- A view generic over the app's types is thin over a core that is not (`Picker<T>` over `PickerCore`, `Control<B>` over `ControlCore`), and its facade builds the core through a non-generic function of `skene-gui` (`wraps!`'s `thin`), so the core is compiled once whether or not the framework's crates share their generics (alternative: rely on `-Zshare-generics`, which a `skene new` app, its framework crates built at `opt-level = 2`, does not have).
+- A choice group's core holds its values as `AnyChoice`, compared and hashed through the value's own `Eq` and `Hash` (alternative: the core generic over the value's type).
+- `Control<B>` holds its behavior as `Rc<dyn Behavior>` once built (alternative: one build per behavior).
+- A styled control's constructor stores what it is given, its defaults applied as it is built, beneath what its user set (`Control::over`); a user's empty caption still removes the default's (alternative: defaults set by the constructor).
+- A keyed list (`derive_children`) tells its keys apart by their 128-bit wide hash (`Key`), as a lazy list does (alternative: the key type's own `Eq`).
+- The fonts, fontconfig's configuration and the compose table load on threads of their own from the start, the first engine and the first key waiting for them (alternative: the main thread, in turn).
+- The settings portal is read with one `ReadAll`, each key alone only where `ReadAll` answers an error (alternative: `ReadOne`, then `Read`, per key).

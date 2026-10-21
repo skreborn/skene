@@ -153,17 +153,13 @@ in a code comment.
     drawn prototype (`spikes/linux`) realizes the whole on X11, mutter, sway, weston and
     KWin, on the latest release of every package it uses but those `spikes/linux` holds
     with a reason (zbus 6, skrifa, harfrust and read-fonts behind Parley 0.12's pins, wesl,
-    generic-array): it starts in 55–85 ms where GTK takes 297–371 (45–58 ms on
-    2026-10-17), a screen reader's text queries meet no error where `GtkEntry`'s meet
-    five, its stripped release binary is 17.7 MB with no GTK in it, and its full `run.sh`
-    passes in 82 minutes. The defaults it took that nothing settled are in
+    generic-array): it starts in 34–49 ms where GTK takes 297–371, a one-line change to
+    an app rebuilds in about a second (the facade compiling its views once, an app's
+    crate 923 functions where it was 8,661), a screen reader's text queries meet no error
+    where `GtkEntry`'s meet five, its stripped release binary is 17.4 MB with no GTK in
+    it, and its full `run.sh` passes in 75 minutes. The defaults it took that nothing settled are in
     `spikes/linux/DEFAULTS.md`, its designs in `spikes/linux/design`, and its reports for
     upstream, unfiled, in `spikes/linux/upstream`. What it leaves open:
-    - An app's rebuild: a one-line change to hello rebuilds in 5.7–6.7 s (1.2–1.4 s on
-    2026-10-17), the app's crate compiling about 1,350 of the framework's generic
-    functions, so the facade compiles its concrete controls once, in `skene-gui`, a
-    generic an app names (`Picker<T>`) staying thin over a core that is not; and start-up
-    grew by a third over the same week, untraced.
     - The first frame: 1000 eager rows take 64.5–73.6 ms (layout 17.3–19.7 ms) against a
     target of 50 (16), shaping 3,000 paragraphs being 37–45 ms of it, while a lazy list of
     1,000 to 100,000 rows draws in 12.7–22.8 ms. What remains is cheaper shaping per
@@ -206,10 +202,11 @@ in a code comment.
     each test process a private display, session bus and AT-SPI bus, over ten legs (X11
     on Xorg with a touchscreen, mutter, sway, sway nested in Xorg for touch, weston,
     KWin, KWin's Xwayland, and mutter, sway, KWin, KWin's Xwayland and X11 at scale 1.5).
-    Some shell scenarios still wait with sleeps; mutter's screen reads judge freshness by
-    a quiet time rather than presentation feedback; and `run.sh` neither copies
-    kwin_wayland where its file capability keeps it from running in a container, nor
-    covers the GPU tests at 1.5 on mutter and KWin.
+    `run.sh` exits zero though a leg or a check failed and skips the KWin legs where
+    kwin_wayland's file capability keeps it from starting, where it should fail and
+    refuse; some shell scenarios still wait with sleeps; mutter's screen reads judge
+    freshness by a quiet time rather than presentation feedback; and the GPU tests at 1.5
+    run on neither mutter nor KWin.
     - What this host cannot answer: a hardware GPU; touch on weston and uinput; touchpad
     gestures on X11 (a protocol limit), weston 13 and KWin 5.27; the caret's rectangle
     from outside the app on sway 1.9 and weston 13; fractional scale on weston 13;

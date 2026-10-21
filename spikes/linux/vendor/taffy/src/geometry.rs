@@ -37,6 +37,12 @@ impl<T> Size<T> {
             AbsoluteAxis::Vertical => self.height,
         }
     }
+
+    /// Swap the width and height components
+    #[inline(always)]
+    pub fn transpose(self) -> Size<T> {
+        Size { width: self.height, height: self.width }
+    }
 }
 
 impl<T: Add> Rect<T> {
@@ -140,12 +146,19 @@ impl<U, T: Add<U>> Add<Rect<U>> for Rect<T> {
 }
 
 impl<T> Rect<T> {
+    /// Swap the horizontal and vertical sides (`left <-> top`, `right <-> bottom`)
+    #[inline(always)]
+    pub fn transpose(self) -> Rect<T> {
+        Rect { left: self.top, right: self.bottom, top: self.left, bottom: self.right }
+    }
+
     /// Applies the function `f` to all four sides of the rect
     ///
     /// When applied to the left and right sides, the width is used
     /// as the second parameter of `f`.
     /// When applied to the top or bottom sides, the height is used instead.
     #[cfg(any(feature = "flexbox", feature = "block_layout"))]
+    #[inline(always)]
     pub(crate) fn zip_size<R, F, U>(self, size: Size<U>, f: F) -> Rect<R>
     where
         F: Fn(T, U) -> R,
@@ -162,6 +175,7 @@ impl<T> Rect<T> {
     /// Applies the function `f` to the left, right, top, and bottom properties
     ///
     /// This is used to transform a `Rect<T>` into a `Rect<R>`.
+    #[inline(always)]
     pub fn map<R, F>(self, f: F) -> Rect<R>
     where
         F: Fn(T) -> R,
@@ -285,6 +299,11 @@ where
             self.right
         }
     }
+}
+
+impl Rect<Option<f32>> {
+    /// A [`Rect`] with `None` as all parameters
+    pub const NONE: Rect<Option<f32>> = Self { left: None, right: None, top: None, bottom: None };
 }
 
 impl Rect<f32> {

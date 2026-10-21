@@ -2,8 +2,9 @@
 //! engine (taffy) that runs one small tree per container over it.
 
 use taffy::{
-  AvailableSpace, Cache, CacheTree, Layout, LayoutInput, LayoutOutput, LayoutPartialTree,
-  NodeId as TaffyId, RunMode, Size, SizingMode, Style,
+  AvailableSpace, Cache, CacheTree, DetailedGridInfo, DetailedLayoutInfo, Layout,
+  LayoutContainingBlock, LayoutInput, LayoutOutput, LayoutPartialTree, NodeId as TaffyId, RunMode,
+  Size, SizingMode, Style,
   geometry::{Line, Rect as TaffyRect},
   prelude::{TaffyAuto, TaffyGridLine, TaffyGridSpan, fr, length, percent},
   style::{self as ts, Display},
@@ -326,6 +327,8 @@ pub struct ContainerLayout<H: LayoutHost> {
   height_free: bool,
   simple: Option<Simple>,
   cache: Cache,
+  pinned: bool,
+  grid: DetailedLayoutInfo<String>,
 }
 
 /// A box holding one shown child that fills it, laid out without taffy's grid, as the grid
@@ -403,6 +406,8 @@ impl<H: LayoutHost> ContainerLayout<H> {
       height_free: true,
       simple: None,
       cache: Cache::new(),
+      pinned: false,
+      grid: DetailedLayoutInfo::None,
     };
 
     this.rebuild(children);
@@ -483,6 +488,10 @@ impl<H: LayoutHost> ContainerLayout<H> {
     self.placements = Vec::with_capacity(children.len());
     self.stale = true;
     self.laid = None;
+    self.pinned = children
+      .iter()
+      .any(|(_, placement)| placement.pin.is_some());
+    self.grid = DetailedLayoutInfo::None;
 
     let column = self.kind == LayoutKind::Column;
     let fraction = |value: Option<Dimension>| matches!(value, Some(Dimension::Fraction(_)));
@@ -755,15 +764,15 @@ impl<H: LayoutHost> ContainerLayout<H> {
           // The children stay laid out as at this width and this height until the next layout.
           self.laid = for_size.map(|width| (width, output.size.height));
 
-          output
+          (output.size.height, output.baselines.first)
         });
 
         Measurement {
           minimum: minimum.map_or(0., |minimum| {
-            natural.map_or(minimum, |natural| minimum.min(natural.size.height.ceil()))
+            natural.map_or(minimum, |(height, _)| minimum.min(height.ceil()))
           }),
-          natural: natural.map_or(0., |natural| natural.size.height.ceil()),
-          baseline: natural.and_then(|natural| natural.baselines.first),
+          natural: natural.map_or(0., |(height, _)| height.ceil()),
+          baseline: natural.and_then(|(_, baseline)| baseline),
         }
       }
     }
@@ -800,7 +809,8 @@ impl<H: LayoutHost> ContainerLayout<H> {
   }
 
   /// [`ContainerLayout::measure`] of a [`Simple`] box: its own size along `axis` where it sets
-  /// one, else its child's and its padding, between its least and greatest.
+  /// one, else its child's and its padding, between its least and greatest. Its least height is
+  /// its natural height, as a grid's min-content block size is its max-content block size.
   fn measure_simple(
     &self,
     simple: Simple,
@@ -840,7 +850,7 @@ impl<H: LayoutHost> ContainerLayout<H> {
         let minimum = needed.minimum().then(|| {
           let content = match own {
             Some(_) => 0.,
-            None => H::measure(child, axis, Some(width), Needed::Minimum).minimum,
+            None => H::measure(child, axis, Some(width), Needed::Natural).natural,
           };
 
           simple.outer(axis, content).ceil()
@@ -1242,6 +1252,8 @@ fn taffy_style(
       LayoutKind::Row | LayoutKind::Column => Display::Flex,
       _ => Display::Grid,
     };
+    // A container is the containing block of the children pinned in it.
+    out.position = ts::Position::Relative;
 
     match kind {
       LayoutKind::Row => out.flex_direction = ts::FlexDirection::Row,
@@ -1275,13 +1287,17 @@ fn taffy_style(
       out.flex_wrap = ts::FlexWrap::Wrap;
     }
 
-    out.justify_content = layout.arrangement.map(arrangement);
-    out.align_content = layout.line_arrangement.map(arrangement);
-    out.align_items = layout.item_alignment.map(item);
+    out.justify_content = layout
+      .arrangement
+      .map_or(ts::JustifyContent::NORMAL, arrangement);
+    out.align_content = layout
+      .line_arrangement
+      .map_or(ts::AlignContent::NORMAL, arrangement);
+    out.align_items = layout.item_alignment.map_or(ts::AlignItems::NORMAL, item);
 
     if let Some(alignment) = layout.alignment {
-      out.justify_items = Some(item(alignment.horizontal));
-      out.align_items = Some(item(alignment.vertical));
+      out.justify_items = item(alignment.horizontal);
+      out.align_items = item(alignment.vertical);
     }
 
     if let Some(value) = &layout.columns {
@@ -1497,20 +1513,22 @@ impl<H: LayoutHost> LayoutPartialTree for ContainerLayout<H> {
         return output;
       }
 
-      match tree.nodes[index].style.display {
-        Display::Grid => {
-          let mut output = taffy::compute_grid_layout(tree, node, inputs);
-
-          if inputs.run_mode == RunMode::PerformLayout
-            && let Some(baseline) = tree.first_row_baseline()
-          {
-            output.baselines.first = Some(baseline);
-          }
-
-          output
-        }
+      let mut output = match tree.nodes[index].style.display {
+        Display::Grid => taffy::compute_grid_layout(tree, node, inputs),
         _ => taffy::compute_flexbox_layout(tree, node, inputs),
+      };
+
+      // The children pinned in the container, laid out once its own children are.
+      taffy::compute_oof_layout(tree, node, &mut output);
+
+      if inputs.run_mode == RunMode::PerformLayout
+        && tree.nodes[index].style.display == Display::Grid
+        && let Some(baseline) = tree.first_row_baseline()
+      {
+        output.baselines.first = Some(baseline);
       }
+
+      output
     })
   }
 }
@@ -1650,6 +1668,35 @@ impl<H: LayoutHost> taffy::LayoutGridContainer for ContainerLayout<H> {
 
   fn get_grid_child_style(&self, child: TaffyId) -> &Style {
     &self.nodes[usize::from(child)].style
+  }
+
+  /// Keeps a grid's tracks where it holds a pinned child, whose area its cell's lines bound.
+  fn set_detailed_grid_info(&mut self, node: TaffyId, info: DetailedGridInfo<String>) {
+    if usize::from(node) == 0 && self.pinned {
+      self.grid = DetailedLayoutInfo::Grid(Box::new(info));
+    }
+  }
+}
+
+/// The container is the containing block of its pinned children, placed against the area
+/// their cell's lines bound in a grid; the engine allocates them as it allocates every child,
+/// so it keeps no list of them.
+impl<H: LayoutHost> LayoutContainingBlock for ContainerLayout<H> {
+  type OofItemStyle<'a> = &'a Style;
+
+  fn get_oof_item_style(&self, node: TaffyId) -> &Style {
+    &self.nodes[usize::from(node)].style
+  }
+
+  fn clear_hoisted_children(&mut self, _: TaffyId) {}
+
+  fn add_hoisted_children(&mut self, _: TaffyId, _: &[TaffyId]) {}
+
+  fn get_detailed_layout_info(&self, node: TaffyId) -> &DetailedLayoutInfo<String> {
+    match usize::from(node) {
+      0 => &self.grid,
+      _ => &DetailedLayoutInfo::None,
+    }
   }
 }
 
@@ -2002,6 +2049,34 @@ mod tests {
     stack.allocate((100., 50.), None);
     assert_eq!(back.at(), (0., 0., 100., 50.));
     assert_eq!(badge.at(), (86., 36., 10., 10.));
+
+    // A pinned edge measures from the stack's cell, which its padding insets.
+    let corner = Leaf::new(10., 10., 10.);
+    let mut padded = ContainerLayout::<Fixed>::new(
+      LayoutKind::Stack,
+      ResolvedLayout {
+        padding: Some(Inset::new(6., 0., 0., 8.)),
+        ..ResolvedLayout::default()
+      },
+    );
+
+    padded.set_children(vec![
+      (back.clone(), ResolvedLayout::default()),
+      (
+        corner.clone(),
+        ResolvedLayout {
+          pin: Some(Edges {
+            top: Some(2.),
+            leading: Some(4.),
+            ..Edges::default()
+          }),
+          ..ResolvedLayout::default()
+        },
+      ),
+    ]);
+    padded.allocate((100., 50.), None);
+    assert_eq!(back.at(), (8., 6., 92., 44.));
+    assert_eq!(corner.at(), (12., 8., 10., 10.));
   }
 
   #[test]
@@ -2091,5 +2166,76 @@ mod tests {
 
     assert_eq!(widths.iter().sum::<f32>(), 100.);
     assert!(widths.iter().all(|width| (33. ..=34.).contains(width)));
+  }
+
+  /// A container that may be drawn shorter than it would like, as a scroller is.
+  #[derive(Clone)]
+  struct Shrinks;
+
+  impl LayoutHost for Shrinks {
+    type Child = Shrinks;
+
+    fn measure(_: &Shrinks, axis: Axis, _: Option<f32>, _: Needed) -> Measurement {
+      match axis {
+        Axis::Horizontal => Measurement {
+          minimum: 20.,
+          natural: 40.,
+          baseline: None,
+        },
+        Axis::Vertical => Measurement {
+          minimum: 0.,
+          natural: 500.,
+          baseline: None,
+        },
+      }
+    }
+
+    fn constant_height(_: &Shrinks) -> bool {
+      false
+    }
+
+    fn is_visible(_: &Shrinks) -> bool {
+      true
+    }
+
+    fn is_container(_: &Shrinks) -> bool {
+      true
+    }
+
+    fn allocate(_: &Shrinks, _: Rect, _: Rect, _: Option<f32>) {}
+  }
+
+  #[test]
+  fn a_box_is_no_shorter_than_its_content_where_a_column_shrinks_to_its_least() {
+    let own = ResolvedLayout {
+      padding: Some(Inset::all(2.)),
+      max_height: Some(Dimension::Length(300.)),
+      ..ResolvedLayout::default()
+    };
+    // A grid's min-content block size is its max-content block size, as in CSS: a box and a
+    // stack are as tall at their least as at their natural height, within their greatest.
+    for kind in [LayoutKind::Box, LayoutKind::Stack] {
+      let mut layout = ContainerLayout::<Shrinks>::with_children(
+        kind,
+        own.clone(),
+        vec![(Shrinks, ResolvedLayout::default())],
+      );
+      let measured = layout.measure(Axis::Vertical, Some(100.), Needed::Both);
+
+      assert_eq!(
+        (measured.minimum, measured.natural),
+        (300., 300.),
+        "{kind:?}"
+      );
+    }
+
+    let mut column = ContainerLayout::<Shrinks>::with_children(
+      LayoutKind::Column,
+      own,
+      vec![(Shrinks, ResolvedLayout::default())],
+    );
+    let measured = column.measure(Axis::Vertical, Some(100.), Needed::Both);
+
+    assert_eq!((measured.minimum, measured.natural), (4., 300.));
   }
 }

@@ -1,7 +1,9 @@
 //! Final data structures that represent the high-level UI layout
 use crate::geometry::{AbsoluteAxis, Line, Point, Rect, Size};
-use crate::style::AvailableSpace;
+use crate::style::{AlignItemsKeyword, AlignSelf, AlignmentSafety, AvailableSpace, CheapCloneStr, Position};
 use crate::style_helpers::TaffyMaxContent;
+use crate::sys::DefaultCheapStr;
+use crate::tree::NodeId;
 use crate::util::sys::{f32_max, f32_min};
 
 /// Whether we are performing a full layout, or we merely need to size the node
@@ -86,6 +88,18 @@ pub enum RequestedAxis {
     Both,
 }
 
+impl RequestedAxis {
+    /// Swap the horizontal and vertical axes (`Both` is unchanged)
+    #[inline(always)]
+    pub fn transpose(self) -> RequestedAxis {
+        match self {
+            RequestedAxis::Horizontal => RequestedAxis::Vertical,
+            RequestedAxis::Vertical => RequestedAxis::Horizontal,
+            RequestedAxis::Both => RequestedAxis::Both,
+        }
+    }
+}
+
 impl From<AbsoluteAxis> for RequestedAxis {
     fn from(value: AbsoluteAxis) -> Self {
         match value {
@@ -141,6 +155,9 @@ pub struct LayoutInput {
     pub parent_size: Size<Option<f32>>,
     /// Available space represents an amount of space to layout into, and is used as a soft constraint
     /// for the purpose of wrapping.
+    ///
+    /// A definite available space is the space available to the node's border box: the parent
+    /// subtracts the node's margins before passing it, and the node must not subtract them again.
     pub available_space: Size<AvailableSpace>,
     /// Specific to CSS Block layout. Used for correctly computing margin collapsing. You probably want to set this to `Line::FALSE`.
     pub vertical_margins_are_collapsible: Line<bool>,
@@ -160,6 +177,25 @@ impl LayoutInput {
         axis: RequestedAxis::Both,
         vertical_margins_are_collapsible: Line::FALSE,
     };
+
+    /// Swap the horizontal and vertical axes of every per-axis input.
+    ///
+    /// Lets a tree lay out a node in a vertical writing mode: transpose the inputs, run the
+    /// (horizontal-tb) algorithm, then transpose the [`LayoutOutput`] back.
+    /// `vertical_margins_are_collapsible` is reset to `Line::FALSE` as margins cannot collapse
+    /// across a change of block axis.
+    pub fn transpose(self) -> LayoutInput {
+        LayoutInput {
+            run_mode: self.run_mode,
+            sizing_mode: self.sizing_mode,
+            axis: self.axis.transpose(),
+            known_dimensions: self.known_dimensions.transpose(),
+            known_dimensions_are_definite: self.known_dimensions_are_definite.transpose(),
+            parent_size: self.parent_size.transpose(),
+            available_space: self.available_space.transpose(),
+            vertical_margins_are_collapsible: Line::FALSE,
+        }
+    }
 }
 
 /// The first and last baselines of a node in the horizontal axis (i.e. baselines for horizontal text,
@@ -186,13 +222,252 @@ impl Baselines {
     }
 }
 
+/// The physical alignment of an out-of-flow box's margin box within its static-position
+/// area (per-axis).
+///
+/// The static position of an out-of-flow box may depend on alignment properties
+/// (`justify-content`/`align-self` in flexbox, `justify-self`/`align-self` in grid) which cannot
+/// be fully resolved until the box's final size is known. To defer that resolution, the static
+/// position is recorded as an *area* plus the physical alignment keyword to apply to the box's
+/// margin box within that area.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum AxisStaticEdge {
+    /// Align the start (left/top) edge of the box's margin box to the start of the area
+    Start,
+    /// Center the box within the area
+    Center,
+    /// Align the end (right/bottom) edge of the box's margin box to the end of the area
+    End,
+}
+
+/// The alignment to apply to an out-of-flow box's margin box within its static-position area
+/// in a single axis.
+///
+/// Keywords are physical: container-specific semantics (`justify-content`/`align-self`
+/// resolution, flex-direction/wrap-reverse reversal, RTL flipping, `self-start`/`self-end`)
+/// are resolved by the emitting layout algorithm.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct AxisStaticAlign {
+    /// The physical alignment keyword
+    pub keyword: AxisStaticEdge,
+    /// The `safe` overflow-position keyword from CSS Box Alignment: when `Safe`, the
+    /// `fallback` keyword is used instead if the box's margin box overflows the area
+    pub safety: AlignmentSafety,
+    /// The physical alignment keyword to fall back to when `safety` is `Safe` and the box's
+    /// margin box overflows the area
+    pub fallback: AxisStaticEdge,
+}
+
+impl AxisStaticAlign {
+    /// Create a `AxisStaticAlign` from a keyword with no safe fallback
+    pub const fn from_keyword(keyword: AxisStaticEdge) -> Self {
+        Self { keyword, safety: AlignmentSafety::Default, fallback: keyword }
+    }
+}
+
+/// The static position of an out-of-flow box in a single axis: the alignment container
+/// (start/end coordinates) plus the alignment to apply to the box's margin box within it.
+///
+/// Area coordinates are initially relative to the border box of the node which produced the
+/// candidate and are translated by each node's location as the candidate bubbles up the tree, so
+/// they are always relative to the border box of the node currently holding the candidate.
+///
+/// Emitters which have no alignment area in an axis (e.g. block layout, where the static
+/// position is a point) emit a degenerate area (`start == end`).
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub struct AxisStaticPosition {
+    /// The alignment container in this axis
+    pub area: Line<f32>,
+    /// The alignment to apply to the box's margin box within `area`
+    pub align: AxisStaticAlign,
+}
+
+impl AxisStaticPosition {
+    /// Create a `AxisStaticPosition` with a degenerate (zero-extent) area at `anchor` and no
+    /// safe fallback
+    pub const fn from_edge(anchor: f32, edge: AxisStaticEdge) -> Self {
+        Self { area: Line { start: anchor, end: anchor }, align: AxisStaticAlign::from_keyword(edge) }
+    }
+
+    /// Create a `AxisStaticPosition` which aligns the box within `area` according to its
+    /// self-alignment property in this axis (`justify-self` in the inline axis, `align-self` in
+    /// the block axis). `normal` and `stretch` behave as `start`. This is the static position
+    /// used by block and inline layout.
+    ///
+    /// `alignment` must already be resolved: `auto` (`None`) replaced by the container's
+    /// `justify-items`/`align-items`, and `self-start`/`self-end` resolved against the
+    /// container's direction (see [`AlignSelf::resolve_self_relative`]).
+    /// `axis_is_rtl` is whether this axis is the inline axis of a right-to-left static-position
+    /// containing block, in which case `start` and `end` are flipped.
+    pub fn from_alignment(alignment: AlignSelf, area: Line<f32>, axis_is_rtl: bool) -> Self {
+        debug_assert!(
+            !matches!(alignment.keyword, AlignItemsKeyword::SelfStart | AlignItemsKeyword::SelfEnd),
+            "self-start/self-end must be resolved before computing the static position"
+        );
+        /// The edge of the static-position rectangle that a (resolved) alignment keyword
+        /// aligns the box to. Normal and Stretch (and anything else that is not an end or
+        /// center alignment) fall back to start-alignment for static-position purposes.
+        fn edge_for(keyword: AlignItemsKeyword, axis_is_rtl: bool) -> AxisStaticEdge {
+            let start_position = !matches!(keyword, AlignItemsKeyword::End | AlignItemsKeyword::FlexEnd) ^ axis_is_rtl;
+            match keyword {
+                AlignItemsKeyword::Center => AxisStaticEdge::Center,
+                _ if start_position => AxisStaticEdge::Start,
+                _ => AxisStaticEdge::End,
+            }
+        }
+        let fallback = if matches!(alignment.safety, AlignmentSafety::Safe) {
+            AlignItemsKeyword::Start
+        } else {
+            alignment.keyword
+        };
+        Self {
+            area,
+            align: AxisStaticAlign {
+                keyword: edge_for(alignment.keyword, axis_is_rtl),
+                safety: alignment.safety,
+                fallback: edge_for(fallback, axis_is_rtl),
+            },
+        }
+    }
+}
+
+/// A record of an out-of-flow (`position: absolute` or `position: fixed`) box which has not yet
+/// been laid out because its containing block is an ancestor of its parent.
+///
+/// Candidates are produced by the layout algorithm of the box's parent (which computes the static
+/// position) and bubble up through `LayoutOutput` until they reach a node which acts as the box's
+/// containing block, which lays the box out.
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub struct OofCandidate {
+    /// The id of the out-of-flow node
+    pub node: NodeId,
+    /// The `order` value that the node's layout should be assigned (its child index within its parent)
+    pub order: u32,
+    /// The position style of the node (`Position::Absolute` or `Position::Fixed`)
+    pub position: Position,
+    /// The static position of the box in each axis
+    pub static_position: Point<AxisStaticPosition>,
+}
+
+/// A list of [`OofCandidate`]s.
+///
+/// This is a lazily-allocated heap vector (an empty list performs no allocation).
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct OofCandidates {
+    /// Backing storage for the candidates
+    inner: Option<crate::util::sys::Box<crate::util::sys::Vec<OofCandidate>>>,
+}
+
+impl OofCandidates {
+    /// An empty list of candidates
+    pub const NONE: Self = Self { inner: None };
+
+    /// Create a new empty list of candidates
+    pub const fn new() -> Self {
+        Self::NONE
+    }
+
+    /// Whether the list contains no candidates
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.as_slice().is_empty()
+    }
+
+    /// The candidates as a slice
+    #[inline]
+    pub fn as_slice(&self) -> &[OofCandidate] {
+        self.inner.as_ref().map(|boxed| boxed.as_slice()).unwrap_or(&[])
+    }
+
+    /// The candidates as a mutable slice
+    #[inline]
+    pub fn as_mut_slice(&mut self) -> &mut [OofCandidate] {
+        self.inner.as_mut().map(|boxed| boxed.as_mut_slice()).unwrap_or(&mut [])
+    }
+
+    /// Append a candidate to the list
+    #[inline]
+    pub fn push(&mut self, candidate: OofCandidate) {
+        self.inner.get_or_insert_with(Default::default).push(candidate);
+    }
+
+    /// Move all candidates from `other` into `self`, leaving `other` empty
+    #[inline]
+    pub fn append(&mut self, other: &mut OofCandidates) {
+        if other.is_empty() {
+            return;
+        }
+        match &mut self.inner {
+            None => self.inner = other.inner.take(),
+            Some(vec) => vec.append(other.inner.as_mut().unwrap()),
+        }
+    }
+
+    /// Take the candidates out of this list, leaving it empty
+    #[inline]
+    pub fn take(&mut self) -> Self {
+        core::mem::take(self)
+    }
+
+    /// Remove all candidates from the list
+    #[inline]
+    pub fn clear(&mut self) {
+        self.inner = None;
+    }
+
+    /// Iterate over the candidates
+    #[inline]
+    pub fn iter(&self) -> core::slice::Iter<'_, OofCandidate> {
+        self.as_slice().iter()
+    }
+
+    /// Translate the static-position areas of every candidate in the list by `offset`.
+    ///
+    /// This is used to convert areas from being relative to a child node's border box to being
+    /// relative to the parent node's border box as candidates bubble up the tree.
+    #[inline]
+    pub fn translate(&mut self, offset: Point<f32>) {
+        for candidate in self.as_mut_slice() {
+            candidate.static_position.x.area.start += offset.x;
+            candidate.static_position.x.area.end += offset.x;
+            candidate.static_position.y.area.start += offset.y;
+            candidate.static_position.y.area.end += offset.y;
+        }
+    }
+}
+
+impl<'a> IntoIterator for &'a OofCandidates {
+    type Item = &'a OofCandidate;
+    type IntoIter = core::slice::Iter<'a, OofCandidate>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
+/// The area of a container against which the insets of its out-of-flow (absolute/fixed) boxes
+/// are resolved: the container's border box minus its borders and scrollbar gutters.
+///
+/// Container layout algorithms record this on [`LayoutOutput`] (for `RunMode::PerformLayout` runs)
+/// so that the out-of-flow positioning pass ([`compute_oof_layout`](crate::compute_oof_layout))
+/// can run after the algorithm has finished. When the container is a grid, per-box grid areas are
+/// resolved within this area by the positioning pass itself (from the container's detailed grid
+/// info).
+#[derive(Debug, Copy, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize))]
+pub struct OofPositioningArea {
+    /// The size of the area
+    pub size: Size<f32>,
+    /// The offset of the area from the container's border box origin
+    pub offset: Point<f32>,
+}
+
 /// A struct containing the result of laying a single node, which is returned up to the parent node
 ///
 /// A baseline is the line on which text sits. Your node likely has a baseline if it is a text node, or contains
 /// children that may be text nodes. See <https://www.w3.org/TR/css-writing-modes-3/#intro-baselines> for details.
 /// If your node does not have a baseline (or you are unsure how to compute it), then simply return `Baselines::NONE`
 /// for the baselines field
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize))]
 pub struct LayoutOutput {
     /// The size of the node
@@ -212,6 +487,23 @@ pub struct LayoutOutput {
     /// Whether margins can be collapsed through this node. This is used for CSS block layout and can
     /// be set to `false` for other layout modes that don't support margin collapsing
     pub margins_can_collapse_through: bool,
+    /// Out-of-flow (absolute/fixed) descendants of this node for which this node is *not* the
+    /// containing block. These bubble up the tree until they reach their containing block, which
+    /// lays them out. Empty (allocation-free) when there are no such descendants (the common case).
+    ///
+    /// Candidates are only produced by `RunMode::PerformLayout` passes.
+    ///
+    /// Container layout algorithms place the *full* document-ordered candidate list here (direct
+    /// out-of-flow children plus candidates bubbled from in-flow children). The out-of-flow
+    /// positioning pass ([`compute_oof_layout`](crate::compute_oof_layout)) then lays out those
+    /// for which the node is the containing block and replaces this list with the unclaimed
+    /// remainder.
+    #[cfg_attr(feature = "serde", serde(skip_serializing))]
+    pub oof_candidates: OofCandidates,
+    /// The node's inset-resolution area for out-of-flow boxes. Set by container layout
+    /// algorithms for `RunMode::PerformLayout` runs; `None` for leaves and size-only runs
+    /// (in which case the out-of-flow positioning pass is a no-op).
+    pub oof_positioning_area: Option<OofPositioningArea>,
 }
 
 impl LayoutOutput {
@@ -224,6 +516,8 @@ impl LayoutOutput {
         top_margin: CollapsibleMarginSet::ZERO,
         bottom_margin: CollapsibleMarginSet::ZERO,
         margins_can_collapse_through: false,
+        oof_candidates: OofCandidates::NONE,
+        oof_positioning_area: None,
     };
 
     /// A blank layout output
@@ -243,12 +537,34 @@ impl LayoutOutput {
             top_margin: CollapsibleMarginSet::ZERO,
             bottom_margin: CollapsibleMarginSet::ZERO,
             margins_can_collapse_through: false,
+            oof_candidates: OofCandidates::NONE,
+            oof_positioning_area: None,
         }
     }
 
     /// Construct a `LayoutOutput` from just the container size and scrollable overflow rectangle
     pub fn from_sizes(size: Size<f32>, scrollable_overflow_rect: Rect<f32>) -> Self {
         Self::from_sizes_and_baselines(size, scrollable_overflow_rect, Baselines::NONE)
+    }
+
+    /// Swap the horizontal and vertical axes of the output (inverse of [`LayoutInput::transpose`]).
+    ///
+    /// Baselines and collapsible margins are block-axis quantities that have no meaning on the
+    /// parent's inline axis, so they are dropped. Out-of-flow candidates are unaffected.
+    pub fn transpose(self) -> Self {
+        Self {
+            size: self.size.transpose(),
+            #[cfg(feature = "content_size")]
+            scrollable_overflow_rect: self.scrollable_overflow_rect.transpose(),
+            baselines: Baselines::NONE,
+            top_margin: CollapsibleMarginSet::ZERO,
+            bottom_margin: CollapsibleMarginSet::ZERO,
+            margins_can_collapse_through: false,
+            oof_candidates: self.oof_candidates,
+            oof_positioning_area: self
+                .oof_positioning_area
+                .map(|area| OofPositioningArea { size: area.size.transpose(), offset: area.offset.transpose() }),
+        }
     }
 
     /// Construct a `LayoutOutput` from just the container's size.
@@ -397,12 +713,16 @@ impl Layout {
 }
 
 /// The additional information from layout algorithm
-#[cfg(feature = "detailed_layout_info")]
 #[derive(Debug, Clone, PartialEq)]
-pub enum DetailedLayoutInfo {
+pub enum DetailedLayoutInfo<S: CheapCloneStr = DefaultCheapStr> {
     /// Enum variant for [`DetailedGridInfo`](crate::compute::grid::DetailedGridInfo)
     #[cfg(feature = "grid")]
-    Grid(Box<crate::compute::grid::DetailedGridInfo>),
+    Grid(crate::util::sys::Box<crate::compute::grid::DetailedGridInfo<S>>),
     /// For node that hasn't had any detailed information yet
     None,
+    /// Unused variant which exists only to consume the `S` type parameter when no variant
+    /// carrying detailed layout info is enabled
+    #[cfg(not(feature = "grid"))]
+    #[doc(hidden)]
+    Phantom(core::convert::Infallible, core::marker::PhantomData<S>),
 }

@@ -12,8 +12,7 @@ pub(crate) use coordinates::{GridCoordinate, GridLine, OriginZeroLine, MAX_GRID_
 pub(super) use grid_item::GridItem;
 pub(super) use grid_track::GridTrack;
 pub(super) use grid_track_counts::TrackCounts;
-pub(super) use named::NamedLineResolver;
-#[cfg(feature = "detailed_layout_info")]
+pub(super) use named::{GridAreasMap, NamedLineResolver};
 pub use named::{GridLineNames, GridLineNamesIter};
 
 #[allow(unused_imports)]

@@ -3,7 +3,7 @@
 #[cfg(feature = "content_size")]
 use crate::geometry::Rect;
 use crate::geometry::Size;
-use crate::style::{AvailableSpace, Overflow, Position};
+use crate::style::{AvailableSpace, Overflow};
 use crate::tree::{Baselines, CollapsibleMarginSet, RunMode};
 use crate::tree::{LayoutInput, LayoutOutput, SizingMode};
 use crate::util::debug::debug_log;
@@ -14,6 +14,9 @@ use crate::{BoxSizing, CoreStyle};
 use core::unreachable;
 
 /// Compute the size of a leaf node (node with no children)
+///
+/// A definite `inputs.available_space` is treated as the space available to the node's border box:
+/// the caller is expected to have already subtracted the node's margins from it.
 pub fn compute_leaf_layout<MeasureFunction>(
     inputs: LayoutInput,
     style: &impl CoreStyle,
@@ -27,7 +30,6 @@ where
 
     // Note: both horizontal and vertical percentage padding/borders are resolved against the container's inline size (i.e. width).
     // This is not a bug, but is how CSS is specified (see: https://developer.mozilla.org/en-US/docs/Web/CSS/padding#values)
-    let margin = style.margin().resolve_or_zero(parent_size.width, &resolve_calc_value);
     let padding = style.padding().resolve_or_zero(parent_size.width, &resolve_calc_value);
     let border = style.border().resolve_or_zero(parent_size.width, &resolve_calc_value);
     let padding_border = padding + border;
@@ -78,7 +80,7 @@ where
     let has_styles_preventing_being_collapsed_through = !style.is_block()
         || style.overflow().x.is_scroll_container()
         || style.overflow().y.is_scroll_container()
-        || style.position() == Position::Absolute
+        || style.position().is_out_of_flow()
         || style.contain().establishes_independent_formatting_context()
         || padding.top > 0.0
         || padding.bottom > 0.0
@@ -106,6 +108,8 @@ where
                 top_margin: CollapsibleMarginSet::ZERO,
                 bottom_margin: CollapsibleMarginSet::ZERO,
                 margins_can_collapse_through: false,
+                oof_candidates: crate::tree::OofCandidates::NONE,
+                oof_positioning_area: None,
             };
         };
     }
@@ -116,7 +120,6 @@ where
             .width
             .map(AvailableSpace::from)
             .unwrap_or(available_space.width)
-            .maybe_sub(margin.horizontal_axis_sum())
             .maybe_set(known_dimensions.width)
             .maybe_set(node_size.width)
             .map_definite_value(|size| {
@@ -126,7 +129,6 @@ where
             .height
             .map(AvailableSpace::from)
             .unwrap_or(available_space.height)
-            .maybe_sub(margin.vertical_axis_sum())
             .maybe_set(known_dimensions.height)
             .maybe_set(node_size.height)
             .map_definite_value(|size| {
@@ -180,5 +182,7 @@ where
         margins_can_collapse_through: !has_styles_preventing_being_collapsed_through
             && size.height == 0.0
             && measured_size.height == 0.0,
+        oof_candidates: crate::tree::OofCandidates::NONE,
+        oof_positioning_area: None,
     }
 }

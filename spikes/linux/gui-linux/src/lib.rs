@@ -6,7 +6,7 @@
 //! foundation's engine ([`LayoutOwner::Engine`]), resolves every style in the foundation
 //! ([`Keep::Nothing`]), and paints with vello_cpu and Parley (FreeType's glyph masks under the
 //! reader's font settings) into shared memory. With the `gpu` feature, a window an adapter
-//! presents to paints the same scene with vello's hybrid renderer over wgpu's Vulkan and
+//! presents to paints the same scene with vello's GPU renderer over wgpu's Vulkan and
 //! presents through the swapchain instead, the CPU path its floor ([`testing::PathChoice`]).
 //!
 //! Its modules are private: the window it draws is reached through the display server and a
@@ -22,7 +22,7 @@
 //! - `adornment`: what the window shows on surfaces of its own that take no input: a drag's
 //!   icon, a touch's selection handles and its magnifier.
 //! - `paint`, `chrome`: the painter, the client-side decorations where the compositor draws
-//!   none; with the `gpu` feature, `gpu`: the GPU path, vello's hybrid renderer over wgpu,
+//!   none; with the `gpu` feature, `gpu`: the GPU path, vello's GPU renderer over wgpu,
 //!   chosen once per window where an adapter presents to it.
 //! - `access`: the reader's tree through AccessKit.
 //! - `shell`: the window both backends share: frames, hit testing, hover, press and focus,

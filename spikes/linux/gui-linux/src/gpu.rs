@@ -1,4 +1,4 @@
-//! The GPU path: a window's frames drawn by vello's hybrid renderer over wgpu (the sparse-strip
+//! The GPU path: a window's frames drawn by vello's GPU renderer over wgpu (the sparse-strip
 //! scene vello_cpu draws, its fine rasterization run on the GPU) and presented through the
 //! platform's own swapchain on the window's surface (Vulkan's WSI, on Wayland and on X11), and
 //! its popups' on theirs, one device shared by the window's surfaces.
@@ -40,10 +40,13 @@ use skene_parley::{
 use vello_common::{
   kurbo::{Affine, BezPath, Rect as KRect, Shape as _, Stroke},
   paint::{Image, ImageId, ImageSource, Tint, TintMode},
-  peniko::{Color as PColor, ImageQuality, ImageSampler, color::PremulRgba8},
-  pixmap::Pixmap,
+  peniko::{Color as PColor, ImageAlphaType, ImageQuality, ImageSampler},
+  pixmap::{PixelMetadata, Pixmap},
 };
-use vello_hybrid::{RenderSize, RenderTargetConfig, Renderer, Resources, Scene, TextureBindings};
+use vello_gpu::{
+  ClearSettings, RenderSize, RenderTargetConfig, Renderer, Resources, Scene, TargetInit,
+  TextureBindings,
+};
 
 use crate::paint::{Brush, CastShadow, PathChoice, Sink, color};
 
@@ -104,7 +107,7 @@ pub struct Lost;
 pub type Band = (u32, u32, u32, u32);
 
 /// What a window's surfaces paint with on the GPU, the window's and its popups' alike: vello's
-/// hybrid renderer, its resources and the glyph images in its atlas, the surfaces' format, the
+/// GPU renderer, its resources and the glyph images in its atlas, the surfaces' format, the
 /// adapter's device and queue, and whether the device was lost.
 struct Shared {
   renderer: Renderer,
@@ -119,16 +122,17 @@ struct Shared {
   instance: wgpu::Instance,
 }
 
-/// A surface's GPU path: the surface it presents to, its configuration and vello's hybrid scene,
+/// A surface's GPU path: the surface it presents to, its configuration and vello's GPU scene,
 /// the whole frame kept between frames (what a frame drawing a part of it copies into, and a
-/// screenshot reads), the texture a part is drawn into, and the device it shares with the
-/// window's other surfaces.
+/// screenshot reads), the texture a part is drawn into, the depth buffer every frame is drawn
+/// with, and the device it shares with the window's other surfaces.
 pub struct Gpu {
   surface: wgpu::Surface<'static>,
   config: wgpu::SurfaceConfiguration,
   scene: Scene,
   frame: wgpu::Texture,
   part: Option<wgpu::Texture>,
+  depth: wgpu::TextureView,
   whole: bool,
   shared: Rc<RefCell<Shared>>,
 }
@@ -136,9 +140,9 @@ pub struct Gpu {
 impl Gpu {
   /// The most glyph images the atlas keeps before it starts over.
   const MOST_GLYPHS: usize = 16_384;
-  /// The side of vello_hybrid's atlas textures, in device pixels.
+  /// The side of vello_gpu's atlas textures, in device pixels.
   const ATLAS: u64 = 4096;
-  /// How many atlas textures vello_hybrid makes at most.
+  /// How many atlas textures vello_gpu makes at most.
   const ATLASES: u64 = 8;
   /// The atlas pixels glyph images may hold when a frame starts; past them the atlas starts
   /// over.
@@ -210,6 +214,7 @@ impl Gpu {
       power_preference: wgpu::PowerPreference::HighPerformance,
       force_fallback_adapter: false,
       compatible_surface: Some(&surface),
+      apply_limit_buckets: false,
     }))
     .map_err(|error| format!("no adapter presents to the surface: {error}"))?;
     let info = adapter.get_info();
@@ -263,8 +268,8 @@ impl Gpu {
       &device,
       &RenderTargetConfig {
         format,
-        width: size.0.max(1),
-        height: size.1.max(1),
+        width: Self::side(size.0),
+        height: Self::side(size.1),
       },
     );
 
@@ -359,6 +364,7 @@ impl Gpu {
         desired_maximum_frame_latency: 2,
         alpha_mode,
         view_formats: Vec::new(),
+        color_space: wgpu::SurfaceColorSpace::Auto,
       };
 
       surface.configure(&device.device, &config);
@@ -376,10 +382,8 @@ impl Gpu {
       &config,
       (config.width, config.height),
     );
-    let scene = Scene::new(
-      u16::try_from(config.width).unwrap_or(u16::MAX),
-      u16::try_from(config.height).unwrap_or(u16::MAX),
-    );
+    let depth = Self::depth(&shared.borrow().device, (config.width, config.height));
+    let scene = Scene::new(Self::side(config.width), Self::side(config.height));
 
     Ok(Self {
       surface,
@@ -387,13 +391,30 @@ impl Gpu {
       scene,
       frame,
       part: None,
+      depth,
       whole: true,
       shared,
     })
   }
 
+  /// A side of a frame, in device pixels, as vello_gpu measures its scenes and targets.
+  fn side(pixels: u32) -> u16 {
+    u16::try_from(pixels.max(1)).unwrap_or(u16::MAX)
+  }
+
+  /// The depth buffer a frame of `size` device pixels is drawn with.
+  fn depth(device: &wgpu::Device, size: (u32, u32)) -> wgpu::TextureView {
+    Renderer::create_depth_texture_view(
+      device,
+      &RenderSize {
+        width: Self::side(size.0),
+        height: Self::side(size.1),
+      },
+    )
+  }
+
   /// Submits what `encoder` holds and starts it afresh: an atlas write queued after this runs
-  /// after the clears and copies recorded before it, where one queued before it runs first.
+  /// after the clears recorded before it, where one queued before it runs first.
   fn submit_so_far(device: &wgpu::Device, queue: &wgpu::Queue, encoder: &mut wgpu::CommandEncoder) {
     let recorded = std::mem::replace(
       encoder,
@@ -486,6 +507,7 @@ impl Gpu {
       self.surface.configure(&shared.device, &self.config);
       self.frame = Self::texture(&shared.device, &self.config, (width, height));
       self.part = None;
+      self.depth = Self::depth(&shared.device, (width, height));
     }
 
     let (left, top, band_width, band_height) = band;
@@ -495,10 +517,7 @@ impl Gpu {
       band_height.clamp(1, height - top),
     );
     let whole = (left, top, band_width, band_height) == (0, 0, width, height);
-    let (scene_width, scene_height) = (
-      u16::try_from(width).unwrap_or(u16::MAX),
-      u16::try_from(height).unwrap_or(u16::MAX),
-    );
+    let (scene_width, scene_height) = (Self::side(width), Self::side(height));
 
     if (self.scene.width(), self.scene.height()) == (scene_width, scene_height) {
       self.scene.reset();
@@ -540,7 +559,7 @@ impl Gpu {
     );
 
     {
-      let mut sink = HybridSink {
+      let mut sink = GpuSink {
         scene: &mut self.scene,
         renderer: &mut shared.renderer,
         resources: &mut shared.resources,
@@ -555,7 +574,7 @@ impl Gpu {
       record(&mut sink);
     }
 
-    self.scene.pop_clip_path();
+    self.scene.pop_clip();
 
     let recorded = started.elapsed();
     let target = if whole {
@@ -577,9 +596,16 @@ impl Gpu {
         &shared.device,
         &shared.queue,
         &mut encoder,
-        &RenderSize { width, height },
+        &RenderSize {
+          width: scene_width,
+          height: scene_height,
+        },
         &view,
+        Some(&self.depth),
         &TextureBindings::new(),
+        TargetInit::Clear(ClearSettings::Viewport {
+          color: PColor::TRANSPARENT,
+        }),
       )
       .map_err(|_| Lost)?;
 
@@ -640,7 +666,7 @@ impl Gpu {
       },
     );
     shared.queue.submit([encoder.finish()]);
-    texture.present();
+    shared.queue.present(texture);
 
     if shared
       .device
@@ -706,7 +732,7 @@ impl Gpu {
       .ok()?;
 
     let bgra = self.config.format == wgpu::TextureFormat::Bgra8Unorm;
-    let data = buffer.slice(..).get_mapped_range();
+    let data = buffer.slice(..).get_mapped_range().ok()?;
     let mut pixels = Vec::with_capacity(width as usize * height as usize);
 
     for line in data.chunks(row as usize).take(height as usize) {
@@ -728,9 +754,9 @@ impl Gpu {
   }
 }
 
-/// vello's hybrid scene as a [`Sink`], uploading each glyph's image to the renderer's atlas the
+/// vello's GPU scene as a [`Sink`], uploading each glyph's image to the renderer's atlas the
 /// first time it is drawn.
-struct HybridSink<'a> {
+struct GpuSink<'a> {
   scene: &'a mut Scene,
   renderer: &'a mut Renderer,
   resources: &'a mut Resources,
@@ -742,7 +768,7 @@ struct HybridSink<'a> {
   short: &'a mut bool,
 }
 
-impl HybridSink<'_> {
+impl GpuSink<'_> {
   fn brush(&mut self, transform: Affine, brush: &Brush) {
     self.scene.set_transform(transform);
 
@@ -762,8 +788,7 @@ impl HybridSink<'_> {
 
   /// The atlas images of `mask`, uploaded where it is new, in parts no larger than
   /// [`Gpu::TILE`] either way; `None`, and the frame short, where they would take the atlas past
-  /// [`Gpu::MOST_AREA`]. A part that grows the atlas submits what the frame recorded so far
-  /// ([`Gpu::submit_so_far`]).
+  /// [`Gpu::MOST_AREA`].
   fn image(&mut self, mask: &Rc<GlyphMask>) -> Option<Vec<Tile>> {
     let key = Rc::as_ptr(mask) as usize;
 
@@ -787,7 +812,7 @@ impl HybridSink<'_> {
           Gpu::TILE.min(mask.width - x),
           Gpu::TILE.min(mask.height - y),
         );
-        let mut pixels = Vec::with_capacity(width as usize * height as usize);
+        let mut pixels = Vec::with_capacity(width as usize * height as usize * 4);
 
         for row in y..y + height {
           let start = (row * mask.width + x) as usize;
@@ -795,20 +820,9 @@ impl HybridSink<'_> {
 
           match &mask.pixels {
             MaskPixels::Alpha(alpha) => {
-              pixels.extend(alpha[start..end].iter().map(|&a| PremulRgba8 {
-                r: 0,
-                g: 0,
-                b: 0,
-                a,
-              }));
+              pixels.extend(alpha[start..end].iter().flat_map(|&a| [0, 0, 0, a]));
             }
-            MaskPixels::Color(rgba) => pixels.extend(
-              rgba[start * 4..end * 4]
-                .as_chunks::<4>()
-                .0
-                .iter()
-                .map(|&[r, g, b, a]| PremulRgba8 { r, g, b, a }),
-            ),
+            MaskPixels::Color(rgba) => pixels.extend_from_slice(&rgba[start * 4..end * 4]),
           }
         }
 
@@ -816,8 +830,8 @@ impl HybridSink<'_> {
           pixels,
           u16::try_from(width).unwrap_or(1),
           u16::try_from(height).unwrap_or(1),
+          PixelMetadata::new(ImageAlphaType::AlphaPremultiplied, true),
         );
-        let layers = self.renderer.atlas_texture().size().depth_or_array_layers;
         let id = self.renderer.upload_image(
           self.resources,
           self.device,
@@ -825,10 +839,6 @@ impl HybridSink<'_> {
           self.encoder,
           &pixmap,
         );
-
-        if self.renderer.atlas_texture().size().depth_or_array_layers != layers {
-          Gpu::submit_so_far(self.device, self.queue, self.encoder);
-        }
 
         tiles.push(Tile {
           id,
@@ -847,7 +857,7 @@ impl HybridSink<'_> {
   }
 }
 
-impl Sink for HybridSink<'_> {
+impl Sink for GpuSink<'_> {
   fn fill(&mut self, path: &BezPath, transform: Affine, brush: &Brush) {
     self.brush(transform, brush);
     self.scene.fill_path(path);
@@ -897,7 +907,7 @@ impl Sink for HybridSink<'_> {
     self
       .scene
       .fill_blurred_rounded_rect(&shadow.cast, shadow.radius, shadow.deviation, false);
-    self.scene.pop_clip_path();
+    self.scene.pop_clip();
   }
 
   fn push_opacity(&mut self, opacity: f32) {

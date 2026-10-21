@@ -67,7 +67,7 @@
 #     its fake input granted to kwin-fake-input alone, which the tests act through, and a
 #     stand-in input method (kwin-input-method), which a field's caret is read through from
 #     outside the app.
-#   - [paint] the GPU path (skene-gui-linux's `gpu` feature: vello_hybrid over wgpu's Vulkan, on
+#   - [paint] the GPU path (skene-gui-linux's `gpu` feature: vello_gpu over wgpu's Vulkan, on
 #     Mesa's lavapipe here): its tests (skene-conformance-linux's `gpu` target) on X11, mutter and
 #     sway, and on sway and X11 at 1.5 with scale:: and presented:: on the GPU path there; the
 #     conformance suite and the facade's tests on the GPU path on X11 and mutter, the suite on X11

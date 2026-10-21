@@ -1455,7 +1455,7 @@ impl PathChoice {
 pub enum PaintPath {
   /// vello_cpu, into shared memory.
   Cpu,
-  /// vello's hybrid renderer over wgpu, presented through the platform's swapchain.
+  /// vello's GPU renderer over wgpu, presented through the platform's swapchain.
   Gpu,
 }
 

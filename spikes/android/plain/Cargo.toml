@@ -16,7 +16,7 @@ parley = ["dep:parley"]
 complex = ["parley", "parley/complex-scripts"]
 
 [dependencies]
-jni = { version = "=0.21.1", default-features = false }
+jni = { version = "=0.22.4", default-features = false }
 parley = { default-features = false, features = ["std", "system"], optional = true, version = "=0.12.0" }
 
 # As an app ships: one codegen unit, whole-program LTO, symbols stripped.

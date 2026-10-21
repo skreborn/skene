@@ -12,10 +12,14 @@
 use std::time::Instant;
 
 use jni::{
-  objects::{GlobalRef, JByteBuffer, JClass, JFloatArray, JLongArray, JMethodID, JObject},
+  errors::ThrowRuntimeExAndDefault,
+  jni_sig,
+  jni_str,
+  objects::{Global, JByteBuffer, JClass, JFloatArray, JLongArray, JMethodID, JObject},
   signature::{Primitive, ReturnType},
   sys::{jfloat, jint, jlong, jvalue},
-  JNIEnv,
+  Env,
+  EnvUnowned,
 };
 use taffy::{compute_leaf_layout, prelude::*, Baselines, LayoutInput, LayoutOutput, RequestedAxis};
 
@@ -72,14 +76,14 @@ pub trait Backend {
   /// baselines at max-content where `with_height` (NaN otherwise).
   fn intrinsics(
     &mut self,
-    env: &mut JNIEnv,
+    env: &mut Env,
     text: i32,
     with_min: bool,
     with_height: bool,
   ) -> Intrinsics;
 
   /// Text `text` laid out at `width` whole pixels.
-  fn layout(&mut self, env: &mut JNIEnv, text: i32, width: i32) -> Laid;
+  fn layout(&mut self, env: &mut Env, text: i32, width: i32) -> Laid;
 }
 
 struct Leaf {
@@ -92,7 +96,7 @@ struct Leaf {
 
 /// The engine handle and the method ids, valid on any attached thread.
 struct Engine {
-  object: GlobalRef,
+  object: Global<JObject<'static>>,
   intrinsics: JMethodID,
   layout: JMethodID,
   buffer: *const f32,
@@ -132,7 +136,7 @@ impl Engine {
 impl Backend for Engine {
   fn intrinsics(
     &mut self,
-    env: &mut JNIEnv,
+    env: &mut Env,
     text: i32,
     with_min: bool,
     with_height: bool,
@@ -146,10 +150,8 @@ impl Backend for Engine {
           ReturnType::Primitive(Primitive::Void),
           &[
             jvalue { i: text },
-            jvalue { z: with_min as u8 },
-            jvalue {
-              z: with_height as u8,
-            },
+            jvalue { z: with_min },
+            jvalue { z: with_height },
           ],
         )
         .expect("intrinsics");
@@ -165,7 +167,7 @@ impl Backend for Engine {
     }
   }
 
-  fn layout(&mut self, env: &mut JNIEnv, text: i32, width: i32) -> Laid {
+  fn layout(&mut self, env: &mut Env, text: i32, width: i32) -> Laid {
     // SAFETY: the method id belongs to the engine's class with signature (II)V.
     unsafe {
       env
@@ -194,7 +196,7 @@ impl Leaf {
   /// max-content height that is wanted.
   fn intrinsics<B: Backend>(
     &mut self,
-    env: &mut JNIEnv,
+    env: &mut Env,
     engine: &mut B,
     stats: &mut PassStats,
     with_min: bool,
@@ -222,7 +224,7 @@ impl Leaf {
   /// known width lays out directly.
   fn measure<B: Backend>(
     &mut self,
-    env: &mut JNIEnv,
+    env: &mut Env,
     engine: &mut B,
     stats: &mut PassStats,
     axis: RequestedAxis,
@@ -351,7 +353,7 @@ impl<B: Backend> Tree<B> {
         width: LengthPercentage::length(ROW_GAP),
         height: LengthPercentage::length(0.0),
       },
-      align_items: Some(AlignItems::FLEX_START),
+      align_items: AlignItems::FLEX_START,
       ..Style::default()
     };
 
@@ -392,7 +394,7 @@ impl<B: Backend> Tree<B> {
               width: LengthPercentage::length(TAG_GAP_H),
               height: LengthPercentage::length(TAG_GAP_V),
             },
-            align_items: Some(AlignItems::FLEX_START),
+            align_items: AlignItems::FLEX_START,
             ..Style::default()
           },
           &tags,
@@ -454,7 +456,7 @@ impl<B: Backend> Tree<B> {
   /// Runs one layout pass and returns `[nanos, crossings, intrinsics calls, layout calls, the
   /// most crossings of any leaf, leaves crossing more than once, measure callbacks, leaves
   /// crossing at all]`.
-  pub fn layout(&mut self, env: &mut JNIEnv, width: f32, flags: jint) -> [i64; 8] {
+  pub fn layout(&mut self, env: &mut Env, width: f32, flags: jint) -> [i64; 8] {
     let start = Instant::now();
 
     if width != self.width {
@@ -591,63 +593,79 @@ impl<B: Backend> Tree<B> {
 /// Creates a tree of `cards` cards over `engine`, whose direct `buffer` receives its answers.
 #[no_mangle]
 pub extern "system" fn Java_dev_skene_spike_text_NativeTree_create<'local>(
-  mut env: JNIEnv<'local>,
+  mut env: EnvUnowned<'local>,
   _class: JClass<'local>,
   engine: JObject<'local>,
   buffer: JByteBuffer<'local>,
   cards: jint,
 ) -> jlong {
-  let class = env.get_object_class(&engine).unwrap();
-  let intrinsics = env.get_method_id(&class, "intrinsics", "(IZZ)V").unwrap();
-  let layout = env.get_method_id(&class, "layout", "(II)V").unwrap();
-  let address = env.get_direct_buffer_address(&buffer).unwrap();
-  let object = env.new_global_ref(&engine).unwrap();
+  env
+    .with_env(|env| -> jni::errors::Result<_> {
+      let class = env.get_object_class(&engine)?;
+      let intrinsics = env.get_method_id(&class, jni_str!("intrinsics"), jni_sig!("(IZZ)V"))?;
+      let layout = env.get_method_id(&class, jni_str!("layout"), jni_sig!("(II)V"))?;
+      let address = env.get_direct_buffer_address(&buffer)?;
+      let object = env.new_global_ref(&engine)?;
 
-  let engine = Engine {
-    object,
-    intrinsics,
-    layout,
-    buffer: address as *const f32,
-  };
+      let engine = Engine {
+        object,
+        intrinsics,
+        layout,
+        buffer: address as *const f32,
+      };
 
-  Box::into_raw(Box::new(Tree::new(engine, cards as usize))) as jlong
+      Ok(Box::into_raw(Box::new(Tree::new(engine, cards as usize))) as jlong)
+    })
+    .resolve::<ThrowRuntimeExAndDefault>()
 }
 
 /// Runs a pass at `width` under `flags`, writing the pass's numbers into `stats` (8 longs).
 #[no_mangle]
 pub extern "system" fn Java_dev_skene_spike_text_NativeTree_layout<'local>(
-  mut env: JNIEnv<'local>,
+  mut env: EnvUnowned<'local>,
   _class: JClass<'local>,
   handle: jlong,
   width: jfloat,
   flags: jint,
   stats: JLongArray<'local>,
 ) {
-  // SAFETY: the handle came from `create` and is used by one thread at a time.
-  let tree = unsafe { &mut *(handle as *mut Tree<Engine>) };
-  let numbers = tree.layout(&mut env, width, flags);
-  env.set_long_array_region(&stats, 0, &numbers).unwrap();
+  env
+    .with_env(|env| -> jni::errors::Result<_> {
+      // SAFETY: the handle came from `create` and is used by one thread at a time.
+      let tree = unsafe { &mut *(handle as *mut Tree<Engine>) };
+      let numbers = tree.layout(env, width, flags);
+      stats.set_region(env, 0, &numbers)?;
+
+      Ok(())
+    })
+    .resolve::<ThrowRuntimeExAndDefault>()
 }
 
 /// Writes the leaves' absolute rectangles and the root's size into `out`.
 #[no_mangle]
 pub extern "system" fn Java_dev_skene_spike_text_NativeTree_rects<'local>(
-  env: JNIEnv<'local>,
+  mut env: EnvUnowned<'local>,
   _class: JClass<'local>,
   handle: jlong,
   out: JFloatArray<'local>,
 ) {
-  // SAFETY: as in `layout`.
-  let tree = unsafe { &*(handle as *const Tree<Engine>) };
-  let mut numbers = vec![0.0f32; tree.leaf_nodes.len() * 4 + 2];
-  tree.rects(&mut numbers);
-  env.set_float_array_region(&out, 0, &numbers).unwrap();
+  env
+    .with_env(|env| -> jni::errors::Result<_> {
+      // SAFETY: as in `layout`.
+      let tree = unsafe { &*(handle as *const Tree<Engine>) };
+      let mut numbers = vec![0.0f32; tree.leaf_nodes.len() * 4 + 2];
+      tree.rects(&mut numbers);
+      out.set_region(env, 0, &numbers)?;
+
+      Ok(())
+    })
+    .resolve::<ThrowRuntimeExAndDefault>()
 }
 
 /// Frees the tree.
 #[no_mangle]
 pub extern "system" fn Java_dev_skene_spike_text_NativeTree_destroy<'local>(
-  _env: JNIEnv<'local>,
+  _env: EnvUnowned<'local>,
   _class: JClass<'local>,
   handle: jlong,
 ) {
@@ -659,37 +677,42 @@ pub extern "system" fn Java_dev_skene_spike_text_NativeTree_destroy<'local>(
 /// `noop()`, 1 calls `layout(0, 500)`, a cache hit once warm.
 #[no_mangle]
 pub extern "system" fn Java_dev_skene_spike_text_NativeTree_upcalls<'local>(
-  mut env: JNIEnv<'local>,
+  mut env: EnvUnowned<'local>,
   _class: JClass<'local>,
   engine: JObject<'local>,
   kind: jint,
   count: jint,
 ) -> jlong {
-  let class = env.get_object_class(&engine).unwrap();
-  let noop = env.get_method_id(&class, "noop", "()V").unwrap();
-  let layout = env.get_method_id(&class, "layout", "(II)V").unwrap();
-  let start = Instant::now();
+  env
+    .with_env(|env| -> jni::errors::Result<_> {
+      let class = env.get_object_class(&engine)?;
+      let noop = env.get_method_id(&class, jni_str!("noop"), jni_sig!("()V"))?;
+      let layout = env.get_method_id(&class, jni_str!("layout"), jni_sig!("(II)V"))?;
+      let start = Instant::now();
 
-  for _ in 0..count {
-    // SAFETY: both method ids belong to the engine's class with the signatures named above.
-    unsafe {
-      if kind == 0 {
-        env
-          .call_method_unchecked(&engine, noop, ReturnType::Primitive(Primitive::Void), &[])
-          .unwrap();
+      for _ in 0..count {
+        // SAFETY: both method ids belong to the engine's class with the signatures named above.
+        unsafe {
+          if kind == 0 {
+            env.call_method_unchecked(
+              &engine,
+              noop,
+              ReturnType::Primitive(Primitive::Void),
+              &[],
+            )?;
+          }
+          else {
+            env.call_method_unchecked(
+              &engine,
+              layout,
+              ReturnType::Primitive(Primitive::Void),
+              &[jvalue { i: 0 }, jvalue { i: 500 }],
+            )?;
+          }
+        }
       }
-      else {
-        env
-          .call_method_unchecked(
-            &engine,
-            layout,
-            ReturnType::Primitive(Primitive::Void),
-            &[jvalue { i: 0 }, jvalue { i: 500 }],
-          )
-          .unwrap();
-      }
-    }
-  }
 
-  start.elapsed().as_nanos() as jlong
+      Ok(start.elapsed().as_nanos() as jlong)
+    })
+    .resolve::<ThrowRuntimeExAndDefault>()
 }

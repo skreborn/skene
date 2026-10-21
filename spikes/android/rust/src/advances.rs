@@ -12,9 +12,11 @@ use std::{
 };
 
 use jni::{
+  errors::ThrowRuntimeExAndDefault,
   objects::{JClass, JString},
-  sys::{jfloat, jstring},
-  JNIEnv,
+  sys::jfloat,
+  Env,
+  EnvUnowned,
 };
 use parley_engine::{AdvanceRule, FontData, NormalizedCoord, RunAdvances};
 use serde_json::{json, Value};
@@ -397,42 +399,43 @@ impl AdvanceRule for HintedAdvances {
   }
 }
 
-fn string(env: &mut JNIEnv, value: &JString) -> String {
-  env.get_string(value).map(Into::into).unwrap_or_default()
+fn string(env: &Env, value: &JString) -> String {
+  value.try_to_string(env).unwrap_or_default()
 }
 
-fn answer(env: &mut JNIEnv, text: &str) -> jstring {
-  env
-    .new_string(text)
-    .map(|value| value.into_raw())
-    .unwrap_or(std::ptr::null_mut())
+fn answer<'local>(env: &mut Env<'local>, text: &str) -> JString<'local> {
+  JString::new(env, text).unwrap_or_default()
 }
 
 /// Sets Parley's advances to the rule named `rule` at `density` (`linear` restores Parley's
 /// own): the rule's name where set, or `error: ` and why.
 #[no_mangle]
 pub extern "system" fn Java_dev_skene_spike_text_Parity_setAdvanceRule<'local>(
-  mut env: JNIEnv<'local>,
+  mut env: EnvUnowned<'local>,
   _class: JClass<'local>,
   rule: JString<'local>,
   density: jfloat,
-) -> jstring {
-  let name = string(&mut env, &rule);
-  let result = match Rule::parse(&name) {
-    Some(Rule::Linear) => {
-      parley_engine::set_advance_rule(None);
+) -> JString<'local> {
+  env
+    .with_env(|env| -> jni::errors::Result<_> {
+      let name = string(env, &rule);
+      let result = match Rule::parse(&name) {
+        Some(Rule::Linear) => {
+          parley_engine::set_advance_rule(None);
 
-      "linear".to_owned()
-    }
-    Some(rule) => {
-      parley_engine::set_advance_rule(Some(Arc::new(HintedAdvances::new(rule, density))));
+          "linear".to_owned()
+        }
+        Some(rule) => {
+          parley_engine::set_advance_rule(Some(Arc::new(HintedAdvances::new(rule, density))));
 
-      rule.name().to_owned()
-    }
-    None => format!("error: no rule {name:?}"),
-  };
+          rule.name().to_owned()
+        }
+        None => format!("error: no rule {name:?}"),
+      };
 
-  answer(&mut env, &result)
+      Ok(answer(env, &result))
+    })
+    .resolve::<ThrowRuntimeExAndDefault>()
 }
 
 /// The fonts the advance probe measures: a name, the family and sample the matcher is asked
@@ -471,50 +474,54 @@ pub const SIZES: [f32; 20] = [
 /// and each character's glyph by the font's cmap.
 #[no_mangle]
 pub extern "system" fn Java_dev_skene_spike_text_Parity_advanceProbe<'local>(
-  mut env: JNIEnv<'local>,
+  mut env: EnvUnowned<'local>,
   _class: JClass<'local>,
-) -> jstring {
-  let mut fonts = Vec::new();
+) -> JString<'local> {
+  env
+    .with_env(|env| -> jni::errors::Result<_> {
+      let mut fonts = Vec::new();
 
-  for (name, family, sample, locales, weight, chars, pairs, simple) in PROBE {
-    let matcher = Matcher::new(*weight, false, locales, VARIANT_COMPACT);
-    let units: Vec<u16> = sample.encode_utf16().collect();
-    let Some((font, _)) = matcher.first(family, &units)
-    else {
-      continue;
-    };
-    let Ok(data) = std::fs::read(&font.path)
-    else {
-      continue;
-    };
-    let Ok(face) = FontRef::from_index(&data, font.index)
-    else {
-      continue;
-    };
-    let charmap = face.charmap();
-    let glyphs: Vec<Value> = chars
-      .chars()
-      .filter_map(|character| {
-        let glyph = charmap.map(character)?;
+      for (name, family, sample, locales, weight, chars, pairs, simple) in PROBE {
+        let matcher = Matcher::new(*weight, false, locales, VARIANT_COMPACT);
+        let units: Vec<u16> = sample.encode_utf16().collect();
+        let Some((font, _)) = matcher.first(family, &units)
+        else {
+          continue;
+        };
+        let Ok(data) = std::fs::read(&font.path)
+        else {
+          continue;
+        };
+        let Ok(face) = FontRef::from_index(&data, font.index)
+        else {
+          continue;
+        };
+        let charmap = face.charmap();
+        let glyphs: Vec<Value> = chars
+          .chars()
+          .filter_map(|character| {
+            let glyph = charmap.map(character)?;
 
-        (glyph.to_u32() != 0).then(|| json!({"char": character.to_string(), "glyph": glyph.to_u32()}))
-      })
-      .collect();
-    let axes = font
-      .axes
-      .iter()
-      .map(|(tag, value)| format!("'{tag}' {value}"))
-      .collect::<Vec<_>>()
-      .join(",");
+            (glyph.to_u32() != 0).then(|| json!({"char": character.to_string(), "glyph": glyph.to_u32()}))
+          })
+          .collect();
+        let axes = font
+          .axes
+          .iter()
+          .map(|(tag, value)| format!("'{tag}' {value}"))
+          .collect::<Vec<_>>()
+          .join(",");
 
-    fonts.push(json!({
-      "name": name, "path": font.path, "index": font.index, "axes": axes, "weight": weight,
-      "locale": locales, "simple": simple, "glyphs": glyphs, "pairs": pairs,
-      "chws": if *name == "cjk" { CHWS } else { &[] },
-    }));
-  }
+        fonts.push(json!({
+          "name": name, "path": font.path, "index": font.index, "axes": axes, "weight": weight,
+          "locale": locales, "simple": simple, "glyphs": glyphs, "pairs": pairs,
+          "chws": if *name == "cjk" { CHWS } else { &[] },
+        }));
+      }
 
-  answer(&mut env, &json!({"sizes_dp": SIZES, "fonts": fonts}).to_string())
+      Ok(answer(env, &json!({"sizes_dp": SIZES, "fonts": fonts}).to_string()))
+    })
+    .resolve::<ThrowRuntimeExAndDefault>()
 }
 
 fn numbers(value: &Value) -> Vec<Option<f64>> {
@@ -841,16 +848,20 @@ fn analyze(measured: &Value) -> Value {
 /// each size) follow, as JSON.
 #[no_mangle]
 pub extern "system" fn Java_dev_skene_spike_text_Parity_advanceAnalysis<'local>(
-  mut env: JNIEnv<'local>,
+  mut env: EnvUnowned<'local>,
   _class: JClass<'local>,
   measured: JString<'local>,
-) -> jstring {
-  let measured = string(&mut env, &measured);
-  let result = serde_json::from_str::<Value>(&measured)
-    .map(|measured| analyze(&measured).to_string())
-    .unwrap_or_else(|error| json!({"error": error.to_string()}).to_string());
+) -> JString<'local> {
+  env
+    .with_env(|env| -> jni::errors::Result<_> {
+      let measured = string(env, &measured);
+      let result = serde_json::from_str::<Value>(&measured)
+        .map(|measured| analyze(&measured).to_string())
+        .unwrap_or_else(|error| json!({"error": error.to_string()}).to_string());
 
-  answer(&mut env, &result)
+      Ok(answer(env, &result))
+    })
+    .resolve::<ThrowRuntimeExAndDefault>()
 }
 
 #[cfg(test)]

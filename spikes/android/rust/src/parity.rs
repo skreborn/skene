@@ -10,9 +10,11 @@ use std::{
 };
 
 use jni::{
+  errors::ThrowRuntimeExAndDefault,
   objects::{JClass, JString},
-  sys::{jboolean, jdouble, jfloat, jint, jstring},
-  JNIEnv,
+  sys::{jboolean, jdouble, jfloat, jint},
+  Env,
+  EnvUnowned,
 };
 use parley::fontique::{
   Collection,
@@ -79,15 +81,12 @@ pub const EMOJI_SAMPLES: &[&str] = &[
   "🪉",
 ];
 
-fn string(env: &mut JNIEnv, value: &JString) -> String {
-  env.get_string(value).map(Into::into).unwrap_or_default()
+fn string(env: &Env, value: &JString) -> String {
+  value.try_to_string(env).unwrap_or_default()
 }
 
-fn answer(env: &mut JNIEnv, text: &str) -> jstring {
-  env
-    .new_string(text)
-    .map(|value| value.into_raw())
-    .unwrap_or(std::ptr::null_mut())
+fn answer<'local>(env: &mut Env<'local>, text: &str) -> JString<'local> {
+  JString::new(env, text).unwrap_or_default()
 }
 
 /// The resident set size of this process in kilobytes.
@@ -107,90 +106,114 @@ pub fn rss_kb() -> u64 {
 /// The corpus with every variant spelled out.
 #[no_mangle]
 pub extern "system" fn Java_dev_skene_spike_text_Parity_corpus<'local>(
-  mut env: JNIEnv<'local>,
+  mut env: EnvUnowned<'local>,
   _class: JClass<'local>,
-) -> jstring {
-  let json = serde_json::to_string(&Corpus::builtin().expanded()).unwrap_or_default();
+) -> JString<'local> {
+  env
+    .with_env(|env| -> jni::errors::Result<_> {
+      let json = serde_json::to_string(&Corpus::builtin().expanded()).unwrap_or_default();
 
-  answer(&mut env, &json)
+      Ok(answer(env, &json))
+    })
+    .resolve::<ThrowRuntimeExAndDefault>()
 }
 
 /// Every font `ASystemFontIterator` lists, with the time it took and per-directory counts.
 #[no_mangle]
 pub extern "system" fn Java_dev_skene_spike_text_Parity_systemFonts<'local>(
-  mut env: JNIEnv<'local>,
+  mut env: EnvUnowned<'local>,
   _class: JClass<'local>,
-) -> jstring {
-  let (fonts, ms) = ndk::system_fonts();
-  let mut directories: BTreeMap<String, usize> = BTreeMap::new();
+) -> JString<'local> {
+  env
+    .with_env(|env| -> jni::errors::Result<_> {
+      let (fonts, ms) = ndk::system_fonts();
+      let mut directories: BTreeMap<String, usize> = BTreeMap::new();
 
-  for font in &fonts {
-    let directory = Path::new(&font.path)
-      .parent()
-      .map(|parent| parent.display().to_string())
-      .unwrap_or_default();
+      for font in &fonts {
+        let directory = Path::new(&font.path)
+          .parent()
+          .map(|parent| parent.display().to_string())
+          .unwrap_or_default();
 
-    *directories.entry(directory).or_default() += 1;
-  }
+        *directories.entry(directory).or_default() += 1;
+      }
 
-  let json = json!({"ms": ms, "count": fonts.len(), "directories": directories, "fonts": fonts});
+      let json =
+        json!({"ms": ms, "count": fonts.len(), "directories": directories, "fonts": fonts});
 
-  answer(&mut env, &json.to_string())
+      Ok(answer(env, &json.to_string()))
+    })
+    .resolve::<ThrowRuntimeExAndDefault>()
 }
 
 /// The runs `AFontMatcher` makes of `text` in `family`, `locales` a comma-separated list.
 #[no_mangle]
 pub extern "system" fn Java_dev_skene_spike_text_Parity_matchRuns<'local>(
-  mut env: JNIEnv<'local>,
+  mut env: EnvUnowned<'local>,
   _class: JClass<'local>,
   family: JString<'local>,
   text: JString<'local>,
   locales: JString<'local>,
   weight: jint,
   italic: jboolean,
-) -> jstring {
-  let family = string(&mut env, &family);
-  let text = string(&mut env, &text);
-  let locales = string(&mut env, &locales);
-  let matcher = Matcher::new(weight as u16, italic != 0, &locales, VARIANT_COMPACT);
-  let runs = matcher.runs(&family, &text);
+) -> JString<'local> {
+  env
+    .with_env(|env| -> jni::errors::Result<_> {
+      let family = string(env, &family);
+      let text = string(env, &text);
+      let locales = string(env, &locales);
+      let matcher = Matcher::new(weight as u16, italic, &locales, VARIANT_COMPACT);
+      let runs = matcher.runs(&family, &text);
 
-  answer(&mut env, &serde_json::to_string(&runs).unwrap_or_default())
+      Ok(answer(
+        env,
+        &serde_json::to_string(&runs).unwrap_or_default(),
+      ))
+    })
+    .resolve::<ThrowRuntimeExAndDefault>()
 }
 
 /// Nanoseconds per `AFontMatcher_match` call for `text`, over `count` calls.
 #[no_mangle]
 pub extern "system" fn Java_dev_skene_spike_text_Parity_matchBench<'local>(
-  mut env: JNIEnv<'local>,
+  mut env: EnvUnowned<'local>,
   _class: JClass<'local>,
   text: JString<'local>,
   locales: JString<'local>,
   count: jint,
 ) -> jdouble {
-  let text = string(&mut env, &text);
-  let locales = string(&mut env, &locales);
-  let matcher = Matcher::new(400, false, &locales, VARIANT_COMPACT);
+  env
+    .with_env(|env| -> jni::errors::Result<_> {
+      let text = string(env, &text);
+      let locales = string(env, &locales);
+      let matcher = Matcher::new(400, false, &locales, VARIANT_COMPACT);
 
-  matcher.bench("sans-serif", &text, count as usize)
+      Ok(matcher.bench("sans-serif", &text, count as usize))
+    })
+    .resolve::<ThrowRuntimeExAndDefault>()
 }
 
 /// The family and PostScript names of face `index` of the font file at `path`, a newline
 /// between them; empty where the file cannot be read.
 #[no_mangle]
 pub extern "system" fn Java_dev_skene_spike_text_Parity_fontNames<'local>(
-  mut env: JNIEnv<'local>,
+  mut env: EnvUnowned<'local>,
   _class: JClass<'local>,
   path: JString<'local>,
   index: jint,
-) -> jstring {
-  let path = string(&mut env, &path);
-  let names = std::fs::read(&path)
-    .ok()
-    .and_then(|data| names_of(&data, index as u32))
-    .map(|(family, postscript)| format!("{family}\n{postscript}"))
-    .unwrap_or_default();
+) -> JString<'local> {
+  env
+    .with_env(|env| -> jni::errors::Result<_> {
+      let path = string(env, &path);
+      let names = std::fs::read(&path)
+        .ok()
+        .and_then(|data| names_of(&data, index as u32))
+        .map(|(family, postscript)| format!("{family}\n{postscript}"))
+        .unwrap_or_default();
 
-  answer(&mut env, &names)
+      Ok(answer(env, &names))
+    })
+    .resolve::<ThrowRuntimeExAndDefault>()
 }
 
 /// A font source built from `AFontMatcher`'s answers: the generic families and a fallback per
@@ -406,113 +429,125 @@ impl Fed {
 /// The font source fed from `AFontMatcher`, with each question's answer and the time taken.
 #[no_mangle]
 pub extern "system" fn Java_dev_skene_spike_text_Parity_fedSource<'local>(
-  mut env: JNIEnv<'local>,
+  mut env: EnvUnowned<'local>,
   _class: JClass<'local>,
-) -> jstring {
-  let fed = Fed::build();
-  let json = json!({"ms": fed.ms, "source": fed.source, "answers": fed.answers});
+) -> JString<'local> {
+  env
+    .with_env(|env| -> jni::errors::Result<_> {
+      let fed = Fed::build();
+      let json = json!({"ms": fed.ms, "source": fed.source, "answers": fed.answers});
 
-  answer(&mut env, &json.to_string())
+      Ok(answer(env, &json.to_string()))
+    })
+    .resolve::<ThrowRuntimeExAndDefault>()
 }
 
 /// fontique's own Android collection (`/system/fonts` scanned, `fonts.xml` read): how long it
 /// takes, what it costs in memory, its families, generic families and per-script fallbacks.
 #[no_mangle]
 pub extern "system" fn Java_dev_skene_spike_text_Parity_stockCollection<'local>(
-  mut env: JNIEnv<'local>,
+  mut env: EnvUnowned<'local>,
   _class: JClass<'local>,
-) -> jstring {
-  let before = rss_kb();
-  let started = Instant::now();
-  let mut collection = Collection::new(CollectionOptions {
-    shared: false,
-    system_fonts: true,
-  });
-  let families: Vec<String> = collection.family_names().map(str::to_owned).collect();
-  let ms = started.elapsed().as_secs_f64() * 1e3;
-  let after = rss_kb();
-  let mut generics = BTreeMap::new();
+) -> JString<'local> {
+  env
+    .with_env(|env| -> jni::errors::Result<_> {
+      let before = rss_kb();
+      let started = Instant::now();
+      let mut collection = Collection::new(CollectionOptions {
+        shared: false,
+        system_fonts: true,
+      });
+      let families: Vec<String> = collection.family_names().map(str::to_owned).collect();
+      let ms = started.elapsed().as_secs_f64() * 1e3;
+      let after = rss_kb();
+      let mut generics = BTreeMap::new();
 
-  for (name, generic) in [
-    ("system-ui", GenericFamily::SystemUi),
-    ("sans-serif", GenericFamily::SansSerif),
-    ("serif", GenericFamily::Serif),
-    ("monospace", GenericFamily::Monospace),
-    ("emoji", GenericFamily::Emoji),
-  ] {
-    let ids: Vec<_> = collection.generic_families(generic).collect();
-    let names: Vec<String> = ids
-      .iter()
-      .filter_map(|id| collection.family_name(*id).map(str::to_owned))
-      .collect();
+      for (name, generic) in [
+        ("system-ui", GenericFamily::SystemUi),
+        ("sans-serif", GenericFamily::SansSerif),
+        ("serif", GenericFamily::Serif),
+        ("monospace", GenericFamily::Monospace),
+        ("emoji", GenericFamily::Emoji),
+      ] {
+        let ids: Vec<_> = collection.generic_families(generic).collect();
+        let names: Vec<String> = ids
+          .iter()
+          .filter_map(|id| collection.family_name(*id).map(str::to_owned))
+          .collect();
 
-    generics.insert(name, names);
-  }
+        generics.insert(name, names);
+      }
 
-  let mut fallbacks = Vec::new();
+      let mut fallbacks = Vec::new();
 
-  for (script, _, _, locale) in FALLBACKS {
-    let language = locale.and_then(|locale| Language::parse(locale).ok());
-    let Ok(parsed) = Script::parse(script)
-    else {
-      continue;
-    };
-    let key = FallbackKey::new(parsed, language.as_ref());
-    let ids: Vec<_> = collection.fallback_families(key).collect();
-    let names: Vec<String> = ids
-      .iter()
-      .filter_map(|id| collection.family_name(*id).map(str::to_owned))
-      .collect();
+      for (script, _, _, locale) in FALLBACKS {
+        let language = locale.and_then(|locale| Language::parse(locale).ok());
+        let Ok(parsed) = Script::parse(script)
+        else {
+          continue;
+        };
+        let key = FallbackKey::new(parsed, language.as_ref());
+        let ids: Vec<_> = collection.fallback_families(key).collect();
+        let names: Vec<String> = ids
+          .iter()
+          .filter_map(|id| collection.family_name(*id).map(str::to_owned))
+          .collect();
 
-    fallbacks.push(json!({"script": script, "locale": locale, "families": names}));
-  }
+        fallbacks.push(json!({"script": script, "locale": locale, "families": names}));
+      }
 
-  let mut named = BTreeMap::new();
+      let mut named = BTreeMap::new();
 
-  for name in [
-    "sans-serif",
-    "serif",
-    "monospace",
-    "Roboto",
-    "Roboto Flex",
-    "Noto Sans",
-    "Noto Serif",
-    "Noto Color Emoji",
-    "Noto Sans CJK JP",
-    "Noto Sans Thai",
-    "Noto Sans Thai UI",
-  ] {
-    named.insert(
-      name,
-      collection
-        .family_by_name(name)
-        .map(|family| family.fonts().len()),
-    );
-  }
+      for name in [
+        "sans-serif",
+        "serif",
+        "monospace",
+        "Roboto",
+        "Roboto Flex",
+        "Noto Sans",
+        "Noto Serif",
+        "Noto Color Emoji",
+        "Noto Sans CJK JP",
+        "Noto Sans Thai",
+        "Noto Sans Thai UI",
+      ] {
+        named.insert(
+          name,
+          collection
+            .family_by_name(name)
+            .map(|family| family.fonts().len()),
+        );
+      }
 
-  let json = json!({
-    "ms": ms, "rss_before_kb": before, "rss_after_kb": after, "families": families.len(),
-    "family_names": families, "generics": generics, "fallbacks": fallbacks, "named_fonts": named,
-  });
+      let json = json!({
+        "ms": ms, "rss_before_kb": before, "rss_after_kb": after, "families": families.len(),
+        "family_names": families, "generics": generics, "fallbacks": fallbacks, "named_fonts": named,
+      });
 
-  answer(&mut env, &json.to_string())
+      Ok(answer(env, &json.to_string()))
+    })
+    .resolve::<ThrowRuntimeExAndDefault>()
 }
 
 /// One Parley run through the harness, configured as `run::parley_json` takes it: `ok: ` and the
 /// summary, or `error: ` and why.
 #[no_mangle]
 pub extern "system" fn Java_dev_skene_spike_text_Parity_parley<'local>(
-  mut env: JNIEnv<'local>,
+  mut env: EnvUnowned<'local>,
   _class: JClass<'local>,
   config: JString<'local>,
-) -> jstring {
-  let config = string(&mut env, &config);
-  let result = match text_parity::run::parley_json(&config) {
-    Ok(summary) => format!("ok: {summary}"),
-    Err(error) => format!("error: {error}"),
-  };
+) -> JString<'local> {
+  env
+    .with_env(|env| -> jni::errors::Result<_> {
+      let config = string(env, &config);
+      let result = match text_parity::run::parley_json(&config) {
+        Ok(summary) => format!("ok: {summary}"),
+        Err(error) => format!("error: {error}"),
+      };
 
-  answer(&mut env, &result)
+      Ok(answer(env, &result))
+    })
+    .resolve::<ThrowRuntimeExAndDefault>()
 }
 
 /// A glyph run as a platform rasterizer draws it: the font, its axes in user space, and the
@@ -695,19 +730,23 @@ fn plan(records: &Path, out: &Path) -> Result<usize, String> {
 /// Writes the option C plan from `records` to `out`: `ok: ` and the variant count, or `error: `.
 #[no_mangle]
 pub extern "system" fn Java_dev_skene_spike_text_Parity_plan<'local>(
-  mut env: JNIEnv<'local>,
+  mut env: EnvUnowned<'local>,
   _class: JClass<'local>,
   records: JString<'local>,
   out: JString<'local>,
-) -> jstring {
-  let records = string(&mut env, &records);
-  let out = string(&mut env, &out);
-  let result = match plan(Path::new(&records), Path::new(&out)) {
-    Ok(count) => format!("ok: {count}"),
-    Err(error) => format!("error: {error}"),
-  };
+) -> JString<'local> {
+  env
+    .with_env(|env| -> jni::errors::Result<_> {
+      let records = string(env, &records);
+      let out = string(env, &out);
+      let result = match plan(Path::new(&records), Path::new(&out)) {
+        Ok(count) => format!("ok: {count}"),
+        Err(error) => format!("error: {error}"),
+      };
 
-  answer(&mut env, &result)
+      Ok(answer(env, &result))
+    })
+    .resolve::<ThrowRuntimeExAndDefault>()
 }
 
 const SP: [f32; 9] = [8., 10., 12., 14., 18., 20., 24., 30., 100.];
@@ -803,7 +842,7 @@ pub fn sp_to_dp(sp: f32, scale: f32, sdk: i32) -> f32 {
 /// Skene's port of the platform's font scale: dp for `sp` at `scale` on API level `sdk`.
 #[no_mangle]
 pub extern "system" fn Java_dev_skene_spike_text_Parity_spToDp<'local>(
-  _env: JNIEnv<'local>,
+  _env: EnvUnowned<'local>,
   _class: JClass<'local>,
   sp: jfloat,
   scale: jfloat,

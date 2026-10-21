@@ -8,9 +8,11 @@
 use std::{borrow::Cow, time::Instant};
 
 use jni::{
+  errors::ThrowRuntimeExAndDefault,
   objects::{JClass, JFloatArray, JLongArray, JObjectArray, JString},
   sys::{jdouble, jfloat, jint, jlong},
-  JNIEnv,
+  Env,
+  EnvUnowned,
 };
 use parley::{
   FontContext,
@@ -196,7 +198,7 @@ impl ParleyBackend {
 impl Backend for ParleyBackend {
   fn intrinsics(
     &mut self,
-    _env: &mut JNIEnv,
+    _env: &mut Env,
     text: i32,
     _with_min: bool,
     with_height: bool,
@@ -204,7 +206,7 @@ impl Backend for ParleyBackend {
     self.measure_intrinsics(text as usize, with_height)
   }
 
-  fn layout(&mut self, _env: &mut JNIEnv, text: i32, width: i32) -> Laid {
+  fn layout(&mut self, _env: &mut Env, text: i32, width: i32) -> Laid {
     self.measure_layout(text as usize, width)
   }
 }
@@ -218,54 +220,55 @@ fn tree<'a>(handle: jlong) -> &'a mut Tree<ParleyBackend> {
 /// showing `texts[i]` at `sizes[i]` pixels; 0 where the fonts fail (the reason is logged).
 #[no_mangle]
 pub extern "system" fn Java_dev_skene_spike_text_ParleyTree_create<'local>(
-  mut env: JNIEnv<'local>,
+  mut env: EnvUnowned<'local>,
   _class: JClass<'local>,
-  texts: JObjectArray<'local>,
+  texts: JObjectArray<'local, JString<'local>>,
   sizes: JFloatArray<'local>,
   fonts: JString<'local>,
   cards: jint,
 ) -> jlong {
-  let count = env.get_array_length(&texts).unwrap_or(0) as usize;
-  let mut strings = Vec::with_capacity(count);
+  env
+    .with_env(|env| -> jni::errors::Result<_> {
+      let count = texts.len(env).unwrap_or(0);
+      let mut strings = Vec::with_capacity(count);
 
-  for at in 0..count {
-    let element = env.get_object_array_element(&texts, at as i32).unwrap();
-    let text: String = env
-      .get_string(&JString::from(element))
-      .map(Into::into)
-      .unwrap_or_default();
+      for at in 0..count {
+        let element = texts.get_element(env, at)?;
+        let text = element.try_to_string(env).unwrap_or_default();
 
-    strings.push(text);
-  }
+        strings.push(text);
+      }
 
-  let mut pixels = vec![0f32; count];
+      let mut pixels = vec![0f32; count];
 
-  env.get_float_array_region(&sizes, 0, &mut pixels).unwrap();
+      sizes.get_region(env, 0, &mut pixels)?;
 
-  let fonts: String = env.get_string(&fonts).map(Into::into).unwrap_or_default();
-  let source = match serde_json::from_str::<FontSource>(&fonts) {
-    Ok(source) => source,
-    Err(error) => {
-      eprintln!("fonts: {error}");
+      let fonts = fonts.try_to_string(env).unwrap_or_default();
+      let source = match serde_json::from_str::<FontSource>(&fonts) {
+        Ok(source) => source,
+        Err(error) => {
+          eprintln!("fonts: {error}");
 
-      return 0;
-    }
-  };
+          return Ok(0);
+        }
+      };
 
-  match ParleyBackend::new(&source, strings, pixels) {
-    Ok(backend) => Box::into_raw(Box::new(Tree::new(backend, cards as usize))) as jlong,
-    Err(error) => {
-      eprintln!("fonts: {error}");
+      Ok(match ParleyBackend::new(&source, strings, pixels) {
+        Ok(backend) => Box::into_raw(Box::new(Tree::new(backend, cards as usize))) as jlong,
+        Err(error) => {
+          eprintln!("fonts: {error}");
 
-      0
-    }
-  }
+          0
+        }
+      })
+    })
+    .resolve::<ThrowRuntimeExAndDefault>()
 }
 
 /// How long the tree's font collection took to make, in milliseconds.
 #[no_mangle]
 pub extern "system" fn Java_dev_skene_spike_text_ParleyTree_fontsMs<'local>(
-  _env: JNIEnv<'local>,
+  _env: EnvUnowned<'local>,
   _class: JClass<'local>,
   handle: jlong,
 ) -> jdouble {
@@ -279,44 +282,56 @@ pub const FLAG_RESHAPE: jint = 8;
 /// numbers into `stats` (8 longs).
 #[no_mangle]
 pub extern "system" fn Java_dev_skene_spike_text_ParleyTree_layout<'local>(
-  mut env: JNIEnv<'local>,
+  mut env: EnvUnowned<'local>,
   _class: JClass<'local>,
   handle: jlong,
   width: jfloat,
   flags: jint,
   stats: JLongArray<'local>,
 ) {
-  let tree = tree(handle);
+  env
+    .with_env(|env| -> jni::errors::Result<_> {
+      let tree = tree(handle);
 
-  if flags & FLAG_RESHAPE != 0 {
-    tree.engine_mut().clear();
-  }
+      if flags & FLAG_RESHAPE != 0 {
+        tree.engine_mut().clear();
+      }
 
-  let numbers = tree.layout(&mut env, width, flags);
+      let numbers = tree.layout(env, width, flags);
 
-  env.set_long_array_region(&stats, 0, &numbers).unwrap();
+      stats.set_region(env, 0, &numbers)?;
+
+      Ok(())
+    })
+    .resolve::<ThrowRuntimeExAndDefault>()
 }
 
 /// Writes the leaves' absolute rectangles and the root's size into `out`.
 #[no_mangle]
 pub extern "system" fn Java_dev_skene_spike_text_ParleyTree_rects<'local>(
-  env: JNIEnv<'local>,
+  mut env: EnvUnowned<'local>,
   _class: JClass<'local>,
   handle: jlong,
   out: JFloatArray<'local>,
 ) {
-  let tree = tree(handle);
-  let mut numbers = vec![0.0f32; tree.leaf_count() * 4 + 2];
+  env
+    .with_env(|env| -> jni::errors::Result<_> {
+      let tree = tree(handle);
+      let mut numbers = vec![0.0f32; tree.leaf_count() * 4 + 2];
 
-  tree.rects(&mut numbers);
-  env.set_float_array_region(&out, 0, &numbers).unwrap();
+      tree.rects(&mut numbers);
+      out.set_region(env, 0, &numbers)?;
+
+      Ok(())
+    })
+    .resolve::<ThrowRuntimeExAndDefault>()
 }
 
 /// Animates leaf `text`'s size from `from` to `to` over `out.len()` frames at `width`, each
 /// frame's nanoseconds into `out`; answers the last frame's height.
 #[no_mangle]
 pub extern "system" fn Java_dev_skene_spike_text_ParleyTree_animate<'local>(
-  env: JNIEnv<'local>,
+  mut env: EnvUnowned<'local>,
   _class: JClass<'local>,
   handle: jlong,
   text: jint,
@@ -325,21 +340,25 @@ pub extern "system" fn Java_dev_skene_spike_text_ParleyTree_animate<'local>(
   width: jfloat,
   out: JLongArray<'local>,
 ) -> jfloat {
-  let frames = env.get_array_length(&out).unwrap_or(0) as usize;
-  let mut nanos = vec![0i64; frames];
-  let height = tree(handle)
-    .engine_mut()
-    .animate(text as usize, (from, to), width, &mut nanos);
+  env
+    .with_env(|env| -> jni::errors::Result<_> {
+      let frames = out.len(env).unwrap_or(0);
+      let mut nanos = vec![0i64; frames];
+      let height = tree(handle)
+        .engine_mut()
+        .animate(text as usize, (from, to), width, &mut nanos);
 
-  env.set_long_array_region(&out, 0, &nanos).unwrap();
+      out.set_region(env, 0, &nanos)?;
 
-  height
+      Ok(height)
+    })
+    .resolve::<ThrowRuntimeExAndDefault>()
 }
 
 /// Frees the tree.
 #[no_mangle]
 pub extern "system" fn Java_dev_skene_spike_text_ParleyTree_destroy<'local>(
-  _env: JNIEnv<'local>,
+  _env: EnvUnowned<'local>,
   _class: JClass<'local>,
   handle: jlong,
 ) {

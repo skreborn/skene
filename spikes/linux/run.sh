@@ -10,10 +10,11 @@
 #      test binary on both paths, the CLI, the shell's tools and probes, the release apps, and
 #      beside them an app made by `skene new` (built, checked, tested and run, in a target of its
 #      own);
-#   3. side by side, POOL jobs at once (3 unless set), the longest first: every test leg, nextest,
-#      the steadiness rounds, the isolation check, the screenshots, the shell's sessions, the
-#      controls' sessions, the platform-text cases and the GPU path's tests;
-#   4. alone: the timed parts: 1000 labels and shaping (verify), the frame costs
+#   3. side by side, POOL jobs at once (4 unless set), the longest first: every test leg, nextest,
+#      the steadiness rounds, the isolation check, the screenshots, the controls' sessions, the
+#      platform-text cases and the GPU path's tests;
+#   4. alone: the timed parts: the shell's sessions (scenarios paced by the clock, and the
+#      sessions' start-up times), 1000 labels and shaping (verify), the frame costs
 #      (tools/bench/frames.sh, six rounds and more until each judged case's first frame is judged
 #      against its targets, or MAX_ROUNDS), and the repaint costs (tools/paint/repaint.sh).
 # Each section's wall time is in the summary.
@@ -144,7 +145,7 @@ job() { # job <name> <command...>
     for pid in "${pool_pids[@]}"; do
       if kill -0 "$pid" 2>/dev/null; then running=$((running + 1)); fi
     done
-    if [ "$running" -lt "${POOL:-3}" ]; then break; fi
+    if [ "$running" -lt "${POOL:-4}" ]; then break; fi
     wait -n 2>/dev/null || sleep 1
   done
   pool_names+=("$name")
@@ -463,7 +464,7 @@ on_gpu_rounds() {
 
 # Phase 3: side by side, the longest jobs first (by their wall times alongside the others),
 # mutter's legs (the most a busy machine slows) apart from one another.
-section "side by side, ${POOL:-3} at once: the tests on every leg and the sessions"
+section "side by side, ${POOL:-4} at once: the tests on every leg and the sessions"
 job steadiness-wayland steadiness wayland
 if [ "${SKIP_CONTROLS:-0}" != 1 ]; then job controls controls_sessions; fi
 job steadiness-x11 steadiness x11
@@ -483,7 +484,6 @@ job x11-1.5 gui_leg x11-1.5 x11 1.5
 if [ "${SKIP_PAINT:-0}" != 1 ]; then job on-gpu-wayland on_gpu wayland; fi
 job nextest-x11 nextest_leg x11
 if [ "${SKIP_PAINT:-0}" != 1 ]; then job on-gpu-x11 on_gpu x11; fi
-if [ "${SKIP_SHELL:-0}" != 1 ]; then job shell shell_sessions; fi
 if [ "${SKIP_PAINT:-0}" != 1 ]; then
   for spec in wayland:1 sway:1.5 x11:1.5 x11:1 sway:1; do
     job "gpu-${spec%:*}-${spec#*:}" gpu_tests "${spec%:*}" "${spec#*:}"
@@ -505,6 +505,11 @@ if [ -f "$gtk" ]; then
 fi
 
 # Phase 4, alone: what measures time.
+if [ "${SKIP_SHELL:-0}" != 1 ]; then
+  section "the shell's sessions (tools/sessions/shell-checks.sh)"
+  shell_sessions
+fi
+
 if [ "${SKIP_CORE:-0}" != 1 ]; then
   section "the platform text's timed parts (verify, release)"
   "$release/examples/verify" bench | sed 's/^/1000 labels: /' | tee "$results/bench.txt" | tee -a "$summary"

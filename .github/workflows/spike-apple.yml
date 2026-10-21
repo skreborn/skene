@@ -23,10 +23,10 @@ concurrency:
 
 jobs:
   ios:
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 75
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           sparse-checkout: |
             spikes/apple
@@ -55,6 +55,7 @@ jobs:
         id: sim
         run: |
           xcodebuild -version
+          swift --version
           xcrun simctl list runtimes
           python3 - <<'EOF' >> "$GITHUB_OUTPUT"
           import json, subprocess, sys
@@ -154,17 +155,17 @@ jobs:
           python3 ../fontmem.py "$OUT" ios | tee "$OUT/fontmem-ios.md"
           echo "=== END ==="
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: spike-apple-ios
           path: ${{ runner.temp }}/out
 
   macos:
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           sparse-checkout: |
             spikes/apple
@@ -301,7 +302,7 @@ jobs:
           } | tee "$RUNNER_TEMP/out/results.txt"
           test -f "$RUNNER_TEMP/out/parity/results.txt"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: spike-apple-macos

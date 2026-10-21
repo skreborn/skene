@@ -1,4 +1,4 @@
-// swift-tools-version:5.9
+// swift-tools-version:6.3
 import Foundation
 import PackageDescription
 
@@ -29,5 +29,7 @@ let package = Package(
       ]
     ),
     .testTarget(name: "TextSpikeTests", dependencies: ["TextSpike", "TextParityFFI"]),
-  ]
+  ],
+  // The sources are written for Swift 5's language mode, which tools version 6 no longer assumes.
+  swiftLanguageModes: [.v5]
 )

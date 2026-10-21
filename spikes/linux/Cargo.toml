@@ -19,12 +19,7 @@ members = [
   "third-party/acme-rating",
   "tools/shell",
 ]
-# gui-linux-gtk is the GTK realization and probes its probes, kept for reference.
-exclude = [
-  "gui-linux-gtk",
-  "probes",
-  "vendor",
-]
+exclude = ["vendor"]
 
 [workspace.package]
 edition = "2024"

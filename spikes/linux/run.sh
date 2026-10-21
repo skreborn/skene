@@ -75,9 +75,6 @@
 #     GPU_SUITE_ROUNDS more times (3 unless set), its aborts counted; full and partial repaints
 #     at 1920x1080 and 3840x2160 on both paths, on Xvfb and headless mutter.
 #
-# The GTK realization (gui-linux-gtk) and its probes (probes/) are kept, outside the
-# workspace, for reference.
-#
 # Results go to results/ (summary.txt, logs, PNGs, JSON; results/jobs/ for each job of phase 3).
 # The target directory is $CARGO_TARGET_DIR (target-testing by default), deleted at the end
 # unless KEEP_TARGET=1. GTK_PROTO names the GTK prototype's directory (../gtk/proto unless set),

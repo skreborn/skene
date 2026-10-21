@@ -158,3 +158,7 @@ Every choice the drawn Linux prototype took that neither `AGENTS.md` nor the aut
 - `Edge` names the two ends of a list's axis, `Start` and `End`, `Start` where unset (alternative: SwiftUI's `UnitPoint`, which can also name the center or any fraction).
 - `Edge` sits among the foundation's values beside `Edges`, in the facade's prelude (alternative: in the `lazy` module beside `ScrollPosition`, for lazy lists alone).
 - One anchor serves both where the list starts and what it holds as its content and its viewport change (alternative: SwiftUI 18's per-role form, `defaultScrollAnchor(_:for:)`, with an initial offset apart from size changes).
+
+## The GTK realization's removal
+
+- The foundation's `contents_gate` stays, with no realization in the prototype running it now that the GTK realization's gate test is gone (alternatives: run it on the drawn realization, or remove it).

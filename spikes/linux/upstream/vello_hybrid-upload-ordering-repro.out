@@ -1,0 +1,8 @@
+adapter: "llvmpipe (LLVM 20.1.2, 256 bits)"
+1. upload after destroy_image in one encoder: drawn [0, 0, 0, 0], expected [0, 255, 0, 255]
+   with the encoder submitted after destroy_image: drawn [0, 255, 0, 255]
+   atlas side 4096
+   atlas layers 1 -> 2
+2. upload after an upload that grew the atlas, in one encoder: drawn [0, 0, 0, 0], expected [0, 255, 0, 255]
+   atlas layers now 3
+   with the encoder submitted after the growth: drawn [0, 255, 0, 255]

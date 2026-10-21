@@ -1,0 +1,13 @@
+[package]
+name = "repro-vello-hybrid-upload"
+edition = "2024"
+version = "0.0.0"
+publish = false
+
+[dependencies]
+pollster = "=0.4.0"
+vello_common = { default-features = false, features = ["std"], version = "=0.2.0" }
+vello_hybrid = { default-features = false, features = ["std", "wgpu"], version = "=0.2.0" }
+wgpu = { default-features = false, features = ["std", "vulkan", "wgsl"], version = "=29.0.4" }
+
+[workspace]

@@ -1,0 +1,7 @@
+shifted down 4 px: 0 pixels differ []
+shifted down 8 px: 0 pixels differ []
+shifted down 100 px: 0 pixels differ []
+shifted down 400 px: 0 pixels differ []
+shifted down 1000 px: 1 pixels differ [(33, 39, 148, 147)]
+shifted down 4000 px: 4 pixels differ [(54, 16, 214, 213), (61, 23, 214, 213), (33, 39, 148, 147), (38, 44, 148, 147)]
+5 differing in all

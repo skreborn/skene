@@ -1,0 +1,5 @@
+initial tree built, focus on the button
+thread 'main' (20881) panicked at /root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/accesskit_consumer-0.39.1/src/tree.rs:91:13:
+Focused ID #1 is not in the node list
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+update naming a removed focus: PANICKED

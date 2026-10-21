@@ -115,7 +115,7 @@ struct Shared {
   glyphs: HashMap<usize, (Rc<GlyphMask>, Vec<Tile>)>,
   images: HashMap<ImageKey, ImageId>,
   area: u64,
-  /// Whether the last frame was short of a glyph, so the next starts the atlas over.
+  // Whether the last frame was short of a glyph, so the next starts the atlas over.
   starved: bool,
   format: wgpu::TextureFormat,
   lost: Arc<AtomicBool>,

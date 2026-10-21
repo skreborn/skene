@@ -1,0 +1,6 @@
+adapter: "llvmpipe (LLVM 20.1.2, 256 bits)"
+1. upload after destroy_image in one encoder: drawn [0, 0, 0, 0], expected [0, 255, 0, 255]
+   with the encoder submitted after destroy_image: drawn [0, 255, 0, 255]
+   a second atlas texture exists: (4096, 4096, 1)
+2. upload after an upload that needed another atlas texture, in one encoder: drawn [0, 255, 0, 255], expected [0, 255, 0, 255]
+   and after a third: drawn [0, 255, 0, 255], expected [0, 255, 0, 255]

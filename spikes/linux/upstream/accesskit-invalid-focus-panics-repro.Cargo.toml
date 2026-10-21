@@ -1,0 +1,9 @@
+[package]
+name = "ak-repro"
+edition = "2024"
+version = "0.0.0"
+publish = false
+
+[dependencies]
+accesskit = "=0.25.1"
+accesskit_consumer = "=0.39.1"

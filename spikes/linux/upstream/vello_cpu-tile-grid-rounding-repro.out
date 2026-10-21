@@ -1,0 +1,10 @@
+paint 255,0,0,128; rectangle from x=6.25: pixel 9 drawn from origin 0 [192, 64, 64, 255], from origin 2 [191, 64, 64, 255]
+paint 30,144,255,128; rectangle from x=6.25: pixel 9 drawn from origin 0 [79, 136, 192, 255], from origin 2 [79, 136, 191, 255]
+paint 255,255,255,128; rectangle from x=6.25: pixel 9 drawn from origin 0 [192, 192, 192, 255], from origin 2 [191, 191, 191, 255]
+paint 255,0,0,150; rectangle from x=6.25: pixel 9 drawn from origin 0 [203, 53, 53, 255], from origin 2 [202, 53, 53, 255]
+paint 30,144,255,150; rectangle from x=6.25: pixel 9 drawn from origin 0 [71, 138, 203, 255], from origin 2 [71, 138, 202, 255]
+paint 255,255,255,150; rectangle from x=6.25: pixel 9 drawn from origin 0 [203, 203, 203, 255], from origin 2 [202, 202, 202, 255]
+paint 255,0,0,200; rectangle from x=6.25: pixel 9 drawn from origin 0 [228, 28, 28, 255], from origin 2 [227, 28, 28, 255]
+paint 30,144,255,200; rectangle from x=6.25: pixel 9 drawn from origin 0 [52, 141, 228, 255], from origin 2 [52, 141, 227, 255]
+paint 255,255,255,200; rectangle from x=6.25: pixel 9 drawn from origin 0 [228, 228, 228, 255], from origin 2 [227, 227, 227, 255]
+9 of 270 cases draw a wholly covered pixel differently

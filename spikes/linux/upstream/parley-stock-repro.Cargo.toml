@@ -1,0 +1,10 @@
+[package]
+name = "stock-parley-repro"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+parley = { default-features = false, features = ["complex-scripts", "std", "system"], version = "=0.12.0" }
+
+[workspace]

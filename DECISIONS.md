@@ -420,6 +420,11 @@ supersedes.
   platform fails with a `compile_error!`; and the CLI substitutes the cfg by reading
   cargo's rustflags sources in cargo's order, refusing when it cannot tell. Revisit
   with the test double.
+- **A reversed lazy list** (2026-10-21), Compose's `reverseLayout`, putting item 0 at the
+  far end: a list that starts at its end and keeps it in view while it shows (a chat) is
+  SwiftUI's `defaultScrollAnchor`, `set_default_scroll_anchor(Edge::End)`, the items
+  keeping their order. Revisit when an app needs the items themselves reversed and
+  reversing its data does not serve.
 - **A realization's unit tests over a windowless instance of itself** (2026-10-16), the
   drawn Linux prototype's tests that built its shell with no backend, fed it synthetic
   pointer and key events and read its pixmap and its own tree: they read what no reader

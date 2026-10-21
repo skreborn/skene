@@ -1,0 +1,32 @@
+# taffy 0.15.0 (crates.io)
+item 0: ComputeSize Horizontal known NonexSome(100.0) available max-contentx100
+item 0: ComputeSize Horizontal known NonexSome(100.0) available min-contentx100
+item 1: ComputeSize Horizontal known NonexSome(100.0) available max-contentx100
+item 1: ComputeSize Horizontal known NonexSome(100.0) available min-contentx100
+item 2: ComputeSize Horizontal known NonexSome(100.0) available max-contentx100
+item 2: ComputeSize Horizontal known NonexSome(100.0) available min-contentx100
+item 0: ComputeSize Vertical known Some(150.0)xNone available 600x100
+item 1: ComputeSize Vertical known Some(150.0)xNone available 600x100
+item 2: ComputeSize Vertical known Some(150.0)xNone available 600x100
+item 0: PerformLayout Both known Some(150.0)xSome(100.0) available 600x100
+item 1: PerformLayout Both known Some(150.0)xSome(100.0) available 600x100
+item 2: PerformLayout Both known Some(150.0)xSome(100.0) available 600x100
+measure calls: 12, of which an unknown height measured: 3
+item laid out at 150x100
+item laid out at 150x100
+item laid out at 150x100
+
+# with the change below applied
+item 0: ComputeSize Horizontal known NonexSome(100.0) available max-contentx100
+item 0: ComputeSize Horizontal known NonexSome(100.0) available min-contentx100
+item 1: ComputeSize Horizontal known NonexSome(100.0) available max-contentx100
+item 1: ComputeSize Horizontal known NonexSome(100.0) available min-contentx100
+item 2: ComputeSize Horizontal known NonexSome(100.0) available max-contentx100
+item 2: ComputeSize Horizontal known NonexSome(100.0) available min-contentx100
+item 0: PerformLayout Both known Some(150.0)xSome(100.0) available 600x100
+item 1: PerformLayout Both known Some(150.0)xSome(100.0) available 600x100
+item 2: PerformLayout Both known Some(150.0)xSome(100.0) available 600x100
+measure calls: 9, of which an unknown height measured: 0
+item laid out at 150x100
+item laid out at 150x100
+item laid out at 150x100

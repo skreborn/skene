@@ -889,7 +889,10 @@ migration is at the top of `ROADMAP.md`, and `DESIGN.md` describes the code as i
 - Aim for the absolute least duplication that sacrifices neither ergonomics nor
   performance: when the facades need the same machinery over different vocabularies, the
   foundation hosts it once as a small monomorphized generic (`Control<B>`,
-  `ConditionTree`), each facade keeping its own flat, medium-typed surface. Never share
+  `ConditionTree`), each facade keeping its own flat, medium-typed surface, and the
+  facade instantiates each of its concrete views once, in its own crate, so an app's
+  rebuild compiles the app's code alone; a view generic over an app's value
+  (`Picker<T>`) stays a thin layer over a core that is not. Never share
   via feature-gated variants or fields: cargo features are additive and unify across the
   build graph, so mutually-exclusive features break any build containing both facades.
 - Examples are targeted: one per feature, under `examples/gui/<name>` and

@@ -30,11 +30,11 @@
 # tools/bin.
 #
 # Appends to <out dir>/frames.txt (every [frame] line and every app-start TIMING line,
-# prefixed by leg, case and round), emptied first unless KEEP=1, and prints, per leg and case,
-# the medians over every run it holds, then BENCH lines judging each judged case's first frame
-# against its targets (under 50 ms, its layout under 16 ms) on every leg. Zero rounds prints what
-# <out dir>/frames.txt holds; FIRST numbers the first round (1 unless set), so runs appended by
-# several calls keep apart.
+# prefixed by leg, case and round), emptied first unless KEEP=1, and prints through
+# tools/bench/frames.py, per leg and case, the medians over every run it holds, then BENCH lines
+# judging each judged case's first frame against its targets (under 50 ms, its layout under
+# 16 ms) on every leg. Zero rounds prints what <out dir>/frames.txt holds; FIRST numbers the
+# first round (1 unless set), so runs appended by several calls keep apart.
 set -u
 release=$1; out=$2; rounds=${3:-6}
 here=$(cd "$(dirname "$0")/../.." && pwd)
@@ -79,40 +79,10 @@ one_round() { # one_round <round> <legs> <cases>
   done
 }
 
-# The judged cases whose first frame is undecided against a target, as `<leg> <case>` a line,
-# from frames.txt.
+# The judged cases whose first frame or layout is undecided against its target, as
+# `<leg> <case>` a line, from frames.txt.
 undecided() {
-  python3 -I - "$out/frames.txt" <<'PY'
-import re, sys
-from math import comb
-
-FRAME = re.compile(r"\[frame\] (\d+) total ([\d.]+) ms prepare ([\d.]+) layout ([\d.]+) ")
-JUDGED = ("rows", "lazy", "lazy-10k", "lazy-100k")
-firsts = {}
-
-for line in open(sys.argv[1]):
-  leg, case, round_, rest = line.split(" ", 3)
-  match = FRAME.search(rest)
-
-  if case in JUDGED and match and (leg, case, round_) not in firsts:
-    firsts[(leg, case, round_)] = (float(match.group(2)), float(match.group(4)))
-
-def interval(values):
-  values = sorted(values)
-  n, k = len(values), 0
-  while sum(comb(n, i) for i in range(k + 1)) / 2 ** n <= 0.025:
-    k += 1
-  return (values[k - 1], values[n - k]) if k else None
-
-for leg, case in sorted({(leg, case) for leg, case, _ in firsts}):
-  for index, target in ((0, 50), (1, 16)):
-    values = [value[index] for (one, kind, _), value in firsts.items() if (one, kind) == (leg, case)]
-    bounds = interval(values)
-
-    if bounds is None or bounds[0] < target < bounds[1] or target in bounds:
-      print(leg, case)
-      break
-PY
+  python3 -I "$here/tools/bench/frames.py" undecided "$out/frames.txt"
 }
 
 first=${FIRST:-1}
@@ -132,89 +102,4 @@ if [ "$rounds" -gt 0 ]; then
   done
 fi
 
-python3 -I - "$out/frames.txt" <<'PY'
-import re, statistics, sys
-from math import comb
-
-FRAME = re.compile(
-  r"\[frame\] (\d+) total ([\d.]+) ms prepare ([\d.]+) layout ([\d.]+) record ([\d.]+) "
-  r"raster ([\d.]+) glyphs ([\d.]+) (full|damage) region (\d+)x(\d+)"
-)
-runs = {}
-starts = {}
-
-for line in open(sys.argv[1]):
-  leg, case, round_, rest = line.split(" ", 3)
-
-  if rest.startswith("TIMING"):
-    starts.setdefault((leg, case), []).append(float(re.search(r"(\d+) ms", rest).group(1)))
-
-    continue
-
-  match = FRAME.search(rest)
-
-  if match:
-    runs.setdefault((leg, case), {}).setdefault(round_, []).append(match.groups())
-
-def median(values):
-  return f"{statistics.median(values):.2f} [{min(values):.2f}-{max(values):.2f}]" if values else "none"
-
-def interval(values):
-  """The 95% interval of the median, between two order statistics; None under six values."""
-  values = sorted(values)
-  n, k = len(values), 0
-  while sum(comb(n, i) for i in range(k + 1)) / 2 ** n <= 0.025:
-    k += 1
-  return (values[k - 1], values[n - k]) if k else None
-
-def verdict(values, target):
-  bounds = interval(values)
-  middle = statistics.median(values)
-  if bounds is None:
-    return f"{middle:.2f} ms (n={len(values)}, too few rounds for an interval: undecided against {target})"
-  low, high = bounds
-  word = "under" if high < target else "NOT under" if low > target else "undecided against"
-  return f"{middle:.2f} ms (95% interval {low:.2f}-{high:.2f}, n={len(values)}: {word} {target})"
-
-verdicts = []
-
-for (leg, case), rounds in sorted(runs.items()):
-  firsts = [frames[0] for frames in rounds.values()]
-  later = [frame for frames in rounds.values() for frame in frames[1:]]
-  area = float(firsts[0][8]) * float(firsts[0][9])
-  parts = {
-    name: [float(first[index]) for first in firsts]
-    for index, name in enumerate(["total", "prepare", "layout", "record", "raster", "glyphs"], 1)
-  }
-  print(
-    f"{leg} {case} (runs {len(firsts)}): first frame {median(parts['total'])} ms "
-    f"(prepare {median(parts['prepare'])}, layout {median(parts['layout'])}, record "
-    f"{median(parts['record'])}, raster {median(parts['raster'])}, glyphs {median(parts['glyphs'])}); "
-    f"app start to first frame {median(starts.get((leg, case), []))} ms"
-  )
-
-  if case == "rows" or case in ("lazy", "lazy-10k", "lazy-100k"):
-    # After the first frame and the second (the window's focus shown), a frame that paints a
-    # small part is a hover; one that paints much of the window, or lays it out again (a lazy
-    # list realizing the rows it scrolls to), is a scroll.
-    driven = [frame for frames in rounds.values() for frame in frames[2:]]
-    small = [float(frame[1]) for frame in driven if frame[7] == "damage" and float(frame[8]) * float(frame[9]) < area / 4]
-    large = [
-      float(frame[1]) for frame in driven
-      if frame[7] == "full" or float(frame[8]) * float(frame[9]) >= area / 4
-    ]
-    print(f"{leg} {case}: hover {median(small)} ms (n={len(small)}); scroll {median(large)} ms (n={len(large)})")
-    verdicts.append(
-      f"BENCH {leg} {case} first frame {verdict(parts['total'], 50)}, layout {verdict(parts['layout'], 16)}"
-    )
-
-  if case.endswith("relayout"):
-    relayouts = [float(frame[1]) for frame in later if frame[7] == "full"]
-    parts = [[float(frame[index]) for frame in later if frame[7] == "full"] for index in (2, 3)]
-    print(
-      f"{leg} {case}: relayout {median(relayouts)} ms (n={len(relayouts)}; prepare "
-      f"{median(parts[0])}, layout {median(parts[1])})"
-    )
-
-print("\n".join(verdicts))
-PY
+python3 -I "$here/tools/bench/frames.py" summary "$out/frames.txt"

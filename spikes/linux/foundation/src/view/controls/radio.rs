@@ -1,16 +1,16 @@
 //! A radio group and its radios.
 
-use std::rc::Rc;
+use std::{marker::PhantomData, rc::Rc};
 
 use crate::{
   Alignment, AxisAlignment, Border, Dimension, Spacing, State, SystemColors, Value,
-  behavior::{Behavior, Choice, Controlled, RadioGroup as Group},
+  behavior::{AnyChoice, Behavior, Choice, Controlled, RadioGroup as Group},
   layout::Axis,
   seam::{Realization, control::Part},
   view::{
     AnyKind, AnyView, AsPart, AsPartBase, Column, ColumnBase, Container, ContainerBase,
     ControlBase, ControlMembersBase, Cx, DecorationBase, Label, Node, Painted, PaintedBase,
-    RunBase, View, Wraps,
+    RunBase, Thin, View, Wraps,
     controls::{
       Pending,
       choice::{GroupOptions, HasChoice, HasOptions, OptionSegment},
@@ -28,12 +28,13 @@ use crate::{
 /// can be disabled.
 #[must_use]
 pub struct Radio<R: Realization> {
-  /// The control it composes, its defaults set, given its behavior by its group.
+  /// The control it composes, captioned, its defaults set and its behavior given as its group
+  /// builds it.
   control: crate::view::Control<Pending, R>,
-  /// The face the mark sits in.
-  face: Container<R>,
-  /// The mark.
-  mark: AnyView<R>,
+  /// The face the mark sits in; the default where unset.
+  face: Option<Container<R>>,
+  /// The mark; the default where unset.
+  mark: Option<AnyView<R>>,
 }
 
 wraps_itself!(Radio<R> where R: Realization);
@@ -74,14 +75,23 @@ impl<R: Realization> Radio<R> {
       .set_height(Dimension::Fraction(1.))
   }
 
-  /// The control this radio is, over `behavior`.
+  /// The control this radio is, over `behavior`, its defaults set.
   fn into_control<B: Behavior>(self, behavior: B) -> crate::view::Control<B, R> {
-    let face = self
-      .face
-      .set_child(AsPart::new(Part::Mark).set_child(self.mark));
+    let Self {
+      control,
+      face,
+      mark,
+    } = self;
+    let defaults = crate::view::Control::new(Pending)
+      .set_item_alignment(AxisAlignment::Center)
+      .set_spacing(8);
+    let mark = mark.unwrap_or_else(|| Self::default_mark().into_any());
+    let face = face
+      .unwrap_or_else(Self::default_face)
+      .set_child(AsPart::new(Part::Mark).set_child(mark));
 
-    self
-      .control
+    control
+      .over(defaults)
       .with_behavior(behavior)
       .add_part(Part::Face, face)
   }
@@ -93,19 +103,16 @@ pub trait RadioBase<R: Realization>: Wraps<Inner = Radio<R>> {
   /// [`Label::set_name`].
   fn new(label: impl Into<Label<R>>) -> Self {
     Self::wrap(Radio {
-      control: crate::view::Control::new(Pending)
-        .set_item_alignment(AxisAlignment::Center)
-        .set_spacing(8)
-        .set_label(label),
-      face: Radio::<R>::default_face(),
-      mark: Radio::<R>::default_mark().into_any(),
+      control: crate::view::Control::new(Pending).set_label(label),
+      face: None,
+      mark: None,
     })
   }
 
   /// The face, in place of [`Radio::default_face`]; the mark is placed in it, so a child it
   /// holds is replaced.
   fn set_face(mut self, face: impl Wraps<Inner = Container<R>>) -> Self {
-    self.inner_mut().face = face.into_inner();
+    self.inner_mut().face = Some(face.into_inner());
 
     self
   }
@@ -113,7 +120,7 @@ pub trait RadioBase<R: Realization>: Wraps<Inner = Radio<R>> {
   /// The mark, in place of [`Radio::default_mark`]: any view, drawn under the radio's states
   /// (`State::Checked` while chosen).
   fn set_mark(mut self, mark: impl View<R>) -> Self {
-    self.inner_mut().mark = mark.into_any();
+    self.inner_mut().mark = Some(mark.into_any());
 
     self
   }
@@ -122,7 +129,7 @@ pub trait RadioBase<R: Realization>: Wraps<Inner = Radio<R>> {
 impl<R: Realization> RadioBase<R> for Radio<R> {}
 
 /// What makes a group's radio from its value and its caption.
-type OptionBuilder<T, R> = Rc<dyn Fn(&T, Label<R>) -> Radio<R>>;
+type OptionBuilder<R> = Rc<dyn Fn(&AnyChoice, Label<R>) -> Radio<R>>;
 
 /// One choice of a few, all shown, with its caption: Skene's radio group, drawn on every
 /// platform. It holds a `T`, each option carrying one. It is a [`crate::view::Control`] over a
@@ -137,33 +144,70 @@ type OptionBuilder<T, R> = Rc<dyn Fn(&T, Label<R>) -> Radio<R>>;
 /// [`ChoiceBase::handle_choose`] for each choice, and shows the truth. A group that starts with
 /// nothing chosen holds an `Option`, its options tagged `Some(..)`.
 ///
+/// It is thin over a [`RadioGroupCore`], which holds its values with their type erased
+/// ([`AnyChoice`]).
+///
 /// [`ChoiceBase::derive_chosen`]: crate::view::ChoiceBase::derive_chosen
 /// [`ChoiceBase::handle_choose`]: crate::view::ChoiceBase::handle_choose
 #[must_use]
 pub struct RadioGroup<T: Choice, R: Realization> {
-  /// The control it composes, its defaults set.
-  control: crate::view::Control<Group<T>, R>,
+  /// The group, its values' type erased.
+  core: RadioGroupCore<R>,
+  /// The type of its values.
+  value: PhantomData<fn(T) -> T>,
+}
+
+/// A [`RadioGroup`] with its values' type erased: what every radio group builds.
+#[must_use]
+pub struct RadioGroupCore<R: Realization> {
+  /// The control it composes, captioned, its defaults set and its behavior given as it is
+  /// built.
+  control: crate::view::Control<Pending, R>,
+  /// What it has chosen.
+  chosen: Controlled<AnyChoice>,
   /// Its options' runs.
-  segments: Vec<OptionSegment<T, R>>,
-  /// The space between the options.
-  option_spacing: Value<Spacing>,
-  /// What makes each option's radio.
-  builder: OptionBuilder<T, R>,
+  segments: Vec<OptionSegment<R>>,
+  /// The space between the options; 6 where unset.
+  option_spacing: Option<Value<Spacing>>,
+  /// What makes each option's radio; [`Radio::new`] where unset.
+  builder: Option<OptionBuilder<R>>,
 }
 
 wraps_itself!(RadioGroup<T, R> where T: Choice, R: Realization);
 
-control_surfaces!([T: Choice, R: Realization] RadioGroup<T, R>, R => control);
+control_surfaces!([T: Choice, R: Realization] RadioGroup<T, R>, R => core.control);
 
 impl<T: Choice, R: Realization> HasChoice<T> for RadioGroup<T, R> {
   fn change_chosen(&mut self, change: impl FnOnce(&mut Controlled<T>)) {
-    self.control.behavior().roster().change_chosen(change);
+    let mut typed = Controlled::new();
+
+    change(&mut typed);
+
+    self
+      .core
+      .chosen
+      .merge(typed.map(AnyChoice::new, |value: AnyChoice| {
+        value.value::<T>().clone()
+      }));
   }
 }
 
-impl<T: Choice, R: Realization> HasOptions<T, R> for RadioGroup<T, R> {
-  fn segments_mut(&mut self) -> &mut Vec<OptionSegment<T, R>> {
-    &mut self.segments
+impl<T: Choice, R: Realization> HasOptions<R> for RadioGroup<T, R> {
+  fn segments_mut(&mut self) -> &mut Vec<OptionSegment<R>> {
+    &mut self.core.segments
+  }
+}
+
+impl<R: Realization> RadioGroupCore<R> {
+  /// A radio group labelled `label`, with no options.
+  pub fn new(label: Label<R>) -> Self {
+    Self {
+      control: crate::view::Control::new(Pending).set_label(label),
+      chosen: Controlled::new(),
+      segments: Vec::new(),
+      option_spacing: None,
+      builder: None,
+    }
   }
 }
 
@@ -173,19 +217,14 @@ pub trait RadioGroupBase<T: Choice, R: Realization>: Wraps<Inner = RadioGroup<T,
   /// A radio group labelled `label`, with no options.
   fn new(label: impl Into<Label<R>>) -> Self {
     Self::wrap(RadioGroup {
-      control: crate::view::Control::new(Group::new())
-        .set_axis(Axis::Vertical)
-        .set_spacing(6)
-        .set_label(label),
-      segments: Vec::new(),
-      option_spacing: Value::from(6),
-      builder: Rc::new(|_, label| Radio::new(label)),
+      core: RadioGroupCore::new(label.into()),
+      value: PhantomData,
     })
   }
 
   /// The space between the options, in pixels; 6 where unset.
   fn set_option_spacing(mut self, spacing: impl Into<Value<Spacing>>) -> Self {
-    self.inner_mut().option_spacing = spacing.into();
+    self.inner_mut().core.option_spacing = Some(spacing.into());
 
     self
   }
@@ -204,7 +243,9 @@ pub trait RadioGroupBase<T: Choice, R: Realization>: Wraps<Inner = RadioGroup<T,
     mut self,
     builder: impl Fn(&T, Label<R>) -> O + 'static,
   ) -> Self {
-    self.inner_mut().builder = Rc::new(move |value, label| builder(value, label).into_inner());
+    self.inner_mut().core.builder = Some(Rc::new(move |value, label| {
+      builder(value.value::<T>(), label).into_inner()
+    }));
 
     self
   }
@@ -214,17 +255,44 @@ impl<T: Choice, R: Realization> RadioGroupBase<T, R> for RadioGroup<T, R> {}
 
 impl<T: Choice, R: Realization> AnyKind for RadioGroup<T, R> {}
 
+impl<T: Choice, R: Realization> Thin<R> for RadioGroup<T, R> {
+  type Core = RadioGroupCore<R>;
+
+  fn into_core(self) -> RadioGroupCore<R> {
+    self.core
+  }
+}
+
 impl<T: Choice, R: Realization> View<R> for RadioGroup<T, R> {
+  fn build(self, cx: &mut Cx<R>) -> Node {
+    self.core.build(cx)
+  }
+}
+
+impl<R: Realization> AnyKind for RadioGroupCore<R> {}
+
+impl<R: Realization> View<R> for RadioGroupCore<R> {
   fn build(self, cx: &mut Cx<R>) -> Node {
     let Self {
       control,
+      chosen,
       segments,
       option_spacing,
       builder,
     } = self;
-    let roster = control.behavior().roster();
+    let group = Group::new();
+    let roster = group.roster();
     let options = GroupOptions::new(segments);
+    let defaults = crate::view::Control::new(Pending).set_spacing(6);
+    let control = control
+      .over(defaults)
+      .with_behavior(group)
+      .set_axis(Axis::Vertical);
+    let option_spacing = option_spacing.unwrap_or_else(|| Value::from(6));
+    let builder: OptionBuilder<R> =
+      builder.unwrap_or_else(|| Rc::new(|_, label| Radio::new(label)));
 
+    roster.change_chosen(|controlled| *controlled = chosen);
     roster.set_options(Rc::new(options.clone()));
 
     let radios = Column::new().set_spacing(option_spacing).derive_children(
@@ -234,7 +302,7 @@ impl<T: Choice, R: Realization> View<R> for RadioGroup<T, R> {
         move || options.values()
       },
       Clone::clone,
-      move |value: T| {
+      move |value: AnyChoice| {
         let member = Group::with_roster(Rc::clone(&roster)).member(value.clone());
 
         builder(&value, options.caption(&value)).into_control(member)

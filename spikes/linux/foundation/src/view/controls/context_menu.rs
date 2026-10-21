@@ -18,7 +18,9 @@ use crate::{
   view::{
     AnyKind, AsPart, AsPartBase, Child, Column, ColumnBase, Container, ContainerBase, ControlBase,
     ControlMembersBase, Cx, DecorationBase, Label, Node, NodeHandle, Overlay, OverlayBase, RunBase,
-    Text, TextBase, View, Wraps, controls::control_surfaces, wraps_itself,
+    Text, TextBase, View, Wraps,
+    controls::{Pending, control_surfaces},
+    wraps_itself,
   },
 };
 
@@ -208,8 +210,9 @@ impl MenuEntry {
 /// focus is on it (where the keys and the pointer move it).
 #[must_use]
 pub struct MenuItem<R: Realization> {
-  /// The control it composes, its defaults set, over a behavior its menu replaces.
-  control: crate::view::Control<MenuOption, R>,
+  /// The control it composes, captioned, its defaults set as its menu builds it, given its
+  /// behavior then.
+  control: crate::view::Control<Pending, R>,
 }
 
 wraps_itself!(MenuItem<R> where R: Realization);
@@ -217,18 +220,9 @@ wraps_itself!(MenuItem<R> where R: Realization);
 control_surfaces!([R: Realization] MenuItem<R>, R => control);
 
 impl<R: Realization> MenuItem<R> {
-  /// The control this item is, over `behavior`.
+  /// The control this item is, over `behavior`, its defaults set.
   fn into_control(self, behavior: MenuOption) -> crate::view::Control<MenuOption, R> {
-    self.control.map_behavior(|_| behavior)
-  }
-}
-
-/// What a [`MenuItem`] carries: every control's members.
-pub trait MenuItemBase<R: Realization>: Wraps<Inner = MenuItem<R>> {
-  /// An item labelled `label`: a text names it, a view by the texts it shows or through
-  /// [`Label::set_name`].
-  fn new(label: impl Into<Label<R>>) -> Self {
-    let control = crate::view::Control::new(Menu::new().member(0))
+    let defaults = crate::view::Control::new(Pending)
       .set_min_height(30)
       .set_padding(Inset::new(0, 12, 0, 12))
       .set_corner_radius(6)
@@ -237,10 +231,20 @@ pub trait MenuItemBase<R: Realization>: Wraps<Inner = MenuItem<R>> {
       .set_background(
         Value::from(Color::TRANSPARENT).when(State::Focused, SystemColors::CONTROL_HOVER),
       )
-      .set_label_placement(LabelPlacement::Leading)
-      .set_label(label);
+      .set_label_placement(LabelPlacement::Leading);
 
-    Self::wrap(MenuItem { control })
+    self.control.over(defaults).with_behavior(behavior)
+  }
+}
+
+/// What a [`MenuItem`] carries: every control's members.
+pub trait MenuItemBase<R: Realization>: Wraps<Inner = MenuItem<R>> {
+  /// An item labelled `label`: a text names it, a view by the texts it shows or through
+  /// [`Label::set_name`].
+  fn new(label: impl Into<Label<R>>) -> Self {
+    Self::wrap(MenuItem {
+      control: crate::view::Control::new(Pending).set_label(label),
+    })
   }
 }
 
@@ -265,10 +269,10 @@ type ItemBuilder<R> = Rc<dyn Fn(&MenuEntry) -> MenuItem<R>>;
 pub struct ContextMenu<R: Realization> {
   /// Its entries.
   entries: Vec<MenuEntry>,
-  /// The box around the open list.
-  list: Container<R>,
-  /// What makes each item.
-  builder: ItemBuilder<R>,
+  /// The box around the open list; the default where unset.
+  list: Option<Container<R>>,
+  /// What makes each item; [`MenuItem::new`] over the entry's caption where unset.
+  builder: Option<ItemBuilder<R>>,
   /// The node the entries act on, where it is not the child's.
   target: Option<NodeHandle>,
   /// The view it is the menu of.
@@ -324,8 +328,8 @@ pub trait ContextMenuBase<R: Realization>: Wraps<Inner = ContextMenu<R>> {
   fn new() -> Self {
     Self::wrap(ContextMenu {
       entries: Vec::new(),
-      list: ContextMenu::<R>::default_list(),
-      builder: Rc::new(|entry| MenuItem::new(entry.caption())),
+      list: None,
+      builder: None,
       target: None,
       child: None,
     })
@@ -347,7 +351,7 @@ pub trait ContextMenuBase<R: Realization>: Wraps<Inner = ContextMenu<R>> {
   /// The box around the open list, in place of [`ContextMenu::default_list`]; the items are
   /// placed in it, so a child it holds is replaced.
   fn set_list(mut self, list: impl Wraps<Inner = Container<R>>) -> Self {
-    self.inner_mut().list = list.into_inner();
+    self.inner_mut().list = Some(list.into_inner());
 
     self
   }
@@ -358,7 +362,7 @@ pub trait ContextMenuBase<R: Realization>: Wraps<Inner = ContextMenu<R>> {
     mut self,
     builder: impl Fn(&MenuEntry) -> I + 'static,
   ) -> Self {
-    self.inner_mut().builder = Rc::new(move |entry| builder(entry).into_inner());
+    self.inner_mut().builder = Some(Rc::new(move |entry| builder(entry).into_inner()));
 
     self
   }
@@ -419,6 +423,8 @@ impl<R: Realization> View<R> for ContextMenu<R> {
       return Node::new(segment);
     }
 
+    let list = list.unwrap_or_else(Self::default_list);
+    let builder = builder.unwrap_or_else(|| Rc::new(|entry| MenuItem::new(entry.caption())));
     let built = Self::target_in(inner.id());
     let target = move || target.and_then(|target| target.node()).unwrap_or(built);
     let entries = Rc::new(entries);

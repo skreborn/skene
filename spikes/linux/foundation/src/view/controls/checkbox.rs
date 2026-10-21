@@ -8,7 +8,7 @@ use crate::{
     AnyKind, AnyView, AsPart, AsPartBase, Container, ContainerBase, ControlBase,
     ControlMembersBase, Cx, DecorationBase, Label, Node, Painted, PaintedBase, RunBase, View,
     Wraps,
-    controls::{control_surfaces, focus_ring, marks},
+    controls::{Pending, control_surfaces, focus_ring, marks},
     wraps_itself,
   },
 };
@@ -26,12 +26,14 @@ use crate::{
 /// control's states, its hover included, so hovering the caption highlights it.
 #[must_use]
 pub struct Checkbox<R: Realization> {
-  /// The control it composes, its defaults set.
+  /// The control it composes, its defaults set as it is built.
   control: crate::view::Control<Behavior, R>,
-  /// The face the mark sits in.
-  face: Container<R>,
-  /// The mark.
-  mark: AnyView<R>,
+  /// Its caption.
+  label: String,
+  /// The face the mark sits in; the default where unset.
+  face: Option<Container<R>>,
+  /// The mark; the default where unset.
+  mark: Option<AnyView<R>>,
 }
 
 wraps_itself!(Checkbox<R> where R: Realization);
@@ -81,15 +83,11 @@ impl<R: Realization> Checkbox<R> {
 pub trait CheckboxBase<R: Realization>: Wraps<Inner = Checkbox<R>> {
   /// A checkbox labelled `label`, unchecked.
   fn new(label: impl Into<String>) -> Self {
-    let control = crate::view::Control::new(Behavior::checkbox())
-      .set_item_alignment(AxisAlignment::Center)
-      .set_spacing(8)
-      .set_label(Label::from(label.into()));
-
     Self::wrap(Checkbox {
-      control,
-      face: Checkbox::<R>::default_face(),
-      mark: Checkbox::<R>::default_mark().into_any(),
+      control: crate::view::Control::new(Behavior::checkbox()),
+      label: label.into(),
+      face: None,
+      mark: None,
     })
   }
 
@@ -150,7 +148,7 @@ pub trait CheckboxBase<R: Realization>: Wraps<Inner = Checkbox<R>> {
   /// The face, in place of [`Checkbox::default_face`]; the mark is placed in it, so a child
   /// it holds is replaced.
   fn set_face(mut self, face: impl Wraps<Inner = Container<R>>) -> Self {
-    self.inner_mut().face = face.into_inner();
+    self.inner_mut().face = Some(face.into_inner());
 
     self
   }
@@ -158,7 +156,7 @@ pub trait CheckboxBase<R: Realization>: Wraps<Inner = Checkbox<R>> {
   /// The mark, in place of [`Checkbox::default_mark`]: any view, drawn under the checkbox's
   /// states (`State::Checked`, `State::Indeterminate`).
   fn set_mark(mut self, mark: impl View<R>) -> Self {
-    self.inner_mut().mark = mark.into_any();
+    self.inner_mut().mark = Some(mark.into_any());
 
     self
   }
@@ -170,10 +168,21 @@ impl<R: Realization> AnyKind for Checkbox<R> {}
 
 impl<R: Realization> View<R> for Checkbox<R> {
   fn build(self, cx: &mut Cx<R>) -> Node {
-    let face = self
-      .face
-      .set_child(AsPart::new(Part::Mark).set_child(self.mark));
+    let Self {
+      control,
+      label,
+      face,
+      mark,
+    } = self;
+    let defaults = crate::view::Control::new(Pending)
+      .set_item_alignment(AxisAlignment::Center)
+      .set_spacing(8)
+      .set_label(Label::from(label));
+    let mark = mark.unwrap_or_else(|| Self::default_mark().into_any());
+    let face = face
+      .unwrap_or_else(Self::default_face)
+      .set_child(AsPart::new(Part::Mark).set_child(mark));
 
-    self.control.add_part(Part::Face, face).build(cx)
+    control.over(defaults).add_part(Part::Face, face).build(cx)
   }
 }

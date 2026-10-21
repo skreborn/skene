@@ -199,11 +199,14 @@ impl Definitions {
 
   /// Adds `token`'s definition, replacing one of the same name.
   pub fn add<T>(&mut self, token: &Token<T>) -> &mut Self {
-    let name = token.reference.name;
+    self.put(token.reference.name, &token.definition)
+  }
 
+  /// Defines the token named `name` as `definition`, replacing one of the same name.
+  fn put(&mut self, name: &'static str, definition: &Definition) -> &mut Self {
     match self.0.iter_mut().find(|(defined, _)| *defined == name) {
-      Some((_, definition)) => *definition = token.definition.clone(),
-      None => self.0.push((name, token.definition.clone())),
+      Some((_, defined)) => *defined = definition.clone(),
+      None => self.0.push((name, definition.clone())),
     }
 
     self
@@ -217,6 +220,11 @@ impl Definitions {
       .iter()
       .find(|(defined, _)| *defined == name)
       .map(|(_, definition)| definition)
+  }
+
+  /// What returns these definitions each time it is asked: a palette that never changes.
+  pub fn constant(self) -> Box<dyn Fn() -> Self> {
+    Box::new(move || self.clone())
   }
 
   /// Each name with its definition, in the order added.

@@ -266,7 +266,7 @@ impl Radio {
 #[must_use]
 pub struct RadioGroup<T: Choice>(base::RadioGroup<T, Active>);
 
-wraps!([T: Choice] RadioGroup<T> => base::RadioGroup<T, Active>, Active);
+wraps!(thin [T: Choice] RadioGroup<T> => base::RadioGroup<T, Active>, base::RadioGroupCore<Active>, Active);
 
 impl<T: Choice> RadioGroupBase<T, Active> for RadioGroup<T> {}
 
@@ -415,7 +415,7 @@ impl PickerItem {
 #[must_use]
 pub struct Picker<T: Choice>(base::Picker<T, Active>);
 
-wraps!([T: Choice] Picker<T> => base::Picker<T, Active>, Active);
+wraps!(thin [T: Choice] Picker<T> => base::Picker<T, Active>, base::PickerCore<Active>, Active);
 
 impl<T: Choice> PickerBase<T, Active> for Picker<T> {}
 
@@ -436,13 +436,21 @@ impl<T: Choice> MotionBase for Picker<T> {}
 impl<T: Choice> Picker<T> {
   /// The default mark: [`marks::chevron`], 12 by 8 pixels.
   pub fn default_mark() -> Painted {
-    Painted::wrap(base::Picker::<T, Active>::default_mark())
+    fn mark() -> Painted {
+      Painted::wrap(base::PickerCore::<Active>::default_mark())
+    }
+
+    mark()
   }
 
   /// The default list: the field color inside a border of 1, its corners rounded by 8, padded
   /// 4.
   pub fn default_list() -> Container {
-    Container::wrap(base::Picker::<T, Active>::default_list())
+    fn list() -> Container {
+      Container::wrap(base::PickerCore::<Active>::default_list())
+    }
+
+    list()
   }
 }
 
@@ -493,7 +501,7 @@ impl MotionBase for ListboxItem {}
 #[must_use]
 pub struct Listbox<C: Chosen>(base::Listbox<C, Active>);
 
-wraps!([C: Chosen] Listbox<C> => base::Listbox<C, Active>, Active);
+wraps!(thin [C: Chosen] Listbox<C> => base::Listbox<C, Active>, base::ListboxCore<Active>, Active);
 
 impl<C: Chosen> ListboxBase<C, Active> for Listbox<C> {}
 
@@ -515,7 +523,11 @@ impl<C: Chosen> Listbox<C> {
   /// The default list: the field color inside a border of 1, its corners rounded by 8, padded
   /// 4.
   pub fn default_list() -> Container {
-    Container::wrap(base::Listbox::<C, Active>::default_list())
+    fn list() -> Container {
+      Container::wrap(base::ListboxCore::<Active>::default_list())
+    }
+
+    list()
   }
 }
 

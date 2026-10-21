@@ -19,7 +19,7 @@ use crate::{
   },
   view::{
     Access, AnyKind, AnyView, Child, ChildOf, ContentName, Cx, DecorationBase, HasRecord,
-    MotionBase, Node, NodeHandle, Row, RunBase, RunWithEntries, Text, TextBase, View, Wraps,
+    MotionBase, Node, NodeHandle, Row, RunBase, RunWithEntries, Text, TextBase, Thin, View, Wraps,
     trait_properties, wraps_itself,
   },
 };
@@ -28,7 +28,7 @@ use crate::{
 /// known. A text's label is named by its text.
 #[must_use]
 pub struct Label<R: Realization> {
-  view: Child<R>,
+  view: Option<Child<R>>,
   name: Option<Rc<dyn Fn() -> Rc<str>>>,
   empty: bool,
   text: Option<Rc<str>>,
@@ -39,10 +39,18 @@ impl<R: Realization> Label<R> {
   /// column, so a `Flexible` places it there.
   pub fn new(view: impl ChildOf<Row<R>, R>) -> Self {
     Self {
-      view: Child::of::<Row<R>>(view),
+      view: Some(Child::of::<Row<R>>(view)),
       name: None,
       empty: false,
       text: None,
+    }
+  }
+
+  /// What shows the caption: its view, or a text's text, made as it is built.
+  fn into_view(self) -> Child<R> {
+    match self.view {
+      Some(view) => view,
+      None => Child::view(Text::<R>::new(self.text.as_deref().unwrap_or_default())),
     }
   }
 
@@ -93,12 +101,13 @@ impl<R: Realization> Label<R> {
     self,
     wrap: impl FnOnce(AnyView<R>) -> V + 'static,
   ) -> Self {
-    let view = self.view;
+    let (name, empty) = (self.name.clone(), self.empty);
 
     Self {
-      view: Child::of::<Row<R>>(wrap(AnyView(view))),
+      view: Some(Child::of::<Row<R>>(wrap(AnyView(self.into_view())))),
+      name,
+      empty,
       text: None,
-      ..self
     }
   }
 }
@@ -117,12 +126,13 @@ impl<R: Realization> From<String> for Label<R> {
 
 impl<R: Realization> From<Rc<str>> for Label<R> {
   fn from(text: Rc<str>) -> Self {
-    let empty = text.is_empty();
+    let name = Rc::clone(&text);
 
     Self {
-      empty,
-      text: Some(Rc::clone(&text)),
-      ..Self::new(Text::<R>::new(text.to_string())).set_name(text)
+      view: None,
+      name: Some(Rc::new(move || Rc::clone(&name))),
+      empty: text.is_empty(),
+      text: Some(text),
     }
   }
 }
@@ -210,6 +220,26 @@ impl<R: Realization> Members<R> {
   pub const fn record(&self) -> &Record {
     &self.record
   }
+
+  /// These members over `defaults`: each given here in place of the default, the record
+  /// folded over the defaults' record as setters called after them would have written it.
+  pub fn over(self, defaults: Self) -> Self {
+    let mut record = defaults.record;
+
+    record.fold(&self.record);
+
+    Self {
+      record,
+      label: self.label.or(defaults.label),
+      placement: self.placement.or(defaults.placement),
+      disabled: self.disabled.or(defaults.disabled),
+      access: self.access.over(defaults.access),
+      focus: self.focus.or(defaults.focus),
+      key: self.key.or(defaults.key),
+      handle: self.handle.or(defaults.handle),
+      autofocus: self.autofocus || defaults.autofocus,
+    }
+  }
 }
 
 /// A view whose root is a control's: what [`ControlMembersBase`] writes its members into.
@@ -235,9 +265,7 @@ pub trait ControlMembersBase<R: Realization>: Wraps<Inner: HasMembers<R>> {
   /// control without one, named by [`ControlMembersBase::set_accessible_name`] or a caption
   /// placed anywhere.
   fn set_label(mut self, label: impl Into<Label<R>>) -> Self {
-    let label = label.into();
-
-    self.inner_mut().members_mut().label = (!label.is_empty()).then_some(label);
+    self.inner_mut().members_mut().label = Some(label.into());
 
     self
   }
@@ -475,6 +503,14 @@ pub trait ControlBase<B: Behavior, R: Realization>: Wraps<Inner = Control<B, R>>
 }
 
 impl<B: Behavior, R: Realization> Control<B, R> {
+  /// This control over `defaults`: every member it was given in place of the default
+  /// ([`Members::over`]), as a styled control applies its defaults as it is built.
+  pub fn over<D: Behavior>(mut self, defaults: Control<D, R>) -> Self {
+    self.members = self.members.over(defaults.members);
+
+    self
+  }
+
   /// This control over `behavior` in place of its own, everything else it carries kept: a
   /// styled member given its behavior by its group as the group builds it.
   pub fn with_behavior<C: Behavior>(self, behavior: C) -> Control<C, R> {
@@ -502,18 +538,57 @@ impl<B: Behavior, R: Realization> MotionBase for Control<B, R> {}
 
 impl<B: Behavior, R: Realization> AnyKind for Control<B, R> {}
 
+impl<B: Behavior, R: Realization> Thin<R> for Control<B, R> {
+  type Core = ControlCore<R>;
+
+  fn into_core(self) -> ControlCore<R> {
+    ControlCore {
+      behavior: Rc::new(self.behavior),
+      axis: self.axis,
+      members: self.members,
+      parts: self.parts,
+      child: self.child,
+    }
+  }
+}
+
 impl<B: Behavior, R: Realization> View<R> for Control<B, R> {
+  fn build(self, cx: &mut Cx<R>) -> Node {
+    self.into_core().build(cx)
+  }
+}
+
+/// A [`Control`] with its behavior's type erased: what every control builds.
+#[must_use]
+pub struct ControlCore<R: Realization> {
+  /// What its interaction is.
+  behavior: Rc<dyn Behavior>,
+  /// The axis its label, parts and body lie along.
+  axis: Axis,
+  /// Everything it carries beside its behavior, its parts and its body.
+  members: Members<R>,
+  /// Its parts, in order.
+  parts: Vec<Child<R>>,
+  /// Its body.
+  child: Option<Child<R>>,
+}
+
+impl<R: Realization> AnyKind for ControlCore<R> {}
+
+impl<R: Realization> View<R> for ControlCore<R> {
   #[expect(clippy::too_many_lines, reason = "a control's every step, in order")]
   fn build(self, cx: &mut Cx<R>) -> Node {
     let Self {
       behavior,
       axis,
-      members,
+      mut members,
       parts,
       child,
     } = self;
-    let behavior = Rc::new(behavior);
     let role = behavior.role();
+
+    members.label = members.label.filter(|label| !label.is_empty());
+
     let placement = members
       .placement
       .unwrap_or_else(|| behavior.label_placement());
@@ -661,7 +736,7 @@ impl<B: Behavior, R: Realization> View<R> for Control<B, R> {
     }
 
     {
-      let control = |behavior: &Rc<B>| (Rc::clone(behavior), handle.clone());
+      let control = |behavior: &Rc<dyn Behavior>| (Rc::clone(behavior), handle.clone());
       let ((key_behavior, key_handle), (pointer_behavior, pointer_handle)) =
         (control(&behavior), control(&behavior));
       let ((click_behavior, click_handle), (access_behavior, access_handle)) =
@@ -700,7 +775,7 @@ impl<B: Behavior, R: Realization> View<R> for Control<B, R> {
     inner.set_control(id);
 
     let label = members.label.map(|label| {
-      let view = label.view;
+      let view = label.into_view();
 
       Child::new(move |cx: &mut Cx<R>| {
         cx.set_part(Part::Label);

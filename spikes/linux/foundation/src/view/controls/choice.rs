@@ -1,11 +1,11 @@
 //! What the choice groups share: what they have chosen, and their options, each carrying a
-//! value of the app's own type.
+//! value of the app's own type, held with its type erased ([`AnyChoice`]) once given.
 
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use crate::{
   Effect, Signal,
-  behavior::{Choice, Controlled, Options},
+  behavior::{AnyChoice, Choice, Controlled, Options},
   seam::Realization,
   untrack,
   view::{Label, Wraps},
@@ -18,11 +18,11 @@ type Name = Rc<dyn Fn() -> Rc<str>>;
 type Caption<R> = Rc<dyn Fn() -> Label<R>>;
 
 /// What captions each option of a derived run, from its value.
-type Captioner<T, R> = Rc<dyn Fn(&T) -> Label<R>>;
+type Captioner<R> = Rc<dyn Fn(&AnyChoice) -> Label<R>>;
 
 /// A fixed run's option: its value, what supplies its name, and its caption: a text built as
 /// often as asked, a view until it is built.
-type FixedOption<T, R> = (T, Option<Name>, FixedCaption<R>);
+type FixedOption<R> = (AnyChoice, Option<Name>, FixedCaption<R>);
 
 /// A fixed option's caption: a text, or a view given once, until it is built.
 enum FixedCaption<R: Realization> {
@@ -31,57 +31,57 @@ enum FixedCaption<R: Realization> {
 }
 
 /// One run of a choice group's options: given one by one or as a list, or derived from the
-/// app's data. A group's options are its runs, in order.
-pub enum OptionSegment<T: Choice, R: Realization> {
+/// app's data, each value's type erased. A group's options are its runs, in order.
+pub enum OptionSegment<R: Realization> {
   /// Options given as they are, each with its caption.
-  Fixed(Vec<(T, Label<R>)>),
+  Fixed(Vec<(AnyChoice, Label<R>)>),
   /// Options derived: the values `values` returns, each captioned by `label`, kept current.
   Derived {
     /// The options' values.
-    values: Rc<dyn Fn() -> Vec<T>>,
+    values: Rc<dyn Fn() -> Vec<AnyChoice>>,
     /// What captions each.
-    label: Captioner<T, R>,
+    label: Captioner<R>,
   },
 }
 
 /// One option as a group's runs give it, with whether its caption is a view given once.
-struct Entry<T, R: Realization> {
-  value: T,
+struct Entry<R: Realization> {
+  value: AnyChoice,
   name: Option<Name>,
   caption: Caption<R>,
   once: bool,
 }
 
 /// A group's options in order, each value's place found by a map.
-struct List<T, R: Realization> {
-  entries: Vec<Entry<T, R>>,
-  places: HashMap<T, usize>,
+struct List<R: Realization> {
+  entries: Vec<Entry<R>>,
+  places: HashMap<AnyChoice, usize>,
 }
 
 /// A choice group's options as its runs give them, kept current as a derived run changes:
 /// what its roster moves through, and what builds each option's caption.
-pub struct GroupOptions<T: Choice, R: Realization> {
-  list: Signal<Rc<List<T, R>>>,
+pub struct GroupOptions<R: Realization> {
+  list: Signal<Rc<List<R>>>,
 }
 
-impl<T: Choice, R: Realization> Clone for GroupOptions<T, R> {
+impl<R: Realization> Clone for GroupOptions<R> {
   fn clone(&self) -> Self {
     Self { list: self.list }
   }
 }
 
-impl<T: Choice, R: Realization> GroupOptions<T, R> {
+impl<R: Realization> GroupOptions<R> {
   /// The options `segments` give, kept current under the running owner.
   ///
   /// # Panics
   ///
   /// In a debug build, where two options carry one value.
-  pub fn new(segments: Vec<OptionSegment<T, R>>) -> Self {
+  pub fn new(segments: Vec<OptionSegment<R>>) -> Self {
     let list = Signal::new(Rc::new(List {
       entries: Vec::new(),
       places: HashMap::new(),
     }));
-    let segments: Vec<Run<T, R>> = segments.into_iter().map(Run::of).collect();
+    let segments: Vec<Run<R>> = segments.into_iter().map(Run::of).collect();
 
     Effect::new(move || {
       let mut entries = Vec::new();
@@ -109,7 +109,7 @@ impl<T: Choice, R: Realization> GroupOptions<T, R> {
 
   /// The options' values in order, tracking them.
   #[must_use]
-  pub fn values(&self) -> Vec<T> {
+  pub fn values(&self) -> Vec<AnyChoice> {
     self.list.with(|list| {
       list
         .entries
@@ -121,7 +121,7 @@ impl<T: Choice, R: Realization> GroupOptions<T, R> {
 
   /// The caption of the option carrying `value`, as it is built: its own, a view given once
   /// shown by a text of its name where it was built already.
-  pub fn caption(&self, value: &T) -> Label<R> {
+  pub fn caption(&self, value: &AnyChoice) -> Label<R> {
     let caption = untrack(|| {
       self.list.with(|list| {
         list
@@ -138,7 +138,7 @@ impl<T: Choice, R: Realization> GroupOptions<T, R> {
   /// only once: a list building its options as they come into view keeps it built from then
   /// on.
   #[must_use]
-  pub fn caption_once(&self, value: &T) -> bool {
+  pub fn caption_once(&self, value: &AnyChoice) -> bool {
     untrack(|| {
       self.list.with(|list| {
         list
@@ -151,23 +151,23 @@ impl<T: Choice, R: Realization> GroupOptions<T, R> {
 
   /// The name of the option carrying `value`, where its caption states one, tracking it.
   #[must_use]
-  pub fn name_of(&self, value: &T) -> Option<Rc<str>> {
+  pub fn name_of(&self, value: &AnyChoice) -> Option<Rc<str>> {
     self.index_of(value).and_then(|index| self.name(index))
   }
 }
 
-impl<T: Choice, R: Realization> Options<T> for GroupOptions<T, R> {
+impl<R: Realization> Options<AnyChoice> for GroupOptions<R> {
   fn count(&self) -> usize {
     self.list.with(|list| list.entries.len())
   }
 
-  fn value(&self, index: usize) -> Option<T> {
+  fn value(&self, index: usize) -> Option<AnyChoice> {
     self
       .list
       .with(|list| list.entries.get(index).map(|entry| entry.value.clone()))
   }
 
-  fn index_of(&self, value: &T) -> Option<usize> {
+  fn index_of(&self, value: &AnyChoice) -> Option<usize> {
     self.list.with(|list| list.places.get(value).copied())
   }
 
@@ -182,16 +182,16 @@ impl<T: Choice, R: Realization> Options<T> for GroupOptions<T, R> {
 
 /// A run as a group keeps it once built: a fixed run's text captions made for each build and
 /// its view captions taken as their options are built, a derived run's made for each.
-enum Run<T: Choice, R: Realization> {
-  Fixed(Vec<FixedOption<T, R>>),
+enum Run<R: Realization> {
+  Fixed(Vec<FixedOption<R>>),
   Derived {
-    values: Rc<dyn Fn() -> Vec<T>>,
-    label: Captioner<T, R>,
+    values: Rc<dyn Fn() -> Vec<AnyChoice>>,
+    label: Captioner<R>,
   },
 }
 
-impl<T: Choice, R: Realization> Run<T, R> {
-  fn of(segment: OptionSegment<T, R>) -> Self {
+impl<R: Realization> Run<R> {
+  fn of(segment: OptionSegment<R>) -> Self {
     match segment {
       OptionSegment::Fixed(options) => Self::Fixed(
         options
@@ -212,7 +212,7 @@ impl<T: Choice, R: Realization> Run<T, R> {
   }
 
   /// Appends the run's options to `entries`, tracking a derived run's values.
-  fn entries(&self, entries: &mut Vec<Entry<T, R>>) {
+  fn entries(&self, entries: &mut Vec<Entry<R>>) {
     match self {
       Self::Fixed(options) => {
         for (value, name, caption) in options {
@@ -323,24 +323,25 @@ pub trait ChoiceBase<V: Clone + 'static>: Wraps<Inner: HasChoice<V>> {
 }
 
 /// A view over a choice group's options: what [`OptionsBase`] writes.
-pub trait HasOptions<T: Choice, R: Realization> {
+pub trait HasOptions<R: Realization> {
   /// Its options' runs, to append to or replace.
-  fn segments_mut(&mut self) -> &mut Vec<OptionSegment<T, R>>;
+  fn segments_mut(&mut self) -> &mut Vec<OptionSegment<R>>;
 }
 
 /// What every choice group's options are: runs of options each carrying a `T` and captioned by
 /// a label, given one by one, as a list, or derived from the app's data. They are its content,
 /// so they end its chain. A debug build panics where two options carry one value.
-pub trait OptionsBase<T: Choice, R: Realization>: Wraps<Inner: HasOptions<T, R>> {
+pub trait OptionsBase<T: Choice, R: Realization>: Wraps<Inner: HasOptions<R>> {
   /// Appends an option carrying `value`, captioned by `label`: a text names it, a view by the
   /// texts it shows once built, or through [`Label::set_name`], which type-ahead finds before
   /// the option is built.
   fn add_option(mut self, value: T, label: impl Into<Label<R>>) -> Self {
+    let option = (AnyChoice::new(value), label.into());
     let segments = self.inner_mut().segments_mut();
 
     match segments.last_mut() {
-      Some(OptionSegment::Fixed(options)) => options.push((value, label.into())),
-      _ => segments.push(OptionSegment::Fixed(vec![(value, label.into())])),
+      Some(OptionSegment::Fixed(options)) => options.push(option),
+      _ => segments.push(OptionSegment::Fixed(vec![option])),
     }
 
     self
@@ -351,7 +352,7 @@ pub trait OptionsBase<T: Choice, R: Realization>: Wraps<Inner: HasOptions<T, R>>
     *self.inner_mut().segments_mut() = vec![OptionSegment::Fixed(
       options
         .into_iter()
-        .map(|(value, label)| (value, label.into()))
+        .map(|(value, label)| (AnyChoice::new(value), label.into()))
         .collect(),
     )];
 
@@ -369,8 +370,8 @@ pub trait OptionsBase<T: Choice, R: Realization>: Wraps<Inner: HasOptions<T, R>>
       .inner_mut()
       .segments_mut()
       .push(OptionSegment::Derived {
-        values: Rc::new(values),
-        label: Rc::new(move |value| label(value).into()),
+        values: Rc::new(move || values().into_iter().map(AnyChoice::new).collect()),
+        label: Rc::new(move |value| label(value.value::<T>()).into()),
       });
 
     self

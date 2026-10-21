@@ -79,7 +79,7 @@ pub fn render<V: View>(app: impl FnOnce() -> V) -> Screen {
   skene_foundation::seam::testing::clear_probes();
 
   let owner = Owner::new();
-  let root = owner.run(|| __private::root(app));
+  let root = owner.run(|| __private::root(app().into_any()));
   let mut driver = Drawn::new();
 
   driver.show(owner, root);
@@ -109,7 +109,7 @@ pub fn open(name: &str) -> Screen {
 /// Registers the view `page` returns as a page named `name`, which a test opens by name
 /// ([`open`], [`Driver::open`]): what a conformance suite runs its scenarios on.
 pub fn register<V: View>(name: &'static str, page: fn() -> V) {
-  skene_foundation::seam::testing::register(name, move || __private::root(page));
+  skene_foundation::seam::testing::register(name, move || __private::root(page().into_any()));
 }
 
 /// Publishes a probe of the page being built: what a signal it binds holds, by name. The only

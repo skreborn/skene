@@ -8,7 +8,7 @@ use crate::{
   view::{
     AnyKind, AsPart, AsPartBase, Container, ContainerBase, ControlBase, ControlMembersBase, Cx,
     DecorationBase, Flexible, FlexibleBase, Label, Node, Text, TextBase, View, Wraps,
-    controls::{control_surfaces, focus_ring},
+    controls::{Pending, control_surfaces, focus_ring},
     wraps_itself,
   },
 };
@@ -25,12 +25,14 @@ use crate::{
 /// thumb moves by its own width while on, by paint alone.
 #[must_use]
 pub struct Toggle<R: Realization> {
-  /// The control it composes, its defaults set.
+  /// The control it composes, its defaults set as it is built.
   control: crate::view::Control<Behavior, R>,
-  /// The track.
-  track: Container<R>,
-  /// The thumb.
-  thumb: Container<R>,
+  /// Its caption.
+  label: String,
+  /// The track; the default where unset.
+  track: Option<Container<R>>,
+  /// The thumb; the default where unset.
+  thumb: Option<Container<R>>,
 }
 
 wraps_itself!(Toggle<R> where R: Realization);
@@ -76,23 +78,11 @@ impl<R: Realization> Toggle<R> {
 pub trait ToggleBase<R: Realization>: Wraps<Inner = Toggle<R>> {
   /// A switch labelled `label`, off.
   fn new(label: impl Into<String>) -> Self {
-    let label = label.into();
-    let caption = Flexible::new()
-      .set_flexibility(Flexibility {
-        grow: 1.,
-        shrink: 1.,
-        initial: Dimension::Auto,
-      })
-      .set_child(Text::<R>::new(label.clone()));
-    let control = crate::view::Control::new(Behavior::switch())
-      .set_item_alignment(AxisAlignment::Center)
-      .set_spacing(12)
-      .set_label(Label::new(caption).set_name(label));
-
     Self::wrap(Toggle {
-      control,
-      track: Toggle::<R>::default_track(),
-      thumb: Toggle::<R>::default_thumb(),
+      control: crate::view::Control::new(Behavior::switch()),
+      label: label.into(),
+      track: None,
+      thumb: None,
     })
   }
 
@@ -137,7 +127,7 @@ pub trait ToggleBase<R: Realization>: Wraps<Inner = Toggle<R>> {
   /// The track, in place of [`Toggle::default_track`]; the thumb is placed in it, so a child
   /// it holds is replaced.
   fn set_track(mut self, track: impl Wraps<Inner = Container<R>>) -> Self {
-    self.inner_mut().track = track.into_inner();
+    self.inner_mut().track = Some(track.into_inner());
 
     self
   }
@@ -145,7 +135,7 @@ pub trait ToggleBase<R: Realization>: Wraps<Inner = Toggle<R>> {
   /// The thumb, in place of [`Toggle::default_thumb`]. A track whose content is not twice the
   /// thumb's width moves the thumb by another `offset`.
   fn set_thumb(mut self, thumb: impl Wraps<Inner = Container<R>>) -> Self {
-    self.inner_mut().thumb = thumb.into_inner();
+    self.inner_mut().thumb = Some(thumb.into_inner());
 
     self
   }
@@ -157,10 +147,30 @@ impl<R: Realization> AnyKind for Toggle<R> {}
 
 impl<R: Realization> View<R> for Toggle<R> {
   fn build(self, cx: &mut Cx<R>) -> Node {
-    let track = self
-      .track
-      .set_child(AsPart::new(Part::Thumb).set_child(self.thumb));
+    let Self {
+      control,
+      label,
+      track,
+      thumb,
+    } = self;
+    let caption = Flexible::new()
+      .set_flexibility(Flexibility {
+        grow: 1.,
+        shrink: 1.,
+        initial: Dimension::Auto,
+      })
+      .set_child(Text::<R>::new(label.clone()));
+    let defaults = crate::view::Control::new(Pending)
+      .set_item_alignment(AxisAlignment::Center)
+      .set_spacing(12)
+      .set_label(Label::new(caption).set_name(label));
+    let track = track
+      .unwrap_or_else(Self::default_track)
+      .set_child(AsPart::new(Part::Thumb).set_child(thumb.unwrap_or_else(Self::default_thumb)));
 
-    self.control.add_part(Part::Track, track).build(cx)
+    control
+      .over(defaults)
+      .add_part(Part::Track, track)
+      .build(cx)
   }
 }

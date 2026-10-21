@@ -8,7 +8,8 @@ use crate::{
   seam::{Realization, content::TextSelection},
   view::{
     AnyKind, ContextMenu, ContextMenuBase, Control, ControlBase, ControlMembersBase, Cx,
-    DecorationBase, Node, RunBase, RunWithEntries, View, Wraps, controls::control_surfaces,
+    DecorationBase, Node, RunBase, RunWithEntries, View, Wraps,
+    controls::{Pending, control_surfaces},
     wraps_itself,
   },
 };
@@ -51,8 +52,8 @@ pub trait HasEntry<R: Realization>: Sized {
   #[must_use]
   fn map_entry(self, map: impl FnOnce(Control<TextEntry, R>) -> Control<TextEntry, R>) -> Self;
 
-  /// Its context menu, to replace.
-  fn menu_mut(&mut self) -> &mut ContextMenu<R>;
+  /// Its context menu, to replace; the standard one where unset.
+  fn menu_mut(&mut self) -> &mut Option<ContextMenu<R>>;
 }
 
 /// What every text entry carries: its context menu, its text, its selection and whether it is
@@ -62,7 +63,7 @@ pub trait EditingBase<R: Realization>: Wraps<Inner: HasEntry<R>> {
   /// the standard one ([`ContextMenuBase::standard`]); an empty one ([`ContextMenuBase::new`])
   /// opens none. Its child is the entry.
   fn set_context_menu(mut self, menu: impl Wraps<Inner = ContextMenu<R>>) -> Self {
-    *self.inner_mut().menu_mut() = menu.into_inner();
+    *self.inner_mut().menu_mut() = Some(menu.into_inner());
 
     self
   }
@@ -142,8 +143,8 @@ pub trait EditingBase<R: Realization>: Wraps<Inner: HasEntry<R>> {
 /// inside it), filled with [`SystemColors::FIELD`], its text in [`SystemColors::INK`], its
 /// placeholder in [`SystemColors::MUTED_INK`], its selection in [`SystemColors::SELECTION`]
 /// (and [`SystemColors::SELECTION_INACTIVE`] without focus).
-fn entry<R: Realization>(lines: u16) -> Control<TextEntry, R> {
-  Control::new(TextEntry::new(lines))
+fn entry<R: Realization>(lines: u16) -> Control<Pending, R> {
+  Control::new(Pending)
     .set_min_height(if lines > 1 { 96 } else { 34 })
     .set_min_width(60)
     .set_corner_radius(8)
@@ -160,12 +161,18 @@ fn entry<R: Realization>(lines: u16) -> Control<TextEntry, R> {
     .set_placeholder_color(SystemColors::MUTED_INK)
 }
 
-/// Builds `control` in `cx` inside `menu`; alone where the menu has no entry.
+/// Builds `control`, of `lines` lines and captioned `label`, its defaults set, in `cx` inside
+/// `menu` (the standard one where unset); alone where the menu has no entry.
 fn with_menu<R: Realization>(
   control: Control<TextEntry, R>,
-  menu: ContextMenu<R>,
+  lines: u16,
+  label: String,
+  menu: Option<ContextMenu<R>>,
   cx: &mut Cx<R>,
 ) -> Node {
+  let control = control.over(entry(lines).set_label(label));
+  let menu = menu.unwrap_or_else(ContextMenu::standard);
+
   if menu.is_empty() {
     return control.build(cx);
   }
@@ -185,10 +192,12 @@ fn with_menu<R: Realization>(
 /// ([`ContextMenuBase::standard`]) unless set otherwise ([`EditingBase::set_context_menu`]).
 #[must_use]
 pub struct TextField<R: Realization> {
-  /// The control it composes, its defaults set.
+  /// The control it composes, its defaults set as it is built.
   control: Control<TextEntry, R>,
-  /// Its context menu.
-  menu: ContextMenu<R>,
+  /// Its caption.
+  label: String,
+  /// Its context menu; the standard one where unset.
+  menu: Option<ContextMenu<R>>,
 }
 
 wraps_itself!(TextField<R> where R: Realization);
@@ -202,7 +211,7 @@ impl<R: Realization> HasEntry<R> for TextField<R> {
     self
   }
 
-  fn menu_mut(&mut self) -> &mut ContextMenu<R> {
+  fn menu_mut(&mut self) -> &mut Option<ContextMenu<R>> {
     &mut self.menu
   }
 }
@@ -214,11 +223,10 @@ impl<R: Realization> EditingBase<R> for TextField<R> {}
 pub trait TextFieldBase<R: Realization>: Wraps<Inner = TextField<R>> {
   /// An empty text field labelled `label`.
   fn new(label: impl Into<String>) -> Self {
-    let label: String = label.into();
-
     Self::wrap(TextField {
-      control: entry(1).set_label(label),
-      menu: ContextMenu::standard(),
+      control: Control::new(TextEntry::new(1)),
+      label: label.into(),
+      menu: None,
     })
   }
 
@@ -278,7 +286,7 @@ impl<R: Realization> AnyKind for TextField<R> {}
 
 impl<R: Realization> View<R> for TextField<R> {
   fn build(self, cx: &mut Cx<R>) -> Node {
-    with_menu(self.control, self.menu, cx)
+    with_menu(self.control, 1, self.label, self.menu, cx)
   }
 }
 
@@ -290,10 +298,12 @@ impl<R: Realization> View<R> for TextField<R> {
 /// It is controlled as a [`TextField`] is, and offers the same context menu.
 #[must_use]
 pub struct TextEditor<R: Realization> {
-  /// The control it composes, its defaults set.
+  /// The control it composes, its defaults set as it is built.
   control: Control<TextEntry, R>,
-  /// Its context menu.
-  menu: ContextMenu<R>,
+  /// Its caption.
+  label: String,
+  /// Its context menu; the standard one where unset.
+  menu: Option<ContextMenu<R>>,
 }
 
 wraps_itself!(TextEditor<R> where R: Realization);
@@ -307,7 +317,7 @@ impl<R: Realization> HasEntry<R> for TextEditor<R> {
     self
   }
 
-  fn menu_mut(&mut self) -> &mut ContextMenu<R> {
+  fn menu_mut(&mut self) -> &mut Option<ContextMenu<R>> {
     &mut self.menu
   }
 }
@@ -318,11 +328,10 @@ impl<R: Realization> EditingBase<R> for TextEditor<R> {}
 pub trait TextEditorBase<R: Realization>: Wraps<Inner = TextEditor<R>> {
   /// An empty text editor labelled `label`.
   fn new(label: impl Into<String>) -> Self {
-    let label: String = label.into();
-
     Self::wrap(TextEditor {
-      control: entry(4).set_label(label),
-      menu: ContextMenu::standard(),
+      control: Control::new(TextEntry::new(4)),
+      label: label.into(),
+      menu: None,
     })
   }
 }
@@ -333,6 +342,6 @@ impl<R: Realization> AnyKind for TextEditor<R> {}
 
 impl<R: Realization> View<R> for TextEditor<R> {
   fn build(self, cx: &mut Cx<R>) -> Node {
-    with_menu(self.control, self.menu, cx)
+    with_menu(self.control, 4, self.label, self.menu, cx)
   }
 }

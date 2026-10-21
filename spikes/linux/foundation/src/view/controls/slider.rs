@@ -10,7 +10,8 @@ use crate::{
   view::{
     AnyKind, AsPart, AsPartBase, Container, ContainerBase, ControlBase, ControlMembersBase, Cx,
     DecorationBase, Flexible, FlexibleBase, Node, Stack, StackBase, View, Wraps,
-    controls::control_surfaces, wraps_itself,
+    controls::{Pending, control_surfaces},
+    wraps_itself,
   },
 };
 
@@ -30,22 +31,24 @@ use crate::{
 /// its thumb where the thumb overflows it.
 #[must_use]
 pub struct Slider<R: Realization> {
-  /// The control it composes, its defaults set, over a behavior replaced as it is built.
+  /// The control it composes, its defaults set as it is built, over a behavior replaced then.
   control: crate::view::Control<Behavior, R>,
-  /// The value.
-  value: Rc<dyn Fn() -> f32>,
-  /// The least and greatest values.
-  range: Rc<dyn Fn() -> (f32, f32)>,
-  /// The step the value moves by.
-  step: Rc<dyn Fn() -> f32>,
+  /// Its caption.
+  label: String,
+  /// The value; 0 where unset.
+  value: Option<Rc<dyn Fn() -> f32>>,
+  /// The least and greatest values; 0 and 1 where unset.
+  range: Option<Rc<dyn Fn() -> (f32, f32)>>,
+  /// The step the value moves by; 0.01 where unset.
+  step: Option<Rc<dyn Fn() -> f32>>,
   /// What hears each move.
   change: Option<Rc<dyn Fn(f32)>>,
-  /// The track.
-  track: Container<R>,
-  /// The fill.
-  fill: Container<R>,
-  /// The thumb.
-  thumb: Container<R>,
+  /// The track; the default where unset.
+  track: Option<Container<R>>,
+  /// The fill; the default where unset.
+  fill: Option<Container<R>>,
+  /// The thumb; the default where unset.
+  thumb: Option<Container<R>>,
 }
 
 wraps_itself!(Slider<R> where R: Realization);
@@ -95,22 +98,16 @@ impl<R: Realization> Slider<R> {
 pub trait SliderBase<R: Realization>: Wraps<Inner = Slider<R>> {
   /// A slider labelled `label`, at 0 of 0 to 1, stepping by a hundredth.
   fn new(label: impl Into<String>) -> Self {
-    let label: String = label.into();
-
     Self::wrap(Slider {
-      control: crate::view::Control::new(Behavior::new())
-        .set_min_width(80)
-        .set_min_height(24)
-        .set_padding(Inset::new(0, 9, 0, 9))
-        .set_item_alignment(AxisAlignment::Center)
-        .set_label(label),
-      value: Rc::new(|| 0.),
-      range: Rc::new(|| (0., 1.)),
-      step: Rc::new(|| 0.01),
+      control: crate::view::Control::new(Behavior::new()),
+      label: label.into(),
+      value: None,
+      range: None,
+      step: None,
       change: None,
-      track: Slider::<R>::default_track(),
-      fill: Slider::<R>::default_fill(),
-      thumb: Slider::<R>::default_thumb(),
+      track: None,
+      fill: None,
+      thumb: None,
     })
   }
 
@@ -121,7 +118,7 @@ pub trait SliderBase<R: Realization>: Wraps<Inner = Slider<R>> {
 
   /// The slider's value, kept current.
   fn derive_value(mut self, value: impl Fn() -> f32 + 'static) -> Self {
-    self.inner_mut().value = Rc::new(value);
+    self.inner_mut().value = Some(Rc::new(value));
 
     self
   }
@@ -140,7 +137,7 @@ pub trait SliderBase<R: Realization>: Wraps<Inner = Slider<R>> {
 
   /// The least and greatest values, kept current.
   fn derive_range(mut self, range: impl Fn() -> (f32, f32) + 'static) -> Self {
-    self.inner_mut().range = Rc::new(range);
+    self.inner_mut().range = Some(Rc::new(range));
 
     self
   }
@@ -152,7 +149,7 @@ pub trait SliderBase<R: Realization>: Wraps<Inner = Slider<R>> {
 
   /// The step the value moves by, kept current.
   fn derive_step(mut self, step: impl Fn() -> f32 + 'static) -> Self {
-    self.inner_mut().step = Rc::new(step);
+    self.inner_mut().step = Some(Rc::new(step));
 
     self
   }
@@ -167,7 +164,7 @@ pub trait SliderBase<R: Realization>: Wraps<Inner = Slider<R>> {
   /// The track, in place of [`Slider::default_track`]; the fill is placed in it, so a child it
   /// holds is replaced.
   fn set_track(mut self, track: impl Wraps<Inner = Container<R>>) -> Self {
-    self.inner_mut().track = track.into_inner();
+    self.inner_mut().track = Some(track.into_inner());
 
     self
   }
@@ -175,7 +172,7 @@ pub trait SliderBase<R: Realization>: Wraps<Inner = Slider<R>> {
   /// The fill, in place of [`Slider::default_fill`]: as large as the track, it is moved back
   /// by the part of the range above the value, the track clipping it.
   fn set_fill(mut self, fill: impl Wraps<Inner = Container<R>>) -> Self {
-    self.inner_mut().fill = fill.into_inner();
+    self.inner_mut().fill = Some(fill.into_inner());
 
     self
   }
@@ -183,7 +180,7 @@ pub trait SliderBase<R: Realization>: Wraps<Inner = Slider<R>> {
   /// The thumb, in place of [`Slider::default_thumb`]: its leading edge on the value, unless
   /// its `offset` moves it.
   fn set_thumb(mut self, thumb: impl Wraps<Inner = Container<R>>) -> Self {
-    self.inner_mut().thumb = thumb.into_inner();
+    self.inner_mut().thumb = Some(thumb.into_inner());
 
     self
   }
@@ -197,6 +194,7 @@ impl<R: Realization> View<R> for Slider<R> {
   fn build(self, cx: &mut Cx<R>) -> Node {
     let Self {
       control,
+      label,
       value,
       range,
       step,
@@ -205,6 +203,20 @@ impl<R: Realization> View<R> for Slider<R> {
       fill,
       thumb,
     } = self;
+    let defaults = crate::view::Control::new(Pending)
+      .set_min_width(80)
+      .set_min_height(24)
+      .set_padding(Inset::new(0, 9, 0, 9))
+      .set_item_alignment(AxisAlignment::Center)
+      .set_label(label);
+    let value = value.unwrap_or_else(|| Rc::new(|| 0.));
+    let range = range.unwrap_or_else(|| Rc::new(|| (0., 1.)));
+    let step = step.unwrap_or_else(|| Rc::new(|| 0.01));
+    let (track, fill, thumb) = (
+      track.unwrap_or_else(Self::default_track),
+      fill.unwrap_or_else(Self::default_fill),
+      thumb.unwrap_or_else(Self::default_thumb),
+    );
     let range = Rc::new(move || {
       let (minimum, maximum) = range();
 
@@ -258,6 +270,7 @@ impl<R: Realization> View<R> for Slider<R> {
     }
 
     control
+      .over(defaults)
       .map_behavior(|_| behavior)
       .set_child(
         Flexible::new()

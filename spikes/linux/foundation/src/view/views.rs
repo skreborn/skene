@@ -488,8 +488,8 @@ pub struct Scroll<R: Realization> {
   axes: ScrollAxes,
   record: Record,
   handle: Option<NodeHandle>,
-  track: BarBuilder<R>,
-  thumb: BarBuilder<R>,
+  track: Option<BarBuilder<R>>,
+  thumb: Option<BarBuilder<R>>,
   child: Option<Child<R>>,
 }
 
@@ -539,8 +539,8 @@ pub trait ScrollBase<R: Realization>: Wraps<Inner = Scroll<R>> {
       axes,
       record: Record::new(),
       handle: None,
-      track: Rc::new(Scroll::<R>::default_track),
-      thumb: Rc::new(Scroll::<R>::default_thumb),
+      track: None,
+      thumb: None,
       child: None,
     })
   }
@@ -573,7 +573,7 @@ pub trait ScrollBase<R: Realization>: Wraps<Inner = Scroll<R>> {
     mut self,
     builder: impl Fn(Axis) -> C + 'static,
   ) -> Self {
-    self.inner_mut().track = Rc::new(move |axis| builder(axis).into_inner());
+    self.inner_mut().track = Some(Rc::new(move |axis| builder(axis).into_inner()));
 
     self
   }
@@ -585,7 +585,7 @@ pub trait ScrollBase<R: Realization>: Wraps<Inner = Scroll<R>> {
     mut self,
     builder: impl Fn(Axis) -> C + 'static,
   ) -> Self {
-    self.inner_mut().thumb = Rc::new(move |axis| builder(axis).into_inner());
+    self.inner_mut().thumb = Some(Rc::new(move |axis| builder(axis).into_inner()));
 
     self
   }
@@ -624,6 +624,8 @@ impl<R: Realization> View<R> for Scroll<R> {
     }
 
     let axes = [(vertical, Axis::Vertical), (horizontal, Axis::Horizontal)];
+    let track = self.track.unwrap_or_else(|| Rc::new(Self::default_track));
+    let thumb = self.thumb.unwrap_or_else(|| Rc::new(Self::default_thumb));
 
     for (index, axis) in axes
       .into_iter()
@@ -636,8 +638,8 @@ impl<R: Realization> View<R> for Scroll<R> {
       bar.set_part(Part::Track);
       bar.set_interaction(Interaction::ScrollBar { axis });
 
-      let track = (self.track)(axis)
-        .set_child(AsPart::<R>::new(Part::Thumb).set_child((self.thumb)(axis)))
+      let track = track(axis)
+        .set_child(AsPart::<R>::new(Part::Thumb).set_child(thumb(axis)))
         .build(&mut bar);
 
       tree::attach::<R>(id, track.id(), content + index);
@@ -865,10 +867,8 @@ wraps_itself!(Theme<R> where R: Realization);
 pub trait ThemeBase<R: Realization>: Wraps<Inner = Theme<R>> {
   /// Defines `palette`'s tokens.
   fn new(palette: impl TokenSet) -> Self {
-    let definitions = palette.definitions();
-
     Self::wrap(Theme {
-      definitions: Box::new(move || definitions.clone()),
+      definitions: Definitions::constant(palette.definitions()),
       child: None,
     })
   }

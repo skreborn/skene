@@ -29,12 +29,19 @@ pub struct Key(u128);
 impl Key {
   /// The key of an item keyed by `value` in the list's segment at `segment`.
   pub fn of(segment: usize, value: &impl Hash) -> Self {
+    Self::hashed(segment, &|mut state: &mut dyn Hasher| {
+      value.hash(&mut state)
+    })
+  }
+
+  /// The key of an item in the list's segment at `segment` whose value `value` hashes.
+  fn hashed(segment: usize, value: &dyn Fn(&mut dyn Hasher)) -> Self {
     let half = |salt: u8| {
       let mut hasher = WideHasher::default();
 
       salt.hash(&mut hasher);
       segment.hash(&mut hasher);
-      value.hash(&mut hasher);
+      value(&mut hasher);
 
       hasher.finish()
     };

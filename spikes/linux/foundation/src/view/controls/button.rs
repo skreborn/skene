@@ -9,7 +9,7 @@ use crate::{
   view::{
     AnyKind, ControlBase, ControlMembersBase, Cx, DecorationBase, Label, Node, RunBase, Text,
     TextBase, View, Wraps,
-    controls::{control_surfaces, focus_ring},
+    controls::{Pending, control_surfaces, focus_ring},
     wraps_itself,
   },
 };
@@ -29,8 +29,10 @@ type Prominent = Rc<RefCell<Rc<dyn Fn() -> bool>>>;
 /// prominent), and a ring of 2 in the accent while focus shows.
 #[must_use]
 pub struct Button<R: Realization> {
-  /// The control it composes, its defaults set.
+  /// The control it composes, its defaults set as it is built.
   control: crate::view::Control<Activate, R>,
+  /// Its label.
+  label: Rc<dyn Fn() -> String>,
   /// Whether it shows as its screen's primary action.
   prominent: Prominent,
 }
@@ -86,42 +88,11 @@ pub trait ButtonBase<R: Realization>: Wraps<Inner = Button<R>> {
 
   /// A button labelled what `label` returns, kept current.
   fn derive<S: Into<String>>(label: impl Fn() -> S + 'static) -> Self {
-    let label: Rc<dyn Fn() -> String> = Rc::new(move || label().into());
-    let prominent: Prominent = Rc::new(RefCell::new(Rc::new(|| false)));
-    let is_prominent = {
-      let prominent = Rc::clone(&prominent);
-
-      move || {
-        let prominent = prominent.borrow().clone();
-
-        prominent()
-      }
-    };
-    let background = {
-      let is_prominent = is_prominent.clone();
-
-      Value::derived(move || Button::<R>::default_background(is_prominent()))
-    };
-    let color = Value::derived(move || Button::<R>::default_color(is_prominent()));
-    let text = {
-      let label = Rc::clone(&label);
-
-      Text::<R>::derive(move || label()).set_max_lines(1)
-    };
-    let control = crate::view::Control::new(Activate::new())
-      .set_min_height(34)
-      .set_min_width(34)
-      .set_padding(Inset::new(7, 14, 7, 14))
-      .set_corner_radius(8)
-      .set_arrangement(Arrangement::Center)
-      .set_item_alignment(AxisAlignment::Center)
-      .set_background(background)
-      .set_color(color)
-      .set_ring(focus_ring())
-      .set_ring_color(SystemColors::ACCENT)
-      .set_label(Label::new(text).derive_name(move || label()));
-
-    Self::wrap(Button { control, prominent })
+    Self::wrap(Button {
+      control: crate::view::Control::new(Activate::new()),
+      label: Rc::new(move || label().into()),
+      prominent: Rc::new(RefCell::new(Rc::new(|| false))),
+    })
   }
 
   /// Runs `activate` when the button is activated: clicked, or pressed from the keyboard.
@@ -155,6 +126,40 @@ impl<R: Realization> AnyKind for Button<R> {}
 
 impl<R: Realization> View<R> for Button<R> {
   fn build(self, cx: &mut Cx<R>) -> Node {
-    self.control.build(cx)
+    let Self {
+      control,
+      label,
+      prominent,
+    } = self;
+    let is_prominent = move || {
+      let prominent = prominent.borrow().clone();
+
+      prominent()
+    };
+    let background = {
+      let is_prominent = is_prominent.clone();
+
+      Value::derived(move || Self::default_background(is_prominent()))
+    };
+    let color = Value::derived(move || Self::default_color(is_prominent()));
+    let text = {
+      let label = Rc::clone(&label);
+
+      Text::<R>::derive(move || label()).set_max_lines(1)
+    };
+    let defaults = crate::view::Control::new(Pending)
+      .set_min_height(34)
+      .set_min_width(34)
+      .set_padding(Inset::new(7, 14, 7, 14))
+      .set_corner_radius(8)
+      .set_arrangement(Arrangement::Center)
+      .set_item_alignment(AxisAlignment::Center)
+      .set_background(background)
+      .set_color(color)
+      .set_ring(focus_ring())
+      .set_ring_color(SystemColors::ACCENT)
+      .set_label(Label::new(text).derive_name(move || label()));
+
+    control.over(defaults).build(cx)
   }
 }

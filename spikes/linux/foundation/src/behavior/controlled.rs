@@ -111,6 +111,39 @@ impl<T: 'static> Controlled<T> {
     self.handle.is_some()
   }
 
+  /// This value as a `U`: read through what it reads through, made a `U` by `into`; each
+  /// change asked of it made a `T` by `from` and asked of its handler.
+  pub fn map<U: 'static>(
+    self,
+    into: impl Fn(T) -> U + 'static,
+    from: impl Fn(U) -> T + 'static,
+  ) -> Controlled<U> {
+    Controlled {
+      read: self.read.map(|read| {
+        let read: Rc<dyn Fn() -> U> = Rc::new(move || into(read()));
+
+        read
+      }),
+      handle: self.handle.map(|handle| {
+        let handle: Rc<dyn Fn(U)> = Rc::new(move |value| handle(from(value)));
+
+        handle
+      }),
+    }
+  }
+
+  /// Takes what `other` is read through and its handler, where it has them, keeping its own
+  /// where it has none.
+  pub fn merge(&mut self, other: Self) {
+    if other.read.is_some() {
+      self.read = other.read;
+    }
+
+    if other.handle.is_some() {
+      self.handle = other.handle;
+    }
+  }
+
   /// The closure the value is read through, for a platform realizing it; `None` with
   /// nothing derived.
   #[inline(always)]

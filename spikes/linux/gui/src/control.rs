@@ -39,7 +39,7 @@ use crate::Active;
 #[must_use]
 pub struct Control<B: Behavior>(base::Control<B, Active>);
 
-wraps!([B: Behavior] Control<B> => base::Control<B, Active>, Active);
+wraps!(thin [B: Behavior] Control<B> => base::Control<B, Active>, base::ControlCore<Active>, Active);
 
 impl<B: Behavior> ControlBase<B, Active> for Control<B> {}
 

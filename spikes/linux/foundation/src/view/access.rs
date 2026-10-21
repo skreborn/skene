@@ -36,6 +36,22 @@ pub struct Access {
 }
 
 impl Access {
+  /// These facts over `defaults`: each given here in place of the default.
+  #[must_use]
+  pub fn over(self, defaults: Self) -> Self {
+    let either = |own: Vec<NodeHandle>, default| if own.is_empty() { default } else { own };
+
+    Self {
+      name: self.name.or(defaults.name),
+      labelled_by: either(self.labelled_by, defaults.labelled_by),
+      description: self.description.or(defaults.description),
+      described_by: either(self.described_by, defaults.described_by),
+      required: self.required.or(defaults.required),
+      invalid: self.invalid.or(defaults.invalid),
+      shortcut: self.shortcut.or(defaults.shortcut),
+    }
+  }
+
   /// States the facts on `id`'s accessible, kept current; nothing where none was given.
   pub fn apply<R: Realization>(self, id: NodeId) {
     let Self {

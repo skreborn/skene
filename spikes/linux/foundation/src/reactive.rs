@@ -138,6 +138,121 @@ impl Runtime {
     RUNTIME.with(body)
   }
 
+  /// A new signal holding `value`, owned by the current owner.
+  fn insert_signal(value: Box<dyn Any>) -> Id {
+    Self::with(|runtime| {
+      let id = runtime.signals.borrow_mut().insert(SignalSlot {
+        value: Rc::new(RefCell::new(value)),
+        subscribers: Vec::new(),
+      });
+
+      if let Some(owner) = runtime.owner.get()
+        && let Some(slot) = runtime.owners.borrow_mut().get_mut(owner)
+      {
+        slot.signals.push(id);
+      }
+
+      id
+    })
+  }
+
+  /// The value of the signal `id`, subscribing the running effect where `track`.
+  fn signal_cell(id: Id, track: bool) -> Rc<RefCell<Box<dyn Any>>> {
+    Self::with(|runtime| {
+      let mut signals = runtime.signals.borrow_mut();
+      let slot = signals
+        .get_mut(id)
+        .expect("a signal is used only while its owner lives");
+
+      if track
+        && let Some(observer) = runtime.observer.get()
+        && !slot.subscribers.contains(&observer)
+      {
+        slot.subscribers.push(observer);
+
+        if let Some(effect) = runtime.effects.borrow_mut().get_mut(observer) {
+          effect.sources.push(id);
+        }
+      }
+
+      Rc::clone(&slot.value)
+    })
+  }
+
+  /// Reruns whatever read the signal `id`.
+  fn signal_changed(id: Id) {
+    Self::with(|runtime| {
+      runtime.queue_subscribers(id);
+      runtime.flush();
+    });
+  }
+
+  /// A new effect running `run`, run once now.
+  fn insert_effect(run: Rc<RefCell<dyn FnMut()>>) -> Id {
+    Self::with(|runtime| {
+      let parent = runtime.owner.get();
+      let owner = runtime.new_owner(parent);
+      let id = runtime.effects.borrow_mut().insert(EffectSlot {
+        run,
+        sources: Vec::new(),
+        owner,
+        queued: false,
+      });
+
+      if let Some(parent) = parent
+        && let Some(slot) = runtime.owners.borrow_mut().get_mut(parent)
+      {
+        slot.effects.push(id);
+      }
+
+      let flushing = runtime.flushing.replace(true);
+
+      runtime.run_effect(id);
+      runtime.flushing.set(flushing);
+      runtime.flush();
+
+      id
+    })
+  }
+
+  /// Makes `owner` and `observer` the ones code runs under, returning those it ran under.
+  fn enter(owner: Option<Id>, observer: Option<Id>) -> (Option<Id>, Option<Id>) {
+    Self::with(|runtime| {
+      (
+        runtime.owner.replace(owner),
+        runtime.observer.replace(observer),
+      )
+    })
+  }
+
+  /// Makes `observer` the effect what code reads subscribes, returning the one it was.
+  fn observe(observer: Option<Id>) -> Option<Id> {
+    Self::with(|runtime| runtime.observer.replace(observer))
+  }
+
+  /// Opens a batch where `open`, else closes one and runs what it deferred once none is open.
+  fn batching(open: bool) {
+    Self::with(|runtime| {
+      if open {
+        runtime.batching.set(runtime.batching.get() + 1);
+      } else {
+        runtime.batching.set(runtime.batching.get() - 1);
+        runtime.flush();
+      }
+    });
+  }
+
+  /// Runs `cleanup` when the current owner is disposed.
+  fn add_cleanup(cleanup: Box<dyn FnOnce()>) {
+    Self::with(|runtime| {
+      if let Some(owner) = runtime.owner.get()
+        && let Some(slot) = runtime.owners.borrow_mut().get_mut(owner)
+      {
+        slot.cleanups.push(cleanup);
+      }
+    });
+  }
+
   /// Creates an owner under `parent`.
   fn new_owner(&self, parent: Option<Id>) -> Id {
     let id = self.owners.borrow_mut().insert(OwnerSlot {
@@ -338,45 +453,15 @@ impl<T> fmt::Debug for Signal<T> {
 impl<T: 'static> Signal<T> {
   /// A signal holding `value`, owned by the current owner.
   pub fn new(value: T) -> Self {
-    Runtime::with(|runtime| {
-      let id = runtime.signals.borrow_mut().insert(SignalSlot {
-        value: Rc::new(RefCell::new(Box::new(value))),
-        subscribers: Vec::new(),
-      });
-
-      if let Some(owner) = runtime.owner.get()
-        && let Some(slot) = runtime.owners.borrow_mut().get_mut(owner)
-      {
-        slot.signals.push(id);
-      }
-
-      Self {
-        id,
-        ty: PhantomData,
-      }
-    })
+    Self {
+      id: Runtime::insert_signal(Box::new(value)),
+      ty: PhantomData,
+    }
   }
 
+  #[inline(always)]
   fn cell(&self, track: bool) -> Rc<RefCell<Box<dyn Any>>> {
-    Runtime::with(|runtime| {
-      let mut signals = runtime.signals.borrow_mut();
-      let slot = signals
-        .get_mut(self.id)
-        .expect("a signal is used only while its owner lives");
-
-      if track
-        && let Some(observer) = runtime.observer.get()
-        && !slot.subscribers.contains(&observer)
-      {
-        slot.subscribers.push(observer);
-
-        if let Some(effect) = runtime.effects.borrow_mut().get_mut(observer) {
-          effect.sources.push(self.id);
-        }
-      }
-
-      Rc::clone(&slot.value)
-    })
+    Runtime::signal_cell(self.id, track)
   }
 
   /// Reads the value through `read`, subscribing the running effect.
@@ -428,11 +513,7 @@ impl<T: 'static> Signal<T> {
         .downcast_mut::<T>()
         .expect("a signal holds its type"),
     );
-
-    Runtime::with(|runtime| {
-      runtime.queue_subscribers(self.id);
-      runtime.flush();
-    });
+    Runtime::signal_changed(self.id);
   }
 }
 
@@ -452,30 +533,7 @@ impl fmt::Debug for Effect {
 impl Effect {
   /// Runs `run` now and whenever a signal it read changes.
   pub fn new(run: impl FnMut() + 'static) -> Self {
-    Runtime::with(|runtime| {
-      let parent = runtime.owner.get();
-      let owner = runtime.new_owner(parent);
-      let id = runtime.effects.borrow_mut().insert(EffectSlot {
-        run: Rc::new(RefCell::new(run)),
-        sources: Vec::new(),
-        owner,
-        queued: false,
-      });
-
-      if let Some(parent) = parent
-        && let Some(slot) = runtime.owners.borrow_mut().get_mut(parent)
-      {
-        slot.effects.push(id);
-      }
-
-      let flushing = runtime.flushing.replace(true);
-
-      runtime.run_effect(id);
-      runtime.flushing.set(flushing);
-      runtime.flush();
-
-      Self(id)
-    })
+    Self(Runtime::insert_effect(Rc::new(RefCell::new(run))))
   }
 
   /// Stops the effect and disposes what it created.
@@ -574,14 +632,10 @@ impl Owner {
   /// Runs `body` under this owner, untracked: what it creates belongs to this owner, and what
   /// it reads subscribes no enclosing effect.
   pub fn run<R>(&self, body: impl FnOnce() -> R) -> R {
-    let (owner, observer) =
-      Runtime::with(|runtime| (runtime.owner.replace(Some(self.0)), runtime.observer.take()));
+    let (owner, observer) = Runtime::enter(Some(self.0), None);
     let result = body();
 
-    Runtime::with(|runtime| {
-      runtime.owner.set(owner);
-      runtime.observer.set(observer);
-    });
+    Runtime::enter(owner, observer);
 
     result
   }
@@ -589,13 +643,7 @@ impl Owner {
   /// Runs `cleanup` when the current owner is disposed, or before its effect reruns; with no
   /// current owner it never runs.
   pub fn on_cleanup(cleanup: impl FnOnce() + 'static) {
-    Runtime::with(|runtime| {
-      if let Some(owner) = runtime.owner.get()
-        && let Some(slot) = runtime.owners.borrow_mut().get_mut(owner)
-      {
-        slot.cleanups.push(Box::new(cleanup));
-      }
-    });
+    Runtime::add_cleanup(Box::new(cleanup));
   }
 
   /// Disposes everything created under this owner, and the owner itself.
@@ -612,24 +660,21 @@ impl Default for Owner {
 
 /// Runs `body` with the effects its writes make stale deferred to its end.
 pub fn batch<R>(body: impl FnOnce() -> R) -> R {
-  Runtime::with(|runtime| runtime.batching.set(runtime.batching.get() + 1));
+  Runtime::batching(true);
 
   let result = body();
 
-  Runtime::with(|runtime| {
-    runtime.batching.set(runtime.batching.get() - 1);
-    runtime.flush();
-  });
+  Runtime::batching(false);
 
   result
 }
 
 /// Runs `body` without subscribing the running effect to what it reads.
 pub fn untrack<R>(body: impl FnOnce() -> R) -> R {
-  let observer = Runtime::with(|runtime| runtime.observer.take());
+  let observer = Runtime::observe(None);
   let result = body();
 
-  Runtime::with(|runtime| runtime.observer.set(observer));
+  Runtime::observe(observer);
 
   result
 }

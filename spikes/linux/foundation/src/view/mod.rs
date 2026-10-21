@@ -44,14 +44,15 @@ pub use self::{
   control::{
     AsPart, AsPartBase, BasicButton, BasicCheckbox, BasicListbox, BasicListboxOption, BasicPicker,
     BasicRadio, BasicRadioGroup, BasicSlider, BasicTextEditor, BasicTextField, Control,
-    ControlBase, ControlMembersBase, HasMembers, Label, Members,
+    ControlBase, ControlCore, ControlMembersBase, HasMembers, Label, Members,
   },
   controls::{
     Button, ButtonBase, Checkbox, CheckboxBase, ChoiceBase, ContextMenu, ContextMenuBase,
     EditingBase, GroupOptions, HasChoice, HasEntry, HasOptions, Keyboard, Listbox, ListboxBase,
-    ListboxItem, ListboxItemBase, MenuEntry, MenuItem, MenuItemBase, OptionSegment, OptionsBase,
-    Picker, PickerBase, PickerItem, PickerItemBase, Radio, RadioBase, RadioGroup, RadioGroupBase,
-    Slider, SliderBase, TextEditor, TextEditorBase, TextField, TextFieldBase, Toggle, ToggleBase,
+    ListboxCore, ListboxItem, ListboxItemBase, MenuEntry, MenuItem, MenuItemBase, OptionSegment,
+    OptionsBase, Picker, PickerBase, PickerCore, PickerItem, PickerItemBase, Radio, RadioBase,
+    RadioGroup, RadioGroupBase, RadioGroupCore, Slider, SliderBase, TextEditor, TextEditorBase,
+    TextField, TextFieldBase, Toggle, ToggleBase,
   },
   lazy::{ItemHeightBase, ItemWidthBase, Lazy, LazyBase, LazyHandle},
   overlay::{Overlay, OverlayBase},
@@ -65,6 +66,7 @@ pub use self::{
 };
 use crate::{
   Effect, Keyed, NodeId, Owner, Signal,
+  lazy::Key,
   seam::{
     Realization,
     access::Role,
@@ -164,8 +166,14 @@ pub trait Wraps: Sized {
 
 /// Implements [`Wraps`] (and [`View`] for the realization named) for a facade's own type
 /// whose one field is a foundation view: `wraps!([] Container => view::Container<Active>,
-/// Active)`, its generic parameters in the brackets (`[T: Choice] Picker<T> => ..`). A wrapper,
-/// which is no view, takes `wrapper` first and implements [`ChildOf`] for its layouts itself.
+/// Active)`. A wrapper, which is no view, takes `wrapper` first and implements [`ChildOf`] for
+/// its layouts itself.
+///
+/// The `build` it implements is a function of the facade's crate, which an app calls. A view
+/// generic over the app's own types is [`Thin`] over a core that is not and takes `thin`
+/// first, naming its core: `wraps!(thin [T: Choice] Picker<T> => view::Picker<T, Active>,
+/// view::PickerCore<Active>, Active)` builds the core through a function of the facade's
+/// crate.
 #[macro_export]
 macro_rules! wraps {
   (wrapper [$($generics:tt)*] $name:ty => $inner:ty) => {
@@ -193,18 +201,44 @@ macro_rules! wraps {
       }
     }
   };
+  (thin [$($generics:tt)*] $name:ty => $inner:ty, $core:ty, $realization:ty) => {
+    $crate::wraps!(wrapper [$($generics)*] $name => $inner);
+
+    impl<$($generics)*> $crate::view::AnyKind for $name {}
+
+    impl<$($generics)*> $crate::view::View<$realization> for $name {
+      fn build(self, cx: &mut $crate::view::Cx<$realization>) -> $crate::view::Node {
+        fn core(core: $core, cx: &mut $crate::view::Cx<$realization>) -> $crate::view::Node {
+          $crate::view::View::build(core, cx)
+        }
+
+        core($crate::view::Thin::into_core(self.0), cx)
+      }
+    }
+  };
   ([$($generics:tt)*] $name:ty => $inner:ty, $realization:ty) => {
     $crate::wraps!(wrapper [$($generics)*] $name => $inner);
 
     impl<$($generics)*> $crate::view::AnyKind for $name {}
 
     impl<$($generics)*> $crate::view::View<$realization> for $name {
-      #[inline(always)]
       fn build(self, cx: &mut $crate::view::Cx<$realization>) -> $crate::view::Node {
         $crate::view::View::build(self.0, cx)
       }
     }
   };
+}
+
+/// A view generic over the app's own types, thin over a core that is not: a [`Picker`] of the
+/// app's values over a [`PickerCore`], a [`Control`] over the app's behavior over a
+/// [`ControlCore`]. Its members erase what they are given into the core, which its facade
+/// builds ([`wraps!`](crate::wraps!)'s `thin`).
+pub trait Thin<R: Realization> {
+  /// The core: this view without the app's types.
+  type Core: View<R>;
+
+  /// The core, holding everything this view was given.
+  fn into_core(self) -> Self::Core;
 }
 
 /// Implements [`Wraps`] for a foundation view over itself.
@@ -575,14 +609,24 @@ impl<R: Realization> Cx<R> {
 /// What builds a child in the context it is built in.
 type Build<R> = dyn FnOnce(&mut Cx<R>) -> Node;
 
+/// What a keyed list reads, tracking it: what then keys its items and makes their children,
+/// untracked.
+type KeyedItems<R> = dyn Fn() -> Box<dyn FnOnce() -> Vec<(Key, Child<R>)>>;
+
 /// A child not built yet: what a view holds until it is built.
 #[must_use]
-pub struct Child<R: Realization>(Box<Build<R>>);
+pub struct Child<R: Realization>(Unbuilt<R>);
+
+/// What a [`Child`] builds: a view, or a keyed list.
+enum Unbuilt<R: Realization> {
+  Build(Box<Build<R>>),
+  Keyed(Box<KeyedItems<R>>),
+}
 
 impl<R: Realization> Child<R> {
   /// The child `build` builds.
   pub fn new(build: impl FnOnce(&mut Cx<R>) -> Node + 'static) -> Self {
-    Self(Box::new(build))
+    Self(Unbuilt::Build(Box::new(build)))
   }
 
   /// `child`, held to be built later as a child of a `L`.
@@ -597,43 +641,69 @@ impl<R: Realization> Child<R> {
 
   /// A keyed list in a layout of type `L`: a segment whose children are one view per item,
   /// each built once per key under an owner of its own and kept, wherever it moves, while its
-  /// key stays.
-  pub fn keyed<T: 'static, K: Eq + Hash + Clone + 'static, C: ChildOf<L, R>, L>(
+  /// key stays. Of items sharing a key, the first is kept and the rest are built anew; a key
+  /// is its wide hash ([`Key`]), so two keys hashing alike are one.
+  pub fn keyed<T: 'static, K: Hash + 'static, C: ChildOf<L, R>, L>(
     items: impl Fn() -> Vec<T> + 'static,
     key: impl Fn(&T) -> K + 'static,
     view: impl Fn(T) -> C + 'static,
   ) -> Self {
-    Self::new(move |cx| {
-      let segment = cx.create(NodeSpec::new(NodeKind::Segment));
-      let inner = cx.child();
-      let list = RefCell::new(Keyed::<K, NodeId>::new());
+    let (key, view) = (Rc::new(key), Rc::new(view));
 
-      Effect::new(move || {
-        let items = items();
-        let ids = untrack(|| {
-          list.borrow_mut().update(
-            items,
-            &key,
-            |item| view(item).build_child(&mut inner.child()).id(),
-            tree::remove::<R>,
-          )
-        });
+    Self(Unbuilt::Keyed(Box::new(move || {
+      let items = items();
+      let (key, view) = (Rc::clone(&key), Rc::clone(&view));
 
-        untrack(|| {
-          for (index, id) in ids.iter().enumerate() {
-            tree::attach::<R>(segment, *id, index);
-          }
-        });
-      });
+      Box::new(move || {
+        items
+          .into_iter()
+          .map(|item| {
+            let view = Rc::clone(&view);
 
-      Node::new(segment)
-    })
+            (
+              Key::of(0, &key(&item)),
+              Self::new(move |cx| view(item).build_child(cx)),
+            )
+          })
+          .collect()
+      })
+    })))
   }
 
   /// Builds the child in `cx`.
   pub fn build(self, cx: &mut Cx<R>) -> Node {
-    (self.0)(cx)
+    match self.0 {
+      Unbuilt::Build(build) => build(cx),
+      Unbuilt::Keyed(items) => build_keyed(items, cx),
+    }
   }
+}
+
+/// Builds a keyed list in `cx`: a segment whose children follow what `items` reads.
+fn build_keyed<R: Realization>(items: Box<KeyedItems<R>>, cx: &mut Cx<R>) -> Node {
+  let segment = cx.create(NodeSpec::new(NodeKind::Segment));
+  let inner = cx.child();
+  let list = RefCell::new(Keyed::<Key, NodeId>::new());
+
+  Effect::new(move || {
+    let keyed = items();
+    let ids = untrack(|| {
+      list.borrow_mut().update(
+        keyed(),
+        |(key, _)| *key,
+        |(_, child)| child.build(&mut inner.child()).id(),
+        tree::remove::<R>,
+      )
+    });
+
+    untrack(|| {
+      for (index, id) in ids.iter().enumerate() {
+        tree::attach::<R>(segment, *id, index);
+      }
+    });
+  });
+
+  Node::new(segment)
 }
 
 /// A slot a built node's id is written into, so a relation can name it: a control named by a

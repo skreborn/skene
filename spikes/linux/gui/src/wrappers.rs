@@ -30,9 +30,12 @@ impl<L> ChildOf<L, Active> for Flexible
 where
   base::Flexible<Active>: ChildOf<L, Active>,
 {
-  #[inline(always)]
   fn build_child(self, cx: &mut Cx) -> Node {
-    self.0.build_child(cx)
+    fn build(flexible: base::Flexible<Active>, cx: &mut Cx) -> Node {
+      flexible.build_wrapped(cx)
+    }
+
+    build(self.0, cx)
   }
 }
 
@@ -48,9 +51,12 @@ impl<L> ChildOf<L, Active> for GridCell
 where
   base::GridCell<Active>: ChildOf<L, Active>,
 {
-  #[inline(always)]
   fn build_child(self, cx: &mut Cx) -> Node {
-    self.0.build_child(cx)
+    fn build(cell: base::GridCell<Active>, cx: &mut Cx) -> Node {
+      cell.build_wrapped(cx)
+    }
+
+    build(self.0, cx)
   }
 }
 
@@ -66,8 +72,11 @@ impl<L> ChildOf<L, Active> for Pinned
 where
   base::Pinned<Active>: ChildOf<L, Active>,
 {
-  #[inline(always)]
   fn build_child(self, cx: &mut Cx) -> Node {
-    self.0.build_child(cx)
+    fn build(pinned: base::Pinned<Active>, cx: &mut Cx) -> Node {
+      pinned.build_wrapped(cx)
+    }
+
+    build(self.0, cx)
   }
 }

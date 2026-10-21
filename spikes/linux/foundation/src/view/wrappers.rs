@@ -16,8 +16,8 @@ use crate::{
   },
 };
 
-/// A wrapper's record and child: what [`build_wrapped`] builds.
-fn build_wrapped<R: Realization>(
+/// Builds a wrapper's child in `cx`, the wrapper's record folded into the child's.
+fn build_child_of<R: Realization>(
   record: &Record,
   child: Option<crate::view::Child<R>>,
   cx: &mut Cx<R>,
@@ -95,22 +95,30 @@ pub trait FlexibleBase<R: Realization>: Wraps<Inner = Flexible<R>> {
 
 impl<R: Realization> FlexibleBase<R> for Flexible<R> {}
 
+impl<R: Realization> Flexible<R> {
+  /// Builds its child in `cx`, its properties folded into the child's: what each layout it
+  /// goes in builds.
+  pub fn build_wrapped(self, cx: &mut Cx<R>) -> Node {
+    build_child_of(&self.record, self.child, cx)
+  }
+}
+
 impl<R: Realization> ChildOf<Row<R>, R> for Flexible<R> {
   fn build_child(self, cx: &mut Cx<R>) -> Node {
-    build_wrapped(&self.record, self.child, cx)
+    self.build_wrapped(cx)
   }
 }
 
 impl<R: Realization> ChildOf<Column<R>, R> for Flexible<R> {
   fn build_child(self, cx: &mut Cx<R>) -> Node {
-    build_wrapped(&self.record, self.child, cx)
+    self.build_wrapped(cx)
   }
 }
 
 /// A control lays its label, its parts and its body out along a row or a column.
 impl<B: Behavior, R: Realization> ChildOf<Control<B, R>, R> for Flexible<R> {
   fn build_child(self, cx: &mut Cx<R>) -> Node {
-    build_wrapped(&self.record, self.child, cx)
+    self.build_wrapped(cx)
   }
 }
 
@@ -157,9 +165,17 @@ pub trait GridCellBase<R: Realization>: Wraps<Inner = GridCell<R>> {
 
 impl<R: Realization> GridCellBase<R> for GridCell<R> {}
 
+impl<R: Realization> GridCell<R> {
+  /// Builds its child in `cx`, its properties folded into the child's: what each layout it
+  /// goes in builds.
+  pub fn build_wrapped(self, cx: &mut Cx<R>) -> Node {
+    build_child_of(&self.record, self.child, cx)
+  }
+}
+
 impl<R: Realization> ChildOf<Grid<R>, R> for GridCell<R> {
   fn build_child(self, cx: &mut Cx<R>) -> Node {
-    build_wrapped(&self.record, self.child, cx)
+    self.build_wrapped(cx)
   }
 }
 
@@ -204,8 +220,16 @@ pub trait PinnedBase<R: Realization>: Wraps<Inner = Pinned<R>> {
 
 impl<R: Realization> PinnedBase<R> for Pinned<R> {}
 
+impl<R: Realization> Pinned<R> {
+  /// Builds its child in `cx`, its properties folded into the child's: what each layout it
+  /// goes in builds.
+  pub fn build_wrapped(self, cx: &mut Cx<R>) -> Node {
+    build_child_of(&self.record, self.child, cx)
+  }
+}
+
 impl<R: Realization> ChildOf<Stack<R>, R> for Pinned<R> {
   fn build_child(self, cx: &mut Cx<R>) -> Node {
-    build_wrapped(&self.record, self.child, cx)
+    self.build_wrapped(cx)
   }
 }

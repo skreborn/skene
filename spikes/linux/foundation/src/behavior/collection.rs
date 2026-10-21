@@ -2,9 +2,10 @@
 //! list box's options, a menu's items.
 
 use std::{
+  any::Any,
   cell::RefCell,
   collections::{BTreeSet, HashMap, HashSet},
-  hash::Hash,
+  hash::{Hash, Hasher},
   marker::PhantomData,
   rc::{Rc, Weak},
 };
@@ -37,6 +38,82 @@ pub trait Choice: Clone + Eq + Hash + 'static {}
 #[diagnostic::do_not_recommend]
 impl<T: Clone + Eq + Hash + 'static> Choice for T {}
 
+/// A choice's value with its type erased: what a styled choice group's core holds, the typed
+/// group thin over it.
+///
+/// It compares equal to another holding an equal value of the same type, and hashes as the
+/// value it holds does.
+#[derive(Clone)]
+pub struct AnyChoice(Rc<dyn ErasedChoice>);
+
+impl AnyChoice {
+  /// `value`, its type erased.
+  pub fn new<T: Choice>(value: T) -> Self {
+    Self(Rc::new(value))
+  }
+
+  /// The value, where it is a `T`.
+  #[must_use]
+  pub fn downcast_ref<T: Choice>(&self) -> Option<&T> {
+    self.0.as_any().downcast_ref()
+  }
+
+  /// The value, a `T`.
+  ///
+  /// # Panics
+  ///
+  /// Where it is not a `T`: a typed group's core holds its group's values alone.
+  #[must_use]
+  pub fn value<T: Choice>(&self) -> &T {
+    self
+      .downcast_ref::<T>()
+      .expect("a choice group's core holds values of its group's type")
+  }
+}
+
+impl PartialEq for AnyChoice {
+  fn eq(&self, other: &Self) -> bool {
+    self.0.eq_choice(other.0.as_any())
+  }
+}
+
+impl Eq for AnyChoice {}
+
+impl Hash for AnyChoice {
+  fn hash<H: Hasher>(&self, state: &mut H) {
+    self.0.hash_choice(state);
+  }
+}
+
+impl std::fmt::Debug for AnyChoice {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("AnyChoice").finish_non_exhaustive()
+  }
+}
+
+/// What an [`AnyChoice`] asks of the value it holds.
+trait ErasedChoice {
+  fn as_any(&self) -> &dyn Any;
+
+  fn eq_choice(&self, other: &dyn Any) -> bool;
+
+  fn hash_choice(&self, state: &mut dyn Hasher);
+}
+
+impl<T: Choice> ErasedChoice for T {
+  fn as_any(&self) -> &dyn Any {
+    self
+  }
+
+  fn eq_choice(&self, other: &dyn Any) -> bool {
+    other.downcast_ref::<T>() == Some(self)
+  }
+
+  fn hash_choice(&self, mut state: &mut dyn Hasher) {
+    self.hash(&mut state);
+  }
+}
+
 /// What a list box has chosen: one value or none (`Option<T>`), or a set of values
 /// (`HashSet<T>`, `BTreeSet<T>`).
 #[diagnostic::on_unimplemented(
@@ -60,6 +137,12 @@ pub trait Chosen: Clone + PartialEq + 'static {
   /// What is chosen once the reader chooses every one of `values` from `chosen` at once (a
   /// range, or all): the last of them for one choice, all of them added for a set.
   fn choosing_all(chosen: Option<&Self>, values: Vec<Self::Value>) -> Self;
+
+  /// The values chosen: none or one for one choice, a set's in its order.
+  fn values(&self) -> Vec<Self::Value>;
+
+  /// What chooses `values`: the last of them for one choice, all of them for a set.
+  fn from_values(values: Vec<Self::Value>) -> Self;
 }
 
 impl<T: Choice> Chosen for Option<T> {
@@ -80,6 +163,14 @@ impl<T: Choice> Chosen for Option<T> {
       .into_iter()
       .last()
       .or_else(|| chosen.cloned().flatten())
+  }
+
+  fn values(&self) -> Vec<T> {
+    self.iter().cloned().collect()
+  }
+
+  fn from_values(values: Vec<T>) -> Self {
+    values.into_iter().last()
   }
 }
 
@@ -109,6 +200,14 @@ impl<T: Choice> Chosen for HashSet<T> {
 
     chosen
   }
+
+  fn values(&self) -> Vec<T> {
+    self.iter().cloned().collect()
+  }
+
+  fn from_values(values: Vec<T>) -> Self {
+    values.into_iter().collect()
+  }
 }
 
 impl<T: Choice + Ord> Chosen for BTreeSet<T> {
@@ -136,6 +235,14 @@ impl<T: Choice + Ord> Chosen for BTreeSet<T> {
     chosen.extend(values);
 
     chosen
+  }
+
+  fn values(&self) -> Vec<T> {
+    self.iter().cloned().collect()
+  }
+
+  fn from_values(values: Vec<T>) -> Self {
+    values.into_iter().collect()
   }
 }
 

@@ -26,7 +26,7 @@ unicode-segmentation = "1"
 unicode-width = "0.2"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-criterion = { default-features = false, features = ["cargo_bench_support"], version = "0.8" }
+criterion = { default-features = false, features = ["cargo_bench_support"], version = "0.7" }
 proptest.workspace = true
 skene-conformance = { path = "../conformance" }
 skene-simple-terminal = { path = "../simple-terminal" }

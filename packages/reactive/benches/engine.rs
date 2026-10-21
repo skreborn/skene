@@ -2,6 +2,11 @@
 //! row's edit among a hundred tracked rows and among ten thousand, by position and by
 //! key, and a row pushed onto as many.
 
+#![expect(
+  missing_docs,
+  reason = "criterion's macros generate the harness's functions"
+)]
+
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
 use skene_reactive::{
   Effect,

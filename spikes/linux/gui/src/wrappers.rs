@@ -31,8 +31,9 @@ where
   base::Flexible<Active>: ChildOf<L, Active>,
 {
   fn build_child(self, cx: &mut Cx) -> Node {
+    // A flexible builds alike in each layout it goes in: as a row's child.
     fn build(flexible: base::Flexible<Active>, cx: &mut Cx) -> Node {
-      flexible.build_wrapped(cx)
+      <base::Flexible<Active> as ChildOf<base::Row<Active>, Active>>::build_child(flexible, cx)
     }
 
     build(self.0, cx)
@@ -53,7 +54,7 @@ where
 {
   fn build_child(self, cx: &mut Cx) -> Node {
     fn build(cell: base::GridCell<Active>, cx: &mut Cx) -> Node {
-      cell.build_wrapped(cx)
+      <base::GridCell<Active> as ChildOf<base::Grid<Active>, Active>>::build_child(cell, cx)
     }
 
     build(self.0, cx)
@@ -74,7 +75,7 @@ where
 {
   fn build_child(self, cx: &mut Cx) -> Node {
     fn build(pinned: base::Pinned<Active>, cx: &mut Cx) -> Node {
-      pinned.build_wrapped(cx)
+      <base::Pinned<Active> as ChildOf<base::Stack<Active>, Active>>::build_child(pinned, cx)
     }
 
     build(self.0, cx)

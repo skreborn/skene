@@ -60,26 +60,6 @@ pub enum NodeKind {
 }
 
 impl NodeKind {
-  /// Every kind with one representative of each layout kind: what
-  /// [`crate::seam::testing::contents_gate`] walks.
-  pub const ALL: [Self; 12] = [
-    Self::Layout(LayoutKind::Box),
-    Self::Layout(LayoutKind::Row),
-    Self::Layout(LayoutKind::Column),
-    Self::Layout(LayoutKind::Grid),
-    Self::Layout(LayoutKind::Stack),
-    Self::Layout(LayoutKind::Scroll {
-      horizontal: false,
-      vertical: true,
-    }),
-    Self::Text,
-    Self::Image,
-    Self::Editable { multiline: false },
-    Self::Editable { multiline: true },
-    Self::Overlay,
-    Self::Painted,
-  ];
-
   /// The contents a node of this kind takes: binding or controlling any other is refused.
   ///
   /// A native node takes the door's own names ([`Content::Door`]) and nothing else.

@@ -7,9 +7,9 @@
 //! [`content::Content`] name, never as a typed function per control per platform. Both are
 //! typed where the view writes them ([`record::Key`], [`content::ContentKey`]), so a value of
 //! the wrong kind does not compile, and erased where the realization reads them. A
-//! realization is a dispatcher over `(kind, name)`: the compiler does not prove it total, so
-//! [`testing::contents_gate`] proves, on the real platform, that every content a kind takes
-//! ([`node::NodeKind::contents`]) is shown and read back.
+//! realization is a dispatcher over `(kind, name)` that the compiler does not prove total:
+//! what proves that every content a kind takes ([`node::NodeKind::contents`]) is shown is
+//! the conformance suite, reading each as a reader finds it on the real platform.
 //!
 //! **Layout belongs to the foundation's engine.** On a platform whose toolkit is not CSS, the
 //! layout names never reach the toolkit: the shared half resolves them and hands them to the

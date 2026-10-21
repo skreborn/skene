@@ -617,10 +617,11 @@ pub enum AxisAlignment {
 
 impl Property for AxisAlignment {}
 
-/// One of the two edges along an axis: where it starts (the top, or the leading edge across a
-/// row) or where it ends.
+/// Where a scrolling list starts and what it keeps in view as its items and its viewport
+/// change, one of the two ends of its axis: where it starts (the top, or the leading edge
+/// across a row) or where it ends.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
-pub enum Edge {
+pub enum ScrollAnchor {
   /// The start: the top, or the leading edge.
   #[default]
   Start,
@@ -628,7 +629,7 @@ pub enum Edge {
   End,
 }
 
-impl Property for Edge {}
+impl Property for ScrollAnchor {}
 
 /// Where an item sits on both axes: a grid's or a stack's cell, a container's child.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]

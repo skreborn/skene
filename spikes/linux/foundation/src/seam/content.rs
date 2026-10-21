@@ -59,16 +59,6 @@ pub enum Content {
   Door(&'static str),
 }
 
-impl Content {
-  /// Whether a realization must read the content back from its toolkit
-  /// ([`crate::seam::testing::contents_gate`] checks it). Rich text is shown only; a reader's
-  /// view of it is checked through the accessibility layer.
-  #[must_use]
-  pub const fn readable(self) -> bool {
-    !matches!(self, Self::Runs)
-  }
-}
-
 /// A text selection in grapheme clusters of the value: `end` is the caret, before `start`
 /// when the selection was made backward.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]

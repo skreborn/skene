@@ -1,5 +1,5 @@
-//! Testing on the real platform: the pages an app registers, the probes they publish, the
-//! gate every realization passes, and the driver each realization implements.
+//! Testing on the real platform: the pages an app registers, the probes they publish, and the
+//! driver each realization implements.
 //!
 //! A test never runs in the app's scene directly: it opens a page by name and reads what a
 //! reader reads, so the same test drives an app in its own process (Linux, Android
@@ -15,17 +15,9 @@ use crate::{
   NodeId, Scheme,
   layout::Rect,
   seam::{
-    Realization,
     access::{Checked, Role},
-    content::{Content, Edit, OverlayPlacement, PropValue, Run, Side, TextSelection, writing},
-    node::{NodeKind, NodeSpec},
-    picture::{
-      Paint, PaintOp, Picture,
-      kurbo::{self, Shape as _},
-    },
+    content::TextSelection,
     report::Modifiers,
-    style::ScopeChain,
-    tree,
   },
 };
 
@@ -93,119 +85,6 @@ pub fn probe(name: &str) -> Option<String> {
   })?;
 
   Some(probe())
-}
-
-/// How a content fared in [`contents_gate`].
-#[derive(Clone, PartialEq, Debug)]
-pub enum GateOutcome {
-  /// Written, and read back from the toolkit equal.
-  Shown,
-  /// Written; the content is shown only ([`Content::readable`]), so a reader's view of it is
-  /// checked through the accessibility layer instead.
-  Written,
-  /// Read back as something else, or not at all: the realization drops it.
-  Dropped(Option<PropValue>),
-}
-
-/// One row of [`contents_gate`].
-#[derive(Clone, PartialEq, Debug)]
-pub struct GateRow {
-  /// The node's kind.
-  pub kind: NodeKind,
-  /// The content.
-  pub content: Content,
-  /// What happened.
-  pub outcome: GateOutcome,
-}
-
-/// A sample of each content, as the gate writes it.
-#[must_use]
-pub fn sample(content: Content) -> Option<PropValue> {
-  let text = |text: &str| PropValue::Text(text.into());
-
-  Some(match content {
-    Content::Text => text("Skene \u{2713}"),
-    Content::Runs => PropValue::Runs(Rc::from(vec![
-      Run {
-        text: "Read the ".into(),
-        props: Rc::from([]),
-        destination: None,
-      },
-      Run {
-        text: "guide".into(),
-        props: Rc::from([]),
-        destination: Some("https://example.org/guide".into()),
-      },
-    ])),
-    Content::Reserve => PropValue::Texts(Rc::from(vec![Rc::from("Small"), Rc::from("Large")])),
-    Content::ReadOnly | Content::Secure => PropValue::Bool(true),
-    Content::Placement => PropValue::Placement(OverlayPlacement {
-      anchor: None,
-      side: Side::Bottom,
-      widen: true,
-      at: Some((12, 34)),
-      spacing: 2,
-    }),
-    Content::Edit => PropValue::Edit(Edit {
-      text: "he\u{301}llo".into(),
-      selection: Some(TextSelection { start: 1, end: 3 }),
-    }),
-    Content::Placeholder => text("Ada"),
-    Content::Keyboard => text("email"),
-    Content::Source => text("/skene/sample.png"),
-    Content::Destination => text("https://example.org/"),
-    Content::Picture => {
-      let mut picture = Picture::new();
-
-      picture.push(PaintOp::Fill {
-        path: kurbo::Rect::new(0., 0., 2., 1.).into_path(0.1),
-        paint: Paint::Color(crate::Color::rgb(0xff0000)),
-      });
-
-      PropValue::Picture(Rc::new(picture))
-    }
-    Content::ScrollOffset => PropValue::Offset(crate::seam::content::ScrollOffset::new(0., 24.)),
-    Content::Door(_) => return None,
-  })
-}
-
-/// The gate every realization passes on its real platform: every content every kind takes
-/// ([`NodeKind::contents`]) is written and, where readable, read back from the toolkit. A
-/// realization is a dispatcher over `(kind, content)` that the compiler cannot prove total;
-/// this proves it. Run it with the toolkit initialized, under an owner.
-#[must_use]
-pub fn contents_gate<R: Realization>() -> Vec<GateRow> {
-  let mut rows = Vec::new();
-
-  for kind in NodeKind::ALL {
-    for content in kind.contents() {
-      let Some(value) = sample(*content) else {
-        continue;
-      };
-      let id = tree::create::<R>(NodeSpec::new(kind), &ScopeChain::root(), None);
-      let Some(native) = tree::native::<R>(id) else {
-        continue;
-      };
-
-      writing(|| R::write(&native, *content, &value));
-
-      let outcome = match R::read(&native, *content) {
-        _ if !content.readable() => GateOutcome::Written,
-        Some(read) if read == value => GateOutcome::Shown,
-        read => GateOutcome::Dropped(read),
-      };
-
-      tree::remove::<R>(id);
-
-      rows.push(GateRow {
-        kind,
-        content: *content,
-        outcome,
-      });
-    }
-  }
-
-  rows
 }
 
 /// What a test looks for.

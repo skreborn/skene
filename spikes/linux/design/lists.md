@@ -212,15 +212,15 @@ The members of `LazyColumn` follow; `LazyRow` takes the same with widths for hei
 ```rust
 LazyColumn::new()
   // Properties first.
-  .set_item_height(ItemExtent::Estimated(56))  // or `48` for ItemExtent::Fixed(48)
-  .set_spacing(1)                               // between rows, as Column's
-  .set_padding(Inset::new(8, 0, 8, 0))          // inside the scrolled content (Compose's contentPadding)
-  .set_item_alignment(AxisAlignment::Stretch)   // across the axis, as Column's
-  .set_overscan(2)                              // lines realized beyond each edge, at least 1
-  .set_default_scroll_anchor(Edge::Start)       // SwiftUI's defaultScrollAnchor; End for a chat
-  .set_sticky_headers(true)                     // a section's header sticks while it is in view
-  .set_label("Messages")                        // the list's accessible name, as Container's
-  .bind_scroll_position(position)               // Signal<ScrollPosition>
+  .set_item_height(ItemExtent::Estimated(56))      // or `48` for ItemExtent::Fixed(48)
+  .set_spacing(1)                                   // between rows, as Column's
+  .set_padding(Inset::new(8, 0, 8, 0))              // inside the scrolled content (Compose's contentPadding)
+  .set_item_alignment(AxisAlignment::Stretch)       // across the axis, as Column's
+  .set_overscan(2)                                  // lines realized beyond each edge, at least 1
+  .set_default_scroll_anchor(ScrollAnchor::Start)   // SwiftUI's defaultScrollAnchor; End for a chat
+  .set_sticky_headers(true)                         // a section's header sticks while it is in view
+  .set_label("Messages")                            // the list's accessible name, as Container's
+  .bind_scroll_position(position)                   // Signal<ScrollPosition>
   .set_item_builder(|| Container::new().set_padding(Inset::new(0, 16, 0, 16)))
   // Items last.
   .add_header(Text::new("Today"))
@@ -512,9 +512,9 @@ first measurements (JUDGMENT).
   while the padding is larger than it, until `scrollend` (a debounce where the engine lacks it),
   then settled in one frame; near the start, where the padding is smaller, it is written to the
   offset at once.
-- **`set_default_scroll_anchor(Edge::End)`** (SwiftUI's `defaultScrollAnchor`) starts at the end
-  and anchors the end while it is in view, so a chat stays at its newest message as messages
-  arrive, its items in their order. Scrolled up, the anchor is the first visible item as usual.
+- **`set_default_scroll_anchor(ScrollAnchor::End)`** (SwiftUI's `defaultScrollAnchor`) starts at
+  the end and anchors the end while it is in view, so a chat stays at its newest message as
+  messages arrive, its items in their order. Scrolled up, the anchor is the first visible item as usual.
   Compose's `reverseLayout`, which puts item 0 at the far end, is decided against in
   `DECISIONS.md`.
 

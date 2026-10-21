@@ -11,8 +11,8 @@
 use std::{cell::RefCell, hash::Hash, rc::Rc};
 
 use crate::{
-  Alignment, Arrangement, AxisAlignment, Edge, Effect, GridPlacement, GridTrack, Inset, NodeId,
-  Owner, Signal, Spacing, State, StateSet, Tracks, Value,
+  Alignment, Arrangement, AxisAlignment, Effect, GridPlacement, GridTrack, Inset, NodeId, Owner,
+  ScrollAnchor, Signal, Spacing, State, StateSet, Tracks, Value,
   layout::Axis,
   lazy::{
     GridCells, ItemExtent, Key, KeyMap, KeySet, ScrollPosition,
@@ -201,7 +201,7 @@ pub struct Lazy<R: Realization> {
   spacing: Value<Spacing>,
   padding: Value<Inset>,
   item_alignment: Value<AxisAlignment>,
-  default_anchor: Value<Edge>,
+  default_anchor: Value<ScrollAnchor>,
   label: Option<Rc<dyn Fn() -> Rc<str>>>,
   labelled_by: Vec<NodeHandle>,
   position: Option<Rc<dyn Fn() -> ScrollPosition>>,
@@ -225,7 +225,7 @@ impl<R: Realization> Lazy<R> {
       spacing: Value::from(Spacing::default()),
       padding: Value::from(Inset::default()),
       item_alignment: Value::from(AxisAlignment::Stretch),
-      default_anchor: Value::from(Edge::Start),
+      default_anchor: Value::from(ScrollAnchor::Start),
       label: None,
       labelled_by: Vec::new(),
       position: None,
@@ -409,20 +409,21 @@ pub trait LazyBase<R: Realization>: Wraps<Inner = Lazy<R>> {
     self
   }
 
-  /// The edge the list starts at and keeps in view while that edge shows, as items arrive or
-  /// measure (SwiftUI's `defaultScrollAnchor`), its items in their order: [`Edge::End`] for a
-  /// chat staying at its newest message. Scrolled away from it, the list keeps its first
-  /// visible item, as every list does. [`Edge::Start`] where unset.
-  fn set_default_scroll_anchor(mut self, anchor: impl Into<Value<Edge>>) -> Self {
+  /// The end the list starts at and keeps in view while that end shows, as items arrive or
+  /// measure (SwiftUI's `defaultScrollAnchor`), its items in their order:
+  /// [`ScrollAnchor::End`] for a chat staying at its newest message. Scrolled away from it,
+  /// the list keeps its first visible item, as every list does. [`ScrollAnchor::Start`] where
+  /// unset.
+  fn set_default_scroll_anchor(mut self, anchor: impl Into<Value<ScrollAnchor>>) -> Self {
     self.inner_mut().default_anchor = anchor.into();
 
     self
   }
 
-  /// The edge the list starts at and keeps in view while it shows, as `anchor` returns it.
+  /// The end the list starts at and keeps in view while it shows, as `anchor` returns it.
   ///
   /// Derived: recomputed whenever a signal the closure reads changes.
-  fn derive_default_scroll_anchor<V: Into<Value<Edge>>>(
+  fn derive_default_scroll_anchor<V: Into<Value<ScrollAnchor>>>(
     mut self,
     anchor: impl Fn() -> V + 'static,
   ) -> Self {
@@ -770,7 +771,7 @@ struct Layout {
   extent: ItemExtent,
   spacing: Spacing,
   padding: Inset,
-  default_anchor: Edge,
+  default_anchor: ScrollAnchor,
 }
 
 /// The content of a lazy list: the grid its realized items sit in, windowing them as its
@@ -781,7 +782,7 @@ struct Content<R: Realization> {
   extent: Rc<dyn Fn() -> ItemExtent>,
   spacing: Rc<dyn Fn() -> Spacing>,
   padding: Rc<dyn Fn() -> Inset>,
-  default_anchor: Rc<dyn Fn() -> Edge>,
+  default_anchor: Rc<dyn Fn() -> ScrollAnchor>,
   scroll: NodeHandle,
   wires: Wires,
   axis: Axis,
@@ -989,7 +990,7 @@ impl<R: Realization> View<R> for Lazy<R> {
       extent.resolving(&tokens, ItemExtent::Estimated(48.)),
       spacing.resolving(&tokens, Spacing::default()),
       padding.resolving(&tokens, Inset::default()),
-      default_anchor.resolving(&tokens, Edge::Start),
+      default_anchor.resolving(&tokens, ScrollAnchor::Start),
     );
     let scroll_handle = handle.unwrap_or_default();
     let list: Rc<RefCell<Option<List<R>>>> = Rc::new(RefCell::new(None));
@@ -1362,7 +1363,7 @@ fn reconcile<R: Realization>(
     }
 
     // A list anchored at its end holds its end while the end shows.
-    if default_anchor == Edge::End
+    if default_anchor == ScrollAnchor::End
       && state.at_end
       && !moved_by_reader
       && let Some(end) = end

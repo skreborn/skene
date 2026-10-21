@@ -811,7 +811,7 @@ fn chat(items: Signal<usize>) -> impl View {
     LazyColumn::new()
       .set_height(200)
       .set_label("Chat")
-      .set_default_scroll_anchor(Edge::End)
+      .set_default_scroll_anchor(ScrollAnchor::End)
       .set_item_height(ItemExtent::estimated(30))
       .derive_items(
         move || (0..items.get()).collect::<Vec<_>>(),

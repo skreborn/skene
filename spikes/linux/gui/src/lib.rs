@@ -99,10 +99,10 @@ pub mod __private;
 pub use skene_foundation::behavior;
 pub use skene_foundation::{
   Alignment, Angle, Arrangement, AxisAlignment, Border, BorderStyle, Color, Condition, Corners,
-  Curve, Definitions, Dimension, Edge, Edges, Effect, Environment, Expr, Fill, Flexibility, Flow,
+  Curve, Definitions, Dimension, Edges, Effect, Environment, Expr, Fill, Flexibility, Flow,
   FontFamily, FontStyle, FontWeight, GridPlacement, GridTrack, Inset, IntoUnit, LinearGradient,
-  Media, Memo, Offset, Owner, RadialGradient, Ring, Scheme, Shadow, Shadows, Signal, Spacing,
-  State, StateSet, StopColor, SweepGradient, SystemColors, TextAlignment, TextDecoration,
+  Media, Memo, Offset, Owner, RadialGradient, Ring, Scheme, ScrollAnchor, Shadow, Shadows, Signal,
+  Spacing, State, StateSet, StopColor, SweepGradient, SystemColors, TextAlignment, TextDecoration,
   TextDecorationStyle, Token, TokenRef, TokenSet, Tracks, UnitPoint, Value, When, batch,
   layout::{Axis, Rect},
   lazy::{GridCells, ItemExtent, ScrollPosition},

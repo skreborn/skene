@@ -9,7 +9,7 @@ use skene_foundation::{NodeId, NodeMap, Platform, Point, Rect, Scene, Size};
 use taffy::{
   TaffyTree,
   prelude::{AvailableSpace, length},
-  style::{Display, FlexDirection, Overflow, Style},
+  style::{Display, FlexDirection, Overflow, Position, Style},
   tree::{Layout, LayoutOutput},
 };
 
@@ -240,6 +240,10 @@ impl Bounds {
 /// and no children, until it is removed, or while a walk of the scene
 /// ([`lay_out`](Self::lay_out)) reaches it. Writing a node's style, context or children
 /// marks it for the next layout only where the value differs from the one it holds.
+///
+/// Every node contains the boxes positioned absolutely inside it: a style that leaves
+/// its position static is laid out relative, so a pinned box or an overlay is placed
+/// against its parent.
 #[must_use]
 pub struct Tree<C> {
   taffy: TaffyTree<C>,
@@ -302,7 +306,7 @@ impl<C: Leaf> Tree<C> {
 
     let taffy = self
       .taffy
-      .new_leaf(Style::default())
+      .new_leaf(Self::containing(Style::default()))
       .expect("allocate a layout node");
 
     self.nodes.insert(
@@ -336,6 +340,7 @@ impl<C: Leaf> Tree<C> {
     else {
       return false;
     };
+    let style = Self::containing(style);
 
     if self
       .taffy
@@ -603,6 +608,16 @@ impl<C: Leaf> Tree<C> {
     Some(frames)
   }
 
+  /// `style`, laid out relative where it leaves its position static, so its node
+  /// contains the boxes positioned absolutely inside it.
+  const fn containing(mut style: Style) -> Style {
+    if matches!(style.position, Position::Static) {
+      style.position = Position::Relative;
+    }
+
+    style
+  }
+
   /// The style of the flex container a root lays out in at `viewport`, its items along
   /// `direction`, and the space it lays out in.
   fn viewport(
@@ -610,7 +625,7 @@ impl<C: Leaf> Tree<C> {
     direction: FlexDirection,
   ) -> (Style, taffy::geometry::Size<AvailableSpace>) {
     (
-      Style {
+      Self::containing(Style {
         display: Display::Flex,
         flex_direction: direction,
         size: taffy::geometry::Size {
@@ -618,7 +633,7 @@ impl<C: Leaf> Tree<C> {
           height: length(viewport.height),
         },
         ..Style::default()
-      },
+      }),
       taffy::geometry::Size {
         width: AvailableSpace::Definite(viewport.width),
         height: AvailableSpace::Definite(viewport.height),

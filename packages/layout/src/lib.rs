@@ -266,10 +266,18 @@ impl<N: Scalar, X: StyleExtension> BoxLayout for BoxStyle<N, Plain, X> {
       out.flex_shrink = flex.shrink_factor;
     }
 
-    out.justify_content = self.arrangement.map(arrangement);
-    out.align_items = self.item_alignment.map(item);
-    out.align_content = self.line_arrangement.map(arrangement);
-    out.justify_items = self.item_horizontal_alignment.map(item);
+    out.justify_content = self
+      .arrangement
+      .map_or(taffy::style::JustifyContent::NORMAL, arrangement);
+    out.align_items = self
+      .item_alignment
+      .map_or(taffy::style::AlignItems::NORMAL, item);
+    out.align_content = self
+      .line_arrangement
+      .map_or(taffy::style::AlignContent::NORMAL, arrangement);
+    out.justify_items = self
+      .item_horizontal_alignment
+      .map_or(taffy::style::JustifyItems::NORMAL, item);
     out.align_self = self.self_alignment.map(item);
     out.justify_self = self.self_horizontal_alignment.map(item);
 
@@ -471,12 +479,16 @@ fn implicit<N: Scalar>(tracks: &[GridTrack<N>]) -> Vec<taffy::style::TrackSizing
     .unwrap_or_default()
 }
 
-/// One [`GridPlacement`] as taffy's.
+/// One [`GridPlacement`] as taffy's: the first line a name finds is taffy's name with no
+/// index, CSS's bare `<custom-ident>`, which an area's name matches by the area's edge.
 fn placement(value: GridPlacement) -> taffy::style::GridPlacement<String> {
   match value {
     GridPlacement::Auto => taffy::style::GridPlacement::Auto,
     GridPlacement::Line(index) => taffy::style::GridPlacement::from_line_index(index),
     GridPlacement::Span(count) => taffy::style::GridPlacement::from_span(count),
+    GridPlacement::Named(name, 1) => {
+      taffy::style::GridPlacement::NamedLine(name.as_str().to_owned(), 0)
+    }
     GridPlacement::Named(name, index) => {
       taffy::style::GridPlacement::NamedLine(name.as_str().to_owned(), index)
     }

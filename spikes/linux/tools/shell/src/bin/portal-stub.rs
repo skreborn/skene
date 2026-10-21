@@ -7,6 +7,11 @@
 //! `portal-stub <scheme> <contrast> [<key>=<value>@<step> ...]`, a color written `0.9,0.2,0.3`,
 //! e.g. `portal-stub 2 0 color-scheme=1@1 accent-color=0.9,0.2,0.3@2`: each `SIGUSR1` it is sent
 //! applies the next step's changes (steps 1, 2, ...). It exits after 120 seconds.
+//!
+//! `PORTAL_READ_ALL` says how it answers `ReadAll`: with the settings (`answers`, the default),
+//! with D-Bus's unknown-method error, as a portal without the method does (`unknown`), or not
+//! for 3 seconds (`silent`). It prints each call it answers (`ReadAll`, `ReadOne <key>`,
+//! `Read <key>`).
 
 use std::{
   collections::HashMap,
@@ -54,13 +59,21 @@ impl Setting {
   }
 }
 
-struct Settings {
-  values: Arc<Mutex<HashMap<String, Setting>>>,
+/// How the stand-in answers `ReadAll`.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum ReadAll {
+  Answers,
+  Unknown,
+  Silent,
 }
 
-#[interface(name = "org.freedesktop.portal.Settings")]
+struct Settings {
+  values: Arc<Mutex<HashMap<String, Setting>>>,
+  read_all: ReadAll,
+}
+
 impl Settings {
-  fn read_one(&self, namespace: &str, key: &str) -> zbus::fdo::Result<OwnedValue> {
+  fn setting(&self, namespace: &str, key: &str) -> zbus::fdo::Result<OwnedValue> {
     let values = self.values.lock().unwrap();
 
     match (namespace, values.get(key)) {
@@ -70,8 +83,32 @@ impl Settings {
       ))),
     }
   }
+}
 
-  fn read_all(&self, namespaces: Vec<String>) -> HashMap<String, HashMap<String, OwnedValue>> {
+#[interface(name = "org.freedesktop.portal.Settings")]
+impl Settings {
+  fn read_one(&self, namespace: &str, key: &str) -> zbus::fdo::Result<OwnedValue> {
+    println!("ReadOne {key}");
+
+    self.setting(namespace, key)
+  }
+
+  fn read_all(
+    &self,
+    namespaces: Vec<String>,
+  ) -> zbus::fdo::Result<HashMap<String, HashMap<String, OwnedValue>>> {
+    println!("ReadAll");
+
+    match self.read_all {
+      ReadAll::Answers => {}
+      ReadAll::Unknown => {
+        return Err(zbus::fdo::Error::UnknownMethod(
+          "No such method \"ReadAll\"".to_owned(),
+        ));
+      }
+      ReadAll::Silent => std::thread::sleep(Duration::from_secs(3)),
+    }
+
     let named = namespaces.is_empty()
       || namespaces.iter().any(|name| {
         name.is_empty()
@@ -86,15 +123,17 @@ impl Settings {
       .map(|(key, setting)| (key.clone(), setting.value()))
       .collect();
 
-    if named {
+    Ok(if named {
       HashMap::from([(NAMESPACE.to_owned(), settings)])
     } else {
       HashMap::new()
-    }
+    })
   }
 
   fn read(&self, namespace: &str, key: &str) -> zbus::fdo::Result<OwnedValue> {
-    let inner = self.read_one(namespace, key)?;
+    println!("Read {key}");
+
+    let inner = self.setting(namespace, key)?;
 
     Ok(
       Value::Value(Box::new(Value::from(inner)))
@@ -151,6 +190,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
       "/org/freedesktop/portal/desktop",
       Settings {
         values: Arc::clone(&values),
+        read_all: match std::env::var("PORTAL_READ_ALL").as_deref() {
+          Ok("unknown") => ReadAll::Unknown,
+          Ok("silent") => ReadAll::Silent,
+          _ => ReadAll::Answers,
+        },
       },
     )?
     .build()?;

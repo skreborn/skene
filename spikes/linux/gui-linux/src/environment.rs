@@ -178,8 +178,9 @@ fn value_of(value: &zbus::zvariant::Value<'_>) -> SettingValue {
   }
 }
 
-/// Every setting of `namespaces` the portal holds, in one call: `None` where no portal is on
-/// the bus, `Err` where it answers `ReadAll` with an error or with no settings map.
+/// Every setting of `namespaces` the portal holds, in one call: `None` where no portal
+/// answers (none is on the bus, or it does not answer within the connection's timeout),
+/// `Err` where it answers `ReadAll` with an error of its own or with no settings map.
 fn read_all(
   connection: &zbus::blocking::Connection,
   namespaces: &[&str],
@@ -193,14 +194,17 @@ fn read_all(
   ) {
     Ok(reply) => Some(reply.body().deserialize().map_err(|_| ())),
     Err(zbus::Error::MethodError(name, ..))
-      if matches!(
+      if !matches!(
         name.as_str(),
-        "org.freedesktop.DBus.Error.ServiceUnknown" | "org.freedesktop.DBus.Error.NameHasNoOwner"
+        "org.freedesktop.DBus.Error.ServiceUnknown"
+          | "org.freedesktop.DBus.Error.NameHasNoOwner"
+          | "org.freedesktop.DBus.Error.NoReply"
+          | "org.freedesktop.DBus.Error.Timeout"
       ) =>
     {
-      None
+      Some(Err(()))
     }
-    Err(_) => Some(Err(())),
+    Err(_) => None,
   }
 }
 

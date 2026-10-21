@@ -7,8 +7,9 @@
 #   1. alone: hello's build times, size and startup (tools/testing/measure.sh, a target of its
 #      own);
 #   2. the builds: formatting, clippy and rustdoc (with skene-gui-linux's `gpu` feature too), every
-#      test binary on both paths, the CLI, the shell's tools and probes, the release apps, and an
-#      app made by `skene new` (built, checked, tested and run, in a target of its own);
+#      test binary on both paths, the CLI, the shell's tools and probes, the release apps, and
+#      beside them an app made by `skene new` (built, checked, tested and run, in a target of its
+#      own);
 #   3. side by side, POOL jobs at once (3 unless set), the longest first: every test leg, nextest,
 #      the steadiness rounds, the isolation check, the screenshots, the shell's sessions, the
 #      controls' sessions, the platform-text cases and the GPU path's tests;
@@ -129,9 +130,10 @@ measure_target() {
   echo "(target now ${size} MB)" >> "$summary"
 }
 
-# Phase 3's jobs: each runs in the background with its output in results/jobs/<name>.log and
-# its summary lines in results/jobs/<name>.summary, at most POOL at once; `gather` waits for
-# them all and adds their summaries in the order the jobs were started.
+# Jobs (phase 3's, and the app phase 2 builds beside the workspace's builds): each runs in the
+# background with its output in results/jobs/<name>.log and its summary lines in
+# results/jobs/<name>.summary, at most POOL at once; `gather` waits for them all and adds their
+# summaries in the order the jobs were started.
 pool_names=()
 pool_pids=()
 job() { # job <name> <command...>
@@ -227,7 +229,48 @@ if [ "${SKIP_PAINT:-0}" != 1 ]; then
 fi
 measure_target
 
-section "the builds: every test, the CLI, the shell's tools and probes, the release apps"
+# An app made by `skene new`, built, checked, tested and run.
+new_app() {
+  local apps code started
+  # Outside the repository, where no configuration of the workspace's reaches the app.
+  apps=$(mktemp -d "${TMPDIR:-/tmp}/skene-new-apps-XXXXXX")
+  mkdir -p "$apps/lonely"
+  cp tools/bin/skene "$apps/lonely/"
+  (cd "$apps" && say "skene new without a runner beside skene: $(lonely/skene new nope 2>&1 | head -c 160 || true)")
+  (cd "$apps" && "$here/tools/bin/skene" new greeter | tee -a "$summary")
+  (
+    cd "$apps/greeter" || exit 1
+    # The app builds in a target of its own, removed after: its dependencies resolve apart from
+    # the workspace's.
+    export CARGO_TARGET_DIR="$here/target-greeter"
+    started=$(date +%s%N)
+    cargo test > "$results/new-test.log" 2>&1 || true
+    say "plain cargo test, no DISPLAY: $(passed "$results/new-test.log") passed, $(failed "$results/new-test.log") failed ($(ms_since "$started") ms, building the app and its dependencies)"
+    code=0
+    "$here/tools/bin/skene" check > "$results/new-check.log" 2>&1 || code=$?
+    say "skene check (linux): exit $code: $(grep '^skene check' "$results/new-check.log" | tr '\n' ' ')"
+    printf 'platforms = ["linux", "ios"]\n' > skene.toml
+    code=0
+    "$here/tools/bin/skene" check > "$results/new-check-ios.log" 2>&1 || code=$?
+    say "skene check (linux, ios): exit $code: $(grep '^skene check' "$results/new-check-ios.log" | tr '\n' ' ')"
+    printf 'platforms = ["linux"]\n' > skene.toml
+    "$here/tools/bin/skene" test > "$results/new-skene-test.log" 2>&1 || true
+    say "skene test (x11): $(passed "$results/new-skene-test.log") passed"
+    SKENE_TEST_SESSION=wayland "$here/tools/bin/skene" test > "$results/new-skene-test-wayland.log" 2>&1 || true
+    say "skene test (wayland): $(passed "$results/new-skene-test-wayland.log") passed"
+    ("$here/tools/bin/skene" build linux 2>/dev/null || true) | grep '^skene build' | tee -a "$summary" || true
+    rm -f "$results/greeter-run.png"
+    SKENE_SHOT="$results/greeter-run.png" timeout 20 "$here/tools/bin/skene" run > /dev/null 2>&1 || true
+    say "skene run, no DISPLAY (the runner's private Xvfb): $(python3 -I -c 'import sys; from PIL import Image; print("frame", Image.open(sys.argv[1]).size)' "$results/greeter-run.png" 2>&1)"
+    say "the app's own target: $(du -sm "$CARGO_TARGET_DIR" | cut -f1) MB, removed"
+    rm -rf "$CARGO_TARGET_DIR"
+  )
+  rm -rf "$apps"
+}
+
+section "the builds (every test, the CLI, the shell's tools and probes, the release apps) and, beside them, an app made by skene new"
+# The app builds in a target of its own, beside the workspace's builds.
+job new-app new_app
 started=$(date +%s%N)
 cargo test --workspace --no-run > "$results/test-build.log" 2>&1
 # The sets phase 3 tests by themselves, whose features unify apart from the workspace's.
@@ -267,48 +310,8 @@ if [ "${SKIP_PAINT:-0}" != 1 ]; then
 fi
 say "the release builds (hello, the probes, verify, rows with the GPU path and without): $(ms_since "$started") ms"
 say "the input tools outside a private session (DISPLAY=:0 set, no session marker): drive: $(DISPLAY=:0 tools/bin/drive x11 key a 2>&1 | head -1); harness.py: $(DISPLAY=:0 OUT=/nonexistent python3.12 -I tools/controls/harness.py focus 2>&1 | head -1); orca.sh: $(DISPLAY=:0 tools/controls/orca/orca.sh 2>&1 | head -1)"
+gather
 measure_target
-
-# An app made by `skene new`, built, checked, tested and run.
-new_app() {
-  local apps code started
-  # Outside the repository, where no configuration of the workspace's reaches the app.
-  apps=$(mktemp -d "${TMPDIR:-/tmp}/skene-new-apps-XXXXXX")
-  mkdir -p "$apps/lonely"
-  cp tools/bin/skene "$apps/lonely/"
-  (cd "$apps" && say "skene new without a runner beside skene: $(lonely/skene new nope 2>&1 | head -c 160 || true)")
-  (cd "$apps" && "$here/tools/bin/skene" new greeter | tee -a "$summary")
-  (
-    cd "$apps/greeter" || exit 1
-    # The app builds in a target of its own, removed after: its dependencies resolve apart from
-    # the workspace's.
-    export CARGO_TARGET_DIR="$here/target-greeter"
-    started=$(date +%s%N)
-    cargo test > "$results/new-test.log" 2>&1 || true
-    say "plain cargo test, no DISPLAY: $(passed "$results/new-test.log") passed, $(failed "$results/new-test.log") failed ($(ms_since "$started") ms, building the app and its dependencies)"
-    code=0
-    "$here/tools/bin/skene" check > "$results/new-check.log" 2>&1 || code=$?
-    say "skene check (linux): exit $code: $(grep '^skene check' "$results/new-check.log" | tr '\n' ' ')"
-    printf 'platforms = ["linux", "ios"]\n' > skene.toml
-    code=0
-    "$here/tools/bin/skene" check > "$results/new-check-ios.log" 2>&1 || code=$?
-    say "skene check (linux, ios): exit $code: $(grep '^skene check' "$results/new-check-ios.log" | tr '\n' ' ')"
-    printf 'platforms = ["linux"]\n' > skene.toml
-    "$here/tools/bin/skene" test > "$results/new-skene-test.log" 2>&1 || true
-    say "skene test (x11): $(passed "$results/new-skene-test.log") passed"
-    SKENE_TEST_SESSION=wayland "$here/tools/bin/skene" test > "$results/new-skene-test-wayland.log" 2>&1 || true
-    say "skene test (wayland): $(passed "$results/new-skene-test-wayland.log") passed"
-    ("$here/tools/bin/skene" build linux 2>/dev/null || true) | grep '^skene build' | tee -a "$summary" || true
-    rm -f "$results/greeter-run.png"
-    SKENE_SHOT="$results/greeter-run.png" timeout 20 "$here/tools/bin/skene" run > /dev/null 2>&1 || true
-    say "skene run, no DISPLAY (the runner's private Xvfb): $(python3 -I -c 'import sys; from PIL import Image; print("frame", Image.open(sys.argv[1]).size)' "$results/greeter-run.png" 2>&1)"
-    say "the app's own target: $(du -sm "$CARGO_TARGET_DIR" | cut -f1) MB, removed"
-    rm -rf "$CARGO_TARGET_DIR"
-  )
-  rm -rf "$apps"
-}
-section "an app made by skene new, outside the repository (a target of its own, removed after)"
-new_app
 
 # Phase 3's jobs.
 workspace_leg() { # workspace_leg <leg>

@@ -20,10 +20,10 @@ env:
 
 jobs:
   gate:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Read the pinned versions
         id: versions
@@ -65,7 +65,7 @@ jobs:
 
       - name: Keep the logs
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: gate-logs
           path: target/gate/*.log

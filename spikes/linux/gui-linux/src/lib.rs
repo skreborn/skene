@@ -373,6 +373,9 @@ pub(crate) fn start(app_id: &str, root: Box<dyn FnOnce() -> NodeId>) -> ExitCode
 
     return ExitCode::FAILURE;
   };
+
+  text::preload();
+
   let (title, size) = window_settings(app_id);
 
   if !environment::follow_portal() {

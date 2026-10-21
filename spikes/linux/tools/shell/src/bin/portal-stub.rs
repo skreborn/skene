@@ -71,6 +71,28 @@ impl Settings {
     }
   }
 
+  fn read_all(&self, namespaces: Vec<String>) -> HashMap<String, HashMap<String, OwnedValue>> {
+    let named = namespaces.is_empty()
+      || namespaces.iter().any(|name| {
+        name.is_empty()
+          || name == NAMESPACE
+          || name
+            .strip_suffix('*')
+            .is_some_and(|prefix| NAMESPACE.starts_with(prefix))
+      });
+    let values = self.values.lock().unwrap();
+    let settings: HashMap<String, OwnedValue> = values
+      .iter()
+      .map(|(key, setting)| (key.clone(), setting.value()))
+      .collect();
+
+    if named {
+      HashMap::from([(NAMESPACE.to_owned(), settings)])
+    } else {
+      HashMap::new()
+    }
+  }
+
   fn read(&self, namespace: &str, key: &str) -> zbus::fdo::Result<OwnedValue> {
     let inner = self.read_one(namespace, key)?;
 

@@ -3,7 +3,10 @@
 //! table for dead keys and `Multi_key` sequences, the repeat rate, and each key named as a
 //! browser names it (`key` and `code`).
 
-use std::time::Duration;
+use std::{
+  thread::{self, JoinHandle},
+  time::Duration,
+};
 
 use skene_foundation::seam::report::{KeyEvent, Modifiers};
 use xkbcommon::xkb::{self, compose, keysyms};
@@ -25,13 +28,87 @@ pub struct KeyInput {
   pub composed: bool,
 }
 
+/// The locale's compose table, compiled with a context of its own.
+struct Table(compose::Table);
+
+// SAFETY: the table and the context it holds are this value's alone: the thread that compiled
+// them gives them up as it ends, and one thread uses them from then on.
+unsafe impl Send for Table {}
+
+impl Table {
+  /// The compose table of the current locale (`en_US.UTF-8`'s where it has none), or `None`
+  /// where xkbcommon finds neither.
+  fn of_locale() -> Option<Self> {
+    let context = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);
+    let locale = ["LC_ALL", "LC_CTYPE", "LANG"]
+      .into_iter()
+      .find_map(|name| std::env::var(name).ok().filter(|value| !value.is_empty()))
+      .unwrap_or_else(|| "C".into());
+
+    compose::Table::new_from_locale(
+      &context,
+      std::ffi::OsStr::new(&locale),
+      compose::COMPILE_NO_FLAGS,
+    )
+    .or_else(|()| {
+      compose::Table::new_from_locale(
+        &context,
+        std::ffi::OsStr::new("en_US.UTF-8"),
+        compose::COMPILE_NO_FLAGS,
+      )
+    })
+    .ok()
+    .map(Self)
+  }
+}
+
+/// The compose state: compiling its table beside the window's thread until a key needs it.
+enum Compose {
+  /// The thread compiling the table.
+  Compiling(JoinHandle<Option<Table>>),
+  /// The state over the table, where there is one.
+  Ready(Option<compose::State>),
+}
+
+impl Compose {
+  /// The table's compiling, on a thread of its own where one starts.
+  fn start() -> Self {
+    match thread::Builder::new()
+      .name("skene-compose".into())
+      .spawn(Table::of_locale)
+    {
+      Ok(compiling) => Self::Compiling(compiling),
+      Err(_) => Self::ready(Table::of_locale()),
+    }
+  }
+
+  /// The state over `table`, where there is one.
+  fn ready(table: Option<Table>) -> Self {
+    Self::Ready(table.map(|table| compose::State::new(&table.0, compose::STATE_NO_FLAGS)))
+  }
+
+  /// The state, waiting for its table where it is compiling.
+  fn state(&mut self) -> Option<&mut compose::State> {
+    if let Self::Compiling(_) = self
+      && let Self::Compiling(compiling) = std::mem::replace(self, Self::Ready(None))
+    {
+      *self = Self::ready(compiling.join().ok().flatten());
+    }
+
+    match self {
+      Self::Ready(state) => state.as_mut(),
+      Self::Compiling(_) => None,
+    }
+  }
+}
+
 /// A keymap, its state, the compose state and the repeat settings.
 pub struct Keyboard {
   /// The xkb context.
   pub context: xkb::Context,
   keymap: Option<xkb::Keymap>,
   state: Option<xkb::State>,
-  compose: Option<compose::State>,
+  compose: Compose,
   sequence: String,
   /// Keys per second a held key repeats at, and the delay before it starts; no repeat where
   /// the rate is 0.
@@ -45,32 +122,13 @@ impl Default for Keyboard {
 }
 
 impl Keyboard {
-  /// A keyboard with no keymap yet, and the compose table of the current locale.
+  /// A keyboard with no keymap yet, and the compose table of the current locale, compiling.
   pub fn new() -> Self {
-    let context = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);
-    let locale = ["LC_ALL", "LC_CTYPE", "LANG"]
-      .into_iter()
-      .find_map(|name| std::env::var(name).ok().filter(|value| !value.is_empty()))
-      .unwrap_or_else(|| "C".into());
-    let table = compose::Table::new_from_locale(
-      &context,
-      std::ffi::OsStr::new(&locale),
-      compose::COMPILE_NO_FLAGS,
-    )
-    .or_else(|()| {
-      compose::Table::new_from_locale(
-        &context,
-        std::ffi::OsStr::new("en_US.UTF-8"),
-        compose::COMPILE_NO_FLAGS,
-      )
-    })
-    .ok();
-
     Self {
-      context,
+      context: xkb::Context::new(xkb::CONTEXT_NO_FLAGS),
       keymap: None,
       state: None,
-      compose: table.map(|table| compose::State::new(&table, compose::STATE_NO_FLAGS)),
+      compose: Compose::start(),
       sequence: String::new(),
       repeat: (25, Duration::from_millis(600)),
     }
@@ -159,7 +217,7 @@ impl Keyboard {
     let mut composing = None;
     let mut composed = false;
 
-    if down && let Some(compose) = &mut self.compose {
+    if down && let Some(compose) = self.compose.state() {
       let accepted = compose.feed(keysym) == compose::FeedResult::Accepted;
 
       match compose.status() {

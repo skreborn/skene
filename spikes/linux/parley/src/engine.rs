@@ -7,7 +7,8 @@ use std::{
   cell::{Ref, RefCell, RefMut},
   ops::Range,
   rc::Rc,
-  sync::Arc,
+  sync::{Arc, Mutex, PoisonError},
+  thread::{self, JoinHandle},
 };
 
 use crate::shaping::{Job, PARALLEL, SHARE, Shaped, Shapers};
@@ -98,22 +99,86 @@ pub struct ParleyEngine {
   contexts: Rc<RefCell<Contexts>>,
 }
 
+/// The system's fonts and fontconfig's configuration as [`ParleyEngine::preload`]'s threads
+/// load them.
+struct Preloaded {
+  /// The thread loading the system's fonts.
+  collection: JoinHandle<Collection>,
+  /// The thread loading fontconfig's configuration.
+  #[cfg(target_os = "linux")]
+  fontconfig: JoinHandle<Option<crate::linux::Loaded>>,
+}
+
+/// What [`ParleyEngine::preload`] started, until an engine over the system's fonts takes it.
+static PRELOADED: Mutex<Option<Preloaded>> = Mutex::new(None);
+
 impl ParleyEngine {
+  /// Starts loading the system's fonts and, on Linux, fontconfig's configuration, each on a
+  /// thread of its own, for the next engine over the system's fonts
+  /// ([`ParleyEngine::system`]) to take; nothing where a load it started is not taken yet.
+  pub fn preload() {
+    let mut preloaded = PRELOADED.lock().unwrap_or_else(PoisonError::into_inner);
+
+    if preloaded.is_some() {
+      return;
+    }
+
+    let collection = thread::Builder::new()
+      .name("skene-fonts".into())
+      .spawn(|| Collection::new(CollectionOptions::default()));
+    #[cfg(target_os = "linux")]
+    let fontconfig = thread::Builder::new()
+      .name("skene-fontconfig".into())
+      .spawn(crate::linux::Loaded::load);
+
+    #[cfg(target_os = "linux")]
+    if let (Ok(collection), Ok(fontconfig)) = (collection, fontconfig) {
+      *preloaded = Some(Preloaded {
+        collection,
+        fontconfig,
+      });
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    if let Ok(collection) = collection {
+      *preloaded = Some(Preloaded { collection });
+    }
+  }
+
   /// The engine over the system's fonts, Linux's fontconfig resolving each character's
-  /// family.
+  /// family: what [`ParleyEngine::preload`] loaded where it started, waiting for it.
   #[must_use]
   pub fn system() -> Self {
+    let preloaded = PRELOADED
+      .lock()
+      .unwrap_or_else(PoisonError::into_inner)
+      .take();
+    let (collection, fallback) = match preloaded {
+      Some(preloaded) => (
+        preloaded.collection.join().ok(),
+        #[cfg(target_os = "linux")]
+        preloaded
+          .fontconfig
+          .join()
+          .ok()
+          .map(|loaded| loaded.map(crate::linux::Fallback::from_loaded)),
+        #[cfg(not(target_os = "linux"))]
+        Some(()),
+      ),
+      None => (None, None),
+    };
+
     Self {
       contexts: Rc::new(RefCell::new(Contexts::new(
         // The loaded fonts are shared with the threads that shape beside this one.
         FontContext {
-          collection: Collection::new(CollectionOptions::default()),
+          collection: collection.unwrap_or_else(|| Collection::new(CollectionOptions::default())),
           source_cache: SourceCache::new_shared(),
         },
         #[cfg(target_os = "linux")]
-        crate::linux::Fallback::load(),
+        fallback.unwrap_or_else(crate::linux::Fallback::load),
         #[cfg(not(target_os = "linux"))]
-        (),
+        fallback.unwrap_or(()),
       ))),
     }
   }

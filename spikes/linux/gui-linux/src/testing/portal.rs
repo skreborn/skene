@@ -112,7 +112,7 @@ type Values = Arc<Mutex<HashMap<(&'static str, &'static str), Setting>>>;
 
 /// The served interface, in a module of its own: zbus's macro adds a signal trait beside it.
 mod served {
-  use std::sync::PoisonError;
+  use std::{collections::HashMap, sync::PoisonError};
 
   use zbus::{
     interface,
@@ -139,6 +139,35 @@ mod served {
         .find(|((space, name), _)| *space == namespace && *name == key)
         .map(|(_, setting)| setting.value())
         .ok_or_else(|| zbus::fdo::Error::UnknownProperty(format!("{namespace} {key}")))
+    }
+
+    /// Every setting of the namespaces `namespaces` names (each whole, or ending in `*` for
+    /// every namespace it begins; none or an empty one for all).
+    fn read_all(
+      &self,
+      namespaces: Vec<String>,
+    ) -> zbus::fdo::Result<HashMap<String, HashMap<String, OwnedValue>>> {
+      let values = self.values.lock().unwrap_or_else(PoisonError::into_inner);
+      let named = |space: &str| {
+        namespaces.is_empty()
+          || namespaces.iter().any(|name| {
+            name.is_empty()
+              || name == space
+              || name
+                .strip_suffix('*')
+                .is_some_and(|prefix| space.starts_with(prefix))
+          })
+      };
+      let mut all: HashMap<String, HashMap<String, OwnedValue>> = HashMap::new();
+
+      for ((space, key), setting) in values.iter().filter(|((space, _), _)| named(space)) {
+        all
+          .entry((*space).to_owned())
+          .or_default()
+          .insert((*key).to_owned(), setting.value());
+      }
+
+      Ok(all)
     }
 
     /// The setting `key` of `namespace`, wrapped in a variant (the interface's first version).

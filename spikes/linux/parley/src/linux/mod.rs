@@ -8,6 +8,6 @@ pub mod xsettings;
 
 pub use self::{
   fallback::{Fallback, Presentation},
-  fontconfig::{DesktopSettings, Fontconfig, RenderSettings, Request},
+  fontconfig::{DesktopSettings, Fontconfig, Loaded, RenderSettings, Request},
   freetype::{GlyphMask, MaskPixels, Rasterizer},
 };

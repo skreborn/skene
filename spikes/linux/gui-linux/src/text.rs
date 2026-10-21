@@ -25,6 +25,11 @@ pub fn engine() -> ParleyEngine {
   ENGINE.with(Clone::clone)
 }
 
+/// Starts loading the system's fonts beside this thread, for the first engine to take.
+pub fn preload() {
+  ParleyEngine::preload();
+}
+
 /// The link runs of a paragraph: each byte range and where it leads.
 pub type Links = Vec<(Range<usize>, Rc<str>)>;
 

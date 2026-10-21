@@ -14,7 +14,7 @@ use skene_foundation::{
 };
 use unicode_segmentation::UnicodeSegmentation as _;
 
-use crate::linux::fontconfig::{Fontconfig, Request};
+use crate::linux::fontconfig::{Fontconfig, Loaded, Request};
 
 /// How a cluster is presented.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -93,6 +93,14 @@ impl Fallback {
   #[must_use]
   pub fn load() -> Option<Self> {
     Fontconfig::load().map(|fontconfig| Self { fontconfig })
+  }
+
+  /// The resolver over the configuration `loaded`.
+  #[must_use]
+  pub fn from_loaded(loaded: Loaded) -> Self {
+    Self {
+      fontconfig: Fontconfig::from_loaded(loaded),
+    }
   }
 
   /// The configuration.

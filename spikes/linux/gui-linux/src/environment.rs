@@ -16,7 +16,7 @@
 //! - what a primary press on a scroll bar's track does ([`primary_warps_slider`]): XSETTINGS'
 //!   `Gtk/PrimaryButtonWarpsSlider`, else the GTK 4 settings files'.
 
-use std::{cell::RefCell, time::Duration};
+use std::{cell::RefCell, collections::HashMap, time::Duration};
 
 use skene_foundation::{
   Color, FontFamily, Scheme,
@@ -178,6 +178,36 @@ fn value_of(value: &zbus::zvariant::Value<'_>) -> SettingValue {
   }
 }
 
+/// Every setting of `namespaces` the portal holds, in one call: `None` where no portal is on
+/// the bus, `Err` where it answers `ReadAll` with an error or with no settings map.
+fn read_all(
+  connection: &zbus::blocking::Connection,
+  namespaces: &[&str],
+) -> Option<Result<AllSettings, ()>> {
+  match connection.call_method(
+    Some(PORTAL),
+    PORTAL_PATH,
+    Some(SETTINGS),
+    "ReadAll",
+    &(namespaces,),
+  ) {
+    Ok(reply) => Some(reply.body().deserialize().map_err(|_| ())),
+    Err(zbus::Error::MethodError(name, ..))
+      if matches!(
+        name.as_str(),
+        "org.freedesktop.DBus.Error.ServiceUnknown" | "org.freedesktop.DBus.Error.NameHasNoOwner"
+      ) =>
+    {
+      None
+    }
+    Err(_) => Some(Err(())),
+  }
+}
+
+/// What the portal's `ReadAll` answers: each namespace's settings by key.
+type AllSettings = HashMap<String, HashMap<String, zbus::zvariant::OwnedValue>>;
+
+/// The setting `key` of `namespace`, where the portal holds it.
 fn read(
   connection: &zbus::blocking::Connection,
   namespace: &str,
@@ -342,12 +372,23 @@ pub fn follow_portal() -> bool {
     (INTERFACE, "font-name"),
   ];
   let mut answered = false;
+  let Some(all) = read_all(&connection, &[APPEARANCE, INTERFACE]) else {
+    return false;
+  };
 
   PREFERENCES.with(|preferences| {
     let mut preferences = preferences.borrow_mut();
 
     for (namespace, key) in keys {
-      if let Some(value) = read(&connection, namespace, key) {
+      let value = match &all {
+        Ok(all) => all
+          .get(namespace)
+          .and_then(|settings| settings.get(key))
+          .map(|value| value_of(value)),
+        Err(()) => read(&connection, namespace, key),
+      };
+
+      if let Some(value) = value {
         trace::log(|| format!("[portal] {namespace} {key} = {value:?}"));
         answered |= namespace == APPEARANCE;
         apply_setting(&mut preferences, namespace, key, &value);

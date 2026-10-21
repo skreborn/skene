@@ -234,6 +234,34 @@ pub struct Request {
   pub italic: bool,
 }
 
+/// A configuration fontconfig loaded for this process that no [`Fontconfig`] holds yet: what
+/// one loads on a thread of its own and hands to another ([`Fontconfig::from_loaded`]).
+pub struct Loaded(ptr::NonNull<FcConfig>);
+
+// SAFETY: a configuration fresh from `FcInitLoadConfigAndFonts` is referenced by this value
+// alone; moving it hands it to one thread, which alone uses it from then on.
+unsafe impl Send for Loaded {}
+
+impl Loaded {
+  /// The configuration fontconfig loads for this process (honouring `FONTCONFIG_FILE` and the
+  /// user's own files), or `None` where it loads none.
+  #[must_use]
+  pub fn load() -> Option<Self> {
+    ptr::NonNull::new(unsafe { FcInitLoadConfigAndFonts() }).map(Self)
+  }
+
+  /// The configuration, now the caller's to destroy.
+  fn into_raw(self) -> *mut FcConfig {
+    std::mem::ManuallyDrop::new(self).0.as_ptr()
+  }
+}
+
+impl Drop for Loaded {
+  fn drop(&mut self) {
+    unsafe { FcConfigDestroy(self.0.as_ptr()) };
+  }
+}
+
 /// The user's fontconfig configuration, loaded once: the fonts it sorts per request (kept),
 /// and the rendering settings it gives each font.
 pub struct Fontconfig {
@@ -248,14 +276,18 @@ impl Fontconfig {
   /// user's own files), or `None` where it loads none.
   #[must_use]
   pub fn load() -> Option<Self> {
-    let config = unsafe { FcInitLoadConfigAndFonts() };
+    Loaded::load().map(Self::from_loaded)
+  }
 
-    (!config.is_null()).then(|| Self {
-      config,
+  /// The fontconfig of the configuration `loaded`.
+  #[must_use]
+  pub fn from_loaded(loaded: Loaded) -> Self {
+    Self {
+      config: loaded.into_raw(),
       sorted: HashMap::new(),
       desktop: DesktopSettings::default(),
       generation: 0,
-    })
+    }
   }
 
   /// Loads the configuration `file` states in place of this one, or the process's again where

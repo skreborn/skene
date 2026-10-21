@@ -11,7 +11,7 @@ import os
 import sys
 
 ROOT = sys.argv[1]
-APIS = (29, 34, 35)
+APIS = (29, 34, 35, 36, 37)
 DENSITIES = (320, 420, 480, 560)
 PAIRS = [
     ("a-simple", "b-linear"),

@@ -203,7 +203,7 @@ def main():
     summary = {"apis": {}}
     lines = ["# Android text parity: options A, B and C", ""]
 
-    for api in (29, 34, 35):
+    for api in (29, 34, 35, 36, 37):
         base = os.path.join(ROOT, f"api{api}", "parity")
 
         if not os.path.isdir(base):

@@ -28,24 +28,37 @@ concurrency:
 permissions:
   contents: read
 
+# The NDK the Rust libraries are built with and the app's build strips them with (its
+# `ndkVersion`), installed where the runner image lacks it.
+env:
+  NDK_VERSION: 30.0.16248370
+
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 40
     defaults:
       run:
         working-directory: spikes/android
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: "25"
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
         with:
-          gradle-version: "8.14.3"
+          gradle-version: "9.8.2"
+          cache-provider: basic
+
+      - name: The pinned NDK
+        run: |
+          NDK="$ANDROID_HOME/ndk/$NDK_VERSION"
+          [ -d "$NDK" ] || yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;$NDK_VERSION" > /dev/null
+          echo "ANDROID_NDK_HOME=$NDK" >> "$GITHUB_ENV"
+          cat "$NDK/source.properties"
 
       # The repository's rust-toolchain.toml pins the toolchain; add the targets to that one.
       - name: Rust targets for the emulator's ABI and for phones
@@ -58,6 +71,12 @@ jobs:
         with:
           tool: cargo-ndk
 
+      - name: Tool versions
+        run: |
+          cargo ndk --version
+          java -version 2>&1 | head -1
+          gradle --version | grep -E "^(Gradle|Kotlin|JVM)"
+
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: |
@@ -67,7 +86,6 @@ jobs:
       - name: Build the Rust library
         working-directory: spikes/android/rust
         run: |
-          export ANDROID_NDK_HOME="$ANDROID_NDK_LATEST_HOME"
           echo "NDK: $ANDROID_NDK_HOME"
           cargo ndk -t x86_64 --platform 29 -o ../app/src/main/jniLibs build --release
           ls -la ../app/src/main/jniLibs/x86_64
@@ -77,7 +95,6 @@ jobs:
       - name: Weigh Parley and build the plain library
         working-directory: spikes/android/plain
         run: |
-          export ANDROID_NDK_HOME="$ANDROID_NDK_LATEST_HOME"
           mkdir -p ../../../sizes
           for target in x86_64 arm64-v8a; do
             triple=$([ "$target" = x86_64 ] && echo x86_64-linux-android || echo aarch64-linux-android)
@@ -103,13 +120,13 @@ jobs:
           cp app/build/outputs/apk/androidTest/release/app-release-androidTest.apk ../../apks/
           ls -la ../../apks
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: spike-android-apks
           path: apks
           retention-days: 5
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: spike-android-sizes
           path: sizes
@@ -117,10 +134,12 @@ jobs:
 
   emulator:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 60
     strategy:
       fail-fast: false
+      # `image` names the system image where its level is not `api` alone: API 37's newest
+      # x86_64 image with 4 KB pages is 37.0's, Google APIs only.
       matrix:
         include:
           - api: 29
@@ -129,10 +148,15 @@ jobs:
             target: default
           - api: 35
             target: google_apis
+          - api: 36
+            target: default
+          - api: 37
+            image: "37.0"
+            target: google_apis
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: spike-android-apks
           path: apks
@@ -146,7 +170,7 @@ jobs:
       - name: Run on the emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: ${{ matrix.api }}
+          api-level: ${{ matrix.image || matrix.api }}
           target: ${{ matrix.target }}
           arch: x86_64
           profile: pixel_6
@@ -165,7 +189,7 @@ jobs:
           cat results-api${{ matrix.api }}.txt || true
           echo "=== END ==="
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: spike-android-results-api${{ matrix.api }}
@@ -177,17 +201,17 @@ jobs:
   compare:
     needs: emulator
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: spike-android-results-api*
           path: results
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: spike-android-sizes
           path: sizes
@@ -208,7 +232,7 @@ jobs:
       - name: Compare
         run: |
           mkdir -p parity
-          for api in 29 34 35; do
+          for api in 29 34 35 36 37; do
             src=results/spike-android-results-api$api
             mkdir -p parity/api$api
             cp "$src"/results-api$api.txt parity/api$api/ || true
@@ -226,7 +250,7 @@ jobs:
           cat parity/sweep.md
           echo "=== END ==="
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: spike-android-parity

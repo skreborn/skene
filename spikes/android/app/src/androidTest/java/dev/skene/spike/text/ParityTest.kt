@@ -666,7 +666,7 @@ class ParityTest {
     })
     val manager = context.getSystemService(AccessibilityManager::class.java)
     report("contrast.hiddenMethod", try {
-      AccessibilityManager::class.java.getMethod("isHighTextContrastEnabled").invoke(manager).toString()
+      AccessibilityManager::class.java.getMethod("isHighTextContrastEnabled").invoke(manager)!!.toString()
     } catch (error: Throwable) {
       error.javaClass.simpleName
     })
@@ -682,7 +682,7 @@ class ParityTest {
     val location = IntArray(2)
     val (width, height) = onMain {
       view!!.getLocationOnScreen(location)
-      view!!.width to view!!.height
+      view.width to view.height
     }
     report("contrast.hardwareAccelerated", onMain { view!!.isHardwareAccelerated })
     // The screenshot may be a hardware bitmap, whose pixels cannot be read until copied.

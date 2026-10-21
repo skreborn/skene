@@ -11,8 +11,8 @@
 use std::{cell::RefCell, hash::Hash, rc::Rc};
 
 use crate::{
-  Alignment, Arrangement, AxisAlignment, Effect, GridPlacement, GridTrack, Inset, NodeId, Owner,
-  Signal, Spacing, State, StateSet, Tracks, Value,
+  Alignment, Arrangement, AxisAlignment, Edge, Effect, GridPlacement, GridTrack, Inset, NodeId,
+  Owner, Signal, Spacing, State, StateSet, Tracks, Value,
   layout::Axis,
   lazy::{
     GridCells, ItemExtent, Key, KeyMap, KeySet, ScrollPosition,
@@ -201,7 +201,7 @@ pub struct Lazy<R: Realization> {
   spacing: Value<Spacing>,
   padding: Value<Inset>,
   item_alignment: Value<AxisAlignment>,
-  reverse: Value<bool>,
+  default_anchor: Value<Edge>,
   label: Option<Rc<dyn Fn() -> Rc<str>>>,
   labelled_by: Vec<NodeHandle>,
   position: Option<Rc<dyn Fn() -> ScrollPosition>>,
@@ -225,7 +225,7 @@ impl<R: Realization> Lazy<R> {
       spacing: Value::from(Spacing::default()),
       padding: Value::from(Inset::default()),
       item_alignment: Value::from(AxisAlignment::Stretch),
-      reverse: Value::from(false),
+      default_anchor: Value::from(Edge::Start),
       label: None,
       labelled_by: Vec::new(),
       position: None,
@@ -409,23 +409,24 @@ pub trait LazyBase<R: Realization>: Wraps<Inner = Lazy<R>> {
     self
   }
 
-  /// Whether the list starts at its end and keeps its end in view while the end shows, as items
-  /// arrive or measure (Compose's `reverseLayout`): a chat staying at its newest message.
-  /// Scrolled away from the end, it keeps its first visible item, as every list does.
-  fn set_reverse_layout(mut self, reverse: impl Into<Value<bool>>) -> Self {
-    self.inner_mut().reverse = reverse.into();
+  /// The edge the list starts at and keeps in view while that edge shows, as items arrive or
+  /// measure (SwiftUI's `defaultScrollAnchor`), its items in their order: [`Edge::End`] for a
+  /// chat staying at its newest message. Scrolled away from it, the list keeps its first
+  /// visible item, as every list does. [`Edge::Start`] where unset.
+  fn set_default_scroll_anchor(mut self, anchor: impl Into<Value<Edge>>) -> Self {
+    self.inner_mut().default_anchor = anchor.into();
 
     self
   }
 
-  /// Whether the list starts at its end and keeps it in view, as `reverse` returns it.
+  /// The edge the list starts at and keeps in view while it shows, as `anchor` returns it.
   ///
   /// Derived: recomputed whenever a signal the closure reads changes.
-  fn derive_reverse_layout<V: Into<Value<bool>>>(
+  fn derive_default_scroll_anchor<V: Into<Value<Edge>>>(
     mut self,
-    reverse: impl Fn() -> V + 'static,
+    anchor: impl Fn() -> V + 'static,
   ) -> Self {
-    self.inner_mut().reverse = Value::derived(reverse);
+    self.inner_mut().default_anchor = Value::derived(anchor);
 
     self
   }
@@ -769,7 +770,7 @@ struct Layout {
   extent: ItemExtent,
   spacing: Spacing,
   padding: Inset,
-  reverse: bool,
+  default_anchor: Edge,
 }
 
 /// The content of a lazy list: the grid its realized items sit in, windowing them as its
@@ -780,7 +781,7 @@ struct Content<R: Realization> {
   extent: Rc<dyn Fn() -> ItemExtent>,
   spacing: Rc<dyn Fn() -> Spacing>,
   padding: Rc<dyn Fn() -> Inset>,
-  reverse: Rc<dyn Fn() -> bool>,
+  default_anchor: Rc<dyn Fn() -> Edge>,
   scroll: NodeHandle,
   wires: Wires,
   axis: Axis,
@@ -803,7 +804,7 @@ impl<R: Realization> View<R> for Content<R> {
       extent,
       spacing,
       padding,
-      reverse,
+      default_anchor,
       scroll,
       wires,
       axis,
@@ -936,7 +937,7 @@ impl<R: Realization> View<R> for Content<R> {
       let extent = extent();
       let spacing = spacing();
       let padding = padding();
-      let reverse = reverse();
+      let default_anchor = default_anchor();
       let _ = (wires.items.get(), wires.changed.get());
       let viewport = wires.viewport.get();
       let offset = wires.offset.get();
@@ -949,7 +950,7 @@ impl<R: Realization> View<R> for Content<R> {
             extent,
             spacing,
             padding,
-            reverse,
+            default_anchor,
           },
           viewport,
           offset,
@@ -971,7 +972,7 @@ impl<R: Realization> View<R> for Lazy<R> {
       spacing,
       padding,
       item_alignment,
-      reverse,
+      default_anchor,
       label,
       labelled_by,
       position,
@@ -984,11 +985,11 @@ impl<R: Realization> View<R> for Lazy<R> {
       segments,
     } = self;
     let tokens = cx.scope().tokens();
-    let (extent, spacing, padding, reverse) = (
+    let (extent, spacing, padding, default_anchor) = (
       extent.resolving(&tokens, ItemExtent::Estimated(48.)),
       spacing.resolving(&tokens, Spacing::default()),
       padding.resolving(&tokens, Inset::default()),
-      reverse.resolving(&tokens, false),
+      default_anchor.resolving(&tokens, Edge::Start),
     );
     let scroll_handle = handle.unwrap_or_default();
     let list: Rc<RefCell<Option<List<R>>>> = Rc::new(RefCell::new(None));
@@ -1009,7 +1010,7 @@ impl<R: Realization> View<R> for Lazy<R> {
       extent,
       spacing,
       padding,
-      reverse,
+      default_anchor,
       scroll: scroll_handle,
       wires,
       axis,
@@ -1295,7 +1296,7 @@ fn reconcile<R: Realization>(
     extent,
     spacing,
     padding,
-    reverse,
+    default_anchor,
   } = layout;
 
   // What the window needs, from the state as it stands.
@@ -1360,8 +1361,8 @@ fn reconcile<R: Realization>(
       at = anchored;
     }
 
-    // A reversed list holds its end while the end shows.
-    if reverse
+    // A list anchored at its end holds its end while the end shows.
+    if default_anchor == Edge::End
       && state.at_end
       && !moved_by_reader
       && let Some(end) = end

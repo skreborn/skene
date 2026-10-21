@@ -805,13 +805,13 @@ fn a_lazy_lists_spacing_takes_a_token_and_a_condition() {
   );
 }
 
-/// A list of `items`, "Message {n}", that starts at its end.
+/// A list of `items`, "Message {n}", anchored by default at its end.
 fn chat(items: Signal<usize>) -> impl View {
   Column::new().set_padding(8).add_child(
     LazyColumn::new()
       .set_height(200)
       .set_label("Chat")
-      .set_reverse_layout(true)
+      .set_default_scroll_anchor(Edge::End)
       .set_item_height(ItemExtent::estimated(30))
       .derive_items(
         move || (0..items.get()).collect::<Vec<_>>(),
@@ -826,7 +826,7 @@ fn chat(items: Signal<usize>) -> impl View {
 }
 
 #[skene_gui::test]
-fn a_reversed_list_starts_at_its_end_and_keeps_it_as_items_arrive() {
+fn a_list_anchored_at_its_end_starts_there_and_keeps_it_as_items_arrive() {
   let items = Signal::new(100);
   let screen = testing::render(move || chat(items));
   let list = screen.find_by_role(Role::List, "Chat").read().bounds;
@@ -838,6 +838,15 @@ fn a_reversed_list_starts_at_its_end_and_keeps_it_as_items_arrive() {
 
   assert!(shown("Message 99"), "the list starts at its end");
   assert!(!shown("Message 0"), "and not at its start");
+
+  let top = |text: &str| screen.find_by_text(text).read().bounds.y;
+
+  assert!(
+    top("Message 98") < top("Message 99"),
+    "the items keep their order: {} then {}",
+    top("Message 98"),
+    top("Message 99")
+  );
 
   items.set(103);
   screen.settle();

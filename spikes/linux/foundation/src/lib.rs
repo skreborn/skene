@@ -76,9 +76,9 @@ pub use crate::{
     Tokenable, Tokens,
   },
   value::{
-    Alignment, Arrangement, AxisAlignment, Border, BorderStyle, Corners, Curve, Dimension, Edges,
-    Flexibility, Flow, FontFamily, FontStyle, FontWeight, GridLine, GridPlacement, GridTrack,
-    Inset, IntoUnit, Leaf, Offset, Property, Ring, Shadow, Shadows, Spacing, TextAlignment,
-    TextDecoration, TextDecorationStyle, Tracks, Value, When,
+    Alignment, Arrangement, AxisAlignment, Border, BorderStyle, Corners, Curve, Dimension, Edge,
+    Edges, Flexibility, Flow, FontFamily, FontStyle, FontWeight, GridLine, GridPlacement,
+    GridTrack, Inset, IntoUnit, Leaf, Offset, Property, Ring, Shadow, Shadows, Spacing,
+    TextAlignment, TextDecoration, TextDecorationStyle, Tracks, Value, When,
   },
 };

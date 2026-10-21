@@ -190,8 +190,8 @@ Both facades declare five views, each a type of their own over the foundation's 
 implementation (`impl LazyColumnBase for LazyColumn {}` and its kin), their own members
 inherent beside it and the surface both facades share from `skene_foundation::facade!`, as every
 view's is. What the four lazy views and `Listbox<C>` share (the item extent, the overscan, the
-spacing and padding, the headers' stickiness, the scroll position, the reversed layout) is one
-trait, `LazyBase`, as `DecorationBase` is for the views that decorate.
+spacing and padding, the headers' stickiness, the scroll position, the default scroll anchor) is
+one trait, `LazyBase`, as `DecorationBase` is for the views that decorate.
 
 | Skene | Compose | SwiftUI | Android Views | UIKit and AppKit | GTK |
 |---|---|---|---|---|---|
@@ -217,7 +217,7 @@ LazyColumn::new()
   .set_padding(Inset::new(8, 0, 8, 0))          // inside the scrolled content (Compose's contentPadding)
   .set_item_alignment(AxisAlignment::Stretch)   // across the axis, as Column's
   .set_overscan(2)                              // lines realized beyond each edge, at least 1
-  .set_reverse_layout(false)                    // Compose's reverseLayout: starts at the end
+  .set_default_scroll_anchor(Edge::Start)       // SwiftUI's defaultScrollAnchor; End for a chat
   .set_sticky_headers(true)                     // a section's header sticks while it is in view
   .set_label("Messages")                        // the list's accessible name, as Container's
   .bind_scroll_position(position)               // Signal<ScrollPosition>
@@ -512,9 +512,11 @@ first measurements (JUDGMENT).
   while the padding is larger than it, until `scrollend` (a debounce where the engine lacks it),
   then settled in one frame; near the start, where the padding is smaller, it is written to the
   offset at once.
-- **`set_reverse_layout(true)`** starts at the end and anchors the end while it is in view, so a
-  chat stays at its newest message as messages arrive. Scrolled up, the anchor is the first
-  visible item as usual.
+- **`set_default_scroll_anchor(Edge::End)`** (SwiftUI's `defaultScrollAnchor`) starts at the end
+  and anchors the end while it is in view, so a chat stays at its newest message as messages
+  arrive, its items in their order. Scrolled up, the anchor is the first visible item as usual.
+  Compose's `reverseLayout`, which puts item 0 at the far end, is decided against in
+  `DECISIONS.md`.
 
 ### The scroll bar
 

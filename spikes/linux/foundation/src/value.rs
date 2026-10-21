@@ -617,6 +617,19 @@ pub enum AxisAlignment {
 
 impl Property for AxisAlignment {}
 
+/// One of the two edges along an axis: where it starts (the top, or the leading edge across a
+/// row) or where it ends.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
+pub enum Edge {
+  /// The start: the top, or the leading edge.
+  #[default]
+  Start,
+  /// The end: the bottom, or the trailing edge.
+  End,
+}
+
+impl Property for Edge {}
+
 /// Where an item sits on both axes: a grid's or a stack's cell, a container's child.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
 #[must_use]

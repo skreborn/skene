@@ -152,3 +152,9 @@ Every choice the drawn Linux prototype took that neither `AGENTS.md` nor the aut
 - A keyed list (`derive_children`) tells its keys apart by their 128-bit wide hash (`Key`), as a lazy list does (alternative: the key type's own `Eq`).
 - The fonts, fontconfig's configuration and the compose table load on threads of their own from the start, the first engine and the first key waiting for them (alternative: the main thread, in turn).
 - The settings portal is read with one `ReadAll`, each key alone only where `ReadAll` answers an error (alternative: `ReadOne`, then `Read`, per key).
+
+## The default scroll anchor
+
+- `Edge` names the two ends of a list's axis, `Start` and `End`, `Start` where unset (alternative: SwiftUI's `UnitPoint`, which can also name the center or any fraction).
+- `Edge` sits among the foundation's values beside `Edges`, in the facade's prelude (alternative: in the `lazy` module beside `ScrollPosition`, for lazy lists alone).
+- One anchor serves both where the list starts and what it holds as its content and its viewport change (alternative: SwiftUI 18's per-role form, `defaultScrollAnchor(_:for:)`, with an initial offset apart from size changes).

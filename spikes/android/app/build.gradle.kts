@@ -6,6 +6,7 @@ plugins {
 android {
   namespace = "dev.skene.spike.text"
   compileSdk { version = release(37) { minorApiLevel = 2 } }
+  buildToolsVersion = "37.0.0"
   // The NDK the Rust libraries are built with, which strips them here too.
   ndkVersion = "30.0.16248370"
 

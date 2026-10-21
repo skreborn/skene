@@ -24,6 +24,23 @@ fn probe<T: Clone + std::fmt::Debug + 'static>(name: &'static str, signal: Signa
   publish(name, move || format!("{:?}", signal.get_untracked()));
 }
 
+/// The probe `name` once it reads `wanted`, or as it reads after five seconds, the test's
+/// window turning meanwhile: a drop from another application lands once the two have traded
+/// its data over the display server.
+fn probe_reaching(screen: &testing::Screen, name: &str, wanted: &str) -> String {
+  let started = Instant::now();
+
+  loop {
+    let read = screen.probe(name);
+
+    if read == wanted || started.elapsed() >= Duration::from_secs(5) {
+      return read;
+    }
+
+    screen.driver().wait(Duration::from_millis(20));
+  }
+}
+
 /// Two fields, "First" holding "alpha beta" and "Second" holding "gamma", and a box that takes
 /// drops, publishing what it took.
 fn fields() -> impl View {
@@ -597,8 +614,12 @@ fn text_dragged_in_from_another_application_drops_into_a_field() {
 
   // The peer's field holds its text selected; a drag from it carries the selection.
   screen.driver().drag(from(&peer), to);
-  screen.driver().wait(Duration::from_millis(300));
-  assert_eq!(screen.probe("second"), "\"gammapeer words\"");
+  assert_eq!(
+    probe_reaching(&screen, "second", "\"gammapeer words\""),
+    "\"gammapeer words\"",
+    "the peer printed {:?}",
+    peer.lines()
+  );
 }
 
 #[skene_gui::test]
@@ -617,11 +638,14 @@ fn files_dragged_in_from_another_application_reach_a_box_that_takes_drops() {
     return;
   };
 
+  let dropped = format!("[\"uris file://{PEER_FILE}\"]");
+
   screen.driver().drag(from(&peer), to);
-  screen.driver().wait(Duration::from_millis(300));
   assert_eq!(
-    screen.probe("dropped"),
-    format!("[\"uris file://{PEER_FILE}\"]")
+    probe_reaching(&screen, "dropped", &dropped),
+    dropped,
+    "the peer printed {:?}",
+    peer.lines()
   );
 }
 

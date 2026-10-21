@@ -91,7 +91,9 @@ for kind in x11 gnome; do
   for step in "Tab to the switch" "Space: switch on" "Tab to the button"; do
     skene=$(sed -n "/^### $step\$/,/^###/p" "$skene_log" | grep -v '^###' | tr '\n' ' ')
     gtk=$(sed -n "/^### $step\$/,/^###/p" "$gtk_log" | grep -v '^###' | tr '\n' ' ')
-    if [ "$skene" = "$gtk" ]; then
+    if [ -z "${skene// /}" ]; then
+      echo "[orca] FAIL $kind: $step: Orca said nothing (skene '$skene', GTK '$gtk')"
+    elif [ "$skene" = "$gtk" ]; then
       echo "[orca] PASS $kind: $step: skene and GTK both say '$skene'"
     else
       echo "[orca] FAIL $kind: $step: skene '$skene', GTK '$gtk'"

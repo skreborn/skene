@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Hello's build times, binary size and startup, in a target directory of its own (removed at
 # the end): clean check and build, the first check after a build, three rounds of a one-line
-# change (check, then build), `skene build linux` (release) with its size stripped and not,
+# change (check, then build) with incremental compilation off and three with it on (cargo's
+# default for a dev build, and what an app `skene new` makes builds with), `skene build linux`
+# (release) with its size stripped and not,
 # and the time from the process's start to its first frame on Xvfb and on headless mutter,
 # five rounds each (each in a private session; the session's own start is not counted).
 #
@@ -29,15 +31,23 @@ echo "the first cargo check -p hello after that build: $(since "$start") ms"
 
 lib=hello/src/lib.rs
 cp "$lib" "$target.lib.rs"
-for round in 1 2 3; do
-  sed -i "s/\"Drawn by Skene\\.[^\"]*\"/\"Drawn by Skene. Round $round.\"/" "$lib"
-  start=$(now)
-  cargo check -p hello >/dev/null 2>&1
-  check=$(since "$start")
-  start=$(now)
-  cargo build -p hello >/dev/null 2>&1
-  echo "a one-line change to hello/src/lib.rs, round $round: cargo check $check ms, cargo build $(since "$start") ms"
-done
+# One-line changes, three rounds, with CARGO_INCREMENTAL at $1 (described as $2).
+change() {
+  for round in 1 2 3; do
+    sed -i "s/\"Drawn by Skene\\.[^\"]*\"/\"Drawn by Skene. Round $round $1.\"/" "$lib"
+    start=$(now)
+    CARGO_INCREMENTAL=$1 cargo check -p hello >/dev/null 2>&1
+    check=$(since "$start")
+    start=$(now)
+    CARGO_INCREMENTAL=$1 cargo build -p hello >/dev/null 2>&1
+    echo "a one-line change to hello/src/lib.rs, $2, round $round: cargo check $check ms, cargo build $(since "$start") ms"
+  done
+}
+change 0 "incremental off"
+# The workspace's crates checked and built once with incremental compilation on, untimed.
+CARGO_INCREMENTAL=1 cargo check -p hello >/dev/null 2>&1
+CARGO_INCREMENTAL=1 cargo build -p hello >/dev/null 2>&1
+change 1 "incremental on"
 cp "$target.lib.rs" "$lib"
 
 (cd hello && "$root/tools/bin/skene" build linux 2>/dev/null | grep "^skene build")

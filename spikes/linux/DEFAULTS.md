@@ -149,16 +149,26 @@ Every choice the drawn Linux prototype took that neither `AGENTS.md` nor the aut
 - A choice group's core holds its values as `AnyChoice`, compared and hashed through the value's own `Eq` and `Hash` (alternative: the core generic over the value's type).
 - `Control<B>` holds its behavior as `Rc<dyn Behavior>` once built (alternative: one build per behavior).
 - A styled control's constructor stores what it is given, its defaults applied as it is built, beneath what its user set (`Control::over`); a user's empty caption still removes the default's (alternative: defaults set by the constructor).
-- A keyed list (`derive_children`) tells its keys apart by their 128-bit wide hash (`Key`), as a lazy list does (alternative: the key type's own `Eq`).
+- A keyed list (`derive_children`) tells its keys apart by the key type's own `Eq`, each key held as an `AnyChoice` (alternative: their 128-bit wide hash, `Key`, as a lazy list does, which counts two keys hashing alike as one).
 - The fonts, fontconfig's configuration and the compose table load on threads of their own from the start, the first engine and the first key waiting for them (alternative: the main thread, in turn).
-- The settings portal is read with one `ReadAll`, each key alone only where `ReadAll` answers an error (alternative: `ReadOne`, then `Read`, per key).
+- The settings portal is read with one `ReadAll`, each key alone only where the portal answers `ReadAll` with an error of its own; a portal that does not answer within the 500 ms timeout counts as none (alternative: `ReadOne`, then `Read`, per key).
 
 ## The default scroll anchor
 
-- `Edge` names the two ends of a list's axis, `Start` and `End`, `Start` where unset (alternative: SwiftUI's `UnitPoint`, which can also name the center or any fraction).
-- `Edge` sits among the foundation's values beside `Edges`, in the facade's prelude (alternative: in the `lazy` module beside `ScrollPosition`, for lazy lists alone).
+- `ScrollAnchor` names the two ends of a list's axis, `Start` and `End`, `Start` where unset (alternative: SwiftUI's `UnitPoint`, which can also name the center or any fraction).
+- `ScrollAnchor` sits among the foundation's values, in the facade's prelude (alternative: in the `lazy` module beside `ScrollPosition`, for lazy lists alone).
 - One anchor serves both where the list starts and what it holds as its content and its viewport change (alternative: SwiftUI 18's per-role form, `defaultScrollAnchor(_:for:)`, with an initial offset apart from size changes).
 
 ## The GTK realization's removal
 
-- The foundation's `contents_gate` stays, with no realization in the prototype running it now that the GTK realization's gate test is gone (alternatives: run it on the drawn realization, or remove it).
+- The foundation's `contents_gate` (with `GateRow`, `GateOutcome`, `sample`, `NodeKind::ALL` and `Content::readable`, which only it used) is removed: it read a realization's own record back, which DECISIONS.md (2026-10-16) rules out for a realization's tests, and the conformance suite reads each content as a reader finds it (alternative: port it to `skene-conformance-linux`).
+
+## The audit's fixes
+
+- A styled list box holds its choice as an `AnyChosen`, the app's `Chosen` behind it making every choice by its own rules, so `Chosen` asks nothing beyond `contains`, `choosing` and `choosing_all` (alternative: `values` and `from_values` on `Chosen`, converting to and from a set of `AnyChoice`).
+- An `AnyChosen` made where nothing is read (a behavior over it with no derive) chooses nothing; a styled list box always reads one, made from its type's rules (alternative: a panic).
+- The foundation's `Edge { Start, End }` is renamed `ScrollAnchor`, as the singular of `Edges` (four sides) and beside `Side` (SwiftUI's `Edge`) it read as one of four sides (alternative: `Edge`).
+- A wrapper's child is built through the `ChildOf` impl of a layout that takes it, the facade naming one (a `Flexible` as a row's child, a `GridCell` as a grid's, a `Pinned` as a stack's), so no public method builds a wrapper outside its layout (alternative: a public `build_wrapped`, or one `#[doc(hidden)]`).
+- `measure.sh` times the one-line change with incremental compilation off (what run.sh and its earlier numbers use) and on (cargo's default for a dev build, and an app made by `skene new`), both reported.
+- The controls checks' Orca comparison fails where Orca said nothing on Skene's side, and the keys checks move focus to each field (a click, else `Tab`) and fail where a reader does not find it there; GTK's reference writes where it saw the pointer to `SKENE_PROBE`, as the drawn probe does, so the driver finds its window on Wayland.
+- A drop from another application is waited for, its probe read until it holds what the drop gives or five seconds pass, in place of a fixed 300 ms (alternative: waiting on the peer's `drag-end`, which the peer now prints).

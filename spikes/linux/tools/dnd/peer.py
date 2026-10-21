@@ -13,6 +13,9 @@ text, GTK's own), a box "Drop here" that takes text and files and shows what it 
   [peer] dropped text <text>       what the box took
   [peer] dropped uris <uri> ...
   [peer] field <text>              the field's text, as it changes
+  [peer] drag-begin source         the file's drag began
+  [peer] drag-end source           it ended, dropped or not
+  [peer] drag-cancel source <why>  it was cancelled (GdkDragCancelReason)
 
 Where it runs on X11 with no window manager (a private Xvfb), it moves its window to
 SKENE_PEER_X, SKENE_PEER_Y with xdotool; on sway, with swaymsg; elsewhere the compositor places
@@ -101,6 +104,9 @@ def on_activate(app):
     return Gdk.ContentProvider.new_for_value(GObject.Value(Gdk.FileList, files))
 
   source.connect("prepare", prepare)
+  source.connect("drag-begin", lambda _, drag: say("drag-begin source"))
+  source.connect("drag-end", lambda _, drag, delete: say("drag-end source"))
+  source.connect("drag-cancel", lambda _, drag, reason: say("drag-cancel source", int(reason)) or False)
   source_label.add_controller(source)
 
   motion = Gtk.EventControllerMotion()

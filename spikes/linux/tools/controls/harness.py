@@ -288,6 +288,31 @@ def settle(seconds=0.3):
   time.sleep(seconds)
 
 
+def has_focus(node):
+  """Whether a reader finds focus on `node` or inside it."""
+  for _, inner in walk(node):
+    try:
+      if inner.get_state_set().contains(Atspi.StateType.FOCUSED):
+        return True
+    except GLib.Error:
+      pass
+  return False
+
+
+def focus(node):
+  """Moves focus to `node` as a user does, a click on it, else Tab until a reader finds it
+  there; whether it is."""
+  if not has_focus(node):
+    click(node)
+    settle(0.6)
+  for _ in range(6):
+    if has_focus(node):
+      return True
+    drive("key", "Tab")
+    settle(0.3)
+  return has_focus(node)
+
+
 def shot(name):
   frame = os.path.join(OUT, "frame.png")
   if os.path.exists(frame):
@@ -825,8 +850,8 @@ def scenario_keys():
   lengths = {}
   for name in ("Name", "Password"):
     node = field(name)
-    click(node)
-    settle(0.6)
+    if not check(f"keys: focus reaches {name}", focus(node)):
+      return
     with open(im_log, encoding="utf-8", errors="replace") as file:
       before = file.read().count("member=ProcessKeyEvent")
     drive("type", "abc")

@@ -639,6 +639,7 @@ impl X11 {
 /// `xf86-input-inputtest-protocol.h`, version 1.1): a touch posted there reaches clients as a
 /// real touchscreen's XInput 2.2 touch, the first one's pointer emulation included.
 struct Touchscreen {
+  /// The driver's socket.
   socket: std::os::unix::net::UnixStream,
   /// The screen's size, which the device's axes span.
   extent: (f64, f64),
@@ -1305,15 +1306,25 @@ impl Input for Ei {
 /// on its X11 backend inside the runner's Xorg, that server's inputtest touchscreen, whose
 /// touches reach sway as its X11 backend's touch.
 pub struct Sway {
+  /// The connection the devices are made on.
   _conn: wayland_client::Connection,
+  /// Its event queue, which a round trip waits on.
   queue: wayland_client::EventQueue<Devices>,
+  /// The virtual pointer.
   pointer: wayland_protocols_wlr::virtual_pointer::v1::client::zwlr_virtual_pointer_v1::ZwlrVirtualPointerV1,
+  /// The virtual keyboard.
   keyboard: wayland_protocols_misc::zwp_virtual_keyboard_v1::client::zwp_virtual_keyboard_v1::ZwpVirtualKeyboardV1,
+  /// Where each keysym is in the keyboard's keymap, by keysym.
   places: HashMap<u32, Place>,
+  /// The output's size in device pixels, which absolute motion spans.
   extent: (u32, u32),
+  /// The output's scale, from logical to device pixels.
   scale: f64,
+  /// When the devices were made, which the events' times count from.
   started: Instant,
+  /// The modifiers held, as the keyboard reports them.
   modifiers: u32,
+  /// The keyboard's keymap, kept open while the compositor may read it.
   _keymap: std::fs::File,
   /// The touchscreen of the X server sway's output is a window of, filling its screen.
   touchscreen: Option<Touchscreen>,

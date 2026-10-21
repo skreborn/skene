@@ -81,6 +81,7 @@ struct PopupWindow {
 /// An adornment on a window of its own: override-redirect, every input passing through it
 /// (an empty input shape), as GDK puts a drag's icon and a popup that takes no input.
 struct AdornmentWindow {
+  /// The window.
   window: Window,
   /// Its size, in device pixels.
   size: (u16, u16),
@@ -203,42 +204,81 @@ impl Clock {
 }
 
 struct X11 {
+  /// The connection to the X server.
   conn: Rc<XCBConnection>,
+  /// The index of the screen the window shows on.
   screen: usize,
+  /// That screen's root window.
   root: Window,
+  /// The app's window.
   window: Window,
+  /// The graphics context frames are put through.
   gc: u32,
+  /// The window's depth: the root's.
   depth: u8,
+  /// The atoms the backend speaks in.
   atoms: Atoms,
+  /// The keymap and its state, from XKB.
   keyboard: Keyboard,
+  /// XKB's id of the core keyboard.
   device: i32,
+  /// Whether XInput 2's events are selected, rather than the core protocol's.
   xi: bool,
+  /// The scroll valuators of the pointer devices, by device and valuator number.
   scroll: HashMap<(u16, u16), ScrollAxis>,
+  /// Whether the server's emulated wheel buttons scroll, while the valuators' last values
+  /// are unknown.
   emulated_wheel: bool,
+  /// The shared memory segment frames are put from, where the server has MIT-SHM.
   segment: Option<Segment>,
+  /// Whether the server has MIT-SHM.
   shm: bool,
+  /// The bytes of a frame put without shared memory.
   buffer: Vec<u8>,
+  /// The cursor theme cursors are loaded from.
   cursors: Option<x11rb::cursor::Handle>,
+  /// The cursors loaded, by name.
   cursor_ids: HashMap<&'static str, u32>,
+  /// The XSETTINGS manager's window and the property it holds the settings in.
   xsettings: Option<(Window, u32)>,
+  /// The selections the app owns, with the text each holds.
   owned: HashMap<Selection, String>,
+  /// The selections being read, each with what is done with its text.
   reads: Vec<(Selection, Then)>,
+  /// The server time of the last input event.
   time: u32,
+  /// Where on the screen the last button press was, which a move or a resize the window
+  /// manager runs starts from.
   last_press: (i16, i16),
+  /// The keycodes held down, which tell a repeat from a press.
   keys_down: HashSet<u32>,
+  /// The scale `SKENE_SCALE` names, which the screen's own never replaces.
   scale_override: Option<f64>,
+  /// The window's size, in device pixels.
   window_size: (u32, u32),
+  /// Where the window's top left is on the screen.
   window_origin: (i32, i32),
+  /// The open overlay's window.
   popup: Option<PopupWindow>,
+  /// The input method spoken to, where one is running.
   ime: Option<Box<dyn Ime>>,
+  /// The key sent to the input method and not answered yet.
   ime_waiting: Option<Waiting>,
+  /// The keys queued behind it, with whether each repeats.
   ime_queue: VecDeque<(RawKey, bool)>,
+  /// The id the next key sent to the input method takes.
   ime_next: u64,
+  /// Whether the input method was told the field has focus.
   ime_focused: bool,
+  /// Whether what the input method was told must be told again.
   ime_stale: bool,
+  /// What the input method was last told of the field.
   ime_sent: Option<ImeSent>,
+  /// The purpose the input method was last told.
   ime_purpose: Option<ime::Purpose>,
+  /// What paces the frames.
   clock: Clock,
+  /// The drag and drop protocol's state, where the window takes part in it.
   xdnd: Option<crate::xdnd::Xdnd>,
   /// The adornments' windows.
   adornments: HashMap<Adornment, AdornmentWindow>,

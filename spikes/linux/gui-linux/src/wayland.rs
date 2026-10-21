@@ -127,11 +127,15 @@ const PROBE_OFFSET: i32 = 1 << 16;
 
 /// The open overlay on its own surface.
 struct OpenPopup {
+  /// The popup.
   popup: Popup,
+  /// Its surface's viewport, where it is scaled fractionally.
   viewport: Option<WpViewport>,
   /// Its surface's fractional scale, which the compositor tells it apart from the window's.
   fractional: Option<WpFractionalScaleV1>,
+  /// Whether the compositor placed it.
   configured: bool,
+  /// The buffers it last showed.
   buffers: Vec<Buffer>,
 }
 
@@ -166,8 +170,11 @@ impl OpenPopup {
 /// A surface of the window's own that shows an adornment, its viewport where it is scaled
 /// fractionally, and the buffers it last showed.
 struct AdornmentSurface {
+  /// The surface.
   surface: wl_surface::WlSurface,
+  /// Its viewport, where it is scaled fractionally.
   viewport: Option<WpViewport>,
+  /// The buffers it last showed.
   buffers: Vec<Buffer>,
   /// Whether it destroys the surface as it goes (a popup's goes with the popup).
   owned: bool,
@@ -242,7 +249,9 @@ impl AdornmentSurface {
 
 /// An adornment on a popup of the window's own, which takes no grab and no input.
 struct AdornmentPopup {
+  /// The surface it shows on.
   surface: AdornmentSurface,
+  /// The popup that surface is.
   popup: Popup,
   /// What it shows, as last placed.
   shown: Shown,

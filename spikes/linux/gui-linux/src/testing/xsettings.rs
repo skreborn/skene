@@ -83,9 +83,13 @@ pub fn serve_desktop() {
 
 /// The stand-in, serving while it lives.
 pub struct Xsettings {
+  /// Its connection to the X server.
   conn: RustConnection,
+  /// The window owning the selection and holding the settings.
   window: u32,
+  /// The property the settings are held in.
   property: u32,
+  /// The serial the next settings take.
   serial: u32,
   /// Whether it is the leg's desktop's own manager.
   desktop: bool,

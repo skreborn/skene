@@ -69,8 +69,11 @@ pub struct Open {
   pub node: Node,
   /// Where it sits.
   pub placement: Placement,
+  /// What paints it.
   renderer: Renderer,
+  /// Whether it is to be painted again.
   dirty: bool,
+  /// Whether its surface is opaque, the window's color showing behind its rounded corners.
   opaque: bool,
   /// The scale its surface prefers, where the compositor told it one: its own, which differs
   /// from the window's where it shows on another output.

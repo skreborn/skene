@@ -1,2 +1,2 @@
 [v1]
-"cargo-nextest 0.9.148 (registry+https://github.com/rust-lang/crates.io-index)" = ["cargo-nextest"]
+"cargo-nextest 0.9.149 (registry+https://github.com/rust-lang/crates.io-index)" = ["cargo-nextest"]

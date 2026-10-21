@@ -7,5 +7,7 @@ Skene's changes, each marked `Skene:` in the source:
 - atspi/interfaces/text.rs: GetTextAtOffset, GetTextBeforeOffset, GetTextAfterOffset and
   GetCharacterAtOffset.
 - atspi/interfaces/action.rs: GetKeyBinding answers the node's keyboard shortcut.
+- Cargo.toml: atspi 0.29 -> 0.30, its latest release (its proxies' renamed members are ones
+  this crate does not call).
 
 The licence files (LICENSE-MIT, LICENSE-APACHE) are copied from the AccessKit repository, since the published crate ships none.

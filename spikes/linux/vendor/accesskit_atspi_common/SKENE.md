@@ -27,5 +27,6 @@ Skene's changes, each marked `Skene:` in the source:
   active state, so Orca presents the object in the window's context (`controls`, then `Name
   text`) rather than the bare window first (`controls frame`).
 - Cargo.toml: unicode-segmentation for words and sentences.
+- Cargo.toml: atspi-common 0.13 -> 0.14, the one atspi 0.30 builds on.
 
 The licence files (LICENSE-MIT, LICENSE-APACHE, and LICENSE.chromium for the parts derived from Chromium) are copied from the AccessKit repository, since the published crate ships none.

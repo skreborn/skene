@@ -141,7 +141,7 @@ opt-level = 2
   write(&dir.join(".gitignore"), "/target\n")?;
   write(
     &dir.join("rust-toolchain.toml"),
-    "# The Rust skene-gui needs.\n[toolchain]\nchannel = \"1.99.0\"\n",
+    "# The Rust skene-gui needs.\n[toolchain]\nchannel = \"1.99.1\"\n",
   )?;
   write(&dir.join("src/lib.rs"), &LIBRARY.replace("NAME", &name))?;
   write(&dir.join("src/main.rs"), &MAIN.replace("LIBRARY", &library))?;

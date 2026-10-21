@@ -47,7 +47,8 @@ version = "0.25.1"
 version = "0.39.1"
 
 [dependencies.atspi-common]
-version = "0.13"
+# Skene: atspi-common 0.14, atspi 0.30's, where the published crate asks for 0.13.
+version = "0.14"
 default-features = false
 
 [dependencies.phf]

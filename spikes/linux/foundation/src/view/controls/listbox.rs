@@ -1,11 +1,13 @@
 //! A list box: options in a list that builds only those in view, one or several of them
 //! chosen, whether built or not.
 
-use std::{collections::HashSet, marker::PhantomData, rc::Rc};
+use std::{marker::PhantomData, rc::Rc};
 
 use crate::{
   AxisAlignment, Border, Color, Effect, Inset, Spacing, State, SystemColors, Value,
-  behavior::{AnyChoice, Behavior, Chosen, Controlled, Listbox as ListboxBehavior, Options},
+  behavior::{
+    AnyChoice, AnyChosen, Behavior, Chosen, Controlled, Listbox as ListboxBehavior, Options,
+  },
   layout::Axis,
   lazy::ItemExtent,
   seam::{
@@ -105,8 +107,9 @@ type ItemBuilder<R> = Rc<dyn Fn(&AnyChoice, Label<R>) -> ListboxItem<R>>;
 /// It is controlled: it shows what [`ChoiceBase::derive_chosen`] returns, asks
 /// [`ChoiceBase::handle_choose`] for each choice, and shows the truth.
 ///
-/// It is thin over a [`ListboxCore`], which holds its values with their type erased
-/// ([`AnyChoice`]).
+/// It is thin over a [`ListboxCore`], which holds its values and its choice with their types
+/// erased ([`AnyChoice`], [`AnyChosen`]), each choice made by the rules of `C`
+/// ([`Chosen::choosing`]).
 ///
 /// [`ChoiceBase::derive_chosen`]: crate::view::ChoiceBase::derive_chosen
 /// [`ChoiceBase::handle_choose`]: crate::view::ChoiceBase::handle_choose
@@ -138,26 +141,37 @@ pub struct ListboxCore<R: Realization> {
   builder: Option<ItemBuilder<R>>,
 }
 
-/// What a list box has chosen, its values' type erased: one value or none, or a set.
+/// What a list box has chosen, its type erased: one value or none, or a set.
 enum ErasedChosen {
-  One(Controlled<Option<AnyChoice>>),
-  Set(Controlled<HashSet<AnyChoice>>),
+  One(Controlled<AnyChosen<false>>),
+  Set(Controlled<AnyChosen<true>>),
 }
 
-/// `chosen`, its values' type erased into `E`.
-fn erase<C: Chosen, E: Chosen<Value = AnyChoice>>(chosen: C) -> E {
-  E::from_values(chosen.values().into_iter().map(AnyChoice::new).collect())
-}
+impl ErasedChosen {
+  /// Nothing read, each choice made by the rules of `C`, until something is.
+  fn unread<C: Chosen>() -> Self {
+    if C::SEVERAL {
+      let mut chosen = Controlled::new();
 
-/// `erased`, its values given the type `C` holds.
-fn restore<C: Chosen, E: Chosen<Value = AnyChoice>>(erased: E) -> C {
-  C::from_values(
-    erased
-      .values()
-      .iter()
-      .map(|value| value.value::<C::Value>().clone())
-      .collect(),
-  )
+      chosen.set(AnyChosen::unread::<C>());
+
+      Self::Set(chosen)
+    } else {
+      let mut chosen = Controlled::new();
+
+      chosen.set(AnyChosen::unread::<C>());
+
+      Self::One(chosen)
+    }
+  }
+
+  /// Takes what `typed` is read through and its handler, where it has them.
+  fn merge<C: Chosen>(&mut self, typed: Controlled<C>) {
+    match self {
+      Self::One(chosen) => chosen.merge(typed.map(AnyChosen::new, AnyChosen::into_chosen)),
+      Self::Set(chosen) => chosen.merge(typed.map(AnyChosen::new, AnyChosen::into_chosen)),
+    }
+  }
 }
 
 wraps_itself!(Listbox<C, R> where C: Chosen, R: Realization);
@@ -169,11 +183,7 @@ impl<C: Chosen, R: Realization> HasChoice<C> for Listbox<C, R> {
     let mut typed = Controlled::new();
 
     change(&mut typed);
-
-    match &mut self.core.chosen {
-      ErasedChosen::One(chosen) => chosen.merge(typed.map(erase, restore)),
-      ErasedChosen::Set(chosen) => chosen.merge(typed.map(erase, restore)),
-    }
+    self.core.chosen.merge(typed);
   }
 }
 
@@ -204,16 +214,11 @@ impl<R: Realization> ListboxCore<R> {
       .set_max_height(320)
   }
 
-  /// A list box labelled `label`, with no options, choosing a set where `several`, one value
-  /// or none otherwise.
-  pub fn new(label: Label<R>, several: bool) -> Self {
+  /// A list box labelled `label`, with no options, nothing read of what it has `chosen`.
+  fn new(label: Label<R>, chosen: ErasedChosen) -> Self {
     Self {
       control: crate::view::Control::new(Pending).set_label(label),
-      chosen: if several {
-        ErasedChosen::Set(Controlled::new())
-      } else {
-        ErasedChosen::One(Controlled::new())
-      },
+      chosen,
       segments: Vec::new(),
       list: None,
       option_spacing: None,
@@ -229,7 +234,7 @@ pub trait ListboxBase<C: Chosen, R: Realization>: Wraps<Inner = Listbox<C, R>> {
   /// A list box labelled `label`, with no options.
   fn new(label: impl Into<Label<R>>) -> Self {
     Self::wrap(Listbox {
-      core: ListboxCore::new(label.into(), C::SEVERAL),
+      core: ListboxCore::new(label.into(), ErasedChosen::unread::<C>()),
       chosen: PhantomData,
     })
   }
@@ -310,95 +315,98 @@ impl<R: Realization> AnyKind for ListboxCore<R> {}
 impl<R: Realization> View<R> for ListboxCore<R> {
   fn build(mut self, cx: &mut Cx<R>) -> Node {
     match std::mem::replace(&mut self.chosen, ErasedChosen::One(Controlled::new())) {
-      ErasedChosen::One(chosen) => build_listbox(self, chosen, cx),
-      ErasedChosen::Set(chosen) => build_listbox(self, chosen, cx),
+      ErasedChosen::One(chosen) => self.build_choosing(chosen, cx),
+      ErasedChosen::Set(chosen) => self.build_choosing(chosen, cx),
     }
   }
 }
 
-/// Builds `listbox`, what it has chosen `chosen`, its behavior choosing an `E`.
-fn build_listbox<E: Chosen<Value = AnyChoice>, R: Realization>(
-  listbox: ListboxCore<R>,
-  chosen: Controlled<E>,
-  cx: &mut Cx<R>,
-) -> Node {
-  let ListboxCore {
-    control,
-    segments,
-    list,
-    option_spacing,
-    option_height,
-    builder,
-    ..
-  } = listbox;
-  let behavior = ListboxBehavior::<E>::new();
-  let roster = behavior.roster();
-  let options = GroupOptions::new(segments);
-  let handle = LazyHandle::new();
-  let defaults = crate::view::Control::new(Pending).set_spacing(6);
-  let list = list.unwrap_or_else(ListboxCore::default_list);
-  let option_spacing = option_spacing.unwrap_or_else(|| Value::from(2));
-  let option_height = option_height.unwrap_or_else(|| Value::from(ItemExtent::Estimated(30.)));
-  let builder: ItemBuilder<R> =
-    builder.unwrap_or_else(|| Rc::new(|_, label| ListboxItem::new(label)));
+impl<R: Realization> ListboxCore<R> {
+  /// Builds this list box, what it has chosen `chosen`.
+  fn build_choosing<const SEVERAL: bool>(
+    self,
+    chosen: Controlled<AnyChosen<SEVERAL>>,
+    cx: &mut Cx<R>,
+  ) -> Node {
+    let Self {
+      control,
+      segments,
+      list,
+      option_spacing,
+      option_height,
+      builder,
+      ..
+    } = self;
+    let behavior = ListboxBehavior::<AnyChosen<SEVERAL>>::new();
+    let roster = behavior.roster();
+    let options = GroupOptions::new(segments);
+    let handle = LazyHandle::new();
+    let defaults = crate::view::Control::new(Pending).set_spacing(6);
+    let list = list.unwrap_or_else(ListboxCore::default_list);
+    let option_spacing = option_spacing.unwrap_or_else(|| Value::from(2));
+    let option_height = option_height.unwrap_or_else(|| Value::from(ItemExtent::Estimated(30.)));
+    let builder: ItemBuilder<R> =
+      builder.unwrap_or_else(|| Rc::new(|_, label| ListboxItem::new(label)));
 
-  roster.change_chosen(|controlled| *controlled = chosen);
-  roster.set_options(Rc::new(options.clone()));
+    roster.change_chosen(|controlled| *controlled = chosen);
+    roster.set_options(Rc::new(options.clone()));
 
-  // An option focus moves to is built first, wherever the list is scrolled.
-  roster.set_reveal({
-    let (options, handle) = (options.clone(), handle.clone());
+    // An option focus moves to is built first, wherever the list is scrolled.
+    roster.set_reveal({
+      let (options, handle) = (options.clone(), handle.clone());
 
-    move |value| {
-      if let Some(index) = untrack(|| options.index_of(value)) {
-        handle.realize(index);
-      }
-    }
-  });
-
-  // The option the list box's one tab stop is on stays built.
-  Effect::new({
-    let (options, handle, roster) = (options.clone(), handle.clone(), Rc::clone(&roster));
-
-    move || {
-      let stop = roster
-        .active()
-        .or_else(|| roster.stop())
-        .and_then(|value| options.index_of(&value));
-
-      untrack(|| handle.keep(stop));
-    }
-  });
-
-  let items = Lazy::new(Axis::Vertical, None)
-    .bare()
-    .set_spacing(option_spacing)
-    .set_item_height(option_height)
-    .set_lazy_handle(&handle)
-    .derive_items_keeping(
-      {
-        let options = options.clone();
-
-        move || options.values()
-      },
-      Clone::clone,
-      {
-        let options = options.clone();
-
-        move |value: AnyChoice| {
-          let member = ListboxBehavior::<E>::with_roster(Rc::clone(&roster)).member(value.clone());
-
-          builder(&value, options.caption(&value)).into_control(member)
+      move |value| {
+        if let Some(index) = untrack(|| options.index_of(value)) {
+          handle.realize(index);
         }
-      },
-      // An option captioned by a view given once stays built once built.
-      move |value| options.caption_once(value),
-    );
+      }
+    });
 
-  control
-    .over(defaults)
-    .with_behavior(behavior)
-    .set_axis(Axis::Vertical)
-    .set_child(AsPart::new(Part::List).set_child(list.set_child(items)))
-    .build(cx)
+    // The option the list box's one tab stop is on stays built.
+    Effect::new({
+      let (options, handle, roster) = (options.clone(), handle.clone(), Rc::clone(&roster));
+
+      move || {
+        let stop = roster
+          .active()
+          .or_else(|| roster.stop())
+          .and_then(|value| options.index_of(&value));
+
+        untrack(|| handle.keep(stop));
+      }
+    });
+
+    let items = Lazy::new(Axis::Vertical, None)
+      .bare()
+      .set_spacing(option_spacing)
+      .set_item_height(option_height)
+      .set_lazy_handle(&handle)
+      .derive_items_keeping(
+        {
+          let options = options.clone();
+
+          move || options.values()
+        },
+        Clone::clone,
+        {
+          let options = options.clone();
+
+          move |value: AnyChoice| {
+            let member = ListboxBehavior::<AnyChosen<SEVERAL>>::with_roster(Rc::clone(&roster))
+              .member(value.clone());
+
+            builder(&value, options.caption(&value)).into_control(member)
+          }
+        },
+        // An option captioned by a view given once stays built once built.
+        move |value| options.caption_once(value),
+      );
+
+    control
+      .over(defaults)
+      .with_behavior(behavior)
+      .set_axis(Axis::Vertical)
+      .set_child(AsPart::new(Part::List).set_child(list.set_child(items)))
+      .build(cx)
+  }
 }

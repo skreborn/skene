@@ -2,11 +2,14 @@
 //! what it draws, a slider is as wide as it says, a caption is never required, a
 //! library's text entry takes the standard context menu as a built-in's does, a disabled
 //! control's caption dims with it wherever it sits, a press on a caption beside its control
-//! presses the control, a disabled group disables its members, and a group whose radios a
-//! third party places by hand moves through them in the scene's order.
+//! presses the control, a disabled group disables its members, a group whose radios a
+//! third party places by hand moves through them in the scene's order, and a list box chooses
+//! by the rules of the app's own choice.
+
+use std::collections::BTreeSet;
 
 use skene_gui::{
-  BasicTextField,
+  BasicTextField, Chosen,
   behavior::{RadioGroup as Group, TextEntry},
   prelude::*,
   testing::{self, Role, Screenshot},
@@ -351,4 +354,95 @@ fn a_hand_placed_group_moves_through_its_radios_in_the_scenes_order() {
     "and wraps to the first in place, whatever its value"
   );
   assert_eq!(screen.probe("size"), "3");
+}
+
+/// What a list box chooses: at most two of its options, a third refused.
+#[derive(Clone, PartialEq, Default, Debug)]
+struct AtMostTwo(BTreeSet<u32>);
+
+impl Chosen for AtMostTwo {
+  type Value = u32;
+
+  const SEVERAL: bool = true;
+
+  fn contains(&self, value: &u32) -> bool {
+    self.0.contains(value)
+  }
+
+  fn choosing(chosen: Option<&Self>, value: &u32) -> Self {
+    let mut chosen = chosen.cloned().unwrap_or_default();
+
+    if !chosen.0.remove(value) && chosen.0.len() < 2 {
+      chosen.0.insert(*value);
+    }
+
+    chosen
+  }
+
+  fn choosing_all(chosen: Option<&Self>, values: Vec<u32>) -> Self {
+    let mut chosen = chosen.cloned().unwrap_or_default();
+
+    for value in values {
+      if chosen.0.len() < 2 {
+        chosen.0.insert(value);
+      }
+    }
+
+    chosen
+  }
+}
+
+/// Two list boxes of four choosing at most two: Capped bound to a signal, Heard only heard.
+fn capped() -> impl View {
+  let chosen = Signal::new(AtMostTwo::default());
+  let heard = Signal::new(String::new());
+
+  testing::publish("capped", move || format!("{:?}", chosen.get().0));
+  testing::publish("heard", move || heard.get());
+
+  Column::new()
+    .set_padding(16)
+    .set_spacing(12)
+    .add_child(
+      Listbox::new("Capped")
+        .bind_chosen(chosen)
+        .derive_options(|| (0..4).collect(), |value: &u32| format!("Item {value}")),
+    )
+    .add_child(
+      Listbox::new("Heard")
+        .handle_choose(move |chosen: AtMostTwo| heard.set(format!("{:?}", chosen.0)))
+        .derive_options(|| (0..4).collect(), |value: &u32| format!("Heard {value}")),
+    )
+}
+
+#[skene_gui::test]
+fn a_list_box_chooses_by_the_rules_of_the_apps_own_choice() {
+  let screen = testing::render(capped);
+
+  for name in ["Item 0", "Item 1", "Item 2"] {
+    screen.find_by_role(Role::Option, name).click();
+  }
+
+  assert_eq!(
+    screen.probe("capped"),
+    "{0, 1}",
+    "the app's choice refuses a third option"
+  );
+
+  screen.find_by_role(Role::Option, "Item 0").click();
+  screen.find_by_role(Role::Option, "Item 1").click();
+  assert_eq!(screen.probe("capped"), "{}");
+  screen.press("ctrl+a");
+  assert_eq!(
+    screen.probe("capped"),
+    "{0, 1}",
+    "choosing every option at once chooses by the app's rules too"
+  );
+
+  screen.find_by_role(Role::Option, "Heard 3").click();
+  assert_eq!(
+    screen.probe("heard"),
+    "{3}",
+    "a list box read from nothing chooses from nothing by the app's rules"
+  );
 }

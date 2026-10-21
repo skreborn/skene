@@ -39,7 +39,8 @@ pub trait Choice: Clone + Eq + Hash + 'static {}
 impl<T: Clone + Eq + Hash + 'static> Choice for T {}
 
 /// A choice's value with its type erased: what a styled choice group's core holds, the typed
-/// group thin over it.
+/// group thin over it, and what a keyed list keys its items by
+/// ([`crate::view::Child::keyed`]).
 ///
 /// It compares equal to another holding an equal value of the same type, and hashes as the
 /// value it holds does.
@@ -137,12 +138,6 @@ pub trait Chosen: Clone + PartialEq + 'static {
   /// What is chosen once the reader chooses every one of `values` from `chosen` at once (a
   /// range, or all): the last of them for one choice, all of them added for a set.
   fn choosing_all(chosen: Option<&Self>, values: Vec<Self::Value>) -> Self;
-
-  /// The values chosen: none or one for one choice, a set's in its order.
-  fn values(&self) -> Vec<Self::Value>;
-
-  /// What chooses `values`: the last of them for one choice, all of them for a set.
-  fn from_values(values: Vec<Self::Value>) -> Self;
 }
 
 impl<T: Choice> Chosen for Option<T> {
@@ -163,14 +158,6 @@ impl<T: Choice> Chosen for Option<T> {
       .into_iter()
       .last()
       .or_else(|| chosen.cloned().flatten())
-  }
-
-  fn values(&self) -> Vec<T> {
-    self.iter().cloned().collect()
-  }
-
-  fn from_values(values: Vec<T>) -> Self {
-    values.into_iter().last()
   }
 }
 
@@ -200,14 +187,6 @@ impl<T: Choice> Chosen for HashSet<T> {
 
     chosen
   }
-
-  fn values(&self) -> Vec<T> {
-    self.iter().cloned().collect()
-  }
-
-  fn from_values(values: Vec<T>) -> Self {
-    values.into_iter().collect()
-  }
 }
 
 impl<T: Choice + Ord> Chosen for BTreeSet<T> {
@@ -236,13 +215,195 @@ impl<T: Choice + Ord> Chosen for BTreeSet<T> {
 
     chosen
   }
+}
 
-  fn values(&self) -> Vec<T> {
-    self.iter().cloned().collect()
+/// What a list box has chosen with its type erased: what a styled list box's core holds, the
+/// typed list box thin over it, choosing one value or none, or a set where `SEVERAL`.
+///
+/// It holds a [`Chosen`] and chooses by that type's own rules ([`Chosen::choosing`] and its
+/// kin), and it compares equal to another holding an equal choice of the same type. One read
+/// from nothing ([`AnyChosen::unread`]) has chosen nothing and chooses by its type's rules
+/// still; one a choice is made from where nothing is read has no type to choose by, and chooses
+/// nothing.
+#[derive(Clone)]
+pub struct AnyChosen<const SEVERAL: bool> {
+  rules: &'static dyn ChosenRules,
+  chosen: Option<Rc<dyn Any>>,
+}
+
+impl<const SEVERAL: bool> AnyChosen<SEVERAL> {
+  /// `chosen`, its type erased.
+  pub fn new<C: Chosen>(chosen: C) -> Self {
+    debug_assert_eq!(
+      C::SEVERAL,
+      SEVERAL,
+      "a list box's choice erases into its own kind"
+    );
+
+    Self {
+      rules: const { &Rules::<C>(PhantomData) },
+      chosen: Some(Rc::new(chosen)),
+    }
   }
 
-  fn from_values(values: Vec<T>) -> Self {
-    values.into_iter().collect()
+  /// Nothing read: nothing chosen, each choice made by the rules of `C`.
+  #[must_use]
+  pub fn unread<C: Chosen>() -> Self {
+    debug_assert_eq!(
+      C::SEVERAL,
+      SEVERAL,
+      "a list box's choice erases into its own kind"
+    );
+
+    Self {
+      rules: const { &Rules::<C>(PhantomData) },
+      chosen: None,
+    }
+  }
+
+  /// The choice, where it is a `C`.
+  #[must_use]
+  pub fn downcast_ref<C: Chosen>(&self) -> Option<&C> {
+    self.chosen.as_deref()?.downcast_ref()
+  }
+
+  /// The choice, a `C`.
+  ///
+  /// # Panics
+  ///
+  /// Where it holds no `C`: a typed list box's core asks only for the choices its rules make.
+  #[must_use]
+  pub fn into_chosen<C: Chosen>(self) -> C {
+    self
+      .downcast_ref::<C>()
+      .expect("a list box's core asks for the choices of its list box's type")
+      .clone()
+  }
+
+  /// Nothing chosen, and nothing to choose by.
+  const fn inert() -> Self {
+    Self {
+      rules: &Inert,
+      chosen: None,
+    }
+  }
+
+  /// What is chosen once the rules make `next` from this choice.
+  fn next(&self, next: Option<Rc<dyn Any>>) -> Self {
+    Self {
+      rules: self.rules,
+      chosen: next,
+    }
+  }
+}
+
+impl<const SEVERAL: bool> PartialEq for AnyChosen<SEVERAL> {
+  fn eq(&self, other: &Self) -> bool {
+    match (&self.chosen, &other.chosen) {
+      (Some(chosen), Some(other)) => self.rules.same(chosen.as_ref(), other.as_ref()),
+      (None, None) => true,
+      _ => false,
+    }
+  }
+}
+
+impl<const SEVERAL: bool> std::fmt::Debug for AnyChosen<SEVERAL> {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("AnyChosen").finish_non_exhaustive()
+  }
+}
+
+impl<const SEVERAL: bool> Chosen for AnyChosen<SEVERAL> {
+  type Value = AnyChoice;
+
+  const SEVERAL: bool = SEVERAL;
+
+  fn contains(&self, value: &AnyChoice) -> bool {
+    self
+      .chosen
+      .as_deref()
+      .is_some_and(|chosen| self.rules.contains(chosen, value))
+  }
+
+  fn choosing(chosen: Option<&Self>, value: &AnyChoice) -> Self {
+    match chosen {
+      Some(chosen) => chosen.next(chosen.rules.choosing(chosen.chosen.as_deref(), value)),
+      None => Self::inert(),
+    }
+  }
+
+  fn choosing_all(chosen: Option<&Self>, values: Vec<AnyChoice>) -> Self {
+    match chosen {
+      Some(chosen) => chosen.next(chosen.rules.choosing_all(chosen.chosen.as_deref(), values)),
+      None => Self::inert(),
+    }
+  }
+}
+
+/// What an [`AnyChosen`] asks of the type it erases: its rules.
+trait ChosenRules {
+  fn contains(&self, chosen: &dyn Any, value: &AnyChoice) -> bool;
+
+  fn choosing(&self, chosen: Option<&dyn Any>, value: &AnyChoice) -> Option<Rc<dyn Any>>;
+
+  fn choosing_all(&self, chosen: Option<&dyn Any>, values: Vec<AnyChoice>) -> Option<Rc<dyn Any>>;
+
+  fn same(&self, chosen: &dyn Any, other: &dyn Any) -> bool;
+}
+
+/// The rules of a choice made where nothing is read: nothing is chosen.
+struct Inert;
+
+impl ChosenRules for Inert {
+  fn contains(&self, _: &dyn Any, _: &AnyChoice) -> bool {
+    false
+  }
+
+  fn choosing(&self, _: Option<&dyn Any>, _: &AnyChoice) -> Option<Rc<dyn Any>> {
+    None
+  }
+
+  fn choosing_all(&self, _: Option<&dyn Any>, _: Vec<AnyChoice>) -> Option<Rc<dyn Any>> {
+    None
+  }
+
+  fn same(&self, _: &dyn Any, _: &dyn Any) -> bool {
+    false
+  }
+}
+
+/// The rules of `C`.
+struct Rules<C>(PhantomData<fn() -> C>);
+
+impl<C: Chosen> ChosenRules for Rules<C> {
+  fn contains(&self, chosen: &dyn Any, value: &AnyChoice) -> bool {
+    chosen
+      .downcast_ref::<C>()
+      .zip(value.downcast_ref::<C::Value>())
+      .is_some_and(|(chosen, value)| chosen.contains(value))
+  }
+
+  fn choosing(&self, chosen: Option<&dyn Any>, value: &AnyChoice) -> Option<Rc<dyn Any>> {
+    let value = value.downcast_ref::<C::Value>()?;
+    let chosen = chosen.and_then(<dyn Any>::downcast_ref::<C>);
+
+    Some(Rc::new(C::choosing(chosen, value)))
+  }
+
+  fn choosing_all(&self, chosen: Option<&dyn Any>, values: Vec<AnyChoice>) -> Option<Rc<dyn Any>> {
+    let values = values
+      .iter()
+      .map(|value| value.downcast_ref::<C::Value>().cloned())
+      .collect::<Option<Vec<_>>>()?;
+    let chosen = chosen.and_then(<dyn Any>::downcast_ref::<C>);
+
+    Some(Rc::new(C::choosing_all(chosen, values)))
+  }
+
+  fn same(&self, chosen: &dyn Any, other: &dyn Any) -> bool {
+    chosen
+      .downcast_ref::<C>()
+      .is_some_and(|chosen| other.downcast_ref::<C>() == Some(chosen))
   }
 }
 

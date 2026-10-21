@@ -1,5 +1,12 @@
 //! The facade's own surface on the real platform: integer lengths in every constructor,
-//! `Apply` from the prelude, a field's keyboard and a button's shortcut.
+//! `Apply` from the prelude, a field's keyboard and a button's shortcut, and a keyed list's
+//! keys told apart by their own `Eq`.
+
+use std::{
+  cell::Cell,
+  hash::{Hash, Hasher},
+  rc::Rc,
+};
 
 use skene_gui::{
   prelude::*,
@@ -65,4 +72,56 @@ fn integer_lengths_lay_out_as_pixels_and_apply_adds_what_is_given() {
   assert_eq!((swatch.width, swatch.height), (40., 24.));
   assert_eq!(swatch.x, 16.);
   screen.find_by_text("Applied");
+}
+
+/// A row's key: its id and its name, hashed by its id alone, as `Hash` may be.
+#[derive(Clone, PartialEq, Eq, Debug)]
+struct Coarse {
+  id: u32,
+  name: &'static str,
+}
+
+impl Hash for Coarse {
+  fn hash<H: Hasher>(&self, state: &mut H) {
+    self.id.hash(state);
+  }
+}
+
+/// A keyed column of `items`, each row counted in `builds` as it is built.
+fn keyed(items: Signal<Vec<(u32, &'static str)>>, builds: Rc<Cell<u32>>) -> impl View {
+  Column::new().set_padding(16).derive_children(
+    move || items.get(),
+    |&(id, name)| Coarse { id, name },
+    move |(id, name)| {
+      builds.set(builds.get() + 1);
+
+      Text::new(format!("Row {id} {name}"))
+    },
+  )
+}
+
+#[skene_gui::test]
+fn a_keyed_list_tells_its_keys_apart_by_their_own_eq() {
+  let items = Signal::new(vec![(1, "a"), (1, "b")]);
+  let builds = Rc::new(Cell::new(0));
+  let screen = testing::render({
+    let builds = Rc::clone(&builds);
+
+    move || keyed(items, builds)
+  });
+
+  screen.find_by_text("Row 1 a");
+  screen.find_by_text("Row 1 b");
+  assert_eq!(builds.get(), 2);
+
+  items.set(vec![(1, "a"), (1, "b")]);
+  screen.settle();
+  items.set(vec![(1, "b"), (1, "a"), (2, "c")]);
+  screen.settle();
+  screen.find_by_text("Row 2 c");
+  assert_eq!(
+    builds.get(),
+    3,
+    "two keys hashing alike and unequal are two, each built once and kept"
+  );
 }

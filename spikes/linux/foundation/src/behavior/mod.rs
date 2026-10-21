@@ -46,9 +46,9 @@ mod tests;
 pub use self::{
   activate::{Activate, ActivateKeys},
   collection::{
-    AnyChoice, Choice, Chosen, Collection, CollectionKeys, CollectionPolicy, Held, Listbox,
-    ListboxOption, ListboxPolicy, Member, Menu, MenuOption, MenuPolicy, One, Options, Orientation,
-    Radio, RadioGroup, RadioPolicy, Roster,
+    AnyChoice, AnyChosen, Choice, Chosen, Collection, CollectionKeys, CollectionPolicy, Held,
+    Listbox, ListboxOption, ListboxPolicy, Member, Menu, MenuOption, MenuPolicy, One, Options,
+    Orientation, Radio, RadioGroup, RadioPolicy, Roster,
   },
   controlled::Controlled,
   handle::{ContentHandler, ContentReader, ControlHandle, ControlOps},

@@ -66,7 +66,7 @@ pub use self::{
 };
 use crate::{
   Effect, Keyed, NodeId, Owner, Signal,
-  lazy::Key,
+  behavior::AnyChoice,
   seam::{
     Realization,
     access::Role,
@@ -609,9 +609,9 @@ impl<R: Realization> Cx<R> {
 /// What builds a child in the context it is built in.
 type Build<R> = dyn FnOnce(&mut Cx<R>) -> Node;
 
-/// What a keyed list reads, tracking it: what then keys its items and makes their children,
-/// untracked.
-type KeyedItems<R> = dyn Fn() -> Box<dyn FnOnce() -> Vec<(Key, Child<R>)>>;
+/// What a keyed list reads, tracking it: what then keys its items, each key's type erased, and
+/// makes their children, untracked.
+type KeyedItems<R> = dyn Fn() -> Box<dyn FnOnce() -> Vec<(AnyChoice, Child<R>)>>;
 
 /// A child not built yet: what a view holds until it is built.
 #[must_use]
@@ -641,9 +641,9 @@ impl<R: Realization> Child<R> {
 
   /// A keyed list in a layout of type `L`: a segment whose children are one view per item,
   /// each built once per key under an owner of its own and kept, wherever it moves, while its
-  /// key stays. Of items sharing a key, the first is kept and the rest are built anew; a key
-  /// is its wide hash ([`Key`]), so two keys hashing alike are one.
-  pub fn keyed<T: 'static, K: Hash + 'static, C: ChildOf<L, R>, L>(
+  /// key stays, two keys being one where `K`'s `Eq` says so. Of items sharing a key, the first
+  /// is kept and the rest are built anew.
+  pub fn keyed<T: 'static, K: Eq + Hash + Clone + 'static, C: ChildOf<L, R>, L>(
     items: impl Fn() -> Vec<T> + 'static,
     key: impl Fn(&T) -> K + 'static,
     view: impl Fn(T) -> C + 'static,
@@ -661,7 +661,7 @@ impl<R: Realization> Child<R> {
             let view = Rc::clone(&view);
 
             (
-              Key::of(0, &key(&item)),
+              AnyChoice::new(key(&item)),
               Self::new(move |cx| view(item).build_child(cx)),
             )
           })
@@ -674,36 +674,36 @@ impl<R: Realization> Child<R> {
   pub fn build(self, cx: &mut Cx<R>) -> Node {
     match self.0 {
       Unbuilt::Build(build) => build(cx),
-      Unbuilt::Keyed(items) => build_keyed(items, cx),
+      Unbuilt::Keyed(items) => Self::build_keyed(items, cx),
     }
   }
-}
 
-/// Builds a keyed list in `cx`: a segment whose children follow what `items` reads.
-fn build_keyed<R: Realization>(items: Box<KeyedItems<R>>, cx: &mut Cx<R>) -> Node {
-  let segment = cx.create(NodeSpec::new(NodeKind::Segment));
-  let inner = cx.child();
-  let list = RefCell::new(Keyed::<Key, NodeId>::new());
+  /// Builds a keyed list in `cx`: a segment whose children follow what `items` reads.
+  fn build_keyed(items: Box<KeyedItems<R>>, cx: &mut Cx<R>) -> Node {
+    let segment = cx.create(NodeSpec::new(NodeKind::Segment));
+    let inner = cx.child();
+    let list = RefCell::new(Keyed::<AnyChoice, NodeId>::new());
 
-  Effect::new(move || {
-    let keyed = items();
-    let ids = untrack(|| {
-      list.borrow_mut().update(
-        keyed(),
-        |(key, _)| *key,
-        |(_, child)| child.build(&mut inner.child()).id(),
-        tree::remove::<R>,
-      )
+    Effect::new(move || {
+      let keyed = items();
+      let ids = untrack(|| {
+        list.borrow_mut().update(
+          keyed(),
+          |(key, _)| key.clone(),
+          |(_, child)| child.build(&mut inner.child()).id(),
+          tree::remove::<R>,
+        )
+      });
+
+      untrack(|| {
+        for (index, id) in ids.iter().enumerate() {
+          tree::attach::<R>(segment, *id, index);
+        }
+      });
     });
 
-    untrack(|| {
-      for (index, id) in ids.iter().enumerate() {
-        tree::attach::<R>(segment, *id, index);
-      }
-    });
-  });
-
-  Node::new(segment)
+    Node::new(segment)
+  }
 }
 
 /// A slot a built node's id is written into, so a relation can name it: a control named by a

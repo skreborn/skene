@@ -1,4 +1,4 @@
-//! The pinned font headless shapes and draws text in: Inter's regular face (4.0),
+//! The pinned font headless shapes and draws text in: Inter's regular face (4.1),
 //! subset to Latin-1 and the combining acute, the face the conformance suite's pages
 //! draw in.
 

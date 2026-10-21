@@ -832,7 +832,7 @@ fn a_text_entry_lays_out_at_its_native_size() {
   else {
     panic!("two entries");
   };
-  let average = 1313. * 16. / 2048.;
+  let average = 1311. * 16. / 2048.;
   let bounds = ((5290_f32 + 1513.) * 16. / 2048.).round();
 
   assert_eq!(

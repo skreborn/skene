@@ -7,14 +7,20 @@
                                                 quarter of the window (a hover), more (a
                                                 scroll), and the whole of it (a relayout)
   check.py grep LOG PATTERN WHAT                PASS where a line of LOG holds PATTERN
+  check.py await FRAME OUT X Y RRGGBB [TOLERANCE] [SECONDS]
+                                                copies FRAME (the app's presented frame) to
+                                                OUT once the pixel is that color, or the last
+                                                frame read when SECONDS (5) have passed
 
 Every check prints one line starting PASS or FAIL and the thing checked, FAIL where the file it
-reads is missing.
+reads is missing; await prints nothing, the checks on OUT that follow it reporting.
 """
 
 import re
+import shutil
 import statistics
 import sys
+import time
 
 from PIL import Image
 
@@ -94,6 +100,27 @@ def frames(path, name):
   )
 
 
+def await_pixel(frame, out, x, y, hex_color, tolerance="2", seconds="5"):
+  want = tuple(int(hex_color[i:i + 2], 16) for i in (0, 2, 4))
+  deadline = time.monotonic() + float(seconds)
+
+  while True:
+    # The app replaces the frame by a rename, so a copy is always a whole frame.
+    try:
+      shutil.copyfile(frame, out)
+      got = Image.open(out).convert("RGBA").getpixel((int(x), int(y)))[:3]
+    except OSError:
+      got = None
+
+    if got is not None and all(abs(a - b) <= int(tolerance) for a, b in zip(got, want)):
+      return
+
+    if time.monotonic() > deadline:
+      return
+
+    time.sleep(0.05)
+
+
 def grep(path, pattern, what):
   try:
     ok = any(pattern in line for line in open(path, errors="replace"))
@@ -107,4 +134,4 @@ def grep(path, pattern, what):
 
 if __name__ == "__main__":
   command, *arguments = sys.argv[1:]
-  {"pixel": pixel, "size": size, "frames": frames, "grep": grep}[command](*arguments)
+  {"pixel": pixel, "size": size, "frames": frames, "grep": grep, "await": await_pixel}[command](*arguments)

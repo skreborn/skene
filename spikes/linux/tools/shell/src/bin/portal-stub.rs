@@ -1,12 +1,12 @@
 //! A stand-in for xdg-desktop-portal's Settings interface on a private session bus, for the
 //! realization's environment checks: it serves `org.freedesktop.appearance`'s `color-scheme`
 //! (0 no preference, 1 dark, 2 light), `contrast` (0 none, 1 more), `reduced-motion` (0 none,
-//! 1 reduce) and `accent-color` (three fractions), and changes them on a schedule, emitting
+//! 1 reduce) and `accent-color` (three fractions), and changes them a step at a time, emitting
 //! `SettingChanged` as the portal does.
 //!
-//! `portal-stub <scheme> <contrast> [<key>=<value>@<milliseconds> ...]`, a color written
-//! `0.9,0.2,0.3`, e.g. `portal-stub 2 0 color-scheme=1@1500 accent-color=0.9,0.2,0.3@2000`.
-//! It exits after 120 seconds.
+//! `portal-stub <scheme> <contrast> [<key>=<value>@<step> ...]`, a color written `0.9,0.2,0.3`,
+//! e.g. `portal-stub 2 0 color-scheme=1@1 accent-color=0.9,0.2,0.3@2`: each `SIGUSR1` it is sent
+//! applies the next step's changes (steps 1, 2, ...). It exits after 120 seconds.
 
 use std::{
   collections::HashMap,
@@ -14,6 +14,7 @@ use std::{
   time::Duration,
 };
 
+use skene_shell_tools::Steps;
 use zbus::{
   interface,
   object_server::SignalEmitter,
@@ -95,6 +96,9 @@ impl Settings {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+  // Before the connection starts its threads.
+  let steps = Steps::block();
+  let started = std::time::Instant::now();
   let arguments: Vec<String> = std::env::args().skip(1).collect();
   let mut values = HashMap::new();
 
@@ -131,42 +135,46 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   println!("serving");
 
-  let mut changes: Vec<(u64, String, Setting)> = arguments
+  let mut changes: Vec<(u32, String, Setting)> = arguments
     .iter()
     .skip(2)
     .filter_map(|change| {
-      let (assignment, at) = change.split_once('@')?;
+      let (assignment, step) = change.split_once('@')?;
       let (key, value) = assignment.split_once('=')?;
 
-      Some((at.parse().ok()?, key.to_owned(), Setting::parse(value)?))
+      Some((step.parse().ok()?, key.to_owned(), Setting::parse(value)?))
     })
     .collect();
 
-  changes.sort_by_key(|(at, _, _)| *at);
+  changes.sort_by_key(|(step, _, _)| *step);
 
-  let started = std::time::Instant::now();
   let interface = connection
     .object_server()
     .interface::<_, Settings>("/org/freedesktop/portal/desktop")?;
+  let lifetime = Duration::from_secs(120);
+  let last = changes.last().map_or(0, |(step, _, _)| *step);
 
-  for (at, key, setting) in changes {
-    let wait = Duration::from_millis(at).saturating_sub(started.elapsed());
+  for step in 1..=last {
+    if !steps.next(lifetime.saturating_sub(started.elapsed())) {
+      return Ok(());
+    }
 
-    std::thread::sleep(wait);
-    values.lock().unwrap().insert(key.clone(), setting.clone());
-    zbus::block_on(Settings::setting_changed(
-      interface.signal_emitter(),
-      NAMESPACE,
-      &key,
-      Value::from(setting.value()),
-    ))?;
-    println!(
-      "changed {key} to {setting:?} at {} ms",
-      started.elapsed().as_millis()
-    );
+    for (_, key, setting) in changes.iter().filter(|(at, _, _)| *at == step) {
+      values.lock().unwrap().insert(key.clone(), setting.clone());
+      zbus::block_on(Settings::setting_changed(
+        interface.signal_emitter(),
+        NAMESPACE,
+        key,
+        Value::from(setting.value()),
+      ))?;
+      println!(
+        "changed {key} to {setting:?} at step {step}, {} ms",
+        started.elapsed().as_millis()
+      );
+    }
   }
 
-  std::thread::sleep(Duration::from_secs(120).saturating_sub(started.elapsed()));
+  std::thread::sleep(lifetime.saturating_sub(started.elapsed()));
 
   Ok(())
 }

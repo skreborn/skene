@@ -36,11 +36,11 @@ run states-sway sway "$debug/states" states-wayland.sh DRIVER=sway SWAY_FLOAT=1 
 run states-mutter mutter "$debug/states" states-wayland.sh DRIVER=mutter-dbus DX=24 DY=62 HEADER=38
 # The reader's environment.
 run environment-sway sway "$debug/environment" environment.sh SKENE_SIZE=480x400 SWAY_BORDER=none ACCENT_X=1225 ACCENT_Y=128 \
-  "PORTAL=2 0 color-scheme=1@1500 contrast=1@2500 accent-color=0.9,0.2,0.3@3500 reduced-motion=1@3500 color-scheme=2@4500 contrast=0@4500"
+  "PORTAL=2 0 color-scheme=1@1 contrast=1@2 accent-color=0.9,0.2,0.3@3 reduced-motion=1@3 color-scheme=2@4 contrast=0@4"
 run environment-mutter mutter "$debug/environment" environment.sh SKENE_SIZE=480x400 DX=24 DY=62 ACCENT_X=449 ACCENT_Y=190 \
-  "PORTAL=2 0 color-scheme=1@1500 contrast=1@2500 accent-color=0.9,0.2,0.3@3500 reduced-motion=1@3500 color-scheme=2@4500 contrast=0@4500"
+  "PORTAL=2 0 color-scheme=1@1 contrast=1@2 accent-color=0.9,0.2,0.3@3 reduced-motion=1@3 color-scheme=2@4 contrast=0@4"
 run xsettings-x11 x11 "$debug/environment" xsettings-x11.sh \
-  "BEFORE=$TOOLS/xsettings-manager Xft/DPI=147456 Net/ThemeName=Adwaita-dark Gtk/EnableAnimations=0 @2000 Xft/DPI=98304 Net/ThemeName=HighContrast"
+  "BEFORE=$TOOLS/xsettings-manager Xft/DPI=147456 Net/ThemeName=Adwaita-dark Gtk/EnableAnimations=0 @ Xft/DPI=98304 Net/ThemeName=HighContrast"
 # The clipboard and the primary selection, the keyboard, the runtime.
 run clipboard-x11 x11 "$debug/clipboard" clipboard.sh CLIP=x11
 run clipboard-sway sway "$debug/clipboard" clipboard.sh CLIP=wlr DRIVER=sway

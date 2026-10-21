@@ -1,6 +1,24 @@
 # Sourced by each scenario: helpers over the session's environment (OUT, KIND, TOOLS, CHECK).
 LOG=$OUT/app.log
 shot() { sleep "${2:-0.4}"; cp "$OUT/frame.png" "$OUT/$1.png"; }
+await_shot() { # await_shot <name> <x> <y> <rrggbb>: the presented frame once that pixel is that color (5 s at most), kept as <name>
+  $CHECK await "$OUT/frame.png" "$OUT/$1.png" "$2" "$3" "$4"
+}
+await() { # await <pattern> [<after>]: a line of the app's log holds the pattern (after the first line holding <after>, where given), 5 s at most
+  local _
+  for _ in $(seq 100); do
+    if awk -v want="$1" -v after="${2:-}" '
+      after == "" || seen { if (index($0, want)) found = 1 }
+      after != "" && index($0, after) { seen = 1 }
+      END { exit !found }' "$LOG"; then
+      return 0
+    fi
+    sleep 0.05
+  done
+  echo "INFO $KIND: no line of the app's log holds '$1' after 5 s"
+  return 1
+}
+step() { kill -USR1 "$1"; } # step <pid>: the stand-in with that process id takes its next step
 pass() { echo "PASS $*"; }
 fail() { echo "FAIL $*"; }
 expect() { # expect <pattern> <what>: a line of the app's log holds the pattern

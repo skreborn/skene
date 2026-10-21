@@ -5,9 +5,10 @@
 # its X11 backend in a private Xvfb, which XTest drives (DISPLAY names that Xvfb); kwin: KWin's
 # virtual backend, its fake input open, $SKENE_KWIN naming the kwin_wayland to run, as it does
 # for skene-runner), optionally the
-# settings-portal stand-in (PORTAL="<scheme> <contrast> [changes]"),
-# BEFORE (a helper started in the background first, an XSETTINGS manager), the app ($APP with
-# $APP_ARGS, SKENE_TRACE on, SKENE_SHOT and SKENE_PROBE in $OUT), then
+# settings-portal stand-in (PORTAL="<scheme> <contrast> [changes]", its process PORTAL_PID),
+# BEFORE (a helper started in the background first, an XSETTINGS manager, its process
+# BEFORE_PID, the app started once it has written a line), the app ($APP with $APP_ARGS,
+# SKENE_TRACE on, SKENE_SHOT and SKENE_PROBE in $OUT), then
 # "$@" with the session's environment, then teardown.
 #
 #   dbus-run-session -- tools/sessions/session.sh <kind> <command...>
@@ -118,7 +119,9 @@ echo "TIMING $KIND display ready $(ms) ms"
 if [ -n "${PORTAL:-}" ]; then
   # shellcheck disable=SC2086
   "$here/../bin/portal-stub" $PORTAL >"$OUT/portal.log" 2>&1 &
-  PIDS+=($!)
+  PORTAL_PID=$!
+  PIDS+=($PORTAL_PID)
+  export PORTAL_PID
   for _ in $(seq 200); do
     gdbus introspect --session --dest org.freedesktop.portal.Desktop \
       --object-path /org/freedesktop/portal/desktop >/dev/null 2>&1 && break
@@ -128,9 +131,11 @@ if [ -n "${PORTAL:-}" ]; then
 fi
 if [ -n "${BEFORE:-}" ]; then
   # A helper the app finds at start (an XSETTINGS manager): run in the background.
-  bash -c "$BEFORE" >"$OUT/before.log" 2>&1 &
-  PIDS+=($!)
-  sleep 0.3
+  bash -c "exec $BEFORE" >"$OUT/before.log" 2>&1 &
+  BEFORE_PID=$!
+  PIDS+=($BEFORE_PID)
+  export BEFORE_PID
+  for _ in $(seq 250); do [ -s "$OUT/before.log" ] && break; sleep 0.02; done
 fi
 if [ "${APP:-none}" != none ]; then
   sleep "${APP_DELAY:-0}"

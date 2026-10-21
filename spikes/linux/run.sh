@@ -13,8 +13,9 @@
 #   3. side by side, POOL jobs at once (4 unless set), the longest first: every test leg, nextest,
 #      the steadiness rounds, the isolation check, the screenshots, the controls' sessions, the
 #      platform-text cases and the GPU path's tests;
-#   4. alone: the timed parts: the shell's sessions (scenarios paced by the clock, and the
-#      sessions' start-up times), 1000 labels and shaping (verify), the frame costs
+#   4. alone: the timed parts: the shell's sessions (scenarios that time what they check: a
+#      held key's repeats, timers, frame costs, and the sessions' start-up times), 1000 labels
+#      and shaping (verify), the frame costs
 #      (tools/bench/frames.sh, six rounds and more until each judged case's first frame is judged
 #      against its targets, or MAX_ROUNDS), and the repaint costs (tools/paint/repaint.sh).
 # Each section's wall time is in the summary.

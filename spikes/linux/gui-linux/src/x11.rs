@@ -1399,6 +1399,7 @@ impl X11 {
       }
       Event::XkbNewKeyboardNotify(_) | Event::XkbMapNotify(_) | Event::MappingNotify(_) => {
         load_keymap(&mut self.keyboard, &self.conn, self.device);
+        trace::log(|| format!("[x11] keymap layouts {:?}", self.keyboard.layouts()));
       }
       Event::KeyPress(event) => {
         self.time = event.time;

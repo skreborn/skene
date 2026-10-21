@@ -23,7 +23,7 @@
 # What runs (the stages that added it in brackets):
 #   - [core] formatting (stable rustfmt), clippy with warnings denied, rustdoc, on every member;
 #     every test of the workspace (foundation, skene-parley, skene-terminal, cli, the cores); the
-#     platform-text cases (scratchpad/platform-text/linux) and the cases of spikes/text-parity's
+#     platform-text cases (skene-parley's `verify` example) and the cases of spikes/text-parity's
 #     corpus that found Parley's gaps (soft hyphens, bidi, Thai, Khmer, Lao, Burmese, Devanagari,
 #     tabs, stacked marks) laid out by Skene's engine and compared with live Pango (pango-view,
 #     same fontconfig): lines, their widths, the clusters' visual order, family per character,

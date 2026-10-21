@@ -94,13 +94,13 @@ struct Pin {
 }
 
 /// The version of the Firefox the goldens are taken in.
-const FIREFOX_VERSION: &str = "157.0.1";
+const FIREFOX_VERSION: &str = "158.0.1";
 
 /// The Firefox the goldens are taken in, the release Mozilla publishes for x86-64 Linux.
 const FIREFOX: Pin = Pin {
-  name: "firefox-157.0.1",
-  url: "https://archive.mozilla.org/pub/firefox/releases/157.0.1/linux-x86_64/en-US/firefox-157.0.1.tar.xz",
-  sha256: "0d92bf39cdd174f5f361008509310bdefbce72a57ca10523a43b32d62dc699b6",
+  name: "firefox-158.0.1",
+  url: "https://archive.mozilla.org/pub/firefox/releases/158.0.1/linux-x86_64/en-US/firefox-158.0.1.tar.xz",
+  sha256: "dce45470139242cf294eb6ada3d192a9bb334696842b02b71ade448a139eb41a",
   executable: "firefox/firefox",
 };
 

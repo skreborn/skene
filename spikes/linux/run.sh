@@ -68,7 +68,7 @@
 #     stand-in input method (kwin-input-method), which a field's caret is read through from
 #     outside the app.
 #   - [paint] the GPU path (skene-gui-linux's `gpu` feature: vello_gpu over wgpu's Vulkan, on
-#     Mesa's lavapipe here): its tests (skene-conformance-linux's `gpu` target) on X11, mutter and
+#     Mesa's lavapipe here): its tests (skene-conformance-linux's `gpu::` tests) on X11, mutter and
 #     sway, and on sway and X11 at 1.5 with scale:: and presented:: on the GPU path there; the
 #     conformance suite and the facade's tests on the GPU path on X11 and mutter, the suite on X11
 #     GPU_SUITE_ROUNDS more times (3 unless set), its aborts counted; full and partial repaints
@@ -379,9 +379,9 @@ isolation() {
 screenshots() {
   rm -rf screenshots
   mkdir -p screenshots/mutter
-  SKENE_SCREENSHOTS="$here/screenshots" cargo test -p hello -p notes-gui --test screenshots > "$results/screenshots.log" 2>&1 || true
+  SKENE_SCREENSHOTS="$here/screenshots" cargo test -p hello -p notes-gui --test it -- screenshots:: > "$results/screenshots.log" 2>&1 || true
   SKENE_TEST_SESSION=wayland SKENE_SCREENSHOTS="$here/screenshots/mutter" \
-    cargo test -p hello -p notes-gui --test screenshots >> "$results/screenshots.log" 2>&1 || true
+    cargo test -p hello -p notes-gui --test it -- screenshots:: >> "$results/screenshots.log" 2>&1 || true
   say "screenshots, x11: $(cd screenshots && ls ./*.png | tr '\n' ' ')"
   say "screenshots, mutter: $(cd screenshots/mutter && ls ./*.png | tr '\n' ' ')"
 }
@@ -436,7 +436,7 @@ gpu_tests() { # gpu_tests <leg> <scale>
   local leg=$1 scale=$2 name=$1
   [ "$scale" = 1 ] || name=$1-$2
   SKENE_TEST_SESSION=$leg SKENE_TEST_SCALE=$scale SKENE_TRACE=1 cargo test -p skene-conformance-linux \
-    --features skene-gui-linux/gpu --test gpu -- --nocapture > "$results/test-gpu-$name.log" 2>&1 || true
+    --features skene-gui-linux/gpu --test it -- gpu:: --nocapture > "$results/test-gpu-$name.log" 2>&1 || true
   say "the GPU tests on the $leg leg at scale $scale: $(grep -E '^test result' "$results/test-gpu-$name.log" | tail -1); $(grep -E '^\[gpu\] .*, Vulkan\)' "$results/test-gpu-$name.log" | sort -u | head -1)"
   grep -E '^[a-z]+: most [0-9]+ apart' "$results/test-gpu-$name.log" | awk '{ if ($3 > most) most = $3; apart += $5 } END { printf "  every page: a channel at most %d apart, %d pixels beyond 2 in all\n", most, apart }' | tee -a "$summary"
   if [ "$scale" != 1 ]; then

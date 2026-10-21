@@ -40,7 +40,7 @@ use skene_parley::{
 use vello_common::{
   kurbo::{Affine, BezPath, Rect as KRect, Shape as _, Stroke},
   paint::{Image, ImageId, ImageSource, Tint, TintMode},
-  peniko::{Color as PColor, ImageAlphaType, ImageQuality, ImageSampler},
+  peniko::{self, Color as PColor, ImageAlphaType, ImageQuality, ImageSampler},
   pixmap::{PixelMetadata, Pixmap},
 };
 use vello_gpu::{
@@ -48,7 +48,7 @@ use vello_gpu::{
   TextureBindings,
 };
 
-use crate::paint::{Brush, CastShadow, PathChoice, Sink, color};
+use crate::paint::{Brush, BrushImages, CastShadow, ImageKey, PathChoice, Sink, color};
 
 /// Where a window's surface is, as the platform's own handles.
 #[derive(Clone, Copy, Debug)]
@@ -107,13 +107,16 @@ pub struct Lost;
 pub type Band = (u32, u32, u32, u32);
 
 /// What a window's surfaces paint with on the GPU, the window's and its popups' alike: vello's
-/// GPU renderer, its resources and the glyph images in its atlas, the surfaces' format, the
-/// adapter's device and queue, and whether the device was lost.
+/// GPU renderer, its resources and the glyph and brush images in its atlas, the surfaces'
+/// format, the adapter's device and queue, and whether the device was lost.
 struct Shared {
   renderer: Renderer,
   resources: Resources,
   glyphs: HashMap<usize, (Rc<GlyphMask>, Vec<Tile>)>,
+  images: HashMap<ImageKey, ImageId>,
   area: u64,
+  /// Whether the last frame was short of a glyph, so the next starts the atlas over.
+  starved: bool,
   format: wgpu::TextureFormat,
   lost: Arc<AtomicBool>,
   queue: wgpu::Queue,
@@ -150,6 +153,10 @@ impl Gpu {
   /// The atlas pixels glyph images may hold within a frame; a glyph past them is drawn by the
   /// next frame, which starts the atlas over.
   const MOST_AREA: u64 = Self::ATLAS * Self::ATLAS * Self::ATLASES / 2;
+  /// The atlas pixels glyph images may hold within a frame that started with the atlas empty:
+  /// all but what the parts' packing may leave unused. A glyph past them is not drawn on the
+  /// GPU, and no frame after it asks again.
+  const MOST_AREA_FRESH: u64 = Self::ATLAS * Self::ATLAS * Self::ATLASES * 3 / 4;
   /// The side of the largest part of a mask uploaded as one image, in device pixels.
   const TILE: u32 = 2048;
 
@@ -284,7 +291,9 @@ impl Gpu {
       renderer,
       resources,
       glyphs: HashMap::new(),
+      images: HashMap::new(),
       area: 0,
+      starved: false,
       format,
       lost,
       queue,
@@ -532,18 +541,28 @@ impl Gpu {
       });
     let mut short = false;
 
-    if shared.glyphs.len() >= Self::MOST_GLYPHS || shared.area > Self::KEEP {
-      for (_, (_, tiles)) in shared.glyphs.drain() {
-        for tile in tiles {
-          shared
-            .renderer
-            .destroy_image(&mut shared.resources, &mut encoder, tile.id);
-        }
+    if shared.starved || shared.glyphs.len() >= Self::MOST_GLYPHS || shared.area > Self::KEEP {
+      let Shared {
+        glyphs,
+        images,
+        renderer,
+        resources,
+        ..
+      } = &mut *shared;
+      let ids = glyphs
+        .drain()
+        .flat_map(|(_, (_, tiles))| tiles.into_iter().map(|tile| tile.id))
+        .chain(images.drain().map(|(_, id)| id));
+
+      for id in ids {
+        renderer.destroy_image(resources, &mut encoder, id);
       }
 
       shared.area = 0;
       Self::submit_so_far(&shared.device, &shared.queue, &mut encoder);
     }
+
+    let fresh = shared.area == 0;
 
     // Every frame is cut to its band, the whole frame's too, so a rectangle is drawn alike
     // either way.
@@ -567,7 +586,13 @@ impl Gpu {
         queue: &shared.queue,
         encoder: &mut encoder,
         glyphs: &mut shared.glyphs,
+        images: &mut shared.images,
         area: &mut shared.area,
+        most: if fresh {
+          Self::MOST_AREA_FRESH
+        } else {
+          Self::MOST_AREA
+        },
         short: &mut short,
       };
 
@@ -677,14 +702,22 @@ impl Gpu {
       return Err(Lost);
     }
 
-    // A frame short of a glyph is drawn again whole once the atlas starts over.
-    self.whole = short;
+    // A frame short of a glyph is drawn again whole once the atlas starts over, unless it
+    // started over already: then the glyph is larger than the atlas holds.
+    let retry = short && !fresh;
+
+    self.whole = retry;
+    shared.starved = retry;
+
+    if short && fresh {
+      crate::trace::log(|| "[gpu] a glyph larger than the atlas holds is not drawn".to_owned());
+    }
 
     #[expect(clippy::cast_possible_truncation, reason = "microseconds")]
     Ok(GpuCost {
       record: recorded.as_micros() as u64,
       render: (started.elapsed() - recorded).as_micros() as u64,
-      short,
+      short: retry,
     })
   }
 
@@ -764,7 +797,9 @@ struct GpuSink<'a> {
   queue: &'a wgpu::Queue,
   encoder: &'a mut wgpu::CommandEncoder,
   glyphs: &'a mut HashMap<usize, (Rc<GlyphMask>, Vec<Tile>)>,
+  images: &'a mut HashMap<ImageKey, ImageId>,
   area: &'a mut u64,
+  most: u64,
   short: &'a mut bool,
 }
 
@@ -783,12 +818,74 @@ impl GpuSink<'_> {
           .scene
           .set_paint_transform(transform.inverse() * *placed);
       }
+      Brush::Image(brush, placed) => match self.brush_image(brush) {
+        Some(id) => {
+          self.scene.set_paint(Image {
+            image: ImageSource::opaque_id(id),
+            sampler: brush.sampler,
+          });
+          self
+            .scene
+            .set_paint_transform(transform.inverse() * *placed);
+        }
+        None => {
+          self.scene.set_paint(PColor::TRANSPARENT);
+          self.scene.reset_paint_transform();
+        }
+      },
     }
+  }
+
+  /// The atlas image of the image brush `brush`, uploaded where it is new; `None` where vello
+  /// reads no pixels of its format, it is larger than [`Gpu::TILE`] either way, or it would
+  /// take the atlas past what a frame may hold (the frame then short).
+  fn brush_image(&mut self, brush: &peniko::ImageBrush) -> Option<ImageId> {
+    let key = BrushImages::key(brush);
+
+    if let Some(id) = self.images.get(&key) {
+      return Some(*id);
+    }
+
+    let (width, height) = (brush.image.width, brush.image.height);
+    let readable = matches!(
+      brush.image.format,
+      peniko::ImageFormat::Rgba8 | peniko::ImageFormat::Bgra8
+    ) && width <= Gpu::TILE
+      && height <= Gpu::TILE
+      && brush.image.data.data().len() >= width as usize * height as usize * 4;
+
+    if !readable {
+      return None;
+    }
+
+    let area = u64::from(width) * u64::from(height);
+
+    if *self.area + area > self.most {
+      *self.short = true;
+
+      return None;
+    }
+
+    let ImageSource::Pixmap(pixmap) = ImageSource::from_peniko_image_data(&brush.image) else {
+      return None;
+    };
+    let id = self.renderer.upload_image(
+      self.resources,
+      self.device,
+      self.queue,
+      self.encoder,
+      &pixmap,
+    );
+
+    *self.area += area;
+    self.images.insert(key, id);
+
+    Some(id)
   }
 
   /// The atlas images of `mask`, uploaded where it is new, in parts no larger than
   /// [`Gpu::TILE`] either way; `None`, and the frame short, where they would take the atlas past
-  /// [`Gpu::MOST_AREA`].
+  /// what a frame may hold.
   fn image(&mut self, mask: &Rc<GlyphMask>) -> Option<Vec<Tile>> {
     let key = Rc::as_ptr(mask) as usize;
 
@@ -798,7 +895,7 @@ impl GpuSink<'_> {
 
     let area = u64::from(mask.width) * u64::from(mask.height);
 
-    if *self.area + area > Gpu::MOST_AREA {
+    if *self.area + area > self.most {
       *self.short = true;
 
       return None;

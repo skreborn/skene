@@ -136,7 +136,7 @@ const USER_ONLY: [&str; 14] = [
   "XMODIFIERS",
   "IBUS_ADDRESS",
   "SKENE_IME",
-  "SKENE_BACKEND",
+  "SKENE_WINDOW_SYSTEM",
   "SKENE_TOUCH_SOCKET",
 ];
 
@@ -1132,7 +1132,7 @@ impl Session {
       command
         .env("SKENE_TEST_SESSION", leg.name())
         .env(
-          "SKENE_BACKEND",
+          "SKENE_WINDOW_SYSTEM",
           if leg.is_x11() { "x11" } else { "wayland" },
         )
         .env("SKENE_SCREEN", {

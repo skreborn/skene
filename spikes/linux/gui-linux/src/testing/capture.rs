@@ -61,8 +61,9 @@ pub struct Pixels {
 
 /// The session's screen, read back as it is presented.
 pub struct Screen {
-  /// Device pixels per unit of the pointer's space.
-  ratio: f64,
+  /// Whether its device pixels per unit of the pointer's space are the output's scale, which
+  /// can change while a window shows (a compositor's output), rather than one (an X screen).
+  scaled: bool,
   /// How it is read.
   source: Source,
 }
@@ -84,36 +85,39 @@ impl Screen {
   ///
   /// Where the session's capture cannot be reached.
   pub fn open(session: Session) -> Result<Self> {
-    let scale = Session::scale();
     let output = std::env::var("SKENE_OUTPUT_DISPLAY").ok();
-    let (ratio, source) = match session {
-      Session::X11 => (1., Source::X(Box::new(XScreen::connect(None)?))),
-      Session::Mutter => (scale, Source::Cast(Cast::start()?)),
-      Session::Sway => (scale, Source::Copy(Screencopy::connect()?)),
+    let (scaled, source) = match session {
+      Session::X11 => (false, Source::X(Box::new(XScreen::connect(None)?))),
+      Session::Mutter => (true, Source::Cast(Cast::start()?)),
+      Session::Sway => (true, Source::Copy(Screencopy::connect()?)),
       Session::Weston | Session::Kwin | Session::KwinX11 => {
         let display = output.ok_or(
           "a nested compositor's leg names the X display its output shows in (SKENE_OUTPUT_DISPLAY)",
         )?;
 
-        (
-          scale,
-          Source::X(Box::new(XScreen::connect(Some(&display))?)),
-        )
+        (true, Source::X(Box::new(XScreen::connect(Some(&display))?)))
       }
     };
 
-    Ok(Self { ratio, source })
+    Ok(Self { scaled, source })
   }
 
   /// What the screen shows in `rect` (left, top, width, height in the pointer's space), in
   /// device pixels, once it shows what the window painted at `painted` (a screen cast's frame
-  /// arrives after the compositor shows it); transparent black where it falls off the screen.
+  /// arrives after the compositor shows it), the output at `scale` (the window's, which is
+  /// its output's now); transparent black where it falls off the screen.
   ///
   /// # Errors
   ///
   /// Where the capture fails.
-  pub fn read(&mut self, rect: (f64, f64, f64, f64), painted: Option<Instant>) -> Result<Pixels> {
-    let device = |value: f64| (value * self.ratio).round() as i64;
+  pub fn read(
+    &mut self,
+    rect: (f64, f64, f64, f64),
+    painted: Option<Instant>,
+    scale: f64,
+  ) -> Result<Pixels> {
+    let ratio = if self.scaled { scale } else { 1. };
+    let device = |value: f64| (value * ratio).round() as i64;
     let (left, top) = (device(rect.0), device(rect.1));
     let (width, height) = (device(rect.2).max(0) as u32, device(rect.3).max(0) as u32);
     let area = Area {

@@ -67,7 +67,6 @@ fn focus_scrolls_into_view_and_the_keys_scroll() {
     first_top(&screen)
   );
 
-  screen.press("Escape");
   screen.press("Home");
   assert!(
     near(first_top(&screen), 0.),
@@ -194,6 +193,59 @@ fn a_drag_on_the_thumb_scrolls_the_box() {
     about(scrolled_by(&screen), 150.),
     "the drag scrolled the box with the thumb: by {}",
     scrolled_by(&screen)
+  );
+}
+
+/// The scroll "Rows" of `count` rows 40 tall, 200 by 100.
+fn growing(count: Signal<usize>) -> impl View {
+  Column::new().set_padding(16).add_child(
+    Container::new()
+      .set_label("Rows")
+      .set_width(200)
+      .set_height(100)
+      .set_child(
+        Scroll::new(ScrollAxes::Vertical)
+          .set_width(200)
+          .set_height(100)
+          .set_child(Column::new().derive_children(
+            move || (0..count.get()).collect::<Vec<_>>(),
+            |index| *index,
+            |index| {
+              Container::new()
+                .set_label(format!("Row {index}"))
+                .set_height(40)
+                .handle_click(|| {})
+                .set_child(Text::new(format!("Row {index}")))
+            },
+          )),
+      ),
+  )
+}
+
+#[skene_gui::test]
+fn a_thumb_held_while_the_content_grows_moves_it_from_where_it_is() {
+  let count = Signal::new(10);
+  let screen = testing::render(move || growing(count));
+  let from = point_of(&screen, "Rows", 195., 14.);
+  let half = point_of(&screen, "Rows", 195., 32.);
+
+  screen.driver().hold_button(from);
+  screen.driver().move_pointer(half);
+  count.set(30);
+  screen.settle();
+
+  let grown = scrolled_by(&screen);
+  let further = point_of(&screen, "Rows", 195., 33.);
+
+  screen.driver().move_pointer(further);
+
+  let after = scrolled_by(&screen);
+
+  screen.driver().release_button();
+  assert!(
+    (after - grown).abs() < 30.,
+    "a one-pixel move of the held thumb after the content grew moves the content by about the \
+     new ratio, not to where the old geometry put it: {grown} then {after}"
   );
 }
 
@@ -363,7 +415,7 @@ fn the_thumb_darkens_while_the_pointer_is_over_its_box() {
 
 #[skene_gui::test]
 fn a_desktop_whose_primary_press_does_not_warp_has_it_page() {
-  if std::env::var("SKENE_BACKEND").as_deref() != Ok("x11") {
+  if std::env::var("SKENE_WINDOW_SYSTEM").as_deref() != Ok("x11") {
     skene_gui_linux::testing::not_tested_here(
       "XSETTINGS are an X server's, and the window is on Wayland",
     );

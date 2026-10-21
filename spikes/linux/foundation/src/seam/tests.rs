@@ -16,13 +16,13 @@ use crate::{
 
 const CARD: TokenRef<Color> = TokenRef::new("card");
 const ACCENT: TokenRef<Color> = TokenRef::new("accent");
-const GAP: TokenRef<f32> = TokenRef::new("gap");
+const SPACING: TokenRef<f32> = TokenRef::new("spacing");
 
 fn theme() -> ScopeChain {
   let mut definitions = Definitions::new();
 
   definitions.add(&Token::new(CARD, Color::WHITE).when(Media::Dark, Color::rgb(0x1c1c1e)));
-  definitions.add(&Token::new(GAP, 12));
+  definitions.add(&Token::new(SPACING, 12));
 
   ScopeChain::root().scope(Signal::new(Rc::new(definitions)))
 }
@@ -35,11 +35,11 @@ fn card_record() -> Record {
       keys::BACKGROUND,
       Value::from(CARD).when(State::Hovered, Color::rgb(0xeef3ff)),
     )
-    .set(keys::PADDING, GAP)
+    .set(keys::PADDING, SPACING)
     .set(keys::CORNER_RADIUS, Corners::all(16.))
     .set(
       keys::SPACING,
-      Spacing::from(8.).when(Media::MinWidth(900), Spacing::from(16.)),
+      Spacing::from(8.).when(Media::min_width(900), Spacing::from(16.)),
     );
 
   record

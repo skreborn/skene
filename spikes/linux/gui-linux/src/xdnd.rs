@@ -90,7 +90,7 @@ pub struct Xdnd {
   outgoing: Option<Outgoing>,
 }
 
-/// What the backend does after a drag's event: the cursor to show, where the drag's status
+/// What the X11 side does after a drag's event: the cursor to show, where the drag's status
 /// changed it.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum DragCursor {

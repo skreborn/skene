@@ -11,7 +11,7 @@
 //!
 //!   Column::new()
 //!     .set_padding(24)
-//!     .set_spacing(12.when(Media::MinWidth(900), 20))
+//!     .set_spacing(12.when(Media::min_width(900), 20))
 //!     .add_child(Text::new("Settings").set_font_size(28))
 //!     .add_child(Toggle::new("Sync").bind_on(sync))
 //! }
@@ -155,11 +155,11 @@ pub use skene_foundation::behavior::{Choice, Chosen};
 pub use skene_foundation::view::{
   AnyKind, AsPartBase, ButtonBase, CheckboxBase, ChoiceBase, ColumnBase, ContainerBase,
   ContextMenuBase, ControlBase, ControlMembersBase, DecorationBase, DerivedBase, EditingBase,
-  FlexibleBase, GridBase, GridCellBase, ImageBase, LazyBase, LazyListBase, ListboxBase,
-  ListboxItemBase, MenuItemBase, MotionBase, OptionsBase, OverlayBase, PaintedBase, PickerBase,
-  PickerItemBase, PinnedBase, RadioBase, RadioGroupBase, RowBase, RunBase, RunWithEntries,
-  ScrollBase, SliderBase, StackBase, TextBase, TextEditorBase, TextFieldBase, ThemeBase,
-  ToggleBase,
+  FlexibleBase, GridBase, GridCellBase, ImageBase, ItemHeightBase, ItemWidthBase, LazyBase,
+  ListboxBase, ListboxItemBase, MenuItemBase, MotionBase, OptionsBase, OverlayBase, PaintedBase,
+  PickerBase, PickerItemBase, PinnedBase, RadioBase, RadioGroupBase, RowBase, RunBase,
+  RunWithEntries, ScrollBase, SliderBase, StackBase, TextBase, TextEditorBase, TextFieldBase,
+  ThemeBase, ToggleBase,
 };
 
 /// The realization this build is for: what a library's own view implements

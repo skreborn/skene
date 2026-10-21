@@ -186,6 +186,16 @@ pub trait Input {
   /// The pointer space's size.
   fn extent(&self) -> (f64, f64);
 
+  /// Reads the output the pointer moves on again, where a compositor may lay it out at
+  /// another scale while a window shows; nothing where the device's space keeps its size.
+  ///
+  /// # Errors
+  ///
+  /// Where the compositor cannot be reached.
+  fn follow_output(&mut self) -> Result<()> {
+    Ok(())
+  }
+
   /// Where a move to `x`, `y` puts the pointer: there, or the nearest point the device can
   /// name.
   fn landing(&self, x: f64, y: f64) -> (f64, f64) {
@@ -527,6 +537,10 @@ impl Input for Tracked {
 
   fn extent(&self) -> (f64, f64) {
     self.input.extent()
+  }
+
+  fn follow_output(&mut self) -> Result<()> {
+    self.input.follow_output()
   }
 
   fn landing(&self, x: f64, y: f64) -> (f64, f64) {
@@ -1328,10 +1342,18 @@ pub struct Sway {
   _keymap: std::fs::File,
   /// The touchscreen of the X server sway's output is a window of, filling its screen.
   touchscreen: Option<Touchscreen>,
+  /// What the queue's events say: the output's logical size.
+  devices: Devices,
+  /// The output's xdg-output, which reports its logical size.
+  _xdg_output: Option<sctk::reexports::protocols::xdg::xdg_output::zv1::client::zxdg_output_v1::ZxdgOutputV1>,
 }
 
 /// The virtual devices' connection state: nothing is read from it.
-pub struct Devices;
+#[derive(Default)]
+pub struct Devices {
+  /// The logical size of the output the pointer moves on, as its xdg-output last said.
+  logical: Option<(i32, i32)>,
+}
 
 impl
   wayland_client::Dispatch<
@@ -1352,6 +1374,27 @@ impl
 
 wayland_client::delegate_noop!(Devices: ignore wayland_client::protocol::wl_seat::WlSeat);
 wayland_client::delegate_noop!(Devices: ignore wayland_client::protocol::wl_output::WlOutput);
+wayland_client::delegate_noop!(Devices: ignore sctk::reexports::protocols::xdg::xdg_output::zv1::client::zxdg_output_manager_v1::ZxdgOutputManagerV1);
+
+impl
+  wayland_client::Dispatch<
+    sctk::reexports::protocols::xdg::xdg_output::zv1::client::zxdg_output_v1::ZxdgOutputV1,
+    (),
+  > for Devices
+{
+  fn event(
+    devices: &mut Self,
+    _: &sctk::reexports::protocols::xdg::xdg_output::zv1::client::zxdg_output_v1::ZxdgOutputV1,
+    event: sctk::reexports::protocols::xdg::xdg_output::zv1::client::zxdg_output_v1::Event,
+    _: &(),
+    _: &wayland_client::Connection,
+    _: &wayland_client::QueueHandle<Self>,
+  ) {
+    if let sctk::reexports::protocols::xdg::xdg_output::zv1::client::zxdg_output_v1::Event::LogicalSize { width, height } = event {
+      devices.logical = Some((width, height));
+    }
+  }
+}
 wayland_client::delegate_noop!(Devices: ignore wayland_protocols_wlr::virtual_pointer::v1::client::zwlr_virtual_pointer_manager_v1::ZwlrVirtualPointerManagerV1);
 wayland_client::delegate_noop!(Devices: ignore wayland_protocols_wlr::virtual_pointer::v1::client::zwlr_virtual_pointer_v1::ZwlrVirtualPointerV1);
 wayland_client::delegate_noop!(Devices: ignore wayland_protocols_misc::zwp_virtual_keyboard_v1::client::zwp_virtual_keyboard_manager_v1::ZwpVirtualKeyboardManagerV1);
@@ -1389,6 +1432,13 @@ impl Sway {
       _ => pointers.create_virtual_pointer(Some(&seat), &qh, ()),
     };
     let keyboard = keyboards.create_virtual_keyboard(&seat, &qh, ());
+    // The output's logical size, which says its scale as the compositor changes it.
+    let xdg_output = output.as_ref().and_then(|output| {
+      let manager: sctk::reexports::protocols::xdg::xdg_output::zv1::client::zxdg_output_manager_v1::ZxdgOutputManagerV1 =
+        globals.bind(&qh, 1..=3, ()).ok()?;
+
+      Some(manager.get_xdg_output(output, &qh, ()))
+    });
     let context = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);
     let keymap = xkb::Keymap::new_from_names(
       &context,
@@ -1409,7 +1459,10 @@ impl Sway {
 
     std::io::Write::write_all(&mut &file, &bytes)?;
     keyboard.keymap(1, file.as_fd(), bytes.len() as u32);
-    queue.roundtrip(&mut Devices)?;
+
+    let mut devices = Devices::default();
+
+    queue.roundtrip(&mut devices)?;
 
     let touchscreen = match std::env::var_os("SKENE_TOUCH_SOCKET") {
       Some(path) => Some(Touchscreen::connect(
@@ -1431,6 +1484,8 @@ impl Sway {
       modifiers: 0,
       _keymap: file,
       touchscreen,
+      devices,
+      _xdg_output: xdg_output,
     })
   }
 
@@ -1609,7 +1664,7 @@ impl Input for Sway {
       touchscreen.sync()?;
     }
 
-    self.queue.roundtrip(&mut Devices)?;
+    self.queue.roundtrip(&mut self.devices)?;
 
     Ok(())
   }
@@ -1623,6 +1678,18 @@ impl Input for Sway {
       f64::from(self.extent.0) / self.scale,
       f64::from(self.extent.1) / self.scale,
     )
+  }
+
+  fn follow_output(&mut self) -> Result<()> {
+    self.queue.roundtrip(&mut self.devices)?;
+
+    if let Some((width, _)) = self.devices.logical
+      && width > 0
+    {
+      self.scale = f64::from(self.extent.0) / f64::from(width);
+    }
+
+    Ok(())
   }
 
   fn landing(&self, x: f64, y: f64) -> (f64, f64) {

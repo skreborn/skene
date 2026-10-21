@@ -6,7 +6,7 @@ use skene_gui::{
   Animation, BasicButton, Curve, Keyframe, PointerEvent, PointerPhase, Transition,
   behavior::Activate,
   keys,
-  painted::shapes::Rect,
+  painted::{paints, shapes::Rect},
   prelude::*,
   testing::{publish, register as register_page},
 };
@@ -339,11 +339,11 @@ fn scheme() -> impl View {
 
 /// A frame whose padding is a width condition, and a text that follows the width.
 fn width() -> impl View {
-  let wide = media::watch(Media::MinWidth(600));
+  let wide = media::watch(Media::min_width(600));
 
   Container::new()
     .set_label("Frame")
-    .set_padding(8.when(Media::MinWidth(600), 32))
+    .set_padding(8.when(Media::min_width(600), 32))
     .set_child(
       Column::new()
         .set_spacing(4)
@@ -459,23 +459,30 @@ fn library() -> impl View {
   )
 }
 
-/// A described picture, and one with no description.
+/// A described picture, and one with no description: each red in its left half and blue in
+/// its right, a blue image brush, repeated, filling the right.
 fn painted() -> impl View {
-  let paint = |canvas: &mut Canvas<'_>| {
+  let blue = paints::ImageData {
+    data: paints::Blob::new(std::sync::Arc::new([0_u8, 0, 255, 255].repeat(16))),
+    format: paints::ImageFormat::Rgba8,
+    alpha_type: paints::ImageAlphaType::Alpha,
+    width: 4,
+    height: 4,
+  };
+  let tiles =
+    paints::Brush::Image(paints::ImageBrush::new(blue).with_extend(paints::Extend::Repeat));
+  let paint = move |canvas: &mut Canvas<'_>| {
     let (width, height) = (canvas.size().width, canvas.size().height);
 
     canvas.fill(&Rect::new(0., 0., width / 2., height), Color::rgb(0xff0000));
-    canvas.fill(
-      &Rect::new(width / 2., 0., width, height),
-      Color::rgb(0x0000ff),
-    );
+    canvas.fill(&Rect::new(width / 2., 0., width, height), tiles.clone());
   };
 
   Column::new()
     .set_padding(16)
     .set_spacing(12)
     .add_child(
-      Painted::new(paint)
+      Painted::new(paint.clone())
         .set_width(200)
         .set_height(50)
         .set_description("Sales by half"),
@@ -1078,7 +1085,7 @@ fn lazy() -> impl View {
       LazyColumn::new()
         .set_height(300)
         .set_label("Actions")
-        .set_item_extent(ItemExtent::Estimated(40.))
+        .set_item_height(ItemExtent::estimated(40))
         .derive_items(
           || (0..10_000).collect::<Vec<usize>>(),
           |index| *index,

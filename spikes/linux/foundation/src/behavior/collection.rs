@@ -163,6 +163,7 @@ pub trait Held: 'static {
 
 /// A value always chosen: what a radio group and a picker hold, each option carrying a `T`.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[must_use]
 pub struct One<T>(pub T);
 
 impl<T: Choice> Held for One<T> {
@@ -480,7 +481,7 @@ impl<H: Held> Roster<H> {
 
   /// Whether the pointer moving over a member focuses it beside what the policy says.
   #[must_use]
-  pub fn follows_pointer(&self) -> bool {
+  pub const fn follows_pointer(&self) -> bool {
     self.follows_pointer.get()
   }
 
@@ -759,6 +760,9 @@ pub trait CollectionPolicy: 'static {
   /// Whether the pointer moving over a member focuses it (a menu's item), as it does in every
   /// collection a popup shows ([`Roster::set_follows_pointer`]).
   const FOLLOWS_POINTER: bool;
+  /// Where the group's caption sits: leading inside it where unset (a radio group's, as a
+  /// fieldset's legend), beside it for a box holding its value (a list box's).
+  const LABEL_PLACEMENT: LabelPlacement = LabelPlacement::Leading;
 }
 
 /// A radio group: `Space` and a click choose a radio, the arrows move to the next and choose
@@ -794,6 +798,7 @@ impl CollectionPolicy for ListboxPolicy {
   const COMMITS: bool = true;
   const SELECTS: bool = true;
   const FOLLOWS_POINTER: bool = false;
+  const LABEL_PLACEMENT: LabelPlacement = LabelPlacement::Beside;
 }
 
 /// A menu of commands: the arrows, `Home` and `End` move focus without choosing, wrapping;
@@ -924,7 +929,7 @@ impl<P: CollectionPolicy, H: Held> Behavior for Collection<P, H> {
   }
 
   fn label_placement(&self) -> LabelPlacement {
-    LabelPlacement::Leading
+    P::LABEL_PLACEMENT
   }
 
   fn focusable(&self) -> bool {

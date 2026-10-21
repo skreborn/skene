@@ -3,9 +3,9 @@
 
 use std::{error::Error, time::Duration};
 
-use crate::{Backend, shell::Shell, wayland, x11};
+use crate::{WindowSystem, shell::Shell, wayland, x11};
 
-/// A window and its backend's connection.
+/// A window and its window system's connection.
 pub struct Window {
   inner: Inner,
 }
@@ -19,23 +19,23 @@ enum Inner {
 }
 
 impl Window {
-  /// Opens `shell` as a window of `app_id` on `backend`'s display server, reported to readers.
+  /// Opens `shell` as a window of `app_id` on `system`, reported to readers.
   ///
   /// # Errors
   ///
   /// Where the display server cannot be reached or refuses the window.
-  pub fn open(backend: Backend, shell: Shell, app_id: &str) -> Result<Self, Box<dyn Error>> {
+  pub fn open(system: WindowSystem, shell: Shell, app_id: &str) -> Result<Self, Box<dyn Error>> {
     crate::shell::reset();
     crate::access::start();
 
-    let inner = match backend {
-      Backend::X11 => {
+    let inner = match system {
+      WindowSystem::X11 => {
         let mut shell = Box::new(shell);
         let open = Box::new(x11::open(&mut shell, app_id)?);
 
         Inner::X11 { open, shell }
       }
-      Backend::Wayland => Inner::Wayland(Box::new(wayland::open(shell, app_id)?)),
+      WindowSystem::Wayland => Inner::Wayland(Box::new(wayland::open(shell, app_id)?)),
     };
 
     Ok(Self { inner })
@@ -47,6 +47,16 @@ impl Window {
     match &self.inner {
       Inner::X11 { shell, .. } => shell,
       Inner::Wayland(open) => open.shell(),
+    }
+  }
+
+  /// Whether a popup it asked for awaits the display server's placement (a Wayland
+  /// compositor's configure); an X11 popup is placed where it is asked for.
+  #[must_use]
+  pub fn popup_pending(&self) -> bool {
+    match &self.inner {
+      Inner::X11 { .. } => false,
+      Inner::Wayland(open) => open.popup_pending(),
     }
   }
 

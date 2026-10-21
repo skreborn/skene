@@ -871,3 +871,154 @@ fn a_run_splits_where_its_font_does_nothing_across_its_spaces() {
   assert_eq!(shape("hello 3 x 4"), (0, 1), "a run with an x is one word");
   assert_eq!(shape("hello 3 x 4"), (1, 0), "found whole");
 }
+
+const SOFT_HYPHENS_HEBREW: &str =
+  "מי\u{AD}לה ארו\u{AD}כה מאו\u{AD}ד בע\u{AD}ב\u{AD}רית ובש\u{AD}פות אח\u{AD}רות";
+
+/// `text` laid out by `engine` at the corpus's size in a paragraph running right to left.
+fn lay_rtl(engine: &ParleyEngine, text: &str) -> skene_parley::ParleyParagraph {
+  engine.paragraph(
+    &AttributedText::plain(text, RunStyle::new(CORPUS)),
+    &ParagraphStyle {
+      direction: skene_foundation::text::BaseDirection::RightToLeft,
+      ..ParagraphStyle::default()
+    },
+  )
+}
+
+#[test]
+fn a_soft_hyphen_breaks_the_least_width_in_right_to_left_text_too() {
+  let engine = ParleyEngine::system();
+
+  for (text, rtl) in [(SOFT_HYPHENS, false), (SOFT_HYPHENS_HEBREW, true)] {
+    let paragraph = if rtl {
+      lay_rtl(&engine, text)
+    } else {
+      engine.paragraph(
+        &AttributedText::plain(text, RunStyle::new(CORPUS)),
+        &ParagraphStyle::default(),
+      )
+    };
+    let least = paragraph.intrinsic().min;
+    let widest_word = text
+      .split(' ')
+      .map(|word| paragraph_width(&engine, &word.replace('\u{AD}', ""), rtl))
+      .fold(0., f32::max);
+
+    eprintln!("{text:?}: least {least}, widest word {widest_word}");
+    assert!(
+      least < widest_word - 1.,
+      "the least width breaks after soft hyphens: {least} against the widest word's {widest_word}"
+    );
+  }
+}
+
+/// The width `text` lays out at on one line.
+fn paragraph_width(engine: &ParleyEngine, text: &str, rtl: bool) -> f32 {
+  let paragraph = if rtl {
+    lay_rtl(engine, text)
+  } else {
+    engine.paragraph(
+      &AttributedText::plain(text, RunStyle::new(CORPUS)),
+      &ParagraphStyle::default(),
+    )
+  };
+
+  paragraph.intrinsic().max
+}
+
+/// The advance of glyph `id` of `run`'s font at the run's size.
+fn advance_of(run: &skene_parley::GlyphRun, id: u32) -> f32 {
+  FontRef::from_index(run.font.data.data(), run.font.index)
+    .ok()
+    .and_then(|font| {
+      font
+        .glyph_metrics(Size::new(run.size), LocationRef::default())
+        .advance_width(skrifa::GlyphId::new(id))
+    })
+    .unwrap_or(0.)
+}
+
+#[test]
+fn a_soft_hyphen_in_right_to_left_text_draws_its_hyphen_at_the_lines_end() {
+  let engine = ParleyEngine::system();
+  let long = "אב גד הו זח אל\u{AD}טר\u{AD}נ\u{AD}טי\u{AD}בי\u{AD}ות טל ים";
+  let mixed =
+    "Some text then מי\u{AD}לה ארו\u{AD}כה and then extra\u{AD}or\u{AD}di\u{AD}nary words";
+  let mut checked = 0;
+
+  for text in [SOFT_HYPHENS_HEBREW, long, mixed] {
+    let paragraph = lay_rtl(&engine, text);
+
+    for width in (20..=240).step_by(4) {
+      #[expect(clippy::cast_precision_loss, reason = "small widths")]
+      let width = width as f32;
+      let laid = paragraph.layout(Some(width));
+      let runs = laid.glyph_runs();
+      // Each glyph's left edge, advance and byte, with whether it is a hyphen.
+      let glyphs: Vec<(f32, f32, usize, bool)> = runs
+        .iter()
+        .flat_map(|run| {
+          let hyphens = [glyph_in(run, '\u{2010}'), glyph_in(run, '-')];
+
+          run.glyphs.iter().map(move |glyph| {
+            (
+              glyph.x,
+              advance_of(run, glyph.id),
+              glyph.at,
+              hyphens
+                .iter()
+                .flatten()
+                .any(|(hyphen, _)| *hyphen == glyph.id),
+            )
+          })
+        })
+        .collect();
+
+      for line in laid.lines() {
+        let shown = &text[line.range.clone()];
+
+        if !shown.ends_with('\u{AD}') {
+          continue;
+        }
+
+        checked += 1;
+
+        let at = line.range.end - '\u{AD}'.len_utf8();
+        let (x, advance, _, hyphen) = *glyphs
+          .iter()
+          .find(|(_, _, byte, _)| *byte == at)
+          .expect("the soft hyphen has a glyph");
+
+        assert!(hyphen, "at {width}, {shown:?} draws a hyphen");
+
+        // The hyphen stands apart from the line's other glyphs, left of them all where a Hebrew
+        // word ends the line.
+        let hebrew = shown
+          .trim_end_matches('\u{AD}')
+          .chars()
+          .next_back()
+          .is_some_and(|ch| ('\u{590}'..='\u{5FF}').contains(&ch));
+
+        for (other_x, other_advance, byte, _) in &glyphs {
+          if !line.range.contains(byte) || *byte == at || text[*byte..].starts_with(' ') {
+            continue;
+          }
+
+          assert!(
+            x + advance <= other_x + 0.5 || other_x + other_advance <= x + 0.5,
+            "at {width}, {shown:?}: the hyphen at {x}+{advance} overlaps the glyph of byte \
+             {byte} at {other_x}+{other_advance}"
+          );
+          assert!(
+            !hebrew || x <= *other_x,
+            "at {width}, {shown:?}: the hyphen at {x} is right of the glyph of byte {byte} at \
+             {other_x}"
+          );
+        }
+      }
+    }
+  }
+
+  assert!(checked > 40, "lines break after soft hyphens: {checked}");
+}

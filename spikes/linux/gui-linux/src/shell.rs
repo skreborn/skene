@@ -1,4 +1,4 @@
-//! The window both backends share: its size, scale and chrome, the realized tree it shows,
+//! The window both window systems share: its size, scale and chrome, the realized tree it shows,
 //! what is dirty since the last frame, and the reader's input dispatched through the
 //! foundation: hit testing, hover, press and focus states, Tab order in the scene's child
 //! order, pointer events, clicks, keys and a reader's requests reported to the controls and
@@ -6,7 +6,7 @@
 //! touchpad's scrolling going on once its fingers lift ([`crate::kinetic`]), and the open
 //! overlay's surface.
 //!
-//! A backend turns its protocol's events into calls here and carries out the
+//! Each window system's side turns its protocol's events into calls here and carries out the
 //! [`Request`]s returned (moving or resizing the window, the cursor), and asks for a frame
 //! when [`Shell::wants_frame`] says one is due.
 
@@ -64,7 +64,7 @@ const SETTLE_PASSES: usize = 4;
 /// as Chromium's page does.
 const PAGE: f32 = 0.875;
 
-/// What a backend is asked to do for the window.
+/// What the window system is asked to do for the window.
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Request {
   /// Start an interactive move from the last press.
@@ -81,9 +81,13 @@ pub enum Request {
   ShowMenu(f32, f32),
   /// Show the cursor.
   Cursor(Cursor),
-  /// Open a popup surface at this placement, or move the open one there; close it where
-  /// `None`.
-  Popup(Option<overlay::Placement>),
+  /// Open a popup surface at this placement at this level of the stack (0 hangs from the
+  /// window, each level above from the popup below it), closing what was there and above; close
+  /// the popup at that level and every one above it where `None`.
+  Popup(usize, Option<overlay::Placement>),
+  /// Place the open popup at this level again at this placement, keeping its grab: its
+  /// content changed size.
+  PlacePopup(usize, overlay::Placement),
   /// Start a drag of what [`Shell::dragged`] says from the last press.
   StartDrag,
 }
@@ -187,6 +191,30 @@ struct Dirty {
   nodes: Vec<Node>,
   rects: Vec<Rect>,
   focus: Option<Option<Node>>,
+  lost: Option<Lost>,
+}
+
+/// Focus the scene took from the node holding it, by removing it or hiding it to return, kept
+/// until the next turn applies it ([`Shell::settle_focus`]).
+struct Lost {
+  /// The shown node standing just before what left, in the scene's order: where `Tab` goes on
+  /// from while nothing has focus, as Chromium's sequential focus navigation starting point
+  /// stays where a removed node stood.
+  before: Option<std::rc::Weak<crate::node::Drawn>>,
+  /// The node that held focus, where it was hidden to return rather than removed: it takes
+  /// focus again once it shows, where focus has gone nowhere since.
+  kept: Option<std::rc::Weak<crate::node::Drawn>>,
+}
+
+/// Where `Tab` goes on from while nothing has focus.
+#[derive(Clone)]
+enum Start {
+  /// At this node, which lost focus while it stayed: `Tab` goes to the stop after it, `Shift-Tab`
+  /// to the one before it.
+  At(std::rc::Weak<crate::node::Drawn>),
+  /// Just after this node, where a node that held focus stood before it left: `Tab` goes to the
+  /// stop after it, `Shift-Tab` to it or the one before it.
+  After(std::rc::Weak<crate::node::Drawn>),
 }
 
 /// How long a touch is held, unmoved, before it is a long press: GTK's `gtk-long-press-time`.
@@ -340,6 +368,50 @@ pub fn request_focus(node: Option<Node>) {
   DIRTY.with(|dirty| dirty.borrow_mut().focus = Some(node));
 }
 
+/// `node` is about to leave the tree, removed for good, or hidden to return where `hidden`:
+/// where focus is inside it, focus goes at the next turn, `Tab` going on from where `node`
+/// stood, and a hidden node keeps the focus for its return.
+pub fn will_leave(node: &Node, hidden: bool) {
+  if !node.is_alive() || node.parent().is_none() {
+    return;
+  }
+
+  let focused = FOCUSED.with(|focused| focused.borrow().as_ref().and_then(std::rc::Weak::upgrade));
+  let holds = focused
+    .as_ref()
+    .is_some_and(|focused| focused.is_within(node));
+
+  DIRTY.with(|dirty| {
+    let mut dirty = dirty.borrow_mut();
+    // A place kept inside what leaves now moves to before it.
+    let place_inside = dirty.lost.as_ref().is_some_and(|lost| {
+      lost
+        .before
+        .as_ref()
+        .and_then(std::rc::Weak::upgrade)
+        .is_some_and(|before| before.is_within(node))
+    });
+
+    if !holds && !place_inside {
+      return;
+    }
+
+    let before = node.shown_before().map(|before| Rc::downgrade(&before));
+
+    match &mut dirty.lost {
+      Some(lost) => lost.before = before,
+      None => {
+        dirty.lost = Some(Lost {
+          before,
+          kept: focused
+            .filter(|_| hidden && holds)
+            .map(|focused| Rc::downgrade(&focused)),
+        });
+      }
+    }
+  });
+}
+
 /// The device rectangle covering `a` and `b`.
 fn union_damage(a: (u32, u32, u32, u32), b: (u32, u32, u32, u32)) -> (u32, u32, u32, u32) {
   let left = a.0.min(b.0);
@@ -372,6 +444,39 @@ impl Drawn {
         .iter()
         .any(|candidate| Rc::ptr_eq(candidate, ancestor))
   }
+
+  /// The shown node standing just before it in the scene's order (depth first): its previous
+  /// shown sibling's last shown descendant, else its parent.
+  fn shown_before(self: &Rc<Self>) -> Option<Node> {
+    let parent = self.parent()?;
+    let previous = {
+      let children = parent.children_ref();
+      let at = children.iter().position(|child| Rc::ptr_eq(child, self))?;
+
+      children[..at]
+        .iter()
+        .rev()
+        .find(|child| !child.is_hidden())
+        .cloned()
+    };
+    let Some(mut last) = previous else {
+      return Some(parent);
+    };
+
+    loop {
+      let next = last
+        .children_ref()
+        .iter()
+        .rev()
+        .find(|child| !child.is_hidden())
+        .cloned();
+
+      match next {
+        Some(next) => last = next,
+        None => return Some(last),
+      }
+    }
+  }
 }
 
 /// A press in progress: where it started, on what.
@@ -399,13 +504,11 @@ struct BarPress {
   scroll: Node,
   /// The axis the bar scrolls along.
   axis: Axis,
-  /// Where the thumb starts along the axis, in window pixels, with the box at its start.
-  base: f32,
-  /// How far the thumb moves along its track.
-  travel: f32,
-  /// How far into the thumb the pointer holds it, while the press drags it; none while it
-  /// paged.
-  grab: Option<f32>,
+  /// The bar's thumb, whose geometry each move of a drag reads again.
+  thumb: Node,
+  /// Where along the axis the pointer was (window pixels) when the thumb last followed it, while
+  /// the press drags the thumb; none while it paged.
+  held: Option<f32>,
   /// The nodes the press set pressed.
   chain: Vec<Node>,
 }
@@ -552,6 +655,11 @@ pub struct Shell {
   focus: Option<Node>,
   /// The focused text's link run with focus, by its index.
   link: Option<usize>,
+  /// Where `Tab` goes on from while nothing has focus.
+  start: Option<Start>,
+  /// The node that held focus as its subtree was hidden to return: it takes focus again once
+  /// it shows, where focus has gone nowhere since.
+  kept_focus: Option<std::rc::Weak<crate::node::Drawn>>,
   /// Whether focus shows.
   focus_visible: bool,
   /// Whether the next frame scrolls the focused node into view.
@@ -560,15 +668,17 @@ pub struct Shell {
   title_click: Option<(Instant, (f32, f32))>,
   /// The pointer's shape.
   cursor: Cursor,
-  /// The open overlay.
-  overlay: Option<Open>,
-  /// Whether the pointer is over the open overlay rather than the window.
-  pointer_in_overlay: bool,
+  /// The open overlays, outermost first: each after the first opened inside the one before
+  /// it, as nested popovers stack.
+  overlays: Vec<Open>,
+  /// The open overlay the pointer is over, by its place in the stack; `None` over the window.
+  pointer_in_overlay: Option<usize>,
   /// What the last input was, so whether focus moved now shows.
   modality: Modality,
-  /// The node focus was on outside every overlay, last: what focus returns to when the open
+  /// The node focus was on last at each depth of overlays (0 the window's tree, 1 inside an
+  /// overlay, 2 inside an overlay inside that, and so on): what focus returns to when the open
   /// overlay holding it closes.
-  outside_focus: Option<Node>,
+  outside_focus: Vec<Option<Node>>,
   /// Whether a control that asked for focus as the window opens took it: one does, once.
   autofocused: bool,
   /// The acting box shown pressed from the keyboard (`Space` held).
@@ -607,7 +717,7 @@ pub struct Shell {
   pub frames: u64,
   /// When the last frame was painted, the window's, its open overlay's or an adornment's.
   pub painted_at: Option<Instant>,
-  /// Whether the backend asks the platform when each of the window's frames reaches the screen
+  /// Whether the window system asks the platform when each of the window's frames reaches the screen
   /// ([`Shell::frame_presented`]): while a test records motion.
   pub watch_presentation: bool,
   /// What the platform reported of the window's frames since the last take, oldest first: each
@@ -643,14 +753,16 @@ impl Shell {
       bar: None,
       focus: None,
       link: None,
+      start: None,
+      kept_focus: None,
       focus_visible: false,
       reveal: false,
       title_click: None,
       cursor: Cursor::Default,
-      overlay: None,
-      pointer_in_overlay: false,
+      overlays: Vec::new(),
+      pointer_in_overlay: None,
       modality: Modality::Unknown,
-      outside_focus: None,
+      outside_focus: Vec::new(),
       autofocused: false,
       key_pressed: None,
       pending: Vec::new(),
@@ -678,7 +790,7 @@ impl Shell {
     }
   }
 
-  /// What the backend is asked to do beside what an event's call returned: a popup opened by
+  /// What the window system is asked to do beside what an event's call returned: a popup opened by
   /// a key, closed by a focus move.
   pub fn take_requests(&mut self) -> Vec<Request> {
     std::mem::take(&mut self.pending)
@@ -762,12 +874,93 @@ impl Shell {
   /// Applies a focus move the app or a behavior asked for, focus shown as the last input
   /// shows it: after a key, not after a press.
   pub fn settle_focus(&mut self) {
+    self.fix_focus();
+
     let request = DIRTY.with(|dirty| dirty.borrow_mut().focus.take());
 
     if let Some(node) = request {
       let visible = self.modality.shows_focus();
 
       self.set_focus(node, visible);
+    }
+  }
+
+  /// Applies what the scene did to the node holding focus since the last turn, as Chromium's
+  /// focus fixup does: where it left (removed, or hidden to return), nothing has focus and `Tab`
+  /// goes on from where it stood; where it left from inside the open overlay, which holds the
+  /// keyboard while it is open, focus goes to the overlay's nearest stop instead. A node hidden
+  /// with focus takes it again as it shows, where focus has gone nowhere since.
+  fn fix_focus(&mut self) {
+    let lost = DIRTY.with(|dirty| dirty.borrow_mut().lost.take());
+
+    // Focus inside an open overlay as it closes is the closing's to return.
+    let closing = |focus: &Node, overlays: &[Open]| {
+      overlays
+        .iter()
+        .any(|open| !open.node.is_shown() && focus.is_within(&open.node))
+    };
+
+    if let Some(focus) = self.focus.clone()
+      && !focus.is_shown()
+      && !closing(&focus, &self.overlays)
+    {
+      let before = lost
+        .as_ref()
+        .and_then(|lost| lost.before.as_ref())
+        .and_then(std::rc::Weak::upgrade)
+        .filter(|before| before.is_shown());
+      let kept = lost.and_then(|lost| lost.kept);
+      let visible = self.focus_visible;
+
+      trace::log(|| {
+        format!(
+          "[focus] {:?} left, after {:?}",
+          focus.id.get(),
+          before
+            .as_ref()
+            .map(|before| (before.id.get(), before.spec.kind))
+        )
+      });
+
+      let holding = before.as_ref().and_then(|before| {
+        self
+          .overlays
+          .iter()
+          .rev()
+          .find(|open| open.node.is_shown() && before.is_within(&open.node))
+          .map(|open| Rc::clone(&open.node))
+      });
+
+      if let (Some(open), Some(before)) = (holding, &before) {
+        let (order, after, _) = Self::order_around(&open, before);
+        let near = order
+          .get(after)
+          .or_else(|| after.checked_sub(1).and_then(|at| order.get(at)))
+          .cloned();
+
+        if let Some((node, link)) = near {
+          match link {
+            Some(link) => self.focus_link(&node, link, visible),
+            None => self.set_focus(Some(node), visible),
+          }
+
+          return;
+        }
+      }
+
+      self.set_focus(None, false);
+      self.start = before.map(|before| Start::After(Rc::downgrade(&before)));
+      self.kept_focus = kept;
+    }
+
+    if self.focus.is_none()
+      && let Some(kept) = self.kept_focus.as_ref().and_then(std::rc::Weak::upgrade)
+      && kept.is_alive()
+      && Self::focusable(&kept)
+    {
+      let visible = self.modality.shows_focus();
+
+      self.set_focus(Some(kept), visible);
     }
   }
 
@@ -892,18 +1085,18 @@ impl Shell {
     self.renderer.lose_device()
   }
 
-  /// Paints the open overlay on the GPU from now on, on the window's device, presenting to the
-  /// surface at `target`, where the window paints on the GPU and its adapter presents to the
-  /// surface; on the CPU otherwise.
+  /// Paints the open overlay at `level` on the GPU from now on, on the window's device,
+  /// presenting to the surface at `target`, where the window paints on the GPU and its adapter
+  /// presents to the surface; on the CPU otherwise.
   ///
   /// # Safety
   ///
   /// The handles in `target` stay valid until [`Shell::release_popup_path`],
   /// [`Shell::release_paths`] or the overlay's close.
   #[cfg(feature = "gpu")]
-  pub unsafe fn choose_popup_path(&mut self, target: crate::gpu::Target) {
-    let scale = self.popup_scale();
-    let (Some(gpu), Some(open)) = (self.renderer.gpu(), self.overlay.as_mut()) else {
+  pub unsafe fn choose_popup_path(&mut self, level: usize, target: crate::gpu::Target) {
+    let scale = self.popup_scale(level);
+    let (Some(gpu), Some(open)) = (self.renderer.gpu(), self.overlays.get_mut(level)) else {
       return;
     };
     let size = open.device_size(scale);
@@ -915,24 +1108,29 @@ impl Shell {
     }
   }
 
-  /// The window's surfaces are going: the window and its open overlay paint on the CPU from
+  /// The window's surfaces are going: the window and its open overlays paint on the CPU from
   /// now on, the GPU paths that presented to the surfaces gone first.
   pub fn release_paths(&mut self) {
-    self.release_popup_path();
+    for level in (0..self.overlays.len()).rev() {
+      self.release_popup_path(level);
+    }
+
     #[cfg(feature = "gpu")]
     self.renderer.drop_gpu();
   }
 
-  /// The open overlay's surface is going: it paints on the CPU until it is given another.
-  pub fn release_popup_path(&mut self) {
-    if let Some(open) = self.overlay.as_mut() {
+  /// The surface of the open overlay at `level` is going: it paints on the CPU until it is
+  /// given another.
+  pub fn release_popup_path(&mut self, level: usize) {
+    if let Some(open) = self.overlays.get_mut(level) {
       open.drop_gpu();
     }
   }
 
-  /// Whether the open overlay paints on the GPU, which presents each of its frames itself.
-  pub fn popup_presents(&self) -> bool {
-    self.overlay.as_ref().is_some_and(Open::presents)
+  /// Whether the open overlay at `level` paints on the GPU, which presents each of its frames
+  /// itself.
+  pub fn popup_presents(&self, level: usize) -> bool {
+    self.overlays.get(level).is_some_and(Open::presents)
   }
 
   /// Lays out and paints what changed; the device rectangle painted.
@@ -1228,7 +1426,7 @@ impl Shell {
         let size = Size {
           width: frame.width,
           height: frame.height,
-          scale,
+          scale: (scale, scale),
           device,
         };
 
@@ -1246,11 +1444,14 @@ impl Shell {
   }
 
   /// The deepest shown node at `x`, `y` (window pixels), with its ancestors, deepest first:
-  /// in the open overlay where the pointer is over it, in the window's tree otherwise.
+  /// in the open overlay the pointer is over, in the window's tree otherwise.
   fn hit(&self, x: f32, y: f32) -> Vec<Node> {
-    match &self.overlay {
-      Some(open) if self.pointer_in_overlay => Self::hit_in(&open.node, x, y),
-      _ => self
+    match self
+      .pointer_in_overlay
+      .and_then(|level| self.overlays.get(level))
+    {
+      Some(open) => Self::hit_in(&open.node, x, y),
+      None => self
         .root
         .as_ref()
         .map(|root| Self::hit_in(root, x, y))
@@ -1396,8 +1597,9 @@ impl Shell {
     // A popover the web promotes in place stays a descendant of its anchor's element, so
     // `:hover` holds on the anchor's chain while the pointer is over it: the chain goes on
     // from the open overlay to its ancestors in the scene.
-    if self.pointer_in_overlay
-      && let Some(open) = &self.overlay
+    if let Some(open) = self
+      .pointer_in_overlay
+      .and_then(|level| self.overlays.get(level))
     {
       held.extend(open.node.ancestors());
     }
@@ -1491,20 +1693,34 @@ impl Shell {
       }
     }
 
-    // Focus moving out of the open overlay, to anything but what holds it, dismisses it.
-    if let (Some(open), Some(next)) = (&self.overlay, &node)
-      && !next.is_within(&open.node)
-      && !open.node.is_within(next)
-    {
-      tree::report::<Linux>(open.node.id.get(), Report::Dismiss);
+    // Focus moving out of an open overlay, to anything but what holds it, dismisses it, the
+    // topmost first.
+    if let Some(next) = &node {
+      for open in self.overlays.iter().rev() {
+        if !next.is_within(&open.node) && !open.node.is_within(next) {
+          tree::report::<Linux>(open.node.id.get(), Report::Dismiss);
+        }
+      }
     }
 
     Self::set_chain(&previous_chain, &next_chain, State::FocusWithin);
 
-    if node.as_ref().is_none_or(|node| node.overlay().is_none()) {
-      self.outside_focus.clone_from(&node);
-    }
+    let depth = node.as_ref().map_or(0, |node| {
+      std::iter::once(Rc::clone(node))
+        .chain(node.ancestors())
+        .filter(|node| node.is_overlay())
+        .count()
+    });
 
+    self.outside_focus.truncate(depth + 1);
+    self.outside_focus.resize(depth + 1, None);
+    self.outside_focus[depth].clone_from(&node);
+
+    self.kept_focus = None;
+    self.start = match (&node, &previous) {
+      (None, Some(previous)) if previous.is_shown() => Some(Start::At(Rc::downgrade(previous))),
+      _ => None,
+    };
     self.focus = node.clone();
     self.link = None;
     self.focus_visible = visible;
@@ -1550,6 +1766,34 @@ impl Shell {
     order
   }
 
+  /// The stops beneath `root` in focus order, with where `node` stands among them: the index
+  /// of the first stop after it and of the first stop at or after it (equal where `node` is no
+  /// stop; both the order's length where it is not shown beneath `root`).
+  fn order_around(root: &Node, node: &Node) -> (Vec<(Node, Option<usize>)>, usize, usize) {
+    let mut order = Vec::new();
+    let mut found = None;
+
+    walk(root, |visited| {
+      let at = order.len();
+
+      if Self::focusable(visited) {
+        order.push((Rc::clone(visited), None));
+      } else if visited.spec.kind == NodeKind::Text && visited.is_shown() {
+        for link in 0..visited.links().len() {
+          order.push((Rc::clone(visited), Some(link)));
+        }
+      }
+
+      if Rc::ptr_eq(visited, node) {
+        found = Some((order.len(), at));
+      }
+    });
+
+    let (after, at) = found.unwrap_or((order.len(), order.len()));
+
+    (order, after, at)
+  }
+
   /// Moves focus to link run `link` of the text `node`, focus shown where `visible`.
   fn focus_link(&mut self, node: &Node, link: usize, visible: bool) {
     self.set_focus_to(Some(Rc::clone(node)), visible, true);
@@ -1568,6 +1812,43 @@ impl Shell {
   }
 
   fn move_focus(&mut self, backward: bool) {
+    if self.focus.is_none()
+      && let Some(root) = self.root.clone()
+      && let Some((node, inclusive)) = match self.start.clone() {
+        Some(Start::At(node)) => node.upgrade().map(|node| (node, false)),
+        Some(Start::After(node)) => node.upgrade().map(|node| (node, true)),
+        None => None,
+      }
+      && node.is_shown()
+    {
+      // Nothing has focus: `Tab` goes on from where focus last was.
+      let (order, after, at) = Self::order_around(&root, &node);
+
+      if order.is_empty() {
+        return;
+      }
+
+      let next = if backward {
+        let before = if inclusive { after } else { at };
+
+        (before + order.len() - 1) % order.len()
+      } else {
+        after % order.len()
+      };
+      let (next, link) = order[next].clone();
+
+      match link {
+        Some(link) => self.focus_link(&next, link, true),
+        None => self.set_focus(Some(Rc::clone(&next)), true),
+      }
+
+      if next.spec.kind == (NodeKind::Editable { multiline: false }) && next.has_entry() {
+        let _ = next.perform(Command::SelectAll);
+      }
+
+      return;
+    }
+
     let order = self.focus_order();
 
     if order.is_empty() {
@@ -1796,54 +2077,61 @@ impl Shell {
     crate::access::invalidate();
   }
 
-  /// Opens the overlay shown now, closes the open one where it was hidden, and lays the open
-  /// one out again where its content changed: the backend is asked to place its surface.
+  /// Opens the overlays shown now, each inside the one before it, closes the open ones that
+  /// were hidden (and every one above them), and lays the open ones out again where their
+  /// content changed: the window system is asked to place their surfaces.
   pub fn sync_overlays(&mut self) {
     let changed = DIRTY.with(|dirty| std::mem::take(&mut dirty.borrow_mut().overlays));
-    let closing = self
-      .overlay
-      .as_ref()
-      .is_some_and(|open| !open.node.is_alive() || !open.node.is_shown());
+    let gone = self
+      .overlays
+      .iter()
+      .position(|open| !open.node.is_alive() || !open.node.is_shown());
 
-    if closing {
-      self.close_overlay();
+    if let Some(gone) = gone {
+      self.close_overlays(gone);
     }
 
-    if !changed && !closing {
+    if !changed && gone.is_none() {
       return;
     }
 
-    let Some(node) = overlay::shown() else {
-      return;
-    };
+    let shown = overlay::shown();
+    let kept = self
+      .overlays
+      .iter()
+      .zip(&shown)
+      .take_while(|(open, node)| Rc::ptr_eq(&open.node, node))
+      .count();
 
-    if self
-      .overlay
-      .as_ref()
-      .is_some_and(|open| Rc::ptr_eq(&open.node, &node))
-    {
-      self.relayout_overlay();
+    self.close_overlays(kept);
 
-      return;
+    for level in 0..kept {
+      self.relayout_overlay(level);
     }
 
-    if self.overlay.is_some() {
-      self.close_overlay();
+    for node in shown.into_iter().skip(kept) {
+      self.open_overlay(node);
     }
+  }
 
+  /// Opens `node`'s surface above the open overlays.
+  fn open_overlay(&mut self, node: Node) {
     // The window is laid out first: the overlay is placed against its anchor's rectangle.
     self.lay_out();
 
     let open = Open::new(Rc::clone(&node));
+    let level = self.overlays.len();
 
     trace::log(|| {
       format!(
-        "[popup] open {:?} {}x{}",
+        "[popup] open {level} {:?} {}x{}",
         open.placement.anchor, open.placement.size.0, open.placement.size.1
       )
     });
-    self.pending.push(Request::Popup(Some(open.placement)));
-    self.overlay = Some(open);
+    self
+      .pending
+      .push(Request::Popup(level, Some(open.placement)));
+    self.overlays.push(open);
 
     let frame = node.frame.get();
 
@@ -1854,14 +2142,17 @@ impl Shell {
     crate::access::invalidate();
   }
 
-  /// Lays the open overlay out again: its surface is placed again where its size changed.
-  fn relayout_overlay(&mut self) {
-    let Some(open) = &mut self.overlay else {
+  /// Lays the open overlay at `level` out again: its surface is placed again where its size
+  /// changed.
+  fn relayout_overlay(&mut self, level: usize) {
+    let Some(open) = self.overlays.get_mut(level) else {
       return;
     };
 
     if open.relayout() {
-      self.pending.push(Request::Popup(Some(open.placement)));
+      self
+        .pending
+        .push(Request::PlacePopup(level, open.placement));
     }
 
     let node = Rc::clone(&open.node);
@@ -1871,117 +2162,151 @@ impl Shell {
     crate::access::invalidate();
   }
 
-  /// Closes the open overlay's surface; focus inside it returns to what held focus when it
-  /// opened, where that still takes focus, else to the nearest node before it that does (its
-  /// anchor), as a popover hiding restores focus.
-  fn close_overlay(&mut self) {
-    let Some(open) = self.overlay.take() else {
+  /// Closes the surfaces of the open overlays from `level` up, the topmost first; focus inside
+  /// one returns to what held focus outside it last, where that still takes focus, else to the
+  /// nearest node before it that does (its anchor), as a popover hiding restores focus.
+  fn close_overlays(&mut self, level: usize) {
+    if level >= self.overlays.len() {
       return;
-    };
-
-    trace::log(|| "[popup] close".to_owned());
-    self.pending.push(Request::Popup(None));
-    self.pointer_in_overlay = false;
-
-    if let Some(focus) = self.focus.clone()
-      && focus.is_within(&open.node)
-    {
-      let back = self
-        .outside_focus
-        .clone()
-        .filter(|node| node.is_alive() && Self::focusable(node))
-        .or_else(|| open.node.ancestors().into_iter().find(Self::focusable));
-      let visible = self.modality.shows_focus();
-
-      self.set_focus(back, visible);
     }
 
-    if self
-      .hovered
-      .first()
-      .is_some_and(|hovered| hovered.is_within(&open.node))
-    {
-      self.hovered.clear();
+    self.pending.push(Request::Popup(level, None));
 
-      let previous = std::mem::take(&mut self.hover_states);
+    while self.overlays.len() > level {
+      let Some(open) = self.overlays.pop() else {
+        break;
+      };
+      let depth = self.overlays.len();
 
-      Self::set_chain(&previous, &[], State::Hovered);
+      trace::log(|| format!("[popup] close {depth}"));
+
+      if self.pointer_in_overlay.is_some_and(|over| over >= depth) {
+        self.pointer_in_overlay = None;
+      }
+
+      if let Some(focus) = self.focus.clone()
+        && focus.is_within(&open.node)
+      {
+        let back = self
+          .outside_focus
+          .get(depth)
+          .cloned()
+          .flatten()
+          .filter(|node| node.is_alive() && Self::focusable(node))
+          .or_else(|| open.node.ancestors().into_iter().find(Self::focusable));
+        let visible = self.modality.shows_focus();
+
+        self.set_focus(back, visible);
+      }
+
+      if self
+        .hovered
+        .first()
+        .is_some_and(|hovered| hovered.is_within(&open.node))
+      {
+        self.hovered.clear();
+
+        let previous = std::mem::take(&mut self.hover_states);
+
+        Self::set_chain(&previous, &[], State::Hovered);
+      }
     }
 
     crate::access::invalidate();
   }
 
-  /// Marks the open overlay to be painted (and laid out) again where what changed reaches it.
+  /// Marks the open overlays to be painted (and laid out) again where what changed reaches
+  /// them.
   fn mark_overlay(&mut self, dirty: &Dirty) {
-    let Some(open) = &self.overlay else {
-      return;
-    };
-
     if dirty.prepare || dirty.layout {
-      self.relayout_overlay();
-    } else if (dirty.all || dirty.nodes.iter().any(|node| node.is_within(&open.node)))
-      && let Some(open) = &mut self.overlay
-    {
-      open.invalidate();
+      for level in 0..self.overlays.len() {
+        self.relayout_overlay(level);
+      }
+
+      return;
+    }
+
+    for open in &mut self.overlays {
+      if dirty.all || dirty.nodes.iter().any(|node| node.is_within(&open.node)) {
+        open.invalidate();
+      }
     }
   }
 
-  /// The reader dismissed the open overlay (a press outside it, the compositor's own
-  /// dismissal): its app is told, and closes it.
-  pub fn dismiss_popup(&mut self) {
-    if let Some(open) = &self.overlay {
-      trace::log(|| "[popup] dismiss".to_owned());
-      tree::report::<Linux>(open.node.id.get(), Report::Dismiss);
-      self.settle_focus();
+  /// The reader dismissed the open overlays from `level` up (a press outside them, the
+  /// compositor's own dismissal, `Escape` on the topmost): each one's app is told, the topmost
+  /// first, and closes it.
+  pub fn dismiss_popup(&mut self, level: usize) {
+    if level >= self.overlays.len() {
+      return;
     }
+
+    let nodes: Vec<Node> = self.overlays[level..]
+      .iter()
+      .rev()
+      .map(|open| Rc::clone(&open.node))
+      .collect();
+
+    for node in nodes {
+      trace::log(|| format!("[popup] dismiss {:?}", node.id.get()));
+      tree::report::<Linux>(node.id.get(), Report::Dismiss);
+    }
+
+    self.settle_focus();
   }
 
-  /// The backend placed the open overlay's surface with its top left at `x`, `y` (window
-  /// pixels).
-  pub fn popup_placed(&mut self, x: f32, y: f32) {
-    if let Some(open) = &mut self.overlay {
+  /// The window system placed the surface of the open overlay at `level` with its top left at `x`,
+  /// `y` (window pixels).
+  pub fn popup_placed(&mut self, level: usize, x: f32, y: f32) {
+    if let Some(open) = self.overlays.get_mut(level) {
       open.placed(x, y);
     }
   }
 
-  /// The open overlay, where one is open.
-  pub const fn popup(&self) -> Option<&Open> {
-    self.overlay.as_ref()
+  /// How many overlays are open, nested each in the one before.
+  pub const fn popup_count(&self) -> usize {
+    self.overlays.len()
   }
 
-  /// The open overlay, where one is open, to change.
-  pub const fn popup_mut(&mut self) -> Option<&mut Open> {
-    self.overlay.as_mut()
+  /// The open overlay at `level`, where one is open there.
+  pub fn popup(&self, level: usize) -> Option<&Open> {
+    self.overlays.get(level)
   }
 
-  /// The scale the open overlay is painted at: its surface's own where the compositor told it
-  /// one, the window's otherwise.
-  pub fn popup_scale(&self) -> f64 {
+  /// The open overlay at `level`, where one is open there, to change.
+  pub fn popup_mut(&mut self, level: usize) -> Option<&mut Open> {
+    self.overlays.get_mut(level)
+  }
+
+  /// The scale the open overlay at `level` is painted at: its surface's own where the
+  /// compositor told it one, the window's otherwise.
+  pub fn popup_scale(&self, level: usize) -> f64 {
     self
-      .overlay
-      .as_ref()
+      .overlays
+      .get(level)
       .and_then(Open::scale)
       .unwrap_or(self.scale)
   }
 
-  /// The open overlay's surface prefers `scale`, the compositor said: it is painted at it.
-  pub fn set_popup_scale(&mut self, scale: f64) {
-    if let Some(open) = &mut self.overlay {
-      trace::log(|| format!("[popup] scale {scale}"));
+  /// The surface of the open overlay at `level` prefers `scale`, the compositor said: it is
+  /// painted at it.
+  pub fn set_popup_scale(&mut self, level: usize, scale: f64) {
+    if let Some(open) = self.overlays.get_mut(level) {
+      trace::log(|| format!("[popup] {level} scale {scale}"));
       open.set_scale(scale);
     }
   }
 
-  /// The open overlay's frame, where it changed, at [`Shell::popup_scale`].
-  pub fn popup_frame(&mut self) -> Option<Frame<'_>> {
-    let scale = self.popup_scale();
+  /// The frame of the open overlay at `level`, where it changed, at [`Shell::popup_scale`].
+  pub fn popup_frame(&mut self, level: usize) -> Option<Frame<'_>> {
+    let scale = self.popup_scale(level);
     let marks = Marks {
       focus: self.focus.clone().filter(|_| self.focus_visible),
       focused: self.focus.clone(),
       link: None,
     };
     let started = Instant::now();
-    let frame = self.overlay.as_mut()?.frame(scale, &marks);
+    let frame = self.overlays.get_mut(level)?.frame(scale, &marks);
 
     if frame.is_some() {
       self.painted_at = Some(started);
@@ -1990,9 +2315,14 @@ impl Shell {
     frame
   }
 
-  /// Whether the open overlay wants a frame.
-  pub fn popup_wants_frame(&self) -> bool {
-    self.overlay.as_ref().is_some_and(Open::wants_frame)
+  /// Whether the open overlay at `level` wants a frame.
+  pub fn popup_wants_frame(&self, level: usize) -> bool {
+    self.overlays.get(level).is_some_and(Open::wants_frame)
+  }
+
+  /// Whether any open overlay wants a frame.
+  pub fn popups_want_frames(&self) -> bool {
+    self.overlays.iter().any(Open::wants_frame)
   }
 
   /// The adornments the window shows now, each on a surface of its own that takes no input:
@@ -2012,7 +2342,7 @@ impl Shell {
       });
     }
 
-    if self.overlay.is_some() {
+    if !self.overlays.is_empty() {
       return shown;
     }
 
@@ -2104,7 +2434,7 @@ impl Shell {
     Some(&renderer.pixmap)
   }
 
-  /// The backend took `adornment`'s surface down: what painted it goes, and the screen changes
+  /// The window system took `adornment`'s surface down: what painted it goes, and the screen changes
   /// as a frame changes it.
   pub fn drop_adornment(&mut self, adornment: Adornment) {
     self.adornment_renderers.remove(&adornment);
@@ -2117,7 +2447,7 @@ impl Shell {
   fn handle_at(&self, at: (f32, f32)) -> Option<(Handle, Node, (f32, f32))> {
     let handles = self.handles.as_ref()?;
 
-    if self.overlay.is_some() || !is_focused(&handles.entry) {
+    if !self.overlays.is_empty() || !is_focused(&handles.entry) {
       return None;
     }
 
@@ -2146,9 +2476,41 @@ impl Shell {
     }
   }
 
-  /// The pointer moved to `x`, `y` over the open overlay (its surface's coordinates).
-  pub fn popup_motion(&mut self, x: f32, y: f32) {
-    let Some(open) = &self.overlay else {
+  /// The open overlay whose surface holds `at` (window pixels), the topmost first; `None` where
+  /// none does (the window).
+  fn overlay_at(&self, at: (f32, f32)) -> Option<usize> {
+    self
+      .overlays
+      .iter()
+      .rposition(|open| open.contains(at.0, at.1))
+  }
+
+  /// A press at `at` (window pixels), on the open overlay at `on` or on the window where `None`,
+  /// dismisses each open overlay that holds neither it nor its anchor under it, as a popover's
+  /// light dismiss closes those the press is outside of, the overlay whose anchor it is kept for
+  /// the anchor to toggle; whether the press goes on to what is under it (a press on the window
+  /// that dismissed an overlay goes no further).
+  fn light_dismiss(&mut self, at: (f32, f32), on: Option<usize>) -> bool {
+    let holding = on.map_or(0, |level| level + 1);
+    let kept = if self
+      .overlays
+      .get(holding)
+      .is_some_and(|open| open.on_anchor(at.0, at.1))
+    {
+      holding + 1
+    } else {
+      holding
+    };
+
+    self.dismiss_popup(kept);
+
+    on.is_some() || kept > holding
+  }
+
+  /// The pointer moved to `x`, `y` over the open overlay at `level` (its surface's coordinates,
+  /// which a grab gives it wherever the pointer is).
+  pub fn popup_motion(&mut self, level: usize, x: f32, y: f32) {
+    let Some(open) = self.overlays.get(level) else {
       return;
     };
     let frame = open.node.frame.get();
@@ -2157,8 +2519,12 @@ impl Shell {
     // Seen over the popup, the pointer is where it is in the window's geometry too.
     trace::pointer(at.0, at.1);
     self.pointer = Some(at);
-    self.pointer_in_overlay = open.contains(at.0, at.1);
+    self.pointer_in_overlay = self.overlay_at(at);
     self.refresh_hover();
+
+    if self.drag_bar(at) {
+      return;
+    }
 
     if let Some(press) = &self.press
       && press.captured
@@ -2172,46 +2538,53 @@ impl Shell {
     self.report_pointer(PointerPhase::Move, 0);
   }
 
-  /// A button was pressed or released at `x`, `y` in the open overlay's coordinates: on it,
-  /// it acts there; a press on its anchor is the anchor's; a press anywhere else dismisses it.
-  pub fn popup_button(&mut self, down: bool, x: f32, y: f32) {
+  /// A button was pressed or released at `x`, `y` in the coordinates of the open overlay at
+  /// `level`: on an open overlay, it acts there, dismissing those above it; a press on the
+  /// topmost one's anchor is the anchor's; a press anywhere else dismisses them all.
+  pub fn popup_button(&mut self, level: usize, down: bool, x: f32, y: f32) {
     count_input();
+    self.fix_focus();
 
-    let Some(open) = &self.overlay else {
+    let Some(open) = self.overlays.get(level) else {
       return;
     };
     let frame = open.node.frame.get();
     let at = (x + frame.x, y + frame.y);
-    let on_overlay = open.contains(at.0, at.1);
-    let on_anchor = open.on_anchor(at.0, at.1);
+    let on = self.overlay_at(at);
 
     self.pointer = Some(at);
-    self.pointer_in_overlay = on_overlay;
+    self.pointer_in_overlay = on;
     self.refresh_hover();
 
-    if on_overlay || (!down && self.press.is_some()) {
-      if down {
-        let chain = self.hovered.clone();
-
-        self.content_press(0, chain);
-      } else {
+    if !down {
+      if let Some(bar) = self.bar.take() {
+        for node in &bar.chain {
+          Self::set_state(node, State::Pressed, false);
+        }
+      } else if self.press.is_some() {
         self.content_release(0);
       }
-    } else if down && on_anchor {
+
+      return;
+    }
+
+    if self.light_dismiss(at, on) {
+      self.refresh_hover();
+
       let chain = self.hovered.clone();
 
-      self.content_press(0, chain);
-    } else if down {
-      self.dismiss_popup();
+      if !self.bar_press(0, &chain) {
+        self.content_press(0, chain);
+      }
     }
   }
 
-  /// The wheel turned over the open overlay.
+  /// The wheel turned over an open overlay.
   pub fn popup_wheel(&mut self, wheel: Wheel) {
     self.wheel(wheel);
   }
 
-  /// The pointer moved to `x`, `y` (surface pixels); returns what the backend should do.
+  /// The pointer moved to `x`, `y` (surface pixels); returns what the window system should do.
   pub fn pointer_motion(&mut self, x: f32, y: f32) -> Vec<Request> {
     let mut requests = Vec::new();
     let (ox, oy) = self.chrome.origin();
@@ -2238,7 +2611,7 @@ impl Shell {
     let geometry = (x - ox, y - oy);
 
     self.pointer = matches!(hit, Hit::Content(..)).then_some(geometry);
-    self.pointer_in_overlay = false;
+    self.pointer_in_overlay = None;
     self.refresh_hover();
 
     let cursor = match hit {
@@ -2252,17 +2625,7 @@ impl Shell {
       requests.push(Request::Cursor(cursor));
     }
 
-    if let Some(bar) = &self.bar {
-      if let Some(grab) = bar.grab {
-        let (scroll, axis, base, travel) = (Rc::clone(&bar.scroll), bar.axis, bar.base, bar.travel);
-        let at = match axis {
-          Axis::Horizontal => geometry.0,
-          Axis::Vertical => geometry.1,
-        };
-
-        self.scroll_thumb_to(&scroll, axis, base, travel, at - grab);
-      }
-
+    if self.drag_bar(geometry) {
       return requests;
     }
 
@@ -2391,6 +2754,7 @@ impl Shell {
   /// A button (0 primary, 1 middle, 2 secondary) was pressed or released at `time`.
   pub fn pointer_button(&mut self, button: u8, down: bool, at: (f32, f32)) -> Vec<Request> {
     count_input();
+    self.fix_focus();
 
     if down {
       self.stop_fling();
@@ -2400,6 +2764,15 @@ impl Shell {
 
     let mut requests = Vec::new();
     let hit = self.chrome.hit(at.0, at.1, self.size.0, self.size.1);
+
+    // A press or a release hits what is at its point now, as Chromium hit-tests each: what is
+    // under a resting pointer may have moved since it last moved (an offset, a transition, a
+    // scroll), and on Wayland a pointer that rests sends no motion.
+    if let Hit::Content(x, y) = hit {
+      self.pointer = Some((x, y));
+      self.pointer_in_overlay = None;
+      self.refresh_hover();
+    }
 
     trace::log(|| {
       format!(
@@ -2413,16 +2786,23 @@ impl Shell {
       )
     });
 
-    // A press anywhere on the window but the open overlay's anchor dismisses the overlay, and
-    // goes no further; a press on the overlay reaches its own surface.
-    if down
-      && let Some(open) = &self.overlay
-      && !matches!(hit, Hit::Content(x, y) if open.on_anchor(x, y))
-    {
-      self.dismiss_popup();
-      requests.extend(self.take_requests());
+    // A press anywhere on the window but the outermost open overlay's anchor dismisses the
+    // open overlays, and goes no further; a press on an overlay reaches its own surface.
+    if down && !self.overlays.is_empty() {
+      let goes_on = match hit {
+        Hit::Content(x, y) => self.light_dismiss((x, y), None),
+        _ => {
+          self.dismiss_popup(0);
 
-      return requests;
+          false
+        }
+      };
+
+      if !goes_on {
+        requests.extend(self.take_requests());
+
+        return requests;
+      }
     }
 
     if down {
@@ -2552,25 +2932,19 @@ impl Shell {
 
     self.modality = Modality::Pointer;
 
-    let along = |rect: Rect| match axis {
-      Axis::Horizontal => (rect.x, rect.width),
-      Axis::Vertical => (rect.y, rect.height),
-    };
     let at = match axis {
       Axis::Horizontal => x,
       Axis::Vertical => y,
     };
-    let (start, length) = along(thumb.window_rect());
-    let travel = thumb.thumb.get().map_or(0., |(_, travel)| travel);
-    let base = start - travel * scroll.scrolled_fraction(axis);
+    let (base, travel, start, length) = Self::bar_geometry(&scroll, &thumb, axis);
     let on_thumb = chain.iter().any(|node| Rc::ptr_eq(node, &thumb));
     let primary = button == 0 && !self.modifiers.shift;
-    let grab = if on_thumb && button == 0 {
-      Some(at - start)
+    let held = if on_thumb && button == 0 {
+      Some(at)
     } else if primary == crate::environment::primary_warps_slider() {
       self.scroll_thumb_to(&scroll, axis, base, travel, at - length / 2.);
 
-      Some(length / 2.)
+      Some(at)
     } else {
       let page = match axis {
         Axis::Horizontal => scroll.frame.get().width,
@@ -2595,8 +2969,8 @@ impl Shell {
     trace::log(|| {
       format!(
         "[bar] {axis:?} press {button} at {at:.1}: {}",
-        match grab {
-          Some(grab) => format!("drags the thumb held {grab:.1} in"),
+        match held {
+          Some(_) => "drags the thumb".to_owned(),
           None => "pages".to_owned(),
         }
       )
@@ -2609,13 +2983,69 @@ impl Shell {
     self.bar = Some(BarPress {
       scroll,
       axis,
-      base,
-      travel,
-      grab,
+      thumb,
+      held,
       chain: chain.to_vec(),
     });
 
     true
+  }
+
+  /// The pointer moved to `at` (window pixels) while a press on a scroll bar holds it: a thumb
+  /// held moves along its track by as much as the pointer moved since it last followed, as
+  /// Blink's scroll bar moves its thumb, from where the thumb is now on its track as it is now:
+  /// content that grew or shrank under the drag stays where it was. Whether a press on a bar
+  /// holds the pointer.
+  fn drag_bar(&mut self, at: (f32, f32)) -> bool {
+    let Some(bar) = &self.bar else {
+      return false;
+    };
+    let Some(held) = bar.held else {
+      return true;
+    };
+    let (scroll, thumb, axis) = (Rc::clone(&bar.scroll), Rc::clone(&bar.thumb), bar.axis);
+
+    if layout_pending() {
+      self.lay_out();
+    }
+
+    let along = match axis {
+      Axis::Horizontal => at.0,
+      Axis::Vertical => at.1,
+    };
+    let (base, travel, start, _) = Self::bar_geometry(&scroll, &thumb, axis);
+    let on_track = start - base;
+    let delta = (along - held).clamp(-on_track, (travel - on_track).max(0.));
+
+    if delta == 0. {
+      return true;
+    }
+
+    self.scroll_thumb_to(&scroll, axis, base, travel, start + delta);
+
+    let (base, _, start, _) = Self::bar_geometry(&scroll, &thumb, axis);
+    let moved = start - base - on_track;
+
+    if let Some(bar) = &mut self.bar {
+      bar.held = Some(held + moved);
+    }
+
+    true
+  }
+
+  /// Where the thumb `thumb` of `scroll`'s bar along `axis` is now: where it starts with the box
+  /// at its start, how far it moves along its track, and where it starts and how long it is
+  /// (window pixels).
+  fn bar_geometry(scroll: &Node, thumb: &Node, axis: Axis) -> (f32, f32, f32, f32) {
+    let rect = thumb.window_rect();
+    let (start, length) = match axis {
+      Axis::Horizontal => (rect.x, rect.width),
+      Axis::Vertical => (rect.y, rect.height),
+    };
+    let travel = thumb.thumb.get().map_or(0., |(_, travel)| travel);
+    let base = start - travel * scroll.scrolled_fraction(axis);
+
+    (base, travel, start, length)
   }
 
   /// Scrolls `scroll` along `axis` so its bar's thumb, which starts at `base` (window pixels)
@@ -2682,7 +3112,7 @@ impl Shell {
         // A press on a link run focuses it, as a press on an anchor does.
         (Some(link), Some(target), _) => self.focus_link(target, *link, false),
         (_, _, Some(caption)) => {
-          let control = tree::control_of::<Linux>(caption.id.get()).and_then(crate::node_of);
+          let control = tree::caption_target::<Linux>(caption.id.get()).and_then(crate::node_of);
 
           self.set_focus(control, false);
         }
@@ -2843,7 +3273,7 @@ impl Shell {
   }
 
   /// Starts dragging the selection of the text entry `entry` pressed at `at` (window pixels):
-  /// the press ends without a click, and the backend is asked to start the drag.
+  /// the press ends without a click, and the window system is asked to start the drag.
   fn start_text_drag(&mut self, entry: &Node, at: (f32, f32)) -> Option<Request> {
     let read_only = entry.contents.borrow().read_only || entry.access.borrow().disabled;
     let (range, text) = entry.with_entry(|state| {
@@ -3117,13 +3547,21 @@ impl Shell {
 
     trace::log(|| format!("[touch] {id} down at ({x}, {y}): {hit:?}"));
 
-    if let Some(open) = &self.overlay
-      && !matches!(hit, Hit::Content(x, y) if open.on_anchor(x, y))
-    {
-      self.dismiss_popup();
-      requests.extend(self.take_requests());
+    if !self.overlays.is_empty() {
+      let goes_on = match hit {
+        Hit::Content(x, y) => self.light_dismiss((x, y), None),
+        _ => {
+          self.dismiss_popup(0);
 
-      return requests;
+          false
+        }
+      };
+
+      if !goes_on {
+        requests.extend(self.take_requests());
+
+        return requests;
+      }
     }
 
     let (ox, oy) = self.chrome.origin();
@@ -3564,15 +4002,15 @@ impl Shell {
     }
   }
 
-  /// A finger went down on the open overlay at `x`, `y` (its surface's coordinates): a press
-  /// there, as the primary button's.
-  pub fn popup_touch_down(&mut self, x: f32, y: f32) {
-    self.popup_button(true, x, y);
+  /// A finger went down on the open overlay at `level` at `x`, `y` (its surface's coordinates):
+  /// a press there, as the primary button's.
+  pub fn popup_touch_down(&mut self, level: usize, x: f32, y: f32) {
+    self.popup_button(level, true, x, y);
   }
 
-  /// A finger lifted from the open overlay at `x`, `y`: a release there.
-  pub fn popup_touch_up(&mut self, x: f32, y: f32) {
-    self.popup_button(false, x, y);
+  /// A finger lifted from the open overlay at `level` at `x`, `y`: a release there.
+  pub fn popup_touch_up(&mut self, level: usize, x: f32, y: f32) {
+    self.popup_button(level, false, x, y);
   }
 
   /// The wheel turned over the window: what is flinging stops, and the nearest box under the
@@ -3585,6 +4023,11 @@ impl Shell {
       Wheel::Pixels(dx, dy) => (dx, dy),
       Wheel::Lines(dx, dy) => (dx * 48., dy * 48.),
     };
+
+    // The wheel scrolls what is under the pointer now, which may have moved beneath it.
+    if self.pointer.is_some() {
+      self.refresh_hover();
+    }
 
     self.scroll_hovered(dx, dy);
   }
@@ -3698,6 +4141,9 @@ impl Shell {
       // A key ends a touch's selection handles, as in GTK's entry.
       self.handles = None;
     }
+
+    // What the scene did to the focus since the last turn applies before the key arrives.
+    self.fix_focus();
 
     if event.down && event.key != "Tab" {
       self.focus_visible_on_key();
@@ -3897,7 +4343,7 @@ impl Shell {
 
   /// What a key no verdict prevented does: a focused text entry edits, Tab moves focus, a
   /// focused box that acts answers as a command does ([`ActivateKeys`]), `Enter` follows a
-  /// focused link, a scroll box scrolls, and `Escape` takes focus away.
+  /// focused link, a scroll box scrolls, and `Escape` dismisses the open overlay.
   fn default_action(&mut self, target: &Node, input: &KeyInput) {
     let event = &input.event;
     let modifiers = event.modifiers;
@@ -3967,8 +4413,10 @@ impl Shell {
       return;
     }
 
-    if event.down && event.key == "Escape" {
-      self.set_focus(None, false);
+    // `Escape` dismisses the topmost open overlay, as a browser's light dismiss and the
+    // scene's key default do; focus stays where it is otherwise, as in an `<input>`.
+    if event.down && event.key == "Escape" && !self.overlays.is_empty() {
+      self.dismiss_popup(self.overlays.len() - 1);
     }
   }
 
@@ -3995,7 +4443,7 @@ impl Shell {
     }
 
     if !focused {
-      self.dismiss_popup();
+      self.dismiss_popup(0);
 
       if let Some(focus) = self.focus.clone() {
         self.release_key(&focus);

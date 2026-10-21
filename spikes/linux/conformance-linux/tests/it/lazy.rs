@@ -20,7 +20,7 @@ fn texts(count: usize) -> impl View {
     LazyColumn::new()
       .set_height(300)
       .set_label("Items")
-      .set_item_extent(ItemExtent::Estimated(30.))
+      .set_item_height(ItemExtent::estimated(30))
       .derive_items(
         move || (0..count).collect::<Vec<_>>(),
         |index| *index,
@@ -144,7 +144,7 @@ fn taller(top: Signal<usize>) -> impl View {
     LazyColumn::new()
       .set_height(300)
       .set_label("Rows")
-      .set_item_extent(ItemExtent::Estimated(20.))
+      .set_item_height(ItemExtent::estimated(20))
       .handle_scroll(move |position| top.set(position.index))
       .derive_items(
         || (0..1000).collect::<Vec<_>>(),
@@ -212,7 +212,7 @@ fn buttons(every: usize) -> impl View {
       LazyColumn::new()
         .set_height(300)
         .set_label("Actions")
-        .set_item_extent(ItemExtent::Estimated(40.))
+        .set_item_height(ItemExtent::estimated(40))
         .derive_items(
           || (0..1000).collect::<Vec<_>>(),
           |index| *index,
@@ -377,6 +377,75 @@ fn a_list_box_moves_and_chooses_through_options_it_has_not_built() {
   assert_eq!(screen.focused().name(), "Fruit 2500");
 }
 
+/// A list box of 200 fixed options, each captioned by a view (a red text) named by
+/// `set_name`, the last one a text.
+fn red_fruit(chosen: Signal<Option<u32>>) -> impl View {
+  let mut list = Listbox::new("Fruit").bind_chosen(chosen);
+
+  for value in 0..199_u32 {
+    list = list.add_option(
+      value,
+      Label::new(Text::new(format!("Fruit {value}")).set_color(Color::rgb(0xcc0000)))
+        .set_name(format!("Fruit {value}")),
+    );
+  }
+
+  Column::new()
+    .set_padding(8)
+    .add_child(list.add_option(199, "Fruit 199"))
+}
+
+/// How many pixels of the option `name`'s box show the red caption's ink.
+fn red_pixels(screen: &Screen, name: &str) -> usize {
+  let bounds = screen.find_by_role(Role::Option, name).read().bounds;
+  let shot = screen.render_to_image();
+  let mut count = 0;
+  let mut y = bounds.y + 1.;
+
+  while y < bounds.y + bounds.height - 1. {
+    let mut x = bounds.x + 1.;
+
+    while x < bounds.x + bounds.width - 1. {
+      let [red, green, blue, _] = shot.rgba_at(x, y);
+
+      if red > 150 && green < 100 && blue < 100 {
+        count += 1;
+      }
+
+      x += 1.;
+    }
+
+    y += 1.;
+  }
+
+  count
+}
+
+#[skene_gui::test]
+fn a_fixed_option_captioned_by_a_view_shows_it_when_it_comes_back_into_view() {
+  let chosen = Signal::new(None);
+  let screen = testing::render(move || red_fruit(chosen));
+  let before = red_pixels(&screen, "Fruit 1");
+
+  assert!(before > 0, "the caption is red");
+
+  // End builds the last options and scrolls the first ones out of view; Home brings them back.
+  screen.find_by_role(Role::Option, "Fruit 0").click();
+  screen.press("End");
+  assert_eq!(
+    screen.focused().name(),
+    "Fruit 199",
+    "a text caption names its option"
+  );
+  screen.press("Home");
+
+  assert!(
+    red_pixels(&screen, "Fruit 1") > 0,
+    "the option shows its own caption again"
+  );
+  assert_eq!(chosen.get_untracked(), Some(0));
+}
+
 /// A list 300 pixels tall named "Items" of the items `items` holds, each "Item {n}" in a box
 /// 30 pixels tall.
 fn held(items: Signal<Vec<usize>>) -> impl View {
@@ -384,7 +453,7 @@ fn held(items: Signal<Vec<usize>>) -> impl View {
     LazyColumn::new()
       .set_height(300)
       .set_label("Items")
-      .set_item_extent(ItemExtent::Estimated(30.))
+      .set_item_height(ItemExtent::estimated(30))
       .derive_items(
         move || items.get(),
         |index| *index,
@@ -442,7 +511,7 @@ fn a_bound_position_scrolls_there_and_follows_the_scroll() {
       LazyColumn::new()
         .set_height(300)
         .set_label("Items")
-        .set_item_extent(ItemExtent::Estimated(30.))
+        .set_item_height(ItemExtent::estimated(30))
         .bind_scroll_position(position)
         .derive_items(
           || (0..10_000).collect::<Vec<_>>(),
@@ -505,7 +574,7 @@ fn a_reordering_keeps_focus_on_the_moved_row() {
       LazyColumn::new()
         .set_height(300)
         .set_label("Actions")
-        .set_item_extent(ItemExtent::Estimated(40.))
+        .set_item_height(ItemExtent::estimated(40))
         .derive_items(
           move || items.get(),
           |index| *index,
@@ -545,10 +614,10 @@ fn a_grid_lays_its_cells_in_lines_and_keeps_the_first_in_view_through_a_resize()
   let screen = testing::render(|| {
     Column::new().add_child(
       LazyVerticalGrid::new()
-        .set_columns(GridCells::Adaptive(100.))
+        .set_columns(GridCells::adaptive(100))
         .set_height(300)
         .set_label("Photos")
-        .set_item_extent(ItemExtent::Estimated(40.))
+        .set_item_height(ItemExtent::estimated(40))
         .derive_items(
           || (0..3000).collect::<Vec<_>>(),
           |index| *index,
@@ -619,7 +688,7 @@ fn a_lazy_row_realizes_what_its_width_shows() {
         .set_width(400)
         .set_height(40)
         .set_label("Chips")
-        .set_item_extent(80)
+        .set_item_width(80)
         .derive_items(
           || (0..1000).collect::<Vec<_>>(),
           |index| *index,
@@ -647,5 +716,294 @@ fn a_lazy_row_realizes_what_its_width_shows() {
     realized(&screen)[0].0 > shown[0].0,
     "the horizontal wheel moved the window: {:?}",
     realized(&screen)
+  );
+}
+
+/// The space between the token list's items.
+const ROW_SPACING: TokenRef<f32> = TokenRef::new("lazy-spacing");
+
+/// A palette defining [`ROW_SPACING`].
+struct Spacings(Token<f32>);
+
+impl TokenSet for Spacings {
+  fn define(&self, definitions: &mut Definitions) {
+    definitions.add(&self.0);
+  }
+}
+
+/// Five texts "{name} 0" onwards, 30 pixels tall each.
+fn five(name: &'static str) -> impl Fn() -> Vec<String> {
+  move || (0..5).map(|index| format!("{name} {index}")).collect()
+}
+
+/// Two lists side by side: "Token", its items 10 apart by a length token, and "Condition", 16
+/// apart by a width condition that holds, its items centered.
+fn spaced() -> impl View {
+  Theme::new(Spacings(Token::new(ROW_SPACING, 10))).set_child(
+    Row::new()
+      .set_padding(8)
+      .set_spacing(16)
+      .add_child(
+        LazyColumn::new()
+          .set_height(300)
+          .set_width(120)
+          .set_label("Token")
+          .set_spacing(ROW_SPACING)
+          .set_padding(ROW_SPACING)
+          .set_item_height(ItemExtent::fixed(30))
+          .derive_items(five("Token"), Clone::clone, |text: String| {
+            Container::new().set_height(30).set_child(Text::new(text))
+          }),
+      )
+      .add_child(
+        LazyColumn::new()
+          .set_height(300)
+          .set_width(120)
+          .set_label("Condition")
+          .set_spacing(Spacing::from(4).when(Media::min_width(1), 16))
+          .derive_item_alignment(|| AxisAlignment::Center)
+          .set_item_height(ItemExtent::estimated(30))
+          .derive_items(five("Condition"), Clone::clone, |text: String| {
+            Container::new().set_height(30).set_child(Text::new(text))
+          }),
+      ),
+  )
+}
+
+#[skene_gui::test]
+fn a_lazy_lists_spacing_takes_a_token_and_a_condition() {
+  let screen = testing::render(spaced);
+  let top = |text: &str| screen.find_by_text(text).read().bounds.y;
+
+  let list = screen.find_by_role(Role::List, "Token").read().bounds;
+
+  assert!(
+    (top("Token 1") - top("Token 0") - 40.).abs() < 1.,
+    "a length token spaces the items: {} then {}",
+    top("Token 0"),
+    top("Token 1")
+  );
+  assert!(
+    (top("Token 0") - list.y - 10.).abs() < 2.,
+    "and pads the list: {} in a list at {}",
+    top("Token 0"),
+    list.y
+  );
+  assert!(
+    (top("Condition 1") - top("Condition 0") - 46.).abs() < 1.,
+    "a width condition that holds spaces the items, each as tall as its content: {} then {}",
+    top("Condition 0"),
+    top("Condition 1")
+  );
+
+  let condition = screen.find_by_role(Role::List, "Condition").read().bounds;
+  let item = screen.find_by_text("Condition 0").read().bounds;
+
+  assert!(
+    item.x > condition.x + 10.,
+    "a derived alignment centers the items: {item:?} in {condition:?}"
+  );
+}
+
+/// A list of `items`, "Message {n}", that starts at its end.
+fn chat(items: Signal<usize>) -> impl View {
+  Column::new().set_padding(8).add_child(
+    LazyColumn::new()
+      .set_height(200)
+      .set_label("Chat")
+      .set_reverse_layout(true)
+      .set_item_height(ItemExtent::estimated(30))
+      .derive_items(
+        move || (0..items.get()).collect::<Vec<_>>(),
+        |index| *index,
+        |index: usize| {
+          Container::new()
+            .set_height(30)
+            .set_child(Text::new(format!("Message {index}")))
+        },
+      ),
+  )
+}
+
+#[skene_gui::test]
+fn a_reversed_list_starts_at_its_end_and_keeps_it_as_items_arrive() {
+  let items = Signal::new(100);
+  let screen = testing::render(move || chat(items));
+  let list = screen.find_by_role(Role::List, "Chat").read().bounds;
+  let shown = |text: &str| {
+    screen
+      .query_by_text(text)
+      .is_some_and(|found| within(found.read().bounds, list))
+  };
+
+  assert!(shown("Message 99"), "the list starts at its end");
+  assert!(!shown("Message 0"), "and not at its start");
+
+  items.set(103);
+  screen.settle();
+  assert!(
+    shown("Message 102"),
+    "the end stays in view as items arrive"
+  );
+
+  // Scrolled up, the first visible item stays.
+  screen.press("Tab");
+  assert_eq!(screen.focused().name(), "Chat");
+  screen.press("Home");
+  assert!(shown("Message 0"), "Home scrolls to the start");
+  items.set(110);
+  screen.settle();
+  assert!(
+    shown("Message 0"),
+    "away from the end, the first item stays"
+  );
+  assert!(!shown("Message 109"));
+}
+
+/// A list box "Fruit" of 50 options each captioned by a view of two texts, "Fruit {n}" and
+/// "fresh", no name stated, 10 pixels apart and 40 tall.
+fn captioned(chosen: Signal<Option<u32>>) -> impl View {
+  Column::new().set_padding(8).set_spacing(8).add_child(
+    Listbox::new("Fruit")
+      .bind_chosen(chosen)
+      .set_option_spacing(10)
+      .set_option_height(ItemExtent::fixed(40))
+      .derive_options(
+        || (0..50).collect(),
+        |value: &u32| {
+          Label::new(
+            Row::new()
+              .set_spacing(6)
+              .add_child(Text::new(format!("Fruit {value}")))
+              .add_child(Text::new("fresh")),
+          )
+        },
+      ),
+  )
+}
+
+#[skene_gui::test]
+fn a_list_boxs_caption_sits_before_it_and_its_options_are_named_by_their_content() {
+  let chosen = Signal::new(None);
+  let screen = testing::render(move || captioned(chosen));
+  let outline = screen.outline();
+
+  eprintln!("{outline}");
+
+  let lines: Vec<&str> = outline.lines().collect();
+  let list = lines
+    .iter()
+    .position(|line| line.trim_start().starts_with("list box \"Fruit\""))
+    .expect("a reader finds the list box named by its caption");
+  let depth = |line: &str| line.len() - line.trim_start().len();
+
+  assert!(
+    lines[..list]
+      .iter()
+      .any(|line| line.trim_start().starts_with("label \"Fruit\"")
+        && depth(line) == depth(lines[list])),
+    "the caption is the list box's sibling before it"
+  );
+  assert!(
+    lines[list + 1]
+      .trim_start()
+      .starts_with("list item \"Fruit 0 fresh\""),
+    "the list box holds its options and nothing before them: {}",
+    lines[list + 1]
+  );
+
+  let first = screen
+    .find_by_role(Role::Option, "Fruit 0 fresh")
+    .read()
+    .bounds;
+  let second = screen
+    .find_by_role(Role::Option, "Fruit 1 fresh")
+    .read()
+    .bounds;
+
+  assert!(
+    (first.height - 40.).abs() < 1.,
+    "an option is as tall as set: {first:?}"
+  );
+  assert!(
+    (second.y - first.y - first.height - 10.).abs() < 1.,
+    "and as far from the next as set: {first:?} then {second:?}"
+  );
+
+  // A press on the caption focuses the list box's option.
+  screen.find_by_text("Fruit").click();
+  assert_eq!(screen.focused().name(), "Fruit 0 fresh");
+}
+
+/// A picker of 30 options whose list may be 600 pixels tall.
+fn tall_picker() -> impl View {
+  let chosen = Signal::new(0_u32);
+
+  Column::new().set_padding(8).add_child(
+    Picker::new("Count")
+      .bind_chosen(chosen)
+      .set_list(Picker::<u32>::default_list().set_max_height(600))
+      .derive_options(|| (0..30).collect(), |value: &u32| format!("Count {value}")),
+  )
+}
+
+#[skene_gui::test]
+fn a_pickers_list_is_as_tall_as_its_list_box_lets_it_be() {
+  let screen = testing::render(tall_picker);
+
+  screen.find_by_role(Role::ComboBox, "Count").click();
+
+  let list = screen.find_by_role(Role::ListBox, "").read().bounds;
+
+  assert!(
+    list.height > 400.,
+    "the list grows past the default's 320 as its list box allows: {list:?}"
+  );
+}
+
+/// A disabled list box "Swatches" whose options each show a black square, named "Swatch {n}".
+fn swatches() -> impl View {
+  Column::new().set_padding(8).add_child(
+    Listbox::new("Swatches")
+      .bind_chosen(Signal::new(None::<u32>))
+      .set_disabled(true)
+      .derive_options(
+        || (0..3).collect(),
+        |value: &u32| {
+          Label::new(
+            Container::new()
+              .set_width(20)
+              .set_height(20)
+              .set_background(Color::BLACK),
+          )
+          .set_name(format!("Swatch {value}"))
+        },
+      ),
+  )
+}
+
+#[skene_gui::test]
+fn a_disabled_list_boxs_options_are_dimmed_once() {
+  let screen = testing::render(swatches);
+  let option = screen.find_by_role(Role::Option, "Swatch 0").read().bounds;
+  let shot = screen.render_to_image();
+  // The darkest pixel of the option: the square's middle.
+  let mut darkest = 255_u8;
+  let mut y = option.y + 1.;
+
+  while y < option.y + option.height - 1. {
+    let mut x = option.x + 1.;
+
+    while x < option.x + option.width - 1. {
+      darkest = darkest.min(shot.rgba_at(x, y)[0]);
+      x += 1.;
+    }
+
+    y += 1.;
+  }
+
+  assert!(
+    (110..=145).contains(&darkest),
+    "black at half opacity over the light list reads about half way: {darkest}"
   );
 }

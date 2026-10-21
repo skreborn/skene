@@ -497,11 +497,17 @@ fn build(shell: &Shell) -> TreeUpdate {
 
     window.set_children(children);
 
+    // Focus names a node the tree holds, else the window: a focused node the scene removed
+    // or hid is not one until the next turn moves focus off it.
     if let Some(node) = shell.focus() {
-      focus = match shell.focused_link() {
+      let id = match shell.focused_link() {
         Some(link) => AkId(LINK | (id_of(node) << 16) | link as u64),
         None => AkId(id_of(node)),
       };
+
+      if map.contains_key(&id.0) {
+        focus = id;
+      }
     }
   }
 
@@ -969,6 +975,9 @@ fn add_entry(
     let mut runs = Vec::new();
     let (anchor, focus) = (entry.editor.anchor().index, entry.editor.focus().index);
     let mut positions = (None, None);
+    // The lines told last time, taken again where unchanged.
+    let mut told = std::mem::take(&mut entry.access_lines);
+    let mut telling = HashMap::with_capacity(lines.len());
 
     for (index, line) in lines.iter().enumerate() {
       let line = skene_foundation::text::LineInfo {
@@ -976,37 +985,63 @@ fn add_entry(
         ..line.clone()
       };
       let slice = &text[line.range.clone()];
-      let mut lengths = Vec::new();
-      let mut xs = Vec::new();
-      let mut widths = Vec::new();
-      let mut words = Vec::new();
-      let mut previous_blank = true;
+      let shown_line = shown(slice);
+      let key = crate::entry::AccessLine::key(&shown_line, line.width, scale);
+      let measure = (line.width.to_bits(), scale.to_bits());
+      let kept = told
+        .remove(&key)
+        .filter(|kept| kept.shown == shown_line && kept.measure == measure);
+      let told_line = kept.unwrap_or_else(|| {
+        let mut lengths = Vec::new();
+        let mut xs = Vec::new();
+        let mut widths = Vec::new();
+        let mut words = Vec::new();
+        let mut previous_blank = true;
 
-      for (count, (start, cluster)) in slice.grapheme_indices(true).enumerate() {
-        let byte = line.range.start + start;
-        let x0 = laid
-          .caret(skene_foundation::text::Position::new(byte))
-          .primary
-          .x;
-        let x1 = laid
-          .caret(skene_foundation::text::Position::with(
-            byte + cluster.len(),
-            skene_foundation::text::Affinity::Upstream,
-          ))
-          .primary
-          .x;
-        let blank = cluster.chars().all(char::is_whitespace);
+        for (count, (start, cluster)) in slice.grapheme_indices(true).enumerate() {
+          let byte = line.range.start + start;
+          let x0 = laid
+            .caret(skene_foundation::text::Position::new(byte))
+            .primary
+            .x;
+          let x1 = laid
+            .caret(skene_foundation::text::Position::with(
+              byte + cluster.len(),
+              skene_foundation::text::Affinity::Upstream,
+            ))
+            .primary
+            .x;
+          let blank = cluster.chars().all(char::is_whitespace);
 
-        if previous_blank && !blank && count < 256 {
-          words.push(count as u8);
+          if previous_blank && !blank && count < 256 {
+            words.push(count as u8);
+          }
+
+          previous_blank = blank;
+          lengths.push(u8::try_from(shown(cluster).len()).unwrap_or(u8::MAX));
+          // In the run's coordinates, which are its bounds' device pixels.
+          xs.push((x0 - line.left) * scale as f32);
+          widths.push((x1 - x0).max(0.) * scale as f32);
         }
 
-        previous_blank = blank;
-        lengths.push(u8::try_from(shown(cluster).len()).unwrap_or(u8::MAX));
-        // In the run's coordinates, which are its bounds' device pixels.
-        xs.push((x0 - line.left) * scale as f32);
-        widths.push((x1 - x0).max(0.) * scale as f32);
-      }
+        crate::entry::AccessLine {
+          shown: shown_line,
+          measure,
+          lengths,
+          xs,
+          widths,
+          words,
+        }
+      });
+      let (lengths, xs, widths, words) = (
+        told_line.lengths.clone(),
+        told_line.xs.clone(),
+        told_line.widths.clone(),
+        told_line.words.clone(),
+      );
+      let value = told_line.shown.clone();
+
+      telling.insert(key, told_line);
 
       let run_id = AkId(base | index as u64);
       let mut run = AkNode::new(AkRole::TextRun);
@@ -1015,7 +1050,7 @@ fn add_entry(
         .zip(widths.last())
         .map_or(0., |(x, width)| (x + width) / scale as f32);
 
-      run.set_value(shown(slice));
+      run.set_value(value);
       run.set_character_lengths(lengths);
       run.set_character_positions(xs);
       run.set_character_widths(widths);
@@ -1051,6 +1086,8 @@ fn add_entry(
 
       runs.push((run_id, run));
     }
+
+    entry.access_lines = telling;
 
     (shown(&text), runs, positions)
   });

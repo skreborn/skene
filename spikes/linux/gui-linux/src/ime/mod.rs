@@ -5,7 +5,7 @@
 //! ([`crate::keys`]).
 //!
 //! Every X11 client reports through [`ImeEvent`]s in protocol order: a D-Bus client answers each
-//! key with [`ImeEvent::KeyDone`] after the signals the key caused, so the backend holds later
+//! key with [`ImeEvent::KeyDone`] after the signals the key caused, so the window system holds later
 //! keys behind an unanswered one; XIM never answers a consumed key, so the keys it does not
 //! consume come back as [`ImeEvent::Forward`].
 
@@ -17,7 +17,7 @@ pub mod xim;
 
 use std::time::Instant;
 
-/// One raw X key event, as the backend saw it.
+/// One raw X key event, as the window system saw it.
 #[derive(Clone, Debug)]
 pub struct RawKey {
   /// The X keycode (evdev + 8).
@@ -125,7 +125,7 @@ pub trait Ime {
     false
   }
 
-  /// Events produced while filtering X events (XIM), drained by the backend.
+  /// Events produced while filtering X events (XIM), drained by the window system.
   fn take_events(&mut self) -> Vec<ImeEvent> {
     Vec::new()
   }

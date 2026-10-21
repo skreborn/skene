@@ -1,7 +1,7 @@
 //! The shared views: a decorated box, the layouts, a scroll box, text, an image and a theme.
 //!
 //! Each property has one setter and its `derive_` twin, and conditions ride the value
-//! (`set_padding(24.when(Media::MinWidth(900), 48))`). Properties come first, children last.
+//! (`set_padding(24.when(Media::min_width(900), 48))`). Properties come first, children last.
 
 use std::{hash::Hash, marker::PhantomData, rc::Rc};
 
@@ -742,7 +742,11 @@ impl<R: Realization> AnyKind for Text<R> {}
 impl<R: Realization> View<R> for Text<R> {
   fn build(self, cx: &mut Cx<R>) -> Node {
     let id = cx.create(NodeSpec::new(NodeKind::Text));
-    let content = self.content;
+    let content: Rc<dyn Fn() -> String> = Rc::from(self.content);
+
+    if let Some(names) = cx.content_name() {
+      names.add(id, Rc::clone(&content));
+    }
 
     cx.finish(id, self.record, self.handle.as_ref());
     tree::bind::<R, _>(id, contents::TEXT, move || content().into());

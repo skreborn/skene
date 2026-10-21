@@ -2173,9 +2173,9 @@ mod tests {
   struct Shrinks;
 
   impl LayoutHost for Shrinks {
-    type Child = Shrinks;
+    type Child = Self;
 
-    fn measure(_: &Shrinks, axis: Axis, _: Option<f32>, _: Needed) -> Measurement {
+    fn measure(_: &Self, axis: Axis, _: Option<f32>, _: Needed) -> Measurement {
       match axis {
         Axis::Horizontal => Measurement {
           minimum: 20.,
@@ -2190,19 +2190,19 @@ mod tests {
       }
     }
 
-    fn constant_height(_: &Shrinks) -> bool {
+    fn constant_height(_: &Self) -> bool {
       false
     }
 
-    fn is_visible(_: &Shrinks) -> bool {
+    fn is_visible(_: &Self) -> bool {
       true
     }
 
-    fn is_container(_: &Shrinks) -> bool {
+    fn is_container(_: &Self) -> bool {
       true
     }
 
-    fn allocate(_: &Shrinks, _: Rect, _: Rect, _: Option<f32>) {}
+    fn allocate(_: &Self, _: Rect, _: Rect, _: Option<f32>) {}
   }
 
   #[test]

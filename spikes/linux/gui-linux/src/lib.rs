@@ -25,12 +25,12 @@
 //!   none; with the `gpu` feature, `gpu`: the GPU path, vello's GPU renderer over wgpu,
 //!   chosen once per window where an adapter presents to it.
 //! - `access`: the reader's tree through AccessKit.
-//! - `shell`: the window both backends share: frames, hit testing, hover, press and focus,
+//! - `shell`: the window both window systems share: frames, hit testing, hover, press and focus,
 //!   Tab order, keys and wheels dispatched through the foundation.
 //! - `keys`, `ime`, `kinetic`, `runtime`, `environment`: the keyboard through xkbcommon, the
 //!   input methods, a fling's motion, the loop's timers and tasks, the reader's preferences
 //!   from the settings portal.
-//! - `wayland`, `x11`, `xdnd`: the backends and X11's drag and drop; `window`: a window on
+//! - `wayland`, `x11`, `xdnd`: the window systems and X11's drag and drop; `window`: a window on
 //!   either, its loop turned a step at a time.
 //!
 //! What it offers beside the [`Linux`] realization:
@@ -146,6 +146,10 @@ impl Realization for Linux {
 
   fn set_hidden(node: &Node, hidden: bool) {
     if node.is_hidden() != hidden {
+      if hidden && !node.is_overlay() {
+        shell::will_leave(node, true);
+      }
+
       node.set_hidden(hidden);
 
       if node.is_overlay() {
@@ -158,6 +162,8 @@ impl Realization for Linux {
   }
 
   fn remove(node: &Node) {
+    shell::will_leave(node, false);
+
     if let Some(parent) = node.parent() {
       crate::layout::mark(&parent, true);
     }
@@ -278,6 +284,28 @@ impl Realization for Linux {
     node.clipboard_op(op);
   }
 
+  /// GTK's entry menu's editing entries, which it follows with an emoji chooser.
+  fn text_menu() -> &'static [ClipboardOp] {
+    &[
+      ClipboardOp::Cut,
+      ClipboardOp::Copy,
+      ClipboardOp::Paste,
+      ClipboardOp::Delete,
+      ClipboardOp::SelectAll,
+    ]
+  }
+
+  /// As GTK labels them.
+  fn operation_label(op: ClipboardOp) -> &'static str {
+    match op {
+      ClipboardOp::Cut => "Cut",
+      ClipboardOp::Copy => "Copy",
+      ClipboardOp::Paste => "Paste",
+      ClipboardOp::Delete => "Delete",
+      ClipboardOp::SelectAll => "Select All",
+    }
+  }
+
   fn start(app_id: &str, root: Box<dyn FnOnce() -> NodeId>) -> ExitCode {
     start(app_id, root)
   }
@@ -290,18 +318,18 @@ pub(crate) fn node_of(id: NodeId) -> Option<Node> {
 
 /// Which display server the window goes to.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum Backend {
+pub enum WindowSystem {
   /// Wayland.
   Wayland,
   /// X11.
   X11,
 }
 
-impl Backend {
-  /// The backend `SKENE_BACKEND` names (`wayland` or `x11`), else Wayland where
+impl WindowSystem {
+  /// The window system `SKENE_WINDOW_SYSTEM` names (`wayland` or `x11`), else Wayland where
   /// `WAYLAND_DISPLAY` is set, else X11 where `DISPLAY` is.
   pub fn choose() -> Option<Self> {
-    match std::env::var("SKENE_BACKEND").as_deref() {
+    match std::env::var("SKENE_WINDOW_SYSTEM").as_deref() {
       Ok("wayland") => return Some(Self::Wayland),
       Ok("x11") => return Some(Self::X11),
       _ => {}
@@ -340,7 +368,7 @@ fn window_settings(app_id: &str) -> (String, (u32, u32)) {
 /// Opens the app's window on the display server in use, builds `root` inside it under an
 /// owner that lives as long as the window, and runs the loop until the app quits.
 pub(crate) fn start(app_id: &str, root: Box<dyn FnOnce() -> NodeId>) -> ExitCode {
-  let Some(backend) = Backend::choose() else {
+  let Some(system) = WindowSystem::choose() else {
     eprintln!("skene: no display: neither WAYLAND_DISPLAY nor DISPLAY is set");
 
     return ExitCode::FAILURE;
@@ -363,9 +391,9 @@ pub(crate) fn start(app_id: &str, root: Box<dyn FnOnce() -> NodeId>) -> ExitCode
     shell.set_root(node);
   }
 
-  trace::log(|| format!("[start] {backend:?} {app_id} {}x{}", size.0, size.1));
+  trace::log(|| format!("[start] {system:?} {app_id} {}x{}", size.0, size.1));
 
-  let result = window::Window::open(backend, shell, app_id).and_then(|mut window| {
+  let result = window::Window::open(system, shell, app_id).and_then(|mut window| {
     while !window.shell().quit {
       window.step(None)?;
     }
@@ -385,8 +413,8 @@ pub(crate) fn start(app_id: &str, root: Box<dyn FnOnce() -> NodeId>) -> ExitCode
   }
 }
 
-/// What the loop does between waits, whichever backend runs it: fires timers and tasks,
-/// applies what other threads posted, settles focus. Returns what was posted for the backend
+/// What the loop does between waits, whichever window system runs it: fires timers and tasks,
+/// applies what other threads posted, settles focus. Returns what was posted for the window system
 /// (its input method's events), the accessibility layer's requests carried out here.
 pub(crate) fn turn(shell: &mut shell::Shell) -> Vec<runtime::Message> {
   let mut rest = Vec::new();
@@ -402,8 +430,10 @@ pub(crate) fn turn(shell: &mut shell::Shell) -> Vec<runtime::Message> {
       runtime::Message::DeviceLost => {
         shell::invalidate_all();
 
-        if let Some(open) = shell.popup_mut() {
-          open.invalidate();
+        for level in 0..shell.popup_count() {
+          if let Some(open) = shell.popup_mut(level) {
+            open.invalidate();
+          }
         }
       }
       message @ runtime::Message::Ime(_) => rest.push(message),

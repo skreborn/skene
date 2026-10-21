@@ -7,7 +7,7 @@
 //! - [`scene`]: a generational arena of nodes with parents and ordered children ([`Scene`]).
 //! - [`keyed`]: a keyed list's items, each built once under an owner of its own ([`Keyed`]).
 //! - [`value`]: a property's value ([`Value`]): fixed, a token, or derived from signals, and
-//!   replaced under conditions (`16.when(Media::MinWidth(900), 24)`); and the types the
+//!   replaced under conditions (`16.when(Media::min_width(900), 24)`); and the types the
 //!   properties hold.
 //! - [`fill`]: what fills a box or its border ([`Fill`]): a color, or a linear, radial or
 //!   sweep gradient whose stops may name color tokens.

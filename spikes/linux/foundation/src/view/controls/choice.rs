@@ -20,8 +20,15 @@ type Caption<R> = Rc<dyn Fn() -> Label<R>>;
 /// What captions each option of a derived run, from its value.
 type Captioner<T, R> = Rc<dyn Fn(&T) -> Label<R>>;
 
-/// A fixed run's option: its value, what supplies its name, and its caption until it is built.
-type FixedOption<T, R> = (T, Option<Name>, Rc<RefCell<Option<Label<R>>>>);
+/// A fixed run's option: its value, what supplies its name, and its caption: a text built as
+/// often as asked, a view until it is built.
+type FixedOption<T, R> = (T, Option<Name>, FixedCaption<R>);
+
+/// A fixed option's caption: a text, or a view given once, until it is built.
+enum FixedCaption<R: Realization> {
+  Text(Rc<str>),
+  Once(Rc<RefCell<Option<Label<R>>>>),
+}
 
 /// One run of a choice group's options: given one by one or as a list, or derived from the
 /// app's data. A group's options are its runs, in order.
@@ -37,11 +44,12 @@ pub enum OptionSegment<T: Choice, R: Realization> {
   },
 }
 
-/// One option as a group's runs give it.
+/// One option as a group's runs give it, with whether its caption is a view given once.
 struct Entry<T, R: Realization> {
   value: T,
   name: Option<Name>,
   caption: Caption<R>,
+  once: bool,
 }
 
 /// A group's options in order, each value's place found by a map.
@@ -111,8 +119,8 @@ impl<T: Choice, R: Realization> GroupOptions<T, R> {
     })
   }
 
-  /// The caption of the option carrying `value`, as it is built: its own where it was given
-  /// one, and a text of its name where that was taken already.
+  /// The caption of the option carrying `value`, as it is built: its own, a view given once
+  /// shown by a text of its name where it was built already.
   pub fn caption(&self, value: &T) -> Label<R> {
     let caption = untrack(|| {
       self.list.with(|list| {
@@ -124,6 +132,21 @@ impl<T: Choice, R: Realization> GroupOptions<T, R> {
     });
 
     caption.map_or_else(|| Label::from(""), |caption| caption())
+  }
+
+  /// Whether the option carrying `value` is captioned by a view given once, which can be built
+  /// only once: a list building its options as they come into view keeps it built from then
+  /// on.
+  #[must_use]
+  pub fn caption_once(&self, value: &T) -> bool {
+    untrack(|| {
+      self.list.with(|list| {
+        list
+          .places
+          .get(value)
+          .is_some_and(|index| list.entries[*index].once)
+      })
+    })
   }
 
   /// The name of the option carrying `value`, where its caption states one, tracking it.
@@ -157,8 +180,8 @@ impl<T: Choice, R: Realization> Options<T> for GroupOptions<T, R> {
   }
 }
 
-/// A run as a group keeps it once built: a fixed run's captions taken as their options are
-/// built, a derived run's made for each.
+/// A run as a group keeps it once built: a fixed run's text captions made for each build and
+/// its view captions taken as their options are built, a derived run's made for each.
 enum Run<T: Choice, R: Realization> {
   Fixed(Vec<FixedOption<T, R>>),
   Derived {
@@ -174,11 +197,13 @@ impl<T: Choice, R: Realization> Run<T, R> {
         options
           .into_iter()
           .map(|(value, label)| {
-            (
-              value,
-              label.name_source(),
-              Rc::new(RefCell::new(Some(label))),
-            )
+            let name = label.name_source();
+            let caption = match label.text() {
+              Some(text) => FixedCaption::Text(text),
+              None => FixedCaption::Once(Rc::new(RefCell::new(Some(label)))),
+            };
+
+            (value, name, caption)
           })
           .collect(),
       ),
@@ -190,21 +215,47 @@ impl<T: Choice, R: Realization> Run<T, R> {
   fn entries(&self, entries: &mut Vec<Entry<T, R>>) {
     match self {
       Self::Fixed(options) => {
-        for (value, name, label) in options {
-          let (label, fallback) = (Rc::clone(label), name.clone());
+        for (value, name, caption) in options {
+          let named = name.clone();
+          let (caption, once): (Caption<R>, bool) = match caption {
+            FixedCaption::Text(text) => {
+              let text = Rc::clone(text);
+
+              (
+                Rc::new(move || {
+                  let label = Label::from(Rc::clone(&text));
+
+                  match &named {
+                    Some(name) => {
+                      let name = Rc::clone(name);
+
+                      label.derive_name(move || name())
+                    }
+                    None => label,
+                  }
+                }),
+                false,
+              )
+            }
+            FixedCaption::Once(label) => {
+              let label = Rc::clone(label);
+
+              (
+                Rc::new(move || {
+                  label.borrow_mut().take().unwrap_or_else(|| {
+                    Label::from(named.as_ref().map_or_else(|| Rc::from(""), |name| name()))
+                  })
+                }),
+                true,
+              )
+            }
+          };
 
           entries.push(Entry {
             value: value.clone(),
             name: name.clone(),
-            caption: Rc::new(move || {
-              label.borrow_mut().take().unwrap_or_else(|| {
-                Label::from(
-                  fallback
-                    .as_ref()
-                    .map_or_else(|| Rc::from(""), |name| name()),
-                )
-              })
-            }),
+            caption,
+            once,
           });
         }
       }
@@ -217,6 +268,7 @@ impl<T: Choice, R: Realization> Run<T, R> {
             value,
             name,
             caption: Rc::new(move || label(&captioned)),
+            once: false,
           });
         }
       }
@@ -280,8 +332,9 @@ pub trait HasOptions<T: Choice, R: Realization> {
 /// a label, given one by one, as a list, or derived from the app's data. They are its content,
 /// so they end its chain. A debug build panics where two options carry one value.
 pub trait OptionsBase<T: Choice, R: Realization>: Wraps<Inner: HasOptions<T, R>> {
-  /// Appends an option carrying `value`, captioned by `label`: a text names it, a view names
-  /// it through [`Label::set_name`].
+  /// Appends an option carrying `value`, captioned by `label`: a text names it, a view by the
+  /// texts it shows once built, or through [`Label::set_name`], which type-ahead finds before
+  /// the option is built.
   fn add_option(mut self, value: T, label: impl Into<Label<R>>) -> Self {
     let segments = self.inner_mut().segments_mut();
 

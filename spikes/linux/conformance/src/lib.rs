@@ -632,7 +632,7 @@ fn painted_draws<D: Driver>(driver: &mut D) {
   assert_eq!(
     pixel(driver, bounds.x + bounds.width * 3. / 4., middle),
     0x0000ff,
-    "the right half is blue"
+    "the right half is blue, an image brush"
   );
 }
 

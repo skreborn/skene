@@ -109,7 +109,7 @@ fn the_portals_antialiasing_and_hinting_reach_the_text_drawn() {
 
 #[skene_gui::test]
 fn xsettings_win_over_the_portal_where_they_state_a_value() {
-  if std::env::var("SKENE_BACKEND").as_deref() != Ok("x11") {
+  if std::env::var("SKENE_WINDOW_SYSTEM").as_deref() != Ok("x11") {
     skene_gui_linux::testing::not_tested_here(
       "XSETTINGS are an X server's, and the window is on Wayland",
     );

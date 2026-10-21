@@ -3,8 +3,8 @@
 //! device is lost painting on, its motion included, on the CPU; glyphs that outgrow the atlas,
 //! together or alone, or are drawn as it starts over, painting on as on the CPU; a change
 //! drawing its part of the window alone, as the whole window drew it; and a popup painting on
-//! the window's device, and on the CPU once the device is lost under it. Built where the
-//! realization builds its GPU path (skene-gui-linux's `gpu` feature).
+//! the window's device, and on the CPU once the device is lost under it. Each tests nothing in
+//! a build without the realization's GPU path (skene-gui-linux's `gpu` feature).
 
 use skene_gui::{
   AccessRequest,
@@ -71,6 +71,20 @@ impl Difference {
   }
 }
 
+/// Whether this build paints on the GPU (skene-gui-linux's `gpu` feature); where it does not,
+/// a test of the GPU path tests nothing here and says so.
+fn built() -> bool {
+  let built = skene_gui_linux::testing::is_gpu_built();
+
+  if !built {
+    skene_gui_linux::testing::not_tested_here(
+      "this build has no GPU path (skene-gui-linux's gpu feature)",
+    );
+  }
+
+  built
+}
+
 /// Opens `page` on the GPU, any adapter admitted.
 fn on_the_gpu(page: &str) -> testing::Screen {
   Drawn::set_path_choice(Some(PathChoice::Any));
@@ -88,6 +102,10 @@ fn on_the_gpu(page: &str) -> testing::Screen {
 
 #[skene_gui::test]
 fn every_page_paints_alike_on_the_gpu_and_on_the_cpu() {
+  if !built() {
+    return;
+  }
+
   skene_conformance::pages::register();
 
   let mut unlike = Vec::new();
@@ -138,6 +156,10 @@ fn every_page_paints_alike_on_the_gpu_and_on_the_cpu() {
 
 #[skene_gui::test]
 fn a_window_whose_device_is_lost_paints_on_the_cpu_motion_included() {
+  if !built() {
+    return;
+  }
+
   skene_conformance::pages::register();
 
   let screen = on_the_gpu("motion");
@@ -199,6 +221,10 @@ fn growing() -> impl skene_gui::View {
 
 #[skene_gui::test]
 fn glyphs_that_outgrow_the_atlas_keep_painting_on_the_gpu() {
+  if !built() {
+    return;
+  }
+
   Drawn::set_path_choice(Some(PathChoice::Any));
 
   let screen = testing::render(growing);
@@ -279,6 +305,10 @@ fn paints_alike(screen: &testing::Screen, what: &str) {
 
 #[skene_gui::test]
 fn a_glyph_larger_than_an_atlas_paints_on_the_gpu_as_on_the_cpu() {
+  if !built() {
+    return;
+  }
+
   Drawn::set_path_choice(Some(PathChoice::Any));
 
   let letter = Signal::new("W");
@@ -292,6 +322,10 @@ fn a_glyph_larger_than_an_atlas_paints_on_the_gpu_as_on_the_cpu() {
 
 #[skene_gui::test]
 fn a_glyph_drawn_as_the_atlas_starts_over_paints_on_the_gpu_as_on_the_cpu() {
+  if !built() {
+    return;
+  }
+
   Drawn::set_path_choice(Some(PathChoice::Any));
 
   let letter = Signal::new("W");
@@ -312,6 +346,10 @@ fn a_glyph_drawn_as_the_atlas_starts_over_paints_on_the_gpu_as_on_the_cpu() {
 
 #[skene_gui::test]
 fn a_change_draws_its_part_alone_on_the_gpu_as_the_whole_window_drew_it() {
+  if !built() {
+    return;
+  }
+
   Drawn::set_path_choice(Some(PathChoice::Any));
 
   let screen = testing::render(skene_conformance_linux::plate);
@@ -347,6 +385,10 @@ fn sizes() -> impl View {
 
 #[skene_gui::test]
 fn a_popup_paints_on_the_gpu_and_on_the_cpu_once_the_device_is_lost() {
+  if !built() {
+    return;
+  }
+
   Drawn::set_path_choice(Some(PathChoice::Any));
 
   let screen = testing::render(sizes);

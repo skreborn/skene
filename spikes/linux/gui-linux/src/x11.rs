@@ -1,4 +1,4 @@
-//! The X11 backend over x11rb (libxcb underneath, so xkbcommon reads the keymap from the
+//! The window on X11, over x11rb (libxcb underneath, so xkbcommon reads the keymap from the
 //! server's XKB device):
 //!
 //! - a window the window manager decorates (or, where `SKENE_X11_CSD` is set, one asking for
@@ -216,7 +216,7 @@ struct X11 {
   gc: u32,
   /// The window's depth: the root's.
   depth: u8,
-  /// The atoms the backend speaks in.
+  /// The atoms the X11 side speaks in.
   atoms: Atoms,
   /// The keymap and its state, from XKB.
   keyboard: Keyboard,
@@ -258,8 +258,9 @@ struct X11 {
   window_size: (u32, u32),
   /// Where the window's top left is on the screen.
   window_origin: (i32, i32),
-  /// The open overlay's window.
-  popup: Option<PopupWindow>,
+  /// The open overlays' windows, outermost first: the shell's open overlays, by their places in
+  /// its stack.
+  popups: Vec<PopupWindow>,
   /// The input method spoken to, where one is running.
   ime: Option<Box<dyn Ime>>,
   /// The key sent to the input method and not answered yet.
@@ -428,7 +429,7 @@ impl X11 {
         .and_then(|scale| scale.parse().ok()),
       window_size: (0, 0),
       window_origin: (0, 0),
-      popup: None,
+      popups: Vec::new(),
       ime: None,
       ime_waiting: None,
       ime_queue: VecDeque::new(),
@@ -907,7 +908,7 @@ impl X11 {
         }
       }
 
-      self.present_popup(shell)?;
+      self.present_popups(shell)?;
       self.sync_adornments(shell)?;
 
       self.conn.flush()?;
@@ -920,7 +921,7 @@ impl X11 {
         continue;
       }
 
-      if (shell.wants_frame() && self.clock.is_due()) || shell.popup_wants_frame() {
+      if (shell.wants_frame() && self.clock.is_due()) || shell.popups_want_frames() {
         continue;
       }
 
@@ -1011,7 +1012,19 @@ impl X11 {
         }
         Request::ShowMenu(..) => {}
         Request::Cursor(cursor) => self.set_cursor(cursor)?,
-        Request::Popup(placement) => self.place_popup(shell, placement)?,
+        Request::Popup(level, placement) => self.place_popup(shell, level, placement)?,
+        Request::PlacePopup(level, placement) => {
+          // An override-redirect window is placed again by making it again, with those above it.
+          self.place_popup(shell, level, Some(placement))?;
+
+          for above in level + 1..shell.popup_count() {
+            let Some(placement) = shell.popup(above).map(|open| open.placement) else {
+              break;
+            };
+
+            self.place_popup(shell, above, Some(placement))?;
+          }
+        }
         Request::StartDrag => {
           // GTK's cursor for a drag no target answered yet.
           let cursor = self
@@ -1299,13 +1312,11 @@ impl X11 {
           *msc = event.msc;
         }
       }
-      Event::Expose(event)
-        if self
-          .popup
-          .as_ref()
-          .is_some_and(|popup| popup.window == event.window) =>
-      {
-        if let Some(list) = shell.popup_mut() {
+      Event::Expose(event) if self.popup_level(event.window).is_some() => {
+        if let Some(list) = self
+          .popup_level(event.window)
+          .and_then(|level| shell.popup_mut(level))
+        {
           list.invalidate();
         }
       }
@@ -1406,11 +1417,9 @@ impl X11 {
         self.key(shell, event, true, false);
       }
       Event::ButtonPress(event) | Event::ButtonRelease(event)
-        if self
-          .popup
-          .as_ref()
-          .is_some_and(|popup| popup.window == event.event) =>
+        if self.popup_level(event.event).is_some() =>
       {
+        let level = self.popup_level(event.event).unwrap_or_default();
         let down = event.response_type & 0x7f == x11rb::protocol::xproto::BUTTON_PRESS_EVENT;
         let scale = shell.scale as f32;
         let (x, y) = (
@@ -1422,7 +1431,7 @@ impl X11 {
           4 | 5 if down => {
             shell.popup_wheel(Wheel::Lines(0., if event.detail == 4 { -1. } else { 1. }))
           }
-          1..=3 => shell.popup_button(down, x, y),
+          1..=3 => shell.popup_button(level, down, x, y),
           _ => {}
         }
 
@@ -1430,15 +1439,12 @@ impl X11 {
 
         self.requests(shell, pending)?;
       }
-      Event::MotionNotify(event)
-        if self
-          .popup
-          .as_ref()
-          .is_some_and(|popup| popup.window == event.event) =>
-      {
+      Event::MotionNotify(event) if self.popup_level(event.event).is_some() => {
         let scale = shell.scale as f32;
+        let level = self.popup_level(event.event).unwrap_or_default();
 
         shell.popup_motion(
+          level,
           f32::from(event.event_x) / scale,
           f32::from(event.event_y) / scale,
         );
@@ -2163,23 +2169,53 @@ impl X11 {
     crate::access::set_window_bounds(rect, rect);
   }
 
-  /// Opens the open overlay's window at `placement` (window pixels), or closes it.
+  /// The place in the stack of the open overlay whose window is `window`, where one's is.
+  fn popup_level(&self, window: Window) -> Option<usize> {
+    self.popups.iter().position(|popup| popup.window == window)
+  }
+
+  /// Opens the window of the open overlay at `level` of the stack at `placement` (window
+  /// pixels), holding the pointer, or closes it; either way, the windows at that level and above
+  /// go first, the topmost first, and the pointer returns to the window below them.
   fn place_popup(
     &mut self,
     shell: &mut Shell,
+    level: usize,
     placement: Option<crate::overlay::Placement>,
   ) -> Result<(), Box<dyn Error>> {
-    if let Some(popup) = self.popup.take() {
-      // The GPU path presenting to the window goes before the window does.
-      shell.release_popup_path();
-      self.conn.ungrab_pointer(x11rb::CURRENT_TIME)?;
-      self.conn.destroy_window(popup.window)?;
+    if self.popups.len() > level {
+      while self.popups.len() > level {
+        let Some(popup) = self.popups.pop() else {
+          break;
+        };
+
+        // The GPU path presenting to the window goes before the window does.
+        shell.release_popup_path(self.popups.len());
+        self.conn.destroy_window(popup.window)?;
+      }
+
+      match self.popups.last() {
+        Some(below) => {
+          let window = below.window;
+          let grabbed = self.grab_popup_pointer(window)?;
+
+          trace::log(|| format!("[x11] the pointer back to popup 0x{window:x}: {grabbed:?}"));
+        }
+        None => {
+          self.conn.ungrab_pointer(x11rb::CURRENT_TIME)?;
+        }
+      }
+
       self.conn.flush()?;
     }
 
     let Some(placement) = placement else {
       return Ok(());
     };
+
+    if level > self.popups.len() {
+      return Ok(());
+    }
 
     self.locate_window(shell);
 
@@ -2194,9 +2230,9 @@ impl X11 {
     let screen = &self.conn.setup().roots[self.screen];
     let x = (self.window_origin.0 + device(anchor.x + ox))
       .clamp(0, (i32::from(screen.width_in_pixels) - width as i32).max(0));
-    let below = self.window_origin.1 + device(anchor.y + anchor.height + placement.gap + oy);
+    let below = self.window_origin.1 + device(anchor.y + anchor.height + placement.spacing + oy);
     let y = if below + height as i32 > i32::from(screen.height_in_pixels) {
-      (self.window_origin.1 + device(anchor.y - placement.gap + oy) - height as i32).max(0)
+      (self.window_origin.1 + device(anchor.y - placement.spacing + oy) - height as i32).max(0)
     } else {
       below
     };
@@ -2226,33 +2262,23 @@ impl X11 {
     self.conn.map_window(window)?;
     self.conn.flush()?;
 
-    let grabbed = self
-      .conn
-      .grab_pointer(
-        false,
-        window,
-        EventMask::BUTTON_PRESS | EventMask::BUTTON_RELEASE | EventMask::POINTER_MOTION,
-        GrabMode::ASYNC,
-        GrabMode::ASYNC,
-        x11rb::NONE,
-        x11rb::NONE,
-        x11rb::CURRENT_TIME,
-      )?
-      .reply()
-      .map(|reply| reply.status);
+    let grabbed = self.grab_popup_pointer(window)?;
 
-    trace::log(|| format!("[x11] popup 0x{window:x} at {x},{y} {width}x{height} grab {grabbed:?}"));
-    self.popup = Some(PopupWindow {
+    trace::log(|| {
+      format!("[x11] popup {level} 0x{window:x} at {x},{y} {width}x{height} grab {grabbed:?}")
+    });
+    self.popups.push(PopupWindow {
       window,
       size: (width, height),
     });
     shell.popup_placed(
+      level,
       (f64::from(x - self.window_origin.0) / scale) as f32 - ox,
       (f64::from(y - self.window_origin.1) / scale) as f32 - oy,
     );
 
     // The window is of the screen's own depth: nothing shows through its corners.
-    if let Some(open) = shell.popup_mut() {
+    if let Some(open) = shell.popup_mut(level) {
       open.set_opaque_surface(true);
     }
 
@@ -2262,49 +2288,68 @@ impl X11 {
       std::num::NonZeroU32::new(window),
       i32::try_from(self.screen),
     ) {
-      // SAFETY: the connection lives as long as the window, and the popup's window until the
-      // next placement or the overlay's close, which release the path first.
+      // SAFETY: the connection lives as long as the window, and the popup's window until its
+      // level is placed again or closed, which release the path first.
       unsafe {
-        shell.choose_popup_path(crate::gpu::Target::X11 {
-          connection,
-          screen,
-          window,
-        });
+        shell.choose_popup_path(
+          level,
+          crate::gpu::Target::X11 {
+            connection,
+            screen,
+            window,
+          },
+        );
       }
     }
 
     Ok(())
   }
 
-  /// Paints the open overlay where it changed.
-  fn present_popup(&mut self, shell: &mut Shell) -> Result<(), Box<dyn Error>> {
-    let Some(popup) = &self.popup else {
-      return Ok(());
-    };
-    let window = popup.window;
-    let Some(frame) = shell.popup_frame() else {
-      return Ok(());
-    };
+  /// Gives the pointer to the popup window `window`, as a menu holds it: every press and motion
+  /// is reported to it, in its coordinates, wherever the pointer is.
+  fn grab_popup_pointer(
+    &self,
+    window: Window,
+  ) -> Result<Result<x11rb::protocol::xproto::GrabStatus, x11rb::errors::ReplyError>, Box<dyn Error>>
+  {
+    Ok(
+      self
+        .conn
+        .grab_pointer(
+          false,
+          window,
+          EventMask::BUTTON_PRESS | EventMask::BUTTON_RELEASE | EventMask::POINTER_MOTION,
+          GrabMode::ASYNC,
+          GrabMode::ASYNC,
+          x11rb::NONE,
+          x11rb::NONE,
+          x11rb::CURRENT_TIME,
+        )?
+        .reply()
+        .map(|reply| reply.status),
+    )
+  }
 
-    if frame.presented {
+  /// Paints each open overlay where it changed.
+  fn present_popups(&mut self, shell: &mut Shell) -> Result<(), Box<dyn Error>> {
+    for level in 0..self.popups.len() {
+      let window = self.popups[level].window;
+      let Some(frame) = shell.popup_frame(level) else {
+        continue;
+      };
+
+      if !frame.presented {
+        Self::put_pixels(&self.conn, window, frame.pixmap, self.depth, false)?;
+      }
+
       if trace::popup_shots_on()
-        && let Some(list) = shell.popup_mut()
+        && let Some(list) = shell.popup_mut(level)
       {
         trace::shot_popup(list.pixmap());
       }
 
-      return Ok(());
+      let _ = self.popups[level].size;
     }
-
-    Self::put_pixels(&self.conn, window, frame.pixmap, self.depth, false)?;
-
-    if trace::popup_shots_on()
-      && let Some(list) = shell.popup_mut()
-    {
-      trace::shot_popup(list.pixmap());
-    }
-
-    let _ = popup.size;
 
     Ok(())
   }

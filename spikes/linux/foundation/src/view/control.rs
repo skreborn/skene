@@ -18,9 +18,9 @@ use crate::{
     tree::{self, Bubbling},
   },
   view::{
-    Access, AnyKind, AnyView, Child, ChildOf, Cx, DecorationBase, HasRecord, MotionBase, Node,
-    NodeHandle, Row, RunBase, RunWithEntries, Text, TextBase, View, Wraps, trait_properties,
-    wraps_itself,
+    Access, AnyKind, AnyView, Child, ChildOf, ContentName, Cx, DecorationBase, HasRecord,
+    MotionBase, Node, NodeHandle, Row, RunBase, RunWithEntries, Text, TextBase, View, Wraps,
+    trait_properties, wraps_itself,
   },
 };
 
@@ -31,6 +31,7 @@ pub struct Label<R: Realization> {
   view: Child<R>,
   name: Option<Rc<dyn Fn() -> Rc<str>>>,
   empty: bool,
+  text: Option<Rc<str>>,
 }
 
 impl<R: Realization> Label<R> {
@@ -41,7 +42,14 @@ impl<R: Realization> Label<R> {
       view: Child::of::<Row<R>>(view),
       name: None,
       empty: false,
+      text: None,
     }
+  }
+
+  /// The text it shows, where it is a text's caption: what builds it again.
+  #[must_use]
+  pub fn text(&self) -> Option<Rc<str>> {
+    self.text.clone()
   }
 
   /// Whether it is an empty text, which shows nothing: a control given one has no caption.
@@ -89,6 +97,7 @@ impl<R: Realization> Label<R> {
 
     Self {
       view: Child::of::<Row<R>>(wrap(AnyView(view))),
+      text: None,
       ..self
     }
   }
@@ -112,6 +121,7 @@ impl<R: Realization> From<Rc<str>> for Label<R> {
 
     Self {
       empty,
+      text: Some(Rc::clone(&text)),
       ..Self::new(Text::<R>::new(text.to_string())).set_name(text)
     }
   }
@@ -375,8 +385,8 @@ pub trait ControlMembersBase<R: Realization>: Wraps<Inner: HasMembers<R>> {
 /// `when(State::Checked, ..)` follows the control's check, and one styled
 /// `when(State::Hovered, ..)` highlights while the pointer is over the control or its
 /// caption. A box that acts inside it keeps its own hover, focus and press. A disabled
-/// control, or one inside a disabled control, is drawn at half opacity unless its style says
-/// otherwise, takes no focus and swallows its input.
+/// control is drawn at half opacity unless its style says otherwise, a control inside it at
+/// its opacity (half once, not twice), and neither takes focus or input.
 #[must_use]
 pub struct Control<B: Behavior, R: Realization> {
   /// What its interaction is.
@@ -535,9 +545,19 @@ impl<B: Behavior, R: Realization> View<R> for Control<B, R> {
     let id = cx.create(spec);
     let mut record = Record::new();
 
+    // Disabled, it is drawn at half opacity, once: inside a disabled control it dims with it.
     record.set(
       keys::OPACITY,
-      Value::from(1.).when(State::Disabled, Value::from(0.5)),
+      Value::from(1.).when(
+        State::Disabled,
+        Value::derived(move || {
+          if tree::enclosing_disabled::<R>(id) {
+            1.
+          } else {
+            0.5
+          }
+        }),
+      ),
     );
     record.fold(&members.record);
 
@@ -560,6 +580,15 @@ impl<B: Behavior, R: Realization> View<R> for Control<B, R> {
     let invalid = members.access.invalid.clone();
     let label_name = members.label.as_ref().and_then(|label| label.name.clone());
     let named_by_content = role.is_named_by_content();
+    let content_name =
+      (named_by_content && label_name.is_none() && members.label.is_some()).then(ContentName::new);
+    let label_name: Option<Rc<dyn Fn() -> Rc<str>>> = label_name.or_else(|| {
+      content_name.clone().map(|names| {
+        let read: Rc<dyn Fn() -> Rc<str>> = Rc::new(move || Rc::from(names.read::<R>()));
+
+        read
+      })
+    });
     let handle = {
       let (access_name, label_name) = (members.access.name.clone(), label_name.clone());
 
@@ -616,7 +645,10 @@ impl<B: Behavior, R: Realization> View<R> for Control<B, R> {
         } else if !access.labelled_by.is_empty() {
           facts.labelled_by = nodes(&access.labelled_by);
         } else if named_by_content {
-          facts.name = label_name.as_ref().map(|name| name());
+          facts.name = label_name
+            .as_ref()
+            .map(|name| name())
+            .filter(|name| !name.is_empty());
         } else if has_label {
           facts.labelled_by = caption.node().into_iter().collect();
         }
@@ -673,6 +705,10 @@ impl<B: Behavior, R: Realization> View<R> for Control<B, R> {
       Child::new(move |cx: &mut Cx<R>| {
         cx.set_part(Part::Label);
         cx.set_presentational(named_by_content);
+
+        if let Some(names) = content_name {
+          cx.set_content_name(names);
+        }
 
         if beside {
           cx.set_interaction(Interaction::Answering);

@@ -178,6 +178,12 @@ pub trait Realization: Sized + 'static {
   /// pastes; nothing where it is not offered.
   fn clipboard(_node: &Self::Node, _op: ClipboardOp) {}
 
+  /// The operations of the platform's standard menu of a text, in its order.
+  fn text_menu() -> &'static [ClipboardOp];
+
+  /// The platform's label for the standard entry carrying `op` out.
+  fn operation_label(op: ClipboardOp) -> &'static str;
+
   /// Runs the app: opens its window, reports the environment, then builds `root` inside it
   /// under an owner that lives as long as the window, and returns when the app quits.
   fn start(app_id: &str, root: Box<dyn FnOnce() -> NodeId>) -> ExitCode;

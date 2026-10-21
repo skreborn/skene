@@ -6,11 +6,15 @@ mod chrome;
 mod contents;
 mod desktop;
 mod dnd;
+mod focus;
 mod gestures;
 mod glyphs;
+mod gpu;
 mod handles;
+mod hits;
 mod lazy;
 mod menu;
+mod popups;
 mod presented;
 mod reader;
 mod roles;
@@ -79,4 +83,36 @@ fn changed(
       (bottom + 1 - top) as f64 * y,
     )
   })
+}
+
+/// Turns the window's loop until the probe `name` reads `wanted`, for up to two seconds; what
+/// it reads then.
+fn probe_until(screen: &skene_gui::testing::Screen, name: &str, wanted: &str) -> String {
+  use skene_gui::testing::Driver as _;
+
+  let start = std::time::Instant::now();
+
+  loop {
+    let read = screen.probe(name);
+
+    if read == wanted || start.elapsed() > std::time::Duration::from_secs(2) {
+      return read;
+    }
+
+    screen.driver().wait(std::time::Duration::from_millis(20));
+  }
+}
+
+/// The name of what a reader finds focused, the window itself read as `<none>`.
+fn focused_name(screen: &skene_gui::testing::Screen) -> String {
+  use skene_gui::testing::{Driver as _, Query};
+
+  let mut driver = screen.driver();
+  let found = driver.find_now(&Query::Focused);
+
+  found
+    .first()
+    .map(|found| driver.read(found))
+    .filter(|read| !read.name.starts_with("skene-test"))
+    .map_or_else(|| "<none>".to_owned(), |read| read.name.to_string())
 }

@@ -345,6 +345,7 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
             self.adapter
                 .emit_object_event(node.id(), ObjectEvent::StateChanged(State::Focused, false));
         }
+        // Skene: the window gaining focus is activated after its focused object is reported.
         if let Some(root_window) = activated {
             self.adapter.window_activated(&NodeWrapper(&root_window));
         }

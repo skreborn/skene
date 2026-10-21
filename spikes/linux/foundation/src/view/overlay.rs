@@ -3,7 +3,7 @@
 use std::{cell::Cell, rc::Rc};
 
 use crate::{
-  Effect, Owner, Signal,
+  Effect, Owner, Signal, Value,
   seam::{
     Realization,
     content::{OverlayPlacement, Side, contents},
@@ -12,7 +12,6 @@ use crate::{
     tree,
   },
   untrack,
-  value::IntoUnit,
   view::{AnyKind, Child, Cx, Node, NodeHandle, View, Wraps, wraps_itself},
 };
 
@@ -30,7 +29,7 @@ pub struct Overlay<R: Realization> {
   side: Rc<dyn Fn() -> Side>,
   widen: Rc<dyn Fn() -> bool>,
   point: Rc<dyn Fn() -> Option<(i32, i32)>>,
-  gap: Rc<dyn Fn() -> f32>,
+  spacing: Value<f32>,
   open: Rc<dyn Fn() -> bool>,
   dismiss: Option<Rc<dyn Fn()>>,
   child: Option<Child<R>>,
@@ -38,7 +37,7 @@ pub struct Overlay<R: Realization> {
 
 wraps_itself!(Overlay<R> where R: Realization);
 
-/// What an [`Overlay`] carries: its anchor, its side, its width, its point, its gap, whether
+/// What an [`Overlay`] carries: its anchor, its side, its width, its point, its spacing, whether
 /// it is open, its dismissal and its child.
 pub trait OverlayBase<R: Realization>: Wraps<Inner = Overlay<R>> {
   /// A closed popup below its anchor, at least as wide, against the node it stands in where
@@ -49,7 +48,7 @@ pub trait OverlayBase<R: Realization>: Wraps<Inner = Overlay<R>> {
       side: Rc::new(|| Side::Bottom),
       widen: Rc::new(|| true),
       point: Rc::new(|| None),
-      gap: Rc::new(|| 2.),
+      spacing: Value::from(2.),
       open: Rc::new(|| false),
       dismiss: None,
       child: None,
@@ -108,17 +107,15 @@ pub trait OverlayBase<R: Realization>: Wraps<Inner = Overlay<R>> {
   }
 
   /// The space between it and its anchor, in pixels; 2 where unset.
-  fn set_gap(self, gap: impl IntoUnit<f32>) -> Self {
-    let gap = gap.into_unit();
+  fn set_spacing(mut self, spacing: impl Into<Value<f32>>) -> Self {
+    self.inner_mut().spacing = spacing.into();
 
-    self.derive_gap(move || gap)
+    self
   }
 
   /// The space between it and its anchor, in pixels, kept current.
-  fn derive_gap(mut self, gap: impl Fn() -> f32 + 'static) -> Self {
-    self.inner_mut().gap = Rc::new(gap);
-
-    self
+  fn derive_spacing<V: Into<Value<f32>>>(self, spacing: impl Fn() -> V + 'static) -> Self {
+    self.set_spacing(Value::derived(spacing))
   }
 
   /// Whether it is open.
@@ -167,11 +164,12 @@ impl<R: Realization> View<R> for Overlay<R> {
       side,
       widen,
       point,
-      gap,
+      spacing,
       open,
       dismiss,
       child,
     } = self;
+    let spacing = spacing.resolving(&cx.scope().tokens(), 2.);
     let id = cx.create(NodeSpec::new(NodeKind::Overlay));
 
     cx.finish(id, Record::new(), None);
@@ -182,7 +180,7 @@ impl<R: Realization> View<R> for Overlay<R> {
       widen: widen(),
       at: point(),
       #[expect(clippy::cast_possible_truncation, reason = "whole pixels")]
-      gap: gap().round() as i32,
+      spacing: spacing().round() as i32,
     });
 
     if let Some(dismiss) = dismiss {

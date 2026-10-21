@@ -161,7 +161,7 @@ mod served {
 
     /// The interface's version.
     #[zbus(property)]
-    fn version(&self) -> u32 {
+    const fn version(&self) -> u32 {
       2
     }
   }

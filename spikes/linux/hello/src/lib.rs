@@ -14,7 +14,7 @@ pub const PAGE: TokenRef<Color> = TokenRef::new("hello-page");
 /// The text's color.
 pub const INK: TokenRef<Color> = TokenRef::new("hello-ink");
 /// The space inside the card.
-pub const GAP: TokenRef<f32> = TokenRef::new("hello-gap");
+pub const SPACING: TokenRef<f32> = TokenRef::new("hello-spacing");
 
 /// Hello's palette, light and dark in each definition.
 pub struct Palette {
@@ -22,7 +22,7 @@ pub struct Palette {
   card: Token<Color>,
   page: Token<Color>,
   ink: Token<Color>,
-  gap: Token<f32>,
+  spacing: Token<f32>,
 }
 
 impl Default for Palette {
@@ -32,7 +32,7 @@ impl Default for Palette {
       card: Token::new(CARD, Color::WHITE).when(Media::Dark, Color::rgb(0x1c1c1e)),
       page: Token::new(PAGE, Color::rgb(0xf2f2f7)).when(Media::Dark, Color::BLACK),
       ink: Token::new(INK, Color::rgb(0x1d1d1f)).when(Media::Dark, Color::rgb(0xf5f5f7)),
-      gap: Token::new(GAP, 12),
+      spacing: Token::new(SPACING, 12),
     }
   }
 }
@@ -44,7 +44,7 @@ impl TokenSet for Palette {
       .add(&self.card)
       .add(&self.page)
       .add(&self.ink)
-      .add(&self.gap);
+      .add(&self.spacing);
   }
 }
 
@@ -83,17 +83,17 @@ pub fn app() -> impl View {
   Theme::new(Palette::default()).set_child(
     Container::new()
       .set_background(PAGE)
-      .set_padding(16.when(Media::MinWidth(900), 48))
+      .set_padding(16.when(Media::min_width(900), 48))
       .set_alignment(Alignment::new(AxisAlignment::Stretch, AxisAlignment::Start))
       .set_child(
         Container::new()
-          .set_padding(24.when(Media::MinWidth(900), 48))
+          .set_padding(24.when(Media::min_width(900), 48))
           .set_background(CARD)
           .set_corner_radius(16)
           .set_shadow(Shadow::new(2, 12, Color::rgba(0x0000_0024)))
           .set_child(
             Column::new()
-              .set_spacing(GAP)
+              .set_spacing(SPACING)
               .add_child(
                 Row::new()
                   .set_spacing(12)

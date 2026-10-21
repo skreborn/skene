@@ -25,7 +25,7 @@
 //!   Theme::new(SimplePalette::default()).set_child(
 //!     SimpleCard::new().set_child(
 //!       Column::new()
-//!         .set_spacing(SimplePalette::GAP)
+//!         .set_spacing(SimplePalette::SPACING)
 //!         .add_child(SimpleToggle::new("Sync").bind_on(sync))
 //!         .add_child(SimpleDatePicker::new("Due").bind_date(due))
 //!         .add_child(SimpleButton::new("Save")),
@@ -46,15 +46,15 @@ use skene_gui::{
 };
 pub use skene_simple_core::{SimpleColors, SimpleDate};
 
-/// Simple's palette on the pixel platforms: its colors, a corner radius and a gap.
+/// Simple's palette on the pixel platforms: its colors, a corner radius and a spacing.
 #[derive(Clone, PartialEq, Debug)]
 pub struct SimplePalette {
   /// The colors, light and dark.
   pub colors: SimpleColors,
   /// [`SimplePalette::RADIUS`]: 12 pixels.
   pub radius: Token<f32>,
-  /// [`SimplePalette::GAP`]: 16 pixels.
-  pub gap: Token<f32>,
+  /// [`SimplePalette::SPACING`]: 16 pixels.
+  pub spacing: Token<f32>,
 }
 
 impl SimplePalette {
@@ -77,7 +77,7 @@ impl SimplePalette {
   /// A card's corner radius, in pixels.
   pub const RADIUS: TokenRef<f32> = TokenRef::new("simple-radius");
   /// The space inside a card and between its rows, in pixels.
-  pub const GAP: TokenRef<f32> = TokenRef::new("simple-gap");
+  pub const SPACING: TokenRef<f32> = TokenRef::new("simple-spacing");
 }
 
 impl Default for SimplePalette {
@@ -85,7 +85,7 @@ impl Default for SimplePalette {
     Self {
       colors: SimpleColors::default(),
       radius: Token::new(Self::RADIUS, 12),
-      gap: Token::new(Self::GAP, 16),
+      spacing: Token::new(Self::SPACING, 16),
     }
   }
 }
@@ -93,7 +93,7 @@ impl Default for SimplePalette {
 impl TokenSet for SimplePalette {
   fn define(&self, definitions: &mut Definitions) {
     self.colors.define(definitions);
-    definitions.add(&self.radius).add(&self.gap);
+    definitions.add(&self.radius).add(&self.spacing);
 
     // The platform's accent beneath a Simple theme is Simple's.
     for (system, simple) in [
@@ -107,7 +107,8 @@ impl TokenSet for SimplePalette {
   }
 }
 
-/// Simple's card: a box in the palette's card color, rounded, outlined and padded by its gap.
+/// Simple's card: a box in the palette's card color, rounded, outlined and padded by its
+/// spacing.
 pub struct SimpleCard;
 
 impl SimpleCard {
@@ -118,7 +119,7 @@ impl SimpleCard {
   )]
   pub fn new() -> Container {
     Container::new()
-      .set_padding(SimplePalette::GAP)
+      .set_padding(SimplePalette::SPACING)
       .set_background(SimplePalette::CARD)
       .set_corner_radius(SimplePalette::RADIUS)
       .set_border(Border::new(1))
@@ -127,8 +128,8 @@ impl SimpleCard {
   }
 }
 
-/// Simple's toggle: the built-in switch, its track in Simple's colors, its caption a gap from
-/// it.
+/// Simple's toggle: the built-in switch, its track in Simple's colors, its caption the
+/// palette's spacing from it.
 pub struct SimpleToggle;
 
 impl SimpleToggle {
@@ -139,7 +140,7 @@ impl SimpleToggle {
   )]
   pub fn new(label: impl Into<String>) -> Toggle {
     Toggle::new(label)
-      .set_spacing(SimplePalette::GAP)
+      .set_spacing(SimplePalette::SPACING)
       .set_track(
         Toggle::default_track()
           .set_background(

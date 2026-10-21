@@ -314,7 +314,7 @@ impl Peer {
     window: (f64, f64, f64, f64),
   ) -> Option<Self> {
     let script = concat!(env!("CARGO_MANIFEST_DIR"), "/../tools/dnd/peer.py");
-    let backend = if std::env::var("SKENE_BACKEND").as_deref() == Ok("x11") {
+    let backend = if std::env::var("SKENE_WINDOW_SYSTEM").as_deref() == Ok("x11") {
       "x11"
     } else {
       "wayland"
@@ -630,7 +630,7 @@ fn a_drag_shows_the_cursors_gtks_drag_shows_on_x11() {
   let test = "a_drag_shows_the_cursors_gtks_drag_shows_on_x11";
   let screen = testing::render(fields);
 
-  if std::env::var("SKENE_BACKEND").as_deref() != Ok("x11") {
+  if std::env::var("SKENE_WINDOW_SYSTEM").as_deref() != Ok("x11") {
     skene_gui_linux::testing::not_tested_here("a Wayland compositor shows a drag's cursor itself");
 
     return;

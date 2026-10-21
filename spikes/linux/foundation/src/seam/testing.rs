@@ -144,7 +144,7 @@ pub fn sample(content: Content) -> Option<PropValue> {
       side: Side::Bottom,
       widen: true,
       at: Some((12, 34)),
-      gap: 2,
+      spacing: 2,
     }),
     Content::Edit => PropValue::Edit(Edit {
       text: "he\u{301}llo".into(),

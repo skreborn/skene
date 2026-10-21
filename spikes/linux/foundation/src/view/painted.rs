@@ -2,7 +2,7 @@
 //! which the platform replays in the scene's order, recorded again whenever what its closure
 //! read changes or the box is drawn at another device size or scale.
 
-use std::{marker::PhantomData, rc::Rc};
+use std::{cell::RefCell, marker::PhantomData, rc::Rc};
 
 /// The geometry a [`Canvas`] draws with (kurbo).
 pub use crate::seam::picture::kurbo as shapes;
@@ -10,7 +10,7 @@ pub use crate::seam::picture::kurbo as shapes;
 pub use crate::seam::picture::peniko as paints;
 pub use crate::seam::picture::{Paint, PaintOp, Picture};
 use crate::{
-  Color, Dimension, Memo, Signal, StateSet,
+  Color, Dimension, Effect, Memo, Owner, Signal, StateSet,
   seam::{
     Realization,
     access::Role,
@@ -20,6 +20,7 @@ use crate::{
     record::Record,
     report, tree,
   },
+  untrack,
   view::{
     Access, AnyKind, Child, Cx, HasRecord, Node, NodeHandle, View, Wraps, trait_properties,
     wraps_itself,
@@ -60,7 +61,7 @@ impl Canvas<'_> {
 
   /// The transform from the box's layout units to its device pixels.
   #[must_use]
-  pub fn to_device(&self) -> Affine {
+  pub const fn to_device(&self) -> Affine {
     Affine::scale_non_uniform(self.scale.x, self.scale.y)
   }
 
@@ -175,8 +176,8 @@ pub trait PaintedBase<R: Realization>: Wraps<Inner = Painted<R>> {
   }
 
   /// What shows in the box's place while painting is not available ([`Painting::available`]):
-  /// the view `fallback` builds, built at most once; on a platform that paints from the start
-  /// it is never built.
+  /// the view `fallback` builds, built at most once and replaced by the box for good once
+  /// painting is available; on a platform that paints from the start it is never built.
   fn set_fallback_builder<V: View<R>>(mut self, fallback: impl FnOnce() -> V + 'static) -> Self {
     self.inner_mut().fallback = Some(Child::new(move |cx: &mut Cx<R>| fallback().build(cx)));
 
@@ -227,13 +228,50 @@ impl<R: Realization> PaintedBase<R> for Painted<R> {}
 impl<R: Realization> AnyKind for Painted<R> {}
 
 impl<R: Realization> View<R> for Painted<R> {
-  fn build(self, cx: &mut Cx<R>) -> Node {
-    if !Painting::<R>::available()
-      && let Some(fallback) = self.fallback
-    {
-      return fallback.build(cx);
+  fn build(mut self, cx: &mut Cx<R>) -> Node {
+    let Some(fallback) = self.fallback.take() else {
+      return self.build_box(cx);
+    };
+
+    if untrack(Painting::<R>::available) {
+      return self.build_box(cx);
     }
 
+    // The fallback while painting is not available, then the box for good, each built once.
+    let segment = cx.create(NodeSpec::new(NodeKind::Segment));
+    let inner = cx.inherit();
+    let (shown, boxed) = (Owner::new(), Owner::new());
+    let built = shown.run(|| fallback.build(&mut inner.inherit()));
+
+    tree::attach::<R>(segment, built.id(), 0);
+
+    let pending = RefCell::new(Some((self, shown, built)));
+
+    Effect::new(move || {
+      if !Painting::<R>::available() {
+        return;
+      }
+
+      untrack(|| {
+        let Some((painted, shown, built)) = pending.borrow_mut().take() else {
+          return;
+        };
+        let node = boxed.run(|| painted.build_box(&mut inner.inherit()));
+
+        tree::attach::<R>(segment, node.id(), 0);
+        tree::remove::<R>(built.id());
+        shown.dispose();
+      });
+    });
+
+    Node::new(segment)
+  }
+}
+
+impl<R: Realization> Painted<R> {
+  /// Builds the box itself: its node, recording its picture at each size and scale it is
+  /// drawn at.
+  fn build_box(self, cx: &mut Cx<R>) -> Node {
     let described = self.access.name.is_some();
     let mut spec = NodeSpec::new(NodeKind::Painted);
 
@@ -249,7 +287,7 @@ impl<R: Realization> View<R> for Painted<R> {
       size.get().map(|size| {
         (
           size.device,
-          size.scale.to_bits(),
+          (size.scale.0.to_bits(), size.scale.1.to_bits()),
           size.width.to_bits(),
           size.height.to_bits(),
         )
@@ -262,13 +300,11 @@ impl<R: Realization> View<R> for Painted<R> {
     tree::bind::<R, _>(id, contents::PICTURE, move || {
       let mut picture = Picture::new();
 
-      if let Some(((device_width, device_height), scale, width, height)) = drawn.get() {
-        let scale = f64::from_bits(scale);
-
+      if let Some(((device_width, device_height), (across, down), width, height)) = drawn.get() {
         paint(&mut Canvas {
           picture: &mut picture,
           size: Size::new(f64::from(device_width), f64::from(device_height)),
-          scale: Vec2::new(scale, scale),
+          scale: Vec2::new(f64::from_bits(across), f64::from_bits(down)),
           layout: Size::new(
             f64::from(f32::from_bits(width)),
             f64::from(f32::from_bits(height)),

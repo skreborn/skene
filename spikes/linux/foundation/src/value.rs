@@ -7,13 +7,15 @@
 //! other value, is its value's base alone.
 //!
 //! Every setter takes `impl Into<Value<T>>`, so a fixed value, a token and a conditional value
-//! are the same call: `set_padding(16)`, `set_padding(16.5)`, `set_padding(Palette::GAP)`,
-//! `set_padding(16.when(Media::MinWidth(900), 24))`. Integer lengths are `i32`, so `-4` is a
+//! are the same call: `set_padding(16)`, `set_padding(16.5)`, `set_padding(Palette::SPACING)`,
+//! `set_padding(16.when(Media::min_width(900), 24))`. Integer lengths are `i32`, so `-4` is a
 //! length too.
 
 use std::{fmt, rc::Rc};
 
-use crate::{Color, Condition, Environment, State, StateSet, TokenRef, TokenValue, Tokens};
+use crate::{
+  Color, Condition, Environment, State, StateSet, TokenRef, TokenValue, Tokens, lazy::ItemExtent,
+};
 
 /// A type a property holds as a fixed value.
 pub trait Property: Clone + 'static {
@@ -269,6 +271,15 @@ impl<T: Property> Value<T> {
     self.resolve_with(tokens, &|_| false)
   }
 
+  /// What reads this value as it is in force at each call, through `tokens`, every state taken
+  /// as not holding, subscribing the running effect to what it read: `fallback` where a token
+  /// it names is defined nowhere above. What a view laying its content out itself reads.
+  pub fn resolving(self, tokens: &Tokens, fallback: T) -> Rc<dyn Fn() -> T> {
+    let tokens = tokens.clone();
+
+    Rc::new(move || self.resolve(&tokens).unwrap_or_else(|| fallback.clone()))
+  }
+
   /// The value in force now, `state` answering for the node's states, subscribing the running
   /// effect to everything it read.
   #[must_use]
@@ -298,7 +309,7 @@ impl<T: Property> Value<T> {
   }
 }
 
-/// A condition riding any value: `16.when(Media::MinWidth(900), 24)`, the property's type
+/// A condition riding any value: `16.when(Media::min_width(900), 24)`, the property's type
 /// taken from the setter the value is passed to.
 pub trait When: Sized {
   /// This value, replaced by `other` while `condition` holds.
@@ -379,7 +390,7 @@ macro_rules! from_lengths {
   )*};
 }
 
-from_lengths!(Inset, Spacing, Corners, Dimension);
+from_lengths!(Inset, Spacing, Corners, Dimension, ItemExtent);
 
 /// Space inside a box's edges, in pixels, by side.
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
@@ -1174,8 +1185,8 @@ mod tests {
     let tokens = Tokens::root();
     let environment = Environment::current();
     let value = spacing(
-      8.when(Media::MinWidth(600), 12)
-        .when(Media::MinWidth(900), 16),
+      8.when(Media::min_width(600), 12)
+        .when(Media::min_width(900), 16),
     );
 
     environment.width.set(1000.);

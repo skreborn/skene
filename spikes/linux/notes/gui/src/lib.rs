@@ -18,11 +18,11 @@ pub fn app() -> impl View {
   Theme::new(Palette::default()).set_child(
     Container::new()
       .set_background(Palette::BACKGROUND)
-      .set_padding(16.when(Media::MinWidth(700), 32))
+      .set_padding(16.when(Media::min_width(700), 32))
       .set_color(Palette::INK)
       .set_child(
         Column::new()
-          .set_spacing(12.when(Media::MinWidth(700), 20))
+          .set_spacing(12.when(Media::min_width(700), 20))
           .add_child(header())
           .add_child(composer(notes))
           .add_child(list(notes))

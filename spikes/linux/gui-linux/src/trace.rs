@@ -3,7 +3,7 @@
 //!
 //! - `SKENE_TRACE=1`: a line on standard error per frame (`[frame] ...` with its costs), per
 //!   state reported (`[state]`), focus move (`[focus]`), activation, change, key and scroll,
-//!   and per window event the backends log;
+//!   and per window event the window systems' sides log;
 //! - `SKENE_SHOT=<path>`: every presented frame written there as a PNG (through a temporary
 //!   file and a rename, so a reader never sees half a file), and `SKENE_SHOT_POPUP=<path>`
 //!   every frame of an open overlay (a picker's list);

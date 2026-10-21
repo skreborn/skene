@@ -12,7 +12,7 @@ use skene_gui::{
   testing::{self, Driver as _, Role, Screen, publish},
 };
 use skene_gui_linux::{
-  Backend,
+  WindowSystem,
   testing::{
     Session,
     input_method::{InputMethod, Purpose, Told},
@@ -242,7 +242,7 @@ fn tells_only_marks(input_method: &InputMethod) {
 
 #[skene_gui::test]
 fn a_secure_field_tells_fcitx_only_its_marks() {
-  if Session::current().map(Session::backend) != Some(Backend::X11) {
+  if Session::current().map(Session::window_system) != Some(WindowSystem::X11) {
     skene_gui_linux::testing::not_tested_here(
       "on Wayland the input method is the compositor's, over text-input-v3",
     );
@@ -261,7 +261,7 @@ fn a_secure_field_tells_fcitx_only_its_marks() {
 
 #[skene_gui::test]
 fn a_secure_field_tells_ibus_only_its_marks() {
-  if Session::current().map(Session::backend) != Some(Backend::X11) {
+  if Session::current().map(Session::window_system) != Some(WindowSystem::X11) {
     skene_gui_linux::testing::not_tested_here(
       "on Wayland the input method is the compositor's, over text-input-v3",
     );
@@ -562,7 +562,7 @@ fn revealed_and_hidden(input_method: &InputMethod) {
 
 #[skene_gui::test]
 fn a_secure_field_revealed_and_hidden_tells_fcitx_at_once() {
-  if Session::current().map(Session::backend) != Some(Backend::X11) {
+  if Session::current().map(Session::window_system) != Some(WindowSystem::X11) {
     skene_gui_linux::testing::not_tested_here(
       "on Wayland the input method is the compositor's, over text-input-v3",
     );
@@ -577,7 +577,7 @@ fn a_secure_field_revealed_and_hidden_tells_fcitx_at_once() {
 
 #[skene_gui::test]
 fn a_secure_field_revealed_and_hidden_tells_ibus_at_once() {
-  if Session::current().map(Session::backend) != Some(Backend::X11) {
+  if Session::current().map(Session::window_system) != Some(WindowSystem::X11) {
     skene_gui_linux::testing::not_tested_here(
       "on Wayland the input method is the compositor's, over text-input-v3",
     );

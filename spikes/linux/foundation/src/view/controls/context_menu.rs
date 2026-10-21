@@ -31,14 +31,14 @@ use crate::{
 /// let refresh = MenuEntry::new("Refresh").handle_activate(|| {});
 /// let copy = MenuEntry::copy();
 ///
-/// assert_eq!(&*refresh.label(), "Refresh");
-/// assert_eq!(&*copy.label(), "Copy");
+/// assert_eq!(refresh.label().as_deref(), Some("Refresh"));
+/// assert_eq!(copy.label(), None, "labelled as the platform labels it, by its menu");
 /// ```
 #[must_use]
 #[derive(Clone)]
 pub struct MenuEntry {
-  /// Its label, as it reads now.
-  label: Rc<dyn Fn() -> Rc<str>>,
+  /// Its label, as it reads now; the platform's for a standard entry given none.
+  label: Option<Rc<dyn Fn() -> Rc<str>>>,
   /// The standard operation it carries out on the menu's target, where it is a standard one.
   standard: Option<ClipboardOp>,
   /// What choosing it runs, after its standard operation.
@@ -56,7 +56,7 @@ impl MenuEntry {
     let label = label.into();
 
     Self {
-      label: Rc::new(move || Rc::clone(&label)),
+      label: Some(Rc::new(move || Rc::clone(&label))),
       standard: None,
       activate: None,
       disabled: None,
@@ -66,42 +66,40 @@ impl MenuEntry {
 
   /// The standard entry carrying `op` out on the text the menu is opened on, offered as the
   /// platform offers it there ([`crate::seam::Realization::clipboard_availability`]), labelled
-  /// as GTK labels it.
-  fn standard(op: ClipboardOp) -> Self {
+  /// as the platform labels it ([`crate::seam::Realization::operation_label`]) unless given a
+  /// label.
+  pub const fn standard(op: ClipboardOp) -> Self {
     Self {
+      label: None,
       standard: Some(op),
-      ..Self::new(match op {
-        ClipboardOp::Cut => "Cut",
-        ClipboardOp::Copy => "Copy",
-        ClipboardOp::Paste => "Paste",
-        ClipboardOp::Delete => "Delete",
-        ClipboardOp::SelectAll => "Select All",
-      })
+      activate: None,
+      disabled: None,
+      shortcut: None,
     }
   }
 
   /// The standard entry that cuts the selection to the clipboard.
-  pub fn cut() -> Self {
+  pub const fn cut() -> Self {
     Self::standard(ClipboardOp::Cut)
   }
 
   /// The standard entry that copies the selection to the clipboard.
-  pub fn copy() -> Self {
+  pub const fn copy() -> Self {
     Self::standard(ClipboardOp::Copy)
   }
 
   /// The standard entry that pastes the clipboard over the selection.
-  pub fn paste() -> Self {
+  pub const fn paste() -> Self {
     Self::standard(ClipboardOp::Paste)
   }
 
   /// The standard entry that deletes the selection.
-  pub fn delete() -> Self {
+  pub const fn delete() -> Self {
     Self::standard(ClipboardOp::Delete)
   }
 
   /// The standard entry that selects the whole text.
-  pub fn select_all() -> Self {
+  pub const fn select_all() -> Self {
     Self::standard(ClipboardOp::SelectAll)
   }
 
@@ -121,7 +119,7 @@ impl MenuEntry {
 
   /// Its label, kept current.
   pub fn derive_label<S: Into<Rc<str>>>(mut self, label: impl Fn() -> S + 'static) -> Self {
-    self.label = Rc::new(move || label().into());
+    self.label = Some(Rc::new(move || label().into()));
 
     self
   }
@@ -146,15 +144,26 @@ impl MenuEntry {
     self
   }
 
-  /// Its label as it reads now, tracking what it reads.
+  /// Its label as it reads now, tracking what it reads: `None` for a standard entry given
+  /// none, which its menu labels as the platform does.
   #[must_use]
-  pub fn label(&self) -> Rc<str> {
-    (self.label)()
+  pub fn label(&self) -> Option<Rc<str>> {
+    self.label.as_ref().map(|label| label())
+  }
+
+  /// Its label on `R`'s platform as it reads now: its own, else the platform's for its
+  /// operation.
+  fn label_on<R: Realization>(&self) -> Rc<dyn Fn() -> Rc<str>> {
+    match (&self.label, self.standard) {
+      (Some(label), _) => Rc::clone(label),
+      (None, Some(op)) => Rc::new(move || Rc::from(R::operation_label(op))),
+      (None, None) => Rc::new(|| Rc::from("")),
+    }
   }
 
   /// Its label as a caption that follows it: a line of text naming its item.
   pub fn caption<R: Realization>(&self) -> Label<R> {
-    let (text, name) = (Rc::clone(&self.label), Rc::clone(&self.label));
+    let (text, name) = (self.label_on::<R>(), self.label_on::<R>());
 
     Label::new(Text::<R>::derive(move || text().to_string()).set_max_lines(1))
       .derive_name(move || name())
@@ -216,7 +225,8 @@ impl<R: Realization> MenuItem<R> {
 
 /// What a [`MenuItem`] carries: every control's members.
 pub trait MenuItemBase<R: Realization>: Wraps<Inner = MenuItem<R>> {
-  /// An item labelled `label`: a text names it, a view through [`Label::set_name`].
+  /// An item labelled `label`: a text names it, a view by the texts it shows or through
+  /// [`Label::set_name`].
   fn new(label: impl Into<Label<R>>) -> Self {
     let control = crate::view::Control::new(Menu::new().member(0))
       .set_min_height(30)
@@ -321,16 +331,11 @@ pub trait ContextMenuBase<R: Realization>: Wraps<Inner = ContextMenu<R>> {
     })
   }
 
-  /// The standard menu of a text: cut, copy, paste, delete and select all, the editing
-  /// entries of GTK's entry menu, which adds an emoji chooser.
+  /// The standard menu of a text, as the platform offers it: its operations in its order
+  /// ([`crate::seam::Realization::text_menu`]; cut, copy, paste, delete and select all on
+  /// Linux, GTK's entry menu's editing entries), each labelled as the platform labels it.
   fn standard() -> Self {
-    Self::new().set_entries([
-      MenuEntry::cut(),
-      MenuEntry::copy(),
-      MenuEntry::paste(),
-      MenuEntry::delete(),
-      MenuEntry::select_all(),
-    ])
+    Self::new().set_entries(R::text_menu().iter().map(|op| MenuEntry::standard(*op)))
   }
 
   /// Whether it has no entry, and so opens nothing.

@@ -85,12 +85,12 @@ during=$(( $(connections) - baseline ))
 echo "during the tests: $(wc -l < "$polls") polls; with an X window on :$xnum: $(awk '$1 > 0' "$polls" | wc -l); with a sway view: $(awk '$2 != "0"' "$polls" | wc -l); connections to the user's bus: $during"
 
 # Positive controls: an app is run on the user's session.
-SKENE_TITLE=positive-x11 SKENE_BACKEND=x11 timeout 8 cargo run -q -p hello > "$out/positive-x11.log" 2>&1 &
+SKENE_TITLE=positive-x11 SKENE_WINDOW_SYSTEM=x11 timeout 8 cargo run -q -p hello > "$out/positive-x11.log" 2>&1 &
 app=$!
 sleep 6
 x11=$(xwininfo -display ":$xnum" -root -tree 2>/dev/null | grep -c 'positive-x11' || true)
 wait $app
-SKENE_TITLE=positive-wayland SKENE_BACKEND=wayland timeout 8 cargo run -q -p hello > "$out/positive-wayland.log" 2>&1 &
+SKENE_TITLE=positive-wayland SKENE_WINDOW_SYSTEM=wayland timeout 8 cargo run -q -p hello > "$out/positive-wayland.log" 2>&1 &
 app=$!
 sleep 6
 wayland=$(views)

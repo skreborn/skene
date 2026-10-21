@@ -4,7 +4,7 @@
 //!
 //! An overlay node takes no room in its parent's layout and is drawn on no surface but its
 //! own. Its frame is in window coordinates, so its content's window rectangles (what a reader
-//! and an input method are told) are where the popup shows; the backend says where it placed
+//! and an input method are told) are where the popup shows; the window system says where it placed
 //! the popup once the compositor or the screen's edge has had its say.
 
 use std::{
@@ -34,7 +34,7 @@ pub struct Placement {
   /// Its width and height.
   pub size: (u32, u32),
   /// The space between it and its anchor.
-  pub gap: f32,
+  pub spacing: f32,
 }
 
 thread_local! {
@@ -51,15 +51,39 @@ pub fn register(node: &Node) {
   });
 }
 
-/// The first overlay shown now, where one is.
-pub fn shown() -> Option<Node> {
-  OVERLAYS.with(|overlays| {
+/// The overlays shown now, outermost first, each after the first inside the one before it:
+/// the first shown overlay inside no other, then the first shown inside it, and so on, as
+/// nested popovers stack.
+pub fn shown() -> Vec<Node> {
+  let shown: Vec<Node> = OVERLAYS.with(|overlays| {
     overlays
       .borrow()
       .iter()
       .filter_map(Weak::upgrade)
-      .find(|overlay| overlay.is_alive() && overlay.is_shown())
-  })
+      .filter(|overlay| overlay.is_alive() && overlay.is_shown())
+      .collect()
+  });
+  // The overlay a node is inside, past the node itself.
+  let holder = |node: &Node| {
+    node
+      .ancestors()
+      .into_iter()
+      .find(|ancestor| ancestor.is_overlay())
+  };
+  let mut stack: Vec<Node> = Vec::new();
+
+  while let Some(next) = shown
+    .iter()
+    .find(|overlay| match (holder(overlay), stack.last()) {
+      (None, None) => true,
+      (Some(holder), Some(top)) => Rc::ptr_eq(&holder, top),
+      _ => false,
+    })
+  {
+    stack.push(Rc::clone(next));
+  }
+
+  stack
 }
 
 /// The open overlay: its node, where it sits, its renderer and whether it is to be painted
@@ -136,14 +160,14 @@ impl Open {
       (placement.side, placement.widen)
     });
     #[expect(clippy::cast_precision_loss, reason = "whole pixels")]
-    let gap = placement.map_or(2., |placement| placement.gap as f32);
+    let spacing = placement.map_or(2., |placement| placement.spacing as f32);
     let point = placement.and_then(|placement| placement.at);
     let anchor = match point {
       // A pixel just above the point, so what opens below it starts at the point.
       #[expect(clippy::cast_precision_loss, reason = "window pixels")]
       Some((x, y)) => Rect {
         x: x as f32,
-        y: y as f32 - gap - 1.,
+        y: y as f32 - spacing - 1.,
         width: 1.,
         height: 1.,
       },
@@ -170,10 +194,10 @@ impl Open {
       .ceil()
       .max(1.);
     let (x, y) = match side {
-      Side::Bottom => (anchor.x, anchor.y + anchor.height + gap),
-      Side::Top => (anchor.x, anchor.y - height - gap),
-      Side::Leading => (anchor.x - width - gap, anchor.y),
-      Side::Trailing => (anchor.x + anchor.width + gap, anchor.y),
+      Side::Bottom => (anchor.x, anchor.y + anchor.height + spacing),
+      Side::Top => (anchor.x, anchor.y - height - spacing),
+      Side::Leading => (anchor.x - width - spacing, anchor.y),
+      Side::Trailing => (anchor.x + anchor.width + spacing, anchor.y),
     };
 
     node.layout_overlay(Rect {
@@ -192,7 +216,7 @@ impl Open {
     Placement {
       anchor,
       size: (width as u32, height as u32),
-      gap,
+      spacing,
     }
   }
 
@@ -203,7 +227,7 @@ impl Open {
     let moved = placement.size != self.placement.size;
 
     if !moved {
-      // Where the backend placed it stays.
+      // Where the window system placed it stays.
       self.node.frame.set(Rect {
         x: frame.x,
         y: frame.y,
@@ -217,7 +241,7 @@ impl Open {
     moved
   }
 
-  /// The backend placed the popup with its top left at `x`, `y` (window pixels).
+  /// The window system placed the popup with its top left at `x`, `y` (window pixels).
   pub fn placed(&mut self, x: f32, y: f32) {
     let frame = self.node.frame.get();
 
@@ -229,7 +253,7 @@ impl Open {
     self.dirty = true;
   }
 
-  /// Where it is: its top left as the backend placed it and its size (window pixels).
+  /// Where it is: its top left as the window system placed it and its size (window pixels).
   pub fn rect(&self) -> Rect {
     self.node.frame.get()
   }
@@ -287,6 +311,13 @@ impl Open {
   }
 
   /// Paints on the CPU from now on: the surface the GPU path presented to is going.
+  #[cfg_attr(
+    not(feature = "gpu"),
+    expect(
+      clippy::missing_const_for_fn,
+      reason = "the GPU path's build calls what is not const"
+    )
+  )]
   pub fn drop_gpu(&mut self) {
     #[cfg(feature = "gpu")]
     self.renderer.drop_gpu();

@@ -313,10 +313,11 @@ mod masks {
       laid: &ParleyLaid,
       origin: (f32, f32),
       scale: f32,
+      band: (f32, f32),
       mut fallback: Option<&mut Fallback>,
       mut each: impl FnMut(PlacedGlyph),
     ) {
-      for run in laid.glyph_runs() {
+      for run in laid.glyph_runs_in(band) {
         let settings = self.settings_for(&run.font, run.size * scale, fallback.as_deref_mut());
 
         for glyph in &run.glyphs {
@@ -369,75 +370,82 @@ mod masks {
       let fade = options.opacity.clamp(0., 1.);
       let data = pixmap.data_as_u8_slice_mut();
 
-      self.place(laid, origin, options.scale, fallback, |placed| {
-        let PlacedGlyph {
-          mask,
-          left,
-          top,
-          color: paint,
-        } = placed;
+      self.place(
+        laid,
+        origin,
+        options.scale,
+        (f32::NEG_INFINITY, f32::INFINITY),
+        fallback,
+        |placed| {
+          let PlacedGlyph {
+            mask,
+            left,
+            top,
+            color: paint,
+          } = placed;
 
-        for row in 0..i64::from(mask.height) {
-          let py = top + row;
+          for row in 0..i64::from(mask.height) {
+            let py = top + row;
 
-          if py < top_edge || py >= bottom_edge {
-            continue;
-          }
-
-          for column in 0..i64::from(mask.width) {
-            let px = left + column;
-
-            if px < left_edge || px >= right_edge {
+            if py < top_edge || py >= bottom_edge {
               continue;
             }
 
-            let source = (row * i64::from(mask.width) + column) as usize;
-            let target = ((py * width + px) * 4) as usize;
-            #[expect(
-              clippy::cast_possible_truncation,
-              clippy::cast_sign_loss,
-              reason = "0 to 255"
-            )]
-            let faded = (f32::from(paint.alpha) * fade).round() as u32;
-            let pixel = match &mask.pixels {
-              MaskPixels::Alpha(alpha) => {
-                let coverage = u32::from(alpha[source]) * faded / 255;
+            for column in 0..i64::from(mask.width) {
+              let px = left + column;
 
-                [
-                  u32::from(paint.red) * coverage / 255,
-                  u32::from(paint.green) * coverage / 255,
-                  u32::from(paint.blue) * coverage / 255,
-                  coverage,
-                ]
+              if px < left_edge || px >= right_edge {
+                continue;
               }
-              MaskPixels::Color(rgba) => {
-                let at = source * 4;
-                #[expect(
-                  clippy::cast_possible_truncation,
-                  clippy::cast_sign_loss,
-                  reason = "0 to 255"
-                )]
-                let fade = |value: u8| (f32::from(value) * fade).round() as u32;
 
-                [
-                  fade(rgba[at]),
-                  fade(rgba[at + 1]),
-                  fade(rgba[at + 2]),
-                  fade(rgba[at + 3]),
-                ]
+              let source = (row * i64::from(mask.width) + column) as usize;
+              let target = ((py * width + px) * 4) as usize;
+              #[expect(
+                clippy::cast_possible_truncation,
+                clippy::cast_sign_loss,
+                reason = "0 to 255"
+              )]
+              let faded = (f32::from(paint.alpha) * fade).round() as u32;
+              let pixel = match &mask.pixels {
+                MaskPixels::Alpha(alpha) => {
+                  let coverage = u32::from(alpha[source]) * faded / 255;
+
+                  [
+                    u32::from(paint.red) * coverage / 255,
+                    u32::from(paint.green) * coverage / 255,
+                    u32::from(paint.blue) * coverage / 255,
+                    coverage,
+                  ]
+                }
+                MaskPixels::Color(rgba) => {
+                  let at = source * 4;
+                  #[expect(
+                    clippy::cast_possible_truncation,
+                    clippy::cast_sign_loss,
+                    reason = "0 to 255"
+                  )]
+                  let fade = |value: u8| (f32::from(value) * fade).round() as u32;
+
+                  [
+                    fade(rgba[at]),
+                    fade(rgba[at + 1]),
+                    fade(rgba[at + 2]),
+                    fade(rgba[at + 3]),
+                  ]
+                }
+              };
+              let inverse = 255 - pixel[3];
+
+              for channel in 0..4 {
+                let under = u32::from(data[target + channel]);
+
+                data[target + channel] =
+                  u8::try_from((pixel[channel] + under * inverse / 255).min(255)).unwrap_or(255);
               }
-            };
-            let inverse = 255 - pixel[3];
-
-            for channel in 0..4 {
-              let under = u32::from(data[target + channel]);
-
-              data[target + channel] =
-                u8::try_from((pixel[channel] + under * inverse / 255).min(255)).unwrap_or(255);
             }
           }
-        }
-      });
+        },
+      );
     }
   }
 }

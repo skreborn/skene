@@ -33,7 +33,7 @@ export XDG_CACHE_HOME=$XDG_RUNTIME_DIR/home/.cache XDG_DATA_HOME=$XDG_RUNTIME_DI
 export GSETTINGS_BACKEND=keyfile LANG=C.UTF-8 LC_ALL=C.UTF-8 NO_AT_BRIDGE=0 GTK_A11Y=atspi
 mkdir -p "$XDG_CONFIG_HOME" "$XDG_CACHE_HOME" "$XDG_DATA_HOME"
 export SKENE_PROBE=$OUT/probe SKENE_SHOT=$OUT/frame.png SKENE_SHOT_POPUP=$OUT/popup.png SKENE_TRACE=1
-unset DISPLAY XAUTHORITY WAYLAND_DISPLAY SKENE_BACKEND GTK_IM_MODULE QT_IM_MODULE XMODIFIERS IBUS_ADDRESS
+unset DISPLAY XAUTHORITY WAYLAND_DISPLAY SKENE_WINDOW_SYSTEM GTK_IM_MODULE QT_IM_MODULE XMODIFIERS IBUS_ADDRESS
 PIDS=()
 cleanup() {
   signal_children TERM "${PIDS[@]}"
@@ -107,7 +107,7 @@ case $KIND in
     PIDS+=($!)
     export DISPLAY=:$N
     for _ in $(seq 100); do xdpyinfo >/dev/null 2>&1 && break; sleep 0.02; done
-    export SKENE_BACKEND=x11 DRIVE=x11
+    export SKENE_WINDOW_SYSTEM=x11 DRIVE=x11
     ;;
   sway)
     cat >"$XDG_RUNTIME_DIR/config" <<CONF
@@ -120,7 +120,7 @@ CONF
     for _ in $(seq 200); do ls "$XDG_RUNTIME_DIR"/wayland-* >/dev/null 2>&1 && break; sleep 0.02; done
     export WAYLAND_DISPLAY=$(basename "$(ls "$XDG_RUNTIME_DIR"/wayland-* | grep -v lock | head -1)")
     export SWAYSOCK=$(ls "$XDG_RUNTIME_DIR"/sway-ipc.* 2>/dev/null | head -1)
-    export SKENE_BACKEND=wayland DRIVE=sway
+    export SKENE_WINDOW_SYSTEM=wayland DRIVE=sway
     ;;
   gnome)
     pipewire >"$OUT/pipewire.log" 2>&1 &
@@ -169,7 +169,7 @@ CONF
     for _ in $(seq 300); do grep -q "GNOME Shell started" "$OUT/gnome-shell.log" && break; sleep 0.1; done
     grep -q "GNOME Shell started" "$OUT/gnome-shell.log" || echo "NOTE gnome-shell did not finish starting"
     xwayland_display "$OUT/gnome-shell.log"
-    export SKENE_BACKEND=wayland DRIVE=mutter-dbus
+    export SKENE_WINDOW_SYSTEM=wayland DRIVE=mutter-dbus
     ;;
   mutter)
     pipewire >"$OUT/pipewire.log" 2>&1 &
@@ -183,7 +183,7 @@ CONF
     export WAYLAND_DISPLAY=$SOCKET
     wait_name org.gnome.Mutter.RemoteDesktop
     xwayland_display "$OUT/mutter.log"
-    export SKENE_BACKEND=wayland DRIVE=mutter-dbus
+    export SKENE_WINDOW_SYSTEM=wayland DRIVE=mutter-dbus
     ;;
 esac
 echo "TIMING $KIND display ready $(ms) ms"

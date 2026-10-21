@@ -181,7 +181,7 @@ impl Engine {
 
   /// How many lines.
   #[must_use]
-  pub fn line_count(&self) -> usize {
+  pub const fn line_count(&self) -> usize {
     match &self.starts {
       Some(starts) => starts.len(),
       None => self.keys.len(),
@@ -316,7 +316,6 @@ impl Engine {
 
   /// The extent it takes for each item.
   #[inline(always)]
-  #[must_use]
   pub const fn extent(&self) -> ItemExtent {
     self.extent
   }

@@ -180,7 +180,7 @@ fn a_switch_shows_its_truth_and_refuses_a_change_it_does_not_take() {
 
 fn padded() -> impl View {
   Container::new()
-    .set_padding(8.when(Media::MinWidth(900), 32))
+    .set_padding(8.when(Media::min_width(900), 32))
     .set_child(Container::new().set_height(10))
 }
 

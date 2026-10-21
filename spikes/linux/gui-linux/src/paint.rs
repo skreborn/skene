@@ -115,6 +115,78 @@ pub enum Brush {
   Solid(PColor),
   /// A gradient, laid over the shape by the transform from its own space to the device's.
   Gradient(Gradient, Affine),
+  /// An image, laid over the shape by the transform from its own space to the device's.
+  Image(peniko::ImageBrush, Affine),
+}
+
+/// What tells an image brush's pixels apart: its blob, its size and its format.
+pub type ImageKey = (u64, u32, u32, u8);
+
+/// The images image brushes draw from, each made once from its pixels and kept while it is
+/// drawn.
+#[derive(Default)]
+pub struct BrushImages {
+  images: HashMap<ImageKey, (ImageSource, u64)>,
+  frame: u64,
+}
+
+impl BrushImages {
+  /// The images the cache keeps; past them it keeps the current frame's alone.
+  const KEEP: usize = 64;
+
+  /// Starts a frame.
+  pub const fn next_frame(&mut self) {
+    self.frame += 1;
+  }
+
+  /// The key of the image brush `brush`'s pixels.
+  #[must_use]
+  pub fn key(brush: &peniko::ImageBrush) -> ImageKey {
+    let image = &brush.image;
+    let format = match image.format {
+      peniko::ImageFormat::Rgba8 => 0,
+      peniko::ImageFormat::Bgra8 => 1,
+      _ => 2,
+    };
+
+    (image.data.id(), image.width, image.height, format)
+  }
+
+  /// The image `brush` draws, made where it is new: `None` where its format is none vello
+  /// reads, or it is larger than vello draws.
+  pub fn image(&mut self, brush: &peniko::ImageBrush) -> Option<ImageSource> {
+    let key = Self::key(brush);
+
+    if let Some((image, used)) = self.images.get_mut(&key) {
+      *used = self.frame;
+
+      return Some(image.clone());
+    }
+
+    let readable = matches!(
+      brush.image.format,
+      peniko::ImageFormat::Rgba8 | peniko::ImageFormat::Bgra8
+    ) && brush.image.width <= u32::from(u16::MAX)
+      && brush.image.height <= u32::from(u16::MAX)
+      && brush.image.data.data().len()
+        >= brush.image.width as usize * brush.image.height as usize * 4;
+
+    if !readable {
+      return None;
+    }
+
+    if self.images.len() >= Self::KEEP {
+      let frame = self.frame;
+
+      self.images.retain(|_, (_, used)| *used == frame);
+    }
+
+    let image = ImageSource::from_peniko_image_data(&brush.image);
+
+    self.images.insert(key, (image.clone(), self.frame));
+
+    Some(image)
+  }
 }
 
 /// What the painter draws through, in device pixels: a renderer's scene, the shapes kept in
@@ -498,7 +570,7 @@ fn mask_pixmap(mask: &GlyphMask) -> Pixmap {
   )
 }
 
-/// vello_cpu's context as a [`Sink`], with the glyph and shadow images it draws from.
+/// vello_cpu's context as a [`Sink`], with the glyph, shadow and brush images it draws from.
 pub struct CpuSink<'a> {
   /// The context, in device pixels.
   pub ctx: &'a mut RenderContext,
@@ -506,6 +578,8 @@ pub struct CpuSink<'a> {
   pub glyphs: &'a mut GlyphImages,
   /// The shadow images.
   pub shadows: &'a mut ShadowImages,
+  /// The image brushes' images.
+  pub images: &'a mut BrushImages,
 }
 
 impl CpuSink<'_> {
@@ -521,6 +595,19 @@ impl CpuSink<'_> {
         self.ctx.set_paint(gradient.clone());
         self.ctx.set_paint_transform(transform.inverse() * *placed);
       }
+      Brush::Image(brush, placed) => match self.images.image(brush) {
+        Some(image) => {
+          self.ctx.set_paint(Image {
+            image,
+            sampler: brush.sampler,
+          });
+          self.ctx.set_paint_transform(transform.inverse() * *placed);
+        }
+        None => {
+          self.ctx.set_paint(PColor::TRANSPARENT);
+          self.ctx.reset_paint_transform();
+        }
+      },
     }
   }
 }
@@ -952,12 +1039,18 @@ impl Canvas<'_> {
   }
 
   /// Draws `laid` with its top left at `origin` (window pixels): its decorations, then its
-  /// glyphs, each where the text stands in the scene's order, cut to the clip in force.
+  /// glyphs, each where the text stands in the scene's order, cut to the clip in force; the
+  /// lines the clip leaves out are not drawn at all, so a long text in a short box (an editor
+  /// scrolled) costs the lines it shows.
   pub fn text(&mut self, laid: &ParleyLaid, origin: (f32, f32)) {
     let transform =
       self.to_device() * Affine::translate((f64::from(origin.0), f64::from(origin.1)));
+    let band = (
+      self.clip.y - origin.1,
+      self.clip.y + self.clip.height - origin.1,
+    );
 
-    for extent in laid.run_extents() {
+    for extent in laid.run_extents_in(band) {
       for line in extent.decoration_lines() {
         let brush = Brush::Solid(color(line.color));
 
@@ -985,6 +1078,7 @@ impl Canvas<'_> {
       laid,
       (device.x as f32, device.y as f32),
       scale as f32,
+      band,
       fallback.as_deref_mut(),
       |glyph| sink.glyph(&glyph),
     );
@@ -1012,7 +1106,7 @@ impl Canvas<'_> {
         Paint::Brush(peniko::Brush::Gradient(gradient)) => {
           Brush::Gradient(gradient.clone(), transform)
         }
-        Paint::Brush(peniko::Brush::Image(_)) => return None,
+        Paint::Brush(peniko::Brush::Image(image)) => Brush::Image(image.clone(), transform),
       })
     };
 
@@ -1467,6 +1561,7 @@ pub struct Renderer {
   masks: Option<MaskPainter>,
   glyphs: GlyphImages,
   shadows: ShadowImages,
+  images: BrushImages,
   #[cfg(feature = "gpu")]
   gpu: Option<crate::gpu::Gpu>,
   stale: bool,
@@ -1518,6 +1613,7 @@ impl Renderer {
       masks: MaskPainter::new(),
       glyphs: GlyphImages::default(),
       shadows: ShadowImages::default(),
+      images: BrushImages::default(),
       #[cfg(feature = "gpu")]
       gpu: None,
       stale: false,
@@ -1559,6 +1655,13 @@ impl Renderer {
   /// Loses the GPU's device, as a driver reset or a removed GPU would, unknown to the window:
   /// whether the window painted on the GPU. The loss wakes the window's loop, which paints
   /// on the CPU.
+  #[cfg_attr(
+    not(feature = "gpu"),
+    expect(
+      clippy::missing_const_for_fn,
+      reason = "the GPU path's build calls what is not const"
+    )
+  )]
   pub fn lose_device(&mut self) -> bool {
     #[cfg(feature = "gpu")]
     if let Some(gpu) = &self.gpu {
@@ -1571,6 +1674,13 @@ impl Renderer {
   }
 
   /// The last frame painted: on the GPU path, read back from the GPU first.
+  #[cfg_attr(
+    not(feature = "gpu"),
+    expect(
+      clippy::missing_const_for_fn,
+      reason = "the GPU path's build calls what is not const"
+    )
+  )]
   pub fn last_frame(&mut self) -> &Pixmap {
     #[cfg(feature = "gpu")]
     if self.stale
@@ -1730,6 +1840,7 @@ impl Renderer {
 
     self.glyphs.next_frame();
     self.shadows.next_frame();
+    self.images.next_frame();
 
     if let Some(masks) = self.masks.as_mut() {
       masks.rasterizer_mut().next_frame();
@@ -1811,6 +1922,7 @@ impl Renderer {
       ctx,
       glyphs: &mut self.glyphs,
       shadows: &mut self.shadows,
+      images: &mut self.images,
     };
     let mut canvas = Canvas {
       sink: &mut sink,

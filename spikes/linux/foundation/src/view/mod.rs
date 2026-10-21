@@ -36,6 +36,7 @@ use std::{
   cell::{Cell, RefCell},
   hash::Hash,
   marker::PhantomData,
+  rc::Rc,
 };
 
 pub use self::{
@@ -52,7 +53,7 @@ pub use self::{
     Picker, PickerBase, PickerItem, PickerItemBase, Radio, RadioBase, RadioGroup, RadioGroupBase,
     Slider, SliderBase, TextEditor, TextEditorBase, TextField, TextFieldBase, Toggle, ToggleBase,
   },
-  lazy::{Lazy, LazyBase, LazyHandle, LazyListBase},
+  lazy::{ItemHeightBase, ItemWidthBase, Lazy, LazyBase, LazyHandle},
   overlay::{Overlay, OverlayBase},
   painted::{Canvas, Paint, Painted, PaintedBase, Painting},
   surface::{DecorationBase, MotionBase, RunBase, RunWithEntries},
@@ -63,7 +64,7 @@ pub use self::{
   wrappers::{Flexible, FlexibleBase, GridCell, GridCellBase, Pinned, PinnedBase},
 };
 use crate::{
-  Effect, Keyed, NodeId, Signal,
+  Effect, Keyed, NodeId, Owner, Signal,
   seam::{
     Realization,
     access::Role,
@@ -324,6 +325,69 @@ impl Node {
   }
 }
 
+/// The texts a caption shows, gathered as its views are built, each until its owner is
+/// disposed: what names a control named by its content (a button, an option, a menu item)
+/// whose caption states no name, as a reader's name from content is computed.
+#[derive(Clone)]
+pub struct ContentName {
+  texts: Rc<RefCell<Vec<Gathered>>>,
+  changed: Signal<u64>,
+}
+
+/// A text a [`ContentName`] gathered: its node, and what returns the text it shows.
+type Gathered = (NodeId, Rc<dyn Fn() -> String>);
+
+impl ContentName {
+  /// Nothing gathered yet.
+  #[must_use]
+  pub fn new() -> Self {
+    Self {
+      texts: Rc::new(RefCell::new(Vec::new())),
+      changed: Signal::new(0),
+    }
+  }
+
+  /// Adds the text the node `node` shows, as `text` returns it, until the running owner is
+  /// disposed.
+  pub fn add(&self, node: NodeId, text: Rc<dyn Fn() -> String>) {
+    self.texts.borrow_mut().push((node, text));
+    self.changed.update(|count| *count = count.wrapping_add(1));
+
+    if Owner::current().is_some() {
+      let (texts, changed) = (Rc::clone(&self.texts), self.changed);
+
+      Owner::on_cleanup(move || {
+        texts.borrow_mut().retain(|(added, _)| *added != node);
+        changed.update(|count| *count = count.wrapping_add(1));
+      });
+    }
+  }
+
+  /// The texts gathered, in the scene's order, joined by a space: empty where there is none.
+  /// It tracks what it read.
+  #[must_use]
+  pub fn read<R: Realization>(&self) -> String {
+    let _ = self.changed.get();
+    let mut texts = self.texts.borrow().clone();
+
+    texts.sort_by(|(a, _), (b, _)| tree::scene_order::<R>(*a, *b));
+
+    let texts: Vec<String> = texts
+      .iter()
+      .map(|(_, text)| text().trim().to_owned())
+      .filter(|text| !text.is_empty())
+      .collect();
+
+    texts.join(" ")
+  }
+}
+
+impl Default for ContentName {
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
 /// Where a view is built: the theme scopes it sits in, the placement the wrappers above it
 /// fold into its properties, the control it is built inside, what the part wrapping it makes
 /// of it, and how its node takes events where the view building it says. Passed along; a view
@@ -336,6 +400,7 @@ pub struct Cx<R: Realization> {
   presentational: bool,
   interaction: Option<Interaction>,
   role: Option<Role>,
+  names: Option<ContentName>,
   realization: PhantomData<fn() -> R>,
 }
 
@@ -351,12 +416,13 @@ impl<R: Realization> Cx<R> {
       presentational: false,
       interaction: None,
       role: None,
+      names: None,
       realization: PhantomData,
     }
   }
 
-  /// The context a view's children are built in: the same scopes and control, no placement
-  /// and no part.
+  /// The context a view's children are built in: the same scopes, control and gathered name,
+  /// no placement and no part.
   #[must_use]
   pub fn child(&self) -> Self {
     Self {
@@ -367,6 +433,7 @@ impl<R: Realization> Cx<R> {
       presentational: false,
       interaction: None,
       role: None,
+      names: self.names.clone(),
       realization: PhantomData,
     }
   }
@@ -383,8 +450,21 @@ impl<R: Realization> Cx<R> {
       presentational: self.presentational,
       interaction: self.interaction,
       role: self.role,
+      names: self.names.clone(),
       realization: PhantomData,
     }
+  }
+
+  /// Gathers the text each text built from here on shows into `names`: a caption naming its
+  /// control by its content.
+  pub fn set_content_name(&mut self, names: ContentName) {
+    self.names = Some(names);
+  }
+
+  /// What gathers the texts built here, where a caption names its control by them.
+  #[must_use]
+  pub const fn content_name(&self) -> Option<&ContentName> {
+    self.names.as_ref()
   }
 
   /// The theme scopes the view sits in, innermost first.

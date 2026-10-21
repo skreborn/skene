@@ -1037,18 +1037,39 @@ pub fn first_stop<R: Realization>(id: NodeId) -> Option<NodeId> {
     .into_iter()
     .find(|(_, spec, sources)| match spec.interaction {
       Interaction::Acting => true,
-      Interaction::Control { .. } => untrack(|| {
-        let mut facts = AccessFacts::default();
-
-        for source in sources {
-          facts.merge(source());
-        }
-
-        facts.focusable && !facts.disabled && !facts.hidden
-      }),
+      Interaction::Control { .. } => takes_focus(sources),
       _ => false,
     })
     .map(|(node, _, _)| node)
+}
+
+/// Whether the facts `sources` report say a node takes focus: focusable, neither disabled nor
+/// hidden.
+fn takes_focus(sources: &[Rc<dyn Fn() -> AccessFacts>]) -> bool {
+  untrack(|| {
+    let mut facts = AccessFacts::default();
+
+    for source in sources {
+      facts.merge(source());
+    }
+
+    facts.focusable && !facts.disabled && !facts.hidden
+  })
+}
+
+/// What a press on `caption`, a caption beside its control, focuses, as a press on a web
+/// `<label>` focuses what it labels: the control where it takes focus, else the first stop
+/// inside it (a list box's option).
+#[must_use]
+pub fn caption_target<R: Realization>(caption: NodeId) -> Option<NodeId> {
+  let control = control_of::<R>(caption)?;
+  let sources = with::<R, _>(|tree| tree.scene.get(control).map(|entry| entry.access.clone()))?;
+
+  if takes_focus(&sources) {
+    Some(control)
+  } else {
+    first_stop::<R>(control)
+  }
 }
 
 /// Runs `size` with the node's size each time it is laid out at another.

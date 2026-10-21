@@ -69,8 +69,8 @@ impl Environment {
   #[must_use]
   pub fn holds(&self, media: &Media) -> bool {
     match media {
-      Media::MinWidth(width) => self.width.get() >= *width as f32,
-      Media::MaxWidth(width) => self.width.get() <= *width as f32,
+      Media::MinWidth(width) => self.width.get() >= *width,
+      Media::MaxWidth(width) => self.width.get() <= *width,
       Media::Dark => self.dark.get(),
       Media::HighContrast => self.high_contrast.get(),
       Media::ReducedMotion => self.reduced_motion.get(),

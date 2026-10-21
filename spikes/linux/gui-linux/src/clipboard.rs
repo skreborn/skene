@@ -3,7 +3,7 @@
 //!
 //! A write offers the text until another client takes the selection; a read asks the
 //! selection's owner for UTF-8 text and hands it over once it arrives (at once where the
-//! window owns the selection itself). Both are queued here and carried out by the backend on
+//! window owns the selection itself). Both are queued here and carried out by the window system on
 //! its loop.
 
 use std::cell::RefCell;
@@ -44,7 +44,7 @@ pub fn read(selection: Selection, then: impl FnOnce(Option<String>) + 'static) {
   crate::runtime::inbox().send(crate::runtime::Message::Wake);
 }
 
-/// The operations queued since the last call: what the backend carries out.
+/// The operations queued since the last call: what the window system carries out.
 pub(crate) fn take() -> Vec<Op> {
   OPS.with(|ops| std::mem::take(&mut *ops.borrow_mut()))
 }

@@ -16,10 +16,5 @@ skene-conformance.workspace = true
 skene-foundation.workspace = true
 skene-gui-linux.workspace = true
 
-# The GPU path's tests, built where the realization builds its GPU path (its `gpu` feature).
-[[test]]
-name = "gpu"
-required-features = ["skene-gui-linux/gpu"]
-
 [lints]
 workspace = true

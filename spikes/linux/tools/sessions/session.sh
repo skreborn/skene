@@ -29,7 +29,7 @@ chmod 700 "$XDG_RUNTIME_DIR"
 export SKENE_PRIVATE_SESSION=$XDG_RUNTIME_DIR
 export SKENE_PROBE=$OUT/probe SKENE_SHOT=$OUT/frame.png SKENE_TRACE=1 LANG=C.UTF-8
 MONITOR=${MONITOR:-1280x1024}
-unset DISPLAY WAYLAND_DISPLAY SKENE_BACKEND
+unset DISPLAY WAYLAND_DISPLAY SKENE_WINDOW_SYSTEM
 PIDS=()
 cleanup() {
   signal_children TERM "${PIDS[@]}"
@@ -51,7 +51,7 @@ case $KIND in
       PIDS+=($!)
       for _ in $(seq 100); do xprop -root _NET_SUPPORTING_WM_CHECK 2>/dev/null | grep -q "window id" && break; sleep 0.05; done
     fi
-    export SKENE_BACKEND=x11
+    export SKENE_WINDOW_SYSTEM=x11
     ;;
   sway)
     cat >"$XDG_RUNTIME_DIR/config" <<CONF
@@ -67,7 +67,7 @@ CONF
     for _ in $(seq 200); do ls "$XDG_RUNTIME_DIR"/wayland-* >/dev/null 2>&1 && break; sleep 0.02; done
     export WAYLAND_DISPLAY=$(basename "$(ls "$XDG_RUNTIME_DIR"/wayland-* | grep -v lock | head -1)")
     export SWAYSOCK=$(ls "$XDG_RUNTIME_DIR"/sway-ipc.* 2>/dev/null | head -1)
-    export SKENE_BACKEND=wayland
+    export SKENE_WINDOW_SYSTEM=wayland
     ;;
   mutter)
     pipewire >"$OUT/pipewire.log" 2>&1 &
@@ -84,7 +84,7 @@ CONF
         --object-path /org/gnome/Mutter/RemoteDesktop >/dev/null 2>&1 && break
       sleep 0.02
     done
-    export SKENE_BACKEND=wayland
+    export SKENE_WINDOW_SYSTEM=wayland
     ;;
   weston)
     for _ in $(seq 40); do
@@ -99,7 +99,7 @@ CONF
     PIDS+=($!)
     for _ in $(seq 200); do [ -S "$XDG_RUNTIME_DIR/skene-shell-$$" ] && break; sleep 0.02; done
     export WAYLAND_DISPLAY=skene-shell-$$
-    export SKENE_BACKEND=wayland
+    export SKENE_WINDOW_SYSTEM=wayland
     ;;
   kwin)
     KWIN_WAYLAND_NO_PERMISSION_CHECKS=1 KWIN_COMPOSE=Q QT_QPA_PLATFORM=offscreen \
@@ -108,7 +108,7 @@ CONF
     PIDS+=($!)
     for _ in $(seq 200); do [ -S "$XDG_RUNTIME_DIR/skene-shell-$$" ] && break; sleep 0.02; done
     export WAYLAND_DISPLAY=skene-shell-$$
-    export SKENE_BACKEND=wayland
+    export SKENE_WINDOW_SYSTEM=wayland
     ;;
 esac
 if [ -n "${WAYLAND_DISPLAY:-}" ] && [ ! -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" ]; then

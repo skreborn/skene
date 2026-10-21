@@ -3,7 +3,7 @@
 
 use skene_foundation::{
   lazy::GridCells,
-  view::{self as base, LazyBase, LazyListBase, Wraps},
+  view::{self as base, ItemHeightBase, ItemWidthBase, LazyBase, Wraps},
   wraps,
 };
 
@@ -14,7 +14,7 @@ use crate::{Active, Axis};
 ///
 /// It scrolls itself, so it takes a height, a greatest height or a `Flexible` weight to stay
 /// within the window, as a `Scroll` does. Each item is built once per key while it is in view
-/// or holds focus, measured as it is realized (or fixed, [`LazyListBase::set_item_extent`]),
+/// or holds focus, measured as it is realized (or fixed, [`ItemHeightBase::set_item_height`]),
 /// and the content never moves under the reader as items above measure or change. A reader
 /// finds a list counting every item, each realized row its place in it.
 ///
@@ -24,7 +24,7 @@ use crate::{Active, Axis};
 /// let names = Signal::new((0..10_000).map(|n| format!("Contact {n}")).collect::<Vec<_>>());
 ///
 /// LazyColumn::new()
-///   .set_item_extent(ItemExtent::Estimated(40.))
+///   .set_item_height(ItemExtent::estimated(40))
 ///   .set_spacing(1)
 ///   .set_label("Contacts")
 ///   .derive_items(move || names.get(), Clone::clone, |name: String| Text::new(name));
@@ -36,7 +36,7 @@ wraps!([] LazyColumn => base::Lazy<Active>, Active);
 
 impl LazyBase<Active> for LazyColumn {}
 
-impl LazyListBase<Active> for LazyColumn {}
+impl ItemHeightBase<Active> for LazyColumn {}
 
 impl LazyColumn {
   /// An empty list scrolling up and down.
@@ -53,7 +53,8 @@ impl Default for LazyColumn {
 
 /// Items side by side, only those in view realized: Compose's `LazyRow`, SwiftUI's `LazyHStack`.
 ///
-/// Its members are a [`LazyColumn`]'s along the horizontal axis.
+/// Its members are a [`LazyColumn`]'s along the horizontal axis, its items' widths
+/// ([`ItemWidthBase::set_item_width`]) in place of their heights.
 #[must_use]
 pub struct LazyRow(base::Lazy<Active>);
 
@@ -61,7 +62,7 @@ wraps!([] LazyRow => base::Lazy<Active>, Active);
 
 impl LazyBase<Active> for LazyRow {}
 
-impl LazyListBase<Active> for LazyRow {}
+impl ItemWidthBase<Active> for LazyRow {}
 
 impl LazyRow {
   /// An empty list scrolling side to side.
@@ -85,7 +86,7 @@ impl Default for LazyRow {
 /// use skene_gui::prelude::*;
 ///
 /// LazyVerticalGrid::new()
-///   .set_columns(GridCells::Adaptive(160.))
+///   .set_columns(GridCells::adaptive(160))
 ///   .set_spacing(8)
 ///   .add_header(Text::new("Photos"))
 ///   .derive_items(|| (0..500).collect::<Vec<u32>>(), |n| *n, |n: u32| Text::new(format!("{n}")));
@@ -97,7 +98,7 @@ wraps!([] LazyVerticalGrid => base::Lazy<Active>, Active);
 
 impl LazyBase<Active> for LazyVerticalGrid {}
 
-impl LazyListBase<Active> for LazyVerticalGrid {}
+impl ItemHeightBase<Active> for LazyVerticalGrid {}
 
 impl LazyVerticalGrid {
   /// An empty grid scrolling up and down, two columns until [`LazyVerticalGrid::set_columns`]
@@ -127,7 +128,7 @@ wraps!([] LazyHorizontalGrid => base::Lazy<Active>, Active);
 
 impl LazyBase<Active> for LazyHorizontalGrid {}
 
-impl LazyListBase<Active> for LazyHorizontalGrid {}
+impl ItemWidthBase<Active> for LazyHorizontalGrid {}
 
 impl LazyHorizontalGrid {
   /// An empty grid scrolling side to side, two rows until [`LazyHorizontalGrid::set_rows`] says

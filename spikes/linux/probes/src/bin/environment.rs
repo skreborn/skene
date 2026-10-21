@@ -169,7 +169,7 @@ fn settings() {
   let (width, height, wide) = (
     media::width(),
     media::height(),
-    media::watch(Media::MinWidth(500)),
+    media::watch(Media::min_width(500)),
   );
   let shown = show(400, 300, || Text::new("Size"));
   let small = (width.get(), height.get(), wide.get());

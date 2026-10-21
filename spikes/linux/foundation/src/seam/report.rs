@@ -211,8 +211,9 @@ pub struct Size {
   pub width: f32,
   /// The height, in pixels.
   pub height: f32,
-  /// Device pixels per pixel.
-  pub scale: f64,
+  /// Device pixels per pixel, across and down: one where a device's pixels are square, two
+  /// where they are not (a terminal's cells).
+  pub scale: (f64, f64),
   /// The width and the height in device pixels, the box's edges snapped to the pixel grid of
   /// the surface it is drawn in.
   pub device: (u32, u32),

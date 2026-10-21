@@ -311,7 +311,7 @@ impl TextInput {
   }
 }
 
-/// What a backend owning a [`TextInput`] dispatches its events to.
+/// What the Wayland side owning a [`TextInput`] dispatches its events to.
 pub trait HasTextInput {
   /// The client and the shell its events apply to.
   fn text_input(&mut self) -> (&mut TextInput, &mut Shell);

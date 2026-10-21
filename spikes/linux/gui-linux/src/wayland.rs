@@ -1,4 +1,4 @@
-//! The Wayland backend over smithay-client-toolkit:
+//! The window on Wayland, over smithay-client-toolkit:
 //!
 //! - an xdg-shell toplevel asking for server-side decorations through xdg-decoration, its
 //!   title bar, shadow and resize band drawn by Skene where the compositor answers
@@ -125,6 +125,82 @@ struct Raw;
 /// How far below the window the probe popup asks to hang: below any output.
 const PROBE_OFFSET: i32 = 1 << 16;
 
+/// A rectangle of a buffer (x, y, width, height, in device pixels).
+type Damage = (u32, u32, u32, u32);
+
+/// The buffers one surface takes turns with, each in shared memory of its own made to its size,
+/// which is never resized.
+#[derive(Default)]
+struct Buffers {
+  /// Each buffer with its pool and what it still owes of the frames drawn since it was last
+  /// drawn in, the one last drawn in last.
+  held: Vec<(Buffer, SlotPool, Damage)>,
+}
+
+impl Buffers {
+  /// Adds a frame's `damage` to what each buffer owes.
+  fn damage(&mut self, damage: Damage) {
+    for (_, _, owed) in &mut self.held {
+      *owed = union_damage(*owed, damage);
+    }
+  }
+
+  /// Takes the buffer of `width` by `height` pixels to draw the next frame in, which
+  /// [`Self::last`] names from then on: a held one the compositor released, else a new one (the
+  /// older of two held going). Returns its bytes, what of it to draw (all of a new one) and
+  /// whether it is new.
+  fn next(&mut self, shm: &Shm, width: i32, height: i32) -> Option<(&mut [u8], Damage, bool)> {
+    self
+      .held
+      .retain(|(buffer, ..)| buffer.height() == height && buffer.stride() == width * 4);
+
+    let released = self
+      .held
+      .iter_mut()
+      .position(|(buffer, pool, _)| buffer.canvas(pool).is_some());
+    let fresh = released.is_none();
+
+    match released {
+      Some(index) => {
+        let taken = self.held.remove(index);
+
+        self.held.push(taken);
+      }
+      None => {
+        let mut pool = SlotPool::new(width as usize * height as usize * 4, shm).ok()?;
+        let (buffer, _) = pool
+          .create_buffer(width, height, width * 4, wl_shm::Format::Argb8888)
+          .ok()?;
+
+        if self.held.len() >= 2 {
+          self.held.remove(0);
+        }
+
+        self
+          .held
+          .push((buffer, pool, (0, 0, width as u32, height as u32)));
+      }
+    }
+
+    let (buffer, pool, owed) = self.held.last_mut()?;
+    let owed = std::mem::take(owed);
+
+    Some((buffer.canvas(pool)?, owed, fresh))
+  }
+
+  /// The buffer last taken.
+  fn last(&self) -> Option<&Buffer> {
+    self.held.last().map(|(buffer, ..)| buffer)
+  }
+}
+
+/// Copies premultiplied pixels into a buffer's bytes, in the order `Argb8888` lays them out.
+fn convert(source: &[vello_cpu::peniko::color::PremulRgba8], target: &mut [u8]) {
+  for (pixel, target) in source.iter().zip(target.as_chunks_mut::<4>().0) {
+    *target = [pixel.b, pixel.g, pixel.r, pixel.a];
+  }
+}
+
 /// The open overlay on its own surface.
 struct OpenPopup {
   /// The popup.
@@ -135,8 +211,12 @@ struct OpenPopup {
   fractional: Option<WpFractionalScaleV1>,
   /// Whether the compositor placed it.
   configured: bool,
-  /// The buffers it last showed.
-  buffers: Vec<Buffer>,
+  /// The buffers it shows.
+  buffers: Buffers,
+  /// The serial its grab named.
+  serial: u32,
+  /// Whether it is the second try of a popup the compositor refused at once.
+  retried: bool,
 }
 
 impl Drop for OpenPopup {
@@ -174,8 +254,8 @@ struct AdornmentSurface {
   surface: wl_surface::WlSurface,
   /// Its viewport, where it is scaled fractionally.
   viewport: Option<WpViewport>,
-  /// The buffers it last showed.
-  buffers: Vec<Buffer>,
+  /// The buffers it shows.
+  buffers: Buffers,
   /// Whether it destroys the surface as it goes (a popup's goes with the popup).
   owned: bool,
 }
@@ -197,21 +277,21 @@ impl AdornmentSurface {
   /// `offset` from where it was: committed.
   fn show(
     &mut self,
-    pool: &mut SlotPool,
+    shm: &Shm,
     pixmap: &vello_cpu::Pixmap,
     size: (u32, u32),
     offset: Option<(i32, i32)>,
   ) {
     let (width, height) = (i32::from(pixmap.width()), i32::from(pixmap.height()));
-    let Ok((buffer, canvas)) =
-      pool.create_buffer(width, height, width * 4, wl_shm::Format::Argb8888)
-    else {
+    let Some((canvas, ..)) = self.buffers.next(shm, width, height) else {
       return;
     };
 
-    for (pixel, target) in pixmap.data().iter().zip(canvas.as_chunks_mut::<4>().0) {
-      *target = [pixel.b, pixel.g, pixel.r, pixel.a];
-    }
+    convert(pixmap.data(), canvas);
+
+    let Some(buffer) = self.buffers.last() else {
+      return;
+    };
 
     match &self.viewport {
       Some(viewport) => {
@@ -239,11 +319,6 @@ impl AdornmentSurface {
 
     self.surface.damage_buffer(0, 0, width, height);
     self.surface.commit();
-    self.buffers.push(buffer);
-
-    if self.buffers.len() > 2 {
-      self.buffers.remove(0);
-    }
   }
 }
 
@@ -282,10 +357,8 @@ struct State {
   compositor: CompositorState,
   /// Shared memory for the buffers.
   shm: Shm,
-  /// The buffers' pool.
-  pool: SlotPool,
-  /// The buffers drawn into, each with the damage it still owes.
-  buffers: Vec<(Buffer, (u32, u32, u32, u32))>,
+  /// The window's buffers.
+  buffers: Buffers,
   /// The toplevel.
   window: Window,
   /// Whether the toplevel was configured once.
@@ -305,8 +378,9 @@ struct State {
   pointer: Option<ThemedPointer>,
   /// The seat's touchscreen.
   touch: Option<wl_touch::WlTouch>,
-  /// The touch points down on the open popup, and where each is in its coordinates.
-  popup_touches: HashMap<i32, (f32, f32)>,
+  /// The touch points down on an open popup: the popup's place in the stack, and where each is
+  /// in its coordinates.
+  popup_touches: HashMap<i32, (usize, (f32, f32))>,
   /// The cursor shown.
   cursor: Cursor,
   /// The serial of the last input event.
@@ -363,8 +437,9 @@ struct State {
   /// The window's frame committed last whose presentation the next frame callback stands for,
   /// where the window watches presentation and the compositor offers no presentation-time.
   committed: Option<u64>,
-  /// The open popup surface.
-  popup: Option<OpenPopup>,
+  /// The open popup surfaces, outermost first, each after the first a popup of the one before
+  /// it: the shell's open overlays, by their places in its stack.
+  popups: Vec<OpenPopup>,
   /// The drag's icon, while a drag from the window goes on.
   drag_icon: Option<AdornmentSurface>,
   /// The adornments on popups of their own: the touch selection handles and the magnifier.
@@ -395,6 +470,12 @@ impl Open {
   /// The window's shell, to change.
   pub const fn shell_mut(&mut self) -> &mut Shell {
     &mut self.state.shell
+  }
+
+  /// Whether a popup it asked for awaits the compositor's placement.
+  #[must_use]
+  pub fn popup_pending(&self) -> bool {
+    self.state.popups.iter().any(|popup| !popup.configured)
   }
 
   /// Takes `width` by `height` pixels as the window's geometry, as a floating window may: the
@@ -447,7 +528,7 @@ impl Open {
 
       state.requests(pending);
       state.sync_text_input();
-      state.draw_popup(&qh);
+      state.draw_popups();
       state.sync_adornments();
 
       if state.shell.quit {
@@ -559,15 +640,13 @@ pub fn open(shell: Shell, app_id: &str) -> Result<Open, Box<dyn Error>> {
     format!("[wayland] globals {}", globals.join(" "))
   });
 
-  let pool = SlotPool::new(480 * 640 * 4, &shm)?;
   let mut state = State {
     registry: RegistryState::new(&globals),
     seats: SeatState::new(&globals, &qh),
     outputs: OutputState::new(&globals, &qh),
     compositor,
     shm,
-    pool,
-    buffers: Vec::new(),
+    buffers: Buffers::default(),
     window,
     configured: false,
     floating_size: (0, 0),
@@ -605,7 +684,7 @@ pub fn open(shell: Shell, app_id: &str) -> Result<Open, Box<dyn Error>> {
     presentation,
     presentation_clock: PresentationClock(libc::CLOCK_MONOTONIC),
     committed: None,
-    popup: None,
+    popups: Vec::new(),
     drag_icon: None,
     adornment_popups: HashMap::new(),
     constrains: None,
@@ -693,64 +772,23 @@ impl State {
     let pixmap = frame.pixmap;
     let (dx, dy, dw, dh) = frame.damage;
     let (width, height) = (i32::from(pixmap.width()), i32::from(pixmap.height()));
-    let convert = |source: &[vello_cpu::peniko::color::PremulRgba8], target: &mut [u8]| {
-      for (pixel, target) in source.iter().zip(target.as_chunks_mut::<4>().0) {
-        *target = [pixel.b, pixel.g, pixel.r, pixel.a];
-      }
-    };
     let pixels = pixmap.data();
 
     // Two buffers take turns. Each frame's damage is added to what each buffer lacks; a
     // buffer the compositor released gets only what it lacks, and a fresh one the whole frame.
-    for (_, missing) in &mut self.buffers {
-      *missing = union_damage(*missing, (dx, dy, dw, dh));
-    }
+    self.buffers.damage((dx, dy, dw, dh));
 
-    self
-      .buffers
-      .retain(|(buffer, _)| buffer.height() == height && buffer.stride() == width * 4);
-
-    let mut reused = None;
-
-    for (index, (buffer, missing)) in self.buffers.iter_mut().enumerate() {
-      if let Some(canvas) = buffer.canvas(&mut self.pool) {
-        let (mx, my, mw, mh) = *missing;
-
-        for row in my..my + mh {
-          let start = (row * width as u32 + mx) as usize;
-          let end = start + mw as usize;
-
-          convert(&pixels[start..end], &mut canvas[start * 4..end * 4]);
-        }
-
-        *missing = (0, 0, 0, 0);
-        reused = Some(index);
-
-        break;
-      }
-    }
-
-    let current = match reused {
-      Some(index) => index,
-      None => {
-        let Ok((buffer, canvas)) =
-          self
-            .pool
-            .create_buffer(width, height, width * 4, wl_shm::Format::Argb8888)
-        else {
-          return;
-        };
-
-        convert(pixels, canvas);
-
-        if self.buffers.len() >= 2 {
-          self.buffers.remove(0);
-        }
-
-        self.buffers.push((buffer, (0, 0, 0, 0)));
-        self.buffers.len() - 1
-      }
+    let Some((canvas, (mx, my, mw, mh), fresh)) = self.buffers.next(&self.shm, width, height)
+    else {
+      return;
     };
+
+    for row in my..my + mh {
+      let start = (row * width as u32 + mx) as usize;
+      let end = start + mw as usize;
+
+      convert(&pixels[start..end], &mut canvas[start * 4..end * 4]);
+    }
 
     if !gpu {
       self.prepare_surface((ox, oy), input, (surface_width, surface_height));
@@ -764,7 +802,7 @@ impl State {
       surface.frame(qh, FrameCallbackData(surface.clone()));
     }
 
-    if let Some((buffer, _)) = self.buffers.get(current)
+    if let Some(buffer) = self.buffers.last()
       && buffer.attach_to(surface).is_ok()
     {
       self.watch_presentation(qh, self.shell.frames);
@@ -776,10 +814,10 @@ impl State {
     trace::log(|| {
       format!(
         "[wayland] present {dw}x{dh}+{dx}+{dy} of {width}x{height} at {scale} {} in {:.2} ms",
-        if reused.is_some() {
-          "into a released buffer"
-        } else {
+        if fresh {
           "into a new buffer"
+        } else {
+          "into a released buffer"
         },
         started.elapsed().as_secs_f64() * 1000.
       )
@@ -860,7 +898,8 @@ impl State {
       trace::log(|| format!("[wayland] request {request:?}"));
 
       match request {
-        Request::Popup(placement) => self.place_popup(placement),
+        Request::Popup(level, placement) => self.place_popup(level, placement),
+        Request::PlacePopup(level, placement) => self.replace_popup(level, placement),
         Request::Close => self.shell.quit = true,
         Request::ToggleMaximize => {
           if self.shell.chrome.states.maximized {
@@ -954,7 +993,7 @@ impl State {
           )
         });
         icon.show(
-          &mut self.pool,
+          &self.shm,
           pixmap,
           shown.size,
           Some((-hotspot.0, -hotspot.1)),
@@ -967,7 +1006,7 @@ impl State {
 
   /// The scale an adornment is painted at: the window's, rounded up where no viewport scales
   /// its buffer down.
-  fn icon_scale(&self, viewport: bool) -> f64 {
+  const fn icon_scale(&self, viewport: bool) -> f64 {
     if viewport {
       self.shell.scale
     } else {
@@ -993,7 +1032,7 @@ impl State {
     AdornmentSurface {
       surface,
       viewport,
-      buffers: Vec::new(),
+      buffers: Buffers::default(),
       owned,
     }
   }
@@ -1115,7 +1154,7 @@ impl State {
 
       if let Some(open) = self.adornment_popups.get_mut(&shown.adornment) {
         open.painted = Some((scale, shown.version));
-        open.surface.show(&mut self.pool, pixmap, shown.size, None);
+        open.surface.show(&self.shm, pixmap, shown.size, None);
       }
     }
   }
@@ -1208,8 +1247,8 @@ impl State {
     let (width, height) = (width as f32, height as f32);
     let (popup_width, popup_height) = (placement.size.0 as f32, placement.size.1 as f32);
     let anchor = placement.anchor;
-    let below = anchor.y + anchor.height + placement.gap;
-    let above = anchor.y - placement.gap - popup_height;
+    let below = anchor.y + anchor.height + placement.spacing;
+    let above = anchor.y - placement.spacing - popup_height;
     let y = if below + popup_height <= height {
       below
     } else if above >= 0. {
@@ -1222,8 +1261,96 @@ impl State {
     (x.round() as i32, y.round() as i32)
   }
 
-  /// Opens the open overlay's surface at `placement`, or closes it.
-  fn place_popup(&mut self, placement: Option<crate::overlay::Placement>) {
+  /// The popup at `level` of the stack, where it is open there.
+  fn popup_level(&self, surface: &wl_surface::WlSurface) -> Option<usize> {
+    self
+      .popups
+      .iter()
+      .position(|open| open.popup.wl_surface() == surface)
+  }
+
+  /// Where the surface a popup at `level` hangs from has its top left, in the window's geometry:
+  /// the window's own, or the open popup below it.
+  fn parent_origin(&self, level: usize) -> (f32, f32) {
+    level
+      .checked_sub(1)
+      .and_then(|below| self.shell.popup(below))
+      .map_or((0., 0.), |open| {
+        let rect = open.rect();
+
+        (rect.x, rect.y)
+      })
+  }
+
+  /// A positioner placing a popup at `level` of the stack at `placement` (window pixels),
+  /// against the surface it hangs from.
+  fn popup_positioner(
+    &self,
+    level: usize,
+    placement: &crate::overlay::Placement,
+  ) -> Option<XdgPositioner> {
+    let positioner = XdgPositioner::new(&self.xdg).ok()?;
+    let anchor = placement.anchor;
+    let (px, py) = self.parent_origin(level);
+
+    positioner.set_size(placement.size.0 as i32, placement.size.1 as i32);
+
+    if self.constrains == Some(false) {
+      // The compositor keeps no popup on its output: it is kept within the window.
+      let (x, y) = self.place_within_window(placement);
+
+      trace::log(|| format!("[wayland] the popup kept within the window at {x},{y}"));
+      positioner.set_anchor_rect(x - px.round() as i32, y - py.round() as i32, 1, 1);
+      positioner.set_anchor(Anchor::TopLeft);
+      positioner.set_gravity(Gravity::BottomRight);
+      positioner.set_constraint_adjustment(ConstraintAdjustment::empty());
+    } else {
+      positioner.set_anchor_rect(
+        (anchor.x - px).round() as i32,
+        (anchor.y - py).round() as i32,
+        (anchor.width.round() as i32).max(1),
+        (anchor.height.round() as i32).max(1),
+      );
+      positioner.set_anchor(Anchor::BottomLeft);
+      positioner.set_gravity(Gravity::BottomRight);
+      #[expect(clippy::cast_possible_truncation, reason = "whole pixels")]
+      positioner.set_offset(0, placement.spacing.round() as i32);
+      positioner.set_constraint_adjustment(
+        ConstraintAdjustment::FlipY | ConstraintAdjustment::SlideX | ConstraintAdjustment::SlideY,
+      );
+    }
+
+    Some(positioner)
+  }
+
+  /// Closes the popups from `level` up, the topmost first, the GPU path presenting to each
+  /// surface going before the surface does.
+  fn close_popups(&mut self, level: usize) {
+    while self.popups.len() > level {
+      self.shell.release_popup_path(self.popups.len() - 1);
+      self.popups.pop();
+    }
+
+    self.popup_touches.retain(|_, (on, _)| *on < level);
+  }
+
+  /// Opens the surface of the open overlay at `level` of the stack at `placement`, hanging from
+  /// the window or the popup below it and grabbing as a menu does, or closes it; either way,
+  /// what was at that level and above goes first.
+  fn place_popup(&mut self, level: usize, placement: Option<crate::overlay::Placement>) {
+    self.open_popup(level, placement, self.grab_serial, false);
+  }
+
+  /// Opens the surface of the open overlay at `level` at `placement` as
+  /// [`place_popup`](Self::place_popup) does, its grab naming `serial`; `retried` where it is the
+  /// second try of a popup the compositor refused at once.
+  fn open_popup(
+    &mut self,
+    level: usize,
+    placement: Option<crate::overlay::Placement>,
+    serial: u32,
+    retried: bool,
+  ) {
     // The overlay's popup grabs: the adornments' go first, and stay hidden while it is open.
     if placement.is_some() {
       for (adornment, _) in std::mem::take(&mut self.adornment_popups) {
@@ -1231,59 +1358,32 @@ impl State {
       }
     }
 
-    // The GPU path presenting to the surface goes before the surface does.
-    self.shell.release_popup_path();
-    self.popup = None;
+    self.close_popups(level);
 
     let Some(placement) = placement else {
       return;
     };
+
+    if level > self.popups.len() {
+      return;
+    }
+
     let qh = self.qh.clone();
-    let Ok(positioner) = XdgPositioner::new(&self.xdg) else {
+    let Some(positioner) = self.popup_positioner(level, &placement) else {
       return;
     };
     let anchor = placement.anchor;
-
-    positioner.set_size(placement.size.0 as i32, placement.size.1 as i32);
-
-    if self.constrains == Some(false) {
-      // The compositor keeps no popup on its output: it is kept within the window.
-      let (x, y) = self.place_within_window(&placement);
-
-      trace::log(|| format!("[wayland] the popup kept within the window at {x},{y}"));
-      positioner.set_anchor_rect(x, y, 1, 1);
-      positioner.set_anchor(Anchor::TopLeft);
-      positioner.set_gravity(Gravity::BottomRight);
-      positioner.set_constraint_adjustment(ConstraintAdjustment::empty());
-    } else {
-      positioner.set_anchor_rect(
-        anchor.x.round() as i32,
-        anchor.y.round() as i32,
-        (anchor.width.round() as i32).max(1),
-        (anchor.height.round() as i32).max(1),
-      );
-      positioner.set_anchor(Anchor::BottomLeft);
-      positioner.set_gravity(Gravity::BottomRight);
-      #[expect(clippy::cast_possible_truncation, reason = "whole pixels")]
-      positioner.set_offset(0, placement.gap.round() as i32);
-      positioner.set_constraint_adjustment(
-        ConstraintAdjustment::FlipY | ConstraintAdjustment::SlideX | ConstraintAdjustment::SlideY,
-      );
-    }
-
+    let parent = match level.checked_sub(1) {
+      Some(below) => self.popups[below].popup.xdg_surface().clone(),
+      None => self.window.xdg_surface().clone(),
+    };
     let surface = self.compositor.create_surface(&qh);
-    let Ok(popup) = Popup::from_surface(
-      Some(self.window.xdg_surface()),
-      &positioner,
-      &qh,
-      surface,
-      &self.xdg,
-    ) else {
+    let Ok(popup) = Popup::from_surface(Some(&parent), &positioner, &qh, surface, &self.xdg) else {
       return;
     };
 
     if let Some(seat) = &self.seat {
-      popup.xdg_popup().grab(seat, self.grab_serial);
+      popup.xdg_popup().grab(seat, serial);
     }
 
     let viewport = self
@@ -1301,9 +1401,21 @@ impl State {
     popup.wl_surface().commit();
     trace::log(|| {
       format!(
-        "[wayland] popup at {anchor:?} grab serial {}",
-        self.grab_serial
+        "[wayland] popup {level} at {anchor:?} grab serial {serial}{}",
+        if retried { ", a second try" } else { "" }
       )
+    });
+
+    let wl_surface = popup.wl_surface().clone();
+
+    self.popups.push(OpenPopup {
+      popup,
+      viewport,
+      fractional,
+      configured: false,
+      buffers: Buffers::default(),
+      serial,
+      retried,
     });
 
     #[cfg(feature = "gpu")]
@@ -1311,55 +1423,83 @@ impl State {
       use wayland_client::Proxy as _;
 
       let display = std::ptr::NonNull::new(self.conn.backend().display_ptr().cast());
-      let surface = std::ptr::NonNull::new(popup.wl_surface().id().as_ptr().cast());
+      let surface = std::ptr::NonNull::new(wl_surface.id().as_ptr().cast());
 
       if let (Some(display), Some(surface)) = (display, surface) {
-        // SAFETY: the surface lives until the next placement or the overlay's close, which
-        // release the path first.
+        // SAFETY: the surface lives until its level is placed again or closed, which release
+        // the path first.
         unsafe {
           self
             .shell
-            .choose_popup_path(crate::gpu::Target::Wayland { display, surface });
+            .choose_popup_path(level, crate::gpu::Target::Wayland { display, surface });
         }
       }
     }
 
-    self.popup = Some(OpenPopup {
-      popup,
-      viewport,
-      fractional,
-      configured: false,
-      buffers: Vec::new(),
-    });
+    #[cfg(not(feature = "gpu"))]
+    let _ = wl_surface;
   }
 
-  /// Paints the open overlay where it changed and attaches it.
-  fn draw_popup(&mut self, _: &QueueHandle<Self>) {
-    let Some(open) = &mut self.popup else {
-      return;
-    };
+  /// Places the open popup at `level` again at `placement`, its content having changed size:
+  /// repositioned, keeping its grab, where the compositor repositions popups (`xdg_wm_base`
+  /// 3), opened again with those above it otherwise.
+  fn replace_popup(&mut self, level: usize, placement: crate::overlay::Placement) {
+    if self.xdg.xdg_wm_base().version() >= 3
+      && level < self.popups.len()
+      && let Some(positioner) = self.popup_positioner(level, &placement)
+    {
+      trace::log(|| format!("[wayland] popup {level} repositioned for {placement:?}"));
+      self.popups[level].popup.reposition(&positioner, 0);
+      self.popups[level].configured = false;
 
-    if !open.configured || !self.shell.popup_wants_frame() {
       return;
     }
 
-    let scale = self.shell.popup_scale();
-    let Some((width, height)) = self.shell.popup().map(|list| list.placement.size) else {
+    self.place_popup(level, Some(placement));
+
+    for above in level + 1..self.shell.popup_count() {
+      let Some(placement) = self.shell.popup(above).map(|open| open.placement) else {
+        break;
+      };
+
+      self.place_popup(above, Some(placement));
+    }
+  }
+
+  /// Paints each open popup where it changed and attaches it.
+  fn draw_popups(&mut self) {
+    for level in 0..self.popups.len() {
+      self.draw_popup(level);
+    }
+  }
+
+  /// Paints the popup at `level` where it changed and attaches it.
+  fn draw_popup(&mut self, level: usize) {
+    let Some(open) = self.popups.get_mut(level) else {
       return;
     };
 
-    if self.shell.popup_presents() {
+    if !open.configured || !self.shell.popup_wants_frame(level) {
+      return;
+    }
+
+    let scale = self.shell.popup_scale(level);
+    let Some((width, height)) = self.shell.popup(level).map(|list| list.placement.size) else {
+      return;
+    };
+
+    if self.shell.popup_presents(level) {
       // The swapchain commits the frame: the surface's scale goes first.
       open.set_scale(scale, (width, height));
     }
 
-    let Some(frame) = self.shell.popup_frame() else {
+    let Some(frame) = self.shell.popup_frame(level) else {
       return;
     };
 
     if frame.presented {
       if trace::popup_shots_on()
-        && let Some(list) = self.shell.popup_mut()
+        && let Some(list) = self.shell.popup_mut(level)
       {
         trace::shot_popup(list.pixmap());
       }
@@ -1369,40 +1509,27 @@ impl State {
 
     let pixmap = frame.pixmap;
     let (device_width, device_height) = (i32::from(pixmap.width()), i32::from(pixmap.height()));
-    let Ok((buffer, canvas)) = self.pool.create_buffer(
-      device_width,
-      device_height,
-      device_width * 4,
-      wl_shm::Format::Argb8888,
-    ) else {
+    let Some(open) = self.popups.get_mut(level) else {
+      return;
+    };
+    let Some((canvas, ..)) = open.buffers.next(&self.shm, device_width, device_height) else {
       return;
     };
 
-    for (pixel, target) in pixmap.data().iter().zip(canvas.as_chunks_mut::<4>().0) {
-      *target = [pixel.b, pixel.g, pixel.r, pixel.a];
-    }
-
-    let Some(open) = &mut self.popup else {
-      return;
-    };
-
+    convert(pixmap.data(), canvas);
     open.set_scale(scale, (width, height));
 
     let surface = open.popup.wl_surface();
 
-    if buffer.attach_to(surface).is_ok() {
+    if let Some(buffer) = open.buffers.last()
+      && buffer.attach_to(surface).is_ok()
+    {
       surface.damage_buffer(0, 0, device_width, device_height);
       surface.commit();
     }
 
-    open.buffers.push(buffer);
-
-    if open.buffers.len() > 2 {
-      open.buffers.remove(0);
-    }
-
     if trace::popup_shots_on()
-      && let Some(list) = self.shell.popup_mut()
+      && let Some(list) = self.shell.popup_mut(level)
     {
       trace::shot_popup(list.pixmap());
     }
@@ -1470,6 +1597,12 @@ impl State {
         }
         Op::Read(selection, then) => {
           if let Some(text) = self.selection_text(selection) {
+            trace::log(|| {
+              format!(
+                "[clipboard] read {selection:?}: ours ({} bytes)",
+                text.len()
+              )
+            });
             then(Some(text));
 
             continue;
@@ -1496,10 +1629,13 @@ impl State {
               }),
           };
           let Some(mut pipe) = pipe else {
+            trace::log(|| format!("[clipboard] read {selection:?}: nothing offered as text"));
             then(None);
 
             continue;
           };
+
+          trace::log(|| format!("[clipboard] read {selection:?}: from its owner"));
           let id = self.next_read;
           let inbox = crate::runtime::inbox();
 
@@ -1531,6 +1667,12 @@ impl State {
 
     for (id, text) in arrived {
       if let Some(then) = self.reads.remove(&id) {
+        trace::log(|| {
+          format!(
+            "[clipboard] read {} bytes from the owner",
+            text.as_ref().map_or(0, String::len)
+          )
+        });
         then(text);
       } else if let Some((offer, at, wanted)) = self.drops.remove(&id) {
         let text = text.unwrap_or_default();
@@ -1647,12 +1789,10 @@ impl CompositorHandler for State {
     surface: &wl_surface::WlSurface,
     factor: i32,
   ) {
-    if let Some(open) = &self.popup
-      && open.popup.wl_surface() == surface
-    {
-      if open.fractional.is_none() {
-        trace::log(|| format!("[wayland] the popup's integer scale {factor}"));
-        self.shell.set_popup_scale(f64::from(factor));
+    if let Some(level) = self.popup_level(surface) {
+      if self.popups[level].fractional.is_none() {
+        trace::log(|| format!("[wayland] popup {level}'s integer scale {factor}"));
+        self.shell.set_popup_scale(level, f64::from(factor));
       }
 
       return;
@@ -1901,23 +2041,19 @@ impl PointerHandler for State {
     for event in events {
       let (x, y) = (event.position.0 as f32, event.position.1 as f32);
 
-      if self
-        .popup
-        .as_ref()
-        .is_some_and(|open| open.popup.wl_surface() == &event.surface)
-      {
+      if let Some(level) = self.popup_level(&event.surface) {
         match event.kind {
           PointerEventKind::Motion { .. } | PointerEventKind::Enter { .. } => {
-            self.shell.popup_motion(x, y);
+            self.shell.popup_motion(level, x, y);
           }
           PointerEventKind::Press { serial, .. } => {
             self.last_serial = serial;
             self.grab_serial = serial;
-            self.shell.popup_button(true, x, y);
+            self.shell.popup_button(level, true, x, y);
           }
           PointerEventKind::Release { serial, .. } => {
             self.last_serial = serial;
-            self.shell.popup_button(false, x, y);
+            self.shell.popup_button(level, false, x, y);
           }
           PointerEventKind::Axis { vertical, .. } => {
             self
@@ -2044,13 +2180,9 @@ impl TouchHandler for State {
     self.last_press_serial = serial;
     self.grab_serial = serial;
 
-    if self
-      .popup
-      .as_ref()
-      .is_some_and(|open| open.popup.wl_surface() == &surface)
-    {
-      self.popup_touches.insert(id, (x, y));
-      self.shell.popup_touch_down(x, y);
+    if let Some(level) = self.popup_level(&surface) {
+      self.popup_touches.insert(id, (level, (x, y)));
+      self.shell.popup_touch_down(level, x, y);
 
       return;
     }
@@ -2075,8 +2207,8 @@ impl TouchHandler for State {
   ) {
     self.last_serial = serial;
 
-    if let Some((x, y)) = self.popup_touches.remove(&id) {
-      self.shell.popup_touch_up(x, y);
+    if let Some((level, (x, y))) = self.popup_touches.remove(&id) {
+      self.shell.popup_touch_up(level, x, y);
 
       return;
     }
@@ -2097,7 +2229,7 @@ impl TouchHandler for State {
   ) {
     let (x, y) = (position.0 as f32, position.1 as f32);
 
-    if let Some(at) = self.popup_touches.get_mut(&id) {
+    if let Some((_, at)) = self.popup_touches.get_mut(&id) {
       *at = (x, y);
 
       return;
@@ -2456,7 +2588,7 @@ impl Dispatch2<wl_keyboard::WlKeyboard, State> for Raw {
         // A popup's grab takes the keyboard from the window to the popup, and the popup's
         // surface gives it back as it closes (KWin says so after the window has it again): the
         // window loses it only when it leaves the window's own surface with no popup open.
-        if state.popup.is_none() && &surface == state.window.wl_surface() {
+        if state.popups.is_empty() && &surface == state.window.wl_surface() {
           state.shell.keyboard_focus(false);
         }
       }
@@ -2540,13 +2672,13 @@ impl Dispatch2<WpFractionalScaleV1, State> for Raw {
       return;
     };
 
-    if state
-      .popup
-      .as_ref()
-      .is_some_and(|open| open.fractional.as_ref() == Some(object))
+    if let Some(level) = state
+      .popups
+      .iter()
+      .position(|open| open.fractional.as_ref() == Some(object))
     {
-      trace::log(|| format!("[wayland] the popup's fractional scale {scale}/120"));
-      state.shell.set_popup_scale(f64::from(scale) / 120.);
+      trace::log(|| format!("[wayland] popup {level}'s fractional scale {scale}/120"));
+      state.shell.set_popup_scale(level, f64::from(scale) / 120.);
 
       return;
     }
@@ -2721,19 +2853,22 @@ impl PopupHandler for State {
       return;
     }
 
-    if let Some(open) = &mut self.popup
-      && open.popup.wl_surface() == popup.wl_surface()
-    {
+    if let Some(level) = self.popup_level(popup.wl_surface()) {
+      // A nested popup is placed against the popup it hangs from.
+      let (px, py) = self.parent_origin(level);
+
       trace::log(|| {
         format!(
-          "[wayland] popup configured at {:?} {}x{}",
+          "[wayland] popup {level} configured at {:?} {}x{}",
           config.position, config.width, config.height
         )
       });
-      open.configured = true;
-      self
-        .shell
-        .popup_placed(config.position.0 as f32, config.position.1 as f32);
+      self.popups[level].configured = true;
+      self.shell.popup_placed(
+        level,
+        px + config.position.0 as f32,
+        py + config.position.1 as f32,
+      );
     }
   }
 
@@ -2761,14 +2896,26 @@ impl PopupHandler for State {
       return;
     }
 
-    if self
-      .popup
-      .as_ref()
-      .is_some_and(|open| open.popup.wl_surface() == popup.wl_surface())
-    {
-      trace::log(|| "[wayland] popup dismissed".to_owned());
-      self.popup = None;
-      self.shell.dismiss_popup();
+    if let Some(level) = self.popup_level(popup.wl_surface()) {
+      let open = &self.popups[level];
+
+      // mutter 46 keeps the serial of the press that opened the first popup as the one a grab
+      // may name while that popup's grab holds the pointer, so it refuses at once a popup
+      // opened from inside a popup by a press there: tried again naming that serial.
+      if level > 0 && !open.configured && !open.retried {
+        let serial = self.popups[0].serial;
+
+        if let Some(placement) = self.shell.popup(level).map(|open| open.placement) {
+          trace::log(|| format!("[wayland] popup {level} refused at once: tried again"));
+          self.open_popup(level, Some(placement), serial, true);
+
+          return;
+        }
+      }
+
+      trace::log(|| format!("[wayland] popup {level} dismissed"));
+      self.close_popups(level);
+      self.shell.dismiss_popup(level);
     }
   }
 }

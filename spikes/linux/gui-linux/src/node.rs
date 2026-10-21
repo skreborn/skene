@@ -271,7 +271,7 @@ impl Drawn {
 
   /// How far its content is scrolled under `child`: its scroll offset, and none under a scroll
   /// bar's track, which stays where it was laid.
-  pub fn scroll_for(&self, child: &Self) -> (f32, f32) {
+  pub const fn scroll_for(&self, child: &Self) -> (f32, f32) {
     if child.bar_axis().is_some() {
       (0., 0.)
     } else {

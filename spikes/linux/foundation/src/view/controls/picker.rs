@@ -64,8 +64,8 @@ impl<R: Realization> PickerItem<R> {
 
 /// What a [`PickerItem`] carries beside every control's members: its mark.
 pub trait PickerItemBase<R: Realization>: Wraps<Inner = PickerItem<R>> {
-  /// An option captioned by `label`: a text names it, a view through [`Label::set_name`]. The
-  /// caption takes the room the row leaves.
+  /// An option captioned by `label`: a text names it, a view by the texts it shows or through
+  /// [`Label::set_name`]. The caption takes the room the row leaves.
   fn new(label: impl Into<Label<R>>) -> Self {
     let label = label.into().wrap_view(|view| {
       Flexible::new()
@@ -172,7 +172,8 @@ impl<T: Choice, R: Realization> Picker<T, R> {
   }
 
   /// The default list: [`SystemColors::FIELD`] inside a border of 1 in
-  /// [`SystemColors::BORDER`], its corners rounded by 8, padded 4.
+  /// [`SystemColors::BORDER`], its corners rounded by 8, padded 4, 320 pixels tall at most
+  /// (about ten options), its options scrolling beyond.
   pub fn default_list() -> Container<R> {
     Container::new()
       .set_background(SystemColors::FIELD)
@@ -180,6 +181,7 @@ impl<T: Choice, R: Realization> Picker<T, R> {
       .set_border_color(SystemColors::BORDER)
       .set_corner_radius(8)
       .set_padding(Inset::all(4))
+      .set_max_height(320)
   }
 }
 
@@ -312,15 +314,12 @@ impl<T: Choice, R: Realization> View<R> for Picker<T, R> {
     let listbox = crate::view::Control::<Listbox<One<T>>, R>::new(list)
       .set_axis(Axis::Vertical)
       .set_child(items);
-    let overlay = Overlay::<R>::popup().bind_open(open).set_child(
-      AsPart::<R>::new(Part::List).set_child(
-        list_box.set_child(
-          Scroll::<R>::new(ScrollAxes::Vertical)
-            .set_max_height(310)
-            .set_child(listbox),
-        ),
-      ),
-    );
+    let overlay =
+      Overlay::<R>::popup()
+        .bind_open(open)
+        .set_child(AsPart::<R>::new(Part::List).set_child(
+          list_box.set_child(Scroll::<R>::new(ScrollAxes::Vertical).set_child(listbox)),
+        ));
 
     control
       .add_part(Part::Value, text)

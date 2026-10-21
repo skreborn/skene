@@ -1,21 +1,66 @@
 //! The conditions a value varies under: the environment ([`Media`]) and a node's own state or
 //! its enclosing control's ([`State`]).
 
-use std::fmt;
+use std::{
+  fmt,
+  hash::{Hash, Hasher},
+};
 
-/// A condition on the environment. Widths are whole pixels.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+use crate::IntoUnit;
+
+/// A condition on the environment. Widths are in pixels, and two widths are one condition
+/// where their bits are one.
+#[derive(Clone, Copy, Debug)]
 pub enum Media {
   /// The window is at least this wide.
-  MinWidth(u32),
+  MinWidth(f32),
   /// The window is at most this wide.
-  MaxWidth(u32),
+  MaxWidth(f32),
   /// The dark color scheme is in force.
   Dark,
   /// The reader asked for more contrast.
   HighContrast,
   /// The reader asked for reduced motion.
   ReducedMotion,
+}
+
+impl Media {
+  /// The window is at least `width` wide: an integer or a float.
+  #[inline(always)]
+  pub fn min_width(width: impl IntoUnit<f32>) -> Self {
+    Self::MinWidth(width.into_unit())
+  }
+
+  /// The window is at most `width` wide: an integer or a float.
+  #[inline(always)]
+  pub fn max_width(width: impl IntoUnit<f32>) -> Self {
+    Self::MaxWidth(width.into_unit())
+  }
+
+  /// What tells conditions apart: the variant, with its width's bits.
+  const fn identity(self) -> (u8, u32) {
+    match self {
+      Self::MinWidth(width) => (0, width.to_bits()),
+      Self::MaxWidth(width) => (1, width.to_bits()),
+      Self::Dark => (2, 0),
+      Self::HighContrast => (3, 0),
+      Self::ReducedMotion => (4, 0),
+    }
+  }
+}
+
+impl PartialEq for Media {
+  fn eq(&self, other: &Self) -> bool {
+    self.identity() == other.identity()
+  }
+}
+
+impl Eq for Media {}
+
+impl Hash for Media {
+  fn hash<H: Hasher>(&self, state: &mut H) {
+    self.identity().hash(state);
+  }
 }
 
 /// A state a node's style varies under: inside a control, the control's (checked, disabled,

@@ -181,8 +181,8 @@ fn with_menu<R: Realization>(
 /// controlled: it shows what [`EditingBase::derive_text`] returns, reports each edit to
 /// [`EditingBase::handle_change`] as the whole text it proposes, and shows the truth; its
 /// selection is controlled the same way where it is derived ([`EditingBase::bind_selection`]),
-/// in grapheme clusters. It offers the standard context menu ([`ContextMenuBase::standard`]),
-/// GTK's entry's editing entries, unless set otherwise ([`EditingBase::set_context_menu`]).
+/// in grapheme clusters. It offers the platform's standard context menu of a text
+/// ([`ContextMenuBase::standard`]) unless set otherwise ([`EditingBase::set_context_menu`]).
 #[must_use]
 pub struct TextField<R: Realization> {
   /// The control it composes, its defaults set.

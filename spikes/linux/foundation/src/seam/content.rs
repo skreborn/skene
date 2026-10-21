@@ -120,7 +120,7 @@ pub struct OverlayPlacement {
   /// anchor: window pixels.
   pub at: Option<(i32, i32)>,
   /// The space between it and its anchor, in whole pixels.
-  pub gap: i32,
+  pub spacing: i32,
 }
 
 /// How far a scroll box's content is scrolled, in pixels from its start along each axis.

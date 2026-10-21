@@ -1,4 +1,4 @@
-//! The keyboard through xkbcommon, shared by both backends: a keymap and its state (from the
+//! The keyboard through xkbcommon, shared by both window systems: a keymap and its state (from the
 //! compositor's keymap on Wayland, from the server's XKB device on X11), the locale's compose
 //! table for dead keys and `Multi_key` sequences, the repeat rate, and each key named as a
 //! browser names it (`key` and `code`).

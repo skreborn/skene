@@ -9,7 +9,7 @@
 //!   `Xft/*`), `text-scaling-factor` (every text's size) and `font-name` (the family of
 //!   [`FontFamily::System`]);
 //! - where no portal answers, the X server's XSETTINGS (`Net/ThemeName` naming a dark or a
-//!   high-contrast theme, `Gtk/EnableAnimations`, `Net/CursorBlink`), which the X11 backend
+//!   high-contrast theme, `Gtk/EnableAnimations`, `Net/CursorBlink`), which the X11 side
 //!   reads; its `Xft/Antialias`, `Xft/Hinting` and `Xft/HintStyle` win over the portal's
 //!   font settings where both state one;
 //! - the app's own choice of scheme ([`set_scheme`]), which wins over the reader's;

@@ -247,7 +247,7 @@ fn the_window_and_its_pickers_list_show_their_device_pixels_one_to_one() {
 #[skene_gui::test]
 fn a_field_tells_an_input_method_where_its_caret_is_on_the_screen() {
   match (
-    std::env::var("SKENE_BACKEND").as_deref(),
+    std::env::var("SKENE_WINDOW_SYSTEM").as_deref(),
     std::env::var("SKENE_TEST_SESSION").as_deref(),
   ) {
     (Ok("x11"), _) => told_over_the_session_bus(),
@@ -505,7 +505,9 @@ fn a_painted_box_records_again_at_its_windows_new_scale() {
   );
 
   if std::env::var("SKENE_TEST_SESSION").as_deref() != Ok("sway") {
-    eprintln!("only the sway leg changes an output's scale while a window shows");
+    skene_gui_linux::testing::not_tested_here(
+      "only the sway leg changes an output's scale while a window shows",
+    );
 
     return;
   }
@@ -522,6 +524,16 @@ fn a_painted_box_records_again_at_its_windows_new_scale() {
     device(wanted),
     "the box records again at the window's new scale ({})",
     screen.driver().scale()
+  );
+
+  // The screen shows it there, one device pixel to a column.
+  let shot = screen.driver().content();
+  let shown = longest_stripes(&shot);
+
+  eprintln!("at scale {wanted}: {shown} device pixels of stripes in a row");
+  assert!(
+    f64::from(shown) >= (48. * wanted).floor() - 1.,
+    "the screen shows the box at the new scale ({shown} device pixels in a row)"
   );
 }
 

@@ -89,7 +89,8 @@ impl<R: Realization> Radio<R> {
 
 /// What a [`Radio`] carries beside every control's members: its face and its mark.
 pub trait RadioBase<R: Realization>: Wraps<Inner = Radio<R>> {
-  /// A radio captioned by `label`: a text names it, a view through [`Label::set_name`].
+  /// A radio captioned by `label`: a text names it, a view by the texts it shows or through
+  /// [`Label::set_name`].
   fn new(label: impl Into<Label<R>>) -> Self {
     Self::wrap(Radio {
       control: crate::view::Control::new(Pending)
@@ -215,7 +216,7 @@ impl<T: Choice, R: Realization> AnyKind for RadioGroup<T, R> {}
 
 impl<T: Choice, R: Realization> View<R> for RadioGroup<T, R> {
   fn build(self, cx: &mut Cx<R>) -> Node {
-    let RadioGroup {
+    let Self {
       control,
       segments,
       option_spacing,

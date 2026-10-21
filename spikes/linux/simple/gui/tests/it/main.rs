@@ -10,7 +10,7 @@ fn buttons() -> impl View {
   Theme::new(SimplePalette::default()).set_child(
     SimpleCard::new().set_child(
       Row::new()
-        .set_spacing(SimplePalette::GAP)
+        .set_spacing(SimplePalette::SPACING)
         .add_child(SimpleButton::new("Save"))
         .add_child(Button::new("Cancel")),
     ),

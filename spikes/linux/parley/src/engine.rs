@@ -839,6 +839,9 @@ pub struct PositionedGlyph {
   pub at: usize,
 }
 
+/// A band holding every line: the whole text.
+const EVERYWHERE: (f32, f32) = (f32::NEG_INFINITY, f32::INFINITY);
+
 /// A run of glyphs in one font, as a renderer draws them.
 #[derive(Clone, Debug)]
 pub struct GlyphRun {
@@ -890,12 +893,91 @@ impl ParleyLaid {
     self.inner.paints.borrow().at(at)
   }
 
+  /// The runs of one paint of the lines that may show between `band`'s top and bottom (the
+  /// layout's pixels), as [`Laid::run_extents`] gives them for every line: what a box showing
+  /// that band of the text decorates.
+  #[must_use]
+  pub fn run_extents_in(&self, band: (f32, f32)) -> Vec<RunExtent> {
+    let paints = self.inner.paints.borrow();
+    let mut extents: Vec<RunExtent> = Vec::new();
+
+    for (index, line) in self.inner.layout.lines().enumerate() {
+      if !Self::line_in(line.metrics(), band) {
+        continue;
+      }
+
+      for item in line.items() {
+        let PositionedLayoutItem::GlyphRun(glyph_run) = item else {
+          continue;
+        };
+        let run = glyph_run.run();
+        let metrics = run.font_metrics();
+        let mut x = glyph_run.offset();
+
+        for cluster in run.visual_clusters() {
+          let range = cluster.text_range();
+          let advance = cluster.advance();
+          let paint = paints.at(range.start);
+
+          match extents.last_mut() {
+            Some(last)
+              if last.line == index
+                && last.paint == paint
+                && (last.x + last.width - x).abs() < 0.01 =>
+            {
+              last.width += advance;
+              last.range = last.range.start.min(range.start)..last.range.end.max(range.end);
+            }
+            _ => extents.push(RunExtent {
+              range,
+              line: index,
+              x,
+              width: advance,
+              baseline: glyph_run.baseline(),
+              ascent: metrics.ascent,
+              descent: metrics.descent,
+              underline_offset: metrics.underline_offset,
+              underline_thickness: metrics.underline_size,
+              strikethrough_offset: metrics.strikethrough_offset,
+              strikethrough_thickness: metrics.strikethrough_size,
+              paint,
+            }),
+          }
+
+          x += advance;
+        }
+      }
+    }
+
+    extents
+  }
+
   /// The glyphs to draw, run by run, the hyphens and the ellipsis included.
   #[must_use]
   pub fn glyph_runs(&self) -> Vec<GlyphRun> {
+    self.glyph_runs_in(EVERYWHERE)
+  }
+
+  /// Whether a line of `metrics` may show between `band`'s top and bottom (the layout's
+  /// pixels): its line box, grown by its height each way for the glyphs that overflow it.
+  fn line_in(metrics: &parley::LineMetrics, band: (f32, f32)) -> bool {
+    let reach = metrics.line_height;
+
+    metrics.block_max_coord + reach >= band.0 && metrics.block_min_coord - reach <= band.1
+  }
+
+  /// The glyphs to draw of the lines that may show between `band`'s top and bottom (the
+  /// layout's pixels), run by run: what of [`glyph_runs`](Self::glyph_runs) a box showing that
+  /// band of the text draws.
+  #[must_use]
+  pub fn glyph_runs_in(&self, band: (f32, f32)) -> Vec<GlyphRun> {
     let mut runs = Vec::new();
 
     for line in self.inner.layout.lines() {
+      if !Self::line_in(line.metrics(), band) {
+        continue;
+      }
+
       for item in line.items() {
         let PositionedLayoutItem::GlyphRun(glyph_run) = item else {
           continue;
@@ -933,6 +1015,10 @@ impl ParleyLaid {
     }
 
     for mark in &self.inner.marks {
+      if mark.baseline + mark.size * 2. < band.0 || mark.baseline - mark.size * 2. > band.1 {
+        continue;
+      }
+
       runs.push(GlyphRun {
         font: mark.font.clone(),
         size: mark.size,
@@ -1083,54 +1169,7 @@ impl Laid for ParleyLaid {
   }
 
   fn run_extents(&self) -> Vec<RunExtent> {
-    let paints = self.inner.paints.borrow();
-    let mut extents: Vec<RunExtent> = Vec::new();
-
-    for (index, line) in self.inner.layout.lines().enumerate() {
-      for item in line.items() {
-        let PositionedLayoutItem::GlyphRun(glyph_run) = item else {
-          continue;
-        };
-        let run = glyph_run.run();
-        let metrics = run.font_metrics();
-        let mut x = glyph_run.offset();
-
-        for cluster in run.visual_clusters() {
-          let range = cluster.text_range();
-          let advance = cluster.advance();
-          let paint = paints.at(range.start);
-
-          match extents.last_mut() {
-            Some(last)
-              if last.line == index
-                && last.paint == paint
-                && (last.x + last.width - x).abs() < 0.01 =>
-            {
-              last.width += advance;
-              last.range = last.range.start.min(range.start)..last.range.end.max(range.end);
-            }
-            _ => extents.push(RunExtent {
-              range,
-              line: index,
-              x,
-              width: advance,
-              baseline: glyph_run.baseline(),
-              ascent: metrics.ascent,
-              descent: metrics.descent,
-              underline_offset: metrics.underline_offset,
-              underline_thickness: metrics.underline_size,
-              strikethrough_offset: metrics.strikethrough_offset,
-              strikethrough_thickness: metrics.strikethrough_size,
-              paint,
-            }),
-          }
-
-          x += advance;
-        }
-      }
-    }
-
-    extents
+    self.run_extents_in(EVERYWHERE)
   }
 
   fn move_visual(&self, position: Position, movement: VisualMove) -> Position {

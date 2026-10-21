@@ -8,6 +8,8 @@ Skene's changes, each marked `Skene:` in the source:
   a character after an invisible stacker), whether it takes the paragraph's level where it ends
   a line (UAX #9 rule L1), and whether it follows a soft hyphen; shape/data.rs carries them on
   `CharacterFlags` and `ShapedClusterFlags`.
+- analysis.rs: a soft hyphen is a soft wrap opportunity before the letter or digit after it,
+  after a Hebrew letter too, where ICU4X's UAX #14 LB21a allows none.
 - shape/shaped_text.rs: a run holding a tab keeps its font's space advance
   (`ShapedRun::space_advance`) and draws a tab as the space at no advance of its own; a run
   holding a soft hyphen keeps the hyphen a break after it draws (`ShapedRun::hyphen`); both are

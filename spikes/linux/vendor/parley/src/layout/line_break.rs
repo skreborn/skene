@@ -50,11 +50,13 @@ impl LineLayout {
             &mut self.aligned_subtree_offsets,
             &mut layout.aligned_subtree_offsets,
         );
+        // Skene: the cluster advances too.
         core::mem::swap(&mut self.cluster_advances, &mut layout.cluster_advances);
     }
 
-    /// Drops the lines from `len` onwards, along with their aligned subtree offsets and (Skene)
-    /// their cluster advances.
+    /// Drops the lines from `len` onwards, along with their aligned subtree offsets.
+    ///
+    /// Skene: and their cluster advances.
     fn truncate(&mut self, len: usize) {
         self.lines.truncate(len);
         let offsets = self

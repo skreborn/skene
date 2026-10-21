@@ -4,7 +4,7 @@
 //! scale, the XDG settings portal's scheme, contrast, accent and reduced motion, and XSETTINGS
 //! where no portal answers), so a view that reads one follows it. A value that only varies
 //! with the environment needs none of them: it declares its condition
-//! (`16.when(Media::MinWidth(900), 24)`).
+//! (`16.when(Media::min_width(900), 24)`).
 
 use skene_foundation::{Effect, Environment, seam::Realization as _};
 

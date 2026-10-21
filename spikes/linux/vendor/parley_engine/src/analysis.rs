@@ -828,7 +828,11 @@ pub(crate) fn analyze_text(
                 // `line-break: anywhere`: an opportunity around every grapheme.
                 prev_char.is_some() && is_grapheme_start
             } else {
-                is_icu_line || after_break_space
+                // Skene: a soft hyphen is a hyphenation opportunity before the letter or digit
+                // after it (CSS Text 3 § 5.4), after a Hebrew letter too (UAX #14 LB21a).
+                is_icu_line
+                    || after_break_space
+                    || (prev_char == Some('\u{AD}') && ch.is_alphanumeric())
             };
             // Consumers can override soft wrap opportunities, except around a mandatory
             // break.

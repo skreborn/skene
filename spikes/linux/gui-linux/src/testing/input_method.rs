@@ -223,7 +223,7 @@ mod served {
     }
 
     /// The client dropped the composition.
-    fn reset(&self) {}
+    const fn reset(&self) {}
 
     /// The caret's rectangle on the screen.
     fn set_cursor_rect(&self, x: i32, y: i32, width: i32, height: i32) {
@@ -287,7 +287,7 @@ mod served {
   #[interface(name = "org.freedesktop.IBus.InputContext")]
   impl IBusContext {
     /// What the client can show.
-    fn set_capabilities(&self, _capabilities: u32) {}
+    const fn set_capabilities(&self, _capabilities: u32) {}
 
     /// A field took focus.
     fn focus_in(&self) {
@@ -300,7 +300,7 @@ mod served {
     }
 
     /// The client dropped the composition.
-    fn reset(&self) {}
+    const fn reset(&self) {}
 
     /// The caret's rectangle on the screen.
     fn set_cursor_location(&self, x: i32, y: i32, width: i32, height: i32) {
@@ -323,7 +323,7 @@ mod served {
 
     /// What the focused field is for: its purpose and hints.
     #[zbus(property)]
-    fn content_type(&self) -> (u32, u32) {
+    const fn content_type(&self) -> (u32, u32) {
       self.content_type
     }
 

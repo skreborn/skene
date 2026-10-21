@@ -163,7 +163,7 @@ fn app() -> AnyView {
     return LazyColumn::new()
       .set_padding(8)
       .set_spacing(2)
-      .set_item_extent(ItemExtent::Estimated(29.))
+      .set_item_height(ItemExtent::estimated(29))
       .derive_items(move || (0..count).collect::<Vec<_>>(), |index| *index, row)
       .into_any();
   }

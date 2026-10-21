@@ -66,7 +66,7 @@ impl Placement {
   }
 
   /// The top left of an adornment `size` big placed so within `bounds`, all in one space (one
-  /// under the pointer, from the pointer): what a backend that places its surfaces itself
+  /// under the pointer, from the pointer): what a window system that places its surfaces itself
   /// (X11) computes, as a compositor places a popup that may flip vertically and slide
   /// horizontally.
   #[must_use]
@@ -181,7 +181,7 @@ impl DragIcon {
 
   /// Its size, in window pixels.
   #[must_use]
-  pub fn size(&self) -> (u32, u32) {
+  pub const fn size(&self) -> (u32, u32) {
     (self.size.0 as u32, self.size.1 as u32)
   }
 

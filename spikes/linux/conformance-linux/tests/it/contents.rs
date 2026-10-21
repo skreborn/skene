@@ -13,7 +13,7 @@ use skene_gui::{
   testing::{self, Driver as _, Role, publish},
 };
 use skene_gui_linux::{
-  Backend,
+  WindowSystem,
   testing::{
     Session,
     input_method::{InputMethod, Purpose},
@@ -118,7 +118,7 @@ fn tells_each_purpose(input_method: &InputMethod) {
 
 #[skene_gui::test]
 fn a_fields_keyboard_reaches_fcitx_as_its_purpose() {
-  if Session::current().map(Session::backend) != Some(Backend::X11) {
+  if Session::current().map(Session::window_system) != Some(WindowSystem::X11) {
     skene_gui_linux::testing::not_tested_here("on Wayland the input method is the compositor's");
 
     return;
@@ -129,7 +129,7 @@ fn a_fields_keyboard_reaches_fcitx_as_its_purpose() {
 
 #[skene_gui::test]
 fn a_fields_keyboard_reaches_ibus_as_its_purpose() {
-  if Session::current().map(Session::backend) != Some(Backend::X11) {
+  if Session::current().map(Session::window_system) != Some(WindowSystem::X11) {
     skene_gui_linux::testing::not_tested_here("on Wayland the input method is the compositor's");
 
     return;
@@ -196,7 +196,7 @@ fn placed() -> impl View {
     .add_child(TextField::new("Note").bind_text(note))
 }
 
-/// Whether `actual` is `wanted` within `within` pixels: the border, padding and gap a popup's
+/// Whether `actual` is `wanted` within `within` pixels: the border, padding and spacing a popup's
 /// style puts between where it opens and the items a reader reads in it.
 fn near(actual: f32, wanted: f32, within: f32) -> bool {
   (actual - wanted).abs() <= within

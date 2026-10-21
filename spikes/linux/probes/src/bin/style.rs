@@ -319,7 +319,7 @@ fn body() {
     Column::new()
       .add_child(
         Container::new()
-          .set_padding(8.when(Media::MinWidth(600), 32))
+          .set_padding(8.when(Media::min_width(600), 32))
           .set_child(Container::new().set_height(10).set_handle(&padded)),
       )
       .add_child(
@@ -327,7 +327,7 @@ fn body() {
           .set_height(20)
           .set_background(
             Value::from(Color::rgb(RED))
-              .when(Media::MaxWidth(500), Color::rgb(BLUE))
+              .when(Media::max_width(500), Color::rgb(BLUE))
               .when(Media::Dark, Color::rgb(0x00ff00)),
           )
           .set_handle(&swatch),
@@ -346,7 +346,7 @@ fn body() {
   let wide = (shown.rect(&padded).0, shown.pixel_in(&swatch, 5., 5.));
 
   result(
-    "MinWidth(600) and MaxWidth(500) follow the window",
+    "min_width(600) and max_width(500) follow the window",
     narrow.0 == 8. && near(narrow.1, BLUE) && wide.0 == 32. && near(wide.1, RED),
     format!(
       "at 400: padding {} swatch {}; at 700: padding {} swatch {}",

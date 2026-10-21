@@ -4,7 +4,7 @@
 use std::rc::Rc;
 
 use crate::{
-  AxisAlignment, Border, Color, Effect, Inset, State, SystemColors, Value,
+  AxisAlignment, Border, Color, Effect, Inset, Spacing, State, SystemColors, Value,
   behavior::{Behavior, Chosen, Controlled, Listbox as ListboxBehavior, Options},
   layout::Axis,
   lazy::ItemExtent,
@@ -15,7 +15,7 @@ use crate::{
   untrack,
   view::{
     AnyKind, AsPart, AsPartBase, Container, ContainerBase, ControlBase, ControlMembersBase, Cx,
-    DecorationBase, Label, Lazy, LazyBase, LazyHandle, LazyListBase, Node, RunBase, View, Wraps,
+    DecorationBase, ItemHeightBase, Label, Lazy, LazyBase, LazyHandle, Node, RunBase, View, Wraps,
     controls::{
       Pending,
       choice::{GroupOptions, HasChoice, HasOptions, OptionSegment},
@@ -51,7 +51,8 @@ impl<R: Realization> ListboxItem<R> {
 
 /// What a [`ListboxItem`] carries: every control's members.
 pub trait ListboxItemBase<R: Realization>: Wraps<Inner = ListboxItem<R>> {
-  /// An option captioned by `label`: a text names it, a view through [`Label::set_name`].
+  /// An option captioned by `label`: a text names it, a view by the texts it shows or through
+  /// [`Label::set_name`].
   fn new(label: impl Into<Label<R>>) -> Self {
     let control = crate::view::Control::new(Pending)
       .set_min_height(30)
@@ -81,8 +82,11 @@ type ItemBuilder<T, R> = Rc<dyn Fn(&T, Label<R>) -> ListboxItem<R>>;
 /// Options in a list, with its caption: Skene's list box, drawn on every platform. It holds
 /// `C`, what it has chosen: an `Option` of its options' values for one choice, a `HashSet` or a
 /// `BTreeSet` of them for several. It is a [`crate::view::Control`] over a
-/// [`crate::behavior::Listbox`], its caption above its list ([`Listbox::default_list`]) of
-/// options, each from its item builder ([`ListboxBase::set_item_builder`]). The list scrolls
+/// [`crate::behavior::Listbox`], its caption before it among its siblings (above it in a
+/// column), a press on the caption focusing it, and its list ([`Listbox::default_list`]) of
+/// options 2 pixels apart ([`ListboxBase::set_option_spacing`]), each from its item builder
+/// ([`ListboxBase::set_item_builder`]) and estimated at 30 pixels tall until built
+/// ([`ListboxBase::set_option_height`]). The list scrolls
 /// once it is as tall as it may be, and builds only the options in view and a few beyond
 /// ([`crate::view::Lazy`]), so a list of a hundred thousand costs what it shows; a reader
 /// finds the whole count and each built option's place.
@@ -108,6 +112,10 @@ pub struct Listbox<C: Chosen, R: Realization> {
   segments: Vec<OptionSegment<C::Value, R>>,
   /// The box around its options.
   list: Container<R>,
+  /// The space between its options.
+  option_spacing: Value<Spacing>,
+  /// How tall its options are.
+  option_height: Value<ItemExtent>,
   /// What makes each option.
   builder: ItemBuilder<C::Value, R>,
 }
@@ -155,8 +163,41 @@ pub trait ListboxBase<C: Chosen, R: Realization>: Wraps<Inner = Listbox<C, R>> {
         .set_label(label),
       segments: Vec::new(),
       list: Listbox::<C, R>::default_list(),
+      option_spacing: Value::from(2),
+      option_height: Value::from(ItemExtent::Estimated(30.)),
       builder: Rc::new(|_, label| ListboxItem::new(label)),
     })
+  }
+
+  /// The space between the options, in pixels; 2 where unset.
+  fn set_option_spacing(mut self, spacing: impl Into<Value<Spacing>>) -> Self {
+    self.inner_mut().option_spacing = spacing.into();
+
+    self
+  }
+
+  /// The space between the options, in pixels, kept current; 2 where unset.
+  fn derive_option_spacing<V: Into<Value<Spacing>>>(
+    self,
+    spacing: impl Fn() -> V + 'static,
+  ) -> Self {
+    self.set_option_spacing(Value::derived(spacing))
+  }
+
+  /// How tall each option is: fixed (`36`), or estimated and measured as it is built
+  /// (`ItemExtent::estimated(30)`, the default).
+  fn set_option_height(mut self, height: impl Into<Value<ItemExtent>>) -> Self {
+    self.inner_mut().option_height = height.into();
+
+    self
+  }
+
+  /// How tall each option is, kept current; estimated at 30 where unset.
+  fn derive_option_height<V: Into<Value<ItemExtent>>>(
+    self,
+    height: impl Fn() -> V + 'static,
+  ) -> Self {
+    self.set_option_height(Value::derived(height))
   }
 
   /// The box around its options, in place of [`Listbox::default_list`]; the options are
@@ -189,6 +230,8 @@ impl<C: Chosen, R: Realization> View<R> for Listbox<C, R> {
       control,
       segments,
       list,
+      option_spacing,
+      option_height,
       builder,
     } = self;
     let roster = control.behavior().roster();
@@ -224,21 +267,28 @@ impl<C: Chosen, R: Realization> View<R> for Listbox<C, R> {
 
     let items = Lazy::new(Axis::Vertical, None)
       .bare()
-      .set_spacing(2)
-      .set_item_extent(ItemExtent::Estimated(30.))
+      .set_spacing(option_spacing)
+      .set_item_height(option_height)
       .set_lazy_handle(&handle)
-      .derive_items(
+      .derive_items_keeping(
         {
           let options = options.clone();
 
           move || options.values()
         },
         Clone::clone,
-        move |value: C::Value| {
-          let member = ListboxBehavior::<C>::with_roster(Rc::clone(&roster)).member(value.clone());
+        {
+          let options = options.clone();
 
-          builder(&value, options.caption(&value)).into_control(member)
+          move |value: C::Value| {
+            let member =
+              ListboxBehavior::<C>::with_roster(Rc::clone(&roster)).member(value.clone());
+
+            builder(&value, options.caption(&value)).into_control(member)
+          }
         },
+        // An option captioned by a view given once stays built once built.
+        move |value| options.caption_once(value),
       );
 
     control

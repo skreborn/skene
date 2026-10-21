@@ -11,8 +11,8 @@
 use std::{cell::RefCell, hash::Hash, rc::Rc};
 
 use crate::{
-  Alignment, AxisAlignment, Effect, GridPlacement, GridTrack, Inset, NodeId, Owner, Signal,
-  Spacing, State, StateSet, Tracks, Value,
+  Alignment, Arrangement, AxisAlignment, Effect, GridPlacement, GridTrack, Inset, NodeId, Owner,
+  Signal, Spacing, State, StateSet, Tracks, Value,
   layout::Axis,
   lazy::{
     GridCells, ItemExtent, Key, KeyMap, KeySet, ScrollPosition,
@@ -51,8 +51,9 @@ trait Items<R: Realization> {
   /// Whether each counts among the list's items for a reader (a header does not).
   fn counted(&self) -> bool;
 
-  /// Whether a built item is kept realized from then on, its view made once.
-  fn kept(&self) -> bool;
+  /// Whether the item at `index`, once built, is kept realized from then on, its view made
+  /// once.
+  fn kept(&self, index: usize) -> bool;
 }
 
 /// A segment of one item: a single item or a header, its view made once.
@@ -83,7 +84,7 @@ impl<R: Realization> Items<R> for One<R> {
     !self.header
   }
 
-  fn kept(&self) -> bool {
+  fn kept(&self, _: usize) -> bool {
     true
   }
 }
@@ -92,10 +93,11 @@ impl<R: Realization> Items<R> for One<R> {
 type Kept<T> = (Rc<[T]>, Rc<[Key]>);
 
 /// A segment of items read from the app's data: what its closure last returned, with their
-/// keys, read once per change of what it reads.
+/// keys, read once per change of what it reads, and which items stay realized once built.
 struct Derived<T, C> {
   kept: RefCell<Kept<T>>,
   view: Rc<dyn Fn(T) -> C>,
+  keep: Rc<dyn Fn(&T) -> bool>,
 }
 
 impl<R: Realization, T: Clone + 'static, C: View<R>> Items<R> for Derived<T, C> {
@@ -121,8 +123,13 @@ impl<R: Realization, T: Clone + 'static, C: View<R>> Items<R> for Derived<T, C> 
     true
   }
 
-  fn kept(&self) -> bool {
-    false
+  fn kept(&self, index: usize) -> bool {
+    self
+      .kept
+      .borrow()
+      .0
+      .get(index)
+      .is_some_and(|item| (self.keep)(item))
   }
 }
 
@@ -189,11 +196,12 @@ impl LazyHandle {
 pub struct Lazy<R: Realization> {
   axis: Axis,
   cells: Option<GridCells>,
-  extent: Rc<dyn Fn() -> ItemExtent>,
+  extent: Value<ItemExtent>,
   overscan: usize,
-  spacing: Rc<dyn Fn() -> Spacing>,
-  padding: Rc<dyn Fn() -> Inset>,
-  item_alignment: AxisAlignment,
+  spacing: Value<Spacing>,
+  padding: Value<Inset>,
+  item_alignment: Value<AxisAlignment>,
+  reverse: Value<bool>,
   label: Option<Rc<dyn Fn() -> Rc<str>>>,
   labelled_by: Vec<NodeHandle>,
   position: Option<Rc<dyn Fn() -> ScrollPosition>>,
@@ -212,11 +220,12 @@ impl<R: Realization> Lazy<R> {
     Self {
       axis,
       cells,
-      extent: Rc::new(|| ItemExtent::Estimated(48.)),
+      extent: Value::from(ItemExtent::Estimated(48.)),
       overscan: 2,
-      spacing: Rc::new(Spacing::default),
-      padding: Rc::new(Inset::default),
-      item_alignment: AxisAlignment::Stretch,
+      spacing: Value::from(Spacing::default()),
+      padding: Value::from(Inset::default()),
+      item_alignment: Value::from(AxisAlignment::Stretch),
+      reverse: Value::from(false),
       label: None,
       labelled_by: Vec::new(),
       position: None,
@@ -233,10 +242,73 @@ impl<R: Realization> Lazy<R> {
     }
   }
 
+  /// Appends one item per item `items` returns, as [`LazyBase::derive_items`] does, keeping
+  /// each item `keep` holds for realized from the time it is built: an item whose view can be
+  /// made only once (a list box's option captioned by a view given once).
+  ///
+  /// # Panics
+  ///
+  /// In a debug build, where two items share a key.
+  pub fn derive_items_keeping<
+    T: Clone + 'static,
+    K: Hash + 'static,
+    C: ChildOf<Self, R> + View<R>,
+  >(
+    mut self,
+    items: impl Fn() -> Vec<T> + 'static,
+    key: impl Fn(&T) -> K + 'static,
+    view: impl Fn(T) -> C + 'static,
+    keep: impl Fn(&T) -> bool + 'static,
+  ) -> Self {
+    self.push_derived(items, key, view, keep);
+
+    self
+  }
+
+  /// Appends the segment of items `items` returns, each keyed by `key`, shown by `view` and
+  /// kept realized once built where `keep` holds.
+  fn push_derived<T: Clone + 'static, K: Hash + 'static, C: View<R>>(
+    &mut self,
+    items: impl Fn() -> Vec<T> + 'static,
+    key: impl Fn(&T) -> K + 'static,
+    view: impl Fn(T) -> C + 'static,
+    keep: impl Fn(&T) -> bool + 'static,
+  ) {
+    let view: Rc<dyn Fn(T) -> C> = Rc::new(view);
+    let keep: Rc<dyn Fn(&T) -> bool> = Rc::new(keep);
+
+    self
+      .segments
+      .push(Segment::Derived(Box::new(move |segment, changed| {
+        let derived = Rc::new(Derived {
+          kept: RefCell::new((Rc::from([]), Rc::from([]))),
+          view,
+          keep,
+        });
+        let kept = Rc::clone(&derived);
+
+        Effect::new(move || {
+          let items: Rc<[T]> = items().into();
+
+          untrack(|| {
+            let keys: Rc<[Key]> = items
+              .iter()
+              .map(|item| Key::of(segment, &key(item)))
+              .collect();
+
+            *kept.kept.borrow_mut() = (items, keys);
+            changed.update(|count| *count = count.wrapping_add(1));
+          });
+        });
+
+        derived as Rc<dyn Items<R>>
+      })));
+  }
+
   /// This list as a control's: each item's own node is its row (a list box's option), with no
   /// box around it, and the list and its scroll box stand for their rows to a reader, the
   /// control reporting the count.
-  pub fn bare(mut self) -> Self {
+  pub const fn bare(mut self) -> Self {
     self.bare = true;
 
     self
@@ -286,41 +358,74 @@ pub trait LazyBase<R: Realization>: Wraps<Inner = Lazy<R>> {
 
   /// The space between neighboring items, in pixels: between lines along the list's axis,
   /// between a grid's cells across it.
-  fn set_spacing(self, spacing: impl Into<Spacing>) -> Self {
-    let spacing = spacing.into();
+  fn set_spacing(mut self, spacing: impl Into<Value<Spacing>>) -> Self {
+    self.inner_mut().spacing = spacing.into();
 
-    self.derive_spacing(move || spacing)
+    self
   }
 
   /// The space between neighboring items, as `spacing` returns it.
   ///
   /// Derived: recomputed whenever a signal the closure reads changes.
-  fn derive_spacing<S: Into<Spacing>>(mut self, spacing: impl Fn() -> S + 'static) -> Self {
-    self.inner_mut().spacing = Rc::new(move || spacing().into());
+  fn derive_spacing<V: Into<Value<Spacing>>>(mut self, spacing: impl Fn() -> V + 'static) -> Self {
+    self.inner_mut().spacing = Value::derived(spacing);
 
     self
   }
 
   /// The space inside the scrolled content, around its items, in pixels (Compose's
   /// `contentPadding`).
-  fn set_padding(self, padding: impl Into<Inset>) -> Self {
-    let padding = padding.into();
+  fn set_padding(mut self, padding: impl Into<Value<Inset>>) -> Self {
+    self.inner_mut().padding = padding.into();
 
-    self.derive_padding(move || padding)
+    self
   }
 
   /// The space inside the scrolled content, as `padding` returns it.
   ///
   /// Derived: recomputed whenever a signal the closure reads changes.
-  fn derive_padding<I: Into<Inset>>(mut self, padding: impl Fn() -> I + 'static) -> Self {
-    self.inner_mut().padding = Rc::new(move || padding().into());
+  fn derive_padding<V: Into<Value<Inset>>>(mut self, padding: impl Fn() -> V + 'static) -> Self {
+    self.inner_mut().padding = Value::derived(padding);
 
     self
   }
 
   /// Where the items sit across the list's axis; stretched across it where unset.
-  fn set_item_alignment(mut self, alignment: AxisAlignment) -> Self {
-    self.inner_mut().item_alignment = alignment;
+  fn set_item_alignment(mut self, alignment: impl Into<Value<AxisAlignment>>) -> Self {
+    self.inner_mut().item_alignment = alignment.into();
+
+    self
+  }
+
+  /// Where the items sit across the list's axis, as `alignment` returns it.
+  ///
+  /// Derived: recomputed whenever a signal the closure reads changes.
+  fn derive_item_alignment<V: Into<Value<AxisAlignment>>>(
+    mut self,
+    alignment: impl Fn() -> V + 'static,
+  ) -> Self {
+    self.inner_mut().item_alignment = Value::derived(alignment);
+
+    self
+  }
+
+  /// Whether the list starts at its end and keeps its end in view while the end shows, as items
+  /// arrive or measure (Compose's `reverseLayout`): a chat staying at its newest message.
+  /// Scrolled away from the end, it keeps its first visible item, as every list does.
+  fn set_reverse_layout(mut self, reverse: impl Into<Value<bool>>) -> Self {
+    self.inner_mut().reverse = reverse.into();
+
+    self
+  }
+
+  /// Whether the list starts at its end and keeps it in view, as `reverse` returns it.
+  ///
+  /// Derived: recomputed whenever a signal the closure reads changes.
+  fn derive_reverse_layout<V: Into<Value<bool>>>(
+    mut self,
+    reverse: impl Fn() -> V + 'static,
+  ) -> Self {
+    self.inner_mut().reverse = Value::derived(reverse);
 
     self
   }
@@ -448,34 +553,7 @@ pub trait LazyBase<R: Realization>: Wraps<Inner = Lazy<R>> {
     key: impl Fn(&T) -> K + 'static,
     view: impl Fn(T) -> C + 'static,
   ) -> Self {
-    let view: Rc<dyn Fn(T) -> C> = Rc::new(view);
-
-    self
-      .inner_mut()
-      .segments
-      .push(Segment::Derived(Box::new(move |segment, changed| {
-        let derived = Rc::new(Derived {
-          kept: RefCell::new((Rc::from([]), Rc::from([]))),
-          view,
-        });
-        let kept = Rc::clone(&derived);
-
-        Effect::new(move || {
-          let items: Rc<[T]> = items().into();
-
-          untrack(|| {
-            let keys: Rc<[Key]> = items
-              .iter()
-              .map(|item| Key::of(segment, &key(item)))
-              .collect();
-
-            *kept.kept.borrow_mut() = (items, keys);
-            changed.update(|count| *count = count.wrapping_add(1));
-          });
-        });
-
-        derived as Rc<dyn Items<R>>
-      })));
+    self.inner_mut().push_derived(items, key, view, |_| false);
 
     self
   }
@@ -483,27 +561,57 @@ pub trait LazyBase<R: Realization>: Wraps<Inner = Lazy<R>> {
 
 impl<R: Realization> LazyBase<R> for Lazy<R> {}
 
-/// What a lazy list carries beside its layout members: how long its items are along its axis.
-pub trait LazyListBase<R: Realization>: LazyBase<R> {
-  /// How long each item is along the list's axis (Flutter's `itemExtent`): fixed (`48`), or
-  /// estimated and measured as it is realized (`ItemExtent::Estimated(56)`, the default at 48).
-  fn set_item_extent(self, extent: impl Into<ItemExtent>) -> Self {
-    let extent = extent.into();
+impl<R: Realization> ItemHeightBase<R> for Lazy<R> {}
 
-    self.derive_item_extent(move || extent)
+impl<R: Realization> ItemWidthBase<R> for Lazy<R> {}
+
+/// What a list scrolling up and down carries beside its layout members: how tall its items
+/// are (a `LazyColumn`'s rows, a `LazyVerticalGrid`'s lines).
+pub trait ItemHeightBase<R: Realization>: LazyBase<R> {
+  /// How tall each item is (Flutter's `itemExtent`): fixed (`48`), or estimated and measured as
+  /// it is realized (`ItemExtent::estimated(56)`, the default at 48).
+  fn set_item_height(mut self, height: impl Into<Value<ItemExtent>>) -> Self {
+    self.inner_mut().extent = height.into();
+
+    self
   }
 
-  /// How long each item is along the list's axis, as `extent` returns it.
+  /// How tall each item is, as `height` returns it.
   ///
   /// Derived: recomputed whenever a signal the closure reads changes.
-  fn derive_item_extent<E: Into<ItemExtent>>(mut self, extent: impl Fn() -> E + 'static) -> Self {
-    self.inner_mut().extent = Rc::new(move || extent().into());
+  fn derive_item_height<V: Into<Value<ItemExtent>>>(
+    mut self,
+    height: impl Fn() -> V + 'static,
+  ) -> Self {
+    self.inner_mut().extent = Value::derived(height);
 
     self
   }
 }
 
-impl<R: Realization> LazyListBase<R> for Lazy<R> {}
+/// What a list scrolling side to side carries beside its layout members: how wide its items
+/// are (a `LazyRow`'s items, a `LazyHorizontalGrid`'s lines).
+pub trait ItemWidthBase<R: Realization>: LazyBase<R> {
+  /// How wide each item is (Flutter's `itemExtent`): fixed (`48`), or estimated and measured as
+  /// it is realized (`ItemExtent::estimated(56)`, the default at 48).
+  fn set_item_width(mut self, width: impl Into<Value<ItemExtent>>) -> Self {
+    self.inner_mut().extent = width.into();
+
+    self
+  }
+
+  /// How wide each item is, as `width` returns it.
+  ///
+  /// Derived: recomputed whenever a signal the closure reads changes.
+  fn derive_item_width<V: Into<Value<ItemExtent>>>(
+    mut self,
+    width: impl Fn() -> V + 'static,
+  ) -> Self {
+    self.inner_mut().extent = Value::derived(width);
+
+    self
+  }
+}
 
 impl<R: Realization> AnyKind for Lazy<R> {}
 
@@ -533,6 +641,7 @@ struct List<R: Realization> {
   item_builder: Option<ItemBuilder<R>>,
   viewport: Option<(f32, f32)>,
   shown: f32,
+  at_end: bool,
   anchor: Option<Anchor>,
   cross_spacing: f32,
   pins: KeyMap<StateSet>,
@@ -610,6 +719,14 @@ impl<R: Realization> List<R> {
     self.engine.set_items(keys, whole, per_line);
     self.no_stop.clear();
 
+    if !self.kept.is_empty() {
+      let engine = &self.engine;
+
+      self
+        .kept
+        .retain(|key| engine.index_of(*key, None).is_some());
+    }
+
     counted
   }
 
@@ -646,6 +763,15 @@ impl<R: Realization> List<R> {
   }
 }
 
+/// What a list's windowing lays its items out by, as resolved now.
+#[derive(Clone, Copy)]
+struct Layout {
+  extent: ItemExtent,
+  spacing: Spacing,
+  padding: Inset,
+  reverse: bool,
+}
+
 /// The content of a lazy list: the grid its realized items sit in, windowing them as its
 /// scroll box's viewport and offset say.
 struct Content<R: Realization> {
@@ -654,10 +780,11 @@ struct Content<R: Realization> {
   extent: Rc<dyn Fn() -> ItemExtent>,
   spacing: Rc<dyn Fn() -> Spacing>,
   padding: Rc<dyn Fn() -> Inset>,
+  reverse: Rc<dyn Fn() -> bool>,
   scroll: NodeHandle,
   wires: Wires,
   axis: Axis,
-  item_alignment: AxisAlignment,
+  item_alignment: Value<AxisAlignment>,
   label: Option<Rc<dyn Fn() -> Rc<str>>>,
   labelled_by: Vec<NodeHandle>,
   bare: bool,
@@ -676,6 +803,7 @@ impl<R: Realization> View<R> for Content<R> {
       extent,
       spacing,
       padding,
+      reverse,
       scroll,
       wires,
       axis,
@@ -694,16 +822,16 @@ impl<R: Realization> View<R> for Content<R> {
       Axis::Vertical => (main, cross),
       Axis::Horizontal => (cross, main),
     };
-    let alignment = match axis {
+    let alignment = item_alignment.map(move |across| match axis {
       Axis::Vertical => Alignment {
-        horizontal: item_alignment,
+        horizontal: across,
         vertical: AxisAlignment::Stretch,
       },
       Axis::Horizontal => Alignment {
         horizontal: AxisAlignment::Stretch,
-        vertical: item_alignment,
+        vertical: across,
       },
-    };
+    });
     let gaps = Rc::clone(&spacing);
 
     record.set(keys::ROWS, Value::derived(move || rows.get()));
@@ -711,6 +839,9 @@ impl<R: Realization> View<R> for Content<R> {
     record.set(keys::PADDING, Value::derived(move || wires.padding.get()));
     record.set(keys::SPACING, Value::derived(move || gaps()));
     record.set(keys::ALIGNMENT, alignment);
+    // The lines keep their extents where they fill less than the viewport.
+    record.set(keys::ARRANGEMENT, Arrangement::Start);
+    record.set(keys::LINE_ARRANGEMENT, Arrangement::Start);
     cx.finish(id, record, None);
 
     // The scroll box is the list a reader finds: its viewport its bounds, its count the
@@ -758,6 +889,7 @@ impl<R: Realization> View<R> for Content<R> {
       item_builder,
       viewport: None,
       shown: 0.,
+      at_end: true,
       anchor: None,
       cross_spacing: 0.,
       pins: KeyMap::default(),
@@ -804,12 +936,24 @@ impl<R: Realization> View<R> for Content<R> {
       let extent = extent();
       let spacing = spacing();
       let padding = padding();
+      let reverse = reverse();
       let _ = (wires.items.get(), wires.changed.get());
       let viewport = wires.viewport.get();
       let offset = wires.offset.get();
 
       untrack(|| {
-        reconcile(&window, wires, extent, spacing, padding, viewport, offset);
+        reconcile(
+          &window,
+          wires,
+          Layout {
+            extent,
+            spacing,
+            padding,
+            reverse,
+          },
+          viewport,
+          offset,
+        );
       });
     });
 
@@ -827,6 +971,7 @@ impl<R: Realization> View<R> for Lazy<R> {
       spacing,
       padding,
       item_alignment,
+      reverse,
       label,
       labelled_by,
       position,
@@ -838,6 +983,13 @@ impl<R: Realization> View<R> for Lazy<R> {
       lazy_handle,
       segments,
     } = self;
+    let tokens = cx.scope().tokens();
+    let (extent, spacing, padding, reverse) = (
+      extent.resolving(&tokens, ItemExtent::Estimated(48.)),
+      spacing.resolving(&tokens, Spacing::default()),
+      padding.resolving(&tokens, Inset::default()),
+      reverse.resolving(&tokens, false),
+    );
     let scroll_handle = handle.unwrap_or_default();
     let list: Rc<RefCell<Option<List<R>>>> = Rc::new(RefCell::new(None));
     let wires = Wires {
@@ -857,6 +1009,7 @@ impl<R: Realization> View<R> for Lazy<R> {
       extent,
       spacing,
       padding,
+      reverse,
       scroll: scroll_handle,
       wires,
       axis,
@@ -999,7 +1152,7 @@ fn build_row<R: Realization>(
     let items = Rc::clone(&state.segments[segment]);
     let key = items.key(at);
 
-    if items.kept() {
+    if items.kept(at) {
       state.kept.insert(key);
     }
 
@@ -1134,12 +1287,17 @@ fn drop_row<R: Realization>(row: Row) {
 fn reconcile<R: Realization>(
   list: &Rc<RefCell<Option<List<R>>>>,
   wires: Wires,
-  extent: ItemExtent,
-  spacing: Spacing,
-  padding: Inset,
+  layout: Layout,
   viewport: Option<(f32, f32)>,
   offset: ScrollOffset,
 ) {
+  let Layout {
+    extent,
+    spacing,
+    padding,
+    reverse,
+  } = layout;
+
   // What the window needs, from the state as it stands.
   let (needed, stale, corrected) = {
     let mut borrowed = list.borrow_mut();
@@ -1181,6 +1339,7 @@ fn reconcile<R: Realization>(
     let main = viewport.map(|size| along(axis, size));
     let moved_by_reader = offset.along(axis) != state.shown;
     let mut at = f64::from(offset.along(axis));
+    let end = main.map(|main| (state.engine.total() - f64::from(main)).max(0.));
 
     // A position the app asked for, once the viewport is known.
     if let Some(main) = main
@@ -1201,10 +1360,23 @@ fn reconcile<R: Realization>(
       at = anchored;
     }
 
-    if let Some(main) = main {
-      at = at.clamp(0., (state.engine.total() - f64::from(main)).max(0.));
+    // A reversed list holds its end while the end shows.
+    if reverse
+      && state.at_end
+      && !moved_by_reader
+      && let Some(end) = end
+    {
+      at = end;
+    }
+
+    if let Some(end) = end {
+      at = at.clamp(0., end);
     } else {
       at = at.max(0.);
+    }
+
+    if end.is_some() {
+      state.at_end = end.is_some_and(|end| at >= end - 0.5);
     }
 
     let lines = match main {

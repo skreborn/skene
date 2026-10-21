@@ -10,6 +10,7 @@
 
 use std::{
   cell::{Cell, RefCell},
+  collections::HashMap,
   ops::Range,
   rc::Rc,
   time::Duration,
@@ -126,6 +127,43 @@ pub struct Entry {
   offered: Option<String>,
   /// Where a drag over the entry would drop its text (a byte of the text), shown as a caret.
   pub drop_caret: Option<usize>,
+  /// The lines a reader was last told of, by [`AccessLine::key`]: what the next telling
+  /// takes again where a line is unchanged, so a long text costs the lines that changed.
+  pub access_lines: HashMap<u64, AccessLine>,
+}
+
+/// A line of an entry's text as a reader is told it: its characters' lengths, positions and
+/// widths (the run's device pixels, from the line's start), and where its words start.
+pub struct AccessLine {
+  /// What it shows.
+  pub shown: String,
+  /// The line's advance and the scale, bit for bit, which the positions depend on beside its
+  /// text.
+  pub measure: (u32, u64),
+  /// Each character's length in bytes of what it shows.
+  pub lengths: Vec<u8>,
+  /// Each character's position.
+  pub xs: Vec<f32>,
+  /// Each character's width.
+  pub widths: Vec<f32>,
+  /// The characters its words start at.
+  pub words: Vec<u8>,
+}
+
+impl AccessLine {
+  /// The key a line showing `shown`, `width` wide at `scale`, is kept by.
+  #[must_use]
+  pub fn key(shown: &str, width: f32, scale: f64) -> u64 {
+    use std::hash::{Hash as _, Hasher as _};
+
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+
+    shown.hash(&mut hasher);
+    width.to_bits().hash(&mut hasher);
+    scale.to_bits().hash(&mut hasher);
+
+    hasher.finish()
+  }
 }
 
 impl Entry {
@@ -170,6 +208,7 @@ impl Entry {
       blink_started: std::time::Instant::now(),
       offered: None,
       drop_caret: None,
+      access_lines: HashMap::new(),
     })
   }
 

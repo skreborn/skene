@@ -288,3 +288,61 @@ fn a_masked_layout_keeps_the_contract_in_the_real_texts_bytes() {
     colors(&laid)
   );
 }
+
+#[test]
+fn a_band_of_a_long_text_holds_only_the_lines_that_may_show_in_it() {
+  let engine = ParleyEngine::system();
+  let text: String = (0..3000)
+    .map(|line| format!("Line number {line}\n"))
+    .collect();
+  let laid = engine
+    .paragraph(
+      &AttributedText::plain(text.as_str(), RunStyle::new(SIZE)),
+      &ParagraphStyle::default(),
+    )
+    .layout(Some(400.));
+  let lines = laid.lines();
+  let height = lines[1].top - lines[0].top;
+  let band = (lines[1000].top, lines[1000].top + height * 10.);
+  // The bytes of the lines that reach into the band, a line's height around it.
+  let near = |at: usize| {
+    lines.iter().any(|line| {
+      line.range.contains(&at)
+        && line.top + line.height + height >= band.0
+        && line.top - height <= band.1
+    })
+  };
+  let all: usize = laid.glyph_runs().iter().map(|run| run.glyphs.len()).sum();
+  let shown: Vec<usize> = laid
+    .glyph_runs_in(band)
+    .iter()
+    .flat_map(|run| run.glyphs.iter().map(|glyph| glyph.at))
+    .collect();
+
+  assert!(
+    shown.iter().all(|at| near(*at)),
+    "only the band's lines are drawn"
+  );
+  assert!(
+    shown.len() * 100 < all,
+    "a band of ten lines draws a few hundredths of the text: {} of {all}",
+    shown.len()
+  );
+
+  for (index, line) in lines.iter().enumerate().skip(1000).take(10) {
+    assert!(
+      shown.iter().any(|at| line.range.contains(at)),
+      "line {index} in the band is drawn"
+    );
+  }
+
+  let extents = laid.run_extents_in(band);
+
+  assert!(!extents.is_empty());
+  assert!(extents.iter().all(|extent| near(extent.range.start)));
+  assert_eq!(
+    laid.run_extents_in((f32::NEG_INFINITY, f32::INFINITY)),
+    laid.run_extents(),
+    "an unbounded band is the whole text"
+  );
+}

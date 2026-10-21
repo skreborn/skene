@@ -1,7 +1,7 @@
 //! The shared views: a decorated box, the layouts, a scroll box, text, an image and a theme.
 //!
 //! Each property has one setter and its `derive_` twin, and conditions ride the value
-//! (`set_padding(24.when(Media::MinWidth(900), 48))`). Properties come first, children last.
+//! (`set_padding(24.when(Media::min_width(900), 48))`). Properties come first, children last.
 
 pub use skene_foundation::view::ScrollAxes;
 use skene_foundation::{

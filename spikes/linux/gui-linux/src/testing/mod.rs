@@ -66,7 +66,7 @@ use self::{
   input::Input,
   portal::{Portal, Setting},
 };
-use crate::{Backend, Linux, environment, shell, trace, window::Window};
+use crate::{Linux, WindowSystem, environment, shell, trace, window::Window};
 pub use crate::{
   chrome::Button as TitleButton,
   paint::{PaintPath, PathChoice},
@@ -128,10 +128,10 @@ impl Session {
 
   /// The display server the session's windows go to.
   #[must_use]
-  pub const fn backend(self) -> Backend {
+  pub const fn window_system(self) -> WindowSystem {
     match self {
-      Self::X11 | Self::KwinX11 => Backend::X11,
-      Self::Mutter | Self::Sway | Self::Weston | Self::Kwin => Backend::Wayland,
+      Self::X11 | Self::KwinX11 => WindowSystem::X11,
+      Self::Mutter | Self::Sway | Self::Weston | Self::Kwin => WindowSystem::Wayland,
     }
   }
 
@@ -199,6 +199,9 @@ struct Shown {
   frame: Option<Object>,
   /// The geometry's origin in the pointer space, and the window's size it was found at.
   origin: Option<((f64, f64), (u32, u32))>,
+  /// The window's scale the origin was found at: a compositor laying its output out at
+  /// another scale moves the window in the pointer's space.
+  origin_scale: f64,
 }
 
 thread_local! {
@@ -366,9 +369,9 @@ fn ui_thread() -> &'static mpsc::SyncSender<Job> {
 /// test never runs on the user's display.
 pub fn run_test(name: &'static str, body: fn()) {
   let session = Session::current();
-  let display = match session.map(Session::backend) {
-    Some(Backend::X11) => std::env::var_os("DISPLAY"),
-    Some(Backend::Wayland) => std::env::var_os("WAYLAND_DISPLAY"),
+  let display = match session.map(Session::window_system) {
+    Some(WindowSystem::X11) => std::env::var_os("DISPLAY"),
+    Some(WindowSystem::Wayland) => std::env::var_os("WAYLAND_DISPLAY"),
     None => None,
   };
 
@@ -410,6 +413,13 @@ pub fn run_test(name: &'static str, body: fn()) {
 thread_local! {
   /// The test running on the window thread.
   static TEST: std::cell::Cell<&'static str> = const { std::cell::Cell::new("") };
+}
+
+/// Whether this build of the realization paints on the GPU where an adapter presents (its
+/// `gpu` feature): a GPU path test tests nothing in a build without it.
+#[must_use]
+pub const fn is_gpu_built() -> bool {
+  cfg!(feature = "gpu")
 }
 
 /// Ends nothing, but says the running test had nothing to test on this leg, for `reason`
@@ -618,13 +628,14 @@ fn round_trip() {
   });
 }
 
-/// Whether the open window has a frame to paint: one asked to close paints none.
+/// Whether the open window has a frame to paint or a popup awaiting its placement: one asked
+/// to close paints none.
 fn wants_frame() -> bool {
   SHOWN.with(|shown| {
     shown.borrow().as_ref().is_some_and(|shown| {
       let shell = shown.window.shell();
 
-      shell.wants_frame() && !shell.quit
+      (shell.wants_frame() || shown.window.popup_pending()) && !shell.quit
     })
   })
 }
@@ -911,7 +922,7 @@ impl Drawn {
       shell.set_root(node);
     }
 
-    let window = Window::open(session.backend(), shell, "dev.skene.test")
+    let window = Window::open(session.window_system(), shell, "dev.skene.test")
       .unwrap_or_else(|error| panic!("the window does not open on {session:?}: {error}"));
 
     SHOWN.with(|shown| {
@@ -920,6 +931,7 @@ impl Drawn {
         owner: Some(owner),
         frame: None,
         origin: None,
+        origin_scale: 1.,
       });
     });
     // A recording goes on into the new window from its first frame.
@@ -1052,14 +1064,23 @@ impl Drawn {
   /// moving the pointer onto the window and reading where the window saw it, once per size
   /// the window was given; the pointer is moved off the window after.
   fn origin() -> (f64, f64) {
-    let size = Self::with_window(|window| window.shell().size);
-    let last = SHOWN.with(|shown| shown.borrow().as_ref().and_then(|shown| shown.origin));
+    let (size, scale) = Self::with_window(|window| (window.shell().size, window.shell().scale));
+    let (last, last_scale) = SHOWN.with(|shown| {
+      shown
+        .borrow()
+        .as_ref()
+        .map_or((None, scale), |shown| (shown.origin, shown.origin_scale))
+    });
 
     if let Some((origin, at)) = last
       && at == size
+      && (last_scale - scale).abs() < 1e-9
     {
       return origin;
     }
+
+    // The output may be laid out at another scale since the input was made.
+    with_input(|input| input.follow_output()).unwrap_or_else(|error| panic!("the output: {error}"));
 
     let origin =
       with_input(|input| input.window_origin()).unwrap_or_else(|| Self::calibrate(last, size));
@@ -1067,6 +1088,7 @@ impl Drawn {
     SHOWN.with(|shown| {
       if let Some(shown) = shown.borrow_mut().as_mut() {
         shown.origin = Some((origin, size));
+        shown.origin_scale = scale;
       }
     });
 
@@ -1725,7 +1747,7 @@ impl Drawn {
   fn keep_on_screen(&mut self) {
     let session = Session::current().unwrap_or(Session::X11);
 
-    if session.backend() == Backend::X11 {
+    if session.window_system() == WindowSystem::X11 {
       return;
     }
 
@@ -1978,7 +2000,7 @@ impl Drawn {
 
     let session = Session::current().unwrap_or(Session::X11);
 
-    if session.backend() != Backend::X11 {
+    if session.window_system() != WindowSystem::X11 {
       return None;
     }
 
@@ -2198,7 +2220,7 @@ impl Drawn {
   /// Where the screen cannot be read.
   fn screen(rect: (f64, f64, f64, f64), scale: f64) -> Screenshot {
     let painted = Self::with_window(|window| window.shell().painted_at);
-    let pixels = with_screen(|screen| screen.read(rect, painted))
+    let pixels = with_screen(|screen| screen.read(rect, painted, scale))
       .unwrap_or_else(|error| panic!("reading the screen at {rect:?}: {error}"));
 
     Screenshot {
@@ -2274,19 +2296,26 @@ impl Drawn {
     }
   }
 
-  /// The scale the open popup's surface is painted at, its own where the compositor told it
-  /// one; `None` while no popup is open.
+  /// The scale the topmost open popup's surface is painted at, its own where the compositor
+  /// told it one; `None` while no popup is open.
   #[must_use]
   pub fn popup_scale(&self) -> Option<f64> {
     Self::with_window(|window| {
       let shell = window.shell();
+      let top = shell.popup_count().checked_sub(1)?;
 
-      shell.popup().map(|_| shell.popup_scale())
+      Some(shell.popup_scale(top))
     })
   }
 
-  /// What the screen shows of the open popup's surface, whole, as RGBA in device pixels, and its
-  /// top left in the pointer's space; `None` while no popup is open.
+  /// How many popups are open, each inside the one before it.
+  #[must_use]
+  pub fn popup_count(&self) -> usize {
+    Self::with_window(|window| window.shell().popup_count())
+  }
+
+  /// What the screen shows of the topmost open popup's surface, whole, as RGBA in device
+  /// pixels, and its top left in the pointer's space; `None` while no popup is open.
   ///
   /// # Panics
   ///
@@ -2300,7 +2329,9 @@ impl Drawn {
     let (rect, scale) = Self::with_window(|window| {
       let shell = window.shell();
 
-      Some((shell.popup()?.rect(), shell.popup_scale()))
+      let top = shell.popup_count().checked_sub(1)?;
+
+      Some((shell.popup(top)?.rect(), shell.popup_scale(top)))
     })?;
     let at = (x + f64::from(rect.x) * unit, y + f64::from(rect.y) * unit);
     let shot = Self::screen(
@@ -2386,18 +2417,17 @@ impl Drawn {
     Self::with_window(|window| window.shell().paint_path())
   }
 
-  /// The path the open popup paints with, where one is open.
+  /// The path the topmost open popup paints with, where one is open.
   #[must_use]
   pub fn popup_paint_path(&self) -> Option<PaintPath> {
     Self::with_window(|window| {
       let shell = window.shell();
+      let top = shell.popup_count().checked_sub(1)?;
 
-      shell.popup().map(|_| {
-        if shell.popup_presents() {
-          PaintPath::Gpu
-        } else {
-          PaintPath::Cpu
-        }
+      Some(if shell.popup_presents(top) {
+        PaintPath::Gpu
+      } else {
+        PaintPath::Cpu
       })
     })
   }

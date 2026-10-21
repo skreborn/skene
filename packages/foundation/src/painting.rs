@@ -115,11 +115,7 @@ impl Canvas {
     context.flush();
     context.render(&mut pixmap, &mut resources);
 
-    pixmap
-      .take_unpremultiplied()
-      .into_iter()
-      .flat_map(|pixel| [pixel.r, pixel.g, pixel.b, pixel.a])
-      .collect()
+    pixmap.take_rgba8(peniko::ImageAlphaType::Alpha)
   }
 }
 

@@ -1,10 +1,18 @@
-//! The WebGPU renderer behind a painted box: vello's hybrid renderer over wgpu, one
-//! device shared by every box, with a surface per canvas.
+//! The WebGPU renderer behind a painted box: vello's GPU renderer over wgpu, one device
+//! shared by every box, with a surface per canvas.
 
 use std::{cell::RefCell, rc::Rc};
 
 use skene_foundation::web::{Canvas, Renderer, kurbo, paint, peniko};
-use vello_hybrid::{RenderSize, RenderTargetConfig, Resources, Scene, TextureBindings};
+use vello_gpu::{
+  ClearSettings,
+  RenderSize,
+  RenderTargetConfig,
+  Resources,
+  Scene,
+  TargetInit,
+  TextureBindings,
+};
 use wasm_bindgen::JsValue;
 use web_sys::HtmlCanvasElement;
 
@@ -99,7 +107,7 @@ pub(crate) struct Context {
 
 /// The renderer, made for the surface format the browser prefers.
 struct Rendering {
-  renderer: vello_hybrid::Renderer,
+  renderer: vello_gpu::Renderer,
   resources: Resources,
   format: wgpu::TextureFormat,
 }
@@ -184,12 +192,12 @@ impl Context {
     let rendering = match &mut *rendering {
       Some(rendering) if rendering.format == target.config.format => rendering,
       slot => {
-        let (renderer, resources) = vello_hybrid::Renderer::new(
+        let (renderer, resources) = vello_gpu::Renderer::new(
           &self.device,
           &RenderTargetConfig {
             format: target.config.format,
-            width: target.config.width,
-            height: target.config.height,
+            width,
+            height,
           },
         );
 
@@ -203,7 +211,7 @@ impl Context {
     let mut scene = self.scene.borrow_mut();
 
     scene.reset_and_resize(width, height);
-    canvas.replay(&mut Hybrid(&mut scene));
+    canvas.replay(&mut Gpu(&mut scene));
 
     let mut encoder = self
       .device
@@ -216,17 +224,18 @@ impl Context {
         &self.device,
         &self.queue,
         &mut encoder,
-        &RenderSize {
-          width: target.config.width,
-          height: target.config.height,
-        },
+        &RenderSize { width, height },
         &view,
+        None,
         &TextureBindings::new(),
+        TargetInit::Clear(ClearSettings::Viewport {
+          color: peniko::Color::TRANSPARENT,
+        }),
       )
       .is_ok();
 
     self.queue.submit([encoder.finish()]);
-    frame.present();
+    self.queue.present(frame);
 
     rendered
   }
@@ -252,10 +261,10 @@ impl Target {
   }
 }
 
-/// The hybrid scene as the renderer a canvas replays into.
-struct Hybrid<'scene>(&'scene mut Scene);
+/// vello's GPU scene as the renderer a canvas replays into.
+struct Gpu<'scene>(&'scene mut Scene);
 
-impl Renderer for Hybrid<'_> {
+impl Renderer for Gpu<'_> {
   #[inline(always)]
   fn set_transform(&mut self, transform: kurbo::Affine) {
     self.0.set_transform(transform);

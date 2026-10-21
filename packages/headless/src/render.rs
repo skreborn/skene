@@ -120,11 +120,7 @@ pub(crate) fn render(frames: &Frames, size: Size<f32>) -> Image {
   Image {
     width,
     height,
-    pixels: pixmap
-      .take_unpremultiplied()
-      .into_iter()
-      .flat_map(|pixel| [pixel.r, pixel.g, pixel.b, pixel.a])
-      .collect(),
+    pixels: pixmap.take_rgba8(peniko::ImageAlphaType::Alpha),
   }
 }
 

@@ -32,7 +32,7 @@ native/pango/        a stand-in native engine (Pango) that validates the harness
 
 ## Running it
 
-The crate is its own workspace pinned to Rust 1.99.0. Build with `--release` for timings (each
+The crate is its own workspace pinned to Rust 1.99.1. Build with `--release` for timings (each
 set records `build` in its engine settings).
 
 ```sh

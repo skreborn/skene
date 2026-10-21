@@ -4,10 +4,12 @@
 //! a corner resizes the window and one on the title bar moves it; the title bar's buttons act.
 //! Where the compositor decorates the window (sway, KWin, X11), each says so and returns.
 
+use std::time::{Duration, Instant};
+
 use skene_gui::{
   Color,
   prelude::*,
-  testing::{self, Role, Screen, publish},
+  testing::{self, Driver as _, Role, Screen, publish},
 };
 use skene_gui_linux::testing::TitleButton;
 
@@ -35,6 +37,28 @@ fn decorated() -> Option<Screen> {
     skene_gui_linux::testing::not_tested_here("the compositor decorates the window itself");
 
     None
+  }
+}
+
+/// The window's rectangle (the pointer's space) once `answered` holds of it, read again for
+/// three seconds at most: a compositor answers a request to maximize, restore or tile a window
+/// with a configure of its own, as late as it is busy.
+fn rect_once(
+  screen: &Screen,
+  answered: impl Fn((f64, f64, f64, f64)) -> bool,
+) -> (f64, f64, f64, f64) {
+  let started = Instant::now();
+
+  loop {
+    screen.driver().window_moved();
+
+    let rect = screen.driver().window_rect();
+
+    if answered(rect) || started.elapsed() >= Duration::from_secs(3) {
+      return rect;
+    }
+
+    screen.driver().wait(Duration::from_millis(50));
   }
 }
 
@@ -71,9 +95,10 @@ fn a_floating_window_casts_a_shadow_and_a_maximized_one_fills_the_screen() {
     .expect("the title bar has a maximize button");
 
   screen.driver().click_point(maximize);
-  screen.driver().window_moved();
 
-  let (x, y, width, height) = screen.driver().window_rect();
+  let (x, y, width, height) = rect_once(&screen, |(x, _, width, _)| {
+    x.abs() <= 1. && (width - screen_width).abs() <= 1.
+  });
 
   eprintln!("maximized: {x}, {y} {width}x{height} of {screen_width}x{screen_height}");
   assert!(
@@ -91,9 +116,8 @@ fn a_floating_window_casts_a_shadow_and_a_maximized_one_fills_the_screen() {
     .expect("the title bar has a restore button");
 
   screen.driver().click_point(restore);
-  screen.driver().window_moved();
   assert!(
-    (screen.driver().window_rect().2 - width).abs() > 1.,
+    (rect_once(&screen, |(_, _, restored, _)| (restored - width).abs() > 1.).2 - width).abs() > 1.,
     "the same button restores it"
   );
 }
@@ -169,9 +193,8 @@ fn a_tiled_edge_casts_no_shadow_and_a_press_at_it_reaches_the_content() {
   }
 
   screen.press("super+Left");
-  screen.driver().window_moved();
 
-  let (x, ..) = screen.driver().window_rect();
+  let (x, ..) = rect_once(&screen, |(x, ..)| x.abs() <= 1.);
 
   assert!(
     x.abs() <= 1.,

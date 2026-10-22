@@ -39,6 +39,14 @@ supersedes.
   that changes the text in one place, and a diff would be a second algorithm the
   editing core and every realization's repair must agree on. Revisit when one
   transform must keep carets across several separated changes.
+- **Keeping a repaired caret's distance in the realization's unit** (2026-10-22),
+  mapping an offset inside the replaced range through `Edit::map_through` in bytes in
+  the editing core and in UTF-16 code units on the web: a replacement whose characters
+  are of other widths than those it replaces (an `a` made `À`, an `e` and a combining
+  acute composed into `é`) would place the caret elsewhere than where the reader typed,
+  even inside a character, and elsewhere on each platform, so the distance is counted
+  in grapheme clusters, the unit a `TextSelection` counts. Revisit when a platform's
+  native field keeps a repaired caret's distance in a unit of its own.
 - **A generic medium** (2026-10-15), views generic over the medium they run on (`impl
   View<P>` with `P: Within<Pixel>`), `Adaptive` value chains and the platform sets
   (`Pixel`, `Cell`, `Apple`, `Mobile`, `Desktop`): checking a view tree grew
@@ -590,7 +598,8 @@ supersedes.
 - **The caret inside a repaired range going to the replacement's end** (2026-10-22):
   a truth replacing a proposal moved every offset strictly inside the replaced range
   to the replacement's end, so a handler uppercasing the text threw the caret to the
-  end of the change wherever the reader typed. Such an offset now stays as far into
-  the replacement as it was, clamped to its end (`Edit::map_through`), for the editing
+  end of the change wherever the reader typed. Such an offset now stays as many
+  grapheme clusters into the replacement as it was, clamped to its end
+  (`Edit::map_through`, over clusters by `TextIndex::map_through`), for the editing
   core and every realization's repair alike. Revisit when a platform's native field
   moves its caret to the replacement's end.

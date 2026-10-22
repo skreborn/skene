@@ -474,6 +474,39 @@ fn a_caret_inside_the_replaced_range_keeps_its_distance_into_it() {
 }
 
 #[test]
+fn a_caret_inside_the_replaced_range_keeps_its_distance_in_clusters() {
+  let (mut editor, _) = controlled("bc", |truth, edit| {
+    truth.set(edit.text.to_uppercase().replace('A', "À"));
+  });
+
+  // The proposal is "abc" with the caret one cluster in; the truth "ÀBC" replaces all of it,
+  // its first cluster two bytes long.
+  key(&mut editor, "Home");
+  key(&mut editor, "a");
+  assert_eq!(editor.text(), "ÀBC");
+  assert_eq!(
+    editor.selection(),
+    selection(1, 1),
+    "the caret stays after the À"
+  );
+
+  let (mut editor, _) = controlled("a", |truth, edit| {
+    truth.set(edit.text.replace("e\u{301}", "é").to_uppercase());
+  });
+
+  // The proposal is "e\u{301}a" with the caret one cluster in, two code points; the truth
+  // "ÉA" composes the cluster into one.
+  key(&mut editor, "Home");
+  let _ = editor.perform(Command::Insert("e\u{301}".into()));
+  assert_eq!(editor.text(), "ÉA");
+  assert_eq!(
+    editor.selection(),
+    selection(1, 1),
+    "the caret stays after the É"
+  );
+}
+
+#[test]
 fn a_rejected_edit_leaves_no_undo_step() {
   // The handler accepts only digits.
   let (mut editor, truth) = controlled("", |truth, edit| {

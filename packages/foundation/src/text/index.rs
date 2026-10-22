@@ -6,7 +6,7 @@ use std::ops::Range;
 
 use unicode_segmentation::UnicodeSegmentation as _;
 
-use crate::Unit;
+use crate::{Edit, Unit};
 
 /// Which way an offset inside a character or a cluster goes.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -285,12 +285,33 @@ impl TextIndex {
   pub fn offset_of_grapheme(&self, unit: Unit, index: usize) -> usize {
     self.offset(unit, self.byte_of_grapheme(index))
   }
+
+  /// Byte `byte` of this index's text mapped into `new`'s, which replaces bytes `replaced` of
+  /// it by `inserted` bytes, by [`Edit::map_through`] over grapheme clusters: the start of the
+  /// cluster of `new` it lands on.
+  #[must_use]
+  pub fn map_through(
+    &self,
+    new: &Self,
+    replaced: Range<usize>,
+    inserted: usize,
+    byte: usize,
+  ) -> usize {
+    let start = self.grapheme_at_byte(replaced.start, Round::Down);
+    let end = self.grapheme_at_byte(replaced.end, Round::Up);
+    let inserted = new
+      .grapheme_at_byte(replaced.start + inserted, Round::Up)
+      .saturating_sub(start);
+    let grapheme = self.grapheme_at_byte(byte, Round::Down);
+
+    new.byte_of_grapheme(Edit::map_through(grapheme, start..end, inserted))
+  }
 }
 
 #[cfg(test)]
 mod tests {
   use super::{Round, TextIndex};
-  use crate::Unit;
+  use crate::{Edit, Unit};
 
   #[test]
   fn an_ascii_text_keeps_no_tables() {
@@ -388,5 +409,30 @@ mod tests {
     assert_eq!(index.byte(Unit::Utf16, 4, Round::Down), 4);
     assert_eq!(index.byte(Unit::Utf16, 4, Round::Up), 8);
     assert_eq!(index.offset(Unit::Utf16, 4), 3);
+  }
+
+  #[test]
+  fn an_offset_maps_through_a_splice_by_clusters() {
+    let map = |old: &str, new: &str, byte: usize| {
+      let edit = Edit::new(new);
+      let (replaced, inserted) = edit.splice_bytes(old);
+
+      TextIndex::new(old).map_through(&TextIndex::new(new), replaced, inserted.len(), byte)
+    };
+
+    // Before the replaced range it stays, after it it moves with it.
+    assert_eq!(map("xaby", "xÀBy", 0), 0);
+    assert_eq!(map("xaby", "xÀBy", 1), 1);
+    assert_eq!(map("xaby", "xÀBy", 3), 4);
+    assert_eq!(map("xaby", "xÀBy", 4), 5);
+
+    // Inside it, it keeps its clusters into the replacement, whatever their bytes.
+    assert_eq!(map("xaby", "xÀBy", 2), 3, "after the À");
+    assert_eq!(map("e\u{301}a", "ÉA", 3), 2, "after the É, one cluster in");
+    assert_eq!(
+      map("éab", "E", 3),
+      1,
+      "two clusters in, clamped to the replacement's end"
+    );
   }
 }

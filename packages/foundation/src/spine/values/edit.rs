@@ -119,9 +119,9 @@ pub enum Verdict {
   Accept,
   /// The truth is this edit instead: a toolkit that asks before applying applies it in the
   /// proposal's place, and one that applied first is repaired to it as the smallest edit,
-  /// the selection mapped through it where the edit leaves it ([`Edit::map_through`]: an
-  /// offset inside the replaced range keeps its distance into the replacement, clamped to
-  /// its end).
+  /// the selection mapped through it where the edit leaves it ([`Edit::map_through`] over
+  /// grapheme clusters: an offset inside the replaced range keeps its distance into the
+  /// replacement, clamped to its end).
   Replace(Edit),
 }
 

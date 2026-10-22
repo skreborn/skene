@@ -2237,6 +2237,7 @@ pub fn skene_foundation::text::TextIndex::grapheme_of(&self, skene_foundation::U
 pub const fn skene_foundation::text::TextIndex::is_empty(&self) -> bool
 pub fn skene_foundation::text::TextIndex::is_grapheme_boundary(&self, usize) -> bool
 pub const fn skene_foundation::text::TextIndex::len(&self) -> usize
+pub fn skene_foundation::text::TextIndex::map_through(&self, &Self, core::ops::range::Range<usize>, usize, usize) -> usize
 pub fn skene_foundation::text::TextIndex::new(&str) -> Self
 pub fn skene_foundation::text::TextIndex::next_grapheme(&self, usize) -> usize
 pub fn skene_foundation::text::TextIndex::offset(&self, skene_foundation::Unit, usize) -> usize

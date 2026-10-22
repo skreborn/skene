@@ -448,12 +448,8 @@ impl<E: TextEngine> Editor<E> {
     }
 
     let (replaced, inserted) = edit.splice_bytes(proposed);
-    let map = |at: usize| {
-      index.snap_to_grapheme(
-        Edit::map_through(at, replaced.clone(), inserted.len()),
-        Round::Down,
-      )
-    };
+    let old = TextIndex::new(proposed);
+    let map = |at: usize| old.map_through(&index, replaced.clone(), inserted.len(), at);
 
     let (anchor, focus) = (map(anchor), map(focus));
 

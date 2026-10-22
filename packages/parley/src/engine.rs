@@ -951,6 +951,10 @@ pub struct PositionedGlyph {
   pub at: usize,
 }
 
+/// How far past a vertical move's goal its line is hit, so a goal on a cluster's middle goes
+/// past the cluster: far below anything a layout shows apart.
+const TIE: f32 = 1e-3;
+
 /// A band holding every line: the whole text.
 const EVERYWHERE: (f32, f32) = (f32::NEG_INFINITY, f32::INFINITY);
 
@@ -994,6 +998,21 @@ fn rect_of(rect: parley::BoundingBox) -> Rect<f32> {
 }
 
 impl ParleyLaid {
+  /// The end of the line Parley's line end `end` closes: on a line a soft break ends, short
+  /// of the blanks hanging past its edge, where a caret at the line's visible end stands.
+  fn line_end(&self, end: Cursor) -> Position {
+    let position = Self::position(end);
+    let text = &self.inner.text;
+    let wrapped = self.inner.lines.iter().find(|line| {
+      !line.hard_break && line.range.end == position.index && position.index < text.len()
+    });
+
+    wrapped.map_or(position, |line| {
+      let shown = text[line.range.clone()].trim_end_matches(char::is_whitespace);
+
+      Position::with(line.range.start + shown.len(), Affinity::Upstream)
+    })
+  }
   /// Parley's cursor at `position`.
   fn cursor(&self, position: Position) -> Cursor {
     Cursor::from_byte_index(
@@ -1300,7 +1319,7 @@ impl Laid for ParleyLaid {
       VisualMove::WordLeft => cursor.previous_visual_word(layout),
       VisualMove::WordRight => cursor.next_visual_word(layout),
       VisualMove::LineStart => selection.line_start(layout, false).focus(),
-      VisualMove::LineEnd => selection.line_end(layout, false).focus(),
+      VisualMove::LineEnd => return self.line_end(selection.line_end(layout, false).focus()),
     })
   }
 
@@ -1318,7 +1337,9 @@ impl Laid for ParleyLaid {
     match current.checked_add_signed(lines) {
       Some(target) if target < self.inner.lines.len() => {
         let line = &self.inner.lines[target];
-        let cursor = Cursor::from_point(&self.inner.layout, goal, line.top + line.height / 2.);
+        // A goal on a cluster's middle goes past it, as a browser rounds a hit there.
+        let cursor =
+          Cursor::from_point(&self.inner.layout, goal + TIE, line.top + line.height / 2.);
 
         (Self::position(cursor), goal)
       }

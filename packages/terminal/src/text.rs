@@ -249,147 +249,6 @@ pub(crate) fn fit(text: &str, cells: usize) -> &str {
   text
 }
 
-/// The cluster a caret goes to for the cell `column` of `text` on one row: the one whose
-/// first cell it is, the next for a wide cluster's later cells, and the count past the
-/// text.
-pub(crate) fn index_at_column(text: &str, column: usize) -> usize {
-  let mut cell = 0;
-
-  for (index, cluster) in text.graphemes(true).enumerate() {
-    let next = cell + width(cluster);
-
-    if column < next {
-      return if column == cell { index } else { index + 1 };
-    }
-
-    cell = next;
-  }
-
-  count(text)
-}
-
-/// A value's clusters: the byte each starts at and the cell its head is in, with the
-/// value's length and its width after the last.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct Clusters {
-  bytes: Vec<usize>,
-  columns: Vec<usize>,
-}
-
-impl Clusters {
-  /// The clusters of nothing.
-  pub(crate) const EMPTY: Self = Self {
-    bytes: Vec::new(),
-    columns: Vec::new(),
-  };
-
-  /// The clusters of `text`.
-  pub(crate) fn of(text: &str) -> Self {
-    let mut bytes = Vec::new();
-    let mut columns = Vec::new();
-    let mut column = 0;
-
-    for (byte, cluster) in clusters(text) {
-      bytes.push(byte);
-      columns.push(column);
-      column += width(cluster);
-    }
-
-    bytes.push(text.len());
-    columns.push(column);
-
-    Self { bytes, columns }
-  }
-
-  /// How many clusters there are.
-  pub(crate) const fn count(&self) -> usize {
-    self.bytes.len().saturating_sub(1)
-  }
-
-  /// The byte offset of the cluster at `index`, or the value's end.
-  pub(crate) fn byte_of(&self, index: usize) -> usize {
-    self
-      .bytes
-      .get(index.min(self.count()))
-      .copied()
-      .unwrap_or(0)
-  }
-
-  /// The cell the cluster at `index` starts in, or the value's width.
-  pub(crate) fn column_of(&self, index: usize) -> usize {
-    self
-      .columns
-      .get(index.min(self.count()))
-      .copied()
-      .unwrap_or(0)
-  }
-
-  /// The cells the value spans.
-  pub(crate) fn cells(&self) -> usize {
-    self.column_of(self.count())
-  }
-
-  /// The cluster holding the byte `offset`, and the count at or past the value's end.
-  pub(crate) fn index_of_byte(&self, offset: usize) -> usize {
-    match self.bytes.binary_search(&offset) {
-      Ok(index) => index.min(self.count()),
-      Err(index) => index.saturating_sub(1).min(self.count()),
-    }
-  }
-
-  /// The cluster a caret goes to for the cell `column` counted from the cluster
-  /// `from`'s first cell: the one whose first cell it is, the next for a wide
-  /// cluster's later cells, and the count past the value.
-  pub(crate) fn index_at_column(&self, from: usize, column: usize) -> usize {
-    let count = self.count();
-    let from = from.min(count);
-    let base = self.column_of(from);
-
-    for index in from..count {
-      let cell = self.column_of(index) - base;
-      let next = self.column_of(index + 1) - base;
-
-      if column < next {
-        return if column == cell { index } else { index + 1 };
-      }
-    }
-
-    count
-  }
-
-  /// The last cluster a window of `span` cells can start at and still show the
-  /// value's end with the caret's cell after it.
-  pub(crate) fn last_window(&self, span: usize) -> usize {
-    let count = self.count();
-    let total = self.cells() + 1;
-
-    (0..=count)
-      .find(|window| total - self.column_of(*window) <= span)
-      .unwrap_or(count)
-  }
-
-  /// A window of `span` cells starting at the cluster `window`, settled around the
-  /// caret `at`: held where the caret's cell stays in view, moved the least that
-  /// brings it in, and never past [`last_window`](Self::last_window).
-  pub(crate) fn settled_window(&self, window: usize, at: usize, span: usize) -> usize {
-    let window = window.min(self.last_window(span));
-    let at = at.min(self.count());
-    let caret_end = self.column_of(at) + 1;
-
-    if at < window {
-      at
-    }
-    else if caret_end - self.column_of(window) > span {
-      (window..=at)
-        .find(|window| caret_end - self.column_of(*window) <= span)
-        .unwrap_or(at)
-    }
-    else {
-      window
-    }
-  }
-}
-
 /// What one painted cell shows.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Glyph {
@@ -508,7 +367,6 @@ mod tests {
       assert_eq!(cells("a\u{1b}bc\r\u{7f}"), 6);
       assert_eq!(cells("\t"), 1);
       assert_eq!(cells("ab\tc"), 4);
-      assert_eq!(index_at_column("ab\tc", 3), 3);
       assert_eq!(fit("ab\tc", 2), "ab");
       assert_eq!(stand_in("\t"), Some(' '));
       assert_eq!(Glyph::of("\u{1b}").to_string(), "\u{fffd}");
@@ -520,28 +378,14 @@ mod tests {
     reset();
   }
 
-  /// A caret lands before the cluster whose first cell is hit and after a wide
-  /// cluster hit on a later cell; a byte inside a cluster reads as the cluster's.
+  /// A cluster index reads as its first byte and slices whole clusters, and a fit takes
+  /// the clusters whose cells it spans.
   #[test]
-  fn positions_map_between_bytes_cells_and_clusters() {
+  fn clusters_slice_and_fit_by_cells() {
     reset();
 
-    let clusters = Clusters::of("a日b");
-
-    assert_eq!(clusters.count(), 3);
-    assert_eq!(clusters.cells(), 4);
-    assert_eq!(clusters.byte_of(2), 4);
-    assert_eq!(clusters.byte_of(9), 5);
-    assert_eq!(clusters.column_of(2), 3);
-    assert_eq!(clusters.index_of_byte(2), 1);
-    assert_eq!(clusters.index_of_byte(4), 2);
-    assert_eq!(clusters.index_of_byte(50), 3);
-    assert_eq!(clusters.index_at_column(0, 1), 1);
-    assert_eq!(clusters.index_at_column(0, 2), 2);
-    assert_eq!(clusters.index_at_column(0, 3), 2);
-    assert_eq!(clusters.index_at_column(0, 4), 3);
-    assert_eq!(clusters.index_at_column(1, 2), 2);
-    assert_eq!(index_at_column("a日b", 2), 2);
+    assert_eq!(byte_of("a日b", 2), 4);
+    assert_eq!(byte_of("a日b", 9), 5);
     assert_eq!(slice("a日b", 1, 2), "日");
     assert_eq!(fit("a日b", 2), "a");
     assert_eq!(fit("a日b", 3), "a日");
@@ -562,22 +406,5 @@ mod tests {
     assert_eq!(CellScale::of(f32::NAN), CellScale::ONE);
     assert_eq!(CellScale::Fraction(1, 2).rows(), 1);
     assert_eq!(CellScale::Whole(3).rows(), 3);
-  }
-
-  /// A window over wide clusters settles by cells: the caret's cell stays in view and
-  /// the window never passes where the value's end fits.
-  #[test]
-  fn a_window_settles_by_cells() {
-    reset();
-
-    let clusters = Clusters::of("日本語");
-
-    assert_eq!(clusters.last_window(4), 2);
-    assert_eq!(clusters.last_window(7), 0);
-    assert_eq!(clusters.settled_window(0, 1, 4), 0);
-    assert_eq!(clusters.settled_window(0, 2, 4), 1);
-    assert_eq!(clusters.settled_window(0, 3, 4), 2);
-    assert_eq!(clusters.settled_window(2, 0, 4), 0);
-    assert_eq!(clusters.settled_window(2, 2, 4), 2);
   }
 }

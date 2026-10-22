@@ -215,6 +215,20 @@ fn selection_takes_whole_clusters_over_emoji_and_combining_marks() {
   assert_eq!(editor.count_in(Unit::Utf16), 5);
 }
 
+/// A base typed before a combining mark joins it into one cluster, and the caret lands after
+/// the cluster rather than inside it.
+#[test]
+fn a_base_typed_before_a_combining_mark_leaves_the_caret_after_the_cluster() {
+  let mut editor = editor("\u{301}x");
+
+  key(&mut editor, "Home");
+  key(&mut editor, "a");
+
+  assert_eq!(editor.text(), "a\u{301}x");
+  assert_eq!(editor.selection(), selection(1, 1));
+  assert_eq!(editor.focus().index, 3, "the caret is on the cluster's end");
+}
+
 #[test]
 fn the_pointer_selects_by_cluster_word_and_line() {
   let mut editor = editor("alpha beta gamma");

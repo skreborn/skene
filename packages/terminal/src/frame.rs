@@ -26,21 +26,27 @@ use crate::{
 const SETTLE_ROUNDS: usize = 4;
 
 /// Lays the tree out at `width` x `height` cells and paints it, once the pending turn
-/// has ended.
+/// has ended and the caret drag's autoscroll has stepped.
 ///
-/// The size reports, container measurements, inline box measurements and
-/// scroll-into-view resolve between layout and paint; the handlers they run may rebuild
-/// content, so the layout is computed again, once their turn has ended, until it
-/// settles (bounded, so a pathological feedback loop still paints). The paint rewrites the rows the
-/// changed nodes covered and cover, over the previous frame; a whole-frame change rewrites
-/// every row.
+/// The layout settles as [`settle`] says. The paint rewrites the rows the changed nodes
+/// covered and cover, over the previous frame; a whole-frame change rewrites every row.
 pub(crate) fn render(width: u16, height: u16) -> Buffer {
   crate::platform::end_turn();
   resize(width, height);
-  with_records(Records::autoscroll_caret_drag);
+  crate::field::autoscroll();
   crate::field::report_selections();
   crate::platform::end_turn();
+  settle(width, height);
+  paint_frame(width, height)
+}
 
+/// Lays the tree out at `width` x `height` cells until it settles, painting nothing.
+///
+/// The size reports, container measurements, inline box measurements and
+/// scroll-into-view resolve after each layout; the handlers they run may rebuild
+/// content, so the layout is computed again, once their turn has ended, until it
+/// settles (bounded, so a pathological feedback loop still ends).
+pub(crate) fn settle(width: u16, height: u16) {
   for _ in 0..SETTLE_ROUNDS {
     let laid_out = with_records(|records| {
       let restyled = layout::restyle(records);
@@ -54,6 +60,7 @@ pub(crate) fn render(width: u16, height: u16) -> Buffer {
       records.layout_dirty = false;
       layout::compute(records, width, height);
       layout::measure_inline_boxes(records);
+      records.fit_entries();
 
       true
     });
@@ -70,7 +77,10 @@ pub(crate) fn render(width: u16, height: u16) -> Buffer {
       break;
     }
   }
+}
 
+/// Paints the laid-out tree into a frame of `width` x `height` cells.
+fn paint_frame(width: u16, height: u16) -> Buffer {
   with_records(|records| {
     let (width, height) = (usize::from(width), usize::from(height));
     let previous = records

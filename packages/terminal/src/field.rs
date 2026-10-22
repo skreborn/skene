@@ -1,113 +1,36 @@
-//! The terminal's editing of a text entry: the caret and the selection over the value,
-//! the visible window, and the keys that move, select and edit.
+//! The terminal's text entries as clients of the shared editing core: each operation on an
+//! entry's editor runs with no records borrowed, and what it changed is settled after; the
+//! keys bound to the core's commands, the clipboard the launch offers, the pointer, and the
+//! window over the value.
+
+use std::rc::Rc;
 
 use skene_foundation::{
   ClipboardAction,
+  Edit,
   Key,
   KeyEvent,
+  Modifiers,
+  NamedKey,
   Scene,
-  notify_change,
+  TextSelection,
   notify_selection_change,
+  text::{
+    Direction,
+    TextBoundary,
+    editing::{Binding, Command, Movement},
+  },
 };
-use unicode_segmentation::UnicodeSegmentation as _;
 
 use crate::{
   Terminal,
-  engine::wrap_spans,
-  records::{AUTOSCROLL_INTERVAL, Drag, Field, Handle, Records},
-  text,
+  records::{AUTOSCROLL_INTERVAL, Deferred, Drag, EntryEditor, Field, Handle, Records},
   with_records,
 };
 
-/// The word segments of `text` as Unicode word boundaries divide it, by cluster: each
-/// one's start and end, and whether it is whitespace alone.
-fn word_segments(text: &str) -> Vec<(usize, usize, bool)> {
-  let mut start = 0;
-
-  text
-    .split_word_bounds()
-    .map(|segment| {
-      let end = start + text::count(segment);
-      let bounds = (start, end, segment.chars().all(char::is_whitespace));
-
-      start = end;
-
-      bounds
-    })
-    .collect()
-}
-
-/// The caret position at the start of the word before `caret`: whitespace skipped,
-/// then one segment—a word, or a punctuation mark.
-fn word_before(value: &str, caret: usize) -> usize {
-  word_segments(value)
-    .into_iter()
-    .rev()
-    .find(|(start, _, space)| *start < caret && !space)
-    .map_or(0, |(start, ..)| start)
-}
-
-/// The caret position at the end of the word after `caret`: whitespace skipped, then
-/// one segment—a word, or a punctuation mark.
-fn word_after(value: &str, caret: usize) -> usize {
-  word_segments(value)
-    .into_iter()
-    .find(|(_, end, space)| *end > caret && !space)
-    .map_or_else(|| text::count(value), |(_, end, _)| end)
-}
-
-/// The bounds of the word segment around the cluster at `at`—a word, a whitespace run,
-/// or a punctuation mark—`at` clamped into a non-empty `text`.
-pub(crate) fn word_bounds(text: &str, at: usize) -> (usize, usize) {
-  let segments = word_segments(text);
-  let Some(last) = segments.last()
-  else {
-    return (0, 0);
-  };
-  let at = at.min(last.1 - 1);
-
-  segments
-    .into_iter()
-    .find(|(start, end, _)| (*start..*end).contains(&at))
-    .map_or((0, 0), |(start, end, _)| (start, end))
-}
-
-/// The clusters of `text`.
-fn clusters(text: &str) -> Vec<&str> {
-  text::clusters(text).map(|(_, cluster)| cluster).collect()
-}
-
-/// The bounds of the hard line around `at` in `text`: from after the previous line
-/// break to the next one.
-fn line_bounds(text: &str, at: usize) -> (usize, usize) {
-  let clusters = clusters(text);
-  let at = at.min(clusters.len());
-  let from = clusters[..at]
-    .iter()
-    .rposition(|cluster| *cluster == "\n")
-    .map_or(0, |index| index + 1);
-  let to = clusters[at..]
-    .iter()
-    .position(|cluster| *cluster == "\n")
-    .map_or(clusters.len(), |index| at + index);
-
-  (from, to)
-}
-
-/// The wrapped lines of a multi-line value at `width`, and the line holding `caret`.
-fn caret_line(value: &str, caret: usize, width: usize) -> (Vec<(usize, String)>, usize) {
-  let lines = wrap_spans(value, width);
-  let row = lines
-    .iter()
-    .rposition(|(start, _)| *start <= caret)
-    .unwrap_or(0);
-
-  (lines, row)
-}
-
-/// A window of `span` rows over `extent` of them, starting at `window` and settled
-/// around `at`: held where `at` stays in view, moved the least that brings it in, and
-/// never past the extent's end.
+/// A window of `span` over `extent`, starting at `window` and settled around `at`: held
+/// where `at` stays in view, moved the least that brings it in, and never past the extent's
+/// end.
 pub(crate) const fn settled_window(window: usize, at: usize, extent: usize, span: usize) -> usize {
   let last = extent.saturating_sub(span);
   let window = if window > last { last } else { window };
@@ -123,402 +46,11 @@ pub(crate) const fn settled_window(window: usize, at: usize, extent: usize, span
   }
 }
 
-/// An entry's visible rows, each with its start offset in the shown text, and the
-/// caret's row and column among them, `None` while it is out of view.
-pub(crate) type VisibleRows = (Vec<(usize, String)>, Option<(usize, usize)>);
-
 /// The cells an entry shows its value in: inside its border and padding.
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) struct Area {
   pub(crate) columns: usize,
   pub(crate) rows: usize,
-}
-
-impl Field {
-  /// The window's geometry in `area`: the caret's position along it, the extent it
-  /// covers and the span it shows—the clusters of the value for a field, wrapped rows
-  /// for an editor, the span in cells or rows.
-  fn window_geometry(&self, area: Area) -> (usize, usize, usize) {
-    if self.lines <= 1 {
-      return (self.caret, self.count() + 1, area.columns.max(1));
-    }
-
-    let (wrapped, row) = caret_line(&self.value, self.caret, area.columns.max(1));
-
-    (row, wrapped.len(), area.rows.max(1))
-  }
-
-  /// The window settled around the caret in `area`.
-  fn settled_window(&self, area: Area) -> usize {
-    if self.lines <= 1 {
-      return self
-        .clusters
-        .settled_window(self.window, self.caret, area.columns.max(1));
-    }
-
-    let (at, extent, span) = self.window_geometry(area);
-
-    settled_window(self.window, at, extent, span)
-  }
-
-  /// How far the window can scroll from its start in `area`.
-  pub(crate) fn window_limit(&self, area: Area) -> usize {
-    if self.lines <= 1 {
-      return self.clusters.last_window(area.columns.max(1));
-    }
-
-    let (_, extent, span) = self.window_geometry(area);
-
-    extent.saturating_sub(span)
-  }
-
-  /// Settles the window around the caret in `area`: held where the caret stays in
-  /// view, else moved the least that shows it.
-  pub(crate) fn settle(&mut self, area: Area) {
-    self.window = self.settled_window(area);
-    self.window_area = Some(area);
-  }
-
-  /// Scrolls the window by `delta`—rows of an editor, columns of a field—in `area`,
-  /// clamped to its extent and leaving the caret where it is; `false` when it cannot
-  /// move that way.
-  pub(crate) fn scroll_window(&mut self, area: Area, delta: i64) -> bool {
-    let limit = i64::try_from(self.window_limit(area)).unwrap_or(i64::MAX);
-    let window = i64::try_from(self.window).unwrap_or(i64::MAX).min(limit);
-    let next = window.saturating_add(delta).clamp(0, limit);
-
-    if next == window {
-      return false;
-    }
-
-    self.window = usize::try_from(next).unwrap_or(0);
-    self.window_area = Some(area);
-
-    true
-  }
-
-  /// The rows the entry shows in `area`, each with its start offset in the shown
-  /// text—the placeholder while the value is empty—and the caret's row and column
-  /// among them, `None` while the window has scrolled it out of view: one windowed row
-  /// for a single-line entry, a wrapped row for each row of the area for an editor. A
-  /// window settled in another area settles around the caret first.
-  pub(crate) fn visible_rows(&self, area: Area) -> VisibleRows {
-    let inner = area.columns.max(1);
-    let empty = self.value.is_empty();
-    let text = if empty {
-      self.placeholder.as_deref().unwrap_or("")
-    }
-    else {
-      self.value.as_str()
-    };
-    let window = if empty {
-      0
-    }
-    else if self.window_area == Some(area) {
-      self.window.min(self.window_limit(area))
-    }
-    else {
-      self.settled_window(area)
-    };
-
-    if self.lines <= 1 {
-      let row = if empty {
-        text::fit(text, inner).to_owned()
-      }
-      else {
-        self.shown_row(window, inner)
-      };
-      let column = self
-        .clusters
-        .column_of(self.caret)
-        .checked_sub(self.clusters.column_of(window));
-      let caret = column
-        .filter(|column| self.caret >= window && *column < inner)
-        .map(|column| (0, column));
-
-      return (vec![(window, row)], caret);
-    }
-
-    let lines = area.rows.max(1);
-    let (wrapped, row) = caret_line(text, self.caret, inner);
-    let (row_start, line) = &wrapped[row];
-    let column = text::cells(text::slice(line, 0, self.caret - row_start)).min(inner);
-    let rows = wrapped.into_iter().skip(window).take(lines).collect();
-    let caret = (window..window + lines)
-      .contains(&row)
-      .then(|| (row - window, column));
-
-    (rows, caret)
-  }
-
-  /// A single-line entry's value from the cluster `window` as it shows in `inner`
-  /// cells: every cluster that fits.
-  fn shown_row(&self, window: usize, inner: usize) -> String {
-    let base = self.clusters.column_of(window);
-    let mut row = String::new();
-
-    for index in window..self.clusters.count() {
-      if self.clusters.column_of(index + 1) - base > inner {
-        break;
-      }
-
-      row.push_str(&self.value[self.byte_of(index)..self.byte_of(index + 1)]);
-    }
-
-    row
-  }
-
-  /// The caret position at the cell (`column`, `row`) of the value shown from `window`
-  /// in `area`, clamped into the visible rows and their ends.
-  fn caret_in_window(&self, window: usize, area: Area, column: usize, row: usize) -> usize {
-    let inner = area.columns.max(1);
-    let column = column.min(inner - 1);
-
-    if self.lines <= 1 {
-      return self.clusters.index_at_column(window, column);
-    }
-
-    let lines = area.rows.max(1);
-    let wrapped = wrap_spans(&self.value, inner);
-    let target = (window + row.min(lines - 1)).min(wrapped.len() - 1);
-    let (start, line) = &wrapped[target];
-
-    start + text::index_at_column(line, column)
-  }
-
-  /// The ends of the row the caret is on in `area`: the whole value of a single-line
-  /// entry, the wrapped row of an editor.
-  fn row_bounds(&self, area: Area) -> (usize, usize) {
-    if self.lines <= 1 {
-      return (0, self.count());
-    }
-
-    let (wrapped, row) = caret_line(&self.value, self.caret, area.columns.max(1));
-    let (start, line) = &wrapped[row];
-
-    (*start, start + text::count(line))
-  }
-
-  /// The text as the entry holds it: an editor's line breaks as line feeds, a
-  /// single-line entry's removed.
-  pub(crate) fn sanitized(&self, text: &str) -> String {
-    if self.lines > 1 {
-      text.replace("\r\n", "\n").replace('\r', "\n")
-    }
-    else {
-      text.replace(['\r', '\n'], "")
-    }
-  }
-}
-
-/// An edit a key made to an entry.
-enum Edit {
-  Value,
-  Caret,
-}
-
-/// Applies `event` to `field` shown in `area`: characters insert at the caret,
-/// replacing the selection; `Backspace`/`Delete` remove the selection or one character
-/// around the caret; arrows and `Home`/`End` move the caret, extending the selection
-/// under `Shift` and collapsing it otherwise; `Ctrl` makes the arrows jump and the
-/// removals delete whole words, `Ctrl+A` selects the value, `Ctrl+Z` undoes the last
-/// edit and `Ctrl+Shift+Z` or `Ctrl+Y` redoes it. In an editor, `Enter` breaks the line,
-/// `ArrowUp`/`ArrowDown` move between rows toward the column the first of them left,
-/// to the value's ends past the first and last rows, and `Home`/`End` go to the ends
-/// of the row, or of the value under `Ctrl`. An entry that is not `editable` takes no
-/// edit to its value.
-#[expect(
-  clippy::too_many_lines,
-  reason = "a match over the keys; length is the key count, not complexity"
-)]
-fn apply(event: &KeyEvent, field: &mut Field, area: Area, editable: bool) -> Option<Edit> {
-  let count = field.count();
-  let ctrl = event.modifiers.ctrl;
-  let alt = event.modifiers.alt;
-  let shift = event.modifiers.shift;
-  let shortcut = event.shortcut_key();
-  let key = shortcut.as_ref();
-  let single = match &event.key {
-    Key::Character(text) => {
-      let mut characters = text.chars();
-
-      characters.next().filter(|_| characters.next().is_none())
-    }
-    Key::Named(_) => None,
-  };
-  let selection = field.selection();
-  let caret = field.caret;
-
-  match key {
-    "a" if ctrl && !alt => {
-      field.select_all();
-
-      Some(Edit::Caret)
-    }
-    "z" if ctrl && !alt && !shift && editable => field.undo().then_some(Edit::Value),
-    "z" | "y" if ctrl && !alt && editable => field.redo().then_some(Edit::Value),
-    _ if !editable && is_removal(key, ctrl) => None,
-    // A removal over a selection removes the selection alone, by the word or not.
-    "Delete" if selection.is_some() => {
-      let (from, to) = selection?;
-
-      field.remove(from, to);
-
-      Some(Edit::Value)
-    }
-    "Backspace" if !alt && selection.is_some() => {
-      let (from, to) = selection?;
-
-      field.remove(from, to);
-
-      Some(Edit::Value)
-    }
-    "h" | "w" if ctrl && !alt && selection.is_some() => {
-      let (from, to) = selection?;
-
-      field.remove(from, to);
-
-      Some(Edit::Value)
-    }
-    // `Ctrl+W` matches `Ctrl+Backspace`: legacy keyboard encodings cannot express the
-    // latter, and the readline binding is muscle memory anyway.
-    "Backspace" | "w" if ctrl && caret > 0 => {
-      field.remove(word_before(&field.value, caret), caret);
-
-      Some(Edit::Value)
-    }
-    "Delete" if ctrl && caret < count => {
-      field.remove(caret, word_after(&field.value, caret));
-
-      Some(Edit::Value)
-    }
-    // Legacy encodings send `Ctrl+Backspace` as `0x08`—the byte of `Ctrl+H`—with no
-    // way to tell the two apart; deleting one character honors both readings.
-    "h" if ctrl && !alt && caret > 0 => {
-      field.remove(caret - 1, caret);
-
-      Some(Edit::Value)
-    }
-    "Backspace" if !alt && caret > 0 => {
-      field.remove(caret - 1, caret);
-
-      Some(Edit::Value)
-    }
-    "Delete" if caret < count => {
-      field.remove(caret, caret + 1);
-
-      Some(Edit::Value)
-    }
-    "Enter" if field.lines > 1 && editable => {
-      field.replace_selection("\n");
-
-      Some(Edit::Value)
-    }
-    // A plain arrow over a selection collapses it to the end it points at.
-    "ArrowLeft" if !shift && !ctrl && selection.is_some() => {
-      field.move_caret(selection?.0, false);
-
-      Some(Edit::Caret)
-    }
-    "ArrowRight" if !shift && !ctrl && selection.is_some() => {
-      field.move_caret(selection?.1, false);
-
-      Some(Edit::Caret)
-    }
-    "ArrowLeft" if ctrl && caret > 0 => {
-      field.move_caret(word_before(&field.value, caret), shift);
-
-      Some(Edit::Caret)
-    }
-    "ArrowRight" if ctrl && caret < count => {
-      field.move_caret(word_after(&field.value, caret), shift);
-
-      Some(Edit::Caret)
-    }
-    "ArrowLeft" if caret > 0 => {
-      field.move_caret(caret - 1, shift);
-
-      Some(Edit::Caret)
-    }
-    "ArrowRight" if caret < count => {
-      field.move_caret(caret + 1, shift);
-
-      Some(Edit::Caret)
-    }
-    "ArrowUp" | "ArrowDown" if field.lines > 1 => {
-      let up = key == "ArrowUp";
-      // Over a selection, an unshifted move starts from the end it leaves behind.
-      let from = match (shift, selection) {
-        (false, Some((start, end))) => {
-          if up {
-            start
-          }
-          else {
-            end
-          }
-        }
-        _ => caret,
-      };
-      let (wrapped, row) = caret_line(&field.value, from, area.columns.max(1));
-      let (row_start, line) = &wrapped[row];
-      let goal = field
-        .goal
-        .unwrap_or_else(|| text::cells(text::slice(line, 0, from - row_start)));
-      let target = if up {
-        row.checked_sub(1)
-      }
-      else {
-        (row + 1 < wrapped.len()).then_some(row + 1)
-      };
-      let to = match target {
-        Some(target) => {
-          let (start, line) = &wrapped[target];
-
-          start + text::index_at_column(line, goal)
-        }
-        None if up => 0,
-        None => count,
-      };
-
-      if to == caret && selection.is_none() {
-        return None;
-      }
-
-      field.move_caret(to, shift);
-      field.goal = Some(goal);
-
-      Some(Edit::Caret)
-    }
-    "Home" | "End" => {
-      let (start, end) = if ctrl {
-        (0, count)
-      }
-      else {
-        field.row_bounds(area)
-      };
-      let to = if key == "Home" { start } else { end };
-
-      if to == caret && selection.is_none() {
-        return None;
-      }
-
-      field.move_caret(to, shift);
-
-      Some(Edit::Caret)
-    }
-    _ => {
-      let character = single.filter(|_| !ctrl && !alt && editable)?;
-
-      field.replace_selection(&character.to_string());
-
-      Some(Edit::Value)
-    }
-  }
-}
-
-/// Whether `key`, under `Ctrl` when `ctrl`, removes text from an entry.
-fn is_removal(key: &str, ctrl: bool) -> bool {
-  matches!(key, "Backspace" | "Delete") || (ctrl && matches!(key, "h" | "w"))
 }
 
 impl Records {
@@ -580,65 +112,49 @@ impl Records {
     )
   }
 
-  /// The caret position at an entry's local cell, mapped through the inset and the
-  /// value's visible window, clamped into the nearest visible row and its ends.
-  fn caret_at(&self, handle: Handle, local_x: i64, local_y: i64) -> Option<usize> {
+  /// The layout position an entry's local cell stands for in its value as it shows:
+  /// mapped through the inset and the window, clamped into the visible area.
+  fn entry_point(&self, handle: Handle, local_x: i64, local_y: i64) -> Option<(f32, f32)> {
     let area = self.field_area(handle);
     let (column, row) = self.entry_cell(handle, local_x, local_y);
-    let field = self.record(handle)?.kind.field()?;
+    let field = self.field(handle)?;
 
-    Some(field.caret_in_window(field.settled_window(area), area, column, row))
+    Some(field.point_at(field.visible_window(area), area, column, row))
   }
 
   /// Whether the node is an editor, whose window scrolls down its wrapped rows.
   pub(crate) fn is_editor(&self, handle: Handle) -> bool {
-    self
-      .record(handle)
-      .and_then(|record| record.kind.field())
-      .is_some_and(|field| field.lines > 1)
+    self.field(handle).is_some_and(Field::is_editor)
   }
 
-  /// An editor's window, clamped to its extent in its laid-out area; `None` for any
-  /// other node.
+  /// An editor's window as it shows in its laid-out area; `None` for any other node.
   pub(crate) fn editor_window(&self, handle: Handle) -> Option<u32> {
-    let field = self
-      .record(handle)
-      .and_then(|record| record.kind.field())
-      .filter(|field| field.lines > 1)?;
-    let area = self.field_area(handle);
+    let field = self.field(handle).filter(|field| field.is_editor())?;
 
-    u32::try_from(field.window.min(field.window_limit(area))).ok()
+    u32::try_from(field.visible_window(self.field_area(handle))).ok()
   }
 
   /// How far an editor's window can scroll in its laid-out area; `None` for any other
   /// node.
   pub(crate) fn editor_window_limit(&self, handle: Handle) -> Option<u32> {
-    let field = self
-      .record(handle)
-      .and_then(|record| record.kind.field())
-      .filter(|field| field.lines > 1)?;
-    let area = self.field_area(handle);
+    let field = self.field(handle).filter(|field| field.is_editor())?;
 
-    u32::try_from(field.window_limit(area)).ok()
+    u32::try_from(field.scroll_limit(self.field_area(handle))).ok()
   }
 
   /// Moves an editor's window to `window`, clamped, in its laid-out area.
   pub(crate) fn set_editor_window(&mut self, handle: Handle, window: u32) {
     let area = self.field_area(handle);
 
-    if let Some(field) = self
-      .record_mut(handle)
-      .and_then(|record| record.kind.field_mut())
-      .filter(|field| field.lines > 1)
-    {
-      field.window = usize::try_from(window)
-        .unwrap_or(usize::MAX)
-        .min(field.window_limit(area));
+    if let Some(field) = self.field_mut(handle).filter(|field| field.is_editor()) {
+      let window = usize::try_from(window).unwrap_or(usize::MAX);
+
+      field.window = window.min(field.scroll_limit(area));
       field.window_area = Some(area);
     }
   }
 
-  /// Scrolls the single-line field at `handle` by `delta` columns in its laid-out area,
+  /// Scrolls the single-line field at `handle` by `delta` cells in its laid-out area,
   /// damaging it: `None` when the node is no field or `delta` is zero, else whether it
   /// moved.
   pub(crate) fn scroll_field_by(&mut self, handle: Handle, delta: i64) -> Option<bool> {
@@ -647,10 +163,7 @@ impl Records {
     }
 
     let area = self.field_area(handle);
-    let field = self
-      .record_mut(handle)
-      .and_then(|record| record.kind.field_mut())
-      .filter(|field| field.lines <= 1)?;
+    let field = self.field_mut(handle).filter(|field| !field.is_editor())?;
     let moved = field.scroll_window(area, delta);
 
     if moved {
@@ -664,79 +177,178 @@ impl Records {
   pub(crate) fn settle_entry(&mut self, handle: Handle) {
     let area = self.field_area(handle);
 
-    if let Some(field) = self
-      .record_mut(handle)
-      .and_then(|record| record.kind.field_mut())
-    {
+    if let Some(field) = self.field_mut(handle) {
       field.settle(area);
     }
   }
 
-  /// Places an entry's caret at a press's local cell, extending the selection from
-  /// its anchor or collapsing it, and starts the drag that follows the press.
-  pub(crate) fn place_caret(&mut self, handle: Handle, local_x: i64, local_y: i64, extend: bool) {
-    let Some(caret) = self.caret_at(handle, local_x, local_y)
-    else {
-      return;
-    };
+  /// Lays every editor's value out at the width of its laid-out area; an editor an
+  /// operation holds is left to it.
+  pub(crate) fn fit_entries(&self) {
+    for entry in &self.entries {
+      let Some(field) = self.field(*entry)
+      else {
+        continue;
+      };
 
-    if let Some(field) = self
-      .record_mut(handle)
-      .and_then(|record| record.kind.field_mut())
-    {
-      field.move_caret(caret, extend);
+      if let Ok(mut editor) = field.editor.try_borrow_mut() {
+        Field::fit(&mut editor, field.lines, self.field_area(*entry));
+      }
     }
-
-    self.settle_entry(handle);
-    self.drag = Some(Drag::Caret(handle));
-    self.damage(handle);
   }
 
-  /// Follows a caret drag to the screen cell (`x`, `y`): the caret moves to the
-  /// position under the pointer, clamped to the visible value's edge, the anchor held;
-  /// past the edge, the autoscroll carries it on from there.
-  pub(crate) fn drag_caret(&mut self, handle: Handle, x: u16, y: u16) {
-    let (origin_x, origin_y) = self.screen_origin(handle);
-    let Some(caret) = self.caret_at(handle, i64::from(x) - origin_x, i64::from(y) - origin_y)
+  /// Settles what an entry's editor changed: a changed value restyles and lays the entry
+  /// out again, and a changed value or selection settles its window and repaints it.
+  pub(crate) fn settle_changes(&mut self, handle: Handle) {
+    let area = self.field_area(handle);
+    let Some(field) = self.field_mut(handle)
     else {
       return;
     };
-    let moved = self
-      .record_mut(handle)
-      .and_then(|record| record.kind.field_mut())
-      .is_some_and(|field| {
-        let before = (field.caret, field.anchor);
+    let changed = field.take_changed();
 
-        field.move_caret(caret, true);
-
-        (field.caret, field.anchor) != before
-      });
-
-    if moved {
-      self.settle_entry(handle);
-      self.damage(handle);
+    if !(changed.text || changed.selection) {
+      return;
     }
+
+    field.settle(area);
+    self.damage(handle);
+
+    if changed.text {
+      self.queue_restyle(handle);
+      self.layout_dirty = true;
+    }
+  }
+
+  /// Runs `operation` on the editor of the entry at `handle` now, where no operation holds
+  /// it, and settles what it changed; else once the operation holding it ends.
+  pub(crate) fn with_entry(
+    &mut self,
+    handle: Handle,
+    operation: impl FnOnce(&mut EntryEditor) + 'static,
+  ) {
+    let Some(field) = self.field_mut(handle)
+    else {
+      return;
+    };
+    let editor = Rc::clone(&field.editor);
+    let Ok(mut editor) = editor.try_borrow_mut()
+    else {
+      field.deferred.push(Box::new(operation));
+
+      return;
+    };
+
+    operation(&mut editor);
+    drop(editor);
+    self.settle_changes(handle);
+  }
+
+  /// Collapses the selection inside `entry` at its caret.
+  pub(crate) fn collapse_entry_selection(&mut self, entry: Handle) {
+    self.with_entry(entry, |editor| {
+      let caret = editor.selection().end;
+
+      let _ = editor.set_selection(TextSelection::collapsed(caret));
+    });
+  }
+
+  /// Takes focus into `entry`: a field selects its whole value and an editor puts its
+  /// caret at the end, as a browser's `<input>` and `<textarea>` do.
+  pub(crate) fn focus_entry(&mut self, entry: Handle) {
+    let Some(multiline) = self.field(entry).map(Field::is_editor)
+    else {
+      return;
+    };
+
+    self.with_entry(entry, move |editor| {
+      let command = if multiline {
+        Command::Move {
+          movement: Movement::Logical(TextBoundary::Text, Direction::Forward),
+          extend: false,
+        }
+      }
+      else {
+        Command::SelectAll
+      };
+
+      let _ = editor.perform(command);
+    });
+  }
+
+  /// Places `entry`'s selection from outside its editing, each index clamped into the
+  /// value; it is not reported back.
+  pub(crate) fn place_entry_selection(&mut self, entry: Handle, selection: TextSelection) {
+    let Some(reported) = self.field(entry).map(Field::reported)
+    else {
+      return;
+    };
+
+    self.with_entry(entry, move |editor| {
+      let _ = editor.set_selection(selection);
+
+      reported.set(editor.selection());
+    });
+  }
+
+  /// Writes `value` into `entry` from outside its editing, as the entry holds it: one undo
+  /// step but for an entry's first value, the caret mapped through the change and the
+  /// selection collapsed at it; nothing happens where it is shown already.
+  pub(crate) fn write_entry(&mut self, entry: Handle, value: &str) {
+    let value = value.to_owned();
+
+    self.with_entry(entry, move |editor| {
+      let value = editor.sanitized(&value);
+
+      if editor.write(&Edit::new(value)) {
+        let caret = editor.selection().end;
+
+        let _ = editor.set_selection(TextSelection::collapsed(caret));
+      }
+    });
+  }
+
+  /// Whether the caret position at an entry's local cell lies inside its selection.
+  pub(crate) fn entry_selection_contains(
+    &self,
+    handle: Handle,
+    local_x: i64,
+    local_y: i64,
+  ) -> bool {
+    let Some((x, y)) = self.entry_point(handle, local_x, local_y)
+    else {
+      return false;
+    };
+
+    self
+      .field(handle)
+      .and_then(|field| field.editor.try_borrow().ok())
+      .is_some_and(|editor| {
+        let selected = editor.selected();
+        let at = editor.byte_at(x, y);
+
+        selected.contains(&at)
+      })
   }
 
   /// The caret drag's overshoot: how far past the entry's visible value the pointer is
-  /// held, in columns for a field and rows for an editor, negative before its start;
-  /// `None` while the pointer is inside it or the window can scroll no further that way.
+  /// held, in cells of a field and rows of an editor, negative before its start; `None`
+  /// while the pointer is inside it or the window can scroll no further that way.
   fn caret_drag_overshoot(&self) -> Option<(Handle, i64)> {
     let Some(Drag::Caret(handle)) = self.drag
     else {
       return None;
     };
-    let field = self.record(handle)?.kind.field()?;
+    let field = self.field(handle)?;
     let area = self.field_area(handle);
     let (origin_x, origin_y) = self.screen_origin(handle);
     let (inset_x, inset_y) = self.field_inset(handle);
     let (x, y) = self.last_pointer;
-    let (_, _, span) = field.window_geometry(area);
-    let along = if field.lines <= 1 {
-      i64::from(x) - origin_x - inset_x
+    let (along, span) = if field.is_editor() {
+      (i64::from(y) - origin_y - inset_y, area.rows.max(1))
     }
     else {
-      i64::from(y) - origin_y - inset_y
+      (i64::from(x) - origin_x - inset_x, area.columns.max(1))
     };
     let span = i64::try_from(span).unwrap_or(i64::MAX);
     let overshoot = if along < 0 {
@@ -748,11 +360,12 @@ impl Records {
     else {
       return None;
     };
+    let window = field.visible_window(area);
     let room = if overshoot < 0 {
-      field.window > 0
+      window > 0
     }
     else {
-      field.window < field.window_limit(area)
+      window < field.scroll_limit(area)
     };
 
     room.then_some((handle, overshoot))
@@ -764,14 +377,14 @@ impl Records {
   }
 
   /// Steps the caret drag's autoscroll on the frame clock: once per interval while the
-  /// pointer is held past the entry's visible value, the window scrolls toward it by
-  /// the overshoot and the caret follows to the edge, extending the selection.
-  pub(crate) fn autoscroll_caret_drag(&mut self) {
+  /// pointer is held past the entry's visible value, the window scrolls toward it by the
+  /// overshoot; the entry and the point its caret follows to, at the edge, are returned.
+  fn autoscroll_step(&mut self) -> Option<(Handle, (f32, f32))> {
     let Some((handle, overshoot)) = self.caret_drag_overshoot()
     else {
       self.autoscroll_at = None;
 
-      return;
+      return None;
     };
     let now = self.now();
     let interval = AUTOSCROLL_INTERVAL.as_secs_f64();
@@ -779,12 +392,12 @@ impl Records {
     else {
       self.autoscroll_at = Some(now);
 
-      return;
+      return None;
     };
     let steps = ((now - at) / interval + 1e-9).floor();
 
     if steps < 1. {
-      return;
+      return None;
     }
 
     self.autoscroll_at = Some(at + steps * interval);
@@ -793,149 +406,197 @@ impl Records {
     let (origin_x, origin_y) = self.screen_origin(handle);
     let (x, y) = self.last_pointer;
     let (column, row) = self.entry_cell(handle, i64::from(x) - origin_x, i64::from(y) - origin_y);
-    let Some(field) = self
-      .record_mut(handle)
-      .and_then(|record| record.kind.field_mut())
-    else {
-      return;
-    };
-    let limit = i64::try_from(field.window_limit(area)).unwrap_or(i64::MAX);
-    let window = i64::try_from(field.window).unwrap_or(i64::MAX);
+    let field = self.field_mut(handle)?;
     #[expect(clippy::cast_possible_truncation, reason = "at least one whole step")]
     let delta = overshoot.saturating_mul(steps as i64);
-    let window = usize::try_from((window + delta).clamp(0, limit)).unwrap_or(0);
-    let caret = field.caret_in_window(window, area, column, row);
 
-    field.window = window;
-    field.move_caret(caret, true);
-    field.settle(area);
+    field.scroll_window(area, delta);
+
+    let point = field.point_at(field.window, area, column, row);
+
     self.damage(handle);
-  }
 
-  /// Selects the word around an entry's caret.
-  pub(crate) fn select_entry_word(&mut self, handle: Handle) {
-    if let Some(field) = self
-      .record_mut(handle)
-      .and_then(|record| record.kind.field_mut())
-    {
-      let (from, to) = word_bounds(&field.value, field.caret);
-
-      field.select(from, to);
-    }
-
-    self.settle_entry(handle);
-    self.damage(handle);
-  }
-
-  /// Selects the line around an entry's caret: the whole value of a single-line entry,
-  /// the hard line of an editor.
-  pub(crate) fn select_entry_line(&mut self, handle: Handle) {
-    if let Some(field) = self
-      .record_mut(handle)
-      .and_then(|record| record.kind.field_mut())
-    {
-      if field.lines > 1 {
-        let (from, to) = line_bounds(&field.value, field.caret);
-
-        field.select(from, to);
-      }
-      else {
-        field.select_all();
-      }
-    }
-
-    self.settle_entry(handle);
-    self.damage(handle);
-  }
-
-  /// Whether the character at an entry's local cell lies inside its selection.
-  pub(crate) fn entry_selection_contains(
-    &self,
-    handle: Handle,
-    local_x: i64,
-    local_y: i64,
-  ) -> bool {
-    let Some((from, to)) = self
-      .record(handle)
-      .and_then(|record| record.kind.field())
-      .and_then(Field::selection)
-    else {
-      return false;
-    };
-
-    self
-      .caret_at(handle, local_x, local_y)
-      .is_some_and(|at| at >= from && at < to)
-  }
-
-  /// Edits the focused entry with `edit`, damaging it; a changed value is returned with
-  /// its node for the caller to report.
-  fn edit_focused_entry(
-    &mut self,
-    edit: impl FnOnce(&mut Field, Area, bool) -> Option<Edit>,
-  ) -> Option<(skene_foundation::NodeId, String)> {
-    let focused = self.focused()?;
-
-    self.edit_entry(focused, edit)
-  }
-
-  /// Applies `edit` to the entry at `entry`, given its laid-out area and whether it is
-  /// editable, returning the changed value with its node when the edit changed it;
-  /// nothing happens when the entry is gone.
-  fn edit_entry(
-    &mut self,
-    entry: Handle,
-    edit: impl FnOnce(&mut Field, Area, bool) -> Option<Edit>,
-  ) -> Option<(skene_foundation::NodeId, String)> {
-    let area = self.field_area(entry);
-    let editable = self.is_editable(entry);
-    let record = self.record_mut(entry)?;
-    let node = record.node;
-    let field = record.kind.field_mut()?;
-    let edit = edit(field, area, editable)?;
-    let value = field.value.clone();
-
-    field.settle(area);
-    self.damage(entry);
-
-    match edit {
-      Edit::Value => {
-        self.queue_restyle(entry);
-        self.layout_dirty = true;
-
-        Some((node?, value))
-      }
-      Edit::Caret => None,
-    }
+    Some((handle, point))
   }
 }
-
-/// Applies an editing or caret key to the focused entry, reporting a changed value
-/// through the node's change handlers.
-pub(crate) fn edit_focused(event: &KeyEvent) {
-  let changed = with_records(|records| {
-    records.edit_focused_entry(|field, area, editable| apply(event, field, area, editable))
-  });
-
-  if let Some((node, value)) = changed {
-    notify_change::<Terminal>(node, &value);
+/// Runs `operation` on the editor of the entry at `entry` with no records borrowed: the
+/// editor laid out at the entry's width (the scene laid out first where `lay_out`) and
+/// taking edits only where the entry is editable; what it changed, and what waited for
+/// it, settle after, and moved selections are reported. `None` where the entry is gone or
+/// an operation holds its editor already.
+fn operate<R>(
+  entry: Handle,
+  lay_out: bool,
+  operation: impl FnOnce(&mut EntryEditor) -> R,
+) -> Option<R> {
+  if lay_out {
+    skene_foundation::lay_out::<Terminal>();
   }
 
+  let (editor, lines, area, editable) = with_records(|records| {
+    let field = records.field(entry)?;
+
+    Some((
+      Rc::clone(&field.editor),
+      field.lines,
+      records.field_area(entry),
+      records.is_editable(entry),
+    ))
+  })?;
+  let result = {
+    let mut editor = editor.try_borrow_mut().ok()?;
+
+    Field::fit(&mut editor, lines, area);
+    editor.set_read_only(!editable);
+    operation(&mut editor)
+  };
+
+  finish(entry);
+
+  Some(result)
+}
+
+/// Settles an operation on the editor of `entry` once it has ended: the operations that
+/// waited for it run, what they and it changed settles, and moved selections are reported.
+fn finish(entry: Handle) {
+  loop {
+    let waiting = with_records(|records| {
+      let field = records.field_mut(entry)?;
+      let deferred: Vec<Deferred> = std::mem::take(&mut field.deferred);
+
+      (!deferred.is_empty()).then(|| (Rc::clone(&field.editor), deferred))
+    });
+    let Some((editor, deferred)) = waiting
+    else {
+      break;
+    };
+    let Ok(mut editor) = editor.try_borrow_mut()
+    else {
+      break;
+    };
+
+    for operation in deferred {
+      operation(&mut editor);
+    }
+  }
+
+  with_records(|records| records.settle_changes(entry));
   report_selections();
 }
 
 /// Reports every entry's selection that moved since it was last reported, through
 /// the node's selection handlers.
 pub(crate) fn report_selections() {
-  let reports = with_records(Records::selection_reports);
+  let reports = with_records(|records| records.selection_reports());
 
   for (node, selection) in reports {
     notify_selection_change::<Terminal>(node, selection);
   }
 }
 
-/// Inserts `text` into the focused entry in place of its selection, reporting the
-/// changed value through the node's change handlers.
+/// `event` as the key the terminal's legacy encodings stand for: `Ctrl+W` for
+/// `Ctrl+Backspace`, which some keyboard encodings cannot express and readline binds
+/// alike, and `Ctrl+H` (`0x08`, the legacy byte of `Ctrl+Backspace`) for `Backspace`,
+/// deleting one character as both readings allow.
+fn legacy(event: &KeyEvent) -> KeyEvent {
+  let modifiers = event.modifiers;
+  let control = modifiers.ctrl && !modifiers.alt && !modifiers.meta && !modifiers.shift;
+  let word = match (&event.key, event.shortcut_key().as_ref()) {
+    (Key::Character(_), "w") if control => true,
+    (Key::Character(_), "h") if control => false,
+    _ => return event.clone(),
+  };
+
+  KeyEvent {
+    key: Key::Named(NamedKey::Backspace),
+    modifiers: Modifiers {
+      ctrl: word,
+      ..modifiers
+    },
+    ..event.clone()
+  }
+}
+
+/// The terminal's response to a key the handlers let stand, through the editing core's key
+/// table: in the focused entry, the binding's command; the clipboard's bindings only where
+/// the launch offers their operation, `Shift+Delete` deleting forward where it offers no
+/// `Cut`; and outside an entry, the copy of the document's selection, or the cut of the
+/// entry a popup was opened from.
+pub(crate) fn edit_focused(event: &KeyEvent) {
+  let (entry, multiline) = with_records(|records| {
+    let entry = records.focused_entry();
+
+    (entry, entry.is_some_and(|entry| records.is_editor(entry)))
+  });
+  let event = legacy(event);
+  let offers = |action| with_records(|records| records.offers(action));
+
+  match Binding::for_key(&event, multiline) {
+    Some(Binding::Command(Command::Copy)) if offers(ClipboardAction::Copy) => {
+      with_records(Records::copy_selection);
+    }
+    Some(Binding::Command(Command::Cut)) if offers(ClipboardAction::Cut) => cut_focused(),
+    Some(Binding::Command(Command::Cut)) if matches!(event.key, Key::Named(NamedKey::Delete)) => {
+      if let Some(entry) = entry {
+        operate(entry, true, |editor| {
+          editor.perform(Command::Delete(TextBoundary::Grapheme, Direction::Forward))
+        });
+      }
+    }
+    Some(Binding::Paste) if offers(ClipboardAction::Paste) => {
+      with_records(|records| {
+        if records.focused_entry().is_some() {
+          records.request_paste();
+        }
+      });
+    }
+    Some(Binding::Command(Command::Copy | Command::Cut | Command::Paste(_)) | Binding::Paste)
+    | None => {}
+    Some(Binding::Command(command)) => {
+      if let Some(entry) = entry {
+        operate(entry, true, |editor| editor.perform(command));
+      }
+    }
+  }
+}
+
+/// Places the caret of `entry` at its local cell, the `clicks`th press in a row (a double
+/// press takes the word, a triple the line of an editor and the value of a field),
+/// extending the selection where `extend`, and starts the drag that follows the press.
+pub(crate) fn press_entry(entry: Handle, local_x: i64, local_y: i64, clicks: u8, extend: bool) {
+  let Some((x, y)) = with_records(|records| records.entry_point(entry, local_x, local_y))
+  else {
+    return;
+  };
+
+  operate(entry, false, |editor| editor.press(x, y, clicks, extend));
+  with_records(|records| records.drag = Some(Drag::Caret(entry)));
+}
+
+/// Follows a caret drag to the screen cell (`x`, `y`): the selection extends to the
+/// position under the pointer, clamped to the visible value's edge, by the press's unit;
+/// past the edge, the autoscroll carries it on from there.
+pub(crate) fn drag_entry(entry: Handle, x: u16, y: u16) {
+  let point = with_records(|records| {
+    let (origin_x, origin_y) = records.screen_origin(entry);
+
+    records.entry_point(entry, i64::from(x) - origin_x, i64::from(y) - origin_y)
+  });
+
+  if let Some((x, y)) = point {
+    operate(entry, false, |editor| editor.drag(x, y));
+  }
+}
+
+/// Steps the caret drag's autoscroll on the frame clock: the window scrolls toward the
+/// pointer held past the entry's edge, and the selection follows to the edge.
+pub(crate) fn autoscroll() {
+  if let Some((entry, (x, y))) = with_records(Records::autoscroll_step) {
+    operate(entry, false, |editor| editor.drag(x, y));
+  }
+}
+
+/// Inserts `text` into the focused entry in place of its selection.
 pub(crate) fn paste_focused(text: &str) {
   let target = with_records(|records| records.focused());
 
@@ -943,8 +604,7 @@ pub(crate) fn paste_focused(text: &str) {
 }
 
 /// Inserts `text`, the terminal's answer to the last clipboard read, into the entry
-/// that asked for it, reporting the changed value through the node's change handlers;
-/// nothing happens when no entry asked or it is gone.
+/// that asked for it; nothing happens when no entry asked or it is gone.
 pub(crate) fn paste_requested(text: &str) {
   let target = with_records(|records| records.paste_target.take());
 
@@ -954,57 +614,34 @@ pub(crate) fn paste_requested(text: &str) {
 /// Inserts `text` into the entry at `target`, in place of its selection, where the
 /// entry is editable.
 fn paste_into(target: Option<Handle>, text: &str) {
-  let Some(target) = target
+  let Some(target) = target.filter(|target| with_records(|records| records.is_field(*target)))
   else {
     return;
   };
-  let changed = with_records(|records| {
-    records.edit_entry(target, |field, _, editable| {
-      let text = field.sanitized(text);
 
-      if !editable || (text.is_empty() && field.selection().is_none()) {
-        return None;
-      }
-
-      field.replace_selection(&text);
-
-      Some(Edit::Value)
-    })
+  operate(target, false, |editor| {
+    editor.perform(Command::Paste(text.to_owned()))
   });
-
-  if let Some((node, value)) = changed {
-    notify_change::<Terminal>(node, &value);
-  }
-
-  report_selections();
 }
 
-/// Stages the clipboard entry's selection for the clipboard and removes it, reporting
-/// the changed value through the node's change handlers; nothing happens when `Cut` is
-/// not offered or the entry is not editable.
+/// Stages the clipboard entry's selection for the clipboard and removes it; nothing
+/// happens when `Cut` is not offered or the entry is not editable.
 pub(crate) fn cut_focused() {
-  let changed = with_records(|records| {
+  let Some(entry) = with_records(|records| {
     if !records.offers(ClipboardAction::Cut) {
       return None;
     }
 
-    let entry = records
+    records
       .clipboard_entry()
-      .filter(|entry| records.is_editable(*entry))?;
+      .filter(|entry| records.is_editable(*entry))
+  })
+  else {
+    return;
+  };
+  let cut = operate(entry, false, |editor| editor.perform(Command::Cut));
 
-    records.copy_selection();
-    records.edit_entry(entry, |field, _, _| {
-      let (from, to) = field.selection()?;
-
-      field.remove(from, to);
-
-      Some(Edit::Value)
-    })
-  });
-
-  if let Some((node, value)) = changed {
-    notify_change::<Terminal>(node, &value);
+  if let Some(text) = cut.and_then(|outcome| outcome.clipboard) {
+    with_records(|records| records.pending_copy = Some(text));
   }
-
-  report_selections();
 }

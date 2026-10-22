@@ -161,9 +161,9 @@ pub trait Laid: Clone {
   fn move_visual(&self, position: Position, movement: VisualMove) -> Position;
 
   /// The position `lines` lines below `position` (above where negative), nearest the
-  /// horizontal `goal` where given, else the position's own; with the goal the move
-  /// keeps for the next. Past the first line it is the text's start, past the last its
-  /// end.
+  /// horizontal `goal` where given, else the position's own, a goal on a cluster's middle
+  /// going past the cluster; with the goal the move keeps for the next. Past the first
+  /// line it is the text's start, past the last its end.
   fn move_vertical(&self, position: Position, lines: isize, goal: Option<f32>) -> (Position, f32);
 }
 
@@ -358,6 +358,7 @@ pub enum VisualMove {
   WordRight,
   /// To the start of the visual line (its left edge in left-to-right text).
   LineStart,
-  /// To the end of the visual line.
+  /// To the end of the visual line: short of the blanks hanging past it where a soft break
+  /// ends it.
   LineEnd,
 }

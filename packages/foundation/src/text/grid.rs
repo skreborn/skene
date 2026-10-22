@@ -559,15 +559,15 @@ impl Laid for GridLaid {
         let end = self.shown_end(line);
         let soft = !self.lines[line].hard_break && line + 1 < self.lines.len();
 
-        Position::with(
-          end,
-          if soft {
-            Affinity::Upstream
-          }
-          else {
-            Affinity::Downstream
-          },
-        )
+        if soft {
+          let start = self.lines[line].range.start;
+          let shown = self.text[start..end].trim_end_matches(char::is_whitespace);
+
+          Position::with(start + shown.len(), Affinity::Upstream)
+        }
+        else {
+          Position::new(end)
+        }
       }
     }
   }

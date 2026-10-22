@@ -7,6 +7,7 @@ use std::{fmt::Write as _, ops::Range, rc::Rc};
 use skene_foundation::{
   Color,
   text::{
+    Affinity,
     AttributedText,
     Intrinsic,
     Laid,
@@ -24,6 +25,7 @@ use skene_foundation::{
     TextLeaf,
     TextRun,
     TextStyle,
+    VisualMove,
   },
 };
 use skene_parley::PARALLEL;
@@ -175,6 +177,38 @@ fn a_word_too_wide_for_its_line_breaks_where_the_line_fills() {
       "the line fills before it breaks: {line:?}"
     );
   }
+}
+
+/// A line's end, where a soft break ends the line, stands short of the blanks hanging past
+/// its edge, on the line; where a newline or the text ends it, at the newline or the end.
+#[test]
+fn a_wrapped_lines_end_stands_before_its_hanging_blanks() {
+  let text = "alpha  beta\ngamma";
+  let wide = laid("alpha", None).size().width;
+  let laid = laid(text, Some(wide + SIZE));
+  let lines = laid.lines();
+
+  assert_eq!(lines[0].range, 0..7, "{lines:?}");
+
+  let end = laid.move_visual(Position::new(2), VisualMove::LineEnd);
+
+  assert_eq!(end, Position::with(5, Affinity::Upstream));
+  assert!(
+    (laid.caret(end).primary.y - lines[0].top).abs() < 0.01,
+    "the caret stays on the line"
+  );
+  assert_eq!(
+    laid
+      .move_visual(Position::new(8), VisualMove::LineEnd)
+      .index,
+    11
+  );
+  assert_eq!(
+    laid
+      .move_visual(Position::new(13), VisualMove::LineEnd)
+      .index,
+    17
+  );
 }
 
 #[test]

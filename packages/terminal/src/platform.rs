@@ -123,7 +123,7 @@ impl Platform for Terminal {
     let field = props
       .native
       .is_some_and(NativeElement::is_text_entry)
-      .then(|| Box::new(Field::new(props.placeholder.clone(), props.lines)));
+      .then(|| Box::new(Field::new(node, props.placeholder.clone(), props.lines)));
 
     let entry = field.is_some();
 
@@ -335,45 +335,18 @@ impl Platform for Terminal {
   }
 
   fn set_value(node: NodeId, value: &str) {
-    with_records(|records| {
-      let Some(record) = records.record_mut(node)
-      else {
-        return;
-      };
-      let Some(field) = record.kind.field_mut()
-      else {
-        return;
-      };
-
-      if !field.set_value(value) {
-        return;
-      }
-
-      records.settle_entry(node);
-      records.queue_restyle(node);
-      records.layout_dirty = true;
-      records.damage(node);
-    });
-
+    with_records(|records| records.write_entry(node, value));
     crate::field::report_selections();
   }
 
   fn set_selection(node: NodeId, selection: TextSelection) {
-    with_records(|records| {
-      let Some(field) = records
-        .record_mut(node)
-        .and_then(|record| record.kind.field_mut())
-      else {
-        return;
-      };
+    with_records(|records| records.place_entry_selection(node, selection));
+  }
 
-      if !field.set_selection(selection) {
-        return;
-      }
+  fn lay_out() {
+    let (width, height) = with_records(|records| records.last_size);
 
-      records.settle_entry(node);
-      records.damage(node);
-    });
+    crate::frame::settle(width, height);
   }
 
   fn set_checked(_: NodeId, _: bool) {}

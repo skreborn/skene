@@ -28,7 +28,7 @@ use skene_layout::{Restyle, Tree};
 use self::environment::MediaState;
 pub(crate) use self::{
   environment::Contrast,
-  field::Field,
+  field::{Deferred, EntryEditor, Field, Visible},
   frames::{Clock, FRAME_INTERVAL},
   input::{AUTOSCROLL_INTERVAL, CELL_CENTER, Drag, Press, SCROLL_GESTURE, ScrollLatch},
   record::{
@@ -305,8 +305,8 @@ impl Records {
   }
 
   /// Measures every node's text again, after the terminal's clustering or sizing
-  /// changed: each entry's clusters, and each laid-out node's flow, made afresh at its
-  /// next restyle.
+  /// changed: each entry's value laid out afresh at its next query, and each laid-out
+  /// node's flow made afresh at its next restyle.
   pub(crate) fn remeasure(&mut self) {
     self.restyle.revisit_every();
 
@@ -316,8 +316,10 @@ impl Records {
         continue;
       };
 
-      if let Some(field) = record.kind.field_mut() {
-        field.reflow();
+      if let Some(field) = record.kind.field()
+        && let Ok(mut editor) = field.editor.try_borrow_mut()
+      {
+        editor.relayout();
       }
 
       self.tree.mark_dirty(handle);

@@ -568,3 +568,43 @@ fn a_hidden_box_keeps_its_place_and_paints_nothing() {
     assert_eq!(clicks.get(), 1);
   });
 }
+
+/// The synchronous layout entry lays the scene out at the terminal's size without painting
+/// a frame: a box's measured size reaches its handle, and the next frame at that size finds
+/// nothing left to lay out.
+#[test]
+fn lay_out_lays_the_scene_out_without_a_frame() {
+  with_platform(|| {
+    let handle = NodeHandle::new();
+
+    let _ = terminal::mount(move || {
+      Container::new()
+        .set_width(7)
+        .set_height(2)
+        .bind_handle(handle)
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(handle.size(), None, "nothing is measured before a layout");
+
+    let before = testing::layout_generation();
+
+    skene_foundation::lay_out::<terminal::Terminal>();
+
+    assert!(
+      testing::layout_generation() > before,
+      "the scene was laid out"
+    );
+    assert_eq!(handle.size(), Some(skene_foundation::Size::new(7, 2)));
+
+    let laid = testing::layout_generation();
+    let _ = testing::render_to_text(80, 24);
+
+    assert_eq!(
+      testing::layout_generation(),
+      laid,
+      "the frame found the layout settled"
+    );
+  });
+}

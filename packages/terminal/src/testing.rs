@@ -213,7 +213,7 @@ fn name_facts(node: NodeId) -> NameFacts {
         *native,
         label.clone(),
         field.as_ref().and_then(|field| field.placeholder.clone()),
-        field.as_ref().map(|field| field.value.clone()),
+        field.as_ref().and_then(|field| field.value()),
       ),
       Kind::Anchor | Kind::Scope => NameFacts::default(),
     };

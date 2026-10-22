@@ -15,11 +15,15 @@
 
 use std::time::Duration;
 
-use skene_foundation::{ClipboardAction, RunPlacement, Scene};
+use skene_foundation::{
+  ClipboardAction,
+  RunPlacement,
+  Scene,
+  text::{Round, Segments, TextIndex},
+};
 
 use crate::{
   Terminal,
-  field::word_bounds,
   layout::{
     Source,
     cell_point,
@@ -30,7 +34,7 @@ use crate::{
     paragraph_runs,
     paragraph_text,
   },
-  records::{Drag, Handle, Kind, Records},
+  records::{Drag, Field, Handle, Kind, Records},
   text,
 };
 
@@ -308,10 +312,7 @@ impl Records {
 
   /// Whether the entry `entry` holds a selection.
   pub(crate) fn entry_has_selection(&self, entry: Handle) -> bool {
-    self
-      .record(entry)
-      .and_then(|record| record.kind.field()?.selection())
-      .is_some()
+    self.field(entry).is_some_and(Field::has_selection)
   }
 
   /// Whether anything is selected: a range over the document's runs, or one inside the
@@ -328,7 +329,7 @@ impl Records {
   /// selected.
   pub(crate) fn selected_text(&self) -> Option<String> {
     if let Some(entry) = self.clipboard_entry() {
-      return self.record(entry)?.kind.field()?.selected_text();
+      return self.field(entry)?.selected_text();
     }
 
     let (start, end, runs) = self.selection_span()?;
@@ -452,7 +453,12 @@ impl Records {
     else {
       return;
     };
-    let (from, to) = word_bounds(&text, point.offset);
+    let index = TextIndex::new(&text);
+    let word = Segments::new(&text).word_around(index.byte_of_grapheme(point.offset));
+    let (from, to) = (
+      index.grapheme_at_byte(word.start, Round::Down),
+      index.grapheme_at_byte(word.end, Round::Down),
+    );
 
     self.selection = Some(Selection {
       anchor: SelectionPoint {
@@ -491,24 +497,6 @@ impl Records {
   pub(crate) const fn clear_selection(&mut self) {
     if self.selection.take().is_some() {
       self.paint_dirty = true;
-    }
-  }
-
-  /// Collapses the selection inside `entry` at its caret.
-  pub(crate) fn collapse_entry_selection(&mut self, entry: Handle) {
-    let collapsed = self
-      .record_mut(entry)
-      .and_then(|record| record.kind.field_mut())
-      .is_some_and(|field| {
-        let selected = field.selection().is_some();
-
-        field.collapse();
-
-        selected
-      });
-
-    if collapsed {
-      self.damage(entry);
     }
   }
 

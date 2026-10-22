@@ -8,7 +8,6 @@ use skene_foundation::{
   Axes,
   Axis,
   ClickEvent,
-  ClipboardAction,
   KeyDefault,
   KeyEvent,
   Modifiers,
@@ -851,17 +850,8 @@ fn focus_on(next: Option<Handle>, restored: bool) {
     }
 
     if let Some(next) = next {
-      if !restored
-        && let Some(field) = records
-          .record_mut(next)
-          .and_then(|record| record.kind.field_mut())
-      {
-        if field.lines <= 1 {
-          field.select_all();
-        }
-        else {
-          field.move_caret(field.count(), false);
-        }
+      if !restored {
+        records.focus_entry(next);
       }
 
       records.settle_entry(next);
@@ -1216,22 +1206,21 @@ fn press_default(
 
   match button {
     PointerButton::Primary => {
-      records(|records| {
-        // A press on an entry places its caret—`Shift` extending the selection to
-        // it—and starts the drag that extends it: a double click takes the word, a
-        // triple click the line.
-        let count = records.press.as_ref().map_or(1, |press| press.count);
+      let count = records(|records| records.press.as_ref().map_or(1, |press| press.count));
 
-        if let Some((entry, local_x, local_y)) = entry_local {
-          match count {
-            2 => records.select_entry_word(entry),
-            3 => records.select_entry_line(entry),
-            _ => records.place_caret(entry, local_x, local_y, modifiers.shift),
-          }
-        }
+      // A press on an entry places its caret—`Shift` extending the selection to it—and
+      // starts the drag that extends it: a double click takes the word, a triple click
+      // the line.
+      if let Some((entry, local_x, local_y)) = entry_local {
+        crate::field::press_entry(entry, local_x, local_y, count, modifiers.shift);
+      }
+
+      records(|records| {
         // A press on a selectable run starts a selection: a drag extends it, a double
         // click takes the word, a triple click the whole run.
-        else if let Some(point) = records.text_position_at(x, y) {
+        if entry_local.is_none()
+          && let Some(point) = records.text_position_at(x, y)
+        {
           match count {
             2 => records.select_word(point),
             3 => records.select_run(point),
@@ -1243,16 +1232,17 @@ fn press_default(
         records.pressed_link = link.map(|(_, url)| (x, y, url));
       });
     }
-    PointerButton::Secondary => records(|records| {
+    PointerButton::Secondary => {
       // A right press outside the selection of the entry holding focus places its
       // caret there first; one focusing the entry places it regardless.
       if let Some((entry, local_x, local_y)) = entry_local
-        && !(entry_held_focus && records.entry_selection_contains(entry, local_x, local_y))
+        && !(entry_held_focus
+          && records(|records| records.entry_selection_contains(entry, local_x, local_y)))
       {
-        records.place_caret(entry, local_x, local_y, false);
-        records.drag = None;
+        crate::field::press_entry(entry, local_x, local_y, 1, false);
+        records(|records| records.drag = None);
       }
-    }),
+    }
     _ => {}
   }
 }
@@ -1423,16 +1413,15 @@ pub(crate) fn drag_to(x: u16, y: u16) {
 
       None
     }
-    Some(Drag::Caret(handle)) => {
-      records.drag_caret(handle, x, y);
-
-      None
-    }
-    Some(Drag::Item { .. }) | None => None,
+    Some(Drag::Caret(_) | Drag::Item { .. }) | None => None,
   });
 
   if let Some((handle, offsets)) = scrolled {
     scroll_to(handle, offsets);
+  }
+
+  if let Some(Drag::Caret(entry)) = records(|records| records.drag) {
+    crate::field::drag_entry(entry, x, y);
   }
 
   crate::field::report_selections();
@@ -1708,9 +1697,6 @@ fn key_default(event: &KeyEvent) {
     None => {}
   }
 
-  let offers = |action| records(|records| records.offers(action));
-  let ctrl = event.modifiers.ctrl && !event.modifiers.alt;
-
   match event.shortcut_key().as_ref() {
     "Enter" if records(|records| records.focused_link()).is_some() => {
       follow_focused_link(event.modifiers);
@@ -1730,27 +1716,15 @@ fn key_default(event: &KeyEvent) {
 
       return;
     }
-    "PageDown" => page_scroll(1),
-    "PageUp" => page_scroll(-1),
-    // The clipboard keys the launch offers: `Ctrl+C` copies whichever selection
-    // exists, `Ctrl+X` cuts the focused entry's, `Ctrl+V` pastes into the focused
-    // entry; one not offered is an ordinary key.
-    "c" if ctrl && offers(ClipboardAction::Copy) => {
-      records(Records::copy_selection);
+    // The page keys scroll the nearest scrollable box, an editor's rows among them,
+    // leaving its caret where it is.
+    "PageDown" => {
+      page_scroll(1);
 
       return;
     }
-    "x" if ctrl && offers(ClipboardAction::Cut) => {
-      crate::field::cut_focused();
-
-      return;
-    }
-    "v" if ctrl && offers(ClipboardAction::Paste) => {
-      records(|records| {
-        if records.focused_entry().is_some() {
-          records.request_paste();
-        }
-      });
+    "PageUp" => {
+      page_scroll(-1);
 
       return;
     }

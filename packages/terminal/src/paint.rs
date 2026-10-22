@@ -25,7 +25,7 @@ use crate::{
   cells::Cells,
   engine::{Drawn, drawn},
   layout::{Source, border_edges, flow_of, has_border, inline_boxes, is_inline_box, is_paragraph},
-  records::{Contrast, Handle, Kind, PlainBox, PlainRun, Record, Records},
+  records::{Contrast, Handle, Kind, PlainBox, PlainRun, Record, Records, Visible},
   text::{self, CellScale, Glyph},
 };
 
@@ -811,15 +811,6 @@ impl Emphasis {
   }
 }
 
-/// An entry's selection highlight: the selected range of its value, in clusters, each
-/// visible row's first cluster in the value, and the ink and highlight colors, `None` for
-/// reverse video.
-struct SelectionPaint {
-  range: (usize, usize),
-  starts: Vec<usize>,
-  colors: Option<SelectionColors>,
-}
-
 /// One cluster a text draws: where it draws, the span it belongs to, its scale, and
 /// whether it is selected.
 struct ClusterPaint {
@@ -860,18 +851,14 @@ enum NodePaint {
     background: Option<(u8, u8, u8)>,
     border: Option<BorderPaint>,
     shadow: Option<ShadowPaint>,
-    /// The visible rows, each with its first cluster in the value.
-    rows: Vec<(usize, String)>,
+    /// What the entry shows in its area, the caret only while it holds focus.
+    visible: Visible,
     /// The value's ink, the terminal's own where `None`.
     foreground: Option<(u8, u8, u8)>,
     bold: bool,
-    /// Whether the rows are the placeholder, drawn at half the ink's strength.
-    placeholder: bool,
-    /// The caret's row and column within the rows.
-    caret: Option<(usize, usize)>,
     inset: (isize, isize),
-    /// The selection over the visible rows, while the entry holds focus.
-    selection: Option<SelectionPaint>,
+    /// The colors the selected cells paint in; reverse video when `None`.
+    selection: Option<SelectionColors>,
   },
   None,
 }
@@ -1049,28 +1036,22 @@ fn node_paint(records: &Records, handle: Handle, width: usize, focused: bool) ->
         isize::try_from(border_cells).unwrap_or(0) + isize::try_from(padding.top).unwrap_or(0),
       );
       let area = records.field_area(handle);
-      let (rows, caret) = field.visible_rows(area);
+      let mut visible = field.visible(area, focused);
       let run = crate::resolve::Env::of(records, handle).resolve_entry_run();
-      let selection = field
-        .selection()
-        .filter(|_| focused)
-        .map(|range| SelectionPaint {
-          range,
-          starts: rows.iter().map(|(start, _)| *start).collect(),
-          colors: selection_colors(&run),
-        });
+
+      if !(focused && area.columns > 0) {
+        visible.caret = None;
+      }
 
       NodePaint::Field {
         background,
         border,
         shadow,
-        rows,
+        visible,
         foreground: run.color.and_then(terminal_rgb),
         bold: run.ext.bold.unwrap_or(false),
-        placeholder: field.value.is_empty(),
-        caret: caret.filter(|_| focused && area.columns > 0),
         inset,
-        selection,
+        selection: selection_colors(&run),
       }
     }
     Kind::Run { .. } if is_inline_box(records, handle) => NodePaint::None,
@@ -1359,11 +1340,9 @@ fn paint_node(
         background,
         border,
         shadow,
-        rows,
+        visible,
         foreground,
         bold,
-        placeholder,
-        caret,
         inset,
         selection,
       } => {
@@ -1381,14 +1360,14 @@ fn paint_node(
           }
         }
 
-        for (row, (_, text)) in rows.iter().enumerate() {
-          draw_row(
-            buffer,
-            x + inset.0,
-            y + inset.1 + isize::try_from(row).expect("fits"),
-            text,
+        for cluster in &visible.clusters {
+          buffer.put_cluster(
+            x + inset.0 + isize::try_from(cluster.column).expect("fits"),
+            y + inset.1 + isize::try_from(cluster.row).expect("fits"),
+            &cluster.text,
+            cluster.advance,
             |cell| {
-              cell.foreground = if placeholder {
+              cell.foreground = if visible.placeholder {
                 Some(halfway(
                   foreground.unwrap_or(contrast.ink),
                   cell.background.unwrap_or(contrast.base),
@@ -1398,17 +1377,17 @@ fn paint_node(
                 foreground
               };
               cell.bold = bold;
+
+              if cluster.selected {
+                select_cell(cell, selection);
+              }
             },
           );
         }
 
-        if let Some(selection) = selection {
-          draw_row_selection(buffer, x + inset.0, y + inset.1, &rows, &selection);
-        }
-
         // The caret: the terminal's own bar cursor at the cell, recorded only while the
         // cell is visible under the current clip.
-        if let Some((row, column)) = caret {
+        if let Some((row, column)) = visible.caret {
           let (caret_x, caret_y) = (
             x + inset.0 + isize::try_from(column).expect("fits"),
             y + inset.1 + isize::try_from(row).expect("fits"),
@@ -2021,24 +2000,6 @@ fn draw_border(
   }
 }
 
-/// Draws one row of an entry's text at one cell, `style` applied to every cell.
-fn draw_row(buffer: &mut Buffer, x: isize, y: isize, row: &str, style: impl Fn(&mut TerminalCell)) {
-  let mut column = 0;
-
-  for (_, cluster) in text::clusters(row) {
-    let advance = text::width(cluster);
-
-    buffer.put_cluster(
-      x + isize::try_from(column).expect("fits"),
-      y,
-      cluster,
-      advance,
-      &style,
-    );
-    column += advance;
-  }
-}
-
 /// Paints one cell as selected: in the selection colors, or in reverse video.
 const fn select_cell(cell: &mut TerminalCell, colors: Option<SelectionColors>) {
   match colors {
@@ -2047,40 +2008,6 @@ const fn select_cell(cell: &mut TerminalCell, colors: Option<SelectionColors>) {
       cell.background = Some(surface);
     }
     None => cell.reverse = true,
-  }
-}
-
-/// Recolors an entry's selected cells over its visible `rows`, each with its first
-/// cluster in the value.
-fn draw_row_selection(
-  buffer: &mut Buffer,
-  x: isize,
-  y: isize,
-  rows: &[(usize, String)],
-  selection: &SelectionPaint,
-) {
-  let (from, to) = selection.range;
-
-  for (row, ((_, text), start)) in rows.iter().zip(&selection.starts).enumerate() {
-    let mut column = 0;
-
-    for (index, (_, cluster)) in text::clusters(text).enumerate() {
-      let offset = start + index;
-      let width = text::width(cluster);
-
-      if offset >= from && offset < to {
-        for cell in column..column + width {
-          if let Some(cell) = buffer.cell_mut(
-            x + isize::try_from(cell).expect("fits"),
-            y + isize::try_from(row).expect("fits"),
-          ) {
-            select_cell(cell, selection.colors);
-          }
-        }
-      }
-
-      column += width;
-    }
   }
 }
 

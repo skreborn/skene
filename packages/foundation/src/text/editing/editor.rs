@@ -541,7 +541,8 @@ impl<E: TextEngine> Editor<E> {
     true
   }
 
-  /// Replaces `range` with `text`, the caret after it.
+  /// Replaces `range` with `text`, the caret after it: after the cluster it ends in, where
+  /// it joins what follows into one (a base typed before a combining mark).
   fn replace_range(
     &mut self,
     range: Range<usize>,
@@ -555,7 +556,8 @@ impl<E: TextEngine> Editor<E> {
     next.push_str(text);
     next.push_str(&self.text[range.end..]);
 
-    let caret = Position::new(range.start + text.len());
+    let caret = TextIndex::new(&next).snap_to_grapheme(range.start + text.len(), Round::Up);
+    let caret = Position::new(caret);
 
     self.propose(next, caret, caret, kind, origin)
   }

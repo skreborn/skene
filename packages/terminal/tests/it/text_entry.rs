@@ -786,3 +786,176 @@ fn a_tab_in_an_entry_is_one_blank_cell() {
     assert_eq!(testing::render_to_caret(20, 3), Some((3, 0)));
   });
 }
+
+/// An edit its handler rejects shows the truth and leaves no undo step behind: the next
+/// undo returns to the state before the run of edits the handler accepted.
+#[test]
+fn a_rejected_edit_is_not_an_undo_step() {
+  with_platform(|| {
+    let name = Signal::new(String::new());
+
+    let _ = terminal::mount(move || {
+      BasicTextField::new(
+        TextEntry::new()
+          .derive_value(move || name.get())
+          .handle_change(move |text| {
+            if !text.contains('x') {
+              name.set(text.to_owned());
+            }
+          }),
+      )
+      .into_any()
+      .build()
+    });
+    let _ = testing::render_to_text(10, 1);
+
+    testing::trigger_key("Tab");
+
+    for key in ["a", "b", "x"] {
+      testing::trigger_key(key);
+    }
+
+    assert_eq!(name.get_untracked(), "ab");
+    assert_eq!(testing::render_to_text(10, 1), "ab\n");
+    assert_eq!(testing::render_to_caret(10, 1), Some((2, 0)));
+
+    testing::trigger_key("Ctrl+z");
+
+    assert_eq!(
+      name.get_untracked(),
+      "",
+      "the typed run undoes as one, the rejected edit no step of its own"
+    );
+    assert_eq!(testing::render_to_text(10, 1), "\n");
+
+    testing::trigger_key("Ctrl+y");
+
+    assert_eq!(name.get_untracked(), "ab");
+  });
+}
+
+/// An edit its handler transforms shows the truth, the caret mapped through the change
+/// from what was typed to what the truth holds.
+#[test]
+fn a_transformed_edit_shows_the_truth_with_the_caret_mapped() {
+  with_platform(|| {
+    let name = Signal::new(String::from("ab"));
+
+    let _ = terminal::mount(move || {
+      BasicTextField::new(
+        TextEntry::new()
+          .derive_value(move || name.get())
+          .handle_change(move |text| name.set(text.replace(' ', ""))),
+      )
+      .into_any()
+      .build()
+    });
+    let _ = testing::render_to_text(10, 1);
+
+    testing::trigger_key("Tab");
+    testing::trigger_key("End");
+    testing::trigger_key("ArrowLeft");
+    testing::trigger_key(" ");
+
+    assert_eq!(name.get_untracked(), "ab");
+    assert_eq!(testing::render_to_text(10, 1), "ab\n");
+    assert_eq!(
+      testing::render_to_caret(10, 1),
+      Some((1, 0)),
+      "the caret typed past the removed blank maps back before it"
+    );
+
+    testing::trigger_key("x");
+
+    assert_eq!(name.get_untracked(), "axb");
+  });
+}
+
+/// A change handler that moves focus to another node runs while the entry's edit is
+/// decided: the entry it leaves collapses its selection once the edit has ended, and
+/// nothing is held twice.
+#[test]
+fn a_handler_that_focuses_another_node_does_not_panic() {
+  with_platform(|| {
+    let name = Signal::new(String::new());
+    let other = Signal::new(String::from("other"));
+    let next = NodeHandle::new();
+
+    let _ = terminal::mount(move || {
+      Column::new()
+        .set_children((
+          BasicTextField::new(
+            TextEntry::new()
+              .bind_value(name)
+              .handle_change(move |text| {
+                name.set(text.to_owned());
+                next.focus();
+              }),
+          )
+          .into_any(),
+          BasicTextField::new(TextEntry::new().bind_value(other))
+            .bind_handle(next)
+            .into_any(),
+        ))
+        .into_any()
+        .build()
+    });
+    let _ = testing::render_to_text(10, 2);
+
+    testing::trigger_key("Tab");
+    testing::trigger_key("a");
+
+    assert_eq!(name.get_untracked(), "a");
+    assert_eq!(testing::focused_node(), next.node(), "focus moved on");
+
+    testing::trigger_key("b");
+
+    assert_eq!(
+      other.get_untracked(),
+      "bother",
+      "the keys reach the entry focused from the script, its caret where it was"
+    );
+    assert_eq!(name.get_untracked(), "a");
+  });
+}
+
+/// `ArrowUp` and `ArrowDown` in a field of one line are no editing keys: they leave the
+/// caret where it is and reach the field's ancestors.
+#[test]
+fn arrow_up_in_a_field_is_left_to_its_ancestors() {
+  with_platform(|| {
+    let name = Signal::new(String::from("abc"));
+    let heard = Signal::new(Vec::<String>::new());
+
+    let _ = terminal::mount(move || {
+      Container::new()
+        .handle_key_down(move |event| heard.update(|keys| keys.push(event.key.to_string())))
+        .set_child(BasicTextField::new(TextEntry::new().bind_value(name)))
+        .into_any()
+        .build()
+    });
+    let _ = testing::render_to_text(10, 1);
+
+    testing::trigger_key("Tab");
+    testing::trigger_key("End");
+    testing::trigger_key("ArrowLeft");
+    testing::trigger_key("ArrowUp");
+    testing::trigger_key("ArrowDown");
+    testing::trigger_key("x");
+
+    assert_eq!(
+      name.get_untracked(),
+      "abxc",
+      "the caret stayed where it was"
+    );
+    assert!(
+      heard.get_untracked().ends_with(&[
+        "ArrowUp".to_owned(),
+        "ArrowDown".to_owned(),
+        "x".to_owned()
+      ]),
+      "the ancestor heard the arrows: {:?}",
+      heard.get_untracked()
+    );
+  });
+}

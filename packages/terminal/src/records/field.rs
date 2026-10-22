@@ -1,348 +1,545 @@
-//! A text entry's editing state: its value, caret, selection and undo history.
+//! A text entry's editing state: the shared editing core over the cell engine, held apart
+//! from the records so it runs with none of them borrowed, and the window the entry shows
+//! its value through.
 
-use skene_foundation::{NodeId, TextSelection};
+use std::{
+  cell::{Cell, RefCell},
+  rc::Rc,
+};
+
+use skene_foundation::{
+  Edit,
+  NodeId,
+  TextSelection,
+  Verdict,
+  report_edit,
+  text::{
+    Laid as _,
+    Position,
+    TextWrap,
+    editing::{Arbiter, Editor, Notice},
+  },
+};
 
 use super::Records;
 use crate::{
-  field::Area,
-  text::{self, Clusters},
+  Terminal,
+  engine::{CellEngine, drawn, engine, paragraph_style, whole, wrap_spans},
+  field::{Area, settled_window},
+  layout::{cell_point, cells_of},
+  text::{self, CellScale},
 };
 
-/// How many undo steps an entry keeps.
-const HISTORY_LIMIT: usize = 100;
+/// An entry's editing core, over the cell engine.
+pub(crate) type EntryEditor = Editor<CellEngine>;
 
-/// One state of an entry an undo or redo returns to.
-struct Snapshot {
-  value: String,
-  caret: usize,
-  anchor: Option<usize>,
+/// An operation on an entry's editor that waits for the operation under way on it to end.
+pub(crate) type Deferred = Box<dyn FnOnce(&mut EntryEditor)>;
+
+/// What an entry's editor changed since its changes were last taken.
+#[derive(Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) struct Changed {
+  /// Whether the value changed.
+  pub(crate) text: bool,
+  /// Whether the selection moved.
+  pub(crate) selection: bool,
 }
 
-/// A kind of edit whose consecutive occurrences make one undo step.
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum EditRun {
-  /// A cluster typed at the caret.
-  Typed,
-  /// A cluster removed beside the caret.
-  Removed,
+/// The arbiter of an entry's edits: each is reported to the entry's node, its text and its
+/// selection as one, and the verdict the node's handlers fold is what the entry shows.
+struct Reporter {
+  node: NodeId,
+  multiline: bool,
+  reported: Rc<Cell<TextSelection>>,
 }
 
-/// A text entry's editing state; the caret and the anchor are cluster positions in
-/// the value, `0..=count`.
+impl Reporter {
+  /// `text` as the entry holds it: an editor's line breaks as line feeds, a field's
+  /// removed.
+  fn sanitized(&self, text: &str) -> String {
+    let text = text.replace("\r\n", "\n").replace('\r', "\n");
+
+    if self.multiline {
+      text
+    }
+    else {
+      text.replace('\n', "")
+    }
+  }
+}
+
+impl Arbiter for Reporter {
+  fn propose(&mut self, proposed: &Edit, applied: bool, _composing: bool) -> Verdict {
+    if let Some(selection) = proposed.selection {
+      self.reported.set(selection);
+    }
+
+    match report_edit::<Terminal>(self.node, proposed, applied) {
+      Verdict::Replace(truth) => Verdict::Replace(Edit {
+        text: Rc::from(self.sanitized(&truth.text)),
+        selection: truth.selection,
+      }),
+      Verdict::Accept => Verdict::Accept,
+    }
+  }
+
+  fn settle(&mut self) -> Option<Edit> {
+    None
+  }
+}
+
+/// One cluster of an entry's visible value: the cell it starts in and the row it is on
+/// within the entry's area, its text and the cells it advances, and whether it is
+/// selected.
+pub(crate) struct VisibleCluster {
+  pub(crate) column: usize,
+  pub(crate) row: usize,
+  pub(crate) text: String,
+  pub(crate) advance: usize,
+  pub(crate) selected: bool,
+}
+
+/// What an entry shows in its area: the clusters of its value or, while the value is
+/// empty, of its placeholder, and the caret's column and row, `None` while the window has
+/// scrolled it out of view.
+pub(crate) struct Visible {
+  pub(crate) clusters: Vec<VisibleCluster>,
+  pub(crate) placeholder: bool,
+  pub(crate) caret: Option<(usize, usize)>,
+}
+
+/// A text entry's editing state: the editing core, shared with the operations that run it
+/// once the records are released, and the window over its value.
 pub(crate) struct Field {
-  /// The value being edited.
-  pub(crate) value: String,
-  /// The value's clusters, kept with it.
-  pub(crate) clusters: Clusters,
-  /// The selection's moving end, and the insertion point.
-  pub(crate) caret: usize,
-  /// The selection's fixed end, `None` while the selection is collapsed.
-  pub(crate) anchor: Option<usize>,
-  /// The selection last reported or written from outside.
-  reported: TextSelection,
-  /// The states an undo returns to, oldest first, at most [`HISTORY_LIMIT`].
-  undo: Vec<Snapshot>,
-  /// The states a redo returns to, oldest first; emptied by an edit.
-  redo: Vec<Snapshot>,
-  /// The kind of the last edit, which the next edit of the same kind joins as one undo
-  /// step; `None` once the caret has moved or the selection changed since.
-  run: Option<EditRun>,
-  /// The first visible column of a field, or the first visible wrapped row of an
-  /// editor; moves only to keep the caret in view, under an autoscroll, or under an
-  /// editor's wheel.
+  /// The editing core; borrowed only by an operation on it, and by readers between them.
+  pub(crate) editor: Rc<RefCell<EntryEditor>>,
+  /// What the editor changed since the last [`take_changed`](Self::take_changed).
+  changed: Rc<Cell<Changed>>,
+  /// The selection last reported, or written from outside.
+  reported: Rc<Cell<TextSelection>>,
+  /// The operations waiting for the one under way on the editor to end.
+  pub(crate) deferred: Vec<Deferred>,
+  /// The first visible cell of a field, or the first visible row of an editor; moves only
+  /// to keep the caret in view, under an autoscroll, or under the wheel.
   pub(crate) window: usize,
-  /// The area the window was last settled or scrolled in, `None` before the first; in
-  /// any other the window settles around the caret before it shows.
+  /// The area the window was last settled or scrolled in, `None` before the first; in any
+  /// other the window settles around the caret before it shows.
   pub(crate) window_area: Option<Area>,
-  /// The cell column vertical motion aims for, held across consecutive vertical moves.
-  pub(crate) goal: Option<usize>,
   /// The text shown while the value is empty.
   pub(crate) placeholder: Option<String>,
   /// The rows the entry asks the layout for; more than one makes it an editor.
   pub(crate) lines: u16,
+  /// The cells the value's widest line spans, as last read.
+  widest: Cell<usize>,
 }
 
 impl Field {
-  /// A fresh, empty entry showing `lines` rows.
-  pub(crate) const fn new(placeholder: Option<String>, lines: u16) -> Self {
+  /// A fresh, empty entry of `node` showing `lines` rows: an editor wrapping its lines at
+  /// its width where they are more than one, else a field of one unwrapped line.
+  pub(crate) fn new(node: NodeId, placeholder: Option<String>, lines: u16) -> Self {
+    let lines = lines.max(1);
+    let multiline = lines > 1;
+    let changed = Rc::new(Cell::new(Changed::default()));
+    let reported = Rc::new(Cell::new(TextSelection::collapsed(0)));
+    let mut editor = Self::editor_of(multiline);
+    let notices = Rc::clone(&changed);
+
+    editor.set_arbiter(Reporter {
+      node,
+      multiline,
+      reported: Rc::clone(&reported),
+    });
+    editor.set_notifier(move |notice: Notice| {
+      let held = notices.get();
+
+      notices.set(Changed {
+        text: held.text || notice.text,
+        selection: held.selection || notice.selection || notice.text,
+      });
+    });
+
     Self {
-      value: String::new(),
-      clusters: Clusters::EMPTY,
-      caret: 0,
-      anchor: None,
-      reported: TextSelection::collapsed(0),
-      undo: Vec::new(),
-      redo: Vec::new(),
-      run: None,
+      editor: Rc::new(RefCell::new(editor)),
+      changed,
+      reported,
+      deferred: Vec::new(),
       window: 0,
       window_area: None,
-      goal: None,
       placeholder,
-      lines: if lines == 0 { 1 } else { lines },
+      lines,
+      widest: Cell::new(0),
     }
   }
 
-  /// The value's length in clusters.
-  pub(crate) const fn count(&self) -> usize {
-    self.clusters.count()
+  /// An editing core over the cell engine, at one cell's scale: of several lines wrapping
+  /// at its width where `multiline`, else of one unwrapped line.
+  pub(crate) fn editor_of(multiline: bool) -> EntryEditor {
+    let style = if multiline {
+      paragraph_style()
+    }
+    else {
+      paragraph_style().with_wrap(TextWrap::None)
+    };
+    let mut editor = Editor::new(engine(), CellScale::ONE.style(), style);
+
+    editor.set_multiline(multiline);
+
+    editor
   }
 
-  /// Measures the value's clusters again, after the value or the terminal's
-  /// clustering changed.
-  pub(crate) fn reflow(&mut self) {
-    self.clusters = Clusters::of(&self.value);
+  /// Whether the entry is an editor, of several rows.
+  pub(crate) const fn is_editor(&self) -> bool {
+    self.lines > 1
   }
 
-  /// The selected cluster range in document order, `None` while collapsed.
-  pub(crate) fn selection(&self) -> Option<(usize, usize)> {
-    let anchor = self.anchor?;
-
-    (anchor != self.caret).then(|| (anchor.min(self.caret), anchor.max(self.caret)))
+  /// What the editor changed since the last take, taken.
+  pub(crate) fn take_changed(&self) -> Changed {
+    self.changed.take()
   }
 
-  /// The selected text, `None` while collapsed.
+  /// The selection last reported, or written from outside, shared with what writes it.
+  pub(crate) fn reported(&self) -> Rc<Cell<TextSelection>> {
+    Rc::clone(&self.reported)
+  }
+
+  /// The selection, when it differs from the one last reported or written from outside,
+  /// which it becomes; `None` too while an operation holds the editor.
+  pub(crate) fn selection_report(&self) -> Option<TextSelection> {
+    let selection = self.editor.try_borrow().ok()?.selection();
+
+    (selection != self.reported.replace(selection)).then_some(selection)
+  }
+
+  /// The value, `None` while an operation holds the editor.
+  pub(crate) fn value(&self) -> Option<String> {
+    Some(self.editor.try_borrow().ok()?.text().to_owned())
+  }
+
+  /// The selected text, `None` while the selection is collapsed or an operation holds the
+  /// editor.
   pub(crate) fn selected_text(&self) -> Option<String> {
-    let (from, to) = self.selection()?;
+    let editor = self.editor.try_borrow().ok()?;
+    let selected = editor.selected();
 
-    Some(self.value[self.byte_of(from)..self.byte_of(to)].to_owned())
+    (!selected.is_empty()).then(|| editor.text()[selected].to_owned())
   }
 
-  /// The selection as the app sees it: from the anchor, or the caret while collapsed,
-  /// to the caret.
-  pub(crate) fn selection_offsets(&self) -> TextSelection {
-    TextSelection::new(self.anchor.unwrap_or(self.caret), self.caret)
+  /// Whether a range of the value is selected.
+  pub(crate) fn has_selection(&self) -> bool {
+    self
+      .editor
+      .try_borrow()
+      .is_ok_and(|editor| !editor.selected().is_empty())
   }
 
-  /// The selection, when it differs from the one last reported or written from
-  /// outside, which it becomes.
-  pub(crate) fn selection_report(&mut self) -> Option<TextSelection> {
-    let selection = self.selection_offsets();
-
-    if selection == self.reported {
-      return None;
+  /// The cells the value's widest line spans; while an operation holds the editor, as
+  /// last read.
+  pub(crate) fn widest(&self) -> usize {
+    if let Ok(editor) = self.editor.try_borrow() {
+      self.widest.set(Self::widest_of(editor.text()));
     }
 
-    self.reported = selection;
-
-    Some(selection)
+    self.widest.get()
   }
 
-  /// Places the selection from outside the entry's editing, each index clamped to the
-  /// value; `false` when it is the selection already.
-  pub(crate) fn set_selection(&mut self, selection: TextSelection) -> bool {
-    let selection = selection.clamped(self.count());
-    let caret = selection.end;
-    let anchor = (selection.start != caret).then_some(selection.start);
+  /// The cells `text`'s widest line spans.
+  pub(crate) fn widest_of(text: &str) -> usize {
+    text.split('\n').map(text::cells).max().unwrap_or(0)
+  }
 
-    if (caret, anchor) == (self.caret, self.anchor) {
-      self.reported = self.selection_offsets();
+  /// Lays an editor's value out at the width of `area`; a field's lays out unwrapped.
+  pub(crate) fn fit(editor: &mut EntryEditor, lines: u16, area: Area) {
+    if lines > 1 {
+      editor.set_width(Some(cells_of(area.columns.max(1))));
+    }
+  }
 
+  /// The window's geometry in `area`: the caret's position along it, the extent it covers
+  /// and the span it shows, in cells of a field and in rows of an editor.
+  fn window_geometry(&self, editor: &EntryEditor, area: Area) -> (usize, usize, usize) {
+    let laid = editor.laid();
+    let caret = editor.caret_rect();
+
+    if self.is_editor() {
+      return (whole(caret.origin.y), laid.line_count(), area.rows.max(1));
+    }
+
+    let end = laid
+      .caret(Position::new(editor.text().len()))
+      .primary
+      .x
+      .max(laid.size().width);
+
+    (
+      whole(caret.origin.x),
+      whole(end.ceil()) + 1,
+      area.columns.max(1),
+    )
+  }
+
+  /// `window` moved past the wide cluster of a field's value it starts inside, if any.
+  fn past_split(&self, editor: &EntryEditor, window: usize) -> usize {
+    if self.is_editor() {
+      return window;
+    }
+
+    let laid = editor.laid();
+
+    drawn(&laid, editor.text(), editor.index())
+      .into_iter()
+      .find(|cluster| cluster.column < window && window < cluster.column + cluster.advance)
+      .map_or(window, |cluster| cluster.column + cluster.advance)
+  }
+
+  /// How far the window can scroll from its start in `area`.
+  fn window_limit(&self, editor: &EntryEditor, area: Area) -> usize {
+    let (_, extent, span) = self.window_geometry(editor, area);
+
+    self.past_split(editor, extent.saturating_sub(span))
+  }
+
+  /// The window settled around the caret in `area`: held where the caret stays in view,
+  /// else moved the least that shows it.
+  fn settled_window(&self, editor: &EntryEditor, area: Area) -> usize {
+    let (at, extent, span) = self.window_geometry(editor, area);
+
+    self.past_split(editor, settled_window(self.window, at, extent, span))
+  }
+
+  /// The window as the entry shows it in `area`: held where it was last settled or
+  /// scrolled in that area, clamped to the extent, and settled around the caret in any
+  /// other.
+  fn shown_window(&self, editor: &EntryEditor, area: Area) -> usize {
+    if self.window_area == Some(area) {
+      self.window.min(self.window_limit(editor, area))
+    }
+    else {
+      self.settled_window(editor, area)
+    }
+  }
+
+  /// Settles the window around the caret in `area`: held where the caret stays in view,
+  /// else moved the least that shows it.
+  pub(crate) fn settle(&mut self, area: Area) {
+    let Ok(editor) = self.editor.try_borrow()
+    else {
+      return;
+    };
+    let window = self.settled_window(&editor, area);
+
+    drop(editor);
+    self.window = window;
+    self.window_area = Some(area);
+  }
+
+  /// How far the window can scroll from its start in `area`; nothing while an operation
+  /// holds the editor.
+  pub(crate) fn scroll_limit(&self, area: Area) -> usize {
+    self
+      .editor
+      .try_borrow()
+      .map_or(0, |editor| self.window_limit(&editor, area))
+  }
+
+  /// The window as the entry shows it in `area`.
+  pub(crate) fn visible_window(&self, area: Area) -> usize {
+    self
+      .editor
+      .try_borrow()
+      .map_or(self.window, |editor| self.shown_window(&editor, area))
+  }
+
+  /// Scrolls the window by `delta` (rows of an editor, cells of a field) in `area`,
+  /// clamped to its extent and leaving the caret where it is; `false` when it cannot move
+  /// that way.
+  pub(crate) fn scroll_window(&mut self, area: Area, delta: i64) -> bool {
+    let Ok(editor) = self.editor.try_borrow()
+    else {
+      return false;
+    };
+    let limit = i64::try_from(self.window_limit(&editor, area)).unwrap_or(i64::MAX);
+    let window = i64::try_from(self.shown_window(&editor, area))
+      .unwrap_or(i64::MAX)
+      .min(limit);
+    let next = window.saturating_add(delta).clamp(0, limit);
+
+    if next == window {
       return false;
     }
 
-    self.caret = caret;
-    self.anchor = anchor;
-    self.run = None;
-    self.goal = None;
-    self.reported = self.selection_offsets();
+    let next = self.past_split(&editor, usize::try_from(next).unwrap_or(0));
+
+    drop(editor);
+    self.window = next;
+    self.window_area = Some(area);
 
     true
   }
 
-  /// Collapses the selection at the caret.
-  pub(crate) const fn collapse(&mut self) {
-    self.anchor = None;
-    self.run = None;
-    self.goal = None;
-  }
-
-  /// Selects `from..to`, the caret at `to`.
-  pub(crate) fn select(&mut self, from: usize, to: usize) {
-    let count = self.count();
-
-    self.caret = to.min(count);
-    self.anchor = (from != to).then_some(from.min(count));
-    self.run = None;
-    self.goal = None;
-  }
-
-  /// Sets the value from outside the entry's editing, sanitized as
-  /// [`sanitized`](Self::sanitized) says, as one undo step, the caret clamped and the
-  /// selection collapsed; a value over an empty entry with no history is the initial
-  /// one and records nothing, and nothing happens when `value` is the value already.
-  pub(crate) fn set_value(&mut self, value: &str) -> bool {
-    let value = self.sanitized(value);
-
-    if self.value == value {
-      return false;
+  /// The layout position standing for the cell (`column`, `row`) of `area`, the value
+  /// shown from `window`: clamped into the area, and a hair into the cell, so a press on
+  /// a cluster's first cell lands before it and one on a wide cluster's second cell after
+  /// it.
+  pub(crate) fn point_at(
+    &self,
+    window: usize,
+    area: Area,
+    column: usize,
+    row: usize,
+  ) -> (f32, f32) {
+    let column = column.min(area.columns.max(1) - 1);
+    let row = row.min(area.rows.max(1) - 1);
+    let point = if self.is_editor() {
+      cell_point(column, row + window)
     }
+    else {
+      cell_point(column + window, row)
+    };
 
-    if !(self.value.is_empty() && self.undo.is_empty() && self.redo.is_empty()) {
-      self.record(None);
-    }
-
-    self.value = value;
-    self.reflow();
-    self.caret = self.caret.min(self.count());
-    self.anchor = None;
-    self.goal = None;
-
-    true
+    (point.x, point.y)
   }
 
-  /// Records the state before an edit of `kind` as the next undo step, unless the
-  /// edit joins the run of the last one; either way the redo states are dropped.
-  fn record(&mut self, kind: Option<EditRun>) {
-    self.redo.clear();
+  /// What the entry shows in `area`: its value's clusters in the window, or its
+  /// placeholder's while the value is empty, the selection marked where `focused`, and
+  /// the caret's cell. Nothing shows while an operation holds the editor.
+  pub(crate) fn visible(&self, area: Area, focused: bool) -> Visible {
+    let inner = area.columns.max(1);
+    let rows = if self.is_editor() {
+      area.rows.max(1)
+    }
+    else {
+      1
+    };
+    let Ok(editor) = self.editor.try_borrow()
+    else {
+      return Visible {
+        clusters: Vec::new(),
+        placeholder: false,
+        caret: None,
+      };
+    };
+    let value = editor.text();
+    let placeholder = value.is_empty();
+    let window = if placeholder {
+      0
+    }
+    else {
+      self.shown_window(&editor, area)
+    };
+    let (shift_x, shift_y) = if self.is_editor() {
+      (0, window)
+    }
+    else {
+      (window, 0)
+    };
+    let mut clusters = Vec::new();
 
-    if kind.is_none() || kind != self.run {
-      if self.undo.len() == HISTORY_LIMIT {
-        self.undo.remove(0);
+    if placeholder {
+      let shown = self.placeholder.as_deref().unwrap_or("");
+      let lines = if self.is_editor() {
+        wrap_spans(shown, inner)
       }
+      else {
+        vec![(0, text::fit(shown, inner).to_owned())]
+      };
 
-      self.undo.push(self.snapshot());
-    }
+      for (row, (_, line)) in lines.into_iter().take(rows).enumerate() {
+        let mut column = 0;
 
-    self.run = kind;
-  }
+        for (_, cluster) in text::clusters(&line) {
+          let advance = text::width(cluster);
 
-  /// Returns to the state before the last undo step, the state left becoming a redo
-  /// step; `false` with nothing to undo.
-  pub(crate) fn undo(&mut self) -> bool {
-    let Some(snapshot) = self.undo.pop()
-    else {
-      return false;
-    };
-
-    self.redo.push(self.snapshot());
-    self.restore(snapshot);
-
-    true
-  }
-
-  /// Returns to the state the last undo left, that state becoming an undo step again;
-  /// `false` with nothing to redo.
-  pub(crate) fn redo(&mut self) -> bool {
-    let Some(snapshot) = self.redo.pop()
-    else {
-      return false;
-    };
-
-    self.undo.push(self.snapshot());
-    self.restore(snapshot);
-
-    true
-  }
-
-  fn snapshot(&self) -> Snapshot {
-    Snapshot {
-      value: self.value.clone(),
-      caret: self.caret,
-      anchor: self.anchor,
-    }
-  }
-
-  fn restore(&mut self, snapshot: Snapshot) {
-    self.value = snapshot.value;
-    self.reflow();
-    self.caret = snapshot.caret;
-    self.anchor = snapshot.anchor;
-    self.run = None;
-    self.goal = None;
-  }
-
-  /// Selects the whole value.
-  pub(crate) fn select_all(&mut self) {
-    self.select(0, self.count());
-  }
-
-  /// Moves the caret to `caret`, extending the selection from the anchor—the caret's
-  /// old position when none—or collapsing it.
-  pub(crate) fn move_caret(&mut self, caret: usize, extend: bool) {
-    let caret = caret.min(self.count());
-
-    if extend {
-      let anchor = self.anchor.unwrap_or(self.caret);
-
-      self.anchor = (anchor != caret).then_some(anchor);
+          clusters.push(VisibleCluster {
+            column,
+            row,
+            text: cluster.to_owned(),
+            advance,
+            selected: false,
+          });
+          column += advance;
+        }
+      }
     }
     else {
-      self.anchor = None;
+      let laid = editor.laid();
+      let selected = editor.selected();
+
+      for cluster in drawn(&laid, value, editor.index()) {
+        let (Some(column), Some(row)) = (
+          cluster.column.checked_sub(shift_x),
+          cluster.top.checked_sub(shift_y),
+        )
+        else {
+          continue;
+        };
+
+        if column + cluster.advance > inner || row >= rows {
+          continue;
+        }
+
+        clusters.push(VisibleCluster {
+          column,
+          row,
+          text: value[cluster.at..cluster.end].to_owned(),
+          advance: cluster.advance,
+          selected: focused && selected.contains(&cluster.at),
+        });
+      }
     }
 
-    self.caret = caret;
-    self.run = None;
-    self.goal = None;
-  }
+    let caret = editor.caret_rect();
+    let caret = whole(caret.origin.x)
+      .checked_sub(shift_x)
+      .zip(whole(caret.origin.y).checked_sub(shift_y))
+      .filter(|(column, row)| *column < inner && *row < rows)
+      .map(|(column, row)| (row, column));
 
-  /// Replaces the selection—or inserts at the caret—with `text`, leaving the caret
-  /// after it. One cluster inserted at the caret joins the run of clusters typed
-  /// before it as one undo step; anything else is a step of its own.
-  pub(crate) fn replace_selection(&mut self, text: &str) {
-    let selection = self.selection();
-    let (from, to) = selection.unwrap_or((self.caret, self.caret));
-    let typed = selection.is_none() && text::count(text) == 1;
-    let start = self.byte_of(from);
-
-    self.record(typed.then_some(EditRun::Typed));
-    self.value.replace_range(start..self.byte_of(to), text);
-    self.reflow();
-    self.caret = self.clusters.index_of_byte(start + text.len());
-    self.anchor = None;
-    self.goal = None;
-  }
-
-  /// Removes `from..to`, leaving the caret at `from`. One cluster removed beside a
-  /// collapsed caret joins the run of clusters removed before it as one undo step;
-  /// anything else is a step of its own.
-  pub(crate) fn remove(&mut self, from: usize, to: usize) {
-    let single = self.selection().is_none() && to == from + 1;
-    let start = self.byte_of(from);
-
-    self.record(single.then_some(EditRun::Removed));
-    self.value.replace_range(start..self.byte_of(to), "");
-    self.reflow();
-    self.caret = self.clusters.index_of_byte(start);
-    self.anchor = None;
-    self.goal = None;
-  }
-
-  /// The byte offset of the cluster at `position`, or the value's end.
-  pub(crate) fn byte_of(&self, position: usize) -> usize {
-    self.clusters.byte_of(position)
+    Visible {
+      clusters,
+      placeholder,
+      caret,
+    }
   }
 }
 
 impl Records {
+  /// The text entry at `handle`, if it is one.
+  pub(crate) fn field(&self, handle: super::Handle) -> Option<&Field> {
+    self.record(handle)?.kind.field()
+  }
+
+  /// The text entry at `handle`, if it is one, to change.
+  pub(crate) fn field_mut(&mut self, handle: super::Handle) -> Option<&mut Field> {
+    self.record_mut(handle)?.kind.field_mut()
+  }
+
   /// The selection of every entry whose selection changed since it was last reported
   /// or written from outside, with the entry's node.
-  pub(crate) fn selection_reports(&mut self) -> Vec<(NodeId, TextSelection)> {
-    let mut reports = Vec::new();
+  pub(crate) fn selection_reports(&self) -> Vec<(NodeId, TextSelection)> {
+    self
+      .entries
+      .iter()
+      .filter_map(|entry| {
+        let record = self.record(*entry)?;
+        let selection = record.kind.field()?.selection_report()?;
 
-    for index in 0..self.entries.len() {
-      let Some(record) = self.record_mut(self.entries[index])
-      else {
-        continue;
-      };
-      let node = record.node;
-
-      if let Some(selection) = record.kind.field_mut().and_then(Field::selection_report)
-        && let Some(node) = node
-      {
-        reports.push((node, selection));
-      }
-    }
-
-    reports
+        Some((record.node?, selection))
+      })
+      .collect()
   }
 }
 
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod properties {
   use proptest::prelude::*;
+  use skene_foundation::{
+    Edit,
+    TextSelection,
+    text::{Direction, Round, TextBoundary, TextIndex, editing::Command},
+  };
 
-  use super::Field;
-  use crate::text::{self, Clusters};
+  use super::{EntryEditor, Field};
+  use crate::{engine::drawn, text};
 
   /// One edit a user makes to an entry.
   #[derive(Debug, Clone)]
@@ -351,11 +548,11 @@ mod properties {
     Paste(&'static str),
     RemoveBefore,
     RemoveAfter,
-    MoveCaret(usize, bool),
+    Select(usize, usize),
     SelectAll,
     Undo,
     Redo,
-    SetValue(&'static str),
+    Write(&'static str),
   }
 
   /// Edits mostly of the clusters an entry is hard on: wide ones, combining marks
@@ -369,84 +566,116 @@ mod properties {
       1 => proptest::sample::select(PASTES).prop_map(Step::Paste),
       2 => Just(Step::RemoveBefore),
       1 => Just(Step::RemoveAfter),
-      2 => (0..12_usize, any::<bool>()).prop_map(|(caret, extend)| Step::MoveCaret(caret, extend)),
+      2 => (0..12_usize, 0..12_usize).prop_map(|(anchor, caret)| Step::Select(anchor, caret)),
       1 => Just(Step::SelectAll),
       2 => Just(Step::Undo),
       1 => Just(Step::Redo),
-      1 => proptest::sample::select(PASTES).prop_map(Step::SetValue),
+      1 => proptest::sample::select(PASTES).prop_map(Step::Write),
     ]
   }
 
-  /// Applies `step` to `field` as the entry's editing does.
-  fn apply(field: &mut Field, step: &Step) {
-    match step {
-      Step::Type(text) | Step::Paste(text) => field.replace_selection(text),
-      Step::RemoveBefore => match field.selection() {
-        Some((from, to)) => field.remove(from, to),
-        None if field.caret > 0 => field.remove(field.caret - 1, field.caret),
-        None => {}
-      },
-      Step::RemoveAfter => match field.selection() {
-        Some((from, to)) => field.remove(from, to),
-        None if field.caret < field.count() => field.remove(field.caret, field.caret + 1),
-        None => {}
-      },
-      Step::MoveCaret(caret, extend) => field.move_caret(*caret, *extend),
-      Step::SelectAll => field.select_all(),
-      Step::Undo => {
-        let _ = field.undo();
-      }
-      Step::Redo => {
-        let _ = field.redo();
-      }
-      Step::SetValue(value) => {
-        let _ = field.set_value(value);
-      }
-    }
-  }
+  /// Applies `step` to `editor` as the entry's operations do.
+  fn apply(editor: &mut EntryEditor, step: &Step) {
+    let command = match step {
+      Step::Type(text) => Command::Insert((*text).to_owned()),
+      Step::Paste(text) => Command::Paste((*text).to_owned()),
+      Step::RemoveBefore => Command::Delete(TextBoundary::Grapheme, Direction::Backward),
+      Step::RemoveAfter => Command::Delete(TextBoundary::Grapheme, Direction::Forward),
+      Step::SelectAll => Command::SelectAll,
+      Step::Undo => Command::Undo,
+      Step::Redo => Command::Redo,
+      Step::Select(anchor, caret) => {
+        let _ = editor.set_selection(TextSelection::new(*anchor, *caret));
 
-  /// Where each cluster of `clusters` starts, its byte and its cell, the end last.
-  fn boundaries(clusters: &Clusters) -> Vec<(usize, usize)> {
-    (0..=clusters.count())
-      .map(|index| (clusters.byte_of(index), clusters.column_of(index)))
-      .collect()
+        return;
+      }
+      Step::Write(text) => {
+        let _ = editor.write(&Edit::new(*text));
+
+        return;
+      }
+    };
+    let _ = editor.perform(command);
   }
 
   /// The state an undo or redo returns to.
-  fn state(field: &Field) -> (String, usize, Option<usize>) {
-    (field.value.clone(), field.caret, field.anchor)
+  fn state(editor: &EntryEditor) -> (String, usize, usize) {
+    (
+      editor.text().to_owned(),
+      editor.anchor().index,
+      editor.focus().index,
+    )
   }
 
   proptest! {
     #![proptest_config(ProptestConfig::with_cases(1000))]
 
-    /// Any run of edits keeps the caret and the anchor on clusters of the value and the
-    /// clusters true to it, and an undo a redo follows changes nothing.
+    /// Any run of edits keeps the selection's ends on clusters of the value, its index and
+    /// its cells true to it, and an undo a redo follows changes nothing.
     #[test]
     fn any_run_of_edits_keeps_the_entry_whole(
       steps in proptest::collection::vec(arbitrary_step(), 0..40),
     ) {
       text::reset();
 
-      let mut field = Field::new(None, 1);
+      let mut editor = Field::editor_of(false);
+
+      editor.set_arbiter(Accepting);
 
       for step in &steps {
-        apply(&mut field, step);
+        apply(&mut editor, step);
 
-        prop_assert!(field.caret <= field.count(), "{step:?} left the caret past the end");
-        prop_assert!(
-          field.anchor.is_none_or(|anchor| anchor <= field.count() && anchor != field.caret),
-          "{step:?} left the anchor off the value"
-        );
-        prop_assert_eq!(boundaries(&field.clusters), boundaries(&Clusters::of(&field.value)));
+        let index = TextIndex::new(editor.text());
 
-        let before = state(&field);
+        for end in [editor.anchor().index, editor.focus().index] {
+          prop_assert!(end <= editor.text().len(), "{step:?} left an end past the value");
+          prop_assert_eq!(
+            index.snap_to_grapheme(end, Round::Down),
+            end,
+            "{:?} left an end inside a cluster",
+            step
+          );
+        }
 
-        if field.undo() {
-          prop_assert!(field.redo(), "a redo follows an undo");
-          prop_assert_eq!(state(&field), before, "an undo a redo follows changes nothing");
+        prop_assert_eq!(editor.index().grapheme_count(), index.grapheme_count());
+
+        let laid = editor.laid();
+        let cells: usize = drawn(&laid, editor.text(), editor.index())
+          .iter()
+          .map(|cluster| cluster.advance)
+          .sum();
+
+        prop_assert_eq!(cells, text::cells(editor.text()), "the value lays out in its cells");
+
+        let selection = editor.selection();
+
+        prop_assert!(selection.start <= index.grapheme_count() && selection.end <= index.grapheme_count());
+
+        let before = state(&editor);
+
+        if editor.perform(Command::Undo).handled {
+          prop_assert!(editor.perform(Command::Redo).handled, "a redo follows an undo");
+          prop_assert_eq!(state(&editor), before, "an undo a redo follows changes nothing");
         }
       }
+    }
+  }
+
+  /// An arbiter accepting every edit, as an uncontrolled entry's node does.
+  struct Accepting;
+
+  impl skene_foundation::text::editing::Arbiter for Accepting {
+    fn propose(
+      &mut self,
+      _proposed: &Edit,
+      _applied: bool,
+      _composing: bool,
+    ) -> skene_foundation::Verdict {
+      skene_foundation::Verdict::Accept
+    }
+
+    fn settle(&mut self) -> Option<Edit> {
+      None
     }
   }
 }

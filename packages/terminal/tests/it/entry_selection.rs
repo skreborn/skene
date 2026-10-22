@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use skene_terminal::{self as terminal, TextEntry, prelude::*, testing};
 
-use crate::common::{rgb, rows, white, with_platform};
+use crate::common::{rgb, rows, white, with_launch, with_platform};
 
 /// The selection highlight the tests read back.
 fn highlight() -> Color {
@@ -510,6 +510,79 @@ fn a_drag_held_above_autoscrolls_the_editor() {
       value.get_untracked(),
       "x",
       "the selection reached the start"
+    );
+  });
+}
+
+/// A clipboard key the launch does not offer does nothing: `Ctrl+X` and `Ctrl+C` neither
+/// cut nor copy, `Ctrl+V` and `Shift+Insert` read nothing, and `Shift+Delete`, without
+/// `Cut`, deletes forward as `Delete` does.
+#[test]
+fn an_unoffered_clipboard_key_does_nothing() {
+  with_launch(
+    terminal::Launch::new().set_clipboard(Clipboard::NONE),
+    || {
+      let value = Signal::new(String::from("alpha"));
+
+      mount_field(value, 10);
+
+      for key in ["Ctrl+x", "Ctrl+c", "Ctrl+Insert", "Ctrl+v", "Shift+Insert"] {
+        testing::trigger_key(key);
+      }
+
+      assert_eq!(value.get_untracked(), "alpha", "nothing was cut");
+      assert_eq!(testing::take_copied(), None, "nothing was copied");
+      assert!(!testing::take_paste_requested(), "nothing was read");
+
+      testing::trigger_key("Home");
+      testing::trigger_key("Shift+Delete");
+
+      assert_eq!(
+        value.get_untracked(),
+        "lpha",
+        "Shift+Delete deleted forward"
+      );
+
+      testing::trigger_key("ArrowRight");
+      testing::trigger_key("Shift+End");
+      testing::trigger_key("Shift+Delete");
+
+      assert_eq!(
+        value.get_untracked(),
+        "l",
+        "over a selection, it deleted the selection"
+      );
+      assert_eq!(testing::take_copied(), None);
+    },
+  );
+}
+
+/// `Ctrl+Shift+A` selects nothing, as in Chromium, and the clipboard keys under `Shift`
+/// neither copy nor cut; `Ctrl+Shift+V` still pastes.
+#[test]
+fn ctrl_shift_a_selects_nothing() {
+  with_platform(|| {
+    let value = Signal::new(String::from("alpha"));
+
+    mount_field(value, 10);
+    testing::trigger_key("End");
+    testing::trigger_key("Ctrl+Shift+a");
+    testing::trigger_key("x");
+
+    assert_eq!(value.get_untracked(), "alphax", "nothing was selected");
+
+    testing::trigger_key("Ctrl+a");
+    testing::trigger_key("Ctrl+Shift+c");
+    testing::trigger_key("Ctrl+Shift+x");
+
+    assert_eq!(testing::take_copied(), None, "nothing was copied");
+    assert_eq!(value.get_untracked(), "alphax", "nothing was cut");
+
+    testing::trigger_key("Ctrl+Shift+v");
+
+    assert!(
+      testing::take_paste_requested(),
+      "Ctrl+Shift+V reads the clipboard"
     );
   });
 }

@@ -37,7 +37,7 @@ use crate::{
   engine::{CellEngine, CellLaid, engine, paragraph_style},
   motion::{Clock, Presented},
   paint::{ShadowPaint, run_scale},
-  records::{BoxCache, Handle, Kind, PlainBox, PlainRun, Record, Records, RunCache},
+  records::{BoxCache, Field, Handle, Kind, PlainBox, PlainRun, Record, Records, RunCache},
   resolve::Env,
   text::{self, CellScale},
 };
@@ -885,9 +885,8 @@ fn taffy_style_of(records: &Records, handle: Handle) -> Restyled {
         if resolved.width.is_none() {
           // One cell past the value's longest line keeps the caret inside the box at
           // its end.
-          let widest = |text: &str| text.split('\n').map(text::cells).max().unwrap_or(0);
-          let content = (widest(&field.value) + 1)
-            .max(field.placeholder.as_deref().map_or(0, widest))
+          let content = (field.widest() + 1)
+            .max(field.placeholder.as_deref().map_or(0, Field::widest_of))
             .max(8);
 
           style.size.width = length(cell(

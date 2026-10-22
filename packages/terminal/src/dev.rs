@@ -33,6 +33,7 @@ use skene_foundation::{
   RunBase,
   Scene,
   TextBase,
+  TextSelection,
 };
 use skene_reactive::{Get, Set, Signal, SnapshotPlace};
 
@@ -256,9 +257,14 @@ fn focus_snapshot() -> Option<(SnapshotPlace, Option<Caret>)> {
   let (focused, caret) = crate::try_with_records(|records| {
     let focused = records.focused()?;
     let caret = records
-      .record(focused)
-      .and_then(|record| record.kind.field())
-      .map(|field| (field.caret, field.anchor));
+      .field(focused)
+      .and_then(|field| Some(field.editor.try_borrow().ok()?.selection()))
+      .map(|selection| {
+        (
+          selection.end,
+          (!selection.is_collapsed()).then_some(selection.start),
+        )
+      });
 
     Some((focused, caret))
   })??;
@@ -303,15 +309,9 @@ fn adopt_focus() {
 
   if let Some((caret, anchor)) = caret {
     crate::with_records(|records| {
-      if let Some(field) = records
-        .record_mut(handle)
-        .and_then(|record| record.kind.field_mut())
-      {
-        field.select(anchor.unwrap_or(caret), caret);
-      }
-
-      records.settle_entry(handle);
-      records.damage(handle);
+      records.with_entry(handle, move |editor| {
+        let _ = editor.set_selection(TextSelection::new(anchor.unwrap_or(caret), caret));
+      });
     });
   }
 }

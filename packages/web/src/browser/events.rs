@@ -16,6 +16,7 @@ use skene_foundation::{
   Axes,
   ClickEvent,
   Code,
+  Edit,
   EventKind,
   Key,
   KeyDefault,
@@ -34,6 +35,7 @@ use skene_foundation::{
   ScrollEvent,
   TextSelection,
   Unit,
+  Verdict,
   WheelUnit,
   dispatch_click,
   dispatch_click_observed,
@@ -56,6 +58,7 @@ use skene_foundation::{
   notify_scroll,
   notify_selection_change,
   notify_toggle,
+  report_edit,
   start_drag,
   text::{Round, TextIndex},
 };
@@ -67,6 +70,7 @@ use web_sys::{
   HtmlInputElement,
   HtmlSelectElement,
   HtmlTextAreaElement,
+  InputEvent,
 };
 
 use super::{Node, Realized, end_turn, with_dom};
@@ -212,7 +216,7 @@ impl Events {
       EventKind::Scroll => &["scroll"],
       EventKind::Change => &["input"],
       EventKind::SelectionChange => &["selectionchange"],
-      EventKind::Edit => &[],
+      EventKind::Edit => &["input", "compositionend"],
       EventKind::Toggle => &["change"],
       EventKind::Dismiss => &["click", "keydown", "pointerdown"],
       EventKind::ContextMenu => &["contextmenu"],
@@ -241,6 +245,7 @@ impl Events {
         "wheel" => on_wheel,
         "scroll" => on_scroll,
         "input" => on_input,
+        "compositionend" => on_composition_end,
         "selectionchange" => on_selection_change,
         "contextmenu" => on_context_menu,
         "dragstart" => on_drag_start,
@@ -908,8 +913,9 @@ fn toggle_input(event: &web_sys::Event) -> Option<HtmlInputElement> {
     .filter(|input| matches!(input.type_().as_str(), "checkbox" | "radio"))
 }
 
-/// A control's new value reported at its node, then, for a text control, the selection
-/// the edit left.
+/// A text entry's edit reported at its node as one its toolkit applied, and repaired to
+/// the truth unless an input method is composing; any other control's new value reported
+/// as a change.
 fn on_input(event: &web_sys::Event) {
   if toggle_input(event).is_some() {
     return;
@@ -919,11 +925,25 @@ fn on_input(event: &web_sys::Event) {
   else {
     return;
   };
+
+  if let Some(entry) = Entry::of(&target) {
+    let composing = event
+      .dyn_ref::<InputEvent>()
+      .is_some_and(InputEvent::is_composing);
+
+    with_dom(|dom| {
+      dom.realizer.sink.composing = composing.then(|| entry.node());
+    });
+
+    if let Some(node) = node_at(Some(target)) {
+      entry.report(node, composing);
+    }
+
+    return;
+  }
+
   let value = if let Some(input) = target.dyn_ref::<HtmlInputElement>() {
     input.value()
-  }
-  else if let Some(area) = target.dyn_ref::<HtmlTextAreaElement>() {
-    area.value()
   }
   else if let Some(select) = target.dyn_ref::<HtmlSelectElement>() {
     select.value()
@@ -932,14 +952,27 @@ fn on_input(event: &web_sys::Event) {
     return;
   };
 
-  let selection = target.dyn_ref::<Element>().and_then(selection_of);
-
   if let Some(node) = node_at(Some(target)) {
     notify_change::<Web>(node, &value);
+  }
+}
 
-    if let Some(selection) = selection {
-      notify_selection_change::<Web>(node, selection);
-    }
+/// The text a composition leaves in its entry, reported at its node as an edit its
+/// toolkit applied and repaired to the truth.
+fn on_composition_end(event: &web_sys::Event) {
+  let Some(target) = event.target()
+  else {
+    return;
+  };
+  let Some(entry) = Entry::of(&target)
+  else {
+    return;
+  };
+
+  with_dom(|dom| dom.realizer.sink.composing = None);
+
+  if let Some(node) = node_at(Some(target)) {
+    entry.report(node, false);
   }
 }
 
@@ -952,7 +985,7 @@ fn on_selection_change(_: &web_sys::Event) {
   else {
     return;
   };
-  let Some(selection) = selection_of(&element)
+  let Some(selection) = Entry::of(&element).and_then(|entry| entry.selection())
   else {
     return;
   };
@@ -962,70 +995,160 @@ fn on_selection_change(_: &web_sys::Event) {
   }
 }
 
-/// The selection inside a text control in grapheme clusters of its value; `None` for
-/// any other element.
-fn selection_of(element: &Element) -> Option<TextSelection> {
-  let (value, start, end, backward) = if let Some(input) = element.dyn_ref::<HtmlInputElement>() {
-    (
-      input.value(),
-      input.selection_start().ok()??,
-      input.selection_end().ok()??,
-      input.selection_direction().ok()?,
-    )
-  }
-  else {
-    let area = element.dyn_ref::<HtmlTextAreaElement>()?;
-
-    (
-      area.value(),
-      area.selection_start().ok()??,
-      area.selection_end().ok()??,
-      area.selection_direction().ok()?,
-    )
-  };
-  let index = TextIndex::new(&value);
-  let cluster = |unit: u32| index.grapheme_of(Unit::Utf16, unit as usize, Round::Down);
-  let (start, end) = (cluster(start), cluster(end));
-
-  Some(if backward.as_deref() == Some("backward") {
-    TextSelection::new(end, start)
-  }
-  else {
-    TextSelection::new(start, end)
-  })
-}
-
 /// Selects `selection`, in grapheme clusters of the control's value, inside a text
 /// control; any other element is left alone.
 pub(super) fn select(element: &Element, selection: TextSelection) {
-  let direction = if selection.is_reversed() {
-    "backward"
-  }
-  else {
-    "forward"
-  };
-
-  if let Some(input) = element.dyn_ref::<HtmlInputElement>() {
-    let (start, end) = units_of(&input.value(), selection);
-
-    let _ = input.set_selection_range_with_direction(start, end, direction);
-  }
-  else if let Some(area) = element.dyn_ref::<HtmlTextAreaElement>() {
-    let (start, end) = units_of(&area.value(), selection);
-
-    let _ = area.set_selection_range_with_direction(start, end, direction);
+  if let Some(entry) = Entry::of(element) {
+    entry.select(selection);
   }
 }
 
-/// `selection`'s lower and upper bounds as UTF-16 code units of `value`, a bound past
-/// its last cluster at its end.
-fn units_of(value: &str, selection: TextSelection) -> (u32, u32) {
-  let index = TextIndex::new(value);
-  let unit = |cluster: usize| {
-    u32::try_from(index.offset_of_grapheme(Unit::Utf16, cluster)).unwrap_or(u32::MAX)
-  };
+/// A text entry's own element: a text `<input>` or a `<textarea>`.
+pub(super) enum Entry {
+  /// A single-line field's `<input>`.
+  Field(HtmlInputElement),
+  /// An editor's `<textarea>`.
+  Editor(HtmlTextAreaElement),
+}
 
-  (unit(selection.min()), unit(selection.max()))
+impl Entry {
+  /// `element` as a text entry; `None` for any other element.
+  pub(super) fn of(element: &JsValue) -> Option<Self> {
+    if let Some(input) = element.dyn_ref::<HtmlInputElement>() {
+      return (input.type_() == "text").then(|| Self::Field(input.clone()));
+    }
+
+    element
+      .dyn_ref::<HtmlTextAreaElement>()
+      .cloned()
+      .map(Self::Editor)
+  }
+
+  /// The element, as a node.
+  fn node(&self) -> web_sys::Node {
+    match self {
+      Self::Field(input) => input.clone().into(),
+      Self::Editor(area) => area.clone().into(),
+    }
+  }
+
+  fn value(&self) -> String {
+    match self {
+      Self::Field(input) => input.value(),
+      Self::Editor(area) => area.value(),
+    }
+  }
+
+  /// The selection's start and end in UTF-16 code units of the value, and whether it was
+  /// made backward.
+  fn range(&self) -> Option<(u32, u32, bool)> {
+    let (start, end, direction) = match self {
+      Self::Field(input) => (
+        input.selection_start().ok()??,
+        input.selection_end().ok()??,
+        input.selection_direction().ok()?,
+      ),
+      Self::Editor(area) => (
+        area.selection_start().ok()??,
+        area.selection_end().ok()??,
+        area.selection_direction().ok()?,
+      ),
+    };
+
+    Some((start, end, direction.as_deref() == Some("backward")))
+  }
+
+  /// Selects from `start` to `end`, in UTF-16 code units of the value, made backward
+  /// where `backward` says.
+  fn select_range(&self, start: u32, end: u32, backward: bool) {
+    let direction = if backward { "backward" } else { "forward" };
+    let _ = match self {
+      Self::Field(input) => input.set_selection_range_with_direction(start, end, direction),
+      Self::Editor(area) => area.set_selection_range_with_direction(start, end, direction),
+    };
+  }
+
+  /// The selection in grapheme clusters of the value.
+  fn selection(&self) -> Option<TextSelection> {
+    let (start, end, backward) = self.range()?;
+    let index = TextIndex::new(&self.value());
+    let cluster = |unit: u32| index.grapheme_of(Unit::Utf16, unit as usize, Round::Down);
+    let (start, end) = (cluster(start), cluster(end));
+
+    Some(if backward {
+      TextSelection::new(end, start)
+    }
+    else {
+      TextSelection::new(start, end)
+    })
+  }
+
+  /// Selects `selection`, in grapheme clusters of the value.
+  fn select(&self, selection: TextSelection) {
+    let index = TextIndex::new(&self.value());
+    let unit = |cluster: usize| Self::narrow(index.offset_of_grapheme(Unit::Utf16, cluster));
+
+    self.select_range(
+      unit(selection.min()),
+      unit(selection.max()),
+      selection.is_reversed(),
+    );
+  }
+
+  /// Reports what the entry shows at `node`, its value and its selection, as an edit its
+  /// toolkit applied, and repairs it to the truth the verdict answers with unless
+  /// `composing`, where the repair waits for the composition's end.
+  fn report(&self, node: NodeId, composing: bool) {
+    let shown = Edit::new(self.value());
+    let shown = match self.selection() {
+      Some(selection) => shown.with_selection(selection),
+      None => shown,
+    };
+
+    if let Verdict::Replace(truth) = report_edit::<Web>(node, &shown, true)
+      && !composing
+    {
+      self.repair(&truth);
+    }
+  }
+
+  /// Repairs the entry to `truth` by the smallest edit: the range of its value that
+  /// differs is replaced in place, and the selection is the truth's where it gives one,
+  /// else the entry's own mapped through the edit ([`TextIndex::map_through`]).
+  pub(super) fn repair(&self, truth: &Edit) {
+    let shown = self.value();
+    let (old, new) = (TextIndex::new(&shown), TextIndex::new(&truth.text));
+    let (replaced, inserted) = truth.splice_bytes(&shown);
+    let units = old.unit_range(Unit::Utf16, replaced.clone());
+    let range = self.range();
+
+    if !replaced.is_empty() || !inserted.is_empty() {
+      let (start, end) = (Self::narrow(units.start), Self::narrow(units.end));
+      let _ = match self {
+        Self::Field(input) => input.set_range_text_with_start_and_end(inserted, start, end),
+        Self::Editor(area) => area.set_range_text_with_start_and_end(inserted, start, end),
+      };
+    }
+
+    if let Some(selection) = truth.selection {
+      self.select(selection);
+    }
+    else if let Some((start, end, backward)) = range {
+      let map = |unit: u32| {
+        let byte = old.byte(Unit::Utf16, unit as usize, Round::Down);
+        let mapped = old.map_through(&new, replaced.clone(), inserted.len(), byte);
+
+        Self::narrow(new.offset(Unit::Utf16, mapped))
+      };
+
+      self.select_range(map(start), map(end), backward);
+    }
+  }
+
+  /// A count of UTF-16 code units as the DOM takes it.
+  fn narrow(units: usize) -> u32 {
+    u32::try_from(units).unwrap_or(u32::MAX)
+  }
 }
 
 fn on_change(event: &web_sys::Event) {

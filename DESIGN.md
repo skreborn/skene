@@ -414,11 +414,18 @@ re-export.
   which the core takes as nothing where it equals what is shown. `TextEntry` accepts an
   edit the truth already holds (`Edit::holds`) without asking, asks the value and then
   the selection otherwise, and accepts any edit of an entry whose value nothing derives.
-  The web's `<input>` and headless still report through `notify_change` and
-  `notify_selection_change`, reconciled after. A `TextSelection` counts grapheme
-  clusters; where a platform's protocol counts in code points or UTF-16 code units it
-  names its unit (`Unit::CodePoint`, `Unit::Utf16`) and converts through one index per
-  text (`TextIndex`), as the web does for its `<input>`.
+  The web's `<input>` and `<textarea>` report the same way, as a toolkit that applies
+  first: each `input` event is one applied `Edit` in UTF-16, and a `Replace` is
+  repaired by the smallest splice (`setRangeText`) with the selection mapped by the
+  same rule, inside the event, so the turn's write of the bound value finds it shown.
+  While an input method composes (`InputEvent.isComposing`) the repair waits, and a
+  signal's write leaves the entry alone, until `compositionend` reports the entry's
+  text again and applies the verdict; `Edit::holds` makes the report idempotent
+  whichever of the two events an engine sends last. Headless alone still reports
+  through `notify_change` and `notify_selection_change`, reconciled after. A
+  `TextSelection` counts grapheme clusters; where a platform's protocol counts in code
+  points or UTF-16 code units it names its unit (`Unit::CodePoint`, `Unit::Utf16`) and
+  converts through one index per text (`TextIndex`), as the web does for its `<input>`.
 - **Parts and control state.** A part is a named child the styling targets (`Track`,
   `Fill`, `Thumb`, `Mark`, `Face`, `List`, `Item`, `Label`); in the terminal a part maps
   to a glyph token. A `State` a box cannot have on its own (`Checked`, `Indeterminate`,
@@ -1021,16 +1028,17 @@ string tree implement: the records, the element choices, attributes, classes, sl
 token definitions, control state and accessibility, so the two cannot drift; each leaf
 adds only what is its own:
 
-- **browser** (`skene_web_platform = "browser"`)—the browser. DOM sink, the stylesheet sink,
-  root-level event delegation with a stamped node id (one listener per event type,
+- **browser** (`skene_web_platform = "browser"`)—the browser. DOM sink, the stylesheet
+  sink, root-level event delegation with a stamped node id (one listener per event type,
   `scroll` and enter/leave included), one shared `ResizeObserver`, hydration
-  (creation-order `data-h` markers, loud mismatch, the server's stylesheet adopted rather
-  than duplicated, a live input value that differs from the serialized one written into
-  its signal, and convergence once the tree is built: every server node the client built
-  differently or never built removed, every adopted element given exactly the client's
-  classes, and the order-keyed resource values no resource adopted dropped), scroll and
-  focus restoration keyed by a segment's end anchor, the
-  `WebDom` escape trait, the History binding and the head.
+  (creation-order `data-h` markers, loud mismatch, the server's stylesheet adopted
+  rather than duplicated, text typed in an entry before the client arrived replayed as
+  an applied edit and repaired in place, any other live input value that differs from
+  the serialized one written into its signal, and convergence once the tree is built:
+  every server node the client built differently or never built removed, every adopted
+  element given exactly the client's classes, and the order-keyed resource values no
+  resource adopted dropped), scroll and focus restoration keyed by a segment's end
+  anchor, the `WebDom` escape trait, the History binding and the head.
 - **server** (`skene_web_platform = "server"`)—the serializer. Renders its string tree to HTML plus
   the interned stylesheet; drives async to a fixpoint on the host executor, parked until
   a waker fires, before serializing, under a render deadline; streams in document order around `Deferred`

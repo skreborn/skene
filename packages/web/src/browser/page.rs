@@ -21,17 +21,29 @@ use crate::{
 
 /// What the reader changed on a native element before the client arrived.
 pub(super) enum Pending {
+  /// A checkbox or a radio, checked or not.
   Toggle(bool),
+  /// A slider's or a picker's new value.
   Change(String),
+  /// The text typed in a text entry.
+  Edit(String),
 }
 
 /// The server's nodes awaiting adoption, and what adoption found.
 pub(super) struct Hydration {
+  /// The server's elements not yet adopted, by marker.
   pub(super) elements: FxHashMap<u32, Element>,
+  /// The server's anchors not yet adopted, by text.
   pub(super) comments: FxHashMap<String, web_sys::Node>,
+  /// The server's elements the client built differently, removed once it finishes.
   pub(super) stale: Vec<Element>,
+  /// How many nodes failed to adopt so far.
   pub(super) mismatches: u32,
+  /// What the reader changed before the client arrived, by control.
   pub(super) pending: Vec<(NodeId, Pending)>,
+  /// The adopted text entries holding text typed before the client arrived, which a
+  /// signal's write leaves alone until the text is reported.
+  pub(super) typed: Vec<web_sys::Node>,
 }
 
 impl Hydration {
@@ -78,6 +90,7 @@ impl Hydration {
       stale: Vec::new(),
       mismatches: 0,
       pending: Vec::new(),
+      typed: Vec::new(),
     }
   }
 }
@@ -90,6 +103,9 @@ pub(super) struct Page {
   pub(super) hydration: Option<Hydration>,
   /// The hydration marker the next element created takes.
   pub(super) markers: u32,
+  /// The text entry an input method is composing in, whose value a signal's write
+  /// leaves alone until the composition ends.
+  pub(super) composing: Option<web_sys::Node>,
 }
 
 impl Sink for Page {
@@ -242,8 +258,19 @@ impl Sink for Page {
     }
   }
 
-  /// Sets the live value, keeping a focused entry's selection within it.
+  /// Sets the live value, keeping a focused entry's selection within it; an entry an
+  /// input method is composing in, or one holding text typed before the client arrived,
+  /// is left to the report of its text.
   fn set_value(&mut self, element: &web_sys::Node, value: &str) {
+    if self.composing.as_ref() == Some(element)
+      || self
+        .hydration
+        .as_ref()
+        .is_some_and(|hydration| hydration.typed.contains(element))
+    {
+      return;
+    }
+
     let focused = self.document.active_element().as_ref().map(AsRef::as_ref) == Some(element);
     let length = u32::try_from(value.encode_utf16().count()).unwrap_or(u32::MAX);
 
@@ -304,7 +331,23 @@ impl Sink for Page {
   /// Notes the change against what the server serialized, for the control to report
   /// once the tree is built.
   fn note_live_state(&mut self, node: NodeId, input: &web_sys::Node, native: FormElement) {
-    let pending = if let Some(input) = input.dyn_ref::<HtmlInputElement>() {
+    let pending = if native.is_text_entry() {
+      let (value, serialized) = if let Some(input) = input.dyn_ref::<HtmlInputElement>() {
+        (
+          input.value(),
+          input.get_attribute("value").unwrap_or_default(),
+        )
+      }
+      else if let Some(area) = input.dyn_ref::<HtmlTextAreaElement>() {
+        (area.value(), area.text_content().unwrap_or_default())
+      }
+      else {
+        return;
+      };
+
+      (value != serialized).then_some(Pending::Edit(value))
+    }
+    else if let Some(input) = input.dyn_ref::<HtmlInputElement>() {
       if native.is_toggle() {
         let serialized = input.has_attribute("checked");
 
@@ -315,11 +358,6 @@ impl Sink for Page {
 
         (input.value() != serialized).then(|| Pending::Change(input.value()))
       }
-    }
-    else if let Some(area) = input.dyn_ref::<HtmlTextAreaElement>() {
-      let serialized = area.text_content().unwrap_or_default();
-
-      (area.value() != serialized).then(|| Pending::Change(area.value()))
     }
     else if let Some(select) = input.dyn_ref::<HtmlSelectElement>() {
       let serialized = select
@@ -336,6 +374,10 @@ impl Sink for Page {
     };
 
     if let (Some(pending), Some(hydration)) = (pending, &mut self.hydration) {
+      if matches!(pending, Pending::Edit(_)) {
+        hydration.typed.push(input.clone());
+      }
+
       hydration.pending.push((node, pending));
     }
   }

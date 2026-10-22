@@ -94,6 +94,16 @@ impl FormElement {
     )
   }
 
+  /// Whether the element is a text entry's: a text `<input>` or a `<textarea>`.
+  #[cfg(skene_web_platform = "browser")]
+  #[inline(always)]
+  pub(crate) fn is_text_entry(self) -> bool {
+    matches!(
+      (self.tag, self.kind),
+      ("textarea", _) | ("input", Some("text"))
+    )
+  }
+
   /// Whether the element is a checkbox or a radio: one the platform toggles itself.
   #[cfg(skene_web_platform = "browser")]
   #[inline(always)]

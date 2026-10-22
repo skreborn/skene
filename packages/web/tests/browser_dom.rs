@@ -117,7 +117,15 @@ use skene_web::{
   window,
 };
 use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
-use web_sys::{Element, HtmlElement, HtmlInputElement};
+use web_sys::{
+  CompositionEvent,
+  CompositionEventInit,
+  Element,
+  HtmlElement,
+  HtmlInputElement,
+  InputEvent,
+  InputEventInit,
+};
 
 wasm_bindgen_test_configure!(run_in_browser);
 
@@ -1055,7 +1063,7 @@ fn a_sliders_native_input_holds_its_range_and_value() {
 }
 
 /// A change handler receives the value, in real time, when an input event fires on
-/// the text field's native input.
+/// the text field's native input with text the reader typed.
 #[wasm_bindgen_test]
 fn change_handler_receives_the_committed_value() {
   let (_guard, root) = fresh_root();
@@ -1066,17 +1074,17 @@ fn change_handler_receives_the_committed_value() {
 
     move || {
       BasicTextField::new(
-        TextEntry::new()
-          .set_value("committed")
-          .handle_change(move |value| value.clone_into(&mut seen.borrow_mut())),
+        TextEntry::new().handle_change(move |value| value.clone_into(&mut seen.borrow_mut())),
       )
       .build()
     }
   });
 
-  let input = only_child(&root);
+  let input = only_child(&root)
+    .dyn_into::<HtmlInputElement>()
+    .expect("an input");
 
-  assert_eq!(input.tag_name(), "INPUT");
+  input.set_value("committed");
   dispatch(&input, "input");
 
   assert_eq!(&*seen.borrow(), "committed");
@@ -1119,8 +1127,8 @@ fn a_drawn_face_keeps_its_caption_before_its_box() {
   );
 }
 
-/// A value written into a focused entry keeps the caret where the browser would move
-/// it to the end: an uppercasing handler leaves it after the character typed.
+/// A transformed value repairs a focused entry in place, the caret kept where the reader
+/// left it: an uppercasing handler leaves it after the character typed.
 #[wasm_bindgen_test]
 fn a_transformed_value_keeps_the_caret() {
   let (_guard, root) = fresh_root();
@@ -1153,6 +1161,109 @@ fn a_transformed_value_keeps_the_caret() {
     (input.selection_start(), input.selection_end()),
     (Ok(Some(2)), Ok(Some(2)))
   );
+}
+
+/// A text field taking digits alone, its value held in `value`.
+fn digits_only(value: Signal<String>) -> AnyView {
+  BasicTextField::new(
+    TextEntry::new()
+      .derive_value(move || value.get())
+      .handle_change(move |text| {
+        if text.chars().all(|character| character.is_ascii_digit()) {
+          value.set(text.to_owned());
+        }
+      }),
+  )
+  .into_any()
+}
+
+/// A character the handler refuses is taken back out of the `<input>` by the smallest
+/// edit: the element stays, and the caret stays where the reader left it, where
+/// rewriting the whole value would leave it after the character that followed.
+#[wasm_bindgen_test]
+fn a_refused_character_is_repaired_in_place() {
+  let (_guard, root) = fresh_root();
+  let value = Signal::new("123".to_owned());
+
+  let _ = mount(move || digits_only(value).build());
+
+  let element = only_child(&root);
+  let input = element
+    .clone()
+    .dyn_into::<HtmlInputElement>()
+    .expect("an input");
+
+  let _ = input.focus();
+
+  input.set_value("12x3");
+
+  let _ = input.set_selection_range(3, 3);
+
+  dispatch(&input, "input");
+  platform::end_turn();
+
+  assert_eq!(input.value(), "123");
+  assert_eq!(value.get(), "123", "the refusal wrote nothing");
+  assert_eq!(
+    (input.selection_start(), input.selection_end()),
+    (Ok(Some(2)), Ok(Some(2))),
+    "the caret stays where the refused character was typed"
+  );
+  assert!(only_child(&root) == element, "the element is the same");
+}
+
+/// An input method's composition is left alone: an edit reported while it composes is
+/// repaired once the composition ends.
+#[wasm_bindgen_test]
+fn a_repair_waits_out_composition() {
+  let (_guard, root) = fresh_root();
+  let value = Signal::new("123".to_owned());
+
+  let _ = mount(move || digits_only(value).build());
+
+  let input = only_child(&root)
+    .dyn_into::<HtmlInputElement>()
+    .expect("an input");
+
+  let _ = input.focus();
+
+  input.set_value("12x3");
+
+  let _ = input.set_selection_range(3, 3);
+
+  let init = InputEventInit::new();
+
+  init.set_bubbles(true);
+  init.set_is_composing(true);
+
+  let composing = InputEvent::new_with_event_init_dict("input", &init).expect("an input event");
+  let _ = input.dispatch_event(&composing);
+
+  platform::end_turn();
+
+  assert_eq!(
+    input.value(),
+    "12x3",
+    "nothing is repaired while the input method composes"
+  );
+
+  let init = CompositionEventInit::new();
+
+  init.set_bubbles(true);
+  init.set_data("x");
+
+  let end = CompositionEvent::new_with_event_init_dict("compositionend", &init)
+    .expect("a composition event");
+  let _ = input.dispatch_event(&end);
+
+  platform::end_turn();
+
+  assert_eq!(input.value(), "123", "the composition's end repairs it");
+  assert_eq!(
+    (input.selection_start(), input.selection_end()),
+    (Ok(Some(2)), Ok(Some(2)))
+  );
+  assert_eq!(value.get(), "123");
 }
 
 /// A checkbox bound to a signal reflects it on its native input and writes toggles

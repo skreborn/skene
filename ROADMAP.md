@@ -68,8 +68,7 @@ in a code comment.
     `ControlSink`, for a native view no built-in covers.
     - The seam: a realization receives properties under Skene's own names as one generic
     record, at the `Keep` level it declares, contents typed and atomic, and reports each
-    write applied or not: the web's `<input>` reports through `report_edit` as a drawn
-    entry does, and is repaired by the smallest edit where it is rewritten whole today.
+    write applied or not.
     - Behaviors name no realization, reaching the build's one realization through a
     table of plain functions filled from it once per build.
     - Reload state is opt-in (`Signal::saved`, `Store::saved`), and `#[inline(always)]`

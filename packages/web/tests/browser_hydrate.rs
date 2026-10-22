@@ -581,6 +581,65 @@ fn hydrate_adopts_a_captioned_text_field() {
   platform::uninstall();
 }
 
+/// Text typed into a server-rendered field before the bundle arrived reaches the
+/// signal as the reader's edit, and a handler transforming it repairs the adopted
+/// `<input>` in place by the smallest edit, the reader's caret kept.
+#[wasm_bindgen_test]
+fn a_value_typed_before_the_bundle_reports_as_an_edit() {
+  use skene_web::{BasicTextField, TextEntry, reactive::Set};
+
+  let field = |value: skene_web::reactive::Signal<String>| {
+    BasicTextField::new(
+      TextEntry::new()
+        .derive_value(move || value.get())
+        .handle_change(move |text| value.set(text.to_uppercase())),
+    )
+  };
+  let (markup, _) = served(move || {
+    skene_web::View::into_any(field(skene_web::reactive::Signal::new("AB".to_owned())))
+  });
+  let root = server_root(&markup);
+  let server_input: web_sys::HtmlInputElement = root
+    .query_selector("input")
+    .expect("query")
+    .expect("an input")
+    .unchecked_into();
+
+  // The server serializes the value as the attribute; the reader typed after it.
+  let _ = server_input.set_attribute("value", "AB");
+
+  document()
+    .body()
+    .expect("a body")
+    .append_child(&root)
+    .expect("connect the root");
+  server_input.set_value("ABc");
+
+  let _ = server_input.set_selection_range(1, 1);
+
+  let value = skene_web::reactive::Signal::new("AB".to_owned());
+
+  hydrate(root.clone(), "", move || field(value));
+
+  assert_eq!(platform::hydration_mismatches(), 0);
+  assert_eq!(value.get(), "ABC", "the typed text reached the handler");
+
+  let input = root
+    .query_selector("input")
+    .expect("query")
+    .expect("an input");
+
+  assert!(input == **server_input, "the input was adopted");
+  assert_eq!(
+    server_input.value(),
+    "ABC",
+    "the input was repaired to the truth"
+  );
+
+  platform::uninstall();
+  root.remove();
+}
+
 #[wasm_bindgen_test]
 fn a_structural_mismatch_is_caught_not_silently_adopted() {
   // The server sent a <span> for marker 1, but the client builds a <div> there.

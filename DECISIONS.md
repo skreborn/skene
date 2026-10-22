@@ -603,3 +603,13 @@ supersedes.
   (`Edit::map_through`, over clusters by `TextIndex::map_through`), for the editing
   core and every realization's repair alike. Revisit when a platform's native field
   moves its caret to the replacement's end.
+- **The web's `<input>` rewritten whole from its signal after a change** (2026-10-22):
+  each `input` event reported the new value through the change path, and the control's
+  reconciliation wrote the bound value back over the whole element, so a transformed or
+  refused character moved the caret wherever the whole rewrite left it and broke an
+  input method's composition. A text `<input>` or `<textarea>` now reports each `input`
+  as an applied `Edit` and is repaired to a `Replace` by the smallest splice
+  (`setRangeText`), its selection mapped through it, the repair held while an input
+  method composes; a value the server serialized and the reader changed before the
+  bundle replays the same way. Revisit when a browser loses its undo history or a
+  composition to `setRangeText` where it keeps them under a whole rewrite.

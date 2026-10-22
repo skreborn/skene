@@ -59,6 +59,7 @@ web-sys = { workspace = true, features = [
   "HtmlStyleElement",
   "HtmlTextAreaElement",
   "ImageData",
+  "InputEvent",
   "KeyboardEvent",
   "Location",
   "MediaQueryList",
@@ -103,6 +104,8 @@ skene-headless = { path = "../headless" }
 wasm-bindgen-test.workspace = true
 web-sys = { workspace = true, features = [
   "CanvasRenderingContext2d",
+  "CompositionEvent",
+  "CompositionEventInit",
   "css",
   "CssStyleDeclaration",
   "DataTransfer",
@@ -121,6 +124,8 @@ web-sys = { workspace = true, features = [
   "HtmlInputElement",
   "HtmlSelectElement",
   "ImageData",
+  "InputEvent",
+  "InputEventInit",
   "KeyboardEvent",
   "KeyboardEventInit",
   "MouseEvent",

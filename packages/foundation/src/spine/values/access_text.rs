@@ -15,15 +15,19 @@ pub struct AccessText {
 }
 
 /// One laid line of an [`AccessText`]: its text and the geometry of each of its
-/// characters, a character being a grapheme cluster.
+/// characters, a character being a grapheme cluster (or a piece of one, as
+/// [`character_lengths`](Self::character_lengths) says).
 ///
 /// Every length is in the units of the layout it is read from.
 #[derive(Debug, Clone, Default, PartialEq)]
 #[must_use]
 pub struct AccessRun {
-  /// The line's text as it shows: a secure entry's marks, its line break included.
+  /// The line's text, its line break included; for a secure entry, a U+2022 mark for each
+  /// grapheme cluster, the line break's among them.
   pub text: String,
-  /// The bytes of `text` each character takes, at most 255.
+  /// The bytes of `text` each character takes, adding up to its length; a cluster longer
+  /// than 255 bytes is as many characters as its code points fill in turn, the first
+  /// drawing it and the rest of no width at its trailing edge.
   pub character_lengths: Vec<u8>,
   /// Where each character starts, from the run's leading edge: its left where it runs left
   /// to right, its right where it runs right to left.

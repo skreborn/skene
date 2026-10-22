@@ -383,9 +383,9 @@ impl<P: Platform> Scene<P> {
   /// A window holds each tree's root; every node outside what is hidden carries its role
   /// (a run's a label holding its text, a box of no role a generic container), its
   /// accessible name, the states and relations it reports, a text entry's value and
-  /// placeholder, a drawn entry's runs, selection and editing actions
-  /// ([`NameFacts::text_runs`]), and its children in tree order, the runs first; focus is on the
-  /// node holding it, else on the window.
+  /// placeholder, a drawn entry's runs, selection and the editing actions its state allows
+  /// ([`NameFacts::text_runs`]), and its children in tree order, the runs first; focus is on
+  /// the node holding it, else on the window.
   #[must_use]
   pub fn access_tree(facts: impl Fn(NodeId) -> NameFacts) -> TreeUpdate {
     let window = accesskit::NodeId(0);
@@ -499,19 +499,21 @@ impl<P: Platform> Scene<P> {
 impl AccessText {
   /// Reports this text as the text of `entry`, the AccessKit node of the node `node`:
   /// adds its runs to `nodes`, one a line, and gives `entry` the selection and the
-  /// actions that edit it, returning the runs' ids.
+  /// actions it takes, returning the runs' ids; a disabled entry takes none, and a
+  /// read-only one only a selection.
   fn report(
     &self,
     node: NodeId,
     entry: &mut accesskit::Node,
     nodes: &mut Vec<(accesskit::NodeId, accesskit::Node)>,
   ) -> Vec<accesskit::NodeId> {
-    for action in [
-      Action::SetValue,
-      Action::SetTextSelection,
-      Action::ReplaceSelectedText,
-    ] {
-      entry.add_action(action);
+    if !entry.is_disabled() {
+      entry.add_action(Action::SetTextSelection);
+
+      if !entry.is_read_only() {
+        entry.add_action(Action::SetValue);
+        entry.add_action(Action::ReplaceSelectedText);
+      }
     }
 
     let runs: Vec<_> = (0..=u16::MAX)
@@ -933,4 +935,62 @@ macro_rules! access_queries {
       $crate::Scene::<$platform>::find_by_text(text, $facts)
     }
   };
+}
+
+#[cfg(test)]
+mod tests {
+  use accesskit::Action;
+
+  use crate::spine::{
+    AccessProp,
+    AccessText,
+    NameFacts,
+    Role,
+    Scene,
+    testing::{TestBox, TestPlatform},
+  };
+
+  /// An entry with runs reports the editing actions its state allows: an editable one takes
+  /// a value, a selection and a replacement of what is selected, a read-only one only a
+  /// selection, and a disabled one none.
+  #[test]
+  fn an_entry_reports_the_editing_actions_its_state_allows() {
+    TestPlatform::reset();
+
+    let entry = TestBox::node();
+    let actions = |access: Vec<AccessProp>| {
+      let tree = Scene::<TestPlatform>::access_tree(|node| {
+        if node == entry {
+          NameFacts {
+            role: Some(Role::TextInput),
+            access: access.clone(),
+            text_runs: Some(AccessText::default()),
+            ..NameFacts::default()
+          }
+        }
+        else {
+          NameFacts::default()
+        }
+      });
+      let (_, node) = tree
+        .nodes
+        .iter()
+        .find(|(id, _)| *id == entry.access_id())
+        .expect("the entry is in the tree");
+
+      [
+        Action::SetValue,
+        Action::SetTextSelection,
+        Action::ReplaceSelectedText,
+      ]
+      .map(|action| node.supports_action(action))
+    };
+
+    assert_eq!(actions(Vec::new()), [true; 3]);
+    assert_eq!(
+      actions(vec![AccessProp::ReadOnly(true)]),
+      [false, true, false]
+    );
+    assert_eq!(actions(vec![AccessProp::Disabled(true)]), [false; 3]);
+  }
 }

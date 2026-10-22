@@ -37,12 +37,14 @@ impl AccessText {
           .next_back()
           .is_none_or(char::is_whitespace)
       };
+      let right_to_left = laid.caret(Position::new(range.start)).primary.right_to_left;
       let mut shown = String::with_capacity(range.len());
       let mut lengths = Vec::with_capacity(end - first);
       let mut edges = Vec::with_capacity(end - first);
+      let mut starts = Vec::with_capacity(end - first);
       let mut words = Vec::new();
 
-      for (count, cluster) in (first..end).enumerate() {
+      for cluster in first..end {
         let start = index.byte_of_grapheme(cluster);
         let stop = index.byte_of_grapheme(cluster + 1);
         let character = if secure { MARK } else { &text[start..stop] };
@@ -52,21 +54,31 @@ impl AccessText {
           .caret(Position::with(stop, Affinity::Upstream))
           .primary
           .x;
+        let (left, right) = (from.min(to), from.max(to));
+        let trailing = if right_to_left { left } else { right };
 
         if previous_blank
           && !blank
-          && let Ok(count) = u8::try_from(count)
+          && let Ok(count) = u8::try_from(lengths.len())
         {
           words.push(count);
         }
 
         previous_blank = blank;
+        starts.push(lengths.len());
         shown.push_str(character);
-        lengths.push(u8::try_from(character.len()).unwrap_or(u8::MAX));
-        edges.push((from.min(to), from.max(to)));
+
+        for (piece, length) in Self::pieces(character).enumerate() {
+          lengths.push(length);
+          edges.push(if piece == 0 {
+            (left, right)
+          }
+          else {
+            (trailing, trailing)
+          });
+        }
       }
 
-      let right_to_left = laid.caret(Position::new(range.start)).primary.right_to_left;
       let bounds = Self::bounds(line, &edges);
       let leading = |(left, right): (f32, f32)| {
         if right_to_left {
@@ -78,9 +90,11 @@ impl AccessText {
       };
       let locate = |position: Position| {
         Self::holds(line, &range, position, at == last).then(|| {
+          let cluster = index.grapheme_at_byte(position.index, Round::Down) - first;
+
           AccessTextPosition::new(
             number,
-            index.grapheme_at_byte(position.index, Round::Down) - first,
+            starts.get(cluster).copied().unwrap_or(lengths.len()),
           )
         })
       };
@@ -108,6 +122,27 @@ impl AccessText {
       anchor: anchor.unwrap_or(end),
       focus: focus.unwrap_or(end),
     }
+  }
+
+  /// The byte lengths of the characters `cluster` is reported as: one, or where it is longer
+  /// than a character's 255 bytes, as many as its code points fill in turn.
+  fn pieces(cluster: &str) -> impl Iterator<Item = u8> {
+    let mut chars = cluster.chars().peekable();
+
+    std::iter::from_fn(move || {
+      let mut length = 0_u8;
+
+      while let Some(longer) = chars.peek().and_then(|next| {
+        u8::try_from(next.len_utf8())
+          .ok()
+          .and_then(|width| length.checked_add(width))
+      }) {
+        length = longer;
+        chars.next();
+      }
+
+      (length > 0).then_some(length)
+    })
   }
 
   /// The frame of `line`, whose characters span `edges`: from its content's start, or the
@@ -274,6 +309,35 @@ mod tests {
       }]
     );
     assert_eq!(access.focus, AccessTextPosition::new(0, 0));
+  }
+
+  #[test]
+  fn a_cluster_longer_than_a_character_is_reported_as_several() {
+    let long = format!("e{}", "\u{301}".repeat(200));
+    let mut entry = editor(&format!("{long}x"), None);
+
+    entry.select_bytes(long.len(), long.len());
+
+    let access = AccessText::of(&entry);
+    let run = &access.runs[0];
+
+    assert_eq!(run.character_lengths, [255, 146, 1]);
+    assert_eq!(
+      run
+        .character_lengths
+        .iter()
+        .map(|length| usize::from(*length))
+        .sum::<usize>(),
+      run.text.len(),
+      "the lengths add up to the text"
+    );
+    assert_eq!(run.character_positions, [0., ADVANCE, ADVANCE]);
+    assert_eq!(run.character_widths, [ADVANCE, 0., ADVANCE]);
+    assert_eq!(
+      access.focus,
+      AccessTextPosition::new(0, 2),
+      "a place after the cluster is after all its characters"
+    );
   }
 
   #[test]

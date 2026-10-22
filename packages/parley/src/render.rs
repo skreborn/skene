@@ -136,6 +136,7 @@ pub fn paint_decorations(context: &mut RenderContext, laid: &ParleyLaid) {
 /// What a decoration line draws, in the layout's units: a filled path (solid, dotted,
 /// dashed), or a stroked one (wavy).
 #[derive(Clone, Debug)]
+#[must_use]
 pub enum DecorationShape {
   /// The path filled.
   Fill(BezPath),
@@ -145,7 +146,6 @@ pub enum DecorationShape {
 
 impl DecorationShape {
   /// The shape `line` draws in its style.
-  #[must_use]
   pub fn of(line: &DecorationLine) -> Self {
     let (x, y, width, thickness) = (
       f64::from(line.x),

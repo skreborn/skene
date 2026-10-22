@@ -139,14 +139,16 @@ pub struct ParleyEngine {
 
 impl std::fmt::Debug for ParleyEngine {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    let contexts = self.contexts.borrow();
+    let mut debug = formatter.debug_struct("ParleyEngine");
 
-    formatter
-      .debug_struct("ParleyEngine")
-      .field("first", &contexts.first)
-      .field("tab_size", &contexts.tab_size)
-      .field("shape_cache", &contexts.shape_cache)
-      .finish_non_exhaustive()
+    if let Ok(contexts) = self.contexts.try_borrow() {
+      debug
+        .field("first", &contexts.first)
+        .field("tab_size", &contexts.tab_size)
+        .field("shape_cache", &contexts.shape_cache);
+    }
+
+    debug.finish_non_exhaustive()
   }
 }
 
@@ -433,14 +435,14 @@ impl TextEngine for ParleyEngine {
 /// What paints each stretch of a paragraph's text: the paragraph's, shared with its layouts,
 /// so a repaint shows in every layout already handed out and none is made again.
 #[derive(Clone, PartialEq, Debug, Default)]
-pub struct PaintRuns {
+#[must_use]
+struct PaintRuns {
   runs: Vec<(Range<usize>, PaintStyle)>,
 }
 
 impl PaintRuns {
   /// The paint of `text`'s spans.
-  #[must_use]
-  pub fn of(text: &AttributedText) -> Self {
+  fn of(text: &AttributedText) -> Self {
     Self {
       runs: text
         .spans()
@@ -451,7 +453,7 @@ impl PaintRuns {
   }
 
   /// The paint at byte `at`: the last stretch's past the text's end.
-  pub fn at(&self, at: usize) -> PaintStyle {
+  fn at(&self, at: usize) -> PaintStyle {
     self
       .runs
       .iter()
@@ -461,7 +463,7 @@ impl PaintRuns {
   }
 
   /// Paints `range` (bytes of the text) with `paint`.
-  pub fn repaint(&mut self, range: Range<usize>, paint: PaintStyle) {
+  fn repaint(&mut self, range: Range<usize>, paint: PaintStyle) {
     let mut next = Vec::with_capacity(self.runs.len() + 2);
 
     for (span, style) in self.runs.drain(..) {
@@ -481,6 +483,7 @@ impl PaintRuns {
 }
 
 /// A paragraph Parley shaped.
+#[must_use]
 pub struct ParleyParagraph {
   text: Rc<str>,
   index: Rc<TextIndex>,
@@ -540,21 +543,21 @@ impl Shape {
 
 /// A glyph drawn beyond the text: an ellipsis (Parley draws a soft hyphen's hyphen itself).
 #[derive(Clone, Debug)]
-pub struct Mark {
+struct Mark {
   /// The font.
-  pub font: FontData,
+  font: FontData,
   /// The font size.
-  pub size: f32,
+  size: f32,
   /// The variation coordinates, normalized (`F2Dot14` bits).
-  pub coords: Vec<i16>,
+  coords: Vec<i16>,
   /// The glyphs, each with its horizontal position.
-  pub glyphs: Vec<(u32, f32)>,
+  glyphs: Vec<(u32, f32)>,
   /// The baseline.
-  pub baseline: f32,
+  baseline: f32,
   /// The byte whose paint it takes.
-  pub at: usize,
+  at: usize,
   /// The line it ends.
-  pub line: usize,
+  line: usize,
 }
 
 impl Mark {
@@ -883,6 +886,7 @@ struct LaidInner {
 /// A paragraph Parley laid out at one width, shared by its clones: its geometry never changes,
 /// and it paints as its paragraph paints now.
 #[derive(Clone)]
+#[must_use]
 pub struct ParleyLaid {
   inner: Rc<LaidInner>,
 }
@@ -901,6 +905,7 @@ impl std::fmt::Debug for ParleyLaid {
 
 /// One glyph to draw.
 #[derive(Clone, Copy, PartialEq, Debug)]
+#[must_use]
 pub struct PositionedGlyph {
   /// The glyph's id in its font.
   pub id: u32,
@@ -917,6 +922,7 @@ const EVERYWHERE: (f32, f32) = (f32::NEG_INFINITY, f32::INFINITY);
 
 /// A run of glyphs in one font, as a renderer draws them.
 #[derive(Clone, Debug)]
+#[must_use]
 pub struct GlyphRun {
   /// The font.
   pub font: FontData,

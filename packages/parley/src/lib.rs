@@ -24,8 +24,6 @@ pub use parley::TabSize;
 pub use self::{
   engine::{
     GlyphRun,
-    Mark,
-    PaintRuns,
     ParleyEngine,
     ParleyLaid,
     ParleyParagraph,

@@ -248,14 +248,49 @@ fn most_lines_cut_the_text_with_an_ellipsis() {
   assert_eq!(laid.line_count(), 2);
   assert!(laid.truncated());
   assert!(laid.lines().iter().all(|line| line.width <= 120.));
+
+  let runs = laid.glyph_runs();
+  let (ellipsis, text_runs) = runs.split_last().expect("the text is drawn");
+  let last = &laid.lines()[1];
+  let text_end = text_runs
+    .iter()
+    .flat_map(|run| &run.glyphs)
+    .filter(|glyph| last.range.contains(&glyph.at) && !text[glyph.at..].starts_with(' '))
+    .map(|glyph| glyph.x)
+    .fold(f32::MIN, f32::max);
+
   assert!(
-    laid.glyph_runs().len() > 1,
-    "the ellipsis is drawn beside the text"
+    matches!(ellipsis.glyphs.len(), 1 | 3),
+    "an ellipsis, or three full stops where the face has none: {ellipsis:?}"
+  );
+  assert!(
+    ellipsis
+      .glyphs
+      .windows(2)
+      .all(|pair| pair[0].id == pair[1].id && pair[0].x < pair[1].x),
+    "{ellipsis:?}"
+  );
+  assert!(
+    ellipsis.glyphs[0].x > text_end,
+    "the ellipsis follows the last line's ink: {ellipsis:?} after {text_end}"
+  );
+  assert!(
+    last.range.contains(&ellipsis.glyphs[0].at),
+    "it takes the paint of the last line's text"
   );
 
   let whole = paragraph(text, ParagraphStyle::default().with_max_lines(9)).layout(Some(120.));
 
   assert!(!whole.truncated());
+  assert_eq!(
+    whole
+      .glyph_runs()
+      .iter()
+      .map(|run| run.glyphs.len())
+      .sum::<usize>(),
+    text.chars().count(),
+    "a text not cut draws no ellipsis"
+  );
 }
 
 /// Everything about `laid` that is geometry, its paint left out: its size, baselines and

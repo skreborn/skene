@@ -1,6 +1,6 @@
 //! skene-parley's integration tests: the engine against the trait's contract and the
 //! guaranteed core, the editing core over real shaping (bidirectional text, clusters), and
-//! the changes Skene carries in Parley.
+//! the changes Skene carries in Parley, and drawing through vello.
 //!
 //! Every test shapes in the pinned Inter face headless draws in, subset to Latin-1 and the
 //! combining acute: a Thai, Hebrew or Arabic case tests the engine's analysis (breaks,
@@ -12,6 +12,7 @@ mod bidi;
 mod clusters;
 mod engine;
 mod patched;
+mod render;
 
 use skene_foundation::{
   Edit,

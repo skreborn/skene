@@ -2,7 +2,7 @@
 
 use std::{fmt::Debug, marker::PhantomData};
 
-use super::{Conditional, PlatformLeaf, StaticLeaf, Value};
+use super::{Conditional, KeptLeaf, StaticLeaf, Value};
 
 /// The stage a style is at, fixing what each of its fields holds.
 #[diagnostic::on_unimplemented(
@@ -22,12 +22,12 @@ impl<C: Clone + PartialEq + Debug + 'static> Shape for Declared<C> {
   type Of<T: Clone + PartialEq + Debug + 'static> = Option<Value<T, C>>;
 }
 
-/// What a platform receives: a conditional [`PlatformLeaf`] per set property, every derived
+/// What a platform receives: a conditional [`KeptLeaf`] per set property, every derived
 /// leaf replaced by the slot a render effect writes.
 pub struct Static<C>(PhantomData<fn() -> C>);
 
 impl<C: Clone + PartialEq + Debug + 'static> Shape for Static<C> {
-  type Of<T: Clone + PartialEq + Debug + 'static> = Option<Conditional<PlatformLeaf<T>, C>>;
+  type Of<T: Clone + PartialEq + Debug + 'static> = Option<Conditional<KeptLeaf<T>, C>>;
 }
 
 /// A plain value per set property: a style resolved against live state.

@@ -12,7 +12,7 @@ use skene_foundation::{
   MouseCursor,
   NoChild,
   NodeId,
-  Platform,
+  Realization,
   State,
   View,
   When,
@@ -37,11 +37,11 @@ use super::{
 #[doc(hidden)]
 #[derive(Debug)]
 #[must_use]
-pub struct SimpleContextMenu<P: Platform, C = NoChild> {
+pub struct SimpleContextMenu<P: Realization, C = NoChild> {
   raw: ContextMenu<P, C>,
 }
 
-impl<P: Platform> SimpleContextMenu<P> {
+impl<P: Realization> SimpleContextMenu<P> {
   /// A menu with no items yet.
   #[inline(always)]
   pub fn new() -> Self {
@@ -79,17 +79,17 @@ impl<P: Platform> SimpleContextMenu<P> {
   }
 }
 
-impl<P: Platform> Default for SimpleContextMenu<P> {
+impl<P: Realization> Default for SimpleContextMenu<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<P: Platform, C> AnyKind for SimpleContextMenu<P, C> {}
+impl<P: Realization, C> AnyKind for SimpleContextMenu<P, C> {}
 
 /// Decorates `menu` in the Simple language.
-fn dress<P: Platform>(menu: ContextMenu<P>) -> ContextMenu<P>
+fn dress<P: Realization>(menu: ContextMenu<P>) -> ContextMenu<P>
 where
   P::Scalar: SimpleUnit,
   P::StyleExt: CornerRadius,
@@ -127,7 +127,7 @@ where
     .set_item_corner_radius(shape.mark_radius)
 }
 
-impl<P: Platform> View<P> for SimpleContextMenu<P, AnyView<P>>
+impl<P: Realization> View<P> for SimpleContextMenu<P, AnyView<P>>
 where
   P::Scalar: SimpleUnit,
   P::StyleExt: CornerRadius,
@@ -138,7 +138,7 @@ where
 }
 
 /// What a platform's `SimpleContextMenu` carries.
-pub trait SimpleContextMenuBase<P: Platform>: Wraps<Inner = SimpleContextMenu<P>> {
+pub trait SimpleContextMenuBase<P: Realization>: Wraps<Inner = SimpleContextMenu<P>> {
   /// A menu with no items yet.
   #[must_use]
   fn new() -> Self {

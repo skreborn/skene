@@ -31,7 +31,7 @@ use crate::spine::{
   FocusOrder,
   NodeId,
   Part,
-  Platform,
+  Realization,
   handler::HandlerSet,
 };
 
@@ -56,7 +56,7 @@ pub enum NodeKind {
 
 /// One node of the scene.
 #[must_use]
-pub struct NodeRecord<P: Platform> {
+pub struct NodeRecord<P: Realization> {
   parent: Option<NodeId>,
   enclosing: Option<NodeId>,
   first_child: Option<NodeId>,
@@ -81,13 +81,13 @@ pub struct NodeRecord<P: Platform> {
   overlay: Option<OverlayRecord>,
 }
 
-impl<P: Platform> std::fmt::Debug for NodeRecord<P> {
+impl<P: Realization> std::fmt::Debug for NodeRecord<P> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter.debug_struct("NodeRecord").finish_non_exhaustive()
   }
 }
 
-impl<P: Platform> NodeRecord<P> {
+impl<P: Realization> NodeRecord<P> {
   /// The node this one is attached under.
   #[inline(always)]
   #[must_use]
@@ -160,13 +160,13 @@ impl<P: Platform> NodeRecord<P> {
   }
 }
 
-struct Entry<P: Platform> {
+struct Entry<P: Realization> {
   generation: u32,
   record: Option<NodeRecord<P>>,
 }
 
 /// A mutation the scene owes its platform, mirrored once the scene is released.
-enum Mirror<P: Platform> {
+enum Mirror<P: Realization> {
   Attach {
     parent: NodeId,
     child: NodeId,
@@ -211,7 +211,7 @@ enum Mirror<P: Platform> {
   Focus(NodeId),
 }
 
-impl<P: Platform> Mirror<P> {
+impl<P: Realization> Mirror<P> {
   /// Hands the mutation to the platform.
   fn run(self) {
     match self {
@@ -250,7 +250,7 @@ impl<P: Platform> Mirror<P> {
 /// [`set_control_state`](Self::set_control_state)) reach it in order once the borrow
 /// that recorded them is released.
 #[must_use]
-pub struct Scene<P: Platform> {
+pub struct Scene<P: Realization> {
   entries: Vec<Entry<P>>,
   free: Vec<u32>,
   pending_annotation: Option<Annotation<P>>,
@@ -272,20 +272,20 @@ pub struct Scene<P: Platform> {
   token_kinds: FxHashMap<crate::spine::TokenName, std::mem::Discriminant<P::TokenValue>>,
 }
 
-impl<P: Platform> std::fmt::Debug for Scene<P> {
+impl<P: Realization> std::fmt::Debug for Scene<P> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter.debug_struct("Scene").finish_non_exhaustive()
   }
 }
 
-impl<P: Platform> Default for Scene<P> {
+impl<P: Realization> Default for Scene<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<P: Platform> Scene<P> {
+impl<P: Realization> Scene<P> {
   /// An empty scene.
   #[inline(always)]
   pub fn new() -> Self {

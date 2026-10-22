@@ -1,7 +1,7 @@
 //! A view of a facade's own over the foundation's: a type holding one other as its
 //! whole content, and taking on what that one is.
 
-use crate::spine::{Children, HasChild, HasChildren, Platform, Seal};
+use crate::spine::{Children, HasChild, HasChildren, Realization, Seal};
 
 /// A type holding one other as its whole content: a facade's view over the
 /// foundation's.
@@ -27,7 +27,7 @@ pub trait Wraps: Sized {
   fn into_inner(self) -> Self::Inner;
 }
 
-impl<P: Platform, T: Wraps<Inner: HasChild<P>>> HasChild<P> for T {
+impl<P: Realization, T: Wraps<Inner: HasChild<P>>> HasChild<P> for T {
   type Kind = <T::Inner as HasChild<P>>::Kind;
 
   #[inline(always)]
@@ -36,7 +36,7 @@ impl<P: Platform, T: Wraps<Inner: HasChild<P>>> HasChild<P> for T {
   }
 }
 
-impl<P: Platform, T: Wraps<Inner: HasChildren<P>>> HasChildren<P> for T {
+impl<P: Realization, T: Wraps<Inner: HasChildren<P>>> HasChildren<P> for T {
   type Kind = <T::Inner as HasChildren<P>>::Kind;
 
   #[inline(always)]

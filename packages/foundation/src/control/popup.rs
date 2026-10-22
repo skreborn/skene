@@ -14,9 +14,9 @@ use crate::{
   NamedKey,
   NativeElement,
   NodeId,
-  Platform,
   PopupKind,
   Prevent,
+  Realization,
   Role,
 };
 
@@ -124,7 +124,7 @@ impl Popup {
   }
 }
 
-impl<P: Platform> Behavior<P> for Popup {
+impl<P: Realization> Behavior<P> for Popup {
   #[inline(always)]
   fn native(&self) -> Option<NativeElement> {
     match self.kind {

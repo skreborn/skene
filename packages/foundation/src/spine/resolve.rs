@@ -28,6 +28,7 @@ use crate::spine::{
   Inset,
   IntoBoxValue,
   IntoRunValue,
+  KeptLeaf,
   Keyframe,
   Leaf,
   Length,
@@ -36,9 +37,8 @@ use crate::spine::{
   NodeId,
   NodeRecord,
   Plain,
-  Platform,
-  PlatformLeaf,
   PropertyKey,
+  Realization,
   RunStyle,
   RunValue,
   RunVisitor,
@@ -511,8 +511,8 @@ impl<N: Scalar, X: StyleExtension> Resolver<'_, N, X> {
     value: &StaticValue<T, Condition<N>>,
   ) -> Option<T> {
     match self.winning(value) {
-      PlatformLeaf::Static(leaf) => self.keyframe_box_value(leaf),
-      PlatformLeaf::Slot(slot) => self.box_leaf(&(self.slot)(*slot)?, |value| match value {
+      KeptLeaf::Static(leaf) => self.keyframe_box_value(leaf),
+      KeptLeaf::Slot(slot) => self.box_leaf(&(self.slot)(*slot)?, |value| match value {
         SlotValue::Box(value) => T::from_box_value(value),
         SlotValue::Run(_) => None,
       }),
@@ -525,8 +525,8 @@ impl<N: Scalar, X: StyleExtension> Resolver<'_, N, X> {
   #[must_use]
   pub fn run_value<T: IntoRunValue<X>>(&self, value: &StaticValue<T, Condition<N>>) -> Option<T> {
     match self.winning(value) {
-      PlatformLeaf::Static(leaf) => self.keyframe_run_value(leaf),
-      PlatformLeaf::Slot(slot) => self.run_leaf(&(self.slot)(*slot)?, |value| match value {
+      KeptLeaf::Static(leaf) => self.keyframe_run_value(leaf),
+      KeptLeaf::Slot(slot) => self.run_leaf(&(self.slot)(*slot)?, |value| match value {
         SlotValue::Run(value) => T::from_run_value(value),
         SlotValue::Box(_) => None,
       }),
@@ -758,7 +758,7 @@ impl<X: StyleExtension> RunStyle<Plain, X> {
   message = "`{Self}` is no source a platform's resolution reads",
   label = "a resolution source gives the environment, container sizes, slots and whether text takes sizes"
 )]
-pub trait ResolutionSource<P: Platform> {
+pub trait ResolutionSource<P: Realization> {
   /// The reader's environment.
   fn environment(&self) -> Environment<P::Scalar>;
 
@@ -769,7 +769,7 @@ pub trait ResolutionSource<P: Platform> {
   fn slot(&self, node: NodeId, slot: Slot) -> Option<SlotLeaf<P::Scalar, P::StyleExt>>;
 
   /// Whether the medium draws text at sizes other than its
-  /// [`FONT_SIZE`](Platform::FONT_SIZE), the
+  /// [`FONT_SIZE`](Realization::FONT_SIZE), the
   /// typography's [`SIZE`](typography::SIZE) then giving the font size.
   fn sizes_text(&self) -> bool;
 
@@ -782,7 +782,7 @@ pub trait ResolutionSource<P: Platform> {
 /// What one node's properties resolve against: the environment, the node's interaction
 /// and the named containers above it, from the scene and a platform's `source`.
 #[must_use]
-pub struct ResolutionContext<'a, P: Platform, S> {
+pub struct ResolutionContext<'a, P: Realization, S> {
   source: &'a S,
   node: Option<NodeId>,
   environment: Environment<P::Scalar>,
@@ -791,7 +791,7 @@ pub struct ResolutionContext<'a, P: Platform, S> {
   containers: Vec<(ContainerName, Option<Size<P::Scalar>>)>,
 }
 
-impl<P: Platform, S> std::fmt::Debug for ResolutionContext<'_, P, S> {
+impl<P: Realization, S> std::fmt::Debug for ResolutionContext<'_, P, S> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter
       .debug_struct("ResolutionContext")
@@ -802,7 +802,7 @@ impl<P: Platform, S> std::fmt::Debug for ResolutionContext<'_, P, S> {
 
 impl<'a, P, S> ResolutionContext<'a, P, S>
 where
-  P: Platform<TokenValue = TokenValue<<P as Platform>::Scalar>>,
+  P: Realization<TokenValue = TokenValue<<P as Realization>::Scalar>>,
   S: ResolutionSource<P>,
 {
   /// The context of `node`; `None` for a stale id.
@@ -892,7 +892,7 @@ where
 
   /// The font size in force here: the typography's [`SIZE`](typography::SIZE), resolved
   /// where it is defined once per defining node, where the source sizes text, else the
-  /// platform's [`FONT_SIZE`](Platform::FONT_SIZE).
+  /// platform's [`FONT_SIZE`](Realization::FONT_SIZE).
   fn font_size(&self) -> f32 {
     if !self.source.sizes_text() {
       return P::FONT_SIZE;

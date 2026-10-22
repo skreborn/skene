@@ -28,9 +28,9 @@ use skene_foundation::{
   OverlayProps,
   PickerOption,
   Placement,
-  Platform,
   Point,
   PointerEvent,
+  Realization,
   RunProps,
   RunValue,
   Scene,
@@ -262,7 +262,7 @@ fn position_at_anchor(popup: &HtmlElement, anchor: &Element, sink: NodeId, place
   let _ = style.set_property("top", &format!("{top}px"));
 }
 
-impl Platform for Web {
+impl Realization for Web {
   const FONT_SIZE: f32 = 16.;
 
   type Scalar = f32;
@@ -964,7 +964,7 @@ impl WebMarkup for Web {
   }
 
   fn set_text(sink: NodeId, text: &str) {
-    <Self as Platform>::set_text(sink, text);
+    <Self as Realization>::set_text(sink, text);
   }
 }
 

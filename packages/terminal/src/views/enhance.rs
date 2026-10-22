@@ -2,7 +2,7 @@
 
 use skene_foundation::{ChildBuilder, EnhanceBase, NoChild, View, Wraps};
 
-use crate::ActivePlatform;
+use crate::Active;
 
 /// Builds one of two forms between its anchors: the fallback while `live` is false,
 /// the child once it is true.
@@ -30,17 +30,17 @@ use crate::ActivePlatform;
 /// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
-pub struct Enhance<C = NoChild>(skene_foundation::Enhance<ActivePlatform, C>);
+pub struct Enhance<C = NoChild>(skene_foundation::Enhance<Active, C>);
 
-impl EnhanceBase<ActivePlatform> for Enhance {}
+impl EnhanceBase<Active> for Enhance {}
 
 impl Enhance {
   /// Sets the form built once `live` is true.
   #[inline(always)]
-  pub fn set_child_builder<V: View<ActivePlatform>>(
+  pub fn set_child_builder<V: View<Active>>(
     self,
     child: impl FnOnce() -> V + 'static,
-  ) -> Enhance<ChildBuilder<ActivePlatform>> {
+  ) -> Enhance<ChildBuilder<Active>> {
     Enhance(self.0.set_child_builder(child))
   }
 }

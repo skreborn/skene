@@ -74,14 +74,14 @@ wraps its core's card this way:
 ```rust
 use skene_foundation::{View, Wraps};
 use skene_simple::SimpleCardBase;
-use skene_web::ActivePlatform;
+use skene_web::Active;
 
 /// A ready-made card.
 #[derive(Debug, Default, View, Wraps)]
 #[must_use]
-pub struct SimpleCard(skene_simple::SimpleCard<ActivePlatform>);
+pub struct SimpleCard(skene_simple::SimpleCard<Active>);
 
-impl SimpleCardBase<ActivePlatform> for SimpleCard {}
+impl SimpleCardBase<Active> for SimpleCard {}
 ```
 
 An app depends on the platform crates it shells for, and imports each one's prelude

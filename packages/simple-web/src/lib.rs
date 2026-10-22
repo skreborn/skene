@@ -1,7 +1,7 @@
 //! # skene-simple-web
 //!
 //! The Simple component library on the web: every `Simple*` view of
-//! [`skene_simple`] as a view of the web's own over its `ActivePlatform`, the
+//! [`skene_simple`] as a view of the web's own over its `Active`, the
 //! palette in the web's unit, and a [`prelude`] an app imports beside the facade's
 //! own.
 

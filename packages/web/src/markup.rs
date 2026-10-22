@@ -9,11 +9,11 @@ use skene_foundation::{
   Conditional,
   ControlProps,
   FocusOrder,
+  KeptLeaf,
   NativeElement,
   NodeId,
-  Platform,
-  PlatformLeaf,
   PopupKind,
+  Realization,
   Role,
   StaticLeaf,
 };
@@ -290,7 +290,7 @@ pub(crate) fn access_attributes(access: &[AccessProp], form: bool) -> Vec<(&'sta
 
 /// The attributes a control's native element carries: its `type`, the placeholder and
 /// the lines of a text entry, and the accessible name when nothing visible supplies one.
-pub(crate) fn native_attributes<P: Platform>(
+pub(crate) fn native_attributes<P: Realization>(
   native: FormElement,
   props: &ControlProps<P>,
 ) -> Vec<(&'static str, String)> {
@@ -368,10 +368,10 @@ pub(crate) fn focus_order_attribute(
 
 /// Whether a box's declared style scrolls its content: an overflow fixed on the base
 /// value that scrolls on either axis once computed.
-pub(crate) fn scrolls<P: Platform>(style: &skene_foundation::StaticBoxStyle<P>) -> bool {
+pub(crate) fn scrolls<P: Realization>(style: &skene_foundation::StaticBoxStyle<P>) -> bool {
   matches!(
     style.overflow.as_ref().map(Conditional::base),
-    Some(PlatformLeaf::Static(StaticLeaf::Fixed(overflow))) if overflow.scrolls()
+    Some(KeptLeaf::Static(StaticLeaf::Fixed(overflow))) if overflow.scrolls()
   )
 }
 

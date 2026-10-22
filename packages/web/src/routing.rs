@@ -2,7 +2,7 @@
 
 use skene_foundation::routing::{Route, Router, StaticRoutes};
 
-use crate::ActivePlatform;
+use crate::Active;
 
 /// Creates the app's router from the platform's current URL, wires navigation both ways,
 /// and provides it to the current scope.
@@ -20,7 +20,7 @@ use crate::ActivePlatform;
 /// beneath with [`Router::current`].
 #[inline(always)]
 pub fn install_router<R: Route>(fallback: R) -> Router<R> {
-  skene_foundation::routing::install_router::<ActivePlatform, R>(fallback)
+  skene_foundation::routing::install_router::<Active, R>(fallback)
 }
 
 /// [`install_router`], for a route type whose statically-renderable routes are
@@ -30,5 +30,5 @@ pub fn install_router<R: Route>(fallback: R) -> Router<R> {
 /// renders every route without being told them.
 #[inline(always)]
 pub fn install_static_router<R: StaticRoutes>(fallback: R) -> Router<R> {
-  skene_foundation::routing::install_static_router::<ActivePlatform, R>(fallback)
+  skene_foundation::routing::install_static_router::<Active, R>(fallback)
 }

@@ -9,7 +9,7 @@ use std::{
 use rustc_hash::FxHashMap;
 use skene_reactive::{Effect, Key, Owner, untrack};
 
-use super::{AnyView, NodeId, Piece, Platform, Scene, Segment, View};
+use super::{AnyView, NodeId, Piece, Realization, Scene, Segment, View};
 use crate::spine::Reorder;
 
 /// Mounts the node `build` returns between a fresh pair of anchors and returns the
@@ -18,7 +18,7 @@ use crate::spine::Reorder;
 /// Each rebuild destroys the previous content and disposes its scope, so state inside
 /// the content does not survive it. The annotation pending when the subtree is created
 /// lands on the content of every rebuild.
-pub fn derived<P: Platform>(build: impl Fn() -> NodeId + 'static) -> NodeId {
+pub fn derived<P: Realization>(build: impl Fn() -> NodeId + 'static) -> NodeId {
   let segment = Segment::<P>::new();
   let start = segment.start();
   let parent_scope = Owner::current();
@@ -45,7 +45,7 @@ pub fn derived<P: Platform>(build: impl Fn() -> NodeId + 'static) -> NodeId {
 
 /// A view that renders nothing: an empty segment.
 #[must_use]
-pub fn empty<P: Platform>() -> impl View<P> {
+pub fn empty<P: Realization>() -> impl View<P> {
   AnyView::new(|| Segment::<P>::new().start())
 }
 
@@ -71,7 +71,7 @@ impl Reconciled {
   /// order: a kept item stays, a new one is built by `build` from its index in its own
   /// scope under `parent_scope`, a gone one is destroyed, and only the displaced are
   /// re-inserted.
-  fn update<P: Platform>(
+  fn update<P: Realization>(
     &mut self,
     start: NodeId,
     parent_scope: Owner,
@@ -165,7 +165,7 @@ impl Reconciled {
 ///
 /// Keys should be unique, which a debug build warns about once; items sharing one
 /// match the ones before them in order, each under a scope of its own.
-pub fn reconcile<P: Platform, T, I, K>(
+pub fn reconcile<P: Realization, T, I, K>(
   start: NodeId,
   items: impl Fn() -> I + 'static,
   key: impl Fn(&T) -> K + 'static,

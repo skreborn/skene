@@ -1,7 +1,7 @@
 //! Hydration: the state and markup a server render carries to the client, and what the
 //! client adopts of them.
 
-use crate::{NodeId, Platform};
+use crate::{NodeId, Realization};
 
 /// A resource's serializer a server render drains into the hydration state once the
 /// resource settles: its value as JSON, `None` while it has none.
@@ -16,7 +16,7 @@ pub type HydrationSource = Box<dyn Fn() -> Option<String>>;
   message = "`{Self}` is not a platform of the web medium",
   label = "hydration crosses from the web's server leaf to its browser leaf"
 )]
-pub trait WebHydration: Platform {
+pub trait WebHydration: Realization {
   /// A lazy segment's place among the hydrating resources.
   type LazyRegion: Unpin + 'static;
 

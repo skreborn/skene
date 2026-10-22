@@ -4,7 +4,7 @@ use std::cell::RefCell;
 
 use skene_reactive::{Effect, on_cleanup, untrack};
 
-use crate::spine::Platform;
+use crate::spine::Realization;
 
 thread_local! {
   /// The titles live owners set.
@@ -48,7 +48,7 @@ impl Titles {
 
   /// Runs `change` on this thread's titles, then shows `P` the title in force where it
   /// changed.
-  fn change<P: Platform, R>(change: impl FnOnce(&mut Self) -> R) -> R {
+  fn change<P: Realization, R>(change: impl FnOnce(&mut Self) -> R) -> R {
     let (result, shown) = TITLES.with(|titles| {
       let mut titles = titles.borrow_mut();
       let before = titles.in_force().map(ToOwned::to_owned);
@@ -68,7 +68,7 @@ impl Titles {
 
 /// Sets the window's title while the current owner lives; the latest title a live owner
 /// set is in force.
-pub fn set_title<P: Platform>(title: impl Into<String>) {
+pub fn set_title<P: Realization>(title: impl Into<String>) {
   let title = title.into();
   let id = Titles::change::<P, _>(|titles| titles.add(title));
 
@@ -77,7 +77,7 @@ pub fn set_title<P: Platform>(title: impl Into<String>) {
 
 /// Derives the window's title from the signals `title` reads, while the current owner
 /// lives; the latest title a live owner set is in force.
-pub fn derive_title<P: Platform>(title: impl Fn() -> String + 'static) {
+pub fn derive_title<P: Realization>(title: impl Fn() -> String + 'static) {
   let first = untrack(&title);
   let id = Titles::change::<P, _>(|titles| titles.add(first));
 

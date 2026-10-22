@@ -15,8 +15,8 @@ use crate::{
   KeyEvent,
   NamedKey,
   NativeElement,
-  Platform,
   Prevent,
+  Realization,
   Role,
 };
 
@@ -156,7 +156,7 @@ impl<C: CollectionPolicy> CollectionContext<C> {
   /// A group whose members join `roster` under `P`'s scene, answering `chosen` for the
   /// chosen value and asking `choose` for a choice; provided as context by a control
   /// holding members, its tab stop a memo owned by the current owner.
-  pub fn new<P: Platform>(
+  pub fn new<P: Realization>(
     chosen: impl Fn() -> Option<String> + 'static,
     choose: impl Fn(String) + 'static,
     roster: Roster,
@@ -218,7 +218,7 @@ impl<C: CollectionPolicy> CollectionContext<C> {
   /// or stopping at the ends as the policy says, `isize::MIN` and `isize::MAX`
   /// reaching the first and the last: focuses it, and chooses it where the policy
   /// says a move does.
-  pub fn step_from<P: Platform>(&self, value: &str, step: isize) {
+  pub fn step_from<P: Realization>(&self, value: &str, step: isize) {
     let members = self.roster.enabled::<P>();
     let Some(index) = members.iter().position(|(_, held)| held == value)
     else {
@@ -246,7 +246,7 @@ impl<C: CollectionPolicy> CollectionContext<C> {
   /// Feeds a key typed on the member holding `value` into the collection's type-ahead
   /// and focuses the member its buffer picks; `false` for a key that is no character.
   #[must_use]
-  pub fn type_ahead_from<P: Platform>(&self, value: &str, event: &KeyEvent) -> bool {
+  pub fn type_ahead_from<P: Realization>(&self, value: &str, event: &KeyEvent) -> bool {
     let Some(buffer) = self.type_ahead.typed::<P>(event)
     else {
       return false;
@@ -362,7 +362,7 @@ impl<C: CollectionPolicy> Default for Collection<C> {
   }
 }
 
-impl<P: Platform, C: CollectionPolicy> Behavior<P> for Collection<C> {
+impl<P: Realization, C: CollectionPolicy> Behavior<P> for Collection<C> {
   #[inline(always)]
   fn role(&self) -> Option<Role> {
     Some(C::ROLE)
@@ -454,7 +454,7 @@ impl<C: CollectionPolicy> Member<C> {
   }
 }
 
-impl<P: Platform, C: CollectionPolicy> Behavior<P> for Member<C> {
+impl<P: Realization, C: CollectionPolicy> Behavior<P> for Member<C> {
   #[inline(always)]
   fn native(&self) -> Option<NativeElement> {
     C::MEMBER_NATIVE

@@ -85,7 +85,7 @@ pub struct Slot(pub u16);
 /// derived leaf's render effect writes.
 #[derive(Debug, Clone, PartialEq, Hash)]
 #[must_use]
-pub enum PlatformLeaf<T> {
+pub enum KeptLeaf<T> {
   /// A value the platform compiles ahead of time.
   Static(StaticLeaf<T>),
   /// A value a render effect writes into the slot.
@@ -143,9 +143,9 @@ pub type Value<T, C> = Conditional<Leaf<T>, C>;
 /// ```
 pub type Definition<T, N> = Conditional<StaticLeaf<T>, Media<N>>;
 
-/// What a platform receives for one property: a [`PlatformLeaf`] under the facade's
+/// What a platform receives for one property: a [`KeptLeaf`] under the facade's
 /// conditions.
-pub type StaticValue<T, C> = Conditional<PlatformLeaf<T>, C>;
+pub type StaticValue<T, C> = Conditional<KeptLeaf<T>, C>;
 
 impl<L, C> Conditional<L, C> {
   /// A value with no variants.
@@ -242,8 +242,8 @@ impl<T, C> Value<T, C> {
 
     self.map(|leaf| {
       let leaf = match leaf {
-        Leaf::Static(leaf) => PlatformLeaf::Static(leaf),
-        Leaf::Derived(compute) => PlatformLeaf::Slot(allocate(position, compute)),
+        Leaf::Static(leaf) => KeptLeaf::Static(leaf),
+        Leaf::Derived(compute) => KeptLeaf::Slot(allocate(position, compute)),
       };
 
       position += 1;
@@ -541,20 +541,20 @@ impl<T, N: Scalar> From<StaticLeaf<T>> for Definition<T, N> {
 impl<T, C> From<T> for StaticValue<T, C> {
   #[inline(always)]
   fn from(value: T) -> Self {
-    Self::new(PlatformLeaf::Static(StaticLeaf::Fixed(value)))
+    Self::new(KeptLeaf::Static(StaticLeaf::Fixed(value)))
   }
 }
 
 impl<T, C> From<StaticLeaf<T>> for StaticValue<T, C> {
   #[inline(always)]
   fn from(leaf: StaticLeaf<T>) -> Self {
-    Self::new(PlatformLeaf::Static(leaf))
+    Self::new(KeptLeaf::Static(leaf))
   }
 }
 
-impl<T, C> From<PlatformLeaf<T>> for StaticValue<T, C> {
+impl<T, C> From<KeptLeaf<T>> for StaticValue<T, C> {
   #[inline(always)]
-  fn from(leaf: PlatformLeaf<T>) -> Self {
+  fn from(leaf: KeptLeaf<T>) -> Self {
     Self::new(leaf)
   }
 }
@@ -566,7 +566,7 @@ mod tests {
     rc::Rc,
   };
 
-  use super::{Conditional, Definition, Leaf, PlatformLeaf, Slot, StaticLeaf, Value, When};
+  use super::{Conditional, Definition, KeptLeaf, Leaf, Slot, StaticLeaf, Value, When};
   use crate::spine::{Color, Expr, Media, State, TokenRef};
 
   /// A plain value conditioned once is a base and one fixed variant.
@@ -629,14 +629,14 @@ mod tests {
     assert_eq!(positions, [1, 3]);
     assert_eq!(
       split.base(),
-      &PlatformLeaf::Static(StaticLeaf::Fixed(Color::TRANSPARENT))
+      &KeptLeaf::Static(StaticLeaf::Fixed(Color::TRANSPARENT))
     );
-    assert_eq!(split.variants()[0].1, PlatformLeaf::Slot(Slot(7)));
+    assert_eq!(split.variants()[0].1, KeptLeaf::Slot(Slot(7)));
     assert_eq!(
       split.variants()[1].1,
-      PlatformLeaf::Static(StaticLeaf::Fixed(Color::TRANSPARENT))
+      KeptLeaf::Static(StaticLeaf::Fixed(Color::TRANSPARENT))
     );
-    assert_eq!(split.variants()[2].1, PlatformLeaf::Slot(Slot(8)));
+    assert_eq!(split.variants()[2].1, KeptLeaf::Slot(Slot(8)));
   }
 
   /// Two definitions with the same content hash alike, expressions included.

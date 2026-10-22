@@ -21,7 +21,7 @@ use skene_foundation::{
   Wraps,
 };
 
-use crate::ActivePlatform;
+use crate::Active;
 
 /// A control: focus, events, decoration, a label, parts and accessibility once, over
 /// the [`Behavior`](skene_foundation::Behavior) that says what the interaction is.
@@ -47,36 +47,34 @@ use crate::ActivePlatform;
 /// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
-pub struct Control<B: Behavior<ActivePlatform>, C = NoChild>(
-  skene_foundation::Control<ActivePlatform, B, C>,
-);
+pub struct Control<B: Behavior<Active>, C = NoChild>(skene_foundation::Control<Active, B, C>);
 
-impl<B: Behavior<ActivePlatform> + Default> Default for Control<B> {
+impl<B: Behavior<Active> + Default> Default for Control<B> {
   #[inline(always)]
   fn default() -> Self {
     Self::new(B::default())
   }
 }
 
-impl<B: Behavior<ActivePlatform>> ControlBase<ActivePlatform, B> for Control<B> {}
+impl<B: Behavior<Active>> ControlBase<Active, B> for Control<B> {}
 
-impl<B: Behavior<ActivePlatform>> DecorationBase<ActivePlatform> for Control<B> {}
+impl<B: Behavior<Active>> DecorationBase<Active> for Control<B> {}
 
-impl<B: Behavior<ActivePlatform>> MotionBase<ActivePlatform> for Control<B> {}
+impl<B: Behavior<Active>> MotionBase<Active> for Control<B> {}
 
-impl<B: Behavior<ActivePlatform>> Control<B> {
+impl<B: Behavior<Active>> Control<B> {
   /// Sets the drawn body.
   #[inline(always)]
-  pub fn set_child(self, child: impl View<ActivePlatform>) -> Control<B, AnyView<ActivePlatform>> {
+  pub fn set_child(self, child: impl View<Active>) -> Control<B, AnyView<Active>> {
     Control(self.0.set_child(child))
   }
 
   /// Sets the drawn body, built by `child` under the control.
   #[inline(always)]
-  pub fn set_child_builder<V: View<ActivePlatform>>(
+  pub fn set_child_builder<V: View<Active>>(
     self,
     child: impl FnOnce() -> V + 'static,
-  ) -> Control<B, AnyView<ActivePlatform>> {
+  ) -> Control<B, AnyView<Active>> {
     Control(self.0.set_child_builder(child))
   }
 }

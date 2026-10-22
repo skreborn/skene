@@ -18,7 +18,7 @@ use skene_foundation::{
   IntoChildOf,
   NodeId,
   PlainChild,
-  Platform,
+  Realization,
   Size,
   View,
 };
@@ -30,19 +30,19 @@ const SEA: &str = "oklch(0.72 0.1 230)";
 /// A map, sized by the container around it.
 #[derive(Debug)]
 #[must_use]
-pub struct Map<P: Platform> {
+pub struct Map<P: Realization> {
   size: Size<f32>,
   platform: PhantomData<fn() -> P>,
 }
 
-impl<P: Platform> Default for Map<P> {
+impl<P: Realization> Default for Map<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<P: Platform> Map<P> {
+impl<P: Realization> Map<P> {
   /// A map 240 by 120 logical pixels.
   #[inline(always)]
   pub const fn new() -> Self {
@@ -63,7 +63,7 @@ impl<P: Platform> Map<P> {
   /// The container of the map's size holding `node`.
   fn sized(&self, node: impl IntoChildOf<P, PlainChild>) -> NodeId
   where
-    P: Platform<Scalar = f32>,
+    P: Realization<Scalar = f32>,
   {
     Container::<P>::new()
       .set_width(self.size.width)
@@ -78,12 +78,12 @@ impl<P: Platform> Map<P> {
   message = "`{Self}` is no platform a map realizes on",
   label = "a map covers the web medium's platforms: its leaves and headless"
 )]
-pub trait MapHost: Platform<Scalar = f32> {
+pub trait MapHost: Realization<Scalar = f32> {
   /// Realizes `map`, returning its node.
   fn build_map(map: Map<Self>) -> NodeId;
 }
 
-impl<P: Platform> AnyKind for Map<P> {}
+impl<P: Realization> AnyKind for Map<P> {}
 
 impl<P: MapHost> View<P> for Map<P> {
   #[inline(always)]

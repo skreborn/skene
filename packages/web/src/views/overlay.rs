@@ -2,7 +2,7 @@
 
 use skene_foundation::{AnyView, DecorationBase, MotionBase, NoChild, OverlayBase, View, Wraps};
 
-use crate::ActivePlatform;
+use crate::Active;
 
 /// Content above the app, opened and closed by the app.
 ///
@@ -28,18 +28,18 @@ use crate::ActivePlatform;
 /// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
-pub struct Overlay<C = NoChild>(skene_foundation::Overlay<ActivePlatform, C>);
+pub struct Overlay<C = NoChild>(skene_foundation::Overlay<Active, C>);
 
-impl OverlayBase<ActivePlatform> for Overlay {}
+impl OverlayBase<Active> for Overlay {}
 
-impl DecorationBase<ActivePlatform> for Overlay {}
+impl DecorationBase<Active> for Overlay {}
 
-impl MotionBase<ActivePlatform> for Overlay {}
+impl MotionBase<Active> for Overlay {}
 
 impl Overlay {
   /// Sets the content.
   #[inline(always)]
-  pub fn set_child(self, child: impl View<ActivePlatform>) -> Overlay<AnyView<ActivePlatform>> {
+  pub fn set_child(self, child: impl View<Active>) -> Overlay<AnyView<Active>> {
     Overlay(self.0.set_child(child))
   }
 }

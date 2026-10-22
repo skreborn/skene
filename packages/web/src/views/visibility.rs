@@ -2,7 +2,7 @@
 
 use skene_foundation::{AnyView, NoChild, View, VisibilityBase, Wraps};
 
-use crate::ActivePlatform;
+use crate::Active;
 
 /// Shows or hides one child, preserving its state.
 ///
@@ -22,7 +22,7 @@ use crate::ActivePlatform;
 /// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
-pub struct Visibility<C = NoChild>(skene_foundation::Visibility<ActivePlatform, C>);
+pub struct Visibility<C = NoChild>(skene_foundation::Visibility<Active, C>);
 
 impl Default for Visibility {
   #[inline(always)]
@@ -31,12 +31,12 @@ impl Default for Visibility {
   }
 }
 
-impl VisibilityBase<ActivePlatform> for Visibility {}
+impl VisibilityBase<Active> for Visibility {}
 
 impl Visibility {
   /// Sets the child.
   #[inline(always)]
-  pub fn set_child(self, child: impl View<ActivePlatform>) -> Visibility<AnyView<ActivePlatform>> {
+  pub fn set_child(self, child: impl View<Active>) -> Visibility<AnyView<Active>> {
     Visibility(self.0.set_child(child))
   }
 }

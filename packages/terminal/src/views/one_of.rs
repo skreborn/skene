@@ -2,7 +2,7 @@
 
 use skene_foundation::{OneOfBase, View, Wraps};
 
-use crate::ActivePlatform;
+use crate::Active;
 
 /// Shows the branch whose key is current, preserving every branch's state.
 ///
@@ -30,7 +30,7 @@ use crate::ActivePlatform;
 /// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
-pub struct OneOf<K>(skene_foundation::OneOf<ActivePlatform, K>);
+pub struct OneOf<K>(skene_foundation::OneOf<Active, K>);
 
 impl<K: PartialEq + 'static> Default for OneOf<K> {
   #[inline(always)]
@@ -39,4 +39,4 @@ impl<K: PartialEq + 'static> Default for OneOf<K> {
   }
 }
 
-impl<K: PartialEq + 'static> OneOfBase<ActivePlatform, K> for OneOf<K> {}
+impl<K: PartialEq + 'static> OneOfBase<Active, K> for OneOf<K> {}

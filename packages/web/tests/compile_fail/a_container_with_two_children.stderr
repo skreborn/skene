@@ -6,13 +6,13 @@ error[E0599]: the method `set_children` exists for struct `skene_web::Container`
   |
  ::: src/views/container.rs
   |
-  | pub struct Container(skene_foundation::Container<ActivePlatform>);
+  | pub struct Container(skene_foundation::Container<Active>);
   | -------------------- doesn't satisfy `skene_web::Container: skene_web::HasChildren<_>`
   |
  ::: $WORKSPACE/packages/foundation/src/container.rs
   |
-  | pub struct Container<P: Platform> {
-  | --------------------------------- doesn't satisfy `_: HasChildren<_>`
+  | pub struct Container<P: Realization> {
+  | ------------------------------------ doesn't satisfy `_: HasChildren<_>`
   |
   = note: the following trait bounds were not satisfied:
           `skene_foundation::container::Container<Headless>: skene_web::HasChildren<_>`

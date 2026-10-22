@@ -13,7 +13,7 @@ use crate::{
   Leaf,
   Line,
   NoChild,
-  Platform,
+  Realization,
   Scene,
   StaticLeaf,
   Value,
@@ -22,7 +22,7 @@ use crate::{
 };
 
 /// A placement value under the platform's conditions.
-type Placement<P> = Value<Line<GridPlacement>, Condition<<P as Platform>::Scalar>>;
+type Placement<P> = Value<Line<GridPlacement>, Condition<<P as Realization>::Scalar>>;
 
 /// Places the child it wraps in the tracks of a [`Grid`](crate::Grid).
 ///
@@ -31,7 +31,7 @@ type Placement<P> = Value<Line<GridPlacement>, Condition<<P as Platform>::Scalar
 /// auto-placed on an axis with no placement set. Accepted only where a grid's children
 /// are; holds [`NoChild`] until `set_child` supplies the child.
 #[must_use]
-pub struct GridCell<P: Platform, C = NoChild> {
+pub struct GridCell<P: Realization, C = NoChild> {
   row: Option<Placement<P>>,
   column: Option<Placement<P>>,
   alignment: Option<Value<Alignment, Condition<P::Scalar>>>,
@@ -39,20 +39,20 @@ pub struct GridCell<P: Platform, C = NoChild> {
   platform: PhantomData<fn() -> P>,
 }
 
-impl<P: Platform, C> std::fmt::Debug for GridCell<P, C> {
+impl<P: Realization, C> std::fmt::Debug for GridCell<P, C> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter.debug_struct("GridCell").finish_non_exhaustive()
   }
 }
 
-impl<P: Platform> Default for GridCell<P> {
+impl<P: Realization> Default for GridCell<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<P: Platform> GridCell<P> {
+impl<P: Realization> GridCell<P> {
   /// A wrapper placing its child automatically, with no child yet.
   #[inline(always)]
   pub fn new() -> Self {
@@ -66,7 +66,7 @@ impl<P: Platform> GridCell<P> {
   }
 }
 
-impl<P: Platform> GridCell<P> {
+impl<P: Realization> GridCell<P> {
   /// Sets the row placement.
   pub fn set_row(mut self, row: impl Into<Placement<P>>) -> Self {
     self.row = Some(row.into());
@@ -135,7 +135,7 @@ impl<P: Platform> GridCell<P> {
   }
 }
 
-impl<P: Platform> IntoChildOf<P, GridChild> for GridCell<P, AnyView<P>> {
+impl<P: Realization> IntoChildOf<P, GridChild> for GridCell<P, AnyView<P>> {
   fn into_child(self) -> AnyView<P> {
     AnyView::new(move || {
       let (horizontal, vertical) = match self.alignment.as_ref().map(Value::split_axes) {
@@ -157,7 +157,7 @@ impl<P: Platform> IntoChildOf<P, GridChild> for GridCell<P, AnyView<P>> {
 }
 
 /// What a facade's [`GridCell`] carries: its constructor and its setters.
-pub trait GridCellBase<P: Platform>: Wraps<Inner = GridCell<P>> {
+pub trait GridCellBase<P: Realization>: Wraps<Inner = GridCell<P>> {
   /// A wrapper placing its child automatically, with no child yet.
   #[must_use]
   fn new() -> Self {

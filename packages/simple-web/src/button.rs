@@ -2,7 +2,7 @@
 
 use skene_foundation::{View, Wraps};
 use skene_simple::SimpleButtonBase;
-use skene_web::ActivePlatform;
+use skene_web::Active;
 
 /// A ready-made button: a text label on the variant's surface, with hover and focus
 /// feedback and the platform's full keyboard behavior.
@@ -25,6 +25,6 @@ use skene_web::ActivePlatform;
 /// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
-pub struct SimpleButton(skene_simple::SimpleButton<ActivePlatform>);
+pub struct SimpleButton(skene_simple::SimpleButton<Active>);
 
-impl SimpleButtonBase<ActivePlatform> for SimpleButton {}
+impl SimpleButtonBase<Active> for SimpleButton {}

@@ -3,7 +3,7 @@
 //! What every platform shares: the spine, and every built-in view once over it.
 //!
 //! The spine owns the retained tree: a [`Scene`] of [`NodeRecord`]s addressed by generational
-//! [`NodeId`]s, every mutation mirrored into the sink of the one [`Platform`] a facade
+//! [`NodeId`]s, every mutation mirrored into the sink of the one [`Realization`] a facade
 //! names. Dispatch ([`dispatch_click`] and its kin) climbs that tree once for every
 //! platform. A [`View`] builds into a node; reactive content ([`derived`], [`reconcile`],
 //! [`Visibility`]) mounts between a segment's anchors, and a container's [`Children`] is a
@@ -21,8 +21,8 @@
 //! platform compiles or runs, and the universal values ([`Color`], the geometry, the
 //! layout vocabulary) are what every medium's properties are made of.
 //!
-//! Every built-in view once, generic over the [`Platform`] a facade names. A facade
-//! aliases them (`type Container = skene_foundation::Container<ActivePlatform>`); a component
+//! Every built-in view once, generic over the [`Realization`] a facade names. A facade
+//! aliases them (`type Container = skene_foundation::Container<Active>`); a component
 //! library writes against them exactly as a facade does. What every platform of one
 //! medium shares above the spine is a module here: [`terminal`] for the terminal and
 //! [`web`] for the web; [`routing`] is the router every facade binds. [`text`] is a text as an

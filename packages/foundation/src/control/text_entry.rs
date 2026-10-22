@@ -3,7 +3,7 @@
 use skene_reactive::{Effect, Signal, untrack};
 
 use super::{Behavior, ControlHandle, Controlled};
-use crate::{Edit, EventKind, NativeElement, Platform, Role, TextSelection, Verdict};
+use crate::{Edit, EventKind, NativeElement, Realization, Role, TextSelection, Verdict};
 
 /// A text entry: a single-line field, or an editor showing several lines at once.
 ///
@@ -144,7 +144,7 @@ impl Default for TextEntry {
   }
 }
 
-impl<P: Platform> Behavior<P> for TextEntry {
+impl<P: Realization> Behavior<P> for TextEntry {
   #[inline(always)]
   fn native(&self) -> Option<NativeElement> {
     Some(if self.lines > 1 {

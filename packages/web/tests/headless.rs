@@ -366,7 +366,7 @@ fn a_third_party_layout_view_matches_the_built_in() {
 
   impl skene_web::AnyKind for Toolbar {}
 
-  impl skene_foundation::View<skene_web::ActivePlatform> for Toolbar {
+  impl skene_foundation::View<skene_web::Active> for Toolbar {
     fn build(self) -> NodeId {
       skene_web::View::build(self.base)
     }
@@ -849,7 +849,7 @@ fn a_painted_box_falls_back_where_nothing_is_drawn_as_pixels() {
       .set_fallback_builder(|| Text::new("a red box"))
       .build()
   });
-  let nodes = || Scene::<skene_web::ActivePlatform>::with(|scene| scene.segment_nodes(start));
+  let nodes = || Scene::<skene_web::Active>::with(|scene| scene.segment_nodes(start));
   let shown = nodes();
 
   assert_eq!(shown.len(), 1);

@@ -38,7 +38,7 @@ pub enum Prevent {
   #[default]
   None,
   /// Suppresses the platform's own response; shallower handlers still run.
-  Platform,
+  Realization,
   /// Skips the shallower handlers; the platform's response still runs.
   Bubbling,
   /// Both: no platform response, no shallower handlers.
@@ -67,7 +67,7 @@ impl Prevented {
   pub const fn absorb(&mut self, verdict: Prevent) {
     match verdict {
       Prevent::None => {}
-      Prevent::Platform => self.platform = true,
+      Prevent::Realization => self.platform = true,
       Prevent::Bubbling => self.bubbling = true,
       Prevent::All => {
         self.platform = true;

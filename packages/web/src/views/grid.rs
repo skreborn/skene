@@ -2,7 +2,7 @@
 
 use skene_foundation::{GridBase, View, Wraps};
 
-use crate::ActivePlatform;
+use crate::Active;
 
 /// Children placed into tracks.
 ///
@@ -21,6 +21,6 @@ use crate::ActivePlatform;
 /// ```
 #[derive(Debug, Default, View, Wraps)]
 #[must_use]
-pub struct Grid(skene_foundation::Grid<ActivePlatform>);
+pub struct Grid(skene_foundation::Grid<Active>);
 
-impl GridBase<ActivePlatform> for Grid {}
+impl GridBase<Active> for Grid {}

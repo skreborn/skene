@@ -3,7 +3,7 @@
 use std::fmt;
 
 use skene_simple_web::prelude::*;
-use skene_web::{ActivePlatform, HasChild, Link, Resource, SliderRange, prelude::*, router::Route};
+use skene_web::{Active, HasChild, Link, Resource, SliderRange, prelude::*, router::Route};
 
 /// The gallery page: every built-in view and Simple component, under the palette the
 /// reader picks.
@@ -562,7 +562,7 @@ fn painted() -> impl View {
 /// A low-level view from outside the framework: a map covering every platform of the web
 /// medium through a trait of its own.
 fn third_party() -> impl View {
-  section("Third party", acme_map::Map::<ActivePlatform>::new())
+  section("Third party", acme_map::Map::<Active>::new())
 }
 
 /// A titled card around one section's content.

@@ -2,7 +2,7 @@
 //! in the web's unit, and a [`prelude`] an app imports beside the facade's own.
 
 use skene_foundation::{View, Wraps};
-use skene_web::ActivePlatform;
+use skene_web::Active;
 
 pub use {crate}::{Type}BadgeBase;
 
@@ -15,9 +15,9 @@ pub use {crate}::{Type}BadgeBase;
 /// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
-pub struct {Type}Badge({crate}::{Type}Badge<ActivePlatform>);
+pub struct {Type}Badge({crate}::{Type}Badge<Active>);
 
-impl {Type}BadgeBase<ActivePlatform> for {Type}Badge {}
+impl {Type}BadgeBase<Active> for {Type}Badge {}
 
 /// The palette in the web's unit; see [`{crate}::{Type}Palette`].
 pub type {Type}Palette = {crate}::{Type}Palette<f32>;

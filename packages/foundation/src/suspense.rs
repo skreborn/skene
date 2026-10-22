@@ -9,7 +9,7 @@ use crate::{
   Boundary,
   NoChild,
   NodeId,
-  Platform,
+  Realization,
   Segment,
   View,
   Wraps,
@@ -28,20 +28,20 @@ use crate::{
 /// content as a builder closure, built under the owner the boundary is provided on.
 #[derive(Debug)]
 #[must_use]
-pub struct Suspense<P: Platform, C = NoChild> {
+pub struct Suspense<P: Realization, C = NoChild> {
   fallback: Option<ChildBuilder<P>>,
   child: C,
   platform: PhantomData<fn() -> P>,
 }
 
-impl<P: Platform> Default for Suspense<P> {
+impl<P: Realization> Default for Suspense<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<P: Platform> Suspense<P> {
+impl<P: Realization> Suspense<P> {
   /// A suspense with no fallback and no content yet.
   #[inline(always)]
   pub const fn new() -> Self {
@@ -53,7 +53,7 @@ impl<P: Platform> Suspense<P> {
   }
 }
 
-impl<P: Platform> Suspense<P> {
+impl<P: Realization> Suspense<P> {
   /// Sets the fallback shown while the content's work is pending, built by `fallback`;
   /// nothing by default.
   pub fn set_fallback_builder<V: View<P>>(
@@ -78,9 +78,9 @@ impl<P: Platform> Suspense<P> {
   }
 }
 
-impl<P: Platform, C> AnyKind for Suspense<P, C> {}
+impl<P: Realization, C> AnyKind for Suspense<P, C> {}
 
-impl<P: Platform> View<P> for Suspense<P, ChildBuilder<P>> {
+impl<P: Realization> View<P> for Suspense<P, ChildBuilder<P>> {
   fn build(self) -> NodeId {
     let segment = Segment::<P>::new();
     let start = segment.start();
@@ -147,7 +147,7 @@ impl<P: Platform> View<P> for Suspense<P, ChildBuilder<P>> {
 }
 
 /// What a facade's [`Suspense`] carries: its constructor and its fallback.
-pub trait SuspenseBase<P: Platform>: Wraps<Inner = Suspense<P>> {
+pub trait SuspenseBase<P: Realization>: Wraps<Inner = Suspense<P>> {
   /// A suspense with no fallback and no content yet.
   #[must_use]
   fn new() -> Self {

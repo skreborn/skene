@@ -106,7 +106,7 @@ fn run() -> Result<bool, String> {
       ));
     }
 
-    let pages = skene_conformance::pages::<skene_web::ActivePlatform>();
+    let pages = skene_conformance::pages::<skene_web::Active>();
 
     println!(
       "\nrunning {} goldens in {} {}",

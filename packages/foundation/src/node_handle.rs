@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use skene_reactive::{Get, Set, Signal, Update};
 
-use crate::{NodeId, Platform, Size};
+use crate::{NodeId, Realization, Size};
 
 /// Whether a handle measures its node.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -23,13 +23,13 @@ enum Measuring {
 /// `Copy`; bound to one view through its `bind_handle`, and holding nothing until that
 /// view builds. It lives as long as the owner it was made under.
 #[must_use]
-pub struct NodeHandle<P: Platform> {
+pub struct NodeHandle<P: Realization> {
   node: Signal<Option<NodeId>>,
   size: Signal<Option<Size<P::Scalar>>>,
   measuring: Signal<Measuring>,
 }
 
-impl<P: Platform> NodeHandle<P> {
+impl<P: Realization> NodeHandle<P> {
   /// An unbound handle.
   #[inline(always)]
   pub fn new() -> Self {
@@ -103,27 +103,27 @@ impl<P: Platform> NodeHandle<P> {
   }
 }
 
-impl<P: Platform> Copy for NodeHandle<P> {}
+impl<P: Realization> Copy for NodeHandle<P> {}
 
 #[expect(
   clippy::expl_impl_clone_on_copy,
   reason = "a derive would bound the platform on Copy"
 )]
-impl<P: Platform> Clone for NodeHandle<P> {
+impl<P: Realization> Clone for NodeHandle<P> {
   #[inline(always)]
   fn clone(&self) -> Self {
     *self
   }
 }
 
-impl<P: Platform> Default for NodeHandle<P> {
+impl<P: Realization> Default for NodeHandle<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<P: Platform> std::fmt::Debug for NodeHandle<P> {
+impl<P: Realization> std::fmt::Debug for NodeHandle<P> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter.debug_struct("NodeHandle").finish_non_exhaustive()
   }

@@ -1,7 +1,7 @@
 //! # skene-web
 //!
 //! The web's shell: a web app's single dependency. It fixes the scalar (logical pixels,
-//! `f32`), names the platform the build selects ([`ActivePlatform`]: the web platform
+//! `f32`), names the platform the build selects ([`Active`]: the web platform
 //! in the browser and on a server render, the headless host platform elsewhere) and
 //! aliases every built-in view to it, so app code names no platform. The medium's own
 //! contribution is [`Typography`], the [`media`] module and the entry points: `launch`
@@ -148,7 +148,6 @@ pub use skene_foundation::{
   PaintedBase,
   Part,
   PinnedBase,
-  Platform,
   PointerButton,
   PointerButtons,
   PointerEvent,
@@ -162,6 +161,7 @@ pub use skene_foundation::{
   Radio,
   RadioGroup,
   RadioGroupContext,
+  Realization,
   RichTextBase,
   Role,
   Roster,
@@ -268,14 +268,14 @@ pub use crate::{
 /// (`wasm32-unknown-unknown`) and on a server render (`--cfg skene_platform="server"`),
 /// the headless host platform elsewhere.
 #[cfg(not(skene_web_platform = "headless"))]
-pub type ActivePlatform = platform::Web;
+pub type Active = platform::Web;
 /// The platform the build selected: the web platform in the browser
 /// (`wasm32-unknown-unknown`) and on a server render (`--cfg skene_platform="server"`),
 /// the headless host platform elsewhere.
 #[cfg(skene_web_platform = "headless")]
-pub type ActivePlatform = skene_headless::Headless;
+pub type Active = skene_headless::Headless;
 
-skene_foundation::facade!(ActivePlatform, f32, "logical pixels");
+skene_foundation::facade!(Active, f32, "logical pixels");
 
 /// Wraps a view that only a client can realize.
 ///

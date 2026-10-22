@@ -19,7 +19,7 @@ use crate::{
   Length,
   MouseCursor,
   Overflow,
-  Platform,
+  Realization,
   Run,
   RunKeyframe,
   StaticLeaf,
@@ -33,12 +33,12 @@ use crate::{
 };
 
 /// A view whose box takes a declared style, which the decoration of a box writes into.
-pub trait HasBoxStyle<P: Platform> {
+pub trait HasBoxStyle<P: Realization> {
   /// The declared style.
   fn box_style_mut(&mut self) -> &mut DeclaredBoxStyle<P>;
 }
 
-impl<P: Platform, T: Wraps<Inner: HasBoxStyle<P>>> HasBoxStyle<P> for T {
+impl<P: Realization, T: Wraps<Inner: HasBoxStyle<P>>> HasBoxStyle<P> for T {
   #[inline(always)]
   fn box_style_mut(&mut self) -> &mut DeclaredBoxStyle<P> {
     self.inner_mut().box_style_mut()
@@ -46,7 +46,7 @@ impl<P: Platform, T: Wraps<Inner: HasBoxStyle<P>>> HasBoxStyle<P> for T {
 }
 
 /// A view over a layout box, which the members a box carries reach through.
-pub trait HasLayoutBox<P: Platform>: Sized {
+pub trait HasLayoutBox<P: Realization>: Sized {
   /// The child kind the layout box accepts.
   type Kind: 'static;
 
@@ -58,7 +58,7 @@ pub trait HasLayoutBox<P: Platform>: Sized {
   ) -> Self;
 }
 
-impl<P: Platform, T: Wraps<Inner: HasLayoutBox<P>>> HasLayoutBox<P> for T {
+impl<P: Realization, T: Wraps<Inner: HasLayoutBox<P>>> HasLayoutBox<P> for T {
   type Kind = <T::Inner as HasLayoutBox<P>>::Kind;
 
   #[inline(always)]
@@ -71,7 +71,7 @@ impl<P: Platform, T: Wraps<Inner: HasLayoutBox<P>>> HasLayoutBox<P> for T {
 }
 
 /// A text view over a run, which the members every text view shares reach through.
-pub trait HasRun<P: Platform>: Sized {
+pub trait HasRun<P: Realization>: Sized {
   /// The run's declared style.
   fn run_style_mut(&mut self) -> &mut DeclaredRunStyle<P>;
 
@@ -80,7 +80,7 @@ pub trait HasRun<P: Platform>: Sized {
   fn map_run(self, map: impl FnOnce(Run<P>) -> Run<P>) -> Self;
 }
 
-impl<P: Platform, T: Wraps<Inner: HasRun<P>>> HasRun<P> for T {
+impl<P: Realization, T: Wraps<Inner: HasRun<P>>> HasRun<P> for T {
   #[inline(always)]
   fn run_style_mut(&mut self) -> &mut DeclaredRunStyle<P> {
     self.inner_mut().run_style_mut()
@@ -96,7 +96,7 @@ impl<P: Platform, T: Wraps<Inner: HasRun<P>>> HasRun<P> for T {
 ///
 /// Its size, its insets, its colors, its border, its cursor, its overflow and whether it
 /// is hidden.
-pub trait DecorationBase<P: Platform>: HasBoxStyle<P> + Sized {
+pub trait DecorationBase<P: Realization>: HasBoxStyle<P> + Sized {
   crate::trait_properties! { box_style_mut, Condition<P::Scalar>;
     set_width / derive_width (width) => width: Dimension<P::Scalar>,
       "the width";
@@ -136,7 +136,7 @@ pub trait DecorationBase<P: Platform>: HasBoxStyle<P> + Sized {
 }
 
 /// The corner radius of a decorated box, where the platform's style rounds corners.
-pub trait DecorationWithCornerRadius<P: Platform>: DecorationBase<P>
+pub trait DecorationWithCornerRadius<P: Realization>: DecorationBase<P>
 where
   P::StyleExt: CornerRadius,
 {
@@ -167,7 +167,7 @@ where
   }
 }
 
-impl<P: Platform, T: DecorationBase<P>> DecorationWithCornerRadius<P> for T where
+impl<P: Realization, T: DecorationBase<P>> DecorationWithCornerRadius<P> for T where
   P::StyleExt: CornerRadius
 {
 }
@@ -176,7 +176,7 @@ impl<P: Platform, T: DecorationBase<P>> DecorationWithCornerRadius<P> for T wher
 ///
 /// The transitions of its properties, its keyframe animations and its name across a
 /// navigation.
-pub trait MotionBase<P: Platform>: HasLayoutBox<P> {
+pub trait MotionBase<P: Realization>: HasLayoutBox<P> {
   /// Adds a property transition, interpolating that property whenever its value
   /// changes.
   #[must_use]
@@ -204,7 +204,7 @@ pub trait MotionBase<P: Platform>: HasLayoutBox<P> {
 /// What every text view declares of its run.
 ///
 /// Its colors, its decoration, whether it is selectable, its link and its motion.
-pub trait RunBase<P: Platform>: HasRun<P> {
+pub trait RunBase<P: Realization>: HasRun<P> {
   crate::trait_properties! { run_style_mut, Condition<P::Scalar>;
     set_color / derive_color (color) => color: Color,
       "the text color";
@@ -282,7 +282,7 @@ macro_rules! type_metric_pairs {
 /// The type metrics of a run, where the platform's style sizes type.
 ///
 /// Its font size, its weight, its line height and its letter spacing.
-pub trait RunWithTypeMetrics<P: Platform>: RunBase<P>
+pub trait RunWithTypeMetrics<P: Realization>: RunBase<P>
 where
   P::StyleExt: TypeMetrics,
 {
@@ -298,4 +298,4 @@ where
   }
 }
 
-impl<P: Platform, T: RunBase<P>> RunWithTypeMetrics<P> for T where P::StyleExt: TypeMetrics {}
+impl<P: Realization, T: RunBase<P>> RunWithTypeMetrics<P> for T where P::StyleExt: TypeMetrics {}

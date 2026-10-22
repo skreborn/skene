@@ -31,8 +31,8 @@ in a code comment.
     names no default platform, a cargo alias per platform and the checked-in
     rust-analyzer settings naming one. Each platform has its module, `platform::<p>`, its data types
     present in every build and its controls in its own alone; `platform::apple` is the
-    one grouping (`Platform::IS_APPLE`, `set_apple_*`). The `Platform` trait, its
-    zero-sized types and every `P: Platform` above the realizations go.
+    one grouping (`Platform::IS_APPLE`, `set_apple_*`). Every
+    `P: Realization` above the realizations goes.
     - Setters: a platform's prefixed setters (`set_linux_*`, `set_ios_*`, `set_apple_*`)
     come from the macro the shared properties come from, with their `derive_` twins and
     their backing fields cfg-gated; another platform's setter compiles and does nothing.

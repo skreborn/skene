@@ -10,7 +10,7 @@ use skene_foundation::{
   reactive::Memo,
 };
 
-use crate::ActivePlatform;
+use crate::Active;
 
 /// A choice among fixed options, drawn by the views it holds: the face draws the
 /// control closed, the options draw the list it opens.
@@ -45,7 +45,7 @@ use crate::ActivePlatform;
 /// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
-pub struct BasicPicker<F = NoChild>(skene_foundation::BasicPicker<ActivePlatform, F>);
+pub struct BasicPicker<F = NoChild>(skene_foundation::BasicPicker<Active, F>);
 
 impl Default for BasicPicker {
   #[inline(always)]
@@ -54,9 +54,9 @@ impl Default for BasicPicker {
   }
 }
 
-impl<F> BasicPickerBase<ActivePlatform, F> for BasicPicker<F> {}
+impl<F> BasicPickerBase<Active, F> for BasicPicker<F> {}
 
-impl<F> DecorationBase<ActivePlatform> for BasicPicker<F> {}
+impl<F> DecorationBase<Active> for BasicPicker<F> {}
 
 impl BasicPicker {
   /// A picker with no options and nothing chosen.
@@ -67,10 +67,10 @@ impl BasicPicker {
 
   /// Sets the view drawing the control closed, built from the chosen value.
   #[inline(always)]
-  pub fn set_face<V: View<ActivePlatform>>(
+  pub fn set_face<V: View<Active>>(
     self,
     face: impl FnOnce(Memo<String>) -> V + 'static,
-  ) -> BasicPicker<Face<ActivePlatform>> {
+  ) -> BasicPicker<Face<Active>> {
     BasicPicker(self.0.set_face(face))
   }
 }

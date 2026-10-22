@@ -34,8 +34,8 @@ use skene_foundation::{
   Observation,
   OverlayProps,
   Placement,
-  Platform,
   PointerPrecision,
+  Realization,
   RunProps,
   RunValue,
   Scene,
@@ -107,7 +107,7 @@ fn calls() -> Vec<&'static str> {
   CALLS.with(|calls| calls.borrow().clone())
 }
 
-impl Platform for Reentrant {
+impl Realization for Reentrant {
   const FONT_SIZE: f32 = 16.;
 
   type Scalar = f32;

@@ -2,7 +2,7 @@
 
 use skene_foundation::{HasRun, RunBase, TextBase, View, Wraps};
 
-use crate::{ActivePlatform, LinkPolicy};
+use crate::{Active, LinkPolicy};
 
 /// A run of text on its own line.
 ///
@@ -18,7 +18,7 @@ use crate::{ActivePlatform, LinkPolicy};
 /// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
-pub struct Text(skene_foundation::Text<ActivePlatform>);
+pub struct Text(skene_foundation::Text<Active>);
 
 impl Text {
   /// Sets how the link opens and what it discloses; a link left without one follows the
@@ -28,6 +28,6 @@ impl Text {
   }
 }
 
-impl TextBase<ActivePlatform> for Text {}
+impl TextBase<Active> for Text {}
 
-impl RunBase<ActivePlatform> for Text {}
+impl RunBase<Active> for Text {}

@@ -356,10 +356,10 @@ mod tests {
       "{workspace}"
     );
     assert!(!workspace.contains("skene-simple"), "{workspace}");
-    assert!(file(&files, "core/src/lib.rs").contains("pub struct AcmeUiBadge<P: Platform>"));
+    assert!(file(&files, "core/src/lib.rs").contains("pub struct AcmeUiBadge<P: Realization>"));
     assert!(
       file(&files, "web/src/lib.rs")
-        .contains("pub struct AcmeUiBadge(acme_ui::AcmeUiBadge<ActivePlatform>);")
+        .contains("pub struct AcmeUiBadge(acme_ui::AcmeUiBadge<Active>);")
     );
     assert!(file(&files, "terminal/Cargo.toml").contains("name = \"acme-ui-terminal\""));
   }

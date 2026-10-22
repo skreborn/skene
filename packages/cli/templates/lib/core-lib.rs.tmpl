@@ -1,6 +1,6 @@
 //! The core of {name}, a skene component library: its palette, the sizes its views are
 //! drawn at in each medium's unit, and its views, written once over the
-//! [`Platform`]. A platform's crate exposes each view as a view of its own and reaches
+//! [`Realization`]. A platform's crate exposes each view as a view of its own and reaches
 //! its members through the view's `*Base` trait.
 
 use skene_foundation::{
@@ -16,7 +16,7 @@ use skene_foundation::{
   Length,
   Media,
   NodeId,
-  Platform,
+  Realization,
   RunBase,
   Scalar,
   Text,
@@ -112,11 +112,11 @@ impl {Type}Unit for u32 {
 #[doc(hidden)]
 #[derive(Debug)]
 #[must_use]
-pub struct {Type}Badge<P: Platform> {
+pub struct {Type}Badge<P: Realization> {
   label: Text<P>,
 }
 
-impl<P: Platform> {Type}Badge<P> {
+impl<P: Realization> {Type}Badge<P> {
   /// A badge reading `label`.
   pub fn new(label: impl Into<String>) -> Self {
     Self {
@@ -132,9 +132,9 @@ impl<P: Platform> {Type}Badge<P> {
   }
 }
 
-impl<P: Platform> AnyKind for {Type}Badge<P> {}
+impl<P: Realization> AnyKind for {Type}Badge<P> {}
 
-impl<P: Platform> View<P> for {Type}Badge<P>
+impl<P: Realization> View<P> for {Type}Badge<P>
 where
   P::Scalar: {Type}Unit,
   P::StyleExt: CornerRadius,
@@ -156,7 +156,7 @@ where
 }
 
 /// What a platform's badge carries.
-pub trait {Type}BadgeBase<P: Platform>: Wraps<Inner = {Type}Badge<P>> {
+pub trait {Type}BadgeBase<P: Realization>: Wraps<Inner = {Type}Badge<P>> {
   /// A badge reading `label`.
   #[must_use]
   fn new(label: impl Into<String>) -> Self {

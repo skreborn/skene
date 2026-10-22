@@ -21,7 +21,7 @@ use std::{
 };
 
 use accesskit::Toggled;
-use skene_foundation::{AnyView, KeyEvent, NodeId, Platform, Role, Scalar, Size, TreeUpdate};
+use skene_foundation::{AnyView, KeyEvent, NodeId, Realization, Role, Scalar, Size, TreeUpdate};
 
 /// A platform driven as a user drives it, for the suite [`run`] runs.
 pub trait Driver {
@@ -163,14 +163,14 @@ impl Debug for Probes {
 }
 
 /// A page of the suite: the view a scenario opens, built on the platform `P`.
-pub struct Page<P: Platform> {
+pub struct Page<P: Realization> {
   /// The name a scenario opens it by.
   pub name: &'static str,
   /// Builds the view, publishing into the probes what a scenario checks of it.
   pub build: fn(&mut Probes) -> AnyView<P>,
 }
 
-impl<P: Platform> Debug for Page<P> {
+impl<P: Realization> Debug for Page<P> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter
       .debug_struct("Page")
@@ -181,13 +181,13 @@ impl<P: Platform> Debug for Page<P> {
 
 /// Every page of the suite, on the platform `P`.
 #[must_use]
-pub fn pages<P: Platform>() -> Vec<Page<P>> {
+pub fn pages<P: Realization>() -> Vec<Page<P>> {
   scenarios::pages()
 }
 
 /// The page of the suite named `name`, on the platform `P`.
 #[must_use]
-pub fn page<P: Platform>(name: &str) -> Option<Page<P>> {
+pub fn page<P: Realization>(name: &str) -> Option<Page<P>> {
   pages().into_iter().find(|page| page.name == name)
 }
 

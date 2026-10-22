@@ -15,7 +15,7 @@ use crate::spine::{
   Line,
   NodeId,
   Plain,
-  Platform,
+  Realization,
   Resolver,
   Value,
 };
@@ -25,7 +25,7 @@ use crate::spine::{
 /// Folded into the child's own declared style before the child is created, so each
 /// takes conditions, tokens and derived values like any property.
 #[must_use]
-pub struct Annotation<P: Platform> {
+pub struct Annotation<P: Realization> {
   /// The child's flexibility in a flex container.
   pub flex: Option<Annotated<P, Flexibility<P::Scalar>>>,
   /// The child's own cross- or block-axis alignment.
@@ -42,9 +42,9 @@ pub struct Annotation<P: Platform> {
 
 /// A property value as an annotation carries it: declared under the platform's
 /// conditions.
-pub type Annotated<P, T> = Value<T, Condition<<P as Platform>::Scalar>>;
+pub type Annotated<P, T> = Value<T, Condition<<P as Realization>::Scalar>>;
 
-impl<P: Platform> Annotation<P> {
+impl<P: Realization> Annotation<P> {
   /// This annotation as a box style holding its properties and nothing else.
   pub fn into_style(self) -> DeclaredBoxStyle<P> {
     let mut style = DeclaredBoxStyle::<P>::default();
@@ -116,7 +116,7 @@ impl<P: Platform> Annotation<P> {
   }
 }
 
-impl<P: Platform> Default for Annotation<P> {
+impl<P: Realization> Default for Annotation<P> {
   #[inline(always)]
   fn default() -> Self {
     Self {
@@ -130,7 +130,7 @@ impl<P: Platform> Default for Annotation<P> {
   }
 }
 
-impl<P: Platform> Clone for Annotation<P> {
+impl<P: Realization> Clone for Annotation<P> {
   fn clone(&self) -> Self {
     Self {
       flex: self.flex.clone(),
@@ -143,7 +143,7 @@ impl<P: Platform> Clone for Annotation<P> {
   }
 }
 
-impl<P: Platform> PartialEq for Annotation<P> {
+impl<P: Realization> PartialEq for Annotation<P> {
   fn eq(&self, other: &Self) -> bool {
     self.flex == other.flex
       && self.self_alignment == other.self_alignment
@@ -154,7 +154,7 @@ impl<P: Platform> PartialEq for Annotation<P> {
   }
 }
 
-impl<P: Platform> Debug for Annotation<P> {
+impl<P: Realization> Debug for Annotation<P> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter
       .debug_struct("Annotation")
@@ -168,7 +168,7 @@ impl<P: Platform> Debug for Annotation<P> {
   }
 }
 
-impl<P: Platform> Scene<P> {
+impl<P: Realization> Scene<P> {
   /// Builds the node `build` returns under `annotation`, where there is one: the first
   /// box, control, run or low-level node `build` creates takes it, and no node built
   /// after `build` returns does.

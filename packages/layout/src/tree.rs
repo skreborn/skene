@@ -5,7 +5,7 @@
 use std::collections::VecDeque;
 
 use rustc_hash::{FxHashMap, FxHashSet};
-use skene_foundation::{NodeId, NodeMap, Platform, Point, Rect, Scene, Size};
+use skene_foundation::{NodeId, NodeMap, Point, Realization, Rect, Scene, Size};
 use taffy::{
   TaffyTree,
   prelude::{AvailableSpace, length},
@@ -494,7 +494,7 @@ impl<C: Leaf> Tree<C> {
   /// A root lays out in the viewport as an item of a flex container laying its items
   /// out along `direction`, and the open overlays beneath it are hoisted beside it, out
   /// of every flow.
-  pub fn lay_out<P: Platform>(
+  pub fn lay_out<P: Realization>(
     &mut self,
     roots: &[NodeId],
     viewport: Size<f32>,
@@ -580,7 +580,7 @@ impl<C: Leaf> Tree<C> {
   /// Returns `None` where a node's part no longer fits the place the tree holds for it
   /// (a box become a leaf or left out, a node left out come back), so the scene is laid
   /// out afresh through `lay_out`.
-  pub fn lay_out_revisited<P: Platform>(
+  pub fn lay_out_revisited<P: Realization>(
     &mut self,
     roots: &[NodeId],
     viewport: Size<f32>,
@@ -680,7 +680,7 @@ impl<C: Leaf> Tree<C> {
 
   /// The nearest node above `node` in the scene of the platform `P` that takes part in
   /// the layout.
-  fn holder<P: Platform>(&self, node: NodeId) -> Option<NodeId> {
+  fn holder<P: Realization>(&self, node: NodeId) -> Option<NodeId> {
     let mut current = Scene::<P>::read(|scene| scene.placed_parent(node));
 
     while let Some(parent) = current {
@@ -695,7 +695,7 @@ impl<C: Leaf> Tree<C> {
   }
 
   /// How many nodes lie above `node` in the scene of the platform `P`.
-  fn depth<P: Platform>(node: NodeId) -> usize {
+  fn depth<P: Realization>(node: NodeId) -> usize {
     let mut depth = 0;
     let mut current = Scene::<P>::read(|scene| scene.placed_parent(node));
 
@@ -794,7 +794,7 @@ impl<C: Leaf> Tree<C> {
 
   /// Brings `node`, whose part is `its`, in line with the scene with everything laid out
   /// beneath it, returning its taffy node; `None` where it is left out.
-  fn sync<P: Platform, F: FnMut(NodeId) -> Part<C>>(
+  fn sync<P: Realization, F: FnMut(NodeId) -> Part<C>>(
     &mut self,
     node: NodeId,
     its: Part<C>,
@@ -855,7 +855,7 @@ impl<C: Leaf> Tree<C> {
   /// Brings the children `node` places in line with the scene, returning their taffy
   /// nodes in order: a transparent one's own in its place, overlays set aside for the
   /// root.
-  fn sync_children<P: Platform, F: FnMut(NodeId) -> Part<C>>(
+  fn sync_children<P: Realization, F: FnMut(NodeId) -> Part<C>>(
     &mut self,
     node: NodeId,
     walk: &mut Walk<F, C>,

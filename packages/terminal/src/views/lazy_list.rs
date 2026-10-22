@@ -2,7 +2,7 @@
 
 use skene_foundation::{LazyColumnBase, LazyRowBase, View, Wraps};
 
-use crate::ActivePlatform;
+use crate::Active;
 
 /// A vertically scrolling column of items, only the slice in view plus an overscan
 /// margin built at any moment; the rest is empty space.
@@ -23,9 +23,9 @@ use crate::ActivePlatform;
 /// ```
 #[derive(Debug, Default, View, Wraps)]
 #[must_use]
-pub struct LazyColumn(skene_foundation::LazyColumn<ActivePlatform>);
+pub struct LazyColumn(skene_foundation::LazyColumn<Active>);
 
-impl LazyColumnBase<ActivePlatform> for LazyColumn {}
+impl LazyColumnBase<Active> for LazyColumn {}
 
 /// A horizontally scrolling row of items, only the slice in view plus an overscan
 /// margin built at any moment; the rest is empty space.
@@ -46,6 +46,6 @@ impl LazyColumnBase<ActivePlatform> for LazyColumn {}
 /// ```
 #[derive(Debug, Default, View, Wraps)]
 #[must_use]
-pub struct LazyRow(skene_foundation::LazyRow<ActivePlatform>);
+pub struct LazyRow(skene_foundation::LazyRow<Active>);
 
-impl LazyRowBase<ActivePlatform> for LazyRow {}
+impl LazyRowBase<Active> for LazyRow {}

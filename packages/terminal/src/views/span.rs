@@ -2,7 +2,7 @@
 
 use skene_foundation::{HasRun, RichTextBase, RunBase, SpanBase, View, Wraps};
 
-use crate::ActivePlatform;
+use crate::Active;
 
 /// An inline run within a [`RichText`]: text, a group of spans styled as a unit, or a
 /// view embedded among the text.
@@ -26,14 +26,14 @@ use crate::ActivePlatform;
 /// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
-pub struct Span(skene_foundation::Span<ActivePlatform>);
+pub struct Span(skene_foundation::Span<Active>);
 
-impl SpanBase<ActivePlatform> for Span {}
+impl SpanBase<Active> for Span {}
 
-impl RunBase<ActivePlatform> for Span {}
+impl RunBase<Active> for Span {}
 
 impl Span {
-  skene_foundation::properties! { run_style_mut, ActivePlatform;
+  skene_foundation::properties! { run_style_mut, Active;
     set_bold / derive_bold (bold) => ext.bold: bool, "whether the text is bold";
   }
 }
@@ -53,6 +53,6 @@ impl Span {
 /// ```
 #[derive(Debug, Default, View, Wraps)]
 #[must_use]
-pub struct RichText(skene_foundation::RichText<ActivePlatform>);
+pub struct RichText(skene_foundation::RichText<Active>);
 
-impl RichTextBase<ActivePlatform> for RichText {}
+impl RichTextBase<Active> for RichText {}

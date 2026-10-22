@@ -2,7 +2,7 @@
 
 use skene_foundation::{StackBase, View, Wraps};
 
-use crate::ActivePlatform;
+use crate::Active;
 
 /// Children overlapping in one cell, stacked in order with the last on top.
 ///
@@ -20,6 +20,6 @@ use crate::ActivePlatform;
 /// ```
 #[derive(Debug, Default, View, Wraps)]
 #[must_use]
-pub struct Stack(skene_foundation::Stack<ActivePlatform>);
+pub struct Stack(skene_foundation::Stack<Active>);
 
-impl StackBase<ActivePlatform> for Stack {}
+impl StackBase<Active> for Stack {}

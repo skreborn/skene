@@ -2,7 +2,7 @@
 
 use skene_foundation::{AnyView, ContextMenuBase, DecorationBase, NoChild, View, Wraps};
 
-use crate::ActivePlatform;
+use crate::Active;
 
 /// A context menu of [`MenuEntry`](skene_foundation::MenuEntry)s over the view it serves.
 ///
@@ -37,7 +37,7 @@ use crate::ActivePlatform;
 /// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
-pub struct ContextMenu<C = NoChild>(skene_foundation::ContextMenu<ActivePlatform, C>);
+pub struct ContextMenu<C = NoChild>(skene_foundation::ContextMenu<Active, C>);
 
 impl Default for ContextMenu {
   #[inline(always)]
@@ -46,14 +46,14 @@ impl Default for ContextMenu {
   }
 }
 
-impl ContextMenuBase<ActivePlatform> for ContextMenu {}
+impl ContextMenuBase<Active> for ContextMenu {}
 
-impl DecorationBase<ActivePlatform> for ContextMenu {}
+impl DecorationBase<Active> for ContextMenu {}
 
 impl ContextMenu {
   /// Sets the view the menu serves.
   #[inline(always)]
-  pub fn set_child(self, child: impl View<ActivePlatform>) -> ContextMenu<AnyView<ActivePlatform>> {
+  pub fn set_child(self, child: impl View<Active>) -> ContextMenu<AnyView<Active>> {
     ContextMenu(self.0.set_child(child))
   }
 }

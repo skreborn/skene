@@ -2,7 +2,7 @@
 
 use skene_foundation::{AnyView, GridCellBase, GridChild, IntoChildOf, NoChild, View, Wraps};
 
-use crate::ActivePlatform;
+use crate::Active;
 
 /// Places the child it wraps in the tracks of a [`Grid`](crate::Grid).
 ///
@@ -20,7 +20,7 @@ use crate::ActivePlatform;
 /// ```
 #[derive(Debug, Wraps)]
 #[must_use]
-pub struct GridCell<C = NoChild>(skene_foundation::GridCell<ActivePlatform, C>);
+pub struct GridCell<C = NoChild>(skene_foundation::GridCell<Active, C>);
 
 impl Default for GridCell {
   #[inline(always)]
@@ -29,19 +29,19 @@ impl Default for GridCell {
   }
 }
 
-impl GridCellBase<ActivePlatform> for GridCell {}
+impl GridCellBase<Active> for GridCell {}
 
 impl GridCell {
   /// Sets the child.
   #[inline(always)]
-  pub fn set_child(self, child: impl View<ActivePlatform>) -> GridCell<AnyView<ActivePlatform>> {
+  pub fn set_child(self, child: impl View<Active>) -> GridCell<AnyView<Active>> {
     GridCell(self.0.set_child(child))
   }
 }
 
-impl IntoChildOf<ActivePlatform, GridChild> for GridCell<AnyView<ActivePlatform>> {
+impl IntoChildOf<Active, GridChild> for GridCell<AnyView<Active>> {
   #[inline(always)]
-  fn into_child(self) -> AnyView<ActivePlatform> {
+  fn into_child(self) -> AnyView<Active> {
     self.0.into_child()
   }
 }

@@ -17,7 +17,7 @@ use skene_foundation::{
   Inset,
   NodeId,
   Part,
-  Platform,
+  Realization,
   RunBase,
   State,
   Text,
@@ -43,13 +43,13 @@ use super::{
 #[doc(hidden)]
 #[derive(Debug)]
 #[must_use]
-pub struct SimpleCheckbox<P: Platform> {
+pub struct SimpleCheckbox<P: Realization> {
   toggle: Toggle,
   label: Option<String>,
   platform: PhantomData<fn() -> P>,
 }
 
-impl<P: Platform> SimpleCheckbox<P> {
+impl<P: Realization> SimpleCheckbox<P> {
   /// An unchecked checkbox.
   #[inline(always)]
   pub fn new() -> Self {
@@ -98,16 +98,16 @@ impl<P: Platform> SimpleCheckbox<P> {
   }
 }
 
-impl<P: Platform> Default for SimpleCheckbox<P> {
+impl<P: Realization> Default for SimpleCheckbox<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<P: Platform> AnyKind for SimpleCheckbox<P> {}
+impl<P: Realization> AnyKind for SimpleCheckbox<P> {}
 
-impl<P: Platform> View<P> for SimpleCheckbox<P>
+impl<P: Realization> View<P> for SimpleCheckbox<P>
 where
   P::Scalar: SimpleUnit,
   P::StyleExt: CornerRadius,
@@ -148,7 +148,7 @@ where
 /// The drawn mark: a rounded box on the card surface that fills with the primary
 /// surface while checked and rings while focused; its check is inked in the mark's own
 /// surface until checked, so it hides on every medium.
-fn drawn_mark<P: Platform>() -> Container<P>
+fn drawn_mark<P: Realization>() -> Container<P>
 where
   P::Scalar: SimpleUnit,
   P::StyleExt: CornerRadius,
@@ -179,7 +179,7 @@ where
 }
 
 /// What a platform's `SimpleCheckbox` carries.
-pub trait SimpleCheckboxBase<P: Platform>: Wraps<Inner = SimpleCheckbox<P>> {
+pub trait SimpleCheckboxBase<P: Realization>: Wraps<Inner = SimpleCheckbox<P>> {
   /// An unchecked checkbox.
   #[must_use]
   fn new() -> Self {

@@ -2,7 +2,7 @@
 //!
 //! The terminal facade and its platform: a terminal app's single dependency, equal in
 //! standing to `skene-web`. It fixes the scalar (cells, `u32`), names the platform
-//! ([`ActivePlatform`]: [`Terminal`]) and aliases every built-in view to it, so app code names
+//! ([`Active`]: [`Terminal`]) and aliases every built-in view to it, so app code names
 //! no platform. The medium's own contribution is
 //! [`Typography`], the [`media`] module, the terminal's decoration on its decorated
 //! views (the border's glyphs, a shadow, scrollbars), the escape trait a low-level view is
@@ -137,7 +137,6 @@ pub use skene_foundation::{
   Painting,
   Part,
   PinnedBase,
-  Platform,
   PointerButton,
   PointerButtons,
   PointerEvent,
@@ -151,6 +150,7 @@ pub use skene_foundation::{
   Radio,
   RadioGroup,
   RadioGroupContext,
+  Realization,
   RichTextBase,
   Role,
   Roster,
@@ -248,9 +248,9 @@ pub use crate::{
 };
 
 /// The platform the build selected: the terminal platform, on every host target.
-pub type ActivePlatform = Terminal;
+pub type Active = Terminal;
 
-skene_foundation::facade!(ActivePlatform, u32, "cells");
+skene_foundation::facade!(Active, u32, "cells");
 
 /// Runs `future` as a task of the current scope until it finishes, the scope goes or
 /// the returned handle cancels it; once it ends it is never polled again.

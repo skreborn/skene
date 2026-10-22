@@ -14,7 +14,7 @@ use crate::{
   Leaf,
   NodeId,
   NodeKind,
-  Platform,
+  Realization,
   RunDynamics,
   RunKeyframe,
   RunPlacement,
@@ -38,30 +38,30 @@ use crate::{
 /// A text view holds one and reaches its surface through [`HasRun`](crate::HasRun),
 /// realizing it with [`build`](Self::build) or, for a group, [`build_group`](Self::build_group).
 #[must_use]
-pub struct Run<P: Platform> {
+pub struct Run<P: Realization> {
   selectable: bool,
   link: Option<String>,
   style: DeclaredRunStyle<P>,
   dynamics: RunDynamics<P::StyleExt>,
-  realizations: Vec<Realization<P>>,
+  realizations: Vec<Realize<P>>,
 }
 
-type Realization<P> = Box<dyn FnOnce(NodeId, &RunProps<P>)>;
+type Realize<P> = Box<dyn FnOnce(NodeId, &RunProps<P>)>;
 
-impl<P: Platform> std::fmt::Debug for Run<P> {
+impl<P: Realization> std::fmt::Debug for Run<P> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter.debug_struct("Run").finish_non_exhaustive()
   }
 }
 
-impl<P: Platform> Default for Run<P> {
+impl<P: Realization> Default for Run<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<P: Platform> Run<P> {
+impl<P: Realization> Run<P> {
   /// An unselectable run with no link and nothing set.
   #[inline(always)]
   pub fn new() -> Self {
@@ -266,7 +266,7 @@ impl<V: 'static> Redefinition<V> {
 
   /// Defines `redefinitions` on `node`: once when none is derived, else under a render
   /// effect following the derived leaves.
-  fn define_all<P: Platform<TokenValue = V>>(node: NodeId, redefinitions: Vec<Self>) {
+  fn define_all<P: Realization<TokenValue = V>>(node: NodeId, redefinitions: Vec<Self>) {
     if redefinitions.is_empty() {
       return;
     }

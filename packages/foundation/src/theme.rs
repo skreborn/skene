@@ -11,7 +11,7 @@ use crate::{
   NoChild,
   NodeId,
   NodeKind,
-  Platform,
+  Realization,
   Scene,
   TokenSet,
   View,
@@ -28,19 +28,19 @@ use crate::{
 /// [`set_child_builder`](Self::set_child_builder) supplies the child as a builder
 /// closure, built under the owner the context is provided on.
 #[must_use]
-pub struct Theme<P: Platform, S: TokenSet<P::TokenValue>, C = NoChild> {
+pub struct Theme<P: Realization, S: TokenSet<P::TokenValue>, C = NoChild> {
   palette: Source<S>,
   child: C,
   platform: PhantomData<fn() -> P>,
 }
 
-impl<P: Platform, S: TokenSet<P::TokenValue>, C> std::fmt::Debug for Theme<P, S, C> {
+impl<P: Realization, S: TokenSet<P::TokenValue>, C> std::fmt::Debug for Theme<P, S, C> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter.debug_struct("Theme").finish_non_exhaustive()
   }
 }
 
-impl<P: Platform, S: TokenSet<P::TokenValue>> Theme<P, S> {
+impl<P: Realization, S: TokenSet<P::TokenValue>> Theme<P, S> {
   /// A theme defining `palette`.
   #[inline(always)]
   pub fn new(palette: S) -> Self {
@@ -62,7 +62,7 @@ impl<P: Platform, S: TokenSet<P::TokenValue>> Theme<P, S> {
   }
 }
 
-impl<P: Platform, S: TokenSet<P::TokenValue>> Theme<P, S> {
+impl<P: Realization, S: TokenSet<P::TokenValue>> Theme<P, S> {
   /// Sets the child, built by `child` under the theme.
   pub fn set_child_builder<V: View<P>>(
     self,
@@ -76,9 +76,9 @@ impl<P: Platform, S: TokenSet<P::TokenValue>> Theme<P, S> {
   }
 }
 
-impl<P: Platform, S: TokenSet<P::TokenValue>, C> AnyKind for Theme<P, S, C> {}
+impl<P: Realization, S: TokenSet<P::TokenValue>, C> AnyKind for Theme<P, S, C> {}
 
-impl<P: Platform, S: TokenSet<P::TokenValue>> View<P> for Theme<P, S, ChildBuilder<P>> {
+impl<P: Realization, S: TokenSet<P::TokenValue>> View<P> for Theme<P, S, ChildBuilder<P>> {
   fn build(self) -> NodeId {
     let scope = Scene::<P>::with(|scene| scene.create(NodeKind::Scope, None));
 
@@ -122,7 +122,7 @@ impl<P: Platform, S: TokenSet<P::TokenValue>> View<P> for Theme<P, S, ChildBuild
   message = "`{Self}` is not a token set with a default on this platform",
   label = "a palette read without a theme is a `TokenSet` for the platform's token value that implements `Default`"
 )]
-pub trait ThemedIn<P: Platform>: TokenSet<P::TokenValue> + Default {
+pub trait ThemedIn<P: Realization>: TokenSet<P::TokenValue> + Default {
   /// The set the nearest theme provides, or the default without one.
   fn current() -> Self;
 
@@ -135,7 +135,7 @@ pub trait ThemedIn<P: Platform>: TokenSet<P::TokenValue> + Default {
 }
 
 #[diagnostic::do_not_recommend]
-impl<P: Platform, S: TokenSet<P::TokenValue> + Default> ThemedIn<P> for S {
+impl<P: Realization, S: TokenSet<P::TokenValue> + Default> ThemedIn<P> for S {
   #[inline(always)]
   fn current() -> Self {
     use_context::<Memo<Self>>().map_or_else(
@@ -171,7 +171,9 @@ impl<P: Platform, S: TokenSet<P::TokenValue> + Default> ThemedIn<P> for S {
 }
 
 /// The constructors of a facade's [`Theme`].
-pub trait ThemeBase<P: Platform, S: TokenSet<P::TokenValue>>: Wraps<Inner = Theme<P, S>> {
+pub trait ThemeBase<P: Realization, S: TokenSet<P::TokenValue>>:
+  Wraps<Inner = Theme<P, S>>
+{
   /// A theme defining `palette`.
   #[must_use]
   fn new(palette: S) -> Self {

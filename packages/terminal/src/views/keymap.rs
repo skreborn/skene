@@ -2,7 +2,7 @@
 
 use skene_foundation::{AnyView, KeymapBase, NoChild, View, Wraps};
 
-use crate::ActivePlatform;
+use crate::Active;
 
 /// Keyboard shortcuts over the one view they serve.
 ///
@@ -24,7 +24,7 @@ use crate::ActivePlatform;
 /// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
-pub struct Keymap<C = NoChild>(skene_foundation::Keymap<ActivePlatform, C>);
+pub struct Keymap<C = NoChild>(skene_foundation::Keymap<Active, C>);
 
 impl Default for Keymap {
   #[inline(always)]
@@ -33,12 +33,12 @@ impl Default for Keymap {
   }
 }
 
-impl KeymapBase<ActivePlatform> for Keymap {}
+impl KeymapBase<Active> for Keymap {}
 
 impl Keymap {
   /// Sets the view the keymap serves.
   #[inline(always)]
-  pub fn set_child(self, child: impl View<ActivePlatform>) -> Keymap<AnyView<ActivePlatform>> {
+  pub fn set_child(self, child: impl View<Active>) -> Keymap<AnyView<Active>> {
     Keymap(self.0.set_child(child))
   }
 }

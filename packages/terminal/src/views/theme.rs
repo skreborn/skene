@@ -2,7 +2,7 @@
 
 use skene_foundation::{ChildBuilder, NoChild, ThemeBase, TokenSet, View, Wraps};
 
-use crate::{ActivePlatform, TokenValue};
+use crate::{Active, TokenValue};
 
 /// Defines the token set `S` for everything beneath it.
 ///
@@ -22,19 +22,17 @@ use crate::{ActivePlatform, TokenValue};
 /// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
-pub struct Theme<S: TokenSet<TokenValue>, C = NoChild>(
-  skene_foundation::Theme<ActivePlatform, S, C>,
-);
+pub struct Theme<S: TokenSet<TokenValue>, C = NoChild>(skene_foundation::Theme<Active, S, C>);
 
-impl<S: TokenSet<TokenValue>> ThemeBase<ActivePlatform, S> for Theme<S> {}
+impl<S: TokenSet<TokenValue>> ThemeBase<Active, S> for Theme<S> {}
 
 impl<S: TokenSet<TokenValue>> Theme<S> {
   /// Sets the child, built by `child` under the theme.
   #[inline(always)]
-  pub fn set_child_builder<V: View<ActivePlatform>>(
+  pub fn set_child_builder<V: View<Active>>(
     self,
     child: impl FnOnce() -> V + 'static,
-  ) -> Theme<S, ChildBuilder<ActivePlatform>> {
+  ) -> Theme<S, ChildBuilder<Active>> {
     Theme(self.0.set_child_builder(child))
   }
 }

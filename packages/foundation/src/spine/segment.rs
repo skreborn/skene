@@ -2,7 +2,7 @@
 
 use skene_reactive::Owner;
 
-use super::{Annotation, NodeId, Platform, Scene};
+use super::{Annotation, NodeId, Realization, Scene};
 
 /// Content between a pair of anchors, standing among its parent's children as the
 /// content itself: what a view whose content changes in place builds on.
@@ -12,12 +12,12 @@ use super::{Annotation, NodeId, Platform, Scene};
 /// or taken out live, and paused while it stands apart where its view wants; a piece's
 /// nodes are destroyed with its scope.
 #[must_use]
-pub struct Segment<P: Platform> {
+pub struct Segment<P: Realization> {
   start: NodeId,
   annotation: Option<Annotation<P>>,
 }
 
-impl<P: Platform> std::fmt::Debug for Segment<P> {
+impl<P: Realization> std::fmt::Debug for Segment<P> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter
       .debug_struct("Segment")
@@ -26,7 +26,7 @@ impl<P: Platform> std::fmt::Debug for Segment<P> {
   }
 }
 
-impl<P: Platform> Segment<P> {
+impl<P: Realization> Segment<P> {
   /// An empty, detached segment, taking the annotation pending for the view making it.
   pub fn new() -> Self {
     let (start, _) = Scene::<P>::create_segment();
@@ -71,7 +71,7 @@ impl<P: Platform> Segment<P> {
   }
 }
 
-impl<P: Platform> Default for Segment<P> {
+impl<P: Realization> Default for Segment<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()

@@ -10,7 +10,7 @@
 use std::cell::RefCell;
 
 use skene_conformance::Probes;
-use skene_web::{ActivePlatform, AnyView, Platform, head, main};
+use skene_web::{Active, AnyView, Realization, head, main};
 
 thread_local! {
   /// What the page the app built publishes, once it is built.
@@ -25,9 +25,9 @@ thread_local! {
 /// Panics where the path names no page of the suite.
 #[main]
 fn app() -> AnyView {
-  let path = ActivePlatform::current_path().unwrap_or_default();
+  let path = Active::current_path().unwrap_or_default();
   let name = path.trim_start_matches('/');
-  let page = skene_conformance::page::<ActivePlatform>(name)
+  let page = skene_conformance::page::<Active>(name)
     .unwrap_or_else(|| panic!("no page of the suite is named {name:?}"));
   let mut probes = Probes::default();
 

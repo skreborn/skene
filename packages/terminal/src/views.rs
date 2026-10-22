@@ -69,7 +69,7 @@ pub use self::{
 /// returns: the glyphs its border draws with, the shadow it casts and its scrollbars.
 macro_rules! terminal_decoration {
   ($access:ident) => {
-    ::skene_foundation::properties! { $access, crate::ActivePlatform;
+    ::skene_foundation::properties! { $access, crate::Active;
       set_border_glyphs / derive_border_glyphs (glyphs) => ext.border_glyphs: ::skene_foundation::terminal::BorderGlyphs,
         "the characters the border draws with";
       set_shadow / derive_shadow (shadow) => ext.shadow: ::skene_foundation::Color,

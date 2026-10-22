@@ -22,7 +22,7 @@ use crate::{
   Overlay,
   Part,
   Placement,
-  Platform,
+  Realization,
   RunBase,
   Scene,
   StyleExtension,
@@ -43,7 +43,7 @@ pub const TOOLTIP_DELAY: Duration = Duration::from_millis(500);
 pub const TOOLTIP_GRACE: Duration = Duration::from_millis(300);
 
 /// What a tooltip shows: text, or a view.
-enum Content<P: Platform> {
+enum Content<P: Realization> {
   Text(Source<String>),
   View(AnyView<P>),
 }
@@ -61,7 +61,7 @@ enum Content<P: Platform> {
 /// anchored overlay's [placement](Self::set_placement) puts it. Holds [`NoChild`] until
 /// [`set_child`](Self::set_child) supplies the view it describes.
 #[must_use]
-pub struct Tooltip<P: Platform, C = NoChild> {
+pub struct Tooltip<P: Realization, C = NoChild> {
   content: Content<P>,
   text_color: Option<Value<Color, Condition<P::Scalar>>>,
   placement: Placement,
@@ -70,13 +70,13 @@ pub struct Tooltip<P: Platform, C = NoChild> {
   child: C,
 }
 
-impl<P: Platform, C> std::fmt::Debug for Tooltip<P, C> {
+impl<P: Realization, C> std::fmt::Debug for Tooltip<P, C> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter.debug_struct("Tooltip").finish_non_exhaustive()
   }
 }
 
-impl<P: Platform> Tooltip<P> {
+impl<P: Realization> Tooltip<P> {
   fn with(content: Content<P>) -> Self {
     Self {
       content,
@@ -116,7 +116,7 @@ impl<P: Platform> Tooltip<P> {
   }
 }
 
-impl<P: Platform> Tooltip<P> {
+impl<P: Realization> Tooltip<P> {
   /// Sets the color of a text tooltip's text; a view tooltip inks its own.
   pub fn set_text_color(mut self, color: impl Into<Value<Color, Condition<P::Scalar>>>) -> Self {
     self.text_color = Some(color.into());
@@ -155,23 +155,28 @@ impl<P: Platform> Tooltip<P> {
   }
 }
 
-impl<P: Platform> HasBoxStyle<P> for Tooltip<P> {
+impl<P: Realization> HasBoxStyle<P> for Tooltip<P> {
   #[inline(always)]
   fn box_style_mut(&mut self) -> &mut DeclaredBoxStyle<P> {
     self.bubble.box_style_mut()
   }
 }
 
-impl<P: Platform> DecorationBase<P> for Tooltip<P> {}
+impl<P: Realization> DecorationBase<P> for Tooltip<P> {}
 
-impl<P: Platform, C> AnyKind for Tooltip<P, C> {}
+impl<P: Realization, C> AnyKind for Tooltip<P, C> {}
 
 /// Registers what opens and closes `bubble`, describing `node`: a pointer resting on
 /// the node for `delay` or focus that shows reaching it writes `open`; the pointer
 /// leaving the node or the bubble clears it after [`TOOLTIP_GRACE`] unless it reaches
 /// either first, and the focus leaving clears it at once. Each cancels what is pending,
 /// as the view's disposal does.
-fn bind_triggers<P: Platform>(node: NodeId, bubble: NodeId, open: Signal<bool>, delay: Duration) {
+fn bind_triggers<P: Realization>(
+  node: NodeId,
+  bubble: NodeId,
+  open: Signal<bool>,
+  delay: Duration,
+) {
   let pending: Rc<Cell<Option<Timer>>> = Rc::new(Cell::new(None));
   let cancel: Rc<dyn Fn()> = Rc::new({
     let pending = Rc::clone(&pending);
@@ -237,7 +242,7 @@ fn bind_triggers<P: Platform>(node: NodeId, bubble: NodeId, open: Signal<bool>, 
   });
 }
 
-impl<P: Platform> View<P> for Tooltip<P, AnyView<P>> {
+impl<P: Realization> View<P> for Tooltip<P, AnyView<P>> {
   fn build(self) -> NodeId {
     let Self {
       content,
@@ -302,7 +307,7 @@ impl<P: Platform> View<P> for Tooltip<P, AnyView<P>> {
 /// Describes the node holding focus within `node` by `bubble` and its `text`, where it
 /// has one: the node found as the tooltip builds, then the one focus reaches, so a
 /// description follows content rebuilt in place.
-fn bind_description<P: Platform>(node: NodeId, bubble: NodeId, text: Option<Source<String>>) {
+fn bind_description<P: Realization>(node: NodeId, bubble: NodeId, text: Option<Source<String>>) {
   let report: Rc<dyn Fn() -> Vec<AccessProp>> = match text {
     None => Rc::new(move || vec![AccessProp::DescribedBy(vec![bubble])]),
     Some(Source::Fixed(text)) => Rc::new(move || {
@@ -347,7 +352,7 @@ fn bind_description<P: Platform>(node: NodeId, bubble: NodeId, text: Option<Sour
 /// What a facade's [`Tooltip`] carries beyond its bubble's decoration.
 ///
 /// Its constructors, its text color, its motion, its placement and its delay.
-pub trait TooltipBase<P: Platform>: Wraps<Inner = Tooltip<P>> {
+pub trait TooltipBase<P: Realization>: Wraps<Inner = Tooltip<P>> {
   /// A tooltip showing `text`.
   #[must_use]
   fn new(text: impl Into<String>) -> Self {

@@ -2,7 +2,7 @@
 
 use skene_foundation::{View, Wraps};
 use skene_simple::SimpleTextEditorBase;
-use skene_web::ActivePlatform;
+use skene_web::Active;
 
 /// A ready-made multi-line text editor: full-width field chrome whose hairline border
 /// becomes the ring while focused, showing several lines at once.
@@ -22,6 +22,6 @@ use skene_web::ActivePlatform;
 /// ```
 #[derive(Debug, Default, View, Wraps)]
 #[must_use]
-pub struct SimpleTextEditor(skene_simple::SimpleTextEditor<ActivePlatform>);
+pub struct SimpleTextEditor(skene_simple::SimpleTextEditor<Active>);
 
-impl SimpleTextEditorBase<ActivePlatform> for SimpleTextEditor {}
+impl SimpleTextEditorBase<Active> for SimpleTextEditor {}

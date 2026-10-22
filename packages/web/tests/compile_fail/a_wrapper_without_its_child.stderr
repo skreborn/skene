@@ -11,8 +11,8 @@ help: the trait `IntoChildOf<Headless, skene_foundation::spine::view::FlexChild>
       but it is implemented for `Flexible<skene_foundation::spine::view::AnyView<Headless>>`
  --> src/views/flexible.rs
   |
-  | impl IntoChildOf<ActivePlatform, FlexChild> for Flexible<AnyView<ActivePlatform>> {
-  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  | impl IntoChildOf<Active, FlexChild> for Flexible<AnyView<Active>> {
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   = help: for that trait implementation, expected `skene_foundation::spine::view::AnyView<Headless>`, found `NoChild`
   = note: required for `(skene_web::Flexible,)` to implement `IntoChildren<Headless, skene_foundation::spine::view::FlexChild>`
 note: required by a bound in `set_children`

@@ -25,8 +25,8 @@ use crate::{
   Placement,
   PlainChild,
   PlainHandler,
-  Platform,
   Point,
+  Realization,
   Role,
   Scene,
   View,
@@ -53,7 +53,7 @@ fn modal_backdrop() -> Color {
 /// inside the content survives. Its content box is decorated like a container. Holds
 /// [`NoChild`] until [`set_child`](Self::set_child) supplies the content.
 #[must_use]
-pub struct Overlay<P: Platform, C = NoChild> {
+pub struct Overlay<P: Realization, C = NoChild> {
   modal: bool,
   hint: bool,
   placement: Source<Placement>,
@@ -66,13 +66,13 @@ pub struct Overlay<P: Platform, C = NoChild> {
   child: C,
 }
 
-impl<P: Platform, C> std::fmt::Debug for Overlay<P, C> {
+impl<P: Realization, C> std::fmt::Debug for Overlay<P, C> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter.debug_struct("Overlay").finish_non_exhaustive()
   }
 }
 
-impl<P: Platform> Overlay<P> {
+impl<P: Realization> Overlay<P> {
   fn new(modal: bool, hint: bool) -> Self {
     Self {
       modal,
@@ -124,7 +124,7 @@ impl<P: Platform> Overlay<P> {
   }
 }
 
-impl<P: Platform> Overlay<P> {
+impl<P: Realization> Overlay<P> {
   crate::forward! { inner;
     /// Sets the overlay's accessible name, where no heading inside names it.
     fn set_label(label: impl Into<String>);
@@ -217,14 +217,14 @@ impl<P: Platform> Overlay<P> {
   }
 }
 
-impl<P: Platform> HasBoxStyle<P> for Overlay<P> {
+impl<P: Realization> HasBoxStyle<P> for Overlay<P> {
   #[inline(always)]
   fn box_style_mut(&mut self) -> &mut DeclaredBoxStyle<P> {
     self.inner.style_mut()
   }
 }
 
-impl<P: Platform> HasLayoutBox<P> for Overlay<P> {
+impl<P: Realization> HasLayoutBox<P> for Overlay<P> {
   type Kind = PlainChild;
 
   #[inline(always)]
@@ -239,13 +239,13 @@ impl<P: Platform> HasLayoutBox<P> for Overlay<P> {
   }
 }
 
-impl<P: Platform> DecorationBase<P> for Overlay<P> {}
+impl<P: Realization> DecorationBase<P> for Overlay<P> {}
 
-impl<P: Platform> MotionBase<P> for Overlay<P> {}
+impl<P: Realization> MotionBase<P> for Overlay<P> {}
 
-impl<P: Platform, C> AnyKind for Overlay<P, C> {}
+impl<P: Realization, C> AnyKind for Overlay<P, C> {}
 
-impl<P: Platform> View<P> for Overlay<P, AnyView<P>> {
+impl<P: Realization> View<P> for Overlay<P, AnyView<P>> {
   fn build(self) -> NodeId {
     let Self {
       modal,
@@ -318,7 +318,7 @@ impl<P: Platform> View<P> for Overlay<P, AnyView<P>> {
 /// What a facade's [`Overlay`] carries beyond its content box's decoration and motion.
 ///
 /// Its constructors, what names it, where it sits and whether it is open.
-pub trait OverlayBase<P: Platform>: Wraps<Inner = Overlay<P>> {
+pub trait OverlayBase<P: Realization>: Wraps<Inner = Overlay<P>> {
   /// A modal: focus trapped, interaction beneath blocked, a backdrop painted.
   #[must_use]
   fn modal() -> Self {

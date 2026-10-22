@@ -1,12 +1,12 @@
 //! The web platform: [`Web`], its escape traits and its seams beyond the
-//! [`Platform`](skene_foundation::Platform) trait.
+//! [`Realization`](skene_foundation::Realization) trait.
 //!
 //! For a library author writing a view directly against the browser DOM or the server's
 //! markup. The browser leaf (`skene_web_platform = "browser"`) realizes against a live
 //! DOM and the server leaf (`skene_web_platform = "server"`) against a string tree,
 //! both emitting the same web semantics, so a node styled the same way gets the same
 //! content-addressed class on either leaf and a served page hydrates in place. Each
-//! leaf implements [`Platform`](skene_foundation::Platform) and
+//! leaf implements [`Realization`](skene_foundation::Realization) and
 //! [`WebHydration`](skene_foundation::web::WebHydration) for [`Web`] and exposes its
 //! own entry points beside them: the executor (`drive`), the document head and the path
 //! (the browser's history, the server's request).
@@ -92,7 +92,7 @@ pub use crate::{
 /// The web platform: zero-sized, implementing the portable vocabulary over the DOM in the
 /// browser and over a string tree on the server.
 ///
-/// Lengths are logical pixels ([`Scalar`](skene_foundation::Platform::Scalar) `f32`), the
+/// Lengths are logical pixels ([`Scalar`](skene_foundation::Realization::Scalar) `f32`), the
 /// style extension is [`WebStyle`](skene_foundation::web::WebStyle), and a token is a
 /// [`WebTokenValue`].
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]

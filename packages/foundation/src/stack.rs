@@ -13,7 +13,7 @@ use crate::{
   Layout,
   LayoutBox,
   NodeId,
-  Platform,
+  Realization,
   Seal,
   StackChild,
   StaticLeaf,
@@ -30,18 +30,18 @@ use crate::{
 /// the alignment puts it.
 #[derive(Debug)]
 #[must_use]
-pub struct Stack<P: Platform> {
+pub struct Stack<P: Realization> {
   inner: LayoutBox<P, StackChild>,
 }
 
-impl<P: Platform> Default for Stack<P> {
+impl<P: Realization> Default for Stack<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<P: Platform> Stack<P> {
+impl<P: Realization> Stack<P> {
   /// An empty stack.
   #[inline(always)]
   pub fn new() -> Self {
@@ -51,7 +51,7 @@ impl<P: Platform> Stack<P> {
   }
 }
 
-impl<P: Platform> HasChildren<P> for Stack<P> {
+impl<P: Realization> HasChildren<P> for Stack<P> {
   type Kind = StackChild;
 
   #[inline(always)]
@@ -60,23 +60,23 @@ impl<P: Platform> HasChildren<P> for Stack<P> {
   }
 }
 
-impl<P: Platform> AnyKind for Stack<P> {}
+impl<P: Realization> AnyKind for Stack<P> {}
 
-impl<P: Platform> View<P> for Stack<P> {
+impl<P: Realization> View<P> for Stack<P> {
   #[inline(always)]
   fn build(self) -> NodeId {
     self.inner.build()
   }
 }
 
-impl<P: Platform> HasBoxStyle<P> for Stack<P> {
+impl<P: Realization> HasBoxStyle<P> for Stack<P> {
   #[inline(always)]
   fn box_style_mut(&mut self) -> &mut DeclaredBoxStyle<P> {
     self.inner.style_mut()
   }
 }
 
-impl<P: Platform> HasLayoutBox<P> for Stack<P> {
+impl<P: Realization> HasLayoutBox<P> for Stack<P> {
   type Kind = StackChild;
 
   #[inline(always)]
@@ -90,12 +90,12 @@ impl<P: Platform> HasLayoutBox<P> for Stack<P> {
   }
 }
 
-impl<P: Platform> StackBase<P> for Stack<P> {}
+impl<P: Realization> StackBase<P> for Stack<P> {}
 
 /// What a [`Stack`] carries, with its constructor on a facade's newtype.
 ///
 /// The inset around its children and the alignment of the unpinned ones.
-pub trait StackBase<P: Platform>: HasBoxStyle<P> + HasLayoutBox<P, Kind = StackChild> {
+pub trait StackBase<P: Realization>: HasBoxStyle<P> + HasLayoutBox<P, Kind = StackChild> {
   /// An empty stack.
   #[must_use]
   fn new() -> Self

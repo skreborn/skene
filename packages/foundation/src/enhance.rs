@@ -10,7 +10,7 @@ use crate::{
   AnyView,
   NoChild,
   NodeId,
-  Platform,
+  Realization,
   Scene,
   View,
   Wraps,
@@ -35,13 +35,13 @@ use crate::{
 /// [`Painting::available`](crate::Painting::available) for a painted box's pixels.
 #[derive(Debug)]
 #[must_use]
-pub struct Enhance<P: Platform, C = NoChild> {
+pub struct Enhance<P: Realization, C = NoChild> {
   live: ReadSignal<bool>,
   fallback: Option<ChildBuilder<P>>,
   child: C,
 }
 
-impl<P: Platform> Enhance<P> {
+impl<P: Realization> Enhance<P> {
   /// An enhancement waiting on `live`, with no forms yet.
   #[inline(always)]
   pub const fn new(live: ReadSignal<bool>) -> Self {
@@ -53,7 +53,7 @@ impl<P: Platform> Enhance<P> {
   }
 }
 
-impl<P: Platform> Enhance<P> {
+impl<P: Realization> Enhance<P> {
   /// Sets the form built while `live` is false; nothing by default.
   pub fn set_fallback_builder<V: View<P>>(
     mut self,
@@ -77,9 +77,9 @@ impl<P: Platform> Enhance<P> {
   }
 }
 
-impl<P: Platform, C> AnyKind for Enhance<P, C> {}
+impl<P: Realization, C> AnyKind for Enhance<P, C> {}
 
-impl<P: Platform> View<P> for Enhance<P, ChildBuilder<P>> {
+impl<P: Realization> View<P> for Enhance<P, ChildBuilder<P>> {
   fn build(self) -> NodeId {
     let signal = self.live;
     let live = Memo::new(move |_| signal.get());
@@ -108,7 +108,7 @@ impl<P: Platform> View<P> for Enhance<P, ChildBuilder<P>> {
 }
 
 /// What a facade's [`Enhance`] carries: its constructor and its fallback.
-pub trait EnhanceBase<P: Platform>: Wraps<Inner = Enhance<P>> {
+pub trait EnhanceBase<P: Realization>: Wraps<Inner = Enhance<P>> {
   /// An enhancement waiting on `live`, with no forms yet.
   #[must_use]
   fn new(live: ReadSignal<bool>) -> Self {

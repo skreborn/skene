@@ -2,7 +2,7 @@
 
 use skene_foundation::{AnyView, NoChild, View, Wraps};
 use skene_simple::SimpleContextMenuBase;
-use skene_web::ActivePlatform;
+use skene_web::Active;
 
 /// A ready-made context menu.
 ///
@@ -25,7 +25,7 @@ use skene_web::ActivePlatform;
 /// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
-pub struct SimpleContextMenu<C = NoChild>(skene_simple::SimpleContextMenu<ActivePlatform, C>);
+pub struct SimpleContextMenu<C = NoChild>(skene_simple::SimpleContextMenu<Active, C>);
 
 impl Default for SimpleContextMenu {
   #[inline(always)]
@@ -34,15 +34,12 @@ impl Default for SimpleContextMenu {
   }
 }
 
-impl SimpleContextMenuBase<ActivePlatform> for SimpleContextMenu {}
+impl SimpleContextMenuBase<Active> for SimpleContextMenu {}
 
 impl SimpleContextMenu {
   /// Sets the view the menu serves.
   #[inline(always)]
-  pub fn set_child(
-    self,
-    child: impl View<ActivePlatform>,
-  ) -> SimpleContextMenu<AnyView<ActivePlatform>> {
+  pub fn set_child(self, child: impl View<Active>) -> SimpleContextMenu<AnyView<Active>> {
     SimpleContextMenu(self.0.set_child(child))
   }
 }

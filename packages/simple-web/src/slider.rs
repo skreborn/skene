@@ -2,7 +2,7 @@
 
 use skene_foundation::{View, Wraps};
 use skene_simple::SimpleSliderBase;
-use skene_web::ActivePlatform;
+use skene_web::Active;
 
 /// A ready-made slider: a track on the secondary surface, the run filled to the value
 /// in the primary surface, and a thumb that rings while focused.
@@ -26,6 +26,6 @@ use skene_web::ActivePlatform;
 /// ```
 #[derive(Debug, Default, View, Wraps)]
 #[must_use]
-pub struct SimpleSlider(skene_simple::SimpleSlider<ActivePlatform>);
+pub struct SimpleSlider(skene_simple::SimpleSlider<Active>);
 
-impl SimpleSliderBase<ActivePlatform> for SimpleSlider {}
+impl SimpleSliderBase<Active> for SimpleSlider {}

@@ -5,7 +5,7 @@ use skene_reactive::ReadSignal;
 pub use vello_cpu::{PaintType, kurbo, peniko};
 use vello_cpu::{Pixmap, RenderContext, Resources};
 
-use crate::{Color, NodeId, Platform, Size};
+use crate::{Color, NodeId, Realization, Size};
 
 /// The surface a paint callback draws on: a vello scene the size of the box, in device
 /// pixels, recorded once and replayed into the platform's renderer once the callback
@@ -227,7 +227,7 @@ pub type Painter = dyn Fn(&mut Canvas, Size<f32>);
   message = "`{Self}` does not paint",
   label = "a painted view is written against a platform implementing `Painting`"
 )]
-pub trait Painting: Platform {
+pub trait Painting: Realization {
   /// Paints `painter` into the box `node` at its laid-out size, now and whenever the
   /// box repaints; a later call replaces the painter.
   fn paint(node: NodeId, painter: Box<Painter>);

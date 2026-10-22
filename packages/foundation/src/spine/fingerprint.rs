@@ -9,9 +9,9 @@ use super::{
   Conditional,
   IntoBoxValue,
   IntoRunValue,
+  KeptLeaf,
   Keyframe,
   Plain,
-  PlatformLeaf,
   PropertyKey,
   PropertyName,
   RunDynamics,
@@ -255,7 +255,7 @@ impl<T: Fingerprint> Fingerprint for StaticLeaf<T> {
   }
 }
 
-impl<T: Fingerprint> Fingerprint for PlatformLeaf<T> {
+impl<T: Fingerprint> Fingerprint for KeptLeaf<T> {
   fn fingerprint<H: Hasher>(&self, state: &mut H) {
     std::mem::discriminant(self).hash(state);
 
@@ -341,7 +341,7 @@ impl<
   fn value<T: IntoBoxValue<N, X>>(
     &mut self,
     key: PropertyKey<X::Property>,
-    value: &Option<Conditional<PlatformLeaf<T>, C>>,
+    value: &Option<Conditional<KeptLeaf<T>, C>>,
   ) {
     key.hash(self.state);
     value.fingerprint(self.state);
@@ -383,7 +383,7 @@ impl<C: Clone + PartialEq + Hash + std::fmt::Debug + 'static, X: StyleExtension,
   fn value<T: IntoRunValue<X>>(
     &mut self,
     key: PropertyKey<X::Property>,
-    value: &Option<Conditional<PlatformLeaf<T>, C>>,
+    value: &Option<Conditional<KeptLeaf<T>, C>>,
   ) {
     key.hash(self.state);
     value.fingerprint(self.state);

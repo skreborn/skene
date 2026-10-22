@@ -2,7 +2,7 @@
 
 use skene_foundation::{AnyView, NoChild, View, Wraps};
 use skene_simple::SimpleTooltipBase;
-use skene_terminal::ActivePlatform;
+use skene_terminal::Active;
 
 /// A ready-made tooltip: a bubble in the foreground color carrying its text in the
 /// background color, above the view it describes, opening after the standard delay on
@@ -21,17 +21,14 @@ use skene_terminal::ActivePlatform;
 /// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
-pub struct SimpleTooltip<C = NoChild>(skene_simple::SimpleTooltip<ActivePlatform, C>);
+pub struct SimpleTooltip<C = NoChild>(skene_simple::SimpleTooltip<Active, C>);
 
-impl SimpleTooltipBase<ActivePlatform> for SimpleTooltip {}
+impl SimpleTooltipBase<Active> for SimpleTooltip {}
 
 impl SimpleTooltip {
   /// Sets the view the tooltip describes.
   #[inline(always)]
-  pub fn set_child(
-    self,
-    child: impl View<ActivePlatform>,
-  ) -> SimpleTooltip<AnyView<ActivePlatform>> {
+  pub fn set_child(self, child: impl View<Active>) -> SimpleTooltip<AnyView<Active>> {
     SimpleTooltip(self.0.set_child(child))
   }
 }

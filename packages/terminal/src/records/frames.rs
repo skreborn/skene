@@ -96,7 +96,7 @@ impl Records {
 mod tests {
   use std::time::Duration;
 
-  use skene_foundation::Platform as _;
+  use skene_foundation::Realization as _;
 
   use crate::{Terminal, with_records};
 

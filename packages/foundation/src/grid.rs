@@ -19,7 +19,7 @@ use crate::{
   LayoutBox,
   Leaf,
   NodeId,
-  Platform,
+  Realization,
   Seal,
   Spacing,
   StaticLeaf,
@@ -36,18 +36,18 @@ use crate::{
 /// [`GridCell`](crate::GridCell) wrapper as a child.
 #[derive(Debug)]
 #[must_use]
-pub struct Grid<P: Platform> {
+pub struct Grid<P: Realization> {
   inner: LayoutBox<P, GridChild>,
 }
 
-impl<P: Platform> Default for Grid<P> {
+impl<P: Realization> Default for Grid<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<P: Platform> Grid<P> {
+impl<P: Realization> Grid<P> {
   /// A grid with no explicit tracks.
   #[inline(always)]
   pub fn new() -> Self {
@@ -72,7 +72,7 @@ impl<P: Platform> Grid<P> {
   }
 }
 
-impl<P: Platform> HasChildren<P> for Grid<P> {
+impl<P: Realization> HasChildren<P> for Grid<P> {
   type Kind = GridChild;
 
   #[inline(always)]
@@ -81,30 +81,30 @@ impl<P: Platform> HasChildren<P> for Grid<P> {
   }
 }
 
-impl<P: Platform> AnyKind for Grid<P> {}
+impl<P: Realization> AnyKind for Grid<P> {}
 
-impl<P: Platform> View<P> for Grid<P> {
+impl<P: Realization> View<P> for Grid<P> {
   #[inline(always)]
   fn build(self) -> NodeId {
     self.inner.build()
   }
 }
 
-impl<P: Platform> HasBoxStyle<P> for Grid<P> {
+impl<P: Realization> HasBoxStyle<P> for Grid<P> {
   #[inline(always)]
   fn box_style_mut(&mut self) -> &mut DeclaredBoxStyle<P> {
     self.inner.style_mut()
   }
 }
 
-impl<P: Platform> GridBase<P> for Grid<P> {}
+impl<P: Realization> GridBase<P> for Grid<P> {}
 
 /// What a [`Grid`] carries, with its constructors on a facade's newtype.
 ///
 /// The inset around its children, the spacing and arrangement of its tracks, the tracks
 /// themselves, the areas over its cells, how it places children and how it aligns each in
 /// its cell.
-pub trait GridBase<P: Platform>: HasBoxStyle<P> + Sized {
+pub trait GridBase<P: Realization>: HasBoxStyle<P> + Sized {
   /// A grid with no explicit tracks.
   #[must_use]
   fn new() -> Self

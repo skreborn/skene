@@ -2,7 +2,7 @@
 
 use skene_foundation::{ChildBuilder, NoChild, View, Wraps, web::DeferredBase};
 
-use crate::ActivePlatform;
+use crate::Active;
 
 /// A subtree whose async work the server settles apart from the shell's and streams
 /// in place once it does.
@@ -24,18 +24,18 @@ use crate::ActivePlatform;
 /// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
-pub struct Deferred<C = NoChild>(skene_foundation::web::Deferred<ActivePlatform, C>);
+pub struct Deferred<C = NoChild>(skene_foundation::web::Deferred<Active, C>);
 
-impl DeferredBase<ActivePlatform> for Deferred {}
+impl DeferredBase<Active> for Deferred {}
 
 impl Deferred {
   /// Sets the content, built by `content`: its async work reports to a boundary of its
   /// own, and a streaming render flushes the surrounding page before it settles.
   #[inline(always)]
-  pub fn set_child_builder<V: View<ActivePlatform>>(
+  pub fn set_child_builder<V: View<Active>>(
     self,
     content: impl FnOnce() -> V + 'static,
-  ) -> Deferred<ChildBuilder<ActivePlatform>> {
+  ) -> Deferred<ChildBuilder<Active>> {
     Deferred(self.0.set_child_builder(content))
   }
 }

@@ -7,7 +7,7 @@ use skene_foundation::{
   BasicTextEditor,
   CornerRadius,
   NodeId,
-  Platform,
+  Realization,
   TextEntry,
   View,
   Wraps,
@@ -27,13 +27,13 @@ const LINES: u16 = 3;
 #[doc(hidden)]
 #[derive(Debug)]
 #[must_use]
-pub struct SimpleTextEditor<P: Platform> {
+pub struct SimpleTextEditor<P: Realization> {
   entry: TextEntry,
   label: Option<String>,
   platform: PhantomData<fn() -> P>,
 }
 
-impl<P: Platform> SimpleTextEditor<P> {
+impl<P: Realization> SimpleTextEditor<P> {
   /// An empty editor showing three lines.
   #[inline(always)]
   pub fn new() -> Self {
@@ -96,16 +96,16 @@ impl<P: Platform> SimpleTextEditor<P> {
   }
 }
 
-impl<P: Platform> Default for SimpleTextEditor<P> {
+impl<P: Realization> Default for SimpleTextEditor<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<P: Platform> AnyKind for SimpleTextEditor<P> {}
+impl<P: Realization> AnyKind for SimpleTextEditor<P> {}
 
-impl<P: Platform> View<P> for SimpleTextEditor<P>
+impl<P: Realization> View<P> for SimpleTextEditor<P>
 where
   P::Scalar: SimpleUnit,
   P::StyleExt: CornerRadius,
@@ -124,7 +124,7 @@ where
 }
 
 /// What a platform's `SimpleTextEditor` carries.
-pub trait SimpleTextEditorBase<P: Platform>: Wraps<Inner = SimpleTextEditor<P>> {
+pub trait SimpleTextEditorBase<P: Realization>: Wraps<Inner = SimpleTextEditor<P>> {
   /// An empty editor showing three lines.
   #[must_use]
   fn new() -> Self {

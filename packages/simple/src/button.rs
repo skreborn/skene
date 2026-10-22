@@ -17,8 +17,8 @@ use skene_foundation::{
   Label,
   MotionBase,
   NodeId,
-  Platform,
   Property,
+  Realization,
   Scene,
   State,
   Text,
@@ -52,7 +52,7 @@ const SURFACE_SETTLE: f32 = 0.15;
 const FOCUS: TokenRef<Color> = TokenRef::new("simple-look-focus");
 
 /// What a button draws: its label's text, or a view in its place.
-enum Content<P: Platform> {
+enum Content<P: Realization> {
   Text(Source<String>),
   View(AnyView<P>),
 }
@@ -68,14 +68,14 @@ enum Content<P: Platform> {
 /// [`BasicButton`] directly.
 #[doc(hidden)]
 #[must_use]
-pub struct SimpleButton<P: Platform> {
+pub struct SimpleButton<P: Realization> {
   raw: BasicButton<P>,
   content: Content<P>,
   variant: Source<SimpleVariant>,
   disabled: Source<bool>,
 }
 
-impl<P: Platform> std::fmt::Debug for SimpleButton<P> {
+impl<P: Realization> std::fmt::Debug for SimpleButton<P> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter
       .debug_struct("SimpleButton")
@@ -83,7 +83,7 @@ impl<P: Platform> std::fmt::Debug for SimpleButton<P> {
   }
 }
 
-impl<P: Platform> SimpleButton<P> {
+impl<P: Realization> SimpleButton<P> {
   /// A button carrying `label`.
   pub fn new(label: impl Into<String>) -> Self {
     Self {
@@ -165,9 +165,9 @@ impl<P: Platform> SimpleButton<P> {
   }
 }
 
-impl<P: Platform> AnyKind for SimpleButton<P> {}
+impl<P: Realization> AnyKind for SimpleButton<P> {}
 
-impl<P: Platform> View<P> for SimpleButton<P>
+impl<P: Realization> View<P> for SimpleButton<P>
 where
   P::Scalar: SimpleUnit,
   P::StyleExt: CornerRadius,
@@ -232,7 +232,7 @@ where
 /// The button's own tokens defined as the palette's disabled surface and ink, which
 /// neither hover nor focus changes, its border the palette's where the look is
 /// `bordered` and transparent otherwise, and the typography ink as the disabled ink.
-fn disabled_definitions<P: Platform>(bordered: bool) -> Definitions<P::TokenValue> {
+fn disabled_definitions<P: Realization>(bordered: bool) -> Definitions<P::TokenValue> {
   let alias = |token: TokenRef<Color>, target: TokenRef<Color>| {
     (
       token.name(),
@@ -258,7 +258,7 @@ fn disabled_definitions<P: Platform>(bordered: bool) -> Definitions<P::TokenValu
 
 /// The button's own tokens defined as `look`'s, and the typography ink as the look's
 /// ink.
-fn look_definitions<P: Platform>(look: &SimpleLook<P::Scalar>) -> Definitions<P::TokenValue> {
+fn look_definitions<P: Realization>(look: &SimpleLook<P::Scalar>) -> Definitions<P::TokenValue> {
   let alias = |token: TokenRef<Color>, target: TokenRef<Color>| {
     (
       token.name(),
@@ -281,7 +281,7 @@ fn look_definitions<P: Platform>(look: &SimpleLook<P::Scalar>) -> Definitions<P:
 }
 
 /// What a platform's `SimpleButton` carries.
-pub trait SimpleButtonBase<P: Platform>: Wraps<Inner = SimpleButton<P>> {
+pub trait SimpleButtonBase<P: Realization>: Wraps<Inner = SimpleButton<P>> {
   /// A button carrying `label`.
   #[must_use]
   fn new(label: impl Into<String>) -> Self {

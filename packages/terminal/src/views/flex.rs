@@ -2,7 +2,7 @@
 
 use skene_foundation::{ColumnBase, FlexBase, RowBase, View, Wraps};
 
-use crate::ActivePlatform;
+use crate::Active;
 
 /// Children laid out left to right.
 ///
@@ -20,11 +20,11 @@ use crate::ActivePlatform;
 /// ```
 #[derive(Debug, Default, View, Wraps)]
 #[must_use]
-pub struct Row(skene_foundation::Row<ActivePlatform>);
+pub struct Row(skene_foundation::Row<Active>);
 
-impl RowBase<ActivePlatform> for Row {}
+impl RowBase<Active> for Row {}
 
-impl FlexBase<ActivePlatform> for Row {}
+impl FlexBase<Active> for Row {}
 
 /// Children laid out top to bottom.
 ///
@@ -42,8 +42,8 @@ impl FlexBase<ActivePlatform> for Row {}
 /// ```
 #[derive(Debug, Default, View, Wraps)]
 #[must_use]
-pub struct Column(skene_foundation::Column<ActivePlatform>);
+pub struct Column(skene_foundation::Column<Active>);
 
-impl ColumnBase<ActivePlatform> for Column {}
+impl ColumnBase<Active> for Column {}
 
-impl FlexBase<ActivePlatform> for Column {}
+impl FlexBase<Active> for Column {}

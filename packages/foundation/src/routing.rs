@@ -10,7 +10,7 @@ use std::rc::Rc;
 
 use skene_reactive::{Get, Set, Signal, provide_context, use_context};
 
-use crate::Platform;
+use crate::Realization;
 
 /// A type that names every place in the app, convertible to and from a URL path.
 pub trait Route: Clone + PartialEq + 'static {
@@ -40,7 +40,7 @@ type Commit = Option<Rc<dyn Fn(Box<dyn FnOnce()>)>>;
 /// The router starts at the platform's current path, or at `fallback` where the platform
 /// has none or the path matches no route, and navigation runs both ways through the
 /// platform's history where it keeps one.
-pub fn install_router<P: Platform, R: Route>(fallback: R) -> Router<R> {
+pub fn install_router<P: Realization, R: Route>(fallback: R) -> Router<R> {
   let router = Router::new(fallback);
 
   if let Some(path) = P::current_path() {
@@ -60,7 +60,7 @@ pub fn install_router<P: Platform, R: Route>(fallback: R) -> Router<R> {
 /// [`install_router`], for a route type whose statically renderable routes are
 /// enumerable: the platform records them, so a static build renders every route
 /// without being told them.
-pub fn install_static_router<P: Platform, R: StaticRoutes>(fallback: R) -> Router<R> {
+pub fn install_static_router<P: Realization, R: StaticRoutes>(fallback: R) -> Router<R> {
   P::record_static_routes(R::all().iter().map(Route::to_path).collect());
 
   install_router::<P, R>(fallback)

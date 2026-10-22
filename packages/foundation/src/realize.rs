@@ -8,11 +8,11 @@ use std::{marker::PhantomData, rc::Rc};
 
 use skene_reactive::Effect;
 
-use crate::{AccessProp, AnyView, BoxSlot, NodeId, NodeKind, Platform, RunSlot, Scene, View};
+use crate::{AccessProp, AnyView, BoxSlot, NodeId, NodeKind, Realization, RunSlot, Scene, View};
 
 /// Binds a render effect that computes `slot`'s leaf and writes it into the box
 /// `node`, now and whenever a signal the leaf reads changes.
-pub fn bind_box_slot<P: Platform>(node: NodeId, slot: BoxSlot<P::Scalar, P::StyleExt>) {
+pub fn bind_box_slot<P: Realization>(node: NodeId, slot: BoxSlot<P::Scalar, P::StyleExt>) {
   let BoxSlot { slot, compute, .. } = slot;
 
   Effect::render(move |_: Option<()>| {
@@ -24,7 +24,7 @@ pub fn bind_box_slot<P: Platform>(node: NodeId, slot: BoxSlot<P::Scalar, P::Styl
 
 /// Binds a render effect that computes `slot`'s leaf and writes it into the run
 /// `node`, now and whenever a signal the leaf reads changes.
-pub fn bind_run_slot<P: Platform>(node: NodeId, slot: RunSlot<P::StyleExt>) {
+pub fn bind_run_slot<P: Realization>(node: NodeId, slot: RunSlot<P::StyleExt>) {
   let RunSlot { slot, compute, .. } = slot;
 
   Effect::render(move |_: Option<()>| {
@@ -36,7 +36,7 @@ pub fn bind_run_slot<P: Platform>(node: NodeId, slot: RunSlot<P::StyleExt>) {
 
 /// Reports `access` as what the view that made `node` says to assistive technology,
 /// beside whatever describes the node.
-pub fn report_access<P: Platform>(node: NodeId, access: Vec<AccessProp>) {
+pub fn report_access<P: Realization>(node: NodeId, access: Vec<AccessProp>) {
   let access = Scene::<P>::with(|scene| scene.report_access(node, access));
 
   P::update_access(node, &access);
@@ -44,7 +44,7 @@ pub fn report_access<P: Platform>(node: NodeId, access: Vec<AccessProp>) {
 
 /// Reports `description` as what a view describing `node` says to assistive
 /// technology, beside the node's own report.
-pub fn describe<P: Platform>(node: NodeId, description: Vec<AccessProp>) {
+pub fn describe<P: Realization>(node: NodeId, description: Vec<AccessProp>) {
   let access = Scene::<P>::with(|scene| scene.describe(node, description));
 
   P::update_access(node, &access);
@@ -125,9 +125,9 @@ impl<T: 'static> Source<T> {
 
 /// The closure building a view's child under the owner the view provides context on.
 #[must_use]
-pub struct ChildBuilder<P: Platform>(Box<dyn FnOnce() -> AnyView<P>>);
+pub struct ChildBuilder<P: Realization>(Box<dyn FnOnce() -> AnyView<P>>);
 
-impl<P: Platform> std::fmt::Debug for ChildBuilder<P> {
+impl<P: Realization> std::fmt::Debug for ChildBuilder<P> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter
       .debug_struct("ChildBuilder")
@@ -135,7 +135,7 @@ impl<P: Platform> std::fmt::Debug for ChildBuilder<P> {
   }
 }
 
-impl<P: Platform> ChildBuilder<P> {
+impl<P: Realization> ChildBuilder<P> {
   /// A builder running `child` when the view builds.
   pub fn new<V: View<P>>(child: impl FnOnce() -> V + 'static) -> Self {
     Self(Box::new(move || child().into_any()))
@@ -154,17 +154,17 @@ impl<P: Platform> ChildBuilder<P> {
 /// The node it returns is a [`View`], so it composes as a built-in does: as the child
 /// of a [`Container`](crate::Container) that sizes and decorates it, under a theme,
 /// inside a wrapper, with handlers registered on it through the [`Scene`]. A box the
-/// view creates through [`Platform::create_box`] instead needs no registration beyond
+/// view creates through [`Realization::create_box`] instead needs no registration beyond
 /// the [`LayoutBox`](crate::LayoutBox) that made it.
 #[derive(Debug)]
 #[must_use]
-pub struct LowLevel<P: Platform>(PhantomData<fn() -> P>);
+pub struct LowLevel<P: Realization>(PhantomData<fn() -> P>);
 
-impl<P: Platform> LowLevel<P> {
+impl<P: Realization> LowLevel<P> {
   /// Mints a detached node of `kind`, has `make` realize it against a platform's
   /// escape trait, and returns its id, recording the annotation a wrapper around the
   /// view gave it and applying it to the node as its layout; see
-  /// [`Platform::apply_layout`].
+  /// [`Realization::apply_layout`].
   pub fn realize(kind: NodeKind, make: impl FnOnce(NodeId)) -> NodeId {
     let (node, annotation) = Scene::<P>::with(|scene| {
       let annotation = scene.take_pending_annotation();

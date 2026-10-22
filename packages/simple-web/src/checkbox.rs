@@ -2,7 +2,7 @@
 
 use skene_foundation::{View, Wraps};
 use skene_simple::SimpleCheckboxBase;
-use skene_web::ActivePlatform;
+use skene_web::Active;
 
 /// A ready-made checkbox: a rounded mark on the card surface that fills with the
 /// primary surface while checked and rings while focused, beside its caption.
@@ -22,6 +22,6 @@ use skene_web::ActivePlatform;
 /// ```
 #[derive(Debug, Default, View, Wraps)]
 #[must_use]
-pub struct SimpleCheckbox(skene_simple::SimpleCheckbox<ActivePlatform>);
+pub struct SimpleCheckbox(skene_simple::SimpleCheckbox<Active>);
 
-impl SimpleCheckboxBase<ActivePlatform> for SimpleCheckbox {}
+impl SimpleCheckboxBase<Active> for SimpleCheckbox {}

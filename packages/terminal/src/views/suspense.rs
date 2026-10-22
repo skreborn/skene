@@ -2,7 +2,7 @@
 
 use skene_foundation::{ChildBuilder, NoChild, SuspenseBase, View, Wraps};
 
-use crate::ActivePlatform;
+use crate::Active;
 
 /// Shows its content once that subtree's async work settles, and the fallback until
 /// then.
@@ -25,7 +25,7 @@ use crate::ActivePlatform;
 /// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
-pub struct Suspense<C = NoChild>(skene_foundation::Suspense<ActivePlatform, C>);
+pub struct Suspense<C = NoChild>(skene_foundation::Suspense<Active, C>);
 
 impl Default for Suspense {
   #[inline(always)]
@@ -34,15 +34,15 @@ impl Default for Suspense {
   }
 }
 
-impl SuspenseBase<ActivePlatform> for Suspense {}
+impl SuspenseBase<Active> for Suspense {}
 
 impl Suspense {
   /// Sets the content, built by `child` under the boundary.
   #[inline(always)]
-  pub fn set_child_builder<V: View<ActivePlatform>>(
+  pub fn set_child_builder<V: View<Active>>(
     self,
     child: impl FnOnce() -> V + 'static,
-  ) -> Suspense<ChildBuilder<ActivePlatform>> {
+  ) -> Suspense<ChildBuilder<Active>> {
     Suspense(self.0.set_child_builder(child))
   }
 }

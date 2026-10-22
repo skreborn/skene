@@ -3,7 +3,7 @@
 
 use skene_foundation::{AnyView, LinkBase, NoChild, View, Wraps, routing::Route};
 
-use crate::ActivePlatform;
+use crate::Active;
 
 /// A link to a route.
 ///
@@ -46,14 +46,14 @@ use crate::ActivePlatform;
 /// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
-pub struct Link<R: Route, C = NoChild>(skene_foundation::Link<ActivePlatform, R, C>);
+pub struct Link<R: Route, C = NoChild>(skene_foundation::Link<Active, R, C>);
 
-impl<R: Route> LinkBase<ActivePlatform, R> for Link<R> {}
+impl<R: Route> LinkBase<Active, R> for Link<R> {}
 
 impl<R: Route> Link<R> {
   /// Sets the view the link holds.
   #[inline(always)]
-  pub fn set_child(self, child: impl View<ActivePlatform>) -> Link<R, AnyView<ActivePlatform>> {
+  pub fn set_child(self, child: impl View<Active>) -> Link<R, AnyView<Active>> {
     Link(self.0.set_child(child))
   }
 }

@@ -5,7 +5,7 @@
 #![cfg(not(target_arch = "wasm32"))]
 
 use skene_foundation::{View, Wraps};
-use skene_terminal::ActivePlatform;
+use skene_terminal::Active;
 
 pub use {crate}::{Type}BadgeBase;
 
@@ -18,9 +18,9 @@ pub use {crate}::{Type}BadgeBase;
 /// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
-pub struct {Type}Badge({crate}::{Type}Badge<ActivePlatform>);
+pub struct {Type}Badge({crate}::{Type}Badge<Active>);
 
-impl {Type}BadgeBase<ActivePlatform> for {Type}Badge {}
+impl {Type}BadgeBase<Active> for {Type}Badge {}
 
 /// The palette in the terminal's unit; see [`{crate}::{Type}Palette`].
 pub type {Type}Palette = {crate}::{Type}Palette<u32>;

@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 
 use skene_reactive::{Key, Owner};
 
-use super::{AnyKind, Children, HasChild, HasChildren, NodeId, Platform, Seal, View};
+use super::{AnyKind, Children, HasChild, HasChildren, NodeId, Realization, Seal, View};
 
 /// The view a [`set_key`](View::set_key) named: built under a scope its key
 /// identifies rather than its position.
@@ -15,13 +15,13 @@ use super::{AnyKind, Children, HasChild, HasChildren, NodeId, Platform, Seal, Vi
 /// A container's setters carry through, so the children still come last.
 #[derive(Debug)]
 #[must_use]
-pub struct Keyed<P: Platform, V> {
+pub struct Keyed<P: Realization, V> {
   key: Key,
   view: V,
   platform: PhantomData<fn() -> P>,
 }
 
-impl<P: Platform, V> Keyed<P, V> {
+impl<P: Realization, V> Keyed<P, V> {
   /// `view` under `key`.
   #[inline(always)]
   pub(in crate::spine) const fn new(key: Key, view: V) -> Self {
@@ -33,9 +33,9 @@ impl<P: Platform, V> Keyed<P, V> {
   }
 }
 
-impl<P: Platform, V> AnyKind for Keyed<P, V> {}
+impl<P: Realization, V> AnyKind for Keyed<P, V> {}
 
-impl<P: Platform, V: View<P>> View<P> for Keyed<P, V> {
+impl<P: Realization, V: View<P>> View<P> for Keyed<P, V> {
   #[inline(always)]
   fn build(self) -> NodeId {
     Owner::current()
@@ -44,7 +44,7 @@ impl<P: Platform, V: View<P>> View<P> for Keyed<P, V> {
   }
 }
 
-impl<P: Platform, V: HasChild<P>> HasChild<P> for Keyed<P, V> {
+impl<P: Realization, V: HasChild<P>> HasChild<P> for Keyed<P, V> {
   type Kind = V::Kind;
 
   #[inline(always)]
@@ -53,7 +53,7 @@ impl<P: Platform, V: HasChild<P>> HasChild<P> for Keyed<P, V> {
   }
 }
 
-impl<P: Platform, V: HasChildren<P>> HasChildren<P> for Keyed<P, V> {
+impl<P: Realization, V: HasChildren<P>> HasChildren<P> for Keyed<P, V> {
   type Kind = V::Kind;
 
   #[inline(always)]

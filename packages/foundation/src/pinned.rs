@@ -11,7 +11,7 @@ use crate::{
   IntoChildOf,
   Leaf,
   NoChild,
-  Platform,
+  Realization,
   Scene,
   StackChild,
   StaticLeaf,
@@ -29,26 +29,26 @@ use crate::{
 /// [`set_edges`](Self::set_edges). Accepted only where a stack's children are; holds
 /// [`NoChild`] until `set_child` supplies the child.
 #[must_use]
-pub struct Pinned<P: Platform, C = NoChild> {
+pub struct Pinned<P: Realization, C = NoChild> {
   edges: Value<Inset<Dimension<P::Scalar>>, Condition<P::Scalar>>,
   child: C,
   platform: PhantomData<fn() -> P>,
 }
 
-impl<P: Platform, C> std::fmt::Debug for Pinned<P, C> {
+impl<P: Realization, C> std::fmt::Debug for Pinned<P, C> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter.debug_struct("Pinned").finish_non_exhaustive()
   }
 }
 
-impl<P: Platform> Default for Pinned<P> {
+impl<P: Realization> Default for Pinned<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<P: Platform> Pinned<P> {
+impl<P: Realization> Pinned<P> {
   /// A wrapper with every edge `Auto` and no child yet.
   #[inline(always)]
   pub fn new() -> Self {
@@ -60,7 +60,7 @@ impl<P: Platform> Pinned<P> {
   }
 }
 
-impl<P: Platform> Pinned<P> {
+impl<P: Realization> Pinned<P> {
   /// Sets the edges the child is pinned to.
   pub fn set_edges(
     mut self,
@@ -92,7 +92,7 @@ impl<P: Platform> Pinned<P> {
   }
 }
 
-impl<P: Platform> IntoChildOf<P, StackChild> for Pinned<P, AnyView<P>> {
+impl<P: Realization> IntoChildOf<P, StackChild> for Pinned<P, AnyView<P>> {
   fn into_child(self) -> AnyView<P> {
     AnyView::new(move || {
       let annotation = Annotation {
@@ -106,7 +106,7 @@ impl<P: Platform> IntoChildOf<P, StackChild> for Pinned<P, AnyView<P>> {
 }
 
 /// What a facade's [`Pinned`] carries: its constructor and its setters.
-pub trait PinnedBase<P: Platform>: Wraps<Inner = Pinned<P>> {
+pub trait PinnedBase<P: Realization>: Wraps<Inner = Pinned<P>> {
   /// A wrapper with every edge `Auto` and no child yet.
   #[must_use]
   fn new() -> Self {

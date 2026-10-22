@@ -2,7 +2,7 @@
 
 use skene_foundation::{ContainerBase, DecorationBase, MotionBase, View, Wraps};
 
-use crate::ActivePlatform;
+use crate::Active;
 
 /// Decoration and sizing around exactly one child.
 ///
@@ -24,10 +24,10 @@ use crate::ActivePlatform;
 /// ```
 #[derive(Debug, Default, View, Wraps)]
 #[must_use]
-pub struct Container(skene_foundation::Container<ActivePlatform>);
+pub struct Container(skene_foundation::Container<Active>);
 
-impl ContainerBase<ActivePlatform> for Container {}
+impl ContainerBase<Active> for Container {}
 
-impl DecorationBase<ActivePlatform> for Container {}
+impl DecorationBase<Active> for Container {}
 
-impl MotionBase<ActivePlatform> for Container {}
+impl MotionBase<Active> for Container {}

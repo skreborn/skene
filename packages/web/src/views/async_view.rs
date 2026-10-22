@@ -9,7 +9,7 @@ use skene_foundation::{
   web::{AsyncViewBase, ChildLoader},
 };
 
-use crate::ActivePlatform;
+use crate::Active;
 
 /// A subtree whose content arrives asynchronously—typically a [`macro@lazy`](crate::lazy)
 /// function whose body loads in a separately fetched wasm module.
@@ -35,9 +35,9 @@ use crate::ActivePlatform;
 /// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
-pub struct AsyncView<C = NoChild>(skene_foundation::web::AsyncView<ActivePlatform, C>);
+pub struct AsyncView<C = NoChild>(skene_foundation::web::AsyncView<Active, C>);
 
-impl AsyncViewBase<ActivePlatform> for AsyncView {}
+impl AsyncViewBase<Active> for AsyncView {}
 
 impl AsyncView {
   /// Sets the content, loaded by `load`, run to completion as a task.
@@ -45,9 +45,9 @@ impl AsyncView {
   pub fn set_child_loader<V, F>(
     self,
     load: impl FnOnce() -> F + 'static,
-  ) -> AsyncView<ChildLoader<ActivePlatform>>
+  ) -> AsyncView<ChildLoader<Active>>
   where
-    V: View<ActivePlatform>,
+    V: View<Active>,
     F: Future<Output = V> + 'static,
   {
     AsyncView(self.0.set_child_loader(load))

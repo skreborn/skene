@@ -3,7 +3,7 @@
 
 use std::fmt::Debug;
 
-use super::{BoxProps, Platform, State};
+use super::{BoxProps, Realization, State};
 use crate::spine::{CheckState, Role};
 
 /// The state a control holds that a box cannot: what the control-scoped [`State`]
@@ -110,7 +110,7 @@ impl NativeElement {
 /// stands in where it has one and, where nothing visible supplies one, an accessible
 /// name.
 #[must_use]
-pub struct ControlProps<P: Platform> {
+pub struct ControlProps<P: Realization> {
   /// The native element the control stands in; `None` for one its view draws.
   pub native: Option<NativeElement>,
   /// The box the control is realized as.
@@ -126,7 +126,7 @@ pub struct ControlProps<P: Platform> {
   pub label_beside: bool,
 }
 
-impl<P: Platform> Clone for ControlProps<P> {
+impl<P: Realization> Clone for ControlProps<P> {
   fn clone(&self) -> Self {
     Self {
       native: self.native,
@@ -139,7 +139,7 @@ impl<P: Platform> Clone for ControlProps<P> {
   }
 }
 
-impl<P: Platform> Debug for ControlProps<P> {
+impl<P: Realization> Debug for ControlProps<P> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter
       .debug_struct("ControlProps")

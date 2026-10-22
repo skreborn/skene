@@ -39,9 +39,9 @@ use skene_foundation::{
   MotionBase,
   NodeId,
   Overflow,
-  Platform,
   Property,
   PropertyKey,
+  Realization,
   RunBase,
   Size,
   State,
@@ -84,7 +84,7 @@ use web_sys::Element;
 
 wasm_bindgen_test_configure!(run_in_browser);
 
-type Web = skene_web::ActivePlatform;
+type Web = skene_web::Active;
 
 const COLOR: PropertyKey<WebProperty> = PropertyKey::Shared(Property::Background);
 const TEXT_COLOR: PropertyKey<WebProperty> = PropertyKey::Shared(Property::TextColor);
@@ -382,7 +382,7 @@ impl Case {
   }
 
   /// The case's box, inside the scopes the case adds, on the platform `P`.
-  fn view<P: Platform<Scalar = f32>>(self) -> AnyView<P> {
+  fn view<P: Realization<Scalar = f32>>(self) -> AnyView<P> {
     match self {
       Self::LexicalToken => Theme::<P, InnerPalette>::new(InnerPalette {
         surface: Token::new(ParityPalette::SURFACE.name().as_str(), orange()),
@@ -432,7 +432,7 @@ impl Case {
   }
 
   /// The case's box, where the case adds no scope, on the platform `P`.
-  fn container<P: Platform<Scalar = f32>>(self) -> Container<P> {
+  fn container<P: Realization<Scalar = f32>>(self) -> Container<P> {
     let container = Container::<P>::new();
 
     match self {
@@ -515,7 +515,7 @@ impl Case {
   }
 
   /// The case's box in motion, where the case moves; the box as it is otherwise.
-  fn moving<P: Platform<Scalar = f32>>(self, container: Container<P>) -> Container<P> {
+  fn moving<P: Realization<Scalar = f32>>(self, container: Container<P>) -> Container<P> {
     match self {
       Self::NeutralKeyframe => container.set_width(Dimension::Length(40.)).add_animation(
         Animation::new(
@@ -572,7 +572,7 @@ impl Case {
   }
 
   /// A box inside a control, blue until `state` holds and orange while it does.
-  fn state_box<P: Platform<Scalar = f32>>(state: State) -> Container<P> {
+  fn state_box<P: Realization<Scalar = f32>>(state: State) -> Container<P> {
     Container::<P>::new()
       .set_width(Dimension::Length(10.))
       .set_height(Dimension::Length(10.))
@@ -600,7 +600,7 @@ impl Case {
 
   /// The case's box under a theme of the palette, inside a typography of a size other
   /// than the default, built on the platform `P`.
-  fn build<P: Platform<Scalar = f32>>(self) -> NodeId {
+  fn build<P: Realization<Scalar = f32>>(self) -> NodeId {
     Theme::<P, Typography>::new(Typography::default().set_size(20.))
       .set_child_builder(move || {
         Theme::<P, ParityPalette>::new(ParityPalette::default())

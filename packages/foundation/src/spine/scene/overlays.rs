@@ -4,7 +4,7 @@
 use std::fmt::Debug;
 
 use super::{Mirror, NodeKind, Scene};
-use crate::spine::{NodeId, Platform};
+use crate::spine::{NodeId, Realization};
 
 /// An overlay's standing: whether it blocks what lies beneath it while open, whether it
 /// is open, the node it opened against, and the node focused when it opened.
@@ -16,7 +16,7 @@ pub(super) struct OverlayRecord {
   pub(super) opener: Option<NodeId>,
 }
 
-impl<P: Platform> Scene<P> {
+impl<P: Realization> Scene<P> {
   /// Records that `node` is an overlay, closed, `modal` when it blocks what lies beneath
   /// it while open.
   pub fn note_overlay(&mut self, node: NodeId, modal: bool) {

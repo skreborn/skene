@@ -9,8 +9,8 @@ use crate::{
   KeyEvent,
   NoChild,
   NodeId,
-  Platform,
   Prevent,
+  Realization,
   Scene,
   Shortcut,
   View,
@@ -25,19 +25,19 @@ use crate::{
 /// served; [`serve`](Self::serve) binds the shortcuts on a node that already exists
 /// instead.
 #[must_use]
-pub struct Keymap<P: Platform, C = NoChild> {
+pub struct Keymap<P: Realization, C = NoChild> {
   bindings: Vec<(Shortcut, Rc<dyn Fn()>)>,
   child: C,
   platform: PhantomData<P>,
 }
 
-impl<P: Platform, C> std::fmt::Debug for Keymap<P, C> {
+impl<P: Realization, C> std::fmt::Debug for Keymap<P, C> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter.debug_struct("Keymap").finish_non_exhaustive()
   }
 }
 
-impl<P: Platform> Keymap<P> {
+impl<P: Realization> Keymap<P> {
   /// A keymap binding no shortcut yet.
   #[inline(always)]
   pub const fn new() -> Self {
@@ -83,14 +83,14 @@ impl<P: Platform> Keymap<P> {
   }
 }
 
-impl<P: Platform> Default for Keymap<P> {
+impl<P: Realization> Default for Keymap<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<P: Platform> Keymap<P> {
+impl<P: Realization> Keymap<P> {
   /// Runs `action` when `shortcut` is pressed while focus is inside the view served.
   pub fn handle_shortcut(mut self, shortcut: Shortcut, action: impl Fn() + 'static) -> Self {
     self.bindings.push((shortcut, Rc::new(action)));
@@ -99,9 +99,9 @@ impl<P: Platform> Keymap<P> {
   }
 }
 
-impl<P: Platform, C> AnyKind for Keymap<P, C> {}
+impl<P: Realization, C> AnyKind for Keymap<P, C> {}
 
-impl<P: Platform> View<P> for Keymap<P, AnyView<P>> {
+impl<P: Realization> View<P> for Keymap<P, AnyView<P>> {
   fn build(self) -> NodeId {
     let node = self.child.build();
 
@@ -115,7 +115,7 @@ impl<P: Platform> View<P> for Keymap<P, AnyView<P>> {
 }
 
 /// What a facade's [`Keymap`] carries: its constructor, the node it serves and its shortcuts.
-pub trait KeymapBase<P: Platform>: Wraps<Inner = Keymap<P>> {
+pub trait KeymapBase<P: Realization>: Wraps<Inner = Keymap<P>> {
   /// A keymap binding no shortcut yet.
   #[must_use]
   fn new() -> Self {

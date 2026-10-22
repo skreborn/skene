@@ -19,7 +19,7 @@ use crate::{
   NodeId,
   Overflow,
   PlainChild,
-  Platform,
+  Realization,
   Scalar,
   ScrollEvent,
   Size,
@@ -174,7 +174,7 @@ impl ScrollAxis {
   }
 
   /// `container` sized to `extent` along the axis.
-  fn sized<P: Platform>(
+  fn sized<P: Realization>(
     self,
     container: Container<P>,
     extent: Dimension<P::Scalar>,
@@ -186,7 +186,7 @@ impl ScrollAxis {
   }
 
   /// `container` sized along the axis by `extent`, followed.
-  fn derive_sized<P: Platform>(
+  fn derive_sized<P: Realization>(
     self,
     container: Container<P>,
     extent: impl Fn() -> f32 + 'static,
@@ -226,21 +226,21 @@ type Edges = Rc<dyn Fn(&Measures, f32) -> Vec<f32>>;
 
 /// What `derive_items` leaves for the build: the item count, tracked, the edges, and
 /// the keyed segment installed over the slice.
-struct Items<P: Platform> {
+struct Items<P: Realization> {
   count: Rc<dyn Fn() -> usize>,
   edges: Edges,
   install: Install<P>,
 }
 
 /// The list both public forms share: the axis, the item extent and the overscan.
-struct LazyList<P: Platform> {
+struct LazyList<P: Realization> {
   axis: ScrollAxis,
   extent: ItemExtent,
   overscan: usize,
   items: Option<Items<P>>,
 }
 
-impl<P: Platform> LazyList<P> {
+impl<P: Realization> LazyList<P> {
   const fn new(axis: ScrollAxis) -> Self {
     Self {
       axis,
@@ -441,7 +441,7 @@ impl<P: Platform> LazyList<P> {
 
 /// `container` kept at its own extent in the list: a flex item that neither grows nor
 /// shrinks.
-fn rigid<P: Platform>(mut container: Container<P>) -> Container<P> {
+fn rigid<P: Realization>(mut container: Container<P>) -> Container<P> {
   container.box_style_mut().flex = Some(
     Flexibility {
       initial: Dimension::Auto,
@@ -462,15 +462,15 @@ fn rigid<P: Platform>(mut container: Container<P>) -> Container<P> {
 /// expresses its own reactivity as usual. The item height is fixed or estimated
 /// ([`ItemExtent`]); until one is set every item builds.
 #[must_use]
-pub struct LazyColumn<P: Platform>(LazyList<P>);
+pub struct LazyColumn<P: Realization>(LazyList<P>);
 
-impl<P: Platform> std::fmt::Debug for LazyColumn<P> {
+impl<P: Realization> std::fmt::Debug for LazyColumn<P> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter.debug_struct("LazyColumn").finish_non_exhaustive()
   }
 }
 
-impl<P: Platform> LazyColumn<P> {
+impl<P: Realization> LazyColumn<P> {
   /// An empty column with an overscan of three items.
   #[inline(always)]
   pub const fn new() -> Self {
@@ -511,16 +511,16 @@ impl<P: Platform> LazyColumn<P> {
   }
 }
 
-impl<P: Platform> Default for LazyColumn<P> {
+impl<P: Realization> Default for LazyColumn<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<P: Platform> AnyKind for LazyColumn<P> {}
+impl<P: Realization> AnyKind for LazyColumn<P> {}
 
-impl<P: Platform> View<P> for LazyColumn<P> {
+impl<P: Realization> View<P> for LazyColumn<P> {
   #[inline(always)]
   fn build(self) -> NodeId {
     self.0.build()
@@ -535,15 +535,15 @@ impl<P: Platform> View<P> for LazyColumn<P> {
 /// expresses its own reactivity as usual. The item width is fixed or estimated
 /// ([`ItemExtent`]); until one is set every item builds.
 #[must_use]
-pub struct LazyRow<P: Platform>(LazyList<P>);
+pub struct LazyRow<P: Realization>(LazyList<P>);
 
-impl<P: Platform> std::fmt::Debug for LazyRow<P> {
+impl<P: Realization> std::fmt::Debug for LazyRow<P> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter.debug_struct("LazyRow").finish_non_exhaustive()
   }
 }
 
-impl<P: Platform> LazyRow<P> {
+impl<P: Realization> LazyRow<P> {
   /// An empty row with an overscan of three items.
   #[inline(always)]
   pub const fn new() -> Self {
@@ -584,16 +584,16 @@ impl<P: Platform> LazyRow<P> {
   }
 }
 
-impl<P: Platform> Default for LazyRow<P> {
+impl<P: Realization> Default for LazyRow<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<P: Platform> AnyKind for LazyRow<P> {}
+impl<P: Realization> AnyKind for LazyRow<P> {}
 
-impl<P: Platform> View<P> for LazyRow<P> {
+impl<P: Realization> View<P> for LazyRow<P> {
   #[inline(always)]
   fn build(self) -> NodeId {
     self.0.build()
@@ -601,7 +601,7 @@ impl<P: Platform> View<P> for LazyRow<P> {
 }
 
 /// What a facade's [`LazyColumn`] carries: its constructor, item height, overscan and items.
-pub trait LazyColumnBase<P: Platform>: Wraps<Inner = LazyColumn<P>> {
+pub trait LazyColumnBase<P: Realization>: Wraps<Inner = LazyColumn<P>> {
   /// An empty column with an overscan of three items.
   #[must_use]
   fn new() -> Self {
@@ -641,7 +641,7 @@ pub trait LazyColumnBase<P: Platform>: Wraps<Inner = LazyColumn<P>> {
 }
 
 /// What a facade's [`LazyRow`] carries: its constructor, item width, overscan and items.
-pub trait LazyRowBase<P: Platform>: Wraps<Inner = LazyRow<P>> {
+pub trait LazyRowBase<P: Realization>: Wraps<Inner = LazyRow<P>> {
   /// An empty row with an overscan of three items.
   #[must_use]
   fn new() -> Self {

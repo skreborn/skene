@@ -21,9 +21,9 @@ use skene_foundation::{
   OverlayProps,
   Painting,
   Placement,
-  Platform,
   Point,
   PointerEvent,
+  Realization,
   RunProps,
   RunValue,
   Scene,
@@ -45,7 +45,7 @@ use crate::{
   records::{BoxRecord, Field, Kind, PictureRecord, Records},
 };
 
-/// The terminal platform: a zero-sized [`Platform`].
+/// The terminal platform: a zero-sized [`Realization`].
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 #[must_use]
 pub struct Terminal;
@@ -88,7 +88,7 @@ pub(crate) fn root_node() -> Option<NodeId> {
   ROOT.with(|root| *root.borrow())
 }
 
-impl Platform for Terminal {
+impl Realization for Terminal {
   const FONT_SIZE: f32 = 1.;
 
   type Scalar = u32;

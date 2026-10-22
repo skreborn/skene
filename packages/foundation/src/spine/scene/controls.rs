@@ -2,7 +2,7 @@
 //! technology.
 
 use super::{Mirror, NodeKind, NodeRecord, Scene};
-use crate::spine::{AccessProp, ControlState, NodeId, Part, Platform};
+use crate::spine::{AccessProp, ControlState, NodeId, Part, Realization};
 
 /// What a node reports to assistive technology: the view's own report, and the report
 /// of a view describing it.
@@ -19,7 +19,7 @@ impl AccessReports {
   }
 }
 
-impl<P: Platform> Scene<P> {
+impl<P: Realization> Scene<P> {
   /// Writes the state of the control `node` and mirrors it, bringing the platform back
   /// to it whether or not it changed; a node of any other kind is left alone.
   pub fn set_control_state(&mut self, node: NodeId, state: ControlState) {

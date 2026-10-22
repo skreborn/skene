@@ -1,7 +1,7 @@
 //! The escape trait a low-level terminal view states as its bound, and the handle it
 //! paints through.
 
-use skene_foundation::{Color, NodeId, Platform, Point, Rect, Size};
+use skene_foundation::{Color, NodeId, Point, Realization, Rect, Size};
 
 use crate::{
   paint::{Buffer, terminal_rgb},
@@ -24,7 +24,7 @@ pub(crate) type Painter = dyn Fn(&mut Cells<'_>, Rect<u32>);
   message = "`{Self}` does not paint cells",
   label = "a view bound on `CellPainter` exists on the terminal platform alone"
 )]
-pub trait CellPainter: Platform {
+pub trait CellPainter: Realization {
   /// Runs `painter` inside the box `node` on every repaint; a later call replaces the
   /// painter.
   fn paint(node: NodeId, painter: Box<Painter>);

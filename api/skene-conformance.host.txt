@@ -1,8 +1,8 @@
 pub mod skene_conformance
-pub struct skene_conformance::Page<P: skene_foundation::spine::platform::Platform>
+pub struct skene_conformance::Page<P: skene_foundation::spine::realization::Realization>
 pub skene_conformance::Page::build: fn(&mut skene_conformance::Probes) -> skene_foundation::spine::view::AnyView<P>
 pub skene_conformance::Page::name: &'static str
-impl<P: skene_foundation::spine::platform::Platform> core::fmt::Debug for skene_conformance::Page<P>
+impl<P: skene_foundation::spine::realization::Realization> core::fmt::Debug for skene_conformance::Page<P>
 pub fn skene_conformance::Page<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_conformance::Probes(_)
 impl skene_conformance::Probes
@@ -56,7 +56,7 @@ pub fn skene_conformance::Driver::read(&mut self, &Self::Node) -> skene_conforma
 pub fn skene_conformance::Driver::release(&mut self, &Self::Node)
 pub fn skene_conformance::Driver::resize(&mut self, skene_foundation::spine::values::size::Size<Self::Scalar>)
 pub fn skene_conformance::Driver::type_text(&mut self, &Self::Node, &str)
-pub fn skene_conformance::page<P: skene_foundation::spine::platform::Platform>(&str) -> core::option::Option<skene_conformance::Page<P>>
-pub fn skene_conformance::pages<P: skene_foundation::spine::platform::Platform>() -> alloc::vec::Vec<skene_conformance::Page<P>>
+pub fn skene_conformance::page<P: skene_foundation::spine::realization::Realization>(&str) -> core::option::Option<skene_conformance::Page<P>>
+pub fn skene_conformance::pages<P: skene_foundation::spine::realization::Realization>() -> alloc::vec::Vec<skene_conformance::Page<P>>
 pub fn skene_conformance::run<D: skene_conformance::Driver>(impl core::ops::function::FnMut() -> D)
 pub fn skene_conformance::scenarios<D: skene_conformance::Driver>() -> alloc::vec::Vec<skene_conformance::Scenario<D>>

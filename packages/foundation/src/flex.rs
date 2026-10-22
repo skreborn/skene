@@ -15,7 +15,7 @@ use crate::{
   Layout,
   LayoutBox,
   NodeId,
-  Platform,
+  Realization,
   Seal,
   Spacing,
   View,
@@ -34,18 +34,18 @@ macro_rules! flex_layout {
     /// [`Flexible`](crate::Flexible) wrapper as a child.
     #[derive(Debug)]
     #[must_use]
-    pub struct $name<P: Platform> {
+    pub struct $name<P: Realization> {
       inner: LayoutBox<P, FlexChild>,
     }
 
-    impl<P: Platform> Default for $name<P> {
+    impl<P: Realization> Default for $name<P> {
       #[inline(always)]
       fn default() -> Self {
         Self::new()
       }
     }
 
-    impl<P: Platform> $name<P> {
+    impl<P: Realization> $name<P> {
       #[doc = concat!("An empty layout running ", $doc, ".")]
       #[inline(always)]
       pub fn new() -> Self {
@@ -69,16 +69,16 @@ macro_rules! flex_layout {
       }
     }
 
-    impl<P: Platform> HasBoxStyle<P> for $name<P> {
+    impl<P: Realization> HasBoxStyle<P> for $name<P> {
       #[inline(always)]
       fn box_style_mut(&mut self) -> &mut DeclaredBoxStyle<P> {
         self.inner.style_mut()
       }
     }
 
-    impl<P: Platform> FlexBase<P> for $name<P> {}
+    impl<P: Realization> FlexBase<P> for $name<P> {}
 
-    impl<P: Platform> HasChildren<P> for $name<P> {
+    impl<P: Realization> HasChildren<P> for $name<P> {
       type Kind = FlexChild;
 
       #[inline(always)]
@@ -87,9 +87,9 @@ macro_rules! flex_layout {
       }
     }
 
-    impl<P: Platform> AnyKind for $name<P> {}
+    impl<P: Realization> AnyKind for $name<P> {}
 
-    impl<P: Platform> View<P> for $name<P> {
+    impl<P: Realization> View<P> for $name<P> {
       #[inline(always)]
       fn build(self) -> NodeId {
         self.inner.build()
@@ -105,7 +105,7 @@ flex_layout!(Column, "top to bottom", Axis::Vertical);
 ///
 /// The inset around its children, their spacing, their distribution and alignment, and how
 /// they wrap.
-pub trait FlexBase<P: Platform>: HasBoxStyle<P> + Sized {
+pub trait FlexBase<P: Realization>: HasBoxStyle<P> + Sized {
   crate::trait_properties! { box_style_mut, Condition<P::Scalar>;
     set_padding / derive_padding (padding) => padding: Inset<P::Scalar>,
       "the inset between the box and the children it arranges";
@@ -123,7 +123,7 @@ pub trait FlexBase<P: Platform>: HasBoxStyle<P> + Sized {
 }
 
 /// The constructors of a facade's [`Row`].
-pub trait RowBase<P: Platform>: Wraps<Inner = Row<P>> {
+pub trait RowBase<P: Realization>: Wraps<Inner = Row<P>> {
   /// An empty layout running left to right.
   #[must_use]
   fn new() -> Self {
@@ -138,7 +138,7 @@ pub trait RowBase<P: Platform>: Wraps<Inner = Row<P>> {
 }
 
 /// The constructors of a facade's [`Column`].
-pub trait ColumnBase<P: Platform>: Wraps<Inner = Column<P>> {
+pub trait ColumnBase<P: Realization>: Wraps<Inner = Column<P>> {
   /// An empty layout running top to bottom.
   #[must_use]
   fn new() -> Self {

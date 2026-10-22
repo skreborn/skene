@@ -2,7 +2,7 @@
 
 use skene_foundation::{PaintedBase, View, Wraps};
 
-use crate::ActivePlatform;
+use crate::Active;
 
 /// A box drawn by a paint callback through the platform's renderer: sized like any box,
 /// painted at its laid-out size now and whenever that size changes.
@@ -28,6 +28,6 @@ use crate::ActivePlatform;
 /// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
-pub struct Painted(skene_foundation::Painted<ActivePlatform>);
+pub struct Painted(skene_foundation::Painted<Active>);
 
-impl PaintedBase<ActivePlatform> for Painted {}
+impl PaintedBase<Active> for Painted {}

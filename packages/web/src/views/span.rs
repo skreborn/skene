@@ -2,7 +2,7 @@
 
 use skene_foundation::{HasRun, RichTextBase, RunBase, SpanBase, View, Wraps};
 
-use crate::{ActivePlatform, LinkPolicy};
+use crate::{Active, LinkPolicy};
 
 /// An inline run within a [`RichText`]: text, a group of spans styled as a unit, or a
 /// view embedded among the text.
@@ -26,7 +26,7 @@ use crate::{ActivePlatform, LinkPolicy};
 /// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
-pub struct Span(skene_foundation::Span<ActivePlatform>);
+pub struct Span(skene_foundation::Span<Active>);
 
 impl Span {
   /// Sets how the link opens and what it discloses; a link left without one follows the
@@ -36,9 +36,9 @@ impl Span {
   }
 }
 
-impl SpanBase<ActivePlatform> for Span {}
+impl SpanBase<Active> for Span {}
 
-impl RunBase<ActivePlatform> for Span {}
+impl RunBase<Active> for Span {}
 
 /// A paragraph of [`Span`]s, flowing together and wrapping as one.
 ///
@@ -55,6 +55,6 @@ impl RunBase<ActivePlatform> for Span {}
 /// ```
 #[derive(Debug, Default, View, Wraps)]
 #[must_use]
-pub struct RichText(skene_foundation::RichText<ActivePlatform>);
+pub struct RichText(skene_foundation::RichText<Active>);
 
-impl RichTextBase<ActivePlatform> for RichText {}
+impl RichTextBase<Active> for RichText {}

@@ -490,12 +490,12 @@ fn overlays_open_at_build_open_and_a_modal_prevents_cancel() {
 #[wasm_bindgen_test]
 fn escape_dismisses_the_topmost_popup_unless_taken() {
   use skene_foundation::{EventKind, KeyEvent, NativeElement, Prevent, Role};
-  use skene_web::{ActivePlatform, Behavior, Control, ControlHandle};
+  use skene_web::{Active, Behavior, Control, ControlHandle};
 
   /// Takes `Escape` and nothing else.
   struct Keeper;
 
-  impl Behavior<ActivePlatform> for Keeper {
+  impl Behavior<Active> for Keeper {
     fn native(&self) -> Option<NativeElement> {
       Some(NativeElement::Button)
     }
@@ -798,12 +798,12 @@ fn a_pointer_event_carries_its_pointer_buttons_and_pressure() {
 #[wasm_bindgen_test]
 fn a_wheel_reaches_the_node_before_it_scrolls() {
   use skene_foundation::{EventKind, NativeElement, Prevent};
-  use skene_web::{ActivePlatform, Behavior, Control, ControlHandle};
+  use skene_web::{Active, Behavior, Control, ControlHandle};
 
   /// Takes every turn for itself.
   struct Dial;
 
-  impl Behavior<ActivePlatform> for Dial {
+  impl Behavior<Active> for Dial {
     fn native(&self) -> Option<NativeElement> {
       Some(NativeElement::Button)
     }

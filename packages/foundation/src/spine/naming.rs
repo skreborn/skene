@@ -27,8 +27,8 @@ use super::{
   NativeElement,
   NodeId,
   Part,
-  Platform,
   PopupKind,
+  Realization,
   Role,
   RunPlacement,
   RunProps,
@@ -66,7 +66,7 @@ pub struct NameFacts {
 
 impl NameFacts {
   /// The facts of a run holding `text`, created with `props`.
-  pub fn of_run<P: Platform>(props: &RunProps<P>, text: String) -> Self {
+  pub fn of_run<P: Realization>(props: &RunProps<P>, text: String) -> Self {
     let link = props.link.is_some();
 
     Self {
@@ -80,7 +80,7 @@ impl NameFacts {
 
   /// The facts of a box, a control or an overlay created with `props`, reporting
   /// `access`.
-  pub fn of_box<P: Platform>(props: &BoxProps<P>, access: Vec<AccessProp>) -> Self {
+  pub fn of_box<P: Realization>(props: &BoxProps<P>, access: Vec<AccessProp>) -> Self {
     let link = props.destination.is_some();
 
     Self {
@@ -260,7 +260,7 @@ impl NameFacts {
   }
 }
 
-impl<P: Platform> Scene<P> {
+impl<P: Realization> Scene<P> {
   /// The name `node` reports to assistive technology, by the accessible-name
   /// computation, each node read through `facts`.
   ///
@@ -376,7 +376,7 @@ impl<P: Platform> Scene<P> {
   }
 }
 
-impl<P: Platform> Scene<P> {
+impl<P: Realization> Scene<P> {
   /// The accessibility tree the scene and `facts` make, as AccessKit models it, for a
   /// platform exposing it or a test asserting it.
   ///
@@ -755,7 +755,7 @@ struct Naming<'a, P, F> {
   platform: PhantomData<P>,
 }
 
-impl<P: Platform, F: Fn(NodeId) -> NameFacts> Naming<'_, P, F> {
+impl<P: Realization, F: Fn(NodeId) -> NameFacts> Naming<'_, P, F> {
   /// The text alternative of `node`, whose facts are `facts`, reached by `reach`.
   fn alternative(&mut self, node: NodeId, facts: &NameFacts, reach: Reach) -> String {
     if reach != Reach::Reference && facts.hidden {

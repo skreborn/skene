@@ -210,9 +210,9 @@ impl<A> Timers<A> {
 #[diagnostic::on_unimplemented(
   message = "`{Self}` is not a platform",
   label = "a platform is a zero-sized type realizing the portable vocabulary: boxes, runs, anchors, scopes, tokens and events",
-  note = "`Painted` and embeds are outside `Platform`; a platform offers them through its own extension traits"
+  note = "`Painted` and embeds are outside `Realization`; a platform offers them through its own extension traits"
 )]
-pub trait Platform: Copy + Default + 'static {
+pub trait Realization: Copy + Default + 'static {
   /// The font size in force where no typography defines one, in the medium's unit.
   const FONT_SIZE: f32;
 

@@ -11,7 +11,7 @@ use skene_foundation::{
   NoChild,
   NodeId,
   Placement,
-  Platform,
+  Realization,
   Tooltip,
   View,
   Wraps,
@@ -33,11 +33,11 @@ use super::{
 #[doc(hidden)]
 #[derive(Debug)]
 #[must_use]
-pub struct SimpleTooltip<P: Platform, C = NoChild> {
+pub struct SimpleTooltip<P: Realization, C = NoChild> {
   raw: Tooltip<P, C>,
 }
 
-impl<P: Platform> SimpleTooltip<P> {
+impl<P: Realization> SimpleTooltip<P> {
   /// A tooltip showing `text`.
   pub fn new(text: impl Into<String>) -> Self {
     Self {
@@ -71,7 +71,7 @@ impl<P: Platform> SimpleTooltip<P> {
   }
 }
 
-impl<P: Platform> SimpleTooltip<P> {
+impl<P: Realization> SimpleTooltip<P> {
   /// Sets where the bubble sits against the described view: above it for `Top`, below
   /// it for `Bottom`.
   #[inline(always)]
@@ -90,9 +90,9 @@ impl<P: Platform> SimpleTooltip<P> {
   }
 }
 
-impl<P: Platform, C> AnyKind for SimpleTooltip<P, C> {}
+impl<P: Realization, C> AnyKind for SimpleTooltip<P, C> {}
 
-impl<P: Platform> View<P> for SimpleTooltip<P, AnyView<P>>
+impl<P: Realization> View<P> for SimpleTooltip<P, AnyView<P>>
 where
   P::Scalar: SimpleUnit,
   P::StyleExt: CornerRadius,
@@ -103,7 +103,7 @@ where
 }
 
 /// Decorates `tooltip` in the Simple language.
-fn dress<P: Platform>(tooltip: Tooltip<P>) -> Tooltip<P>
+fn dress<P: Realization>(tooltip: Tooltip<P>) -> Tooltip<P>
 where
   P::Scalar: SimpleUnit,
   P::StyleExt: CornerRadius,
@@ -118,7 +118,7 @@ where
 }
 
 /// What a platform's `SimpleTooltip` carries.
-pub trait SimpleTooltipBase<P: Platform>: Wraps<Inner = SimpleTooltip<P>> {
+pub trait SimpleTooltipBase<P: Realization>: Wraps<Inner = SimpleTooltip<P>> {
   /// A tooltip showing `text`.
   #[must_use]
   fn new(text: impl Into<String>) -> Self {

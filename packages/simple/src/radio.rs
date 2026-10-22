@@ -20,10 +20,10 @@ use skene_foundation::{
   NoChild,
   NodeId,
   Part,
-  Platform,
   Radio,
   RadioGroup,
   RadioGroupContext,
+  Realization,
   RunBase,
   Scalar,
   State,
@@ -49,14 +49,14 @@ use super::{
 #[doc(hidden)]
 #[derive(Debug)]
 #[must_use]
-pub struct SimpleRadioGroup<P: Platform, C = NoChild> {
+pub struct SimpleRadioGroup<P: Realization, C = NoChild> {
   behavior: RadioGroup,
   label: Option<String>,
   child: C,
   platform: PhantomData<fn() -> P>,
 }
 
-impl<P: Platform> SimpleRadioGroup<P> {
+impl<P: Realization> SimpleRadioGroup<P> {
   /// A group with nothing chosen.
   #[inline(always)]
   pub fn new() -> Self {
@@ -69,14 +69,14 @@ impl<P: Platform> SimpleRadioGroup<P> {
   }
 }
 
-impl<P: Platform> Default for SimpleRadioGroup<P> {
+impl<P: Realization> Default for SimpleRadioGroup<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<P: Platform> SimpleRadioGroup<P> {
+impl<P: Realization> SimpleRadioGroup<P> {
   /// Sets the chosen member's value.
   pub fn set_chosen(mut self, chosen: impl Into<String>) -> Self {
     self.behavior = self.behavior.set_chosen(chosen);
@@ -124,9 +124,9 @@ impl<P: Platform> SimpleRadioGroup<P> {
   }
 }
 
-impl<P: Platform, C> AnyKind for SimpleRadioGroup<P, C> {}
+impl<P: Realization, C> AnyKind for SimpleRadioGroup<P, C> {}
 
-impl<P: Platform> View<P> for SimpleRadioGroup<P, AnyView<P>> {
+impl<P: Realization> View<P> for SimpleRadioGroup<P, AnyView<P>> {
   fn build(self) -> NodeId {
     let mut group = BasicRadioGroup::new(self.behavior);
 
@@ -148,13 +148,13 @@ impl<P: Platform> View<P> for SimpleRadioGroup<P, AnyView<P>> {
 #[doc(hidden)]
 #[derive(Debug)]
 #[must_use]
-pub struct SimpleRadio<P: Platform> {
+pub struct SimpleRadio<P: Realization> {
   member: Radio,
   label: Option<String>,
   platform: PhantomData<fn() -> P>,
 }
 
-impl<P: Platform> SimpleRadio<P> {
+impl<P: Realization> SimpleRadio<P> {
   /// The member standing for `value`, the string the group reports when it is chosen.
   pub fn new(value: impl Into<String>) -> Self {
     Self {
@@ -172,9 +172,9 @@ impl<P: Platform> SimpleRadio<P> {
   }
 }
 
-impl<P: Platform> AnyKind for SimpleRadio<P> {}
+impl<P: Realization> AnyKind for SimpleRadio<P> {}
 
-impl<P: Platform> View<P> for SimpleRadio<P>
+impl<P: Realization> View<P> for SimpleRadio<P>
 where
   P::Scalar: SimpleUnit,
   P::StyleExt: CornerRadius,
@@ -219,7 +219,7 @@ where
 
 /// The drawn mark: a ring on the card surface holding a dot that fills with the primary
 /// surface while checked, ringing while focused.
-fn drawn_mark<P: Platform>() -> Container<P>
+fn drawn_mark<P: Realization>() -> Container<P>
 where
   P::Scalar: SimpleUnit,
   P::StyleExt: CornerRadius,
@@ -249,7 +249,7 @@ where
 }
 
 /// What a platform's `SimpleRadioGroup` carries.
-pub trait SimpleRadioGroupBase<P: Platform>: Wraps<Inner = SimpleRadioGroup<P>> {
+pub trait SimpleRadioGroupBase<P: Realization>: Wraps<Inner = SimpleRadioGroup<P>> {
   /// A group with nothing chosen.
   #[must_use]
   fn new() -> Self {
@@ -288,7 +288,7 @@ pub trait SimpleRadioGroupBase<P: Platform>: Wraps<Inner = SimpleRadioGroup<P>> 
 }
 
 /// What a platform's `SimpleRadio` carries.
-pub trait SimpleRadioBase<P: Platform>: Wraps<Inner = SimpleRadio<P>> {
+pub trait SimpleRadioBase<P: Realization>: Wraps<Inner = SimpleRadio<P>> {
   /// The member standing for `value`, the string the group reports when it is chosen.
   #[must_use]
   fn new(value: impl Into<String>) -> Self {

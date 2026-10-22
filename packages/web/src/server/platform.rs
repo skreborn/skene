@@ -19,7 +19,7 @@ use skene_foundation::{
   Observation,
   OverlayProps,
   PickerOption,
-  Platform,
+  Realization,
   RunProps,
   RunValue,
   Scene,
@@ -55,7 +55,7 @@ impl Painting for Web {
   }
 }
 
-impl Platform for Web {
+impl Realization for Web {
   const FONT_SIZE: f32 = 16.;
 
   type Scalar = f32;
@@ -289,6 +289,6 @@ impl WebMarkup for Web {
   }
 
   fn set_text(node: NodeId, text: &str) {
-    <Self as Platform>::set_text(node, text);
+    <Self as Realization>::set_text(node, text);
   }
 }

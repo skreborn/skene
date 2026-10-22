@@ -2,7 +2,7 @@
 
 use skene_foundation::{HasRun, RunBase, TextBase, View, Wraps};
 
-use crate::ActivePlatform;
+use crate::Active;
 
 /// A run of text on its own line.
 ///
@@ -18,14 +18,14 @@ use crate::ActivePlatform;
 /// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
-pub struct Text(skene_foundation::Text<ActivePlatform>);
+pub struct Text(skene_foundation::Text<Active>);
 
-impl TextBase<ActivePlatform> for Text {}
+impl TextBase<Active> for Text {}
 
-impl RunBase<ActivePlatform> for Text {}
+impl RunBase<Active> for Text {}
 
 impl Text {
-  skene_foundation::properties! { run_style_mut, ActivePlatform;
+  skene_foundation::properties! { run_style_mut, Active;
     set_bold / derive_bold (bold) => ext.bold: bool, "whether the text is bold";
   }
 }

@@ -20,7 +20,7 @@ macro_rules! properties {
     pub fn $set(
       mut self,
       $param: impl Into<
-        $crate::Value<$type, $crate::Condition<<$platform as $crate::Platform>::Scalar>>,
+        $crate::Value<$type, $crate::Condition<<$platform as $crate::Realization>::Scalar>>,
       >,
     ) -> Self {
       self.$access().$($field).+ = Some($param.into());
@@ -94,7 +94,7 @@ macro_rules! alignment_properties {
     pub fn $set(
       mut self,
       alignment: impl Into<
-        $crate::Value<$crate::Alignment, $crate::Condition<<$platform as $crate::Platform>::Scalar>>,
+        $crate::Value<$crate::Alignment, $crate::Condition<<$platform as $crate::Realization>::Scalar>>,
       >,
     ) -> Self {
       let (horizontal, vertical) = alignment.into().split_axes();
@@ -113,7 +113,7 @@ macro_rules! alignment_properties {
     ) -> Self {
       self.$set($crate::Value::<
         $crate::Alignment,
-        $crate::Condition<<$platform as $crate::Platform>::Scalar>,
+        $crate::Condition<<$platform as $crate::Realization>::Scalar>,
       >::new($crate::Leaf::derive(alignment)))
     }
   };

@@ -20,7 +20,7 @@ use skene_foundation::{
   NodeId,
   Part,
   Pinned,
-  Platform,
+  Realization,
   Scalar,
   Scene,
   Slider,
@@ -49,7 +49,7 @@ use super::{
 /// flows both ways. For a slider drawn some other way, compose [`BasicSlider`] directly.
 #[doc(hidden)]
 #[must_use]
-pub struct SimpleSlider<P: Platform> {
+pub struct SimpleSlider<P: Realization> {
   label: Option<String>,
   range: Source<SliderRange>,
   value: Option<Rc<dyn Fn() -> f32>>,
@@ -57,7 +57,7 @@ pub struct SimpleSlider<P: Platform> {
   platform: PhantomData<fn() -> P>,
 }
 
-impl<P: Platform> std::fmt::Debug for SimpleSlider<P> {
+impl<P: Realization> std::fmt::Debug for SimpleSlider<P> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter
       .debug_struct("SimpleSlider")
@@ -65,7 +65,7 @@ impl<P: Platform> std::fmt::Debug for SimpleSlider<P> {
   }
 }
 
-impl<P: Platform> SimpleSlider<P> {
+impl<P: Realization> SimpleSlider<P> {
   /// A slider over `0..=100` stepping by `1`, holding its minimum.
   #[inline(always)]
   pub fn new() -> Self {
@@ -130,16 +130,16 @@ impl<P: Platform> SimpleSlider<P> {
   }
 }
 
-impl<P: Platform> Default for SimpleSlider<P> {
+impl<P: Realization> Default for SimpleSlider<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<P: Platform> AnyKind for SimpleSlider<P> {}
+impl<P: Realization> AnyKind for SimpleSlider<P> {}
 
-impl<P: Platform> View<P> for SimpleSlider<P>
+impl<P: Realization> View<P> for SimpleSlider<P>
 where
   P::Scalar: SimpleUnit,
   P::StyleExt: CornerRadius,
@@ -262,7 +262,7 @@ where
 
 /// The thumb: a box in the unit's thumb surface, ringed while focus is visible where
 /// the ring has thickness and recolored where it has none, bound to `handle`.
-fn thumb<P: Platform>(shape: SimpleShape<P::Scalar>, handle: NodeHandle<P>) -> Container<P>
+fn thumb<P: Realization>(shape: SimpleShape<P::Scalar>, handle: NodeHandle<P>) -> Container<P>
 where
   P::Scalar: SimpleUnit,
   P::StyleExt: CornerRadius,
@@ -285,7 +285,7 @@ where
 }
 
 /// What a platform's `SimpleSlider` carries.
-pub trait SimpleSliderBase<P: Platform>: Wraps<Inner = SimpleSlider<P>> {
+pub trait SimpleSliderBase<P: Realization>: Wraps<Inner = SimpleSlider<P>> {
   /// A slider over `0..=100` stepping by `1`, holding its minimum.
   #[must_use]
   fn new() -> Self {

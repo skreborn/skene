@@ -21,9 +21,9 @@ mod motion;
 mod naming;
 mod node;
 mod node_map;
-mod platform;
 mod property;
 mod props;
+mod realization;
 mod reorder;
 mod resolve;
 mod run_style;
@@ -137,8 +137,8 @@ pub use leaf::{
   Conditional,
   Definition,
   DerivedSlot,
+  KeptLeaf,
   Leaf,
-  PlatformLeaf,
   Slot,
   StaticLeaf,
   StaticValue,
@@ -149,7 +149,6 @@ pub use motion::{Animation, Easing, Iterations, StyleProperty, Transition, inter
 pub use naming::NameFacts;
 pub use node::NodeId;
 pub use node_map::NodeMap;
-pub use platform::{Observation, Platform, Timer, Timers};
 pub use property::{Property, PropertyKey, PropertyName};
 pub use props::{
   BoxKeyframe,
@@ -166,6 +165,7 @@ pub use props::{
   StaticBoxStyle,
   StaticRunStyle,
 };
+pub use realization::{Observation, Realization, Timer, Timers};
 pub use reorder::Reorder;
 pub use resolve::{
   Focus,

@@ -25,7 +25,7 @@ use skene_foundation::{
   MouseCursor,
   NodeId,
   Part,
-  Platform,
+  Realization,
   Row,
   RunBase,
   State,
@@ -60,12 +60,12 @@ const CHECK: &str = "✓";
 #[doc(hidden)]
 #[derive(Debug)]
 #[must_use]
-pub struct SimplePicker<P: Platform> {
+pub struct SimplePicker<P: Realization> {
   options: Vec<(String, String)>,
   picker: BasicPicker<P>,
 }
 
-impl<P: Platform> SimplePicker<P> {
+impl<P: Realization> SimplePicker<P> {
   /// A picker with no options and nothing chosen.
   #[inline(always)]
   pub fn new() -> Self {
@@ -140,16 +140,16 @@ impl<P: Platform> SimplePicker<P> {
   }
 }
 
-impl<P: Platform> Default for SimplePicker<P> {
+impl<P: Realization> Default for SimplePicker<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<P: Platform> AnyKind for SimplePicker<P> {}
+impl<P: Realization> AnyKind for SimplePicker<P> {}
 
-impl<P: Platform> View<P> for SimplePicker<P>
+impl<P: Realization> View<P> for SimplePicker<P>
 where
   P::Scalar: SimpleUnit,
   P::StyleExt: CornerRadius,
@@ -194,7 +194,7 @@ where
 }
 
 /// The face: the chosen option's label, and the indicator as the [`Part::Face`].
-fn face<P: Platform>(labels: &Rc<Vec<(String, String)>>, value: Memo<String>) -> Row<P>
+fn face<P: Realization>(labels: &Rc<Vec<(String, String)>>, value: Memo<String>) -> Row<P>
 where
   P::Scalar: SimpleUnit,
 {
@@ -239,7 +239,7 @@ where
 
 /// One row of the list: highlighted while focused, filled in the primary look while
 /// chosen, its check the [`Part::Item`] and its caption the label.
-fn row<P: Platform>(value: &str, label: &str) -> AnyView<P>
+fn row<P: Realization>(value: &str, label: &str) -> AnyView<P>
 where
   P::Scalar: SimpleUnit,
   P::StyleExt: CornerRadius,
@@ -270,7 +270,7 @@ where
 }
 
 /// What a platform's `SimplePicker` carries.
-pub trait SimplePickerBase<P: Platform>: Wraps<Inner = SimplePicker<P>> {
+pub trait SimplePickerBase<P: Realization>: Wraps<Inner = SimplePicker<P>> {
   /// A picker with no options and nothing chosen.
   #[must_use]
   fn new() -> Self {

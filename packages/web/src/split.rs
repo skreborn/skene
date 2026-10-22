@@ -16,9 +16,9 @@ use std::{
   time::Duration,
 };
 
-use skene_foundation::Platform as _;
+use skene_foundation::Realization as _;
 
-use crate::ActivePlatform;
+use crate::Active;
 
 /// A split module's wasm loader import: each call runs the completion callback exactly
 /// once with the payload it was given and whether the module loaded.
@@ -156,7 +156,7 @@ unsafe extern "C" fn loaded(payload: *const c_void, success: bool) {
   inner.failures.set(failures);
   tracing::warn!("a split module failed to load; asking again in {wait:?}");
 
-  let _ = ActivePlatform::schedule(
+  let _ = Active::schedule(
     wait,
     Box::new(move || {
       let load = match &*inner.state.borrow() {

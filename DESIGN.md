@@ -35,11 +35,11 @@ because the platform's associated types say so.
 
 Dependency arrows only point down; a platform depends on the foundation, never on another
 platform; each facade names only its own platforms, the web's naming the headless one
-it compiles against off its target, and publishes the selected one as `ActivePlatform`.
+it compiles against off its target, and publishes the selected one as `Active`.
 
 ## The scene and the platform
 
-**The spine owns the tree; a platform keeps a record per node.** `Scene<P: Platform>` is a
+**The spine owns the tree; a platform keeps a record per node.** `Scene<P: Realization>` is a
 generational arena of node records—parent, children as a list of linked siblings (a move
 relinks a few records and shifts nothing), the annotation a wrapper asked for the child,
 the token definitions a theme placed on the node, the query-container name, the
@@ -91,7 +91,7 @@ one, dropping each with its node, and resolves every node's interaction from the
 whether an entry takes edits (`Scene::is_editable`: neither disabled nor read-only) from
 the control state and reports it holds, which the platforms read rather than copy.
 
-**`Platform` is a zero-sized trait with associated types**, monomorphized, hidden behind
+**`Realization` is a zero-sized trait with associated types**, monomorphized, hidden behind
 each facade's views: `Scalar` (`f32` or `u32`), `StyleExt` (the medium's own
 properties), `TokenValue` (the erased definition the medium accepts). Its methods are the
 portable vocabulary over node ids: realize and update boxes, controls, overlays and
@@ -102,7 +102,7 @@ boundary—and arrive through extension traits (`Painting`; each platform's esca
 The leaf-only surface (`document`, `element`, `render_to_string`, `launch`) stays free
 functions in the platform crate, since it is not a shared contract. One entry is
 synchronous by contract: `lay_out::<P>()` ends the turn (`end_turn`) and lays the scene
-out through `Platform::lay_out`, without painting, so a platform's text-input protocol,
+out through `Realization::lay_out`, without painting, so a platform's text-input protocol,
 which asks its questions synchronously, reads geometry that is current; the terminal
 lays out through the settle loop its frame runs, and a platform whose layout is its
 toolkit's keeps the default, which does nothing.
@@ -246,7 +246,7 @@ and its cost unjustified.
   ready, and `set_child_builder(|| enhancement)` the form built once it is. Which is built
   follows a signal the enhancement is given (`Enhance::new(live)`), and the signals
   the built-ins wait on belong to the things that can lack them, never to a shared
-  capability vocabulary. **Hydration** is the web's: `Platform::hydration()` returns
+  capability vocabulary. **Hydration** is the web's: `Realization::hydration()` returns
   the signal that turns true once a render made without script has been hydrated,
   and `None` by default, which every platform whose tree is live from the start keeps,
   the terminal and the native platforms among them, so nothing on the terminal facade
@@ -279,7 +279,7 @@ and its cost unjustified.
   under them consumes, so per-child layout is an ordinary property of the child's
   style: in the class on the web, conditional, token-valued or derived like any other.
   A run carries it as its layout, its derived leaves slots numbered after the run's
-  own, and a low-level node hands it to its platform through `Platform::apply_layout`,
+  own, and a low-level node hands it to its platform through `Realization::apply_layout`,
   which the web compiles into the element's class.
 - **Owners** are created per reconciled item, per rebuild, per keyed view and where
   context is provided; everything else inherits the ambient owner. `derived` rebuilds
@@ -307,7 +307,7 @@ and whose moves pass over the disabled members in one place; `BasicButton`,
 `BasicRadio`, `BasicListbox`, `BasicListboxOption`, `BasicTextField` and `BasicTextEditor` are aliases over
 them, and `BasicPicker` composes a `Popup` face with a `Listbox` in an `Overlay`. Both
 have type-ahead: `TypeAhead` holds the characters typed in quick succession, reset by
-a `Platform::schedule` timer, and `Roster::typed` matches them against the members'
+a `Realization::schedule` timer, and `Roster::typed` matches them against the members'
 names (`Label::set_name`, the value standing in), one character cycling through the
 names starting with it and more matching a prefix; the listbox moves focus to the
 match, and the closed face chooses it outright through `Popup::set_key_fallback`, the
@@ -323,7 +323,7 @@ named after its node, the popup placed by `position-area`) where the engine has 
 sits at the anchor's measured rectangle as it opens elsewhere. A `Tooltip` wraps the one
 view it describes and mounts that view and a hint overlay, the `Bubble`, in a segment of
 its own: it opens on the platform's clock once the pointer has rested for its delay and
-at once on focus that shows (`Platform::focus_visible`), closes on leave, blur and a
+at once on focus that shows (`Realization::focus_visible`), closes on leave, blur and a
 dismiss, and reports the bubble as the description (`DescribedBy`, and `Description` for
 text) of the node that takes focus within the view (`Scene::focus_holder_within`), the
 report merged in the scene with that node's own; the web's server leaf renders the text
@@ -337,7 +337,7 @@ is the opt-in: a secondary press on the wrapped view, or `Shift-F10` and the
 `ContextMenu` key while focus is inside it, dispatches `EventKind::ContextMenu` at the
 node through the ordinary bubbling dispatch, and the deepest wrapper along the path
 opens its menu pinned at the pointer (at the focused node's bottom-start corner from
-the keyboard, through `Platform::set_overlay_position`) and answers `Prevent::All`, so
+the keyboard, through `Realization::set_overlay_position`) and answers `Prevent::All`, so
 the browser's own menu stays wherever no wrapper is, and an app that wants its own
 everywhere wraps its root. The terminal facade serves the standard menu from the root
 at install, because the terminal has no menu of its own; a deeper wrapper wins over it
@@ -352,7 +352,7 @@ any view, no menu needed. A standard item asks the platform for its `Availabilit
 menu is requested: `Absent` hides it, `Disabled` lists it disabled, `Enabled` lists it
 live—outside a text entry only `Copy` exists, and only with a selection; inside one all
 three are listed, `Copy` and `Cut` disabled without a selection—and running it calls
-`Platform::clipboard` (OSC 52 in the terminal, the async Clipboard API on the web, where
+`Realization::clipboard` (OSC 52 in the terminal, the async Clipboard API on the web, where
 the items are absent without it and a paste is permission-gated and stays best effort;
 the headless platform records the action). A menu with nothing usable does not open but
 still prevents the platform's, which is what a right press on an empty spot did before.
@@ -721,7 +721,7 @@ facade, backed by the platform: `MediaQueryList` and `resize` in the browser, th
 terminal's size and background, the headless store's settings. `media::watch(&media)`
 turns any declared condition into a memo rendered from the same query text the class
 compiler renders, so the signal and the stylesheet cannot disagree. A box's measured size
-reaches a view through `Platform::observe_size` (the lazy column's viewport, the slider's
+reaches a view through `Realization::observe_size` (the lazy column's viewport, the slider's
 track). On the server these hold the client hints the render was given
 (`Sec-CH-Prefers-Color-Scheme`, `Sec-CH-Viewport-Width`, `Sec-CH-Prefers-Reduced-Motion`;
 Chromium only, opt-in through `Accept-CH`/`Critical-CH`), else documented defaults.
@@ -1034,7 +1034,7 @@ and on wasm proved the bits equal.
 
 ### Headless (`skene-headless`)
 
-The host platform: every `Platform` method writes into a record per node, keyed by its
+The host platform: every `Realization` method writes into a record per node, keyed by its
 `NodeId`, while the structure stays the scene's alone; it lays the scene out and draws
 it as the layout bullet of the style model says, its text through `skene-parley` in the
 pinned face, and no platform response fires. It is the web medium (`StyleExt = WebStyle`), so a corner radius or a
@@ -1336,7 +1336,7 @@ apps never cross-compile into the web.
 Two guarantees, both properties of what is public rather than of any one API.
 
 - **A component library: one core, a crate per platform.** Its core depends on
-  `skene-foundation`, writes its views generic over `P: Platform` exactly as the built-ins
+  `skene-foundation`, writes its views generic over `P: Realization` exactly as the built-ins
   are written, states what it needs from a medium as a bound on the platform's associated
   types (`P::StyleExt: CornerRadius`), and keeps each view's members in a trait; each
   platform's crate makes them concrete as views of its own, as each facade does the
@@ -1360,10 +1360,10 @@ Two guarantees, both properties of what is public rather than of any one API.
   on headless) and `acme-sparkline` (bars through `CellPainter`) are the standing
   proofs. The portable low-level path for pixel media is `Painted`.
 
-A platform need not be first-party: a crate that implements `Platform`, provides its scalar,
-leaves, extension, a `launch` and views over `skene-foundation` is a facade. `Platform` is not
-sealed, and the shared machinery bounds only on it and the public extension traits; the
-headless platform is exactly such a crate in all but ownership.
+A platform need not be first-party: a crate that implements `Realization`, provides its
+scalar, leaves, extension, a `launch` and views over `skene-foundation` is a facade.
+`Realization` is not sealed, and the shared machinery bounds only on it and the public
+extension traits; the headless platform is exactly such a crate in all but ownership.
 
 ## Selection and entry
 
@@ -1391,8 +1391,8 @@ external crate can provide, and ships it as *public seams* so third-party integr
 sit on exactly the footing first-party ones would:
 
 - `spawn`—resume on the UI thread, scope-bound cancellation.
-- `Platform::schedule`—a one-shot action on the platform's clock, cancelled by the `Timer`
-  it returns: the window's timeout on the web, the loop's wait in the terminal, the
+- `Realization::schedule`—a one-shot action on the platform's clock, cancelled by the
+  `Timer` it returns: the window's timeout on the web, the loop's wait in the terminal, the
   hand-stepped clock under the headless platform, and never on the server.
 - `Resource`—in the engine: load into a signal with a `Loading`/`Ready`/`Refetching`
   state that keeps the last value; the web facade's newtype adds hydration across the
@@ -1490,7 +1490,7 @@ leaves the choice to the test. The spine carries no subscriber.
 The words this codebase uses in more than one sense, with the phrase that keeps each
 sense apart where context does not.
 
-- **Leaf.** A property's leaf (`Leaf`, `StaticLeaf`, `PlatformLeaf`): the fixed value,
+- **Leaf.** A property's leaf (`Leaf`, `StaticLeaf`, `KeptLeaf`): the fixed value,
   token, expression or derived closure at the bottom of a `Value`, conditions choosing
   among leaves. A web leaf: one of the platforms the web facade compiles to, the browser
   leaf and the server leaf, the headless platform standing in off their targets.

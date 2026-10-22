@@ -1,7 +1,7 @@
 //! # skene-simple-terminal
 //!
 //! The Simple component library on the terminal: every `Simple*` view of
-//! [`skene_simple`] as a view of the terminal's own over its `ActivePlatform`, the
+//! [`skene_simple`] as a view of the terminal's own over its `Active`, the
 //! palette in the terminal's unit, and a [`prelude`] an app imports beside the facade's
 //! own.
 

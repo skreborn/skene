@@ -9,7 +9,7 @@
 //! The node an element realizes is minted through `skene_foundation::LowLevel`, and it
 //! composes as a built-in does.
 
-use skene_foundation::{NodeId, Platform};
+use skene_foundation::{NodeId, Realization};
 
 use crate::declarations::Declarations;
 
@@ -21,7 +21,7 @@ use crate::declarations::Declarations;
   message = "`{Self}` is not a web platform",
   label = "a view bound on `WebMarkup` exists on the web platform's leaves alone"
 )]
-pub trait WebMarkup: Platform {
+pub trait WebMarkup: Realization {
   /// Realizes `node` as a detached element of `tag`.
   fn create_element(node: NodeId, tag: &'static str);
 

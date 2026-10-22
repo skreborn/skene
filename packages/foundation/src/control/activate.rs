@@ -10,8 +10,8 @@ use crate::{
   KeyEvent,
   NamedKey,
   NativeElement,
-  Platform,
   Prevent,
+  Realization,
   Role,
 };
 
@@ -38,7 +38,7 @@ impl Activate {
   }
 }
 
-impl<P: Platform> Behavior<P> for Activate {
+impl<P: Realization> Behavior<P> for Activate {
   #[inline(always)]
   fn native(&self) -> Option<NativeElement> {
     Some(NativeElement::Button)

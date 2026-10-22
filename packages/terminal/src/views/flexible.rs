@@ -2,7 +2,7 @@
 
 use skene_foundation::{AnyView, FlexChild, FlexibleBase, IntoChildOf, NoChild, View, Wraps};
 
-use crate::ActivePlatform;
+use crate::Active;
 
 /// Gives the child it wraps its flexibility in a [`Row`](crate::Row) or a
 /// [`Column`](crate::Column).
@@ -24,7 +24,7 @@ use crate::ActivePlatform;
 /// ```
 #[derive(Debug, Wraps)]
 #[must_use]
-pub struct Flexible<C = NoChild>(skene_foundation::Flexible<ActivePlatform, C>);
+pub struct Flexible<C = NoChild>(skene_foundation::Flexible<Active, C>);
 
 impl Default for Flexible {
   #[inline(always)]
@@ -33,19 +33,19 @@ impl Default for Flexible {
   }
 }
 
-impl FlexibleBase<ActivePlatform> for Flexible {}
+impl FlexibleBase<Active> for Flexible {}
 
 impl Flexible {
   /// Sets the child.
   #[inline(always)]
-  pub fn set_child(self, child: impl View<ActivePlatform>) -> Flexible<AnyView<ActivePlatform>> {
+  pub fn set_child(self, child: impl View<Active>) -> Flexible<AnyView<Active>> {
     Flexible(self.0.set_child(child))
   }
 }
 
-impl IntoChildOf<ActivePlatform, FlexChild> for Flexible<AnyView<ActivePlatform>> {
+impl IntoChildOf<Active, FlexChild> for Flexible<AnyView<Active>> {
   #[inline(always)]
-  fn into_child(self) -> AnyView<ActivePlatform> {
+  fn into_child(self) -> AnyView<Active> {
     self.0.into_child()
   }
 }

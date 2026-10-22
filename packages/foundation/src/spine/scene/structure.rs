@@ -4,7 +4,7 @@
 use smallvec::SmallVec;
 
 use super::{Mirror, NodeKind, NodeRecord, Scene};
-use crate::spine::{NodeId, Part, Platform};
+use crate::spine::{NodeId, Part, Realization};
 
 /// The end of a segment and, while the segment is detached, the content waiting
 /// between its anchors.
@@ -27,7 +27,7 @@ enum Departure {
   Remove,
 }
 
-impl<P: Platform> Scene<P> {
+impl<P: Realization> Scene<P> {
   /// Mints a detached segment: a start and an end anchor, attached and detached as one
   /// with whatever is mounted between them. The platform realizes the anchors once the
   /// scene is released.

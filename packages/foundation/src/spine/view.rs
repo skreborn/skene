@@ -4,7 +4,7 @@ use std::{hash::Hash, marker::PhantomData};
 
 use skene_reactive::Key;
 
-use super::{Keyed, NodeId, Platform};
+use super::{Keyed, NodeId, Realization};
 
 /// A view accepted as a child of every kind.
 ///
@@ -27,7 +27,7 @@ pub trait AnyKind {}
   note = "check that it is indeed a view type",
   note = "see its documentation to determine what completes it"
 )]
-pub trait View<P: Platform>: AnyKind + 'static {
+pub trait View<P: Realization>: AnyKind + 'static {
   /// Realizes this view and returns its root node.
   fn build(self) -> NodeId;
 
@@ -55,12 +55,12 @@ pub trait View<P: Platform>: AnyKind + 'static {
 
 /// A type-erased view: a boxed build, or a node already built.
 #[must_use]
-pub struct AnyView<P: Platform> {
+pub struct AnyView<P: Realization> {
   inner: Inner,
   platform: PhantomData<fn() -> P>,
 }
 
-impl<P: Platform> std::fmt::Debug for AnyView<P> {
+impl<P: Realization> std::fmt::Debug for AnyView<P> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter.debug_struct("AnyView").finish_non_exhaustive()
   }
@@ -71,7 +71,7 @@ enum Inner {
   Node(NodeId),
 }
 
-impl<P: Platform> AnyView<P> {
+impl<P: Realization> AnyView<P> {
   /// A view built by `build`.
   pub fn new(build: impl FnOnce() -> NodeId + 'static) -> Self {
     Self {
@@ -90,9 +90,9 @@ impl<P: Platform> AnyView<P> {
   }
 }
 
-impl<P: Platform> AnyKind for AnyView<P> {}
+impl<P: Realization> AnyKind for AnyView<P> {}
 
-impl<P: Platform> View<P> for AnyView<P> {
+impl<P: Realization> View<P> for AnyView<P> {
   #[inline(always)]
   fn build(self) -> NodeId {
     match self.inner {
@@ -109,7 +109,7 @@ impl<P: Platform> View<P> for AnyView<P> {
 
 impl AnyKind for NodeId {}
 
-impl<P: Platform> View<P> for NodeId {
+impl<P: Realization> View<P> for NodeId {
   #[inline(always)]
   fn build(self) -> NodeId {
     self
@@ -155,13 +155,13 @@ pub struct GridChild;
   note = "a wrapper (`Flexible`, `Pinned`, `GridCell`) is accepted only by the container that understands it",
   note = "see its documentation to determine what completes it"
 )]
-pub trait IntoChildOf<P: Platform, Kind> {
+pub trait IntoChildOf<P: Realization, Kind> {
   /// Converts this value into the child's view.
   fn into_child(self) -> AnyView<P>;
 }
 
 #[diagnostic::do_not_recommend]
-impl<P: Platform, Kind, V: View<P>> IntoChildOf<P, Kind> for V {
+impl<P: Realization, Kind, V: View<P>> IntoChildOf<P, Kind> for V {
   #[inline(always)]
   fn into_child(self) -> AnyView<P> {
     self.into_any()

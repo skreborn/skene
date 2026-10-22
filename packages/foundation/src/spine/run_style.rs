@@ -224,7 +224,7 @@ impl<X: StyleExtension> RunFieldVisitor<X> for Overlay<'_, X> {
 impl<C: Clone + PartialEq + Debug + 'static, X: StyleExtension> RunStyle<Declared<C>, X> {
   /// The static style a platform receives, and the derived leaves lifted out of it: each
   /// slot's index is its position in the list, and its property's field holds
-  /// [`PlatformLeaf::Slot`](super::PlatformLeaf::Slot) where the leaf was.
+  /// [`KeptLeaf::Slot`](super::KeptLeaf::Slot) where the leaf was.
   pub fn split(mut self) -> (RunStyle<Static<C>, X>, Vec<RunSlot<X>>) {
     let mut target = RunStyle::default();
     let mut slots = Vec::new();
@@ -300,8 +300,8 @@ mod tests {
   use crate::spine::{
     Color,
     Declared,
+    KeptLeaf,
     Plain,
-    PlatformLeaf,
     Property,
     PropertyKey,
     Slot,
@@ -324,9 +324,9 @@ mod tests {
 
     assert_eq!(
       color.base(),
-      &PlatformLeaf::Static(StaticLeaf::Token(TokenName::new("ink")))
+      &KeptLeaf::Static(StaticLeaf::Token(TokenName::new("ink")))
     );
-    assert_eq!(color.variants()[0].1, PlatformLeaf::Slot(Slot(0)));
+    assert_eq!(color.variants()[0].1, KeptLeaf::Slot(Slot(0)));
     assert_eq!(fixed.selection_color, None);
     assert_eq!(slots.len(), 1);
     assert_eq!(slots[0].property, PropertyKey::Shared(Property::TextColor));

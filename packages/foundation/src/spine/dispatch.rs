@@ -14,7 +14,7 @@
 use skene_reactive::batch;
 use smallvec::SmallVec;
 
-use super::{Handler, NodeId, Platform, Scene};
+use super::{Handler, NodeId, Realization, Scene};
 use crate::spine::{
   ClickEvent,
   Edit,
@@ -33,7 +33,7 @@ use crate::spine::{
 };
 
 /// Dispatches a click at `node`.
-pub fn dispatch_click<P: Platform>(node: NodeId, event: &ClickEvent) -> Prevented {
+pub fn dispatch_click<P: Realization>(node: NodeId, event: &ClickEvent) -> Prevented {
   bubble::<P, _, _>(
     node,
     |set, out| {
@@ -54,7 +54,7 @@ pub fn dispatch_click<P: Platform>(node: NodeId, event: &ClickEvent) -> Prevente
 }
 
 /// Dispatches the second click of a double click at `node`, after the click itself.
-pub fn dispatch_double_click<P: Platform>(node: NodeId, event: &ClickEvent) -> Prevented {
+pub fn dispatch_double_click<P: Realization>(node: NodeId, event: &ClickEvent) -> Prevented {
   bubble::<P, _, _>(
     node,
     all(|handler| match handler {
@@ -70,7 +70,7 @@ pub fn dispatch_double_click<P: Platform>(node: NodeId, event: &ClickEvent) -> P
 ///
 /// Every click handler up the path runs except the acting ones, and the climb ends at
 /// the first node carrying acting ones.
-pub fn dispatch_click_observed<P: Platform>(node: NodeId, event: &ClickEvent) -> Prevented {
+pub fn dispatch_click_observed<P: Realization>(node: NodeId, event: &ClickEvent) -> Prevented {
   bubble::<P, _, _>(
     node,
     |set, out| {
@@ -90,7 +90,7 @@ pub fn dispatch_click_observed<P: Platform>(node: NodeId, event: &ClickEvent) ->
 }
 
 /// Dispatches a key press at `node`, the focused node.
-pub fn dispatch_key_down<P: Platform>(node: NodeId, event: &KeyEvent) -> Prevented {
+pub fn dispatch_key_down<P: Realization>(node: NodeId, event: &KeyEvent) -> Prevented {
   bubble::<P, _, _>(
     node,
     all(|handler| match handler {
@@ -103,7 +103,7 @@ pub fn dispatch_key_down<P: Platform>(node: NodeId, event: &KeyEvent) -> Prevent
 }
 
 /// Dispatches a key release at `node`, the focused node.
-pub fn dispatch_key_up<P: Platform>(node: NodeId, event: &KeyEvent) -> Prevented {
+pub fn dispatch_key_up<P: Realization>(node: NodeId, event: &KeyEvent) -> Prevented {
   bubble::<P, _, _>(
     node,
     all(|handler| match handler {
@@ -116,7 +116,7 @@ pub fn dispatch_key_up<P: Platform>(node: NodeId, event: &KeyEvent) -> Prevented
 }
 
 /// Dispatches a pointer press at `node`.
-pub fn dispatch_pointer_down<P: Platform>(node: NodeId, event: &PointerEvent) -> Prevented {
+pub fn dispatch_pointer_down<P: Realization>(node: NodeId, event: &PointerEvent) -> Prevented {
   bubble::<P, _, _>(
     node,
     all(|handler| match handler {
@@ -130,7 +130,7 @@ pub fn dispatch_pointer_down<P: Platform>(node: NodeId, event: &PointerEvent) ->
 
 /// Dispatches the cancel of a pointer the platform took for itself at `node`, the node
 /// its press reached.
-pub fn dispatch_pointer_cancel<P: Platform>(node: NodeId, event: &PointerEvent) -> Prevented {
+pub fn dispatch_pointer_cancel<P: Realization>(node: NodeId, event: &PointerEvent) -> Prevented {
   bubble::<P, _, _>(
     node,
     all(|handler| match handler {
@@ -144,7 +144,7 @@ pub fn dispatch_pointer_cancel<P: Platform>(node: NodeId, event: &PointerEvent) 
 
 /// Dispatches a wheel's turn at `node`, the deepest node under the pointer, before the
 /// platform scrolls by it.
-pub fn dispatch_wheel<P: Platform>(node: NodeId, event: &WheelEvent) -> Prevented {
+pub fn dispatch_wheel<P: Realization>(node: NodeId, event: &WheelEvent) -> Prevented {
   bubble::<P, _, _>(
     node,
     all(|handler| match handler {
@@ -165,7 +165,7 @@ pub fn dispatch_wheel<P: Platform>(node: NodeId, event: &WheelEvent) -> Prevente
 }
 
 /// Dispatches a pointer release at `node`.
-pub fn dispatch_pointer_up<P: Platform>(node: NodeId, event: &PointerEvent) -> Prevented {
+pub fn dispatch_pointer_up<P: Realization>(node: NodeId, event: &PointerEvent) -> Prevented {
   bubble::<P, _, _>(
     node,
     all(|handler| match handler {
@@ -178,7 +178,7 @@ pub fn dispatch_pointer_up<P: Platform>(node: NodeId, event: &PointerEvent) -> P
 }
 
 /// Dispatches a pointer move at `node`.
-pub fn dispatch_pointer_move<P: Platform>(node: NodeId, event: &PointerEvent) -> Prevented {
+pub fn dispatch_pointer_move<P: Realization>(node: NodeId, event: &PointerEvent) -> Prevented {
   bubble::<P, _, _>(
     node,
     all(|handler| match handler {
@@ -191,7 +191,7 @@ pub fn dispatch_pointer_move<P: Platform>(node: NodeId, event: &PointerEvent) ->
 }
 
 /// `event` local to `node`'s box, as the platform measures it.
-fn localize<P: Platform>(node: NodeId, event: &PointerEvent) -> PointerEvent {
+fn localize<P: Realization>(node: NodeId, event: &PointerEvent) -> PointerEvent {
   P::localize_pointer(node, event)
 }
 
@@ -200,7 +200,7 @@ fn localize<P: Platform>(node: NodeId, event: &PointerEvent) -> PointerEvent {
 /// Each node the pointer left is notified, innermost first, then each it entered,
 /// outermost first, as `pointerleave` and `pointerenter` reach every node whose subtree
 /// the pointer crossed.
-pub fn notify_pointer_moved<P: Platform>(next: Option<NodeId>) {
+pub fn notify_pointer_moved<P: Realization>(next: Option<NodeId>) {
   let (left, entered) = Scene::<P>::with(|scene| scene.move_pointer(next));
   let leave: Pick<PlainHandler> = |handler| match handler {
     Handler::PointerLeave(run) => Some(run),
@@ -228,7 +228,7 @@ pub fn notify_pointer_moved<P: Platform>(next: Option<NodeId>) {
 /// then each whose subtree holds it and did not is focused, outermost first, as
 /// `:focus-within` changes; then each popup focus left for another node is dismissed
 /// ([`Scene::popups_left_by`]).
-pub fn notify_focus_moved<P: Platform>(next: Option<NodeId>) {
+pub fn notify_focus_moved<P: Realization>(next: Option<NodeId>) {
   let (left, reached, popups) = Scene::<P>::with(|scene| {
     let (left, reached) = scene.move_focus(next);
     let popups = next.map_or_else(Vec::new, |next| scene.popups_left_by(next));
@@ -260,7 +260,7 @@ pub fn notify_focus_moved<P: Platform>(next: Option<NodeId>) {
 }
 
 /// Notifies `node` of its new scroll offsets.
-pub fn notify_scroll<P: Platform>(node: NodeId, event: &ScrollEvent) {
+pub fn notify_scroll<P: Realization>(node: NodeId, event: &ScrollEvent) {
   notify::<P, _>(
     node,
     |handler| match handler {
@@ -272,7 +272,7 @@ pub fn notify_scroll<P: Platform>(node: NodeId, event: &ScrollEvent) {
 }
 
 /// Notifies `node` of its new textual value.
-pub fn notify_change<P: Platform>(node: NodeId, value: &str) {
+pub fn notify_change<P: Realization>(node: NodeId, value: &str) {
   notify::<P, _>(
     node,
     |handler| match handler {
@@ -284,7 +284,7 @@ pub fn notify_change<P: Platform>(node: NodeId, value: &str) {
 }
 
 /// Notifies `node` of its new selection.
-pub fn notify_selection_change<P: Platform>(node: NodeId, selection: TextSelection) {
+pub fn notify_selection_change<P: Realization>(node: NodeId, selection: TextSelection) {
   notify::<P, _>(
     node,
     |handler| match handler {
@@ -303,7 +303,7 @@ pub fn notify_selection_change<P: Platform>(node: NodeId, selection: TextSelecti
 /// [`Verdict::Replace`] decides; with none answering it, or none at all, the edit stands
 /// as [`Verdict::Accept`]. The verdict is the only write-back: a platform applies it, and
 /// a bound value's write reaching it later as the same text changes nothing.
-pub fn report_edit<P: Platform>(node: NodeId, edit: &Edit, applied: bool) -> Verdict {
+pub fn report_edit<P: Realization>(node: NodeId, edit: &Edit, applied: bool) -> Verdict {
   batch(|| {
     let (handlers, _) = snapshot::<P, EditHandler>(
       node,
@@ -323,7 +323,7 @@ pub fn report_edit<P: Platform>(node: NodeId, edit: &Edit, applied: bool) -> Ver
 }
 
 /// Notifies `node` of its new checked state.
-pub fn notify_toggle<P: Platform>(node: NodeId, checked: bool) {
+pub fn notify_toggle<P: Realization>(node: NodeId, checked: bool) {
   notify::<P, _>(
     node,
     |handler| match handler {
@@ -335,7 +335,7 @@ pub fn notify_toggle<P: Platform>(node: NodeId, checked: bool) {
 }
 
 /// Notifies the overlay `node` that the platform dismissed it.
-pub fn notify_dismiss<P: Platform>(node: NodeId) {
+pub fn notify_dismiss<P: Realization>(node: NodeId) {
   notify::<P, _>(
     node,
     |handler| match handler {
@@ -348,7 +348,7 @@ pub fn notify_dismiss<P: Platform>(node: NodeId) {
 
 /// Dispatches a context menu request at `node`: `event` is where the menu is asked
 /// for, the secondary button on a press and no button from the keyboard.
-pub fn dispatch_context_menu<P: Platform>(node: NodeId, event: &PointerEvent) -> Prevented {
+pub fn dispatch_context_menu<P: Realization>(node: NodeId, event: &PointerEvent) -> Prevented {
   bubble::<P, _, _>(
     node,
     all(|handler| match handler {
@@ -374,7 +374,7 @@ fn all<H: ?Sized>(pick: Pick<H>) -> impl Fn(&HandlerSet, &mut Selected<H>) -> bo
 
 /// The handlers `select` picks on one node, cloned out so the scene is released
 /// before any runs; with whether `select` ends the climb at the node.
-fn snapshot<P: Platform, H: ?Sized>(
+fn snapshot<P: Realization, H: ?Sized>(
   node: NodeId,
   select: impl Fn(&HandlerSet, &mut Selected<H>) -> bool,
 ) -> (Selected<H>, bool) {
@@ -391,7 +391,7 @@ fn snapshot<P: Platform, H: ?Sized>(
 /// Climbs from `node` along the path it has before any handler runs, running the
 /// handlers `select` picks on each node with the payload `prepare` makes for that
 /// node, made only where a handler runs.
-fn bubble<P: Platform, H: ?Sized, E>(
+fn bubble<P: Realization, H: ?Sized, E>(
   node: NodeId,
   select: impl Fn(&HandlerSet, &mut Selected<H>) -> bool,
   prepare: impl Fn(NodeId) -> E,
@@ -421,7 +421,7 @@ fn bubble<P: Platform, H: ?Sized, E>(
 }
 
 /// Runs the handlers `pick` takes on `node` alone.
-fn notify<P: Platform, H: ?Sized>(node: NodeId, pick: Pick<H>, run: impl Fn(&H)) {
+fn notify<P: Realization, H: ?Sized>(node: NodeId, pick: Pick<H>, run: impl Fn(&H)) {
   batch(|| {
     let (handlers, _) = snapshot::<P, H>(node, all(pick));
 
@@ -564,7 +564,7 @@ mod tests {
     assert_eq!(*log.borrow(), ["inner", "middle"]);
   }
 
-  /// The `Prevent::Platform` verdict is the control's own: it suppresses the native response
+  /// The `Prevent::Realization` verdict is the control's own: it suppresses the native response
   /// without stopping the ancestors, and a handler may reach the scene while it runs.
   #[test]
   fn platform_verdict_is_the_controls() {
@@ -590,7 +590,7 @@ mod tests {
             "orphan"
           });
 
-          Prevent::Platform
+          Prevent::Realization
         })),
       );
     });

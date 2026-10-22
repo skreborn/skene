@@ -13,8 +13,8 @@ help: the trait `IntoChildOf<Headless, skene_foundation::spine::view::PlainChild
       but trait `IntoChildOf<Headless, skene_foundation::spine::view::FlexChild>` is implemented for it
  --> src/views/flexible.rs
   |
-  | impl IntoChildOf<ActivePlatform, FlexChild> for Flexible<AnyView<ActivePlatform>> {
-  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  | impl IntoChildOf<Active, FlexChild> for Flexible<AnyView<Active>> {
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   = help: for that trait implementation, expected `skene_foundation::spine::view::FlexChild`, found `skene_foundation::spine::view::PlainChild`
 note: required by a bound in `set_child`
  --> $WORKSPACE/packages/foundation/src/spine/children.rs

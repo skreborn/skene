@@ -16,10 +16,10 @@ use crate::{
   NativeElement,
   NodeId,
   Part,
-  Platform,
   PointerButton,
   PointerEvent,
   Prevent,
+  Realization,
   Role,
   Scalar,
   Scene,
@@ -157,7 +157,7 @@ impl Slider {
 
   /// Asks for the value whose thumb centers under the pointer along the measured
   /// extent, the pointer measured from the track's start where the control has one.
-  fn slide<P: Platform>(&self, event: &PointerEvent) {
+  fn slide<P: Realization>(&self, event: &PointerEvent) {
     let event = self
       .track
       .get()
@@ -204,7 +204,7 @@ impl Default for Slider {
   }
 }
 
-impl<P: Platform> Behavior<P> for Slider {
+impl<P: Realization> Behavior<P> for Slider {
   #[inline(always)]
   fn native(&self) -> Option<NativeElement> {
     Some(NativeElement::Slider)

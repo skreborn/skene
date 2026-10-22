@@ -34,9 +34,9 @@ use crate::{
   NodeId,
   NodeKind,
   PlainChild,
-  Platform,
   PointerEvent,
   Prevent,
+  Realization,
   Role,
   Scene,
   ScrollEvent,
@@ -61,7 +61,7 @@ use crate::{
 /// [`Container`](crate::Container). A [`NodeHandle`] bound to the box names its node
 /// once built.
 #[must_use]
-pub struct LayoutBox<P: Platform, Kind = PlainChild> {
+pub struct LayoutBox<P: Realization, Kind = PlainChild> {
   layout: Layout,
   role: Option<Role>,
   container: Option<ContainerName>,
@@ -79,13 +79,13 @@ pub struct LayoutBox<P: Platform, Kind = PlainChild> {
   children: Children<P, Kind>,
 }
 
-impl<P: Platform, Kind> std::fmt::Debug for LayoutBox<P, Kind> {
+impl<P: Realization, Kind> std::fmt::Debug for LayoutBox<P, Kind> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter.debug_struct("LayoutBox").finish_non_exhaustive()
   }
 }
 
-impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
+impl<P: Realization, Kind: 'static> LayoutBox<P, Kind> {
   /// A box laid out in `layout`, with no properties set.
   #[inline(always)]
   pub fn new(layout: Layout) -> Self {
@@ -477,7 +477,7 @@ fn verdict<R: Into<Bubbling>>(result: R) -> Prevent {
   Prevent::from(bubbling)
 }
 
-impl<P: Platform, Kind: 'static> HasChildren<P> for LayoutBox<P, Kind> {
+impl<P: Realization, Kind: 'static> HasChildren<P> for LayoutBox<P, Kind> {
   type Kind = Kind;
 
   #[inline(always)]
@@ -486,15 +486,15 @@ impl<P: Platform, Kind: 'static> HasChildren<P> for LayoutBox<P, Kind> {
   }
 }
 
-impl<P: Platform, Kind: 'static> AnyKind for LayoutBox<P, Kind> {}
+impl<P: Realization, Kind: 'static> AnyKind for LayoutBox<P, Kind> {}
 
-impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
+impl<P: Realization, Kind: 'static> LayoutBox<P, Kind> {
   /// Realizes the box as a node of `kind`, which `create` realizes on the platform from
   /// the props: folds the pending annotation into the style, splits it, binds every
   /// derived slot, the focus order, the accessibility and the handlers, mounts the
   /// children and returns the node.
   ///
-  /// A box builds through this with [`NodeKind::Box`] and [`Platform::create_box`]; a
+  /// A box builds through this with [`NodeKind::Box`] and [`Realization::create_box`]; a
   /// view realized as another kind supplies its own creation.
   pub fn realize(mut self, kind: NodeKind, create: impl FnOnce(NodeId, BoxProps<P>)) -> NodeId {
     if let Some(annotation) = Scene::<P>::with(Scene::take_pending_annotation) {
@@ -604,7 +604,7 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
   }
 }
 
-impl<P: Platform, Kind: 'static> View<P> for LayoutBox<P, Kind> {
+impl<P: Realization, Kind: 'static> View<P> for LayoutBox<P, Kind> {
   #[inline(always)]
   fn build(self) -> NodeId {
     self.realize(NodeKind::Box, |node, props| P::create_box(node, &props))

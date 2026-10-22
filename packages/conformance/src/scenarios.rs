@@ -31,9 +31,9 @@ use skene_foundation::{
   Media,
   MenuEntry,
   Overlay,
-  Platform,
   Radio,
   RadioGroup,
+  Realization,
   Role,
   Row,
   Scalar,
@@ -61,7 +61,7 @@ const RETURN: Duration = Duration::from_secs(1);
 const BREAKPOINT: f32 = 700.;
 
 /// Every page, in the order the suite first opens them.
-pub(crate) fn pages<P: Platform>() -> Vec<Page<P>> {
+pub(crate) fn pages<P: Realization>() -> Vec<Page<P>> {
   vec![
     Page {
       name: "button",
@@ -281,12 +281,12 @@ pub(crate) fn all<D: Driver>() -> Vec<Scenario<D>> {
 }
 
 /// A button named `name`.
-fn button<P: Platform>(name: &str) -> BasicButton<P> {
+fn button<P: Realization>(name: &str) -> BasicButton<P> {
   BasicButton::new(Activate::new()).set_label(name)
 }
 
 /// A button named Save, counting its activations as `clicks`.
-fn button_page<P: Platform>(probes: &mut Probes) -> AnyView<P> {
+fn button_page<P: Realization>(probes: &mut Probes) -> AnyView<P> {
   let clicks = Signal::new(0u32);
 
   probes.publish("clicks", move || clicks.get().to_string());
@@ -297,7 +297,7 @@ fn button_page<P: Platform>(probes: &mut Probes) -> AnyView<P> {
 }
 
 /// A checkbox named Remember me, bound to `checked`.
-fn checkbox_page<P: Platform>(probes: &mut Probes) -> AnyView<P> {
+fn checkbox_page<P: Realization>(probes: &mut Probes) -> AnyView<P> {
   let checked = Signal::new(false);
 
   probes.publish("checked", move || checked.get().to_string());
@@ -308,7 +308,7 @@ fn checkbox_page<P: Platform>(probes: &mut Probes) -> AnyView<P> {
 }
 
 /// The buttons One, Two and Three in a column.
-fn buttons_page<P: Platform>(_: &mut Probes) -> AnyView<P> {
+fn buttons_page<P: Realization>(_: &mut Probes) -> AnyView<P> {
   Column::<P>::new()
     .set_children((button::<P>("One"), button::<P>("Two"), button::<P>("Three")))
     .into_any()
@@ -316,7 +316,7 @@ fn buttons_page<P: Platform>(_: &mut Probes) -> AnyView<P> {
 
 /// The buttons One, Two and Three in a column, Two disabled and counting its activations
 /// as `clicks`.
-fn disabled_button_page<P: Platform>(probes: &mut Probes) -> AnyView<P> {
+fn disabled_button_page<P: Realization>(probes: &mut Probes) -> AnyView<P> {
   let clicks = Signal::new(0u32);
 
   probes.publish("clicks", move || clicks.get().to_string());
@@ -334,7 +334,7 @@ fn disabled_button_page<P: Platform>(probes: &mut Probes) -> AnyView<P> {
 
 /// A text field named Name, its text bound to `value` and its selection to `selection`
 /// as `start..end`, above the plain text Plain words.
-fn text_field_page<P: Platform>(probes: &mut Probes) -> AnyView<P> {
+fn text_field_page<P: Realization>(probes: &mut Probes) -> AnyView<P> {
   let value = Signal::new(String::new());
   let selection = Signal::new(TextSelection::collapsed(0));
 
@@ -355,7 +355,7 @@ fn text_field_page<P: Platform>(probes: &mut Probes) -> AnyView<P> {
 }
 
 /// A read-only text field named Name holding fixed, bound to `value`.
-fn read_only_field_page<P: Platform>(probes: &mut Probes) -> AnyView<P> {
+fn read_only_field_page<P: Realization>(probes: &mut Probes) -> AnyView<P> {
   let value = Signal::new("fixed".to_owned());
 
   probes.publish("value", move || value.get());
@@ -371,7 +371,7 @@ fn read_only_field_page<P: Platform>(probes: &mut Probes) -> AnyView<P> {
 
 /// A radio group named Size of Small, Medium and Large, its choice bound to `chosen`
 /// (empty while nothing is chosen), above a button named Next.
-fn radio_group_page<P: Platform>(probes: &mut Probes) -> AnyView<P> {
+fn radio_group_page<P: Realization>(probes: &mut Probes) -> AnyView<P> {
   let chosen: Signal<Option<String>> = Signal::new(None);
 
   probes.publish("chosen", move || chosen.get().unwrap_or_default());
@@ -391,7 +391,7 @@ fn radio_group_page<P: Platform>(probes: &mut Probes) -> AnyView<P> {
 }
 
 /// A slider named Volume from 0 to 100, its value bound to `value`.
-fn slider_page<P: Platform>(probes: &mut Probes) -> AnyView<P> {
+fn slider_page<P: Realization>(probes: &mut Probes) -> AnyView<P> {
   let value = Signal::new(50f32);
 
   probes.publish("value", move || value.get().to_string());
@@ -403,7 +403,7 @@ fn slider_page<P: Platform>(probes: &mut Probes) -> AnyView<P> {
 
 /// A picker named Letter of a, b and c, its choice bound to `chosen`, above a button
 /// named Elsewhere.
-fn picker_page<P: Platform>(probes: &mut Probes) -> AnyView<P> {
+fn picker_page<P: Realization>(probes: &mut Probes) -> AnyView<P> {
   let chosen = Signal::new("b".to_owned());
 
   probes.publish("chosen", move || chosen.get());
@@ -424,7 +424,7 @@ fn picker_page<P: Platform>(probes: &mut Probes) -> AnyView<P> {
 }
 
 /// A button named Save, described by the tooltip Saves your work.
-fn tooltip_page<P: Platform>(_: &mut Probes) -> AnyView<P> {
+fn tooltip_page<P: Realization>(_: &mut Probes) -> AnyView<P> {
   Tooltip::<P>::new("Saves your work")
     .set_child(button::<P>("Save"))
     .into_any()
@@ -432,7 +432,7 @@ fn tooltip_page<P: Platform>(_: &mut Probes) -> AnyView<P> {
 
 /// A focusable group named Note serving a context menu of one entry, Rename, whose
 /// activation sets `renamed`.
-fn context_menu_page<P: Platform>(probes: &mut Probes) -> AnyView<P> {
+fn context_menu_page<P: Realization>(probes: &mut Probes) -> AnyView<P> {
   let renamed = Signal::new(false);
 
   probes.publish("renamed", move || renamed.get().to_string());
@@ -450,7 +450,7 @@ fn context_menu_page<P: Platform>(probes: &mut Probes) -> AnyView<P> {
 }
 
 /// The text Wide, hidden below the [`BREAKPOINT`] width.
-fn viewport_page<P: Platform>(_: &mut Probes) -> AnyView<P> {
+fn viewport_page<P: Realization>(_: &mut Probes) -> AnyView<P> {
   Container::<P>::new()
     .set_hidden(true.when(Media::MinWidth(P::Scalar::from_f32(BREAKPOINT)), false))
     .set_child(Text::new("Wide"))
@@ -459,7 +459,7 @@ fn viewport_page<P: Platform>(_: &mut Probes) -> AnyView<P> {
 
 /// A button named Dismiss, whose activation hides it for [`RETURN`], above a button
 /// named Elsewhere.
-fn visibility_page<P: Platform>(_: &mut Probes) -> AnyView<P> {
+fn visibility_page<P: Realization>(_: &mut Probes) -> AnyView<P> {
   let shown = Signal::new(true);
 
   Column::<P>::new()
@@ -478,7 +478,7 @@ fn visibility_page<P: Platform>(_: &mut Probes) -> AnyView<P> {
 
 /// A button named Open, which opens a modal holding a button named Inside, `open` as
 /// the modal is open.
-fn modal_page<P: Platform>(probes: &mut Probes) -> AnyView<P> {
+fn modal_page<P: Realization>(probes: &mut Probes) -> AnyView<P> {
   let open = Signal::new(false);
 
   probes.publish("open", move || open.get().to_string());
@@ -495,7 +495,7 @@ fn modal_page<P: Platform>(probes: &mut Probes) -> AnyView<P> {
 
 /// A sign-in form: a heading, a text field holding ada, a checked checkbox and a
 /// disabled button, none bound.
-fn form_page<P: Platform>(_: &mut Probes) -> AnyView<P> {
+fn form_page<P: Realization>(_: &mut Probes) -> AnyView<P> {
   Column::<P>::new()
     .set_children((
       Container::new()
@@ -509,7 +509,7 @@ fn form_page<P: Platform>(_: &mut Probes) -> AnyView<P> {
 }
 
 /// A box named Outer around a box named Inner, neither focusable.
-fn nested_boxes_page<P: Platform>(_: &mut Probes) -> AnyView<P> {
+fn nested_boxes_page<P: Realization>(_: &mut Probes) -> AnyView<P> {
   let length = P::Scalar::from_f32;
 
   Container::<P>::new()
@@ -528,7 +528,7 @@ fn nested_boxes_page<P: Platform>(_: &mut Probes) -> AnyView<P> {
 
 /// A box around the buttons a and b, counting focus entering it as `entered` and
 /// leaving it as `left`, above a button named c.
-fn focus_group_page<P: Platform>(probes: &mut Probes) -> AnyView<P> {
+fn focus_group_page<P: Realization>(probes: &mut Probes) -> AnyView<P> {
   let entered = Signal::new(0u32);
   let left = Signal::new(0u32);
 
@@ -1192,7 +1192,7 @@ fn a_box_hears_focus_entering_and_leaving<D: Driver>(driver: &mut D) {
 /// Text keeping its blanks and newlines: two spaces between words, two lines, a line
 /// starting with blanks, and a word too wide for the page broken where the page's width
 /// ends.
-fn text_page<P: Platform>(_: &mut Probes) -> AnyView<P> {
+fn text_page<P: Realization>(_: &mut Probes) -> AnyView<P> {
   Column::<P>::new()
     .set_spacing(Spacing::from(P::Scalar::from_f32(16.)))
     .set_children((

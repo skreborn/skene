@@ -7,8 +7,8 @@ use skene_foundation::{
   Color,
   Condition,
   Conditional,
+  KeptLeaf,
   Keyframe,
-  PlatformLeaf,
   ResolutionContext,
   Resolver,
   RunStyle,
@@ -102,11 +102,7 @@ impl<'a> Env<'a> {
   /// The run style a text entry's value paints with: the typography inherited at the
   /// entry, every property resolved.
   pub(crate) fn resolve_entry_run(&self) -> PlainRun {
-    let token = |token| {
-      Some(Conditional::new(PlatformLeaf::Static(StaticLeaf::from(
-        token,
-      ))))
-    };
+    let token = |token| Some(Conditional::new(KeptLeaf::Static(StaticLeaf::from(token))));
     let style = RunStyle::<Static<Condition<u32>>, TerminalStyle> {
       color: token(typography::INK),
       selection_color: token(typography::SELECTION_INK),

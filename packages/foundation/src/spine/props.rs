@@ -15,8 +15,8 @@ use super::{
   Keyframe,
   Media,
   MediaEnv,
-  Platform,
   PointerPrecision,
+  Realization,
   RunDynamics,
   RunStyle,
   Scalar,
@@ -37,36 +37,37 @@ use crate::spine::{
 /// A box's style as a builder declares it: values under the platform's conditions,
 /// possibly derived.
 pub type DeclaredBoxStyle<P> = BoxStyle<
-  <P as Platform>::Scalar,
-  Declared<Condition<<P as Platform>::Scalar>>,
-  <P as Platform>::StyleExt,
+  <P as Realization>::Scalar,
+  Declared<Condition<<P as Realization>::Scalar>>,
+  <P as Realization>::StyleExt,
 >;
 
 /// A box's style as a platform receives it: every derived leaf replaced by its slot.
 pub type StaticBoxStyle<P> = BoxStyle<
-  <P as Platform>::Scalar,
-  Static<Condition<<P as Platform>::Scalar>>,
-  <P as Platform>::StyleExt,
+  <P as Realization>::Scalar,
+  Static<Condition<<P as Realization>::Scalar>>,
+  <P as Realization>::StyleExt,
 >;
 
 /// A run's style as a builder declares it.
 pub type DeclaredRunStyle<P> =
-  RunStyle<Declared<Condition<<P as Platform>::Scalar>>, <P as Platform>::StyleExt>;
+  RunStyle<Declared<Condition<<P as Realization>::Scalar>>, <P as Realization>::StyleExt>;
 
 /// A run's style as a platform receives it: every derived leaf replaced by its slot.
 pub type StaticRunStyle<P> =
-  RunStyle<Static<Condition<<P as Platform>::Scalar>>, <P as Platform>::StyleExt>;
+  RunStyle<Static<Condition<<P as Realization>::Scalar>>, <P as Realization>::StyleExt>;
 
 /// A box's style as one keyframe of an animation: a static leaf per set property.
-pub type BoxKeyframe<P> = BoxStyle<<P as Platform>::Scalar, Keyframe, <P as Platform>::StyleExt>;
+pub type BoxKeyframe<P> =
+  BoxStyle<<P as Realization>::Scalar, Keyframe, <P as Realization>::StyleExt>;
 
 /// A run's style as one keyframe of an animation: a static leaf per set property.
-pub type RunKeyframe<P> = RunStyle<Keyframe, <P as Platform>::StyleExt>;
+pub type RunKeyframe<P> = RunStyle<Keyframe, <P as Realization>::StyleExt>;
 
 /// Everything a platform needs to realize a box.
 #[derive(Clone, Debug)]
 #[must_use]
-pub struct BoxProps<P: Platform> {
+pub struct BoxProps<P: Realization> {
   /// The layout mode.
   pub layout: Layout,
   /// The semantic role, guiding the platform's concrete choice of element.
@@ -93,7 +94,7 @@ pub struct BoxProps<P: Platform> {
 /// Everything a platform needs to realize a text run.
 #[derive(Clone, Debug)]
 #[must_use]
-pub struct RunProps<P: Platform> {
+pub struct RunProps<P: Realization> {
   /// Where the run sits in the surrounding layout.
   pub placement: RunPlacement,
   /// Whether the user can select and copy the run's text.
@@ -110,10 +111,10 @@ pub struct RunProps<P: Platform> {
 }
 
 /// Everything a platform needs to realize an overlay: a box shown above the app while
-/// open, opened and closed through [`Platform::set_overlay_open`].
+/// open, opened and closed through [`Realization::set_overlay_open`].
 #[derive(Clone, Debug)]
 #[must_use]
-pub struct OverlayProps<P: Platform> {
+pub struct OverlayProps<P: Realization> {
   /// Whether the overlay is modal: it traps focus and blocks interaction beneath it.
   pub modal: bool,
   /// Whether the overlay is a hint: a popup describing its anchor, which never takes
@@ -127,7 +128,7 @@ pub struct OverlayProps<P: Platform> {
   pub box_props: BoxProps<P>,
 }
 
-impl<P: Platform> OverlayProps<P> {
+impl<P: Realization> OverlayProps<P> {
   /// The role the overlay carries: a hint's tooltip, a modal's dialog unless its box
   /// states another, else the one its box states.
   #[must_use]

@@ -1414,18 +1414,18 @@ fn a_disabled_checkbox_keeps_its_input_out_of_the_tab_order() {
 fn a_markup_style_and_its_declarations_serialize_as_one_attribute() {
   use skene_foundation::{AnyView, NodeKind};
   use skene_web::{
-    ActivePlatform,
+    Active,
     platform::{Declarations, WebMarkup},
   };
 
   let rendered = render_to_string(|| {
-    AnyView::node(skene_foundation::LowLevel::<ActivePlatform>::realize(
+    AnyView::node(skene_foundation::LowLevel::<Active>::realize(
       NodeKind::Box,
       |node| {
-        ActivePlatform::create_element(node, "div");
-        ActivePlatform::set_declarations(node, &Declarations::new().set("margin", "0"));
-        ActivePlatform::set_attribute(node, "style", "color: red");
-        ActivePlatform::set_declarations(node, &Declarations::new().set("padding", "0"));
+        Active::create_element(node, "div");
+        Active::set_declarations(node, &Declarations::new().set("margin", "0"));
+        Active::set_attribute(node, "style", "color: red");
+        Active::set_declarations(node, &Declarations::new().set("padding", "0"));
       },
     ))
   });

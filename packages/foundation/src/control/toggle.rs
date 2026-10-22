@@ -11,8 +11,8 @@ use crate::{
   EventKind,
   KeyEvent,
   NativeElement,
-  Platform,
   Prevent,
+  Realization,
   Role,
 };
 
@@ -100,7 +100,7 @@ impl Toggle {
   }
 }
 
-impl<P: Platform> Behavior<P> for Toggle {
+impl<P: Realization> Behavior<P> for Toggle {
   #[inline(always)]
   fn native(&self) -> Option<NativeElement> {
     Some(NativeElement::Checkbox)

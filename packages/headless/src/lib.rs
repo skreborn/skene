@@ -16,8 +16,8 @@
 //!
 //! The environment starts at a 1024 by 768 viewport, the light scheme and no reduced
 //! motion; [`trigger_resize`], [`trigger_color_scheme`] and [`trigger_reduced_motion`]
-//! move it, the app's choice through [`Platform::set_scheme`] overrides the platform's
-//! scheme, and the signals [`Platform::media`] reports follow.
+//! move it, the app's choice through [`Realization::set_scheme`] overrides the platform's
+//! scheme, and the signals [`Realization::media`] reports follow.
 //!
 //! Motion runs on a clock that stands still until [`trigger_frame`] steps it: a property
 //! whose resolved value moved under a transition, or that an animation sets, resolves
@@ -85,7 +85,6 @@ use skene_foundation::{
   Part,
   PickerOption,
   Placement,
-  Platform,
   Point,
   PointerButton,
   PointerEvent,
@@ -93,6 +92,7 @@ use skene_foundation::{
   Prevented,
   Property,
   PropertyKey,
+  Realization,
   Rect,
   RunProps,
   RunValue,
@@ -135,7 +135,7 @@ use unicode_segmentation::UnicodeSegmentation;
 pub use self::render::Image;
 use crate::records::{Kind, Record, Records, Report};
 
-/// The host platform: a zero-sized [`Platform`] keeping a record per node in this
+/// The host platform: a zero-sized [`Realization`] keeping a record per node in this
 /// crate's records.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 #[must_use]
@@ -193,7 +193,7 @@ fn queue_restyle(node: NodeId) {
   with_records(|records| records.restyle.queue(node));
 }
 
-impl Platform for Headless {
+impl Realization for Headless {
   const FONT_SIZE: f32 = 16.;
 
   type Scalar = f32;

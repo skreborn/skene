@@ -101,7 +101,7 @@ pub(crate) fn derive_view(input: &DeriveInput) -> syn::Result<TokenStream> {
 
   generics
     .params
-    .push(parse_quote!(__P: #foundation::Platform));
+    .push(parse_quote!(__P: #foundation::Realization));
   generics
     .make_where_clause()
     .predicates

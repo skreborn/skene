@@ -2,7 +2,7 @@
 
 use skene_foundation::{AnyView, NoChild, View, Wraps};
 use skene_simple::{SimpleRadioBase, SimpleRadioGroupBase};
-use skene_web::ActivePlatform;
+use skene_web::Active;
 
 /// A ready-made group of radio buttons: the members inside it are one tab stop, the
 /// arrow keys move between them, and exactly one is chosen.
@@ -25,7 +25,7 @@ use skene_web::ActivePlatform;
 /// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
-pub struct SimpleRadioGroup<C = NoChild>(skene_simple::SimpleRadioGroup<ActivePlatform, C>);
+pub struct SimpleRadioGroup<C = NoChild>(skene_simple::SimpleRadioGroup<Active, C>);
 
 impl Default for SimpleRadioGroup {
   #[inline(always)]
@@ -34,15 +34,12 @@ impl Default for SimpleRadioGroup {
   }
 }
 
-impl SimpleRadioGroupBase<ActivePlatform> for SimpleRadioGroup {}
+impl SimpleRadioGroupBase<Active> for SimpleRadioGroup {}
 
 impl SimpleRadioGroup {
   /// Sets the view holding the members.
   #[inline(always)]
-  pub fn set_child(
-    self,
-    child: impl View<ActivePlatform>,
-  ) -> SimpleRadioGroup<AnyView<ActivePlatform>> {
+  pub fn set_child(self, child: impl View<Active>) -> SimpleRadioGroup<AnyView<Active>> {
     SimpleRadioGroup(self.0.set_child(child))
   }
 }
@@ -63,6 +60,6 @@ impl SimpleRadioGroup {
 /// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
-pub struct SimpleRadio(skene_simple::SimpleRadio<ActivePlatform>);
+pub struct SimpleRadio(skene_simple::SimpleRadio<Active>);
 
-impl SimpleRadioBase<ActivePlatform> for SimpleRadio {}
+impl SimpleRadioBase<Active> for SimpleRadio {}

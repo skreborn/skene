@@ -15,8 +15,8 @@ use crate::{
   LayoutBox,
   NodeId,
   PlainChild,
-  Platform,
   Prevent,
+  Realization,
   RunBase,
   RunPlacement,
   Scene,
@@ -28,7 +28,7 @@ use crate::{
 };
 
 /// What a span renders.
-enum Content<P: Platform> {
+enum Content<P: Realization> {
   Text(Source<String>),
   Group(Vec<Span<P>>),
   View(AnyView<P>),
@@ -45,19 +45,19 @@ enum Content<P: Platform> {
 /// a state applies to the group's own run alone. A [view](Self::view) is laid out as an
 /// inline-level box among the surrounding runs.
 #[must_use]
-pub struct Span<P: Platform> {
+pub struct Span<P: Realization> {
   content: Content<P>,
   run: Run<P>,
   click: Vec<Rc<ClickHandler>>,
 }
 
-impl<P: Platform> std::fmt::Debug for Span<P> {
+impl<P: Realization> std::fmt::Debug for Span<P> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter.debug_struct("Span").finish_non_exhaustive()
   }
 }
 
-impl<P: Platform> Span<P> {
+impl<P: Realization> Span<P> {
   /// A run reading `content`.
   pub fn new(content: impl Into<String>) -> Self {
     Self::with_content(Content::Text(Source::Fixed(content.into())))
@@ -100,9 +100,9 @@ impl<P: Platform> Span<P> {
   }
 }
 
-impl<P: Platform> AnyKind for Span<P> {}
+impl<P: Realization> AnyKind for Span<P> {}
 
-impl<P: Platform> View<P> for Span<P>
+impl<P: Realization> View<P> for Span<P>
 where
   P::StyleExt: TypeMetrics,
 {
@@ -147,18 +147,18 @@ where
 /// [`Container`](crate::Container).
 #[derive(Debug)]
 #[must_use]
-pub struct RichText<P: Platform> {
+pub struct RichText<P: Realization> {
   spans: Vec<Span<P>>,
 }
 
-impl<P: Platform> Default for RichText<P> {
+impl<P: Realization> Default for RichText<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<P: Platform> RichText<P> {
+impl<P: Realization> RichText<P> {
   /// An empty paragraph.
   #[inline(always)]
   pub const fn new() -> Self {
@@ -173,9 +173,9 @@ impl<P: Platform> RichText<P> {
   }
 }
 
-impl<P: Platform> AnyKind for RichText<P> {}
+impl<P: Realization> AnyKind for RichText<P> {}
 
-impl<P: Platform> View<P> for RichText<P>
+impl<P: Realization> View<P> for RichText<P>
 where
   P::StyleExt: TypeMetrics,
 {
@@ -192,7 +192,7 @@ where
   }
 }
 
-impl<P: Platform> HasRun<P> for Span<P> {
+impl<P: Realization> HasRun<P> for Span<P> {
   #[inline(always)]
   fn run_style_mut(&mut self) -> &mut DeclaredRunStyle<P> {
     self.run.style_mut()
@@ -208,10 +208,10 @@ impl<P: Platform> HasRun<P> for Span<P> {
   }
 }
 
-impl<P: Platform> RunBase<P> for Span<P> {}
+impl<P: Realization> RunBase<P> for Span<P> {}
 
 /// What a facade's [`Span`] carries beyond its run: its constructors and its click handler.
-pub trait SpanBase<P: Platform>: Wraps<Inner = Span<P>> {
+pub trait SpanBase<P: Realization>: Wraps<Inner = Span<P>> {
   /// A run reading `content`.
   #[must_use]
   fn new(content: impl Into<String>) -> Self {
@@ -245,7 +245,7 @@ pub trait SpanBase<P: Platform>: Wraps<Inner = Span<P>> {
 }
 
 /// What a facade's [`RichText`] carries: its constructor and its spans.
-pub trait RichTextBase<P: Platform>: Wraps<Inner = RichText<P>> {
+pub trait RichTextBase<P: Realization>: Wraps<Inner = RichText<P>> {
   /// An empty paragraph.
   #[must_use]
   fn new() -> Self {

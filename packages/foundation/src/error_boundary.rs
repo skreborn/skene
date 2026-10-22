@@ -10,7 +10,7 @@ use crate::{
   Errors,
   NoChild,
   NodeId,
-  Platform,
+  Realization,
   Segment,
   View,
   Wraps,
@@ -30,13 +30,13 @@ use crate::{
 /// supplies the content as a builder closure, built under the owner the handle is
 /// provided on.
 #[must_use]
-pub struct ErrorBoundary<P: Platform, C = NoChild> {
+pub struct ErrorBoundary<P: Realization, C = NoChild> {
   fallback: Option<Rc<dyn Fn(Errors) -> AnyView<P>>>,
   child: C,
   platform: PhantomData<fn() -> P>,
 }
 
-impl<P: Platform, C> std::fmt::Debug for ErrorBoundary<P, C> {
+impl<P: Realization, C> std::fmt::Debug for ErrorBoundary<P, C> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter
       .debug_struct("ErrorBoundary")
@@ -44,14 +44,14 @@ impl<P: Platform, C> std::fmt::Debug for ErrorBoundary<P, C> {
   }
 }
 
-impl<P: Platform> Default for ErrorBoundary<P> {
+impl<P: Realization> Default for ErrorBoundary<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<P: Platform> ErrorBoundary<P> {
+impl<P: Realization> ErrorBoundary<P> {
   /// A boundary with no fallback and no content yet.
   #[inline(always)]
   pub const fn new() -> Self {
@@ -63,7 +63,7 @@ impl<P: Platform> ErrorBoundary<P> {
   }
 }
 
-impl<P: Platform> ErrorBoundary<P> {
+impl<P: Realization> ErrorBoundary<P> {
   /// Sets the fallback shown while errors are held, built by `fallback` from the
   /// boundary's handle whenever the held errors change; nothing by default.
   pub fn set_fallback_builder<V: View<P>>(
@@ -88,9 +88,9 @@ impl<P: Platform> ErrorBoundary<P> {
   }
 }
 
-impl<P: Platform, C> AnyKind for ErrorBoundary<P, C> {}
+impl<P: Realization, C> AnyKind for ErrorBoundary<P, C> {}
 
-impl<P: Platform> View<P> for ErrorBoundary<P, ChildBuilder<P>> {
+impl<P: Realization> View<P> for ErrorBoundary<P, ChildBuilder<P>> {
   fn build(self) -> NodeId {
     let segment = Segment::<P>::new();
     let start = segment.start();
@@ -138,7 +138,7 @@ impl<P: Platform> View<P> for ErrorBoundary<P, ChildBuilder<P>> {
 }
 
 /// What a facade's [`ErrorBoundary`] carries: its constructor and its fallback.
-pub trait ErrorBoundaryBase<P: Platform>: Wraps<Inner = ErrorBoundary<P>> {
+pub trait ErrorBoundaryBase<P: Realization>: Wraps<Inner = ErrorBoundary<P>> {
   /// A boundary with no fallback and no content yet.
   #[must_use]
   fn new() -> Self {

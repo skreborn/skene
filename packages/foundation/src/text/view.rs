@@ -5,7 +5,7 @@ use crate::{
   DeclaredRunStyle,
   HasRun,
   NodeId,
-  Platform,
+  Realization,
   RunBase,
   RunPlacement,
   View,
@@ -19,18 +19,18 @@ use crate::{
 /// A property left unset is inherited through its [`typography`](crate::typography)
 /// token; the medium's own text properties come through the platform's style extension.
 #[must_use]
-pub struct Text<P: Platform> {
+pub struct Text<P: Realization> {
   content: Source<String>,
   run: Run<P>,
 }
 
-impl<P: Platform> std::fmt::Debug for Text<P> {
+impl<P: Realization> std::fmt::Debug for Text<P> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter.debug_struct("Text").finish_non_exhaustive()
   }
 }
 
-impl<P: Platform> Text<P> {
+impl<P: Realization> Text<P> {
   /// A run reading `content`.
   pub fn new(content: impl Into<String>) -> Self {
     Self {
@@ -48,9 +48,9 @@ impl<P: Platform> Text<P> {
   }
 }
 
-impl<P: Platform> AnyKind for Text<P> {}
+impl<P: Realization> AnyKind for Text<P> {}
 
-impl<P: Platform> View<P> for Text<P> {
+impl<P: Realization> View<P> for Text<P> {
   fn build(self) -> NodeId {
     let node = self.run.build(RunPlacement::Line);
 
@@ -62,7 +62,7 @@ impl<P: Platform> View<P> for Text<P> {
   }
 }
 
-impl<P: Platform> HasRun<P> for Text<P> {
+impl<P: Realization> HasRun<P> for Text<P> {
   #[inline(always)]
   fn run_style_mut(&mut self) -> &mut DeclaredRunStyle<P> {
     self.run.style_mut()
@@ -77,10 +77,10 @@ impl<P: Platform> HasRun<P> for Text<P> {
   }
 }
 
-impl<P: Platform> RunBase<P> for Text<P> {}
+impl<P: Realization> RunBase<P> for Text<P> {}
 
 /// The constructors of a facade's [`Text`].
-pub trait TextBase<P: Platform>: Wraps<Inner = Text<P>> {
+pub trait TextBase<P: Realization>: Wraps<Inner = Text<P>> {
   /// A run reading `content`.
   #[must_use]
   fn new(content: impl Into<String>) -> Self {

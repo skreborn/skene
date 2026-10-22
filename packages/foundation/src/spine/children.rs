@@ -4,7 +4,17 @@ use std::{hash::Hash, marker::PhantomData};
 
 use skene_reactive::{AtKey, KeyedField};
 
-use super::{AnyView, IntoChildOf, NodeId, PlainChild, Platform, Scene, View, derived, reconcile};
+use super::{
+  AnyView,
+  IntoChildOf,
+  NodeId,
+  PlainChild,
+  Realization,
+  Scene,
+  View,
+  derived,
+  reconcile,
+};
 
 /// A value that can be converted into children of kind `Kind`: a tuple of up to twelve
 /// children, an array, or a `Vec`.
@@ -13,19 +23,21 @@ use super::{AnyView, IntoChildOf, NodeId, PlainChild, Platform, Scene, View, der
   label = "not a set of children",
   note = "pass a tuple, `Vec`, or an array of children"
 )]
-pub trait IntoChildren<P: Platform, Kind = PlainChild> {
+pub trait IntoChildren<P: Realization, Kind = PlainChild> {
   /// Converts this value into children.
   fn into_children(self) -> Vec<AnyView<P>>;
 }
 
-impl<P: Platform, Kind, V: IntoChildOf<P, Kind>> IntoChildren<P, Kind> for Vec<V> {
+impl<P: Realization, Kind, V: IntoChildOf<P, Kind>> IntoChildren<P, Kind> for Vec<V> {
   #[inline(always)]
   fn into_children(self) -> Vec<AnyView<P>> {
     self.into_iter().map(IntoChildOf::into_child).collect()
   }
 }
 
-impl<P: Platform, Kind, V: IntoChildOf<P, Kind>, const N: usize> IntoChildren<P, Kind> for [V; N] {
+impl<P: Realization, Kind, V: IntoChildOf<P, Kind>, const N: usize> IntoChildren<P, Kind>
+  for [V; N]
+{
   #[inline(always)]
   fn into_children(self) -> Vec<AnyView<P>> {
     self.into_iter().map(IntoChildOf::into_child).collect()
@@ -34,7 +46,7 @@ impl<P: Platform, Kind, V: IntoChildOf<P, Kind>, const N: usize> IntoChildren<P,
 
 macro_rules! impl_tuple {
   ($($T:ident),+) => {
-    impl<P: Platform, Kind, $($T: IntoChildOf<P, Kind>),+> IntoChildren<P, Kind> for ($($T,)+) {
+    impl<P: Realization, Kind, $($T: IntoChildOf<P, Kind>),+> IntoChildren<P, Kind> for ($($T,)+) {
       fn into_children(self) -> Vec<AnyView<P>> {
         #[expect(non_snake_case, clippy::min_ident_chars, reason = "each binding takes its element's type parameter name")]
         let ($($T,)+) = self;
@@ -62,30 +74,30 @@ impl_tuple!(A, B, C, D2, E, F, G, H, I, J, K, L);
 /// own pair of anchors so a static run and a keyed list sit side by side under one
 /// parent.
 #[must_use]
-pub struct Children<P: Platform, Kind = PlainChild> {
+pub struct Children<P: Realization, Kind = PlainChild> {
   segments: Vec<ChildSegment<P>>,
   kind: PhantomData<fn() -> Kind>,
 }
 
-impl<P: Platform, Kind> std::fmt::Debug for Children<P, Kind> {
+impl<P: Realization, Kind> std::fmt::Debug for Children<P, Kind> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter.debug_struct("Children").finish_non_exhaustive()
   }
 }
 
-enum ChildSegment<P: Platform> {
+enum ChildSegment<P: Realization> {
   Static(Vec<AnyView<P>>),
   Keyed(Box<dyn FnOnce(NodeId)>),
 }
 
-impl<P: Platform, Kind: 'static> Default for Children<P, Kind> {
+impl<P: Realization, Kind: 'static> Default for Children<P, Kind> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<P: Platform, Kind: 'static> Children<P, Kind> {
+impl<P: Realization, Kind: 'static> Children<P, Kind> {
   /// No children yet.
   #[inline(always)]
   pub const fn new() -> Self {
@@ -176,7 +188,7 @@ pub struct Seal(());
 ///
 /// One method is required and unreachable from outside core: the public setters are
 /// the defaults.
-pub trait HasChild<P: Platform>: Sized {
+pub trait HasChild<P: Realization>: Sized {
   /// The child kind this view accepts; wrapper views carry per-child properties only
   /// the matching view understands.
   type Kind: 'static;
@@ -215,7 +227,7 @@ pub trait HasChild<P: Platform>: Sized {
 ///
 /// One method is required and unreachable from outside core: the public setters are
 /// the defaults, and each appends a segment.
-pub trait HasChildren<P: Platform>: Sized {
+pub trait HasChildren<P: Realization>: Sized {
   /// The child kind this container accepts; wrapper views carry per-child properties
   /// only the matching container understands.
   type Kind: 'static;

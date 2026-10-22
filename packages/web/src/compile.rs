@@ -31,6 +31,7 @@ use skene_foundation::{
   GridFlow,
   IntoBoxValue,
   IntoRunValue,
+  KeptLeaf,
   Keyframe,
   Layout,
   NativeElement,
@@ -38,10 +39,9 @@ use skene_foundation::{
   OverlayProps,
   Placement,
   Plain,
-  Platform,
-  PlatformLeaf,
   Property,
   PropertyKey,
+  Realization,
   RunPlacement,
   RunProps,
   RunStyle,
@@ -68,9 +68,9 @@ use super::{
 use crate::declarations::{Declarations, Ident};
 
 /// A platform over pixels with the pixel extension: the one the compiler serves.
-pub(crate) trait PixelPlatform: Platform<Scalar = f32, StyleExt = WebStyle> {}
+pub(crate) trait PixelPlatform: Realization<Scalar = f32, StyleExt = WebStyle> {}
 
-impl<P: Platform<Scalar = f32, StyleExt = WebStyle>> PixelPlatform for P {}
+impl<P: Realization<Scalar = f32, StyleExt = WebStyle>> PixelPlatform for P {}
 
 /// A property's key on the web.
 pub(crate) type Key = PropertyKey<WebProperty>;
@@ -380,13 +380,13 @@ fn static_leaf_texts<T: Clone>(
 fn leaf_texts<T: Clone>(
   key: Key,
   position: usize,
-  leaf: &PlatformLeaf<T>,
+  leaf: &KeptLeaf<T>,
   slots: &mut Vec<SlotBinding>,
   fixed: impl FnOnce(T) -> Vec<String>,
 ) -> Vec<String> {
   match leaf {
-    PlatformLeaf::Static(leaf) => static_leaf_texts(leaf, target(key).declared().len(), fixed),
-    PlatformLeaf::Slot(slot) => {
+    KeptLeaf::Static(leaf) => static_leaf_texts(leaf, target(key).declared().len(), fixed),
+    KeptLeaf::Slot(slot) => {
       slots.push(SlotBinding {
         slot: *slot,
         property: key,
@@ -455,7 +455,7 @@ impl Rules {
   fn property<T: Clone>(
     &mut self,
     key: Key,
-    value: &Conditional<PlatformLeaf<T>, Condition<f32>>,
+    value: &Conditional<KeptLeaf<T>, Condition<f32>>,
     fixed: &impl Fn(T) -> Vec<String>,
   ) {
     let target = target(key);
@@ -537,7 +537,7 @@ impl BoxVisitor<f32, Static<Condition<f32>>, WebStyle> for BoxRules<'_> {
   fn value<T: IntoBoxValue<f32, WebStyle>>(
     &mut self,
     key: Key,
-    value: &Option<Conditional<PlatformLeaf<T>, Condition<f32>>>,
+    value: &Option<Conditional<KeptLeaf<T>, Condition<f32>>>,
   ) {
     if let Some(value) = value {
       self.0.property(key, value, &|fixed: T| {
@@ -554,7 +554,7 @@ impl RunVisitor<Static<Condition<f32>>, WebStyle> for RunRules<'_> {
   fn value<T: IntoRunValue<WebStyle>>(
     &mut self,
     key: Key,
-    value: &Option<Conditional<PlatformLeaf<T>, Condition<f32>>>,
+    value: &Option<Conditional<KeptLeaf<T>, Condition<f32>>>,
   ) {
     if let Some(value) = value {
       self.0.property(key, value, &|fixed: T| {

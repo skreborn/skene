@@ -3,7 +3,7 @@
 use std::time::Duration;
 
 use skene_conformance::{Driver, Probes, Reading};
-use skene_foundation::{KeyEvent, NodeId, Platform, Role, Scene, Size, View};
+use skene_foundation::{KeyEvent, NodeId, Realization, Role, Scene, Size, View};
 use skene_terminal::{self as terminal, Terminal, testing};
 
 /// The terminal driven as a user drives it, a frame painted at its size before every act

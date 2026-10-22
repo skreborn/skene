@@ -2,7 +2,7 @@
 
 pub use skene_reactive::LoadState;
 
-use crate::ActivePlatform;
+use crate::Active;
 
 /// A [`skene_reactive::Resource`] that hydrates: a value loaded on the server crosses
 /// the boundary to the client and is adopted there rather than re-loaded.
@@ -15,4 +15,4 @@ use crate::ActivePlatform;
 ///   Some(user) => profile(user).build(),
 /// })
 /// ```
-pub type Resource<T> = skene_foundation::web::Resource<ActivePlatform, T>;
+pub type Resource<T> = skene_foundation::web::Resource<Active, T>;

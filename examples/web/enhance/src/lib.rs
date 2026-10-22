@@ -10,7 +10,7 @@
 use std::time::Duration;
 
 use skene_simple_web::prelude::*;
-use skene_web::{ActivePlatform, HasChild, Platform, kurbo::Rect, prelude::*};
+use skene_web::{Active, HasChild, Realization, kurbo::Rect, prelude::*};
 
 #[main]
 fn app() -> impl View {
@@ -66,7 +66,7 @@ fn clock_card() -> impl View {
 
 /// Advances `seconds` once a second on the platform's clock.
 fn tick(seconds: Signal<u32>) {
-  let _ = ActivePlatform::schedule(
+  let _ = Active::schedule(
     Duration::from_secs(1),
     Box::new(move || {
       seconds.update(|count| *count += 1);

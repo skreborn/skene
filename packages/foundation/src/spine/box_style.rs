@@ -449,7 +449,7 @@ impl<N: Scalar, C: Clone + PartialEq + Debug + 'static, X: StyleExtension>
 {
   /// The static style a platform receives, and the derived leaves lifted out of it: each
   /// slot's index is its position in the list, and its property's field holds
-  /// [`PlatformLeaf::Slot`](super::PlatformLeaf::Slot) where the leaf was.
+  /// [`KeptLeaf::Slot`](super::KeptLeaf::Slot) where the leaf was.
   #[expect(
     clippy::type_complexity,
     reason = "the style model's own types, plainer spelled out than behind an alias"
@@ -548,11 +548,11 @@ mod tests {
     Declared,
     Dimension,
     Inset,
+    KeptLeaf,
     Leaf,
     Length,
     Media,
     Plain,
-    PlatformLeaf,
     Property,
     PropertyKey,
     Shape,
@@ -587,13 +587,11 @@ mod tests {
 
     assert_eq!(
       fixed.width.as_ref().map(|width| width.base().clone()),
-      Some(PlatformLeaf::Static(StaticLeaf::Fixed(Dimension::Length(
-        10.
-      ))))
+      Some(KeptLeaf::Static(StaticLeaf::Fixed(Dimension::Length(10.))))
     );
     assert_eq!(
       fixed.padding.as_ref().map(|padding| padding.base().clone()),
-      Some(PlatformLeaf::Static(StaticLeaf::Token(TokenName::new(
+      Some(KeptLeaf::Static(StaticLeaf::Token(TokenName::new(
         "gutter"
       ))))
     );
@@ -601,12 +599,12 @@ mod tests {
 
     let color = fixed.background.unwrap();
 
-    assert_eq!(color.base(), &PlatformLeaf::Slot(Slot(1)));
+    assert_eq!(color.base(), &KeptLeaf::Slot(Slot(1)));
     assert_eq!(
       color.variants(),
       &[(
         PixelCondition::Media(Media::Dark),
-        PlatformLeaf::Static(StaticLeaf::Fixed(Color::srgb(0., 0., 0.))),
+        KeptLeaf::Static(StaticLeaf::Fixed(Color::srgb(0., 0., 0.))),
       )]
     );
 
@@ -614,9 +612,9 @@ mod tests {
 
     assert_eq!(
       aspect_ratio.base(),
-      &PlatformLeaf::Static(StaticLeaf::Fixed(AspectRatio(1.)))
+      &KeptLeaf::Static(StaticLeaf::Fixed(AspectRatio(1.)))
     );
-    assert_eq!(aspect_ratio.variants()[0].1, PlatformLeaf::Slot(Slot(0)));
+    assert_eq!(aspect_ratio.variants()[0].1, KeptLeaf::Slot(Slot(0)));
 
     assert_eq!(slots.len(), 2, "slots follow declaration order");
     assert_eq!(slots[0].slot, Slot(0));

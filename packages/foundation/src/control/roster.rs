@@ -9,7 +9,7 @@ use rustc_hash::FxHashMap;
 use skene_reactive::{Memo, Trigger};
 
 use super::TypeAhead;
-use crate::{NodeId, PickerOption, Platform, Scene};
+use crate::{NodeId, PickerOption, Realization, Scene};
 
 /// The members a grouping control tracks: a radio group's choices, a listbox's options.
 ///
@@ -105,7 +105,7 @@ impl Roster {
 
   /// Focuses the enabled member at `index` among the [`enabled`](Self::enabled), if
   /// there is one.
-  pub fn focus_at<P: Platform>(&self, index: usize) {
+  pub fn focus_at<P: Realization>(&self, index: usize) {
     if let Some((node, _)) = self.enabled::<P>().get(index) {
       P::focus(*node);
     }
@@ -113,7 +113,7 @@ impl Roster {
 
   /// Focuses the enabled member holding `value`, or the first enabled member when none
   /// does.
-  pub fn focus_value<P: Platform>(&self, value: Option<&str>) {
+  pub fn focus_value<P: Realization>(&self, value: Option<&str>) {
     let members = self.enabled::<P>();
     let index = value
       .and_then(|value| members.iter().position(|(_, held)| held == value))
@@ -126,7 +126,7 @@ impl Roster {
 
   /// The members whose control is enabled, in tree order under `P`'s scene, tracked.
   #[must_use]
-  pub fn enabled<P: Platform>(&self) -> Vec<(NodeId, String)> {
+  pub fn enabled<P: Realization>(&self) -> Vec<(NodeId, String)> {
     self
       .walk::<P>()
       .into_iter()
@@ -137,7 +137,7 @@ impl Roster {
 
   /// The members in tree order under `P`'s scene, tracked.
   #[must_use]
-  pub fn ordered<P: Platform>(&self) -> Vec<(NodeId, String)> {
+  pub fn ordered<P: Realization>(&self) -> Vec<(NodeId, String)> {
     self
       .walk::<P>()
       .into_iter()
@@ -148,7 +148,7 @@ impl Roster {
   /// The members as a platform-drawn picker's options, in tree order under `P`'s scene,
   /// tracked; a member's value is its name where its label supplied none.
   #[must_use]
-  pub fn options<P: Platform>(&self) -> Vec<PickerOption> {
+  pub fn options<P: Realization>(&self) -> Vec<PickerOption> {
     self
       .walk::<P>()
       .into_iter()
@@ -165,7 +165,7 @@ impl Roster {
   /// `current` has focus or is chosen; a member's value is its name where its label
   /// supplied none.
   #[must_use]
-  pub fn typed<P: Platform>(&self, buffer: &str, current: Option<&str>) -> Option<usize> {
+  pub fn typed<P: Realization>(&self, buffer: &str, current: Option<&str>) -> Option<usize> {
     let members: Vec<Member> = self
       .walk::<P>()
       .into_iter()
@@ -181,7 +181,7 @@ impl Roster {
   /// The group's one tab stop as a memo: the member holding the value `chosen` names
   /// where that member is enabled, else the first enabled member, in tree order under
   /// `P`'s scene; a member compares its value against it.
-  pub fn tab_stop<P: Platform>(
+  pub fn tab_stop<P: Realization>(
     &self,
     chosen: impl Fn() -> Option<String> + 'static,
   ) -> Memo<Option<String>> {
@@ -196,7 +196,7 @@ impl Roster {
     })
   }
 
-  fn walk<P: Platform>(&self) -> Vec<Member> {
+  fn walk<P: Realization>(&self) -> Vec<Member> {
     self.changed.track();
 
     let members = self.members.borrow();

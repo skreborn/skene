@@ -3,7 +3,7 @@
 use std::rc::Rc;
 
 use super::Scene;
-use crate::spine::{DragData, DragSource, DropHandler, Handler, NodeId, Platform, Registered};
+use crate::spine::{DragData, DragSource, DropHandler, Handler, NodeId, Realization, Registered};
 
 /// A drag in progress: the node it started from, what it carries, and the node taking
 /// it.
@@ -29,7 +29,7 @@ fn pick_drop(handler: &Handler) -> Option<&Rc<DropHandler>> {
   }
 }
 
-impl<P: Platform> Scene<P> {
+impl<P: Realization> Scene<P> {
   /// The nearest node at or above `node` offering drag data, with what builds it.
   #[must_use]
   pub fn drag_source(&self, node: NodeId) -> Option<(NodeId, Registered<DragSource>)> {

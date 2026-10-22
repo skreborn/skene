@@ -78,10 +78,10 @@ use crate::{
   NodeKind,
   Part,
   PlainChild,
-  Platform,
   PointerEvent,
   Prevent,
   Prevented,
+  Realization,
   Role,
   Scene,
   ScrollEvent,
@@ -146,7 +146,7 @@ pub enum LabelPlacement {
   message = "`{Self}` is not a control behavior",
   label = "a behavior states a control's kind, role, the events it acts on, and what it reports"
 )]
-pub trait Behavior<P: Platform>: 'static {
+pub trait Behavior<P: Realization>: 'static {
   /// The native element the control stands in, where a platform has one; `None`, the
   /// default, for a control its view draws.
   #[inline(always)]
@@ -302,7 +302,7 @@ pub trait Behavior<P: Platform>: 'static {
 /// A behavior's access to the control it drives: the node, its sink, focus, a click
 /// dispatched at it, and a re-read of its reports.
 #[must_use]
-pub struct ControlHandle<P: Platform> {
+pub struct ControlHandle<P: Realization> {
   node: NodeId,
   name: Option<Rc<dyn Fn() -> String>>,
   disabled: Rc<dyn Fn() -> bool>,
@@ -310,7 +310,7 @@ pub struct ControlHandle<P: Platform> {
   platform: PhantomData<fn() -> P>,
 }
 
-impl<P: Platform> std::fmt::Debug for ControlHandle<P> {
+impl<P: Realization> std::fmt::Debug for ControlHandle<P> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter
       .debug_struct("ControlHandle")
@@ -318,7 +318,7 @@ impl<P: Platform> std::fmt::Debug for ControlHandle<P> {
   }
 }
 
-impl<P: Platform> ControlHandle<P> {
+impl<P: Realization> ControlHandle<P> {
   /// The control's node.
   #[inline(always)]
   pub const fn node(&self) -> NodeId {
@@ -380,12 +380,12 @@ impl<P: Platform> ControlHandle<P> {
 /// name it supplies when its text is known at build.
 #[derive(Debug)]
 #[must_use]
-pub struct Label<P: Platform> {
+pub struct Label<P: Realization> {
   view: AnyView<P>,
   name: Option<Source<String>>,
 }
 
-impl<P: Platform> Label<P> {
+impl<P: Realization> Label<P> {
   /// A caption drawn by `view`; the name is the platform's to read from the part.
   pub fn new(view: impl View<P>) -> Self {
     Self {
@@ -417,7 +417,7 @@ impl<P: Platform> Label<P> {
   }
 }
 
-impl<P: Platform> From<String> for Label<P> {
+impl<P: Realization> From<String> for Label<P> {
   #[inline(always)]
   fn from(text: String) -> Self {
     Self {
@@ -427,7 +427,7 @@ impl<P: Platform> From<String> for Label<P> {
   }
 }
 
-impl<P: Platform> From<&str> for Label<P> {
+impl<P: Realization> From<&str> for Label<P> {
   fn from(text: &str) -> Self {
     Self::from(text.to_owned())
   }
@@ -438,19 +438,19 @@ impl<P: Platform> From<&str> for Label<P> {
   message = "`{Self}` is not a control's body",
   label = "a control holds `NoChild` or the one view `set_child` gave it"
 )]
-pub trait ControlChild<P: Platform>: 'static {
+pub trait ControlChild<P: Realization>: 'static {
   /// Builds the body, if there is one.
   fn build_body(self) -> Option<NodeId>;
 }
 
-impl<P: Platform> ControlChild<P> for NoChild {
+impl<P: Realization> ControlChild<P> for NoChild {
   #[inline(always)]
   fn build_body(self) -> Option<NodeId> {
     None
   }
 }
 
-impl<P: Platform> ControlChild<P> for AnyView<P> {
+impl<P: Realization> ControlChild<P> for AnyView<P> {
   #[inline(always)]
   fn build_body(self) -> Option<NodeId> {
     Some(self.build())
@@ -471,7 +471,7 @@ impl<P: Platform> ControlChild<P> for AnyView<P> {
 /// behavior places it ([`Behavior::label_placement`]): leading or trailing in the row,
 /// or beside the box, before it among its siblings.
 #[must_use]
-pub struct Control<P: Platform, B: Behavior<P>, C = NoChild> {
+pub struct Control<P: Realization, B: Behavior<P>, C = NoChild> {
   behavior: B,
   inner: LayoutBox<P, PlainChild>,
   label: Option<Label<P>>,
@@ -488,13 +488,13 @@ pub struct Control<P: Platform, B: Behavior<P>, C = NoChild> {
   child: C,
 }
 
-impl<P: Platform, B: Behavior<P>, C> std::fmt::Debug for Control<P, B, C> {
+impl<P: Realization, B: Behavior<P>, C> std::fmt::Debug for Control<P, B, C> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter.debug_struct("Control").finish_non_exhaustive()
   }
 }
 
-impl<P: Platform, B: Behavior<P>> Control<P, B> {
+impl<P: Realization, B: Behavior<P>> Control<P, B> {
   /// A control driven by `behavior`, undecorated and without a body.
   #[inline(always)]
   pub fn new(behavior: B) -> Self {
@@ -557,14 +557,14 @@ impl<P: Platform, B: Behavior<P>> Control<P, B> {
   }
 }
 
-impl<P: Platform, B: Behavior<P> + Default> Default for Control<P, B> {
+impl<P: Realization, B: Behavior<P> + Default> Default for Control<P, B> {
   #[inline(always)]
   fn default() -> Self {
     Self::new(B::default())
   }
 }
 
-impl<P: Platform, B: Behavior<P>> Control<P, B> {
+impl<P: Realization, B: Behavior<P>> Control<P, B> {
   crate::properties! { box_style_mut, P;
     set_spacing / derive_spacing (spacing) => spacing: Spacing<P::Scalar>,
       "the spacing between the control's parts, body and label; half an em unless told otherwise";
@@ -830,7 +830,7 @@ impl<P: Platform, B: Behavior<P>> Control<P, B> {
   }
 }
 
-impl<P: Platform, B: Behavior<P>, C> Control<P, B, C> {
+impl<P: Realization, B: Behavior<P>, C> Control<P, B, C> {
   /// The behavior driving the control.
   #[inline(always)]
   pub const fn behavior(&self) -> &B {
@@ -838,9 +838,9 @@ impl<P: Platform, B: Behavior<P>, C> Control<P, B, C> {
   }
 }
 
-impl<P: Platform, B: Behavior<P>, C> AnyKind for Control<P, B, C> {}
+impl<P: Realization, B: Behavior<P>, C> AnyKind for Control<P, B, C> {}
 
-impl<P: Platform, B: Behavior<P>, C: ControlChild<P>> View<P> for Control<P, B, C> {
+impl<P: Realization, B: Behavior<P>, C: ControlChild<P>> View<P> for Control<P, B, C> {
   fn build(self) -> NodeId {
     let Self {
       behavior,
@@ -957,7 +957,7 @@ impl<P: Platform, B: Behavior<P>, C: ControlChild<P>> View<P> for Control<P, B, 
 
 /// Mounts what a control holds under `node`, in order: the label where it leads, the
 /// parts, the body, then the label where it trails or sits beside.
-fn mount_contents<P: Platform>(
+fn mount_contents<P: Realization>(
   node: NodeId,
   placement: LabelPlacement,
   label: Option<NodeId>,
@@ -991,7 +991,7 @@ fn read_bool(source: Option<Source<bool>>) -> Rc<dyn Fn() -> bool> {
 }
 
 /// Attaches `child` under `node` as its `part`.
-fn mount_part<P: Platform>(node: NodeId, part: Part, child: NodeId) {
+fn mount_part<P: Realization>(node: NodeId, part: Part, child: NodeId) {
   Scene::<P>::with(|scene| {
     scene.set_part(child, part);
     scene.attach(node, child, None);
@@ -1022,7 +1022,7 @@ struct Flags {
 
 /// Binds the render effects writing the control's state, accessibility and focus
 /// order, each re-applied when what it reads changes or the handle is refreshed.
-fn bind_reports<P: Platform, B: Behavior<P>>(
+fn bind_reports<P: Realization, B: Behavior<P>>(
   handle: &Rc<ControlHandle<P>>,
   behavior: &Rc<B>,
   flags: &Flags,
@@ -1116,13 +1116,13 @@ fn bind_reports<P: Platform, B: Behavior<P>>(
 }
 
 /// What every acting handler shares: the behavior, its handle and the disabled read.
-struct Actor<P: Platform, B: Behavior<P>> {
+struct Actor<P: Realization, B: Behavior<P>> {
   behavior: Rc<B>,
   handle: Rc<ControlHandle<P>>,
   disabled: Rc<dyn Fn() -> bool>,
 }
 
-impl<P: Platform, B: Behavior<P>> Clone for Actor<P, B> {
+impl<P: Realization, B: Behavior<P>> Clone for Actor<P, B> {
   fn clone(&self) -> Self {
     Self {
       behavior: Rc::clone(&self.behavior),
@@ -1132,7 +1132,7 @@ impl<P: Platform, B: Behavior<P>> Clone for Actor<P, B> {
   }
 }
 
-impl<P: Platform, B: Behavior<P>> Actor<P, B> {
+impl<P: Realization, B: Behavior<P>> Actor<P, B> {
   /// Runs `report`, the behavior hearing a change the platform made itself, unless the
   /// control is disabled, then reconciles the platform with what the behavior holds.
   fn report(&self, report: impl FnOnce(&B, &ControlHandle<P>)) {
@@ -1297,7 +1297,7 @@ impl<P: Platform, B: Behavior<P>> Actor<P, B> {
 
 /// Registers the behavior's handler for each event it acts on, then the observers:
 /// the behavior acts first and its verdict stands, and the observers see what it did.
-fn register<P: Platform, B: Behavior<P>>(
+fn register<P: Realization, B: Behavior<P>>(
   node: NodeId,
   behavior: &Rc<B>,
   handle: &Rc<ControlHandle<P>>,
@@ -1359,14 +1359,14 @@ pub type BasicMenu<P, C = NoChild> = Control<P, Menu, C>;
 /// One item within a menu: [`Control`] over [`MenuOption`].
 pub type BasicMenuItem<P, C = NoChild> = Control<P, MenuOption, C>;
 
-impl<P: Platform, B: Behavior<P>> HasBoxStyle<P> for Control<P, B> {
+impl<P: Realization, B: Behavior<P>> HasBoxStyle<P> for Control<P, B> {
   #[inline(always)]
   fn box_style_mut(&mut self) -> &mut DeclaredBoxStyle<P> {
     self.inner.style_mut()
   }
 }
 
-impl<P: Platform, B: Behavior<P>> HasLayoutBox<P> for Control<P, B> {
+impl<P: Realization, B: Behavior<P>> HasLayoutBox<P> for Control<P, B> {
   type Kind = PlainChild;
 
   #[inline(always)]
@@ -1381,14 +1381,14 @@ impl<P: Platform, B: Behavior<P>> HasLayoutBox<P> for Control<P, B> {
   }
 }
 
-impl<P: Platform, B: Behavior<P>> DecorationBase<P> for Control<P, B> {}
+impl<P: Realization, B: Behavior<P>> DecorationBase<P> for Control<P, B> {}
 
-impl<P: Platform, B: Behavior<P>> MotionBase<P> for Control<P, B> {}
+impl<P: Realization, B: Behavior<P>> MotionBase<P> for Control<P, B> {}
 
 /// What a facade's [`Control`] carries beyond its decoration and motion.
 ///
 /// Its constructor, its row, its caption, its reported state, its parts and its handlers.
-pub trait ControlBase<P: Platform, B: Behavior<P>>: Wraps<Inner = Control<P, B>> {
+pub trait ControlBase<P: Realization, B: Behavior<P>>: Wraps<Inner = Control<P, B>> {
   /// A control driven by `behavior`, undecorated and without a body.
   #[must_use]
   fn new(behavior: B) -> Self {

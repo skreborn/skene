@@ -3,7 +3,7 @@
 
 use std::{any::Any, fmt, rc::Rc};
 
-use crate::spine::{NodeId, Platform, Scene, task::run_handler};
+use crate::spine::{NodeId, Realization, Scene, task::run_handler};
 
 /// What a drag carries: a value of the app's, and the text another app may read.
 #[derive(Clone, Default)]
@@ -73,7 +73,7 @@ pub type DropHandler = dyn Fn(&DragData, DropPhase) -> bool;
 ///
 /// That node and the data, or `None` where no node offers any.
 #[must_use]
-pub fn start_drag<P: Platform>(node: NodeId) -> Option<(NodeId, DragData)> {
+pub fn start_drag<P: Realization>(node: NodeId) -> Option<(NodeId, DragData)> {
   let (source, build) = Scene::<P>::with(|scene| scene.drag_source(node))?;
   let data = run_handler(build.owner(), &*build);
 
@@ -87,7 +87,7 @@ pub fn start_drag<P: Platform>(node: NodeId) -> Option<(NodeId, DragData)> {
 ///
 /// The target, `None` where no node takes the drag or none is in progress.
 #[must_use]
-pub fn move_drag<P: Platform>(node: Option<NodeId>) -> Option<NodeId> {
+pub fn move_drag<P: Realization>(node: Option<NodeId>) -> Option<NodeId> {
   let (data, candidates) = Scene::<P>::with(|scene| {
     let data = scene.drag_data()?.clone();
     let candidates = node.map_or_else(Vec::new, |node| scene.drop_candidates(node));
@@ -108,7 +108,7 @@ pub fn move_drag<P: Platform>(node: Option<NodeId>) -> Option<NodeId> {
 
 /// Drops the drag in progress on its target and ends it; whether the target took it.
 #[must_use]
-pub fn drop_drag<P: Platform>() -> bool {
+pub fn drop_drag<P: Realization>() -> bool {
   let Some((data, target)) = Scene::<P>::with(|scene| {
     let data = scene.drag_data()?.clone();
     let target = scene.drag_target()?;
@@ -131,6 +131,6 @@ pub fn drop_drag<P: Platform>() -> bool {
 
 /// Ends the drag in progress, dropped or not: its source holds `Dragged` and its
 /// target `Targeted` no longer.
-pub fn end_drag<P: Platform>() {
+pub fn end_drag<P: Realization>() {
   Scene::<P>::with(Scene::finish_drag);
 }

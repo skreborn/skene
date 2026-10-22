@@ -30,8 +30,8 @@ use crate::{
   Overlay,
   Placement,
   PlainChild,
-  Platform,
   Popup,
+  Realization,
   Roster,
   Scene,
   TypeAhead,
@@ -42,9 +42,9 @@ use crate::{
 
 /// The builder of a picker's face, given the chosen value.
 #[must_use]
-pub struct Face<P: Platform>(Box<dyn FnOnce(Memo<String>) -> AnyView<P>>);
+pub struct Face<P: Realization>(Box<dyn FnOnce(Memo<String>) -> AnyView<P>>);
 
-impl<P: Platform> std::fmt::Debug for Face<P> {
+impl<P: Realization> std::fmt::Debug for Face<P> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter.debug_struct("Face").finish_non_exhaustive()
   }
@@ -69,7 +69,7 @@ impl<P: Platform> std::fmt::Debug for Face<P> {
 /// [`set_options`](Self::set_options) and [`derive_options`](Self::derive_options),
 /// each a [`BasicListboxOption`](crate::BasicListboxOption) at any depth.
 #[must_use]
-pub struct BasicPicker<P: Platform, F = NoChild> {
+pub struct BasicPicker<P: Realization, F = NoChild> {
   face_style: Box<DeclaredBoxStyle<P>>,
   label: Option<Label<P>>,
   disabled: Option<Source<bool>>,
@@ -80,7 +80,7 @@ pub struct BasicPicker<P: Platform, F = NoChild> {
   face: F,
 }
 
-impl<P: Platform, F> std::fmt::Debug for BasicPicker<P, F> {
+impl<P: Realization, F> std::fmt::Debug for BasicPicker<P, F> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter
       .debug_struct("BasicPicker")
@@ -88,7 +88,7 @@ impl<P: Platform, F> std::fmt::Debug for BasicPicker<P, F> {
   }
 }
 
-impl<P: Platform> BasicPicker<P> {
+impl<P: Realization> BasicPicker<P> {
   /// A picker with no options and nothing chosen.
   #[inline(always)]
   pub fn new() -> Self {
@@ -125,14 +125,14 @@ impl<P: Platform> BasicPicker<P> {
   }
 }
 
-impl<P: Platform> Default for BasicPicker<P> {
+impl<P: Realization> Default for BasicPicker<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<P: Platform, F> BasicPicker<P, F> {
+impl<P: Realization, F> BasicPicker<P, F> {
   /// Sets where the list opens against the face; below it unless told otherwise.
   #[inline(always)]
   pub const fn set_placement(mut self, placement: Placement) -> Self {
@@ -219,21 +219,21 @@ impl<P: Platform, F> BasicPicker<P, F> {
   }
 }
 
-impl<P: Platform, F> HasBoxStyle<P> for BasicPicker<P, F> {
+impl<P: Realization, F> HasBoxStyle<P> for BasicPicker<P, F> {
   #[inline(always)]
   fn box_style_mut(&mut self) -> &mut DeclaredBoxStyle<P> {
     &mut self.face_style
   }
 }
 
-impl<P: Platform, F> DecorationBase<P> for BasicPicker<P, F> {}
+impl<P: Realization, F> DecorationBase<P> for BasicPicker<P, F> {}
 
-impl<P: Platform, F> AnyKind for BasicPicker<P, F> {}
+impl<P: Realization, F> AnyKind for BasicPicker<P, F> {}
 
 /// What a facade's [`BasicPicker`] carries beyond the face's decoration.
 ///
 /// Its list, its value and its caption.
-pub trait BasicPickerBase<P: Platform, F>: Wraps<Inner = BasicPicker<P, F>> {
+pub trait BasicPickerBase<P: Realization, F>: Wraps<Inner = BasicPicker<P, F>> {
   /// Sets where the list opens against the face; below it unless told otherwise.
   #[must_use]
   fn set_placement(self, placement: Placement) -> Self {
@@ -310,7 +310,7 @@ pub trait BasicPickerBase<P: Platform, F>: Wraps<Inner = BasicPicker<P, F>> {
 
 /// What the picker's two forms take: the decoration, what each form's control carries,
 /// and the face.
-struct Parts<P: Platform> {
+struct Parts<P: Realization> {
   face_style: Box<DeclaredBoxStyle<P>>,
   settings: ControlSettings,
   placement: Placement,
@@ -326,7 +326,7 @@ struct ControlSettings {
 
 impl ControlSettings {
   /// `control` carrying the caption and the disabled setting.
-  fn apply<P: Platform, B: Behavior<P>>(&self, mut control: Control<P, B>) -> Control<P, B> {
+  fn apply<P: Realization, B: Behavior<P>>(&self, mut control: Control<P, B>) -> Control<P, B> {
     if let Some((node, name)) = &self.caption {
       let label = Label::new(*node);
 
@@ -350,7 +350,7 @@ type Chooser = Rc<RefCell<Rc<dyn Fn(String)>>>;
 
 /// What both forms share: the chosen value, the handler the form in force answers a
 /// choice with, the roster the options joined, and the option views, built once.
-struct Shared<P: Platform> {
+struct Shared<P: Realization> {
   chosen: Rc<dyn Fn() -> Option<String>>,
   choose: Chooser,
   roster: Roster,
@@ -358,7 +358,7 @@ struct Shared<P: Platform> {
   platform: PhantomData<fn() -> P>,
 }
 
-impl<P: Platform> View<P> for BasicPicker<P, Face<P>> {
+impl<P: Realization> View<P> for BasicPicker<P, Face<P>> {
   fn build(self) -> NodeId {
     let Self {
       face_style,
@@ -462,7 +462,7 @@ impl<P: Platform> View<P> for BasicPicker<P, Face<P>> {
 /// Builds the scriptless form: a [`NativePicker`] carrying the decoration, caption
 /// and disabled setting, its options read from the option views, which attach
 /// nowhere; the parts stay for the drawn form.
-fn build_native<P: Platform>(
+fn build_native<P: Realization>(
   parts: &mut Option<Parts<P>>,
   shared: &Rc<Shared<P>>,
   on_change: Option<Rc<dyn Fn(String)>>,
@@ -501,7 +501,7 @@ fn build_native<P: Platform>(
 }
 
 /// Builds the drawn form: the [`Popup`] face over the [`Listbox`] in its overlay.
-fn build_drawn<P: Platform>(
+fn build_drawn<P: Realization>(
   parts: Parts<P>,
   shared: &Rc<Shared<P>>,
   on_change: Option<Rc<dyn Fn(String)>>,
@@ -584,7 +584,7 @@ fn build_drawn<P: Platform>(
 
 /// The closed face's type-ahead: a character typed picks among `roster`'s options by
 /// name from the one `chosen` reads, and `on_change` is asked for the pick.
-fn choose_typed<P: Platform>(
+fn choose_typed<P: Realization>(
   roster: Roster,
   chosen: Rc<dyn Fn() -> Option<String>>,
   on_change: Option<Rc<dyn Fn(String)>>,

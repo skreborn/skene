@@ -12,11 +12,11 @@ use crate::spine::{
   KeyEvent,
   NamedKey,
   NodeId,
-  Platform,
+  Realization,
   handler::HandlerSet,
 };
 
-impl<P: Platform> Scene<P> {
+impl<P: Realization> Scene<P> {
   /// A count that moves whenever the interaction a node resolves against may have
   /// changed: its hover, press, focus or drag, or its control's state.
   #[inline(always)]

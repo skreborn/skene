@@ -22,7 +22,7 @@ use skene_foundation::{
   DecorationBase,
   NodeId,
   Painting,
-  Platform,
+  Realization,
   View,
   kurbo::Rect,
 };
@@ -34,13 +34,13 @@ const BARS: [char; 8] = ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█']
 /// A row of bars, one cell per value, scaled to the values' range.
 #[derive(Debug)]
 #[must_use]
-pub struct Sparkline<P: Platform> {
+pub struct Sparkline<P: Realization> {
   values: Vec<f32>,
   color: Option<Color>,
   platform: PhantomData<fn() -> P>,
 }
 
-impl<P: Platform> Sparkline<P> {
+impl<P: Realization> Sparkline<P> {
   /// A sparkline of `values`, one cell wide per value.
   #[inline(always)]
   pub fn new(values: impl IntoIterator<Item = f32>) -> Self {
@@ -61,9 +61,9 @@ impl<P: Platform> Sparkline<P> {
   }
 }
 
-impl<P: Platform> AnyKind for Sparkline<P> {}
+impl<P: Realization> AnyKind for Sparkline<P> {}
 
-impl<P: Platform<Scalar = u32> + CellPainter + Painting> View<P> for Sparkline<P> {
+impl<P: Realization<Scalar = u32> + CellPainter + Painting> View<P> for Sparkline<P> {
   fn build(self) -> NodeId {
     let width = u32::try_from(self.values.len()).unwrap_or(u32::MAX);
     let node = Container::<P>::new().set_width(width).set_height(1).build();

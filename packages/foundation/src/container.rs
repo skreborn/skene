@@ -24,8 +24,8 @@ use crate::{
   NodeHandle,
   NodeId,
   PlainChild,
-  Platform,
   PointerEvent,
+  Realization,
   Role,
   ScrollEvent,
   Seal,
@@ -45,18 +45,18 @@ use crate::{
 /// neither. Several children take a layout view, wrapped in a container to decorate it.
 #[derive(Debug)]
 #[must_use]
-pub struct Container<P: Platform> {
+pub struct Container<P: Realization> {
   inner: LayoutBox<P, PlainChild>,
 }
 
-impl<P: Platform> Default for Container<P> {
+impl<P: Realization> Default for Container<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<P: Platform> Container<P> {
+impl<P: Realization> Container<P> {
   /// An undecorated container.
   #[inline(always)]
   pub fn new() -> Self {
@@ -66,7 +66,7 @@ impl<P: Platform> Container<P> {
   }
 }
 
-impl<P: Platform> HasChild<P> for Container<P> {
+impl<P: Realization> HasChild<P> for Container<P> {
   type Kind = PlainChild;
 
   #[inline(always)]
@@ -75,23 +75,23 @@ impl<P: Platform> HasChild<P> for Container<P> {
   }
 }
 
-impl<P: Platform> AnyKind for Container<P> {}
+impl<P: Realization> AnyKind for Container<P> {}
 
-impl<P: Platform> View<P> for Container<P> {
+impl<P: Realization> View<P> for Container<P> {
   #[inline(always)]
   fn build(self) -> NodeId {
     self.inner.build()
   }
 }
 
-impl<P: Platform> HasBoxStyle<P> for Container<P> {
+impl<P: Realization> HasBoxStyle<P> for Container<P> {
   #[inline(always)]
   fn box_style_mut(&mut self) -> &mut DeclaredBoxStyle<P> {
     self.inner.style_mut()
   }
 }
 
-impl<P: Platform> HasLayoutBox<P> for Container<P> {
+impl<P: Realization> HasLayoutBox<P> for Container<P> {
   type Kind = PlainChild;
 
   #[inline(always)]
@@ -105,17 +105,17 @@ impl<P: Platform> HasLayoutBox<P> for Container<P> {
   }
 }
 
-impl<P: Platform> DecorationBase<P> for Container<P> {}
+impl<P: Realization> DecorationBase<P> for Container<P> {}
 
-impl<P: Platform> MotionBase<P> for Container<P> {}
+impl<P: Realization> MotionBase<P> for Container<P> {}
 
-impl<P: Platform> ContainerBase<P> for Container<P> {}
+impl<P: Realization> ContainerBase<P> for Container<P> {}
 
 /// What a [`Container`] carries beyond its decoration and its motion.
 ///
 /// Its constructor, where its child sits, what names it, its place in focus traversal,
 /// what it reports to assistive technology, its handle and its handlers.
-pub trait ContainerBase<P: Platform>: HasLayoutBox<P, Kind = PlainChild> {
+pub trait ContainerBase<P: Realization>: HasLayoutBox<P, Kind = PlainChild> {
   /// An undecorated container.
   #[must_use]
   fn new() -> Self

@@ -12,7 +12,7 @@ use crate::{
   ItemAlignment,
   Leaf,
   NoChild,
-  Platform,
+  Realization,
   Scene,
   StaticLeaf,
   Value,
@@ -28,27 +28,27 @@ use crate::{
 /// derive like any property. Accepted only where a flex container's children are;
 /// holds [`NoChild`] until `set_child` supplies the child.
 #[must_use]
-pub struct Flexible<P: Platform, C = NoChild> {
+pub struct Flexible<P: Realization, C = NoChild> {
   flexibility: Value<Flexibility<P::Scalar>, Condition<P::Scalar>>,
   alignment: Option<Value<ItemAlignment, Condition<P::Scalar>>>,
   child: C,
   platform: PhantomData<fn() -> P>,
 }
 
-impl<P: Platform, C> std::fmt::Debug for Flexible<P, C> {
+impl<P: Realization, C> std::fmt::Debug for Flexible<P, C> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter.debug_struct("Flexible").finish_non_exhaustive()
   }
 }
 
-impl<P: Platform> Default for Flexible<P> {
+impl<P: Realization> Default for Flexible<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<P: Platform> Flexible<P> {
+impl<P: Realization> Flexible<P> {
   /// A wrapper with the default flexibility and no child yet.
   #[inline(always)]
   pub fn new() -> Self {
@@ -61,7 +61,7 @@ impl<P: Platform> Flexible<P> {
   }
 }
 
-impl<P: Platform> Flexible<P> {
+impl<P: Realization> Flexible<P> {
   /// Sets the child's flexibility: the size it starts from and its weights for taking
   /// free space and giving up overflow.
   pub fn set_flexibility(
@@ -114,7 +114,7 @@ impl<P: Platform> Flexible<P> {
   }
 }
 
-impl<P: Platform> IntoChildOf<P, FlexChild> for Flexible<P, AnyView<P>> {
+impl<P: Realization> IntoChildOf<P, FlexChild> for Flexible<P, AnyView<P>> {
   fn into_child(self) -> AnyView<P> {
     AnyView::new(move || {
       let annotation = Annotation {
@@ -129,7 +129,7 @@ impl<P: Platform> IntoChildOf<P, FlexChild> for Flexible<P, AnyView<P>> {
 }
 
 /// What a facade's [`Flexible`] carries: its constructor and its setters.
-pub trait FlexibleBase<P: Platform>: Wraps<Inner = Flexible<P>> {
+pub trait FlexibleBase<P: Realization>: Wraps<Inner = Flexible<P>> {
   /// A wrapper with the default flexibility and no child yet.
   #[must_use]
   fn new() -> Self {

@@ -544,7 +544,7 @@ mod tests {
         Path::new("api/test.txt"),
         "pub skene_foundation::Spacing::row_gap: f32\n\
          impl core::fmt::Display for skene_foundation::Color\n\
-         pub fn skene_foundation::Run<P: skene_foundation::Platform>::set_display(self) -> Self\n\
+         pub fn skene_foundation::Run<P: skene_foundation::Realization>::set_display(self) -> Self\n\
          pub use skene_web::Widget\n"
       ),
       [
@@ -567,7 +567,7 @@ mod tests {
         Some("placement"),
       ),
       (
-        "pub struct skene_foundation::Run<P: skene_foundation::Platform>",
+        "pub struct skene_foundation::Run<P: skene_foundation::Realization>",
         Some("Run"),
       ),
       (

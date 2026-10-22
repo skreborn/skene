@@ -2,7 +2,7 @@
 
 use skene_foundation::{View, Wraps};
 use skene_simple::SimplePickerBase;
-use skene_web::ActivePlatform;
+use skene_web::Active;
 
 /// A ready-made dropdown choice.
 ///
@@ -28,6 +28,6 @@ use skene_web::ActivePlatform;
 /// ```
 #[derive(Debug, Default, View, Wraps)]
 #[must_use]
-pub struct SimplePicker(skene_simple::SimplePicker<ActivePlatform>);
+pub struct SimplePicker(skene_simple::SimplePicker<Active>);
 
-impl SimplePickerBase<ActivePlatform> for SimplePicker {}
+impl SimplePickerBase<Active> for SimplePicker {}

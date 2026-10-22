@@ -2,7 +2,7 @@
 
 use skene_foundation::{AnyView, IntoChildOf, NoChild, PinnedBase, StackChild, View, Wraps};
 
-use crate::ActivePlatform;
+use crate::Active;
 
 /// Pins the child it wraps against the edges of a [`Stack`](crate::Stack), out of flow.
 ///
@@ -29,7 +29,7 @@ use crate::ActivePlatform;
 /// ```
 #[derive(Debug, Wraps)]
 #[must_use]
-pub struct Pinned<C = NoChild>(skene_foundation::Pinned<ActivePlatform, C>);
+pub struct Pinned<C = NoChild>(skene_foundation::Pinned<Active, C>);
 
 impl Default for Pinned {
   #[inline(always)]
@@ -38,19 +38,19 @@ impl Default for Pinned {
   }
 }
 
-impl PinnedBase<ActivePlatform> for Pinned {}
+impl PinnedBase<Active> for Pinned {}
 
 impl Pinned {
   /// Sets the child.
   #[inline(always)]
-  pub fn set_child(self, child: impl View<ActivePlatform>) -> Pinned<AnyView<ActivePlatform>> {
+  pub fn set_child(self, child: impl View<Active>) -> Pinned<AnyView<Active>> {
     Pinned(self.0.set_child(child))
   }
 }
 
-impl IntoChildOf<ActivePlatform, StackChild> for Pinned<AnyView<ActivePlatform>> {
+impl IntoChildOf<Active, StackChild> for Pinned<AnyView<Active>> {
   #[inline(always)]
-  fn into_child(self) -> AnyView<ActivePlatform> {
+  fn into_child(self) -> AnyView<Active> {
     self.0.into_child()
   }
 }

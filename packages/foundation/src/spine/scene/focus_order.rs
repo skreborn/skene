@@ -3,9 +3,9 @@
 use rustc_hash::FxHashMap;
 
 use super::{Mirror, Scene};
-use crate::spine::{FocusOrder, NodeId, Platform};
+use crate::spine::{FocusOrder, NodeId, Realization};
 
-impl<P: Platform> Scene<P> {
+impl<P: Realization> Scene<P> {
   /// Records `node`'s place in focus traversal as the platform was given it at
   /// creation; `None` keeps it out of focus.
   pub fn note_focus_order(&mut self, node: NodeId, order: Option<FocusOrder>) {

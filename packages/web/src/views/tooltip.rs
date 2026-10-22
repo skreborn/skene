@@ -2,7 +2,7 @@
 
 use skene_foundation::{AnyView, DecorationBase, NoChild, TooltipBase, View, Wraps};
 
-use crate::ActivePlatform;
+use crate::Active;
 
 /// A tooltip: content shown in a bubble beside the one view it describes, open while
 /// the pointer rests on that view or it holds focus.
@@ -25,16 +25,16 @@ use crate::ActivePlatform;
 /// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
-pub struct Tooltip<C = NoChild>(skene_foundation::Tooltip<ActivePlatform, C>);
+pub struct Tooltip<C = NoChild>(skene_foundation::Tooltip<Active, C>);
 
-impl TooltipBase<ActivePlatform> for Tooltip {}
+impl TooltipBase<Active> for Tooltip {}
 
-impl DecorationBase<ActivePlatform> for Tooltip {}
+impl DecorationBase<Active> for Tooltip {}
 
 impl Tooltip {
   /// Sets the view the tooltip describes.
   #[inline(always)]
-  pub fn set_child(self, child: impl View<ActivePlatform>) -> Tooltip<AnyView<ActivePlatform>> {
+  pub fn set_child(self, child: impl View<Active>) -> Tooltip<AnyView<Active>> {
     Tooltip(self.0.set_child(child))
   }
 }

@@ -15,7 +15,7 @@ use skene_foundation::{
   HasChildren,
   ItemAlignment,
   NodeId,
-  Platform,
+  Realization,
   Seal,
   Spacing,
   StaticLeaf,
@@ -38,11 +38,11 @@ use super::{
 #[doc(hidden)]
 #[derive(Debug)]
 #[must_use]
-pub struct SimpleCard<P: Platform> {
+pub struct SimpleCard<P: Realization> {
   column: Column<P>,
 }
 
-impl<P: Platform> SimpleCard<P>
+impl<P: Realization> SimpleCard<P>
 where
   P::Scalar: SimpleUnit,
 {
@@ -55,7 +55,7 @@ where
   }
 }
 
-impl<P: Platform> SimpleCard<P> {
+impl<P: Realization> SimpleCard<P> {
   /// Sets the spacing between the card's children.
   pub fn set_spacing(
     mut self,
@@ -97,7 +97,7 @@ impl<P: Platform> SimpleCard<P> {
   }
 }
 
-impl<P: Platform> Default for SimpleCard<P>
+impl<P: Realization> Default for SimpleCard<P>
 where
   P::Scalar: SimpleUnit,
 {
@@ -107,7 +107,7 @@ where
   }
 }
 
-impl<P: Platform> HasChildren<P> for SimpleCard<P> {
+impl<P: Realization> HasChildren<P> for SimpleCard<P> {
   type Kind = FlexChild;
 
   #[inline(always)]
@@ -116,9 +116,9 @@ impl<P: Platform> HasChildren<P> for SimpleCard<P> {
   }
 }
 
-impl<P: Platform> AnyKind for SimpleCard<P> {}
+impl<P: Realization> AnyKind for SimpleCard<P> {}
 
-impl<P: Platform> View<P> for SimpleCard<P>
+impl<P: Realization> View<P> for SimpleCard<P>
 where
   P::Scalar: SimpleUnit,
   P::StyleExt: CornerRadius,
@@ -138,7 +138,7 @@ where
 }
 
 /// What a platform's `SimpleCard` carries.
-pub trait SimpleCardBase<P: Platform>: Wraps<Inner = SimpleCard<P>> {
+pub trait SimpleCardBase<P: Realization>: Wraps<Inner = SimpleCard<P>> {
   /// An empty card.
   #[must_use]
   fn new() -> Self

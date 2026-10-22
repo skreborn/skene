@@ -6,7 +6,7 @@ use std::any::TypeId;
 use rustc_hash::FxHashMap;
 
 use super::{Mirror, Scene};
-use crate::spine::{ContainerName, Definitions, NodeId, Platform, Resolved, Scalar, TokenName};
+use crate::spine::{ContainerName, Definitions, NodeId, Realization, Resolved, Scalar, TokenName};
 
 /// Where a token in force at a node is defined.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -42,7 +42,7 @@ impl<N: Scalar> Default for ResolvedTokens<N> {
   }
 }
 
-impl<P: Platform> Scene<P> {
+impl<P: Realization> Scene<P> {
   /// Panics, in a debug build, when a token of `definitions` was defined before as
   /// another kind: one name is one kind wherever it is defined.
   #[cfg(debug_assertions)]

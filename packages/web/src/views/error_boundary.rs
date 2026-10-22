@@ -2,7 +2,7 @@
 
 use skene_foundation::{ChildBuilder, ErrorBoundaryBase, NoChild, View, Wraps};
 
-use crate::ActivePlatform;
+use crate::Active;
 
 /// Shows its content while no errors are held, and the fallback once one is reported.
 ///
@@ -24,7 +24,7 @@ use crate::ActivePlatform;
 /// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
-pub struct ErrorBoundary<C = NoChild>(skene_foundation::ErrorBoundary<ActivePlatform, C>);
+pub struct ErrorBoundary<C = NoChild>(skene_foundation::ErrorBoundary<Active, C>);
 
 impl Default for ErrorBoundary {
   #[inline(always)]
@@ -33,15 +33,15 @@ impl Default for ErrorBoundary {
   }
 }
 
-impl ErrorBoundaryBase<ActivePlatform> for ErrorBoundary {}
+impl ErrorBoundaryBase<Active> for ErrorBoundary {}
 
 impl ErrorBoundary {
   /// Sets the content, built by `child` under the boundary.
   #[inline(always)]
-  pub fn set_child_builder<V: View<ActivePlatform>>(
+  pub fn set_child_builder<V: View<Active>>(
     self,
     child: impl FnOnce() -> V + 'static,
-  ) -> ErrorBoundary<ChildBuilder<ActivePlatform>> {
+  ) -> ErrorBoundary<ChildBuilder<Active>> {
     ErrorBoundary(self.0.set_child_builder(child))
   }
 }

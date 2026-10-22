@@ -15,7 +15,7 @@ use skene_foundation::{
   MouseCursor,
   NodeId,
   Part,
-  Platform,
+  Realization,
   Scalar,
   Scene,
   State,
@@ -163,7 +163,7 @@ impl SimpleUnit for u32 {
 }
 
 /// The shape of the platform's unit.
-pub(crate) const fn shape<P: Platform>() -> SimpleShape<P::Scalar>
+pub(crate) const fn shape<P: Realization>() -> SimpleShape<P::Scalar>
 where
   P::Scalar: SimpleUnit,
 {
@@ -183,18 +183,18 @@ pub(crate) fn hairline<N: Scalar>() -> Inset<N> {
 
 /// The palette in force as a memo, its default defined at the root where no theme
 /// provides one.
-pub(crate) fn palette<P: Platform>() -> Memo<SimplePalette<P::Scalar>> {
+pub(crate) fn palette<P: Realization>() -> Memo<SimplePalette<P::Scalar>> {
   <SimplePalette<P::Scalar> as ThemedIn<P>>::watch()
 }
 
 /// Defines the default palette at the root where no theme provides one, so a view
 /// referencing the tokens resolves them.
-pub(crate) fn define_defaults<P: Platform>() {
+pub(crate) fn define_defaults<P: Realization>() {
   let _ = palette::<P>();
 }
 
 /// Builds `view` and records it as `part` of the control it is mounted under.
-pub(crate) fn as_part<P: Platform>(part: Part, view: impl View<P>) -> NodeId {
+pub(crate) fn as_part<P: Realization>(part: Part, view: impl View<P>) -> NodeId {
   let node = view.build();
 
   Scene::<P>::with(|scene| scene.set_part(node, part));
@@ -205,7 +205,7 @@ pub(crate) fn as_part<P: Platform>(part: Part, view: impl View<P>) -> NodeId {
 /// The chrome of a text entry: full width, padded, on the card surface, a hairline in
 /// the border color that becomes the ring while focused, rounded; on the disabled
 /// surface under the default cursor while disabled.
-pub(crate) fn field_chrome<P: Platform, B: Behavior<P>>(control: Control<P, B>) -> Control<P, B>
+pub(crate) fn field_chrome<P: Realization, B: Behavior<P>>(control: Control<P, B>) -> Control<P, B>
 where
   P::Scalar: SimpleUnit,
   P::StyleExt: CornerRadius,

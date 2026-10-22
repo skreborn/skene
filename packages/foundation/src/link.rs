@@ -15,8 +15,8 @@ use crate::{
   NamedKey,
   NoChild,
   NodeId,
-  Platform,
   Prevent,
+  Realization,
   Scene,
   View,
   Wraps,
@@ -35,13 +35,13 @@ use crate::{
 /// platform, so open-in-new-tab and friends keep working.
 #[derive(Debug)]
 #[must_use]
-pub struct Link<P: Platform, R: Route, C = NoChild> {
+pub struct Link<P: Realization, R: Route, C = NoChild> {
   route: R,
   inner: LayoutBox<P>,
   child: C,
 }
 
-impl<P: Platform, R: Route> Link<P, R> {
+impl<P: Realization, R: Route> Link<P, R> {
   /// A link to `route`.
   #[inline(always)]
   pub fn new(route: R) -> Self {
@@ -64,9 +64,9 @@ impl<P: Platform, R: Route> Link<P, R> {
   }
 }
 
-impl<P: Platform, R: Route> AnyKind for Link<P, R, AnyView<P>> {}
+impl<P: Realization, R: Route> AnyKind for Link<P, R, AnyView<P>> {}
 
-impl<P: Platform, R: Route> View<P> for Link<P, R, AnyView<P>> {
+impl<P: Realization, R: Route> View<P> for Link<P, R, AnyView<P>> {
   fn build(self) -> NodeId {
     let node = self.inner.add_child(self.child).build();
     // Captured while building, where an ancestor's `provide` is in scope; an event
@@ -84,7 +84,7 @@ impl<P: Platform, R: Route> View<P> for Link<P, R, AnyView<P>> {
 
       router.navigate(self.route.clone());
 
-      Prevent::Platform
+      Prevent::Realization
     });
 
     Scene::<P>::with(|scene| {
@@ -114,7 +114,7 @@ impl<P: Platform, R: Route> View<P> for Link<P, R, AnyView<P>> {
 }
 
 /// What a facade's [`Link`] carries: its constructor.
-pub trait LinkBase<P: Platform, R: Route>: Wraps<Inner = Link<P, R>> {
+pub trait LinkBase<P: Realization, R: Route>: Wraps<Inner = Link<P, R>> {
   /// A link to `route`.
   #[must_use]
   fn new(route: R) -> Self {

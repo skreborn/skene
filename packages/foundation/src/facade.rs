@@ -14,7 +14,7 @@
 macro_rules! facade {
   ($platform:ty, $scalar:ty, $unit:literal) => {
     /// The erased token definition the active platform stores per token.
-    pub type TokenValue = <$platform as $crate::Platform>::TokenValue;
+    pub type TokenValue = <$platform as $crate::Realization>::TokenValue;
 
     /// A view on the active platform, accepted as a child of every kind; see
     /// [`skene_foundation::View`].

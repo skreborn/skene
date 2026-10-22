@@ -17,10 +17,10 @@ use skene_foundation::{
   HasChildren,
   Inset,
   ItemAlignment,
+  KeptLeaf,
   Layout,
   Length,
   Media,
-  PlatformLeaf,
   Size,
   Slot,
   Spacing,
@@ -151,7 +151,7 @@ fn media_condition_on_padding_switches_with_the_viewport() {
     box_props(root).unwrap().style.padding.unwrap().variants(),
     &[(
       Condition::Media(Media::MinWidth(900.)),
-      PlatformLeaf::Static(StaticLeaf::Fixed(Inset::all(12.))),
+      KeptLeaf::Static(StaticLeaf::Fixed(Inset::all(12.))),
     )]
   );
 
@@ -216,11 +216,11 @@ fn stack_derived_alignment_drives_both_axes() {
   assert_eq!(props.layout, Layout::Stack);
   assert_eq!(
     props.style.item_alignment,
-    Some(StaticValue::from(PlatformLeaf::Slot(Slot(0))))
+    Some(StaticValue::from(KeptLeaf::Slot(Slot(0))))
   );
   assert_eq!(
     props.style.item_horizontal_alignment,
-    Some(StaticValue::from(PlatformLeaf::Slot(Slot(1))))
+    Some(StaticValue::from(KeptLeaf::Slot(Slot(1))))
   );
   assert_eq!(
     slot_leaf(stack, Slot(1)),

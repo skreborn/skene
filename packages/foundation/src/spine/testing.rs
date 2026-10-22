@@ -22,7 +22,7 @@ use super::{
   Observation,
   OverlayProps,
   PlainChild,
-  Platform,
+  Realization,
   RunProps,
   RunValue,
   Scene,
@@ -130,7 +130,7 @@ impl TestPlatform {
   }
 }
 
-impl Platform for TestPlatform {
+impl Realization for TestPlatform {
   const FONT_SIZE: f32 = 16.;
 
   type Scalar = f32;

@@ -37,10 +37,10 @@ use crate::{
   Overlay,
   Part,
   Placement,
-  Platform,
   Point,
   PointerEvent,
   Prevent,
+  Realization,
   Row,
   RunBase,
   Scalar,
@@ -240,7 +240,7 @@ impl MenuEntry {
 /// supplies the view served; [`serve`](Self::serve) attaches the menu to a node that
 /// already exists instead.
 #[must_use]
-pub struct ContextMenu<P: Platform, C = NoChild> {
+pub struct ContextMenu<P: Realization, C = NoChild> {
   items: Vec<MenuEntry>,
   list: Overlay<P>,
   item_style: Box<DeclaredBoxStyle<P>>,
@@ -253,7 +253,7 @@ pub struct ContextMenu<P: Platform, C = NoChild> {
   child: C,
 }
 
-impl<P: Platform, C> std::fmt::Debug for ContextMenu<P, C> {
+impl<P: Realization, C> std::fmt::Debug for ContextMenu<P, C> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter
       .debug_struct("ContextMenu")
@@ -261,7 +261,7 @@ impl<P: Platform, C> std::fmt::Debug for ContextMenu<P, C> {
   }
 }
 
-impl<P: Platform> ContextMenu<P> {
+impl<P: Realization> ContextMenu<P> {
   /// A menu with no items yet.
   #[inline(always)]
   pub fn new() -> Self {
@@ -314,14 +314,14 @@ impl<P: Platform> ContextMenu<P> {
   }
 }
 
-impl<P: Platform> Default for ContextMenu<P> {
+impl<P: Realization> Default for ContextMenu<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<P: Platform> ContextMenu<P> {
+impl<P: Realization> ContextMenu<P> {
   /// The declared style of every item, for a facade's medium-specific setters to
   /// write into.
   #[inline(always)]
@@ -441,7 +441,7 @@ impl<P: Platform> ContextMenu<P> {
   }
 }
 
-impl<P: Platform, C> ContextMenu<P, C> {
+impl<P: Realization, C> ContextMenu<P, C> {
   /// Builds the list and registers what opens it on `served`; returns the list's node,
   /// attached nowhere yet.
   fn mount(self, served: NodeId) -> NodeId {
@@ -607,7 +607,7 @@ impl ItemShortcuts {
 }
 
 /// A declared value of `T`, its conditions in the platform's scalar.
-type Declared<P, T> = Value<T, Condition<<P as Platform>::Scalar>>;
+type Declared<P, T> = Value<T, Condition<<P as Realization>::Scalar>>;
 
 /// A closure answering a yes or no each time it is asked.
 type Predicate = Rc<dyn Fn() -> bool>;
@@ -623,7 +623,7 @@ struct Verdicts {
 impl MenuEntry {
   /// The item's verdicts; a standard item re-asks the platform's clipboard whenever
   /// `generation` moves.
-  fn verdicts<P: Platform>(&self, generation: Signal<u32>) -> Verdicts {
+  fn verdicts<P: Realization>(&self, generation: Signal<u32>) -> Verdicts {
     let disabled: Predicate = match &self.disabled {
       None => Rc::new(|| false),
       Some(Source::Fixed(disabled)) => {
@@ -665,7 +665,7 @@ impl MenuEntry {
 }
 
 /// The decoration every row of one menu shares.
-struct RowDress<P: Platform> {
+struct RowDress<P: Realization> {
   item_style: Box<DeclaredBoxStyle<P>>,
   item_text_color: Option<Declared<P, Color>>,
   shortcut_color: Option<Declared<P, Color>>,
@@ -675,7 +675,7 @@ struct RowDress<P: Platform> {
   item_view: Option<ItemView<P>>,
 }
 
-impl<P: Platform> RowDress<P> {
+impl<P: Realization> RowDress<P> {
   /// A rule between groups of items.
   fn separator(&self) -> AnyView<P> {
     let mut rule = Container::<P>::new().set_height(
@@ -775,18 +775,18 @@ impl<P: Platform> RowDress<P> {
   }
 }
 
-impl<P: Platform> HasBoxStyle<P> for ContextMenu<P> {
+impl<P: Realization> HasBoxStyle<P> for ContextMenu<P> {
   #[inline(always)]
   fn box_style_mut(&mut self) -> &mut DeclaredBoxStyle<P> {
     self.list.box_style_mut()
   }
 }
 
-impl<P: Platform> DecorationBase<P> for ContextMenu<P> {}
+impl<P: Realization> DecorationBase<P> for ContextMenu<P> {}
 
-impl<P: Platform, C> AnyKind for ContextMenu<P, C> {}
+impl<P: Realization, C> AnyKind for ContextMenu<P, C> {}
 
-impl<P: Platform> View<P> for ContextMenu<P, AnyView<P>> {
+impl<P: Realization> View<P> for ContextMenu<P, AnyView<P>> {
   fn build(self) -> NodeId {
     let (start, _) = Scene::<P>::create_segment();
     let Self {
@@ -829,7 +829,7 @@ impl<P: Platform> View<P> for ContextMenu<P, AnyView<P>> {
 ///
 /// Its constructor, its items, the node it serves, every item's and separator's styling,
 /// the item view and the placement.
-pub trait ContextMenuBase<P: Platform>: Wraps<Inner = ContextMenu<P>> {
+pub trait ContextMenuBase<P: Realization>: Wraps<Inner = ContextMenu<P>> {
   /// A menu with no items yet.
   #[must_use]
   fn new() -> Self {
@@ -961,7 +961,7 @@ pub trait ContextMenuBase<P: Platform>: Wraps<Inner = ContextMenu<P>> {
 }
 
 /// The corner radius of a facade's [`ContextMenu`] items, where the style rounds corners.
-pub trait ContextMenuWithCornerRadius<P: Platform>: ContextMenuBase<P>
+pub trait ContextMenuWithCornerRadius<P: Realization>: ContextMenuBase<P>
 where
   P::StyleExt: crate::CornerRadius,
 {
@@ -975,7 +975,7 @@ where
   }
 }
 
-impl<P: Platform, T: ContextMenuBase<P>> ContextMenuWithCornerRadius<P> for T where
+impl<P: Realization, T: ContextMenuBase<P>> ContextMenuWithCornerRadius<P> for T where
   P::StyleExt: crate::CornerRadius
 {
 }

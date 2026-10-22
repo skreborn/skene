@@ -7,7 +7,7 @@ use std::{
   time::Duration,
 };
 
-use crate::{Key, KeyEvent, Platform, Timer};
+use crate::{Key, KeyEvent, Realization, Timer};
 
 /// How long after the last character a type-ahead buffer is kept.
 pub const TYPE_AHEAD_RESET: Duration = Duration::from_millis(500);
@@ -31,7 +31,7 @@ impl TypeAhead {
   /// Feeds `event` into the buffer: the buffer so far for a printable key typed
   /// without `Ctrl`, `Alt` or `Meta`, a space only extending a buffer already begun;
   /// `None` for any other key. Each character schedules the reset afresh.
-  pub fn typed<P: Platform>(self: &Rc<Self>, event: &KeyEvent) -> Option<String> {
+  pub fn typed<P: Realization>(self: &Rc<Self>, event: &KeyEvent) -> Option<String> {
     let modifiers = event.modifiers;
 
     if modifiers.ctrl || modifiers.alt || modifiers.meta {

@@ -7,7 +7,7 @@ use skene_foundation::{
   BasicTextField,
   CornerRadius,
   NodeId,
-  Platform,
+  Realization,
   TextEntry,
   View,
   Wraps,
@@ -24,13 +24,13 @@ use super::shape::{SimpleUnit, define_defaults, field_chrome};
 #[doc(hidden)]
 #[derive(Debug)]
 #[must_use]
-pub struct SimpleTextField<P: Platform> {
+pub struct SimpleTextField<P: Realization> {
   entry: TextEntry,
   label: Option<String>,
   platform: PhantomData<fn() -> P>,
 }
 
-impl<P: Platform> SimpleTextField<P> {
+impl<P: Realization> SimpleTextField<P> {
   /// An empty field.
   #[inline(always)]
   pub fn new() -> Self {
@@ -85,16 +85,16 @@ impl<P: Platform> SimpleTextField<P> {
   }
 }
 
-impl<P: Platform> Default for SimpleTextField<P> {
+impl<P: Realization> Default for SimpleTextField<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<P: Platform> AnyKind for SimpleTextField<P> {}
+impl<P: Realization> AnyKind for SimpleTextField<P> {}
 
-impl<P: Platform> View<P> for SimpleTextField<P>
+impl<P: Realization> View<P> for SimpleTextField<P>
 where
   P::Scalar: SimpleUnit,
   P::StyleExt: CornerRadius,
@@ -113,7 +113,7 @@ where
 }
 
 /// What a platform's `SimpleTextField` carries.
-pub trait SimpleTextFieldBase<P: Platform>: Wraps<Inner = SimpleTextField<P>> {
+pub trait SimpleTextFieldBase<P: Realization>: Wraps<Inner = SimpleTextField<P>> {
   /// An empty field.
   #[must_use]
   fn new() -> Self {

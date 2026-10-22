@@ -2,7 +2,7 @@
 
 use skene_foundation::{View, Wraps};
 use skene_simple::SimpleCardBase;
-use skene_web::ActivePlatform;
+use skene_web::Active;
 
 /// A ready-made card: a raised, hairline-bordered, rounded surface grouping related
 /// content, laid out as a column.
@@ -21,6 +21,6 @@ use skene_web::ActivePlatform;
 /// ```
 #[derive(Debug, Default, View, Wraps)]
 #[must_use]
-pub struct SimpleCard(skene_simple::SimpleCard<ActivePlatform>);
+pub struct SimpleCard(skene_simple::SimpleCard<Active>);
 
-impl SimpleCardBase<ActivePlatform> for SimpleCard {}
+impl SimpleCardBase<Active> for SimpleCard {}

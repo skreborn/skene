@@ -208,9 +208,9 @@ impl<A> Timers<A> {
 /// [`end_turn`](crate::end_turn), so what a view's build notifies is delivered once the
 /// build is whole, and leaves a thread through [`reset_thread`](crate::reset_thread).
 #[diagnostic::on_unimplemented(
-  message = "`{Self}` is not a platform",
-  label = "a platform is a zero-sized type realizing the portable vocabulary: boxes, runs, anchors, scopes, tokens and events",
-  note = "`Painted` and embeds are outside `Realization`; a platform offers them through its own extension traits"
+  message = "`{Self}` is not a realization",
+  label = "a realization is a platform's zero-sized type realizing the portable vocabulary: boxes, runs, anchors, scopes, tokens and events",
+  note = "`Painted` and embeds are outside `Realization`; a realization offers them through its own extension traits"
 )]
 pub trait Realization: Copy + Default + 'static {
   /// The font size in force where no typography defines one, in the medium's unit.

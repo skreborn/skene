@@ -264,14 +264,12 @@ pub use crate::{
   },
 };
 
-/// The platform the build selected: the web platform in the browser
-/// (`wasm32-unknown-unknown`) and on a server render (`--cfg skene_platform="server"`),
-/// the headless host platform elsewhere.
+/// The realization the build selected: the web's in the browser (`wasm32-unknown-unknown`)
+/// and on a server render (`--cfg skene_platform="server"`), the headless host's elsewhere.
 #[cfg(not(skene_web_platform = "headless"))]
 pub type Active = platform::Web;
-/// The platform the build selected: the web platform in the browser
-/// (`wasm32-unknown-unknown`) and on a server render (`--cfg skene_platform="server"`),
-/// the headless host platform elsewhere.
+/// The realization the build selected: the web's in the browser (`wasm32-unknown-unknown`)
+/// and on a server render (`--cfg skene_platform="server"`), the headless host's elsewhere.
 #[cfg(skene_web_platform = "headless")]
 pub type Active = skene_headless::Headless;
 

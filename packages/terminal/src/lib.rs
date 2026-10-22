@@ -247,7 +247,7 @@ pub use crate::{
   },
 };
 
-/// The platform the build selected: the terminal platform, on every host target.
+/// The realization the build selected: the terminal's, on every host target.
 pub type Active = Terminal;
 
 skene_foundation::facade!(Active, u32, "cells");

@@ -67,10 +67,10 @@ use super::{
 };
 use crate::declarations::{Declarations, Ident};
 
-/// A platform over pixels with the pixel extension: the one the compiler serves.
-pub(crate) trait PixelPlatform: Realization<Scalar = f32, StyleExt = WebStyle> {}
+/// A realization over pixels with the pixel extension: the one the compiler serves.
+pub(crate) trait PixelRealization: Realization<Scalar = f32, StyleExt = WebStyle> {}
 
-impl<P: Realization<Scalar = f32, StyleExt = WebStyle>> PixelPlatform for P {}
+impl<P: Realization<Scalar = f32, StyleExt = WebStyle>> PixelRealization for P {}
 
 /// A property's key on the web.
 pub(crate) type Key = PropertyKey<WebProperty>;
@@ -721,14 +721,14 @@ fn layout_declarations(layout: Layout) -> Declarations {
 }
 
 /// The base declarations a box starts from: its layout and its identity.
-fn box_base<P: PixelPlatform>(props: &BoxProps<P>) -> Declarations {
+fn box_base<P: PixelRealization>(props: &BoxProps<P>) -> Declarations {
   box_identity(props, layout_declarations(props.layout))
 }
 
 /// `base` with what names a box: when it names itself for container queries, its
 /// containment—`size` when its height is set, else `inline-size`—and its
 /// view-transition name.
-fn box_identity<P: PixelPlatform>(props: &BoxProps<P>, mut base: Declarations) -> Declarations {
+fn box_identity<P: PixelRealization>(props: &BoxProps<P>, mut base: Declarations) -> Declarations {
   if let Some(name) = props.container {
     let containment = if props.style.height.is_some() {
       "size"
@@ -748,7 +748,7 @@ fn box_identity<P: PixelPlatform>(props: &BoxProps<P>, mut base: Declarations) -
 }
 
 /// Compiles a box's props with `base` ahead of its own declarations.
-fn compile_box_with<P: PixelPlatform>(props: &BoxProps<P>, base: Declarations) -> Compiled {
+fn compile_box_with<P: PixelRealization>(props: &BoxProps<P>, base: Declarations) -> Compiled {
   let mut out = String::new();
   let (base, trailer) = motion(
     &mut out,
@@ -765,7 +765,7 @@ fn compile_box_with<P: PixelPlatform>(props: &BoxProps<P>, base: Declarations) -
 }
 
 /// The rule template of a box; a stack's places every child in its one cell.
-pub(crate) fn compile_box<P: PixelPlatform>(props: &BoxProps<P>) -> Compiled {
+pub(crate) fn compile_box<P: PixelRealization>(props: &BoxProps<P>) -> Compiled {
   let mut compiled = compile_box_with(props, box_base(props));
 
   if props.layout == Layout::Stack {
@@ -781,7 +781,7 @@ pub(crate) fn compile_box<P: PixelPlatform>(props: &BoxProps<P>) -> Compiled {
 }
 
 /// The rule template of the per-child layout a wrapper gave a low-level node.
-pub(crate) fn compile_layout<P: PixelPlatform>(layout: &StaticBoxStyle<P>) -> Compiled {
+pub(crate) fn compile_layout<P: PixelRealization>(layout: &StaticBoxStyle<P>) -> Compiled {
   let mut rules = Rules::new(Declarations::new());
 
   layout.visit(&mut BoxRules(&mut rules));
@@ -792,7 +792,7 @@ pub(crate) fn compile_layout<P: PixelPlatform>(layout: &StaticBoxStyle<P>) -> Co
 /// The rule template of a control: its box's, over the control reset that strips the
 /// native element's own chrome; a text entry's value is inked and selected by the
 /// typography inherited at it.
-pub(crate) fn compile_control<P: PixelPlatform>(props: &ControlProps<P>) -> Compiled {
+pub(crate) fn compile_control<P: PixelRealization>(props: &ControlProps<P>) -> Compiled {
   let entry = props.native.is_some_and(NativeElement::is_text_entry);
   let ink = if entry {
     token_reference(typography::INK.name())
@@ -845,7 +845,7 @@ const fn placement_margin(placement: Placement) -> &'static str {
 /// placement margins, its layout applying only while open so the platform's
 /// `display: none` stands while closed, and the `::backdrop` rule of a modal with a
 /// backdrop.
-pub(crate) fn compile_overlay<P: PixelPlatform>(props: &OverlayProps<P>) -> Compiled {
+pub(crate) fn compile_overlay<P: PixelRealization>(props: &OverlayProps<P>) -> Compiled {
   let base = box_identity(&props.box_props, Declarations::new())
     .set("border", "0 solid")
     .set("padding", "0")
@@ -878,7 +878,7 @@ pub(crate) fn compile_overlay<P: PixelPlatform>(props: &OverlayProps<P>) -> Comp
 
 /// The rule template of a text run; a run on a line of its own lays out one line while
 /// empty, through a rule of its class's specificity that precedes the class's own.
-pub(crate) fn compile_run<P: PixelPlatform>(props: &RunProps<P>) -> Compiled {
+pub(crate) fn compile_run<P: PixelRealization>(props: &RunProps<P>) -> Compiled {
   let mut base = match props.placement {
     RunPlacement::Line => Declarations::new().set("display", "block"),
     RunPlacement::Inline => Declarations::new(),
@@ -1118,7 +1118,7 @@ pub(crate) fn slot_registrations() -> String {
 }
 
 /// The hash the class cache keys a box's compiled template on.
-pub(crate) fn box_fingerprint<P: PixelPlatform>(props: &BoxProps<P>, reset: u8) -> u64 {
+pub(crate) fn box_fingerprint<P: PixelRealization>(props: &BoxProps<P>, reset: u8) -> u64 {
   let mut hasher = FxHasher::default();
 
   hasher.write_u8(reset);
@@ -1133,7 +1133,7 @@ pub(crate) fn box_fingerprint<P: PixelPlatform>(props: &BoxProps<P>, reset: u8) 
 
 /// The hash the class cache keys a control's compiled template on: its box's and its
 /// kind's.
-pub(crate) fn control_fingerprint<P: PixelPlatform>(props: &ControlProps<P>) -> u64 {
+pub(crate) fn control_fingerprint<P: PixelRealization>(props: &ControlProps<P>) -> u64 {
   let mut hasher = FxHasher::default();
 
   hasher.write_u64(box_fingerprint(&props.box_props, 1));
@@ -1143,7 +1143,7 @@ pub(crate) fn control_fingerprint<P: PixelPlatform>(props: &ControlProps<P>) -> 
 }
 
 /// The hash the class cache keys an overlay's compiled template on.
-pub(crate) fn overlay_fingerprint<P: PixelPlatform>(props: &OverlayProps<P>) -> u64 {
+pub(crate) fn overlay_fingerprint<P: PixelRealization>(props: &OverlayProps<P>) -> u64 {
   let mut hasher = FxHasher::default();
 
   hasher.write_u64(box_fingerprint(&props.box_props, 2));
@@ -1155,7 +1155,7 @@ pub(crate) fn overlay_fingerprint<P: PixelPlatform>(props: &OverlayProps<P>) -> 
 }
 
 /// The hash the class cache keys a low-level node's compiled layout on.
-pub(crate) fn layout_fingerprint<P: PixelPlatform>(layout: &StaticBoxStyle<P>) -> u64 {
+pub(crate) fn layout_fingerprint<P: PixelRealization>(layout: &StaticBoxStyle<P>) -> u64 {
   let mut hasher = FxHasher::default();
 
   hasher.write_u8(3);
@@ -1165,7 +1165,7 @@ pub(crate) fn layout_fingerprint<P: PixelPlatform>(layout: &StaticBoxStyle<P>) -
 }
 
 /// The hash the class cache keys a run's compiled template on.
-pub(crate) fn run_fingerprint<P: PixelPlatform>(props: &RunProps<P>) -> u64 {
+pub(crate) fn run_fingerprint<P: PixelRealization>(props: &RunProps<P>) -> u64 {
   let mut hasher = FxHasher::default();
 
   (props.placement as u8).hash(&mut hasher);

@@ -45,9 +45,10 @@ use crate::{
 /// The character standing in for one cell of an inline box in its paragraph's text.
 pub(crate) const INLINE_BOX: char = '\u{fffc}';
 
-/// How far into its cell a point stands for the cell: just past its left edge, so a cell
-/// holding a cluster's start places a caret before it and any later cell of its block
-/// after it.
+/// How far into its cell a point stands for the cell: just past its left edge, so a caret
+/// placed at a cell goes to the cell's left edge, where a cluster's edge lies there, and
+/// otherwise to the nearer edge of the cluster whose block holds it: before a cluster from
+/// the cell its block starts at, after a wide cluster from its second cell.
 const INTO_CELL: f32 = 1. / 16.;
 
 /// What one restyle of a node decided.
@@ -73,8 +74,8 @@ enum FlowItem {
 
 /// What the layout measures a text leaf by: its runs and inline boxes laid out as one
 /// paragraph through the cell engine, made once a measure, a paint or a hit first asks
-/// and kept between frames. Two leaves are alike where their runs' texts and scales,
-/// their boxes' sizes and the terminal's clustering are.
+/// and kept between frames. Two leaves are alike where their runs' nodes, texts and
+/// scales, their boxes' nodes and sizes and the terminal's clustering are.
 #[derive(Debug)]
 pub(crate) struct CellFlow {
   text: String,
@@ -177,7 +178,7 @@ pub(crate) const fn content(width: usize) -> Rect<f32> {
 }
 
 /// The point standing for the cell (`column`, `row`) of a text node's flow.
-pub(crate) fn cell_point(column: usize, row: usize) -> Point<f32> {
+pub(crate) const fn cell_point(column: usize, row: usize) -> Point<f32> {
   Point::new(cells_of(column) + INTO_CELL, cells_of(row) + 0.5)
 }
 

@@ -422,14 +422,14 @@ in a code comment.
     - Constant factors: the lazy list reading a data source (a count and the item at an
     index) through a Fenwick tree, and evicting measured extents; the terminal's text
     leaves, each a paragraph of the cell engine, costing a 16k-row mount a quarter more
-    than the wrap they replaced (490 ms against 390) and a keyed row's relayout a fifth
-    more (72 ms against 60), taffy asking each leaf eleven measures a relayout; one constructable
-    stylesheet with deferred collection and a set of adopted names; release web output
-    precompressed, fingerprinted and preloaded, a split build's modules through wasm-opt
-    as an unsplit bundle is, with one cached stylesheet shared by static pages instead
-    of inlined into each; a bundle budget the gate holds, a release `counter` after
-    `wasm-bindgen` having grown from 911 KB to 1.27 MB between 2026-09-15 and
-    2026-10-02, `skene-web` and `skene-foundation` most of it.
+    than the wrap they replaced (about 500 ms against 390) and a keyed row's relayout a
+    fifth more (72 ms against 60), taffy asking each leaf eleven measures a relayout; one
+    constructable stylesheet with deferred collection and a set of adopted names; release
+    web output precompressed, fingerprinted and preloaded, a split build's modules
+    through wasm-opt as an unsplit bundle is, with one cached stylesheet shared by static
+    pages instead of inlined into each; a bundle budget the gate holds, a release
+    `counter` after `wasm-bindgen` having grown from 911 KB to 1.27 MB between 2026-09-15
+    and 2026-10-02, `skene-web` and `skene-foundation` most of it.
 16. **The dev reload costs production nothing.** The saved tier is no second API: reload
     state is opt-in, Android's process death writes the same snapshot of it (item 7),
     and the web and the desktops keep none beyond the dev reload.

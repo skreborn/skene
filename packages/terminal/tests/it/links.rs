@@ -189,6 +189,41 @@ fn click_focuses_a_link_and_enter_is_its_click() {
   });
 }
 
+/// A click reaches a linked span where its cells are drawn, a right-to-left span's
+/// reordered with the text around it, and a click on a cell of another span opens
+/// nothing.
+#[test]
+fn a_click_finds_a_right_to_left_link_where_it_is_drawn() {
+  with_platform(|| {
+    let _ = terminal::mount(|| {
+      RichText::new()
+        .add_spans([
+          Span::new("x "),
+          Span::new("\u{5d0}\u{5d1}").set_link("https://b.example"),
+          Span::new(" \u{5d2}"),
+        ])
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(testing::render_to_text(10, 1), "x \u{5d2} \u{5d1}\u{5d0}\n");
+
+    testing::trigger_mouse_click(2, 0);
+
+    assert_eq!(testing::take_opened(), None, "\u{5d2} is not linked");
+
+    for column in [4, 5] {
+      testing::trigger_mouse_click(column, 0);
+
+      assert_eq!(
+        testing::take_opened().as_deref(),
+        Some("https://b.example"),
+        "the link's cell {column}"
+      );
+    }
+  });
+}
+
 /// Focus moving to a linked span below a scroll container's fold scrolls its paragraph
 /// into view.
 #[test]

@@ -68,6 +68,46 @@ fn drag_selects_and_copies_the_source_flow() {
   });
 }
 
+/// A drag over right-to-left text selects between the cells' left edges as drawn, the
+/// first character rightmost: it highlights the cells it crossed and copies them in the
+/// order the source holds them.
+#[test]
+fn a_drag_over_right_to_left_text_selects_what_it_crosses() {
+  with_platform(|| {
+    mount_themed(|| {
+      Text::new("ab \u{5d0}\u{5d1}\u{5d2} cd")
+        .set_selectable(true)
+        .into_any()
+    });
+
+    assert_eq!(
+      testing::render_to_text(12, 3),
+      "ab \u{5d2}\u{5d1}\u{5d0} cd\n\n\n"
+    );
+
+    testing::trigger_mouse_press(5, 0);
+    testing::trigger_mouse_drag(3, 0);
+    testing::trigger_mouse_release(3, 0);
+
+    let colors = testing::render_to_colors(12, 3);
+    let highlighted: Vec<usize> = (0..12)
+      .filter(|column| colors[*column].1 == Some(rgb(highlight())))
+      .collect();
+
+    assert_eq!(highlighted, [3, 4], "the cells of \u{5d2} and \u{5d1}");
+
+    testing::trigger_mouse_right_click(4, 0);
+
+    let menu = testing::render_to_text(12, 3);
+
+    assert!(menu.contains("Copy"), "the menu opened: {menu}");
+
+    testing::trigger_mouse_click(6, 1);
+
+    assert_eq!(testing::take_copied().as_deref(), Some("\u{5d1}\u{5d2}"));
+  });
+}
+
 /// A double click selects the word under the pointer; a triple click the whole run.
 #[test]
 fn double_and_triple_click_select_word_and_run() {

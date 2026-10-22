@@ -1,6 +1,6 @@
 //! The real loop end to end in a pseudo-terminal: the app draws into the terminal, a
 //! typed `Tab` and `Enter` reach its button, a resize reflows it, and `Ctrl-Q` ends it,
-//! the terminal handed back.
+//! the terminal handed back, its bidirectional support mode as it found it.
 
 #![cfg(unix)]
 
@@ -116,6 +116,55 @@ fn the_loop_draws_takes_keys_reflows_and_quits_in_a_terminal() {
   assert!(
     !screen.parser.screen().alternate_screen(),
     "quitting hands the terminal back"
+  );
+
+  drop(pty);
+}
+
+/// Setup asks the terminal for its bidirectional support mode before making it explicit,
+/// and the hand-back restores the mode the terminal reported.
+#[test]
+fn the_reported_bidi_mode_is_restored_on_quitting() {
+  let size = WindowSize::cells(20, 4);
+  let (pty, mut host) = Pty::open(size).expect("open a pseudo-terminal");
+  let app = thread::spawn(move || Launch::new().run_on(pty, || Text::new("ready")));
+  let mut screen = Screen::new(size);
+  let mut written = Vec::new();
+  let deadline = std::time::Instant::now() + Duration::from_secs(10);
+
+  while !screen.parser.screen().contents().contains("ready") {
+    let drawn = host
+      .drawn(Duration::from_millis(100))
+      .expect("read the terminal");
+
+    screen.parser.process(&drawn);
+    written.extend_from_slice(&drawn);
+    assert!(std::time::Instant::now() < deadline, "the app never drew");
+  }
+
+  let setup = String::from_utf8_lossy(&written).into_owned();
+  let query = setup.find("\x1b[8$p").expect("setup queries the mode");
+  let explicit = setup
+    .find("\x1b[8l")
+    .expect("setup makes the mode explicit");
+
+  assert!(query < explicit, "the query reports the mode setup found");
+
+  host
+    .type_bytes(b"\x1b[8;1$y")
+    .expect("report the mode implicit");
+
+  host.type_bytes(b"\x11").expect("type Ctrl-Q");
+
+  let pty = app.join().expect("the app ends");
+  let handed_back = host
+    .drawn(Duration::from_millis(100))
+    .expect("read the terminal");
+  let handed_back = String::from_utf8_lossy(&handed_back);
+
+  assert!(
+    handed_back.contains("\x1b[8h"),
+    "the hand-back restores implicit mode: {handed_back:?}"
   );
 
   drop(pty);

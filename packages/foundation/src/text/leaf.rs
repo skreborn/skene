@@ -376,6 +376,37 @@ mod tests {
     assert_eq!(measured(&leaf, Space::MaxContent), (50., 20.));
   }
 
+  /// What measuring read is kept for its last four widths past the three layouts kept, and
+  /// dropped with the paragraph it was read from.
+  #[test]
+  fn measuring_again_at_one_of_the_last_four_widths_lays_nothing_out() {
+    let mut leaf = leaf("alpha beta gamma");
+
+    for width in [70., 80., 90., 100.] {
+      let _ = measured(&leaf, Space::Definite(width));
+    }
+
+    assert_eq!(leaf.layouts(), 4);
+    assert_eq!(
+      measured(&leaf, Space::Definite(70.)),
+      (50., 60.),
+      "the layout at 70 is no longer kept, what measuring read of it is"
+    );
+    assert_eq!(leaf.layouts(), 4);
+
+    let _ = measured(&leaf, Space::Definite(110.));
+    let _ = measured(&leaf, Space::Definite(70.));
+
+    assert_eq!(leaf.layouts(), 6, "four widths later, 70 lays out again");
+
+    leaf.replace(Grid.paragraph(
+      &AttributedText::plain("a\nb\nc", TextStyle::new(13.)),
+      &ParagraphStyle::default(),
+    ));
+
+    assert_eq!(measured(&leaf, Space::Definite(70.)), (10., 60.));
+  }
+
   #[test]
   fn a_layout_past_the_widest_line_is_shared_only_where_the_width_moves_no_line() {
     let start = leaf("alpha");

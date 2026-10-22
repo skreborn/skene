@@ -964,16 +964,18 @@ The public API speaks the ecosystem's standard reactive vocabulary:
   step is an owner's position among its siblings, or the `Key` of a keyed owner: a keyed
   step takes no position, so keying a sibling shifts none of the positional ones, and a
   key is the hash of the value it was taken from (`wide_of`, which hashes a value alike
-  on every target, an integer as its little-endian bytes and a `usize` as a `u64`), so
+  on every target, an integer as its little-endian bytes and a `usize` as a `u64`, a
+  slice of `usize` or `isize` alone hashing its elements at the target's width), so
   `reconcile`'s item key and a view's `set_key` are one concept and a key taken on the
   server leaf is the browser's. `Signal::transient` occupies no position,
-  `Signal::tagged` is an anchor the diff aligns around within one owner. Restore aligns per owner as the live side is created, and
-  every mismatch defaults, so a stale snapshot reaching an edited program is the
-  ordinary case and never fails. A node takes a `SnapshotPlace` from the same sequence
-  when the scene creates it, and a platform carries what a node holds outside the
-  graph—focus, a text control's selection or caret, scroll offsets—through
-  `provide_extra`/`take_extra` by that place, so a rebuilt page resumes on the same
-  node through the same alignment, keys included.
+  `Signal::tagged` is an anchor the diff aligns around within one owner. Restore aligns
+  per owner as the live side is created, and every mismatch defaults, so a stale
+  snapshot reaching an edited program is the ordinary case and never fails. A node
+  takes a `SnapshotPlace` from the same sequence when the scene creates it, and a
+  platform carries what a node holds outside the graph—focus, a text control's
+  selection or caret, scroll offsets—through `provide_extra`/`take_extra` by that
+  place, so a rebuilt page resumes on the same node through the same alignment, keys
+  included.
 - **Tasks belong to their owners.** `set_spawner` installs the thread's executor,
   which hands back a guard that cancels a task when dropped; `spawn` files it with the
   current owner, so a task ends when it finishes, when its owner is disposed or runs

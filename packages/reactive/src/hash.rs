@@ -26,6 +26,9 @@ pub fn wide(bytes: &[u8]) -> u128 {
 
 /// The 128-bit xxh3 of `value`, as it hashes, alike on every target: an integer counts as
 /// its little-endian bytes, a `usize` as a `u64` and an `isize` as an `i64`.
+///
+/// A slice or an array of `usize` or `isize` is the exception: the standard library hashes
+/// one as its bytes in memory, so its elements count at the target's width.
 #[must_use]
 pub fn wide_of(value: &impl Hash) -> u128 {
   let mut hasher = Stable(xxh3::Xxh3::new());

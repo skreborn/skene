@@ -54,9 +54,11 @@ in a code comment.
     presses), focus order follows the scene's child order, and a window opens with
     nothing focused but a control set to `set_autofocus`. A choice's value is the app's
     own type, each option carrying one (`Picker<T>`), where today's collections hold
-    strings, and the web's scriptless form names each option by a key of its own. A text
-    entry's secure flag (`set_secure`), the web's `type=password` and every drawn field
-    masked through the core's `Masked` engine, which has no client until then;
+    strings, and the web's scriptless form names each option by a key of its own, the
+    server leaf's and the browser's alike even for a value holding a slice of `usize` or
+    `isize`, which `wide_of` hashes at the target's width. A text entry's secure flag
+    (`set_secure`), the web's `type=password` and every drawn field masked through the
+    core's `Masked` engine, which has no client until then;
     `TextEntry::on_key` takes the core's `Binding` table once every field is drawn, the
     terminal's key default consulting it until then, and the engine and editor move from
     the drawing realization onto the platform's seam.

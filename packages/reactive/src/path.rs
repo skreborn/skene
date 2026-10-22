@@ -12,8 +12,8 @@ use crate::{
 ///
 /// A key anchors the place its position would otherwise give it, so state under a
 /// keyed scope survives an edit or a reorder around it. Keys are matched across runs
-/// by a 128-bit hash of the value they are taken from, so two values hashing alike are
-/// one key.
+/// by a 128-bit hash of the value they are taken from ([`hash::wide_of`], alike on every
+/// target), so two values hashing alike are one key.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[must_use]
 pub struct Key(u128);

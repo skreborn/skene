@@ -281,6 +281,13 @@ impl<E: TextEngine> Editor<E> {
     &self.index
   }
 
+  /// Whether the text is secure ([`set_secure`](Self::set_secure)).
+  #[inline(always)]
+  #[must_use]
+  pub const fn is_secure(&self) -> bool {
+    self.secure
+  }
+
   /// The selection's fixed end.
   #[inline(always)]
   pub const fn anchor(&self) -> Position {

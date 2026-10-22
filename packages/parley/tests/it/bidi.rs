@@ -2,6 +2,7 @@
 //! the text's order, carets split at direction boundaries, and hits land where they are drawn.
 
 use skene_foundation::{
+  AccessText,
   TextSelection,
   text::{
     BaseDirection,
@@ -175,4 +176,31 @@ fn backspace_takes_an_arabic_letter_with_its_mark() {
   let _ = editor.perform(Command::Delete(TextBoundary::Grapheme, Direction::Backward));
 
   assert_eq!(editor.text(), "");
+}
+
+#[test]
+fn a_right_to_left_line_reports_its_characters_from_its_right() {
+  let style = ParagraphStyle::default().with_direction(BaseDirection::RightToLeft);
+  let access = AccessText::of(&editor("\u{5E9}\u{5DC}\u{5D5}\u{5DD} \u{5D0}", style));
+  let run = &access.runs[0];
+
+  assert!(run.right_to_left);
+  assert_eq!(run.character_lengths, [2, 2, 2, 2, 1, 2]);
+  assert_eq!(run.word_starts, [0, 5]);
+  assert!(run.character_positions[0].abs() < 0.01, "{run:?}");
+  assert!(
+    run
+      .character_positions
+      .windows(2)
+      .all(|pair| pair[1] > pair[0]),
+    "each character stands farther from the right: {run:?}"
+  );
+  assert!(
+    run.character_widths.iter().all(|width| *width > 0.),
+    "{run:?}"
+  );
+
+  let access = AccessText::of(&editor("abc", ParagraphStyle::default()));
+
+  assert!(!access.runs[0].right_to_left);
 }

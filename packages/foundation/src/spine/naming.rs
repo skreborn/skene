@@ -4,10 +4,23 @@
 
 use std::{fmt::Write as _, marker::PhantomData};
 
-use accesskit::{HasPopup, Invalid, Orientation, Toggled, TreeInfo, TreeUpdate};
+use accesskit::{
+  Action,
+  HasPopup,
+  Invalid,
+  Orientation,
+  TextDirection,
+  TextPosition,
+  Toggled,
+  TreeInfo,
+  TreeUpdate,
+};
 
 use super::{
   AccessProp,
+  AccessRun,
+  AccessText,
+  AccessTextPosition,
   Axis,
   BoxProps,
   CheckState,
@@ -46,6 +59,9 @@ pub struct NameFacts {
   pub value: Option<String>,
   /// The hint a text entry shows while empty.
   pub placeholder: Option<String>,
+  /// A drawn text entry's laid lines and selection; `None` where its platform's own entry
+  /// reports them.
+  pub text_runs: Option<AccessText>,
 }
 
 impl NameFacts {
@@ -367,8 +383,9 @@ impl<P: Platform> Scene<P> {
   /// A window holds each tree's root; every node outside what is hidden carries its role
   /// (a run's a label holding its text, a box of no role a generic container), its
   /// accessible name, the states and relations it reports, a text entry's value and
-  /// placeholder, and its children in tree order; focus is on the node holding it, else on
-  /// the window.
+  /// placeholder, a drawn entry's runs, selection and editing actions
+  /// ([`NameFacts::text_runs`]), and its children in tree order, the runs first; focus is on the
+  /// node holding it, else on the window.
   #[must_use]
   pub fn access_tree(facts: impl Fn(NodeId) -> NameFacts) -> TreeUpdate {
     let window = accesskit::NodeId(0);
@@ -398,7 +415,8 @@ impl<P: Platform> Scene<P> {
 
   /// [`access_tree`](Self::access_tree) as indented text, one node a line: its role, its
   /// name quoted, its value after `=`, its states in brackets; a generic container naming
-  /// nothing is left out, its children standing in its place.
+  /// nothing is left out, its children standing in its place, and a text entry's runs are
+  /// left out, its value standing for them.
   #[must_use]
   pub fn access_outline(facts: impl Fn(NodeId) -> NameFacts) -> String {
     let tree = Self::access_tree(facts);
@@ -448,6 +466,10 @@ impl<P: Platform> Scene<P> {
       prop.apply(&mut access);
     }
 
+    let mut children = own
+      .text_runs
+      .as_ref()
+      .map_or_else(Vec::new, |text| text.report(node, &mut access, nodes));
     let beneath = Self::with(|scene| {
       let mut beneath: Vec<_> = scene.children(node).collect();
 
@@ -457,10 +479,12 @@ impl<P: Platform> Scene<P> {
 
       beneath
     });
-    let children: Vec<_> = beneath
-      .into_iter()
-      .filter_map(|child| Self::access_node(child, facts, nodes))
-      .collect();
+
+    children.extend(
+      beneath
+        .into_iter()
+        .filter_map(|child| Self::access_node(child, facts, nodes)),
+    );
 
     access.set_children(children);
 
@@ -469,6 +493,78 @@ impl<P: Platform> Scene<P> {
     nodes.push((id, access));
 
     Some(id)
+  }
+}
+
+impl AccessText {
+  /// Reports this text as the text of `entry`, the AccessKit node of the node `node`:
+  /// adds its runs to `nodes`, one a line, and gives `entry` the selection and the
+  /// actions that edit it, returning the runs' ids.
+  fn report(
+    &self,
+    node: NodeId,
+    entry: &mut accesskit::Node,
+    nodes: &mut Vec<(accesskit::NodeId, accesskit::Node)>,
+  ) -> Vec<accesskit::NodeId> {
+    for action in [
+      Action::SetValue,
+      Action::SetTextSelection,
+      Action::ReplaceSelectedText,
+    ] {
+      entry.add_action(action);
+    }
+
+    let runs: Vec<_> = (0..=u16::MAX)
+      .zip(&self.runs)
+      .map(|(line, run)| {
+        let id = node.access_run_id(line);
+
+        nodes.push((id, run.access_node()));
+
+        id
+      })
+      .collect();
+    let position = |at: AccessTextPosition| TextPosition {
+      node: node.access_run_id(at.line),
+      character_index: at.character,
+    };
+
+    if !runs.is_empty() {
+      entry.set_text_selection(accesskit::TextSelection {
+        anchor: position(self.anchor),
+        focus: position(self.focus),
+      });
+    }
+
+    runs
+  }
+}
+
+impl AccessRun {
+  /// The AccessKit node of this run.
+  fn access_node(&self) -> accesskit::Node {
+    let mut run = accesskit::Node::new(Role::TextRun);
+    let bounds = self.bounds;
+
+    run.set_value(self.text.clone());
+    run.set_character_lengths(self.character_lengths.clone());
+    run.set_character_positions(self.character_positions.clone());
+    run.set_character_widths(self.character_widths.clone());
+    run.set_word_starts(self.word_starts.clone());
+    run.set_text_direction(if self.right_to_left {
+      TextDirection::RightToLeft
+    }
+    else {
+      TextDirection::LeftToRight
+    });
+    run.set_bounds(accesskit::Rect {
+      x0: f64::from(bounds.origin.x),
+      y0: f64::from(bounds.origin.y),
+      x1: f64::from(bounds.origin.x + bounds.size.width),
+      y1: f64::from(bounds.origin.y + bounds.size.height),
+    });
+
+    run
   }
 }
 
@@ -546,6 +642,11 @@ fn outline_into(tree: &TreeUpdate, id: accesskit::NodeId, depth: usize, out: &mu
   else {
     return;
   };
+
+  if node.role() == Role::TextRun {
+    return;
+  }
+
   let skipped = node.role() == Role::GenericContainer && node.label().is_none();
 
   if !skipped {

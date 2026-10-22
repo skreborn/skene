@@ -206,6 +206,9 @@ pub use ui_events::pointer::{
 };
 pub use values::{
   AccessProp,
+  AccessRun,
+  AccessText,
+  AccessTextPosition,
   Alignment,
   Arrangement,
   AspectRatio,

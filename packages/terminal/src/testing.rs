@@ -10,9 +10,10 @@
 mod pty;
 pub mod user;
 
-use std::time::Duration;
+use std::{rc::Rc, time::Duration};
 
 use skene_foundation::{
+  AccessText,
   ColorScheme,
   KeyEvent,
   Modifiers,
@@ -190,12 +191,19 @@ pub fn focused_node() -> Option<skene_foundation::NodeId> {
 
 skene_foundation::access_queries!(Terminal, name_facts);
 
-/// What the accessible-name computation reads of `node`.
+/// What the accessible-name computation reads of `node`: a field's text runs among it, read
+/// from its editor once the records are released.
 fn name_facts(node: NodeId) -> NameFacts {
-  with_records(|records| {
+  let (facts, editor) = with_records(|records| {
     let Some(record) = records.record(node)
     else {
-      return NameFacts::default();
+      return (NameFacts::default(), None);
+    };
+    let editor = match &record.kind {
+      Kind::Control {
+        field: Some(field), ..
+      } => Some(Rc::clone(&field.editor)),
+      _ => None,
     };
     let access = || Scene::<Terminal>::read(|scene| scene.access(node));
     let facts = match &record.kind {
@@ -218,11 +226,21 @@ fn name_facts(node: NodeId) -> NameFacts {
       Kind::Anchor | Kind::Scope => NameFacts::default(),
     };
 
-    NameFacts {
+    let facts = NameFacts {
       hidden: facts.hidden || records.is_hidden(node),
       ..facts
-    }
-  })
+    };
+
+    (facts, editor)
+  });
+  let text_runs = editor.and_then(|editor| {
+    editor
+      .try_borrow()
+      .ok()
+      .map(|editor| AccessText::of(&editor))
+  });
+
+  NameFacts { text_runs, ..facts }
 }
 
 /// Simulates the mouse moving to the cell (`x`, `y`), for a test driving hover

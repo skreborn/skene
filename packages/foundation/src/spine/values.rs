@@ -1,4 +1,5 @@
 mod access;
+mod access_text;
 mod aspect_ratio;
 mod axis;
 mod check_state;
@@ -24,6 +25,7 @@ mod text_selection;
 mod unit;
 
 pub use access::*;
+pub use access_text::*;
 pub use aspect_ratio::*;
 pub use axis::*;
 pub use check_state::*;

@@ -3,12 +3,14 @@
 //! What a text says and how it is styled ([`AttributedText`], [`ParagraphStyle`]), the
 //! contract a realization's engine implements to shape, break and measure it ([`TextEngine`]),
 //! the layout engine's text leaf ([`TextLeaf`]), the offset index every protocol meets on
-//! ([`TextIndex`]), and the editing core every drawn entry shares ([`editing`]).
+//! ([`TextIndex`]), the editing core every drawn entry shares ([`editing`]), and what a drawn
+//! entry reports to assistive technology ([`AccessText::of`](crate::AccessText::of)).
 //!
 //! The foundation owns the content and the style; the engine owns shaping, breaking,
 //! rasterizing and measuring; everything acting on text (selection, editing, accessibility,
 //! the decorations an engine lacks) is written once here over the geometry the engine reports.
 
+mod access;
 mod decoration;
 pub mod editing;
 mod engine;

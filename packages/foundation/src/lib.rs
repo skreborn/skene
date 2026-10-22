@@ -29,7 +29,8 @@
 //! engine receives it, every property resolved, and the contract a realization's text engine
 //! lays it out under, with what is written once above it, the editing core every drawn
 //! entry shares ([`text::editing`]) included. An entry's change crosses as one [`Edit`], its
-//! text and its selection together, answered by a [`Verdict`].
+//! text and its selection together, answered by a [`Verdict`]; a drawn entry reports its
+//! text to assistive technology as an [`AccessText`], read from its editor.
 //!
 //! A view's build folds the annotation a wrapper left pending into its declared style,
 //! splits the style into the static part a platform compiles and the derived slots render

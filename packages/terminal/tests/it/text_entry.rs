@@ -1011,3 +1011,94 @@ fn arrow_up_in_a_field_is_left_to_its_ancestors() {
     );
   });
 }
+
+/// An entry reports its text to assistive technology as the editing core lays it: a text
+/// run a line, holding the value between them, and the selection as a place in a run at
+/// each end; the outline reads the value alone.
+#[test]
+fn an_editor_reports_its_lines_as_text_runs_and_its_selection_in_them() {
+  with_platform(|| {
+    let value = Signal::new(String::new());
+
+    let _ = terminal::mount(move || {
+      BasicTextEditor::new(TextEntry::new().set_lines(3).bind_value(value))
+        .into_any()
+        .build()
+    });
+    let _ = testing::render_to_text(20, 3);
+
+    testing::trigger_key("Tab");
+
+    for key in ["a", "b", "Enter", "c", "d", "e"] {
+      testing::trigger_key(key);
+    }
+
+    testing::trigger_key("Shift+ArrowLeft");
+    testing::trigger_key("Shift+ArrowLeft");
+
+    let tree = testing::access_tree();
+    let node = |id| {
+      tree
+        .nodes
+        .iter()
+        .find(|(held, _)| *held == id)
+        .map(|(_, node)| node)
+        .expect("the tree holds the node")
+    };
+    let (_, entry) = tree
+      .nodes
+      .iter()
+      .find(|(_, node)| node.role() == Role::MultilineTextInput)
+      .expect("the editor is in the tree");
+    let runs: Vec<_> = entry
+      .children()
+      .iter()
+      .copied()
+      .filter(|id| node(*id).role() == Role::TextRun)
+      .collect();
+    let texts: Vec<_> = runs.iter().map(|id| node(*id).value().unwrap()).collect();
+
+    assert_eq!(value.get_untracked(), "ab\ncde");
+    assert_eq!(texts, ["ab\n", "cde"], "a run a line");
+    assert_eq!(texts.concat(), value.get_untracked());
+    assert_eq!(node(runs[1]).character_lengths(), [1, 1, 1]);
+    assert_eq!(node(runs[1]).character_positions(), Some(&[0., 1., 2.][..]));
+    assert_eq!(node(runs[1]).word_starts(), [0]);
+
+    let selection = entry
+      .text_selection()
+      .expect("the editor reports its selection");
+
+    assert_eq!(
+      (selection.anchor.node, selection.anchor.character_index),
+      (runs[1], 3)
+    );
+    assert_eq!(
+      (selection.focus.node, selection.focus.character_index),
+      (runs[1], 1)
+    );
+
+    testing::trigger_key("Shift+ArrowUp");
+
+    let tree = testing::access_tree();
+    let (_, entry) = tree
+      .nodes
+      .iter()
+      .find(|(_, node)| node.role() == Role::MultilineTextInput)
+      .expect("the editor is in the tree");
+    let selection = entry
+      .text_selection()
+      .expect("the editor reports its selection");
+
+    assert_eq!(
+      (selection.focus.node, selection.focus.character_index),
+      (runs[0], 1),
+      "the caret moved up a line"
+    );
+    assert!(
+      !testing::access_outline().contains("TextRun"),
+      "{}",
+      testing::access_outline()
+    );
+  });
+}

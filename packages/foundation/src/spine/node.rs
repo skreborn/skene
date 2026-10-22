@@ -34,10 +34,71 @@ impl NodeId {
 
   /// The node's id in the accessibility tree the scene reports
   /// ([`Scene::access_tree`](super::Scene::access_tree)): its generation and index,
-  /// past the window's zero.
+  /// past the window's zero, its top bit clear.
   #[inline(always)]
   #[must_use]
   pub const fn access_id(self) -> accesskit::NodeId {
-    accesskit::NodeId((((self.generation as u64) << 32) | self.index as u64) + 1)
+    let id = (((self.generation as u64) << 32) | self.index as u64) + 1;
+
+    debug_assert!(
+      id >> 63 == 0,
+      "a node's accessibility id sets the bit of a run's"
+    );
+
+    accesskit::NodeId(id)
+  }
+
+  /// The id in the accessibility tree of the text run of line `line` of the node, a drawn
+  /// text entry ([`AccessText`](super::AccessText)): its top bit set, then the low 15 bits
+  /// of its generation, its index and the line.
+  ///
+  /// Only one generation of an index is live at a time, so no two runs of a tree share an
+  /// id, nor a run a node's.
+  #[inline(always)]
+  #[must_use]
+  pub const fn access_run_id(self, line: u16) -> accesskit::NodeId {
+    accesskit::NodeId(
+      1 << 63
+        | ((self.generation as u64 & 0x7fff) << 48)
+        | ((self.index as u64) << 16)
+        | line as u64,
+    )
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use std::collections::HashSet;
+
+  use super::NodeId;
+
+  #[test]
+  fn run_ids_are_unique_and_apart_from_node_ids() {
+    let nodes = [
+      NodeId::new(0, 0),
+      NodeId::new(1, 0),
+      NodeId::new(0, 1),
+      NodeId::new(u32::MAX, 0x7fff),
+      NodeId::new(70_000, 3),
+    ];
+    let mut seen = HashSet::new();
+
+    for node in nodes {
+      assert!(seen.insert(node.access_id()), "{node:?}'s id is its own");
+
+      for line in [0, 1, 2, u16::MAX] {
+        assert!(
+          seen.insert(node.access_run_id(line)),
+          "{node:?} line {line}"
+        );
+      }
+    }
+
+    assert_ne!(
+      NodeId::new(5, 1).access_run_id(0),
+      NodeId::new(5, 2).access_run_id(0)
+    );
+    assert_eq!(NodeId::new(0, 0).access_run_id(0).0 >> 63, 1);
+    assert_eq!(NodeId::new(u32::MAX, (1 << 31) - 2).access_id().0 >> 63, 0);
   }
 }

@@ -780,6 +780,37 @@ fn an_inline_span_flows_inline_unlike_a_block_text() {
   );
 }
 
+/// A text on a line of its own lays out one line while empty, through a rule of no
+/// more specificity than its class that precedes its own; an inline run takes none.
+#[test]
+fn an_empty_block_text_keeps_one_line() {
+  let block = render_to_string(|| Text::new(""));
+  let inline = render_to_string(|| RichText::new().add_spans([Span::new("")]));
+  let class = first_class(block.body());
+  let empty = format!(".{class}:where(:empty){{min-block-size:var(--skene-line);}}");
+
+  assert!(
+    block.body().ends_with("></span>"),
+    "an empty text renders an empty span: {}",
+    block.body()
+  );
+  assert!(block.styles().contains(&empty), "{}", block.styles());
+  assert!(
+    block.styles().find(&empty) < block.styles().find(&format!(".{class}{{")),
+    "the empty rule precedes the class's own: {}",
+    block.styles()
+  );
+  assert!(
+    !inline.styles().contains(":where(:empty)"),
+    "an inline run keeps no line of its own: {}",
+    inline.styles()
+  );
+  assert!(
+    block.styles().contains("--skene-line: 1lh;"),
+    "the reset defines the line"
+  );
+}
+
 /// A `RichText` flows nested groups and embedded views inline.
 #[test]
 fn rich_text_nests_groups_and_embeds_views() {

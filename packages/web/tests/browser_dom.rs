@@ -26,6 +26,7 @@ use skene_foundation::{
   Dimension,
   DragAxes,
   DragData,
+  FlexBase,
   Flexibility,
   FlexibleBase,
   GridAreas,
@@ -35,6 +36,7 @@ use skene_foundation::{
   GridPlacement,
   GridTemplate,
   GridTrack,
+  ItemAlignment,
   LazyColumnBase,
   Line,
   MotionBase,
@@ -1370,6 +1372,87 @@ fn derived_text_updates_the_dom_on_change() {
   platform::end_turn();
 
   assert_eq!(element.text_content().as_deref(), Some("5"));
+}
+
+/// Text keeps the guaranteed core: its blanks and newlines are kept, a word too wide
+/// for its line breaks where the line fills, and an empty text, fixed or derived, lays
+/// out the one line a letter does. The word's line is a fixed track's width, since a
+/// flexible track grows to the widest word it holds.
+#[wasm_bindgen_test]
+fn text_keeps_the_guaranteed_core() {
+  let (_guard, root) = fresh_root();
+  let shown = Signal::new("a".to_owned());
+
+  let _ = mount(move || {
+    Column::new()
+      .set_item_alignment(ItemAlignment::Start)
+      .set_children((
+        Text::new("a b"),
+        Text::new("a  b"),
+        Text::new("a"),
+        Text::new("a\nb"),
+        Grid::new()
+          .set_columns(vec![GridTrack::Length(40.)])
+          .set_children((Text::new("unbreakable".repeat(4)),)),
+        Text::new(""),
+        Text::derive(move || shown.get()),
+      ))
+      .build()
+  });
+
+  let column = only_child(&root);
+  let child = |index| column.children().item(index).expect("a child");
+  let rect = |index| child(index).get_bounding_client_rect();
+  let letter = rect(2).height();
+
+  assert!(letter > 0., "a letter lays out a line");
+  assert!(
+    rect(1).width() > rect(0).width() + 1.,
+    "two blanks are wider than one: {} against {}",
+    rect(1).width(),
+    rect(0).width(),
+  );
+  assert!(
+    rect(3).height() > letter * 1.5,
+    "a newline opens a second line: {} against {letter}",
+    rect(3).height(),
+  );
+
+  let track = child(4);
+  let word = only_child(&track);
+  let bounds = word.get_bounding_client_rect();
+
+  assert!(
+    (bounds.width() - 40.).abs() < 0.5,
+    "the word's line is its track's width: {}",
+    bounds.width(),
+  );
+  assert!(
+    bounds.height() > letter * 2.5,
+    "the word breaks onto several lines: {} against {letter}",
+    bounds.height(),
+  );
+  assert!(
+    word.scroll_width() <= 40,
+    "no line is wider than the track: {}",
+    word.scroll_width(),
+  );
+  assert!(
+    (rect(5).height() - letter).abs() < 0.5,
+    "an empty text is as tall as a letter's line: {} against {letter}",
+    rect(5).height(),
+  );
+  assert!((rect(6).height() - letter).abs() < 0.5);
+
+  shown.set(String::new());
+  platform::end_turn();
+
+  assert_eq!(child(6).text_content().as_deref(), Some(""));
+  assert!(
+    (rect(6).height() - letter).abs() < 0.5,
+    "a derived text emptied keeps its line: {} against {letter}",
+    rect(6).height(),
+  );
 }
 
 /// A derived property writes its slot on change, and the class reading the slot

@@ -44,6 +44,19 @@
     user-select: none;
   }
 
+  /* One line of text, as tall as a line holding a letter (cap to baseline where line
+     boxes are trimmed): an empty run on a line of its own takes it. Unregistered, it
+     resolves against each run's own font. */
+  :where(:root) {
+    --skene-line: 1lh;
+  }
+
+  @supports (text-box-trim: trim-both) {
+    :where(:root) {
+      --skene-line: 1cap;
+    }
+  }
+
   /* The typography in force: the root and every scope turn the typography tokens into
      the text properties everything beneath them inherits, the defaults standing in where
      nothing defines them. */

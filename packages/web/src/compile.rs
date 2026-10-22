@@ -876,7 +876,8 @@ pub(crate) fn compile_overlay<P: PixelPlatform>(props: &OverlayProps<P>) -> Comp
   compiled
 }
 
-/// The rule template of a text run.
+/// The rule template of a text run; a run on a line of its own lays out one line while
+/// empty, through a rule that precedes its own so any sizing it is given wins.
 pub(crate) fn compile_run<P: PixelPlatform>(props: &RunProps<P>) -> Compiled {
   let mut base = match props.placement {
     RunPlacement::Line => Declarations::new().set("display", "block"),
@@ -898,6 +899,18 @@ pub(crate) fn compile_run<P: PixelPlatform>(props: &RunProps<P>) -> Compiled {
     &props.dynamics.animations,
     &run_keyframe_declarations,
   );
+
+  if props.placement == RunPlacement::Line {
+    Conjunction::default().emit(
+      &mut out,
+      None,
+      ":where(:empty)",
+      &Declarations::new()
+        .set("min-block-size", "var(--skene-line)")
+        .render(),
+    );
+  }
+
   let mut rules = Rules::new(base);
 
   props.style.visit(&mut RunRules(&mut rules));

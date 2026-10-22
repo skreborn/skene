@@ -90,7 +90,8 @@ impl Edit {
   }
 
   /// `offset` mapped through a splice of `replaced` by `inserted` units: before the range it
-  /// stays, after it it moves with it, and inside it it goes to the replacement's end.
+  /// stays, after it it moves with it, and strictly inside it it stays as far into the
+  /// replacement as it was into the range, clamped to the replacement's end.
   #[must_use]
   pub const fn map_through(offset: usize, replaced: Range<usize>, inserted: usize) -> usize {
     if offset <= replaced.start {
@@ -100,7 +101,9 @@ impl Edit {
       offset - (replaced.end - replaced.start) + inserted
     }
     else {
-      replaced.start + inserted
+      let into = offset - replaced.start;
+
+      replaced.start + if into < inserted { into } else { inserted }
     }
   }
 }
@@ -116,7 +119,9 @@ pub enum Verdict {
   Accept,
   /// The truth is this edit instead: a toolkit that asks before applying applies it in the
   /// proposal's place, and one that applied first is repaired to it as the smallest edit,
-  /// the selection mapped through it where the edit leaves it.
+  /// the selection mapped through it where the edit leaves it ([`Edit::map_through`]: an
+  /// offset inside the replaced range keeps its distance into the replacement, clamped to
+  /// its end).
   Replace(Edit),
 }
 
@@ -153,6 +158,21 @@ mod tests {
     assert_eq!(Edit::map_through(3, 2..4, 1), 3);
     assert_eq!(Edit::map_through(4, 2..4, 1), 3);
     assert_eq!(Edit::map_through(6, 2..4, 5), 9);
+  }
+
+  #[test]
+  fn an_offset_inside_the_replaced_range_keeps_its_distance_into_the_replacement() {
+    // An equal-length replacement keeps the offset.
+    assert_eq!(Edit::map_through(2, 0..3, 3), 2);
+    assert_eq!(Edit::map_through(1, 0..3, 3), 1);
+
+    // A shrinking one clamps it to the replacement's end.
+    assert_eq!(Edit::map_through(3, 1..4, 1), 2);
+    assert_eq!(Edit::map_through(2, 1..4, 1), 2);
+    assert_eq!(Edit::map_through(2, 1..4, 0), 1);
+
+    // A growing one keeps the offset.
+    assert_eq!(Edit::map_through(2, 1..3, 5), 2);
   }
 
   #[test]

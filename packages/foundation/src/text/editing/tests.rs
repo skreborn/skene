@@ -458,6 +458,22 @@ fn a_handler_that_transforms_the_edit_is_shown_with_the_caret_mapped() {
 }
 
 #[test]
+fn a_caret_inside_the_replaced_range_keeps_its_distance_into_it() {
+  let (mut editor, truth) = controlled("ab", |truth, edit| truth.set(edit.text.to_uppercase()));
+
+  // The proposal is "cab" with the caret at 1; the truth "CAB" replaces all of it.
+  key(&mut editor, "Home");
+  key(&mut editor, "c");
+  assert_eq!(editor.text(), "CAB");
+  assert_eq!(truth.get_untracked(), "CAB");
+  assert_eq!(
+    editor.selection(),
+    selection(1, 1),
+    "the caret stays as far into the replacement as it was, not at its end"
+  );
+}
+
+#[test]
 fn a_rejected_edit_leaves_no_undo_step() {
   // The handler accepts only digits.
   let (mut editor, truth) = controlled("", |truth, edit| {

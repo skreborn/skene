@@ -31,6 +31,14 @@ supersedes.
   to explicit at launch, restoring the mode it reported on exit. Revisit when the
   terminals in use reorder text written under explicit BDSM again, or a terminal
   protocol hands an app the visual order it draws.
+- **A splice per changed run** (2026-10-22), repairing a toolkit that applied first by
+  a diff of every separated run the truth changes, each caret mapped through the run
+  it falls in, rather than by the one smallest edit from the common prefix to the
+  common suffix: with an offset inside that edit keeping its distance into the
+  replacement, one splice keeps the caret where the reader typed for every transform
+  that changes the text in one place, and a diff would be a second algorithm the
+  editing core and every realization's repair must agree on. Revisit when one
+  transform must keep carets across several separated changes.
 - **A generic medium** (2026-10-15), views generic over the medium they run on (`impl
   View<P>` with `P: Within<Pixel>`), `Adaptive` value chains and the platform sets
   (`Pixel`, `Cell`, `Apple`, `Mobile`, `Desktop`): checking a view tree grew
@@ -579,3 +587,10 @@ supersedes.
   functions alone (a field read, a constructor, a forwarding call), and every other
   inlining decision is the compiler's. Revisit when a measurement shows a function that
   is not tiny gaining from a forced inline across crates.
+- **The caret inside a repaired range going to the replacement's end** (2026-10-22):
+  a truth replacing a proposal moved every offset strictly inside the replaced range
+  to the replacement's end, so a handler uppercasing the text threw the caret to the
+  end of the change wherever the reader typed. Such an offset now stays as far into
+  the replacement as it was, clamped to its end (`Edit::map_through`), for the editing
+  core and every realization's repair alike. Revisit when a platform's native field
+  moves its caret to the replacement's end.

@@ -399,19 +399,24 @@ re-export.
   platform edits it with Skene's editing core (the terminal's today) reports a reader's
   edit as one `Edit`, its text and its selection together, with whether its toolkit
   shows it already, through `report_edit::<P>(node, &edit, applied)`, and is answered
-  with a `Verdict`: `Accept`, or `Replace` with the truth, which it shows. The control
-  asks the behavior (`Behavior::on_edit`; while it is disabled the behavior's held truth,
-  `Behavior::held_edit`, answers), refreshes its state and does not reconcile, so the
-  verdict is the only write-back and a vetoed or transformed edit leaves no step in the
-  core's undo history; the bound value's own write arrives later through `set_value`,
-  which the core takes as nothing where it equals what is shown. `TextEntry` accepts an
-  edit the truth already holds (`Edit::holds`) without asking, asks the value and then
-  the selection otherwise, and accepts any edit of an entry whose value nothing derives.
-  The web's `<input>` and headless still report through `notify_change` and
-  `notify_selection_change`, reconciled after. A `TextSelection` counts grapheme
-  clusters; where a platform's protocol counts in code points or UTF-16 code units it
-  names its unit (`Unit::CodePoint`, `Unit::Utf16`) and converts through one index per
-  text (`TextIndex`), as the web does for its `<input>`.
+  with a `Verdict`: `Accept`, or `Replace` with the truth, which it shows. A truth that
+  gives no selection keeps the proposed one, mapped through the smallest edit from the
+  proposal to the truth by one rule in the shared half (`Edit::map_through`): an offset
+  before the replaced range stays, one after it moves with it, and one strictly inside
+  it stays as far into the replacement as it was, clamped to the replacement's end, so a
+  transform that rewrites the whole text, as uppercasing does, keeps the caret where the
+  reader typed. The control asks the behavior (`Behavior::on_edit`; while it is disabled
+  the behavior's held truth, `Behavior::held_edit`, answers), refreshes its state and
+  does not reconcile, so the verdict is the only write-back and a vetoed or transformed
+  edit leaves no step in the core's undo history; the bound value's own write arrives
+  later through `set_value`, which the core takes as nothing where it equals what is
+  shown. `TextEntry` accepts an edit the truth already holds (`Edit::holds`) without
+  asking, asks the value and then the selection otherwise, and accepts any edit of an
+  entry whose value nothing derives. The web's `<input>` and headless still report
+  through `notify_change` and `notify_selection_change`, reconciled after. A
+  `TextSelection` counts grapheme clusters; where a platform's protocol counts in code
+  points or UTF-16 code units it names its unit (`Unit::CodePoint`, `Unit::Utf16`) and
+  converts through one index per text (`TextIndex`), as the web does for its `<input>`.
 - **Parts and control state.** A part is a named child the styling targets (`Track`,
   `Fill`, `Thumb`, `Mark`, `Face`, `List`, `Item`, `Label`); in the terminal a part maps
   to a glyph token. A `State` a box cannot have on its own (`Checked`, `Indeterminate`,
@@ -842,15 +847,16 @@ engine, over the geometry it reports.
   transposition, an undo or a redo) ends a composition first, keeping its text.
   Backspace removes the last code point of the cluster before the caret, as Chromium's
   does, an emoji sequence, a keycap or a flag whole; a forward deletion removes the
-  cluster. A change
-  to the text is proposed to the editor's `Arbiter` (`ControlledText` over a truth and
-  a handler, or a platform's adapter onto `report_edit`), and an edit it refuses
-  leaves no step. `Binding::for_key` is the key table where Ctrl is the command key
-  (Linux, Windows and the terminal): select all; undo and redo (`Ctrl-Shift-Z`,
-  `Ctrl-Y`); copy, cut and paste (`Ctrl-Shift-V`, `Ctrl-Insert`, `Shift-Insert` and
-  `Shift-Delete` among them); deletion by cluster and by word; Home and End, the whole
-  text's under Ctrl; and the arrows, up and down in an editor alone, while a composing
-  key and `Ctrl-Shift-A` bind nothing and a key typing one cluster inserts it.
+  cluster. A change to the text is proposed to the editor's `Arbiter` (`ControlledText`
+  over a truth and a handler, or a platform's adapter onto `report_edit`), an edit it
+  refuses leaves no step, and a truth it answers instead is shown with the proposed
+  selection mapped through `Edit::map_through` and snapped down to a cluster.
+  `Binding::for_key` is the key table where Ctrl is the command key (Linux, Windows and
+  the terminal): select all; undo and redo (`Ctrl-Shift-Z`, `Ctrl-Y`); copy, cut and
+  paste (`Ctrl-Shift-V`, `Ctrl-Insert`, `Shift-Insert` and `Shift-Delete` among them);
+  deletion by cluster and by word; Home and End, the whole text's under Ctrl; and the
+  arrows, up and down in an editor alone, while a composing key and `Ctrl-Shift-A` bind
+  nothing and a key typing one cluster inserts it.
 
 ## State
 

@@ -21,6 +21,17 @@ takes a handler through `handle_<event>`. A view's children come last in its cha
 `set_child` for a view of one child, and `add_child` or `set_children` for a layout,
 which takes a tuple of views of any types.
 
+A setting the chain may lack goes through `apply`, which calls the setter where there is
+a value and leaves the view as it is where there is none:
+
+```rust
+use skene_web::prelude::*;
+
+fn caption(text: &str, color: Option<Color>) -> impl View {
+  Text::new(text).apply(color, Text::set_color)
+}
+```
+
 ## Layout
 
 Each layout is its own view, and exposes only the properties it honors: `Row` and

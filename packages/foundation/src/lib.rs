@@ -55,6 +55,7 @@
 //! its type; both are silently declined by a medium without them. [`LowLevel`] registers a sink a
 //! low-level view made against a platform's escape trait as a node, so it composes like a built-in.
 
+mod apply;
 mod container;
 mod context_menu;
 mod control;
@@ -102,6 +103,7 @@ pub use skene_reactive as reactive;
 
 pub use self::spine::*;
 pub use crate::{
+  apply::Apply,
   container::{Container, ContainerBase},
   context_menu::{
     ContextMenu,

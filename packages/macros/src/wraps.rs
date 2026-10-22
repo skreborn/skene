@@ -7,11 +7,11 @@ use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use syn::{Data, DeriveInput, Fields, Type, parse_quote};
 
-/// The path to the foundation from the deriving crate: the crate itself, or its direct
-/// dependency.
+/// The path to the foundation from the deriving crate: the crate itself (and its doctests),
+/// through the name it gives itself, or its direct dependency.
 fn foundation() -> Option<TokenStream> {
   match crate_name("skene-foundation").ok()? {
-    FoundCrate::Itself => Some(quote!(crate)),
+    FoundCrate::Itself => Some(quote!(::skene_foundation)),
     FoundCrate::Name(name) => {
       let name = format_ident!("{name}");
 

@@ -7843,6 +7843,10 @@ impl<P: skene_foundation::Realization> skene_foundation::AnyKind for skene_found
 impl<P: skene_foundation::Realization> skene_foundation::AnyKind for skene_foundation::Text<P>
 impl<P: skene_foundation::web::WebHydration> skene_foundation::AnyKind for skene_foundation::web::AsyncView<P, skene_foundation::web::ChildLoader<P>>
 impl<P: skene_foundation::web::WebHydration> skene_foundation::AnyKind for skene_foundation::web::Deferred<P, skene_foundation::realize::ChildBuilder<P>>
+pub trait skene_foundation::Apply: core::marker::Sized
+pub fn skene_foundation::Apply::apply<T>(self, core::option::Option<T>, impl core::ops::function::FnOnce(Self, T) -> Self) -> Self
+impl<T: skene_foundation::Wraps> skene_foundation::Apply for T
+pub fn T::apply<T>(self, core::option::Option<T>, impl core::ops::function::FnOnce(Self, T) -> Self) -> Self
 pub trait skene_foundation::BasicPickerBase<P: skene_foundation::Realization, F>: skene_foundation::Wraps<Inner = skene_foundation::BasicPicker<P, F>>
 pub fn skene_foundation::BasicPickerBase::bind_chosen(self, skene_reactive::signal::Signal<alloc::string::String>) -> Self
 pub fn skene_foundation::BasicPickerBase::derive_chosen(self, impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self

@@ -422,6 +422,7 @@ pub mod skene_web::prelude
 pub use skene_web::prelude::AccessProp
 pub use skene_web::prelude::Alignment
 pub use skene_web::prelude::Animation
+pub use skene_web::prelude::Apply
 pub use skene_web::prelude::Arrangement
 pub use skene_web::prelude::AspectRatio
 pub use skene_web::prelude::AsyncViewBase

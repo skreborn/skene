@@ -5,6 +5,7 @@ pub use skene_foundation::{
   AccessProp,
   Alignment,
   Animation,
+  Apply,
   Arrangement,
   AspectRatio,
   Axes,

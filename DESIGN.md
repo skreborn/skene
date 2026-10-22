@@ -30,7 +30,9 @@ cross-compiles into the other. Each facade therefore owns its builder vocabulary
 exactly its capabilities—and everything beneath it is written once in the spine. The
 facade's own contribution is small by design: a scalar, the medium's condition leaves,
 the properties only that medium has, the platform it selects, and a type of its own per
-view, a newtype over the foundation's, that gives app code a flat, medium-typed surface. What a medium lacks is absent at compile time
+view, a newtype over the foundation's, that gives app code a flat, medium-typed surface. The newtype derives `Wraps`, which
+gives it `Apply`: `.apply(option, Type::set_<prop>)` sets a property only where a value is
+given. What a medium lacks is absent at compile time
 because the platform's associated types say so.
 
 Dependency arrows only point down; a platform depends on the foundation, never on another

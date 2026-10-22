@@ -157,6 +157,7 @@ pub mod skene_terminal::prelude
 pub use skene_terminal::prelude::AccessProp
 pub use skene_terminal::prelude::Alignment
 pub use skene_terminal::prelude::Animation
+pub use skene_terminal::prelude::Apply
 pub use skene_terminal::prelude::Arrangement
 pub use skene_terminal::prelude::AspectRatio
 pub use skene_terminal::prelude::Axes

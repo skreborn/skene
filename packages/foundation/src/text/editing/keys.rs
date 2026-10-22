@@ -82,7 +82,7 @@ impl Binding {
         "y" if !extend => command(Command::Redo),
         "c" if !extend => command(Command::Copy),
         "x" if !extend => command(Command::Cut),
-        "v" if !extend => Some(Self::Paste),
+        "v" => Some(Self::Paste),
         _ => None,
       },
       Key::Character(text) if plain && text.graphemes(true).count() == 1 => {
@@ -167,13 +167,18 @@ mod tests {
   }
 
   #[test]
-  fn ctrl_shift_a_binds_nothing() {
+  fn ctrl_shift_a_binds_nothing_and_ctrl_shift_v_pastes() {
     let event = press(Key::Character("A".into()), CTRL_SHIFT);
 
     assert_eq!(Binding::for_key(&event, false), None);
     assert_eq!(
       Binding::for_key(&press(Key::Character("a".into()), CTRL), false),
       Some(Binding::Command(Command::SelectAll))
+    );
+    assert_eq!(
+      Binding::for_key(&press(Key::Character("V".into()), CTRL_SHIFT), false),
+      Some(Binding::Paste),
+      "Ctrl+Shift+V pastes as plain text, which a text entry's paste is"
     );
   }
 

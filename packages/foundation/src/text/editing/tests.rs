@@ -314,6 +314,11 @@ fn the_clipboard_copies_cuts_and_pastes_through_commands() {
     "alphalinebreaks\nbeta",
     "an editor keeps them as line feeds"
   );
+  assert_eq!(
+    editor.sanitized("a\rb\r\n\rc"),
+    "a\nb\n\nc",
+    "a lone return too"
+  );
 
   editor.set_read_only(true);
   assert!(!editor.perform(Command::Paste("x".into())).handled);

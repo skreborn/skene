@@ -64,7 +64,6 @@ impl fmt::Debug for ControlledText {
   fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
     formatter
       .debug_struct("ControlledText")
-      .field("truth", &(self.truth)())
       .field("held", &self.held)
       .finish_non_exhaustive()
   }
@@ -95,5 +94,80 @@ impl Arbiter for ControlledText {
 
   fn settle(&mut self) -> Option<Edit> {
     std::mem::take(&mut self.held).then(|| (self.truth)())
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use std::{cell::Cell, rc::Rc};
+
+  use skene_reactive::{Get as _, Set as _, Signal};
+
+  use super::{Arbiter as _, ControlledText};
+  use crate::{Edit, Verdict};
+
+  /// A contract over a signal whose handler keeps what `keep` maps a proposal to, counting
+  /// its runs.
+  fn contract(
+    value: &str,
+    keep: impl Fn(&str) -> Option<String> + 'static,
+  ) -> (ControlledText, Signal<String>, Rc<Cell<usize>>) {
+    let truth = Signal::new(value.to_owned());
+    let runs = Rc::new(Cell::new(0));
+    let counted = runs.clone();
+    let contract = ControlledText::new(
+      move || Edit::new(truth.get_untracked()),
+      move |edit| {
+        counted.set(counted.get() + 1);
+
+        if let Some(kept) = keep(&edit.text) {
+          truth.set(kept);
+        }
+      },
+    );
+
+    (contract, truth, runs)
+  }
+
+  #[test]
+  fn a_proposal_the_truth_holds_is_accepted_without_the_handler() {
+    let (mut contract, _, runs) = contract("ab", |text| Some(text.to_owned()));
+
+    assert_eq!(
+      contract.propose(&Edit::new("ab"), false, false),
+      Verdict::Accept
+    );
+    assert_eq!(runs.get(), 0);
+
+    assert_eq!(
+      contract.propose(&Edit::new("abc"), false, false),
+      Verdict::Accept
+    );
+    assert_eq!(runs.get(), 1);
+  }
+
+  #[test]
+  fn a_proposal_the_handler_does_not_keep_is_replaced_by_the_truth() {
+    let (mut contract, truth, _) = contract("ab", |text| Some(text.to_uppercase()));
+
+    assert_eq!(
+      contract.propose(&Edit::new("abc"), false, false),
+      Verdict::Replace(Edit::new("ABC"))
+    );
+    assert_eq!(truth.get_untracked(), "ABC");
+    assert_eq!(contract.settle(), None, "nothing was held");
+  }
+
+  #[test]
+  fn a_composition_keeps_its_change_and_settles_to_the_truth() {
+    let (mut contract, _, _) = contract("", |_| None);
+
+    assert_eq!(
+      contract.propose(&Edit::new("k"), true, true),
+      Verdict::Accept,
+      "an input method is not interrupted"
+    );
+    assert_eq!(contract.settle(), Some(Edit::new("")));
+    assert_eq!(contract.settle(), None, "settled once");
   }
 }

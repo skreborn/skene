@@ -25,11 +25,9 @@ impl Edit {
 
   /// This edit, the selection placed at `selection`.
   #[inline(always)]
-  pub fn with_selection(self, selection: TextSelection) -> Self {
-    Self {
-      selection: Some(selection),
-      ..self
-    }
+  pub const fn with_selection(mut self, selection: TextSelection) -> Self {
+    self.selection = Some(selection);
+    self
   }
 
   /// The smallest edit turning `old` into this edit's text, in `unit`: the range of `old`

@@ -127,3 +127,87 @@ impl History {
     self.redo.push(state);
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::{EditKind, History, LIMIT, Step};
+  use crate::text::Position;
+
+  fn step(text: &str) -> Step {
+    Step {
+      text: text.to_owned(),
+      anchor: Position::new(text.len()),
+      focus: Position::new(text.len()),
+    }
+  }
+
+  #[test]
+  fn edits_of_one_kind_merge_until_the_run_breaks() {
+    let mut history = History::default();
+
+    history.record(step(""), EditKind::Typed);
+    history.record(step("a"), EditKind::Typed);
+    history.record(step("ab"), EditKind::RemovedBackward);
+    history.break_run();
+    history.record(step("a"), EditKind::RemovedBackward);
+    history.record(step(""), EditKind::Other);
+    history.record(step("x"), EditKind::Other);
+
+    let undone: Vec<String> = std::iter::from_fn(|| history.take_undo())
+      .map(|step| step.text)
+      .collect();
+
+    assert_eq!(undone, ["x", "", "a", "ab", ""]);
+  }
+
+  #[test]
+  fn an_input_methods_deletion_joins_the_edit_after_it() {
+    let mut history = History::default();
+
+    history.record(step("abc"), EditKind::Surrounding);
+    history.record(step("a"), EditKind::Other);
+    history.record(step("a\u{5951}"), EditKind::Other);
+
+    assert_eq!(
+      history.take_undo().map(|step| step.text).as_deref(),
+      Some("a\u{5951}")
+    );
+    assert_eq!(
+      history.take_undo().map(|step| step.text).as_deref(),
+      Some("abc")
+    );
+    assert_eq!(history.take_undo(), None);
+  }
+
+  #[test]
+  fn the_oldest_step_goes_past_the_limit() {
+    let mut history = History::default();
+
+    for count in 0..=LIMIT {
+      history.record(step(&count.to_string()), EditKind::Other);
+    }
+
+    let mut kept = 0;
+    let mut last = None;
+
+    while let Some(step) = history.take_undo() {
+      kept += 1;
+      last = Some(step.text);
+    }
+
+    assert_eq!(kept, LIMIT);
+    assert_eq!(last.as_deref(), Some("1"), "the first step was dropped");
+  }
+
+  #[test]
+  fn a_disabled_history_records_nothing_and_drops_what_it_kept() {
+    let mut history = History::default();
+
+    history.record(step(""), EditKind::Other);
+    history.set_enabled(false);
+    assert!(history.is_empty());
+
+    history.record(step("a"), EditKind::Other);
+    assert!(history.is_empty());
+  }
+}

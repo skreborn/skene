@@ -797,5 +797,27 @@ mod tests {
       Some(RunHit { node: 1, offset: 0 })
     );
     assert_eq!(flow.node_at(7), Some(&3));
+
+    let mut wrapped = TextFlow::new(engine(), style(), ParagraphStyle::default());
+
+    wrapped.add_run(1_u8, &[], "alpha ", style());
+    wrapped.add_run(2, &[], "beta", style());
+
+    let narrow = Rect::new(Point::ZERO, Size::new(width("alpha") + 2., 48.));
+
+    assert_eq!(
+      wrapped.nearest(narrow, Point::new(narrow.size.width + 50., 12.)),
+      Some(RunHit { node: 1, offset: 6 }),
+      "past the end of a wrapped line, the run that line ends with"
+    );
+    assert_eq!(
+      wrapped.nearest(narrow, Point::new(-5., 36.)),
+      Some(RunHit { node: 2, offset: 0 }),
+      "before the start of the next, the run it starts with"
+    );
+    assert_eq!(
+      wrapped.run_at(narrow, Point::new(2., 36.)),
+      Some(RunHit { node: 2, offset: 0 })
+    );
   }
 }

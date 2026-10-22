@@ -626,10 +626,46 @@ fn a_runs_own_line_height_sets_its_line_box_and_metrics_may_stay_fractional() {
     )
     .layout(None);
 
+  let unset = AttributedText::new(
+    "ab",
+    TextStyle::new(SIZE).with_line_height(LineHeight::Factor(1.)),
+    vec![TextRun {
+      range: 0..2,
+      style: TextStyle::new(SIZE),
+    }],
+  );
+
   assert_eq!(plain.size().height, 24., "the base style's line height");
+  assert_eq!(
+    engine
+      .paragraph(
+        &unset,
+        &ParagraphStyle::default().with_line_height(LineHeight::Factor(2.)),
+      )
+      .layout(None)
+      .size()
+      .height,
+    32.,
+    "a run setting none takes the paragraph's"
+  );
   assert_eq!(
     engine.paragraph(&tall, &style).layout(None).size().height,
     40.,
     "the tallest run's"
   );
+
+  let normal = |engine: &skene_parley::ParleyEngine| {
+    engine
+      .paragraph(
+        &AttributedText::plain("ab", TextStyle::new(SIZE)),
+        &ParagraphStyle::default(),
+      )
+      .layout(None)
+      .size()
+      .height
+  };
+  let (fractional, rounded) = (normal(&engine), normal(&inter()));
+
+  assert_ne!(fractional.fract(), 0., "unquantized: {fractional}");
+  assert_eq!(rounded.fract(), 0., "rounded unless set: {rounded}");
 }

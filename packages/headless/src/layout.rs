@@ -23,7 +23,7 @@ use skene_foundation::{
   StaticBoxStyle,
   StaticLeaf,
   TextDecoration,
-  text::{LineHeight, PaintStyle, ParagraphStyle, TextStyle},
+  text::{LineHeight, ParagraphStyle, TextStyle},
   typography,
   web::WebStyle,
 };
@@ -508,7 +508,6 @@ pub(crate) fn style_of(size: f32, line_height: f32, spacing: f32) -> TextStyle {
   TextStyle::new(size)
     .with_letter_spacing(spacing)
     .with_line_height(LineHeight::Factor(line_height))
-    .with_paint(PaintStyle::default())
 }
 
 /// The children `node` places, in order.

@@ -245,8 +245,12 @@ impl ParleyEngine {
   }
 
   /// The properties of a run as Parley takes them, its family falling back to `first`, its
-  /// line height where it sets one.
-  fn properties(style: &TextStyle, first: Option<&'static str>) -> Vec<StyleProperty<'static, ()>> {
+  /// line height `line_height` where it sets none.
+  fn properties(
+    style: &TextStyle,
+    line_height: LineHeight,
+    first: Option<&'static str>,
+  ) -> Vec<StyleProperty<'static, ()>> {
     let mut families = vec![Self::family_of(&style.family)];
 
     if let Some(first) = first
@@ -255,7 +259,7 @@ impl ParleyEngine {
       families.push(FontFamilyName::Named(Cow::Borrowed(first)));
     }
 
-    let mut properties = vec![
+    vec![
       StyleProperty::FontFamily(ParleyFamilies::List(Cow::Owned(families))),
       StyleProperty::FontSize(style.size),
       StyleProperty::FontWeight(ParleyWeight::new(style.weight.0)),
@@ -264,13 +268,10 @@ impl ParleyEngine {
         FontSlant::Italic => ParleySlant::Italic,
       }),
       StyleProperty::LetterSpacing(style.letter_spacing),
-    ];
-
-    if let Some(height) = style.line_height {
-      properties.push(StyleProperty::LineHeight(Self::line_height_of(height)));
-    }
-
-    properties
+      StyleProperty::LineHeight(Self::line_height_of(
+        style.line_height.unwrap_or(line_height),
+      )),
+    ]
   }
 
   /// A line height as Parley takes it.
@@ -290,11 +291,8 @@ impl ParleyEngine {
     style: &ParagraphStyle,
     settings: Settings,
   ) -> Job {
-    let mut defaults = vec![StyleProperty::LineHeight(Self::line_height_of(
-      style.line_height,
-    ))];
+    let mut defaults = Self::properties(text.base(), style.line_height, first);
 
-    defaults.extend(Self::properties(text.base(), first));
     defaults.push(StyleProperty::OverflowWrap(OverflowWrap::BreakWord));
     defaults.push(StyleProperty::TabSize(settings.tab_size));
     defaults.push(StyleProperty::TextWrapMode(match style.wrap {
@@ -306,7 +304,7 @@ impl ParleyEngine {
       .runs()
       .iter()
       .flat_map(|run| {
-        Self::properties(&run.style, first)
+        Self::properties(&run.style, style.line_height, first)
           .into_iter()
           .map(|property| (property, run.range.clone()))
       })

@@ -7,8 +7,9 @@
 //! stops at the node whose handlers prevented bubbling. A pointer event reaches each
 //! node local to that node's own box, measured by the platform. A notification runs the
 //! node's own handlers only, and a focus move notifies each node whose subtree it
-//! enters or leaves. Every dispatch runs in one batch, and no borrow of the scene is
-//! held while a handler runs.
+//! enters or leaves. A report of an edit runs the node's own handlers too and folds
+//! their answers into the [`Verdict`] the platform applies. Every dispatch runs in one
+//! batch, and no borrow of the scene is held while a handler runs.
 
 use skene_reactive::batch;
 use smallvec::SmallVec;
@@ -16,6 +17,8 @@ use smallvec::SmallVec;
 use super::{Handler, NodeId, Platform, Scene};
 use crate::spine::{
   ClickEvent,
+  Edit,
+  EditHandler,
   KeyEvent,
   PlainHandler,
   PointerEvent,
@@ -23,6 +26,7 @@ use crate::spine::{
   Prevented,
   ScrollEvent,
   TextSelection,
+  Verdict,
   WheelEvent,
   handler::{HandlerSet, Pick, Registered},
   task::run_handler,
@@ -291,6 +295,33 @@ pub fn notify_selection_change<P: Platform>(node: NodeId, selection: TextSelecti
   );
 }
 
+/// Reports a reader's edit of the drawn text entry `node`, its text and selection as one,
+/// and answers with the verdict the platform applies: `applied` says whether its toolkit
+/// shows the edit already.
+///
+/// The node's edit handlers run in registration order, and the last answering
+/// [`Verdict::Replace`] decides; with none answering it, or none at all, the edit stands
+/// as [`Verdict::Accept`]. The verdict is the only write-back: a platform applies it, and
+/// a bound value's write reaching it later as the same text changes nothing.
+pub fn report_edit<P: Platform>(node: NodeId, edit: &Edit, applied: bool) -> Verdict {
+  batch(|| {
+    let (handlers, _) = snapshot::<P, EditHandler>(
+      node,
+      all(|handler| match handler {
+        Handler::Edit(run) => Some(run),
+        _ => None,
+      }),
+    );
+
+    handlers.iter().fold(Verdict::Accept, |verdict, handler| {
+      match run_handler(handler.owner(), || handler(edit, applied)) {
+        Verdict::Accept => verdict,
+        replaced @ Verdict::Replace(_) => replaced,
+      }
+    })
+  })
+}
+
 /// Notifies `node` of its new checked state.
 pub fn notify_toggle<P: Platform>(node: NodeId, checked: bool) {
   notify::<P, _>(
@@ -413,12 +444,14 @@ mod tests {
     notify_dismiss,
     notify_focus_moved,
     notify_pointer_moved,
+    report_edit,
   };
   use crate::spine::{
     Boundary,
     Bubbling,
     ClickEvent,
     ClickHandler,
+    Edit,
     EventKind,
     Handler,
     NodeId,
@@ -428,6 +461,8 @@ mod tests {
     Prevent,
     Prevented,
     Scene,
+    TextSelection,
+    Verdict,
     count_pending,
     testing::{Call, TestBox, TestPlatform},
   };
@@ -935,5 +970,59 @@ mod tests {
     );
     assert_eq!(tasks.borrow().len(), 1);
     assert!(boundary.is_settled());
+  }
+
+  /// An edit is answered by the node's own handlers alone, the last replacing it deciding,
+  /// each hearing whether the toolkit shows the edit already.
+  #[test]
+  fn report_edit_folds_its_handlers_verdicts() {
+    TestPlatform::reset();
+
+    let (outer, _, inner) = chain();
+    let heard = Rc::new(RefCell::new(Vec::new()));
+    let answer = |verdict: Verdict| {
+      let heard = Rc::clone(&heard);
+
+      Handler::Edit(Rc::new(move |edit: &Edit, applied| {
+        heard.borrow_mut().push((edit.text.to_string(), applied));
+
+        verdict.clone()
+      }))
+    };
+    let first = Edit::new("A");
+    let last = Edit::new("B").with_selection(TextSelection::collapsed(1));
+
+    Scene::<TestPlatform>::with(|scene| {
+      scene.handle(outer, answer(Verdict::Replace(Edit::new("outer"))));
+      scene.handle(inner, answer(Verdict::Replace(first)));
+      scene.handle(inner, answer(Verdict::Replace(last.clone())));
+      scene.handle(inner, answer(Verdict::Accept));
+    });
+
+    assert_eq!(
+      report_edit::<TestPlatform>(inner, &Edit::new("a"), true),
+      Verdict::Replace(last)
+    );
+    assert_eq!(
+      *heard.borrow(),
+      [
+        ("a".to_owned(), true),
+        ("a".to_owned(), true),
+        ("a".to_owned(), true)
+      ]
+    );
+  }
+
+  /// An edit no handler answers stands.
+  #[test]
+  fn report_edit_accepts_where_no_handler_acts() {
+    TestPlatform::reset();
+
+    let (_, _, inner) = chain();
+
+    assert_eq!(
+      report_edit::<TestPlatform>(inner, &Edit::new("a"), false),
+      Verdict::Accept
+    );
   }
 }

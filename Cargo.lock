@@ -2702,7 +2702,6 @@ dependencies = [
  "smallvec",
  "tracing",
  "trybuild",
- "unicode-segmentation",
  "vello_gpu",
  "wasm-bindgen",
  "wasm-bindgen-futures",

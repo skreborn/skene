@@ -8,11 +8,13 @@ use crate::spine::{
   ClickHandler,
   DragSource,
   DropHandler,
+  Edit,
   EventKind,
   KeyHandler,
   PointerHandler,
   ScrollEvent,
   TextSelection,
+  Verdict,
   WheelHandler,
 };
 
@@ -26,6 +28,9 @@ pub type ChangeHandler = dyn Fn(&str);
 pub type ToggleHandler = dyn Fn(bool);
 /// A selection handler: a text entry's new selection.
 pub type SelectionHandler = dyn Fn(TextSelection);
+/// An edit handler: a reader's edit of a drawn text entry, with whether its toolkit shows
+/// it already, answered with the verdict on it.
+pub type EditHandler = dyn Fn(&Edit, bool) -> Verdict;
 
 /// A handler for one kind of event, as a node carries it.
 ///
@@ -68,6 +73,8 @@ pub enum Handler {
   Change(Rc<ChangeHandler>),
   /// Runs with a text entry's new selection.
   SelectionChange(Rc<SelectionHandler>),
+  /// Answers a reader's edit of a drawn text entry.
+  Edit(Rc<EditHandler>),
   /// Runs with a control's new checked state.
   Toggle(Rc<ToggleHandler>),
   /// Runs when the platform dismisses the overlay.
@@ -101,6 +108,7 @@ impl Handler {
       Self::Scroll(_) => EventKind::Scroll,
       Self::Change(_) => EventKind::Change,
       Self::SelectionChange(_) => EventKind::SelectionChange,
+      Self::Edit(_) => EventKind::Edit,
       Self::Toggle(_) => EventKind::Toggle,
       Self::Dismiss(_) => EventKind::Dismiss,
       Self::DragStart(_) => EventKind::DragStart,

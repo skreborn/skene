@@ -351,6 +351,9 @@ pub enum EventKind {
   Change,
   /// A text entry's selection changed.
   SelectionChange,
+  /// A reader edited a drawn text entry, its text and selection as one, and awaits the
+  /// verdict on it.
+  Edit,
   /// A control's checked state changed.
   Toggle,
   /// An overlay was dismissed by the platform: a light dismiss, or `Escape`.

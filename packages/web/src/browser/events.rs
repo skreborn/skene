@@ -33,6 +33,7 @@ use skene_foundation::{
   Scene,
   ScrollEvent,
   TextSelection,
+  Unit,
   WheelUnit,
   dispatch_click,
   dispatch_click_observed,
@@ -56,8 +57,8 @@ use skene_foundation::{
   notify_selection_change,
   notify_toggle,
   start_drag,
+  text::{Round, TextIndex},
 };
-use unicode_segmentation::UnicodeSegmentation;
 use wasm_bindgen::{JsCast, JsValue, closure::Closure};
 use web_sys::{
   AddEventListenerOptions,
@@ -211,6 +212,7 @@ impl Events {
       EventKind::Scroll => &["scroll"],
       EventKind::Change => &["input"],
       EventKind::SelectionChange => &["selectionchange"],
+      EventKind::Edit => &[],
       EventKind::Toggle => &["change"],
       EventKind::Dismiss => &["click", "keydown", "pointerdown"],
       EventKind::ContextMenu => &["contextmenu"],
@@ -1024,32 +1026,15 @@ pub(super) fn select(element: &Element, selection: TextSelection) {
 /// The cluster of `value` holding the UTF-16 code unit `unit`, or the cluster count
 /// at or past the value's end.
 fn cluster_of_unit(value: &str, unit: u32) -> usize {
-  let mut units = 0;
-  let mut index = 0;
-
-  for cluster in value.graphemes(true) {
-    units += u32::try_from(cluster.encode_utf16().count()).unwrap_or(u32::MAX);
-
-    if units > unit {
-      return index;
-    }
-
-    index += 1;
-  }
-
-  index
+  TextIndex::new(value).grapheme_of(Unit::Utf16, unit as usize, Round::Down)
 }
 
 /// The UTF-16 code unit in `value` the cluster at `index` starts at, or the value's
 /// end in units.
 fn unit_of_cluster(value: &str, index: usize) -> u32 {
-  let units = value
-    .graphemes(true)
-    .take(index)
-    .map(|cluster| cluster.encode_utf16().count())
-    .sum::<usize>();
+  let unit = TextIndex::new(value).offset_of_grapheme(Unit::Utf16, index);
 
-  u32::try_from(units).unwrap_or(u32::MAX)
+  u32::try_from(unit).unwrap_or(u32::MAX)
 }
 
 fn on_change(event: &web_sys::Event) {

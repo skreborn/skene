@@ -59,6 +59,7 @@ use crate::{
   DeclaredBoxStyle,
   DecorationBase,
   DragAxes,
+  Edit,
   EventKind,
   Expr,
   FocusOrder,
@@ -89,6 +90,7 @@ use crate::{
   Text,
   TextSelection,
   Value,
+  Verdict,
   View,
   WheelEvent,
   Wraps,
@@ -251,6 +253,22 @@ pub trait Behavior<P: Platform>: 'static {
   /// What the behavior does when the platform reports a new selection.
   #[inline(always)]
   fn on_selection_change(&self, _selection: TextSelection, _control: &ControlHandle<P>) {}
+
+  /// The verdict on an edit a reader made in a drawn entry, its text and selection as
+  /// one: `applied` says whether the entry's toolkit shows it already. The verdict is the
+  /// only write-back, so a behavior answering it writes nothing to the platform itself.
+  /// [`Verdict::Accept`], the default, keeps the edit.
+  #[inline(always)]
+  fn on_edit(&self, _edit: &Edit, _applied: bool, _control: &ControlHandle<P>) -> Verdict {
+    Verdict::Accept
+  }
+
+  /// The text and selection the behavior holds, read untracked: what a disabled entry
+  /// answers every edit with. `None`, the default, for a behavior holding no text.
+  #[inline(always)]
+  fn held_edit(&self) -> Option<Edit> {
+    None
+  }
 
   /// What the behavior does when the platform reports a new checked state.
   #[inline(always)]
@@ -1126,6 +1144,26 @@ impl<P: Platform, B: Behavior<P>> Actor<P, B> {
     self.behavior.reconcile(&self.handle);
   }
 
+  /// The verdict on an edit a drawn entry reports: what the behavior holds while the
+  /// control is disabled, the behavior's answer otherwise; the control's state and
+  /// accessibility are re-read beside it, and nothing is written back but the verdict.
+  fn answer(&self, edit: &Edit, applied: bool) -> Verdict {
+    let verdict = if (self.disabled)() {
+      self
+        .behavior
+        .held_edit()
+        .filter(|held| !held.holds(edit))
+        .map_or(Verdict::Accept, Verdict::Replace)
+    }
+    else {
+      self.behavior.on_edit(edit, applied, &self.handle)
+    };
+
+    self.handle.refresh();
+
+    verdict
+  }
+
   /// The behavior's handler for an event of `kind`, `None` for a kind no behavior
   /// acts on: a disabled control answers without acting, and a key an input method is
   /// composing never reaches the behavior.
@@ -1179,6 +1217,13 @@ impl<P: Platform, B: Behavior<P>> Actor<P, B> {
 
         Handler::SelectionChange(Rc::new(move |selection: TextSelection| {
           actor.report(|behavior, handle| behavior.on_selection_change(selection, handle));
+        }))
+      }
+      EventKind::Edit => {
+        let actor = self.clone();
+
+        Handler::Edit(Rc::new(move |edit: &Edit, applied| {
+          actor.answer(edit, applied)
         }))
       }
       EventKind::Toggle => {

@@ -87,6 +87,7 @@ pub use dispatch::{
   notify_scroll,
   notify_selection_change,
   notify_toggle,
+  report_edit,
 };
 pub use drag::{
   DragData,
@@ -122,6 +123,7 @@ pub use extension::{NoProperty, NoValue, StyleExtension};
 pub use fingerprint::Fingerprint;
 pub use handler::{
   ChangeHandler,
+  EditHandler,
   Handler,
   PlainHandler,
   Registered,
@@ -187,7 +189,7 @@ pub use run_style::{
   RunVisitor,
   run_fields,
 };
-pub use runtime::{end_turn, hold_flushes, reset_thread};
+pub use runtime::{end_turn, hold_flushes, lay_out, reset_thread};
 pub use scalar::Scalar;
 pub use scene::{Annotated, Annotation, NodeKind, NodeRecord, Scene};
 pub use segment::{Piece, Segment};

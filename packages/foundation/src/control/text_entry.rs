@@ -3,11 +3,16 @@
 use skene_reactive::{Effect, Signal, untrack};
 
 use super::{Behavior, ControlHandle, Controlled};
-use crate::{EventKind, NativeElement, Platform, Role, TextSelection};
+use crate::{Edit, EventKind, NativeElement, Platform, Role, TextSelection, Verdict};
 
 /// A text entry: a single-line field, or an editor showing several lines at once.
 ///
-/// Editing keys are the platform's; the behavior only reports each change. Controlled:
+/// Editing keys are the platform's; the behavior only reports each change. A drawn
+/// entry reports a reader's edit as one [`Edit`], its text and selection together, with
+/// whether its toolkit shows it already, and applies the [`Verdict`] it is answered with,
+/// which is the only write-back: the value is asked for first, then the selection, and
+/// an edit the truth then holds, or any edit while nothing is derived, is accepted,
+/// while any other is answered with the truth. Controlled:
 /// the text shown is what [`derive_value`](Self::derive_value) reads, and an edit
 /// only calls [`handle_change`](Self::handle_change) with the text asked for;
 /// [`bind_value`](Self::bind_value) wires both to one signal. The selection is
@@ -114,6 +119,20 @@ impl TextEntry {
 
     self
   }
+
+  /// The text and selection the entry holds, read untracked; `None` while no text is
+  /// derived.
+  fn held(&self) -> Option<Edit> {
+    untrack(|| {
+      let text = self.value.read()?;
+      let edit = Edit::new(text);
+
+      Some(match self.selection.read() {
+        Some(selection) => edit.with_selection(selection),
+        None => edit,
+      })
+    })
+  }
 }
 
 impl Default for TextEntry {
@@ -142,10 +161,14 @@ impl<P: Platform> Behavior<P> for TextEntry {
   #[inline(always)]
   fn listens(&self) -> &'static [EventKind] {
     if self.selection.is_handled() {
-      &[EventKind::Change, EventKind::SelectionChange]
+      &[
+        EventKind::Change,
+        EventKind::SelectionChange,
+        EventKind::Edit,
+      ]
     }
     else {
-      &[EventKind::Change]
+      &[EventKind::Change, EventKind::Edit]
     }
   }
 
@@ -185,6 +208,24 @@ impl<P: Platform> Behavior<P> for TextEntry {
 
   fn on_selection_change(&self, selection: TextSelection, _control: &ControlHandle<P>) {
     self.selection.ask(selection);
+  }
+
+  fn on_edit(&self, edit: &Edit, _applied: bool, _control: &ControlHandle<P>) -> Verdict {
+    self.value.ask(edit.text.to_string());
+
+    if let Some(selection) = edit.selection {
+      self.selection.ask(selection);
+    }
+
+    self
+      .held()
+      .filter(|truth| !truth.holds(edit))
+      .map_or(Verdict::Accept, Verdict::Replace)
+  }
+
+  #[inline(always)]
+  fn held_edit(&self) -> Option<Edit> {
+    self.held()
   }
 
   fn reconcile(&self, control: &ControlHandle<P>) {

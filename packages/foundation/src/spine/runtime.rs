@@ -30,6 +30,17 @@ pub fn end_turn() {
   }
 }
 
+/// Lays the scene out now: ends the turn, so the effects of every write since the last
+/// turn's end have taken hold, then has `P` lay out what they changed, so geometry read
+/// after it is current.
+///
+/// A platform's text-input protocol asks its questions synchronously, and one asking for
+/// geometry reaches this before it answers.
+pub fn lay_out<P: Platform>() {
+  end_turn();
+  P::lay_out();
+}
+
 /// Resets what running the platform `P` left on this thread.
 ///
 /// The turn is dropped unflushed, and the scene, the reactive runtime, the root scope,

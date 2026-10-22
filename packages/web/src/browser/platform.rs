@@ -40,7 +40,9 @@ use skene_foundation::{
   StaticLeaf,
   TextSelection,
   Timer,
+  Unit,
   notify_dismiss,
+  text::TextIndex,
   web::{HydrationSource, WebHydration, WebStyle},
 };
 use skene_reactive::{Memo, ReadSignal};
@@ -153,13 +155,16 @@ fn entry_selection(entry: &Element) -> Option<(u32, u32, String)> {
       editor.selection_end().ok()??,
     )
   };
-  let units: Vec<u16> = value.encode_utf16().collect();
-  let length = u32::try_from(units.len()).unwrap_or(u32::MAX);
-  let start = start.min(length);
-  let end = end.min(length).max(start);
-  let selected = &units[start as usize..end as usize];
+  let index = TextIndex::new(&value);
+  let selected = index.byte_range(Unit::Utf16, start as usize..end as usize);
+  let units = index.unit_range(Unit::Utf16, selected.clone());
+  let unit = |offset: usize| u32::try_from(offset).unwrap_or(u32::MAX);
 
-  Some((start, end, String::from_utf16_lossy(selected)))
+  Some((
+    unit(units.start),
+    unit(units.end),
+    value[selected].to_owned(),
+  ))
 }
 
 /// The document's selection as text, if any.

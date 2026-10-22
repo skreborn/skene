@@ -20,6 +20,7 @@ use skene_foundation::{
   DecorationBase,
   Dimension,
   DragAxes,
+  Edit,
   EventKind,
   FocusOrder,
   HasChild,
@@ -34,6 +35,7 @@ use skene_foundation::{
   NamedKey,
   NativeElement,
   Part,
+  Platform,
   PointerButton,
   PointerEvent,
   Popup,
@@ -53,10 +55,12 @@ use skene_foundation::{
   TextEntry,
   TextSelection,
   Toggle,
+  Verdict,
   View,
   WheelEvent,
   WheelUnit,
   When,
+  report_edit,
 };
 use skene_headless::{
   Headless,
@@ -390,6 +394,122 @@ fn a_rejected_edit_leaves_the_platform_showing_the_bound_value() {
 
   assert_eq!(bound.get(), "123", "a disabled entry hears no edit");
   assert_eq!(value(node).as_deref(), Some("123"));
+
+  owner.dispose();
+}
+
+/// A drawn entry's edit is answered with the truth: one its handler transforms is
+/// replaced by what the handler kept, the selection beside it, and one the truth holds
+/// stands.
+#[test]
+fn report_edit_answers_with_the_truth_when_the_handler_transforms_it() {
+  reset();
+
+  let owner = Owner::new();
+  let text = Signal::new("ab".to_owned());
+  let caret = Signal::new(TextSelection::collapsed(2));
+  let node = owner.enter(|| {
+    BasicTextField::new(
+      TextEntry::new()
+        .derive_value(move || text.get())
+        .handle_change(move |value| text.set(value.to_uppercase()))
+        .bind_selection(caret),
+    )
+    .build()
+  });
+  let typed = Edit::new("abc").with_selection(TextSelection::collapsed(3));
+
+  assert_eq!(
+    report_edit::<Headless>(node, &typed, false),
+    Verdict::Replace(Edit::new("ABC").with_selection(TextSelection::collapsed(3)))
+  );
+  assert_eq!(text.get(), "ABC");
+  assert_eq!(value(node).as_deref(), Some("ABC"));
+
+  let kept = Edit::new("ABCD").with_selection(TextSelection::collapsed(4));
+
+  assert_eq!(report_edit::<Headless>(node, &kept, true), Verdict::Accept);
+  assert_eq!(caret.get(), TextSelection::collapsed(4));
+
+  owner.dispose();
+}
+
+/// An entry deriving no text keeps no truth: its edit stands, its handler hearing it.
+#[test]
+fn report_edit_accepts_an_uncontrolled_entry() {
+  reset();
+
+  let owner = Owner::new();
+  let heard = Rc::new(RefCell::new(Vec::new()));
+  let node = owner.enter(|| {
+    let heard = Rc::clone(&heard);
+
+    BasicTextField::new(
+      TextEntry::new().handle_change(move |value| heard.borrow_mut().push(value.to_owned())),
+    )
+    .build()
+  });
+
+  assert_eq!(
+    report_edit::<Headless>(node, &Edit::new("typed"), true),
+    Verdict::Accept
+  );
+  assert_eq!(*heard.borrow(), ["typed"]);
+
+  owner.dispose();
+}
+
+/// A disabled entry hears no edit and answers each with what it holds, but one its
+/// truth already holds.
+#[test]
+fn a_disabled_entry_answers_its_edit_with_the_truth() {
+  reset();
+
+  let owner = Owner::new();
+  let bound = Signal::new("12".to_owned());
+  let node = owner.enter(|| {
+    BasicTextField::new(TextEntry::new().bind_value(bound))
+      .set_disabled(true)
+      .build()
+  });
+
+  assert_eq!(
+    report_edit::<Headless>(node, &Edit::new("123"), false),
+    Verdict::Replace(Edit::new("12"))
+  );
+  assert_eq!(bound.get(), "12");
+  assert_eq!(
+    report_edit::<Headless>(node, &Edit::new("12"), true),
+    Verdict::Accept
+  );
+
+  owner.dispose();
+}
+
+/// The verdict is an edit's only write-back: the platform is not reconciled with the
+/// truth while the edit is reported.
+#[test]
+fn report_edit_does_not_reconcile() {
+  reset();
+
+  let owner = Owner::new();
+  let node = owner
+    .enter(|| BasicTextField::new(TextEntry::new().set_value("12").handle_change(|_| {})).build());
+
+  assert_eq!(value(node).as_deref(), Some("12"));
+
+  // The entry's toolkit shows the reader's edit already.
+  Headless::set_value(node, "12a");
+
+  assert_eq!(
+    report_edit::<Headless>(node, &Edit::new("12a"), true),
+    Verdict::Replace(Edit::new("12"))
+  );
+  assert_eq!(
+    value(node).as_deref(),
+    Some("12a"),
+    "nothing but the verdict writes back"
+  );
 
   owner.dispose();
 }
@@ -1096,7 +1216,7 @@ fn only_the_events_a_behavior_or_a_handler_needs_are_listened_to() {
       EventKind::PointerCancel,
     ]
   );
-  assert_eq!(listened(field), [EventKind::Change]);
+  assert_eq!(listened(field), [EventKind::Change, EventKind::Edit]);
   assert_eq!(
     listened(button),
     [

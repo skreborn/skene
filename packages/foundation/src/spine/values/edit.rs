@@ -30,6 +30,17 @@ impl Edit {
     self
   }
 
+  /// Whether this edit, as the truth, already holds `proposed`: the same text, and the
+  /// same selection where both give one.
+  #[must_use]
+  pub fn holds(&self, proposed: &Self) -> bool {
+    self.text == proposed.text
+      && match (self.selection, proposed.selection) {
+        (Some(held), Some(asked)) => held == asked,
+        _ => true,
+      }
+  }
+
   /// The smallest edit turning `old` into this edit's text, in `unit`: the range of `old`
   /// replaced and the text replacing it.
   #[must_use]
@@ -152,5 +163,16 @@ mod tests {
 
     assert_eq!(edit.selection, Some(TextSelection::collapsed(1)));
     assert_eq!(&*edit.text, "ab");
+  }
+
+  #[test]
+  fn a_truth_holds_its_text_and_the_selection_both_give() {
+    let truth = Edit::new("ab").with_selection(TextSelection::collapsed(1));
+
+    assert!(truth.holds(&Edit::new("ab")));
+    assert!(truth.holds(&Edit::new("ab").with_selection(TextSelection::collapsed(1))));
+    assert!(!truth.holds(&Edit::new("ab").with_selection(TextSelection::collapsed(2))));
+    assert!(!truth.holds(&Edit::new("abc")));
+    assert!(Edit::new("ab").holds(&Edit::new("ab").with_selection(TextSelection::collapsed(2))));
   }
 }

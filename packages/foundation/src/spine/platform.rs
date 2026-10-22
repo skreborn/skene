@@ -369,6 +369,13 @@ pub trait Platform: Copy + Default + 'static {
   /// Writes a text entry's selection.
   fn set_selection(node: NodeId, selection: TextSelection);
 
+  /// Lays out what changed since the last layout, synchronously, without painting: the
+  /// layout a text-input protocol call reaches through [`lay_out`](crate::spine::lay_out)
+  /// when it asks for geometry. A platform whose layout no such call reads does nothing,
+  /// the default.
+  #[inline(always)]
+  fn lay_out() {}
+
   /// Writes a control's checked state.
   fn set_checked(node: NodeId, checked: bool);
 

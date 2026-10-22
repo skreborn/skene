@@ -806,8 +806,8 @@ fn an_empty_block_text_keeps_one_line() {
     inline.styles()
   );
   assert!(
-    block.styles().contains("--skene-line: 1lh;"),
-    "the reset defines the line"
+    block.styles().contains("--skene-line: 1lh;") && block.styles().contains("--skene-line: 1cap;"),
+    "the reset defines the line, trimmed where line boxes are"
   );
 }
 

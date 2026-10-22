@@ -1376,8 +1376,7 @@ fn derived_text_updates_the_dom_on_change() {
 
 /// Text keeps the guaranteed core: its blanks and newlines are kept, a word too wide
 /// for its line breaks where the line fills, and an empty text, fixed or derived, lays
-/// out the one line a letter does. The word's line is a fixed track's width, since a
-/// flexible track grows to the widest word it holds.
+/// out the one line a letter does. The word's line is a fixed grid track.
 #[wasm_bindgen_test]
 fn text_keeps_the_guaranteed_core() {
   let (_guard, root) = fresh_root();
@@ -1442,7 +1441,11 @@ fn text_keeps_the_guaranteed_core() {
     "an empty text is as tall as a letter's line: {} against {letter}",
     rect(5).height(),
   );
-  assert!((rect(6).height() - letter).abs() < 0.5);
+  assert!(
+    (rect(6).height() - letter).abs() < 0.5,
+    "a derived text is as tall as a letter's line: {} against {letter}",
+    rect(6).height(),
+  );
 
   shown.set(String::new());
   platform::end_turn();

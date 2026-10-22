@@ -877,7 +877,7 @@ pub(crate) fn compile_overlay<P: PixelPlatform>(props: &OverlayProps<P>) -> Comp
 }
 
 /// The rule template of a text run; a run on a line of its own lays out one line while
-/// empty, through a rule that precedes its own so any sizing it is given wins.
+/// empty, through a rule of its class's specificity that precedes the class's own.
 pub(crate) fn compile_run<P: PixelPlatform>(props: &RunProps<P>) -> Compiled {
   let mut base = match props.placement {
     RunPlacement::Line => Declarations::new().set("display", "block"),

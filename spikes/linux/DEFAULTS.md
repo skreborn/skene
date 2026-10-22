@@ -155,7 +155,9 @@ Every choice the drawn Linux prototype took that neither `AGENTS.md` nor the aut
 
 ## The default scroll anchor
 
-- `ScrollAnchor` names the two ends of a list's axis, `Start` and `End`, `Start` where unset (alternative: SwiftUI's `UnitPoint`, which can also name the center or any fraction).
+- `ScrollAnchor` is a point along a list's axis, a fraction of it from the start (SwiftUI's `UnitPoint` along one axis), with `START`, `CENTER` and `END` named and `START` where unset, so a list can open on its middle; a fraction beyond the ends is the nearer end (alternative: an enum of the two ends, `Start` and `End`, which it was until the author's 2026-10-22 decision).
+- The content's point at the anchor's fraction sits on the viewport's point at the same fraction, whatever the anchor: the list opens there, holds it while it sits there as items arrive or measure and the viewport resizes, and places content shorter than the viewport so, a chat's few messages at the bottom (alternative: content shorter than the viewport at the start whatever the anchor, as the two-ended anchor left it).
+- A position the app asks for (`bind_scroll_position`) wins over the default anchor in the frame it lands, and the list holds the anchor afterwards only where the position put it there (alternative: the anchor overriding the position while the list sits at it, as the end anchor did).
 - `ScrollAnchor` sits among the foundation's values, in the facade's prelude (alternative: in the `lazy` module beside `ScrollPosition`, for lazy lists alone).
 - One anchor serves both where the list starts and what it holds as its content and its viewport change (alternative: SwiftUI 18's per-role form, `defaultScrollAnchor(_:for:)`, with an initial offset apart from size changes).
 
@@ -167,8 +169,16 @@ Every choice the drawn Linux prototype took that neither `AGENTS.md` nor the aut
 
 - A styled list box holds its choice as an `AnyChosen`, the app's `Chosen` behind it making every choice by its own rules, so `Chosen` asks nothing beyond `contains`, `choosing` and `choosing_all` (alternative: `values` and `from_values` on `Chosen`, converting to and from a set of `AnyChoice`).
 - An `AnyChosen` made where nothing is read (a behavior over it with no derive) chooses nothing; a styled list box always reads one, made from its type's rules (alternative: a panic).
-- The foundation's `Edge { Start, End }` is renamed `ScrollAnchor`, as the singular of `Edges` (four sides) and beside `Side` (SwiftUI's `Edge`) it read as one of four sides (alternative: `Edge`).
+- The foundation's `Edge { Start, End }` is renamed `ScrollAnchor`, as the singular of `Edges` (four sides) and beside `Side` (SwiftUI's `Edge`) it read as one of four sides (alternative: `Edge`); it is now a fraction of the axis (the default scroll anchor, above).
 - A wrapper's child is built through the `ChildOf` impl of a layout that takes it, the facade naming one (a `Flexible` as a row's child, a `GridCell` as a grid's, a `Pinned` as a stack's), so no public method builds a wrapper outside its layout (alternative: a public `build_wrapped`, or one `#[doc(hidden)]`).
 - `measure.sh` times the one-line change with incremental compilation off (what run.sh and its earlier numbers use) and on (cargo's default for a dev build, and an app made by `skene new`), both reported.
 - The controls checks' Orca comparison fails where Orca said nothing on Skene's side, and the keys checks move focus to each field (a click, else `Tab`) and fail where a reader does not find it there; GTK's reference writes where it saw the pointer to `SKENE_PROBE`, as the drawn probe does, so the driver finds its window on Wayland.
 - A drop from another application is waited for, its probe read until it holds what the drop gives or five seconds pass, in place of a fixed 300 ms (alternative: waiting on the peer's `drag-end`, which the peer now prints).
+
+## run.sh's exit status
+
+- `run.sh` exits nonzero where a build, a check, a test job or a leg failed, a leg whose session could not start among them, the summary's last line (`== FAILED: ...`) naming each, and its names gathering in `results/failures.txt` across the jobs' subshells; a part a `SKIP_*` switch skips is no failure, the passing last line naming the switches (alternative: stopping at the first failure).
+- What measures is reported, not judged: build times and sizes, the frame costs against their targets (the eager 1000-row probe's first frame misses its 50 ms) and the comparison with Pango (alternative: each target a check).
+- Where a KWin leg or the shell's KWin scenario is to run, `run.sh` refuses before building anything unless `kwin_wayland --version` (or `$SKENE_KWIN`'s) runs, which is what a file capability beyond the bounding set stops (alternative: starting a KWin session, which takes seconds and needs the shell's tools built).
+- `SKIP_TESTING=1` skips the `[testing]` stage (the tests on every leg, nextest, the steadiness rounds, the isolation check, the screenshots and the app made by `skene new`), so a short run proves the run's own checks (alternative: no switch for it, as before).
+- The shell's KWin scenario takes its screenshot once hello's content shows (`await_shot`, five seconds at most) in place of after a fixed 0.6 s, which a first frame later than that failed once the run reported its checks (alternative: a longer sleep).

@@ -2,8 +2,9 @@
 //! about its viewport and tells a reader the whole count and each realized row's place; the
 //! wheel, the keys and a reader's own requests move the window; rows measuring taller than
 //! estimated above the viewport move nothing in it; `Tab` reaches a stop beyond the realized
-//! rows and leaves a list whose next stop is beyond a page; and a list box moves, types ahead
-//! and chooses across options it has not built.
+//! rows and leaves a list whose next stop is beyond a page; a list anchored at its end or its
+//! center starts there and holds it, and content shorter than its list sits at the anchor; and
+//! a list box moves, types ahead and chooses across options it has not built.
 
 use std::collections::HashSet;
 
@@ -805,13 +806,33 @@ fn a_lazy_lists_spacing_takes_a_token_and_a_condition() {
   );
 }
 
+/// A list 200 pixels tall named `name` of `items`, "{name} {n}" each in a box 30 pixels tall,
+/// anchored by default at `anchor`.
+fn anchored(name: &'static str, anchor: ScrollAnchor, items: Signal<usize>) -> LazyColumn {
+  LazyColumn::new()
+    .set_height(200)
+    .set_width(140)
+    .set_label(name)
+    .set_default_scroll_anchor(anchor)
+    .set_item_height(ItemExtent::estimated(30))
+    .derive_items(
+      move || (0..items.get()).collect::<Vec<_>>(),
+      |index| *index,
+      move |index: usize| {
+        Container::new()
+          .set_height(30)
+          .set_child(Text::new(format!("{name} {index}")))
+      },
+    )
+}
+
 /// A list of `items`, "Message {n}", anchored by default at its end.
 fn chat(items: Signal<usize>) -> impl View {
   Column::new().set_padding(8).add_child(
     LazyColumn::new()
       .set_height(200)
       .set_label("Chat")
-      .set_default_scroll_anchor(ScrollAnchor::End)
+      .set_default_scroll_anchor(ScrollAnchor::END)
       .set_item_height(ItemExtent::estimated(30))
       .derive_items(
         move || (0..items.get()).collect::<Vec<_>>(),
@@ -867,6 +888,93 @@ fn a_list_anchored_at_its_end_starts_there_and_keeps_it_as_items_arrive() {
     "away from the end, the first item stays"
   );
   assert!(!shown("Message 109"));
+}
+
+#[skene_gui::test]
+fn a_list_anchored_at_its_center_starts_there_and_keeps_it_as_items_arrive() {
+  let items = Signal::new(101);
+  let screen = testing::render(move || {
+    Column::new()
+      .set_padding(8)
+      .add_child(anchored("Middle", ScrollAnchor::CENTER, items))
+  });
+  let list = screen.find_by_role(Role::List, "Middle").read().bounds;
+  let center = list.y + list.height / 2.;
+  let shown = |text: &str| {
+    screen
+      .query_by_text(text)
+      .is_some_and(|found| within(found.read().bounds, list))
+  };
+  let top = |text: &str| screen.find_by_text(text).read().bounds.y;
+
+  assert!(!shown("Middle 0"), "the list does not start at its start");
+  assert!(!shown("Middle 100"), "nor at its end");
+  assert!(
+    top("Middle 50") < center && center < top("Middle 51"),
+    "the middle item sits on the viewport's center: {} then {} about {center}",
+    top("Middle 50"),
+    top("Middle 51")
+  );
+
+  items.set(121);
+  screen.settle();
+  assert!(
+    top("Middle 60") < center && center < top("Middle 61"),
+    "the center stays on the content's center as items arrive: {} then {} about {center}",
+    top("Middle 60"),
+    top("Middle 61")
+  );
+
+  // Scrolled away, the first visible item stays.
+  screen.press("Tab");
+  assert_eq!(screen.focused().name(), "Middle");
+  screen.press("Home");
+  assert!(shown("Middle 0"), "Home scrolls to the start");
+  items.set(141);
+  screen.settle();
+  assert!(
+    shown("Middle 0"),
+    "away from the center, the first item stays"
+  );
+}
+
+#[skene_gui::test]
+fn content_shorter_than_its_list_sits_at_the_anchor() {
+  let items = Signal::new(3);
+  let screen = testing::render(move || {
+    Row::new()
+      .set_padding(8)
+      .set_spacing(8)
+      .add_child(anchored("Start", ScrollAnchor::START, items))
+      .add_child(anchored("Center", ScrollAnchor::CENTER, items))
+      .add_child(anchored("End", ScrollAnchor::END, items))
+  });
+  let lead = |name: &str| {
+    let list = screen.find_by_role(Role::List, name).read().bounds;
+
+    screen.find_by_text(&format!("{name} 0")).read().bounds.y - list.y
+  };
+  let start = lead("Start");
+
+  assert!(
+    (lead("Center") - start - 55.).abs() < 1.5,
+    "three items 90 tall sit centered in a list 200 tall: {} below {start}",
+    lead("Center")
+  );
+  assert!(
+    (lead("End") - start - 110.).abs() < 1.5,
+    "and at the end of one anchored there: {} below {start}",
+    lead("End")
+  );
+
+  items.set(5);
+  screen.settle();
+  assert!(
+    (lead("End") - lead("Start") - 50.).abs() < 1.5,
+    "an item arriving keeps the content at the anchor: {} below {}",
+    lead("End"),
+    lead("Start")
+  );
 }
 
 /// A list box "Fruit" of 50 options each captioned by a view of two texts, "Fruit {n}" and

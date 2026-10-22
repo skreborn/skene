@@ -202,11 +202,9 @@ in a code comment.
     each test process a private display, session bus and AT-SPI bus, over ten legs (X11
     on Xorg with a touchscreen, mutter, sway, sway nested in Xorg for touch, weston,
     KWin, KWin's Xwayland, and mutter, sway, KWin, KWin's Xwayland and X11 at scale 1.5).
-    `run.sh` exits zero though a leg or a check failed and skips the KWin legs where
-    kwin_wayland's file capability keeps it from starting, where it should fail and
-    refuse; some shell scenarios still wait with sleeps; mutter's screen reads judge
-    freshness by a quiet time rather than presentation feedback; and the GPU tests at 1.5
-    run on neither mutter nor KWin.
+    Some shell scenarios still wait with sleeps; mutter's screen reads judge freshness by
+    a quiet time rather than presentation feedback; and the GPU tests at 1.5 run on
+    neither mutter nor KWin.
     - What this host cannot answer: a hardware GPU; touch on weston and uinput; touchpad
     gestures on X11 (a protocol limit), weston 13 and KWin 5.27; the caret's rectangle
     from outside the app on sway 1.9 and weston 13; fractional scale on weston 13;

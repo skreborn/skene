@@ -618,15 +618,43 @@ pub enum AxisAlignment {
 impl Property for AxisAlignment {}
 
 /// Where a scrolling list starts and what it keeps in view as its items and its viewport
-/// change, one of the two ends of its axis: where it starts (the top, or the leading edge
-/// across a row) or where it ends.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
-pub enum ScrollAnchor {
+/// change: a point along its axis, as a fraction of it from the start (SwiftUI's `UnitPoint`
+/// along one axis), [`ScrollAnchor::START`] (the top, or the leading edge across a row),
+/// [`ScrollAnchor::CENTER`] or [`ScrollAnchor::END`]. The content's point at the fraction
+/// sits on the viewport's point at the same fraction.
+#[derive(Clone, Copy, PartialEq, Debug, Default)]
+#[must_use]
+pub struct ScrollAnchor {
+  fraction: f32,
+}
+
+impl ScrollAnchor {
   /// The start: the top, or the leading edge.
-  #[default]
-  Start,
+  pub const START: Self = Self::new(0.);
+  /// The center.
+  pub const CENTER: Self = Self::new(0.5);
   /// The end: the bottom, or the trailing edge.
-  End,
+  pub const END: Self = Self::new(1.);
+
+  /// The point `fraction` of the way along the axis from its start, `0` the start and `1` the
+  /// end; a fraction outside them is the nearer of the two, and one that is not a number the
+  /// start.
+  pub const fn new(fraction: f32) -> Self {
+    Self {
+      fraction: if fraction.is_nan() {
+        0.
+      } else {
+        fraction.clamp(0., 1.)
+      },
+    }
+  }
+
+  /// The fraction of the axis from its start: `0` the start, `1` the end.
+  #[inline(always)]
+  #[must_use]
+  pub const fn fraction(self) -> f32 {
+    self.fraction
+  }
 }
 
 impl Property for ScrollAnchor {}
@@ -1209,5 +1237,17 @@ mod tests {
     assert_eq!(value.resolve(&tokens), Some(Spacing::from(12.)));
     environment.width.set(320.);
     assert_eq!(value.resolve(&tokens), Some(Spacing::from(8.)));
+  }
+
+  #[test]
+  fn a_scroll_anchor_is_a_fraction_of_the_axis() {
+    assert_eq!(ScrollAnchor::START.fraction(), 0.);
+    assert_eq!(ScrollAnchor::CENTER.fraction(), 0.5);
+    assert_eq!(ScrollAnchor::END.fraction(), 1.);
+    assert_eq!(ScrollAnchor::default(), ScrollAnchor::START);
+    assert_eq!(ScrollAnchor::new(0.25).fraction(), 0.25);
+    assert_eq!(ScrollAnchor::new(-1.), ScrollAnchor::START);
+    assert_eq!(ScrollAnchor::new(2.), ScrollAnchor::END);
+    assert_eq!(ScrollAnchor::new(f32::NAN), ScrollAnchor::START);
   }
 }

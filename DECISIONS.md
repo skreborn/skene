@@ -422,7 +422,7 @@ supersedes.
   with the test double.
 - **A reversed lazy list** (2026-10-21), Compose's `reverseLayout`, putting item 0 at the
   far end: a list that starts at its end and keeps it in view while it shows (a chat) is
-  SwiftUI's `defaultScrollAnchor`, `set_default_scroll_anchor(ScrollAnchor::End)`, the items
+  SwiftUI's `defaultScrollAnchor`, `set_default_scroll_anchor(ScrollAnchor::END)`, the items
   keeping their order. Revisit when an app needs the items themselves reversed and
   reversing its data does not serve.
 - **A realization's unit tests over a windowless instance of itself** (2026-10-16), the

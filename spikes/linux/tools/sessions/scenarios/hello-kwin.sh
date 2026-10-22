@@ -3,7 +3,7 @@
 # the window's geometry alone; the window is activated, and real input reaches its content.
 . "$(dirname "$0")/common.sh"
 DRIVE="$TOOLS/drive kwin"
-shot hello-kwin 0.6
+await_shot hello-kwin 30 100 ffffff
 expect "decorations Server" "xdg-decoration negotiates server-side decorations"
 size hello-kwin 480 640
 pixel hello-kwin 4 4 f2f2f7

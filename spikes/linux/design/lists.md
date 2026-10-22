@@ -217,7 +217,7 @@ LazyColumn::new()
   .set_padding(Inset::new(8, 0, 8, 0))              // inside the scrolled content (Compose's contentPadding)
   .set_item_alignment(AxisAlignment::Stretch)       // across the axis, as Column's
   .set_overscan(2)                                  // lines realized beyond each edge, at least 1
-  .set_default_scroll_anchor(ScrollAnchor::Start)   // SwiftUI's defaultScrollAnchor; End for a chat
+  .set_default_scroll_anchor(ScrollAnchor::START)   // SwiftUI's defaultScrollAnchor; END for a chat
   .set_sticky_headers(true)                         // a section's header sticks while it is in view
   .set_label("Messages")                            // the list's accessible name, as Container's
   .bind_scroll_position(position)                   // Signal<ScrollPosition>
@@ -512,9 +512,23 @@ first measurements (JUDGMENT).
   while the padding is larger than it, until `scrollend` (a debounce where the engine lacks it),
   then settled in one frame; near the start, where the padding is smaller, it is written to the
   offset at once.
-- **`set_default_scroll_anchor(ScrollAnchor::End)`** (SwiftUI's `defaultScrollAnchor`) starts at
-  the end and anchors the end while it is in view, so a chat stays at its newest message as
-  messages arrive, its items in their order. Scrolled up, the anchor is the first visible item as usual.
+- **`set_default_scroll_anchor(anchor)`** (SwiftUI's `defaultScrollAnchor`) takes a
+  `ScrollAnchor`, a point along the list's axis as a fraction of it from the start (SwiftUI's
+  `UnitPoint` along one axis, the author's 2026-10-22 decision): `START` (`0`, where unset),
+  `CENTER` (`0.5`), `END` (`1`) or any fraction between, `ScrollAnchor::new(0.25)`. The
+  content's point at the fraction sits on the viewport's point at the same fraction, so the
+  offset is the fraction of the scrollable length (the content's extent less the viewport's):
+  - the list opens there, `END` at its last item and `CENTER` on its middle;
+  - while it sits there it holds the anchor as items arrive, go or measure and as the
+    viewport resizes, so a chat anchored at `END` stays at its newest message, its items in
+    their order, and a list anchored at `CENTER` keeps its content's middle on the viewport's;
+  - content shorter than the viewport is placed so too, a leading space of the fraction of
+    what the viewport has left over: `END` puts a chat's few messages at the bottom, `CENTER`
+    centers them;
+  - scrolled away from it, by the reader or to a position the app asks for, the anchor is the
+    first visible item as usual, until the list is back at the default anchor. A position the
+    app asks for wins in the frame it lands.
+
   Compose's `reverseLayout`, which puts item 0 at the far end, is decided against in
   `DECISIONS.md`.
 

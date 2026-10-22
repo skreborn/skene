@@ -225,7 +225,7 @@ impl<R: Realization> Lazy<R> {
       spacing: Value::from(Spacing::default()),
       padding: Value::from(Inset::default()),
       item_alignment: Value::from(AxisAlignment::Stretch),
-      default_anchor: Value::from(ScrollAnchor::Start),
+      default_anchor: Value::from(ScrollAnchor::START),
       label: None,
       labelled_by: Vec::new(),
       position: None,
@@ -409,18 +409,21 @@ pub trait LazyBase<R: Realization>: Wraps<Inner = Lazy<R>> {
     self
   }
 
-  /// The end the list starts at and keeps in view while that end shows, as items arrive or
-  /// measure (SwiftUI's `defaultScrollAnchor`), its items in their order:
-  /// [`ScrollAnchor::End`] for a chat staying at its newest message. Scrolled away from it,
-  /// the list keeps its first visible item, as every list does. [`ScrollAnchor::Start`] where
-  /// unset.
+  /// The point of its axis the list starts at and holds while it sits there, as items arrive
+  /// or measure and its viewport resizes (SwiftUI's `defaultScrollAnchor`), its items in their
+  /// order: the content's point at the anchor's fraction on the viewport's point at the same
+  /// fraction, content shorter than the viewport placed so too. [`ScrollAnchor::END`] for a
+  /// chat staying at its newest message, [`ScrollAnchor::CENTER`] for a list opening on its
+  /// middle. Scrolled away from it, or to a position asked for elsewhere, the list keeps its
+  /// first visible item, as every list does. [`ScrollAnchor::START`] where unset.
   fn set_default_scroll_anchor(mut self, anchor: impl Into<Value<ScrollAnchor>>) -> Self {
     self.inner_mut().default_anchor = anchor.into();
 
     self
   }
 
-  /// The end the list starts at and keeps in view while it shows, as `anchor` returns it.
+  /// The point of its axis the list starts at and holds while it sits there, as `anchor`
+  /// returns it.
   ///
   /// Derived: recomputed whenever a signal the closure reads changes.
   fn derive_default_scroll_anchor<V: Into<Value<ScrollAnchor>>>(
@@ -643,7 +646,7 @@ struct List<R: Realization> {
   item_builder: Option<ItemBuilder<R>>,
   viewport: Option<(f32, f32)>,
   shown: f32,
-  at_end: bool,
+  at_anchor: bool,
   anchor: Option<Anchor>,
   cross_spacing: f32,
   pins: KeyMap<StateSet>,
@@ -891,7 +894,7 @@ impl<R: Realization> View<R> for Content<R> {
       item_builder,
       viewport: None,
       shown: 0.,
-      at_end: true,
+      at_anchor: true,
       anchor: None,
       cross_spacing: 0.,
       pins: KeyMap::default(),
@@ -990,7 +993,7 @@ impl<R: Realization> View<R> for Lazy<R> {
       extent.resolving(&tokens, ItemExtent::Estimated(48.)),
       spacing.resolving(&tokens, Spacing::default()),
       padding.resolving(&tokens, Inset::default()),
-      default_anchor.resolving(&tokens, ScrollAnchor::Start),
+      default_anchor.resolving(&tokens, ScrollAnchor::START),
     );
     let scroll_handle = handle.unwrap_or_default();
     let list: Rc<RefCell<Option<List<R>>>> = Rc::new(RefCell::new(None));
@@ -1285,7 +1288,8 @@ fn drop_row<R: Realization>(row: Row) {
 
 /// Brings the realized rows to the window the viewport and the offset show, with every pinned
 /// row; corrects the offset so the anchor stays where it was in the viewport after a change of
-/// the items or their extents; and lays the realized lines out in the content's grid.
+/// the items or their extents, or holds the default anchor while the list sits at it; and lays
+/// the realized lines out in the content's grid.
 fn reconcile<R: Realization>(
   list: &Rc<RefCell<Option<List<R>>>>,
   wires: Wires,
@@ -1299,6 +1303,7 @@ fn reconcile<R: Realization>(
     padding,
     default_anchor,
   } = layout;
+  let fraction = f64::from(default_anchor.fraction());
 
   // What the window needs, from the state as it stands.
   let (needed, stale, corrected) = {
@@ -1342,11 +1347,13 @@ fn reconcile<R: Realization>(
     let moved_by_reader = offset.along(axis) != state.shown;
     let mut at = f64::from(offset.along(axis));
     let end = main.map(|main| (state.engine.total() - f64::from(main)).max(0.));
+    let mut positioned = false;
 
     // A position the app asked for, once the viewport is known.
     if let Some(main) = main
       && let Some(position) = state.pending_position.take()
     {
+      positioned = true;
       at = state.engine.offset_of(
         position.index,
         position.fraction(),
@@ -1362,13 +1369,14 @@ fn reconcile<R: Realization>(
       at = anchored;
     }
 
-    // A list anchored at its end holds its end while the end shows.
-    if default_anchor == ScrollAnchor::End
-      && state.at_end
+    // A list at its default anchor holds it: the content's point at the anchor's fraction on
+    // the viewport's point at the same fraction.
+    if state.at_anchor
       && !moved_by_reader
+      && !positioned
       && let Some(end) = end
     {
-      at = end;
+      at = end * fraction;
     }
 
     if let Some(end) = end {
@@ -1377,8 +1385,8 @@ fn reconcile<R: Realization>(
       at = at.max(0.);
     }
 
-    if end.is_some() {
-      state.at_end = end.is_some_and(|end| at >= end - 0.5);
+    if let Some(end) = end {
+      state.at_anchor = (at - end * fraction).abs() < 0.5;
     }
 
     let lines = match main {
@@ -1542,9 +1550,15 @@ fn reconcile<R: Realization>(
       placements.push((*key, *index, placement));
     }
 
-    let leading = realized.first().map_or(state.engine.total(), |(index, _)| {
-      state.engine.line_start(state.engine.line_of(*index))
+    // Content shorter than the viewport sits with its point at the anchor's fraction on the
+    // viewport's.
+    let short = state.viewport.map_or(0., |size| {
+      (f64::from(along(axis, size)) - state.engine.total()).max(0.) * fraction
     });
+    let leading = short
+      + realized.first().map_or(state.engine.total(), |(index, _)| {
+        state.engine.line_start(state.engine.line_of(*index))
+      });
     let trailing = realized.last().map_or(0., |(index, _)| {
       state.engine.total() - state.engine.line_end(state.engine.line_of(*index))
     });

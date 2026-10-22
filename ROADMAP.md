@@ -655,7 +655,7 @@ Every item above that asks the terminal for a capability—the further picture
 transports and notifications—shares one rule with those that shipped (synchronized
 output, pointer shapes, in-band resize, underlines, the keyboard flags, grapheme
 clustering, the pixel mouse, text sizing, the graphics layer with the decoration on
-it, the palette read back, the answering clipboard). A plain emulator is the floor and stays whole: every capability is asked for at launch,
+it, the palette read back, the answering clipboard, the explicit BiDi mode). A plain emulator is the floor and stays whole: every capability is asked for at launch,
 confirmed by a parsed reply or ignored in silence, and degrades to the cell rendering
 that exists today. None becomes a requirement, a type bound or a launch setting a
 terminal must meet, and none is inferred from a name (XTVERSION, `TERM`), since a name

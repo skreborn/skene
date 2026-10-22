@@ -22,6 +22,15 @@ supersedes.
   nothing it has not shown; a third answer meaning the same left every client a case
   to handle that changes nothing. Revisit when a client must tell a proposal the truth
   already held apart from one its handler accepted.
+- **The terminal's text in logical order** (2026-10-22), each line's clusters written
+  as the text stores them and left to a terminal that reorders bidirectional text
+  itself: the editing core's carets, hits and selection rectangles are the engine's,
+  in visual order, so a right-to-left entry drawn in logical order would place its
+  caret where no cluster it names is drawn, and a terminal reordering nothing would
+  show it backward. The terminal draws in the engine's visual order and switches BDSM
+  to explicit at launch, restoring the mode it reported on exit. Revisit when the
+  terminals in use reorder text written under explicit BDSM again, or a terminal
+  protocol hands an app the visual order it draws.
 - **A generic medium** (2026-10-15), views generic over the medium they run on (`impl
   View<P>` with `P: Within<Pixel>`), `Adaptive` value chains and the platform sets
   (`Pixel`, `Cell`, `Apple`, `Mobile`, `Desktop`): checking a view tree grew

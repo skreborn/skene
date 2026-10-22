@@ -18,13 +18,18 @@ One list, every item big and small, top first. An item is resolved by landing it
 proving it unnecessary, or by recording it in `DECISIONS.md`; it is never left half-done
 in a code comment.
 
-1. **One platform per build, and app code concrete.** `skene-gui` is born over the
-    reshaped foundation with Linux as its first platform (item 4), and the web and the
-    terminal follow it there (item 9); no app or library signature carries a type
-    parameter.
+1. **One platform per build, and app code concrete.** The web and the terminal move
+    onto the reshaped foundation in place, then split into the two facades over
+    realization crates of their own, `skene-gui` with the web as its first platform and
+    `skene-tui` with the terminal, `skene-simple-gui` and `skene-simple-tui` beside them;
+    Linux joins `skene-gui` as its next realization (item 4), and no app or library
+    signature carries a type parameter (the author's order, 2026-10-23).
     - Selection: `--cfg skene_platform="<p>"` names the platform of every build,
     `Platform::CURRENT` answers it as a const enum, and a build naming none fails with
-    one `compile_error!`. Each platform has its module, `platform::<p>`, its data types
+    one `compile_error!`; the server leaf is the `web` build on the host with
+    `--cfg skene_server`, answered by `Platform::IS_SERVER`, and this repository's root
+    names no default platform, a cargo alias per platform and the checked-in
+    rust-analyzer settings naming one. Each platform has its module, `platform::<p>`, its data types
     present in every build and its controls in its own alone; `platform::apple` is the
     one grouping (`Platform::IS_APPLE`, `set_apple_*`). The `Platform` trait, its
     zero-sized types and every `P: Platform` above the realizations go.
@@ -35,8 +40,9 @@ in a code comment.
     `NoChild` and `Children<V>` go, children last stays a convention the gate checks and
     the compile-fail suite loses its children-last programs; typed children stay
     (`Flexible` in `Row` and `Column`, `GridCell` in `Grid`, `Pinned` in `Stack`).
-    - Values: every length takes `i32` beside `f32`, value constructors included;
-    `derive_` setters stay, and tokens stay as they are.
+    - Values: every length takes `i32` beside `f32`, value constructors included, the
+    terminal's lengths whole cells (an `f32` rounding at the setter, a font size keeping
+    its fraction); `derive_` setters stay, and tokens stay as they are.
     - Controls: the built-ins are drawn on every platform, a behavior over a composed
     tree of Skene's views (boxes and runs, a `Painted` canvas where it draws marks), and
     on the web over the form element CSS styles; a platform's own
@@ -55,13 +61,17 @@ in a code comment.
     terminal's key default consulting it until then, and the engine and editor move from
     the drawing realization onto the platform's seam.
     - Libraries: a core with a crate per facade (`skene-simple-gui`,
-    `skene-simple-tui`), and the native door, `platform::<p>::NativeView` with its
+    `skene-simple-tui`), a preset a constructor per variant and a `derive_variant`
+    re-inking its built-in, and the native door, `platform::<p>::NativeView` with its
     `ControlSink`, for a native view no built-in covers.
     - The seam: a realization receives properties under Skene's own names as one generic
     record, at the `Keep` level it declares, contents typed and atomic, and reports each
     write applied or not: the web's `<input>` reports through `report_edit` as a drawn
     entry does, and is repaired by the smallest edit where it is rewritten whole today.
-    - Reload state is opt-in, and `#[inline(always)]` stays on tiny functions alone.
+    - Behaviors name no realization, reaching the build's one realization through a
+    table of plain functions filled from it once per build.
+    - Reload state is opt-in (`Signal::saved`, `Store::saved`), and `#[inline(always)]`
+    stays on tiny functions alone.
 2. **One runtime beneath every platform but the web.** What the terminal keeps for
     itself, Linux and Windows need as well, since they too own their window, and the
     compositor platforms need its layout and its motion; each mechanism is written once.
@@ -287,15 +297,12 @@ in a code comment.
     the platform's input methods, selection, autofill, dictation and handwriting.
     - Contrast themes swap an app's colors for system colors, which literal palettes
     break; the floor is unsettled.
-9. **The web and the terminal on the two facades.** `skene-web` becomes the web
-    platform of `skene-gui` and `skene-terminal` becomes `skene-tui`, both taking item
-    1's shape; the bare name `skene` is the CLI's.
-    - The web: its browser and server leaves selected by the platform cfg, its
-    progressive enhancement, hydration, interner contract and test tiers unchanged; its
-    native form elements, styled by CSS, are its drawn controls, `EditContext` or a
-    rendering of its own a progressive enhancement over them, never a replacement.
-    - The terminal: its vocabulary parallel to `skene-gui`'s name for name, its device
-    layer and its tests unchanged.
+9. **The two facades name for name.** Once item 1 has split them, `skene-tui`'s
+    vocabulary is made parallel to `skene-gui`'s name for name, settled against
+    `spikes/linux/DEFAULTS.md` and `spikes/linux/design/api.md` (a scheme's name, item
+    and axis alignments, a viewport's size, `set_children` beside `add_child`).
+    - The web: `EditContext` or a rendering of its own a progressive enhancement over
+    its form elements, never a replacement.
 10. **The CLI for every platform.**
     - Configuration: `skene new` writes `.cargo/config.toml`, `[build] target` the real
     triple, the platform cfg under `[target.'cfg(all())'] rustflags` and

@@ -864,7 +864,7 @@ scroll gestures). A drawn bar on the web over `scrollbar-width: none`, its thumb
 scroll-driven animation (`animation-timeline: scroll()`), is an upgrade a signal could prove
 later. The `TerminalStyle` properties `scrollbar_thumb`, `scrollbar_track` and
 `scrollbar_glyphs` (VERIFIED (read): `packages/foundation/src/terminal/ext.rs:179-185`) become
-the parts' fills and the thumb's glyph property, for item 9. JUDGMENT for every row.
+the parts' fills and the thumb's glyph property, for item 1. JUDGMENT for every row.
 
 ### 5.7 What changes in the prototype
 
@@ -1004,7 +1004,7 @@ true }` (VERIFIED (read)) becomes the tracked read. JUDGMENT.
   css`, and records again when either changes, as `packages/` does today. `Ink` is the canvas
   element's computed `color`, read when it paints; the box records nothing new when the color
   changes but must replay, which needs an event for a computed change (a `transitionrun` on
-  `color` is the one a page hears). JUDGMENT, unproven; an open point for item 9.
+  `color` is the one a page hears). JUDGMENT, unproven; an open point for item 1.
 - **The terminal** records at the box's cells times the cell's pixels, scale `(cell width, cell
   height)`, shows it through the kitty graphics protocol where proven, and records again when the
   cell's pixel size changes (a font change the terminal reports through mode 2048's pixel size).

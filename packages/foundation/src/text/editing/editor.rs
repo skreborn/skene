@@ -448,7 +448,8 @@ impl<E: TextEngine> Editor<E> {
   }
 
   /// Proposes `text` with the selection `anchor`..`focus` as the reader's change of `kind`,
-  /// then shows what the arbiter decides: `false` where nothing changed.
+  /// then shows what the arbiter decides, as this entry takes it: `false` where nothing
+  /// changed.
   fn propose(
     &mut self,
     text: String,
@@ -481,6 +482,7 @@ impl<E: TextEngine> Editor<E> {
     let mut restart = false;
     let (text, anchor, focus) = match verdict {
       Verdict::Replace(truth) => {
+        let truth = self.taken(&truth);
         let (text, anchor, focus) = Self::resolve(&truth, &text, anchor.index, focus.index);
 
         if composing {
@@ -576,7 +578,17 @@ impl<E: TextEngine> Editor<E> {
     }
   }
 
-  /// Writes the app's truth: `edit`'s text, and its selection where it gives one (else the
+  /// `edit` as this entry takes it: its text [`sanitized`](Self::sanitized), its selection
+  /// as it is.
+  fn taken(&self, edit: &Edit) -> Edit {
+    Edit {
+      text: Rc::from(self.sanitized(&edit.text)),
+      selection: edit.selection,
+    }
+  }
+
+  /// Writes the app's truth: `edit`'s text as this entry takes it
+  /// ([`sanitized`](Self::sanitized)), and its selection where it gives one (else the
   /// selection mapped through the change). Nothing happens where it is shown already, a
   /// write during a composition waits for its end, and a write is an undo step of its own
   /// but for the first value of an entry with no history. `false` where nothing changed.
@@ -587,6 +599,7 @@ impl<E: TextEngine> Editor<E> {
       return false;
     }
 
+    let edit = &self.taken(edit);
     let shown = *edit.text == *self.text
       && edit
         .selection
@@ -766,8 +779,9 @@ impl<E: TextEngine> Editor<E> {
 
     let (text, anchor, focus) = match &verdict {
       Verdict::Replace(truth) => {
+        let truth = self.taken(truth);
         let (text, anchor, focus) =
-          Self::resolve(truth, &state.text, state.anchor.index, state.focus.index);
+          Self::resolve(&truth, &state.text, state.anchor.index, state.focus.index);
 
         (text, Position::new(anchor), Position::new(focus))
       }

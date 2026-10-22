@@ -298,8 +298,6 @@ impl Records {
     let value = value.to_owned();
 
     self.with_entry(entry, move |editor| {
-      let value = editor.sanitized(&value);
-
       if editor.write(&Edit::new(value)) {
         let caret = editor.selection().end;
 
@@ -419,6 +417,7 @@ impl Records {
     Some((handle, point))
   }
 }
+
 /// Runs `operation` on the editor of the entry at `entry` with no records borrowed: the
 /// editor laid out at the entry's width (the scene laid out first where `lay_out`) and
 /// taking edits only where the entry is editable; what it changed, and what waited for
@@ -461,12 +460,11 @@ fn operate<R>(
 fn finish(entry: Handle) {
   loop {
     let waiting = with_records(|records| {
-      let field = records.field_mut(entry)?;
-      let deferred: Vec<Deferred> = std::mem::take(&mut field.deferred);
+      let field = records.field(entry)?;
 
-      (!deferred.is_empty()).then(|| (Rc::clone(&field.editor), deferred))
+      (!field.deferred.is_empty()).then(|| Rc::clone(&field.editor))
     });
-    let Some((editor, deferred)) = waiting
+    let Some(editor) = waiting
     else {
       break;
     };
@@ -474,6 +472,12 @@ fn finish(entry: Handle) {
     else {
       break;
     };
+    let deferred: Vec<Deferred> = with_records(|records| {
+      records
+        .field_mut(entry)
+        .map(|field| std::mem::take(&mut field.deferred))
+        .unwrap_or_default()
+    });
 
     for operation in deferred {
       operation(&mut editor);
@@ -569,8 +573,9 @@ pub(crate) fn press_entry(entry: Handle, local_x: i64, local_y: i64, clicks: u8,
     return;
   };
 
-  operate(entry, false, |editor| editor.press(x, y, clicks, extend));
-  with_records(|records| records.drag = Some(Drag::Caret(entry)));
+  if operate(entry, false, |editor| editor.press(x, y, clicks, extend)).is_some() {
+    with_records(|records| records.drag = Some(Drag::Caret(entry)));
+  }
 }
 
 /// Follows a caret drag to the screen cell (`x`, `y`): the selection extends to the

@@ -345,9 +345,10 @@ fn the_clipboard_copies_cuts_and_pastes_through_commands() {
 
 #[test]
 fn an_editor_moves_between_lines_keeping_its_column() {
-  let mut editor = editor("abcdef\nab\nabcdef");
+  let mut editor = editor("");
 
   editor.set_multiline(true);
+  editor.write(&Edit::new("abcdef\nab\nabcdef"));
   editor.set_selection(selection(5, 5));
 
   let down = Command::Move {
@@ -497,6 +498,41 @@ fn a_write_of_what_is_shown_changes_nothing() {
   assert!(editor.write(&Edit::new("abcd")));
   assert_eq!(notices.borrow()[0].origin, Origin::App);
   assert!(notices.borrow()[0].restart, "an input method starts afresh");
+}
+
+#[test]
+fn a_truth_shows_as_the_entry_takes_it() {
+  let mut field = editor("");
+
+  assert!(field.write(&Edit::new("a\r\nb")));
+  assert_eq!(
+    field.text(),
+    "ab",
+    "a field drops a written truth's line breaks"
+  );
+  assert!(
+    !field.write(&Edit::new("a\nb")),
+    "a truth shown as the entry takes it is shown already"
+  );
+
+  let (mut controlled, _) = controlled("", |truth, edit| truth.set(format!("{}\n", edit.text)));
+
+  key(&mut controlled, "a");
+  assert_eq!(
+    controlled.text(),
+    "a",
+    "a field drops a verdict's line breaks"
+  );
+
+  let mut editor = editor("");
+
+  editor.set_multiline(true);
+  assert!(editor.write(&Edit::new("a\r\nb\rc")));
+  assert_eq!(
+    editor.text(),
+    "a\nb\nc",
+    "an editor's line breaks are line feeds"
+  );
 }
 
 #[test]

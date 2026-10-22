@@ -787,8 +787,9 @@ fn a_tab_in_an_entry_is_one_blank_cell() {
   });
 }
 
-/// An edit its handler rejects shows the truth and leaves no undo step behind: the next
-/// undo returns to the state before the run of edits the handler accepted.
+/// An edit its handler rejects shows the truth and leaves no undo step behind, after a
+/// move has ended the run of typing as before it: the next undo returns to the state
+/// before the run the handler accepted.
 #[test]
 fn a_rejected_edit_is_not_an_undo_step() {
   with_platform(|| {
@@ -810,10 +811,11 @@ fn a_rejected_edit_is_not_an_undo_step() {
     let _ = testing::render_to_text(10, 1);
 
     testing::trigger_key("Tab");
-
-    for key in ["a", "b", "x"] {
-      testing::trigger_key(key);
-    }
+    testing::trigger_key("a");
+    testing::trigger_key("b");
+    testing::trigger_key("ArrowLeft");
+    testing::trigger_key("ArrowRight");
+    testing::trigger_key("x");
 
     assert_eq!(name.get_untracked(), "ab");
     assert_eq!(testing::render_to_text(10, 1), "ab\n");
@@ -872,12 +874,14 @@ fn a_transformed_edit_shows_the_truth_with_the_caret_mapped() {
 }
 
 /// A change handler that moves focus to another node runs while the entry's edit is
-/// decided: the entry it leaves collapses its selection once the edit has ended, and
-/// nothing is held twice.
+/// decided: an undo returning to the whole value selected moves focus on, the entry it
+/// leaves collapses that selection once the edit has ended, nothing is held twice, and the
+/// keys reach the entry focus moved to.
 #[test]
 fn a_handler_that_focuses_another_node_does_not_panic() {
   with_platform(|| {
-    let name = Signal::new(String::new());
+    let name = Signal::new(String::from("abc"));
+    let selection = Signal::new(skene_foundation::TextSelection::collapsed(0));
     let other = Signal::new(String::from("other"));
     let next = NodeHandle::new();
 
@@ -887,9 +891,13 @@ fn a_handler_that_focuses_another_node_does_not_panic() {
           BasicTextField::new(
             TextEntry::new()
               .bind_value(name)
+              .bind_selection(selection)
               .handle_change(move |text| {
                 name.set(text.to_owned());
-                next.focus();
+
+                if text == "abc" {
+                  next.focus();
+                }
               }),
           )
           .into_any(),
@@ -903,10 +911,19 @@ fn a_handler_that_focuses_another_node_does_not_panic() {
     let _ = testing::render_to_text(10, 2);
 
     testing::trigger_key("Tab");
-    testing::trigger_key("a");
+    testing::trigger_key("x");
 
-    assert_eq!(name.get_untracked(), "a");
+    assert_eq!(name.get_untracked(), "x");
+
+    testing::trigger_key("Ctrl+z");
+
+    assert_eq!(name.get_untracked(), "abc");
     assert_eq!(testing::focused_node(), next.node(), "focus moved on");
+    assert_eq!(
+      selection.get_untracked(),
+      skene_foundation::TextSelection::collapsed(3),
+      "the entry focus left collapsed its selection once the edit ended"
+    );
 
     testing::trigger_key("b");
 
@@ -915,7 +932,42 @@ fn a_handler_that_focuses_another_node_does_not_panic() {
       "bother",
       "the keys reach the entry focused from the script, its caret where it was"
     );
-    assert_eq!(name.get_untracked(), "a");
+    assert_eq!(name.get_untracked(), "abc");
+  });
+}
+
+/// An editor's caret at the end of a full row stands at the area's edge, past its last
+/// cell, as it does at the end of a row it wrapped.
+#[test]
+fn a_caret_at_a_full_rows_end_stays_in_view() {
+  with_platform(|| {
+    let bio = Signal::new(String::new());
+
+    let _ = terminal::mount(move || {
+      Column::new()
+        .add_child(BasicTextEditor::new(TextEntry::new().set_lines(3).bind_value(bio)).set_width(5))
+        .into_any()
+        .build()
+    });
+    let _ = testing::render_to_text(20, 4);
+
+    testing::trigger_key("Tab");
+
+    for key in ["a", "b", "c", "d", "e"] {
+      testing::trigger_key(key);
+    }
+
+    assert_eq!(testing::render_to_caret(20, 4), Some((5, 0)));
+
+    testing::trigger_key("f");
+
+    assert_eq!(rows(&testing::render_to_text(20, 4)), "abcde\nf\n\n\n");
+    assert_eq!(testing::render_to_caret(20, 4), Some((1, 1)));
+
+    testing::trigger_key("ArrowUp");
+    testing::trigger_key("End");
+
+    assert_eq!(testing::render_to_caret(20, 4), Some((5, 0)));
   });
 }
 

@@ -49,23 +49,7 @@ pub(crate) struct Changed {
 /// selection as one, and the verdict the node's handlers fold is what the entry shows.
 struct Reporter {
   node: NodeId,
-  multiline: bool,
   reported: Rc<Cell<TextSelection>>,
-}
-
-impl Reporter {
-  /// `text` as the entry holds it: an editor's line breaks as line feeds, a field's
-  /// removed.
-  fn sanitized(&self, text: &str) -> String {
-    let text = text.replace("\r\n", "\n").replace('\r', "\n");
-
-    if self.multiline {
-      text
-    }
-    else {
-      text.replace('\n', "")
-    }
-  }
 }
 
 impl Arbiter for Reporter {
@@ -74,13 +58,7 @@ impl Arbiter for Reporter {
       self.reported.set(selection);
     }
 
-    match report_edit::<Terminal>(self.node, proposed, applied) {
-      Verdict::Replace(truth) => Verdict::Replace(Edit {
-        text: Rc::from(self.sanitized(&truth.text)),
-        selection: truth.selection,
-      }),
-      Verdict::Accept => Verdict::Accept,
-    }
+    report_edit::<Terminal>(self.node, proposed, applied)
   }
 
   fn settle(&mut self) -> Option<Edit> {
@@ -100,8 +78,9 @@ pub(crate) struct VisibleCluster {
 }
 
 /// What an entry shows in its area: the clusters of its value or, while the value is
-/// empty, of its placeholder, and the caret's column and row, `None` while the window has
-/// scrolled it out of view.
+/// empty, of its placeholder, and the caret's row and column, `None` while the window has
+/// scrolled it out of view; an editor's caret at the end of a full row stands at the
+/// area's edge, past its last cell.
 pub(crate) struct Visible {
   pub(crate) clusters: Vec<VisibleCluster>,
   pub(crate) placeholder: bool,
@@ -146,7 +125,6 @@ impl Field {
 
     editor.set_arbiter(Reporter {
       node,
-      multiline,
       reported: Rc::clone(&reported),
     });
     editor.set_notifier(move |notice: Notice| {
@@ -487,11 +465,12 @@ impl Field {
       }
     }
 
+    let last = if self.is_editor() { inner } else { inner - 1 };
     let caret = editor.caret_rect();
     let caret = whole(caret.origin.x)
       .checked_sub(shift_x)
       .zip(whole(caret.origin.y).checked_sub(shift_y))
-      .filter(|(column, row)| *column < inner && *row < rows)
+      .filter(|(column, row)| *column <= last && *row < rows)
       .map(|(column, row)| (row, column));
 
     Visible {

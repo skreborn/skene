@@ -62,6 +62,7 @@ pub trait TextEngine {
 /// A paragraph an engine made of a batch's text ([`TextEngine::paragraphs`]), beside the text
 /// and the style it was made of.
 #[derive(Debug)]
+#[must_use]
 pub struct Made<P> {
   /// The text.
   pub text: AttributedText,
@@ -72,6 +73,11 @@ pub struct Made<P> {
 }
 
 /// A paragraph: text shaped once, measured and laid out at widths.
+#[diagnostic::on_unimplemented(
+  message = "`{Self}` is not a paragraph of a text engine",
+  label = "a paragraph of a text engine is needed here",
+  note = "an engine's paragraph is its text shaped once, measured and laid out at any width"
+)]
 pub trait Paragraph {
   /// The paragraph laid out at one width.
   type Laid: Laid;
@@ -87,6 +93,12 @@ pub trait Paragraph {
   /// layout or repaint changes, painted as the paragraph is ([`Paragraph::repaint`]).
   fn layout(&self, width: Option<f32>) -> Self::Laid;
 
+  /// Whether every line starts at the layout's left edge at any width (start-aligned
+  /// left-to-right text, left-aligned text), so a layout within a width at or past the
+  /// widest line is the unbounded one; `false` where the width places a line (centered, at
+  /// the end, right-aligned, start-aligned right-to-left text).
+  fn is_left_anchored(&self) -> bool;
+
   /// Repaints `range` (bytes of the text) with `paint`: the paint is the paragraph's, so it
   /// shows in every layout of the paragraph, those already handed out included, and changes
   /// no size or position. `false` where the engine needs the paragraph rebuilt instead.
@@ -101,6 +113,11 @@ pub trait Paragraph {
 
 /// A paragraph laid out at one width, cheap to clone: its geometry never changes, and it
 /// paints as its paragraph paints now ([`Paragraph::repaint`]).
+#[diagnostic::on_unimplemented(
+  message = "`{Self}` is not a laid-out paragraph",
+  label = "a paragraph laid out at a width is needed here",
+  note = "a layout is a paragraph laid out at one width, cheap to clone, its geometry never changing"
+)]
 pub trait Laid: Clone {
   /// The size the lines take: the widest line's advance (no more than the width laid out
   /// within, but for one cluster wider than it) and the lines' total height.
@@ -172,6 +189,7 @@ pub struct TextSize {
 /// Which side of a position a caret belongs to where both sides are not adjacent on screen
 /// (a line's end, a direction change).
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
+#[must_use]
 pub enum Affinity {
   /// With the character after the position.
   #[default]
@@ -303,6 +321,7 @@ pub struct RunExtent {
 
 /// A unit of logical movement.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[must_use]
 pub enum TextBoundary {
   /// An extended grapheme cluster.
   Grapheme,
@@ -316,6 +335,7 @@ pub enum TextBoundary {
 
 /// A logical direction.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[must_use]
 pub enum Direction {
   /// Toward the text's end.
   Forward,
@@ -325,6 +345,7 @@ pub enum Direction {
 
 /// A move on screen.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[must_use]
 pub enum VisualMove {
   /// One cluster to the left.
   Left,

@@ -8,6 +8,7 @@ use crate::{Color, TextDecoration, TextDecorationStyle};
 
 /// The typeface a run is set in.
 #[derive(Clone, PartialEq, Eq, Hash, Debug, Default)]
+#[must_use]
 pub enum FontFamily {
   /// The platform's interface typeface.
   #[default]
@@ -43,6 +44,7 @@ impl Default for FontWeight {
 
 /// Whether a run is upright or slanted.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
+#[must_use]
 pub enum FontSlant {
   /// Upright.
   #[default]
@@ -190,6 +192,7 @@ impl TextStyle {
 /// One run of an attributed text: a byte range of its value, on character boundaries, and
 /// the run's style.
 #[derive(Clone, PartialEq, Debug)]
+#[must_use]
 pub struct TextRun {
   /// The bytes of the value the run covers.
   pub range: Range<usize>,
@@ -363,6 +366,7 @@ impl AttributedText {
 
 /// The direction a paragraph's lines start from where its text says nothing.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
+#[must_use]
 pub enum BaseDirection {
   /// From the first strong character, left to right where none.
   #[default]
@@ -375,6 +379,7 @@ pub enum BaseDirection {
 
 /// Whether a paragraph wraps its lines.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
+#[must_use]
 pub enum TextWrap {
   /// Wraps where the Unicode line breaking algorithm allows, a word too wide for a line
   /// of its own broken where the line fills.
@@ -386,6 +391,7 @@ pub enum TextWrap {
 
 /// How tall a paragraph's lines are.
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
+#[must_use]
 pub enum LineHeight {
   /// The typeface's own line height.
   #[default]
@@ -398,6 +404,7 @@ pub enum LineHeight {
 
 /// Where a paragraph's lines sit across its width.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
+#[must_use]
 pub enum TextAlignment {
   /// At the edge its lines start from: the left in left-to-right text.
   #[default]

@@ -24,7 +24,7 @@ pub struct DecorationLine {
 impl RunExtent {
   /// The lines this stretch's decoration draws under, through or over the text, in the
   /// decoration's color and style, each at least a unit thick: none undecorated, two for a
-  /// double line, one otherwise.
+  /// double line (the second below the first, above it for an overline), one otherwise.
   #[must_use]
   pub fn decoration_lines(&self) -> Vec<DecorationLine> {
     let paint = &self.paint;
@@ -50,10 +50,15 @@ impl RunExtent {
       color: paint.line_color(),
     };
 
+    let second = match paint.decoration {
+      TextDecoration::Overline => top - thickness * 2.,
+      _ => top + thickness * 2.,
+    };
+
     match paint.decoration_style {
       TextDecorationStyle::Double => vec![
         line(top, TextDecorationStyle::Solid),
-        line(top + thickness * 2., TextDecorationStyle::Solid),
+        line(second, TextDecorationStyle::Solid),
       ],
       style => vec![line(top, style)],
     }
@@ -106,10 +111,18 @@ mod tests {
     // Beneath the baseline, thickened to a unit.
     assert_eq!(bands(&under.decoration_lines()), [(17., 1., Wavy)]);
     assert_eq!(bands(&through.decoration_lines()), [(10., 1.5, Dashed)]);
-    // At the ascent, a double line as two solid ones.
+    // At the ascent, a double line as two solid ones, the second above the first.
     assert_eq!(
       bands(&over.decoration_lines()),
-      [(3., 1., Solid), (5., 1., Solid)]
+      [(3., 1., Solid), (1., 1., Solid)]
+    );
+
+    let double_under = extent(TextDecoration::Underline, Double);
+
+    assert_eq!(
+      bands(&double_under.decoration_lines()),
+      [(17., 1., Solid), (19., 1., Solid)],
+      "the second line of a double underline is below the first"
     );
 
     let line = under.decoration_lines()[0];

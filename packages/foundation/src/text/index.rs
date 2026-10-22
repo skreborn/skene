@@ -10,6 +10,7 @@ use crate::Unit;
 
 /// Which way an offset inside a character or a cluster goes.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[must_use]
 pub enum Round {
   /// To the start of what it falls inside.
   Down,
@@ -21,7 +22,7 @@ pub enum Round {
 /// and the UTF-16 offset of each character. An ASCII text keeps no tables.
 ///
 /// Bytes are the index's own positions; every other unit is converted to and from them.
-#[derive(Clone, PartialEq, Eq, Debug, Default)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 #[must_use]
 pub struct TextIndex {
   len: usize,
@@ -29,6 +30,14 @@ pub struct TextIndex {
   chars: Vec<u32>,
   utf16: Vec<u32>,
   graphemes: Vec<u32>,
+}
+
+impl Default for TextIndex {
+  /// The index of an empty text.
+  #[inline(always)]
+  fn default() -> Self {
+    Self::ascii(0)
+  }
 }
 
 impl TextIndex {
@@ -297,6 +306,12 @@ mod tests {
       3,
       "a carriage return and a line feed are one cluster"
     );
+    assert_eq!(
+      TextIndex::default(),
+      TextIndex::new(""),
+      "the default is an empty text's"
+    );
+    assert_eq!(TextIndex::default().offset(Unit::Utf16, 0), 0);
   }
 
   #[test]
@@ -322,6 +337,8 @@ mod tests {
     assert_eq!(index.byte(Unit::Utf16, 3, Round::Down), 3);
     assert_eq!(index.byte(Unit::Utf16, 3, Round::Up), 7);
     assert_eq!(index.byte_range(Unit::Utf16, 3..3), 3..7);
+    assert_eq!(index.unit_range(Unit::Utf16, 3..21), 2..10);
+    assert_eq!(index.unit_range(Unit::CodePoint, 4..21), 2..7);
     // A byte inside a character goes to its ends.
     assert_eq!(index.snap_to_char(4, Round::Down), 3);
     assert_eq!(index.snap_to_char(4, Round::Up), 7);

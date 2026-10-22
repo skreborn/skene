@@ -10,6 +10,7 @@ use crate::text::{Intrinsic, Laid, PaintStyle, Paragraph};
 
 /// The space a leaf is measured in along one axis.
 #[derive(Clone, Copy, PartialEq, Debug)]
+#[must_use]
 pub enum Space {
   /// As narrow as it can be: its min-content size.
   MinContent,
@@ -61,8 +62,10 @@ const KEPT: usize = 3;
 /// Min-content is the paragraph's narrowest width, max-content its widest; a definite width
 /// lays it out within that width and reports the width it uses, so a width under min-content
 /// breaks words where the line fills; a known width lays it out at that width. Its intrinsic
-/// widths are measured once a paragraph, and its last three layouts are kept by width, a
-/// width at or past its widest sharing the unbounded layout.
+/// widths are measured once a paragraph, and its last three layouts are kept by width. A
+/// width at or past its widest shares the unbounded layout wherever only sizes and baselines
+/// are asked for (measuring), and for a layout where the paragraph's lines start at the left
+/// edge whatever the width ([`Paragraph::is_left_anchored`]).
 #[must_use]
 pub struct TextLeaf<P: Paragraph> {
   paragraph: P,
@@ -146,8 +149,14 @@ impl<P: Paragraph> TextLeaf<P> {
   /// The paragraph laid out within `width` (unbounded where `None`), from the cache where a
   /// layout at that width is kept.
   pub fn laid(&self, width: Option<f32>) -> P::Laid {
+    self.kept(width, self.paragraph.is_left_anchored())
+  }
+
+  /// The layout within `width`, the unbounded one standing for any width at or past the
+  /// widest where `shared`.
+  fn kept(&self, width: Option<f32>, shared: bool) -> P::Laid {
     let key = width
-      .filter(|width| *width < self.intrinsic().max)
+      .filter(|width| !shared || *width < self.intrinsic().max)
       .map(f32::to_bits);
     let mut kept = self.laid.borrow_mut();
 
@@ -175,7 +184,7 @@ impl<P: Paragraph> MeasureText for TextLeaf<P> {
     match available {
       Space::MinContent => self.intrinsic().min,
       Space::MaxContent => self.intrinsic().max,
-      Space::Definite(width) => self.laid(Some(width)).size().width,
+      Space::Definite(width) => self.kept(Some(width), true).size().width,
     }
   }
 
@@ -186,7 +195,7 @@ impl<P: Paragraph> MeasureText for TextLeaf<P> {
       (None, Space::MinContent) => Some(intrinsic.min),
       (None, Space::MaxContent) => None,
     };
-    let laid = self.laid(within);
+    let laid = self.kept(within, true);
     let size = laid.size();
     let width = match (known.0, available.0) {
       (Some(width), _) => width,
@@ -211,8 +220,10 @@ mod tests {
     Color,
     text::{
       AttributedText,
+      Laid,
       PaintStyle,
       ParagraphStyle,
+      TextAlignment,
       TextEngine,
       TextStyle,
       grid::{Grid, GridParagraph},
@@ -298,5 +309,36 @@ mod tests {
     ));
     assert_eq!(leaf.epoch(), 1);
     assert_eq!(measured(&leaf, Space::MaxContent), (50., 20.));
+  }
+
+  #[test]
+  fn a_layout_past_the_widest_line_is_shared_only_where_the_width_moves_no_line() {
+    let start = leaf("alpha");
+
+    let _ = measured(&start, Space::MaxContent);
+    assert_eq!(start.laid(Some(500.)).lines()[0].left, 0.);
+    assert_eq!(
+      start.layouts(),
+      1,
+      "start-aligned lines share the unbounded layout"
+    );
+
+    let centered = TextLeaf::new(Grid.paragraph(
+      &AttributedText::plain("alpha", TextStyle::new(13.)),
+      &ParagraphStyle::default().with_alignment(TextAlignment::Center),
+    ));
+
+    assert_eq!(measured(&centered, Space::Definite(500.)), (50., 20.));
+    assert_eq!(
+      centered.layouts(),
+      1,
+      "measuring shares the unbounded layout"
+    );
+    assert_eq!(
+      centered.laid(Some(500.)).lines()[0].left,
+      225.,
+      "centered within the width"
+    );
+    assert_eq!(centered.layouts(), 2);
   }
 }

@@ -9,6 +9,7 @@ use crate::text::{Direction, TextBoundary, TextIndex};
 
 /// A text's word segments and hard lines, as UAX #29 divides it.
 #[derive(Clone, Copy, Debug)]
+#[must_use]
 pub struct Segments<'a> {
   text: &'a str,
 }
@@ -16,7 +17,6 @@ pub struct Segments<'a> {
 impl<'a> Segments<'a> {
   /// The segments of `text`.
   #[inline(always)]
-  #[must_use]
   pub const fn new(text: &'a str) -> Self {
     Self { text }
   }

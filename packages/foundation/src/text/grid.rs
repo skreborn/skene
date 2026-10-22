@@ -238,6 +238,13 @@ impl Paragraph for GridParagraph {
     }
   }
 
+  fn is_left_anchored(&self) -> bool {
+    matches!(
+      self.style.alignment,
+      TextAlignment::Start | TextAlignment::Left
+    )
+  }
+
   fn layout(&self, width: Option<f32>) -> GridLaid {
     let mut ranges = self.break_lines(width);
     let max = self.style.max_lines.map(|lines| lines as usize);
@@ -247,6 +254,11 @@ impl Paragraph for GridParagraph {
       ranges.truncate(max.max(1));
     }
 
+    let widest = ranges
+      .iter()
+      .map(|range| self.width(self.trimmed(range.clone())))
+      .fold(0., f32::max);
+    let within = width.unwrap_or(widest);
     let mut top = 0.;
     let lines = ranges
       .into_iter()
@@ -260,10 +272,10 @@ impl Paragraph for GridParagraph {
         let baseline = BASELINE.max(tallest);
         let height = LINE.max(baseline + LINE - BASELINE);
         let advance = self.width(self.trimmed(range.clone()));
-        let left = match (width, self.style.alignment) {
-          (Some(width), TextAlignment::End | TextAlignment::Right) => width - advance,
-          (Some(width), TextAlignment::Center) => (width - advance) / 2.,
-          _ => 0.,
+        let left = match self.style.alignment {
+          TextAlignment::End | TextAlignment::Right => within - advance,
+          TextAlignment::Center => (within - advance) / 2.,
+          TextAlignment::Start | TextAlignment::Left => 0.,
         };
         let line = LineInfo {
           hard_break: self.text[range.clone()].ends_with('\n'),

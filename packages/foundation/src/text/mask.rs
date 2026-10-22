@@ -56,6 +56,7 @@ pub trait Substitute {
   }
 }
 
+#[diagnostic::do_not_recommend]
 impl<S: Substitute + ?Sized> Substitute for Rc<S> {
   #[inline(always)]
   fn is_active(&self) -> bool {
@@ -79,6 +80,7 @@ impl<S: Substitute + ?Sized> Substitute for Rc<S> {
 /// byte of the real text, and the text's runs and inline boxes are carried over to the text
 /// laid out.
 #[derive(Clone, Debug)]
+#[must_use]
 pub struct Substituted<E, S> {
   inner: E,
   substitute: S,
@@ -143,6 +145,7 @@ impl Map {
 /// A paragraph of [`Substituted`]: the inner engine's, over the text shown where anything is
 /// substituted.
 #[derive(Debug)]
+#[must_use]
 pub struct SubstitutedParagraph<P> {
   inner: P,
   real: Rc<str>,
@@ -151,6 +154,7 @@ pub struct SubstitutedParagraph<P> {
 
 /// A layout of [`SubstitutedParagraph`].
 #[derive(Clone, Debug)]
+#[must_use]
 pub struct SubstitutedLaid<L> {
   inner: L,
   map: Option<Rc<Map>>,
@@ -265,6 +269,10 @@ impl<P: Paragraph> Paragraph for SubstitutedParagraph<P> {
 
   fn intrinsic(&self) -> Intrinsic {
     self.inner.intrinsic()
+  }
+
+  fn is_left_anchored(&self) -> bool {
+    self.inner.is_left_anchored()
   }
 
   fn layout(&self, width: Option<f32>) -> Self::Laid {
@@ -416,6 +424,7 @@ impl<L: Laid> Laid for SubstitutedLaid<L> {
 /// Whether an entry's text is masked, and which cluster shows as typed: shared between the
 /// entry and its engine ([`Masked`]), so a change takes effect at the next layout.
 #[derive(Debug)]
+#[must_use]
 pub struct MaskState {
   masked: Cell<bool>,
   revealed: Cell<Option<usize>>,
@@ -424,7 +433,6 @@ pub struct MaskState {
 
 impl MaskState {
   /// A state masking nothing, each masked cluster drawn as `mark`.
-  #[must_use]
   pub const fn new(mark: char) -> Self {
     Self {
       masked: Cell::new(false),

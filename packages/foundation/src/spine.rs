@@ -217,6 +217,7 @@ pub use values::{
   Dimension,
   DragAxes,
   Edge,
+  Edit,
   Flexibility,
   FocusOrder,
   GridArea,
@@ -246,6 +247,7 @@ pub use values::{
   TextSelection,
   TrackLimit,
   Unit,
+  Verdict,
   Wrap,
 };
 pub use view::{

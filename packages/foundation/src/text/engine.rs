@@ -162,7 +162,8 @@ pub trait Laid: Clone {
 
   /// The position `lines` lines below `position` (above where negative), nearest the
   /// horizontal `goal` where given, else the position's own; with the goal the move
-  /// keeps for the next.
+  /// keeps for the next. Past the first line it is the text's start, past the last its
+  /// end.
   fn move_vertical(&self, position: Position, lines: isize, goal: Option<f32>) -> (Position, f32);
 }
 

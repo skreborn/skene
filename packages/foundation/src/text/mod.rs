@@ -2,14 +2,15 @@
 //!
 //! What a text says and how it is styled ([`AttributedText`], [`ParagraphStyle`]), the
 //! contract a realization's engine implements to shape, break and measure it ([`TextEngine`]),
-//! the layout engine's text leaf ([`TextLeaf`]), and the offset index every protocol meets on
-//! ([`TextIndex`]).
+//! the layout engine's text leaf ([`TextLeaf`]), the offset index every protocol meets on
+//! ([`TextIndex`]), and the editing core every drawn entry shares ([`editing`]).
 //!
 //! The foundation owns the content and the style; the engine owns shaping, breaking,
 //! rasterizing and measuring; everything acting on text (selection, editing, accessibility,
 //! the decorations an engine lacks) is written once here over the geometry the engine reports.
 
 mod decoration;
+pub mod editing;
 mod engine;
 mod index;
 mod leaf;

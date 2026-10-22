@@ -25,7 +25,9 @@
 //! aliases them (`type Container = skene_foundation::Container<ActivePlatform>`); a component
 //! library writes against them exactly as a facade does. What every platform of one
 //! medium shares above the spine is a module here: [`terminal`] for the terminal and
-//! [`web`] for the web; [`routing`] is the router every facade binds.
+//! [`web`] for the web; [`routing`] is the router every facade binds. [`text`] is a text as an
+//! engine receives it, every property resolved, and the contract a realization's text engine
+//! lays it out under, with what is written once above it.
 //!
 //! A view's build folds the annotation a wrapper left pending into its declared style,
 //! splits the style into the static part a platform compiles and the derived slots render
@@ -83,7 +85,7 @@ mod stack;
 mod surface;
 mod suspense;
 pub mod terminal;
-mod text;
+pub mod text;
 mod theme;
 mod tooltip;
 mod type_metrics;

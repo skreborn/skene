@@ -2558,6 +2558,7 @@ dependencies = [
  "smallvec",
  "thin-vec",
  "ui-events",
+ "unicode-segmentation",
  "vello_cpu",
 ]
 

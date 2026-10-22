@@ -20,6 +20,7 @@ mod run_placement;
 mod size;
 mod text_decoration;
 mod text_selection;
+mod unit;
 
 pub use access::*;
 pub use aspect_ratio::*;
@@ -43,6 +44,7 @@ pub use run_placement::*;
 pub use size::*;
 pub use text_decoration::*;
 pub use text_selection::*;
+pub use unit::*;
 
 /// Whether `name` is ASCII letters, digits, `_` and `-`, not starting with a digit.
 pub(in crate::spine) const fn is_identifier(name: &str) -> bool {

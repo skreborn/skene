@@ -245,6 +245,7 @@ pub use values::{
   TextDecorationStyle,
   TextSelection,
   TrackLimit,
+  Unit,
   Wrap,
 };
 pub use view::{

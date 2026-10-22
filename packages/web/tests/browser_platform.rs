@@ -1,7 +1,7 @@
 //! The browser leaf over the new model, against a real DOM: tokens and palettes
 //! through the theme, derived slots beside variants, controls over their native
-//! inputs, delegated events through core's dispatch, the environment's signals, and
-//! hydration of the server leaf's markup.
+//! inputs, delegated events through core's dispatch, the environment's signals,
+//! hydration of the server leaf's markup, and the hash a key takes.
 //!
 //! Run in a headless browser:
 //! `cargo test -p skene-web --target wasm32-unknown-unknown --test browser_platform`.
@@ -41,7 +41,7 @@ use skene_foundation::{
   Value,
   View,
 };
-use skene_reactive::{Get, Set, Signal};
+use skene_reactive::{Get, Set, Signal, hash::wide_of};
 use skene_simple_web::{
   SimpleButton,
   SimpleButtonBase,
@@ -1004,4 +1004,22 @@ fn a_picker_opens_and_chooses_with_the_keyboard() {
 
   assert_eq!(value.get(), "lg", "type-ahead chooses over the closed face");
   assert!(!popup.matches(":popover-open").unwrap_or(true));
+}
+
+#[wasm_bindgen_test]
+fn a_value_hashes_as_it_does_on_the_host() {
+  // The constants the reactive crate pins on a 64-bit host: a 32-bit target hashes a
+  // `usize`, an `isize` and a length alike.
+  assert_eq!(wide_of(&42u32), 0x9a45_5182_d724_f034_1ad2_93a7_1185_8e8f);
+  assert_eq!(wide_of(&7usize), 0xdeb6_d224_c549_cbd3_e8c0_d782_b2f6_1276);
+  assert_eq!(wide_of(&-1isize), 0xdc6b_20d2_0742_5aa5_8b32_49d3_4c2e_f0b0);
+  assert_eq!(wide_of(&"row"), 0xd2f2_8282_435c_c6ac_7651_138b_515a_7219);
+  assert_eq!(
+    wide_of(&(3usize, "a")),
+    0x0225_5803_5bfe_01d1_ef69_cd80_5749_b47a
+  );
+  assert_eq!(
+    wide_of(&vec![1u16, 2]),
+    0x0758_c67a_c51a_33c6_6944_4642_ed1f_5182
+  );
 }

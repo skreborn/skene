@@ -960,12 +960,14 @@ The public API speaks the ecosystem's standard reactive vocabulary:
   something records: a platform calls `record_snapshots` at startup where a dev channel
   is present, and `restore` implies it, so a production build creates every signal as
   a transient one. A signal registers by the path of steps from the runtime's root
-  owner, its index among its owner's snapshot signals and the hash of its type name. A step is an owner's position among its
-  siblings, or the `Key` of a keyed owner: a keyed step takes no position, so keying
-  a sibling shifts none of the positional ones, and a key is the hash of the value it
-  was taken from, so `reconcile`'s item key and a view's `set_key` are one concept.
-  `Signal::transient` occupies no position, `Signal::tagged` is an anchor the diff aligns
-  around within one owner. Restore aligns per owner as the live side is created, and
+  owner, its index among its owner's snapshot signals and the hash of its type name. A
+  step is an owner's position among its siblings, or the `Key` of a keyed owner: a keyed
+  step takes no position, so keying a sibling shifts none of the positional ones, and a
+  key is the hash of the value it was taken from (`wide_of`, which hashes a value alike
+  on every target, an integer as its little-endian bytes and a `usize` as a `u64`), so
+  `reconcile`'s item key and a view's `set_key` are one concept and a key taken on the
+  server leaf is the browser's. `Signal::transient` occupies no position,
+  `Signal::tagged` is an anchor the diff aligns around within one owner. Restore aligns per owner as the live side is created, and
   every mismatch defaults, so a stale snapshot reaching an edited program is the
   ordinary case and never fails. A node takes a `SnapshotPlace` from the same sequence
   when the scene creates it, and a platform carries what a node holds outside the

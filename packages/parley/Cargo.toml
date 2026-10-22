@@ -1,0 +1,20 @@
+[package]
+name = "skene-parley"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Parley as skene's text engine: a paragraph shaped once, laid out per width, its geometry what the editing core moves over"
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+parley.workspace = true
+skene-foundation.workspace = true
+skrifa = { default-features = false, features = ["std"], version = "0.44" }
+vello_cpu = { default-features = false, features = ["std", "u8_pipeline"], version = "0.3" }
+
+[dev-dependencies]
+unicode-segmentation.workspace = true
+
+[lints]
+workspace = true

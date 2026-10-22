@@ -2601,6 +2601,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "skene-parley"
+version = "0.1.0"
+dependencies = [
+ "parley",
+ "skene-foundation",
+ "skrifa",
+ "unicode-segmentation",
+ "vello_cpu",
+]
+
+[[package]]
 name = "skene-reactive"
 version = "0.1.0"
 dependencies = [

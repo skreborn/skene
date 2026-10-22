@@ -269,10 +269,15 @@ fn drawn_alone(cluster: &str) -> usize {
 }
 
 /// The text the layout measures `cluster` by in the cells' typeface, which draws each
-/// code point on its own: the cluster itself, or where the terminal clusters and draws
-/// it wider or narrower than its code points sum to, one cluster of its width that a
-/// line breaks around as it does around an ideograph.
+/// code point on its own: a tab as the blank it shows as, one cell at its run's scale;
+/// else the cluster itself, or where the terminal clusters and draws it wider or
+/// narrower than its code points sum to, one cluster of its width that a line breaks
+/// around as it does around an ideograph.
 pub(crate) fn measured(cluster: &str) -> &str {
+  if cluster == "\t" {
+    return " ";
+  }
+
   if !clustering() || cluster.starts_with(char::is_control) {
     return cluster;
   }
@@ -575,7 +580,8 @@ mod tests {
   }
 
   /// A control shows as one cell whether or not the terminal clusters: a tab or a
-  /// carriage return as a space, any other as the replacement character.
+  /// carriage return as a space, any other as the replacement character; the layout
+  /// measures a tab as that space.
   #[test]
   fn a_control_shows_as_one_cell() {
     reset();
@@ -588,6 +594,7 @@ mod tests {
       assert_eq!(cells("ab\tc"), 4);
       assert_eq!(index_at_column("ab\tc", 3), 3);
       assert_eq!(fit("ab\tc", 2), "ab");
+      assert_eq!(measured("\t"), " ");
       assert_eq!(Glyph::of("\u{1b}").to_string(), "\u{fffd}");
       assert_eq!(Glyph::of("\t").to_string(), " ");
       assert_eq!(Glyph::of("\r\n").to_string(), " ");

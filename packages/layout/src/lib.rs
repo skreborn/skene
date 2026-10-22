@@ -13,7 +13,6 @@ mod paragraph;
 mod restyle;
 mod tree;
 
-pub use parley::TabSize;
 use skene_foundation::{
   Arrangement,
   Axis,

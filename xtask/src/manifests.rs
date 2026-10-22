@@ -101,17 +101,7 @@ pub(crate) fn check(root: &Path) -> Result<(), String> {
         }
       }
 
-      let keys: Vec<&str> = entries.iter().map(|(key, _)| key).collect();
-      let unordered = keys.windows(2).find_map(|pair| match *pair {
-        [earlier, later] if earlier > later => Some((earlier, later)),
-        _ => None,
-      });
-
-      if let Some((earlier, later)) = unordered {
-        problems.push(format!(
-          "{name}: [{table}] lists `{later}` after `{earlier}`"
-        ));
-      }
+      check_order(&name.to_string(), &table, entries, &mut problems);
     }
   }
 
@@ -166,6 +156,22 @@ fn check_publishable(
         ));
       }
     }
+  }
+}
+
+/// Notes the first crate the dependency table `table` of the manifest named `name` lists
+/// out of alphabetical order in `entries`.
+fn check_order(name: &str, table: &str, entries: &dyn TableLike, problems: &mut Vec<String>) {
+  let keys: Vec<&str> = entries.iter().map(|(key, _)| key).collect();
+  let unordered = keys.windows(2).find_map(|pair| match *pair {
+    [earlier, later] if earlier > later => Some((earlier, later)),
+    _ => None,
+  });
+
+  if let Some((earlier, later)) = unordered {
+    problems.push(format!(
+      "{name}: [{table}] lists `{later}` after `{earlier}`"
+    ));
   }
 }
 
@@ -425,7 +431,7 @@ mod tests {
 
   use toml_edit::DocumentMut;
 
-  use super::{check_patches, dependency_tables};
+  use super::{check_order, check_patches, dependency_tables};
 
   fn manifest(source: &str) -> DocumentMut {
     source.parse().expect("the manifest parses")
@@ -450,12 +456,16 @@ mod tests {
       "[patch.crates-io]\nparley_engine = { path = \"vendor/parley_engine\" }\nparley = { \
        path = \"vendor/parley\" }\n",
     );
-    let tables = dependency_tables(&manifest);
-    let (name, table) = tables.first().expect("the patch table is listed");
-    let keys: Vec<&str> = table.iter().map(|(key, _)| key).collect();
+    let mut problems = Vec::new();
 
-    assert_eq!(name, "patch.crates-io");
-    assert_eq!(keys, ["parley_engine", "parley"]);
+    for (table, entries) in dependency_tables(&manifest) {
+      check_order("Cargo.toml", &table, entries, &mut problems);
+    }
+
+    assert_eq!(
+      problems,
+      ["Cargo.toml: [patch.crates-io] lists `parley` after `parley_engine`"]
+    );
   }
 
   #[test]

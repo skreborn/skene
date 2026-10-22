@@ -968,7 +968,7 @@ cell, the dotted circle unmapped so no shaper inserts one), a stretch of one sca
 at that many cells and an inline box a box as many cells wide and rows tall as it, and
 under the mode a cluster whose code points sum to another width measured by a stand-in
 of its width, so a run wraps and keeps its blanks as headless does, a tab one blank
-cell, its stops a cell apart; a cell holds a cluster
+cell at its run's scale, measured as the blank it shows as; a cell holds a cluster
 (`Glyph`: one code point, an interned cluster, or the continuation of a wide one, which
 paints nothing) while a field's caret, window and selection index clusters, the window
 of a single-line field settling by cells. A confirmation arriving after the first

@@ -192,3 +192,28 @@ fn a_groups_size_reaches_its_spans() {
     assert_eq!(scale_at(4, 2, 0, 0), CellScale::Whole(2));
   });
 }
+
+/// A tab in a sized run is one blank cell at the run's scale wherever it falls, the
+/// layout placing what follows where the paint draws it.
+#[test]
+fn a_tab_in_a_sized_run_is_one_sized_blank() {
+  with_platform(|| {
+    testing::trigger_text_sizing(true);
+
+    let _ = terminal::mount(|| {
+      Row::new()
+        .set_children((
+          RichText::new().add_spans([Span::new("a"), Span::new("\tb").set_font_size(2.)]),
+          Text::new("|"),
+        ))
+        .into_any()
+        .build()
+    });
+
+    let frame = testing::render_to_text(12, 3);
+
+    assert!(frame.starts_with("   b |\na\n"), "{frame}");
+    assert_eq!(scale_at(12, 3, 1, 0), CellScale::Whole(2));
+    assert_eq!(scale_at(12, 3, 3, 0), CellScale::Whole(2));
+  });
+}

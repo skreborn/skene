@@ -108,6 +108,19 @@ pub(super) struct Page {
   pub(super) composing: Option<web_sys::Node>,
 }
 
+impl Page {
+  /// Whether `element` is a text entry whose shown text is the reader's until it is
+  /// reported, which a signal's write leaves alone: an input method is composing in it,
+  /// or it holds text typed before the client arrived.
+  pub(super) fn holds_reader_text(&self, element: &web_sys::Node) -> bool {
+    self.composing.as_ref() == Some(element)
+      || self
+        .hydration
+        .as_ref()
+        .is_some_and(|hydration| hydration.typed.contains(element))
+  }
+}
+
 impl Sink for Page {
   type Element = web_sys::Node;
   type Extra = Extra;
@@ -262,12 +275,7 @@ impl Sink for Page {
   /// input method is composing in, or one holding text typed before the client arrived,
   /// is left to the report of its text.
   fn set_value(&mut self, element: &web_sys::Node, value: &str) {
-    if self.composing.as_ref() == Some(element)
-      || self
-        .hydration
-        .as_ref()
-        .is_some_and(|hydration| hydration.typed.contains(element))
-    {
+    if self.holds_reader_text(element) {
       return;
     }
 

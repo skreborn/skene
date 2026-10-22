@@ -1062,6 +1062,7 @@ impl Entry {
   /// where `backward` says.
   fn select_range(&self, start: u32, end: u32, backward: bool) {
     let direction = if backward { "backward" } else { "forward" };
+
     let _ = match self {
       Self::Field(input) => input.set_selection_range_with_direction(start, end, direction),
       Self::Editor(area) => area.set_selection_range_with_direction(start, end, direction),
@@ -1124,6 +1125,7 @@ impl Entry {
 
     if !replaced.is_empty() || !inserted.is_empty() {
       let (start, end) = (Self::narrow(units.start), Self::narrow(units.end));
+
       let _ = match self {
         Self::Field(input) => input.set_range_text_with_start_and_end(inserted, start, end),
         Self::Editor(area) => area.set_range_text_with_start_and_end(inserted, start, end),

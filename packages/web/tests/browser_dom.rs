@@ -1163,20 +1163,6 @@ fn a_transformed_value_keeps_the_caret() {
   );
 }
 
-/// A text field taking digits alone, its value held in `value`.
-fn digits_only(value: Signal<String>) -> AnyView {
-  BasicTextField::new(
-    TextEntry::new()
-      .derive_value(move || value.get())
-      .handle_change(move |text| {
-        if text.chars().all(|character| character.is_ascii_digit()) {
-          value.set(text.to_owned());
-        }
-      }),
-  )
-  .into_any()
-}
-
 /// A character the handler refuses is taken back out of the `<input>` by the smallest
 /// edit: the element stays, and the caret stays where the reader left it, where
 /// rewriting the whole value would leave it after the character that followed.
@@ -1185,7 +1171,18 @@ fn a_refused_character_is_repaired_in_place() {
   let (_guard, root) = fresh_root();
   let value = Signal::new("123".to_owned());
 
-  let _ = mount(move || digits_only(value).build());
+  let _ = mount(move || {
+    BasicTextField::new(
+      TextEntry::new()
+        .derive_value(move || value.get())
+        .handle_change(move |text| {
+          if text.chars().all(|character| character.is_ascii_digit()) {
+            value.set(text.to_owned());
+          }
+        }),
+    )
+    .build()
+  });
 
   let element = only_child(&root);
   let input = element
@@ -1213,13 +1210,23 @@ fn a_refused_character_is_repaired_in_place() {
 }
 
 /// An input method's composition is left alone: an edit reported while it composes is
-/// repaired once the composition ends.
+/// not repaired, nor rewritten by the signal's writes, and the composition's end
+/// repairs it.
 #[wasm_bindgen_test]
 fn a_repair_waits_out_composition() {
   let (_guard, root) = fresh_root();
-  let value = Signal::new("123".to_owned());
+  let value = Signal::new("ab".to_owned());
+  let selection = Signal::new(TextSelection::new(2, 2));
 
-  let _ = mount(move || digits_only(value).build());
+  let _ = mount(move || {
+    BasicTextField::new(
+      TextEntry::new()
+        .derive_value(move || value.get())
+        .handle_change(move |text| value.set(text.to_uppercase()))
+        .bind_selection(selection),
+    )
+    .build()
+  });
 
   let input = only_child(&root)
     .dyn_into::<HtmlInputElement>()
@@ -1227,7 +1234,7 @@ fn a_repair_waits_out_composition() {
 
   let _ = input.focus();
 
-  input.set_value("12x3");
+  input.set_value("abx");
 
   let _ = input.set_selection_range(3, 3);
 
@@ -1241,10 +1248,20 @@ fn a_repair_waits_out_composition() {
 
   platform::end_turn();
 
+  assert_eq!(value.get(), "ABX", "the composing edit reached the handler");
   assert_eq!(
     input.value(),
-    "12x3",
+    "abx",
     "nothing is repaired while the input method composes"
+  );
+
+  selection.set(TextSelection::new(0, 0));
+  platform::end_turn();
+
+  assert_eq!(
+    (input.selection_start(), input.selection_end()),
+    (Ok(Some(3)), Ok(Some(3))),
+    "a selection written while the input method composes waits too"
   );
 
   let init = CompositionEventInit::new();
@@ -1258,12 +1275,14 @@ fn a_repair_waits_out_composition() {
 
   platform::end_turn();
 
-  assert_eq!(input.value(), "123", "the composition's end repairs it");
+  assert_eq!(input.value(), "ABX", "the composition's end repairs it");
   assert_eq!(
     (input.selection_start(), input.selection_end()),
-    (Ok(Some(2)), Ok(Some(2)))
+    (Ok(Some(3)), Ok(Some(3))),
+    "the reader's caret stands"
   );
-  assert_eq!(value.get(), "123");
+  assert_eq!(value.get(), "ABX");
+  assert_eq!(selection.get(), TextSelection::new(3, 3));
 }
 
 /// A checkbox bound to a signal reflects it on its native input and writes toggles

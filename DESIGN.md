@@ -415,17 +415,20 @@ re-export.
   edit the truth already holds (`Edit::holds`) without asking, asks the value and then
   the selection otherwise, and accepts any edit of an entry whose value nothing derives.
   The web's `<input>` and `<textarea>` report the same way, as a toolkit that applies
-  first: each `input` event is one applied `Edit` in UTF-16, and a `Replace` is
-  repaired by the smallest splice (`setRangeText`) with the selection mapped by the
-  same rule, inside the event, so the turn's write of the bound value finds it shown.
-  While an input method composes (`InputEvent.isComposing`) the repair waits, and a
-  signal's write leaves the entry alone, until `compositionend` reports the entry's
-  text again and applies the verdict; `Edit::holds` makes the report idempotent
-  whichever of the two events an engine sends last. Headless alone still reports
-  through `notify_change` and `notify_selection_change`, reconciled after. A
-  `TextSelection` counts grapheme clusters; where a platform's protocol counts in code
-  points or UTF-16 code units it names its unit (`Unit::CodePoint`, `Unit::Utf16`) and
-  converts through one index per text (`TextIndex`), as the web does for its `<input>`.
+  first: each `input` event is one applied `Edit`, its selection read in UTF-16 code
+  units and counted in clusters, and a `Replace` is repaired by the smallest splice
+  (`setRangeText`) with the selection mapped by the same rule, inside the event, so the
+  turn's write of the bound value finds it shown. While an input method composes
+  (`InputEvent.isComposing`) the repair waits, and a signal's write of the value or the
+  selection leaves the entry alone, until `compositionend` reports the entry's text
+  again and applies the verdict (an adopted entry holding text typed before the client
+  arrived is left alone the same way until hydration replays it); `Edit::holds` makes
+  the report idempotent whichever of the two events an engine sends last. Headless
+  alone still reports through `notify_change` and `notify_selection_change`, reconciled
+  after. A `TextSelection` counts grapheme clusters; where a platform's protocol counts
+  in code points or UTF-16 code units it names its unit (`Unit::CodePoint`,
+  `Unit::Utf16`) and converts through one index per text (`TextIndex`), as the web does
+  for its `<input>`.
 - **Parts and control state.** A part is a named child the styling targets (`Track`,
   `Fill`, `Thumb`, `Mark`, `Face`, `List`, `Item`, `Label`); in the terminal a part maps
   to a glyph token. A `State` a box cannot have on its own (`Checked`, `Indeterminate`,

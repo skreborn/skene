@@ -678,6 +678,10 @@ impl Realization for Web {
         return;
       };
 
+      if dom.realizer.sink.holds_reader_text(carrier) {
+        return;
+      }
+
       events::select(carrier, selection);
     });
   }

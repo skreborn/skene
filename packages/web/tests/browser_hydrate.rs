@@ -613,6 +613,7 @@ fn a_value_typed_before_the_bundle_reports_as_an_edit() {
     .expect("a body")
     .append_child(&root)
     .expect("connect the root");
+
   server_input.set_value("ABc");
 
   let _ = server_input.set_selection_range(1, 1);
@@ -634,6 +635,11 @@ fn a_value_typed_before_the_bundle_reports_as_an_edit() {
     server_input.value(),
     "ABC",
     "the input was repaired to the truth"
+  );
+  assert_eq!(
+    (server_input.selection_start(), server_input.selection_end()),
+    (Ok(Some(1)), Ok(Some(1))),
+    "the reader's caret, before the repaired range, stays"
   );
 
   platform::uninstall();

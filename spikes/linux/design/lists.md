@@ -1,6 +1,6 @@
 # Lists that recycle their rows
 
-The list half of `ROADMAP.md` item 4: lazy lists shaped once for both kinds of platform (the
+The list half of `ROADMAP.md` item 3: lazy lists shaped once for both kinds of platform (the
 compositor platforms, where Skene's views are the platform's views among native ones, and the
 window platforms, where Skene draws everything), realized first on Linux in `spikes/linux`.
 Written 2026-10-19 against `AGENTS.md` as of commit a31b959, then reviewed the same day against
@@ -451,7 +451,7 @@ comes back where it was left, as Compose's `rememberLazyListState` does inside a
 
 A stash entry goes when its key leaves the items. Nothing is stashed for a signal that is not
 opted in, so a list whose rows opt nothing in pays nothing. This gives the opt-in a production
-use on every platform, beside Android's process death (`ROADMAP.md` item 16): the one concept of
+use on every platform, beside Android's process death (`ROADMAP.md` item 15): the one concept of
 state worth keeping, as `rememberSaveable` is Compose's for both. Section 15, choice 13.
 
 ### Recycling
@@ -472,7 +472,7 @@ A native view adopted through the native door is rebuilt with its row. A reuse h
 ### The frame
 
 On every platform but the web, the foundation runs the list inside the frame contract of
-`ROADMAP.md` item 3 ("layout settles before a frame commits"), the window computed by the
+`ROADMAP.md` item 2 ("layout settles before a frame commits"), the window computed by the
 engine and not through the reactive graph:
 
 1. Apply the scroll input.
@@ -835,7 +835,7 @@ exist (section 7), and the `ItemContainerPattern` gap is upstream.
 
 ### The terminal
 
-As Linux, in cells: the same engine through `skene-layout`'s runtime (`ROADMAP.md` item 3).
+As Linux, in cells: the same engine through `skene-layout`'s runtime (`ROADMAP.md` item 2).
 
 - `packages/terminal`'s `LazyColumn` is replaced by the engine's, keeping its tests' behavior
   (window, restore from a snapshot) with the restore now by `(item, offset)`.
@@ -883,7 +883,7 @@ As Linux, in cells: the same engine through `skene-layout`'s runtime (`ROADMAP.m
 - **A list box's scriptless form** follows the picker's: an `Enhance` over a `<select>` (`size`
   rows tall, `multiple` for a set) holding each option's name under its key (`api-design.md`
   1.6), the drawn list box once hydrated. At 100,000 options that `<select>` is the cost to
-  measure (JUDGMENT; `ROADMAP.md` item 10, section 15, choice 14).
+  measure (JUDGMENT; `ROADMAP.md` item 9, section 15, choice 14).
 - **Limits** (JUDGMENT): after hydration, find-in-page finds realized rows only, as in every
   virtualized list on the web, and `hidden="until-found"` cannot help with rows that are not in
   the document. An app that needs the browser's find over all rows uses a `Column`.
@@ -1057,7 +1057,7 @@ on the runner's legs.
    - the AccessKit mapping and the reader's requests.
 5. **The conformance scenarios, the rows probe's `MODE=lazy` and the frame benchmark.**
 6. **The grids, sections and sticky headers.**
-7. **Stashed state across leaving** (it needs the opt-in reload state of `ROADMAP.md` item 2,
+7. **Stashed state across leaving** (it needs the opt-in reload state of `ROADMAP.md` item 1,
    which the prototype has not landed; until then a row's extras alone return).
 
 What cannot be checked here:

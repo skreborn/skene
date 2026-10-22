@@ -37,7 +37,7 @@ the surface designed here, and `lists-design.md` applies it to the lists.
   rather than Chromium's paging.
 - Autofocus: the modality's starting value said plainly; iOS and Android; lazy rows.
 - `Painted` on every platform; `ContextMenu`'s entries stay data, which keeps `ROADMAP.md` item
-  4's native-menu candidate open.
+  3's native-menu candidate open.
 - The aliases' scope agrees with `lists-design.md`, and every member that carries a toolkit
   member's meaning carries its alias (`set_`, `derive_`, `bind_` and `handle_` alike).
 - The probes are named relative to this file, never by a scratch path.
@@ -636,7 +636,7 @@ walk of the tree. The realization calls it when something opens.
 |---|---|---|
 | A window | its first autofocus control; else nothing, `Tab` then starting at the first stop (today) | |
 | A popup (`Overlay::popup()`) | its first autofocus control; else focus stays where it is, unless the popup's own behavior moves it (a picker's list to its chosen option, a context menu to its first operable item: today) | focus inside it returns to what held focus when it opened, where that still takes focus; else to the nearest node before it that does (today's rule) |
-| A modal (item 4) | its first autofocus control; else its first control that takes focus; else the modal's own box | focus returns to what held it when it opened |
+| A modal (item 3) | its first autofocus control; else its first control that takes focus; else the modal's own box | focus returns to what held it when it opened |
 | A subtree mounted later (a derived view, a lazy list's row) | its autofocus control, only while nothing in its window is focused and no autofocus has acted there yet | |
 
 These follow HTML's autofocus processing (the first candidate, once per document), its popover
@@ -652,7 +652,7 @@ here. A lazy list's row built by scrolling therefore never takes focus from what
   it. JUDGMENT: Chromium's `:focus-visible` heuristic, for the web tier to confirm.
 - **A reader** hears the focus at open, so Orca on mutter announces an autofocused control as it
   announces the control `GtkWindow` focuses first. Without autofocus it announces the window
-  alone: the GNOME Wayland difference `ROADMAP.md` item 5 lists, now chosen rather than open.
+  alone: the GNOME Wayland difference `ROADMAP.md` item 4 lists, now chosen rather than open.
   JUDGMENT.
 - **The web** renders `autofocus` on the control's focusable element (its `<input>`, `<select>`
   or the box carrying `tabindex`), so a page with no script focuses it, and the browser leaf keeps
@@ -661,7 +661,7 @@ here. A lazy list's row built by scrolling therefore never takes focus from what
   appears: iOS makes it first responder, which raises the keyboard; Android focuses it and
   leaves the keyboard to the window's soft-input mode. A control that is not a text field takes
   no focus there without a hardware keyboard, as the platforms' own controls take none (JUDGMENT,
-  for item 7 and item 8 to confirm on hardware).
+  for item 6 and item 7 to confirm on hardware).
 
 ### 3.3 What changes in the prototype
 
@@ -708,13 +708,13 @@ only by the boxes that clip.
 - **The web** has the rule from CSS: an overflowing part is a DOM descendant of its control, so
   the press reaches the control's element, and `border-radius` and `overflow: clip` shape and
   cut hits as above.
-- **The terminal** takes it through `skene-layout`'s runtime (`ROADMAP.md` item 3), in cells.
+- **The terminal** takes it through `skene-layout`'s runtime (`ROADMAP.md` item 2), in cells.
 - **iOS, macOS and Android** stop a hit at a view's own bounds by default: `UIView.hitTest`
   asks `point(inside:with:)` of each view before its subviews, `NSView.hitTest` likewise, and an
   Android `ViewGroup` dispatches a touch only to children whose bounds hold it. Skene's own view
   classes answer by the subtree's bounds (the same as the pruning bounds) and by the rounded
   shape, so the rule holds; a native view adopted through the door keeps its toolkit's own hit
-  testing (JUDGMENT, for items 7 and 8).
+  testing (JUDGMENT, for items 6 and 7).
 - **Windows** draws everything, so it takes the drawn rule as Linux does.
 
 ### 4.3 What changes in the prototype
@@ -864,7 +864,7 @@ scroll gestures). A drawn bar on the web over `scrollbar-width: none`, its thumb
 scroll-driven animation (`animation-timeline: scroll()`), is an upgrade a signal could prove
 later. The `TerminalStyle` properties `scrollbar_thumb`, `scrollbar_track` and
 `scrollbar_glyphs` (VERIFIED (read): `packages/foundation/src/terminal/ext.rs:179-185`) become
-the parts' fills and the thumb's glyph property, for item 10. JUDGMENT for every row.
+the parts' fills and the thumb's glyph property, for item 9. JUDGMENT for every row.
 
 ### 5.7 What changes in the prototype
 
@@ -998,13 +998,13 @@ true }` (VERIFIED (read)) becomes the tracked read. JUDGMENT.
 - **iOS, macOS, Android** draw the recording into the box's own platform view at its
   `contentScaleFactor`, `backingScaleFactor` or display density, recording again when the scale
   changes (a trait collection change, `viewDidChangeBackingProperties`, a configuration change).
-  JUDGMENT, for items 7 and 8.
+  JUDGMENT, for items 6 and 7.
 - **The web** sizes its `<canvas>` from the `device-pixel-content-box` the engine reports, or the
   content box times the pixel ratio where it reports none, takes the scale per axis as `device /
   css`, and records again when either changes, as `packages/` does today. `Ink` is the canvas
   element's computed `color`, read when it paints; the box records nothing new when the color
   changes but must replay, which needs an event for a computed change (a `transitionrun` on
-  `color` is the one a page hears). JUDGMENT, unproven; an open point for item 10.
+  `color` is the one a page hears). JUDGMENT, unproven; an open point for item 9.
 - **The terminal** records at the box's cells times the cell's pixels, scale `(cell width, cell
   height)`, shows it through the kitty graphics protocol where proven, and records again when the
   cell's pixel size changes (a font change the terminal reports through mode 2048's pixel size).
@@ -1059,7 +1059,7 @@ impl ContextMenu {
   `gui/src/controls/context_menu.rs`; `ClipboardOp` already holds `Delete` and `SelectAll`); the
   item builder takes the entry so an item can show its shortcut.
 - **An entry is data**: a label, a shortcut, whether it is offered, what it runs. That keeps
-  `ROADMAP.md` item 4's candidate open, in which `NSMenu`, `UIMenu` and `PopupMenu` realize the
+  `ROADMAP.md` item 3's candidate open, in which `NSMenu`, `UIMenu` and `PopupMenu` realize the
   entries where the platform composites views (a drawn Paste triggers iOS's paste prompt). Where
   a platform realizes the menu natively, the list and item builders are the drawn form's and do
   not apply, as a picker's parts do not apply to its `<select>`. JUDGMENT.
@@ -1068,7 +1068,7 @@ impl ContextMenu {
   section 9, choice 15.
 - **Content last**: the entries and the wrapped child are the menu's content, so the chain ends
   with them, the child last.
-- A separator (`MenuEntry::separator()`, in `packages/`) is left for item 4's menus. The server
+- A separator (`MenuEntry::separator()`, in `packages/`) is left for item 3's menus. The server
   renders nothing for a menu, the web opens it as a popover promoted in place, and the terminal
   serves its standard menu from the root where no wrapper does, as `AGENTS.md` says. JUDGMENT.
 
@@ -1193,7 +1193,7 @@ Each has the default first; the design above takes it.
     Alternative: hidden until a key.
 11. **The whole view layer moves into the foundation** with `Painted` and `ContextMenu`.
     Alternative for the prototype: `Canvas`, `Paint`, `Picture`, `Renderer`, `Painting`,
-    `MenuEntry` and the menu's wiring move now, the two views staying in `gui` until item 2
+    `MenuEntry` and the menu's wiring move now, the two views staying in `gui` until item 1
     ports the view layer.
 12. **The web keeps the engine's scroll bar**, colored by `scrollbar-color`, and the compositor
     platforms keep their indicators, the drawn bar an upgrade later. Alternative: a drawn bar on

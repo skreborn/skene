@@ -10,11 +10,13 @@ use crate::{Edit, EventKind, NativeElement, Platform, Role, TextSelection, Verdi
 /// Editing keys are the platform's; the behavior only reports each change. A drawn
 /// entry reports a reader's edit as one [`Edit`], its text and selection together, with
 /// whether its toolkit shows it already, and applies the [`Verdict`] it is answered with,
-/// which is the only write-back: the value is asked for first, then the selection, and
-/// an edit the truth then holds, or any edit while nothing is derived, is accepted,
-/// while any other is answered with the truth. Controlled:
-/// the text shown is what [`derive_value`](Self::derive_value) reads, and an edit
-/// only calls [`handle_change`](Self::handle_change) with the text asked for;
+/// which is the only write-back: an edit the truth holds already is accepted unasked;
+/// otherwise the value is asked for first, then the selection, and an edit the truth
+/// then holds, or any edit while nothing is derived, is accepted, while any other is
+/// answered with the truth.
+///
+/// Controlled: the text shown is what [`derive_value`](Self::derive_value) reads, and an
+/// edit only calls [`handle_change`](Self::handle_change) with the text asked for;
 /// [`bind_value`](Self::bind_value) wires both to one signal. The selection is
 /// controlled the same way: [`derive_selection`](Self::derive_selection) places it,
 /// [`handle_selection_change`](Self::handle_selection_change) hears every move of the
@@ -211,6 +213,10 @@ impl<P: Platform> Behavior<P> for TextEntry {
   }
 
   fn on_edit(&self, edit: &Edit, _applied: bool, _control: &ControlHandle<P>) -> Verdict {
+    if self.held().is_some_and(|truth| truth.holds(edit)) {
+      return Verdict::Accept;
+    }
+
     self.value.ask(edit.text.to_string());
 
     if let Some(selection) = edit.selection {

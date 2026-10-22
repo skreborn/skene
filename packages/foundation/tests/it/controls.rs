@@ -434,6 +434,37 @@ fn report_edit_answers_with_the_truth_when_the_handler_transforms_it() {
   owner.dispose();
 }
 
+/// An edit the truth holds already is accepted without asking the handlers, and one
+/// leaving a controlled selection unnamed is answered with the truth's.
+#[test]
+fn report_edit_of_what_the_truth_holds_asks_nothing() {
+  reset();
+
+  let owner = Owner::new();
+  let asked = Rc::new(RefCell::new(Vec::new()));
+  let node = owner.enter(|| {
+    let asked = Rc::clone(&asked);
+
+    BasicTextField::new(
+      TextEntry::new()
+        .set_value("ab")
+        .handle_change(move |value| asked.borrow_mut().push(value.to_owned()))
+        .set_selection(TextSelection::collapsed(1)),
+    )
+    .build()
+  });
+  let truth = Edit::new("ab").with_selection(TextSelection::collapsed(1));
+
+  assert_eq!(report_edit::<Headless>(node, &truth, true), Verdict::Accept);
+  assert_eq!(*asked.borrow(), [""; 0]);
+  assert_eq!(
+    report_edit::<Headless>(node, &Edit::new("ab"), true),
+    Verdict::Replace(truth)
+  );
+
+  owner.dispose();
+}
+
 /// An entry deriving no text keeps no truth: its edit stands, its handler hearing it.
 #[test]
 fn report_edit_accepts_an_uncontrolled_entry() {

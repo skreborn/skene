@@ -983,7 +983,9 @@ fn selection_of(element: &Element) -> Option<TextSelection> {
       area.selection_direction().ok()?,
     )
   };
-  let (start, end) = (cluster_of_unit(&value, start), cluster_of_unit(&value, end));
+  let index = TextIndex::new(&value);
+  let cluster = |unit: u32| index.grapheme_of(Unit::Utf16, unit as usize, Round::Down);
+  let (start, end) = (cluster(start), cluster(end));
 
   Some(if backward.as_deref() == Some("backward") {
     TextSelection::new(end, start)
@@ -1004,37 +1006,26 @@ pub(super) fn select(element: &Element, selection: TextSelection) {
   };
 
   if let Some(input) = element.dyn_ref::<HtmlInputElement>() {
-    let value = input.value();
+    let (start, end) = units_of(&input.value(), selection);
 
-    let _ = input.set_selection_range_with_direction(
-      unit_of_cluster(&value, selection.min()),
-      unit_of_cluster(&value, selection.max()),
-      direction,
-    );
+    let _ = input.set_selection_range_with_direction(start, end, direction);
   }
   else if let Some(area) = element.dyn_ref::<HtmlTextAreaElement>() {
-    let value = area.value();
+    let (start, end) = units_of(&area.value(), selection);
 
-    let _ = area.set_selection_range_with_direction(
-      unit_of_cluster(&value, selection.min()),
-      unit_of_cluster(&value, selection.max()),
-      direction,
-    );
+    let _ = area.set_selection_range_with_direction(start, end, direction);
   }
 }
 
-/// The cluster of `value` holding the UTF-16 code unit `unit`, or the cluster count
-/// at or past the value's end.
-fn cluster_of_unit(value: &str, unit: u32) -> usize {
-  TextIndex::new(value).grapheme_of(Unit::Utf16, unit as usize, Round::Down)
-}
+/// `selection`'s lower and upper bounds as UTF-16 code units of `value`, a bound past
+/// its last cluster at its end.
+fn units_of(value: &str, selection: TextSelection) -> (u32, u32) {
+  let index = TextIndex::new(value);
+  let unit = |cluster: usize| {
+    u32::try_from(index.offset_of_grapheme(Unit::Utf16, cluster)).unwrap_or(u32::MAX)
+  };
 
-/// The UTF-16 code unit in `value` the cluster at `index` starts at, or the value's
-/// end in units.
-fn unit_of_cluster(value: &str, index: usize) -> u32 {
-  let unit = TextIndex::new(value).offset_of_grapheme(Unit::Utf16, index);
-
-  u32::try_from(unit).unwrap_or(u32::MAX)
+  (unit(selection.min()), unit(selection.max()))
 }
 
 fn on_change(event: &web_sys::Event) {

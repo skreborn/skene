@@ -49,15 +49,6 @@ impl ControlledText {
       held: false,
     }
   }
-
-  /// Whether the truth holds `proposed`: the same text, and the same selection where the
-  /// truth controls it.
-  fn holds(proposed: &Edit, truth: &Edit) -> bool {
-    proposed.text == truth.text
-      && truth
-        .selection
-        .is_none_or(|selection| proposed.selection == Some(selection))
-  }
 }
 
 impl fmt::Debug for ControlledText {
@@ -71,7 +62,7 @@ impl fmt::Debug for ControlledText {
 
 impl Arbiter for ControlledText {
   fn propose(&mut self, proposed: &Edit, applied: bool, composing: bool) -> Verdict {
-    if Self::holds(proposed, &(self.truth)()) {
+    if (self.truth)().holds(proposed) {
       return Verdict::Accept;
     }
 
@@ -79,7 +70,7 @@ impl Arbiter for ControlledText {
 
     let truth = (self.truth)();
 
-    if Self::holds(proposed, &truth) {
+    if truth.holds(proposed) {
       Verdict::Accept
     }
     else if applied && composing {

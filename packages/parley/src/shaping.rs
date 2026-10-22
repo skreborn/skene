@@ -45,6 +45,8 @@ pub(crate) struct Job {
   pub(crate) ranged: Vec<(StyleProperty<'static, ()>, Range<usize>)>,
   /// The inline boxes, in the text's order, each its place in that order as its id.
   pub(crate) boxes: Vec<InlineBox>,
+  /// Whether line metrics are rounded to whole units.
+  pub(crate) quantize: bool,
   /// The base direction.
   pub(crate) direction: BaseDirection,
   /// How its lines align, where its unbounded layout is made with it: one cutting no line,
@@ -65,7 +67,7 @@ pub(crate) struct Shaped {
 impl Job {
   /// Shapes the paragraph through `fonts` and `layouts`.
   pub(crate) fn shape(&self, fonts: &mut FontContext, layouts: &mut LayoutContext<()>) -> Shaped {
-    let mut builder = layouts.ranged_builder(fonts, &self.text, 1., true);
+    let mut builder = layouts.ranged_builder(fonts, &self.text, 1., self.quantize);
 
     for property in &self.defaults {
       builder.push_default(property.clone());

@@ -152,6 +152,13 @@ impl<P: Paragraph> TextLeaf<P> {
     self.kept(width, self.paragraph.is_left_anchored())
   }
 
+  /// The paragraph laid out within `width` (unbounded where `None`) for its size and its
+  /// baselines alone, as measuring lays it out: the unbounded layout standing for any width
+  /// at or past the widest line, whatever the paragraph's alignment.
+  pub fn sized(&self, width: Option<f32>) -> P::Laid {
+    self.kept(width, true)
+  }
+
   /// The layout within `width`, the unbounded one standing for any width at or past the
   /// widest where `shared`.
   fn kept(&self, width: Option<f32>, shared: bool) -> P::Laid {

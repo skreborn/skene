@@ -4,7 +4,7 @@
 
 use std::{ops::Range, rc::Rc};
 
-use crate::{Color, TextDecoration, TextDecorationStyle};
+use crate::{Color, Length, Plain, RunStyle, TextDecoration, TextDecorationStyle, TypeMetrics};
 
 /// The typeface a run is set in.
 #[derive(Clone, PartialEq, Eq, Hash, Debug, Default)]
@@ -112,7 +112,7 @@ impl Default for PaintStyle {
 }
 
 /// A run's properties, resolved: what shapes it (the typeface, its size, weight and slant,
-/// the spacing past each cluster) and what paints it.
+/// the spacing past each cluster), how tall its line box is, and what paints it.
 #[derive(Clone, PartialEq, Debug)]
 #[must_use]
 pub struct TextStyle {
@@ -127,6 +127,9 @@ pub struct TextStyle {
   pub slant: FontSlant,
   /// Extra spacing past each cluster, in the engine's units.
   pub letter_spacing: f32,
+  /// How tall the run's line box is, its glyphs centered in it; the paragraph's line height
+  /// where none.
+  pub line_height: Option<LineHeight>,
   /// What paints the run.
   pub paint: PaintStyle,
 }
@@ -141,7 +144,31 @@ impl TextStyle {
       weight: FontWeight::REGULAR,
       slant: FontSlant::Upright,
       letter_spacing: 0.,
+      line_height: None,
       paint: PaintStyle::new(Color::oklch(0., 0., 0.)),
+    }
+  }
+
+  /// The style `style` resolves to, its font size `size` where it sets none: its type
+  /// metrics as its medium's [`TypeMetrics`] read them (regular, with no spacing past a
+  /// cluster and the paragraph's line height where it sets none), and its color and
+  /// decoration (black and undecorated where it sets none), in the platform's interface
+  /// typeface, upright.
+  pub fn resolved<X: TypeMetrics>(style: &RunStyle<Plain, X>, size: f32) -> Self {
+    let paint = PaintStyle {
+      color: style.color.unwrap_or(Color::oklch(0., 0., 0.)),
+      decoration: style.decoration.unwrap_or(TextDecoration::None),
+      decoration_style: style.decoration_style.unwrap_or(TextDecorationStyle::Solid),
+      decoration_color: style.decoration_color,
+    };
+
+    Self {
+      size: X::font_size::<Plain>(&style.ext).map_or(size, |size: Length| size.0),
+      weight: X::font_weight::<Plain>(&style.ext).map_or(FontWeight::REGULAR, FontWeight),
+      letter_spacing: X::letter_spacing::<Plain>(&style.ext).map_or(0., |spacing| spacing.0),
+      line_height: X::line_height::<Plain>(&style.ext).map(LineHeight::Factor),
+      paint,
+      ..Self::new(size)
     }
   }
 
@@ -172,13 +199,23 @@ impl TextStyle {
     }
   }
 
+  /// This style's line box as tall as `height` says.
+  #[inline(always)]
+  pub fn with_line_height(self, height: LineHeight) -> Self {
+    Self {
+      line_height: Some(height),
+      ..self
+    }
+  }
+
   /// This style painted with `paint`.
   #[inline(always)]
   pub fn with_paint(self, paint: PaintStyle) -> Self {
     Self { paint, ..self }
   }
 
-  /// Whether `other` shapes its text exactly as this style does: only the paint differs.
+  /// Whether `other` shapes and lays out its text exactly as this style does: only the
+  /// paint differs.
   #[must_use]
   pub fn shapes_like(&self, other: &Self) -> bool {
     self.family == other.family
@@ -186,6 +223,7 @@ impl TextStyle {
       && self.weight.0.to_bits() == other.weight.0.to_bits()
       && self.slant == other.slant
       && self.letter_spacing.to_bits() == other.letter_spacing.to_bits()
+      && self.line_height == other.line_height
   }
 }
 
@@ -474,5 +512,57 @@ impl ParagraphStyle {
       line_height: height,
       ..self
     }
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::{FontWeight, LineHeight, PaintStyle, TextStyle};
+  use crate::{
+    Color,
+    Length,
+    Plain,
+    RunStyle,
+    TextDecoration,
+    TextDecorationStyle,
+    terminal::TerminalStyle,
+    web::{WebRunFields, WebStyle},
+  };
+
+  #[test]
+  fn a_resolved_run_style_reads_its_mediums_type_metrics() {
+    let red = Color::srgb(1., 0., 0.);
+    let style = RunStyle::<Plain, WebStyle> {
+      color: Some(red),
+      decoration: Some(TextDecoration::Underline),
+      decoration_style: Some(TextDecorationStyle::Wavy),
+      ext: WebRunFields {
+        font_size: Some(Length(20.)),
+        font_weight: Some(600.),
+        line_height: Some(2.),
+        letter_spacing: Some(Length(1.)),
+      },
+      ..RunStyle::default()
+    };
+    let resolved = TextStyle::resolved(&style, 16.);
+
+    assert_eq!(resolved.size, 20.);
+    assert_eq!(resolved.weight, FontWeight::SEMIBOLD);
+    assert_eq!(resolved.line_height, Some(LineHeight::Factor(2.)));
+    assert_eq!(resolved.letter_spacing, 1.);
+    assert_eq!(
+      resolved.paint,
+      PaintStyle::new(red).with_decoration(TextDecoration::Underline, TextDecorationStyle::Wavy)
+    );
+    assert_eq!(
+      TextStyle::resolved(&RunStyle::<Plain, WebStyle>::default(), 16.),
+      TextStyle::new(16.),
+      "what a style leaves unset"
+    );
+    assert_eq!(
+      TextStyle::resolved(&RunStyle::<Plain, TerminalStyle>::default(), 1.).line_height,
+      None,
+      "a medium without a line height"
+    );
   }
 }

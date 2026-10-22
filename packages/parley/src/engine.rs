@@ -106,10 +106,19 @@ struct Contexts {
   /// The threads shaping a batch beside this one.
   #[cfg(not(target_arch = "wasm32"))]
   shapers: Threads,
-  /// How far apart a tab's stops are.
-  tab_size: TabSize,
+  /// How the paragraphs made from now on lay out.
+  settings: Settings,
   /// How many shaped words each context keeps for later paragraphs.
   shape_cache: usize,
+}
+
+/// How an engine's paragraphs lay out beyond their text and style.
+#[derive(Clone, Copy, Debug)]
+struct Settings {
+  /// How far apart a tab's stops are.
+  tab_size: TabSize,
+  /// Whether line metrics are rounded to whole units.
+  quantize: bool,
 }
 
 /// The threads shaping a batch beside an engine's own.
@@ -144,7 +153,7 @@ impl std::fmt::Debug for ParleyEngine {
     if let Ok(contexts) = self.contexts.try_borrow() {
       debug
         .field("first", &contexts.first)
-        .field("tab_size", &contexts.tab_size)
+        .field("settings", &contexts.settings)
         .field("shape_cache", &contexts.shape_cache);
     }
 
@@ -154,7 +163,8 @@ impl std::fmt::Debug for ParleyEngine {
 
 impl ParleyEngine {
   /// The engine over `typefaces` alone: no system font is read, and nothing falls back past
-  /// them. Its tab stops are eight spaces apart, and it keeps [`SHAPE_CACHE`] shaped words.
+  /// them. Its tab stops are eight spaces apart, its line metrics rounded to whole units, and
+  /// it keeps [`SHAPE_CACHE`] shaped words.
   pub fn with_typefaces(typefaces: &[Typeface]) -> Self {
     let mut collection = Collection::new(CollectionOptions {
       shared: false,
@@ -185,7 +195,10 @@ impl ParleyEngine {
         first: typefaces.first().map(|typeface| typeface.family),
         #[cfg(not(target_arch = "wasm32"))]
         shapers: Threads::Unstarted,
-        tab_size: TabSize::default(),
+        settings: Settings {
+          tab_size: TabSize::default(),
+          quantize: true,
+        },
         shape_cache: SHAPE_CACHE,
       })),
     }
@@ -194,7 +207,15 @@ impl ParleyEngine {
   /// Sets how far apart a tab's stops are for the paragraphs made from now on (eight spaces
   /// unless set, a browser's `tab-size`).
   pub fn set_tab_size(&self, tab_size: TabSize) {
-    self.contexts.borrow_mut().tab_size = tab_size;
+    self.contexts.borrow_mut().settings.tab_size = tab_size;
+  }
+
+  /// Sets whether the paragraphs made from now on round their line metrics (each run's
+  /// ascent, descent and line height) to whole units, as a renderer aligning lines to its
+  /// pixels does (rounded unless set), or keep them fractional, as a browser lays out
+  /// lines.
+  pub fn set_quantize(&self, quantize: bool) {
+    self.contexts.borrow_mut().settings.quantize = quantize;
   }
 
   /// Keeps at most `words` shaped words for later paragraphs to reuse, in this engine's
@@ -223,7 +244,8 @@ impl ParleyEngine {
     }
   }
 
-  /// The properties of a run as Parley takes them, its family falling back to `first`.
+  /// The properties of a run as Parley takes them, its family falling back to `first`, its
+  /// line height where it sets one.
   fn properties(style: &TextStyle, first: Option<&'static str>) -> Vec<StyleProperty<'static, ()>> {
     let mut families = vec![Self::family_of(&style.family)];
 
@@ -233,7 +255,7 @@ impl ParleyEngine {
       families.push(FontFamilyName::Named(Cow::Borrowed(first)));
     }
 
-    vec![
+    let mut properties = vec![
       StyleProperty::FontFamily(ParleyFamilies::List(Cow::Owned(families))),
       StyleProperty::FontSize(style.size),
       StyleProperty::FontWeight(ParleyWeight::new(style.weight.0)),
@@ -242,26 +264,39 @@ impl ParleyEngine {
         FontSlant::Italic => ParleySlant::Italic,
       }),
       StyleProperty::LetterSpacing(style.letter_spacing),
-    ]
+    ];
+
+    if let Some(height) = style.line_height {
+      properties.push(StyleProperty::LineHeight(Self::line_height_of(height)));
+    }
+
+    properties
   }
 
-  /// What shaping `text` in `style` takes, its families falling back to `first`, its tab
-  /// stops `tab_size` apart.
+  /// A line height as Parley takes it.
+  const fn line_height_of(height: LineHeight) -> ParleyLineHeight {
+    match height {
+      LineHeight::Normal => ParleyLineHeight::MetricsRelative(1.),
+      LineHeight::Factor(factor) => ParleyLineHeight::FontSizeRelative(factor),
+      LineHeight::Absolute(height) => ParleyLineHeight::Absolute(height),
+    }
+  }
+
+  /// What shaping `text` in `style` takes, its families falling back to `first`, laid out
+  /// under `settings`.
   fn job(
     first: Option<&'static str>,
     text: &AttributedText,
     style: &ParagraphStyle,
-    tab_size: TabSize,
+    settings: Settings,
   ) -> Job {
-    let mut defaults = Self::properties(text.base(), first);
+    let mut defaults = vec![StyleProperty::LineHeight(Self::line_height_of(
+      style.line_height,
+    ))];
 
-    defaults.push(StyleProperty::LineHeight(match style.line_height {
-      LineHeight::Normal => ParleyLineHeight::MetricsRelative(1.),
-      LineHeight::Factor(factor) => ParleyLineHeight::FontSizeRelative(factor),
-      LineHeight::Absolute(height) => ParleyLineHeight::Absolute(height),
-    }));
+    defaults.extend(Self::properties(text.base(), first));
     defaults.push(StyleProperty::OverflowWrap(OverflowWrap::BreakWord));
-    defaults.push(StyleProperty::TabSize(tab_size));
+    defaults.push(StyleProperty::TabSize(settings.tab_size));
     defaults.push(StyleProperty::TextWrapMode(match style.wrap {
       TextWrap::Words => TextWrapMode::Wrap,
       TextWrap::None => TextWrapMode::NoWrap,
@@ -296,6 +331,7 @@ impl ParleyEngine {
       defaults,
       ranged,
       boxes,
+      quantize: settings.quantize,
       direction: match style.direction {
         BaseDirection::Auto => parley::BaseDirection::Auto,
         BaseDirection::LeftToRight => parley::BaseDirection::Ltr,
@@ -327,18 +363,18 @@ impl ParleyEngine {
   }
 
   /// The threads shaping beside this one over `fonts`: one fewer than the cores the system
-  /// offers and at most seven, each warmed by a sample in `first` and keeping `shape_cache`
-  /// shaped words.
+  /// offers and at most seven, each warmed by a sample in `first` laid out under `settings`
+  /// and keeping `shape_cache` shaped words.
   #[cfg(not(target_arch = "wasm32"))]
   fn start(
     fonts: &FontContext,
     first: Option<&'static str>,
-    tab_size: TabSize,
+    settings: Settings,
     shape_cache: usize,
   ) -> Option<Shapers> {
     let cores = std::thread::available_parallelism().map_or(1, usize::from);
     let sample = AttributedText::plain("Ag", TextStyle::new(13.));
-    let warm = Self::job(first, &sample, &ParagraphStyle::default(), tab_size);
+    let warm = Self::job(first, &sample, &ParagraphStyle::default(), settings);
 
     Shapers::start(fonts, cores.saturating_sub(1).min(7), &warm, shape_cache)
   }
@@ -350,7 +386,7 @@ impl TextEngine for ParleyEngine {
   fn paragraph(&self, text: &AttributedText, style: &ParagraphStyle) -> ParleyParagraph {
     let mut contexts = self.contexts.borrow_mut();
     let contexts = &mut *contexts;
-    let job = Self::job(contexts.first, text, style, contexts.tab_size);
+    let job = Self::job(contexts.first, text, style, contexts.settings);
     let shaped = job.shape(&mut contexts.fonts, &mut contexts.layouts);
 
     Self::wrap(text, style, shaped)
@@ -389,19 +425,19 @@ impl TextEngine for ParleyEngine {
       layouts,
       first: family,
       shapers,
-      tab_size,
+      settings,
       shape_cache,
     } = &mut *contexts;
-    let (family, tab_size, shape_cache) = (*family, *tab_size, *shape_cache);
+    let (family, settings, shape_cache) = (*family, *settings, *shape_cache);
 
     if matches!(shapers, Threads::Unstarted) {
-      *shapers = Self::start(fonts, family, tab_size, shape_cache)
+      *shapers = Self::start(fonts, family, settings, shape_cache)
         .map_or(Threads::Unavailable, Threads::Started);
     }
 
     let mut kept = Vec::with_capacity(first.len() * 2);
     let jobs = first.into_iter().chain(texts).map(|(text, style)| {
-      let job = Self::job(family, &text, &style, tab_size);
+      let job = Self::job(family, &text, &style, settings);
 
       kept.push((text, style));
 
@@ -1030,7 +1066,8 @@ impl ParleyLaid {
             Some(last)
               if last.line == index
                 && last.paint == paint
-                && (last.x + last.width - x).abs() < 0.01 =>
+                && (last.x + last.width - x).abs() < 0.01
+                && Self::measured_alike(last, glyph_run.baseline(), metrics) =>
             {
               last.width += advance;
               last.range = last.range.start.min(range.start)..last.range.end.max(range.end);
@@ -1057,6 +1094,22 @@ impl ParleyLaid {
     }
 
     extents
+  }
+
+  /// Whether `extent` sits on `baseline` with a run's font `metrics`, so a stretch of that
+  /// run joins it.
+  const fn measured_alike(
+    extent: &RunExtent,
+    baseline: f32,
+    metrics: &parley::layout::FontMetrics,
+  ) -> bool {
+    extent.baseline.to_bits() == baseline.to_bits()
+      && extent.ascent.to_bits() == metrics.ascent.to_bits()
+      && extent.descent.to_bits() == metrics.descent.to_bits()
+      && extent.underline_offset.to_bits() == metrics.underline_offset.to_bits()
+      && extent.underline_thickness.to_bits() == metrics.underline_size.to_bits()
+      && extent.strikethrough_offset.to_bits() == metrics.strikethrough_offset.to_bits()
+      && extent.strikethrough_thickness.to_bits() == metrics.strikethrough_size.to_bits()
   }
 
   /// The glyphs to draw, run by run, the hyphens and the ellipsis included.

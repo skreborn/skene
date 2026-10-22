@@ -3,11 +3,11 @@
 //! to its padding box, each run's text in the pinned face with its decoration, a text
 //! entry's value, each painted box's picture, and the open overlays above the rest.
 //!
-//! A border is drawn solid whatever its style, and a decoration as one solid line.
+//! A border is drawn solid whatever its style, and a decoration's line solid whatever its
+//! style, a double line as two.
 
 use std::collections::VecDeque;
 
-use rustc_hash::FxHashMap;
 use skene_foundation::{
   Canvas,
   Color,
@@ -23,14 +23,16 @@ use skene_foundation::{
   Scene,
   Size,
   StaticLeaf,
-  TextDecoration,
   kurbo::{self, Affine, BezPath, Shape as _},
   paint,
   peniko,
+  text::{Laid as _, PaintStyle, ParagraphStyle},
   typography,
 };
-use skene_layout::{Content, Frames, GlyphRun, Inline, Stroke, TextItem};
+use skene_layout::{Frames, Leaf as _};
+use skene_parley::ParleyLaid;
 use skrifa::{
+  FontRef,
   GlyphId,
   MetadataProvider,
   outline::{DrawSettings, OutlinePen},
@@ -40,7 +42,7 @@ use vello_cpu::{Pixmap, RenderContext, RenderSettings, Resources};
 
 use crate::{
   Headless,
-  font::Pinned,
+  font,
   layout::{self, Text},
   records::Kind,
   resolve::{Env, Records},
@@ -360,91 +362,99 @@ impl Drawing<'_> {
     else {
       content.origin.y
     };
-    let style = layout::style_of(size, line_height, 0.);
-    let paragraph = Text::new(
-      style,
-      vec![Inline {
-        node,
-        groups: Vec::new(),
-        content: Content::Text(text.to_owned()),
-        style,
-      }],
-    );
-    let area = Rect {
+    let style = layout::style_of(size, line_height, 0.).with_paint(PaintStyle::new(color));
+    let mut paragraph = Text::new(font::engine(), style.clone(), ParagraphStyle::default());
+
+    paragraph.add_run(node, &[], text, style);
+
+    let (laid, origin) = paragraph.layout_in(Rect {
       origin: Point::new(content.origin.x, first),
       size: Size::new(f32::MAX, height),
-    };
+    });
 
-    for item in paragraph.items(area) {
-      if let TextItem::Glyphs(run) = item {
-        self.glyphs(&run, color);
-      }
-    }
+    self.glyphs(&paragraph, &laid, origin);
   }
 
-  /// Draws `paragraph` laid out in a content box at `content`: each stretch of a run's
-  /// glyphs in its ink, with its decoration, and each inline box.
+  /// Draws `paragraph` laid out in a content box at `content`: each run's glyphs in its
+  /// ink, then its decoration, short of the blanks hanging past a line's end, then each
+  /// inline box.
   fn text(&mut self, paragraph: &Text, content: Rect<f32>) {
-    let mut inks: FxHashMap<NodeId, Ink> = FxHashMap::default();
+    let (laid, origin) = paragraph.layout_in(content);
+    let lines = laid.lines();
 
-    for item in paragraph.items(content) {
-      let run = match item {
-        TextItem::Box(node) => {
-          self.node(node, false);
+    self.glyphs(paragraph, &laid, origin);
 
+    for extent in laid.run_extents() {
+      let visible = lines
+        .get(extent.line)
+        .map_or(f32::MAX, |line| line.left + line.width);
+
+      for line in extent.decoration_lines() {
+        let right = (line.x + line.width).min(visible);
+
+        if right <= line.x {
           continue;
         }
-        TextItem::Glyphs(run) => run,
-      };
-      let ink = *inks.entry(run.node).or_insert_with(|| Ink::of(run.node));
 
-      self.glyphs(&run, ink.color);
-
-      let line = match ink.decoration {
-        TextDecoration::None => continue,
-        TextDecoration::Underline => run.underline,
-        TextDecoration::LineThrough => run.strikethrough,
-        TextDecoration::Overline => Stroke {
-          offset: run.ascent,
-          thickness: run.underline.thickness,
-        },
-      };
-      let top = f64::from(run.origin.y - line.offset);
-      let stroke = kurbo::Rect::new(
-        f64::from(run.origin.x),
-        top,
-        f64::from(run.origin.x + run.width),
-        top + f64::from(line.thickness.max(1.)),
-      );
-
-      self.fill(&stroke.to_path(0.1), ink.decoration_color);
-    }
-  }
-
-  /// Draws the glyphs of `run` in `color`.
-  fn glyphs(&mut self, run: &GlyphRun, color: Color) {
-    let font = Pinned::font();
-    let outlines = font.outline_glyphs();
-    let mut pen = Pen {
-      path: BezPath::new(),
-      x: 0.,
-      y: 0.,
-    };
-
-    for glyph in &run.glyphs {
-      pen.x = glyph.origin.x;
-      pen.y = glyph.origin.y;
-
-      if let Some(outline) = outlines.get(GlyphId::new(glyph.id)) {
-        let _ = outline.draw(
-          DrawSettings::unhinted(FontSize::new(run.size), LocationRef::default()),
-          &mut pen,
+        let top = f64::from(origin.y + line.y);
+        let stroke = kurbo::Rect::new(
+          f64::from(origin.x + line.x),
+          top,
+          f64::from(origin.x + right),
+          top + f64::from(line.thickness),
         );
+
+        self.fill(&stroke.to_path(0.1), line.color);
       }
     }
 
-    if !pen.path.elements().is_empty() {
-      self.fill(&pen.path, color);
+    for inline in paragraph.boxes() {
+      self.node(inline, false);
+    }
+  }
+
+  /// Draws the glyphs of `laid`, `paragraph` laid out with its top left at `origin`: one
+  /// shape for each stretch of a run's glyphs on a line, in its paint's color.
+  fn glyphs(&mut self, paragraph: &Text, laid: &ParleyLaid, origin: Point<f32>) {
+    for run in laid.glyph_runs() {
+      let Ok(font) = FontRef::from_index(run.font.data.data(), run.font.index)
+      else {
+        continue;
+      };
+      let outlines = font.outline_glyphs();
+      let mut start = 0;
+
+      while start < run.glyphs.len() {
+        let at = run.glyphs[start].at;
+        let node = paragraph.node_at(at);
+        let end = run.glyphs[start..]
+          .iter()
+          .position(|glyph| paragraph.node_at(glyph.at) != node)
+          .map_or(run.glyphs.len(), |offset| start + offset);
+        let mut pen = Pen {
+          path: BezPath::new(),
+          x: 0.,
+          y: 0.,
+        };
+
+        for glyph in &run.glyphs[start..end] {
+          pen.x = origin.x + glyph.x;
+          pen.y = origin.y + glyph.y;
+
+          if let Some(outline) = outlines.get(GlyphId::new(glyph.id)) {
+            let _ = outline.draw(
+              DrawSettings::unhinted(FontSize::new(run.size), LocationRef::default()),
+              &mut pen,
+            );
+          }
+        }
+
+        if !pen.path.elements().is_empty() {
+          self.fill(&pen.path, laid.paint_at(at).color);
+        }
+
+        start = end;
+      }
     }
   }
 
@@ -452,62 +462,6 @@ impl Drawing<'_> {
   fn fill(&mut self, path: &BezPath, color: Color) {
     self.context.set_paint(paint(&color.into_brush()));
     self.context.fill_path(path);
-  }
-}
-
-/// How a run's text is drawn: its ink, and its decoration with that line's color.
-#[derive(Clone, Copy)]
-struct Ink {
-  color: Color,
-  decoration: TextDecoration,
-  decoration_color: Color,
-}
-
-impl Ink {
-  /// How the run `node` draws its text, its ink the typography's where it sets none and
-  /// a link's underlined where its decoration says nothing.
-  fn of(node: NodeId) -> Self {
-    let props = with_records(|records| match &records.record(node)?.kind {
-      Kind::Run(props) => Some((props.style.clone(), props.link.is_some())),
-      _ => None,
-    });
-    let resolved = Env::of(&Records, node)
-      .zip(props)
-      .map(|(env, (style, link))| {
-        env.with_resolver(|resolver| {
-          let resolved = resolver.run_style(&style);
-          let fallback = if link {
-            typography::LINK_INK
-          }
-          else {
-            typography::INK
-          };
-          let color = resolved
-            .color
-            .or_else(|| resolver.keyframe_run_value(&StaticLeaf::from(fallback)))
-            .unwrap_or(BLACK);
-          let decoration = resolved.decoration.unwrap_or(if link {
-            TextDecoration::Underline
-          }
-          else {
-            TextDecoration::None
-          });
-
-          (
-            color,
-            decoration,
-            resolved.decoration_color.unwrap_or(color),
-          )
-        })
-      });
-    let (color, decoration, decoration_color) =
-      resolved.unwrap_or((BLACK, TextDecoration::None, BLACK));
-
-    Self {
-      color,
-      decoration,
-      decoration_color,
-    }
   }
 }
 

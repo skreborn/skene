@@ -12,6 +12,7 @@ fearless_simd = { default-features = false, features = ["force_support_fallback"
 rustc-hash.workspace = true
 skene-foundation.workspace = true
 skene-layout.workspace = true
+skene-parley.workspace = true
 skene-reactive.workspace = true
 skrifa = { default-features = false, features = ["std"], version = "0.44" }
 unicode-segmentation.workspace = true

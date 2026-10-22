@@ -30,6 +30,7 @@ skene-foundation = { path = "packages/foundation", version = "0.1.0" }
 skene-headless = { path = "packages/headless", version = "0.1.0" }
 skene-layout = { path = "packages/layout", version = "0.1.0" }
 skene-macros = { path = "packages/macros", version = "0.1.0" }
+skene-parley = { path = "packages/parley", version = "0.1.0" }
 skene-reactive = { path = "packages/reactive", version = "0.1.0" }
 skene-simple = { path = "packages/simple", version = "0.1.0" }
 skene-simple-terminal = { path = "packages/simple-terminal", version = "0.1.0" }

@@ -4,21 +4,40 @@
 
 use std::sync::OnceLock;
 
-use skene_layout::Typeface;
+use skene_parley::{ParleyEngine, Typeface};
 use skrifa::{
   MetadataProvider,
   prelude::{FontRef, LocationRef, Size},
 };
 
 /// The pinned face, as the layout shapes text in it.
-pub(crate) static INTER: Typeface = Typeface::new("Inter", Pinned::DATA);
+pub(crate) const INTER: Typeface = Typeface::new("Inter", Pinned::DATA);
 
-/// The pinned face's metrics a text entry is sized by, read once from its tables, in
-/// font units.
+thread_local! {
+  /// The engine text is laid out through, in the pinned face alone.
+  static ENGINE: ParleyEngine = {
+    let engine = ParleyEngine::with_typefaces(&[INTER]);
+
+    engine.set_quantize(false);
+
+    engine
+  };
+}
+
+/// The engine text is laid out through: Parley over the pinned face alone, its tab stops
+/// eight blanks apart as a browser's `tab-size` sets them, its line metrics fractional as a
+/// browser keeps them.
+pub(crate) fn engine() -> ParleyEngine {
+  ENGINE.with(Clone::clone)
+}
+
+/// The pinned face's metrics a text entry is sized and a text trimmed by, read once from
+/// its tables, in font units.
 pub(crate) struct Pinned {
   units_per_em: f32,
   average: f32,
   span: f32,
+  cap: f32,
 }
 
 impl Pinned {
@@ -39,11 +58,18 @@ impl Pinned {
 
     Self {
       units_per_em,
+      cap: face.cap_height.unwrap_or(face.ascent * 0.7),
       average: face.average_width.unwrap_or(units_per_em / 2.),
       span: face
         .bounds
         .map_or(units_per_em, |bounds| bounds.x_max - bounds.x_min),
     }
+  }
+
+  /// How far above the baseline the face's capital letters reach at a font size of one:
+  /// its cap height, or seven tenths of its ascent where it states none.
+  pub(crate) fn cap_height(&self) -> f32 {
+    self.cap / self.units_per_em
   }
 
   /// The face, to read glyphs from.

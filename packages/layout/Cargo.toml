@@ -15,5 +15,9 @@ skrifa = { default-features = false, features = ["std"], version = "0.44" }
 taffy = "0.15"
 unicode-segmentation.workspace = true
 
+[dev-dependencies]
+skene-headless = { path = "../headless" }
+skene-parley = { path = "../parley" }
+
 [lints]
 workspace = true

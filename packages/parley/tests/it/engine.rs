@@ -11,6 +11,7 @@ use skene_foundation::{
     Intrinsic,
     Laid,
     LeafMeasure,
+    LineHeight,
     MaskState,
     Masked,
     MeasureText as _,
@@ -21,6 +22,7 @@ use skene_foundation::{
     Space,
     TextEngine as _,
     TextLeaf,
+    TextRun,
     TextStyle,
   },
 };
@@ -570,5 +572,64 @@ fn a_band_of_a_long_text_holds_only_the_lines_that_may_show_in_it() {
     laid.run_extents_in((f32::NEG_INFINITY, f32::INFINITY)),
     laid.run_extents(),
     "an unbounded band is the whole text"
+  );
+}
+
+#[test]
+fn stretches_painted_alike_part_where_their_type_differs() {
+  let text = AttributedText::new(
+    "big small",
+    TextStyle::new(SIZE),
+    vec![TextRun {
+      range: 0..4,
+      style: TextStyle::new(SIZE * 2.),
+    }],
+  );
+  let extents = inter()
+    .paragraph(&text, &ParagraphStyle::default())
+    .layout(None)
+    .run_extents();
+  let [big, small] = &extents[..]
+  else {
+    panic!("two stretches: {extents:?}");
+  };
+
+  assert_eq!((big.range.clone(), small.range.clone()), (0..4, 4..9));
+  assert!(
+    (big.ascent - small.ascent * 2.).abs() < 1e-3,
+    "each with its own type's metrics"
+  );
+}
+
+#[test]
+fn a_runs_own_line_height_sets_its_line_box_and_metrics_may_stay_fractional() {
+  let engine = inter();
+
+  engine.set_quantize(false);
+
+  let tall = AttributedText::new(
+    "ab cd",
+    TextStyle::new(SIZE).with_line_height(LineHeight::Factor(1.5)),
+    vec![TextRun {
+      range: 3..5,
+      style: TextStyle::new(SIZE).with_line_height(LineHeight::Absolute(40.)),
+    }],
+  );
+  let style = ParagraphStyle::default().with_line_height(LineHeight::Factor(1.));
+  let plain = engine
+    .paragraph(
+      &AttributedText::plain(
+        "ab",
+        TextStyle::new(SIZE).with_line_height(LineHeight::Factor(1.5)),
+      ),
+      &style,
+    )
+    .layout(None);
+
+  assert_eq!(plain.size().height, 24., "the base style's line height");
+  assert_eq!(
+    engine.paragraph(&tall, &style).layout(None).size().height,
+    40.,
+    "the tallest run's"
   );
 }

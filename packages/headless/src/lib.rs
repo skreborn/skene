@@ -1227,7 +1227,8 @@ pub fn mount(page: impl FnOnce() -> skene_foundation::AnyView<Headless>) -> Node
 /// what a box clipping its overflow holds clipped to its padding box, each run's text in
 /// the pinned face with its decoration, a text entry's value, each painted box's picture
 /// where graphics show, and the open overlays above the rest. A border is drawn solid
-/// whatever its style, and a decoration as one solid line.
+/// whatever its style, and a decoration's line solid whatever its style, a double line as
+/// two.
 pub fn render_to_image() -> Image {
   end_turn();
 
@@ -1245,18 +1246,14 @@ pub fn render_to_image() -> Image {
 #[must_use]
 pub fn text_width(text: &str, size: f32) -> f32 {
   let style = layout::style_of(size, layout::LINE_HEIGHT, 0.);
+  let mut paragraph = skene_layout::TextFlow::new(
+    font::engine(),
+    style.clone(),
+    skene_foundation::text::ParagraphStyle::default(),
+  );
 
-  skene_layout::Paragraph::new(
-    style,
-    vec![skene_layout::Inline {
-      node: (),
-      groups: Vec::new(),
-      content: skene_layout::Content::Text(text.to_owned()),
-      style,
-    }],
-  )
-  .size_within(None)
-  .width
+  paragraph.add_run((), &[], text, style);
+  skene_foundation::text::Laid::size(&paragraph.leaf().laid(None)).width
 }
 
 /// The part of [`layout_rect`] the boxes clipping `node` leave showing, empty where they

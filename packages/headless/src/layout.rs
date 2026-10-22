@@ -1,7 +1,7 @@
 //! The layout of the scene: each record's part in it, a box styled from its resolved
-//! style, a paragraph of runs measured in the pinned face and a text entry at its native
-//! element's size, laid out through the shared layout at the viewport, on a tree kept
-//! across frames.
+//! style, a paragraph of runs laid out through the engine in the pinned face and a text
+//! entry at its native element's size, laid out through the shared layout at the
+//! viewport, on a tree kept across frames.
 
 use std::cell::RefCell;
 
@@ -22,21 +22,20 @@ use skene_foundation::{
   Size,
   StaticBoxStyle,
   StaticLeaf,
+  TextDecoration,
+  text::{LineHeight, PaintStyle, ParagraphStyle, TextStyle},
   typography,
   web::WebStyle,
 };
 use skene_layout::{
   Borders,
   BoxLayout,
-  Content,
   Frames,
-  Inline,
   Leaf,
-  Paragraph,
   Part,
   Place,
   Revisit,
-  TextStyle,
+  TextFlow,
   Tree,
   taffy::{
     self,
@@ -44,11 +43,12 @@ use skene_layout::{
     style::{Dimension, Display, FlexDirection, Style},
   },
 };
+use skene_parley::ParleyEngine;
 
 use crate::{
   Headless,
   SlotValue,
-  font::{INTER, Pinned},
+  font::{self, Pinned},
   records::{DEFAULT_VIEWPORT, Kind},
   resolve::{self, Env, Records},
   with_records,
@@ -58,8 +58,8 @@ use crate::{
 /// sets one, as a multiple of its font size.
 pub(crate) const LINE_HEIGHT: f32 = 1.5;
 
-/// A paragraph of runs, shaped in the pinned face.
-pub(crate) type Text = Paragraph;
+/// A paragraph of runs, laid out through the engine in the pinned face.
+pub(crate) type Text = TextFlow<ParleyEngine>;
 
 /// What the layout measures a leaf by.
 #[derive(Debug, PartialEq)]
@@ -330,15 +330,10 @@ pub(crate) fn lone(node: NodeId, text: String) -> Text {
       .into_iter()
       .all(|child| inlines(child, &[node], &mut runs))
   {
-    runs = vec![Inline {
-      node,
-      groups: Vec::new(),
-      content: Content::Text(text),
-      style: text_style(node),
-    }];
+    runs = vec![Inline::Run(node, Vec::new(), text)];
   }
 
-  Paragraph::new(text_style(node), runs).trimmed()
+  flow(text_style(node), runs).trimmed(Pinned::get().cap_height())
 }
 
 /// The taffy style the run `node` takes from its place and the wrapper's properties it
@@ -374,8 +369,30 @@ pub(crate) fn paragraph(node: NodeId) -> Option<Text> {
       .as_ref()
       .map_or((Headless::FONT_SIZE, LINE_HEIGHT), typography);
 
-    Paragraph::new(style_of(size, line_height, 0.), runs).trimmed()
+    flow(style_of(size, line_height, 0.), runs).trimmed(Pinned::get().cap_height())
   })
+}
+
+/// What flows in a paragraph: a run's node, the groups around it and its text, or an inline
+/// box's node and the groups around it.
+enum Inline {
+  Run(NodeId, Vec<NodeId>, String),
+  Box(NodeId, Vec<NodeId>),
+}
+
+/// The paragraph of `runs`, in order, through the engine in the pinned face, its empty
+/// lines in `base`.
+fn flow(base: TextStyle, runs: Vec<Inline>) -> Text {
+  let mut flow = TextFlow::new(font::engine(), base, ParagraphStyle::default());
+
+  for run in runs {
+    match run {
+      Inline::Run(node, groups, text) => flow.add_run(node, &groups, &text, text_style(node)),
+      Inline::Box(node, groups) => flow.add_box(node, &groups, Size::new(0., 0.)),
+    }
+  }
+
+  flow
 }
 
 /// Adds the runs `node` holds to a paragraph's `runs`, inside `groups`: a text run or
@@ -399,22 +416,12 @@ fn inlines(node: NodeId, groups: &[NodeId], runs: &mut Vec<Inline>) -> bool {
       .into_iter()
       .all(|child| inlines(child, groups, runs)),
     Some(Flow::Run(text)) if children.is_empty() => {
-      runs.push(Inline {
-        node,
-        groups: groups.to_vec(),
-        content: Content::Text(text),
-        style: text_style(node),
-      });
+      runs.push(Inline::Run(node, groups.to_vec(), text));
 
       true
     }
     Some(Flow::Box) => {
-      runs.push(Inline {
-        node,
-        groups: groups.to_vec(),
-        content: Content::Box(Size::new(0., 0.)),
-        style: text_style(node),
-      });
+      runs.push(Inline::Box(node, groups.to_vec()));
 
       true
     }
@@ -438,33 +445,49 @@ enum Flow {
   Other,
 }
 
-/// The style the run `node` shapes its text in, as its style and the typography in force
-/// set it; the restyle notes whether its resolution read its interaction.
+/// The style the run `node` lays out and paints its text in, as its style and the
+/// typography in force set it: its ink the typography's where it sets none, and a link's
+/// underlined where its decoration says nothing; the restyle notes whether its resolution
+/// read its interaction.
 pub(crate) fn text_style(node: NodeId) -> TextStyle {
-  let style = with_records(|records| match &records.record(node)?.kind {
-    Kind::Run(props) => Some(props.style.clone()),
+  let props = with_records(|records| match &records.record(node)?.kind {
+    Kind::Run(props) => Some((props.style.clone(), props.link.is_some())),
     _ => None,
   });
-  let (size, line_height, spacing) = Env::of(&Records, node)
-    .zip(style)
-    .map(|(env, style)| {
+  let resolved = Env::of(&Records, node)
+    .zip(props)
+    .map(|(env, (style, link))| {
       let resolved = env.with_resolver(|resolver| {
-        let resolved = resolver.run_style(&style);
+        let mut resolved = resolver.run_style(&style);
+        let ink = if link {
+          typography::LINK_INK
+        }
+        else {
+          typography::INK
+        };
 
-        (
-          resolved
-            .ext
-            .font_size
-            .or_else(|| resolver.keyframe_run_value(&StaticLeaf::from(typography::SIZE))),
-          resolved
-            .ext
-            .line_height
-            .or_else(|| resolver.keyframe_run_value(&StaticLeaf::from(typography::LINE_HEIGHT))),
-          resolved
-            .ext
-            .letter_spacing
-            .or_else(|| resolver.keyframe_run_value(&StaticLeaf::from(typography::LETTER_SPACING))),
-        )
+        resolved.ext.font_size = resolved
+          .ext
+          .font_size
+          .or_else(|| resolver.keyframe_run_value(&StaticLeaf::from(typography::SIZE)));
+        resolved.ext.line_height = resolved
+          .ext
+          .line_height
+          .or_else(|| resolver.keyframe_run_value(&StaticLeaf::from(typography::LINE_HEIGHT)))
+          .or(Some(LINE_HEIGHT));
+        resolved.ext.letter_spacing = resolved
+          .ext
+          .letter_spacing
+          .or_else(|| resolver.keyframe_run_value(&StaticLeaf::from(typography::LETTER_SPACING)));
+        resolved.color = resolved
+          .color
+          .or_else(|| resolver.keyframe_run_value(&StaticLeaf::from(ink)));
+
+        if link && resolved.decoration.is_none() {
+          resolved.decoration = Some(TextDecoration::Underline);
+        }
+
+        resolved
       });
 
       with_records(|records| {
@@ -473,26 +496,19 @@ pub(crate) fn text_style(node: NodeId) -> TextStyle {
           .read_interaction(node, env.read_interaction());
       });
 
-      resolved
-    })
-    .unwrap_or_default();
+      TextStyle::resolved(&resolved, Headless::FONT_SIZE)
+    });
 
-  style_of(
-    size.map_or(Headless::FONT_SIZE, |size| size.0),
-    line_height.unwrap_or(LINE_HEIGHT),
-    spacing.map_or(0., |spacing| spacing.0),
-  )
+  resolved.unwrap_or_else(|| style_of(Headless::FONT_SIZE, LINE_HEIGHT, 0.))
 }
 
 /// The style of text in the pinned face at the font size `size`, its line height
-/// `line_height` times that and `spacing` past each cluster.
-pub(crate) const fn style_of(size: f32, line_height: f32, spacing: f32) -> TextStyle {
-  TextStyle {
-    typeface: &INTER,
-    size,
-    line_height: size * line_height,
-    letter_spacing: spacing,
-  }
+/// `line_height` times that and `spacing` past each cluster, in black.
+pub(crate) fn style_of(size: f32, line_height: f32, spacing: f32) -> TextStyle {
+  TextStyle::new(size)
+    .with_letter_spacing(spacing)
+    .with_line_height(LineHeight::Factor(line_height))
+    .with_paint(PaintStyle::default())
 }
 
 /// The children `node` places, in order.

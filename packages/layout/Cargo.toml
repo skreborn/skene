@@ -8,12 +8,12 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-parley = { default-features = false, features = ["std"], version = "0.12" }
+parley.workspace = true
 rustc-hash.workspace = true
 skene-foundation.workspace = true
 skrifa = { default-features = false, features = ["std"], version = "0.44" }
 taffy = "0.15"
-unicode-segmentation = "1"
+unicode-segmentation.workspace = true
 
 [lints]
 workspace = true

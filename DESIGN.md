@@ -579,8 +579,9 @@ Condition     = Media | State | And | Or
   every run is shaped through Parley in the pinned face the conformance suite draws in,
   Inter's regular (kerned, its letter spacing past each cluster, a line its font size
   times its line height tall, each as the typography in force sets them), and where
-  Parley reads text as an editor does its reading stands: a tab is as wide as its glyph,
-  and a newline ending the text opens a line. Headless reports each box's size to the
+  Parley reads text as an editor does its reading stands: a tab advances to the next
+  stop eight blanks apart, as a browser's `tab-size` sets them, and a newline ending the
+  text opens a line. Headless reports each box's size to the
   observers bound to it and answers `layout_rect`, `visible_rect` and, through the
   frames' paint order, `node_at`,
   a hidden box keeping its place but taking no hit as the web's `visibility: hidden`
@@ -967,7 +968,7 @@ cell, the dotted circle unmapped so no shaper inserts one), a stretch of one sca
 at that many cells and an inline box a box as many cells wide and rows tall as it, and
 under the mode a cluster whose code points sum to another width measured by a stand-in
 of its width, so a run wraps and keeps its blanks as headless does, a tab one blank
-cell; a cell holds a cluster
+cell, its stops a cell apart; a cell holds a cluster
 (`Glyph`: one code point, an interned cluster, or the continuation of a wide one, which
 paints nothing) while a field's caret, window and selection index clusters, the window
 of a single-line field settling by cells. A confirmation arriving after the first

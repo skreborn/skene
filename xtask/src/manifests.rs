@@ -2,7 +2,7 @@
 
 use std::{
   fs,
-  path::{Path, PathBuf},
+  path::{Component, Path, PathBuf},
 };
 
 use toml_edit::{DocumentMut, Item, TableLike};
@@ -10,12 +10,25 @@ use toml_edit::{DocumentMut, Item, TableLike};
 /// The dependency tables a manifest lists crates in, each alphabetically.
 const DEPENDENCY_TABLES: [&str; 3] = ["dependencies", "dev-dependencies", "build-dependencies"];
 
-/// Checks every manifest in the workspace: each dependency table lists its crates in
-/// alphabetical order, a cargo feature enables optional dependencies alone and none is
-/// on by default, a crate is optional only where a feature enables it, each member
-/// inherits the workspace's lints and rust-version, a crate under `packages/` declares a
-/// description, inherits the license and the repository and names a workspace crate it
-/// tests against by its path alone, and every other member is never published.
+/// The directory the crates a manifest patches in are vendored under.
+const VENDOR: &str = "vendor";
+
+/// The notes a vendored crate keeps beside its manifest: where it comes from and what
+/// Skene changed in it.
+const NOTES: &str = "SKENE.md";
+
+/// Checks every manifest in the workspace: each dependency table and each `[patch]` table
+/// lists its crates in alphabetical order, a cargo feature enables optional dependencies
+/// alone and none is on by default, a crate is optional only where a feature enables it,
+/// each member inherits the workspace's lints and rust-version, a crate under `packages/`
+/// declares a description, inherits the license and the repository and names a workspace
+/// crate it tests against by its path alone, every other member is never published, and
+/// every crate a `[patch]` table patches in is a `path` under `vendor/` holding a
+/// `SKENE.md`.
+///
+/// A vendored crate is exempt from the rest: it is no member (the workspace excludes
+/// `vendor/`), so it keeps its published manifest and its own lints, outside the
+/// workspace's lints, rust-version and publishing rules.
 pub(crate) fn check(root: &Path) -> Result<(), String> {
   let mut problems = Vec::new();
   let workspace = root.join("Cargo.toml");
@@ -68,6 +81,13 @@ pub(crate) fn check(root: &Path) -> Result<(), String> {
     }
 
     let enabled = features(&manifest, &name.to_string(), &mut problems);
+
+    check_patches(
+      &name.to_string(),
+      &manifest,
+      |path| root.join(path).join(NOTES).is_file(),
+      &mut problems,
+    );
 
     for (table, entries) in dependency_tables(&manifest) {
       for (dependency, entry) in entries.iter() {
@@ -143,6 +163,50 @@ fn check_publishable(
         problems.push(format!(
           "{name}: [{table}] names the workspace's `{dependency}` by more than its path, \
            which a publish would wait on (`{{ path = \"..\" }}`)"
+        ));
+      }
+    }
+  }
+}
+
+/// Notes each crate a `[patch]` table of `manifest` (named `name`) patches in that is not a
+/// `path` under `vendor/` whose directory `holds_notes` (given the path as the manifest
+/// spells it) answers holds a `SKENE.md`.
+fn check_patches(
+  name: &str,
+  manifest: &DocumentMut,
+  holds_notes: impl Fn(&Path) -> bool,
+  problems: &mut Vec<String>,
+) {
+  for (table, entries) in patch_tables(manifest) {
+    for (dependency, entry) in entries.iter() {
+      let Some(path) = entry.get("path").and_then(Item::as_str).map(Path::new)
+      else {
+        problems.push(format!(
+          "{name}: [{table}] patches `{dependency}` in from elsewhere than a path under \
+           `{VENDOR}/` (`{{ path = \"{VENDOR}/{dependency}\" }}`)"
+        ));
+
+        continue;
+      };
+
+      let vendored = path.starts_with(VENDOR)
+        && path.components().count() > 1
+        && path
+          .components()
+          .all(|component| matches!(component, Component::Normal(_)));
+
+      if !vendored {
+        problems.push(format!(
+          "{name}: [{table}] patches `{dependency}` in from `{}`, outside `{VENDOR}/`",
+          path.display()
+        ));
+      }
+      else if !holds_notes(path) {
+        problems.push(format!(
+          "{name}: [{table}] patches `{dependency}` in from `{}`, which holds no `{NOTES}` \
+           naming its source and Skene's changes",
+          path.display()
         ));
       }
     }
@@ -334,5 +398,93 @@ fn dependency_tables(manifest: &DocumentMut) -> Vec<(String, &dyn TableLike)> {
     }
   }
 
+  tables.extend(patch_tables(manifest));
+
   tables
+}
+
+/// Every `[patch]` table of `manifest`, one per source it patches, named as its header
+/// spells it.
+fn patch_tables(manifest: &DocumentMut) -> Vec<(String, &dyn TableLike)> {
+  manifest
+    .get("patch")
+    .and_then(Item::as_table_like)
+    .into_iter()
+    .flat_map(TableLike::iter)
+    .filter_map(|(source, table)| {
+      table
+        .as_table_like()
+        .map(|table| (format!("patch.{source}"), table))
+    })
+    .collect()
+}
+
+#[cfg(test)]
+mod tests {
+  use std::path::Path;
+
+  use toml_edit::DocumentMut;
+
+  use super::{check_patches, dependency_tables};
+
+  fn manifest(source: &str) -> DocumentMut {
+    source.parse().expect("the manifest parses")
+  }
+
+  fn patch_problems(source: &str) -> Vec<String> {
+    let mut problems = Vec::new();
+
+    check_patches(
+      "Cargo.toml",
+      &manifest(source),
+      |path| path != Path::new("vendor/bare"),
+      &mut problems,
+    );
+
+    problems
+  }
+
+  #[test]
+  fn a_patch_table_is_held_to_alphabetical_order() {
+    let manifest = manifest(
+      "[patch.crates-io]\nparley_engine = { path = \"vendor/parley_engine\" }\nparley = { \
+       path = \"vendor/parley\" }\n",
+    );
+    let tables = dependency_tables(&manifest);
+    let (name, table) = tables.first().expect("the patch table is listed");
+    let keys: Vec<&str> = table.iter().map(|(key, _)| key).collect();
+
+    assert_eq!(name, "patch.crates-io");
+    assert_eq!(keys, ["parley_engine", "parley"]);
+  }
+
+  #[test]
+  fn a_patch_from_a_vendored_path_with_its_notes_passes() {
+    assert_eq!(
+      patch_problems(
+        "[patch.crates-io]\nparley = { path = \"vendor/parley\" }\nparley_engine = { path = \
+         \"vendor/parley_engine\" }\n"
+      ),
+      Vec::<String>::new()
+    );
+  }
+
+  #[test]
+  fn a_patch_from_elsewhere_than_vendor_is_a_problem() {
+    let problems = patch_problems(
+      "[patch.crates-io]\na = { git = \"https://example.com/a\" }\nb = { path = \"../b\" \
+       }\nc = { path = \"vendor/../c\" }\nd = { path = \"vendor\" }\ne = { path = \
+       \"packages/e\" }\n",
+    );
+
+    assert_eq!(problems.len(), 5, "{problems:#?}");
+  }
+
+  #[test]
+  fn a_vendored_patch_without_its_notes_is_a_problem() {
+    let problems = patch_problems("[patch.crates-io]\nbare = { path = \"vendor/bare\" }\n");
+
+    assert_eq!(problems.len(), 1, "{problems:#?}");
+    assert!(problems[0].contains("SKENE.md"), "{}", problems[0]);
+  }
 }

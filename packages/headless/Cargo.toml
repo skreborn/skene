@@ -14,7 +14,7 @@ skene-foundation.workspace = true
 skene-layout.workspace = true
 skene-reactive.workspace = true
 skrifa = { default-features = false, features = ["std"], version = "0.44" }
-unicode-segmentation = "1"
+unicode-segmentation.workspace = true
 vello_cpu = { default-features = false, features = ["std", "u8_pipeline"], version = "0.3" }
 
 [dev-dependencies]

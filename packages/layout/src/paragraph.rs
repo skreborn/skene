@@ -18,6 +18,7 @@ use parley::{
   OverflowWrap,
   PositionedLayoutItem,
   StyleProperty,
+  TabSize,
   VerticalAlign,
   fontique::{Blob, Collection, CollectionOptions, FontInfoOverride, SourceCache},
 };
@@ -135,7 +136,8 @@ pub enum Content {
 /// broken where the line fills (never in its min-content width). The blanks a line ends
 /// in hang past its end where it wraps, and past the line's limit alone before a newline
 /// or at the text's end. A newline ending the text opens a line, and an empty text lays
-/// out one.
+/// out one. A tab advances to the next of the stops its tab size sets, eight blanks apart
+/// unless set, as CSS's `tab-size` sets them.
 ///
 /// Each run's line box sits on its line's baseline, its glyphs centered in it, a box's
 /// bottom on the baseline, and a line spans the highest of them above the baseline to
@@ -149,6 +151,7 @@ pub struct Paragraph<N = NodeId> {
   root: TextStyle,
   runs: Vec<Inline<N>>,
   trimmed: bool,
+  tab_size: TabSize,
   shaped: OnceCell<Box<Shaped>>,
   widest: OnceCell<Size<f32>>,
   narrowest: OnceCell<Size<f32>>,
@@ -156,7 +159,10 @@ pub struct Paragraph<N = NodeId> {
 
 impl<N: PartialEq> PartialEq for Paragraph<N> {
   fn eq(&self, other: &Self) -> bool {
-    self.root == other.root && self.runs == other.runs && self.trimmed == other.trimmed
+    self.root == other.root
+      && self.runs == other.runs
+      && self.trimmed == other.trimmed
+      && self.tab_size == other.tab_size
   }
 }
 
@@ -345,6 +351,7 @@ impl<N: Copy> Paragraph<N> {
       root,
       runs,
       trimmed: false,
+      tab_size: TabSize::Spaces(8.),
       shaped: OnceCell::new(),
       widest: OnceCell::new(),
       narrowest: OnceCell::new(),
@@ -356,6 +363,16 @@ impl<N: Copy> Paragraph<N> {
   /// `text-box-trim: trim-both` with `text-box-edge: cap alphabetic` trims a block's text.
   pub fn trimmed(mut self) -> Self {
     self.trimmed = true;
+    self.widest.take();
+    self.narrowest.take();
+
+    self
+  }
+
+  /// The paragraph with its tab stops `tab_size` apart.
+  pub fn set_tab_size(mut self, tab_size: TabSize) -> Self {
+    self.tab_size = tab_size;
+    self.shaped.take();
     self.widest.take();
     self.narrowest.take();
 
@@ -750,6 +767,7 @@ impl<N: Copy> Paragraph<N> {
 
       Self::push_style(&mut |property| builder.push_default(property), &self.root);
       builder.push_default(StyleProperty::OverflowWrap(OverflowWrap::BreakWord));
+      builder.push_default(StyleProperty::TabSize(self.tab_size));
       builder.push_default(StyleProperty::Brush(usize::MAX));
 
       for (index, run) in self.runs.iter().enumerate() {

@@ -22,7 +22,7 @@ skene-macros.workspace = true
 skene-reactive.workspace = true
 smallvec.workspace = true
 tracing.workspace = true
-unicode-segmentation = "1"
+unicode-segmentation.workspace = true
 unicode-width = "0.2"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]

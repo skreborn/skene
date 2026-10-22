@@ -17,7 +17,7 @@ use skene_foundation::{
   TextDecoration,
   TextDecorationStyle,
 };
-use skene_layout::{Content, Inline, Paragraph};
+use skene_layout::{Content, Inline, Paragraph, TabSize};
 
 use crate::{
   BorderGlyphs,
@@ -816,7 +816,8 @@ pub(crate) fn wrap_paragraph(
 
 /// The paragraph `text` lays out as at `scales`: a run of each stretch of one scale, each
 /// cluster measured as [`text::measured`] measures it, and an inline box's placeholder a
-/// box as many cells wide and rows tall as the box.
+/// box as many cells wide and rows tall as the box, and a tab one blank cell, its stops a
+/// cell apart.
 pub(crate) fn paragraph_of(text: &str, scales: &Scales) -> Paragraph<usize> {
   let mut runs: Vec<Inline<usize>> = Vec::new();
   let mut extents: Vec<Extent> = Vec::new();
@@ -854,7 +855,7 @@ pub(crate) fn paragraph_of(text: &str, scales: &Scales) -> Paragraph<usize> {
     }
   }
 
-  Paragraph::new(CellScale::ONE.style(), runs)
+  Paragraph::new(CellScale::ONE.style(), runs).set_tab_size(TabSize::Spaces(1.))
 }
 
 /// `count` cells or rows as the layout counts them.
